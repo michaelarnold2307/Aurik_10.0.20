@@ -38,7 +38,14 @@ import logging
 import time
 from typing import Any
 
-import librosa
+try:
+    import librosa
+
+    _LIBROSA_AVAILABLE = True
+except ImportError:
+    librosa = None  # type: ignore[assignment]
+    _LIBROSA_AVAILABLE = False
+
 import numpy as np
 from scipy import interpolate
 from scipy.signal import lfilter
@@ -281,7 +288,7 @@ class ClickPopRemoval(PhaseInterface):
         click_repair_profile = self._compute_click_repair_profile(_material_key, _quality_mode, _restorability_score)
         self._click_repair_profile_current = click_repair_profile
         _safe_strength = self._derive_safe_click_strength(_effective_strength, _material_key, _panns_tags)
-        config["repair_strength"] = float(np.clip(config["repair_strength"] * _safe_strength, 0.0, 1.0))
+        config["repair_strength"] = float(np.clip(float(config["repair_strength"]) * _safe_strength, 0.0, 1.0))
 
         if _effective_strength <= 0.0:
             passthrough = np.nan_to_num(audio.copy(), nan=0.0, posinf=0.0, neginf=0.0)
