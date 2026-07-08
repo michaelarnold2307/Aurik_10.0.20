@@ -34,3 +34,4 @@ pre-commit>=3.7.0
 types-requests
 types-pyyaml
 psutil>=5.9.0
+zipp>=3.19.1
