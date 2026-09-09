@@ -98,6 +98,18 @@ class ONNXInferenceSession:
         self.model_path = Path(model_path)
         self.providers = providers or [ONNXProvider.CPU.value]
 
+        # §v10.40c (2026-09-09): Per-Modell-GPU-Policy aus dem Kompatibilitäts-Scan
+        # (scripts/onnx_gpu_compat_scan.py → backend/core/gpu_model_registry.py):
+        # "cpu" erzwingt CPU (inkompatibel ODER CPU schneller), "migraphx"/"rocm"
+        # sortieren die GPU-Provider. Fügt nie GPU hinzu, wenn der Aufrufer
+        # CPU-only ist (AURIK_FORCE_CPU / Manager-Demotion).
+        try:
+            from backend.core.gpu_model_registry import apply_gpu_policy
+
+            self.providers = apply_gpu_policy(self.providers, self.model_path)
+        except Exception as _pol_exc:
+            logger.debug("GPU-Policy-Registry nicht anwendbar: %s", _pol_exc)
+
         if not self.model_path.exists():
             raise FileNotFoundError(f"ONNX model not found: {self.model_path}")
 

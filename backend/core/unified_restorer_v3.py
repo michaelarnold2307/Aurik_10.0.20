@@ -549,9 +549,13 @@ def _resolve_noise_texture_rollback_threshold(
     if calibration_context is not None:
         _rs = float(getattr(calibration_context, "restorability_score", restorability_score))
         _depth = int(getattr(calibration_context, "transfer_chain_depth", transfer_chain_depth))
+        # §v10.731: Era-Decade aus dem Kontext für den §G79-Audit durchreichen
+        # (war hardcodiert None → „era=unknown" trotz bekannter Ära).
+        _era_ctx = getattr(calibration_context, "era_decade", None)
     else:
         _rs = float(restorability_score)
         _depth = int(transfer_chain_depth)
+        _era_ctx = None
     _base = float(
         max(
             [_get_noise_texture_rollback_threshold(material_key)]
@@ -572,7 +576,7 @@ def _resolve_noise_texture_rollback_threshold(
         restorability_score=_rs,
         transfer_chain_depth=_depth,
         material_key=material_key,
-        era_decade=None,
+        era_decade=_era_ctx,
     )
     return _result
 
@@ -3667,6 +3671,7 @@ class UnifiedRestorerV3:
         guard_result: dict[str, Any] | None,
         material_key: str | None = None,
         transfer_chain_depth: int | None = None,
+        era_decade: int | None = None,  # §v10.731: für den §G79-Audit (era=unknown-Befund)
     ) -> float:
         """Leitet aus Stereo-Contract-Daten einen konservativen Strength-Multiplikator ab.
 
@@ -3756,6 +3761,7 @@ class UnifiedRestorerV3:
             restorability_score=70.0,  # stereo penalty is guard-driven, not RS-driven
             transfer_chain_depth=_depth,
             material_key=str(material_key or "unknown"),
+            era_decade=era_decade,  # §v10.731: echte Ära statt unknown
         )
 
         return float(np.clip(_multiplier, 0.55, 1.0))
@@ -8761,6 +8767,15 @@ class UnifiedRestorerV3:
             # H2-Targets).
             if _era_result is not None:
                 self._restoration_context["era_result"] = _era_result
+                # §v10.731 (2026-09-09): Era-Decade in den Kontext schreiben —
+                # calibrate_pipeline_guards() liest _rc.get("decade", 1980) und
+                # die Phasen lesen _ctx.get("decade") — BEIDE Keys wurden NIE
+                # gesetzt (Befund Elke-Best-Lauf 2026-09-09: EraClassifier
+                # decade=1970, §CALIB-Audits aber era=unknown/Default-1980).
+                _era_d_ctx = int(getattr(_era_result, "decade", 0) or 0)
+                if _era_d_ctx:
+                    self._restoration_context["era_decade"] = _era_d_ctx
+                    self._restoration_context["decade"] = _era_d_ctx
             # §v10.20 Material-Konsens (2026-08-22): Liegt ein pre_Analyse-Konsens
             # vor, ist er die Single Source of Truth — die Era-Dominanz-Regel
             # darunter würde sonst flip-floppen (Befund: vinyl → tape → vinyl).
@@ -16709,24 +16724,37 @@ class UnifiedRestorerV3:
             # fehlenden Score stillschweigend aus der Endentscheidung herausfallen.
             _goal_vector_keys = sorted(_effective_goal_thresholds.keys())
             _missing_goal_scores = [k for k in _goal_vector_keys if k not in _musical_goal_scores]
+            _tail_skipped_goals = bool(_chunked_tail_skip and not _chunked_last)
             if _missing_goal_scores:
-                logger.warning(
-                    "🎯 Goal-Vektor unvollständig: %d Ziel(e) fehlen in measure_all() → default Wert=0.0 (%s)",
-                    len(_missing_goal_scores),
-                    ", ".join(_missing_goal_scores),
-                )
-                for _missing_goal in _missing_goal_scores:
-                    _musical_goal_scores[_missing_goal] = 0.0
+                if _tail_skipped_goals:
+                    logger.info(
+                        "🎯 Goal-Vektor nicht gemessen (chunked_tail_skip, Nicht-Letzter-Chunk): %d Ziel(e) — keine Messung, keine Defaults",
+                        len(_missing_goal_scores),
+                    )
+                else:
+                    logger.warning(
+                        "🎯 Goal-Vektor unvollständig: %d Ziel(e) fehlen in measure_all() — werden NICHT als 0.0 gewertet (%s)",
+                        len(_missing_goal_scores),
+                        ", ".join(_missing_goal_scores),
+                    )
+            # §v10.732 (2026-09-09): Fehlende Scores NICHT auf 0.0 setzen — 0.0
+            # heißt „katastrophal gescheitert" und vergiftet _musical_goals_passed,
+            # _musical_excellence_score, PQS-MOS und die ExzellenzDenker-Entscheidung
+            # (Befund Elke-Best-Lauf: 15 fehlende Goals → PQS-MOS=1.9 → Rollback-
+            # Signale auf jedem Nicht-Letzten-Chunk). Nur GEMESSENE Goals zählen.
+            _measured_goals = {k: v for k, v in _musical_goal_scores.items() if k in _goal_vector_keys}
 
             _musical_goals_passed = {
                 k: (
                     True
-                    if k not in _applicable_goal_names
-                    else float(_musical_goal_scores.get(k, 0.0)) >= _effective_goal_thresholds.get(k, 0.85)
+                    if k not in _applicable_goal_names or k not in _measured_goals
+                    else float(_measured_goals[k]) >= _effective_goal_thresholds.get(k, 0.85)
                 )
                 for k in _goal_vector_keys
             }
-            _musical_excellence_score = sum(_musical_goal_scores.values()) / max(len(_musical_goal_scores), 1)
+            _musical_excellence_score = (
+                sum(_measured_goals.values()) / max(len(_measured_goals), 1) if _measured_goals else -1.0
+            )
             _mg_violations = [
                 k
                 for k, p in _musical_goals_passed.items()
@@ -27549,8 +27577,15 @@ class UnifiedRestorerV3:
         # §2.8 Vocal-Chain: Einmalige Gender-Detektion für alle nachfolgenden Vocal-Phasen
         # Ergebnis wird auf self gespeichert und in _restoration_context injiziert,
         # sodass Phase 19/42/43 das erkannte Geschlecht via kwargs erhalten.
+        # §v10.734 (2026-09-09): Song-global vorberechnetes Gender (Mittelfenster
+        # aus _restore_chunked) hat Vorrang — Chunk-0-Intros lieferten sonst
+        # F0=0.0 → unknown (Befund Elke-Best-Lauf 2).
+        _precomputed_gender = kwargs.pop("_precomputed_vocal_gender", None)
         self._detected_vocal_gender = "unknown"
-        if vocals_detected and audio is not None:
+        if _precomputed_gender:
+            self._detected_vocal_gender = str(_precomputed_gender)
+            logger.info("§2.8 Vocal Gender (song-global vorberechnet): %s", self._detected_vocal_gender)
+        elif vocals_detected and audio is not None:
             try:
                 from backend.core.vocal_ai_enhancement import GenderDetector as _GenderDet
 
@@ -41163,6 +41198,12 @@ class UnifiedRestorerV3:
                                         len(getattr(self, "_restoration_context", {}).get("transfer_chain", []) or [])
                                         or 1
                                     ),
+                                    era_decade=int(
+                                        getattr(self, "_restoration_context", {}).get("decade")
+                                        or getattr(self, "_restoration_context", {}).get("era_decade")
+                                        or 0
+                                    )
+                                    or None,  # §v10.731: echte Ära durchreichen
                                 )
                                 if _stereo_multiplier < 1.0:
                                     _existing_hint = self._conductor_strength_hints.get(_next_phase_id)
@@ -45127,6 +45168,30 @@ class UnifiedRestorerV3:
                 len(chunks),
                 _total_s,
             )
+
+            # §v10.734 (2026-09-09): Song-globales Gender VOR der Chunk-Schleife —
+            # deterministisches Mittelfenster (30 s). Chunk-0-Intros erzeugten sonst
+            # F0=0.0 → vocal_gender=unknown für den GESAMTEN Song (Befund Lauf 2).
+            try:
+                from backend.core.vocal_ai_enhancement import GenderDetector as _GD734
+
+                _ws_samples = int(30.0 * sample_rate)
+                _mid0 = max(0, (_n_total - _ws_samples) // 2)
+                _seg = audio[_mid0 : _mid0 + _ws_samples]
+                _seg_mono = _seg.mean(axis=1) if _seg.ndim == 2 else _seg
+                _g734 = _GD734(sample_rate=sample_rate).detect(np.asarray(_seg_mono, dtype=np.float32))
+                if _g734.gender.value != "unknown":
+                    _chunk_kwargs["_precomputed_vocal_gender"] = _g734.gender.value
+                    logger.info(
+                        "🎤 Song-Globales Gender (Mittelfenster): %s (F0=%.1f Hz, conf=%.2f)",
+                        _g734.gender.value,
+                        _g734.fundamental_freq,
+                        _g734.confidence,
+                    )
+                else:
+                    logger.info("🎤 Song-Globales Gender: unbekannt (Mittelfenster ohne voicing) — Chunk-Detektion bleibt aktiv")
+            except Exception as _g734_exc:
+                logger.debug("Song-Globales Gender fehlgeschlagen (%s) — Chunk-Detektion bleibt aktiv", _g734_exc)
 
             # §v10.704 B28 [FIX 2026-08-23]: pre_repair_reference ist der FULL-SONG
             # (Denker übergibt _work_audio). Unbeschnitten übernimmt jeder Chunk-Lauf

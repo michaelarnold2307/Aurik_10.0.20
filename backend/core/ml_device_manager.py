@@ -377,7 +377,12 @@ _HEAVY_ML_PLUGINS: frozenset[str] = frozenset(
         "BigVGAN",  # bigvgan_v2_plugin — neural vocoder (400 MB)
         "Vocos",  # vocos_plugin — primary neural vocoder in restore/export path
         "HiFiGAN",  # hifigan_plugin — neural vocoder fallback path
-        "ApolloPlugin",  # apollo_plugin — restorative ML
+        # §v10.733 (2026-09-09): ApolloPlugin NICHT mehr GPU-fähig — das TorchScript
+        # enthält torch.stft im Graphen; stft wird im TorchScript-Interpreter auf
+        # CUDA/ROCm nicht unterstützt (Befund Elke-Best-Lauf: „GPU-Inferenz
+        # fehlgeschlagen ... stft"). CPU-Force gemäß GPU-Policy (inkompatible
+        # Modelle laufen auf CPU).
+        # "ApolloPlugin",  # apollo_plugin — restorative ML → CPU-Force §v10.733
         "CQTDiffPlus",  # cqtdiff_plus_plugin — diffusion inpainting
         "Gacela",  # gacela_plugin — audio inpainting
         "MPSENet",  # mp_senet plugin — speech enhancement

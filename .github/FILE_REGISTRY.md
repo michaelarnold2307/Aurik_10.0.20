@@ -106,6 +106,9 @@
 | tests/unit/test_whole_song_mode.py | ACTIVE | testing/unit | ja | — | §v10.720 Lücke-4 Stufe 1: Unit-Gate für die Chunk-vs-Ganzsong-Entscheidung (_should_use_chunked_path) + Env-/Kwarg-Verdrahtung (2026-09-08) |
 | tests/integration/test_whole_song_mode.py | ACTIVE | testing/integration | ja | — | §v10.720 Lücke-4 Stufe 1: End-to-End Ganzsong-Modus (121 s, FAST, kein Chunked-Aufruf, Bit-Determinismus §G5) (2026-09-08) |
 | tests/unit/test_phase07_era_passthrough.py | ACTIVE | testing/unit | ja | — | §v10.730: era_result-Durchreichung an Phasen (2026-09-09) |
+| backend/core/gpu_model_registry.py | ACTIVE | backend/core | ja | — | §v10.40c Per-Modell-GPU-Policy aus dem Kompatibilitäts-Scan (migraphx/rocm/cpu-Verdicts; CPU-Force bei Inkompatibilität oder CPU-schneller; nie GPU-Hinzufügen bei CPU-only) (2026-09-09) |
+| scripts/onnx_gpu_compat_scan.py | ACTIVE | scripts | ja | — | §v10.40c Wartungswerkzeug: scannt jedes ONNX-Modell auf GPU-Kompatibilität + Zeitmessung (CPU/ROCm/MIGraphX), schreibt backend/core/gpu_model_registry.json (2026-09-09) |
+| tests/unit/test_gpu_model_registry.py | ACTIVE | testing/unit | ja | — | §v10.40c Policy-Tests für gpu_model_registry (Verdicts, CPU-Force, CPU-only-Schutz) (2026-09-09) |
 
 - **Neue Datei anlegen:** zuerst `scripts/repo_search.py --before-create <pfad>`
   (kanonische Alternative? Namens-/Symbol-Ähnlichkeit?), dann hier eintragen
