@@ -20,6 +20,54 @@ import numpy as np
 
 logger = logging.getLogger(__name__)
 
+# ── §v10.750: ONNX-Core-Inferenz (STFT/Band-Split/ISTFT in NumPy) ─────────
+_APOLLO_NFFT = 882
+_APOLLO_HOP = 441
+_APOLLO_BANDW: list[int] = [5] * 79 + [47]  # 80 Bänder: 79×5 + Rest (442-395)
+_APOLLO_EPS = float(np.finfo(np.float32).eps)
+
+
+def _run_apollo_onnx_core(session: Any, input_names: list[str], x: np.ndarray) -> np.ndarray:
+    """x: mono float32 (N,) @ 44100 — gibt restauriertes mono (N,) zurück.
+
+    Repliziert Apollo.spec_band_split + feature_extractor-Vorseite exakt:
+    Hann-STFT (n_fft=882, hop=441) → 80 Bänder → concat(real, imag,
+    log(power)) → ONNX-Core (BN/Net/Output im Graphen) → RI-Masken → ISTFT.
+    """
+    import scipy.signal as _sps750  # pylint: disable=import-outside-toplevel
+
+    win = np.hanning(_APOLLO_NFFT).astype(np.float32)
+    _, _, spec = _sps750.stft(
+        x,
+        fs=44100,
+        window=win,
+        nperseg=_APOLLO_NFFT,
+        noverlap=_APOLLO_NFFT - _APOLLO_HOP,
+        boundary=None,
+        padded=False,
+        return_onesided=True,
+    )
+    spec = np.asarray(spec, dtype=np.complex64)  # (442, T)
+    feed: dict[str, np.ndarray] = {}
+    _b = 0
+    for _i, _bw in enumerate(_APOLLO_BANDW):
+        _s = spec[_b : _b + _bw]
+        _power = np.sqrt((np.abs(_s) ** 2).sum(0) + _APOLLO_EPS)
+        _band_in = np.concatenate([_s.real, _s.imag, np.log(_power)[None, :]], axis=0)
+        feed[input_names[_i]] = _band_in[None, :, :].astype(np.float32)
+        _b += _bw
+    ri = session.run(None, feed)[0]  # (1, 2, 442, T)
+    est = (ri[0, 0] + 1j * ri[0, 1]).astype(np.complex64)
+    _, y = _sps750.istft(
+        est,
+        fs=44100,
+        window=win,
+        nperseg=_APOLLO_NFFT,
+        noverlap=_APOLLO_NFFT - _APOLLO_HOP,
+        input_onesided=True,
+    )
+    return np.asarray(y, dtype=np.float32)
+
 # ── Cache: Per-Material-Effectiveness ───────────────────────────────────
 
 _effectiveness_cache: dict[str, dict[str, Any]] = {}
@@ -152,6 +200,8 @@ class ApolloPhase0Guard:
         )
         self._hallucination_threshold = float(hallucination_threshold)  # default 0.35
         self._model = None
+        self._apollo_onnx = None  # §v10.750: ONNX-Core-Session (registry-bewusst, GPU-fähig)
+        self._onnx_input_names: list[str] = []
         self._device = "cpu"
         self._loaded = False
         self._cached_effective: set[str] = set()  # Materialien wo Apollo half
@@ -204,6 +254,25 @@ class ApolloPhase0Guard:
         if not __import__("os").path.isfile(self._model_path):
             logger.debug("Apollo-Modell nicht gefunden: %s", self._model_path)
             return False
+        # §v10.750 (2026-09-09): ONNX-Core zuerst — Apollo-Core (67.6 MB) läuft
+        # registry-bewusst (GPU möglich) statt CPU-geforcedem TorchScript (§v10.736).
+        _core_path = __import__("os").path.join(__import__("os").path.dirname(self._model_path), "apollo_core.onnx")
+        try:
+            if __import__("os").path.isfile(_core_path):
+                import onnxruntime as _ort750
+
+                from backend.core.ml_device_manager import get_ort_providers as _gp750
+
+                self._apollo_onnx = _ort750.InferenceSession(_core_path, providers=_gp750("ApolloCore"))
+                self._onnx_input_names = [i.name for i in self._apollo_onnx.get_inputs()]
+                self._loaded = True
+                logger.info(
+                    "Apollo Verarbeitungsschritt-0 ONNX-Core geladen (apollo_core.onnx, %d Band-Eingänge)",
+                    len(self._onnx_input_names),
+                )
+                return True
+        except Exception as _exc750:
+            logger.warning("Apollo-ONNX-Core nicht verfügbar (%s) — TorchScript-Fallback", _exc750)
         try:
             import torch
 
@@ -322,7 +391,14 @@ class ApolloPhase0Guard:
                 _end = min(_start + _chunk_samples, _total)
                 _chunk = t[:, :, _start:_end]
                 with torch.no_grad():
-                    _out = _model(_chunk)
+                    if self._apollo_onnx is not None:
+                        # §v10.750: ONNX-Core-Pfad (deterministisch, GPU-fähig)
+                        _np_chunk = _chunk[0, 0].cpu().numpy()
+                        _np_out = _run_apollo_onnx_core(self._apollo_onnx, self._onnx_input_names, _np_chunk)
+                        _out = torch.from_numpy(_np_out).unsqueeze(0).unsqueeze(0).to(t.device)
+                        _out = _out[..., : _chunk.shape[-1]]
+                    else:
+                        _out = _model(_chunk)
                 _result[:, :, _start:_end] = _out
 
             # Resample zurück

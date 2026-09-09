@@ -1,4 +1,12 @@
 {
+  "models/apollo/apollo_core.onnx": {
+    "backend": "rocm",
+    "cpu_ms": 1700.3,
+    "gpu_ms": 55.9,
+    "note": "manuell gemessen (80 Band-Eing\u00e4nge, 128 Frames)",
+    "scan_s": 3.1,
+    "verdict": "rocm"
+  },
   "models/bs_roformer/bs_roformer_317_core.onnx": {
     "backend": "rocm",
     "cpu_ms": 11076.119,
