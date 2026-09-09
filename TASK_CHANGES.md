@@ -1,13 +1,14 @@
 # TASK_CHANGES — Live-Ledger der aktuellen Aufgabe
 
-> Generiert von `scripts/change_ledger.py snapshot` (Base: `HEAD`, Stand: 2026-09-09 20:54 CEST).
+> Generiert von `scripts/change_ledger.py snapshot` (Base: `HEAD`, Stand: 2026-09-09 21:51 CEST).
 > CI (`ci-lite.yml` pr-evidence-gate) erzwingt Abdeckung: jede geänderte Code-Datei muss hier stehen.
 
 ## Geänderte Dateien
 
 | Status | Pfad | Art |
 |---|---|---|
-| ?? | scripts/export_bs_roformer_onnx.py | ungetrackt |
+| M | plugins/mert_plugin.py | modifiziert |
+| M | scripts/export_mert_onnx.py | modifiziert |
 
 ## Entscheidungen
 

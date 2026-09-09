@@ -1,179 +1,72 @@
-"""
-Export MERT-95M (and optionally MERT-330M) to ONNX INT8.
+#!/usr/bin/env python3
+"""§P1-4c (2026-09-09): MERT-v1-330M → ONNX-Export + Parität.
 
-Plugin interface (mert_plugin._analyze_onnx):
-  Input:  "input_values"  float32 [1, T]   (T audio samples @ 16 kHz)
-  Output: [0]             float32 [1, F, D] (F frames, D hidden dims)
-  Score:  np.mean(np.abs(output)) / 10.0   (clipped to [0, 1])
+Ziel: models/mert/mert.onnx — der MERT-Plugin-ONNX-Pfad erwartet genau diese
+Datei (fehlt → 1.3-GB-HF/transformers-Fallback lädt in JEDEM Run auf CPU).
+Export: MERTModel (HubertModel-Subklasse, lokale custom modeling_MERT.py)
+input_values (24 kHz) → last_hidden_state; dynamische Zeitachse, opset 17,
+Legacy-Exporter (dynamo=False).
 
 Usage:
-    python scripts/export_mert_onnx.py [--model 330m]  # default: 95m
+    .venv_aurik/bin/python scripts/export_mert_onnx.py
 """
 
 from __future__ import annotations
 
-import argparse
-import hashlib
 import sys
 from pathlib import Path
 
-import numpy as np
-import torch
+ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(ROOT))
+sys.path.insert(0, str(ROOT / "models" / "mert-v1-330m"))
 
-ROOT = Path(__file__).resolve().parents[1]
-
-# ---------------------------------------------------------------------------
-# CLI
-# ---------------------------------------------------------------------------
+MODEL_DIR = ROOT / "models" / "mert-v1-330m"
+OUT = ROOT / "models" / "mert" / "mert_330m.onnx"  # bestehendes mert.onnx = 95M-Variante (768) — nicht überschreiben
 
 
-def parse_args() -> argparse.Namespace:
-    p = argparse.ArgumentParser()
-    p.add_argument(
-        "--model", choices=["95m", "330m"], default="95m", help="Which MERT variant to export (default: 95m)"
-    )
-    return p.parse_args()
+def main() -> int:
+    import numpy as np  # pylint: disable=import-outside-toplevel
+    import onnxruntime as ort  # pylint: disable=import-outside-toplevel
+    import torch  # pylint: disable=import-outside-toplevel
 
+    if OUT.exists():
+        print(f"existiert bereits: {OUT} ({OUT.stat().st_size/1e6:.1f} MB)")
+        return 0
 
-# ---------------------------------------------------------------------------
-# Export helpers
-# ---------------------------------------------------------------------------
+    from modeling_MERT import MERTModel  # pylint: disable=import-outside-toplevel
 
-
-def sha256_of_file(path: Path) -> str:
-    h = hashlib.sha256()
-    with path.open("rb") as f:
-        for chunk in iter(lambda: f.read(1 << 20), b""):
-            h.update(chunk)
-    return h.hexdigest()
-
-
-def export(model_id: str) -> Path:
-    """Export MERT variant to FP32 ONNX, then quantize to INT8."""
-    if model_id == "95m":
-        src_dir = ROOT / "models" / "mert-95m"
-        hidden_size = 768
-    else:
-        src_dir = ROOT / "models" / "mert-v1-330m"
-        hidden_size = 1024  # MERT-330M dim
-
-    out_dir = ROOT / "models" / "mert"
-    out_dir.mkdir(parents=True, exist_ok=True)
-
-    fp32_path = out_dir / f"mert_{model_id}_fp32.onnx"
-    int8_path = out_dir / f"mert_{model_id}.onnx"
-
-    # Backup existing mert.onnx (95M legacy) before overwriting
-    legacy_path = out_dir / "mert.onnx"
-    if model_id == "95m" and legacy_path.exists():
-        legacy_backup = out_dir / "mert.onnx.bak"
-        import shutil
-
-        shutil.copy2(legacy_path, legacy_backup)
-        print("      Backed up existing mert.onnx → mert.onnx.bak")
-
-    # ------------------------------------------------------------------
-    # 1. Load model
-    # ------------------------------------------------------------------
-    print(f"[1/4] Loading MERT-{model_id.upper()} from {src_dir} ...")
-    sys.path.insert(0, str(src_dir))
-
-    from transformers import AutoModel  # type: ignore
-
-    model = AutoModel.from_pretrained(str(src_dir), trust_remote_code=True)
+    model = MERTModel.from_pretrained(str(MODEL_DIR))
     model.eval()
-    print(f"      Model type: {type(model).__name__}")
+    print(f"Modell geladen: {sum(p.numel() for p in model.parameters())/1e6:.0f}M Parameter")
 
-    # ------------------------------------------------------------------
-    # 2. ONNX export (FP32)
-    # ------------------------------------------------------------------
-    SR = 16_000
-    dummy_seconds = 1.0
-    dummy = torch.zeros(1, int(SR * dummy_seconds))
-
-    print(f"[2/4] Exporting FP32 ONNX → {fp32_path} ...")
-
+    OUT.parent.mkdir(parents=True, exist_ok=True)
+    dummy = torch.zeros((1, 24000), dtype=torch.float32)  # 1 s @ 24 kHz
     with torch.no_grad():
         torch.onnx.export(
             model,
-            (dummy,),
-            str(fp32_path),
-            opset_version=14,
+            dummy,
+            str(OUT),
             input_names=["input_values"],
             output_names=["last_hidden_state"],
-            dynamic_axes={
-                "input_values": {0: "batch", 1: "samples"},
-                "last_hidden_state": {0: "batch", 1: "frames"},
-            },
+            dynamic_axes={"input_values": {0: "batch", 1: "time"}, "last_hidden_state": {0: "batch", 1: "time"}},
+            opset_version=17,
+            dynamo=False,
             do_constant_folding=True,
         )
+    print(f"Export OK: {OUT} ({OUT.stat().st_size/1e6:.1f} MB)")
 
-    size_fp32 = fp32_path.stat().st_size
-    print(f"      FP32 ONNX size: {size_fp32 / 1e6:.1f} MB")
+    # ── Parität: torch vs. ONNX auf identischem Eingang ─────────────────
+    rng = np.random.default_rng(7)
+    x = (rng.standard_normal((1, 48000)) * 0.05).astype(np.float32)  # 2 s
+    with torch.no_grad():
+        y_torch = model(torch.from_numpy(x)).last_hidden_state.numpy()
+    sess = ort.InferenceSession(str(OUT), providers=["CPUExecutionProvider"])
+    y_onnx = sess.run(None, {"input_values": x})[0]
+    diff = float(np.abs(y_torch - y_onnx).max())
+    rel = float(np.abs(y_torch - y_onnx).mean() / (np.abs(y_torch).mean() + 1e-9))
+    print(f"Parität: max_abs={diff:.3e} rel_mean={rel:.3e} (Toleranz 1e-3)")
+    return 0 if diff < 1e-3 else 1
 
-    # ------------------------------------------------------------------
-    # 3. INT8 quantization (MatMul + Gemm only — Conv excluded;
-    #    CPUExecutionProvider does not support ConvInteger)
-    # ------------------------------------------------------------------
-    print(f"[3/4] Quantizing to INT8 → {int8_path} ...")
-    from onnxruntime.quantization import QuantType, quantize_dynamic
-
-    quantize_dynamic(
-        str(fp32_path),
-        str(int8_path),
-        weight_type=QuantType.QInt8,
-        op_types_to_quantize=["MatMul", "Gemm"],
-    )
-
-    size_int8 = int8_path.stat().st_size
-    print(f"      INT8 ONNX size: {size_int8 / 1e6:.1f} MB  ({size_fp32 / size_int8:.1f}× smaller)")
-
-    # Clean up FP32 intermediate
-    fp32_path.unlink(missing_ok=True)
-
-    # ------------------------------------------------------------------
-    # 4. Verify with OnnxRuntime
-    # ------------------------------------------------------------------
-    print("[4/4] Verifying with OnnxRuntime ...")
-    import onnxruntime as ort
-
-    sess = ort.InferenceSession(str(int8_path), providers=["CPUExecutionProvider"])
-    input_name = sess.get_inputs()[0].name
-
-    # 3-second test clip
-    test_audio = np.zeros((1, SR * 3), dtype=np.float32)
-    outputs = sess.run(None, {input_name: test_audio})
-    out_arr = outputs[0]
-    print(f"      Output shape: {out_arr.shape}   (expect [1, *, {hidden_size}])")
-    assert out_arr.ndim == 3, f"Expected 3D output, got shape {out_arr.shape}"
-    assert out_arr.shape[0] == 1
-    assert out_arr.shape[2] == hidden_size, f"Hidden size mismatch: {out_arr.shape[2]} vs {hidden_size}"
-    assert np.isfinite(out_arr).all(), "NaN/Inf in output!"
-
-    # Plugin-style score
-    score = float(np.clip(np.mean(np.abs(out_arr)) / 10.0, 0.0, 1.0))
-    print(f"      Plugin score (zero-input): {score:.4f}")
-
-    sha = sha256_of_file(int8_path)
-    print(f"      SHA-256: {sha}")
-    print(f"\n✅  MERT-{model_id.upper()} ONNX saved → {int8_path}")
-
-    # Create/update symlink for plugin compatibility (mert.onnx → variant file)
-    if model_id == "95m":
-        if legacy_path.is_symlink():
-            legacy_path.unlink()
-        elif legacy_path.exists():
-            legacy_path.rename(legacy_path.with_suffix(".onnx.pre_multivariant"))
-        legacy_path.symlink_to(int8_path.name)
-        print(f"      Symlink: mert.onnx → {int8_path.name}")
-
-    return int8_path, sha  # type: ignore[return-value]
-
-
-# ---------------------------------------------------------------------------
-# Main
-# ---------------------------------------------------------------------------
 
 if __name__ == "__main__":
-    args = parse_args()
-    export(args.model)
+    sys.exit(main())

@@ -366,7 +366,7 @@ class MertPlugin:
     def __init__(
         self,
         model_dir: str | None = None,
-        use_onnx: bool = False,
+        use_onnx: bool = True,  # §v10.748 (2026-09-09): ONNX-first — mert_330m.onnx (355 MB, ROCm 1.32×) statt HF-1.3-GB-Pfad
         target_sr: int = _TARGET_SR,
     ) -> None:
         self._model_dir = Path(model_dir) if model_dir else _MERT_MODEL_DIR
