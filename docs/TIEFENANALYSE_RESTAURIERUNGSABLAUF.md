@@ -147,6 +147,9 @@ Quality-Modus) deckte vier echte Qualitäts-Bugs auf — alle behoben und dokume
 | §v10.731 | `_restoration_context["decade"/"era_decade"]` wurde NIE gesetzt → Kalibrierung still 1980, §CALIB-Audits „era=unknown“ | Era-Decade in den Kontext + NTX/Stereo-Audits |
 | §v10.732 | Fehlende Goal-Scores wurden mit 0.0 gefüllt („katastrophal gescheitert“) → PQS-MOS 1.9 → Rollback-Signale auf jedem Nicht-Letzten-Chunk | Nur gemessene Goals zählen; -1.0-Sentinel deaktiviert PQS sauber |
 | §v10.734 | Gender-Erkennung lief pro 30-s-Chunk → Chunk-0-Intro = F0 0.0/unknown für den GANZEN Song | Song-globales Mittelfenster-Gender vor der Chunk-Schleife (`_precomputed_vocal_gender`) |
+| §v10.735 | PQS/§2.14-Gate + EmotionalArc liefen auf jedem 30-s-Chunk → Chunk-MOS 1.9 → Rollback-Signale | Song-globale Gates nur auf dem letzten Chunk (Nicht-Letzter-Chunk = Skip) |
+| §v10.736 | Apollo (TorchScript) lief auf device=cuda → `torch.stft`-im-Graph crashte im ROCm-Interpreter → Apollo komplett ausgefallen | Apollo-Plug-in CPU-geforced (`_device="cpu"`), §v10.733 umgesetzt |
 
 **GPU-Befunde desselben Laufs** (→ Spec §v10.40c): PANNs/ROCm-fp16 aktiv;
-Apollo (TorchScript mit in-Graph-`torch.stft`) ist GPU-unfähig → CPU-Force (§v10.733).
+Apollo (TorchScript mit in-Graph-`torch.stft`) ist GPU-unfähig → CPU-Force (§v10.733) —
+Lauf 4: erstes Laden auf cuda crash → §v10.736-Fix im Plugin.

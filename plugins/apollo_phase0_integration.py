@@ -207,7 +207,12 @@ class ApolloPhase0Guard:
         try:
             import torch
 
-            self._device = "cuda" if torch.cuda.is_available() else "cpu"
+            # §v10.733 (2026-09-09): Apollo ist CPU-geforced — der TorchScript-
+            # Graph enthält torch.stft im Forward (spec_band_split); dieser Op
+            # crasht im ROCm-Interpreter (Befund Lauf 4: RuntimeError in
+            # TorchScript interpreter auf device=cuda). §v10.40c: TorchScript
+            # ist nicht ONNX/MIGraphX-fähig → immer CPU.
+            self._device = "cpu"
             self._model = torch.jit.load(self._model_path, map_location=self._device)
             self._model.eval()  # type: ignore[attr-defined]
             self._loaded = True
