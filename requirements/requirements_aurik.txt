@@ -22,6 +22,8 @@
 #
 # §v10.40c GPU-Stack (2026-09-09, AMD RX 7900 XTX / ROCm 7.2.4 — verifiziert):
 #   torch==2.11.0+rocm7.2  torchaudio==2.11.0+rocm7.2
+#   torchvision==0.26.0+rocm7.2  (P1-5: 0.22.0+cpu war ABI-inkompatibel →
+#   LAION-CLAP fiel auf PANNs-Heuristik zurück; 0.26+rocm7.2 läuft auf 2.11)
 #   --index-url https://download.pytorch.org/whl/rocm7.2
 #   onnxruntime-rocm==1.22.2.post3  (ERSETZT onnxruntime; ROCMExecutionProvider)
 #   MIGraphX: backend/core/migraphx_adapter.py + libmigraphx_bridge.so (ONNX-only)
