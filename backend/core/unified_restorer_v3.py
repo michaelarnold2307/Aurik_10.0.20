@@ -16301,7 +16301,14 @@ class UnifiedRestorerV3:
             )
 
             _shape_match = original_audio_for_goals.shape == restored_audio.shape and original_audio_for_goals.size > 0
-            if _shape_match:
+            # §v10.735 (2026-09-09): PQS + §2.14-Quality-Gate sind SONG-GLOBAL —
+            # auf Nicht-Letzten-Chunks (30-s-Fenster) messen sie Chunk-MOS und
+            # erzeugen falsche Rollback-Signale (Befund Lauf 4: PQS-MOS 1.9 auf
+            # jedem Chunk). Skip; das Gate läuft auf dem letzten Chunk.
+            if _chunked_tail_skip and not _chunked_last:
+                _pqs_result = None
+                logger.info("📊 PQS/§2.14-Quality-Gate übersprungen (Nicht-Letzter-Chunk)")
+            elif _shape_match:
                 _pqs_result = _score_audio(original_audio_for_goals, restored_audio, sample_rate)
             else:
                 _pqs_result = _score_abs(restored_audio, sample_rate)
@@ -16322,7 +16329,7 @@ class UnifiedRestorerV3:
                 "wire_recording": 2.0,
             }
             _mos_t = _MOS_MAT.get(str(getattr(material_type, "value", str(material_type))).lower(), 3.0)
-            if _pqs_result.pqs_mos >= _mos_t:
+            if _pqs_result is not None and _pqs_result.pqs_mos >= _mos_t:
                 logger.info(
                     "📊 PQS-MOS: %.2f (NSIM=%.3f MCD=%.1f dB) ≥ %.1f ✓",
                     _pqs_result.pqs_mos,
@@ -17071,7 +17078,9 @@ class UnifiedRestorerV3:
                             _cent_exc,
                         )
 
-                    if not (_are_p >= _arousal_threshold and _val_p >= _valence_threshold):
+                    if not (_are_p >= _arousal_threshold and _val_p >= _valence_threshold) and not (
+                        _chunked_tail_skip and not _chunked_last
+                    ):  # §v10.735: EmotionalArc ist song-global — kein Chunk-Rollback
                         restored_audio = _pre_excellence_audio.copy()
                         _fail_reasons.append(
                             {
