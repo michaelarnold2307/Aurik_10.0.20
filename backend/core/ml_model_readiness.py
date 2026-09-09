@@ -337,7 +337,6 @@ def _register_all() -> None:
         _probe_plugin("plugins.whisper_denoiser_plugin", "get_whisper_denoiser_plugin", "is_loaded"),
     )
     # --- Music Demixing ---
-    register_ml_check("MDX23C", _probe_plugin("plugins.mdx23c_plugin", "get_mdx23c_plugin", "_model_loaded"))
     register_ml_check(
         "UVR-MDX-Net", _probe_plugin("plugins.uvr_mdxnet_plugin", "get_uvr_mdxnet_plugin", "_model_loaded")
     )

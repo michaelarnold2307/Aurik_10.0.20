@@ -1567,7 +1567,6 @@ def warmup_models_background() -> None:
     _plugins_tier2 = [
         ("plugins.apollo_plugin", "get_apollo"),  # ~800 MB
         ("plugins.bs_roformer_plugin", "get_bs_roformer"),  # ~860 MB
-        ("plugins.mdx23c_plugin", "get_mdx23c_plugin"),  # ~900 MB
         ("plugins.mert_plugin", "get_mert_plugin"),  # ~1.2 GB (async)
     ]
 

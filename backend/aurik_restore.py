@@ -285,18 +285,12 @@ def rekonstruktion(audio: np.ndarray, sr: int) -> tuple[np.ndarray, int]:
     logger.info("[5] Rekonstruktion...")
     audio, sr = ensure_sr(audio, sr, 48000)
     vocals = None
-    try:
-        from plugins.mdx23c_plugin import MDX23CPlugin  # pylint: disable=import-outside-toplevel
-
-        plugin = MDX23CPlugin()
-        vocals = plugin.process(audio, sr, stem="vocals")
-    except Exception as _mdx_exc:
-        logger.warning("ML→DSP-Fallback aktiviert", exc_info=True)  # §V6 (copilot-instructions.md)
-        logger.debug("rekonstruktion: MDX23C nicht verfügbar (%s) — Dry-Passthrough", _mdx_exc)
-        _record_fallback("aurik_restore", "mdx23c", "dry_passthrough", "mdx23c_unavailable")
+    # §v10.739 (2026-09-09): MDX23C entfernt (Registry ohne Gewichte).
+    # Legacy-Pfad: Dry-Passthrough ohne Vocal-Stem.
+    logger.info("rekonstruktion: MDX23C entfernt (§v10.739) — Dry-Passthrough")
     if vocals is None:
-        logger.warning(
-            "rekonstruktion: MDX23C lieferte keinen Vocal-Stem — Dry-Passthrough (§V6 (copilot-instructions.md))"
+        logger.info(
+            "rekonstruktion: kein Vocal-Stem verfügbar — Dry-Passthrough"
         )
         _record_fallback("aurik_restore", "mdx23c", "dry_passthrough", "mdx23c_no_result")
         vocals = audio

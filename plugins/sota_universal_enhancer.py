@@ -12,11 +12,9 @@ except ImportError as e:  # pragma: no cover
     MpSenetPlugin = None  # type: ignore[misc,assignment]
     _log.warning("MpSenetPlugin nicht verfügbar: %s", e)
 
-try:
-    from plugins.mdx23c_plugin import MDX23CPlugin
-except ImportError as e:  # pragma: no cover
-    MDX23CPlugin = None  # type: ignore[misc,assignment]
-    _log.warning("MDX23CPlugin nicht verfügbar: %s", e)
+# §v10.739 (2026-09-09): MDX23C entfernt (Registry ohne Gewichte) —
+# music_model bleibt None; DemucsV4/RoFormer übernehmen die Separation.
+MDX23CPlugin = None  # type: ignore[misc,assignment]
 
 try:
     from plugins.wpe_plugin import WpePlugin

@@ -45381,11 +45381,15 @@ class UnifiedRestorerV3:
             # Era/Material aus Chunk-0 für Folge-Chunks
             _rc = getattr(self, "_restoration_context", {}) or {}
             _cached_material = _rc.get("material_type")
-            _cached_era = _rc.get("era")
+            # §v10.738 (2026-09-09): _rc.get("era") war nie gesetzt — die echten
+            # Keys sind "era_decade"/"decade" (§v10.731). Befund Lauf 4:
+            # Chunk 0 era=1970, Folge-Chunks re-detektierten 1980 → inkonsistente
+            # Era-Kalibrierung pro Chunk.
+            _cached_era = _rc.get("era_decade") or _rc.get("decade") or None
             if _cached_material:
                 _chunk_kwargs["material_type"] = _cached_material
             if _cached_era:
-                _chunk_kwargs["era_decade"] = getattr(_cached_era, "decade", None)
+                _chunk_kwargs["era_decade"] = int(_cached_era)
 
             results = [_ChunkResult(_first_result.audio, sample_rate, 0, chunks[0][0], chunks[0][1])]
 

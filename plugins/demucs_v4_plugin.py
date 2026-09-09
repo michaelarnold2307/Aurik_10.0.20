@@ -118,7 +118,7 @@ class DemucsV4Plugin:
 
     # ── Public API ───────────────────────────────────────────────────────────
 
-    def separate(self, audio: np.ndarray, sr: int, prefer_mdx23c: bool = True) -> dict[str, np.ndarray]:
+    def separate(self, audio: np.ndarray, sr: int, prefer_mdx23c: bool = False) -> dict[str, np.ndarray]:
         """Stem-Separation: gibt Dict stem→audio zurück (selbe SR wie Eingang).
 
         Args:
@@ -128,37 +128,22 @@ class DemucsV4Plugin:
         Returns:
             Dict mit Schlüsseln "vocals", "drums", "bass", "other", "guitar", "piano".
 
-        Priority:
-            - prefer_mdx23c=True: MDX23C (Kim_Vocal_2) → HTDemucs 6s ONNX → HPSS-DSP
-            - prefer_mdx23c=False: HTDemucs 6s ONNX → HPSS-DSP
+        Priority (§v10.739: MDX23C entfernt — Registry ohne Gewichte):
+            HTDemucs 6s ONNX → HPSS-DSP
         """
         assert sr == 48000, f"SR muss 48000 Hz sein, erhalten: {sr}"
         audio = np.nan_to_num(audio.astype(np.float32), nan=0.0, posinf=0.0, neginf=0.0)
 
-        # Normalize to (2, N) channels-first — required by MDX23C/HTDemucs.
+        # Normalize to (2, N) channels-first — required by HTDemucs.
         # UV3 sends (2, N); (N, 2) samples-first is transposed; unexpected layouts fallback to first row.
         if audio.ndim == 1:
             audio = np.stack([audio, audio], axis=0)  # (N,) → (2, N)
         elif audio.ndim == 2 and audio.shape[0] == 2 and audio.shape[1] > 2:
-            pass  # already (2, N) channels-first — correct for MDX23C
+            pass  # already (2, N) channels-first — correct for HTDemucs
         elif audio.ndim == 2 and audio.shape[1] == 2 and audio.shape[0] != 2:
             audio = audio.T  # (N, 2) → (2, N)
         elif audio.ndim == 2 and audio.shape[1] != 2:
             audio = np.stack([audio[0], audio[0]], axis=0)  # (C, N) unexpected → duplicate ch0
-
-        # Optional Primary: MDX23C (Kim_Vocal_2) — production-grade vocal separation (§4.4 spec)
-        if prefer_mdx23c:
-            try:
-                from plugins.mdx23c_plugin import (  # pylint: disable=import-outside-toplevel
-                    separate_stems as _mdx_stems,
-                )
-
-                mdx_result = _mdx_stems(audio, sr)
-                if mdx_result and "vocals" in mdx_result:
-                    logger.info("DemucsV4: MDX23C primary path used (Kim_Vocal_2).")
-                    return mdx_result
-            except Exception as exc:
-                logger.warning("DemucsV4: MDX23C primary failed (%s) — HTDemucs/HPSS fallback.", exc)
 
         # Fallback 1: HTDemucs 6s ONNX (if loaded)
         if self._session is not None:

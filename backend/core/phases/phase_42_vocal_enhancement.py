@@ -1543,90 +1543,13 @@ class VocalEnhancement(PhaseInterface):
                 _avail_gb,
             )
         else:
-            try:
-                from plugins.mdx23c_plugin import get_mdx23c_plugin  # pylint: disable=import-outside-toplevel
+            # §v10.739 (2026-09-09): MDX23C entfernt (Registry ohne Gewichte,
+            # toter Fallback). Phase 42 ist im Restoration-Modus ohnehin
+            # verboten (§0a); NMF-β→HPSS-Degradationskaskade bleibt bestehen.
+            logger.info("Verarbeitungsschritt42 Stem-Sep: MDX23C entfernt (§v10.739) — Ersatzpfad NMF-β/HPSS")
 
-                try:
-                    # pylint: disable-next=import-outside-toplevel
-                    from backend.core.plugin_lifecycle_manager import get_plugin_lifecycle_manager as _get_plm42m
-
-                    _plm42_mdx = _get_plm42m()
-                    # MDX23C registers as "MDX23C_vocals" and "MDX23C_inst" in PLM (§4.6c sync)
-                    _plm42_mdx.set_active("MDX23C_vocals", True)
-                    _plm42_mdx.set_active("MDX23C_inst", True)
-                except Exception:
-                    _plm42_mdx = None
-
-                try:
-                    from plugins.mdx23c_plugin import get_loaded_mdx23c_plugin
-                except Exception:
-                    get_loaded_mdx23c_plugin = None  # type: ignore[assignment]
-
-                mdx = get_loaded_mdx23c_plugin() if callable(get_loaded_mdx23c_plugin) else None
-                if mdx is None:
-                    mdx = get_mdx23c_plugin()
-                if _plm42_mdx is not None:
-                    try:
-                        _plm42_mdx.touch_plugin("MDX23C_vocals")  # type: ignore[attr-defined]
-                        _plm42_mdx.touch_plugin("MDX23C_inst")  # type: ignore[attr-defined]
-                    except Exception as e:
-                        logger.warning("Verarbeitungsschritt_42_vocal_enhancement.py::unbekannter Ersatzpfad: %s", e)
-                voc_mono = mdx.process(audio_mono, sr, stem="vocals")
-                if _plm42_mdx is not None:
-                    try:
-                        _plm42_mdx.touch_plugin("MDX23C_vocals")  # type: ignore[attr-defined]
-                        _plm42_mdx.touch_plugin("MDX23C_inst")  # type: ignore[attr-defined]
-                    except Exception as e:
-                        logger.warning("Verarbeitungsschritt_42_vocal_enhancement.py::unbekannter Ersatzpfad: %s", e)
-                inst_mono = mdx.process(audio_mono, sr, stem="inst")
-                n = min(len(audio_mono), len(voc_mono), len(inst_mono))
-                if audio.ndim == 2:
-                    # §9.10.118: Wiener stereo masking preserves L/R phase
-                    vocals_out, instr_out = self._wiener_stereo_from_mono(audio[:n], voc_mono[:n], sr)
-                else:
-                    vocals_out = voc_mono[:n]
-                    instr_out = inst_mono[:n]
-                return vocals_out, instr_out, 0.65, "mdx23c_kim_vocal_2"
-            except Exception as exc:
-                logger.debug("Verarbeitungsschritt42 mdx23c fehlgeschlagen: %s", exc)
-            finally:
-                if _plm42_mdx is not None:
-                    try:
-                        _plm42_mdx.set_active("MDX23C_vocals", False)
-                        _plm42_mdx.set_active("MDX23C_inst", False)
-                    except Exception as e:
-                        logger.warning("Verarbeitungsschritt_42_vocal_enhancement.py::unbekannter Ersatzpfad: %s", e)
-
-        # ── 4: NMF-β Fallback (§2.47 ML-Failure-Degradationskascade: NMF-β→HPSS) ──
-        try:
-            from plugins.mdx23c_plugin import MDX23CModel as _MDX23CModel  # pylint: disable=import-outside-toplevel
-
-            _audio_2d = audio_mono[np.newaxis, :] if audio_mono.ndim == 1 else audio_mono
-            voc_nmf_2d = _MDX23CModel._nmf_beta_fallback(_audio_2d, is_vocals=True)  # pylint: disable=protected-access
-            inst_nmf_2d = _MDX23CModel._nmf_beta_fallback(_audio_2d, is_vocals=False)  # pylint: disable=protected-access
-            voc_nmf = voc_nmf_2d[0] if voc_nmf_2d.ndim == 2 else voc_nmf_2d
-            inst_nmf = inst_nmf_2d[0] if inst_nmf_2d.ndim == 2 else inst_nmf_2d
-            # §2.47 sdB ≥ 5 Guard: NMF-β nur wenn Separation-Güte ausreichend.
-            # sdB-Proxy: Verhältnis Vokal-RMS zu Instrument-RMS; < 5 dB → HPSS tertiär.
-            _voc_rms = float(np.sqrt(np.mean(voc_nmf**2) + 1e-12))
-            _inst_rms = float(np.sqrt(np.mean(inst_nmf**2) + 1e-12))
-            _sdb = float(20.0 * np.log10(_voc_rms / (_inst_rms + 1e-12)))
-            if _sdb < 5.0:
-                logger.info(
-                    "Verarbeitungsschritt42 NMF-β: sdB=%.1f dB < 5 dB → HPSS tertiärer Ersatzpfad (§2.47)",
-                    _sdb,
-                )
-                raise ValueError(f"NMF-β sdB {_sdb:.1f} dB < 5 dB threshold")
-            n = min(len(audio_mono), len(voc_nmf))
-            if audio.ndim == 2:
-                vocals_out, instr_out = self._wiener_stereo_from_mono(audio[:n], voc_nmf[:n], sr)
-            else:
-                vocals_out = voc_nmf[:n]
-                instr_out = inst_nmf[:n]
-            logger.debug("Verarbeitungsschritt42 NMF-β Ersatzpfad erfolgreich (§2.47) sdB=%.1f dB", _sdb)
-            return vocals_out, instr_out, 0.45, "nmf_beta_dsp"
-        except Exception as exc:
-            logger.debug("Verarbeitungsschritt42 NMF-β fehlgeschlagen: %s — HPSS tertiärer Ersatzpfad", exc)
+        # ── 4: NMF-β entfällt (§v10.739) — MDX23C-Plug-in ohne Gewichte entfernt.
+        # Die §2.47-Degradationskaskade springt direkt auf HPSS (nächster Block).
 
         # ── 4: HPSS tertiärer Fallback ────────────────────────────────────────
         try:

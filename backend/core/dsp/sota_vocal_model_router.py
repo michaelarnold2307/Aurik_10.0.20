@@ -1,8 +1,8 @@
 """SOTA vocal model router for vocal-first music restoration (§SMR-1).
 
 Centralizes model choice for pre-phase vocal/instrumental stem restoration:
-BS-RoFormer → Demucs v4 → MDX23C for separation, and MIIPHER → SGMSE+ →
-DeepFilterNet for vocal NR.  The router is deliberately adapter-only: it does
+BS-RoFormer → Demucs v4 for separation (MDX23C entfernt, §v10.739), and
+MIIPHER → SGMSE+ → DeepFilterNet for vocal NR.  The router is deliberately adapter-only: it does
 not invent new DSP, it selects the strongest available local plugin and returns
 explicit fallback metadata.
 """
@@ -157,67 +157,20 @@ class SotaVocalModelRouter:
                 logger.debug("§SMR-1 Demucs separation nicht verfuegbar: %s", exc)
             return None
 
-        def _try_mdx23c() -> StemSeparationRouteResult | None:
-            _available_mem = self._available_memory_gb()
-            _required_mdx = self._required_memory_gb("mdx23c", reference, sr, pressure_factor=pressure_factor)
-            if _available_mem is not None and _available_mem < _required_mdx:
-                attempts.append(f"mdx23c:preflight_low_ram_{_available_mem:.1f}GB_req_{_required_mdx:.1f}GB")
-                logger.info(
-                    "§SMR-1 MDX23C preflight ueberspringen (verfuegbar=%.1fGB < required=%.1fGB)",
-                    _available_mem,
-                    _required_mdx,
-                )
-                return None
-            try:
-                mdx_module = __import__("plugins.mdx23c_plugin", fromlist=["get_mdx23c_plugin"])
-                get_mdx23c_plugin = mdx_module.get_mdx23c_plugin
-                get_loaded_mdx23c_plugin = getattr(mdx_module, "get_loaded_mdx23c_plugin", None)
-
-                mdx = get_loaded_mdx23c_plugin() if callable(get_loaded_mdx23c_plugin) else None
-                if mdx is None:
-                    mdx = get_mdx23c_plugin()
-                stems = mdx.separate_all_stems(reference, sr, stems=["vocals", "inst"])
-                if isinstance(stems, dict) and stems:
-                    vocal = self._coerce_like(stems.get("vocals", np.zeros_like(reference)), reference)
-                    instrumental = self._coerce_like(stems.get("inst", reference - vocal), reference)
-                    return StemSeparationRouteResult(
-                        vocal=vocal,
-                        instrumental=instrumental,
-                        success=True,
-                        model_used="mdx23c",
-                        fallback_chain=attempts.copy(),
-                        metadata={"capability_status": "sota_fallback"},
-                    )
-                attempts.append("mdx23c:empty_stems")
-            except Exception as exc:  # pylint: disable=broad-except
-                attempts.append(f"mdx23c:{type(exc).__name__}")
-                logger.debug("§SMR-1 MDX23C separation nicht verfuegbar: %s", exc)
-            return None
-
-        if prefer_demucs_native:
-            demucs_result = _try_demucs()
-            mdx_result = _try_mdx23c()
-            _ranked = self._rank_separation_candidates(
-                [demucs_result, mdx_result],
-                reference,
-                panns_singing=panns_singing,
-                prefer_demucs_native=prefer_demucs_native,
-                score_routing_enabled=score_routing_enabled,
-            )
-            if _ranked is not None:
-                return _ranked
-        else:
-            mdx_result = _try_mdx23c()
-            demucs_result = _try_demucs()
-            _ranked = self._rank_separation_candidates(
-                [mdx_result, demucs_result],
-                reference,
-                panns_singing=panns_singing,
-                prefer_demucs_native=prefer_demucs_native,
-                score_routing_enabled=score_routing_enabled,
-            )
-            if _ranked is not None:
-                return _ranked
+        # §v10.739 (2026-09-09): MDX23C-Kandidat entfernt — Registry-Eintrag ohne
+        # Gewichte (toter Fallback, Befund Modell-Inventur). Einziger nativer
+        # Separations-Kandidat ist jetzt Demucs; MBR/BS-RoFormer laufen über
+        # den Plugin-Router (bs_roformer_plugin), nicht hier.
+        demucs_result = _try_demucs()
+        _ranked = self._rank_separation_candidates(
+            [demucs_result],
+            reference,
+            panns_singing=panns_singing,
+            prefer_demucs_native=prefer_demucs_native,
+            score_routing_enabled=score_routing_enabled,
+        )
+        if _ranked is not None:
+            return _ranked
 
         return StemSeparationRouteResult(
             vocal=np.zeros_like(reference, dtype=np.float32),

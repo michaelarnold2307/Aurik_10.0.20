@@ -2,7 +2,7 @@
 §2.35c [RELEASE_MUST] LPC-Formant-Tracker für Shellac-Material — Aurik 10.0.0
 
 Burg-LPC-basierte Formant-Schätzung für schmalbandiges Material (BW ≤ 8 kHz).
-Wenn MelBandRoformer / MDX23C / NMF / HPSS fehlschlagen, ist dies der finale
+Wenn MelBandRoformer / NMF / HPSS fehlschlagen, ist dies der finale
 DSP-Fallback für Formant-Enhancement auf Shellac/WaxCylinder.
 
 Ziel: F1–F3 schätzen + leichter Formant-Boosting (max +3 dB) → Vokalklarheit

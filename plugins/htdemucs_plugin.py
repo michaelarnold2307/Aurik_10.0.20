@@ -40,9 +40,6 @@ from importlib import import_module
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, cast
 
-if TYPE_CHECKING:
-    from plugins.mdx23c_plugin import MDX23CPlugin
-
 import numpy as np
 
 logger = logging.getLogger(__name__)
@@ -406,19 +403,18 @@ class HtdemucsPlugin:
                     logger.debug("HTDemucs Model entladen")
 
 
-def get_htdemucs_plugin() -> MDX23CPlugin:
-    """Facade (P1-Migration): routet auf MDX23CPlugin als primären Separator.
+def get_htdemucs_plugin() -> "DemucsV4Plugin":
+    """Facade (§v10.739): MDX23C entfernt (Registry ohne Gewichte).
 
     Der Funktionsname bleibt für API-Kompatibilität bestehen; der primäre
-    Separator ist seit der P1-Migration MDX23C (htdemucs_6s bleibt nur als
-    experimentelles Manifest-Modell mit DSP-Fallback).
+    Separator ist jetzt DemucsV4 (HTDemucs 6s ONNX → HPSS-DSP).
     """
-    from plugins.mdx23c_plugin import MDX23CPlugin  # pylint: disable=import-outside-toplevel
+    from plugins.demucs_v4_plugin import DemucsV4Plugin  # pylint: disable=import-outside-toplevel
 
     if _INSTANCE_HOLDER["plugin"] is None:
         with _singleton_lock:
             if _INSTANCE_HOLDER["plugin"] is None:
-                _INSTANCE_HOLDER["plugin"] = MDX23CPlugin()
+                _INSTANCE_HOLDER["plugin"] = DemucsV4Plugin()
     plugin = _INSTANCE_HOLDER["plugin"]
     assert plugin is not None
-    return cast(MDX23CPlugin, plugin)
+    return cast("DemucsV4Plugin", plugin)

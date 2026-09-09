@@ -62,8 +62,6 @@ ACCEPTED_STUBS: frozenset[tuple[str, str]] = frozenset(
         # P3-Plugin-Feedback-Hooks
         ("plugins/artifact_detection_plugin.py", "feedback"),
         ("plugins/parameter_optimizer.py", "feedback"),
-        # Intentionaler No-Op: absorbiert Legacy-Docker-kwargs (Docstring)
-        ("plugins/mdx23c_plugin.py", "__init__"),
         # P2-V10 — Worldclass-Architektur-Komponenten (§Phase-Prune, RLP, Tape-Head, Vocal-Scratch)
         ("backend/core/artifact_echo_removal.py", "__init__"),
         ("backend/core/phase_pruner.py", "__init__"),

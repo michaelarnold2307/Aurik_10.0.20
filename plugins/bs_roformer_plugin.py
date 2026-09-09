@@ -10,7 +10,7 @@ Referenz:
 
 SOTA-Entscheidungsmatrix (§4.4 Aurik-Spec):
     Primär: BS-RoFormer (ONNX, CPUExecutionProvider)
-    Fallback: mdx23c_plugin (Kim_Vocal_2/Kim_Inst, lokal, kein Docker)
+    Fallback: HPSS + NMF-β DSP (§v10.739: MDX23C-Fallback entfernt)
 
 CPU-Policy: Ausschließlich CPUExecutionProvider — keine GPU-Abhängigkeit.
 Modell-Gewichte: ~/.aurik/models/bs_roformer/ (via ModelDownloader beim 1. Start)
@@ -653,68 +653,12 @@ class BSRoFormerPlugin:
         sr: int,
         requested_stems: list[str],
     ) -> StemSeparationResult | None:
-        """MDX23C-Fallback via mdx23c_plugin (Kim_Vocal_2 + Kim_Inst ONNX).
+        """§v10.739 (2026-09-09): MDX23C entfernt (Registry ohne Gewichte).
 
-        Gibt None zurück wenn MDX23C-Modelle nicht geladen werden können,
-        damit der nächste Fallback (HPSS DSP) greift.  # §V6 (copilot-instructions.md): logger.warning handled at call site
-
-        Funktioniert mit sr=48000; MDX23C-Plugin resampelt intern auf 44100 Hz.
+        Gibt immer None zurück, damit der nächste Fallback (HPSS DSP) greift.
         """
-        try:
-            from plugins.mdx23c_plugin import _get_model
-
-            vocal_model = _get_model("vocals")
-            inst_model = _get_model("inst")
-
-            if not (vocal_model._ok or inst_model._ok):
-                logger.debug("BS-RoFormer MDX23C-Fallback: Keine Modelle geladen")
-                return None
-
-            # MDX23C erwartet Stereo [2, samples]
-            if audio.ndim == 1:
-                audio_stereo = np.stack([audio, audio])
-            else:
-                audio_stereo = audio[:2] if audio.shape[0] > 2 else audio.copy()
-
-            vocals_stereo = vocal_model.separate(audio_stereo, sr)  # [2, samples]
-            instr_stereo = inst_model.separate(audio_stereo, sr)  # [2, samples]
-
-            # Mono aus Stereo (Mittelwert)
-            v_mono = (np.mean(vocals_stereo, axis=0) if vocals_stereo.ndim == 2 else vocals_stereo).astype(np.float32)
-            i_mono = (np.mean(instr_stereo, axis=0) if instr_stereo.ndim == 2 else instr_stereo).astype(np.float32)
-
-            # Grobe Aufschlüsselung der Instrumente auf 6 Stems
-            stem_map: dict[str, np.ndarray] = {
-                "vocals": np.clip(v_mono, -1.0, 1.0),
-                "drums": np.clip(i_mono * 0.40, -1.0, 1.0),
-                "bass": np.clip(i_mono * 0.30, -1.0, 1.0),
-                "guitar": np.clip(i_mono * 0.15, -1.0, 1.0),
-                "piano": np.clip(i_mono * 0.10, -1.0, 1.0),
-                "other": np.clip(i_mono * 0.05, -1.0, 1.0),
-            }
-            stems_out = {k: v for k, v in stem_map.items() if k in requested_stems}
-            # SDRi gegen vollständige Rekonstruktion (vocals + inst), nicht gefilterte Stems
-            _sdri_mix_ref = audio if audio.ndim == 1 else audio.mean(axis=0)
-            _sdri_all = {"vocals": np.clip(v_mono, -1.0, 1.0), "instruments": np.clip(i_mono, -1.0, 1.0)}
-            sdri = self._estimate_sdri(_sdri_mix_ref, _sdri_all)
-            model_tag = ("kim_vocal_2" if vocal_model._ok else "") + ("+kim_inst" if inst_model._ok else "")
-            logger.info(
-                "🎵 BS-RoFormer → MDX23C-Fallback (%s): SDRi=%.1f dB | Stems=%s",
-                model_tag,
-                sdri,
-                list(stems_out.keys()),
-            )
-            return StemSeparationResult(
-                stems=stems_out,
-                sr=sr,
-                sdri_db=sdri,
-                model_used=f"mdx23c_fallback_{model_tag}",
-                confidence=0.72,
-            )
-        except Exception as exc:
-            logger.warning("ML→DSP-Fallback aktiviert", exc_info=True)  # §V6 (copilot-instructions.md)
-            logger.debug("BS-RoFormer MDX23C-Fallback Fehler: %s — weiter zu HPSS", exc)
-            return None
+        logger.debug("BS-RoFormer MDX23C-Fallback entfällt (§v10.739) — weiter zu HPSS")
+        return None
 
     # ------------------------------------------------------------------
     # ML-Fallback Stufe 2 / DSP-Fallback: HPSS + NMF-β

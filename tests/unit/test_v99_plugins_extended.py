@@ -412,7 +412,6 @@ class TestDockerBasedPlugins:
         ("deepfilternet_v3_ii_plugin", "DeepFilterNetV3IIPlugin"),
         ("demucs_v4_plugin", "DemucsV4Plugin"),
         ("hifigan_plugin", "HiFiGANPlugin"),
-        ("mdx23c_plugin", "MDX23CPlugin"),
         ("resemble_enhance_plugin", "ResembleEnhancePlugin"),
         ("wpe_plugin", "WpePlugin"),
         ("uvr_mdxnet_plugin", "UVRMDXNetPlugin"),
@@ -460,12 +459,6 @@ class TestDockerBasedPlugins:
         from plugins.hifigan_plugin import vocode_audio
 
         assert callable(vocode_audio)
-
-    def test_07_mdx23c_convenience_importable(self):
-        from plugins.mdx23c_plugin import separate_stems, separate_vocals
-
-        assert callable(separate_stems)
-        assert callable(separate_vocals)
 
     def test_08_uvr_convenience_importable(self):
         from plugins.uvr_mdxnet_plugin import separate_vocals_uvr

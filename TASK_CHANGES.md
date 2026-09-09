@@ -1,13 +1,31 @@
 # TASK_CHANGES — Live-Ledger der aktuellen Aufgabe
 
-> Generiert von `scripts/change_ledger.py snapshot` (Base: `HEAD`, Stand: 2026-09-09 15:08 CEST).
+> Generiert von `scripts/change_ledger.py snapshot` (Base: `HEAD`, Stand: 2026-09-09 16:29 CEST).
 > CI (`ci-lite.yml` pr-evidence-gate) erzwingt Abdeckung: jede geänderte Code-Datei muss hier stehen.
 
 ## Geänderte Dateien
 
 | Status | Pfad | Art |
 |---|---|---|
+| M | backend/api/bridge.py | modifiziert |
+| M | backend/api/bridge_infrastructure.py | modifiziert |
+| M | backend/aurik_restore.py | modifiziert |
+| M | backend/core/chunked_streaming.py | modifiziert |
+| M | backend/core/dsp/lpc_formant_tracker.py | modifiziert |
+| M | backend/core/dsp/model_capability_gate.py | modifiziert |
+| M | backend/core/dsp/sota_vocal_model_router.py | modifiziert |
+| M | backend/core/ml_model_readiness.py | modifiziert |
+| M | backend/core/model_zoo_registry.py | modifiziert |
+| M | backend/core/phases/phase_42_vocal_enhancement.py | modifiziert |
 | M | backend/core/unified_restorer_v3.py | modifiziert |
+| M | plugins/bs_roformer_plugin.py | modifiziert |
+| M | plugins/demucs_v4_plugin.py | modifiziert |
+| M | plugins/htdemucs_plugin.py | modifiziert |
+| D | plugins/mdx23c_plugin.py | gelöscht |
+| M | plugins/sota_universal_enhancer.py | modifiziert |
+| M | tests/normative/test_no_production_stubs.py | modifiziert |
+| M | tests/unit/test_v99_plugins_extended.py | modifiziert |
+| ?? | tests/unit/test_chunked_streaming_layouts.py | ungetrackt |
 
 ## Entscheidungen
 

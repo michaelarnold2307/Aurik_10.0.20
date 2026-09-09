@@ -58,14 +58,6 @@ MODEL_ZOO: list[ModelEntry] = [
         notes="BS-Roformer (bs_roformer_plugin). Stem-aware Repair-Flow integriert (Rev. 2026-08-17): SLR-1-Pre-Phase (UV3) + Phase 66 Stem-Targeted-NR + StemRemixBalancer (Spec §1.4/§2.8, Quell-LUFS-korrekter Re-Mix mit Soft-Knee-Peak-Schutz).",
     ),
     ModelEntry(
-        name="mdx23c",
-        path="models/mdx23c/models/Kim_Vocal_2.onnx",
-        purpose="separation",
-        input_shapes="IN input [B,4,3072,256] → OUT [B,4,3072,256]",
-        status="active",
-        notes="Stem-Trennung (Vocals/drums/bass/other). In SotaVocalModelRouter als Separation-Kandidat verdrahtet (demucs-Primär, mdx23c-Fallback); StemRemixBalancer übernimmt den LUFS-korrekten Re-Mix.",
-    ),
-    ModelEntry(
         name="sgmse_plus",
         path="models/ (kein ONNX — .pth in Plugin)",
         purpose="repair",

@@ -154,7 +154,7 @@ class ModelCapabilityGate:
                 model_path=path_str,
                 loaded=loaded,
                 bundled=bundled,
-                fallback="demucs_v4 -> mdx23c -> dsp",  # §V6 (copilot-instructions.md): logger.warning handled at call site
+                fallback="demucs_v4 -> dsp",  # §V6 (copilot-instructions.md): logger.warning handled at call site
                 reason="bundled_or_loaded" if bundled or loaded else "model_file_missing_or_not_loaded",
             )
         except Exception as exc:  # pylint: disable=broad-except
@@ -339,7 +339,7 @@ class ModelCapabilityGate:
                 model_path=path_str,
                 loaded=loaded,
                 bundled=bundled,
-                fallback="mdx23c -> hpss_dsp",  # §V6 (copilot-instructions.md): logger.warning handled at call site
+                fallback="hpss_dsp",  # §V6 (copilot-instructions.md): logger.warning handled at call site
                 reason="model_available" if bundled or loaded else "model_file_missing",
             )
         except Exception as exc:  # pylint: disable=broad-except
@@ -348,7 +348,7 @@ class ModelCapabilityGate:
                 "demucs_v4",
                 "separation",
                 "unavailable",
-                fallback="mdx23c",
+                fallback="hpss_dsp",
                 reason=type(exc).__name__,
             )
 

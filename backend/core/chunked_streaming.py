@@ -175,7 +175,19 @@ class ChunkedPipeline:
 
         total_samples = results[-1].end_sample
         # §v10.451: Stereo: (total_samples, kanäle), nicht (chunk_samples, total_samples)
-        shape = (total_samples,) if results[0].audio.ndim == 1 else (total_samples, results[0].audio.shape[1])
+        # §v10.740 (2026-09-09): Kanal-Layout normalisieren — die Pipeline liefert
+        # teils (2, N) channels-first; shape[1] ist dann N (Chunklänge), nicht die
+        # Kanalzahl (Befund Lauf 4: 56.7-TiB-Allokation (total, chunk_len)).
+        _first_audio = results[0].audio
+        _channels = 1
+        _is_channels_first = False
+        if _first_audio.ndim == 2:
+            if _first_audio.shape[0] == 2 and _first_audio.shape[1] > 2:
+                _channels = 2
+                _is_channels_first = True
+            else:
+                _channels = int(_first_audio.shape[1])
+        shape = (total_samples,) if _channels == 1 else (total_samples, _channels)
         output = np.zeros(shape, dtype=np.float32)
 
         overlap_samples = int(self.config.overlap_s * sample_rate)
@@ -184,6 +196,8 @@ class ChunkedPipeline:
 
         for i, cr in enumerate(results):
             chunk_audio = cr.audio.astype(np.float64)
+            if _is_channels_first and chunk_audio.ndim == 2:
+                chunk_audio = chunk_audio.T  # §v10.740: (2, N) → (N, 2)
             out_start = cr.start_sample
             out_end = cr.end_sample
 
