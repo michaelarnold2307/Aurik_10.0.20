@@ -189,9 +189,9 @@ class LAIONCLAPPlugin:
     """
 
     # ONNX-Pfad (SOTA-Upgrade via ModelDownloader)
-    MODELS_DIR: Path = Path.home() / ".aurik" / "models" / "laion_clap"
-    # Lokaler PyTorch-Checkpoint + Quellcode (models/clap/, lokal gebündelt)
     _PROJECT_ROOT: Path = Path(__file__).parent.parent
+    MODELS_DIR: Path = _PROJECT_ROOT / "models" / "clap"  # §v10.745: war ~/.aurik/models/laion_clap — dort lagen die Assets nie; ONNX-Pfad schlug immer fehl
+    # Lokaler PyTorch-Checkpoint + Quellcode (models/clap/, lokal gebündelt)
     _LOCAL_CLAP_DIR: Path = _PROJECT_ROOT / "models" / "clap"
     _LOCAL_CLAP_CKPT: str = "music_audioset_epoch_15_esc_90.14.pt"
     # Lokaler roberta-base (§13.3: Out-of-Box-Pflicht, kein HF-Hub-Download)
@@ -673,8 +673,14 @@ class LAIONCLAPPlugin:
         """CLAP-Inferenz via Audio-Encoder ONNX + vorberechnete Text-Embeddings."""
         try:
             # Audio-Embedding [1, 512]
-            feat = np.abs(np.fft.rfft(audio[:sr], n=2048)).astype(np.float32)
-            feat = feat[np.newaxis, :]
+            # §v10.745 (2026-09-09): Der ONNX-Encoder erwartet das Raw-Waveform
+            # (batch, samples) — der alte Code fütterte FFT-Magnituden
+            # (Rank-3-Fehler). Mono + bis 10 s Slice (CLAP-Trainingslänge).
+            _wav = np.asarray(audio, dtype=np.float32)
+            if _wav.ndim == 2:
+                _wav = _wav.mean(axis=1) if _wav.shape[1] == 2 else _wav.mean(axis=0)
+            _wav = _wav[: min(len(_wav), 10 * sr)]
+            feat = _wav[np.newaxis, :]
 
             input_name = self._audio_session.get_inputs()[0].name
             _plm_clap = None
