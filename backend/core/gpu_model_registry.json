@@ -1,0 +1,37 @@
+{
+  "models/bs_roformer/bs_roformer_317_core.onnx": {
+    "backend": "rocm",
+    "cpu_ms": 11076.119,
+    "gpu_ms": 185.518,
+    "note": "",
+    "scan_s": 69.9,
+    "size_mb": 615.2,
+    "verdict": "rocm"
+  },
+  "models/clap/audio_encoder.onnx": {
+    "backend": "rocm",
+    "cpu_ms": 106.672,
+    "gpu_ms": 14.129,
+    "note": "",
+    "scan_s": 8.3,
+    "size_mb": 272.0,
+    "verdict": "rocm"
+  },
+  "models/melbandroformer/melbandroformer_optimized.onnx": {
+    "backend": "rocm",
+    "cpu_ms": 3756.62,
+    "gpu_ms": 78.175,
+    "note": "",
+    "scan_s": 22.3,
+    "size_mb": 859.5,
+    "verdict": "rocm"
+  },
+  "models/mert/mert_330m.onnx": {
+    "backend": "rocm",
+    "cpu_ms": 554.2,
+    "gpu_ms": 419.1,
+    "note": "manuell gemessen (5-s-Eingang; Scan-Dummy rank-inkompatibel)",
+    "scan_s": 3.1,
+    "verdict": "rocm"
+  }
+}
