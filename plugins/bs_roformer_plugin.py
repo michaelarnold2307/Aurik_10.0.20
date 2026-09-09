@@ -422,7 +422,16 @@ class BSRoFormerPlugin:
             # Spec §2.11 (MelBandRoformer): 48kHz→44.1kHz polyphase resampling.
             # resample_poly uses Kaiser-windowed FIR (≈ Lanczos-4 quality).
             # SNR budget both stages together ≈ −0.8 dB (normative, AMRB-measured).
-            audio_1d = audio.mean(axis=0) if audio.ndim == 2 else audio
+            # §v10.744 (2026-09-09): Kanal-Layout normalisieren — Phase 66 liefert
+            # (N, 2) channels-last; mean(axis=0) ergab (2,) → scipy.stft
+            # "window is longer than input signal" → ganzer Fallback
+            # (Befund Lauf 5: Separation trotz geladenem MBR inaktiv).
+            if audio.ndim == 2 and audio.shape[1] == 2 and audio.shape[0] > 2:
+                audio_1d = audio.mean(axis=1)  # (N, 2) → mono N
+            elif audio.ndim == 2:
+                audio_1d = audio.mean(axis=0)  # (2, N) → mono N
+            else:
+                audio_1d = audio
             _g = gcd(_SR, sr)
             audio_44 = _sps.resample_poly(audio_1d, _SR // _g, sr // _g).astype(np.float64)
 
@@ -551,10 +560,21 @@ class BSRoFormerPlugin:
                     except Exception:
                         logger.warning("bs_roformer_plugin.py::_process_segment fallback", exc_info=True)
                     _ce = min(_cs + _chunk_samples, n_orig_44)
-                    voc_chunk = _process_segment(audio_44[_cs:_ce])
+                    _seg = audio_44[_cs:_ce]
+                    _seg_orig = len(_seg)
+                    if _seg_orig < _N:
+                        # §v10.743 (2026-09-09): Tail kürzer als das STFT-Fenster
+                        # (_N=7914) → "window is longer than input signal" → der
+                        # GESAMTE Fallback feuerte (Befund Lauf 5: Separation inaktiv,
+                        # obwohl 99 % des Songs normal lang sind). Tail auf _N padden,
+                        # Ergebnis danach trimmen.
+                        _seg = np.pad(_seg, (0, _N - _seg_orig))
+                    voc_chunk = _process_segment(_seg)
                     if voc_chunk is None:
                         logger.warning("MelBandRoformer chunk: bad output → Fallback")
                         return self._separate_fallback(audio, sr, requested_stems)
+                    if _seg_orig < _N:
+                        voc_chunk = voc_chunk[:_seg_orig]
 
                     # Hanning crossfade window
                     _wlen = len(voc_chunk)
@@ -729,7 +749,13 @@ class BSRoFormerPlugin:
         """Konvertiert Stereo zu Mono, stellt float32 [-1,1] sicher."""
         audio = np.asarray(audio, dtype=np.float32)
         if audio.ndim == 2:
-            audio = np.mean(audio, axis=0)
+            # §v10.744 (2026-09-09): Layout-tolerant — Phase 66 liefert (N, 2)
+            # channels-last; mean(axis=0) ergab (2,) → stft "window is longer
+            # than input signal" → ganzer Fallback (Befund Lauf 5).
+            if audio.shape[1] == 2 and audio.shape[0] > 2:
+                audio = np.mean(audio, axis=1)  # (N, 2) → mono N
+            else:
+                audio = np.mean(audio, axis=0)  # (2, N) → mono N
         audio = np.nan_to_num(audio, nan=0.0, posinf=0.0, neginf=0.0)
         peak = np.max(np.abs(audio))
         if peak > 1.0:
