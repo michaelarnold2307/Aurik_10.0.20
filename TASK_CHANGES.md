@@ -1,14 +1,16 @@
 # TASK_CHANGES — Live-Ledger der aktuellen Aufgabe
 
-> Generiert von `scripts/change_ledger.py snapshot` (Base: `HEAD`, Stand: 2026-09-09 22:09 CEST).
+> Generiert von `scripts/change_ledger.py snapshot` (Base: `HEAD`, Stand: 2026-09-09 22:25 CEST).
 > CI (`ci-lite.yml` pr-evidence-gate) erzwingt Abdeckung: jede geänderte Code-Datei muss hier stehen.
 
 ## Geänderte Dateien
 
 | Status | Pfad | Art |
 |---|---|---|
-| ?? | backend/core/gpu_model_registry.json | ungetrackt |
-| ?? | scripts/scan_selected_gpu_models.py | ungetrackt |
+| M | backend/core/gpu_model_registry.json | modifiziert |
+| M | backend/core/lyrics_guided_enhancement.py | modifiziert |
+| M | backend/core/ml_device_manager.py | modifiziert |
+| M | plugins/lyrics_transcriber_plugin.py | modifiziert |
 
 ## Entscheidungen
 

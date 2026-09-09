@@ -33,5 +33,21 @@
     "note": "manuell gemessen (5-s-Eingang; Scan-Dummy rank-inkompatibel)",
     "scan_s": 3.1,
     "verdict": "rocm"
+  },
+  "models/wav2vec2/wav2vec2_forced_alignment.onnx": {
+    "backend": null,
+    "cpu_ms": 308.7,
+    "gpu_ms": 370.0,
+    "note": "manuell gemessen (korrekte Eingaben; Scan-Dummy inkompatibel)",
+    "scan_s": 3.1,
+    "verdict": "cpu"
+  },
+  "models/whisper/whisper_tiny.onnx": {
+    "backend": "rocm",
+    "cpu_ms": 98.1,
+    "gpu_ms": 4.0,
+    "note": "manuell gemessen (korrekte Eingaben; Scan-Dummy inkompatibel)",
+    "scan_s": 3.1,
+    "verdict": "rocm"
   }
 }

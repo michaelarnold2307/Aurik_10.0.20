@@ -390,6 +390,7 @@ _HEAVY_ML_PLUGINS: frozenset[str] = frozenset(
         "AudioLDM2",  # audioldm2_plugin — diffusion ONNX (~1.3 GB)
         # --- Neural Enhancement (GPU-accelerated on AMD ROCm) ---
         "DeepFilterNetV3",  # deepfilternet_v3_ii_plugin — 3x enc/dec ONNX (~150 MB)
+        "WhisperTiny",  # lyrics_transcriber/phase-58 — whisper_tiny.onnx (39 MB) — §v10.749: ROCm 24.5× gemessen
         #                     Computationally intensive DF-filter; ROCm accelerates
         #                     the iterative ERB-inverse + deep filtering significantly.
         # --- Quality / Scoring (heavy Transformer backbones) ---

@@ -646,9 +646,16 @@ class LyricsGuidedEnhancement:
 
             model_path = Path(__file__).resolve().parents[2] / "models" / "whisper" / "whisper_tiny.onnx"
             if model_path.exists():
+                # §v10.749: Registry-bewusst (ROCm 24.5× gemessen) statt CPU-hardcoded
+                try:
+                    from backend.core.ml_device_manager import get_ort_providers as _gp749b
+
+                    _prov749 = _gp749b("WhisperTiny")
+                except Exception:
+                    _prov749 = ["CPUExecutionProvider"]
                 self._ort_session = ort.InferenceSession(
                     str(model_path),
-                    providers=["CPUExecutionProvider"],
+                    providers=_prov749,
                 )
                 logger.info(
                     "LyricsGuidedEnhancement: whisper_tiny.onnx geladen (%.1f MB)",
