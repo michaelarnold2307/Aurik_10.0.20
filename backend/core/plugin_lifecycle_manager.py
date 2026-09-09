@@ -427,6 +427,28 @@ class PluginLifecycleManager:
         if not candidates:
             return 0
 
+        # §v10.742 (2026-09-09): Residency bei freiem RAM — der Look-Ahead entlud
+        # pro Chunk ~7 Modelle (PANNs/CLAP/MBR/FCPE/whisper/...) und lud sie im
+        # Folge-Chunk neu (Befund Lauf 4/5: 24 GB frei, Budget 10.4 GB bei ~2 GB
+        # belegt). Proaktive Entladung nur noch bei echtem Speicherdruck; die
+        # druckgetriebene LRU-Entladung (evict_if_needed) bleibt unberührt.
+        _used = 0.0
+        _limit = 0.0
+        try:
+            _mbb = import_module("backend.core.ml_memory_budget")
+            _used = float(getattr(_mbb, "_total_gb", 0.0) or 0.0)
+            _limit = float(getattr(_mbb, "ML_MAX_GB", 0.0) or 0.0)
+        except Exception:
+            pass
+        _under_pressure = _limit > 0.0 and _used >= _limit * 0.75
+        if not _under_pressure:
+            logger.debug(
+                "PLM Look-Ahead: Residency aktiv (%.1f/%.1f GB) — keine proaktive Entladung (§v10.742)",
+                _used,
+                _limit,
+            )
+            return 0
+
         evicted = 0
         for entry in candidates:
             try:
