@@ -116,17 +116,37 @@ Restaurierungsversion: der direkte UV3-Pfad. 285/285 Denker-Tests grün.
 
 ## 6. Umsetzungsplan Ganz-Song-Refactor (nächste Sessions, mit Referenzlauf)
 
-1. `_restore_chunked`: neuen Modus einführen, in dem `chunks == [ganzer Song]` ist
-   (Pipeline läuft EINMAL auf dem Song); Chunked-Progress-Mapping entfällt dort.
-2. Separation bleibt chunkweise: BS-RoFormer/Demucs rufen intern Chunked-Inferenz
-   (Overlap-Add) auf — keine Qualitätseinbußen, Modell-Limit bleibt respektiert.
-3. Tail/Gates/m1b laufen dann ohnehin song-global — Chunk-Sonderlogik
-   (`_chunked_tail_skip`, `_chunked_last`, B3-State-Freeze) kann schrittweise abgebaut werden.
-4. Verifikation: **Referenzlauf (224 s)** — Bit-Determinismus-Referenz neu erzeugen,
-   ≤ 40 min Budget, `n_audible → 0`, RAM-Messung (Ziel < 8 GB).
-5. Rollback-Plan: der Modus bleibt feature-flagged (Env/Kwarg), bis der Referenzlauf grün ist.
+> **Status 2026-09-08**: **Stufe 1 UMGESETZT** — Ganzsong-Modus ist feature-flagged
+> verfügbar (`whole_song=True`-Kwarg oder Env `AURIK_WHOLE_SONG=1`, §v10.720):
+> die Pipeline läuft dann EINMAL auf dem ganzen Song; der Chunked-Pfad (RAM O(1))
+> bleibt Default und Fallback. Unit-Gate (5 Tests, `tests/unit/test_whole_song_mode.py`)
+> + Integrationstest (121 s FAST, kein Chunked-Aufruf, §G5-Bit-Determinismus,
+> `tests/integration/test_whole_song_mode.py`).
+
+1. [X] **Stufe 1 (erledigt)**: Ganzsong-Modus hinter Flag (`_should_use_chunked_path`
+   als pure Entscheidungsfunktion in `unified_restorer_v3.py`); Chunk-Pfad bleibt
+   Default/Fallback; Separation bleibt intern chunkweise (BS-RoFormer/Demucs Overlap-Add).
+2. [ ] **Stufe 2 (braucht Referenzlauf)**: 224-s-Referenzlauf mit Ganzsong-Flag
+   (≤ 40 min, `n_audible → 0`, RAM-Messung, Bit-Referenz neu erzeugen) → danach
+   Umstellung zum Default; anschließend Chunk-Sonderlogik (`_chunked_tail_skip`,
+   `_chunked_last`, B3-State-Freeze) schrittweise abbauen.
 
 **Bewusst NICHT umgesetzt wurde**: das Separationsmodell auf Ganz-Song umzubauen
-(internes Chunking existiert und ist qualitätsgleich) und der Ganz-Song-Refactor selbst —
-beides verlangt den neuen Referenzlauf, der Nutzer-Audio voraussetzt (§V7: keine
+(internes Chunking existiert und ist qualitätsgleich) — und die Stufe-2-Umstellung
+zum Default, die den neuen Referenzlauf mit Nutzer-Audio voraussetzt (§V7: keine
 ungeprüften Strukturänderungen am Qualitätspfad).
+
+## 7. Überwachter 224-s-Lauf (Elke Best) — Befunde & Fixes (2026-09-09)
+
+Der überwachte Lauf (`test_audio/Elke Best - Du wolltest nur ein Abenteuer…`, 225,3 s,
+Quality-Modus) deckte vier echte Qualitäts-Bugs auf — alle behoben und dokumentiert:
+
+| § | Bug (aus INFO/„unknown“-Zeilen) | Fix |
+|---|---|---|
+| §v10.730 | `era_result` erreichte die Phasen nicht → Phase 07 loggte era=None trotz decade=1970 | EraResult in ALLE vier Phase-Aufrufpfade |
+| §v10.731 | `_restoration_context["decade"/"era_decade"]` wurde NIE gesetzt → Kalibrierung still 1980, §CALIB-Audits „era=unknown“ | Era-Decade in den Kontext + NTX/Stereo-Audits |
+| §v10.732 | Fehlende Goal-Scores wurden mit 0.0 gefüllt („katastrophal gescheitert“) → PQS-MOS 1.9 → Rollback-Signale auf jedem Nicht-Letzten-Chunk | Nur gemessene Goals zählen; -1.0-Sentinel deaktiviert PQS sauber |
+| §v10.734 | Gender-Erkennung lief pro 30-s-Chunk → Chunk-0-Intro = F0 0.0/unknown für den GANZEN Song | Song-globales Mittelfenster-Gender vor der Chunk-Schleife (`_precomputed_vocal_gender`) |
+
+**GPU-Befunde desselben Laufs** (→ Spec §v10.40c): PANNs/ROCm-fp16 aktiv;
+Apollo (TorchScript mit in-Graph-`torch.stft`) ist GPU-unfähig → CPU-Force (§v10.733).

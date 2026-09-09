@@ -19,6 +19,19 @@
 #   → NICHT direkt in dieser Datei, da pip sonst die CUDA-Variante zieht.
 #   Sicherheitsfix: torch>=2.6.0 behebt CVE-2025-32434 (critical RCE/deserialization),
 #   CVE-2024-31580 (heap-based buffer overflow), CVE-2024-31583 (use-after-free).
+#
+# §v10.40c GPU-Stack (2026-09-09, AMD RX 7900 XTX / ROCm 7.2.4 — verifiziert):
+#   torch==2.11.0+rocm7.2  torchaudio==2.11.0+rocm7.2
+#   --index-url https://download.pytorch.org/whl/rocm7.2
+#   onnxruntime-rocm==1.22.2.post3  (ERSETZT onnxruntime; ROCMExecutionProvider)
+#   MIGraphX: backend/core/migraphx_adapter.py + libmigraphx_bridge.so (ONNX-only)
+#   Per-Modell-GPU-Policy: backend/core/gpu_model_registry.json
+#     (scripts/onnx_gpu_compat_scan.py; Regel: GPU nur wenn strikt schneller,
+#      sonst CPU-Force — z. B. ApolloPlugin §v10.733).
+#   Determininismus: GPU-fp32 ist nicht bit-identisch → Referenzläufe (§G5)
+#   MÜSSEN mit AURIK_FORCE_CPU=1 laufen.
+#   Sicherheits-Trade-off: onnxruntime-rocm existiert nur bis 1.22.2.post3
+#   (die CPU-Builds 1.23.2+/1.24.1+ enthalten die SNYK-Fixes) — dokumentiert.
 # ============================================================================
 
 # --- Build/Packaging-Abhängigkeiten (pkg_resources-Kompatibilität) ---

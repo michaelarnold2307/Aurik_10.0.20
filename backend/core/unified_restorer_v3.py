@@ -534,6 +534,7 @@ def _resolve_noise_texture_rollback_threshold(
     transfer_chain_depth: int | None = None,
     *,
     calibration_context: Any | None = None,
+    era_decade: int | None = None,  # §v10.731: explizite Ära für den Audit (Befund era=unknown)
 ) -> float:
     """Gibt die adaptive NTX-Rollback-Schwelle zurück.
 
@@ -551,11 +552,11 @@ def _resolve_noise_texture_rollback_threshold(
         _depth = int(getattr(calibration_context, "transfer_chain_depth", transfer_chain_depth))
         # §v10.731: Era-Decade aus dem Kontext für den §G79-Audit durchreichen
         # (war hardcodiert None → „era=unknown" trotz bekannter Ära).
-        _era_ctx = getattr(calibration_context, "era_decade", None)
+        _era_ctx = era_decade if era_decade is not None else getattr(calibration_context, "era_decade", None)
     else:
         _rs = float(restorability_score)
         _depth = int(transfer_chain_depth)
-        _era_ctx = None
+        _era_ctx = era_decade
     _base = float(
         max(
             [_get_noise_texture_rollback_threshold(material_key)]
@@ -8151,6 +8152,10 @@ class UnifiedRestorerV3:
         # für Flüsse ohne Stufe-2/m1b; mit m1b ist sie ohnehin redundant, da die
         # Stufe-2 die Kaskade einmal auf dem assemblierten Song ausführt).
         _chunked_last = bool(kwargs.pop("_chunked_last", False))
+        # §v10.734: Song-global vorberechnetes Gender (aus _restore_chunked)
+        # hier poppen und als Attribut ablegen — _select_phases hat KEIN kwargs.
+        _precomputed_vocal_gender = kwargs.pop("_precomputed_vocal_gender", None)
+        self._precomputed_vocal_gender = str(_precomputed_vocal_gender) if _precomputed_vocal_gender else None
         _cached_medium_kwarg = kwargs.pop("cached_medium_result", None)
         _cached_restorability_kwarg = kwargs.pop("cached_restorability_result", None)
         # §B3 Chunked-Streaming: Chunk-Offset für die Reparatur-Fenster-Zuordnung
@@ -27579,8 +27584,9 @@ class UnifiedRestorerV3:
         # sodass Phase 19/42/43 das erkannte Geschlecht via kwargs erhalten.
         # §v10.734 (2026-09-09): Song-global vorberechnetes Gender (Mittelfenster
         # aus _restore_chunked) hat Vorrang — Chunk-0-Intros lieferten sonst
-        # F0=0.0 → unknown (Befund Elke-Best-Lauf 2).
-        _precomputed_gender = kwargs.pop("_precomputed_vocal_gender", None)
+        # F0=0.0 → unknown (Befund Elke-Best-Lauf 2). Wert kommt über
+        # self._precomputed_vocal_gender (in restore() gepoppt).
+        _precomputed_gender = getattr(self, "_precomputed_vocal_gender", None)
         self._detected_vocal_gender = "unknown"
         if _precomputed_gender:
             self._detected_vocal_gender = str(_precomputed_gender)
@@ -42211,6 +42217,10 @@ class UnifiedRestorerV3:
                             _ntx_chain_keys,
                             restorability_score=float(getattr(self, "_last_restorability_score", 70.0) or 70.0),
                             transfer_chain_depth=int(len(_ntx_chain_keys) or 1),
+                            era_decade=int(
+                                _ctx_phase_vocal.get("decade") or _ctx_phase_vocal.get("era_decade") or 0
+                            )
+                            or None,  # §v10.731: echte Ära für den Audit
                         )
                         # Noise texture deviation uses materialadaptive threshold (§2.49 / §8.5A)
                         _ntx_dev = float(_afg_result.noise_texture_deviation_db_oct)
