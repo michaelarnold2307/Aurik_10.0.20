@@ -15,6 +15,8 @@ from unittest.mock import Mock, patch
 import numpy as np
 import pytest
 
+pytest.importorskip("onnxruntime")  # CI-Minimal-Umgebung (cross-platform)
+
 from backend.core.onnx.plugin_manager import ONNXPluginManager, load_model
 
 

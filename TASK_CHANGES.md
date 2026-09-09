@@ -1,13 +1,12 @@
 # TASK_CHANGES — Live-Ledger der aktuellen Aufgabe
 
-> Generiert von `scripts/change_ledger.py snapshot` (Base: `HEAD`, Stand: 2026-09-09 14:18 CEST).
+> Generiert von `scripts/change_ledger.py snapshot` (Base: `HEAD`, Stand: 2026-09-09 14:28 CEST).
 > CI (`ci-lite.yml` pr-evidence-gate) erzwingt Abdeckung: jede geänderte Code-Datei muss hier stehen.
 
 ## Geänderte Dateien
 
 | Status | Pfad | Art |
 |---|---|---|
-| M | docs/TIEFENANALYSE_RESTAURIERUNGSABLAUF.md | modifiziert |
 | D | docs/archive/BEST_2026_ERKENNTNISSE.md | gelöscht |
 | D | docs/archive/BEST_2026_EXECUTION_PLAN_30D.md | gelöscht |
 | D | docs/archive/DAW_Plugin_Architecture.md | gelöscht |
@@ -32,7 +31,6 @@
 | D | docs/archive/natural_sound_improvement_analysis.md | gelöscht |
 | D | docs/archive/tier2_ml_hybrid_analysis.md | gelöscht |
 | D | docs/archive/worldclass_balance_roadmap_2026-06-05.md | gelöscht |
-| M | plugins/apollo_phase0_integration.py | modifiziert |
 | M | tests/onnx_skip/test_plugin_manager.py | modifiziert |
 | ?? | audit/bridge_import_status_summary_voice_first_runtime.json | ungetrackt |
 | ?? | tests/integration/test_whole_song_mode.py | ungetrackt |
