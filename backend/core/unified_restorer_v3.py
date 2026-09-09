@@ -36231,7 +36231,16 @@ class UnifiedRestorerV3:
 
             _ctx_depth = int(_depth) if "_depth" in dir() else 1
             _ctx_rs = float(restorability_score) if "restorability_score" in dir() else 50.0
-            _ctx_mat = str(getattr(material_type, "value", material_type) or "unknown")
+            _ctx_mat = str(getattr(material_type, "value", material_type) or "")
+            # §v10.737 (2026-09-09): Im Chunked-Pfad ist der material_type-Param
+            # None → Kontext lief mit mat=unknown (Befund Lauf 4: 18× §CALIB
+            # mat=unknown trotz klassifiziertem mp3_low). Die interne
+            # Klassifikation (_classified_material) ist die Wahrheit.
+            if not _ctx_mat or _ctx_mat == "unknown":
+                _ctx_mat = str(getattr(_classified_material, "value", _classified_material) or "unknown")
+            # Für den Chunk-Cache (§B3) persistieren, damit Folge-Chunks das
+            # Material via _cached_material erhalten.
+            _rc["material_type"] = _ctx_mat
             _ctx = CalibrationContext(
                 restorability_score=_ctx_rs,
                 transfer_chain_depth=_ctx_depth,
