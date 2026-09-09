@@ -7872,6 +7872,25 @@ class UnifiedRestorerV3:
                     "🎵 Ganzsong-Modus: %.1fs Audio — RAM-Bedarf steigt linear; bei OOM auf Chunked-Pfad zurück",
                     _ws_sec,
                 )
+            # §v10.746 (2026-09-09): RAM-Preflight — der Ganzsong-Lauf (225 s,
+            # 31 GB RAM) wurde am Ende vom OOM-Killer erschlagen (RAM 93 %,
+            # swap 85 %, kein Traceback). Konservativer Bedarf: ~0.12 GB/s +
+            # 4 GB Basis (gemessenes Peak ≈ 26+ GB bei 225 s); sonst sicherer
+            # Chunked-Fallback statt Crash.
+            try:
+                import psutil as _ps746
+
+                _avail746 = float(_ps746.virtual_memory().available / (1024**3))
+                _need746 = 4.0 + 0.12 * _ws_sec
+                if _avail746 < _need746:
+                    logger.warning(
+                        "🎵 Ganzsong-Modus: RAM-Preflight abgelehnt (frei=%.1f GB < Bedarf ~%.1f GB) — Chunked-Fallback (§v10.746)",
+                        _avail746,
+                        _need746,
+                    )
+                    _whole_song = False
+            except Exception:
+                pass
         if _should_use_chunked_path(
             _n_total, sample_rate, in_chunked=bool(getattr(self, "_in_chunked", False)), whole_song=_whole_song
         ):
@@ -17103,6 +17122,16 @@ class UnifiedRestorerV3:
                         )
             except Exception as _eap_exc:
                 logger.debug("EmotionalArcPreservationMetric nicht verfügbar: %s", _eap_exc)
+
+        # §v10.746 (2026-09-09): Voll-Song-Snapshot freigeben — EmotionalArc war
+        # der letzte Verbraucher; der Ganzsong-OOM (RAM 93 %) hält sonst den
+        # 173-MB-Backup bis zum Funktionsende referenziert.
+        try:
+            del _pre_excellence_audio
+            _gc746 = __import__("gc")
+            _gc746.collect()
+        except Exception:
+            pass
 
         # §8.3 GoosebumpsQualityChecker — Holistische psychoakustische Qualitätsprüfung
         _goosebumps_result = None
