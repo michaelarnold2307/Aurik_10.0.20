@@ -263,6 +263,19 @@ class StemTargetedNRPhase(PhaseInterface):
         strength = float(_strength_ctx["effective_strength"])
         quality_mode = str(kwargs.get("quality_mode", "restoration")).strip().lower()
         panns_singing = float(kwargs.get("panns_singing", kwargs.get("panns_singing_confidence", 0.0)))
+        # §v10.741 (2026-09-09): §2.9a-Soft-Activation statt hartem 0.40-Gate.
+        # Befund Lauf 4: Elke Best vocal_prob=0.399 < 0.40 → Phase 66 lief auf
+        # JEDEM Chunk in den Passthrough (Stem-NR komplett inaktiv).
+        _vocal_soft = float(kwargs.get("vocal_strength_scale", 0.0) or 0.0)
+        if _vocal_soft <= 0.0:
+            if panns_singing >= 0.55:
+                _vocal_soft = 1.0
+            elif panns_singing >= 0.40:
+                _vocal_soft = 0.75
+            elif panns_singing >= 0.30:
+                _vocal_soft = 0.5
+            else:
+                _vocal_soft = 0.0
         if not isinstance(material_type, MaterialType):
             try:
                 material_type = MaterialType(str(material_type).strip().lower())
@@ -284,8 +297,10 @@ class StemTargetedNRPhase(PhaseInterface):
             )
 
         # --- Aktivierungs-Gates ---
-        if panns_singing < _PANNS_SINGING_GATE:
-            return _passthrough(f"panns_singing={panns_singing:.2f} < {_PANNS_SINGING_GATE}")
+        # §v10.741: Harter Skip nur bei klarem Nicht-Stimmmaterial (<0.30).
+        if panns_singing < 0.30 or _vocal_soft <= 0.0:
+            return _passthrough(f"panns_singing={panns_singing:.2f} < 0.30 (kein Stimmaterial)")
+        _p66_meta["vocal_soft_scale"] = _vocal_soft
 
         if material_type in _SKIP_MATERIALS:
             return _passthrough(f"material={material_type} in skip-list (zu verrauscht für Separation)")
@@ -396,10 +411,11 @@ class StemTargetedNRPhase(PhaseInterface):
         audio_combined = np.nan_to_num(audio_combined, nan=0.0, posinf=0.0, neginf=0.0)
         audio_combined = np.clip(audio_combined, -1.0, 1.0)
 
-        # --- Strength-Blend: wet/dry Mix ---
-        if strength < 1.0:
+        # --- Strength-Blend: wet/dry Mix (mit §2.9a-Soft-Skala) ---
+        _strength_eff = float(np.clip(strength * _vocal_soft, 0.05, 1.0))
+        if _strength_eff < 1.0:
             _n_blend = min(audio.shape[0], audio_combined.shape[0])
-            audio_combined[:_n_blend] = strength * audio_combined[:_n_blend] + (1.0 - strength) * audio[:_n_blend]
+            audio_combined[:_n_blend] = _strength_eff * audio_combined[:_n_blend] + (1.0 - _strength_eff) * audio[:_n_blend]
             audio_combined = np.clip(audio_combined, -1.0, 1.0)
 
         # --- §2.46e HallucinationGuard (Studio 2026: additive Operation) ---
