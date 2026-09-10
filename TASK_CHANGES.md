@@ -1,14 +1,14 @@
 # TASK_CHANGES — Live-Ledger der aktuellen Aufgabe
 
-> Generiert von `scripts/change_ledger.py snapshot` (Base: `HEAD`, Stand: 2026-09-10 06:50 CEST).
+> Generiert von `scripts/change_ledger.py snapshot` (Base: `HEAD`, Stand: 2026-09-10 07:02 CEST).
 > CI (`ci-lite.yml` pr-evidence-gate) erzwingt Abdeckung: jede geänderte Code-Datei muss hier stehen.
 
 ## Geänderte Dateien
 
 | Status | Pfad | Art |
 |---|---|---|
-| M | .github/FILE_REGISTRY.md | modifiziert |
-| ?? | backend/core/dsp/harmonic_aware_noise_estimator.py | ungetrackt |
+| M | backend/core/phases/phase_28_surface_noise_profiling.py | modifiziert |
+| M | backend/core/phases/phase_29_tape_hiss_reduction.py | modifiziert |
 
 ## Entscheidungen
 

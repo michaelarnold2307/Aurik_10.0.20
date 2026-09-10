@@ -490,6 +490,19 @@ class TapeHissReductionPhase(PhaseInterface):
         self.validate_input(audio)
         audio, _p29_transposed = to_channels_last(audio)
 
+        # §v10.754 (2026-09-09): Harmonisch-bewusste Floor-Schätzung als
+        # Pre-Stage (identisch zu Phase 28) — systematischer Rausch-Floor
+        # vor der MMSE-LSA-Kette; Zwei-Pfad mit §V7-Guard.
+        try:
+            from backend.core.dsp.harmonic_aware_noise_estimator import (
+                subtract_noise_floor as _ha_sub754b,
+            )
+
+            audio = _ha_sub754b(audio, sample_rate, over_subtraction_db=6.0)
+            logger.info("Verarbeitungsschritt 29: Harmonisch-bewusster Floor aktiv (§v10.754)")
+        except Exception as _ha_exc29:
+            logger.debug("Verarbeitungsschritt 29: Harmonisch-bewusster Floor nicht verfügbar: %s", _ha_exc29)
+
         # §EraTarget: Read era-adaptive G_floor from restoration context (v10.0.0).
         # Stored on self for access in _process_channel_omlsa_mrsa without signature change.
         _era_ctx_p29 = kwargs.get("_restoration_context", {}).get("era_carrier_target", {})

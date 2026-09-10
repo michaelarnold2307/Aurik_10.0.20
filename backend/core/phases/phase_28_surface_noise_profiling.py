@@ -287,6 +287,20 @@ class SurfaceNoiseProfiling(PhaseInterface):
         start_time = time.time()
         self.validate_input(audio)
 
+        # §v10.754 (2026-09-09): Harmonisch-bewusste Floor-Schätzung als
+        # Pre-Stage — bei hoher Konsens-Konfidenz wird der systematische
+        # Rausch-Floor vor der OMLSA-Kette entfernt (Musikbins bleiben
+        # unangetastet). Sonst klassisch (Zwei-Pfad-Muster, §V7-Guard).
+        try:
+            from backend.core.dsp.harmonic_aware_noise_estimator import (
+                subtract_noise_floor as _ha_sub754,
+            )
+
+            audio = _ha_sub754(audio, sample_rate, over_subtraction_db=6.0)
+            logger.info("Verarbeitungsschritt 28: Harmonisch-bewusster Floor aktiv (§v10.754)")
+        except Exception as _ha_exc:
+            logger.debug("Verarbeitungsschritt 28: Harmonisch-bewusster Floor nicht verfügbar: %s", _ha_exc)
+
         # §2.46f Natural-Performance-Artifacts-Guard — detect protected breath/vibrato zones before NR
         _npa_result_28 = None
         try:
