@@ -138,6 +138,23 @@ def _adaptive_crossfade_width(clip_fraction: float) -> int:
         return 480  # 10 ms — musikalisch weich bei vielen Clips
 
 
+def _clip_runs(mask: np.ndarray) -> list[tuple[int, int]]:
+    """§v10.752: Zusammenhängende True-Runs in einer Bool-Maske → (start, end)."""
+    runs: list[tuple[int, int]] = []
+    in_run = False
+    start = 0
+    for i, v in enumerate(mask):
+        if v and not in_run:
+            start = i
+            in_run = True
+        elif not v and in_run:
+            runs.append((start, i))
+            in_run = False
+    if in_run:
+        runs.append((start, len(mask)))
+    return runs
+
+
 def _declip_pchip(audio: np.ndarray, threshold: float) -> np.ndarray:
     """PCHIP-Interpolation geclippter Samples mit adaptiver Blend-Glättung.
 
@@ -318,6 +335,50 @@ class DeclipperPhase(PhaseInterface):
         for ch in range(audio_in.shape[0]):
             audio_out[ch] = _declip_pchip(audio_in[ch], self._clip_threshold)
 
+        # §v10.752 (2026-09-09): CQT-Diff-informierter Zweig für schwere Fälle.
+        # Selbstkalibrierung bleibt der Detektor/Konditionierer; die maskierte
+        # Diffusion repariert nur Regionen mit Clip-Runs ≥ 50 ms (Severity-Gate).
+        # Guard: KL-Divergenz < 0.2 (Plugin-Metrik) + Energie-Plausibilität —
+        # sonst bleibt das klassische Ergebnis (§V7: ML nur bei nachweisbarem Gewinn).
+        _cqtdiff_used = False
+        _mask07 = np.abs(audio_in[0]) >= self._clip_threshold
+        _runs07 = _clip_runs(_mask07)
+        _severe_runs = [r for r in _runs07 if (r[1] - r[0]) >= int(0.05 * sample_rate)]
+        if _severe_runs and self._clip_fraction >= 0.01:
+            try:
+                import torch as _torch752  # pylint: disable=import-outside-toplevel
+                from plugins.cqtdiff_plus_plugin import inpaint_gap as _cq752  # pylint: disable=import-outside-toplevel
+
+                _torch752.manual_seed(20260909)  # §G5: fixer Seed für den Reparatur-Zweig
+                _cand = audio_out.copy()
+                _ok_runs = 0
+                for ch in range(_cand.shape[0]):
+                    for (_s, _e) in _severe_runs:
+                        _res752 = _cq752(_cand[ch], sample_rate, _s, _e, context_audio=audio_in[ch])
+                        _seg752 = getattr(_res752, "audio", None)
+                        _kl752 = float(getattr(_res752, "kl_divergence", 1.0) or 1.0)
+                        if _seg752 is not None and _kl752 < 0.2:
+                            _n752 = min(_e - _s, len(_seg752))
+                            _cand[ch, _s : _s + _n752] = _seg752[:_n752]
+                            _ok_runs += 1
+                if _ok_runs > 0:
+                    _e_ratio = (np.mean(_cand**2) + 1e-12) / (np.mean(audio_out**2) + 1e-12)
+                    if 0.2 <= _e_ratio <= 5.0:
+                        audio_out = _cand
+                        _cqtdiff_used = True
+                logger.info(
+                    "Verarbeitungsschritt 07 CQT-Diff: %d schwere Regionen, %d übernommen, "
+                    "Zweig aktiv=%s",
+                    len(_severe_runs),
+                    _ok_runs,
+                    _cqtdiff_used,
+                )
+            except Exception as _exc752:
+                logger.warning(
+                    "Verarbeitungsschritt 07 CQT-Diff nicht verfügbar (%s) — klassisch bleibt",
+                    _exc752,
+                )
+
         # — Strength-Skalierung: PMGG kann Stärke reduzieren —
         if strength < 1.0:
             blend = float(np.clip(strength, 0.0, 1.0))
@@ -363,6 +424,7 @@ class DeclipperPhase(PhaseInterface):
                 "clip_threshold": float(self._clip_threshold),
                 "crossfade_samples": self._crossfade_n,
                 "reduction_db": float(reduction_db),
+                "cqtdiff_used": bool(_cqtdiff_used),  # §v10.752
                 "material": material,
             },
             resolved_defects={
