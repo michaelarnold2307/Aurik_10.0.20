@@ -36,6 +36,18 @@ _REGISTRY_OUT = _REPO_ROOT / "backend" / "core" / "gpu_model_registry.json"
 _MIGRAPHX_MAX_MB = 200  # §v10.40 Compile-Zeit-Regel
 _DEFAULT_DIM = 256
 
+# Per-Modell-Input-Overrides: _DEFAULT_DIM=256 ist für zeitdynamische Modelle
+# ungeeignet — wav2vec2-Conv degeneriert unterhalb ~320 Samples (Kernel 2 >
+# Eingang → RuntimeError). Lange Zeitachse daher explizit vorgeben.
+# §v10-SINGMOS-ONNX (2026-09-10)
+_INPUT_OVERRIDES: dict[str, dict[str, tuple[tuple[int, ...], str]]] = {
+    "models/singmos/singmos_pro.onnx": {
+        "audio": ((1, 1, 160000), "float32"),
+        "audio_length": ((1,), "int64"),
+        "domain_id": ((1,), "int64"),
+    },
+}
+
 
 def _collect_models(limit: int | None) -> list[Path]:
     _seen: set[str] = set()
@@ -52,10 +64,15 @@ def _collect_models(limit: int | None) -> list[Path]:
     return _out
 
 
-def _dummy_inputs(session) -> dict:
+def _dummy_inputs(session, overrides: dict | None = None) -> dict:
     """Erzeugt realistische Dummy-Inputs aus den ORT-Eingabe-Signaturen."""
     _inputs: dict = {}
     for _inp in session.get_inputs():
+        _ov = (overrides or {}).get(_inp.name)
+        if _ov is not None:
+            _shape, _dtype = _ov
+            _inputs[_inp.name] = np.zeros(tuple(_shape), dtype=_dtype)
+            continue
         _shape: list[int] = []
         for _d in _inp.shape:
             if isinstance(_d, int):
@@ -105,7 +122,7 @@ def _with_timeout(fn, seconds: float):
         signal.signal(signal.SIGALRM, _old)
 
 
-def _scan_model(path: Path) -> dict:
+def _scan_model(path: Path, overrides: dict | None = None) -> dict:
     import onnxruntime as ort
 
     _size_mb = path.stat().st_size / (1024**2)
@@ -115,7 +132,7 @@ def _scan_model(path: Path) -> dict:
     try:
         def _cpu_step():
             _cpu = ort.InferenceSession(str(path), providers=["CPUExecutionProvider"])
-            _inputs = _dummy_inputs(_cpu)
+            _inputs = _dummy_inputs(_cpu, overrides)
             return _cpu, _inputs
 
         _cpu, _inputs = _with_timeout(_cpu_step, 60.0)
@@ -181,7 +198,7 @@ def main() -> int:
         _rel = _p.relative_to(_REPO_ROOT).as_posix()
         print(f"[{_i:2d}/{len(_models)}] scanne {_rel} ...", flush=True)
         _t0 = time.perf_counter()
-        _entry = _scan_model(_p)
+        _entry = _scan_model(_p, _INPUT_OVERRIDES.get(_rel))
         _entry["scan_s"] = round(time.perf_counter() - _t0, 1)
         _registry[_rel] = _entry
         _counts[_entry["verdict"]] = _counts.get(_entry["verdict"], 0) + 1

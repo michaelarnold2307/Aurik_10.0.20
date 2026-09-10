@@ -1,6 +1,6 @@
 # TASK_CHANGES — Live-Ledger der aktuellen Aufgabe
 
-> Generiert von `scripts/change_ledger.py snapshot` (Base: `HEAD`, Stand: 2026-09-10 08:40 CEST).
+> Generiert von `scripts/change_ledger.py snapshot` (Base: `HEAD`, Stand: 2026-09-10 14:27 CEST).
 > CI (`ci-lite.yml` pr-evidence-gate) erzwingt Abdeckung: jede geänderte Code-Datei muss hier stehen.
 
 ## Geänderte Dateien
@@ -8,8 +8,20 @@
 | Status | Pfad | Art |
 |---|---|---|
 | M | .github/FILE_REGISTRY.md | modifiziert |
-| M | plugins/laion_clap_plugin.py | modifiziert |
-| ?? | tests/unit/test_laion_clap_onnx_guard.py | ungetrackt |
+| M | backend/core/coordinated_repair.py | modifiziert |
+| M | backend/core/gpu_model_registry.json | modifiziert |
+| M | plugins/aero_plugin.py | modifiziert |
+| M | plugins/gacela_plugin.py | modifiziert |
+| M | scripts/export_miipher_dit_onnx.py | modifiziert |
+| M | scripts/onnx_gpu_compat_scan.py | modifiziert |
+| M | scripts/prepare_sgmse_musik_data.py | modifiziert |
+| M | scripts/train_sgmse_musik.py | modifiziert |
+| M | tests/unit/test_aero_plugin.py | modifiziert |
+| ?? | scripts/export_aero_onnx.py | ungetrackt |
+| ?? | scripts/export_gacela_onnx.py | ungetrackt |
+| ?? | scripts/export_sgmse_onnx.py | ungetrackt |
+| ?? | scripts/export_singmos_onnx.py | ungetrackt |
+| ?? | scripts/inspect_sgmse_ckpt.py | ungetrackt |
 
 ## Entscheidungen
 
