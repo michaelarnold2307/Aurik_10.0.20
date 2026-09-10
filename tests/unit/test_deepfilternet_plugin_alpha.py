@@ -5,7 +5,11 @@ Befund 2026-09-08: IndexError in _infer_spectral_chunk (alpha = dec_out[1])
 veralteter Export ohne Alpha-Head (df_fc_a). Fix 2026-09-08: alle drei
 ONNX-Modelle aus dfn_musik_best.pt neu exportiert (scripts/
 export_dfn_finetuned_onnx.py), dec MIT Alpha-Ausgang; alpha optional
-behandeln (fehlendes alpha = pure DF, blend=1.0).
+behandeln (fehlendes alpha = kein IndexError).
+
+§v10-DFN-Feature-Fix (2026-09-10): Der trainierte DFN3-Forward nutzt df_fc_a
+(alpha) NICHT — der Enhance-Pfad wendet pure df_op an (5 komplexe Taps),
+kein Alpha-Blend. Diese Tests prüfen genau diese Semantik.
 """
 
 from __future__ import annotations
@@ -35,10 +39,19 @@ _S = 12  # Frames (realistisch >= DF_ORDER; Produktion: T=100)
 
 def _make_plugin(dec_outputs: list[np.ndarray]) -> DeepFilterNetV3Plugin:
     p = DeepFilterNetV3Plugin.__new__(DeepFilterNetV3Plugin)  # ohne Modell-Load
+    p._df_state = None  # §v10-DFN-Feature-Fix: numpy-Kette im Test (libdf-frei)
+    p._erb_widths = None
+    p._current_energy_bias_db = 0.0
     p._enc = _FakeSession(
-        [np.zeros((1, 16, _S, 32)), np.zeros((1, 16, _S, 16)), np.zeros((1, 16, _S, 8)),
-         np.zeros((1, 16, _S, 8)), np.zeros((1, _S, 256)), np.zeros((1, 16, _S, 96)),
-         np.zeros((1, _S, 1))]
+        [
+            np.zeros((1, 16, _S, 32)),
+            np.zeros((1, 16, _S, 16)),
+            np.zeros((1, 16, _S, 8)),
+            np.zeros((1, 16, _S, 8)),
+            np.zeros((1, _S, 256)),
+            np.zeros((1, 16, _S, 96)),
+            np.zeros((1, _S, 1)),
+        ]
     )
     p._erb_dec = _FakeSession([np.zeros((1, 1, _S, 32))])
     p._dec = _FakeSession(dec_outputs)
@@ -59,40 +72,42 @@ def test_infer_spectral_chunk_single_output_no_crash() -> None:
     assert out.shape == (481, _S)
 
 
-def test_infer_spectral_chunk_two_outputs_uses_alpha() -> None:
-    """dec mit coefs + alpha → Alpha-Pfad bleibt funktional."""
+def test_infer_spectral_chunk_two_outputs_alpha_ignored() -> None:
+    """dec mit coefs + alpha → kein Crash; alpha geht nicht in den Enhance-Pfad
+    ein (trainierter DFN3-Forward nutzt df_fc_a nicht, §v10-DFN-Feature-Fix)."""
     alpha = np.full((1, _S, 1), 0.5, dtype=np.float32)
     p = _make_plugin([np.zeros((1, _S, 96, 10), dtype=np.float32), alpha])
     out = p._infer_spectral_chunk(*_inputs())
     assert out.shape == (481, _S)
 
 
-def test_apply_df_filter_none_alpha_is_pure_df() -> None:
-    """alpha=None → blend=1.0 (pure DF, wie trainierter DFN3-Forward)."""
+def test_apply_df_filter_pure_df_zero_tap() -> None:
+    """pure df_op: nur der 0. Tap aktiv (0.25 reell) → acc = 0.25·spec
+    auf den ersten 96 Bins; höhere Bins bleiben original."""
     p = DeepFilterNetV3Plugin.__new__(DeepFilterNetV3Plugin)
     spec = np.ones((481, _S), dtype=np.complex64)
     coefs = np.zeros((_S, 96, 10), dtype=np.float32)
-    coefs[:, :, 0] = 0.25  # nur 0. Koeffizient aktiv
-    out_none = p._apply_df_filter(spec, coefs, None)
-    out_explicit = p._apply_df_filter(spec, coefs, np.full((1, _S, 1), 1.0, dtype=np.float32))
-    # pure DF: acc = coefs[:, :, 0].T * spec → 0.25 (nur erste 96 Bins)
+    coefs[:, :, 0] = 0.25  # re des 0. Taps
+    out = p._apply_df_filter(spec, coefs)
     expected = np.ones((481, _S), dtype=np.complex64)
     expected[:96, :] = 0.25
-    assert np.allclose(out_none, expected, atol=1e-6)
-    assert np.allclose(out_none, out_explicit, atol=1e-6)
+    assert np.allclose(out, expected, atol=1e-6)
 
 
-def test_apply_df_filter_alpha_blend_unchanged() -> None:
-    """Alpha-Blend-Pfad (0.5) bleibt wie vor dem Fix."""
+def test_apply_df_filter_tap1_shift_semantics() -> None:
+    """df_op mit Tap 1 aktiv (1.0 reell) → enh[t] = spec[t-1] (Clamp t=0)."""
     p = DeepFilterNetV3Plugin.__new__(DeepFilterNetV3Plugin)
-    spec = np.ones((481, _S), dtype=np.complex64)
+    rng = np.random.default_rng(7)
+    spec = (rng.standard_normal((481, _S)) + 1j * rng.standard_normal((481, _S))).astype(np.complex64)
     coefs = np.zeros((_S, 96, 10), dtype=np.float32)
-    coefs[:, :, 0] = 0.5
-    alpha = np.full((1, _S, 1), 0.5, dtype=np.float32)
-    out = p._apply_df_filter(spec, coefs, alpha)
-    # blend 0.5: 0.5 * (0.5) + 0.5 * 1.0 = 0.75 (erste 96 Bins)
-    expected = np.ones((481, _S), dtype=np.complex64)
-    expected[:96, :] = 0.75
+    coefs[:, :, 2] = 1.0  # re des 1. Taps (Paar-Layout)
+    out = p._apply_df_filter(spec, coefs)
+    expected = spec.copy()
+    shifted = spec[:96, :].copy()
+    _s = np.empty_like(shifted)
+    _s[:, 1:] = shifted[:, :-1]
+    _s[:, 0] = shifted[:, 0]  # clamp max(0, t-1)
+    expected[:96, :] = _s
     assert np.allclose(out, expected, atol=1e-6)
 
 

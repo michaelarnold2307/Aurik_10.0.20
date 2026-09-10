@@ -1,6 +1,6 @@
 # TASK_CHANGES — Live-Ledger der aktuellen Aufgabe
 
-> Generiert von `scripts/change_ledger.py snapshot` (Base: `HEAD`, Stand: 2026-09-10 16:08 CEST).
+> Generiert von `scripts/change_ledger.py snapshot` (Base: `HEAD`, Stand: 2026-09-10 17:09 CEST).
 > CI (`ci-lite.yml` pr-evidence-gate) erzwingt Abdeckung: jede geänderte Code-Datei muss hier stehen.
 
 ## Geänderte Dateien
@@ -8,20 +8,9 @@
 | Status | Pfad | Art |
 |---|---|---|
 | M | .github/FILE_REGISTRY.md | modifiziert |
-| M | TASK_CHANGES.md | modifiziert |
-| M | backend/core/dsp/harmonic_aware_noise_estimator.py | modifiziert |
-| M | backend/core/dsp/if_wow_flutter_estimator.py | modifiziert |
-| M | backend/core/dsp/phase_locked_vocoder.py | modifiziert |
-| M | backend/core/dsp/sparse_declipper.py | modifiziert |
-| M | backend/core/gpu_model_registry.py | modifiziert |
-| M | backend/core/phases/phase_12_wow_flutter_fix.py | modifiziert |
-| M | backend/core/residuum_masking.py | modifiziert |
-| M | backend/core/unified_restorer_v3.py | modifiziert |
-| M | plugins/apollo_phase0_integration.py | modifiziert |
-| M | plugins/demucs_v4_plugin.py | modifiziert |
-| M | plugins/gacela_plugin.py | modifiziert |
-| M | plugins/htdemucs_plugin.py | modifiziert |
-| M | plugins/versa_plugin.py | modifiziert |
+| M | backend/core/dfn_expanded_inference.py | modifiziert |
+| M | plugins/deepfilternet_v3_ii_plugin.py | modifiziert |
+| M | tests/unit/test_deepfilternet_plugin_alpha.py | modifiziert |
 
 ## Entscheidungen
 

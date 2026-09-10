@@ -94,6 +94,24 @@ def _erb_fb(n_fft: int = 960, n_erb: int = 32, sr: float = 48000.0) -> np.ndarra
 
 _ERB_FB = _erb_fb(_N_FFT, _N_ERB, float(_SR))  # [32, 481]
 
+# §v10-DFN-Feature-Fix (2026-09-10): offizielle Feature-Kette aus df/enhance.py
+# (libdf). Norm-Alpha = exp(-hop/(tau·sr)), tau=1 (df/config NORM_TAU) → 0.99.
+_NORM_ALPHA: float = 0.99
+# Optional deklariert (libdf kann fehlen → numpy-Ersatz, §V6 (copilot-instructions.md)).
+LibDF: Any = None
+_libdf_erb: Any = None
+_libdf_erb_norm: Any = None
+_libdf_unit_norm: Any = None
+try:
+    from libdf import DF as LibDF  # noqa: N811 — Alias für Kollisionsfreiheit
+    from libdf import erb as _libdf_erb
+    from libdf import erb_norm as _libdf_erb_norm
+    from libdf import unit_norm as _libdf_unit_norm
+
+    _HAS_LIBDF = True
+except ImportError:
+    _HAS_LIBDF = False
+
 
 class DeepFilterNetV3Plugin:
     """DeepFilterNet v3 (§v10.15 Musik-Fine-Tuning) II Rauschunterdrückung (ONNX) mit OMLSA-DSP-Fallback.
@@ -113,6 +131,21 @@ class DeepFilterNetV3Plugin:
         self._enc: Any = None
         self._dec: Any = None
         self._erb_dec: Any = None
+        # §v10-DFN-Feature-Fix (2026-09-10): offizielle libdf-Feature-Kette
+        # (analysis + erb_norm + unit_norm) statt der degradierten numpy-Kette.
+        self._df_state: Any = None
+        self._erb_widths: Any = None
+        if _HAS_LIBDF:
+            try:
+                self._df_state = LibDF(sr=_SR, fft_size=_N_FFT, hop_size=_HOP, nb_bands=_N_ERB)
+                self._erb_widths = self._df_state.erb_widths()
+            except Exception as _exc:
+                logger.warning("libdf-Feature-Kette nicht initialisierbar (%s) — numpy-Ersatz.", _exc)
+                self._df_state = None
+        else:
+            logger.warning(
+                "libdf nicht verfügbar — numpy-Feature-Ersatz aktiv (degradierte Modellqualität; §V6 (copilot-instructions.md))."
+            )
         # Fixe Zeitdimension des enc-Exports (None = dynamisch → Ganzsignal-Pfad).
         self._enc_time_frames: int | None = None
         self._current_energy_bias_db: float = 0.0  # §0j (dsp.instructions.md); Default §v10.15/§v10.19
@@ -283,7 +316,16 @@ class DeepFilterNetV3Plugin:
             except Exception:
                 logger.warning("deepfilternet_v3_ii_plugin.py::_verbessern_channel Ersatzpfad", exc_info=True)
             try:
-                out = self._infer_onnx(mono)
+                if getattr(self, "_df_state", None) is not None:
+                    # §v10-DFN-Feature-Fix (2026-09-10): offizielle enhance-Semantik
+                    # (df/enhance.py) — n_fft-Pad vor analysis, Delay-Ausgleich
+                    # d = n_fft - hop nach synthesis.
+                    _mono_in = np.pad(mono, (0, _N_FFT))
+                    _out = self._infer_onnx(_mono_in)
+                    _d = _N_FFT - _HOP
+                    out = _out[_d : _d + len(mono)]
+                else:
+                    out = self._infer_onnx(mono)
             finally:
                 if _plm_dfn is not None:
                     try:
@@ -315,6 +357,21 @@ class DeepFilterNetV3Plugin:
             feat_spec  [1, 2, S, 96]
             spec_cx    [n_fft//2+1, S] komplexes Spektrogramm
         """
+        if getattr(self, "_df_state", None) is not None and getattr(self, "_erb_widths", None) is not None:
+            # §v10-DFN-Feature-Fix (2026-09-10): offizielle Kette aus
+            # df/enhance.py::df_features — analysis → erb/erb_norm → unit_norm
+            # auf den 96 DF-Bins (der ONNX-Export verwendete exakt diese Kette).
+            _spec3 = self._df_state.analysis(mono[np.newaxis, :])  # [1,S,481] cx64
+            _erb_e = _libdf_erb(_spec3, self._erb_widths)  # [1,S,32]
+            _erb_n = _libdf_erb_norm(_erb_e, _NORM_ALPHA)  # [1,S,32]
+            _un = _libdf_unit_norm(_spec3[..., :_DF_BINS], _NORM_ALPHA)  # [1,S,96] cx
+            feat_erb = _erb_n[:, np.newaxis, :, :].astype(np.float32)  # [1,1,S,32]
+            _fs = np.stack([_un.real, _un.imag], axis=-1)  # [1,S,96,2]
+            feat_spec = _fs.transpose(0, 3, 1, 2).astype(np.float32)  # [1,2,S,96]
+            return feat_erb, feat_spec, _spec3[0].T  # [481,S]
+
+        # §V6 (copilot-instructions.md)-Ersatz: numpy-Kette (libdf fehlt) —
+        # bekannte Degradation (Befund 2026-09-10: Korrelation 0.57 vs 0.93).
         win = np.hanning(_N_FFT).astype(np.float32)
         n = len(mono)
         # Zero-pad auf ganzzahlige Hop-Anzahl
@@ -346,46 +403,35 @@ class DeepFilterNetV3Plugin:
 
         return feat_erb.astype(np.float32), feat_spec.astype(np.float32), spec_cx
 
-    def _apply_df_filter(self, spec_cx: np.ndarray, coefs: np.ndarray, alpha: np.ndarray | None) -> np.ndarray:
-        """Wende Deep-Filter-Koeffizienten auf komplexes Spektrum an (vektorisiert).
+    def _apply_df_filter(self, spec_cx: np.ndarray, coefs: np.ndarray) -> np.ndarray:
+        """Deep-Filter (df_op) auf das komplexe Spektrum — §v10-DFN-Feature-Fix.
 
-        Vectorized FIR-Filter: statt O(S × n_bins × DF_ORDER) Python-Iterationen
-        werden nur _DF_ORDER (=10) NumPy-Array-Operationen durchgeführt.
-        Beschleunigung: ~100-1000× gegenüber reinem Python-Loop.
-
-        coefs: [S, 96, 10] DF-Koeffizienten
-        alpha: [1, S, 1] oder skalar — Blending-Faktor (0..1).
-        §P1-6 (2026-09-08): alpha=None heißt DFN3-Export ohne Alpha-Head —
-        dann pure DF wie im trainierten Forward (df_op(coefs) ohne Alpha-Blend).
+        Exakte Semantik des trainierten DFN3-Forwards (df/multiframe.py::DF):
+        enh[t,f] = Σ_{k=0..frame_size-1} c_k[t,f] · spec[f, t-k] mit
+        frame_size=5 komplexen Taps (coefs [S,96,10] = re/im-Paare, Lookahead 0).
+        Kein ERB-Gain, kein Alpha-Blend (df_fc_a ist im DFN3-Forward unbenutzt).
+        Nur die ersten 96 Bins werden gefiltert; höhere Bins bleiben original.
         """
         n_bins = min(coefs.shape[1], spec_cx.shape[0])
         S = spec_cx.shape[1]
-        result = spec_cx.copy()
+        # [S,96,10] → [S,96,5] komplex (Paar-Layout: (re_k, im_k) je Tap)
+        _coefs_cx = coefs[:S, :n_bins].astype(np.float64)
+        _coefs_cx = _coefs_cx.reshape(S, n_bins, -1, 2)
+        _coefs_cx = _coefs_cx[..., 0] + 1j * _coefs_cx[..., 1]  # [S,n_bins,5]
 
+        result = spec_cx.copy()
         spec_sub = spec_cx[:n_bins, :]  # [n_bins, S]
         acc = np.zeros((n_bins, S), dtype=np.complex128)
-
-        for k in range(_DF_ORDER):
+        _frame_size = _coefs_cx.shape[2]
+        for k in range(_frame_size):
             if k == 0:
                 shifted = spec_sub
             else:
                 shifted = np.empty_like(spec_sub)
                 shifted[:, k:] = spec_sub[:, : S - k]
                 shifted[:, :k] = spec_sub[:, 0:1]  # max(0, t-k) → clamp to t=0
-            # coefs[:, :, k] shape [S, n_bins] → transpose to [n_bins, S]
-            acc += coefs[:, :n_bins, k].T * shifted
-
-        # Alpha-Blending: blend × FIR-Ergebnis + (1 - blend) × Original
-        if alpha is None:
-            # §P1-6: DFN3-Export ohne Alpha-Head — trainierter Forward wendet
-            # df_op(coefs) ohne Alpha-Blend an (pure DF).
-            blend = np.full((1, S), 1.0, dtype=np.float64)
-        elif alpha.ndim >= 2 and alpha.shape[1] >= S:
-            blend = alpha[0, :S, 0].astype(np.float64)[np.newaxis, :]  # [1, S]
-        else:
-            blend = np.full((1, S), 0.5, dtype=np.float64)
-        result[:n_bins, :] = (blend * acc + (1.0 - blend) * spec_sub).astype(spec_cx.dtype)
-
+            acc += _coefs_cx[:, :, k].T * shifted
+        result[:n_bins, :] = acc
         return result
 
     @staticmethod
@@ -452,7 +498,15 @@ class DeepFilterNetV3Plugin:
             logger.debug("DeepFilterNet ONNX-Inferenz-Fehler: %s — DSP-Ersatzpfad.", exc)
             return self._omlsa_fallback(mono, _SR, energy_bias_db=float(getattr(self, "_current_energy_bias_db", 0.0)))
 
-        # ISTFT (vectorized batch-IRFFT + overlap-add)
+        # ISTFT — offizielle libdf-Synthese (Streaming-Normierung + Delay-
+        # Ausgleich außerhalb, §v10-DFN-Feature-Fix 2026-09-10).
+        if getattr(self, "_df_state", None) is not None:
+            _spec_syn = np.ascontiguousarray(spec_filtered.T)[np.newaxis, :, :]
+            _syn = self._df_state.synthesis(_spec_syn)[0]
+            out = np.nan_to_num(_syn, nan=0.0, posinf=0.0, neginf=0.0)
+            return out[: len(mono)].astype(np.float32)  # type: ignore[no-any-return]
+
+        # §V6 (copilot-instructions.md)-Ersatz: batch-IRFFT + Overlap-Add.
         win = np.hanning(_N_FFT).astype(np.float32)
         n_frames = spec_filtered.shape[1]
         n_out = _HOP * n_frames + _N_FFT
@@ -488,40 +542,31 @@ class DeepFilterNetV3Plugin:
         # Encoder
         enc_out = self._enc.run(None, {"feat_erb": feat_erb, "feat_spec": feat_spec})
         # enc outputs: e0,e1,e2,e3,emb,c0,lsnr (Reihenfolge per Modell)
-        e0, e1, e2, e3 = enc_out[0], enc_out[1], enc_out[2], enc_out[3]
+        _e0, _e1, _e2, _e3 = enc_out[0], enc_out[1], enc_out[2], enc_out[3]
         emb = enc_out[4]
         c0 = enc_out[5]
 
-        # ERB-Dekoder → Maske [1,1,S,32]
-        erb_out = self._erb_dec.run(None, {"emb": emb, "e3": e3, "e2": e2, "e1": e1, "e0": e0})
-        erb_mask = erb_out[0]  # [1,1,S,32]
+        # §v10-DFN-Feature-Fix (2026-09-10): Der trainierte DFN3-Forward wendet
+        # NUR df_op an — die ERB-Maske (erb_dec) geht in den Enhance-Pfad nicht
+        # ein und df_fc_a (alpha) ist im Forward unbenutzt. Beides wurde hier
+        # früher angewendet → degradierte den Output (Korrelation 0.57 statt
+        # 0.93 gegen die eager-Referenz, gleicher Checkpoint).
 
-        # Haupt-Dekoder → DF-Koeffizienten + optional alpha
+        # Haupt-Dekoder → DF-Koeffizienten [B,S,96,10] = 5 komplexe Taps
         dec_out = self._dec.run(None, {"emb": emb, "c0": c0})
         coefs = dec_out[0]  # [B, S, 96, 10]
-        # §P1-6 (2026-09-08): DFN3-Export liefert nur coefs (df_fc_a ist im
-        # trainierten DFN3-Forward unbenutzt) — alpha optional behandeln statt
-        # IndexError → ML→DSP-Fallback.
-        alpha = dec_out[1] if len(dec_out) > 1 else None  # sigmoid (nur DFN2-Exporte)
-
-        # ERB-Maske zurück auf FFT-Bins interpolieren
-        # §P1-6: Bei gepolsterten Rand-Chunks (T=100-Modell, l<100) nur die
-        # ersten l Output-Frames verwenden — sonst Broadcast-Fehler.
         _S_out = int(spec_cx.shape[1])
-        m = erb_mask[0, 0, :_S_out, :]  # [_S_out, 32]
-        # Mappe ERB → linear (inverse des Filterbank-Produkts)
-        gain_lin = _ERB_FB.T @ m.T  # [481, S]
-        gain_lin = np.clip(gain_lin, 0.0, 1.0)
-        # §0j (dsp.instructions.md): Energy-Bias auf der Gain-Maske
-        # anwenden (ONNX-Graph bietet keinen Noise-Floor-Input).
-        gain_lin = self._apply_energy_bias_to_gain(gain_lin, float(getattr(self, "_current_energy_bias_db", 0.0)))
-
-        # ERB-Gain anwenden
-        spec_filtered = spec_cx * gain_lin
-
-        # DF-Filter anwenden
         coefs_np = (coefs[0] if coefs.ndim == 4 else coefs)[:_S_out]
-        return self._apply_df_filter(spec_filtered, coefs_np, alpha)
+        spec_filtered = self._apply_df_filter(spec_cx, coefs_np)
+
+        # §0j (dsp.instructions.md): Energy-Bias als atten-lim-Blend (analog
+        # df/enhance.py::enhance, atten_lim_db) — negativer Bias hebt den
+        # Gain-Floor (mehr Originalanteil), positiver dämpft aggressiver.
+        _bias_db = float(getattr(self, "_current_energy_bias_db", 0.0))
+        if _bias_db != 0.0:
+            _lim = float(10.0 ** (_bias_db / 20.0))
+            spec_filtered = spec_cx * _lim + spec_filtered * (1.0 - _lim)
+        return spec_filtered
 
     @staticmethod
     def _estimate_input_snr_db(mono: np.ndarray, frame_len: int = 2048, hop: int = 512) -> float:
