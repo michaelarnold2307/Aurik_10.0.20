@@ -14,7 +14,7 @@ Lösung (recycelt den Harmonischen-Konsens aus §v10.753):
 4. Der Floor in den Harmonischen-Bins wird aus den Nachbar-Nicht-
    Harmonischen-Bins interpoliert (Rauschen ist dort kontinuierlich).
 
-Deterministisch, vollständig vektorisiert, kein ML, §G5.
+Deterministisch, vollständig vektorisiert, kein ML, §G5 (copilot-instructions.md).
 """
 
 from __future__ import annotations
@@ -86,9 +86,7 @@ def harmonic_aware_noise_floor(
     harmonic_bins = np.any(is_harmonic, axis=1)
     if np.any(harmonic_bins) and np.any(~harmonic_bins):
         nb_idx = np.where(~harmonic_bins)[0]
-        noise_psd[harmonic_bins] = np.interp(
-            np.where(harmonic_bins)[0], nb_idx, noise_psd[nb_idx]
-        )
+        noise_psd[harmonic_bins] = np.interp(np.where(harmonic_bins)[0], nb_idx, noise_psd[nb_idx])
 
     # Konsens-Konfidenz: Anteil der harmonischen Energie an der Gesamtenergie
     harm_energy = mag2[is_harmonic].sum(0) if is_harmonic.any() else np.zeros(T)
@@ -108,11 +106,11 @@ def subtract_noise_floor(
     """Wiener-artige Spektral-Subtraktion mit dem harmonisch-bewussten Floor.
 
     Nur anwenden, wenn die Konsens-Konfidenz ausreichend ist — sonst
-    Passthrough (§V7: keine Verschlechterung ohne Beleg).
+    Passthrough (§V7 (copilot-instructions.md): keine Verschlechterung ohne Beleg).
     """
     psd, conf = harmonic_aware_noise_floor(audio, sr)
     if float(np.median(conf)) < 0.35:
-        return np.asarray(audio, dtype=np.float32)
+        return np.asarray(audio, dtype=np.float32)  # type: ignore[no-any-return]
     win = np.hanning(_NFFT).astype(np.float32)
     from scipy.signal import istft as _istft  # pylint: disable=import-outside-toplevel
     from scipy.signal import stft as _stft  # pylint: disable=import-outside-toplevel
@@ -142,4 +140,4 @@ def subtract_noise_floor(
     n = min(len(audio), len(y))
     out = np.asarray(audio, dtype=np.float32).copy()
     out[:n] = y[:n]
-    return out
+    return out  # type: ignore[no-any-return]

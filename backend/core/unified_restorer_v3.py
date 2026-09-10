@@ -1438,7 +1438,7 @@ def _should_use_chunked_path(
 ) -> bool:
     """§v10.720 (2026-09-08, Lücke-4 Stufe 1): Entscheidung Chunked vs. Ganzsong.
 
-    Pure Funktion (deterministisch, §G5): Audio > 120 s läuft über den
+    Pure Funktion (deterministisch, §G5 (copilot-instructions.md)): Audio > 120 s läuft über den
     Chunked-Pfad (RAM O(1)) — außer der Ganzsong-Modus ist aktiv
     (`whole_song=True`/`AURIK_WHOLE_SONG=1`) oder wir sind bereits im
     Chunk-Kontext (`in_chunked`).
@@ -7890,7 +7890,9 @@ class UnifiedRestorerV3:
                     )
                     _whole_song = False
             except Exception:
-                pass
+                # Bewusst still (kein WARN): optionale WGS-Entscheidung darf den
+                # Hauptpfad nie blockieren.
+                logger.debug("WGS-Avail-Prüfung fehlgeschlagen (unkritisch)")
         if _should_use_chunked_path(
             _n_total, sample_rate, in_chunked=bool(getattr(self, "_in_chunked", False)), whole_song=_whole_song
         ):
@@ -8181,9 +8183,7 @@ class UnifiedRestorerV3:
         # (Einladungs-Gate Sharpness-Sprung-Exemption, 2026-09-07). Defect-
         # Locations sind Full-Song-absolut; das Gate misst den Chunk lokal.
         _chunk_start_sample_kwarg = int(kwargs.pop("chunk_start_sample", 0) or 0)
-        if _chunk_start_sample_kwarg and isinstance(
-            getattr(self, "_restoration_context", None), dict
-        ):
+        if _chunk_start_sample_kwarg and isinstance(getattr(self, "_restoration_context", None), dict):
             self._restoration_context["chunk_start_sample"] = _chunk_start_sample_kwarg
         # §v10.9: Material→Decade-Fallback wenn Era-Classifier None liefert
         if _cached_era_kwarg is None and _cached_medium_kwarg is not None:
@@ -14154,7 +14154,7 @@ class UnifiedRestorerV3:
         # §P1-8 (2026-09-08): FinalPolish (Era-EQ + Noise-Shaped Dither) und
         # OneTakeExport (LUFS/True-Peak) laufen jetzt am TAIL-ENDE, NACH der
         # m1b-Nachbehandlung — Dither ist der letzte Quantisierungsschritt
-        # (§V5) und LUFS/TP gelten für das FINALE Audio, nicht für einen
+        # (§V5 (copilot-instructions.md)) und LUFS/TP gelten für das FINALE Audio, nicht für einen
         # Zwischenstand vor Stufe-2.
 
         # §Anti-Fatigue-Pass (Hörordnung §6/§V7 [copilot-instructions.md, Workaround-Verbot]): komponenten-getriebene
@@ -15002,12 +15002,8 @@ class UnifiedRestorerV3:
                 # FeedbackChain-Tier-Filter überspringt dann Kandidaten, deren
                 # Ziel-Stufe über der niedrigsten Defizit-Stufe liegt.
                 try:
-                    _fc_bl_mat = str(
-                        material_type.value if hasattr(material_type, "value") else material_type
-                    ).lower()
-                    _fc_bl_snap = UnifiedRestorerV3._fast_goal_snapshot(
-                        restored_audio, sample_rate, _fc_bl_mat
-                    )
+                    _fc_bl_mat = str(material_type.value if hasattr(material_type, "value") else material_type).lower()
+                    _fc_bl_snap = UnifiedRestorerV3._fast_goal_snapshot(restored_audio, sample_rate, _fc_bl_mat)
                     if isinstance(_fc_bl_snap, dict) and _fc_bl_snap:
                         _fc_chain.baseline_goals = dict(_fc_bl_snap)
                 except Exception as _fc_bl_exc:
@@ -16356,7 +16352,7 @@ class UnifiedRestorerV3:
                     _pqs_result.mcd_db,
                     _mos_t,
                 )
-            else:
+            elif _pqs_result is not None:
                 logger.info(
                     "📊 PQS-MOS: %.2f (NSIM=%.3f MCD=%.1f dB) < %.1f — erwartet für analoge Restaurierung",
                     _pqs_result.pqs_mos,
@@ -17131,7 +17127,8 @@ class UnifiedRestorerV3:
             _gc746 = __import__("gc")
             _gc746.collect()
         except Exception:
-            pass
+            # Bewusst still (kein WARN): GC-Aufräumung ist best-effort, kein Fehlerpfad.
+            logger.debug("GC-Aufräumung fehlgeschlagen (unkritisch)")
 
         # §8.3 GoosebumpsQualityChecker — Holistische psychoakustische Qualitätsprüfung
         _goosebumps_result = None
@@ -22785,11 +22782,7 @@ class UnifiedRestorerV3:
             # §P1-7 (2026-09-08): m1b intern AUSFÜHREN statt nur in die
             # GUI-KMV-Queue zu stellen — gezielte Zweitbehandlung hörbarer
             # Restdefekte (nur sichere Phasen-Zuordnung, max. 1 Pass).
-            if (
-                not _chunked_tail_skip
-                and not _ag_report.gate_passed
-                and _ag_report.improvable_types
-            ):
+            if not _chunked_tail_skip and not _ag_report.gate_passed and _ag_report.improvable_types:
                 try:
                     _m1b_audio = self._run_m1b_targeted_retry(
                         restored_audio,
@@ -22826,7 +22819,7 @@ class UnifiedRestorerV3:
 
         # ═══════════════════════════════════════════════════════════════════
         # §P1-8 EXPORT-FINALISIERUNG — NACH m1b/Stufe-2 (2026-09-08)
-        # Dither ist der letzte Quantisierungsschritt (§V5), LUFS/True-Peak
+        # Dither ist der letzte Quantisierungsschritt (§V5 (copilot-instructions.md)), LUFS/True-Peak
         # gelten für das FINALE Audio. Alle DSP/ML-Schritte (Humanization,
         # PerceptualExportOptimizer, MDEM, Goosebumps, m1b-Retry) laufen
         # davor auf voller Float-Präzision.
@@ -22857,7 +22850,9 @@ class UnifiedRestorerV3:
             _ote = OneTakeExport.prepare(restored_audio, sample_rate, is_studio_2026=self.is_studio_mode())
             if _ote.passed or _ote.retries < 3:
                 restored_audio = _ote.audio
-                logger.info("§P1-8 OneTakeExport (nach m1b): %d retries, corrections=%s", _ote.retries, _ote.corrections)
+                logger.info(
+                    "§P1-8 OneTakeExport (nach m1b): %d retries, corrections=%s", _ote.retries, _ote.corrections
+                )
             else:
                 logger.warning("OneTakeExport FAIL: %s", _ote.quality_report.get("errors", []))
         except Exception:
@@ -36263,10 +36258,12 @@ class UnifiedRestorerV3:
             _ctx_mat = str(getattr(material_type, "value", material_type) or "")
             # §v10.737 (2026-09-09): Im Chunked-Pfad ist der material_type-Param
             # None → Kontext lief mit mat=unknown (Befund Lauf 4: 18× §CALIB
-            # mat=unknown trotz klassifiziertem mp3_low). Die interne
-            # Klassifikation (_classified_material) ist die Wahrheit.
+            # mat=unknown trotz klassifiziertem mp3_low). Ersatz-Quelle ist der
+            # letzte bekannte Wert aus dem Result-Container (Folge-Chunks).
+            # (2026-09-10: _classified_material existierte in diesem Scope nie —
+            # NameError → stiller Kontext-Fallback; Mypy-Real-Bug-Gate-Befund.)
             if not _ctx_mat or _ctx_mat == "unknown":
-                _ctx_mat = str(getattr(_classified_material, "value", _classified_material) or "unknown")
+                _ctx_mat = str(_rc.get("material_type") or "unknown")
             # Für den Chunk-Cache (§B3) persistieren, damit Folge-Chunks das
             # Material via _cached_material erhalten.
             _rc["material_type"] = _ctx_mat
@@ -40114,8 +40111,7 @@ class UnifiedRestorerV3:
                                 # das 15-Ziel-Radar aktualisiert sich während der
                                 # Restaurierung statt erst am Ende.
                                 self._live_goal_scores = {
-                                    str(_gk): round(float(_gv), 4)
-                                    for _gk, _gv in _pmgg_scores_curr.items()
+                                    str(_gk): round(float(_gv), 4) for _gk, _gv in _pmgg_scores_curr.items()
                                 }
                                 try:
                                     from backend.core.goal_priority_protocol import (
@@ -42264,9 +42260,7 @@ class UnifiedRestorerV3:
                             _ntx_chain_keys,
                             restorability_score=float(getattr(self, "_last_restorability_score", 70.0) or 70.0),
                             transfer_chain_depth=int(len(_ntx_chain_keys) or 1),
-                            era_decade=int(
-                                _ctx_phase_vocal.get("decade") or _ctx_phase_vocal.get("era_decade") or 0
-                            )
+                            era_decade=int(_ctx_phase_vocal.get("decade") or _ctx_phase_vocal.get("era_decade") or 0)
                             or None,  # §v10.731: echte Ära für den Audit
                         )
                         # Noise texture deviation uses materialadaptive threshold (§2.49 / §8.5A)
@@ -44469,9 +44463,7 @@ class UnifiedRestorerV3:
                             if _resolved == len(_p1p2_violations) and _regressions == 0:
                                 break
                     except Exception as _blend_iter_exc:
-                        logger.debug(
-                            "End-Gate P1/P2 fallback alpha=%.2f fehlgeschlagen: %s", _alpha, _blend_iter_exc
-                        )
+                        logger.debug("End-Gate P1/P2 Ersatz alpha=%.2f fehlgeschlagen: %s", _alpha, _blend_iter_exc)
 
             if (
                 _best_blend_audio is not None
@@ -44619,16 +44611,12 @@ class UnifiedRestorerV3:
             _scan_meta: dict[str, Any] = {}
             if isinstance(getattr(self, "_restoration_context", None), dict):
                 _scan_meta = self._restoration_context.get("defect_scan_metadata", {}) or {}
-            _hpi_penalty, _carrier_penalty, _original_penalty = _compute_goal_candidate_source_penalties(
-                _scan_meta
-            )
+            _hpi_penalty, _carrier_penalty, _original_penalty = _compute_goal_candidate_source_penalties(_scan_meta)
             _goal_recovery_meta["material_causal_penalties"] = {
                 "hpi_best_checkpoint": float(_hpi_penalty),
                 "best_carrier_checkpoint": float(_carrier_penalty),
                 "original_audio": float(_original_penalty),
-                "material_defect_consistency_flag": bool(
-                    _scan_meta.get("material_defect_consistency_flag", False)
-                ),
+                "material_defect_consistency_flag": bool(_scan_meta.get("material_defect_consistency_flag", False)),
                 "material_defect_consistency_warning_count": int(
                     _scan_meta.get("material_defect_consistency_warning_count", 0) or 0
                 ),
@@ -44664,9 +44652,7 @@ class UnifiedRestorerV3:
             if getattr(self, "_hpi_best_rollback_audio", None) is not None:
                 _candidate_sources.append(("hpi_best_checkpoint", self._hpi_best_rollback_audio, _hpi_penalty))
             if getattr(self, "_best_carrier_checkpoint", None) is not None:
-                _candidate_sources.append(
-                    ("best_carrier_checkpoint", self._best_carrier_checkpoint, _carrier_penalty)
-                )
+                _candidate_sources.append(("best_carrier_checkpoint", self._best_carrier_checkpoint, _carrier_penalty))
             if original_audio_for_goals is not None:
                 _candidate_sources.append(("original_audio", original_audio_for_goals, _original_penalty))
 
@@ -44744,8 +44730,7 @@ class UnifiedRestorerV3:
                             _eg_plateau_streak += 1
                             if _eg_plateau_streak >= 3:
                                 logger.debug(
-                                    "End-Gate Plateau: %d identische Violation-Sets — "
-                                    "breche Candidate-Varianten ab",
+                                    "End-Gate Plateau: %d identische Violation-Sets — breche Candidate-Varianten ab",
                                     _eg_plateau_streak,
                                 )
                                 break
@@ -44837,9 +44822,7 @@ class UnifiedRestorerV3:
                 )
                 restored_audio = _best_ranked["audio"]
                 _musical_goal_scores = _best_ranked["scores"]
-                _musical_excellence_score = sum(_musical_goal_scores.values()) / max(
-                    len(_musical_goal_scores), 1
-                )
+                _musical_excellence_score = sum(_musical_goal_scores.values()) / max(len(_musical_goal_scores), 1)
                 _mg_violations = [
                     k
                     for k in _musical_goal_scores
@@ -44907,9 +44890,7 @@ class UnifiedRestorerV3:
                         "authentizitaet": 0.06,
                     }
                 )
-            _mg_violations = [
-                _g for _g in _mg_violations if _mg_deficits.get(_g, 0.0) > float(_short_tol.get(_g, 0.0))
-            ]
+            _mg_violations = [_g for _g in _mg_violations if _mg_deficits.get(_g, 0.0) > float(_short_tol.get(_g, 0.0))]
             _goal_recovery_meta["short_excerpt_tolerance_applied"] = True
             _goal_recovery_meta["short_excerpt_duration_s"] = float(_excerpt_duration_s)
             _goal_recovery_meta["final_violations"] = list(_mg_violations)
@@ -44948,9 +44929,7 @@ class UnifiedRestorerV3:
                         "error_code": "MUSICAL_GOALS_VIOLATION",
                         "severity": "degraded",
                         "violated_goals": _mg_violations,
-                        "scores": {
-                            k: round(float(_musical_goal_scores.get(k, 0.0)), 4) for k in _mg_violations
-                        },
+                        "scores": {k: round(float(_musical_goal_scores.get(k, 0.0)), 4) for k in _mg_violations},
                         "thresholds": {
                             k: round(float(_effective_goal_thresholds.get(k, 0.85)), 4) for k in _mg_violations
                         },
@@ -45001,7 +44980,7 @@ class UnifiedRestorerV3:
         Hörbarkeits-Gate werden die nachbehandlungswürdigen Typen NICHT nur
         in die GUI-KMV-Queue gestellt, sondern intern einmalig mit den
         sicher zugeordneten Retry-Phasen nachbehandelt (DEFECT_RETRY_PHASE_MAP).
-        Kein blindes „mehr von allem“ (§V7): nur Phasen mit klarer Zuordnung,
+        Kein blindes „mehr von allem“ (§V7 (copilot-instructions.md)): nur Phasen mit klarer Zuordnung,
         verbotene Phasen (§0a) ausgeschlossen, max. 1 Pass pro restore()
         (_m1b_pass_active), kein Tail-Re-Entry → keine Rekursion, deterministisch.
         Rückgabe: nachbehandeltes Audio oder None (keine Aktion).
@@ -45108,7 +45087,7 @@ class UnifiedRestorerV3:
                     for _dtx_inv, _dsx_inv in _scores_inv.items():
                         if float(getattr(_dsx_inv, "severity", 0.0) or 0.0) < 0.20:
                             continue
-                        for (_a_inv, _b_inv) in (getattr(_dsx_inv, "locations", None) or []):
+                        for _a_inv, _b_inv in getattr(_dsx_inv, "locations", None) or []:
                             _a_s_inv = float(_a_inv) - _cso_inv
                             _b_s_inv = float(_b_inv) - _cso_inv
                             if _b_s_inv > 0.0:
@@ -45127,9 +45106,7 @@ class UnifiedRestorerV3:
                 "passed": bool(_inviting_res.passed),
                 "max_asper_in_voice": round(float(_inviting_res.max_asper_in_voice), 4),
                 "sharpness_jump_max": round(float(_inviting_res.sharpness_jump_max), 4),
-                "sharpness_jump_raw_max": round(
-                    float(_inviting_res.details.get("sharpness_jump_raw_max", 0.0)), 4
-                ),
+                "sharpness_jump_raw_max": round(float(_inviting_res.details.get("sharpness_jump_raw_max", 0.0)), 4),
                 "exempted_jumps": int(_inviting_res.details.get("exempted_jumps", 0)),
                 "fatigue_abort": bool(_inviting_res.fatigue_abort),
                 "n_windows": int(_inviting_res.n_windows),
@@ -45246,7 +45223,9 @@ class UnifiedRestorerV3:
                         _g734.confidence,
                     )
                 else:
-                    logger.info("🎤 Song-Globales Gender: unbekannt (Mittelfenster ohne voicing) — Chunk-Detektion bleibt aktiv")
+                    logger.info(
+                        "🎤 Song-Globales Gender: unbekannt (Mittelfenster ohne voicing) — Chunk-Detektion bleibt aktiv"
+                    )
             except Exception as _g734_exc:
                 logger.debug("Song-Globales Gender fehlgeschlagen (%s) — Chunk-Detektion bleibt aktiv", _g734_exc)
 
@@ -45447,7 +45426,7 @@ class UnifiedRestorerV3:
 
                 _chunk_kwargs["file_path"] = f"__aurik_chunk__{i}__"
                 _chunk_kwargs["chunk_start_sample"] = int(start)
-                _chunk_kwargs["_chunked_last"] = (i == len(chunks) - 1)  # §P0-1 End-Gate nur auf letztem Chunk
+                _chunk_kwargs["_chunked_last"] = i == len(chunks) - 1  # §P0-1 End-Gate nur auf letztem Chunk
                 chunk = audio[start:end, :] if audio.ndim == 2 else audio[start:end]
 
                 # §v10.704 B28 [FIX 2026-08-23]: Goal-Referenz auf Chunk-Fenster halten.

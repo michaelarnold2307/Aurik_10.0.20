@@ -1,6 +1,6 @@
 # TASK_CHANGES — Live-Ledger der aktuellen Aufgabe
 
-> Generiert von `scripts/change_ledger.py snapshot` (Base: `HEAD`, Stand: 2026-09-10 14:27 CEST).
+> Generiert von `scripts/change_ledger.py snapshot` (Base: `HEAD`, Stand: 2026-09-10 16:08 CEST).
 > CI (`ci-lite.yml` pr-evidence-gate) erzwingt Abdeckung: jede geänderte Code-Datei muss hier stehen.
 
 ## Geänderte Dateien
@@ -8,20 +8,20 @@
 | Status | Pfad | Art |
 |---|---|---|
 | M | .github/FILE_REGISTRY.md | modifiziert |
-| M | backend/core/coordinated_repair.py | modifiziert |
-| M | backend/core/gpu_model_registry.json | modifiziert |
-| M | plugins/aero_plugin.py | modifiziert |
+| M | TASK_CHANGES.md | modifiziert |
+| M | backend/core/dsp/harmonic_aware_noise_estimator.py | modifiziert |
+| M | backend/core/dsp/if_wow_flutter_estimator.py | modifiziert |
+| M | backend/core/dsp/phase_locked_vocoder.py | modifiziert |
+| M | backend/core/dsp/sparse_declipper.py | modifiziert |
+| M | backend/core/gpu_model_registry.py | modifiziert |
+| M | backend/core/phases/phase_12_wow_flutter_fix.py | modifiziert |
+| M | backend/core/residuum_masking.py | modifiziert |
+| M | backend/core/unified_restorer_v3.py | modifiziert |
+| M | plugins/apollo_phase0_integration.py | modifiziert |
+| M | plugins/demucs_v4_plugin.py | modifiziert |
 | M | plugins/gacela_plugin.py | modifiziert |
-| M | scripts/export_miipher_dit_onnx.py | modifiziert |
-| M | scripts/onnx_gpu_compat_scan.py | modifiziert |
-| M | scripts/prepare_sgmse_musik_data.py | modifiziert |
-| M | scripts/train_sgmse_musik.py | modifiziert |
-| M | tests/unit/test_aero_plugin.py | modifiziert |
-| ?? | scripts/export_aero_onnx.py | ungetrackt |
-| ?? | scripts/export_gacela_onnx.py | ungetrackt |
-| ?? | scripts/export_sgmse_onnx.py | ungetrackt |
-| ?? | scripts/export_singmos_onnx.py | ungetrackt |
-| ?? | scripts/inspect_sgmse_ckpt.py | ungetrackt |
+| M | plugins/htdemucs_plugin.py | modifiziert |
+| M | plugins/versa_plugin.py | modifiziert |
 
 ## Entscheidungen
 
@@ -84,7 +84,7 @@
   ChunkedProcessor rief aber `_ensure_model()`/`_separate_direct_impl()` der alten
   HTDemucs-API (11 Testfehler, Coverage-Gate blockiert). Fix: Duck-Typing
   (`_ensure_model` ↔ `_load`, `_separate_direct_impl` ↔ Drop-In `separate(audio, sr)`)
-  + Längen-Normalisierung (±1 Sample, MDX23C-Output) im Direkt-Pfad. Crossfade-Test
+  - Längen-Normalisierung (±1 Sample, MDX23C-Output) im Direkt-Pfad. Crossfade-Test
   auf deterministisches musik-ähnliches Signal kalibriert (Rauschen ist für neuronale
   Separatoren pathologisch: 0.11 vs. tonal 0.0177–0.0205); Toleranz 0.03 dokumentiert
   (GPU-Kernel-Varianz MIOpen ±0.003, HTDemucs-Bound 0.02 bleibt im Kommentar).
@@ -117,4 +117,3 @@
   `docs/reports/current/2026-09-08_envelope_root_cause_sota_fixes_matrix.md` (9 Abschnitte:
   Root-Cause, 6 Punkte + 2 Zusatzfixes, Matrix-Vergleich, GUI-Smoke, offene Punkte, Commits,
   Verifikation, Dateiübersicht).
-

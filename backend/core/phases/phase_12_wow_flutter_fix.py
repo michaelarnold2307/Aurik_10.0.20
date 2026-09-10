@@ -1154,7 +1154,7 @@ class WowFlutterFix(PhaseInterface):
         )
         # §AUTH-P12 (§v10.709-Befund 2026-09-08): Vibrato/Intonations-Bends der
         # Performance sind authentischer Ausdruck — Flutter-Korrektur nur
-        # mechanisch plausibel anwenden (Root-Cause, §V7 kein Workaround).
+        # mechanisch plausibel anwenden (Root-Cause, §V7 (copilot-instructions.md) kein Workaround).
         _flutter_stretch = self._preserve_musical_modulation(
             _flutter_stretch, pitch_trajectory, confidence, sample_rate
         )
@@ -3344,19 +3344,19 @@ class WowFlutterFix(PhaseInterface):
         """
         sf = np.asarray(flutter_stretch, dtype=np.float64)
         if sf.size < 8 or float(np.max(np.abs(sf - 1.0))) < 1e-4:
-            return np.asarray(flutter_stretch)
+            return np.asarray(flutter_stretch)  # type: ignore[no-any-return]
         pt = np.asarray(pitch_trajectory, dtype=np.float64)
         cf = np.asarray(confidence, dtype=np.float64)
         n = int(min(len(sf), len(pt)))
         if n < 8:
-            return np.asarray(flutter_stretch)
+            return np.asarray(flutter_stretch)  # type: ignore[no-any-return]
         sf, pt, cf = sf[:n], pt[:n], cf[:n]
         _valid = (np.isfinite(pt)) & (pt > 0.0) & (np.isfinite(cf)) & (cf > 0.3)
         if not bool(_valid.any()):
-            return np.asarray(flutter_stretch)
+            return np.asarray(flutter_stretch)  # type: ignore[no-any-return]
         _target = float(np.nanmedian(pt[_valid]))
         if not np.isfinite(_target) or _target <= 1e-6:
-            return np.asarray(flutter_stretch)
+            return np.asarray(flutter_stretch)  # type: ignore[no-any-return]
         _dev = np.where(_valid, pt / _target - 1.0, 0.0)
         try:
             from scipy.signal import savgol_filter
@@ -3370,11 +3370,11 @@ class WowFlutterFix(PhaseInterface):
             if _win >= n:
                 _win = n - 1 if (n - 1) % 2 == 1 else n - 2
             if _win < 5:
-                return np.asarray(flutter_stretch)
+                return np.asarray(flutter_stretch)  # type: ignore[no-any-return]
             _slow = savgol_filter(_dev, window_length=_win, polyorder=2, mode="interp")
         except Exception as _savg_exc:
             logger.debug("§AUTH-P12: Savitzky-Golay nicht verfügbar — keine Vibrato-Erhaltung: %s", _savg_exc)
-            return np.asarray(flutter_stretch)
+            return np.asarray(flutter_stretch)  # type: ignore[no-any-return]
         _fast = _dev - _slow
         _fast = np.nan_to_num(_fast, nan=0.0, posinf=0.0, neginf=0.0)
         try:

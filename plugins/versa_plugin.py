@@ -1,17 +1,22 @@
-"""versa_plugin — SingMOS Pro via VERSA Toolkit (2024).
+"""versa_plugin — SingMOS Pro (MOS-Schätzung für Gesangsmaterial).
 
-Primär:  SingMOS Pro (South-Twilight/SingMOS v1.1.1, via torch.hub)
-         Integration: VERSA / models/versa/versa/utterance_metrics/pseudo_mos.py
-         Eingabe: float32 mono @ 16 kHz; Ausgabe: MOS ∈ [1.0, 5.0]
-         Hub-Cache: models/versa/hub_cache/ (offline nach Installation)
-         Referenz: https://arxiv.org/abs/2510.01812
+Primär:  SingMOS Pro ONNX (models/singmos/singmos_pro.onnx,
+         exportiert via scripts/export_singmos_onnx.py, Parität 0.0 gegen
+         das eager singmos_pro-Modell; I/O audio [1,1,T] @ 16 kHz +
+         audio_length/domain_id). Eingabe: float32 mono @ 16 kHz; Ausgabe:
+         MOS ∈ [1.0, 5.0]. CPU-only (§v10.17, siehe unten).
+
+Fallback: VERSA-Toolkit eager (South-Twilight/SingMOS v1.1.1, via torch.hub;
+         CPU-only gemäß §v10.17) — §V6-Warnung + Grund bei jedem Fallback.
+
+         GPU-Hinweis: Der ONNX-Pfad ist bewusst CPU-only (§v10.17): ROCm-ONNX
+         zeigte HIP-700-Instabilität bei dynamischer Zeitachse (Befund 2026-09-10).
 
 Fallback: PQS-DSP-Gammatone (Bark-Filterbank + Sigmoid-MOS-Mapping)  # §V6 (copilot-instructions.md): logger.warning handled at call site
 
 VERBOTEN laut Spec §4.4: PESQ, DNSMOS, NISQA, STOI, CDPAM.
 
 Singleton-Pattern: get_versa_plugin() verwenden.
-CPU-Only.
 """
 
 from __future__ import annotations
@@ -24,6 +29,7 @@ import threading
 import warnings
 from dataclasses import dataclass, field
 from pathlib import Path
+from typing import Any
 
 import numpy as np
 
@@ -48,6 +54,9 @@ _logging.getLogger("s3prl.upstream.espnet_hubert.expert").setLevel(_logging.ERRO
 _logging.getLogger("s3prl.upstream.fairseq.expert").setLevel(_logging.ERROR)
 del _logging
 _MODEL_SR: int = 16_000
+# ONNX-Artefakt: singmos_pro.pt → dynamo-Export (1.26 GB externe Gewichte).
+_ONNX_PATH = _ROOT / "models" / "singmos" / "singmos_pro.onnx"
+_ONNX_BUDGET_GB: float = 1.40
 # SingMOS Pro / wav2vec2-large is designed for short utterances (≤30 s).
 # Processing full-length tracks (3+ min) causes O(n) inference on CPU and
 # leads to 20–40 min blocking calls per FC iteration. Cap at 30 s representative
@@ -117,6 +126,7 @@ class VersaPlugin:
         self._predictor_dict: dict | None = None
         self._predictor_fs: dict | None = None
         self._pseudo_mos_metric = None
+        self._session: Any = None  # ONNX-Session (primär, §v10-SINGMOS-ONNX)
         self._model_loaded: bool = False
         self._load_attempted: bool = False
         self._load_lock = threading.Lock()
@@ -132,7 +142,7 @@ class VersaPlugin:
 
             tags = get_panns_plugin().get_tags(audio, sr)
         except Exception as exc:
-            logger.debug("VERSA: PANNs unavailable for vocal gating: %s", exc)
+            logger.debug("VERSA: PANNs nicht verfügbar für Vocal-Gating: %s", exc)
             return 0.0
 
         singing_conf = float(tags.get("Singing voice", 0.0))
@@ -151,10 +161,56 @@ class VersaPlugin:
         vorhanden sind. Kein torch.hub-Download im Produktionsbetrieb.
         Fehlende Weights → sofortiger PQS-DSP-Fallback (kein Netzwerkaufruf).
         """
+        # ── Primär: ONNX (§v10-SINGMOS-ONNX, 2026-09-10) ──
+        # singmos_pro.pt (1.27 GB) kapselt denselben wav2vec2-large-ft-Checkpoint
+        # wie der Versa-Hub-Cache (ft_wav2vec2_...pth, 1.27 GB); der dynamo-
+        # Export hat Parität 0.0 gegen das eager singmos_pro-Modell.
+        # GPU-Policy via §v10.40c-Registry — ABER §v10.17 (SingMOS always CPU)
+        # gilt auch hier: ROCm-ONNX ist instabil (Befund 2026-09-10: HIP 700
+        # illegal memory access bei dynamischer Zeitachse + SIGABRT im Session-
+        # Teardown). CPU-only für den ONNX-Pfad, kein GPU-Request.
+        if _ONNX_PATH.exists():
+            try:
+                from backend.core.ml_memory_budget import try_allocate as _try_alloc
+
+                if _try_alloc("VersaSingMOS", size_gb=_ONNX_BUDGET_GB):
+                    import onnxruntime as ort  # pylint: disable=import-outside-toplevel
+
+                    from backend.core.gpu_model_registry import apply_gpu_policy
+
+                    # §v10.17: kein GPU-Request — apply_gpu_policy fügt bei
+                    # CPU-only-Request nie GPU hinzu (Guard in der Registry-Policy).
+                    _providers = apply_gpu_policy(["CPUExecutionProvider"], _ONNX_PATH)
+                    _sess = ort.InferenceSession(str(_ONNX_PATH), providers=_providers)
+                    self._session = _sess
+                    self._model_loaded = True
+
+                    from backend.core.plugin_lifecycle_manager import register_plugin as _reg_plm
+
+                    def _unload_singmos_onnx() -> None:
+                        if _instance is not None:
+                            _instance._session = None
+                            _instance._model_loaded = False
+
+                    _reg_plm("VersaSingMOS", size_gb=_ONNX_BUDGET_GB, unload_fn=_unload_singmos_onnx)
+                    logger.info(
+                        "✅ VERSA SingMOS Pro ONNX geladen (%s, provider=%s)",
+                        _ONNX_PATH.name,
+                        _sess.get_providers()[0],
+                    )
+                    return
+                logger.warning(
+                    "VERSA SingMOS ONNX: ML-Kontingent erschöpft (%.2f GB) — eager/PQS-Ersatzpfad.", _ONNX_BUDGET_GB
+                )
+            except Exception as exc:  # pylint: disable=broad-except
+                # §V6 (copilot-instructions.md): kein Silent-Failure — Warnung + Grund, dann eager-Fallback.
+                logger.warning("VERSA SingMOS ONNX nicht ladbar (%s) — eager-Versa-Ersatzpfad.", exc)
+                self._session = None
+
         versa_pkg = _VERSA_PATH / "versa"
         _pm_path = _VERSA_PATH / "versa" / "utterance_metrics" / "pseudo_mos.py"
         if not versa_pkg.exists() or not _pm_path.exists():
-            logger.info("VERSA toolkit nicht gefunden (%s) — PQS-DSP-Fallback.", versa_pkg)
+            logger.info("VERSA toolkit nicht gefunden (%s) — PQS-DSP-Ersatz.", versa_pkg)
             return
 
         # Offline check: SingMOS Pro checkpoint must be locally cached.
@@ -193,10 +249,10 @@ class VersaPlugin:
             from backend.core.ml_memory_budget import try_allocate as _try_alloc
 
             if not _try_alloc("VersaSingMOS", size_gb=self._BUDGET_GB):
-                logger.warning("VERSA SingMOS Pro: ML-Budget erschöpft (%.2f GB) — PQS-Fallback.", self._BUDGET_GB)
+                logger.warning("VERSA SingMOS Pro: ML-Kontingent erschöpft (%.2f GB) — PQS-Ersatz.", self._BUDGET_GB)
                 return
         except Exception as _exc:
-            logger.debug("Operation failed (non-critical): %s", _exc)
+            logger.debug("Operation fehlgeschlagen (unkritisch): %s", _exc)
 
         try:
             import importlib.util
@@ -247,7 +303,7 @@ class VersaPlugin:
             _reg_plm("VersaSingMOS", size_gb=self._BUDGET_GB, unload_fn=_unload_singmos)
             logger.info("✅ VERSA SingMOS Pro geladen (§4.4 — Musik-MOS-Primär)")
         except Exception as exc:
-            logger.warning("VERSA SingMOS Pro nicht ladbar: %s — PQS-DSP-Fallback.", exc)
+            logger.warning("VERSA SingMOS Pro nicht ladbar: %s — PQS-DSP-Ersatz.", exc)
 
     # ------------------------------------------------------------------
     # Public API
@@ -346,8 +402,40 @@ class VersaPlugin:
                     mono_48k.size / sr,
                 )
             if mono_16k.size < 320:
-                logger.debug("SingMOS input too short (%d samples @16k) — using PQS fallback", mono_16k.size)
+                logger.debug("SingMOS-Eingabe zu kurz (%d Samples @16k) — nutze PQS-Ersatz", mono_16k.size)
                 return self._score_pqs_dsp(mono_48k, sr)
+
+            # ── ONNX-Pfad (§v10-SINGMOS-ONNX): fester I/O-Vertrag, dynamische
+            #    Zeitachse (Export-Verifikation T=80k/160k); domain_id=1 (Singing).
+            if self._session is not None:
+                _plm_versa_onnx = None
+                try:
+                    from backend.core.plugin_lifecycle_manager import get_plugin_lifecycle_manager as _get_plm_v
+
+                    _plm_versa_onnx = _get_plm_v()
+                    _plm_versa_onnx.set_active("VersaSingMOS", True)
+                except Exception:
+                    logger.warning("versa_plugin.py::_score_singmos_pro fallback", exc_info=True)
+                try:
+                    _out = self._session.run(
+                        None,
+                        {
+                            "audio": mono_16k[np.newaxis, np.newaxis, :],
+                            "audio_length": np.array([mono_16k.shape[0]], dtype=np.int64),
+                            "domain_id": np.array([1], dtype=np.int64),
+                        },
+                    )[0]
+                finally:
+                    if _plm_versa_onnx is not None:
+                        try:
+                            _plm_versa_onnx.set_active("VersaSingMOS", False)
+                        except Exception:
+                            logger.warning("versa_plugin.py::_score_singmos_pro fallback", exc_info=True)
+                mos = float(np.clip(float(np.asarray(_out).ravel()[0]), 1.0, 5.0))
+                if not math.isfinite(mos):
+                    mos = 3.0
+                logger.debug("SingMOS Pro (ONNX) MOS: %.3f", mos)
+                return VersaResult(mos=mos, model_used="singmos_pro", confidence=0.92)
 
             # Robustly handle backend-specific shape expectations (1D vs 2D [B, T]).
             # Some SingMOS builds expect a batch dimension and raise "Dimension out of range"
@@ -401,7 +489,7 @@ class VersaPlugin:
             logger.debug("SingMOS Pro MOS: %.3f", mos)
             return VersaResult(mos=mos, model_used="singmos_pro", confidence=0.92)
         except Exception as exc:
-            logger.warning("SingMOS Pro Inferenzfehler: %s — PQS-DSP-Fallback.", exc)
+            logger.warning("SingMOS Pro Inferenzfehler: %s — PQS-DSP-Ersatz.", exc)
             return self._score_pqs_dsp(mono_48k, sr)
 
     # ------------------------------------------------------------------
@@ -520,7 +608,7 @@ class VersaPlugin:
 
             return VersaResult(mos=mos, model_used="pqs_dsp_fallback", confidence=0.55)
         except Exception as exc:
-            logger.error("PQS-DSP Fallback fehlgeschlagen: %s", exc)
+            logger.error("PQS-DSP-Ersatz fehlgeschlagen: %s", exc)
             return VersaResult(mos=3.0, model_used="error", confidence=0.0)
 
 

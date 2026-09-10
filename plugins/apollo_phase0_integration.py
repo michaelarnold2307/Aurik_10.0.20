@@ -66,7 +66,8 @@ def _run_apollo_onnx_core(session: Any, input_names: list[str], x: np.ndarray) -
         noverlap=_APOLLO_NFFT - _APOLLO_HOP,
         input_onesided=True,
     )
-    return np.asarray(y, dtype=np.float32)
+    return np.asarray(y, dtype=np.float32)  # type: ignore[no-any-return]
+
 
 # ── Cache: Per-Material-Effectiveness ───────────────────────────────────
 
@@ -263,8 +264,9 @@ class ApolloPhase0Guard:
 
                 from backend.core.ml_device_manager import get_ort_providers as _gp750
 
-                self._apollo_onnx = _ort750.InferenceSession(_core_path, providers=_gp750("ApolloCore"))
-                self._onnx_input_names = [i.name for i in self._apollo_onnx.get_inputs()]
+                _sess750 = _ort750.InferenceSession(_core_path, providers=_gp750("ApolloCore"))
+                self._apollo_onnx = _sess750
+                self._onnx_input_names = [i.name for i in _sess750.get_inputs()]
                 self._loaded = True
                 logger.info(
                     "Apollo Verarbeitungsschritt-0 ONNX-Core geladen (apollo_core.onnx, %d Band-Eingänge)",
@@ -272,7 +274,7 @@ class ApolloPhase0Guard:
                 )
                 return True
         except Exception as _exc750:
-            logger.warning("Apollo-ONNX-Core nicht verfügbar (%s) — TorchScript-Fallback", _exc750)
+            logger.warning("Apollo-ONNX-Core nicht verfügbar (%s) — TorchScript-Ersatz", _exc750)
         try:
             import torch
 

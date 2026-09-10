@@ -152,7 +152,7 @@ class GacelaPlugin:
     def __init__(self) -> None:
         self._model_ready: bool = False
         self._session: Any = None  # ONNX-Session (primär)
-        self._generator: Any = None  # eager-.pt-Fallback (§V6)
+        self._generator: Any = None  # eager-.pt-Fallback (§V6 (copilot-instructions.md))
         self._encoders: list = []
         self._mel_basis: np.ndarray | None = None
         self._stft: Any = None
@@ -232,9 +232,7 @@ class GacelaPlugin:
 
             # ── ML-Kern: ONNX-first (§v10.40c-GPU-Policy), eager-.pt als §V6-Fallback ──
             if not self._load_onnx() and not self._load_eager():
-                raise FileNotFoundError(
-                    f"Weder gacela_core.onnx noch .pt-Checkpoint ladbar in: {_CKPT_DIR}"
-                )
+                raise FileNotFoundError(f"Weder gacela_core.onnx noch .pt-Checkpoint ladbar in: {_CKPT_DIR}")
 
             self._model_ready = True
             logger.info("GACELA: ML-Modell bereit (MODEL_SR=%d Hz, ONNX=%s).", MODEL_SR, self._session is not None)
@@ -283,7 +281,7 @@ class GacelaPlugin:
             )
             return True
         except Exception as exc:  # pylint: disable=broad-except
-            logger.warning("GACELA-ONNX nicht ladbar (%s) — eager-.pt-Fallback", exc)
+            logger.warning("GACELA-ONNX nicht ladbar (%s) — eager-.pt-Ersatzpfad", exc)
             self._session = None
             return False
 
@@ -382,10 +380,8 @@ class GacelaPlugin:
                     spec_full = self._stft.spectrogram(mono, normalize=False)  # [513, T]
                     spec = spec_full[: FFT_LENGTH // 2, : SPLIT[0]]  # [512, 480]
                     mel = (self._mel_basis @ spec).astype(np.float32)  # [80, 480]
-                    t = _time_average(
-                        torch.from_numpy(mel).unsqueeze(0).unsqueeze(0), TIME_AVG
-                    )  # [1,1,80,240]
-                    return t.numpy()
+                    t = _time_average(torch.from_numpy(mel).unsqueeze(0).unsqueeze(0), TIME_AVG)  # [1,1,80,240]
+                    return t.numpy()  # type: ignore[no-any-return]
 
                 noise = np.random.rand(1, NOISE_CH, 5, 15).astype(np.float32)
                 gap_np = self._session.run(

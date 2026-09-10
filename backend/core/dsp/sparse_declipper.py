@@ -8,7 +8,7 @@ Obertöne rekonstruiert, wo PCHIP nur glättet.
 Projektion: Nicht-geclippte Samples bleiben exakt erhalten; geclippte werden
 aus der Spektral-Darstellung mit Harte-Schwellwert (Floor) re-synthetisiert.
 
-Deterministisch, vektorisiert, kein ML, §G5.
+Deterministisch, vektorisiert, kein ML, §G5 (copilot-instructions.md).
 """
 
 from __future__ import annotations
@@ -33,7 +33,7 @@ def sparse_declip(
     mono = audio if audio.ndim == 1 else audio.mean(axis=0)
     clip_mask = np.abs(mono) >= clip_threshold
     if not clip_mask.any():
-        return audio.astype(np.float32)
+        return audio.astype(np.float32)  # type: ignore[no-any-return]
 
     win = np.hanning(_NFFT)
     from scipy.signal import istft as _istft  # pylint: disable=import-outside-toplevel
@@ -81,4 +81,4 @@ def sparse_declip(
         out = x
     else:
         out[0] = x
-    return out.astype(np.float32)
+    return out.astype(np.float32)  # type: ignore[no-any-return]

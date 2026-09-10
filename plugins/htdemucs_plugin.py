@@ -40,6 +40,9 @@ from importlib import import_module
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, cast
 
+if TYPE_CHECKING:
+    from plugins.demucs_v4_plugin import DemucsV4Plugin  # pragma: no cover
+
 import numpy as np
 
 logger = logging.getLogger(__name__)
@@ -403,7 +406,7 @@ class HtdemucsPlugin:
                     logger.debug("HTDemucs Model entladen")
 
 
-def get_htdemucs_plugin() -> "DemucsV4Plugin":
+def get_htdemucs_plugin() -> DemucsV4Plugin:
     """Facade (§v10.739): MDX23C entfernt (Registry ohne Gewichte).
 
     Der Funktionsname bleibt für API-Kompatibilität bestehen; der primäre

@@ -230,7 +230,7 @@ def estimate_residuum_salience_batch(
     Frames ausgewählt (Kontext-Frames außerhalb des Events, Event-Frames
     innerhalb).
 
-    Numerik: deterministisch (§G5), aber NICHT bit-identisch zum Per-Event-
+    Numerik: deterministisch (§G5 (copilot-instructions.md)), aber NICHT bit-identisch zum Per-Event-
     Pfad — bewusst: die alte Version vermischte über die Konkatenation nicht
     benachbarte Audio-Teile in „Junction-Frames“ und zero-paddete kurze
     Events; die Batch-Version nutzt ausschließlich echte Audio-Fenster
@@ -377,7 +377,7 @@ def delta_masking_margin_db_per_band(
         def _mono(x: np.ndarray) -> np.ndarray:
             if x.ndim == 2:
                 _ax = 0 if x.shape[0] <= 2 else 1
-                return np.asarray(x.mean(axis=_ax))
+                return np.asarray(x.mean(axis=_ax))  # type: ignore[no-any-return]
             return x
 
         pre_mono = _mono(pre)
@@ -389,7 +389,7 @@ def delta_masking_margin_db_per_band(
 
         d_frames, _ = _stft_magnitude_db(delta, sr)
         d_bands = _to_bark_bands(d_frames, freqs)
-        return np.asarray(thr - d_bands)
+        return np.asarray(thr - d_bands)  # type: ignore[no-any-return]
     except Exception as exc:
         logger.debug("delta_masking_margin_db_per_band nicht blockierend: %s", exc)
         return _zeros
@@ -439,7 +439,7 @@ def estimate_delta_masking_jnd_db(
     try:
         margins = delta_masking_margin_db_per_band(pre, post, sr)
         if freq_range_hz is not None:
-            _sel = (_BARK_CENTERS >= freq_range_hz[0]) & (_BARK_CENTERS <= freq_range_hz[1])
+            _sel = (freq_range_hz[0] <= _BARK_CENTERS) & (freq_range_hz[1] >= _BARK_CENTERS)
             if not np.any(_sel):
                 return _cons
             margins = margins[_sel]

@@ -8,7 +8,7 @@ Prinzip (klassische FM-Demodulation, blind auf Musik angewendet):
    Vielfache des dominanten F0 (Gewicht = |X|²) — robust gegen Einzelton-Rauschen.
 3. Kalman-Glättung (langsame Drift, konstantes Zustandsmodell) → W&F-Kurve.
 
-Deterministisch, vollständig vektorisiert, kein ML, §G5. Ergänzt den
+Deterministisch, vollständig vektorisiert, kein ML, §G5 (copilot-instructions.md). Ergänzt den
 frame-lokalen Pitch-Tracking-Solver in Phase 12 (Polyphonie-robust).
 
 Mathematik: dphi = arg(Z[t+1]·conj(Z[t])); IF = f_bin + dphi/(2π·hop)·sr.
@@ -36,7 +36,7 @@ def _dominant_f0_hps(mag: np.ndarray, sr: int, bin_hz: float) -> np.ndarray:
     lo = max(1, int(50 / bin_hz))
     hi = min(mag.shape[0] - 1, int(400 / bin_hz))
     idx = np.argmax(hps[lo:hi], axis=0) + lo
-    return idx.astype(np.float32) * bin_hz  # (T,)
+    return idx.astype(np.float32) * bin_hz  # type: ignore[no-any-return]  # (T,)
 
 
 def estimate_wow_flutter(
@@ -97,8 +97,8 @@ def estimate_wow_flutter(
         center_hz = h * f0_median
         k = int(round(center_hz / bin_hz))
         if 1 <= k < Z.shape[0] - 1:
-            w = (mag[k - 1, 1:] ** 2 + mag[k, 1:] ** 2 + mag[k + 1, 1:] ** 2)
-            d = (cents[k - 1] * mag[k - 1, 1:] ** 2 + cents[k] * mag[k, 1:] ** 2 + cents[k + 1] * mag[k + 1, 1:] ** 2)
+            w = mag[k - 1, 1:] ** 2 + mag[k, 1:] ** 2 + mag[k + 1, 1:] ** 2
+            d = cents[k - 1] * mag[k - 1, 1:] ** 2 + cents[k] * mag[k, 1:] ** 2 + cents[k + 1] * mag[k + 1, 1:] ** 2
             consensus += d
             weight_sum += w
     with np.errstate(divide="ignore", invalid="ignore"):
@@ -117,7 +117,7 @@ def estimate_wow_flutter(
             x += k_gain * (signal[t] - x)
             p *= 1.0 - k_gain
             out[t] = x
-        return out
+        return out  # type: ignore[no-any-return]
 
     fwd = _kalman_run(dev)
     bwd = _kalman_run(dev[::-1])[::-1]
@@ -145,4 +145,4 @@ def correct_wow_flutter(audio: np.ndarray, sr: int, deviation_cents: np.ndarray,
     # Ziel-Zeitachse = gleichmäßig: invertiere via Interpolation
     t_target = np.linspace(0.0, t_new[-1], n)
     corrected = np.interp(t_target, t_new, audio.astype(np.float64))
-    return corrected.astype(np.float32)
+    return corrected.astype(np.float32)  # type: ignore[no-any-return]

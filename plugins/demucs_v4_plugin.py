@@ -48,18 +48,17 @@ class DemucsV4Plugin:
 
     def _try_load(self) -> None:
         if not os.path.exists(self._model_path):
-            logger.warning("Demucs-Modell fehlt: %s — DSP-Fallback aktiv.", self._model_path)
+            logger.warning("Demucs-Modell fehlt: %s — DSP-Ersatz aktiv.", self._model_path)
             return
         # §Fix 2026-09-08 (SOTA-Root-Cause): Das frühere Manifest-Gate
         # (models/manifest.json, gitignored) deaktivierte die Demucs-Stufe
-        # STILL (experimental=True) — Verstoß §V6 und §V7. Produktions-Modelle
+        # STILL (experimental=True) — Verstoß §V6 und §V7 (copilot-instructions.md). Produktions-Modelle
         # werden jetzt standardmäßig geladen; ein expliziter, dokumentierter
         # Opt-out ersetzt das stille Gate:
         #     AURIK_DISABLE_HTDEMUCS_6S=1 → DSP-Fallback (Debug/Notbetrieb).
         if os.environ.get("AURIK_DISABLE_HTDEMUCS_6S") == "1":
             logger.warning(
-                "HTDemucs 6s: AURIK_DISABLE_HTDEMUCS_6S=1 gesetzt — "
-                "ONNX-Session nicht geladen, DSP-Fallback aktiv."
+                "HTDemucs 6s: AURIK_DISABLE_HTDEMUCS_6S=1 gesetzt — ONNX-Session nicht geladen, DSP-Fallback aktiv."
             )
             return
         try:
@@ -80,10 +79,10 @@ class DemucsV4Plugin:
                     except Exception:
                         logger.warning("demucs_v4_plugin.py::_try_load fallback", exc_info=True)
                     if not _try_alloc("DemucsV4", size_gb=0.12):
-                        logger.warning("DemucsV4: ML-Budget erschöpft — HPSS-Fallback.")
+                        logger.warning("DemucsV4: ML-Kontingent erschöpft — HPSS-Ersatz.")
                         return
             except Exception as _exc:
-                logger.debug("Operation failed (non-critical): %s", _exc)
+                logger.debug("Operation fehlgeschlagen (unkritisch): %s", _exc)
 
             opts = ort.SessionOptions()
             opts.inter_op_num_threads = 2
@@ -104,9 +103,9 @@ class DemucsV4Plugin:
 
                 _reg_plm("DemucsV4", size_gb=0.12, unload_fn=lambda s=self: setattr(s, "_session", None))  # type: ignore[misc]
             except Exception as _exc:
-                logger.debug("Operation failed (non-critical): %s", _exc)
+                logger.debug("Operation fehlgeschlagen (unkritisch): %s", _exc)
         except Exception as exc:
-            logger.warning("Demucs ONNX-Ladefehler: %s — DSP-Fallback aktiv.", exc)
+            logger.warning("Demucs ONNX-Ladefehler: %s — DSP-Ersatz aktiv.", exc)
             try:
                 from backend.core.ml_memory_budget import (  # pylint: disable=import-outside-toplevel
                     release as _rel,
@@ -114,7 +113,7 @@ class DemucsV4Plugin:
 
                 _rel("DemucsV4")
             except Exception as _exc:
-                logger.debug("Operation failed (non-critical): %s", _exc)
+                logger.debug("Operation fehlgeschlagen (unkritisch): %s", _exc)
 
     # ── Public API ───────────────────────────────────────────────────────────
 
@@ -156,7 +155,7 @@ class DemucsV4Plugin:
                 _plm_dmu = _get_plm_fn()
                 _plm_dmu.set_active("DemucsV4", True)
             except Exception as _exc:
-                logger.debug("DemucsV4: PLM set_active failed: %s", _exc)
+                logger.debug("DemucsV4: PLM set_active fehlgeschlagen: %s", _exc)
             try:
                 return self._infer_onnx(audio, sr)
             finally:
@@ -164,7 +163,7 @@ class DemucsV4Plugin:
                     try:
                         _plm_dmu.set_active("DemucsV4", False)
                     except Exception as _exc:
-                        logger.debug("DemucsV4: PLM unset_active failed: %s", _exc)
+                        logger.debug("DemucsV4: PLM unset_active fehlgeschlagen: %s", _exc)
 
         # Fallback 2: HPSS-DSP
         return self._hpss_fallback(audio, sr)
@@ -203,7 +202,7 @@ class DemucsV4Plugin:
             ch0 = resample_poly(audio[0], up, down).astype(np.float32)
             ch1 = resample_poly(audio[1], up, down).astype(np.float32)
             n = min(len(ch0), len(ch1))
-            return np.stack([ch0[:n], ch1[:n]], axis=0)  # (2, n) channels-first
+            return np.stack([ch0[:n], ch1[:n]], axis=0)  # type: ignore[no-any-return]  # (2, n) channels-first
         left = resample_poly(audio[:, 0], up, down).astype(np.float32)
         right = resample_poly(audio[:, 1], up, down).astype(np.float32)
         n = min(len(left), len(right))

@@ -12,7 +12,7 @@ scaling='density') hatte die Energie-Kalibrierung der OLA unkontrollierbar
 gemacht. Jetzt gilt explizit: Z[t] = rfft(x·w), OLA-Norm = Σ_m w über das
 Synthese-Gitter, Phasen-Advance in Frame-Einheiten (true_freq·H_s/H_a).
 
-Deterministisch, vektorisiert, kein ML, §G5.
+Deterministisch, vektorisiert, kein ML, §G5 (copilot-instructions.md).
 """
 
 from __future__ import annotations
@@ -25,7 +25,7 @@ _HOP = 512
 
 def phase_locked_stretch(audio: np.ndarray, sr: int, rate: float) -> np.ndarray:
     if abs(rate - 1.0) < 1e-6:
-        return np.asarray(audio, dtype=np.float32)
+        return np.asarray(audio, dtype=np.float32)  # type: ignore[no-any-return]
     audio = np.asarray(audio, dtype=np.float32)
     if audio.ndim == 2:
         audio = audio.mean(axis=0)
@@ -126,4 +126,4 @@ def phase_locked_stretch(audio: np.ndarray, sr: int, rate: float) -> np.ndarray:
     valid = np.where(wsum > 1e-3)[0]
     if valid.size:
         y = y[: valid[-1] + 1]
-    return y.astype(np.float32)
+    return y.astype(np.float32)  # type: ignore[no-any-return]

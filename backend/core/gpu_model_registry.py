@@ -64,7 +64,7 @@ def _match_key(model_path: str | Path) -> str | None:
     _suffix = f"/{_p.name}"
     for _key in _reg:
         if _key.endswith(_suffix) or _key == _p.name:
-            return _key
+            return str(_key)
     return None
 
 
