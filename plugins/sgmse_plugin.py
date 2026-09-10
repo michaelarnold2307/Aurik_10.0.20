@@ -14,6 +14,11 @@ Modell:
     Input:  [1, 2, n_fft//2+1, T] float32 (Real + Imag getrennt)
     Output: [1, 2, n_fft//2+1, T] float32 (denoised Real + Imag)
     Sigma:  Rauschpegel ∈ [0.01, 1.0] als skalarer Input
+    ONNX:    models/sgmse_plus/sgmse_plus_core.onnx (Score-Core, §v10.762,
+             Parität 1e-4 verifiziert) — bewusst NICHT im Runtime-Pfad:
+             Registry-Verdict „cpu" (ROCm/MIGraphX rechnet rel ~3–10 % falsch)
+             und CPU-ONNX ist ~50× langsamer als der TS-GPU-Pfad. Der
+             TS/eager-Checkpoint-Pfad bleibt der produktive Weg.
 
 Fallback-Kaskade (§4.4):
     1. SGMSE+ TorchScript (dieser Plugin)
@@ -146,7 +151,6 @@ class SGMSEPlusPlugin:
 
     def __init__(self) -> None:
         """Initialisiert SGMSE+ plugin and attempt model load."""
-        self._session: Any = None
         self._ts_model: Any = None
         self._eager_model: Any = None
         self._eager_backbone: str = ""
@@ -664,10 +668,6 @@ class SGMSEPlusPlugin:
         )
         return np.clip(np.nan_to_num(out, nan=0.0), -1.0, 1.0)  # type: ignore[no-any-return]
 
-    # ------------------------------------------------------------------
-    # ONNX Inference (SGMSE+ deterministic forward pass @ optimal sigma)
-    # ------------------------------------------------------------------
-
     def _stft(self, mono: np.ndarray) -> tuple[np.ndarray, int]:
         """STFT → Complex Spectrogram."""
         from scipy.signal import stft as scipy_stft  # pylint: disable=import-outside-toplevel
@@ -706,47 +706,6 @@ class SGMSEPlusPlugin:
         elif len(x) < n_orig:
             x = np.pad(x, (0, n_orig - len(x)))
         return x  # type: ignore[no-any-return]
-
-    def _enhance_onnx(self, mono: np.ndarray, sigma: float) -> np.ndarray:
-        """SGMSE+ ONNX-Inferenz: Score-Based Enhancement."""
-        assert self._session is not None
-        try:
-            Z, n_orig = self._stft(mono)
-            # SGMSE+ input: [1, 2, F, T] — Real und Imag als separate Kanäle
-            real_c = Z.real[np.newaxis, np.newaxis].astype(np.float32)
-            imag_c = Z.imag[np.newaxis, np.newaxis].astype(np.float32)
-            inp = np.concatenate([real_c, imag_c], axis=1)  # [1, 2, F, T]
-
-            # ── Pad time dimension to multiple of _UNET_ALIGN ──
-            T_orig = inp.shape[3]
-            T_pad = (self._UNET_ALIGN - T_orig % self._UNET_ALIGN) % self._UNET_ALIGN
-            if T_pad > 0:
-                inp = np.pad(inp, ((0, 0), (0, 0), (0, 0), (0, T_pad)), mode="constant")
-
-            # Sigma als skalarer Input (falls Modell diesen Eingang erwartet)
-            input_names = [i.name for i in self._session.get_inputs()]
-            feed: dict[str, np.ndarray] = {input_names[0]: inp}
-            if len(input_names) > 1:
-                feed[input_names[1]] = np.array([[[[sigma]]]], dtype=np.float32)
-
-            ort_out = self._session.run(None, feed)
-            out_arr = np.asarray(ort_out[0], dtype=np.float32)  # [1, 2, F, T]
-
-            # ── Remove time padding ──
-            if T_pad > 0:
-                out_arr = out_arr[:, :, :, :T_orig]
-
-            out_real = out_arr[0, 0]
-            out_imag = out_arr[0, 1] if out_arr.shape[1] >= 2 else np.zeros_like(out_real)
-
-            Z_enhanced = (out_real + 1j * out_imag).astype(np.complex64)
-            Z_enhanced = np.nan_to_num(Z_enhanced, nan=0.0, posinf=0.0, neginf=0.0)
-
-            result = self._istft(Z_enhanced, n_orig)
-            return np.clip(np.nan_to_num(result, nan=0.0), -1.0, 1.0)  # type: ignore[no-any-return]
-        except Exception as exc:
-            logger.warning("SGMSE+ ONNX-Inferenzfehler: %s — WPE-Fallback.", exc)
-            return self._wpe_fallback(mono, _SR)
 
     # NCSNPP U-Net has ~5 downsampling steps → time dim must be multiple of 2^5=32
     # to avoid encoder/decoder skip-connection shape mismatch (torch.cat RuntimeError).
