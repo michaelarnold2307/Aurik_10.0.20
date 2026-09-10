@@ -1,17 +1,13 @@
 # TASK_CHANGES — Live-Ledger der aktuellen Aufgabe
 
-> Generiert von `scripts/change_ledger.py snapshot` (Base: `HEAD`, Stand: 2026-09-10 07:18 CEST).
+> Generiert von `scripts/change_ledger.py snapshot` (Base: `HEAD`, Stand: 2026-09-10 07:30 CEST).
 > CI (`ci-lite.yml` pr-evidence-gate) erzwingt Abdeckung: jede geänderte Code-Datei muss hier stehen.
 
 ## Geänderte Dateien
 
 | Status | Pfad | Art |
 |---|---|---|
-| M | .github/FILE_REGISTRY.md | modifiziert |
-| ?? | backend/core/dsp/modulation_deesser.py | ungetrackt |
-| ?? | backend/core/dsp/phase_locked_vocoder.py | ungetrackt |
-| ?? | backend/core/dsp/sparse_declipper.py | ungetrackt |
-| ?? | backend/core/dsp/subspace_dereverb.py | ungetrackt |
+| M | backend/core/dsp/spectral_color_guard.py | modifiziert |
 
 ## Entscheidungen
 

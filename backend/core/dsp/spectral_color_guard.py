@@ -164,22 +164,33 @@ def check_spectral_color_preservation(
 
         # §P1-3 (Hörordnung Ebene 2): Ist der Phasen-Delta lokal maskiert,
         # darf die Spektralfarbe weiter abweichen, bevor der Guard greift.
-        # Korrelation ist keine dB-Größe → beschränkte Relaxation
-        # (max. 0,20 bei voller 6-dB-JND, linear).
+        # Korrelation ist keine dB-Größe → beschränkte Relaxation.
+        # §v10.759 (2026-09-09): _SCK_JND_FULL_DB = 6.0 = volle Maskierungs-JND
+        # (§P1-3-Kalibrierung); sie mappt linear auf die maximale Schwell-
+        # Relaxation 0,20. JND≈0 heißt: Delta liegt ÜBER der Maskierungs-
+        # schwelle → KEINE Relaxation (strenger Guard) — das ist konservativ
+        # KORREKT, nicht „wirkungslos“ (Audit-Befund 2026-09-09 präzisiert).
+        _SCK_JND_FULL_DB = 6.0
+        _SCK_RELAX_CAP = 0.20
         _jnd = estimate_delta_masking_jnd_db(pre, post, sr, freq_range_hz=(160.0, 8000.0))
-        _relax = float(np.clip(_jnd.jnd_db / 30.0, 0.0, 0.20))
+        _relax = float(np.clip(_jnd.jnd_db * (_SCK_RELAX_CAP / _SCK_JND_FULL_DB), 0.0, _SCK_RELAX_CAP))
         _eff_threshold = float(np.clip(threshold - _relax, 0.0, 1.0))
 
         ok = corr >= _eff_threshold
 
         if not ok:
+            _relax_note = (
+                "Relaxation %.3f" % _relax
+                if _relax > 1e-4
+                else "keine Relaxation (Delta hoerbar, JND=%.2f dB)" % _jnd.jnd_db
+            )
             logger.info(
-                "§V24 (Spec-Vintage-Guard) Spektralfarbe: Korrelation=%.3f < %.3f (Schwelle %.3f, §P1-3 JND=%.2f dB → Relaxation %.3f) → Verarbeitungsschritt-Strength − 30 %% (WARNING)",
+                "§V24 (Spec-Vintage-Guard) Spektralfarbe: Korrelation=%.3f < %.3f (Schwelle %.3f, §P1-3 JND=%.2f dB → %s) → Verarbeitungsschritt-Strength − 30 %% (WARNING)",
                 corr,
                 _eff_threshold,
                 threshold,
                 _jnd.jnd_db,
-                _relax,
+                _relax_note,
             )
 
         return SpectralColorResult(
