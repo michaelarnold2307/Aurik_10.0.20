@@ -1020,30 +1020,23 @@ class CoordinatedRepair:
             log.info("Inpainting übersprungen (§v10.880 Opt-In)")
             return audio
         try:
-            # DiT-basiertes Inpainting — verwendet das trainierte Modell
-            import torch
-
-            from models.miipher_dit.dit_model import FlowMatchingDiT
-
-            base_dir = __import__("pathlib").Path(__file__).parent.parent / "models" / "harmonic_inpainting"
-            mask_ckpt = base_dir / "inpainting_mask_best.pt"
-            if mask_ckpt.exists():
-                # §v10.910: Mask-konditioniertes Modell (2 Kanäle: Audio+Maske)
-                model = FlowMatchingDiT(in_channels=2)
-                ckpt = torch.load(str(mask_ckpt), map_location="cpu", weights_only=True)
-                model.load_state_dict(ckpt.get("model_state_dict", ckpt))
-                use_mask_channel = True
-            else:
-                model = FlowMatchingDiT()
-                ckpt_path = base_dir / "inpainting_best.pt"
-                use_mask_channel = False
-                if ckpt_path.exists():
-                    ckpt = torch.load(str(ckpt_path), map_location="cpu", weights_only=True)
-                    model.load_state_dict(ckpt.get("model_state_dict", ckpt))
-
-            device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-            model.to(device)
-            model.eval()
+            # §v10.910: ONNX zuerst — Mask-Variante (2K) bevorzugt, dann 1K;
+            # GPU-Policy über backend/core/gpu_model_registry (§v10.40c).
+            # Pfad-Fix 2026-09-10: parent.parent zeigte auf backend/ statt
+            # Repo-Wurzel — Checkpoints wurden nie gefunden (Original-Bug).
+            base_dir = (
+                __import__("pathlib").Path(__file__).resolve().parent.parent.parent
+                / "models"
+                / "harmonic_inpainting"
+            )
+            session, use_mask_channel = self._load_inpainting_onnx(base_dir)
+            if session is None:
+                # §V6: Silent-Failure verboten — Warnung + Grund, dann eager-Fallback.
+                log.warning(
+                    "Harmonic Inpainting: kein ONNX in %s ladbar — eager .pt-Fallback",
+                    base_dir,
+                )
+                return self._run_inpainting_eager(audio, step, base_dir, sr)
 
             # §v10.900: ODE-Integrationsparameter
             n_steps = int(step.parameters.get("ode_steps", 20))
@@ -1059,9 +1052,169 @@ class CoordinatedRepair:
                 if len(chunk) < chunk_samples:
                     chunk = np.pad(chunk, (0, chunk_samples - len(chunk)))
 
-                x_audio = torch.from_numpy(chunk).float().unsqueeze(0).unsqueeze(-1).to(device)
+                x_audio = chunk.astype(np.float32)[None, :, None]  # [1, T, 1]
                 if use_mask_channel:
                     # 2. Kanal: Maske (1 in Inpaint-Regionen)
+                    ch_mask = np.zeros_like(x_audio)
+                    for s_smp, e_smp in step.affected_samples or []:
+                        ch_mask[:, s_smp : min(e_smp, x_audio.shape[1]), :] = 1.0
+                    if not step.affected_samples or ch_mask.sum() == 0:
+                        ch_mask = np.ones_like(x_audio)
+                    x = np.concatenate([x_audio, ch_mask], axis=-1)  # [1, T, 2]
+                else:
+                    x = x_audio
+                x0 = x_audio.copy()
+
+                # §v10.900: Mask-Reset — nach jedem Euler-Schritt werden die
+                # NICHT-Inpaint-Regionen auf das Original zurückgesetzt. Das
+                # verhindert ODE-Drift in unkontrollierten Regionen
+                # (Ablation: -15.8 dB ohne Reset → -4.9 dB mit Reset).
+                affected = step.affected_samples or []
+                mask = np.zeros_like(x0)
+                for s_smp, e_smp in affected:
+                    mask[:, s_smp : min(e_smp, x0.shape[1]), :] = 1.0
+                if not affected or mask.sum() == 0:
+                    mask = np.ones_like(x0)  # ganzes Chunk
+
+                # ── ODE-Integration: dx/dt = v(x, t) via Euler (ONNX) ──
+                # §v10.910: Velocity wirkt NUR auf den Audio-Kanal; der
+                # Mask-Kanal ist eine Bedingung und bleibt konstant.
+                for i in range(n_steps):
+                    velocity = session.run(
+                        None,
+                        {"x": x, "t": np.array([float(i * dt)], dtype=np.float32)},
+                    )[0]  # [1, T, 1]
+                    if use_mask_channel:
+                        x = x + np.concatenate([velocity, np.zeros_like(velocity)], axis=-1) * dt
+                    else:
+                        x = x + velocity * dt
+                    x[..., :1] = x[..., :1] * mask + x0 * (1.0 - mask)
+
+                enhanced_np = x[..., 0]  # [1, T]
+
+                # Nur die Inpaint-Regionen übernehmen, Rest = Original
+                mix = min(1.0, strength)
+                inpainted_chunk = chunk * (1.0 - mix) + enhanced_np[0] * mix
+
+                out_len = min(chunk_samples, len(audio) - start)
+                window = np.hanning(chunk_samples)
+                output[start : start + out_len] += inpainted_chunk[:out_len] * window[:out_len] / 2
+
+            return cast(np.ndarray, output.astype(np.float32))
+        except Exception as exc:
+            log.warning("Harmonic Inpainting nicht verfügbar (%s) — Pass-Through", exc)
+            return audio
+
+    def _load_inpainting_onnx(self, base_dir: Any) -> tuple[Any, bool]:
+        """§v10.910: ONNX-Session für Harmonic Inpainting (Mask-2K bevorzugt).
+
+        §v10.40c: GPU-Policy aus backend/core/gpu_model_registry (verdict
+        rocm/cpu); CPU-only-Aufrufer bleiben CPU-only. Sessions werden auf der
+        Instanz gecacht (Session ist zustandslos, §V8-konform; kein
+        Song-übergreifender Zustand).
+
+        Returns (session, use_mask_channel); (None, False) wenn nichts ladbar.
+        """
+        cache = getattr(self, "_inpaint_onnx_cache", None)
+        if cache is None:
+            cache = {}
+            self._inpaint_onnx_cache = cache
+
+        candidates = (
+            (base_dir / "inpainting_mask_best.onnx", True),
+            (base_dir / "inpainting_best.onnx", False),
+        )
+        for path, use_mask in candidates:
+            key = str(path)
+            if key in cache:
+                entry = cache[key]
+                if entry is None:
+                    continue  # bereits gescheitert — nächster Kandidat
+                return entry, use_mask
+            if not path.is_file():
+                log.info("Harmonic Inpainting: %s fehlt", path.name)
+                cache[key] = None
+                continue
+            try:
+                import onnxruntime as ort  # pylint: disable=import-outside-toplevel
+                import torch  # pylint: disable=import-outside-toplevel
+
+                from backend.core.gpu_model_registry import apply_gpu_policy
+
+                _gpu = bool(torch.cuda.is_available())
+                _requested = (
+                    ["ROCMExecutionProvider", "CPUExecutionProvider"] if _gpu else ["CPUExecutionProvider"]
+                )
+                _providers = apply_gpu_policy(_requested, path)
+                _sess = ort.InferenceSession(str(path), providers=_providers)
+                log.info(
+                    "Harmonic Inpainting ONNX geladen: %s (%s, %d Kanäle)",
+                    path.name,
+                    _sess.get_providers()[0],
+                    2 if use_mask else 1,
+                )
+                cache[key] = _sess
+                return _sess, use_mask
+            except Exception as exc:  # pylint: disable=broad-except
+                log.warning("Harmonic Inpainting ONNX %s nicht ladbar: %s", path.name, exc)
+                cache[key] = None
+                continue
+        return None, False
+
+    def _run_inpainting_eager(
+        self,
+        audio: np.ndarray,
+        step: RepairStep,
+        base_dir: Any,
+        sr: int,
+    ) -> np.ndarray:
+        """Eager-.pt-Fallback (§V6), wenn kein ONNX ladbar ist.
+
+        Semantik identisch zum ONNX-Pfad (§v10.900 ODE, Mask-Reset, Overlap-
+        Add); 1-Kanal-Zweig mit korrektem Euler-Update (Fix: vorher erzwang
+        das cat auch ohne Mask-Kanal einen 2-Kanal-Shape → RuntimeError).
+        """
+        try:
+            import torch  # pylint: disable=import-outside-toplevel
+
+            from models.miipher_dit.dit_model import FlowMatchingDiT
+
+            mask_ckpt = base_dir / "inpainting_mask_best.pt"
+            ckpt_path = base_dir / "inpainting_best.pt"
+            if not mask_ckpt.exists() and not ckpt_path.exists():
+                # §V6: niemals mit uninitialisierten Gewichten rechnen.
+                log.warning("Harmonic Inpainting: keine .pt-Checkpoints in %s — Pass-Through", base_dir)
+                return audio
+            if mask_ckpt.exists():
+                model = FlowMatchingDiT(in_channels=2)
+                ckpt = torch.load(str(mask_ckpt), map_location="cpu", weights_only=True)
+                model.load_state_dict(ckpt.get("model_state_dict", ckpt))
+                use_mask_channel = True
+            else:
+                model = FlowMatchingDiT()
+                use_mask_channel = False
+                if ckpt_path.exists():
+                    ckpt = torch.load(str(ckpt_path), map_location="cpu", weights_only=True)
+                    model.load_state_dict(ckpt.get("model_state_dict", ckpt))
+
+            device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+            model.to(device)
+            model.eval()
+
+            n_steps = int(step.parameters.get("ode_steps", 20))
+            strength = float(step.parameters.get("strength", 0.3))
+            dt = 1.0 / n_steps
+
+            chunk_samples = 2 * sr
+            output = np.zeros_like(audio)
+            for start in range(0, len(audio), chunk_samples // 2):
+                end = min(start + chunk_samples, len(audio))
+                chunk = audio[start:end]
+                if len(chunk) < chunk_samples:
+                    chunk = np.pad(chunk, (0, chunk_samples - len(chunk)))
+
+                x_audio = torch.from_numpy(chunk).float().unsqueeze(0).unsqueeze(-1).to(device)
+                if use_mask_channel:
                     ch_mask = torch.zeros_like(x_audio)
                     for s_smp, e_smp in step.affected_samples or []:
                         ch_mask[:, s_smp : min(e_smp, x_audio.shape[1]), :] = 1.0
@@ -1072,31 +1225,25 @@ class CoordinatedRepair:
                     x = x_audio
                 x0 = x_audio.clone()
 
-                # §v10.900: Mask-Reset — nach jedem Euler-Schritt werden die
-                # NICHT-Inpaint-Regionen auf das Original zurückgesetzt. Das
-                # verhindert ODE-Drift in unkontrollierten Regionen
-                # (Ablation: -15.8 dB ohne Reset → -4.9 dB mit Reset).
                 affected = step.affected_samples or []
                 mask = torch.zeros_like(x0)
                 for s_smp, e_smp in affected:
                     mask[:, s_smp : min(e_smp, x0.shape[1]), :] = 1.0
                 if not affected or mask.sum() == 0:
-                    mask = torch.ones_like(x0)  # ganzes Chunk
+                    mask = torch.ones_like(x0)
 
-                # ── ODE-Integration: dx/dt = v(x, t) via Euler ──
-                # §v10.910: Velocity wirkt NUR auf den Audio-Kanal; der
-                # Mask-Kanal ist eine Bedingung und bleibt konstant.
                 with torch.no_grad():
                     for i in range(n_steps):
                         t = torch.full((1,), i * dt, device=device)
                         velocity = model(x, t)  # [B, T, 1]
-                        x = x + torch.cat([velocity, torch.zeros_like(velocity)], dim=-1) * dt
-                        # Mask-Reset: unmaskierte Audio-Regionen bleiben Original
+                        if use_mask_channel:
+                            x = x + torch.cat([velocity, torch.zeros_like(velocity)], dim=-1) * dt
+                        else:
+                            x = x + velocity * dt
                         x[..., :1] = x[..., :1] * mask + x0 * (1.0 - mask)
 
                 enhanced_np = x[..., :1].squeeze().cpu().numpy()
 
-                # Nur die Inpaint-Regionen übernehmen, Rest = Original
                 mix = min(1.0, strength)
                 inpainted_chunk = chunk * (1.0 - mix) + enhanced_np * mix
 
@@ -1105,8 +1252,8 @@ class CoordinatedRepair:
                 output[start : start + out_len] += inpainted_chunk[:out_len] * window[:out_len] / 2
 
             return cast(np.ndarray, output.astype(np.float32))
-        except Exception:
-            log.debug("Inpainting not available, skipping")
+        except Exception as exc:
+            log.warning("Harmonic Inpainting eager-Fallback fehlgeschlagen (%s) — Pass-Through", exc)
             return audio
 
     def _run_hum_removal(

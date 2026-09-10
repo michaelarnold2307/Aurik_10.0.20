@@ -35,19 +35,29 @@ def export_to_onnx(
     dynamic_time: bool = True,
     dynamic_batch: bool = True,
     opset_version: int = 17,
+    dummy_T: int = 48000,
 ):
     """Export model to ONNX with dynamic axes.
 
     The plugin passes inputs {"x": [1, T, 1], "t": [1]}.
     Both batch and time axes must be dynamic because T varies per chunk.
+
+    ACHTUNG dummy_T: Der Legacy-Tracer backt size=N (pos_embed-Interpolation)
+    und original_length (Trim) als Konstanten ein — das Artefakt ist NUR am
+    Dummy-Shape exakt korrekt. Beim Export immer die reale Produktions-Chunk-
+    Länge verwenden (Harmonic-Inpainting: 96000; MIIPHER-DiT: 48000).
     """
     model.eval()
     model.to("cpu")
 
+    # Kanalzahl aus dem Modell ableiten (Mask-Variante §v10.910: 2)
+    _inner = getattr(model, "model", model)
+    _patch = getattr(_inner, "patch_embed", None)
+    in_channels = int(getattr(_patch, "in_channels", 1))
+
     # Dummy inputs matching the plugin's expected shapes
-    # Use a moderate length (1s @ 48kHz) as the concrete shape
-    dummy_T = 48000
-    dummy_x = torch.randn(1, dummy_T, 1, dtype=torch.float32)
+    # Use the production chunk length as the concrete shape
+    dummy_x = torch.randn(1, dummy_T, in_channels, dtype=torch.float32)
     dummy_t = torch.tensor([0.5], dtype=torch.float32)
 
     # Dynamic axes: batch dim 0 and time dim 1 for both input and output
@@ -109,10 +119,10 @@ def export_to_onnx(
     return output_path
 
 
-def export_from_checkpoint(checkpoint_path: str, output_path: str, **kwargs):
+def export_from_checkpoint(checkpoint_path: str, output_path: str, in_channels: int = 1, **kwargs):
     """Load a trained checkpoint and export to ONNX."""
     device = torch.device("cpu")
-    model = create_miipher_dit()
+    model = create_miipher_dit(in_channels=in_channels)
     wrapper = FlowMatchingDiTExportWrapper(model)
 
     print(f"Loading checkpoint: {checkpoint_path}")
@@ -153,7 +163,7 @@ def export_from_checkpoint(checkpoint_path: str, output_path: str, **kwargs):
     return export_to_onnx(wrapper, output_path, **kwargs)
 
 
-def export_fresh(output_path: str, **kwargs):
+def export_fresh(output_path: str, in_channels: int = 1, **kwargs):
     """Export a randomly-initialised (untrained) model to ONNX.
 
     This is useful for:
@@ -166,7 +176,7 @@ def export_fresh(output_path: str, **kwargs):
     print("   This model will NOT enhance audio — it outputs noise.")
     print("   Use --checkpoint to export a trained model.")
 
-    model = create_miipher_dit()
+    model = create_miipher_dit(in_channels=in_channels)
     wrapper = FlowMatchingDiTExportWrapper(model)
 
     # Reset all weights with a standard initialisation
@@ -211,6 +221,20 @@ def main():
         default=17,
         help="ONNX opset version (default: 17)",
     )
+    parser.add_argument(
+        "--dummy-t",
+        type=int,
+        default=48000,
+        help="Konkrete Dummy-Zeitlänge in Samples (Produktions-Chunk-Länge! "
+        "Harmonic-Inpainting: 96000, MIIPHER-DiT: 48000)",
+    )
+    parser.add_argument(
+        "--in-channels",
+        type=int,
+        default=1,
+        help="Eingabekanäle des FlowMatchingDiT (1=Wellenform, 2=Audio+Maske; "
+        "Mask-Variante §v10.910: 2)",
+    )
     args = parser.parse_args()
 
     output = Path(args.output)
@@ -220,6 +244,7 @@ def main():
         dynamic_batch=not args.static_batch,
         dynamic_time=not args.static_time,
         opset_version=args.opset,
+        dummy_T=args.dummy_t,
     )
 
     if args.checkpoint:
@@ -228,13 +253,13 @@ def main():
             print(f"❌ Checkpoint not found: {checkpoint}")
             print("   Train the model first: scripts/train_miipher_dit.py")
             sys.exit(1)
-        export_from_checkpoint(str(checkpoint), str(output), **kwargs)
+        export_from_checkpoint(str(checkpoint), str(output), in_channels=args.in_channels, **kwargs)
     elif args.fresh:
-        export_fresh(str(output), **kwargs)
+        export_fresh(str(output), in_channels=args.in_channels, **kwargs)
     else:
         print("No --checkpoint or --fresh specified.")
         print("Exporting untrained model by default (use --checkpoint for trained weights).")
-        export_fresh(str(output), **kwargs)
+        export_fresh(str(output), in_channels=args.in_channels, **kwargs)
 
     print(f"\n✅ Done: {output}")
 
