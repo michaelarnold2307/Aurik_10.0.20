@@ -50,6 +50,7 @@ logger = logging.getLogger(__name__)
 _ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 _MDL_ROOT = os.path.join(_ROOT, "models", "gacela")
 _CKPT_DIR = os.path.join(_MDL_ROOT, "model")
+_ONNX_PATH = os.path.join(_CKPT_DIR, "gacela_core.onnx")
 
 # ── Audio-Konstanten ─────────────────────────────────────────────────────────
 MODEL_SR: int = 22_050
@@ -150,7 +151,8 @@ class GacelaPlugin:
 
     def __init__(self) -> None:
         self._model_ready: bool = False
-        self._generator: Any = None
+        self._session: Any = None  # ONNX-Session (primär)
+        self._generator: Any = None  # eager-.pt-Fallback (§V6)
         self._encoders: list = []
         self._mel_basis: np.ndarray | None = None
         self._stft: Any = None
@@ -186,38 +188,10 @@ class GacelaPlugin:
                 sys.path.insert(0, _MDL_ROOT)
 
             import librosa
-            from model.borderEncoder import BorderEncoder  # type: ignore[import]
-            from model.generator import Generator  # type: ignore[import]
             from tifresi.stft import GaussTruncTF  # type: ignore[import]
             from utils.spectrogramInverter import SpectrogramInverter  # type: ignore[import]
 
-            # Architektur aufbauen
-            self._encoders = [BorderEncoder(_BE_PARAMS) for _ in range(2)]
-            self._generator = Generator(_GEN_PARAMS, _GEN_IN_SHAPE)
-
-            # Besten verfügbaren Checkpoint laden
-            ckpt = None
-            for fname in _CKPT_ORDER:
-                path = os.path.join(_CKPT_DIR, fname)
-                if os.path.isfile(path):
-                    ckpt = torch.load(path, map_location="cpu", weights_only=True)  # nosec B614 — lokaler Tensor-Checkpoint
-                    logger.info("GACELA: Checkpoint geladen — %s", fname)
-                    break
-
-            if ckpt is None:
-                raise FileNotFoundError(f"Kein GACELA-Checkpoint gefunden in: {_CKPT_DIR}")
-
-            # Gewichte einspielen
-            self._generator.load_state_dict(ckpt["generator"])
-            for enc, sd in zip(self._encoders, ckpt["encoders"]):
-                enc.load_state_dict(sd)
-
-            # Eval-Modus (kein Dropout/BatchNorm-Training)
-            self._generator.eval()
-            for enc in self._encoders:
-                enc.eval()
-
-            # Device-Platzierung
+            # Device-Platzierung (gilt für ONNX-Provider und eager-Fallback)
             try:
                 from backend.core.ml_device_manager import get_torch_device as _get_dev
 
@@ -233,12 +207,9 @@ class GacelaPlugin:
                         _dev = "cpu"
                 except Exception:
                     logger.warning("gacela_plugin.py::_try_laden Ersatzpfad", exc_info=True)
-            self._generator.to(_dev)
-            for enc in self._encoders:
-                enc.to(_dev)
             self._device = _dev
 
-            # STFT-Objekte
+            # STFT-Objekte (gemeinsam für ONNX- und eager-Pfad)
             self._stft = GaussTruncTF(hop_size=FFT_HOP_SIZE, stft_channels=FFT_LENGTH)
             mel_fb = librosa.filters.mel(sr=MODEL_SR, n_fft=FFT_LENGTH, n_mels=MEL_BINS)  # type: ignore[attr-defined]
             # mel_fb Form [80, FFT_LENGTH//2 + 1] = [80, 513]; nur erste 512 Bins
@@ -259,8 +230,14 @@ class GacelaPlugin:
                 logger.debug("GACELA: dsp.pghi nicht verfuegbar, using inline Ersatzpfad: %s", _pghi_exc)
                 self._pghi_rec = None
 
+            # ── ML-Kern: ONNX-first (§v10.40c-GPU-Policy), eager-.pt als §V6-Fallback ──
+            if not self._load_onnx() and not self._load_eager():
+                raise FileNotFoundError(
+                    f"Weder gacela_core.onnx noch .pt-Checkpoint ladbar in: {_CKPT_DIR}"
+                )
+
             self._model_ready = True
-            logger.info("GACELA: ML-Modell bereit (MODEL_SR=%d Hz).", MODEL_SR)
+            logger.info("GACELA: ML-Modell bereit (MODEL_SR=%d Hz, ONNX=%s).", MODEL_SR, self._session is not None)
             try:
                 from backend.core.plugin_lifecycle_manager import register_plugin as _reg_plm
 
@@ -281,6 +258,71 @@ class GacelaPlugin:
             except Exception as _exc:
                 logger.debug("Operation fehlgeschlagen (unkritisch): %s", _exc)
 
+    def _load_onnx(self) -> bool:
+        """§v10-GACELA-ONNX (2026-09-10): gacela_core.onnx mit §v10.40c-GPU-Policy.
+
+        I/O-Vertrag: ctx_l/ctx_r [1,1,80,240] (Mel-Kontexte), noise [1,4,5,15]
+        → gap [1,1,256,256]. Bei Fehler: §V6-Warnung + False (eager-Fallback).
+        """
+        if not os.path.isfile(_ONNX_PATH):
+            return False
+        try:
+            import onnxruntime as ort  # pylint: disable=import-outside-toplevel
+
+            from backend.core.gpu_model_registry import apply_gpu_policy
+
+            _requested = (
+                ["ROCMExecutionProvider", "CPUExecutionProvider"] if self._device != "cpu" else ["CPUExecutionProvider"]
+            )
+            _providers = apply_gpu_policy(_requested, _ONNX_PATH)
+            self._session = ort.InferenceSession(_ONNX_PATH, providers=_providers)
+            logger.info(
+                "GACELA: ONNX-Kern geladen (%s, provider=%s)",
+                os.path.basename(_ONNX_PATH),
+                self._session.get_providers()[0],
+            )
+            return True
+        except Exception as exc:  # pylint: disable=broad-except
+            logger.warning("GACELA-ONNX nicht ladbar (%s) — eager-.pt-Fallback", exc)
+            self._session = None
+            return False
+
+    def _load_eager(self) -> bool:
+        """§V6-Fallback: eager .pt-Checkpoint (bisheriger Ladecode)."""
+        try:
+            import torch  # pylint: disable=import-outside-toplevel
+            from model.borderEncoder import BorderEncoder  # type: ignore[import]
+            from model.generator import Generator  # type: ignore[import]
+
+            self._encoders = [BorderEncoder(_BE_PARAMS) for _ in range(2)]
+            self._generator = Generator(_GEN_PARAMS, _GEN_IN_SHAPE)
+
+            ckpt = None
+            for fname in _CKPT_ORDER:
+                path = os.path.join(_CKPT_DIR, fname)
+                if os.path.isfile(path):
+                    ckpt = torch.load(path, map_location="cpu", weights_only=True)  # nosec B614 — lokaler Tensor-Checkpoint
+                    logger.info("GACELA: Checkpoint geladen — %s", fname)
+                    break
+            if ckpt is None:
+                return False
+
+            self._generator.load_state_dict(ckpt["generator"])
+            for enc, sd in zip(self._encoders, ckpt["encoders"]):
+                enc.load_state_dict(sd)
+            self._generator.eval()
+            for enc in self._encoders:
+                enc.eval()
+            self._generator.to(self._device)
+            for enc in self._encoders:
+                enc.to(self._device)
+            return True
+        except Exception as exc:  # pylint: disable=broad-except
+            logger.warning("GACELA eager-Ladevorgang fehlgeschlagen: %s", exc)
+            self._generator = None
+            self._encoders = []
+            return False
+
     # ── ML-Inpainting (primärer Pfad) ────────────────────────────────────────
 
     def inpaint(
@@ -296,10 +338,11 @@ class GacelaPlugin:
             2. Auf SPLIT[0]/SPLIT[2] × FFT_HOP_SIZE Samples kürzen/padden
             3. GaussTruncTF.spectrogram() → Log-Spektrogramm [:512, :480]
             4. Mel-Filterbank [80,512] @ Spektrogramm → Mel [80, 480]
-            5. Zeit-Mitteln (÷4) → [80, 120]
-            6. BorderEncoder(left), BorderEncoder(right) → je [1,16,5,8]
-            7. cat([enc_L, enc_R, noise(4)], dim=1) → [1,36,5,8]
-            8. Generator → [1,1,512,64] ∈ [-1,1]
+            5. Zeit-Mitteln (÷2, TIME_AVG) → [80, 240]
+            6. BorderEncoder(left), BorderEncoder(right) → je [1,16,5,15]
+            7. cat([enc_L, enc_R, noise(4)], dim=1) → [1,36,5,15]
+            8. Generator → [1,1,256,256] ∈ [-1,1]  (Shape-Fix 2026-09-10: Docstring
+               nannte früher [1,1,512,64]; real 256×256, siehe gap_linear [256,256])
             9. Denorm: gap_linear = exp(25·(output − 1))
             10. SpectrogramInverter → 16 384 Samples @ 22 050 Hz
             11. Resample → native_sr; NaN/Inf-Guard; clip [-1,1]
@@ -333,32 +376,51 @@ class GacelaPlugin:
             left_mono = _prep(left_audio)
             right_mono = _prep(right_audio)
 
-            def _encode(mono: np.ndarray, encoder: torch.nn.Module) -> torch.Tensor:
-                """Mono [n_ctx] → BorderEncoder-Embedding [1,16,5,8]."""
-                # Log-Spektrogramm via GaussTruncTF
-                spec_full = self._stft.spectrogram(mono, normalize=False)  # [513, T]
-                spec = spec_full[: FFT_LENGTH // 2, : SPLIT[0]]  # [512, 480]
-                # Mel-Projektion
-                mel = (self._mel_basis @ spec).astype(np.float32)  # [80, 480]
-                t = torch.from_numpy(mel).unsqueeze(0).unsqueeze(0).to(self._device)  # [1,1,80,480]
-                t = _time_average(t, TIME_AVG)  # [1,1,80,240]
+            if self._session is not None:
+                # §v10-GACELA-ONNX: Mel-Kontexte in numpy, ein Session-Run.
+                def _mel_np(mono: np.ndarray) -> np.ndarray:
+                    spec_full = self._stft.spectrogram(mono, normalize=False)  # [513, T]
+                    spec = spec_full[: FFT_LENGTH // 2, : SPLIT[0]]  # [512, 480]
+                    mel = (self._mel_basis @ spec).astype(np.float32)  # [80, 480]
+                    t = _time_average(
+                        torch.from_numpy(mel).unsqueeze(0).unsqueeze(0), TIME_AVG
+                    )  # [1,1,80,240]
+                    return t.numpy()
+
+                noise = np.random.rand(1, NOISE_CH, 5, 15).astype(np.float32)
+                gap_np = self._session.run(
+                    None,
+                    {
+                        "ctx_l": _mel_np(left_mono),
+                        "ctx_r": _mel_np(right_mono),
+                        "noise": noise,
+                    },
+                )[0][0, 0]  # [256, 256]
+            else:
+                # §V6-eager-Fallback (bisheriger Pfad)
+                def _encode(mono: np.ndarray, encoder: torch.nn.Module) -> torch.Tensor:
+                    """Mono [n_ctx] → BorderEncoder-Embedding [1,16,5,15]."""
+                    # Log-Spektrogramm via GaussTruncTF
+                    spec_full = self._stft.spectrogram(mono, normalize=False)  # [513, T]
+                    spec = spec_full[: FFT_LENGTH // 2, : SPLIT[0]]  # [512, 480]
+                    # Mel-Projektion
+                    mel = (self._mel_basis @ spec).astype(np.float32)  # [80, 480]
+                    t = torch.from_numpy(mel).unsqueeze(0).unsqueeze(0).to(self._device)  # [1,1,80,480]
+                    t = _time_average(t, TIME_AVG)  # [1,1,80,240]
+                    with torch.no_grad():
+                        return encoder(t)  # type: ignore[no-any-return]  # [1,16,5,15]
+
+                enc_L = _encode(left_mono, self._encoders[0])
+                enc_R = _encode(right_mono, self._encoders[1])
+
+                # Rauschen und Konkatenation
+                noise = torch.rand(1, NOISE_CH, enc_L.size(2), enc_L.size(3), dtype=torch.float32).to(self._device)
+                x = torch.cat([enc_L, enc_R, noise], dim=1)  # [1,36,5,15]
+
+                # Generator-Inferenz
                 with torch.no_grad():
-                    return encoder(t)  # type: ignore[no-any-return]  # [1,16,5,8]
-
-            enc_L = _encode(left_mono, self._encoders[0])
-            enc_R = _encode(right_mono, self._encoders[1])
-
-            # Rauschen und Konkatenation
-            noise = torch.rand(1, NOISE_CH, enc_L.size(2), enc_L.size(3), dtype=torch.float32).to(self._device)
-            x = torch.cat([enc_L, enc_R, noise], dim=1)  # [1,36,5,8]
-
-            # Generator-Inferenz
-            with torch.no_grad():
-                gap_norm = self._generator(x)  # [1,1,512,64], Tanh ∈ [-1,1]
-
-            # Denormalisierung: norm → log → linear (ganSystem.py generateGap)
-            # Generator-Ausgabe: [1, 1, 256, 256] (256 freq-bins × 256 time-frames)
-            gap_np = gap_norm[0, 0].cpu().numpy()  # [256, 256], float32
+                    gap_norm = self._generator(x)  # [1,1,256,256], Tanh ∈ [-1,1]
+                gap_np = gap_norm[0, 0].cpu().numpy()  # [256, 256], float32
             gap_log = 25.0 * (gap_np - 1.0)  # Log-Spektrogramm
             gap_linear = np.exp(np.clip(gap_log, -80.0, 20.0))  # numerisch stabil
 

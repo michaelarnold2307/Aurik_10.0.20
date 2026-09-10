@@ -13,7 +13,10 @@ _MODEL = Path(__file__).resolve().parents[2] / "models" / "aero" / "checkpoint_1
 
 
 def test_plugin_importable_without_model() -> None:
-    plugin = AeroPlugin(checkpoint=Path("/nonexistent/checkpoint.th"))
+    plugin = AeroPlugin(
+        checkpoint=Path("/nonexistent/checkpoint.th"),
+        onnx_path=Path("/nonexistent/aero.onnx"),
+    )
     assert plugin.is_loaded is False
     assert plugin.enhance(np.zeros(12000, dtype=np.float32), 12000) is None
 
