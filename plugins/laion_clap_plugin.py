@@ -549,8 +549,15 @@ class LAIONCLAPPlugin:
 
         # Path 1: ONNX audio-encoder
         if self._model_loaded and self._audio_session is not None:
-            feat = np.abs(np.fft.rfft(audio_f32[:sr], n=2048)).astype(np.float32)
-            feat = feat[np.newaxis, :]
+            # §v10.761 (2026-09-09): Der ONNX-Encoder erwartet das RAW-Waveform
+            # [batch, samples] — der alte Code fütterte FFT-Magnituden
+            # (semantisch falsches Embedding). Konsistent mit _tag_clap:
+            # mono, bis 10 s CLAP-Trainingslänge.
+            _wav = audio_f32
+            if _wav.ndim == 2:
+                _wav = _wav.mean(axis=1) if _wav.shape[1] == 2 else _wav.mean(axis=0)
+            _wav = _wav[: min(len(_wav), 10 * sr)]
+            feat = _wav[np.newaxis, :]
             input_name = self._audio_session.get_inputs()[0].name
             _plm_clap = None
             try:

@@ -1,6 +1,6 @@
 # TASK_CHANGES — Live-Ledger der aktuellen Aufgabe
 
-> Generiert von `scripts/change_ledger.py snapshot` (Base: `HEAD`, Stand: 2026-09-10 08:26 CEST).
+> Generiert von `scripts/change_ledger.py snapshot` (Base: `HEAD`, Stand: 2026-09-10 08:40 CEST).
 > CI (`ci-lite.yml` pr-evidence-gate) erzwingt Abdeckung: jede geänderte Code-Datei muss hier stehen.
 
 ## Geänderte Dateien
@@ -8,10 +8,8 @@
 | Status | Pfad | Art |
 |---|---|---|
 | M | .github/FILE_REGISTRY.md | modifiziert |
-| M | backend/core/dsp/phase_locked_vocoder.py | modifiziert |
-| M | backend/core/dsp/subspace_dereverb.py | modifiziert |
-| ?? | tests/unit/test_phase_locked_vocoder_sota.py | ungetrackt |
-| ?? | tests/unit/test_subspace_dereverb_sota.py | ungetrackt |
+| M | plugins/laion_clap_plugin.py | modifiziert |
+| ?? | tests/unit/test_laion_clap_onnx_guard.py | ungetrackt |
 
 ## Entscheidungen
 
