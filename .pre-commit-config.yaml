@@ -453,6 +453,16 @@ repos:
         pass_filenames: false
         always_run: true
 
+      # Blindtest-Metrics — lief zuvor als manueller .git/hooks/pre-commit (nicht
+      # versioniert) und verdrängte dabei den pre-commit-Framework-Hook; als
+      # Config-Hook ist er reproduzierbar und der Framework-Hook bleibt aktiv.
+      - id: aurik-blindtest-metrics
+        name: "Aurik Blindtest-Metrics (Preservation/Artifact/Quality)"
+        entry: python3 -m pytest tests/test_blindtest_metrics.py -v --tb=short -q
+        language: system
+        pass_filenames: false
+        always_run: true
+
       # Unit-Smoke nach Spec §10.2: schnell, low-overhead, kein E2E/ML-Gate im Commit-Pfad.
       - id: aurik-unit-smoke
         name: "Aurik Unit-Smoke (tests/unit, maxfail=3)"
