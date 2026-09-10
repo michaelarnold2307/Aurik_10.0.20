@@ -391,6 +391,7 @@ _HEAVY_ML_PLUGINS: frozenset[str] = frozenset(
         # --- Neural Enhancement (GPU-accelerated on AMD ROCm) ---
         "DeepFilterNetV3",  # deepfilternet_v3_ii_plugin — 3x enc/dec ONNX (~150 MB)
         "WhisperTiny",  # lyrics_transcriber/phase-58 — whisper_tiny.onnx (39 MB) — §v10.749: ROCm 24.5× gemessen
+        "WhisperTurbo",  # lyrics_transcriber — whisper-large-v3-turbo fp16-Encoder (GPU-only, §v10.751)
         #                     Computationally intensive DF-filter; ROCm accelerates
         #                     the iterative ERB-inverse + deep filtering significantly.
         # --- Quality / Scoring (heavy Transformer backbones) ---

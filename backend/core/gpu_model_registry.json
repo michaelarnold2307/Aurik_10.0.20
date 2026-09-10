@@ -50,6 +50,14 @@
     "scan_s": 3.1,
     "verdict": "cpu"
   },
+  "models/whisper/whisper_large_v3_turbo_encoder_fp16.onnx": {
+    "backend": "rocm",
+    "cpu_ms": null,
+    "gpu_ms": 52.5,
+    "note": "fp16-Gewichte, float32-I/O GPU-only (Community-Export, 128 Mel-Bins); CPU/Referenz bleibt whisper_tiny fp32",
+    "scan_s": 3.1,
+    "verdict": "rocm"
+  },
   "models/whisper/whisper_tiny.onnx": {
     "backend": "rocm",
     "cpu_ms": 98.1,

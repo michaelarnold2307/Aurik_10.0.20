@@ -100,6 +100,9 @@ class LyricsTranscriber:
     """
 
     MODEL_PATH: Path = Path(__file__).parent.parent / "models" / "whisper" / "whisper_tiny.onnx"
+    _TURBO_PATH: Path = (
+        Path(__file__).parent.parent / "models" / "whisper" / "whisper_large_v3_turbo_encoder_fp16.onnx"
+    )  # §v10.751: fp16-Encoder (GPU) — fp32-tiny bleibt CPU-/Referenz-Fallback
     VOCAB_PATH: Path = Path(__file__).parent.parent / "models" / "whisper" / "whisper_tiny_vocab.json"
     # Fallback: Whisper-Base ONNX (§13.3 — gebündeltes Modell falls tiny fehlt)
     _BASE_MODEL_PATH: Path = Path(__file__).parent.parent / "models" / "whisper" / "whisper-base_beamsearch.onnx"
@@ -115,6 +118,7 @@ class LyricsTranscriber:
     def __init__(self) -> None:
         self._session: object | None = None
         self._session_loaded: bool = False
+        self._turbo_active: bool = False  # §v10.751: Turbo-fp16-Encoder (128 Mel-Bins) aktiv
         self._load_onnx()
 
     def _load_onnx(self) -> None:
@@ -127,6 +131,25 @@ class LyricsTranscriber:
         """
         try:
             import onnxruntime as ort  # noqa: E402
+
+            # §v10.751 (2026-09-09): Zweistufig — Turbo-fp16-Encoder (GPU) zuerst;
+            # tiny-fp32 (CPU/Referenz, §G5) bleibt der deterministische Fallback.
+            if self._TURBO_PATH.exists():
+                try:
+                    from backend.core.ml_device_manager import get_ort_providers as _gp751
+
+                    _turbo_prov = _gp751("WhisperTurbo")
+                    if "ROCMExecutionProvider" in _turbo_prov:
+                        from backend.core.ml_memory_budget import try_allocate as _ta751
+
+                        if _ta751("WhisperTurbo", size_gb=0.70):
+                            self._session = ort.InferenceSession(str(self._TURBO_PATH), providers=_turbo_prov)
+                            self._session_loaded = True
+                            self._turbo_active = True  # §v10.751: 128-Mel-Pfad aktiv
+                            logger.info("✅ Whisper-Large-v3-Turbo fp16-Encoder geladen (GPU, §v10.751)")
+                            return
+                except Exception as _exc751:
+                    logger.warning("Whisper-Turbo-Encoder nicht verfügbar (%s) — tiny-fp32-Fallback", _exc751)
 
             # Ladereihenfolge: tiny → base → DSP
             if self.MODEL_PATH.exists():
@@ -217,11 +240,9 @@ class LyricsTranscriber:
 
         try:
             if self._session_loaded and self._session is not None:
-                result = cast(Any, self._session).run(None, {"input": mono})
-                _decode = getattr(self, "_decode_result", None)
-                if _decode is not None:
-                    return cast(LyricsTranscriptionResult, _decode(result, sr, duration_s))
-                raise AttributeError("_decode_result fehlt — DSP-Fallback")
+                # §v10.751: Mel-Encoder-Pfad — der Legacy-Aufruf ({"input": mono})
+                # passt nicht zu tiny/turbo (Eingang heißt input_features).
+                return self._transcribe_onnx(mono, sr, duration_s)
         except Exception as exc:
             logger.warning("ML→DSP-Fallback aktiviert", exc_info=True)  # §V6 (copilot-instructions.md)
             logger.debug("Whisper-Inferenz fehlgeschlagen, DSP-Fallback: %s", exc)
@@ -249,7 +270,7 @@ class LyricsTranscriber:
         audio_16k = self._resample_to_whisper(mono, sr)
 
         # 2. Log-Mel-Spektrogramm [1, 80, 3000]
-        mel = self._compute_log_mel(audio_16k)
+        mel = self._compute_log_mel(audio_16k, n_mels=128 if self._turbo_active else 80)  # §v10.751: Turbo nutzt 128 Mel-Bins
 
         # 3. ONNX-Encoder-Forward
         encoder_out: np.ndarray | None = None
@@ -369,15 +390,14 @@ class LyricsTranscriber:
             indices = np.linspace(0, len(mono) - 1, max(target_len, 1))
             return np.interp(indices, np.arange(len(mono)), mono).astype(np.float32)  # type: ignore[no-any-return]
 
-    def _compute_log_mel(self, audio_16k: np.ndarray) -> np.ndarray:
-        """Log-Mel-Spektrogramm [1, 80, 3000] für Whisper-Eingang (30 s @ 16 kHz).
+    def _compute_log_mel(self, audio_16k: np.ndarray, n_mels: int = 80) -> np.ndarray:
+        """Log-Mel-Spektrogramm [1, n_mels, 3000] für Whisper-Eingang (30 s @ 16 kHz).
 
-        Algorithmus: Hanning-STFT (n_fft=400, hop=160) → Mel-Filterbank (80 Bänder)
-        → Log10 → Wertebereich [−4, 1] auf [0, 1] normiert.
+        Algorithmus: Hanning-STFT (n_fft=400, hop=160) → Mel-Filterbank
+        (80 Bänder tiny / 128 Bänder Turbo §v10.751) → Log10 → auf [0, 1] normiert.
         """
         n_fft = 400  # 25 ms @ 16 kHz
         hop = 160  # 10 ms @ 16 kHz
-        n_mels = 80
         target_frames = 3000
 
         # Zero-Padding auf 30 s
