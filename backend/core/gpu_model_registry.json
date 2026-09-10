@@ -1,4 +1,13 @@
 {
+  "_summary": {
+    "counts": {
+      "cpu": 2,
+      "migraphx": 0,
+      "rocm": 12
+    },
+    "generated_by": "scripts/onnx_gpu_compat_scan.py",
+    "rule": "GPU nur wenn strikt schneller als CPU UND numerisch parit\u00e4tisch (rel<=1e-3); MIGraphX <= 200 MB"
+  },
   "models/aero/aero_12_48.onnx": {
     "backend": "rocm",
     "cpu_ms": 6805.124,
@@ -80,12 +89,12 @@
   },
   "models/sgmse_plus/sgmse_plus_core.onnx": {
     "backend": "rocm",
-    "cpu_ms": 1666.445,
-    "gpu_ms": 39.195,
-    "note": "",
-    "scan_s": 23.8,
+    "cpu_ms": 2112.81,
+    "gpu_ms": 46.216,
+    "note": "EP-Numerik weicht ab (rel=1.00e-01 vs CPU)",
+    "scan_s": 20.2,
     "size_mb": 251.4,
-    "verdict": "rocm"
+    "verdict": "cpu"
   },
   "models/singmos/singmos_pro.onnx": {
     "backend": "rocm",
