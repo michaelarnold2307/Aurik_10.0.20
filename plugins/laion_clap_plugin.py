@@ -257,6 +257,12 @@ class LAIONCLAPPlugin:
                         from backend.core.ml_device_manager import get_ort_providers as _get_prov  # pylint: disable=import-outside-toplevel  # noqa: I001
 
                         _clap_providers = _get_prov("LaionCLAP_ONNX")
+                        try:
+                            from backend.core.gpu_model_registry import apply_gpu_policy as _clap_policy  # pylint: disable=import-outside-toplevel  # noqa: I001
+
+                            _clap_providers = _clap_policy(_clap_providers, audio_enc_path)
+                        except Exception:
+                            pass
                     except Exception:
                         _clap_providers = ["CPUExecutionProvider"]
                     self._audio_session = ort.InferenceSession(

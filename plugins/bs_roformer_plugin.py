@@ -198,6 +198,12 @@ class BSRoFormerPlugin:
                         from backend.core.ml_device_manager import get_ort_providers as _get_prov
 
                         _bs_prov = _get_prov("BSRoFormer")
+                        try:
+                            from backend.core.gpu_model_registry import apply_gpu_policy as _bs_policy  # pylint: disable=import-outside-toplevel  # noqa: I001
+
+                            _bs_prov = _bs_policy(_bs_prov, model_path)
+                        except Exception:
+                            pass
                     except Exception:
                         _bs_prov = ["CPUExecutionProvider"]
                     session = ort.InferenceSession(

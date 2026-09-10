@@ -188,9 +188,21 @@ class DeepFilterNetV3Plugin:
                 prov = get_ort_providers("DeepFilterNetV3")
             except Exception:
                 prov = ["CPUExecutionProvider"]
-            self._enc = ort.InferenceSession(os.path.join(d, "enc.onnx"), sess_options=opts, providers=prov)
-            self._dec = ort.InferenceSession(os.path.join(d, "dec.onnx"), sess_options=opts, providers=prov)
-            self._erb_dec = ort.InferenceSession(os.path.join(d, "erb_dec.onnx"), sess_options=opts, providers=prov)
+            # §v10.40c: Datei-Policy pro Modell — enc/dec/erb_dec können im
+            # Scan unterschiedliche Verdicts haben (rocm/cpu).
+            def _prov_for(_fname):
+                _pv = prov
+                try:
+                    from backend.core.gpu_model_registry import apply_gpu_policy as _df_policy  # pylint: disable=import-outside-toplevel  # noqa: I001
+
+                    _pv = _df_policy(list(prov), os.path.join(d, _fname))
+                except Exception:
+                    pass
+                return _pv
+
+            self._enc = ort.InferenceSession(os.path.join(d, "enc.onnx"), sess_options=opts, providers=_prov_for("enc.onnx"))
+            self._dec = ort.InferenceSession(os.path.join(d, "dec.onnx"), sess_options=opts, providers=_prov_for("dec.onnx"))
+            self._erb_dec = ort.InferenceSession(os.path.join(d, "erb_dec.onnx"), sess_options=opts, providers=_prov_for("erb_dec.onnx"))
             # §P1-6 (2026-09-08): DFN3-Exporte haben keinen Alpha-Head (df_fc_a
             # ist im trainierten Forward unbenutzt). Ohne diese Prüfung crasht
             # _infer_spectral_chunk mit IndexError → stiller OMLSA-Fallback.

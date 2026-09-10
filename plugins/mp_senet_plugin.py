@@ -136,6 +136,12 @@ class MpSenetPlugin:
                 from backend.core.ml_device_manager import get_ort_providers as _get_prov
 
                 _mp_prov = _get_prov("MPSENet")
+                try:
+                    from backend.core.gpu_model_registry import apply_gpu_policy as _mps_policy  # pylint: disable=import-outside-toplevel  # noqa: I001
+
+                    _mp_prov = _mps_policy(_mp_prov, _ONNX_PATH)
+                except Exception:
+                    pass
             except Exception:
                 _mp_prov = ["CPUExecutionProvider"]
             self._session = ort.InferenceSession(

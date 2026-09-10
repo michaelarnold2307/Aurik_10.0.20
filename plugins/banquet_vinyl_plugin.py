@@ -111,6 +111,14 @@ class BanquetVinylPlugin:
                 from backend.core.ml_device_manager import get_ort_providers as _get_prov
 
                 _providers = _get_prov("BanquetVinyl")
+                try:
+                    from backend.core.gpu_model_registry import apply_gpu_policy as _bq_policy  # pylint: disable=import-outside-toplevel  # noqa: I001
+
+                    # Policy gegen das ORIGINAL-Modell (Registry-Schlüssel); geladen
+                    # wird die gepatchte Kopie mit identischen Gewichten.
+                    _providers = _bq_policy(_providers, self._model_path)
+                except Exception:
+                    pass
             except Exception:
                 _providers = ["CPUExecutionProvider"]
             self._session = ort.InferenceSession(

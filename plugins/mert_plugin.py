@@ -649,7 +649,17 @@ class MertPlugin:
             try:
                 if ort is None:
                     return
-                self._model = ort.InferenceSession(str(_onnx_path), providers=["CPUExecutionProvider"])
+                # §v10.40c: mert_330m.onnx ist rocm-verifiziert (1.32×) —
+                # Provider über Device-Manager, Datei-Policy über Registry
+                # (ersetzt den früheren CPU-only-Hartpfad).
+                try:
+                    from backend.core.ml_device_manager import get_ort_providers as _mert_prov  # pylint: disable=import-outside-toplevel  # noqa: I001
+                    from backend.core.gpu_model_registry import apply_gpu_policy as _mert_policy  # pylint: disable=import-outside-toplevel  # noqa: I001
+
+                    _providers = _mert_policy(_mert_prov("MERT-330M-HF"), _onnx_path)
+                except Exception:
+                    _providers = ["CPUExecutionProvider"]
+                self._model = ort.InferenceSession(str(_onnx_path), providers=_providers)
                 self._model_type = _model_type
                 logger.info("MERT ONNX geladen (%s): %s", _model_type, _onnx_path.name)
                 try:
