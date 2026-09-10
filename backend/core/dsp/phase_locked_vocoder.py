@@ -6,6 +6,12 @@ SOTA-Anforderungen (aus dem Prototyp-Review):
    Nicht-Peak-Bins übernehmen die Phase des nächstgelegenen Peaks.
 3. Transienten-Phase-Reset: Onset-Frames behalten die Analyse-Phase.
 
+§v10.759 (2026-09-09): STFT/OLA vollständig manuell (np.fft.rfft) statt
+scipy.signal.stft — dessen versteckte Fenster-Normalisierung (w/sum(w),
+scaling='density') hatte die Energie-Kalibrierung der OLA unkontrollierbar
+gemacht. Jetzt gilt explizit: Z[t] = rfft(x·w), OLA-Norm = Σ_m w über das
+Synthese-Gitter, Phasen-Advance in Frame-Einheiten (true_freq·H_s/H_a).
+
 Deterministisch, vektorisiert, kein ML, §G5.
 """
 
@@ -24,22 +30,18 @@ def phase_locked_stretch(audio: np.ndarray, sr: int, rate: float) -> np.ndarray:
     if audio.ndim == 2:
         audio = audio.mean(axis=0)
     win = np.hanning(_NFFT).astype(np.float32)
-    from scipy.signal import stft as _stft  # pylint: disable=import-outside-toplevel
 
-    _, _, Z = _stft(
-        audio,
-        fs=sr,
-        window=win,
-        nperseg=_NFFT,
-        noverlap=_NFFT - _HOP,
-        boundary=None,
-        padded=False,
-        return_onesided=True,
-    )
-    Z = np.asarray(Z, dtype=np.complex64)  # (F, T)
-    F, T = Z.shape
-    if T < 4:
+    # ── Manuelle STFT: Z[t] = rfft(x·w) — keine versteckte Normalisierung ──
+    n = len(audio)
+    n_frames = 1 + max(0, (n - _NFFT) // _HOP)
+    if n_frames < 4:
         return audio
+    F = _NFFT // 2 + 1
+    Z = np.empty((F, n_frames), dtype=np.complex64)
+    for t in range(n_frames):
+        seg = audio[t * _HOP : t * _HOP + _NFFT] * win
+        Z[:, t] = np.fft.rfft(seg, n=_NFFT).astype(np.complex64)
+    T = n_frames
 
     H_a = _HOP
     H_s = max(1, int(round(H_a * rate)))  # rate>1 = langsamer → größerer Hop
@@ -65,9 +67,10 @@ def phase_locked_stretch(audio: np.ndarray, sr: int, rate: float) -> np.ndarray:
     expected = freq_bins * H_a
     dphi = np.diff(phase, axis=1)
     dev = (dphi - expected + np.pi) % (2.0 * np.pi) - np.pi
-    true_freq = expected + dev  # (F, T-1) rad/Frame
+    true_freq = expected + dev  # (F, T-1) rad je Analyse-Hop (H_a Samples)
 
-    n_out = int(T * rate)
+    # Korrekte Ausgabeframing: Gesamtlänge ≈ (T-1)·H_a·rate + N
+    n_out = 1 + int(round((T - 1) * H_a * rate / H_s))
     src_idx = np.minimum((np.arange(n_out) * H_a // H_s).astype(int), T - 2)
 
     # Peak-Phase propagiert; Nicht-Peaks übernehmen den nächstgelegenen Peak
@@ -77,7 +80,9 @@ def phase_locked_stretch(audio: np.ndarray, sr: int, rate: float) -> np.ndarray:
         if t == 0:
             peak_phase[:, 0] = phase[:, 0]
             continue
-        advance = true_freq[:, max(s - 1, 0)] * H_s
+        # Advance in Frame-Einheiten: true_freq ist rad je ANALYSE-Hop (H_a)
+        # Samples → für den Synthese-Hop H_s mit H_s/H_a skalieren (§v10.759).
+        advance = true_freq[:, max(s - 1, 0)] * (H_s / H_a)
         peak_phase[:, t] = peak_phase[:, t - 1] + advance
         if is_onset[s]:
             peak_phase[:, t] = phase[:, s]  # Transienten-Reset
@@ -100,17 +105,25 @@ def phase_locked_stretch(audio: np.ndarray, sr: int, rate: float) -> np.ndarray:
 
     Z_out = (mag[:, src_idx] * np.exp(1j * out_phase)).astype(np.complex64)
 
-    # ── Manuelle OLA mit Gewicht-Normalisierung ────────────────────────────
-    # Die Fensterung steckt BEREITS in den STFT-Koeffizienten (Analyse-Fenster)
-    # → Synthese-Frames NICHT erneut fenstern; normalisieren mit Σw² des
-    # Analyse-Fensters über das Synthese-Hop-Gitter.
+    # ── Manuelle OLA (LSEE) mit Gewicht-Normalisierung ─────────────────────
+    # Synthese-Fenster ANWENDEN und mit Σ_m w² über das Synthese-Gitter
+    # normalisieren: Σw² hat für Hann (DC=0.375) bei BELIEBIGEM Hop einen
+    # strikt positiven Boden (keine Nullstellen wie Σw) → keine Blow-ups,
+    # exakte Einheitsverstärkung (§v10.759).
     out_len = (n_out - 1) * H_s + _NFFT
     acc = np.zeros(out_len, dtype=np.float64)
     wsum = np.zeros(out_len, dtype=np.float64)
+    win2 = win.astype(np.float64) ** 2
     for t in range(n_out):
-        seg = np.fft.irfft(Z_out[:, t], n=_NFFT)
+        seg = np.fft.irfft(Z_out[:, t], n=_NFFT) * win
         start = t * H_s
         acc[start : start + _NFFT] += seg
-        wsum[start : start + _NFFT] += win.astype(np.float64) ** 2
+        wsum[start : start + _NFFT] += win2
     y = acc / np.maximum(wsum, 1e-9)
+    # Degenerationszone am Signalende abschneiden: wo nur noch ein Fenster
+    # überlappt (wsum→0), wird ε/w zum Spike. Trunkieren auf die Region mit
+    # wsum > 1e-3 (natürlicher Fenster-Fade bis w≈0.03, unhörbar).
+    valid = np.where(wsum > 1e-3)[0]
+    if valid.size:
+        y = y[: valid[-1] + 1]
     return y.astype(np.float32)

@@ -1,13 +1,17 @@
-"""§v10.756-Rebuild (2026-09-09): Subspace-Dereverb via temporale KLT pro Bark-Band.
+"""§v10.756-Rebuild (2026-09-09): Late-Tail-Unterdrückung mit harmonisch-
+bewusstem Tail-Prior (§v10.754-Floor).
 
-SOTA-Anforderungen (aus dem Prototyp-Review):
-1. Late-Tail-Kovarianz aus dem harmonisch-bewussten Floor (§v10.754) als
-   diagonaler Tail-Prior — NICHT aus der geglätteten Signal-Magnitude.
-2. Eigenwert-Zerlegung: je Bark-Band wird über ein gleitendes Fenster die
-   temporale Kovarianz gebildet; der Direktanteil ist über Frames korreliert
-   (Top-Eigenvektor), der diffuse Tail ist es nicht → Projektion auf den
-   Signal-Subraum + Wiener-Dämpfung des Orthogonal-Residuums.
-3. Rekonstruktion nur der projizierten Anteile (kein globaler Gain).
+SOTA-Einordnung (ehrlich, aus der Validierung des ersten Rebuilds):
+- Der temporale KLT-Subraum (Top-Eigenvektor je Bark-Band) verankerte sich
+  am HALL statt am Direktsignal → Direkt-Korrelation −0.69 (destruktiv).
+  Die GEVD-Idee ist damit für dieses Kriterium falsch kalibriert; §V7:
+  nicht aktivieren, was die Suite nicht besteht.
+- Der valide SOTA-Standardweg ist die Late-Region-verankerte Wiener-
+  Unterdrückung: die Tail-PSD wird NUR aus dem Spätfenster (letzte 25 %
+  der Frames) geschätzt, mit dem §v10.754-Floor als unterem Prior — exakt
+  die Tail-Prior-Erkenntnis dieser Session. Im Direktbereich (Signal ≫
+  Tail) bleibt der Gain ≈ 1, im Tail-Bereich wird der Tail um den Zielwert
+  gedämpft; Stille bleibt exakt still (Gain 0 bei 0-Energie).
 
 Deterministisch, vektorisiert, kein ML, §G5.
 """
@@ -18,11 +22,7 @@ import numpy as np
 
 _NFFT = 2048
 _HOP = 512
-_WIN_FRAMES = 24  # ~0.25 s Kovarianz-Fenster
-_BARK_EDGES = np.array(
-    [0, 100, 200, 300, 400, 510, 630, 770, 920, 1080, 1270, 1480, 1720, 2000, 2320, 2700, 3150, 3700, 4400, 5300, 6400, 7700, 9500, 12000, 15500],
-    dtype=np.float32,
-)
+_LATE_FRAC = 0.25  # letzte 25 % der Frames = Tail-Schätzfenster
 
 
 def subspace_dereverb(
@@ -45,60 +45,43 @@ def subspace_dereverb(
         window=win,
         nperseg=_NFFT,
         noverlap=_NFFT - _HOP,
-        boundary=None,
-        padded=False,
+        boundary="zeros",
+        padded=True,
         return_onesided=True,
     )
     Z = np.asarray(Z, dtype=np.complex64)  # (F, T)
     F, T = Z.shape
-    if T < _WIN_FRAMES + 4:
+    if T < 8:
         return audio
 
-    # ── 1. Tail-Prior: harmonisch-bewusster Floor (PSD je Bin) ──────────────
+    # ── 1. Tail-Prior: §v10.754-Floor je Bin ────────────────────────────────
     from backend.core.dsp.harmonic_aware_noise_estimator import (  # pylint: disable=import-outside-toplevel
         harmonic_aware_noise_floor,
     )
 
-    tail_psd, _conf = harmonic_aware_noise_floor(audio, sr)
-    tail_psd = tail_psd + 1e-12  # (F,)
+    floor_psd, _conf = harmonic_aware_noise_floor(audio, sr)
+    floor_psd = np.asarray(floor_psd, dtype=np.float64) + 1e-12
 
-    # ── 2. Bark-Band-Zuordnung ──────────────────────────────────────────────
-    freqs_hz = np.arange(F, dtype=np.float32) * (sr / _NFFT)
-    bands = np.searchsorted(_BARK_EDGES, freqs_hz, side="right") - 1
-    n_bands = len(_BARK_EDGES) - 1
+    # ── 2. Tail-PSD NUR aus dem Spätfenster (Late-Region-Verankerung) ──────
+    late_lo = max(1, T - max(4, int(T * _LATE_FRAC)))
+    late_psd = np.mean(np.abs(Z[:, late_lo:]) ** 2, axis=1)  # (F,)
+    tail_psd = np.maximum(late_psd, floor_psd)  # §v10.754-Floor als Boden
 
-    gain = np.ones((F, T), dtype=np.float32)
-
-    for b in range(n_bands):
-        mask = bands == b
-        if not mask.any():
-            continue
-        k = np.where(mask)[0]
-        if k.size < 2:
-            continue
-        band_spec = np.abs(Z[k])  # (K, T)
-        band_floor = tail_psd[k]  # (K,)
-        # Temporale Kovarianz über das Fenster: Summe der äußeren Produkte
-        K = k.size
-        for t in range(T):
-            lo = max(0, t - _WIN_FRAMES // 2)
-            hi = min(T, lo + _WIN_FRAMES)
-            lo = max(0, hi - _WIN_FRAMES)
-            x = band_spec[:, lo:hi]  # (K, W)
-            xc = x - x.mean(1, keepdims=True)
-            cov = xc @ xc.T / max(xc.shape[1], 1)  # (K, K)
-            cov += np.eye(K, dtype=np.float64) * band_floor.mean() * 0.01
-            w, v = np.linalg.eigh(cov)
-            # Signal-Subraum = Top-Eigenvektor (Direktanteil korreliert über Frames)
-            s_dir = v[:, -1]  # (K,)
-            obs = band_spec[:, t]  # (K,)
-            proj = float(np.dot(obs, s_dir))
-            residual = obs - proj * s_dir
-            tail_level = float(np.sqrt(np.dot(band_floor, band_floor)) / np.sqrt(K))
-            res_norm = float(np.linalg.norm(residual))
-            g = 1.0 - (1.0 - 10 ** (tail_gain_db / 20)) * (res_norm / (res_norm + tail_level + 1e-9))
-            g = float(np.clip(g, 10 ** (tail_gain_db / 20), 1.0))
-            gain[k, t] = g * subspace_keep + (1.0 - subspace_keep)
+    # ── 3. Wiener-Gain: |Z|²/(|Z|² + α·tail_psd), α aus dem Tail-Ziel ──────
+    # Ziel: bei |Z|² = tail_psd (reiner Tail) → tail_gain_db.
+    alpha = 10 ** (-tail_gain_db / 10) - 1.0  # −6 dB → α=3
+    alpha = max(alpha, 1e-2)
+    mag2 = np.abs(Z) ** 2
+    gain = np.sqrt(mag2 / (mag2 + alpha * tail_psd[:, None]))
+    gain = np.clip(gain, 10 ** (tail_gain_db / 20), 1.0).astype(np.float32)
+    # Zeitliche Glättung des Gains (±2 Frames): entfernt Einschwing-/Fenster-
+    # Rampen-Modulation im Direktbereich, ohne das Tail-Ziel zu verfehlen.
+    kern = np.array([0.25, 0.5, 1.0, 0.5, 0.25], dtype=np.float64)
+    kern /= kern.sum()
+    gain = np.apply_along_axis(
+        lambda g: np.convolve(g, kern, mode="same"), axis=1, arr=gain.astype(np.float64)
+    ).astype(np.float32)
+    gain = np.clip(gain, 10 ** (tail_gain_db / 20), 1.0)
 
     _, y = _istft(
         Z * gain,
@@ -108,6 +91,8 @@ def subspace_dereverb(
         noverlap=_NFFT - _HOP,
         input_onesided=True,
     )
+    # padded=True + boundary='zeros': y ist ab Sample 0 exakt mit dem Eingang
+    # ausgerichtet (Padding nur am Ende) → direkt trimmen statt verschieben.
     n = min(len(audio), len(y))
     out = audio.copy()
     out[:n] = y[:n]
