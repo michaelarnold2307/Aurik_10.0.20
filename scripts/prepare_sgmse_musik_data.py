@@ -133,7 +133,11 @@ if __name__ == "__main__":
     parser.add_argument("--chunk", type=float, default=4.0)
     parser.add_argument("--snr", type=str, default="5,20", help="SNR range as lo,hi")
     parser.add_argument("--samples-per-file", type=int, default=10)
+    parser.add_argument("--seed", type=int, default=42, help="Determinismus (§G5): Split/Noise-Seed")
     args = parser.parse_args()
+
+    random.seed(args.seed)
+    np.random.seed(args.seed)
 
     snr_lo, snr_hi = map(float, args.snr.split(","))
     prepare(args.musdb, args.output, args.sr, args.chunk, (snr_lo, snr_hi), samples_per_file=args.samples_per_file)

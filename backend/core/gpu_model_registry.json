@@ -1,4 +1,13 @@
 {
+  "models/aero/aero_12_48.onnx": {
+    "backend": "rocm",
+    "cpu_ms": 6805.124,
+    "gpu_ms": 972.97,
+    "note": "MIGraphX: RuntimeError",
+    "scan_s": 63.8,
+    "size_mb": 77.6,
+    "verdict": "rocm"
+  },
   "models/apollo/apollo_core.onnx": {
     "backend": "rocm",
     "cpu_ms": 1700.3,
@@ -25,6 +34,33 @@
     "size_mb": 272.0,
     "verdict": "rocm"
   },
+  "models/gacela/model/gacela_core.onnx": {
+    "backend": "rocm",
+    "cpu_ms": 41.247,
+    "gpu_ms": 1.21,
+    "note": "MIGraphX OK",
+    "scan_s": 41.0,
+    "size_mb": 0.1,
+    "verdict": "rocm"
+  },
+  "models/harmonic_inpainting/inpainting_best.onnx": {
+    "backend": "rocm",
+    "cpu_ms": 23.976,
+    "gpu_ms": 8.457,
+    "note": "",
+    "scan_s": 3.9,
+    "size_mb": 769.2,
+    "verdict": "rocm"
+  },
+  "models/harmonic_inpainting/inpainting_mask_best.onnx": {
+    "backend": "rocm",
+    "cpu_ms": 23.721,
+    "gpu_ms": 11.735,
+    "note": "",
+    "scan_s": 3.9,
+    "size_mb": 770.7,
+    "verdict": "rocm"
+  },
   "models/melbandroformer/melbandroformer_optimized.onnx": {
     "backend": "rocm",
     "cpu_ms": 3756.62,
@@ -40,6 +76,24 @@
     "gpu_ms": 419.1,
     "note": "manuell gemessen (5-s-Eingang; Scan-Dummy rank-inkompatibel)",
     "scan_s": 3.1,
+    "verdict": "rocm"
+  },
+  "models/sgmse_plus/sgmse_plus_core.onnx": {
+    "backend": "rocm",
+    "cpu_ms": 1666.445,
+    "gpu_ms": 39.195,
+    "note": "",
+    "scan_s": 23.8,
+    "size_mb": 251.4,
+    "verdict": "rocm"
+  },
+  "models/singmos/singmos_pro.onnx": {
+    "backend": "rocm",
+    "cpu_ms": 1323.313,
+    "gpu_ms": 66.244,
+    "note": "MIGraphX: RuntimeError",
+    "scan_s": 15.0,
+    "size_mb": 2.7,
     "verdict": "rocm"
   },
   "models/wav2vec2/wav2vec2_forced_alignment.onnx": {
