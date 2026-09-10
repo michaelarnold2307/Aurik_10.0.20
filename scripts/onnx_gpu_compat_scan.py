@@ -21,6 +21,7 @@ Aufruf:  .venv_aurik/bin/python scripts/onnx_gpu_compat_scan.py [--limit N]
 from __future__ import annotations
 
 import argparse
+import gc
 import json
 import sys
 import time
@@ -45,6 +46,13 @@ _INPUT_OVERRIDES: dict[str, dict[str, tuple[tuple[int, ...], str]]] = {
         "audio": ((1, 1, 160000), "float32"),
         "audio_length": ((1,), "int64"),
         "domain_id": ((1,), "int64"),
+    },
+    # vae_decoder (2026-09-10): _DEFAULT_DIM=256 erzeugt ein
+    # (1,8,256,256)-Latent → 1024×1024-Mel, ~80 s/CPU-Lauf und VRAM-Spitzen
+    # auf ROCm (2× System-Crash im Scan). Plugin-Realform (1,8,8,128) wie in
+    # plugins/audioldm2_plugin.py (mel 64 Bins / 1024 Frames).
+    "models/audioldm2/vae_decoder.onnx": {
+        "latent": ((1, 8, 8, 128), "float32"),
     },
 }
 
@@ -193,6 +201,12 @@ def _scan_model(path: Path, overrides: dict | None = None) -> dict:
         "note": "",
     }
     _ok_backends: set[str] = set()
+    # §Unload (2026-09-10): Referenzen vorab definieren, damit jeder Exit-Pfad
+    # die Sessions freigeben kann — ROCm/CPU-Allokationen würden sonst über
+    # 63 Modelle × 3 Sessions akkumulieren → OOM/System-Crash.
+    _cpu = None
+    _rocm = None
+    _mgx = None
 
     # 1) CPU-Baseline
     try:
@@ -206,6 +220,8 @@ def _scan_model(path: Path, overrides: dict | None = None) -> dict:
         _entry["cpu_ms"] = round(_bench(_cpu, _inputs), 3)
     except Exception as exc:
         _entry["note"] = f"CPU-Load fehlgeschlagen: {type(exc).__name__}"
+        _cpu = None
+        gc.collect()
         return _entry
 
     # 2) ROCm EP
@@ -260,7 +276,29 @@ def _scan_model(path: Path, overrides: dict | None = None) -> dict:
             if _entry["backend"] in _ok_backends:
                 _entry["note"] = _join_note(_entry["note"], "CPU schneller/gleich")
             _entry["verdict"] = "cpu"
+    # §Unload: Sessions dieses Modell-Tests freigeben, BEVOR das nächste Modell
+    # geladen wird.
+    _cpu = None
+    _rocm = None
+    _mgx = None
+    gc.collect()
     return _entry
+
+
+def _write_registry(_registry: dict) -> dict[str, int]:
+    """Registry mit _summary persistieren (crash-resistent: nach jedem Modell)."""
+    _counts: dict[str, int] = {"migraphx": 0, "rocm": 0, "cpu": 0}
+    for _v in _registry.values():
+        if isinstance(_v, dict) and _v.get("verdict") in _counts:
+            _counts[_v["verdict"]] += 1
+    _registry["_summary"] = {
+        "generated_by": "scripts/onnx_gpu_compat_scan.py",
+        "rule": "GPU nur wenn strikt schneller als CPU UND numerisch paritätisch (rel<=1e-3); MIGraphX <= 200 MB",
+        "counts": _counts,
+    }
+    _REGISTRY_OUT.parent.mkdir(parents=True, exist_ok=True)
+    _REGISTRY_OUT.write_text(json.dumps(_registry, indent=2, sort_keys=True), encoding="utf-8")
+    return _counts
 
 
 def main() -> int:
@@ -272,6 +310,18 @@ def main() -> int:
         default=None,
         help="Nur dieses Modell scannen (relativer Pfad, z. B. models/sgmse_plus/sgmse_plus_core.onnx)",
     )
+    _ap.add_argument(
+        "--start",
+        type=int,
+        default=1,
+        help="Erst ab diesem 1-basierten Index der VOLLEN Liste scannen (Resume nach Crash).",
+    )
+    _ap.add_argument(
+        "--skip",
+        type=str,
+        default=None,
+        help="Kommagetrennte Teilpfade; passende Modelle werden übersprungen (z. B. audioldm2).",
+    )
     _args = _ap.parse_args()
 
     _models = _collect_models(None if _args.model else _args.limit)
@@ -280,6 +330,19 @@ def main() -> int:
         if not _models:
             print(f"Modell nicht gefunden: {_args.model}")
             return 2
+    if _args.start > 1 and not _args.model:
+        _models = _models[_args.start - 1 :]
+        print(f"Resume: starte bei Index {_args.start} der vollen Liste.")
+    _skips = [s.strip() for s in (_args.skip or "").split(",") if s.strip()]
+    if _skips and not _args.model:
+        _before = len(_models)
+        _models = [
+            p
+            for p in _models
+            if not any(s in p.relative_to(_REPO_ROOT).as_posix() for s in _skips)
+        ]
+        if _before != len(_models):
+            print(f"Übersprungen via --skip: {_before - len(_models)} Modell(e).")
     print(f"Scan: {len(_models)} ONNX-Modelle")
     # Bestehende Registry mergen, damit Teil-Scans (--model) keine Einträge löschen.
     _registry: dict = {}
@@ -300,19 +363,12 @@ def main() -> int:
             f"[{_i:2d}/{len(_models)}] {_rel:<70} → {_entry['verdict']:<9} "
             f"(cpu={_entry['cpu_ms']}ms, gpu={_entry['gpu_ms']}ms, {_entry['note'][:40]})"
         )
+        # §Crash-Resilienz: Ergebnis nach JEDEM Modell persistieren — stirbt der
+        # Lauf mittendrin, bleiben alle bisherigen Verdicts erhalten.
+        _write_registry(_registry)
 
     # Zählung aus der GEMERGTEN Registry (bei Teil-Scans sonst verfälscht).
-    _counts: dict[str, int] = {"migraphx": 0, "rocm": 0, "cpu": 0}
-    for _v in _registry.values():
-        if isinstance(_v, dict) and _v.get("verdict") in _counts:
-            _counts[_v["verdict"]] += 1
-    _registry["_summary"] = {
-        "generated_by": "scripts/onnx_gpu_compat_scan.py",
-        "rule": "GPU nur wenn strikt schneller als CPU UND numerisch paritätisch (rel<=1e-3); MIGraphX <= 200 MB",
-        "counts": _counts,
-    }
-    _REGISTRY_OUT.parent.mkdir(parents=True, exist_ok=True)
-    _REGISTRY_OUT.write_text(json.dumps(_registry, indent=2, sort_keys=True), encoding="utf-8")
+    _counts = _write_registry(_registry)
     print(f"\nFertig: {_counts} → {_REGISTRY_OUT}")
     return 0
 
