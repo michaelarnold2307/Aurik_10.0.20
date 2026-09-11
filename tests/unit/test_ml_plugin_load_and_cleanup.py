@@ -361,64 +361,33 @@ class TestBsRoformerPlugin:
 class TestDemucsV4Plugin:
     """HTDemucs (Legacy-Fallback, experimental): Laden, finite Stems, Budget sauber.
 
-    §4.4: Primär-Separator ist MDX23C (Kim_Vocal_2). HTDemucs bleibt als Fallback.
+    §4.4: Primär-Separator ist BS-RoFormer; Demucs v4 bleibt Fallback (§v10.739 MDX23C entfernt).
     """
 
     def test_01_loads_without_crash(self):
         _reset_budget()
-        from plugins.mdx23c_plugin import MDX23CPlugin
+        from plugins.demucs_v4_plugin import DemucsV4Plugin
 
-        p = MDX23CPlugin()
+        p = DemucsV4Plugin()
         assert p is not None
-        _cleanup(["MDX23C_vocals", "MDX23C_inst"], "plugins.mdx23c_plugin")
+        _cleanup(["DemucsV4"], "plugins.demucs_v4_plugin")
 
     def test_02_separate_finite(self):
         _reset_budget()
-        from plugins.mdx23c_plugin import MDX23CPlugin
+        from plugins.demucs_v4_plugin import DemucsV4Plugin
 
-        p = MDX23CPlugin()
+        p = DemucsV4Plugin()
         audio = _signal(2.0)
-        result = p.process(audio, SR, stem="vocals")
-        _assert_finite(np.asarray(result, dtype=np.float32), "MDX23C stem=vocals")
-        _cleanup(["MDX23C_vocals", "MDX23C_inst"], "plugins.mdx23c_plugin")
+        result = p.process(audio, SR)["vocals"]
+        _assert_finite(np.asarray(result, dtype=np.float32), "DemucsV4 stem=vocals")
+        _cleanup(["DemucsV4"], "plugins.demucs_v4_plugin")
 
     def test_03_budget_zero_after_cleanup(self):
         _reset_budget()
-        from plugins.mdx23c_plugin import MDX23CPlugin
+        from plugins.demucs_v4_plugin import DemucsV4Plugin
 
-        MDX23CPlugin()
-        _cleanup(["MDX23C_vocals", "MDX23C_inst"], "plugins.mdx23c_plugin")
-        assert _budget_total() == 0.0
-
-
-class TestMdx23cPlugin:
-    """MDX23C: Vocal-Separation, HPSS-Fallback, Budget-Cleanup."""
-
-    def test_01_loads_without_crash(self):
-        _reset_budget()
-        from plugins.mdx23c_plugin import MDX23CPlugin
-
-        p = MDX23CPlugin()
-        assert p is not None
-        _cleanup(["MDX23C_vocals", "MDX23C_instruments"], "plugins.mdx23c_plugin")
-
-    def test_02_separate_finite(self):
-        _reset_budget()
-        from plugins.mdx23c_plugin import MDX23CPlugin
-
-        p = MDX23CPlugin()
-        audio = _signal(2.0)
-        # MDX23CPlugin nutzt .process() (nicht .separate())
-        out = p.process(audio, SR, stem="vocals")
-        _assert_finite(np.nan_to_num(np.asarray(out, dtype=np.float32), nan=0.0), "MDX23C.process")
-        _cleanup(["MDX23C_vocals", "MDX23C_instruments"], "plugins.mdx23c_plugin")
-
-    def test_03_budget_zero_after_cleanup(self):
-        _reset_budget()
-        from plugins.mdx23c_plugin import MDX23CPlugin
-
-        MDX23CPlugin()
-        _cleanup(["MDX23C_vocals", "MDX23C_instruments"], "plugins.mdx23c_plugin")
+        DemucsV4Plugin()
+        _cleanup(["DemucsV4"], "plugins.demucs_v4_plugin")
         assert _budget_total() == 0.0
 
 

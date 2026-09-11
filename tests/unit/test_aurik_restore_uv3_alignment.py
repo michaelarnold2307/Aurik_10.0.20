@@ -82,7 +82,6 @@ class TestAurikRestoreUv3Alignment:
 
         monkeypatch.setitem(
             sys.modules,
-            "plugins.mdx23c_plugin",
             types.SimpleNamespace(MDX23CPlugin=lambda: _FakeMdx()),
         )
         import backend.aurik_restore as ar

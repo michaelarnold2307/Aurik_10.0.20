@@ -116,7 +116,6 @@ def test_demucs_stem_split_sums_all_non_vocal_stems(monkeypatch):
         def separate(
             audio: np.ndarray,
             sr: int,
-            prefer_mdx23c: bool = True,
         ) -> dict[str, np.ndarray]:  # pylint: disable=unused-argument
             return {
                 "vocals": np.full_like(audio, 0.10, dtype=np.float32),
@@ -129,9 +128,6 @@ def test_demucs_stem_split_sums_all_non_vocal_stems(monkeypatch):
     monkeypatch.setattr(
         "plugins.bs_roformer_plugin.get_bs_roformer",
         lambda: (_ for _ in ()).throw(RuntimeError("roformer unavailable")),
-    )
-    monkeypatch.setattr(
-        "plugins.mdx23c_plugin.get_mdx23c_plugin", lambda: (_ for _ in ()).throw(RuntimeError("mdx unavailable"))
     )
     monkeypatch.setattr(
         "backend.core.dsp.sota_vocal_model_router.SotaVocalModelRouter._available_memory_gb",

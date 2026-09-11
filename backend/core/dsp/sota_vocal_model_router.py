@@ -137,7 +137,7 @@ class SotaVocalModelRouter:
                     attempts.append("demucs_v4:no_native_session")
                     return None
                 try:
-                    stems = demucs.separate(reference, sr, prefer_mdx23c=False)
+                    stems = demucs.separate(reference, sr)
                 except TypeError:
                     # Backward compatibility for older plugin stubs in tests.
                     stems = demucs.separate(reference, sr)

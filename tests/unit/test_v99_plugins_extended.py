@@ -620,7 +620,6 @@ class TestPluginsIntegration:
         ("plugins.hifigan_plugin", "HiFiGANPlugin"),
         ("plugins.hybrid_restoration", "HybridRestorationPlugin"),
         ("plugins.matchering_plugin", "MatcheringPlugin"),
-        ("plugins.mdx23c_plugin", "MDX23CPlugin"),
         ("plugins.panns_plugin", "PANNSPlugin"),
         ("plugins.phoneme_detector", "PhonemeDetector"),
         ("plugins.wpe_plugin", "WpePlugin"),

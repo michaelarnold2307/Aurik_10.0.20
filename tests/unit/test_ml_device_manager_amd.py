@@ -267,7 +267,6 @@ class TestFp16PluginAudit:
         "BSRoFormer": "plugins/bs_roformer_plugin.py",
         "MDXNet": "plugins/uvr_mdxnet_plugin.py",
         "DemucsV4": "plugins/demucs_v4_plugin.py",
-        "MDX23C": "plugins/mdx23c_plugin.py",
         "MPSENet": "plugins/mp_senet_plugin.py",
         "PANNs": "plugins/panns_plugin.py",
         "LaionCLAP_ONNX": "plugins/laion_clap_plugin.py",

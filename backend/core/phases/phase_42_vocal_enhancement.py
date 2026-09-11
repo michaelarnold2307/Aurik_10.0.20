@@ -1394,7 +1394,7 @@ class VocalEnhancement(PhaseInterface):
         quality_mode: str = "quality",
         quality_first_unleashed: bool = False,
     ) -> "tuple[np.ndarray, np.ndarray, float, str] | None":
-        """Vocal/Instrument stem separation cascade: bs_roformer → demucs_v4 → mdx23c → dsp.
+        """Vocal/Instrument stem separation cascade: bs_roformer → demucs_v4 → dsp.
 
         Returns (vocals, instruments, vocal_weight, model_name) or None on total failure.
         Both stems match the input shape (mono [n] or stereo [n, 2]).
@@ -1408,7 +1408,7 @@ class VocalEnhancement(PhaseInterface):
         _prefer_demucs_native = self._prefer_demucs_native(material)
 
         # §v10.60 Depth-Aware Fast-Path: Bei transfer_depth ≥ 3 sind ML-Stem-Separation-
-        # Modelle (MelBandRoformer, MDX23C) für moderne, saubere Produktionen trainiert.
+        # Modell (MelBandRoformer) für moderne, saubere Produktionen trainiert.
         # Auf 4-fach degradierten Signalen (reel→vinyl→cassette→mp3) produzieren sie
         # SDRi < -1 dB → Fallback-Kaskade → HPSS. Zeitverschwendung + Artefakt-Risiko.
         # Direkt HPSS + Wiener — zuverlässig, schnell, keine ML-Halluzination.
@@ -1443,7 +1443,7 @@ class VocalEnhancement(PhaseInterface):
         # ── 1: BSRoFormer (MelBandRoformer, falls Modell verfügbar) ──────────
         if _skip_roformer_reason is not None:
             logger.info(
-                "Verarbeitungsschritt42 Stem-Sep: bs_roformer übersprungen (%s) — direkter Ersatzpfad auf MDX23C/NMF/HPSS",
+                "Verarbeitungsschritt42 Stem-Sep: bs_roformer übersprungen (%s) — direkter Ersatzpfad auf NMF/HPSS",
                 _skip_roformer_reason,
             )
         else:
@@ -1473,7 +1473,7 @@ class VocalEnhancement(PhaseInterface):
                     _sdri_db = float(getattr(sep, "sdri_db", 0.0))
                     if _sdri_db < -1.0:
                         logger.warning(
-                            "Verarbeitungsschritt42 Stem-Sep: bs_roformer SDRi=%.1f dB < -1.0 dB → Ersatzpfad auf MDX23C/NMF/HPSS",
+                            "Verarbeitungsschritt42 Stem-Sep: bs_roformer SDRi=%.1f dB < -1.0 dB → Ersatzpfad auf NMF/HPSS",
                             _sdri_db,
                         )
                         raise ValueError(f"bs_roformer_low_sdri:{_sdri_db:.2f}")
@@ -1507,7 +1507,7 @@ class VocalEnhancement(PhaseInterface):
         if _prefer_demucs_native:
             if _avail_gb is not None and _avail_gb < 5.0:
                 logger.info(
-                    "Verarbeitungsschritt42 Stem-Sep: demucs_v4 übersprungen (low_ram_%.1fGB) — Ersatzpfad auf MDX23C/NMF/HPSS",
+                    "Verarbeitungsschritt42 Stem-Sep: demucs_v4 übersprungen (low_ram_%.1fGB) — Ersatzpfad auf NMF/HPSS",
                     _avail_gb,
                 )
             else:
@@ -1519,7 +1519,7 @@ class VocalEnhancement(PhaseInterface):
                         logger.debug("Verarbeitungsschritt42 demucs_v4 übersprungen: keine native HTDemucs-Sitzung")
                     else:
                         try:
-                            voc_mono, inst_mono = demucs.separate_vocals(audio_mono, sr, prefer_mdx23c=False)
+                            voc_mono, inst_mono = demucs.separate_vocals(audio_mono, sr)
                         except TypeError:
                             # Backward compatibility for older plugin stubs in tests.
                             voc_mono, inst_mono = demucs.separate_vocals(audio_mono, sr)
@@ -1535,11 +1535,11 @@ class VocalEnhancement(PhaseInterface):
                 except Exception as exc:
                     logger.debug("Verarbeitungsschritt42 demucs_v4 fehlgeschlagen: %s", exc)
 
-        # ── 3: MDX23C fallback (Kim_Vocal_2) ─────────────────────────────────
+        # ── 3: MDX23C entfernt (§v10.739) — Ersatzpfad NMF-β/HPSS ───────────
         _plm42_mdx = None
         if _avail_gb is not None and _avail_gb < 3.0:
             logger.info(
-                "Verarbeitungsschritt42 Stem-Sep: mdx23c übersprungen (low_ram_%.1fGB) — Ersatzpfad auf NMF/HPSS",
+                "Verarbeitungsschritt42 Stem-Sep: Ersatzpfad übersprungen (low_ram_%.1fGB) — Ersatzpfad auf NMF/HPSS",
                 _avail_gb,
             )
         else:
@@ -1599,7 +1599,7 @@ class VocalEnhancement(PhaseInterface):
     ) -> "tuple[np.ndarray, np.ndarray, float, str] | None":
         """§v10.60 HPSS+Wiener Fast-Path für depth≥3.
 
-        Überspringt die gesamte ML-Kaskade (MelBandRoformer→MDX23C→NMF-β)
+        Überspringt die gesamte ML-Kaskade (MelBandRoformer→NMF-β)
         und verwendet direkt HPSS mit Wiener-Stereo-Rekonstruktion.
         Zuverlässig auf degradierten Signalen, keine ML-Halluzination.
         """

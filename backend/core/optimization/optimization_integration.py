@@ -409,7 +409,6 @@ class OptimizationIntegration:
         elif material_type == "digital":
             strategy["recommended_models"] = [
                 "mp_senet",
-                "mdx23c",
             ]  # Digital artifacts — §4.4: MP-SENet 2023 ersetzt DCCRN
             strategy["recommended_dsp_chain"] = ["dithering_removal", "eq_digital_correction", "limiter"]
 

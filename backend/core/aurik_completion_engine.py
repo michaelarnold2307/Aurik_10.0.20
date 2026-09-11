@@ -288,7 +288,7 @@ ALTERNATIVE_PLUGINS_ACTIVE = {
         ("mp_senet", "MpSenet"),
         ("wpe", "WPE"),
     ],
-    "declip": [("mdx23c", "MDX23C"), ("bs_roformer", "BSRoFormer")],
+    "declip": [("bs_roformer", "BSRoFormer")],
     "source_separation": [("demucs", "HTDemucs"), ("uvr_mdxnet", "UVRMDXNet"), ("gacela", "GACELA")],
     "mastering_chain": [("matchering", "Matchering"), ("panns", "PANNs")],
 }

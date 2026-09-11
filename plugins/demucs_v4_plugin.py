@@ -117,7 +117,7 @@ class DemucsV4Plugin:
 
     # ── Public API ───────────────────────────────────────────────────────────
 
-    def separate(self, audio: np.ndarray, sr: int, prefer_mdx23c: bool = False) -> dict[str, np.ndarray]:
+    def separate(self, audio: np.ndarray, sr: int) -> dict[str, np.ndarray]:
         """Stem-Separation: gibt Dict stem→audio zurück (selbe SR wie Eingang).
 
         Args:
@@ -172,10 +172,9 @@ class DemucsV4Plugin:
         self,
         audio: np.ndarray,
         sr: int,
-        prefer_mdx23c: bool = True,
     ) -> tuple[np.ndarray, np.ndarray]:
         """Gibt (vocals, instruments) zurück (Shortcut für 2-Stem-Betrieb)."""
-        stems = self.separate(audio, sr, prefer_mdx23c=prefer_mdx23c)
+        stems = self.separate(audio, sr)
         vocals = stems.get("vocals", audio)
         non_vocals = ["drums", "bass", "other", "guitar", "piano"]
         inst_arrays = [stems[k] for k in non_vocals if k in stems]

@@ -1675,7 +1675,6 @@ class TestPhase42VocalEnhancement:
         monkeypatch.setattr(
             mod42.psutil if hasattr(mod42, "psutil") else __import__("psutil"), "virtual_memory", lambda: _VM()
         )
-        monkeypatch.setattr("plugins.mdx23c_plugin.get_mdx23c_plugin", lambda: _FakeMDX())
         monkeypatch.setattr("plugins.bs_roformer_plugin.get_bs_roformer", _boom)
 
         long_stereo = np.tile(np.array([[0.1, 0.05]], dtype=np.float32), (SR * 121, 1))
@@ -1746,7 +1745,6 @@ class TestPhase42VocalEnhancement:
             "plugins.bs_roformer_plugin.get_bs_roformer", lambda: (_ for _ in ()).throw(RuntimeError("no roformer"))
         )
         monkeypatch.setattr("plugins.demucs_v4_plugin.get_demucs_plugin", lambda: _FakeDemucs())
-        monkeypatch.setattr("plugins.mdx23c_plugin.get_mdx23c_plugin", _boom_mdx)
 
         short_stereo = np.tile(np.array([[0.1, 0.05]], dtype=np.float32), (SR * 2, 1))
         stems = self.phase._try_stem_separation(short_stereo, SR, material="live")  # type: ignore[arg-type]

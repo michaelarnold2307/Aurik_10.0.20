@@ -9,7 +9,7 @@ unterdrückt mit stemspezifischen Parametern.
 
 Algorithmus:
     1. BS-RoFormer Stem-Separation → vocals + other (Begleitung)
-       (Fallback: MDX23C Kim_Vocal_2 → BSRoFormer-Fallback)
+       (Fallback: HTDemucs → BS-RoFormer-Fallback)
     2. Confidence-Gate: SDRi-Schätzwert < 5.0 dB → skip (Separation zu unsicher)
     3. Vokal-Stem → DFN v3 II mit energy_bias=−6 dB (VFA-Schutzzone-aware)
     4. Begleitungs-Stem → DFN v3 II mit energy_bias=−9 dB (Instrumental-Optimum)
@@ -34,9 +34,9 @@ Aktivierungs-Gates:
 
 Wissenschaftliche Grundlage:
     - BS-RoFormer (Lu et al. 2023): Band-Split RoPE Transformer, beste SDR auf MusDB18
-    - MDX23C (Kim et al.): Fallback, Kim_Vocal_2 Modell
+    - HTDemucs v4: Fallback
     - DeepFilterNet v3 (Schröter et al. 2022/2023): state-of-the-art NR für Sprache/Musik
-    - §4.4a Spec: BSRoFormer = Primär, MDX23C = Fallback (Spec 04, SOTA-Matrix)
+    - §4.4a Spec: BSRoFormer = Primär, HTDemucs = Fallback (Spec 04, SOTA-Matrix)
 
 Author: Aurik Development Team
 Version: 1.0.0 (v10.0.0)
@@ -122,7 +122,7 @@ class StemTargetedNRPhase(PhaseInterface):
 
     @staticmethod
     def _get_separator():
-        """Lazy-load BS-RoFormer (primär) oder MDX23C (Fallback)."""
+        """Lazy-load BS-RoFormer (primär) oder HTDemucs (Fallback)."""
         try:
             from plugins.bs_roformer_plugin import get_bs_roformer
 
@@ -136,9 +136,9 @@ class StemTargetedNRPhase(PhaseInterface):
 
             _sep_fb = get_htdemucs_plugin()
             if _sep_fb is not None:
-                return _sep_fb, "mdx23c_fallback"
+                return _sep_fb, "htdemucs_fallback"
         except Exception as _e2:
-            logger.debug("Verarbeitungsschritt_66: MDX23C-Ersatzpfad nicht verfügbar: %s", _e2)
+            logger.debug("Verarbeitungsschritt_66: HTDemucs-Ersatzpfad nicht verfügbar: %s", _e2)
         return None, "unavailable"
 
     @staticmethod

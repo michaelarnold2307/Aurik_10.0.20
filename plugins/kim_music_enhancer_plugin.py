@@ -1,7 +1,7 @@
 """
 §v10.121: KIM Music Enhancer Plugin — MDX23C-kompatibel (§B12).
 
-Format (aus mdx23c_plugin.py reverse-engineered):
+Format (aus dem entfernten MDX23C-Plugin reverse-engineered, §v10.739):
   Input:  STFT [B=1, 4, 3072, 256] — L-real, L-imag, R-real, R-imag
   Output: Maske [B=1, 4, 3072, 256] — auf Input multipliziert
   SR=44100, n_fft=6144, hop=1024, dim_t=256, overlap=128

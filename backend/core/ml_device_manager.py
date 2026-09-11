@@ -373,7 +373,6 @@ _HEAVY_ML_PLUGINS: frozenset[str] = frozenset(
         "BSRoFormer",  # bs_roformer_plugin — stem separation ONNX (860 MB)
         "MDXNet",  # uvr_mdxnet_plugin — stem separation ONNX (~1.2 GB)
         "DemucsV5",  # demucs_v5_wrapper — stem separation
-        "MDX23C",  # mdx23c wrapper — stem separation
         "DemucsV4",  # demucs_v4_plugin — htdemucs_6s ONNX (~500 MB)
         # --- Neural Vocoders / Enhancement ---
         "BigVGAN",  # bigvgan_v2_plugin — neural vocoder (400 MB)
@@ -427,7 +426,6 @@ _FP16_ELIGIBLE_PLUGINS: frozenset[str] = frozenset(
         "DeepFilterNetV3",
         # PyTorch models where .half() is safe on AMD ROCm:
         "BigVGAN",
-        "MDX23C",
     }
 )
 

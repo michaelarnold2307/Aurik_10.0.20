@@ -15324,7 +15324,7 @@ class UnifiedRestorerV3:
                 _vocals = _stems.get("vocals")
                 _instruments = _stems.get("instruments")
                 if _vocals is not None and _instruments is not None:
-                    # §1.4 vocal_weight: aus PANNs-Ergebnis ableiten (vor MDX23C auf Original geschätzt)
+                    # §1.4 vocal_weight: aus PANNs-Ergebnis ableiten (vor der Stem-Separation auf Original geschätzt)
                     # §1.4 vocal_weight: None → _estimate_vocal_weight() in StemRemixBalancer
                     _vw_raw = _stems.get("vocal_weight")
                     _vw: float | None = None

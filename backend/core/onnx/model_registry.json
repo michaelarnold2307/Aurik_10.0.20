@@ -88,7 +88,7 @@
     "demucs_v4": {
       "base_dir": "models/demucs",
       "name": "Demucs v4 (HTDemucs 6s)",
-      "notes": "Legacy HTDemucs 6s model (experimental). Primary separation via MDX23C (Kim_Vocal_2). 6-stem separation: vocals, drums, bass, other, piano, guitar.",
+      "notes": "Legacy HTDemucs 6s model (experimental). Primary separation via BS-RoFormer; MDX23C entfernt (§v10.739). 6-stem separation: vocals, drums, bass, other, piano, guitar.",
       "onnx_models": [
         {
           "expected_speedup": 2.2,
@@ -112,7 +112,7 @@
         "quantization_type": "dynamic",
         "target_speedup": "2.0-3.0x"
       },
-      "plugin": "plugins.mdx23c_plugin.MDX23CPlugin",
+      "plugin": "plugins.demucs_v4_plugin.DemucsV4Plugin",
       "task": "source_separation",
       "type": "separation"
     }

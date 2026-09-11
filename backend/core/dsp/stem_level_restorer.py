@@ -179,7 +179,7 @@ class StemLevelRestorer:
             _vocal_energy_bias,
         )
 
-        # §SLR-1a: Stem separation via SOTA router (BS-RoFormer → Demucs → MDX23C → DSP).
+        # §SLR-1a: Stem separation via SOTA router (BS-RoFormer → Demucs v4 → DSP).
         _vocal_stem, _instr_stem, _separation_model = self._separate_stems(_audio, sample_rate, panns_singing, _ctx)
 
         _vocal_out = _vocal_stem.copy()
