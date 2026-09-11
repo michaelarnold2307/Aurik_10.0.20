@@ -805,10 +805,21 @@ class WowFlutterFix(PhaseInterface):
         # above 0.20 threshold in the low-Hz (<200 Hz) tape flutter range.
         _valid_conf = confidence[confidence > 0]
         _mean_conf = float(np.mean(_valid_conf)) if len(_valid_conf) > 0 else 0.0
+        # §SOTA-Gate-Fix (2026-09-11): RMVPE-Salienz ist KEIN Voiced-Probability-
+        # Maß wie pYIN — der Gesamtmittelwert (inkl. Sibilanten/Fast-Stille)
+        # lag auf Gesangsmaterial bei 0.035 und aktivierte fälschlich den
+        # konservativen Ersatzpfad, obwohl das Modell auf stimmhaften Frames
+        # sicher war. Gate jetzt auf die Konfidenz der Frames, die das Modell
+        # selbst als stimmhaft führt (conf ≥ 0.5): pYIN ≈ 0.9+, RMVPE ≥ 0.5.
+        _voiced_frames = _valid_conf[_valid_conf >= 0.5]
+        if len(_voiced_frames) >= max(8, int(0.05 * len(_valid_conf))):
+            _gate_conf = float(np.mean(_voiced_frames))
+        else:
+            _gate_conf = _mean_conf
         _MIN_CONFIDENCE_FOR_CORRECTION = 0.40
         if material in (MaterialType.TAPE, MaterialType.CASSETTE):
             _MIN_CONFIDENCE_FOR_CORRECTION = 0.25  # tape/cassette: transport-start-aware lower threshold
-        if _mean_conf < _MIN_CONFIDENCE_FOR_CORRECTION:
+        if _gate_conf < _MIN_CONFIDENCE_FOR_CORRECTION:
             # -------------------------------------------------------------------
             # Tier-3-Fallback: Instantan-Frequenz-Tracking (IEC 60386, SNR-robust)
             # Wird aktiviert wenn pYIN/BasicPitch für rauschiges Kassetten-/
@@ -847,7 +858,7 @@ class WowFlutterFix(PhaseInterface):
                 logger.info(
                     "Verarbeitungsschritt 12: konservativer Ersatzpfad aktiv (Konfidenz %.3f < %.2f) — "
                     "Transportstabilisierung statt Vollkorrektur",
-                    _mean_conf,
+                    _gate_conf,
                     _MIN_CONFIDENCE_FOR_CORRECTION,
                 )
                 # Transport-Level-Stabilisierung auch im Low-Confidence-Pfad,
