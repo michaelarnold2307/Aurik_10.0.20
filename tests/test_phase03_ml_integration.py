@@ -71,7 +71,7 @@ def test_phase03_ml_routing():
         print(f"  Algorithm: {result_balanced.metadata.get('algorithm', 'N/A')}")
         print(f"  ML Hybrid: {result_balanced.metadata.get('ml_hybrid', False)}")
         print(f"  OMLSA applied: {result_balanced.modifications.get('omlsa_applied', False)}")
-        print(f"  Resemble applied: {result_balanced.modifications.get('resemble_applied', False)}")
+        print(f"  DeepFilterNet applied: {result_balanced.modifications.get('dfn_applied', False)}")
         print(f"  Quality estimate: {result_balanced.metadata.get('quality_estimate', 0):.3f}")
         print(f"  Reduction: {result_balanced.modifications.get('noise_reduction_db', 0):.1f} dB")
         print(f"  Time: {result_balanced.metadata.get('execution_time_seconds', 0):.2f}s")
@@ -81,7 +81,7 @@ def test_phase03_ml_routing():
 
         traceback.print_exc()
         # Not fatal - ML might not be available
-        print("  (This is expected if Resemble Enhance is not installed)")
+        print("  (This is expected if DeepFilterNet is not installed)")
 
     # Test 3: BALANCED mode (Adaptive ML-Hybrid)
     print("\n" + "-" * 80)
@@ -94,7 +94,7 @@ def test_phase03_ml_routing():
         print(f"  Algorithm: {result_balanced.metadata.get('algorithm', 'N/A')}")
         print(f"  ML Hybrid: {result_balanced.metadata.get('ml_hybrid', False)}")
         print(f"  OMLSA applied: {result_balanced.modifications.get('omlsa_applied', False)}")
-        print(f"  Resemble applied: {result_balanced.modifications.get('resemble_applied', False)}")
+        print(f"  DeepFilterNet applied: {result_balanced.modifications.get('dfn_applied', False)}")
         print(f"  Quality estimate: {result_balanced.metadata.get('quality_estimate', 0):.3f}")
         print(f"  Reduction: {result_balanced.modifications.get('noise_reduction_db', 0):.1f} dB")
         print(f"  Time: {result_balanced.metadata.get('execution_time_seconds', 0):.2f}s")
@@ -104,7 +104,7 @@ def test_phase03_ml_routing():
     except Exception as e:
         print(f"✗ BALANCED mode failed: {e}")
         # Not fatal
-        print("  (This is expected if Resemble Enhance is not installed)")
+        print("  (This is expected if DeepFilterNet is not installed)")
 
     # Summary
     print("\n" + "=" * 80)

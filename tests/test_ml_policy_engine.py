@@ -146,8 +146,8 @@ class TestStemSeparationSelection:
 class TestEnhancementSelection:
     """Test enhancement model selection."""
 
-    def test_speech_enhancement_selects_resemble(self, policy_engine):
-        """Speech enhancement should select Resemble Enhance."""
+    def test_speech_enhancement_selects_vocal_nr(self, policy_engine):
+        """Speech enhancement should select the canonical vocal-NR route (KIM2/DeepFilterNet)."""
         context = {"has_vocals": True}
         goal = {"enhancement_type": "speech"}
         model = policy_engine.select_enhancement_model(context, goal)

@@ -86,7 +86,7 @@ PHASE_EFFECT_CATALOG: dict[str, PhaseEffectProfile] = {
         risks=["vocal_distortion", "ml_artifact", "energy_loss"],
         preconditions={"snr_db": "< 20", "bypass_if": "snr_unknown AND vocal_heavy"},
         max_strength_by_material={"vinyl": 0.85, "tape": 0.90, "shellac": 0.95, "cd_digital": 0.40},
-        time_profile="heavy",  # BS-RoFormer + MIIPHER + Resemble = 9+ Minuten!
+        time_profile="heavy",  # BS-RoFormer + MIIPHER + DeepFilterNet = 9+ Minuten!
         min_severity=0.3,
         note="Schwerste ML-Phase; Codec-Degradation (mp3_low/streaming/aac/minidisc) → MIIPHER-Sigma konservativ (0.25-0.40)",
     ),

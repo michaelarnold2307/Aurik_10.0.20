@@ -4,7 +4,7 @@ ML-Hybrid Validation Test
 ==========================
 
 Direkter Test der 3 implementierten ML-Hybrid Phasen:
-- Phase 03: Denoise (OMLSA + Resemble Enhance)
+- Phase 03: Denoise (OMLSA + DeepFilterNet)
 - Phase 12: Wow/Flutter (YIN + CREPE)
 - Phase 20: Reverb (DSP + DCCRN)
 

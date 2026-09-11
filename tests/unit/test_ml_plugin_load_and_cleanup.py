@@ -1094,38 +1094,6 @@ class TestArtifactDetectionPlugin:
         assert _budget_total() == 0.0
 
 
-class TestResembleEnhancePlugin:
-    """ResembleEnhance: Vocal-Enhancement, finite Ausgabe, Budget sauber."""
-
-    def test_01_loads_without_crash(self):
-        _reset_budget()
-        from plugins.resemble_enhance_plugin import ResembleEnhancePlugin
-
-        p = ResembleEnhancePlugin()
-        assert p is not None
-        _cleanup(["ResembleEnhance"], "plugins.resemble_enhance_plugin")
-
-    def test_02_enhance_finite(self):
-        _reset_budget()
-        from plugins.resemble_enhance_plugin import ResembleEnhancePlugin
-
-        p = ResembleEnhancePlugin()
-        audio = _signal(2.0)
-        result = p.enhance(audio, SR)
-        out = result.audio if hasattr(result, "audio") else np.asarray(result, dtype=np.float32)
-        _assert_finite(out, "ResembleEnhancePlugin.enhance")
-        assert np.max(np.abs(out)) <= 1.0
-        _cleanup(["ResembleEnhance"], "plugins.resemble_enhance_plugin")
-
-    def test_03_budget_zero_after_cleanup(self):
-        _reset_budget()
-        from plugins.resemble_enhance_plugin import ResembleEnhancePlugin
-
-        ResembleEnhancePlugin()
-        _cleanup(["ResembleEnhance"], "plugins.resemble_enhance_plugin")
-        assert _budget_total() == 0.0
-
-
 # ---------------------------------------------------------------------------
 # ── Gruppe 9: Lyrics-Transkription ─────────────────────────────────────────
 # ---------------------------------------------------------------------------

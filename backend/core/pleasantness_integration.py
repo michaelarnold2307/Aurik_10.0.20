@@ -134,7 +134,7 @@ def get_frequency_corrections(audio: np.ndarray, sr: int) -> dict[str, float]:
 
 # Alternative Plugin-Map für RETRY_DIFFERENT
 ALTERNATIVE_PLUGINS: dict[str, list[str]] = {
-    "denoise+declick": ["deepfilternet", "resemble_enhance", "mp_senet", "wpe"],
+    "denoise+declick": ["deepfilternet", "kim_vocal", "mp_senet", "wpe"],
     "declip": ["mdx23c", "bs_roformer"],
     "source_separation": ["demucs", "uvr_mdxnet", "gacela"],
     "mastering_chain": ["matchering", "panns"],

@@ -63,7 +63,7 @@
 - [x] **ML-Hybrid Architecture Complete** (10/10 kritische Phasen) ✅ _16.02.2026_
   - [x] Phase 01: Click Removal + DeepFilterNet
   - [x] Phase 02: Hum Removal + DeepFilterNet
-  - [x] **Phase 03: Denoise + OMLSA + Resemble Enhance** ✅ _16.02.2026_
+  - [x] **Phase 03: Denoise + OMLSA + DeepFilterNet** ✅ _16.02.2026_
   - [x] Phase 06/07: Frequency Restoration + NVSR ✅ _16.02.2026_
   - [x] Phase 09: Crackle Removal + BANQUET (Vinyl)
   - [x] **Phase 12: Wow/Flutter + YIN + CREPE** ✅ _16.02.2026_
@@ -81,8 +81,8 @@
 - [x] DefectScanner mit 11 Defekttypen implementiert (Defect-First Architecture)
 - [x] **Quality Feedback Loop** (Psychoacoustic Metrics, adaptive tuning) ✅ _16.02.2026_
 - [x] **Phase Skipping - Performance-basiert** (PerformanceGuard in V3) ✅ _15.02.2026_
-- [x] **Resemble Enhance Plugin** (Docker-basiert, 286 Zeilen) ✅ _Existiert_
-- [x] **Hybrid ML Denoising** (OMLSA + Resemble Enhance, 450 Zeilen) ✅ _16.02.2026_
+- [x] **DeepFilterNet v3-II Plugin** (in-process, musik-finetuned) ✅ _Existiert_ · Resemble Enhance entfernt (2026-09-11)
+- [x] **Hybrid ML Denoising** (OMLSA + DeepFilterNet, 450 Zeilen) ✅ _16.02.2026_
 - [x] **Phase Skipping - Defect-basiert** (Integration in V3, 4/4 Tests passing) ✅ _16.02.2026_
   - Intelligente Phase-Auswahl basierend auf Defekten
   - 20-40% Speedup für clean Audio

@@ -42,7 +42,7 @@
 | --- | --- | --- |
 | **Phase-0 Apollo (Codec-Decompression)** | `plugins/apollo_phase0_integration.py` | ✅ v10.303.17 |
 | **Phase-0 DeepFilterNet v3 (Denoising)** | `plugins/apollo_phase0_integration.py` | ✅ v10.303.17 |
-| **Phase-0 Resemble Enhance (Enhancement)** | `plugins/apollo_phase0_integration.py` | ✅ v10.303.17 |
+| **Phase-0 DeepFilterNet (Enhancement)** | `plugins/apollo_phase0_integration.py` | ✅ v10.303.17 |
 | **ChainedPhase0Preprocessor** | `plugins/apollo_phase0_integration.py` | ✅ v10.303.17 |
 | **ApolloPlugin + Hallucination-Guard** | `plugins/apollo_plugin.py` | ✅ erweitert §2.46e |
 | --- | --- | --- |
@@ -262,7 +262,7 @@ Dithering: POW-r Typ 3 bei 24->16-bit; Fallback: TPDF
 | CREPE full | Pitch-Tracking f0 | ~85 MB ONNX | pYIN DSP |
 | PANNs CNN14 | Audio-Tagging | ~81 KB ONNX | DSP Fingerprint |
 | DiffWave | Dropout-Inpainting + Leichtgewicht-Entrauschung | ~552 KB ONNX | NMF-b + Sinusoidal |
-| Resemble-Enhance | Apollo-Fallback | ~41 MB ONNX | DSP Spectral Repair |
+| DeepFilterNet v3-II | Apollo-Fallback | ~34 MB ONNX | DSP Spectral Repair |
 | HiFi-GAN | Vocoder-Fallback | ~3.6 MB ONNX | PGHI-ISTFT |
 | DAC | Neural Audio Codec | 87 MB Enc + 208 MB Dec ONNX | DSP Codec Simulation |
 | BigVGAN v2 | Vocoder (Studio-2026) | ~489 MB PyTorch | HiFi-GAN → PGHI |

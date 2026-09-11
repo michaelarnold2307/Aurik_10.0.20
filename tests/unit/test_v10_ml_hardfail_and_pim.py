@@ -115,12 +115,6 @@ PLUGIN_MODULES: dict[str, dict] = {
         "input_shape": "mel_spectrogram",
         "expect": "ndarray",
     },
-    "resemble_enhance_plugin": {
-        "test_fn": "get_resemble_enhance_plugin",
-        "requires": ["onnxruntime"],
-        "input_shape": "mono",
-        "expect": "ndarray",
-    },
     "deepfilternet_v3_ii_plugin": {
         "test_fn": "get_deepfilternet_plugin",
         "requires": ["onnxruntime"],

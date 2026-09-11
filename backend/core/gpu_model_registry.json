@@ -395,15 +395,6 @@
     "size_mb": 0.1,
     "verdict": "cpu"
   },
-  "models/resemble_enhance/model.onnx": {
-    "backend": null,
-    "cpu_ms": null,
-    "gpu_ms": null,
-    "note": "CPU-Load fehlgeschlagen: NameError",
-    "scan_s": 0.3,
-    "size_mb": 40.7,
-    "verdict": "cpu"
-  },
   "models/rmvpe/rmvpe.onnx": {
     "backend": null,
     "cpu_ms": null,

@@ -515,7 +515,7 @@ We are committed to providing a welcoming and inclusive environment. Please:
 
 1. **GUI Development:** Electron-based interface (`aurik_90/`)
 2. **Real-World Testing:** Validate with actual degraded recordings
-3. **ML Plugin Deployment:** Docker containers for DCCRN, Resemble, CREPE
+3. **ML Plugin Deployment:** Docker containers for DCCRN, DeepFilterNet, CREPE
 4. **Performance Optimization:** Further speed improvements
 5. **Documentation:** User guides, API documentation
 

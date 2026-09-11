@@ -27788,7 +27788,7 @@ class UnifiedRestorerV3:
         # aktivieren, da das Doppel-NR bei SNR≈6 dB das Signal vollständig zerstört.
         # REEL_TAPE: Profi-Spulenband mit identischem Hiss-Profil wie TAPE.
         # §v10.303.14: Nur für TAPE-Materialien. MP3/AAC/Streaming/Digital haben
-        # Codec-Quantisierungsrauschen, KEIN Tape-Hiss. Phase-0 DeepFilterNet/Resemble
+        # Codec-Quantisierungsrauschen, KEIN Tape-Hiss. Phase-0 DeepFilterNet/DeepFilterNet
         # Enhance übernehmen bereits die Rauschunterdrückung für nicht-Tape-Materialien.
         _tape_hiss_materials = _tape_materials | {MaterialType.CASSETTE}
         _is_lossy_digital = str(getattr(material, "value", material) or "").lower() in {
@@ -27800,7 +27800,7 @@ class UnifiedRestorerV3:
         }
         _tape_hiss_appropriate = material in _tape_hiss_materials
         # §v10.303.14: Für lossy-codec ist HIGH_FREQ_NOISE ein Codec-Artefakt, kein Hiss.
-        # Phase 0 (DeepFilterNet/Resemble) entfernt das bereits — phase_29 würde nur
+        # Phase 0 (DeepFilterNet/DeepFilterNet) entfernt das bereits — phase_29 würde nur
         # kumulative STFT-Artefakte erzeugen (group delay deviation, siehe CIG).
         if _tape_hiss_appropriate and not _is_lossy_digital:
             if sev(DefectType.HIGH_FREQ_NOISE) > 0.30 or material in _tape_materials:
@@ -31147,7 +31147,7 @@ class UnifiedRestorerV3:
         # aber EPG muss auf 0.195 cappen können (unter DSP-Threshold).
         # Phase 03 hat internen DSP-Threshold: 0.10 + panns × 0.30.
         # Wenn Strength darüber liegt und Vocals vorhanden sind, läuft erst
-        # der ML-Pfad (BS-RoFormer + Resemble, ~745s), dessen Ergebnis dann
+        # der ML-Pfad (BS-RoFormer + DeepFilterNet, ~745s), dessen Ergebnis dann
         # vom Energy-Guard verworfen wird → VQI-Rollback → DSP-only (~530s).
         # Dieser Guard cappt Strength knapp UNTER den DSP-Threshold, sodass
         # Phase 03 direkt den DSP-Pfad nimmt — ohne ML-Modell-Ladung.
@@ -36074,7 +36074,7 @@ class UnifiedRestorerV3:
         # Wissenschaftliche Reihenfolge (Carrier-Chain-Inversion §2.46):
         #   1. Apollo (Codec-Decompression) — nur für lossy-codec
         #   2. DeepFilterNet v3 (Noise-Floor) — alle Materialien, Atmungserhalt
-        #   3. Resemble Enhance (Enhancement) — alle Materialien
+        #   3. DeepFilterNet (Enhancement) — alle Materialien
         _p0_applied = False
         _mat_key = str(getattr(material_type, "value", material_type) or "unknown").lower()
         try:
@@ -36111,7 +36111,7 @@ class UnifiedRestorerV3:
                     "ear_vae": ["broadband_noise", "spectral_dullness", "phase_distortion"],
                     "apollo": ["compression_artifacts", "codec_pre_echo", "codec_hf_loss"],
                     "deepfilternet": ["broadband_noise", "tape_hiss", "modulation_noise"],
-                    "resemble_enhance": ["broadband_noise", "spectral_dullness"],
+                    "kim_vocal": ["broadband_noise", "spectral_dullness"],
                 }
                 _rc["phase0_resolved_defects"] = []
                 for _s in _stages:
@@ -36138,7 +36138,7 @@ class UnifiedRestorerV3:
                         "phase_18_noise_gate",  # DFN stabilisiert Noise-Floor → Gate redundant
                         "phase_20_adaptive_denoise",  # Adaptives Denoising redundant
                     ],
-                    "resemble_enhance": [
+                    "kim_vocal": [
                         "phase_03_denoise",
                         "phase_29_tape_hiss_reduction",
                         "phase_38_presence_boost",

@@ -269,7 +269,6 @@ class TestFp16PluginAudit:
         "DemucsV4": "plugins/demucs_v4_plugin.py",
         "MDX23C": "plugins/mdx23c_plugin.py",
         "MPSENet": "plugins/mp_senet_plugin.py",
-        "ResembleEnhance": "plugins/resemble_enhance_plugin.py",
         "PANNs": "plugins/panns_plugin.py",
         "LaionCLAP_ONNX": "plugins/laion_clap_plugin.py",
         "BanquetVinyl": "plugins/banquet_vinyl_plugin.py",

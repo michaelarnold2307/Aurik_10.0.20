@@ -694,7 +694,7 @@ class ReverbReduction(PhaseInterface):
                     },
                     execution_time_seconds=processing_time,
                     metadata={
-                        "algorithm": "hybrid_wpe_resemble_v4",
+                        "algorithm": "hybrid_wpe_dfn_v4",
                         "ml_hybrid": True,
                         "dsp_applied": ml_result.dsp_applied,
                         "ml_applied": getattr(ml_result, "ml_applied", ml_result.dccrn_applied),

@@ -342,10 +342,6 @@ def _register_all() -> None:
     # --- Speech Enhancement / Separation ---
     register_ml_check("SGMSE+", _probe_plugin("plugins.sgmse_plugin", "get_sgmse_plus_plugin", "_model_loaded"))
     register_ml_check(
-        "ResembleEnhance",
-        _probe_plugin("plugins.resemble_enhance_plugin", "get_resemble_enhance_plugin", "_model_loaded"),
-    )
-    register_ml_check(
         "ConvTasNet", _probe_plugin("plugins.convtasnet_plugin", "get_convtasnet_plugin", "_model_loaded")
     )
     register_ml_check("MP-SENet", _probe_plugin("plugins.mp_senet_plugin", "get_mp_senet_plugin", "_model_loaded"))

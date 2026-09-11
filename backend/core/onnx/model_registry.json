@@ -115,43 +115,14 @@
       "plugin": "plugins.mdx23c_plugin.MDX23CPlugin",
       "task": "source_separation",
       "type": "separation"
-    },
-    "resemble_enhance": {
-      "base_dir": "models/resemble_enhance",
-      "name": "Resemble-Enhance",
-      "notes": "High-quality music denoising and speech enhancement. Optimized for music restoration.",
-      "onnx_models": [
-        {
-          "expected_speedup": 2.1,
-          "input_shape": [1, 1, -1],
-          "model_size_mb": 45.2,
-          "name": "denoiser",
-          "opset_version": 14,
-          "output_shape": [1, 1, -1],
-          "path": "models/resemble_enhance/denoiser.onnx",
-          "quantized": false,
-          "quantized_path": "models/resemble_enhance/denoiser_int8.onnx",
-          "sample_rate": 44100
-        }
-      ],
-      "optimization": {
-        "cpu_threads": 4,
-        "onnx_runtime_enabled": true,
-        "quantization_enabled": false,
-        "quantization_type": "dynamic",
-        "target_speedup": "2.0-3.0x"
-      },
-      "plugin": "plugins.resemble_enhance_plugin.ResembleEnhancePlugin",
-      "task": "music_denoising",
-      "type": "enhancement"
     }
   },
   "roadmap": {
     "completed": [
       "ONNX Runtime infrastructure",
-      "Model converter (PyTorch \u2192 ONNX)",
-      "Model quantizer (FP32 \u2192 INT8)",
-      "Fallback manager (ONNX \u2192 PyTorch)",
+      "Model converter (PyTorch → ONNX)",
+      "Model quantizer (FP32 → INT8)",
+      "Fallback manager (ONNX → PyTorch)",
       "Benchmark scripts"
     ],
     "in_progress": [

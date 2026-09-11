@@ -412,7 +412,6 @@ class TestDockerBasedPlugins:
         ("deepfilternet_v3_ii_plugin", "DeepFilterNetV3IIPlugin"),
         ("demucs_v4_plugin", "DemucsV4Plugin"),
         ("hifigan_plugin", "HiFiGANPlugin"),
-        ("resemble_enhance_plugin", "ResembleEnhancePlugin"),
         ("wpe_plugin", "WpePlugin"),
         ("uvr_mdxnet_plugin", "UVRMDXNetPlugin"),
     ]
@@ -624,7 +623,6 @@ class TestPluginsIntegration:
         ("plugins.mdx23c_plugin", "MDX23CPlugin"),
         ("plugins.panns_plugin", "PANNSPlugin"),
         ("plugins.phoneme_detector", "PhonemeDetector"),
-        ("plugins.resemble_enhance_plugin", "ResembleEnhancePlugin"),
         ("plugins.wpe_plugin", "WpePlugin"),
         ("plugins.silero_plugin", "SileroPlugin"),
         ("plugins.sota_universal_enhancer", "SOTAUniversalEnhancer"),

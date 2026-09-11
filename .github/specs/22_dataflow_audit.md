@@ -22,7 +22,7 @@ Phase-0 Pre-Processor (plugins/apollo_phase0_integration.py)
   │ EAR_VAE → load → process → unload (643 MB)
   │ Apollo → load → process → unload (800 MB) [nur lossy-codec]
   │ DeepFilterNet → load → process → unload (34 MB)
-  │ ResembleEnhance → load → process → unload (722 MB)
+  │ DeepFilterNet → load → process → unload (722 MB)
   │ §v10.306: ALLE sequenziell, nie parallel
   ▼
 Denker-Pipeline (denker/)

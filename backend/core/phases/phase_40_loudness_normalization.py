@@ -274,7 +274,7 @@ class LoudnessNormalizationPhase(PhaseInterface):
         _amplitude_drift_requested = bool(kwargs.get("amplitude_drift_correction", False))
 
         # ── §v10.303.36 Phase-0-Aware Skip ──
-        # Nach Phase 0 (Apollo+DFN+Resemble) ist Loudness bereits nahe am Target.
+        # Nach Phase 0 (Apollo+DFN+DeepFilterNet) ist Loudness bereits nahe am Target.
         # Schnelle LUFS-Prüfung spart ~500s Rechenzeit.
         try:
             import pyloudnorm as _pyln

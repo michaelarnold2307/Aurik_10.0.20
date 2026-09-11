@@ -160,7 +160,7 @@ class ProcessingConfig:
     # === Enhancement ===
 
     enable_enhancement: bool = True
-    """Enable ResembleEnhance (vocal clarity, intelligibility)."""
+    """Enable DeepFilterNet (vocal clarity, intelligibility)."""
 
     enhancement_strength: float = 0.50
     """Enhancement strength (0.0-1.0) if enabled."""

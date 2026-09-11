@@ -74,7 +74,9 @@ def test_resource_widget_initialization():
     assert widget.active_ml_plugins == []
 
     # Test update_status method
-    widget.update_status(cpu=50.0, memory=60.0, mode="QUALITY", ml_active=True, ml_plugins=["Resemble", "MP-SENet"])
+    widget.update_status(
+        cpu=50.0, memory=60.0, mode="QUALITY", ml_active=True, ml_plugins=["DeepFilterNet", "MP-SENet"]
+    )
     assert widget.cpu_usage == 50.0
     assert widget.memory_usage == 60.0
     assert widget.quality_mode == "QUALITY"

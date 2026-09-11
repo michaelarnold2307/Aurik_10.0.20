@@ -11,7 +11,7 @@ Architektur-Begründung:
     - core/hybrid/ = Orchestrierung beider Schichten (darf beide importieren)
 
 Module:
-    hybrid_ml_denoiser      — OMLSA (DSP) + Resemble Enhance (ML)
+    hybrid_ml_denoiser      — OMLSA (DSP) + DeepFilterNet (ML)
     hybrid_dereverb         — DSP-Dereverb + DCCRN (ML)
     hybrid_nvsr             — Bandbreiten-Erweiterung + AudioSR (ML)
     hybrid_speed_pitch_ml   — Zeitdehnung/Pitch + CREPE (ML)

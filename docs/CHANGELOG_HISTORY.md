@@ -344,7 +344,7 @@
 - v10.0.0: AudioSR-Watchdog in phase_06.
 - v10.0.0–24: Peak-Guard Conformity + Wide-Stereo-Guard phase_13/14 (R11 UAT Fix).
 - v10.0.0–39: PLM set_active Guards für alle schweren ML-Plugins (CREPE, SGMSE+, AudioSR,
-  DiffWave, MIIPHER, FCPE, Vocos, BigVGAN, ResembleEnhance, HiFiGAN, BanquetVinyl u.a.).
+  DiffWave, MIIPHER, FCPE, Vocos, BigVGAN, DeepFilterNet, HiFiGAN, BanquetVinyl u.a.).
 - v10.0.0: Stereo-Slicing-Bug + Ketten-Pflichtphasen + corrcoef NaN-Guard.
 
 > Vollständige Details zu v10.0.0–19 und allen Patch-Releases: `CHANGELOG.md`
@@ -1046,7 +1046,7 @@ Testzahl: 6394 → **6312** (nach v2-Cleanup).
 ## v10.0.0 (Feb 2026) — SHA256-Größenabgleich (15 Modelle)
 
 - MDX23C: 2× 64 MB; Apollo: 65 MB; CREPE: 85 MB; DeepFilterNet: 37 MB
-- Vocos: 52 MB; Banquet Vinyl: 92 MB; Resemble-Enhance: 41 MB
+- Vocos: 52 MB; Banquet Vinyl: 92 MB; DeepFilterNet v3-II: 34 MB
 - UVR HQ: 56–64 MB; HTDemucs 6s: 2,5 MB
 
 ---
@@ -1061,7 +1061,7 @@ Testzahl: 6394 → **6312** (nach v2-Cleanup).
 
 ## v10.0.0 (Feb 2026) — Manifest-Abgleich
 
-- §4.4: Apollo primär (bundled) / Resemble-Enhance Fallback (nicht umgekehrt)
+- §4.4: Apollo primär (bundled) / DeepFilterNet Fallback (nicht umgekehrt)
 - §11.3: 18 Manifest-Modelle und Plugin-Dateien vollständig dokumentiert
 
 ---

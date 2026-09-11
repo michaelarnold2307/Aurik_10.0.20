@@ -988,7 +988,7 @@ plugins/wpe_plugin.py                → ✅ WPE Dereverb (rein DSP, kein Checkp
 
 # Codec-Artefakte
 plugins/apollo_plugin.py             → ✅ PRIMÄR Codec-Korrektur (65 MB ONNX)
-plugins/resemble_enhance_plugin.py   → ✅ Fallback Apollo (41 MB ONNX)
+plugins/deepfilternet_v3_ii_plugin.py   → ✅ Fallback Apollo (41 MB ONNX)
 
 # Inpainting
 plugins/flow_matching_plugin.py      → ✅ Generatives Inpainting PRIMÄR (SOTA, Flow Matching)

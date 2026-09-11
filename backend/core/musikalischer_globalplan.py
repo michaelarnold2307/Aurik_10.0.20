@@ -943,7 +943,7 @@ class MusikalischerGlobalplanDienst:
         nr_aggressiveness = float(np.clip(nr_aggressiveness, 0.1, 1.0))
 
         # Material-aware NR cap (§6.2): digitale/codec-komprimierte Quellen haben kein
-        # Breitrauschen — Codec-Artefakte werden von Apollo/Resemble-Enhance behandelt,
+        # Breitrauschen — Codec-Artefakte werden von Apollo/DeepFilterNet behandelt,
         # NICHT von DeepFilterNet. Hohe NR-Stärke auf MP3/AAC zerhackt Musikinhalte
         # (Musical Noise / "Kratzen"). Deckeln auf ein minimales Schutzniveau.
         _DIGITAL_NR_CAP: dict[str, float] = {

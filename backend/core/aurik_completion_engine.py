@@ -285,7 +285,6 @@ def update_song_profile(
 ALTERNATIVE_PLUGINS_ACTIVE = {
     "denoise+declick": [
         ("deepfilternet", "DeepFilterNet"),
-        ("resemble_enhance", "ResembleEnhance"),
         ("mp_senet", "MpSenet"),
         ("wpe", "WPE"),
     ],

@@ -8,7 +8,7 @@ Regressionstests für die 10 ML-Hybrid-Phasen (§3 copilot-instructions.md).
 Abgedeckte Phasen:
     Phase 01 — Click Removal       (DeepFilterNet-Hybrid)
     Phase 02 — Hum Removal         (DeepFilterNet-Hybrid)
-    Phase 03 — Denoise             (OMLSA + Resemble Enhance)
+    Phase 03 — Denoise             (OMLSA + DeepFilterNet)
     Phase 09 — Crackle Removal     (BANQUET Vinyl-Hybrid)
     Phase 12 — Wow/Flutter Fix     (pYIN / CREPE-Hybrid)
     Phase 18 — Noise Gate          (Silero VAD-Hybrid)
@@ -322,7 +322,7 @@ def test_R10_phase_result_success(module_name, class_name, audio, kwargs):
 
 
 class TestPhase03DenoiseRegression:
-    """Spezifische Regressionstests für Phase 03 (OMLSA + Resemble Enhance)."""
+    """Spezifische Regressionstests für Phase 03 (OMLSA + DeepFilterNet)."""
 
     @staticmethod
     def _load():

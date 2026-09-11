@@ -792,7 +792,7 @@ result = process_in_adaptive_chunks(
 
 | Phase | ML-Modell | Begründung |
 | --- | --- | --- |
-| `phase_03_denoise` | SGMSE+ (Tier-0, Vokal) / ResembleEnhance / DeepFilterNetV3 / OMLSA (DSP) | ML-Hybrid: Inferenz-Output identisch bei gleichem Input |
+| `phase_03_denoise` | SGMSE+ (Tier-0, Vokal) / DeepFilterNet / DeepFilterNetV3 / OMLSA (DSP) | ML-Hybrid: Inferenz-Output identisch bei gleichem Input |
 | `phase_06_frequency_restoration` | AudioSR | Neurale Bandwidth-Extension deterministisch |
 | `phase_09_crackle_removal` | BANQUET ONNX | Blind-Denoising deterministisch |
 | `phase_12_wow_flutter_fix` | FCPE/CREPE/pYIN | f₀-Schätzung deterministisch (Timing-Phase: kein Wet/Dry) |

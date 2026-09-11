@@ -648,7 +648,7 @@ plugins/wpe_plugin.py                 ✅ WPE Dereverb (3-Tier: nara_wpe→NumPy
 
 # Codec-Artefakte
 plugins/apollo_plugin.py              ✅ Apollo (65 MB ONNX, PRIMÄR Codec-Artefakte)
-plugins/resemble_enhance_plugin.py    ✅ Resemble-Enhance (41 MB ONNX, Fallback)
+plugins/deepfilternet_v3_ii_plugin.py    ✅ DeepFilterNet (41 MB ONNX, Fallback)
 
 # Audio-Tagging & MOS
 plugins/beats_plugin.py               ✅ BEATs iter3 (90 MB ONNX) — PRIMÄR Audio-Tagging +10.7 % mAP
@@ -990,7 +990,7 @@ Era-Badge-Block (nach Pfad C)
       "sha256": "440c48b110f66ff6d7b86cf5bb77201a302d1592ea6471a9b5b99791b21762ac",
       "size_bytes": 67713684,
       "required": false,
-      "fallback": "resemble_enhance_onnx"
+      "fallback": "deepfilternet_v3_ii_onnx"
     }
   ]
 }

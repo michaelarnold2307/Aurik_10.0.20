@@ -11,7 +11,7 @@ remains as fallback.
 Usage:
     from backend.core.music_model_flags import (
         use_df_musik, use_sgmse_musik, use_mp_senet_musik,
-        use_miipher_dit, use_resemble_enhance,
+        use_miipher_dit,
         MUSIC_MODEL_PATHS,
     )
 
@@ -29,7 +29,7 @@ use_bw_v5: bool = False  # BW-Reconstructor v5 — A1: HF-Gain-Gate nicht bestan
 # redundant zu FlashSR/NVSR/DSP-SBR in Phase_06. Gated-Forschungsmodell.
 use_harmonic_inpainting: bool = True  # Harmonic-Inpainting-DiT (§v10.300) — DiT-Finetune für gedämpfte Obertöne
 use_whisper_denoiser: bool = False  # Whisper-Denoiser — DEPRECATED (Rev. 2026-08-16), nur A/B-Gate; NR trägt die Spec-04-Kette (DFN/SGMSE+/OMLSA)
-use_resemble_enhance: bool = True  # Resemble Enhance — set to False after §v10.19
+
 
 # ── Model Paths (relative to project root) ──────────────────────────────────
 

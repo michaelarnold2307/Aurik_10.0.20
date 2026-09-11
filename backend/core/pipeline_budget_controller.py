@@ -39,7 +39,7 @@ logger = logging.getLogger(__name__)
 # ── Per-Phase Time Caps (prevents individual ML-phase hangs) ──
 PHASE_TIME_CAP_S: dict[str, float] = {
     "phase_06_frequency_restoration": 2700.0,  # NVSR max 45 min
-    "phase_03_denoise": 1800.0,  # MelBandRoformer+Resemble 30 min
+    "phase_03_denoise": 1800.0,  # MelBandRoformer+DeepFilterNet 30 min
     "phase_23_spectral_repair": 1800.0,  # FlashSR 30 min
     "phase_12_wow_flutter_fix": 1200.0,  # pYIN+CREPE 20 min
     "phase_20_reverb_reduction": 1200.0,  # SGMSE+ 20 min

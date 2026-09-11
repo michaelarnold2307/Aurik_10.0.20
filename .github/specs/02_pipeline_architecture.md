@@ -18,7 +18,7 @@
 ## §v10.303 Phase-0 ML-Pre-Processor (implementiert 2026-07-28)
 
 > **ML vor DSP:** Apollo (Codec-Decompression) → DeepFilterNet v3 (Noise-Floor) →
-> Resemble Enhance (Spektrale Reparatur). Wissenschaftliche Reihenfolge gemäß
+> DeepFilterNet (Spektrale Reparatur). Wissenschaftliche Reihenfolge gemäß
 > Carrier-Chain-Inversion (§2.46). 12 redundante DSP-Phasen werden automatisch
 > übersprungen. Goal-Baseline wird nach Phase 0 neu kalibriert.
 >
@@ -930,7 +930,7 @@ Falsch-Regression → Retry-Kaskade → best-effort bei minimaler Wet-Strength �
 _RESTORATIVE_PHASES: frozenset[str] = frozenset({
     "phase_01",  # Click removal
     "phase_02",  # Hum removal (Kammfilter)
-    "phase_03",  # Broadband denoise (OMLSA + ResembleEnhance)
+    "phase_03",  # Broadband denoise (OMLSA + DeepFilterNet)
     "phase_05",  # Rumble filter (subtractive LF cleanup)
     "phase_09",  # Crackle removal (BANQUET ONNX — blind neural denoising; targetiert impulsive Vinyl-Crackle)
     "phase_18",  # Noise gate (Silero VAD)
@@ -1300,7 +1300,7 @@ tonal_center = 1.0 - min(6, d + mode_penalty) / 6.0
 These exclusions were removed because the old entropy proxy was SNR-dependent. K-S is key-label-based
 and does not react to spectral energy redistribution that doesn't cause a genuine pitch transposition.
 
-**§9.7.11 Extension (v10.0.0/96)**: K-S ist bei **shaped/HF-selektiver NR** (phase_03 OMLSA+ResembleEnhance,
+**§9.7.11 Extension (v10.0.0/96)**: K-S ist bei **shaped/HF-selektiver NR** (phase_03 OMLSA+DeepFilterNet,
 phase_29 DeepFilterNet) **nicht** invariant. Nicht-uniformes NR verändert Chroma-Bin-Balance selektiv
 → Key-Label-Flip möglich. Daher bleiben `tonal_center`-Ausschlüsse für phase_03 und phase_29 bestehen.
 Phase_12 (Wow/Flutter) erhält ebenfalls tonal_center-Ausschluss: Pitch-/Speed-Korrektur verschiebt

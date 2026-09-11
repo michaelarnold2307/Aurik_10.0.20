@@ -429,7 +429,7 @@ class OptimizationIntegration:
         elif material_type == "mp3":
             strategy["recommended_models"] = [
                 "flashsr",  # Restore lost frequencies
-                "resemble_enhance",  # General enhancement
+                "kim_vocal",  # General enhancement (musik-finetuned)
             ]
             strategy["recommended_dsp_chain"] = ["eq_mp3_compensation", "stereo_enhancer", "harmonic_enhancer"]
 

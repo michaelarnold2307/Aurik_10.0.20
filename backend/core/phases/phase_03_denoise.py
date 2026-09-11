@@ -988,7 +988,7 @@ class DenoisePhase(PhaseInterface):
                 effective_strength,
             )
         # §v10.58 Depth-Aware Denoiser: Bei transfer_depth ≥ 3 (z.B. reel→vinyl→cassette→mp3)
-        # ist das Signal so stark degradiert, dass ML-Denoiser (SGMSE+, ResembleEnhance)
+        # ist das Signal so stark degradiert, dass ML-Denoiser (SGMSE+, DeepFilterNet)
         # nicht mehr zwischen Rauschen und Signal unterscheiden können → Musical Noise,
         # Dropouts und zerstörte Stimmharmonik. DSP-OMLSA ist sicherer und erhält mehr
         # Signalstruktur. Zusätzlich wird die Stärke auf max. 0.40 begrenzt.
@@ -1652,7 +1652,7 @@ class DenoisePhase(PhaseInterface):
         )
 
         # §0p/§4.4: Bei vokalem Cassette-/Tape-Material ist MIIPHER/SGMSE+/DFN der
-        # eigentliche SOTA-Vokalpfad. Ein zusätzlicher Resemble-ML-Hybrid-Pass nach
+        # eigentliche SOTA-Vokalpfad. Ein zusätzlicher DeepFilterNet-ML-Hybrid-Pass nach
         # erfolgreichem MIIPHER hat in Real-Audio-Cassette-Runs Energie fast komplett
         # verworfen und wurde erst spät vom Energy-Preservation-Guard zurückgerollt.
         # Deshalb früh bremsen: Qualität bleibt beim spezialisierten Vokalpfad,
@@ -1667,7 +1667,7 @@ class DenoisePhase(PhaseInterface):
             use_ml_hybrid = False
             logger.info(
                 "Verarbeitungsschritt 03 ML-Hybrid übersprungen: MIIPHER/Vokalpfad bereits aktiv "
-                "(material=%s panns=%.2f) — konservative OMLSA/DSP-Restglättung statt Resemble-Zweitpass",
+                "(material=%s panns=%.2f) — konservative OMLSA/DSP-Restglättung statt DeepFilterNet-Zweitpass",
                 material_type,
                 _panns_singing,
             )
@@ -1686,7 +1686,7 @@ class DenoisePhase(PhaseInterface):
 
                 # Configure ML denoiser strategy
                 if quality_mode in ["quality", "maximum"]:
-                    strategy = DenoiseStrategy.HYBRID  # Full OMLSA + Resemble
+                    strategy = DenoiseStrategy.HYBRID  # Full OMLSA + DeepFilterNet
                 else:  # balanced
                     strategy = DenoiseStrategy.ADAPTIVE  # Smart: OMLSA only if clean, else hybrid
 
@@ -1694,14 +1694,14 @@ class DenoisePhase(PhaseInterface):
                     config=DenoiseConfig(
                         strategy=strategy,
                         omlsa_alpha=effective_strength,
-                        resemble_denoise=True,
+                        dfn_denoise=True,
                         enable_preprocessing=True,
-                        quality_threshold=0.85,  # Skip Resemble if OMLSA result clean enough
+                        quality_threshold=0.85,  # Skip DeepFilterNet if OMLSA result clean enough
                     )
                 )
 
-                _report_progress(55.0, "ML-Hybrid Entrauschung (OMLSA+Resemble)...")
-                # §2.46f Context-Padding for OMLSA+Resemble ML-Hybrid: reflect-pad 1 s to prevent
+                _report_progress(55.0, "ML-Hybrid Entrauschung (OMLSA+DeepFilterNet)...")
+                # §2.46f Context-Padding for OMLSA+DeepFilterNet ML-Hybrid: reflect-pad 1 s to prevent
                 # boundary artefacts — model sees interior signal at what were signal edges.
                 _mlhyb_len = _mlhyb_audio.shape[-1] if _mlhyb_audio.ndim == 2 else len(_mlhyb_audio)
                 _ctx_n03_hyb = min(int(1.0 * sample_rate), _mlhyb_len // 4)
@@ -1731,7 +1731,7 @@ class DenoisePhase(PhaseInterface):
                 else:
                     ml_result = denoiser.denoise(_mlhyb_audio, sample_rate=sample_rate)
                 # §2.51 Redundanz-Guard: ml_result.audio zu channels-first normalisieren,
-                # falls HybridMLDenoiser/Resemble channels-last zurückgegeben hat.
+                # falls HybridMLDenoiser/DeepFilterNet channels-last zurückgegeben hat.
                 if (
                     ml_result is not None
                     and hasattr(ml_result, "audio")
@@ -1752,9 +1752,9 @@ class DenoisePhase(PhaseInterface):
                     noise_reduction_db = 15.0  # Default estimate
 
                 logger.info(
-                    "ML-Hybrid vollstaendig: OMLSA=%s, Resemble=%s, quality=%.3f, reduction=%.1fdB, time=%.2fs",
+                    "ML-Hybrid vollstaendig: OMLSA=%s, DeepFilterNet=%s, quality=%.3f, reduction=%.1fdB, time=%.2fs",
                     ml_result.omlsa_applied,
-                    ml_result.resemble_applied,
+                    ml_result.dfn_applied,
                     ml_result.quality_estimate,
                     noise_reduction_db,
                     execution_time,
@@ -1762,8 +1762,8 @@ class DenoisePhase(PhaseInterface):
 
                 # Generate warnings
                 warnings = []
-                if not ml_result.resemble_applied and quality_mode in ["quality", "maximum"]:
-                    warnings.append("Resemble Enhance unavailable, OMLSA-only result")
+                if not ml_result.dfn_applied and quality_mode in ["quality", "maximum"]:
+                    warnings.append("DeepFilterNet unavailable, OMLSA-only result")
                 if ml_result.quality_estimate < 0.7:
                     warnings.append(
                         f"Low quality estimate: {ml_result.quality_estimate:.2f} (heavy noise or difficult material)"
@@ -1773,7 +1773,7 @@ class DenoisePhase(PhaseInterface):
                 ml_result.audio = np.clip(ml_result.audio, -1.0, 1.0)
 
                 # §8.2 Energy-Preservation Guard (ML-Hybrid path).
-                # Resemble Enhance can produce near-silence (e_ratio < 20%) when it mis-treats
+                # DeepFilterNet can produce near-silence (e_ratio < 20%) when it mis-treats
                 # clean audio or low-noise signals as pure noise.  In that case fall back to the
                 # OMLSA-preprocessed audio stored in the ml_result pipeline (re-run DSP path).
                 # Using a blend-back here would destroy the PMGG Wet/Dry delta contrast
@@ -1792,15 +1792,15 @@ class DenoisePhase(PhaseInterface):
                 _ml_e_in = float(np.sum(audio.astype(np.float64) ** 2))
                 _ml_e_out = float(np.sum(ml_result.audio.astype(np.float64) ** 2))
                 if _ml_e_in > 1e-6 and _ml_e_out / _ml_e_in < _energy_threshold_p03:
-                    # Resemble output is near-silence: fall back to DSP-OMLSA path
+                    # DeepFilterNet output is near-silence: fall back to DSP-OMLSA path
                     logger.info(
-                        "Verarbeitungsschritt 03 ML Energy-Preservation Guard: Resemble e_Verhaeltnis=%.4f < %.2f (SNR=%.1fdB) → DSP Ersatzpfad",
+                        "Verarbeitungsschritt 03 ML Energy-Preservation Guard: DeepFilterNet e_Verhaeltnis=%.4f < %.2f (SNR=%.1fdB) → DSP Ersatzpfad",
                         _ml_e_out / _ml_e_in,
                         _energy_threshold_p03,
                         _snr_for_energy,
                     )
                     warnings.append(
-                        f"ML energy-preservation: Resemble near-silence (ratio={_ml_e_out / _ml_e_in:.3f}) → DSP fallback"  # pylint: disable=line-too-long
+                        f"ML energy-preservation: DeepFilterNet near-silence (ratio={_ml_e_out / _ml_e_in:.3f}) → DSP fallback"  # pylint: disable=line-too-long
                     )
                     # Re-run DSP path (OMLSA/IMCRA) which has its own §8.2 guard
                     dsp_params_fb = dict(params)
@@ -1952,7 +1952,7 @@ class DenoisePhase(PhaseInterface):
                         "ml_requested_wet": _ml_wet,
                         "phase_locality_factor": phase_locality_factor,
                         "omlsa_applied": ml_result.omlsa_applied,
-                        "resemble_applied": ml_result.resemble_applied,
+                        "dfn_applied": ml_result.dfn_applied,
                         "material_type": material_type,
                         "strategy": str(ml_result.strategy_used),
                         "quality_mode": quality_mode,
@@ -1963,15 +1963,15 @@ class DenoisePhase(PhaseInterface):
                     },
                     warnings=warnings,
                     metadata={
-                        "algorithm": "hybrid_ml_omlsa_resemble_v3",
+                        "algorithm": "hybrid_ml_omlsa_dfn_v4",
                         "ml_hybrid": True,
                         "omlsa_applied": ml_result.omlsa_applied,
-                        "resemble_applied": ml_result.resemble_applied,
+                        "dfn_applied": ml_result.dfn_applied,
                         "quality_estimate": ml_result.quality_estimate,
                         "processing_time": ml_result.processing_time,
                         "algorithm_version": "3.0_ml_hybrid",
                         "execution_time_seconds": execution_time,
-                        "scientific_ref": "OMLSA Cohen (2003), IMCRA Cohen & Berdugo (2002), Resemble Enhance (2023)",
+                        "scientific_ref": "OMLSA Cohen (2003), IMCRA Cohen & Berdugo (2002), DeepFilterNet (2023)",
                         "benchmark": "Professional ML-enhanced denoising",
                         "ml_metadata": ml_result.metadata,
                         "tdp_mode": _tdp_mode,

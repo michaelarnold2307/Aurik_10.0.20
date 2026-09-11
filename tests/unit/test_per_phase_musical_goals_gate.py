@@ -703,7 +703,7 @@ class TestPhaseGoalExclusions:
     def test_38_phase03_tonal_center_excluded(self):
         """§9.7.11 extension (v10.0.0): tonal_center MUST be excluded from phase_03.
         K-S is invariant to additive white noise but NOT to frequency-selective NR
-        (OMLSA/ResembleEnhance apply gain G(f) varying per band → chroma energy
+        (OMLSA/DeepFilterNet apply gain G(f) varying per band → chroma energy
         distribution shifts → K-S argmax changes even though musical key is unchanged).
         Real-run confirmed: catastrophic tonal_center regression Δ=0.1043 on 1930s tape
         (SNR≈15 dB, 1/f hiss). Exclusion prevents false P2 catastrophic cascades."""

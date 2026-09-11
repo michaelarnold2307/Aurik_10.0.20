@@ -23,13 +23,13 @@ _ENSEMBLE_STRENGTHS: list[float] = [0.6, 1.0, 1.4]
 
 # Mode → preferred chain of model keys (legacy context-based path)
 _MODE_CHAINS: dict[str, list[str]] = {
-    "tape": ["deepfilternet_v3_ii", "resemble_enhance"],
-    "vinyl": ["resemble_enhance", "deepfilternet_v3_ii"],
+    "tape": ["deepfilternet_v3_ii", "kim_vocal"],
+    "vinyl": ["kim_vocal", "deepfilternet_v3_ii"],
     "digital": ["deepfilternet_v3_ii"],
-    "broadcast": ["resemble_enhance", "deepfilternet_v3_ii"],
-    "restoration": ["deepfilternet_v3_ii", "resemble_enhance"],
+    "broadcast": ["kim_vocal", "deepfilternet_v3_ii"],
+    "restoration": ["deepfilternet_v3_ii", "kim_vocal"],
 }
-_DEFAULT_CHAIN: list[str] = ["deepfilternet_v3_ii", "resemble_enhance"]
+_DEFAULT_CHAIN: list[str] = ["deepfilternet_v3_ii", "deepfilternet_v3_ii"]
 
 
 class EnsembleProcessor:

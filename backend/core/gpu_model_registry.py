@@ -180,7 +180,6 @@ PLUGIN_MODEL_HINTS: dict[str, str] = {
     "UTMOS": "models/utmosv2/utmosv2_ssl_encoder.onnx",
     "UTMOSv2": "models/utmosv2/utmosv2_ssl_encoder.onnx",
     "Vocos": "models/vocos_48khz/vocos_48khz.onnx",
-    "ResembleEnhance": "models/resemble_enhance/model.onnx",
     "HarmonicInpainting": "models/harmonic_inpainting/inpainting_best.onnx",
     "DemucsV4": "models/demucs/htdemucs_6s.onnx",
     "HiFiGAN": "models/hifi_gan/hifi_gan.onnx",

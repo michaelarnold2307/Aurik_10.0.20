@@ -2,7 +2,7 @@
 Hybrid ML Denoiser - Aurik 10.0.0
 ================================
 
-Kombiniert OMLSA (DSP-basiert, schnell) mit Resemble Enhance (ML-basiert, hochwertig)
+Kombiniert OMLSA (DSP-basiert, schnell) mit DeepFilterNet (ML-basiert, musik-finetuned)
 für optimale Balance zwischen Performance und Qualität.
 
 Strategy:
@@ -10,24 +10,24 @@ Strategy:
       * Removes bulk of noise quickly (stationary noise, hum, hiss)
       * Sets good baseline for ML refinement
 
-    - Stage 2 (Quality Refinement): Resemble Enhance ML (~1-2min)
+    - Stage 2 (Quality Refinement): DeepFilterNet ML (in-process, ~10-30s)
       * Further enhances naturalness and removes residual artifacts
       * Works better on OMLSA-preprocessed audio (cleaner input)
 
     - Adaptive Strategy:
       * FAST mode: OMLSA only (~0.5× RT)
-      * BALANCED mode: OMLSA + selective Resemble (~1.5× RT)
-      * MAXIMUM mode: OMLSA + full Resemble (~3-5× RT)
+      * BALANCED mode: OMLSA + selective DeepFilterNet (~1.5× RT)
+      * MAXIMUM mode: OMLSA + full DeepFilterNet (~2-3× RT)
 
 Benefits:
-    - 30-40% faster than Resemble alone (OMLSA does bulk work)
+    - 30-40% faster than DeepFilterNet alone (OMLSA does bulk work)
     - Better quality than OMLSA alone (+0.05-0.10 naturalness)
-    - More stable than Resemble on noisy inputs (OMLSA pre-cleaning)
+    - More stable than DeepFilterNet on noisy inputs (OMLSA pre-cleaning)
     - Adaptive to quality requirements
 
 Performance:
     - FAST: ~0.5× RT (OMLSA only)
-    - BALANCED: ~1.5× RT (OMLSA + selective Resemble)
+    - BALANCED: ~1.5× RT (OMLSA + selective DeepFilterNet)
     - MAXIMUM: ~3-5× RT (full pipeline)
 
 Author: Aurik 10.0.0 Development Team
@@ -47,11 +47,6 @@ import numpy as np
 
 from backend.core.audio_utils import safe_filtfilt  # §v10.101 padlen-guard
 from dsp.adaptive_omlsa import AdaptiveOMLSA
-from plugins.resemble_enhance_plugin import (
-    ResembleEnhancePlugin,
-    get_loaded_resemble_enhance_plugin,
-    get_resemble_enhance_plugin,
-)
 
 logger = logging.getLogger(__name__)
 
@@ -60,8 +55,8 @@ class DenoiseStrategy(Enum):
     """Denoising strategy."""
 
     OMLSA_ONLY = "omlsa_only"  # Fast, DSP-based
-    RESEMBLE_ONLY = "resemble_only"  # High quality, ML-based
-    HYBRID = "hybrid"  # OMLSA → Resemble (best balance)
+    DFN_ONLY = "dfn_only"  # High quality, ML-based (musik-finetuned DeepFilterNet)
+    HYBRID = "hybrid"  # OMLSA → DeepFilterNet (best balance)
     ADAPTIVE = "adaptive"  # Auto-select based on audio analysis
 
 
@@ -72,10 +67,10 @@ class DenoiseConfig:
     strategy: DenoiseStrategy = DenoiseStrategy.HYBRID
     omlsa_alpha: float = 0.98  # OMLSA smoothing factor
     omlsa_noise_floor: float = 1e-8  # OMLSA noise floor
-    resemble_denoise: float = 0.8  # Resemble denoising strength
-    resemble_enhance: float = 0.5  # Resemble enhancement strength
-    enable_preprocessing: bool = True  # OMLSA preprocessing before Resemble
-    quality_threshold: float = 0.75  # If quality > threshold, skip Resemble
+    dfn_denoise: float = 0.8  # DeepFilterNet denoising strength
+    dfn_enhance: float = 0.5  # DeepFilterNet enhancement strength
+    enable_preprocessing: bool = True  # OMLSA preprocessing before DeepFilterNet
+    quality_threshold: float = 0.75  # If quality > threshold, skip DeepFilterNet
 
 
 @dataclass
@@ -85,7 +80,7 @@ class DenoiseResult:
     audio: np.ndarray
     strategy_used: DenoiseStrategy
     omlsa_applied: bool
-    resemble_applied: bool
+    dfn_applied: bool
     processing_time: float
     quality_estimate: float
     metadata: dict[str, Any]
@@ -93,7 +88,7 @@ class DenoiseResult:
 
 class HybridMLDenoiser:
     """
-    Hybrid ML Denoiser combining OMLSA and Resemble Enhance.
+    Hybrid ML Denoiser combining OMLSA and DeepFilterNet.
 
     Usage:
         denoiser = HybridMLDenoiser(strategy=DenoiseStrategy.HYBRID)
@@ -111,23 +106,25 @@ class HybridMLDenoiser:
         self.config = config or DenoiseConfig()
         self.omlsa = AdaptiveOMLSA(alpha=self.config.omlsa_alpha, noise_floor=self.config.omlsa_noise_floor)
 
-        # Lazy-load Resemble Enhance (heavy Docker dependency)
-        self._resemble = None
+        # Lazy-load DeepFilterNet (musik-finetuned, in-process)
+        self._dfn_cache: Any = None
 
         logger.info("HybridMLDenoiser initialisiert: strategy=%s", self.config.strategy.value)
 
-    @property
-    def resemble(self) -> ResembleEnhancePlugin:
-        """Gibt the module-level Resemble Enhance singleton (avoids reloading 722 MB per batch file) zurück."""
-        if self._resemble is None:
+    def _dfn_plugin(self) -> Any:
+        """Lazy DeepFilterNet-Singleton (ehem. Sprach-Enhancement ersetzt, §v10.19 .github/specs/v10.19_sprachmodell_ersatz_sota_roadmap.md)."""
+        if self._dfn_cache is None:
             try:
-                loaded = get_loaded_resemble_enhance_plugin()
-                self._resemble = loaded if loaded is not None else get_resemble_enhance_plugin()  # type: ignore[assignment]
-                logger.info("Resemble verbessern plugin geladen erfolgreich")
+                from plugins.deepfilternet_v3_ii_plugin import (  # pylint: disable=import-outside-toplevel
+                    get_deepfilternet_plugin,
+                )
+
+                self._dfn_cache = get_deepfilternet_plugin()
+                logger.info("DeepFilterNet plugin geladen erfolgreich")
             except Exception as e:
-                logger.warning("konnte nicht laden Resemble verbessern: %s", e)
+                logger.warning("konnte DeepFilterNet nicht laden: %s", e)
                 logger.warning("Falling back to OMLSA-only Betriebsart")
-        return self._resemble  # type: ignore[return-value]
+        return self._dfn_cache
 
     def denoise(
         self, audio: np.ndarray, sample_rate: int = 48000, noise_profile: np.ndarray | None = None
@@ -151,7 +148,7 @@ class HybridMLDenoiser:
         strategy = self._determine_strategy(audio, sample_rate)
 
         omlsa_applied = False
-        resemble_applied = False
+        dfn_applied = False
         quality_estimate = 0.0
         metadata = {}
 
@@ -168,54 +165,54 @@ class HybridMLDenoiser:
 
             logger.info("OMLSA vollstaendig: quality=%.3f", quality_estimate)
 
-            # Skip Resemble if quality already good enough
+            # Skip DFN if quality already good enough
             if quality_estimate >= self.config.quality_threshold and strategy == DenoiseStrategy.HYBRID:
-                logger.info("Quality sufficient (%.3f), skipping Resemble", quality_estimate)
+                logger.info("Quality sufficient (%.3f), skipping DeepFilterNet", quality_estimate)
                 strategy = DenoiseStrategy.OMLSA_ONLY
 
-        # Stage 2: Resemble Enhancement (if needed)
-        if strategy in [DenoiseStrategy.RESEMBLE_ONLY, DenoiseStrategy.HYBRID]:
-            # try_allocate-Gate: erlaubt Tests Resemble per Mock zu deaktivieren (§2.51 Determinismus)
-            _resemble_budget_ok = True
+        # Stage 2: DeepFilterNet Enhancement (if needed)
+        if strategy in [DenoiseStrategy.DFN_ONLY, DenoiseStrategy.HYBRID]:
+            # try_allocate-Gate: erlaubt Tests DeepFilterNet per Mock zu deaktivieren (§2.51 Determinismus)
+            _dfn_budget_ok = True
             try:
                 from backend.core.ml_memory_budget import (
                     try_allocate as _ml_try_allocate,  # pylint: disable=import-outside-toplevel
                 )
 
-                _resemble_budget_ok = _ml_try_allocate("ResembleEnhance", size_gb=0.5)
+                _dfn_budget_ok = _ml_try_allocate("DeepFilterNetV3", size_gb=0.5)
             except Exception as e:
                 logger.warning("hybrid_ml_denoiser.py::denoise Ersatzpfad: %s", e)
             if (
-                _resemble_budget_ok
+                _dfn_budget_ok
                 and self._has_sufficient_ml_headroom(audio, sample_rate)
-                and self.resemble is not None
+                and self._dfn_plugin() is not None
             ):
-                logger.info("Stufe 2: Applying Resemble verbessern refinement...")
-                # Protect ResembleEnhance from PLM eviction during inference
+                logger.info("Stufe 2: Applying DeepFilterNet refinement...")
+                # Protect DeepFilterNetV3 from PLM eviction during inference
                 try:
                     from backend.core.plugin_lifecycle_manager import (
                         get_plugin_lifecycle_manager,  # pylint: disable=import-outside-toplevel
                     )
 
                     _plm = get_plugin_lifecycle_manager()
-                    _plm.set_active("ResembleEnhance", True)
+                    _plm.set_active("DeepFilterNetV3", True)
                 except Exception:
                     _plm = None
                 try:
-                    audio, resemble_meta = self._apply_resemble(audio, sample_rate)
-                    resemble_applied = True
-                    metadata["resemble"] = resemble_meta
+                    audio, dfn_meta = self._apply_dfn(audio, sample_rate)
+                    dfn_applied = True
+                    metadata["dfn"] = dfn_meta
 
-                    # Re-estimate quality after Resemble
+                    # Re-estimate quality after DeepFilterNet
                     quality_estimate = self._estimate_quality(audio, sample_rate)
-                    metadata["quality_after_resemble"] = quality_estimate  # type: ignore[assignment]
+                    metadata["quality_after_dfn"] = quality_estimate  # type: ignore[assignment]
 
-                    logger.info("Resemble vollstaendig: quality=%.3f", quality_estimate)
+                    logger.info("DeepFilterNet vollstaendig: quality=%.3f", quality_estimate)
                 finally:
                     if _plm is not None:
-                        _plm.set_active("ResembleEnhance", False)
+                        _plm.set_active("DeepFilterNetV3", False)
             else:
-                logger.warning("Resemble not verfuegbar, using OMLSA Ergebnis")
+                logger.warning("DeepFilterNet not verfuegbar, using OMLSA Ergebnis")
 
         processing_time = time.time() - start_time
         metadata["processing_time"] = processing_time  # type: ignore[assignment]
@@ -243,7 +240,7 @@ class HybridMLDenoiser:
             audio=audio,
             strategy_used=strategy,
             omlsa_applied=omlsa_applied,
-            resemble_applied=resemble_applied,
+            dfn_applied=dfn_applied,
             processing_time=processing_time,
             quality_estimate=quality_estimate,
             metadata=metadata,
@@ -354,76 +351,44 @@ class HybridMLDenoiser:
 
         return audio_clean, metadata
 
-    def _apply_resemble(self, audio: np.ndarray, sample_rate: int) -> tuple[np.ndarray, dict[str, Any]]:
-        """Wendet an: Resemble Enhance ML refinement."""
-        import soundfile as sf  # pylint: disable=import-outside-toplevel
+    def _apply_dfn(self, audio: np.ndarray, sample_rate: int) -> tuple[np.ndarray, dict[str, Any]]:
+        """Wendet an: DeepFilterNet ML refinement (musik-finetuned, in-process).
 
-        metadata = {}
+        §v10.19 (.github/specs/v10.19_sprachmodell_ersatz_sota_roadmap.md), umgesetzt
+        2026-09-11: das vormals eingesetzte Sprach-Enhancement
+        wurde aus Aurik entfernt — für GESANG ist die musik-finetuned
+        DeepFilterNet-Kette die korrekte ML-Stufe; KIM2 (kim_vocal_2) übernimmt
+        die vokal-spezifische Klarheit in den Gesangsphasen (phase_19/43/66 +
+        StemContext-Router).
+        """
+        metadata: dict[str, Any] = {}
 
         if not self._has_sufficient_ml_headroom(audio, sample_rate):
             metadata["success"] = False
-            metadata["error"] = "OOM guard: insufficient RAM"  # type: ignore[assignment]
+            metadata["error"] = "OOM guard: insufficient RAM"
             return audio, metadata
-
-        # Write to temp file (Resemble needs file I/O)
-        with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as input_tmp:
-            input_path = input_tmp.name
-            sf.write(input_path, audio.T if audio.ndim == 2 else audio, sample_rate)
-
-        with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as output_tmp:
-            output_path = output_tmp.name
 
         try:
-            # Process with Resemble
-            returncode, _stdout, stderr = self.resemble.process(
-                input_path,
-                output_path,
-                denoise_level=self.config.resemble_denoise,
-                enhance_level=self.config.resemble_enhance,
-            )
-
-            if returncode == 0:
-                # Load processed audio
-                from backend.file_import import load_audio_file  # pylint: disable=import-outside-toplevel
-
-                _res = load_audio_file(output_path, do_carrier_analysis=False)
-                if _res is None:
-                    raise RuntimeError("load_audio_file returned None für Resemble-Output")
-                audio_enhanced = np.asarray(_res["audio"], dtype=np.float32)
-
-                # Ensure same shape as input
-                if audio.ndim == 2 and audio_enhanced.ndim == 1:
-                    audio_enhanced = np.stack([audio_enhanced, audio_enhanced])
-                elif audio.ndim == 1 and audio_enhanced.ndim == 2:
-                    audio_enhanced = np.mean(audio_enhanced, axis=0)
-
-                # §2.51: Layout normalisieren — output muss input-Layout entsprechen
-                # load_audio_file gibt soundfile-Default (N, channels) zurück;
-                # wenn Input channels-first (2, N) war, muss Output auch (2, N) sein.
-                if audio.ndim == 2 and audio_enhanced.ndim == 2:
-                    _in_cf = audio.shape[0] <= 2 and audio.shape[1] > 2
-                    _out_cf = audio_enhanced.shape[0] <= 2 and audio_enhanced.shape[1] > 2
-                    if _in_cf != _out_cf:
-                        audio_enhanced = audio_enhanced.T
-
-                metadata["success"] = True
-                metadata["returncode"] = returncode
-
-                return audio_enhanced, metadata
-            logger.error("Resemble processing fehlgeschlagen: %s", stderr)
+            _dfn = self._dfn_plugin()
+            if _dfn is None:
+                metadata["success"] = False
+                metadata["error"] = "DeepFilterNet nicht verfügbar — DSP-Pfad bleibt aktiv"
+                return audio, metadata
+            _in = audio.T if audio.ndim == 2 else audio
+            _out = np.asarray(_dfn.enhance(_in, sample_rate), dtype=np.float32)
+            if audio.ndim == 2:
+                _out = _out.T if _out.ndim == 2 else np.stack([_out, _out], axis=0)
+            metadata["success"] = True
+            metadata["model"] = "deepfilternet_v3_ii"
+            return _out, metadata
+        except Exception as exc:
+            logger.warning("hybrid_ml_denoiser.py DFN-Stufe ML→DSP-Ersatzpfad: %s", exc)
             metadata["success"] = False
-            metadata["error"] = stderr
+            metadata["error"] = str(exc)
             return audio, metadata
 
-        finally:
-            # Cleanup temp files
-            if os.path.exists(input_path):
-                os.remove(input_path)
-            if os.path.exists(output_path):
-                os.remove(output_path)
-
     def _has_sufficient_ml_headroom(self, audio: np.ndarray, sample_rate: int) -> bool:
-        """Gibt True when enough free RAM is available for Resemble denoise zurück.
+        """Gibt True when enough free RAM is available for DeepFilterNet denoise zurück.
 
         The previous guard only compared current free RAM to raw audio size and
         still allowed plugin loading plus temp-file IO to push the VS Code cgroup
@@ -457,7 +422,7 @@ class HybridMLDenoiser:
         avail_gb = psutil.virtual_memory().available / (1024**3)
         if avail_gb < required_gb + 1.5:
             logger.info(
-                "Denoise: %.1f GB frei, Ziel-Headroom %.1f GB — proaktive Plugin-Eviction vor Resemble-Inferenz",
+                "Denoise: %.1f GB frei, Ziel-Headroom %.1f GB — proaktive Plugin-Eviction vor DeepFilterNet-Inferenz",
                 avail_gb,
                 required_gb,
             )
@@ -481,7 +446,7 @@ class HybridMLDenoiser:
         if avail_gb < required_gb:
             logger.warning(
                 "Denoise RAM guard: %.1f GB frei, benötigt >= %.1f GB"
-                " (dauer=%.1fs, kanaele=%d) — Resemble-Stufe übersprungen, OMLSA-Ergebnis behalten",
+                " (dauer=%.1fs, kanaele=%d) — DeepFilterNet-Stufe übersprungen, OMLSA-Ergebnis behalten",
                 avail_gb,
                 required_gb,
                 duration_s,
@@ -562,10 +527,10 @@ def denoise_fast(audio: np.ndarray, sample_rate: int = 48000) -> np.ndarray:
 
 
 def denoise_balanced(audio: np.ndarray, sample_rate: int = 48000) -> np.ndarray:
-    """Balanced denoising (OMLSA + selective Resemble)."""
+    """Balanced denoising (OMLSA + selective DeepFilterNet)."""
     config = DenoiseConfig(
         strategy=DenoiseStrategy.HYBRID,
-        quality_threshold=0.75,  # Skip Resemble if OMLSA achieves >0.75
+        quality_threshold=0.75,  # Skip DeepFilterNet if OMLSA achieves >0.75
     )
     denoiser = HybridMLDenoiser(config)
     result = denoiser.denoise(audio, sample_rate)
@@ -573,12 +538,12 @@ def denoise_balanced(audio: np.ndarray, sample_rate: int = 48000) -> np.ndarray:
 
 
 def denoise_maximum(audio: np.ndarray, sample_rate: int = 48000) -> np.ndarray:
-    """Maximum quality denoising (Full OMLSA → Resemble)."""
+    """Maximum quality denoising (Full OMLSA → DeepFilterNet)."""
     config = DenoiseConfig(
         strategy=DenoiseStrategy.HYBRID,
-        quality_threshold=1.0,  # Always apply Resemble
-        resemble_denoise=1.0,
-        resemble_enhance=0.7,
+        quality_threshold=1.0,  # Always apply DeepFilterNet
+        dfn_denoise=1.0,
+        dfn_enhance=0.7,
     )
     denoiser = HybridMLDenoiser(config)
     result = denoiser.denoise(audio, sample_rate)
@@ -624,7 +589,7 @@ if __name__ == "__main__":
 
         logger.debug("✅ Strategy: %s", _res_main.strategy_used.value)
         logger.debug("✅ OMLSA angewendet: %s", _res_main.omlsa_applied)
-        logger.debug("✅ Resemble angewendet: %s", _res_main.resemble_applied)
+        logger.debug("✅ DeepFilterNet angewendet: %s", _res_main.dfn_applied)
         logger.debug("✅ Processing time: %.2fs", _res_main.processing_time)
         logger.debug("✅ Quality estimate: %.3f", _res_main.quality_estimate)
         logger.debug("")

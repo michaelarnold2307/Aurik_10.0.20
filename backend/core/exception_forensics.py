@@ -89,7 +89,7 @@ class ExceptionAggregator:
         "phase0.*failed": "P19",
         "Apollo.*not found": "P20",
         "DeepFilterNet.*not.*available": "P21",
-        "ResembleEnhance.*not.*available": "P22",
+        "SGMSE\\+.*not.*available": "P22",
     }
 
     def __init__(self, log_dir: Path | str | None = None):

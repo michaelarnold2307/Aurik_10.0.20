@@ -388,7 +388,6 @@ _HEAVY_ML_PLUGINS: frozenset[str] = frozenset(
         "CQTDiffPlus",  # cqtdiff_plus_plugin — diffusion inpainting
         "Gacela",  # gacela_plugin — audio inpainting
         "MPSENet",  # mp_senet plugin — speech enhancement
-        "ResembleEnhance",  # resemble_enhance_plugin — ONNX (~722 MB)
         "AudioLDM2",  # audioldm2_plugin — diffusion ONNX (~1.3 GB)
         # --- Neural Enhancement (GPU-accelerated on AMD ROCm) ---
         "DeepFilterNetV3",  # deepfilternet_v3_ii_plugin — 3x enc/dec ONNX (~150 MB)
@@ -422,7 +421,6 @@ _FP16_ELIGIBLE_PLUGINS: frozenset[str] = frozenset(
         "MDXNet",
         "DemucsV4",
         "MPSENet",
-        "ResembleEnhance",
         "PANNs",
         "LaionCLAP_ONNX",
         "BanquetVinyl",

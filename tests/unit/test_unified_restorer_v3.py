@@ -1043,7 +1043,7 @@ class TestPreventFirstQuietEdges:
         audio_in = np.concatenate([intro, middle, outro]).astype(np.float32)
         quiet_profile = UnifiedRestorerV3._compute_quiet_edge_prevention_profile(audio_in, SR, material_key="vinyl")
 
-        # §v10.303 Phase-0 (Apollo/DFN/Resemble) ist reales ML — im Mock-Test
+        # §v10.303 Phase-0 (Apollo/DFN) ist reales ML — im Mock-Test
         # wie die Phasen selbst stubben (die Phasen sind ebenfalls gemockt).
         class _P0Noop:
             def process(self, audio, sample_rate, material_type):

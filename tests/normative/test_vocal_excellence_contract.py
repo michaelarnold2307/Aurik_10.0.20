@@ -165,13 +165,13 @@ class TestVocalExcellencePipelineWiring:
         assert "preflight_risk_removed_phases" in content
         assert "Preflight-Risk-Guard hatte Phase entfernt" in content
 
-    def test_phase03_skips_resemble_second_pass_after_vocal_primary_on_cassette(self) -> None:
+    def test_phase03_skips_deepfilternet_second_pass_after_vocal_primary_on_cassette(self) -> None:
         content = (_ROOT / "backend/core/phases/phase_03_denoise.py").read_text(encoding="utf-8")
 
         assert "_skip_ml_hybrid_after_vocal_primary" in content
         assert "_miipher_applied" in content
         assert 'material_type in ("cassette", "tape", "reel_tape", "mp3_low")' in content
-        assert "konservative OMLSA/DSP-Restglättung statt Resemble-Zweitpass" in content
+        assert "konservative OMLSA/DSP-Restglättung statt DeepFilterNet-Zweitpass" in content
 
     def test_phase65_keeps_vocal_naturalness_guards_active(self) -> None:
         content = _PHASE65.read_text(encoding="utf-8")

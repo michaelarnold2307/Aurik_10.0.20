@@ -29,7 +29,7 @@ Each component retains its original license as specified below.
 | **PANNs CNN14** | Apache-2.0 | Kong et al. (2020) |
 | **DiffWave** (diffwave_model.onnx) | MIT | Kong et al. (2020) |
 | **HiFi-GAN** (hifi_gan.onnx) | MIT | Kong et al. (2020) |
-| **Resemble-Enhance** | MIT | Resemble AI (2023) |
+| **DeepFilterNet v3-II** | MIT | Rong et al. (2022/2023) |
 | **Banquet Vinyl** | CC BY-NC-SA 4.0 | Bai et al. (2024) |
 | **DCCRN** | MIT | Hu et al. (2020) |
 | **BS-RoFormer / Mel-RoFormer** | MIT | Lu et al. (2023) |

@@ -1,7 +1,7 @@
 """§v10.303.22 Hallucination-Guard-Kalibrierung für Phase 0.
 
-Kalibriert die spectral_novelty-Schwellen für Apollo, DeepFilterNet v3 und
-Resemble Enhance anhand eines Batch von echten Importsongs.
+Kalibriert die spectral_novelty-Schwellen für Apollo und DeepFilterNet v3
+anhand eines Batch von echten Importsongs.
 
 Usage:
   python backend/tests/apollo_hallucination_calibration.py --dir /path/to/songs/
@@ -62,7 +62,6 @@ def calibrate_thresholds(song_dir: str, min_songs: int = 10) -> dict:
     from plugins.apollo_phase0_integration import (
         ApolloPhase0Guard,
         DeepFilterNetGuard,
-        ResembleEnhanceGuard,
     )
 
     _audio_extensions = {".wav", ".flac", ".mp3", ".aac", ".m4a", ".ogg"}
@@ -79,7 +78,6 @@ def calibrate_thresholds(song_dir: str, min_songs: int = 10) -> dict:
     _novelties: dict[str, list[float]] = {
         "apollo": [],
         "deepfilternet": [],
-        "resemble_enhance": [],
     }
 
     for _i, _file in enumerate(_files[: max(min_songs, 50)]):
@@ -125,17 +123,6 @@ def calibrate_thresholds(song_dir: str, min_songs: int = 10) -> dict:
         except Exception as exc:
             logger.debug("  deepfilternet fehlgeschlagen: %s", exc)
 
-        # ── Resemble Enhance ──
-        try:
-            _re = ResembleEnhanceGuard()
-            _re._threshold = 999.0
-            _re_out, _re_applied = _re.process(_audio, 48000)
-            _nov_re = spectral_novelty(_audio[: len(_re_out)], _re_out, 48000)
-            _novelties["resemble_enhance"].append(_nov_re)
-            logger.info("  resemble_verbessern: novelty=%.4f", _nov_re)
-        except Exception as exc:
-            logger.debug("  resemble_verbessern fehlgeschlagen: %s", exc)
-
     # ── Empfehlungen ──
     _recommendations = {}
     _STATS = {}
@@ -168,17 +155,15 @@ def calibrate_thresholds(song_dir: str, min_songs: int = 10) -> dict:
         "current_thresholds": {
             "apollo": 0.15,
             "deepfilternet": 0.25,
-            "resemble_enhance": 0.20,
         },
     }
 
     # ── Output ──
-    _report_dir = _PROJECT_ROOT / "reports"
-    _report_dir.mkdir(exist_ok=True)
-    _report_path = _report_dir / f"phase0_calibration_{datetime.now():%Y-%m-%d}.json"
-    with open(_report_path, "w") as _f:
-        json.dump(_result, _f, indent=2, ensure_ascii=False)
-    logger.info("Kalibrierung gespeichert: %s", _report_path)
+    _out_dir = Path("reports")
+    _out_dir.mkdir(exist_ok=True)
+    _out_path = _out_dir / f"phase0_calibration_{datetime.now().strftime('%Y-%m-%d')}.json"
+    _out_path.write_text(json.dumps(_result, indent=2, ensure_ascii=False), encoding="utf-8")
+    logger.info("Kalibrierung gespeichert: %s", _out_path)
 
     return _result
 

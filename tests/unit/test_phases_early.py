@@ -228,7 +228,7 @@ class TestPhase03Denoise:
             def __init__(self, audio):
                 self.audio = audio
                 self.omlsa_applied = True
-                self.resemble_applied = False
+                self.dfn_applied = False
                 self.quality_estimate = 0.8
                 self.processing_time = 0.01
                 self.strategy_used = "hybrid"
@@ -246,6 +246,33 @@ class TestPhase03Denoise:
         monkeypatch.setattr(phase03_mod, "ML_HYBRID_AVAILABLE", True)
         monkeypatch.setattr(phase03_mod, "HybridMLDenoiser", _DummyDenoiser)
 
+        # Determinismus (§G5 (copilot-instructions.md)): Tier-1-ML (SOTA-4-Layer/SGMSE+) ist umgebungsabhängig
+        # (reale ONNX-Modelle im Hauptbaum) und würde den Testfixture dekorrelieren.
+        # Beide Tiers no-open → der ML-Hybrid-Dummy erhält das unveränderte Signal.
+        import backend.core.sota_denoise_pipeline as _sota_mod
+
+        class _DummySOTA:
+            def process(self, audio, sr):
+                class _R:
+                    pass
+
+                _r = _R()
+                _r.audio = np.asarray(audio, dtype=np.float32)
+                _r.genre = "unknown"
+                _r.layers_applied = []
+                _r.processing_time = 0.0
+                return _r
+
+        monkeypatch.setattr(_sota_mod, "SOTADenoisePipeline", _DummySOTA)
+
+        import plugins.sgmse_plugin as _sgmse_mod
+
+        class _NoopSGMSE:
+            def enhance(self, audio, sr=48000, sigma=0.5):
+                return None
+
+        monkeypatch.setattr(_sgmse_mod, "get_sgmse_plus_plugin", lambda: _NoopSGMSE())
+
         result = self.phase.process(mono, material_type="tape", quality_mode="quality", sample_rate=48000)
         _assert_phase_result(result, mono)
         assert bool(result.metadata.get("ml_hybrid")) is True
@@ -262,7 +289,7 @@ class TestPhase03Denoise:
                 # 0.95 (≈-0.45dB) bleibt sicher unter der Schwelle.
                 self.audio = np.asarray(audio, dtype=np.float32) * 0.95
                 self.omlsa_applied = True
-                self.resemble_applied = True
+                self.dfn_applied = True
                 self.quality_estimate = 0.8
                 self.processing_time = 0.01
                 self.strategy_used = "hybrid"
@@ -277,6 +304,31 @@ class TestPhase03Denoise:
 
         monkeypatch.setattr(phase03_mod, "ML_HYBRID_AVAILABLE", True)
         monkeypatch.setattr(phase03_mod, "HybridMLDenoiser", _DummyDenoiser)
+
+        # Determinismus (§G5 (copilot-instructions.md)): Tier-1-ML no-op (siehe Test oben).
+        import backend.core.sota_denoise_pipeline as _sota_mod
+
+        class _DummySOTA:
+            def process(self, audio, sr):
+                class _R:
+                    pass
+
+                _r = _R()
+                _r.audio = np.asarray(audio, dtype=np.float32)
+                _r.genre = "unknown"
+                _r.layers_applied = []
+                _r.processing_time = 0.0
+                return _r
+
+        monkeypatch.setattr(_sota_mod, "SOTADenoisePipeline", _DummySOTA)
+
+        import plugins.sgmse_plugin as _sgmse_mod
+
+        class _NoopSGMSE:
+            def enhance(self, audio, sr=48000, sigma=0.5):
+                return None
+
+        monkeypatch.setattr(_sgmse_mod, "get_sgmse_plus_plugin", lambda: _NoopSGMSE())
 
         strength = 0.15
         result = self.phase.process(

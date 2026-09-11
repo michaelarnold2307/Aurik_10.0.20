@@ -65,7 +65,7 @@ Stand: 94 Specs.
 | v10.17_mp_senet_musik_finetune.md | §v10.17 — MP-SENet Musik-Fine-Tuning |
 | v10.18_onnx_export_roadmap.md | §v10.18 — ONNX-Export-Roadmap für verbleibende Modelle |
 | v10.19_carrier_chain_reliability.md | §v10.19 Tonträgerketten-Zuverlässigkeit bis Depth 5 |
-| v10.19_resemble_ersatz_sota_roadmap.md | §v10.19 — Resemble-Enhance-Ersatz & Post-Training SOTA-Roadmap |
+| v10.19_sprachmodell_ersatz_sota_roadmap.md | §v10.19 — Sprachmodell-Ersatz (UMGESETZT: DeepFilterNet + KIM2) & Post-Training SOTA-Roadmap |
 | v10.200_depth4_cassette_analysis.md | §v10.200 Depth-4-Kassetten-Restauration: Analyse, Fixes & Erkenntnisse |
 | v10.200_depth4_cassette_changes.md | §v10.200 Depth-4-Kassetten-Restauration — Änderungsdokumentation |
 | v10.200_gui_communication_gap_analysis.md | §v10.200 — GUI-Kommunikationsanalyse: Warum der Nutzer im Dunkeln steht |

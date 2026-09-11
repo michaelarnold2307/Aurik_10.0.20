@@ -421,7 +421,7 @@ TransientDecoupledProcessing → RestorabilityEstimator → EraClassifier
 | Raumrauschen / Reverb | WPE (Nakatani 2010) | nara_wpe → OMLSA (DSP) |
 | Stem-Separation Vocals | MDX23C Kim_Vocal_2 (64 MB) | NMF-β |
 | Stem-Separation Instrumente | MDX23C Kim_Inst (64 MB) | Energy-Masking |
-| Codec-Artefakte | **Apollo** (65 MB ONNX) | Resemble-Enhance |
+| Codec-Artefakte | **Apollo** (65 MB ONNX) | DeepFilterNet v3-II |
 | Dropout < 50 ms | NMF-β + Sinusoidal (DSP) | Consistent Wiener |
 | Dropout 50–999 ms | CQTdiff+ / **Flow Matching** | DiffWave ONNX |
 | Pitch-Tracking mono | CREPE full (85 MB) | pYIN (DSP) |

@@ -498,7 +498,7 @@ PHASE_GOAL_EXCLUSIONS: dict[str, set[str]] = {
     # reference-aware preservation correctly evaluates naturalness for denoise.
     # artikulation excluded: ArticulationMetric(reference=noisy_tape) measures
     # transient-shape correlation between the denoised output and the noisy input.
-    # Denoising IS supposed to reshape transients (ResembleEnhance, OMLSA spectral
+    # Denoising IS supposed to reshape transients (DeepFilterNet, OMLSA spectral
     # weighting) — scores_before(reference-free)≈0.67 vs scores_after(ref-based)≈0.13
     # produces a false P2 regression of ~0.54 that drives PMGG into best_effort at
     # strength=0.06 (virtually no denoising applied).  Root cause confirmed in debug
@@ -521,7 +521,7 @@ PHASE_GOAL_EXCLUSIONS: dict[str, set[str]] = {
     # perceptual clarity.
     # tonal_center excluded (§9.7.11 extension, v10.0.0): K-S is invariant to ADDITIVE
     # white noise (uniform spectral floor lifts all chroma bins equally → ratios preserved).
-    # OMLSA/ResembleEnhance apply FREQUENCY-SELECTIVE suppression (gain G(f) varies per
+    # OMLSA/DeepFilterNet apply FREQUENCY-SELECTIVE suppression (gain G(f) varies per
     # frequency band) which effectively acts as a noise-adaptive EQ → chroma energy
     # distribution shifts → K-S key template correlation changes. Real-run confirmed:
     # catastrophic tonal_center regression Δ=0.1043 on 1930s tape (SNR≈15 dB, 1/f hiss).
@@ -538,7 +538,7 @@ PHASE_GOAL_EXCLUSIONS: dict[str, set[str]] = {
         # Proxy zeigt weniger Onsets → false P3. Realer Endwert: 0.805 (über Boden 0.746).
         # Bestätigt: Δ=−0.13 in Run 1779217698 → PMGG best_effort_r1 → NR zu schwach.
         "transient_energie",
-    },  # OMLSA/ResembleEnhance: CREPE-Load-State + transient-shape mismatch + K-S NOT invariant for shaped NR §9.7.11 ext + MFCC-Pearson/Centroid-CV disturbed by spectral-envelope change after NR (v10.0.0 canonical — groove/emotionalitaet entfernt: P3-Quick-Proxy-Robustheit hinreichend) + §V36 transient_energie (v10.0.0)
+    },  # OMLSA/DeepFilterNet: CREPE-Load-State + transient-shape mismatch + K-S NOT invariant for shaped NR §9.7.11 ext + MFCC-Pearson/Centroid-CV disturbed by spectral-envelope change after NR (v10.0.0 canonical — groove/emotionalitaet entfernt: P3-Quick-Proxy-Robustheit hinreichend) + §V36 transient_energie (v10.0.0)
     # DeepFilterNet HF-removal intentionally reduces HF energy → brillanz drops.
     # artikulation excluded for same reason as phase_03: reference=hissy_tape vs
     # denoised output gives misleadingly low transient-correlation score.
@@ -1375,7 +1375,7 @@ _RESTORATIVE_PHASES: frozenset[str] = frozenset(
     {
         "phase_01",  # Click removal
         "phase_02",  # Hum removal (Kammfilter)
-        "phase_03",  # Broadband denoise (OMLSA + ResembleEnhance)
+        "phase_03",  # Broadband denoise (OMLSA + DeepFilterNet)
         "phase_04",  # EQ correction (RIAA/NAB de-emphasis inversion) — HF/LF energy redistribution inflates brillanz/waerme proxies
         "phase_05",  # Rumble filter (subtractive LF cleanup)
         "phase_09",  # BANQUET blind denoising
@@ -1460,7 +1460,7 @@ _BINARY_SEARCH_PRECISION: float = 0.005  # 0.5% — darunter dominiert PMGG-Mess
 # Phase-ID-Prefixes (startswith-Match) für robustes Matching.
 _ML_DETERMINISTIC_PHASES: frozenset[str] = frozenset(
     {
-        "phase_03",  # OMLSA + ResembleEnhance (ML-Hybrid Denoising)
+        "phase_03",  # OMLSA + DeepFilterNet (ML-Hybrid Denoising)
         "phase_06",  # FlashSR (neurale Bandwidth-Extension)
         "phase_09",  # BANQUET ONNX (Blind-Denoising)
         "phase_12",  # FCPE/CREPE/pYIN (f₀-Schätzung) — Timing-Phase, kein Wet/Dry
@@ -5072,7 +5072,7 @@ class PerPhaseMusicalGoalsGate:
 
         # Retry-Schleife
         # ML-deterministische Phasen: Wet/Dry-Reblend des gecachten audio_full
-        #   (spart ~60 s pro Retry bei OMLSA + ResembleEnhance etc.)
+        #   (spart ~60 s pro Retry bei OMLSA + DeepFilterNet etc.)
         # DSP-Phasen: Erneuter process()-Aufruf mit geändertem strength
         #   (nichtlineare DSP-Operationen: wet/dry ≠ Neuberechnung)
         _prev_regression = regression

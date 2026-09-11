@@ -42,7 +42,6 @@ _PRIMARY_MODEL_NAMES: frozenset[str] = frozenset(
         "sgmse_plus",
         "htdemucs_ft",
         "apollo",
-        "resemble_enhance",
         "vocos_mel_44khz",
     }
 )

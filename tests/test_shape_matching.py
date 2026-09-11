@@ -1,7 +1,7 @@
 import pytest
 
 """
-Test für Shape-Matching zwischen Stereo/Mono Arrays (resemble_enhance Broadcasting-Fix)
+Test für Shape-Matching zwischen Stereo/Mono Arrays (DeepFilterNet Broadcasting-Fix)
 """
 
 import numpy as np

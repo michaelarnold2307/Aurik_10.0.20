@@ -2,7 +2,7 @@
 Hybrid Dereverb - AURIK 9.0 Phase 20 ML-Hybrid
 ===============================================
 
-Two-stage dereverb: DSP spectral gating + ML refinement (SGMSE+ / ResembleEnhance).
+Two-stage dereverb: DSP spectral gating + ML refinement (SGMSE+).
 
 Architecture:
 1. Stage 1: DSP Spectral Gating (fast, ~0.3× RT)
@@ -11,7 +11,7 @@ Architecture:
    - Tail damping
 
 2. Stage 2: ML Refinement (slower, ~2.0× RT)
-   - SGMSE+ (primary) or ResembleEnhance (fallback)
+   - SGMSE+ (primary) or WPE-DSP (fallback)
    - Preserves direct sound, removes reflections
 
 Strategy Modes:
@@ -87,17 +87,16 @@ class DereverbResult:
     processing_time: float
     reverb_estimate: float  # Estimated reverb level (0-1)
     metadata: dict[str, Any]
-    ml_applied: bool = False  # True wenn ResembleEnhance aktiv war
+    ml_applied: bool = False  # True wenn ML aktiv war
 
 
 class HybridDereverb:
     """
-    Hybrid Dereverb: DSP + SGMSE+ ML (Primär, §4.4) + ResembleEnhance (Fallback 1).
+    Hybrid Dereverb: DSP + SGMSE+ ML (Primär, §4.4).
 
     SOTA-Priorität gemäß §4.4 DSP-Mindeststandards (Vocal Enhancement / Dereverb):
         Primär:    SGMSE+ ONNX         (sgmse_plugin,          ~120 MB)
-        Fallback 1: Resemble-Enhance ONNX (resemble_enhance_plugin, ~722 MB)
-        Fallback 2: WPE DSP             (kein ML erforderlich)  # §V6 (copilot-instructions.md): logger.warning handled at call site
+        Fallback 1: WPE DSP             (kein ML erforderlich)  # §V6 (copilot-instructions.md): logger.warning handled at call site
 
     Combines fast DSP spectral gating with SGMSE+ ML refinement.
     SGMSE+ (Score-Based Generative Model for Speech Enhancement, Richter 2022)
@@ -117,18 +116,17 @@ class HybridDereverb:
         self._disable_ml_due_deterministic_error: bool = False
         self._last_deterministic_ml_error: str = ""
 
-        # Lazy-load ML-Stufe: SGMSE+ primär, ResembleEnhance als Fallback 1
+        # Lazy-load ML-Stufe: SGMSE+ primär, WPE-DSP als Fallback
         self.dccrn = None  # backward-compat Name beibehalten
         if self.config.strategy in [DereverbStrategy.DCCRN_ONLY, DereverbStrategy.HYBRID, DereverbStrategy.ADAPTIVE]:
             self._init_dccrn()
 
     def _init_dccrn(self) -> None:
-        """ML-Stufe initialisieren — SGMSE+ primär (§4.4), ResembleEnhance Fallback 1, DSP Fallback 2.
+        """ML-Stufe initialisieren — SGMSE+ primär (§4.4), WPE-DSP Fallback.
 
         SOTA-Reihenfolge (§4.4 Vocal Enhancement / Dereverb):
             1. SGMSE+ ONNX (sgmse_plugin)          — Primär
-            2. Resemble-Enhance ONNX                — Fallback 1
-            3. WPE DSP (self.dccrn = None)          — Fallback 2
+            2. WPE DSP (self.dccrn = None)         — Fallback
         """
         # Stufe 1: SGMSE+ ONNX (§4.4 Primär — Score-Based Generative Model for Speech Enhancement)
         try:
@@ -136,27 +134,19 @@ class HybridDereverb:
 
             self.dccrn = get_sgmse_plus_plugin()  # type: ignore[assignment]
             self._sgmse_active = True
-            logger.info("✅ SGMSE+ geladen als Dereverb-Primärmodul (§4.4) — ResembleEnhance als Ersatzpfad bereit")
+            logger.info("✅ SGMSE+ geladen als Dereverb-Primärmodul (§4.4)")
             return
         except ImportError as e:
-            logger.debug("SGMSE+ import fehlgeschlagen (%s) — versuche ResembleEnhance Ersatzpfad 1", e)
+            logger.debug("SGMSE+ import fehlgeschlagen (%s) — WPE-DSP-Ersatzpfad", e)
         except Exception as e:
-            logger.warning("SGMSE+ Init-Fehler (%s) — versuche ResembleEnhance Ersatzpfad 1", e)
+            logger.warning("SGMSE+ Init-Fehler (%s) — WPE-DSP-Ersatzpfad", e)
 
-        # Stufe 2: Resemble-Enhance ONNX (§4.4 Fallback 1)
-        try:
-            from plugins.resemble_enhance_plugin import ResembleEnhancePlugin
-
-            self.dccrn = ResembleEnhancePlugin()  # type: ignore[assignment]
-            self._sgmse_active = False
-            logger.info("ResembleEnhance ML-Stufe für Dereverb geladen (§4.4 Ersatzpfad 1)")
-        except ImportError as e:
-            logger.warning("ML→DSP-Ersatzpfad aktiviert", exc_info=True)  # §V6 (copilot-instructions.md)
-            logger.info("ResembleEnhance nicht verfügbar (%s) — WPE-DSP-Ersatzpfad 2 aktiv", e)
-            self.dccrn = None
-        except Exception as e:
-            logger.warning("ResembleEnhance-Init fehlgeschlagen (%s) — DSP-only Ersatzpfad 2", e)
-            self.dccrn = None
+        # Fallback: WPE DSP (§4.4, kein ML erforderlich)
+        logger.warning(
+            "ML→DSP-Ersatzpfad aktiviert: SGMSE+ nicht verfügbar — WPE-DSP aktiv"
+        )  # §V6 (copilot-instructions.md)
+        self.dccrn = None
+        self._sgmse_active = False
 
     def dereverb(self, audio: np.ndarray, sample_rate: int = 48000) -> DereverbResult:
         """
@@ -198,10 +188,10 @@ class HybridDereverb:
                 logger.info("Reverb sufficient (%.3f), skipping ML refinement", reverb_after_dsp)
                 strategy = DereverbStrategy.DSP_ONLY
 
-        # Stage 2: ML refinement (SGMSE+ / ResembleEnhance, if needed)
+        # Stage 2: ML refinement (SGMSE+, if needed)
         if strategy in [DereverbStrategy.DCCRN_ONLY, DereverbStrategy.HYBRID]:
             if self.dccrn is not None:
-                _ml_name = "SGMSE+" if self._sgmse_active else "ResembleEnhance"
+                _ml_name = "SGMSE+" if self._sgmse_active else "WPE-DSP"
                 logger.info("Stufe 2: %s ML-Dereverb-Stufe...", _ml_name)
 
                 _skip_ml = not self._has_sufficient_ml_headroom(audio)
@@ -307,7 +297,7 @@ class HybridDereverb:
                 required_gb,
                 duration_s,
                 n_channels,
-                "SGMSE+" if self._sgmse_active else "ResembleEnhance",
+                "SGMSE+" if self._sgmse_active else "WPE-DSP",
             )
             return False
 
@@ -384,7 +374,7 @@ class HybridDereverb:
         return result, metadata
 
     def _apply_dccrn(self, audio: np.ndarray, sample_rate: int) -> tuple[np.ndarray, dict[str, Any]]:
-        """ML-Dereverb via SGMSE+ (primär §4.4) oder ResembleEnhance (Fallback 1).
+        """ML-Dereverb via SGMSE+ (primär §4.4) oder WPE-DSP (Fallback).
 
         Verarbeitet Stereo-Kanäle unabhängig für bessere Qualität.
         """
@@ -395,9 +385,9 @@ class HybridDereverb:
             metadata["error"] = "ml_plugin_unavailable"
             return audio, metadata
 
-        # §4.6b: PLM active-guard — prevents emergency-eviction during SGMSE+/ResembleEnhance inference
+        # §4.6b: PLM active-guard — prevents emergency-eviction during SGMSE+ inference
         _plm_dereverb = None
-        _plm_model_name = "SGMSE+" if self._sgmse_active else "ResembleEnhance"
+        _plm_model_name = "SGMSE+" if self._sgmse_active else "WPE-DSP"
         try:
             from backend.core.plugin_lifecycle_manager import get_plugin_lifecycle_manager as _get_plm_drv
 
@@ -439,11 +429,11 @@ class HybridDereverb:
                         metadata["model"] = "sgmse_plus"
                         metadata["model_used"] = getattr(result, "model_used", "sgmse_plus_torchscript")
                 else:
-                    # §4.4 Fallback 1: ResembleEnhance
+                    # §4.4 Fallback: WPE-DSP
                     enhanced = dccrn_plugin.enhance(mono_in, sample_rate)
                     enhanced = np.asarray(enhanced, dtype=np.float32)
                     if ch_idx == 0:
-                        metadata["model"] = "resemble_enhance"
+                        metadata["model"] = "wpe_dsp"
 
                 # Trim back to original channel length
                 enhanced = enhanced[:_orig_ch_len]

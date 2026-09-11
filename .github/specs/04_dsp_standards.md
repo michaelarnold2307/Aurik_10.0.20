@@ -425,7 +425,7 @@ Pflicht: Apollo (Zhang et al. 2024)
     - Band-Splitting-RNN: Audio → 24 Sub-Bänder
     - Mamba-Backbone-Sequenzmodellierung
     - Musical Goals Check post-Rekonstruktion (Brillanz ≥ 0.85, Wärme ≥ 0.80)
-Fallback: Resemble-Enhance ONNX → DSP Spectral Repair + PGHI
+Fallback: DeepFilterNet ONNX → DSP Spectral Repair + PGHI
 ```
 
 ### Amplituden-Clipping (Phase 23 — CLIPPING-Typ) §4.5a [RELEASE_MUST]
@@ -1381,7 +1381,7 @@ finally:
 
 | Phase | Primär | Fallback(s) | _PHASE_REQUIRED_MODELS |
 | --- | --- | --- | --- |
-| `phase_03_denoise` | SGMSE+, ResembleEnhance | DeepFilterNetV3, OMLSA (DSP) | `{"SGMSE+", "ResembleEnhance", "DeepFilterNetV3"}` |
+| `phase_03_denoise` | SGMSE+, DeepFilterNet | DeepFilterNetV3, OMLSA (DSP) | `{"SGMSE+", "DeepFilterNet", "DeepFilterNetV3"}` |
 | `phase_09_crackle_removal` | BANQUET | DSP (Median-Filter) | `{"BANQUET"}` |
 | `phase_12_wow_flutter_fix` | FCPE | RMVPE, CREPE, pYIN (DSP) | `{"FCPE", "RMVPE", "CREPE"}` |
 | `phase_18_noise_gate` | SileroVAD | Energy-Gate (DSP) | `{"SileroVAD"}` |
@@ -1403,7 +1403,7 @@ finally:
 
 ### §2.38a Headroom-Guard (RELEASE_MUST)
 
-Für schwere ML-Pfade (SGMSE+, ResembleEnhance, FlashSR, CQTdiff/FlowMatching):
+Für schwere ML-Pfade (SGMSE+, DeepFilterNet, FlashSR, CQTdiff/FlowMatching):
 
 1. Vor Load: Physischer RAM-Headroom prüfen (mono/stereo, Dateilänge)
 2. Bei knappem RAM: `evict_stale_plugins()` + `gc.collect()` + `malloc_trim(0)`
@@ -1463,7 +1463,7 @@ Jeder Fallback in `metadata["ml_fallbacks_used"]` protokollieren.
 | Phase | Modell | `set_active()` Guard | Status |
 | --- | --- | --- | --- |
 | phase_03 | SGMSE+ | ✅ | v10.0.0 |
-| phase_03 | ResembleEnhance | ✅ | v10.0.0.x |
+| phase_03 | DeepFilterNet | ✅ | v10.0.0.x |
 | phase_03 | DeepFilterNetV3 | ✅ | v10.0.0.x |
 | phase_09 | BANQUET | ✅ | v10.14 PLM-Guard |
 | phase_12 | FCPE/RMVPE/CREPE | ✅ | v10.14 PLM-Guard |
@@ -1547,7 +1547,7 @@ Crossfade: Hanning 10 ms. Modul: `backend/core/adaptive_chunk_processor.py`
 | SGMSE+ | TorchScript 251 MB | Aurik 10.10.x |
 | Flow Matching | ONNX/PT | Aurik 10.10.x |
 | Whisper-Tiny | ONNX 39 MB | Aurik 10.10.46b |
-| Resemble-Enhance | ONNX 722 MB | Aurik 10.0 (Fallback) |
+| DeepFilterNet | ONNX 722 MB | Aurik 10.0 (Fallback) |
 
 ### §4.10.7 Migrationspfad Bark/LUFS (§v10.101)
 

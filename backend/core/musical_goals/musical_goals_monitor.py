@@ -314,7 +314,7 @@ class MusicalGoalsMonitor:
                 "emotionalitaet": -0.03 * strength,  # Dynamics loss
                 "transparenz": 0.02 * strength,  # Clarity gain
             },
-            "ResembleEnhance": {
+            "KIM2": {
                 "bass_kraft": 0.01 * strength,
                 "brillanz": 0.03 * strength,
                 "waerme": 0.02 * strength,
