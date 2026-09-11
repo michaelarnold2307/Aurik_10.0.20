@@ -564,6 +564,14 @@ def process_audio(
         sys.exit(10)
 
     if verbose:
+        # §Modell-Transparenz: ehrlicher Inventar-Status vor dem Start —
+        # fehlende SOTA-Modelle dürfen nicht still in DSP-Fallbacks münden.
+        try:
+            from scripts.model_inventory import summary_line
+
+            logger.info("%s", summary_line())
+        except Exception as _inv_exc:
+            logger.debug("Modell-Inventar nicht lesbar: %s", _inv_exc)
         logger.info("🔧 Starte AurikDenker — Modus: %s", mode)
 
     # ── 3. Kanonischer Einstiegspunkt: AurikDenker.denke() (Spec §2.2) ────────
