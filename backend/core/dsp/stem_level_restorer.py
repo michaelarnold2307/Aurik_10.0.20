@@ -79,6 +79,12 @@ class StemLevelRestorerResult:
     kim_witness: dict | None = None
     """Listening-Witness report of the KIM2 clarity stage (None if skipped)."""
 
+    instrumental_stem_kim: bool = False
+    """True if KIM Inst (kim_inst) clarity was applied to the instrumental stem."""
+
+    kim_inst_witness: dict | None = None
+    """Listening-Witness report of the KIM-Inst clarity stage (None if skipped)."""
+
 
 # ---------------------------------------------------------------------------
 # Singleton
@@ -188,6 +194,8 @@ class StemLevelRestorer:
         _dfn_used = False
         _kim_used = False
         _kim_witness: dict | None = None
+        _kim_inst_used = False
+        _kim_inst_witness: dict | None = None
         _vocal_nr_model = "none"
         _instrumental_nr_model = "none"
 
@@ -229,6 +237,17 @@ class StemLevelRestorer:
         except Exception as _kim_exc:  # pylint: disable=broad-except
             logger.debug("§SLR-1 KIM2 nicht blockierend: %s", _kim_exc)
 
+        # §SLR-1e3: KIM Inst (kim_inst) Musik-Klarheit — Spiegelstufe zu KIM2.
+        # kim_inst.onnx (64 MB, vortrainiert) ist das Musik-Enhancement —
+        # NACH der DFN-NR, VOR dem Remix (ein Rekombinationspunkt).
+        # Never-worsen via Witness (Bass/Transienten).
+        try:
+            _instr_out, _kim_inst_used, _kim_inst_witness = self._apply_kim_inst_clarity(
+                _instr_stem, _instr_out, sample_rate
+            )
+        except Exception as _kim_inst_exc:  # pylint: disable=broad-except
+            logger.debug("§SLR-1 KIM Inst nicht blockierend: %s", _kim_inst_exc)
+
         # §SLR-1f: Remix stems to output
         _out = self._coerce_like(_vocal_out + _instr_out, _audio)
         _out = np.nan_to_num(_out, nan=0.0, posinf=0.0, neginf=0.0)
@@ -268,6 +287,8 @@ class StemLevelRestorer:
                 instrumental_stem_dfn=_dfn_used,
                 vocal_stem_kim=_kim_used,
                 kim_witness=_kim_witness,
+                instrumental_stem_kim=_kim_inst_used,
+                kim_inst_witness=_kim_inst_witness,
                 vqi_after=_vqi_after,
                 rollback_reason=_rollback_reason,
                 separation_model=_separation_model,
@@ -287,6 +308,8 @@ class StemLevelRestorer:
             instrumental_stem_dfn=_dfn_used,
             vocal_stem_kim=_kim_used,
             kim_witness=_kim_witness,
+            instrumental_stem_kim=_kim_inst_used,
+            kim_inst_witness=_kim_inst_witness,
             vqi_after=_vqi_after,
             fallback_reason="" if _success else "no_stem_nr_applied",
             separation_model=_separation_model,
@@ -496,6 +519,55 @@ class StemLevelRestorer:
         except Exception as exc:  # pylint: disable=broad-except
             logger.debug("§KIM2 Klarheit nicht verfuegbar: %s", exc)
             return np.asarray(vocal_nr, dtype=np.float32), False, {"applied": False, "reason": "unavailable"}
+
+    def _apply_kim_inst_clarity(
+        self, instr_stem: np.ndarray, instr_nr: np.ndarray, sample_rate: int
+    ) -> tuple[np.ndarray, bool, dict | None]:
+        """Wendet an: KIM-Inst-Klarheit auf den NR-Instrumentalstem — witness-guarded, harmlos.
+
+        Musikseite des §v10.19-Pendants: kim_inst.onnx (64 MB, vortrainiert)
+        ist das musik-trainierte Instrumental-Enhancement — das Spiegelbild
+        zu KIM2 auf dem Gesang.
+
+        Never-worsen-Vertrag (§0 Primum non nocere): Die KIM-Inst-Ausgabe wird
+        nur übernommen, wenn der Listening-Witness keine Instrumental-Regression
+        meldet (bass_drop < 1.0 dB, transient_smear_ratio > 0.85,
+        flat_top_rise < 0.02). Sonst Passthrough — blend=0.
+        """
+        _metadata: dict | None = None
+        try:
+            from plugins.kim_music_enhancer_plugin import enhance_music  # pylint: disable=import-outside-toplevel
+
+            _in = np.asarray(instr_nr, dtype=np.float32)
+            # KIM Inst erwartet channels-first (2, N) für Stereo,
+            # der Stem ist hier channels-last (N, 2).
+            _in_cf = _in.T if _in.ndim == 2 else _in
+            _out = self._coerce_like(enhance_music(_in_cf), _in)
+            _out = np.nan_to_num(_out, nan=0.0, posinf=0.0, neginf=0.0)
+            _out = np.clip(_out, -1.0, 1.0)
+
+            from backend.core.listening_witness import (  # pylint: disable=import-outside-toplevel
+                evaluate_listening_witness,
+            )
+
+            _witness = evaluate_listening_witness(_in, _out, sample_rate, "kim_inst")
+            _ok = (
+                _witness.bass_drop_db < 1.0 and _witness.transient_smear_ratio > 0.85 and _witness.flat_top_rise < 0.02
+            )
+            if not _ok:
+                logger.info(
+                    "§KIM-Inst Witness-Gate haelt DFN-Stem (bass_drop=%.2f dB smear=%.3f flat_top=%.3f)",
+                    _witness.bass_drop_db,
+                    _witness.transient_smear_ratio,
+                    _witness.flat_top_rise,
+                )
+                _metadata = {"applied": False, "reason": "witness_gate", "witness": _witness.as_dict()}
+                return np.asarray(instr_nr, dtype=np.float32), False, _metadata
+            _metadata = {"applied": True, "model": "kim_inst", "witness": _witness.as_dict()}
+            return _out, True, _metadata
+        except Exception as exc:  # pylint: disable=broad-except
+            logger.debug("§KIM-Inst Klarheit nicht verfuegbar: %s", exc)
+            return np.asarray(instr_nr, dtype=np.float32), False, {"applied": False, "reason": "unavailable"}
 
     # -----------------------------------------------------------------------
     # DeepFilterNet v3 (instrumental stem)
