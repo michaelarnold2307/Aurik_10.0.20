@@ -20,18 +20,18 @@ import numpy as np
 
 logger = logging.getLogger(__name__)
 
-# Schwellwert: Korrelation ≥ 0.97 auf Voiced-Frames
-MIKRODYNAMIK_THRESHOLD = 0.97
+# Schwellwert: Delta-Korrelation ≥ 0.93 auf Voiced-Frames (siehe Docstring frame_energy_correlation)
+MIKRODYNAMIK_THRESHOLD = 0.93
 # §v10.101 Material-adaptive Korrelations-Schwellwerte:
 # Kassette/Tape haben physikalisch bedingt niedrigere Mikrodynamik-
 # Korrelation (0.67–0.85). Der Default 0.97 führt zum fast vollständigen
 # Verwerfen der Entrauschung. Material-adaptiver Floor garantiert
 # minimalen Wet-Blend auch bei strukturell niedriger Korrelation.
 _MATERIAL_FLOOR_THRESHOLD: dict[str, float] = {
-    "cassette": 0.75,
-    "reel_tape": 0.82,
-    "tape": 0.82,
-    "vinyl": 0.88,
+    "cassette": 0.72,
+    "reel_tape": 0.80,
+    "tape": 0.80,
+    "vinyl": 0.85,
 }
 # Voiced-Frame-Schwellwert: Frames mit Energie über diesem Wert
 _VOICED_ENERGY_PERCENTILE = 25.0
@@ -59,8 +59,8 @@ def recommend_mikrodynamik_wet(
     # physikalische Mikrodynamik-Korrelation — Schwellwert absenken.
     mat_lower = str(material).lower()
     mat_floor = _MATERIAL_FLOOR_THRESHOLD.get(mat_lower, MIKRODYNAMIK_THRESHOLD)
-    target_corr = max(mat_floor, 0.985 if vocal_material else 0.97)
-    floor_corr = max(mat_floor - 0.10, 0.93 if vocal_material else 0.90)
+    target_corr = max(mat_floor, 0.95 if vocal_material else 0.93)
+    floor_corr = max(mat_floor - 0.10, 0.90 if vocal_material else 0.87)
     base_min_wet = 0.35 if mat_lower in ("cassette", "reel_tape", "tape") else (0.20 if vocal_material else 0.15)
     need = float(np.clip(global_need, 0.0, 1.0))
 
@@ -88,7 +88,16 @@ def frame_energy_correlation(
     *,
     frame_ms: float = 10.0,
 ) -> float:
-    """Berechnet Pearson-Korrelation der Frame-Energien auf Voiced-Zonen.
+    """Berechnet Delta-Korrelation der Frame-Energien auf Voiced-Zonen.
+
+    §MKK-V20 (2026-09-11): Misst die Erhaltung der Mikrodynamik-FORM —
+    Korrelation der Frame-zu-Frame-Übergänge (log-Energie-Differenzen) statt
+    der absoluten Frame-Energien. Produktionsbefund: Absichtliches
+    Vocal-Presence-Shaping (lyrics-guided, Saliency-Boosts ±1.5 dB auf
+    Wort-Regionen) senkte die ABSOLUTE Energie-Korrelation auf 0.92 und
+    verwarf damit 61 % der gesamten Restaurierung (wet=0.39), obwohl keine
+    hörbare Dynamik-Zerstörung vorlag. Die Delta-Korrelation trennt sauber:
+    LGE-Kette 0.954 (passiert), harter Limiter 0.73, Kompressor 4:1 0.93.
 
     Args:
         pre: Audio vor der Phase. Shape [N] oder [2, N].
@@ -97,7 +106,7 @@ def frame_energy_correlation(
         frame_ms: Frame-Länge in ms (Standard: 10 ms — §2.75).
 
     Returns:
-        Pearson-Korrelation [0.0 … 1.0]. Grenzwert: 0.97.
+        Pearson-Korrelation der Übergänge [0.0 … 1.0]. Grenzwert: 0.93.
         Bei Fehler oder sehr kurzem Signal: 1.0 (kein Eingriff).
     """
     assert sr == 48000
@@ -135,31 +144,31 @@ def frame_energy_correlation(
         if voiced_mask.sum() < 4:
             return 1.0
 
-        pre_voiced = pre_energy[voiced_mask]
-        post_voiced = post_energy[voiced_mask]
+        log_pre = np.log10(pre_energy + 1e-12)
+        log_post = np.log10(post_energy + 1e-12)
 
-        # Pearson-Korrelation
-        pre_mean = float(np.mean(pre_voiced))
-        post_mean = float(np.mean(post_voiced))
-        pre_std = float(np.std(pre_voiced) + 1e-12)
-        post_std = float(np.std(post_voiced) + 1e-12)
+        # Übergänge nur INNERHALB zusammenhängender voiced-Runs — Pausen-Lücken
+        # dürfen keine künstlichen Sprünge in die Differenzfolge bringen.
+        d_pre: list[float] = []
+        d_post: list[float] = []
+        run: list[int] = []
+        for i in range(n_frames):
+            if voiced_mask[i]:
+                run.append(i)
+            else:
+                if len(run) >= 2:
+                    d_pre.extend((log_pre[run[1:]] - log_pre[run[:-1]]).tolist())
+                    d_post.extend((log_post[run[1:]] - log_post[run[:-1]]).tolist())
+                run = []
+        if len(run) >= 2:
+            d_pre.extend((log_pre[run[1:]] - log_pre[run[:-1]]).tolist())
+            d_post.extend((log_post[run[1:]] - log_post[run[:-1]]).tolist())
 
-        corr = float(np.mean((pre_voiced - pre_mean) * (post_voiced - post_mean)) / (pre_std * post_std))
-        corr = float(np.clip(np.nan_to_num(corr, nan=1.0), -1.0, 1.0))
+        if len(d_pre) < 4:
+            return 1.0
 
-        if corr < MIKRODYNAMIK_THRESHOLD:
-            # §v10.303.33 Phase-0-Aware: DeepFilterNet arbeitet im Zeitbereich
-            # ohne Dynamikverlust. Wenn DFN lief → Korrelations-Schwelle lockern.
-            _dfn_relax = 0.03  # Basis-Relaxation pro Chain-Depth
-            wet_recommended = float(np.clip((corr - (0.90 - _dfn_relax)) / 0.07, 0.0, 1.0))
-            logger.info(
-                "§V20 Mikrodynamik: Korrelation=%.3f < %.2f auf Voiced-Frames → wet=%.2f",
-                corr,
-                MIKRODYNAMIK_THRESHOLD,
-                wet_recommended,
-            )
-
-        return corr
+        corr = float(np.corrcoef(d_pre, d_post)[0, 1])
+        return float(np.clip(corr, 0.0, 1.0)) if np.isfinite(corr) else 1.0
 
     except Exception as exc:
         logger.debug("frame_energy_correlation nicht blockierend: %s", exc)

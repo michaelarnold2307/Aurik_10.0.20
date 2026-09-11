@@ -171,3 +171,71 @@ def test_real_music_224s_runtime() -> None:
     dt = time.perf_counter() - t0
     assert res.findings == []
     assert dt < 30.0, f"Witness auf 224 s zu langsam: {dt:.1f}s"
+
+
+@pytest.mark.skipif(not _REAL_30.exists(), reason="Elke-Best-Testaudio (30 s) fehlt")
+def test_silence_pad_no_false_positive() -> None:
+    """§Witness-Fix 2026-09-11: 100-ms-Silence-Pad am Anfang darf kein
+    loudness_pumping auslösen — der Silence→Musik-Schritt am Rand war die
+    Leakage-Quelle der 37-dB-False-Positives (Produktionsbefund phase_04)."""
+    x, sr = _load_real(_REAL_30)
+    pad = np.zeros((sr // 10, x.shape[1]), dtype=np.float32) if x.ndim == 2 else np.zeros(sr // 10, dtype=np.float32)
+    y = np.concatenate([pad, x], axis=0).astype(np.float32)
+    res = evaluate_listening_witness(x, y[: len(x)], sr, "phase_pad")
+    assert res.loud_mod_rise_db < 1.0, f"Rand-Leakage nicht unterdrückt: {res.loud_mod_rise_db:.2f} dB"
+    assert "loudness_pumping" not in res.findings
+
+
+def test_phrase_gap_robustness() -> None:
+    """§Witness-Fix 2026-09-11: Phrasen-Lücken im F0-Verlauf dürfen keine
+    Pitch-Modulation vortäuschen (Konkatenations-Sprünge → 3–8-Hz-Leakage).
+    Gleiche Phrasen mit verschobener Lücke ⇒ pitch_mod_depth bleibt klein."""
+    sr = 48000
+    t = np.arange(sr * 4) / sr
+
+    def _voiced_phrases(gap_at: int) -> np.ndarray:
+        seg1 = (0.4 * np.sin(2 * np.pi * 220 * t[:sr])).astype(np.float32)
+        gap = np.zeros(gap_at, dtype=np.float32)
+        seg2 = (0.4 * np.sin(2 * np.pi * 220 * t[:sr])).astype(np.float32)
+        return np.concatenate([seg1, gap, seg2])
+
+    x = _voiced_phrases(int(sr * 0.35))
+    y = _voiced_phrases(int(sr * 0.55))
+    res = evaluate_listening_witness(x, y, sr, "phrase_gap")
+    assert res.pitch_mod_depth_cents < 15.0, f"Phrasen-Lücken-Leakage: {res.pitch_mod_depth_cents:.1f} Cent"
+
+
+def test_bass_loss_detected() -> None:
+    """Hochpass-gefiltertes Signal (Bass weg) → bass_loss-Finding."""
+    sr = 48000
+    rng = np.random.default_rng(11)
+    t = np.arange(sr * 4) / sr
+    x = np.clip(
+        0.4 * np.sin(2 * np.pi * 60 * t) + 0.3 * np.sin(2 * np.pi * 440 * t) + 0.2 * rng.normal(0, 1, len(t)), -1, 1
+    )
+    x = x.astype(np.float32)
+    from scipy.signal import butter, sosfiltfilt
+
+    sos = butter(4, 400 / (sr / 2), btype="high", output="sos")
+    y = sosfiltfilt(sos, x).astype(np.float32)
+    res = evaluate_listening_witness(x, y, sr, "bass_test")
+    assert res.bass_drop_db > 1.5, f"Bass-Verlust nicht erkannt: {res.bass_drop_db:.2f} dB"
+    assert "bass_loss" in res.findings
+
+
+def test_transient_smearing_detected() -> None:
+    """Glattgebügeltes Signal (Transienten weg) → transient_smearing-Finding."""
+    sr = 48000
+    rng = np.random.default_rng(13)
+    t = np.arange(sr * 4) / sr
+    x = (0.4 * np.sin(2 * np.pi * 220 * t) + 0.25 * rng.normal(0, 1, len(t))).astype(np.float32)
+    for k in range(4, len(t), sr // 2):
+        x[k : k + 8] += 0.9
+    x = np.clip(x, -1, 1).astype(np.float32)
+    from scipy.ndimage import median_filter
+
+    y = x * (median_filter(np.abs(x) + 1e-4, size=961) / (np.abs(x) + 1e-4)).astype(np.float32)
+    y = np.clip(np.nan_to_num(y, nan=0.0, posinf=0.0, neginf=0.0), -1, 1).astype(np.float32)
+    res = evaluate_listening_witness(x, y, sr, "transient_test")
+    assert res.transient_smear_ratio > 0.35, f"Verschmierung nicht erkannt: {res.transient_smear_ratio:.3f}"
+    assert "transient_smearing" in res.findings

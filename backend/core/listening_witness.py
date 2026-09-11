@@ -41,6 +41,8 @@ _HNR_DROP_DB = 2.0  # Stimm-HNR-Abfall (de Krom)
 _HF_FLATNESS_RISE = 0.15  # Spektral-Flatness-Anstieg 2–8 kHz
 _FLAT_TOP_RISE = 0.005  # Anteil ±1-gepinnter Samples (Clipping-Proxy)
 _LOUD_MOD_RISE_DB = 1.5  # STL-Modulations-Tiefe-Anstieg (0.2–6 Hz)
+_BASS_DROP_DB = 1.5  # Relativer Bass-Energie-Anteil-Verlust (20–250 Hz)
+_TRANSIENT_SMEAR_RATIO = 0.35  # Relativer Abfall der 95-Perzentil-Hüllkurven-Steigung
 
 _FRAME = 2048
 _HOP = 1024
@@ -55,6 +57,9 @@ _STL_WIN = 0.100
 _STL_HOP = 0.050
 _MOD_LO_HZ = 0.2
 _MOD_HI_HZ = 6.0
+_BASS_LO_HZ = 20.0
+_BASS_HI_HZ = 250.0
+_TRANSIENT_WIN = 0.005  # 5-ms-Envelope für Transienten-Steigung
 
 
 @dataclass
@@ -68,6 +73,8 @@ class ListeningWitnessResult:
     hf_flatness_rise: float = 0.0
     flat_top_rise: float = 0.0
     loud_mod_rise_db: float = 0.0
+    bass_drop_db: float = 0.0
+    transient_smear_ratio: float = 0.0
     findings: list[str] = field(default_factory=list)
 
     def as_dict(self) -> dict:
@@ -79,6 +86,8 @@ class ListeningWitnessResult:
             "hf_flatness_rise": round(self.hf_flatness_rise, 4),
             "flat_top_rise": round(self.flat_top_rise, 4),
             "loud_mod_rise_db": round(self.loud_mod_rise_db, 2),
+            "bass_drop_db": round(self.bass_drop_db, 2),
+            "transient_smear_ratio": round(self.transient_smear_ratio, 3),
             "findings": list(self.findings),
         }
 
@@ -171,26 +180,58 @@ def _frame_f0_hnr(x: np.ndarray, sr: int) -> tuple[np.ndarray, np.ndarray, np.nd
 
 
 def _f0_metrics(f0s: np.ndarray, voiced: np.ndarray, hop_rate_hz: float) -> tuple[float, float]:
-    """(Trajektorien-Spread in Cent, Modulations-Tiefe 3–8 Hz in Cent)."""
+    """(Trajektorien-Spread in Cent, Modulations-Tiefe 3–8 Hz in Cent).
+
+    §Witness-Fix (2026-09-11): Die Modulations-Tiefe wird pro ZUSAMMENHÄNGENDEM
+    stimmhaftem Segment (Phrase) berechnet und über Phrasen gemittelt (Median) —
+    die frühere Konkatenation aller stimmhaften Frames erzeugte an jeder
+    Phrasen-Lücke einen künstlichen Cent-Sprung, dessen Spektral-Leckage das
+    3–8-Hz-Band dominierte (False-Positives von >100 Cent auf unverändertem
+    Signal nach minimalen Rand-Änderungen).
+    """
     f0v = f0s[voiced]
     if len(f0v) < 3:
         return 0.0, 0.0
     cents = 1200.0 * np.log2(np.maximum(f0v, 1e-6) / np.median(f0v))
     spread = float(np.median(np.abs(cents - np.median(cents))))
-    # Modulations-Tiefe: Band 3–8 Hz über die F0-Trajektorie (Wow/Vibrato-Proxy);
-    # Trajektorien-Abtastrate = sr / _HOP (46.875 Hz @ 48 kHz).
-    mod_depth = spread
-    if len(cents) >= 16:
-        spec = np.abs(np.fft.rfft(cents - np.median(cents)))
-        freqs = np.fft.rfftfreq(len(cents), 1.0 / max(hop_rate_hz, 1e-6))
-        band = spec[(freqs >= 3.0) & (freqs <= 8.0)]
-        if len(band):
-            mod_depth = float(np.sqrt(np.mean(band**2)) * 2.0)
+    # Kontinuierliche stimmhafte Runs extrahieren (Phrasen-Grenzen nicht mischen).
+    runs: list[np.ndarray] = []
+    run_start: int | None = None
+    for i in range(1, len(voiced) + 1):
+        if i < len(voiced) and voiced[i]:
+            if run_start is None:
+                run_start = i
+        else:
+            if run_start is not None:
+                _seg = f0s[run_start:i]
+                if len(_seg) >= 8:
+                    _c = 1200.0 * np.log2(np.maximum(_seg, 1e-6) / np.median(_seg))
+                    _c = _c - np.median(_c)
+                    runs.append(_c * np.hanning(len(_c)))
+                run_start = None
+    mod_depths: list[float] = []
+    for _c in runs:
+        if len(_c) >= 16:
+            _spec = np.abs(np.fft.rfft(_c))
+            _fr = np.fft.rfftfreq(len(_c), 1.0 / max(hop_rate_hz, 1e-6))
+            _band = _spec[(_fr >= 3.0) & (_fr <= 8.0)]
+            if len(_band):
+                mod_depths.append(float(np.sqrt(np.mean(_band**2)) * 2.0))
+    mod_depth = float(np.median(mod_depths)) if mod_depths else 0.0
     return spread, float(mod_depth)
 
 
 def _loudness_mod_depth_db(x: np.ndarray, sr: int) -> float:
-    """Modulations-Tiefe (dB) der STL-Envelope im Band 0.2–6 Hz (Pumping-Proxy)."""
+    """Modulations-Tiefe (dB) der STL-Envelope im Band 0.2–6 Hz (Pumping-Proxy).
+
+    §Witness-Fix (2026-09-11):
+    - Nahezu stille Fenster (Fade-In/Fade-Out, Pausen) werden ausgeblendet —
+      der Silence→Musik-Schritt am Dateirand erzeugte ein Breitband-Leakage,
+      das das Modulationsband vollständig dominierte (False-Positives von
+      >30 dB auf praktisch unverändertem Signal).
+    - Linearer Trend wird entfernt + Hann-Fenster vor der FFT (Standard-
+      Spektralschätzung) — unterdrückt Rand-Leakage der aktiven Region.
+    """
     win = int(_STL_WIN * sr)
     hop = int(_STL_HOP * sr)
     if len(x) < win:
@@ -201,14 +242,64 @@ def _loudness_mod_depth_db(x: np.ndarray, sr: int) -> float:
     )
     db = 20.0 * np.log10(np.maximum(rms, 1e-9))
     db = db - np.median(db)
+    # Stille-/Randfenster ausblenden: nur Fenster ≥ −50 dB unter dem Peak.
+    _peak = float(np.max(db))
+    _active = db > (_peak - 50.0)
+    _active_idx = np.flatnonzero(_active)
+    if len(_active_idx) >= 16:
+        db = db[_active_idx[0] : _active_idx[-1] + 1]
     if len(db) < 8:
         return 0.0
+    # Trend-Entfernung + Hann-Fenster (Rand-Leakage-Unterdrückung).
+    _t = np.linspace(0.0, 1.0, len(db))
+    _trend = np.polyfit(_t, db, 1)
+    db = (db - np.polyval(_trend, _t)) * np.hanning(len(db))
     spec = np.abs(np.fft.rfft(db))
     freqs = np.fft.rfftfreq(len(db), 1.0 / (1.0 / _STL_HOP))
     band = spec[(freqs >= _MOD_LO_HZ) & (freqs <= _MOD_HI_HZ)]
     if len(band) == 0:
         return 0.0
     return float(np.sqrt(np.mean(band**2)) * 2.0)
+
+
+def _band_energy_ratio_db(x: np.ndarray, sr: int, lo_hz: float, hi_hz: float) -> float:
+    """Relativer Energie-Anteil eines Frequenzbands an der Gesamtenergie (20 Hz–20 kHz).
+
+    Ganzes Signal, ein Hann-gefenstertes FFT (statische Tonal-Balance-Proxies).
+    Rückgabe in dB relativ zur Gesamtenergie (z. B. −12 dB = Bass trägt 6 %).
+    """
+    if len(x) < 2048:
+        return 0.0
+    _w = np.hanning(len(x))
+    _spec = np.abs(np.fft.rfft(x * _w)) ** 2
+    _fr = np.fft.rfftfreq(len(x), 1.0 / sr)
+    _band = _spec[(_fr >= lo_hz) & (_fr <= hi_hz)]
+    _total = _spec[(_fr >= 20.0) & (_fr <= 20000.0)]
+    if _total.sum() <= 1e-20 or _band.sum() <= 1e-20:
+        return 0.0
+    return float(10.0 * np.log10(max(_band.sum(), 1e-20) / max(_total.sum(), 1e-20)))
+
+
+def _transient_sharpness(x: np.ndarray, sr: int) -> float:
+    """95-Perzentil der Hüllkurven-Steigung (dB/s) — Transienten-Schärfe-Proxy.
+
+    5-ms-RMS-Envelope; die steilsten Anstiege (95. Perzentil der positiven
+    Steigung) repräsentieren Anschläge/Onsets. Heavy-NR/Verschmierung senkt sie.
+    """
+    _win = max(64, int(_TRANSIENT_WIN * sr))
+    _hop = _win // 2
+    if len(x) < _win * 4:
+        return 0.0
+    _rms = np.asarray(
+        [np.sqrt(np.mean(x[i : i + _win] ** 2) + 1e-12) for i in range(0, len(x) - _win + 1, _hop)],
+        dtype=np.float64,
+    )
+    _db = 20.0 * np.log10(_rms + 1e-12)
+    _slope = np.diff(_db) / (_hop / float(sr))
+    _pos = _slope[_slope > 0]
+    if len(_pos) < 4:
+        return 0.0
+    return float(np.percentile(_pos, 95.0))
 
 
 def evaluate_listening_witness(
@@ -250,6 +341,16 @@ def evaluate_listening_witness(
     _flat_a = float(np.mean(np.abs(a) > 0.98))
     _flat_b = float(np.mean(np.abs(b) > 0.98))
 
+    # §Witness-Coverage (2026-09-11): Bass-Präsenz + Transienten-Schärfe —
+    # klassische „unangenehm“-Defekte (dünner Klang, verschmierte Anschläge),
+    # die Pitch/HNR/Loudness nicht abdecken.
+    _bass_a = _band_energy_ratio_db(a, sr, _BASS_LO_HZ, _BASS_HI_HZ)
+    _bass_b = _band_energy_ratio_db(b, sr, _BASS_LO_HZ, _BASS_HI_HZ)
+    _tr_a = _transient_sharpness(a, sr)
+    _tr_b = _transient_sharpness(b, sr)
+    bass_drop = _bass_a - _bass_b
+    transient_smear = float((_tr_a - _tr_b) / max(_tr_a, 1e-6)) if _tr_a > 1e-6 else 0.0
+
     result = ListeningWitnessResult(
         phase_id=phase_id,
         pitch_drift_cents=pitch_delta,
@@ -258,6 +359,8 @@ def evaluate_listening_witness(
         hf_flatness_rise=flat_rise,
         flat_top_rise=max(_flat_b - _flat_a, 0.0),
         loud_mod_rise_db=max(loud_b - loud_a, 0.0),
+        bass_drop_db=max(bass_drop, 0.0),
+        transient_smear_ratio=max(transient_smear, 0.0),
     )
 
     if result.pitch_drift_cents > _PITCH_DRIFT_CENTS:
@@ -272,4 +375,8 @@ def evaluate_listening_witness(
         result.findings.append("vocal_distortion")
     if result.loud_mod_rise_db > _LOUD_MOD_RISE_DB:
         result.findings.append("loudness_pumping")
+    if result.bass_drop_db > _BASS_DROP_DB:
+        result.findings.append("bass_loss")
+    if result.transient_smear_ratio > _TRANSIENT_SMEAR_RATIO:
+        result.findings.append("transient_smearing")
     return result

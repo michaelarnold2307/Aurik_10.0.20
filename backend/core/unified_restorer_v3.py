@@ -21412,7 +21412,10 @@ class UnifiedRestorerV3:
 
         _pre_final_shape = tuple(np.asarray(restored_audio).shape)
         logger.info(
-            "🏁 Restoration abgeschlossen: %d Schritte gesamt (Haupt-Loop, Post, FC additiv)", int(self._step_no)
+            "🏁 Restoration abgeschlossen: %d Verarbeitungsschritte gesamt "
+            "(Phasen-Loop + Post-Processing + Final-Chain additiv — die "
+            "Fortschrittsanzeige zählt nur die geplanten Phasen)",
+            int(self._step_no),
         )
         restored_audio = _normalize_to_external_layout(restored_audio)
         if tuple(np.asarray(restored_audio).shape) != _pre_final_shape:
@@ -41380,6 +41383,32 @@ class UnifiedRestorerV3:
                             from backend.core.listening_witness import evaluate_listening_witness as _lw_eval
 
                             _lw_res = _lw_eval(_afg_phase_input, current_audio, sample_rate, phase_id)
+                            # §Witness-Debug (env-gegatet): Before/After-Dump für
+                            # deterministische Reproduktion der Befunde (AURIK_WITNESS_DEBUG=1).
+                            if os.environ.get("AURIK_WITNESS_DEBUG") == "1":
+                                try:
+                                    from pathlib import Path as _wdbg_P
+
+                                    import soundfile as _wdbg_sf
+
+                                    _wdbg_dir = _wdbg_P("tmp_repro") / "witness_debug"
+                                    _wdbg_dir.mkdir(parents=True, exist_ok=True)
+                                    _wdbg_before = np.asarray(_afg_phase_input, dtype=np.float32)
+                                    _wdbg_after = np.asarray(current_audio, dtype=np.float32)
+                                    _wdbg_bf = (
+                                        _wdbg_before.T
+                                        if _wdbg_before.ndim == 2 and _wdbg_before.shape[0] <= 8
+                                        else _wdbg_before
+                                    )
+                                    _wdbg_af = (
+                                        _wdbg_after.T
+                                        if _wdbg_after.ndim == 2 and _wdbg_after.shape[0] <= 8
+                                        else _wdbg_after
+                                    )
+                                    _wdbg_sf.write(_wdbg_dir / f"{phase_id}_before.wav", _wdbg_bf, sample_rate)
+                                    _wdbg_sf.write(_wdbg_dir / f"{phase_id}_after.wav", _wdbg_af, sample_rate)
+                                except Exception as _wdbg_exc:
+                                    logger.debug("Witness-Debug-Dump fehlgeschlagen: %s", _wdbg_exc)
                             if _lw_res.findings:
                                 logger.warning(
                                     "👂 Reinhör-Witness %s: %s (pitch=%.1fc mod=%.1fc hnr=%.1fdB hf=%.3f loud=%.1fdB)",

@@ -343,6 +343,11 @@ class ContentAwareProcessor:
             i1 = max(i0, min(n_samples, int(word.end_s * sr)))
             if i1 - i0 < 32:
                 continue
+            # §Witness-Fix (2026-09-11): Phonem-Segmente mit 30-ms-Linear-Crossfade
+            # statt hartem Ersetzen einblenden — harte Phonem-Grenzen erzeugten
+            # Envelope-Stufen → 0.2–6-Hz-Pumping (Produktionsbefund phase_58:
+            # 1.61 dB Modulations-Rise + 1 dB Pegel-Gewinn).
+            _xf_len = int(0.030 * sr) if (i1 - i0) > 96 else 0
             # §v10.303.51: Per-phoneme language-specific strength scaling
             _phoneme_str = strength
             if "fricative" in word.phoneme_type:
@@ -352,15 +357,29 @@ class ContentAwareProcessor:
             elif "vowel" in word.phoneme_type:
                 _phoneme_str *= _vowel_gain
             _phoneme_str = float(np.clip(_phoneme_str, 0.1, 1.5))
+
+            def _crossfade_seg(_orig: np.ndarray, _new: np.ndarray, _xfade_len: int) -> np.ndarray:
+                """Linear-Crossfade für korrelierte Signale (Summe der Fades = 1)."""
+                if _xfade_len <= 8:
+                    return _new
+                _f = np.linspace(0.0, 1.0, _xfade_len, dtype=np.float64)
+                _mix = _new.copy()
+                _mix[:_xfade_len] = (1.0 - _f) * _orig[:_xfade_len] + _f * _new[:_xfade_len]
+                _mix[-_xfade_len:] = (1.0 - _f[::-1]) * _orig[-_xfade_len:] + _f[::-1] * _new[-_xfade_len:]
+                _xf_ret: np.ndarray = _mix.astype(np.float32)
+                return _xf_ret
+
             if is_stereo:
                 for ch in range(out.shape[1]):
-                    seg_out = self._apply_phoneme_dsp(out[i0:i1, ch], word.phoneme_type, sr, _phoneme_str)
+                    _orig_seg = out[i0:i1, ch]
+                    seg_out = self._apply_phoneme_dsp(_orig_seg, word.phoneme_type, sr, _phoneme_str)
                     seg_len = min(len(seg_out), i1 - i0)
-                    out[i0 : i0 + seg_len, ch] = seg_out[:seg_len]
+                    out[i0 : i0 + seg_len, ch] = _crossfade_seg(_orig_seg[:seg_len], seg_out[:seg_len], _xf_len)
             else:
-                seg_out = self._apply_phoneme_dsp(out[i0:i1], word.phoneme_type, sr, _phoneme_str)
+                _orig_seg = out[i0:i1]
+                seg_out = self._apply_phoneme_dsp(_orig_seg, word.phoneme_type, sr, _phoneme_str)
                 seg_len = min(len(seg_out), i1 - i0)
-                out[i0 : i0 + seg_len] = seg_out[:seg_len]
+                out[i0 : i0 + seg_len] = _crossfade_seg(_orig_seg[:seg_len], seg_out[:seg_len], _xf_len)
 
         return np.clip(np.nan_to_num(out, nan=0.0, posinf=0.0, neginf=0.0), -1.0, 1.0)  # type: ignore[no-any-return]
 
@@ -558,6 +577,41 @@ def get_content_aware_processor() -> ContentAwareProcessor:
             if _processor is None:
                 _processor = ContentAwareProcessor()
     return _processor
+
+
+def apply_saliency_strength(
+    audio: np.ndarray,
+    saliency: np.ndarray,
+    sr: int,
+    strength: float = 1.0,
+) -> np.ndarray:
+    """§V7 (copilot-instructions.md)/§Witness-Fix (2026-09-11): Saliency-Abweichung psychoakustisch kalibriert.
+
+    Die Saliency-Kurve erzeugt Wort-Regionen-Boosts im 0.2–6-Hz-Band
+    (Wort-Rate). Produktionsbefund: volle Abweichung (±4–5 dB vor Phase-Blend)
+    ergab hörbares Loudness-Pumping (Witness 1.6 dB) und senkte die
+    Mikrodynamik-Korrelation auf 0.92 (61 % Verwerfung der Restaurierung).
+    Fix an der Wurzel: Abweichung auf ±0.75 dB begrenzen (Wort-Raten-
+    Pegelmodulation bleibt unter der Hörschwelle, Präsenz-Cue bleibt) und die
+    Saliency-Trajektorie mit 100-ms-Hann glätten. Kein Bypass: die spektrale
+    Phonem-Formung der nachgelagerten Stufen bleibt unverändert.
+    """
+    strength = float(np.clip(strength, 0.0, 1.0))
+    _dev_scale = 0.5  # ±0.75 dB Ziel-Swing bei voller Stärke
+    _sal = 1.0 + _dev_scale * strength * (np.asarray(saliency, dtype=np.float32) - 1.0)
+    _sal = np.clip(_sal, 0.90, 1.10).astype(np.float32)
+    _k = max(2, int(0.100 * sr) // 2)
+    _kern = np.hanning(2 * _k + 1)
+    _kern = _kern / (_kern.sum() + 1e-12)
+    _sal_s = np.clip(np.convolve(_sal, _kern, mode="same"), 0.90, 1.10).astype(np.float32)
+    if audio.ndim == 2 and audio.shape[0] <= 2:
+        out = audio * _sal_s[np.newaxis, :]
+    elif audio.ndim == 2:
+        out = audio * _sal_s[:, np.newaxis]
+    else:
+        out = audio * _sal_s
+    _sal_ret: np.ndarray = np.clip(np.nan_to_num(out, nan=0.0, posinf=0.0, neginf=0.0), -1.0, 1.0).astype(np.float32)
+    return _sal_ret
 
 
 def get_lyrics_guided_timeline() -> LyricsGuidedTimeline:
@@ -1221,6 +1275,7 @@ class LyricsGuidedEnhancement:
         self,
         audio: np.ndarray,
         sr: int,
+        strength: float = 1.0,
     ) -> tuple[np.ndarray, LyricsTranscriptionResult]:
         """Wendet an: lyrics-guided saliency enhancement (§2.36).
 
@@ -1245,6 +1300,11 @@ class LyricsGuidedEnhancement:
         # §v10.303.50: Text erst NACH Sentiment/Semantic-DSP löschen.
         # _assert_no_lyrics_in_log wird am Ende nach der Textlöschung aufgerufen.
         saliency = self._build_sample_saliency(transcription, n_samples, sr)
+        # §V7 (copilot-instructions.md): Saliency-Abweichung an Phasen-Stärke koppeln (Wurzel-Kalibrierung
+        # gegen Wort-Raten-Loudness-Pumping, Produktionsbefund phase_58).
+        _st = float(np.clip(strength, 0.0, 1.0))
+        saliency = 1.0 + 0.5 * _st * (saliency - 1.0)
+        saliency = np.clip(saliency, 0.90, 1.10).astype(np.float32)
 
         # §LSM-1 Sentiment-Modulation: emotionaler Kontext des Texts beeinflusst
         # die Saliency-Kurve sanft. Bei Fallback/leerem Transkript wird der
@@ -1308,6 +1368,45 @@ class LyricsGuidedEnhancement:
         for _w in transcription.words:
             if hasattr(_w, "word") and _w.word:
                 object.__setattr__(_w, "word", "")
+
+        # §Witness-Fix (2026-09-11): Envelope-Trajektorien-Glättung — Saliency-,
+        # Phonem- und Semantic-DSP-Schritte arbeiten auf Wort-Segmenten; jede
+        # harte Segment-Grenze erzeugt Pegelstufen im 0.2–6-Hz-Band
+        # (Loudness-Pumping, Produktionsbefund 1.6 dB auf phase_58).
+        # Nur die RMS-ENVELOPE-Ratio (100-ms-Fenster) wird geglättet und als
+        # Korrektur angewendet — die spektrale Formung (Phonem-EQ etc.) bleibt
+        # vollständig erhalten, lediglich die Übergänge werden kontinuierlich.
+        # Kein Bypass: bei konstanter Envelope-Ratio ist das Ergebnis identisch.
+        try:
+            _win58 = int(0.100 * sr)
+            _hop58 = _win58 // 2
+            _out_m58 = audio_out.mean(axis=0) if audio_out.ndim == 2 else audio_out
+            if len(mono) >= _win58:
+                _n58 = 1 + (len(mono) - _win58) // _hop58
+                _rms_in58 = np.asarray(
+                    [np.sqrt(np.mean(mono[i * _hop58 : i * _hop58 + _win58] ** 2) + 1e-12) for i in range(_n58)],
+                    dtype=np.float64,
+                )
+                _rms_out58 = np.asarray(
+                    [np.sqrt(np.mean(_out_m58[i * _hop58 : i * _hop58 + _win58] ** 2) + 1e-12) for i in range(_n58)],
+                    dtype=np.float64,
+                )
+                _ratio58 = np.clip(_rms_out58 / np.maximum(_rms_in58, 1e-12), 0.5, 2.0)
+                _k58 = max(2, int(0.100 * sr) // _hop58)
+                _kern58 = np.hanning(2 * _k58 + 1)
+                _kern58 /= _kern58.sum() + 1e-12
+                _ratio_s58 = np.convolve(_ratio58, _kern58, mode="same")
+                _centers58 = np.arange(_n58) * _hop58 + _win58 // 2
+                _t58 = np.arange(len(mono))
+                _env_in58 = np.interp(_t58, _centers58, _ratio58)
+                _env_out58 = np.interp(_t58, _centers58, _ratio_s58)
+                _env_corr58 = np.clip(_env_out58 / np.maximum(_env_in58, 1e-6), 0.5, 2.0)
+                if audio_out.ndim == 2:
+                    audio_out = audio_out * _env_corr58[np.newaxis, :]
+                else:
+                    audio_out = audio_out * _env_corr58
+        except Exception as _gsm_exc:
+            logger.debug("§Witness-Fix Envelope-Smoothing nicht blockierend: %s", _gsm_exc)
 
         audio_out = np.clip(
             np.nan_to_num(audio_out, nan=0.0, posinf=0.0, neginf=0.0),

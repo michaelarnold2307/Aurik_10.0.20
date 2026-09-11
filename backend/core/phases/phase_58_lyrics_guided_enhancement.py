@@ -195,15 +195,8 @@ class Phase58LyricsGuidedEnhancement(PhaseInterface):
                 n_smp = audio.shape[-1] if audio.ndim == 2 else len(audio)
                 base_sal = np.ones(n_smp, dtype=np.float32)
                 saliency = cap.compute_lyrics_saliency(base_sal, pre_transcription, sample_rate)
-                if audio.ndim == 2 and audio.shape[0] <= 2:
-                    audio_out = audio * saliency[np.newaxis, :]
-                elif audio.ndim == 2:
-                    audio_out = audio * saliency[:, np.newaxis]
-                else:
-                    audio_out = audio * saliency
-                audio_out = np.clip(np.nan_to_num(audio_out, nan=0.0, posinf=0.0, neginf=0.0), -1.0, 1.0).astype(
-                    np.float32
-                )
+                # §V7 (copilot-instructions.md)/§Witness-Fix: Abweichung stärke-skaliert + Wort-Raten-Pumping begrenzt.
+                audio_out = _lge_mod2.apply_saliency_strength(audio, saliency, sample_rate, _effective_strength)
                 transcription = pre_transcription
                 logger.info(
                     "Verarbeitungsschritt_58_lyrics_guided_enhancement: saliency path (pre-transcription) — %d segments",
@@ -215,7 +208,7 @@ class Phase58LyricsGuidedEnhancement(PhaseInterface):
                     enhance_attempts = attempt + 1
                     retry_attempted = retry_attempted or attempt > 0
                     try:
-                        audio_out, transcription = lge.enhance(audio, sample_rate)
+                        audio_out, transcription = lge.enhance(audio, sample_rate, strength=_effective_strength)
                         break
                     except Exception as exc:
                         last_enhance_exc = exc

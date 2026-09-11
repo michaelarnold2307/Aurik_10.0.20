@@ -144,7 +144,8 @@
 | scripts/export_muq_mulan_onnx.py | ACTIVE | scripts | ja | — | MuQ-MuLan-Audio-Turm → ONNX (dynamo, Opset 18, externes Weight-File): Waveform(1,240000)@24k → 768-d; lädt mulan.audio.*-Keys aus pytorch_model.bin; ORT-Validierung rel≤1e-3 (gemessen 1,15e-6) (2026-09-11) |
 | tests/unit/test_muq_mulan_plugin.py | ACTIVE | testing/unit | ja | — | MuQ-MuLan-Plugin-Tests: Fallback ohne ONNX, Witness-Mapping (Fake-Embeddings),_to_mono_24k-Determinismus, echter ONNX-Pfad bit-identisch (skipif ohne .onnx) (2026-09-11) |
 | backend/core/listening_witness.py | ACTIVE | backend/core | ja | — | 👂 Reinhör-Witness (2026-09-11): per-Phase-Selbstkontrolle nach jeder abgeschlossenen Phase — Pitch-Drift (Cent, Cross-Signal-ΔF0), Pitch-Modulation (3–8 Hz), Stimm-Verzerrung (HNR+HF-Flatness+Flat-Top-Clipping-Proxy), Lautstärke-Pumpen (STL-Modulation 0.2–6 Hz); FFT-Autokorrelation (§V08/§10a), REPORT-ONLY (Hörordnung §8a); in UV3-Phase-Loop + Pipeline-Summary verdrahtet (2026-09-11) |
-| tests/unit/test_listening_witness.py | ACTIVE | testing/unit | ja | — | Reinhör-Witness-Tests: synthetische Fälle + echte Musik (test_audio/Elke Best 30 s/224 s: Identität ohne False-Positives, +100-Cent-Shift, 2-Hz-Pumping, Determinismus, 224-s-Laufzeit) — 13 Tests (2026-09-11) |
+| tests/unit/test_listening_witness.py | ACTIVE | testing/unit | ja | — | Reinhör-Witness-Tests: synthetische Fälle + echte Musik (test_audio/Elke Best 30 s/224 s: Identität ohne False-Positives, +100-Cent-Shift, 2-Hz-Pumping, Determinismus, 224-s-Laufzeit, Silence-Pad-/Phrasen-Lücken-Robustheit) — 15 Tests (2026-09-11) |
+| tests/unit/test_mikrodynamik_guard.py | ACTIVE | testing/unit | ja | — | §MKK-V20 Delta-Korrelations-Metrik (2026-09-11): Wort-Boosts passieren, Limiter fällt durch, Wet-Empfehlung kalibriert — 5 Tests |
 
 ## Pflege-Regeln
 
