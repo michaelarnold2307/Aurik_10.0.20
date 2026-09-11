@@ -226,12 +226,14 @@ class HybridMLDenoiser:
 
             _guard = get_noise_texture_coherence_guard()
             # Residual noise estimate: denoised audio minus original (approximated by difference)
-            _residual = np.clip(audio - np.mean(audio, axis=-1, keepdims=True), -0.5, 0.5) if audio.ndim > 1 else audio * 0.01
+            _residual = (
+                np.clip(audio - np.mean(audio, axis=-1, keepdims=True), -0.5, 0.5) if audio.ndim > 1 else audio * 0.01
+            )
             _coherence_result = _guard.check(_residual, "unknown", sample_rate)
             metadata["noise_texture_coherence"] = float(_coherence_result.coherence)  # type: ignore[assignment]
             if _coherence_result.coherence < 0.80:
                 logger.warning(
-                    "§4.7 NoiseTextureCoherenceGuard: coherence=%.2f < 0.80 → Kohärenz-Check fehlgeschlagen",
+                    "§4.7 NoiseTextureCoherenceGuard: coherence=%.2f < 0.80 → Kohärenz-Pruefung fehlgeschlagen",
                     float(_coherence_result.coherence),
                 )
         except Exception as _ntc_err:

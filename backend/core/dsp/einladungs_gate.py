@@ -344,7 +344,7 @@ def compute_masking_threshold(
 
         # STFT für spektrale Analyse
         # §Fix 2026-09-08: librosa.stft kennt kein sr=-Kwarg (seit 0.10 entfernt) —
-        # der Aufruf warf TypeError und die Maskierungsschwelle fiel still aus (§V6).
+        # der Aufruf warf TypeError und die Maskierungsschwelle fiel still aus (§V6 (copilot-instructions.md)).
         _n_fft = 2048
         S = np.abs(librosa.stft(mono, n_fft=_n_fft))
         freqs = librosa.fft_frequencies(sr=sr, n_fft=_n_fft)

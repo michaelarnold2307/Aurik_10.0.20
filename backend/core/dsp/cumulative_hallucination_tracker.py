@@ -148,7 +148,7 @@ class CumulativeHallucinationTracker:
             if self._phase_count >= 5 and self._cumulative > crit_t and not self._hard_limit_reached:
                 self._hard_limit_reached = True
                 logger.warning(
-                    "§CHT-1 Hard-Limit nach Phase %d: cumulative=%.4f > CRITICAL=%.2f — ML-Phasen bypassen",
+                    "§CHT-1 Hard-Limit nach Verarbeitungsschritt %d: cumulative=%.4f > CRITICAL=%.2f — ML-Phasen bypassen",
                     self._phase_count,
                     self._cumulative,
                     crit_t,

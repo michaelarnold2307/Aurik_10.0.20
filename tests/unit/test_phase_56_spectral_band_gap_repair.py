@@ -373,7 +373,9 @@ class TestBwCapNyquistGuard:
         assert with_ceiling == [], "Gap über dem Vinyl-Ceiling darf nicht detektiert werden"
 
         without_ceiling = _detect_band_gaps(stft, SR, n_fft)
-        assert any(g[0] >= 1013 for g in without_ceiling), "Ohne Ceiling muss der Rand als Gap erscheinen (Legacy-Verhalten)"
+        assert any(g[0] >= 1013 for g in without_ceiling), (
+            "Ohne Ceiling muss der Rand als Gap erscheinen (Legacy-Verhalten)"
+        )
 
     def test_gap_below_ceiling_is_still_detected(self) -> None:
         from backend.core.phases.phase_56_spectral_band_gap_repair import _detect_band_gaps

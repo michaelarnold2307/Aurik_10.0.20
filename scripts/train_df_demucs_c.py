@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """
+
 §v10.15-C: Demucs + DeepFilterNet — Residual Spectral Refinement.
 
 Strategy (NO model architecture changes):
@@ -14,6 +15,10 @@ Why: Demucs (42M params, MUSDB18-trained) provides musical structure.
 """
 
 from __future__ import annotations
+
+import logging
+
+logger = logging.getLogger(__name__)
 
 import argparse
 import random
@@ -80,7 +85,7 @@ class DFNFeatureExtractor:
 
     def __call__(self, audio):
         spec = torch.stft(audio, n_fft=N_FFT, hop_length=HOP, window=self.window, return_complex=True)
-        T = spec.shape[2]
+        spec.shape[2]
         mag = spec[:, :481, :].abs()
         erb_e = torch.matmul(self.erb_fb, mag)
         feat_erb = torch.log1p(erb_e).unsqueeze(1).transpose(2, 3)
@@ -169,6 +174,7 @@ class DemucsEnhancedDataset(Dataset):
                 n, _ = self._load(random.choice(self.noise_files))
                 return n / (np.abs(n).max() + np.float32(1e-8))
             except Exception:
+                logger.debug("Stiller Ersatzpfad dokumentiert (Bug 9/V74)", exc_info=True)
                 pass
         n = np.random.randn(length).astype(np.float32)
         c = random.choice(["white", "pink", "brown"])

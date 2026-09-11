@@ -18,8 +18,9 @@ Referenz: Spec 08 §11 Softwareschichten-Architektur.
 from __future__ import annotations
 
 import logging
-import numpy as np
 from typing import TYPE_CHECKING, Any
+
+import numpy as np
 
 if TYPE_CHECKING:
     pass
@@ -30,6 +31,7 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 # Enums & Mode Normalization
 # ---------------------------------------------------------------------------
+
 
 def get_quality_mode() -> type:
     """Gibt die ``QualityMode``-Enum zurück (lazy import)."""
@@ -84,6 +86,7 @@ def is_preview_mode(mode: str | None) -> bool:
 # Core Entry Points (Restorer, Denker, ML-Device)
 # ---------------------------------------------------------------------------
 
+
 def get_restorer_classes() -> tuple[type, type]:
     """Gibt ``(RestorationConfig, UnifiedRestorerV3)`` zurück (lazy import)."""
     from backend.core.unified_restorer_v3 import RestorationConfig, UnifiedRestorerV3  # type: ignore[import]
@@ -133,6 +136,7 @@ def get_aurik_denker_instance():
 # Analysis & Classification (Defect, Medium, Era/Genre, Restorability)
 # ---------------------------------------------------------------------------
 
+
 def get_defect_scanner() -> type:
     """Gibt die ``DefectScanner``-Klasse zurück (lazy import)."""
     from backend.core.defect_scanner import DefectScanner  # type: ignore[import]
@@ -168,7 +172,7 @@ def get_medium_classifier_fn():
     Signatur-kompatibel zu ``classify_medium(mono_audio, sr)`` für Altaufrufer,
     intern jedoch detector-only (kein direkter MediumClassifier-Aufruf).
     """
-    import numpy as np  # noqa: E402 — needed for _CompatMediumResult
+    import numpy as np
 
     from forensics.medium_detector import get_medium_detector as _get_md  # type: ignore[import]
 
@@ -247,9 +251,9 @@ def get_medium_detector():
 
         return _get()
     except ImportError as exc:
-        logger.debug("§V6 MediumDetector nicht verfügbar — Stub-Recorder aktiviert: %s", exc)
+        logger.debug("§V6 (copilot-instructions.md) MediumDetector nicht verfügbar — Stub-Recorder aktiviert: %s", exc)
         # Import bridge.py to access the stub recorder (circular-safe at runtime)
-        from backend.api.bridge import _record_medium_detector_stub_activation  # noqa: E402, F401
+        from backend.api.bridge import _record_medium_detector_stub_activation
 
         return _record_medium_detector_stub_activation(exc)
 

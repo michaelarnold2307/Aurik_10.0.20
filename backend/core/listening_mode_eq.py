@@ -333,7 +333,12 @@ class AdaptiveListeningEQ:
                 sos[:, :3] *= gain_linear
                 return sos  # type: ignore[no-any-return]
             except AttributeError as exc:
-                logger.debug("§V6 scipy.signal.iirpeak nicht verfügbar — Butter-Bandpass Fallback aktiviert (%.0f-%.0f Hz): %s", lo, hi, exc)
+                logger.debug(
+                    "§V6 (copilot-instructions.md) scipy.signal.iirpeak nicht verfügbar — Butter-Bandpass Ersatzpfad aktiviert (%.0f-%.0f Hz): %s",
+                    lo,
+                    hi,
+                    exc,
+                )
                 # Fallback: butter bandpass
                 nyq = sr / 2
                 lo_norm = max(0.001, lo / nyq)

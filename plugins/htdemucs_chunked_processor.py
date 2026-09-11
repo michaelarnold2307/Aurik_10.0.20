@@ -8,7 +8,7 @@ Orchestriert HTDemucs-Separation über beliebig lange Audio-Dateien durch:
   4. Blending: Hanning Crossfade in Overlap-Regionen
   5. Reconstruction: 4 Stems über ganzen Song
 
-Invarianten (§G2, §G5, §G8):
+Invarianten (§G2 (GEBOTE.md), §G5 (GEBOTE.md), §G8 (GEBOTE.md)):
     - Vollständige Defektbehebung: 100% des Songs analysiert, nicht Sampling
     - Deterministische Reproduzierbarkeit: CPU-only, no randomness
     - Transparenz: Logging pro Chunk
@@ -120,8 +120,10 @@ class ChunkedProcessor:
                 result_48k = self.plugin.separate(audio_2ch, 48000)
             # Längen-Normalisierung (MDX23C kann ±1 Sample liefern)
             if getattr(result_48k, "vocals", None) is not None and result_48k.vocals.shape[-1] != orig_length:
-                _trim_fn = lambda _v: _v[..., :orig_length] if _v.shape[-1] > orig_length else np.pad(
-                    _v, ((0, 0),) * (_v.ndim - 1) + ((0, orig_length - _v.shape[-1]),), mode="constant"
+                _trim_fn = lambda _v: (
+                    _v[..., :orig_length]
+                    if _v.shape[-1] > orig_length
+                    else np.pad(_v, ((0, 0),) * (_v.ndim - 1) + ((0, orig_length - _v.shape[-1]),), mode="constant")
                 )
                 result_48k = SeparationResult(
                     vocals=_trim_fn(result_48k.vocals),
@@ -190,9 +192,9 @@ class ChunkedProcessor:
                 else:
                     separated = self.plugin.separate(chunk, 48000)
                 stems_chunk: dict[str, np.ndarray] = separated.as_dict()
-                logger.debug("Chunk %d: separation successful", chunk_idx)
+                logger.debug("Chunk %d: separation erfolgreich", chunk_idx)
             except Exception as e:
-                logger.error("Chunk %d: separation failed: %s", chunk_idx, e)
+                logger.error("Chunk %d: separation fehlgeschlagen: %s", chunk_idx, e)
                 failed_chunks += 1
                 # Fallback: Stille (Nullen) - nutze Standard-Stem-Namen
                 stems_chunk = {
@@ -309,7 +311,7 @@ class ChunkedProcessor:
         )
 
         logger.info(
-            "ChunkedProcessor: completed %d chunks, success rate %.1f%%, energy loss %.2f%%",
+            "ChunkedProcessor: abgeschlossen %d chunks, success rate %.1f%%, energy loss %.2f%%",
             chunk_idx,
             success_rate * 100,
             energy_loss * 100,

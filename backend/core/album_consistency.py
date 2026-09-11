@@ -13,6 +13,8 @@ from typing import Any, cast
 import numpy as np
 from scipy import signal as scipy_signal
 
+from backend.core.audio_layout import to_samples_first
+
 logger = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
@@ -320,10 +322,14 @@ def analyze_track(audio: np.ndarray, sr: int, path: str = "") -> TrackProfile:
     centroid = float(np.sum(freqs * spec) / max(np.sum(spec), 1e-10))
     rms = float(np.sqrt(np.mean(mono**2)))
     stereo = 0.5
-    if audio.ndim == 2 and audio.shape[-1] == 2:
-        l, r = audio[:, 0], audio[:, 1]
-        corr = float(np.corrcoef(l, r)[0, 1])
-        stereo = float(np.clip(1.0 - abs(corr), 0.0, 1.0))
+    # §V7 (copilot-instructions.md): layout-sicher — shape[-1]==2 setzte (N,2)
+    # voraus; channels-first (2,N) wurde stillschweigend als Mono gewertet.
+    if audio.ndim == 2:
+        _st = to_samples_first(audio)
+        if _st.shape[1] >= 2:
+            l, r = _st[:, 0], _st[:, 1]
+            corr = float(np.corrcoef(l, r)[0, 1])
+            stereo = float(np.clip(1.0 - abs(corr), 0.0, 1.0))
     return TrackProfile(
         path=path,
         spectral_centroid_hz=centroid,

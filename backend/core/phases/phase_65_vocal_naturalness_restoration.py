@@ -161,17 +161,15 @@ def _apply_shelving_eq(
     if audio_f64.ndim == 1:
         # Typ-Grenze: numpy-1.26-Stubs typisieren nan_to_num/sosfiltfilt als Any;
         # die annotierte Variable stellt den ndarray-Vertrag der Funktion sicher.
-        _out65: np.ndarray = np.nan_to_num(
-            np.asarray(sps.sosfiltfilt(sos, audio_f64)).astype(audio.dtype), nan=0.0
-        )
+        _out65: np.ndarray = np.nan_to_num(np.asarray(sps.sosfiltfilt(sos, audio_f64)).astype(audio.dtype), nan=0.0)
         return _out65
     if audio_f64.ndim == 2:
         if audio_f64.shape[0] <= 2 and audio_f64.shape[1] > audio_f64.shape[0]:
             # [C, T] — nach to_channels_last
             _out65 = np.nan_to_num(
-                np.asarray(
-                    np.stack([sps.sosfiltfilt(sos, audio_f64[c]) for c in range(audio_f64.shape[0])])
-                ).astype(audio.dtype),
+                np.asarray(np.stack([sps.sosfiltfilt(sos, audio_f64[c]) for c in range(audio_f64.shape[0])])).astype(
+                    audio.dtype
+                ),
                 nan=0.0,
             )
             return _out65

@@ -8,6 +8,7 @@ The script respects the current Aurik Spec rules:
 - All security fixes must be applied automatically before a commit is allowed.
 - The guard runs in the same environment as the rest of the pre‑commit hooks (Python 3.11).
 """
+
 import subprocess
 import sys
 from pathlib import Path
@@ -28,6 +29,7 @@ def run(cmd, cwd=None):
         return result.returncode, result.stdout
     except Exception as exc:
         return 1, str(exc)
+
 
 # 1. Run snyk test
 print("Running Snyk security scan…")

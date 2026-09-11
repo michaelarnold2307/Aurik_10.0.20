@@ -4,7 +4,7 @@ bewusstem Tail-Prior (§v10.754-Floor).
 SOTA-Einordnung (ehrlich, aus der Validierung des ersten Rebuilds):
 - Der temporale KLT-Subraum (Top-Eigenvektor je Bark-Band) verankerte sich
   am HALL statt am Direktsignal → Direkt-Korrelation −0.69 (destruktiv).
-  Die GEVD-Idee ist damit für dieses Kriterium falsch kalibriert; §V7:
+  Die GEVD-Idee ist damit für dieses Kriterium falsch kalibriert; §V7 (copilot-instructions.md):
   nicht aktivieren, was die Suite nicht besteht.
 - Der valide SOTA-Standardweg ist die Late-Region-verankerte Wiener-
   Unterdrückung: die Tail-PSD wird NUR aus dem Spätfenster (letzte 25 %
@@ -13,7 +13,7 @@ SOTA-Einordnung (ehrlich, aus der Validierung des ersten Rebuilds):
   Tail) bleibt der Gain ≈ 1, im Tail-Bereich wird der Tail um den Zielwert
   gedämpft; Stille bleibt exakt still (Gain 0 bei 0-Energie).
 
-Deterministisch, vektorisiert, kein ML, §G5.
+Deterministisch, vektorisiert, kein ML, §G5 (copilot-instructions.md).
 """
 
 from __future__ import annotations
@@ -78,9 +78,9 @@ def subspace_dereverb(
     # Rampen-Modulation im Direktbereich, ohne das Tail-Ziel zu verfehlen.
     kern = np.array([0.25, 0.5, 1.0, 0.5, 0.25], dtype=np.float64)
     kern /= kern.sum()
-    gain = np.apply_along_axis(
-        lambda g: np.convolve(g, kern, mode="same"), axis=1, arr=gain.astype(np.float64)
-    ).astype(np.float32)
+    gain = np.apply_along_axis(lambda g: np.convolve(g, kern, mode="same"), axis=1, arr=gain.astype(np.float64)).astype(
+        np.float32
+    )
     gain = np.clip(gain, 10 ** (tail_gain_db / 20), 1.0)
 
     _, y = _istft(

@@ -31,7 +31,11 @@ class WatchdogCorrectness:
                 return False, f"{label}: total silence (RMS={rms:.2e})"
             return True, "ok"
         except Exception as e:
-            logger.debug("§V6 check_audio_valid fehlgeschlagen — (False, error) zurückgegeben für %s: %s", label, e)
+            logger.debug(
+                "§V6 (copilot-instructions.md) Pruefung_audio_valid fehlgeschlagen — (False, error) zurückgegeben für %s: %s",
+                label,
+                e,
+            )
             return False, f"{label}: validation error: {e}"
 
     @staticmethod

@@ -23,6 +23,7 @@ SAMPLES = [
     ("test_audio/vinyl/jazz_1950s_scratched.wav", "Vinyl Jazz (1950s)"),
 ]
 
+
 def count_warnings_in_sample(sample_path: str) -> dict:
     """Count warnings/errors for one sample."""
     cmd = f"""
@@ -39,24 +40,29 @@ print("OK")
 
     try:
         env = os.environ.copy()
-        env['PYTHONWARNINGS'] = 'ignore::FutureWarning,ignore::DeprecationWarning'
-        env['PYTHONDONTWRITEBYTECODE'] = '1'
+        env["PYTHONWARNINGS"] = "ignore::FutureWarning,ignore::DeprecationWarning"
+        env["PYTHONDONTWRITEBYTECODE"] = "1"
 
         result = subprocess.run(
-            [str(WORKSPACE_ROOT / ".venv_aurik/bin/python"),
-             "-W", "ignore::FutureWarning",
-             "-W", "ignore::DeprecationWarning",
-             "-c", cmd],
+            [
+                sys.executable,  # §V34: kein hartcodierter venv-Interpreter-Pfad
+                "-W",
+                "ignore::FutureWarning",
+                "-W",
+                "ignore::DeprecationWarning",
+                "-c",
+                cmd,
+            ],
             capture_output=True,
             text=True,
             timeout=60,
             env=env,
         )
 
-        stderr_lines = result.stderr.split('\n') if result.stderr else []
+        stderr_lines = result.stderr.split("\n") if result.stderr else []
 
-        warnings = [l for l in stderr_lines if 'WARNING' in l or 'FutureWarning' in l]
-        errors = [l for l in stderr_lines if 'ERROR' in l or 'Traceback' in l]
+        warnings = [l for l in stderr_lines if "WARNING" in l or "FutureWarning" in l]
+        errors = [l for l in stderr_lines if "ERROR" in l or "Traceback" in l]
 
         return {
             "success": "OK" in result.stdout,
@@ -69,6 +75,7 @@ print("OK")
         return {"success": False, "error": "timeout", "warnings_count": 0, "errors_count": 1}
     except Exception as e:
         return {"success": False, "error": str(e), "warnings_count": 0, "errors_count": 1}
+
 
 def main():
     print("=" * 80)
@@ -84,7 +91,7 @@ def main():
             "total_warnings": 0,
             "total_errors": 0,
             "clean_samples": 0,
-        }
+        },
     }
 
     for sample_path, label in SAMPLES:
@@ -121,9 +128,9 @@ def main():
     print(f"Total Warnings: {results['summary']['total_warnings']}")
     print(f"Total Errors: {results['summary']['total_errors']}")
 
-    if results['summary']['clean_samples'] >= len(SAMPLES) - 1:
+    if results["summary"]["clean_samples"] >= len(SAMPLES) - 1:
         print("\n✅ EXCELLENT: System is nearly warning-free!")
-    elif results['summary']['total_warnings'] == 0:
+    elif results["summary"]["total_warnings"] == 0:
         print("\n✅ GOOD: No application warnings! (Errors may be external)")
     else:
         print(f"\n⚠️  {results['summary']['total_warnings']} warnings remain")
@@ -138,6 +145,7 @@ def main():
     print(f"\n✅ Report: {output_path}")
 
     return 0
+
 
 if __name__ == "__main__":
     sys.exit(main())

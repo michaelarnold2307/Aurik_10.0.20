@@ -148,7 +148,9 @@ def _librosa_stft(audio, n_fft=2048, hop_length=512):
 
         return librosa.stft(audio, n_fft=n_fft, hop_length=hop_length)
     except ImportError as exc:
-        logger.debug("§V6 librosa.stft nicht verfügbar — NumPy-FFT Fallback aktiviert: %s", exc)
+        logger.debug(
+            "§V6 (copilot-instructions.md) librosa.stft nicht verfügbar — NumPy-FFT Ersatzpfad aktiviert: %s", exc
+        )
         n_frames = (len(audio) - n_fft) // hop_length + 1
         result = np.zeros((n_fft // 2 + 1, n_frames), dtype=np.complex128)
         window = np.hanning(n_fft)
@@ -166,7 +168,9 @@ def _librosa_istft(D, hop_length=512, length=None):
 
         return librosa.istft(D, hop_length=hop_length, length=length)
     except ImportError as exc:
-        logger.debug("§V6 librosa.istft nicht verfügbar — NumPy-ISTFT Fallback aktiviert: %s", exc)
+        logger.debug(
+            "§V6 (copilot-instructions.md) librosa.istft nicht verfügbar — NumPy-ISTFT Ersatzpfad aktiviert: %s", exc
+        )
         n_fft = (D.shape[0] - 1) * 2
         n_frames = D.shape[1]
         result = np.zeros(n_fft + hop_length * (n_frames - 1), dtype=np.float64)

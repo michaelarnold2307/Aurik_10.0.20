@@ -23,6 +23,7 @@ import time as _time
 
 import numpy as np
 
+from backend.core.audio_layout import is_channels_first, mono_mix, to_channels_first, to_samples_first
 from backend.core.ml_model_readiness import check_ml_model_ready
 
 from .phase_interface import PhaseCategory, PhaseInterface, PhaseMetadata, PhaseResult
@@ -250,14 +251,17 @@ def apply(
     if stereo:
         # §2.51 Linked: detect splice boundaries on mono mix (L+R)/2 so that
         # both channels are repaired at exactly the same sample positions.
-        mono_mix = (audio[0] + audio[1]) * 0.5
-        mono64 = mono_mix.astype(np.float32)
+        # §V7 (copilot-instructions.md): Layout über audio_layout normalisieren —
+        # (audio[0]+audio[1])*0.5 traf bei channels-last (N,2) nur 2 Samples.
+        _cf64 = to_channels_first(audio)
+        _was_cf64 = is_channels_first(audio)
+        mono64 = mono_mix(_cf64).astype(np.float32)
         splice_points = _detect_splice_points(mono64, sample_rate, crossfade_samples)
         if not splice_points:
             return np.nan_to_num(np.clip(audio, -1.0, 1.0).astype(np.float32), nan=0.0)  # type: ignore[no-any-return]
         left_out = _apply_splice_repair(
-            audio[0].astype(np.float32),
-            audio[0].astype(np.float32),
+            _cf64[0].astype(np.float32),
+            _cf64[0].astype(np.float32),
             splice_points,
             crossfade_samples,
             strength,
@@ -265,8 +269,8 @@ def apply(
             sample_rate=sample_rate,
         )
         right_out = _apply_splice_repair(
-            audio[1].astype(np.float32),
-            audio[1].astype(np.float32),
+            _cf64[1].astype(np.float32),
+            _cf64[1].astype(np.float32),
             splice_points,
             crossfade_samples,
             strength,
@@ -275,7 +279,11 @@ def apply(
         )
         left_out = np.nan_to_num(left_out, nan=0.0, posinf=0.0, neginf=0.0)
         right_out = np.nan_to_num(right_out, nan=0.0, posinf=0.0, neginf=0.0)
-        return np.nan_to_num(np.clip(np.stack([left_out, right_out], axis=0), -1.0, 1.0).astype(np.float32), nan=0.0)  # type: ignore[no-any-return]
+        _out64 = np.clip(np.stack([left_out, right_out], axis=0), -1.0, 1.0).astype(np.float32)
+        if not _was_cf64:
+            _out64 = to_samples_first(_out64)
+        _ret64: np.ndarray = np.nan_to_num(_out64, nan=0.0)
+        return _ret64
 
     x = audio.astype(np.float32)
     splice_points = _detect_splice_points(x, sample_rate, crossfade_samples)

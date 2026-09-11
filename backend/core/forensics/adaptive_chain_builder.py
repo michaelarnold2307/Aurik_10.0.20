@@ -179,7 +179,9 @@ class AdaptiveChainBuilder:
         material_type = forensic_analysis.medium_type
         if material_type not in self.CHAIN_TEMPLATES:
             # Fallback to DIGITAL for unknown types - INFO (not WARNING) since fallback is graceful
-            logger.debug("§2.46b Unknown medium type %s detected, falling back to DIGITAL template per §3.0", material_type)
+            logger.debug(
+                "§2.46b Unknown medium type %s erkannt, falling back to DIGITAL template per §3.0", material_type
+            )
             material_type = "DIGITAL"
 
         template = self.CHAIN_TEMPLATES[material_type]

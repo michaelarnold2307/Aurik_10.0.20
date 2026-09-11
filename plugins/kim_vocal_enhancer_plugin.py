@@ -16,6 +16,8 @@ import numpy as np
 
 logger = logging.getLogger(__name__)
 _lock = threading.Lock()
+# §v10.40c: Session-Cache auf Modulebene statt setattr auf Funktionsobjekt (B010).
+_SESS_CACHE: dict = {}
 
 _ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 _MODEL_PATH = os.path.join(_ROOT, "models", "kim_vocal_2", "kim_vocal_2.onnx")
@@ -31,13 +33,17 @@ OVERLAP = 128
 def _get_session():
     import onnxruntime as ort
 
-    _sess = getattr(_get_session, "_sess", None)
+    # §G174: Import NIEMALS innerhalb eines Locks — vorher auflösen.
+    from backend.core.gpu_model_registry import get_onnx_providers
+
+    _sess = _SESS_CACHE.get("default")
     if _sess is None:
         with _lock:
-            _sess = getattr(_get_session, "_sess", None)
+            _sess = _SESS_CACHE.get("default")
             if _sess is None:
-                _sess = ort.InferenceSession(_MODEL_PATH, providers=["CPUExecutionProvider"])
-                setattr(_get_session, "_sess", _sess)
+                # §v10.40c: Registry-konsultierte Provider-Wahl statt hartem CPU.
+                _sess = ort.InferenceSession(_MODEL_PATH, providers=get_onnx_providers(_MODEL_PATH))
+                _SESS_CACHE["default"] = _sess
     return _sess
 
 
@@ -88,9 +94,9 @@ def enhance_vocals(audio: np.ndarray) -> np.ndarray:
             result = from_mid_side(type(ms)(mid=mid_enhanced, side=ms.side, correlation=ms.correlation))
             return cast(np.ndarray, result.astype(np.float32))
         except Exception as exc:
-            logger.warning("ML→DSP-Fallback aktiviert", exc_info=True)  # §V6 (copilot-instructions.md)
+            logger.warning("ML→DSP-Ersatzpfad aktiviert", exc_info=True)  # §V6 (copilot-instructions.md)
             logger.warning(
-                "KIM Vocal Enhancer: Mid/Side-Pfad fehlgeschlagen (%s) — Fallback auf Stereo-Direktpfad.", exc
+                "KIM Vocal Enhancer: Mid/Side-Pfad fehlgeschlagen (%s) — Ersatzpfad auf Stereo-Direktpfad.", exc
             )
 
     return _process(session, audio)

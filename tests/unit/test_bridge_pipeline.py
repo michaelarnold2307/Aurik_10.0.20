@@ -14,6 +14,7 @@ Prüft:
 """
 
 import importlib
+
 import pytest
 
 
@@ -172,6 +173,7 @@ class TestRepairPlanConsent:
 
     def test_returns_dict_with_found_and_will_do_keys(self, bridge_pipeline):
         """Bei vorhandenem Defekt-Ergebnis: 'found' und 'will_do' Keys vorhanden."""
+
         # Dummy-Objekt mit leerem repair_plan
         class _DummyDefectResult:
             _consensus_manifest = None

@@ -379,7 +379,11 @@ class HarmonicContextAnalyzer:
         try:
             _, _, Zxx = stft(mono, sr, nperseg=n_fft, noverlap=_noverlap, boundary="even")
         except Exception as exc:
-            logger.debug("§V6 scipy.signal.stft fehlgeschlagen — Full-Protect-Maske zurückgegeben (Shape %s): %s", mono.shape, exc)
+            logger.debug(
+                "§V6 (copilot-instructions.md) scipy.signal.stft fehlgeschlagen — Full-Protect-Maske zurückgegeben (Shape %s): %s",
+                mono.shape,
+                exc,
+            )
             # Fallback: full protect (never gate anything)
             n_fft_bins = n_fft // 2 + 1
             n_frames = chroma.shape[1]

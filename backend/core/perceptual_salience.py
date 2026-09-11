@@ -86,9 +86,31 @@ class PerceptualSalienceEstimator:
 
     # Bark band edges (ISO 11172-3 approximation) for pre-screening
     _BARK_EDGES_HZ: tuple[float, ...] = (
-        0, 100, 200, 300, 400, 510, 630, 770, 920, 1080,
-        1270, 1480, 1720, 2000, 2320, 2700, 3150, 3700,
-        4400, 5300, 6400, 7700, 9500, 12000, 15500,
+        0,
+        100,
+        200,
+        300,
+        400,
+        510,
+        630,
+        770,
+        920,
+        1080,
+        1270,
+        1480,
+        1720,
+        2000,
+        2320,
+        2700,
+        3150,
+        3700,
+        4400,
+        5300,
+        6400,
+        7700,
+        9500,
+        12000,
+        15500,
     )
 
     @staticmethod
@@ -391,8 +413,8 @@ class PerceptualSalienceEstimator:
 
                     erb_anns = _selected
                     logger.info(
-                        "SOTA ERB masking: %d → %d annotations (budget=%d, duration=%.1fs, "
-                        "density_factor=%.2f, mode=%s) — uncertainty-first sampling",
+                        "SOTA ERB masking: %d → %d annotations (Grenze=%d, duration=%.1fs, "
+                        "density_factor=%.2f, Betriebsart=%s) — uncertainty-first sampling",
                         n_total,
                         len(erb_anns),
                         _ERB_MAX_ANNOTATIONS,
@@ -625,7 +647,7 @@ class PerceptualSalienceEstimator:
         std_db = np.std(bark_matrix, axis=0)
 
         logger.debug(
-            "Global spectral profile: %d Bark bands, median range=[%.1f, %.1f] dB",
+            "Global spectral Profil: %d Bark bands, median range=[%.1f, %.1f] dB",
             n_bands,
             float(np.min(median_db)),
             float(np.max(median_db)),
@@ -869,14 +891,12 @@ class PerceptualSalienceEstimator:
                     loc_start,
                     loc_end,
                 )
-                pre_screen_sal = self._pre_screen_salience_from_profile(
-                    event_bark, global_median_db, global_std_db
-                )
+                pre_screen_sal = self._pre_screen_salience_from_profile(event_bark, global_median_db, global_std_db)
                 # Blend: trust pre-screening when it disagrees strongly with broadband
                 if pre_screen_sal < 0.5 and salience > 0.9:
                     salience = float(0.4 * pre_screen_sal + 0.6 * salience)
             except Exception as _e:
-                logger.debug("Pre-screening fallback (broadband retained): %s", _e)
+                logger.debug("Pre-screening Ersatzpfad (broadband retained): %s", _e)
 
         salience = float(np.nan_to_num(np.clip(salience, 0.0, 1.0), nan=0.5))
         return salience, local_lufs, context_lufs, masking_type

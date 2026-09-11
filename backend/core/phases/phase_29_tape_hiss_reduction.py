@@ -61,7 +61,7 @@ try:
 
 except ImportError as _exp1_import_err:  # pragma: no cover
     logger.debug(
-        "§V6 (copilot-instructions.md) scipy.special.exp1 nicht verfügbar — Identity-Gain Fallback aktiviert (phase_29): %s",
+        "§V6 (copilot-instructions.md) scipy.special.exp1 nicht verfügbar — Identity-Gain Ersatzpfad aktiviert (Verarbeitungsschritt_29): %s",
         _exp1_import_err,
     )
 
@@ -446,6 +446,52 @@ class TapeHissReductionPhase(PhaseInterface):
             if isinstance(audio, (tuple, list)):
                 audio = audio[0] if len(audio) > 0 else np.zeros(1, dtype=np.float32)
             audio = np.asarray(audio, dtype=np.float32)
+        # §Primum non nocere: strength=0 ⇒ bit-identischer Passthrough VOR
+        # jedem DSP (inkl. _ha_sub754b/Harmonic-Audio-Aufbereitung) — der
+        # spätere Check bei _effective_strength deckt goal-hint-Nullen ab.
+        if float(kwargs.get("strength", 1.0)) <= 0.0:
+            return PhaseResult(
+                success=True,
+                audio=audio,
+                execution_time_seconds=0.0,
+                metadata={
+                    "processing": "skipped_zero_strength",
+                    "algorithm": "passthrough_zero_strength",
+                    "effective_strength": 0.0,
+                },
+            )
+        # §BMLD (binaural_masking.py): Binaurale Maskierungs-Freisetzung —
+        # pro Song neu (§G1 (GEBOTE.md)), Gate-Schwelle stoppt an der binauralen Schwelle.
+        self._binaural_floor_release_db = 0.0
+        try:
+            from backend.core.dsp.binaural_masking import binaural_noise_floor_release_db as _bnfr29
+
+            _rel29 = float(_bnfr29(audio, sample_rate))
+            if _rel29 > 0.05:
+                self._binaural_floor_release_db = _rel29
+                logger.info("§BMLD Verarbeitungsschritt 29: binaurale Floor-Freisetzung +%.2f dB", _rel29)
+        except Exception as _bnfr_exc:
+            logger.warning(
+                "§V6 (copilot-instructions.md) BMLD-Freisetzung nicht verfügbar — monaurale Gate-Schwelle: %s",
+                _bnfr_exc,
+            )
+
+        # §AO Minimum-Length-Guard (Modulebene): Direktaufrufer (Sweeps/Tests)
+        # umgehen den UV3-Wrapper — Kurz-Input → deterministischer Passthrough.
+        if audio.ndim == 1 and audio.size < 256:
+            return PhaseResult(
+                success=True,
+                audio=np.clip(np.nan_to_num(audio, nan=0.0, posinf=0.0, neginf=0.0), -1.0, 1.0),
+                execution_time_seconds=0.0,
+                metadata={"algorithm": "passthrough_too_short", "skipped": "input_too_short"},
+            )
+        if audio.ndim == 2 and audio.size < 256:
+            return PhaseResult(
+                success=True,
+                audio=np.clip(np.nan_to_num(audio, nan=0.0, posinf=0.0, neginf=0.0), -1.0, 1.0),
+                execution_time_seconds=0.0,
+                metadata={"algorithm": "passthrough_too_short", "skipped": "input_too_short"},
+            )
         """
         # §v10.15 Type-Guard: ensure audio is ndarray, not a tuple
         if not isinstance(audio, np.ndarray):
@@ -734,6 +780,20 @@ class TapeHissReductionPhase(PhaseInterface):
         _effective_strength = float(np.clip(_pmgg_strength * phase_locality_factor, 0.0, 1.0))
         _goal_hint_scalar = self._goal_hint_strength_scalar(kwargs)
         _effective_strength = float(np.clip(_effective_strength * _goal_hint_scalar, 0.0, 1.0))
+
+        # §Primum non nocere: Stärke 0 ⇒ bit-identischer Passthrough — kein
+        # Band-Split, keine Filterung, keine NMR-Anhebung (§V40 hebt 0 nicht an).
+        if _effective_strength <= 0.0:
+            return PhaseResult(
+                success=True,
+                audio=audio,
+                execution_time_seconds=0.0,
+                metadata={
+                    "processing": "skipped_zero_strength",
+                    "algorithm": "passthrough_zero_strength",
+                    "effective_strength": 0.0,
+                },
+            )
 
         # §G78 (GEBOTE.md) CalibrationContext: Kalibrierter Cap aus Messwerten.
         _calib_cap = kwargs.get("phase29_strength_cap")
@@ -2291,7 +2351,7 @@ class TapeHissReductionPhase(PhaseInterface):
         if low_norm >= high_norm:
             return signal_in.copy()
         sos = signal.butter(4, [low_norm, high_norm], btype="band", fs=sample_rate, output="sos")
-        band_result: np.ndarray = np.asarray(signal.sosfilt(sos, signal_in), dtype=np.float32)
+        band_result: np.ndarray = np.asarray(signal.sosfiltfilt(sos, signal_in), dtype=np.float32)
         return band_result
 
     def _estimate_noise_floor(self, band_signal: np.ndarray) -> float:
@@ -2504,8 +2564,12 @@ class TapeHissReductionPhase(PhaseInterface):
         # Compute gate threshold
         gate_threshold = noise_floor_db + threshold_db
 
-        # Compute gains
+        # Compute gains — §BMLD: binaurale Maskierungs-Freisetzung dämpft die
+        # Gate-Tiefe (stoppt an der binauralen Schwelle, konservativ max. −45 %).
         reduction_factor = 10 ** (reduction_db / 20)
+        _bml_rel29 = float(getattr(self, "_binaural_floor_release_db", 0.0) or 0.0)
+        if _bml_rel29 > 0.05:
+            reduction_factor = reduction_factor ** float(np.clip(1.0 - _bml_rel29 / 15.0, 0.55, 1.0))
         gains = np.ones_like(envelope)
 
         # Below threshold: apply reduction
@@ -2556,7 +2620,7 @@ class TapeHissReductionPhase(PhaseInterface):
         # Lowpass filter gains
         cutoff = 1000.0 / smooth_ms  # Lower cutoff for longer smooth_ms
         sos = signal.butter(2, cutoff, "low", fs=sample_rate, output="sos")
-        gains_smoothed = signal.sosfilt(sos, gains)
+        gains_smoothed = signal.sosfiltfilt(sos, gains)
 
         gains_result: np.ndarray = np.asarray(gains_smoothed, dtype=np.float32)
         return gains_result
@@ -2591,7 +2655,7 @@ if __name__ == "__main__":
         # Tape hiss: High-frequency noise (8-18 kHz dominant)
         hiss = 0.12 * np.random.randn(samples)
         sos_hiss = signal.butter(4, [8000, 18000], "band", fs=sr, output="sos")
-        hiss = signal.sosfilt(sos_hiss, hiss)
+        hiss = signal.sosfiltfilt(sos_hiss, hiss)
 
         # Combine
         noisy = music + hiss
@@ -2608,8 +2672,8 @@ if __name__ == "__main__":
 
         # Calculate HF noise reduction
         sos_hf = signal.butter(4, 8000, "high", fs=sr, output="sos")
-        hf_orig = signal.sosfilt(sos_hf, _test_audio[:, 0])
-        hf_proc = signal.sosfilt(sos_hf, _test_processed[:, 0])
+        hf_orig = signal.sosfiltfilt(sos_hf, _test_audio[:, 0])
+        hf_proc = signal.sosfiltfilt(sos_hf, _test_processed[:, 0])
 
         hf_reduction = 20 * np.log10(np.std(hf_orig) / (np.std(hf_proc) + 1e-10))
 

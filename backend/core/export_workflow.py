@@ -193,10 +193,13 @@ def _resolve_export_strategy(quality_gate: dict | None, gate_passed: bool | None
     if gate_passed is False:
         recovery_attempted = bool(quality_gate.get("recovery_attempted", False))
         if not recovery_attempted:
-            raise RuntimeError(
-                "Export blocked: quality_gate failed and no recovery_attempted flag was provided. "
-                "Run recovery cascade first and pass recovery metadata."
+            # §0c [RELEASE_MUST]: Hardstop ohne Ausgabedatei ist normativ
+            # unzulässig — auch ohne Recovery-Flag wird das bestmögliche
+            # sichere Ergebnis (Rollback-Kaskade des Callers) degraded exportiert.
+            logger.warning(
+                "§0c: quality_gate fehlgeschlagen ohne Wiederherstellung_attempted-Flag — Ausgabe erfolgt DEGRADED statt blockiert"
             )
+            return "degraded"
         best_possible_reached = bool(quality_gate.get("best_possible_reached", False))
         return "recovered" if best_possible_reached else "degraded"
 
@@ -418,7 +421,7 @@ def export_stems(
     try:
         from dsp.stem_separator import StemSeparator
     except ImportError as e:
-        logger.warning("ML→DSP-Fallback aktiviert", exc_info=True)  # §V6 (copilot-instructions.md)
+        logger.warning("ML→DSP-Ersatzpfad aktiviert", exc_info=True)  # §V6 (copilot-instructions.md)
         raise RuntimeError("Stem separator not available. Make sure dsp/ module is in your Python path.") from e
 
     logger.debug("Separating stems (backend: %s)...", backend)

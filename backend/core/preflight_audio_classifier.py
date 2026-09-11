@@ -77,5 +77,8 @@ def classify_audio(audio: np.ndarray, sr: int) -> AudioClass:
         return result
 
     except Exception as e:
-        logger.debug("§V6 PreflightAudioClassifier fehlgeschlagen — leeres AudioClass zurückgegeben: %s", e)
+        logger.debug(
+            "§V6 (copilot-instructions.md) PreflightAudioClassifier fehlgeschlagen — leeres AudioClass zurückgegeben: %s",
+            e,
+        )
         return AudioClass()

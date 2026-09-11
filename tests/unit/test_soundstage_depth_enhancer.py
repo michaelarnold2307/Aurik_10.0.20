@@ -46,6 +46,6 @@ def test_soundstage_depth_enhancer_rejects_wrong_sr() -> None:
 
     try:
         enh.process(audio, 44100)
-        assert False, "Expected assertion for sample rate mismatch"
+        raise AssertionError("Expected assertion for sample rate mismatch")
     except AssertionError as exc:
         assert "48000" in str(exc)

@@ -282,3 +282,71 @@ class TestRestaurierDenkerOracleRolloutForwarding:
 
         assert isinstance(result.audio, np.ndarray)
         assert fake_restorer.restore_kwargs.get("phase_strength_oracle_rollout") == "pilot"
+
+
+# ─── §0h/§0c — degraded-Export statt Stub (Rev. 2026-09-11) ───────────────
+
+
+@pytest.mark.unit
+class TestKonvertiereDegradedExport:
+    """§0c (copilot-instructions.md): kein Hardstop/Stub — bestmögliches sicheres Ergebnis."""
+
+    def test_23_raw_none_returns_original_as_degraded(self):
+        from denker.restaurier_denker import RestaurierDenker
+
+        original = _sine(0.5)
+        result = RestaurierDenker()._konvertiere(None, material="tape", original_audio=original)
+        assert isinstance(result.audio, np.ndarray)
+        assert result.audio.shape == original.shape
+        assert np.allclose(result.audio, original, atol=1e-6)
+        assert result.degradation_status == "degraded"
+        assert result.fail_reason
+        assert any("degraded" in w for w in result.warnings)
+
+    def test_24_raw_audio_none_returns_original_as_degraded(self):
+        from denker.restaurier_denker import RestaurierDenker
+
+        class _RawNoAudio:
+            audio = None
+            rt_factor = 0.0
+            quality_estimate = 0.0
+            phases_executed: list[str] = []
+            phases_skipped: list[str] = []
+            musical_goals: dict = {}
+            warnings: list[str] = []
+            confidence = 0.0
+            winning_variant = None
+            rollback_triggered = False
+            total_time_seconds = 0.0
+            material_type = None
+
+        original = _sine(0.5)
+        result = RestaurierDenker()._konvertiere(_RawNoAudio(), material="tape", original_audio=original)
+        assert isinstance(result.audio, np.ndarray)
+        assert result.audio.shape == original.shape
+        assert result.degradation_status == "degraded"
+        assert result.fail_reason
+
+    def test_25_raw_2sample_stub_is_rejected_as_unusable(self):
+        """Der historische 50-Byte-Stub (2-Sample-Array) darf nie durchrutschen."""
+        from denker.restaurier_denker import RestaurierDenker
+
+        class _RawTiny:
+            audio = np.zeros(2, dtype=np.float32)
+            rt_factor = 0.0
+            quality_estimate = 0.0
+            phases_executed: list[str] = []
+            phases_skipped: list[str] = []
+            musical_goals: dict = {}
+            warnings: list[str] = []
+            confidence = 0.0
+            winning_variant = None
+            rollback_triggered = False
+            total_time_seconds = 0.0
+            material_type = None
+
+        original = _sine(0.5)
+        result = RestaurierDenker()._konvertiere(_RawTiny(), material="tape", original_audio=original)
+        assert result.audio.shape == original.shape
+        assert result.degradation_status == "degraded"
+        assert result.fail_reason

@@ -41,7 +41,9 @@ def _load_torch() -> bool:
         torch = _torch  # type: ignore[assignment]
         return True
     except (ImportError, Warning) as exc:
-        logger.debug("§V6 torch nicht verfügbar — False zurückgegeben (Semantic Goals): %s", exc)
+        logger.debug(
+            "§V6 (copilot-instructions.md) torch nicht verfügbar — False zurückgegeben (Semantic Goals): %s", exc
+        )
         return False
 
 
@@ -708,7 +710,7 @@ class SemanticGoalsEngine:
             return (model, feature_extractor)
 
         except ImportError:
-            logger.warning("ML→DSP-Fallback aktiviert", exc_info=True)  # §V6 (copilot-instructions.md)
+            logger.warning("ML→DSP-Ersatzpfad aktiviert", exc_info=True)  # §V6 (copilot-instructions.md)
             if not self._instrument_fallback_logged:
                 logger.warning(
                     "⚠️ SOTA SemanticGoals: transformers nicht verfügbar — akustischer Offline-Ersatzpfad aktiv"

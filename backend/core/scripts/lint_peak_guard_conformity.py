@@ -144,7 +144,11 @@ def lint_file(file_path: str) -> list[tuple[int, str, str]]:
         try:
             lines = f.readlines()
         except Exception as e:
-            logger.debug("§V6 Datei konnte nicht gelesen werden %s: %s — leere Violations zurückgegeben", file_path, e)
+            logger.debug(
+                "§V6 (copilot-instructions.md) Datei konnte nicht gelesen werden %s: %s — leere Violations zurückgegeben",
+                file_path,
+                e,
+            )
             print(f"Warning: Could not read {file_path}: {e}")
             return violations
 

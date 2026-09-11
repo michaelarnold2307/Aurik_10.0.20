@@ -1329,7 +1329,7 @@ class CumulativeInteractionGuard:
                 goal_weight = float(np.clip(state.goal_weights.get(guard_goal, 1.0), 0.30, 2.00))
             except Exception:
                 logger.warning(
-                    "§V6 CumulativeInteractionGuard: goal weight parse failed → default 1.0 for %s: %s",
+                    "§V6 (copilot-instructions.md) CumulativeInteractionGuard: goal weight parse fehlgeschlagen → default 1.0 for %s: %s",
                     guard_goal,
                     str(Exception),
                 )

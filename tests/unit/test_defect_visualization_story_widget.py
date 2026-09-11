@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-#!/usr/bin/env python3
 """Tests for defect visualization story and extended defect mapping in modern_window."""
 
 

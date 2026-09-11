@@ -319,7 +319,7 @@ class TestMDX23CPrimarySeparator:
         """htdemucs_6s ist PRODUKTIV (nicht experimental) — §Fix 2026-09-08.
 
         Früher: experimental=True im (gitignored) Manifest → DemucsV4Plugin
-        lud die ONNX-Session nie → stummer HPSS-Fallback (§V6). Neuer
+        lud die ONNX-Session nie → stummer HPSS-Fallback (§V6 (copilot-instructions.md)). Neuer
         Vertrag: Produktions-Modelle laden standardmäßig; der Ladepfad liest
         das Manifest nicht mehr (Opt-out: AURIK_DISABLE_HTDEMUCS_6S=1).
         """

@@ -1540,7 +1540,7 @@ class ClickRemovalPhase(PhaseInterface):
 
         except Exception as exc:
             logger.debug(
-                "§V6 (copilot-instructions.md) _interpolate_hermite fehlgeschlagen — Cubic-Spline Fallback aktiviert (Range %d-%d): %s",
+                "§V6 (copilot-instructions.md) _interpolate_hermite fehlgeschlagen — Cubic-Spline Ersatzpfad aktiviert (Range %d-%d): %s",
                 start,
                 end,
                 exc,

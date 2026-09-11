@@ -1024,7 +1024,7 @@ class PhaseProgressNarrator:
         ctx = self._context
         # material and chain context (material not yet used in current logic)
         chain = ctx.get("transfer_chain") or []
-        era = ctx.get("era_decade")
+        ctx.get("era_decade")
 
         if was_reverted:
             _recs = [

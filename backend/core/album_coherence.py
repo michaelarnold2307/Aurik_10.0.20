@@ -76,6 +76,7 @@ class AlbumCoherence:
                     data = json.load(f)
                 self._profiles = {k: AlbumProfile.from_dict(v) for k, v in data.items()}
             except Exception:
+                logger.debug("Stiller Ersatzpfad dokumentiert (Bug 9/V74)", exc_info=True)
                 pass
 
     def _save(self) -> None:
@@ -106,6 +107,6 @@ class AlbumCoherence:
             album_id,
             profile.track_count + 1,
             gain_db,
-            float(np.mean(profile.track_qualities + [track_quality])),
+            float(np.mean([*profile.track_qualities, track_quality])),
         )
         return cast(np.ndarray, result.astype(np.float32))

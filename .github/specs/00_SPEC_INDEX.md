@@ -12,30 +12,30 @@ Stand: 94 Specs.
 |---|---|
 | 01_musical_goals.md | Aurik 10 — Spec 01: 15 Musikalische Ziele |
 | 02_pipeline_architecture.md | Aurik 10 — Spec 02: Pipeline-Architektur |
-| 03_cognitive_modules.md | Aurik 10 — Spec 03: Kognitive Module | §v10 Pleasantness-First |
+| 03_cognitive_modules.md | Aurik 10 — Spec 03: Kognitive Module · §v10 Pleasantness-First |
 | 04_dsp_standards.md | Aurik 10 — Spec 04: DSP-Standards & SOTA-Algorithmen |
-| 05_material_system.md | Aurik 10 — Spec 05: Material-System | §v10 Pleasantness-First |
-| 06_phases_system.md | Aurik 10 — Spec 06: Phasen-System | §v10 Pleasantness-First |
+| 05_material_system.md | Aurik 10 — Spec 05: Material-System · §v10 Pleasantness-First |
+| 06_phases_system.md | Aurik 10 — Spec 06: Phasen-System · §v10 Pleasantness-First |
 | 07_quality_and_tests.md | Aurik 10 — Spec 07: Qualitätsziele & Tests |
-| 08_architecture_and_distribution.md | Aurik 10 — Spec 08: Architektur, Code-Standards & Distribution | §v10 Pleasantness-First |
-| 09_global_calibration_matrix.md | Spec §09 — Globale Kalibrierungs-Matrix für reproduzierbare Optimalwerte | §v10 Pleasantness-First |
-| 10_bug_gap_strategy.md | Spec 10 — Bug & Gap Detection Strategy (v10.0.0) | §v10 Pleasantness-First |
+| 08_architecture_and_distribution.md | Aurik 10 — Spec 08: Architektur, Code-Standards & Distribution · §v10 Pleasantness-First |
+| 09_global_calibration_matrix.md | Spec §09 — Globale Kalibrierungs-Matrix für reproduzierbare Optimalwerte · §v10 Pleasantness-First |
+| 10_bug_gap_strategy.md | Spec 10 — Bug & Gap Detection Strategy (v10.0.0) · §v10 Pleasantness-First |
 | 10_lag_integrity_architecture.md | Aurik 10 — Lag-Integritäts-Architektur (§G60–§G67, §V27–§V33) |
-| 11_decision_intelligence.md | Aurik 10 — Spec 11: Entscheidungsintelligenz | §v10 Pleasantness-First |
-| 12_evolution_260_30.md | §EVO [RELEASE_MUST]: Denker → UV3 Evolutionsstufen (§2.60–§3.0) | §v10 Pleasantness-First |
-| 12_perceptual_optimization.md | Spec 12: Perceptual Optimization Patterns (§G–§Z) | §v10 Pleasantness-First |
-| 13_human_ear_quality.md | Spec 13: Klangqualität für das menschliche Ohr | §v10 Pleasantness-First |
-| 14_completeness_and_perfection.md | Aurik 10 — Spec 14 [RELEASE_MUST]: Vollständigkeit & Perfektion | §v10 Pleasantness-First |
+| 11_decision_intelligence.md | Aurik 10 — Spec 11: Entscheidungsintelligenz · §v10 Pleasantness-First |
+| 12_evolution_260_30.md | §EVO [RELEASE_MUST]: Denker → UV3 Evolutionsstufen (§2.60–§3.0) · §v10 Pleasantness-First |
+| 12_perceptual_optimization.md | Spec 12: Perceptual Optimization Patterns (§G–§Z) · §v10 Pleasantness-First |
+| 13_human_ear_quality.md | Spec 13: Klangqualität für das menschliche Ohr · §v10 Pleasantness-First |
+| 14_completeness_and_perfection.md | Aurik 10 — Spec 14 [RELEASE_MUST]: Vollständigkeit & Perfektion · §v10 Pleasantness-First |
 | 15_world_class_gap_closure.md | Spec 15: Weltspitze-Gap-Closure — 10-Punkte-Plan |
 | 16_phantom_rollout.md | Spec 16: Phantom-Rollout — Rolls-Royce-Gesangs-Restaurierung |
-| 17_sft_novelty_adaptive_calibration.md | Spec §17 — SFT Novelty Adaptive Calibration & Defekt-Audibilitäts-Garantie | §v10.40 Per-Song-Kalibrierung |
+| 17_sft_novelty_adaptive_calibration.md | Spec §17 — SFT Novelty Adaptive Calibration & Defekt-Audibilitäts-Garantie · §v10.40 Per-Song-Kalibrierung |
 | 18_depth_threshold_calibration_shift.md | §18 — Depth-Threshold Calibration-Shift (§v10.120) |
 | 18_non_plus_ultra_perceptual_fidelity.md | §18 — Non-Plus-Ultra: Vom Messen zum Wahrnehmen (§v10.80–§v10.83) |
-| 18_subprocess_contract_and_wav_retry.md | Spec §18 — Subprocess-Vertrag, WAV-Retry & Scipy-Unpack | §v10.50 |
+| 18_subprocess_contract_and_wav_retry.md | Spec §18 — Subprocess-Vertrag, WAV-Retry & Scipy-Unpack · §v10.50 |
 | 18_verification_plan.md | Depth-Calibration-Shift — Verifikationsplan |
 | 19_major_version_roadmap.md | §19 — Architektur-Roadmap für nächste Major-Version (§v10.124) |
 | 19_non_plus_ultra_quality_ceiling_elimination.md | §19 — Non-Plus-Ultra: Strukturelle Qualitäts-Deckel beseitigt (§v10.90–§v10.94) |
-| 19_sota_export_gap_closure.md | Spec §19 — SOTA-Export-Gap-Closure | §v10.52 |
+| 19_sota_export_gap_closure.md | Spec §19 — SOTA-Export-Gap-Closure · §v10.52 |
 | 19_sota_gender_detection.md | Spec 19: SOTA Vocal Gender Detection — §2.8 Perfection |
 | 20_erkenntnisse_maximale_restaurierung.md | §v10.116 Erkenntnisse & Roadmap: Maximale Restaurierung aller Importsongs |
 | 20_fair_payment_model.md | §FAIR-PAY — Faires Zahlungsmodell für Aurik |

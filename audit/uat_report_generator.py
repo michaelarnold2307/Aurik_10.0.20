@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
-"""
-UAT Report Generator für Aurik 10.0.0
+"""UAT Report Generator für Aurik 10.0.0
 Führt UAT-Tests aus und generiert formale Scorecard + Final Report
 
 Usage:
@@ -11,6 +10,10 @@ Output:
     - docs/UAT_REPORT_2026-03-28.md (Finales Zertifikat)
     - audit/uat_results_2026-03-28.json (Machine-readable Resultate)
 """
+
+import logging
+
+logger = logging.getLogger(__name__)
 
 import argparse
 import json
@@ -181,6 +184,7 @@ class UATReportGenerator:
                 try:
                     payload = json.loads(line[marker_pos + len(self.RESULT_MARKER_PREFIX) :].strip())
                 except Exception:
+                    logger.debug("Stiller Ersatzpfad dokumentiert (Bug 9/V74)", exc_info=True)
                     continue
                 kind = str(payload.get("kind", "") or "")
                 cid = str(payload.get("criterion_id", "") or "")

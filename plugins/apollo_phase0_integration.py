@@ -1,9 +1,11 @@
 """§v10.303.20–21 Phase-0 Pre-Processor Pipeline für Aurik UV3.
 
-Wissenschaftlich korrekte Reihenfolge (Carrier-Chain-Inversion §2.46):
-  1. Apollo      (Codec-Decompression)  — subtraktiv: MP3/AAC-Artefakte entfernen
-  2. DeepFilterNet v3 (Denoising)       — subtraktiv: Noise-Floor stabilisieren
-  3. Resemble Enhance (Enhancement)     — additiv: Spektrale Reparatur
+Wissenschaftlich korrekte Reihenfolge (Carrier-Chain-Inversion §2.46, Chain-Metadaten
+„ear_vae→apollo→deepfilternet→resemble_enhance“):
+  1. EAR_VAE      (Neural Clean-Pass)    — läuft VOR den subtraktiven Stufen
+  2. Apollo       (Codec-Decompression)  — subtraktiv: MP3/AAC-Artefakte entfernen
+  3. DeepFilterNet v3 (Denoising)        — subtraktiv: Noise-Floor stabilisieren
+  4. Resemble Enhance (Enhancement)      — additiv: Spektrale Reparatur
 
 Cache (§v10.303.18): Hash-basierte Persistenz in ~/.aurik/cache/phase0/.
 Vermeidet wiederholte ML-Inferenz bei Batch-Imports und Re-Imports.
@@ -217,6 +219,8 @@ class ApolloPhase0Guard:
         if self._model is not None:
             del self._model
             self._model = None
+        self._apollo_onnx = None
+        self._onnx_input_names = []
         self._loaded = False
         import gc
 
@@ -241,6 +245,14 @@ class ApolloPhase0Guard:
 
             _apollo = get_loaded_apollo()
             if _apollo is not None:
+                _onnx_session = getattr(_apollo, "_onnx_session", None)
+                if _onnx_session is not None:
+                    self._apollo_onnx = _onnx_session
+                    self._onnx_input_names = [item.name for item in _onnx_session.get_inputs()]
+                    self._loaded = True
+                    self._shared_from_plm = True
+                    logger.info("Apollo Verarbeitungsschritt-0 via PLM-ONNX-Sitzung (shared model)")
+                    return True
                 _model = getattr(_apollo, "_model", None)
                 if _model is not None:
                     self._model = _model
@@ -252,12 +264,12 @@ class ApolloPhase0Guard:
         except Exception:
             pass
         # Fallback: eigenes Modell laden
-        if not __import__("os").path.isfile(self._model_path):
+        _core_path = __import__("os").path.join(__import__("os").path.dirname(self._model_path), "apollo_core.onnx")
+        if not __import__("os").path.isfile(self._model_path) and not __import__("os").path.isfile(_core_path):
             logger.debug("Apollo-Modell nicht gefunden: %s", self._model_path)
             return False
         # §v10.750 (2026-09-09): ONNX-Core zuerst — Apollo-Core (67.6 MB) läuft
         # registry-bewusst (GPU möglich) statt CPU-geforcedem TorchScript (§v10.736).
-        _core_path = __import__("os").path.join(__import__("os").path.dirname(self._model_path), "apollo_core.onnx")
         try:
             if __import__("os").path.isfile(_core_path):
                 import onnxruntime as _ort750

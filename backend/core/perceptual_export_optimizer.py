@@ -46,12 +46,14 @@ class PerceptualExportOptimizer:
         """Führt die vollständige Perceptual-Optimierung durch.
 
         Args:
-            audio: (channels, samples) float32
+            audio: (channels, samples) float32 — mono (T,) oder stereo (C, T)/(T, C)
             sr: Sample-Rate
             material: Material-Typ für adaptive Parameter
             listening_mode: headphones | nearfield | farfield | car
             use_ml: ML-Modelle verwenden wenn RAM verfügbar
         """
+        _input_was_1d = np.asarray(audio).ndim == 1
+        _input_shape = np.asarray(audio).shape
         result = np.asarray(audio, dtype=np.float32).copy()
 
         # ── 1. Perceptual-Masking-Gate ──
@@ -71,6 +73,18 @@ class PerceptualExportOptimizer:
 
         # ── 5. Hörumgebungs-Adaption ──
         result = self._apply_listening_adaptation(result, sr, listening_mode)
+
+        # Shape-Restore: ML-Schritte (DFN) können aus mono (T,) ein (1, T) machen —
+        # Eingabe-Layout exakt wiederherstellen (PostGate-Shape-Garantie).
+        if _input_was_1d and result.ndim == 2:
+            result = result[0]
+        elif not _input_was_1d and result.ndim != _input_shape.__len__():
+            result = np.reshape(result, _input_shape)
+        elif not _input_was_1d and result.shape != _input_shape:
+            if result.shape[-1] == _input_shape[-1] and result.shape[0] == _input_shape[0]:
+                pass
+            else:
+                result = np.reshape(result, _input_shape)
 
         return cast(np.ndarray, (np.clip(result, -1.0, 1.0).astype(np.float32)))
 

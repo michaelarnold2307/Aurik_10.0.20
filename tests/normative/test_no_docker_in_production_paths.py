@@ -70,11 +70,7 @@ def _is_subprocess_docker_call(call: ast.Call) -> bool:
     if call.args and _contains_docker_literal(call.args[0]):
         return True
 
-    for kw in call.keywords:
-        if kw.value is not None and _contains_docker_literal(kw.value):
-            return True
-
-    return False
+    return any(kw.value is not None and _contains_docker_literal(kw.value) for kw in call.keywords)
 
 
 def _is_os_system_docker_call(call: ast.Call) -> bool:

@@ -26,7 +26,7 @@ class ManifestItem:
 
 ITEMS = [
     ManifestItem("rmvpe", "models/rmvpe/rmvpe.onnx", "crepe_full"),
-    ManifestItem("sgmse_plus", "models/sgmse_plus/sgmse_plus.ts", "wpe_dsp"),
+    ManifestItem("sgmse_plus", "models/sgmse_plus/sgmse_plus_core.onnx", "wpe_dsp"),
     ManifestItem(
         "versa",
         "models/versa/hub_cache/checkpoints/ft_wav2vec2_large_ll60k_mdf_p1_200epochs_all_192epochs.pth",

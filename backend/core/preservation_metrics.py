@@ -444,7 +444,9 @@ def _extract_formants(audio: np.ndarray, sr: int, n_formants: int = 4) -> list[f
         formants.sort()  # Sort by frequency
         return formants
     except Exception as e:
-        logger.debug("§V6 Formant-Erkennung fehlgeschlagen — leere Liste zurückgegeben: %s", e)
+        logger.debug(
+            "§V6 (copilot-instructions.md) Formant-Erkennung fehlgeschlagen — leere Liste zurückgegeben: %s", e
+        )
         return []
 
 

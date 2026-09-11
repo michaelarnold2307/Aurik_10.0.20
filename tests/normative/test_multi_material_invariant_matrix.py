@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-#!/usr/bin/env python3
 """Normative multi-material invariant matrix for critical late-pipeline phases.
 
 Goal:

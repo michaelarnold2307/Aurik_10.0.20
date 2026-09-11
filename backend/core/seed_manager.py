@@ -1,5 +1,5 @@
 """
-§G5 Deterministischer Seed-Manager — Aurik 10
+§G5 (GEBOTE.md) Deterministischer Seed-Manager — Aurik 10
 
 Zweck: Garantiert bit-identischen Output bei gleichem Input + Version.
 Verwaltet einen Master-Seed pro Session und bindet alle ML-Phasen daran.
@@ -33,7 +33,7 @@ logger = logging.getLogger(__name__)
 
 
 class _SeedManager:
-    """§G5 Deterministischer Seed-Manager — Singleton pro Session.
+    """§G5 (GEBOTE.md) Deterministischer Seed-Manager — Singleton pro Session.
 
     Verwaltet einen Master-Seed pro Session und leitet phasenspezifische
     Seeds ab, die reproduzierbar sind (gleicher Master-Seed → gleiche Phase-Seeds).
@@ -41,7 +41,7 @@ class _SeedManager:
     Invarianten:
         - Master-Seed wird nur einmal pro Session gesetzt.
         - Phase-Seeds sind deterministisch vom Master-Seed + Phase-ID abgeleitet.
-        - Kein time.time() oder os.urandom() in Entscheidungslogik (§G5).
+        - Kein time.time() oder os.urandom() in Entscheidungslogik (§G5 (GEBOTE.md)).
     """
 
     def __init__(self) -> None:
@@ -77,7 +77,7 @@ class _SeedManager:
             Der verwendete Master-Seed (int).
         """
         with self._lock:
-            # §G5: Kein time.time() — Seed aus deterministischen Quellen
+            # §G5 (GEBOTE.md): Kein time.time() — Seed aus deterministischen Quellen
             if master_seed is None:
                 # Aus song_id + Prozess-ID + fester Salt ableiten
                 salt = "aurik_v10_deterministic"
@@ -91,7 +91,7 @@ class _SeedManager:
             self._phase_seeds.clear()
 
             logger.info(
-                "§G5 Seed-Manager: Session=%s Master-Seed=%d",
+                "§G5 (GEBOTE.md) Seed-Manager: Sitzung=%s Master-Seed=%d",
                 self._session_id,
                 self._master_seed,
             )
@@ -114,7 +114,7 @@ class _SeedManager:
             if self._master_seed is None:
                 # Session nicht initialisiert → konservativer Fallback
                 logger.warning(
-                    "§G5 Seed-Manager: Session nicht initialisiert — Fallback-Seed für %s",
+                    "§G5 (GEBOTE.md) Seed-Manager: Sitzung nicht initialisiert — Ersatzpfad-Seed für %s",
                     phase_id,
                 )
                 self.start_session()
@@ -128,12 +128,12 @@ class _SeedManager:
             return self._phase_seeds[phase_id]
 
     def reset(self) -> None:
-        """Setzt Session zurück (für Song-Isolation §V8/§G1)."""
+        """Setzt Session zurück (für Song-Isolation §V8 (copilot-instructions.md)/§G1 (GEBOTE.md))."""
         with self._lock:
             self._master_seed = None
             self._session_id = None
             self._phase_seeds.clear()
-            logger.debug("§G5 Seed-Manager: Session zurückgesetzt")
+            logger.debug("§G5 (GEBOTE.md) Seed-Manager: Sitzung zurückgesetzt")
 
 
 # ── Thread-safe Singleton ────────────────────────────────────────────────

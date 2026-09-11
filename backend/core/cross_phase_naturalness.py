@@ -124,7 +124,6 @@ def get_tracker() -> CrossPhaseTracker:
 
 
 def reset_tracker():
-    global _tracker
     with _tracker_lock:
         if _tracker is not None:
             _tracker.reset()

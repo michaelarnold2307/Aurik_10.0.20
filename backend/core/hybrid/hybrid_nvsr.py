@@ -205,7 +205,7 @@ class HybridNVSR:
 
         # Detect current bandwidth - DEBUG level to prevent console spam on import
         detected_bandwidth = self._detect_bandwidth(audio, sample_rate)
-        logger.debug("§2.46f Bandwidth detected: %.0f Hz", detected_bandwidth)
+        logger.debug("§2.46f Bandwidth erkannt: %.0f Hz", detected_bandwidth)
 
         # Choose strategy
         strategy = self.config.strategy

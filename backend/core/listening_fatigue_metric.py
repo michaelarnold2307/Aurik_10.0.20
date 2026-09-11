@@ -121,7 +121,7 @@ def measure_fatigue(
         return fatigue
 
     except Exception:
-        logger.warning("ML→DSP-Fallback aktiviert", exc_info=True)  # §V6 (copilot-instructions.md)
+        logger.warning("ML→DSP-Ersatzpfad aktiviert", exc_info=True)  # §V6 (copilot-instructions.md)
         return _fallback(return_components)
 
 

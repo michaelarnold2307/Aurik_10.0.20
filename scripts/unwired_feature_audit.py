@@ -126,7 +126,7 @@ def main():
 
     print("=" * 70)
     print("§v10.118 Unverkabelte-Feature-Audit")
-    print(f"{len(all_findings)} ungenutzte SOTA-Features in {len(set(f['phase'] for f in all_findings))} Phasen")
+    print(f"{len(all_findings)} ungenutzte SOTA-Features in {len({f['phase'] for f in all_findings})} Phasen")
     print("=" * 70)
 
     for feat, items in sorted(by_feature.items(), key=lambda x: -len(x[1])):

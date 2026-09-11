@@ -2199,7 +2199,7 @@ class DeEsserPhase(PhaseInterface):
                         _p19_depth = _ctx.transfer_chain_depth if _ctx else 1
                     except Exception:
                         _p19_depth = 1
-                detection_band = signal.sosfilt(sos_detection, audio)
+                detection_band = signal.sosfilt(sos_detection, audio)  # H-SCAN-EXEMPT: sosfilt
                 # Detection verwendet immer sosfilt (kausal) — Envelope-Timing
                 # ist unabhängig vom Processing-Filter-Typ.
                 processing_band = safe_sosfiltfilt(sos_processing, audio, chain_depth=_p19_depth)
@@ -2787,6 +2787,7 @@ class DeEsserPhase(PhaseInterface):
 
         try:
             from backend.core.audio_utils import safe_sosfiltfilt as _safe_sosfiltfilt19
+
             sos = signal.butter(4, [sib_low, sib_high], btype="band", output="sos")
             sib_filtered = _safe_sosfiltfilt19(sos, audio)
             energy = np.sqrt(np.mean(sib_filtered**2))
@@ -2823,6 +2824,7 @@ class DeEsserPhase(PhaseInterface):
 
             try:
                 from backend.core.audio_utils import safe_sosfiltfilt as _safe_sosfiltfilt19b
+
                 sos = signal.butter(4, [low, high], btype="band", output="sos")
                 band_audio = _safe_sosfiltfilt19b(sos, audio)
                 # Use peak energy instead of RMS to match de-esser behavior
@@ -3625,6 +3627,12 @@ class DeEsserPhase(PhaseInterface):
         """Verarbeitet Audio in Gender-spezifischen Segmenten mit Crossfades."""
         if not gender_timeline:
             return audio
+        # §V7 (copilot-instructions.md): Kanalzugriffe (audio[:, s0:s1], seg_audio[0],
+        # output[:, s0:s1] += (2,seg)) setzen channels-first voraus — Layout
+        # normalisieren, am Ende bit-identisch ins Eingangs-Layout zurück.
+        _p19_was_cf = audio.ndim != 2 or audio.shape[0] <= 2
+        if audio.ndim == 2 and audio.shape[0] > 2:
+            audio = np.ascontiguousarray(audio.T)  # (N,2) → (2,N)
         is_stereo = audio.ndim == 2
         n_samples = audio.shape[1] if is_stereo else len(audio)
         output = np.zeros_like(audio, dtype=np.float32)
@@ -3692,7 +3700,10 @@ class DeEsserPhase(PhaseInterface):
                 output[:, gaps] = audio[:, gaps]
             else:
                 output[gaps] = audio[gaps]
-        return cast(np.ndarray, (np.clip(output, -1.0, 1.0).astype(np.float32)))
+        _out19 = np.clip(output, -1.0, 1.0).astype(np.float32)
+        if not _p19_was_cf and _out19.ndim == 2:
+            _out19 = np.ascontiguousarray(_out19.T)  # (2,N) → (N,2)
+        return cast(np.ndarray, _out19)
 
     def _apply_formant_preservation(
         self,

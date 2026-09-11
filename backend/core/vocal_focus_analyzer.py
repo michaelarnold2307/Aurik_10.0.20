@@ -512,6 +512,9 @@ class VocalFocusAnalyzer:
         """LPC-Formant-Analyse → (f1_mean_hz, f2_mean_hz, is_stable).
 
         Verwendet 4 s Segment aus der Mitte. Fallback: (0.0, 0.0, True).
+        §VORMERKEN (2026-09-11): SSL-Formant-Schätzung (wav2vec2/HuBERT-Encoder)
+        als Upgrade-Pfad bei Vintage-Rauschen — erfordert neues ONNX-Modell +
+        Paritäts-Gate; bis dahin bleibt LPC + F0-Fallback der Primärpfad.
         """
         try:
             # 4s Analyse-Segment (Zentrum)
@@ -586,19 +589,40 @@ class VocalFocusAnalyzer:
             _max_samp = int(_PYIN_MAX_S * _pyin_sr)
             if len(mono_f) > _max_samp:
                 mono_f = mono_f[:_max_samp]
-            f0, voiced_flag, _ = _librosa.pyin(  # type: ignore[union-attr]
-                mono_f,
-                fmin=_librosa.note_to_hz("C2"),  # type: ignore[arg-type]
-                fmax=_librosa.note_to_hz("C7"),  # type: ignore[arg-type]
-                sr=_pyin_sr,
-                frame_length=2048,
-                hop_length=hop,
-            )
-            if f0 is None or voiced_flag is None:
+            # §SOTA Pitch (2026-09-11): FCPE-ONNX (Conformer) ist der primäre
+            # Pitchtracker — präziser bei Gesang/Vibrato als librosa.pyin;
+            # pyin bleibt §V6-Fallback bei Modellfehler (Silent-Failure-Verbot).
+            f0: np.ndarray | None = None
+            voiced_flag: np.ndarray | None = None
+            times: np.ndarray | None = None
+            try:
+                from plugins.fcpe_plugin import analyze_pitch as _fcpe_pitch_fn
+
+                _fcpe_res = _fcpe_pitch_fn(mono_f, _pyin_sr)
+                f0 = np.asarray(_fcpe_res.f0_hz, dtype=np.float64)
+                voiced_flag = np.asarray(_fcpe_res.voiced_prob, dtype=np.float64) >= 0.5
+                times = np.asarray(_fcpe_res.times_s, dtype=np.float64)
+                logger.debug("VFA passaggio: FCPE-ONNX aktiv (model=%s)", _fcpe_res.model_used)
+            except Exception as _fcpe_exc:
+                logger.warning(
+                    "§V6 (copilot-instructions.md) VFA passaggio: FCPE nicht verfügbar (%s) — pyin-Ersatzpfad",
+                    _fcpe_exc,
+                )
+
+            if f0 is None and _librosa is not None:
+                f0, voiced_flag, _ = _librosa.pyin(  # type: ignore[union-attr]
+                    mono_f,
+                    fmin=_librosa.note_to_hz("C2"),  # type: ignore[arg-type]
+                    fmax=_librosa.note_to_hz("C7"),  # type: ignore[arg-type]
+                    sr=_pyin_sr,
+                    frame_length=2048,
+                    hop_length=hop,
+                )
+                times = _librosa.frames_to_time(np.arange(len(f0)), sr=_pyin_sr, hop_length=hop)  # type: ignore[union-attr]
+            if f0 is None or voiced_flag is None or times is None:
                 return []
 
             zones: list[tuple[float, float]] = []
-            times = _librosa.frames_to_time(np.arange(len(f0)), sr=_pyin_sr, hop_length=hop)  # type: ignore[union-attr]
             # Halbtöne-Differenz zwischen aufeinanderfolgenden voiced Frames
             prev_f0: float | None = None
             prev_t: float = 0.0

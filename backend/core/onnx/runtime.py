@@ -16,6 +16,8 @@ from typing import Any
 import numpy as np
 import onnxruntime as ort
 
+from backend.core.gpu_model_registry import _Provider
+
 # ── §D4 + D1: Suppress ONNX Runtime C-level warnings ────────────────
 # 1. Set ONNX logger severity to ERROR (suppresses harmless WARNINGs like
 #    MIOpen epsilon, 40+ lines per model load).
@@ -80,7 +82,7 @@ class ONNXInferenceSession:
     def __init__(
         self,
         model_path: Path,
-        providers: list[str] | None = None,
+        providers: list[_Provider] | None = None,
         intra_op_num_threads: int = 4,
         inter_op_num_threads: int = 2,
         enable_profiling: bool = False,
@@ -164,7 +166,7 @@ class ONNXInferenceSession:
                         )
                         logger.info("ONNX Sitzung via MIGraphX (GPU): %s", self.model_path.name)
                 except Exception as _mgx_exc:
-                    logger.debug("MIGraphX session fallback: %s", _mgx_exc)
+                    logger.debug("MIGraphX Sitzung Ersatzpfad: %s", _mgx_exc)
                     self.session = ort.InferenceSession(str(self.model_path), sess_options, providers=self.providers)
             else:
                 self.session = ort.InferenceSession(str(self.model_path), sess_options, providers=self.providers)
@@ -288,7 +290,7 @@ class OptimizedONNXModel:
         model_path: Path,
         model_type: str = "denoising",
         sample_rate: int = 48000,
-        providers: list[str] | None = None,
+        providers: list[_Provider] | None = None,
         enable_warmup: bool = True,
     ):
         """

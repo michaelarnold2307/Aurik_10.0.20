@@ -55,8 +55,7 @@ class TestDynamicPreservationGuard:
         guard = get_dynamic_preservation_guard()
         # Signal mit hohem Crest-Faktor (große Dynamik: Peaks >> RMS)
         t = np.linspace(0, 2.0, int(48000 * 2), endpoint=False)
-        audio = (0.3 * np.sin(2 * np.pi * 440.0 * t) +
-                 0.1 * np.random.randn(len(t)) * 0.1).astype(np.float32)
+        audio = (0.3 * np.sin(2 * np.pi * 440.0 * t) + 0.1 * np.random.randn(len(t)) * 0.1).astype(np.float32)
         # Hard-Limiter: Peaks werden stark gekappt → RMS bleibt ähnlich, Peak sinkt
         post = np.clip(audio, -0.08, 0.08).astype(np.float32)
 
@@ -153,10 +152,12 @@ class TestDynamicPreservationGuardEdgeCases:
 
         guard = get_dynamic_preservation_guard()
         t = np.linspace(0, 2.0, int(48000 * 2), endpoint=False)
-        stereo = np.stack([
-            0.3 * np.sin(2 * np.pi * 440.0 * t),
-            0.25 * np.sin(2 * np.pi * 440.0 * t + 0.1),
-        ]).astype(np.float32)  # (2, N) channel-first
+        stereo = np.stack(
+            [
+                0.3 * np.sin(2 * np.pi * 440.0 * t),
+                0.25 * np.sin(2 * np.pi * 440.0 * t + 0.1),
+            ]
+        ).astype(np.float32)  # (2, N) channel-first
 
         post = np.clip(stereo, -0.1, 0.1).astype(np.float32)
         decision = guard.evaluate(stereo, post, sr=48000)

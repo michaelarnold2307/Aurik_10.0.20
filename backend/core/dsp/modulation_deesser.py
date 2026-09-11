@@ -5,13 +5,12 @@ im Frikativ-Rhythmus (12–28 Hz) — Becken/Hi-Hats sind dagegen breitbandige
 Transienten ohne diese Modulation. Der Detektor misst den AM-Anteil der
 Band-Hüllkurve und dämpft nur, wenn das Modulationsmuster sibilant ist.
 
-Deterministisch, vektorisiert, kein ML, §G5.
+Deterministisch, vektorisiert, kein ML, §G5 (copilot-instructions.md).
 """
 
 from __future__ import annotations
 
 import numpy as np
-
 from scipy.ndimage import uniform_filter1d  # pylint: disable=import-outside-toplevel
 from scipy.signal import butter, sosfiltfilt  # pylint: disable=import-outside-toplevel
 

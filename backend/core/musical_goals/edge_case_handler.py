@@ -751,7 +751,7 @@ class EdgeCaseHandler:
                 treble_ratio=0.0,
                 spectral_centroid=0.0,
                 spectral_bandwidth=0.0,
-                missing_bands=list(sorted({"bass", "mid", "treble"})),
+                missing_bands=sorted({"bass", "mid", "treble"}),
             )
         stft = librosa.stft(audio, n_fft=_n_fft_ech, hop_length=_hop_ech)
         magnitude = np.abs(stft)

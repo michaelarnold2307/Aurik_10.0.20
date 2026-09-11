@@ -442,7 +442,7 @@ class HarmonicProtector:
         # §v10.600 SOTA: F0-driven harmonic mask via VocalHarmonicMask
         h_mask_2d: np.ndarray | None = None
         try:
-            from backend.core.dsp.vocal_harmonic_decomp import VocalHarmonicMask, _F0_MIN_HZ
+            from backend.core.dsp.vocal_harmonic_decomp import _F0_MIN_HZ, VocalHarmonicMask
 
             vmask = VocalHarmonicMask(audio, sample_rate, n_fft=self.n_fft, hop=self.hop)
             h_mask_2d = vmask.harmonic_mask(soft=True)  # shape: (n_freq, n_frames)
@@ -593,7 +593,7 @@ class SOTAVocalPipeline:
           - MECHANICAL_POP: leichte Reduktion (Gain 0.6)
         """
         try:
-            from backend.core.dsp.breath_emotion_classifier import classify_breath_emotions, BreathCategory
+            from backend.core.dsp.breath_emotion_classifier import BreathCategory, classify_breath_emotions
 
             breath_segs = classify_breath_emotions(audio, sample_rate)
             if not breath_segs:
@@ -636,7 +636,8 @@ class SOTAVocalPipeline:
 
                 total_breath_energy_after += float(
                     np.sum(np.fft.rfft(breath_out * np.hanning(len(breath_out))) ** 2)[low_mask].sum()
-                    if len(breath_out) > 64 else 0.0
+                    if len(breath_out) > 64
+                    else 0.0
                 )
 
             # OLA-Rekonstruktion für den gesamten Audio-Stream
@@ -659,5 +660,5 @@ class SOTAVocalPipeline:
             return breath_change_db
 
         except Exception as _breath_exc:
-            log.debug("Breath Processing fehlgeschlagen: %s", _breath_exc)
+            log.warning("Breath Processing fehlgeschlagen: %s", _breath_exc)
             return 0.0

@@ -155,7 +155,7 @@ class PresenceBoost(PhaseInterface):
             _mat_38 = MaterialType(material_type)
         except Exception:
             logger.warning(
-                "§V6 Phase-38 material parse failed → CD_DIGITAL fallback: %s",
+                "§V6 (copilot-instructions.md) Verarbeitungsschritt-38 material parse fehlgeschlagen → CD_DIGITAL Ersatzpfad: %s",
                 str(Exception),
             )
             _mat_38 = MaterialType.CD_DIGITAL

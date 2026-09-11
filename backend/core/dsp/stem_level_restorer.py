@@ -325,7 +325,7 @@ class StemLevelRestorer:
             if route.success:
                 return route.vocal.astype(np.float32), route.instrumental.astype(np.float32), route.model_used
             logger.warning(
-                "ML→DSP-Fallback aktiviert (§SLR-1: SOTA-Router lehnte ab, chain=%s) — DSP-Bandpass",
+                "ML→DSP-Ersatzpfad aktiviert (§SLR-1: SOTA-Router lehnte ab, chain=%s) — DSP-Bandpass",
                 route.fallback_chain,
             )
             try:
@@ -337,7 +337,7 @@ class StemLevelRestorer:
             except Exception:
                 logger.debug("FallbackAuditor nicht verfügbar (unkritisch)", exc_info=True)
         except Exception as _router_exc:  # pylint: disable=broad-except
-            logger.warning("ML→DSP-Fallback aktiviert", exc_info=True)  # §V6 (copilot-instructions.md)
+            logger.warning("ML→DSP-Ersatzpfad aktiviert", exc_info=True)  # §V6 (copilot-instructions.md)
             logger.debug("§SLR-1 separation router Ersatzpfad to DSP: %s", _router_exc)
         _vocal, _instr = self._dsp_stem_split(audio, sample_rate)
         return _vocal, _instr, "dsp_bandpass_residual"
@@ -349,7 +349,11 @@ class StemLevelRestorer:
         try:
             arr = np.asarray(candidate, dtype=np.float32)
         except Exception as exc:  # pylint: disable=broad-except
-            logger.debug("§V6 np.asarray(candidate) fehlgeschlagen — Nullen zurückgegeben (Shape %s): %s", ref.shape, exc)
+            logger.debug(
+                "§V6 (copilot-instructions.md) np.asarray(candidate) fehlgeschlagen — Nullen zurückgegeben (Shape %s): %s",
+                ref.shape,
+                exc,
+            )
             return np.zeros_like(ref, dtype=np.float32)  # type: ignore[no-any-return]
 
         arr = np.nan_to_num(arr, nan=0.0, posinf=0.0, neginf=0.0)
@@ -388,7 +392,7 @@ class StemLevelRestorer:
             _instr = (audio - _vocal).astype(np.float32)
             return _vocal, _instr
         except Exception as _sos_exc:  # pylint: disable=broad-except
-            logger.warning("ML→DSP-Fallback aktiviert", exc_info=True)  # §V6 (copilot-instructions.md)
+            logger.warning("ML→DSP-Ersatzpfad aktiviert", exc_info=True)  # §V6 (copilot-instructions.md)
             logger.debug("§SLR-1 DSP stem split fehlgeschlagen: %s", _sos_exc)
             # Last resort: equal split
             _half = (audio * 0.5).astype(np.float32)
@@ -495,7 +499,9 @@ class StemLevelRestorer:
             _snr_db = 20.0 * np.log10(_rms_sig / _rms_noise + _eps)
             return float(np.clip(_snr_db, 0.0, 30.0))
         except Exception:  # pylint: disable=broad-except
-            logger.warning("§V6 ML→DSP-Fallback: _estimate_snr_db fehlgeschlagen → neutraler Return (0.0)")
+            logger.warning(
+                "§V6 (copilot-instructions.md) ML→DSP-Ersatzpfad: _estimate_snr_db fehlgeschlagen → neutraler Return (0.0)"
+            )
             return 0.0
 
 

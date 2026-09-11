@@ -124,6 +124,8 @@ exclude = [
     "golden_samples",
     "chain_templates",
     "configs",
+    "plugins/_vendor_aero",
+    "plugins/_vendor_muq",
 ]
 
 [tool.ruff.lint]
@@ -299,6 +301,9 @@ exclude = [
     "output_audio/",
     "sessions/",
     "logs/",
+    # Vendored Drittanbieter-Code (unverändert kopiert, MIT; siehe plugins/_vendor_*/README)
+    "plugins/_vendor_muq/",
+    "plugins/_vendor_aero/",
 ]
 
 # Bekannte Drittanbieter ohne Stubs — ignorieren

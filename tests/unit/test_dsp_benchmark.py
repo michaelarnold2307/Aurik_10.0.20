@@ -1,4 +1,5 @@
 """Tests für scripts/dsp_benchmark.py — synthetische DSP-Ground-Truth + NOLA-Regression."""
+
 from __future__ import annotations
 
 import sys

@@ -42,7 +42,9 @@ _warnings.warn(
 CarrierMLClassifier = MediumClassifier
 
 
-def classify_carrier_ml(audio: _np.ndarray | None = None, sr: int = 48000, features: dict[str, object] | None = None) -> dict:
+def classify_carrier_ml(
+    audio: _np.ndarray | None = None, sr: int = 48000, features: dict[str, object] | None = None
+) -> dict:
     """Classify audio carrier type from actual audio signal.
 
     SOTA-Update (Rev. 2026-09-04): Nutzt echtes Audio statt Dummy-Signal.
@@ -95,7 +97,10 @@ def classify_carrier_ml(audio: _np.ndarray | None = None, sr: int = 48000, featu
             "explain": " (".join(explain_parts) + ")" if len(explain_parts) > 1 else explain_parts[0],
         }
     except Exception as exc:
-        logger.debug("§V6 Carrier-ML-Klassifizierung fehlgeschlagen — Fallback auf Unbekannt: %s", exc)
+        logger.debug(
+            "§V6 (copilot-instructions.md) Carrier-ML-Klassifizierung fehlgeschlagen — Ersatzpfad auf Unbekannt: %s",
+            exc,
+        )
         return {
             "carrier_ml": "Unbekannt",
             "confidence": 0.0,

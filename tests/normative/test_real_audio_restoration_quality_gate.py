@@ -80,14 +80,14 @@ class TestRealAudioQualityGate:
         passed = gate.get("passed", False)
         hpi = gate.get("hpi_average", 0)
         qe = gate.get("quality_estimate_average", 0)
-        
+
         # Progressive Improvement: HPI ≥ 0.80 und Quality ≥ 0.60 als akzeptabel
         if not passed and hpi >= 0.80 and qe >= 0.60:
             pytest.skip(
                 f"Gate nicht bestanden, aber progressive Verbesserung erkannt "
                 f"(HPI={hpi:.3f}, Quality={qe:.3f}). Führe audit/daily_real_audio_gate.py aus."
             )
-        
+
         if not passed:
             fail_reasons = gate.get("fail_reasons", [])
             reason_text = "\n  ".join(fail_reasons) if fail_reasons else "unbekannt"

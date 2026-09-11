@@ -129,11 +129,16 @@ def test_is_gpu_available_false_without_gpu():
 
 
 def test_heavy_plugins_classified():
-    """Bekannte schwere Plugins sind in _HEAVY_ML_PLUGINS."""
+    """Bekannte schwere Plugins sind in _HEAVY_ML_PLUGINS.
+
+    §v10.733 (2026-09-09): ApolloPlugin ist BEWUSST NICHT heavy — TorchScript
+    mit torch.stft ist auf GPU nicht lauffähig → CPU-Force (GPU-Policy).
+    """
     from backend.core.ml_device_manager import _HEAVY_ML_PLUGINS
 
-    for name in ("SGMSE", "AudioSR", "BSRoFormer", "MDXNet", "BigVGAN", "Vocos", "HiFiGAN", "ApolloPlugin"):
+    for name in ("SGMSE", "AudioSR", "BSRoFormer", "MDXNet", "BigVGAN", "Vocos", "HiFiGAN"):
         assert name in _HEAVY_ML_PLUGINS, f"{name} should be in _HEAVY_ML_PLUGINS"
+    assert "ApolloPlugin" not in _HEAVY_ML_PLUGINS, "§v10.733: ApolloPlugin ist CPU-geforced, nicht heavy"
 
 
 def test_lightweight_plugins_not_in_heavy():

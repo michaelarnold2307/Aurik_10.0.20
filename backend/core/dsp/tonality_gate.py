@@ -75,7 +75,7 @@ def is_tonal_clean(audio: np.ndarray, sample_rate: int) -> bool:
         _threshold = get_tonal_clean_flatness()
         _result = _flat < _threshold
         logger.debug(
-            "tonality_gate: flatness=%.4f threshold=%.3f → tonal_clean=%s",
+            "tonality_gate: flatness=%.4f Schwelle=%.3f → tonal_clean=%s",
             _flat,
             _threshold,
             _result,

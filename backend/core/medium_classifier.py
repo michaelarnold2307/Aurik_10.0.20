@@ -26,10 +26,8 @@ def _get_material_type():
 
         return MaterialType
     except Exception as e:
-        # §V6 Silent-Failure-Verbot: Log with reason, but INFO (graceful fallback returning None)
-        logger.info(
-            "§V6 Graceful fallback material_classifier: %s", str(e)[:200]
-        )
+        # §V6 (copilot-instructions.md) Silent-Failure-Verbot: Log with reason, but INFO (graceful fallback returning None)
+        logger.info("§V6 (copilot-instructions.md) Graceful Ersatzpfad material_classifier: %s", str(e)[:200])
         return None
 
 

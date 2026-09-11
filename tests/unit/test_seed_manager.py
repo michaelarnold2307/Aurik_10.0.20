@@ -1,4 +1,4 @@
-"""§G5 SeedManager — Unit-Tests für deterministischen Seed-Verwaltung.
+"""§G5 (GEBOTE.md) SeedManager — Unit-Tests für deterministischen Seed-Verwaltung.
 
 Testet Session-Initialisierung, phasenspezifische Seeds, Determinismus (gleicher
 Master-Seed → gleiche Phase-Seeds), Reset und Edge-Cases.
@@ -13,7 +13,7 @@ import pytest
 
 @pytest.mark.unit
 class TestSeedManager:
-    """§G5 Seed-Manager funktioniert korrekt."""
+    """§G5 (GEBOTE.md) Seed-Manager funktioniert korrekt."""
 
     def test_singleton_factory(self):
         from backend.core.seed_manager import get_seed_manager
@@ -114,13 +114,9 @@ class TestSeedManagerEdgeCases:
 
     def setup_method(self) -> None:
         """Reset Singleton vor jedem Test."""
-        from backend.core.seed_manager import (
-            _manager_instance,
-            get_seed_manager,
-        )
-        # pylint: disable=global-statement
-        global _manager_instance  # noqa: F841
         import backend.core.seed_manager as sm_module
+        from backend.core.seed_manager import get_seed_manager
+
         sm_module._manager_instance = None
 
     def test_none_song_id(self):

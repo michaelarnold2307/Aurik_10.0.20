@@ -1,10 +1,13 @@
-"""
-audit_dashboard.py – Minimaler Dashboard-Server für Policy-/Audit-Übersicht
+"""audit_dashboard.py – Minimaler Dashboard-Server für Policy-/Audit-Übersicht
 
 - Liest alle Audit-Reports (YAML) im Workspace
 - Zeigt Policy-Status, Qualitätsziele, User-Feedback und Benchmarks als Web-UI
 - Nutzt Flask und Bootstrap für einfache Darstellung
 """
+
+import logging
+
+logger = logging.getLogger(__name__)
 
 import os
 
@@ -59,6 +62,7 @@ def dashboard():
                     rep = yaml.safe_load(f)
                     reports.append(rep)
                 except Exception:
+                    logger.debug("Stiller Ersatzpfad dokumentiert (Bug 9/V74)", exc_info=True)
                     continue
     return render_template_string(template, reports=reports)
 

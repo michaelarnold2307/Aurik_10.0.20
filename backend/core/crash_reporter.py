@@ -142,7 +142,9 @@ def get_last_seen_ts() -> float:
     try:
         return float(_LAST_SEEN_FILE.read_text(encoding="utf-8").strip())
     except Exception:
-        logger.warning("§V6 ML→DSP-Fallback: get_last_seen_ts fehlgeschlagen → neutraler Return (0.0)")
+        logger.warning(
+            "§V6 (copilot-instructions.md) ML→DSP-Ersatzpfad: get_last_seen_ts fehlgeschlagen → neutraler Return (0.0)"
+        )
         return 0.0
 
 

@@ -335,7 +335,11 @@ def _deess_channel(
     try:
         sib_band = sig.sosfiltfilt(sos, ch)
     except ValueError as exc:
-        logger.debug("§V6 scipy.signal.sosfiltfilt fehlgeschlagen — Audio unverändert zurückgegeben (Channel %s): %s", ch.shape, exc)
+        logger.debug(
+            "§V6 (copilot-instructions.md) scipy.signal.sosfiltfilt fehlgeschlagen — Audio unverändert zurückgegeben (Channel %s): %s",
+            ch.shape,
+            exc,
+        )
         return ch.astype(ch.dtype), 0.0
 
     # 2. Look-Ahead: Sibilantenband um lookahead_ms vorziehen
@@ -394,7 +398,9 @@ def _band_rms(audio: np.ndarray, sr: int, low_hz: float, high_hz: float) -> floa
     try:
         band = sig.sosfiltfilt(sos, mono)
     except ValueError:
-        band = sig.sosfilt(sos, mono)
+        # Degradiertes Ultra-Kurzsignal (< padlen): kausaler Fallback für die
+        # RMS-Bandmessung — kein Audio-Ausgang, Phase unerheblich.
+        band = sig.sosfilt(sos, mono)  # H-SCAN-EXEMPT: sosfilt (Mess-Fallback < padlen)
     return float(np.sqrt(np.mean(band**2) + 1e-12))
 
 

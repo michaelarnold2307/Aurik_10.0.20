@@ -179,7 +179,7 @@ def test_main_progress_strictly_mirrors_reported_progress_no_export_headroom() -
     assert "_stage_cap = 100.0" in src
     assert "item.progress = 90" not in src  # kein künstlicher 90-%-Rücksprung nach restore
     assert "range(9610, 10010, 10)" not in src  # kein Fake-Glide auf 100 %
-    assert 'self.item_progress.emit(item.id, 10000)' in src  # exakt ein Sprung auf 100 %
+    assert "self.item_progress.emit(item.id, 10000)" in src  # exakt ein Sprung auf 100 %
 
 
 @pytest.mark.normative

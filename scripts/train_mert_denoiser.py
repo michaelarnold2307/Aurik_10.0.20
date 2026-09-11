@@ -170,7 +170,7 @@ class MERTDenoiser(nn.Module):
         )
         # Multi-band MSE
         F_bins = pred_spec.shape[1]
-        f_low, f_mid = F_bins // 6, F_bins // 3
+        _f_low, _f_mid = F_bins // 6, F_bins // 3
         loss_real = F.mse_loss(pred_spec.real, clean_spec.real)
         loss_imag = F.mse_loss(pred_spec.imag, clean_spec.imag)
         loss_mse = loss_real + loss_imag
@@ -312,7 +312,7 @@ def train(epochs=50, micro_batch=4, accum_steps=8, lr=1e-4, steps_per_epoch=200,
         ckpt = torch.load(resume, map_location=device, weights_only=True)
         model.decoder.load_state_dict(ckpt["decoder_state_dict"])
         if "ema_state" in ckpt:
-            ema_state = ckpt["ema_state"]
+            ema_state = ckpt.get("ema_state")
         print(f"  Resumed from {resume}")
 
     print(f"Epochs: {epochs} | Micro-batch: {micro_batch} | Accum: {accum_steps} | Effective: {effective_batch}")

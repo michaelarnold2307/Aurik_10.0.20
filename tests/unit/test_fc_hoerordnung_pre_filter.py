@@ -15,7 +15,7 @@ from backend.core.feedback_chain import FeedbackChain
 def _phases() -> list:
     """Fake-Phasenliste wie im FC-Loop: (num, fn, kw)."""
     return [
-        (7, lambda a, sr, **kw: a, {}),   # Harmonic Restoration → waerme/natuerlichkeit
+        (7, lambda a, sr, **kw: a, {}),  # Harmonic Restoration → waerme/natuerlichkeit
         (16, lambda a, sr, **kw: a, {}),  # Final EQ → brillanz/waerme
         (17, lambda a, sr, **kw: a, {}),  # Mastering polish → brillanz/groove
         (48, lambda a, sr, **kw: a, {}),  # Stereo imaging → spatial_depth/separation_fidelity

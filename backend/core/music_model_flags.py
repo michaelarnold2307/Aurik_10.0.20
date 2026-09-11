@@ -42,22 +42,22 @@ MUSIC_MODEL_PATHS: dict[str, Path] = {
     "dfn_enc": _PROJECT_ROOT / "models" / "deepfilternet_v3_ii" / "finetuned" / "enc.onnx",
     "dfn_dec": _PROJECT_ROOT / "models" / "deepfilternet_v3_ii" / "finetuned" / "dec.onnx",
     "dfn_erb_dec": _PROJECT_ROOT / "models" / "deepfilternet_v3_ii" / "finetuned" / "erb_dec.onnx",
-    # SGMSE+ Musik — TorchScript
-    "sgmse": _PROJECT_ROOT / "models" / "sgmse_plus" / "finetuned" / "sgmse_musik.ts",
+    # SGMSE+ Score-Core — produktiver ONNX-Export
+    "sgmse": _PROJECT_ROOT / "models" / "sgmse_plus" / "sgmse_plus_core.onnx",
     # MP-SENet Musik — ONNX
     "mp_senet": _PROJECT_ROOT / "models" / "mp_senet" / "finetuned" / "mp_senet_musik.onnx",
     # MIIPHER-DiT — ONNX
     "miipher_dit": _PROJECT_ROOT / "models" / "miipher_dit" / "flow_matching_dit.onnx",
     # BW-Reconstructor v5 — bestes selbst trainiertes U-Net
     "bw": _PROJECT_ROOT / "models" / "bw_reconstructor" / "bw_reconstructor_v5.onnx",
-    # Harmonic-Inpainting-DiT (§v10.300) — DiT-Finetune (FlowMatchingDiT state_dict)
-    "harmonic_inpainting": _PROJECT_ROOT / "models" / "harmonic_inpainting" / "inpainting_best.pt",
+    # Harmonic-Inpainting-DiT (§v10.300) — produktiver ONNX-Export
+    "harmonic_inpainting": _PROJECT_ROOT / "models" / "harmonic_inpainting" / "inpainting_best.onnx",
     # Whisper-Denoiser (§v10.20) — Whisper-tiny (frozen) + 2M-Decoder (unet/decoder state_dicts)
     "whisper_denoiser": _PROJECT_ROOT / "models" / "miipher_dit" / "whisper_denoiser_best.pt",
     # Whisper-Encoder-Ersatz für MIIPHER-DiT (semantische Bedingung)
     "whisper_encoder": _PROJECT_ROOT / "models" / "whisper" / "whisper_tiny.onnx",
-    # BigVGAN-Ersatz für MIIPHER-DiT-Vocoder
-    "bigvgan": _PROJECT_ROOT / "models" / "bigvgan" / "bigvgan_v2.pth",
+    # BigVGAN-v2 Produktionsvocoder — ONNX, export source bleibt .pth
+    "bigvgan": _PROJECT_ROOT / "models" / "bigvgan" / "bigvgan_v2.onnx",
 }
 
 # ── Legacy paths (fallback) ─────────────────────────────────────────────────
@@ -66,16 +66,15 @@ LEGACY_MODEL_PATHS: dict[str, Path] = {
     "dfn_enc": _PROJECT_ROOT / "models" / "deepfilternet_v3_ii" / "enc.onnx",
     "dfn_dec": _PROJECT_ROOT / "models" / "deepfilternet_v3_ii" / "dec.onnx",
     "dfn_erb_dec": _PROJECT_ROOT / "models" / "deepfilternet_v3_ii" / "erb_dec.onnx",
-    "sgmse": _PROJECT_ROOT / "models" / "sgmse_plus" / "sgmse_plus.ts",
+    "sgmse": _PROJECT_ROOT / "models" / "sgmse_plus" / "sgmse_plus_core.onnx",
     "mp_senet": _PROJECT_ROOT / "models" / "mp_senet" / "mp_senet.onnx",
     "miipher_dit": _PROJECT_ROOT / "models" / "miipher_dit" / "flow_matching_dit.onnx",
     # BW v1 als Fallback, falls v5 fehlt
     "bw": _PROJECT_ROOT / "models" / "bw_reconstructor" / "bw_reconstructor.onnx",
     # Harmonic-Inpainting: kein Legacy-Modell — DSP-Fallback (Phase_07 bestehende Synthese)
     # Whisper-Denoiser: kein Legacy-Modell — DFN bleibt primärer Denoiser
-    # whisper_encoder/bigvgan: einziger bekannter lokaler Pfad — auch als Legacy hinterlegt
+    # whisper_encoder: einziger bekannter lokaler Pfad
     "whisper_encoder": _PROJECT_ROOT / "models" / "whisper" / "whisper_tiny.onnx",
-    "bigvgan": _PROJECT_ROOT / "models" / "bigvgan" / "bigvgan_v2.pth",
 }
 
 

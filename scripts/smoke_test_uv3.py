@@ -12,7 +12,6 @@ Exit 0 = OK, Exit 1 = Fehler gefunden
 import sys
 
 sys.path.insert(0, ".")
-#!/usr/bin/env python3
 
 
 import sys

@@ -339,7 +339,7 @@ class DeclipperPhase(PhaseInterface):
         # Selbstkalibrierung bleibt der Detektor/Konditionierer; die maskierte
         # Diffusion repariert nur Regionen mit Clip-Runs ≥ 50 ms (Severity-Gate).
         # Guard: KL-Divergenz < 0.2 (Plugin-Metrik) + Energie-Plausibilität —
-        # sonst bleibt das klassische Ergebnis (§V7: ML nur bei nachweisbarem Gewinn).
+        # sonst bleibt das klassische Ergebnis (§V7 (copilot-instructions.md): ML nur bei nachweisbarem Gewinn).
         _cqtdiff_used = False
         _mask07 = np.abs(audio_in[0]) >= self._clip_threshold
         _runs07 = _clip_runs(_mask07)
@@ -347,13 +347,14 @@ class DeclipperPhase(PhaseInterface):
         if _severe_runs and self._clip_fraction >= 0.01:
             try:
                 import torch as _torch752  # pylint: disable=import-outside-toplevel
+
                 from plugins.cqtdiff_plus_plugin import inpaint_gap as _cq752  # pylint: disable=import-outside-toplevel
 
-                _torch752.manual_seed(20260909)  # §G5: fixer Seed für den Reparatur-Zweig
+                _torch752.manual_seed(20260909)  # §G5 (GEBOTE.md): fixer Seed für den Reparatur-Zweig
                 _cand = audio_out.copy()
                 _ok_runs = 0
                 for ch in range(_cand.shape[0]):
-                    for (_s, _e) in _severe_runs:
+                    for _s, _e in _severe_runs:
                         _res752 = _cq752(_cand[ch], sample_rate, _s, _e, context_audio=audio_in[ch])
                         _seg752 = getattr(_res752, "audio", None)
                         _kl752 = float(getattr(_res752, "kl_divergence", 1.0) or 1.0)
@@ -367,8 +368,7 @@ class DeclipperPhase(PhaseInterface):
                         audio_out = _cand
                         _cqtdiff_used = True
                 logger.info(
-                    "Verarbeitungsschritt 07 CQT-Diff: %d schwere Regionen, %d übernommen, "
-                    "Zweig aktiv=%s",
+                    "Verarbeitungsschritt 07 CQT-Diff: %d schwere Regionen, %d übernommen, Zweig aktiv=%s",
                     len(_severe_runs),
                     _ok_runs,
                     _cqtdiff_used,

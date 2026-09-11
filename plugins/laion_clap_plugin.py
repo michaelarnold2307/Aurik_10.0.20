@@ -36,6 +36,8 @@ from typing import Any
 
 import numpy as np
 
+from backend.core.gpu_model_registry import get_onnx_providers  # §v10.40c Registry-GPU-Policy
+
 logger = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
@@ -190,7 +192,9 @@ class LAIONCLAPPlugin:
 
     # ONNX-Pfad (SOTA-Upgrade via ModelDownloader)
     _PROJECT_ROOT: Path = Path(__file__).parent.parent
-    MODELS_DIR: Path = _PROJECT_ROOT / "models" / "clap"  # §v10.745: war ~/.aurik/models/laion_clap — dort lagen die Assets nie; ONNX-Pfad schlug immer fehl
+    MODELS_DIR: Path = (
+        _PROJECT_ROOT / "models" / "clap"
+    )  # §v10.745: war ~/.aurik/models/laion_clap — dort lagen die Assets nie; ONNX-Pfad schlug immer fehl
     # Lokaler PyTorch-Checkpoint + Quellcode (models/clap/, lokal gebündelt)
     _LOCAL_CLAP_DIR: Path = _PROJECT_ROOT / "models" / "clap"
     _LOCAL_CLAP_CKPT: str = "music_audioset_epoch_15_esc_90.14.pt"
@@ -242,11 +246,11 @@ class LAIONCLAPPlugin:
                     )
 
                     if not _try_alloc_onnx("LaionCLAP_ONNX", 0.30):
-                        logger.warning("LAION-CLAP: ML-Budget erschöpft (ONNX) — überspringe ONNX-Pfad")
+                        logger.warning("LAION-CLAP: ML-Grenze erschöpft (ONNX) — überspringe ONNX-Pfad")
                         _onnx_budget_ok = False
                 except ImportError as _exc:
                     logger.debug(
-                        "Optional import not available (non-critical): %s", _exc
+                        "Optional import not verfuegbar (unkritisch): %s", _exc
                     )  # Budget-Modul optional — weiter
 
                 if not _onnx_budget_ok:
@@ -262,6 +266,7 @@ class LAIONCLAPPlugin:
 
                             _clap_providers = _clap_policy(_clap_providers, audio_enc_path)
                         except Exception:
+                            logger.debug("Stiller Ersatzpfad dokumentiert (Bug 9/V74)", exc_info=True)
                             pass
                     except Exception:
                         _clap_providers = ["CPUExecutionProvider"]
@@ -294,7 +299,7 @@ class LAIONCLAPPlugin:
                         unload_fn=lambda: setattr(self, "_audio_session", None),
                     )
                 except Exception as _exc:
-                    logger.debug("Plugin operation failed (non-critical): %s", _exc)
+                    logger.debug("Plugin operation fehlgeschlagen (unkritisch): %s", _exc)
                 return
         except Exception as exc:
             logger.debug("LAION-CLAP ONNX-Pfad nicht verfügbar: %s", exc)
@@ -304,7 +309,7 @@ class LAIONCLAPPlugin:
             return
 
         # 3. Fallback: PANNs-DSP
-        logger.info("LAION-CLAP: Kein Modell geladen — PANNs-DSP-Fallback aktiv")
+        logger.info("LAION-CLAP: Kein Modell geladen — PANNs-DSP-Ersatzpfad aktiv")
         self._fallback_active = True
 
     def _ensure_roberta_hf_cache(self) -> str | None:
@@ -326,7 +331,7 @@ class LAIONCLAPPlugin:
         """
         roberta_src = self._LOCAL_ROBERTA_DIR
         if not roberta_src.exists():
-            logger.debug("LAION-CLAP: models/roberta-base/ nicht gefunden — HF-Cache unverändert")
+            logger.debug("LAION-CLAP: models/roberta-base/ nicht gefunden — HF-Zwischenspeicher unverändert")
             return None
 
         hf_cache = self._HF_STAGING_DIR
@@ -344,7 +349,7 @@ class LAIONCLAPPlugin:
                     if not link.exists():
                         link.symlink_to(src_file.resolve())
             logger.debug(
-                "LAION-CLAP: HF-Staging-Cache für roberta-base angelegt: %s",
+                "LAION-CLAP: HF-Staging-Zwischenspeicher für roberta-base angelegt: %s",
                 snapshot_dir,
             )
 
@@ -352,7 +357,7 @@ class LAIONCLAPPlugin:
         if not refs_main.exists() or refs_main.read_text(encoding="utf-8").strip() != "local":
             refs_main.write_text("local", encoding="utf-8")
 
-        logger.debug("LAION-CLAP: HF_HUB_CACHE → %s", hf_cache)
+        logger.debug("LAION-CLAP: HF_HUB_Zwischenspeicher → %s", hf_cache)
         return str(hf_cache)
 
     def _try_load_clap_pt(self) -> bool:
@@ -407,7 +412,7 @@ class LAIONCLAPPlugin:
                     return False  # Budget erschöpft → PANNs-DSP-Fallback
             except Exception as _exc:
                 logger.debug(
-                    "Plugin operation failed (non-critical): %s", _exc
+                    "Plugin operation fehlgeschlagen (unkritisch): %s", _exc
                 )  # Budget-Modul nicht verfügbar — weiter
 
             # CLAP_Module laden:
@@ -491,12 +496,12 @@ class LAIONCLAPPlugin:
                 if _unload_fn is not None:
                     _reg_plm("LAION-CLAP", size_gb=2.2, unload_fn=_unload_fn)
             except Exception as _exc:
-                logger.debug("Plugin operation failed (non-critical): %s", _exc)
+                logger.debug("Plugin operation fehlgeschlagen (unkritisch): %s", _exc)
             return True
 
         except ImportError as ie:
             logger.info(
-                "LAION-CLAP: 'laion_clap'-Paket nicht importierbar: %s — PANNs-Fallback",
+                "LAION-CLAP: 'laion_clap'-Paket nicht importierbar: %s — PANNs-Ersatzpfad",
                 ie,
             )
             return False
@@ -504,11 +509,13 @@ class LAIONCLAPPlugin:
             # torchvision::nms fehlt im ROCm-venv — bekanntes Setup, PANNs-Fallback ist korrekt
             exc_str = str(exc)
             if "torchvision" in exc_str or "nms" in exc_str:
-                logger.info("LAION-CLAP: torchvision nicht verfügbar (%s) — PANNs-Fallback", exc_str[:80])
+                logger.info("LAION-CLAP: torchvision nicht verfügbar (%s) — PANNs-Ersatzpfad", exc_str[:80])
             elif "Weights only load failed" in exc_str or "weights_only" in exc_str:
-                logger.info("LAION-CLAP: PyTorch-Checkpoint nicht kompatibel mit weights_only-Loader — PANNs-Fallback")
+                logger.info(
+                    "LAION-CLAP: PyTorch-Checkpoint nicht kompatibel mit weights_only-Loader — PANNs-Ersatzpfad"
+                )
             else:
-                logger.warning("LAION-CLAP PyTorch-Checkpoint-Fehler: %s — PANNs-Fallback", exc)
+                logger.warning("LAION-CLAP PyTorch-Checkpoint-Fehler: %s — PANNs-Ersatzpfad", exc)
             return False
 
     # ------------------------------------------------------------------
@@ -527,9 +534,11 @@ class LAIONCLAPPlugin:
         try:
             import onnxruntime as ort
 
-            return ort.InferenceSession(self._audio_session_model_path, providers=["CPUExecutionProvider"])
+            return ort.InferenceSession(
+                self._audio_session_model_path, providers=get_onnx_providers(self._audio_session_model_path)
+            )
         except Exception as _exc:
-            logger.warning("LAION-CLAP: CPU-Session-Rebuild fehlgeschlagen: %s", _exc)
+            logger.warning("LAION-CLAP: CPU-Sitzung-Rebuild fehlgeschlagen: %s", _exc)
             return None
 
     def embed_audio(self, audio: np.ndarray, sr: int) -> np.ndarray:
@@ -574,7 +583,7 @@ class LAIONCLAPPlugin:
                 _plm_clap = _get_plm_fn()
                 _plm_clap.set_active("LaionCLAP_ONNX", True)
             except Exception as _exc:
-                logger.debug("LaionCLAP: PLM set_active failed: %s", _exc)
+                logger.debug("LaionCLAP: PLM set_active fehlgeschlagen: %s", _exc)
             try:
                 try:
                     outputs = self._audio_session.run(None, {input_name: feat})
@@ -582,7 +591,9 @@ class LAIONCLAPPlugin:
                     # §ROCm-Fallback: MIOpen-Kernel-Fehler (Code object build failed)
                     # auf GPU → Session CPU-only neu aufbauen und EINMAL wiederholen.
                     # Kein Qualitätsverlust, nur Laufzeit (CPU-Inferenz).
-                    logger.warning("LAION-CLAP: ONNX-Inferenz fehlgeschlagen (%s) — CPU-Fallback-Retry", _ort_exc)
+                    logger.warning(
+                        "LAION-CLAP: ONNX-Inferenz fehlgeschlagen (%s) — CPU-Ersatzpfad-Wiederholung", _ort_exc
+                    )
                     _cpu_session = self._build_cpu_audio_session()
                     if _cpu_session is None:
                         raise
@@ -593,7 +604,7 @@ class LAIONCLAPPlugin:
                     try:
                         _plm_clap.set_active("LaionCLAP_ONNX", False)
                     except Exception as _exc:
-                        logger.debug("LaionCLAP: PLM unset_active failed: %s", _exc)
+                        logger.debug("LaionCLAP: PLM unset_active fehlgeschlagen: %s", _exc)
             emb = np.nan_to_num(outputs[0].flatten()[: self.EMBEDDING_DIM], nan=0.0)
         # Path 2: PyTorch laion_clap
         elif self._model_loaded and self._clap_model is not None:
@@ -705,7 +716,7 @@ class LAIONCLAPPlugin:
                 _plm_clap = _get_plm_fn()
                 _plm_clap.set_active("LaionCLAP_ONNX", True)
             except Exception as _exc:
-                logger.debug("LaionCLAP: PLM set_active (tag): failed: %s", _exc)
+                logger.debug("LaionCLAP: PLM set_active (tag): fehlgeschlagen: %s", _exc)
             try:
                 outputs = self._audio_session.run(None, {input_name: feat})
             finally:
@@ -713,7 +724,7 @@ class LAIONCLAPPlugin:
                     try:
                         _plm_clap.set_active("LaionCLAP_ONNX", False)
                     except Exception as _exc:
-                        logger.debug("LaionCLAP: PLM unset_active (tag) failed: %s", _exc)
+                        logger.debug("LaionCLAP: PLM unset_active (tag) fehlgeschlagen: %s", _exc)
             audio_emb = np.nan_to_num(outputs[0].flatten()[: self.EMBEDDING_DIM], nan=0.0)
             norm = np.linalg.norm(audio_emb)
             audio_emb = audio_emb / (norm + 1e-12)
@@ -749,7 +760,7 @@ class LAIONCLAPPlugin:
             )
 
         except Exception as exc:
-            logger.warning("LAION-CLAP Inferenz-Fehler: %s — DSP-Fallback", exc)
+            logger.warning("LAION-CLAP Inferenz-Fehler: %s — DSP-Ersatzpfad", exc)
             return self._tag_dsp_fallback(audio, sr)
 
     # ------------------------------------------------------------------
@@ -827,7 +838,7 @@ class LAIONCLAPPlugin:
             )
 
         except Exception as exc:
-            logger.warning("LAION-CLAP PyTorch-Inferenz-Fehler: %s — DSP-Fallback", exc)
+            logger.warning("LAION-CLAP PyTorch-Inferenz-Fehler: %s — DSP-Ersatzpfad", exc)
             return self._tag_dsp_fallback(audio, sr)
 
     # ------------------------------------------------------------------
@@ -942,7 +953,7 @@ class LAIONCLAPPlugin:
 
             _rel("LAION-CLAP")
         except Exception as _exc:
-            logger.debug("Plugin operation failed (non-critical): %s", _exc)
+            logger.debug("Plugin operation fehlgeschlagen (unkritisch): %s", _exc)
         logger.info("LAION-CLAP: Modell entladen, ~2.2 GB RAM freigegeben.")
 
     @staticmethod

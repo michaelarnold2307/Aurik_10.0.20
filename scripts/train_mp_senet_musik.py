@@ -113,7 +113,7 @@ def load_mpnet(device):
             print(f"Loading pre-trained weights from {pretrained}")
             state = torch.load(pretrained, map_location=device, weights_only=True)
             if "generator" in state:
-                state = state["generator"]
+                state = state.get("generator", state)
             model.load_state_dict(state, strict=False)
             break
     else:

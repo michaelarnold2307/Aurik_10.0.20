@@ -1436,7 +1436,11 @@ class DropoutRepairPhase(PhaseInterface):
             )
             lag_out = _lag_out_result["median_lag"] if _lag_out_result.get("num_points", 0) >= 2 else 0.0
         except Exception as exc:
-            logger.debug("§V6 STCG-Lag-Multi-Point fehlgeschlagen — Audio unverändert zurückgegeben (Stereo %s): %s", processed_audio.shape, exc)
+            logger.debug(
+                "§V6 (copilot-instructions.md) STCG-Lag-Multi-Point fehlgeschlagen — Audio unverändert zurückgegeben (Stereo %s): %s",
+                processed_audio.shape,
+                exc,
+            )
             return processed_audio, stats
 
         stats["lag_input_samples"] = int(lag_in)

@@ -1001,7 +1001,7 @@ class LyricsGuidedEnhancement:
                 )
             return updated
         except Exception as exc:
-            logger.warning("ML→DSP-Fallback aktiviert", exc_info=True)  # §V6 (copilot-instructions.md)
+            logger.warning("ML→DSP-Ersatzpfad aktiviert", exc_info=True)  # §V6 (copilot-instructions.md)
             logger.debug("LyricsGuidedEnhancement._align_phonemes fehlgeschlagen (%s) — DSP Ersatzpfad", exc)
             return words
 
@@ -1782,7 +1782,7 @@ class LyricsGuidedEnhancement:
                 if fricative_ratio >= 0.30:
                     return "fricative_stressed" if is_stressed else "fricative_unstressed"
         except Exception as _phoneme_exc:
-            logger.warning("ML→DSP-Fallback aktiviert", exc_info=True)  # §V6 (copilot-instructions.md)
+            logger.warning("ML→DSP-Ersatzpfad aktiviert", exc_info=True)  # §V6 (copilot-instructions.md)
             logger.debug("LGE phoneme DSP classifier nicht verfuegbar (unkritisch): %s", _phoneme_exc)
 
         # --- Plosive: very short burst (< 30 ms) with high peak/RMS ratio ---
@@ -1917,7 +1917,12 @@ class LyricsGuidedEnhancement:
             n_out = max(1, int(len(mono) * sr_out / sr_in))
             return np.asarray(sps.resample(mono, n_out), dtype=np.float32)  # type: ignore[no-any-return]
         except Exception as exc:
-            logger.debug("§V6 scipy.signal.resample fehlgeschlagen — Decimation-Fallback aktiviert (%.0f→%.0f Hz): %s", sr_in, sr_out, exc)
+            logger.debug(
+                "§V6 (copilot-instructions.md) scipy.signal.resample fehlgeschlagen — Decimation-Ersatzpfad aktiviert (%.0f→%.0f Hz): %s",
+                sr_in,
+                sr_out,
+                exc,
+            )
             step = max(1.0, sr_in / sr_out)
             indices = np.arange(0, len(mono), step).astype(np.int64)
             indices = np.clip(indices, 0, len(mono) - 1)
@@ -1960,7 +1965,11 @@ class LyricsGuidedEnhancement:
                 log_mel = log_mel[:, : self._MAX_FRAMES]
             return np.asarray(log_mel, dtype=np.float32)[np.newaxis, ...]  # type: ignore[no-any-return]  # (1, 80, 3000)
         except Exception as exc:
-            logger.debug("§V6 librosa.feature.melspectrogram fehlgeschlagen — Null-Mel-Spektrogramm zurückgegeben (Shape %s): %s", mono_16k.shape, exc)
+            logger.debug(
+                "§V6 (copilot-instructions.md) librosa.feature.melspectrogram fehlgeschlagen — Null-Mel-Spektrogramm zurückgegeben (Shape %s): %s",
+                mono_16k.shape,
+                exc,
+            )
             # Zero fallback: encoder processes silence → near-zero hidden states
             return np.zeros((1, self._N_MELS, self._MAX_FRAMES), dtype=np.float32)  # type: ignore[no-any-return]
 

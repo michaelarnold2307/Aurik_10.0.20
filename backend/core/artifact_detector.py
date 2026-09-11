@@ -22,6 +22,8 @@ from typing import Any
 
 import numpy as np
 
+from backend.core.audio_layout import to_samples_first
+
 logger = logging.getLogger(__name__)
 
 
@@ -278,11 +280,17 @@ class ArtifactDetector:
         A healthy stereo signal has slowly-varying L/R correlation.
         Sudden jumps indicate phase processing errors or channel swaps.
         """
-        if audio.ndim < 2 or audio.shape[1] < 2:
+        if audio.ndim < 2:
             return 1.0
 
-        left = audio[:, 0].astype(np.float64)
-        right = audio[:, 1].astype(np.float64)
+        # §V7 (copilot-instructions.md): layout-sicher — audio[:, 0] setzte
+        # (N,2) voraus; bei channels-first (2,N) traf es nur 2 Samples.
+        _st = to_samples_first(audio)
+        if _st.shape[1] < 2:
+            return 1.0
+
+        left = _st[:, 0].astype(np.float64)
+        right = _st[:, 1].astype(np.float64)
         n = min(len(left), len(right))
 
         # L/R correlation in 100ms windows

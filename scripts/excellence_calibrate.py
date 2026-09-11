@@ -43,10 +43,9 @@ def run_calibration(n_runs: int = 20, parallel: bool = False) -> dict:
 
             p3 = DenoisePhase(sample_rate=48000)
             r3 = p3.process(audio, sample_rate=48000, material_type=mat)
-            restored = r3.audio if hasattr(r3, "audio") else audio
+            r3.audio if hasattr(r3, "audio") else audio
             success = True
         except Exception:
-            restored = audio
             success = False
 
         rt = time.monotonic() - t0

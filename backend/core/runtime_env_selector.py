@@ -116,7 +116,11 @@ def probe_python_runtime(python_path: Path) -> RuntimeProbe | None:
     try:
         payload = json.loads(proc.stdout.strip() or "{}")
     except json.JSONDecodeError as e:
-        logger.debug("§V6 GPU-Probe JSON-Dekodierung fehlgeschlagen für %s — None zurückgegeben: %s", python_path, e)
+        logger.debug(
+            "§V6 (copilot-instructions.md) GPU-Probe JSON-Dekodierung fehlgeschlagen für %s — None zurückgegeben: %s",
+            python_path,
+            e,
+        )
         return None
     return RuntimeProbe(
         python_path=python_path,

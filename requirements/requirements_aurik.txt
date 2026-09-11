@@ -130,6 +130,7 @@ pydantic==2.12.5
 pydantic_core==2.41.5
 pydantic-settings>=2.0.0
 einops>=0.7.0
+easydict>=1.13
 safetensors>=0.4.0
 
 # --- HuggingFace-Ökosystem (für Modell-Caching §13.3) ---

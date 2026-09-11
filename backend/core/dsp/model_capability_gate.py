@@ -118,7 +118,11 @@ class ModelCapabilityGate:
         try:
             return str(path), path.exists()
         except Exception as exc:  # pylint: disable=broad-except
-            logger.debug("§V6 Path-Existenzprüfung fehlgeschlagen — False zurückgegeben (Path %s): %s", path, exc)
+            logger.debug(
+                "§V6 (copilot-instructions.md) Path-Existenzprüfung fehlgeschlagen — False zurückgegeben (Path %s): %s",
+                path,
+                exc,
+            )
             return str(path_obj), False
 
     @staticmethod
@@ -227,7 +231,10 @@ class ModelCapabilityGate:
             loaded = bool(getattr(inst, "_model_loaded", False)) if inst is not None else False
             return bool(ts_exists or ckpt_exists or loaded)
         except Exception as exc:  # pylint: disable=broad-except
-            logger.debug("§V6 Miipher-Readiness-Check fehlgeschlagen — False zurückgegeben (Import-Fehler): %s", exc)
+            logger.debug(
+                "§V6 (copilot-instructions.md) Miipher-Readiness-Pruefung fehlgeschlagen — False zurückgegeben (Import-Fehler): %s",
+                exc,
+            )
             return False
 
     def _deepfilternet_ready_for_miipher_compensation(self) -> bool:
@@ -248,7 +255,10 @@ class ModelCapabilityGate:
             )
             return bool(bundled or loaded)
         except Exception as exc:  # pylint: disable=broad-except
-            logger.debug("§V6 DeepFilterNet-Readiness-Check fehlgeschlagen — False zurückgegeben (Import-Fehler): %s", exc)
+            logger.debug(
+                "§V6 (copilot-instructions.md) DeepFilterNet-Readiness-Pruefung fehlgeschlagen — False zurückgegeben (Import-Fehler): %s",
+                exc,
+            )
             return False
 
     def _sgmse_capability(self) -> ModelCapability:

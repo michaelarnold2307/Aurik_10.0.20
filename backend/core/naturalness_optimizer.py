@@ -83,6 +83,18 @@ def optimize_naturalness(
         raise ValueError(f"audio must be 1D or 2D, got shape {arr.shape}")
     if arr.size == 0:
         raise ValueError("audio is empty")
+    # UV3 liefert Stereo channels-first (2, N); die Stages hier erwarten
+    # channels-last (N, 2). Ohne Normalisierung kollabiert z.B. mean(axis=1)
+    # auf 2 Samples (Produktionsbefund: „Signal degeneriert (2 Samples)“).
+    _layout_cf = arr.ndim == 2 and arr.shape[0] <= 2 and arr.shape[1] > 2
+    if _layout_cf:
+        arr = np.ascontiguousarray(arr.T)
+        orig = np.ascontiguousarray(orig.T)
+    _entry_audio = arr.copy()
+
+    def _restore_layout(a: np.ndarray) -> np.ndarray:
+        return np.ascontiguousarray(a.T) if _layout_cf else a
+
     is_stereo = arr.ndim == 2 and arr.shape[1] == 2
 
     hpe_before = _compute_hpe(arr, sr)
@@ -93,7 +105,7 @@ def optimize_naturalness(
 
     if dry_run:
         return NaturalnessResult(
-            audio=arr,
+            audio=_restore_layout(arr),
             hpe_before=hpe_before,
             hpe_after=hpe_before,
             delta_hpe=0.0,
@@ -314,13 +326,13 @@ def optimize_naturalness(
         improvements.insert(0, f"Natürlichkeit: {hpe_before:.2f} → {hpe_after:.2f} (+{hpe_after - hpe_before:.2f})")
     elif hpe_after < hpe_before - 0.03:
         logger.warning("NaturalnessOptimizer: Verschlechterung, gebe UV3-Originalsignal zurück")
-        arr = np.asarray(audio, dtype=np.float32)
+        arr = _entry_audio.copy()
         hpe_after = hpe_before
     else:
         improvements.insert(0, "Natürlichkeit erhalten – bereits optimal.")
 
     return NaturalnessResult(
-        audio=arr,
+        audio=_restore_layout(arr),
         hpe_before=hpe_before,
         hpe_after=hpe_after,
         delta_hpe=hpe_after - hpe_before,
@@ -1043,7 +1055,11 @@ def _detect_noise_floor(audio: np.ndarray, sr: int) -> bool:
         noise_floor = float(np.percentile(rms_db, 10))
         return noise_floor > -50.0
     except Exception as exc:
-        logger.debug("§V6 _detect_noise_floor fehlgeschlagen — False zurückgegeben (Audio %s): %s", audio.shape, exc)
+        logger.debug(
+            "§V6 (copilot-instructions.md) _erkennen_noise_floor fehlgeschlagen — False zurückgegeben (Audio %s): %s",
+            audio.shape,
+            exc,
+        )
         return False
 
 
@@ -1079,7 +1095,11 @@ def _detect_spectral_imbalance(audio: np.ndarray, sr: int) -> bool:
         median = float(np.median(energies))
         return any(abs(e - median) > 6.0 for e in energies)
     except Exception as exc:
-        logger.debug("§V6 _detect_spectral_imbalance fehlgeschlagen — False zurückgegeben (Audio %s): %s", audio.shape, exc)
+        logger.debug(
+            "§V6 (copilot-instructions.md) _erkennen_spectral_imbalance fehlgeschlagen — False zurückgegeben (Audio %s): %s",
+            audio.shape,
+            exc,
+        )
         return False
 
 
@@ -1101,7 +1121,11 @@ def _detect_diffuse_center(audio: np.ndarray, sr: int) -> bool:
         rms_M = float(np.sqrt(np.mean(M_mid**2)) + 1e-12)
         return rms_S / (rms_M + 1e-12) > 0.35
     except Exception as exc:
-        logger.debug("§V6 _detect_diffuse_center fehlgeschlagen — False zurückgegeben (Stereo Audio %s): %s", audio.shape, exc)
+        logger.debug(
+            "§V6 (copilot-instructions.md) _erkennen_diffuse_center fehlgeschlagen — False zurückgegeben (Stereo Audio %s): %s",
+            audio.shape,
+            exc,
+        )
         return False
 
 

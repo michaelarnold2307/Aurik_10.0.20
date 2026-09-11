@@ -382,7 +382,7 @@ class VocalSupremacyGate:
 
             if rollback:
                 logger.info(
-                    "§0p Vokal-Supremacy-Gate: ROLLBACK empfohlen — score=%.3f, formant=%s, hnr=%s, vibrato=%s",
+                    "§0p Vokal-Supremacy-Gate: ROLLBACK empfohlen — Wert=%.3f, formant=%s, hnr=%s, vibrato=%s",
                     composite,
                     "OK" if formant_ok else f"FAIL ({max_shift_db:.1f} dB)",
                     "OK" if hnr_ok else f"FAIL (Δ{float(cast(float, hnr_diag.get('delta_hnr', 0.0))):.1f} dB)",

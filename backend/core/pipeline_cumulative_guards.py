@@ -117,7 +117,11 @@ class CumulativeDynamicsTracker:
             rms = float(np.sqrt(np.mean(a * a))) + 1e-12
             return float(20.0 * np.log10(peak / rms))
         except Exception as exc:
-            logger.debug("§V6 _measure_crest fehlgeschlagen — None zurückgegeben (Audio %s): %s", audio.shape, exc)
+            logger.debug(
+                "§V6 (copilot-instructions.md) _measure_crest fehlgeschlagen — None zurückgegeben (Audio %s): %s",
+                audio.shape,
+                exc,
+            )
             return None
 
 
@@ -221,7 +225,9 @@ class EarlyQualityGate:
                     logger.warning("§EARLY-GATE abbrechen: %s", result["reason"])
             except Exception as _eg_exc:
                 logger.warning(
-                    "§G93 pipeline_cumulative_guards early-gate check failed (non-blocking): %s", _eg_exc, exc_info=True
+                    "§G93 pipeline_cumulative_guards early-gate Pruefung fehlgeschlagen (nicht blockierend): %s",
+                    _eg_exc,
+                    exc_info=True,
                 )
 
         return result
@@ -384,7 +390,12 @@ class GrooveHardGuard:
             onsets = int(np.sum((energy > energy_prev * 2.0) & (energy > 1e-8)))
             return int(onsets)
         except Exception as exc:
-            logger.debug("§V6 _count_onsets fehlgeschlagen — 0 zurückgegeben (Audio %s, SR %d): %s", audio.shape, sr, exc)
+            logger.debug(
+                "§V6 (copilot-instructions.md) _count_onsets fehlgeschlagen — 0 zurückgegeben (Audio %s, SR %d): %s",
+                audio.shape,
+                sr,
+                exc,
+            )
             return 0
 
 
@@ -653,7 +664,7 @@ class PipelineCumulativeGuard:
         _nt_max = getattr(self, "_nt_max_triggers", 3)
         _nt_tol = getattr(self, "_nt_tolerance", 0.15)
         if noise_texture_dist is not None and noise_texture_dist > _nt_tol:
-            nt_result = self.noise_texture.record_trigger(phase_id, noise_texture_dist)
+            self.noise_texture.record_trigger(phase_id, noise_texture_dist)
             if self.noise_texture._trigger_count >= _nt_max:
                 result["block_subtractive"] = True
                 result["warnings"].append(f"M4: {self.noise_texture._trigger_count} NT-Trigger ≥ {_nt_max}")

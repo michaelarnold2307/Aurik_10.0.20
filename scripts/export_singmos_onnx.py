@@ -27,13 +27,19 @@ from pathlib import Path
 
 _ROOT = Path(__file__).resolve().parent.parent
 _SINGMOS_ROOT = _ROOT / "models" / "singmos"
-_PTH = _ROOT / "models" / "versa" / "hub_cache" / "checkpoints" / "ft_wav2vec2_large_ll60k_mdf_p1_200epochs_all_192epochs.pth"
+_PTH = (
+    _ROOT
+    / "models"
+    / "versa"
+    / "hub_cache"
+    / "checkpoints"
+    / "ft_wav2vec2_large_ll60k_mdf_p1_200epochs_all_192epochs.pth"
+)
 _OUT = _SINGMOS_ROOT / "singmos_pro.onnx"
 
 
 def _build_wrapper():
-    import torch  # pylint: disable=import-outside-toplevel
-    from torch import nn
+    import sys as _sys
 
     # Shim: aurik_bridge.pth leitet s3prl auf .venv_aurik (torchaudio neu —
     # set_audio_backend/sox_effects entfernt). s3prl/hub.py importiert ALLE
@@ -42,7 +48,8 @@ def _build_wrapper():
     # einen Minimal-Shim, bevor s3prl.nn ihn importiert (nur Importpfad).
     import types  # pylint: disable=import-outside-toplevel
 
-    import sys as _sys
+    import torch  # pylint: disable=import-outside-toplevel
+    from torch import nn
 
     _hub_shim = types.ModuleType("s3prl.hub")
     _hub_shim.options = lambda _only_registered_ckpt=False: []  # ungenutzt in unserem Pfad

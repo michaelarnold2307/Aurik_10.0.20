@@ -39,6 +39,11 @@ class RestorabilityResult:
     processing_time_estimate_s: float  # Geschätzte Verarbeitungszeit
     snr_db: float = 0.0  # Geschätzter SNR
     grade: str = "unknown"  # excellent / good / fair / poor / critical
+    # §MuQ-SOTA (2025): optionaler ML-Qualitätsprior — gelernter MOS
+    # (MuQ-Eval-A1-Head, 1–5) bzw. deterministischer Embedding-Witness (0–100).
+    # None = Modell/Head nicht verfügbar → DSP-Schätzung bleibt allein aktiv.
+    muq_mos: float | None = None
+    muq_quality_witness: float | None = None
 
     @property
     def tier(self) -> str:
@@ -56,6 +61,8 @@ class RestorabilityResult:
             "snr_db": self.snr_db,
             "grade": self.grade,
             "tier": self.tier,
+            "muq_mos": self.muq_mos,
+            "muq_quality_witness": self.muq_quality_witness,
         }
 
 
@@ -148,6 +155,10 @@ class RestorabilityEstimator:
         Returns:
             RestorabilityResult mit Score, MOS-Prognose, Empfehlungen.
         """
+
+        # Original-Audio vor Layout-Normalisierung festhalten — der MuQ-Prior
+        # (§MuQ-SOTA) resampled/kanalisiert selbst (deterministisch, 24 kHz).
+        _orig_audio = audio
 
         # Mono-Konvertierung:
         # Aurik canonical shape is (N, channels) — axis=1 is the channel dimension.
@@ -251,9 +262,29 @@ class RestorabilityEstimator:
         score = float(np.clip(score, 0.0, 100.0))
 
         # ----------------------------------------------------------------
-        # 7. MOS-Prognose
+        # 7. MOS-Prognose — §MuQ-SOTA (2025): optionaler ML-Qualitätsprior.
+        #    MuQ-Eval-A1 (eingefrorene MuQ-Features, SRCC 0.957 system-level)
+        #    liefert einen gelernten MOS; ohne Modell/Head bleibt die
+        #    DSP-Schätzung allein aktiv (§V6 (copilot-instructions.md): Warnung statt stillem Ausfall).
+        #    Blend 50/50 — Metriken sind Zeugen, die Hör-Instanz entscheidet
+        #    (Hörordnung §8a); restorability_score bleibt DSP-kalibriert.
         # ----------------------------------------------------------------
+        _muq_mos: float | None = None
+        _muq_witness: float | None = None
+        try:
+            from plugins.muq_plugin import estimate_muq_mos as _muq_mos_fn
+            from plugins.muq_plugin import estimate_quality_witness as _muq_witness_fn
+
+            _muq_witness = _muq_witness_fn(_orig_audio, sr)
+            _muq_mos = _muq_mos_fn(_orig_audio, sr)
+        except Exception as _muq_exc:
+            logger.warning(
+                "MuQ-Qualitätsprior nicht verfügbar (%s) — DSP-MOS bleibt aktiv (§V6 (copilot-instructions.md))",
+                _muq_exc,
+            )
         predicted_mos = self._score_to_mos(score)
+        if _muq_mos is not None:
+            predicted_mos = float(np.clip(0.5 * predicted_mos + 0.5 * float(_muq_mos), 1.0, 5.0))
         mos_ci = (
             max(1.0, predicted_mos - 0.3),
             min(5.0, predicted_mos + 0.3),
@@ -291,6 +322,8 @@ class RestorabilityEstimator:
             processing_time_estimate_s=round(processing_estimate, 1),
             snr_db=round(snr_db, 1),
             grade=grade,
+            muq_mos=_muq_mos,
+            muq_quality_witness=_muq_witness,
         )
 
     # ----------------------------------------------------------------

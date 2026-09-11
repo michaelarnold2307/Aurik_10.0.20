@@ -12,8 +12,11 @@ Steuert Sichtbarkeit von:
 from __future__ import annotations
 
 import json
+import logging
 import os
 from pathlib import Path
+
+logger = logging.getLogger(__name__)
 
 EXPERT_CONFIG_PATH = Path.home() / ".aurik" / "expert_mode.json"
 
@@ -47,6 +50,7 @@ class ExpertMode:
                 self._enabled = data.get("enabled", False)
                 self._features.update(data.get("features", {}))
             except (json.JSONDecodeError, KeyError):
+                logger.debug("Expert-Betriebsart-Config nicht lesbar — Defaults aktiv", exc_info=True)
                 pass
 
     def _save(self) -> None:

@@ -2035,3 +2035,18 @@ class TestAurikDenkerQualityEstimateFormula:
             f"quality_estimate={result.quality_estimate:.3f} zu niedrig — "
             "VERSA MOS aus ExzellenzDenker sollte h\u00f6here Qualit\u00e4t ergeben"
         )
+
+
+def test_surgical_zone_awareness() -> None:
+    """Anti-Regression-Gate Check 5: ExzellenzDenker kennt die Surgical-Zonen.
+
+    §2.59 (surgical_defect_analyzer): ExzellenzDenker muss chirurgische
+    Defektzonen (Klicks, Splices, Bandkanten) vom globalen Processing
+    unterscheiden — surgical_defect_types ist die kanonische Menge.
+    """
+    from backend.core.surgical_defect_analyzer import SURGICAL_DEFECT_TYPES
+
+    assert SURGICAL_DEFECT_TYPES, "SURGICAL_DEFECT_TYPES darf nicht leer sein"
+    assert len(SURGICAL_DEFECT_TYPES) == 24, (
+        f"SURGICAL_DEFECT_TYPES hat {len(SURGICAL_DEFECT_TYPES)} Einträge — erwartet 24 (Gate Check 5)"
+    )

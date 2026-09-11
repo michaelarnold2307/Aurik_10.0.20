@@ -8,7 +8,9 @@ Baseline: tests/unit/calibration_context_linter_baseline.txt
 
 from __future__ import annotations
 
+import functools
 import hashlib
+import operator
 import sys
 from pathlib import Path
 
@@ -139,8 +141,8 @@ def test_calibration_context_linter_no_new_violations() -> None:
             for line in lines:
                 msg_parts.append(f"  {path}:{line}  transfer_chain_depth: int = 1  ← VERBOTEN (§G86)")
         msg_parts.append(
-            f"\n  Baseline: {len(sum(baseline.values(), []))} bekannte Verstöße"
-            f"\n  Aktuell:  {len(sum(current.values(), []))} Verstöße"
+            f"\n  Baseline: {len(functools.reduce(operator.iadd, baseline.values(), []))} bekannte Verstöße"
+            f"\n  Aktuell:  {len(functools.reduce(operator.iadd, current.values(), []))} Verstöße"
             f"\n  Neu:      {sum(len(v) for v in new_violations.values())}"
             f"\n\n  Abhilfe: Statt 'transfer_chain_depth: int = 1' den Parameter"
             f"\n  aus dem CalibrationContext beziehen oder explizit übergeben."

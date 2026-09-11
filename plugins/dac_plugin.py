@@ -41,6 +41,8 @@ from typing import Any
 
 import numpy as np
 
+from backend.core.gpu_model_registry import get_onnx_providers
+
 logger = logging.getLogger(__name__)
 
 _ROOT = Path(__file__).parent.parent
@@ -177,7 +179,7 @@ def _make_session_options():
         opts.graph_optimization_level = ort.GraphOptimizationLevel.ORT_ENABLE_ALL
         return opts
     except Exception:
-        logger.warning("dac_plugin.py::_make_session_options fallback", exc_info=True)
+        logger.warning("dac_plugin.py::_make_Sitzung_options Ersatzpfad", exc_info=True)
         return None
 
 
@@ -225,7 +227,7 @@ class DacPlugin:
         """Lädt encoder and decoder ONNX sessions."""
         if not _ENCODER_PATH.exists():
             logger.info(
-                "DAC encoder ONNX not found (%s) — plugin unavailable. "
+                "DAC encoder ONNX not found (%s) — plugin nicht verfuegbar. "
                 "Download: https://huggingface.co/onnx-community/dac_44khz-ONNX",
                 _ENCODER_PATH,
             )
@@ -239,22 +241,22 @@ class DacPlugin:
                 from backend.core.ml_memory_budget import try_allocate as _try_alloc
 
                 if not _try_alloc("DacEncoder", size_gb=_ENCODER_GB):
-                    logger.warning("DacPlugin: RAM-Budget erschöpft — Encoder nicht geladen.")
+                    logger.warning("DacPlugin: RAM-Grenze erschöpft — Encoder nicht geladen.")
                     return
             except Exception as _exc:
-                logger.debug("Plugin operation failed (non-critical): %s", _exc)
+                logger.debug("Plugin operation fehlgeschlagen (unkritisch): %s", _exc)
 
             opts = _make_session_options()
             if opts is not None:
                 self._enc_session = ort.InferenceSession(
                     str(_ENCODER_PATH),
                     sess_options=opts,
-                    providers=["CPUExecutionProvider"],
+                    providers=get_onnx_providers(str(_ENCODER_PATH)),
                 )
             else:
                 self._enc_session = ort.InferenceSession(
                     str(_ENCODER_PATH),
-                    providers=["CPUExecutionProvider"],
+                    providers=get_onnx_providers(str(_ENCODER_PATH)),
                 )
             self._enc_loaded = True
             logger.info("✅ DAC encoder ONNX geladen (%s)", _ENCODER_PATH.name)
@@ -263,7 +265,7 @@ class DacPlugin:
 
                 _reg_plm("DacEncoder", size_gb=_ENCODER_GB, unload_fn=self._unload_encoder)
             except Exception as _exc:
-                logger.debug("Plugin operation failed (non-critical): %s", _exc)
+                logger.debug("Plugin operation fehlgeschlagen (unkritisch): %s", _exc)
 
             # Decoder is optional (larger, only needed for full round-trip)
             if _DECODER_PATH.exists():
@@ -271,21 +273,21 @@ class DacPlugin:
                     from backend.core.ml_memory_budget import try_allocate as _try_alloc2
 
                     if not _try_alloc2("DacDecoder", size_gb=_DECODER_GB):
-                        logger.info("DacPlugin: RAM-Budget erschöpft — Decoder nicht geladen (Encoder aktiv).")
+                        logger.info("DacPlugin: RAM-Grenze erschöpft — Decoder nicht geladen (Encoder aktiv).")
                         return
                 except Exception as _exc:
-                    logger.debug("Plugin operation failed (non-critical): %s", _exc)
+                    logger.debug("Plugin operation fehlgeschlagen (unkritisch): %s", _exc)
 
                 if opts is not None:
                     self._dec_session = ort.InferenceSession(
                         str(_DECODER_PATH),
                         sess_options=opts,
-                        providers=["CPUExecutionProvider"],
+                        providers=get_onnx_providers(str(_DECODER_PATH)),
                     )
                 else:
                     self._dec_session = ort.InferenceSession(
                         str(_DECODER_PATH),
-                        providers=["CPUExecutionProvider"],
+                        providers=get_onnx_providers(str(_DECODER_PATH)),
                     )
                 self._dec_loaded = True
                 logger.info("✅ DAC decoder ONNX geladen (%s)", _DECODER_PATH.name)
@@ -294,7 +296,7 @@ class DacPlugin:
 
                     _reg_plm("DacDecoder", size_gb=_DECODER_GB, unload_fn=self._unload_decoder)
                 except Exception as _exc:
-                    logger.debug("Plugin operation failed (non-critical): %s", _exc)
+                    logger.debug("Plugin operation fehlgeschlagen (unkritisch): %s", _exc)
 
         except Exception as exc:
             logger.warning("DAC ONNX nicht ladbar: %s — Plugin deaktiviert.", exc)
@@ -305,7 +307,7 @@ class DacPlugin:
                     _release("DacEncoder")
                 _release("DacDecoder")
             except Exception as _exc:
-                logger.debug("Plugin operation failed (non-critical): %s", _exc)
+                logger.debug("Plugin operation fehlgeschlagen (unkritisch): %s", _exc)
 
     # ------------------------------------------------------------------
     # Public API
@@ -384,7 +386,7 @@ class DacPlugin:
             _plm = get_plugin_lifecycle_manager()
             _plm.set_active("DacEncoder", True)
         except Exception:
-            logger.warning("dac_plugin.py::encode fallback", exc_info=True)
+            logger.warning("dac_plugin.py::encode Ersatzpfad", exc_info=True)
         try:
             outputs = self._enc_session.run(
                 ["audio_codes"],
@@ -409,7 +411,7 @@ class DacPlugin:
                 try:
                     _plm.set_active("DacEncoder", False)
                 except Exception:
-                    logger.warning("dac_plugin.py::encode fallback", exc_info=True)
+                    logger.warning("dac_plugin.py::encode Ersatzpfad", exc_info=True)
 
     def decode(self, codes: np.ndarray) -> DacDecodeResult:
         """Dekodiert discrete DAC codes back to audio.
@@ -441,7 +443,7 @@ class DacPlugin:
             _plm = get_plugin_lifecycle_manager()
             _plm.set_active("DacDecoder", True)
         except Exception:
-            logger.warning("dac_plugin.py::decode fallback", exc_info=True)
+            logger.warning("dac_plugin.py::decode Ersatzpfad", exc_info=True)
         try:
             outputs = self._dec_session.run(
                 ["audio_values"],
@@ -471,7 +473,7 @@ class DacPlugin:
                 try:
                     _plm.set_active("DacDecoder", False)
                 except Exception:
-                    logger.warning("dac_plugin.py::decode fallback", exc_info=True)
+                    logger.warning("dac_plugin.py::decode Ersatzpfad", exc_info=True)
 
     def round_trip(self, audio: np.ndarray, sr: int) -> DacRoundTripResult:
         """Kodiert then decode (round-trip). Used for conditioning context and quality checks.

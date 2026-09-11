@@ -226,7 +226,7 @@ def flow_matching_loss(
     and trains model to predict velocity v = clean - degraded.
     """
     B = clean.shape[0]
-    T = clean.shape[2]
+    clean.shape[2]
 
     # Sample flow times
     t = torch.rand(B, device=device)  # [B]

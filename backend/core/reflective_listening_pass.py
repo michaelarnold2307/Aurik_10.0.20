@@ -325,6 +325,8 @@ class ReflectiveListeningPass:
 
     def _apply_corrections(self, audio: np.ndarray, sr: int, issues: list[RLPIssue], material: str) -> np.ndarray:
         """Wendet Mikro-Korrekturen an — kumulativ, aber mit strengen Limits."""
+        from scipy import signal as scipy_signal
+
         arr = np.asarray(audio, dtype=np.float64).copy()
         # §III RLP-last: Die Korrektur-Filter (SOS, Ordnung 2–4) brauchen
         # padlen 9–15 Samples. Bei kürzeren Signalen ist die Identität die
@@ -340,8 +342,6 @@ class ReflectiveListeningPass:
             corr = issue.correction
 
             if "eq_high_shelf_db" in corr:
-                from scipy import signal as scipy_signal
-
                 gain_db = float(np.clip(corr["eq_high_shelf_db"], -self.MAX_EQ_DB, self.MAX_EQ_DB))
                 freq_hz = float(corr.get("eq_freq_hz", 8000.0))
                 if abs(gain_db) > 0.1:
@@ -351,8 +351,6 @@ class ReflectiveListeningPass:
                     logger.debug("RLP: High-Shelf %.1f dB @ %.0f Hz", gain_db, freq_hz)
 
             if "eq_low_shelf_db" in corr:
-                from scipy import signal as scipy_signal
-
                 gain_db = float(np.clip(corr["eq_low_shelf_db"], -self.MAX_EQ_DB, self.MAX_EQ_DB))
                 freq_hz = float(corr.get("eq_freq_hz", 150.0))
                 if abs(gain_db) > 0.1:
@@ -445,7 +443,7 @@ class ReflectiveListeningPass:
             pleasantness_improved = hpe_cmp.get("improved", False)
         except Exception:
             # Fallback: Wenn HPE nicht verfügbar, nur technische Prüfung
-            logger.debug("HPE-Vergleich fehlgeschlagen — Fallback auf technische Prüfung", exc_info=True)
+            logger.debug("HPE-Vergleich fehlgeschlagen — Ersatzpfad auf technische Prüfung", exc_info=True)
             pleasantness_delta = 0.0
             pleasantness_improved = True
 

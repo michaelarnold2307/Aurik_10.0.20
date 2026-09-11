@@ -678,8 +678,8 @@ RepairDynamicsGuard
 
 | Metrik | Ziel | Messung |
 | --- | --- | --- |
-| Envelope-Kontinuität | |Δ| ≤ 1.5 dB | RMS-Sprung an Reparaturgrenzen |
-| Stereo-Drift | |Δ| ≤ 0.3 dB | L/R-Balance vor/nach |
+| Envelope-Kontinuität | \|Δ\| ≤ 1.5 dB | RMS-Sprung an Reparaturgrenzen |
+| Stereo-Drift | \|Δ\| ≤ 0.3 dB | L/R-Balance vor/nach |
 | Phasen-Korrelation | r ≥ 0.85 | Pearson L/R |
 | Crest-Faktor-Änderung | ≤ 5 % | Peak/RMS vor/nach |
 | LUFS-Drift | ≤ 1.0 LU | ITU-R BS.1770-4 integrated |

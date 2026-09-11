@@ -574,7 +574,10 @@ class SignalFlowTracer:
             data = json.loads(_LATEST_SYMLINK.read_text(encoding="utf-8"))
             return _format_report(data)
         except Exception as exc:
-            logger.debug("§V6 report_latest: Trace-File lesen fehlgeschlagen — Fallback-Meldung zurückgegeben: %s", exc)
+            logger.debug(
+                "§V6 (copilot-instructions.md) report_latest: Trace-File lesen fehlgeschlagen — Ersatzpfad-Meldung zurückgegeben: %s",
+                exc,
+            )
             return f"§SFT: Kein Trace-File vorhanden ({exc})"
 
     def latest_output_wav(self) -> str | None:
@@ -1137,7 +1140,7 @@ def calibrate_sft_thresholds(
             _WET_CEILING_REPAIR,
         )
     except Exception:
-        logger.warning("ML→DSP-Fallback aktiviert", exc_info=True)  # §V6 (copilot-instructions.md)
+        logger.warning("ML→DSP-Ersatzpfad aktiviert", exc_info=True)  # §V6 (copilot-instructions.md)
         pass  # Fallback: lokale Berechnungen bleiben aktiv
 
     # §G71 (GEBOTE.md) Wet-Ceilings: depth-adaptiv für effektive Phasen-Wirkung ≥ 0.15

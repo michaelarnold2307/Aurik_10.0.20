@@ -985,12 +985,17 @@ class SpecConstitution:
         if artifact_freedom < _af_min:
             issues.append(
                 f"§0h VETO: artifact_freedom={artifact_freedom:.3f} < "
-                f"{_af_min} (depth={chain_depth}) — Export muss blockiert werden"
+                f"{_af_min} (depth={chain_depth}) — §0c: degraded-Export des "
+                f"bestmöglichen sicheren Rollback-Kandidaten, Hardstop verboten"
             )
 
-        # §0h: HPI ≤ 0 → Over-Processing
+        # §0h: HPI ≤ 0 → Over-Processing. §0c: bestmögliches sicheres Ergebnis
+        # (= Original-Input) mit Status „degraded" exportieren — kein Hardstop.
         if hpi <= self._shield["hpi_min"]:
-            issues.append(f"§0h VETO: HPI={hpi:.3f} ≤ 0 — Signal wurde verschlechtert. Original-Input exportieren.")
+            issues.append(
+                f"§0h VETO: HPI={hpi:.3f} ≤ 0 — Signal wurde verschlechtert. "
+                f"§0c: Original-Input als degraded-Ergebnis exportieren."
+            )
 
         # §0p: Primus-inter-Pares — Vokal-Vorrang
         if has_vocals and vqi < self._shield["vqi_recovery_trigger"]:

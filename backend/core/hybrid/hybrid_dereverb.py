@@ -151,7 +151,7 @@ class HybridDereverb:
             self._sgmse_active = False
             logger.info("ResembleEnhance ML-Stufe für Dereverb geladen (§4.4 Ersatzpfad 1)")
         except ImportError as e:
-            logger.warning("ML→DSP-Fallback aktiviert", exc_info=True)  # §V6 (copilot-instructions.md)
+            logger.warning("ML→DSP-Ersatzpfad aktiviert", exc_info=True)  # §V6 (copilot-instructions.md)
             logger.info("ResembleEnhance nicht verfügbar (%s) — WPE-DSP-Ersatzpfad 2 aktiv", e)
             self.dccrn = None
         except Exception as e:

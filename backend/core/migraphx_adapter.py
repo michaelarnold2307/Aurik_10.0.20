@@ -41,6 +41,8 @@ from typing import Any
 
 import numpy as np
 
+from backend.core.gpu_model_registry import _Provider
+
 logger = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
@@ -71,7 +73,11 @@ def _discover_rocm_lib_dirs() -> list[str]:
         try:
             return tuple(int(x) for x in p.name.removeprefix("rocm-").split(".") if x.isdigit())
         except Exception as exc:
-            logger.debug("§V6 ROCM-Version-Key-Parsing fehlgeschlagen — leeres Tuple zurückgegeben (Path %s): %s", p, exc)
+            logger.debug(
+                "§V6 (copilot-instructions.md) ROCM-Version-Key-Parsing fehlgeschlagen — leeres Tuple zurückgegeben (Path %s): %s",
+                p,
+                exc,
+            )
             return ()
 
     dirs: list[str] = []
@@ -174,7 +180,10 @@ def is_migraphx_available() -> bool:
         _load_bridge()
         return True
     except (RuntimeError, OSError) as exc:
-        logger.debug("§V6 MIGraphX-Bridge nicht ladbar — False zurückgegeben (Bridge-Load-Fehler): %s", exc)
+        logger.debug(
+            "§V6 (copilot-instructions.md) MIGraphX-Bridge nicht ladbar — False zurückgegeben (Bridge-laden-Fehler): %s",
+            exc,
+        )
         return False
 
 
@@ -188,8 +197,13 @@ def migraphx_model_size_mb(model_path: str | Path) -> float:
     try:
         return Path(model_path).stat().st_size / (1024 * 1024)
     except OSError as exc:
-        logger.debug("§V6 ONNX-Dateigröße nicht lesbar — 0.0 MB zurückgegeben (Path %s): %s", model_path, exc)
+        logger.debug(
+            "§V6 (copilot-instructions.md) ONNX-Dateigröße nicht lesbar — 0.0 MB zurückgegeben (Path %s): %s",
+            model_path,
+            exc,
+        )
         return 0.0
+
 
 def is_migraphx_size_eligible(model_path: str | Path) -> bool:
     """True, wenn das Modell klein genug für MIGraphX ist (§v10.40 Größenlimit)."""
@@ -222,7 +236,7 @@ class MIGraphXSession:
         self,
         model_path: str | Path,
         default_dim: int = 256,
-        providers: list[str] | None = None,  # ORT-compat: ignored, always MIGraphX
+        providers: list[_Provider] | None = None,  # ORT-compat: ignored, always MIGraphX
         sess_options: Any = None,  # ORT-compat: ignored
         **kwargs: Any,  # additional ORT kwargs (ignored)
     ) -> None:
@@ -376,6 +390,7 @@ class MIGraphXSession:
             try:
                 self._bridge.mgx_destroy(self._handle)
             except Exception:
+                logger.debug("Stiller Ersatzpfad dokumentiert (Bug 9/V74)", exc_info=True)
                 pass
             self._handle = None
 
@@ -421,7 +436,7 @@ def create_session_with_fallback(
             logger.info("Using MIGraphX GPU for %s", model_path)
             return sess
     except Exception as exc:
-        logger.debug("MIGraphX unavailable for %s: %s", model_path, exc)
+        logger.debug("MIGraphX nicht verfuegbar for %s: %s", model_path, exc)
 
     logger.info("Falling back to ONNX Runtime CPU for %s", model_path)
     return ort.InferenceSession(

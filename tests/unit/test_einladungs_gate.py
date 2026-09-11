@@ -180,7 +180,7 @@ class TestTransientProtection:
         audio, sr = sample_audio
         # Audio mit klarem Transient simulieren (plötzlicher Lautstärke-Anstieg)
         transient_audio = np.zeros_like(audio)
-        transient_audio[int(2.0 * sr):] = 0.3 * np.random.randn(int(8.0 * sr))
+        transient_audio[int(2.0 * sr) :] = 0.3 * np.random.randn(int(8.0 * sr))
 
         onsets = detect_transients(transient_audio, sr)
 
@@ -318,7 +318,7 @@ def test_release_must_coverage():
     )
 
     if os.path.exists(copilot_path):
-        with open(copilot_path, "r", encoding="utf-8") as f:
+        with open(copilot_path, encoding="utf-8") as f:
             content = f.read()
 
-        assert "[RELEASE_MUST]" in content or True  # Platzhalter für zukünftige Prüfung
+        assert True  # Platzhalter für zukünftige Prüfung (ersetzt 'or True'-Muster)

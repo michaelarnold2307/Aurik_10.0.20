@@ -65,9 +65,11 @@ def test_clap_score_resamples_to_48k() -> None:
             return SimpleNamespace(genre_tags={"rock": 0.1})
 
     audio = (0.5 * np.sin(2 * np.pi * 440 * np.linspace(0, 1.0, 22050, endpoint=False))).astype(np.float32)
-    with patch("backend.core.ml_memory_budget.try_allocate", return_value=True), patch(
-        "plugins.laion_clap_plugin.get_loaded_laion_clap", return_value=_FakeClap()
-    ), patch("backend.core.ml_memory_budget.release", MagicMock()):
+    with (
+        patch("backend.core.ml_memory_budget.try_allocate", return_value=True),
+        patch("plugins.laion_clap_plugin.get_loaded_laion_clap", return_value=_FakeClap()),
+        patch("backend.core.ml_memory_budget.release", MagicMock()),
+    ):
         score = clf._compute_clap_score(audio, 22050)
 
     assert received_sr.get("sr") == 48000

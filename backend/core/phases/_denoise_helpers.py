@@ -68,7 +68,7 @@ def decade_strength_multiplier(decade: int) -> float:
 def _determine_era_nr_routing(
     era_decade: int,
     material_type: str,
-    est_snr_db: "float | None",
+    est_snr_db: float | None,
     panns_singing: float,
     is_vocal_material: bool,
     is_non_digital: bool,

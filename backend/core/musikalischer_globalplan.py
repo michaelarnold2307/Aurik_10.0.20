@@ -468,7 +468,9 @@ def _estimate_warmth(mono: np.ndarray, sr: int) -> float:
             rms = float(np.sqrt(np.mean(mono.astype(np.float64) ** 2) + 1e-12))
             return float(np.clip(rms * 5.0, 0.3, 0.7))
         except Exception:
-            logger.warning("§V6 ML→DSP-Fallback: _estimate_warmth Ersatzpfad fehlgeschlagen → neutraler Return (0.5)")
+            logger.warning(
+                "§V6 (copilot-instructions.md) ML→DSP-Ersatzpfad: _estimate_warmth Ersatzpfad fehlgeschlagen → neutraler Return (0.5)"
+            )
             return 0.5
 
 
@@ -507,7 +509,9 @@ def _estimate_brightness(mono: np.ndarray, sr: int) -> float:
             zcr = float(np.mean(np.abs(np.diff(np.sign(mono))) / 2.0))
             return float(np.clip(zcr * 3.0, 0.3, 0.7))
         except Exception:
-            logger.warning("§V6 ML→DSP-Fallback: _estimate_brightness Ersatzpfad fehlgeschlagen → neutraler Return (0.5)")
+            logger.warning(
+                "§V6 (copilot-instructions.md) ML→DSP-Ersatzpfad: _estimate_brightness Ersatzpfad fehlgeschlagen → neutraler Return (0.5)"
+            )
             return 0.5
 
 
@@ -552,7 +556,9 @@ def _estimate_dynamic_range(mono: np.ndarray) -> float:
             crest = peak / rms if rms > 0 else 1.0
             return float(np.clip((crest - 1.0) / 10.0, 0.3, 0.7))
         except Exception:
-            logger.warning("§V6 ML→DSP-Fallback: _estimate_dynamic_range Ersatzpfad fehlgeschlagen → neutraler Return (0.5)")
+            logger.warning(
+                "§V6 (copilot-instructions.md) ML→DSP-Ersatzpfad: _estimate_dynamic_range Ersatzpfad fehlgeschlagen → neutraler Return (0.5)"
+            )
             return 0.5
 
 
@@ -640,7 +646,10 @@ def _estimate_bpm_with_phrase_extractor(mono: np.ndarray, sr: int) -> float | No
     try:
         tempo_fn = extractor.estimate_tempo
     except AttributeError as exc:
-        logger.debug("§V6 Phrase-Extractor.estimate_tempo nicht verfügbar — None zurückgegeben (BPM-Schätzung): %s", exc)
+        logger.debug(
+            "§V6 (copilot-instructions.md) Phrase-Extractor.estimate_tempo nicht verfügbar — None zurückgegeben (BPM-Schätzung): %s",
+            exc,
+        )
         return None
 
     bpm = float(tempo_fn(mono, sr))

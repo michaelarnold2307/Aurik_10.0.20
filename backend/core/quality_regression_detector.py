@@ -293,6 +293,7 @@ class QualityRegressionDetector:
 
 # ── Convenience-Funktionen (für Dead-Import-Reparatur) ───────────────
 
+
 def detect_quality_regression(
     audio: np.ndarray,
     sr: int = 48000,
@@ -306,7 +307,7 @@ def detect_quality_regression(
     Returns:
         Dict mit Regression-Analyse-Ergebnissen
     """
-    detector = QualityRegressionDetector()
+    QualityRegressionDetector()
     # Einfache RMS-basierte Qualitätsprüfung
     rms = float(np.sqrt(np.mean(audio.astype(np.float64) ** 2)) + 1e-12)
     q_score = min(1.0, max(0.0, rms * 2.0))  # Normalisiert auf [0, 1]

@@ -123,6 +123,7 @@ from .bridge_core import (
 # Canonical Contract — Mode-Normalisierung (§11 Spec 08)
 # ---------------------------------------------------------------------------
 
+
 def normalize_user_mode(mode: str | None) -> str:
     """Normalisiert Nutzer-Mode-Aliase auf die kanonischen Release-Modi.
 
@@ -423,7 +424,6 @@ def _build_bridge_calibration_dict() -> dict:
 # Cache functions — extracted to bridge_cache.py (re-exported above)
 # All cache_* / get_cached_* / clear_* functions live in bridge_cache.py
 # ---------------------------------------------------------------------------
-
 
 
 # ---------------------------------------------------------------------------
@@ -2180,13 +2180,13 @@ def _get_ml_availability() -> dict[str, Any]:
 
         models["speaker_identity"] = "ecapa_tdnn"
     except ImportError:
-        logger.warning("ML→DSP-Fallback aktiviert", exc_info=True)  # §V6 (copilot-instructions.md)
+        logger.warning("ML→DSP-Ersatzpfad aktiviert", exc_info=True)  # §V6 (copilot-instructions.md)
         models["speaker_identity"] = "mfcc_dsp"
     # PANNs (Genre/Audio tagging)
     try:
         pass
     except ImportError:
-        logger.warning("ML→DSP-Fallback aktiviert", exc_info=True)  # §V6 (copilot-instructions.md)
+        logger.warning("ML→DSP-Ersatzpfad aktiviert", exc_info=True)  # §V6 (copilot-instructions.md)
         models["panns"] = "dsp"
     # LAION-CLAP und SGMSE+ Dereverb: Torch-Verfügbarkeit via find_spec prüfen
     # (kein doppeltes `import torch` im selben Scope — flake8 F811/B025).
@@ -2196,13 +2196,13 @@ def _get_ml_availability() -> dict[str, Any]:
         models["laion_clap"] = "torch"
     else:
         models["laion_clap"] = "unavailable"
-        logger.warning("ML→DSP-Fallback aktiviert", exc_info=True)  # §V6 (copilot-instructions.md)
+        logger.warning("ML→DSP-Ersatzpfad aktiviert", exc_info=True)  # §V6 (copilot-instructions.md)
         models["sgmse_dereverb"] = "dsp_wpe"
     # RMVPE Pitch
     try:
         models["rmvpe_pitch"] = "onnx"
     except ImportError:
-        logger.warning("ML→DSP-Fallback aktiviert", exc_info=True)  # §V6 (copilot-instructions.md)
+        logger.warning("ML→DSP-Ersatzpfad aktiviert", exc_info=True)  # §V6 (copilot-instructions.md)
         models["rmvpe_pitch"] = "pyin_dsp"
 
     any_ml = any(v not in ("dsp", "dsp_wpe", "pyin_dsp", "mfcc_dsp", "unavailable") for v in models.values())
@@ -2905,7 +2905,9 @@ def get_phase_display_formatter_fns() -> dict[str, object]:
         }
     except Exception as _fmt_exc:
         logger.warning(
-            "§G93 bridge: get_phase_display_formatter_fns DSP-Ersatzpfad → returning {}: %s", _fmt_exc, exc_info=True
+            "§G93 bridge: get_Verarbeitungsschritt_display_formatter_fns DSP-Ersatzpfad → returning {}: %s",
+            _fmt_exc,
+            exc_info=True,
         )
         return {}
 
@@ -2949,7 +2951,7 @@ def get_live_preview(seek_s: float = 0.0, duration_s: float = 5.0) -> dict | Non
             "total_s": float(n_total / sr),  # type: ignore[operator]
         }
     except Exception as _prev_exc:
-        logger.warning("§G93 bridge: get_live_preview failed → returning None: %s", _prev_exc, exc_info=True)
+        logger.warning("§G93 bridge: get_live_preview fehlgeschlagen → returning None: %s", _prev_exc, exc_info=True)
         return None
 
 
@@ -2965,7 +2967,7 @@ def get_donation_reminder() -> dict[str, str]:
 
         return {"paypal_email": PAYPAL_EMAIL, "donation_url": DONATION_URL}
     except ImportError:
-        logger.debug("§V6 donation_reminder nicht verfügbar — leeres Dict zurückgegeben")
+        logger.debug("§V6 (copilot-instructions.md) donation_reminder nicht verfügbar — leeres Dict zurückgegeben")
         return {}
 
 
@@ -2976,7 +2978,9 @@ def should_show_donation_reminder() -> bool:
 
         return should_show_reminder()
     except ImportError:
-        logger.debug("§V6 donation_reminder.should_show_reminder nicht verfügbar — False zurückgegeben")
+        logger.debug(
+            "§V6 (copilot-instructions.md) donation_reminder.should_show_reminder nicht verfügbar — False zurückgegeben"
+        )
         return False
 
 
@@ -2997,7 +3001,9 @@ def open_donation_reminder_link() -> bool:
 
         return open_donation_link()
     except ImportError:
-        logger.debug("§V6 donation_reminder.open_donation_link nicht verfügbar — False zurückgegeben")
+        logger.debug(
+            "§V6 (copilot-instructions.md) donation_reminder.open_donation_link nicht verfügbar — False zurückgegeben"
+        )
         return False
 
 
@@ -3008,7 +3014,9 @@ def get_donation_reminder_info() -> dict:
 
         return get_donation_info()
     except ImportError:
-        logger.debug("§V6 donation_reminder.get_donation_info nicht verfügbar — leeres Dict zurückgegeben")
+        logger.debug(
+            "§V6 (copilot-instructions.md) donation_reminder.get_donation_info nicht verfügbar — leeres Dict zurückgegeben"
+        )
         return {}
 
 
@@ -3031,7 +3039,7 @@ def inject_cd_noise_profile(
 
         return _inject(audio, sample_rate, mode=mode, bit_depth=bit_depth, seed=seed)  # type: ignore[misc]
     except ImportError:
-        logger.debug("§V6 cd_noise_profile nicht verfügbar — Audio unverändert zurückgegeben")
+        logger.debug("§V6 (copilot-instructions.md) CD-Rauschprofil nicht verfügbar — Audio unverändert zurückgegeben")
         return audio
 
 
@@ -3069,7 +3077,9 @@ def get_model_zoo_summary() -> list[dict[str, str]]:
             for e in MODEL_ZOO
         ]
     except Exception as exc:
-        logger.debug("§V6 get_model_zoo_summary fehlgeschlagen — leere Liste zurückgegeben: %s", exc)
+        logger.debug(
+            "§V6 (copilot-instructions.md) get_model_zoo_summary fehlgeschlagen — leere Liste zurückgegeben: %s", exc
+        )
         return []
 
 
@@ -3130,7 +3140,10 @@ def get_defect_consensus_summary(manifest: object) -> dict:
             "module_count": int(getattr(m, "module_count", 0) or 0),
         }
     except Exception as exc:
-        logger.debug("§V6 get_defect_consensus_summary fehlgeschlagen — leeres Dict zurückgegeben: %s", exc)
+        logger.debug(
+            "§V6 (copilot-instructions.md) get_defect_consensus_summary fehlgeschlagen — leeres Dict zurückgegeben: %s",
+            exc,
+        )
         return {}
 
 
@@ -3166,7 +3179,9 @@ def get_repair_plan_summary(plan: object) -> dict:
             "estimated_duration_s": float(getattr(plan, "estimated_duration_s", 0.0) or 0.0),
         }
     except Exception as exc:
-        logger.debug("§V6 get_repair_plan_summary fehlgeschlagen — leeres Dict zurückgegeben: %s", exc)
+        logger.debug(
+            "§V6 (copilot-instructions.md) get_repair_plan_summary fehlgeschlagen — leeres Dict zurückgegeben: %s", exc
+        )
         return {}
 
 
@@ -3282,7 +3297,9 @@ def get_repair_plan_consent(defect_result: object) -> dict:
             return {}  # Kein Analyse-Material → Frontend blendet die Zeile aus
         return {"found": found, "will_do": will_do}
     except Exception as exc:
-        logger.debug("§V6 get_repair_plan_consent fehlgeschlagen — leeres Dict zurückgegeben: %s", exc)
+        logger.debug(
+            "§V6 (copilot-instructions.md) get_repair_plan_consent fehlgeschlagen — leeres Dict zurückgegeben: %s", exc
+        )
         return {}
 
 
@@ -3298,7 +3315,10 @@ def get_new_crash_reports() -> list[dict]:
 
         return list(_new() or [])
     except Exception as exc:
-        logger.debug("§V6 crash_reporter.get_new_reports fehlgeschlagen — leere Liste zurückgegeben: %s", exc)
+        logger.debug(
+            "§V6 (copilot-instructions.md) crash_reporter.get_new_reports fehlgeschlagen — leere Liste zurückgegeben: %s",
+            exc,
+        )
         return []
 
 
@@ -3358,7 +3378,9 @@ def get_guard_report(result: object) -> dict:
             },
         }
     except Exception as exc:
-        logger.debug("§V6 get_guard_report fehlgeschlagen — leeres Dict zurückgegeben: %s", exc)
+        logger.debug(
+            "§V6 (copilot-instructions.md) get_guard_report fehlgeschlagen — leeres Dict zurückgegeben: %s", exc
+        )
         return {}
 
 
@@ -3414,5 +3436,18 @@ def get_restoration_bericht(result: object, defect_result: object = None) -> dic
             "was_reverted": bool((meta.get("do_no_harm") or {}).get("reverted", False)),
         }
     except Exception as exc:
-        logger.debug("§V6 get_restoration_bericht fehlgeschlagen — leeres Dict zurückgegeben: %s", exc)
+        logger.debug(
+            "§V6 (copilot-instructions.md) get_restoration_bericht fehlgeschlagen — leeres Dict zurückgegeben: %s", exc
+        )
         return {}
+
+
+def evaluate_export_gate(result: Any, audio: Any = None) -> Any:
+    """§V4-Bridge: GO/NO-GO-Export-Verdict (backend/core/go_nogo_export_gate).
+
+    UI/CLI dürfen backend/core nie direkt importieren (§V4 (copilot-instructions.md)) — dieser
+    Wrapper ist der einzige erlaubte Pfad.
+    """
+    from backend.core.go_nogo_export_gate import evaluate
+
+    return evaluate(result, audio=audio)

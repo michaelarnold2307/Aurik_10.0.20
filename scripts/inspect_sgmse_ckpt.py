@@ -4,6 +4,7 @@
 enthält (ncsnpp / ncsnpp_48k / ncsnpp_v2), damit der Real-IO-Patch an der
 richtigen Stelle sitzt, bevor scripts/export_sgmse_onnx.py läuft.
 """
+
 import re
 import sys
 from pathlib import Path

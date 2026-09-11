@@ -894,9 +894,7 @@ class SpectralBandGapRepairPhase(PhaseInterface):
             side = (audio[:, 0] - audio[:, 1]) / _sqrt2
 
             # Full repair on Mid channel
-            mid_repaired = self._process_channel(
-                mid, sr, instrument_tag, bw_cap_hz=_band_gap_profile.get("bw_cap_hz")
-            )
+            mid_repaired = self._process_channel(mid, sr, instrument_tag, bw_cap_hz=_band_gap_profile.get("bw_cap_hz"))
             mid_repaired = self._mrsa_gain_refinement(
                 mid.astype(np.float64), mid_repaired.astype(np.float64), sr
             ).astype(np.float32)
@@ -1172,9 +1170,7 @@ class SpectralBandGapRepairPhase(PhaseInterface):
         stft_phase = np.angle(stft_frames).astype(np.float32)
 
         # Lücken detektieren — optional konservativer für Side-Kanal (§2.51)
-        gaps = _detect_band_gaps(
-            stft_mag, sr, n_fft, gap_fraction_min=gap_fraction_min, bw_cap_hz=bw_cap_hz
-        )
+        gaps = _detect_band_gaps(stft_mag, sr, n_fft, gap_fraction_min=gap_fraction_min, bw_cap_hz=bw_cap_hz)
         if not gaps:
             return mono
 

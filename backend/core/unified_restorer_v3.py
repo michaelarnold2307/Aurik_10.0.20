@@ -389,7 +389,7 @@ def _log_calibration_audit(
     transfer_chain_depth = _resolve_transfer_chain_depth(transfer_chain_depth)
     if is_fallback:
         logger.warning(
-            "⚠️ §G80 (GEBOTE.md) uncalibrated fallback: %s=%.4f (rs=%.0f depth=%d mat=%s era=%s reason: %s)",
+            "⚠️ §G80 (GEBOTE.md) uncalibrated Ersatzpfad: %s=%.4f (rs=%.0f depth=%d mat=%s era=%s reason: %s)",
             param_name,
             value,
             restorability_score,
@@ -980,8 +980,12 @@ def _evaluate_stereo_safety_guard(
         hard_fail_reasons.append("interchannel_correlation_collapse")
     if iacc_out > 0.95 and iacc_delta > 0.15 and iacc_in < 0.85:
         hard_fail_reasons.append("iacc_collapse")
+    # TP > -1 dBTP ist bei normal gemastertem Material der Regelfall (Loudness-War-Master
+    # liegen bei 0 dBTP) — als Mid-Pipeline-HARD-FAIL rollt das JEDE Phase zurück
+    # (Produktionsbefund: „0 Phasen“, no-op Pipeline bei Stereo-Eingaben).
+    # Das finale True-Peak-Limit regeln phase_47/§2.63 — hier nur Warnung.
     if tp_out > -1.0:
-        hard_fail_reasons.append("true_peak_gt_minus_1dbtp")
+        warning_reasons.append("true_peak_gt_minus_1dbtp")
 
     # Warning thresholds (§2.51a)
     if 0.5 < delay_out <= 1.0 and delay_out > delay_in + _delay_delta_threshold:
@@ -994,6 +998,36 @@ def _evaluate_stereo_safety_guard(
         warning_reasons.append("interchannel_correlation_drop")
     if iacc_out > 0.90 and iacc_delta > 0.08 and iacc_in < 0.85:
         warning_reasons.append("iacc_rising_towards_mono")
+
+    # §HRTF/interaural (§Hörfähigkeits-SOTA): ITD/ILD/BMLD-Integrität zwischen
+    # Original und Restaurierung. Hör-JNDs: ITD ~30 µs (Ton, 500 Hz–1 kHz),
+    # ILD ~1 dB (oberhalb 1 kHz), IACC Δ ~0.08. Delta-Guard: nur melden, wenn
+    # die Restaurierung die Cues GEGENÜBER dem Input verschlechtert hat.
+    _interaural: dict[str, Any] = {}
+    try:
+        from backend.core.dsp.interaural_cues import interaural_cue_integrity as _ici
+
+        _ici_res = _ici(original_audio, restored_audio, sample_rate)
+        _interaural = cast(dict[str, Any], _ici_res.as_dict())
+        _itd_drift = abs(float(_interaural.get("itd_drift_us", 0.0)))
+        _ild_drift = abs(float(_interaural.get("ild_drift_db", 0.0)))
+        _iacc_delta = float(_interaural.get("iacc_delta", 0.0))
+        if _itd_drift >= 1e6:  # Mono-Kollaps-Sentinel (interaural_cue_integrity)
+            hard_fail_reasons.append("itd_mono_collapse")
+        elif _itd_drift > 60.0 and float(_interaural.get("restored", {}).get("itd_us", 0.0)) > float(
+            _interaural.get("original", {}).get("itd_us", 0.0)
+        ):
+            hard_fail_reasons.append("itd_drift_gt_60us")
+        elif _itd_drift > 30.0:
+            warning_reasons.append("itd_drift_gt_30us")
+        if _ild_drift > 4.0 and imb_in < 3.0:
+            hard_fail_reasons.append("ild_drift_gt_4db")
+        elif _ild_drift > 2.0:
+            warning_reasons.append("ild_drift_gt_2db")
+        if _iacc_delta > 0.15 and iacc_in < 0.85:
+            warning_reasons.append("iacc_delta_gt_0p15")
+    except Exception as _ici_exc:
+        logger.debug("§HRTF interaural integrity uebersprungen: %s", _ici_exc)
 
     return {
         "enabled": True,
@@ -1009,6 +1043,7 @@ def _evaluate_stereo_safety_guard(
             "interchannel_corr": corr_drop,
             "iacc": iacc_delta,
         },
+        "interaural": _interaural,
         "hard_fail_reasons": hard_fail_reasons,
         "warning_reasons": warning_reasons,
     }
@@ -1776,7 +1811,7 @@ class UnifiedRestorerV3:
         )
         if not getattr(self, "_vocal_threshold_fallback_warned", False):
             logger.warning(
-                "§G80 (GEBOTE.md) uncalibrated fallback: vocal_threshold=%.3f (no CalibrationContext available)",
+                "§G80 (GEBOTE.md) uncalibrated Ersatzpfad: vocal_Schwelle=%.3f (no CalibrationContext verfuegbar)",
                 _result,
             )
             self._vocal_threshold_fallback_warned = True
@@ -1793,7 +1828,7 @@ class UnifiedRestorerV3:
             from backend.core.calibration_context import CalibrationContext
         except ImportError as e:
             logger.debug(
-                "§V6 [copilot-instructions.md, Silent-Failure-Verbot] CalibrationContext-Import fehlgeschlagen — None zurückgegeben: %s",
+                "§V6 [copilot-instructions.md, Silent-Fehlschlag-Verbot] CalibrationContext-Import fehlgeschlagen — None zurückgegeben: %s",
                 e,
             )
             return None
@@ -5813,12 +5848,12 @@ class UnifiedRestorerV3:
                         )
                     )
                     logger.debug(
-                        "§v10 Phase2: Real separation_fidelity via HTDemucs (ChunkedProcessor): %.3f",
+                        "§v10 Verarbeitungsschritt2: Real separation_fidelity via HTDemucs (ChunkedProcessor): %.3f",
                         _sep_fidelity_score,
                     )
                 except Exception as _sep_exc:
                     logger.debug(
-                        "§v10 Phase2: Real separation_fidelity failed, using MS-ratio fallback: %s",
+                        "§v10 Verarbeitungsschritt2: Real separation_fidelity fehlgeschlagen, using MS-Verhaeltnis Ersatzpfad: %s",
                         _sep_exc,
                     )
                     # Fallback to MS-ratio heuristic if HTDemucs unavailable
@@ -7884,7 +7919,7 @@ class UnifiedRestorerV3:
                 _need746 = 4.0 + 0.12 * _ws_sec
                 if _avail746 < _need746:
                     logger.warning(
-                        "🎵 Ganzsong-Modus: RAM-Preflight abgelehnt (frei=%.1f GB < Bedarf ~%.1f GB) — Chunked-Fallback (§v10.746)",
+                        "🎵 Ganzsong-Modus: RAM-Preflight abgelehnt (frei=%.1f GB < Bedarf ~%.1f GB) — Chunked-Ersatzpfad (§v10.746)",
                         _avail746,
                         _need746,
                     )
@@ -8135,7 +8170,7 @@ class UnifiedRestorerV3:
         if _precomputed_phase_plan:
             logger.info("Überspringen deaktiviert: deterministischer PID-Executor aktiv")
             logger.info(
-                "§PID PhaseInteractionDenker-Plan aktiv: %d Phasen (UV3 _select/_optimize übersprungen)",
+                "§PID PhaseInteractionDenker-Plan aktiv: %d Phasen (UV3 _select/_optimieren übersprungen)",
                 len(_precomputed_phase_plan),
             )
         # Pre-analysis result (PreAnalysisResult from backend.core.pre_analysis).
@@ -10156,7 +10191,7 @@ class UnifiedRestorerV3:
             _master_seed = _sm.start_session(song_id=_song_id_for_seed, master_seed=_seed_override)
             self._restoration_context["_seed_manager"] = _sm
             logger.debug(
-                "§G5 [copilot-instructions.md, Determinismus] Seed-Manager: Session=%s Master-Seed=%d — deterministische Reproduzierbarkeit aktiv",
+                "§G5 [copilot-instructions.md, Determinismus] Seed-Manager: Sitzung=%s Master-Seed=%d — deterministische Reproduzierbarkeit aktiv",
                 _song_id_for_seed,
                 _master_seed,
             )
@@ -10624,7 +10659,7 @@ class UnifiedRestorerV3:
                 logger.warning(
                     "🔍 DefectScanner.scan(): Material ist NULL — alle Detektoren (MediumDetector, EraClassifier) "
                     "haben fehlgeschlagen oder zu niedriger Konfidenz. DefectScanner wird auf MaterialType.UNKNOWN "
-                    "fallback. Analyse-Präzision wird reduziert. Prüfe Pre-Analysis Logs."
+                    "Ersatzpfad. Analyse-Präzision wird reduziert. Prüfe Pre-Analyse Logs."
                 )
 
             _t_scan0 = time.perf_counter()
@@ -11472,7 +11507,7 @@ class UnifiedRestorerV3:
                         _material_conf_ctx = _mc_conf
                         if _prev_conf <= 0.0:
                             logger.info(
-                                "§2.47a material_confidence-Fallback: Forensic-Wert fehlt → MediumDetector conf=%.3f",
+                                "§2.47a material_confidence-Ersatzpfad: Forensic-Wert fehlt → MediumDetector conf=%.3f",
                                 _mc_conf,
                             )
                         else:
@@ -12301,7 +12336,7 @@ class UnifiedRestorerV3:
             # §2.53b: Phase Skipping deaktiviert — als erstes loggen damit auch bei frühem Mock-Return sichtbar
             logger.info("Überspringen deaktiviert: deterministischer PID-Executor aktiv")
             logger.info(
-                "§PID PhaseInteractionDenker-Plan aktiv: %d Phasen (UV3 _select/_optimize übersprungen)",
+                "§PID PhaseInteractionDenker-Plan aktiv: %d Phasen (UV3 _select/_optimieren übersprungen)",
                 len(_precomputed_phase_plan),
             )
             # Verhindert Stale-State aus vorherigen restore()-Läufen.
@@ -12443,7 +12478,7 @@ class UnifiedRestorerV3:
                         if isinstance(getattr(self, "_conductor_strength_hints", None), dict):
                             self._conductor_strength_hints.pop("phase_17_mastering_polish", None)
                         logger.info(
-                            "Preflight-Risk-Guard hatte Phase entfernt: phase_17_mastering_polish "
+                            "Preflight-Risk-Guard hatte Verarbeitungsschritt entfernt: Verarbeitungsschritt_17_mastering_polish "
                             "(vocal-analog Restoration, NOVELTY_CRIT/HNR_DROP/ECHO-Lage)"
                         )
 
@@ -16755,7 +16790,7 @@ class UnifiedRestorerV3:
             if _missing_goal_scores:
                 if _tail_skipped_goals:
                     logger.info(
-                        "🎯 Goal-Vektor nicht gemessen (chunked_tail_skip, Nicht-Letzter-Chunk): %d Ziel(e) — keine Messung, keine Defaults",
+                        "🎯 Goal-Vektor nicht gemessen (chunked_tail_ueberspringen, Nicht-Letzter-Chunk): %d Ziel(e) — keine Messung, keine Defaults",
                         len(_missing_goal_scores),
                     )
                 else:
@@ -19502,7 +19537,7 @@ class UnifiedRestorerV3:
                 _singmos_source_capped = _is_singmos_source_capped(_smp_src_singmos, _singmos_val)
                 if _singmos_source_capped:
                     logger.info(
-                        "§G4 (GEBOTE.md) SingMOS-Quell-Ceiling: Quelle=%.2f Output=%.2f — kein Warnfall",
+                        "§G4 (GEBOTE.md) SingMOS-Quell-Ceiling: Quelle=%.2f Ausgabe=%.2f — kein Warnfall",
                         _smp_src_singmos,
                         _singmos_val,
                     )
@@ -19513,7 +19548,7 @@ class UnifiedRestorerV3:
                     _singmos_needs_phase65 = False
                 singmos_phase65_recovery = bool(_singmos_needs_phase65)
                 logger.info(
-                    "§G4 (GEBOTE.md) SingMOS Phase_65-Recovery: singmos=%.2f needs=%s",
+                    "§G4 (GEBOTE.md) SingMOS Verarbeitungsschritt_65-Wiederherstellung: singmos=%.2f needs=%s",
                     _singmos_val,
                     singmos_phase65_recovery,
                 )
@@ -19722,7 +19757,7 @@ class UnifiedRestorerV3:
                 # VQI unter Floor → Recovery-Kaskade aktivieren
                 _recovery_params = _trigger_rec(_mat_type, _vqi_score, _floor)
                 logger.warning(
-                    "§VQI-Recovery: Score=%.3f < Floor=%.3f (material=%s) — Kaskade aktiviert",
+                    "§VQI-Wiederherstellung: Wert=%.3f < Floor=%.3f (material=%s) — Kaskade aktiviert",
                     _vqi_score,
                     _floor,
                     _mat_type,
@@ -19734,7 +19769,7 @@ class UnifiedRestorerV3:
                     self._restoration_context["vocal_boost_factor"] = _recovery_params.get("recovery_boost_factor", 1.0)
             else:
                 logger.debug(
-                    "§VQI-Wiederherstellung: Score=%.3f ≥ Floor=%.3f (material=%s) — OK", _vqi_score, _floor, _mat_type
+                    "§VQI-Wiederherstellung: Wert=%.3f ≥ Floor=%.3f (material=%s) — OK", _vqi_score, _floor, _mat_type
                 )
 
         except Exception as _vqi_rec_exc:
@@ -19749,7 +19784,7 @@ class UnifiedRestorerV3:
                 # GP-Memory aktualisieren mit aktuellem Audio als Referenz
                 self._gp_memory_reference = restored_audio.copy()
                 logger.info(
-                    "§HPI Referenz-Memory aktualisiert: HPI=%.4f AF=%.4f (relaxed Update)",
+                    "§HPI Referenz-Memory aktualisiert: HPI=%.4f AF=%.4f (relaxed Aktualisierung)",
                     _hpi_result.hpi,
                     _artifact_freedom_for_hpi,
                 )
@@ -19876,7 +19911,7 @@ class UnifiedRestorerV3:
                 )
                 logger.warning(
                     "§2.49 Ausgabe-Gate: artifact_freedom=%.3f < %.3f — "
-                    "kein kompatibler Rollback-Checkpoint (fail-closed auf Original)",
+                    "kein kompatibler Rollback-Checkpoint (fail-closed auf Originalsignal)",
                     _artifact_freedom_for_hpi,
                     _afg_af_min,
                 )
@@ -20652,7 +20687,7 @@ class UnifiedRestorerV3:
                 _mismatch_pct_late = abs(_ref_len_late - _rest_len_late) / max(_min_len_late, 1)
                 if _mismatch_pct_late > 0.01:
                     logger.warning(
-                        "§8.1 MUSHRA post-LUFS: Längen-Mismatch ref=%d vs restored=%d (%.1f%%) — "
+                        "§8.1 MUSHRA post-LUFS: Längen-Mismatch ref=%d vs wiederhergestellt=%d (%.1f%%) — "
                         "Messung auf gemeinsames Fenster (%d Samples) gelegt",
                         _ref_len_late,
                         _rest_len_late,
@@ -21329,13 +21364,13 @@ class UnifiedRestorerV3:
                 _fb = getattr(self, "_shape_safe_fallback_audio", None)
                 if _fb is not None and getattr(_fb, "shape", (_target_len,))[_axis] == _target_len:
                     logger.warning(
-                        "FATAL-Längen-Mismatch (%d vs Ziel %d): Fallback-Checkpoint verwendet (kein Trim)",
+                        "FATAL-Längen-Mismatch (%d vs Ziel %d): Ersatzpfad-Checkpoint verwendet (kein Trim)",
                         _a.shape[_axis],
                         _target_len,
                     )
                     return cast(np.ndarray, np.asarray(_fb, dtype=np.float32))
                 logger.error(
-                    "FATAL: restored_audio Länge %d weicht >50%% von Ziel %d ab — trimme auf Ziel (kein Resample!)",
+                    "FATAL: wiederhergestellt_audio Länge %d weicht >50%% von Ziel %d ab — trimme auf Ziel (kein Resample!)",
                     _a.shape[_axis],
                     _target_len,
                 )
@@ -21756,7 +21791,12 @@ class UnifiedRestorerV3:
 
         # §G-STEREO-GUARD: Nie mono exportieren, wenn stereo importiert wurde
         _input_shape = _external_input_shape
-        _input_was_stereo = len(_input_shape) >= 2 and _input_shape[-1] >= 2
+        # Kanallayout-robust: stereo ⇔ genau 2 Kanäle, unabhängig von
+        # channels-first (2, T) / channels-last (T, 2). Ein (1, T)-Mono-Layout
+        # wurde bisher als stereo fehldetektiert (shape[-1] >= 2).
+        _input_was_stereo = (
+            len(_input_shape) >= 2 and any(d == 2 for d in _input_shape[:2]) and any(d > 2 for d in _input_shape)
+        )
         if _input_was_stereo and restored_audio.ndim == 1:
             logger.warning(
                 "§G-STEREO-GUARD: mono Ausgabe (shape=%s) from stereo Eingabe (shape=%s) — emergency stereo reconstruction",
@@ -22703,7 +22743,7 @@ class UnifiedRestorerV3:
                     if hasattr(result, "audio"):
                         result.audio = _vo_guarded
                     logger.warning(
-                        "§Ebene-0 Vocal-Drive Final-Check: Blend=%.2f — %s",
+                        "§Ebene-0 Vocal-Drive Final-Pruefung: Blend=%.2f — %s",
                         _vo_final_res.blend_factor,
                         "; ".join(_vo_final_res.reasons),
                     )
@@ -23052,7 +23092,7 @@ class UnifiedRestorerV3:
         if _wm_artefact_guard and _wm_mushra > 0:
             logger.warning(
                 "⚡ Wohlklang-Garantie: MUSHRA %.1f als Messartefakt eingestuft "
-                "(nsim=%.3f, mcd=%.1f dB, lufs_delta=%.1f LU, len=%d→%d) — kein automatischer Re-Run",
+                "(nsim=%.3f, mcd=%.1f dB, lufs_delta=%.1f LU, len=%d→%d) — kein automatischer Re-Ausfuehrung",
                 _wm_mushra,
                 _wm_nsim,
                 _wm_mcd_db,
@@ -23110,7 +23150,7 @@ class UnifiedRestorerV3:
             )  # §G-DB7 base 0.50, proportional SOTA
             logger.warning(
                 "⚡ Wohlklang-Garantie: MUSHRA %.1f < %.0f (%s) — "
-                "automatischer Re-Run mit %.0f%% Strengths (Versuch %d/2)",
+                "automatischer Re-Ausfuehrung mit %.0f%% Strengths (Versuch %d/2)",
                 _wm_mushra,
                 _wm_threshold,
                 _wm_mat,
@@ -23142,13 +23182,13 @@ class UnifiedRestorerV3:
                     _blend_audio = _wm_blend
                     logger.info(
                         "⚡ Wohlklang-Garantie: Blend-Versuch MUSHRA %.1f ≥ %.0f — "
-                        "Voll-Re-Run übersprungen (Performance-Faktor ~2)",
+                        "Voll-Re-Ausfuehrung übersprungen (Performance-Faktor ~2)",
                         _blend_mushra,
                         _wm_threshold,
                     )
                 else:
                     logger.info(
-                        "⚡ Wohlklang-Garantie: Blend-Versuch MUSHRA %.1f < %.0f — Voll-Re-Run folgt",
+                        "⚡ Wohlklang-Garantie: Blend-Versuch MUSHRA %.1f < %.0f — Voll-Re-Ausfuehrung folgt",
                         _blend_mushra,
                         _wm_threshold,
                     )
@@ -23175,14 +23215,14 @@ class UnifiedRestorerV3:
             _retry_mushra = float(getattr(self, "_mqa_mushra", 0.0) or 0.0)
             if _retry_mushra > self._wohlklang_best_mushra:
                 logger.info(
-                    "⚡ Wohlklang-Garantie: Re-Run MUSHRA %.1f > Erstlauf %.1f → Re-Run gewinnt",
+                    "⚡ Wohlklang-Garantie: Re-Ausfuehrung MUSHRA %.1f > Erstlauf %.1f → Re-Ausfuehrung gewinnt",
                     _retry_mushra,
                     self._wohlklang_best_mushra,
                 )
                 return _retry_result
             else:
                 logger.info(
-                    "⚡ Wohlklang-Garantie: Erstlauf MUSHRA %.1f ≥ Re-Run %.1f → Erstlauf gewinnt",
+                    "⚡ Wohlklang-Garantie: Erstlauf MUSHRA %.1f ≥ Re-Ausfuehrung %.1f → Erstlauf gewinnt",
                     self._wohlklang_best_mushra,
                     _retry_mushra,
                 )
@@ -24704,7 +24744,7 @@ class UnifiedRestorerV3:
             logger.debug("🏛️ HybridDereverb: Klasse verfügbar")
             return _hybrid_dereverb_result
         except Exception as _e38a:
-            logger.warning("§G23 ML→DSP-Fallback HybridDereverb: %s", _e38a, exc_info=True)
+            logger.warning("§G23 ML→DSP-Ersatzpfad HybridDereverb: %s", _e38a, exc_info=True)
             return None
 
     def _compute_hybrid_ml_denoiser_result(self) -> dict | None:
@@ -24717,7 +24757,7 @@ class UnifiedRestorerV3:
             logger.debug("🏛️ HybridMLDenoiser: initialisiert")
             return _hybrid_ml_denoiser_result
         except Exception as _e38b:
-            logger.warning("§G23 ML→DSP-Fallback HybridMLDenoiser: %s", _e38b, exc_info=True)
+            logger.warning("§G23 ML→DSP-Ersatzpfad HybridMLDenoiser: %s", _e38b, exc_info=True)
             return None
 
     def _compute_hybrid_nvsr_result(self) -> dict | None:
@@ -24730,7 +24770,7 @@ class UnifiedRestorerV3:
             logger.debug("🏛️ HybridNVSR: initialisiert")
             return _hybrid_nvsr_result
         except Exception as _e38c:
-            logger.warning("§G23 ML→DSP-Fallback HybridNVSR: %s", _e38c, exc_info=True)
+            logger.warning("§G23 ML→DSP-Ersatzpfad HybridNVSR: %s", _e38c, exc_info=True)
             return None
 
     def _compute_hybrid_speed_pitch_result(self) -> dict | None:
@@ -24743,7 +24783,7 @@ class UnifiedRestorerV3:
             logger.debug("🏛️ HybridSpeedPitch: initialisiert")
             return _hybrid_speed_pitch_result
         except Exception as _e38d:
-            logger.warning("ML→DSP-Fallback aktiviert", exc_info=True)  # §V6 (copilot-instructions.md)
+            logger.warning("ML→DSP-Ersatzpfad aktiviert", exc_info=True)  # §V6 (copilot-instructions.md)
             logger.debug("HybridSpeedPitch übersprungen: %s", _e38d)
             return None
 
@@ -24757,7 +24797,7 @@ class UnifiedRestorerV3:
             logger.debug("🏛️ HybridVocalEnhancer: initialisiert")
             return _hybrid_vocal_enhancer_result
         except Exception as _e38e:
-            logger.warning("§G23 ML→DSP-Fallback HybridVocalEnhancer: %s", _e38e, exc_info=True)
+            logger.warning("§G23 ML→DSP-Ersatzpfad HybridVocalEnhancer: %s", _e38e, exc_info=True)
             return None
 
     def _compute_hybrid_wow_flutter_result(self) -> dict | None:
@@ -24770,7 +24810,7 @@ class UnifiedRestorerV3:
             logger.debug("🏛️ HybridWowFlutter: initialisiert")
             return _hybrid_wow_flutter_result
         except Exception as _e38f:
-            logger.warning("§G23 ML→DSP-Fallback HybridWowFlutter: %s", _e38f, exc_info=True)
+            logger.warning("§G23 ML→DSP-Ersatzpfad HybridWowFlutter: %s", _e38f, exc_info=True)
             return None
 
     def _compute_audit_log_result(self) -> dict | None:
@@ -25696,7 +25736,7 @@ class UnifiedRestorerV3:
                 else None
             )
             logger.info(
-                "📌 QualityAnalyzer (Nachher): Wert=%.1f (Δ%s) SNR(output_snr_db)=%.1f warmth=%.3f naturalness=%.3f",
+                "📌 QualityAnalyzer (Nachher): Wert=%.1f (Δ%s) SNR(Ausgabe_snr_db)=%.1f warmth=%.3f naturalness=%.3f",
                 _quality_after.overall_score,
                 (
                     f"+{_qa_delta:.1f}"
@@ -31233,7 +31273,7 @@ class UnifiedRestorerV3:
             # ZCR korreliert invers mit spektralem Schwerpunkt: hohe ZCR
             # bedeutet mehr hochfrequente Anteile. Skaliert auf [0,1].
             logger.warning(
-                "§G93 Exception-Proxy: _estimate_hf_ratio FFT fehlgeschlagen → Zero-Crossing-Rate-Fallback (%s)",
+                "§G93 Exception-Proxy: _estimate_hf_Verhaeltnis FFT fehlgeschlagen → Zero-Crossing-Rate-Ersatzpfad (%s)",
                 _hf_exc,
                 exc_info=True,
             )
@@ -31252,7 +31292,7 @@ class UnifiedRestorerV3:
                 return float(np.clip(_zcr / 0.50, 0.10, 1.0))
             except Exception:
                 logger.warning(
-                    "§G93 Exception-Proxy: Zero-Crossing-Fallback ebenfalls fehlgeschlagen → neutral 0.50",
+                    "§G93 Exception-Proxy: Zero-Crossing-Ersatzpfad ebenfalls fehlgeschlagen → neutral 0.50",
                     exc_info=True,
                 )
                 return 0.50
@@ -31280,7 +31320,7 @@ class UnifiedRestorerV3:
             # Geringer Crest-Faktor ≈ stark komprimiert ≈ niedrige VQI.
             # Hoher Crest-Faktor ≈ natürliche Dynamik ≈ hohe VQI.
             logger.warning(
-                "§G93 Exception-Proxy: _estimate_vqi_proxy RMS-Stabilität fehlgeschlagen → Crest-Faktor-Fallback (%s)",
+                "§G93 Exception-Proxy: _estimate_vqi_proxy RMS-Stabilität fehlgeschlagen → Crest-Faktor-Ersatzpfad (%s)",
                 _vqi_exc,
                 exc_info=True,
             )
@@ -31302,7 +31342,7 @@ class UnifiedRestorerV3:
                 return _vqi_est
             except Exception:
                 logger.warning(
-                    "§G93 Exception-Proxy: Crest-Fallback ebenfalls fehlgeschlagen → neutral 0.50",
+                    "§G93 Exception-Proxy: Crest-Ersatzpfad ebenfalls fehlgeschlagen → neutral 0.50",
                     exc_info=True,
                 )
                 return 0.50
@@ -34691,7 +34731,7 @@ class UnifiedRestorerV3:
                 if _ho_retreat_reason is not None:
                     result.audio = np.asarray(audio, dtype=np.float32)
                     logger.warning(
-                        "🎧 §SCK-R/§WBG-R: Phase %s zurückgenommen (%s) — Hörordnung Ebene 1",
+                        "🎧 §SCK-R/§WBG-R: Verarbeitungsschritt %s zurückgenommen (%s) — Hörordnung Ebene 1",
                         _pid_guards,
                         _ho_retreat_reason,
                     )
@@ -34846,7 +34886,7 @@ class UnifiedRestorerV3:
                         if _wk4_violated:
                             if _wk4_reverted:
                                 logger.warning(
-                                    "§Ebene-4a Wohlklang-Veto (%s): Phase zurückgenommen — %s",
+                                    "§Ebene-4a Wohlklang-Veto (%s): Verarbeitungsschritt zurückgenommen — %s",
                                     _pid_guards,
                                     "; ".join(_wk4_post_res.failure_reasons),
                                 )
@@ -35630,7 +35670,7 @@ class UnifiedRestorerV3:
 
                             except Exception:
                                 logger.warning(
-                                    "ML→DSP-Fallback aktiviert", exc_info=True
+                                    "ML→DSP-Ersatzpfad aktiviert", exc_info=True
                                 )  # §V6 (copilot-instructions.md)
                                 _novelty_crit_sft = 0.35  # Konservativer Fallback
                             _excess_novelty = float(max(0.0, _sft_novelty_val - _novelty_crit_sft))
@@ -35719,7 +35759,7 @@ class UnifiedRestorerV3:
                     )
                     _mp_acc.update(_mp_fields)
         except Exception as _mp_merge_exc:
-            logger.debug("§G144 MushraProxy metadata merge non-blocking: %s", _mp_merge_exc)
+            logger.debug("§G144 MushraProxy metadata merge nicht blockierend: %s", _mp_merge_exc)
 
         # §G82-G86 Runtime Recalibration: Aktualisiere globalen
         # CalibrationContext NUR wenn sich SNR oder Bandbreite signifikant
@@ -35749,7 +35789,7 @@ class UnifiedRestorerV3:
                             _ctx.bandwidth_hz,
                         )
         except Exception as _recal_exc:
-            logger.debug("§G82 Rekalibrierungs-Kontext-Aktualisierung non-blocking: %s", _recal_exc)
+            logger.debug("§G82 Rekalibrierungs-Kontext-Aktualisierung nicht blockierend: %s", _recal_exc)
 
         return result
 
@@ -35913,7 +35953,7 @@ class UnifiedRestorerV3:
             )
         except ImportError as e:
             logger.debug(
-                "§V6 [copilot-instructions.md, Silent-Failure-Verbot] Phasen-Namens-Import fehlgeschlagen — lokale Ersatzfunktion verwendet: %s",
+                "§V6 [copilot-instructions.md, Silent-Fehlschlag-Verbot] Phasen-Namens-Import fehlgeschlagen — lokale Ersatzfunktion verwendet: %s",
                 e,
             )
 
@@ -37929,7 +37969,7 @@ class UnifiedRestorerV3:
                     _best_alpha = 0.0
                     _best_cost = float(_cost_base)
                     logger.info(
-                        "ActiveIntervention %s REJECTED: no beneficial score delta (Betriebsart=%s, alpha=%.2f)",
+                        "ActiveIntervention %s REJECTED: no beneficial Wert delta (Betriebsart=%s, alpha=%.2f)",
                         phase_id,
                         _best_mode,
                         _best_alpha,
@@ -38243,7 +38283,7 @@ class UnifiedRestorerV3:
                     # Location über gesamte Dauer — verhindert degeneriertes Envelope
                     _defect_locations[_dt_key] = [(0.0, _audio_duration_s)]
                     logger.debug(
-                        "§2.46g %s: keine Events → Fallback-Location [0.0, %.1fs] (stationärer Defekt)",
+                        "§2.46g %s: keine Events → Ersatzpfad-Location [0.0, %.1fs] (stationärer Defekt)",
                         _dt_key,
                         _audio_duration_s,
                     )
@@ -38954,6 +38994,10 @@ class UnifiedRestorerV3:
             self._step_total = max(int(self._step_total), len(selected_phases))
 
             for phase_id in selected_phases:
+                # §Watchdog (2026-09-11): Breadcrumb vor Lazy-Load — sichtbarer
+                # Marker für Stillstands-Diagnose (Stillstand nach Phase-Abschluss
+                # = Lazy-Load-Hang; Stillstand NACH diesem Log = Gate/Measure).
+                logger.info("§Watchdog: %s — Lazy-laden beginnt", phase_id)
                 phase = self._get_phase(phase_id)
                 if not phase:
                     _k_step, _n_step = self._next_step()
@@ -38966,6 +39010,9 @@ class UnifiedRestorerV3:
                     skipped.append(phase_id)
                     _record_oom_probe("phase_skip_not_loaded", phase_id)
                     continue
+                # §Watchdog (2026-09-11): Breadcrumb nach Lazy-Load — wenn dieses
+                # Log fehlt, hängt der Import/Modell-Load in _get_phase selbst.
+                logger.info("§Watchdog: %s — geladen, Gate/Banner folgt", phase_id)
                 # §v10.24: Skip phase if all primary defects already resolved
                 if self._should_skip_masked_phase(phase_id):
                     _k_step, _n_step = self._next_step()
@@ -39073,7 +39120,7 @@ class UnifiedRestorerV3:
                     # → additive Gesamt-Zählung.
                     _k_step, _n_step = self._next_step()
                     logger.info(
-                        "⏭️ %s deferred (%d/%d) — RT-Budget (KMV Stufe 2)",
+                        "⏭️ %s deferred (%d/%d) — RT-Grenze (KMV Stufe 2)",
                         phase_id,
                         _k_step,
                         _n_step,
@@ -39111,7 +39158,7 @@ class UnifiedRestorerV3:
                         continue
                     if _pipeline_non_exempt_elapsed_s > _pipeline_wall_budget:
                         logger.info(
-                            "§Wall-Time-Budget: %.0f s non-exempt > %.0f s"
+                            "§Wall-Time-Grenze: %.0f s non-exempt > %.0f s"
                             " (material=%s) — %s als Passthrough übersprungen",
                             _pipeline_non_exempt_elapsed_s,
                             _pipeline_wall_budget,
@@ -41324,6 +41371,34 @@ class UnifiedRestorerV3:
                                 self._metadata["length_corrections"] = []
                             self._metadata["length_corrections"].append(phase_id)
 
+                    # 👂 Reinhör-Witness (2026-09-11): deterministisches Hineinhören
+                    # ins Phase-Delta — meldet hörbare Regressionen (Pitch-Drift,
+                    # Stimm-Verzerrung, Lautstärke-Pumpen) REPORT-ONLY, damit die
+                    # Entwicklung Bugs pro Phase lokalisieren kann.
+                    if phase_id in executed and _afg_phase_input is not None:
+                        try:
+                            from backend.core.listening_witness import evaluate_listening_witness as _lw_eval
+
+                            _lw_res = _lw_eval(_afg_phase_input, current_audio, sample_rate, phase_id)
+                            if _lw_res.findings:
+                                logger.warning(
+                                    "👂 Reinhör-Witness %s: %s (pitch=%.1fc mod=%.1fc hnr=%.1fdB hf=%.3f loud=%.1fdB)",
+                                    phase_id,
+                                    ", ".join(_lw_res.findings),
+                                    _lw_res.pitch_drift_cents,
+                                    _lw_res.pitch_mod_depth_cents,
+                                    _lw_res.hnr_drop_db,
+                                    _lw_res.hf_flatness_rise,
+                                    _lw_res.loud_mod_rise_db,
+                                )
+                                if not hasattr(self, "_phase_metadata_accumulator"):
+                                    self._phase_metadata_accumulator = {}
+                                _lw_meta = dict(self._phase_metadata_accumulator.get(phase_id) or {})
+                                _lw_meta["listening_witness"] = _lw_res.as_dict()
+                                self._phase_metadata_accumulator[phase_id] = _lw_meta
+                        except Exception as _lw_exc:
+                            logger.debug("Reinhör-Witness %s nicht verfügbar: %s", phase_id, _lw_exc)
+
                     # §0d Carrier-Recovery-Checkpoint: nach jeder erfolgreichen Carrier-Phase
                     # den Audio-Snapshot speichern (letzter Carrier-Checkpoint = best_carrier_checkpoint)
                     if phase_id in executed and any(phase_id.startswith(cp) for cp in _CARRIER_PHASE_PREFIXES_0d):
@@ -42749,7 +42824,7 @@ class UnifiedRestorerV3:
                             _warn_t, _crit_t = (0.20, 0.35) if _mode == "restoration" else (0.30, 0.50)
                             if _cht_score > _crit_t:
                                 logger.warning(
-                                    "§CHT-2 Hard-Limit nach Glue Stage: Score=%.3f > CRITICAL=%.2f — "
+                                    "§CHT-2 Hard-Limit nach Glue Stufe: Wert=%.3f > CRITICAL=%.2f — "
                                     "rollback to best artifact-free checkpoint",
                                     _cht_score,
                                     _crit_t,
@@ -42765,7 +42840,7 @@ class UnifiedRestorerV3:
                                     logger.info("§CHT-2 Rollback-Ersatz: Audio auf Phasen-Anfang zurückgesetzt")
                             else:
                                 logger.debug(
-                                    "§CHT-2 nach Glue Stage: Score=%.3f <= CRITICAL=%.2f — OK",
+                                    "§CHT-2 nach Glue Stufe: Wert=%.3f <= CRITICAL=%.2f — OK",
                                     _cht_score,
                                     _crit_t,
                                 )
@@ -43612,7 +43687,31 @@ class UnifiedRestorerV3:
                 if _mp_rollbacks:
                     logger.warning("§G144 Rollbacks: %s", ", ".join(_mp_rollbacks[:5]))
         except Exception as _mp_sum_exc:
-            logger.debug("§G144 MushraProxy Summary non-blocking: %s", _mp_sum_exc)
+            logger.debug("§G144 MushraProxy Summary nicht blockierend: %s", _mp_sum_exc)
+
+        # ── 👂 Reinhör-Witness Pipeline-Summary (2026-09-11) ───────────
+        # Aggregiert die per-Phase-Hörbefunde (Pitch/Stimme/Lautstärke) aus dem
+        # Phase-Metadata-Accumulator. REPORT-ONLY — die Hör-Instanz entscheidet
+        # (Hörordnung §8a); dient der Bug-Lokalisierung in der Entwicklung.
+        try:
+            _lw_findings: list[dict[str, Any]] = []
+            for _pid, _pmeta in (getattr(self, "_phase_metadata_accumulator", None) or {}).items():
+                if isinstance(_pmeta, dict) and isinstance(_pmeta.get("listening_witness"), dict):
+                    _lw_findings.append(_pmeta["listening_witness"])
+            if _lw_findings:
+                _lw_by_phase: dict[str, list[str]] = {}
+                for _f in _lw_findings:
+                    _lw_by_phase.setdefault(str(_f.get("phase_id", "?")), []).extend(_f.get("findings", []))
+                _lw_summary = ", ".join(f"{p}:{','.join(fs)}" for p, fs in _lw_by_phase.items())
+                logger.warning(
+                    "👂 Reinhör-Witness Summary: %d Phasen mit Hörbefunden — %s",
+                    len(_lw_by_phase),
+                    _lw_summary[:400],
+                )
+            else:
+                logger.info("👂 Reinhör-Witness Summary: keine Hörbefunde über die Pipeline")
+        except Exception as _lw_sum_exc:
+            logger.debug("Reinhör-Witness Summary nicht blockierend: %s", _lw_sum_exc)
 
         # ── §G90 PresenceEmbedding: Post-Processing vor Export ──────────────
         _presence_audio = opt_result.audio
@@ -43738,7 +43837,7 @@ class UnifiedRestorerV3:
             return all_resolved
         except Exception as e:
             logger.debug(
-                "§V6 (copilot-instructions.md) _should_skip_resolved_phase fehlgeschlagen — False zurückgegeben (Phase wird ausgeführt): %s",
+                "§V6 (copilot-instructions.md) _should_ueberspringen_resolved_Verarbeitungsschritt fehlgeschlagen — False zurückgegeben (Verarbeitungsschritt wird ausgeführt): %s",
                 e,
             )
             return False
@@ -43757,6 +43856,11 @@ class UnifiedRestorerV3:
         - Enhancement-Phasen ohne Defekt-Mapping nie überspringen.
         - Defekte unter severity 0.03 zählen nicht (nicht vorhanden).
         """
+        # §m1b-Stufe-2-Nachbehandlung: Das Hörbarkeits-Gate hat diese Typen
+        # explizit als hörbar eingestuft und die Phase gequeued — der ERB-Masken-
+        # Skip darf den Retry nicht vetoen (sonst „keine Ausführung“, Produktionsbefund).
+        if getattr(self, "_m1b_pass_active", False):
+            return False
         if phase_id == "phase_06_frequency_restoration":
             _rctx = getattr(self, "_restoration_context", None) or {}
             _mat = str(_rctx.get("material_key", "")).lower()
@@ -43808,7 +43912,7 @@ class UnifiedRestorerV3:
             return False
         except Exception as e:
             logger.debug(
-                "§V6 (copilot-instructions.md) _should_skip_masked_phase fehlgeschlagen — False zurückgegeben (Phase wird ausgeführt): %s",
+                "§V6 (copilot-instructions.md) _should_ueberspringen_masked_Verarbeitungsschritt fehlgeschlagen — False zurückgegeben (Verarbeitungsschritt wird ausgeführt): %s",
                 e,
             )
             return False
@@ -43892,7 +43996,7 @@ class UnifiedRestorerV3:
             return all_absent
         except Exception as e:
             logger.debug(
-                "§V6 (copilot-instructions.md) _should_skip_absent_defect_phase fehlgeschlagen — False zurückgegeben (Phase wird ausgeführt): %s",
+                "§V6 (copilot-instructions.md) _should_ueberspringen_absent_defect_Verarbeitungsschritt fehlgeschlagen — False zurückgegeben (Verarbeitungsschritt wird ausgeführt): %s",
                 e,
             )
             return False
@@ -43940,7 +44044,7 @@ class UnifiedRestorerV3:
                 _conf = getattr(self, "_song_calibration_profile", {}).get("pipeline_confidence")
         except Exception as e:
             logger.debug(
-                "§V6 (copilot-instructions.md) Material-Confidence-Lesen fehlgeschlagen — False zurückgegeben (Phase wird ausgeführt): %s",
+                "§V6 (copilot-instructions.md) Material-Confidence-Lesen fehlgeschlagen — False zurückgegeben (Verarbeitungsschritt wird ausgeführt): %s",
                 e,
             )
             return False
@@ -44172,7 +44276,7 @@ class UnifiedRestorerV3:
             # RMS-basierte Noise-Floor-Schätzung aus den leisesten Segmenten.
             logger.warning(
                 "§G93 Exception-Proxy: _estimate_noise_floor_db FFT-Methode "
-                "fehlgeschlagen → RMS-Perzentil-Fallback (%s)",
+                "fehlgeschlagen → RMS-Perzentil-Ersatzpfad (%s)",
                 _nf_exc,
                 exc_info=True,
             )
@@ -44194,7 +44298,7 @@ class UnifiedRestorerV3:
                 return float(np.clip(noise_db_rms, -90.0, 0.0))
             except Exception:
                 logger.warning(
-                    "§G93 Exception-Proxy: RMS-Fallback ebenfalls fehlgeschlagen → None (keine Schätzung möglich)",
+                    "§G93 Exception-Proxy: RMS-Ersatzpfad ebenfalls fehlgeschlagen → None (keine Schätzung möglich)",
                     exc_info=True,
                 )
                 return None
@@ -44213,7 +44317,7 @@ class UnifiedRestorerV3:
             # Zeitbereichs-Proxy. Bei Fehler → Median-Peak/RMS aus Chunks.
             logger.warning(
                 "§G93 Exception-Proxy: _estimate_crest_factor_db direkte Methode "
-                "fehlgeschlagen → Chunk-Median-Fallback (%s)",
+                "fehlgeschlagen → Chunk-Median-Ersatzpfad (%s)",
                 _cf_exc,
                 exc_info=True,
             )
@@ -44235,7 +44339,7 @@ class UnifiedRestorerV3:
                 return float(20.0 * np.log10(max(median_ratio, 1.0)))
             except Exception:
                 logger.warning(
-                    "§G93 Exception-Proxy: Chunk-Median-Fallback ebenfalls "
+                    "§G93 Exception-Proxy: Chunk-Median-Ersatzpfad ebenfalls "
                     "fehlgeschlagen → None (keine Schätzung möglich)",
                     exc_info=True,
                 )
@@ -45030,12 +45134,12 @@ class UnifiedRestorerV3:
             _dt = time.monotonic() - _t0
             if not _m1b_exec:
                 logger.warning(
-                    "§m1b: Retry-Phasen %s erzeugten keine Ausführung — kein Audio-Ersatz.",
+                    "§m1b: Wiederholung-Phasen %s erzeugten keine Ausführung — kein Audio-Ersatz.",
                     _retry,
                 )
                 return None
             logger.info(
-                "🔧 §m1b: %d Retry-Phasen (%s) in %.1fs — Restdefekt-Nachbehandlung abgeschlossen",
+                "🔧 §m1b: %d Wiederholung-Phasen (%s) in %.1fs — Restdefekt-Nachbehandlung abgeschlossen",
                 len(_m1b_exec),
                 ", ".join(str(p) for p in _m1b_exec),
                 _dt,
@@ -45259,7 +45363,7 @@ class UnifiedRestorerV3:
 
                 _chunk_kwargs["pre_repair_reference"] = _ppr_slice_fn(chunks[0][0], chunks[0][1])
                 logger.info(
-                    "§B3 Chunked-Streaming: pre_repair_reference pro Chunk zugeschnitten (Full-Song %d Samples)",
+                    "§B3 Chunked-Streaming: pre_repair_Referenz pro Chunk zugeschnitten (Full-Song %d Samples)",
                     _ppr_len,
                 )
 
@@ -45895,7 +45999,7 @@ if __name__ == "__main__":
             # Höhere ZCR → mehr hochfrequente Anteile → höhere effektive BW.
             logger.warning(
                 "§G93 Exception-Proxy: _estimate_effective_bandwidth_hz FFT "
-                "fehlgeschlagen → Zero-Crossing-Rate-Fallback (%s)",
+                "fehlgeschlagen → Zero-Crossing-Rate-Ersatzpfad (%s)",
                 _bw_exc,
                 exc_info=True,
             )
@@ -45912,7 +46016,7 @@ if __name__ == "__main__":
                 return bw_est
             except Exception:
                 logger.warning(
-                    "§G93 Exception-Proxy: ZCR-Fallback ebenfalls fehlgeschlagen → None (keine Schätzung möglich)",
+                    "§G93 Exception-Proxy: ZCR-Ersatzpfad ebenfalls fehlgeschlagen → None (keine Schätzung möglich)",
                     exc_info=True,
                 )
                 return None
@@ -45938,7 +46042,7 @@ def _deep_extract_ndarray(obj: object, _depth: int = 0) -> "np.ndarray | None":
             if found is not None:
                 return found
     except Exception as _dex_exc:
-        logger.warning("§G93 _deep_extract_ndarray fehlgeschlagen: %s", _dex_exc, exc_info=True)
+        logger.warning("§G93 _deep_extrahieren_ndarray fehlgeschlagen: %s", _dex_exc, exc_info=True)
     return None
 
 
@@ -45973,7 +46077,7 @@ def _audio_sanity_check(audio: "np.ndarray", phase_id: str = "unknown") -> "np.n
         return audio
     except Exception as _asc_exc:
         logger.warning(
-            "§G93 Exception-Proxy: _audio_sanity_check fehlgeschlagen → None (Audio abgelehnt): %s",
+            "§G93 Exception-Proxy: _audio_sanity_Pruefung fehlgeschlagen → None (Audio abgelehnt): %s",
             _asc_exc,
             exc_info=True,
         )

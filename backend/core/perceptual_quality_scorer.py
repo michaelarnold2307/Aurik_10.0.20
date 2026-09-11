@@ -43,6 +43,8 @@ class PQSResult:
     mcd_db: float  # Mel-Cepstral Distortion [dB] (lower = better)
     spectral_coherence: float  # ∈ [0, 1]
     referenced: bool = True  # True = referenz-basiert, False = absolut (§2.6)
+    gc_nsim: float = 0.5  # Gammachirp-NSIM (auditorische Peripherie, §Gammachirp)
+    dlm_loudness_ratio_db: float = 0.0  # §DLM-full: 10·log10(N_deg/N_ref) (Zeuge)
 
     @property
     def pqs_mos(self) -> float:
@@ -156,6 +158,18 @@ class PerceptualQualityScorer:
         _std_d = np.std(_deg_weighted) + 1e-12
         nsim = float(np.clip(_cov / (_std_r * _std_d), 0.0, 1.0))
 
+        # §Gammachirp (gammachirp_filterbank.py): echte auditorische
+        # Peripherie-Ähnlichkeit (Irino & Patterson 1997) — 15 %-Blend in den
+        # NSIM-Term. Deterministisch; §V6-Fallback auf ERB-NSIM bei Fehler.
+        try:
+            from backend.core.dsp.gammachirp_filterbank import nsim_gammachirp
+
+            gc_nsim = float(nsim_gammachirp(reference, degraded, sr))
+        except Exception as _gc_exc:
+            logger.warning("§V6 (copilot-instructions.md) Gammachirp-NSIM nicht verfügbar — ERB-NSIM: %s", _gc_exc)
+            gc_nsim = float(nsim)
+        nsim_blend = float(np.clip(0.85 * nsim + 0.15 * gc_nsim, 0.0, 1.0))
+
         # §9.10.120: True Mel-Cepstral Distortion (MCD) — replaces naive RMS diff.
         # Standard MCD: mean Euclidean distance of MFCC vectors (Kubichek 1993).
         # Uses 13 MFCCs from DCT of log-mel spectrogram.
@@ -197,7 +211,7 @@ class PerceptualQualityScorer:
         # MOS-Mapping (§2.6 Spec-Formel: W_NSIM=0.40, W_MCD=0.30, W_LUFS=0.15, W_COH=0.15)
         # Für identische Signale: nsim=1, mcd_db=0, coh=1 → z=1.0 → MOS≈4.97
         z = (
-            self.W_NSIM * nsim
+            self.W_NSIM * nsim_blend
             + self.W_MCD * (1.0 - np.clip(mcd_db, 0.0, 50.0) / 50.0)  # invertiert: 0 dB → 1.0
             + self.W_COH * coh
             + self.W_LUFS * 1.0
@@ -211,8 +225,27 @@ class PerceptualQualityScorer:
         coh = np.nan_to_num(coh, nan=0.6)
         mos = np.nan_to_num(mos, nan=3.5)
 
+        # §DLM-full (dynamic_loudness_model.py): Loudness-Verhältnis deg/ref in
+        # dB — Restaurierung darf die Lautheit nicht unkontrolliert anheben
+        # (Zeuge, kein Hard-Fail; Hörordnung §1).
+        _dlm_ratio_db = 0.0
+        try:
+            from backend.core.dsp.dynamic_loudness_model import dynamic_loudness as _dlm_fn
+
+            _n_ref = float(_dlm_fn(np.asarray(reference, dtype=np.float32), sr).stl_sone)
+            _n_deg = float(_dlm_fn(np.asarray(degraded, dtype=np.float32), sr).stl_sone)
+            _dlm_ratio_db = float(np.clip(10.0 * np.log10(max(_n_deg, 1e-9) / max(_n_ref, 1e-9)), -24.0, 24.0))
+        except Exception as _dlm_exc:
+            logger.warning("§V6 (copilot-instructions.md) DLM-Loudness nicht verfügbar — neutral: %s", _dlm_exc)
+
         return PQSResult(
-            mos=float(mos), nsim=float(nsim), mcd_db=float(mcd_db), spectral_coherence=float(coh), referenced=True
+            mos=float(mos),
+            nsim=float(nsim_blend),
+            mcd_db=float(mcd_db),
+            spectral_coherence=float(coh),
+            referenced=True,
+            gc_nsim=float(gc_nsim),
+            dlm_loudness_ratio_db=_dlm_ratio_db,
         )
 
     def score_absolute(self, audio: np.ndarray, sr: int) -> PQSResult:

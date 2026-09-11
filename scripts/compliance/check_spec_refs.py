@@ -1,9 +1,14 @@
 #!/usr/bin/env python3
 """Pre-commit hook: §-Referenz-Check.
 
+
 Prüft, ob neue §-Referenzen im SPEC.md dokumentiert sind.
 Exit 1 wenn undokumentierte §-Referenzen gefunden werden.
 """
+
+import logging
+
+logger = logging.getLogger(__name__)
 
 import re
 import sys
@@ -25,6 +30,7 @@ for fp in sys.argv[1:]:
     try:
         content = Path(fp).read_text(encoding="utf-8")
     except Exception:
+        logger.debug("Stiller Ersatzpfad dokumentiert (Bug 9/V74)", exc_info=True)
         continue
     found = set(re.findall(r"§[A-Za-z0-9._-]+", content))
     undocumented = found - DOCUMENTED

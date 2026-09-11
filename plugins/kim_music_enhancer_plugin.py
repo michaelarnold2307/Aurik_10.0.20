@@ -20,6 +20,8 @@ import numpy as np
 
 logger = logging.getLogger(__name__)
 _lock = threading.Lock()
+# §v10.40c: Session-Cache auf Modulebene statt setattr auf Funktionsobjekt (B010).
+_SESS_CACHE: dict = {}
 
 _ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 _MODEL_PATH = os.path.join(_ROOT, "models", "kim_inst", "kim_inst.onnx")
@@ -35,13 +37,17 @@ OVERLAP = 128  # DIM_T // 2
 def _get_session():
     import onnxruntime as ort
 
-    _sess = getattr(_get_session, "_sess", None)
+    # §G174: Import NIEMALS innerhalb eines Locks — vorher auflösen.
+    from backend.core.gpu_model_registry import get_onnx_providers
+
+    _sess = _SESS_CACHE.get("default")
     if _sess is None:
         with _lock:
-            _sess = getattr(_get_session, "_sess", None)
+            _sess = _SESS_CACHE.get("default")
             if _sess is None:
-                _sess = ort.InferenceSession(_MODEL_PATH, providers=["CPUExecutionProvider"])
-                setattr(_get_session, "_sess", _sess)
+                # §v10.40c: Registry-konsultierte Provider-Wahl statt hartem CPU.
+                _sess = ort.InferenceSession(_MODEL_PATH, providers=get_onnx_providers(_MODEL_PATH))
+                _SESS_CACHE["default"] = _sess
     return _sess
 
 

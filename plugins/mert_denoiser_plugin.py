@@ -25,6 +25,8 @@ import numpy as np
 import onnxruntime as ort
 import soundfile as sf
 
+from backend.core.gpu_model_registry import get_onnx_providers
+
 log = logging.getLogger(__name__)
 
 # Constants
@@ -78,7 +80,7 @@ class MERTDenoiserPlugin:
             raise FileNotFoundError(f"Decoder ONNX not found: {decoder_path}")
         self.decoder_session = ort.InferenceSession(
             str(decoder_path),
-            providers=["CPUExecutionProvider"],  # Decoder is lightweight, CPU is fine
+            providers=get_onnx_providers(str(decoder_path)),  # Decoder is lightweight, CPU is fine
         )
         log.info(f"MERT Denoiser: Decoder loaded from {decoder_path}")
 

@@ -87,7 +87,9 @@ def _bounded_patches(audio: np.ndarray, sr: int) -> list:
         patch("backend.core.quality_prediction.QualityAnalyzer", return_value=_qa_stub),
         patch("backend.core.ast_audio_set_classifier.get_ast_classifier", return_value=_ast_stub),
         patch("backend.core.unified_restorer_v3.UnifiedRestorerV3._execute_pipeline", new=_execute_spy),
-        patch("backend.core.musical_goals.musical_goals_metrics.MusicalGoalsChecker.measure_all", return_value=_goals_ok),
+        patch(
+            "backend.core.musical_goals.musical_goals_metrics.MusicalGoalsChecker.measure_all", return_value=_goals_ok
+        ),
         patch("backend.core.artifact_freedom_gate.ArtifactFreedomGate.evaluate", return_value=_artifact_ok),
         patch("backend.core.feedback_chain.FeedbackChain.run", return_value=None),
     ], _pipeline_len

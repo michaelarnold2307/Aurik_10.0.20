@@ -28,7 +28,10 @@ def phase_human_name(phase_id: str) -> str:
 
         return phase_name_de(phase_id)
     except ImportError as exc:
-        logger.debug("§V6 phase_icons.phase_name_de nicht verfügbar — Phase-ID unverändert zurückgegeben: %s", exc)
+        logger.debug(
+            "§V6 (copilot-instructions.md) Verarbeitungsschritt_icons.Verarbeitungsschritt_name_de nicht verfügbar — Verarbeitungsschritt-ID unverändert zurückgegeben: %s",
+            exc,
+        )
         return phase_id
 
 
@@ -39,5 +42,8 @@ def phase_human_name_with_icon(phase_id: str) -> str:
 
         return phase_display(phase_id)
     except ImportError as exc:
-        logger.debug("§V6 phase_icons.phase_display nicht verfügbar — phase_human_name Fallback aktiviert: %s", exc)
+        logger.debug(
+            "§V6 (copilot-instructions.md) Verarbeitungsschritt_icons.Verarbeitungsschritt_display nicht verfügbar — Verarbeitungsschritt_human_name Ersatzpfad aktiviert: %s",
+            exc,
+        )
         return phase_human_name(phase_id)

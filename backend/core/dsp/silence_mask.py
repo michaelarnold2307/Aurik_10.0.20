@@ -258,7 +258,7 @@ def compute_silence_mask(
         return _mask_smooth.astype(np.float32)  # type: ignore[no-any-return]
 
     except Exception:  # pragma: no cover
-        logger.warning("ML→DSP-Fallback aktiviert", exc_info=True)  # §V6 (copilot-instructions.md)
+        logger.warning("ML→DSP-Ersatzpfad aktiviert", exc_info=True)  # §V6 (copilot-instructions.md)
         logger.exception("silence_mask: Fehler bei compute_silence_mask — Fallback: alle aktiv")
         _n_fb = int(np.asarray(audio).shape[-1]) if np.asarray(audio).ndim >= 1 else 0
         return np.ones(max(0, _n_fb), dtype=np.float32)  # type: ignore[no-any-return]
@@ -367,7 +367,7 @@ def apply_silence_preservation(
 
         return _out.astype(np.float32)  # type: ignore[no-any-return]
     except Exception:  # pragma: no cover
-        logger.warning("ML→DSP-Fallback aktiviert", exc_info=True)  # §V6 (copilot-instructions.md)
+        logger.warning("ML→DSP-Ersatzpfad aktiviert", exc_info=True)  # §V6 (copilot-instructions.md)
         logger.exception("silence_mask: Fehler bei apply_silence_preservation — Fallback: unverändert")
         return np.asarray(processed, dtype=np.float32)  # type: ignore[no-any-return]
 

@@ -31,6 +31,8 @@ from typing import cast
 
 import numpy as np
 
+from backend.core.gpu_model_registry import get_onnx_providers
+
 logger = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
@@ -88,7 +90,7 @@ def _load_onnx_session():
 
             _onnx_session = ort.InferenceSession(
                 str(_AUDIOLDM2_ONNX_PATH),
-                providers=["CPUExecutionProvider"],
+                providers=get_onnx_providers(str(_AUDIOLDM2_ONNX_PATH)),
             )
             logger.info("AudioLDM2 ONNX geladen: %s", _AUDIOLDM2_ONNX_PATH)
             return _onnx_session
@@ -152,7 +154,7 @@ def _ddim_scheduler(
     # Initial random noise
     latent = np.random.randn(*latent_shape).astype(np.float32)
 
-    batch_size = latent_shape[0]
+    latent_shape[0]
 
     for i in range(num_inference_steps):
         t = ddim_timesteps[i]
@@ -365,7 +367,7 @@ def _load_vae_session():
 
             _vae_session = ort.InferenceSession(
                 str(_AUDIOLDM2_VAE_ONNX_PATH),
-                providers=["CPUExecutionProvider"],
+                providers=get_onnx_providers(str(_AUDIOLDM2_VAE_ONNX_PATH)),
             )
             logger.info("AudioLDM2 VAE decoder ONNX geladen: %s", _AUDIOLDM2_VAE_ONNX_PATH)
             return _vae_session
@@ -484,7 +486,7 @@ def _mel_to_audio_griffin_lim(
 
         # Mel → linear spectrogram (approximate inverse)
         mel_spec = np.maximum(mel_spec, 1e-8)
-        mel_spec_db = 20.0 * np.log10(mel_spec)
+        20.0 * np.log10(mel_spec)
 
         # Approximate: just use spectrogram magnitude as-is with Griffin-Lim
         # Since we can't invert the mel filterbank exactly without the filters,
@@ -648,7 +650,7 @@ class AudioLDM2Plugin:
             Denoised audio at original sample rate, float32, same shape as input.
         """
         if not self._ok:
-            logger.debug("AudioLDM2 denoise: model not loaded, returning original")
+            logger.debug("AudioLDM2 denoise: model not geladen, returning Originalsignal")
             return cast(np.ndarray, (np.asarray(audio, dtype=np.float32)))
 
         audio = np.nan_to_num(np.asarray(audio, dtype=np.float32), nan=0.0, posinf=0.0, neginf=0.0)
@@ -738,7 +740,7 @@ class AudioLDM2Plugin:
             return cast(np.ndarray, denoised.astype(np.float32))
 
         except Exception as exc:
-            logger.warning("AudioLDM2 denoise failed: %s — returning original", exc)
+            logger.warning("AudioLDM2 denoise fehlgeschlagen: %s — returning Originalsignal", exc)
             return cast(np.ndarray, (np.asarray(audio, dtype=np.float32)))
 
     def _run_unet(

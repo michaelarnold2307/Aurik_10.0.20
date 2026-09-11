@@ -1,6 +1,6 @@
 """§Anti-Fatigue-Pass — komponenten-getriebene Hörermüdungs-Prävention.
 
-Hörordnung §6 (Ermüdungs-Abbruch, hoerordnung.instructions.md) + §V7
+Hörordnung §6 (Ermüdungs-Abbruch, hoerordnung.instructions.md) + §V7 (copilot-instructions.md)
 (Ursache statt Symptom, copilot-instructions.md): Die Listening-Fatigue-Metrik
 (`backend/core/listening_fatigue_metric.py`) misst drei Komponenten —
 Spektralbalance (HF-Anteil), Crest-Faktor (Kompression) und Mikrodynamik.
@@ -19,7 +19,7 @@ Dieses Modul liefert:
    übernehmen nur, wenn die Fatigue nachweislich sinkt und kein Peak-Schaden
    entsteht) und liefert Vorher/Nachher-Werte für Telemetrie.
 
-Deterministisch (§G5), numpy/scipy-only, keine externen Modelle.
+Deterministisch (§G5 (GEBOTE.md)), numpy/scipy-only, keine externen Modelle.
 """
 
 from __future__ import annotations
@@ -28,6 +28,8 @@ import logging
 from dataclasses import dataclass
 
 import numpy as np
+
+from backend.core.audio_layout import mono_mix
 
 logger = logging.getLogger(__name__)
 
@@ -95,9 +97,7 @@ def fatigue_correction_plan(
         # §V26: kontinuierliche Stärke aus der Abweichung, gedeckelt.
         hf_cut_db = float(np.clip(-hf_dev * 6.0, -_HF_CUT_MAX_DB, 0.0))
     if micro_dev > _COMPONENT_MIN or crest_dev > _COMPONENT_MIN:
-        micro_expand_db = float(
-            np.clip(1.2 * micro_dev + 0.8 * crest_dev, 0.0, _MICRO_EXPAND_MAX_DB)
-        )
+        micro_expand_db = float(np.clip(1.2 * micro_dev + 0.8 * crest_dev, 0.0, _MICRO_EXPAND_MAX_DB))
 
     if hf_cut_db == 0.0 and micro_expand_db == 0.0:
         return FatigueCorrectionPlan(
@@ -151,7 +151,7 @@ def apply_microdynamics_expansion(audio: np.ndarray, sr: int, expand_db: float) 
         return _out
 
     arr = np.asarray(audio, dtype=np.float64)
-    mono = arr.mean(axis=0) if arr.ndim == 2 else arr
+    mono = mono_mix(arr) if arr.ndim == 2 else arr
 
     frame = max(1, int(sr * 0.05))  # 50 ms
     hop = max(1, frame // 2)
@@ -196,7 +196,9 @@ def anti_fatigue_pass(audio: np.ndarray, sr: int) -> AntiFatigueResult:
         before = float(_components["fatigue"])
         plan = fatigue_correction_plan(_components, fatigue=before)
         if plan.is_empty:
-            return AntiFatigueResult(audio=arr, before=before, after=before, plan=plan, applied=False, reason=plan.reason)
+            return AntiFatigueResult(
+                audio=arr, before=before, after=before, plan=plan, applied=False, reason=plan.reason
+            )
 
         candidate = arr
         if plan.hf_cut_db < 0.0:

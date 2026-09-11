@@ -83,7 +83,9 @@ class GoalPriorityProtocol:
         for _g in cls.PRIORITY_MAP:
             _c = cls.canonical_goal(_g)
             if _c not in _tier:
-                _problems.append(f"PRIORITY_MAP-Goal '{_g}' (kanonisch '{_c}') fehlt in HEARING_TIER_MAP — würde still auf Tier 3 defaulten")
+                _problems.append(
+                    f"PRIORITY_MAP-Goal '{_g}' (kanonisch '{_c}') fehlt in HEARING_TIER_MAP — würde still auf Tier 3 defaulten"
+                )
         # (b) Normative Hörordnungs-Anker (hoerordnung.instructions.md §5)
         _anchors = {"natuerlichkeit": 1, "waerme": 2, "transparenz": 3, "brillanz": 4}
         for _g, _expected in _anchors.items():

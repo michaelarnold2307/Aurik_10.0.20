@@ -22,6 +22,7 @@ logger = logging.getLogger(__name__)
 
 AVAILABLE_STEMS = ["vocals", "drums", "bass", "other"]
 
+
 # §15.9/P1-1: ONNX-Sessions laufen über den zentralen InferenceSessionManager
 # (Residency je Session, LRU-Eviction, Memory-Limit — kein Prozess-Eigen-Cache).
 def _get_ort_session(model_path: str) -> Any:

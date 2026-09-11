@@ -231,8 +231,8 @@ def _dynamic_eq(audio: np.ndarray, sr: int, material: str) -> np.ndarray:
             return (audio * ratio[:, np.newaxis]).astype(np.float32)  # type: ignore[no-any-return]
         return cast(np.ndarray, (np.clip(result, -1, 1).astype(np.float32)))
     except Exception as e:
-        # §V6 Silent-Failure-Verbot: Log mit Begründung, aber nicht WARNING (graceful fallback)
-        logger.info("§V6 Graceful fallback stage 1: %s", str(e)[:200])
+        # §V6 (copilot-instructions.md) Silent-Failure-Verbot: Log mit Begründung, aber nicht WARNING (graceful fallback)
+        logger.info("§V6 (copilot-instructions.md) Graceful Ersatzpfad Stufe 1: %s", str(e)[:200])
         return audio
 
 
@@ -304,8 +304,8 @@ def _adaptive_mb_compression(audio: np.ndarray, sr: int) -> np.ndarray:
             return (audio * ratio_arr[:, np.newaxis]).astype(np.float32)  # type: ignore[no-any-return]
         return combined.astype(np.float32)  # type: ignore[no-any-return]
     except Exception as e:
-        # §V6 Silent-Failure-Verbot: Log mit Begründung, aber nicht WARNING (graceful fallback)
-        logger.info("§V6 Graceful fallback stage 1b: %s", str(e)[:200])
+        # §V6 (copilot-instructions.md) Silent-Failure-Verbot: Log mit Begründung, aber nicht WARNING (graceful fallback)
+        logger.info("§V6 (copilot-instructions.md) Graceful Ersatzpfad Stufe 1b: %s", str(e)[:200])
         return audio
 
 

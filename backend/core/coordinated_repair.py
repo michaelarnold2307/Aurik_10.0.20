@@ -37,6 +37,8 @@ from typing import Any, Optional, cast
 
 import numpy as np
 
+from backend.core.audio_layout import mono_mix
+
 logger = logging.getLogger(__name__)
 
 try:
@@ -147,8 +149,8 @@ def _is_localized_change(pre: np.ndarray, post: np.ndarray, max_fraction: float 
         if _pre.shape != _post.shape:
             return False
         if _pre.ndim > 1:
-            _pre = _pre.mean(axis=0)
-            _post = _post.mean(axis=0)
+            _pre = mono_mix(_pre)
+            _post = mono_mix(_post)
         _diff = np.abs(_post - _pre).flatten()
         _sorted = np.sort(_diff)[::-1]
         _cum = np.cumsum(_sorted**2)
@@ -1025,13 +1027,11 @@ class CoordinatedRepair:
             # Pfad-Fix 2026-09-10: parent.parent zeigte auf backend/ statt
             # Repo-Wurzel — Checkpoints wurden nie gefunden (Original-Bug).
             base_dir = (
-                __import__("pathlib").Path(__file__).resolve().parent.parent.parent
-                / "models"
-                / "harmonic_inpainting"
+                __import__("pathlib").Path(__file__).resolve().parent.parent.parent / "models" / "harmonic_inpainting"
             )
             session, use_mask_channel = self._load_inpainting_onnx(base_dir)
             if session is None:
-                # §V6: Silent-Failure verboten — Warnung + Grund, dann eager-Fallback.
+                # §V6 (copilot-instructions.md): Silent-Failure verboten — Warnung + Grund, dann eager-Fallback.
                 log.warning(
                     "Harmonic Inpainting: kein ONNX in %s ladbar — eager .pt-Fallback",
                     base_dir,
@@ -1142,9 +1142,7 @@ class CoordinatedRepair:
                 from backend.core.gpu_model_registry import apply_gpu_policy
 
                 _gpu = bool(torch.cuda.is_available())
-                _requested = (
-                    ["ROCMExecutionProvider", "CPUExecutionProvider"] if _gpu else ["CPUExecutionProvider"]
-                )
+                _requested = ["ROCMExecutionProvider", "CPUExecutionProvider"] if _gpu else ["CPUExecutionProvider"]
                 _providers = apply_gpu_policy(_requested, path)
                 _sess = ort.InferenceSession(str(path), providers=_providers)
                 log.info(
@@ -1168,7 +1166,7 @@ class CoordinatedRepair:
         base_dir: Any,
         sr: int,
     ) -> np.ndarray:
-        """Eager-.pt-Fallback (§V6), wenn kein ONNX ladbar ist.
+        """Eager-.pt-Fallback (§V6 (copilot-instructions.md)), wenn kein ONNX ladbar ist.
 
         Semantik identisch zum ONNX-Pfad (§v10.900 ODE, Mask-Reset, Overlap-
         Add); 1-Kanal-Zweig mit korrektem Euler-Update (Fix: vorher erzwang
@@ -1182,7 +1180,7 @@ class CoordinatedRepair:
             mask_ckpt = base_dir / "inpainting_mask_best.pt"
             ckpt_path = base_dir / "inpainting_best.pt"
             if not mask_ckpt.exists() and not ckpt_path.exists():
-                # §V6: niemals mit uninitialisierten Gewichten rechnen.
+                # §V6 (copilot-instructions.md): niemals mit uninitialisierten Gewichten rechnen.
                 log.warning("Harmonic Inpainting: keine .pt-Checkpoints in %s — Pass-Through", base_dir)
                 return audio
             if mask_ckpt.exists():

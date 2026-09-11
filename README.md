@@ -4,7 +4,7 @@
 
 > Normativer Ist-Stand: `.github/specs/`, `.github/copilot-instructions.md`, `CHANGELOG.md`, `denker/README.md`.
 
-![Tests](https://img.shields.io/badge/tests-285%2B%20Denker%20%2B%2018.400%2B%20gesamt-brightgreen)
+![Tests](https://img.shields.io/badge/tests-19.040%2B%20gr%C3%BCn%20%2F%2019.700%2B%20gesammelt-brightgreen)
 ![DefectTypes](https://img.shields.io/badge/Defekttypen-62%2F62%20erkannt%20%26%20gemappt-brightgreen)
 ![Materials](https://img.shields.io/badge/Materialien-16%20Typen-blue)
 ![Genres](https://img.shields.io/badge/Genres-19%20Profile-blue)
@@ -32,9 +32,9 @@ vollständig offline, ohne Cloud- oder Netzwerkabhängigkeiten.
 - Endnutzer-Workflow: genau eine Entscheidung pro Datei, `Restoration` oder `Studio 2026`
 - Kanonischer Laufzeitpfad: Bridge -> `AurikDenker.denke(...)` -> `export_guard()`
 
-**Aktuelle Ergebnisse (v10.0.8):**
+**Aktuelle Ergebnisse (Stand 2026-09-11, Fullsuite verify3):**
 
-- ✅ **285+ Denker-Tests** — grün (zzgl. ~15.000 weitere Test-Suites)
+- ✅ **19.040+ Tests grün** — 19.700+ gesammelt, 14 failed, 31 skipped; 261 Denker-Tests in 11 Dateien
 - ✅ **62/62 Defekttypen** — vollständig erkannt und auf Phasen gemappt
 - ✅ **16 Materialien** — auto-erkannt mit Transfer-Chain-Analyse
 - ✅ **19 Genre-Profile** — inkl. Reggae, Latin, Gospel, Country, Funk, Ambient, World
@@ -108,9 +108,9 @@ DefectScanner (62 Typen)
 
 ---
 
-## 🚀 Aurik 10.0.8 — Weltklasse-Intelligenz
+## 🚀 Aurik 10.0.x — Weltklasse-Intelligenz (Meilenstein-Reihe)
 
-**Stand: 4. Juli 2026** | **38 Dateien modifiziert, 14 neue Dateien** | **358+ Tests**
+**Meilenstein v10.0.8: 4. Juli 2026** | **Heutiger Stand: 19.040+ Tests grün (Fullsuite 2026-08-16)**
 
 ### Neue psychoakustische Modelle
 
@@ -186,9 +186,9 @@ DefectScanner (62 Typen)
 | `CausalDefectReasoner` | Bayesianische Kausalinferenz, **62 Kausal-Ursachen** |
 | `GPParameterOptimizer` | RBF-GP + UCB + **MOO Pareto-Front** (14 Objectives) |
 | `PerceptualQualityScorer` | Gammatone-NSIM + MCD + LUFS + MOS |
-| `MusicalGoalsChecker` | **14 musikalische Qualitätsziele** |
+| `MusicalGoalsChecker` | **15 musikalische Qualitätsziele** |
 | `MediumDetector` | File-ext-aware Tonträgerketten-Erkennung, autoritatives Materialsystem |
-| `DefectScanner` | 56 DefectTypes, material-adaptive Material-Priors |
+| `DefectScanner` | 62 DefectTypes, material-adaptive Material-Priors |
 | `TransientDecoupledProcessing` | HPSS-Trennung — Groove-Schutz vor jeder NR |
 | `HarmonicPreservationGuard` | CREPE/pYIN → G_floor 0.85 an Harmonik-Bins |
 | `PerPhaseMusicalGoalsGate` | Rollback bei kumulativer Degradation (66 Phasen) |
@@ -241,11 +241,11 @@ und produziert das vollständige `AurikErgebnis` (17 Felder, `@dataclass`).
 | `RestaurierDenker` | Vollrestaurierung via `UnifiedRestorerV3` |
 | `ReparaturDenker` | Self-contained scipy-Direktreparatur |
 | `RekonstruktionsDenker` | Lückenfüllung / Inpainting via `GapReconstructor` |
-| `ExzellenzDenker` | 14 Musical Goals + `ExcellenceOptimizer` |
+| `ExzellenzDenker` | 15 Musical Goals + `ExcellenceOptimizer` |
 | `PhaseInteractionDenker` | Phasenübergreifende Interaktionsanalyse + Koalitions-Evaluation (§2.67) |
 
 **Entry-Point:** `from denker import restauriere` ·
-**Tests:** `tests/unit/test_denker/` (10 Dateien) ·
+**Tests:** `tests/unit/test_denker/` (11 Dateien) ·
 **Doku:** [`denker/README.md`](denker/README.md)
 
 > Hinweis: `denker/` ist die interne Orchestrierungsschicht. Release-faehige Oberflaechen
@@ -261,7 +261,7 @@ und produziert das vollständige `AurikErgebnis` (17 Felder, `@dataclass`).
 
 | Schritt | Aktion | Was passiert |
 | --- | --- | --- |
-| **1** | **Datei öffnen** — Doppelklick auf `AURIK910.AppImage` (Linux) oder `AURIK910.exe` (Windows) | Das Programm startet. Alle KI-Modelle sind bereits enthalten — keine Internetverbindung nötig. |
+| **1** | **App starten** — Linux: `./run_aurik.sh` (Installation: `./install_aurik.sh`); Windows: gebündelter Installer | Das Programm startet. Alle KI-Modelle sind bereits enthalten — keine Internetverbindung nötig. |
 | **2** | **Aufnahme laden** — Klick auf **📂 Datei öffnen** oder die Audiodatei ins Fenster ziehen | Aurik erkennt automatisch den Tonträger (Vinyl, Kassette, Shellac …) und analysiert alle Defekte. |
 | **3** | **Modus wählen und starten** — Klick auf **📀 Restoration** oder **🎯 Studio 2026** | Die bearbeitete Datei wird im Ordner `output/` gespeichert; Qualitäts- und Exportgates laufen automatisch. |
 
@@ -448,9 +448,9 @@ TransientDecoupledProcessing → RestorabilityEstimator → EraClassifier
 **Hardware-Modus:** CPU verpflichtend, optionale AMD-GPU-Beschleunigung (ROCm/DirectML) fuer Heavy-Modelle mit transparentem CPU-Fallback.  
 **Bundled:** Alle primären Modelle lokal gebündelt — kein Download beim ersten Start.
 
-### 🎯 Material-Adaptive Verarbeitung (15 Typen)
+### 🎯 Material-Adaptive Verarbeitung (16 Typen: 15 Kern-Typen + `digital`-Default)
 
-**Auto-Detection** via `MediumDetector` (file-ext-aware, DSP + forensische Kettenlogik) — **15 Material-Typen:**
+**Auto-Detection** via `MediumDetector` (file-ext-aware, DSP + forensische Kettenlogik) — **16 Material-Typen (15 Kern + `digital`-Default):**
 
 | Material | Hauptdefekte | PQS-Ziel |
 | --- | --- | --- |
@@ -470,9 +470,9 @@ TransientDecoupledProcessing → RestorabilityEstimator → EraClassifier
 | `streaming` | Variables Bitrate-Profil | MOS ≥ 4.1 |
 | `unknown` | Konservative Prior, alle Tier-1 Phasen | MOS ≥ 3.8 |
 
-### 📊 Die 14 Musikalischen Qualitätsziele
+### 📊 Die 15 Musikalischen Qualitätsziele
 
-Nach jeder Restaurierung werden alle 14 Ziele geprüft (adaptiv via `AdaptiveGoalThresholds`
+Nach jeder Restaurierung werden alle 15 Ziele geprüft (adaptiv via `AdaptiveGoalThresholds`
 und `GoalApplicabilityFilter`). Regression in einem Ziel macht das Feature ungültig:
 
 | # | Ziel | Frequenzbereich / Messgröße | Schwellwert |
@@ -491,6 +491,7 @@ und `GoalApplicabilityFilter`). Regression in einem Ziel macht das Feature ungü
 | 12 | **Mikro-Dynamik** | LUFS-Profil 400 ms, Crest-Faktor | ≥ **0.92** |
 | 13 | **Separation-Treue** | SDR ≥ 8 dB / SIR ≥ 12 dB | ≥ **0.82** |
 | 14 | **Artikulation** | Attack-Charakter, Transient-Shape | ≥ **0.85** |
+| 15 | **Transienten-Energie** | Attack-Transienten, Crest-Erhalt | ≥ **0.85** |
 
 **PQS-Metriken** (`PerceptualQualityScorer`):
 
@@ -527,7 +528,9 @@ und `GoalApplicabilityFilter`). Regression in einem Ziel macht das Feature ungü
 
 ## 🧪 Testing & Validation
 
-### Test-Suite (~18.400 Tests, 511 mit Markern)
+### Test-Suite (~19.700 gesammelt · 19.040+ grün, 27 Marker-Typen)
+
+(Fullsuite verify3, 2026-08-16: 19.040 passed, 14 failed, 31 skipped, 644 deselected.)
 
 ```bash
 # Alle Tests
@@ -614,8 +617,6 @@ kein Budget-bedingtes Überspringen von Enhancement-Phasen mehr.
 
 **Test-Mindestanforderung pro neuem Modul:** ≥ 35 Unit-Tests,
 inkl. NaN/Inf-Tests, Bounds-Tests, Mono+Stereo, Edge-Cases, Thread-Safety.
-
-#
 
 ### 🔍 Pre-Commit Static-Value-Guard (§v10)
 
@@ -777,4 +778,4 @@ Aurik 10.0.0 steht unter der **Apache-2.0-Lizenz** — siehe [LICENSE](LICENSE).
 
 ---
 
-Aurik 10.0.10 — Juli 2026
+Aurik 10.0.20 — September 2026

@@ -9,6 +9,10 @@ Extrahiert aus RestorationResult die Daten für:
 
 from __future__ import annotations
 
+import logging
+
+logger = logging.getLogger(__name__)
+
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -116,6 +120,7 @@ class ResultEnricher:
             meta = getattr(result, "metadata", None) or {}
             info.phase_timings = meta.get("phase_timings", {})
         except Exception:
+            logger.debug("Stiller Ersatzpfad dokumentiert (Bug 9/V74)", exc_info=True)
             pass
         return info
 
@@ -131,6 +136,7 @@ class ResultEnricher:
             report.phases_executed = report.phases_total - len(report.phases_skipped)
             report.timeline = meta.get("phase_timeline", [])
         except Exception:
+            logger.debug("Verarbeitungsschritt-Report-Extraktion fehlgeschlagen", exc_info=True)
             pass
         return report
 
@@ -144,6 +150,7 @@ class ResultEnricher:
             info.file_size_before_mb = float(meta.get("file_size_before_mb", 0))
             info.file_size_after_mb = float(meta.get("file_size_after_mb", 0))
         except Exception:
+            logger.debug("Ausgabe-Chain-Extraktion fehlgeschlagen", exc_info=True)
             pass
         return info
 
@@ -162,6 +169,7 @@ class ResultEnricher:
                 else 0
             )
         except Exception:
+            logger.debug("Technische-Metriken-Extraktion fehlgeschlagen", exc_info=True)
             pass
         return metrics
 

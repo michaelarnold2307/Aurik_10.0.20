@@ -244,7 +244,7 @@ class InferenceSessionManager:
                     )
                     return session, size_mb
         except Exception as _mgx_exc:
-            logger.debug("SessionManager: MIGraphX not available (%s), using ORT CPU", _mgx_exc)
+            logger.debug("SessionManager: MIGraphX not verfuegbar (%s), using ORT CPU", _mgx_exc)
 
         session = ort.InferenceSession(
             str(model_path),

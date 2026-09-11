@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """
+
 §v10.20: Whisper-gesteuertes Musik-Denoising (Ansatz 1 aus "unkonventionelle Lösungswege").
 
 Architektur:
@@ -11,6 +12,10 @@ Training: MUSDB18-HQ, 48kHz, komplexe STFT.
 """
 
 from __future__ import annotations
+
+import logging
+
+logger = logging.getLogger(__name__)
 
 import argparse
 import random
@@ -258,14 +263,14 @@ class WhisperDenoiser(nn.Module):
 
     def forward(self, noisy_audio, return_specs=False):
         """noisy_audio: [B, T_48k] → clean_audio: [B, T_48k]"""
-        B = noisy_audio.shape[0]
+        noisy_audio.shape[0]
 
         # 1. STFT
         spec = torch.stft(
             noisy_audio, n_fft=N_FFT, hop_length=HOP, window=self.window.to(noisy_audio.device), return_complex=True
         )
         T_s = spec.shape[2]
-        F_bins = spec.shape[1]  # 481
+        spec.shape[1]  # 481
 
         # 2. Whisper features
         w_feat = self.extract_whisper_features(noisy_audio)  # [B, T_w, 384]
@@ -403,6 +408,7 @@ class MusicDenoiseDataset(Dataset):
                 n, _ = self._load(random.choice(self.noise_files))
                 return n / (np.abs(n).max() + np.float32(1e-8))
             except Exception:
+                logger.debug("Stiller Ersatzpfad dokumentiert (Bug 9/V74)", exc_info=True)
                 pass
         n = np.random.randn(length).astype(np.float32)
         c = random.choice(["white", "pink", "brown"])

@@ -1,6 +1,5 @@
 import pytest
 
-#!/usr/bin/env python3
 """
 v10.0.0 — Kopfhörer-Qualitäts-Fixes: 5 audible Defizite behoben.
 

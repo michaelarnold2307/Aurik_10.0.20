@@ -1,7 +1,18 @@
 #!/usr/bin/env python3
-"""V01–V75 VERBOTEN-Linter v5 — vollständig an VERBOTEN.md angepasst.
+"""V01–V75 VERBOTEN-Linter v6 — vollständig an VERBOTEN.md angepasst.
 
-Abdeckung: 27 von 44 regex-detectable Regeln (AST/Runtime-Regeln separat).
+Abdeckung (Rev. 2026-09-11, Katalog-Ausbau 30 → 52+):
+  - 31 Kern-Regeln: V01, V-BRIDGE, V02–V05, V08, V09, V11–V14, V21, V27–V33,
+    V39, V44, V46–V49, V53, V58, V73, V74
+  - +18 neu implementiert (diese Session): V38, V40, V41, V42, V43, V45,
+    V50, V51 (AST), V52, V54, V55, V56, V57, V59 (NEU: Stereo-Kanal-Slicing
+    ohne audio_layout-Helfer, §V7 (copilot-instructions.md)), V63 (MD5/B324), V64 (rtol-in-numpy),
+    V75 (stilles except: pass)
+  - Gesamt: 49 regex-/AST-geprüfte Regeln. Nicht regex-fähig (Architektur/
+    Runtime, in VERBOTEN.md dokumentiert): V70, V71, V72.
+  - "only"-Feld: Regeln gelten nur für Dateien, deren Pfad einen der
+    Substrings enthält (Präzisionsfilter für phasen-/modulgebundene Regeln).
+
 Referenz: .github/VERBOTEN.md — Linter-Referenz-Tabelle.
 """
 
@@ -404,6 +415,153 @@ RULES: dict[str, dict] = {
         "skip": {"test_", "phase_42_vocal_enhancement.py", "scripts/", "docs/"},
         "sev": "ERROR",
     },
+    # ── V38: Bump/Dropout-Schleife ohne lokalen Stärke-Orakel (§2.38) ──
+    "V38": {
+        "p": r"for\s+\w+\s+in\s+(?:bump_locations|splice_points|dropout_regions|bump_events)",
+        "negate": r"local_strength|_compute_\w*_strength",
+        "d": "Bump/Dropout-Schleife ohne lokalen Stärke-Orakel (§2.38) — Stärke pro Event aus SNR/Psophometrie",
+        "skip": {"test_", "scripts/", "docs/"},
+        "sev": "WARNING",
+    },
+    # ── V40: NR-Phase ohne NMR-Score bei FeedbackChain (§2.41) ──
+    "V40": {
+        "p": r"FeedbackChain",
+        "negate": r"compute_nmr_score",
+        "d": "NR-Phase (03/29) mit FeedbackChain ohne compute_nmr_score (§2.41)",
+        "skip": {"test_", "scripts/", "docs/"},
+        "only": ("phase_03", "phase_29"),
+        "sev": "WARNING",
+    },
+    # ── V41: Additive Phase mit panns_singing ohne ForwardMaskingGuard ──
+    "V41": {
+        "p": r"panns_singing",
+        "negate": r"get_forward_masking_guard|ForwardMaskingGuard",
+        "d": "Additive Phase mit panns_singing-Konditionierung ohne ForwardMaskingGuard (§2.43)",
+        "skip": {"test_", "scripts/", "docs/"},
+        "only": ("phase_37", "phase_39", "phase_21", "phase_42"),
+        "sev": "WARNING",
+    },
+    # ── V42: NR-Phase ohne Roughness-Regression (§2.44) ──
+    "V42": {
+        "p": r"sosfilt|nr_strength|noise_reduction",
+        "negate": r"check_roughness_regression",
+        "d": "NR-Phase (03/29) ohne Roughness-Regression-Check (§2.44)",
+        "skip": {"test_", "scripts/", "docs/"},
+        "only": ("phase_03", "phase_29"),
+        "sev": "WARNING",
+    },
+    # ── V43: Formant-Guard mit uniformem ±1 dB (§2.45b) ──
+    "V43": {
+        "p": r"_formant_threshold\s*=\s*max\(\s*1\.0\b",
+        "negate": r"resolve_jnd_tolerance_db",
+        "d": "Formant-Guard mit uniformem ±1 dB statt resolve_jnd_tolerance_db (§2.45b)",
+        "skip": {"test_", "scripts/", "docs/"},
+        "sev": "WARNING",
+    },
+    # ── V45: Emotionalitaet-Metrik ohne VAT-Blend (§2.47) ──
+    "V45": {
+        "p": r"class\s+EmotionalitaetMetric",
+        "negate": r"VAT",
+        "d": "EmotionalitaetMetric ohne VAT-Emotion-Blend (§2.47)",
+        "skip": {"test_", "scripts/", "docs/"},
+        "only": ("musical_goals_metrics",),
+        "sev": "INFO",
+    },
+    # ── V50: messe_ziele ohne Referenz-Bezug (§2.52) ──
+    "V50": {
+        "p": r"def\s+messe_ziele\(\s*self\s*,",
+        "negate": r"\breference\b",
+        "d": "ExzellenzDenker.messe_ziele ohne Referenz-Audio-Bezug (§2.52)",
+        "skip": {"test_", "scripts/", "docs/"},
+        "only": ("exzellenz_denker",),
+        "sev": "ERROR",
+    },
+    # ── V52: separation_fidelity ohne Near-Mono-Codec-Tabelle (§2.54) ──
+    "V52": {
+        "p": r"separation_fidelity",
+        "negate": r"_CODEC_JOINT_STEREO_MATS",
+        "d": "separation_fidelity ohne Near-Mono-Codec-Tabelle (§2.54)",
+        "skip": {"test_", "scripts/", "docs/"},
+        "only": ("goal_applicability_filter",),
+        "sev": "ERROR",
+    },
+    # ── V54: UV3 ohne update_reference_memory (§2.56) ──
+    "V54": {
+        "p": r"HolisticPerceptualGate",
+        "negate": r"update_reference_memory",
+        "d": "UV3 ohne _hg.update_reference_memory (§2.56) — Referenz-Gedächtnis pro Song",
+        "skip": {"test_", "scripts/", "docs/"},
+        "only": ("unified_restorer_v3",),
+        "sev": "ERROR",
+    },
+    # ── V55: LPC-Enhance ohne era_decade (§2.57a) ──
+    "V55": {
+        "p": r"lpc_formant_enhance\(",
+        "negate": r"era_decade",
+        "d": "LPC-Formant-Enhancement ohne era_decade (§2.57a)",
+        "skip": {"test_", "scripts/", "docs/"},
+        "only": ("lpc_formant_tracker", "phase_42", "phase_65"),
+        "sev": "WARNING",
+    },
+    # ── V56: Frontend-Versions-Fallback hartkodiert (§2.58) ──
+    "V56": {
+        "p": r"_AURIK_VERSION\s*=\s*[\"']\d+\.\d+\.\d+[\"']",
+        "d": 'Frontend-Versions-Fallback hartkodiert — "unknown" verwenden (§2.58)',
+        "skip": {"test_", "scripts/", "docs/"},
+        "only": ("modern_window",),
+        "sev": "ERROR",
+    },
+    # ── V57: Additive Phase ohne ForwardMaskingGuard (§2.59) ──
+    "V57": {
+        "p": r"_effective_strength",
+        "negate": r"get_forward_masking_guard",
+        "d": "Additive Phase ohne ForwardMaskingGuard (§2.59)",
+        "skip": {"test_", "scripts/", "docs/"},
+        "only": ("phase_37", "phase_39", "phase_21", "phase_42"),
+        "sev": "WARNING",
+    },
+    # ── V59: Stereo-Kanal-Slicing ohne audio_layout-Helfer (§V7 (copilot-instructions.md), NEU) ──
+    "V59": {
+        "p": r"audio\[0\]|audio\[:, 0\]|audio\[:, 1\]",
+        "negate": r"from\s+backend\.core\.audio_layout\s+import|audio_layout\.",
+        "d": "Stereo-Kanal-Slicing (audio[0]/audio[:, 0]) ohne audio_layout-Helfer (§V7 (copilot-instructions.md)) — kollabiert (N,2)/(2,N) auf 2 Samples",
+        "skip": {
+            "test_",
+            "scripts/",
+            "docs/",
+            "stereo_collapse",
+            "stereo_guard",
+            "stereo_parallel",
+            "cross_channel_repair",
+            "defect_detection/",
+            "dsp/",
+            "forensics/",
+            "plugins/",
+        },
+        "sev": "WARNING",
+    },
+    # ── V63: MD5 ohne usedforsecurity=False (§Sicherheit, B324) ──
+    "V63": {
+        "p": r"hashlib\.md5\s*\(",
+        "negate": r"usedforsecurity",
+        "d": "MD5 ohne usedforsecurity=False — B324",
+        "skip": {"test_", "scripts/", "docs/", "plugins/_vendor_"},
+        "sev": "ERROR",
+    },
+    # ── V64: rtol= direkt in numpy-Funktionsaufrufen (§Determinismus) ──
+    "V64": {
+        "p": r"np\.\w+\([^)]*rtol\s*=",
+        "d": "rtol=-Toleranz direkt in numpy-Aufruf — außerhalb parametrisieren (Determinismus)",
+        "skip": {"test_", "scripts/", "docs/"},
+        "sev": "WARNING",
+    },
+    # ── V75: stilles except: pass (§V75) ──
+    "V75": {
+        "p": r"^\s*except[^\n]*:\s*pass\s*$",
+        "d": "Stilles except: pass ohne Logging (§V75) — logger.warning + Begründung",
+        "skip": {"test_", "scripts/", "docs/"},
+        "sev": "WARNING",
+    },
 }
 
 SKIP_DIRS = {
@@ -575,6 +733,40 @@ def _scan_v32_v33_ast(fp: Path, source: str, rel: Path) -> list[Violation]:
     return issues
 
 
+def _scan_v51_ast(fp: Path, source: str, rel: Path) -> list[Violation]:
+    """V51: RestaurierErgebnis ohne goal_applicability-Feld (§8.8b/§2.53)."""
+    issues: list[Violation] = []
+    try:
+        tree = ast.parse(source)
+    except SyntaxError:
+        return issues
+    for node in ast.walk(tree):
+        if not isinstance(node, ast.ClassDef) or node.name != "RestaurierErgebnis":
+            continue
+        has_goal_applicability = False
+        for stmt in node.body:
+            if isinstance(stmt, (ast.AnnAssign, ast.Assign)):
+                targets = stmt.targets if isinstance(stmt, ast.Assign) else [stmt.target]
+                for t in targets:
+                    name = t.id if isinstance(t, ast.Name) else getattr(t, "attr", None)
+                    if name == "goal_applicability":
+                        has_goal_applicability = True
+                        break
+            if has_goal_applicability:
+                break
+        if not has_goal_applicability:
+            issues.append(
+                Violation(
+                    rule="V51",
+                    severity="ERROR",
+                    description="RestaurierErgebnis ohne goal_applicability-Feld (§8.8b) — messe_ziele filtert danach",
+                    file=str(rel),
+                )
+            )
+        break
+    return issues
+
+
 def _should_skip_rule(fp: Path, rid: str) -> bool:
     """Check if file should be skipped for a given rule."""
     r = str(fp)
@@ -632,6 +824,9 @@ def scan(fp: Path) -> list[Violation]:
     for rid, rule in RULES.items():
         if _should_skip_rule(fp, rid):
             continue
+        only_pats = rule.get("only")
+        if only_pats and not any(s in str(rel) for s in only_pats):
+            continue  # Regel gilt nur für Dateien, deren Pfad einen der Substrings enthält
         if re.search(rule["p"], code_text, re.IGNORECASE | re.MULTILINE):
             # Check negate pattern: if present, only flag when negate does NOT match
             negate_pat = rule.get("negate")
@@ -641,6 +836,8 @@ def scan(fp: Path) -> list[Violation]:
             issues.append(Violation(rule=rid, severity=sev, description=rule["d"], file=str(rel)))
 
     issues.extend(_scan_v32_v33_ast(fp, "\n".join(lines), rel))
+    if "restaurier_denker" in str(rel) or "aurik_denker" in str(rel):
+        issues.extend(_scan_v51_ast(fp, "\n".join(lines), rel))
     return issues
 
 

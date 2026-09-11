@@ -5,7 +5,7 @@ Kriterien (aus dem SOTA-Review):
 2. Frequenz-Erhalt (dominante Frequenz bleibt der Grundton, ±1 Hz).
 3. Energie-Erhalt: RMS ≈ Original-RMS (±10 %).
 4. Länge ≈ rate · Länge (±5 %), für rate < 1 und rate > 1.
-5. Determinismus (§G5): bit-identisch bei gleichem Input.
+5. Determinismus (§G5 (GEBOTE.md)): bit-identisch bei gleichem Input.
 6. Keine OLA-Spikes: |max| < 4 · Original-Amplitude.
 """
 

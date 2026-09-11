@@ -220,7 +220,7 @@ def _compute_singer_identity_dsp(
         # Altes Formel (cosine − 0.70) / 0.30: raw 0.93 → 0.767 — falscher Rollback bei unveränderter Stimme.
         return float(np.clip((cosine * 8.0 - 1.0) / 7.0, 0.0, 1.0))
     except Exception as exc:
-        logger.warning("ML→DSP-Fallback aktiviert", exc_info=True)  # §V6 (copilot-instructions.md)
+        logger.warning("ML→DSP-Ersatzpfad aktiviert", exc_info=True)  # §V6 (copilot-instructions.md)
         logger.debug("singer_identity_dsp fehlgeschlagen: %s", exc)
         return 0.80  # conservatively neutral
 
@@ -246,7 +246,7 @@ def _compute_singer_identity(
         cosine = plugin.cosine_similarity(emb_pre, emb_post)
         return cosine, False  # ML-Pfad aktiv (kein DSP-Fallback)
     except Exception as exc:
-        logger.warning("ML→DSP-Fallback aktiviert", exc_info=True)  # §V6 (copilot-instructions.md)
+        logger.warning("ML→DSP-Ersatzpfad aktiviert", exc_info=True)  # §V6 (copilot-instructions.md)
         logger.debug("Resemblyzer not verfuegbar (%s) — DSP Ersatzpfad", exc)
         return _compute_singer_identity_dsp(vocal_pre, vocal_post, sr), True
 

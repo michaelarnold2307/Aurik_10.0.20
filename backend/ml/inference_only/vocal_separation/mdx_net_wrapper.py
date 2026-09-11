@@ -125,13 +125,13 @@ class MDXNetSeparator:
             ort.InferenceSession or None (fallback to HPSS)
         """
         if not self.model_path.exists():
-            logger.warning("MDX-Net model nicht verfügbar (%s). Fallback auf HPSS.", self.model_path)
+            logger.warning("MDX-Net model nicht verfügbar (%s). Ersatzpfad auf HPSS.", self.model_path)
             return None
 
         try:
             # ONNX Runtime mit CPU-Optimierung (§9.5)
             if not _HAS_ONNX or ort is None:
-                logger.warning("onnxruntime nicht installiert — Fallback auf HPSS spectral mask")
+                logger.warning("onnxruntime nicht installiert — Ersatzpfad auf HPSS spectral mask")
                 return None
 
             # Execution Provider: CPU (EP) mit optimalen Einstellungen
@@ -150,7 +150,7 @@ class MDXNetSeparator:
             return self._onnx_session
 
         except Exception as e:
-            logger.error("konnte nicht laden MDX-Net model (%s): %s — Fallback auf HPSS", self.model_path, e)
+            logger.error("konnte nicht laden MDX-Net model (%s): %s — Ersatzpfad auf HPSS", self.model_path, e)
             self._onnx_session = None
             return None
 
@@ -196,7 +196,7 @@ class MDXNetSeparator:
         if self._model_loaded and self._onnx_session is not None:
             vocals, instrumental = self._mdx_net_inference(audio)
         else:
-            logger.warning("MDX-Net model nicht verfügbar oder nicht geladen — Fallback auf HPSS spectral mask")
+            logger.warning("MDX-Net model nicht verfügbar oder nicht geladen — Ersatzpfad auf HPSS spectral mask")
             vocals, instrumental = self._fallback_separation(audio)
 
         # HIPS: Nebenwirkungen tracking
@@ -213,7 +213,7 @@ class MDXNetSeparator:
             logger.warning(
                 "Separation nebenwirkungen erkannt: "
                 f"stereo_width_loss={nebenwirkungen['stereo_width_loss']:.2f}, "
-                f"phase_correlation_loss={nebenwirkungen['phase_loss']:.2f}"
+                f"Verarbeitungsschritt_correlation_loss={nebenwirkungen['phase_loss']:.2f}"
             )
 
         # Return stems
@@ -235,7 +235,7 @@ class MDXNetSeparator:
         Note: Vocals = mostly harmonic; instrumental = percussive residual.
         H + P = D (HPSS identity) → vocals + instrumental ≈ original
         """
-        logger.info("Using SOTA HPSS fallback for vocal/instrumental separation")
+        logger.info("Using SOTA HPSS Ersatzpfad for vocal/instrumental separation")
 
         # STFT parameters (SOTA: high resolution for vocal preservation)
         n_fft = 2048
@@ -289,7 +289,7 @@ class MDXNetSeparator:
             (vocals, instrumental) as [channels, samples] arrays
         """
         if self._onnx_session is None:
-            logger.warning("ONNX session nicht verfügbar — Fallback auf HPSS")
+            logger.warning("ONNX Sitzung nicht verfügbar — Ersatzpfad auf HPSS")
             return self._fallback_separation(audio)
 
         # SOTA STFT parameters (MDX-Net standard)
@@ -352,7 +352,7 @@ class MDXNetSeparator:
             logger.info("MDX-Net ONNX inference erfolgreich: vocal_mask_mean=%.4f", float(vocal_mask.mean()))
 
         except Exception as e:
-            logger.error("MDX-Net ONNX inference fehlgeschlagen: %s — Fallback auf HPSS", e)
+            logger.error("MDX-Net ONNX inference fehlgeschlagen: %s — Ersatzpfad auf HPSS", e)
             return self._fallback_separation(audio)
 
         return vocals, instrumental

@@ -173,7 +173,9 @@ class IntroducedArtifactDetector:
                 elif d <= onset_threshold and in_smear:
                     duration_samples = (i - smear_start) * pvoc_hop
                     if duration_samples > max(1, int(self.PVOC_SMEAR_THRESHOLD_MS / 1000.0 * sr)):
-                        sev = float(np.clip(duration_samples / max(int(self.PVOC_SMEAR_THRESHOLD_MS / 50.0 * sr), 1), 0.0, 1.0))
+                        sev = float(
+                            np.clip(duration_samples / max(int(self.PVOC_SMEAR_THRESHOLD_MS / 50.0 * sr), 1), 0.0, 1.0)
+                        )
                         artifacts.append(
                             ArtifactRegion(
                                 "phase_vocoder_smearing",

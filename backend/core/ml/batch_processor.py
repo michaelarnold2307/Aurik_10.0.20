@@ -81,7 +81,7 @@ class BatchProcessor:
                 track_index=idx, track_path=path, success=True, processing_time_s=time.monotonic() - t0
             )
         except Exception as e:
-            logger.warning(f"Batch track {idx} failed: {e}")
+            logger.warning(f"Batch track {idx} fehlgeschlagen: {e}")
             return BatchTrackResult(
                 track_index=idx,
                 track_path=path,
@@ -102,7 +102,7 @@ class BatchProcessor:
             gc.collect()
             logger.info("Batch: sessions recycled after %d tracks", self._track_count)
         except Exception as e:
-            logger.debug("Session recycle skipped: %s", e)
+            logger.debug("Sitzung recycle uebersprungen: %s", e)
 
 
 def get_batch_processor(process_fn: Callable, **kwargs) -> BatchProcessor:

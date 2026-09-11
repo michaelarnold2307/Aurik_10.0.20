@@ -36,6 +36,8 @@ from pathlib import Path
 
 import numpy as np
 
+from backend.core.gpu_model_registry import get_onnx_providers
+
 logger = logging.getLogger(__name__)
 
 _ROOT = Path(__file__).parent.parent
@@ -119,7 +121,7 @@ class BeatsPlugin:
         """Lädt BEATs ONNX-Session; PANNs-Fallback bei Fehler."""
         if not self._ONNX_PATH.exists():
             logger.info(
-                "BEATs ONNX nicht gefunden (%s) — PANNs-Fallback aktiv. "
+                "BEATs ONNX nicht gefunden (%s) — PANNs-Ersatzpfad aktiv. "
                 "Modell herunterladen: https://github.com/microsoft/unilm/tree/master/beats",
                 self._ONNX_PATH,
             )
@@ -131,17 +133,17 @@ class BeatsPlugin:
                 from backend.core.ml_memory_budget import try_allocate as _try_alloc
 
                 if not _try_alloc("BEATs", size_gb=0.09):
-                    logger.warning("BEATs: ML-Budget erschöpft — PANNs-Fallback.")
+                    logger.warning("BEATs: ML-Grenze erschöpft — PANNs-Ersatzpfad.")
                     return
             except Exception as _exc:
-                logger.debug("Operation failed (non-critical): %s", _exc)
+                logger.debug("Operation fehlgeschlagen (unkritisch): %s", _exc)
 
             opts = ort.SessionOptions()
             opts.inter_op_num_threads = 2
             self._session = ort.InferenceSession(
                 str(self._ONNX_PATH),
                 sess_options=opts,
-                providers=["CPUExecutionProvider"],
+                providers=get_onnx_providers(str(self._ONNX_PATH)),
             )
             # Detect embedding-only models (rank-3 fbank input, 768-dim output).
             # These cannot produce AudioSet-527 scores without a classification head.
@@ -153,8 +155,8 @@ class BeatsPlugin:
             _out_last_dim_out = _out.shape[-1] if _out.shape else 0
             if _inp_rank == 3 or int(_out_last_dim_out or 0) == 768:
                 logger.debug(
-                    "beats_plugin: embedding-only model detected (input=%s, output=%s) "
-                    "— no AudioSet-527 head; routing to spectral DSP fallback.",
+                    "beats_plugin: embedding-only model erkannt (Eingabe=%s, Ausgabe=%s) "
+                    "— no AudioSet-527 head; routing to spectral DSP Ersatzpfad.",
                     _inp.shape,
                     _out.shape,
                 )
@@ -162,7 +164,7 @@ class BeatsPlugin:
                 self._model_loaded = False
                 return
             self._model_loaded = True
-            logger.info("beats_plugin: ONNX model loaded (%s, §4.4 primary audio tagger)", self._ONNX_PATH.name)
+            logger.info("beats_plugin: ONNX model geladen (%s, §4.4 primary audio tagger)", self._ONNX_PATH.name)
             try:
                 from backend.core.plugin_lifecycle_manager import register_plugin as _reg_plm
 
@@ -172,15 +174,15 @@ class BeatsPlugin:
                     unload_fn=lambda s=self: setattr(s, "_session", None) or setattr(s, "_model_loaded", False),  # type: ignore[func-returns-value,misc]
                 )
             except Exception as _exc:
-                logger.debug("Operation failed (non-critical): %s", _exc)
+                logger.debug("Operation fehlgeschlagen (unkritisch): %s", _exc)
         except Exception as exc:
-            logger.warning("BEATs ONNX nicht ladbar: %s — PANNs-Fallback aktiv.", exc)
+            logger.warning("BEATs ONNX nicht ladbar: %s — PANNs-Ersatzpfad aktiv.", exc)
             try:
                 from backend.core.ml_memory_budget import release as _rel
 
                 _rel("BEATs")
             except Exception as _exc:
-                logger.debug("Operation failed (non-critical): %s", _exc)
+                logger.debug("Operation fehlgeschlagen (unkritisch): %s", _exc)
 
     def _to_model_input(self, audio: np.ndarray, sr: int) -> np.ndarray:
         """Resampelt Audio auf 16 kHz, kürzt/paddet auf max. 10 s.
@@ -258,7 +260,7 @@ class BeatsPlugin:
             _plm = get_plugin_lifecycle_manager()
             _plm.set_active("BEATs", True)
         except Exception:
-            logger.warning("beats_plugin.py::_infer_onnx fallback", exc_info=True)
+            logger.warning("beats_plugin.py::_infer_onnx Ersatzpfad", exc_info=True)
         try:
             inp = self._to_model_input(audio, sr)
             inp_name = self._session.get_inputs()[0].name
@@ -286,16 +288,16 @@ class BeatsPlugin:
             # Known BEATs input-rank mismatches should not trigger heavyweight model loads
             # in fallback paths (e.g. strict timeout test runs). Use DSP fallback directly.
             if "INVALID_ARGUMENT" in _msg and "Invalid rank for input" in _msg:
-                logger.warning("BEATs ONNX-Inferenzfehler: %s — Spectral DSP-Fallback.", exc)
+                logger.warning("BEATs ONNX-Inferenzfehler: %s — Spectral DSP-Ersatzpfad.", exc)
                 return self._spectral_dsp_fallback(audio, sr, top_k)
-            logger.warning("BEATs ONNX-Inferenzfehler: %s — PANNs-Fallback.", exc)
+            logger.warning("BEATs ONNX-Inferenzfehler: %s — PANNs-Ersatzpfad.", exc)
             return self._panns_fallback(audio, sr, top_k)
         finally:
             if _plm is not None:
                 try:
                     _plm.set_active("BEATs", False)
                 except Exception:
-                    logger.warning("beats_plugin.py::_infer_onnx fallback", exc_info=True)
+                    logger.warning("beats_plugin.py::_infer_onnx Ersatzpfad", exc_info=True)
 
     def _panns_fallback(self, audio: np.ndarray, sr: int, top_k: int) -> BeatsResult:
         """PANNs CNN14 als Fallback wenn BEATs nicht verfügbar."""
@@ -312,7 +314,7 @@ class BeatsPlugin:
                 top_k=top,
             )
         except Exception as exc:
-            logger.warning("PANNs-Fallback fehlgeschlagen: %s — Spectral DSP aktiv.", exc)
+            logger.warning("PANNs-Ersatzpfad fehlgeschlagen: %s — Spectral DSP aktiv.", exc)
             return self._spectral_dsp_fallback(audio, sr, top_k)
 
     def _spectral_dsp_fallback(self, audio: np.ndarray, sr: int, top_k: int) -> BeatsResult:
@@ -339,7 +341,7 @@ class BeatsPlugin:
                 tags=tags, embeddings=np.zeros(768, dtype=np.float32), model_used="spectral_dsp", top_k=top
             )
         except Exception as exc:
-            logger.error("Spectral DSP Fallback fehlgeschlagen: %s", exc)
+            logger.error("Spectral DSP Ersatzpfad fehlgeschlagen: %s", exc)
             return BeatsResult(tags={}, embeddings=np.zeros(768, dtype=np.float32), model_used="error")
 
 

@@ -85,9 +85,15 @@ class DecWithAlpha(torch.nn.Module):
         return c, alpha
 
 
-def _export(path: Path, model: torch.nn.Module, inputs: tuple[torch.Tensor, ...],
-            input_names: list[str], output_names: list[str],
-            dynamic_axes: dict[str, dict[int, str]], opset: int = 14) -> None:
+def _export(
+    path: Path,
+    model: torch.nn.Module,
+    inputs: tuple[torch.Tensor, ...],
+    input_names: list[str],
+    output_names: list[str],
+    dynamic_axes: dict[str, dict[int, str]],
+    opset: int = 14,
+) -> None:
     model = model.eval().cpu()
     with torch.no_grad():
         torch.onnx.export(
@@ -109,14 +115,14 @@ def main() -> int:
     args = parser.parse_args()
 
     sys.path.insert(0, str(_DF_PKG))
-    from df.config import config  # noqa: E402
+    from df.config import config
 
     config.use_defaults()
     for option, (value, cast_type, section) in _CONFIG.items():
         config.set(option, value, cast_type, section)  # type: ignore[arg-type]
 
-    from df.deepfilternet3 import init_model  # noqa: E402
-    from libdf import DF  # noqa: E402
+    from df.deepfilternet3 import init_model
+    from libdf import DF
 
     model = init_model().eval().cpu()
     sd = torch.load(str(_CHECKPOINT), map_location="cpu", weights_only=False)
@@ -125,7 +131,7 @@ def main() -> int:
 
     df_state = DF(sr=48000, fft_size=960, hop_size=480, nb_bands=32)
 
-    from df.enhance import df_features  # noqa: E402
+    from df.enhance import df_features
 
     with torch.no_grad():
         audio = torch.randn((1, 48000))
@@ -141,14 +147,20 @@ def main() -> int:
             ["feat_erb", "feat_spec"],
             ["e0", "e1", "e2", "e3", "emb", "c0", "lsnr"],
             {
-                "feat_erb": {2: "S"}, "feat_spec": {2: "S"},
-                "e0": {2: "S"}, "e1": {2: "S"}, "e2": {2: "S"}, "e3": {2: "S"},
-                "emb": {1: "S"}, "c0": {2: "S"}, "lsnr": {1: "S"},
+                "feat_erb": {2: "S"},
+                "feat_spec": {2: "S"},
+                "e0": {2: "S"},
+                "e1": {2: "S"},
+                "e2": {2: "S"},
+                "e3": {2: "S"},
+                "emb": {1: "S"},
+                "c0": {2: "S"},
+                "lsnr": {1: "S"},
             },
         )
 
         # ── erb_dec ──────────────────────────────────────────────────────────
-        m_out = model.erb_dec(emb.clone(), e3, e2, e1, e0)
+        model.erb_dec(emb.clone(), e3, e2, e1, e0)
         _export(
             args.out / "erb_dec.onnx",
             model.erb_dec,

@@ -32,13 +32,13 @@ SOTA-CI-Erweiterungen (ausschließlich diese Datei):
     — niemals geschätzt. Verletzungen landen unter ``budget_violations`` und
     führen im --ci-Modus zu Exit-Code 1.
   * --bootstrap-ci : 95%-Konfidenzintervalle der Qualitäts-/MUSHRA-Werte je Zelle
-    via Percentile-Bootstrap (deterministischer Seed, §G5). Wiederverwendet das
+    via Percentile-Bootstrap (deterministischer Seed, §G5 (GEBOTE.md)). Wiederverwendet das
     Bootstrap-Muster aus scripts/non_inferiority_gate.py (RandomState(seed),
     n_boot) und die Kalibrier-Konvention aus scripts/calibrate_mushra_bootstrap.py.
   * --profile-top-phases N : die N langsamsten Phasen je Zelle (Wall-Zeit aus den
     realen progress_callback-Zeitstempeln) landen unter ``top_phases``.
   * --repeats N : N Wiederholungen je Zelle mit deterministischem Seed-Offset
-    (AURIK_MASTER_SEED = 42+i, §G5); liefert echte Stichproben für --bootstrap-ci
+    (AURIK_MASTER_SEED = 42+i, §G5 (GEBOTE.md)); liefert echte Stichproben für --bootstrap-ci
     (mit einer Beobachtung degeneriert das CI zu null).
 
 Bestehende Aufrufe ohne Flags verhalten sich identisch (deterministisch,
@@ -53,9 +53,10 @@ import logging
 import os
 import sys
 import time
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any
 
 import numpy as np
 
@@ -80,19 +81,19 @@ BUDGETS_S_PER_MIN: dict[str, float] = {
     "export_flac": 10.0,
 }
 
-# Deterministischer Bootstrap-Seed (§G5): gleicher Input + gleiche Version
+# Deterministischer Bootstrap-Seed (§G5 (GEBOTE.md)): gleicher Input + gleiche Version
 # ⇒ bit-identischer Output. Konvention aus calibrate_mushra_bootstrap.py
 # (RandomState(42)) und non_inferiority_gate.py (seed 42, n_boot 5000).
 _BOOTSTRAP_SEED = 42
 _N_BOOT = 5000
 _BOOTSTRAP_ALPHA = 0.05  # 95%-CI
 
-# Basis für deterministische Wiederholungs-Seeds bei --repeats N (§G5).
+# Basis für deterministische Wiederholungs-Seeds bei --repeats N (§G5 (GEBOTE.md)).
 _REPEAT_BASE_SEED = 42
 
 
 def _repeat_seed_schedule(base_seed: int, n: int) -> list[int]:
-    """Deterministische Seed-Folge für --repeats N (§G5).
+    """Deterministische Seed-Folge für --repeats N (§G5 (GEBOTE.md)).
 
     Wiederholung i nutzt AURIK_MASTER_SEED = base_seed + i (0-basiert) —
     reproduzierbar über Läufe hinweg, dokumentiert im Ergebnis-JSON unter
@@ -188,7 +189,7 @@ def run_cell(
         )
         engine = UnifiedRestorerV3(cfg)
 
-        # §G5: deterministische Wiederholungs-Seeds (--repeats N) — die Pipeline
+        # §G5 (GEBOTE.md): deterministische Wiederholungs-Seeds (--repeats N) — die Pipeline
         # liest AURIK_MASTER_SEED via seed_manager.start_session(master_seed=...).
         if master_seed is not None:
             os.environ["AURIK_MASTER_SEED"] = str(int(master_seed))
@@ -239,7 +240,7 @@ def run_cell(
                 sf.write(str(_out_wav), _arr_out, sr, format="WAV", subtype="PCM_24")
                 wav_path = str(_out_wav)
             except Exception as _wav_exc:
-                logger.warning("WAV-Save für Zelle %s fehlgeschlagen: %s", cell.id, _wav_exc)
+                logger.warning("WAV-speichern für Zelle %s fehlgeschlagen: %s", cell.id, _wav_exc)
 
         pqs_mos: float | None = None
         try:
@@ -252,10 +253,7 @@ def run_cell(
         _vocal_meta: dict[str, str] = {}
         for _mk, _mv in meta.items():
             _mk_l = _mk.lower()
-            if any(
-                _s in _mk_l
-                for _s in ("vocal", "drive", "level_1", "einladung", "vqi", "sing", "breath")
-            ):
+            if any(_s in _mk_l for _s in ("vocal", "drive", "level_1", "einladung", "vqi", "sing", "breath")):
                 try:
                     _vocal_meta[_mk] = json.dumps(_mv, ensure_ascii=False, default=str)[:400]
                 except Exception:
@@ -276,9 +274,9 @@ def run_cell(
             "phases_skipped": int(len(result.phases_skipped or [])),
             "deferred_phases": list(result.deferred_phases or []),
             "pqs_mos": pqs_mos,
-            "hpi": meta.get("hpi", None),
-            "artifact_freedom": meta.get("artifact_freedom", None),
-            "pipeline_budget_timings": meta.get("pipeline_budget_timings", None),
+            "hpi": meta.get("hpi"),
+            "artifact_freedom": meta.get("artifact_freedom"),
+            "pipeline_budget_timings": meta.get("pipeline_budget_timings"),
             "master_seed": int(master_seed) if master_seed is not None else None,
             "n_progress_events": len(progress),
             "progress": progress,
@@ -323,7 +321,7 @@ def _bootstrap_percentile_ci(
     seed: int = _BOOTSTRAP_SEED,
     alpha: float = _BOOTSTRAP_ALPHA,
 ) -> tuple[float, float] | None:
-    """Percentile-Bootstrap-95%-CI des Mittelwerts (deterministischer Seed, §G5).
+    """Percentile-Bootstrap-95%-CI des Mittelwerts (deterministischer Seed, §G5 (GEBOTE.md)).
 
     Wiederverwendet das Bootstrap-Muster aus scripts/non_inferiority_gate.py
     (RandomState(seed), n_boot Resampling, np.percentile). Benötigt >= 2
@@ -332,7 +330,7 @@ def _bootstrap_percentile_ci(
     arr = np.asarray([float(v) for v in values if v is not None], dtype=np.float64)
     if arr.size < 2 or not np.all(np.isfinite(arr)):
         return None
-    rng = np.random.RandomState(seed)  # deterministisch (§G5)
+    rng = np.random.RandomState(seed)  # deterministisch (§G5 (GEBOTE.md))
     n = int(arr.size)
     means = np.empty(n_boot, dtype=np.float64)
     for _ in range(n_boot):
@@ -419,7 +417,7 @@ def _enforce_budget(entry: dict[str, Any], audio_minutes: float) -> tuple[list[d
     if not isinstance(_pt, dict):
         _pt = {}
         logger.warning(
-            "Budget-Check: keine pipeline_budget_timings im Ergebnis (Zelle %s) — Fallback auf Gesamtzeit",
+            "Grenze-Pruefung: keine pipeline_Grenze_timings im Ergebnis (Zelle %s) — Ersatzpfad auf Gesamtzeit",
             entry.get("cell"),
         )
 
@@ -427,7 +425,7 @@ def _enforce_budget(entry: dict[str, Any], audio_minutes: float) -> tuple[list[d
         if measured_s is None or not isinstance(measured_s, (int, float)) or audio_minutes <= 0:
             checks[op] = None
             logger.warning(
-                "Budget-Check '%s' nicht verfügbar (kein Per-Operation-Timing) — als null geführt, nicht geschätzt (Zelle %s)",
+                "Grenze-Pruefung '%s' nicht verfügbar (kein Per-Operation-Timing) — als null geführt, nicht geschätzt (Zelle %s)",
                 op,
                 entry.get("cell"),
             )
@@ -472,7 +470,7 @@ def _enforce_budget(entry: dict[str, Any], audio_minutes: float) -> tuple[list[d
         _check_op(_op, _pt.get(f"{_op}_s"))
     checks["export_flac"] = None
     logger.warning(
-        "Budget-Check 'export_flac' nicht verfügbar (Export läuft außerhalb des Restorers) — als null geführt (Zelle %s)",
+        "Grenze-Pruefung 'Ausgabe_flac' nicht verfügbar (Ausgabe läuft außerhalb des Restorers) — als null geführt (Zelle %s)",
         entry.get("cell"),
     )
 
@@ -533,7 +531,7 @@ def main() -> None:
         "--repeats",
         type=int,
         default=1,
-        help="Wiederholungen je Zelle mit deterministischem Seed-Offset (AURIK_MASTER_SEED = 42+i, §G5); liefert echte Stichproben für --bootstrap-ci",
+        help="Wiederholungen je Zelle mit deterministischem Seed-Offset (AURIK_MASTER_SEED = 42+i, §G5 (GEBOTE.md)); liefert echte Stichproben für --bootstrap-ci",
     )
     args = ap.parse_args()
 
@@ -562,15 +560,13 @@ def main() -> None:
     _repeat_n = max(1, int(args.repeats))
     for cell in cells:
         logger.warning("=== Zelle %s (%s) gestartet: %s ===", cell.id, cell.quality_mode, time.strftime("%H:%M:%S"))
-        # §G5: deterministische Wiederholungs-Seeds (AURIK_MASTER_SEED = 42+i);
+        # §G5 (GEBOTE.md): deterministische Wiederholungs-Seeds (AURIK_MASTER_SEED = 42+i);
         # jede Wiederholung liefert eigene Beobachtungen für --bootstrap-ci.
         _repeat_seeds = _repeat_seed_schedule(_REPEAT_BASE_SEED, _repeat_n)
         _rep_entries: list[dict[str, Any]] = []
         for _rep_i in range(_repeat_n):
             _log_path = out_root / (
-                f"cell_{cell.id}_{run_tag}.log"
-                if _repeat_n == 1
-                else f"cell_{cell.id}_{run_tag}_r{_rep_i}.log"
+                f"cell_{cell.id}_{run_tag}.log" if _repeat_n == 1 else f"cell_{cell.id}_{run_tag}_r{_rep_i}.log"
             )
             _save_wav = (not args.no_wav) and _rep_i == 0
             _rep_entries.append(
@@ -591,7 +587,7 @@ def main() -> None:
             if _top is None:
                 entry["top_phases"] = None
                 logger.warning(
-                    "Phase-Profiling: keine Phasen-Timing-Daten verfügbar (top_phases=null, Zelle %s)",
+                    "Verarbeitungsschritt-Messung: keine Phasen-Timing-Daten verfügbar (top_phases=null, Zelle %s)",
                     cell.id,
                 )
             else:
@@ -647,7 +643,7 @@ def main() -> None:
             logger.warning("Zelle %s FEHLER: %s", cell.id, entry["error"])
         else:
             logger.warning(
-                "Zelle %s fertig: wall=%.1f s | RT=%.1f× | quality=%.3f | MOS=%s | Phasen=%d(+%d skip)",
+                "Zelle %s fertig: wall=%.1f s | RT=%.1f× | quality=%.3f | MOS=%s | Phasen=%d(+%d ueberspringen)",
                 cell.id,
                 entry["wall_s"],
                 entry["rt_factor"],
@@ -672,7 +668,7 @@ def main() -> None:
 
     # Exit-Code 1 bei Budget-Verletzungen im --ci-Modus.
     if args.ci and any_budget_violation:
-        logger.warning("Budget-Verletzungen aufgetreten — Exit-Code 1")
+        logger.warning("Grenze-Verletzungen aufgetreten — Exit-Code 1")
         sys.exit(1)
 
 

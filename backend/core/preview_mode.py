@@ -103,7 +103,7 @@ class PreviewMode:
                 # Die Preview nutzt ihre eigenen schnellen DSP-Schätzer.
                 logger.warning(
                     "Preview Pre-Analyse inaktiv — vollständige Analyse nur im Hauptlauf "
-                    "(backend.core.pre_analysis.run_pre_analysis)"
+                    "(backend.core.pre_Analyse.Ausfuehrung_pre_Analyse)"
                 )
             except Exception as _pre_exc:
                 logger.warning("Preview Pre-Analyse fehlgeschlagen: %s", _pre_exc)

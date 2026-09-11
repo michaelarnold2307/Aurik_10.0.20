@@ -22,6 +22,8 @@ from dataclasses import dataclass
 import numpy as np
 from scipy import signal
 
+from backend.core.audio_layout import mono_mix, to_channels_first
+
 logger = logging.getLogger(__name__)
 
 try:
@@ -521,9 +523,10 @@ class RoomToneDetector:
         Returns:
             RoomToneAnalysis with characteristics
         """
-        # Convert to mono for analysis
+        # Convert to mono for analysis — §V7 (copilot-instructions.md):
+        # layout-sicher; mean(axis=0) kollabierte (N,2)-Stereo auf (2,).
         if audio.ndim > 1:
-            audio_mono = np.mean(audio, axis=0)
+            audio_mono = mono_mix(audio)
             is_stereo = True
         else:
             audio_mono = audio
@@ -581,27 +584,28 @@ class RoomToneDetector:
 
         reverb_tail_ms = float(np.median(reverb_times)) if reverb_times else 0.0
 
-        # 4. Spatial correlation (stereo width)
-        if is_stereo and audio.shape[0] == 2:
-            left = audio[0]
-            right = audio[1]
+        # 4. Spatial correlation (stereo width) — §V7 (copilot-instructions.md) layout-sicher
+        spatial_correlation = 0.0
+        if is_stereo:
+            _cf = to_channels_first(audio)
+            if _cf.ndim == 2 and _cf.shape[0] >= 2:
+                left = _cf[0]
+                right = _cf[1]
 
-            # Correlation between channels (NaN-safe: guard against near-constant signals)
-            _sl = float(np.std(left))
-            _sr = float(np.std(right))
-            if _sl > 1e-8 and _sr > 1e-8:
-                _la = left - left.mean()
-                _ra = right - right.mean()
-                _nl = float(np.linalg.norm(_la))
-                _nr = float(np.linalg.norm(_ra))
-                correlation = float(np.dot(_la, _ra) / (_nl * _nr + 1e-10))
-                if not np.isfinite(correlation):
-                    correlation = 1.0
-            else:
-                correlation = 1.0  # Both constant — mono-equivalent
-            spatial_correlation = float(1.0 - abs(correlation))  # 0=mono, 1=wide
-        else:
-            spatial_correlation = 0.0  # Mono
+                # Correlation between channels (NaN-safe: guard against near-constant signals)
+                _sl = float(np.std(left))
+                _sr = float(np.std(right))
+                if _sl > 1e-8 and _sr > 1e-8:
+                    _la = left - left.mean()
+                    _ra = right - right.mean()
+                    _nl = float(np.linalg.norm(_la))
+                    _nr = float(np.linalg.norm(_ra))
+                    correlation = float(np.dot(_la, _ra) / (_nl * _nr + 1e-10))
+                    if not np.isfinite(correlation):
+                        correlation = 1.0
+                else:
+                    correlation = 1.0  # Both constant — mono-equivalent
+                spatial_correlation = float(1.0 - abs(correlation))  # 0=mono, 1=wide
 
         # 5. Naturalness score (heuristic)
         # Natural rooms have:

@@ -21,8 +21,6 @@ import json
 import logging
 from pathlib import Path
 
-import pytest
-
 pytest.importorskip("librosa")  # CI-Minimal-Umgebung (cross-platform) ohne librosa
 import librosa
 import numpy as np

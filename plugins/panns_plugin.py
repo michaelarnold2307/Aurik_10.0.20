@@ -30,6 +30,7 @@ from typing import Any, cast
 
 import numpy as np
 
+from backend.core.gpu_model_registry import get_onnx_providers
 from backend.core.plugin_base import MLPluginBase  # §A2
 
 # ---------------------------------------------------------------------------
@@ -243,7 +244,7 @@ class PANNsPlugin(MLPluginBase):  # §A2
                 device = "cpu"
                 self._device = "cpu"
                 self._use_fp16 = False
-                _providers = ["CPUExecutionProvider"]
+                _providers = get_onnx_providers(str(self._ONNX_PATH))
 
             # ONNX Session options for GPU optimization
             sess_options = ort.SessionOptions()
@@ -266,7 +267,7 @@ class PANNsPlugin(MLPluginBase):  # §A2
             ):
                 # §V6 (copilot-instructions.md): GPU angefordert, ORT still auf CPU zurückgefallen — nie still.
                 logger.warning(
-                    "PANNs: GPU-Inferenz angefordert (%s), aber Session nutzt nur %s — Provider-Fallback (§v10.304)",
+                    "PANNs: GPU-Inferenz angefordert (%s), aber Sitzung nutzt nur %s — Provider-Ersatzpfad (§v10.304)",
                     _providers,
                     _active_providers,
                 )
@@ -445,11 +446,11 @@ class PANNsPlugin(MLPluginBase):  # §A2
             _new_sess = ort.InferenceSession(
                 str(self._ONNX_PATH),
                 sess_options=_sess_opts,
-                providers=["CPUExecutionProvider"],
+                providers=get_onnx_providers(str(self._ONNX_PATH)),
             )
             return cast(object, _new_sess)
         except Exception as _exc:
-            logger.warning("PANNs: CPU-Session-Rebuild fehlgeschlagen: %s", _exc)
+            logger.warning("PANNs: CPU-Sitzung-Rebuild fehlgeschlagen: %s", _exc)
             return None
 
     def get_tags(self, audio: np.ndarray, sr: int) -> dict[str, float]:
@@ -529,7 +530,7 @@ class PANNsPlugin(MLPluginBase):  # §A2
                 if _is_miopen:
                     _MIOPEN_POOL_FAILED_THIS_PROCESS = True
                 logger.warning(
-                    "PANNs: ONNX-Inferenz fehlgeschlagen (%s) — CPU-Fallback-Retry%s",
+                    "PANNs: ONNX-Inferenz fehlgeschlagen (%s) — CPU-Ersatzpfad-Wiederholung%s",
                     _ort_exc,
                     " (MIOPEN defekt — Prozess-Latch gesetzt)" if _is_miopen else "",
                 )

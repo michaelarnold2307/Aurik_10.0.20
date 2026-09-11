@@ -25,7 +25,7 @@ OUT = ROOT / "models" / "clap" / "text_embeddings.npy"
 
 def main() -> int:
     if OUT.exists():
-        print(f"existiert bereits: {OUT} ({OUT.stat().st_size/1e6:.1f} MB)")
+        print(f"existiert bereits: {OUT} ({OUT.stat().st_size / 1e6:.1f} MB)")
         return 0
     from transformers import AutoModel, AutoTokenizer  # pylint: disable=import-outside-toplevel
 
@@ -57,12 +57,38 @@ def main() -> int:
     # text_transform (Linear+LN+LN+Linear) → L2-Norm.
     import torch.nn as nn  # pylint: disable=import-outside-toplevel
 
-    _proj0 = nn.Linear(768, 512); _proj0.load_state_dict({"weight": sd["module.text_projection.0.weight"], "bias": sd["module.text_projection.0.bias"]})
-    _proj2 = nn.Linear(512, 512); _proj2.load_state_dict({"weight": sd["module.text_projection.2.weight"], "bias": sd["module.text_projection.2.bias"]})
-    _tf0 = nn.Linear(512, 512); _tf0.load_state_dict({"weight": sd["module.text_transform.sequential.0.weight"], "bias": sd["module.text_transform.sequential.0.bias"]})
-    _tf3 = nn.Linear(512, 512); _tf3.load_state_dict({"weight": sd["module.text_transform.sequential.3.weight"], "bias": sd["module.text_transform.sequential.3.bias"]})
-    _ln_p = nn.LayerNorm(512); _ln_t1 = nn.LayerNorm(512); _ln_t2 = nn.LayerNorm(512)
-    _proj0.eval(); _proj2.eval(); _tf0.eval(); _tf3.eval(); _ln_p.eval(); _ln_t1.eval(); _ln_t2.eval()
+    _proj0 = nn.Linear(768, 512)
+    _proj0.load_state_dict(
+        {"weight": sd["module.text_projection.0.weight"], "bias": sd["module.text_projection.0.bias"]}
+    )
+    _proj2 = nn.Linear(512, 512)
+    _proj2.load_state_dict(
+        {"weight": sd["module.text_projection.2.weight"], "bias": sd["module.text_projection.2.bias"]}
+    )
+    _tf0 = nn.Linear(512, 512)
+    _tf0.load_state_dict(
+        {
+            "weight": sd["module.text_transform.sequential.0.weight"],
+            "bias": sd["module.text_transform.sequential.0.bias"],
+        }
+    )
+    _tf3 = nn.Linear(512, 512)
+    _tf3.load_state_dict(
+        {
+            "weight": sd["module.text_transform.sequential.3.weight"],
+            "bias": sd["module.text_transform.sequential.3.bias"],
+        }
+    )
+    _ln_p = nn.LayerNorm(512)
+    _ln_t1 = nn.LayerNorm(512)
+    _ln_t2 = nn.LayerNorm(512)
+    _proj0.eval()
+    _proj2.eval()
+    _tf0.eval()
+    _tf3.eval()
+    _ln_p.eval()
+    _ln_t1.eval()
+    _ln_t2.eval()
 
     embs: list[np.ndarray] = []
     with torch.no_grad():
@@ -70,8 +96,13 @@ def main() -> int:
             tok = tokenizer(t, return_tensors="pt", padding="max_length", truncation=True, max_length=77)
             out = model(**tok)
             x = out.last_hidden_state[:, 0, :]  # CLS-Token (CLAP-Konvention)
-            x = _proj0(x); x = _ln_p(x); x = _proj2(x)
-            x = _tf0(x); x = _ln_t1(x); x = _ln_t2(x); x = _tf3(x)
+            x = _proj0(x)
+            x = _ln_p(x)
+            x = _proj2(x)
+            x = _tf0(x)
+            x = _ln_t1(x)
+            x = _ln_t2(x)
+            x = _tf3(x)
             x = torch.nn.functional.normalize(x, dim=-1)
             embs.append(x[0].cpu().numpy().astype(np.float32))
     arr = np.stack(embs)  # (527, 768)

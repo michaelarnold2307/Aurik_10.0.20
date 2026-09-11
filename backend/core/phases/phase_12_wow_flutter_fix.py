@@ -654,7 +654,7 @@ class WowFlutterFix(PhaseInterface):
                         material.value,
                     )
                 except Exception as _poly_exc:
-                    logger.warning("ML→DSP-Fallback aktiviert", exc_info=True)  # §V6 (copilot-instructions.md)
+                    logger.warning("ML→DSP-Ersatzpfad aktiviert", exc_info=True)  # §V6 (copilot-instructions.md)
                     _poly_fallback = True
                     logger.warning(
                         "PolyphonicSpeedCurveEstimator fehlgeschlagen (%s) — ML-Hybrid-Ersatzpfad",
@@ -1436,7 +1436,7 @@ class WowFlutterFix(PhaseInterface):
             )
             _chroma_pearson = _pearson_num / _pearson_den if _pearson_den > 1e-12 else 1.0
         except Exception:
-            logger.warning("ML→DSP-Fallback aktiviert", exc_info=True)  # §V6 (copilot-instructions.md)
+            logger.warning("ML→DSP-Ersatzpfad aktiviert", exc_info=True)  # §V6 (copilot-instructions.md)
             _chroma_pearson = 1.0  # fallback: assume OK
 
         if _chroma_pearson < 0.95:
@@ -3772,7 +3772,7 @@ class WowFlutterFix(PhaseInterface):
             result = np.clip(np.nan_to_num(result, nan=0.0, posinf=0.0, neginf=0.0), -1.0, 1.0)
             return result.astype(audio.dtype, copy=False)  # type: ignore[no-any-return]
         except Exception as _c3_fallback_exc:
-            logger.warning("ML→DSP-Fallback aktiviert", exc_info=True)  # §V6 (copilot-instructions.md)
+            logger.warning("ML→DSP-Ersatzpfad aktiviert", exc_info=True)  # §V6 (copilot-instructions.md)
             if "result" in locals():
                 return result.astype(audio.dtype, copy=False)  # type: ignore[no-any-return]
             logger.debug("§C3 emergency smoothing Ersatzpfad fehlgeschlagen: %s", _c3_fallback_exc)

@@ -35,7 +35,7 @@ def _make_voice(f0: float = 233.0, amp: float = 0.28, seed: int = 42) -> np.ndar
     t = np.arange(n) / SR
     x = np.zeros(n, dtype=np.float64)
     for k in range(1, 9):
-        x += amp / (k ** 1.1) * np.sin(2 * np.pi * k * f0 * t + 0.3 * k)
+        x += amp / (k**1.1) * np.sin(2 * np.pi * k * f0 * t + 0.3 * k)
     x += 0.05 * np.sin(2 * np.pi * 110 * t)  # schwache Begleitung
     rng = np.random.default_rng(seed)
     x += rng.standard_normal(n) * 10 ** (-60 / 20)

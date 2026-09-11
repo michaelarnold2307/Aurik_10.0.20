@@ -117,6 +117,8 @@ def test_try_allocate_positive_size() -> None:
                 continue
 
             class _ZeroFinder(ast.NodeVisitor):
+                _py_file = py_file  # B023-Fix: Loop-Variable beim Klassenaufbau binden
+
                 def visit_Call(self, node: ast.Call) -> None:
                     func_name = ""
                     if isinstance(node.func, ast.Name):
@@ -133,7 +135,7 @@ def test_try_allocate_positive_size() -> None:
                         if size_node is not None and isinstance(size_node, ast.Constant):
                             val = size_node.value
                             if isinstance(val, (int, float)) and float(val) <= 0.0:
-                                zero_violations.append((py_file, getattr(size_node, "lineno", -1), val))
+                                zero_violations.append((self._py_file, getattr(size_node, "lineno", -1), val))
                     self.generic_visit(node)
 
             _ZeroFinder().visit(tree)

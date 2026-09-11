@@ -87,18 +87,14 @@ class TestViolation:
 
     def test_multiple_violated_goals_sorted(self) -> None:
         # brillanz (4) verbessert auf Kosten von waerme (2) und natuerlichkeit (1).
-        r = make_gate().evaluate(
-            {"brillanz": 0.10, "waerme": -0.04, "natuerlichkeit": -0.05}
-        )
+        r = make_gate().evaluate({"brillanz": 0.10, "waerme": -0.04, "natuerlichkeit": -0.05})
         assert r.status == VIOLATION
         assert r.violated_goals == sorted(["waerme", "natuerlichkeit"])
 
     def test_threshold_gates_degradation(self) -> None:
         # Mit expliziter Schwelle zählt ein nur minimaler Verlust am
         # höherrangigen Goal nicht als Verstoß.
-        r = make_gate().evaluate(
-            {"brillanz": 0.10, "waerme": -0.001}, threshold=0.05
-        )
+        r = make_gate().evaluate({"brillanz": 0.10, "waerme": -0.001}, threshold=0.05)
         assert r.status == PASS
 
 
@@ -112,9 +108,7 @@ class TestNotApplicable:
         assert r.status == NOT_APPLICABLE
 
     def test_all_invalid_values(self) -> None:
-        r = make_gate().evaluate(
-            {"brillanz": float("nan"), "waerme": float("inf"), "natuerlichkeit": float("-inf")}
-        )
+        r = make_gate().evaluate({"brillanz": float("nan"), "waerme": float("inf"), "natuerlichkeit": float("-inf")})
         assert r.status == NOT_APPLICABLE
 
     def test_non_numeric_value_ignored(self) -> None:

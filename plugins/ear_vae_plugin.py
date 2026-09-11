@@ -72,7 +72,10 @@ def _load_session(path: Path, name: str):
         try:
             import onnxruntime as ort
 
-            session = ort.InferenceSession(str(path), providers=["CPUExecutionProvider"])
+            # §v10.40c: Registry-konsultierte Provider-Wahl statt hartem CPU.
+            from backend.core.gpu_model_registry import get_onnx_providers
+
+            session = ort.InferenceSession(str(path), providers=get_onnx_providers(str(path)))
             logger.info("EAR_VAE %s ONNX geladen (%s)", name, path)
 
             if name == "encoder":

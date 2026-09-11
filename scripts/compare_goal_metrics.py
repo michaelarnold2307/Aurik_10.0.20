@@ -3,6 +3,10 @@
 
 from __future__ import annotations
 
+import logging
+
+logger = logging.getLogger(__name__)
+
 import argparse
 import json
 from pathlib import Path
@@ -39,6 +43,7 @@ def _goal_scores(data: dict) -> dict[str, float]:
         try:
             out[str(k)] = float(v)
         except Exception:
+            logger.debug("Stiller Ersatzpfad dokumentiert (Bug 9/V74)", exc_info=True)
             continue
     return out
 

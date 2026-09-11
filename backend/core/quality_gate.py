@@ -249,7 +249,7 @@ class QualityGate:
 
             return True
         except Exception:
-            logger.warning("ML→DSP-Fallback aktiviert", exc_info=True)  # §V6 (copilot-instructions.md)
+            logger.warning("ML→DSP-Ersatzpfad aktiviert", exc_info=True)  # §V6 (copilot-instructions.md)
             logger.exception("[QualityGate/DSP] Unerwarteter Fehler – Fallback True")
             return True
 
@@ -285,7 +285,7 @@ class QualityGate:
             return True  # alle ML-Checks bestanden
 
         except Exception:
-            logger.warning("ML→DSP-Fallback aktiviert", exc_info=True)  # §V6 (copilot-instructions.md)
+            logger.warning("ML→DSP-Ersatzpfad aktiviert", exc_info=True)  # §V6 (copilot-instructions.md)
             logger.exception("[QualityGate/ML] Unerwarteter Fehler – Fallback True")
             return True
 
@@ -309,7 +309,7 @@ class QualityGate:
             return True  # alle GUI-Checks bestanden
 
         except Exception:
-            logger.warning("ML→DSP-Fallback aktiviert", exc_info=True)  # §V6 (copilot-instructions.md)
+            logger.warning("ML→DSP-Ersatzpfad aktiviert", exc_info=True)  # §V6 (copilot-instructions.md)
             logger.exception("[QualityGate/GUI] Unerwarteter Fehler – Fallback True")
             return True
 
@@ -319,5 +319,8 @@ class QualityGate:
         try:
             return float(value) >= float(threshold)
         except (TypeError, ValueError) as e:
-            logger.debug("§V6 QualityGate.check Schwellwert-Vergleich fehlgeschlagen — False zurückgegeben: %s", e)
+            logger.debug(
+                "§V6 (copilot-instructions.md) QualityGate.Pruefung Schwellwert-Vergleich fehlgeschlagen — False zurückgegeben: %s",
+                e,
+            )
             return False

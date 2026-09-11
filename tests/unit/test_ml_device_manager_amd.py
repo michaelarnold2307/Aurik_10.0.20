@@ -561,8 +561,9 @@ class TestAutoFp16:
     def test_non_fp16_plugin_gets_standard_rocm_provider(self) -> None:
         """Plugins not in _FP16_ELIGIBLE_PLUGINS still get ROCMExecutionProvider (not fp16)."""
         mgr = self._mgr_tier1_rocm()
-        # ApolloPlugin is heavy but not fp16-eligible
-        providers = mgr.get_ort_providers("ApolloPlugin")
+        # Vocos ist heavy, aber nicht fp16-eligible (§v10.733: ApolloPlugin ist
+        # CPU-geforced und deshalb kein gültiger GPU-Kandidat).
+        providers = mgr.get_ort_providers("Vocos")
         assert "ROCMExecutionProvider" in providers, "Heavy plugin should get GPU"
 
     def test_cpu_only_no_fp16(self) -> None:

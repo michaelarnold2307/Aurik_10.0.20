@@ -39,8 +39,8 @@ def test_pipeline_passes_era_result_to_phases_all_paths() -> None:
     )
     assert 'self._restoration_context["era_result"] = _era_result' in _src
     assert '"era_result": _ctx_phase_vocal.get("era_result"),' in _src  # PMGG-Primär
-    assert "era_result=_ctx_phase_vocal.get(\"era_result\")," in _src  # Fallback + Direkt
-    assert "era_result=(getattr(self, \"_restoration_context\", {}) or {}).get(\"era_result\")," in _src  # Parallel
+    assert 'era_result=_ctx_phase_vocal.get("era_result"),' in _src  # Fallback + Direkt
+    assert 'era_result=(getattr(self, "_restoration_context", {}) or {}).get("era_result"),' in _src  # Parallel
 
 
 def test_phase07_uses_era_decade_from_era_result() -> None:
@@ -74,9 +74,7 @@ def test_phase07_uses_era_decade_from_era_result() -> None:
         phase = HarmonicRestorationPhase()
         phase.process(_vinyl_like(), _SR, material_type="vinyl", era_result=_fake_era, strength=0.5)
 
-    assert _captured.get("era_decade") == 1968, (
-        f"era_decade aus era_result wurde nicht durchgereicht: {_captured}"
-    )
+    assert _captured.get("era_decade") == 1968, f"era_decade aus era_result wurde nicht durchgereicht: {_captured}"
 
 
 def test_phase07_era_none_keeps_material_adaptive_default() -> None:

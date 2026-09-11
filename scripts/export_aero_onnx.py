@@ -199,7 +199,9 @@ def main() -> int:
         except RuntimeError as exc:
             # torch ≥ 2.7: Original-Aero-istft (4D-komplex) crasht eager —
             # Patch-Parität wurde separat unter torch 2.5.1 verifiziert.
-            print(f"[aero-export] Original-Referenz nicht lauffähig ({type(exc).__name__}) — Patch-Parität übersprungen")
+            print(
+                f"[aero-export] Original-Referenz nicht lauffähig ({type(exc).__name__}) — Patch-Parität übersprungen"
+            )
             ref_orig = None
     print(f"[aero-export] PyTorch-Referenz: {tuple(ref.shape)}")
     if ref_orig is not None:

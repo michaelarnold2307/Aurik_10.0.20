@@ -357,7 +357,10 @@ class StreamingDoNoHarm:
                 "rms_db": rms_db,
             }
         except Exception as exc:
-            logger.debug("§V6 _compute_quality_metrics fehlgeschlagen — leeres Dict zurückgegeben: %s", exc)
+            logger.debug(
+                "§V6 (copilot-instructions.md) _berechnen_quality_metrics fehlgeschlagen — leeres Dict zurückgegeben: %s",
+                exc,
+            )
             return {}
 
 
@@ -727,7 +730,7 @@ class AurikOrchestrator:
             if not self._warned_watchdog_uninit:
                 self._warned_watchdog_uninit = True
                 logger.debug(
-                    "§WATCHDOG passiv: preflight() fehlt — after_phase(%s) No-Op (Spec 23)",
+                    "§WATCHDOG passiv: preflight() fehlt — after_Verarbeitungsschritt(%s) No-Op (Spec 23)",
                     phase_id,
                 )
             return PhaseWatchResult()

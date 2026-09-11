@@ -106,10 +106,14 @@ def detect_gpu_capabilities(fail_fast: bool = False) -> MLEngineConfig:
 
     # ── onnxruntime prüfen ───────────────────────────────────────────────
     try:
-        import onnxruntime as _ort  # noqa: F811, F401
+        import onnxruntime as _ort
+
         del _ort
     except ImportError as exc:
-        logger.debug("§V6 onnxruntime nicht installiert — CPU-only Konfiguration zurückgegeben: %s", exc)
+        logger.debug(
+            "§V6 (copilot-instructions.md) onnxruntime nicht installiert — CPU-only Konfiguration zurückgegeben: %s",
+            exc,
+        )
         config.warnings.append("onnxruntime nicht installiert — CPU-only")
         return config
 
@@ -195,7 +199,10 @@ def _get_available_providers() -> list[str]:
 
         return ort.get_available_providers()  # type: ignore[no-any-return]
     except Exception as exc:
-        logger.debug("§V6 onnxruntime.get_available_providers fehlgeschlagen — leere Liste zurückgegeben: %s", exc)
+        logger.debug(
+            "§V6 (copilot-instructions.md) onnxruntime.get_verfuegbar_providers fehlgeschlagen — leere Liste zurückgegeben: %s",
+            exc,
+        )
         return []
 
 
@@ -212,7 +219,10 @@ def _cpu_thread_count() -> int:
     try:
         return max(1, len(os.sched_getaffinity(0)))
     except (AttributeError, NotImplementedError) as exc:
-        logger.debug("§V6 os.sched_getaffinity nicht verfügbar — cpu_count Fallback aktiviert: %s", exc)
+        logger.debug(
+            "§V6 (copilot-instructions.md) os.sched_getaffinity nicht verfügbar — cpu_count Ersatzpfad aktiviert: %s",
+            exc,
+        )
         return max(1, os.cpu_count() or 4)
 
 
@@ -222,7 +232,10 @@ def _get_cuda_version() -> str:
 
         return torch.version.cuda or "unknown"
     except Exception as exc:
-        logger.debug("§V6 torch.version.cuda nicht verfügbar — leere String zurückgegeben (CUDA-Version): %s", exc)
+        logger.debug(
+            "§V6 (copilot-instructions.md) torch.version.cuda nicht verfügbar — leere String zurückgegeben (CUDA-Version): %s",
+            exc,
+        )
         return ""
 
 
@@ -232,7 +245,10 @@ def _get_gpu_name_cuda() -> str:
 
         return str(torch.cuda.get_device_name(0))
     except Exception as exc:
-        logger.debug("§V6 torch.cuda.get_device_name fehlgeschlagen — Default-GPU-Name zurückgegeben (CUDA): %s", exc)
+        logger.debug(
+            "§V6 (copilot-instructions.md) torch.cuda.get_device_name fehlgeschlagen — Default-GPU-Name zurückgegeben (CUDA): %s",
+            exc,
+        )
         return "NVIDIA GPU (CUDA)"
 
 
@@ -243,7 +259,9 @@ def _get_vram_cuda(device_id: int = 0) -> float:
         props = torch.cuda.get_device_properties(device_id)
         return float(props.total_memory / (1024 * 1024))
     except Exception:
-        logger.warning("§V6 ML→DSP-Fallback: _get_vram_cuda fehlgeschlagen → neutraler Return (0.0)")
+        logger.warning(
+            "§V6 (copilot-instructions.md) ML→DSP-Ersatzpfad: _get_vram_cuda fehlgeschlagen → neutraler Return (0.0)"
+        )
         return 0.0
 
 
@@ -253,7 +271,10 @@ def _get_gpu_name_rocm() -> str:
 
         return str(torch.cuda.get_device_name(0))
     except Exception as exc:
-        logger.debug("§V6 torch.cuda.get_device_name fehlgeschlagen — Default-GPU-Name zurückgegeben (ROCm): %s", exc)
+        logger.debug(
+            "§V6 (copilot-instructions.md) torch.cuda.get_device_name fehlgeschlagen — Default-GPU-Name zurückgegeben (ROCm): %s",
+            exc,
+        )
         return "AMD GPU (ROCm)"
 
 
@@ -264,7 +285,9 @@ def _get_vram_rocm(device_id: int = 0) -> float:
         props = torch.cuda.get_device_properties(device_id)
         return float(props.total_memory / (1024 * 1024))
     except Exception:
-        logger.warning("§V6 ML→DSP-Fallback: _get_vram_rocm fehlgeschlagen → neutraler Return (0.0)")
+        logger.warning(
+            "§V6 (copilot-instructions.md) ML→DSP-Ersatzpfad: _get_vram_rocm fehlgeschlagen → neutraler Return (0.0)"
+        )
         return 0.0
 
 

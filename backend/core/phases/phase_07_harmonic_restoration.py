@@ -742,7 +742,7 @@ class HarmonicRestorationPhase(PhaseInterface):
                     audio = np.clip(audio + _ddsp_wet * (_ddsp_audio - audio), -1.0, 1.0)
                 _mono = np.mean(audio, axis=1) if audio.ndim == 2 else audio  # re-derive mono
         except Exception as _ddsp_exc:
-            logger.warning("ML→DSP-Fallback aktiviert", exc_info=True)  # §V6 (copilot-instructions.md)
+            logger.warning("ML→DSP-Ersatzpfad aktiviert", exc_info=True)  # §V6 (copilot-instructions.md)
             logger.debug("§C5 DDSP-Inversion uebersprungen (nicht blockierend): %s", _ddsp_exc)
 
         # §v10.300 ML Harmonic Inpainting (selbst trainiertes DiT-Finetune, Rectified Flow).

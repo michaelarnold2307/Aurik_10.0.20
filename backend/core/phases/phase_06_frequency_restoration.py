@@ -480,7 +480,7 @@ class FrequencyRestorationPhase(PhaseInterface):
                 params["extension_range_hz"] = [min(_ext[0], _bw_cap), min(_ext[1], _bw_cap)]
         except Exception:
             logger.warning(
-                "§V6 Phase-06 SourceMediumProfile nicht verfügbar → Default-Parameter: %s",
+                "§V6 (copilot-instructions.md) Verarbeitungsschritt-06 SourceMediumProfile nicht verfügbar → Default-Parameter: %s",
                 str(Exception),
             )
 
@@ -1454,7 +1454,7 @@ class FrequencyRestorationPhase(PhaseInterface):
             if quality_mode in ("quality", "maximum"):
                 # Quality-first: extended timeout already applied via watchdog profile.
                 # studio_2026 uses the same extended profile via _compute_flashsr_watchdog_profile.
-                logger.debug("§v10.303 FlashSR Quality-Modus aktiv — erweitertes Timeout angewendet")
+                logger.debug("§v10.303 FlashSR Quality-Modus aktiv — erweitertes Zeitlimit angewendet")
 
             # Quality-first watchdog policy:
             # - quality/maximum: do not let time factor prematurely cap FlashSR quality.

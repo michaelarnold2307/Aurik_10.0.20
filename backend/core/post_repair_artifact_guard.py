@@ -123,6 +123,7 @@ class PostRepairArtifactGuard:
                     if drift is not None:
                         formant_drift = float(drift)
             except Exception:
+                log.debug("Stiller Fallback dokumentiert (Bug 9/V74)", exc_info=True)
                 pass
 
         if formant_drift > FORMANT_DRIFT_MAX:

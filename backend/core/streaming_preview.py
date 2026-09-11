@@ -96,7 +96,7 @@ class StreamingPreview:
                 try:
                     self._on_chunk_ready(processed)
                 except Exception:
-                    logger.debug("streaming_preview: chunk processing failed, skipping chunk", exc_info=True)
+                    logger.debug("streaming_preview: chunk processing fehlgeschlagen, skipping chunk", exc_info=True)
 
             pos = end
             chunks_processed += 1
@@ -118,7 +118,9 @@ class StreamingPreview:
             result = apply_comfort_guard(r3.audio, self.sr)
             return cast(np.ndarray, result.astype(np.float32))
         except Exception as e:
-            logger.debug("§V6 _mini_pipeline fehlgeschlagen — Lowpass-Fallback aktiviert: %s", e)
+            logger.debug(
+                "§V6 (copilot-instructions.md) _mini_pipeline fehlgeschlagen — Lowpass-Ersatzpfad aktiviert: %s", e
+            )
             # Fallback: leichter Lowpass mit Längen-Guard (§v10.103)
             from scipy.signal import butter
 

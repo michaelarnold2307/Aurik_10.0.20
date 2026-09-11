@@ -38,7 +38,7 @@ def _entry(**overrides) -> dict:
 
 
 def test_repeat_seed_schedule_deterministic():
-    # §G5: gleiche Eingabe ⇒ gleiche Folge; 0-basiert ab Basis-Seed.
+    # §G5 (GEBOTE.md): gleiche Eingabe ⇒ gleiche Folge; 0-basiert ab Basis-Seed.
     assert _repeat_seed_schedule(42, 3) == [42, 43, 44]
     assert _repeat_seed_schedule(42, 1) == [42]
     assert _repeat_seed_schedule(7, 0) == [7]
@@ -58,7 +58,7 @@ def test_bootstrap_ci_with_repeats_non_degenerate():
     mci = _bootstrap_percentile_ci(m_obs)
     assert qci is not None and qci[0] < qci[1]
     assert mci is not None and mci[0] < mci[1]
-    # Determinismus (§G5): identischer Aufruf ⇒ identisches Intervall.
+    # Determinismus (§G5 (GEBOTE.md)): identischer Aufruf ⇒ identisches Intervall.
     assert _bootstrap_percentile_ci(q_obs) == qci
 
 

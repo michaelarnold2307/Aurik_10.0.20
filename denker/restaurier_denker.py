@@ -104,6 +104,12 @@ class RestaurierErgebnis:
     processing_note: str = ""
     """Kurznotiz zur Verarbeitung (laienverständlich)."""
 
+    degradation_status: str = "ok"
+    """§0c: "ok" | "degraded" — Qualitäts-Gate-Status für den Export-Vertrag."""
+
+    fail_reason: str | None = None
+    """Grund einer Degradierung (z. B. kein Restaurierungs-Ergebnis)."""
+
     def as_dict(self) -> dict[str, Any]:
         """Liefert alle Felder als serialisierbares Dict."""
         return {
@@ -434,7 +440,7 @@ class RestaurierDenker:
                     audio_update_callback=audio_update_callback,
                     no_rt_limit=no_rt_limit,
                 )
-                return self._konvertiere(raw, material=material)
+                return self._konvertiere(raw, material=material, original_audio=audio)
             except Exception as cp_exc:
                 logger.warning("RestaurierDenker: OOM-Wiederherstellung fehlgeschlagen: %s", cp_exc)
                 return self._fallback(audio, material or "unknown", f"OOM-Recovery fehlgeschlagen: {cp_exc}")
@@ -594,7 +600,7 @@ class RestaurierDenker:
                     logger.debug("restauriere: silent except suppressed", exc_info=True)
 
                 raw = restorer.restore(audio, **_uv3_kwargs)
-                result = self._konvertiere(raw, material=material)
+                result = self._konvertiere(raw, material=material, original_audio=audio)
 
                 # §v10 HPE + Inviting Check: Hat UV3 versagt?
                 try:
@@ -690,7 +696,11 @@ class RestaurierDenker:
                             return result
 
                         # Nicht am Sweet Spot → iterative Optimierung
-                        _optimized = self._optimize_to_sweet_spot(audio, _restored_f32, sr, result, max_iterations=3)
+                        # §Stereo-Layout-Invariante: SweetSpot auf dem VOLLEN
+                        # Stereo-Signal optimieren — der Mono-Downmix
+                        # (_restored_f32) darf das Stereo-Ergebnis nicht ersetzen
+                        # (Produktionsbefund: Export-Kollaps auf (2,)).
+                        _optimized = self._optimize_to_sweet_spot(audio, result.audio, sr, result, max_iterations=3)
                         if _optimized is not None:
                             return _optimized  # type: ignore[no-any-return]
 
@@ -782,7 +792,7 @@ class RestaurierDenker:
                         material=material or "unknown",
                         progress_callback=progress_callback,
                     )
-                    return self._konvertiere(raw, material=material)
+                    return self._konvertiere(raw, material=material, original_audio=audio)
                 except Exception as _sar_exc:
                     logger.warning(
                         "§3.0 SourceAwareRestorer fehlgeschlagen: %s — Ersatzpfad auf Standard-UV3",
@@ -797,7 +807,7 @@ class RestaurierDenker:
             )
             return self._fallback(audio, material or "unknown", str(exc))
 
-        return self._konvertiere(raw, material=material)
+        return self._konvertiere(raw, material=material, original_audio=audio)
 
     # ------------------------------------------------------------------
     # Interne Hilfsmethoden
@@ -867,19 +877,64 @@ class RestaurierDenker:
 
     # ── §Befund 2026-09-08: ARE-Pipeline entfernt (Parallelversion-Verbot) ──
 
-    def _konvertiere(self, raw: Any, *, material: str | None) -> RestaurierErgebnis:
-        """Wandelt RestorationResult in RestaurierErgebnis um."""
-        if raw is None:
-            dummy = np.zeros(1, dtype=np.float32)
+    def _konvertiere(
+        self,
+        raw: Any,
+        *,
+        material: str | None,
+        original_audio: np.ndarray | None = None,
+    ) -> RestaurierErgebnis:
+        """Wandelt RestorationResult in RestaurierErgebnis um.
+
+        §0h/§0c-Auflösung (copilot-instructions.md): Ein fehlgeschlagener
+        Restaurierungs-/Quality-Gate-Lauf darf NIEMALS in einem Hardstop
+        oder einem Stub (z. B. 1-Sample-Null-Array → 50-Byte-Export) enden.
+        §0c verlangt den Export des bestmöglichen sicheren Ergebnisses mit
+        Status ``degraded``. Bestmöglich sicher ist hier das bereinigte
+        Original-Audio — es ist garantiert vollständig und artefaktfrei.
+        """
+        _raw_audio = None if raw is None else getattr(raw, "audio", None)
+        _raw_audio_arr = np.asarray(_raw_audio) if _raw_audio is not None else None
+        _raw_audio_usable = (
+            _raw_audio_arr is not None
+            and _raw_audio_arr.ndim >= 1
+            and _raw_audio_arr.size >= 256  # < 256 Samples = Stub (UV3-§AO-Mindestlänge)
+        )
+        if raw is None or not _raw_audio_usable:
+            _best = np.asarray(original_audio, dtype=np.float32) if original_audio is not None else None
+            if _best is not None and (_best.ndim == 0 or _best.size == 0):
+                _best = None
+            if _best is not None:
+                _best = np.clip(
+                    np.nan_to_num(_best, nan=0.0, posinf=0.0, neginf=0.0),
+                    -1.0,
+                    1.0,
+                )
+            _reason = (
+                "Keine Verarbeitung — Restorer nicht initialisiert"
+                if raw is None
+                else "Restorer lieferte kein verwertbares Audio (audio=None/Stub)"
+            )
+            if _best is None:
+                logger.error(
+                    "§0c degraded-Ausgabe: %s — kein Originalsignal-Puffer verfügbar, "
+                    "Ersatzpfad auf Stille (darf im Produktionspfad nie auftreten)",
+                    _reason,
+                )
             return RestaurierErgebnis(
-                audio=dummy,
+                audio=_best if _best is not None else np.zeros(1, dtype=np.float32),
                 rt_factor=0.0,
                 quality_estimate=0.0,
                 phases_executed=[],
                 phases_skipped=[],
                 musical_goals=None,
-                warnings=["Keine Verarbeitung — Restorer nicht initialisiert"],
+                warnings=[
+                    f"{_reason} — §0c degraded-Export: bestmögliches sicheres Ergebnis "
+                    "(Original) ausgeliefert, kein Hardstop"
+                ],
                 material=material or "unknown",
+                degradation_status="degraded",
+                fail_reason=_reason,
             )
 
         # Audio sichern
@@ -1082,7 +1137,9 @@ class RestaurierDenker:
             raw2 = restorer.restore(audio, **_lighter_kwargs)
             from denker.restaurier_denker import RestaurierDenker
 
-            result2 = RestaurierDenker._konvertiere.__func__(None, raw2, material=material)  # type: ignore[attr-defined]
+            result2 = RestaurierDenker._konvertiere.__func__(  # type: ignore[attr-defined]
+                None, raw2, material=material, original_audio=audio
+            )
 
             # Prüfe ob der Retry besser ist
             from backend.core.human_pleasantness_estimator import compare_pleasantness

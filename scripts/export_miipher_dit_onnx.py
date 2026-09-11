@@ -232,20 +232,19 @@ def main():
         "--in-channels",
         type=int,
         default=1,
-        help="Eingabekanäle des FlowMatchingDiT (1=Wellenform, 2=Audio+Maske; "
-        "Mask-Variante §v10.910: 2)",
+        help="Eingabekanäle des FlowMatchingDiT (1=Wellenform, 2=Audio+Maske; Mask-Variante §v10.910: 2)",
     )
     args = parser.parse_args()
 
     output = Path(args.output)
     output.parent.mkdir(parents=True, exist_ok=True)
 
-    kwargs = dict(
-        dynamic_batch=not args.static_batch,
-        dynamic_time=not args.static_time,
-        opset_version=args.opset,
-        dummy_T=args.dummy_t,
-    )
+    kwargs = {
+        "dynamic_batch": not args.static_batch,
+        "dynamic_time": not args.static_time,
+        "opset_version": args.opset,
+        "dummy_T": args.dummy_t,
+    }
 
     if args.checkpoint:
         checkpoint = Path(args.checkpoint)

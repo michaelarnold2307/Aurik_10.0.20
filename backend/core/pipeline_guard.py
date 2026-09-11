@@ -445,7 +445,11 @@ class PipelineGuard:
 
             return get_clp_max_attenuation_for_frequency(freq_hz, self._clp_result)
         except Exception as exc:
-            logger.debug("§V6 CLP-Attenuation fehlgeschlagen — 99.0 zurückgegeben (Freq %.1f Hz): %s", freq_hz, exc)
+            logger.debug(
+                "§V6 (copilot-instructions.md) CLP-Attenuation fehlgeschlagen — 99.0 zurückgegeben (Freq %.1f Hz): %s",
+                freq_hz,
+                exc,
+            )
             return 99.0
 
     def get_clp_gain_limit(self, freq_hz: float) -> float:
@@ -459,7 +463,11 @@ class PipelineGuard:
         try:
             return get_clp_max_gain_for_frequency(freq_hz, self._clp_result)
         except Exception as exc:
-            logger.debug("§V6 CLP-Gain-Limit fehlgeschlagen — 99.0 zurückgegeben (Freq %.1f Hz): %s", freq_hz, exc)
+            logger.debug(
+                "§V6 (copilot-instructions.md) CLP-Gain-Limit fehlgeschlagen — 99.0 zurückgegeben (Freq %.1f Hz): %s",
+                freq_hz,
+                exc,
+            )
             return 99.0
 
     def get_whisper_protection(self, time_s: float) -> float:

@@ -30,14 +30,14 @@ def main() -> int:
     import torch  # pylint: disable=import-outside-toplevel
 
     if OUT.exists():
-        print(f"existiert bereits: {OUT} ({OUT.stat().st_size/1e6:.1f} MB)")
+        print(f"existiert bereits: {OUT} ({OUT.stat().st_size / 1e6:.1f} MB)")
         return 0
 
     from modeling_MERT import MERTModel  # pylint: disable=import-outside-toplevel
 
     model = MERTModel.from_pretrained(str(MODEL_DIR))
     model.eval()
-    print(f"Modell geladen: {sum(p.numel() for p in model.parameters())/1e6:.0f}M Parameter")
+    print(f"Modell geladen: {sum(p.numel() for p in model.parameters()) / 1e6:.0f}M Parameter")
 
     OUT.parent.mkdir(parents=True, exist_ok=True)
     dummy = torch.zeros((1, 24000), dtype=torch.float32)  # 1 s @ 24 kHz
@@ -53,7 +53,7 @@ def main() -> int:
             dynamo=False,
             do_constant_folding=True,
         )
-    print(f"Export OK: {OUT} ({OUT.stat().st_size/1e6:.1f} MB)")
+    print(f"Export OK: {OUT} ({OUT.stat().st_size / 1e6:.1f} MB)")
 
     # ── Parität: torch vs. ONNX auf identischem Eingang ─────────────────
     rng = np.random.default_rng(7)

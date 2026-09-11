@@ -5,7 +5,7 @@ htdemucs_6s als experimental=True → DemucsV4Plugin lud die ONNX-Session
 NIE → die Demucs-Stufe der Router-Kette (BS-RoFormer → Demucs v4 → MDX23C)
 lief permanent auf HPSS-DSP-Fallback — still (§V6-Verstoß).
 
-SOTA-Lösung (Root-Cause statt Symptom, §V7):
+SOTA-Lösung (Root-Cause statt Symptom, §V7 (copilot-instructions.md)):
 - Produktions-Modelle laden standardmäßig, sobald die Datei existiert.
 - Expliziter Opt-out statt stillem Gate: AURIK_DISABLE_HTDEMUCS_6S=1.
 - Kein Lese-Zugriff mehr auf das gitignored Manifest im Ladepfad.
@@ -35,7 +35,7 @@ def _clear_optout(monkeypatch):
     monkeypatch.delenv("AURIK_DISABLE_HTDEMUCS_6S", raising=False)
 
 
-def _construct_plugin(monkeypatch, tmp_path, *, env_disable: bool = False) -> "DemucsV4Plugin":
+def _construct_plugin(monkeypatch, tmp_path, *, env_disable: bool = False) -> DemucsV4Plugin:
     from plugins.demucs_v4_plugin import DemucsV4Plugin
 
     dummy = tmp_path / "htdemucs_6s.onnx"
@@ -58,7 +58,7 @@ def _construct_plugin(monkeypatch, tmp_path, *, env_disable: bool = False) -> "D
 def test_demucs_loads_session_by_default(monkeypatch, tmp_path) -> None:
     """Produktions-Modell lädt standardmäßig — kein stilles Gate mehr."""
     p = _construct_plugin(monkeypatch, tmp_path)
-    assert p._session is not None, "Demucs-Stufe darf nicht stumm deaktiviert sein (§V6)"
+    assert p._session is not None, "Demucs-Stufe darf nicht stumm deaktiviert sein (§V6 (copilot-instructions.md))"
 
 
 @pytest.mark.unit
@@ -70,7 +70,7 @@ def test_demucs_env_optout_disables(monkeypatch, tmp_path) -> None:
 
 @pytest.mark.unit
 def test_plugin_no_longer_reads_experimental_manifest() -> None:
-    """Der Ladepfad darf nicht mehr vom gitignored Manifest abhängen (§V7)."""
+    """Der Ladepfad darf nicht mehr vom gitignored Manifest abhängen (§V7 (copilot-instructions.md))."""
     src = (_REPO / "plugins" / "demucs_v4_plugin.py").read_text(encoding="utf-8")
     assert "_manifest_path" not in src, "Manifest-Lesezugriff im Ladepfad"
     assert "AURIK_DISABLE_HTDEMUCS_6S" in src

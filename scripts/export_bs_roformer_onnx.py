@@ -6,7 +6,7 @@ strict mit missing=0/unexpected=0 (dim=512, depth=12, stereo, 62 Bänder,
 Summe 1025 Bins, time/freq-Tiefe 1, stft n_fft=2048/hop=512).
 
 Export-Strategie (wie MelBandRoformer-ONNX): STFT und ISTFT bleiben
-AUSSERHALB des Graphen (NumPy/scipy, deterministisch, §G5) — exportiert
+AUSSERHALB des Graphen (NumPy/scipy, deterministisch, §G5 (GEBOTE.md)) — exportiert
 wird der Core: view_as_real-STFT (b,2,f,t,2) → Band-Split → Axial-
 Transformer → Masken (b,1,2050,t,2) real/imag. Der Legacy-Exporter
 (dynamo=False) verarbeitet einops korrekt; der einzige bekannte Blocker
@@ -27,9 +27,9 @@ sys.path.insert(0, str(ROOT))
 CKPT = ROOT / "models" / "bs_roformer" / "model_bs_roformer_ep_317_sdr_12.9755.ckpt"
 OUT = ROOT / "models" / "bs_roformer" / "bs_roformer_317_core.onnx"
 
-import torch  # noqa: E402  pylint: disable=wrong-import-position
-import torch.nn as nn  # noqa: E402  pylint: disable=wrong-import-position
-from einops import pack, rearrange, unpack  # noqa: E402  pylint: disable=wrong-import-position
+import torch
+import torch.nn as nn
+from einops import pack, rearrange, unpack
 
 
 class BSRCore(nn.Module):
@@ -96,7 +96,7 @@ def main() -> int:
     import onnxruntime as ort  # pylint: disable=import-outside-toplevel
 
     if OUT.exists():
-        print(f"existiert bereits: {OUT} ({OUT.stat().st_size/1e6:.1f} MB)")
+        print(f"existiert bereits: {OUT} ({OUT.stat().st_size / 1e6:.1f} MB)")
         return 0
 
     full, core = _build_models()
@@ -113,7 +113,7 @@ def main() -> int:
             dynamo=False,
             do_constant_folding=True,
         )
-    print(f"Export OK: {OUT} ({OUT.stat().st_size/1e6:.1f} MB)")
+    print(f"Export OK: {OUT} ({OUT.stat().st_size / 1e6:.1f} MB)")
 
     # ── Core-Parität: BSRCore(torch) vs. ONNX auf identischem STFT-Eingang ──
     rng = np.random.default_rng(7)

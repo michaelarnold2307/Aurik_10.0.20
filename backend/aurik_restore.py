@@ -62,7 +62,7 @@ def _mos_payload(mos_result: Any) -> dict[str, Any]:
     try:
         return {"mos": float(mos_result)}
     except (TypeError, ValueError) as exc:
-        logger.debug("§V6 MOS-Resultat nicht konvertierbar — Fallback auf 0.0: %s", exc)
+        logger.debug("§V6 (copilot-instructions.md) MOS-Resultat nicht konvertierbar — Ersatzpfad auf 0.0: %s", exc)
         return {"mos": 0.0, "raw": str(mos_result)}
 
 
@@ -72,7 +72,7 @@ def _mos_score(mos_result: Any) -> float:
     try:
         return float(payload.get("mos", 0.0) or 0.0)
     except (TypeError, ValueError) as exc:
-        logger.debug("§V6 MOS-Score-Extraktion fehlgeschlagen — Fallback auf 0.0: %s", exc)
+        logger.debug("§V6 (copilot-instructions.md) MOS-Wert-Extraktion fehlgeschlagen — Ersatzpfad auf 0.0: %s", exc)
         return 0.0
 
 
@@ -198,7 +198,7 @@ def restaurierung(audio: np.ndarray, sr: int) -> tuple[np.ndarray, int]:
 
         _wet = enhance_audio(audio, sr)
     except Exception as _dfn_exc:
-        logger.warning("ML→DSP-Fallback aktiviert", exc_info=True)  # §V6 (copilot-instructions.md)
+        logger.warning("ML→DSP-Ersatzpfad aktiviert", exc_info=True)  # §V6 (copilot-instructions.md)
         logger.debug("restaurierung: DFN nicht verfügbar (%s) — Dry-Passthrough", _dfn_exc)
         _record_fallback("aurik_restore", "deepfilternet", "dry_passthrough", "dfn_unavailable")
     # §v10.101 Hybrid-Naht: DFN (ML) auf DSP-Basis nur perzeptuell geblendet
@@ -245,7 +245,7 @@ def reparatur(audio: np.ndarray, sr: int) -> tuple[np.ndarray, int]:
         plugin = DiffwavePlugin()
         _wet_r4 = plugin.inpaint(audio, sr, mask=None)
     except Exception as _dw_exc:
-        logger.warning("ML→DSP-Fallback aktiviert", exc_info=True)  # §V6 (copilot-instructions.md)
+        logger.warning("ML→DSP-Ersatzpfad aktiviert", exc_info=True)  # §V6 (copilot-instructions.md)
         logger.debug("reparatur: DiffWave-Inpainting nicht verfügbar (%s) — Dry-Passthrough", _dw_exc)
         _record_fallback("aurik_restore", "diffwave", "dry_passthrough", "diffwave_unavailable")
     # §v10.101 Hybrid-Naht: DiffWave-Inpainting (ML) perzeptuell geblendet —
@@ -289,9 +289,7 @@ def rekonstruktion(audio: np.ndarray, sr: int) -> tuple[np.ndarray, int]:
     # Legacy-Pfad: Dry-Passthrough ohne Vocal-Stem.
     logger.info("rekonstruktion: MDX23C entfernt (§v10.739) — Dry-Passthrough")
     if vocals is None:
-        logger.info(
-            "rekonstruktion: kein Vocal-Stem verfügbar — Dry-Passthrough"
-        )
+        logger.info("rekonstruktion: kein Vocal-Stem verfügbar — Dry-Passthrough")
         _record_fallback("aurik_restore", "mdx23c", "dry_passthrough", "mdx23c_no_result")
         vocals = audio
     audio = vocals

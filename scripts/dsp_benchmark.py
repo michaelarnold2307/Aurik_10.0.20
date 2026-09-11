@@ -67,7 +67,8 @@ def synth_degraded(
 def _stft(x: np.ndarray, n_fft: int = 1024, hop: int = 256) -> tuple[np.ndarray, int, int]:
     from scipy.signal import stft
 
-    _, _, Z = stft(x, fs=_SR, nperseg=n_fft, noverlap=n_fft - hop, boundary="zeros", padded=True)
+    _noverlap = min(n_fft - hop, max(0, n_fft - 1))
+    _, _, Z = stft(x, fs=_SR, nperseg=n_fft, noverlap=_noverlap, boundary="zeros", padded=True)
     return Z, n_fft, hop
 
 
@@ -76,7 +77,8 @@ def _istft(Z: np.ndarray, n_fft: int, hop: int, length: int) -> np.ndarray:
 
     # boundary=True passt zur zero-padded STFT — das korrekte Paar.
     # (Das Plugin nutzt boundary=None/padded=False + boundary=False → NOLA-Spike.)
-    _, x = istft(Z, fs=_SR, nperseg=n_fft, noverlap=n_fft - hop, boundary=True)
+    _noverlap = min(n_fft - hop, max(0, n_fft - 1))
+    _, x = istft(Z, fs=_SR, nperseg=n_fft, noverlap=_noverlap, boundary=True)
     return x[:length]
 
 

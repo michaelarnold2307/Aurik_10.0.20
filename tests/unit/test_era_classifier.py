@@ -10,10 +10,10 @@ import numpy as np
 import pytest
 
 from backend.core.era_classifier import (
+    _ANALOG_ERA_CEILING,
     MEDIUM_DECADE_FLOOR,
     EraClassifier,
     EraResult,
-    _ANALOG_ERA_CEILING,
     _apply_analog_era_ceiling,
     _dsp_fingerprint_decade,
     _estimate_highband_presence,
@@ -1192,14 +1192,10 @@ class TestAnalogEraCeiling:
         """
 
         def fake_tier1(*args, **kwargs):
-            return EraResult(
-                decade=2000, era_label="2000er", confidence=0.60, material_prior="mp3_high", tier_used=1
-            )
+            return EraResult(decade=2000, era_label="2000er", confidence=0.60, material_prior="mp3_high", tier_used=1)
 
         def fake_tier2(*args, **kwargs):
-            return EraResult(
-                decade=2000, era_label="2000er", confidence=0.60, material_prior="mp3_high", tier_used=2
-            )
+            return EraResult(decade=2000, era_label="2000er", confidence=0.60, material_prior="mp3_high", tier_used=2)
 
         monkeypatch.setattr(clf, "_try_tier1", fake_tier1)
         monkeypatch.setattr(clf, "_tier2", fake_tier2)

@@ -18,7 +18,7 @@ Referenz:
     in Polyphonic Music" — ICASSP 2023
 
 Singleton-Pattern: get_rmvpe_plugin() verwenden.
-Provider-Wahl: CPU Standard (§G5 Determinismus); GPU via AURIK_PITCH_GPU=1 optional.
+Provider-Wahl: CPU Standard (§G5 (GEBOTE.md) Determinismus); GPU via AURIK_PITCH_GPU=1 optional.
 """
 
 from __future__ import annotations
@@ -140,7 +140,7 @@ class RmvpePlugin:
     def _try_load(self) -> None:
         """Lädt RMVPE ONNX-Modell; pYIN-Fallback bei Fehler."""
         if not _ONNX_PATH.exists():
-            logger.info("RMVPE ONNX nicht gefunden (%s) — pYIN-Fallback aktiv.", _ONNX_PATH)
+            logger.info("RMVPE ONNX nicht gefunden (%s) — pYIN-Ersatzpfad aktiv.", _ONNX_PATH)
             return
         try:
             import onnxruntime as ort
@@ -149,31 +149,39 @@ class RmvpePlugin:
                 from backend.core.ml_memory_budget import try_allocate as _try_alloc
 
                 if not _try_alloc("RMVPE", size_gb=0.03):
-                    logger.warning("RMVPE: ML-Budget erschöpft — pYIN-Fallback.")
+                    logger.warning("RMVPE: ML-Grenze erschöpft — pYIN-Ersatzpfad.")
                     return
             except Exception as _exc:
-                logger.debug("Operation failed (non-critical): %s", _exc)
+                logger.debug("Operation fehlgeschlagen (unkritisch): %s", _exc)
 
             opts = ort.SessionOptions()
             opts.inter_op_num_threads = 2
-            # Wähle Provider: GPU wenn AURIK_PITCH_GPU=1, sonst CPU (§G5 Determinismus)
+            # Wähle Provider: GPU wenn AURIK_PITCH_GPU=1, sonst CPU (§G5 (GEBOTE.md) Determinismus)
             if _PITCH_GPU_ENABLED:
                 try:
                     from backend.core.ml_device_manager import get_ort_providers
+
                     providers = get_ort_providers("RMVPE")
                     logger.info("RMVPE: GPU-Provider aktiviert via AURIK_PITCH_GPU=1")
                 except Exception as _e:
-                    logger.warning("RMVPE: GPU-Provider fehlgeschlagen (%s) — CPU-Fallback", _e)
-                    providers = ["CPUExecutionProvider"]
+                    logger.warning("RMVPE: GPU-Provider fehlgeschlagen (%s) — Registry-Ersatzpfad", _e)
+                    from backend.core.gpu_model_registry import get_onnx_providers
+
+                    providers = get_onnx_providers(_ONNX_PATH)
             else:
-                providers = ["CPUExecutionProvider"]
+                # §v10.40c: Registry-konsultierte Provider-Wahl statt hartem CPU.
+                from backend.core.gpu_model_registry import get_onnx_providers
+
+                providers = get_onnx_providers(_ONNX_PATH)
             self._session = ort.InferenceSession(
                 str(_ONNX_PATH),
                 sess_options=opts,
                 providers=providers,
             )
             self._model_loaded = True
-            logger.info("✅ RMVPE ONNX geladen: %s (provider=%s, §4.4 primärer Pitch-Tracker)", _ONNX_PATH.name, providers[0])
+            logger.info(
+                "✅ RMVPE ONNX geladen: %s (provider=%s, §4.4 primärer Pitch-Tracker)", _ONNX_PATH.name, providers[0]
+            )
             try:
                 from backend.core.plugin_lifecycle_manager import register_plugin as _reg_plm
 
@@ -183,15 +191,15 @@ class RmvpePlugin:
                     unload_fn=lambda s=self: setattr(s, "_session", None) or setattr(s, "_model_loaded", False),  # type: ignore[func-returns-value,misc]
                 )
             except Exception as _exc:
-                logger.debug("Operation failed (non-critical): %s", _exc)
+                logger.debug("Operation fehlgeschlagen (unkritisch): %s", _exc)
         except Exception as exc:
-            logger.warning("RMVPE ONNX Ladefehler: %s — pYIN-Fallback aktiv.", exc)
+            logger.warning("RMVPE ONNX Ladefehler: %s — pYIN-Ersatzpfad aktiv.", exc)
             try:
                 from backend.core.ml_memory_budget import release as _rel
 
                 _rel("RMVPE")
             except Exception as _exc:
-                logger.debug("Operation failed (non-critical): %s", _exc)
+                logger.debug("Operation fehlgeschlagen (unkritisch): %s", _exc)
 
     # ------------------------------------------------------------------
     # Public API
@@ -311,7 +319,7 @@ class RmvpePlugin:
             _plm = get_plugin_lifecycle_manager()
             _plm.set_active("RMVPE", True)
         except Exception:
-            logger.warning("rmvpe_plugin.py::_analyze_onnx fallback", exc_info=True)
+            logger.warning("rmvpe_plugin.py::_analyze_onnx Ersatzpfad", exc_info=True)
         try:
             mel = self._mel_spectrogram(mono_16k)  # [T, 128]
             t_orig = mel.shape[0]
@@ -334,7 +342,7 @@ class RmvpePlugin:
                     inp = np.pad(inp, ((0, 0), (0, 0), (0, _extra)), mode="edge")
                 else:
                     inp = inp[:, :, :_t_fixed]
-                logger.debug("RMVPE ONNX: fixed T=%d detected — input adjusted from %d", _t_fixed, inp.shape[2])
+                logger.debug("RMVPE ONNX: fixed T=%d erkannt — Eingabe angepasst from %d", _t_fixed, inp.shape[2])
             ort_out = cast(Any, session).run(None, {inp_name: inp.astype(np.float32)})
             salience = np.asarray(ort_out[0], dtype=np.float32)  # [1, T, 360]
             if salience.ndim == 3:
@@ -401,14 +409,14 @@ class RmvpePlugin:
                 },
             )
         except Exception as exc:
-            logger.warning("RMVPE ONNX-Inferenzfehler: %s — pYIN-Fallback.", exc)
+            logger.warning("RMVPE ONNX-Inferenzfehler: %s — pYIN-Ersatzpfad.", exc)
             return self._analyze_pyin(mono_48k, sr)
         finally:
             if _plm is not None:
                 try:
                     _plm.set_active("RMVPE", False)
                 except Exception:
-                    logger.warning("rmvpe_plugin.py::unknown fallback", exc_info=True)
+                    logger.warning("rmvpe_plugin.py::unknown Ersatzpfad", exc_info=True)
 
     def _analyze_pyin(self, mono_48k: np.ndarray, sr: int) -> RmvpeResult:
         """DSP-Fallback-Kette: PESTO (Riou et al. ISMIR 2023) → pYIN (Mauch & Dixon 2014).
@@ -438,8 +446,8 @@ class RmvpePlugin:
                     f0_std=float(np.std(voiced_f0)) if len(voiced_f0) > 1 else 0.0,
                 )
         except Exception as exc:
-            logger.warning("ML→DSP-Fallback aktiviert", exc_info=True)  # §V6 (copilot-instructions.md)
-            logger.debug("PESTO-Fallback fehlgeschlagen: %s — weiter mit pYIN", exc)
+            logger.warning("ML→DSP-Ersatzpfad aktiviert", exc_info=True)  # §V6 (copilot-instructions.md)
+            logger.debug("PESTO-Ersatzpfad fehlgeschlagen: %s — weiter mit pYIN", exc)
 
         try:
             import librosa
@@ -467,7 +475,7 @@ class RmvpePlugin:
                 f0_std=f0_std,
             )
         except Exception as exc:
-            logger.error("pYIN Fallback fehlgeschlagen: %s", exc)
+            logger.error("pYIN Ersatzpfad fehlgeschlagen: %s", exc)
             n = max(1, int(len(mono_48k) / 512))
             return RmvpeResult(
                 f0=np.full(n, np.nan, dtype=np.float32),

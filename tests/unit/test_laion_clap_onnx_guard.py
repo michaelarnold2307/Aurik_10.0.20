@@ -51,9 +51,7 @@ def test_onnx_path_e2e_l2_normalized_embedding():
 
     sr = 48000
     t = np.arange(3 * sr) / sr
-    audio = (
-        0.5 * np.sin(2 * np.pi * 220 * t) + 0.3 * np.sin(2 * np.pi * 440 * t)
-    ).astype(np.float32)
+    audio = (0.5 * np.sin(2 * np.pi * 220 * t) + 0.3 * np.sin(2 * np.pi * 440 * t)).astype(np.float32)
     clap = get_laion_clap()
     emb = clap.embed_audio(audio, sr)
     assert emb.shape == (512,)

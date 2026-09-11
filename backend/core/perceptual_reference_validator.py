@@ -139,7 +139,11 @@ class PerceptualReferenceValidator:
                 sample_rate=sr,
             )
         except Exception as exc:
-            logger.debug("§V6 _extract_perceptual_anchor fehlgeschlagen — Minimal-Anker zurückgegeben (Label %s): %s", label, exc)
+            logger.debug(
+                "§V6 (copilot-instructions.md) _extrahieren_perceptual_anchor fehlgeschlagen — Minimal-Anker zurückgegeben (Label %s): %s",
+                label,
+                exc,
+            )
             return PerceptualAnchor(label=label, sample_rate=sr)
 
     @staticmethod
@@ -218,7 +222,10 @@ class PerceptualReferenceValidator:
             return result
 
         except Exception as exc:
-            logger.debug("§V6 PerceptualValidation fehlgeschlagen — accepted=True zurückgegeben (konservativ): %s", exc)
+            logger.debug(
+                "§V6 (copilot-instructions.md) PerceptualValidation fehlgeschlagen — accepted=True zurückgegeben (konservativ): %s",
+                exc,
+            )
             return PerceptualValidationResult(accepted=True)
 
     # ── Helfer ──────────────────────────────────────────────────────

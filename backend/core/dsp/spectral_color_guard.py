@@ -120,7 +120,7 @@ def check_spectral_color_preservation(
                 _rs = float(np.clip(_ctx.restorability_score, 0.0, 100.0))
                 threshold = float(np.clip(0.97 - (0.97 - 0.70) * (100.0 - _rs) / 100.0, 0.70, 0.97))
         except Exception:
-            logger.warning("ML→DSP-Fallback aktiviert", exc_info=True)  # §V6 (copilot-instructions.md)
+            logger.warning("ML→DSP-Ersatzpfad aktiviert", exc_info=True)  # §V6 (copilot-instructions.md)
             pass  # Fallback: 0.97
     _empty = [0.0] * len(_THIRD_OCT_CENTERS_HZ)
     _fallback = SpectralColorResult(correlation=1.0, ok=True, pre_profile_db=_empty, post_profile_db=_empty)
@@ -180,9 +180,9 @@ def check_spectral_color_preservation(
 
         if not ok:
             _relax_note = (
-                "Relaxation %.3f" % _relax
+                f"Relaxation {_relax:.3f}"
                 if _relax > 1e-4
-                else "keine Relaxation (Delta hoerbar, JND=%.2f dB)" % _jnd.jnd_db
+                else f"keine Relaxation (Delta hoerbar, JND={_jnd.jnd_db:.2f} dB)"
             )
             logger.info(
                 "§V24 (Spec-Vintage-Guard) Spektralfarbe: Korrelation=%.3f < %.3f (Schwelle %.3f, §P1-3 JND=%.2f dB → %s) → Verarbeitungsschritt-Strength − 30 %% (WARNING)",

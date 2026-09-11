@@ -615,7 +615,7 @@ class TransientShaper(PhaseInterface):
 
         # High-pass filter (removes bass, focuses on transients)
         sos = signal.butter(4, 2000, btype="high", fs=sample_rate, output="sos")
-        audio_hp = signal.sosfilt(sos, audio)
+        audio_hp = signal.sosfiltfilt(sos, audio)
 
         # Compute envelope
         audio_hp_1d = np.asarray(audio_hp, dtype=np.float64).reshape(-1)

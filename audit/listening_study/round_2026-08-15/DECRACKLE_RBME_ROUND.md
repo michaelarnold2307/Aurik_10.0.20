@@ -20,6 +20,7 @@ damit messbar gerechtfertigt, nicht nur deklariert.
 ## Gate-Verifikation (B6, v10.900)
 
 `tests/unit/test_banquet_gate.py` beweist zur Laufzeit:
+
 - Digital-Material lädt **nie** die Banquet-Session (B6: −1,3 dB auf Digital).
 - Vinyl aktiviert den ML-Pfad.
 - **Chain-Aware**: Vinyl irgendwo in der Kette (z. B. Vinyl→Cassette→MP3)

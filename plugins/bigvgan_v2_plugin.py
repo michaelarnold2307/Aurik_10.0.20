@@ -10,7 +10,7 @@ Referenz:
     NVIDIA 2024. Lizenz: Apache 2.0. https://github.com/NVIDIA/BigVGAN
 
 SOTA-Entscheidungsmatrix (§4.4 Aurik-Spec):
-    Primär:   BigVGAN-v2 (ONNX, CPUExecutionProvider, Mel-Eingang 80 Bänder)
+    Primär:   BigVGAN-v2 (ONNX, CPUExecutionProvider, Mel-Eingang 128 Bänder)
     Fallback: Vocos → HiFi-GAN v2 (2021) → phase-coherent iSTFT
 
 Aktivierungsbedingungen (§4.5 Aurik-Spec):
@@ -129,12 +129,14 @@ class BigVGANv2Plugin:
     MODELS_DIR: Path = _ROOT / "models" / "bigvgan"
     MEL_HOP: int = _BIGVGAN_HOP  # 512 Samples @ 44100 Hz (aus config.json)
     MEL_WIN: int = _BIGVGAN_WIN  # 2048 Samples @ 44100 Hz (aus config.json)
+    ONNX_MEL_OVERLAP: int = 18  # >= 200 ms bei 44.1 kHz, §G3 (GEBOTE.md)
 
     def __init__(self) -> None:
         self._session = None  # onnxruntime.InferenceSession
         self._torch_gen = None  # torch.nn.Module (Generator)
         self._model_loaded: bool = False
         self._fallback_mode: str = "phase_coherent_istft"
+        self._onnx_mel_frames: int | None = None
         self._device: str = "cpu"  # set by _try_load_model
         self._try_load_model()
 
@@ -149,11 +151,42 @@ class BigVGANv2Plugin:
             from backend.core.ml_memory_budget import try_allocate
 
             if not try_allocate(self._BUDGET_NAME, size_gb=self._BUDGET_SIZE_GB):
-                logger.info("BigVGAN-v2: ML-Budget erschöpft — phase-coherent iSTFT fallback aktiv.")
+                logger.info("BigVGAN-v2: ML-Grenze erschöpft — Verarbeitungsschritt-coherent iSTFT Ersatzpfad aktiv.")
                 self._fallback_mode = "phase_coherent_istft"
                 return
         except ImportError:
             pass  # budget module absent → attempt load anyway
+        # ONNX ist der produktive CPU-Pfad; Torch bleibt Export-/Kompatibilitätsfallback.
+        onnx_path = self.MODELS_DIR / "bigvgan_v2.onnx"
+        if onnx_path.exists():
+            try:
+                import onnxruntime as ort
+
+                # §v10.40c: Registry-konsultierte Provider-Wahl — GPU wo
+                # Paritäts-Gate „rocm“ (bigvgan_v2.onnx ist validiert).
+                from backend.core.gpu_model_registry import get_onnx_providers
+
+                options = ort.SessionOptions()
+                options.inter_op_num_threads = 2
+                session = ort.InferenceSession(
+                    str(onnx_path),
+                    sess_options=options,
+                    providers=get_onnx_providers(onnx_path),
+                )
+                input_shape = session.get_inputs()[0].shape
+                if len(input_shape) != 3 or input_shape[1] not in (MEL_BANDS, "mel_bands", None):
+                    raise RuntimeError(f"unerwartete ONNX-Mel-Form: {input_shape}")
+                if not isinstance(input_shape[2], int) or input_shape[2] <= self.ONNX_MEL_OVERLAP:
+                    raise RuntimeError(f"ONNX benötigt feste Mel-Blockgröße > {self.ONNX_MEL_OVERLAP}: {input_shape}")
+                self._session = session
+                self._model_loaded = True
+                self._fallback_mode = "bigvgan_v2_onnx"
+                self._device = "cpu"
+                self._onnx_mel_frames = input_shape[2]
+                logger.info("BigVGAN-v2: ONNX geladen (CPU): %s", onnx_path)
+                return
+            except Exception as exc:
+                logger.warning("BigVGAN-v2 ONNX nicht ladbar: %s — versuche PyTorch", exc)
         # Versuch 1: torch (CPU)
         try:
             import torch
@@ -239,7 +272,7 @@ class BigVGANv2Plugin:
                         unload_fn=lambda: setattr(self, "_torch_gen", None),
                     )
                 except Exception as _exc:
-                    logger.debug("Operation failed (non-critical): %s", _exc)
+                    logger.debug("Operation fehlgeschlagen (unkritisch): %s", _exc)
                 return
         except ImportError:
             logger.debug("torch nicht verfügbar für BigVGAN-v2")
@@ -250,11 +283,11 @@ class BigVGANv2Plugin:
 
                 _release(self._BUDGET_NAME)
             except Exception as _exc:
-                logger.debug("Operation failed (non-critical): %s", _exc)
+                logger.debug("Operation fehlgeschlagen (unkritisch): %s", _exc)
 
         # Kein Modell gefunden
         logger.info(
-            "BigVGAN-v2: Kein Modell in %s — Vocos/HiFi-GAN/phase-coherent iSTFT fallback aktiv",
+            "BigVGAN-v2: Kein Modell in %s — Vocos/HiFi-GAN/Verarbeitungsschritt-coherent iSTFT Ersatzpfad aktiv",
             self.MODELS_DIR,
         )
         self._fallback_mode = "phase_coherent_istft"
@@ -273,7 +306,7 @@ class BigVGANv2Plugin:
         """Neuronale Vocoder-Synthese via Mel-Spektrogramm-Konditionierung.
 
         Algorithmus:
-            1. Audio → Mel-Spektrogramm (80 Bänder, Hanning 50 ms, Hop 12.5 ms)
+            1. Audio → Mel-Spektrogramm (128 Bänder, Hanning 50 ms, Hop 12.5 ms)
             2. Mel → BigVGAN-v2-Generator → Waveform (48 kHz)
             3. Ausgabe: clip(−1, 1), nan_to_num, PQS-MOS-Schätzung
 
@@ -344,19 +377,13 @@ class BigVGANv2Plugin:
             _plm = get_plugin_lifecycle_manager()
             _plm.set_active("bigvgan_v2", True)
         except Exception:
-            logger.warning("bigvgan_v2_plugin.py::_synthesize_bigvgan fallback", exc_info=True)
+            logger.warning("bigvgan_v2_plugin.py::_synthesize_bigvgan Ersatzpfad", exc_info=True)
         try:
             mel = self._compute_mel(audio, sr)  # [n_mel, T]
 
             if self._session is not None:
                 # ONNX-Pfad
-                mel_input = mel[np.newaxis, :, :].astype(np.float32)  # [1, 80, T]
-                input_name = self._session.get_inputs()[0].name
-                outputs = self._session.run(None, {input_name: mel_input})
-                if outputs and outputs[0] is not None:
-                    synthesized = outputs[0].flatten()
-                else:
-                    synthesized = np.zeros(int(mel.shape[1] * self.MEL_HOP), dtype=np.float32)
+                synthesized = self._synthesize_onnx_chunks(mel)
             elif self._torch_gen is not None:
                 # torch-Pfad
                 import torch
@@ -397,7 +424,7 @@ class BigVGANv2Plugin:
 
         except Exception as exc:
             if self._device != "cpu" and self._torch_gen is not None:
-                logger.warning("BigVGAN-v2: GPU-Inferenz fehlgeschlagen (%s) — CPU-Retry", exc)
+                logger.warning("BigVGAN-v2: GPU-Inferenz fehlgeschlagen (%s) — CPU-Wiederholung", exc)
                 try:
                     self._torch_gen.cpu()
                     self._device = "cpu"
@@ -406,19 +433,57 @@ class BigVGANv2Plugin:
 
                         _mgr().report_gpu_error("BigVGAN", exc)
                     except Exception:
-                        logger.warning("bigvgan_v2_plugin.py::_pin_fn fallback", exc_info=True)
+                        logger.warning("bigvgan_v2_plugin.py::_pin_fn Ersatzpfad", exc_info=True)
                 except Exception as _mv_exc:
                     logger.debug("BigVGAN-v2 GPU→CPU move fehlgeschlagen: %s", _mv_exc)
                     self._device = "cpu"
                 return self._synthesize_bigvgan(audio, sr)
-            logger.warning("BigVGAN-v2 Inferenz-Fehler: %s — fallback chain", exc)
+            logger.warning("BigVGAN-v2 Inferenz-Fehler: %s — Ersatzpfad chain", exc)
             return self._synthesize_fallback_chain(audio, sr)
         finally:
             if _plm is not None:
                 try:
                     _plm.set_active("bigvgan_v2", False)
                 except Exception:
-                    logger.warning("bigvgan_v2_plugin.py::_pin_fn fallback", exc_info=True)
+                    logger.warning("bigvgan_v2_plugin.py::_pin_fn Ersatzpfad", exc_info=True)
+
+    def _synthesize_onnx_chunks(self, mel: np.ndarray) -> np.ndarray:
+        """Führt Fixed-Shape-ONNX-Blöcke mit 200-ms-Cosine-Crossfades aus."""
+        if self._session is None or self._onnx_mel_frames is None:
+            raise RuntimeError("BigVGAN-v2 ONNX-Session ist nicht initialisiert")
+        block_frames = self._onnx_mel_frames
+        overlap_frames = min(self.ONNX_MEL_OVERLAP, block_frames // 2 - 1)
+        step_frames = block_frames - overlap_frames
+        n_frames = mel.shape[1]
+        if n_frames == 0:
+            return np.zeros(0, dtype=np.float32)
+        input_name = self._session.get_inputs()[0].name
+        block_count = (max(0, n_frames - 1) // step_frames) + 1
+        result_length = (block_count - 1) * step_frames * self.MEL_HOP + block_frames * self.MEL_HOP
+        result = np.zeros(result_length, dtype=np.float32)
+        weights = np.zeros_like(result)
+        fade_samples = overlap_frames * self.MEL_HOP
+        for start in range(0, n_frames, step_frames):
+            block = mel[:, start : start + block_frames]
+            if block.shape[1] < block_frames:
+                block = np.pad(block, ((0, 0), (0, block_frames - block.shape[1])), mode="edge")
+            outputs = self._session.run(None, {input_name: block[np.newaxis].astype(np.float32)})
+            if not outputs or outputs[0] is None:
+                raise RuntimeError("BigVGAN-v2 ONNX liefert keine Ausgabe")
+            audio_block = np.asarray(outputs[0], dtype=np.float32).reshape(-1)
+            if audio_block.size == 0:
+                raise RuntimeError("BigVGAN-v2 ONNX liefert leere Ausgabe")
+            window = np.ones(audio_block.size, dtype=np.float32)
+            fade = min(fade_samples, audio_block.size // 2)
+            if start > 0 and fade:
+                window[:fade] = np.sin(np.linspace(0.0, np.pi / 2.0, fade, dtype=np.float32))
+            if start + block_frames < n_frames and fade:
+                window[-fade:] = np.sin(np.linspace(np.pi / 2.0, 0.0, fade, dtype=np.float32))
+            offset = start * self.MEL_HOP
+            end = min(offset + audio_block.size, result.size)
+            result[offset:end] += audio_block[: end - offset] * window[: end - offset]
+            weights[offset:end] += window[: end - offset]
+        return np.nan_to_num(result / np.maximum(weights, 1e-8), nan=0.0, posinf=0.0, neginf=0.0)
 
     # ------------------------------------------------------------------
     # Fallback chain
@@ -440,8 +505,8 @@ class BigVGANv2Plugin:
                 if self._usable_vocoder_output(audio, out):
                     return out, "vocos_fallback", 0.86
         except Exception as exc:  # pylint: disable=broad-except
-            logger.warning("ML→DSP-Fallback aktiviert", exc_info=True)  # §V6 (copilot-instructions.md)
-            logger.debug("BigVGAN-v2: Vocos fallback unavailable: %s", exc)
+            logger.warning("ML→DSP-Ersatzpfad aktiviert", exc_info=True)  # §V6 (copilot-instructions.md)
+            logger.debug("BigVGAN-v2: Vocos Ersatzpfad nicht verfuegbar: %s", exc)
 
         try:
             from plugins.hifigan_plugin import get_hifigan_plugin  # pylint: disable=import-outside-toplevel
@@ -452,7 +517,7 @@ class BigVGANv2Plugin:
                 if self._usable_vocoder_output(audio, out):
                     return out, "hifigan_fallback", 0.78
         except Exception:  # pylint: disable=broad-except
-            logger.warning("ML→DSP-Fallback aktiviert", exc_info=True)  # §V6 (copilot-instructions.md)
+            logger.warning("ML→DSP-Ersatzpfad aktiviert", exc_info=True)  # §V6 (copilot-instructions.md)
 
         return self._synthesize_phase_coherent_istft_fallback(audio, sr)
 

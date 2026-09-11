@@ -1352,7 +1352,7 @@ if __name__ == "__main__":
     # Pink noise (1/f spectrum)
     white = np.random.randn(len(t))
     sos_pink = signal.butter(2, 0.5, output="sos")
-    pink = signal.sosfilt(sos_pink, white)
+    pink = signal.sosfiltfilt(sos_pink, white)
     pink = pink / np.percentile(np.abs(pink), 99.9) * 0.3
 
     # Make stereo

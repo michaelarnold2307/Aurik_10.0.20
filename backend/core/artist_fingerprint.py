@@ -17,6 +17,8 @@ from typing import Any
 
 import numpy as np
 
+from backend.core.audio_layout import to_samples_first
+
 logger = logging.getLogger(__name__)
 
 DEFAULT_FINGERPRINT_DIR = os.path.join(os.path.dirname(__file__), "..", "..", "sessions", "fingerprints")
@@ -176,7 +178,9 @@ class ArtistFingerprintStore:
             with open(path, "w") as f:
                 json.dump(fingerprint.to_dict(), f, indent=2)
         except OSError as e:
-            logger.warning("ArtistFingerprintStore: voice save failed for %s: %s", fingerprint.artist_id, e)
+            logger.warning(
+                "ArtistFingerprintStore: voice speichern fehlgeschlagen for %s: %s", fingerprint.artist_id, e
+            )
 
     def load_voice(self, artist_id: str) -> SingerVoiceFingerprint | None:
         """Laedt ein Stimm-Modell, mit Cache."""
@@ -195,7 +199,7 @@ class ArtistFingerprintStore:
             self._voice_cache[artist_id] = fp
             return fp
         except (OSError, json.JSONDecodeError, KeyError) as e:
-            logger.warning("ArtistFingerprintStore: voice load failed for %s: %s", artist_id, e)
+            logger.warning("ArtistFingerprintStore: voice laden fehlgeschlagen for %s: %s", artist_id, e)
             return None
 
     def store_track(self, fingerprint: TrackFingerprint) -> None:
@@ -207,7 +211,7 @@ class ArtistFingerprintStore:
             with open(path, "w") as f:
                 json.dump(fingerprint.to_dict(), f, indent=2)
         except OSError as e:
-            logger.warning("ArtistFingerprintStore: track save failed for %s: %s", fingerprint.track_id, e)
+            logger.warning("ArtistFingerprintStore: track speichern fehlgeschlagen for %s: %s", fingerprint.track_id, e)
 
     def load_track(self, track_id: str) -> TrackFingerprint | None:
         """Laedt ein Track-Modell, mit Cache."""
@@ -226,7 +230,7 @@ class ArtistFingerprintStore:
             self._track_cache[track_id] = fp
             return fp
         except (OSError, json.JSONDecodeError, KeyError) as e:
-            logger.warning("ArtistFingerprintStore: track load failed for %s: %s", track_id, e)
+            logger.warning("ArtistFingerprintStore: track laden fehlgeschlagen for %s: %s", track_id, e)
             return None
 
     def update_or_create_voice(self, artist_id: str, new_fp: SingerVoiceFingerprint) -> SingerVoiceFingerprint:
@@ -298,6 +302,7 @@ class ArtistFingerprintStore:
                 if fname.startswith("voice_") and fname.endswith(".json"):
                     ids.append(fname[6:-5])
         except OSError:
+            logger.debug("Voice-Store nicht lesbar", exc_info=True)
             pass
         return ids
 
@@ -316,8 +321,10 @@ class ArtistFingerprintStore:
                         os.remove(path)
                         removed += 1
                 except OSError:
+                    logger.debug("Cleanup-Datei nicht entfernbar: %s", path, exc_info=True)
                     pass
         except OSError:
+            logger.debug("Store-Verzeichnis nicht lesbar", exc_info=True)
             pass
         if removed > 0:
             logger.info("ArtistFingerprintStore: removed %d expired fingerprints", removed)
@@ -440,11 +447,15 @@ def extract_track_fingerprint(
             fp.snr_db = float(20 * np.log10(rms / (noise_rms + 1e-12)))
         fp.dynamic_range_db = float(20 * np.log10(np.max(np.abs(mono)) / (rms + 1e-12)))
 
-        if audio.ndim == 2 and audio.shape[1] == 2:
-            corr = float(np.corrcoef(audio[:, 0], audio[:, 1])[0, 1])
-            fp.stereo_width = max(0.0, min(1.0, 1.0 - abs(corr)))
+        # §V7 (copilot-instructions.md): layout-sicher — audio[:, 0] setzte
+        # (N,2) voraus; channels-first (2,N) lieferte nur 2 Samples.
+        if audio.ndim == 2:
+            _st = to_samples_first(audio)
+            if _st.shape[1] >= 2:
+                corr = float(np.corrcoef(_st[:, 0], _st[:, 1])[0, 1])
+                fp.stereo_width = max(0.0, min(1.0, 1.0 - abs(corr)))
     except Exception as e:
-        logger.warning("ML→DSP-Fallback aktiviert", exc_info=True)  # §V6 (copilot-instructions.md)
-        logger.debug("Track-Fingerprint extraction fallback: %s", e)
+        logger.warning("ML→DSP-Ersatzpfad aktiviert", exc_info=True)  # §V6 (copilot-instructions.md)
+        logger.debug("Track-Fingerprint extraction Ersatzpfad: %s", e)
 
     return fp

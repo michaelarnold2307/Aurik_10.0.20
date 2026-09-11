@@ -115,7 +115,7 @@ class WhisperDenoiserPlugin:
 
     def _try_load(self) -> None:
         if not _TORCH_AVAILABLE:
-            logger.warning("WhisperDenoiser: torch fehlt — Plugin inaktiv (OMLSA-Fallback)")
+            logger.warning("WhisperDenoiser: torch fehlt — Plugin inaktiv (OMLSA-Ersatzpfad)")
             return
         if not _FLAGS_AVAILABLE or not use_whisper_denoiser:
             logger.info("WhisperDenoiser: Feature-Flag use_whisper_denoiser=False — inaktiv")
@@ -128,7 +128,7 @@ class WhisperDenoiserPlugin:
             from backend.core.ml_memory_budget import try_allocate
 
             if not try_allocate(self._BUDGET_NAME, size_gb=self._BUDGET_SIZE_GB):
-                logger.info("WhisperDenoiser: ML-Budget erschöpft — Plugin inaktiv")
+                logger.info("WhisperDenoiser: ML-Grenze erschöpft — Plugin inaktiv")
                 return
         except ImportError:
             pass
@@ -159,9 +159,10 @@ class WhisperDenoiserPlugin:
                     unload_fn=self.unload,
                 )
             except Exception:
+                logger.debug("Stiller Ersatzpfad dokumentiert (Bug 9/V74)", exc_info=True)
                 pass
         except Exception as _exc:
-            logger.warning("WhisperDenoiser: Ladefehler — OMLSA-Fallback aktiv: %s", _exc)
+            logger.warning("WhisperDenoiser: Ladefehler — OMLSA-Ersatzpfad aktiv: %s", _exc)
             self._model = None
 
     def unload(self) -> None:
@@ -171,6 +172,7 @@ class WhisperDenoiserPlugin:
 
             release(self._BUDGET_NAME)
         except Exception:
+            logger.debug("WhisperDenoiser-Grenze-Freigabe fehlgeschlagen", exc_info=True)
             pass
         logger.debug("WhisperDenoiser entladen")
 

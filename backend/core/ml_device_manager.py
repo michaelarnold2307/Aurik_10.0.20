@@ -45,6 +45,8 @@ import threading
 from collections.abc import Callable
 from typing import Any, cast
 
+from backend.core.gpu_model_registry import _Provider
+
 try:
     import psutil as _psutil
 except ImportError:
@@ -503,26 +505,35 @@ def get_torch_device(plugin_name: str = "") -> str:
         return "cpu"
 
 
-def get_ort_providers(plugin_name: str = "") -> list[str]:
+def get_ort_providers(plugin_name: str = "") -> list[_Provider]:
     """Gibt the ONNX Runtime provider list for *plugin_name* zurück.
 
     Heavy plugins get GPU provider + CPU fallback; others get CPU-only.
+    §v10.40c: Das per-Modell-Numerik-Paritäts-Verdict der GPU-Registry
+    (gpu_model_registry) wird zusätzlich angewendet — GPU nur wo „rocm"
+    validiert, CPU erzwungen wo „cpu" (§v10.762).
     """
     try:
-        return get_ml_device_manager().get_ort_providers(plugin_name)
+        _providers = get_ml_device_manager().get_ort_providers(plugin_name)
+        from backend.core.gpu_model_registry import apply_gpu_policy_for_plugin
+
+        return list(apply_gpu_policy_for_plugin(_providers, plugin_name))
     except Exception as exc:
         logger.debug("get_ort_providers Ersatzpfad to CPU: %s", exc)
         return ["CPUExecutionProvider"]
 
 
-def get_ort_providers_fp16(plugin_name: str = "") -> list[str]:
+def get_ort_providers_fp16(plugin_name: str = "") -> list[_Provider]:
     """Gibt ORT providers with AMD ROCm fp16 hint for *plugin_name* zurück.
 
     For eligible ONNX plugins on ROCm, returns ROCMExecutionProvider with
     memory-efficient options.  Falls back to standard providers on CPU/DirectML.
     """
     try:
-        return get_ml_device_manager().get_ort_providers_fp16(plugin_name)
+        _providers = get_ml_device_manager().get_ort_providers_fp16(plugin_name)
+        from backend.core.gpu_model_registry import apply_gpu_policy_for_plugin
+
+        return list(apply_gpu_policy_for_plugin(_providers, plugin_name))
     except Exception as exc:
         logger.debug("get_ort_providers_fp16 Ersatzpfad to CPU: %s", exc)
         return ["CPUExecutionProvider"]
@@ -1339,7 +1350,10 @@ class MLDeviceManager:
                     torch.set_num_interop_threads(_ROCM_TORCH_THREADS)
                     return True
                 except Exception as exc:
-                    logger.debug("§V6 ROCm-Warmup-Operation fehlgeschlagen — False zurückgegeben (CUDA-Tensor): %s", exc)
+                    logger.debug(
+                        "§V6 (copilot-instructions.md) ROCm-Warmup-Operation fehlgeschlagen — False zurückgegeben (CUDA-Tensor): %s",
+                        exc,
+                    )
                     return False
 
             from concurrent.futures import ThreadPoolExecutor as _WarmupTPE

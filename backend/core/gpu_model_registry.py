@@ -21,7 +21,12 @@ from __future__ import annotations
 import json
 import logging
 import threading
+from collections.abc import Sequence
 from pathlib import Path
+from typing import Any
+
+# ORT-Provider-Eintrag: entweder Provider-Name oder (name, options)-Tupel (fp16-Pfad).
+_Provider = str | tuple[Any, ...]
 
 logger = logging.getLogger(__name__)
 
@@ -85,16 +90,25 @@ def verdict_for_model(model_path: str | Path) -> str:
     return _verdict if _verdict in _VALID_VERDICTS else "unknown"
 
 
-def apply_gpu_policy(providers: list[str], model_path: str | Path) -> list[str]:
+def apply_gpu_policy(providers: Sequence[_Provider], model_path: str | Path) -> list[_Provider]:
     """Wendet die Registry auf die Provider-Liste an (nie GPU-Hinzufügen bei CPU-only).
 
     - Verdict "cpu"      → CPU erzwungen (inkompatibel oder CPU schneller).
     - Verdict "migraphx" → MIGraphX zuerst, wenn GPU angefordert wurde.
     - Verdict "rocm"     → ROCMExecutionProvider zuerst, wenn GPU angefordert wurde.
     - "unknown"          → unverändert.
+
+    Provider-Einträge können ORT-Tupel `(name, options)` sein (fp16-Pfad via
+    get_ort_providers_fp16) — diese werden UNVERÄNDERT durchgereicht. Ein
+    str()-Cast würde sie zu `"('ROCMExecutionProvider', {...})"` machen und ORT
+    mit "Unknown Provider Type" scheitern lassen (Produktionsbefund).
     """
     _verdict = verdict_for_model(model_path)
-    _providers = [str(p) for p in (providers or [])]
+    _providers: list[_Provider] = list(providers)
+
+    def _pname(p) -> str:
+        return str(p[0]) if isinstance(p, tuple) else str(p)
+
     # GPU-Request-Erkennung: ROCm/CUDA/MIGraphX sind GPU-Provider — deren
     # Namen enthalten NICHT zwangsläufig "GPU" (ROCMExecutionProvider!).
     _gpu_provider_names = (
@@ -103,7 +117,9 @@ def apply_gpu_policy(providers: list[str], model_path: str | Path) -> list[str]:
         "MIGraphXExecutionProvider",
         "TensorrtExecutionProvider",
     )
-    _gpu_requested = any(_p in _gpu_provider_names or "GPU" in _p or "MIGraphX" in _p for _p in _providers)
+    _gpu_requested = any(
+        _pname(p) in _gpu_provider_names or "GPU" in _pname(p) or "MIGraphX" in _pname(p) for p in _providers
+    )
     if not _gpu_requested:
         return _providers  # CPU-only-Aufrufer (AURIK_FORCE_CPU etc.) respektieren
 
@@ -116,5 +132,80 @@ def apply_gpu_policy(providers: list[str], model_path: str | Path) -> list[str]:
     if _verdict == "migraphx":
         return ["MIGraphXExecutionProvider", "CPUExecutionProvider"]
     if _verdict == "rocm":
+        # ROCm bereits angefordert → Aufrufer-Optionen (fp16-Tupel) beibehalten;
+        # sonst (z.B. MIGraphX-Request) auf ROCm downgraden (Registry-Verdict).
+        if any(_pname(p) == "ROCMExecutionProvider" for p in _providers):
+            return _providers
         return ["ROCMExecutionProvider", "CPUExecutionProvider"]
     return _providers
+
+
+def get_onnx_providers(model_path: str | Path, prefer_gpu: bool = True) -> list[_Provider]:
+    """Zentrale Provider-Wahl für ONNX-Sessions (Registry-konsultiert).
+
+    Baut GPU-Kandidaten nur aus den auf DIESEM Host verfügbaren ORT-Providern
+    (ROCm > MIGraphX > CUDA) und lässt die Registry entscheiden:
+      - Verdict "rocm"/"migraphx" → GPU zuerst, CPU-Fallback.
+      - Verdict "cpu"            → CPU erzwungen (Numerik-Paritäts-Gate
+        §v10.762: EP rechnet nachweislich falsch oder langsamer).
+      - "unknown"                 → GPU-Kandidaten + CPU-Fallback (unverändert
+        durchgereicht; ORT ignoriert nicht verfügbare Provider selbst).
+    """
+    try:
+        import onnxruntime as ort
+
+        _avail = set(ort.get_available_providers())
+    except Exception:
+        return ["CPUExecutionProvider"]
+    if not prefer_gpu:
+        return ["CPUExecutionProvider"]
+    candidates: list[_Provider] = []
+    for _p in ("ROCMExecutionProvider", "MIGraphXExecutionProvider", "CUDAExecutionProvider"):
+        if _p in _avail:
+            candidates.append(_p)
+            break
+    candidates.append("CPUExecutionProvider")
+    return apply_gpu_policy(candidates, model_path)
+
+
+# Plugin-Name → Registry-Schlüssel-Hinweis: get_ort_providers("Plugin")-Aufrufer
+# (ml_device_manager) erhalten damit ebenfalls das per-Modell-Numerik-Paritäts-
+# Verdict (§v10.762) — GPU nur wo „rocm“ validiert, CPU wo „cpu“.
+PLUGIN_MODEL_HINTS: dict[str, str] = {
+    "SGMSE": "models/sgmse_plus/sgmse_plus_core.onnx",
+    "CREPE": "models/crepe/crepe.onnx",
+    "FCPE": "models/fcpe/fcpe.onnx",
+    "RMVPE": "models/rmvpe/rmvpe.onnx",
+    "PANNS": "models/panns/panns_wavegram_logmel_cnn14.onnx",
+    "UTMOS": "models/utmosv2/utmosv2_ssl_encoder.onnx",
+    "UTMOSv2": "models/utmosv2/utmosv2_ssl_encoder.onnx",
+    "Vocos": "models/vocos_48khz/vocos_48khz.onnx",
+    "ResembleEnhance": "models/resemble_enhance/model.onnx",
+    "HarmonicInpainting": "models/harmonic_inpainting/inpainting_best.onnx",
+    "DemucsV4": "models/demucs/htdemucs_6s.onnx",
+    "HiFiGAN": "models/hifi_gan/hifi_gan.onnx",
+    "ApolloCore": "models/apollo/apollo_core.onnx",
+    "BigVGAN": "models/bigvgan/bigvgan_v2.onnx",
+    "BasicPitch": "models/basicpitch/basicpitch.onnx",
+    "FlashSR": "models/flashsr/flashsr.onnx",
+    "Aero": "models/aero/aero_12_48.onnx",
+    "Gacela": "models/gacela/model/gacela_core.onnx",
+    "DiffWave": "models/diffwave/diffwave_model.onnx",
+    "MERT": "models/mert/mert_330m.onnx",
+    "LaionCLAP": "models/clap/audio_encoder.onnx",
+    "CLAP": "models/clap/audio_encoder.onnx",
+    "Nvsr": "models/nvsr/nvsr.onnx",
+    "MP_Senet": "models/mp_senet/mp_senet.onnx",
+    "Miipher": "models/miipher_dit/flow_matching_dit.onnx",
+    "Silero": "models/silero/silero_en_v5.onnx",
+    "Whisper": "models/whisper/whisper_tiny.onnx",
+    "BSRoFormer": "models/bs_roformer/bs_roformer_317_core.onnx",
+}
+
+
+def apply_gpu_policy_for_plugin(providers: Sequence[_Provider], plugin_name: str) -> list[_Provider]:
+    """Brücke für get_ort_providers("Plugin")-Aufrufer: Registry-Verdict je Modell."""
+    _hint = PLUGIN_MODEL_HINTS.get(plugin_name)
+    if _hint is None:
+        return list(providers)
+    return apply_gpu_policy(providers, _hint)

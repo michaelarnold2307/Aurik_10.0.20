@@ -357,7 +357,7 @@ def _count_onsets(audio: np.ndarray, sr: int) -> int:
         return int(np.sum(_flux > _thresh))
     except Exception:
         logger.warning(
-            "§V6 ExcellenceOptimizer: onset count failed → 0 transients: %s",
+            "§V6 (copilot-instructions.md) ExcellenceOptimizer: onset count fehlgeschlagen → 0 transients: %s",
             str(Exception),
         )
         return 0
@@ -642,14 +642,21 @@ def _inject_micro_dynamics(
             modulation[_fs - _xf // 2 : _fs - _xf // 2 + _xf] = _fade
 
     if audio.ndim == 1:
-        return np.nan_to_num(np.asarray((audio * modulation).astype(audio.dtype)), nan=0.0)  # type: ignore[no-any-return]
+        _out_eo: np.ndarray = np.nan_to_num(np.asarray((audio * modulation).astype(audio.dtype)), nan=0.0)
+        return _out_eo
 
     # Stereo: gleiche Modulation auf beide Kanäle
-    return np.nan_to_num(np.asarray(  # type: ignore[no-any-return]
-        (
-            audio * modulation[:, np.newaxis] if audio.shape[1] <= audio.shape[0] else audio * modulation[np.newaxis, :]
-        ).astype(audio.dtype)
-    ), nan=0.0)
+    _out_eo_st: np.ndarray = np.nan_to_num(
+        np.asarray(
+            (
+                audio * modulation[:, np.newaxis]
+                if audio.shape[1] <= audio.shape[0]
+                else audio * modulation[np.newaxis, :]
+            ).astype(audio.dtype)
+        ),
+        nan=0.0,
+    )
+    return _out_eo_st
 
 
 def _reinforce_harmonics(
@@ -930,7 +937,7 @@ class ExcellenceOptimizer:
                     _gp_proposal.expected_quality,
                 )
         except Exception as _gp_exc:
-            logger.warning("§G23 ML→DSP-Fallback: GPParameterOptimizer nicht verfügbar: %s", _gp_exc, exc_info=True)
+            logger.warning("§G23 ML→DSP-Ersatzpfad: GPParameterOptimizer nicht verfügbar: %s", _gp_exc, exc_info=True)
 
         # Optional: MERT-Analyse verbessert die Context-Felder (harmonicity)  # v10.0.0-C3: dynamic_cv korrigiert (MertAnalysis hat kein dynamic_cv-Feld)
         if self.use_mert and context is None:
@@ -961,7 +968,7 @@ class ExcellenceOptimizer:
                     _analysis.naturalness_score,
                 )
             except Exception as _mert_exc:
-                logger.warning("§G23 ML→DSP-Fallback: MERT-Context nicht verfügbar: %s", _mert_exc, exc_info=True)
+                logger.warning("§G23 ML→DSP-Ersatzpfad: MERT-Context nicht verfügbar: %s", _mert_exc, exc_info=True)
 
         result = ExcellenceResult()
 
@@ -1115,7 +1122,7 @@ class ExcellenceOptimizer:
             if _priority_log:
                 result.applied_steps.extend(_priority_log)
         except Exception as _gpp_exc:
-            logger.warning("§G23 ML→DSP-Fallback: GoalPriorityProtocol nicht verfügbar: %s", _gpp_exc, exc_info=True)
+            logger.warning("§G23 ML→DSP-Ersatzpfad: GoalPriorityProtocol nicht verfügbar: %s", _gpp_exc, exc_info=True)
 
         # RMS-Delta auf dem finalen Output berechnen (auch nach Rollback korrekt).
         rms_after = float(np.sqrt(np.mean(out.astype(np.float64) ** 2)) + 1e-10)

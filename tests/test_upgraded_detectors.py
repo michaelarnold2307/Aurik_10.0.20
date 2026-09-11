@@ -1,6 +1,5 @@
 import pytest
 
-#!/usr/bin/env python3
 """Test upgraded defect detectors (phase_issues, bias_error, riaa_curve_error, aliasing)."""
 
 import numpy as np

@@ -1486,7 +1486,11 @@ CAUSE_TO_PHASES: dict[str, list[str]] = {
         "phase_23_spectral_repair",
     ],
     # ── Digital / Codec ──────────────────────────────────────────────────────
-    "digital_artifacts": ["phase_23_spectral_repair", "phase_50_spectral_repair", "phase_06_frequency_restoration"],  # §4.7c POCS vor PGHI; §2.57a HF-Guard für analoge Harmoniken
+    "digital_artifacts": [
+        "phase_23_spectral_repair",
+        "phase_50_spectral_repair",
+        "phase_06_frequency_restoration",
+    ],  # §4.7c POCS vor PGHI; §2.57a HF-Guard für analoge Harmoniken
     "compression_artifacts": [
         "phase_23_spectral_repair",  # Apollo pre-proc + IMCRA inpainting (primary codec path); §4.7c POCS n_iter=2–5
         "phase_50_spectral_repair",  # STFT spike interpolation DSP (no Apollo — fallback/complement); §2.57a HF-Guard _hf_protected_bin_start aktiv

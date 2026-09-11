@@ -1,13 +1,18 @@
-"""
-Musical Goals Bar Chart Widget für Aurik 10
+"""Musical Goals Bar Chart Widget für Aurik 10
 Zeigt alle 15 musikalischen Qualitätsziele als lesbares Balkendiagramm.
 
 Rein PyQt5-basiert (kein Matplotlib) — CPU-leicht, sofort responsiv.
 Vollständig laienfreundlich: Deutsche Labels, Farb-Kodierung, Prozentwerte, Tooltips.
 """
-# pylint: disable=c-extension-no-member
 
 from __future__ import annotations
+
+import logging
+
+logger = logging.getLogger(__name__)
+
+# pylint: disable=c-extension-no-member
+
 
 import copy
 from dataclasses import dataclass
@@ -654,6 +659,7 @@ def build_radar_update_payload(result: object) -> dict[str, Any]:
                     try:
                         val = float(v)
                     except Exception:
+                        logger.debug("Stiller Ersatzpfad dokumentiert (Bug 9/V74)", exc_info=True)
                         continue
                     if val > 1.0:
                         val = max(0.0, min(100.0, val)) / 100.0

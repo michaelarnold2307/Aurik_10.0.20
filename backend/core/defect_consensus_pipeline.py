@@ -675,7 +675,11 @@ class ParallelDefectScanner:
                     result = detector_fn(audio, sample_rate, stage2_hypotheses)
                 elif name == "attack_type_classifier":
                     # Extract onset positions from click/crackle hypotheses
-                    onsets = [h.start_sample for h in stage2_hypotheses if h.category in (DefectCategory.CLICK, DefectCategory.POP)]
+                    onsets = [
+                        h.start_sample
+                        for h in stage2_hypotheses
+                        if h.category in (DefectCategory.CLICK, DefectCategory.POP)
+                    ]
                     result = detector_fn(audio, sample_rate, onsets)
                 elif name == "defect_detection_quality_gate":
                     result = detector_fn(audio, sample_rate, stage2_hypotheses)
@@ -820,7 +824,11 @@ class ParallelDefectScanner:
                 causes=d.get("causes", []),
             )
         except Exception as exc:
-            log.debug("§V6 _dict_to_hypothesis fehlgeschlagen — None zurückgegeben (Dict %s): %s", module, exc)
+            log.debug(
+                "§V6 (copilot-instructions.md) _dict_to_hypothesis fehlgeschlagen — None zurückgegeben (Dict %s): %s",
+                module,
+                exc,
+            )
             return None
 
     def _object_to_hypothesis(
@@ -849,7 +857,11 @@ class ParallelDefectScanner:
                 causes=getattr(d, "causes", []),
             )
         except Exception as exc:
-            log.debug("§V6 _object_to_hypothesis fehlgeschlagen — None zurückgegeben (Objekt %s): %s", module, exc)
+            log.debug(
+                "§V6 (copilot-instructions.md) _object_to_hypothesis fehlgeschlagen — None zurückgegeben (Objekt %s): %s",
+                module,
+                exc,
+            )
             return None
 
     @staticmethod
@@ -1073,6 +1085,7 @@ class CausalValidator:
 
             self._reasoner = get_reasoner()
         except Exception:
+            log.debug("Stiller Fallback dokumentiert (Bug 9/V74)", exc_info=True)
             pass
 
     def validate(self, defects: list[DefectHypothesis], audio_length: int) -> tuple[list[DefectHypothesis], int]:
@@ -1106,6 +1119,7 @@ class CausalValidator:
                         downgrades += 1
 
         except Exception:
+            log.debug("Causal-Downgrade-Analyse fehlgeschlagen", exc_info=True)
             pass
 
         return defects, downgrades

@@ -152,6 +152,14 @@
 
 ## Linter-Referenz
 
+> **Linter-Abdeckung (aurik_verboten_linter.py v6, Rev. 2026-09-11 — Katalog 30 → 52+):**
+> Implementiert sind 49 Regeln: V01, V-BRIDGE, V02–V05, V08, V09, V11–V14, V21,
+> V27–V33, V38–V45, V46–V58, **V59 (NEU: Stereo-Kanal-Slicing `audio[0]`/
+> `audio[:, 0]` ohne `backend.core.audio_layout`-Helfer — §V7-Wurzelregel gegen
+> den Stereo-Kollaps), V63 (MD5/B324), V64 (rtol-in-numpy), V73–V75.
+> Nicht regex-fähig (Architektur/Runtime): V70, V71, V72. "only"-Feld: Regeln
+> gelten nur für Dateien, deren Pfad einen der Substrings enthält.
+
 | Code | Scope | Regel |
 | --- | --- | --- |
 | V01 | `backend/`, `plugins/` | `print(` → ERROR |

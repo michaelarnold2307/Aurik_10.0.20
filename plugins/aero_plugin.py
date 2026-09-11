@@ -55,7 +55,7 @@ class AeroPlugin:
         device: str = "cpu",
         onnx_path: Path | None = None,
     ) -> None:
-        self._model: Any = None  # eager-.th-Fallback (§V6)
+        self._model: Any = None  # eager-.th-Fallback (§V6 (copilot-instructions.md))
         self._session: Any = None  # ONNX-Session (primär)
         self._device = device
         self.checkpoint = Path(checkpoint) if checkpoint else _CHECKPOINT
@@ -78,9 +78,7 @@ class AeroPlugin:
                 from backend.core.gpu_model_registry import apply_gpu_policy
 
                 _gpu = self._device != "cpu"
-                _requested = (
-                    ["ROCMExecutionProvider", "CPUExecutionProvider"] if _gpu else ["CPUExecutionProvider"]
-                )
+                _requested = ["ROCMExecutionProvider", "CPUExecutionProvider"] if _gpu else ["CPUExecutionProvider"]
                 _providers = apply_gpu_policy(_requested, self._onnx_path)
                 self._session = ort.InferenceSession(str(self._onnx_path), providers=_providers)
                 logger.info(
@@ -90,8 +88,8 @@ class AeroPlugin:
                 )
                 return
             except Exception as exc:  # pylint: disable=broad-except
-                # §V6: kein Silent-Failure — Warnung + Grund, dann eager-Fallback.
-                logger.warning("AERO-ONNX nicht ladbar (%s) — eager-.th-Fallback", exc)
+                # §V6 (copilot-instructions.md): kein Silent-Failure — Warnung + Grund, dann eager-Fallback.
+                logger.warning("AERO-ONNX nicht ladbar (%s) — eager-.th-Ersatzpfad", exc)
                 self._session = None
         # ── §V6-Fallback: eager .th ──
         if not self.checkpoint.exists():
@@ -117,7 +115,7 @@ class AeroPlugin:
             model.eval()
             model.to(self._device)
             self._model = model
-            logger.info("AERO eager geladen (%s, device=%s, Fallback)", self.checkpoint.name, self._device)
+            logger.info("AERO eager geladen (%s, device=%s, Ersatzpfad)", self.checkpoint.name, self._device)
         except Exception as exc:
             logger.warning("AERO-Ladevorgang fehlgeschlagen: %s", exc)
             self._model = None

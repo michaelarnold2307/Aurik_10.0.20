@@ -89,7 +89,7 @@ class TestSegmentProbeResultDataclass:
             probe_duration_s=0.1,
             segment_start_s=0.0,
         )
-        with pytest.raises(Exception):
+        with pytest.raises((ValueError, TypeError)):
             r.confirmed_strength = 0.9  # type: ignore[misc]
 
     def test_to_dict_keys(self) -> None:

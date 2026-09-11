@@ -412,6 +412,10 @@ class MetadataPreserver:
                     h.update(chunk)
                     remaining -= len(chunk)
         except OSError as exc:
-            logger.debug("§V6 Datei-Hash-Berechnung fehlgeschlagen — leere String zurückgegeben (Path %s): %s", path, exc)
+            logger.debug(
+                "§V6 (copilot-instructions.md) Datei-Hash-Berechnung fehlgeschlagen — leere String zurückgegeben (Path %s): %s",
+                path,
+                exc,
+            )
             return ""
         return h.hexdigest()

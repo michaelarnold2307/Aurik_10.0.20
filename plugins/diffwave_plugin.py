@@ -32,7 +32,7 @@ class DiffwavePlugin:
 
     def _try_load(self, path: str) -> None:
         if not os.path.exists(path):
-            logger.warning("DiffWave Modell fehlt: %s — DSP-Inpainting-Fallback.", path)
+            logger.warning("DiffWave Modell fehlt: %s — DSP-Inpainting-Ersatzpfad.", path)
             return
         try:
             import onnxruntime as ort
@@ -41,29 +41,32 @@ class DiffwavePlugin:
                 from backend.core.ml_memory_budget import try_allocate as _try_alloc
 
                 if not _try_alloc("DiffWave", size_gb=0.012):
-                    logger.warning("DiffWave: ML-Budget erschöpft — DSP-Fallback.")
+                    logger.warning("DiffWave: ML-Grenze erschöpft — DSP-Ersatzpfad.")
                     return
             except Exception as _exc:
-                logger.debug("Operation failed (non-critical): %s", _exc)
+                logger.debug("Operation fehlgeschlagen (unkritisch): %s", _exc)
 
             opts = ort.SessionOptions()
             opts.inter_op_num_threads = 2
-            self._session = ort.InferenceSession(path, sess_options=opts, providers=["CPUExecutionProvider"])
+            # §v10.40c: Registry-konsultierte Provider-Wahl statt hartem CPU.
+            from backend.core.gpu_model_registry import get_onnx_providers
+
+            self._session = ort.InferenceSession(path, sess_options=opts, providers=get_onnx_providers(path))
             logger.info("DiffWave ONNX geladen: %s", path)
             try:
                 from backend.core.plugin_lifecycle_manager import register_plugin as _reg_plm
 
                 _reg_plm("DiffWave", size_gb=0.012, unload_fn=lambda s=self: setattr(s, "_session", None))
             except Exception as _exc:
-                logger.debug("Operation failed (non-critical): %s", _exc)
+                logger.debug("Operation fehlgeschlagen (unkritisch): %s", _exc)
         except Exception as exc:
-            logger.warning("DiffWave Ladefehler: %s — DSP-Fallback.", exc)
+            logger.warning("DiffWave Ladefehler: %s — DSP-Ersatzpfad.", exc)
             try:
                 from backend.core.ml_memory_budget import release as _rel
 
                 _rel("DiffWave")
             except Exception as _exc:
-                logger.debug("Operation failed (non-critical): %s", _exc)
+                logger.debug("Operation fehlgeschlagen (unkritisch): %s", _exc)
 
     def inpaint(self, audio: np.ndarray, sr: int, mask: np.ndarray | None = None, n_steps: int = 50) -> np.ndarray:
         """Lücken-Inpainting via NMF-\u03b2 (DSP) oder DiffWave ONNX.
@@ -127,7 +130,7 @@ class DiffwavePlugin:
             Denoised audio at original sample rate, float32.
         """
         if self._session is None:
-            logger.debug("DiffWave denoise: model not loaded, returning original")
+            logger.debug("DiffWave denoise: model not geladen, returning Originalsignal")
             return np.asarray(audio, dtype=np.float32)
 
         audio = np.nan_to_num(np.asarray(audio, dtype=np.float32), nan=0.0, posinf=0.0, neginf=0.0)
@@ -165,6 +168,7 @@ class DiffwavePlugin:
             _plm = get_plugin_lifecycle_manager()
             _plm.set_active("DiffWave", True)
         except Exception:
+            logger.debug("Stiller Ersatzpfad dokumentiert (Bug 9/V74)", exc_info=True)
             pass
 
         try:
@@ -228,13 +232,14 @@ class DiffwavePlugin:
             return np.clip(result, -1.0, 1.0).astype(np.float32)
 
         except Exception as exc:
-            logger.warning("DiffWave denoise failed: %s — returning original", exc)
+            logger.warning("DiffWave denoise fehlgeschlagen: %s — returning Originalsignal", exc)
             return np.asarray(audio, dtype=np.float32)
         finally:
             if _plm is not None:
                 try:
                     _plm.set_active("DiffWave", False)
                 except Exception:
+                    logger.debug("set_active(False) fehlgeschlagen", exc_info=True)
                     pass
 
     def _diffuse(self, mono: np.ndarray, mask: np.ndarray | None) -> np.ndarray:
@@ -245,7 +250,7 @@ class DiffwavePlugin:
             _plm = get_plugin_lifecycle_manager()
             _plm.set_active("DiffWave", True)
         except Exception:
-            logger.warning("diffwave_plugin.py::_diffuse fallback", exc_info=True)
+            logger.warning("diffwave_plugin.py::_diffuse Ersatzpfad", exc_info=True)
         try:
             N = len(mono)
             chunks = []
@@ -290,7 +295,7 @@ class DiffwavePlugin:
                 try:
                     _plm.set_active("DiffWave", False)
                 except Exception:
-                    logger.warning("diffwave_plugin.py::_diffuse fallback", exc_info=True)
+                    logger.warning("diffwave_plugin.py::_diffuse Ersatzpfad", exc_info=True)
 
 
 def _mel_spec(mono, sr, n_mels=80, n_fft=1024, hop=256, T=64):
@@ -486,8 +491,8 @@ def inpaint(audio: np.ndarray, gap_start: int, gap_end: int, sr: int, n_steps: i
             out = np.clip(plugin_result, -1.0, 1.0).astype(np.float32)
             return out.T if (_was_channels_first and out.ndim == 2) else out
     except Exception as _e:
-        logger.warning("ML→DSP-Fallback aktiviert", exc_info=True)  # §V6 (copilot-instructions.md)
-        logger.debug("DiffWave plugin inpaint fehlgeschlagen, DSP-Fallback: %s", _e)
+        logger.warning("ML→DSP-Ersatzpfad aktiviert", exc_info=True)  # §V6 (copilot-instructions.md)
+        logger.debug("DiffWave plugin inpaint fehlgeschlagen, DSP-Ersatzpfad: %s", _e)
 
     # ── Fallback: DSP cubic/linear interpolation ──────────────────────────────
     if audio.ndim == 2:

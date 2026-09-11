@@ -125,6 +125,11 @@ repos:
           - flake8-docstrings>=1.7.0
           - pep8-naming>=0.14.0
         args: [--config=.flake8]
+        exclude: |
+          (?x)^(
+            plugins/_vendor_muq/.*|
+            plugins/_vendor_aero/.*
+          )$
 
   # ---------------------------------------------------------------------------
   # 5. Mypy — Statische Typprüfung
@@ -158,6 +163,11 @@ repos:
           - --disable-error-code=dict-item
           - --disable-error-code=override
         files: ^(backend|plugins|denker)/.*\.py$
+        exclude: |
+          (?x)^(
+            plugins/_vendor_muq/.*|
+            plugins/_vendor_aero/.*
+          )$
 
   # ---------------------------------------------------------------------------
   # 6. Bandit — Sicherheits-Scan (OWASP Top 10)
@@ -173,6 +183,11 @@ repos:
           - --exclude=tests,benchmarks,scripts
           - --skip=B101,B311,B603,B607,B614
         files: ^(core|dsp|plugins|backend|denker)/
+        exclude: |
+          (?x)^(
+            plugins/_vendor_muq/.*|
+            plugins/_vendor_aero/.*
+          )$
 
   # ---------------------------------------------------------------------------
   # 7. Markdownlint — Markdown-Qualität

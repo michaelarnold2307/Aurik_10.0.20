@@ -27,7 +27,7 @@ def _read(rel: str) -> str:
 def _dataclass_field_names(mod: object) -> list[str]:
     import dataclasses
 
-    cls = getattr(mod, "BridgeCalibrationData")
+    cls = mod.BridgeCalibrationData
     return [f.name for f in dataclasses.fields(cls)]
 
 

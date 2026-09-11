@@ -85,7 +85,7 @@ class BasicPitchPlugin:
         # NMP (Non-Mel-Peak) ist auf degradiertem Material robuster — genau
         # Auriks Kern-Domäne. Gleiche ONNX-Schnittstelle, gleicher Decoder.
         if not _ONNX_PATH.exists():
-            logger.info("BasicPitch ONNX nicht gefunden (%s) — DSP-Fallback aktiv.", _ONNX_PATH)
+            logger.info("BasicPitch ONNX nicht gefunden (%s) — DSP-Ersatzpfad aktiv.", _ONNX_PATH)
             self._try_load_nmp()
             return
         try:
@@ -95,19 +95,22 @@ class BasicPitchPlugin:
                 from backend.core.ml_memory_budget import try_allocate as _try_alloc
 
                 if not _try_alloc("BasicPitch", size_gb=0.12):
-                    logger.warning("BasicPitch: ML-Budget erschöpft — DSP-Fallback aktiv.")
+                    logger.warning("BasicPitch: ML-Grenze erschöpft — DSP-Ersatzpfad aktiv.")
                     return
             except Exception as _exc:
-                logger.debug("Plugin operation failed (non-critical): %s", _exc)
+                logger.debug("Plugin operation fehlgeschlagen (unkritisch): %s", _exc)
 
             opts = ort.SessionOptions()
             opts.intra_op_num_threads = 4
             opts.inter_op_num_threads = 1
             opts.graph_optimization_level = ort.GraphOptimizationLevel.ORT_ENABLE_ALL
+            # §v10.40c: Registry-konsultierte Provider-Wahl (GPU wo rocm-Verdict).
+            from backend.core.gpu_model_registry import get_onnx_providers
+
             self._session = ort.InferenceSession(
                 str(_ONNX_PATH),
                 sess_options=opts,
-                providers=["CPUExecutionProvider"],
+                providers=get_onnx_providers(_ONNX_PATH),
             )
             self._model_loaded = True
             logger.info("🎼 BasicPitch ONNX geladen: %s", _ONNX_PATH.name)
@@ -120,15 +123,15 @@ class BasicPitchPlugin:
                     unload_fn=lambda s=self: setattr(s, "_session", None) or setattr(s, "_model_loaded", False),  # type: ignore[func-returns-value,misc]
                 )
             except Exception as _exc:
-                logger.debug("Plugin operation failed (non-critical): %s", _exc)
+                logger.debug("Plugin operation fehlgeschlagen (unkritisch): %s", _exc)
         except Exception as exc:
-            logger.warning("BasicPitch ONNX-Init fehlgeschlagen (%s) — NMP-Variante als Fallback.", exc)
+            logger.warning("BasicPitch ONNX-Init fehlgeschlagen (%s) — NMP-Variante als Ersatzpfad.", exc)
             try:
                 from backend.core.ml_memory_budget import release as _release
 
                 _release("BasicPitch")
             except Exception as _exc:
-                logger.debug("Plugin operation failed (non-critical): %s", _exc)
+                logger.debug("Plugin operation fehlgeschlagen (unkritisch): %s", _exc)
             self._try_load_nmp()
 
     def _try_load_nmp(self) -> bool:
@@ -137,7 +140,7 @@ class BasicPitchPlugin:
         Returns True wenn die NMP-Session aktiv ist.
         """
         if not _ONNX_PATH_NMP.exists():
-            logger.info("BasicPitch NMP-Variante nicht gefunden (%s) — DSP-Fallback bleibt.", _ONNX_PATH_NMP)
+            logger.info("BasicPitch NMP-Variante nicht gefunden (%s) — DSP-Ersatzpfad bleibt.", _ONNX_PATH_NMP)
             return False
         try:
             import onnxruntime as ort
@@ -146,23 +149,26 @@ class BasicPitchPlugin:
             opts.intra_op_num_threads = 4
             opts.inter_op_num_threads = 1
             opts.graph_optimization_level = ort.GraphOptimizationLevel.ORT_ENABLE_ALL
+            # §v10.40c: Registry-konsultierte Provider-Wahl (GPU wo rocm-Verdict).
+            from backend.core.gpu_model_registry import get_onnx_providers
+
             self._session = ort.InferenceSession(
                 str(_ONNX_PATH_NMP),
                 sess_options=opts,
-                providers=["CPUExecutionProvider"],
+                providers=get_onnx_providers(_ONNX_PATH_NMP),
             )
             self._model_loaded = True
             self._using_nmp = True
             logger.info("🎼 BasicPitch NMP-Variante geladen: %s", _ONNX_PATH_NMP.name)
             return True
         except Exception as exc:
-            logger.warning("BasicPitch NMP-Init fehlgeschlagen (%s) — DSP-Fallback.", exc)
+            logger.warning("BasicPitch NMP-Init fehlgeschlagen (%s) — DSP-Ersatzpfad.", exc)
             try:
                 from backend.core.ml_memory_budget import release as _release
 
                 _release("BasicPitch")
             except Exception as _exc:
-                logger.debug("Plugin operation failed (non-critical): %s", _exc)
+                logger.debug("Plugin operation fehlgeschlagen (unkritisch): %s", _exc)
             return False
 
     def analyze(self, audio: np.ndarray, sr: int, max_polyphony: int = _DEFAULT_MAX_POLYPHONY) -> BasicPitchResult:
@@ -205,8 +211,8 @@ class BasicPitchPlugin:
                         _res_nmp.model_used = "basicpitch_nmp"
                         return _res_nmp
                     except Exception as _nmp_exc:
-                        logger.debug("BasicPitch NMP-Inferenz fehlgeschlagen (%s) — DSP-Fallback.", _nmp_exc)
-                logger.warning("ML→DSP-Fallback aktiviert", exc_info=True)  # §V6 (copilot-instructions.md)
+                        logger.debug("BasicPitch NMP-Inferenz fehlgeschlagen (%s) — DSP-Ersatzpfad.", _nmp_exc)
+                logger.warning("ML→DSP-Ersatzpfad aktiviert", exc_info=True)  # §V6 (copilot-instructions.md)
 
         return self._analyze_dsp(audio, sr, max_polyphony)
 
@@ -224,7 +230,7 @@ class BasicPitchPlugin:
             _plm = get_plugin_lifecycle_manager()
             _plm.set_active("BasicPitch", True)
         except Exception:
-            logger.warning("basicpitch_plugin.py::_analyze_onnx fallback", exc_info=True)
+            logger.warning("basicpitch_plugin.py::_analyze_onnx Ersatzpfad", exc_info=True)
         try:
             session = self._session
             if session is None:
@@ -343,7 +349,7 @@ class BasicPitchPlugin:
                 try:
                     _plm.set_active("BasicPitch", False)
                 except Exception:
-                    logger.warning("basicpitch_plugin.py::unknown fallback", exc_info=True)
+                    logger.warning("basicpitch_plugin.py::unknown Ersatzpfad", exc_info=True)
 
     def _analyze_dsp(self, audio: np.ndarray, sr: int, max_polyphony: int) -> BasicPitchResult:
         """STFT peak-based polyphonic fallback."""
@@ -403,7 +409,7 @@ class BasicPitchPlugin:
                 details={"n_frames": float(T), "sr": float(sr)},
             )
         except Exception as exc:
-            logger.warning("BasicPitch DSP-Fallback fehlgeschlagen: %s", exc)
+            logger.warning("BasicPitch DSP-Ersatzpfad fehlgeschlagen: %s", exc)
             return BasicPitchResult(
                 frame_times_s=np.zeros(1, dtype=np.float32),
                 pitches_hz=np.zeros((1, max_polyphony), dtype=np.float32),
@@ -500,14 +506,14 @@ def unload_basicpitch() -> None:
                 _instance._session = None
                 _instance._model_loaded = False
             except Exception as _exc:
-                logger.debug("Plugin operation failed (non-critical): %s", _exc)
+                logger.debug("Plugin operation fehlgeschlagen (unkritisch): %s", _exc)
             _instance = None
     try:
         from backend.core.ml_memory_budget import release as _release
 
         _release("BasicPitch")
     except Exception as _exc:
-        logger.debug("Plugin operation failed (non-critical): %s", _exc)
+        logger.debug("Plugin operation fehlgeschlagen (unkritisch): %s", _exc)
 
 
 def analyze_polyphonic_pitch(

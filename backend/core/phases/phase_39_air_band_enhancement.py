@@ -710,5 +710,5 @@ class AirBandEnhancement(PhaseInterface):
                     4, self.AIR_BAND_HZ, btype="band", fs=sample_rate, output="sos"
                 )
             sos = self._sos_air_cache[sample_rate]
-        hf = signal.sosfilt(sos, audio)
+        hf = signal.sosfiltfilt(sos, audio)
         return float(np.sqrt(np.mean(hf**2)))

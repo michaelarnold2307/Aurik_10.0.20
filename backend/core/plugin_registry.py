@@ -89,7 +89,11 @@ class PluginRegistry:
         try:
             manifest = json.loads(manifest_path.read_text())
         except (json.JSONDecodeError, OSError) as e:
-            logger.debug("§V6 Manifest-Laden fehlgeschlagen für %s: %s — Plugin als ungültig markiert", directory.name, e)
+            logger.debug(
+                "§V6 (copilot-instructions.md) Manifest-Laden fehlgeschlagen für %s: %s — Plugin als ungültig markiert",
+                directory.name,
+                e,
+            )
             return PluginInfo(
                 name=directory.name,
                 path=str(directory),

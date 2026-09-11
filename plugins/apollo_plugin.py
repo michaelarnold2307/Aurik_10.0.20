@@ -178,6 +178,8 @@ class ApolloPlugin:
 
     def __init__(self) -> None:
         self._torch_model = None  # torch.jit.ScriptModule
+        self._onnx_session = None  # onnxruntime.InferenceSession
+        self._onnx_input_names: list[str] = []
         self._model_loaded: bool = False
         self._fallback_active: bool = False
         self._device: str = "cpu"  # set by _try_load_model
@@ -195,7 +197,7 @@ class ApolloPlugin:
     _CHUNK_S: float = 30.0  # Apollo-Inferenz-Chunk: 30 s → kontrolliertes RAM-Profil + Budget-Checks
 
     def _try_load_model(self) -> None:
-        """Lädt Apollo TorchScript-Modell; aktiviert DSP-Fallback bei Fehler."""
+        """Lädt Apollo ONNX-Core primär, TorchScript als Fallback."""
         try:
             if _ml_budget_try_allocate is None:
                 raise ImportError("backend.core.ml_memory_budget nicht verfügbar")
@@ -208,6 +210,36 @@ class ApolloPlugin:
             logger.debug(
                 "Optional import not verfuegbar (unkritisch): %s", _exc
             )  # Budget-Modul fehlt → load trotzdem versuchen
+        _onnx_path = self.MODELS_DIR / "apollo_core.onnx"
+        if _onnx_path.exists():
+            try:
+                import onnxruntime as ort
+
+                try:
+                    from backend.core.ml_device_manager import get_ort_providers
+
+                    _providers = get_ort_providers("ApolloCore")
+                except Exception:
+                    _providers = ["CPUExecutionProvider"]
+                self._onnx_session = ort.InferenceSession(str(_onnx_path), providers=_providers)
+                self._onnx_input_names = [item.name for item in self._onnx_session.get_inputs()]
+                if len(self._onnx_input_names) != 80:
+                    raise RuntimeError(f"Apollo ONNX erwartet 80 Band-Eingänge, gefunden {len(self._onnx_input_names)}")
+                self._device = "cpu"
+                self._model_loaded = True
+                logger.info("Apollo ONNX-Core geladen: %s", _onnx_path.name)
+                try:
+                    if _plugin_lifecycle_manager is not None:
+                        _plugin_lifecycle_manager.register_plugin(
+                            self._BUDGET_NAME,
+                            size_gb=self._BUDGET_SIZE_GB,
+                            unload_fn=_unload_apollo,
+                        )
+                except Exception as _exc:
+                    logger.debug("Plugin operation fehlgeschlagen (unkritisch): %s", _exc)
+                return
+            except Exception as _onnx_exc:
+                logger.warning("Apollo ONNX-Ladefehler: %s — TorchScript-Ersatzpfad", _onnx_exc)
         try:
             if torch is None:
                 raise ImportError("torch nicht verfügbar")
@@ -255,7 +287,7 @@ class ApolloPlugin:
                 )
                 self._fallback_active = True
         except ImportError:
-            logger.warning("ML→DSP-Fallback aktiviert", exc_info=True)  # §V6 (copilot-instructions.md)
+            logger.warning("ML→DSP-Ersatzpfad aktiviert", exc_info=True)  # §V6 (copilot-instructions.md)
             logger.debug("torch nicht verfügbar — Apollo DSP-Ersatzpfad aktiv")
             self._fallback_active = True
             try:
@@ -312,7 +344,7 @@ class ApolloPlugin:
             "Apollo" if self._model_loaded else "DSP-Fallback",
         )
 
-        if self._model_loaded and self._torch_model is not None:
+        if self._model_loaded and (self._torch_model is not None or self._onnx_session is not None):
             lifecycle_manager = None
             try:
                 if _plugin_lifecycle_manager is not None:
@@ -363,6 +395,38 @@ class ApolloPlugin:
     # Apollo TorchScript-Pfad
     # ------------------------------------------------------------------
 
+    def _repair_apollo_onnx(self, audio: np.ndarray, sr: int) -> np.ndarray:
+        """Apollo-Core-ONNX-Inferenz mit NumPy-STFT/Band-Split/ISTFT."""
+        from scipy.signal import resample_poly
+
+        from plugins.apollo_phase0_integration import _run_apollo_onnx_core
+
+        original_length = len(audio)
+        min_samples = int(np.ceil(8192 * sr / self._APOLLO_SR))
+        working = np.asarray(audio, dtype=np.float32)
+        if len(working) < min_samples:
+            working = np.pad(working, (0, min_samples - len(working)), mode="constant")
+        if sr != self._APOLLO_SR:
+            working = resample_poly(working, self._APOLLO_SR, sr).astype(np.float32)
+
+        chunk_samples = int(self._CHUNK_S * self._APOLLO_SR)
+        result = np.zeros_like(working, dtype=np.float32)
+        for start in range(0, len(working), chunk_samples):
+            end = min(start + chunk_samples, len(working))
+            chunk = working[start:end]
+            processed = _run_apollo_onnx_core(self._onnx_session, self._onnx_input_names, chunk)
+            write_len = min(len(chunk), len(processed))
+            result[start : start + write_len] = np.nan_to_num(processed[:write_len], nan=0.0, posinf=0.0, neginf=0.0)
+
+        if sr != self._APOLLO_SR:
+            result = resample_poly(result, sr, self._APOLLO_SR).astype(np.float32)
+        result = np.clip(result[:original_length], -1.0, 1.0)
+        novelty = _compute_spectral_novelty(audio[: len(result)], result, sr)
+        if novelty > self._hallucination_threshold:
+            logger.warning("Apollo ONNX Hallucination-Guard: novelty=%.3f — Rollback", novelty)
+            return np.asarray(audio[:original_length], dtype=np.float32)
+        return result.astype(np.float32)
+
     def _repair_apollo(
         self,
         audio: np.ndarray,
@@ -377,6 +441,9 @@ class ApolloPlugin:
             3. Resample 44100 → 48000 Hz
             4. NaN-Guard + Clip [-1, 1]
         """
+        if self._onnx_session is not None:
+            return self._repair_apollo_onnx(audio, sr)
+
         # Minimum-Input-Guard (§ml-plugin: Fixed-Shape-Input Rule)
         # Apollo internal STFT uses padding=441 (n_fft=882 @ 44100 Hz).
         # Segments shorter than 8192 samples @ 44100 Hz cause RuntimeError:

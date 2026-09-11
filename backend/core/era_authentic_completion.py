@@ -86,7 +86,10 @@ def _estimate_effective_bandwidth_hz(audio: np.ndarray, sr: int) -> float:
             return float(freqs[mask][-1])
         return float(sr / 2)
     except Exception as exc:
-        logger.debug("§V6 _estimate_bandwidth fehlgeschlagen — Nyquist-Frequenz zurückgegeben (sr/2): %s", exc)
+        logger.debug(
+            "§V6 (copilot-instructions.md) _estimate_bandwidth fehlgeschlagen — Nyquist-Frequenz zurückgegeben (sr/2): %s",
+            exc,
+        )
         return float(sr / 2)
 
 
@@ -226,7 +229,7 @@ class EraAuthenticPerceptualCompletion:
             if not _validate_completion(arr, shaped, sr):
                 logger.warning(
                     "EraAuthenticPerceptualCompletion: Completion validierung fehlgeschlagen — "
-                    "Original wird zurückgegeben"
+                    "Originalsignal wird zurückgegeben"
                 )
                 return cast(np.ndarray, arr)
 
@@ -243,7 +246,7 @@ class EraAuthenticPerceptualCompletion:
 
         except Exception as exc:
             logger.warning(
-                "EraAuthenticPerceptualCompletion: Fehler bei Completion — Original wird zurückgegeben: %s",
+                "EraAuthenticPerceptualCompletion: Fehler bei Completion — Originalsignal wird zurückgegeben: %s",
                 exc,
             )
             return cast(np.ndarray, arr)
@@ -290,7 +293,8 @@ def _apply_era_spectral_shaping(audio: np.ndarray, sr: int, *, max_target_hz: fl
         return result.astype(np.float32)  # type: ignore[no-any-return]
     except ImportError as exc:
         logger.debug(
-            "§V6 scipy.signal.sosfiltfilt nicht verfügbar — Audio unverändert zurückgegeben (ImportError): %s", exc
+            "§V6 (copilot-instructions.md) scipy.signal.sosfiltfilt nicht verfügbar — Audio unverändert zurückgegeben (ImportError): %s",
+            exc,
         )
         return audio
     except Exception as exc:
@@ -325,7 +329,10 @@ def _validate_completion(original: np.ndarray, completed: np.ndarray, sr: int) -
 
         return True
     except Exception as exc:
-        logger.debug("§V6 _validate_completion fehlgeschlagen — False zurückgegeben (konservativ): %s", exc)
+        logger.debug(
+            "§V6 (copilot-instructions.md) _validieren_completion fehlgeschlagen — False zurückgegeben (konservativ): %s",
+            exc,
+        )
         return False
 
 

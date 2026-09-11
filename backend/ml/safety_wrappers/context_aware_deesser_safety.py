@@ -16,9 +16,9 @@ Version: 2.0.0
 Date: 8. Februar 2026
 """
 
+import logging
 from typing import Any
 
-import logging
 import numpy as np
 
 logger = logging.getLogger(__name__)
@@ -57,7 +57,9 @@ try:
         return float(_compute_correlation_impl(before, after))
 
 except ImportError:
-    logger.debug("§V6 deesser_safety-Import fehlgeschlagen — Fallback-Implementierungen aktiviert")
+    logger.debug(
+        "§V6 (copilot-instructions.md) deesser_safety-Import fehlgeschlagen — Ersatzpfad-Implementierungen aktiviert"
+    )
 
     def compute_energy_ratio(before: np.ndarray, after: np.ndarray) -> float:
         """Berechnet energy ratio in dB."""
@@ -167,7 +169,10 @@ def detect_phoneme_based_sibilance(
         return has_sibilance, intensity, metrics
 
     except Exception as e:
-        logger.debug("§V6 phoneme-basierte Sibilanz-Erkennung fehlgeschlagen — Frequency-Fallback aktiviert: %s", e)
+        logger.debug(
+            "§V6 (copilot-instructions.md) phoneme-basierte Sibilanz-Erkennung fehlgeschlagen — Frequency-Ersatzpfad aktiviert: %s",
+            e,
+        )
         return _detect_frequency_based_sibilance(audio, sr)
 
 

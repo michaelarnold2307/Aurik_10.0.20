@@ -46,6 +46,7 @@ import hashlib
 
 # v10.101 SOTA: Gammatone-geschützte Defektanalyse. Pipeline-Gates validieren.
 import logging
+import os
 import threading
 import time
 from collections.abc import Callable
@@ -1557,7 +1558,7 @@ class DefectScanner:
             )
         )
 
-        # §G1 Song-Isolation: DefectScanner wird bei UV3.__init__() instantiiert (vor restore()),
+        # §G1 (GEBOTE.md) Song-Isolation: DefectScanner wird bei UV3.__init__() instantiiert (vor restore()),
         # daher ist Material zu diesem Zeitpunkt noch nicht bekannt. Es wird später in
         # restore() durch Material-Konsens ermittelt und an scan() übergeben (§9.7.2).
         # Das ist kein Bug, sondern beabsichtiges Design — jeder Song bekommt seinen eigenen
@@ -1565,7 +1566,9 @@ class DefectScanner:
         if material_type is not None:
             logger.debug("DefectScanner initialisiert: SR=%s, Material=%s (vorgegeben)", sample_rate, material_type)
         else:
-            logger.debug("DefectScanner initialisiert: SR=%s (Material wird in restore() auto-detected)", sample_rate)
+            logger.debug(
+                "DefectScanner initialisiert: SR=%s (Material wird in wiederherstellen() auto-erkannt)", sample_rate
+            )
 
         # Welch-PSD-Cache (P1): gültig für Dauer eines scan()-Calls - wird in scan() gesetzt.
         self._scan_welch_cache: dict[tuple[object, ...], tuple[np.ndarray, np.ndarray]] = {}
@@ -2245,7 +2248,7 @@ class DefectScanner:
         # thresholds) — sequentiell kostete die Detektionsstrecke ~124 s für
         # 60 s Audio (207,9 % Overhead, Produktionsbefund). ThreadPool nutzt
         # die GIL-Freigaben von numpy/scipy (FFT/Welch/Filter); die
-        # Ergebnis-Zuordnung erfolgt deterministisch pro DefectType (§G5 —
+        # Ergebnis-Zuordnung erfolgt deterministisch pro DefectType (§G5 (GEBOTE.md) —
         # keine Zufallsquellen, keine Reihenfolge-Abhängigkeit). Abhängige
         # Merge-Schritte (Tape-Intro-Supplement, Clipping→Clicks-Suppression)
         # bleiben serial.
@@ -2253,7 +2256,6 @@ class DefectScanner:
         self._scan_welch_cache = {}
         scores = {}
 
-        import os  # noqa: PLC0415 — lokaler Import im Konsistenz-Muster der Datei
         from concurrent.futures import ThreadPoolExecutor
 
         _prog(_lead_pct(5), "Defekt-Detektion (parallel)")
@@ -2267,9 +2269,11 @@ class DefectScanner:
             (DefectType.AZIMUTH_ERROR, lambda: self._detect_azimuth_error(audio)),  # PHD-Slope L/R
             (
                 DefectType.STEREO_IMBALANCE,
-                lambda: self._detect_stereo_imbalance(audio)
-                if is_stereo
-                else DefectScore(DefectType.STEREO_IMBALANCE, 0.0, 0.0),
+                lambda: (
+                    self._detect_stereo_imbalance(audio)
+                    if is_stereo
+                    else DefectScore(DefectType.STEREO_IMBALANCE, 0.0, 0.0)
+                ),
             ),
             (DefectType.DIGITAL_ARTIFACTS, lambda: self._detect_digital_artifacts(audio_mono)),
             (DefectType.LOW_FREQ_RUMBLE, lambda: self._detect_low_freq_rumble(audio_mono)),
@@ -2277,9 +2281,9 @@ class DefectScanner:
             (DefectType.COMPRESSION_ARTIFACTS, lambda: self._detect_compression_artifacts(audio_mono)),
             (
                 DefectType.PHASE_ISSUES,
-                lambda: self._detect_phase_issues(audio)
-                if is_stereo
-                else DefectScore(DefectType.PHASE_ISSUES, 0.0, 0.0),
+                lambda: (
+                    self._detect_phase_issues(audio) if is_stereo else DefectScore(DefectType.PHASE_ISSUES, 0.0, 0.0)
+                ),
             ),
             # §9.7.5a - Dropout detection runs on FULL audio (not center-cropped).
             # Tape dropouts occur anywhere (intro, leader, splice points).
@@ -2308,9 +2312,11 @@ class DefectScanner:
             (DefectType.GROOVE_ECHO, lambda: self._detect_groove_echo(audio_mono)),
             (
                 DefectType.CROSSTALK,
-                lambda: self._detect_crosstalk(audio)
-                if is_stereo
-                else DefectScore(DefectType.CROSSTALK, 0.0, 0.5, metadata={"reason": "mono"}),
+                lambda: (
+                    self._detect_crosstalk(audio)
+                    if is_stereo
+                    else DefectScore(DefectType.CROSSTALK, 0.0, 0.5, metadata={"reason": "mono"})
+                ),
             ),
             (DefectType.INTERMODULATION_DISTORTION, lambda: self._detect_intermodulation_distortion(audio_mono)),
             (DefectType.TAPE_SPLICE_ARTIFACT, lambda: self._detect_tape_splice_artifact(audio_mono)),
@@ -2332,7 +2338,7 @@ class DefectScanner:
         # gleichen Pool — TRANSPORT_BUMP ist der größte Einzelposten
         # („15-40 s auf langen Dateien“, §9.4a-Kommentar). Material-Gates und
         # Cross-Material-Fallbacks hängen nur von material_type ab und werden
-        # in den Tasks gekapselt; die Zuordnung bleibt deterministisch (§G5).
+        # in den Tasks gekapselt; die Zuordnung bleibt deterministisch (§G5 (GEBOTE.md)).
         _DIGITAL_NO_BUMP: frozenset[MaterialType] = frozenset(
             {
                 MaterialType.CD_DIGITAL,
@@ -2417,10 +2423,10 @@ class DefectScanner:
                 (DefectType.MPEG_FRAME_LOSS, lambda: self._detect_mpeg_frame_loss(_audio_mono_full)),
                 (
                     DefectType.STEREO_FIELD_COLLAPSE,
-                    lambda: self._detect_stereo_collapse(audio)
-                    if is_stereo
-                    else DefectScore(
-                        DefectType.STEREO_FIELD_COLLAPSE, 0.0, 0.5, metadata={"reason": "mono"}
+                    lambda: (
+                        self._detect_stereo_collapse(audio)
+                        if is_stereo
+                        else DefectScore(DefectType.STEREO_FIELD_COLLAPSE, 0.0, 0.5, metadata={"reason": "mono"})
                     ),
                 ),
                 (DefectType.PHASE_ROTATION, lambda: self._detect_phase_rotation(_audio_mono_full)),
@@ -3509,21 +3515,23 @@ class DefectScanner:
                 and best_material != forensic_material
             ):
                 logger.info(
-                    "§2.46f Auto-Detection mono %s (score=%.2f) widerspricht Forensic-Primary %s → Forensic übernimmt",
+                    "§2.46f Auto-Detection mono %s (Wert=%.2f) widerspricht Forensic-Primary %s → Forensic übernimmt",
                     best_material.value,
                     best_score,
                     forensic_material.value,
                 )
                 return forensic_material
             # §2.46a: Auto-detected material tracked for provenance
-            logger.info("§2.46a Auto-detected mono %s with score=%.2f", best_material.value, best_score)
+            logger.info("§2.46a Auto-erkannt mono %s with Wert=%.2f", best_material.value, best_score)
             return best_material
         else:
             if forensic_material is not None and forensic_material != MaterialType.UNKNOWN:
                 # Schwache Feature-Evidenz → Forensic-Material übernehmen statt UNKNOWN.
                 return forensic_material
             # INFO (not WARNING): auto-detection failed gracefully, fallback chain activated per §3.0
-            logger.debug("Mono material detection inconclusive (best=%.2f), falling back to transfer-chain analysis", best_score)
+            logger.debug(
+                "Mono material detection inconclusive (best=%.2f), falling back to transfer-chain Analyse", best_score
+            )
             return MaterialType.UNKNOWN
 
     def _detect_stereo_material(
@@ -3816,7 +3824,7 @@ class DefectScanner:
             and best_material[0] != forensic_material
         ):
             logger.info(
-                "§2.46f Auto-Detection %s (score=%.2f) widerspricht Forensic-Primary %s → Forensic übernimmt",
+                "§2.46f Auto-Detection %s (Wert=%.2f) widerspricht Forensic-Primary %s → Forensic übernimmt",
                 best_material[0].value,
                 best_material[1],
                 forensic_material.value,
@@ -3825,7 +3833,7 @@ class DefectScanner:
         # §v10.350 SOTA: Only log material detection in debug mode or during development
         # This prevents console spam on every import while still enabling troubleshooting
         if logger.isEnabledFor(logging.DEBUG):
-            logger.info("§2.46f Auto-detected %s with score=%.2f", best_material[0].value, best_material[1])
+            logger.info("§2.46f Auto-erkannt %s with Wert=%.2f", best_material[0].value, best_material[1])
 
         return best_material[0]
 
@@ -4042,7 +4050,10 @@ class DefectScanner:
         try:
             from scipy.linalg import solve_toeplitz as _solve_toeplitz  # pylint: disable=import-outside-toplevel
         except ImportError as exc:
-            logger.debug("§V6 scipy.linalg.solve_toeplitz nicht verfügbar — 0.0 Click-Rate zurückgegeben: %s", exc)
+            logger.debug(
+                "§V6 (copilot-instructions.md) scipy.linalg.solve_toeplitz nicht verfügbar — 0.0 Click-Rate zurückgegeben: %s",
+                exc,
+            )
             return 0.0
 
         lpc_order = 30  # spec: 30-40 @ 48 kHz

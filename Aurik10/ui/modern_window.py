@@ -316,7 +316,9 @@ except ImportError:
 
     def _validate_export_quality(result: object) -> tuple:  # type: ignore[misc]
         _ = result
-        return False, ["Bridge nicht verfügbar: Export-Quality-Gate konnte nicht validiert werden"]
+        # §0c: Bridge-Ausfall darf den Export nicht hard-stoppen — degraded
+        # zulassen statt fail-closed (Parität zur §0c-Implementierung der CLI).
+        return True, ["Bridge nicht verfügbar: Export-Quality-Gate übersprungen — Export erfolgt degraded (§0c)"]
 
     def _build_export_quality_gate_payload(result: object) -> dict:  # type: ignore[misc]
         _ = result
@@ -327,9 +329,9 @@ except ImportError:
             "required_gates": ["musical_goals", "pqs", "oqs", "fallback_quality_floor"],
             "recovery_attempted": False,
             "best_possible_reached": False,
-            "degradation_status": "failed",
+            "degradation_status": "degraded",
             "fallback_quality_floor": {},
-            "warnings": ["Bridge nicht verfügbar: Export wird fail-closed blockiert"],
+            "warnings": ["Bridge nicht verfügbar: Export erfolgt degraded (§0c), kein Hardstop"],
         }
 
     def cache_defect_result(file_path: str, result: object) -> None:  # type: ignore[misc]
@@ -574,7 +576,7 @@ QSvgRenderer = QtSvg.QSvgRenderer
 try:
     from Aurik10 import __version__ as _AURIK_VERSION
 except Exception:
-    logger.warning("ML→DSP-Fallback aktiviert", exc_info=True)  # §V6 (copilot-instructions.md)
+    logger.warning("ML→DSP-Ersatzpfad aktiviert", exc_info=True)  # §V6 (copilot-instructions.md)
     _AURIK_VERSION = "unknown"  # Fallback: Import-Fehler — wird beim nächsten Release-Bump automatisch korrekt
 
 # SVG-Phasen-Icons (2.5D mystisch-profi)
@@ -2875,6 +2877,7 @@ class BatchProcessingThread(QThread):
                                     if _cdone and hasattr(self, "_refresh_chips_display"):
                                         self._refresh_chips_display()
                             except Exception:
+                                logger.debug("Stiller Ersatzpfad dokumentiert (Bug 9/V74)", exc_info=True)
                                 pass
                         # §GUI-T6: Live-15-Ziel-Radar während der Restaurierung
                         _live_goals = metrics.get("goals")
@@ -3598,9 +3601,15 @@ class BatchProcessingThread(QThread):
                         if _cached_restorability is not None:
                             _denke_kwargs["cached_restorability_result"] = _cached_restorability
 
-                # Quality-first policy: never reduce restoration quality due to
-                # RT budget in the main pass.
-                _denke_kwargs["no_rt_limit"] = True
+                # §Performance-Budget (copilot-instructions.md): Der normative
+                # RT-Budget-Guard (mode-adaptiv + 30-Minuten-Absolutlimit) läuft
+                # standardmäßig — sonst laufen Lieder > 1,5 h (Befund: 40,5×
+                # Echtzeit, 39–44 Phasen pro Chunk) und Exporte werden praktisch
+                # nie fertig. Opt-out für überwachte Offline-Läufe:
+                #   AURIK_NO_RT_LIMIT=1
+                _denke_kwargs["no_rt_limit"] = os.environ.get("AURIK_NO_RT_LIMIT", "0") == "1"
+                if _denke_kwargs["no_rt_limit"]:
+                    logger.warning("BatchDiag: AURIK_NO_RT_LIMIT=1 — RT-Deckel deaktiviert (überwachter Lauf)")
                 logger.info("BatchDiag: calling denke() at %.2fs after item_gestartet", time.perf_counter() - _t_load_0)
 
                 # §3.9.2: Expose state for emergency checkpoint on SIGTERM
@@ -3788,23 +3797,45 @@ class BatchProcessingThread(QThread):
                     for _eqw in _eq_warnings:
                         logger.warning("Ausgabe-Quality: %s", _eqw)
                 if not _eq_passed:
-                    # §8.1 Hard-Gate: P1/P2-Verletzung oder quality_estimate < 0.55
-                    # Fail-closed: Kein Dateiexport bei fehlgeschlagenem Gate.
-                    logger.error(
-                        "Ausgabe-Quality-Gate fehlgeschlagen für %s — Ausgabe wird blockiert (fail-closed). Ursachen: %s",
+                    # §0c [RELEASE_MUST] (copilot-instructions.md): Bei
+                    # fehlgeschlagenem Export-Quality-Gate MUSS das bestmögliche
+                    # sichere Ergebnis mit Status „degraded" exportiert werden —
+                    # Hardstop ohne Ausgabedatei ist normativ unzulässig
+                    # (CLI/Frontend-Parität: aurik_cli.py exportiert bereits
+                    # degraded statt zu blockieren). Die Pipeline hat ihr
+                    # bestes Ergebnis (Rollback-Kaskade) in write_audio abgelegt.
+                    logger.warning(
+                        "§0c: Ausgabe-Quality-Gate fehlgeschlagen für %s — "
+                        "bestmögliches sicheres Ergebnis wird DEGRADED exportiert: %s",
                         item.id,
-                        "; ".join(_eq_warnings),
+                        "; ".join(_eq_warnings) if _eq_warnings else "unbekannt",
                     )
-                    # Tag result metadata, damit UI/Audit den blockierten Export transparent anzeigen.
+                    # Tag result metadata, damit UI/Audit den degraded-Export
+                    # transparent anzeigen (kein „blocked" mehr — Datei entsteht).
                     _meta = getattr(result, "metadata", None)
                     if isinstance(_meta, dict):
                         _meta["export_quality_gate_failed"] = True
                         _meta["export_quality_gate_warnings"] = list(_eq_warnings)
-                        _meta["export_blocked_by_quality_gate"] = True
-                    raise RuntimeError(
-                        "Export blockiert: Export-Quality-Gate nicht bestanden"
-                        + (f" ({'; '.join(_eq_warnings)})" if _eq_warnings else "")
-                    )
+                        _meta["export_degraded_by_quality_gate"] = True
+                        _meta["degradation_status"] = "degraded"
+
+                # §GO/NO-GO (go_nogo_export_gate.py): deterministischer
+                # Export-Verdict — blockiert nie (§0c), Metadaten + Log für UI/Audit.
+                try:
+                    from backend.api.bridge import evaluate_export_gate as _gnge_gui
+
+                    _gng_gui = _gnge_gui(result, audio=write_audio)
+                    _meta_g = getattr(result, "metadata", None)
+                    if isinstance(_meta_g, dict):
+                        _meta_g["go_nogo_export"] = _gng_gui.as_dict()
+                    if _gng_gui.verdict != "GO":
+                        logger.warning(
+                            "§GO/NO-GO: %s — %s",
+                            _gng_gui.verdict,
+                            "; ".join((_gng_gui.reasons + _gng_gui.cautions)[:5]),
+                        )
+                except Exception as _gng_gui_exc:
+                    logger.debug("§V6 (copilot-instructions.md) GO/NO-GO nicht verfügbar: %s", _gng_gui_exc)
 
                 # Ensure output directory exists.
                 os.makedirs(os.path.dirname(item.output_file), exist_ok=True)
@@ -3969,7 +4000,7 @@ class BatchProcessingThread(QThread):
                                 _fb_ref_audio, _fallback_audio, write_sr, max_edge_boost_db=0.5
                             )
                     except Exception as _fb_edge_exc:
-                        logger.debug("Fallback quiet-edge guard skipped: %s", _fb_edge_exc)
+                        logger.debug("Ersatzpfad: Quiet-Edge-Guard übersprungen: %s", _fb_edge_exc)
                         _fallback_audio = write_audio  # sicher: Originalzustand
                     try:
                         _fallback_audio = _export_guard(_fallback_audio)
@@ -4016,10 +4047,43 @@ class BatchProcessingThread(QThread):
                     e,
                     traceback.format_exc(),
                 )
-                error_msg = str(e)
-                item.status = "failed"
-                item.error = error_msg
-                self.item_error.emit(item.id, error_msg)
+                # §0c [RELEASE_MUST] (copilot-instructions.md): Ein Fehler darf
+                # nicht ohne Ausgabedatei enden — bestmögliches sicheres Ergebnis
+                # ist der bereinigte Original-Input (Status degraded).
+                _deg_written = False
+                try:
+                    _src_audio, _src_sr = _load_audio_robust(str(item.input_file))
+                    if _src_audio is not None and getattr(item, "output_file", None):
+                        _src_audio = _export_guard(_normalize_audio(_src_audio))
+                        _out_dir = os.path.dirname(item.output_file)
+                        if _out_dir:
+                            os.makedirs(_out_dir, exist_ok=True)
+                        _tmp = item.output_file + ".degraded.tmp"
+                        sf.write(_tmp, _src_audio, _src_sr, format="WAV", subtype="PCM_24")
+                        os.replace(_tmp, item.output_file)
+                        _deg_written = True
+                        logger.warning(
+                            "§0c: degraded-Ausgabe des Originalsignal-Inputs nach Fehler geschrieben: %s (%s)",
+                            item.output_file,
+                            e,
+                        )
+                except Exception as _deg_exc:
+                    logger.error("§0c Auch die degradierte Ausgabe schlug fehl: %s", _deg_exc)
+
+                if _deg_written:
+                    item.progress = 100
+                    with _sp_lock:
+                        _sp["alive"] = False
+                    self.item_progress.emit(item.id, 10000)
+                    item.status = "completed"
+                    item.error = f"§0c degraded (Original nach Fehler): {e}"
+                    self.item_finished.emit(item.id)
+                    self.item_error.emit(item.id, item.error)
+                else:
+                    error_msg = str(e)
+                    item.status = "failed"
+                    item.error = error_msg
+                    self.item_error.emit(item.id, error_msg)
 
             finally:
                 # Always stop the smooth-progress emitter, regardless of whether
@@ -10712,9 +10776,11 @@ class ModernTitleBar(QWidget):
             safe_color = "rgba(123,147,184,0.85)"
         self.status_label.setText(text)
         # Transparenter Glassmorphism-Hintergrund
-        self.status_label.setStyleSheet(_sanitize_qss_colors(
-            f"color: {safe_color};padding: 6px 18px;background: rgba(102,126,234,0.08);border-radius: 8px;font-size: 9.5pt;"
-        ))
+        self.status_label.setStyleSheet(
+            _sanitize_qss_colors(
+                f"color: {safe_color};padding: 6px 18px;background: rgba(102,126,234,0.08);border-radius: 8px;font-size: 9.5pt;"
+            )
+        )
 
 
 class ModernButton(QPushButton):
@@ -13748,7 +13814,9 @@ class ModernMainWindow(QMainWindow):
         self.quality_score_label = QLabel("—")
         self.quality_score_label.setWordWrap(True)
         self.quality_score_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.quality_score_label.setStyleSheet(_sanitize_qss_colors("color: #8894A8; font-size: 8pt; padding: 4px; background: transparent;"))
+        self.quality_score_label.setStyleSheet(
+            _sanitize_qss_colors("color: #8894A8; font-size: 8pt; padding: 4px; background: transparent;")
+        )
         qi.addWidget(self.quality_score_label)
 
         self.info_banner = QLabel("")
@@ -15405,7 +15473,7 @@ class ModernMainWindow(QMainWindow):
                 return
             _radar.update_scores(scores=dict(goals))
         except Exception:
-            logger.debug("§GUI-T6 Live-Radar-Update fehlgeschlagen", exc_info=True)
+            logger.debug("§GUI-T6 Live-Radar-Aktualisierung fehlgeschlagen", exc_info=True)
 
     def _update_live_quality(self, metrics: dict | None = None) -> None:
         """§v10.14 P1: Aktualisiert die Live-Qualitätsanzeige während der Restaurierung."""
@@ -18353,7 +18421,7 @@ class ModernMainWindow(QMainWindow):
                     # Keep waiting for defect scan to avoid "analysis completed"
                     # while detail cards still show analyzing placeholders.
                     logger.info(
-                        "Pre-analysis hard-timeout reached, waiting for defect_scan before finalization: file=%s",
+                        "Pre-Analyse hard-Zeitlimit reached, waiting for defect_scan before finalization: file=%s",
                         _cfk,
                     )
 
@@ -21973,6 +22041,7 @@ class ModernMainWindow(QMainWindow):
                 try:
                     self._live_playback_frac = float(_sp.position_frac)
                 except Exception:
+                    logger.debug("position_frac nicht lesbar", exc_info=True)
                     pass
         self._stop_playback()
 
@@ -22164,15 +22233,14 @@ class ModernMainWindow(QMainWindow):
 
         # Strukturierte Signale aus Metadata/StageNotes: fail-closed, export block,
         # degradierter Laufstatus oder explizite Original-Fallback-Notiz.
-        _meta_fail = bool(
-            metadata.get("export_quality_gate_failed", False) or metadata.get("export_blocked_by_quality_gate", False)
-        )
-        _stage_fail = bool(
-            stage_notes.get("export_quality_gate_failed", False)
-            or stage_notes.get("export_blocked_by_quality_gate", False)
-        )
-        if _meta_fail or _stage_fail:
+        _meta_blocked = bool(metadata.get("export_blocked_by_quality_gate", False))
+        _stage_blocked = bool(stage_notes.get("export_blocked_by_quality_gate", False))
+        _meta_deg_gate = bool(metadata.get("export_degraded_by_quality_gate", False))
+        _stage_deg_gate = bool(stage_notes.get("export_degraded_by_quality_gate", False))
+        if _meta_blocked or _stage_blocked:
             return "Export-Quality-Gate fehlgeschlagen (runtime fallback original)"
+        if _meta_deg_gate or _stage_deg_gate:
+            return "Export DEGRADED — Quality-Gate nicht bestanden (bestmögliches sicheres Ergebnis exportiert, §0c)"
 
         _meta_deg = str(metadata.get("degradation_status", "") or "").strip().lower()
         _stage_deg = str(stage_notes.get("degradation_status", "") or "").strip().lower()
@@ -24462,7 +24530,7 @@ class ModernMainWindow(QMainWindow):
             # initialisieren — ohne Initialisierung war die Rückwärtszählung
             # (_on_batch_progress → apply_resolved_defects) ein No-op.
             if _status == "correcting" and _active_defects_set and not getattr(self, "_defect_chip_counts", None):
-                self._defect_chip_counts = {_k: 1 for _k in sorted(_active_defects_set)}
+                self._defect_chip_counts = dict.fromkeys(sorted(_active_defects_set), 1)
                 self._defect_chip_total = len(_active_defects_set)
             if _status == "correcting" and _active_defects_set:
                 _initial_mut = getattr(self, "_defect_initial_scores", None)
@@ -24507,6 +24575,7 @@ class ModernMainWindow(QMainWindow):
                                 "✅ Schadensbehebung" if _remain == 0 else f"⚙ Verbleibende Schäden: {_remain}"
                             )
                 except Exception:
+                    logger.debug("Defect-Chip-Aktualisierung fehlgeschlagen", exc_info=True)
                     pass
             _show_chips = (
                 bool(active)

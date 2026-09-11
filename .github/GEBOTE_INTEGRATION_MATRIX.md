@@ -207,9 +207,9 @@ Regeneriert mit `python scripts/gen_integration_matrix.py`.
 | V12 | VERBOTEN.md | `backend/core/causal_defect_reasoner.py` | integriert (Linter) |
 | V13 | VERBOTEN.md | `backend/core/unified_restorer_v3.py` | integriert (Linter) |
 | V27 | VERBOTEN.md | `backend/core/unified_restorer_v3.py`, `causal_defect_reasoner.py`, `defect_phase_mapper.py` | integriert (Linter) |
-| V28 | VERBOTEN.md | | ⏳ V28 DFN-MUSIK: `NR_BREATHING_ARTIFACT` → `phase_03_denoise` / `phase_29` | NR-Atmen/Pumpen entsteht durch  | integriert (Linter) |
+| V28 | VERBOTEN.md | ⏳ V28 DFN-MUSIK: `NR_BREATHING_ARTIFACT` → `phase_03_denoise` / `phase_29` — NR-Atmen/Pumpen entsteht durch | integriert (Linter) |
 | V29 | VERBOTEN.md | `backend/core/causal_defect_reasoner.py`, `defect_phase_mapper.py` | integriert (Linter) |
-| V30 | VERBOTEN.md | | ⏳ V30 DFN-MUSIK: `ALIASING` → `phase_03_denoise` | Aliasing-Spiegelfrequenzen sind kohärente Signalspiegelun | integriert (Linter) |
+| V30 | VERBOTEN.md | ⏳ V30 DFN-MUSIK: `ALIASING` → `phase_03_denoise` — Aliasing-Spiegelfrequenzen sind kohärente Signalspiegelun | integriert (Linter) |
 | V31 | VERBOTEN.md | `backend/core/defect_phase_mapper.py`, `causal_defect_reasoner.py` | integriert (Linter) |
 | V32 | VERBOTEN.md | `backend/core/cumulative_interaction_guard.py` | integriert (Linter) |
 | V33 | VERBOTEN.md | `backend/core/phases/phase_*.py` | integriert (Linter) |

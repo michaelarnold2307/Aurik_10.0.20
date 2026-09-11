@@ -224,14 +224,46 @@ def check_enum_as_dict_key(filepath: str, source: str) -> list[str]:
 # dsp.instructions.md, copilot-instructions (§V5/§G5), Befunde 2026-08-23.
 
 
+def _inside_string(line: str, match: "re.Match[str]") -> bool:
+    """True, wenn der Treffer innerhalb eines String-Literals der Zeile liegt.
+
+    Verhindert False-Positives in Regel-Katalogen (z. B. griffinlim-Pattern
+    in Linter-Skripten) und Docstring-Text.
+    """
+    _before = line[: match.start()]
+    _in_str: str | None = None
+    _esc = False
+    for _ch in _before:
+        if _in_str is not None:
+            if _esc:
+                _esc = False
+            elif _ch == "\\":
+                _esc = True
+            elif _ch == _in_str:
+                _in_str = None
+        elif _ch in "\"'":
+            _in_str = _ch
+    return _in_str is not None
+
+
 def check_hoerordnung_export_patterns(filepath: str, source: str) -> list[str]:
     """H-Serie: Psychoakustik-/Exportqualitäts-Schwachstellen im Code."""
     issues = []
     lines = source.split("\n")
+    _in_docstring = False
     for i, line in enumerate(lines, 1):
         stripped = line.strip()
         if stripped.startswith("#"):
             continue
+        # Docstring-Zeilen (Triple-Quotes) sind Text, kein Code.
+        if _in_docstring:
+            if '"""' in line or "'''" in line:
+                _in_docstring = False
+            continue
+        if '"""' in stripped or "'''" in stripped:
+            _in_docstring = (line.count('"""') % 2 == 1) or (line.count("'''") % 2 == 1)
+            if _in_docstring:
+                continue
 
         # H01: nacktes astype(np.int16) ohne Dither (POW-r/TPDF) — §V5 (copilot-instructions.md)
         if re.search(r"astype\(np\.int16\)", stripped):
@@ -243,7 +275,8 @@ def check_hoerordnung_export_patterns(filepath: str, source: str) -> list[str]:
                 )
 
         # H02: griffinlim() als Endschritt — VERBOTEN V05 (PGHI/Vocos-Pflicht)
-        if re.search(r"\bgriffinlim\(", stripped):
+        _m02 = re.search(r"\bgriffinlim\(", stripped)
+        if _m02 and not _inside_string(stripped, _m02):
             issues.append(
                 f"{filepath}:{i}: H02 griffinlim() in Produktionscode "
                 f"(→ nicht-deterministisch, V05). "
@@ -254,8 +287,10 @@ def check_hoerordnung_export_patterns(filepath: str, source: str) -> list[str]:
         # dsp.instructions „Bandfilter — Zero-Phase“. Nur Phasen/DSP melden:
         # dort ist Filterung Signal-Verarbeitung, wo Phase nicht zum Original
         # addiert werden darf. Analyse-/Realtime-Kontexte sind ausgenommen.
-        if re.search(r"\bsosfilt\(", stripped) and (
-            "/phases/" in filepath.replace("\\", "/") or "/dsp/" in filepath.replace("\\", "/")
+        if (
+            re.search(r"\bsosfilt\(", stripped)
+            and ("/phases/" in filepath.replace("\\", "/") or "/dsp/" in filepath.replace("\\", "/"))
+            and "# H-SCAN-EXEMPT:" not in stripped
         ):
             issues.append(
                 f"{filepath}:{i}: H03 sosfilt() statt sosfiltfilt() "
@@ -263,7 +298,7 @@ def check_hoerordnung_export_patterns(filepath: str, source: str) -> list[str]:
                 f"FIX: sosfiltfilt(sos, audio)"
             )
 
-        # H04: time.time() IN Entscheidungslogik (if/compare) — §G5 Determinismus.
+        # H04: time.time() IN Entscheidungslogik (if/compare) — §G5 (copilot-instructions.md) Determinismus.
         # Reines Profiling (Zuweisung/Subtraktion) ist zulässig und wird nicht gemeldet.
         if re.search(r"\btime\.time\(\)", stripped) and re.search(
             r"\bif\b.*time\.time\(\)|time\.time\(\).*(?:<|>|==|!=|<=|>=)", stripped
@@ -303,10 +338,10 @@ def check_hoerordnung_export_patterns(filepath: str, source: str) -> list[str]:
                     f"FIX: Soft-Knee (6 dB, 200 ms Hanning)"
                 )
 
-        # H07: Silent-Except mit neutralem Return ohne logger — §V6 Silent-Failure-Verbot
+        # H07: Silent-Except mit neutralem Return ohne logger — §V6 (copilot-instructions.md) Silent-Failure-Verbot
         if re.search(r"except\s+Exception", stripped) or stripped == "except Exception:":
-            _window = "\n".join(lines[i : min(i + 3, len(lines))])
-            if re.search(r"return\s+[01]\.\d*", _window) and "logger" not in _window:
+            _window = "\n".join(_ln for _ln in lines[i : min(i + 3, len(lines))] if not _ln.strip().startswith("#"))
+            if re.search(r"return\s+[01]\.\d*", _window) and not re.search(r"logger\.|log\.warning", _window):
                 issues.append(
                     f"{filepath}:{i}: H07 Silent-Except → neutraler Return ohne logger.warning "
                     f"(→ ML→DSP-Fallback unsichtbar, §V6 (copilot-instructions.md))"
@@ -395,7 +430,9 @@ def _write_hoerordnung_todo(all_issues: list[str], todo_path: str) -> None:
     _dest = Path(todo_path)
     _dest.parent.mkdir(parents=True, exist_ok=True)
     _dest.write_text("\n".join(_out_lines), encoding="utf-8")
-    logger.info("§V01 Hörordnungs-To-Do geschrieben: %s (%d Einträge, %d bereits erledigt)", _dest, len(_entries), len(_done))
+    logger.info(
+        "§V01 Hörordnungs-To-Do geschrieben: %s (%d Einträge, %d bereits erledigt)", _dest, len(_entries), len(_done)
+    )
 
 
 def _load_discovered_patterns() -> list[str]:

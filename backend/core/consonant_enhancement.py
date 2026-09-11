@@ -35,6 +35,8 @@ from dataclasses import dataclass, field
 import numpy as np
 import scipy.signal as sig
 
+from backend.core.audio_layout import is_channels_first, mono_mix, to_channels_first, to_samples_first
+
 logger = logging.getLogger(__name__)
 
 # ── Stimmtyp-adaptive Frikativ-Bänder (§2.8, §4.4) ─────────────────────────
@@ -191,10 +193,16 @@ class ConsonantEnhancement:
         if not isinstance(audio, np.ndarray) or audio.size == 0:
             return _passthrough(audio, voice_gender)
         audio = np.nan_to_num(audio.astype(np.float32), nan=0.0, posinf=0.0, neginf=0.0)
+        # §V7 (copilot-instructions.md): Layout-Normalisierung auf channels-first,
+        # damit die Kanalschleifen (audio.shape[0], np.stack axis=0) deterministisch
+        # die KANAL-Achse treffen — bei (N,2)-Input kollabierten sie vorher.
+        _was_channels_first = audio.ndim != 2 or is_channels_first(audio)
+        if audio.ndim == 2:
+            audio = to_channels_first(audio)
         stereo = audio.ndim == 2
 
-        # Mono für Analyse
-        mono = audio.mean(axis=0) if stereo else audio.copy()
+        # Mono für Analyse (layout-sicher)
+        mono = mono_mix(audio) if stereo else audio.copy()
 
         # ── Kausal-Konditionierung ──────────────────────────────────────── #
         causal_factor = self._causal_factor(defect_scores or {})
@@ -280,6 +288,9 @@ class ConsonantEnhancement:
         # ── NaN/Inf-Guard & Clipping ────────────────────────────────────── #
         processed = np.nan_to_num(processed, nan=0.0, posinf=0.0, neginf=0.0)
         processed = np.clip(processed, -1.0, 1.0)
+        # Rückführung auf das Eingangs-Layout (§V7 (copilot-instructions.md): bit-identisches Transpose)
+        if not _was_channels_first and processed.ndim == 2:
+            processed = to_samples_first(processed)
 
         logger.debug(
             "ConsonantEnhancement: gender=%s, causal=%.2f, boost=%.1f dB, "
@@ -522,7 +533,7 @@ def measure_fricative_snr(audio: np.ndarray, sr: int, voice_gender: str = "unkno
     if not isinstance(audio, np.ndarray) or audio.size == 0:
         return 0.0
     audio = np.nan_to_num(audio.astype(np.float32), nan=0.0, posinf=0.0, neginf=0.0)
-    mono = audio.mean(axis=0) if audio.ndim == 2 else audio
+    mono = mono_mix(audio) if audio.ndim == 2 else audio
     f_lo, f_hi = _fricative_band(voice_gender, sr)
     return _snr_in_band(mono, sr, f_lo, f_hi)
 
@@ -652,11 +663,19 @@ class PlosiveBurstPreserver:
         original = np.nan_to_num(np.asarray(original, dtype=np.float32), nan=0.0, posinf=0.0, neginf=0.0)
         processed = np.nan_to_num(np.asarray(processed, dtype=np.float32), nan=0.0, posinf=0.0, neginf=0.0)
 
-        # Handle stereo: process the mix for detection, apply to each channel
+        # Handle stereo: process the mix for detection, apply to each channel.
+        # §V7 (copilot-instructions.md): Layout-Normalisierung auf channels-first
+        # — die bisherige Mischung aus mean(axis=0)-Mono und [:, ch]-Kanalzugriff
+        # kollabierte (N,2)-Input auf 2 Samples.
+        _orig_was_channels_first = original.ndim != 2 or is_channels_first(original)
+        if original.ndim == 2:
+            original = to_channels_first(original)
+        if processed.ndim == 2:
+            processed = to_channels_first(processed)
         stereo = original.ndim == 2
-        orig_mono = original.mean(axis=0) if stereo else original
+        orig_mono = mono_mix(original) if stereo else original
         proc_channels = (
-            [processed[:, ch] for ch in range(processed.shape[1])] if stereo and processed.ndim == 2 else [processed]
+            [processed[ch] for ch in range(processed.shape[0])] if stereo and processed.ndim == 2 else [processed]
         )
 
         frame_n = max(2, int(self._FRAME_MS / 1000.0 * sr))
@@ -696,6 +715,8 @@ class PlosiveBurstPreserver:
 
         if not onsets:
             out = np.clip(processed, -1.0, 1.0)
+            if not _orig_was_channels_first and out.ndim == 2:
+                out = to_samples_first(out)  # §V7 (copilot-instructions.md): Rückführung aufs Eingangs-Layout
             return PlosiveBurstResult(audio=out, n_bursts_detected=0)
 
         # ── Transient restoration ──────────────────────────────────────── #
@@ -736,6 +757,8 @@ class PlosiveBurstPreserver:
 
         # Reassemble
         out = np.column_stack(result_channels) if stereo and len(result_channels) > 1 else result_channels[0]
+        if _orig_was_channels_first and out.ndim == 2:
+            out = to_channels_first(out)  # §V7 (copilot-instructions.md): Rückführung aufs Eingangs-Layout
 
         out = np.nan_to_num(out, nan=0.0, posinf=0.0, neginf=0.0)
         out = np.clip(out, -1.0, 1.0)

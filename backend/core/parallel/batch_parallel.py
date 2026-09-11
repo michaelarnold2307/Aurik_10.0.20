@@ -387,7 +387,11 @@ def _process_file_worker(task: FileTask, process_func: Callable[[Path, Path], No
         )
 
     except Exception as e:
-        logger.debug("§V6 _process_file_task fehlgeschlagen — FAILED-Status zurückgegeben (Task %s): %s", task.task_id, e)
+        logger.debug(
+            "§V6 (copilot-instructions.md) _verarbeiten_file_task fehlgeschlagen — fehlgeschlagen-Status zurückgegeben (Task %s): %s",
+            task.task_id,
+            e,
+        )
         processing_time = time.time() - start_time
 
         return FileResult(

@@ -481,7 +481,9 @@ class TransparentDynamicsV1(PhaseInterface):
                 _smp = get_medium_profile(str(getattr(material_enum, "value", material_enum)).lower())
                 _is_compressed_mat = bool(getattr(_smp, "is_compressed", _is_compressed_mat))
             except Exception:
-                logger.debug("§V6 Material-Profil-Laden fehlgeschlagen — Standard-Komprimierungs-Annahme")
+                logger.debug(
+                    "§V6 (copilot-instructions.md) Material-Profil-Laden fehlgeschlagen — Standard-Komprimierungs-Annahme"
+                )
             if _is_compressed_mat:
                 ratio = float(np.clip(ratio, 1.1, 2.5))
                 logger.info(
@@ -682,7 +684,7 @@ class TransparentDynamicsV1(PhaseInterface):
         try:
             masking_curve = signal.sosfiltfilt(_sos_lp, masking_curve)
         except Exception:
-            masking_curve = signal.sosfilt(_sos_lp, masking_curve)
+            masking_curve = signal.sosfilt(_sos_lp, masking_curve)  # H-SCAN-EXEMPT: sosfilt (Fallback < padlen)
 
         # Clip to 0-1 range
         masking_curve = np.clip(masking_curve, 0, 1)
@@ -701,7 +703,7 @@ class TransparentDynamicsV1(PhaseInterface):
         try:
             audio_hp = signal.sosfiltfilt(sos, audio)
         except Exception:
-            audio_hp = signal.sosfilt(sos, audio)
+            audio_hp = signal.sosfilt(sos, audio)  # H-SCAN-EXEMPT: sosfilt (Fallback < padlen)
 
         # Envelope detection
         envelope = np.abs(audio_hp)
@@ -709,7 +711,7 @@ class TransparentDynamicsV1(PhaseInterface):
         try:
             envelope = signal.sosfiltfilt(_sos_env, envelope)
         except Exception:
-            envelope = signal.sosfilt(_sos_env, envelope)
+            envelope = signal.sosfilt(_sos_env, envelope)  # H-SCAN-EXEMPT: sosfilt (Fallback < padlen)
 
         # Find transient peaks
         _med = float(np.median(envelope))
@@ -790,18 +792,38 @@ class TransparentDynamicsV1(PhaseInterface):
                     # Above knee: full compression
                     gain_reduction[i] = (threshold_linear / level) ** (1 - 1 / ratio)
 
-        # Apply attack/release envelope
+        # Apply attack/release envelope — §DLM (temporal_loudness.py):
+        # STL-adaptive Zeitkonstanten (laut = schnell, leise = langsamere
+        # Release) — Moore-Glasberg-Prinzip, Pumpen-Schutz. §V6-Fallback auf
+        # feste Zeitkonstanten bei Fehler.
+        try:
+            from backend.core.dsp.temporal_loudness import temporal_loudness as _tl54
+
+            _tl54_res = _tl54(audio, self.sample_rate)
+            _stl54 = _tl54_res.stl_sone
+            if _stl54.size != len(gain_reduction):
+                _stl54 = np.interp(
+                    np.linspace(0.0, 1.0, len(gain_reduction)),
+                    np.linspace(0.0, 1.0, _stl54.size),
+                    _stl54,
+                )
+            _loud54 = np.clip(_stl54 / max(float(np.median(_stl54)), 1e-9), 0.1, 10.0)
+        except Exception as _tl54_exc:
+            logger.warning("§V6 (copilot-instructions.md) STL nicht verfügbar — feste Zeitkonstanten: %s", _tl54_exc)
+            _loud54 = np.ones(len(gain_reduction), dtype=np.float64)
+
         gain_smooth = np.zeros_like(gain_reduction)
         gain_smooth[0] = gain_reduction[0]
 
         for i in range(1, len(gain_reduction)):
+            _lratio = float(_loud54[i])
             if gain_reduction[i] < gain_smooth[i - 1]:
-                # Attack (gain going down)
-                alpha_attack = 1.0 - np.exp(-1.0 / attack_samples)
+                # Attack (gain going down) — in lauten Passagen schneller
+                alpha_attack = 1.0 - np.exp(-1.0 / max(1.0, attack_samples * float(np.clip(1.0 / _lratio, 0.4, 1.5))))
                 gain_smooth[i] = alpha_attack * gain_reduction[i] + (1 - alpha_attack) * gain_smooth[i - 1]
             else:
-                # Release (gain going up)
-                alpha_release = 1.0 - np.exp(-1.0 / release_samples)
+                # Release (gain going up) — in leisen Passagen langsamer
+                alpha_release = 1.0 - np.exp(-1.0 / max(1.0, release_samples * float(np.clip(_lratio, 0.4, 3.0))))
                 gain_smooth[i] = alpha_release * gain_reduction[i] + (1 - alpha_release) * gain_smooth[i - 1]
 
         # Modulate compression based on psychoacoustic masking

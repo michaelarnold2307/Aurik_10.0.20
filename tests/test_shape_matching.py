@@ -1,6 +1,5 @@
 import pytest
 
-#!/usr/bin/env python
 """
 Test für Shape-Matching zwischen Stereo/Mono Arrays (resemble_enhance Broadcasting-Fix)
 """

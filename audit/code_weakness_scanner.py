@@ -67,7 +67,7 @@ RULES: dict[str, WeaknessRule] = {
         spec_ref="§V4 (copilot-instructions.md)",
         title="UI/Frontend importiert backend/core direkt statt über backend/api/bridge.py",
         recommendation=(
-            "Import über backend.api.bridge umleiten; Denker-Schicht ist ausgenommen. (§V4 Bridge-Bypass-Verbot)"
+            "Import über backend.api.bridge umleiten; Denker-Schicht ist ausgenommen. (§V4 (copilot-instructions.md) Bridge-Bypass-Verbot)"
         ),
     ),
     "dither_missing_int_conversion": WeaknessRule(
@@ -77,7 +77,7 @@ RULES: dict[str, WeaknessRule] = {
         title="Integer-Konversion ohne Dither (bit_depth < 32)",
         recommendation=(
             "POW-r Type 3 (primär) oder TPDF (Fallback) vor der Konversion anwenden; "
-            "kein nacktes astype(np.int16). (§V5 Truncation-ohne-Dither-Verbot)"
+            "kein nacktes astype(np.int16). (§V5 (copilot-instructions.md) Truncation-ohne-Dither-Verbot)"
         ),
     ),
     "silent_fallback_no_log": WeaknessRule(
@@ -87,7 +87,7 @@ RULES: dict[str, WeaknessRule] = {
         title="Fallback/Return in except-Block ohne Logging",
         recommendation=(
             "logger.warning() + Begründung ergänzen, damit ML→DSP-Fallbacks nie "
-            "stumm bleiben. (§V6 Silent-Failure-Verbot)"
+            "stumm bleiben. (§V6 (copilot-instructions.md) Silent-Failure-Verbot)"
         ),
     ),
     "bare_except": WeaknessRule(
@@ -118,7 +118,7 @@ RULES: dict[str, WeaknessRule] = {
         title="time.time() im Produktions-Code — Determinismus-Risiko",
         recommendation=(
             "Prüfen, ob Wall-Clock-Zeit in Entscheidungslogik einfließt; für Messungen "
-            "time.monotonic()/perf_counter() verwenden. (§G5 Determinism)"
+            "time.monotonic()/perf_counter() verwenden. (§G5 (copilot-instructions.md) Determinism)"
         ),
     ),
     "print_in_production": WeaknessRule(
@@ -215,7 +215,7 @@ def _handler_returns_value(handler: ast.ExceptHandler) -> bool:
 
 
 def _check_bridge_imports(rel_posix: str, text: str, lines: list[str]) -> list[WeaknessFinding]:
-    """§V4: UI/Frontend (Aurik10/, cli/) darf backend/core nie direkt importieren."""
+    """§V4 (copilot-instructions.md): UI/Frontend (Aurik10/, cli/) darf backend/core nie direkt importieren."""
     if not rel_posix.startswith(("Aurik10/", "cli/")):
         return []
     rule = RULES["bridge_import_violation"]
@@ -237,7 +237,7 @@ def _check_bridge_imports(rel_posix: str, text: str, lines: list[str]) -> list[W
 
 
 def _check_dither(rel_posix: str, text: str, lines: list[str]) -> list[WeaknessFinding]:
-    """§V5: Integer-Konversion (bit_depth < 32) ohne Dither im Kontext."""
+    """§V5 (copilot-instructions.md): Integer-Konversion (bit_depth < 32) ohne Dither im Kontext."""
     if not rel_posix.startswith(("backend/", "denker/")):
         return []
     rule = RULES["dither_missing_int_conversion"]
@@ -267,7 +267,7 @@ def _check_ast_rules(
     lines: list[str],
     suppressed: dict[str, int] | None = None,
 ) -> list[WeaknessFinding]:
-    """§V6 Silent-Fallbacks + bare except (AST-basiert, pro Datei gedeckelt).
+    """§V6 (copilot-instructions.md) Silent-Fallbacks + bare except (AST-basiert, pro Datei gedeckelt).
 
     Befunde jenseits des Pro-Datei-Caps werden nicht verschwiegen, sondern
     im ``suppressed``-Zähler ausgewiesen (Transparenz statt Logflut).

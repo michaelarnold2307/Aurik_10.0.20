@@ -36,13 +36,10 @@ def initialize_warning_filters():
     warnings_to_suppress = [
         # webrtcvad: legacy packaging
         ("UserWarning", "pkg_resources is deprecated"),
-
         # torch: minor API changes (non-critical)
         ("UserWarning", "meshgrid"),
-
         # onnxruntime: hardware provider availability (not an error)
         ("UserWarning", "Specified provider"),
-
         # librosa: resampling backend selection
         ("UserWarning", "julius"),
     ]
@@ -58,7 +55,7 @@ def initialize_warning_filters():
         except Exception as e:
             logger.debug(f"Could not set warning filter for {category_name}: {e}")
 
-    logger.debug("§v10.801: Warning filters initialized (FutureWarning + DeprecationWarning blanket-ignored)")
+    logger.debug("§v10.801: Warning filters initialisiert (FutureWarning + DeprecationWarning blanket-ignored)")
 
 
 def configure_production_logging():
@@ -99,7 +96,7 @@ def configure_production_logging():
         for logger_name in noisy_loggers:
             logging.getLogger(logger_name).setLevel(max(level, logging.WARNING))
 
-    logger.debug(f"§v10.801: Logging configured to {level_str}")
+    logger.debug(f"§v10.801: Logging konfiguriert to {level_str}")
 
 
 def robust_numpy_operations():
@@ -118,21 +115,21 @@ def robust_numpy_operations():
     def safe_clip(a, a_min, a_max, **kwargs):
         result = original_clip(a, a_min, a_max, **kwargs)
         if np.any(~np.isfinite(result)):
-            logger.warning("§v10.801.3: np.clip produced NaN/Inf, using fallback")
+            logger.warning("§v10.801.3: np.clip produced NaN/Inf, using Ersatzpfad")
             return np.nan_to_num(result, nan=0.0, posinf=0.0, neginf=0.0)
         return result
 
     def safe_divide(x1, x2, **kwargs):
         result = original_divide(x1, x2, **kwargs)
         if np.any(~np.isfinite(result)):
-            logger.warning("§v10.801.3: np.divide produced NaN/Inf, using fallback")
+            logger.warning("§v10.801.3: np.divide produced NaN/Inf, using Ersatzpfad")
             return np.nan_to_num(result, nan=0.0, posinf=1.0, neginf=-1.0)
         return result
 
     def safe_sqrt(x, **kwargs):
         result = original_sqrt(x, **kwargs)
         if np.any(~np.isfinite(result)):
-            logger.warning("§v10.801.3: np.sqrt produced NaN/Inf, using fallback")
+            logger.warning("§v10.801.3: np.sqrt produced NaN/Inf, using Ersatzpfad")
             return np.nan_to_num(result, nan=0.0, posinf=0.0, neginf=0.0)
         return result
 
@@ -164,7 +161,7 @@ def configure_ml_device_fallbacks():
     if not os.getenv("AURIK_ML_GPU"):
         os.environ["ORT_CUDA_AVAILABLE"] = "0"  # ONNX Runtime: disable CUDA
 
-    logger.debug("§v10.801.4: ML device fallback configured (CPU-first)")
+    logger.debug("§v10.801.4: ML device Ersatzpfad konfiguriert (CPU-first)")
 
 
 def configure_audio_processing_safeguards():
@@ -205,7 +202,7 @@ def main():
     configure_ml_device_fallbacks()
     configure_audio_processing_safeguards()
 
-    logger.info("§v10.801 SOTA Warning Prevention: All systems initialized")
+    logger.info("§v10.801 SOTA Warning Prevention: All systems initialisiert")
 
 
 if __name__ == "__main__":

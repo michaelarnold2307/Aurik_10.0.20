@@ -31,6 +31,7 @@ from typing import Any, cast
 import numpy as np
 import soundfile as sf
 
+from backend.core.audio_layout import mono_mix
 from backend.core.audio_utils import apply_musical_gain_envelope as _amge
 from backend.core.audio_utils import limit_quiet_edge_boost as _limit_quiet_edge_boost
 
@@ -406,6 +407,18 @@ class AudioExporter:
             except Exception as _quiet_edge_exc:
                 logger.debug("Final quiet-edge Ausgabe clamp uebersprungen: %s", _quiet_edge_exc)
 
+        # §Hörpolish (konservativ, nur bei klaren Indikatoren): sanfte
+        # Höhen-Glättung bei HF-Rauheit, Stereobalance-Korrektur > 7 dB,
+        # Mikro-Fades gegen Klick-Ränder. Parität zum exporter.py-Pfad, damit
+        # ALLE Exportpfade (GUI/CLI/Batch) aufs menschliche Gehör
+        # zugeschnitten sind — kein Hardstop, nicht blockierend.
+        try:
+            from backend.exporter import _export_nuance_guard as _nuance_guard
+
+            audio_export = _nuance_guard(audio_export, sr)
+        except Exception as _nuance_exc:
+            logger.debug("Ausgabe-NuanceGuard übersprungen (nicht blockierend): %s", _nuance_exc)
+
         # Zentraler musiclover-Finalizer (alle Exportpfade):
         # nutzt Export-Metadaten für konservative Defekt-Minimierung.
         try:
@@ -478,7 +491,7 @@ class AudioExporter:
                 ) + np.random.default_rng().uniform(-0.5, 0.5, audio_export.shape)
                 dither_amp = 1.0 / (2 ** (bit_depth - 1))
                 audio_export = audio_export + (noise * dither_amp).astype(np.float32)
-                logger.debug("§V5 (copilot-instructions.md) TPDF-Fallback-Dither angewendet (POW-r nicht verfügbar)")
+                logger.debug("§V5 (copilot-instructions.md) TPDF-Ersatzpfad-Dither angewendet (POW-r nicht verfügbar)")
             except Exception as _dith_exc:
                 logger.debug("§V5 (copilot-instructions.md) Dither übersprungen (%s)", _dith_exc)
 
@@ -762,10 +775,9 @@ def _approx_true_peak(audio: np.ndarray, sr: int, upsample: int = 4) -> float:
     Returns value in dBTP (dB relative to full scale, 0 dB = ±1.0).
     """
     try:
-        if audio.ndim == 2:
-            mono = 0.5 * (audio[:, 0] + audio[:, 1])
-        else:
-            mono = audio
+        # §V7 (copilot-instructions.md): layout-sicherer Mono-Mix —
+        # audio[:, 0]+audio[:, 1] traf bei channels-first (2,N) nur 2 Samples.
+        mono = mono_mix(audio) if audio.ndim == 2 else audio
         n = mono.shape[0]
         if n < 2:
             peak = float(np.max(np.abs(mono)))
@@ -780,7 +792,9 @@ def _approx_true_peak(audio: np.ndarray, sr: int, upsample: int = 4) -> float:
             return float("-inf")
         return float(20.0 * np.log10(peak))
     except Exception as exc:
-        logger.debug("§V6 True-Peak-Interpolation fehlgeschlagen — Peak-Max Fallback: %s", exc)
+        logger.debug(
+            "§V6 (copilot-instructions.md) True-Peak-Interpolation fehlgeschlagen — Peak-Max Ersatzpfad: %s", exc
+        )
         peak = float(np.max(np.abs(audio)))
         if peak <= 0:
             return float("-inf")
@@ -800,7 +814,7 @@ def _write_export_metrics_impl(
     try:
         metrics["file_size_bytes"] = file_path.stat().st_size
     except Exception as exc:
-        logger.debug("§V6 Datei-Stat fehlgeschlagen — None für file_size_bytes: %s", exc)
+        logger.debug("§V6 (copilot-instructions.md) Datei-Stat fehlgeschlagen — None für file_size_bytes: %s", exc)
         metrics["file_size_bytes"] = None
 
     # Loudness measurements (using pyloudnorm if available)

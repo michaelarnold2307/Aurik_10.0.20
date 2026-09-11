@@ -19,7 +19,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from scripts.onnx_gpu_compat_scan import _REGISTRY_OUT, _REPO_ROOT, _scan_model  # noqa: E402
+from scripts.onnx_gpu_compat_scan import _REGISTRY_OUT, _REPO_ROOT, _scan_model
 
 _DEFAULTS = [
     "models/mert/mert_330m.onnx",

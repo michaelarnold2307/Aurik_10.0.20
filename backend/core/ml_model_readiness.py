@@ -144,10 +144,18 @@ def _probe_plugin(module_path: str, getter_name: str, attr: str | None = None) -
             # Module existence + getter existence = probe success.
             return True
         except ImportError as exc:
-            logger.debug("§V6 ML-Modul nicht importierbar — False zurückgegeben (Module %s): %s", module_path, exc)
+            logger.debug(
+                "§V6 (copilot-instructions.md) ML-Modul nicht importierbar — False zurückgegeben (Module %s): %s",
+                module_path,
+                exc,
+            )
             return False
         except Exception as exc:
-            logger.debug("§V6 ML-Probe fehlgeschlagen — False zurückgegeben (Getter %s): %s", getter_name, exc)
+            logger.debug(
+                "§V6 (copilot-instructions.md) ML-Probe fehlgeschlagen — False zurückgegeben (Getter %s): %s",
+                getter_name,
+                exc,
+            )
             return False
 
     return _check
@@ -168,10 +176,18 @@ def _probe_function(module_path: str, fn_name: str) -> Callable[[], bool]:
             # Do NOT call fn() — that triggers full model load.
             return fn is not None
         except ImportError as exc:
-            logger.debug("§V6 ML-Funktion-Modul nicht importierbar — False zurückgegeben (Module %s): %s", module_path, exc)
+            logger.debug(
+                "§V6 (copilot-instructions.md) ML-Funktion-Modul nicht importierbar — False zurückgegeben (Module %s): %s",
+                module_path,
+                exc,
+            )
             return False
         except Exception as exc:
-            logger.debug("§V6 ML-Probe fehlgeschlagen — False zurückgegeben (Funktion %s): %s", fn_name, exc)
+            logger.debug(
+                "§V6 (copilot-instructions.md) ML-Probe fehlgeschlagen — False zurückgegeben (Funktion %s): %s",
+                fn_name,
+                exc,
+            )
             return False
 
     return _check
@@ -289,7 +305,10 @@ def _register_all() -> None:
             _instance = getattr(_pv_mod, "_validator", None)
             return _instance is not None and _instance.is_loaded()
         except ImportError as exc:
-            logger.debug("§V6 musical_goals.perceptual_validator nicht importierbar — False zurückgegeben (AST-Perceptual): %s", exc)
+            logger.debug(
+                "§V6 (copilot-instructions.md) musical_goals.perceptual_validator nicht importierbar — False zurückgegeben (AST-Perceptual): %s",
+                exc,
+            )
             return False
         except AttributeError as exc:
             # §V6 (copilot-instructions.md): Ein Readiness-Check darf NIE werfen.
@@ -298,7 +317,7 @@ def _register_all() -> None:
             # CRITICAL im Selftest aus — der Check meldet dann ehrlich „nicht
             # bereit“ statt den Selftest dauerhaft zu vergiften.
             logger.warning(
-                "AST-Perceptual-ONNX Readiness-Check nicht durchführbar (%s) — als nicht bereit gemeldet",
+                "AST-Perceptual-ONNX Readiness-Pruefung nicht durchführbar (%s) — als nicht bereit gemeldet",
                 exc,
             )
             return False
@@ -312,7 +331,10 @@ def _register_all() -> None:
 
             return is_ast_loaded()
         except ImportError as exc:
-            logger.debug("§V6 ast_audio_set_classifier.is_ast_loaded nicht verfügbar — False zurückgegeben (AST-Classifier): %s", exc)
+            logger.debug(
+                "§V6 (copilot-instructions.md) ast_audio_set_classifier.is_ast_geladen nicht verfügbar — False zurückgegeben (AST-Classifier): %s",
+                exc,
+            )
             return False
 
     register_ml_check("AST-AudioSet-Classifier", _ast_classifier_ready)

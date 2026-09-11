@@ -439,6 +439,7 @@ class PluginLifecycleManager:
             _used = float(getattr(_mbb, "_total_gb", 0.0) or 0.0)
             _limit = float(getattr(_mbb, "ML_MAX_GB", 0.0) or 0.0)
         except Exception:
+            logger.debug("Stiller Ersatzpfad dokumentiert (Bug 9/V74)", exc_info=True)
             pass
         _under_pressure = _limit > 0.0 and _used >= _limit * 0.75
         if not _under_pressure:

@@ -154,7 +154,7 @@ def _dsp_restore(audio: np.ndarray, sr: int) -> np.ndarray:
             processing_applied = True
             logger.debug("_dsp_wiederherstellen: shellac path (SNR=%.1f dB, f0=%.0f Hz)", snr_est_db, f0_est)
         except Exception as exc:
-            logger.warning("ML→DSP-Fallback aktiviert", exc_info=True)  # §V6 (copilot-instructions.md)
+            logger.warning("ML→DSP-Ersatzpfad aktiviert", exc_info=True)  # §V6 (copilot-instructions.md)
             logger.debug("_dsp_wiederherstellen shellac fehlgeschlagen: %s", exc)
 
     # ── Step 2b: VOCAL path — WOW-Inversion + Harmonic-Aware Wiener + Smoothing ─
@@ -229,7 +229,7 @@ def _dsp_restore(audio: np.ndarray, sr: int) -> np.ndarray:
                                         wow_depth_est * 100,
                                     )
         except Exception as exc:
-            logger.warning("ML→DSP-Fallback aktiviert", exc_info=True)  # §V6 (copilot-instructions.md)
+            logger.warning("ML→DSP-Ersatzpfad aktiviert", exc_info=True)  # §V6 (copilot-instructions.md)
             logger.debug("_dsp_wiederherstellen vocal WOW: %s", exc)
         # Wiener-NR mit Temporal Smoothing (5 Frames) — verhindert Musical Noise.
         # Floor=0.65 (uniform, max 35 % NR): bewahrt spektrale Form (NSIM-kritisch).
@@ -253,17 +253,15 @@ def _dsp_restore(audio: np.ndarray, sr: int) -> np.ndarray:
             wiener_nr = np.clip(sig_psd_nr / (sig_psd_nr + noise_psd_nr + 1e-20), 0.65, 1.0).astype(np.float64)
             # Temporal Smoothing (uniform 5 Frames) — verhindert Musical Noise
             wiener_nr = _ufl_vc(wiener_nr, size=5, axis=1).astype(np.float32)
-            audio_nr = librosa.istft(
+            librosa.istft(
                 (mag_nr * wiener_nr) * np.exp(1j * np.angle(S_nr)),
                 n_fft=_NR_FFT,
                 hop_length=_NR_HOP,
                 length=len(audio_f),
             )
-        except Exception:
-            logger.warning("ML→DSP-Fallback aktiviert", exc_info=True)  # §V6 (copilot-instructions.md)
-            logger.debug("_dsp_wiederherstellen: Wiener-NR + Temporal-Smooth (SNR=%.1f dB)", snr_est_db)
         except Exception as exc:
-            logger.debug("_dsp_wiederherstellen Wiener-NR: %s", exc)
+            logger.warning("ML→DSP-Ersatzpfad aktiviert", exc_info=True)  # §V6 (copilot-instructions.md)
+            logger.debug("_dsp_wiederherstellen Wiener-NR: %s — Temporal-Smooth (SNR=%.1f dB)", exc, snr_est_db)
 
     # ── Step 2c: Low-noise signals (TAPE, VINYL, …) — skip spectral processing ─
     # These signals already score ≥ 80 MUSHRA. Any spectral modification reduces
@@ -310,7 +308,7 @@ def make_restoration_fn(mode: str = "quality"):
                 result = restorer.restore(audio, sr, mode=mode)
                 return result.audio if hasattr(result, "audio") else result
             except Exception as exc:
-                logger.warning("ML→DSP-Fallback aktiviert", exc_info=True)  # §V6 (copilot-instructions.md)
+                logger.warning("ML→DSP-Ersatzpfad aktiviert", exc_info=True)  # §V6 (copilot-instructions.md)
                 logger.debug("wiederherstellen-Fehler (DSP-Ersatzpfad): %s", exc)
                 return _dsp_restore(audio, sr)
 

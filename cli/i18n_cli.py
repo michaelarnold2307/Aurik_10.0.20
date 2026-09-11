@@ -42,7 +42,6 @@ def _(key: str, **kwargs) -> str:
 
 def _load_translations() -> None:
     """Lädt Übersetzungsdateien für die aktuelle Sprache."""
-    global _TRANSLATIONS
     if _TRANSLATIONS.get(_CURRENT_LANG):
         return
 

@@ -276,7 +276,7 @@ class AstAudioSetClassifier:
                 release("ASTAudioSetClassifier")
                 raise
         except Exception as exc:
-            logger.warning("ML→DSP-Fallback aktiviert", exc_info=True)  # §V6 (copilot-instructions.md)
+            logger.warning("ML→DSP-Ersatzpfad aktiviert", exc_info=True)  # §V6 (copilot-instructions.md)
             logger.debug("AST ONNX laden fehlgeschlagen: %s — DSP-Ersatzpfad aktiv", exc)
             self._session = None
 
@@ -507,7 +507,10 @@ class AstAudioSetClassifier:
             num = int(len(audio) * target_sr / orig_sr)
             return scipy.signal.resample(audio, num).astype(np.float32)  # type: ignore[no-any-return]
         except Exception as exc:
-            logger.debug("§V6 scipy.signal.resample fehlgeschlagen — Linear-Interpolation Fallback: %s", exc)
+            logger.debug(
+                "§V6 (copilot-instructions.md) scipy.signal.resample fehlgeschlagen — Linear-Interpolation Ersatzpfad: %s",
+                exc,
+            )
             # Linear interpolation fallback
             n = len(audio)
             x_old = np.linspace(0, n - 1, n)
@@ -546,7 +549,10 @@ class AstAudioSetClassifier:
             mel_norm = (mel_db - mel_db.min()) / (mel_db.max() - mel_db.min() + 1e-12)
             return mel_norm.astype(np.float32)[:, : self._TARGET_FRAMES]  # type: ignore[no-any-return]
         except Exception as exc:
-            logger.debug("§V6 librosa.feature.melspectrogram fehlgeschlagen — STFT-Fallback aktiviert: %s", exc)
+            logger.debug(
+                "§V6 (copilot-instructions.md) librosa.feature.melspectrogram fehlgeschlagen — STFT-Ersatzpfad aktiviert: %s",
+                exc,
+            )
             # Minimal fallback: STFT-based mel approximation
             return self._compute_mel_fallback(audio_16k)
 

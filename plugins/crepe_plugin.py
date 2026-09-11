@@ -22,7 +22,7 @@ bei fehlender ONNX-Laufzeit oder pYIN-Fehlern.
 Invarianten (§3.1, §3.2, §3.7 Aurik-Spec):
     - Thread-sicherer Singleton mit Double-Checked Locking
     - NaN/Inf in keiner Ausgabe (nan_to_num)
-    - Provider-Wahl über get_ort_providers() oder CPU-Fallback (§G5 Determinismus)
+    - Provider-Wahl über get_ort_providers() oder CPU-Fallback (§G5 (GEBOTE.md) Determinismus)
     - Alle öffentlichen Methoden vollständig typisiert (PEP 484)
     - GPU-Support via AURIK_PITCH_GPU=1 optional; CPU ist Default für Reproduzierbarkeit
 """
@@ -142,7 +142,7 @@ class CrepePlugin:
 
             if not _CREPE_ONNX_PATH.exists():
                 logger.debug(
-                    "CREPE-ONNX nicht gefunden (%s) — pYIN-Fallback aktiv",
+                    "CREPE-ONNX nicht gefunden (%s) — pYIN-Ersatzpfad aktiv",
                     _CREPE_ONNX_PATH,
                 )
                 return
@@ -155,28 +155,35 @@ class CrepePlugin:
                     try:
                         _release("CREPE")
                     except Exception:
-                        logger.warning("crepe_plugin.py::_load_model fallback", exc_info=True)
+                        logger.warning("crepe_plugin.py::_laden_model Ersatzpfad", exc_info=True)
                     if not _try_alloc("CREPE", size_gb=0.10):
-                        logger.warning("CREPE: ML-Budget erschöpft — pYIN-Fallback.")
+                        logger.warning("CREPE: ML-Grenze erschöpft — pYIN-Ersatzpfad.")
                         return
             except Exception as _exc:
-                logger.debug("Plugin operation failed (non-critical): %s", _exc)
+                logger.debug("Plugin operation fehlgeschlagen (unkritisch): %s", _exc)
 
             opts = ort.SessionOptions()
             opts.inter_op_num_threads = 1
             opts.intra_op_num_threads = 4
             opts.graph_optimization_level = ort.GraphOptimizationLevel.ORT_ENABLE_ALL
-            # Wähle Provider: GPU wenn AURIK_PITCH_GPU=1, sonst CPU (§G5 Determinismus)
+            # Wähle Provider: GPU wenn AURIK_PITCH_GPU=1, sonst CPU (§G5 (GEBOTE.md) Determinismus)
             if _PITCH_GPU_ENABLED:
                 try:
                     from backend.core.ml_device_manager import get_ort_providers
+
                     providers = get_ort_providers("CREPE")
                     logger.info("CREPE: GPU-Provider aktiviert via AURIK_PITCH_GPU=1")
                 except Exception as _e:
-                    logger.warning("CREPE: GPU-Provider fehlgeschlagen (%s) — CPU-Fallback", _e)
-                    providers = ["CPUExecutionProvider"]
+                    logger.warning("CREPE: GPU-Provider fehlgeschlagen (%s) — Registry-Ersatzpfad", _e)
+                    from backend.core.gpu_model_registry import get_onnx_providers
+
+                    providers = get_onnx_providers(_CREPE_ONNX_PATH)
             else:
-                providers = ["CPUExecutionProvider"]
+                # §v10.40c: Registry-konsultierte Provider-Wahl statt hartem CPU —
+                # GPU wo Paritäts-Gate „rocm“ validiert hat, CPU sonst.
+                from backend.core.gpu_model_registry import get_onnx_providers
+
+                providers = get_onnx_providers(_CREPE_ONNX_PATH)
             self._session = ort.InferenceSession(
                 str(_CREPE_ONNX_PATH),
                 sess_options=opts,
@@ -184,7 +191,7 @@ class CrepePlugin:
             )
             self._model_used = "crepe_onnx"
             logger.info(
-                "crepe_plugin: ONNX model loaded: %s (provider=%s)",
+                "crepe_plugin: ONNX model geladen: %s (provider=%s)",
                 _CREPE_ONNX_PATH.name,
                 providers[0],
             )
@@ -194,9 +201,9 @@ class CrepePlugin:
                 _dummy = np.zeros((1, _FRAME_LENGTH), dtype=np.float32)
                 assert isinstance(self._session, ort.InferenceSession)
                 self._session.run(["classifier"], {"input": _dummy})
-                logger.debug("CREPE ONNX warmup inference completed")
+                logger.debug("CREPE ONNX warmup inference abgeschlossen")
             except Exception as _exc:
-                logger.debug("Plugin operation failed (non-critical): %s", _exc)
+                logger.debug("Plugin operation fehlgeschlagen (unkritisch): %s", _exc)
             try:
                 from backend.core.plugin_lifecycle_manager import register_plugin as _reg_plm
 
@@ -210,16 +217,16 @@ class CrepePlugin:
                     unload_fn=_unload_crepe,
                 )
             except Exception as _exc:
-                logger.debug("Plugin operation failed (non-critical): %s", _exc)
+                logger.debug("Plugin operation fehlgeschlagen (unkritisch): %s", _exc)
         except Exception as exc:
-            logger.warning("ML→DSP-Fallback aktiviert", exc_info=True)  # §V6 (copilot-instructions.md)
-            logger.debug("CREPE-ONNX nicht verfügbar (%s) — pYIN-Fallback aktiv", exc)
+            logger.warning("ML→DSP-Ersatzpfad aktiviert", exc_info=True)  # §V6 (copilot-instructions.md)
+            logger.debug("CREPE-ONNX nicht verfügbar (%s) — pYIN-Ersatzpfad aktiv", exc)
             try:
                 from backend.core.ml_memory_budget import release as _release
 
                 _release("CREPE")
             except Exception as _exc:
-                logger.debug("Plugin operation failed (non-critical): %s", _exc)
+                logger.debug("Plugin operation fehlgeschlagen (unkritisch): %s", _exc)
 
     def analyze(self, audio: np.ndarray, sr: int) -> CrepeResult:
         """Analysiert den Grundton (F0) eines Audio-Signals.
@@ -246,7 +253,7 @@ class CrepePlugin:
         _cache_key = "crepe:" + _h.hexdigest()[:16]
         with self._cache_lock:
             if _cache_key in self._result_cache:
-                logger.debug("CREPE-Cache-Hit: %s", _cache_key)
+                logger.debug("CREPE-Zwischenspeicher-Hit: %s", _cache_key)
                 return self._result_cache[_cache_key]
 
         result = self._analyze_onnx(audio, sr) if self._session is not None else self._analyze_pyin(audio, sr)
@@ -268,7 +275,7 @@ class CrepePlugin:
             _plm = get_plugin_lifecycle_manager()
             _plm.set_active("CREPE", True)
         except Exception:
-            logger.warning("crepe_plugin.py::_analyze_onnx fallback", exc_info=True)
+            logger.warning("crepe_plugin.py::_analyze_onnx Ersatzpfad", exc_info=True)
         try:
             import onnxruntime as ort
             import scipy.signal as sps
@@ -368,7 +375,7 @@ class CrepePlugin:
                 try:
                     _plm.set_active("CREPE", False)
                 except Exception:
-                    logger.warning("crepe_plugin.py::unknown fallback", exc_info=True)
+                    logger.warning("crepe_plugin.py::unknown Ersatzpfad", exc_info=True)
 
     def _analyze_pyin(self, audio: np.ndarray, sr: int) -> CrepeResult:
         """pYIN-Fallback (Mauch & Dixon 2014) — O(N²), max. 2 Sekunden.
@@ -404,7 +411,7 @@ class CrepePlugin:
                 details={"segment_len_s": seg_len / sr},
             )
         except Exception as exc:
-            logger.warning("pYIN-Fallback fehlgeschlagen (%s) — Wechsel zu YIN", exc)
+            logger.warning("pYIN-Ersatzpfad fehlgeschlagen (%s) — Wechsel zu YIN", exc)
             return self._analyze_yin(audio, sr)
 
     def _analyze_yin(self, audio: np.ndarray, sr: int) -> CrepeResult:
@@ -435,7 +442,7 @@ class CrepePlugin:
                 details={"segment_len_s": seg_len / sr},
             )
         except Exception as exc:
-            logger.warning("YIN-Fallback fehlgeschlagen (%s) — leeres Ergebnis", exc)
+            logger.warning("YIN-Ersatzpfad fehlgeschlagen (%s) — leeres Ergebnis", exc)
             return CrepeResult(
                 f0_hz=np.zeros(1, dtype=np.float32),
                 voiced_prob=np.zeros(1, dtype=np.float32),
@@ -478,14 +485,14 @@ def unload_crepe() -> None:
             try:
                 plugin.unload()
             except Exception as _exc:
-                logger.debug("Plugin operation failed (non-critical): %s", _exc)
+                logger.debug("Plugin operation fehlgeschlagen (unkritisch): %s", _exc)
             _INSTANCE_HOLDER[0] = None
     try:
         from backend.core.ml_memory_budget import release as _release
 
         _release("CREPE")
     except Exception as _exc:
-        logger.debug("Plugin operation failed (non-critical): %s", _exc)
+        logger.debug("Plugin operation fehlgeschlagen (unkritisch): %s", _exc)
 
 
 # ---------------------------------------------------------------------------

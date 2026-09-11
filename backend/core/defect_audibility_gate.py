@@ -72,7 +72,7 @@ DEFECT_RETRY_PHASE_MAP: dict[str, str] = {
     "crackle": "phase_09_crackle_removal",
     "wow": "phase_12_wow_flutter_fix",
     "flutter": "phase_12_wow_flutter_fix",
-    "jitter_artifacts": "phase_12_wow_flutter_fix",
+    "jitter_artifacts": "phase_14_phase_correction",  # V27: JITTER nie über phase_12
     "motor_interference": "phase_12_wow_flutter_fix",
     "speed_variation": "phase_12_wow_flutter_fix",
     "hiss": "phase_29_tape_hiss_reduction",
@@ -137,10 +137,7 @@ class DefectAudibilityReport:
             "n_resolved": int(self.n_resolved),
             "n_physical_cap": int(self.n_physical_cap),
             "improvable_types": list(self.improvable_types),
-            "per_type": {
-                k: {kk: vv for kk, vv in v.items() if kk != "phase_hint"}
-                for k, v in self.per_type.items()
-            },
+            "per_type": {k: {kk: vv for kk, vv in v.items() if kk != "phase_hint"} for k, v in self.per_type.items()},
         }
 
 

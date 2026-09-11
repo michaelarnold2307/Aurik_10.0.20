@@ -59,6 +59,14 @@ try:
 except Exception:
     LIBROSA_AVAILABLE = False
 
+try:
+    import onnxruntime as ort
+
+    ONNX_AVAILABLE = True
+except Exception:
+    ort = None  # type: ignore[assignment]
+    ONNX_AVAILABLE = False
+
 import logging
 
 from backend.ml.phoneme_aware.logging_config import setup_logger
@@ -188,6 +196,16 @@ class PhonemeDetector:
         self._model = None
         self._processor = None
         self._device = None
+        self._onnx_session = None
+        self._onnx_model_path = _WAV2VEC2_LOCAL_DIR / "wav2vec2_forced_alignment.onnx"
+        if ONNX_AVAILABLE and self._onnx_model_path.is_file():
+            try:
+                self._onnx_session = ort.InferenceSession(  # type: ignore[union-attr]
+                    str(self._onnx_model_path), providers=["CPUExecutionProvider"]
+                )
+                logger.info("Wav2Vec2 ONNX geladen: %s", self._onnx_model_path.name)
+            except Exception as exc:
+                logger.warning("Wav2Vec2 ONNX-Laden fehlgeschlagen: %s — Transformers-Ersatzpfad", exc)
 
         logger.info("PhonemeDetector initialisiert with model: %s", self.config.model_name)
 
@@ -379,9 +397,13 @@ class PhonemeDetector:
             inputs = self.processor(audio_processed, sampling_rate=self.config.target_sample_rate, return_tensors="pt")
             input_values = inputs.input_values.to(self.device)
 
-            # Run model
-            with torch.no_grad():
-                logits = self.model(input_values).logits[0]  # [time, vocab_size]
+            # ONNX ist der produktive Pfad; Transformers bleibt Kompatibilitätsfallback.
+            if self._onnx_session is not None:
+                onnx_input = self._onnx_session.get_inputs()[0].name
+                logits = torch.from_numpy(self._onnx_session.run(None, {onnx_input: input_values.cpu().numpy()})[0][0])
+            else:
+                with torch.no_grad():
+                    logits = self.model(input_values).logits[0]  # [time, vocab_size]
 
             # Decode predictions
             phonemes_raw = self._decode_predictions(logits, len(audio_processed))

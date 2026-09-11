@@ -47,9 +47,7 @@ def test_payload_extraction_full() -> None:
             applicable=["brillanz"],
             reasons={"waerme": "nicht messbar"},
         ),
-        genealogy=SimpleNamespace(
-            operations=[SimpleNamespace(operation_type="synthesize_brillanz")]
-        ),
+        genealogy=SimpleNamespace(operations=[SimpleNamespace(operation_type="synthesize_brillanz")]),
     )
     p = build_radar_update_payload(result)
     assert p["scores"] == {"brillanz": 0.9, "waerme": 0.5}

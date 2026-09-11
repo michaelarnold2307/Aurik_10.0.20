@@ -578,11 +578,11 @@ class PianoRestorationV1(PhaseInterface):
         high_freq = min(self.PIANO_RANGES["hammer_impact"][1] / nyquist, 0.99)
 
         sos = signal.butter(4, [low_freq, high_freq], btype="band", output="sos")
-        hammer_band = signal.sosfilt(sos, audio)
+        hammer_band = signal.sosfiltfilt(sos, audio)
 
         # Envelope detection (fast attack, slow release)
         envelope = np.abs(hammer_band)
-        envelope = signal.sosfilt(signal.butter(2, 50 / nyquist, output="sos"), envelope)  # 50 Hz lowpass
+        envelope = signal.sosfiltfilt(signal.butter(2, 50 / nyquist, output="sos"), envelope)  # 50 Hz lowpass
 
         # Transient detection (peaks in envelope)
         peak_indices, _ = signal.find_peaks(
@@ -698,7 +698,7 @@ class PianoRestorationV1(PhaseInterface):
 
         # Envelope detection
         envelope = np.abs(pedal_band)
-        envelope = signal.sosfilt(
+        envelope = signal.sosfiltfilt(
             signal.butter(2, 20 / nyquist, output="sos"), envelope
         )  # 20 Hz lowpass — analysis only
 
@@ -762,7 +762,7 @@ class PianoRestorationV1(PhaseInterface):
 
         # Smooth gain (avoid artifacts)
         nyquist = self.sample_rate / 2
-        gain = signal.sosfilt(signal.butter(2, 10 / nyquist, output="sos"), gain)  # 10 Hz lowpass
+        gain = signal.sosfiltfilt(signal.butter(2, 10 / nyquist, output="sos"), gain)  # 10 Hz lowpass
 
         # Apply gain
         audio_expanded = audio * gain

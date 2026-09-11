@@ -189,7 +189,7 @@ class LyricsAligner:
             from faster_whisper import WhisperModel  # type: ignore[import-untyped]
 
             model_size = "medium" if self.whisper_model in {"large", "large-v3"} else self.whisper_model
-            logger.info("Lyrics Aligner: Loading faster-whisper %s...", model_size)
+            logger.info("Lyrics Aligner: lade faster-whisper %s...", model_size)
             self._whisper_model_obj = WhisperModel(model_size, device="cpu")
             self._whisper_available = True
             logger.info("✅ Lyrics Aligner: faster-whisper verfuegbar (%s)", model_size)
@@ -202,12 +202,12 @@ class LyricsAligner:
                 import whisper  # type: ignore[import-untyped]
 
                 model_size = "medium" if self.whisper_model in {"large", "large-v3"} else self.whisper_model
-                logger.info("Lyrics Aligner: Loading openai-whisper %s...", model_size)
+                logger.info("Lyrics Aligner: lade openai-whisper %s...", model_size)
                 self._whisper_model_obj = whisper.load_model(model_size)
                 self._whisper_available = True
                 logger.info("✅ Lyrics Aligner: openai-whisper verfuegbar (%s)", model_size)
             except Exception as e2:
-                logger.warning("Lyrics Aligner: Whisper nicht verfügbar (%s) — VAD-Fallback aktiv", e2)
+                logger.warning("Lyrics Aligner: Whisper nicht verfügbar (%s) — VAD-Ersatzpfad aktiv", e2)
 
     def _check_mfa_availability(self) -> None:
         """Prüft if MFA is available and which models are installed."""
@@ -319,7 +319,7 @@ class LyricsAligner:
         """Transcribe audio with Whisper (SOTA: faster-whisper oder openai-whisper)."""
         if self._whisper_available and self._whisper_model_obj is not None:
             try:
-                # Normalize to float32 [-1, 1] → PCM16 for Whisper (Intermediate-Format, kein Audio-Dither nötig §V5)
+                # Normalize to float32 [-1, 1] → PCM16 for Whisper (Intermediate-Format, kein Audio-Dither nötig §V5 (copilot-instructions.md))
                 pcm16 = (audio * 32767.0).astype(np.int16)
 
                 if "faster_whisper" in str(type(self._whisper_model_obj)):
@@ -332,7 +332,7 @@ class LyricsAligner:
                         temperature=[0.0],
                     )
                     detected_lang = getattr(info, "language", "unknown") or "unknown"
-                    lang_name = getattr(info, "language_name", "") if hasattr(info, "language_name") else ""
+                    getattr(info, "language_name", "") if hasattr(info, "language_name") else ""
 
                     word_segments = []
                     for seg in segments:
@@ -343,12 +343,14 @@ class LyricsAligner:
                         confidence = float(seg.no_ts_prob) if hasattr(seg, "no_ts_prob") else 0.8
 
                         for word in text.split():
-                            word_segments.append({
-                                "start": start,
-                                "end": end,
-                                "word": word,
-                                "confidence": min(confidence, 0.95),
-                            })
+                            word_segments.append(
+                                {
+                                    "start": start,
+                                    "end": end,
+                                    "word": word,
+                                    "confidence": min(confidence, 0.95),
+                                }
+                            )
 
                     transcript = " ".join(seg.text.strip() for seg in segments)
                     return transcript, detected_lang, word_segments
@@ -372,18 +374,20 @@ class LyricsAligner:
                         text = str(seg["text"]).strip()
 
                         for word in text.split():
-                            word_segments.append({
-                                "start": start,
-                                "end": end,
-                                "word": word,
-                                "confidence": 0.85,
-                            })
+                            word_segments.append(
+                                {
+                                    "start": start,
+                                    "end": end,
+                                    "word": word,
+                                    "confidence": 0.85,
+                                }
+                            )
 
                     transcript = result.get("text", "")
                     return transcript.strip(), detected_lang, word_segments
 
             except Exception as e:
-                logger.warning("Whisper Transkription fehlgeschlagen (%s) — VAD-Fallback aktiv", e)
+                logger.warning("Whisper Transkription fehlgeschlagen (%s) — VAD-Ersatzpfad aktiv", e)
                 self._whisper_available = False
 
         # Fallback to VAD-only transcription

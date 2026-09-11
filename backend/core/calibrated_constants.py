@@ -160,13 +160,7 @@ class CalibratedConstants:
         depth = max(1, int(self.transfer_chain_depth))
         if depth >= 5:
             return 0.55
-        elif depth == 4:
-            return 0.40
-        elif depth == 3:
-            return 0.30
-        elif depth == 2:
-            return 0.22
-        return 0.15
+        return {4: 0.40, 3: 0.30, 2: 0.22}.get(depth, 0.15)
 
     @property
     def novelty_crit_scale(self) -> float:

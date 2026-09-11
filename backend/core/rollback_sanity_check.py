@@ -126,7 +126,7 @@ def validate_rollback_audio(
     # All checks passed
     result.passed = True
     logger.debug(
-        "RollbackSanityCheck PASSED: phase=%s, rms=%.1f dBFS, peak=%.6f",
+        "RollbackSanityCheck PASSED: Verarbeitungsschritt=%s, rms=%.1f dBFS, peak=%.6f",
         source_phase,
         result.rms_db,
         result.peak,
@@ -172,7 +172,7 @@ class RollbackSanityGuard:
         """Speichert einen Checkpoint vor einem Rollback."""
         self._checkpoints[phase_id] = np.asarray(audio, dtype=np.float32).copy()
         self._last_valid = self._checkpoints[phase_id]
-        logger.debug("RollbackSanityGuard: checkpoint saved for %s", phase_id)
+        logger.debug("RollbackSanityGuard: checkpoint gespeichert for %s", phase_id)
 
     def check(
         self,
@@ -195,13 +195,13 @@ class RollbackSanityGuard:
             self._failure_count += 1
             if use_fallback_on_failure and self._last_valid is not None:
                 logger.warning(
-                    "RollbackSanityGuard: using fallback checkpoint after %s failure (%d total failures)",
+                    "RollbackSanityGuard: using Ersatzpfad checkpoint after %s Fehlschlag (%d total failures)",
                     source_phase,
                     self._failure_count,
                 )
                 return result, self._last_valid.copy()
             logger.error(
-                "RollbackSanityGuard: no fallback available for %s failure! Returning damaged audio.",
+                "RollbackSanityGuard: no Ersatzpfad verfuegbar for %s Fehlschlag! Returning damaged audio.",
                 source_phase,
             )
             return result, audio

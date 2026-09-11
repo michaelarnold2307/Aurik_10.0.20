@@ -23,6 +23,8 @@ from dataclasses import dataclass
 
 import numpy as np
 
+from backend.core.audio_layout import mono_mix
+
 logger = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
@@ -63,7 +65,7 @@ def compute_chunk_size_s(max_severity: float, is_silence: bool = False) -> float
 
 def _is_near_silence(audio: np.ndarray, threshold_db: float = -55.0) -> bool:
     """Prüft whether *audio* is near-silent (RMS below threshold)."""
-    mono = audio.mean(axis=0) if audio.ndim == 2 else audio
+    mono = mono_mix(audio)
     rms = float(np.sqrt(np.mean(mono.astype(np.float64) ** 2) + 1e-15))
     db = 20.0 * np.log10(rms + 1e-15)
     return db < threshold_db  # type: ignore[no-any-return]
@@ -175,11 +177,9 @@ def _find_safe_boundary(
     try:
         import librosa  # Available in .venv_aurik; lightweight import after first use
 
-        # Downmix to mono for onset detection
-        if audio.ndim == 2:
-            audio_window = audio[:, window_start:window_end].mean(axis=0).astype(np.float32)
-        else:
-            audio_window = audio[window_start:window_end].astype(np.float32)
+        # Downmix to mono for onset detection — §V7 (copilot-instructions.md):
+        # layout-sicher via mono_mix; mean(axis=0) kollabierte (N,2) auf (2,).
+        audio_window = mono_mix(audio)[window_start:window_end].astype(np.float32)
 
         hop_length = max(1, int(sr * 0.010))  # 10 ms hop
         oenv = librosa.onset.onset_strength(y=audio_window, sr=sr, hop_length=hop_length)  # type: ignore[attr-defined]
@@ -263,7 +263,7 @@ def process_in_adaptive_chunks(
     # Beat detection for boundary snapping (opt-in, only for full tracks > 10 s)
     beat_times_s: list[float] = []
     if beat_sync_chunks and duration_s >= 10.0 and not is_silence:
-        audio_mono = audio.mean(axis=0).astype(np.float32) if is_stereo else audio.astype(np.float32)
+        audio_mono = mono_mix(audio).astype(np.float32)
         beat_times_s = _estimate_beat_times(audio_mono, sr)
         if beat_times_s:
             logger.debug(
@@ -386,7 +386,7 @@ def process_in_adaptive_chunks(
                             order=3,
                         ).astype(np.float32)
                         logger.debug(
-                            "PHAOLA: phase-aligned by %.2f samples (corr=%.3f)",
+                            "PHAOLA: Verarbeitungsschritt-aligned by %.2f samples (corr=%.3f)",
                             _align.shift_samples,
                             _align.correlation,
                         )

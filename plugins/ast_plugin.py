@@ -168,7 +168,7 @@ class AstPlugin:
         Kompatibel mit BeatsPlugin.get_tags() / PannsPlugin.get_tags().
         """
         result = self.classify(audio, sr, top_k=top_k)
-        return {label: conf for label, conf in result.labels}
+        return dict(result.labels)
 
     def discriminate_defect(
         self,
@@ -195,7 +195,9 @@ class AstPlugin:
                 return 0.0
             return float(_disc.instrument_confidence)
         except Exception:
-            logger.warning("§V6 ML→DSP-Fallback: get_ast_instrument_confidence fehlgeschlagen → neutraler Return (0.0)")
+            logger.warning(
+                "§V6 (copilot-instructions.md) ML→DSP-Ersatzpfad: get_ast_instrument_confidence fehlgeschlagen → neutraler Return (0.0)"
+            )
             return 0.0
 
     def get_ast_musical_confidence(self, audio: np.ndarray, sr: int = 48000) -> float:
@@ -224,7 +226,9 @@ class AstPlugin:
                     musical_conf = max(musical_conf, float(scores[idx]))
             return float(np.clip(musical_conf, 0.0, 1.0))
         except Exception:
-            logger.warning("§V6 ML→DSP-Fallback: get_ast_musical_confidence fehlgeschlagen → neutraler Return (0.0)")
+            logger.warning(
+                "§V6 (copilot-instructions.md) ML→DSP-Ersatzpfad: get_ast_musical_confidence fehlgeschlagen → neutraler Return (0.0)"
+            )
             return 0.0
 
 
@@ -253,7 +257,6 @@ def get_loaded_ast_plugin() -> AstPlugin | None:
     Non-invasiver Peek — KEIN Lazy-Load. Verwendet für
     ml_model_readiness-Checks ohne Deadlock-Risiko.
     """
-    global _instance
     if _instance is not None and _instance.is_loaded():
         return _instance
     return None

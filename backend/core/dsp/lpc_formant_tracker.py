@@ -120,7 +120,7 @@ def _burg_lpc(x: np.ndarray, order: int) -> np.ndarray:
     §Fix 2026-09-08: Die Schleife nutzte das ORIGINALE n statt der nach jeder
     Iteration schrumpfenden Vektorlänge → ab order ≥ 2 immer Shape-Mismatch →
     Ausnahme wurde im Aufrufer still geschluckt → §0p-Formant-Guard war ein
-    stummer No-op (Verstoß §V6). Jetzt dynamische Länge _L je Iteration.
+    stummer No-op (Verstoß §V6 (copilot-instructions.md)). Jetzt dynamische Länge _L je Iteration.
     """
     f = x.copy().astype(np.float64)
     b = x.copy().astype(np.float64)
@@ -464,7 +464,7 @@ def check_formant_shift_db(
             formants_hz = _lpc_to_formants(a, sr_ds, max_formants=max_formants)
         except Exception as e:
             logger.warning(
-                "lpc_formant_tracker.py::check_formant_shift_db LPC-Analyse fehlgeschlagen → Guard passiv (kein Rollback): %s",
+                "lpc_formant_tracker.py::Pruefung_formant_shift_db LPC-Analyse fehlgeschlagen → Guard passiv (kein Rollback): %s",
                 e,
             )
             return False, 0.0
@@ -524,7 +524,7 @@ def check_formant_shift_db(
         return rollback, max_shift
     except Exception as e:
         logger.warning(
-            "lpc_formant_tracker.py::check_formant_shift_db fehlgeschlagen → Guard passiv (kein Rollback): %s",
+            "lpc_formant_tracker.py::Pruefung_formant_shift_db fehlgeschlagen → Guard passiv (kein Rollback): %s",
             e,
         )
         return False, 0.0

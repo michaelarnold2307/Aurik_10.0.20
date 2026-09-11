@@ -162,9 +162,7 @@ def compute_adaptive_guard_profile(
     _rest_quality_adj = ((_rest - 50.0) / 50.0) * 0.08
     _rest_energy_adj = ((_rest - 50.0) / 50.0) * 0.04
 
-    quality_warning_threshold = float(
-        np.clip(_base_quality_warn + _mode_quality_adj + _rest_quality_adj, 0.55, 0.85)
-    )
+    quality_warning_threshold = float(np.clip(_base_quality_warn + _mode_quality_adj + _rest_quality_adj, 0.55, 0.85))
     energy_min_ratio = float(np.clip(_base_energy_min + _mode_energy_adj + _rest_energy_adj, 0.14, 0.32))
     _target_margin = 0.06 if _qm in {"quality", "maximum", "restoration", "studio_2026"} else 0.04
     energy_target_ratio = float(np.clip(energy_min_ratio + _target_margin, 0.20, 0.45))
@@ -253,7 +251,7 @@ def compute_erb_bands(n_bins: int, sr: int) -> np.ndarray:
         np.searchsorted(erb_edges[1:], _hz_to_cam(freqs)),  # type: ignore[arg-type]
         0,
         N_ERB - 1,
-    ).astype(np.int32)  # Index-Array (ERB-Band), kein Audio-Dither nötig (§V5)
+    ).astype(np.int32)  # Index-Array (ERB-Band), kein Audio-Dither nötig (§V5 (copilot-instructions.md))
     return band_idx  # type: ignore[no-any-return]
 
 
@@ -300,7 +298,7 @@ def apply_masking_gate(gain: np.ndarray, magnitude: np.ndarray) -> np.ndarray:
 def estimate_noise_imcra(
     magnitude: np.ndarray,
     times: np.ndarray,
-    onset_frames: "np.ndarray | None" = None,
+    onset_frames: np.ndarray | None = None,
     sr: int = 48_000,
 ) -> np.ndarray:
     """IMCRA Noise PSD Estimation with ERB-rate grouping + adaptive smoothing.
@@ -388,7 +386,7 @@ def compute_omlsa_gain(
     magnitude: np.ndarray,
     noise_mag: np.ndarray,
     params: dict[str, Any],
-    g_floor_vec: "np.ndarray | None" = None,
+    g_floor_vec: np.ndarray | None = None,
 ) -> tuple[np.ndarray, np.ndarray]:
     """OMLSA Gain Function (Cohen 2003).
 
@@ -481,9 +479,7 @@ def compute_omlsa_gain(
                 _t_targ = np.linspace(0, 1, _n_targ)
                 _mask_aligned = np.zeros((G_omlsa.shape[0], _n_targ), dtype=np.float64)
                 for _f in range(min(_hpg_mask.shape[0], G_omlsa.shape[0])):
-                    _mask_aligned[_f, :] = np.interp(
-                        _t_targ, _t_orig, _hpg_mask[_f, :].astype(np.float64)
-                    )
+                    _mask_aligned[_f, :] = np.interp(_t_targ, _t_orig, _hpg_mask[_f, :].astype(np.float64))
             else:
                 _mask_aligned = None
             if _mask_aligned is not None:
@@ -557,9 +553,7 @@ def suppress_musical_noise(
     return gain_final  # type: ignore[no-any-return]
 
 
-def preserve_transients(
-    magnitude: np.ndarray, gain: np.ndarray, preserve_strength: float
-) -> np.ndarray:
+def preserve_transients(magnitude: np.ndarray, gain: np.ndarray, preserve_strength: float) -> np.ndarray:
     """Preserve transients by detecting attacks and reducing gain.
 
     Args:
@@ -585,9 +579,7 @@ def preserve_transients(
     return gain_modified
 
 
-def apply_multiband_gate(
-    gain: np.ndarray, freqs: np.ndarray, band_params: dict[str, dict[str, float]]
-) -> np.ndarray:
+def apply_multiband_gate(gain: np.ndarray, freqs: np.ndarray, band_params: dict[str, dict[str, float]]) -> np.ndarray:
     """Apply frequency-dependent gain modifications per band.
 
     Args:

@@ -79,6 +79,8 @@ _PHYSICAL_CONSTANTS: set[str] = {
     "MAX_ACCEPTABLE_STEREO_WIDTH_CHANGE",  # HIPS-Sicherheitsgrenze fuer Stem-Separation
     "_post90_snr",  # kalibrierte digitale Era-Priors aus Frame-Energy-DR
     "_dr_threshold",  # kalibrierte DR-Priors fuer Era-Upvote
+    "_FATIGUE_ABORT_THRESHOLD",  # Hörordnung §6: Ermüdungs-Index > 0.40 = Einladungs-Abbruch (perzeptuell fixiert)
+    "_HNR_DROP_DB",  # de Krom HNR: >2 dB Stimm-HNR-Abfall = hörbare Stimmverschlechterung
 }
 
 # Muster für hartcodierte Schwellwerte

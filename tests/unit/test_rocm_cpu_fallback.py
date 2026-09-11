@@ -135,7 +135,7 @@ def test_era_tier1_lazy_loads_when_clap_model_not_loaded() -> None:
 
 
 def test_era_tier1_falls_back_on_load_failure() -> None:
-    """§G23/§V6: Totaler Ladefehler (RuntimeError aus embed_audio) → DSP-Ersatzpfad
+    """§G23/§V6 (copilot-instructions.md): Totaler Ladefehler (RuntimeError aus embed_audio) → DSP-Ersatzpfad
     (None), kein Crash, kein stiller Erfolg.
     """
     era, clap = _make_era_classifier(plugin_model_loaded=False)

@@ -497,7 +497,11 @@ def load_audio_file(
                 else:
                     raise RuntimeError(_proc.stderr[:500] or f"returncode={_proc.returncode}")
             except Exception as _e2:
-                logger.warning("§V6 Audio-Laden (pydub-Subprozess) fehlgeschlagen für %s — Error-Result zurückgegeben: %s", filepath, _e2)
+                logger.warning(
+                    "§V6 (copilot-instructions.md) Audio-Laden (pydub-Subprozess) fehlgeschlagen für %s — Error-Ergebnis zurückgegeben: %s",
+                    filepath,
+                    _e2,
+                )
                 result["error"] = f"Audio read error: pedalboard + pydub subprocess failed. Last: {_e2}"
                 return result
             finally:
@@ -531,7 +535,11 @@ def load_audio_file(
                 audio = _raw.astype(np.float32)
                 logger.debug("laden_audio_file: pedalboard/FFmpeg OK (%s)", filepath)
             except Exception as _e3:
-                logger.warning("§V6 Audio-Laden (pedalboard/FFmpeg) fehlgeschlagen für %s — Error-Result zurückgegeben: %s", filepath, _e3)
+                logger.warning(
+                    "§V6 (copilot-instructions.md) Audio-Laden (pedalboard/FFmpeg) fehlgeschlagen für %s — Error-Ergebnis zurückgegeben: %s",
+                    filepath,
+                    _e3,
+                )
                 result["error"] = f"Audio read error: soundfile + pedalboard failed. Last: {_e3}"
                 return result
 

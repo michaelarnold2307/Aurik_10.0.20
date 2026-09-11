@@ -11,22 +11,22 @@ from torch.nn import functional as F
 
 
 def get_network_description(network):
-    '''Get the string and total parameters of the network'''
+    """Get the string and total parameters of the network"""
     if isinstance(network, torch.nn.DataParallel):
         network = network.module
     s = str(network)
     n = sum(map(lambda x: x.numel(), network.parameters()))
     return s, n
 
+
 def print_network(network_name, network, logger):
     s, n = get_network_description(network)
     if isinstance(network, torch.nn.DataParallel):
-        net_struc_str = f'{network.__class__.__name__} - {network.module.__class__.__name__}'
+        net_struc_str = f"{network.__class__.__name__} - {network.module.__class__.__name__}"
     else:
-        net_struc_str = f'{network.__class__.__name__}'
+        net_struc_str = f"{network.__class__.__name__}"
 
-    logger.info(
-        f'{network_name} structure: {net_struc_str}, with parameters: {n:,d}')
+    logger.info(f"{network_name} structure: {net_struc_str}, with parameters: {n:,d}")
     logger.info(s)
 
 
@@ -56,7 +56,7 @@ def unfold(a, kernel_size, stride):
     tgt_length = (n_frames - 1) * stride + kernel_size
     a = F.pad(a, (0, tgt_length - length))
     strides = list(a.stride())
-    assert strides[-1] == 1, 'data should be contiguous'
+    assert strides[-1] == 1, "data should be contiguous"
     strides = strides[:-1] + [stride, 1]
     return a.as_strided([*shape, n_frames, kernel_size], strides)
 
@@ -75,13 +75,7 @@ class LogProgress:
         - level: logging level (like `logging.INFO`).
     """
 
-    def __init__(self,
-                 logger,
-                 iterable,
-                 updates=5,
-                 total=None,
-                 name="LogProgress",
-                 level=logging.INFO):
+    def __init__(self, logger, iterable, updates=5, total=None, name="LogProgress", level=logging.INFO):
         self.iterable = iterable
         self.total = total or len(iterable)
         self.updates = updates

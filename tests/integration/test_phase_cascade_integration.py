@@ -24,11 +24,7 @@ def audio_vinyl_like() -> tuple[np.ndarray, int]:
     t = np.linspace(0, 3.0, n, endpoint=False, dtype=np.float64)
 
     # Musik-ähnliches Signal (mehrere Töne + Harmonische)
-    signal = (
-        0.2 * np.sin(2 * np.pi * 220 * t)
-        + 0.15 * np.sin(2 * np.pi * 440 * t)
-        + 0.1 * np.sin(2 * np.pi * 880 * t)
-    )
+    signal = 0.2 * np.sin(2 * np.pi * 220 * t) + 0.15 * np.sin(2 * np.pi * 440 * t) + 0.1 * np.sin(2 * np.pi * 880 * t)
 
     # Breitbandiges Rauschen (Hiss)
     signal += 0.03 * rng.standard_normal(n, dtype=np.float64)
@@ -64,9 +60,7 @@ def audio_vocal_like() -> tuple[np.ndarray, int]:
     )
 
     # Sibilanz (3-5 kHz, hissend)
-    signal += 0.04 * rng.standard_normal(n, dtype=np.float64) * np.where(
-        (t % 0.1 < 0.05), 1.0, 0.2
-    )
+    signal += 0.04 * rng.standard_normal(n, dtype=np.float64) * np.where((t % 0.1 < 0.05), 1.0, 0.2)
 
     # Leichter DC-Offset
     signal += 0.003
@@ -134,9 +128,7 @@ class TestNRChainCascade:
         result = DenoisePhase().process(result.audio.copy(), sample_rate=sr)
         result = RumbleFilterPhase().process(result.audio.copy(), sample_rate=sr)
 
-        assert result.audio.shape == orig_shape, (
-            f"Shape changed: {orig_shape} → {result.audio.shape}"
-        )
+        assert result.audio.shape == orig_shape, f"Shape changed: {orig_shape} → {result.audio.shape}"
 
     @pytest.mark.timeout(_KAS_TIMEOUT)
     def test_nr_chain_reduces_noise_floor(self, audio_vinyl_like):
@@ -153,9 +145,7 @@ class TestNRChainCascade:
         out_rms = float(np.sqrt(np.mean(result.audio.astype(np.float64) ** 2)))
 
         # NR-Kette sollte Rauschen reduzieren (oder zumindest nicht erhöhen)
-        assert out_rms <= orig_rms * 1.15, (
-            f"NR-Kette erhöhte RMS: {orig_rms:.4f} → {out_rms:.4f}"
-        )
+        assert out_rms <= orig_rms * 1.15, f"NR-Kette erhöhte RMS: {orig_rms:.4f} → {out_rms:.4f}"
 
 
 # ═══════════════════════════════════════════════════════════════════════
@@ -169,8 +159,8 @@ class TestDynamicsChainCascade:
         """DC → Clipping → Harmonic: alle Outputs finite + bounded."""
         audio, sr = audio_vinyl_like
 
-        from backend.core.phases.phase_30_dc_offset_removal import DCOffsetRemoval
         from backend.core.phases.phase_07_harmonic_restoration import HarmonicRestorationPhase
+        from backend.core.phases.phase_30_dc_offset_removal import DCOffsetRemoval
 
         result = DCOffsetRemoval().process(audio.copy(), sample_rate=sr)
         assert np.isfinite(result.audio).all()
@@ -179,9 +169,7 @@ class TestDynamicsChainCascade:
         boosted = result.audio * 1.3
         boosted = np.clip(boosted, -1.0, 1.0)
 
-        result = HarmonicRestorationPhase().process(
-            boosted.copy(), sample_rate=sr, strength=0.5
-        )
+        result = HarmonicRestorationPhase().process(boosted.copy(), sample_rate=sr, strength=0.5)
         assert np.isfinite(result.audio).all()
         assert np.max(np.abs(result.audio)) <= 1.0
 
@@ -208,9 +196,7 @@ class TestVocalChainCascade:
         from backend.core.phases.phase_46_spatial_enhancement import SpatialEnhancementPhase
 
         spatial_phase = SpatialEnhancementPhase()
-        result2 = spatial_phase.process(
-            result1.audio.copy(), sample_rate=sr, panns_singing=0.5
-        )
+        result2 = spatial_phase.process(result1.audio.copy(), sample_rate=sr, panns_singing=0.5)
         assert np.isfinite(result2.audio).all(), "Spatial-Enhancement erzeugt NaN/Inf"
 
     @pytest.mark.timeout(_KAS_TIMEOUT)
@@ -238,9 +224,7 @@ class TestVocalChainCascade:
         out_energy = _fundamental_energy(result.audio)
 
         # Fundamental sollte nicht um > 50 % reduziert werden
-        assert out_energy >= orig_energy * 0.3, (
-            f"Fundamental-Energie verloren: {orig_energy:.6f} → {out_energy:.6f}"
-        )
+        assert out_energy >= orig_energy * 0.3, f"Fundamental-Energie verloren: {orig_energy:.6f} → {out_energy:.6f}"
 
 
 # ═══════════════════════════════════════════════════════════════════════
@@ -271,13 +255,11 @@ class TestMultiPhaseNaNProtection:
         instance = cls()
 
         result = instance.process(audio.copy(), sample_rate=sr)
-        assert np.isfinite(result.audio).all(), (
-            f"{phase_class} erzeugt NaN/Inf bei normalem Input"
-        )
+        assert np.isfinite(result.audio).all(), f"{phase_class} erzeugt NaN/Inf bei normalem Input"
 
 
 # ═══════════════════════════════════════════════════════════════════════
-# 5. Shape-Erhalt über Kaskaden (§G1 Song-Isolation)
+# 5. Shape-Erhalt über Kaskaden (§G1 (GEBOTE.md) Song-Isolation)
 # ═══════════════════════════════════════════════════════════════════════
 class TestShapePreservationCascade:
     """Mono bleibt Mono, Stereo bleibt Stereo — durch alle Phasen."""
@@ -303,9 +285,7 @@ class TestShapePreservationCascade:
             cls = getattr(mod, cls_name)
             result = cls().process(current.copy(), sample_rate=sr)
             current = result.audio
-            assert current.ndim == 1, (
-                f"{cls_name} hat Mono-Shape gebrochen: {current.shape}"
-            )
+            assert current.ndim == 1, f"{cls_name} hat Mono-Shape gebrochen: {current.shape}"
 
     @pytest.mark.timeout(_KAS_TIMEOUT)
     def test_stereo_stays_stereo_through_chain(self, audio_stereo_like):
@@ -360,13 +340,11 @@ class TestPeakBoundsCascade:
             result = cls().process(current.copy(), sample_rate=sr)
             current = result.audio
             peak = float(np.max(np.abs(current)))
-            assert peak <= 1.0 + 1e-6, (
-                f"{cls_name} erzeugt Clipping: peak={peak:.6f}"
-            )
+            assert peak <= 1.0 + 1e-6, f"{cls_name} erzeugt Clipping: peak={peak:.6f}"
 
 
 # ═══════════════════════════════════════════════════════════════════════
-# 7. Determinismus über Kaskaden (§G5)
+# 7. Determinismus über Kaskaden (§G5 (GEBOTE.md))
 # ═══════════════════════════════════════════════════════════════════════
 class TestDeterminismCascade:
     """Gleiche Input + gleiche Phasen → bit-identischer Output."""
@@ -401,13 +379,11 @@ class TestDeterminismCascade:
         hash2 = _run_chain(audio)
         hash3 = _run_chain(audio)
 
-        assert hash1 == hash2 == hash3, (
-            f"Kaskade nicht deterministisch: {hash1} ≠ {hash2} ≠ {hash3}"
-        )
+        assert hash1 == hash2 == hash3, f"Kaskade nicht deterministisch: {hash1} ≠ {hash2} ≠ {hash3}"
 
 
 # ═══════════════════════════════════════════════════════════════════════
-# 8. Metadata-Akkumulation (§G9 Logger-Pflicht)
+# 8. Metadata-Akkumulation (§G9 (GEBOTE.md) Logger-Pflicht)
 # ═══════════════════════════════════════════════════════════════════════
 class TestMetadataAccumulation:
     """Jede Phase trägt zum metadata-Dict bei — Akkumulation über Kette."""

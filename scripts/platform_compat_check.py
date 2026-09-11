@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Plattform-Kompatibilitäts-Check für Aurik.
 
+
 §15.4: Prüft plattformübergreifende Kompatibilität vor Merge.
 - Echte Windows-Hartkodierte Pfade (C:\\...)
 - CRLF-Zeilenenden in Projektdateien (nicht models/)
@@ -8,6 +9,10 @@
 """
 
 from __future__ import annotations
+
+import logging
+
+logger = logging.getLogger(__name__)
 
 import re
 import sys
@@ -34,6 +39,7 @@ def check_path_separators() -> tuple[bool, list[str]]:
         try:
             content = py_file.read_text(encoding="utf-8", errors="replace")
         except Exception:
+            logger.debug("Stiller Ersatzpfad dokumentiert (Bug 9/V74)", exc_info=True)
             continue
         for i, line in enumerate(content.splitlines(), 1):
             if re.search(r'["\x27][A-Za-z]:\\\\', line):
@@ -51,6 +57,7 @@ def check_line_endings() -> tuple[bool, list[str]]:
         try:
             content = py_file.read_bytes()
         except Exception:
+            logger.debug("read_bytes() für %s fehlgeschlagen", rel, exc_info=True)
             continue
         if b"\r\n" in content:
             issues.append(f"{rel}: CRLF line endings detected")

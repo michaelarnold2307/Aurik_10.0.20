@@ -37,8 +37,11 @@ logger = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
 # FlashSR ONNX-Modell-Pfad (Apache 2.0, kein HuggingFace-Download erforderlich)
+# §v10.40c/§Level-3: Primär = models/flashsr/flashsr.onnx (Registry-Verdict „rocm" —
+# GPU-paritätsvalidiert, bit-identisch zu nvsr.onnx); Fallback = nvsr.onnx („cpu").
 # ---------------------------------------------------------------------------
-_FLASHSR_ONNX_PATH = Path(__file__).parent.parent / "models" / "nvsr" / "nvsr.onnx"
+_FLASHSR_ONNX_PATH = Path(__file__).parent.parent / "models" / "flashsr" / "flashsr.onnx"
+_FLASHSR_FALLBACK_PATH = Path(__file__).parent.parent / "models" / "nvsr" / "nvsr.onnx"
 
 # Chunk-Größe für speichereffiziente ONNX-Inferenz (§v10.306: 10s→4s, RAM ~1.5GB→~600MB)
 _FLASHSR_CHUNK_16K = 64000  # 4 s @ 16 kHz
@@ -79,6 +82,15 @@ def _detect_bandwidth(audio: np.ndarray, sr: int) -> float:
     return float(freqs[min(rolloff_idx, len(freqs) - 1)])
 
 
+def _resolve_flashsr_path() -> Path | None:
+    """§v10.40c: Primär flashsr.onnx (rocm-Verdict), Fallback nvsr.onnx (cpu)."""
+    if _FLASHSR_ONNX_PATH.exists():
+        return _FLASHSR_ONNX_PATH
+    if _FLASHSR_FALLBACK_PATH.exists():
+        return _FLASHSR_FALLBACK_PATH
+    return None
+
+
 def _load_onnx_session():
     """Lädt FlashSR ONNX-Session (thread-sicher, lazy)."""
     global _onnx_session, _onnx_failed  # pylint: disable=global-statement
@@ -91,18 +103,22 @@ def _load_onnx_session():
             return _onnx_session
         if _onnx_failed:
             return None
-        if not _FLASHSR_ONNX_PATH.exists():
-            logger.info("FlashSR ONNX nicht gefunden: %s", _FLASHSR_ONNX_PATH)
+        _resolved_path = _resolve_flashsr_path()
+        if _resolved_path is None:
+            logger.info("FlashSR ONNX nicht gefunden: %s / %s", _FLASHSR_ONNX_PATH, _FLASHSR_FALLBACK_PATH)
             _onnx_failed = True
             return None
         try:
             import onnxruntime as ort  # type: ignore[import-untyped]
 
+            # §v10.40c: Registry-konsultierte Provider-Wahl (flashsr.onnx = rocm).
+            from backend.core.gpu_model_registry import get_onnx_providers
+
             _onnx_session = ort.InferenceSession(
-                str(_FLASHSR_ONNX_PATH),
-                providers=["CPUExecutionProvider"],
+                str(_resolved_path),
+                providers=get_onnx_providers(_resolved_path),
             )
-            logger.info("FlashSR ONNX geladen: %s", _FLASHSR_ONNX_PATH)
+            logger.info("FlashSR ONNX geladen: %s", _resolved_path)
             return _onnx_session
         except Exception as exc:
             logger.warning("FlashSR ONNX-Ladefehler: %s", exc)
@@ -481,7 +497,14 @@ def _get_ml_model():
     try:
         import onnxruntime as _ort
 
-        _onnx_session = _ort.InferenceSession(str(_FLASHSR_ONNX_PATH), providers=["CPUExecutionProvider"])
+        # §v10.40c: Registry-konsultierte Provider-Wahl (flashsr.onnx = rocm).
+        from backend.core.gpu_model_registry import get_onnx_providers as _gop484
+
+        _resolved484 = _resolve_flashsr_path()
+        if _resolved484 is None:
+            _onnx_failed = True
+            return None
+        _onnx_session = _ort.InferenceSession(str(_resolved484), providers=_gop484(_resolved484))
         return _onnx_session
     except Exception as _exc:
         _onnx_failed = True

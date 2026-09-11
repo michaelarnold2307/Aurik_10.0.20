@@ -49,7 +49,7 @@ class TestPhase3RealAudioValidation:
         print(f"  File: {golden_sample_path.name}")
         print(f"  Shape: {audio.shape}")
         print(f"  Sample Rate: {sr}")
-        print(f"  Duration: {audio.shape[0]/sr:.2f}s")
+        print(f"  Duration: {audio.shape[0] / sr:.2f}s")
 
         # For testing, use a scaled/clipped version as "restored"
         # (simulating partial restoration)
@@ -64,7 +64,7 @@ class TestPhase3RealAudioValidation:
             sr=sr,
             reference=audio,  # Original audio as reference
             material_type="unknown",
-            global_scalar=0.8
+            global_scalar=0.8,
         )
 
         print("\n  Musical Goals Scores (Full Song):")
@@ -79,11 +79,21 @@ class TestPhase3RealAudioValidation:
 
         # All 15 goals should be present
         expected_goals = {
-            "brillanz", "waerme", "natuerlichkeit", "authentizitaet",
-            "emotionalitaet", "transparenz", "bass_kraft", "groove",
-            "spatial_depth", "timbre_authentizitaet", "tonal_center",
-            "micro_dynamics", "separation_fidelity", "artikulation",
-            "transient_energie"
+            "brillanz",
+            "waerme",
+            "natuerlichkeit",
+            "authentizitaet",
+            "emotionalitaet",
+            "transparenz",
+            "bass_kraft",
+            "groove",
+            "spatial_depth",
+            "timbre_authentizitaet",
+            "tonal_center",
+            "micro_dynamics",
+            "separation_fidelity",
+            "artikulation",
+            "transient_energie",
         }
         measured_goals = set(goals.keys())
         missing = expected_goals - measured_goals
@@ -109,13 +119,7 @@ class TestPhase3RealAudioValidation:
         restored = audio.copy() * 0.98
 
         checker = MusicalGoalsChecker(mode="restoration")
-        goals = checker.measure_all(
-            audio=restored,
-            sr=sr,
-            reference=audio,
-            material_type="unknown",
-            global_scalar=0.8
-        )
+        goals = checker.measure_all(audio=restored, sr=sr, reference=audio, material_type="unknown", global_scalar=0.8)
 
         assert "separation_fidelity" in goals
         assert 0.0 <= goals["separation_fidelity"] <= 1.0
@@ -140,11 +144,7 @@ class TestPhase3RealAudioValidation:
 
         for material in materials:
             goals = checker.measure_all(
-                audio=restored,
-                sr=sr,
-                reference=audio,
-                material_type=material,
-                global_scalar=0.8
+                audio=restored, sr=sr, reference=audio, material_type=material, global_scalar=0.8
             )
             scores[material] = goals["separation_fidelity"]
 
@@ -175,18 +175,12 @@ class TestPhase3RealAudioValidation:
         checker = MusicalGoalsChecker(mode="restoration")
 
         t_start = time.perf_counter()
-        goals = checker.measure_all(
-            audio=restored,
-            sr=sr,
-            reference=audio,
-            material_type="unknown",
-            global_scalar=0.8
-        )
+        goals = checker.measure_all(audio=restored, sr=sr, reference=audio, material_type="unknown", global_scalar=0.8)
         elapsed = time.perf_counter() - t_start
 
         print(f"  Measurement Time: {elapsed:.2f}s")
         print(f"  Duration: {duration_s:.2f}s")
-        print(f"  Ratio: {elapsed/max(duration_s, 1):.2f}x")
+        print(f"  Ratio: {elapsed / max(duration_s, 1):.2f}x")
 
         assert "separation_fidelity" in goals
 

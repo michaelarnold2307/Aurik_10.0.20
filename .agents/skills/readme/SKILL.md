@@ -556,8 +556,6 @@ pytest tests/normative/test_modern_window_gui_contract.py -v
 **Test-Mindestanforderung pro neuem Modul:** ≥ 35 Unit-Tests,
 inkl. NaN/Inf-Tests, Bounds-Tests, Mono+Stereo, Edge-Cases, Thread-Safety.
 
-#
-
 ### 🔍 Pre-Commit Static-Value-Guard (§v10)
 
 Verhindert blinde statische Werte ohne Song-Messung:

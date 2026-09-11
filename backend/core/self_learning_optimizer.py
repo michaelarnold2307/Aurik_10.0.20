@@ -385,7 +385,7 @@ class SelfLearningOptimizer:
         self._legacy_history.append({"features": features, "feedback": feedback})
         # Cap history to prevent unbounded memory growth
         if len(self._legacy_history) > self._max_legacy_history:
-            self._legacy_history = self._legacy_history[-self._max_legacy_history:]
+            self._legacy_history = self._legacy_history[-self._max_legacy_history :]
 
     def predict(self, features: dict[str, float]) -> float:
         """[Deprecated] Lineare Vorhersage basierend auf gelernten Gewichten."""

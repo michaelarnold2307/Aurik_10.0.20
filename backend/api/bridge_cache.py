@@ -48,6 +48,7 @@ _content_key_lock = threading.Lock()
 # LRU Cache Class
 # ---------------------------------------------------------------------------
 
+
 class _AnalysisLruCache:
     """Thread-safe LRU cache keyed by content-hash (or arbitrary string).
 
@@ -121,6 +122,7 @@ class _AnalysisLruCache:
 # Content-Addressed Keying
 # ---------------------------------------------------------------------------
 
+
 def content_cache_key(file_path: str) -> str:
     """Berechnet a content-addressed cache key for *file_path*.
 
@@ -139,7 +141,9 @@ def content_cache_key(file_path: str) -> str:
     try:
         stat_result = os.stat(normalized_path)
     except OSError as exc:
-        logger.debug("§V6 os.stat fehlgeschlagen — Dateipfad als Cache-Key verwendet: %s", exc)
+        logger.debug(
+            "§V6 (copilot-instructions.md) os.stat fehlgeschlagen — Dateipfad als Schlüssel verwendet: %s", exc
+        )
         return file_path
 
     size = int(stat_result.st_size)
@@ -162,7 +166,10 @@ def content_cache_key(file_path: str) -> str:
                 tail = b""
         digest = hashlib.sha256(head + tail + str(size).encode()).hexdigest()
     except OSError as exc:
-        logger.debug("§V6 Datei-Lesen fehlgeschlagen — Dateipfad als Cache-Key verwendet: %s", exc)
+        logger.debug(
+            "§V6 (copilot-instructions.md) Datei-Lesen fehlgeschlagen — Dateipfad als Zwischenspeicher-Key verwendet: %s",
+            exc,
+        )
         return file_path
 
     with _content_key_lock:
@@ -187,6 +194,7 @@ _restorability_lru: _AnalysisLruCache = _AnalysisLruCache()
 # ---------------------------------------------------------------------------
 # Defect-Scan-Cache  (Thread-sicher, LRU, content-addressed)
 # ---------------------------------------------------------------------------
+
 
 def cache_defect_result(file_path: str, result: object) -> None:
     """Cache a DefectScanner result under a content-addressed key.
@@ -220,6 +228,7 @@ def clear_defect_cache(file_path: str | None = None) -> None:
 # ---------------------------------------------------------------------------
 # Era/Genre-Cache  (Thread-sicher, LRU, content-addressed)
 # ---------------------------------------------------------------------------
+
 
 def cache_era_genre_result(
     file_path: str,
@@ -265,6 +274,7 @@ def clear_era_genre_cache(file_path: str | None = None) -> None:
 # Medium-Cache  (Thread-sicher, LRU, content-addressed)
 # ---------------------------------------------------------------------------
 
+
 def cache_medium_result(file_path: str, result: object) -> None:
     """Cache a MediumClassifier result for *file_path*."""
     key = content_cache_key(file_path)
@@ -296,6 +306,7 @@ def clear_medium_cache(file_path: str | None = None) -> None:
 # ---------------------------------------------------------------------------
 # Restorability-Cache  (Thread-sicher, LRU, content-addressed)
 # ---------------------------------------------------------------------------
+
 
 def cache_restorability_result(file_path: str, result: object) -> None:
     """Cache a RestorabilityEstimator result for *file_path*."""

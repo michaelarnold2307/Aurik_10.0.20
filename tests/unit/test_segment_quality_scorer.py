@@ -31,6 +31,7 @@ class TestSegmentQualityScorer:
     def setup_method(self) -> None:
         """Reset Singleton vor jedem Test."""
         import backend.core.segment_quality_scorer as sqs_module
+
         sqs_module._scorer_instance = None  # pylint: disable=protected-access
 
     def test_singleton_factory(self):
@@ -127,6 +128,7 @@ class TestSegmentQualityScorerEdgeCases:
     def setup_method(self) -> None:
         """Reset Singleton vor jedem Test."""
         import backend.core.segment_quality_scorer as sqs_module
+
         sqs_module._scorer_instance = None  # pylint: disable=protected-access
 
     def test_audio_too_short(self):
@@ -169,10 +171,12 @@ class TestSegmentQualityScorerEdgeCases:
 
         scorer = get_segment_quality_scorer(window_seconds=2.0)
         t = np.linspace(0, 5.0, int(48000 * 5), endpoint=False)
-        stereo = np.stack([
-            0.3 * np.sin(2 * np.pi * 440.0 * t),
-            0.25 * np.sin(2 * np.pi * 440.0 * t + 0.1),
-        ]).astype(np.float32)  # (2, N) channel-first
+        stereo = np.stack(
+            [
+                0.3 * np.sin(2 * np.pi * 440.0 * t),
+                0.25 * np.sin(2 * np.pi * 440.0 * t + 0.1),
+            ]
+        ).astype(np.float32)  # (2, N) channel-first
 
         scores = scorer.score(stereo, sr=48000)
         assert len(scores) >= 2

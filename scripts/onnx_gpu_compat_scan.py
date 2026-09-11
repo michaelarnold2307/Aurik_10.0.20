@@ -217,7 +217,7 @@ def _scan_model(path: Path, overrides: dict | None = None) -> dict:
             return _cpu, _inputs
 
         _cpu, _inputs = _with_timeout(_cpu_step, 60.0)
-        _entry["cpu_ms"] = round(_bench(_cpu, _inputs), 3)
+        _entry["cpu_ms"] = round(_bench(_cpu, _inputs, runs=_args.runs), 3)
     except Exception as exc:
         _entry["note"] = f"CPU-Load fehlgeschlagen: {type(exc).__name__}"
         _cpu = None
@@ -235,7 +235,7 @@ def _scan_model(path: Path, overrides: dict | None = None) -> dict:
         if _used != "ROCMExecutionProvider":
             _entry["note"] = f"ROCm-EP nicht platziert ({_used})"
         else:
-            _rocm_ms = _bench(_rocm, _inputs)
+            _rocm_ms = _bench(_rocm, _inputs, runs=_args.runs)
             _entry["gpu_ms"] = round(_rocm_ms, 3)
             _entry["backend"] = "rocm"
             # Numerik-Parität vs CPU — Geschwindigkeit allein genügt nicht.
@@ -248,7 +248,7 @@ def _scan_model(path: Path, overrides: dict | None = None) -> dict:
         _entry["note"] = f"ROCm-EP-Fehler: {type(exc).__name__}"
 
     # 3) MIGraphX (≤ 200 MB)
-    if _size_mb <= _MIGRAPHX_MAX_MB:
+    if _size_mb <= _MIGRAPHX_MAX_MB and not _args.no_migraphx:
         try:
             from backend.core.migraphx_adapter import MIGraphXSession, is_migraphx_available
 
@@ -258,7 +258,7 @@ def _scan_model(path: Path, overrides: dict | None = None) -> dict:
                     return MIGraphXSession(path, providers=["MIGraphXExecutionProvider", "CPUExecutionProvider"])
 
                 _mgx = _with_timeout(_mgx_step, 45.0)
-                _mgx_ms = _bench(_mgx, _inputs)
+                _mgx_ms = _bench(_mgx, _inputs, runs=_args.runs)
                 _mgx_note = _parity_note(_cpu, _mgx, _inputs)
                 if not _mgx_note and (_entry["gpu_ms"] is None or _mgx_ms < _entry["gpu_ms"]):
                     _entry["gpu_ms"] = round(_mgx_ms, 3)
@@ -301,7 +301,11 @@ def _write_registry(_registry: dict) -> dict[str, int]:
     return _counts
 
 
+_args = None  # Modul-Global; wird in main() gesetzt und von _scan_model gelesen.
+
+
 def main() -> int:
+    global _args
     _ap = argparse.ArgumentParser()
     _ap.add_argument("--limit", type=int, default=None, help="Nur die ersten N Modelle scannen")
     _ap.add_argument(
@@ -322,6 +326,17 @@ def main() -> int:
         default=None,
         help="Kommagetrennte Teilpfade; passende Modelle werden übersprungen (z. B. audioldm2).",
     )
+    _ap.add_argument(
+        "--runs",
+        type=int,
+        default=3,
+        help="Bench-Wiederholungen pro Backend (Default 3; 1 = schneller Durchlauf).",
+    )
+    _ap.add_argument(
+        "--no-migraphx",
+        action="store_true",
+        help="MIGraphX-Phase überspringen (schnellerer Scan; kein Modell hat derzeit Verdict migraphx).",
+    )
     _args = _ap.parse_args()
 
     _models = _collect_models(None if _args.model else _args.limit)
@@ -336,11 +351,7 @@ def main() -> int:
     _skips = [s.strip() for s in (_args.skip or "").split(",") if s.strip()]
     if _skips and not _args.model:
         _before = len(_models)
-        _models = [
-            p
-            for p in _models
-            if not any(s in p.relative_to(_REPO_ROOT).as_posix() for s in _skips)
-        ]
+        _models = [p for p in _models if not any(s in p.relative_to(_REPO_ROOT).as_posix() for s in _skips)]
         if _before != len(_models):
             print(f"Übersprungen via --skip: {_before - len(_models)} Modell(e).")
     print(f"Scan: {len(_models)} ONNX-Modelle")

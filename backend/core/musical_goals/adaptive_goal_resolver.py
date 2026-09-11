@@ -78,6 +78,7 @@ def resolve_adaptive_goal_thresholds(adaptive_goals_payload: Any) -> dict[str, f
                                 resolved[canonical] = val
                                 break
                         except Exception:
+                            logger.debug("Stiller Ersatzpfad dokumentiert (Bug 9/V74)", exc_info=True)
                             continue
                 if canonical in resolved:
                     break
@@ -93,6 +94,7 @@ def resolve_adaptive_goal_thresholds(adaptive_goals_payload: Any) -> dict[str, f
                                 resolved[canonical] = val
                                 break
                         except Exception:
+                            logger.debug("Alias-Schwelle nicht konvertierbar: %s", alias, exc_info=True)
                             continue
                 if canonical in resolved:
                     break
@@ -108,10 +110,12 @@ def resolve_adaptive_goal_thresholds(adaptive_goals_payload: Any) -> dict[str, f
                         resolved[canonical] = val
                         break
                 except Exception:
+                    logger.debug("Goal-Attribut nicht konvertierbar: %s", alias, exc_info=True)
                     continue
             if canonical in resolved:
                 break
 
     return resolved
+
 
 logger = logging.getLogger(__name__)

@@ -25,9 +25,9 @@ Referenz:
 Invarianten (§3.1, §3.2, §3.7 Aurik-Spec):
     - Thread-sicherer Singleton mit Double-Checked Locking
     - NaN/Inf in keiner Ausgabe (nan_to_num)
-    - Provider-Wahl über get_ort_providers() oder CPU-Fallback (§G5 Determinismus)
+    - Provider-Wahl über get_ort_providers() oder CPU-Fallback (§G5 (GEBOTE.md) Determinismus)
     - Alle öffentlichen Methoden vollständig typisiert (PEP 484)
-    - GPU-Support via AURIK_PITCH_GPU=1 optional; CPU ist Default für §G5 Reproduzierbarkeit
+    - GPU-Support via AURIK_PITCH_GPU=1 optional; CPU ist Default für §G5 (GEBOTE.md) Reproduzierbarkeit
 """
 
 # pylint: disable=import-outside-toplevel
@@ -213,32 +213,38 @@ class FcpePlugin:
                     from backend.core.ml_memory_budget import try_allocate as _try_alloc
 
                     if not _try_alloc("FCPE", size_gb=0.07):
-                        logger.warning("FCPE: ML-Budget erschöpft — CREPE-Fallback.")
+                        logger.warning("FCPE: ML-Grenze erschöpft — CREPE-Ersatzpfad.")
                         return
                 except Exception as _exc:
-                    logger.debug("Operation failed (non-critical): %s", _exc)
+                    logger.debug("Operation fehlgeschlagen (unkritisch): %s", _exc)
 
                 opts = ort.SessionOptions()
                 opts.inter_op_num_threads = 1
                 opts.intra_op_num_threads = 4
                 opts.graph_optimization_level = ort.GraphOptimizationLevel.ORT_ENABLE_ALL
-                # Wähle Provider: GPU wenn AURIK_PITCH_GPU=1, sonst CPU (§G5 Determinismus)
+                # Wähle Provider: GPU wenn AURIK_PITCH_GPU=1, sonst CPU (§G5 (GEBOTE.md) Determinismus)
                 if _PITCH_GPU_ENABLED:
                     try:
                         from backend.core.ml_device_manager import get_ort_providers
+
                         providers = get_ort_providers("FCPE")
                         logger.info("FCPE: GPU-Provider aktiviert via AURIK_PITCH_GPU=1")
                     except Exception as _e:
-                        logger.warning("FCPE: GPU-Provider fehlgeschlagen (%s) — CPU-Fallback", _e)
-                        providers = ["CPUExecutionProvider"]
+                        logger.warning("FCPE: GPU-Provider fehlgeschlagen (%s) — Registry-Ersatzpfad", _e)
+                        from backend.core.gpu_model_registry import get_onnx_providers
+
+                        providers = get_onnx_providers(_FCPE_ONNX_PATH)
                 else:
-                    providers = ["CPUExecutionProvider"]
+                    # §v10.40c: Registry-konsultierte Provider-Wahl statt hartem CPU.
+                    from backend.core.gpu_model_registry import get_onnx_providers
+
+                    providers = get_onnx_providers(_FCPE_ONNX_PATH)
                 self._session = ort.InferenceSession(
                     str(_FCPE_ONNX_PATH),
                     sess_options=opts,
                     providers=providers,
                 )
-                logger.info("fcpe_plugin: ONNX model loaded: %s (provider=%s)", _FCPE_ONNX_PATH.name, providers[0])
+                logger.info("fcpe_plugin: ONNX model geladen: %s (provider=%s)", _FCPE_ONNX_PATH.name, providers[0])
                 try:
                     from backend.core.plugin_lifecycle_manager import register_plugin as _reg_plm
 
@@ -247,15 +253,15 @@ class FcpePlugin:
 
                     _reg_plm("FCPE", size_gb=0.07, unload_fn=_unload_fcpe)
                 except Exception as _exc:
-                    logger.debug("Operation failed (non-critical): %s", _exc)
+                    logger.debug("Operation fehlgeschlagen (unkritisch): %s", _exc)
                 return
             logger.debug(
-                "FCPE ONNX nicht gefunden (%s) — CREPE ONNX-Fallback aktiv",
+                "FCPE ONNX nicht gefunden (%s) — CREPE ONNX-Ersatzpfad aktiv",
                 _FCPE_ONNX_PATH,
             )
         except Exception as exc:
-            logger.warning("ML→DSP-Fallback aktiviert", exc_info=True)  # §V6 (copilot-instructions.md)
-            logger.debug("FCPE ONNX-Init fehlgeschlagen (%s) — CREPE-Fallback", exc)
+            logger.warning("ML→DSP-Ersatzpfad aktiviert", exc_info=True)  # §V6 (copilot-instructions.md)
+            logger.debug("FCPE ONNX-Init fehlgeschlagen (%s) — CREPE-Ersatzpfad", exc)
 
         # Versuch 2: CREPE ONNX als transparente Delegation
         try:
@@ -266,7 +272,7 @@ class FcpePlugin:
                 delegate_model,
             )
         except Exception as exc:
-            logger.warning("ML→DSP-Fallback aktiviert", exc_info=True)  # §V6 (copilot-instructions.md)
+            logger.warning("ML→DSP-Ersatzpfad aktiviert", exc_info=True)  # §V6 (copilot-instructions.md)
             logger.debug("CREPE-Delegation fehlgeschlagen (%s) — pYIN DSP aktiv", exc)
 
     @property
@@ -317,7 +323,7 @@ class FcpePlugin:
             _plm = get_plugin_lifecycle_manager()
             _plm.set_active("FCPE", True)
         except Exception:
-            logger.warning("fcpe_plugin.py::_analyze_fcpe_onnx fallback", exc_info=True)
+            logger.warning("fcpe_plugin.py::_analyze_fcpe_onnx Ersatzpfad", exc_info=True)
         try:
             import scipy.signal as sps
 
@@ -370,7 +376,7 @@ class FcpePlugin:
                 model_used="fcpe_onnx",
             )
         except Exception as exc:
-            logger.warning("FCPE-ONNX-Inferenz fehlgeschlagen (%s) — CREPE/pYIN Fallback", exc)
+            logger.warning("FCPE-ONNX-Inferenz fehlgeschlagen (%s) — CREPE/pYIN Ersatzpfad", exc)
             if self._crepe_delegate is not None:
                 return cast(CrepeResult, self._crepe_delegate.analyze(audio, sr))
             return self._analyze_pyin(audio, sr)
@@ -379,7 +385,7 @@ class FcpePlugin:
                 try:
                     _plm.set_active("FCPE", False)
                 except Exception:
-                    logger.warning("fcpe_plugin.py::_analyze_fcpe_onnx fallback", exc_info=True)
+                    logger.warning("fcpe_plugin.py::_analyze_fcpe_onnx Ersatzpfad", exc_info=True)
 
     def _analyze_pyin(self, audio: np.ndarray, sr: int) -> CrepeResult:
         """pYIN DSP-Fallback (Mauch & Dixon 2014)."""
@@ -404,7 +410,7 @@ class FcpePlugin:
                 model_used="dsp_pyin",
             )
         except Exception as exc:
-            logger.warning("pYIN-Fallback fehlgeschlagen (%s)", exc)
+            logger.warning("pYIN-Ersatzpfad fehlgeschlagen (%s)", exc)
             return CrepeResult(
                 f0_hz=np.zeros(1, np.float32),
                 voiced_prob=np.zeros(1, np.float32),
@@ -454,14 +460,14 @@ def unload_fcpe() -> None:
                 assert plugin is not None
                 plugin.clear_runtime_handles()
             except Exception as _exc:
-                logger.debug("Operation failed (non-critical): %s", _exc)
+                logger.debug("Operation fehlgeschlagen (unkritisch): %s", _exc)
             _INSTANCE_HOLDER[0] = None
     try:
         from backend.core.ml_memory_budget import release as _release
 
         _release("FCPE")
     except Exception as _exc:
-        logger.debug("Operation failed (non-critical): %s", _exc)
+        logger.debug("Operation fehlgeschlagen (unkritisch): %s", _exc)
 
 
 def analyze_pitch(audio: np.ndarray, sr: int) -> CrepeResult:

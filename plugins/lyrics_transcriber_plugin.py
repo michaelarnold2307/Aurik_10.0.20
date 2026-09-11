@@ -32,10 +32,12 @@ from typing import Any, cast
 
 import numpy as np
 
+from backend.core.gpu_model_registry import _Provider
+
 logger = logging.getLogger(__name__)
 
 
-def _get_providers_749() -> list[str]:
+def _get_providers_749() -> list[_Provider]:
     """§v10.749 (2026-09-09): Registry-bewusste Provider — WhisperTiny läuft
     auf ROCm 24.5× schneller (gemessen 98.1 ms → 4.0 ms); CPU-Fallback bleibt."""
     try:
@@ -44,6 +46,7 @@ def _get_providers_749() -> list[str]:
         return _gp749("WhisperTiny")
     except Exception:
         return ["CPUExecutionProvider"]
+
 
 # ---------------------------------------------------------------------------
 # Dataclasses (§2.36)
@@ -103,6 +106,8 @@ class LyricsTranscriber:
     _TURBO_PATH: Path = (
         Path(__file__).parent.parent / "models" / "whisper" / "whisper_large_v3_turbo_encoder_fp16.onnx"
     )  # §v10.751: fp16-Encoder (GPU) — fp32-tiny bleibt CPU-/Referenz-Fallback
+    _TURBO_DECODER_PATH: Path = Path(__file__).parent.parent / "models" / "whisper" / "decoder_model_merged.onnx"
+    _TURBO_TOKENIZER_DIR: Path = Path(__file__).parent.parent / "models" / "whisper"
     VOCAB_PATH: Path = Path(__file__).parent.parent / "models" / "whisper" / "whisper_tiny_vocab.json"
     # Fallback: Whisper-Base ONNX (§13.3 — gebündeltes Modell falls tiny fehlt)
     _BASE_MODEL_PATH: Path = Path(__file__).parent.parent / "models" / "whisper" / "whisper-base_beamsearch.onnx"
@@ -117,9 +122,57 @@ class LyricsTranscriber:
 
     def __init__(self) -> None:
         self._session: object | None = None
+        self._decoder_session: object | None = None
+        self._turbo_tokenizer: object | None = None
         self._session_loaded: bool = False
         self._turbo_active: bool = False  # §v10.751: Turbo-fp16-Encoder (128 Mel-Bins) aktiv
+        self._turbo_decoder_active: bool = False
         self._load_onnx()
+
+    def _load_turbo_decoder(self, providers: list[_Provider]) -> bool:
+        """Lädt den lokalen Large-v3-Turbo-Decoder nur bei passender I/O-Signatur."""
+        if not self._TURBO_DECODER_PATH.exists():
+            return False
+        decoder_budget_reserved = False
+        try:
+            from backend.core.ml_memory_budget import try_allocate
+
+            if not try_allocate("WhisperTurboDecoder", size_gb=0.75):
+                logger.warning("Whisper-Turbo-Decoder: ML-Grenze erschöpft — Encoder-only-Ersatzpfad")
+                return False
+            decoder_budget_reserved = True
+            import onnxruntime as ort
+            from transformers import WhisperTokenizer
+
+            decoder = ort.InferenceSession(str(self._TURBO_DECODER_PATH), providers=providers)
+            encoder_input = next(
+                (item for item in decoder.get_inputs() if item.name == "encoder_hidden_states"),
+                None,
+            )
+            logits_output = next((item for item in decoder.get_outputs() if item.name == "logits"), None)
+            if encoder_input is None or logits_output is None or encoder_input.shape[-1] != 1280:
+                logger.warning("Whisper-Turbo-Decoder: inkompatible ONNX-Signatur — Decoder bleibt inaktiv")
+                return False
+            tokenizer = WhisperTokenizer.from_pretrained(  # nosec B615 — local_files_only=True, kein Download
+                str(self._TURBO_TOKENIZER_DIR),
+                local_files_only=True,
+            )
+            self._decoder_session = decoder
+            self._turbo_tokenizer = tokenizer
+            self._turbo_decoder_active = True
+            return True
+        except Exception as exc:
+            logger.warning("Whisper-Turbo-Decoder nicht verfügbar — Encoder-only-Ersatzpfad: %s", exc)
+            if decoder_budget_reserved:
+                try:
+                    from backend.core.ml_memory_budget import release
+
+                    release("WhisperTurboDecoder")
+                except Exception as release_exc:
+                    logger.debug("Whisper-Turbo-Decoder-Grenze konnte nicht freigegeben werden: %s", release_exc)
+            self._decoder_session = None
+            self._turbo_tokenizer = None
+            return False
 
     def _load_onnx(self) -> None:
         """Lädt Whisper ONNX (Tiny → Base → DSP-Fallback, §2.36 + §13.3).
@@ -130,10 +183,10 @@ class LyricsTranscriber:
           3. DSP-Energie-Segmentierung (kein ML, stiller Fallback)
         """
         try:
-            import onnxruntime as ort  # noqa: E402
+            import onnxruntime as ort
 
             # §v10.751 (2026-09-09): Zweistufig — Turbo-fp16-Encoder (GPU) zuerst;
-            # tiny-fp32 (CPU/Referenz, §G5) bleibt der deterministische Fallback.
+            # tiny-fp32 (CPU/Referenz, §G5 (GEBOTE.md)) bleibt der deterministische Fallback.
             if self._TURBO_PATH.exists():
                 try:
                     from backend.core.ml_device_manager import get_ort_providers as _gp751
@@ -146,10 +199,11 @@ class LyricsTranscriber:
                             self._session = ort.InferenceSession(str(self._TURBO_PATH), providers=_turbo_prov)
                             self._session_loaded = True
                             self._turbo_active = True  # §v10.751: 128-Mel-Pfad aktiv
+                            self._load_turbo_decoder(_turbo_prov)
                             logger.info("✅ Whisper-Large-v3-Turbo fp16-Encoder geladen (GPU, §v10.751)")
                             return
                 except Exception as _exc751:
-                    logger.warning("Whisper-Turbo-Encoder nicht verfügbar (%s) — tiny-fp32-Fallback", _exc751)
+                    logger.warning("Whisper-Turbo-Encoder nicht verfügbar (%s) — tiny-fp32-Ersatzpfad", _exc751)
 
             # Ladereihenfolge: tiny → base → DSP
             if self.MODEL_PATH.exists():
@@ -164,7 +218,7 @@ class LyricsTranscriber:
                 )
             else:
                 logger.info(
-                    "Kein Whisper-ONNX gefunden (%s / %s) — DSP-Fallback aktiv (§2.36)",
+                    "Kein Whisper-ONNX gefunden (%s / %s) — DSP-Ersatzpfad aktiv (§2.36)",
                     self.MODEL_PATH.name,
                     self._BASE_MODEL_PATH.name,
                 )
@@ -174,10 +228,10 @@ class LyricsTranscriber:
                 from backend.core.ml_memory_budget import try_allocate as _try_alloc
 
                 if not _try_alloc("WhisperTiny", size_gb=0.41):
-                    logger.warning("WhisperTiny: ML-Budget erschöpft — DSP-Fallback.")
+                    logger.warning("WhisperTiny: ML-Grenze erschöpft — DSP-Ersatzpfad.")
                     return
             except Exception as _exc:
-                logger.debug("Operation failed (non-critical): %s", _exc)
+                logger.debug("Operation fehlgeschlagen (unkritisch): %s", _exc)
 
             self._session = ort.InferenceSession(
                 str(model_path),
@@ -194,17 +248,17 @@ class LyricsTranscriber:
                     unload_fn=lambda s=self: setattr(s, "_session", None) or setattr(s, "_session_loaded", False),  # type: ignore[func-returns-value,misc]
                 )
             except Exception as _exc:
-                logger.debug("Operation failed (non-critical): %s", _exc)
+                logger.debug("Operation fehlgeschlagen (unkritisch): %s", _exc)
 
         except Exception as exc:
-            logger.warning("ML→DSP-Fallback aktiviert", exc_info=True)  # §V6 (copilot-instructions.md)
-            logger.info("Whisper-ONNX nicht verfügbar — DSP-Energie-Fallback aktiv: %s", exc)
+            logger.warning("ML→DSP-Ersatzpfad aktiviert", exc_info=True)  # §V6 (copilot-instructions.md)
+            logger.info("Whisper-ONNX nicht verfügbar — DSP-Energie-Ersatzpfad aktiv: %s", exc)
             try:
                 from backend.core.ml_memory_budget import release as _rel
 
                 _rel("WhisperTiny")
             except Exception as _exc:
-                logger.debug("Operation failed (non-critical): %s", _exc)
+                logger.debug("Operation fehlgeschlagen (unkritisch): %s", _exc)
 
     def transcribe(
         self,
@@ -244,8 +298,8 @@ class LyricsTranscriber:
                 # passt nicht zu tiny/turbo (Eingang heißt input_features).
                 return self._transcribe_onnx(mono, sr, duration_s)
         except Exception as exc:
-            logger.warning("ML→DSP-Fallback aktiviert", exc_info=True)  # §V6 (copilot-instructions.md)
-            logger.debug("Whisper-Inferenz fehlgeschlagen, DSP-Fallback: %s", exc)
+            logger.warning("ML→DSP-Ersatzpfad aktiviert", exc_info=True)  # §V6 (copilot-instructions.md)
+            logger.debug("Whisper-Inferenz fehlgeschlagen, DSP-Ersatzpfad: %s", exc)
 
         return self._transcribe_dsp_fallback(mono, sr, duration_s)
 
@@ -270,7 +324,9 @@ class LyricsTranscriber:
         audio_16k = self._resample_to_whisper(mono, sr)
 
         # 2. Log-Mel-Spektrogramm [1, 80, 3000]
-        mel = self._compute_log_mel(audio_16k, n_mels=128 if self._turbo_active else 80)  # §v10.751: Turbo nutzt 128 Mel-Bins
+        mel = self._compute_log_mel(
+            audio_16k, n_mels=128 if self._turbo_active else 80
+        )  # §v10.751: Turbo nutzt 128 Mel-Bins
 
         # 3. ONNX-Encoder-Forward
         encoder_out: np.ndarray | None = None
@@ -281,7 +337,7 @@ class LyricsTranscriber:
             _plm = get_plugin_lifecycle_manager()
             _plm.set_active("WhisperTiny", True)
         except Exception:
-            logger.warning("lyrics_transcriber_plugin.py::_transcribe_onnx fallback", exc_info=True)
+            logger.warning("lyrics_transcriber_plugin.py::_transcribe_onnx Ersatzpfad", exc_info=True)
         try:
             input_name = self._session.get_inputs()[0].name  # type: ignore[union-attr]
             outputs = self._session.run(None, {input_name: mel})  # type: ignore[union-attr]
@@ -295,21 +351,105 @@ class LyricsTranscriber:
                 try:
                     _plm.set_active("WhisperTiny", False)
                 except Exception:
-                    logger.warning("lyrics_transcriber_plugin.py::_transcribe_onnx fallback", exc_info=True)
+                    logger.warning("lyrics_transcriber_plugin.py::_transcribe_onnx Ersatzpfad", exc_info=True)
 
         # 4. Segmentierung mit Encoder-Aktivierungen
-        words = self._segment_with_encoder(audio_16k, encoder_out, duration_s)
+        detected_lang, _lang_conf = self._detect_language_from_mono(audio_16k, self.WHISPER_SR)
+        words = self._segment_with_turbo_decoder(encoder_out, duration_s, detected_lang)
+        if not words:
+            words = self._segment_with_encoder(audio_16k, encoder_out, duration_s)
         overall_conf = float(np.mean([w.confidence for w in words])) if words else 0.0
         overall_conf = max(0.0, min(1.0, overall_conf))
-        _detected_lang, _lang_conf = self._detect_language_from_mono(audio_16k, self.WHISPER_SR)
 
         return LyricsTranscriptionResult(
             words=words,
-            language=_detected_lang,
+            language=detected_lang,
             overall_confidence=overall_conf,
             duration_s=duration_s,
             fallback_used=False,
         )
+
+    def _segment_with_turbo_decoder(
+        self,
+        encoder_out: np.ndarray | None,
+        duration_s: float,
+        language: str,
+    ) -> list[WordTimestamp]:
+        """Erzeugt Gesangssegmente aus den Whisper-Timestamp-Tokens."""
+        decoder = getattr(self, "_decoder_session", None)
+        tokenizer = getattr(self, "_turbo_tokenizer", None)
+        if (
+            not getattr(self, "_turbo_decoder_active", False)
+            or decoder is None
+            or tokenizer is None
+            or encoder_out is None
+        ):
+            return []
+        try:
+            import numpy as np
+
+            token_id = tokenizer.convert_tokens_to_ids  # type: ignore[union-attr]
+            language_token = token_id(f"<|{language}|>")
+            if language_token < 0:
+                language_token = token_id("<|de|>")
+            prompt = [token_id("<|startoftranscript|>"), language_token, token_id("<|transcribe|>")]
+            input_map = {item.name: item for item in decoder.get_inputs()}
+            decoder_output_names = [item.name for item in decoder.get_outputs()]
+            feed: dict[str, np.ndarray] = {
+                "input_ids": np.asarray([prompt], dtype=np.int64),
+                "encoder_hidden_states": np.asarray(encoder_out, dtype=np.float32),
+                "use_cache_branch": np.asarray([False], dtype=bool),
+            }
+            for name, item in input_map.items():
+                if name in feed or not name.startswith("past_key_values"):
+                    continue
+                shape = (1, 20, 0, 64)
+                feed[name] = np.zeros(shape, dtype=np.float32)
+
+            generated: list[int] = []
+            for _ in range(96):
+                outputs = decoder.run(None, feed)
+                output_by_name = dict(zip(decoder_output_names, outputs))
+                logits = output_by_name.get("logits")
+                if logits is None:
+                    return []
+                next_token = int(np.argmax(logits[0, -1]))
+                generated.append(next_token)
+                if next_token == token_id("<|endoftext|>"):
+                    break
+                for layer in range(4):
+                    for kind in ("decoder.key", "decoder.value", "encoder.key", "encoder.value"):
+                        past_name = f"past_key_values.{layer}.{kind}"
+                        present_name = f"present.{layer}.{kind}"
+                        if past_name in input_map and present_name in output_by_name:
+                            feed[past_name] = output_by_name[present_name]
+                feed["input_ids"] = np.asarray([[next_token]], dtype=np.int64)
+                feed["use_cache_branch"] = np.asarray([True], dtype=bool)
+
+            timestamp_begin = int(getattr(tokenizer, "timestamp_begin", 50364))
+            timestamps = [
+                min(duration_s, max(0.0, (token - timestamp_begin) * 0.02))
+                for token in generated
+                if token >= timestamp_begin
+            ]
+            words: list[WordTimestamp] = []
+            for start_s, end_s in zip(timestamps[::2], timestamps[1::2]):
+                if end_s <= start_s:
+                    continue
+                words.append(
+                    WordTimestamp(
+                        word="[vocal]",
+                        start_s=start_s,
+                        end_s=end_s,
+                        confidence=0.85,
+                        is_stressed=False,
+                        phoneme_type="mixed",
+                    )
+                )
+            return words
+        except Exception as exc:
+            logger.warning("Whisper-Turbo-Decoder-Inferenz fehlgeschlagen — Encoder-Ersatzpfad: %s", exc)
+            return []
 
     def _segment_with_encoder(
         self,
@@ -634,7 +774,7 @@ class LyricsTranscriber:
 
             return _ptl_detect(mono, sr)  # type: ignore[no-any-return]
         except Exception as exc:
-            logger.debug("LyricsTranscriber._detect_language_from_mono failed: %s", exc)
+            logger.debug("LyricsTranscriber._erkennen_language_from_mono fehlgeschlagen: %s", exc)
             return ("unknown", 0.0)
 
 

@@ -80,7 +80,7 @@ def enhance_vocals(
             processing_applied.append("mid_side_processing")
         except Exception:
             # Fallback: process mono mix
-            logger.debug("Mid/Side nicht verfügbar — mono fallback")
+            logger.debug("Mid/Side nicht verfügbar — mono Ersatzpfad")
             mono = audio.mean(axis=0) if is_stereo else audio
             processed = _process_vocal_mono(mono, sr, breath_reduction_db, sibilance_reduction_db)
             ratio = processed / (mono + 1e-10)

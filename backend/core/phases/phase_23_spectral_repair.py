@@ -437,7 +437,7 @@ class SpectralRepair(PhaseInterface):
             return float(get_bw_ceiling_hz(mat_key))
         except ImportError as exc:
             logger.debug(
-                "§V6 (copilot-instructions.md) carrier_transfer_characteristics.get_bw_ceiling_hz nicht verfügbar — Fallback-Werte aktiviert (Material %s): %s",
+                "§V6 (copilot-instructions.md) carrier_transfer_characteristics.get_bw_ceiling_hz nicht verfügbar — Ersatzpfad-Werte aktiviert (Material %s): %s",
                 mat_key,
                 exc,
             )
@@ -894,7 +894,7 @@ class SpectralRepair(PhaseInterface):
                         _plm23.set_active("Apollo", True)  # §4.6b: protect from eviction during inference
                     except Exception:
                         logger.warning(
-                            "§V6 (copilot-instructions.md) Phase-23 Apollo lifecycle guard failed → no eviction protection: %s",
+                            "§V6 (copilot-instructions.md) Verarbeitungsschritt-23 Apollo lifecycle guard fehlgeschlagen → no eviction protection: %s",
                             str(Exception),
                         )
                         _plm23 = None
@@ -1917,7 +1917,7 @@ class SpectralRepair(PhaseInterface):
                     )
                 except Exception:
                     logger.warning(
-                        "§V6 (copilot-instructions.md) Phase-23 FlashSR BW-Messung fehlgeschlagen (unkritisch): %s",
+                        "§V6 (copilot-instructions.md) Verarbeitungsschritt-23 FlashSR BW-Messung fehlgeschlagen (unkritisch): %s",
                         str(Exception),
                     )
                     pass  # Non-blocking

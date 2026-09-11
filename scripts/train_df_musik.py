@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """
+
 Fine-tune DeepFilterNet v3.II on MUSDB18 music data (§v10.15).
 
 Eliminates the Speech-Domain-Mismatch: instead of DNS-Challenge (speech+noise),
@@ -19,6 +20,10 @@ Usage:
 """
 
 from __future__ import annotations
+
+import logging
+
+logger = logging.getLogger(__name__)
 
 import argparse
 import random
@@ -103,7 +108,7 @@ class DFNFeatureExtractor:
         """
         # STFT: [B, freq=481, frames]
         spec = torch.stft(audio, n_fft=N_FFT, hop_length=HOP, window=self.window, return_complex=True)
-        T = spec.shape[2]
+        spec.shape[2]
 
         # ERB: [B, 32, T] → [B, 1, T, 32]
         mag = spec[:, :481, :].abs()
@@ -165,6 +170,7 @@ class MusicDenoiseDataset(Dataset):
                 n = self._load(random.choice(self.noise_files))
                 return n / (np.abs(n).max() + np.float32(1e-8))
             except Exception:
+                logger.debug("Stiller Ersatzpfad dokumentiert (Bug 9/V74)", exc_info=True)
                 pass
         n = np.random.randn(length).astype(np.float32)
         c = random.choice(["white", "pink", "brown"])

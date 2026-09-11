@@ -447,6 +447,25 @@ class DenoisePhase(PhaseInterface):
             params["bands"] = _bands_adaptive
             params["_noise_floor_db"] = _nf["noise_floor_db"]
             params["_estimated_snr_db"] = _nf["estimated_snr_db"]
+            # §BMLD (binaural_masking.py): Binaurale Maskierungs-Freisetzung —
+            # interaural unkorreliertes Rauschen ist fürs Ohr bis zu ~15 dB
+            # besser maskiert; die NR-Reduktion wird entsprechend GEDÄMPFT,
+            # damit sie an der binauralen statt der monauralen Schwelle stoppt
+            # (mehr Musik bleibt erhalten, kein hörbarer Rauschgewinn).
+            try:
+                from backend.core.dsp.binaural_masking import binaural_noise_floor_release_db as _bnfr03
+
+                _release03 = float(_bnfr03(audio, sample_rate))
+                if _release03 > 0.05:
+                    params["_binaural_release_db"] = _release03
+                    logger.info(
+                        "§BMLD Verarbeitungsschritt 03: binaurale Freisetzung %.2f dB → NR-Dämpfung",
+                        _release03,
+                    )
+            except Exception as _bnfr_exc:
+                logger.warning(
+                    "§V6 (copilot-instructions.md) BMLD-Freisetzung nicht verfügbar — volle monaurale NR: %s", _bnfr_exc
+                )
             logger.debug(
                 "Verarbeitungsschritt 03 adaptive: noise_floor=%.1f dB snr=%.1f dB → band_reduction scaled",
                 _nf["noise_floor_db"],
@@ -459,6 +478,13 @@ class DenoisePhase(PhaseInterface):
         # If not provided, fall back to material-specific default.
         effective_strength = kwargs.get("strength", params["strength"])
         effective_strength = float(np.clip(float(effective_strength), 0.0, 1.0))
+        # §BMLD: binaurale Freisetzung dämpft die NR-Tiefe — die NR stoppt an
+        # der binauralen Maskierungsschwelle statt der monauralen (konservativ
+        # max. −45 %, Bodengrenze 0.55).
+        _bml_raw = params.get("_binaural_release_db", 0.0) or 0.0
+        _bml_release03 = float(_bml_raw) if isinstance(_bml_raw, (int, float, str)) else 0.0
+        if _bml_release03 > 0.05:
+            effective_strength *= float(np.clip(1.0 - _bml_release03 / 15.0, 0.55, 1.0))
 
         # Locality-aware modulation from UV3.
         # For sparse defects keep denoising gentler to avoid global timbre flattening.
@@ -536,6 +562,36 @@ class DenoisePhase(PhaseInterface):
         quality_mode = kwargs.get("quality_mode", "quality")
         assert sample_rate == 48000, f"SR muss 48000 Hz sein, erhalten: {sample_rate}"
 
+        # §0 Primum non nocere — Eingangs-Referenz VOR jeder ML-Ersetzung:
+        # ML-Zweige (Miipher/DFN/SGMSE+) ersetzen `audio`; Guards und
+        # Level-Restauration MÜSSEN gegen die wahre Eingabe messen.
+        _p03_entry_audio = np.asarray(audio, dtype=np.float32).copy()
+
+        # §AO Minimum-Length-Guard (Modulebene): Direktaufrufer (Sweeps, Tests)
+        # umgehen den UV3-Wrapper — 2-Sample-Stubs dürfen die Phase nie
+        # erreichen. Kurz-Input → deterministischer Passthrough.
+        if _p03_entry_audio.ndim == 1 and _p03_entry_audio.size < 256:
+            return create_phase_result(
+                audio=np.clip(np.nan_to_num(_p03_entry_audio, nan=0.0, posinf=0.0, neginf=0.0), -1.0, 1.0),
+                modifications={"skipped": "input_too_short", "effective_strength": 0.0},
+                warnings=["phase_03: Eingabe < 256 Samples — Passthrough (§AO)"],
+                metadata={"algorithm": "passthrough_too_short"},
+            )
+        if _p03_entry_audio.ndim == 2 and min(_p03_entry_audio.shape) < 256 and max(_p03_entry_audio.shape) >= 256:
+            # Stereo mit degenerierter Kanal-Achse (z. B. (2, N) mit N<256)
+            _p03_entry_audio = (
+                _p03_entry_audio.T
+                if _p03_entry_audio.shape[0] <= 2 and _p03_entry_audio.shape[1] > _p03_entry_audio.shape[0]
+                else _p03_entry_audio
+            )
+        if _p03_entry_audio.size < 256:
+            return create_phase_result(
+                audio=np.clip(np.nan_to_num(_p03_entry_audio, nan=0.0, posinf=0.0, neginf=0.0), -1.0, 1.0),
+                modifications={"skipped": "input_too_short", "effective_strength": 0.0},
+                warnings=["phase_03: Eingabe < 256 Samples — Passthrough (§AO)"],
+                metadata={"algorithm": "passthrough_too_short"},
+            )
+
         # §V40 NMR-Feedback: NR-Stärke adaptiv anpassen (FeedbackChain-aware).
         try:
             from backend.core.dsp.nmr_feedback import (
@@ -570,9 +626,51 @@ class DenoisePhase(PhaseInterface):
             _p03_was_channels_last = True
 
         def _p03_out(a: np.ndarray) -> np.ndarray:
-            """Rückkonversion zu channels-last (N, 2) wenn nötig."""
+            """Rückkonversion zu channels-last (N, 2) wenn nötig + §0-Level-Restauration.
+
+            ML-Zweige können den Pegel verschieben; Ausgabe wird auf den
+            Eingangs-RMS zurückgesetzt, wenn sie > 1.5× lauter oder < 2/3×
+            leiser ist (Primum non nocere — Denoising darf den Pegel nicht
+            verschieben)."""
             if _p03_was_channels_last and a.ndim == 2 and a.shape[0] == 2 and a.shape[1] > 2:
-                return a.T
+                a = a.T
+            try:
+                from backend.core.audio_layout import mono_mix as _mm_out03
+
+                _in_m = _mm_out03(_p03_entry_audio)
+                _out_m = _mm_out03(np.asarray(a, dtype=np.float32))
+                if _in_m.shape == _out_m.shape and _in_m.size > 512:
+                    _r_in = float(np.sqrt(np.mean(_in_m**2) + 1e-18))
+                    _r_out = float(np.sqrt(np.mean(_out_m**2) + 1e-18))
+                    if _r_out > _r_in * 1.5 or _r_out < _r_in * (2.0 / 3.0):
+                        a = np.asarray(a, dtype=np.float32) * (_r_in / max(_r_out, 1e-18))
+                        logger.warning(
+                            "§0 Level-Restauration: Ausgabe %.2f× vom Eingangspegel → zurückgesetzt (%.3f → %.3f RMS)",
+                            _r_out / _r_in,
+                            _r_out,
+                            _r_in,
+                        )
+                    # §0 Primum non nocere — No-Harm-Passthrough bei hohem SNR:
+                    # Dekorreliert die Ausgabe die Eingabe auf sauberem Material
+                    # (SNR > 12 dB), hat die Phase Schaden angerichtet → bestes
+                    # sicheres Ergebnis ist der unveränderte Input (§0c-Gedanke).
+                    _p90 = float(np.percentile(np.abs(_in_m), 90))
+                    _p10 = float(np.percentile(np.abs(_in_m), 10))
+                    _snr_est = 20.0 * np.log10((_p90 + 1e-12) / (_p10 + 1e-12))
+                    if _snr_est > 12.0:
+                        _a_c = _in_m - _in_m.mean()
+                        _b_c = _out_m - _out_m.mean()
+                        _den_c = float(np.sqrt(np.dot(_a_c, _a_c) * np.dot(_b_c, _b_c))) + 1e-12
+                        _corr_out03 = float(np.dot(_a_c, _b_c) / _den_c)
+                        if _corr_out03 < 0.5:
+                            a = np.asarray(_p03_entry_audio, dtype=np.float32).copy()
+                            logger.warning(
+                                "§0 No-Harm-Passthrough: Ausgabe dekorreliert Eingabe (corr=%.3f) bei SNR %.1f dB → Eingabe unverändert",
+                                _corr_out03,
+                                _snr_est,
+                            )
+            except Exception as _out03_exc:
+                logger.debug("§0 Level-Restauration nicht verfügbar: %s", _out03_exc)
             return a
 
         # §2.46f Natural-Performance-Artifacts-Guard — detect protected zones before NR
@@ -1426,7 +1524,7 @@ class DenoisePhase(PhaseInterface):
                 _sota_result = _sota_pipeline.process(audio, int(sample_rate))
                 audio = _sota_result.audio
                 logger.info(
-                    "§v10.200 SOTA 4-Layer Denoiser applied: genre=%s layers=%s time=%.1fs",
+                    "§v10.200 SOTA 4-Layer Denoiser angewendet: genre=%s layers=%s time=%.1fs",
                     _sota_result.genre,
                     _sota_result.layers_applied,
                     _sota_result.processing_time,
@@ -1523,7 +1621,7 @@ class DenoisePhase(PhaseInterface):
                         _sgmse_result.model_used,
                     )
             except Exception as _sgmse_exc:
-                logger.warning("ML→DSP-Fallback aktiviert", exc_info=True)  # §V6 (copilot-instructions.md)
+                logger.warning("ML→DSP-Ersatzpfad aktiviert", exc_info=True)  # §V6 (copilot-instructions.md)
                 logger.debug("SGMSE+ Tier-1 Ersatzpfad nicht verfügbar, weiter mit OMLSA: %s", _sgmse_exc)
                 try:
                     from backend.core.fallback_auditor import get_fallback_auditor
@@ -1749,12 +1847,65 @@ class DenoisePhase(PhaseInterface):
                     if (_bsrof_stem_active and _bsrof_original_audio is not None)
                     else (_tdp_original_audio if (_tdp_active and _tdp_original_audio is not None) else audio)
                 )
+                # §0 Primum non nocere — SOTA-ML-Harmlosigkeits-Guard:
+                # Dekorreliert die ML-Ausgabe die Eingabe (out-of-domain ML,
+                # z. B. Sinus/Synthetik für Sprach-Denoiser), fällt der Lauf
+                # auf den DSP-Pfad zurück (§V6 (copilot-instructions.md): WARNING mit Begründung).
+                try:
+                    from backend.core.audio_layout import mono_mix as _mm_guard03
+
+                    _ml_guard_in = _mm_guard03(_p03_entry_audio)
+                    _ml_guard_out = _mm_guard03(np.asarray(ml_result.audio, dtype=np.float32))
+                    if _ml_guard_in.shape == _ml_guard_out.shape and _ml_guard_in.size > 512:
+                        _a = _ml_guard_in - _ml_guard_in.mean()
+                        _b = _ml_guard_out - _ml_guard_out.mean()
+                        _den = float(np.sqrt(np.dot(_a, _a) * np.dot(_b, _b))) + 1e-12
+                        _corr03 = float(np.dot(_a, _b) / _den)
+                        _rms_ratio03 = float(
+                            np.sqrt(np.mean(_ml_guard_out**2) + 1e-18) / np.sqrt(np.mean(_ml_guard_in**2) + 1e-18)
+                        )
+                        if _corr03 < 0.5:
+                            logger.warning(
+                                "§V6 (copilot-instructions.md) ML→DSP-Ersatzpfad: ML-Ausgabe dekorreliert Eingabe (corr=%.3f < 0.5) — DSP-Pfad",
+                                _corr03,
+                            )
+                            raise RuntimeError("ML out-of-domain decorrelation guard")
+                        if _rms_ratio03 > 1.25:
+                            logger.warning(
+                                "§V6 (copilot-instructions.md) ML→DSP-Ersatzpfad: ML-Ausgabe %.2f× lauter als Eingabe (Energie-Gewinn) — DSP-Pfad",
+                                _rms_ratio03,
+                            )
+                            raise RuntimeError("ML energy gain guard")
+                except RuntimeError:
+                    raise
+                except Exception as _guard03_exc:
+                    logger.debug("ML-Harmlosigkeits-Guard nicht verfügbar: %s", _guard03_exc)
                 ml_result.audio, loudness_stats = self._apply_material_loudness_preservation(
                     _loudness_ref_audio,
                     ml_result.audio,
                     material_type,
                     quality_mode,
                 )
+                # §0 Primum non nocere — Energie-Guard NACH der Lautheitskette:
+                # Die gated-RMS-Erhaltung kann breitbandige ML-Artefakt-Energie
+                # unterhalb des Gates übersehen → naive RMS-Ratio entscheidet.
+                try:
+                    from backend.core.audio_layout import mono_mix as _mm_guard03b
+
+                    _in_b = _mm_guard03(np.asarray(audio, dtype=np.float32))
+                    _out_b = _mm_guard03(np.asarray(ml_result.audio, dtype=np.float32))
+                    if _in_b.shape == _out_b.shape and _in_b.size > 512:
+                        _ratio_b = float(np.sqrt(np.mean(_out_b**2) + 1e-18) / np.sqrt(np.mean(_in_b**2) + 1e-18))
+                        if _ratio_b > 1.5:
+                            logger.warning(
+                                "§V6 (copilot-instructions.md) ML→DSP-Ersatzpfad: ML-Kette %.2f× lauter als Eingabe (Artefakt-Energie) — DSP-Pfad",
+                                _ratio_b,
+                            )
+                            raise RuntimeError("ML chain energy gain guard")
+                except RuntimeError:
+                    raise
+                except Exception as _guard03b_exc:
+                    logger.debug("ML-Energie-Guard nicht verfügbar: %s", _guard03b_exc)
 
                 _ml_strength_raw = params.get("strength", 1.0)
                 _ml_strength_val = float(_ml_strength_raw) if isinstance(_ml_strength_raw, int | float) else 1.0
@@ -2631,7 +2782,10 @@ class DenoisePhase(PhaseInterface):
         if rms_in > 1e-8 and rms_drop_db < -max_rms_drop_db:
             target_rms_drop_db = -max_rms_drop_db
             required_gain_db = target_rms_drop_db - rms_drop_db
-            makeup_gain_db = float(np.clip(required_gain_db, 0.0, 6.0))
+            # §0 Primum non nocere (SOTA-Guard): Makeup darf den Pegelabfall
+            # NIE überkompensieren — Denoising darf das Signal nicht lauter
+            # machen als die Eingabe. Cap = |drop| + 1 dB, max. 6 dB.
+            makeup_gain_db = float(np.clip(required_gain_db, 0.0, min(6.0, max(0.0, -rms_drop_db + 1.0))))
             if makeup_gain_db > 0.0:
                 _gain_lin = float(10.0 ** (makeup_gain_db / 20.0))
                 # §2.45a-II: signal-relative gate = max(material_floor, P15(ref)+9 dB)
@@ -3700,6 +3854,7 @@ class DenoisePhase(PhaseInterface):
 
         try:
             from backend.core.audio_utils import safe_sosfiltfilt as _safe_sosfiltfilt03
+
             hf_before = _safe_sosfiltfilt03(sos, before)
             hf_after = _safe_sosfiltfilt03(sos, after)
         except Exception as e:
@@ -3744,7 +3899,7 @@ if __name__ == "__main__":
 
     # High-frequency emphasis (tape hiss characteristic)
     _sos_hf = signal.butter(2, 5000, btype="high", fs=_sr, output="sos")
-    _noise_hf = signal.sosfilt(_sos_hf, _noise)
+    _noise_hf = signal.sosfiltfilt(_sos_hf, _noise)
 
     _audio_with_noise = _audio + _noise_hf
 

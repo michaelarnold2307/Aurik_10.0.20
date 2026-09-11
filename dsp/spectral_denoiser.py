@@ -144,7 +144,11 @@ class SpectralDenoiser:
         specs = [stft(ch, **_stft_kw)[2] for ch in channels]
 
         # Gain aus Mono-Mix (Stereo: verlinkte Kanäle, kein unabhängiges Gating)
-        mix = channels[0] if len(channels) == 1 else np.mean(cast(npt.NDArray[np.floating], np.stack(channels, axis=0)), axis=0)
+        mix = (
+            channels[0]
+            if len(channels) == 1
+            else np.mean(cast(npt.NDArray[np.floating], np.stack(channels, axis=0)), axis=0)
+        )
         _, _, Z_mix = stft(mix, **_stft_kw)
         gain = self._compute_omlsa_gain(np.abs(Z_mix) ** 2)
 
@@ -259,7 +263,7 @@ class SpectralDenoiser:
             ml = ml.T
         ml = np.nan_to_num(ml.astype(dsp_out.dtype), nan=0.0, posinf=0.0, neginf=0.0)
         if ml.shape != dsp_out.shape:
-            logger.debug("spectral_denoiser: ml_output Shape-Mismatch %s vs %s — DSP-only", ml.shape, dsp_out.shape)
+            logger.debug("spectral_denoiser: ml_Ausgabe Shape-Mismatch %s vs %s — DSP-only", ml.shape, dsp_out.shape)
             return dsp_out
         wet = float(np.clip(ml_wet, 0.0, 1.0))
         if wet <= 0.0:
@@ -276,6 +280,6 @@ class SpectralDenoiser:
                 genre=genre,
             )
         except Exception as _hml_exc:  # backend nicht verfügbar → deterministischer Fallback
-            logger.debug("spectral_denoiser: hybrid_ml_apply nicht verfügbar (%s) — skalarer Blend", _hml_exc)
+            logger.debug("spectral_denoiser: hybrid_ml_anwenden nicht verfügbar (%s) — skalarer Blend", _hml_exc)
             out = dsp_out + wet * (ml - dsp_out)
         return np.clip(np.nan_to_num(out, nan=0.0, posinf=0.0, neginf=0.0), -1.0, 1.0).astype(dsp_out.dtype)

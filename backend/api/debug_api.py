@@ -135,7 +135,9 @@ def format_goals_table(result: Any) -> str:
         trace = build_from_result(result)
         return _fmt(trace)  # type: ignore[no-any-return]
     except Exception as e:
-        logger.debug("§V6 format_goals_table fehlgeschlagen — Fallback-String zurückgegeben: %s", e)
+        logger.debug(
+            "§V6 (copilot-instructions.md) format_goals_table fehlgeschlagen — Ersatzpfad-String zurückgegeben: %s", e
+        )
         return f"(format_goals_table fehlgeschlagen: {e})"
 
 
@@ -154,7 +156,9 @@ def format_full_report(result: Any) -> str:
         store_trace(trace)  # Für get_last_trace() Zugriff
         return _fmt(trace)  # type: ignore[no-any-return]
     except Exception as e:
-        logger.debug("§V6 format_full_report fehlgeschlagen — Fallback-String zurückgegeben: %s", e)
+        logger.debug(
+            "§V6 (copilot-instructions.md) format_full_report fehlgeschlagen — Ersatzpfad-String zurückgegeben: %s", e
+        )
         return f"(format_full_report fehlgeschlagen: {e})"
 
 
@@ -176,7 +180,9 @@ def format_goal_deltas(trace: Any) -> str:
 
         return _fmt(trace)  # type: ignore[no-any-return]
     except Exception as e:
-        logger.debug("§V6 format_goal_deltas fehlgeschlagen — Fallback-String zurückgegeben: %s", e)
+        logger.debug(
+            "§V6 (copilot-instructions.md) format_goal_deltas fehlgeschlagen — Ersatzpfad-String zurückgegeben: %s", e
+        )
         return f"(format_goal_deltas fehlgeschlagen: {e})"
 
 
@@ -187,7 +193,10 @@ def format_phase_decisions(trace: Any) -> str:
 
         return _fmt(trace)  # type: ignore[no-any-return]
     except Exception as e:
-        logger.debug("§V6 format_phase_decisions fehlgeschlagen — Fallback-String zurückgegeben: %s", e)
+        logger.debug(
+            "§V6 (copilot-instructions.md) format_Verarbeitungsschritt_decisions fehlgeschlagen — Ersatzpfad-String zurückgegeben: %s",
+            e,
+        )
         return f"(format_phase_decisions fehlgeschlagen: {e})"
 
 
@@ -294,7 +303,10 @@ def _safe_float(v: Any, default: float = 0.0) -> float:
         f = float(v)
         return 0.0 if not math.isfinite(f) else round(f, 4)
     except (TypeError, ValueError) as exc:
-        logger.debug("§V6 _safe_float Konvertierung fehlgeschlagen — Default-Wert zurückgegeben: %s", exc)
+        logger.debug(
+            "§V6 (copilot-instructions.md) _safe_float Konvertierung fehlgeschlagen — Default-Wert zurückgegeben: %s",
+            exc,
+        )
         return default
 
 

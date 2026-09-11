@@ -145,11 +145,11 @@ class PhasePerformanceTracker:
         if status == "ok":
             pass
         elif status == "skipped":
-            logger.debug("Phase %s übersprungen", phase_id)
+            logger.debug("Verarbeitungsschritt %s übersprungen", phase_id)
         elif status == "failed":
-            logger.warning("Phase %s fehlgeschlagen (%.2fs)", phase_id, duration)
+            logger.warning("Verarbeitungsschritt %s fehlgeschlagen (%.2fs)", phase_id, duration)
         elif status == "rollback":
-            logger.warning("Phase %s Rollback (%.2fs)", phase_id, duration)
+            logger.warning("Verarbeitungsschritt %s Rollback (%.2fs)", phase_id, duration)
 
     def finish_pipeline(self) -> PipelinePerformance:
         """Pipeline beenden und Gesamt-Performance berechnen."""

@@ -13,7 +13,7 @@
 > Ergebnis erreicht. Ihre Schwellwerte sind so kalibriert, dass sie die qualitativ hochwertigsten
 > automatisierten Restaurierungsergebnisse für Musik mit Gesang weltweit ermöglichen.
 
-### §1.10 VocalQualityGate (v10.0.0-Phantom)
+## §1.10 VocalQualityGate (v10.0.0-Phantom)
 
 6-dimensionale Gesangsqualität mit Delta-Vergleich (vor/nach Phase):
 Formant-Integrität, Atem-Natürlichkeit, Sibilanz-Erhalt,

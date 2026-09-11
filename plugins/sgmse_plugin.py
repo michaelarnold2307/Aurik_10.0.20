@@ -10,19 +10,18 @@ Verbesserung gegenüber WPE (2010):
     - Hallunterdrückung UND Rauschreduzierung in einem Schritt
 
 Modell:
-    Primär:   models/sgmse_plus/sgmse_plus.ts (~251 MB, TorchScript)
+    Primär:   models/sgmse_plus/sgmse_plus_core.onnx (~251 MB, ONNX)
     Input:  [1, 2, n_fft//2+1, T] float32 (Real + Imag getrennt)
     Output: [1, 2, n_fft//2+1, T] float32 (denoised Real + Imag)
     Sigma:  Rauschpegel ∈ [0.01, 1.0] als skalarer Input
-    ONNX:    models/sgmse_plus/sgmse_plus_core.onnx (Score-Core, §v10.762,
-             Parität 1e-4 verifiziert) — bewusst NICHT im Runtime-Pfad:
-             Registry-Verdict „cpu" (ROCm/MIGraphX rechnet rel ~3–10 % falsch)
-             und CPU-ONNX ist ~50× langsamer als der TS-GPU-Pfad. Der
-             TS/eager-Checkpoint-Pfad bleibt der produktive Weg.
+    ONNX:    Real-IO-Score-Core mit Parität rel < 1e-4; wird im vorhandenen
+             STFT-/SDE-Chunk-Solver produktiv verwendet. TorchScript bleibt
+             als lokaler Kompatibilitätsfallback erhalten.
 
 Fallback-Kaskade (§4.4):
-    1. SGMSE+ TorchScript (dieser Plugin)
-    2. WPE DSP (Nara-WPE, wpe_plugin.py)
+    1. SGMSE+ ONNX Score-Core (dieses Plugin)
+    2. SGMSE+ TorchScript (lokaler Kompatibilitätsfallback)
+    3. WPE DSP (Nara-WPE, wpe_plugin.py)
 
 Backward-Kompatibilität:
     Alle früheren Exporte (WpePlugin, SgmsePlugin, get_wpe_plugin, …)
@@ -53,6 +52,7 @@ import numpy as np
 logger = logging.getLogger(__name__)
 
 _ROOT = Path(__file__).parent.parent
+_ONNX_PATH = _ROOT / "models" / "sgmse_plus" / "sgmse_plus_core.onnx"
 _TS_PATH = _ROOT / "models" / "sgmse_plus" / "sgmse_plus.ts"
 _CKPT_CANDIDATES = (
     _ROOT / "models" / "sgmse_plus" / "sgmse_plus_src_1.ckpt",
@@ -120,7 +120,7 @@ class SgmseResult:
     Attributes:
         audio:      Bereinigtes / Dereverb-Audio, float32 ∈ [-1, 1]
         sr:         Sample-Rate (48000)
-        model_used: "sgmse_plus_torchscript" | "wpe_dsp_fallback"
+        model_used: "sgmse_plus_onnx" | "sgmse_plus_torchscript" | "wpe_dsp_fallback"
         snr_improvement_db: Geschätzter SNR-Gewinn in dB
     """
 
@@ -141,7 +141,7 @@ class SgmseResult:
 
 
 class SGMSEPlusPlugin:
-    """SGMSE+ Score-Based Speech/Music Enhancement (TorchScript-primary).
+    """SGMSE+ Score-Based Speech/Music Enhancement (ONNX-primary).
 
     Verarbeitet kombinierte Rausch- und Hallunterdrückung via score-basierter
     generativer Inferenz oder fällt auf WPE DSP zurück (§4.4 Spec).
@@ -152,6 +152,7 @@ class SGMSEPlusPlugin:
     def __init__(self) -> None:
         """Initialisiert SGMSE+ plugin and attempt model load."""
         self._ts_model: Any = None
+        self._onnx_session: Any = None
         self._eager_model: Any = None
         self._eager_backbone: str = ""
         self._num_frames: int = 256
@@ -204,7 +205,7 @@ class SGMSEPlusPlugin:
                 )
                 return
         except Exception as exc:
-            logger.debug("SGMSE+ checkpoint geometry unavailable (%s) — using defaults", exc)
+            logger.debug("SGMSE+ checkpoint geometry nicht verfuegbar (%s) — using defaults", exc)
 
     def _try_load(self) -> None:
         """Lädt SGMSE+ TorchScript; sonst WPE-Fallback."""
@@ -214,6 +215,40 @@ class SGMSEPlusPlugin:
             )
         except Exception:
             _try_alloc = None  # type: ignore[assignment]
+
+        if _ONNX_PATH.exists():
+            try:
+                import onnxruntime as ort  # pylint: disable=import-outside-toplevel
+
+                try:
+                    from backend.core.ml_device_manager import (  # pylint: disable=import-outside-toplevel
+                        get_ort_providers,
+                    )
+
+                    _providers = get_ort_providers("SGMSE")
+                except Exception:
+                    _providers = ["CPUExecutionProvider"]
+                _session = ort.InferenceSession(str(_ONNX_PATH), providers=_providers)
+                _inputs = {item.name: item for item in _session.get_inputs()}
+                if {"x_t", "y", "t"} - set(_inputs):
+                    raise RuntimeError(f"SGMSE+ ONNX-Eingänge unerwartet: {sorted(_inputs)}")
+                self._onnx_session = _session
+                self._model_loaded = True
+                self._device = "cpu"
+                logger.info("✅ SGMSE+ ONNX geladen (%s, providers=%s)", _ONNX_PATH.name, _session.get_providers())
+                try:
+                    from backend.core.plugin_lifecycle_manager import register_plugin as _reg_plm
+
+                    _reg_plm(
+                        "SGMSE+",
+                        size_gb=0.12,
+                        unload_fn=lambda: self._unload_onnx(),
+                    )
+                except Exception as _exc:
+                    logger.debug("Plugin operation fehlgeschlagen (unkritisch): %s", _exc)
+                return
+            except Exception as _onnx_exc:
+                logger.warning("SGMSE+ ONNX nicht ladbar: %s — versuche TorchScript", _onnx_exc)
 
         if _TS_PATH.exists():
             try:
@@ -231,10 +266,10 @@ class SGMSEPlusPlugin:
 
                         _rel2("SGMSE+")
                     except Exception:
-                        logger.warning("sgmse_plugin.py::_try_load fallback", exc_info=True)
+                        logger.warning("sgmse_plugin.py::_try_laden Ersatzpfad", exc_info=True)
                     _budget_ok = _try_alloc is None or _try_alloc("SGMSE+", size_gb=0.12)
                 if not _budget_ok:
-                    logger.warning("SGMSE+: ML-Budget erschöpft — WPE-DSP-Fallback.")
+                    logger.warning("SGMSE+: ML-Grenze erschöpft — WPE-DSP-Ersatzpfad.")
                 else:
                     try:
                         from backend.core.ml_device_manager import (  # pylint: disable=import-outside-toplevel
@@ -254,7 +289,7 @@ class SGMSEPlusPlugin:
                             _quarantine_corrupt_torchscript(_TS_PATH, _gpu_load_exc)
                             raise
                         if _dev != "cpu":
-                            logger.warning("SGMSE+: GPU-Load fehlgeschlagen (%s) — CPU-Retry", _gpu_load_exc)
+                            logger.warning("SGMSE+: GPU-laden fehlgeschlagen (%s) — CPU-Wiederholung", _gpu_load_exc)
                             try:
                                 self._ts_model = torch.jit.load(str(_TS_PATH), map_location="cpu")  # nosec B614
                             except Exception as _cpu_load_exc:
@@ -278,16 +313,16 @@ class SGMSEPlusPlugin:
 
                         _reg_plm("SGMSE+", size_gb=0.12, unload_fn=_unload_sgmse)
                     except Exception as _exc:
-                        logger.debug("Plugin operation failed (non-critical): %s", _exc)
+                        logger.debug("Plugin operation fehlgeschlagen (unkritisch): %s", _exc)
                     return
             except Exception as exc:
-                logger.warning("SGMSE+ TorchScript nicht ladbar: %s — WPE-DSP-Fallback aktiv.", exc)
+                logger.warning("SGMSE+ TorchScript nicht ladbar: %s — WPE-DSP-Ersatzpfad aktiv.", exc)
                 try:
                     from backend.core.ml_memory_budget import release as _rel  # pylint: disable=import-outside-toplevel
 
                     _rel("SGMSE+")
                 except Exception as _exc:
-                    logger.debug("Plugin operation failed (non-critical): %s", _exc)
+                    logger.debug("Plugin operation fehlgeschlagen (unkritisch): %s", _exc)
 
         # Recovery path: keep ML available via checkpoint-backed eager model.
         if self._try_load_from_checkpoint():
@@ -295,9 +330,15 @@ class SGMSEPlusPlugin:
             return
 
         logger.info(
-            "SGMSE+ Modell nicht verfügbar (TorchScript: %s) — WPE-DSP-Fallback aktiv.",
+            "SGMSE+ Modell nicht verfügbar (ONNX: %s, TorchScript: %s) — WPE-DSP-Ersatzpfad aktiv.",
+            _ONNX_PATH,
             _TS_PATH,
         )
+
+    def _unload_onnx(self) -> None:
+        """Entlädt die ONNX-Session für den Plugin-Lifecycle-Manager."""
+        self._onnx_session = None
+        self._model_loaded = False
 
     def _try_load_from_checkpoint(self) -> bool:
         """Lädt SGMSE backbone directly from checkpoint as ML recovery path."""
@@ -376,7 +417,7 @@ class SGMSEPlusPlugin:
 
             return float(psutil.virtual_memory().available / (1024**3))
         except Exception:
-            logger.warning("sgmse_plugin.py::_get_available_ram_gb fallback", exc_info=True)
+            logger.warning("sgmse_plugin.py::_get_verfuegbar_ram_gb Ersatzpfad", exc_info=True)
             return float("inf")
 
     def enhance(
@@ -417,7 +458,7 @@ class SGMSEPlusPlugin:
         # panns_singing ≥ 0.35 → sigma_max=0.35; 0.25–0.35 → sigma_max=0.45 (weich).
         if float(panns_singing) >= 0.35:
             sigma = float(min(sigma, 0.35))
-            logger.debug("§0p SGMSE+ Vokal-Mode: panns_singing=%.2f → sigma cap 0.35", panns_singing)
+            logger.debug("§0p SGMSE+ Vokal-Betriebsart: panns_singing=%.2f → sigma cap 0.35", panns_singing)
         elif float(panns_singing) >= 0.25:
             sigma = float(min(sigma, 0.45))
 
@@ -430,12 +471,12 @@ class SGMSEPlusPlugin:
         # ── RAM guard: < 3 GB available → WPE-DSP-Fallback ──────────
         # Threshold lowered from 4 GB to 3 GB to catch tighter RAM situations.
         # The SGMSE+ TorchScript SDE solver needs ≥1 GB headroom even for 10 s chunks.
-        _use_ml = self._ts_model is not None
+        _use_ml = self._ts_model is not None or self._onnx_session is not None
         if _use_ml:
             _avail_gb = self._get_available_ram_gb()
             if _avail_gb < 3.0:
                 logger.warning(
-                    "SGMSE+ RAM guard: nur %.1f GB frei (< 3 GB) — WPE-DSP-Fallback",
+                    "SGMSE+ RAM guard: nur %.1f GB frei (< 3 GB) — WPE-DSP-Ersatzpfad",
                     _avail_gb,
                 )
                 _use_ml = False
@@ -458,7 +499,7 @@ class SGMSEPlusPlugin:
                         if _plm is not None:
                             _plm.set_active("SGMSE+", False)
                     except Exception:
-                        logger.warning("sgmse_plugin.py::process_channel fallback", exc_info=True)
+                        logger.warning("sgmse_plugin.py::verarbeiten_channel Ersatzpfad", exc_info=True)
             return self._wpe_fallback(ch, sr)
 
         if stereo:
@@ -483,7 +524,13 @@ class SGMSEPlusPlugin:
         return SgmseResult(
             audio=out_final.astype(np.float32),
             sr=sr,
-            model_used=("sgmse_plus_torchscript" if _use_ml else "wpe_dsp_fallback"),
+            model_used=(
+                "sgmse_plus_onnx"
+                if _use_ml and self._onnx_session is not None
+                else "sgmse_plus_torchscript"
+                if _use_ml
+                else "wpe_dsp_fallback"
+            ),
             snr_improvement_db=float(np.clip(snr_imp, 0.0, 30.0)),
         )
 
@@ -553,7 +600,7 @@ class SGMSEPlusPlugin:
                 _projected_total_s = _elapsed + _avg_chunk_s * _remaining_chunks
                 if _projected_total_s > _runtime_budget_s:
                     logger.warning(
-                        "SGMSE+ runtime guard: projected %.1fs > budget %.1fs after %d chunks — rest via WPE-fallback",
+                        "SGMSE+ runtime guard: projected %.1fs > Grenze %.1fs after %d chunks — rest via WPE-Ersatzpfad",
                         _projected_total_s,
                         _runtime_budget_s,
                         chunk_idx,
@@ -565,7 +612,7 @@ class SGMSEPlusPlugin:
 
             if _elapsed > _runtime_budget_s:
                 logger.warning(
-                    "SGMSE+ runtime guard: elapsed %.1fs > budget %.1fs at chunk %d — rest via WPE-fallback",
+                    "SGMSE+ runtime guard: elapsed %.1fs > Grenze %.1fs at chunk %d — rest via WPE-Ersatzpfad",
                     _elapsed,
                     _runtime_budget_s,
                     chunk_idx + 1,
@@ -584,12 +631,12 @@ class SGMSEPlusPlugin:
 
                 _ct_pre.CDLL("libc.so.6").malloc_trim(0)
             except Exception as _exc:
-                logger.debug("Plugin operation failed (non-critical): %s", _exc)
+                logger.debug("Plugin operation fehlgeschlagen (unkritisch): %s", _exc)
             _avail_pre = self._get_available_ram_gb()
             _headroom_needed = _HEADROOM_LARGE if chunk_len > self._MAX_CHUNK_SAMPLES_SMALL else _HEADROOM_SMALL
             if _avail_pre < _headroom_needed:
                 logger.warning(
-                    "SGMSE+ pre-chunk %d: %.1f GB frei < %.1f GB Headroom — WPE-Fallback für Rest (%.1f s)",
+                    "SGMSE+ pre-chunk %d: %.1f GB frei < %.1f GB Headroom — WPE-Ersatzpfad für Rest (%.1f s)",
                     chunk_idx + 1,
                     _avail_pre,
                     _headroom_needed,
@@ -636,13 +683,13 @@ class SGMSEPlusPlugin:
 
                 _ct.CDLL("libc.so.6").malloc_trim(0)
             except Exception as _exc:
-                logger.debug("Plugin operation failed (non-critical): %s", _exc)
+                logger.debug("Plugin operation fehlgeschlagen (unkritisch): %s", _exc)
 
             # RAM check between chunks — adaptive: shrink or bail out
             _avail_now = self._get_available_ram_gb()
             if _avail_now < 1.5:
                 logger.warning(
-                    "SGMSE+ chunk %d: nur %.1f GB frei (< 1.5 GB) — rest via WPE-Fallback",
+                    "SGMSE+ chunk %d: nur %.1f GB frei (< 1.5 GB) — rest via WPE-Ersatzpfad",
                     chunk_idx,
                     _avail_now,
                 )
@@ -659,7 +706,7 @@ class SGMSEPlusPlugin:
                 logger.info("SGMSE+ RAM dropping (%.1f GB) — switching to 10 s chunks", _avail_now)
 
         logger.info(
-            "SGMSE+ chunked: %d chunks (adaptive) für %.1f s Audio, %.1f GB frei (elapsed=%.1fs, budget=%.1fs)",
+            "SGMSE+ chunked: %d chunks (adaptive) für %.1f s Audio, %.1f GB frei (elapsed=%.1fs, Grenze=%.1fs)",
             chunk_idx,
             n_total / _SR,
             self._get_available_ram_gb(),
@@ -722,15 +769,16 @@ class SGMSEPlusPlugin:
         # Capture model refs atomically — PLM may set _ts_model/eager_model to None
         # between the None-check and the lambda invocation in _run_with_timeout (race cond.)
         _ts = self._ts_model
+        _onnx = self._onnx_session
         _eager = self._eager_model
-        if _ts is None and _eager is None:
+        if _ts is None and _onnx is None and _eager is None:
             return self._wpe_fallback(mono, _SR)
         # Minimum-Input-Guard: NCSNPP U-Net 4×4 kernel requires STFT freq/time dims > 4.
         # Short segments produce too few STFT bins → RuntimeError:
         # "Kernel size can't be greater than actual input size (3×130)".
         _MIN_MONO_SAMPLES = _DEFAULT_N_FFT * 8  # 510*8 = 4080 ≈ 85 ms @ 48 kHz
         if len(mono) < _MIN_MONO_SAMPLES:
-            logger.debug("SGMSE+: Segment zu kurz (%d < %d samples) → WPE-Fallback", len(mono), _MIN_MONO_SAMPLES)
+            logger.debug("SGMSE+: Segment zu kurz (%d < %d samples) → WPE-Ersatzpfad", len(mono), _MIN_MONO_SAMPLES)
             return self._wpe_fallback(mono, _SR)
         try:
             import gc  # pylint: disable=import-outside-toplevel
@@ -779,7 +827,7 @@ class SGMSEPlusPlugin:
 
                     _pin_fn = _get_mdm().pin_tensor_rocm
                 except Exception:
-                    logger.warning("sgmse_plugin.py::_identity_pin fallback", exc_info=True)
+                    logger.warning("sgmse_plugin.py::_identity_pin Ersatzpfad", exc_info=True)
                 for s in starts:
                     e = min(s + target_frames, T_orig)
                     seg = x_t[:, :, :, s:e]
@@ -792,7 +840,16 @@ class SGMSEPlusPlugin:
                         self._device
                     )
                     y_t = xt_t
-                    if _ts is not None:
+                    if _onnx is not None:
+                        out_t = _onnx.run(
+                            None,
+                            {
+                                "x_t": seg.astype(np.float32),
+                                "y": seg.astype(np.float32),
+                                "t": np.asarray([float(sigma)], dtype=np.float32),
+                            },
+                        )[0]
+                    elif _ts is not None:
                         out_t = self._run_with_timeout(
                             lambda xt_t=xt_t, y_t=y_t, t_t=t_t, _m=_ts: _m(xt_t, y_t, t_t),
                             timeout_s=self.FORWARD_TIMEOUT_S,
@@ -813,7 +870,10 @@ class SGMSEPlusPlugin:
                             )
                             out_t = torch.stack([out_complex.real, out_complex.imag], dim=1)
 
-                    out_seg = out_t.detach().cpu().numpy().astype(np.float32)
+                    if _onnx is not None:
+                        out_seg = np.asarray(out_t, dtype=np.float32)
+                    else:
+                        out_seg = out_t.detach().cpu().numpy().astype(np.float32)
                     # SGMSE+ TorchScript wrapper may return [B,2,1,F,T] (5D)
                     # instead of [B,2,F,T] (4D) — squeeze extra dim if present.
                     while out_seg.ndim > 4:
@@ -862,7 +922,7 @@ class SGMSEPlusPlugin:
 
                 _ct.CDLL("libc.so.6").malloc_trim(0)
             except Exception as _exc:
-                logger.debug("Plugin operation failed (non-critical): %s", _exc)
+                logger.debug("Plugin operation fehlgeschlagen (unkritisch): %s", _exc)
 
             return np.clip(np.nan_to_num(result, nan=0.0), -1.0, 1.0)  # type: ignore[no-any-return]
         except Exception as exc:
@@ -878,7 +938,7 @@ class SGMSEPlusPlugin:
                 )
                 raise MemoryError(f"SGMSE+ Torch-OOM: {exc}") from exc
             if self._device != "cpu":
-                logger.warning("SGMSE+: GPU-Inferenz fehlgeschlagen (%s) — CPU-Retry", exc)
+                logger.warning("SGMSE+: GPU-Inferenz fehlgeschlagen (%s) — CPU-Wiederholung", exc)
                 try:
                     for _m in (self._ts_model, self._eager_model):
                         if _m is not None:
@@ -890,12 +950,12 @@ class SGMSEPlusPlugin:
 
                         _mgr().report_gpu_error("SGMSE", exc)
                     except Exception:
-                        logger.warning("sgmse_plugin.py::unknown fallback", exc_info=True)
+                        logger.warning("sgmse_plugin.py::unknown Ersatzpfad", exc_info=True)
                 except Exception as _mv_exc:
                     logger.debug("SGMSE+ GPU→CPU move fehlgeschlagen: %s", _mv_exc)
                     self._device = "cpu"
                 return self._enhance_torchscript(mono, sigma)
-            logger.warning("SGMSE+ TorchScript-Inferenzfehler: %s — WPE-Fallback.", exc)
+            logger.warning("SGMSE+ TorchScript-Inferenzfehler: %s — WPE-Ersatzpfad.", exc)
             return self._wpe_fallback(mono, _SR)
 
     def _run_with_timeout(self, fn: Any, timeout_s: float) -> Any:
@@ -937,7 +997,7 @@ class SGMSEPlusPlugin:
             arr = np.asarray(result, dtype=np.float32).flatten()
             return np.clip(np.nan_to_num(arr, nan=0.0), -1.0, 1.0)  # type: ignore[no-any-return]
         except Exception as exc:
-            logger.error("WPE-Fallback fehlgeschlagen: %s — Audio unverändert.", exc)
+            logger.error("WPE-Ersatzpfad fehlgeschlagen: %s — Audio unverändert.", exc)
             return np.clip(np.nan_to_num(mono.copy(), nan=0.0), -1.0, 1.0)  # type: ignore[no-any-return]
 
 

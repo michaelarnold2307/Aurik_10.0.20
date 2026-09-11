@@ -1,4 +1,4 @@
-"""Unit-Tests für backend/core/anti_fatigue_pass.py (Hörordnung §6, §V7).
+"""Unit-Tests für backend/core/anti_fatigue_pass.py (Hörordnung §6, §V7 (copilot-instructions.md)).
 
 Deterministisch, ohne Audio-I/O. Prüft Plan-Ableitung, einseitigen Crest,
 Mikrodynamik-Expansion (Peak-neutral) und Do-No-Harm-Verhalten.

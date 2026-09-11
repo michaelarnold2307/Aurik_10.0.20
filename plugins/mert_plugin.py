@@ -635,10 +635,11 @@ class MertPlugin:
                     try:
                         ml_budget_release(_budget_key)
                     except Exception:
+                        logger.debug("Stiller Ersatzpfad dokumentiert (Bug 9/V74)", exc_info=True)
                         pass
                     if not ml_budget_try_allocate(_budget_key, size_gb=_budget_gb):
                         logger.warning(
-                            "MERT ONNX %s: ML-Budget erschöpft (%.2f GB) → nächster Versuch",
+                            "MERT ONNX %s: ML-Grenze erschöpft (%.2f GB) → nächster Versuch",
                             _model_type,
                             _budget_gb,
                         )
@@ -654,7 +655,7 @@ class MertPlugin:
                 # (ersetzt den früheren CPU-only-Hartpfad).
                 try:
                     from backend.core.ml_device_manager import get_ort_providers as _mert_prov  # pylint: disable=import-outside-toplevel  # noqa: I001
-                    from backend.core.gpu_model_registry import apply_gpu_policy as _mert_policy  # pylint: disable=import-outside-toplevel  # noqa: I001
+                    from backend.core.gpu_model_registry import apply_gpu_policy as _mert_policy  # pylint: disable=import-outside-toplevel
 
                     _providers = _mert_policy(_mert_prov("MERT-330M-HF"), _onnx_path)
                 except Exception:
@@ -677,7 +678,7 @@ class MertPlugin:
                     logger.debug("Plugin operation fehlgeschlagen (unkritisch): %s", _exc)
                 return  # Successfully loaded — stop trying further variants
             except Exception as e:
-                logger.warning("ML→DSP-Fallback aktiviert", exc_info=True)
+                logger.warning("ML→DSP-Ersatzpfad aktiviert", exc_info=True)
                 logger.debug("MERT ONNX Ladefehler (%s): %s → nächster Versuch", _model_type, e)
                 try:
                     ml_budget_release(_budget_key)

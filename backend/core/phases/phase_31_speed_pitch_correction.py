@@ -938,7 +938,7 @@ class SpeedPitchCorrectionPhase(PhaseInterface):
             return pitch_hz, confidence
 
         except Exception as e:
-            logger.warning("ML→DSP-Fallback aktiviert", exc_info=True)  # §V6 (copilot-instructions.md)
+            logger.warning("ML→DSP-Ersatzpfad aktiviert", exc_info=True)  # §V6 (copilot-instructions.md)
             logger.debug("pYIN fehlgeschlagen (%s), DSP-Notfall-Ersatzpfad: librosa.yin", e)
             try:
                 # Notfall-Fallback: librosa.yin (einfaches YIN — nur als letzter Ausweg)

@@ -21,6 +21,8 @@ from typing import Any
 
 import numpy as np
 
+from backend.core.audio_layout import to_channels_first
+
 logger = logging.getLogger(__name__)
 
 
@@ -132,11 +134,14 @@ class AuraPreserver:
             noise_bins = sorted_mags[: max(10, len(sorted_mags) // 10)]
             profile.noise_floor_db = float(20.0 * np.log10(np.median(noise_bins) + 1e-12))
 
-        # Stereo Width (L/R Differenz / Summe)
-        if audio.ndim >= 2 and audio.shape[0] >= 2:
-            diff = np.mean(np.abs(audio[0] - audio[1]))
-            sum_ = np.mean(np.abs(audio[0] + audio[1])) + 1e-10
-            profile.stereo_width = float(diff / sum_)
+        # Stereo Width (L/R Differenz / Summe) — §V7 (copilot-instructions.md):
+        # layout-sicher: audio[0]/audio[1] trafen bei (N,2)-Input die ZEIT-Achse.
+        if audio.ndim >= 2:
+            _st = to_channels_first(audio)
+            if _st.ndim == 2 and _st.shape[0] >= 2:
+                diff = np.mean(np.abs(_st[0] - _st[1]))
+                sum_ = np.mean(np.abs(_st[0] + _st[1])) + 1e-10
+                profile.stereo_width = float(diff / sum_)
 
         self._baseline = profile
         return profile

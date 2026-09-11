@@ -8,6 +8,10 @@ Speichert:
 
 from __future__ import annotations
 
+import logging
+
+logger = logging.getLogger(__name__)
+
 import json
 import time
 from pathlib import Path
@@ -48,6 +52,7 @@ class SessionMemory:
                 self._last_material = data.get("last_material", "unknown")
                 self._last_export_format = data.get("last_export_format", "flac")
             except Exception:
+                logger.debug("Stiller Ersatzpfad dokumentiert (Bug 9/V74)", exc_info=True)
                 pass
 
     def _save(self) -> None:

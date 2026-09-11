@@ -1969,7 +1969,7 @@ class EraClassifier:
         except Exception as exc:
             # §V6 (copilot-instructions.md): ML→DSP-Fallback — DEBUG-level Logging
             # um zu zeigen, dass ein Fallback stattfand, aber keine Warnung für den User.
-            logger.debug("§G23 EraClassifier Tier-1 fallback (normal): %s", exc)
+            logger.debug("§G23 EraClassifier Tier-1 Ersatzpfad (normal): %s", exc)
             return None
 
     def _tier2(

@@ -59,7 +59,10 @@ def _get_adaptive_rollback_threshold() -> float:
 
         return max(_ROLLBACK_THRESHOLD_FLOOR, get_hallucination_guard_threshold())
     except Exception as exc:
-        logger.debug("§V6 SFT-Halluzinationsschwelle nicht verfügbar — Floor-Wert zurückgegeben (0.15): %s", exc)
+        logger.debug(
+            "§V6 (copilot-instructions.md) SFT-Halluzinationsschwelle nicht verfügbar — Floor-Wert zurückgegeben (0.15): %s",
+            exc,
+        )
         return _ROLLBACK_THRESHOLD_FLOOR
 
 
@@ -300,6 +303,6 @@ def _compute_spectral_novelty_dsp(
         novelty = float(np.clip(E_novel / E_total, 0.0, 1.0))
         return novelty, {"method": "dsp_fallback"}
     except Exception as exc:
-        logger.warning("ML→DSP-Fallback aktiviert", exc_info=True)  # §V6 (copilot-instructions.md)
+        logger.warning("ML→DSP-Ersatzpfad aktiviert", exc_info=True)  # §V6 (copilot-instructions.md)
         logger.debug("_berechnen_spectral_novelty_dsp fehlgeschlagen: %s", exc)
         return 0.0, {"error": str(exc), "method": "dsp_fallback_failed"}

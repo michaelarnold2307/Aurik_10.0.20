@@ -69,16 +69,12 @@ def test_smooth_bar_fallback_uses_de_num() -> None:
 
 def test_heartbeat_forecast_uses_de_num() -> None:
     """Heartbeat-Prognose: f\"{_overall:.1f} %\" mit Punkt ist verboten."""
-    assert 'setFormat(f"{_de_num(_overall, 1)} %")' in _SRC, (
-        "Heartbeat-Prognose muss _de_num (Komma) nutzen"
-    )
+    assert 'setFormat(f"{_de_num(_overall, 1)} %")' in _SRC, "Heartbeat-Prognose muss _de_num (Komma) nutzen"
 
 
 def test_queue_list_item_uses_de_num() -> None:
     """Queue-Liste (⏳ datei (x %)): Punkt-Format ({progress / 100:.2f}%) verboten."""
-    assert "({_de_num(progress / 100)} %)" in _SRC, (
-        "Queue-Listen-Eintrag muss _de_num (Komma) nutzen"
-    )
+    assert "({_de_num(progress / 100)} %)" in _SRC, "Queue-Listen-Eintrag muss _de_num (Komma) nutzen"
     assert "({progress / 100:.2f}%)" not in _SRC
 
 

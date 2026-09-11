@@ -21,6 +21,8 @@ from pathlib import Path
 import numpy as np
 import scipy.signal as signal
 
+from backend.core.audio_layout import to_channels_first
+
 from .safety_wrapper_template import (
     BaseSafetyWrapper,
     PostCheckResult,
@@ -47,11 +49,14 @@ def check_mono_compatibility(audio: np.ndarray) -> tuple[float, float]:
     Returns:
         (compatibility_score, energy_loss_db)
     """
-    if audio.ndim == 1 or audio.shape[0] != 2:
+    # §V7 (copilot-instructions.md): Layout-Normalisierung — shape[0]!=2 ließ
+    # channels-last (N,2) fälschlich als Mono durchrutschen.
+    _st = to_channels_first(audio)
+    if audio.ndim == 1 or _st.ndim != 2 or _st.shape[0] != 2:
         return 1.0, 0.0  # Mono is always compatible
 
-    left = audio[0]
-    right = audio[1]
+    left = _st[0]
+    right = _st[1]
 
     # Stereo energy
     stereo_energy = np.mean(left**2) + np.mean(right**2)
@@ -91,11 +96,12 @@ def measure_stereo_width(audio: np.ndarray) -> float:
     Returns:
         Width measure (0.0-2.0)
     """
-    if audio.ndim == 1 or audio.shape[0] != 2:
+    _st = to_channels_first(audio)
+    if audio.ndim == 1 or _st.ndim != 2 or _st.shape[0] != 2:
         return 0.0  # Mono
 
-    left = audio[0]
-    right = audio[1]
+    left = _st[0]
+    right = _st[1]
 
     # Mid/Side decomposition
     mid = (left + right) / 2
@@ -126,11 +132,12 @@ def detect_center_content(audio: np.ndarray, sr: int) -> dict[str, float]:
     Returns:
         Dict with center content analysis
     """
-    if audio.ndim == 1 or audio.shape[0] != 2:
+    _st = to_channels_first(audio)
+    if audio.ndim == 1 or _st.ndim != 2 or _st.shape[0] != 2:
         return {"has_center_content": False, "center_energy": 0.0}
 
-    left = audio[0]
-    right = audio[1]
+    left = _st[0]
+    right = _st[1]
 
     # Mid signal (center content)
     mid = (left + right) / 2
@@ -177,11 +184,12 @@ def measure_phase_correlation(audio: np.ndarray) -> float:
     Returns:
         Phase correlation (-1.0 to +1.0)
     """
-    if audio.ndim == 1 or audio.shape[0] != 2:
+    _st = to_channels_first(audio)
+    if audio.ndim == 1 or _st.ndim != 2 or _st.shape[0] != 2:
         return 1.0  # Mono
 
-    left = audio[0]
-    right = audio[1]
+    left = _st[0]
+    right = _st[1]
 
     # Normalize
     left_norm = left / (np.sqrt(np.mean(left**2)) + 1e-10)
@@ -208,11 +216,12 @@ def detect_hollow_artifacts(audio: np.ndarray, sr: int) -> tuple[bool, float]:
     Returns:
         (has_artifacts, severity)
     """
-    if audio.ndim == 1 or audio.shape[0] != 2:
+    _st = to_channels_first(audio)
+    if audio.ndim == 1 or _st.ndim != 2 or _st.shape[0] != 2:
         return False, 0.0
 
-    left = audio[0]
-    right = audio[1]
+    left = _st[0]
+    right = _st[1]
 
     # Mid and Side
     mid = (left + right) / 2
@@ -256,11 +265,12 @@ def measure_spatial_balance(audio: np.ndarray) -> float:
     Returns:
         Balance (0.0-1.0)
     """
-    if audio.ndim == 1 or audio.shape[0] != 2:
+    _st = to_channels_first(audio)
+    if audio.ndim == 1 or _st.ndim != 2 or _st.shape[0] != 2:
         return 0.5  # Mono = balanced
 
-    left_energy = np.mean(audio[0] ** 2)
-    right_energy = np.mean(audio[1] ** 2)
+    left_energy = np.mean(_st[0] ** 2)
+    right_energy = np.mean(_st[1] ** 2)
 
     total_energy = left_energy + right_energy
 
@@ -332,7 +342,8 @@ class StereoWidenerSafety(BaseSafetyWrapper):
         metadata = {}
 
         # Check if stereo
-        if audio.ndim == 1 or audio.shape[0] != 2:
+        _st = to_channels_first(audio)
+        if audio.ndim == 1 or _st.ndim != 2 or _st.shape[0] != 2:
             return PreCheckResult(
                 passed=False, confidence=0.0, reasons=["Audio is not stereo. Stereo widening requires stereo input."]
             )

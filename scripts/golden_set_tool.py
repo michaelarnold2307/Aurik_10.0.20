@@ -157,15 +157,19 @@ def _load_audio(path: str) -> tuple[np.ndarray, int] | None:
         audio, sr = sf.read(path, dtype="float32")
         return np.asarray(audio, dtype=np.float32), int(sr)
     except Exception:
+        logger.debug("Stiller Ersatzpfad dokumentiert (Bug 9/V74)", exc_info=True)
         pass
     try:
         from scipy.io import wavfile
 
-        sr, audio = wavfile.read(path)
-        audio = np.asarray(audio, dtype=np.float32)
+        _wf = wavfile.read(path)
+        if not isinstance(_wf, tuple) or len(_wf) < 2:  # Bug 12: Index-basiert statt Unpacking
+            raise ValueError("wavfile.read() ohne (sr, data)-Tupel")
+        sr = int(_wf[0])
+        audio = np.asarray(_wf[1], dtype=np.float32)
         if np.max(np.abs(audio)) > 1.0:
             audio = audio / 32768.0
-        return audio, int(sr)
+        return audio, sr
     except Exception:
         return None
 

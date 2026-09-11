@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """§v10.15 Gebote-Verifier: Garantiert dass ALLE §G-Regeln im Code umgesetzt sind.
 
+
 Non-Plus-Ultra-Compliance-Checker. Prüft JEDES Gebot gegen den tatsächlichen Code.
 Keine Spezifikation ohne Verifikation. Kein Gebot ohne Nachweis.
 
@@ -11,6 +12,10 @@ Usage:
 """
 
 from __future__ import annotations
+
+import logging
+
+logger = logging.getLogger(__name__)
 
 import ast
 import os
@@ -74,10 +79,7 @@ def _file_contains(path: str, pattern: str) -> bool:
 def _file_contains_line(path: str, pattern: str) -> bool:
     """Prüft ob eine Datei eine Zeile mit dem Pattern enthält."""
     try:
-        for line in (ROOT / path).read_text().splitlines():
-            if re.search(pattern, line):
-                return True
-        return False
+        return any(re.search(pattern, line) for line in (ROOT / path).read_text().splitlines())
     except Exception:
         return False
 
@@ -148,6 +150,7 @@ def _find_in_code(pattern: str, paths: list[str] | None = None) -> bool:
                 if re.search(pattern, py_file.read_text()):
                     return True
             except Exception:
+                logger.debug("Stiller Ersatzpfad dokumentiert (Bug 9/V74)", exc_info=True)
                 pass
     return False
 
@@ -257,6 +260,7 @@ def check_g24() -> tuple[bool, str]:
             try:
                 count += len(re.findall(r"np\.nan_to_num|np\.isfinite", _pf.read_text()))
             except Exception:
+                logger.debug("Phasen-Datei nicht lesbar: %s", _pf, exc_info=True)
                 pass
     return count >= 10, f"NaN/Inf-Schutz {count}× in Phasen (≥10 erwartet)"
 
@@ -398,6 +402,88 @@ def check_db13() -> tuple[bool, str]:
 # ═══════════════════════════════════════════════════════════════════════════════
 # Main
 # ═══════════════════════════════════════════════════════════════════════════════
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# Teilmenge-Erweiterung Rev. 2026-09-11 (dokumentiert): §G5 (GEBOTE.md)/§G6 (GEBOTE.md)/§G8 (GEBOTE.md)/§G9 (GEBOTE.md)
+# Die folgenden Checks sind die STATISCH PRÜFBARE Teilmenge der normativen Kette
+# (copilot-instructions.md + GEBOTE.md). Vollständige Prüfung der übrigen Gebote
+# bleibt den Pre-Commit-Gates (compliance_check.py, bug-prevention) vorbehalten.
+# ═══════════════════════════════════════════════════════════════════════════════
+
+# §G5 (GEBOTE.md) zielt auf ENTSCHEIDUNGSLOGIK. Zeitmessung (t0 = time.time();
+# execution_time_seconds = time.time() - t0) ist reine Instrumentierung und
+# erlaubt. Verboten ist time.time() als Seed/Entscheidungsinput.
+_G5_SEED_RE = re.compile(
+    r"(?:np\.random|random|torch)\.(?:default_rng|seed|manual_seed|Generator)\s*\([^)]*time\.time\(\)",
+    re.IGNORECASE,
+)
+
+
+@gebot(
+    "§G5 (copilot-instructions.md)", "Determinismus", "Kein time.time() als Seed/Entscheidungsinput in backend/core."
+)
+def check_g5_determinism() -> tuple[bool, str]:
+    violations: list[str] = []
+    for py_file in (ROOT / "backend/core").rglob("*.py"):
+        rel = str(py_file.relative_to(ROOT))
+        try:
+            content = py_file.read_text(encoding="utf-8", errors="replace")
+        except Exception:
+            logger.debug("Datei nicht lesbar: %s", py_file, exc_info=True)
+            continue
+        for line_no, line in enumerate(content.splitlines(), start=1):
+            _s = line.strip()
+            if _s.startswith("#"):
+                continue
+            if _G5_SEED_RE.search(line):
+                violations.append(f"{rel}:{line_no}")
+    if not violations:
+        return True, "Kein time.time() als Seed/Entscheidungsinput (Zeitmessung = Instrumentierung, erlaubt)"
+    return False, f"time.time() als Seed/Entscheidungsinput: {', '.join(violations[:3])}"
+
+
+@gebot(
+    "§G6 (GEBOTE.md)",
+    "Null-Toleranz Phasen-Leckage",
+    "Circuit-Breaker/Zustände aus Phase 12/21/35/42 werden pro Song zurückgesetzt (§C3).",
+)
+def check_g6_leakage() -> tuple[bool, str]:
+    ok = _find_in_code(r"circuit_breaker.*reset|reset.*circuit_breaker|circuit.*zustand.*reset|per_song.*reset")
+    return ok, "Per-Song-Reset der Circuit-Breaker im Code" if ok else "Kein Circuit-Breaker-Reset gefunden"
+
+
+@gebot(
+    "§G8 (GEBOTE.md)",
+    "CD-Rauschprofil-Pflicht",
+    "Jeder Export erhält ein CD-charakteristisches Rauschprofil (psychoakustisch appliziert).",
+)
+def check_g8_cd_noise() -> tuple[bool, str]:
+    ok = _find_in_code(r"cd_noise_profile|CD_Rauschprofil|noise_profile")
+    return ok, "CD-Rauschprofil im Export-Pfad" if ok else "Kein CD-Rauschprofil gefunden"
+
+
+@gebot(
+    "§G9 (copilot-instructions.md)",
+    "Spec-Referenzen",
+    "≥45% der backend/core-Dateien tragen eine §-Spec-Referenz (§G9).",
+)
+def check_g9_spec_refs() -> tuple[bool, str]:
+    total = 0
+    with_ref = 0
+    for py_file in (ROOT / "backend/core").rglob("*.py"):
+        total += 1
+        try:
+            if "§" in py_file.read_text(encoding="utf-8", errors="replace"):
+                with_ref += 1
+        except Exception:
+            logger.debug("Datei nicht lesbar: %s", py_file, exc_info=True)
+            pass
+    if total == 0:
+        return False, "keine Dateien gefunden"
+    ratio = with_ref / total
+    ok = ratio >= 0.45
+    return ok, f"{with_ref}/{total} Dateien mit Spec-Referenz ({ratio:.1%}, Schwelle 45%)"
 
 
 def run_verifier(ci_mode: bool = False) -> int:

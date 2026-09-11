@@ -207,7 +207,7 @@ def _repair_channel(
                 phase[:, _known_mask] = _ph_anchor
             except Exception:
                 logger.warning(
-                    "§V6 Phase-50 POCS consistency iteration failed → break (keep current estimate): %s",
+                    "§V6 (copilot-instructions.md) Verarbeitungsschritt-50 POCS consistency iteration fehlgeschlagen → break (keep current estimate): %s",
                     str(Exception),
                 )
                 break  # Consistency iteration failed; keep current estimate

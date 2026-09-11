@@ -354,7 +354,10 @@ def probe_phase_benefit(
         }
 
     except Exception as e:
-        logger.debug("§V6 _compute_quality_probe fehlgeschlagen — should_run=False zurückgegeben (Probe-Fehler): %s", e)
+        logger.debug(
+            "§V6 (copilot-instructions.md) _berechnen_quality_probe fehlgeschlagen — should_Ausfuehrung=False zurückgegeben (Probe-Fehler): %s",
+            e,
+        )
         return {"should_run": False, "strength": 0.0, "delta": -1.0, "reason": f"Probe fehlgeschlagen: {e}"}
 
 
@@ -374,5 +377,9 @@ def _quick_probe_delta(pre: np.ndarray, post: np.ndarray) -> float:
         corr = max(0.0, min(1.0, corr)) if not np.isnan(corr) else 1.0
         return float(0.5 * rms_ok + 0.5 * corr - 0.95)
     except Exception as exc:
-        logger.debug("§V6 _quick_probe_delta fehlgeschlagen — 0.0 zurückgegeben (Audio %s): %s", pre.shape, exc)
+        logger.debug(
+            "§V6 (copilot-instructions.md) _quick_probe_delta fehlgeschlagen — 0.0 zurückgegeben (Audio %s): %s",
+            pre.shape,
+            exc,
+        )
         return 0.0

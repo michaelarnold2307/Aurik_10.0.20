@@ -353,7 +353,10 @@ class MidSideProcessing(PhaseInterface):
             try:
                 material = MaterialType(str(material))
             except Exception:
-                logger.warning("§V6 MaterialType Konvertierung fehlgeschlagen — Fallback auf VINYL: %s", material)
+                logger.warning(
+                    "§V6 (copilot-instructions.md) MaterialType Konvertierung fehlgeschlagen — Ersatzpfad auf VINYL: %s",
+                    material,
+                )
                 material = MaterialType.VINYL
 
         _strength_ctx = resolve_phase_strength_contract(kwargs)

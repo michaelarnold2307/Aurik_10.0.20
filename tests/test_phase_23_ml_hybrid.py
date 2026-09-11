@@ -1,6 +1,5 @@
 import pytest
 
-#!/usr/bin/env python3
 """
 Test Phase 23 ML-Hybrid Integration
 ====================================

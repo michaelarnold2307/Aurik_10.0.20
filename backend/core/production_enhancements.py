@@ -217,10 +217,10 @@ class CodecAwareProcessor:
         p = self._profile
 
         try:
+            from scipy.signal import butter, sosfilt
+
             # 1. Pre-Emphasis (leichte Höhenanhebung vor Encoder)
             if p.pre_emphasis_db > 0.01:
-                from scipy.signal import butter, sosfilt
-
                 freq = 4000.0
                 10.0 ** (p.pre_emphasis_db / 40.0)
                 sos = (
@@ -239,8 +239,6 @@ class CodecAwareProcessor:
             # 2. Lowpass (Anti-Aliasing vor Codec)
             if p.lowpass_hz is not None and p.lowpass_hz < sr / 2.2:
                 try:
-                    from scipy.signal import butter, sosfilt
-
                     sos = butter(4, p.lowpass_hz / (sr / 2), btype="low", output="sos")
                     if result.ndim == 2:
                         result[0] = sosfilt(sos, result[0])

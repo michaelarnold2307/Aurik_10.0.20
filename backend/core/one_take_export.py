@@ -260,7 +260,7 @@ class OneTakeExport:
                 arr = OneTakeExport._limit_channel(arr, ceiling_linear, lookahead, release_coeff)
             return cast(np.ndarray, (np.clip(arr, -ceiling_linear, ceiling_linear)))
         except Exception:
-            logger.warning("ML→DSP-Fallback aktiviert", exc_info=True)  # §V6 (copilot-instructions.md)
+            logger.warning("ML→DSP-Ersatzpfad aktiviert", exc_info=True)  # §V6 (copilot-instructions.md)
             return cast(np.ndarray, (np.clip(audio, -0.966, 0.966)))  # −0.3 dB hard clip fallback
 
     @staticmethod

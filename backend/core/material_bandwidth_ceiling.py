@@ -124,7 +124,7 @@ def get_material_bandwidth_ceiling(
         return best_ceiling
 
     logger.warning(
-        "§1.2b Bandbreiten-Ceiling: %s (era=%d) nicht gefunden → Fallback %.0f Hz",
+        "§1.2b Bandbreiten-Ceiling: %s (era=%d) nicht gefunden → Ersatzpfad %.0f Hz",
         mat,
         era_decade or -1,
         _fallback,

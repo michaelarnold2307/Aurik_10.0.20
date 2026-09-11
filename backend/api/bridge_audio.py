@@ -237,7 +237,7 @@ def inject_cd_noise_profile(
 
         return _inject(audio, sample_rate, mode=mode, bit_depth=bit_depth, seed=seed)  # type: ignore[misc]
     except ImportError:
-        logger.debug("§V6 cd_noise_profile nicht verfügbar — Audio unverändert zurückgegeben")
+        logger.debug("§V6 (copilot-instructions.md) cd_noise_Profil nicht verfügbar — Audio unverändert zurückgegeben")
         return audio
 
 
@@ -284,7 +284,7 @@ def get_live_preview(seek_s: float = 0.0, duration_s: float = 5.0) -> dict | Non
             "total_s": float(n_total / sr),  # type: ignore[operator]
         }
     except Exception as _prev_exc:
-        logger.warning("§G93 bridge: get_live_preview failed → returning None: %s", _prev_exc, exc_info=True)
+        logger.warning("§G93 bridge: get_live_preview fehlgeschlagen → returning None: %s", _prev_exc, exc_info=True)
         return None
 
 

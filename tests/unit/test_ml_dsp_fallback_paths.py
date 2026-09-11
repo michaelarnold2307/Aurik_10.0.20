@@ -1,4 +1,4 @@
-"""§V6 ML→DSP-Fallback-Pfade — Validierung der Fallback-Kette.
+"""§V6 (copilot-instructions.md) ML→DSP-Fallback-Pfade — Validierung der Fallback-Kette.
 
 Testet alle kritischen ML→DSP-Fallback-Pfade in Aurik 10, um sicherzustellen,
 dass das System auch ohne ML-Modelle (ONNX, PyTorch) korrekt funktioniert.
@@ -184,7 +184,9 @@ class TestSotaVocalModelRouterFallback:
         monkeypatch.setitem(
             __import__("sys").modules,
             "plugins.miipher_dit_plugin",
-            types.SimpleNamespace(get_miipher_dit=lambda: (_ for _ in ()).throw(ImportError("miipher_dit not available"))),
+            types.SimpleNamespace(
+                get_miipher_dit=lambda: (_ for _ in ()).throw(ImportError("miipher_dit not available"))
+            ),
         )
         monkeypatch.setitem(
             __import__("sys").modules,

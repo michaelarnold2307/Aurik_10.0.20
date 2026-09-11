@@ -61,7 +61,7 @@ class SpectrogramSnapshotter:
         try:
             from PIL import Image
         except Exception as e:
-            logger.debug("§V6 PIL-Import fehlgeschlagen — Dummy-Bild zurückgegeben: %s", e)
+            logger.debug("§V6 (copilot-instructions.md) PIL-Import fehlgeschlagen — Dummy-Bild zurückgegeben: %s", e)
             return _dummy_image()
 
         _mono = audio
@@ -84,7 +84,9 @@ class SpectrogramSnapshotter:
 
             _f, _t, Zxx = stft(_segment.astype(np.float64), fs=sr, nperseg=_N_FFT, noverlap=_N_FFT - _HOP)
         except Exception as e:
-            logger.debug("§V6 scipy.signal.stft fehlgeschlagen — Dummy-Bild zurückgegeben: %s", e)
+            logger.debug(
+                "§V6 (copilot-instructions.md) scipy.signal.stft fehlgeschlagen — Dummy-Bild zurückgegeben: %s", e
+            )
             return _dummy_image()
 
         # Magnitude → dB → 0-255 Graustufen
@@ -106,5 +108,7 @@ def _dummy_image():
 
         return Image.new("L", (1, 1), 0)
     except Exception as e:
-        logger.debug("§V6 _dummy_image: PIL-Import fehlgeschlagen — None zurückgegeben: %s", e)
+        logger.debug(
+            "§V6 (copilot-instructions.md) _dummy_image: PIL-Import fehlgeschlagen — None zurückgegeben: %s", e
+        )
         return None

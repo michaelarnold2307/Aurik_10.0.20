@@ -242,7 +242,7 @@ def validate_material_era_consistency(material: str, decade: int, transfer_chain
         # Nein — wenn decade > _end, wurde es VOR der Aufnahme eingestellt.
         # Das ist physikalisch unmöglich.
         logger.warning(
-            "validate_material_era_consistency: %s production ended %d, but era=%d → IMPOSSIBLE",
+            "validieren_material_era_consistency: %s production ended %d, but era=%d → IMPOSSIBLE",
             material,
             _end,
             decade,
@@ -304,7 +304,7 @@ def validate_material_era_consistency(material: str, decade: int, transfer_chain
             # Bei Einzel-Medium (keine Chain) → IMPOSSIBLE.
             if not transfer_chain or len(transfer_chain) <= 1:
                 logger.warning(
-                    "validate_material_era_consistency: %s invented %d, but era=%d and no transfer chain → IMPOSSIBLE",
+                    "validieren_material_era_consistency: %s invented %d, but era=%d and no transfer chain → IMPOSSIBLE",
                     material,
                     _invented,
                     decade,

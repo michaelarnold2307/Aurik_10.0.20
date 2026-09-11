@@ -87,9 +87,7 @@ class TestEvaluateAudibility:
 
     def test_physical_cap_types_accepted(self) -> None:
         data = {"bandwidth_loss": _entry(0.7, 0.35)}
-        rep = evaluate_defect_audibility(
-            data, material_key="mp3_low", physical_cap_types={"codec_artifacts"}
-        )
+        rep = evaluate_defect_audibility(data, material_key="mp3_low", physical_cap_types={"codec_artifacts"})
         assert rep.gate_passed is True
         assert rep.n_physical_cap == 1
 

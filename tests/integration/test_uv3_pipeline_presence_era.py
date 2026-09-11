@@ -18,12 +18,12 @@ def _create_test_audio(sr: int = 48000, duration: float = 2.0) -> np.ndarray:
     """Erzeugt realistisches Test-Audio mit mehreren Frequenzen und Transienten."""
     t = np.linspace(0, duration, int(sr * duration), endpoint=False)
     signal = (
-        0.3 * np.sin(2 * np.pi * 440.0 * t) +
-        0.15 * np.sin(2 * np.pi * 880.0 * t) +
-        0.1 * np.sin(2 * np.pi * 1760.0 * t) +
-        0.05 * np.sin(2 * np.pi * 3520.0 * t) +
-        0.02 * np.sin(2 * np.pi * 8000.0 * t) +
-        0.01 * np.sin(2 * np.pi * 12000.0 * t)
+        0.3 * np.sin(2 * np.pi * 440.0 * t)
+        + 0.15 * np.sin(2 * np.pi * 880.0 * t)
+        + 0.1 * np.sin(2 * np.pi * 1760.0 * t)
+        + 0.05 * np.sin(2 * np.pi * 3520.0 * t)
+        + 0.02 * np.sin(2 * np.pi * 8000.0 * t)
+        + 0.01 * np.sin(2 * np.pi * 12000.0 * t)
     )
     envelope = np.ones_like(t)
     for i in range(0, len(t), int(sr * 0.3)):
@@ -36,9 +36,9 @@ def _create_narrowband_audio(sr: int = 48000, duration: float = 2.0) -> np.ndarr
     """Erzeugt bandbreitenbegrenztes Audio (< 10 kHz) für EraAuthenticCompletion."""
     t = np.linspace(0, duration, int(sr * duration), endpoint=False)
     signal = (
-        0.3 * np.sin(2 * np.pi * 440.0 * t) +
-        0.15 * np.sin(2 * np.pi * 880.0 * t) +
-        0.1 * np.sin(2 * np.pi * 1760.0 * t)
+        0.3 * np.sin(2 * np.pi * 440.0 * t)
+        + 0.15 * np.sin(2 * np.pi * 880.0 * t)
+        + 0.1 * np.sin(2 * np.pi * 1760.0 * t)
     )
     return (signal).astype(np.float32)
 
@@ -74,8 +74,8 @@ class TestUV3PipelinePresenceEmbedding:
 
     def test_presence_score_integration_with_mushra_proxy(self):
         """PresenceEmbedding + MushraProxy arbeiten zusammen."""
-        from backend.core.presence_embedding import get_presence_embedding
         from backend.core.mushra_proxy import get_mushra_proxy
+        from backend.core.presence_embedding import get_presence_embedding
 
         pe = get_presence_embedding()
         mp = get_mushra_proxy()
@@ -141,9 +141,9 @@ class TestUV3PipelineFullIntegration:
 
     def test_full_pipeline_run(self):
         """PresenceEmbedding + EraAuthenticCompletion + MushraProxy in Pipeline."""
-        from backend.core.presence_embedding import get_presence_embedding
         from backend.core.era_authentic_completion import get_era_completion
         from backend.core.mushra_proxy import get_mushra_proxy
+        from backend.core.presence_embedding import get_presence_embedding
 
         pe = get_presence_embedding()
         ec = get_era_completion()
@@ -181,8 +181,8 @@ class TestUV3PipelineFullIntegration:
 
     def test_pipeline_handles_edge_cases(self):
         """Pipeline behandelt Edge-Cases (NaN, Inf, sehr kurzes Audio)."""
-        from backend.core.presence_embedding import get_presence_embedding
         from backend.core.era_authentic_completion import get_era_completion
+        from backend.core.presence_embedding import get_presence_embedding
 
         pe = get_presence_embedding()
         ec = get_era_completion()

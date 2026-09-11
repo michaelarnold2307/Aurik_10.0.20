@@ -25,6 +25,8 @@ exclude =
     .eggs,
     *.egg-info,
     configs,
+    plugins/_vendor_aero,
+    plugins/_vendor_muq,
     *.pyi
 
 # Ignorierte Regeln:
@@ -52,6 +54,8 @@ per-file-ignores =
     # Tests: assert und direktimporte
     tests/*.py:S101,F401,N802,N803,F811
     tests/**/*.py:S101,F401,N802,N803,F811
+    # aurik_exceptions: stabile öffentliche API-Namen seit v10 — N818 bewusst
+    backend/core/aurik_exceptions.py:N818
     # Skripte: print() erlaubt
     scripts/*.py:T201,F811
     aurik_cli.py:T201
@@ -60,7 +64,7 @@ per-file-ignores =
     # UV3: historisch gewachsene 8000-Zeilen-Datei — vorbestehende Style-Warnungen
     backend/core/unified_restorer_v3.py:D102,D107,D200,D205,B007,B015,B036,N811,N814,SIM102,SIM113,SIM114,SIM401,SIM901
     # modern_window: intentionale Loop-Closures (Qt-Signal-Lambdas)
-    Aurik910/ui/modern_window.py:B023
+    Aurik10/ui/modern_window.py:B023
     # defect_scanner: intentionale Loop-Closures
     backend/core/defect_scanner.py:B023
     # Legacy-Code

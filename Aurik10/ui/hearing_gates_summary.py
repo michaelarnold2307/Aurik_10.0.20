@@ -55,7 +55,7 @@ def hearing_gate_status(meta: dict) -> str:
 
 def hearing_gates_line(meta: dict) -> str:
     """Kurzzeile für den Qualitäts-Score-Text."""
-    icon = {"green": "\U0001F7E2", "yellow": "\U0001F7E1", "red": "\U0001F534"}[hearing_gate_status(meta)]
+    icon = {"green": "\U0001f7e2", "yellow": "\U0001f7e1", "red": "\U0001f534"}[hearing_gate_status(meta)]
     return f"Hör-Gates: {icon} {hearing_gate_status(meta).upper()}"
 
 
@@ -99,9 +99,7 @@ def hearing_gates_details(meta: dict) -> list[str]:
     return out or ["Hör-Gates: keine Gate-Metadaten (n/a)"]
 
 
-def apply_resolved_defects(
-    counts: dict[str, int], resolved: list[str] | None
-) -> tuple[dict[str, int], int, list[str]]:
+def apply_resolved_defects(counts: dict[str, int], resolved: list[str] | None) -> tuple[dict[str, int], int, list[str]]:
     """Defekt-Chip-Subtraktion (Echtzeit, pure Logik).
 
     Args:

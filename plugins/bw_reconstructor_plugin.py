@@ -126,7 +126,10 @@ class BWReconstructorPlugin:
             opts.inter_op_num_threads = 1
             opts.graph_optimization_level = ort.GraphOptimizationLevel.ORT_ENABLE_ALL
 
-            self._session = ort.InferenceSession(str(path), opts, providers=["CPUExecutionProvider"])
+            # §v10.40c: Registry-konsultierte Provider-Wahl statt hartem CPU.
+            from backend.core.gpu_model_registry import get_onnx_providers
+
+            self._session = ort.InferenceSession(str(path), opts, providers=get_onnx_providers(str(path)))
             self._model_path = path
 
             # §v10.19 Interface-Detektion: v5 ist ein Waveform-U-Net

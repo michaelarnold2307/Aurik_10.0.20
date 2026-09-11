@@ -88,7 +88,11 @@ class PhaseFingerprinter:
             _idx = all_phases.index(changed_phase)
             return all_phases[_idx:]
         except ValueError as exc:
-            logger.debug("§V6 changed_phase nicht in all_phases gefunden — alle Phasen zurückgegeben (Phase %s): %s", changed_phase, exc)
+            logger.debug(
+                "§V6 (copilot-instructions.md) changed_Verarbeitungsschritt nicht in all_phases gefunden — alle Phasen zurückgegeben (Verarbeitungsschritt %s): %s",
+                changed_phase,
+                exc,
+            )
             return list(all_phases)
 
     def needs_reprocessing(

@@ -161,6 +161,35 @@ Hörstufen-Konsistenz). Verletzung ⇒ Exit 1.
 - Das Harness ist die maschinelle Vorstufe der Panel-Kalibrierung (§7, Abschluss
   der echten Hörertests bleibt menschliche Prozessarbeit).
 
+## 8b. Hörfähigkeits-SOTA — interaurale Fähigkeiten des menschlichen Gehörs
+
+„Lückenlos aufs Gehör zugeschnitten“ ist nur ehrlich, wenn die
+binauralen Fähigkeiten des Hörsystems maschinell bewertet und geschützt
+werden. Kanonische Implementierung: `backend/core/dsp/interaural_cues.py`
+(§HRTF/interaural, verdrahtet in `_evaluate_stereo_safety_guard` der UV3).
+
+| Fähigkeit | Messgröße | Hör-JND (Warn-/Hard-Fail) | Modell |
+|---|---|---|---|
+| Zeitliche Lokalisation | ITD (Kreuzkorrelation, parabolische Sub-Sample-Interpolation, Fenster-Median) | ~30 µs / 60 µs (Ton 500 Hz–1 kHz) | Woodworth (1938)/Kuhn (1977) |
+| Pegel-Lokalisation | ILD (mittelbandig, 1/3-Oktaven 315–3150 Hz) | ~1 dB / 2 dB (Mills 1960) | Kopfschatten, Duda & Martens (1998) |
+| Räumliche Bündelung | IACC (Maximum der normierten Kreuzkorrelation, ±1 ms) | Δ 0.08 / 0.15 | Standard-IACC-Definition |
+| Maskierungs-Freisetzung | BMLD-Proxy (Lowband-Korrelation 250 Hz–1 kHz) | ≥15 dB Freisetzung NπS0 vs. N0S0 | Levitt (1971), Durlach (1972) |
+| Richtungs-Ortsgedächtnis | `apply_interaural_cues` (Kopfmodell: Woodworth-ITD + Sphären-ILD + 1/r-Distanz) | deterministische Mono→Stereo-Cue-Platzierung | First-Order-HRTF |
+
+Regeln:
+
+1. **Delta-Guard:** Nur eine Verschlechterung der Cues GEGENÜBER dem Input ist
+ein Befund (analoge Träger tragen inhärenten L/R-Versatz).
+2. **Layout-Invariante (§V7):** Alle Cue-Messungen normalisieren über
+`backend.core.audio_layout` — kein hartes (N,2)/(2,N)-Annehmen; Mono-Kollaps
+⇒ maximaler Befund (itd_drift=1e6 µs).
+3. **Ehrlichkeits-Klausel:** Das sphärische Kopfmodell ist die deterministische
+First-Order-HRTF-Näherung. Personalisierte HRIR-Datensätze (z. B. CIPIC)
+sind dokumentierte, aber nicht erzwungene Erweiterung — keine Messdaten-
+Behauptung ohne Messdaten.
+4. Neue Träger auf Ebene 1/2 MÜSSEN ihre interauralen Invarianten im
+`aurik-horordnung-calibration`-Harness ergänzen (§8a).
+
 ## 9. Verhältnis zur normativen Kette
 
 - Kein Widerspruch zu den Mess-Definitionen in `musical_goals.instructions.md`,

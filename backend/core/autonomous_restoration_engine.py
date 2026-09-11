@@ -899,7 +899,10 @@ class AutonomousRestorationEngine:
                 _kwargs["variant_params"] = dict(variant.parameters)
             return _uv3.restore(audio, sample_rate, **_kwargs)  # type: ignore[return-value]
         except Exception as exc:
-            logger.debug("§V6 UV3.restore fehlgeschlagen — Audio unverändert zurückgegeben (Baseline Fallback): %s", exc)
+            logger.debug(
+                "§V6 (copilot-instructions.md) UV3.wiederherstellen fehlgeschlagen — Audio unverändert zurückgegeben (Baseline Ersatzpfad): %s",
+                exc,
+            )
             # Fallback: einfache Gain-Anpassung als Baseline
             return cast(np.ndarray, (np.asarray(audio, dtype=np.float32)))
 

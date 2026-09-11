@@ -18,6 +18,8 @@ try:
 except ImportError:
     torch = None  # type: ignore[assignment]
     _HAS_TORCH = False
+import logging
+
 import torch.nn as nn
 import torch.nn.functional as F
 
@@ -94,7 +96,9 @@ def stft_loss(x: torch.Tensor, y: torch.Tensor) -> torch.Tensor:
     return F.l1_loss(X_mag, Y_mag)
 
 
-def perceptual_loss(x: torch.Tensor, y: torch.Tensor, vggish: nn.Module | None = None, alpha: float = 0.5) -> torch.Tensor:
+def perceptual_loss(
+    x: torch.Tensor, y: torch.Tensor, vggish: nn.Module | None = None, alpha: float = 0.5
+) -> torch.Tensor:
     """Kombiniert Feature-Loss und STFT-Loss (SOTA: Gammatone-CNN).
 
     Parameters
@@ -122,6 +126,7 @@ def perceptual_loss(x: torch.Tensor, y: torch.Tensor, vggish: nn.Module | None =
             loss += alpha * F.mse_loss(feat_x, feat_y)
         except Exception:
             # Fallback: nur STFT-Loss wenn GCNN fehlschlägt
+            logger.debug("GCNN-Feature-Loss nicht verfügbar — STFT-only Ersatzpfad", exc_info=True)
             pass
 
     return loss
@@ -158,4 +163,6 @@ def si_sdr_loss(x: torch.Tensor, y: torch.Tensor) -> torch.Tensor:
     si_sdr = 10.0 * torch.log10((x_norm + 1e-8) / (torch.norm(noise, dim=-1) ** 2 + 1e-8))
 
     return -si_sdr.mean()  # Negative because we want to maximize SI-SDR
+
+
 logger = logging.getLogger(__name__)

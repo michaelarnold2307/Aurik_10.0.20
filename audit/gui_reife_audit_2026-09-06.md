@@ -27,4 +27,5 @@ Umfang: Aurik10 = 37.017 Zeilen / 20+ Module; modern_window.py = 26.611 Zeilen.
 - **T7 Langzeit/Stabilität (Folge)**: Session-Recovery nach Abbruch, Ressourcen-Freigabe, Regression-Suite GUI-Smoke (headless).
 
 ## Verknüpfung Kern
+
 Alle neuen Lauf-Gates liefern result.metadata (audibility_gate, vocal_drive_*, einladung_gate_*) — GUI muss sie nur anzeigen (T1) und beim Export als letzte Hürde nutzen (T2).

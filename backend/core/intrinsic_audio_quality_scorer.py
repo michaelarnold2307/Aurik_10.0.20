@@ -45,6 +45,7 @@ Date: 2026-02-17
 
 from __future__ import annotations
 
+import itertools
 import logging
 import math
 from dataclasses import asdict, dataclass, field
@@ -266,7 +267,7 @@ class IntrinsicAudioQualityScorer:
         nyquist = float(sr) / 2.0
         edges = [0.0] + [b for b in _BARK_BANDS_HZ if b < nyquist] + [nyquist]
         energies: list[float] = []
-        for low, high in zip(edges[:-1], edges[1:]):
+        for low, high in itertools.pairwise(edges):
             mask = (freqs >= low) & (freqs < high)
             energies.append(float(np.sum(power[mask])) if np.any(mask) else 0.0)
         vals = np.asarray(energies, dtype=np.float64)

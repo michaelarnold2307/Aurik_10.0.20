@@ -147,8 +147,8 @@ class PsolaPitchShifter:
             result_audio, n_epochs = self._psola(audio, f0_hz, ratio, f0_trajectory)
             method = "psola"
         except Exception as e:
-            logger.warning("ML→DSP-Fallback aktiviert", exc_info=True)  # §V6
-            logger.debug("PSOLA Fallback (Phase-Vocoder): %s", e)
+            logger.warning("ML→DSP-Ersatzpfad aktiviert", exc_info=True)  # §V6 (copilot-instructions.md)
+            logger.debug("PSOLA Ersatzpfad (Verarbeitungsschritt-Vocoder): %s", e)
             result_audio = self._phase_vocoder_shift(audio, ratio)
             n_epochs = 0
             method = "phase_vocoder_fallback"
@@ -160,7 +160,7 @@ class PsolaPitchShifter:
         formant_ok = self._check_formant_preservation(audio, result_audio)
 
         logger.debug(
-            "PSOLA: %.1f Halbtöne, f0=%.1f Hz, ratio=%.3f, epochs=%d, formant_ok=%s, method=%s",
+            "PSOLA: %.1f Halbtöne, f0=%.1f Hz, Verhaeltnis=%.3f, epochs=%d, formant_ok=%s, method=%s",
             semitones,
             f0_hz,
             ratio,
@@ -446,7 +446,7 @@ class PsolaPitchShifter:
             pearson = np.dot(orig_env, proc_env) / (norm_o * norm_p)
             return float(pearson) >= self.FORMANT_PEARSON_THRESHOLD
         except Exception:
-            logger.warning("psola.py::_check_formant_preservation fallback", exc_info=True)
+            logger.warning("psola.py::_Pruefung_formant_preservation Ersatzpfad", exc_info=True)
             return True  # Im Zweifel: OK annehmen
 
 

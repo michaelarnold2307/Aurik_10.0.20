@@ -23,6 +23,7 @@ REPORTS_DIR = Path(__file__).resolve().parent.parent.parent / "reports"
 def _load_audio(path: Path) -> tuple[np.ndarray, int]:
     """Lädt Audio-Datei und gibt (audio, sr) zurück."""
     import soundfile as sf
+
     audio, sr = sf.read(str(path), dtype="float32")
     if audio.ndim == 2:
         audio = audio.mean(axis=1)
@@ -97,8 +98,7 @@ class TestCorpusIntegrity:
                 skipped.append((wav_file, str(e)))
         # Maximal 5% der Dateien dürfen problematisch sein
         total = len(list(CORPUS_DIR.rglob("*.wav")))
-        assert len(skipped) <= max(1, int(total * 0.05)), \
-            f"Zu viele problematische Dateien: {len(skipped)}/{total}"
+        assert len(skipped) <= max(1, int(total * 0.05)), f"Zu viele problematische Dateien: {len(skipped)}/{total}"
 
 
 @pytest.mark.unit
@@ -125,18 +125,19 @@ class TestMushraCorpusScoring:
             clean_audio = clean_audio[:min_len]
 
             score = proxy.evaluate(clean_audio, damaged_audio, sr)
-            scores.append({
-                "material": material,
-                "damaged": str(damaged_path.name),
-                "clean": str(clean_path.name),
-                "mushra_score": float(score.proxy_score),
-                "confidence": float(score.confidence),
-            })
+            scores.append(
+                {
+                    "material": material,
+                    "damaged": str(damaged_path.name),
+                    "clean": str(clean_path.name),
+                    "mushra_score": float(score.proxy_score),
+                    "confidence": float(score.confidence),
+                }
+            )
 
         # MUSHRA-Scores sollten im gültigen Bereich sein (0-100)
         for item in scores:
-            assert 0 <= item["mushra_score"] <= 100, \
-                f"MUSHRA-Score außerhalb des Bereichs: {item}"
+            assert 0 <= item["mushra_score"] <= 100, f"MUSHRA-Score außerhalb des Bereichs: {item}"
 
     def test_mushra_regression_detection(self, corpus_pairs):
         """Restaurierte Dateien sollten bessere MUSHRA-Scores haben als beschädigte."""
@@ -165,8 +166,9 @@ class TestMushraCorpusScoring:
 
                         score = proxy.score(clean_audio, restored_audio, sr)
                         # Restaurierte Dateien sollten nahe am Original sein (Score > 50)
-                        assert score.proxy_score > 50, \
+                        assert score.proxy_score > 50, (
                             f"Restaurierung zu schlecht: {f.name} (MUSHRA={score.proxy_score:.1f})"
+                        )
 
 
 @pytest.mark.unit
@@ -192,24 +194,30 @@ class TestCorpusReporting:
             clean_audio = clean_audio[:min_len]
 
             score = proxy.evaluate(clean_audio, damaged_audio, sr)
-            report_data.append({
-                "material": material,
-                "damaged_file": str(damaged_path.name),
-                "clean_file": str(clean_path.name),
-                "mushra_score": float(score.proxy_score),
-                "confidence": float(score.confidence),
-                "grade": score.grade if hasattr(score, 'grade') else "unknown",
-            })
+            report_data.append(
+                {
+                    "material": material,
+                    "damaged_file": str(damaged_path.name),
+                    "clean_file": str(clean_path.name),
+                    "mushra_score": float(score.proxy_score),
+                    "confidence": float(score.confidence),
+                    "grade": score.grade if hasattr(score, "grade") else "unknown",
+                }
+            )
 
         # Bericht speichern (optional)
         report_path = REPORTS_DIR / "corpus_mushra_report.json"
         if REPORTS_DIR.exists():
             with open(report_path, "w") as f:
-                json.dump({
-                    "total_pairs": len(report_data),
-                    "mean_score": float(np.mean([r["mushra_score"] for r in report_data])),
-                    "results": sorted(report_data, key=lambda x: x["mushra_score"]),
-                }, f, indent=2)
+                json.dump(
+                    {
+                        "total_pairs": len(report_data),
+                        "mean_score": float(np.mean([r["mushra_score"] for r in report_data])),
+                        "results": sorted(report_data, key=lambda x: x["mushra_score"]),
+                    },
+                    f,
+                    indent=2,
+                )
 
         # Validierung
         assert len(report_data) > 0

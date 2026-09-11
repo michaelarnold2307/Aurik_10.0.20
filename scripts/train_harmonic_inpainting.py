@@ -252,7 +252,9 @@ def train(
     patience_counter = 0
     production_ready = False
 
-    print(f"Epochs: {epochs} | LR: {lr} | Effective batch: {BATCH_SIZE * ACCUM_STEPS} | Patience: {early_stop_patience}")
+    print(
+        f"Epochs: {epochs} | LR: {lr} | Effective batch: {BATCH_SIZE * ACCUM_STEPS} | Patience: {early_stop_patience}"
+    )
 
     for epoch in range(epochs):
         model.train()

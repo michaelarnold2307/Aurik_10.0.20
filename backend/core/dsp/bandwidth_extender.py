@@ -92,7 +92,10 @@ def _spectral_extend(
     try:
         from scipy.signal import butter, sosfiltfilt
     except ImportError as exc:
-        logger.debug("§V6 scipy.signal.butter/sosfiltfilt nicht verfügbar — Audio unverändert zurückgegeben: %s", exc)
+        logger.debug(
+            "§V6 (copilot-instructions.md) scipy.signal.butter/sosfiltfilt nicht verfügbar — Audio unverändert zurückgegeben: %s",
+            exc,
+        )
         return mono
 
     nyq = sr / 2.0

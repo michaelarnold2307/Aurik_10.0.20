@@ -393,7 +393,7 @@ class AurikDenker:
 
             get_fallback_auditor().reset()
         except Exception as _fa_reset_exc:
-            logger.debug("FallbackAuditor.reset nicht möglich (unkritisch): %s", _fa_reset_exc)
+            logger.debug("FallbackAuditor.zurueckgesetzt nicht möglich (unkritisch): %s", _fa_reset_exc)
 
         # ── §3.5 Preview-Mode: 30s Vorschau vor voller Restaurierung ─────
         _PREVIEW_DURATION_S = 30.0
@@ -1387,8 +1387,14 @@ class AurikDenker:
                 if cached_era_result is not None
                 else ""
             )
+            # §GUI-Display-Fix (2026-09-11): „tape“/„band“ auf den Ketten-Key
+            # „reel_tape“ normalisieren — sonst wird ein UNBEKANNTES Glied
+            # („tape“) VOR die korrekte Kette gestellt und die GUI zeigt
+            # „tape → reel_tape → …“ mit falschem Icon/Label.
+            if _era_mp in ("tape", "magnetic_tape", "band", "tonband"):
+                _era_mp = "reel_tape"
             _phys_chain = getattr(kette, "chain", []) or []
-            if _era_mp in ("reel_tape", "tape") and _era_mp not in _phys_chain:
+            if _era_mp in ("reel_tape",) and _era_mp not in _phys_chain:
                 _phys_chain = [_era_mp, *list(_phys_chain)]
                 kette.chain = _phys_chain
                 kette.chain_string = " → ".join(_phys_chain)
@@ -1416,7 +1422,10 @@ class AurikDenker:
 
                 return SURGICAL_DEFECT_TYPES
             except ImportError as e:
-                logger.debug("§V6 SURGICAL_DEFECT_TYPES-Import fehlgeschlagen — leeres Frozenset zurückgegeben: %s", e)
+                logger.debug(
+                    "§V6 (copilot-instructions.md) SURGICAL_DEFECT_TYPES-Import fehlgeschlagen — leeres Frozenset zurückgegeben: %s",
+                    e,
+                )
                 return frozenset()
 
         def _defekt_scan_cb(pct: int, name: str = "") -> None:

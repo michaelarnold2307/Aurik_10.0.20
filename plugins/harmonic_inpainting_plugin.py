@@ -119,13 +119,12 @@ class HarmonicInpaintingPlugin:
 
     def __init__(self) -> None:
         self._model: Any = None
+        self._onnx_session: Any = None
         self._loaded: bool = False
+        self._backend: str = "dsp_fallback"
         self._try_load()
 
     def _try_load(self) -> None:
-        if not _TORCH_AVAILABLE:
-            logger.warning("HarmonicInpainting: torch fehlt — DSP-Ersatzpfad aktiv.")
-            return
         if not _FLAGS_AVAILABLE or not use_harmonic_inpainting:
             logger.info("HarmonicInpainting: Feature-Flag aus — DSP-Ersatzpfad.")
             return
@@ -139,11 +138,60 @@ class HarmonicInpaintingPlugin:
             from backend.core.ml_memory_budget import try_allocate
 
             if not try_allocate(self._BUDGET_NAME, size_gb=self._BUDGET_SIZE_GB):
-                logger.info("HarmonicInpainting: ML-Budget erschöpft — DSP-Ersatzpfad.")
+                logger.info("HarmonicInpainting: ML-Grenze erschöpft — DSP-Ersatzpfad.")
                 return
         except ImportError:
             pass
 
+        if Path(_p).suffix.lower() == ".onnx":
+            try:
+                import onnxruntime as ort
+
+                try:
+                    from backend.core.ml_device_manager import get_ort_providers
+
+                    providers = get_ort_providers("HarmonicInpainting")
+                except Exception:
+                    providers = ["CPUExecutionProvider"]
+                session = ort.InferenceSession(str(_p), providers=providers)
+                inputs = {item.name: item for item in session.get_inputs()}
+                x_input = inputs.get("x")
+                t_input = inputs.get("t")
+                if x_input is None or t_input is None:
+                    raise RuntimeError(f"unerwartete ONNX-Signatur: {sorted(inputs)}")
+                x_shape = x_input.shape
+                t_shape = t_input.shape
+                if len(x_shape) != 3 or x_shape[2] not in (1, None):
+                    raise RuntimeError(f"unerwartete ONNX-Signatur: x={x_shape}, t={t_shape}")
+                self._model = session
+                self._onnx_session = session
+                self._backend = "onnx"
+                self._loaded = True
+                logger.info(
+                    "HarmonicInpainting ONNX geladen: %s (provider=%s, x=%s, t=%s)",
+                    Path(_p).name,
+                    session.get_providers()[0],
+                    x_shape,
+                    t_shape,
+                )
+                try:
+                    from backend.core.plugin_lifecycle_manager import register_plugin as _reg_plm
+
+                    _reg_plm(
+                        self._BUDGET_NAME,
+                        size_gb=self._BUDGET_SIZE_GB,
+                        unload_fn=self.unload,
+                    )
+                except Exception:
+                    logger.debug("HarmonicInpainting ONNX PLM-Registrierung nicht verfügbar", exc_info=True)
+                return
+            except Exception as exc:
+                logger.warning("HarmonicInpainting ONNX-Ladefehler: %s — DSP-Ersatzpfad.", exc)
+                return
+
+        if not _TORCH_AVAILABLE:
+            logger.warning("HarmonicInpainting: torch fehlt — DSP-Ersatzpfad aktiv.")
+            return
         if not _DIT_AVAILABLE:
             logger.warning("HarmonicInpainting: dit_model fehlt — DSP-Ersatzpfad.")
             return
@@ -154,6 +202,7 @@ class HarmonicInpaintingPlugin:
             model.load_state_dict(sd)
             model.eval()
             self._model = model
+            self._backend = "torch_legacy"
             self._loaded = True
             logger.info(
                 "HarmonicInpainting geladen: %s (val_loss=%s, %.1f MB)",
@@ -171,8 +220,8 @@ class HarmonicInpaintingPlugin:
                     size_gb=self._BUDGET_SIZE_GB,
                     unload_fn=self.unload,
                 )
-            except Exception:
-                pass
+            except Exception as _exc:
+                logger.debug("HarmonicInpainting PLM-Registrierung fehlgeschlagen: %s", _exc)
         except Exception as exc:
             logger.warning("HarmonicInpainting Ladefehler: %s — DSP-Ersatzpfad.", exc)
             self._model = None
@@ -181,13 +230,15 @@ class HarmonicInpaintingPlugin:
     def unload(self) -> None:
         """Entlädt das Modell (PLM-Eviction-Callback)."""
         self._model = None
+        self._onnx_session = None
+        self._backend = "dsp_fallback"
         self._loaded = False
         try:
             from backend.core.ml_memory_budget import release as _release
 
             _release(self._BUDGET_NAME)
-        except Exception:
-            pass
+        except Exception as _exc:
+            logger.debug("HarmonicInpainting Speicherfreigabe fehlgeschlagen: %s", _exc)
         logger.debug("HarmonicInpainting entladen")
 
     @property
@@ -210,11 +261,23 @@ class HarmonicInpaintingPlugin:
         attenuated, mask = _mask_generate_deterministic(norm)
 
         try:
-            x = torch.from_numpy(attenuated).unsqueeze(0).unsqueeze(-1)  # [1, T, 1]
-            t_val = torch.tensor([0.1])
-            with torch.no_grad():
-                v = self._model(x, t_val)  # [1, T, 1]
-            v_np = v.squeeze().cpu().numpy().astype(np.float32)
+            if self._onnx_session is not None:
+                outputs = self._onnx_session.run(
+                    None,
+                    {
+                        "x": attenuated[np.newaxis, :, np.newaxis].astype(np.float32),
+                        "t": np.asarray([0.1], dtype=np.float32),
+                    },
+                )
+                if not outputs or outputs[0] is None:
+                    return None
+                v_np = np.asarray(outputs[0], dtype=np.float32).reshape(-1)
+            else:
+                x = torch.from_numpy(attenuated).unsqueeze(0).unsqueeze(-1)  # [1, T, 1]
+                t_val = torch.tensor([0.1])
+                with torch.no_grad():
+                    v = self._model(x, t_val)  # [1, T, 1]
+                v_np = v.squeeze().cpu().numpy().astype(np.float32)
             out = attenuated + (v_np * mask)  # nur Inpainting-Regionen
             return cast(np.ndarray | None, ((np.clip(out, -1.0, 1.0) * peak).astype(np.float32)[: len(chunk)]))
         except Exception as exc:
@@ -273,7 +336,7 @@ class HarmonicInpaintingPlugin:
                 out = librosa.resample(out, orig_sr=_SR, target_sr=sr).astype(np.float32)
             return cast(np.ndarray | None, (np.clip(out, -1.0, 1.0)))
         except Exception as exc:
-            logger.debug("HarmonicInpainting enhance Fehler: %s", exc)
+            logger.debug("HarmonicInpainting verbessern Fehler: %s", exc)
             return None
 
 

@@ -832,6 +832,50 @@ class TestCqtdiffPlusPlugin:
         _cleanup(["CQTdiffPlus"], "plugins.cqtdiff_plus_plugin")
         assert _budget_total() == 0.0
 
+    def test_04_inpaint_without_session_falls_back(self):
+        """Regression: fehlendes Modell darf keinen AttributeError werfen (§V6-Fallback)."""
+        _reset_budget()
+        from plugins.cqtdiff_plus_plugin import get_cqtdiff_plus
+
+        p = get_cqtdiff_plus()
+        p._session = None
+        p._torch_model = None
+        p._model_loaded = False
+        audio = _signal(3.0)
+        gap_start = int(SR * 1.0)
+        gap_end = gap_start + int(SR * 0.4)  # 400 ms > 250 ms → Diffusionskandidat
+        audio[gap_start:gap_end] = 0.0
+        result = p.inpaint(audio, SR, gap_start, gap_end)
+        assert result.model_used != "cqtdiff"
+        _assert_finite(np.asarray(result.audio, dtype=np.float32), "CQTdiffPlus fallback")
+        assert np.max(np.abs(result.audio)) <= 1.0
+        _cleanup(["CQTdiffPlus"], "plugins.cqtdiff_plus_plugin")
+
+    @pytest.mark.ml
+    @pytest.mark.slow
+    def test_05_onnx_spectral_diffusion_path(self):
+        """ONNX-Spektral-Diffusionspfad: Lücke >250 ms, langes Signal → cqtdiff-Pfad."""
+        from pathlib import Path
+
+        _model = Path(__file__).resolve().parent.parent.parent / "models" / "cqtdiff" / "score_network.onnx"
+        if not _model.exists():
+            pytest.skip("score_network.onnx nicht vorhanden (CI ohne Modelle)")
+        _reset_budget()
+        from plugins.cqtdiff_plus_plugin import get_cqtdiff_plus
+
+        p = get_cqtdiff_plus()
+        if not (p._model_loaded and p._session is not None):
+            pytest.skip("CQTdiff ONNX-Session nicht geladen (Budget/Env)")
+        audio = _signal(6.0)
+        gap_start = int(SR * 2.5)
+        gap_end = gap_start + int(SR * 0.4)
+        audio[gap_start:gap_end] = 0.0
+        result = p.inpaint(audio, SR, gap_start, gap_end)
+        assert result.model_used == "cqtdiff"
+        _assert_finite(np.asarray(result.audio, dtype=np.float32), "CQTdiffPlus onnx")
+        assert np.max(np.abs(result.audio)) <= 1.0
+        _cleanup(["CQTdiffPlus"], "plugins.cqtdiff_plus_plugin")
+
 
 class TestGacelaPlugin:
     """GACELA (GAN-Inpainting ≥ 200 ms): finite Audio, Budget sauber."""

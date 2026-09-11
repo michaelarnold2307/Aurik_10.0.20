@@ -5,7 +5,7 @@ Apollo enthält torch.stft im Graphen (→ §v10.736 CPU-Force, ROCm-Crash).
 Der Core-Export schneidet vor der STFT: 80 Band-Eingänge
 (real/imag/log-power concat, je 2·BW+1 Kanäle) → BN-Convs → Roformer-Netz
 → Output-GLUs → RI-Masken (1, 2, 442, T). STFT/Band-Split und ISTFT bleiben
-in NumPy (deterministisch, §G5).
+in NumPy (deterministisch, §G5 (GEBOTE.md)).
 
 Voraussetzung: vendored apollo.py nutzt .transpose(-2,-1) statt .mT
 (§v10.750 — der Legacy-Exporter kennt aten::mT nicht).
@@ -32,11 +32,10 @@ def main() -> int:
     import onnxruntime as ort  # pylint: disable=import-outside-toplevel
     import torch  # pylint: disable=import-outside-toplevel
     import torch.nn as nn  # pylint: disable=import-outside-toplevel
-
     from look2hear.models.apollo import Apollo  # pylint: disable=import-outside-toplevel
 
     if OUT.exists():
-        print(f"existiert bereits: {OUT} ({OUT.stat().st_size/1e6:.1f} MB)")
+        print(f"existiert bereits: {OUT} ({OUT.stat().st_size / 1e6:.1f} MB)")
         return 0
 
     ts = torch.jit.load(str(TS), map_location="cpu")
@@ -83,7 +82,7 @@ def main() -> int:
         dynamo=False,
         do_constant_folding=True,
     )
-    print(f"Export OK: {OUT} ({OUT.stat().st_size/1e6:.1f} MB)")
+    print(f"Export OK: {OUT} ({OUT.stat().st_size / 1e6:.1f} MB)")
 
     rng = np.random.default_rng(7)
     np_bands = tuple((rng.standard_normal((1, 2 * bw + 1, 32)) * 0.1).astype(np.float32) for bw in model.band_width)

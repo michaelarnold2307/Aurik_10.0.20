@@ -13,7 +13,7 @@
 5. [§15.5 GPU-Strategie öffnen](#155-gpu-strategie-öffnen)
 6. [§15.6 Plugin-SDK und Developer-Ökosystem](#156-plugin-sdk-und-developer-ökosystem)
 7. [§15.7 Dokumentations-Nutzerpfade](#157-dokumentations-nutzerpfade)
-8. [§15.8 ErrorGuard-Flächendeckung](#158-errorguard-flächendeckung)
+8. [§15.8 ErrorGuard-Flächendeckung](#158-errorguard-fl%C3%A4chendeckung--erledigt-v10115)
 9. [§15.9 Zentraler Memory-Lifecycle](#159-zentraler-memory-lifecycle)
 10. [§15.10 Perceptual-Validation-Studie](#1510-perceptual-validation-studie)
 

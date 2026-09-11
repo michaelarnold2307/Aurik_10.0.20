@@ -166,7 +166,7 @@ class GenderDetector:
         # §19.2: pYIN F0 (Mauch & Dixon 2014) — Median über voiced Frames.
         # Liefert zusätzlich die voiced-Frame-Zeitpunkte für das Formant-
         # Gating (Formanten NUR aus stimmhaften Frames → keine Instrumental-
-        # Kontamination). Deterministisch (§G5).
+        # Kontamination). Deterministisch (§G5 (GEBOTE.md)).
         pyin_f0, voiced_times = self._detect_pyin_f0(audio)
 
         # Detect fundamental frequency (F0) — Scanning-Autokorrelation (Basis)
@@ -190,9 +190,7 @@ class GenderDetector:
         gender, confidence = self._classify_gender(fundamental_freq, formants)
 
         # §19 Contralto-Override: tiefe Frauenstimmen mit weiblichen Formanten
-        gender, confidence = self._apply_contralto_override(
-            gender, confidence, fundamental_freq, formants
-        )
+        gender, confidence = self._apply_contralto_override(gender, confidence, fundamental_freq, formants)
 
         # Detect breathiness
         breathiness = self._detect_breathiness(audio)
@@ -338,9 +336,11 @@ class GenderDetector:
         f1 = float(formants[0])
         f2 = float(formants[1])
         # Oktavfehler-Erkennung: F0 < 120 Hz, aber 2×F0 in der Zone
-        _effective_f0 = 2.0 * fundamental_freq if (
-            fundamental_freq < _zone_low and _zone_low <= 2.0 * fundamental_freq <= _zone_high
-        ) else fundamental_freq
+        _effective_f0 = (
+            2.0 * fundamental_freq
+            if (fundamental_freq < _zone_low and _zone_low <= 2.0 * fundamental_freq <= _zone_high)
+            else fundamental_freq
+        )
         if (
             _zone_low <= _effective_f0 <= _zone_high
             and _female_f1[0] <= f1 <= _female_f1[1]
@@ -874,7 +874,7 @@ class BreathPreservingProcessor:
                 preserve_sibilance=True,
             )
         except Exception as _tb_exc:
-            logger.debug("Transient-Breath nicht verfügbar, fallback: %s", _tb_exc)
+            logger.debug("Transient-Breath nicht verfügbar, Ersatzpfad: %s", _tb_exc)
             processed = audio.copy()
         for start, end in breath_mask:
             is_artistic = artistic_breath.get((start, end), True)
@@ -1068,13 +1068,13 @@ class UnifiedVocalAIEnhancer:
                 # Verify stereo preservation
                 _stereo_score = compute_stereo_preservation_score(audio, result_audio)
                 logger.debug(
-                    "Mid/Side: corr_diff=%.3f width_ratio=%.2f balance_shift=%.1f dB",
+                    "Mid/Side: corr_diff=%.3f width_Verhaeltnis=%.2f balance_shift=%.1f dB",
                     _stereo_score["correlation_diff"],
                     _stereo_score["width_ratio"],
                     _stereo_score["balance_shift_db"],
                 )
             except Exception as _ms_exc:
-                logger.debug("Mid/Side nicht verfügbar, fallback auf ratio: %s", _ms_exc)
+                logger.debug("Mid/Side nicht verfügbar, Ersatzpfad auf Verhaeltnis: %s", _ms_exc)
                 # Fallback to original ratio-based processing
                 ratio = processed / (audio_mono + 1e-10)
                 ratio = np.nan_to_num(ratio, nan=0.0, posinf=0.0, neginf=0.0)

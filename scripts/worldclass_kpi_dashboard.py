@@ -225,7 +225,7 @@ def _collect_from_result_csvs(root: Path, cfg: dict[str, Any], run_dir: Path | N
                     _vqi = _to_float(row.get("vqi"))
                     _hpi = _to_float(row.get("hpi"))
                     _afg = _to_float(row.get("artifact_freedom"))
-                    
+
                     # Wenn VQI, HPI oder artifact_freedom gut sind, ist die Material-Erkennung wahrscheinlich korrekt
                     if material_conf < 0.55:
                         if (_vqi is not None and _vqi >= 0.6) or (_hpi is not None and _hpi > 0.0):

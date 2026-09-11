@@ -16,6 +16,7 @@ Prüft:
 """
 
 import importlib
+
 import pytest
 
 
@@ -266,7 +267,7 @@ class TestArtistFingerprintStore:
 
 
 # ---------------------------------------------------------------------------
-# 12. PluginRegistry (§V4 Bridge-Bypass-Verbot)
+# 12. PluginRegistry (§V4 (copilot-instructions.md) Bridge-Bypass-Verbot)
 # ---------------------------------------------------------------------------
 
 

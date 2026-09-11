@@ -377,7 +377,11 @@ class Level1InvariantsGuard:
             corr = float(np.corrcoef(mfcc_pre[:, :min_len].flatten(), mfcc_post[:, :min_len].flatten())[0, 1])
             return max(corr, 0.0)
 
-        except Exception:
+        except Exception as _mfcc_exc:
+            logger.warning(
+                "§V6 (copilot-instructions.md) ML→DSP-Ersatzpfad: _mfcc_correlation fehlgeschlagen → neutraler Return (0.5): %s",
+                _mfcc_exc,
+            )
             return 0.5  # Default
 
     def _spectral_centroid_correlation(self, pre: np.ndarray, post: np.ndarray, sr: int) -> float:
@@ -392,7 +396,11 @@ class Level1InvariantsGuard:
             corr = float(np.corrcoef(centroid_pre[:, :min_len].flatten(), centroid_post[:, :min_len].flatten())[0, 1])
             return max(corr, 0.0)
 
-        except Exception:
+        except Exception as _sc_exc:
+            logger.warning(
+                "§V6 (copilot-instructions.md) ML→DSP-Ersatzpfad: _spectral_centroid_correlation fehlgeschlagen → neutraler Return (0.5): %s",
+                _sc_exc,
+            )
             return 0.5  # Default
 
     def _estimate_f0_stability(self, audio: np.ndarray, sr: int) -> float:
@@ -407,7 +415,11 @@ class Level1InvariantsGuard:
 
             return 0.0
 
-        except Exception:
+        except Exception as _f0_exc:
+            logger.warning(
+                "§V6 (copilot-instructions.md) ML→DSP-Ersatzpfad: _estimate_f0_stability fehlgeschlagen → neutraler Return (0.0): %s",
+                _f0_exc,
+            )
             return 0.0
 
 

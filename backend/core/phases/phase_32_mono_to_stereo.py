@@ -72,6 +72,7 @@ Quality Target: 0.86 (Professional-Grade)
 """
 
 import logging
+import os
 import time
 
 import numpy as np
@@ -323,30 +324,52 @@ class MonoToStereoPhaseV2(PhaseInterface):
         # Step 1: Extract mono signal (average L+R)
         mono = np.mean(audio, axis=1)
 
-        # Step 2: Multi-band split
-        bands = self._split_multiband(mono, sample_rate)
+        # §HRTF (interaural_cues.py): Opt-in gemessenes HRIR-Paar statt
+        # Lauridsen-Pseudo-Stereo — AURIK_HRIR_SOFA=<pfad>, AURIK_HRIR_AZIMUTH=<deg>.
+        # §V6-Fallback: SOFA nicht lesbar → klassischer Lauridsen-Pfad.
+        _hrir_pair = None
+        try:
+            _sofa_path = str(os.environ.get("AURIK_HRIR_SOFA", "") or "").strip()
+            if _sofa_path:
+                from backend.core.dsp.interaural_cues import apply_hrir_pair, load_sofa_hrir
 
-        # Step 3: Per-band pseudo-stereo generation
-        width_factors = [float(w * _effective_strength) for w in self.WIDTH_FACTORS[phase_material]]
-        haas_delays = [int(round(d * _effective_strength)) for d in self.HAAS_DELAYS_MS[phase_material]]
-
-        stereo_bands = []
-        for i, band_mono in enumerate(bands):
-            stereo_band = self._generate_pseudo_stereo_band(
-                band_mono, sample_rate, width_factors[i], haas_delays[i], self.ALLPASS_ORDERS[i]
+                _az32 = float(os.environ.get("AURIK_HRIR_AZIMUTH", "0") or 0)
+                _hrir_pair = load_sofa_hrir(_sofa_path, azimuth_deg=_az32)
+                if _hrir_pair is not None:
+                    _hrir_stereo = apply_hrir_pair(mono, _hrir_pair[0], _hrir_pair[1])
+                    pseudo_stereo = np.ascontiguousarray(_hrir_stereo.T)  # (N,2)
+                    logger.info("§HRTF Verarbeitungsschritt 32: gemessenes HRIR-Paar aus %s", _sofa_path)
+        except Exception as _hrir_exc:
+            logger.warning(
+                "§V6 (copilot-instructions.md) HRIR-Pfad fehlgeschlagen — Lauridsen-Ersatzpfad: %s", _hrir_exc
             )
-            stereo_bands.append(stereo_band)
+            _hrir_pair = None
 
-        # Step 4: Recombine bands
-        pseudo_stereo = self._recombine_multiband(stereo_bands)
+        if _hrir_pair is None:
+            # Step 2: Multi-band split
+            bands = self._split_multiband(mono, sample_rate)
 
-        # Step 5: Transient preservation
-        pseudo_stereo = self._preserve_transients(mono, pseudo_stereo, sample_rate)
+            # Step 3: Per-band pseudo-stereo generation
+            width_factors = [float(w * _effective_strength) for w in self.WIDTH_FACTORS[phase_material]]
+            haas_delays = [int(round(d * _effective_strength)) for d in self.HAAS_DELAYS_MS[phase_material]]
 
-        # Step 6: HF enhancement (optional)
-        hf_boost_db = float(self.HF_ENHANCEMENT_DB[phase_material] * _effective_strength)
-        if hf_boost_db > 0:
-            pseudo_stereo = self._enhance_hf_content(pseudo_stereo, sample_rate, hf_boost_db)
+            stereo_bands = []
+            for i, band_mono in enumerate(bands):
+                stereo_band = self._generate_pseudo_stereo_band(
+                    band_mono, sample_rate, width_factors[i], haas_delays[i], self.ALLPASS_ORDERS[i]
+                )
+                stereo_bands.append(stereo_band)
+
+            # Step 4: Recombine bands
+            pseudo_stereo = self._recombine_multiband(stereo_bands)
+
+            # Step 5: Transient preservation
+            pseudo_stereo = self._preserve_transients(mono, pseudo_stereo, sample_rate)
+
+            # Step 6: HF enhancement (optional)
+            hf_boost_db = float(self.HF_ENHANCEMENT_DB[phase_material] * _effective_strength)
+            if hf_boost_db > 0:
+                pseudo_stereo = self._enhance_hf_content(pseudo_stereo, sample_rate, hf_boost_db)
 
         if 0.0 < _effective_strength < 1.0:
             pseudo_stereo = audio + _effective_strength * (pseudo_stereo - audio)

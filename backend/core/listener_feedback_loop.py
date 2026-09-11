@@ -171,7 +171,7 @@ class ListenerFeedbackLoop:
 
             if score < 6.0:
                 logger.info(
-                    "Listener-Feedback: Segment %s Score=%.1f < 6.0 — neu Restaurierung empfohlen",
+                    "Listener-Feedback: Segment %s Wert=%.1f < 6.0 — neu Restaurierung empfohlen",
                     segment_id,
                     score,
                 )

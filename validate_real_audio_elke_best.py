@@ -16,25 +16,25 @@ from datetime import datetime
 from pathlib import Path
 
 # Setup logging
-logging.basicConfig(
-    level=logging.INFO,
-    format='[%(asctime)s] %(levelname)-8s %(name)s: %(message)s'
-)
+logging.basicConfig(level=logging.INFO, format="[%(asctime)s] %(levelname)-8s %(name)s: %(message)s")
 logger = logging.getLogger(__name__)
 
 # Add workspace to path
 WORKSPACE_ROOT = Path(__file__).parent
 sys.path.insert(0, str(WORKSPACE_ROOT))
 
+
 def load_audio_safe(filepath: str) -> tuple[bytes, int] | None:
     """Load audio file safely."""
     try:
         import soundfile as sf
+
         audio, sr = sf.read(filepath)
         return audio, sr
     except Exception as e:
-        logger.error(f"Failed to load {filepath}: {e}")
+        logger.error(f"konnte nicht laden {filepath}: {e}")
         return None
+
 
 def run_restoration_with_monitoring(audio: bytes, sr: int, material_hint: str = "unknown") -> dict:
     """Run restoration with Material-Uncertainty Watchdog monitoring."""
@@ -56,10 +56,11 @@ def run_restoration_with_monitoring(audio: bytes, sr: int, material_hint: str = 
 
     try:
         import time
+
         start = time.time()
 
         # Step 1: Pre-analysis with Material-Uncertainty Watchdog
-        logger.info("🔍 Running pre-analysis...")
+        logger.info("🔍 laeuft pre-Analyse...")
         pre_result = run_pre_analysis(audio, sr, file_path="real_audio_validation")
 
         if pre_result and pre_result.medium:
@@ -71,7 +72,7 @@ def run_restoration_with_monitoring(audio: bytes, sr: int, material_hint: str = 
                 logger.warning(f"⚠️  §v10.712.5 Watchdog triggered: confidence={material_conf:.2f} < 0.30")
 
         # Step 2: Restoration (Restoration Mode, not Studio 2026)
-        logger.info("🎵 Running restoration pipeline...")
+        logger.info("🎵 laeuft restoration pipeline...")
         restorer = UnifiedRestorerV3()
         restored = restorer.restore(
             audio=audio,
@@ -100,16 +101,17 @@ def run_restoration_with_monitoring(audio: bytes, sr: int, material_hint: str = 
         result["status"] = "SUCCESS"
         result["wall_time_s"] = time.time() - start
 
-        logger.info(f"✅ Restoration complete: {result['wall_time_s']:.2f}s")
+        logger.info(f"✅ Restoration vollstaendig: {result['wall_time_s']:.2f}s")
         logger.info(f"   separation_fidelity: {result['separation_fidelity']:.4f}")
         logger.info(f"   watchdog_triggered: {result['watchdog_triggered']}")
 
     except Exception as e:
         result["status"] = "ERROR"
         result["error"] = str(e)
-        logger.error(f"❌ Restoration failed: {e}", exc_info=True)
+        logger.error(f"❌ Restoration fehlgeschlagen: {e}", exc_info=True)
 
     return result
+
 
 def validate_against_baseline(result: dict, baseline: float = 0.7232) -> dict:
     """Compare result against known baseline."""
@@ -126,10 +128,11 @@ def validate_against_baseline(result: dict, baseline: float = 0.7232) -> dict:
         "status": "✅ EXCELLENT" if sep_fid >= 0.85 else "✅ GOOD" if sep_fid >= 0.80 else "⚠️  FAIR",
     }
 
+
 def main():
     """Run comprehensive real-audio validation."""
     logger.info("=" * 80)
-    logger.info("🎼 AUTONOMOUS REAL-AUDIO VALIDATION WITH MATERIAL-UNCERTAINTY WATCHDOG")
+    logger.info("🎼 AUTONOMOUS REAL-AUDIO Validierung WITH MATERIAL-UNCERTAINTY WATCHDOG")
     logger.info("=" * 80)
 
     samples = [
@@ -141,7 +144,7 @@ def main():
         "timestamp": datetime.now().isoformat(),
         "watchdog_enabled": True,
         "baseline_separation_fidelity": 0.7232,
-        "samples": {}
+        "samples": {},
     }
 
     for filepath, label in samples:
@@ -159,7 +162,7 @@ def main():
             continue
 
         audio, sr = audio_result
-        logger.info(f"   Loaded: {audio.shape} @ {sr}Hz")
+        logger.info(f"   geladen: {audio.shape} @ {sr}Hz")
 
         # Run restoration
         restoration = run_restoration_with_monitoring(audio, sr, material_hint="vocal")
@@ -173,7 +176,7 @@ def main():
         }
 
         # Print summary
-        logger.info("\n   📊 VALIDATION RESULTS:")
+        logger.info("\n   📊 Validierung RESULTS:")
         logger.info(f"      Baseline:     {validation['baseline']:.4f}")
         logger.info(f"      Measured:     {validation['measured']:.4f}")
         logger.info(f"      Delta:        {validation['delta']:+.4f} ({validation['improvement_pct']:+.1f}%)")
@@ -186,30 +189,27 @@ def main():
     with open(output_path, "w") as f:
         json.dump(results, f, indent=2)
 
-    logger.info(f"\n✅ Results saved to: {output_path}")
+    logger.info(f"\n✅ Results gespeichert to: {output_path}")
 
     # Final summary
     logger.info("\n" + "=" * 80)
-    logger.info("🎯 VALIDATION SUMMARY")
+    logger.info("🎯 Validierung SUMMARY")
     logger.info("=" * 80)
 
     all_excellent = all(
-        v["validation"].get("status", "").startswith("✅ EXCELLENT")
-        for v in results["samples"].values()
+        v["validation"].get("status", "").startswith("✅ EXCELLENT") for v in results["samples"].values()
     )
-    all_good = all(
-        v["validation"].get("status", "").startswith("✅")
-        for v in results["samples"].values()
-    )
+    all_good = all(v["validation"].get("status", "").startswith("✅") for v in results["samples"].values())
 
     if all_excellent:
-        logger.info("🏆 RESULT: EXCELLENT — All samples exceeded 0.85 separation_fidelity")
+        logger.info("🏆 Ergebnis: EXCELLENT — All samples exceeded 0.85 separation_fidelity")
     elif all_good:
-        logger.info("✅ RESULT: GOOD — All samples met or exceeded 0.80 separation_fidelity")
+        logger.info("✅ Ergebnis: GOOD — All samples met or exceeded 0.80 separation_fidelity")
     else:
-        logger.info("⚠️  RESULT: FAIR — Some samples below 0.80 threshold")
+        logger.info("⚠️  Ergebnis: FAIR — Some samples below 0.80 Schwelle")
 
     return 0
+
 
 if __name__ == "__main__":
     sys.exit(main())

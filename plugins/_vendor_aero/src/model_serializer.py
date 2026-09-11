@@ -7,12 +7,12 @@ from src.utils import copy_state
 
 logger = logging.getLogger(__name__)
 
-SERIALIZE_KEY_MODELS = 'models'
-SERIALIZE_KEY_OPTIMIZERS = 'optimizers'
-SERIALIZE_KEY_HISTORY = 'history'
-SERIALIZE_KEY_STATE = 'state'
-SERIALIZE_KEY_BEST_STATES = 'best_states'
-SERIALIZE_KEY_ARGS = 'args'
+SERIALIZE_KEY_MODELS = "models"
+SERIALIZE_KEY_OPTIMIZERS = "optimizers"
+SERIALIZE_KEY_HISTORY = "history"
+SERIALIZE_KEY_STATE = "state"
+SERIALIZE_KEY_BEST_STATES = "best_states"
+SERIALIZE_KEY_ARGS = "args"
 
 
 def serialize_model(model):
@@ -55,7 +55,7 @@ def serialize(models, optimizers, history, best_states, args):
     models = package[SERIALIZE_KEY_MODELS]
     for model_name, best_state in package[SERIALIZE_KEY_BEST_STATES].items():
         models[model_name][SERIALIZE_KEY_STATE] = best_state
-        model_filename = model_name + '_' + best_file.name
+        model_filename = model_name + "_" + best_file.name
         tmp_path = os.path.join(best_file.parent, model_filename) + ".tmp"
         torch.save(models[model_name], tmp_path)
         model_path = Path(best_file.parent / model_filename)

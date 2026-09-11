@@ -299,7 +299,12 @@ def _material_similarity(m1: str, m2: str) -> float:
         j = _MATERIAL_SIMILARITY_KEYS.index(n2)
         return _MATERIAL_SIMILARITY_MATRIX[i][j]
     except ValueError as exc:
-        logger.debug("§V6 Material-Similaritäts-Key nicht gefunden — 0.0 zurückgegeben (%s, %s): %s", n1, n2, exc)
+        logger.debug(
+            "§V6 (copilot-instructions.md) Material-Similaritäts-Key nicht gefunden — 0.0 zurückgegeben (%s, %s): %s",
+            n1,
+            n2,
+            exc,
+        )
         return 0.0
 
 

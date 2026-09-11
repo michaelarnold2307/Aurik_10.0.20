@@ -23,6 +23,8 @@ import time as _time
 import numpy as np
 import scipy.signal as sps
 
+from backend.core.audio_layout import is_channels_first, mono_mix, to_channels_first, to_samples_first
+
 logger = logging.getLogger(__name__)
 
 
@@ -146,10 +148,14 @@ def apply(
 
     stereo = audio.ndim == 2
     if stereo:
-        # §2.51 Linked-Stereo: STFT-Gain-Maske aus Mid, identisch auf L+R
-        mono_mix = (audio[0] + audio[1]) / 2.0
+        # §2.51 Linked-Stereo: STFT-Gain-Maske aus Mid, identisch auf L+R.
+        # §V7 (copilot-instructions.md): Layout über audio_layout normalisieren —
+        # (audio[0]+audio[1])/2 traf bei channels-last (N,2) nur 2 Samples.
+        _cf60 = to_channels_first(audio)
+        _was_cf60 = is_channels_first(audio)
+        _mono60 = mono_mix(_cf60)
         mono_repaired = apply(
-            mono_mix,
+            _mono60,
             sample_rate,
             strength=strength,
             defect_scores=defect_scores,
@@ -159,12 +165,16 @@ def apply(
         )
         _eps_igd = 1e-10
         _gain_igd = np.where(
-            np.abs(mono_mix) > _eps_igd,
-            mono_repaired / (mono_mix + _eps_igd * np.sign(mono_mix + _eps_igd)),
+            np.abs(_mono60) > _eps_igd,
+            mono_repaired / (_mono60 + _eps_igd * np.sign(_mono60 + _eps_igd)),
             1.0,
         )
         _gain_igd = np.clip(_gain_igd, 0.0, 10.0)
-        return np.clip(np.stack([audio[0] * _gain_igd, audio[1] * _gain_igd], axis=0), -1.0, 1.0).astype(np.float32)  # type: ignore[no-any-return]
+        _out60 = np.clip(np.stack([_cf60[0] * _gain_igd, _cf60[1] * _gain_igd], axis=0), -1.0, 1.0).astype(np.float32)
+        if not _was_cf60:
+            _out60 = to_samples_first(_out60)
+        _ret60: np.ndarray = _out60
+        return _ret60
 
     x = np.asarray(audio, dtype=np.float32)
     n = len(x)

@@ -5,6 +5,30 @@
 
 **Ziel:** Intelligente Musikwiederherstellung mit psychoakustischer Präzision, deterministischer Reproduzierbarkeit und vollständiger Ausrichtung auf den natürlichen Wohlklang für das menschliche Ohr.
 
+## 🎧 Hörordnung (normative Spitze für Hör-Entscheidungen)
+
+Alle Qualitätsentscheidungen folgen `.github/instructions/hoerordnung.instructions.md` — sie steht ÜBER den Goal-Regeln:
+
+1. **Hör-Invarianten** (unverletzlich, auch gegen Messwerte)
+2. **Audibility**: Maskierungsschwelle statt Mess-Null — ein Defekt unter der Schwelle ist kein Defekt
+3. **Lexikografische Wohlklang-Ordnung**: niemals niederrangige Goals (z.B. groove, brillanz) auf Kosten höherrangiger (authentizitaet, emotionalitaet, natuerlichkeit) verbessern
+4. **Einladungs-Gate**: Export muss einladen, nicht ermüden (Fatigue)
+
+Metriken sind Zeugen — die Hör-Instanz entscheidet (aber nie gegen Ebene 1).
+
+## 🛡️ Produktions-Invarianten (aus überwachten Restaurierungsläufen)
+
+Diese Invarianten entstanden aus realen Lauf-Befunden — Verstöße zerstören Exporte oder degradieren die Hörqualität:
+
+- **§0c Export-Vertrag**: Bei fehlgeschlagenem Export-Gate MUSS das bestmögliche sichere Ergebnis mit Status „degraded“ exportiert werden. Hardstop ohne Ausgabedatei ist normativ unzulässig (Parität CLI ↔ Frontend/export_workflow).
+- **Stereo-Layout-Invariante**: Die Pipeline arbeitet intern **channels-first (C, N)**. Jede Modul-Grenze (Optimizer, Plugins, Metriken) MUSS das Layout normalisieren oder beide Layouts bedienen. `audio[:, 0]` / `mean(axis=0)` auf einem (N, C)-Array kollabiert auf C Samples — Produktionsbefund: Export `(2,)` statt `(480000, 2)`.
+- **ORT-Provider-Tupel**: `(name, options)`-Tupel aus dem fp16-Pfad dürfen NIE `str()`-t werden (Policy-Funktionen reichen sie unverändert durch). Sonst „EP Error Unknown Provider Type“ + stiller CPU-Fallback pro Session.
+- **Guard-Kalibrierung**: Hard-Fail nur bei **Regression gegenüber dem Input** (delta-basiert). Absolute Produktions-Normalwerte (z.B. TP > −1 dBTP bei gemasterter Musik) sind KEIN Hard-Fail — sonst Rollback jeder Phase („0 Phasen“-No-Op).
+- **Log-Zeilen sind Bug-Reports**: Bei überwachten Läufen sind CRITICAL/WARNING-Zeilen Pflichtbefunde. Bekannte Muster: „Signal degeneriert (2 Samples)“, „0 Phasen“, „Retry erzeugten keine Ausführung“, „unbekannte Action“, „self-comparison erkannt (no-op pipeline)“. Kein stilles Akzeptieren.
+- **ONNX-Export-Regeln**: Artefakte MÜSSEN mit onnxruntime (CPU) ladbar sein und numerisch gegen TorchScript/Eager validiert werden (max-abs ≤ 1e-3). Komplexe FFTs vermeiden — ONNX `DFT(inverse=1, onesided=1)` lehnt ORT ab. Große Modelle mit externem `.onnx.data` (nur zusammen kopieren).
+- **Facade-API-Kompatibilität**: `get_htdemucs_plugin()` liefert ein Stems-**Dict** (DemucsV4-Facade) — Aufrufer MÜSSEN Dict und `SeparationResult.reconstruct()` bedienen.
+- **Retry-Semantik**: m1b-Nachbehandlung ist eine explizite Hörbarkeits-Gate-Entscheidung — ERB-Masken-Skips dürfen gequeuede Retries nicht vetoen.
+
 ## 🚀 v10 Invarianten
 
 - **Bridge-Bypass-Verbot**: Kein UI-/Frontend-Code (Aurik10, CLI) importiert `backend/core/` direkt. Nur über `backend/api/bridge.py`. Die Denker-Schicht (`denker/`) ist Teil der Backend-Orchestrierung und von diesem Verbot ausgenommen.
@@ -54,18 +78,22 @@
   Alle Post-Pipeline-Checks (Goals, Goosebumps, EmotionalArc, IAD, HPI, MUSHRA) vergleichen gegen
   den ML-verbesserten Output — nicht gegen das physikalisch unerreichbare degradierte Original.
 - **Cache**: Hash-basierte Persistenz in `~/.aurik/cache/phase0/` für Batch-Imports (§v10.303.18).
-- **PLM-Lade-Reihenfolge**: EAR_VAE (643MB ONNX) → DFN (34MB) → Apollo (67MB) → Resemble (722MB) — klein zu groß.
+- **PLM-Lade-Reihenfolge Phase 0**: EAR_VAE → Apollo → DeepFilterNet v3 → Resemble Enhance (Stufen-Reihenfolge der Kette, Chain-Metadaten „ear_vae→apollo→deepfilternet→resemble_enhance“).
 - **MP3-resistente Gender-Detection**: `bandwidth_loss` an `_detect_gender_robust()` übergeben.
 
-### v10 Roadmap (spezifiziert, nicht implementiert)
+### v10 Roadmap
+
+> §3.1 (SectionStrengthEnvelope) und §3.4 (DAG-Reordering) sind inzwischen implementiert
+> (aktiv im Produktionslauf: „§3.4 DAG reorder“ / „SectionGoalAdapter … sektionsweise
+> Stärke-Skalierung aktiv“). Die übrigen Einträge bleiben Roadmap.
 
 | § | Konzept | Beschreibung |
 |---|---|---|
 | §3.0 | **Cross-Phase Naturalness Consensus** | Phasen im gleichen Frequenzbereich stimmen sich ab. Naturalness-Guard prüft kumulative Wirkung |
-| §3.1 | **SectionStrengthEnvelope aktiv** | Phase 19, 38, 18 lesen die bereits injizierte Envelope |
+| ~~§3.1~~ | ~~SectionStrengthEnvelope aktiv~~ | **Implementiert** — SectionGoalAdapter skaliert Stärke sektionsweise |
 | §3.2 | **Artist/Track-Fingerprint** | BatchSessionLearner persistiert Stimm-Modell + Track-Modell für Transfer |
 | §3.3 | **Blind Reference-Free Quality** | MERT-Embedding-basierte absolute Qualitätsschätzung ohne Vergleich zum degradierten Original |
-| §3.4 | **Dynamic Phase Ordering (DAG)** | Volles DAG-basiertes Phase-Reordering, materialabhängig |
+| ~~§3.4~~ | ~~Dynamic Phase Ordering (DAG)~~ | **Implementiert** — PhaseInteractionDenker + DAG-Reorder aktiv |
 | §3.5 | **Real-time Preview** | 10s in ~30s vorab restaurieren zur Validierung |
 | §3.6 | **Human-Panel MUSHRA** | Ridge-Regression auf echten Hörtest-Daten → kalibrierter MUSHRA-Proxy |
 
@@ -81,7 +109,7 @@
 ## 📊 Architektur-Ebenen
 
 ```
-CLI (denker/aurik_cli.py)
+CLI (cli/aurik_cli.py)
   ↓
 Bridge API (backend/api/bridge.py) [Mode-Normalisierung]
   ↓
@@ -96,7 +124,8 @@ Denker-Schicht (denker/*.py) [ZENTRALE ENTSCHEIDUNGSINTELLIGENZ]
   └─ ExzellenzDenker     — Musical Goals, Goal-Repair
   ↓
 UnifiedRestorerV3 (backend/core/unified_restorer_v3.py)
-  ├─ **Phase 0: EAR_VAE→Apollo→DFN→Resemble** (plugins/apollo_phase0_integration.py)
+  ├─ **Phase 0: EAR_VAE→Apollo→DeepFilterNet v3→Resemble Enhance** (plugins/apollo_phase0_integration.py;
+  │  EAR_VAE = neuraler Clean-Pass VOR den subtraktiven Stufen)
   ├─ SongCalibration     — global_scalar, family_scalars, ALLE Guards
   ├─ SectionStrengthEnvelope — kontinuierliche per-Segment-Hüllkurve
   ├─ Phase-Selektion     — Preservation Mode, Risk-Guard

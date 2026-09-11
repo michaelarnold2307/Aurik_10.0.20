@@ -38,6 +38,7 @@ class AurikPipeline:
 
 # ── Alias-Klassen (für Dead-Import-Reparatur) ───────────────────────
 
+
 class RestorationPipeline(AurikPipeline):
     """Alias für AurikPipeline — für Dead-Import-Kompatibilität."""
 

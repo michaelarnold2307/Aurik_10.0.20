@@ -21,6 +21,8 @@ from pathlib import Path
 import numpy as np
 import scipy.signal as signal
 
+from backend.core.audio_layout import mono_mix
+
 from .safety_wrapper_template import (
     BaseSafetyWrapper,
     PostCheckResult,
@@ -50,7 +52,7 @@ def detect_formants_lpc(audio: np.ndarray, sr: int, n_formants: int = 5) -> np.n
     """
     # Ensure mono
     if audio.ndim > 1:
-        audio = np.mean(audio, axis=0)
+        audio = mono_mix(audio)  # §V7 (copilot-instructions.md): layout-sicher statt mean(axis=0)
 
     # Pre-emphasis to boost high frequencies
     pre_emphasized = np.append(audio[0], audio[1:] - 0.97 * audio[:-1])
@@ -151,7 +153,7 @@ def detect_voice_presence(audio: np.ndarray, sr: int) -> tuple[bool, float]:
     """
     # Ensure mono
     if audio.ndim > 1:
-        audio = np.mean(audio, axis=0)
+        audio = mono_mix(audio)  # §V7 (copilot-instructions.md): layout-sicher statt mean(axis=0)
 
     # Voice characteristics:
     # 1. Fundamental frequency in 80-400 Hz range (speech/singing)
@@ -194,7 +196,7 @@ def detect_singers_formant(audio: np.ndarray, sr: int) -> tuple[bool, float]:
     """
     # Ensure mono
     if audio.ndim > 1:
-        audio = np.mean(audio, axis=0)
+        audio = mono_mix(audio)  # §V7 (copilot-instructions.md): layout-sicher statt mean(axis=0)
 
     # Compute spectrum
     spectrum = np.abs(np.fft.rfft(audio))

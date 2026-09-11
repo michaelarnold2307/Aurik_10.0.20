@@ -107,7 +107,7 @@ def _set_job_budget_registered(job: object, registered: bool) -> None:
         object.__setattr__(job, "_budget_registered", bool(registered))
     except Exception:
         logger.warning(
-            "§G23 KMV Stufe 2: _budget_registered konnte nicht gesetzt werden (non-fatal)",
+            "§G23 KMV Stufe 2: _Grenze_registered konnte nicht gesetzt werden (non-fatal)",
             exc_info=True,
         )
 
@@ -198,7 +198,7 @@ class MLRefinementThread(QThread):
                 self.refinement_cancelled.emit(output_path)
                 return
         except ImportError as _be:
-            logger.warning("§G23 KMV: ml_memory_budget nicht verfügbar — ohne Budget-Guard: %s", _be, exc_info=True)
+            logger.warning("§G23 KMV: ml_memory_Grenze nicht verfügbar — ohne Grenze-Guard: %s", _be, exc_info=True)
             # Continue without budget guard if module absent (test environments)
             _budget_registered = False
             _set_job_budget_registered(job, False)

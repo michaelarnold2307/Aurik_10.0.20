@@ -93,8 +93,9 @@ def sha256_file(p: Path) -> str:
     return h.hexdigest()
 
 
-def prepare_pair(dmg: Path, clean: Path, label: str, out_dir: Path, mode: str,
-                 seconds: float, sr_out: int = 48000) -> dict:
+def prepare_pair(
+    dmg: Path, clean: Path, label: str, out_dir: Path, mode: str, seconds: float, sr_out: int = 48000
+) -> dict:
     import soundfile as sf
 
     from backend.core.unified_restorer_v3 import QualityMode, RestorationConfig, UnifiedRestorerV3
@@ -114,8 +115,11 @@ def prepare_pair(dmg: Path, clean: Path, label: str, out_dir: Path, mode: str,
     out_path = out_dir / f"{label}__{mode}.wav"
     sf.write(str(out_path), restored, sr_out, format="WAV", subtype="PCM_24")
     return {
-        "label": label, "mode": mode, "damaged_sha": sha256_file(dmg)[:16],
-        "clean_sha": sha256_file(clean)[:16], "wall_s": round(wall, 1),
+        "label": label,
+        "mode": mode,
+        "damaged_sha": sha256_file(dmg)[:16],
+        "clean_sha": sha256_file(clean)[:16],
+        "wall_s": round(wall, 1),
         "quality": float(getattr(result, "quality_estimate", 0.0) or 0.0),
         "audibility_gate": (result.metadata or {}).get("audibility_gate"),
         "out": str(out_path),
@@ -136,8 +140,7 @@ def cmd_prepare(args: argparse.Namespace) -> int:
         return 2
     run_dir = OUT_ROOT / time.strftime("run_%Y%m%d_%H%M%S")
     run_dir.mkdir(parents=True, exist_ok=True)
-    meta = {"pairs": [], "created": time.strftime("%Y-%m-%dT%H:%M:%S"),
-            "seconds": args.seconds, "modes": args.modes}
+    meta = {"pairs": [], "created": time.strftime("%Y-%m-%dT%H:%M:%S"), "seconds": args.seconds, "modes": args.modes}
     for dmg, clean, label in pairs[: args.max_pairs]:
         for mode in args.modes:
             row = prepare_pair(dmg, clean, label, run_dir, mode, args.seconds)
@@ -167,7 +170,6 @@ def build_sessions(pairs_meta: dict, n_listeners: int, seed: int, ref_root: Path
             stim = [
                 {"kind": "aurik", "path": pr["out"]},
             ]
-            clean_hint = None
             for rpath in refs.get(pr["label"], []):
                 stim.append({"kind": "reference", "path": str(rpath), "tool": rpath.parent.name})
             # Hidden Reference + Anchor werden zur Laufzeit aus clean bzw. Rest erzeugt;
@@ -175,13 +177,16 @@ def build_sessions(pairs_meta: dict, n_listeners: int, seed: int, ref_root: Path
             stim.append({"kind": "hidden_ref"})
             stim.append({"kind": "anchor"})
             order = rng.permutation(len(stim)).tolist()
-            trials.append({
-                "label": pr["label"], "mode": pr["mode"],
-                "clean_sha": pr["clean_sha"],
-                "order": [stim[i]["kind"] for i in order],
-                "n_stimuli": len(stim),
-            })
-        sessions.append({"listener": f"L{li+1:02d}", "seed": int(rng.integers(0, 2**31)), "trials": trials})
+            trials.append(
+                {
+                    "label": pr["label"],
+                    "mode": pr["mode"],
+                    "clean_sha": pr["clean_sha"],
+                    "order": [stim[i]["kind"] for i in order],
+                    "n_stimuli": len(stim),
+                }
+            )
+        sessions.append({"listener": f"L{li + 1:02d}", "seed": int(rng.integers(0, 2**31)), "trials": trials})
     return sessions
 
 
@@ -204,8 +209,9 @@ def cmd_sessions(args: argparse.Namespace) -> int:
             for t in s["trials"]:
                 for i, kind in enumerate(t["order"]):
                     w.writerow([s["listener"], t["label"], i, kind, ""])
-    (out / "meta.json").write_text(json.dumps({"seed": args.seed, "run": run_dir.name,
-                                               "listeners": args.listeners}, indent=2), encoding="utf-8")
+    (out / "meta.json").write_text(
+        json.dumps({"seed": args.seed, "run": run_dir.name, "listeners": args.listeners}, indent=2), encoding="utf-8"
+    )
     print("Studien-Ordner:", out)
     return 0
 
@@ -258,9 +264,12 @@ def analyze_answers(answers_csv: Path, out_dir: Path, args: argparse.Namespace) 
         if an is not None and aur < an + margin:
             go, reasons = False, [*reasons, f"{label}: Aurik {aur:.0f} < Anchor {an:.0f} + {margin}"]
     result = {
-        "listeners_total": len(by_listener), "listeners_valid": len(valid),
+        "listeners_total": len(by_listener),
+        "listeners_valid": len(valid),
         "excluded": sorted(set(by_listener) - set(valid)),
-        "scores": summary, "go": go, "reasons": reasons,
+        "scores": summary,
+        "go": go,
+        "reasons": reasons,
         "criteria": {"hidden_ref_gap": gap, "anchor_margin": margin, "validity_min": 60},
     }
     out_file = out_dir / f"analysis_{answers_csv.stem}.json"

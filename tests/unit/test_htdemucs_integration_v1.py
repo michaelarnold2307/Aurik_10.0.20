@@ -202,11 +202,23 @@ class TestHtdemucsPlugin:
 
         def _fast(*args, **kwargs):
             calls["fast"] += 1
-            return {"bass_kraft": 0.81, "brillanz": 0.83, "waerme": 0.82, "natuerlichkeit": 0.84,
-                    "authentizitaet": 0.83, "emotionalitaet": 0.81, "transparenz": 0.82,
-                    "groove": 0.80, "spatial_depth": 0.76, "timbre_authentizitaet": 0.82,
-                    "tonal_center": 0.84, "micro_dynamics": 0.81, "separation_fidelity": 0.79,
-                    "artikulation": 0.81, "transient_energie": 0.80}
+            return {
+                "bass_kraft": 0.81,
+                "brillanz": 0.83,
+                "waerme": 0.82,
+                "natuerlichkeit": 0.84,
+                "authentizitaet": 0.83,
+                "emotionalitaet": 0.81,
+                "transparenz": 0.82,
+                "groove": 0.80,
+                "spatial_depth": 0.76,
+                "timbre_authentizitaet": 0.82,
+                "tonal_center": 0.84,
+                "micro_dynamics": 0.81,
+                "separation_fidelity": 0.79,
+                "artikulation": 0.81,
+                "transient_energie": 0.80,
+            }
 
         def _raise_if_called(*args, **kwargs):
             raise AssertionError("Expensive 15-goal loop should be skipped for low global_scalar")

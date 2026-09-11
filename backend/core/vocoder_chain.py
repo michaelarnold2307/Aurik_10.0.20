@@ -16,6 +16,7 @@ nicht verdrahtet.
 from __future__ import annotations
 
 import logging
+from importlib import import_module
 from typing import cast
 
 import numpy as np
@@ -69,12 +70,17 @@ def activate_vocoder_chain(
 
     # Stufe 2: BigVGAN-v2 (primär im Restoration-Modus)
     try:
-        from plugins.bigvgan_v2_plugin import BigVGANv2Plugin
+        _bigvgan_module = import_module("plugins.bigvgan_v2_plugin")
 
-        result = BigVGANv2Plugin().synthesize(arr, sample_rate)
-        if _ok(result):
-            logger.info("Vocoder-Kette: BigVGAN-v2 erfolgreich")
-            return cast(np.ndarray | None, (np.asarray(result, dtype=np.float32)))
+        try:
+            _get_bigvgan = _bigvgan_module.get_bigvgan_v2
+        except (ImportError, AttributeError):
+            _get_bigvgan = _bigvgan_module.BigVGANv2Plugin
+        result = _get_bigvgan().synthesize(arr, sample_rate)
+        out = getattr(result, "audio", result)
+        if _ok(out):
+            logger.info("Vocoder-Kette: BigVGAN-v2 erfolgreich (%s)", getattr(result, "model_used", "adapter"))
+            return cast(np.ndarray | None, np.asarray(out, dtype=np.float32))
     except Exception as e:
         logger.warning("BigVGAN-v2 fehlgeschlagen: %s — Rückfall zu HiFi-GAN", e)
 

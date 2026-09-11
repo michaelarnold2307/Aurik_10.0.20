@@ -17,6 +17,7 @@ sys.path.insert(0, str(WORKSPACE_ROOT))
 
 logger = logging.getLogger(__name__)
 
+
 def run_sample_and_capture_logs(sample_path: str, sample_label: str, max_duration: float = 30.0):
     """Run one sample with extensive log capture and analysis."""
     import io
@@ -29,7 +30,7 @@ def run_sample_and_capture_logs(sample_path: str, sample_label: str, max_duratio
     log_capture = io.StringIO()
     handler = logging.StreamHandler(log_capture)
     handler.setLevel(logging.DEBUG)
-    formatter = logging.Formatter('[%(levelname)-8s] %(name)s: %(message)s')
+    formatter = logging.Formatter("[%(levelname)-8s] %(name)s: %(message)s")
     handler.setFormatter(formatter)
 
     root_logger = logging.getLogger()
@@ -51,28 +52,40 @@ def run_sample_and_capture_logs(sample_path: str, sample_label: str, max_duratio
         if len(audio.shape) == 1:
             audio = audio.reshape(-1, 1)
 
-        # Run pre-analysis
+        # Run pre-analysis (Ergebnis wird hier nicht benötigt — nur Log-Seiteneffekte)
         from backend.core.pre_analysis import run_pre_analysis
-        pre_result = run_pre_analysis(audio, sr, file_path=sample_path)
+
+        run_pre_analysis(audio, sr, file_path=sample_path)
 
         # Get all captured logs
         logs_text = log_capture.getvalue()
-        result["logs"] = logs_text.split('\n')
+        result["logs"] = logs_text.split("\n")
 
         # Parse warnings and errors
         for line in result["logs"]:
             if line.strip():
-                if 'WARNING' in line:
+                if "WARNING" in line:
                     result["warnings"].append(line.strip())
-                elif 'ERROR' in line:
+                elif "ERROR" in line:
                     result["errors"].append(line.strip())
 
                 # Identify severity issues
-                if any(kw in line.lower() for kw in [
-                    'fallback', 'failed', 'error', 'exception',
-                    'infinite', 'nan', 'clipping', 'timeout',
-                    'shape mismatch', 'out of memory', 'crash'
-                ]):
+                if any(
+                    kw in line.lower()
+                    for kw in [
+                        "fallback",
+                        "failed",
+                        "error",
+                        "exception",
+                        "infinite",
+                        "nan",
+                        "clipping",
+                        "timeout",
+                        "shape mismatch",
+                        "out of memory",
+                        "crash",
+                    ]
+                ):
                     result["severity_issues"].append(line.strip())
 
     except Exception as e:
@@ -83,6 +96,7 @@ def run_sample_and_capture_logs(sample_path: str, sample_label: str, max_duratio
         root_logger.setLevel(old_level)
 
     return result
+
 
 def main():
     """Run one sample as representative test."""
@@ -137,15 +151,15 @@ def main():
         "timestamp": datetime.now().isoformat(),
         "samples_analyzed": len(all_results),
         "top_issues": [
-            {"issue": issue, "count": count}
-            for issue, count in sorted(all_issues.items(), key=lambda x: -x[1])[:20]
+            {"issue": issue, "count": count} for issue, count in sorted(all_issues.items(), key=lambda x: -x[1])[:20]
         ],
     }
 
     with open(output_path, "w") as f:
         json.dump(report, f, indent=2)
 
-    logger.info("§V01 Report saved: %s", output_path)
+    logger.info("§V01 Report gespeichert: %s", output_path)
+
 
 if __name__ == "__main__":
     main()

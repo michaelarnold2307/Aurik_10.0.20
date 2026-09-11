@@ -95,10 +95,7 @@ def main() -> int:
         dnn._real_io = True
         err = float((cplx_ref - real_out).abs().max())
         scale = float(cplx_ref.abs().max())
-        print(
-            f"[parity] Real-IO vs komplexer Pfad: max|Δ|={err:.3e} "
-            f"rel={err / max(scale, 1e-9):.3e}"
-        )
+        print(f"[parity] Real-IO vs komplexer Pfad: max|Δ|={err:.3e} rel={err / max(scale, 1e-9):.3e}")
         assert err / max(scale, 1e-9) < 1e-4, "Parität verletzt"
 
         # Informativ: TS-Artefakt trägt andere Gewichte (kein Assert).
@@ -112,8 +109,7 @@ def main() -> int:
                 ts_ref = ts_out.squeeze(2)
             ts_err = float((ts_ref - real_out).abs().max())
             print(
-                f"[info] TS-Artefakt vs Real-IO: max|Δ|={ts_err:.3e} "
-                "(erwartet groß — andere Gewichte, siehe Docstring)"
+                f"[info] TS-Artefakt vs Real-IO: max|Δ|={ts_err:.3e} (erwartet groß — andere Gewichte, siehe Docstring)"
             )
         except Exception as exc:  # pylint: disable=broad-except
             print(f"[info] TS-Artefakt-Check übersprungen: {type(exc).__name__}: {exc}")

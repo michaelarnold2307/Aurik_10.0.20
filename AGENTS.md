@@ -74,6 +74,12 @@ Details immer in der normativen Kette (§1) nachlesen.
 - **Bridge-Verbot (§V4)**: UI/Frontend (Aurik10, CLI) importiert `backend/core/`
   nie direkt — nur über `backend/api/bridge.py`. Denker-Schicht (`denker/`)
   ausgenommen.
+- **CLI/GUI-Funktionsgleichheit**: CLI und GUI rufen die gesamte Verarbeitung
+  (Voranalyse, Restaurierung, Export) ausschließlich über
+  `backend/api/bridge.py` auf; funktionelle Abweichungen zwischen beiden
+  Pfaden sind verboten. Bei Modell- und Algorithmus-Entscheidungen gilt immer
+  die höherwertige SOTA-Lösung des Wohlklangs für das menschliche Ohr —
+  Legacy-Lösungen werden nie bevorzugt.
 - **Neue Datei anlegen (Write-Gate)**: vor dem Anlegen
   `python scripts/repo_search.py --before-create <pfad>` prüfen (kanonische
   Alternative? Namens-/Symbol-Ähnlichkeit?); danach Eintrag in
@@ -87,6 +93,16 @@ Details immer in der normativen Kette (§1) nachlesen.
   (Fallback); kein nacktes `astype(np.int16)`.
 - **Silent-Failure-Verbot (§V6)**: jeder ML→DSP-Fallback mit
   `logger.warning()` + Begründung.
+- **Export-Vertrag (§0c)**: Bei fehlgeschlagenem Export-Quality-Gate MUSS das
+  bestmögliche sichere Ergebnis mit Status „degraded“ exportiert werden —
+  Hardstop ohne Ausgabedatei ist normativ unzulässig (CLI und Frontend gleich).
+- **Stereo-Layout-Invariante**: Pipeline-intern ist Stereo **channels-first
+  (C, N)**. Jede Modul-Grenze (Optimizer, Plugins, Metriken) MUSS das Layout
+  normalisieren oder beide Layouts bedienen — `audio[:, 0]`/`mean(axis=0)` ohne
+  Layout-Check kollabiert auf C Samples (Produktionsbefund: Export `(2,)`).
+- **Guard-Kalibrierung**: Hard-Fail nur bei Regression gegenüber dem Input
+  (delta-basiert). Absolute Produktions-Normalwerte (z.B. TP > −1 dBTP bei
+  gemasterter Musik) sind kein Hard-Fail.
 - **Workaround-Verbot (§V7)**: Ursache statt Symptom; keine phasen-individuellen
   Schwellwerte; Stärke-Entscheidungen zentral über `global_scalar`.
 - **Song-Isolation (§V8/§G1)**: alle Stateful-Module (Circuit-Breaker, Caches,

@@ -156,14 +156,20 @@ class STFTExtractor:
 # ── Dataset (streaming from MUSDB18, no pre-generation needed) ──────────────
 
 
-class SGMSE_Dataset(Dataset):
+class SgmsEDataset(Dataset):
     """Streaming-Dataset: MUSDB18-Stems direkt laden, Rauschen + Hall on-the-fly.
 
     §v10.16: 30 % Reverb-Paare (anechoic/reverb), 50 % Corpus-Rauschen
     (data/musan, falls vorhanden), sonst synthetisch weiß/rosa/braun.
     """
 
-    def __init__(self, audio_files: list[Path], musan_files: Optional[list[Path]] = None, reverb_prob: float = 0.30, chunk_samples: int = 192000):
+    def __init__(
+        self,
+        audio_files: list[Path],
+        musan_files: list[Path] | None = None,
+        reverb_prob: float = 0.30,
+        chunk_samples: int = 192000,
+    ):
         self.files = audio_files
         self.musan_files = musan_files or []
         self.reverb_prob = reverb_prob
@@ -213,7 +219,7 @@ class SGMSE_Dataset(Dataset):
     @staticmethod
     def _reverb(clean: np.ndarray) -> np.ndarray:
         """Anechoic → reverberant via synthetischer RIR (fftconvolve, gleiche Länge)."""
-        wet = fftconvolve(clean, SGMSE_Dataset._rir())[: len(clean)]
+        wet = fftconvolve(clean, SgmsEDataset._rir())[: len(clean)]
         return wet.astype(np.float32)
 
     def _synthetic_noise(self, n: int) -> np.ndarray:
@@ -273,7 +279,6 @@ def train(
 
     chunk_samples = int(chunk_sec * 48000)
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    use_amp = device.type == "cuda"
 
     # Data — streaming directly from MUSDB18, no pre-generation
     musdb = _PROJECT / "data" / "musdb18hq" / "train"
@@ -291,21 +296,23 @@ def train(
     if musan_files:
         print(f"MUSAN-Corpus: {len(musan_files)} Noise-Dateien gefunden")
     else:
-        print("WARNUNG: data/musan leer — Training läuft synthetisch-only (weiß/rosa/braun). "
-              "§v10.16 verlangt zusätzlich Corpus-Rauschen; MUSAN vor dem finalen Lauf bereitstellen.")
+        print(
+            "WARNUNG: data/musan leer — Training läuft synthetisch-only (weiß/rosa/braun). "
+            "§v10.16 verlangt zusätzlich Corpus-Rauschen; MUSAN vor dem finalen Lauf bereitstellen."
+        )
 
     random.shuffle(all_files)
     n_val = max(1, int(len(all_files) * 0.2))
     train_files, val_files = all_files[n_val:], all_files[:n_val]
 
-    train_ds = SGMSE_Dataset(train_files, musan_files=musan_files, chunk_samples=chunk_samples)
-    val_ds = SGMSE_Dataset(val_files, musan_files=musan_files, chunk_samples=chunk_samples)
+    train_ds = SgmsEDataset(train_files, musan_files=musan_files, chunk_samples=chunk_samples)
+    val_ds = SgmsEDataset(val_files, musan_files=musan_files, chunk_samples=chunk_samples)
     train_loader = DataLoader(train_ds, batch_size=batch_size, shuffle=True, num_workers=0, drop_last=True)
     val_loader = DataLoader(val_ds, batch_size=batch_size, shuffle=False, num_workers=0, drop_last=True)
 
     # Model — Backbone NCSNpp (src-Architektur, 48-kHz-STFT). Nicht NCSNpp_48k:
     # dessen Layer-Struktur weicht vom src-Checkpoint ab (Size-Mismatches im
-    # Smoke-Run 2026-09-10) — Fine-Tune-Init wäre unmöglich (§V7: Ursache statt
+    # Smoke-Run 2026-09-10) — Fine-Tune-Init wäre unmöglich (§V7 (copilot-instructions.md): Ursache statt
     # Workaround; der faltungsbasierte NCSNpp verarbeitet F=512/T=768 nativ).
     from sgmse.backbones.ncsnpp import NCSNpp
 
@@ -450,8 +457,25 @@ if __name__ == "__main__":
     p.add_argument("--steps-per-epoch", type=int, default=200)
     p.add_argument("--ckpt", type=str, default="models/sgmse_plus/sgmse_plus_src_1.ckpt")
     p.add_argument("--resume", type=str, default=None)
-    p.add_argument("--seed", type=int, default=42, help="Determinismus (§G5)")
-    p.add_argument("--out-dir", type=str, default=None, help="Ausgabeverzeichnis (Default: models/sgmse_plus/finetuned)")
-    p.add_argument("--chunk-sec", type=float, default=4.0, help="Chunk-Länge in Sekunden (Speicher-Knopf: 24-GB-GPU braucht ggf. 2 s oder Batch 1)")
+    p.add_argument("--seed", type=int, default=42, help="Determinismus (§G5 (GEBOTE.md))")
+    p.add_argument(
+        "--out-dir", type=str, default=None, help="Ausgabeverzeichnis (Default: models/sgmse_plus/finetuned)"
+    )
+    p.add_argument(
+        "--chunk-sec",
+        type=float,
+        default=4.0,
+        help="Chunk-Länge in Sekunden (Speicher-Knopf: 24-GB-GPU braucht ggf. 2 s oder Batch 1)",
+    )
     args = p.parse_args()
-    train(args.epochs, args.batch_size, args.lr, args.steps_per_epoch, args.ckpt, args.resume, args.seed, args.out_dir, args.chunk_sec)
+    train(
+        args.epochs,
+        args.batch_size,
+        args.lr,
+        args.steps_per_epoch,
+        args.ckpt,
+        args.resume,
+        args.seed,
+        args.out_dir,
+        args.chunk_sec,
+    )

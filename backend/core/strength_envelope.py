@@ -121,7 +121,7 @@ def compute_strength_envelope(
         # verlorener Locations-/Salienz-Transport aus dem Cache — sichtbar machen.
         logger.warning(
             "§2.71: Keine Defekt-Locations → uniform floor=%.3f (Envelope degeneriert; "
-            "Phasen laufen mit Minimal-Stärke — bitte Cached-Scan-Salienz/Locations prüfen)",
+            "Phasen laufen mit Minimal-Stärke — bitte zwischengespeichert-Scan-Salienz/Locations prüfen)",
             min_strength,
         )
         return cast(np.ndarray, (np.asarray(envelope, dtype=np.float32)))

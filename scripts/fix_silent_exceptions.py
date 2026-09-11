@@ -94,7 +94,7 @@ def fix_file(filepath: str, dry_run: bool = False) -> int:
         import re
 
         var_match = re.search(r"except\s+Exception\s+as\s+(\w+)", except_line)
-        var_name = var_match.group(1) if var_match else "_exc"
+        var_match.group(1) if var_match else "_exc"
 
         # Erstelle Logger-Zeile mit korrekter Einrückung
         # Füge 4 Leerzeichen mehr ein als die except-Zeile

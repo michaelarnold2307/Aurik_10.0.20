@@ -204,9 +204,12 @@ class TestSpectralColorMaskingJND:
         from backend.core.dsp.spectral_color_guard import check_spectral_color_preservation
 
         pre, post = _spectral_color_signals()
-        with patch("backend.core.calibration_context.get_calibration_context", return_value=None), patch(
-            "backend.core.dsp.spectral_color_guard.estimate_delta_masking_jnd_db",
-            return_value=_jnd(0.0, above_db=8.0),
+        with (
+            patch("backend.core.calibration_context.get_calibration_context", return_value=None),
+            patch(
+                "backend.core.dsp.spectral_color_guard.estimate_delta_masking_jnd_db",
+                return_value=_jnd(0.0, above_db=8.0),
+            ),
         ):
             result = check_spectral_color_preservation(pre, post, SR, threshold=0.97)
         assert result.correlation < 0.97
@@ -216,9 +219,12 @@ class TestSpectralColorMaskingJND:
         from backend.core.dsp.spectral_color_guard import check_spectral_color_preservation
 
         pre, post = _spectral_color_signals()
-        with patch("backend.core.calibration_context.get_calibration_context", return_value=None), patch(
-            "backend.core.dsp.spectral_color_guard.estimate_delta_masking_jnd_db",
-            return_value=_jnd(6.0),
+        with (
+            patch("backend.core.calibration_context.get_calibration_context", return_value=None),
+            patch(
+                "backend.core.dsp.spectral_color_guard.estimate_delta_masking_jnd_db",
+                return_value=_jnd(6.0),
+            ),
         ):
             result_masked = check_spectral_color_preservation(pre, post, SR, threshold=0.97)
         assert result_masked.ok is True  # Schwelle 0.97 − 0.20 = 0.77
@@ -313,10 +319,13 @@ class TestGainStepMaskingJND:
         rng = np.random.default_rng(21)
         pre = (0.4 * rng.standard_normal(SR * 2)).astype(np.float32)
         post = (pre * 2.0).astype(np.float32)  # +6 dB Gain-Sprung
-        with patch(
-            "backend.core.temporal_continuity_guard.estimate_delta_masking_jnd_db",
-            return_value=_jnd(0.0, above_db=6.0),
-        ), caplog.at_level("WARNING", logger="backend.core.temporal_continuity_guard"):
+        with (
+            patch(
+                "backend.core.temporal_continuity_guard.estimate_delta_masking_jnd_db",
+                return_value=_jnd(0.0, above_db=6.0),
+            ),
+            caplog.at_level("WARNING", logger="backend.core.temporal_continuity_guard"),
+        ):
             r = check_temporal_continuity(pre, post, "phase_test", SR)
         assert r.gain_step_threshold_db == 1.5
         assert r.gain_step_db > 5.0
@@ -328,10 +337,13 @@ class TestGainStepMaskingJND:
         rng = np.random.default_rng(21)
         pre = (0.4 * rng.standard_normal(SR * 2)).astype(np.float32)
         post = (pre * 1.9).astype(np.float32)  # ≈ +5,6 dB — unter dem 6-dB-JND-Cap
-        with patch(
-            "backend.core.temporal_continuity_guard.estimate_delta_masking_jnd_db",
-            return_value=_jnd(6.0),
-        ), caplog.at_level("WARNING", logger="backend.core.temporal_continuity_guard"):
+        with (
+            patch(
+                "backend.core.temporal_continuity_guard.estimate_delta_masking_jnd_db",
+                return_value=_jnd(6.0),
+            ),
+            caplog.at_level("WARNING", logger="backend.core.temporal_continuity_guard"),
+        ):
             r = check_temporal_continuity(pre, post, "phase_test", SR)
         assert r.gain_step_threshold_db == 6.0  # max(1,5; 6,0)
         assert not any("Mikro-Klick-Risiko" in rec.message for rec in caplog.records)

@@ -30,7 +30,7 @@ class SileroPlugin:
 
     def _try_load(self, path: str) -> None:
         if not os.path.exists(path):
-            logger.warning("Silero VAD fehlt: %s -- Energie-Fallback.", path)
+            logger.warning("Silero VAD fehlt: %s -- Energie-Ersatzpfad.", path)
             return
         try:
             import onnxruntime as ort
@@ -39,29 +39,32 @@ class SileroPlugin:
                 from backend.core.ml_memory_budget import try_allocate as _try_alloc
 
                 if not _try_alloc("SileroVAD", size_gb=0.11):
-                    logger.warning("SileroVAD: ML-Budget erschöpft — Energie-Fallback.")
+                    logger.warning("SileroVAD: ML-Grenze erschöpft — Energie-Ersatzpfad.")
                     return
             except Exception as _exc:
-                logger.debug("Operation failed (non-critical): %s", _exc)
+                logger.debug("Operation fehlgeschlagen (unkritisch): %s", _exc)
 
             opts = ort.SessionOptions()
             opts.inter_op_num_threads = 2
-            self._session = ort.InferenceSession(path, sess_options=opts, providers=["CPUExecutionProvider"])
+            # §v10.40c: Registry-konsultierte Provider-Wahl statt hartem CPU.
+            from backend.core.gpu_model_registry import get_onnx_providers
+
+            self._session = ort.InferenceSession(path, sess_options=opts, providers=get_onnx_providers(path))
             logger.info("Silero VAD ONNX geladen: %s", path)
             try:
                 from backend.core.plugin_lifecycle_manager import register_plugin as _reg_plm
 
                 _reg_plm("SileroVAD", size_gb=0.11, unload_fn=lambda s=self: setattr(s, "_session", None))  # type: ignore[misc]
             except Exception as _exc:
-                logger.debug("Operation failed (non-critical): %s", _exc)
+                logger.debug("Operation fehlgeschlagen (unkritisch): %s", _exc)
         except Exception as exc:
-            logger.warning("Silero Ladefehler: %s -- Energie-Fallback.", exc)
+            logger.warning("Silero Ladefehler: %s -- Energie-Ersatzpfad.", exc)
             try:
                 from backend.core.ml_memory_budget import release as _rel
 
                 _rel("SileroVAD")
             except Exception as _exc:
-                logger.debug("Operation failed (non-critical): %s", _exc)
+                logger.debug("Operation fehlgeschlagen (unkritisch): %s", _exc)
 
     def is_speech(self, audio: np.ndarray, sr: int) -> float:
         """Gibt Sprach-Wahrscheinlichkeit [0,1] zurueck."""
@@ -97,7 +100,7 @@ class SileroPlugin:
             try:
                 mask16 = self._vad_mask_single_call(mono16)
             except Exception as exc:
-                logger.warning("Silero VAD single-call failed (%s), using energy fallback", exc)
+                logger.warning("Silero VAD single-call fehlgeschlagen (%s), using energy Ersatzpfad", exc)
                 mask16 = self._energy_mask(mono16)
         else:
             mask16 = self._energy_mask(mono16)
@@ -118,7 +121,7 @@ class SileroPlugin:
             _plm = get_plugin_lifecycle_manager()
             _plm.set_active("SileroVAD", True)
         except Exception:
-            logger.warning("silero_plugin.py::_vad_mask_single_call fallback", exc_info=True)
+            logger.warning("silero_plugin.py::_vad_mask_single_call Ersatzpfad", exc_info=True)
         try:
             inp = mono16[None].astype(np.float32)  # [1, n_samples]
             out = self._session.run(None, {"input": inp})[0]  # [1, frames, 999]
@@ -144,7 +147,7 @@ class SileroPlugin:
                 try:
                     _plm.set_active("SileroVAD", False)
                 except Exception:
-                    logger.warning("silero_plugin.py::_vad_mask_single_call fallback", exc_info=True)
+                    logger.warning("silero_plugin.py::_vad_mask_single_call Ersatzpfad", exc_info=True)
 
     def _energy_mask(self, mono16: np.ndarray) -> np.ndarray:
         """Energy-based VAD fallback: chunk-wise RMS."""
@@ -165,7 +168,7 @@ class SileroPlugin:
             _plm = get_plugin_lifecycle_manager()
             _plm.set_active("SileroVAD", True)
         except Exception:
-            logger.warning("silero_plugin.py::_vad_onnx fallback", exc_info=True)
+            logger.warning("silero_plugin.py::_vad_onnx Ersatzpfad", exc_info=True)
         try:
             inp = chunk[None].astype(np.float32)
             try:
@@ -175,14 +178,14 @@ class SileroPlugin:
                 speech_prob = float(probs[:, 1:].max(axis=-1).mean()) if probs.shape[-1] > 1 else 0.5
                 return min(max(speech_prob, 0.0), 1.0)
             except Exception as exc:
-                logger.debug("Silero VAD ONNX run Fehler: %s", exc)
+                logger.debug("Silero VAD ONNX Ausfuehrung Fehler: %s", exc)
                 return self._energy_vad(chunk)
         finally:
             if _plm is not None:
                 try:
                     _plm.set_active("SileroVAD", False)
                 except Exception:
-                    logger.warning("silero_plugin.py::_vad_onnx fallback", exc_info=True)
+                    logger.warning("silero_plugin.py::_vad_onnx Ersatzpfad", exc_info=True)
 
     @staticmethod
     def _energy_vad(chunk: np.ndarray, threshold: float = 0.01) -> float:

@@ -19,7 +19,8 @@ from __future__ import annotations
 import os
 import pathlib
 import re
-from typing import TYPE_CHECKING, Callable, cast
+from collections.abc import Callable
+from typing import TYPE_CHECKING, cast
 
 import pytest
 
@@ -93,7 +94,7 @@ def test_ui_constants_de_num_german_comma() -> None:
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 pytest.importorskip("PyQt5")
 
-from PyQt5.QtWidgets import QApplication  # noqa: E402
+from PyQt5.QtWidgets import QApplication
 
 _APP = QApplication.instance() or QApplication([])
 

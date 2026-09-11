@@ -5000,7 +5000,7 @@ class PerPhaseMusicalGoalsGate:
             _final_pen_meta_29 = {}
         if float(_final_pen_29) >= 0.90:
             logger.warning(
-                "PMGG Content-Guard: %s final penalty=%.2f (rms_drop=%.1f dB corr=%.3f) → best_effort statt Skip (§2.29)",
+                "PMGG Content-Guard: %s final penalty=%.2f (rms_drop=%.1f dB corr=%.3f) → best_effort statt ueberspringen (§2.29)",
                 phase_id,
                 float(_final_pen_29),
                 float(_final_pen_meta_29.get("rms_drop_db", 0.0) or 0.0),
@@ -5226,7 +5226,8 @@ class PerPhaseMusicalGoalsGate:
             _EMERGENCY_STRENGTHS = [
                 _audibility_boost * 0.80,  # 80% der benötigten Stärke
                 _audibility_boost,  # Volle benötigte Stärke
-            ] + _EMERGENCY_STRENGTHS
+                *_EMERGENCY_STRENGTHS,
+            ]
         # §0l: Emergency-Retries nur wenn Team netto negativ (oder nahe null) ist.
         # Wenn best_scores bereits Team-Net-Positiv sind und Regression unter
         # 1.5×_CATASTROPHIC_THRESHOLD liegt, würden Emergency-Retries Over-Processing
@@ -5897,6 +5898,11 @@ class PerPhaseMusicalGoalsGate:
             return "best_effort", "retry_exhausted_best_effort"
         if a == "hpe_skip":
             return "skip", "hpe_pleasantness_decline_skip"  # §v10
+        if a == "hpe_ultra_low":
+            # §v10 HPE-GATE: neutraler HPE-Bereich → akzeptiert mit ultra-reduzierter Stärke
+            return "pass", "hpe_marginal_decline_ultra_low_strength"
+        if a.startswith("hpe_"):
+            return "pass", "hpe_adaptive_strength_accepted"
 
         # Deterministischer Fallback: Unbekannte Action wird geloggt und klassifiziert
         logger.warning("PMGG unbekannte Action: '%s' — klassifiziert als 'other'", a)

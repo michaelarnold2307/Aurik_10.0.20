@@ -45,7 +45,7 @@ def summarize(entries: list[dict]):
         return
 
     total = len(entries)
-    by_stage = Counter(e.get("stage", "unknown") for e in entries)
+    Counter(e.get("stage", "unknown") for e in entries)
     errors = [e for e in entries if e.get("stage", "").startswith(("phase_failed", "phase_exception"))]
     phases = {e.get("phase_id", "?") for e in entries if e.get("phase_id", "").startswith("phase_")}
 

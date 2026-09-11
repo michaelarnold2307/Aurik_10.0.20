@@ -392,7 +392,7 @@ class MLStemSeparator:
             ht_stems = ht.separate(audio, sample_rate)
             # §Fix 2026-09-08: htdemucs_plugin.separate() liefert ein
             # SeparationResult-Dataclass, KEIN Dict — "vocals" in ht_stems
-            # und .get() warfen TypeError → stiller Tier-4-Fallback (§V6).
+            # und .get() warfen TypeError → stiller Tier-4-Fallback (§V6 (copilot-instructions.md)).
             if ht_stems is not None and getattr(ht_stems, "vocals", None) is not None:
                 self.metrics = {"backend": "HTDemucs", "quality": "high", "tier": 3}
                 _logger.info("MLStemSeparator: Tier-3 HTDemucs OK")

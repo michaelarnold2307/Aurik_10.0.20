@@ -30,6 +30,8 @@ from typing import Any, cast
 
 import numpy as np
 
+from backend.core.gpu_model_registry import get_onnx_providers  # §v10.40c Registry-GPU-Policy
+
 logger = logging.getLogger(__name__)
 
 # Modulebene (§G174): Flags ohne Backend-Abhängigkeiten.
@@ -147,7 +149,7 @@ class MiipherDiTPlugin:
 
         if _ml_budget_try_allocate is not None:
             if not _ml_budget_try_allocate(self._BUDGET_NAME, size_gb=self._BUDGET_SIZE_GB):
-                logger.info("MIIPHER-DiT: ML-Budget erschöpft — DSP-Ersatzpfad aktiv")
+                logger.info("MIIPHER-DiT: ML-Grenze erschöpft — DSP-Ersatzpfad aktiv")
                 self._fallback_active = True
                 return
 
@@ -160,7 +162,7 @@ class MiipherDiTPlugin:
             return
 
         try:
-            _providers = ["CPUExecutionProvider"]
+            _providers = get_onnx_providers(self._dit_onnx_path)
             if ort is not None:
                 _available = ort.get_available_providers()
                 if "ROCMExecutionProvider" in _available:
@@ -208,6 +210,7 @@ class MiipherDiTPlugin:
             try:
                 _ml_budget_release(self._BUDGET_NAME)
             except Exception:
+                logger.debug("Stiller Ersatzpfad dokumentiert (Bug 9/V74)", exc_info=True)
                 pass
         logger.debug("MIIPHER-DiT entladen")
 
@@ -261,7 +264,9 @@ class MiipherDiTPlugin:
             _diff = np.mean(np.abs(_spec_after_norm - _spec_before_norm))
             return float(np.clip(_diff, 0.0, 1.0))
         except Exception:
-            logger.warning("§V6 ML→DSP-Fallback: _spectral_novelty fehlgeschlagen → neutraler Return (0.0)")
+            logger.warning(
+                "§V6 (copilot-instructions.md) ML→DSP-Ersatzpfad: _spectral_novelty fehlgeschlagen → neutraler Return (0.0)"
+            )
             return 0.0
 
     # ── Haupt-API ───────────────────────────────────────────────────────
@@ -351,7 +356,7 @@ class MiipherDiTPlugin:
             _model_used = "none"
         else:
             logger.info(
-                "MIIPHER-DiT: %s enhanced (%.2fs, novelty=%.3f)",
+                "MIIPHER-DiT: %s verbessert (%.2fs, novelty=%.3f)",
                 _mat,
                 time.time() - t_start,
                 _novelty,

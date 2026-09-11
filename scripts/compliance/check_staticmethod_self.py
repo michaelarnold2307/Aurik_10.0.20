@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """
+
 Compliance Check: @staticmethod + self.X-Zugriffe (§2.59, Bugfix 2026-07-09)
 
 Scannt alle Python-Dateien unter backend/, denker/, forensics/ auf:
@@ -17,6 +18,10 @@ Usage:
 """
 
 from __future__ import annotations
+
+import logging
+
+logger = logging.getLogger(__name__)
 
 import ast
 import os
@@ -88,6 +93,7 @@ def scan_directory(root: Path, scan_dir: str) -> list[tuple[str, int, str, str]]
         try:
             source = py_file.read_text(encoding="utf-8")
         except Exception:
+            logger.debug("Stiller Ersatzpfad dokumentiert (Bug 9/V74)", exc_info=True)
             continue
 
         try:

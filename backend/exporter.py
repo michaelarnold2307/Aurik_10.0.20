@@ -86,7 +86,6 @@ def _build_chain_metadata() -> dict[str, object]:
     Returns an empty dict when no chain analysis has been performed.
     Called by :func:`export_audio` during the export phase (§2.46a).
     """
-    global _chain_metadata
     with _chain_lock:
         return dict(_chain_metadata)
 

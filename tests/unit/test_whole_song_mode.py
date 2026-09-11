@@ -42,4 +42,4 @@ def test_restore_gate_wires_env_flag_and_helper() -> None:
     )
     assert 'os.environ.get("AURIK_WHOLE_SONG", "") == "1"' in _src
     assert "_should_use_chunked_path(" in _src
-    assert "kwargs.pop(\"whole_song\", False)" in _src
+    assert 'kwargs.pop("whole_song", False)' in _src

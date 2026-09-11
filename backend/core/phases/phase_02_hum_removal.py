@@ -465,7 +465,7 @@ class HumRemovalPhase(PhaseInterface):
             _chroma_p = float(np.dot(_chroma_orig / _norm_o, _chroma_res / _norm_r))
         except Exception:
             logger.warning(
-                "§V6 [copilot-instructions.md, Silent-Failure-Verbot] Phase-02 chroma preservation metric failed → assume perfect (chroma_p=1.0): %s",
+                "§V6 [copilot-instructions.md, Silent-Fehlschlag-Verbot] Verarbeitungsschritt-02 chroma preservation metric fehlgeschlagen → assume perfect (chroma_p=1.0): %s",
                 str(Exception),
             )
             _chroma_p = 1.0
@@ -795,7 +795,7 @@ class HumRemovalPhase(PhaseInterface):
                     _beta = max(0.0, min(1.0, 1.0 / max(_over, 1e-9)))
                     result = audio + _beta * (result - audio)
                     logger.info(
-                        "§v10.998 Hum-Budget: %.0f%% entfernt → auf Budget zurückgemischt (beta=%.2f)",
+                        "§v10.998 Hum-Grenze: %.0f%% entfernt → auf Grenze zurückgemischt (beta=%.2f)",
                         _over * 100,
                         _beta,
                     )
@@ -862,7 +862,7 @@ class HumRemovalPhase(PhaseInterface):
         except Exception:
             # Fallback to forward filter if filtfilt fails (§V6 [copilot-instructions.md, Silent-Failure-Verbot])
             logger.warning(
-                "§V6 [copilot-instructions.md, Silent-Failure-Verbot] Phase-02 safe_filtfilt failed → signal.lfilter fallback: %s",
+                "§V6 [copilot-instructions.md, Silent-Fehlschlag-Verbot] Verarbeitungsschritt-02 safe_filtfilt fehlgeschlagen → signal.lfilter Ersatzpfad: %s",
                 str(Exception),
             )
             if audio.ndim == 2:

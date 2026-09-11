@@ -625,7 +625,11 @@ class HumanizationPass:
             return strength
 
         except Exception as exc:
-            logger.debug("§V6 HumanizationPass.calibrate_strength fehlgeschlagen — Default-Stärke zurückgegeben (%.2f): %s", HumanizationPass._STRENGTH_DEFAULT, exc)
+            logger.debug(
+                "§V6 (copilot-instructions.md) HumanizationPass.calibrate_strength fehlgeschlagen — Default-Stärke zurückgegeben (%.2f): %s",
+                HumanizationPass._STRENGTH_DEFAULT,
+                exc,
+            )
             return HumanizationPass._STRENGTH_DEFAULT
 
     @staticmethod

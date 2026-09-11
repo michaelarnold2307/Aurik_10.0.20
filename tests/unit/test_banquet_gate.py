@@ -4,6 +4,7 @@ Spec v10.900 B6: „Banquet auf nicht-Vinyl: −1,3 dB auf Digital“ ⇒
 Material-Gate + Opt-In sind Pflicht. Diese Tests beweisen das Laufzeit-
 Verhalten von phase_09 (nicht nur die Header-Deklaration).
 """
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -102,8 +103,6 @@ def test_b11_guard_contract_over_noise_levels() -> None:
 def test_spec_decrackle_row_references_verified_model() -> None:
     """Rev. 2026-08-16: Keine Phantom-Zitate im Decrackle-Pfad (RBME-Net existiert nicht)."""
     spec = Path(__file__).resolve().parents[2] / ".github" / "specs" / "04_dsp_standards.md"
-    row = next(
-        l for l in spec.read_text(encoding="utf-8").splitlines() if l.strip().startswith("| Decrackle ")
-    )
+    row = next(l for l in spec.read_text(encoding="utf-8").splitlines() if l.strip().startswith("| Decrackle "))
     assert "RBME-Net" not in row, "Phantom-Zitat RBME-Net wieder in der Spec!"
     assert "Banquet-Vinyl" in row

@@ -118,6 +118,7 @@ class BanquetVinylPlugin:
                     # wird die gepatchte Kopie mit identischen Gewichten.
                     _providers = _bq_policy(_providers, self._model_path)
                 except Exception:
+                    logger.debug("Stiller Ersatzpfad dokumentiert (Bug 9/V74)", exc_info=True)
                     pass
             except Exception:
                 _providers = ["CPUExecutionProvider"]
@@ -281,7 +282,7 @@ class BanquetVinylPlugin:
                     chunk_out = self._extract_output(raw_out, channels, chunk_len, stft_ctx)
                     self._chunk_failures = 0
                 except Exception as exc:
-                    logger.warning("ML→DSP-Fallback aktiviert", exc_info=True)  # §V6 (copilot-instructions.md)
+                    logger.warning("ML→DSP-Ersatzpfad aktiviert", exc_info=True)  # §V6 (copilot-instructions.md)
                     logger.debug("ONNX-Chunk-Fehler: %s — DSP für diesen Chunk", exc)
                     self._chunk_failures += 1
                     # Quarantine ONNX path after repeated deterministic failures.

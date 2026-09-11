@@ -201,7 +201,6 @@ class SongCoherenceGuard:
                 # Einfacher 1-poliger Low-Shelf/High-Shelf
                 alpha = float(np.clip(abs(centroid_diff) / 2000.0, 0.0, 0.5))
                 b0 = 1.0 - alpha
-                a1 = alpha
                 if centroid_diff > 0:  # B ist zu dunkel → boost Höhen
                     result = result + alpha * (result - np.convolve(result, [b0], mode="same")[: len(result)])
                 fix_desc.append(f"spectral_align=α{alpha:.2f}")

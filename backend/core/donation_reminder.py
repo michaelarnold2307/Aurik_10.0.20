@@ -58,7 +58,7 @@ def show_reminder(quality_score: float = 0.0) -> str:
     else:
         personal = "🎧 Dein Song wurde restauriert. Aurik hat sein Bestes gegeben."
 
-    lines = [personal] + _MESSAGES
+    lines = [personal, *_MESSAGES]
 
     message = "\n".join(lines)
     logger.info(message)
@@ -79,7 +79,10 @@ def open_donation_link() -> bool:
     try:
         return bool(webbrowser.open(PAYPAL_FALLBACK))
     except Exception as exc:
-        logger.debug("§V6 donation_reminder: Fallback-URL open fehlgeschlagen — False zurückgegeben: %s", exc)
+        logger.debug(
+            "§V6 (copilot-instructions.md) donation_reminder: Ersatzpfad-URL open fehlgeschlagen — False zurückgegeben: %s",
+            exc,
+        )
         return False
 
 
@@ -176,7 +179,10 @@ def should_show_reminder() -> bool:
 
         return True
     except Exception as exc:
-        logger.debug("§V6 donation_reminder: should_show fehlgeschlagen — True zurückgegeben (lieber anzeigen als nie): %s", exc)
+        logger.debug(
+            "§V6 (copilot-instructions.md) donation_reminder: should_show fehlgeschlagen — True zurückgegeben (lieber anzeigen als nie): %s",
+            exc,
+        )
         return True  # Bei Fehler lieber anzeigen als nie
 
 

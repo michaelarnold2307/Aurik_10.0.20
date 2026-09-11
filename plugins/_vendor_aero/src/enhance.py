@@ -8,6 +8,7 @@ from src.utils import LogProgress, convert_spectrogram_to_heatmap
 
 logger = logging.getLogger(__name__)
 
+
 def get_estimate(model, lr_sig):
     torch.set_num_threads(1)
     with torch.no_grad():
@@ -27,6 +28,7 @@ def save_wavs(processed_sigs, lr_sigs, hr_sigs, filenames, lr_sr, hr_sr):
         write(lr, filename + "_lr.wav", sr=lr_sr)
         write(hr, filename + "_hr.wav", sr=hr_sr)
         write(pr, filename + "_pr.wav", sr=hr_sr)
+
 
 def save_specs(lr_spec, pr_spec, hr_spec, filename):
     lr_spec_path = filename + "_lr_spec.png"
@@ -53,8 +55,8 @@ def enhance(dataloader, model, args):
     model.eval()
 
     os.makedirs(args.samples_dir, exist_ok=True)
-    lr_sr = args.experiment.lr_sr if 'experiment' in args else args.lr_sr
-    hr_sr = args.experiment.hr_sr if 'experiment' in args else args.hr_sr
+    lr_sr = args.experiment.lr_sr if "experiment" in args else args.lr_sr
+    hr_sr = args.experiment.hr_sr if "experiment" in args else args.hr_sr
 
     total_filenames = []
 

@@ -181,7 +181,7 @@ class PhaseInteractionDenker:
             if has_interference:
                 severity = "CRITICAL" if max_peak > -40.0 else "WARNING"
                 logger.info(
-                    "§11 Cross-Phase Consensus: %s — %d neue Peaks, max=%.1f dBFS",
+                    "§11 Cross-Verarbeitungsschritt Consensus: %s — %d neue Peaks, max=%.1f dBFS",
                     severity,
                     len(new_peaks),
                     max_peak,

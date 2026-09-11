@@ -128,6 +128,11 @@ class PreAnalysisResult:
     material_uncertainty_flag: bool = False
     material_uncertainty_confidence: float = 1.0
 
+    # §MuQ-MuLan-SOTA (2025): Musik-Text-Embedding-Witness (Audio-Turm, ONNX/GPU).
+    # Optional — None wenn Modell/ONNX nicht verfügbar (§V6 (copilot-instructions.md): Warnung statt Stillem Ausfall).
+    muq_mulan_embedding: np.ndarray | None = None  # 768-d float32
+    muq_mulan_witness: float | None = None  # 0–100, Kosinus zu Clean-Referenzen
+
 
 _run_lock = threading.Lock()
 
@@ -378,6 +383,29 @@ def run_pre_analysis(
 
         return _er(audio_48k, 48_000, material=_material_str)
 
+    def _run_muq_mulan() -> object:
+        """§MuQ-MuLan-SOTA (2025): Audio-Turm-Embedding + Witness (ONNX, GPU)."""
+        try:
+            # Kanonischer Lazy-Symbol-Pfad (wie Era/Genre/Defects/Restorability) —
+            # hält Unit-Tests mockbar und die CLI/GUI-Bridge synchron (AGENTS.md §3).
+            _mm_embed = cast(
+                Callable[..., Any], _load_symbol("plugins.muq_mulan_plugin", "extract_muq_mulan_embedding")
+            )
+            _mm_witness = cast(
+                Callable[..., Any], _load_symbol("plugins.muq_mulan_plugin", "estimate_muq_mulan_witness")
+            )
+
+            return {
+                "embedding": _mm_embed(audio_native, sr_native),
+                "witness": _mm_witness(audio_native, sr_native),
+            }
+        except Exception as _mm_exc:
+            logger.warning(
+                "pre_Analyse: muq_mulan-Schritt fehlgeschlagen (%s) — Zeuge übersprungen (§V6 (copilot-instructions.md))",
+                _mm_exc,
+            )
+            return {"embedding": None, "witness": None}
+
     _step_fns: dict[str, Callable[[], object]] = {}
     if _cached_parts.get("era") is not None:
         result.era = _cached_parts["era"]
@@ -403,26 +431,40 @@ def run_pre_analysis(
     else:
         _step_fns["restorability"] = _run_restorability
 
+    # §MuQ-MuLan-SOTA (2025): kein Bridge-Cache — Embedding wird pro Analyse
+    # deterministisch berechnet (ONNX-GPU, ~1–3 s nach Session-Load).
+    _step_fns["muq_mulan"] = _run_muq_mulan
+
     if _step_fns:
         _total_steps = len(_step_fns)
         _done_steps = 0
 
-        # Era + Genre laufen ASYNCHRON als Daemon-Thread (wie alte _detect_era_genre_bg).
-        # CLAP-Kaltstart dauert 200+s auf ROCm — synchrones Warten blockiert
-        # die gesamte Pre-Analysis. Der Daemon-Thread lädt CLAP im Hintergrund
-        # und setzt result.era/result.genre wenn fertig.
-        _clap_steps = {k: v for k, v in _step_fns.items() if k in ("era", "genre")}
-        _other_steps = {k: v for k, v in _step_fns.items() if k not in ("era", "genre")}
+        # Era + Genre + MuQ-MuLan laufen ASYNCHRON als Daemon-Thread (wie alte
+        # _detect_era_genre_bg). CLAP-Kaltstart dauert 200+s auf ROCm — synchrones
+        # Warten blockiert die gesamte Pre-Analysis. Der Daemon-Thread lädt CLAP
+        # (und den MuQ-MuLan-ONNX-Session) im Hintergrund und setzt die
+        # result-Felder wenn fertig.
+        _clap_steps = {k: v for k, v in _step_fns.items() if k in ("era", "genre", "muq_mulan")}
+        _other_steps = {k: v for k, v in _step_fns.items() if k not in ("era", "genre", "muq_mulan")}
 
         if _clap_steps:
 
             def _run_era_genre_async() -> None:
-                """Hintergrund-Thread für Era+Genre (hat ROCm-Kontext)."""
-                for _name in ("era", "genre"):
+                """Hintergrund-Thread für Era+Genre+MuQ-MuLan (hat ROCm-Kontext).
+
+                Reihenfolge: MuQ-MuLan zuerst — der Zeuge ist in ~1 s fertig,
+                während der CLAP-Kaltstart (~200 s) Era/Genre danach bedient.
+                """
+                for _name in ("muq_mulan", "era", "genre"):
                     if _name not in _clap_steps:
                         continue
                     try:
-                        setattr(result, _name, _clap_steps[_name]())
+                        _val = _clap_steps[_name]()
+                        if _name == "muq_mulan" and isinstance(_val, dict):
+                            result.muq_mulan_embedding = _val.get("embedding")
+                            result.muq_mulan_witness = _val.get("witness")
+                        else:
+                            setattr(result, _name, _val)
                         logger.info("pre_Analyse: step=%s done (async)", _name)
                     except Exception as _exc:
                         result.errors[_name] = str(_exc)
@@ -625,6 +667,7 @@ def run_pre_analysis(
                 try:
                     result.medium.cross_validation_agreements = len(_cv_agreements)  # type: ignore[attr-defined]
                 except Exception:
+                    logger.debug("Stiller Ersatzpfad dokumentiert (Bug 9/V74)", exc_info=True)
                     pass
                 logger.info(
                     "Cross-Validierung: %d Faktoren ketten-konsistent (%s). Confidence %.2f → %.2f (persistiert)",
@@ -698,7 +741,7 @@ def run_pre_analysis(
                         _new_conf = min(1.0, _old_conf + _conf_boost)
                         result.medium.confidence = _new_conf  # type: ignore[attr-defined]
                         logger.info(
-                            "pre_Analyse: Era-Prior applied — decade=%d boost=%.1f nat "
+                            "pre_Analyse: Era-Prior angewendet — decade=%d boost=%.1f nat "
                             "→ %s posterior %.3f→%.3f, confidence %.3f→%.3f",
                             _era_decade,
                             _era_boost,
@@ -710,7 +753,7 @@ def run_pre_analysis(
                         )
                     else:
                         logger.debug(
-                            "pre_Analyse: Era-Prior applied — decade=%d, but primary=%s "
+                            "pre_Analyse: Era-Prior angewendet — decade=%d, but primary=%s "
                             "still at zero posterior (no era tables entry)",
                             _era_decade,
                             _primary,
@@ -1280,7 +1323,7 @@ def run_pre_analysis(
                         _md.transfer_chain = _chain  # type: ignore[attr-defined]
                 except Exception:
                     logger.debug(
-                        "pre_analysis: transfer_chain injection failed for one stage, continuing", exc_info=True
+                        "pre_Analyse: transfer_chain injection fehlgeschlagen for one Stufe, continuing", exc_info=True
                     )
 
                 logger.info(
@@ -1390,7 +1433,7 @@ def run_pre_analysis(
                     # Ein Song von 1960 kann selbstverständlich als MP3 vorliegen.
                     # Keine Ära-Korrektur nötig — die Kette enthält bereits alle Infos.
                 except Exception:
-                    logger.debug("pre_analysis: era correction skipped for one stage", exc_info=True)
+                    logger.debug("pre_Analyse: era correction uebersprungen for one Stufe", exc_info=True)
         except Exception as _inj_exc:
             logger.debug("Deep-Transfer-Chain-Injection uebersprungen: %s", _inj_exc)
 

@@ -124,9 +124,11 @@ class CQTdiffPlusPlugin:
 
     def __init__(self) -> None:
         self._torch_model = None  # torch.jit.ScriptModule (score network + EDM)
+        self._session = None  # onnxruntime.InferenceSession (Spectral-Core) — sonst AttributeError im inpaint-Pfad
         self._model_loaded: bool = False
         self._fallback_active: bool = False
         self._device: str = "cpu"  # set by _try_load_model
+        self._cqt_transform = None  # CQT frontend/backend for spectral ONNX core
         self._try_load_model()
 
     _BUDGET_NAME: str = "CQTdiffPlus"
@@ -144,11 +146,39 @@ class CQTdiffPlusPlugin:
             from backend.core.ml_memory_budget import try_allocate
 
             if not try_allocate(self._BUDGET_NAME, size_gb=self._BUDGET_SIZE_GB):
-                logger.info("CQTdiff+: ML-Budget erschöpft — Fallback aktiv.")
+                logger.info("CQTdiff+: ML-Grenze erschöpft — Ersatzpfad aktiv.")
                 self._fallback_active = True
                 return
         except ImportError as _exc:
-            logger.debug("Optional import not available (non-critical): %s", _exc)
+            logger.debug("Optional import not verfuegbar (unkritisch): %s", _exc)
+        onnx_path = self.MODELS_DIR / "score_network.onnx"
+        if onnx_path.exists():
+            try:
+                import onnxruntime as ort
+
+                # §v10.40c: Registry-konsultierte Provider-Wahl statt hartem CPU.
+                from backend.core.gpu_model_registry import get_onnx_providers
+
+                self._session = ort.InferenceSession(str(onnx_path), providers=get_onnx_providers(str(onnx_path)))
+                input_names = {item.name for item in self._session.get_inputs()}
+                if {"cqt", "sigma"} - input_names:
+                    raise RuntimeError(f"CQTdiff ONNX-Signatur unerwartet: {input_names}")
+                self._model_loaded = True
+                self._device = "cpu"
+                logger.info("CQTdiff: Spectral-ONNX geladen (%s)", onnx_path.name)
+                try:
+                    from backend.core.plugin_lifecycle_manager import register_plugin as _reg_plm
+
+                    _reg_plm(
+                        self._BUDGET_NAME,
+                        size_gb=self._BUDGET_SIZE_GB,
+                        unload_fn=lambda s=self: setattr(s, "_session", None) or setattr(s, "_model_loaded", False),
+                    )
+                except Exception as _exc:
+                    logger.debug("Plugin operation fehlgeschlagen (unkritisch): %s", _exc)
+                return
+            except Exception as _onnx_exc:
+                logger.warning("CQTdiff ONNX-Ladefehler: %s — TorchScript-Ersatzpfad", _onnx_exc)
         try:
             import torch
 
@@ -168,47 +198,47 @@ class CQTdiffPlusPlugin:
                         from backend.core.ml_device_manager import get_ml_device_manager as _mgr
 
                         if not _mgr().try_allocate_vram("CQTDiffPlus", self._BUDGET_SIZE_GB):
-                            logger.info("CQTdiff+: VRAM-Budget erschöpft — CPU-Load")
+                            logger.info("CQTdiff+: VRAM-Grenze erschöpft — CPU-laden")
                             _dev = "cpu"
                     except Exception:
-                        logger.warning("cqtdiff_plus_plugin.py::_try_load_model fallback", exc_info=True)
+                        logger.warning("cqtdiff_plus_plugin.py::_try_laden_model Ersatzpfad", exc_info=True)
                 self._torch_model = torch.jit.load(str(model_path), map_location=_dev)
                 self._torch_model.eval()
                 self._torch_model.to(_dev)
                 self._device = _dev
                 self._model_loaded = True
-                logger.info("🔵 CQTdiff: Score-Netzwerk geladen (%s, device=%s)", model_path, _dev)
+                logger.info("🔵 CQTdiff: Wert-Netzwerk geladen (%s, device=%s)", model_path, _dev)
                 try:
                     from backend.core.plugin_lifecycle_manager import register_plugin as _reg_plm
 
                     _reg_plm(self._BUDGET_NAME, size_gb=self._BUDGET_SIZE_GB, unload_fn=_unload_cqtdiff_plus)
                 except Exception as _exc:
-                    logger.debug("Plugin operation failed (non-critical): %s", _exc)
+                    logger.debug("Plugin operation fehlgeschlagen (unkritisch): %s", _exc)
             else:
                 logger.info(
-                    "CQTdiff: TorchScript-Modell nicht gefunden (%s) — Fallback aktiv",
+                    "CQTdiff: TorchScript-Modell nicht gefunden (%s) — Ersatzpfad aktiv",
                     model_path,
                 )
                 self._fallback_active = True
         except ImportError:
-            logger.warning("ML→DSP-Fallback aktiviert", exc_info=True)  # §V6 (copilot-instructions.md)
-            logger.debug("torch nicht verfügbar — CQTdiff+ Fallback aktiv")
+            logger.warning("ML→DSP-Ersatzpfad aktiviert", exc_info=True)  # §V6 (copilot-instructions.md)
+            logger.debug("torch nicht verfügbar — CQTdiff+ Ersatzpfad aktiv")
             self._fallback_active = True
             try:
                 from backend.core.ml_memory_budget import release as _release
 
                 _release(self._BUDGET_NAME)
             except Exception as _exc:
-                logger.debug("Plugin operation failed (non-critical): %s", _exc)
+                logger.debug("Plugin operation fehlgeschlagen (unkritisch): %s", _exc)
         except Exception as exc:
-            logger.warning("CQTdiff+ Modell-Lade-Fehler: %s — Fallback aktiv", exc)
+            logger.warning("CQTdiff+ Modell-Lade-Fehler: %s — Ersatzpfad aktiv", exc)
             self._fallback_active = True
             try:
                 from backend.core.ml_memory_budget import release as _release
 
                 _release(self._BUDGET_NAME)
             except Exception as _exc:
-                logger.debug("Plugin operation failed (non-critical): %s", _exc)
+                logger.debug("Plugin operation fehlgeschlagen (unkritisch): %s", _exc)
 
     # ------------------------------------------------------------------
     # Öffentliche API
@@ -265,7 +295,7 @@ class CQTdiffPlusPlugin:
         use_fast_dsp = gap_ms <= 250.0 and len(audio_f32) <= int(5 * sr)
 
         used_model = "nmf_dsp_fallback"
-        if (not use_fast_dsp) and self._model_loaded and self._torch_model is not None:
+        if (not use_fast_dsp) and self._model_loaded and (self._torch_model is not None or self._session is not None):
             result_audio = self._inpaint_diffusion(audio_f32, sr, gap_start_sample, gap_end_sample, context_audio)
             used_model = "cqtdiff"
         else:
@@ -288,6 +318,91 @@ class CQTdiffPlusPlugin:
     # Diffusions-Pfad (TorchScript, EDM-Sampling)
     # ------------------------------------------------------------------
 
+    def _inpaint_diffusion_onnx(
+        self,
+        audio: np.ndarray,
+        sr: int,
+        gap_start: int,
+        gap_end: int,
+    ) -> np.ndarray:
+        """CQTdiff-ONNX: Python-CQT/iCQT um den reellen Spectral-Core."""
+        import sys
+
+        import torch
+        import torchaudio
+
+        model_root = str(Path(__file__).resolve().parent.parent / "models" / "cqtdiff")
+        if model_root not in sys.path:
+            sys.path.insert(0, model_root)
+        from src.CQT_nsgt import CQT_cpx
+
+        target_sr = self._CQTDIFF_SR
+        win = self._AUDIO_LEN
+        scale = target_sr / sr
+        needed = int(win / scale) + 4096
+        extract_start = max(0, gap_start - needed // 2)
+        extract_end = min(len(audio), gap_end + needed // 2)
+        local = audio[extract_start:extract_end].copy()
+        local_gap_start = gap_start - extract_start
+        local_gap_end = gap_end - extract_start
+
+        audio_t = torch.from_numpy(local).unsqueeze(0)
+        down = torchaudio.transforms.Resample(sr, target_sr)
+        audio_22k = down(audio_t).squeeze(0).numpy()
+        gap_s = int(local_gap_start * scale)
+        gap_e = int(local_gap_end * scale)
+        center = (gap_s + gap_e) // 2
+        win_start = max(0, min(center - win // 2, len(audio_22k) - win))
+        segment = audio_22k[max(0, win_start) : max(0, win_start) + win]
+        y_obs = np.zeros(win, dtype=np.float32)
+        y_obs[: len(segment)] = segment
+        known = np.ones(win, dtype=bool)
+        gap_local_s = max(0, gap_s - win_start)
+        gap_local_e = min(win, gap_e - win_start)
+        known[gap_local_s:gap_local_e] = False
+
+        if self._cqt_transform is None:
+            self._cqt_transform = CQT_cpx(
+                target_sr / (2**8),
+                64 * 7,
+                target_sr,
+                win,
+                device="cpu",
+            )
+        cqt = self._cqt_transform
+        y_t = torch.from_numpy(y_obs).unsqueeze(0)
+        known_t = torch.from_numpy(known).unsqueeze(0)
+        sigmas = torch.linspace(self._SIGMA_MAX, self._SIGMA_MIN, self.DIFFUSION_STEPS + 1)
+        sigmas[-1] = 0.0
+        generator = torch.Generator(device="cpu").manual_seed(0)
+        x = y_t + torch.randn(y_t.shape, generator=generator) * sigmas[0]
+        x = torch.where(known_t, y_t, x)
+
+        with torch.no_grad():
+            for index in range(self.DIFFUSION_STEPS):
+                sigma = sigmas[index]
+                cqt_input = cqt.fwd(x).permute(0, 3, 2, 1).contiguous().numpy().astype(np.float32)
+                score_cqt = self._session.run(
+                    ["score_cqt"],
+                    {"cqt": cqt_input, "sigma": np.asarray([[float(sigma)]], dtype=np.float32)},
+                )[0]
+                denoised = cqt.bwd(torch.from_numpy(score_cqt).permute(0, 3, 2, 1)).squeeze(0)
+                score = (denoised - x) / (sigma**2 + 1e-12)
+                x = x - (sigmas[index + 1] - sigma) * sigma * score
+                x = torch.where(known_t, y_t, x)
+
+        generated = np.clip(np.nan_to_num(x.squeeze(0).numpy()), -1.0, 1.0).astype(np.float32)
+        up = torchaudio.transforms.Resample(target_sr, sr)
+        out_48k = up(torch.from_numpy(generated).unsqueeze(0)).squeeze(0).numpy()
+        offset = local_gap_start - int(win_start / scale)
+        gap_len = gap_end - gap_start
+        generated_gap = out_48k[offset : offset + gap_len]
+        if len(generated_gap) < gap_len:
+            generated_gap = np.pad(generated_gap, (0, gap_len - len(generated_gap)))
+        result = audio.copy()
+        result[gap_start:gap_end] = np.clip(generated_gap[:gap_len], -1.0, 1.0)
+        return self._crossfade_edges(result, gap_start, gap_end, sr, fade_ms=5.0)
+
     def _inpaint_diffusion(
         self,
         audio: np.ndarray,
@@ -306,7 +421,6 @@ class CQTdiffPlusPlugin:
                a. Denoiser: D(x, σ) via TorchScript-Modell (~9s/Schritt auf CPU)
                b. Score:    s = (D(x,σ) − x) / σ²
                c. Euler-Schritt
-               d. Data-Consistency (Replacement): x[~mask] = y_obs[~mask]
             5. Resample 22050 → 48000 Hz
             6. Crossfade + Splice in Originalaudio
 
@@ -314,6 +428,8 @@ class CQTdiffPlusPlugin:
         Für höhere Qualität: DIFFUSION_STEPS = 35 (dann ~300s).
         Siehe: models/cqtdiff/src/sampler.py — Sampler.predict()
         """
+        if self._session is not None:
+            return self._inpaint_diffusion_onnx(audio, sr, gap_start, gap_end)
         if self._torch_model is None:
             return self._inpaint_dsp_fallback(audio, sr, gap_start, gap_end)
 
@@ -325,7 +441,7 @@ class CQTdiffPlusPlugin:
             _plm_cqt = _get_plm_cqt_fn()
             _plm_cqt.set_active(self._BUDGET_NAME, True)
         except Exception as _exc:
-            logger.debug("CQTdiff+: PLM set_active failed: %s", _exc)
+            logger.debug("CQTdiff+: PLM set_active fehlgeschlagen: %s", _exc)
 
         try:
             import gc
@@ -414,7 +530,7 @@ class CQTdiffPlusPlugin:
                     # Timeout-Guard: verhindert Einfrieren bei langsamer CPU
                     if time.perf_counter() - _t_loop_start > _MAX_DIFFUSION_WALL_S:
                         logger.warning(
-                            "CQTdiff+: Diffusions-Timeout nach %.1fs (Schritt %d/%d) "
+                            "CQTdiff+: Diffusions-Zeitlimit nach %.1fs (Schritt %d/%d) "
                             "— verwende aktuelles x, DSP-Crossfade folgt",
                             time.perf_counter() - _t_loop_start,
                             i,
@@ -467,7 +583,7 @@ class CQTdiffPlusPlugin:
                 if _plm_cqt is not None:
                     _plm_cqt.set_active(self._BUDGET_NAME, False)
             except Exception as _exc:
-                logger.debug("CQTdiff+: PLM unset_active failed: %s", _exc)
+                logger.debug("CQTdiff+: PLM unset_active fehlgeschlagen: %s", _exc)
             return np.clip(result, -1.0, 1.0).astype(np.float32)
 
         except Exception as exc:
@@ -475,9 +591,9 @@ class CQTdiffPlusPlugin:
                 if _plm_cqt is not None:
                     _plm_cqt.set_active(self._BUDGET_NAME, False)
             except Exception:
-                logger.warning("cqtdiff_plus_plugin.py::unknown fallback", exc_info=True)
+                logger.warning("cqtdiff_plus_plugin.py::unknown Ersatzpfad", exc_info=True)
             if self._device != "cpu":
-                logger.warning("CQTdiff+: GPU-Inferenz fehlgeschlagen (%s) — CPU-Retry", exc)
+                logger.warning("CQTdiff+: GPU-Inferenz fehlgeschlagen (%s) — CPU-Wiederholung", exc)
                 try:
                     if self._torch_model is not None:
                         self._torch_model.cpu()
@@ -487,12 +603,12 @@ class CQTdiffPlusPlugin:
 
                         _mgr().report_gpu_error("CQTDiffPlus", exc)
                     except Exception:
-                        logger.warning("cqtdiff_plus_plugin.py::unknown fallback", exc_info=True)
+                        logger.warning("cqtdiff_plus_plugin.py::unknown Ersatzpfad", exc_info=True)
                 except Exception as _mv_exc:
                     logger.debug("CQTdiff+ GPU→CPU move fehlgeschlagen: %s", _mv_exc)
                     self._device = "cpu"
                 return self._inpaint_diffusion(audio, sr, gap_start, gap_end)
-            logger.warning("CQTdiff Diffusion-Fehler: %s — DSP-Fallback", exc, exc_info=True)
+            logger.warning("CQTdiff Diffusion-Fehler: %s — DSP-Ersatzpfad", exc, exc_info=True)
             return self._inpaint_dsp_fallback(audio, sr, gap_start, gap_end)
 
     # ------------------------------------------------------------------
@@ -528,16 +644,16 @@ class CQTdiffPlusPlugin:
                 result = np.clip(dw_result, -1.0, 1.0).astype(np.float32)
                 result = self._crossfade_edges(result, gap_start, gap_end, sr, fade_ms=5.0)
                 logger.info(
-                    "🔵 CQTdiff+ → DiffWave-Fallback: Lücke %.1f ms [%d–%d]",
+                    "🔵 CQTdiff+ → DiffWave-Ersatzpfad: Lücke %.1f ms [%d–%d]",
                     gap_len / sr * 1000,
                     gap_start,
                     gap_end,
                 )
                 return result
-        except Exception:
-            logger.warning("ML→DSP-Fallback aktiviert", exc_info=True)  # §V6 (copilot-instructions.md)
+        except ImportError:
+            logger.warning("ML→DSP-Ersatzpfad aktiviert", exc_info=True)  # §V6 (copilot-instructions.md)
         except Exception as exc:
-            logger.debug("CQTdiff+ DiffWave-Fallback Fehler: %s — lineare Interpolation", exc)
+            logger.debug("CQTdiff+ DiffWave-Ersatzpfad Fehler: %s — lineare Interpolation", exc)
 
         # --- DSP-Fallback Stufe 2: Lineare Interpolation + AR-Vorhersage ---
         result = audio.copy()
@@ -562,7 +678,7 @@ class CQTdiffPlusPlugin:
 
         result[gap_start:gap_end] = np.clip(interpolated, -1.0, 1.0)
         result = self._crossfade_edges(result, gap_start, gap_end, sr, fade_ms=5.0)
-        logger.info("🔵 CQTdiff DSP-Fallback: Lineare Interpolation (%.1f ms Lücke)", gap_len / sr * 1000)
+        logger.info("🔵 CQTdiff DSP-Ersatzpfad: Lineare Interpolation (%.1f ms Lücke)", gap_len / sr * 1000)
         return np.clip(result, -1.0, 1.0).astype(np.float32)
 
     # ------------------------------------------------------------------
@@ -657,7 +773,7 @@ class CQTdiffPlusPlugin:
             corr = float(np.dot(_c1a, _c2a) / (_nc1 * _nc2 + 1e-10))
             return float(np.clip(np.nan_to_num(corr), -1.0, 1.0))
         except Exception:
-            logger.warning("cqtdiff_plus_plugin.py::_compute_chroma_corr fallback", exc_info=True)
+            logger.warning("cqtdiff_plus_plugin.py::_berechnen_chroma_corr Ersatzpfad", exc_info=True)
             return 0.9  # Optimistischer Standardwert bei librosa-Fehler
 
 
@@ -675,7 +791,7 @@ def _unload_cqtdiff_plus() -> None:
 
         gc.collect()
     except Exception as _exc:
-        logger.debug("Plugin operation failed (non-critical): %s", _exc)
+        logger.debug("Plugin operation fehlgeschlagen (unkritisch): %s", _exc)
 
 
 def get_cqtdiff_plus() -> CQTdiffPlusPlugin:

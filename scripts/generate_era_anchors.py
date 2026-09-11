@@ -25,6 +25,10 @@ import pathlib
 
 import numpy as np
 
+# Kanonischer Referenzwert: backend/core/reference_anchor_synthesizer.py:MATERIAL_EXPECTED_BW
+# (lokal gespiegelt — Skript läuft standalone ohne backend-Import).
+MATERIAL_EXPECTED_BW = 20000.0
+
 # ============================================================
 # Konfiguration
 # ============================================================
@@ -128,7 +132,7 @@ def _spectral_envelope_128(
         2020: 22000,
         2025: 22000,
     }
-    bw_hz = bw_map.get(decade, 20000)
+    bw_hz = bw_map.get(decade, MATERIAL_EXPECTED_BW)
     rolloff_mask = np.clip(1.0 - (freqs - bw_hz) / (bw_hz * 0.5), 0.0, 1.0)
     rolloff_mask = rolloff_mask**2
     envelope *= rolloff_mask

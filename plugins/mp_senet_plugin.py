@@ -107,7 +107,7 @@ class MpSenetPlugin:
         """Lädt MP-SENet ONNX; OMLSA-Fallback bei Fehler."""
         if not _ONNX_PATH.exists():
             logger.info(
-                "MP-SENet ONNX nicht gefunden (%s) — OMLSA-DSP-Fallback aktiv. "
+                "MP-SENet ONNX nicht gefunden (%s) — OMLSA-DSP-Ersatzpfad aktiv. "
                 "Modell: https://github.com/yxlu-0102/MP-SENet",
                 _ONNX_PATH,
             )
@@ -123,12 +123,12 @@ class MpSenetPlugin:
                     try:
                         _release("MP-SENet")
                     except Exception:
-                        logger.warning("mp_senet_plugin.py::_try_load fallback", exc_info=True)
+                        logger.warning("mp_senet_plugin.py::_try_laden Ersatzpfad", exc_info=True)
                     if not _try_alloc("MP-SENet", size_gb=0.04):
-                        logger.warning("MP-SENet: ML-Budget erschöpft — DSP-Fallback.")
+                        logger.warning("MP-SENet: ML-Grenze erschöpft — DSP-Ersatzpfad.")
                         return
             except Exception as _exc:
-                logger.debug("Operation failed (non-critical): %s", _exc)
+                logger.debug("Operation fehlgeschlagen (unkritisch): %s", _exc)
 
             opts = ort.SessionOptions()
             opts.inter_op_num_threads = 2
@@ -141,6 +141,7 @@ class MpSenetPlugin:
 
                     _mp_prov = _mps_policy(_mp_prov, _ONNX_PATH)
                 except Exception:
+                    logger.debug("Stiller Ersatzpfad dokumentiert (Bug 9/V74)", exc_info=True)
                     pass
             except Exception:
                 _mp_prov = ["CPUExecutionProvider"]
@@ -160,15 +161,15 @@ class MpSenetPlugin:
                     unload_fn=lambda s=self: setattr(s, "_session", None) or setattr(s, "_model_loaded", False),  # type: ignore[func-returns-value,misc]
                 )
             except Exception as _exc:
-                logger.debug("Operation failed (non-critical): %s", _exc)
+                logger.debug("Operation fehlgeschlagen (unkritisch): %s", _exc)
         except Exception as exc:
-            logger.warning("MP-SENet ONNX nicht ladbar: %s — OMLSA-DSP-Fallback aktiv.", exc)
+            logger.warning("MP-SENet ONNX nicht ladbar: %s — OMLSA-DSP-Ersatzpfad aktiv.", exc)
             try:
                 from backend.core.ml_memory_budget import release as _rel
 
                 _rel("MP-SENet")
             except Exception as _exc:
-                logger.debug("Operation failed (non-critical): %s", _exc)
+                logger.debug("Operation fehlgeschlagen (unkritisch): %s", _exc)
 
     # ------------------------------------------------------------------
     # Public API
@@ -318,7 +319,7 @@ class MpSenetPlugin:
             if "Reshape" not in msg and "reshape" not in msg:
                 raise
             logger.warning(
-                "MP-SENet layout retry: [B,F,T] fehlgeschlagen (%s) — versuche [B,T,F]",
+                "MP-SENet layout Wiederholung: [B,F,T] fehlgeschlagen (%s) — versuche [B,T,F]",
                 exc,
             )
 
@@ -393,7 +394,7 @@ class MpSenetPlugin:
             _plm_mps = _get_plm_fn()
             _plm_mps.set_active("MP-SENet", True)
         except Exception as _exc:
-            logger.debug("MP-SENet: PLM set_active failed: %s", _exc)
+            logger.debug("MP-SENet: PLM set_active fehlgeschlagen: %s", _exc)
         try:
             Z, _, n_orig = self._stft(mono)  # Z: [481, T] complex64
             amp_full = np.abs(Z).astype(np.float32)  # [481, T]
@@ -408,7 +409,7 @@ class MpSenetPlugin:
                 amp_in, pha_in = self._validate_and_pad_shapes(amp_in, pha_in)
             except ValueError as shape_exc:
                 logger.error(
-                    "MP-SENet Shape-Validierung fehlgeschlagen: %s (audio_len=%d frames=%d) — OMLSA-DSP-Fallback",
+                    "MP-SENet Shape-Validierung fehlgeschlagen: %s (audio_len=%d frames=%d) — OMLSA-DSP-Ersatzpfad",
                     shape_exc,
                     len(mono),
                     amp_in.shape[1] if amp_in.ndim > 1 else 0,
@@ -438,7 +439,7 @@ class MpSenetPlugin:
         except Exception as exc:
             # §Punkt 4: Structured Error Logging mit fail_reason
             logger.error(
-                "🔴 MP-SENet ONNX-Inferenzfehler: %s (Typ: %s, audio_len=%d) — OMLSA-DSP-Fallback wird angewandt.",
+                "🔴 MP-SENet ONNX-Inferenzfehler: %s (Typ: %s, audio_len=%d) — OMLSA-DSP-Ersatzpfad wird angewandt.",
                 exc,
                 type(exc).__name__,
                 len(mono),
@@ -450,7 +451,7 @@ class MpSenetPlugin:
                 try:
                     _plm_mps.set_active("MP-SENet", False)
                 except Exception as _exc:
-                    logger.debug("MP-SENet: PLM unset_active failed: %s", _exc)
+                    logger.debug("MP-SENet: PLM unset_active fehlgeschlagen: %s", _exc)
 
     # ------------------------------------------------------------------
     # OMLSA DSP Fallback
@@ -525,7 +526,7 @@ class MpSenetPlugin:
                 x = np.pad(x, (0, n_orig - len(x)))
             return np.clip(np.nan_to_num(x, nan=0.0), -1.0, 1.0)  # type: ignore[no-any-return]
         except Exception as exc:
-            logger.error("OMLSA-DSP-Fallback fehlgeschlagen: %s — Audio unverändert.", exc)
+            logger.error("OMLSA-DSP-Ersatzpfad fehlgeschlagen: %s — Audio unverändert.", exc)
             return np.clip(np.nan_to_num(mono.copy(), nan=0.0), -1.0, 1.0)  # type: ignore[no-any-return]
 
 
@@ -550,6 +551,7 @@ def enhance_audio(audio: np.ndarray, sr: int) -> MpSenetResult:
 
 
 # ── Alias-Funktionen (für Dead-Import-Reparatur) ─────────────────────
+
 
 def get_mp_senet() -> MpSenetPlugin:
     """Alias für get_mp_senet_plugin() — für Dead-Import-Kompatibilität."""

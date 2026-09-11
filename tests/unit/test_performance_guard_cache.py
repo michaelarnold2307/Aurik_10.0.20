@@ -92,7 +92,7 @@ class TestDefectCache:
     """Validiert die Defekt-Cache-Funktionen."""
 
     def test_cache_defect_result(self):
-        from backend.api.bridge_cache import cache_defect_result, get_cached_defect_result, clear_defect_cache
+        from backend.api.bridge_cache import cache_defect_result, clear_defect_cache, get_cached_defect_result
 
         # Speichere Defekt-Ergebnis
         defect_data = {"defects": ["clicks", "hiss"], "severity": 0.7}
@@ -113,14 +113,14 @@ class TestPerformanceGuardIntegration:
     """Validiert PerformanceGuard-Cache-Interaktion."""
 
     def test_performance_guard_with_cache(self):
-        from backend.core.performance_guard import PerformanceGuard, QualityMode
         from backend.api.bridge_cache import cache_defect_result, get_cached_defect_result
+        from backend.core.performance_guard import PerformanceGuard, QualityMode
 
         # Erstelle PerformanceGuard
         guard = PerformanceGuard(mode=QualityMode.BALANCED, enforce_limit=True)
         # Starte Monitoring mit realistischer Audio-Dauer
         guard.start_monitoring(180.0)  # 3 Minuten Audio
-        
+
         # should_skip_phase sollte False zurückgeben bei niedriger RT
         skip = guard.should_skip_phase("phase_01_denoise", estimated_time_seconds=5.0, remaining_phases=20)
         assert not skip, "Phase 01 sollte nicht geskippt werden bei niedriger RT"

@@ -404,9 +404,9 @@ class TestElkeBestSOTA:
             if f > SR / 2 - 100:
                 break
             env = (
-                3.0 * np.exp(-((f - f1) / 60.0) ** 2)
-                + 2.5 * np.exp(-((f - f2) / 80.0) ** 2)
-                + 2.0 * np.exp(-((f - f3) / 100.0) ** 2)
+                3.0 * np.exp(-(((f - f1) / 60.0) ** 2))
+                + 2.5 * np.exp(-(((f - f2) / 80.0) ** 2))
+                + 2.0 * np.exp(-(((f - f3) / 100.0) ** 2))
             )
             sig += (1.0 / h) * env * np.sin(2 * np.pi * f * t)
         sig *= 0.5 / max(np.max(np.abs(sig)), 1e-10)
@@ -455,9 +455,7 @@ class TestElkeBestSOTA:
 
         gd = GenderDetector(sample_rate=SR)
         chars = gd.detect(self._harmonic_voice(120, 500, 840, 2500))
-        assert chars.gender == VoiceGender.MALE, (
-            f"Männliche Stimme wurde {chars.gender.value} — Regression"
-        )
+        assert chars.gender == VoiceGender.MALE, f"Männliche Stimme wurde {chars.gender.value} — Regression"
 
     def test_g09_long_intro_survived_by_pyin_window_ladder(self):
         """G09d: 12 s Intro + Frauenstimme → FEMALE (Fenster-Leiter statt 3-s-Scan)."""
@@ -484,9 +482,9 @@ class TestDeepChainGenderSOTA:
         """G10a: Quellen-Vertrag — der UNKNOWN-Ersatzpfad ist entfernt."""
         from pathlib import Path
 
-        _src = (
-            Path(__file__).resolve().parents[2] / "backend" / "core" / "phases" / "phase_19_de_esser.py"
-        ).read_text(encoding="utf-8")
+        _src = (Path(__file__).resolve().parents[2] / "backend" / "core" / "phases" / "phase_19_de_esser.py").read_text(
+            encoding="utf-8"
+        )
         assert "Gender-Ersatzpfad: depth=%d ≥4" not in _src
         assert "self.gender = detected_gender" in _src
         assert "Auto-erkannt gender: %s (depth=%d)" in _src

@@ -4,7 +4,7 @@ Phase 3 Extended: Measure separation_fidelity and musical goals across
 all golden sample genres (vocal, jazz, classical, instrumental) to establish
 baseline quality and validate that Phase 2 infrastructure improves restoration.
 
-Compliance: §G2 (100% song analysis), §G5 (deterministic), §G8 (transparent).
+Compliance: §G2 (GEBOTE.md) (100% song analysis), §G5 (GEBOTE.md) (deterministic), §G8 (GEBOTE.md) (transparent).
 """
 
 import logging
@@ -44,7 +44,7 @@ class TestComprehensiveGoldenCorpus:
 
         for genre in self.GENRES:
             genre_dir = self.GOLDEN_ROOT / genre
-            samples = sorted(list(genre_dir.glob("*.wav")))[:self.MAX_SAMPLES_PER_GENRE]
+            samples = sorted(genre_dir.glob("*.wav"))[: self.MAX_SAMPLES_PER_GENRE]
 
             genre_scores = []
             for sample_path in samples:
@@ -113,7 +113,7 @@ class TestComprehensiveGoldenCorpus:
 
         checker = MusicalGoalsChecker()
         vocal_dir = self.GOLDEN_ROOT / "vocal"
-        samples = sorted(list(vocal_dir.glob("*.wav")))[:2]  # First 2 vocal samples
+        samples = sorted(vocal_dir.glob("*.wav"))[:2]  # First 2 vocal samples
 
         for sample_path in samples:
             try:
@@ -151,9 +151,7 @@ class TestComprehensiveGoldenCorpus:
                     "transparenz",
                     "waerme",
                 }
-                assert (
-                    set(scores.keys()) == expected_goals
-                ), f"Missing goals: {expected_goals - set(scores.keys())}"
+                assert set(scores.keys()) == expected_goals, f"Missing goals: {expected_goals - set(scores.keys())}"
 
                 # All scores should be finite and in [0, 1]
                 for score in scores.values():
@@ -173,7 +171,7 @@ class TestComprehensiveGoldenCorpus:
         vocal_dir = self.GOLDEN_ROOT / "vocal"
         reference_dir = self.GOLDEN_ROOT / "references"
 
-        sample_files = sorted(list(vocal_dir.glob("*.wav")))[:1]  # First vocal sample
+        sample_files = sorted(vocal_dir.glob("*.wav"))[:1]  # First vocal sample
 
         for sample_path in sample_files:
             try:

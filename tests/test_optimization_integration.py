@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-#!/usr/bin/env python3
 """Smoke tests for the canonical CLI entrypoint replacing the legacy orchestrator script."""
 
 
@@ -147,19 +146,22 @@ def test_cli_export_helper_uses_audio_exporter_and_quality_payload(monkeypatch, 
     )
 
     result = SimpleNamespace(audio=np.zeros((2, 8), dtype=np.float32), metadata={})
-    with pytest.raises(RuntimeError, match="Export blockiert: Export-Quality-Gate nicht bestanden"):
-        aurik_cli._export_audio_frontend_parity(
-            result,
-            str(tmp_path / "out.wav"),
-            np.array([[np.nan, 2.0, -2.0, 0.0], [0.1, 0.2, 0.3, 0.4]], dtype=np.float32),
-            np.zeros((4, 2), dtype=np.float32),
-            aurik_cli.logging.getLogger("test_cli_export"),
-        )
+    # §0c: Gate-Fehler degradieren statt blockieren — Export MUSS die Datei
+    # schreiben (Hardstop ohne Ausgabedatei ist normativ unzulässig).
+    ok, warnings, payload = aurik_cli._export_audio_frontend_parity(
+        result,
+        str(tmp_path / "out.wav"),
+        np.array([[np.nan, 2.0, -2.0, 0.0], [0.1, 0.2, 0.3, 0.4]], dtype=np.float32),
+        np.zeros((4, 2), dtype=np.float32),
+        aurik_cli.logging.getLogger("test_cli_export"),
+    )
 
+    assert (tmp_path / "out.wav").read_bytes() == b"fake-wav"  # Datei existiert — kein Hardstop
     assert calls["guard_count"] == 2
     assert result.metadata["export_quality_gate_failed"] is True
     assert result.metadata["export_quality_gate_warnings"] == ["gate-warning"]
-    assert result.metadata["export_blocked_by_quality_gate"] is True
+    assert result.metadata["export_degraded_by_quality_gate"] is True
+    assert result.metadata["degradation_status"] == "degraded"
 
 
 def test_cli_export_helper_applies_mono_guard_and_forwards_musiclover_metadata(monkeypatch, tmp_path):

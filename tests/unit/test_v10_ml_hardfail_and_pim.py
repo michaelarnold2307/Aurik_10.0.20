@@ -51,7 +51,7 @@ def _assert_shape_valid(audio: np.ndarray, min_samples: int = 100) -> None:
         if flat.size < min_samples:
             if flat.size < 10:
                 return  # Sehr kleiner Output — wahrscheinlich Fehler-Tupel
-            assert False, f"Output zu kurz: {len(flat)} Samples, erwartet >= {min_samples}"
+            raise AssertionError(f"Output zu kurz: {len(flat)} Samples, erwartet >= {min_samples}")
     except (TypeError, ValueError, AttributeError):
         pass  # Nicht in Array konvertierbar (z.B. benutzerdefinierte Result-Objekte)
 

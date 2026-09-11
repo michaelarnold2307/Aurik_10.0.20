@@ -189,7 +189,10 @@ class StemTargetedNRPhase(PhaseInterface):
         stem_f = np.asarray(stem, dtype=np.float32)
         if dfn_plugin is not None:
             try:
-                return np.nan_to_num(np.asarray(dfn_plugin.enhance(stem_f, sr, energy_bias_db=energy_bias_db), dtype=np.float32), nan=0.0)  # type: ignore[no-any-return]
+                _out66: np.ndarray = np.nan_to_num(
+                    np.asarray(dfn_plugin.enhance(stem_f, sr, energy_bias_db=energy_bias_db), dtype=np.float32), nan=0.0
+                )
+                return _out66
             except Exception as _e:
                 logger.debug("Verarbeitungsschritt_66: DFN verbessern Fehler (OMLSA-Ersatzpfad): %s", _e)
 
@@ -415,7 +418,9 @@ class StemTargetedNRPhase(PhaseInterface):
         _strength_eff = float(np.clip(strength * _vocal_soft, 0.05, 1.0))
         if _strength_eff < 1.0:
             _n_blend = min(audio.shape[0], audio_combined.shape[0])
-            audio_combined[:_n_blend] = _strength_eff * audio_combined[:_n_blend] + (1.0 - _strength_eff) * audio[:_n_blend]
+            audio_combined[:_n_blend] = (
+                _strength_eff * audio_combined[:_n_blend] + (1.0 - _strength_eff) * audio[:_n_blend]
+            )
             audio_combined = np.clip(audio_combined, -1.0, 1.0)
 
         # --- §2.46e HallucinationGuard (Studio 2026: additive Operation) ---

@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """
+
 §v10.19 Train CLAP-Material-Classifier Head.
 
 Trains a lightweight 2-layer MLP on frozen CLAP embeddings to classify
@@ -20,6 +21,10 @@ Dependencies:
 """
 
 from __future__ import annotations
+
+import logging
+
+logger = logging.getLogger(__name__)
 
 import argparse
 import sys
@@ -148,6 +153,7 @@ def generate_training_data(num_samples: int = 10_000, cache_dir: str | None = No
                     X_list.append(emb.astype(np.float32))
                     y_list.append(class_idx)
             except Exception:
+                logger.debug("Stiller Ersatzpfad dokumentiert (Bug 9/V74)", exc_info=True)
                 continue
 
         print(f"  {media_name}: {samples_per_media} samples → {len([y for y in y_list if y == class_idx])} embeddings")

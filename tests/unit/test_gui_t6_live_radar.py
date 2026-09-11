@@ -60,4 +60,4 @@ def test_batch_progress_wires_goals_to_live_radar() -> None:
     src = pathlib.Path("Aurik10/ui/modern_window.py").read_text(encoding="utf-8")
     assert 'metrics.get("goals")' in src
     assert "_update_live_goal_radar(dict(_live_goals))" in src
-    assert 'def _update_live_goal_radar(self, goals: dict) -> None:' in src
+    assert "def _update_live_goal_radar(self, goals: dict) -> None:" in src

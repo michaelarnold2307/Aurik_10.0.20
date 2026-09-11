@@ -133,7 +133,7 @@ if __name__ == "__main__":
     parser.add_argument("--chunk", type=float, default=4.0)
     parser.add_argument("--snr", type=str, default="5,20", help="SNR range as lo,hi")
     parser.add_argument("--samples-per-file", type=int, default=10)
-    parser.add_argument("--seed", type=int, default=42, help="Determinismus (§G5): Split/Noise-Seed")
+    parser.add_argument("--seed", type=int, default=42, help="Determinismus (§G5 (GEBOTE.md)): Split/Noise-Seed")
     args = parser.parse_args()
 
     random.seed(args.seed)

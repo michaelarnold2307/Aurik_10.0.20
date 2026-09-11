@@ -188,6 +188,7 @@ class DeepFilterNetV3Plugin:
                 prov = get_ort_providers("DeepFilterNetV3")
             except Exception:
                 prov = ["CPUExecutionProvider"]
+
             # §v10.40c: Datei-Policy pro Modell — enc/dec/erb_dec können im
             # Scan unterschiedliche Verdicts haben (rocm/cpu).
             def _prov_for(_fname):
@@ -197,12 +198,19 @@ class DeepFilterNetV3Plugin:
 
                     _pv = _df_policy(list(prov), os.path.join(d, _fname))
                 except Exception:
+                    logger.debug("Stiller Ersatzpfad dokumentiert (Bug 9/V74)", exc_info=True)
                     pass
                 return _pv
 
-            self._enc = ort.InferenceSession(os.path.join(d, "enc.onnx"), sess_options=opts, providers=_prov_for("enc.onnx"))
-            self._dec = ort.InferenceSession(os.path.join(d, "dec.onnx"), sess_options=opts, providers=_prov_for("dec.onnx"))
-            self._erb_dec = ort.InferenceSession(os.path.join(d, "erb_dec.onnx"), sess_options=opts, providers=_prov_for("erb_dec.onnx"))
+            self._enc = ort.InferenceSession(
+                os.path.join(d, "enc.onnx"), sess_options=opts, providers=_prov_for("enc.onnx")
+            )
+            self._dec = ort.InferenceSession(
+                os.path.join(d, "dec.onnx"), sess_options=opts, providers=_prov_for("dec.onnx")
+            )
+            self._erb_dec = ort.InferenceSession(
+                os.path.join(d, "erb_dec.onnx"), sess_options=opts, providers=_prov_for("erb_dec.onnx")
+            )
             # §P1-6 (2026-09-08): DFN3-Exporte haben keinen Alpha-Head (df_fc_a
             # ist im trainierten Forward unbenutzt). Ohne diese Prüfung crasht
             # _infer_spectral_chunk mit IndexError → stiller OMLSA-Fallback.
@@ -286,6 +294,9 @@ class DeepFilterNetV3Plugin:
         _was_channels_first = audio.ndim == 2 and audio.shape[0] == 2 and audio.shape[1] > 2
         if _was_channels_first:
             audio = audio.T  # (2, N) → (N, 2)
+        # Einzelkanal channels-first (1, N): explizit markieren — audio[:, 0]
+        # würde sonst nur 1 Sample liefern (Produktionsbefund: Shape-Kollaps (N,)→(1,)).
+        _was_single_ch_first = audio.ndim == 2 and audio.shape[0] == 1 and audio.shape[1] > 2
         stereo = audio.ndim == 2 and audio.shape[1] == 2
 
         def proc(ch: np.ndarray) -> np.ndarray:
@@ -298,12 +309,19 @@ class DeepFilterNetV3Plugin:
             n = min(len(left), len(right), len(audio))
             out = np.stack([left[:n], right[:n]], axis=1)
         else:
-            mono = audio[:, 0] if audio.ndim == 2 else audio
+            if _was_single_ch_first:
+                mono = audio[0]  # (1, N) → (N,)
+            elif audio.ndim == 2:
+                mono = audio[:, 0]
+            else:
+                mono = audio
             out = proc(mono)
 
-        # Restore channels-first layout if input was (2, N)
+        # Restore channels-first layout if input was (2, N) or (1, N)
         if _was_channels_first and out.ndim == 2:
             out = out.T
+        if _was_single_ch_first and out.ndim == 1:
+            out = out[np.newaxis, :]
         return np.clip(out, -1.0, 1.0)  # type: ignore[no-any-return]
 
     # ── Internal ────────────────────────────────────────────────────────────
@@ -506,7 +524,7 @@ class DeepFilterNetV3Plugin:
                 spec_filtered /= wsum
 
         except Exception as exc:
-            logger.warning("ML→DSP-Fallback aktiviert", exc_info=True)  # §V6 (copilot-instructions.md)
+            logger.warning("ML→DSP-Ersatzpfad aktiviert", exc_info=True)  # §V6 (copilot-instructions.md)
             logger.debug("DeepFilterNet ONNX-Inferenz-Fehler: %s — DSP-Ersatzpfad.", exc)
             return self._omlsa_fallback(mono, _SR, energy_bias_db=float(getattr(self, "_current_energy_bias_db", 0.0)))
 

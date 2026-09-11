@@ -203,4 +203,6 @@ def simple_compressor(
     over = abs_audio > threshold
     audio[over] = np.sign(audio[over]) * (threshold + (abs_audio[over] - threshold) / ratio)
     return audio * makeup_gain  # type: ignore[no-any-return]
+
+
 logger = logging.getLogger(__name__)

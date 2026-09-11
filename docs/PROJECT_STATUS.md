@@ -1,6 +1,6 @@
 # 📊 Aurik 10 — Project Status Report
 
-**Datum:** 2026-09-06
+**Datum:** 2026-09-11
 **Version:** 10.0.20 (version.py)
 **Status:** ✅ Produktionsbereit (v10.0.20 — Era-/Material-Kalibrierung PASS) | GPU-Detection failsafe | Dual-Progress live | Kontextbewusste Kommunikation | Hör-Gates Ebenen 1/2/3 (Audit)/4 + GUI-Hör-Gates-Summary (T1) | 10 GEBOTE (G71–G80) | Startup-Smoke-Test | 12 neue i18n-Keys
 
@@ -16,7 +16,7 @@
 
 | Kennzahl | Wert |
 | --- | --- |
-| Tests | **~18.400** pytest-IDs (Stand 2026-09-06), 511 mit Markern |
+| Tests | **19.700+ gesammelt · 19.040+ grün** (Fullsuite 2026-08-16; 13.301 Testfunktionen in 682 Unit-Dateien, 27 Marker-Typen) |
 | Phasen | **69 Phasen-Dateien** (Phase 01–66 + Glue Stage + Interface) + 3 Phase-0-Module (§v10.303.17) |
 | Materialien | **16** auto-erkannte Typen + Multi-Generation-Chain |
 | Musical Goals | **15** psychoakustisch fundierte Ziele (Spec 01) + 2 vokal-exklusive P0-Gates |

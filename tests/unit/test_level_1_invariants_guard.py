@@ -135,9 +135,7 @@ class TestSingerIdentity:
     def test_singer_identity_with_vqi_context(self, sample_audio):
         """VQI-Kontext sollte singer_identity messen."""
         audio, sr = sample_audio
-        context = {
-            "vqi_result": {"singer_identity_cosine": 0.95}
-        }
+        context = {"vqi_result": {"singer_identity_cosine": 0.95}}
 
         result = check_level_1_invariants(audio, audio * 0.98, sr, context=context)
 
@@ -332,8 +330,8 @@ def test_release_must_coverage():
     )
 
     if os.path.exists(copilot_path):
-        with open(copilot_path, "r", encoding="utf-8") as f:
+        with open(copilot_path, encoding="utf-8") as f:
             content = f.read()
 
         # Prüfen ob [RELEASE_MUST] vorhanden ist (nicht alle Tests müssen hier sein)
-        assert "[RELEASE_MUST]" in content or True  # Platzhalter für zukünftige Prüfung
+        assert True  # Platzhalter für zukünftige Prüfung (ersetzt 'or True'-Muster)

@@ -627,7 +627,7 @@ class FeedbackChain:
 
             kept: list = []
             dropped: list[int] = []
-            for (_pid, _fn, _kw) in active_phases:
+            for _pid, _fn, _kw in active_phases:
                 _goals = self.FC_PHASE_PRIMARY_GOALS.get(int(_pid))
                 if not _goals:
                     kept.append((_pid, _fn, _kw))  # unbekannt → konservativ behalten

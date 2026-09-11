@@ -61,7 +61,7 @@ class TestPhaseInteractionDenker:
 
     def test_result_attributes(self):
         """PhaseInteractionResult hat alle erwarteten Attribute."""
-        from backend.core.phase_interaction_denker import get_phase_interaction_denker, PhaseInteractionResult
+        from backend.core.phase_interaction_denker import PhaseInteractionResult, get_phase_interaction_denker
 
         denker = get_phase_interaction_denker()
         audio = _audio(48000, 2.0)
@@ -138,10 +138,12 @@ class TestPhaseInteractionDenkerEdgeCases:
 
         denker = get_phase_interaction_denker()
         t = np.linspace(0, 2.0, int(48000 * 2), endpoint=False)
-        stereo = np.stack([
-            0.3 * np.sin(2 * np.pi * 440.0 * t),
-            0.25 * np.sin(2 * np.pi * 440.0 * t + 0.1),
-        ]).astype(np.float32)
+        stereo = np.stack(
+            [
+                0.3 * np.sin(2 * np.pi * 440.0 * t),
+                0.25 * np.sin(2 * np.pi * 440.0 * t + 0.1),
+            ]
+        ).astype(np.float32)
 
         post = np.clip(stereo, -0.1, 0.1).astype(np.float32)
         result = denker.check_interference(stereo, post, sr=48000)

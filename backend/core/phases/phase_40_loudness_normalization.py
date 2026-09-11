@@ -265,7 +265,7 @@ class LoudnessNormalizationPhase(PhaseInterface):
         if _mode_scale < 1.0:
             _effective_strength = float(_effective_strength * _mode_scale)
             logger.debug(
-                "LoudnessNorm: mode=%s → strength scaled ×%.2f (effective=%.3f)",
+                "LoudnessNorm: Betriebsart=%s → strength scaled ×%.2f (effective=%.3f)",
                 _mode_raw,
                 _mode_scale,
                 _effective_strength,
@@ -296,7 +296,9 @@ class LoudnessNormalizationPhase(PhaseInterface):
                     metadata={"algorithm": "skipped_near_target", "integrated_lufs": _p0_lufs},
                 )
         except ImportError:
-            logger.debug("§V6 pyloudnorm nicht installiert — Near-Target-Loudness-Skip übersprungen")
+            logger.debug(
+                "§V6 (copilot-instructions.md) pyloudnorm nicht installiert — Near-Target-Loudness-ueberspringen übersprungen"
+            )
             pass
         except ValueError as _p0_short_exc:
             # Kurzsignale < Blockgröße (0.4 s) können pyln nicht messen →
@@ -503,7 +505,7 @@ class LoudnessNormalizationPhase(PhaseInterface):
                 lra = 6.0  # Konservativer Default für Pop/Rock
             momentary_max = integrated_lufs  # pyloudnorm misst kein Momentary
             short_term_max = integrated_lufs
-            logger.debug("Phase 40: pyloudnorm LUFS=%.1f LRA=%.1f (<0.1s)", integrated_lufs, lra)
+            logger.debug("Verarbeitungsschritt 40: pyloudnorm LUFS=%.1f LRA=%.1f (<0.1s)", integrated_lufs, lra)
         except (ImportError, ValueError):
             # ValueError: pyln kann Kurzsignale (< Blockgröße 0.4 s) nicht messen.
             integrated_lufs, lra, momentary_max, short_term_max = self._measure_loudness_full(audio, sample_rate)

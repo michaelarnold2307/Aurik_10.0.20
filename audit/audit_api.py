@@ -1,9 +1,12 @@
-"""
-audit_api.py – REST-API für Audit-/Policy-Abfragen und Compliance-Status
+"""audit_api.py – REST-API für Audit-/Policy-Abfragen und Compliance-Status
 
 - Endpunkte für Audit-Reports, Policy-Status, User-Feedback und Benchmarks
 - Nutzt FastAPI für moderne API
 """
+
+import logging
+
+logger = logging.getLogger(__name__)
 
 import os
 from typing import Any
@@ -24,6 +27,7 @@ def get_audits() -> JSONResponse:
                 try:
                     audits.append(yaml.safe_load(f))
                 except Exception:
+                    logger.debug("Stiller Ersatzpfad dokumentiert (Bug 9/V74)", exc_info=True)
                     continue
     return JSONResponse(audits)
 
@@ -51,6 +55,7 @@ def get_compliance() -> JSONResponse:
                     data["quality_log"] = qlog
                 reports.append(data)
             except Exception:
+                logger.debug("Audit-Report-Extraktion fehlgeschlagen", exc_info=True)
                 continue
     return JSONResponse(reports)
 

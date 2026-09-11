@@ -12,53 +12,52 @@ import sys
 from datetime import datetime
 from pathlib import Path
 
-logging.basicConfig(
-    level=logging.INFO,
-    format='[%(asctime)s] %(levelname)-8s %(message)s'
-)
+logging.basicConfig(level=logging.INFO, format="[%(asctime)s] %(levelname)-8s %(message)s")
 logger = logging.getLogger(__name__)
 
 WORKSPACE_ROOT = Path(__file__).parent
 sys.path.insert(0, str(WORKSPACE_ROOT))
+
 
 def measure_goals_only(audio_path: str) -> dict:
     """Measure musical goals on real audio without restoration."""
     import numpy as np
     import soundfile as sf
 
-    logger.info(f"📁 Loading audio: {audio_path}")
+    logger.info(f"📁 lade audio: {audio_path}")
     try:
         audio, sr = sf.read(audio_path)
         if len(audio.shape) == 1:
             audio = audio.reshape(-1, 1)
-        logger.info(f"   ✓ Loaded: {audio.shape} @ {sr}Hz")
+        logger.info(f"   ✓ geladen: {audio.shape} @ {sr}Hz")
     except Exception as e:
-        logger.error(f"❌ Failed to load: {e}")
+        logger.error(f"❌ konnte nicht laden: {e}")
         return {}
 
     try:
         from backend.core.musical_goals.musical_goals_metrics import MusicalGoalsChecker
 
-        logger.info("📊 Initializing MusicalGoalsChecker...")
+        logger.info("📊 initialisiere MusicalGoalsChecker...")
         checker = MusicalGoalsChecker()
 
         logger.info("🎼 Measuring all 15 musical goals...")
         goals = checker.measure_all(audio=audio, sr=sr, reference=audio)
 
         if goals:
-            logger.info("✅ Measurement complete:")
+            logger.info("✅ Measurement vollstaendig:")
             for name, score in sorted(goals.items()):
                 if isinstance(score, (int, float)):
                     logger.info(f"   {name:30s}: {score:.4f}")
 
         return goals or {}
     except Exception as e:
-        logger.error(f"❌ Measurement failed: {e}", exc_info=True)
+        logger.error(f"❌ Measurement fehlgeschlagen: {e}", exc_info=True)
         return {}
+
 
 def main():
     logger.info("=" * 70)
-    logger.info("⚡ FAST REAL-AUDIO VALIDATION (Musical Goals Only)")
+    logger.info("⚡ FAST REAL-AUDIO Validierung (Musical Goals Only)")
     logger.info("=" * 70)
 
     samples = [
@@ -70,7 +69,7 @@ def main():
         "timestamp": datetime.now().isoformat(),
         "validation": "musical_goals_only",
         "baseline": 0.7232,
-        "samples": {}
+        "samples": {},
     }
 
     for path in samples:
@@ -101,8 +100,9 @@ def main():
     with open(output_path, "w") as f:
         json.dump(results, f, indent=2)
 
-    logger.info(f"\n✅ Results saved: {output_path}")
+    logger.info(f"\n✅ Results gespeichert: {output_path}")
     return 0
+
 
 if __name__ == "__main__":
     sys.exit(main())

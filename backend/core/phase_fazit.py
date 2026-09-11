@@ -81,7 +81,7 @@ def log_phase_fazit(
     footer = "└" + "─" * (_WIDTH - 2) + "┘"
 
     # Log as single multi-line INFO message
-    lines = [header] + summary_formatted + [score_text, footer]
+    lines = [header, *summary_formatted, score_text, footer]
     logger.info("\n".join(lines))
 
 

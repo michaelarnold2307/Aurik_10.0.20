@@ -3,6 +3,7 @@ import json
 import logging
 import os
 import sys
+import time
 from pathlib import Path
 
 import numpy as np
@@ -40,20 +41,29 @@ _VALID_MODES = {"Restoration", "Studio 2026"}
 
 
 def _load_audio(path: str) -> tuple[np.ndarray, int]:
-    """Lädt audio file via canonical bridge import cascade."""
-    try:
-        load_audio_file = get_load_audio_fn()
-        loaded = load_audio_file(path, target_sr=None, mono=False, do_carrier_analysis=False)
-        if not isinstance(loaded, dict) or loaded.get("audio") is None or loaded.get("sr") is None:
-            raise RuntimeError(str((loaded or {}).get("error") or "Unbekannter Ladefehler"))
-        audio = np.asarray(loaded["audio"], dtype=np.float32)
-        if audio.ndim == 1:
-            audio = audio[:, np.newaxis]
-        elif audio.ndim == 2 and audio.shape[0] < audio.shape[1]:
-            audio = audio.T
-        return np.clip(np.nan_to_num(audio, nan=0.0, posinf=0.0, neginf=0.0), -1.0, 1.0), int(loaded["sr"])
-    except Exception as exc:
-        raise RuntimeError(f"Audio konnte nicht geladen werden: {exc}") from exc
+    """Lädt audio file via canonical bridge import cascade (3× Retry, §V35/Bug 11)."""
+    load_audio_file = get_load_audio_fn()
+    loaded: dict | None = None
+    _last_exc: Exception | None = None
+    _max_retries = 3
+    for _attempt in range(_max_retries):  # §V35 (Bug 11): transienten WAV-Fehler 3× retry
+        try:
+            loaded = load_audio_file(path, target_sr=None, mono=False, do_carrier_analysis=False)
+            break
+        except Exception as exc:
+            _last_exc = exc
+            logger.debug("Ladeversuch %d/3 fehlgeschlagen: %s", _attempt + 1, exc)
+            time.sleep(0.5 * (_attempt + 1))
+    if loaded is None:
+        raise RuntimeError(f"Audio konnte nicht geladen werden: {_last_exc}") from _last_exc
+    if not isinstance(loaded, dict) or loaded.get("audio") is None or loaded.get("sr") is None:
+        raise RuntimeError(str((loaded or {}).get("error") or "Unbekannter Ladefehler"))
+    audio = np.asarray(loaded["audio"], dtype=np.float32)
+    if audio.ndim == 1:
+        audio = audio[:, np.newaxis]
+    elif audio.ndim == 2 and audio.shape[0] < audio.shape[1]:
+        audio = audio.T
+    return np.clip(np.nan_to_num(audio, nan=0.0, posinf=0.0, neginf=0.0), -1.0, 1.0), int(loaded["sr"])
 
 
 def _normalize_mode(mode: str) -> str:
@@ -248,7 +258,7 @@ def _resample_to_48k(audio: np.ndarray, sr: int) -> np.ndarray:
             out = _soxr_rs.resample(audio, sr, _TARGET_SR, quality="HQ")
             return np.asarray(out, dtype=np.float32)  # type: ignore[no-any-return]
         except Exception:
-            logger.warning("aurik_cli.py::_resample_to_48k fallback", exc_info=True)
+            logger.warning("aurik_cli.py::_resample_to_48k Ersatzpfad", exc_info=True)
     if _sig is not None:
         try:
             int(round(audio.shape[0] * _TARGET_SR / sr))
@@ -282,7 +292,7 @@ def _resample_audio(audio: np.ndarray, src_sr: int, dst_sr: int) -> np.ndarray:
             _out: np.ndarray = np.asarray(_soxr_rs.resample(audio, src_sr, dst_sr, quality="HQ"), dtype=np.float32)
             return _out
         except Exception:
-            logger.warning("aurik_cli.py::_resample_audio fallback", exc_info=True)
+            logger.warning("aurik_cli.py::_resample_audio Ersatzpfad", exc_info=True)
     if _sig is not None:
         n_out = int(round(audio.shape[0] * dst_sr / src_sr))
         if audio.ndim == 1:
@@ -358,30 +368,48 @@ def _export_audio_frontend_parity(
         write_audio[:, 0] = np.clip(_mid + _side, -1.0, 1.0)
         write_audio[:, 1] = np.clip(_mid - _side, -1.0, 1.0)
         _ml_mono_softened = True
-        logger.info("CLI Export-MonoGuard: leichte Stereo-Softening-Korrektur aktiv")
+        logger.info("CLI Ausgabe-MonoGuard: leichte Stereo-Softening-Korrektur aktiv")
 
     if eq_warnings:
         for warning in eq_warnings:
-            logger.warning("Export-Quality: %s", warning)
+            logger.warning("Ausgabe-Quality: %s", warning)
     if not eq_passed:
-        # Diagnose-/A-B-Modus: expliziter, dokumentierter Override — das
-        # Schutz-Gate bleibt im Normalbetrieb voll aktiv.
+        # §0c [RELEASE_MUST]: Bei fehlgeschlagenem End-Gate MUSS das bestmögliche
+        # sichere Ergebnis exportiert werden — Hardstop ohne Ausgabedatei ist
+        # normativ unzulässig (Parität zum Frontend: export_workflow degradet
+        # transparent statt zu blockieren).
+        metadata = getattr(result, "metadata", None)
+        if isinstance(metadata, dict):
+            metadata["export_quality_gate_failed"] = True
+            metadata["export_quality_gate_warnings"] = list(eq_warnings)
+            metadata["export_degraded_by_quality_gate"] = True
+            metadata["degradation_status"] = "degraded"
         if os.getenv("AURIK_EXPORT_OVERRIDE", "0") == "1":
             logger.warning(
-                "Export-Quality-Gate mit AURIK_EXPORT_OVERRIDE=1 übersprungen "
+                "Ausgabe-Quality-Gate mit AURIK_Ausgabe_OVERRIDE=1 übersprungen "
                 "(Diagnose/A-B-Modus — Ergebnis NICHT für Produktion): %s",
                 "; ".join(eq_warnings) if eq_warnings else "unbekannt",
             )
         else:
-            metadata = getattr(result, "metadata", None)
-            if isinstance(metadata, dict):
-                metadata["export_quality_gate_failed"] = True
-                metadata["export_quality_gate_warnings"] = list(eq_warnings)
-                metadata["export_blocked_by_quality_gate"] = True
-            raise RuntimeError(
-                "Export blockiert: Export-Quality-Gate nicht bestanden"
-                + (f" ({'; '.join(eq_warnings)})" if eq_warnings else "")
+            logger.warning(
+                "§0c: Ausgabe-Quality-Gate nicht bestanden — bestmögliches Ergebnis "
+                "wird mit Status 'degraded' exportiert: %s",
+                "; ".join(eq_warnings) if eq_warnings else "unbekannt",
             )
+
+    # §GO/NO-GO (go_nogo_export_gate.py): Deterministischer Export-Verdict —
+    # wird in den Metadaten festgehalten; degradiert, blockiert NIE (§0c).
+    try:
+        from backend.api.bridge import evaluate_export_gate as _gnge
+
+        _gng = _gnge(result, audio=write_audio)
+        _meta_gng = getattr(result, "metadata", None)
+        if isinstance(_meta_gng, dict):
+            _meta_gng["go_nogo_export"] = _gng.as_dict()
+        if _gng.verdict != "GO":
+            logger.warning("§GO/NO-GO: %s — %s", _gng.verdict, "; ".join((_gng.reasons + _gng.cautions)[:5]))
+    except Exception as _gng_exc:
+        logger.warning("§V6 (copilot-instructions.md) GO/NO-GO nicht verfügbar: %s", _gng_exc)
 
     export_metadata = {
         "quality_gate_passed": str(bool(eq_payload.get("passed", eq_passed))),
@@ -434,9 +462,9 @@ def _export_audio_frontend_parity(
             if reference_for_export is not None:
                 reference_for_export = _resample_audio(reference_for_export, _TARGET_SR, output_sr)
             write_sr = output_sr
-            logger.info("Output-Resampling: %d Hz → %d Hz (soxr HQ)", _TARGET_SR, output_sr)
+            logger.info("Ausgabe-Resampling: %d Hz → %d Hz (soxr HQ)", _TARGET_SR, output_sr)
         except Exception as _rs_exc:
-            logger.warning("Output-Resampling fehlgeschlagen, exportiere mit %d Hz: %s", _TARGET_SR, _rs_exc)
+            logger.warning("Ausgabe-Resampling fehlgeschlagen, exportiere mit %d Hz: %s", _TARGET_SR, _rs_exc)
 
     _SUBTYPE_MAP = {16: "PCM_16", 24: "PCM_24", 32: "FLOAT"}
     _sf_subtype = _SUBTYPE_MAP.get(bit_depth, "PCM_24")
@@ -502,7 +530,7 @@ def process_audio(
         )
 
     if not os.path.exists(input_path):
-        logger.error("Input-Datei nicht gefunden: %s", input_path)
+        logger.error("Eingabe-Datei nicht gefunden: %s", input_path)
         sys.exit(2)
 
     # ── 1. Audio laden ────────────────────────────────────────────────────────
@@ -546,15 +574,45 @@ def process_audio(
             audio_48k,
             sr=_TARGET_SR,
             mode=mode,
-            no_rt_limit=True,
+            # §Performance-Budget (copilot-instructions.md): RT-Budget-Guard läuft
+            # standardmäßig (mode-adaptiv + 30-Minuten-Absolutlimit) — sonst
+            # laufen Lieder > 1,5 h und Exporte werden nie fertig (Befund: 40,5×
+            # Echtzeit). Opt-out für überwachte Offline-Läufe: AURIK_NO_RT_LIMIT=1.
+            no_rt_limit=os.environ.get("AURIK_NO_RT_LIMIT", "0") == "1",
             input_path=input_path,
             output_path=output_path,
             pre_analysis_result=pre,
             phase_strength_oracle_rollout=rollout_mode,
         )
     except Exception as exc:
-        logger.error("Fehler in der Restaurierungspipeline: %s", exc)
-        sys.exit(4)
+        # §0c [RELEASE_MUST] (copilot-instructions.md): Pipeline-Crash darf nicht
+        # ohne Ausgabedatei enden — bestmögliches sicheres Ergebnis ist der
+        # bereinigte Original-Input, Status degraded.
+        logger.error("Fehler in der Restaurierungspipeline: %s — §0c: degraded-Ausgabe des Originalsignal-Inputs", exc)
+        try:
+            from denker.aurik_denker import AurikErgebnis
+
+            _clean = np.clip(
+                np.nan_to_num(np.asarray(audio_48k, dtype=np.float32), nan=0.0, posinf=0.0, neginf=0.0),
+                -1.0,
+                1.0,
+            )
+            result = AurikErgebnis(
+                audio=_clean,
+                material="unknown",
+                rt_factor=0.0,
+                quality_estimate=0.0,
+                musical_goals={},
+                goals_passed=0,
+                phases_executed=[],
+                warnings=[f"Restaurierungspipeline fehlgeschlagen — Original unverändert (§0c): {exc}"],
+                processing_note="Export degradiert: Original unverändert (§0c)",
+                degradation_status="degraded",
+                fail_reason=str(exc),
+            )
+        except Exception as _deg_exc:
+            logger.error("§0c degraded-Ersatzpfad nicht konstruierbar: %s", _deg_exc)
+            sys.exit(4)
 
     if verbose:
         logger.info(
@@ -578,7 +636,7 @@ def process_audio(
             from backend.api.bridge import inject_cd_noise_profile
 
             result.audio = inject_cd_noise_profile(result.audio, _TARGET_SR, bit_depth=bit_depth)
-            logger.info("💿 CD-Rauschprofil für Vorschau angewendet — Vorschau = Export")
+            logger.info("💿 CD-Rauschprofil für Vorschau angewendet — Vorschau = Ausgabe")
         except Exception:
             logger.debug("CD-Rauschprofil für Vorschau übersprungen")
 
@@ -621,13 +679,13 @@ def process_audio(
         _export_degraded = True
         _export_degraded_reasons.append(f"quality_estimate={_qe:.3f}<{_qe_threshold:.2f} (§8.1)")
         logger.warning(
-            "§0c: quality_estimate=%.3f < %.2f (%s-Schwelle) — Export mit Status 'degraded'.",
+            "§0c: quality_estimate=%.3f < %.2f (%s-Schwelle) — Ausgabe mit Status 'degraded'.",
             _qe,
             _qe_threshold,
             _mat_str or "default",
         )
     logger.info(
-        "Export-Gate-Profil: %s · qe_threshold=%.2f · crest=%.1f dB · hf=%.3f · transient=%.4f",
+        "Ausgabe-Gate-Profil: %s · qe_Schwelle=%.2f · crest=%.1f dB · hf=%.3f · transient=%.4f",
         _gate_profile,
         _qe_threshold,
         _sig.get("crest_db", 0.0),
@@ -649,7 +707,7 @@ def process_audio(
         _export_degraded = True
         _export_degraded_reasons.append(f"P1/P2-Goals: {', '.join(_failed_goals)}")
         logger.warning(
-            "§0c: P1/P2-Goals verfehlt (%s) — Export mit Status 'degraded'.",
+            "§0c: P1/P2-Goals verfehlt (%s) — Ausgabe mit Status 'degraded'.",
             ", ".join(_failed_goals),
         )
 
@@ -708,7 +766,7 @@ def process_audio(
         _export_degraded = True
         _export_degraded_reasons.append(f"Pegelabfall={_drop_db:.2f}dB>{_pegel_threshold:.1f}dB")
         logger.warning(
-            "§0c: Pegelabfall %.2f dB > %.1f dB (%s-Schwelle) — Export mit Status 'degraded'.",
+            "§0c: Pegelabfall %.2f dB > %.1f dB (%s-Schwelle) — Ausgabe mit Status 'degraded'.",
             _drop_db,
             _pegel_threshold,
             _mat_str or "default",
@@ -736,7 +794,7 @@ def process_audio(
             elif not _export_degraded_reasons and isinstance(_eq_payload, dict):
                 _export_degraded_reasons.append(str(_eq_payload.get("fail_reason", "Export-Quality-Gate")))
             logger.warning(
-                "🟡 Export abgeschlossen (DEGRADED): %s — Grund: %s",
+                "🟡 Ausgabe abgeschlossen (DEGRADED): %s — Grund: %s",
                 output_path,
                 " | ".join(_export_degraded_reasons),
             )
@@ -1026,7 +1084,7 @@ def save_pipeline_checkpoint(audio, phase_id, output_path, metadata=None):
             pickle.dump(data, f, protocol=5)
         logger.debug("Checkpoint: %s", ckpt_path)
     except Exception as e:
-        logger.debug("Checkpoint failed: %s", e)
+        logger.debug("Checkpoint fehlgeschlagen: %s", e)
 
 
 def load_latest_checkpoint(output_path):
@@ -1044,6 +1102,7 @@ def load_latest_checkpoint(output_path):
             with open(f, "rb") as fh:
                 return pickle.load(fh)
         except Exception:
+            logger.debug("Stiller Ersatzpfad dokumentiert (Bug 9/V74)", exc_info=True)
             continue
     return None
 

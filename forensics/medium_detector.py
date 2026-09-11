@@ -1276,8 +1276,6 @@ class MediumDetector:
         if not detected or len(detected) <= 1:
             return None
         detected_set = set(detected)
-        best_match = None
-        best_score = 0
 
         # Genre-era validation
         _genre_earliest = self._GENRE_EARLIEST_ORDER.get((genre or "").lower().replace(" ", "_").replace("-", "_"), 0)
@@ -1285,7 +1283,7 @@ class MediumDetector:
 
         for chain in self._KNOWN_CHAINS:
             chain_set = set(chain)
-            overlap = len(detected_set & chain_set)
+            len(detected_set & chain_set)
 
             # Genre-era penalty: media too early for the genre lose points
             genre_penalty = 0
@@ -2150,7 +2148,7 @@ class MediumDetector:
                 elif _era_decade_rounded in _impossible_decades:
                     log_likes[mat] -= _era_boost_nats * 1.5  # harder penalty for impossible combos
             logger.debug(
-                "MediumDetector: Era-Prior applied (decade=%d, conf=%.2f, boost=%.1f nats)",
+                "MediumDetector: Era-Prior angewendet (decade=%d, conf=%.2f, boost=%.1f nats)",
                 _era_decade_rounded,
                 era_confidence,
                 _era_boost_nats,
@@ -2163,7 +2161,7 @@ class MediumDetector:
             _log_prior = math.log(_P_UNKNOWN) if mat == "unknown" else math.log(_P_OTHER)
             log_likes[mat] += _log_prior
         logger.debug(
-            "MediumDetector: Bayesian-Prior applied P(unknown)=%.3f P(other)=%.3f (Δ=%.1f nats)",
+            "MediumDetector: Bayesian-Prior angewendet P(unknown)=%.3f P(other)=%.3f (Δ=%.1f nats)",
             _P_UNKNOWN,
             _P_OTHER,
             math.log(_P_OTHER) - math.log(_P_UNKNOWN),
@@ -2644,7 +2642,7 @@ class MediumDetector:
                 )
                 # Filter to keep only candidates that match known chain patterns
                 _candidate_materials = [m for m, _ in _candidate_items]
-                _best_chain = self._best_matching_chain(_candidate_materials + [best_analog])
+                _best_chain = self._best_matching_chain([*_candidate_materials, best_analog])
                 if _best_chain:
                     # Reorder candidates to match best known chain
                     _ordered = [m for m in _best_chain if m in _candidate_materials or m == best_analog]

@@ -579,7 +579,7 @@ class AdvancedDereverbPhase(PhaseInterface):
                             )
                     _release_49("SGMSE+_phase49")
         except Exception as _imp_err:
-            logger.warning("ML→DSP-Fallback aktiviert", exc_info=True)  # §V6 (copilot-instructions.md)
+            logger.warning("ML→DSP-Ersatzpfad aktiviert", exc_info=True)  # §V6 (copilot-instructions.md)
             logger.debug("Verarbeitungsschritt 49: SGMSE+-Import nicht verfügbar (%s) → WPE DSP-Ersatzpfad", _imp_err)
 
         if not _sgmse_used:
@@ -848,7 +848,7 @@ class AdvancedDereverbPhase(PhaseInterface):
                 )
                 if _f1_post_49 > 0 and abs(_f1_post_49 - _f1_pre_49) > _f1_pre_49 * 0.15:
                     logger.warning(
-                        "§0p Formant drift phase_49 (F1 %.0f→%.0f Hz, delta=%.0f Hz) — rollback",
+                        "§0p Formant drift Verarbeitungsschritt_49 (F1 %.0f→%.0f Hz, delta=%.0f Hz) — rollback",
                         _f1_pre_49,
                         _f1_post_49,
                         abs(_f1_post_49 - _f1_pre_49),
@@ -1479,7 +1479,10 @@ class AdvancedDereverbPhase(PhaseInterface):
             reg = 1e-4 * np.eye(K)
             g = np.linalg.solve(XhXw + reg, XhBw)
         except np.linalg.LinAlgError as exc:
-            logger.debug("§V6 LS-Reverb-Prediction fehlgeschlagen — Nullen zurückgegeben (LinAlgError): %s", exc)
+            logger.debug(
+                "§V6 (copilot-instructions.md) LS-Reverb-Prediction fehlgeschlagen — Nullen zurückgegeben (LinAlgError): %s",
+                exc,
+            )
             return np.zeros_like(y)  # type: ignore[no-any-return]
 
         # Vectorized reverb prediction: r(t) = Σ_k g_k · y(t-D-k-1)

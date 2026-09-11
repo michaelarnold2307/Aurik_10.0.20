@@ -46,7 +46,11 @@ class InferenceResult:
         try:
             return self[key]
         except KeyError as exc:
-            logger.debug("§V6 ML-Parameter-Key nicht gefunden — Default-Wert zurückgegeben (Key %s): %s", key, exc)
+            logger.debug(
+                "§V6 (copilot-instructions.md) ML-Parameter-Key nicht gefunden — Default-Wert zurückgegeben (Key %s): %s",
+                key,
+                exc,
+            )
             return default
 
 

@@ -121,7 +121,7 @@ class AudioRestorationDataset(Dataset):
         # Load actual audio files using soundfile (SOTA)
         try:
             if not _HAS_SOUNDFILE or sf is None:
-                logger.warning("soundfile nicht verfügbar — Fallback auf synthetische Daten")
+                logger.warning("soundfile nicht verfügbar — Ersatzpfad auf synthetische Daten")
                 degraded_audio = torch.randn(1, self.samples)
                 clean_audio = torch.randn(1, self.samples)
             else:
@@ -166,7 +166,12 @@ class AudioRestorationDataset(Dataset):
                 clean_audio = torch.from_numpy(cln_resampled).unsqueeze(0)
 
         except Exception as e:
-            logger.warning("Audio-Laden fehlgeschlagen (%s, %s): %s — Fallback auf synthetische Daten", degraded_path, clean_path, e)
+            logger.warning(
+                "Audio-Laden fehlgeschlagen (%s, %s): %s — Ersatzpfad auf synthetische Daten",
+                degraded_path,
+                clean_path,
+                e,
+            )
             degraded_audio = torch.randn(1, self.samples)
             clean_audio = torch.randn(1, self.samples)
 

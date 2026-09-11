@@ -59,7 +59,7 @@ MODEL_ZOO: list[ModelEntry] = [
     ),
     ModelEntry(
         name="sgmse_plus",
-        path="models/ (kein ONNX — .pth in Plugin)",
+        path="models/sgmse_plus/sgmse_plus_core.onnx",
         purpose="repair",
         input_shapes="via plugins/sgmse_plugin.py",
         status="active",
@@ -76,7 +76,7 @@ MODEL_ZOO: list[ModelEntry] = [
     ),
     ModelEntry(
         name="cqtdiff",
-        path="models/cqtdiff/score_network.pt",
+        path="models/cqtdiff/score_network.onnx",
         purpose="generation",
         input_shapes="Audio-Synthese",
         status="generation_only",

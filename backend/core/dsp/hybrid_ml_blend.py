@@ -79,7 +79,7 @@ def hybrid_ml_apply(
     _dot = float(np.dot(_d_c, _w_c))
     if _dot < 0.0:
         logger.warning(
-            "hybrid_ml_apply: Polarity-Guard — invertierte ML-Ausgabe erkannt (dot=%.3g) — Vorzeichen korrigiert",
+            "hybrid_ml_anwenden: Polarity-Guard — invertierte ML-Ausgabe erkannt (dot=%.3g) — Vorzeichen korrigiert",
             _dot,
         )
         wet = -wet
@@ -94,7 +94,7 @@ def hybrid_ml_apply(
         _lag = int(np.argmax(_corr) - (_d_ds.size - 1)) * _step
         if abs(_lag) > _max_lag:
             logger.warning(
-                "hybrid_ml_apply: Lag-Guard — ML-Ausgabe um %d Samples versetzt (> %d) — dry zurück",
+                "hybrid_ml_anwenden: Lag-Guard — ML-Ausgabe um %d Samples versetzt (> %d) — dry zurück",
                 _lag,
                 _max_lag,
             )
@@ -123,7 +123,7 @@ def hybrid_ml_apply(
     _rms_wet = float(np.sqrt(np.mean(wet**2)) + 1e-12)
     if _rms_wet < _ENERGY_FLOOR_RATIO * _rms_dry:
         logger.debug(
-            "hybrid_ml_apply: Energie-Guard (wet-RMS %.4f < %.2f x dry-RMS %.4f) — dry",
+            "hybrid_ml_anwenden: Energie-Guard (wet-RMS %.4f < %.2f x dry-RMS %.4f) — dry",
             _rms_wet,
             _ENERGY_FLOOR_RATIO,
             _rms_dry,

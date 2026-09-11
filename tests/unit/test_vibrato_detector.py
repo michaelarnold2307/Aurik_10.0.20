@@ -40,7 +40,7 @@ class TestVibratoDetector:
 
     def test_detect_vibrato_rate_returns_result(self):
         """detect_vibrato_rate() sollte VibratoDetectionResult zurückgeben."""
-        from backend.core.vibrato_detector import detect_vibrato_rate, VibratoDetectionResult
+        from backend.core.vibrato_detector import VibratoDetectionResult, detect_vibrato_rate
 
         audio = _vibrato_audio(48000, 3.0, vibrato_rate=5.0)
         result = detect_vibrato_rate(audio, sr=48000)
@@ -145,10 +145,12 @@ class TestVibratoDetectorEdgeCases:
         from backend.core.vibrato_detector import detect_vibrato_rate
 
         t = np.linspace(0, 3.0, int(48000 * 3), endpoint=False)
-        stereo = np.stack([
-            0.3 * np.sin(2 * np.pi * 200.0 * t + 5.0 * np.sin(2 * np.pi * 5.0 * t)),
-            0.25 * np.sin(2 * np.pi * 200.0 * t + 5.0 * np.sin(2 * np.pi * 5.0 * t) + 0.1),
-        ]).astype(np.float32)
+        stereo = np.stack(
+            [
+                0.3 * np.sin(2 * np.pi * 200.0 * t + 5.0 * np.sin(2 * np.pi * 5.0 * t)),
+                0.25 * np.sin(2 * np.pi * 200.0 * t + 5.0 * np.sin(2 * np.pi * 5.0 * t) + 0.1),
+            ]
+        ).astype(np.float32)
 
         result = detect_vibrato_rate(stereo, sr=48000)
         assert isinstance(result.rate_hz, float)

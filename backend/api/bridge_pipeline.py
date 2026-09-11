@@ -239,7 +239,10 @@ def get_new_crash_reports() -> list[dict]:
 
         return list(_new() or [])
     except Exception as exc:
-        logger.debug("§V6 crash_reporter.get_new_reports fehlgeschlagen — leere Liste zurückgegeben: %s", exc)
+        logger.debug(
+            "§V6 (copilot-instructions.md) crash_reporter.get_new_reports fehlgeschlagen — leere Liste zurückgegeben: %s",
+            exc,
+        )
         return []
 
 
@@ -304,7 +307,9 @@ def get_guard_report(result: object) -> dict:
             },
         }
     except Exception as exc:
-        logger.debug("§V6 get_guard_report fehlgeschlagen — leeres Dict zurückgegeben: %s", exc)
+        logger.debug(
+            "§V6 (copilot-instructions.md) get_guard_report fehlgeschlagen — leeres Dict zurückgegeben: %s", exc
+        )
         return {}
 
 
@@ -360,7 +365,9 @@ def get_restoration_bericht(result: object, defect_result: object = None) -> dic
             "was_reverted": bool((meta.get("do_no_harm") or {}).get("reverted", False)),
         }
     except Exception as exc:
-        logger.debug("§V6 get_restoration_bericht fehlgeschlagen — leeres Dict zurückgegeben: %s", exc)
+        logger.debug(
+            "§V6 (copilot-instructions.md) get_restoration_bericht fehlgeschlagen — leeres Dict zurückgegeben: %s", exc
+        )
         return {}
 
 
@@ -480,7 +487,9 @@ def get_repair_plan_consent(defect_result: object) -> dict:
             return {}  # Kein Analyse-Material → Frontend blendet die Zeile aus
         return {"found": found, "will_do": will_do}
     except Exception as exc:
-        logger.debug("§V6 get_repair_plan_consent fehlgeschlagen — leeres Dict zurückgegeben: %s", exc)
+        logger.debug(
+            "§V6 (copilot-instructions.md) get_repair_plan_consent fehlgeschlagen — leeres Dict zurückgegeben: %s", exc
+        )
         return {}
 
 

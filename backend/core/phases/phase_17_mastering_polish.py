@@ -312,7 +312,7 @@ class MasteringPolishPhase(PhaseInterface):
         if _mode_scale < 1.0:
             _effective_strength = float(_effective_strength * _mode_scale)
             logger.debug(
-                "MasteringPolish: mode=%s → strength scaled ×%.2f (effective=%.3f)",
+                "MasteringPolish: Betriebsart=%s → strength scaled ×%.2f (effective=%.3f)",
                 _mode_raw,
                 _mode_scale,
                 _effective_strength,

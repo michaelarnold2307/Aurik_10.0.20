@@ -1,7 +1,7 @@
 """§v10.17 AurikException — spezifische Exception-Typen."""
 
 
-class AurikException(Exception):
+class AurikException(Exception):  # noqa: N818 — stabiler öffentlicher API-Name seit v10
     """Basis für alle Aurik-Exceptions."""
 
 

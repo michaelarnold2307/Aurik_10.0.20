@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """§v10.700 Externes Benchmark: Aurik vs. ffmpeg auf dem Real-Audio-Corpus.
 
+
 Spec-Verankerung:
 - .github/specs/v10.700_weltspitze_roadmap.md, Lücke 1 (Öffentliche Benchmarks):
   "Vergleich gegen iZotope RX / Adobe Audition / ffmpeg. Die Benchmark-Tools
@@ -32,6 +33,10 @@ Usage:
 """
 
 from __future__ import annotations
+
+import logging
+
+logger = logging.getLogger(__name__)
 
 import argparse
 import json
@@ -199,11 +204,10 @@ def main() -> int:
         "cases": [],
     }
     try:
-        ver = subprocess.run(
-            ["ffmpeg", "-version"], capture_output=True, text=True, timeout=10
-        )
+        ver = subprocess.run(["ffmpeg", "-version"], capture_output=True, text=True, timeout=10)
         report["external_tool_version"] = ver.stdout.splitlines()[0].strip() if ver.returncode == 0 else None
     except Exception:
+        logger.debug("Stiller Ersatzpfad dokumentiert (Bug 9/V74)", exc_info=True)
         pass
 
     ok = 0
@@ -242,7 +246,12 @@ def main() -> int:
         except Exception as exc:
             entry["ffmpeg"] = {"error": str(exc)[:300]}
 
-        if isinstance(entry.get("aurik"), dict) and isinstance(entry.get("ffmpeg"), dict) and "error" not in entry["aurik"] and "error" not in entry["ffmpeg"]:
+        if (
+            isinstance(entry.get("aurik"), dict)
+            and isinstance(entry.get("ffmpeg"), dict)
+            and "error" not in entry["aurik"]
+            and "error" not in entry["ffmpeg"]
+        ):
             ok += 1
         report["cases"].append(entry)
         print(

@@ -195,8 +195,7 @@ class WohlklangOrdnungGate:
             violated = sorted({v["at_cost_of"] for v in violations})
             for v in violations:
                 logger.warning(
-                    "§Ebene-3 Wohlklang-Ordnung verletzt: %s (Stufe %d) verbessert "
-                    "auf Kosten von %s (Stufe %d)",
+                    "§Ebene-3 Wohlklang-Ordnung verletzt: %s (Stufe %d) verbessert auf Kosten von %s (Stufe %d)",
                     v["improving_goal"],
                     v["improving_tier"],
                     v["at_cost_of"],

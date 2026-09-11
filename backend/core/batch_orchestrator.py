@@ -370,7 +370,7 @@ def _hash_file(path: str) -> str:
                 h.update(chunk)
         return h.hexdigest()[:16]
     except OSError as exc:
-        logger.debug("§V6 SHA-256 Hash fehlgeschlagen — leere String zurückgegeben: %s", exc)
+        logger.debug("§V6 (copilot-instructions.md) SHA-256 Hash fehlgeschlagen — leere String zurückgegeben: %s", exc)
         return ""
 
 

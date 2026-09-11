@@ -200,7 +200,7 @@ def _download_with_retry(
                     progress_callback(model_name or url, 1.0)
 
             logger.info(
-                "Download erfolgreich: %s (%d bytes, attempt %d/%d)",
+                "Download erfolgreich: %s (%d bytes, Versuch %d/%d)",
                 model_name or url,
                 downloaded,
                 attempt,
@@ -589,7 +589,11 @@ class ModelDownloader:
                 data = json.load(fh)
             return str(data.get(model_name, {}).get("sha256", ""))
         except (json.JSONDecodeError, OSError, AttributeError) as exc:
-            logger.debug("§V6 SOTA-SHA256-Cache-Lesen fehlgeschlagen — leere String zurückgegeben (Model %s): %s", model_name, exc)
+            logger.debug(
+                "§V6 (copilot-instructions.md) SOTA-SHA256-Zwischenspeicher-Lesen fehlgeschlagen — leere String zurückgegeben (Model %s): %s",
+                model_name,
+                exc,
+            )
             return ""
 
     def _write_sota_sha256(self, model_name: str, sha256: str) -> None:

@@ -25,6 +25,7 @@ class TestListenerFeedbackLoop:
     def setup_method(self) -> None:
         """Reset Singleton vor jedem Test."""
         import backend.core.listener_feedback_loop as lfl_module
+
         lfl_module._feedback_instance = None  # pylint: disable=protected-access
 
     def test_singleton_factory(self):
@@ -103,7 +104,7 @@ class TestListenerFeedbackLoop:
 
     def test_feedback_result(self):
         """get_feedback_result() sollte korrekte Gesamtbewertung zurückgeben."""
-        from backend.core.listener_feedback_loop import get_listener_feedback_loop, FeedbackResult
+        from backend.core.listener_feedback_loop import FeedbackResult, get_listener_feedback_loop
 
         feedback = get_listener_feedback_loop(segment_duration_s=2.0)
         restored = _audio(48000, 6.0)
@@ -147,11 +148,12 @@ class TestListenerFeedbackLoopEdgeCases:
     def setup_method(self) -> None:
         """Reset Singleton vor jedem Test."""
         import backend.core.listener_feedback_loop as lfl_module
+
         lfl_module._feedback_instance = None  # pylint: disable=protected-access
 
     def test_no_segments_scored(self):
         """Keine bewerteten Segmente sollte konservatives FeedbackResult zurückgeben."""
-        from backend.core.listener_feedback_loop import get_listener_feedback_loop, FeedbackResult
+        from backend.core.listener_feedback_loop import FeedbackResult, get_listener_feedback_loop
 
         feedback = get_listener_feedback_loop(segment_duration_s=2.0)
         result = feedback.get_feedback_result(threshold=6.0)

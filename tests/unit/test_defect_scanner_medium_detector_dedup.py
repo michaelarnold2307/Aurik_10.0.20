@@ -143,18 +143,14 @@ class TestForensicVeto:
         """§2.46f-1: Auch degenerierte Signale (Stille → hf_loss≈1 → mp3_low-Heuristik)
         dürfen den Forensic-Primary nicht überstimmen — Veto erzwingt Forensic."""
         scanner = DefectScanner(sample_rate=48_000)
-        got = scanner._auto_detect_material(
-            _silent_stereo(), era_decade=1970, forensic_material=MaterialType.VINYL
-        )
+        got = scanner._auto_detect_material(_silent_stereo(), era_decade=1970, forensic_material=MaterialType.VINYL)
         assert got == MaterialType.VINYL
 
     def test_hiss_contradiction_vetoes_to_forensic_primary(self) -> None:
         """§2.46f-2: Hiss-Evidenz (cassette-like) darf den Forensic-Primary
         NICHT überstimmen — Veto erzwingt das Forensic-Material."""
         scanner = DefectScanner(sample_rate=48_000)
-        got = scanner._auto_detect_material(
-            _hiss_stereo(), era_decade=1970, forensic_material=MaterialType.VINYL
-        )
+        got = scanner._auto_detect_material(_hiss_stereo(), era_decade=1970, forensic_material=MaterialType.VINYL)
         assert got == MaterialType.VINYL
 
     def test_mono_path_defers_to_forensic_primary(self) -> None:
@@ -191,6 +187,7 @@ class TestForensicVeto:
 # §2.46g Scoring-Redesign (2026-09-06): Slope-HF-Loss, Stille-Guards, Mono-Normalisierung
 # ============================================================
 
+
 def _narrowband_stereo(seconds: float = 1.5) -> np.ndarray:
     """8-kHz-Bandbreite (2 Sinustöne) — schmalbandiges Analog OHNE HF-Inhalt."""
     n = int(48_000 * seconds)
@@ -204,9 +201,9 @@ def _vinyl_mono(seconds: float = 2.0) -> np.ndarray:
     rng = np.random.default_rng(5)
     n = int(48_000 * seconds)
     t = np.arange(n) / 48_000
-    sig = (0.08 * np.sin(2 * np.pi * 50 * t) + 0.15 * np.sin(2 * np.pi * 20 * t) + 0.05 * np.sin(2 * np.pi * 300 * t)).astype(
-        np.float32
-    )
+    sig = (
+        0.08 * np.sin(2 * np.pi * 50 * t) + 0.15 * np.sin(2 * np.pi * 20 * t) + 0.05 * np.sin(2 * np.pi * 300 * t)
+    ).astype(np.float32)
     for p in rng.integers(0, n - 40, 200):
         sig[p : p + 40] += rng.uniform(0.2, 0.5)
     return sig

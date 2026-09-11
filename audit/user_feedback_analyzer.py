@@ -58,7 +58,7 @@ def integrate_feedback_in_policy(trends, policy_path="policy/policy_engine.py"):
         for k, v in result.items():
             print(f"  {k}: {v}")
     except Exception as exc:
-        logger.warning("ML→DSP-Fallback aktiviert", exc_info=True)  # §V6
+        logger.warning("ML→DSP-Ersatzpfad aktiviert", exc_info=True)  # §V6 (copilot-instructions.md)
         print(f"Policy-Engine-Integration (Fallback-Modus, Ursache: {exc}):")
         for k, v in trends.items():
             for comment in v:

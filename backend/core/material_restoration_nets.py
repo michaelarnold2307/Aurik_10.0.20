@@ -74,7 +74,6 @@ def _check_noise_texture_coherence(audio: np.ndarray, sample_rate: int) -> float
         return 1.0  # fallback: assume coherent
 
 
-
 # ─── Medium-Enum ─────────────────────────────────────────────────────────
 
 
@@ -198,9 +197,10 @@ def restore_shellac(audio: np.ndarray, sample_rate: int, **kwargs) -> MaterialRe
             _check_noise_texture_coherence(result_audio, sample_rate)  # §4.7 NoiseTextureCoherenceGuard
             return MaterialRestorationResult(result_audio, SourceMedium.SHELLAC, True, ["plugin"], {})
     except ImportError as _mrn_shellac_exc:
-        # §V6 Silent-Failure-Verbot: Log with reason, but INFO (graceful fallback)
+        # §V6 (copilot-instructions.md) Silent-Failure-Verbot: Log with reason, but INFO (graceful fallback)
         logger.info(
-            "§V6 Graceful fallback shellac plugin not available (DSP path): %s", str(_mrn_shellac_exc)[:200]
+            "§V6 (copilot-instructions.md) Graceful Ersatzpfad shellac plugin not verfuegbar (DSP path): %s",
+            str(_mrn_shellac_exc)[:200],
         )
 
     # DSP-Pfad
@@ -282,9 +282,10 @@ def restore_vinyl(audio: np.ndarray, sample_rate: int, apply_riaa: bool = False,
             _check_noise_texture_coherence(result_audio, sample_rate)  # §4.7 NoiseTextureCoherenceGuard
             return MaterialRestorationResult(result_audio, SourceMedium.VINYL, True, ["plugin"], {})
     except ImportError as _mrn_vinyl_exc:
-        # §V6 Silent-Failure-Verbot: Log with reason, but INFO (graceful fallback)
+        # §V6 (copilot-instructions.md) Silent-Failure-Verbot: Log with reason, but INFO (graceful fallback)
         logger.info(
-            "§V6 Graceful fallback vinyl plugin not available (DSP path): %s", str(_mrn_vinyl_exc)[:200]
+            "§V6 (copilot-instructions.md) Graceful Ersatzpfad vinyl plugin not verfuegbar (DSP path): %s",
+            str(_mrn_vinyl_exc)[:200],
         )
 
     out = audio.copy()
@@ -435,9 +436,10 @@ def restore_tape(audio: np.ndarray, sample_rate: int, **kwargs) -> MaterialResto
             _check_noise_texture_coherence(result_audio, sample_rate)  # §4.7 NoiseTextureCoherenceGuard
             return MaterialRestorationResult(result_audio, SourceMedium.TAPE, True, ["plugin"], {})
     except ImportError as _mrn_tape_exc:
-        # §V6 Silent-Failure-Verbot: Log with reason, but INFO (graceful fallback)
+        # §V6 (copilot-instructions.md) Silent-Failure-Verbot: Log with reason, but INFO (graceful fallback)
         logger.info(
-            "§V6 Graceful fallback tape plugin not available (DSP path): %s", str(_mrn_tape_exc)[:200]
+            "§V6 (copilot-instructions.md) Graceful Ersatzpfad tape plugin not verfuegbar (DSP path): %s",
+            str(_mrn_tape_exc)[:200],
         )
 
     out = audio.copy()
@@ -515,9 +517,10 @@ def restore_lacquer(audio: np.ndarray, sample_rate: int, **kwargs) -> MaterialRe
             _check_noise_texture_coherence(result_audio, sample_rate)  # §4.7 NoiseTextureCoherenceGuard
             return MaterialRestorationResult(result_audio, SourceMedium.LACQUER, True, ["plugin"], {})
     except ImportError as _mrn_lacquer_exc:
-        # §V6 Silent-Failure-Verbot: Log with reason, but INFO (graceful fallback)
+        # §V6 (copilot-instructions.md) Silent-Failure-Verbot: Log with reason, but INFO (graceful fallback)
         logger.info(
-            "§V6 Graceful fallback lacquer plugin not available (DSP path): %s", str(_mrn_lacquer_exc)[:200]
+            "§V6 (copilot-instructions.md) Graceful Ersatzpfad lacquer plugin not verfuegbar (DSP path): %s",
+            str(_mrn_lacquer_exc)[:200],
         )
 
     out = audio.copy()

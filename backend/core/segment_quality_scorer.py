@@ -166,16 +166,18 @@ class SegmentQualityScorer:
 
                 score_val, rms_dbfs, peak_dbfs, snr_db = _compute_segment_score(segment, sr)
 
-                scores.append(SegmentScore(
-                    start_sample=start,
-                    end_sample=end,
-                    start_time_s=start / sr,
-                    duration_s=self._window_s,
-                    score=score_val,
-                    rms_dbfs=rms_dbfs,
-                    peak_dbfs=peak_dbfs,
-                    snr_estimate_db=snr_db,
-                ))
+                scores.append(
+                    SegmentScore(
+                        start_sample=start,
+                        end_sample=end,
+                        start_time_s=start / sr,
+                        duration_s=self._window_s,
+                        score=score_val,
+                        rms_dbfs=rms_dbfs,
+                        peak_dbfs=peak_dbfs,
+                        snr_estimate_db=snr_db,
+                    )
+                )
 
             if scores:
                 mean_score = float(np.mean([s.score for s in scores]))

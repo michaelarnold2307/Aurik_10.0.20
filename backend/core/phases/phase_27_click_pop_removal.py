@@ -546,9 +546,9 @@ class ClickPopRemoval(PhaseInterface):
                 all_detections.update(outliers.tolist())
 
             except Exception:
-                # Graceful Degradation: Diese Ordnung überspringen (§V6)
+                # Graceful Degradation: Diese Ordnung überspringen (§V6 (copilot-instructions.md))
                 logger.warning(
-                    "§V6 Phase-27 click detection order failed → skipping: %s",
+                    "§V6 (copilot-instructions.md) Verarbeitungsschritt-27 click detection order fehlgeschlagen → skipping: %s",
                     str(Exception),
                 )
                 continue

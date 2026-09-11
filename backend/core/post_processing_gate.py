@@ -186,10 +186,7 @@ class PostProcessingGate:
         # bisherigen ÜBERSPRUNGEN-Pfad (Original bleibt), aber ohne dessen Kosten.
         # Binäre-Stärken-Suche bleibt ausgenommen (eigene Bewertung).
         _hist = getattr(self, "_a3_history", {})
-        if (
-            not binary_search_strength
-            and int((_hist.get(label) or {}).get("consecutive", 0)) >= 2
-        ):
+        if not binary_search_strength and int((_hist.get(label) or {}).get("consecutive", 0)) >= 2:
             logger.warning(
                 "PostGate [%s]: §A3-Prognose — 2× Regression in Folge, Messung übersprungen",
                 label,
@@ -336,7 +333,10 @@ class PostProcessingGate:
             full_scores = _measure_quick(audio, sr, precise_override=True, enable_vocal_guard=False)
             return {g: full_scores.get(g, 0.5) for g in goals}
         except Exception as e:
-            logger.warning("§V6 _measure fehlgeschlagen — alle Goals auf 0.5 gesetzt (Gate passiert immer): %s", e)
+            logger.warning(
+                "§V6 (copilot-instructions.md) _measure fehlgeschlagen — alle Goals auf 0.5 gesetzt (Gate passiert immer): %s",
+                e,
+            )
             return dict.fromkeys(goals, 0.5)
 
     # ── Signatur-Validierung ────────────────────────────────────────
@@ -351,7 +351,7 @@ class PostProcessingGate:
         try:
             sig = inspect.signature(component_fn)
             params = list(sig.parameters.values())
-            required = sum(
+            sum(
                 1
                 for p in params
                 if p.default is inspect.Parameter.empty

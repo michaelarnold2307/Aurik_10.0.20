@@ -55,10 +55,7 @@ BUCKET_PATTERN = re.compile(
 
 def _is_canonical(filepath: str) -> bool:
     """Prüft ob die Datei eine kanonische Definitionsdatei ist."""
-    for cf in CANONICAL_FILES:
-        if filepath.endswith(cf) or filepath == cf:
-            return True
-    return False
+    return any(filepath.endswith(cf) or filepath == cf for cf in CANONICAL_FILES)
 
 
 def _scan_file(filepath: Path) -> dict[str, list[dict[str, Any]]]:

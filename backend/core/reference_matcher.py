@@ -26,7 +26,7 @@ def analyze_reference(audio: np.ndarray, sr: int) -> MatchProfile:
     """Extrahiert EQ/Dynamics/Stereo-Profil aus Referenz-Track."""
     mono = np.mean(audio, axis=-1) if audio.ndim > 1 else np.asarray(audio, dtype=np.float32)
     n_fft = 4096
-    spec = np.abs(np.fft.rfft(mono[: n_fft * 16], n=n_fft))
+    np.abs(np.fft.rfft(mono[: n_fft * 16], n=n_fft))
     freqs = np.fft.rfftfreq(n_fft, d=1.0 / sr)
 
     # EQ-Kurve (langfristiges Spektrum)

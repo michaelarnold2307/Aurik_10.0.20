@@ -279,7 +279,11 @@ class MushraProxy:
             #          cos_sim 0.0 → 50 (starke Änderung, neutral)
             return float(np.clip(_cos_sim * 100.0, 0.0, 100.0))
         except Exception as exc:
-            logger.debug("§V6 MUSHRA-MERT-Embedding fehlgeschlagen — Spektrale-Differenz Fallback aktiviert (Audio %s): %s", audio.shape, exc)
+            logger.debug(
+                "§V6 (copilot-instructions.md) MUSHRA-MERT-Embedding fehlgeschlagen — Spektrale-Differenz Ersatzpfad aktiviert (Audio %s): %s",
+                audio.shape,
+                exc,
+            )
             # Fallback: spektrale Differenz
             _flat_a = self._estimate_mushra_fallback(audio, sample_rate)
             _flat_r = self._estimate_mushra_fallback(reference, sample_rate)

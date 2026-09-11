@@ -334,10 +334,15 @@ def get_changed_files() -> list[Path]:
             result = subprocess.run(cmd, capture_output=True, text=True, timeout=10)
             for line in result.stdout.strip().split("\n"):
                 line = line.strip()
-                if line.endswith(".py") and not line.startswith(("tests/", "benchmarks/")):
-                    fp = _PROJECT_ROOT / line
-                    if fp.exists():
-                        files.append(fp)
+                if not line.endswith(".py") or line.startswith(("tests/", "benchmarks/")):
+                    continue
+                # Vendor-Drittanbieter (unverändert kopiert, Englisch by Design)
+                # — konsistent mit SKIP_DIRS der übrigen Linter (§V40).
+                if "/_vendor_" in line:
+                    continue
+                fp = _PROJECT_ROOT / line
+                if fp.exists():
+                    files.append(fp)
         except (subprocess.TimeoutExpired, FileNotFoundError):
             logger.debug("Stiller optionaler Ausnahmefall ignoriert", exc_info=True)
     return files
@@ -345,10 +350,7 @@ def get_changed_files() -> list[Path]:
 
 def _is_exempt(line: str) -> bool:
     """Prüft ob eine Zeile von der Sprach-Prüfung ausgenommen ist."""
-    for pat in _EXEMPT_PATTERNS:
-        if re.search(pat, line):
-            return True
-    return False
+    return any(re.search(pat, line) for pat in _EXEMPT_PATTERNS)
 
 
 def _contains_english_word(text: str) -> tuple[bool, str]:
@@ -370,7 +372,7 @@ def _replace_forbidden_terms(text: str) -> str:
         pattern = re.compile(
             rf"(^|\\[abfnrtv]|[^{word_letters}])({re.escape(term)})(?![{word_letters}])", re.IGNORECASE
         )
-        translated = pattern.sub(lambda match: f"{match.group(1)}{replacement}", translated)
+        translated = pattern.sub(lambda match, replacement=replacement: f"{match.group(1)}{replacement}", translated)
     return translated
 
 

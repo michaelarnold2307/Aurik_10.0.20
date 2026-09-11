@@ -51,9 +51,7 @@ def test_end_gate_cascade_decision_matrix(
     chunked_last: bool,
     expected: bool,
 ) -> None:
-    assert (
-        _should_run_end_gate_cascade(violations, tail_skip, chunked_last) is expected
-    )
+    assert _should_run_end_gate_cascade(violations, tail_skip, chunked_last) is expected
 
 
 def test_measure_goals_for_tail_chunk_skip() -> None:
@@ -64,15 +62,25 @@ def test_measure_goals_for_tail_chunk_skip() -> None:
     audio = [0.0] * 1000
 
     skipped = restorer._measure_goals_for_tail(
-        checker, audio, 48000, None, "vinyl",
-        chunked_tail_skip=True, chunked_last=False,
+        checker,
+        audio,
+        48000,
+        None,
+        "vinyl",
+        chunked_tail_skip=True,
+        chunked_last=False,
     )
     assert skipped == {}
     assert checker.calls == []
 
     measured = restorer._measure_goals_for_tail(
-        checker, audio, 48000, None, "vinyl",
-        chunked_tail_skip=True, chunked_last=True,
+        checker,
+        audio,
+        48000,
+        None,
+        "vinyl",
+        chunked_tail_skip=True,
+        chunked_last=True,
     )
     assert measured == {"brillanz": 0.5}
     assert len(checker.calls) == 1

@@ -17,6 +17,9 @@ Nutzung:
 from __future__ import annotations
 
 import argparse
+import logging
+
+logger = logging.getLogger(__name__)
 import json
 import random
 import sys
@@ -58,7 +61,7 @@ def _compute_anchor(audio_path: Path, output_dir: Path, cutoff_hz: float = 3500.
 
         audio, sr = sf.read(str(audio_path))
     except Exception:
-        logger.warning("ML→DSP-Fallback aktiviert", exc_info=True)  # §V6 (copilot-instructions.md)
+        logger.warning("ML→DSP-Ersatzpfad aktiviert", exc_info=True)  # §V6 (copilot-instructions.md)
         return audio_path  # Fallback
 
     nyquist = sr / 2

@@ -1231,7 +1231,7 @@ class NatuerlichkeitMetric:
                         raise ImportError("scipy.signal.decimate unavailable")
                     proc_audio = np.asarray(_SCIPY_DECIMATE(audio, _stride, zero_phase=True), dtype=np.float64)
                 except Exception:
-                    logger.warning("ML→DSP-Fallback aktiviert", exc_info=True)  # §V6 (copilot-instructions.md)
+                    logger.warning("ML→DSP-Ersatzpfad aktiviert", exc_info=True)  # §V6 (copilot-instructions.md)
                     proc_audio = audio[::_stride]  # fallback if scipy unavailable
                 proc_sr = max(1, sr // _stride)
 
@@ -1985,7 +1985,7 @@ class EmotionalitaetMetric:
                     score,
                 )
         except Exception as _exc:
-            logger.warning("ML→DSP-Fallback aktiviert", exc_info=True)  # §V6 (copilot-instructions.md)
+            logger.warning("ML→DSP-Ersatzpfad aktiviert", exc_info=True)  # §V6 (copilot-instructions.md)
             logger.debug("Operation fehlgeschlagen (unkritisch): %s", _exc)  # MERT not loaded — DSP-only path
 
         # --- VAT emotion model (Valence-Arousal-Tension, Russell 1980 + Thayer 1990) ---
@@ -3814,7 +3814,7 @@ class SeparationFidelityMetric:
                 _mod_prior = _sep_prior_lookup(int(sr), material_type)
                 if _mod_prior is not None:
                     logger.warning(
-                        "separation_fidelity: HTDemucs-Mess-Budget erschöpft → Song-Prior %.3f (Chunked-Prior)",
+                        "separation_fidelity: HTDemucs-Mess-Grenze erschöpft → Song-Prior %.3f (Chunked-Prior)",
                         _mod_prior,
                     )
                     return float(np.clip(_mod_prior, 0.0, 1.0))
@@ -3823,7 +3823,7 @@ class SeparationFidelityMetric:
                 )
                 return self._separation_fidelity_proxy(restored, reference, sr, min_len)
             logger.warning(
-                "separation_fidelity: HTDemucs-Mess-Budget erschöpft → Prior-Fallback (letzter echter Wert %.3f)",
+                "separation_fidelity: HTDemucs-Mess-Grenze erschöpft → Prior-Ersatzpfad (letzter echter Wert %.3f)",
                 _prior,
             )
             return float(np.clip(_prior, 0.0, 1.0))
@@ -3845,14 +3845,41 @@ class SeparationFidelityMetric:
             _elapsed = time.perf_counter() - _t0
             if _elapsed > _time_budget_s:
                 logger.warning(
-                    "separation_fidelity: HTDemucs %.1fs > Budget %.1fs → Proxy-Fallback",
+                    "separation_fidelity: HTDemucs %.1fs > Grenze %.1fs → Proxy-Ersatzpfad",
                     _elapsed,
                     _time_budget_s,
                 )
                 return self._separation_fidelity_proxy(restored, reference, sr, min_len)
 
             # Rekonstruktion der Summe aller Stems
-            reconstructed = sep_result.reconstruct()
+            if isinstance(sep_result, dict):
+                # §v10.739-Facade: get_htdemucs_plugin() liefert DemucsV4Plugin,
+                # dessen separate() ein Stems-Dict (channels-first) zurückgibt —
+                # kein SeparationResult.reconstruct(). Hier kompatibel aufsummieren.
+                _vals = [np.asarray(v, dtype=np.float32) for v in sep_result.values() if v is not None]
+                if not _vals:
+                    raise RuntimeError("Separation lieferte keine Stems")
+                _n = min(_v.shape[-1] for _v in _vals)
+                _acc = _vals[0][..., :_n]
+                for _v in _vals[1:]:
+                    _acc = _acc + _v[..., :_n]
+                if _acc.ndim == 2 and _acc.shape[0] in (1, 2) and restored.ndim == 1:
+                    _acc = _acc.mean(axis=0)  # channels-first (C, T) → mono (T,)
+                elif _acc.ndim == 1 and restored.ndim == 2:
+                    _acc = np.stack([_acc, _acc], axis=-1)
+                reconstructed = np.asarray(_acc, dtype=np.float32)
+            else:
+                reconstructed = sep_result.reconstruct()
+
+            # Shape-/Längen-Angleich (mono/stereo-Kompatibilität der Facade)
+            if reconstructed.shape != restored.shape:
+                if restored.ndim == 1 and reconstructed.ndim == 2:
+                    reconstructed = reconstructed.mean(axis=0)
+                elif restored.ndim == 2 and restored.shape[-1] > restored.shape[0] and reconstructed.ndim == 1:
+                    reconstructed = np.stack([reconstructed, reconstructed], axis=-1)
+                _n = min(restored.shape[-1], reconstructed.shape[-1])
+                restored = restored[..., :_n]
+                reconstructed = reconstructed[..., :_n]
 
             # Residuum ist der Fehler bei Rekonstruktion (sollte nur "noise" sein)
             residual = restored - reconstructed
@@ -3866,7 +3893,7 @@ class SeparationFidelityMetric:
             score = float(np.clip(separation_fidelity, 0.0, 1.0))
 
             logger.debug(
-                "separation_fidelity (HTDemucs): %.3f (%.1fs; RMS-restored=%.2e, RMS-residual=%.2e)",
+                "separation_fidelity (HTDemucs): %.3f (%.1fs; RMS-wiederhergestellt=%.2e, RMS-residual=%.2e)",
                 score,
                 _elapsed,
                 rms_restored,
@@ -4538,7 +4565,7 @@ class MusicalGoalsChecker:
         _global_scalar = float(global_scalar)
         if _global_scalar < 0.15:
             logger.debug(
-                "measure_all: global_scalar=%.3f < 0.15 -> fast-validation path (skip expensive 15-goal loop)",
+                "measure_all: global_scalar=%.3f < 0.15 -> fast-Validierung path (ueberspringen expensive 15-goal loop)",
                 _global_scalar,
             )
             return self._measure_all_fast_validation(
@@ -4600,8 +4627,14 @@ class MusicalGoalsChecker:
         _ref_hash = hash(reference.tobytes()) if reference is not None and hasattr(reference, "tobytes") else None
         _cache_key = (_audio_hash, _ref_hash, sr, material_type, float(panns_singing), round(_global_scalar, 4))
         _cache = getattr(self, "_measure_all_cache", {})
-        if _cache.get("key") == _cache_key:
-            logger.debug("measure_all: Zwischenspeicher hit (hash=%d, gespeichert 6s)", _audio_hash % 10000)
+        # §a Mess-Cache (2026-09-11): Mehr-Eintrags-FIFO (8) statt 1-Eintrag —
+        # die measure_all-Kaskade pro Song wiederholt Varianten (pre/post/
+        # Ensemble/Varianten/Export); content-keyed (§G5 (GEBOTE.md) deterministisch).
+        if isinstance(_cache, dict) and "key" not in _cache and _cache.get(_cache_key) is not None:
+            logger.debug("measure_all: Zwischenspeicher hit (%d Einträge)", len(_cache))
+            return dict(_cache[_cache_key])
+        if isinstance(_cache, dict) and _cache.get("key") == _cache_key:  # Legacy-1-Eintrag
+            logger.debug("measure_all: Zwischenspeicher hit (legacy 1-Eintrag)")
             return dict(_cache["result"])
         if _is_fast_validation_context():
             return self._measure_all_fast_validation(
@@ -4631,7 +4664,7 @@ class MusicalGoalsChecker:
                     except Exception:
                         logger.debug("measure_all: HTDemucs warm-up nicht möglich (nicht blockierend)")
                     logger.debug(
-                        "measure_all: HTDemucs warm-up %.1f s (außerhalb Per-Goal-Budget)",
+                        "measure_all: HTDemucs warm-up %.1f s (außerhalb Per-Goal-Grenze)",
                         time.perf_counter() - _t_warm0,
                     )
             except Exception:
@@ -4728,7 +4761,7 @@ class MusicalGoalsChecker:
                         _dt,
                     )
             elif _dt > 15.0:
-                logger.debug("measure_all: goal=%s took %.1f s (im 60-s-Budget)", goal_name, _dt)
+                logger.debug("measure_all: goal=%s took %.1f s (im 60-s-Grenze)", goal_name, _dt)
             elif _dt > 8.0:  # §v10.0.4: 5.0→8.0 — waerme-Spektralanalyse auf 225s dauert 6.1s
                 logger.warning("measure_all: goal=%s took %.1f s", goal_name, _dt)
             else:
@@ -4761,12 +4794,24 @@ class MusicalGoalsChecker:
         else:
             scores.setdefault("transient_energie", 1.0)
 
-        # Key ist "artikulation" (konsistent mit goal_priority_protocol, goal_applicability_filter)
-        # §v10.98 Cache: Ergebnis speichern für nächsten Aufruf mit identischem Audio
-        # §v10.x: Schlüssel inkl. Referenz/material/panns (siehe Cache-Lesen oben).
+        # §a Mess-Cache: Ergebnis im FIFO ablegen (max. 8 Einträge).
         if hasattr(audio, "tobytes"):
-            self._measure_all_cache = {"key": _cache_key, "result": dict(scores)}
+            self._store_measure_cache(_cache_key, scores)
         return scores
+
+    def _store_measure_cache(self, key: tuple, scores: dict[str, float]) -> None:
+        """§a Mess-Cache: FIFO-Store mit Legacy-Migration (1-Eintrag → 8-Einträge)."""
+        _c = getattr(self, "_measure_all_cache", None)
+        if not isinstance(_c, dict):
+            _c = {}
+        if "key" in _c and "result" in _c:  # Legacy-Format migrieren
+            _legacy_key, _legacy_res = _c.pop("key"), _c.pop("result")
+            _c[_legacy_key] = dict(_legacy_res)
+        _c[key] = dict(scores)
+        _max_entries = int(getattr(self, "_MEASURE_CACHE_MAX", 8))
+        while len(_c) > _max_entries:
+            _c.pop(next(iter(_c)))
+        self._measure_all_cache = _c
 
     def _measure_all_fast_validation(
         self,

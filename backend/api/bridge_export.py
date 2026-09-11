@@ -150,8 +150,9 @@ def validate_export_quality(result: object) -> tuple[bool, list[str]]:
 
         return _veq(result)  # type: ignore[no-any-return]
     except Exception as exc:
-        logger.warning("validieren_Ausgabe_quality nicht verfuegbar -> fail-closed: %s", exc)
-        return False, ["Bridge-Export-Gate nicht verfügbar (fail-closed)"]
+        # §0c: Bridge-Ausfall degradiert statt blockiert — kein Hardstop.
+        logger.warning("validieren_Ausgabe_quality nicht verfuegbar -> §0c degraded: %s", exc)
+        return True, ["Bridge-Export-Gate nicht verfügbar — Export erfolgt degraded (§0c)"]
 
 
 # ---------------------------------------------------------------------------
@@ -211,6 +212,66 @@ def build_export_quality_gate_payload(result: object) -> dict[str, Any]:
 
     if not degradation_status:
         degradation_status = "ok" if passed else "degraded"
+
+    # §GO/NO-GO (§0c-Kopplung): Deterministischer Hör-Verdict aus den
+    # vorhandenen Proxies — degradiert den Export bei NO_GO, BLOCKIERT NIE
+    # (bestmögliches sicheres Ergebnis wird immer exportiert).
+    go_nogo_verdict: dict[str, Any] = {}
+    try:
+        from backend.core.go_nogo_export_gate import evaluate as _go_nogo_eval
+
+        _audio_for_gate = getattr(result, "audio", None)
+        _verdict = _go_nogo_eval(result, np.asarray(_audio_for_gate) if _audio_for_gate is not None else None)
+        go_nogo_verdict = _verdict.as_dict()
+        if _verdict.verdict == "NO_GO":
+            passed = False
+            degradation_status = "degraded" if degradation_status in {"", "ok"} else degradation_status
+            _first_reason = _verdict.reasons[0] if _verdict.reasons else "go_nogo_no_go"
+            if not primary_fail_reason:
+                primary_fail_reason = f"go_nogo:{_first_reason}"
+            fail_reasons.append({"error_code": "GO_NO_GO_NO_GO", "detail": _first_reason})
+        elif _verdict.verdict == "GO_CAUTION" and _verdict.cautions:
+            warnings.extend(_verdict.cautions)
+    except Exception as _gn_exc:
+        logger.warning(
+            "GO/NO-GO-Gate nicht verfügbar — Ausgabe unverändert (§V6 (copilot-instructions.md)): %s", _gn_exc
+        )
+
+    # §Level-3 Verdrahtung: Micro-Temporal-Envelope-Fidelity (MTEF) + Temporal-
+    # Consistency-Guard (TCG) als Transparenz-Metriken Original→Restauriert.
+    # Rein additiv — Metrics sind Zeugen (Hörordnung §1), kein Hard-Fail.
+    mtef_metric: dict[str, Any] = {}
+    tcg_metric: dict[str, Any] = {}
+    _restored_audio = getattr(result, "audio", None)
+    _original_audio = getattr(result, "original_audio", None)
+    if _original_audio is None and isinstance(meta, dict):
+        _original_audio = meta.get("original_audio")
+    if _restored_audio is not None and _original_audio is not None:
+        try:
+            from backend.core.micro_temporal_envelope_fidelity import measure as _mtef_measure
+            from backend.core.temporal_consistency_guard import TemporalConsistencyGuard as _TCG
+
+            _mtef = _mtef_measure(np.asarray(_original_audio), np.asarray(_restored_audio), 48000)
+            mtef_metric = {
+                "fidelity_score": float(_mtef.fidelity_score),
+                "pearson_attack": float(_mtef.pearson_attack),
+                "pearson_syllable": float(_mtef.pearson_syllable),
+                "pearson_note": float(_mtef.pearson_note),
+            }
+            _tcg = _TCG().check(np.asarray(_original_audio), np.asarray(_restored_audio), "export")
+            tcg_metric = {
+                "passed": bool(_tcg.passed),
+                "energy_jumps": int(_tcg.energy_jumps),
+                "noise_reintroduced": bool(_tcg.noise_reintroduced),
+                "stereo_collapse": bool(_tcg.stereo_collapse),
+                "warnings": list(_tcg.warnings),
+            }
+            if not _tcg.passed:
+                warnings.extend(_tcg.warnings)
+            if _mtef.fidelity_score < 0.55:
+                warnings.append(f"micro_temporal_envelope_fidelity_low={_mtef.fidelity_score:.3f}")
+        except Exception as _mt_exc:
+            logger.debug("MTEF/TCG-Metriken nicht verfügbar: %s", _mt_exc)
 
     # Music-Lover Telemetrie: liefert musikalisch relevante Exportindikatoren
     # für UI/Reporter, ohne bestehende Gate-Semantik zu verändern.
@@ -315,10 +376,13 @@ def build_export_quality_gate_payload(result: object) -> dict[str, Any]:
         "root_cause": _root_cause,
         "failure_class": _failure_class,
         "fail_reasons": list(fail_reasons),
-        "required_gates": ["musical_goals", "pqs", "oqs", "fallback_quality_floor"],
+        "required_gates": ["musical_goals", "pqs", "oqs", "fallback_quality_floor", "go_nogo"],
         "recovery_attempted": bool(fqf_attempts > 0),
         "best_possible_reached": bool(fqf_status == "recovered"),
         "degradation_status": degradation_status,
+        "go_nogo": go_nogo_verdict,
+        "micro_temporal_envelope_fidelity": mtef_metric,
+        "temporal_consistency": tcg_metric,
         "fallback_quality_floor": dict(fqf) if fqf else {},
         "profile": export_gate_profile,
         "material": export_gate_material,

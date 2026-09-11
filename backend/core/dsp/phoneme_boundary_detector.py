@@ -139,7 +139,7 @@ def detect_phoneme_boundaries_dsp(
         return boundaries
 
     except Exception as exc:
-        logger.warning("ML→DSP-Fallback aktiviert", exc_info=True)  # §V6 (copilot-instructions.md)
+        logger.warning("ML→DSP-Ersatzpfad aktiviert", exc_info=True)  # §V6 (copilot-instructions.md)
         logger.debug("phoneme_boundaries_dsp: Fehler (nicht blockierend): %s", exc)
         hop_length = _valid_hop_length(hop_length)
         n_frames = max(1, len(np.asarray(audio).flatten()) // hop_length)
@@ -157,7 +157,7 @@ def get_phoneme_features_dsp(
         mono = _to_mono(audio)
         return _extract_frame_features(mono, sr, hop_length)
     except Exception as exc:
-        logger.warning("ML→DSP-Fallback aktiviert", exc_info=True)  # §V6 (copilot-instructions.md)
+        logger.warning("ML→DSP-Ersatzpfad aktiviert", exc_info=True)  # §V6 (copilot-instructions.md)
         logger.debug("phoneme_features_dsp: Fehler: %s", exc)
         return []
 
@@ -189,7 +189,7 @@ def detect_phoneme_protection_mask_dsp(
             mask[start:end] = True
         return cast(np.ndarray, mask)
     except Exception as exc:  # pylint: disable=broad-except
-        logger.warning("ML→DSP-Fallback aktiviert", exc_info=True)  # §V6 (copilot-instructions.md)
+        logger.warning("ML→DSP-Ersatzpfad aktiviert", exc_info=True)  # §V6 (copilot-instructions.md)
         logger.debug("phoneme_protection_mask_dsp: Fehler (nicht blockierend): %s", exc)
         return np.zeros(len(np.asarray(audio).flatten()), dtype=bool)  # type: ignore[no-any-return]
 

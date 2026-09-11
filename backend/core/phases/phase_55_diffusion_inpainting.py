@@ -119,11 +119,13 @@ def _apply_bw_cap(segment: np.ndarray, sample_rate: int, cap_hz: float) -> np.nd
     from scipy import signal as _sps  # pylint: disable=import-outside-toplevel
 
     sos = _sps.butter(4, norm_cut, btype="low", output="sos")
-    # filtfilt for zero-phase; fall back to sosfilt for very short segments
+    # filtfilt for zero-phase; für sehr kurze Segmente padlen reduzieren
     if len(segment) > 20:
         filtered = _sps.sosfiltfilt(sos, segment)
+    elif len(segment) > 3:
+        filtered = _sps.sosfiltfilt(sos, segment, padlen=3)
     else:
-        filtered = _sps.sosfilt(sos, segment)
+        filtered = segment
     return np.clip(filtered.astype(segment.dtype), -1.0, 1.0)  # type: ignore[no-any-return]
 
 
@@ -164,7 +166,10 @@ def _burg_ar_predict(context: np.ndarray, order: int, n_samples: int) -> np.ndar
             return np.zeros(n_samples)  # type: ignore[no-any-return]
         ar_coeff = np.linalg.solve(Rmat, R)
     except np.linalg.LinAlgError as exc:
-        logger.debug("§V6 AR-Toeplitz-Solve fehlgeschlagen — Nullen zurückgegeben (LinAlgError): %s", exc)
+        logger.debug(
+            "§V6 (copilot-instructions.md) AR-Toeplitz-Solve fehlgeschlagen — Nullen zurückgegeben (LinAlgError): %s",
+            exc,
+        )
         return np.zeros(n_samples)  # type: ignore[no-any-return]
 
     # Vorhersage iterativ berechnen
@@ -555,7 +560,6 @@ def _try_diffwave_plugin(audio: np.ndarray, start: int, end: int, sample_rate: i
     """
     try:
         import importlib  # pylint: disable=import-outside-toplevel
-        import os  # pylint: disable=import-outside-toplevel
         import sys  # pylint: disable=import-outside-toplevel
 
         plugins_dir = os.path.join(os.path.dirname(__file__), "..", "..", "..", "plugins")
@@ -607,7 +611,10 @@ def _try_consistency_model_inpainting(channel: np.ndarray, start: int, end: int,
                 get_consistency_inpaint_plugin,
             )
         except (ImportError, ModuleNotFoundError) as exc:
-            logger.debug("§V6 consistency_inpaint_plugin nicht verfügbar — None zurückgegeben (phase_55): %s", exc)
+            logger.debug(
+                "§V6 (copilot-instructions.md) consistency_inpaint_plugin nicht verfügbar — None zurückgegeben (Verarbeitungsschritt_55): %s",
+                exc,
+            )
             return None
 
         from backend.core.plugin_lifecycle_manager import (  # pylint: disable=import-outside-toplevel

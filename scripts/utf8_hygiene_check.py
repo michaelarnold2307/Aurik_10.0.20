@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# -*- coding: utf-8 -*-
 """UTF-8-Hygiene-Check (P2-1) — fail-closed im Pre-Commit.
 
 Normative Grundlage: TODO-P2-1 (docs/TODOS_SOTA_ROADMAP.md). Der gesamte
@@ -38,9 +37,30 @@ SKIP_DIRS = {
 }
 
 TEXT_EXTS = {
-    ".py", ".md", ".yaml", ".yml", ".json", ".toml", ".txt", ".cfg", ".ini",
-    ".csv", ".tsv", ".sh", ".bat", ".ps1", ".html", ".css", ".js", ".ts",
-    ".xml", ".rst", ".sql", ".ipynb", ".qss", ".ui",
+    ".py",
+    ".md",
+    ".yaml",
+    ".yml",
+    ".json",
+    ".toml",
+    ".txt",
+    ".cfg",
+    ".ini",
+    ".csv",
+    ".tsv",
+    ".sh",
+    ".bat",
+    ".ps1",
+    ".html",
+    ".css",
+    ".js",
+    ".ts",
+    ".xml",
+    ".rst",
+    ".sql",
+    ".ipynb",
+    ".qss",
+    ".ui",
 }
 
 BOMS = (b"\xff\xfe\x00\x00", b"\x00\x00\xfe\xff", b"\xff\xfe", b"\xfe\xff")
@@ -55,16 +75,10 @@ def is_skipped(path: str) -> bool:
 
 def tracked_text_files() -> list[str]:
     try:
-        out = subprocess.run(
-            ["git", "ls-files"], capture_output=True, text=True, check=True
-        ).stdout
+        out = subprocess.run(["git", "ls-files"], capture_output=True, text=True, check=True).stdout
     except (subprocess.CalledProcessError, FileNotFoundError):
         return []
-    return [
-        p
-        for p in out.splitlines()
-        if Path(p).suffix.lower() in TEXT_EXTS and not is_skipped(p)
-    ]
+    return [p for p in out.splitlines() if Path(p).suffix.lower() in TEXT_EXTS and not is_skipped(p)]
 
 
 def check_file(path: str) -> list[str]:
@@ -82,10 +96,7 @@ def check_file(path: str) -> list[str]:
     try:
         raw.decode("utf-8")
     except UnicodeDecodeError as exc:
-        problems.append(
-            f"{path}: invalide UTF-8-Sequenz bei Byte {exc.start} "
-            f"(0x{raw[exc.start]:02x})"
-        )
+        problems.append(f"{path}: invalide UTF-8-Sequenz bei Byte {exc.start} (0x{raw[exc.start]:02x})")
         return problems
     if b"\x00" in raw:
         # Kleine Dateien (< Fenster) als Ganzes prüfen, sonst gleitende Fenster.
@@ -97,10 +108,7 @@ def check_file(path: str) -> list[str]:
             window = raw[off : off + WINDOW]
             _nul_count = window.count(b"\x00")
             if _nul_count > len(window) * NUL_RATIO:
-                problems.append(
-                    f"{path}: UTF-16LE-NUL-Byte-Fenster bei Byte {off} "
-                    f"({_nul_count}/{len(window)} NUL)"
-                )
+                problems.append(f"{path}: UTF-16LE-NUL-Byte-Fenster bei Byte {off} ({_nul_count}/{len(window)} NUL)")
                 break
     return problems
 

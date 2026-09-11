@@ -61,8 +61,6 @@ jobs:
           python scripts/change_ledger.py check --base "$BASE_SHA" --head "$HEAD_SHA"
 
 
-
-
   snyk-guard:
     name: Snyk Guard (Security Scan)
     if: github.event_name == 'pull_request'

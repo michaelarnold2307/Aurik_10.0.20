@@ -45,8 +45,7 @@ class TestGpuDetectionFailsafe:
         mgr = get_ml_device_manager()
         # ONNX-Provider sollten CPUExecutionProvider enthalten
         providers = mgr._ort_gpu_providers or ["CPUExecutionProvider"]
-        assert "CPUExecutionProvider" in providers, \
-            f"CPUExecutionProvider nicht in ONNX-Providern: {providers}"
+        assert "CPUExecutionProvider" in providers, f"CPUExecutionProvider nicht in ONNX-Providern: {providers}"
 
 
 @pytest.mark.unit

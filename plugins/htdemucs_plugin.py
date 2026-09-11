@@ -45,6 +45,8 @@ if TYPE_CHECKING:
 
 import numpy as np
 
+from backend.core.gpu_model_registry import get_onnx_providers  # §v10.40c Registry-GPU-Policy
+
 logger = logging.getLogger(__name__)
 
 # Feature-Flag: AURIK_DEMUX_GPU=1 ermöglicht GPU-Inferenz
@@ -303,7 +305,7 @@ class HtdemucsPlugin:
                 if not onnx_path.exists():
                     raise FileNotFoundError(f"ONNX Model nicht gefunden: {onnx_path}")
 
-                providers = ["CPUExecutionProvider"]  # Default CPU für Determinismus
+                providers = get_onnx_providers(onnx_path)  # Default CPU für Determinismus
                 if _DEMUX_GPU_ENABLED:
                     providers = ["CUDAExecutionProvider", "CPUExecutionProvider"]
 
@@ -311,7 +313,7 @@ class HtdemucsPlugin:
                 self._model_type = "onnx"
                 logger.info("HTDemucs ONNX Model geladen (Provider: %s)", providers[0])
             except Exception as e:
-                logger.error("HTDemucs ONNX Load fehlgeschlagen: %s", e, exc_info=True)
+                logger.error("HTDemucs ONNX laden fehlgeschlagen: %s", e, exc_info=True)
                 raise RuntimeError(f"HTDemucs Modell konnte nicht geladen werden: {e}") from e
 
     def _separate_pytorch(self, audio_2ch: np.ndarray) -> list[np.ndarray]:

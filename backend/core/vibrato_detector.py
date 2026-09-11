@@ -29,10 +29,10 @@ logger = logging.getLogger(__name__)
 # ── Historische Vibrato-Raten nach Ära (psychoakustisch kalibriert) ──────
 
 _VIBRATO_RATES_BY_ERA: dict[str, tuple[float, float]] = {
-    "baroque": (3.0, 4.5),     # Barock: langsames Vibrato
-    "classical": (4.0, 5.5),   # Klassik: moderates Vibrato
-    "romantic": (5.0, 6.5),    # Romantik: etwas schneller
-    "modern": (5.5, 7.0),      # Modern: volles Vibrato
+    "baroque": (3.0, 4.5),  # Barock: langsames Vibrato
+    "classical": (4.0, 5.5),  # Klassik: moderates Vibrato
+    "romantic": (5.0, 6.5),  # Romantik: etwas schneller
+    "modern": (5.5, 7.0),  # Modern: volles Vibrato
 }
 
 
@@ -213,9 +213,7 @@ def detect_vibrato_rate(
     f0_frames, _times = _estimate_f0_temporal(mono, sr)
 
     # Vibrato-Rate schätzen
-    rate_hz, depth_hz, confidence = _estimate_vibrato_rate(
-        f0_frames, sr, expected_lo, expected_hi
-    )
+    rate_hz, depth_hz, confidence = _estimate_vibrato_rate(f0_frames, sr, expected_lo, expected_hi)
 
     is_vibrato = (expected_lo <= rate_hz <= expected_hi) and (depth_hz > 0.3) and (confidence > 0.15)
 
@@ -229,7 +227,10 @@ def detect_vibrato_rate(
     if is_vibrato:
         logger.debug(
             "§0p Vibrato-Detektor: Rate=%.1f Hz Tiefe=%.2f Hz Konfidenz=%.3f (era=%d)",
-            rate_hz, depth_hz, confidence, era_decade or -1,
+            rate_hz,
+            depth_hz,
+            confidence,
+            era_decade or -1,
         )
 
     return result

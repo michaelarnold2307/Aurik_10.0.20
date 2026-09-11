@@ -16,6 +16,7 @@ from .zwicker_metrics import compute_roughness_asper
 
 logger = logging.getLogger(__name__)
 
+
 @dataclass
 class RLPDecisionResult:
     keep_rlp: bool
@@ -46,6 +47,6 @@ def should_keep_rlp(audio_pre: np.ndarray, audio_post: np.ndarray, sr: int) -> R
         lufs_impr,
         keep,
     )
-    return RLPDecisionResult(keep_rlp=keep,
-                             roughness_improvement_db=(pre_rough - post_rough),
-                             lufs_improvement_db=lufs_impr)
+    return RLPDecisionResult(
+        keep_rlp=keep, roughness_improvement_db=(pre_rough - post_rough), lufs_improvement_db=lufs_impr
+    )

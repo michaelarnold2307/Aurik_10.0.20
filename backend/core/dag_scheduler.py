@@ -97,7 +97,7 @@ class DAGScheduler:
                         results[pid] = future.result(timeout=300)
                         results[pid]["_dag_level"] = level_idx
                     except Exception as e:
-                        logger.warning("DAG-Phase %s fehlgeschlagen: %s", pid, e)
+                        logger.warning("DAG-Verarbeitungsschritt %s fehlgeschlagen: %s", pid, e)
                         results[pid] = {"error": str(e), "_dag_level": level_idx}
 
             if progress_callback:

@@ -26,13 +26,7 @@ class TestPhase2SeparationFidelityIntegration:
         audio = np.random.randn(335544).astype(np.float32) * 0.1
         reference = audio.copy()
 
-        score = metric.measure(
-            audio=audio,
-            sr=48000,
-            reference=reference,
-            material_type="unknown",
-            global_scalar=0.8
-        )
+        score = metric.measure(audio=audio, sr=48000, reference=reference, material_type="unknown", global_scalar=0.8)
 
         assert isinstance(score, float)
         assert 0.0 <= score <= 1.0
@@ -47,13 +41,7 @@ class TestPhase2SeparationFidelityIntegration:
         audio = np.random.randn(687960).astype(np.float32) * 0.1
         reference = audio.copy() + np.random.randn(687960).astype(np.float32) * 0.02
 
-        score = metric.measure(
-            audio=audio,
-            sr=48000,
-            reference=reference,
-            material_type="unknown",
-            global_scalar=0.8
-        )
+        score = metric.measure(audio=audio, sr=48000, reference=reference, material_type="unknown", global_scalar=0.8)
 
         assert isinstance(score, float)
         assert 0.0 <= score <= 1.0
@@ -68,13 +56,7 @@ class TestPhase2SeparationFidelityIntegration:
         audio = np.random.randn(2880000).astype(np.float32) * 0.05
         reference = audio.copy()
 
-        score = metric.measure(
-            audio=audio,
-            sr=48000,
-            reference=reference,
-            material_type="vinyl",
-            global_scalar=0.9
-        )
+        score = metric.measure(audio=audio, sr=48000, reference=reference, material_type="vinyl", global_scalar=0.9)
 
         assert isinstance(score, float)
         assert 0.0 <= score <= 1.0
@@ -87,13 +69,7 @@ class TestPhase2SeparationFidelityIntegration:
         audio = np.random.randn(2, 687960).astype(np.float32) * 0.1
         reference = audio.copy()
 
-        score = metric.measure(
-            audio=audio,
-            sr=48000,
-            reference=reference,
-            material_type="tape",
-            global_scalar=0.7
-        )
+        score = metric.measure(audio=audio, sr=48000, reference=reference, material_type="tape", global_scalar=0.7)
 
         assert isinstance(score, float)
         assert 0.0 <= score <= 1.0
@@ -107,20 +83,10 @@ class TestPhase2SeparationFidelityIntegration:
         reference = audio.copy()
 
         # Tape material should apply × 0.95 correction if MS-ratio heuristic used
-        score_tape = metric.measure(
-            audio=audio,
-            sr=48000,
-            reference=reference,
-            material_type="tape",
-            global_scalar=0.8
-        )
+        score_tape = metric.measure(audio=audio, sr=48000, reference=reference, material_type="tape", global_scalar=0.8)
 
         score_unknown = metric.measure(
-            audio=audio,
-            sr=48000,
-            reference=reference,
-            material_type="unknown",
-            global_scalar=0.8
+            audio=audio, sr=48000, reference=reference, material_type="unknown", global_scalar=0.8
         )
 
         # Both should be valid
@@ -140,7 +106,7 @@ class TestPhase2SeparationFidelityIntegration:
             sr=48000,
             reference=reference,
             material_type="unknown",
-            global_scalar=0.1  # < 0.15 → triggers fast path
+            global_scalar=0.1,  # < 0.15 → triggers fast path
         )
 
         assert isinstance(score, float)
@@ -158,7 +124,7 @@ class TestPhase2SeparationFidelityIntegration:
             sr=48000,
             reference=None,  # No reference
             material_type="unknown",
-            global_scalar=0.8
+            global_scalar=0.8,
         )
 
         assert isinstance(score, float)
@@ -172,13 +138,7 @@ class TestPhase2SeparationFidelityIntegration:
         audio = np.random.randn(687960).astype(np.float32) * 0.1
         reference = audio.copy()
 
-        score = metric.measure(
-            audio=audio,
-            sr=48000,
-            reference=reference,
-            material_type="unknown",
-            global_scalar=0.8
-        )
+        score = metric.measure(audio=audio, sr=48000, reference=reference, material_type="unknown", global_scalar=0.8)
 
         assert isinstance(score, float)
         assert 0.0 <= score <= 1.0
@@ -194,13 +154,7 @@ class TestPhase2SeparationFidelityIntegration:
 
         reference = np.random.randn(687960).astype(np.float32) * 0.1
 
-        score = metric.measure(
-            audio=audio,
-            sr=48000,
-            reference=reference,
-            material_type="unknown",
-            global_scalar=0.8
-        )
+        score = metric.measure(audio=audio, sr=48000, reference=reference, material_type="unknown", global_scalar=0.8)
 
         assert isinstance(score, float)
         assert np.isfinite(score)
@@ -214,21 +168,9 @@ class TestPhase2SeparationFidelityIntegration:
         audio = np.ones(687960, dtype=np.float32) * 0.1
         reference = audio.copy()
 
-        score1 = metric.measure(
-            audio=audio,
-            sr=48000,
-            reference=reference,
-            material_type="unknown",
-            global_scalar=0.8
-        )
+        score1 = metric.measure(audio=audio, sr=48000, reference=reference, material_type="unknown", global_scalar=0.8)
 
-        score2 = metric.measure(
-            audio=audio,
-            sr=48000,
-            reference=reference,
-            material_type="unknown",
-            global_scalar=0.8
-        )
+        score2 = metric.measure(audio=audio, sr=48000, reference=reference, material_type="unknown", global_scalar=0.8)
 
         # Should be identical (cached)
         assert score1 == score2
@@ -248,11 +190,7 @@ class TestPhase2MusicalGoalsCheckerIntegration:
         reference = audio.copy()
 
         goals = checker.measure_all(
-            audio=audio,
-            sr=48000,
-            reference=reference,
-            material_type="unknown",
-            global_scalar=0.8
+            audio=audio, sr=48000, reference=reference, material_type="unknown", global_scalar=0.8
         )
 
         # All 15 goals should be present
@@ -262,10 +200,20 @@ class TestPhase2MusicalGoalsCheckerIntegration:
 
         # Verify all 15 goals are measured
         expected_goals = {
-            "brillanz", "waerme", "natuerlichkeit", "authentizitaet",
-            "emotionalitaet", "transparenz", "bass_kraft", "groove",
-            "spatial_depth", "timbre_authentizitaet", "tonal_center",
-            "micro_dynamics", "separation_fidelity", "artikulation",
-            "transient_energie"
+            "brillanz",
+            "waerme",
+            "natuerlichkeit",
+            "authentizitaet",
+            "emotionalitaet",
+            "transparenz",
+            "bass_kraft",
+            "groove",
+            "spatial_depth",
+            "timbre_authentizitaet",
+            "tonal_center",
+            "micro_dynamics",
+            "separation_fidelity",
+            "artikulation",
+            "transient_energie",
         }
         assert expected_goals.issubset(set(goals.keys()))

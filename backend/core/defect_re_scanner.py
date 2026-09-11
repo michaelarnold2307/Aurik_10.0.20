@@ -180,6 +180,7 @@ class DefectReScanner:
 
 # ── Singleton-Funktion (für Dead-Import-Reparatur) ───────────────────
 
+
 def get_defect_re_scanner() -> DefectReScanner:
     """Gibt eine DefectReScanner-Instanz zurück."""
     return DefectReScanner()

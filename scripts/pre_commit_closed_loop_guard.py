@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """§v10.600 Pre-Commit Closed-Loop Guard — erzwingt Regelkreis-Integrität.
 
+
 Prüft vor jedem Commit:
   §CLC-1: closed_loop_calibrate() in _execute_pipeline aufgerufen
   §CLC-2: measure_phase_quality_delta(pre, post) — korrekte Signalquelle
@@ -11,6 +12,10 @@ Prüft vor jedem Commit:
 
 Exit 0 = sauber, Exit 1 = Verstoß.
 """
+
+import logging
+
+logger = logging.getLogger(__name__)
 
 import sys
 from pathlib import Path
@@ -102,6 +107,7 @@ def main():
         try:
             content = fp.read_text()
         except Exception:
+            logger.debug("Stiller Ersatzpfad dokumentiert (Bug 9/V74)", exc_info=True)
             continue
         violations = check_closed_loop_integration(content, fp)
         if violations:

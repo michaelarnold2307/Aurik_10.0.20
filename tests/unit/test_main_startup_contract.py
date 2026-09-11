@@ -58,9 +58,7 @@ def test_gpu_detection_before_main_window() -> None:
 
     assert gpu_idx is not None, "GPU-Erkennung fehlt in main()"
     assert window_idx is not None, "ModernMainWindow-Instanziierung fehlt in main()"
-    assert gpu_idx < window_idx, (
-        f"GPU-Erkennung ({gpu_idx}) muss VOR ModernMainWindow ({window_idx}) laufen"
-    )
+    assert gpu_idx < window_idx, f"GPU-Erkennung ({gpu_idx}) muss VOR ModernMainWindow ({window_idx}) laufen"
 
 
 def test_gpu_wait_for_detection_present() -> None:
@@ -75,4 +73,4 @@ def test_launcher_uses_python_b() -> None:
         return  # Skript fehlt in dieser Umgebung — nicht blockieren
     src = LAUNCHER.read_text(encoding="utf-8", errors="replace")
     # mindestens ein Startpfad mit -B vor Aurik10/main.py
-    assert re.search(r'"\$\{?VENV_PYTHON\}?"\s+-B\b', src) or re.search(r'-B\b.*Aurik10/main\.py', src)
+    assert re.search(r'"\$\{?VENV_PYTHON\}?"\s+-B\b', src) or re.search(r"-B\b.*Aurik10/main\.py", src)

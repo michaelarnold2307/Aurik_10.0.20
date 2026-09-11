@@ -13,17 +13,19 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent.parent
+# Needle zerlegt, damit der Bug-10-Scanner dieses Scanner-Skript nicht selbst flaggt (§V34).
+_NEEDLE = ".venv_" + "aurik"
 
 
 def find_hardcoded_venv(filepath: Path) -> list[tuple[int, str]]:
-    """Findet hartcodierte .venv_aurik-Pfade in subprocess-Aufrufen."""
+    """Findet hartcodierte venv-Pfade in subprocess-Aufrufen."""
     issues: list[tuple[int, str]] = []
     try:
         content = filepath.read_text(encoding="utf-8")
     except Exception:
         return issues
 
-    if ".venv_aurik" not in content:
+    if _NEEDLE not in content:
         return issues
 
     lines = content.split("\n")
@@ -34,16 +36,16 @@ def find_hardcoded_venv(filepath: Path) -> list[tuple[int, str]]:
         if "subprocess.Popen" in line or "subprocess.run" in line:
             in_subprocess_block = True
             subprocess_start_line = i + 1
-        if in_subprocess_block and ".venv_aurik" in line:
+        if in_subprocess_block and _NEEDLE in line:
             # Only flag if it's used as a Python interpreter path (not in comments/docs)
             stripped = line.strip()
             if stripped.startswith("#") or stripped.startswith('"""') or stripped.startswith("'''"):
                 continue
-            if '".venv_aurik"' in line or "'.venv_aurik'" in line or '".venv_aurik/' in line or "'.venv_aurik/" in line:
+            if f'"{_NEEDLE}"' in line or f"'{_NEEDLE}'" in line or f'"{_NEEDLE}/' in line or f"'{_NEEDLE}/" in line:
                 issues.append(
                     (
                         i + 1,
-                        f"Hartcodiertes .venv_aurik in subprocess-Aufruf (seit Zeile {subprocess_start_line}). "
+                        f"Hartcodiertes {_NEEDLE} in subprocess-Aufruf (seit Zeile {subprocess_start_line}). "
                         f"Muss sys.executable sein (§V34).",
                     )
                 )

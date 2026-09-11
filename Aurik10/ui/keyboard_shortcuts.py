@@ -70,7 +70,9 @@ class KeyboardShortcuts:
         if key == Qt.Key_Space:
             return ("play_pause", 0.0)
         if key == Qt.Key_Left:
-            _delta = -KeyboardShortcuts.SEEK_LARGE_S if modifiers & Qt.ShiftModifier else -KeyboardShortcuts.SEEK_SMALL_S
+            _delta = (
+                -KeyboardShortcuts.SEEK_LARGE_S if modifiers & Qt.ShiftModifier else -KeyboardShortcuts.SEEK_SMALL_S
+            )
             return ("seek", _delta)
         if key == Qt.Key_Right:
             _delta = KeyboardShortcuts.SEEK_LARGE_S if modifiers & Qt.ShiftModifier else KeyboardShortcuts.SEEK_SMALL_S
@@ -97,7 +99,7 @@ class KeyboardShortcuts:
                 self._player.play()
             return True
         except Exception:
-            logger.debug("keyboard_shortcuts: play/pause action failed", exc_info=True)
+            logger.debug("keyboard_shortcuts: play/pause action fehlgeschlagen", exc_info=True)
             return False
 
     def _seek_relative(self, delta_s: float) -> bool:
@@ -110,7 +112,7 @@ class KeyboardShortcuts:
             self._player.seek(new_pos / max(duration, 0.001))
             return True
         except Exception:
-            logger.debug("keyboard_shortcuts: seek action failed", exc_info=True)
+            logger.debug("keyboard_shortcuts: seek action fehlgeschlagen", exc_info=True)
             return False
 
     def _stop(self) -> bool:
@@ -120,7 +122,7 @@ class KeyboardShortcuts:
             self._player.stop()
             return True
         except Exception:
-            logger.debug("keyboard_shortcuts: stop action failed", exc_info=True)
+            logger.debug("keyboard_shortcuts: stop action fehlgeschlagen", exc_info=True)
             return False
 
     def _toggle_expert_mode(self) -> bool:
@@ -133,5 +135,5 @@ class KeyboardShortcuts:
                 self._window._update_expert_mode_visibility()
             return True
         except Exception:
-            logger.debug("keyboard_shortcuts: toggle expert mode failed", exc_info=True)
+            logger.debug("keyboard_shortcuts: toggle expert Betriebsart fehlgeschlagen", exc_info=True)
             return False

@@ -51,8 +51,12 @@ class TestChunkedProcessorBasic:
         assert np.all(np.isfinite(result.other))
 
         # Prüfe dass wenigstens ein Stem Non-Zero ist
-        stems_energy = [np.sum(result.vocals**2), np.sum(result.drums**2),
-                        np.sum(result.bass**2), np.sum(result.other**2)]
+        stems_energy = [
+            np.sum(result.vocals**2),
+            np.sum(result.drums**2),
+            np.sum(result.bass**2),
+            np.sum(result.other**2),
+        ]
         assert max(stems_energy) > 0, "Alle Stems sind 0"
 
     def test_chunked_processor_short_audio_mono(self, chunker: ChunkedProcessor) -> None:

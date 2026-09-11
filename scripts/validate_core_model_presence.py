@@ -19,7 +19,7 @@ logger = logging.getLogger(__name__)
 ROOT = Path(__file__).resolve().parent.parent
 CORE_PATHS = [
     "models/fcpe/fcpe.onnx",
-    "models/sgmse_plus/sgmse_plus.ts",
+    "models/sgmse_plus/sgmse_plus_core.onnx",
     "models/versa/hub_cache/checkpoints/ft_wav2vec2_large_ll60k_mdf_p1_200epochs_all_192epochs.pth",
     "models/flow_matching/flow_matching.onnx",
     "models/gacela/model/01_400000.pt",
@@ -49,7 +49,7 @@ def _exists(rel_path: str) -> bool:
 def _runtime_ready_checks() -> list[dict[str, str | bool]]:
     # Primaries
     fcpe_primary = _exists("models/fcpe/fcpe.onnx")
-    sgmse_primary = _exists("models/sgmse_plus/sgmse_plus.ts")
+    sgmse_primary = _exists("models/sgmse_plus/sgmse_plus_core.onnx")
     versa_primary = _exists(
         "models/versa/hub_cache/checkpoints/ft_wav2vec2_large_ll60k_mdf_p1_200epochs_all_192epochs.pth"
     )
@@ -62,7 +62,7 @@ def _runtime_ready_checks() -> list[dict[str, str | bool]]:
     sgmse_checkpoint = _exists("models/sgmse_plus/sgmse_wsj0_reverb.ckpt")
     sgmse_torchscript = _exists("models/sgmse_plus/sgmse_plus.ts")
     versa_fallback = True  # versa_plugin.py has PQS-DSP fallback.  # §V6 (copilot-instructions.md): logger.warning handled at call site
-    flow_fallback = _exists("models/cqtdiff/score_network.pt") or _exists("models/diffwave/diffwave_model.onnx")
+    flow_fallback = _exists("models/cqtdiff/score_network.onnx") or _exists("models/diffwave/diffwave_model.onnx")
     gacela_fallback = True  # gacela_plugin.py has DSP exciter fallback.  # §V6 (copilot-instructions.md): logger.warning handled at call site
 
     return [

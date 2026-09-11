@@ -24,6 +24,7 @@ import time as _time
 import numpy as np
 import scipy.signal as sps
 
+from backend.core.audio_layout import is_channels_first, mono_mix, to_channels_first, to_samples_first
 from backend.core.ml_model_readiness import check_ml_model_ready
 
 from .phase_interface import PhaseCategory, PhaseInterface, PhaseMetadata, PhaseResult
@@ -92,17 +93,25 @@ def apply(
 
     stereo = audio.ndim == 2
     if stereo:
-        # §2.51 Linked-Stereo: Noise-Modell aus Mid, identischer STFT-Gain auf L+R
-        mono_mix = (audio[0] + audio[1]) / 2.0
-        mono_denoised = apply(mono_mix, sample_rate, strength=strength, defect_scores=defect_scores)
+        # §2.51 Linked-Stereo: Noise-Modell aus Mid, identischer STFT-Gain auf L+R.
+        # §V7 (copilot-instructions.md): Layout über audio_layout normalisieren —
+        # (audio[0]+audio[1])/2 traf bei channels-last (N,2) nur 2 Samples.
+        _cf59 = to_channels_first(audio)
+        _was_cf59 = is_channels_first(audio)
+        _mono59 = mono_mix(_cf59)
+        mono_denoised = apply(_mono59, sample_rate, strength=strength, defect_scores=defect_scores)
         _eps_mn = 1e-10
         _gain_mn = np.where(
-            np.abs(mono_mix) > _eps_mn,
-            mono_denoised / (mono_mix + _eps_mn * np.sign(mono_mix + _eps_mn)),
+            np.abs(_mono59) > _eps_mn,
+            mono_denoised / (_mono59 + _eps_mn * np.sign(_mono59 + _eps_mn)),
             1.0,
         )
         _gain_mn = np.clip(_gain_mn, 0.0, 10.0)
-        return np.clip(np.stack([audio[0] * _gain_mn, audio[1] * _gain_mn], axis=0), -1.0, 1.0).astype(np.float32)  # type: ignore[no-any-return]
+        _out59 = np.clip(np.stack([_cf59[0] * _gain_mn, _cf59[1] * _gain_mn], axis=0), -1.0, 1.0).astype(np.float32)
+        if not _was_cf59:
+            _out59 = to_samples_first(_out59)
+        _ret59: np.ndarray = _out59
+        return _ret59
 
     x = np.asarray(audio, dtype=np.float32)
     n = len(x)

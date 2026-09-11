@@ -14,10 +14,11 @@ logger = logging.getLogger(__name__)
 SLEEP_DURATION = 0.1
 VISQOL_MIN_DURATION = 0.48
 
+
 def run_metrics(clean, estimate, args, filename):
-    hr_sr = args.experiment.hr_sr if 'experiment' in args else args.hr_sr
-    speech_mode = args.experiment.speech_mode if 'speech_mode' in args.experiment else True
-    lsd, visqol = get_metrics(clean, estimate, hr_sr, filename, speech_mode,args)
+    hr_sr = args.experiment.hr_sr if "experiment" in args else args.hr_sr
+    speech_mode = args.experiment.speech_mode if "speech_mode" in args.experiment else True
+    lsd, visqol = get_metrics(clean, estimate, hr_sr, filename, speech_mode, args)
     return lsd, visqol
 
 
@@ -35,33 +36,33 @@ def get_metrics(clean, estimate, sr, filename, speech_mode, args):
 
 
 class STFTMag(nn.Module):
-    def __init__(self,
-                 nfft=1024,
-                 hop=256):
+    def __init__(self, nfft=1024, hop=256):
         super().__init__()
         self.nfft = nfft
         self.hop = hop
-        self.register_buffer('window', torch.hann_window(nfft), False)
+        self.register_buffer("window", torch.hann_window(nfft), False)
 
     # x: [B,T] or [T]
     @torch.no_grad()
     def forward(self, x):
         T = x.shape[-1]
-        stft = torch.stft(x,
-                          self.nfft,
-                          self.hop,
-                          window=self.window,
-                          )  # return_complex=False)  #[B, F, TT,2]
+        stft = torch.stft(
+            x,
+            self.nfft,
+            self.hop,
+            window=self.window,
+        )  # return_complex=False)  #[B, F, TT,2]
         mag = torch.norm(stft, p=2, dim=-1)  # [B, F, TT]
         return mag
+
 
 # taken from: https://github.com/nanahou/metric/blob/master/measure_SNR_LSD.py
 def get_lsd(ref_sig, out_sig):
     """
-       Compute LSD (log spectral distance)
-       Arguments:
-           out_sig: vector (torch.Tensor), enhanced signal [B,T]
-           ref_sig: vector (torch.Tensor), reference signal(ground truth) [B,T]
+    Compute LSD (log spectral distance)
+    Arguments:
+        out_sig: vector (torch.Tensor), enhanced signal [B,T]
+        ref_sig: vector (torch.Tensor), reference signal(ground truth) [B,T]
     """
 
     stft = STFTMag(2048, 512)
@@ -103,30 +104,30 @@ def get_visqol(ref_sig, out_sig, filename, sr, speech_mode, visqol_path):
         est_duration = sox.file_info.duration(estimation_abs_path)
 
         if ref_duration < VISQOL_MIN_DURATION or est_duration < VISQOL_MIN_DURATION:
-            raise ValueError('File duration is too small.')
+            raise ValueError("File duration is too small.")
 
-        visqol_cmd = ("cd " + visqol_path + "; " +
-                      "./bazel-bin/visqol "
-                      f"--reference_file {reference_abs_path} "
-                      f"--degraded_file {estimation_abs_path} ")
+        visqol_cmd = (
+            "cd " + visqol_path + "; " + "./bazel-bin/visqol "
+            f"--reference_file {reference_abs_path} "
+            f"--degraded_file {estimation_abs_path} "
+        )
 
         if speech_mode:
             visqol_cmd += "--use_speech_mode"
 
-        visqol = subprocess.run(visqol_cmd, shell=True,
-                                stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+        visqol = subprocess.run(visqol_cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
 
         # parse stdout to get the current float value
         visqol = visqol.stdout.decode("utf-8").split("\t")[-1].replace("\n", "")
         visqol = float(visqol)
 
     except FileNotFoundError as e:
-        logger.info(f'visqol: failed to create {filename}')
+        logger.info(f"visqol: failed to create {filename}")
         logger.info(str(e))
         visqol = 0
 
     except Exception as e:
-        logger.info(f'failed to get visqol of {filename}')
+        logger.info(f"failed to get visqol of {filename}")
         logger.info(str(e))
         visqol = 0
 

@@ -77,7 +77,7 @@ def guard_phase_output(result, audio_in: np.ndarray, phase_id: str) -> PhaseResu
                         if _out_len > _in_len
                         else np.pad(result.audio, ((0, 0), (0, _in_len - _out_len))),
                         modifications=result.modifications,
-                        warnings=result.warnings + [f"Shape normalized: {_out_len}→{_in_len}"],
+                        warnings=[*result.warnings, f"Shape normalized: {_out_len}→{_in_len}"],
                     )
                 else:
                     result = PhaseResult(
@@ -85,7 +85,7 @@ def guard_phase_output(result, audio_in: np.ndarray, phase_id: str) -> PhaseResu
                         if _out_len > _in_len
                         else np.pad(result.audio, (0, _in_len - _out_len)),
                         modifications=result.modifications,
-                        warnings=result.warnings + [f"Shape normalized: {_out_len}→{_in_len}"],
+                        warnings=[*result.warnings, f"Shape normalized: {_out_len}→{_in_len}"],
                     )
 
     return result  # type: ignore[no-any-return]

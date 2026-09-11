@@ -9,7 +9,7 @@
 > für Musik mit Gesang weltweit. Algorithmen ab 2018 als Minimum.
 > Legacy-Algorithmen als Primärverarbeitung **VERBOTEN**.
 
-### §4.11 ComfortGuard (v10.0.0-Phantom)
+## §4.11 ComfortGuard (v10.0.0-Phantom)
 
 Psychoakustische Hörmüdungs-Prävention nach ISO 532-B (Zwicker Sharpness).
 High-Shelf-Filter (fc=2.5 kHz, Q=0.5, max −3 dB) wird automatisch nach

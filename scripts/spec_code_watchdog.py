@@ -3,6 +3,10 @@
 
 from __future__ import annotations
 
+import logging
+
+logger = logging.getLogger(__name__)
+
 import json
 import os
 import re
@@ -42,6 +46,7 @@ def scan_codebase() -> dict[str, set[str]]:
         try:
             text = py_file.read_text(encoding="utf-8", errors="replace")
         except Exception:
+            logger.debug("Stiller Ersatzpfad dokumentiert (Bug 9/V74)", exc_info=True)
             continue
         names = set()
         for m in re.finditer(r"^(?:def |class )(\w+)", text, re.MULTILINE):

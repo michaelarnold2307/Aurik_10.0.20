@@ -29,7 +29,7 @@ sys.path.insert(0, str(WORKSPACE_ROOT))
 # Capture ALL warnings
 logging.basicConfig(
     level=logging.DEBUG,
-    format='[%(levelname)-8s] %(name)s: %(message)s',
+    format="[%(levelname)-8s] %(name)s: %(message)s",
 )
 logger = logging.getLogger(__name__)
 
@@ -54,6 +54,7 @@ SAMPLES = [
     "test_audio/vocals/podcast_plosives.wav",
 ]
 
+
 class WarningCapture:
     """Context manager to capture all log warnings and errors."""
 
@@ -77,11 +78,12 @@ class WarningCapture:
 
     def _parse_messages(self):
         """Parse captured log lines into warnings and errors."""
-        for line in self.text.split('\n'):
-            if 'WARNING' in line:
+        for line in self.text.split("\n"):
+            if "WARNING" in line:
                 self.warnings.append(line.strip())
-            elif 'ERROR' in line:
+            elif "ERROR" in line:
                 self.errors.append(line.strip())
+
 
 def run_complete_pipeline(audio_path: str, sample_label: str) -> dict[str, Any]:
     """Run complete Aurik pipeline for one sample."""
@@ -102,18 +104,19 @@ def run_complete_pipeline(audio_path: str, sample_label: str) -> dict[str, Any]:
 
     try:
         # Load audio
-        logger.info(f"━━━━━━━━━━━━ LOADING {sample_label} ━━━━━━━━━━━━")
+        logger.info(f"━━━━━━━━━━━━ lade {sample_label} ━━━━━━━━━━━━")
         audio, sr = sf.read(audio_path)
         if len(audio.shape) == 1:
             audio = audio.reshape(-1, 1)
 
         result["duration_s"] = len(audio) / sr
-        logger.info(f"✓ Loaded: {audio.shape} @ {sr}Hz ({result['duration_s']:.1f}s)")
+        logger.info(f"✓ geladen: {audio.shape} @ {sr}Hz ({result['duration_s']:.1f}s)")
 
         # Pre-Analysis
-        logger.info(f"\n🔍 PRE-ANALYSIS {sample_label}...")
+        logger.info(f"\n🔍 PRE-Analyse {sample_label}...")
         with WarningCapture() as wc:
             from backend.core.pre_analysis import run_pre_analysis
+
             pre_result = run_pre_analysis(audio, sr, file_path=audio_path)
 
         result["warnings"].extend(wc.warnings)
@@ -124,7 +127,7 @@ def run_complete_pipeline(audio_path: str, sample_label: str) -> dict[str, Any]:
             if pre_result.restorability:
                 try:
                     # RestorabilityResult is an object with restorability_score attribute
-                    if hasattr(pre_result.restorability, 'restorability_score'):
+                    if hasattr(pre_result.restorability, "restorability_score"):
                         restorability_score = float(pre_result.restorability.restorability_score)
                     elif isinstance(pre_result.restorability, (int, float)):
                         restorability_score = float(pre_result.restorability)
@@ -137,29 +140,33 @@ def run_complete_pipeline(audio_path: str, sample_label: str) -> dict[str, Any]:
                 "genre": str(pre_result.genre) if pre_result.genre else "Unknown",
                 "restorability": restorability_score,
             }
-            logger.info(f"✓ Pre-analysis: medium={pre_result.medium}, era={pre_result.era}, restorability={restorability_score:.1f}")
+            logger.info(
+                f"✓ Pre-Analyse: medium={pre_result.medium}, era={pre_result.era}, restorability={restorability_score:.1f}"
+            )
 
         # Quick restoration (time-limited)
         logger.info(f"\n🎵 RESTORATION {sample_label} (time-limited)...")
         with WarningCapture() as wc:
             from backend.core.unified_restorer_v3 import UnifiedRestorerV3
+
             restorer = UnifiedRestorerV3()
 
             # Use max 30s per sample to avoid timeout
             import time
+
             start = time.time()
             try:
-                restored = restorer.restore(
-                    audio=audio[:min(44100*30, audio.shape[0])],  # Max 30s
+                restorer.restore(
+                    audio=audio[: min(44100 * 30, audio.shape[0])],  # Max 30s
                     sr=sr,
                     mode="restoration",
                 )
                 elapsed = time.time() - start
-                logger.info(f"✓ Restoration complete: {elapsed:.1f}s")
+                logger.info(f"✓ Restoration vollstaendig: {elapsed:.1f}s")
                 result["restoration"]["status"] = "OK"
                 result["restoration"]["wall_time_s"] = elapsed
             except Exception as e:
-                logger.error(f"✗ Restoration failed: {e}")
+                logger.error(f"✗ Restoration fehlgeschlagen: {e}")
                 result["restoration"]["status"] = "FAILED"
                 result["restoration"]["error"] = str(e)
 
@@ -168,7 +175,7 @@ def run_complete_pipeline(audio_path: str, sample_label: str) -> dict[str, Any]:
         result["status"] = "SUCCESS"
 
     except Exception as e:
-        logger.error(f"❌ Pipeline failed: {e}", exc_info=False)
+        logger.error(f"❌ Pipeline fehlgeschlagen: {e}", exc_info=False)
         result["status"] = "ERROR"
         result["errors"].append(str(e))
 
@@ -176,6 +183,7 @@ def run_complete_pipeline(audio_path: str, sample_label: str) -> dict[str, Any]:
     result["categories"] = _categorize_warnings(result["warnings"] + result["errors"])
 
     return result
+
 
 def _categorize_warnings(messages: list[str]) -> dict[str, list[str]]:
     """Categorize warnings by type for SOTA solution development."""
@@ -208,9 +216,10 @@ def _categorize_warnings(messages: list[str]) -> dict[str, list[str]]:
 
     return dict(categories)
 
+
 def main():
     logger.info("=" * 80)
-    logger.info("🎼 COMPREHENSIVE FULL-RUN WARNING AUDIT")
+    logger.info("🎼 COMPREHENSIVE FULL-Ausfuehrung WARNING AUDIT")
     logger.info("=" * 80)
 
     results = {
@@ -282,9 +291,10 @@ def main():
         }
         json.dump(clean_results, f, indent=2)
 
-    logger.info(f"\n✅ Full report saved: {output_path}")
+    logger.info(f"\n✅ Full report gespeichert: {output_path}")
 
     return results
+
 
 if __name__ == "__main__":
     results = main()

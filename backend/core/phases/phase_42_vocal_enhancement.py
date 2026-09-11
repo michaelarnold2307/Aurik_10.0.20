@@ -376,7 +376,7 @@ class VocalEnhancement(PhaseInterface):
                 _vocal_result = _vocal_pipeline.process(audio, int(sample_rate))
                 audio = _vocal_result.audio
             logger.info(
-                "Phase 42: SOTA Vocal Pipeline register=%s deess=%.1fdB harmonic=%.0f%% time=%.1fs",
+                "Verarbeitungsschritt 42: SOTA Vocal Pipeline register=%s deess=%.1fdB harmonic=%.0f%% time=%.1fs",
                 _vocal_result.profile.register,
                 _vocal_result.sibilance_reduction_db,
                 _vocal_result.harmonic_preservation_pct,
@@ -1247,12 +1247,12 @@ class VocalEnhancement(PhaseInterface):
 
             # Fricative band (4–8 kHz): articulation air/intimacy.
             sos_fric = signal.butter(4, [4000.0, 8000.0], btype="band", fs=sample_rate, output="sos")
-            fric = signal.sosfilt(sos_fric, x)
+            fric = signal.sosfiltfilt(sos_fric, x)
             fric_rms = float(np.sqrt(np.mean(fric**2) + 1e-12))
 
             # Mid vocal body (300–3500 Hz): reference energy.
             sos_mid = signal.butter(4, [300.0, 3500.0], btype="band", fs=sample_rate, output="sos")
-            mid = signal.sosfilt(sos_mid, x)
+            mid = signal.sosfiltfilt(sos_mid, x)
             mid_rms = float(np.sqrt(np.mean(mid**2) + 1e-12))
 
             fric_ratio = fric_rms / (mid_rms + 1e-12)
@@ -1260,7 +1260,7 @@ class VocalEnhancement(PhaseInterface):
 
             # Plosive band (120–350 Hz) + transient derivative.
             sos_plo = signal.butter(3, [120.0, 350.0], btype="band", fs=sample_rate, output="sos")
-            plo = signal.sosfilt(sos_plo, x)
+            plo = signal.sosfiltfilt(sos_plo, x)
             dplo = np.diff(plo, prepend=plo[0])
             transient = float(np.percentile(np.abs(dplo), 95))
             ref_std = float(np.std(x) + 1e-9)
@@ -1631,7 +1631,7 @@ class VocalEnhancement(PhaseInterface):
 
         # Measure energy in formant region (300-3000 Hz)
         sos_formant = signal.butter(4, self.VOCAL_BANDS["formant"], btype="band", fs=sample_rate, output="sos")
-        formant_signal = signal.sosfilt(sos_formant, audio)
+        formant_signal = signal.sosfiltfilt(sos_formant, audio)
         formant_energy = float(np.mean(formant_signal**2))
 
         # Measure total energy
@@ -1799,7 +1799,7 @@ class VocalEnhancement(PhaseInterface):
                     return -80.0
                 try:
                     sos = signal.butter(2, [lo, hi], btype="band", fs=sample_rate, output="sos")
-                    band = signal.sosfilt(sos, sig)
+                    band = signal.sosfiltfilt(sos, sig)
                     rms = float(np.sqrt(np.mean(band**2) + 1e-12))
                     return float(20.0 * np.log10(rms + 1e-12))
                 except Exception as e:
@@ -2296,7 +2296,7 @@ class VocalEnhancement(PhaseInterface):
         try:
             # Extract F0 band
             sos_f0 = signal.butter(3, [80.0, 400.0], btype="band", fs=sample_rate, output="sos")
-            f0_band = signal.sosfilt(sos_f0, audio)
+            f0_band = signal.sosfiltfilt(sos_f0, audio)
             # Compute amplitude envelope
             f0_band_1d = np.asarray(f0_band, dtype=np.float64).reshape(-1)
             n_f0 = f0_band_1d.shape[0]

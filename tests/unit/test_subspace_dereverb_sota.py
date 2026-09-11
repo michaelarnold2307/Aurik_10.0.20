@@ -7,7 +7,7 @@ Kriterien (aus dem SOTA-Review, ehrlich kalibriert):
    „volle erste Sekunde"-Kriterium ist physikalisch falsch: es enthält das
    Einschwingen, das eine Dereverberation per Definition ändern MUSS.
 3. Stille bleibt exakt still.
-4. Determinismus (§G5).
+4. Determinismus (§G5 (GEBOTE.md)).
 5. Ton-Konzentration bleibt erhalten (kein spektrales Verwischen).
 """
 
@@ -23,9 +23,7 @@ def _reverb_mixture() -> tuple[np.ndarray, np.ndarray]:
     dry = np.sin(2 * np.pi * 300 * t) * 0.4
     ir = np.zeros(int(0.5 * SR))
     ir[0] = 1.0
-    ir[int(0.01 * SR) : int(0.25 * SR)] = np.exp(
-        -np.arange(int(0.24 * SR)) / (0.08 * SR)
-    ) * 0.5
+    ir[int(0.01 * SR) : int(0.25 * SR)] = np.exp(-np.arange(int(0.24 * SR)) / (0.08 * SR)) * 0.5
     wet = np.convolve(dry, ir)[: len(t)]
     return dry.astype(np.float32), (dry * 0.7 + wet).astype(np.float32)
 

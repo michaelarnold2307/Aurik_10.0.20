@@ -165,7 +165,7 @@ class PhaseResult:
 
                 self.audio = apply_soft_clip(self.audio, ceiling=1.0)
             except ImportError:
-                logger.warning("ML→DSP-Fallback aktiviert", exc_info=True)  # §V6 (copilot-instructions.md)
+                logger.warning("ML→DSP-Ersatzpfad aktiviert", exc_info=True)  # §V6 (copilot-instructions.md)
                 self.audio = np.clip(self.audio, -1.0, 1.0)  # Fallback
         if self.audio.dtype != np.float32:
             self.audio = self.audio.astype(np.float32)
@@ -753,7 +753,7 @@ class PhaseInterface(abc.ABC):
                 result.quality_estimate = max(0.4, result.quality_estimate - 0.15)
             else:
                 self._logger.info(
-                    "§G144 MUSHRA-Proxy %s: PASS — mushra %.1f→%.1f (Δ=+.3f, latency=%.1fms, proxy=%s)",
+                    "§G144 MUSHRA-Proxy %s: PASS — mushra %.1f→%.1f (Δ=%+.3f, latency=%.1fms, proxy=%s)",
                     phase_id,
                     _verdict.mushra_before,
                     _verdict.mushra_after,

@@ -417,7 +417,6 @@ _calibrated_confidence: float | None = None
 
 def _auto_load_calibration() -> None:
     """§3.6: Lädt Kalibrierungsartefakt beim Modulimport (Stufe 3 CI-Proxy)."""
-    global _calibrated_weights, _calibrated_confidence
     if _calibrated_weights is not None:
         return  # Bereits geladen (z.B. via calibrate_from_panel)
     try:
@@ -920,7 +919,6 @@ class MertMushraProxy:
 
         Returns den Pfad oder None bei Fehler.
         """
-        global _calibrated_weights, _calibrated_confidence
         if _calibrated_weights is None:
             logger.warning("§3.6 speichern: keine kalibrierten Gewichte zum Speichern")
             return None
@@ -1554,7 +1552,7 @@ class MertMushraProxy:
                 return self._extract_embedding(_mert, audio, sr)
             return _extract_dsp_embedding(audio, sr)
         except Exception as exc:
-            logger.debug("compute_embedding: MERT/DSP fehlgeschlagen: %s", exc)
+            logger.debug("berechnen_embedding: MERT/DSP fehlgeschlagen: %s", exc)
             return None
 
     # ------------------------------------------------------------------

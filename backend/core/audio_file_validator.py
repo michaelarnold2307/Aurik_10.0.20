@@ -35,7 +35,9 @@ class AudioLoadError(Exception):
     def __init__(self, message_user: str, cause: str = "") -> None:
         self.message_user = message_user
         self.cause = cause
-        super().__init__(f"{message_user} | tech: {cause}" if cause else message_user)
+        super().__init__(message_user, cause)  # B042: alle Args an super (pickle/copy-sicher)
+        # Nutzerfreundliche str()-Darstellung bleibt wie vor dem B042-Fix erhalten.
+        self.args = (f"{message_user} | tech: {cause}" if cause else message_user,)
 
 
 # ---------------------------------------------------------------------------

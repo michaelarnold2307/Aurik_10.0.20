@@ -1498,7 +1498,7 @@ class CrackleRemovalPhase(PhaseInterface):
                 predicted = lfilter([1.0], a_filter, filtered)
                 residual = filtered - predicted
             except Exception:
-                logger.warning("ML→DSP-Fallback aktiviert", exc_info=True)  # §V6 (copilot-instructions.md)
+                logger.warning("ML→DSP-Ersatzpfad aktiviert", exc_info=True)  # §V6 (copilot-instructions.md)
                 residual = filtered  # Fallback: residual = filtered signal
         else:
             residual = filtered
@@ -2101,7 +2101,7 @@ if __name__ == "__main__":
     # Add vinyl surface noise texture
     surface_noise = 0.02 * np.random.randn(len(_audio))
     sos_hf = signal.butter(2, 3000, btype="high", fs=_sr, output="sos")
-    surface_noise_hf = signal.sosfilt(sos_hf, surface_noise)
+    surface_noise_hf = signal.sosfiltfilt(sos_hf, surface_noise)
     _audio += surface_noise_hf
 
     # Make stereo

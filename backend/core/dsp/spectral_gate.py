@@ -74,7 +74,7 @@ def apply_spectral_gating(
     window = windows.hann(n_fft)
 
     logger.info(
-        "§2.62 Spectral Gating: threshold=%.1f dB, hop=%d, n_fft=%d",
+        "§2.62 Spectral Gating: Schwelle=%.1f dB, hop=%d, n_fft=%d",
         threshold_db,
         hop_length,
         n_fft,

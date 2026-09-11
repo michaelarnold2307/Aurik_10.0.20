@@ -22,9 +22,10 @@ def run(cmd: str, cwd=None):
         check=False,
         stdout=subprocess.PIPE,
         stderr=subprocess.STDOUT,
-        text=True
+        text=True,
     )
     return result.returncode, result.stdout
+
 
 def main():
     # 1️⃣ Load metadata
@@ -47,6 +48,7 @@ def main():
     with open("export_log.txt", "a") as log:
         log.write(f"Export finished at {pathlib.datetime.now()}\n")
         log.write(out + "\n")
+
 
 if __name__ == "__main__":
     main()

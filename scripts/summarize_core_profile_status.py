@@ -32,7 +32,7 @@ class Artifact:
 
 ARTIFACTS = [
     Artifact("fcpe", "models/fcpe/fcpe.onnx", "models/crepe/crepe.onnx|models/rmvpe/rmvpe.onnx"),
-    Artifact("sgmse_plus", "models/sgmse_plus/sgmse_plus.ts", "wpe_dsp"),
+    Artifact("sgmse_plus", "models/sgmse_plus/sgmse_plus_core.onnx", "wpe_dsp"),
     Artifact(
         "versa",
         "models/versa/hub_cache/checkpoints/ft_wav2vec2_large_ll60k_mdf_p1_200epochs_all_192epochs.pth",
@@ -41,7 +41,7 @@ ARTIFACTS = [
     Artifact(
         "flow_matching",
         "models/flow_matching/flow_matching.onnx",
-        "models/cqtdiff/score_network.pt|models/diffwave/diffwave_model.onnx",
+        "models/cqtdiff/score_network.onnx|models/diffwave/diffwave_model.onnx",
     ),
     Artifact("gacela", "models/gacela/model/01_400000.pt", "dsp_exciter"),
 ]

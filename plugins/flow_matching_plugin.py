@@ -169,14 +169,17 @@ def _inpaint_diffwave_onnx(
                 return None
             allocated = True
         except ImportError as _exc:
-            logger.debug("Optional import not available (non-critical): %s", _exc)
-        sess = ort.InferenceSession(str(model_path), providers=["CPUExecutionProvider"])
+            logger.debug("Optional import not verfuegbar (unkritisch): %s", _exc)
+        # §v10.40c: Registry-konsultierte Provider-Wahl statt hartem CPU.
+        from backend.core.gpu_model_registry import get_onnx_providers
+
+        sess = ort.InferenceSession(str(model_path), providers=get_onnx_providers(str(model_path)))
         try:
             from backend.core.plugin_lifecycle_manager import register_plugin as _reg_plm
 
             _reg_plm("DiffWave-FlowMatch", size_gb=0.01, unload_fn=lambda: None)
         except Exception as _exc:
-            logger.debug("Plugin operation failed (non-critical): %s", _exc)
+            logger.debug("Plugin operation fehlgeschlagen (unkritisch): %s", _exc)
         ctx_len = min(int(sr * 0.5), gap_start)
         ctx = audio[gap_start - ctx_len : gap_start].astype(np.float32)
         if len(ctx) < 128:
@@ -209,8 +212,8 @@ def _inpaint_diffwave_onnx(
         result[gap_start:gap_end] = np.clip(inpainted_chunk, -1.0, 1.0)
         return result
     except Exception as e:
-        logger.warning("ML→DSP-Fallback aktiviert", exc_info=True)  # §V6 (copilot-instructions.md)
-        logger.debug("DiffWave ONNX Fallback fehlgeschlagen: %s", e)
+        logger.warning("ML→DSP-Ersatzpfad aktiviert", exc_info=True)  # §V6 (copilot-instructions.md)
+        logger.debug("DiffWave ONNX Ersatzpfad fehlgeschlagen: %s", e)
         return None
     finally:
         if allocated:
@@ -219,7 +222,7 @@ def _inpaint_diffwave_onnx(
 
                 _rel("DiffWave-FlowMatch")
             except Exception as _exc:
-                logger.debug("Plugin operation failed (non-critical): %s", _exc)
+                logger.debug("Plugin operation fehlgeschlagen (unkritisch): %s", _exc)
 
 
 # ---------------------------------------------------------------------------
@@ -289,7 +292,7 @@ class FlowMatchingPlugin:
             return InpaintingResult(audio=audio.copy(), method_used="no_inpainting", success=True, n_steps=0)
         gap_dur_s = gap_len / sr
         if gap_dur_s > self.MAX_GAP_S:
-            logger.warning("Lücke (%.2f s) überschreitet max. %.0f s — DSP-Fallback.", gap_dur_s, self.MAX_GAP_S)
+            logger.warning("Lücke (%.2f s) überschreitet max. %.0f s — DSP-Ersatzpfad.", gap_dur_s, self.MAX_GAP_S)
 
         logger.info(
             "🎯 FlowMatchingPlugin: Lücke %.0f–%.0f ms (%.3f s), %d Schritte",
@@ -361,11 +364,11 @@ class FlowMatchingPlugin:
             from backend.core.ml_memory_budget import try_allocate as _try_alloc
 
             if not _try_alloc("FlowAudioCFM", size_gb=0.05):
-                logger.info("FlowAudio: ML-Budget nicht verfügbar — DSP-Fallback")
+                logger.info("FlowAudio: ML-Grenze nicht verfügbar — DSP-Ersatzpfad")
                 return None
             allocated = True
         except ImportError as _exc:
-            logger.debug("Optional import not available (non-critical): %s", _exc)
+            logger.debug("Optional import not verfuegbar (unkritisch): %s", _exc)
         try:
             from plugins.flow_audio_sota import FlowAudioModel  # type: ignore[import]
 
@@ -385,7 +388,7 @@ class FlowMatchingPlugin:
                     _release("FlowAudioCFM")
                     allocated = False
                 except Exception as _exc:
-                    logger.debug("Plugin operation failed (non-critical): %s", _exc)
+                    logger.debug("Plugin operation fehlgeschlagen (unkritisch): %s", _exc)
             # Validate result before returning
             if result is not None and np.isfinite(result).all() and len(result) > 0:
                 try:
@@ -393,7 +396,7 @@ class FlowMatchingPlugin:
 
                     _reg_plm("FlowAudioCFM", size_gb=0.05, unload_fn=lambda: None)
                 except Exception as _exc:
-                    logger.debug("Plugin operation failed (non-critical): %s", _exc)
+                    logger.debug("Plugin operation fehlgeschlagen (unkritisch): %s", _exc)
                 return result
             return None
         except Exception as e:
@@ -404,7 +407,7 @@ class FlowMatchingPlugin:
                 try:
                     _release("FlowAudioCFM")
                 except Exception as _exc:
-                    logger.debug("Plugin operation failed (non-critical): %s", _exc)
+                    logger.debug("Plugin operation fehlgeschlagen (unkritisch): %s", _exc)
 
     def _try_cqtdiff_plus(
         self,

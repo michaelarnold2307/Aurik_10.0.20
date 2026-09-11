@@ -3,9 +3,9 @@
 # §v10.14 ATOMIC CACHE-CLEAR: Löscht ALLE __pycache__-Verzeichnisse
 # rekursiv beim ersten Import. Garantiert dass JEDER Aurik-Start mit
 # frischem Bytecode läuft — kein manuelles find/rm mehr nötig.
+import logging
 import pathlib as _bclear_path
 import shutil as _bclear_shutil
-import logging
 
 logger = logging.getLogger(__name__)
 
@@ -124,7 +124,7 @@ def _safe_istft(
     try:
         return _scipy_istft(Zxx, fs=fs, window=window, nperseg=nperseg, noverlap=_noverlap, **kwargs)
     except ValueError as exc:
-        logger.debug("§V6 scipy ISTFT Fallback aktiviert (ValueError): %s", exc)
+        logger.debug("§V6 (copilot-instructions.md) scipy-ISTFT-Ersatzpfad aktiviert (ValueError): %s", exc)
         _noverlap = max(0, _eff_nperseg // 4)
         return _scipy_istft(Zxx, fs=fs, window="hann", nperseg=nperseg, noverlap=_noverlap)
 

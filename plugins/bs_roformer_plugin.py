@@ -27,6 +27,8 @@ from typing import Any
 
 import numpy as np
 
+from backend.core.gpu_model_registry import get_onnx_providers  # §v10.40c Registry-GPU-Policy
+
 logger = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
@@ -182,12 +184,12 @@ class BSRoFormerPlugin:
             from backend.core.ml_memory_budget import try_allocate
 
             if not try_allocate("MelBandRoformer", size_gb=0.90):
-                logger.warning("BSRoFormer: ML-Budget erschöpft — Fallback aktiv")
+                logger.warning("BSRoFormer: ML-Grenze erschöpft — Ersatzpfad aktiv")
                 self._fallback_active = True
                 return
             _allocated = True
         except ImportError as _exc:
-            logger.debug("Optional import not available (non-critical): %s", _exc)  # budget-Modul optional
+            logger.debug("Optional import not verfuegbar (unkritisch): %s", _exc)  # budget-Modul optional
         try:
             import onnxruntime as ort
 
@@ -203,6 +205,7 @@ class BSRoFormerPlugin:
 
                             _bs_prov = _bs_policy(_bs_prov, model_path)
                         except Exception:
+                            logger.debug("Stiller Ersatzpfad dokumentiert (Bug 9/V74)", exc_info=True)
                             pass
                     except Exception:
                         _bs_prov = ["CPUExecutionProvider"]
@@ -216,7 +219,7 @@ class BSRoFormerPlugin:
                     out_rank = self._shape_rank(getattr(output_meta, "shape", None))
                     if in_rank != 4 or out_rank not in (4, 5):
                         logger.warning(
-                            "MelBandRoformer: Inkompatible ONNX-Signatur (in_rank=%s, out_rank=%s) bei %s — Fallback aktiv",
+                            "MelBandRoformer: Inkompatible ONNX-Signatur (in_rank=%s, out_rank=%s) bei %s — Ersatzpfad aktiv",
                             in_rank,
                             out_rank,
                             model_path,
@@ -229,7 +232,7 @@ class BSRoFormerPlugin:
 
                                 _release("MelBandRoformer")
                             except ImportError as _exc:
-                                logger.debug("Optional import not available (non-critical): %s", _exc)
+                                logger.debug("Optional import not verfuegbar (unkritisch): %s", _exc)
                         return
                     self._session = session
                     self._session_model_path = str(model_path)
@@ -244,9 +247,9 @@ class BSRoFormerPlugin:
                             unload_fn=lambda s=self: setattr(s, "_session", None) or setattr(s, "_model_loaded", False),
                         )
                     except Exception as _exc:
-                        logger.debug("Plugin operation failed (non-critical): %s", _exc)
+                        logger.debug("Plugin operation fehlgeschlagen (unkritisch): %s", _exc)
                     return
-            logger.info("MelBandRoformer: Kein ONNX-Modell gefunden — Fallback aktiv")
+            logger.info("MelBandRoformer: Kein ONNX-Modell gefunden — Ersatzpfad aktiv")
             self._fallback_active = True
             if _allocated:
                 try:
@@ -254,10 +257,10 @@ class BSRoFormerPlugin:
 
                     _release("MelBandRoformer")
                 except ImportError as _exc:
-                    logger.debug("Optional import not available (non-critical): %s", _exc)
+                    logger.debug("Optional import not verfuegbar (unkritisch): %s", _exc)
         except ImportError:
-            logger.warning("ML→DSP-Fallback aktiviert", exc_info=True)  # §V6 (copilot-instructions.md)
-            logger.debug("onnxruntime nicht verfügbar — MelBandRoformer Fallback aktiv")
+            logger.warning("ML→DSP-Ersatzpfad aktiviert", exc_info=True)  # §V6 (copilot-instructions.md)
+            logger.debug("onnxruntime nicht verfügbar — MelBandRoformer Ersatzpfad aktiv")
             self._fallback_active = True
             if _allocated:
                 try:
@@ -265,9 +268,9 @@ class BSRoFormerPlugin:
 
                     _release("MelBandRoformer")
                 except ImportError as _exc:
-                    logger.debug("Optional import not available (non-critical): %s", _exc)
+                    logger.debug("Optional import not verfuegbar (unkritisch): %s", _exc)
         except Exception as exc:
-            logger.warning("MelBandRoformer Modell-Lade-Fehler: %s — Fallback aktiv", exc)
+            logger.warning("MelBandRoformer Modell-Lade-Fehler: %s — Ersatzpfad aktiv", exc)
             self._fallback_active = True
             if _allocated:
                 try:
@@ -275,7 +278,7 @@ class BSRoFormerPlugin:
 
                     _release("MelBandRoformer")
                 except ImportError as _exc:
-                    logger.debug("Optional import not available (non-critical): %s", _exc)
+                    logger.debug("Optional import not verfuegbar (unkritisch): %s", _exc)
 
     # ------------------------------------------------------------------
     # Öffentliche API
@@ -288,9 +291,11 @@ class BSRoFormerPlugin:
         try:
             import onnxruntime as ort
 
-            return ort.InferenceSession(self._session_model_path, providers=["CPUExecutionProvider"])
+            return ort.InferenceSession(
+                self._session_model_path, providers=get_onnx_providers(self._session_model_path)
+            )
         except Exception as _exc:
-            logger.warning("MelBandRoformer: CPU-Session-Rebuild fehlgeschlagen: %s", _exc)
+            logger.warning("MelBandRoformer: CPU-Sitzung-Rebuild fehlgeschlagen: %s", _exc)
             return None
 
     def separate(
@@ -411,7 +416,7 @@ class BSRoFormerPlugin:
         _FD = self._MBR_FDIM
         session = self._session
         if session is None:
-            logger.warning("MelBandRoformer: ONNX-Session fehlt → Fallback")
+            logger.warning("MelBandRoformer: ONNX-Sitzung fehlt → Ersatzpfad")
             return self._separate_fallback(audio, sr, requested_stems)
 
         _plm_mbr = None
@@ -421,7 +426,7 @@ class BSRoFormerPlugin:
             _plm_mbr = _get_plm_fn()
             _plm_mbr.set_active("MelBandRoformer", True)
         except Exception as _exc:
-            logger.debug("BSRoFormer: PLM set_active failed: %s", _exc)
+            logger.debug("BSRoFormer: PLM set_active fehlgeschlagen: %s", _exc)
 
         try:
             # ── 1. Resample to model SR ──────────────────────────────────────
@@ -465,7 +470,7 @@ class BSRoFormerPlugin:
 
                 _avail_mbr = float(_psutil_mbr.virtual_memory().available / (1024**3))
             except Exception:
-                logger.warning("ML→DSP-Fallback aktiviert", exc_info=True)  # §V6 (copilot-instructions.md)
+                logger.warning("ML→DSP-Ersatzpfad aktiviert", exc_info=True)  # §V6 (copilot-instructions.md)
             if _avail_mbr < 16.0:
                 _CHUNK_S = 5
             elif _avail_mbr < 24.0:
@@ -501,7 +506,7 @@ class BSRoFormerPlugin:
                     # X_s released when function returns (every except-path returns)
                     _half = len(seg) // 2
                     if _half < _SR:  # < 1 s — give up
-                        logger.warning("MelBandRoformer OOM auf Sub-1s-Chunk: %s → Fallback", _oom)
+                        logger.warning("MelBandRoformer OOM auf Sub-1s-Chunk: %s → Ersatzpfad", _oom)
                         return None
                     logger.info("MelBandRoformer OOM auf %ds Chunk → halbiere auf 2×%ds", len(seg) // _SR, _half // _SR)
                     first = _process_segment(seg[:_half])
@@ -513,7 +518,7 @@ class BSRoFormerPlugin:
                     # §ROCm-Fallback: Nicht-Memory-Fehler (z. B. MIOpen-Kernel-Build
                     # "Code object build failed") → CPU-only Session einmalig aufbauen
                     # und wiederholen. Halbierung hilft hier nicht (kein OOM).
-                    logger.warning("MelBandRoformer: ONNX-Inferenz fehlgeschlagen (%s) — CPU-Retry", _ort_exc)
+                    logger.warning("MelBandRoformer: ONNX-Inferenz fehlgeschlagen (%s) — CPU-Wiederholung", _ort_exc)
                     _cpu_sess = self._build_cpu_session()
                     if _cpu_sess is None:
                         return None
@@ -538,7 +543,7 @@ class BSRoFormerPlugin:
                 # Short file — single pass
                 voc_result = _process_segment(audio_44)
                 if voc_result is None:
-                    logger.warning("MelBandRoformer: Unerwarteter Output-Shape → Fallback")
+                    logger.warning("MelBandRoformer: Unerwarteter Ausgabe-Shape → Ersatzpfad")
                     return self._separate_fallback(audio, sr, requested_stems)
                 vocals_44 = voc_result
             else:
@@ -559,12 +564,12 @@ class BSRoFormerPlugin:
                         _avail_chk = float(_psutil_chk.virtual_memory().available / (1024**3))
                         if _avail_chk < 3.0:
                             logger.warning(
-                                "MelBandRoformer: RAM < 3 GB vor Chunk (avail=%.1f GB) → Fallback",
+                                "MelBandRoformer: RAM < 3 GB vor Chunk (avail=%.1f GB) → Ersatzpfad",
                                 _avail_chk,
                             )
                             return self._separate_fallback(audio, sr, requested_stems)
                     except Exception:
-                        logger.warning("bs_roformer_plugin.py::_process_segment fallback", exc_info=True)
+                        logger.warning("bs_roformer_plugin.py::_verarbeiten_segment Ersatzpfad", exc_info=True)
                     _ce = min(_cs + _chunk_samples, n_orig_44)
                     _seg = audio_44[_cs:_ce]
                     _seg_orig = len(_seg)
@@ -577,7 +582,7 @@ class BSRoFormerPlugin:
                         _seg = np.pad(_seg, (0, _N - _seg_orig))
                     voc_chunk = _process_segment(_seg)
                     if voc_chunk is None:
-                        logger.warning("MelBandRoformer chunk: bad output → Fallback")
+                        logger.warning("MelBandRoformer chunk: bad Ausgabe → Ersatzpfad")
                         return self._separate_fallback(audio, sr, requested_stems)
                     if _seg_orig < _N:
                         voc_chunk = voc_chunk[:_seg_orig]
@@ -650,7 +655,7 @@ class BSRoFormerPlugin:
                 metadata={"n_stems": len(stems_out), "model_sr": _SR},
             )
         except Exception as exc:
-            logger.warning("MelBandRoformer ONNX-Fehler: %s — Fallback aktiv", exc)
+            logger.warning("MelBandRoformer ONNX-Fehler: %s — Ersatzpfad aktiv", exc)
             self._model_loaded = False
             self._fallback_active = True
             self._onnx_quarantined = True
@@ -660,14 +665,14 @@ class BSRoFormerPlugin:
 
                 _release("MelBandRoformer")
             except Exception as _exc:
-                logger.debug("Plugin operation failed (non-critical): %s", _exc)
+                logger.debug("Plugin operation fehlgeschlagen (unkritisch): %s", _exc)
             return self._separate_fallback(audio, sr, requested_stems)
         finally:
             if _plm_mbr is not None:
                 try:
                     _plm_mbr.set_active("MelBandRoformer", False)
                 except Exception as _exc:
-                    logger.debug("BSRoFormer: PLM unset_active failed: %s", _exc)
+                    logger.debug("BSRoFormer: PLM unset_active fehlgeschlagen: %s", _exc)
 
     # ------------------------------------------------------------------
     # ML-Fallback Stufe 1: MDX23C (Kim_Vocal_2 + Kim_Inst ONNX)
@@ -683,7 +688,7 @@ class BSRoFormerPlugin:
 
         Gibt immer None zurück, damit der nächste Fallback (HPSS DSP) greift.
         """
-        logger.debug("BS-RoFormer MDX23C-Fallback entfällt (§v10.739) — weiter zu HPSS")
+        logger.debug("BS-RoFormer MDX23C-Ersatzpfad entfällt (§v10.739) — weiter zu HPSS")
         return None
 
     # ------------------------------------------------------------------
@@ -736,7 +741,7 @@ class BSRoFormerPlugin:
         # SDRi gegen vollständige HPSS-Rekonstruktion (harmonic + percussive)
         _hpss_sdri_all = {"harmonic": np.clip(harmonic, -1.0, 1.0), "percussive": np.clip(percussive, -1.0, 1.0)}
         sdri = self._estimate_sdri(audio_1d, _hpss_sdri_all)
-        logger.info("🎵 BS-RoFormer HPSS-DSP-Fallback aktiv | SDRi=%.1f dB", sdri)
+        logger.info("🎵 BS-RoFormer HPSS-DSP-Ersatzpfad aktiv | SDRi=%.1f dB", sdri)
         return StemSeparationResult(
             stems=stems_out,
             sr=sr,

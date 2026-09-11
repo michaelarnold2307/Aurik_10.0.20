@@ -502,7 +502,11 @@ def compute_adaptive_phon(
             meter = pyln.Meter(sr)
             measured_lufs = float(meter.integrated_loudness(mono.astype(float)))
         except Exception as exc:
-            logger.debug("§V6 pyloudnorm.integrated_loudness fehlgeschlagen — Default-Phon zurückgegeben (%d): %s", default_phon, exc)
+            logger.debug(
+                "§V6 (copilot-instructions.md) pyloudnorm.integrated_loudness fehlgeschlagen — Default-Phon zurückgegeben (%d): %s",
+                default_phon,
+                exc,
+            )
             return default_phon
 
     if measured_lufs is None:

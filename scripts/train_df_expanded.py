@@ -1,11 +1,16 @@
 #!/usr/bin/env python3
 """
+
 §v10.21: Erweitertes DFN-Training mit FMA-small (8.000 Tracks) + MUSDB18.
 
 Nutzt den PyTorch-GPU-Pfad direkt (ONNX-ROCm ist auf gfx1100 blockiert).
 """
 
 from __future__ import annotations
+
+import logging
+
+logger = logging.getLogger(__name__)
 
 import argparse
 import random
@@ -116,6 +121,7 @@ class AudioDenoiseDataset(Dataset):
                 n = self._load(random.choice(self.noise_files))
                 return n / (np.abs(n).max() + np.float32(1e-8))
             except Exception:
+                logger.debug("Stiller Ersatzpfad dokumentiert (Bug 9/V74)", exc_info=True)
                 pass
         n = np.random.randn(length).astype(np.float32)
         c = random.choice(["white", "pink", "brown"])
