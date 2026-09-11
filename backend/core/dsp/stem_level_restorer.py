@@ -73,6 +73,12 @@ class StemLevelRestorerResult:
     instrumental_nr_model: str = ""
     """Model route used for instrumental-stem noise reduction."""
 
+    vocal_stem_kim: bool = False
+    """True if KIM2 (kim_vocal_2) clarity was applied to the vocal stem."""
+
+    kim_witness: dict | None = None
+    """Listening-Witness report of the KIM2 clarity stage (None if skipped)."""
+
 
 # ---------------------------------------------------------------------------
 # Singleton
@@ -180,6 +186,8 @@ class StemLevelRestorer:
         _instr_out = _instr_stem.copy()
         _miipher_used = False
         _dfn_used = False
+        _kim_used = False
+        _kim_witness: dict | None = None
         _vocal_nr_model = "none"
         _instrumental_nr_model = "none"
 
@@ -211,6 +219,15 @@ class StemLevelRestorer:
         # §SLR-1e: Hallucination-Guard on each processed stem (§2.46e)
         _vocal_out = self._hallucination_guard(_vocal_stem, _vocal_out, sample_rate, "vocal")
         _instr_out = self._hallucination_guard(_instr_stem, _instr_out, sample_rate, "instr")
+
+        # §SLR-1e2: KIM2 (kim_vocal_2) Gesangs-Klarheit/Brillianz — musik-trainiert.
+        # §v10.19 (.github/specs/v10.19_sprachmodell_ersatz_sota_roadmap.md):
+        # KIM2 ist das Gesangsmodell — Klarheitsstufe NACH der NR, VOR dem Remix
+        # (ein Rekombinationspunkt). Never-worsen via Listening-Witness-Gate.
+        try:
+            _vocal_out, _kim_used, _kim_witness = self._apply_kim_clarity(_vocal_stem, _vocal_out, sample_rate)
+        except Exception as _kim_exc:  # pylint: disable=broad-except
+            logger.debug("§SLR-1 KIM2 nicht blockierend: %s", _kim_exc)
 
         # §SLR-1f: Remix stems to output
         _out = self._coerce_like(_vocal_out + _instr_out, _audio)
@@ -249,6 +266,8 @@ class StemLevelRestorer:
                 success=False,
                 vocal_stem_miipher=_miipher_used,
                 instrumental_stem_dfn=_dfn_used,
+                vocal_stem_kim=_kim_used,
+                kim_witness=_kim_witness,
                 vqi_after=_vqi_after,
                 rollback_reason=_rollback_reason,
                 separation_model=_separation_model,
@@ -266,6 +285,8 @@ class StemLevelRestorer:
             success=_success,
             vocal_stem_miipher=_miipher_used,
             instrumental_stem_dfn=_dfn_used,
+            vocal_stem_kim=_kim_used,
+            kim_witness=_kim_witness,
             vqi_after=_vqi_after,
             fallback_reason="" if _success else "no_stem_nr_applied",
             separation_model=_separation_model,
@@ -424,6 +445,57 @@ class StemLevelRestorer:
         except Exception as _router_exc:  # pylint: disable=broad-except
             logger.debug("§SLR-1 vocal NR router nicht blockierend: %s", _router_exc)
             return vocal_stem, False, "none"
+
+    # -----------------------------------------------------------------------
+    # KIM2 (kim_vocal_2) — Gesangs-Klarheit/Brillianz
+    # -----------------------------------------------------------------------
+
+    def _apply_kim_clarity(
+        self, vocal_stem: np.ndarray, vocal_nr: np.ndarray, sample_rate: int
+    ) -> tuple[np.ndarray, bool, dict | None]:
+        """Wendet an: KIM2-Klarheit auf den NR-Vokalstem — witness-guarded, harmlos.
+
+        §v10.19 (.github/specs/v10.19_sprachmodell_ersatz_sota_roadmap.md):
+        KIM2 (models/kim_vocal_2/kim_vocal_2.onnx, 64 MB) ist das
+        musik-trainierte Gesangsmodell — Klarheit/Brillianz statt Sprachmodell.
+
+        Never-worsen-Vertrag (§0 Primum non nocere): Die KIM2-Ausgabe wird nur
+        übernommen, wenn der Listening-Witness keine Hör-Regression meldet
+        (hnr_drop < 1.0 dB, pitch_drift < 8 ct, flat_top_rise < 0.02).
+        Sonst Passthrough — der MIIPHER-Stem bleibt unverändert (blend=0).
+        """
+        _metadata: dict | None = None
+        try:
+            from plugins.kim_vocal_enhancer_plugin import enhance_vocals  # pylint: disable=import-outside-toplevel
+
+            _in = np.asarray(vocal_nr, dtype=np.float32)
+            # KIM2 erwartet channels-first (2, N) für Stereo (§v10.117 Mid/Side),
+            # der Stem ist hier channels-last (N, 2).
+            _in_cf = _in.T if _in.ndim == 2 else _in
+            _out = self._coerce_like(enhance_vocals(_in_cf), _in)
+            _out = np.nan_to_num(_out, nan=0.0, posinf=0.0, neginf=0.0)
+            _out = np.clip(_out, -1.0, 1.0)
+
+            from backend.core.listening_witness import (  # pylint: disable=import-outside-toplevel
+                evaluate_listening_witness,
+            )
+
+            _witness = evaluate_listening_witness(_in, _out, sample_rate, "kim_vocal_2")
+            _ok = _witness.hnr_drop_db < 1.0 and _witness.pitch_drift_cents < 8.0 and _witness.flat_top_rise < 0.02
+            if not _ok:
+                logger.info(
+                    "§KIM2 Witness-Gate haelt MIIPHER-Stem (hnr_drop=%.2f dB pitch=%.1f ct flat_top=%.3f)",
+                    _witness.hnr_drop_db,
+                    _witness.pitch_drift_cents,
+                    _witness.flat_top_rise,
+                )
+                _metadata = {"applied": False, "reason": "witness_gate", "witness": _witness.as_dict()}
+                return np.asarray(vocal_nr, dtype=np.float32), False, _metadata
+            _metadata = {"applied": True, "model": "kim_vocal_2", "witness": _witness.as_dict()}
+            return _out, True, _metadata
+        except Exception as exc:  # pylint: disable=broad-except
+            logger.debug("§KIM2 Klarheit nicht verfuegbar: %s", exc)
+            return np.asarray(vocal_nr, dtype=np.float32), False, {"applied": False, "reason": "unavailable"}
 
     # -----------------------------------------------------------------------
     # DeepFilterNet v3 (instrumental stem)
