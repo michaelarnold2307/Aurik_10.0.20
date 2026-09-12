@@ -1,6 +1,6 @@
 # TASK_CHANGES — Live-Ledger der aktuellen Aufgabe
 
-> Generiert von `scripts/change_ledger.py snapshot` (Base: `HEAD`, Stand: 2026-09-12 09:24 CEST).
+> Generiert von `scripts/change_ledger.py snapshot` (Base: `HEAD`, Stand: 2026-09-12 23:02 CEST).
 > CI (`ci-lite.yml` pr-evidence-gate) erzwingt Abdeckung: jede geänderte Code-Datei muss hier stehen.
 
 ## Geänderte Dateien
@@ -8,39 +8,12 @@
 | Status | Pfad | Art |
 |---|---|---|
 | M | .github/FILE_REGISTRY.md | modifiziert |
-| M | .github/specs/v10.19_sprachmodell_ersatz_sota_roadmap.md | modifiziert |
-| M | .github/workflows/ci-cross-platform.yml | modifiziert |
-| M | .github/workflows/ci-lite.yml | modifiziert |
-| M | .github/workflows/nightly-quality.yml | modifiziert |
-| M | .github/workflows/solo-release-gate.yml | modifiziert |
-| M | .gitignore | modifiziert |
-| A | backend/core/dsp/air_presence_enhancer.py | neu |
-| M | backend/core/dsp/dynamic_loudness_model.py | modifiziert |
-| A | backend/core/dsp/stem_context.py | neu |
-| M | backend/core/dsp/stem_level_restorer.py | modifiziert |
-| M | backend/core/listening_witness.py | modifiziert |
-| M | backend/core/musical_goals/musical_goals_monitor.py | modifiziert |
-| M | backend/core/optimization/hyperparameter_optimizer.py | modifiziert |
-| M | backend/core/phases/phase_19_de_esser.py | modifiziert |
-| M | backend/core/surgical_repair.py | modifiziert |
+| M | backend/core/hybrid/hybrid_ml_denoiser.py | modifiziert |
 | M | backend/core/unified_restorer_v3.py | modifiziert |
-| A | docs/ANALYSE_VOKAL_MUSIK_NACH_RESTAURATION.md | neu |
-| A | docs/MUSICAL_GOALS_WITNESS_HARMONISIERUNG.md | neu |
-| A | docs/REKOMBINATION_ZEITPUNKT_ANALYSE.md | neu |
-| A | docs/WITNESS_SOTA_GAP_ANALYSE.md | neu |
-| A | docs/reports/spec_evidence/2026-09-12_v10_19_air_presence_stemcontext_ci_gates.md | neu |
-| M | plugins/aero_plugin.py | modifiziert |
-| M | plugins/flashsr_plugin.py | modifiziert |
-| M | plugins/gacela_plugin.py | modifiziert |
-| M | plugins/muq_plugin.py | modifiziert |
-| M | pyproject.toml | modifiziert |
-| M | requirements/requirements_dev.txt | modifiziert |
-| M | scripts/export_guard.py | modifiziert |
-| A | tests/unit/test_air_presence_enhancer.py | neu |
-| M | tests/unit/test_frontend_ux_spec_compliance.py | modifiziert |
-| M | tests/unit/test_listening_witness.py | modifiziert |
-| A | tests/unit/test_stem_context.py | neu |
-| ?? | docs/reports/supervised_runs/2026-09-12_elke_best_30s.md | ungetrackt |
+| ?? | backend/core/dsp/hybrid_denoise_fusion.py | ungetrackt |
+| ?? | backend/core/dsp/witness_correction_loop.py | ungetrackt |
+| ?? | tests/unit/test_hybrid_denoise_fusion.py | ungetrackt |
+| ?? | tests/unit/test_witness_correction_loop.py | ungetrackt |
 
 ## Entscheidungen
 

@@ -71,6 +71,9 @@ class DenoiseConfig:
     dfn_enhance: float = 0.5  # DeepFilterNet enhancement strength
     enable_preprocessing: bool = True  # OMLSA preprocessing before DeepFilterNet
     quality_threshold: float = 0.75  # If quality > threshold, skip DeepFilterNet
+    enable_psychoacoustic_fusion: bool = (
+        True  # §Witness-SOTA H1+H2: Masking-Fusion + Musical-Noise-Gate um die ML-Stufe
+    )
 
 
 @dataclass
@@ -170,6 +173,10 @@ class HybridMLDenoiser:
                 logger.info("Quality sufficient (%.3f), skipping DeepFilterNet", quality_estimate)
                 strategy = DenoiseStrategy.OMLSA_ONLY
 
+        # §Witness-SOTA H1: DSP-Baseline für die masking-threshold-bewusste
+        # Fusion sichern (Referenz, an der die ML-Stufe gemessen wird).
+        _omlsa_baseline = audio.copy()
+
         # Stage 2: DeepFilterNet Enhancement (if needed)
         if strategy in [DenoiseStrategy.DFN_ONLY, DenoiseStrategy.HYBRID]:
             # try_allocate-Gate: erlaubt Tests DeepFilterNet per Mock zu deaktivieren (§2.51 Determinismus)
@@ -202,6 +209,36 @@ class HybridMLDenoiser:
                     audio, dfn_meta = self._apply_dfn(audio, sample_rate)
                     dfn_applied = True
                     metadata["dfn"] = dfn_meta
+
+                    # §Witness-SOTA H1+H2: Die ML-Stufe (Kandidat) darf sich nur
+                    # dort durchsetzen, wo sie gegenüber dem OMLSA-Baseline
+                    # HÖRBAR leiser ist (Johnston-Maskierungsschwelle, Bark-
+                    # Bänder, Never-worsen); danach dämpft das Musical-Noise-Gate
+                    # hörbares Restrauschen auf die Schwelle (nie „tote Stille").
+                    # ML→DSP-Ersatzpfad mit Warnung bei Fehler (§V6 (copilot-instructions.md)): dann bleibt
+                    # das unveränderte DeepFilterNet-Ergebnis bestehen.
+                    if self.config.enable_psychoacoustic_fusion and omlsa_applied:
+                        try:
+                            from backend.core.dsp.hybrid_denoise_fusion import (  # pylint: disable=import-outside-toplevel
+                                masked_denoise_fusion,
+                                musical_noise_gate,
+                            )
+
+                            audio, _fusion_report = masked_denoise_fusion(audio, _omlsa_baseline, sample_rate)
+                            metadata["psychoacoustic_fusion"] = _fusion_report
+                            audio, _gate_report = musical_noise_gate(audio, sample_rate)
+                            metadata["musical_noise_gate"] = _gate_report
+                            logger.info(
+                                "§H1+H2 Psychoakustische Denoise-Fusion: mean_blend=%.3f, bands_gated=%d",
+                                float(_fusion_report.get("mean_blend", 0.0)),
+                                int(_gate_report.get("bands_gated", 0)),
+                            )
+                        except Exception as _pf_exc:  # pylint: disable=broad-except
+                            logger.warning(
+                                "§V6 (copilot-instructions.md) Psychoakustische Fusion nicht anwendbar (%s) — "
+                                "DeepFilterNet-Ergebnis ohne H1+H2-Gate beibehalten",
+                                _pf_exc,
+                            )
 
                     # Re-estimate quality after DeepFilterNet
                     quality_estimate = self._estimate_quality(audio, sample_rate)

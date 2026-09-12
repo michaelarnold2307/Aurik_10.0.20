@@ -166,9 +166,13 @@
 | backend/core/dsp/roughness_model.py | ACTIVE | backend/core/dsp | ja | — | Rauigkeits-Schätzer (2026-09-12): Hilbert-Hüllkurven-Fluktuation 20–150 Hz, deterministisch (§Witness-SOTA P2); Witness-Delta roughness_rise_asper |
 | backend/core/dsp/pre_echo_model.py | ACTIVE | backend/core/dsp | ja | — | Pre-Echo-Proxy (2026-09-12, §Witness-SOTA P4): Delta-Energie vor starken Onsets (Forward-Masking-Verletzung), 5-ms-Hüllkurven, deterministisch |
 | backend/core/dsp/stem_recombination_gates.py | ACTIVE | backend/core/dsp | ja | — | C1–C3-Rekombinations-Gates vor §SLR-1f (2026-09-12, REKOMBINATION_ZEITPUNKT_ANALYSE.md §4/§6): C2 Hüllkurven-Alignment, C1 Bark-Residuum-Gate vs. Maskierungsschwelle, C3 interaural_cues am Nahtpunkt — deterministisch, report-only |
+| backend/core/dsp/hybrid_denoise_fusion.py | ACTIVE | backend/core/dsp | ja | — | H1+H2 DSP/ML-Hybrid (2026-09-12, §Witness-SOTA): masking-threshold-bewusste ML-vs-DSP-Denoise-Fusion (Parseval-Band-Deltas, Never-worsen, 3-dB-JND) + Musical-Noise-Gate (Minimum-Tracking auf Maskierungsschwelle, nie „tote Stille") — deterministisch, layout-agnostisch |
+| backend/core/dsp/witness_correction_loop.py | ACTIVE | backend/core/dsp | ja | — | H3 Witness-Veto → global_scalar/family_scalars (2026-09-12, §V7, todo t11): delta-basierte JND-Überschreitungen (Rauigkeit/Pre-Echo/Stereo-Kollaps/HNR/Pitch) reduzieren die verantwortliche Phase-Familie SOFORT, Clamping [0.50, 1.50] — deterministisch |
 | tests/unit/test_stem_recombination_gates.py | ACTIVE | testing/unit | ja | — | C1–C3-Gate-Tests (2026-09-12): perfekte Separation unangetastet, Alignment-Korrektur, hörbarer Verlust wiederhergestellt, maskiertes Residuum verworfen, Stereo-Kollaps gemeldet, Layout/Determinismus |
 | tests/unit/test_aspade_declipper_plugin.py | ACTIVE | testing/unit | ja | — | A-SPADE-Plugin-Tests (2026-09-12): Fallback ohne Modell, synthetisches Identity-ONNX (dynamische Zeitachse), Determinismus, Phase-07-Never-worsen-Router |
 | tests/unit/test_witness_sota_p1p2.py | ACTIVE | testing/unit | ja | — | Witness-SOTA-Tests (2026-09-12): Bark-Determinismus, Masker verdeckt Delta, lautes Delta audible, AM-Rauigkeit signiert, P3 Stereo-Kollaps, P4 Pre-Echo |
+| tests/unit/test_hybrid_denoise_fusion.py | ACTIVE | testing/unit | ja | — | H1+H2-Tests (2026-09-12): Passthrough, Never-worsen bei lauterem Kandidaten, hörbar leisere Übernahme, Stereo-Layout, Determinismus, Gate ≤ 1 |
+| tests/unit/test_witness_correction_loop.py | ACTIVE | testing/unit | ja | — | H3-Tests (2026-09-12): clean = no-op, Rauigkeit/Pre-Echo/Stereo-Veto-Familien, Clamping-Floor, Determinismus |
 
 ## Pflege-Regeln
 

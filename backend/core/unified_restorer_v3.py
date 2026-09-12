@@ -15236,6 +15236,27 @@ class UnifiedRestorerV3:
                                 "witness": _fc_veto_wit.as_dict(),
                                 "rolled_back": True,
                             }
+                        # §Witness-SOTA H3: JEDES Veto (hart wie weich) passt die
+                        # verantwortliche Phase-Familie SOFORT an — global_scalar/
+                        # family_scalars werden delta-basiert reduziert, damit
+                        # nachgelagerte Phasen die Regression nicht wiederholen
+                        # (§V7 (copilot-instructions.md): Stärke-Entscheidungen zentral über global_scalar).
+                        try:
+                            from backend.core.dsp.witness_correction_loop import (  # pylint: disable=import-outside-toplevel
+                                apply_witness_veto,
+                            )
+
+                            _veto_result = apply_witness_veto(
+                                self._song_calibration_profile, _fc_veto_wit, "feedback_chain"
+                            )
+                            if _veto_result.applied:
+                                self._restoration_context["witness_veto_adjusted"] = {
+                                    "stage": "feedback_chain",
+                                    "adjustments": _veto_result.adjustments,
+                                    "global_factor": _veto_result.global_factor,
+                                }
+                        except Exception as _wv_exc:  # pylint: disable=broad-except
+                            logger.debug("§Witness-Veto Korrektur nicht anwendbar: %s", _wv_exc)
                 except Exception as _fc_veto_exc:  # pylint: disable=broad-except
                     logger.debug("§Witness-Veto Prüfung fehlgeschlagen (nicht blockierend): %s", _fc_veto_exc)
                 # §Ebene-3 Audit → Ergebnis-Metadaten (hoerordnung.instructions.md §8, GUI-Ampel).
