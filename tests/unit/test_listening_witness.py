@@ -48,6 +48,36 @@ def test_deterministic() -> None:
     assert r1.as_dict() == r2.as_dict()
 
 
+def test_air_gain_db_reports_air_band_delta() -> None:
+    """§Witness↔Goals-Harmonisierung: Brillianz-Zeuge (Luftband-Delta, signiert)."""
+    x = _tone_vibrato()
+    t = np.arange(N) / SR
+    air = 0.02 * np.sin(2 * np.pi * 12000.0 * t)  # 12-kHz-Komponente = Luftband
+    res_boost = evaluate_listening_witness(x, (x + air).astype(np.float32), SR, "phase_air")
+    assert res_boost.air_gain_db > 0.0, f"Luftband-Boost muss positiv gemeldet werden: {res_boost.air_gain_db}"
+    assert "air_loss" not in res_boost.findings
+
+    # Identität: Delta ≈ 0, kein Befund.
+    res_id = evaluate_listening_witness(x, x.copy(), SR, "phase_air_id")
+    assert abs(res_id.air_gain_db) < 0.5, f"Identität darf kein Luftband-Delta melden: {res_id.air_gain_db}"
+    assert "air_loss" not in res_id.findings
+
+
+def test_air_loss_finding_on_band_suppression() -> None:
+    """Starke Luftband-Dämpfung (z. B. muffige Restauration) wird als air_loss gemeldet."""
+    x = _tone_vibrato()
+    t = np.arange(N) / SR
+    air = 0.02 * np.sin(2 * np.pi * 12000.0 * t)
+    src = (x + air).astype(np.float32)
+    from scipy.signal import butter, sosfiltfilt
+
+    _sos = butter(4, 6000.0, btype="lowpass", fs=SR, output="sos")
+    muffled = sosfiltfilt(_sos, src).astype(np.float32)
+    res = evaluate_listening_witness(src, muffled, SR, "phase_muffle")
+    assert res.air_gain_db < -1.0, f"Luftband-Dämpfung muss negativ gemeldet werden: {res.air_gain_db}"
+    assert "air_loss" in res.findings
+
+
 def test_pitch_drift_detected() -> None:
     """+50 Cent Versatz ⇒ pitch_instability (JND ~5–10 Cent, Schwelle 15 Cent)."""
     x = _tone_vibrato(f0=220.0)

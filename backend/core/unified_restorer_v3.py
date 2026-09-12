@@ -13448,6 +13448,14 @@ class UnifiedRestorerV3:
                         "instrumental_nr_model": _slr_result.instrumental_nr_model,
                     }
                     self._restoration_context["stem_level_restorer"] = _slr_metadata
+                    _slr_metadata["vocal_stem_kim"] = bool(_slr_result.vocal_stem_kim)
+                    _slr_metadata["instrumental_stem_kim"] = bool(_slr_result.instrumental_stem_kim)
+                    _slr_metadata["air_presence_used"] = bool(_slr_result.air_presence_used)
+                    if _slr_result.air_presence_witness:
+                        _slr_metadata["air_presence_witness"] = _slr_result.air_presence_witness
+                    if _slr_result.stem_context is not None:
+                        # §v10.19 First-Class StemContext — für Phasen 19/43/66 im Loop lesbar
+                        self._restoration_context["stem_context"] = _slr_result.stem_context
                     if isinstance(getattr(self, "_phase_metadata_accumulator", None), dict):
                         self._phase_metadata_accumulator["stem_level_restorer"] = _slr_metadata
                 if _slr_result is not None and _slr_result.success:

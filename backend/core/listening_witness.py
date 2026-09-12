@@ -59,6 +59,9 @@ _MOD_LO_HZ = 0.2
 _MOD_HI_HZ = 6.0
 _BASS_LO_HZ = 20.0
 _BASS_HI_HZ = 250.0
+_AIR_LO_HZ = 8000.0
+_AIR_HI_HZ = 20000.0
+_AIR_LOSS_DB = 2.0
 _TRANSIENT_WIN = 0.005  # 5-ms-Envelope für Transienten-Steigung
 
 
@@ -75,6 +78,7 @@ class ListeningWitnessResult:
     loud_mod_rise_db: float = 0.0
     bass_drop_db: float = 0.0
     transient_smear_ratio: float = 0.0
+    air_gain_db: float = 0.0
     findings: list[str] = field(default_factory=list)
 
     def as_dict(self) -> dict:
@@ -88,6 +92,7 @@ class ListeningWitnessResult:
             "loud_mod_rise_db": round(self.loud_mod_rise_db, 2),
             "bass_drop_db": round(self.bass_drop_db, 2),
             "transient_smear_ratio": round(self.transient_smear_ratio, 3),
+            "air_gain_db": round(self.air_gain_db, 2),
             "findings": list(self.findings),
         }
 
@@ -351,6 +356,14 @@ def evaluate_listening_witness(
     bass_drop = _bass_a - _bass_b
     transient_smear = float((_tr_a - _tr_b) / max(_tr_a, 1e-6)) if _tr_a > 1e-6 else 0.0
 
+    # §Witness↔Goals-Harmonisierung (2026-09-12): Brillianz-Zeuge — signiertes
+    # Luftband-Delta (8–20 kHz) in dB. Gleiche Wahrnehmungsdomäne wie das
+    # Brillianz-Goal (Musical-Goals), aber delta-basiert (Witness-Rolle:
+    # Regression, nicht Zielwert). Positiv = Brillianz-Gewinn, negativ = Verlust.
+    _air_a = _band_energy_ratio_db(a, sr, _AIR_LO_HZ, _AIR_HI_HZ)
+    _air_b = _band_energy_ratio_db(b, sr, _AIR_LO_HZ, _AIR_HI_HZ)
+    air_gain = _air_b - _air_a
+
     result = ListeningWitnessResult(
         phase_id=phase_id,
         pitch_drift_cents=pitch_delta,
@@ -361,6 +374,7 @@ def evaluate_listening_witness(
         loud_mod_rise_db=max(loud_b - loud_a, 0.0),
         bass_drop_db=max(bass_drop, 0.0),
         transient_smear_ratio=max(transient_smear, 0.0),
+        air_gain_db=air_gain,
     )
 
     if result.pitch_drift_cents > _PITCH_DRIFT_CENTS:
@@ -379,4 +393,6 @@ def evaluate_listening_witness(
         result.findings.append("bass_loss")
     if result.transient_smear_ratio > _TRANSIENT_SMEAR_RATIO:
         result.findings.append("transient_smearing")
+    if result.air_gain_db < -_AIR_LOSS_DB:
+        result.findings.append("air_loss")
     return result

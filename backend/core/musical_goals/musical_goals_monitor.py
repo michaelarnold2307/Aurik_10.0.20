@@ -116,6 +116,29 @@ class MusicalGoalsMonitor:
         self.pre_validation_result: PreValidationResult | None = None
         self.checkpoints: list[MonitoringCheckpoint] = []
         self.thresholds: dict[str, float] | None = None
+        self._last_audio: np.ndarray | None = None
+        self._last_sr: int = 48000
+        self._last_goals: dict[str, float] = {}
+
+    def get_status(self) -> dict[str, Any]:
+        """Status-Snapshot für UV3-Health-Block — inkl. Brillianz-Goal.
+
+        §v10.19: Das Brillianz-Goal (Luftband 8–20 kHz) wird explizit gemeldet,
+        damit der überwachte Run die Air-Presence-Wirkung im Monitor sieht.
+        """
+        _brillanz = self._last_goals.get("brillanz")
+        if _brillanz is None and self._last_audio is not None:
+            try:
+                _goals = self.goals_checker.measure_all(self._last_audio, self._last_sr)
+                _brillanz = float(_goals.get("brillanz", 0.0))
+            except Exception as _gs_exc:
+                logger.debug("MusicalGoalsMonitor.get_status Messung nicht verfügbar: %s", _gs_exc)
+        return {
+            "active": True,
+            "brillanz": None if _brillanz is None else round(float(_brillanz), 4),
+            "goals": dict(self._last_goals),
+            "checkpoints": len(self.checkpoints),
+        }
 
     def pre_validate(
         self,
@@ -218,6 +241,9 @@ class MusicalGoalsMonitor:
         )
 
         self.checkpoints.append(checkpoint)
+        self._last_audio = np.asarray(audio, dtype=np.float32)
+        self._last_sr = int(sr)
+        self._last_goals = dict(current_goals)
 
         if violations:
             logger.warning(
@@ -322,6 +348,16 @@ class MusicalGoalsMonitor:
                 "authentizitaet": -0.03 * strength,
                 "emotionalitaet": 0.01 * strength,
                 "transparenz": 0.03 * strength,
+            },
+            # §v10.19: Air-Presence (DSP-Luftband 8–20 kHz) hebt Brillianz/Transparenz
+            "air_presence": {
+                "bass_kraft": 0.0 * strength,
+                "brillanz": 0.05 * strength,
+                "waerme": -0.01 * strength,
+                "natuerlichkeit": -0.01 * strength,
+                "authentizitaet": 0.0 * strength,
+                "emotionalitaet": 0.01 * strength,
+                "transparenz": 0.04 * strength,
             },
             # Default (unknown algorithm)
             "unknown": dict.fromkeys(current_goals, -0.05 * strength),

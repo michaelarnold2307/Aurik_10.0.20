@@ -2026,6 +2026,66 @@ class DeEsserPhase(PhaseInterface):
                 _sc19_exc,
             )
 
+        # §v10.19 Präsenz/Formant-Pfad (DSP, harmlos, deterministisch):
+        # Singer's-Formant (2.5–3.5 kHz, additive Schmalband-Komponente) +
+        # Air-Band (8–20 kHz via enhance_air_presence, Original-Phasen-STFT).
+        # Nur aktiv, wenn ein StemContext existiert (§SLR-1 hat separiert);
+        # witness-guarded — blend=0 bei Hör-Regression (§SLR-1e2b-Schwellen).
+        _presence_formant_applied = False
+        _presence_formant_witness: dict | None = None
+        try:
+            _ctx_sc = (kwargs.get("restoration_context") or {}).get("stem_context")
+            if _ctx_sc is not None:
+                from scipy.signal import butter
+                from scipy.signal import sosfiltfilt as _sosfiltfilt
+
+                from backend.core.dsp.air_presence_enhancer import (  # pylint: disable=import-outside-toplevel
+                    enhance_air_presence,
+                )
+                from backend.core.listening_witness import (  # pylint: disable=import-outside-toplevel
+                    evaluate_listening_witness,
+                )
+
+                _pf_in = np.asarray(deessed_audio, dtype=np.float32)
+                _air_cf = _pf_in.T if _pf_in.ndim == 2 else _pf_in  # channels-first für Enhancer
+                _air_strength = float(np.clip(0.10 * _effective_strength, 0.0, 0.20))
+                _air_out_cf = enhance_air_presence(_air_cf, sr=sample_rate, strength=_air_strength)
+                _air_out = _air_out_cf.T if _pf_in.ndim == 2 else _air_out_cf
+
+                # Singer's-Formant: sanfte additive Anhebung 2.5–3.5 kHz (max +1.5 dB)
+                _sos_pf = butter(2, [2500.0, 3500.0], btype="bandpass", fs=sample_rate, output="sos")
+                _pf_gain = float(np.clip(0.10 * _effective_strength, 0.0, 0.15))
+                _formant = _sosfiltfilt(_sos_pf, _air_out, axis=0)
+                _pf_candidate = np.clip(_air_out + _pf_gain * _formant, -1.0, 1.0).astype(np.float32)
+
+                _wit19 = evaluate_listening_witness(_pf_in, _pf_candidate, sample_rate, "phase_19_presence_formant")
+                _pf_ok = _wit19.hnr_drop_db < 1.0 and _wit19.pitch_drift_cents < 8.0 and _wit19.flat_top_rise < 0.02
+                if _pf_ok:
+                    deessed_audio = _pf_candidate
+                    _presence_formant_applied = True
+                    _presence_formant_witness = {
+                        "applied": True,
+                        "algorithm": "presence_formant_dsp",
+                        "air_strength": _air_strength,
+                        "formant_gain": _pf_gain,
+                        "witness": _wit19.as_dict(),
+                    }
+                else:
+                    logger.debug(
+                        "§v10.19 Verarbeitungsschritt_19 Präsenz/Formant Witness-Gate hält "
+                        "(hnr=%.2f pitch=%.1f flat=%.3f)",
+                        _wit19.hnr_drop_db,
+                        _wit19.pitch_drift_cents,
+                        _wit19.flat_top_rise,
+                    )
+                    _presence_formant_witness = {
+                        "applied": False,
+                        "reason": "witness_gate",
+                        "witness": _wit19.as_dict(),
+                    }
+        except Exception as _pf19_exc:
+            logger.debug("§v10.19 Verarbeitungsschritt_19 Präsenz/Formant-Pfad (nicht blockierend): %s", _pf19_exc)
+
         return _phase_result(
             success=True,
             audio=deessed_audio,
@@ -2072,6 +2132,9 @@ class DeEsserPhase(PhaseInterface):
                 "effective_strength": _effective_strength,
                 "rms_drop_db": 0.0,
                 "loudness_makeup_db": 0.0,
+                # §v10.19 Präsenz/Formant-Pfad
+                "presence_formant_applied": _presence_formant_applied,
+                "presence_formant_witness": _presence_formant_witness,
             },
             metrics={
                 "sibilance_reduction_db": float(sibilance_reduction_db),  # type: ignore[arg-type]

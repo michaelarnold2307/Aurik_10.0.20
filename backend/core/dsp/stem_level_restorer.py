@@ -85,6 +85,15 @@ class StemLevelRestorerResult:
     kim_inst_witness: dict | None = None
     """Listening-Witness report of the KIM-Inst clarity stage (None if skipped)."""
 
+    air_presence_used: bool = False
+    """True if the Air-Presence DSP stage (§SLR-1e2b) was applied to the vocal stem."""
+
+    air_presence_witness: dict | None = None
+    """Listening-Witness report of the Air-Presence stage (None if skipped)."""
+
+    stem_context: object | None = None
+    """First-Class StemContext (§v10.19) mit finalen Stems + Stage-Bookkeeping."""
+
 
 # ---------------------------------------------------------------------------
 # Singleton
@@ -194,6 +203,8 @@ class StemLevelRestorer:
         _dfn_used = False
         _kim_used = False
         _kim_witness: dict | None = None
+        _air_used = False
+        _air_witness: dict | None = None
         _kim_inst_used = False
         _kim_inst_witness: dict | None = None
         _vocal_nr_model = "none"
@@ -237,6 +248,15 @@ class StemLevelRestorer:
         except Exception as _kim_exc:  # pylint: disable=broad-except
             logger.debug("§SLR-1 KIM2 nicht blockierend: %s", _kim_exc)
 
+        # §SLR-1e2b: Air-Presence-Brillianz (DSP, §v10.19) — modellfreie Stufe
+        # NACH KIM2, VOR dem Remix: Luftband 8–20 kHz via Original-Phasen-STFT,
+        # Raised-Cosine-Kanten, Noise-Floor-Gate. Never-worsen via
+        # Listening-Witness-Gate (gleiche Schwellen wie KIM2) + Air-Gain-Check.
+        try:
+            _vocal_out, _air_used, _air_witness = self._apply_air_presence(_vocal_stem, _vocal_out, sample_rate)
+        except Exception as _air_exc:  # pylint: disable=broad-except
+            logger.debug("§SLR-1 Air-Presence nicht blockierend: %s", _air_exc)
+
         # §SLR-1e3: KIM Inst (kim_inst) Musik-Klarheit — Spiegelstufe zu KIM2.
         # kim_inst.onnx (64 MB, vortrainiert) ist das Musik-Enhancement —
         # NACH der DFN-NR, VOR dem Remix (ein Rekombinationspunkt).
@@ -247,6 +267,37 @@ class StemLevelRestorer:
             )
         except Exception as _kim_inst_exc:  # pylint: disable=broad-except
             logger.debug("§SLR-1 KIM Inst nicht blockierend: %s", _kim_inst_exc)
+
+        # §SLR-1e4: StemContext (First-Class, §v10.19) aufbauen — Stems sind final.
+        from backend.core.dsp.stem_context import StemContext  # pylint: disable=import-outside-toplevel
+
+        _stages = []
+        if _miipher_used:
+            _stages.append(_vocal_nr_model)
+        if _dfn_used:
+            _stages.append(_instrumental_nr_model)
+        if _kim_used:
+            _stages.append("kim_vocal_2")
+        if _air_used:
+            _stages.append("air_presence")
+        if _kim_inst_used:
+            _stages.append("kim_inst")
+        _witness_reports: dict = {}
+        if isinstance(_kim_witness, dict) and isinstance(_kim_witness.get("witness"), dict):
+            _witness_reports["kim_vocal_2"] = _kim_witness["witness"]
+        if isinstance(_air_witness, dict) and isinstance(_air_witness.get("witness"), dict):
+            _witness_reports["air_presence"] = _air_witness["witness"]
+        if isinstance(_kim_inst_witness, dict) and isinstance(_kim_inst_witness.get("witness"), dict):
+            _witness_reports["kim_inst"] = _kim_inst_witness["witness"]
+        _stem_context = StemContext(
+            vocal_stem=np.asarray(_vocal_out.T if _vocal_out.ndim == 2 else _vocal_out, dtype=np.float32),
+            instrumental_stem=np.asarray(_instr_out.T if _instr_out.ndim == 2 else _instr_out, dtype=np.float32),
+            sample_rate=int(sample_rate),
+            panns_singing=float(panns_singing),
+            separation_model=_separation_model,
+            applied_stages=_stages,
+            witness_reports=_witness_reports,
+        )
 
         # §SLR-1f: Remix stems to output
         _out = self._coerce_like(_vocal_out + _instr_out, _audio)
@@ -289,6 +340,9 @@ class StemLevelRestorer:
                 kim_witness=_kim_witness,
                 instrumental_stem_kim=_kim_inst_used,
                 kim_inst_witness=_kim_inst_witness,
+                air_presence_used=_air_used,
+                air_presence_witness=_air_witness,
+                stem_context=_stem_context,
                 vqi_after=_vqi_after,
                 rollback_reason=_rollback_reason,
                 separation_model=_separation_model,
@@ -310,6 +364,9 @@ class StemLevelRestorer:
             kim_witness=_kim_witness,
             instrumental_stem_kim=_kim_inst_used,
             kim_inst_witness=_kim_inst_witness,
+            air_presence_used=_air_used,
+            air_presence_witness=_air_witness,
+            stem_context=_stem_context,
             vqi_after=_vqi_after,
             fallback_reason="" if _success else "no_stem_nr_applied",
             separation_model=_separation_model,
@@ -519,6 +576,75 @@ class StemLevelRestorer:
         except Exception as exc:  # pylint: disable=broad-except
             logger.debug("§KIM2 Klarheit nicht verfuegbar: %s", exc)
             return np.asarray(vocal_nr, dtype=np.float32), False, {"applied": False, "reason": "unavailable"}
+
+    # -----------------------------------------------------------------------
+    # Air-Presence (vocal stem) — DSP-Brillianz im Luftband (§SLR-1e2b)
+    # -----------------------------------------------------------------------
+
+    def _apply_air_presence(
+        self, vocal_stem: np.ndarray, vocal_processed: np.ndarray, sample_rate: int
+    ) -> tuple[np.ndarray, bool, dict | None]:
+        """Wendet an: Air-Presence-Brillianz auf den verarbeiteten Vokalstem.
+
+        §SLR-1e2b (§v10.19): modellfreie DSP-Stufe NACH KIM2 — Luftband
+        8–20 kHz via Original-Phasen-STFT (enhance_air_presence),
+        Raised-Cosine-Kanten, Noise-Floor-Gate. Deterministisch (§G5 (copilot-instructions.md)).
+
+        Never-worsen-Vertrag (§0 Primum non nocere): Übernahme nur, wenn der
+        Listening-Witness keine Hör-Regression meldet (hnr_drop < 1.0 dB,
+        pitch_drift < 8 ct, flat_top_rise < 0.02) — sonst blend=0-Passthrough.
+
+        Args:
+            vocal_stem:      Originaler Vokalstem (Referenz, unverändert).
+            vocal_processed: Aktueller Vokalstem nach MIIPHER/KIM2 (channels-last (N, 2) bzw. (N,)).
+            sample_rate:     48000 Hz.
+
+        Returns:
+            (audio, applied, witness-metadata) — bei blend=0 identisch zum Input.
+        """
+        _metadata: dict | None = None
+        try:
+            from backend.core.dsp.air_presence_enhancer import (  # pylint: disable=import-outside-toplevel
+                enhance_air_presence,
+            )
+
+            _in = np.asarray(vocal_processed, dtype=np.float32)
+            # Enhancer erwartet channels-first (2, N); Stem ist channels-last (N, 2).
+            _in_cf = _in.T if _in.ndim == 2 else _in
+            _enhanced = enhance_air_presence(_in_cf, sr=sample_rate, strength=0.15)
+            _out = self._coerce_like(_enhanced, _in)
+            _out = np.nan_to_num(_out, nan=0.0, posinf=0.0, neginf=0.0)
+            _out = np.clip(_out, -1.0, 1.0)
+
+            from backend.core.listening_witness import (  # pylint: disable=import-outside-toplevel
+                evaluate_listening_witness,
+            )
+
+            _witness = evaluate_listening_witness(_in, _out, sample_rate, "air_presence")
+            _ok = _witness.hnr_drop_db < 1.0 and _witness.pitch_drift_cents < 8.0 and _witness.flat_top_rise < 0.02
+            if not _ok:
+                logger.info(
+                    "§SLR-1e2b Air-Presence Witness-Gate haelt Stem (hnr_drop=%.2f dB pitch=%.1f ct flat_top=%.3f)",
+                    _witness.hnr_drop_db,
+                    _witness.pitch_drift_cents,
+                    _witness.flat_top_rise,
+                )
+                _metadata = {"applied": False, "reason": "witness_gate", "witness": _witness.as_dict()}
+                return np.asarray(vocal_processed, dtype=np.float32), False, _metadata
+            _metadata = {
+                "applied": True,
+                "algorithm": "air_presence_stft",
+                "strength": 0.15,
+                "witness": _witness.as_dict(),
+            }
+            return _out, True, _metadata
+        except Exception as exc:  # pylint: disable=broad-except
+            logger.debug("§SLR-1e2b Air-Presence nicht verfuegbar: %s", exc)
+            return (
+                np.asarray(vocal_processed, dtype=np.float32),
+                False,
+                {"applied": False, "reason": "unavailable"},
+            )
 
     def _apply_kim_inst_clarity(
         self, instr_stem: np.ndarray, instr_nr: np.ndarray, sample_rate: int
