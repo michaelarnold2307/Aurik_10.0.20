@@ -15204,6 +15204,40 @@ class UnifiedRestorerV3:
                 _fc_chain_result = _fc_chain.run(restored_audio, _fc_numbered_list, ceiling=_fc_ceiling_val)
                 _budget_timings["feedback_chain_s"] = round(time.perf_counter() - _t_fc0, 4)
                 restored_audio = _fc_chain_result.audio
+                # §Witness-Veto-Korrekturschleife (Hörordnung §8a, todo t11): Die
+                # FeedbackChain darf den Pre-FC-Zustand nicht hörbar verschlechtern —
+                # der Witness entscheidet SOFORT, nicht erst durch nachträgliche
+                # Eingriffe. Bei Hör-Regression Rollback auf die Pre-FC-Referenz.
+                try:
+                    from backend.core.listening_witness import (  # pylint: disable=import-outside-toplevel
+                        evaluate_listening_witness,
+                    )
+
+                    _fc_veto_ref = getattr(self, "_wohklang_pre_enhancement_ref", None)
+                    if _fc_veto_ref is not None and getattr(_fc_veto_ref, "shape", None) == restored_audio.shape:
+                        _fc_veto_wit = evaluate_listening_witness(
+                            _fc_veto_ref, restored_audio, sample_rate, "feedback_chain_veto"
+                        )
+                        if (
+                            _fc_veto_wit.hnr_drop_db >= 1.0
+                            or _fc_veto_wit.pitch_drift_cents >= 8.0
+                            or _fc_veto_wit.flat_top_rise >= 0.02
+                        ):
+                            logger.warning(
+                                "§Witness-Veto: FeedbackChain verschlechtert hörbar "
+                                "(hnr=%.2f dB pitch=%.1f ct flat=%.3f) → Rollback auf Pre-FC-Zustand",
+                                _fc_veto_wit.hnr_drop_db,
+                                _fc_veto_wit.pitch_drift_cents,
+                                _fc_veto_wit.flat_top_rise,
+                            )
+                            restored_audio = np.asarray(_fc_veto_ref, dtype=np.float32)
+                            self._restoration_context["witness_veto"] = {
+                                "stage": "feedback_chain",
+                                "witness": _fc_veto_wit.as_dict(),
+                                "rolled_back": True,
+                            }
+                except Exception as _fc_veto_exc:  # pylint: disable=broad-except
+                    logger.debug("§Witness-Veto Prüfung fehlgeschlagen (nicht blockierend): %s", _fc_veto_exc)
                 # §Ebene-3 Audit → Ergebnis-Metadaten (hoerordnung.instructions.md §8, GUI-Ampel).
                 try:
                     _wo_audit = getattr(_fc_chain, "last_wohlklang_audit", None) or getattr(

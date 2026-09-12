@@ -995,6 +995,21 @@ class WowFlutterFix(PhaseInterface):
         # Step 3: Detect significant wow/flutter (check if correction needed)
         wow_flutter_detected, max_deviation = self._detect_wow_flutter(pitch_trajectory, confidence, threshold)
 
+        # §Witness-Schutz (t14, §v10.709-Befund): Pitch-Korrektur nur bei
+        # belastbarer Evidenz — sonst erzeugt die Korrektur selbst Pitch-Wobble
+        # in Gesang UND Musik (Produktionsbefund: verschlimmerte Aufnahme).
+        if wow_flutter_detected:
+            _wf_strong_conf = confidence[confidence > 0.5]
+            _wf_mean_conf = float(np.mean(_wf_strong_conf)) if _wf_strong_conf.size else 0.0
+            if _wf_strong_conf.size < 4 or _wf_mean_conf < 0.5:
+                logger.info(
+                    "Verarbeitungsschritt 12: Wow/Flutter-Korrektur übersprungen — "
+                    "Pitch-Evidenz unzureichend (frames=%d mean_conf=%.2f)",
+                    int(_wf_strong_conf.size),
+                    _wf_mean_conf,
+                )
+                wow_flutter_detected = False
+
         if not wow_flutter_detected:
             # No significant wow/flutter detected
             metadata: dict[str, Any] = {
