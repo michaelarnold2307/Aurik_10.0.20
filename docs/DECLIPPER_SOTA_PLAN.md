@@ -65,6 +65,15 @@ Kanal nur übernommen, wenn der Proxy sinkt, sonst bleibt PCHIP. Tests:
   Adapter liegen (`is_available()=False` → CQT-Diff/PCHIP, §V6
   (copilot-instructions.md)) und lädt das Modell automatisch, sobald es
   unter `models/aspade/aspade_declipper.onnx` liegt.
+- **APPLADE-Code-Fund (2026-09-12):** Das offizielle APPLADE-Repo des
+  Erstautors (TomoroTanaka/APPLADE, Zenodo/MATLAB-File-Exchange) enthält
+  die trainierten DNN-Parameter (MATLAB .mat, 16-kHz-Sprache/LibriSpeech)
+  — aber unter **NTT-Software-Lizenz „for Evaluation"**: keine Weitergabe,
+  keine kommerzielle Nutzung, keine abgeleiteten Werke. Einbinden in Aurik
+  (öffentliches Repo) wäre ein Lizenzverstoß → nicht integrierbar ohne
+  schriftliche Freigabe von NTT. Technisch wäre der PnP-ADMM-Ansatz
+  determinismus-tauglich (§G5 (copilot-instructions.md)), die Domäne aber
+  Sprache/16 kHz statt Musik/48 kHz.
 - **Operativer neuronaler Declip-Zweig ist CQT-Diff+** (250 MB, lokal unter
   models/cqtdiff vorhanden, §v10.752 mit KL-Guard + fixem Seed) — der
   schwere Fall ist damit neuronal abgedeckt; A-SPADE wäre die
