@@ -663,11 +663,11 @@ class CrackleRemovalPhase(PhaseInterface):
         if audio.ndim == 2:
             if audio.shape[0] <= 2 and audio.shape[1] > 2:
                 _outs = [self._remove_crackle_onnx_direct(audio[c], sample_rate, params) for c in range(audio.shape[0])]
-                _stereo_result: np.ndarray = np.stack(_outs, axis=0).astype(np.float32)
-                return _stereo_result
+                _stereo_cf: np.ndarray = np.stack(_outs, axis=0).astype(np.float32)
+                return _stereo_cf
             _outs = [self._remove_crackle_onnx_direct(audio[:, c], sample_rate, params) for c in range(audio.shape[1])]
-            _stereo_result: np.ndarray = np.stack(_outs, axis=1).astype(np.float32)
-            return _stereo_result
+            _stereo_cl: np.ndarray = np.stack(_outs, axis=1).astype(np.float32)
+            return _stereo_cl
 
         # --- Channel handling (Mono) ---
         # §v10.99: audio.shape[0] <= audio.shape[1] ist für kurzes channels-last
