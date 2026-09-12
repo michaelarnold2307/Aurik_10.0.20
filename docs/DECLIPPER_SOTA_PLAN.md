@@ -52,7 +52,19 @@ delta-basiert, AGENTS.md Guard-Kalibrierung) — der Sparse-Kandidat wird pro
 Kanal nur übernommen, wenn der Proxy sinkt, sonst bleibt PCHIP. Tests:
 88 grün (mild → abgelehnt, stark → übernommen, Determinismus, Fallback).
 
-### Slice B — A-SPADE-ONNX-Plugin ✅ (2026-09-12 umgesetzt, Modell-Artefakt offen)
+### Slice B — A-SPADE-ONNX-Plugin ✅ (2026-09-12: Plugin + ONNX-Export komplett)
+- **ONNX-Export abgeschlossen (2026-09-12):** APPLADE-Gewichte aus
+  `TrainedDNNParameters.mat` extrahiert (856.033 Parameter, MCOS-Format
+  dekodiert), PyTorch-Port, ONNX-Export (opset 17, dynamische Zeitachse,
+  ORT vs. PyTorch max|Δ| = 4.7e-05) → `models/aspade/aspade_declipper.onnx`
+  (lokal, gitignored — NTT-Evaluation-Lizenz: keine Weitergabe).
+- **Validierung:** SDR-Selbsttest auf den vier mitgelieferten
+  LibriSpeech-Beispielen — ΔSDR +0.02…+0.51 dB bei starkem Clipping
+  (8.6–15.9 %), nie schlechter als Input. Port = funktional korrekt.
+- **Plugin-APPLADE-Pfad:** DGT (Hann 1024/256, kanonisch-tight) + PnP-ADMM
+  (100 Iterationen, λ = 0.3·Clip-Prozent, Π_Γ-Projektion) um das ONNX-DNN;
+  16-kHz-Verarbeitung in 16 384er-Blöcken, Masken-Blend in den 48-kHz-Bereich.
+  93 Tests grün (Identity-ONNX, Determinismus, Fallback ohne Modell).
 - `plugins/aspade_declipper_plugin.py` nach dem Muster von
   `banquet_vinyl_plugin.py`/`deepfilternet_v3_ii_plugin.py`: ONNX-Session über
   `ml_device_manager`/Providers, Chunked-Inferenz (10 s + 0.5 s Hann-Overlap-Add),

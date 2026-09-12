@@ -21,12 +21,15 @@ def _tone_clipped(dur_s: float = 2.0) -> np.ndarray:
 
 
 def _save_identity_onnx(path) -> None:
-    """Schreibt ein Identity-ONNX (1, 1, T) → (1, 1, T) mit dynamischer Zeitachse."""
+    """Schreibt ein Identity-ONNX (1, 1, 512, T) → (1, 1, 512, T), dynamische Zeitachse.
+
+    Entspricht dem APPLADE-Vertrag: Magnitude-Patch (Frequenz 512 × Zeit T).
+    """
     import onnx
     from onnx import TensorProto, helper
 
-    x = helper.make_tensor_value_info("x", TensorProto.FLOAT, [1, 1, None])
-    y = helper.make_tensor_value_info("y", TensorProto.FLOAT, [1, 1, None])
+    x = helper.make_tensor_value_info("x", TensorProto.FLOAT, [1, 1, 512, None])
+    y = helper.make_tensor_value_info("y", TensorProto.FLOAT, [1, 1, 512, None])
     node = helper.make_node("Identity", ["x"], ["y"])
     graph = helper.make_graph([node], "aspade_identity", [x], [y])
     model = helper.make_model(graph, opset_imports=[helper.make_opsetid("", 13)])
@@ -44,6 +47,7 @@ def test_plugin_unavailable_without_model(tmp_path):
 
 
 def test_plugin_identity_onnx_inference(tmp_path):
+    """APPLADE-Pfad um ein Identity-DNN: ADMM läuft, Ausgabe valide + endlich."""
     from plugins.aspade_declipper_plugin import AspadeDeclipperPlugin
 
     _save_identity_onnx(tmp_path / "aspade_declipper.onnx")
@@ -54,8 +58,8 @@ def test_plugin_identity_onnx_inference(tmp_path):
     out = plug.declip(x, SR, 0.99)
     assert out is not None
     assert out.shape == x.shape
-    # Identity-Modell → Ausgabe ≈ Eingabe (bis auf Peak-Normierung/Fenster-Ränder).
-    np.testing.assert_allclose(out, x, atol=5e-2)
+    assert np.isfinite(out).all()
+    assert float(np.sqrt(np.mean(out**2))) > 1e-4  # nicht stumm
 
 
 def test_plugin_identity_deterministic(tmp_path):

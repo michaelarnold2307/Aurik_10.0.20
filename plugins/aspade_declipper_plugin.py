@@ -33,6 +33,59 @@ OVERLAP_SEC = 0.5
 _PEAK_NORM = 0.95
 
 
+# ── APPLADE-Pfad (Gaultier et al., ICASSP 2022 — aus dem Paper implementiert) ──
+# DGT: Hann 1024, Hop 256, FFT 1024, kanonisch-tightes Fenster (deterministisch).
+# PnP-ADMM: x ← Π_Γ(F.H(v−u)); v ← T_θ(Fx+u); u ← Fx−v+u; λ = 0.3·Clip-Prozent.
+_APL_W, _APL_A, _APL_M = 1024, 256, 1024
+
+
+def _apl_tight_window() -> np.ndarray:
+    g = np.hanning(_APL_W)
+    s = np.zeros(_APL_W)
+    for n in range(_APL_W):
+        acc = 0.0
+        for k in range(-4, 5):
+            idx = n - k * _APL_A
+            if 0 <= idx < _APL_W:
+                acc += g[idx] ** 2
+        s[n] = acc
+    return (g / np.sqrt(s)).astype(np.float32)  # type: ignore[no-any-return]
+
+
+_APL_GT = _apl_tight_window()
+
+
+def _apl_dgt(x: np.ndarray) -> np.ndarray:
+    n = len(x)
+    n_frames = (n + _APL_A - 1) // _APL_A
+    out = np.zeros((_APL_M // 2 + 1, n_frames), dtype=np.complex128)
+    for m in range(n_frames):
+        seg = np.zeros(_APL_W, dtype=np.float64)
+        s0 = m * _APL_A
+        ln = min(_APL_W, n - s0)
+        if ln > 0:
+            seg[:ln] = x[s0 : s0 + ln]
+        out[:, m] = np.fft.rfft(seg * _APL_GT)
+    return out  # type: ignore[no-any-return]
+
+
+def _apl_idgt(x_cmplx: np.ndarray, n: int) -> np.ndarray:
+    n_frames = x_cmplx.shape[1]
+    out = np.zeros(n + _APL_W, dtype=np.float64)
+    for m in range(n_frames):
+        seg = np.fft.irfft(x_cmplx[:, m], n=_APL_W) * _APL_GT
+        out[m * _APL_A : m * _APL_A + _APL_W] += seg
+    return out[:n]  # type: ignore[no-any-return]
+
+
+def _apl_pi_gamma(x: np.ndarray, idx: dict, clipped: np.ndarray) -> np.ndarray:
+    y = x.copy()
+    y[idx["R"]] = clipped[idx["R"]]
+    y[idx["H"]] = np.maximum(y[idx["H"]], clipped[idx["H"]])
+    y[idx["L"]] = np.minimum(y[idx["L"]], clipped[idx["L"]])
+    return y
+
+
 class AspadeDeclipperPlugin:
     """Lädt A-SPADE-ONNX und de-clippt deterministisch (Waveform→Waveform)."""
 
@@ -112,6 +165,7 @@ class AspadeDeclipperPlugin:
         if int(sr) != TARGET_SR:
             logger.warning("A-SPADE: sr=%d ≠ 48 kHz — Ersatzpfad.", sr)
             return None
+        return self._declip_applade(audio, sr, clip_threshold)
         x = np.asarray(audio, dtype=np.float32)
         x = np.nan_to_num(x, nan=0.0, posinf=0.0, neginf=0.0)
         n = len(x)
@@ -157,6 +211,86 @@ class AspadeDeclipperPlugin:
         out = out / norm_acc
         out = np.nan_to_num(out, nan=0.0, posinf=0.0, neginf=0.0)
         return np.clip(out, -1.0, 1.0).astype(np.float32)  # type: ignore[no-any-return]
+
+    def _declip_applade(self, audio: np.ndarray, sr: int, clip_threshold: float) -> np.ndarray | None:
+        """APPLADE-PnP-ADMM um das ONNX-DNN (16-kHz-Sprachmodell, Papier-Setup).
+
+        Deterministisch; 16 384-Sample-Blöcke (64 DGT-Frames); Rückmischung
+        nur in den geclippten Regionen (Masken-Blend, 48-kHz-Treue sonst).
+        """
+        from scipy.signal import resample_poly  # pylint: disable=import-outside-toplevel
+
+        try:
+            x = np.asarray(audio, dtype=np.float32)
+            x = np.nan_to_num(x, nan=0.0, posinf=0.0, neginf=0.0)
+            theta = float(np.clip(clip_threshold, 0.05, 0.999))
+            mask = np.abs(x) >= theta  # 48-kHz-Domäne
+
+            x16 = resample_poly(x.astype(np.float64), 1, 3).astype(np.float64)
+            idx = {
+                "H": (x16 > theta) | (np.abs(x16 - theta) < 1e-9),
+                "L": x16 < -theta,
+            }
+            idx["R"] = ~(idx["H"] | idx["L"])
+            if not idx["H"].any() and not idx["L"].any():
+                return x.copy()  # type: ignore[no-any-return]
+            pct = float(np.mean(~idx["R"]) * 100.0)
+            lam = 30.0 * pct / 100.0
+            weight = ((np.arange(1, _APL_M // 2 + 2, dtype=np.float64) / (_APL_M // 2 + 1)) ** 2).reshape(-1, 1)
+
+            rec16 = np.zeros_like(x16)
+            block = 16384
+            assert self._session is not None
+            for s0 in range(0, len(x16), block):
+                blk = x16[s0 : s0 + block]
+                if len(blk) < 512:
+                    rec16[s0:] = blk
+                    break
+                orig_len = len(blk)
+                if orig_len < block:
+                    blk = np.pad(blk, (0, block - orig_len))
+                # Block-lokale Masks (idx ist block-relativ)
+                _bidx = {
+                    "H": (blk > theta) | (np.abs(blk - theta) < 1e-9),
+                    "L": blk < -theta,
+                }
+                _bidx["R"] = ~(_bidx["H"] | _bidx["L"])
+                _v = _apl_dgt(blk)
+                _u = np.zeros_like(_v)
+                _x = blk.copy()
+                for _ in range(100):
+                    _x = _apl_pi_gamma(_apl_idgt(_v - _u, len(_x)), _bidx, blk)
+                    _fx = _apl_dgt(_x)
+                    _vin = _fx + _u
+                    _mag = np.abs(_vin)
+                    _feed = np.zeros((1, 1, _APL_M // 2, _mag.shape[1]), dtype=np.float32)
+                    _feed[0, 0, :, :] = _mag[:-1, :]
+                    _out = self._session.run([self._output_name], {self._input_name: _feed})[0]
+                    _den = np.vstack([np.asarray(_out, dtype=np.float64)[0, 0], np.zeros((1, _mag.shape[1]))])
+                    _v = np.maximum(0.0, 1.0 - lam * weight / (_den + 1e-6) ** 2) * _vin
+                    _u = _fx - _v + _u
+                _x[_bidx["R"]] = blk[_bidx["R"]]
+                rec16[s0 : s0 + orig_len] = _x[:orig_len]
+
+            rec48 = resample_poly(rec16, 3, 1)[: len(x)].astype(np.float32)
+            fade = int(0.005 * sr)
+            win = 0.5 * (1 - np.cos(np.pi * np.arange(fade) / max(fade, 1)))
+            blend = np.zeros(len(x), dtype=np.float32)
+            edges = np.diff(mask.astype(np.int8))
+            starts = np.where(edges == 1)[0]
+            ends = np.where(edges == -1)[0]
+            for st in starts:
+                a0 = max(0, st - fade)
+                blend[a0:st] = np.maximum(blend[a0:st], win[: st - a0])
+            for en in ends:
+                b1 = min(len(x), en + fade)
+                blend[en:b1] = np.maximum(blend[en:b1], win[::-1][: b1 - en])
+            blend[mask] = 1.0
+            out = blend * rec48 + (1.0 - blend) * x
+            return np.clip(out, -1.0, 1.0).astype(np.float32)  # type: ignore[no-any-return]
+        except Exception as _exc:
+            logger.warning("A-SPADE-APPLADE-Pfad fehlgeschlagen (%s) — Ersatzpfad.", _exc)
+            return None
 
     def _infer(self, seg: np.ndarray) -> np.ndarray:
         """Ein Segment (chunk,) → Modell-Inferenz → (chunk,) float32."""
