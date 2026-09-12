@@ -79,8 +79,31 @@ def activate_vocoder_chain(
         result = _get_bigvgan().synthesize(arr, sample_rate)
         out = getattr(result, "audio", result)
         if _ok(out):
+            _bigvgan_out = np.asarray(out, dtype=np.float32)
+            # §Witness-SOTA B5: Masking-bewusstes Gate um die Vocoder-Resynthese —
+            # BigVGAN darf Energie nur in UNHÖRBAREN Baseline-Bändern bis zur
+            # Maskierungsschwelle hinzufügen; hörbarer Original-Inhalt und
+            # Onset-Frames bleiben unangetastet (Never-worsen). §V6 (copilot-instructions.md)-
+            # Ersatzpfad: bei Fehler bleibt der unveränderte Vocoder-Ausgang bestehen.
+            try:
+                from backend.core.dsp.additive_synthesis_gate import (  # pylint: disable=import-outside-toplevel
+                    additive_synthesis_gate,
+                )
+
+                _gated_out, _b5_rep = additive_synthesis_gate(_bigvgan_out, arr, sample_rate, model="bigvgan_v2")
+                logger.info(
+                    "§B5 Synthesis-Gate bigvgan_v2: mean_gain=%.3f, bands_released=%d",
+                    float(_b5_rep.get("mean_synthesis_gain", 0.0)),
+                    int(_b5_rep.get("bands_released", 0)),
+                )
+                _bigvgan_out = _gated_out
+            except Exception as _b5_exc:  # pylint: disable=broad-except
+                logger.warning(
+                    "§V6 (copilot-instructions.md) BigVGAN-Gate nicht anwendbar (%s) — Vocoder-Ausgang unverändert",
+                    _b5_exc,
+                )
             logger.info("Vocoder-Kette: BigVGAN-v2 erfolgreich (%s)", getattr(result, "model_used", "adapter"))
-            return cast(np.ndarray | None, np.asarray(out, dtype=np.float32))
+            return cast(np.ndarray | None, _bigvgan_out)
     except Exception as e:
         logger.warning("BigVGAN-v2 fehlgeschlagen: %s — Rückfall zu HiFi-GAN", e)
 

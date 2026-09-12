@@ -25,7 +25,7 @@ import logging
 import time
 from dataclasses import dataclass
 from enum import Enum
-from typing import Any
+from typing import Any, cast
 
 import numpy as np
 import numpy.fft as np_fft
@@ -276,6 +276,37 @@ class HybridNVSR:
             skipped_reason="DSP-only mode selected",
         )
 
+    def _apply_synthesis_gate(
+        self, candidate: np.ndarray, base: np.ndarray, sample_rate: int, model: str
+    ) -> np.ndarray:
+        """§Witness-SOTA B4: Masking-bewusstes Gate um FlashSR (energie-hinzufügend).
+
+        FlashSR darf Höhen nur dort synthetisieren, wo das Baseline-Band
+        UNHÖRBAR ist, und nur bis zur Maskierungsschwelle — nie über
+        hörbarem Original-Inhalt, nie in Onset-Frames (§V6 (copilot-instructions.md)-
+        Ersatzpfad: bei Fehler bleibt der unveränderte Kandidat bestehen).
+        """
+        try:
+            from backend.core.dsp.additive_synthesis_gate import (  # pylint: disable=import-outside-toplevel
+                additive_synthesis_gate,
+            )
+
+            _gated, _rep = additive_synthesis_gate(candidate, base, sample_rate, model=model)
+            logger.info(
+                "§B4 Synthesis-Gate %s: mean_gain=%.3f, bands_released=%d, onsets=%d",
+                model,
+                float(_rep.get("mean_synthesis_gain", 0.0)),
+                int(_rep.get("bands_released", 0)),
+                int(_rep.get("onset_frames_protected", 0)),
+            )
+            return _gated
+        except Exception as _sg_exc:  # pylint: disable=broad-except
+            logger.warning(
+                "§V6 (copilot-instructions.md) Synthesis-Gate nicht anwendbar (%s) — FlashSR-Kandidat unverändert",
+                _sg_exc,
+            )
+            return cast(np.ndarray, np.asarray(candidate, dtype=np.float32))
+
     def _apply_flashsr_only(self, audio: np.ndarray, sample_rate: int, detected_bandwidth: float) -> NVSRResult:
         """FlashSR-only path."""
         plugin = self._get_flashsr_plugin(audio, sample_rate, "phase_06_frequency_restoration")
@@ -286,6 +317,8 @@ class HybridNVSR:
         try:
             # Apply FlashSR
             restored = self._run_flashsr(audio, sample_rate, plugin)
+            # §Witness-SOTA B4: synthetisierte Höhen nur unter der Schwelle freigeben.
+            restored = self._apply_synthesis_gate(restored, audio, sample_rate, "flashsr")
 
             return NVSRResult(
                 restored_audio=restored,
@@ -352,6 +385,8 @@ class HybridNVSR:
         try:
             # Apply FlashSR for bandwidth extension
             restored = self._run_flashsr(audio, sample_rate, plugin)
+            # §Witness-SOTA B4: synthetisierte Höhen nur unter der Schwelle freigeben.
+            restored = self._apply_synthesis_gate(restored, base_audio, sample_rate, "flashsr_adaptive")
 
             return NVSRResult(
                 restored_audio=restored,

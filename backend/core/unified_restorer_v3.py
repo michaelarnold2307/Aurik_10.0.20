@@ -15255,6 +15255,17 @@ class UnifiedRestorerV3:
                                     "adjustments": _veto_result.adjustments,
                                     "global_factor": _veto_result.global_factor,
                                 }
+                                # §Witness-SOTA C3: Das Veto speist die zweite Lern-
+                                # Schleife (Preference-Learner) als
+                                # sounds_artificial-Evidenz — nicht-persistierend.
+                                try:
+                                    from backend.core.dsp.witness_correction_loop import (  # pylint: disable=import-outside-toplevel
+                                        record_veto_to_preferences,
+                                    )
+
+                                    record_veto_to_preferences("feedback_chain", _veto_result.reasons)
+                                except Exception as _plv_exc:  # pylint: disable=broad-except
+                                    logger.debug("§C3 Preference-Aufzeichnung nicht anwendbar: %s", _plv_exc)
                         except Exception as _wv_exc:  # pylint: disable=broad-except
                             logger.debug("§Witness-Veto Korrektur nicht anwendbar: %s", _wv_exc)
                 except Exception as _fc_veto_exc:  # pylint: disable=broad-except

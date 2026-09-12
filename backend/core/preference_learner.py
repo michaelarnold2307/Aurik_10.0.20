@@ -120,3 +120,31 @@ class PreferenceLearner:
             if self._history
             else "none",
         }
+
+    def record_witness_veto(self, stage: str, reasons: list[str]) -> None:
+        """C3: Zeichnet ein Witness-Veto als „sounds_artificial“-Evidenz auf.
+
+        Bewusst NICHT-persistierend: Die Nutzer-Präferenz-Datei bleibt dem
+        expliziten Nutzer-Feedback vorbehalten (Determinismus §G5 (copilot-instructions.md));
+        die Veto-Historie dient dem Lernbild für zukünftige Läufe innerhalb der Session.
+        """
+        self._history.append(
+            {
+                "feedback": "sounds_artificial",
+                "source": "witness_veto",
+                "stage": stage,
+                "reasons": list(reasons),
+            }
+        )
+        logger.info("Preference-Learner: Witness-Veto (%s) als sounds_artificial-Evidenz erfasst", stage)
+
+
+_PREFERENCE_LEARNER_SINGLETON: PreferenceLearner | None = None
+
+
+def get_preference_learner() -> PreferenceLearner:
+    """Lazy-Singleton (Song-übergreifend, aber ohne Persistenz-Zwang)."""
+    global _PREFERENCE_LEARNER_SINGLETON
+    if _PREFERENCE_LEARNER_SINGLETON is None:
+        _PREFERENCE_LEARNER_SINGLETON = PreferenceLearner()
+    return _PREFERENCE_LEARNER_SINGLETON

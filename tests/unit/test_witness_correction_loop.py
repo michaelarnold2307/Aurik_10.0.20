@@ -79,3 +79,31 @@ def test_determinism() -> None:
     r1 = compute_witness_veto(wit, "det")
     r2 = compute_witness_veto(wit, "det")
     assert r1.adjustments == r2.adjustments and r1.global_factor == r2.global_factor
+
+
+def test_external_metric_veto_delta_based() -> None:
+    from backend.core.dsp.witness_correction_loop import apply_external_metric_veto
+
+    prof = _profile()
+    # Kleine Regression unter Schwelle → kein Veto.
+    r0 = apply_external_metric_veto(prof, "utmos", -0.1, 0.5, "utmos_gate")
+    assert r0.applied is False and prof["global_scalar"] == 1.0
+    # Klare Regression → enhancement-Familie + global_scalar reduziert.
+    r1 = apply_external_metric_veto(prof, "utmos", -0.8, 0.5, "utmos_gate")
+    assert r1.applied is True
+    assert prof["family_scalars"]["enhancement"] == 0.9
+    assert prof["global_scalar"] == 0.95
+    assert r1.adjustments["enhancement"] == 0.90
+
+
+def test_preference_veto_recording() -> None:
+    from backend.core.dsp.witness_correction_loop import record_veto_to_preferences
+    from backend.core.preference_learner import get_preference_learner
+
+    learner = get_preference_learner()
+    n_before = len(learner._history)
+    ok = record_veto_to_preferences("feedback_chain", ["Rauigkeit", "Stereo-Kollaps"])
+    assert ok is True
+    assert len(learner._history) == n_before + 1
+    assert learner._history[-1]["feedback"] == "sounds_artificial"
+    assert learner._history[-1]["source"] == "witness_veto"

@@ -1,19 +1,20 @@
 # TASK_CHANGES — Live-Ledger der aktuellen Aufgabe
 
-> Generiert von `scripts/change_ledger.py snapshot` (Base: `HEAD`, Stand: 2026-09-12 23:02 CEST).
+> Generiert von `scripts/change_ledger.py snapshot` (Base: `HEAD`, Stand: 2026-09-13 00:22 CEST).
 > CI (`ci-lite.yml` pr-evidence-gate) erzwingt Abdeckung: jede geänderte Code-Datei muss hier stehen.
 
 ## Geänderte Dateien
 
 | Status | Pfad | Art |
 |---|---|---|
-| M | .github/FILE_REGISTRY.md | modifiziert |
-| M | backend/core/hybrid/hybrid_ml_denoiser.py | modifiziert |
+| M | backend/core/dsp/witness_correction_loop.py | modifiziert |
+| M | backend/core/hybrid/hybrid_nvsr.py | modifiziert |
+| M | backend/core/preference_learner.py | modifiziert |
 | M | backend/core/unified_restorer_v3.py | modifiziert |
-| ?? | backend/core/dsp/hybrid_denoise_fusion.py | ungetrackt |
-| ?? | backend/core/dsp/witness_correction_loop.py | ungetrackt |
-| ?? | tests/unit/test_hybrid_denoise_fusion.py | ungetrackt |
-| ?? | tests/unit/test_witness_correction_loop.py | ungetrackt |
+| M | backend/core/vocoder_chain.py | modifiziert |
+| M | tests/unit/test_witness_correction_loop.py | modifiziert |
+| ?? | backend/core/dsp/additive_synthesis_gate.py | ungetrackt |
+| ?? | tests/unit/test_additive_synthesis_gate.py | ungetrackt |
 
 ## Entscheidungen
 

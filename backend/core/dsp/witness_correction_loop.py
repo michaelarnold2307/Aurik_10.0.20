@@ -145,3 +145,73 @@ def apply_witness_veto(profile: Any, witness: Any, stage: str = "") -> WitnessVe
 def np_clip(x: float, lo: float, hi: float) -> float:
     """Clip ohne numpy-Import-Zwang (Tests ohne schweren Import)."""
     return lo if x < lo else hi if x > hi else x
+
+
+def apply_external_metric_veto(
+    profile: Any,
+    name: str,
+    delta: float,
+    threshold: float,
+    stage: str = "external_metric",
+    family: str = "enhancement",
+) -> WitnessVetoResult:
+    """Delta-basiertes Veto durch externe Wahrnehmungsmetriken (C1: UTMOS & Co.).
+
+    Externe Scores (UTMOS-MOS, CLAP-Aesthetic) sind ZEUGEN, keine Richter
+    (Hörordnung §8): nur eine klare REGRESSION gegenüber der Referenz
+    (delta < −threshold) reduziert die verantwortliche Familie sofort.
+    Ein Score allein ohne Referenz löst nie ein Veto aus.
+    """
+    res = WitnessVetoResult(stage=stage)
+    _delta = float(delta)
+    if _delta < -abs(float(threshold)):
+        res.adjustments[family] = 0.90
+        res.global_factor = 0.95
+        res.reasons.append(f"{name}: delta={_delta:.3f} < −{abs(float(threshold)):.3f} (hörbare Regression)")
+        fams = (
+            profile.get("family_scalars", None)
+            if isinstance(profile, dict)
+            else getattr(profile, "family_scalars", None)
+        )
+        if isinstance(fams, dict):
+            cur = float(fams.get(family, 1.0))
+            fams[family] = round(float(np_clip(cur * 0.90, _MIN_FAMILY, _MAX_FAMILY)), 3)
+        gs_cur = (
+            float(profile.get("global_scalar", 1.0))
+            if isinstance(profile, dict)
+            else float(getattr(profile, "global_scalar", 1.0))
+        )
+        gs_new = round(float(np_clip(gs_cur * 0.95, _MIN_GLOBAL, _MAX_GLOBAL)), 3)
+        if isinstance(profile, dict):
+            profile["global_scalar"] = gs_new
+        else:
+            profile.global_scalar = gs_new
+        logger.warning(
+            "§C1 Externes Metric-Veto (%s): %s → global_scalar %.3f→%.3f — "
+            "delta-basiert, §V7 (copilot-instructions.md)",
+            stage,
+            "; ".join(res.reasons),
+            gs_cur,
+            gs_new,
+        )
+    return res
+
+
+def record_veto_to_preferences(stage: str, reasons: list[str]) -> bool:
+    """C3: Witness-Veto-Ereignisse fließen in den Preference-Learner (nicht-persistierend).
+
+    Schließt die zweite Lern-Schleife: Der Preference-Learner sieht jedes
+    Veto als „sounds_artificial“-Evidenz der betreffenden Phase-Familie,
+    ohne die Nutzer-Präferenz-Datei anzufassen (Determinismus §G5 (copilot-instructions.md):
+    Training-State gehört dem Nutzer).
+    """
+    try:
+        from backend.core.preference_learner import get_preference_learner  # pylint: disable=import-outside-toplevel
+
+        learner = get_preference_learner()
+        if learner is not None and hasattr(learner, "record_witness_veto"):
+            learner.record_witness_veto(stage, list(reasons))
+            return True
+    except Exception as _pl_exc:  # pylint: disable=broad-except
+        logger.debug("Preference-Learner nicht erreichbar: %s", _pl_exc)
+    return False
