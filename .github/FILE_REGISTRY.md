@@ -161,6 +161,8 @@
 | backend/core/dsp/masking_model.py | ACTIVE | backend/core/dsp | ja | — | Johnston-1988-vereinfachtes Maskierungsmodell (2026-09-12): Bark-Schwelle, SFM-Tonalität, Spreading, Sicherheitsmarge; Audibility statt Mess-Null (Hörordnung Ebene 2, §Witness-SOTA P1) |
 | backend/core/dsp/roughness_model.py | ACTIVE | backend/core/dsp | ja | — | Rauigkeits-Schätzer (2026-09-12): Hilbert-Hüllkurven-Fluktuation 20–150 Hz, deterministisch (§Witness-SOTA P2); Witness-Delta roughness_rise_asper |
 | backend/core/dsp/pre_echo_model.py | ACTIVE | backend/core/dsp | ja | — | Pre-Echo-Proxy (2026-09-12, §Witness-SOTA P4): Delta-Energie vor starken Onsets (Forward-Masking-Verletzung), 5-ms-Hüllkurven, deterministisch |
+| backend/core/dsp/stem_recombination_gates.py | ACTIVE | backend/core/dsp | ja | — | C1–C3-Rekombinations-Gates vor §SLR-1f (2026-09-12, REKOMBINATION_ZEITPUNKT_ANALYSE.md §4/§6): C2 Hüllkurven-Alignment, C1 Bark-Residuum-Gate vs. Maskierungsschwelle, C3 interaural_cues am Nahtpunkt — deterministisch, report-only |
+| tests/unit/test_stem_recombination_gates.py | ACTIVE | testing/unit | ja | — | C1–C3-Gate-Tests (2026-09-12): perfekte Separation unangetastet, Alignment-Korrektur, hörbarer Verlust wiederhergestellt, maskiertes Residuum verworfen, Stereo-Kollaps gemeldet, Layout/Determinismus |
 | tests/unit/test_witness_sota_p1p2.py | ACTIVE | testing/unit | ja | — | Witness-SOTA-Tests (2026-09-12): Bark-Determinismus, Masker verdeckt Delta, lautes Delta audible, AM-Rauigkeit signiert, P3 Stereo-Kollaps, P4 Pre-Echo |
 
 ## Pflege-Regeln

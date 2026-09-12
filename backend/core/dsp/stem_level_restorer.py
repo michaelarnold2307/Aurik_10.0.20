@@ -299,8 +299,23 @@ class StemLevelRestorer:
             witness_reports=_witness_reports,
         )
 
-        # §SLR-1f: Remix stems to output
-        _out = self._coerce_like(_vocal_out + _instr_out, _audio)
+        # §SLR-1f: Remix stems to output — C1–C3-Gates VOR der Summe
+        # (REKOMBINATION_ZEITPUNKT_ANALYSE.md §4 Option C): C2 Alignment-
+        # Korrektur, C1 Separations-Verlust vs. Maskierungsschwelle,
+        # C3 interaural_cues am Nahtpunkt. Report-only; Fallback = nackte Summe.
+        try:
+            from backend.core.dsp.stem_recombination_gates import (  # pylint: disable=import-outside-toplevel
+                recombine_stems_with_gates,
+            )
+
+            _remix_cn, _recomb_gates = recombine_stems_with_gates(
+                _audio, _vocal_stem, _instr_stem, _vocal_out, _instr_out, sample_rate
+            )
+            _out = self._coerce_like(_remix_cn, _audio)
+            _stem_context.witness_reports["recombination"] = _recomb_gates.witness
+        except Exception as _recomb_exc:  # pylint: disable=broad-except
+            logger.debug("§SLR-1f C1–C3-Gates nicht verfügbar — nackte Summe: %s", _recomb_exc)
+            _out = self._coerce_like(_vocal_out + _instr_out, _audio)
         _out = np.nan_to_num(_out, nan=0.0, posinf=0.0, neginf=0.0)
         _out = np.clip(_out, -1.0, 1.0)
 

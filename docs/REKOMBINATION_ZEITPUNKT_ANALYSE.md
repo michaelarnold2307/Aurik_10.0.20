@@ -89,8 +89,11 @@ neuen magischen Zahlen, Hörordnung Ebene 1/2).
 
 ## 6. Umsetzungsreihenfolge (nächste Slices)
 
-1. W2 Alignment-Korrektur + W1 Residuum-Gate **vor** §SLR-1f (C1/C2)
-2. W3 interaural_cues am Nahtpunkt (C3)
+1. ✅ W2 Alignment-Korrektur + W1 Residuum-Gate **vor** §SLR-1f (C1/C2) —
+   `backend/core/dsp/stem_recombination_gates.py` (2026-09-12): Hüllkurven-
+   xcorr (±50 ms, normierter Koeffizient ≥ 0.25), Bark-Residuum-Gate gegen
+   die Maskierungsschwelle des Gehörten, STFT-Rückmischung.
+2. ✅ W3 interaural_cues am Nahtpunkt (C3) — im selben Modul, report-only.
 3. W4/W5/W6 als Witness-Reports in `StemContext.witness_reports` (Messung,
    Kalibrierung gegen echte Songs im überwachten Run)
 4. Kalibrierung: Schwellen auf P90 der No-Harm-Deltas über N≥3 Songs
