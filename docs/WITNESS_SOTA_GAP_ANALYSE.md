@@ -76,12 +76,14 @@ DELTA-basierte Regressions-Proxies — exakt die Witness-Rolle.
 
 ## 5. Roadmap (priorisiert, determinismus-tauglich)
 
-- **P1 — Maskierungs-Modul (empfohlen, nächster Schritt):** Johnston-1988-artige
-  Maskierungsschwelle pro Frame (FFT-basiert, kein ML, deterministisch);
-  Findings erhalten `audible: true/false`. Kalibrierung an N≥3 Songs mit
-  Evidenzblock (wie Analyse-Plan §5). Laufzeit-Ziel: ≤ 2× heutige Witness-Zeit.
-- **P2 — Rauigkeit + Sibilanz:** Vassilakis-Roughness (15–300 Hz AM) + 5–8-kHz-
-  Resonanz-Maß — schließt die „harsh"-Lücke zwischen HF-Flatness und HNR.
+- **P1 — Maskierungs-Modul ✅ (2026-09-12):** Johnston-1988-vereinfachte
+  Maskierungsschwelle (Bark, SFM-Tonalität, Spreading, Sicherheitsmarge) in
+  `backend/core/dsp/masking_model.py`; Witness meldet `masked_residual_db` +
+  `air_audible` und unterscheidet `air_loss` von `air_loss_audible`.
+- **P2 — Rauigkeit ✅ (2026-09-12):** Hilbert-Hüllkurven-Fluktuation
+  (20–150 Hz, deterministisch) in `backend/core/dsp/roughness_model.py`;
+  Witness meldet `roughness_rise_asper` + Finding `roughness_increase`.
+  (Band-weise Vassilakis-Verfeinerung + 5–8-kHz-Sibilanz bleiben Folgeschritt.)
 - **P3 — Räumlich:** ITD/ILD-Delta (Stereo-Kollaps) — im Analyse-Plan bereits
   als Mix-Zusatz-Metrik gefordert.
 - **P4 — Zeitliche Maskierung:** Pre-Echo-Proxy (Forward-Masking) für

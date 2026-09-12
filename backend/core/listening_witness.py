@@ -62,6 +62,7 @@ _BASS_HI_HZ = 250.0
 _AIR_LO_HZ = 8000.0
 _AIR_HI_HZ = 20000.0
 _AIR_LOSS_DB = 2.0
+_ROUGHNESS_RISE_ASPER = 0.35
 _TRANSIENT_WIN = 0.005  # 5-ms-Envelope für Transienten-Steigung
 
 
@@ -79,6 +80,9 @@ class ListeningWitnessResult:
     bass_drop_db: float = 0.0
     transient_smear_ratio: float = 0.0
     air_gain_db: float = 0.0
+    masked_residual_db: float = 0.0
+    air_audible: bool = False
+    roughness_rise_asper: float = 0.0
     findings: list[str] = field(default_factory=list)
 
     def as_dict(self) -> dict:
@@ -93,6 +97,9 @@ class ListeningWitnessResult:
             "bass_drop_db": round(self.bass_drop_db, 2),
             "transient_smear_ratio": round(self.transient_smear_ratio, 3),
             "air_gain_db": round(self.air_gain_db, 2),
+            "masked_residual_db": round(self.masked_residual_db, 2),
+            "air_audible": bool(self.air_audible),
+            "roughness_rise_asper": round(self.roughness_rise_asper, 4),
             "findings": list(self.findings),
         }
 
@@ -364,6 +371,23 @@ def evaluate_listening_witness(
     _air_b = _band_energy_ratio_db(b, sr, _AIR_LO_HZ, _AIR_HI_HZ)
     air_gain = _air_b - _air_a
 
+    # §Witness-SOTA P1/P2 (2026-09-12, Hörordnung Ebene 2): Audibility statt
+    # Mess-Null — Luftband-Delta gegen die Johnston-Maskierungsschwelle; plus
+    # Rauigkeits-Delta (Vassilakis-vereinfacht). Determinismus: rein FFT-basiert.
+    _masked_residual_db = 0.0
+    _air_audible = False
+    _roughness_rise = 0.0
+    try:
+        from backend.core.dsp.masking_model import band_audibility as _ba
+        from backend.core.dsp.roughness_model import roughness_rise_asper as _rra
+
+        _air_aud = _ba(a, b, sr, _AIR_LO_HZ, _AIR_HI_HZ)
+        _masked_residual_db = float(_air_aud.get("delta_db", 0.0))
+        _air_audible = bool(_air_aud.get("audible", False))
+        _roughness_rise = _rra(a, b, sr)
+    except Exception as _sota_exc:
+        logger.debug("§Witness-SOTA P1/P2 nicht verfügbar: %s", _sota_exc)
+
     result = ListeningWitnessResult(
         phase_id=phase_id,
         pitch_drift_cents=pitch_delta,
@@ -375,6 +399,9 @@ def evaluate_listening_witness(
         bass_drop_db=max(bass_drop, 0.0),
         transient_smear_ratio=max(transient_smear, 0.0),
         air_gain_db=air_gain,
+        masked_residual_db=_masked_residual_db,
+        air_audible=_air_audible,
+        roughness_rise_asper=_roughness_rise,
     )
 
     if result.pitch_drift_cents > _PITCH_DRIFT_CENTS:
@@ -395,4 +422,8 @@ def evaluate_listening_witness(
         result.findings.append("transient_smearing")
     if result.air_gain_db < -_AIR_LOSS_DB:
         result.findings.append("air_loss")
+    if result.air_audible and result.air_gain_db < -_AIR_LOSS_DB:
+        result.findings.append("air_loss_audible")
+    if result.roughness_rise_asper > _ROUGHNESS_RISE_ASPER:
+        result.findings.append("roughness_increase")
     return result

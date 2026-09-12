@@ -158,6 +158,9 @@
 | docs/WITNESS_SOTA_GAP_ANALYSE.md | ACTIVE | docs | ja | — | SOTA-Gap-Analyse (2026-09-12): Witness misst 9 Delta-Domänen, besitzt nicht alle SOTA-Fähigkeiten der Gehör-Nachempfindung; größter Gap = Maskierungsschwelle (Hörordnung Ebene 2); Roadmap P1 Maskierungs-Modul, P2 Rauigkeit, P3 Räumlich; PEAQ/ML-Prädiktoren bewusst ausgeschlossen |
 | docs/reports/supervised_runs/2026-09-12_elke_best_30s.md | ACTIVE | docs/reports/supervised_runs | ja | — | Überwachter Run (2026-09-12): Elke Best 30s mp3_low — VQI 0.910 world_class, OQS 99.4; §SLR-1 nicht angetriggert (kein Stem-Block); Resemblyzer-Root-Cause dokumentiert |
 | docs/KNISTERN_ML_MODELL_ANALYSE.md | ACTIVE | docs | ja | — | Knistern-ML-Analyse (2026-09-12): BANQUET ist das geeignetste Vinyl-Modell, lief aber nie (is_phase_ml_enabled(9) permanent False); Root-Fix: Phase 9 in ML-CRITICAL; KIM ungeeignet für Impuls-Entfernung |
+| backend/core/dsp/masking_model.py | ACTIVE | backend/core/dsp | ja | — | Johnston-1988-vereinfachtes Maskierungsmodell (2026-09-12): Bark-Schwelle, SFM-Tonalität, Spreading, Sicherheitsmarge; Audibility statt Mess-Null (Hörordnung Ebene 2, §Witness-SOTA P1) |
+| backend/core/dsp/roughness_model.py | ACTIVE | backend/core/dsp | ja | — | Rauigkeits-Schätzer (2026-09-12): Hilbert-Hüllkurven-Fluktuation 20–150 Hz, deterministisch (§Witness-SOTA P2); Witness-Delta roughness_rise_asper |
+| tests/unit/test_witness_sota_p1p2.py | ACTIVE | testing/unit | ja | — | Witness-SOTA-P1/P2-Tests (2026-09-12): Bark-Determinismus, Masker verdeckt Delta, lautes Delta audible, AM-Rauigkeit signiert |
 
 ## Pflege-Regeln
 
