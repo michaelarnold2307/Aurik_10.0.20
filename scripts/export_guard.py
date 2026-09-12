@@ -7,6 +7,7 @@ Der Guard führt:
 3️⃣ Loggt die Ergebnisse in export_log.txt
 """
 
+import datetime
 import pathlib
 import subprocess
 
@@ -28,9 +29,14 @@ def run(cmd: str, cwd=None):
 
 
 def main():
-    # 1️⃣ Load metadata
-    with open("metadata.yaml") as f:
-        meta = yaml.safe_load(f)
+    # 1️⃣ Load metadata — fehlt sie (Solo-Push-Pfad), ist der Guard ein No-Op.
+    try:
+        with open("metadata.yaml") as f:
+            meta = yaml.safe_load(f)
+    except FileNotFoundError:
+        with open("export_log.txt", "a") as log:
+            log.write(f"Export guard skipped at {datetime.datetime.now()} — metadata.yaml not present.\n")
+        return
     # 2️⃣ Build command string
     batch_flag = "--batch" if meta.get("batch", True) else ""
     formats = " ".join(meta["formats"])
@@ -46,7 +52,7 @@ def main():
     print(out)
     # 4️⃣ Log result
     with open("export_log.txt", "a") as log:
-        log.write(f"Export finished at {pathlib.datetime.now()}\n")
+        log.write(f"Export finished at {datetime.datetime.now()}\n")
         log.write(out + "\n")
 
 

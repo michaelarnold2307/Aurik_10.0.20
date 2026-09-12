@@ -6,6 +6,12 @@ ML-Pfad (Primär, Lazy-Load bei eingeschränkter Bandbreite):
     Modell: models/nvsr/nvsr.onnx (FlashSR ONNX export).
     Aktivierung: wenn effektive Bandbreite (Spektral-Rolloff 90%) < 15 kHz.
 
+Device-Dispatch (§2.40 Determinismus-Invariante):
+    Provider-Wahl zentral über backend.core.gpu_model_registry.get_onnx_providers
+    (Registry-Verdicts rocm/migraphx/cpu); CPUExecutionProvider ist dort als
+    deterministischer Fallback immer enthalten — bit-identische Numerik
+    unabhängig vom Host (§G5 (copilot-instructions.md)).
+
 DSP-Kaskade (Fallback bei fehlendem Modell oder ML-Fehler):
     1. Polyphase-Resampling (scipy resample_poly, Lanczos-äquivalent)
     2. Spektrale HF-Erweiterung durch harmonische Oberton-Synthese

@@ -410,8 +410,8 @@ class GacelaPlugin:
                 enc_R = _encode(right_mono, self._encoders[1])
 
                 # Rauschen und Konkatenation
-                noise = torch.rand(1, NOISE_CH, enc_L.size(2), enc_L.size(3), dtype=torch.float32).to(self._device)
-                x = torch.cat([enc_L, enc_R, noise], dim=1)  # [1,36,5,15]
+                noise_t = torch.rand(1, NOISE_CH, enc_L.size(2), enc_L.size(3), dtype=torch.float32).to(self._device)
+                x = torch.cat([enc_L, enc_R, noise_t], dim=1)  # [1,36,5,15]
 
                 # Generator-Inferenz
                 with torch.no_grad():

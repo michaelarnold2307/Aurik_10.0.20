@@ -346,7 +346,6 @@ module = [
     "plugins.cqtdiff_plus_plugin",
     "plugins.diffwave_plugin",
     "plugins.laion_clap_plugin",
-    "plugins.mdx23c_plugin",
     "plugins.utmos_plugin",
     "plugins.vocos_plugin",
 ]
@@ -377,6 +376,8 @@ ignore_errors = true
 module = [
     "plugins._vendor_aero",
     "plugins._vendor_aero.*",
+    "plugins._vendor_muq",
+    "plugins._vendor_muq.*",
 ]
 ignore_errors = true
 

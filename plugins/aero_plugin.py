@@ -155,8 +155,8 @@ class AeroPlugin:
 
                 with torch.no_grad():
                     mono = torch.from_numpy(ch.astype(np.float32))
-                    x = mono.unsqueeze(0).unsqueeze(0).to(self._device)
-                    out = self._model(x).squeeze(0).squeeze(0).cpu().numpy()
+                    x_t = mono.unsqueeze(0).unsqueeze(0).to(self._device)
+                    out = self._model(x_t).squeeze(0).squeeze(0).cpu().numpy()
                 out = out[:out_len]
             outs.append(np.asarray(out, dtype=np.float32))
 

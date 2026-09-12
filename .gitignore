@@ -168,3 +168,4 @@ backend/core/dsp/__pycache__/
 
 # Kun runtime UI state
 .kun-canvas/
+export_log.txt

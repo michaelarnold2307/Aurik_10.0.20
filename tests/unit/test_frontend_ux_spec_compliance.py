@@ -17,6 +17,7 @@ Deckt ab:
 
 import ast
 import importlib.util
+import pathlib
 import sys
 
 import pytest
@@ -34,14 +35,16 @@ if _QT_AVAILABLE:
     os.environ["QT_QPA_PLATFORM"] = "offscreen"
 
 # ─── Import modern_window components ────────────────────────────────────────
+# Repo-relative Verankerung (§G1 (copilot-instructions.md)): kein hartkodierter Entwickler-Pfad —
+# cross-platform CI (Linux/Windows/macOS) muss denselben Quellbaum finden.
+_REPO_ROOT = pathlib.Path(__file__).resolve().parents[2]
+_MODERN_WINDOW_PATH = _REPO_ROOT / "Aurik10" / "ui" / "modern_window.py"
 try:
     # Use importlib to avoid triggering Qt widget construction at import time
     import importlib
     import importlib.util
 
-    _spec = importlib.util.spec_from_file_location(
-        "modern_window", "/media/michael/Software 4TB/Aurik_Standalone/Aurik10/ui/modern_window.py"
-    )
+    _spec = importlib.util.spec_from_file_location("modern_window", str(_MODERN_WINDOW_PATH))
     _mod = importlib.util.module_from_spec(_spec)  # type: ignore[arg-type]
     # Only load if display available — ast-based checks done without load
     _MW_MODULE_LOADED = False
@@ -55,11 +58,8 @@ except Exception:
 
 
 # ─── AST-based source checks (no Qt needed) ──────────────────────────────────
-import pathlib
 
-_MODERN_WINDOW_SRC = pathlib.Path("/media/michael/Software 4TB/Aurik_Standalone/Aurik10/ui/modern_window.py").read_text(
-    encoding="utf-8"
-)
+_MODERN_WINDOW_SRC = _MODERN_WINDOW_PATH.read_text(encoding="utf-8")
 _MODERN_WINDOW_TREE = ast.parse(_MODERN_WINDOW_SRC)
 
 

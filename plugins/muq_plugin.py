@@ -196,6 +196,7 @@ def _resolve_device() -> Any:
     global _device
     if _device is not None:
         return _device
+    _dev: Any = None
     try:
         from backend.core.ml_device_manager import get_torch_device
 

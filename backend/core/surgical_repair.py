@@ -231,12 +231,9 @@ def _repair_crackle(audio: np.ndarray, sr: int, **kwargs) -> np.ndarray:
     try:
         # Highpass > 4 kHz extrahieren (da wo Knistern lebt)
         sos = butter(4, 4000, "high", fs=sr, output="sos")
-        channels = (
-            [(result, result)]
-            if result.ndim == 1
-            else [(result[ch : ch + 1], result[ch]) for ch in range(result.shape[0])]
-        )
-        for ch_view, ch_data in channels:
+        channels = list(range(1 if result.ndim == 1 else result.shape[0]))
+        for ch_idx in channels:
+            ch_data = result if result.ndim == 1 else result[ch_idx]
             hf = sosfiltfilt(sos, ch_data)
             # Adaptiver Schwellwert für Knistern-Intensität
             hf_env = np.abs(hf)
@@ -257,10 +254,11 @@ def _repair_crackle(audio: np.ndarray, sr: int, **kwargs) -> np.ndarray:
             if edge > 2:
                 blend[:edge] = np.linspace(0.0, 1.0, edge)
                 blend[-edge:] = np.linspace(1.0, 0.0, edge)
-            ch_data[:] = lp + (blend * hf_filtered + (1.0 - blend) * hf_original)
-        if result.ndim > 1:
-            for ch in range(result.shape[0]):
-                pass  # already modified in-place via ch_data
+            _repaired_ch = lp + (blend * hf_filtered + (1.0 - blend) * hf_original)
+            if result.ndim == 1:
+                result = _repaired_ch
+            else:
+                result[ch_idx] = _repaired_ch
     except Exception as e:
         logger.warning("surgical_repair.py::_repair_crackle Ersatzpfad: %s", e)
     result = _safety_clamp(result, audio)
@@ -723,8 +721,9 @@ def _repair_motor_interference(audio: np.ndarray, sr: int, **kwargs) -> np.ndarr
                 idx = np.argmin(np.abs(freqs - hz))
                 if idx > 0 and idx < len(spec) - 1:
                     # Schmalband-Peak? (3× Umgebung)
-                    local_bg = np.median(spec[max(0, idx - 10) : min(len(spec), idx + 10)])
-                    if local_bg > 0 and spec[idx] > local_bg * 3:
+                    _idx_i = int(idx)
+                    local_bg = np.median(spec[max(0, _idx_i - 10) : min(len(spec), _idx_i + 10)])
+                    if local_bg > 0 and spec[_idx_i] > local_bg * 3:
                         peaks_found += 1
             if peaks_found >= 2:  # Mindestens 2 Harmonische = Motor-Interferenz bestätigt
                 # Notch-Filter für jede gefundene Harmonische
@@ -735,7 +734,7 @@ def _repair_motor_interference(audio: np.ndarray, sr: int, **kwargs) -> np.ndarr
                         w0 = hz / (sr / 2)
                         bw = w0 / Q
                         sos_notch = butter(2, [w0 - bw, w0 + bw], "bandstop", fs=sr, output="sos")
-                        ch_data[:] = sosfilt(sos_notch, ch_data)
+                        ch_data = sosfilt(sos_notch, ch_data)
                     if result.ndim == 1:
                         result = ch_data
                     else:

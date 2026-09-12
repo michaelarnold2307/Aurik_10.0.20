@@ -31,9 +31,9 @@ try:
     from optuna.pruners import MedianPruner  # type: ignore[reportMissingImports]
     from optuna.samplers import TPESampler  # type: ignore[reportMissingImports]
 except ImportError:
-    optuna = None  # type: ignore[assignment]
-    MedianPruner = None  # type: ignore[assignment]
-    TPESampler = None  # type: ignore[assignment]
+    optuna = None  # type: ignore[assignment,misc]
+    MedianPruner = None  # type: ignore[assignment,misc]
+    TPESampler = None  # type: ignore[assignment,misc]
 
 logger = logging.getLogger(__name__)
 
@@ -117,7 +117,7 @@ class MaterialSpecificOptimizer:
         self.n_jobs = n_jobs
 
         # Optuna study
-        self.study = None
+        self.study: Any = None
 
         # Best parameters
         self.best_params = None

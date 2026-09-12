@@ -102,9 +102,9 @@ def _excitation_sone(band_energies: np.ndarray) -> np.ndarray:
     verlöre die Loudness ihre Pegelabhängigkeit (Produktionsbefund: 10× Pegel
     → Faktor 1.0). Absolute Sone-Kalibrierung ist ein deterministischer Proxy.
     """
-    exc = np.clip(band_energies, 1e-12, None) ** (_COCHLEAR_EXP / 2.0)
+    exc: np.ndarray = np.clip(band_energies, 1e-12, None) ** (_COCHLEAR_EXP / 2.0)
     exc = exc / 1e-3
-    return cast(np.ndarray, exc)
+    return exc
 
 
 def _dual_temporal_integration(sone_frames: np.ndarray, sr: int) -> tuple[float, float]:
@@ -116,13 +116,13 @@ def _dual_temporal_integration(sone_frames: np.ndarray, sr: int) -> tuple[float,
 
 
 def _one_pole(x: np.ndarray, attack: float, decay: float, dt: float) -> np.ndarray:
-    y = np.zeros_like(x)
+    y: np.ndarray = np.zeros_like(x)
     prev = 0.0
     for i in range(len(x)):
         a = 1.0 - np.exp(-dt / attack) if x[i] > prev else 1.0 - np.exp(-dt / decay)
         prev = a * x[i] + (1.0 - a) * prev
         y[i] = prev
-    return cast(np.ndarray, y)
+    return y
 
 
 def dynamic_loudness(audio: np.ndarray, sr: int) -> DynamicLoudnessResult:
