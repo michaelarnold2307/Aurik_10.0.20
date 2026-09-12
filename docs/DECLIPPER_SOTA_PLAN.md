@@ -57,9 +57,18 @@ Kanal nur übernommen, wenn der Proxy sinkt, sonst bleibt PCHIP. Tests:
   `banquet_vinyl_plugin.py`/`deepfilternet_v3_ii_plugin.py`: ONNX-Session über
   `ml_device_manager`/Providers, Chunked-Inferenz (10 s + 0.5 s Hann-Overlap-Add),
   Float32, RAM-Budget, deterministisch; Waveform→Waveform-Vertrag (1,1,T)/(1,T).
-- **Offen:** das eigentliche Modell-Artefakt (`models/aspade/aspade_declipper.onnx`,
-  PyTorch→ONNX via Spec v10.18). Ohne Modell meldet das Plugin
-  `is_available()=False` → Phase 07 nutzt CQT-Diff/PCHIP (§V6 (copilot-instructions.md)).
+- **Gewichte-Beschaffung (2026-09-12): NICHT MÖGLICH — die neuronalen
+  A-SPADE/APPLADE-Gewichte sind nicht öffentlich veröffentlicht.** Evidenz:
+  GitHub-Suche (nur klassisches MATLAB-SPADE, MIT — bereits als
+  `sparse_declipper`-DSP repliziert), HAL (nur SPADE-Toolbox/CASCADE),
+  Hugging Face (kein Audio-Declipper). Das Plugin bleibt als fertiger
+  Adapter liegen (`is_available()=False` → CQT-Diff/PCHIP, §V6
+  (copilot-instructions.md)) und lädt das Modell automatisch, sobald es
+  unter `models/aspade/aspade_declipper.onnx` liegt.
+- **Operativer neuronaler Declip-Zweig ist CQT-Diff+** (250 MB, lokal unter
+  models/cqtdiff vorhanden, §v10.752 mit KL-Guard + fixem Seed) — der
+  schwere Fall ist damit neuronal abgedeckt; A-SPADE wäre die
+  deterministische (sampling-freie) Ergänzung gewesen.
 - Tests: 93 grün inkl. synthetischem Identity-ONNX (dynamische Zeitachse),
   Fallback ohne Modell, Determinismus.
 
