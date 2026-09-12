@@ -3443,11 +3443,16 @@ class DeEsserPhase(PhaseInterface):
                     _f1 = formants[0] if len(formants) > 0 else 9999.0
                     _f2 = formants[1] if len(formants) > 1 else 9999.0
                     if _bw_loss_gd > 0.8 and _f1 < 1000.0 and _f2 < 1000.0:
-                        # Confidence proportional zur verbleibenden Signalqualität
-                        _degraded_confidence = max(0.25, confidence * (1.0 - _bw_loss_gd * 0.6))
-                        logger.warning(
+                        # §v10.95 Root-Fix (2026-09-12): bw_loss ist ein HOCHFREQUENZ-Maß
+                        # (Bandbreitenverlust oben); die F0-Evidenz liegt im TIEFBAND
+                        # (100–400 Hz) und überlebt MP3/AAC-Kompression gut. Die alte
+                        # Strafe (×0.6 → 0.92→0.37) bestrafte die intakte F0-Evidenz
+                        # für einen Formant-Schaden, der sie nicht betrifft —
+                        # band-appropriate: milde Degradation (×0.2), Floor 0.40.
+                        _degraded_confidence = max(0.40, confidence * (1.0 - _bw_loss_gd * 0.20))
+                        logger.info(
                             "§v10.95 Gender-Degradation: bw_loss=%.2f F1=%.0f F2=%.0f <1000Hz → "
-                            "Formanten unzuverlässig. F0-basiert: %s (conf %.2f→%.2f)",
+                            "Formanten unzuverlässig (erwartet bei Codec-Schaden). F0-basiert: %s (conf %.2f→%.2f)",
                             _bw_loss_gd,
                             _f1,
                             _f2,
@@ -3455,8 +3460,9 @@ class DeEsserPhase(PhaseInterface):
                             confidence,
                             _degraded_confidence,
                         )
-                        # F0-basierte Entscheidung beibehalten, aber Confidence reduziert.
-                        # Phase 19 arbeitet dann mit konservativen, gender-agnostischen Parametern.
+                        # F0-basierte Entscheidung beibehalten; Confidence nur band-
+                        # angemessen reduziert — die bw_loss-Graduierung (minimal-
+                        # Betriebsart) bleibt als Schutzschicht aktiv.
                         self.stats["degradation_uncertainty"] = round(_bw_loss_gd, 2)
                         self.stats["confidence_raw"] = round(confidence, 3)
                         self.stats["confidence_adjusted"] = round(_degraded_confidence, 3)
