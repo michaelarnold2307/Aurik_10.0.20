@@ -275,8 +275,17 @@ class RestorabilityEstimator:
             from plugins.muq_plugin import estimate_muq_mos as _muq_mos_fn
             from plugins.muq_plugin import estimate_quality_witness as _muq_witness_fn
 
-            _muq_witness = _muq_witness_fn(_orig_audio, sr)
-            _muq_mos = _muq_mos_fn(_orig_audio, sr)
+            # §v10.95 SOTA-Budget (2026-09-12): MOS-Prior auf ein deterministisches
+            # Zentrum-Segment (20 s) begrenzen — der Prior ist ein globaler
+            # Qualitäts-Cue, kein Voll-Längen-Maß. Produktionsbefund: Voll-Länge
+            # sprengte das 5-s-Budget (vinyl 11.43 s).
+            _muq_in = np.asarray(mono, dtype=np.float32)
+            _max_muq_samples = int(sr * 20)
+            if len(_muq_in) > _max_muq_samples:
+                _muq_start = (len(_muq_in) - _max_muq_samples) // 2
+                _muq_in = _muq_in[_muq_start : _muq_start + _max_muq_samples]
+            _muq_witness = _muq_witness_fn(_muq_in, sr)
+            _muq_mos = _muq_mos_fn(_muq_in, sr)
         except Exception as _muq_exc:
             logger.warning(
                 "MuQ-Qualitätsprior nicht verfügbar (%s) — DSP-MOS bleibt aktiv (§V6 (copilot-instructions.md))",
