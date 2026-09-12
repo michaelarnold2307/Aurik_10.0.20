@@ -655,7 +655,21 @@ class CrackleRemovalPhase(PhaseInterface):
         if session is None:
             raise RuntimeError("BANQUET ONNX session not available")
 
-        # --- Channel handling (Mono/Stereo) ---
+        # --- Stereo: pro Kanal inferieren (volle Leistung, kein Gain-Kompromiss) ---
+        # §v10.95 Root-Fix (2026-09-12): BANQUET ersetzt DeepFilterNet als Knistern-ML
+        # und entfaltet seine volle Qualität in ALLEN Songs — Stereo wird kanalweise
+        # restauriert (deterministisch, identisches Layout wie Input), statt über
+        # einen Mono-Gain beide Kanäle gleich zu korrigieren.
+        if audio.ndim == 2:
+            if audio.shape[0] <= 2 and audio.shape[1] > 2:
+                _outs = [self._remove_crackle_onnx_direct(audio[c], sample_rate, params) for c in range(audio.shape[0])]
+                _stereo_result: np.ndarray = np.stack(_outs, axis=0).astype(np.float32)
+                return _stereo_result
+            _outs = [self._remove_crackle_onnx_direct(audio[:, c], sample_rate, params) for c in range(audio.shape[1])]
+            _stereo_result: np.ndarray = np.stack(_outs, axis=1).astype(np.float32)
+            return _stereo_result
+
+        # --- Channel handling (Mono) ---
         # §v10.99: audio.shape[0] <= audio.shape[1] ist für kurzes channels-last
         # (N,2) mit N≤2 falsch-positiv → per-channel mean statt Mono-Mixdown
         # → (2,) statt (N,) → Broadcast-Crash mit audio (2,N) vs gain (M,).
@@ -1072,7 +1086,6 @@ class CrackleRemovalPhase(PhaseInterface):
                 for m in (_chain if isinstance(_chain, (list, tuple)) else [])
             )
         use_banquet = QUALITY_MODE_AVAILABLE and _is_vinyl and is_phase_ml_enabled(9)
-
         if use_banquet:
             # ----------------------------------------------------------------
             # Primary: direct ONNX inference (no Docker overhead, cached)
