@@ -245,6 +245,12 @@ unfixable = []
 # Kompatibilität mit print() in bestimmten Skripten
 dummy-variable-rgx = "^(_+|(_+[a-zA-Z0-9_]*[a-zA-Z0-9]+_*)|dummy|unused|ignored)$"
 
+[tool.ruff.lint.isort]
+# models/ ist gitignored (lokal vorhanden, auf CI nicht) — Klassifikation
+# deterministisch festzurren, sonst ändert Ruff die Import-Sektionen je nach
+# Umgebung (I001-Drift zwischen lokalem Checkout und CI-Runner).
+known-first-party = ["models"]
+
 [tool.ruff.lint.per-file-ignores]
 # Test-Dateien: assert und direkte Importe erlaubt
 "tests/**/*.py" = ["S101", "F401", "N802", "N803", "PLR2004", "E712", "F841", "B017", "B011", "B023", "C416", "B018", "SIM101", "SIM222", "SIM110", "RUF005", "RUF043"]

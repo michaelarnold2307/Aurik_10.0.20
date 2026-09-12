@@ -103,10 +103,10 @@ _libdf_erb: Any = None
 _libdf_erb_norm: Any = None
 _libdf_unit_norm: Any = None
 try:
-    from libdf import DF as LibDF  # noqa: N811 — Alias für Kollisionsfreiheit
-    from libdf import erb as _libdf_erb
-    from libdf import erb_norm as _libdf_erb_norm
-    from libdf import unit_norm as _libdf_unit_norm
+    from libdf import DF as LibDF  # type: ignore[no-redef]  # noqa: N811 — Alias für Kollisionsfreiheit
+    from libdf import erb as _libdf_erb  # type: ignore[no-redef]
+    from libdf import erb_norm as _libdf_erb_norm  # type: ignore[no-redef]
+    from libdf import unit_norm as _libdf_unit_norm  # type: ignore[no-redef]
 
     _HAS_LIBDF = True
 except ImportError:

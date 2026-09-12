@@ -10781,6 +10781,22 @@ for _new_dt_v9129, _mat_defaults_v9129 in _NEW_DEFECT_SENSITIVITY_DEFAULTS.items
         _threshold_v9129 = _mat_defaults_v9129.get(_mat_type_v9129.value, 0.70)
         DefectScanner.MATERIAL_SENSITIVITY[_mat_type_v9129].setdefault(_new_dt_v9129, _threshold_v9129)
 
+# Legacy-Aliase (§DefectType-Konsolidierung: HISS/DISTORTION/DROPOUT): identische
+# Schwellen wie ihre Primär-Defekte — sonst fehlen Einträge für neue Materialien
+# (wax_cylinder/wire_recording/lacquer_disc) und der Vollständigkeits-Test schlägt fehl.
+for _alias_v9129, _primary_v9129 in (
+    (DefectType.HISS, DefectType.HIGH_FREQ_NOISE),
+    (DefectType.DISTORTION, DefectType.OVERLOAD_DISTORTION),
+    (DefectType.DROPOUT, DefectType.DROPOUTS),
+):
+    for _mat_type_v9129 in MaterialType:
+        if _mat_type_v9129 not in DefectScanner.MATERIAL_SENSITIVITY:
+            continue
+        DefectScanner.MATERIAL_SENSITIVITY[_mat_type_v9129].setdefault(
+            _alias_v9129,
+            DefectScanner.MATERIAL_SENSITIVITY[_mat_type_v9129].get(_primary_v9129, 0.70),
+        )
+
 
 # ========== Singleton ==========
 
