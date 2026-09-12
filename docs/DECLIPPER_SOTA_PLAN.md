@@ -52,20 +52,23 @@ delta-basiert, AGENTS.md Guard-Kalibrierung) — der Sparse-Kandidat wird pro
 Kanal nur übernommen, wenn der Proxy sinkt, sonst bleibt PCHIP. Tests:
 88 grün (mild → abgelehnt, stark → übernommen, Determinismus, Fallback).
 
-### Slice B — A-SPADE-ONNX-Plugin
+### Slice B — A-SPADE-ONNX-Plugin ✅ (2026-09-12 umgesetzt, Modell-Artefakt offen)
 - `plugins/aspade_declipper_plugin.py` nach dem Muster von
   `banquet_vinyl_plugin.py`/`deepfilternet_v3_ii_plugin.py`: ONNX-Session über
-  `ml_device_manager`, Chunked-Inferenz (30/60 s), Float32, RAM-Budget +
-  LRU-Eviction, `enable_ml`-Flag.
-- Modell-Artefakt: PyTorch-Checkpoint → ONNX (opset passend zur Repo-ORT-Version),
-  abgelegt nach bestehender Modell-Pfad-Konvention; Größe dokumentieren.
-- Registrierung: Plugin-Registry + `.github/FILE_REGISTRY.md` (Write-Gate).
+  `ml_device_manager`/Providers, Chunked-Inferenz (10 s + 0.5 s Hann-Overlap-Add),
+  Float32, RAM-Budget, deterministisch; Waveform→Waveform-Vertrag (1,1,T)/(1,T).
+- **Offen:** das eigentliche Modell-Artefakt (`models/aspade/aspade_declipper.onnx`,
+  PyTorch→ONNX via Spec v10.18). Ohne Modell meldet das Plugin
+  `is_available()=False` → Phase 07 nutzt CQT-Diff/PCHIP (§V6 (copilot-instructions.md)).
+- Tests: 93 grün inkl. synthetischem Identity-ONNX (dynamische Zeitachse),
+  Fallback ohne Modell, Determinismus.
 
-### Slice C — Phase-07-Router
-Entscheidung aus `digital_clip`-Severity (DefectType-Mapping des
-causal_defect_reasoner): stark → A-SPADE, mild → Sparse, sonst/Edge → PCHIP.
-ML→DSP-Fallback mit `logger.warning` (§V6 (copilot-instructions.md)).
-`global_scalar` bleibt die zentrale Stärke (§V7 (copilot-instructions.md)).
+### Slice C — Phase-07-Router ✅ (2026-09-12 umgesetzt)
+Severity-Router: schwere Fälle (Clip-Runs ≥ 50 ms, Anteil ≥ 1 %) →
+**A-SPADE zuerst**, dann CQT-Diff, sonst PCHIP; milde/moderate Fälle → Sparse
+(Never-worsen-Harmonik-Proxy pro Kanal). ML→DSP-Fallback mit `logger.warning`
+(§V6 (copilot-instructions.md)); `global_scalar` bleibt zentrale Stärke
+(§V7 (copilot-instructions.md)).
 
 ### Slice D — Kalibrierung + Evidenzblock
 - Witness-Gate-Kalibrierung: Schwellen auf P90 der No-Harm-Deltas über

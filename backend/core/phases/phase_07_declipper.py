@@ -395,13 +395,52 @@ class DeclipperPhase(PhaseInterface):
             except Exception as _sp_exc:
                 logger.warning("Verarbeitungsschritt 07 sparse nicht verfügbar (%s) — PCHIP bleibt", _sp_exc)
 
+        # §DECLIPPER_SOTA_PLAN.md Slice B/C (2026-09-12): A-SPADE-ONNX als
+        # erster neuronaler Zweig für schwere Fälle — Never-worsen über den
+        # Harmonik-Proxy; ohne Modell oder ohne Gewinn bleibt CQT-Diff.
+        _aspade_used = False
+        if _severe_runs and self._clip_fraction >= 0.01:
+            try:
+                from plugins.aspade_declipper_plugin import (  # pylint: disable=import-outside-toplevel
+                    get_aspade_declipper_plugin,
+                )
+
+                _asp = get_aspade_declipper_plugin()
+                if _asp.is_available():
+                    _asp_out = np.zeros_like(audio_in)
+                    _acc = 0
+                    for _ch in range(audio_in.shape[0]):
+                        _asp_cand: np.ndarray | None = _asp.declip(
+                            audio_in[_ch], sample_rate, float(self._clip_threshold)
+                        )
+                        if _asp_cand is None:
+                            _asp_out[_ch] = audio_out[_ch]
+                            continue
+                        _pin = _harmonic_distortion_proxy(audio_in[_ch], sample_rate)
+                        _pout = _harmonic_distortion_proxy(_asp_cand, sample_rate)
+                        if _pout < _pin:
+                            _asp_out[_ch] = _asp_cand
+                            _acc += 1
+                        else:
+                            _asp_out[_ch] = audio_out[_ch]
+                    if _acc > 0:
+                        audio_out = _asp_out
+                        _aspade_used = True
+                        logger.info(
+                            "Verarbeitungsschritt 07 A-SPADE: %d/%d Kanäle übernommen (Harmonik-Proxy sank)",
+                            _acc,
+                            audio_in.shape[0],
+                        )
+            except Exception as _asp_exc:
+                logger.warning("Verarbeitungsschritt 07 A-SPADE nicht verfügbar (%s) — CQT-Diff bleibt", _asp_exc)
+
         # §v10.752 (2026-09-09): CQT-Diff-informierter Zweig für schwere Fälle.
         # Selbstkalibrierung bleibt der Detektor/Konditionierer; die maskierte
         # Diffusion repariert nur Regionen mit Clip-Runs ≥ 50 ms (Severity-Gate).
         # Guard: KL-Divergenz < 0.2 (Plugin-Metrik) + Energie-Plausibilität —
         # sonst bleibt das klassische Ergebnis (§V7 (copilot-instructions.md): ML nur bei nachweisbarem Gewinn).
         _cqtdiff_used = False
-        if _severe_runs and self._clip_fraction >= 0.01:
+        if _severe_runs and self._clip_fraction >= 0.01 and not _aspade_used:
             try:
                 import torch as _torch752  # pylint: disable=import-outside-toplevel
 
@@ -482,6 +521,7 @@ class DeclipperPhase(PhaseInterface):
                 "crossfade_samples": self._crossfade_n,
                 "reduction_db": float(reduction_db),
                 "sparse_used": bool(_sparse_used),  # §v10.755
+                "aspade_used": bool(_aspade_used),  # DECLIPPER_SOTA_PLAN Slice B
                 "cqtdiff_used": bool(_cqtdiff_used),  # §v10.752
                 "material": material,
             },
