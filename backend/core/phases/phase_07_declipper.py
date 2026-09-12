@@ -239,6 +239,27 @@ def _declip_pchip(audio: np.ndarray, threshold: float) -> np.ndarray:
     return cast(np.ndarray, (declipped.astype(audio.dtype, copy=False)))
 
 
+def _harmonic_distortion_proxy(x: np.ndarray, sr: int) -> float:
+    """THD-ähnlicher Harmonik-Proxy (dominante Grundfrequenz 60 Hz–2 kHz).
+
+    §v10.755 Verdrahtung: Never-worsen-Entscheidung für den Sparse-Zweig —
+    der Kandidat wird nur übernommen, wenn der Proxy sinkt (delta-basiert,
+    AGENTS.md Guard-Kalibrierung). Deterministisch, O(N log N).
+    """
+    spec = np.abs(np.fft.rfft(x.astype(np.float64)))
+    freqs = np.fft.rfftfreq(len(x), 1.0 / max(int(sr), 1))
+    band = (freqs >= 60.0) & (freqs <= 2000.0)
+    f0_i = int(np.argmax(spec * band))
+    f0 = float(freqs[f0_i])
+    fund = float(spec[f0_i]) + 1e-12
+    harm = 0.0
+    for h in range(2, 11):
+        hi = int(np.argmin(np.abs(freqs - f0 * h)))
+        if hi != f0_i:
+            harm += float(spec[hi] ** 2)
+    return float(np.sqrt(harm) / fund)
+
+
 class DeclipperPhase(PhaseInterface):
     """Selbstkalibrierende Phase 07 — Declipping mit adaptiver Glättung.
 
@@ -335,15 +356,51 @@ class DeclipperPhase(PhaseInterface):
         for ch in range(audio_in.shape[0]):
             audio_out[ch] = _declip_pchip(audio_in[ch], self._clip_threshold)
 
+        # §v10.755 (2026-09-09, DECLIPPER_SOTA_PLAN.md Slice A): Sparse-Zweig
+        # für Nicht-Severe-Fälle — A-SPADE-lite rekonstruiert Obertöne, wo
+        # PCHIP nichts bewirkt. Never-worsen: Übernahme pro Kanal nur, wenn der
+        # Harmonik-Proxy sinkt (Evidenz: starkes Flat-Top 6×/12× → Sparse −48/−80 %,
+        # mildes 2.5× → PCHIP besser). PCHIP bleibt der Fallback (§V6 (copilot-instructions.md)).
+        _mask07 = np.abs(audio_in[0]) >= self._clip_threshold
+        _runs07 = _clip_runs(_mask07)
+        _severe_runs = [r for r in _runs07 if (r[1] - r[0]) >= int(0.05 * sample_rate)]
+        _sparse_used = False
+        if not _severe_runs:
+            try:
+                from backend.core.dsp.sparse_declipper import (  # pylint: disable=import-outside-toplevel
+                    sparse_declip,
+                )
+
+                _sparse_out = np.zeros_like(audio_in)
+                _accepted = 0
+                for _ch in range(audio_in.shape[0]):
+                    _cand = sparse_declip(audio_in[_ch], sample_rate, float(self._clip_threshold))
+                    _pin = _harmonic_distortion_proxy(audio_in[_ch], sample_rate)
+                    _pout = _harmonic_distortion_proxy(_cand, sample_rate)
+                    if _pout < _pin:
+                        _sparse_out[_ch] = _cand
+                        _accepted += 1
+                    else:
+                        _sparse_out[_ch] = audio_out[_ch]  # PCHIP bleibt
+                if _accepted > 0:
+                    audio_out = _sparse_out
+                    _sparse_used = True
+                    logger.info(
+                        "Verarbeitungsschritt 07 sparse (A-SPADE-lite): %d/%d Kanäle übernommen (Harmonik-Proxy sank)",
+                        _accepted,
+                        audio_in.shape[0],
+                    )
+                else:
+                    logger.info("Verarbeitungsschritt 07 sparse abgelehnt (Harmonik-Proxy: kein Gewinn) — PCHIP bleibt")
+            except Exception as _sp_exc:
+                logger.warning("Verarbeitungsschritt 07 sparse nicht verfügbar (%s) — PCHIP bleibt", _sp_exc)
+
         # §v10.752 (2026-09-09): CQT-Diff-informierter Zweig für schwere Fälle.
         # Selbstkalibrierung bleibt der Detektor/Konditionierer; die maskierte
         # Diffusion repariert nur Regionen mit Clip-Runs ≥ 50 ms (Severity-Gate).
         # Guard: KL-Divergenz < 0.2 (Plugin-Metrik) + Energie-Plausibilität —
         # sonst bleibt das klassische Ergebnis (§V7 (copilot-instructions.md): ML nur bei nachweisbarem Gewinn).
         _cqtdiff_used = False
-        _mask07 = np.abs(audio_in[0]) >= self._clip_threshold
-        _runs07 = _clip_runs(_mask07)
-        _severe_runs = [r for r in _runs07 if (r[1] - r[0]) >= int(0.05 * sample_rate)]
         if _severe_runs and self._clip_fraction >= 0.01:
             try:
                 import torch as _torch752  # pylint: disable=import-outside-toplevel
@@ -424,6 +481,7 @@ class DeclipperPhase(PhaseInterface):
                 "clip_threshold": float(self._clip_threshold),
                 "crossfade_samples": self._crossfade_n,
                 "reduction_db": float(reduction_db),
+                "sparse_used": bool(_sparse_used),  # §v10.755
                 "cqtdiff_used": bool(_cqtdiff_used),  # §v10.752
                 "material": material,
             },
