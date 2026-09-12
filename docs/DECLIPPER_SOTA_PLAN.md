@@ -100,7 +100,13 @@ Severity-Router: schwere Fälle (Clip-Runs ≥ 50 ms, Anteil ≥ 1 %) →
 (§V6 (copilot-instructions.md)); `global_scalar` bleibt zentrale Stärke
 (§V7 (copilot-instructions.md)).
 
-### Slice D — Kalibrierung + Evidenzblock
+### Slice D — Kalibrierung + Evidenzblock ✅ (2026-09-12)
+No-Harm-Kalibrierung über N=5 MUSDB18-HQ-Songs (`scripts/calibrate_gates_slice_d.py`):
+alle Gate-Schwellen verifiziert (Offset 0, Residuum −146.8 dB, ITD/ILD/IACC 0,
+Declip-Proxy ohne Eingriff auf sauberer Musik) — keine Konstanten geändert.
+Evidenzblock: `docs/reports/calibration/2026-09-12_SLICE_D_GATE_CALIBRATION.md`.
+Musik-Finetune-Pipeline: `models/applade/port/finetune_music.py` (lokal,
+MUSDB18-HQ-Clipping-Dataset, verifizierter Quick-Lauf MSE 0.501).
 - Witness-Gate-Kalibrierung: Schwellen auf P90 der No-Harm-Deltas über
   **N≥3 Songs** (Evidenzblock, Seed, 95 %-CI, Maintainer Sign-off —
   PR-Vertrag §4 AGENTS.md).
