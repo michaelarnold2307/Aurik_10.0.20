@@ -107,6 +107,23 @@ Declip-Proxy ohne Eingriff auf sauberer Musik) — keine Konstanten geändert.
 Evidenzblock: `docs/reports/calibration/2026-09-12_SLICE_D_GATE_CALIBRATION.md`.
 Musik-Finetune-Pipeline: `models/applade/port/finetune_music.py` (lokal,
 MUSDB18-HQ-Clipping-Dataset, verifizierter Quick-Lauf MSE 0.501).
+
+**GPU-Finetune abgeschlossen (2026-09-12):** 20 Epochen × 10 Songs auf der
+Radeon RX 7900 XTX (58 s, MSE 1.745 → 0.290). ΔSDR-Bewertung (Clipping
+θ=0.15·Peak, 100 ADMM-Iterationen):
+
+| Datei | Basis (Sprache) | Finetune (Musik) |
+|---|---|---|
+| LibriSpeech 0003 | +0.23 dB | **+1.74 dB** |
+| MUSDB AM Contra | +0.50 dB | **+1.22 dB** |
+| MUSDB BKS Too Much | −5.01 dB | **+1.21 dB** |
+| MUSDB Bobby Nobody | +0.56 dB | **+1.44 dB** |
+
+Das Musik-Finetune gewinnt auf allen vier Dateien und behebt den
+−5-dB-Versager des Sprach-Modells. Produktions-ONNX
+(`models/aspade/aspade_declipper.onnx`) auf das Finetune umgestellt
+(ONNX op 17, eingebettete Gewichte, ORT-verifiziert 2.3e-05; 14
+Plugin-/Phase-07-Tests grün).
 - Witness-Gate-Kalibrierung: Schwellen auf P90 der No-Harm-Deltas über
   **N≥3 Songs** (Evidenzblock, Seed, 95 %-CI, Maintainer Sign-off —
   PR-Vertrag §4 AGENTS.md).
