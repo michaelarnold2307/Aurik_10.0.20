@@ -63,6 +63,7 @@ _AIR_LO_HZ = 8000.0
 _AIR_HI_HZ = 20000.0
 _AIR_LOSS_DB = 2.0
 _ROUGHNESS_RISE_ASPER = 0.35
+_PRE_ECHO_DB = -12.0
 _TRANSIENT_WIN = 0.005  # 5-ms-Envelope für Transienten-Steigung
 
 
@@ -83,6 +84,10 @@ class ListeningWitnessResult:
     masked_residual_db: float = 0.0
     air_audible: bool = False
     roughness_rise_asper: float = 0.0
+    itd_drift_us: float = 0.0
+    ild_drift_db: float = 0.0
+    iacc_drop: float = 0.0
+    pre_echo_db: float = 0.0
     findings: list[str] = field(default_factory=list)
 
     def as_dict(self) -> dict:
@@ -100,6 +105,10 @@ class ListeningWitnessResult:
             "masked_residual_db": round(self.masked_residual_db, 2),
             "air_audible": bool(self.air_audible),
             "roughness_rise_asper": round(self.roughness_rise_asper, 4),
+            "itd_drift_us": round(self.itd_drift_us, 2),
+            "ild_drift_db": round(self.ild_drift_db, 2),
+            "iacc_drop": round(self.iacc_drop, 4),
+            "pre_echo_db": round(self.pre_echo_db, 2),
             "findings": list(self.findings),
         }
 
@@ -115,6 +124,21 @@ def _mono(audio: np.ndarray) -> np.ndarray:
             arr = arr.mean(axis=1)
     _witness_ret: np.ndarray = arr
     return _witness_ret
+
+
+def _channels_first_or_none(audio: np.ndarray) -> np.ndarray | None:
+    """Stereo als channels-first (2, N) — None für Mono/unklare Layouts."""
+    arr = np.asarray(audio, dtype=np.float32)
+    arr = np.nan_to_num(arr, nan=0.0, posinf=0.0, neginf=0.0)
+    if arr.ndim != 2:
+        return None
+    if arr.shape[0] <= 2 and arr.shape[0] < arr.shape[1]:
+        _witness_cf: np.ndarray = arr
+        return _witness_cf
+    if arr.shape[1] <= 2 and arr.shape[1] < arr.shape[0]:
+        _witness_cf_t: np.ndarray = arr.T
+        return _witness_cf_t
+    return None
 
 
 def _frame_iter(x: np.ndarray, sr: int, frame: int = _FRAME, hop: int = _HOP):
@@ -388,6 +412,34 @@ def evaluate_listening_witness(
     except Exception as _sota_exc:
         logger.debug("§Witness-SOTA P1/P2 nicht verfügbar: %s", _sota_exc)
 
+    # §Witness-SOTA P3/P4 (2026-09-12): Stereo-Kollaps (ITD/ILD/IACC vs. JNDs)
+    # und Pre-Echo-Proxy — deterministisch; P4 läuft immer (Mono-Basis),
+    # P3 nur bei Stereo-Inputs.
+    _itd_drift = 0.0
+    _ild_drift = 0.0
+    _iacc_drop = 0.0
+    _stereo_ok = True
+    _pre_echo_db = -200.0
+    _cf_a = _channels_first_or_none(audio_before)
+    _cf_b = _channels_first_or_none(audio_after)
+    if _cf_a is not None and _cf_b is not None:
+        try:
+            from backend.core.dsp.interaural_cues import interaural_cue_integrity as _ici
+
+            _ic = _ici(_cf_a, _cf_b, sr)
+            _itd_drift = float(_ic.itd_drift_us)
+            _ild_drift = float(_ic.ild_drift_db)
+            _iacc_drop = float(_ic.iacc_delta)
+            _stereo_ok = bool(_ic.itd_ok and _ic.ild_ok and _ic.iacc_ok)
+        except Exception as _p3_exc:
+            logger.debug("§Witness-SOTA P3 nicht verfügbar: %s", _p3_exc)
+    try:
+        from backend.core.dsp.pre_echo_model import pre_echo_ratio_db as _pe_db
+
+        _pre_echo_db = _pe_db(a, b, sr)
+    except Exception as _p4_exc:
+        logger.debug("§Witness-SOTA P4 nicht verfügbar: %s", _p4_exc)
+
     result = ListeningWitnessResult(
         phase_id=phase_id,
         pitch_drift_cents=pitch_delta,
@@ -402,6 +454,10 @@ def evaluate_listening_witness(
         masked_residual_db=_masked_residual_db,
         air_audible=_air_audible,
         roughness_rise_asper=_roughness_rise,
+        itd_drift_us=_itd_drift,
+        ild_drift_db=_ild_drift,
+        iacc_drop=_iacc_drop,
+        pre_echo_db=_pre_echo_db,
     )
 
     if result.pitch_drift_cents > _PITCH_DRIFT_CENTS:
@@ -426,4 +482,8 @@ def evaluate_listening_witness(
         result.findings.append("air_loss_audible")
     if result.roughness_rise_asper > _ROUGHNESS_RISE_ASPER:
         result.findings.append("roughness_increase")
+    if not _stereo_ok:
+        result.findings.append("stereo_collapse")
+    if result.pre_echo_db > _PRE_ECHO_DB:
+        result.findings.append("pre_echo")
     return result

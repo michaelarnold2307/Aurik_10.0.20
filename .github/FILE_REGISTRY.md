@@ -160,7 +160,8 @@
 | docs/KNISTERN_ML_MODELL_ANALYSE.md | ACTIVE | docs | ja | — | Knistern-ML-Analyse (2026-09-12): BANQUET ist das geeignetste Vinyl-Modell, lief aber nie (is_phase_ml_enabled(9) permanent False); Root-Fix: Phase 9 in ML-CRITICAL; KIM ungeeignet für Impuls-Entfernung |
 | backend/core/dsp/masking_model.py | ACTIVE | backend/core/dsp | ja | — | Johnston-1988-vereinfachtes Maskierungsmodell (2026-09-12): Bark-Schwelle, SFM-Tonalität, Spreading, Sicherheitsmarge; Audibility statt Mess-Null (Hörordnung Ebene 2, §Witness-SOTA P1) |
 | backend/core/dsp/roughness_model.py | ACTIVE | backend/core/dsp | ja | — | Rauigkeits-Schätzer (2026-09-12): Hilbert-Hüllkurven-Fluktuation 20–150 Hz, deterministisch (§Witness-SOTA P2); Witness-Delta roughness_rise_asper |
-| tests/unit/test_witness_sota_p1p2.py | ACTIVE | testing/unit | ja | — | Witness-SOTA-P1/P2-Tests (2026-09-12): Bark-Determinismus, Masker verdeckt Delta, lautes Delta audible, AM-Rauigkeit signiert |
+| backend/core/dsp/pre_echo_model.py | ACTIVE | backend/core/dsp | ja | — | Pre-Echo-Proxy (2026-09-12, §Witness-SOTA P4): Delta-Energie vor starken Onsets (Forward-Masking-Verletzung), 5-ms-Hüllkurven, deterministisch |
+| tests/unit/test_witness_sota_p1p2.py | ACTIVE | testing/unit | ja | — | Witness-SOTA-Tests (2026-09-12): Bark-Determinismus, Masker verdeckt Delta, lautes Delta audible, AM-Rauigkeit signiert, P3 Stereo-Kollaps, P4 Pre-Echo |
 
 ## Pflege-Regeln
 

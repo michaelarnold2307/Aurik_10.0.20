@@ -1,7 +1,9 @@
-"""Unit-Tests für Maskierungsmodell + Rauigkeit (§Witness-SOTA P1/P2, 2026-09-12).
+"""Unit-Tests für Maskierungsmodell + Rauigkeit (§Witness-SOTA P1/P2, 2026-09-12)
+und P3 (Stereo-Kollaps) + P4 (Pre-Echo) — 2026-09-12.
 
 Prüft: Determinismus, Ton-maskiert-Ton (lauter Masker → leises Delta inaudible),
-klares Delta über der Schwelle (audible), Rauigkeit steigt bei 70-Hz-AM.
+klares Delta über der Schwelle (audible), Rauigkeit steigt bei 70-Hz-AM,
+Stereo→Mono-Kollaps, Energie vor einem Transienten (Pre-Echo).
 """
 
 from __future__ import annotations
@@ -74,3 +76,34 @@ def test_roughness_rise_signed() -> None:
     assert roughness_rise_asper(carrier, rough, SR) > 0.0
     assert roughness_rise_asper(rough, carrier, SR) < 0.0
     assert roughness_rise_asper(carrier, carrier.copy(), SR) == 0.0
+
+
+def test_stereo_collapse_detected_by_witness() -> None:
+    """P3: Stereo → Mono-Kollaps meldet stereo_collapse + ILD/IACC-Drift."""
+    from backend.core.listening_witness import evaluate_listening_witness
+
+    left = _tone(440.0, 0.4, dur_s=2.0) + _tone(220.0, 0.3, dur_s=2.0)
+    right = _tone(660.0, 0.4, dur_s=2.0) + _tone(220.0, 0.2, dur_s=2.0)
+    stereo = np.stack([left, right], axis=0).astype(np.float32)  # (2, N)
+    collapsed = np.stack([np.mean(stereo, axis=0), np.mean(stereo, axis=0)], axis=0).astype(np.float32)
+    res = evaluate_listening_witness(stereo, collapsed, SR, "phase_p3")
+    assert res.ild_drift_db > 1.0 or res.iacc_drop > 0.05
+    assert "stereo_collapse" in res.findings
+
+
+def test_pre_echo_detected_by_witness() -> None:
+    """P4: Energie vor einem Transienten → pre_echo-Finding."""
+    from backend.core.listening_witness import evaluate_listening_witness
+
+    rng = np.random.default_rng(5)
+    n = int(SR * 2.0)
+    base = (rng.standard_normal(n) * 0.01).astype(np.float32)
+    onset = int(SR * 1.0)
+    base[onset : onset + 200] += 0.8 * np.hanning(200).astype(np.float32)
+    base[onset + 200 : onset + 800] += 0.4
+    with_echo = base.copy()
+    pre = int(SR * 0.010)
+    with_echo[onset - pre : onset] += 0.15 * np.hanning(pre).astype(np.float32)  # 10 ms Vor-Energie
+    res = evaluate_listening_witness(base, with_echo, SR, "phase_p4")
+    assert res.pre_echo_db > -12.0
+    assert "pre_echo" in res.findings

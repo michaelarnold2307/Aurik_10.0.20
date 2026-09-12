@@ -84,10 +84,12 @@ DELTA-basierte Regressions-Proxies — exakt die Witness-Rolle.
   (20–150 Hz, deterministisch) in `backend/core/dsp/roughness_model.py`;
   Witness meldet `roughness_rise_asper` + Finding `roughness_increase`.
   (Band-weise Vassilakis-Verfeinerung + 5–8-kHz-Sibilanz bleiben Folgeschritt.)
-- **P3 — Räumlich:** ITD/ILD-Delta (Stereo-Kollaps) — im Analyse-Plan bereits
-  als Mix-Zusatz-Metrik gefordert.
-- **P4 — Zeitliche Maskierung:** Pre-Echo-Proxy (Forward-Masking) für
-  Zeitbereichs-Prozessoren (KIM/AudioSR-Klasse).
+- **P3 — Räumlich ✅ (2026-09-12):** `interaural_cue_integrity` (ITD/ILD/IACC
+  vs. Hör-JNDs) im Witness verdrahtet — Felder `itd_drift_us`/`ild_drift_db`/
+  `iacc_drop` + Finding `stereo_collapse` bei JND-Verletzung.
+- **P4 — Zeitliche Maskierung ✅ (2026-09-12):** Pre-Echo-Proxy
+  (`backend/core/dsp/pre_echo_model.py`) — Delta-Energie vor starken Onsets;
+  Witness-Feld `pre_echo_db` + Finding `pre_echo` (> −12 dB).
 - **Nicht tun:** PEAQ/POLQA/MOS-Prädiktoren im Witness (Rollenbruch:
   absolut statt delta; ML-Bruch: Determinismus), Fusion mit den Goals
   (siehe Harmonisierungs-Urteil §5).
