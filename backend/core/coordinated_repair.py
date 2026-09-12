@@ -1173,7 +1173,8 @@ class CoordinatedRepair:
         das cat auch ohne Mask-Kanal einen 2-Kanal-Shape → RuntimeError).
         """
         try:
-            import torch  # pylint: disable=import-outside-toplevel
+            # pylint: disable=import-outside-toplevel
+            import torch
 
             from models.miipher_dit.dit_model import FlowMatchingDiT
 

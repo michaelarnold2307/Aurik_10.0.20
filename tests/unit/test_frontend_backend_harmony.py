@@ -445,12 +445,24 @@ def test_ui_still_bridge_only():
 
 
 def test_crash_reporter_new_reports_lifecycle(tmp_path, monkeypatch):
-    """get_new_reports → mark_seen → keine erneute Anzeige."""
+    """get_new_reports → mark_seen → keine erneute Anzeige.
+
+    Deterministisch über eine kontrollierte Zeitquelle (keine Wall-Clock-Races
+    auf CI-Runnern mit unterschiedlicher mtime-Granularität).
+    """
     import json
-    import time
 
     from backend.core import crash_reporter
 
+    class _FakeClock:
+        def __init__(self) -> None:
+            self.t = 1000.0
+
+        def __call__(self) -> float:
+            return self.t
+
+    _clock = _FakeClock()
+    monkeypatch.setattr(crash_reporter.time, "time", _clock)
     monkeypatch.setattr(crash_reporter, "_REPORTS_DIR", tmp_path)
     monkeypatch.setattr(crash_reporter, "_LAST_SEEN_FILE", tmp_path / ".last_seen")
 
@@ -463,21 +475,22 @@ def test_crash_reporter_new_reports_lifecycle(tmp_path, monkeypatch):
     # Neuen Report schreiben (älter als Basislinie → unsichtbar)
     _old = tmp_path / "crash_old.json"
     _old.write_text(json.dumps({"exception": {"type": "ValueError", "message": "alt"}}), encoding="utf-8")
-    _old_ts = time.time() - 60
     import os
 
-    os.utime(_old, (_old_ts, _old_ts))
+    os.utime(_old, (_base - 60.0, _base - 60.0))
     assert crash_reporter.get_new_reports() == []
 
-    # Frischen Report schreiben → sichtbar mit type/message
+    # Frischen Report schreiben (mtime explizit NACH der Basislinie) → sichtbar
     _new = tmp_path / "crash_new.json"
     _new.write_text(json.dumps({"exception": {"type": "KeyError", "message": "kaputt"}}), encoding="utf-8")
+    os.utime(_new, (_base + 1.0, _base + 1.0))
     reports = crash_reporter.get_new_reports()
     assert len(reports) == 1
     assert reports[0]["type"] == "KeyError"
     assert reports[0]["message"] == "kaputt"
 
-    # Gesehen → weg
+    # Gesehen → weg (Basislinie wird über die kontrollierte Uhr verschoben)
+    _clock.t = 2000.0
     crash_reporter.mark_reports_seen()
     assert crash_reporter.get_new_reports() == []
 
