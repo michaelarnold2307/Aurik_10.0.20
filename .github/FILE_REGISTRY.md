@@ -157,6 +157,7 @@
 | docs/MUSICAL_GOALS_WITNESS_HARMONISIERUNG.md | ACTIVE | docs | ja | — | Harmonisierungs-Urteil (2026-09-12): Musical-Goals vs. Witness-Reinhören — gleiches Endziel, getrennte Rollen; Hierarchie-Vertrag + gemeinsame Mess-Sprache (air_gain_db); Fusion kontraproduktiv |
 | docs/WITNESS_SOTA_GAP_ANALYSE.md | ACTIVE | docs | ja | — | SOTA-Gap-Analyse (2026-09-12): Witness misst 9 Delta-Domänen, besitzt nicht alle SOTA-Fähigkeiten der Gehör-Nachempfindung; größter Gap = Maskierungsschwelle (Hörordnung Ebene 2); Roadmap P1 Maskierungs-Modul, P2 Rauigkeit, P3 Räumlich; PEAQ/ML-Prädiktoren bewusst ausgeschlossen |
 | docs/reports/supervised_runs/2026-09-12_elke_best_30s.md | ACTIVE | docs/reports/supervised_runs | ja | — | Überwachter Run (2026-09-12): Elke Best 30s mp3_low — VQI 0.910 world_class, OQS 99.4; §SLR-1 nicht angetriggert (kein Stem-Block); Resemblyzer-Root-Cause dokumentiert |
+| docs/KNISTERN_ML_MODELL_ANALYSE.md | ACTIVE | docs | ja | — | Knistern-ML-Analyse (2026-09-12): BANQUET ist das geeignetste Vinyl-Modell, lief aber nie (is_phase_ml_enabled(9) permanent False); Root-Fix: Phase 9 in ML-CRITICAL; KIM ungeeignet für Impuls-Entfernung |
 
 ## Pflege-Regeln
 

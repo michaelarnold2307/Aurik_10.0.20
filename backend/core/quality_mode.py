@@ -55,7 +55,11 @@ class QualityModeConfig:
 
 
 def is_phase_ml_enabled(phase_number: int) -> bool:
-    _CRITICAL: frozenset[int] = frozenset({3, 23, 24, 29, 55, 66})
+    # §v10.95 ML-Hybrid (2026-09-12): 9 = BANQUET (Vinyl-Knistern) — phase_09
+    # nutzt dieses Gate als ANWENDUNGS-Freigabe. Ohne Eintrag wird das Modell
+    # zwar geladen, aber nie angewendet (Produktionsbefund: Batch-Läufe laden
+    # banquet_vinyl_final.onnx und entladen es ungenutzt).
+    _CRITICAL: frozenset[int] = frozenset({3, 9, 23, 24, 29, 55, 66})
     if phase_number not in _CRITICAL:
         return False
     return QualityModeConfig._ml_phases_enabled
