@@ -72,7 +72,6 @@ Date: 2026-02-15
 import contextlib
 import logging
 import os  # §v10.105 module-level (prevents UnboundLocalError)
-import threading
 import time
 from pathlib import Path
 from typing import Any
@@ -84,8 +83,6 @@ from backend.core.audio_utils import apply_musical_gain_envelope as _amge_09
 from backend.core.audio_utils import compute_gated_rms_dbfs as _gated_rms_dbfs_09
 from backend.core.audio_utils import compute_signal_relative_gate_dbfs as _sig_gate_09
 from backend.core.audio_utils import to_channels_last
-from backend.core.ml_memory_budget import release as _ml_release
-from backend.core.ml_memory_budget import try_allocate as _try_allocate
 from backend.core.ml_model_readiness import check_ml_model_ready
 from backend.core.restoration_policy import get_effective_song_goal_weights
 
@@ -101,82 +98,6 @@ except ImportError:
     logging.warning("Quality Mode System not available for Phase 9")
 
 logger = logging.getLogger(__name__)
-
-# ---------------------------------------------------------------------------
-# BANQUET ONNX-Session Singleton (thread-safe, no Docker overhead)
-# Model: models/banquet/banquet_vinyl_final.onnx + .onnx.data (External Data)
-# ---------------------------------------------------------------------------
-_BANQUET_ONNX_STATE: dict = {"session": None}  # session: onnxruntime.InferenceSession | False | None
-_BANQUET_ONNX_LOCK = threading.Lock()
-
-
-def _get_banquet_onnx_session():
-    """Thread-safe singleton for BANQUET ONNX session (no Docker overhead).
-
-    Loads the local ONNX model on first call and caches it permanently.
-    Subsequent calls are nearly free (dict-lookup only).
-    Double-checked locking for thread-safety in batch processing.
-
-    Returns:
-        ort.InferenceSession | None
-    """
-    if _BANQUET_ONNX_STATE["session"] is None:
-        with _BANQUET_ONNX_LOCK:
-            if _BANQUET_ONNX_STATE["session"] is None:
-                try:
-                    import onnxruntime as ort
-
-                    _BANQUET_SIZE_GB = 0.05  # banquet_vinyl_final.onnx ~ 50 MB
-                    if not _try_allocate("BanquetVinyl", size_gb=_BANQUET_SIZE_GB):
-                        logger.warning(
-                            "ML Grenze exhausted — BANQUET ONNX cannot be geladen. "
-                            "Activating DSP Ersatzpfad (SpectralDecrackler)."
-                        )
-                        _BANQUET_ONNX_STATE["session"] = False
-                        return None
-
-                    _model_path = (
-                        Path(__file__).parent.parent.parent.parent / "models" / "banquet" / "banquet_vinyl_final.onnx"
-                    )
-                    if _model_path.exists():
-                        try:
-                            sess = ort.InferenceSession(
-                                str(_model_path),
-                                providers=["CPUExecutionProvider"],
-                            )
-                        except Exception as _load_exc:
-                            _ml_release("BanquetVinyl")
-                            logger.warning("BANQUET ONNX-Sitzung laden error: %s — DSP Ersatzpfad active.", _load_exc)
-                            _BANQUET_ONNX_STATE["session"] = False
-                            return None
-
-                        _BANQUET_ONNX_STATE["session"] = sess
-                        try:
-                            from backend.core.plugin_lifecycle_manager import (
-                                get_plugin_lifecycle_manager,
-                            )
-
-                            get_plugin_lifecycle_manager().register(
-                                "BanquetVinyl", size_gb=_BANQUET_SIZE_GB, unload_fn=lambda: None
-                            )
-                        except Exception as _exc:
-                            logger.debug("Operation fehlgeschlagen (unkritisch): %s", _exc)
-                        logger.info(
-                            "BANQUET ONNX-Sitzung geladen (direct access, no Docker): %s",
-                            _model_path,
-                        )
-                    else:
-                        _ml_release("BanquetVinyl")
-                        logger.warning(
-                            "BANQUET ONNX model not found: %s — DSP Ersatzpfad active",
-                            _model_path,
-                        )
-                        _BANQUET_ONNX_STATE["session"] = False
-                except Exception as exc:
-                    logger.warning("BANQUET ONNX-Sitzung could not be initialisiert: %s", exc)
-                    _BANQUET_ONNX_STATE["session"] = False
-    return _BANQUET_ONNX_STATE["session"] if _BANQUET_ONNX_STATE["session"] is not False else None
-
 
 # §v10.900 B11: HF-Rauschfloor-Check — macht Banquets Schaden sichtbar.
 _B11_HF_FLOOR_MIN_HZ = 8000.0
@@ -629,17 +550,20 @@ class CrackleRemovalPhase(PhaseInterface):
         sample_rate: int,
         params: dict[str, Any],
     ) -> np.ndarray:
-        """BANQUET vinyl restoration via direct ONNX inference (no Docker).
+        """BANQUET-Vinyl-Restaurierung über die kanonische Plugin-Pipeline.
 
-        BANQUET is trained at 48 kHz. The method resamples transparently
-        to/from this rate as needed. The ONNX session is loaded once
-        and reused for all subsequent calls.
-
-        ONNX model input:  [1, n_samples] float32 (normalized)
-        ONNX model output: [1, n_samples] float32
+        §V7 (copilot-instructions.md) — EINE Lösung pro Rolle: Die frühere
+        direkte Waveform-Inferenz ([1, n_samples] roh) war eine fehlerhafte
+        Reimplementierung — das SeqBand-Modell erwartet ein 4-D-STFT-Feature
+        [1, 128, 128, 128] (Produktionsfehler: ONNXRuntimeError
+        INVALID_ARGUMENT, rank 2 ≠ 4, 2026-09-13). Kanonischer Pfad ist
+        BanquetVinylPlugin.process(): STFT n_fft=512/hop=375 → 128 Bänder ×
+        128 Frames, OLA 1 s/0,5 s, Original-Phase-iSTFT, gepatchtes ONNX,
+        Resampling auf 48 kHz, DSP-Fallback + Quarantäne (§V6 (copilot-instructions.md)) — alles
+        bereits dort implementiert und getestet.
 
         Args:
-            audio:       Input audio (1-D or 2-D mono/stereo, float32)
+            audio:       Input audio (1-D oder 2-D mono/stereo, float32)
             sample_rate: Original sample rate of the audio
             params:      Material-specific processing parameters
 
@@ -647,188 +571,29 @@ class CrackleRemovalPhase(PhaseInterface):
             Restored audio (same shape as input)
 
         Raises:
-            RuntimeError: If ONNX session is not available.
+            RuntimeError: Wenn das ONNX-Modell nicht verfügbar ist — der
+                Aufrufer fällt dann auf den Datei-basierten Plugin-Pfad zurück.
         """
-        _BANQUET_SR = 48_000
+        from plugins.banquet_vinyl_plugin import get_banquet_plugin as _get_bvq_plugin
 
-        session = _get_banquet_onnx_session()
-        if session is None:
-            raise RuntimeError("BANQUET ONNX session not available")
+        _plugin_bvq = _get_bvq_plugin()
+        if not getattr(_plugin_bvq, "_model_ok", False):
+            raise RuntimeError("BANQUET ONNX nicht verfügbar — Plugin ohne Modell")
 
-        # --- Stereo: pro Kanal inferieren (volle Leistung, kein Gain-Kompromiss) ---
-        # §v10.95 Root-Fix (2026-09-12): BANQUET ersetzt DeepFilterNet als Knistern-ML
-        # und entfaltet seine volle Qualität in ALLEN Songs — Stereo wird kanalweise
-        # restauriert (deterministisch, identisches Layout wie Input), statt über
-        # einen Mono-Gain beide Kanäle gleich zu korrigieren.
-        if audio.ndim == 2:
-            if audio.shape[0] <= 2 and audio.shape[1] > 2:
-                _outs = [self._remove_crackle_onnx_direct(audio[c], sample_rate, params) for c in range(audio.shape[0])]
-                _stereo_cf: np.ndarray = np.stack(_outs, axis=0).astype(np.float32)
-                return _stereo_cf
-            _outs = [self._remove_crackle_onnx_direct(audio[:, c], sample_rate, params) for c in range(audio.shape[1])]
-            _stereo_cl: np.ndarray = np.stack(_outs, axis=1).astype(np.float32)
-            return _stereo_cl
+        _in09 = np.asarray(audio, dtype=np.float32)
+        _was_cl = _in09.ndim == 2 and _in09.shape[0] > 2  # (N, C) → Plugin erwartet (C, N)
+        _plug_in = _in09.T.copy() if _was_cl else _in09
+        _restored = np.asarray(_plugin_bvq.process(_plug_in, sample_rate), dtype=np.float32)
+        _restored = _restored.T if _was_cl else _restored
+        _restored = np.nan_to_num(_restored, nan=0.0, posinf=0.0, neginf=0.0)
 
-        # --- Channel handling (Mono) ---
-        # §v10.99: audio.shape[0] <= audio.shape[1] ist für kurzes channels-last
-        # (N,2) mit N≤2 falsch-positiv → per-channel mean statt Mono-Mixdown
-        # → (2,) statt (N,) → Broadcast-Crash mit audio (2,N) vs gain (M,).
-        if audio.ndim == 1:
-            audio_mono = audio
-            stereo_mode = False
-        elif audio.ndim == 2 and audio.shape[0] <= 2 and audio.shape[1] > 2:
-            # Shape (channels, samples) — e.g. (2, 144000)
-            audio_mono = audio.mean(axis=0)
-            stereo_mode = True
-        elif audio.ndim == 2:
-            # Shape (samples, channels) — e.g. (144000, 2)
-            audio_mono = audio.mean(axis=-1)
-            stereo_mode = True
-        else:
-            audio_mono = audio
-            stereo_mode = False
-
-        # --- Resample auf BANQUET-Trainings-SR (48 kHz) ---
-        need_resample = sample_rate != _BANQUET_SR
-        if need_resample:
-            try:
-                import librosa
-
-                audio_48k = librosa.resample(audio_mono, orig_sr=sample_rate, target_sr=_BANQUET_SR).astype(np.float32)
-            except ImportError:
-                from math import gcd
-
-                from scipy.signal import resample_poly
-
-                _g = gcd(int(sample_rate), _BANQUET_SR)
-                audio_48k = resample_poly(
-                    audio_mono.astype(np.float64),
-                    _BANQUET_SR // _g,
-                    int(sample_rate) // _g,
-                ).astype(np.float32)
-        else:
-            audio_48k = audio_mono.astype(np.float32)
-
-        # --- Normalization ---
-        max_val = float(np.abs(audio_48k).max())
-        if max_val < 1e-10:
-            return np.nan_to_num(audio, nan=0.0, posinf=0.0, neginf=0.0)  # type: ignore[no-any-return]  # Silence — return unchanged
-        audio_norm = (audio_48k / max_val).astype(np.float32)
-
-        # --- ONNX inference with fixed-shape chunking (§ml-plugin-SKILL) ---
-        input_name = session.get_inputs()[0].name
-        _inp_shape = session.get_inputs()[0].shape
-        _fixed_len = (
-            _inp_shape[1] if (len(_inp_shape) > 1 and isinstance(_inp_shape[1], int) and _inp_shape[1] > 0) else None
-        )
-
-        # §2.63: Reflect-Padding VOR BANQUET-Inferenz (root-cause boundary fix, §2.63)
-        # Provides intro/outro context for the ML model (like phase_03 for DeepFilterNet).
-        _ctx_n09 = min(int(sample_rate), len(audio_norm) // 4)
-        _banquet_use_pad = _ctx_n09 > 0 and len(audio_norm) > _ctx_n09 * 4
-        if _banquet_use_pad:
-            _audio_norm_09 = np.pad(audio_norm, _ctx_n09, mode="reflect")
-        else:
-            _audio_norm_09 = audio_norm
-
-        # PLM Active-Guard: prevents emergency-eviction during active inference (§VERBOTEN)
-        try:
-            from backend.core.plugin_lifecycle_manager import (
-                get_plugin_lifecycle_manager,
-            )
-
-            _plm = get_plugin_lifecycle_manager()
-            _plm.set_active("BanquetVinyl", True)
-        except Exception:
-            _plm = None
-
-        try:
-            if _fixed_len is not None and len(_audio_norm_09) != _fixed_len:
-                # Chunking-Loop: zero-pad letzten Chunk (§2.63: iterates over padded audio)
-                _chunks_out: list[np.ndarray] = []
-                for _ci in range(0, len(_audio_norm_09), _fixed_len):
-                    _chunk = _audio_norm_09[_ci : _ci + _fixed_len]
-                    if len(_chunk) < _fixed_len:
-                        _chunk = np.pad(_chunk, (0, _fixed_len - len(_chunk)))
-                    _cout = session.run(None, {input_name: _chunk[np.newaxis, :]})[0].squeeze(0)
-                    _chunks_out.append(_cout[: min(_fixed_len, len(_audio_norm_09) - _ci)])
-                restored_48k_raw = (np.concatenate(_chunks_out) * max_val).astype(np.float32)
-            else:
-                audio_input = _audio_norm_09[np.newaxis, :]  # [1, n_samples]
-                outputs = session.run(None, {input_name: audio_input})
-                restored_48k_raw = (outputs[0].squeeze(0) * max_val).astype(np.float32)
-            # §2.63: Strip reflect-padding deterministically (restore original length)
-            if _banquet_use_pad:
-                restored_48k = restored_48k_raw[_ctx_n09 : _ctx_n09 + len(audio_norm)]
-            else:
-                restored_48k = restored_48k_raw
-        finally:
-            if _plm is not None:
-                try:
-                    _plm.set_active("BanquetVinyl", False)
-                except Exception:
-                    logger.debug("_remove_crackle_onnx_direct: silent except suppressed", exc_info=True)
-
-        # --- Resample back to original SR ---
-        if need_resample:
-            try:
-                import librosa
-
-                restored_mono = librosa.resample(restored_48k, orig_sr=_BANQUET_SR, target_sr=sample_rate).astype(
-                    np.float32
-                )
-            except ImportError:
-                from math import gcd
-
-                from scipy.signal import resample_poly
-
-                _g = gcd(_BANQUET_SR, int(sample_rate))
-                restored_mono = resample_poly(
-                    restored_48k.astype(np.float64),
-                    int(sample_rate) // _g,
-                    _BANQUET_SR // _g,
-                ).astype(np.float32)
-        else:
-            restored_mono = restored_48k
-
-        # --- Align length ---
-        n = len(audio_mono)
-        if len(restored_mono) > n:
-            restored_mono = restored_mono[:n]
-        elif len(restored_mono) < n:
-            restored_mono = np.pad(restored_mono, (0, n - len(restored_mono)))
-
-        # --- Blending (texture_preserve) ---
-        texture_preserve = float(params.get("texture_preserve", 0.85))
-        blend_weight = 1.0 - texture_preserve
-        restored_mono = (audio_mono * texture_preserve + restored_mono * blend_weight).astype(np.float32)
-
-        # --- Clipping-Schutz ---
-        peak = float(np.abs(restored_mono).max())
-        if peak > 1.0:
-            restored_mono = (restored_mono / peak * 0.99).astype(np.float32)
-
-        # --- Restore stereo (apply same correction to both channels) ---
-        if stereo_mode:
-            if audio.ndim == 2 and audio.shape[0] <= audio.shape[1]:
-                # (channels, samples) → apply gain correction instead of mono collapse
-                gain = np.where(
-                    np.abs(audio_mono) > 1e-10,
-                    restored_mono / np.where(np.abs(audio_mono) > 1e-10, audio_mono, 1.0),
-                    1.0,
-                ).astype(np.float32)
-                result = (audio * gain[np.newaxis, :]).astype(np.float32)
-            else:
-                # (samples, channels)
-                gain = np.where(
-                    np.abs(audio_mono) > 1e-10,
-                    restored_mono / np.where(np.abs(audio_mono) > 1e-10, audio_mono, 1.0),
-                    1.0,
-                ).astype(np.float32)
-                result = (audio * gain[:, np.newaxis]).astype(np.float32)
-            return np.nan_to_num(np.clip(result, -1.0, 1.0).astype(np.float32), nan=0.0)  # type: ignore[no-any-return]
-
-        return np.nan_to_num(np.clip(restored_mono, -1.0, 1.0), nan=0.0)  # type: ignore[no-any-return]
+        # Phase-Semantik: texture_preserve-Blend + Clipping-Schutz (wie bisher)
+        _texture = float(params.get("texture_preserve", 0.85))
+        _restored = (_in09 * _texture + _restored * (1.0 - _texture)).astype(np.float32)
+        _peak09 = float(np.abs(_restored).max())
+        if _peak09 > 1.0:
+            _restored = (_restored / _peak09 * 0.99).astype(np.float32)
+        return np.nan_to_num(np.clip(_restored, -1.0, 1.0).astype(np.float32), nan=0.0)  # type: ignore[no-any-return]
 
     def _remove_crackle_ml(self, audio: np.ndarray, banquet_plugin, params: dict[str, Any]) -> np.ndarray:
         """
@@ -854,12 +619,15 @@ class CrackleRemovalPhase(PhaseInterface):
                 tmp_out_path = tmp_out.name
 
             try:
-                # Write input
+                # Write input — Layout normalisieren: soundfile erwartet (N, C)
                 sr = 44100  # Assume 44.1kHz (standard for audio restoration)
-                sf.write(tmp_in_path, audio, sr)
+                _to_write = audio.T if audio.ndim == 2 else audio
+                sf.write(tmp_in_path, _to_write, sr)
 
-                # Process with BANQUET
-                banquet_plugin.process(tmp_in_path, tmp_out_path)
+                # Process with BANQUET — Datei-API des Plugins; process() nimmt
+                # Audio-Arrays, Pfade ergeben 'str' object has no attribute
+                # 'astype' (Produktionsfehler 2026-09-13).
+                banquet_plugin.process_files(tmp_in_path, tmp_out_path)
 
                 # Read result
                 from backend.file_import import load_audio_file
@@ -869,13 +637,18 @@ class CrackleRemovalPhase(PhaseInterface):
                 if _audio_loaded is None:
                     raise RuntimeError("BANQUET output could not be loaded")
                 restored = np.asarray(_audio_loaded, dtype=np.float32)
+                # Layout: load_audio_file liefert (N, C) — auf Eingabe-Layout bringen
+                if audio.ndim == 2:
+                    restored = restored.T if restored.ndim == 2 else restored
+                _n09 = audio.shape[-1]
+                restored = restored[..., :_n09]
 
                 # Blend with original based on texture_preserve parameter
                 texture_preserve = params.get("texture_preserve", 0.85)
                 blend_amount = 1 - texture_preserve
                 restored = audio * texture_preserve + restored * blend_amount
 
-                return np.nan_to_num(np.asarray(restored[: len(audio)], dtype=np.float32), nan=0.0)  # type: ignore[no-any-return]
+                return np.nan_to_num(np.asarray(restored, dtype=np.float32), nan=0.0)  # type: ignore[no-any-return]
 
             finally:
                 # Cleanup
