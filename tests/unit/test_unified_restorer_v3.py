@@ -3007,7 +3007,7 @@ class TestStereoSafetyGuardBranching:
         assert result["warning"] is False
         assert result["reason"] == "ok"
 
-    def test_94_hard_fail_when_true_peak_above_minus_1dbtp(self):
+    def test_94_warns_when_true_peak_above_minus_1dbtp(self):
         mono_in = (0.30 * _sine(secs=1.0, freq=220.0)).astype(np.float32)
         mono_out = (0.95 * _sine(secs=1.0, freq=220.0)).astype(np.float32)
         original = np.stack([mono_in, mono_in], axis=1)
@@ -3015,9 +3015,14 @@ class TestStereoSafetyGuardBranching:
 
         result = _uv3_mod._evaluate_stereo_safety_guard(original, restored, SR)
 
+        # Guard-Kalibrierung (AGENTS.md §3): Hard-Fail nur delta-basiert bei
+        # Regression gegenüber dem Input — absolute Produktions-Normalwerte
+        # (TP > −1 dBTP bei gemastertem Material) sind kein Hard-Fail, nur
+        # Warnung; das finale True-Peak-Limit regeln phase_47/§2.63.
         assert result["enabled"] is True
-        assert result["hard_fail"] is True
-        assert "true_peak_gt_minus_1dbtp" in result["hard_fail_reasons"]
+        assert result["hard_fail"] is False
+        assert result["warning"] is True
+        assert "true_peak_gt_minus_1dbtp" in result["warning_reasons"]
 
 
 class TestStereoContractEventRecorder:
