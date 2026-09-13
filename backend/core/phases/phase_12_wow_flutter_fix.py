@@ -1194,6 +1194,18 @@ class WowFlutterFix(PhaseInterface):
             defect_locations=kwargs.get("defect_locations"),
         )
 
+        # §Witness-SOTA WF-V2: F0-unabhängige Spektral-Warp-Schätzung (Capstan-
+        # Prinzip). Versorgt den Zero-Consensus-Fall (pYIN/CREPE ohne Befund →
+        # flache Trajektorie, typisch instrumental/dicht) und verfeinert bei
+        # vorhandener F0-Trajektorie per Konsens-Gate. EINMAL auf der Mono-
+        # Referenz geschätzt — Mid/Side erhalten identische Faktoren
+        # (§2.51 L/R-Timing-Invariante; kein per-Kanal-Schätzer, sonst L/R-Zeitversatz).
+        stretch_factors = self._spectral_warp_supply_or_consensus(
+            safe_to_mono(np.asarray(audio, dtype=np.float32)),
+            np.asarray(stretch_factors, dtype=np.float32),
+            sample_rate,
+        )
+
         # Step 5: Apply time-stretching – PSOLA für Vokal-Segmente, WSOLA sonst
         # Moulines & Charpentier (1990): PSOLA ist formanterhaltend bei Gesangsmaterial;
         # Phase-Vocoder (hier: WSOLA/resample) für Instrumental-/Nicht-Vokal-Material.
@@ -3576,6 +3588,68 @@ class WowFlutterFix(PhaseInterface):
             logger.debug("§PV1 Verarbeitungsschritt vocoder nicht verfuegbar (%s) — Ersatzpfad to WSOLA", _pv_exc)
             return self._phase_vocoder_wsola_fallback(audio, stretch_factors)
 
+    def _spectral_warp_supply_or_consensus(
+        self, audio_mono: np.ndarray, sf_samples: np.ndarray, sample_rate: int
+    ) -> np.ndarray:
+        """§Witness-SOTA WF-V2: F0-unabhängige Spektral-Warp-Schätzung (Capstan-Prinzip).
+
+        Zwei Rollen:
+        1. VERSORGUNG im Zero-Consensus-Fall (sf ≈ konstant 1 — pYIN/CREPE
+           fanden nichts, typisch instrumental/dicht): Die Spektral-Schätzung
+           liefert die Warp-Trajektorie, wenn ihre Qualität hoch ist.
+        2. KONSENS-Verfeinerung, wenn eine F0-Trajektorie existiert: Überein-
+           stimmende Frames werden gemittelt, widersprechende bleiben bei der
+           F0-Schätzung (Vorsicht vor falschen Spektral-Schätzungen).
+        """
+        try:
+            from backend.core.dsp.warp_estimator import (  # pylint: disable=import-outside-toplevel
+                consensus_warp,
+                spectral_warp_estimate,
+            )
+
+            # Perf-Guard: die Spektral-Schätzung ist O(Frames × Shifts) — für
+            # sehr lange Signale nicht im Fallback-Pfad erzwingen.
+            if len(audio_mono) > 300 * max(1, sample_rate):
+                return sf_samples
+            times, warp_est, quality = spectral_warp_estimate(audio_mono, sample_rate)
+            if len(warp_est) < 4:
+                return sf_samples
+            stretch_est = 1.0 / np.clip(warp_est, 0.90, 1.10)
+            _flat = bool(np.max(np.abs(sf_samples - 1.0)) < 0.002)
+            if _flat:
+                # Zero-Consensus-Versorgung: nur bei hoher, konsistenter Qualität.
+                if float(np.median(quality)) >= 0.55 and float(np.max(np.abs(stretch_est - 1.0))) >= 0.004:
+                    logger.info(
+                        "§WF-V2 Spektral-Warp-Versorgung (Zero-Consensus): median_quality=%.3f, max_dev=%.4f",
+                        float(np.median(quality)),
+                        float(np.max(np.abs(stretch_est - 1.0))),
+                    )
+                    # Auf das Raster der Eingabe-Trajektorie interpolieren — die
+                    # Spektral-Schätzung hat ihr eigenes Frame-Grid (hop=1024).
+                    _supplied: np.ndarray
+                    if len(sf_samples) > 1:
+                        _frac = np.linspace(0.0, 1.0, len(sf_samples), dtype=np.float64)
+                        _t_frac = times.astype(np.float64) / max(float(times[-1]), 1e-9)
+                        _supplied = np.asarray(np.interp(_frac, _t_frac, stretch_est))
+                    else:
+                        _supplied = np.array([float(np.median(stretch_est))], dtype=np.float64)
+                    return np.array(_supplied, dtype=np.float32)  # type: ignore[no-any-return]
+                return sf_samples
+            _cons_arr: np.ndarray
+            _agree_arr: np.ndarray
+            _cons_arr, _agree_arr = consensus_warp(
+                sf_samples, None, stretch_est, times, quality_b=quality, tol=0.01, min_quality=0.5
+            )
+            if float(_agree_arr.mean()) > 0.25:
+                logger.info(
+                    "§WF-V2 Spektral-Warp-Konsens: %.0f%% Frames übereinstimmend", float(_agree_arr.mean()) * 100.0
+                )
+                return np.array(_cons_arr, dtype=np.float32)  # type: ignore[no-any-return]
+            return sf_samples
+        except Exception as _wf2_exc:  # pylint: disable=broad-except
+            logger.debug("§WF-V2 nicht anwendbar (%s) — Trajektorie unverändert", _wf2_exc)
+            return sf_samples
+
     def _phase_vocoder_wsola_fallback(self, audio: np.ndarray, stretch_factors: np.ndarray) -> np.ndarray:
         """WSOLA-style fallback via np.interp — used when STFT phase vocoder is unavailable."""
         audio_f = np.nan_to_num(np.asarray(audio, dtype=np.float32), nan=0.0, posinf=0.0, neginf=0.0)
@@ -3601,6 +3675,10 @@ class WowFlutterFix(PhaseInterface):
             logger.debug("Operation fehlgeschlagen (unkritisch): %s", _exc)
 
         sf_samples = np.clip(sf_samples, 0.90, 1.10)
+
+        # §Witness-SOTA WF-V2: Die Spektral-Warp-Versorgung lief bereits EINMAL
+        # im Hauptfluss (Mono-Referenz, §2.51). Hier NICHT je Kanal erneut
+        # schätzen — sonst divergieren Mid/Side-Trajektorien (L/R-Zeitversatz).
         if np.max(np.abs(sf_samples - 1.0)) < 0.002:
             return audio.copy()
 

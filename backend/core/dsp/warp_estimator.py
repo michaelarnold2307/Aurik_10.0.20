@@ -1,11 +1,28 @@
-"""WF-V2: F0-unabhängige Warp-Schätzung über harmonische Spektral-Korrelation.
+"""WF-V2: F0-unabhängige Warp-Schätzung über spektralen Log-Frequenz-Zentroid.
 
 Wow/Flutter ist eine gemeinsame Zeit-Warp-Funktion für ALLE Frequenzen —
 die F0-zentrische Schätzung (pYIN/CREPE) versagt in rein instrumentalen,
-dichten oder perkussiven Passagen. Dieser Schätzer (Capstan-Prinzip)
-vergleicht jedes Frame-Spektrum mit einer robusten Referenz in der
-Log-Frequenz-Domäne: eine Verschiebung in log f entspricht direkt dem
-Warp-Verhältnis des Frames — ohne jegliche F0-Schätzung.
+dichten oder perkussiven Passagen. Dieser Schätzer (Capstan-Prinzip) nutzt
+eine Eigenschaft der Zeit-Warp-Invarianz: Verschiebt sich das Klangspektrum
+eines Frames uniform um ln(ratio) in log f, verschiebt sich der leistungs-
+gewichtete Log-Frequenz-Zentroid um EXAKT denselben Betrag — unabhängig von
+der Spektralform, solange das Amplitudenprofil über die Zeit stationär ist.
+
+Schätzung:
+  1. STFT (Hann, 4096) → Leistungsspektrum je Frame.
+  2. Zentroid c[f] = Σ log(f)·|X|² / Σ |X|² über das Band ≥ min_freq_hz.
+  3. Robuste Referenz: Quantil der Zentroide über die Frames (Median-Referenz
+     ≈ ungewarpte Position; symmetrischer Wow um 1 hebt sich heraus).
+  4. warp[f] = exp(c[f] − Referenz) — >1 = Frame ist schneller (höher).
+
+Qualität: Self-Consistency-Korrelation des Frame-Spektrums gegen die Median-
+Referenz AM geschätzten Shift (±1 Bin). Tonal/harmonisch strukturierte
+Spektren korrelieren hoch (→ vertrauenswürdig), Rauschen/Stille ≈ 0
+(→ Konsens-/Versorgungs-Gates blocken). Die frühere Korrelations-SUCHE nach
+dem besten Shift wurde verworfen: Ihre Antwortkurve ist über weite Bereiche
+flach (corr ≈ 0,99 bei ±6 Bins) und wählt Rausch-Maxima mit falschem
+Vorzeichen (Produktionsbefund 2026-09-13, synthetisch gewarptes Musik-Segment:
+Trajektorienfehler 43–79 % statt < 10 %).
 
 Deterministisch, rein numpy.
 """
@@ -32,13 +49,14 @@ def spectral_warp_estimate(
     min_freq_hz: float = 100.0,
     max_freq_hz: float | None = None,
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
-    """Schätzt die Warp-Ratio je Frame (log-f-Spektral-Korrelation vs. Referenz).
+    """Schätzt die Warp-Ratio je Frame (Log-f-Zentroid-Verschiebung vs. Referenz).
 
     Returns:
         (times_s, warp_ratio, corr_quality) —
         warp_ratio ≈ 1.0 für unwarped, >1 = Frame ist schneller (höher).
-        corr_quality ∈ [0, 1]: Peak-Steigung der Kreuzkorrelation — niedrig
-        bei Rauschen/unstrukturiertem Spektrum (fürs Konsens-Gate).
+        corr_quality ∈ [0, 1]: Self-Consistency-Korrelation des Frames mit
+        der Median-Referenz am geschätzten Shift — niedrig bei Rauschen/
+        unstrukturiertem Spektrum (fürs Konsens-/Versorgungs-Gate).
     """
     audio_m = np.asarray(audio, dtype=np.float32).ravel()
     if len(audio_m) < n_fft:
@@ -58,25 +76,38 @@ def spectral_warp_estimate(
     if n_bins < 64:
         return np.zeros(n_frames), np.zeros(n_frames), np.zeros(n_frames)
 
-    # Log-Frequenz-Raster mit Interpolation (kubisch) auf gleichmäßiges Gitter.
+    # Log-Frequenz-Raster mit Interpolation (kubisch auf gleichmäßiges Gitter —
+    # lineare Interpolation über die FFT-Bins, Werte identisch zum FFT-Raster).
     log_edges = np.linspace(log_f[0], log_f[-1], n_bins)
+    dlog = (log_edges[-1] - log_edges[0]) / max(n_bins - 1, 1)
     log_spec = np.zeros((n_frames, n_bins), dtype=np.float64)
     for f in range(n_frames):
         log_spec[f] = np.interp(log_edges, log_f, np.log(spec[f, band] + 1e-9))
 
-    # Robuste Referenz: Median-Spektrum über die ruhigsten (kohärenten) Frames.
-    ref = np.median(log_spec, axis=0)
+    # ── Warp über Log-f-Zentroid: exakt unter uniformem Zeit-Warp ──────────
+    power = spec[:, band] ** 2
+    psum = power.sum(axis=1) + 1e-12
+    centroid = (power @ log_f) / psum
+    ref_c = float(np.quantile(centroid, float(ref_quantile)))
+    _max_shift_log = float(max_shift_bins) * dlog
+    warp = np.exp(np.clip(centroid - ref_c, -_max_shift_log, _max_shift_log))
 
-    warp = np.ones(n_frames, dtype=np.float64)
+    # ── Qualität: Self-Consistency-Korrelation am geschätzten Shift (±1) ────
+    ref = np.median(log_spec, axis=0)
+    ref_s = ref - np.median(ref)
     quality = np.zeros(n_frames, dtype=np.float64)
-    shifts = np.arange(-max_shift_bins, max_shift_bins + 1)
+    shift_units = np.clip((centroid - ref_c) / dlog, -max_shift_bins, max_shift_bins)
     for f in range(n_frames):
         frame_s = log_spec[f] - np.median(log_spec[f])
-        ref_s = ref - np.median(ref)
-        # Effiziente Verschiebungs-Korrelation (Norm aus den verschobenen Slices).
         best = 0.0
-        best_shift = 0
-        for sh in shifts:
+        for _sh in (
+            int(np.floor(shift_units[f])),
+            int(np.floor(shift_units[f])) + 1,
+            int(np.floor(shift_units[f])) - 1,
+        ):
+            sh = int(_sh)
+            if abs(sh) > max_shift_bins:
+                continue
             if sh < 0:
                 a, b = frame_s[-sh:], ref_s[:sh]
             elif sh > 0:
@@ -88,10 +119,7 @@ def spectral_warp_estimate(
             denom_c = np.sqrt(np.sum(a**2) * np.sum(b**2)) + 1e-12
             c = float(np.dot(a, b) / denom_c)
             if c > best:
-                best, best_shift = c, int(sh)
-        # Shift in log-f-Bins → Warp-Ratio: log f_shift = log(ratio).
-        dlog = (log_edges[-1] - log_edges[0]) / max(n_bins - 1, 1)
-        warp[f] = float(np.exp(-best_shift * dlog))
+                best = c
         quality[f] = float(np.clip(best, 0.0, 1.0))
 
     times = (np.arange(n_frames) * hop + n_fft / 2.0) / sr
