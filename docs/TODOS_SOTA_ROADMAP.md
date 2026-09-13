@@ -357,17 +357,21 @@
    neurale Phasen-Schätzung für Transienten-Frames (phase_08/36).
 10. **SOTA-HR-V1** · BigVGAN-Repair-Pfad mit additive_synthesis_gate in
     phase_07_harmonic_restoration.
-11. **SOTA-CR-V1** · BANQUET-Klick-Detektion als zusätzlicher Detektor im
-    Multi-Scale-Konsens von phase_01 (ML detektiert, RBME rekonstruiert).
+11. **SOTA-CR-V1** · ✅ ERLEDIGT (36b452b4, 2026-09-13) — BANQUET-Klick-Detektion als
+    zusätzlicher Detektor im Multi-Scale-Konsens von phase_01 (ML detektiert,
+    RBME rekonstruiert): `_detect_clicks_banquet_ml` + `_merge_click_regions`
+    (Never-worsen-Union, §V6-Fallback, 8 Tests grün; 111 hum/phase_01-Tests grün).
 12. **SOTA-DR-V1** · Neurale RT60-Schätzung steuert Dereverb-Parameter (phase_20/49).
 13. **SOTA-WF-V4** · Neuraler Warp-Schätzer (2025/26-Checkpoint) mit Never-worsen-Gate.
 14. **SOTA-WF-CASS** · Scrape-Flutter-Restpfad für Cassette (Breitband-Modulations-
     Kompensation/Denoise) — separat vom gemeinsamen Warp.
-15. **SOTA-HU-V1** (niedrig, OFFEN) · Kalman-getracktes Notch-Filter für Netzfrequenz-Drift (phase_02).
-    Validierung 2026-09-13: Kalman-Drift-Tracking empirisch bestätigt (Notch folgt 49,8→50,2 Hz-Drift,
-    ~30 dB Dämpfung auf der Harmonischen). Modul bewusst NICHT committet: Wiring in phase_02 +
-    Unit-Tests fehlen — als ungetesteter/unverdrahteter Code wäre das ein Totcode-/§V7-Verstoß.
-    Nächster Schritt: Wiring hinter der phase_02-Hum-Erkennung + `tests/unit/test_hum_drift_tracker.py`.
+15. **SOTA-HU-V1** · ✅ ERLEDIGT (a4428e50, 2026-09-13) — `backend/core/dsp/hum_drift_tracker.py`:
+    Kalman-getrackter Netzfrequenz-Pfad [f, df] (Bandpass+Analytiksignal → Phasen-Differenz)
+    + Fenster-LSQ-Subtraktion von Grundton+Harmonischen (Hann-Crossfade,
+    Never-worsen-Energie-Gate je Fenster), verdrahtet hinter dem adaptiven Comb in
+    phase_02 (Gate: Drift > 0,08 Hz + Reduktion > 3 dB, non-blocking §V6).
+    Beleg: 6 Tests grün (Drift 49,8→50,2 Hz → >25 dB Hum-Reduktion, statisch >25 dB,
+    Determinismus, Passthrough, Stereo); 111 hum/phase_02-Tests grün.
 16. **SOTA-D3+D4** (niedrig) · Multiresolution-Split (neuronal 2–5 kHz, DSP außerhalb) +
     APPLADE-Maskierungs-Loss-Variante (DGT-Domäne).
 17. **SOTA-VOCAL-INPAINT** · SOTA-Langlückenfüller FÜR GESANG (fehlt — Befund 2026-09-13:

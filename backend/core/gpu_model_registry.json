@@ -1,12 +1,12 @@
 {
   "_summary": {
     "counts": {
-      "cpu": 54,
+      "cpu": 46,
       "migraphx": 0,
-      "rocm": 11
+      "rocm": 12
     },
     "generated_by": "scripts/onnx_gpu_compat_scan.py",
-    "rule": "GPU nur wenn strikt schneller als CPU UND numerisch paritätisch (rel<=1e-3); MIGraphX <= 200 MB"
+    "rule": "GPU nur wenn strikt schneller als CPU UND numerisch parit\u00e4tisch (rel<=1e-3); MIGraphX <= 200 MB"
   },
   "models/aero/aero_12_48.onnx": {
     "backend": "rocm",
@@ -57,7 +57,7 @@
     "backend": "rocm",
     "cpu_ms": 2485.0,
     "gpu_ms": 2092.0,
-    "note": "EP-Numerik: rel=7.8e-03 vs CPU (SNR ~44 dB, Masken-hörirrelevant) nach Partitioning-Fix 2026-09-13 (ENABLE_BASIC); Funktions-Validierung Klick-Reduktion identisch",
+    "note": "EP-Numerik: rel=7.8e-03 vs CPU (SNR ~44 dB, Masken-h\u00f6rirrelevant) nach Partitioning-Fix 2026-09-13 (ENABLE_BASIC); Funktions-Validierung Klick-Reduktion identisch",
     "scan_s": 12.7,
     "size_mb": 91.8,
     "verdict": "rocm"
@@ -333,11 +333,11 @@
     "verdict": "cpu"
   },
   "models/melbandroformer/melbandroformer_optimized.onnx": {
-    "backend": null,
-    "cpu_ms": null,
-    "gpu_ms": null,
-    "note": "CPU-Load fehlgeschlagen: NameError",
-    "scan_s": 5.2,
+    "backend": "rocm",
+    "cpu_ms": 4845.006,
+    "gpu_ms": 473.908,
+    "note": "EP-Numerik weicht ab (rel=6.11e+00 vs CPU)",
+    "scan_s": 15.9,
     "size_mb": 859.5,
     "verdict": "cpu"
   },
