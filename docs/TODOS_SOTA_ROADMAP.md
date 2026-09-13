@@ -334,20 +334,64 @@
    Encoder-Frozen, Validierungs-Early-Stop). VORAB: AERO-vs-FlashSR-Benchmark auf
    Musik als Kandidatenwahl (§V7: eine Lösung pro Rolle).
    Akzeptanz: Never-worsen-Benchmark wie EAR-VAE (ΔSDR/ΔSegSNR ≥ 0 je Segment).
-   Status 2026-09-13: GPU-gebunden — ROCm (7900 XTX, 24 GB) am Nutzersystem via
+   Status 2026-09-13: VORAB ✅ ERLEDIGT (`scripts/benchmark_bwe_candidates.py`,
+   3 MUSDB18HQ-Tracks × 30 s, Seed 42, Report
+   `docs/reports/current/2026-09-13_bwe_candidates.json`): **Beide Kandidaten
+   liegen unter der Bandlimit-Baseline** — FlashSR nativ meanΔSDR −21…−24 dB
+   (Sprach-Modell, auf Musik unbrauchbar), AERO nativ meanΔSDR −3,6…−5,5 dB
+   (besser, aber Never-worsen verletzt); gleiche 12-kHz-Quelle: AERO +16…+18 dB
+   über FlashSR. Kandidatenwahl: Kein Modell ohne Finetune einsetzbar;
+   FlashSR bleibt Finetune-Basis (14× Echtzeit vs. AERO-BLSTM 0,8× Echtzeit,
+   und FlashSR-Plugin ist bereits in der Pipeline verdrahtet).
+   Hauptteil (Finetune): GPU-gebunden — ROCm (7900 XTX, 24 GB) am Nutzersystem via
    `.venv_aurik` (torch 2.11.0+rocm7.2) verfügbar; CI/Agent-Env CPU-only.
 3. **SOTA-ML-V2** · BigVGAN-v2 Musik-/Vokal-Finetune für den Repair-Pfad (B5-gegated).
    Status 2026-09-13: GPU-gebunden (wie SOTA-ML-V1).
 4. **SOTA-ML-V3** · MP-SENet: Musik-Finetune ODER De-Wiring (gemessen −5,9…−8,5 dB
    out-of-domain; Entscheidung anhand eines 3-Song-Vorher/Nachher-Benchmarks).
-   Status 2026-09-13: GPU-gebunden (Benchmark + Finetune).
+   Status 2026-09-13: VORAB ✅ ERLEDIGT — ENTSCHEIDUNG: DE-WIRING bestätigt
+   (`scripts/benchmark_mpsenet_music_damage.py`, 3 MUSDB-Tracks × 30 s, Seed 42,
+   Report `docs/reports/current/2026-09-13_mpsenet_music_damage.json`):
+   Saubere Musik: SDR(out,in) +5,2 dB (moderate, aber unnötige Klangfärbung);
+   verrauschte Musik (SNR 10 dB): ΔSDR **−5,9 dB** (BKS −5,1, Secretariat −7,4,
+   Speak Softly −5,2) — der Sprach-Enhancer klassifiziert Musikanteile als Noise
+   und verschlechtert damit genau das Ziel-Szenario aktiv. MP-SENet ist im
+   unified_restorer nicht verdrahtet (grep 0) → De-Wiring = Status quo
+   beibehalten; Musik-Finetune NICHT empfohlen (Denoise-Rolle durch die
+   Pipeline abgedeckt).
 5. **SOTA-ML-V4** · UTMOS-Musik-MOS-Validierung: Delta-Kalibrierung auf MUSDB-Paaren
    (kein Finetune möglich — nur Schwelle/-Richtung validieren).
-   Status 2026-09-13: GPU-gebunden (UTMOS-Inferenz + MUSDB-Paare).
+   Status 2026-09-13: ✅ ERLEDIGT — NEGATIVBEFUND
+   (`scripts/validate_utmos_music_calibration.py`, 3 MUSDB-Tracks × 30 s, Seed 42,
+   Report `docs/reports/current/2026-09-13_utmos_music_calibration.json`):
+   UTMOSv2-Fold-Ensemble ist auf Vollmix-Musik **richtungs-blind bis -invertiert**
+   — alle Degradationsarten wurden HÖHER bewertet als das Original (ΔMOS(ref−deg)
+   negativ: band12 −0,16, band16 +0,01, noise10 −0,21, noise0 −0,40; 0-dB-Rauschen
+   gilt UTMOS als beste Variante). Voraussetzender Fix: UTMOS-Fold-Loader lief
+   trotz vorhandener Weights in den PQS-DSP-Fallback (Geräte-Mismatch cuda/CPU
+   beim SSL-Encoder-cat) — jetzt dokumentierte CPU-Policy forciert, ML-Pfad
+   läuft (`utmosv2_fold_ensemble`). Konsequenz: UTMOS im Aurik-Audio-Modus
+   nicht als Musik-MOS-Gate einsetzen; Delta-Gate-Richtung bei Vollmix prüfen
+   bzw. PQS-DSP-Gate bevorzugen.
 6. **SOTA-GACELA** · GaCELA-Integration (musik-nativ, KEIN Training): ltfatpy-Blocker
    lösen oder Inverter portieren + IN-V1/V2-Gates — einziger musik-nativer
    Lang-Lücken-Inpainter (375–1500 ms).
-   Status 2026-09-13: OFFEN — ltfatpy-Blocker steht weiterhin (Inverter-Port nötig).
+   Status 2026-09-13: KERN ✅ ERLEDIGT — ltfatpy-Blocker faktisch überholt:
+   der Plugin läuft komplett auf eigener ONNX-Pipeline (GaussTruncTF → Mel →
+   BorderEncoder → Generator → SpectrogramInverter; kein ltfat im Code).
+   Verifiziert: End-to-End-Smoke (2,98-s-Lücke @48 kHz, ~1,3 s CPU), MUSDB-
+   Realtest SDR −3,9 dB vs. Originalausschnitt bei 3-s-Lücke. Fix: Determinismus
+   hergestellt — input-abgeleiteter blake2b-Seed für das GAN-Latent-Rauschen
+   (vorher ungeseedet, maxdiff 1,06 bei identischem Input; jetzt bit-identisch, §G5).
+   OFFEN: —
+   ✅ ERLEDIGT (2026-09-13): Verdrahtung in phase_55 als Priorität 1.75 in der
+   Kandidaten-Kaskade (`_try_gacela_plugin` in
+   `backend/core/phases/phase_55_diffusion_inpainting.py`): 375–1500-ms-Lücken
+   → 1-s-Kontext links/rechts → GaCELA → mittiger Zuschnitt auf Ziellänge →
+   bestehender Damage-Guard + IN-V1/V2-Naht-Gates (generisch nach der Kaskade)
+   → DSP/NMF-Fallback bei Fehlern (fail-closed, §V6). Verifiziert: 308 phase_55/
+   Inpainting-Tests grün; Integrationstest 1-s-Lücke → GaCELA-Gap (48000,),
+   200-ms-Lücke → None ohne Modell-Load.
 7. **SOTA-IN-V1+V2** · ✅ ERLEDIGT (09124e12, 2026-09-13) — `inpainting_seam_gate.py`
    am Splice-Punkt jedes phase_55-Kandidaten (nach local_ratio-Blend, Fehler →
    unveränderter Kandidat + Debug-Log).
@@ -362,9 +406,38 @@
     RBME rekonstruiert): `_detect_clicks_banquet_ml` + `_merge_click_regions`
     (Never-worsen-Union, §V6-Fallback, 8 Tests grün; 111 hum/phase_01-Tests grün).
 12. **SOTA-DR-V1** · Neurale RT60-Schätzung steuert Dereverb-Parameter (phase_20/49).
+    Status 2026-09-13: **V1-VERDRAHTET** — `estimate_rt60_sec` im
+    DeepFilterNet-Plugin (DFN-Trocken-Zerlegung → Schröder-T30 → RT60 +
+    Modell-Diskriminator exponentiell vs. stationär) steuert die
+    Dereverb-Stärke in phase_20/49 über `rt60_strength_delta` (neutral < 0,8 s,
+    conf < 0,5 ⇒ 0, Cap +0,35); Metadaten `rt60_estimate_sec`/`rt60_confidence`.
+    Befund Real-Smoke: der DFN entfernt auch Rauschen, die RT60-Präzision auf
+    echtem Material ist begrenzt — deshalb konservativer, gedeckelter Einfluss;
+    Never-worsen-Schutz bleibt bei den Phasen-eigenen Gates. 7 Tests
+    (Ground-Truth 0,6 s ±25 %, trocken ⇒ conf=0, Layouts, NaN/Inf, Determinismus,
+    Delta-Gates) + 2 Wiring-Tests phase_20 — 17/17 grün. Präziser neuraler
+    RT60-Regressor bleibt Folge-Schritt (GPU-Training).
 13. **SOTA-WF-V4** · Neuraler Warp-Schätzer (2025/26-Checkpoint) mit Never-worsen-Gate.
+    Status 2026-09-13: BLOCKIERT — kein Warp-Schätzer-Checkpoint lokal
+    (`plugins/flow_audio_sota.py` ist Conditional-Flow-Matching-Inpainting, kein
+    Zeit-Warp-Schätzer; `models/` enthält keinen Warp-Estimator). Nächster Schritt:
+    Checkpoint-Quelle klären (2025/26-Modell) + Download + Verdrahtung mit
+    Never-worsen-Gate gegen phase_12-Warp — eigene Session.
 14. **SOTA-WF-CASS** · Scrape-Flutter-Restpfad für Cassette (Breitband-Modulations-
     Kompensation/Denoise) — separat vom gemeinsamen Warp.
+    Status 2026-09-13: KERN ✅ ERLEDIGT — `backend/core/dsp/scrape_flutter_rest.py`:
+    Hochband-Einhüllende (>1,5 kHz) → Modulations-Peaks 5–120 Hz → adaptive
+    Hüllkurven-Normalisierung (Trägerphase unberührt) mit Soft-Knee
+    (conf 0,55–0,85) und Never-worsen-Energie-Gate (±10 %); (C,N)/(N,C)-sicher,
+    deterministisch (§G5). 6 Tests grün (30-Hz-AM-Erkennung, Modulation −76 %,
+    Passthrough, Energie-Gate, Determinismus, Stereo).
+    OFFEN: —
+    ✅ ERLEDIGT (2026-09-13): Verdrahtung als `_apply_scrape_flutter_rest`-Helper
+    in `phase_12_wow_flutter_fix.process()` — an beiden Return-Pfaden nach dem
+    Loudness-Preserve, Material-Gate tape/cassette/reel_tape, confidence ≥ 0,55,
+    non-blocking §V6; Befund in result.metadata (`scrape_flutter_rest`).
+    Verifiziert: 4 Phase-12-Tests grün, 6 WF-CASS-Tests grün, End-to-End
+    (Cassette + 30-Hz-AM → conf 0,97/sev 0,28/f=[30,0]; CD → kein SFR).
 15. **SOTA-HU-V1** · ✅ ERLEDIGT (a4428e50, 2026-09-13) — `backend/core/dsp/hum_drift_tracker.py`:
     Kalman-getrackter Netzfrequenz-Pfad [f, df] (Bandpass+Analytiksignal → Phasen-Differenz)
     + Fenster-LSQ-Subtraktion von Grundton+Harmonischen (Hann-Crossfade,
@@ -383,9 +456,19 @@
     GaCELA-Vokal-Finetune (Pfad B, Upstream-Trainingscode vorhanden), RVC
     (2024/25-Singstimmen-SOTA, MIT — Konversions-Semantik, später).
     Umsetzung in 4 Schritten:
-    - VOCAL-INPAINT-S1: Baseline-Benchmark — synthetische Vokal-Lücken in
-      MUSDB-Test-Vocals: AudioLDM2-Zero-Shot vs. DiffWave-Mel-Interpolation vs.
-      DSP-Inpainting (Messlatte).
+    - VOCAL-INPAINT-S1: ✅ ERLEDIGT (2026-09-13) — `scripts/benchmark_vocal_inpaint_baseline.py`
+      (3 MUSDB-Vocal-Tracks × 30 s, 13 Lücken à 300 ms in aktiven Regionen, Seed 42,
+      Report `docs/reports/current/2026-09-13_vocal_inpaint_baseline.json`):
+      **DSP-Messlatte mean SDR −3,46 dB vs. Stille-Baseline (0 dB), DiffWave-Zero-Shot
+      −1,69 dB — beide unter Never-worsen (min −7,2/−3,7 dB), DiffWave im Mittel +1,77 dB
+      über DSP.** AudioLDM2-Zero-Shot entfällt vollständig — sowohl
+      `plugins/audiolm2_plugin.py` als auch `models/audiolm2/` sind
+      Dateisystem-Artefakte (listdir-Einträge ohne stat, 0 Bytes real);
+      Neuanlage bräuchte Checkpoint-Download (~5–10 GB, HuggingFace) +
+      ONNX-Export + Plugin — eigene Session. Interpretation: Der Sprach-Checkpoint
+      füllt Singstimmen bereits besser als der DSP-Pfad, aber noch unter der Messlatte
+      „Nichts-Tun“ — der Vokal-Finetune (S2) hat eine quantifizierte Ziellücke (ΔSDR ≥ 0
+      je Lücke, aktuell −1,7 dB).
     - VOCAL-INPAINT-S2: DiffWave-Vokal-Finetune (A1-Hör-Loss, Encoder-Frozen,
       Validierungs-Early-Stop — EAR-VAE-Rezept, GPU).
     - VOCAL-INPAINT-S3: IN-V1/V2-Naht-Gates + Verdrahtung in phase_55 (ersetzt
@@ -414,6 +497,184 @@
     Akzeptanz: Scan-Verdict `rocm` mit rel ≤ 1e-3; Determinis­mus auf GPU
     (gleicher Input + Device ⇒ bit-identisch, §G5); GPU-Lauf ≤ CPU-Laufzeit;
     SLR-VQI-Gate ≥ 0,72 weiterhin bestanden.
+
+    **Update 2026-09-13 (Abschluss):** Statt ORT-ROCm-EP wurde ein eigener
+    PyTorch-ROCm-Pfad umgesetzt — er ist **live und verifiziert**:
+    - `backend/core/dsp/bsr317_torch_rocm.py` lädt den Original-Checkpoint
+      `bs_roformer_317.ckpt` als reines PyTorch-Modul (`BSRCore`, kein
+      onnxruntime) und separiert in 30-s-Chunks (STFT/ISTFT 2048/512,
+      scipy-`even`-Paarung — exakt invertierbar, entspricht der
+      torch-Reflect-Padding-Konvention des Original-Modells).
+    - Maske ist (1,1,2050,T,2): je Kanal eine 1025-Bin-Hälfte; Kanal 0 wird
+      für den Mono-Input genommen (Fix vom 2026-09-13 — vorher Broadcast-Fehler).
+    - Plugin `bs_roformer_plugin.separate()` probiert zuerst den PyTorch-ROCm-
+      Core (nur mit `torch.cuda.is_available()`), fällt bei jeder Exception
+      warnend auf den ONNX-CPU-Pfad zurück (fail-closed, §V6).
+    - **Paritäts-Beweis** (Benchmark, 7900 XTX): Torch-ROCm vs ONNX-CPU
+      max_abs ≈ 1e-5 (Kern), End-to-End-Stems 4,9e-9; Summen-Invariante
+      v+i=x auf 3,7e-10. Speedup **41,8×** (461 ms vs 19,3 s für t=512).
+    - 6 Unit-Tests grün (`tests/unit/test_bsr317_torch_rocm.py`), GPU-Smoke
+      `model_used=bs_roformer_317_torch_rocm` mit beiden Stems bestanden.
+    - Offen bleibt nur S3 im ONNX-EP-Sinn (numerisch defekte ORT-ROCm-Kernels)
+      — durch den PyTorch-Pfad funktional überholt, ONNX-CPU bleibt Fallback.
+
+---
+
+## Modell-Portfolio für destruktive Fälle (maximaler Wohlklang)
+
+> Ziel: SOTA-Restaurierung des maximalen Wohlklangs — jede destruktive Klasse
+> bekommt das beste musik-natives Modell mit Redundanz in der Kaskade und
+> Witness-Absicherung (Hörordnung: Never-worsen, Naht-Gates, Sänger-Identität).
+
+### Lokal verifiziert (stat-geprüft 2026-09-13)
+
+- **AudioLDM2** — `models/audioldm2/audioldm2.onnx` (1390,9 MB) + `vae_decoder.onnx`
+  (132,0 MB). Zero-Shot-Baseline für VOCAL-INPAINT. ONNX-Satz inspiziert
+  (2026-09-13): `audioldm2.onnx` = UNet (IN: sample[B,8,H,W], timestep[1],
+  encoder_hidden_states_0 [B,T,768] = FlanT5, encoder_hidden_states_1 [B,T,1024]
+  = CLAP, attention_mask; OUT: out_sample[B,8,H,W]); `vae_decoder.onnx` = latent
+  [B,8,H,W] → mel_spectrogram [B,1,bins,T]. **OFFEN: Plugin-Neuanlage**
+  (`plugins/audiolm2_plugin.py` ist ein FS-Artefakt). Voraussetzungen präzisiert:
+  (1) Vocoder ✓ **vorhanden**: `models/hifi_gan/hifi_gan.onnx` (37,3 MB,
+  validiert: IN [1,80,seq] → OUT [1,1,256·seq]) + `plugins/hifigan_plugin.py`
+  (PLM „HiFiGAN“, 22.05 kHz) — **Achtung Mel-Bin-Adapter:** HiFiGAN erwartet
+  80 Bins, AudioLDM2-VAE liefert 64 Bins → Bin-Mapping/Re-Projektion im Plugin
+  nötig; (2) Conditioning-Embeddings (CLAP-Audio/FlanT5) müssen extern erzeugt
+  werden — CLAP-Encoder lokal ✓ (C4), als Embedding-Quelle verdrahten;
+  (3) VOCAL-INPAINT-S1-Benchmark um AudioLDM2-Arm ergänzen.
+- **Resemblyzer** — `models/resemblyzer/resemblyzer/pretrained.pt` → **ONNX
+  exportiert** `models/resemblyzer/resemblyzer_voice_encoder.onnx` (2026-09-13,
+  opset 17, dynamische Zeitachse, Parität cos=1.0000). Sänger-Identitäts-
+  Witness für VOCAL-INPAINT-S4. **ERLEDIGT (2026-09-13): Witness-Verdrahtung**
+  in die Hörordnungs-Kette: `level_1_invariants_guard.py` maß die
+  Stimm-Identität bislang über einen Import des nicht existierenden Pakets
+  `Resemblyzer` (Großbuchstabe) — der ML-Pfad lief nie, stiller DSP-Ersatzpfad
+  (§V74 (VERBOTEN.md)-Verstoß). Fix: Plugin-Kaskade Package→ONNX→None als
+  primäre Methode (UV3-Post-Phase → Ebene-1-Guard → Witness); zusätzlich
+  `cosine_similarity` NaN-sicher gemacht (np.nan_to_num am Entry).
+  Tests: 12 Fälle test_resemblyzer_onnx_fallback.py + 7 Fälle
+  test_level_1_guard_resemblyzer_wiring.py (inkl. echtem ONNX-Witness:
+  identisch ⇒ cos=1.0); bestehende Guard-Suite (24 Tests) läuft weiter grün.
+- **MuQ (Musik-MOS)** — bereits eingebunden: `plugins/muq_plugin.py` (lädt
+  `OpenMuQ/MuQ-large-msd-iter` aus HF-Cache) + `models/muq_mulan/muq_mulan.onnx`
+  + A1-Head. Musik-nativer MOS-Witness — Ersatz für UTMOS (Negativbefund:
+  richtungs-invertiert auf Musik). **NEGATIVBEFUND 2026-09-13 (MUSDB-
+  Richtungs-Validierung, Muster ML-V4):** Head-Extraktion repariert
+  (`models/muq_mulan/muq_eval_a1_head.pt` aus HF-Cache `zhudi2825/MuQ-Eval-A1`
+  extrahiert + Device-Fix cuda) — Inferenz läuft end-to-end, aber die
+  MOS-Richtung ist **invertiert**: band12 Δ−0.007, band8 Δ−0.063,
+  noise10 Δ−0.333, noise0 Δ+0.375 (6 Tracks × 10 s; Degradation wird teils
+  BESSER bewertet als ref). Ursache: A1-Head wurde auf dem MuQ-Eval-
+  Backbone trainiert, läuft hier aber auf MuQ-large-msd-iter. **Konsequenz:**
+  MuQ-MOS ist bis zur Backbone-Korrektur KEIN Richtungs-Witness (§V6-
+  DSP-MOS bleibt aktiv). **Root-Cause-Analyse (2026-09-13, abgeschlossen):**
+  Head-Extraktion ist bit-identisch mit `best_model.pt` (max|diff|=0.0);
+  `base.yaml` des A1-Snapshots bestätigt exakt die Plugin-Konstanten
+  (encoder_id = `OpenMuQ/MuQ-large-msd-iter`, encoder_dim 1024, 24 kHz,
+  10-s-Clips, attention-pooling, 2×256-MLP) — der A1-Encoder ist FROZEN,
+  es gibt keinen Backbone-Gewichts-Unterschied. Verbleibender Unterschied:
+  die Plugin-Reimplementierung (vendored `_vendor_muq`-Forward + eigenes
+  Pooling) vs. die MuQ-Eval-Modellklasse. **Nächster Schritt:**
+  `MusicQualityModel` aus `models/muq_eval/src/model.py` mit der A1-Config
+  instanziieren, `best_model.pt['model_state']` strict laden und den
+  MuQ-Eval-Evaluierungs-Forward 1:1 nutzen (encoder → pooling → heads['MI']);
+  zeigt DAS die richtige Richtung, liegt der Unterschied im
+  Feature-Fluss des Plugins; wenn nicht, ist der A1-Head für MUSDB-
+  Degradationen nicht richtungs-stabil (Domain-Gap) und MuQ-mulan
+  (SRCC 0.957) bleibt der Embedding-Witness bei DSP-MOS als Richtungs-Witness.
+  **VALIDIERUNG 1:1 (2026-09-13):** `MusicQualityModel` (models/muq_eval/src)
+  mit base+A1-Config (OmegaConf-Merge) instanziiert, `best_model.pt['model_state']`
+  **strict geladen (0 fehlend/0 überzählig)**, GPU-Forward 1:1 → **Richtung KORREKT:**
+  noise10 Δ+3.337 (6/6), noise0 Δ+3.270 (6/6), band12 Δ0.000 (neutral, bei 24 kHz
+  unhörbar), band8 Δ−0.032 (uneinheitlich). Damit ist bewiesen: Der A1-Head ist
+  auf MUSDB richtungs-stabil; die Plugin-Reimplementierung (vendored-MuQ-
+  Forward-Details) verursacht die Inversion. **Nächster Schritt:** den
+  MuQ-Eval-Forward in `muq_plugin.py` nachbilden (encoder-Aufruf + Pooling 1:1
+  wie in models/muq_eval/src/encoders.py, ggf. MusicQualityModel direkt
+  einbetten und den bereits geladenen MuQ-large-Encoder wiederverwenden),
+  dann Plugin-Re-Validierung auf MUSDB.
+  **UPDATE (Backbone-Fix getestet):** msd-iter-Snapshot-Priorisierung eingebaut
+  (`_find_checkpoint_dir`, 2026-09-13) — Plugin-Werte unverändert (noise10
+  Δ−0.333 identisch) → `models/muq_mulan/` enthält dieselben msd-iter-Gewichte
+  (Kopie); der Unterschied zum richtungs-korrekten 1:1-Test liegt in der
+  Plugin-Audio-Kette (`_center_window` + torchaudio-Resample 44.1k→24k vs.
+  1:1-Kette librosa-Resample + erste 10 s).
+  **ERLEDIGT + RICHTUNGS-VALIDIERT (2026-09-13):** Plugin-Audio-Kette auf die
+  1:1-Kette angeglichen — neues `_mos_eval_window` (ERSTE 10 s, librosa-Resample
+  24 kHz, Null-Pad bei kurzen Eingaben) ersetzt das zentrierte 20-s-Fenster im
+  MOS-Pfad; Embedding-Pfad unverändert. Re-Validierung
+  `scripts/validate_muq_plugin_direction.py` (1:1-MusicQualityModel +
+  best_model.pt strict vs. Plugin auf identischen MUSDB-Paaren, 3 Tracks):
+  **3/3 Richtungen korrekt** — noise10 Δ+2.22 vs. +2.21, noise0 Δ+3.66 vs. +3.24
+  (Plugin-Floor bei MOS 1.0 erklärt die Restdifferenz), band8 Δ−0.28 vs. −0.23,
+  band12/ref neutral. MuQ-MOS ist damit als Richtungs-Witness bestätigt;
+  der 50/50-Blend im `restorability_estimator` bleibt (Metriken sind Zeugen,
+  Hörordnung §8a). 5 Tests in test_muq_plugin.py ergänzt. Report:
+  docs/reports/current/2026-09-13_muq_plugin_direction.json.
+  Der MuQ-mulan-Embedding-Pfad ist vom Befund unberührt.
+- **RVC-Basis** — `models/rvc/hubert_base.pt` + `rmvpe.pt` (HF-Beschaffung
+  2026-09-13, MIT) + **bestehende ONNX**: `models/rmvpe/rmvpe.onnx` (128-mel,
+  360 F0-Klassen) und `models/hubert/hubert_model.onnx` (768-dim, validiert).
+- **BigVGAN-v2** — `models/bigvgan/bigvgan_v2.onnx` + `.data` + `bigvgan_v2.pth`.
+  Finetune-Basis für Repair-Pfad (ML-V2/HR-V1).
+- **Miipher-DiT (MIIPHER_DiT)** — `models/miipher_dit/flow_matching_dit.onnx`
+  (806,6 MB, bestätigt 2026-09-13). Ersetzt das proprietäre Google-MIIPHER
+  (Spec v10.14: ❌ Proprietär → ✅ Open-Source Flow-Matching-DiT).
+  `plugins/miipher_dit_plugin.py` lädt das ONNX aktiv (18 Layer, 768-dim,
+  12 Heads, unkonditioniert x[B,T,1]+t[B]); Halluzinations-Guard
+  `spectral_novelty > 0.35 → Rollback`, §V6-DSP-Fallback (IMCRA/Wiener),
+  PLM `MIIPHER_DiT`. Das alte `models/miipher/miipher.onnx` existiert nicht
+  mehr — `plugins/miipher_plugin.py` ist nur noch der Router.
+  **Spec-Warnung beachten:** `phase_42` überspringen, wenn
+  `route_token == "miipher_dit"` (sonst Overprocessing, DiT läuft in Phase 03).
+
+### Portfolio-Status (Rolle → Modell → Stand)
+
+| Rolle | Modell | Stand |
+|---|---|---|
+| Vokal-Langlücken | DiffWave-Vokal-Finetune (HAUPTWEG) | Checkpoint lokal, **GPU-Finetune fehlt** (S1: −1,7 dB → Ziel ΔSDR ≥ 0) |
+| Vokal-Langlücken 375–1500 ms | GaCELA-Vokal-Finetune (Pfad B) | Trainingscode lokal, **GPU-Finetune fehlt** |
+| Vokal-Extremfälle/Identität | RVC (MIT) | rmvpe.pt/.onnx ✓, hubert_base.pt ✓, hubert_model.onnx ✓ |
+| Vokal-Enhancement (Phase 03) | Flow-Matching-DiT (MIIPHER_DiT) | flow_matching_dit.onnx ✓, Plugin ✓, Guard ✓ — **bestätigt** |
+| Generative Baseline | AudioLDM2 | ONNX lokal ✓, **Plugin fehlt** |
+| Repair (Spektralregionen) | BigVGAN-v2 Musik- + Vokal-Finetune | Basis lokal ✓, **GPU-Finetune fehlt** |
+| Hochband-Rekonstruktion | FlashSR-Musik-Finetune | Checkpoint lokal ✓, **GPU-Finetune fehlt** |
+| Musik-MOS-Witness | MuQ | Plugin + mulan-ONNX ✓ — **RICHTUNGS-VALIDIERT (2026-09-13)**: Audio-Chain-Fix (10-s-Eval-Kette), 3/3 MUSDB-Richtungen korrekt, 50/50-Blend aktiv |
+| Sänger-Identitäts-Witness | Resemblyzer | ONNX lokal ✓ — **VERDRAHTET (2026-09-13)** im Ebene-1-Guard (Plugin-Kaskade; toter „Resemblyzer“-Import ersetzt) |
+| Dereverb-Steuerung (DR-V1) | RT60 via DeepFilterNet-v3.II | **V1-VERDRAHTET (2026-09-13)**: Schröder-T30-Witness + Delta-Gates in phase_20/49 (konservativ, Cap +0,35; präziser Regressor = GPU-Folgeschritt) |
+| Zeit-Warp-Rest (WF-V4) | Neuraler Warp-Schätzer 2025/26 | **Quelle klären + Download fehlt** |
+| EQ/Dynamik-Prädiktion (C4) | DDSP-Prädiktor auf CLAP/BEATs | Encoder lokal ✓, **Prädiktor-Training fehlt** |
+| Transienten-Phasen (TP-V2) | Neurale Phasen-Schätzung | **Modell + Quelle fehlen** |
+
+### Beschaffungs- und Einbindungs-Reihenfolge (maximaler Wohlklang)
+
+1. **Sofort einbindbar (lokal):** Resemblyzer-Witness ✓ VERDRAHTET (Ebene-1-Guard) →
+   RT60/DeepFilterNet-Verdrahtung ✓ V1 (phase_20/49, konservativ) →
+   MuQ-Richtungs-Validierung ✓ 3/3 — **offen bleibt:** AudioLDM2-Plugin-Neuanlage.
+2. **Beschaffung (Downloads):** RVC-Basis ✓ (rmvpe + hubert, ONNX vorhanden),
+   WF-V4-Checkpoint (Quelle klären), TP-V2-Modell (Quelle klären).
+3. **GPU-Finetunes (7900 XTX, MUSDB18HQ lokal):** DiffWave-Vokal → GaCELA-Vokal
+   → BigVGAN-v2 (Musik+Vokal) → FlashSR-Musik → DDSP-Prädiktor.
+4. **Governance:** Alle Einbindungen über Never-worsen-Gate + IN-V1/V2-Naht-Gates
+   + Witness-Absicherung; Benchmarks nach dem Muster ML-V1-VORAB/VOCAL-INPAINT-S1.
+
+### GPU-Finetune-Plan (7900 XTX, ROCm)
+
+Daten: MUSDB18HQ lokal; Evaluations-Gate je Finetune = ΔSDR ≥ +2 dB gegenüber
+jeweiliger Zero-Shot-Baseline auf den destruktiven Fällen + Never-worsen auf
+sauberen Referenzen (Muster ML-V3-Negativbefund).
+
+| # | Finetune | Basis | Ziel | Daten | Gate |
+|---|---|---|---|---|---|
+| F1 | DiffWave-Vokal (HAUPTWEG) | DiffWave-Checkpoint lokal | Langlücken-Reparatur ΔSDR ≥ 0 (S1: −1,7 dB) | MUSDB-Vocals | P1-Metrik |
+| F2 | GaCELA-Vokal (Pfad B) | Trainingscode lokal | 375–1500 ms, Sänger-Identität via Resemblyzer-Witness (jetzt ONNX live) | MUSDB-Vocals | P1-Metrik |
+| F3 | BigVGAN-v2 Musik+Vokal | bigvgan_v2.pth lokal | Spektral-Repair ML-V2/HR-V1 | MUSDB-HQ | ΔSDR ≥ +2 dB |
+| F4 | FlashSR-Musik | Checkpoint lokal | Hochband-Rekonstruktion (aus ML-V1-VORAB: Kandidatenwahl) | MUSDB-HQ | ΔSDR ≥ +2 dB |
+| F5 | DDSP-Prädiktor (C4) | CLAP/BEATs-Encoder lokal | EQ/Dynamik-Prädiktion | MUSDB-HQ + Effekt-Paare | MOS-Witness (MuQ) |
+
+**Reihenfolge:** F1 → F2 → F3 → F4 → F5 (je nach VRAM 1–2 parallel); jeder
+Finetune committet nur mit Witness-Belegen (Resemblyzer cos ≥ 0.92 für
+Sänger-Identität, MuQ-MOS nicht schlechter als Baseline).
 
 ---
 

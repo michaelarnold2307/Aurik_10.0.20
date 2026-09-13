@@ -1,19 +1,13 @@
 # TASK_CHANGES — Live-Ledger der aktuellen Aufgabe
 
-> Generiert von `scripts/change_ledger.py snapshot` (Base: `HEAD`, Stand: 2026-09-13 23:56 CEST).
+> Generiert von `scripts/change_ledger.py snapshot` (Base: `HEAD`, Stand: 2026-09-14 00:07 CEST).
 > CI (`ci-lite.yml` pr-evidence-gate) erzwingt Abdeckung: jede geänderte Code-Datei muss hier stehen.
 
 ## Geänderte Dateien
 
 | Status | Pfad | Art |
 |---|---|---|
-| M | .github/FILE_REGISTRY.md | modifiziert |
-| M | backend/core/phases/phase_20_reverb_reduction.py | modifiziert |
-| M | backend/core/phases/phase_49_advanced_dereverb.py | modifiziert |
 | M | docs/TODOS_SOTA_ROADMAP.md | modifiziert |
-| M | plugins/deepfilternet_v3_ii_plugin.py | modifiziert |
-| M | tests/unit/test_phase_20_reverb_reduction.py | modifiziert |
-| ?? | tests/unit/test_deepfilternet_rt60_estimator.py | ungetrackt |
 
 ## Entscheidungen
 
