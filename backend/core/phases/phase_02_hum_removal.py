@@ -417,6 +417,30 @@ class HumRemovalPhase(PhaseInterface):
         if len(detected_fundamentals) > 1:
             warnings.append(f"Multiple hum sources detected: {detected_fundamentals} Hz")
 
+        # §SOTA-HU-V1 (2026-09-13): Kalman-getrackte Netzfrequenz-Drift-Subtraktion
+        # hinter dem adaptiven Comb — fängt langsame Drift (49,8→50,2 Hz), die
+        # statische Notches nicht treffen. Non-blocking (§V6 (copilot-instructions.md));
+        # wirkt nur bei gemessener Drift > 0.08 Hz UND Reduktion > 3 dB.
+        try:
+            from backend.core.dsp.hum_drift_tracker import (
+                remove_drifting_hum,  # pylint: disable=import-outside-toplevel
+            )
+
+            _drift_base = float(detected_fundamentals[0]) if detected_fundamentals else 50.0
+            _drift_out, _drift_meta = remove_drifting_hum(result_audio, sample_rate, base_hz=_drift_base)
+            if _drift_meta.get("drift_hz", 0.0) > 0.08 and _drift_meta.get("reduction_db", 0.0) > 3.0:
+                result_audio = _drift_out
+                stats["drift_tracked"] = True
+                stats["drift_hz"] = float(_drift_meta["drift_hz"])
+                stats["drift_reduction_db"] = float(_drift_meta.get("reduction_db", 0.0))
+                logger.info(
+                    "§HU-V1 Drift-Tracking: drift=%.3f Hz, reduction=%.1f dB",
+                    _drift_meta["drift_hz"],
+                    _drift_meta.get("reduction_db", 0.0),
+                )
+        except Exception as _hu_exc:  # pylint: disable=broad-except
+            logger.debug("§HU-V1 Drift-Tracker nicht blockierend: %s", _hu_exc)
+
         # NaN/Inf-Guard + Clip (§3.1 Pflicht)
         result_audio = np.nan_to_num(result_audio, nan=0.0, posinf=0.0, neginf=0.0)
         result_audio = np.clip(result_audio, -1.0, 1.0)
