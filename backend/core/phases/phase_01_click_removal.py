@@ -646,6 +646,19 @@ class ClickRemovalPhase(PhaseInterface):
         """Erstellt einen deterministischen Reparaturplan für Click-Events."""
         stats = {"short": 0, "medium": 0, "long": 0, "transients_preserved": 0, "ml_repaired": 0, "total": 0}
         click_candidates = self._detect_clicks_multiscale(audio, thresholds)
+        # §SOTA-CR-V1 (2026-09-13): BANQUET-ML als ZUSÄTZLICHER Detektor im
+        # Multi-Scale-Konsens — ML detektiert, RBME/Interpolation rekonstruiert.
+        # Never-worsen: nur UNION mit DSP-Regionen (keine Entfernung); ohne
+        # geladenes Modell oder bei Fehler bleibt der DSP-Pfad unverändert
+        # (§V6 (copilot-instructions.md)).
+        _ml_regions = self._detect_clicks_banquet_ml(audio, sample_rate)
+        if _ml_regions:
+            click_candidates = self._merge_click_regions(click_candidates, _ml_regions)
+            logger.info(
+                "§CR-V1 BANQUET-ML-Konsens: %d ML-Klick-Regionen, gesamt %d Kandidaten",
+                len(_ml_regions),
+                len(click_candidates),
+            )
         classified_clicks = self._classify_clicks(audio, click_candidates, preserve_transients, thresholds)
 
         severe_clicks: list[dict[str, Any]] = []
@@ -1284,6 +1297,81 @@ class ClickRemovalPhase(PhaseInterface):
             click_regions.append((start_idx, len(click_mask) - 1))
 
         return click_regions
+
+    def _detect_clicks_banquet_ml(self, audio: np.ndarray, sample_rate: int) -> list[tuple[int, int]]:
+        """§SOTA-CR-V1: BANQUET-ML-Klick-Detektion als Zusatz-Detektor.
+
+        Läuft NUR als Kandidaten-Lieferant (Union mit DSP-Regionen); die
+        Rekonstruktion übernimmt der bestehende RBME/Interpolations-Pfad.
+        Never-worsen + §V6 (copilot-instructions.md): ohne geladenes Modell oder bei jedem Fehler → [].
+        Deterministisch (§G5 (copilot-instructions.md)): gleicher Input + gleiches Device ⇒ identische Regionen.
+        """
+        try:
+            from plugins.banquet_vinyl_plugin import get_banquet_plugin  # pylint: disable=import-outside-toplevel
+
+            _plugin = get_banquet_plugin()
+            if not bool(getattr(_plugin, "_model_loaded", False)):
+                return []
+            _mono = safe_to_mono(audio)
+            if _mono.size == 0:
+                return []
+            _mono = np.nan_to_num(np.asarray(_mono, dtype=np.float32), nan=0.0, posinf=0.0, neginf=0.0)
+            if sample_rate != 48000:
+                try:
+                    _mono, _ = _plugin._maybe_resample(_mono, sample_rate, 48000)
+                except Exception:  # pylint: disable=broad-except
+                    _mono = np.interp(
+                        np.linspace(0, _mono.size - 1, max(1, int(_mono.size * 48000 / sample_rate))),
+                        np.arange(_mono.size),
+                        _mono,
+                    ).astype(np.float32)
+            _processed = _plugin._process_onnx(_mono, strength=1.0)
+            _processed = np.nan_to_num(np.asarray(_processed, dtype=np.float32), nan=0.0, posinf=0.0, neginf=0.0)
+            if _processed.shape != _mono.shape:
+                return []
+            _delta = np.abs(_mono - _processed)
+            if _delta.size < 4801:
+                return []
+            _w = min(4801, _delta.size) | 1
+            _local_med = median_filter(_delta, size=_w)
+            _local_mad = 1.4826 * median_filter(np.abs(_delta - _local_med), size=_w)
+            _threshold = _local_med + 4.0 * np.maximum(_local_mad, 1e-8)
+            _mask = _delta > _threshold
+            _regions: list[tuple[int, int]] = []
+            _in_click = False
+            _start = 0
+            for _i, _is_click in enumerate(_mask):
+                if _is_click and not _in_click:
+                    _in_click = True
+                    _start = _i
+                elif not _is_click and _in_click:
+                    _in_click = False
+                    if 8 <= _i - _start <= 8192:
+                        _regions.append((int(_start), int(_i - 1)))
+            if _in_click and 8 <= len(_mask) - _start <= 8192:
+                _regions.append((int(_start), int(len(_mask) - 1)))
+            if sample_rate != 48000:
+                _scale = sample_rate / 48000
+                _regions = [(int(round(_s * _scale)), int(round(_e * _scale))) for _s, _e in _regions]
+            return _regions
+        except Exception as _exc:  # pylint: disable=broad-except
+            logger.warning("§CR-V1 BANQUET-ML-Konsens nicht verfuegbar: %s", _exc)  # §V6 (copilot-instructions.md)
+            return []
+
+    @staticmethod
+    def _merge_click_regions(
+        dsp_regions: list[tuple[int, int]],
+        ml_regions: list[tuple[int, int]],
+        gap_tolerance: int = 32,
+    ) -> list[tuple[int, int]]:
+        """§SOTA-CR-V1: Union von DSP- und ML-Klick-Regionen (deterministisch)."""
+        _merged: list[tuple[int, int]] = []
+        for _s, _e in sorted((int(_s), int(_e)) for _s, _e in list(dsp_regions) + list(ml_regions)):
+            if not _merged or _s > _merged[-1][1] + gap_tolerance:
+                _merged.append((_s, _e))
+            else:
+                _merged[-1] = (_merged[-1][0], max(_merged[-1][1], _e))
+        return _merged
 
     def _classify_clicks(
         self,
