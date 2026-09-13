@@ -13510,8 +13510,18 @@ class UnifiedRestorerV3:
             except Exception as _slr_exc:
                 logger.debug("§SLR-1 StemLevelRestorer nicht blockierend: %s", _slr_exc)
                 self._restoration_context.setdefault("stem_nr_done", False)
+                self._restoration_context["stem_nr_skip_reason"] = f"Fehler: {_slr_exc}"
         else:
+            # §SLR-1 Transparenz (2026-09-13): Sichtbar machen, WENN keine
+            # Stem-Separation läuft — vorher gab es dafür keinerlei INFO-Log
+            # (Produktionsbefund: Nutzer konnte nicht erkennen, ob getrennt wurde).
+            _slr_skip_reason = "Studio-Modus" if self.is_studio_mode() else f"PANNs-Singing {_slr_panns:.2f} < 0.35"
+            logger.info(
+                "§SLR-1 Stem-Level-Restoration ÜBERSPRUNGEN (%s) — keine Stem-Separation in diesem Lauf",
+                _slr_skip_reason,
+            )
             self._restoration_context.setdefault("stem_nr_done", False)
+            self._restoration_context["stem_nr_skip_reason"] = _slr_skip_reason
 
         try:
             _fallback_teamwork_profile = self._initialize_fallback_teamwork_controller()
