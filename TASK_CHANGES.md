@@ -1,16 +1,60 @@
 # TASK_CHANGES — Live-Ledger der aktuellen Aufgabe
 
-> Generiert von `scripts/change_ledger.py snapshot` (Base: `HEAD`, Stand: 2026-09-13 15:37 CEST).
+> Generiert von `scripts/change_ledger.py snapshot` (Base: `HEAD`, Stand: 2026-09-13 23:14 CEST).
 > CI (`ci-lite.yml` pr-evidence-gate) erzwingt Abdeckung: jede geänderte Code-Datei muss hier stehen.
 
 ## Geänderte Dateien
 
 | Status | Pfad | Art |
 |---|---|---|
+| M | .github/FILE_REGISTRY.md | modifiziert |
+| M | TASK_CHANGES.md | modifiziert |
 | M | docs/TODOS_SOTA_ROADMAP.md | modifiziert |
+| M | plugins/muq_plugin.py | modifiziert |
+| M | tests/unit/test_muq_plugin.py | modifiziert |
+| ?? | docs/reports/current/2026-09-13_muq_plugin_direction.json | ungetrackt |
+| ?? | scripts/validate_muq_plugin_direction.py | ungetrackt |
 
 ## Entscheidungen
 
+- **SOTA-MuQ RICHTUNGS-VALIDIERT (2026-09-13, Abschluss des Befunds)**: Die
+  MOS-Richtungs-Inversion des Plugins ist behoben und 1:1-validiert.
+  Ursache war NUR die Plugin-Audio-Kette: `_center_window` (zentrierte 20 s) +
+  torchaudio-Resample statt der validierten Kette (ERSTE 10 s + librosa-Resample
+  auf 24 kHz). Fix: neues `_mos_eval_window` (10 s, 24 kHz, Null-Pad bei kurzen
+  Eingaben, librosa primär/torchaudio-Fallback) im MOS-Pfad; Embedding-Pfad
+  unverändert. Re-Validierung `scripts/validate_muq_plugin_direction.py`
+  (1:1-MusicQualityModel + best_model.pt strict vs. Plugin auf identischen
+  MUSDB-Paaren): **3/3 Richtungen korrekt** (noise10 Δ+2.22 vs. +2.21,
+  noise0 Δ+3.66 vs. +3.24 — Plugin-Floor bei MOS 1.0 erklärt die Restdifferenz,
+  band8 Δ−0.28 vs. −0.23, band12/ref neutral). Der 50/50-Blend im
+  `restorability_estimator` bleibt (Metriken sind Zeugen, Hörordnung §8a);
+  5 Tests in test_muq_plugin.py ergänzt. Report:
+  docs/reports/current/2026-09-13_muq_plugin_direction.json.
+- **MuQ-Eval-A1-Forward 1:1 im Plugin (SOTA-MuQ, 2026-09-13)**: Die Plugin-Reimplementierungen
+  (vendored-MuQ-Forward + eigenes Pooling) invertierten die MOS-Richtung auf MUSDB
+  (noise10 Δ−0.333 statt Δ+3.337 der 1:1-Validierung). Fix: (1) `_find_checkpoint_dir`
+  priorisiert den `OpenMuQ/MuQ-large-msd-iter`-Snapshot vor dem MuQ-MuLan-Backbone
+  (A1-Trainings-Backbone, base.yaml); (2) der MOS-Pfad lädt die ORIGINAL-
+  MuQ-Eval-Klassen (`src.encoders.AttentionPooling`, `src.model.PredictionHead`) aus
+  `models/muq_eval` und bindet sie strict an den extrahierten A1-Head
+  (`models/muq_mulan/muq_eval_a1_head.pt`); Fallback auf die Plugin-Klassen nur wenn
+  das MuQ-Eval-Paket nicht ladbar ist. Tests: Checkpoint-Priorisierung (msd vor mulan,
+  Fallback, unvollständige Verzeichnisse) + A1-Head-Load/-Forward.
+  **Verbleibender Unterschied zur richtungs-korrekten 1:1-Kette:** Plugin-Audio-Kette
+  (`_center_window` 20 s + torchaudio-Resample) vs. 1:1-Kette (librosa-Resample,
+  erste 10 s) — Angleichung + Re-Validierung ist der nächste Roadmap-Schritt.
+- **Resemblyzer-ONNX-Fallback + NaN-Sicherheit (2026-09-13)**: Das Resemblyzer-Package
+  ist in manchen Umgebungen nicht importierbar (ModuleNotFoundError) — neuer ONNX-Pfad
+  `models/resemblyzer/resemblyzer_voice_encoder.onnx` (opset 17, exportiert aus
+  pretrained.pt, Parität cos=1.0000) als Kaskade Package→ONNX→None (§V6
+  (copilot-instructions.md)); identische Mel-Parameter 400/160/40. Dabei Befund:
+  `cosine_similarity` war trotz Docstring NICHT NaN-sicher (`np.clip(nan,…)` → NaN) —
+  `np.nan_to_num`-Bereinigung am Entry. Tests: `tests/unit/test_resemblyzer_onnx_fallback.py`
+  (12 Fälle: Routing, Mel-Shape, VAD-Trim, L2-Norm, Layouts, NaN/Inf, Determinismus,
+  echte ONNX-Smokes 16 kHz + 44,1 kHz).
+- **FILE_REGISTRY-Nachzug**: `tests/unit/test_bsr317_torch_rocm.py` und
+  `tests/unit/test_resemblyzer_onnx_fallback.py` eingetragen (Write-Gate).
 - **Root-Cause-Fix §v10.702 B3-Phase-2 Early-Merge** (`_b3_merge_full_song_defect_types` in
   `backend/core/unified_restorer_v3.py`): `_b3_full_song_defect_types` (Strings) wurde gegen
   `defect_result.scores.keys()` (DefectType-ENUMs) differenziert — Plain-Enum ⇒ Differenz immer

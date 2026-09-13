@@ -61,6 +61,8 @@ _PROJECT_ROOT = Path(__file__).resolve().parent.parent
 _MODEL_ID = "OpenMuQ/MuQ-large-msd-iter"
 _TARGET_SR = 24000
 _MAX_ANALYSIS_S = 20.0
+_MOS_CLIP_S = 10.0  # MuQ-Eval base.yaml: clip_duration_sec
+_MOS_CLIP_SAMPLES = 240000  # 24000 × 10 — A1-Head wurde auf 10-s-Clips trainiert
 _EMBED_DIM = 1024
 _REF_DIR = _PROJECT_ROOT / "corpus" / "vinyl" / "clean"
 _REF_CACHE = _PROJECT_ROOT / "models" / "muq_mulan" / "muq_ref_embeddings.npz"
@@ -263,6 +265,37 @@ def _center_window(mono: np.ndarray, sr: int) -> np.ndarray:
     start = (len(mono) - n_max) // 2
     _w2: np.ndarray = np.asarray(mono[start : start + n_max], dtype=np.float32)
     return _w2
+
+
+def _mos_eval_window(mono: np.ndarray, sr: int) -> np.ndarray:
+    """10-s-Eval-Fenster exakt nach MuQ-Eval (base.yaml: 24 kHz, clip_samples=240000).
+
+    Die richtungs-korrekte 1:1-Validierung (2026-09-13, MUSDB) nutzte die ERSTEN
+    10 s mit librosa-Resample auf 24 kHz — das Plugin verwendete davor ein
+    zentriertes 20-s-Fenster plus torchaudio-Resample und invertierte damit die
+    MOS-Richtung (noise10 Δ−0.333 statt Δ+3.337). torchaudio-Resample bleibt
+    dokumentierter Fallback, wenn librosa fehlt; kürzere Eingaben werden
+    null-aufgefüllt (AudioProcessor-Pad-Konvention).
+    """
+    n_target = _MOS_CLIP_SAMPLES
+    _librosa: Any | None = None
+    try:
+        import librosa as _imported_librosa
+
+        _librosa = _imported_librosa
+    except Exception:  # pragma: no cover
+        _librosa = None
+    if int(sr) != _TARGET_SR:
+        if _librosa is not None:
+            mono = np.asarray(_librosa.resample(mono, orig_sr=int(sr), target_sr=_TARGET_SR), dtype=np.float32)
+        elif torchaudio is not None and torch is not None:
+            _wav = torch.from_numpy(np.asarray(mono, dtype=np.float32)).float()
+            mono = torchaudio.functional.resample(_wav, int(sr), _TARGET_SR).numpy().astype(np.float32)
+    if mono.size >= n_target:
+        _clip: np.ndarray = np.asarray(mono[:n_target], dtype=np.float32)
+        return _clip
+    _pad: np.ndarray = np.pad(np.asarray(mono, dtype=np.float32), (0, n_target - mono.size))
+    return _pad
 
 
 def extract_embedding(audio: Any, sr: int) -> np.ndarray | None:
@@ -525,12 +558,8 @@ def estimate_muq_mos(audio: Any, sr: int) -> float | None:
                 mono = arr.mean(axis=1)
         else:
             mono = arr
-        mono = _center_window(mono, sr)
-        if int(sr) != _TARGET_SR:
-            wav = torch.from_numpy(mono).unsqueeze(0).to(_dev)
-            wav = torchaudio.functional.resample(wav, int(sr), _TARGET_SR)
-        else:
-            wav = torch.from_numpy(mono).unsqueeze(0).to(_dev)
+        mono = _mos_eval_window(mono, sr)
+        wav = torch.from_numpy(mono).unsqueeze(0).to(_dev)
         pooling, head = _modules
         with torch.no_grad():
             out = model(wav, output_hidden_states=True)

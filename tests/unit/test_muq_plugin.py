@@ -192,3 +192,48 @@ def test_a1_head_modules_load_and_run(monkeypatch: pytest.MonkeyPatch) -> None:
     val = float(mi.item())
     assert np.isfinite(val)
     assert 1.0 <= float(np.clip(val, 1.0, 5.0)) <= 5.0
+
+
+def test_mos_eval_window_first_10s_at_target_sr() -> None:
+    """24-kHz-Eingabe > 10 s ⇒ ERSTE 240000 Samples (1:1-Konvention), nicht zentriert."""
+    rng = np.random.RandomState(11)
+    x = rng.randn(mq._MOS_CLIP_SAMPLES + 8000).astype(np.float32)
+    w = mq._mos_eval_window(x, mq._TARGET_SR)
+    assert w.shape == (mq._MOS_CLIP_SAMPLES,)
+    assert np.array_equal(w, x[: mq._MOS_CLIP_SAMPLES])
+
+
+def test_mos_eval_window_pads_short_input() -> None:
+    """Kürzer als 10 s ⇒ Null-Pad auf clip_samples (AudioProcessor-Konvention)."""
+    rng = np.random.RandomState(12)
+    x = rng.randn(8000).astype(np.float32)
+    w = mq._mos_eval_window(x, mq._TARGET_SR)
+    assert w.shape == (mq._MOS_CLIP_SAMPLES,)
+    assert np.array_equal(w[:8000], x)
+    assert np.all(w[8000:] == 0.0)
+
+
+def test_mos_eval_window_resamples_48k_to_24k() -> None:
+    """48-kHz-Eingabe ⇒ librosa-Resample auf 24 kHz, Länge 240000 (1:1-Kette)."""
+    try:
+        import librosa
+    except Exception:
+        pytest.skip("librosa fehlt")
+    rng = np.random.RandomState(13)
+    x = rng.randn(480000 + 100).astype(np.float32)
+    w = mq._mos_eval_window(x, 48000)
+    assert w.shape == (mq._MOS_CLIP_SAMPLES,)
+    assert np.all(np.isfinite(w))
+
+
+def test_mos_eval_window_deterministic() -> None:
+    """Gleicher Input ⇒ bit-identischer Output (§G5 (GEBOTE.md))."""
+    try:
+        import librosa
+    except Exception:
+        pytest.skip("librosa fehlt")
+    rng = np.random.RandomState(14)
+    x = rng.randn(96000).astype(np.float32)
+    w1 = mq._mos_eval_window(x, 48000)
+    w2 = mq._mos_eval_window(x, 48000)
+    assert np.array_equal(w1, w2)
