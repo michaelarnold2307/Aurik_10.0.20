@@ -374,6 +374,23 @@ class GacelaPlugin:
             left_mono = _prep(left_audio)
             right_mono = _prep(right_audio)
 
+            # Determinismus (§G5 (GEBOTE.md)): Seed aus dem Input abgeleitet — gleicher
+            # Input + Version ⇒ bit-identische Lücke; ungeseedetes Rauschen
+            # im GAN-Latent war der Produktionsbefund (maxdiff 1,06 bei
+            # identischem Input, 2026-09-13).
+            _seed = int.from_bytes(
+                __import__("hashlib")
+                .blake2b(
+                    np.ascontiguousarray(left_mono, dtype=np.float32).tobytes()
+                    + np.ascontiguousarray(right_mono, dtype=np.float32).tobytes(),
+                    digest_size=4,
+                )
+                .digest(),
+                "little",
+            )
+            _rng = np.random.default_rng(_seed)
+            _gen = torch.Generator(device=self._device).manual_seed(_seed)
+
             if self._session is not None:
                 # §v10-GACELA-ONNX: Mel-Kontexte in numpy, ein Session-Run.
                 def _mel_np(mono: np.ndarray) -> np.ndarray:
@@ -383,7 +400,7 @@ class GacelaPlugin:
                     t = _time_average(torch.from_numpy(mel).unsqueeze(0).unsqueeze(0), TIME_AVG)  # [1,1,80,240]
                     return t.numpy()  # type: ignore[no-any-return]
 
-                noise = np.random.rand(1, NOISE_CH, 5, 15).astype(np.float32)
+                noise = _rng.random((1, NOISE_CH, 5, 15)).astype(np.float32)
                 gap_np = self._session.run(
                     None,
                     {
@@ -410,7 +427,9 @@ class GacelaPlugin:
                 enc_R = _encode(right_mono, self._encoders[1])
 
                 # Rauschen und Konkatenation
-                noise_t = torch.rand(1, NOISE_CH, enc_L.size(2), enc_L.size(3), dtype=torch.float32).to(self._device)
+                noise_t = torch.rand(1, NOISE_CH, enc_L.size(2), enc_L.size(3), dtype=torch.float32, generator=_gen).to(
+                    self._device
+                )
                 x = torch.cat([enc_L, enc_R, noise_t], dim=1)  # [1,36,5,15]
 
                 # Generator-Inferenz

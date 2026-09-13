@@ -585,6 +585,64 @@ def _try_diffwave_plugin(audio: np.ndarray, start: int, end: int, sample_rate: i
         return None
 
 
+def _try_gacela_plugin(channel: np.ndarray, start: int, end: int, sample_rate: int) -> np.ndarray | None:
+    """Priorität 1.75: GaCELA (musik-nativer GAN-Langlücken-Inpainter, 375–1500 ms).
+
+    Generiert die Lücke aus je ~1 s Kontext links/rechts (§SOTA-GACELA,
+    KEIN Training; deterministisch via input-abgeleitetem Seed, §G5 (GEBOTE.md)).
+    GaCELA erzeugt ~3 s Material — mittiger Zuschnitt auf die Ziellänge,
+    damit beide Nahtstellen aus generiertem Material stammen.
+    Gibt None zurück, wenn das Plugin nicht verfügbar ist (non-blocking,
+    §V6 (copilot-instructions.md)).
+    """
+    try:
+        gap_ms = (end - start) * 1000.0 / sample_rate
+        if gap_ms < 375.0 or gap_ms > 1500.0:
+            return None  # außerhalb der GaCELA-Domäne
+        import importlib  # pylint: disable=import-outside-toplevel
+        import os  # pylint: disable=import-outside-toplevel
+        import sys  # pylint: disable=import-outside-toplevel
+
+        plugins_dir = os.path.join(os.path.dirname(__file__), "..", "..", "..", "plugins")
+        if plugins_dir not in sys.path:
+            sys.path.insert(0, os.path.abspath(plugins_dir))
+
+        gacela_mod = importlib.import_module("gacela_plugin")
+        if not hasattr(gacela_mod, "get_gacela_plugin"):
+            return None
+
+        from backend.core.plugin_lifecycle_manager import (  # pylint: disable=import-outside-toplevel
+            get_plugin_lifecycle_manager as _get_plm55g,
+        )
+
+        _plm55g = _get_plm55g()
+        _plm55g.set_active("GaCELA", True)
+        try:
+            gacela = gacela_mod.get_gacela_plugin()
+            ctx = int(1.0 * sample_rate)  # 1 s Kontext je Seite
+            left = channel[max(0, start - ctx) : start]
+            right = channel[end : min(len(channel), end + ctx)]
+            if left.size < sample_rate // 4 or right.size < sample_rate // 4:
+                return None  # zu wenig Kontext für stabile Borders
+            gap = gacela.inpaint(left.astype(np.float32), right.astype(np.float32), sample_rate)
+            if gap is None or gap.size == 0:
+                return None
+            gap = np.asarray(gap, dtype=np.float32)
+            gap = np.nan_to_num(gap, nan=0.0, posinf=0.0, neginf=0.0)
+            if gap.size > end - start:
+                _off = (gap.size - (end - start)) // 2
+                gap = gap[_off : _off + (end - start)]
+            elif gap.size < end - start:
+                gap = np.pad(gap, (0, end - start - gap.size), mode="edge")
+            _gap_out: np.ndarray = np.clip(gap, -1.0, 1.0)
+            return _gap_out
+        finally:
+            _plm55g.set_active("GaCELA", False)
+    except Exception as e:
+        logger.debug("GaCELA-Plugin nicht verfügbar (Verarbeitungsschritt_55): %s", e)
+        return None
+
+
 def _try_consistency_model_inpainting(channel: np.ndarray, start: int, end: int, sample_rate: int) -> np.ndarray | None:
     """Priority 0.8: Consistency Model inpainting (Song et al. 2023, ICML).
 
@@ -993,6 +1051,16 @@ def _process_channel(
                                 candidate = plugin_result[: end - start]
                                 stats["plugin_used"] = True
                                 stats["dac_token_used"] = stats.get("dac_token_used", 0) + 1
+
+                        if plugin_result is None and 375.0 <= gap_ms <= 1500.0:
+                            # Priorität 1.75: GaCELA (musik-nativer Lang-Lücken-Inpainter,
+                            # 375–1500 ms; §SOTA-GACELA — deterministisch, KEIN Training)
+                            plugin_result = _try_gacela_plugin(channel, start, end, sample_rate)
+                            if plugin_result is not None:
+                                logger.debug("Verarbeitungsschritt_55: GaCELA Inpainting OK (gap=%.1f ms)", gap_ms)
+                                candidate = plugin_result[: end - start]
+                                stats["plugin_used"] = True
+                                stats["gacela_used"] = stats.get("gacela_used", 0) + 1
 
                         if plugin_result is None:
                             # Priorität 2+: DSP AR-Diffusion → NMF-β IS-Divergenz (§2.47 Fallback-Pflicht)

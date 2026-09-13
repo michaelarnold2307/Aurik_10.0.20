@@ -136,18 +136,19 @@ def main() -> int:
         z_list = []
         for ch in range(2):
             _f, _t, zc = stft(
-                audio[ch], fs=48000, nperseg=2048, noverlap=1536, window=win, boundary="zeros", padded=False
+                audio[ch], fs=48000, nperseg=2048, noverlap=1536, window=win, boundary="even", padded=True
             )
             z_list.append(np.stack([zc.real, zc.imag], axis=-1))  # (1025, T, 2)
         zri = np.stack(z_list, axis=0)[None].astype(np.float32)  # (1, s=2, 1025, T, 2)
-        mask = core_fn(zri)  # (1, 1, 1025, T, 2)
-        mc = mask[0, 0, ..., 0] + 1j * mask[0, 0, ..., 1]  # (1025, T) komplexe Maske
+        mask = core_fn(zri)  # (1, 1, 2050, T, 2) — je Kanal eine Maskenhälfte
+        mc_full = mask[0, 0, ..., 0] + 1j * mask[0, 0, ..., 1]  # (2050, T)
         outs = []
         for ch in range(2):
+            mc = mc_full[ch * 1025 : (ch + 1) * 1025]  # Maskenhälfte des Kanals
             _f, _t, zc = stft(
-                audio[ch], fs=48000, nperseg=2048, noverlap=1536, window=win, boundary="zeros", padded=False
+                audio[ch], fs=48000, nperseg=2048, noverlap=1536, window=win, boundary="even", padded=True
             )
-            _t2, v = istft(zc * mc, fs=48000, nperseg=2048, noverlap=1536, window=win, boundary=False)
+            _t2, v = istft(zc * mc, fs=48000, nperseg=2048, noverlap=1536, window=win, boundary="even")
             outs.append(v[: len(audio[ch])])
         return np.stack(outs)
 

@@ -162,6 +162,8 @@ class BSRoFormerPlugin:
         self._session = None  # onnxruntime.InferenceSession
         self._session_model_path: str | None = None  # §ROCm-Fallback: Pfad für CPU-Rebuild
         self._torch_model = None  # torch.nn.Module (wenn ONNX nicht verfügbar)
+        self._torch_core = None  # §SOTA-BSR-GPU: 317-Core auf ROCm (None = nicht verfügbar)
+        self._torch_tried_torch = False
         self._model_loaded: bool = False
         self._fallback_active: bool = False
         self._onnx_quarantined: bool = False
@@ -335,6 +337,41 @@ class BSRoFormerPlugin:
 
         audio_mono = self._to_mono_float32(audio)
         requested = stems or self.STEM_NAMES
+
+        # §SOTA-BSR-GPU (2026-09-13): PyTorch-ROCm-Pfad zuerst — numerisch
+        # paritätisch zur ONNX-CPU-Referenz (rel ~1e-5), ~46× schneller;
+        # ONNX-ROCm ist durch den Upstream-EP-Bug blockiert. Fail-closed:
+        # ohne ROCm/Checkpoint oder bei Fehler bleibt der ONNX-/DSP-Pfad.
+        if not self._torch_tried_torch:
+            self._torch_tried_torch = True
+            try:
+                from backend.core.dsp.bsr317_torch_rocm import (
+                    get_bsr317_torch_core,  # pylint: disable=import-outside-toplevel
+                )
+
+                self._torch_core = get_bsr317_torch_core()
+            except Exception as _gt_exc:  # pylint: disable=broad-except
+                logger.debug("§BSR-GPU torch-Core-Auflösung nicht blockierend: %s", _gt_exc)
+        if self._torch_core is not None:
+            try:
+                from backend.core.dsp.bsr317_torch_rocm import (
+                    separate_bsr317_torch,  # pylint: disable=import-outside-toplevel
+                )
+
+                _stems_map = separate_bsr317_torch(audio_mono, sr, self._torch_core, stems=tuple(requested))
+                if _stems_map:
+                    return StemSeparationResult(
+                        stems=_stems_map,
+                        sr=sr,
+                        sdri_db=0.0,
+                        model_used="bs_roformer_317_torch_rocm",
+                        confidence=0.95,
+                        metadata={"gpu_backend": "pytorch_rocm", "checkpoint_sdr_db": 12.98},
+                    )
+            except Exception as _t_exc:  # pylint: disable=broad-except
+                logger.warning(
+                    "§BSR-GPU torch-ROCm-Separation fehlgeschlagen: %s — ONNX/DSP-Pfad", _t_exc
+                )  # §V6 (copilot-instructions.md)
 
         if self._model_loaded and self._session is not None:
             return self._separate_onnx(audio_mono, sr, requested)

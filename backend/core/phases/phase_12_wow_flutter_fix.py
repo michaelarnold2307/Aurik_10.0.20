@@ -398,6 +398,44 @@ class WowFlutterFix(PhaseInterface):
             ),
         )
 
+    def _apply_scrape_flutter_rest(
+        self, audio: np.ndarray, sample_rate: int, material: MaterialType, metadata: dict
+    ) -> np.ndarray:
+        """§SOTA-WF-CASS: Scrape-Flutter-Restpfad für Cassette.
+
+        Kompensiert breitbandige Amplitudenmodulation (Bandkante kratzt am Kopf),
+        getrennt vom gemeinsamen Warp. Nur tape/cassette, Gate über confidence,
+        non-blocking (§V6 (copilot-instructions.md)).
+        """
+        _mat_name = material.value if isinstance(material, MaterialType) else str(material)
+        if _mat_name not in {"tape", "cassette", "reel_tape"}:
+            return audio
+        try:
+            from backend.core.dsp.scrape_flutter_rest import (  # pylint: disable=import-outside-toplevel
+                compensate_scrape_flutter,
+                detect_scrape_flutter,
+            )
+
+            _sfr = detect_scrape_flutter(audio, sample_rate)
+            if _sfr.confidence >= 0.55:
+                _before = audio
+                audio = compensate_scrape_flutter(audio, sample_rate, _sfr)
+                if not np.array_equal(audio, _before):
+                    metadata["scrape_flutter_rest"] = {
+                        "confidence": round(_sfr.confidence, 3),
+                        "severity": round(_sfr.severity, 3),
+                        "mod_freqs": _sfr.mod_freqs,
+                    }
+                    logger.info(
+                        "WF-CASS: Scrape-Flutter-Rest aktiv (conf=%.2f, sev=%.3f, f=%s)",
+                        _sfr.confidence,
+                        _sfr.severity,
+                        _sfr.mod_freqs,
+                    )
+        except Exception as _sfr_exc:
+            logger.warning("WF-CASS: Scrape-Flutter-Rest nicht verfügbar: %s", _sfr_exc)
+        return audio
+
     def process(  # type: ignore[override]  # pyright: ignore[reportIncompatibleMethodOverride]
         self, audio: np.ndarray, sample_rate: int = 48000, material_type: str = "unknown", **kwargs: Any
     ) -> PhaseResult:
@@ -947,6 +985,9 @@ class WowFlutterFix(PhaseInterface):
                     material,
                 )
                 audio = np.nan_to_num(audio, nan=0.0, posinf=0.0, neginf=0.0)
+                # Früher Pfad (keine Wow/Flutter-Reparatur nötig): Befund wird
+                # nur geloggt, nicht zurückgemeldet.
+                audio = self._apply_scrape_flutter_rest(audio, sample_rate, material, {})
                 audio = np.clip(audio, -1.0, 1.0)
                 return PhaseResult(
                     success=True,
@@ -1061,6 +1102,7 @@ class WowFlutterFix(PhaseInterface):
             )
 
             audio = np.nan_to_num(audio, nan=0.0, posinf=0.0, neginf=0.0)
+            audio = self._apply_scrape_flutter_rest(audio, sample_rate, material, metadata)
             audio = np.clip(audio, -1.0, 1.0)
             return PhaseResult(
                 success=True,
