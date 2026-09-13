@@ -333,11 +333,11 @@
     "verdict": "cpu"
   },
   "models/melbandroformer/melbandroformer_optimized.onnx": {
-    "backend": "rocm",
-    "cpu_ms": 4845.006,
-    "gpu_ms": 473.908,
-    "note": "EP-Numerik weicht ab (rel=6.11e+00 vs CPU)",
-    "scan_s": 15.9,
+    "backend": null,
+    "cpu_ms": 3794.623,
+    "gpu_ms": null,
+    "note": "ROCm-EP nicht platziert (CPUExecutionProvider)",
+    "scan_s": 9.3,
     "size_mb": 859.5,
     "verdict": "cpu"
   },

@@ -191,6 +191,20 @@ def _join_note(*parts: str) -> str:
 def _scan_model(path: Path, overrides: dict | None = None) -> dict:
     import onnxruntime as ort
 
+    def _mk_session(providers):
+        _so = None
+        if getattr(_args, "no_opt", False):
+            _so = ort.SessionOptions()
+            _so.graph_optimization_level = ort.GraphOptimizationLevel.ORT_DISABLE_ALL
+        _po = None
+        if getattr(_args, "no_tunable", False):
+            _po = [{"tunable_op_enable": "0"}]
+        if _so is not None:
+            return ort.InferenceSession(str(path), sess_options=_so, providers=providers, provider_options=_po)
+        if _po is not None:
+            return ort.InferenceSession(str(path), providers=providers, provider_options=_po)
+        return ort.InferenceSession(str(path), providers=providers)
+
     _size_mb = path.stat().st_size / (1024**2)
     _entry: dict = {
         "size_mb": round(_size_mb, 1),
@@ -212,7 +226,7 @@ def _scan_model(path: Path, overrides: dict | None = None) -> dict:
     try:
 
         def _cpu_step():
-            _cpu = ort.InferenceSession(str(path), providers=["CPUExecutionProvider"])
+            _cpu = _mk_session(["CPUExecutionProvider"])
             _inputs = _dummy_inputs(_cpu, overrides)
             return _cpu, _inputs
 
@@ -228,7 +242,7 @@ def _scan_model(path: Path, overrides: dict | None = None) -> dict:
     try:
 
         def _rocm_step():
-            return ort.InferenceSession(str(path), providers=["ROCMExecutionProvider", "CPUExecutionProvider"])
+            return _mk_session(["ROCMExecutionProvider", "CPUExecutionProvider"])
 
         _rocm = _with_timeout(_rocm_step, 90.0)
         _used = str(_rocm.get_providers()[0])
@@ -331,6 +345,16 @@ def main() -> int:
         type=int,
         default=3,
         help="Bench-Wiederholungen pro Backend (Default 3; 1 = schneller Durchlauf).",
+    )
+    _ap.add_argument(
+        "--no-tunable",
+        action="store_true",
+        help="ROCm-Tunable-Op-Suche deaktivieren (provider_options tunable_op_enable=0).",
+    )
+    _ap.add_argument(
+        "--no-opt",
+        action="store_true",
+        help="ORT-Graph-Optimizer deaktivieren (Fusionen können defekte EP-Kernels auswählen).",
     )
     _ap.add_argument(
         "--no-migraphx",
