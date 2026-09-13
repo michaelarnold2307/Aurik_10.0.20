@@ -1,7 +1,7 @@
 {
   "_summary": {
     "counts": {
-      "cpu": 47,
+      "cpu": 49,
       "migraphx": 0,
       "rocm": 12
     },
@@ -104,6 +104,24 @@
     "gpu_ms": 189.54,
     "note": "EP-Numerik weicht ab (rel=6.18e+00 vs CPU)",
     "scan_s": 51.4,
+    "size_mb": 615.2,
+    "verdict": "cpu"
+  },
+  "models/bs_roformer/bsr317_core_fp16.onnx": {
+    "backend": null,
+    "cpu_ms": null,
+    "gpu_ms": null,
+    "note": "CPU-Load fehlgeschlagen: InvalidGraph",
+    "scan_s": 0.4,
+    "size_mb": 308.5,
+    "verdict": "cpu"
+  },
+  "models/bs_roformer/bsr317_core_reexport.onnx": {
+    "backend": "rocm",
+    "cpu_ms": 9167.563,
+    "gpu_ms": 549.209,
+    "note": "EP-Numerik weicht ab (rel=6.18e+00 vs CPU)",
+    "scan_s": 27.3,
     "size_mb": 615.2,
     "verdict": "cpu"
   },
