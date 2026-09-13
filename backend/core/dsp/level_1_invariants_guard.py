@@ -88,16 +88,21 @@ class Level1InvariantsGuard:
     """
 
     def __init__(self) -> None:
-        self._resemblyzer_available = False
+        # Resemblyzer-Witness (2026-09-13): das Resemblyzer-Package ist in manchen
+        # Umgebungen nicht importierbar — das Plugin liefert die Kaskade
+        # Package→ONNX→None (plugins/resemblyzer_plugin.py, opset-17-Export,
+        # Parität cos=1.0000). Der alte Import "Resemblyzer" (falscher
+        # Paketname, Großbuchstabe) schlug immer fehl und deaktivierte den
+        # echten ML-Pfad still — Produktionsbefund §Ebene-1.
+        self._resemblyzer_plugin: object | None = None
         try:
-            import Resemblyzer  # pylint: disable=unused-import
+            from plugins.resemblyzer_plugin import get_resemblyzer_plugin
 
-            self._resemblyzer_available = True
-        except ImportError:
+            self._resemblyzer_plugin = get_resemblyzer_plugin()
+        except Exception:
             # §V74 (VERBOTEN.md): kein stilles except:pass — Resemblyzer ist optional,
-            # der fehlende Import wird bewusst toleriert.
-            logger.debug("Resemblyzer nicht verfügbar — optionale Stimmen-Parameter deaktiviert")
-            pass
+            # der fehlende Import wird bewusst toleriert (DSP-Ersatzpfad greift).
+            logger.debug("Resemblyzer-Witness nicht verfügbar — DSP-Ersatzpfad aktiv")
 
     def check(
         self,
@@ -209,15 +214,13 @@ class Level1InvariantsGuard:
                 singer_cosine = float(_raw_vqi.get("singer_identity_cosine", 0.85))
                 return max(singer_cosine, 0.5)
 
-            # Resemblyzer als primäre Methode
-            if self._resemblyzer_available:
-                from Resemblyzer import Resemblyzer
-
-                re = Resemblyzer()
-                emb_pre = re.embed(pre.reshape(1, -1), sr)[0]
-                emb_post = re.embed(post.reshape(1, -1), sr)[0]
-                cosine = float(np.dot(emb_pre, emb_post) / (np.linalg.norm(emb_pre) * np.linalg.norm(emb_post) + 1e-8))
-                return max(cosine, 0.0)
+            # Resemblyzer-Witness (Plugin-Kaskade Package→ONNX) als primäre Methode
+            if self._resemblyzer_plugin is not None and getattr(self._resemblyzer_plugin, "available", False):
+                emb_pre = self._resemblyzer_plugin.embed(pre, sr)  # type: ignore[attr-defined]
+                emb_post = self._resemblyzer_plugin.embed(post, sr)  # type: ignore[attr-defined]
+                if emb_pre is not None and emb_post is not None:
+                    cosine = float(self._resemblyzer_plugin.cosine_similarity(emb_pre, emb_post))  # type: ignore[attr-defined]
+                    return max(cosine, 0.0)
 
             # DSP-Fallback: MFCC-Korrelation + spektraler Centroid-Korrelation
             mono_pre = pre.mean(axis=0) if pre.ndim == 2 else pre
