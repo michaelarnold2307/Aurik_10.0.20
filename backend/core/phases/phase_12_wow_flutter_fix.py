@@ -3604,6 +3604,15 @@ class WowFlutterFix(PhaseInterface):
         if np.max(np.abs(sf_samples - 1.0)) < 0.002:
             return audio.copy()
 
+        # §Witness-SOTA WF-V3: Kalman-Glättung der Stretch-Trajektorie —
+        # der pYIN/CREPE-Jitter darf nicht direkt ins Warping übertragen werden.
+        try:
+            from backend.core.dsp.warp_kalman import kalman_smooth_warp  # pylint: disable=import-outside-toplevel
+
+            sf_samples = kalman_smooth_warp(sf_samples, q=1e-8, r=1e-5).astype(np.float32)
+        except Exception as _wk_exc:  # pylint: disable=broad-except
+            logger.debug("§WF-V3 Kalman-Glättung nicht anwendbar (%s) — ungeglättet", _wk_exc)
+
         src_step = 1.0 / np.clip(sf_samples, 0.85, 1.15)
         src_pos = np.cumsum(src_step)
         src_pos -= src_pos[0]
@@ -3611,7 +3620,21 @@ class WowFlutterFix(PhaseInterface):
         src_pos *= (n_samples - 1) / max_pos
         src_pos = np.clip(src_pos, 0.0, n_samples - 1)
 
-        corrected = np.interp(src_pos, np.arange(n_samples, dtype=np.float32), audio_f)
+        # §Witness-SOTA WF-V1: Bandbegrenztes Fenster-Sinc-Resampling statt
+        # linearer np.interp-Interpolation (kein HF-Aliasing). §V6 (copilot-instructions.md)-
+        # Ersatzpfad: bei Fehler bleibt np.interp.
+        try:
+            from backend.core.dsp.bandlimited_resampler import (
+                bandlimited_warp,  # pylint: disable=import-outside-toplevel
+            )
+
+            corrected = bandlimited_warp(audio_f, src_pos)
+        except Exception as _bw_exc:  # pylint: disable=broad-except
+            logger.warning(
+                "§V6 (copilot-instructions.md) WF-V1 Resampler nicht anwendbar (%s) — np.interp-Fallback",
+                _bw_exc,
+            )
+            corrected = np.interp(src_pos, np.arange(n_samples, dtype=np.float32), audio_f)
         corrected = np.nan_to_num(corrected, nan=0.0, posinf=0.0, neginf=0.0)
         return corrected.astype(audio.dtype, copy=False)  # type: ignore[no-any-return]
 

@@ -144,11 +144,40 @@ Stufe; die ML-Seite ist über die Gates dieser Session abgedeckt.
   auch für APPLADE (DGT-Domain-Variante) und weitere Finetunes — die
   Waveform-Variante existiert und ist im EAR-VAE-Finetune aktiv.
 
+## 5. ML-Trainingsdomänen-Matrix — welche Modelle brauchen Musik-/Gesangs-Finetuning?
+
+Befund (2026-09-13, verifiziert gegen Plugin-Header/Modellherkunft):
+Mehrere verdrahtete Modelle sind auf SPRACHE vortrainiert, werden aber auf
+MUSIK eingesetzt — der MP-SENet-Benchmark (−5,9…−8,5 dB out-of-domain) ist
+der Beweis, dass das Ohr das hört. Die A1-Maskierungs-Loss-Pipeline (torch)
+steht für jeden Waveform-Finetune bereit; die EAR-VAE-/APPLADE-Runs liefern
+das bewährte Vorgehen (Encoder-Frozen, Validierungs-Early-Stop, Never-worsen).
+
+| Modell | Trainingsdomäne | Aurik-Einsatz | Musik-Fit | Maßnahme |
+|---|---|---|---|---|
+| FlashSR (HierSpeech++) | Sprache (16k→48k) | phase_06/07 Bandbreiten-Extension (B4-gegated) | ⚠️ out-of-domain | **ML-V1: Musik-Finetune** (MUSDB-HQ lowpass→original, A1-Loss) |
+| BigVGAN-v2 | Sprache (LibriTTS-Klasse) | Vocoder-Repair (B5-gegated) | ⚠️ out-of-domain | **ML-V2: Musik-/Vokal-Finetune** für den Repair-Pfad |
+| MP-SENet | Sprache (Interspeech 2023) | phase_43 ML-De-Esser (streng gegated) | ❌ gemessen −5,9…−8,5 dB | **ML-V3: Musik-Finetune ODER De-Wiring** aus Musikpfaden |
+| UTMOS | Sprache (MOS) | C1-Zeuge (delta-basiert) | ⚠️ Bias möglich | **ML-V4: Musik-MOS-Validierung/Kalibrierung** (nur Delta-Urteil, bereits so verdrahtet) |
+| DeepFilterNet v3.II | Sprache + Musik-Variante | Denoise-Kandidat | ✅ use_df_musik aktiv (verifiziert) | keine |
+| CREPE/FCPE | Musik (Pitch) | Wow/Flutter-Schätzung | ✅ | keine |
+| Demucs/HTDemucs | MUSDB18 (Musik) | Stem-Separation | ✅ | keine |
+| CQT-Diff+ | Musik (Declip) | Declip-Zweig | ✅ | keine |
+| KIM Music/Vocal | MDX23C (Musik) | Klarheit | ✅ | keine |
+| BANQUET | Vinyl (Knistern) | Crackle/Klick | ✅ | keine |
+| Whisper/Resemblyzer | Sprache | Lyrics/Stimm-Identität | ✅ zweckrichtig (Gesang) | keine |
+| GaCELA/AERO | Sprache | (nicht in Produktion) | — | keine (nicht einhängen) |
+
+Priorität: ML-V1 (FlashSR — direkt im HF-Hörbereich) → ML-V2 (BigVGAN) →
+ML-V3 (MP-SENet entscheiden) → ML-V4 (UTMOS-Kalibrierung).
+Alle mit A1-Hör-Loss + Encoder-Frozen-Verfahren + Never-worsen-Benchmark wie EAR-VAE.
+
 ## Priorisierte Gesamt-Reihenfolge
 
 1. WF-V1 → WF-V2 → WF-V3 (Wow/Flutter, größter Einzelhebel)
-2. IN-V1 + IN-V2 (Inpainting-Naht-Gates, B8)
-3. C4 DDSP (EQ/Dynamik-Parameter-Prädiktion)
-4. TP-V1 + TP-V2 (D-Klasse Transienten)
-5. HR-V1 (BigVGAN-Harmonik), CR-V1 (BANQUET-Klick-Detektion), DR-V1 (neurales RT60)
-6. WF-V4 (neuraler Warp-Schätzer) + WF-Cassette (Scrape-Flutter) + D3/D4
+2. ML-V1 → ML-V2 → ML-V3 → ML-V4 (Musik-Finetunes der sprach-vortrainierten Modelle)
+3. IN-V1 + IN-V2 (Inpainting-Naht-Gates, B8)
+4. C4 DDSP (EQ/Dynamik-Parameter-Prädiktion)
+5. TP-V1 + TP-V2 (D-Klasse Transienten)
+6. HR-V1 (BigVGAN-Harmonik), CR-V1 (BANQUET-Klick-Detektion), DR-V1 (neurales RT60)
+7. WF-V4 (neuraler Warp-Schätzer) + WF-Cassette (Scrape-Flutter) + D3/D4
