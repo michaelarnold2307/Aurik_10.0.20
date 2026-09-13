@@ -474,6 +474,16 @@ def test_get_torch_device_respects_disabled_plugins():
     assert mgr.get_torch_device("SGMSE") == "cpu"  # nach Deaktivierung CPU
 
 
+def test_muq_is_heavy_plugin_gets_gpu():
+    """§MuQ-SOTA (2026-09-13): MuQ-310M ist Heavy-Plugin → GPU-Device wenn
+    verfügbar — CPU kostete 11,2 s für 20 s Audio und sprengte das 5-s-
+    Budget des RestorabilityEstimators."""
+    mgr = _make_manager_with_gpu()
+    assert mgr.get_torch_device("MuQ-310M") == "cuda"
+    # Unbekannte Plugins bleiben CPU-only
+    assert mgr.get_torch_device("IrgendwasUnbekanntes") == "cpu"
+
+
 def test_report_gpu_error_summary_reflects_state():
     """gpu_status_summary() zeigt Fehler und deaktivierte Plugins korrekt an."""
     mgr = _make_manager_with_gpu()

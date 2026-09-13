@@ -1568,6 +1568,10 @@ def warmup_models_background() -> None:
         ("plugins.apollo_plugin", "get_apollo"),  # ~800 MB
         ("plugins.bs_roformer_plugin", "get_bs_roformer"),  # ~860 MB
         ("plugins.mert_plugin", "get_mert_plugin"),  # ~1.2 GB (async)
+        # §MuQ-SOTA (2026-09-13): MuQ-Eval-A1-Witness vorladen — der erste
+        # Aufruf kostete 10,8 s (Load + GPU-Warmup) und sprengte das 5-s-
+        # Budget des RestorabilityEstimators; danach sind es 0,05 s.
+        ("plugins.muq_plugin", "get_muq_model"),  # ~1.2 GB fp32
     ]
 
     logger.info("bridge: warmup gestartet (%d+%d plugins) …", len(_plugins_tier1), len(_plugins_tier2))

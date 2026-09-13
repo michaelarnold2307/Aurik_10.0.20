@@ -386,6 +386,9 @@ _HEAVY_ML_PLUGINS: frozenset[str] = frozenset(
         # "ApolloPlugin",  # apollo_plugin — restorative ML → CPU-Force §v10.733
         "CQTDiffPlus",  # cqtdiff_plus_plugin — diffusion inpainting
         "Gacela",  # gacela_plugin — audio inpainting
+        "MuQ-310M",  # muq_plugin — MuQ-Eval-A1-Qualitätswitness (310M Params, ~1,2 GB fp32);
+        # CPU kostete 11,2 s für 20 s Audio und sprengte das 5-s-Budget des
+        # RestorabilityEstimators (Produktionsbefund 2026-09-13) → GPU.
         "MPSENet",  # mp_senet plugin — speech enhancement
         "AudioLDM2",  # audioldm2_plugin — diffusion ONNX (~1.3 GB)
         # --- Neural Enhancement (GPU-accelerated on AMD ROCm) ---
