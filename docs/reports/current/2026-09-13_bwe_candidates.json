@@ -1,0 +1,73 @@
+{
+  "seed": 42,
+  "tracks": [
+    {
+      "track": "BKS - Bulldozer",
+      "aero_native": {
+        "mean_dSDR": -5.4854666151172475,
+        "min_dSDR": -9.537701054178587,
+        "mean_dSegSNR": -7.921925685799111,
+        "wall_s": 24.64
+      },
+      "flash_native": {
+        "mean_dSDR": -24.306459123314248,
+        "min_dSDR": -31.278140046688453,
+        "mean_dSegSNR": -27.60160243087443,
+        "wall_s": 2.06
+      },
+      "shared12": {
+        "sdr_aero_db": 15.241054851150015,
+        "sdr_flashsr_db": -1.1701637245467713,
+        "sdr_baseline_db": 20.078494183064173
+      }
+    },
+    {
+      "track": "Secretariat - Borderline",
+      "aero_native": {
+        "mean_dSDR": -4.5345117072052386,
+        "min_dSDR": -6.762728822195438,
+        "mean_dSegSNR": -6.43763285365081,
+        "wall_s": 20.22
+      },
+      "flash_native": {
+        "mean_dSDR": -24.409702080407392,
+        "min_dSDR": -31.22618296553277,
+        "mean_dSegSNR": -27.68100958255469,
+        "wall_s": 0.35
+      },
+      "shared12": {
+        "sdr_aero_db": 16.182839190652608,
+        "sdr_flashsr_db": -1.190352629744908,
+        "sdr_baseline_db": 20.18810561897038
+      }
+    },
+    {
+      "track": "Speak Softly - Broken Man",
+      "aero_native": {
+        "mean_dSDR": -3.6006215794278216,
+        "min_dSDR": -9.346678986139477,
+        "mean_dSegSNR": -9.374260752711985,
+        "wall_s": 20.04
+      },
+      "flash_native": {
+        "mean_dSDR": -21.156514897088456,
+        "min_dSDR": -29.730473283640197,
+        "mean_dSegSNR": -29.44526257140889,
+        "wall_s": 0.35
+      },
+      "shared12": {
+        "sdr_aero_db": 17.081984493825757,
+        "sdr_flashsr_db": -1.225463632551731,
+        "sdr_baseline_db": 21.636447014594825
+      }
+    }
+  ],
+  "summary": {
+    "aero_native_min_dSDR_over_tracks": -9.537701054178587,
+    "flash_native_min_dSDR_over_tracks": -31.278140046688453,
+    "aero_never_worsen": false,
+    "flash_never_worsen": false,
+    "shared12_aero_minus_flash_min_db": 16.411218575696786,
+    "shared12_aero_minus_flash_mean_db": 17.36395284082393
+  }
+}

@@ -1,0 +1,32 @@
+{
+  "seed": 42,
+  "tracks": [
+    {
+      "track": "BKS - Bulldozer",
+      "mean_sdr_out_in_db": 6.291368736274334,
+      "min_sdr_out_in_db": 4.550389898432785,
+      "plugin_snr_improvement_db": 6.069484260295979,
+      "model_used": "mp_senet_onnx"
+    },
+    {
+      "track": "Secretariat - Borderline",
+      "mean_sdr_out_in_db": 3.340152682533875,
+      "min_sdr_out_in_db": 1.9364837413672278,
+      "plugin_snr_improvement_db": 3.203382047509673,
+      "model_used": "mp_senet_onnx"
+    },
+    {
+      "track": "Speak Softly - Broken Man",
+      "mean_sdr_out_in_db": 5.8414410531135665,
+      "min_sdr_out_in_db": 3.905233270528429,
+      "plugin_snr_improvement_db": 5.948731679778496,
+      "model_used": "mp_senet_onnx"
+    }
+  ],
+  "summary": {
+    "mean_sdr_out_in_db": 5.157654157307258,
+    "min_sdr_out_in_db": 1.9364837413672278,
+    "max_sdr_out_in_db": 10.866086370751562,
+    "passthrough_would_be_better": false
+  }
+}

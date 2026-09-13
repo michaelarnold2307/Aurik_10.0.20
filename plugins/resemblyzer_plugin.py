@@ -39,6 +39,25 @@ try:
 except Exception:
     _librosa = None  # type: ignore[assignment]
 
+try:
+    import onnxruntime as _ort
+except Exception:
+    _ort = None  # type: ignore[assignment]
+
+# ONNX-Fallback-Pfad (§0j, CPU-only): models/resemblyzer/resemblyzer_voice_encoder.onnx
+# exportiert 2026-09-13 aus pretrained.pt (opset 17, [B, T, 40] Mels → 256-dim,
+# Parität cos=1.0000). Erwartet dieselben Mel-Parameter wie das Package:
+# 16 kHz, n_fft=400, hop=160, n_mels=40.
+_ONNX_MODEL_PATH = os.path.join(
+    os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+    "models",
+    "resemblyzer",
+    "resemblyzer_voice_encoder.onnx",
+)
+_ONNX_MEL_N_FFT = 400
+_ONNX_MEL_HOP = 160
+_ONNX_MEL_N_MELS = 40
+
 # Lokales Resemblyzer-Paket aus models/rezemblyzer/ einbinden (offline-fähig,
 # kein pip install nötig). Pfad wird nur einmalig in sys.path eingetragen.
 _LOCAL_RESEMBLYZER_DIR = os.path.join(
@@ -87,6 +106,7 @@ class ResemblyzerPlugin:
     def __init__(self) -> None:
         self._encoder: Any | None = None
         self._preprocess_wav_fn: Callable[..., np.ndarray] | None = None
+        self._onnx_session: Any | None = None
         self._load()
 
     # ------------------------------------------------------------------
@@ -94,7 +114,11 @@ class ResemblyzerPlugin:
     # ------------------------------------------------------------------
 
     def _load(self) -> None:
-        """Lädt VoiceEncoder einmalig lazy; warnt bei Fehler, kein Absturz."""
+        """Lädt VoiceEncoder einmalig lazy; warnt bei Fehler, kein Absturz.
+
+        Kaskade: Python-Package → ONNX (models/resemblyzer) → None (DSP-Fallback
+        liegt beim Aufrufer). Beide Pfade liefern 256-dim d-vectoren.
+        """
         try:
             if _ResemblyzerVoiceEncoder is None or _resemblyzer_preprocess_wav is None:
                 raise ImportError("resemblyzer unavailable")
@@ -104,9 +128,31 @@ class ResemblyzerPlugin:
             self._preprocess_wav_fn = _resemblyzer_preprocess_wav
             logger.info("resemblyzer_plugin: VoiceEncoder loaded (256-dim d-vector, CPU, §2.35c)")
         except Exception as exc:
-            logger.warning("resemblyzer_plugin: Resemblyzer nicht verfügbar — DSP-Fallback aktiv: %s", exc)
+            logger.warning(
+                "resemblyzer_plugin: Resemblyzer-Package nicht verfügbar — ONNX-Fallback wird geprüft: %s", exc
+            )
             self._encoder = None
             self._preprocess_wav_fn = None
+            self._load_onnx()
+
+    def _load_onnx(self) -> None:
+        """Lädt resemblyzer_voice_encoder.onnx via onnxruntime (CPU-only).
+
+        Kein Absturz bei Fehler: _onnx_session bleibt None, embed() gibt None
+        zurück und der Aufrufer nutzt den DSP-Fallback (§3.1).
+        """
+        if _ort is None:
+            logger.warning("resemblyzer_plugin: onnxruntime nicht verfügbar — kein ONNX-Pfad")
+            return
+        if not os.path.exists(_ONNX_MODEL_PATH):
+            logger.warning("resemblyzer_plugin: ONNX nicht gefunden (%s) — kein ONNX-Pfad", _ONNX_MODEL_PATH)
+            return
+        try:
+            self._onnx_session = _ort.InferenceSession(_ONNX_MODEL_PATH, providers=["CPUExecutionProvider"])
+            logger.info("resemblyzer_plugin: VoiceEncoder-ONNX geladen (256-dim d-vector, CPU, §2.35c)")
+        except Exception as exc:
+            logger.warning("resemblyzer_plugin: ONNX-Laden fehlgeschlagen — DSP-Fallback aktiv: %s", exc)
+            self._onnx_session = None
 
     # ------------------------------------------------------------------
     # Öffentliche API
@@ -114,8 +160,8 @@ class ResemblyzerPlugin:
 
     @property
     def available(self) -> bool:
-        """True wenn Resemblyzer geladen und einsatzbereit."""
-        return self._encoder is not None
+        """True wenn Resemblyzer (Package oder ONNX) geladen und einsatzbereit."""
+        return self._encoder is not None or self._onnx_session is not None
 
     def embed(self, audio: np.ndarray, sr: int) -> np.ndarray | None:
         """Berechnet 256-dim d-vector Embedding.
@@ -127,6 +173,8 @@ class ResemblyzerPlugin:
         Returns:
             256-dim L2-normierter Embedding-Vektor (float32) oder None bei Fehler.
         """
+        if self._onnx_session is not None and self._encoder is None:
+            return self._embed_onnx(audio, sr)
         if self._encoder is None or self._preprocess_wav_fn is None:
             return None
         try:
@@ -155,6 +203,64 @@ class ResemblyzerPlugin:
             logger.debug("resemblyzer_plugin: embed() Fehler — None zurückgegeben: %s", exc)
             return None
 
+    def _embed_onnx(self, audio: np.ndarray, sr: int) -> np.ndarray | None:
+        """ONNX-Pfad: 16 kHz mono → Volumen-Norm (−30 dBFS, increase-only wie
+        Resemblyzer) → Energie-VAD-Trim → Mel (400/160/40) → ONNX → L2-Norm.
+
+        Verwendet dieselben Mel-Parameter wie das Python-Package, damit die
+        d-vectoren beider Pfade vergleichbar bleiben.
+        """
+        try:
+            mono = _to_mono(audio)
+            mono = np.asarray(np.nan_to_num(mono, nan=0.0, posinf=0.0, neginf=0.0), dtype=np.float32)
+
+            if sr != self.MODEL_SR:
+                if _librosa is None:
+                    return None
+                mono = np.asarray(_librosa.resample(mono, orig_sr=sr, target_sr=self.MODEL_SR), dtype=np.float32)
+
+            # Volumen-Normierung wie resemblyzer.normalize_volume(increase_only=True)
+            rms = float(np.sqrt(np.mean(np.square(mono, dtype=np.float64))) + 1e-12)
+            target_rms = 10.0 ** (-30.0 / 20.0)  # −30 dBFS
+            if rms < target_rms:
+                mono = mono * (target_rms / rms)
+
+            # Energie-basiertes VAD-Trim (Ersatz für webrtcvad im Package):
+            # 30-ms-Frames, 10-ms-Hop; behalte Regionen über 1e-5 RMS.
+            frame_len = 480
+            hop = 160
+            if mono.size >= frame_len:
+                n_frames = 1 + (mono.size - frame_len) // hop
+                idx = np.arange(n_frames) * hop
+                fr = np.stack([mono[i : i + frame_len] for i in idx])
+                energy = np.mean(np.square(fr), axis=1)
+                voice = energy > 1e-5
+                if not np.any(voice):
+                    return None
+                first, last = int(np.argmax(voice)), int(n_frames - 1 - np.argmax(voice[::-1]))
+                mono = mono[first * hop : (last + 1) * hop + frame_len]
+
+            if mono.size < frame_len or _librosa is None or self._onnx_session is None:
+                return None
+
+            mels = _librosa.feature.melspectrogram(
+                y=mono,
+                sr=self.MODEL_SR,
+                n_fft=_ONNX_MEL_N_FFT,
+                hop_length=_ONNX_MEL_HOP,
+                n_mels=_ONNX_MEL_N_MELS,
+            )
+            mel_input = np.ascontiguousarray(mels.T, dtype=np.float32)[np.newaxis, ...]  # [1, T, 40]
+            emb = self._onnx_session.run(None, {"mels": mel_input})[0][0]  # [256]
+            norm = float(np.linalg.norm(emb)) + 1e-12
+            emb = (emb / norm).astype(np.float32)
+            _emb_clean: np.ndarray = np.asarray(np.nan_to_num(emb, nan=0.0, posinf=0.0, neginf=0.0), dtype=np.float32)
+            return _emb_clean
+
+        except Exception as exc:
+            logger.debug("resemblyzer_plugin: _embed_onnx() Fehler — None zurückgegeben: %s", exc)
+            return None
+
     def cosine_similarity(self, emb_a: np.ndarray, emb_b: np.ndarray) -> float:
         """L2-normierte Cosinus-Ähnlichkeit ∈ [0, 1] zwischen zwei Embeddings.
 
@@ -165,8 +271,8 @@ class ResemblyzerPlugin:
         Returns:
             Cosinus-Ähnlichkeit ∈ [0, 1]. NaN-safe.
         """
-        a = np.array(emb_a, dtype=np.float64)
-        b = np.array(emb_b, dtype=np.float64)
+        a = np.nan_to_num(np.array(emb_a, dtype=np.float64), nan=0.0, posinf=0.0, neginf=0.0)
+        b = np.nan_to_num(np.array(emb_b, dtype=np.float64), nan=0.0, posinf=0.0, neginf=0.0)
         denom = np.linalg.norm(a) * np.linalg.norm(b) + 1e-12
         cos = float(np.dot(a, b) / denom)
         # Resemblyzer-Embeddings sind L2-normiert → cos ∈ [-1, 1]; clippen auf [0, 1]

@@ -295,11 +295,10 @@ class UTMOSPlugin:
                         if _local_w2v_base.exists():
                             cfg.model.ssl.name = str(_local_w2v_base)  # type: ignore[attr-defined]
                             logger.debug("UTMOS: SSL-Encoder nutzt lokales wav2vec2-base (%s)", _local_w2v_base)
-                        try:
-                            from backend.core.ml_device_manager import get_torch_device as _get_dev
-
-                            _utmos_dev = _get_dev("UTMOSv2")
-                        except Exception:
+                            # CPU-Policy (§Doku): UTMOSv2 läuft komplett auf CPU — der
+                            # interne SSL-Encoder (HuggingFace wav2vec2) lädt immer auf CPU,
+                            # ein CUDA-Fold-Modell cat't dann Geräte-gemischt → RuntimeError
+                            # (Befund 2026-09-13: Fallback-Kette trotz vorhandener Weights).
                             _utmos_dev = "cpu"
                         device = torch.device(_utmos_dev)
                         model = _get_model(cfg, device)

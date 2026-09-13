@@ -104,7 +104,15 @@ def _candidate_checkpoint_dirs() -> list[Path]:
 
 
 def _find_checkpoint_dir() -> Path | None:
-    for cand in _candidate_checkpoint_dirs():
+    candidates = _candidate_checkpoint_dirs()
+    # A1-Head wurde auf OpenMuQ/MuQ-large-msd-iter trainiert (base.yaml) —
+    # der HF-Cache-Snapshot dieses Backbones MUSS vor dem MuQ-MULAN-
+    # Backbone (models/muq_mulan/, anderer Trainingsstand) priorisiert werden,
+    # sonst invertiert die MOS-Richtung (Befund 2026-09-13).
+    msd_first = [c for c in candidates if "MuQ-large-msd-iter" in str(c)] + [
+        c for c in candidates if "MuQ-large-msd-iter" not in str(c)
+    ]
+    for cand in msd_first:
         if not cand.is_dir():
             continue
         has_cfg = (cand / "config.json").is_file()
@@ -169,8 +177,30 @@ def get_muq_model() -> Any | None:
                 )
                 return None
             _reg_plm("MuQ", size_gb=_MEMORY_GB, unload_fn=_unload_muq)
-            _model = MuQ.from_pretrained(str(_dir))
+            # 1:1-Pfad wie der verifiziert richtungs-korrekte MuQ-Eval-Lauf:
+            # MuQ.from_pretrained mit der HF-ID lädt die Revision MIT korrekten
+            # BatchNorm-running-Statistiken; der lokale Verzeichnis-Pfad zog
+            # eine Revision ohne (18 running_mean/var abweichend → MOS-Inversion,
+            # Befund 2026-09-13). Fallback: lokales Verzeichnis.
+            try:
+                _model = MuQ.from_pretrained(_MODEL_ID)
+            except Exception as _id_exc:
+                logger.debug("MuQ: HF-ID-Load fehlgeschlagen (%s) — lokaler Pfad-Fallback", _id_exc)
+                _model = MuQ.from_pretrained(str(_dir))
             _model.to(_resolve_device())
+            # BatchNorm-Statistiken aus dem A1-Checkpoint nachladen (Befund
+            # 2026-09-13): Der HF-Hub-Export des MuQ-Backbones weicht in
+            # 18 running_mean/running_var-Paaren vom A1-Trainingsstand ab;
+            # ohne Korrektur invertiert die MOS-Richtung (ref ok, noise10 kippt).
+            _bn_path = _LOCAL_DIR / "muq_eval_bn_stats.pt"
+            if _bn_path.is_file():
+                try:
+                    _bn = torch.load(str(_bn_path), map_location="cpu", weights_only=True)
+                    _missing, _unexp = _model.load_state_dict(_bn, strict=False)
+                    if _missing or _unexp:
+                        logger.debug("MuQ-BN-Korrektur: missing=%d unexpected=%d", len(_missing), len(_unexp))
+                except Exception as _bn_exc:
+                    logger.warning("MuQ-BN-Korrektur fehlgeschlagen: %s", _bn_exc)
             _model.eval()
             logger.info("MuQ-Plugin: %s geladen (device=%s, fp32)", _MODEL_ID, str(_resolve_device()))
         except Exception as _exc:
@@ -396,6 +426,42 @@ _a1_head_loaded: bool = False
 _a1_head_lock = threading.Lock()
 
 
+# MuQ-Eval-Originalklassen (models/muq_eval/src) für den 1:1-A1-Pfad:
+# Der verifiziert richtungs-korrekte Lauf nutzt AttentionPooling/PredictionHead
+# aus dem MuQ-Eval-Repo — die Plugin-Reimplementierungen sind ausgeschlossen,
+# also werden hier die Originalklassen geladen (Fallback: alte Klassen).
+try:
+    import importlib.machinery as _ilm
+    import importlib.util as _ilu
+    import sys
+
+    _muq_eval_root = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "models", "muq_eval")
+    if _muq_eval_root not in sys.path:
+        sys.path.insert(0, _muq_eval_root)
+        sys.path.insert(0, os.path.join(_muq_eval_root, "src"))
+    if "peft" not in sys.modules:
+        _peft_stub = _ilu.module_from_spec(_ilm.ModuleSpec("peft", loader=None))
+        # Attribute via __dict__ (weder setattr noch direkte Zuweisung):
+        # B010-sicher und mypy-sauber (kein attr-defined).
+        _peft_stub.__dict__.update(
+            {
+                "LoraConfig": lambda **kw: None,
+                "get_peft_model": lambda m, c: m,
+            }
+        )
+        sys.modules["peft"] = _peft_stub
+    import plugins._vendor_muq as _vendor_muq_alias
+
+    sys.modules.setdefault("muq", _vendor_muq_alias)
+    from src.encoders import AttentionPooling as _MuQEvalAttentionPooling
+    from src.model import PredictionHead as _MuQEvalPredictionHead
+
+    _MUQ_EVAL_CLASSES = True
+except Exception as _muq_eval_exc:
+    logger.debug("MuQ-Eval-Originalklassen nicht ladbar (%s) — Plugin-Klassen bleiben", _muq_eval_exc)
+    _MUQ_EVAL_CLASSES = False
+
+
 def _get_a1_head_modules() -> tuple[Any, Any] | None:
     global _a1_head_loaded
     if _a1_head_loaded:
@@ -409,10 +475,19 @@ def _get_a1_head_modules() -> tuple[Any, Any] | None:
                 return None
             try:
                 state = torch.load(str(_A1_HEAD_PATH), map_location="cpu", weights_only=True)
-                pooling = _A1AttentionPooling(_EMBED_DIM)
+                pooling = _MuQEvalAttentionPooling(_EMBED_DIM) if _MUQ_EVAL_CLASSES else _A1AttentionPooling(_EMBED_DIM)
                 pooling.load_state_dict(state["pooling"])
-                head = _A1PredictionHead(_EMBED_DIM, 256, 2)
+                head = (
+                    _MuQEvalPredictionHead(_EMBED_DIM, 256, 2)
+                    if _MUQ_EVAL_CLASSES
+                    else _A1PredictionHead(_EMBED_DIM, 256, 2)
+                )
                 head.load_state_dict(state["head"])
+                # Auf das aktive ML-Device bewegen — das MuQ-Backbone läuft auf
+                # cuda; ein CPU-Head würde im Head-MLP zu Device-Mismatch führen.
+                _dev = _resolve_device()
+                pooling = pooling.to(_dev)
+                head = head.to(_dev)
                 pooling.eval()
                 head.eval()
                 _a1_head_state["pooling"] = pooling

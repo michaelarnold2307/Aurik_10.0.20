@@ -7,6 +7,8 @@ Determinismus (§G5 (GEBOTE.md)), Shape und Wertebereiche gegen das echte Modell
 
 from __future__ import annotations
 
+from pathlib import Path
+
 import numpy as np
 import pytest
 
@@ -128,3 +130,65 @@ def test_quality_witness_range(monkeypatch: pytest.MonkeyPatch) -> None:
     assert w is not None
     assert 0.0 <= w <= 100.0
     assert mq.estimate_quality_witness(np.zeros(48000, dtype=np.float32), 48000) == pytest.approx(w)
+
+
+def _fake_checkpoint(tmp_path: Path, name: str) -> Path:
+    """Mini-Checkpoint-Verzeichnis mit config.json + model.safetensors."""
+    d = tmp_path / name
+    d.mkdir()
+    (d / "config.json").write_text("{}", encoding="utf-8")
+    (d / "model.safetensors").write_bytes(b"x")
+    return d
+
+
+def test_find_checkpoint_dir_prefers_msd_iter(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    """Der A1-Head wurde auf OpenMuQ/MuQ-large-msd-iter trainiert (base.yaml) —
+    dieser Snapshot MUSS vor dem MuQ-MuLan-Backbone priorisiert werden, sonst
+    invertiert die MOS-Richtung (Befund 2026-09-13)."""
+    mulan = _fake_checkpoint(tmp_path, "models--OpenMuQ--MuQ-MuLan-large")
+    msd = _fake_checkpoint(tmp_path, "models--OpenMuQ--MuQ-large-msd-iter")
+    # Kandidatenliste liefert mulan ZUERST — Priorisierung muss msd vorziehen.
+    monkeypatch.setattr(mq, "_candidate_checkpoint_dirs", lambda: [mulan, msd])
+    assert mq._find_checkpoint_dir() == msd
+
+
+def test_find_checkpoint_dir_falls_back_to_mulan(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    """Ohne msd-iter-Snapshot bleibt das MuQ-MuLan-Backbone gültig."""
+    mulan = _fake_checkpoint(tmp_path, "models--OpenMuQ--MuQ-MuLan-large")
+    monkeypatch.setattr(mq, "_candidate_checkpoint_dirs", lambda: [mulan])
+    assert mq._find_checkpoint_dir() == mulan
+
+
+def test_find_checkpoint_dir_rejects_incomplete(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    """Verzeichnisse ohne Gewichte/Config werden übersprungen (kein stummer Fehlload)."""
+    broken = tmp_path / "models--OpenMuQ--MuQ-large-msd-iter"
+    broken.mkdir()
+    monkeypatch.setattr(mq, "_candidate_checkpoint_dirs", lambda: [broken])
+    assert mq._find_checkpoint_dir() is None
+
+
+@pytest.mark.skipif(
+    not mq._A1_HEAD_PATH.is_file() or mq.torch is None,
+    reason="MuQ-Eval-A1-Head fehlt (models/muq_mulan/muq_eval_a1_head.pt)",
+)
+def test_a1_head_modules_load_and_run(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Original-MuQ-Eval-Klassen (AttentionPooling + PredictionHead) laden den
+    extrahierten A1-Head-State strict und liefern einen finiten MI-Score.
+
+    1:1-Bezug: die richtungs-korrekten MUSDB-Ergebnisse (noise10 Δ+3.337)
+    stammen exakt aus diesem Klassen-/Head-Pfad.
+    """
+    monkeypatch.setenv("AURIK_MUQ_CPU", "1")
+    mods = mq._get_a1_head_modules()
+    assert mods is not None
+    pooling, head = mods
+    _dev = next(pooling.parameters()).device  # _get_a1_head_modules bewegt auf das aktive ML-Device
+    rng = np.random.RandomState(3)
+    hidden = rng.randn(1, 50, mq._EMBED_DIM).astype(np.float32)
+    x = mq.torch.from_numpy(hidden).to(_dev)
+    with mq.torch.no_grad():
+        pooled = pooling(x)
+        mi = head(pooled)
+    val = float(mi.item())
+    assert np.isfinite(val)
+    assert 1.0 <= float(np.clip(val, 1.0, 5.0)) <= 5.0
