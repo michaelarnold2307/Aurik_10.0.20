@@ -21,6 +21,21 @@ import threading
 logger = logging.getLogger(__name__)
 
 
+_TAPE_FAMILY = {"cassette", "reel_tape", "tape"}
+
+
+def _is_tape_family(material: str) -> bool:
+    """Tape-Familie auch in Material-KOMBINATIONEN erkennen ("vinyl+digital")."""
+    if not material:
+        return False
+    _parts = [
+        p.strip().lower()
+        for p in str(material).replace("+", " ").replace("/", " ").replace(",", " ").split()
+        if p.strip()
+    ]
+    return any(_p in _TAPE_FAMILY for _p in _parts)
+
+
 class GlobalGainBudget:
     """Thread-safe singleton managing cumulative gain across all phases."""
 
@@ -57,6 +72,11 @@ class GlobalGainBudget:
           SNR = 14 dB:  ×2.13  (cassette with heavy noise)
 
         Material-specific floor: cassette/tape gets +2 dB extra.
+        Material-Kombinationen (§Mixtape-Realität, 2026-09-13): Importsongs
+        sind selten REINES Material — Vinyl-Rips mit MP3-Vorlauf, Kassetten-
+        Kopien mit digitalen Artefakten. Kombinierte Strings ("vinyl+digital",
+        "cassette/mp3") zählen als Tape-Familie, sobald EINE Komponente Tape
+        ist — die empfindlichste Komponente bestimmt die Budget-Regel.
 
         Called once per pipeline run from UV3/Denker after chain detection.
         """
@@ -77,7 +97,7 @@ class GlobalGainBudget:
         snr = float(max(1.0, snr_db))
         if snr < 30.0:
             snr_factor = 1.0 + (30.0 - snr) / 15.0
-            if str(material).lower() in ("cassette", "reel_tape", "tape"):
+            if _is_tape_family(material):
                 snr_factor += 0.30
             self._total_budget_db = float(max(self._total_budget_db, min(self._total_budget_db * snr_factor, 24.0)))
 
@@ -98,7 +118,7 @@ class GlobalGainBudget:
         snr = float(max(1.0, snr_db))
         if snr < 30.0:
             snr_factor = 1.0 + (30.0 - snr) / 15.0
-            if str(material).lower() in ("cassette", "reel_tape", "tape"):
+            if _is_tape_family(material):
                 snr_factor += 0.30
             new_budget = float(max(self._total_budget_db, min(self._total_budget_db * snr_factor, 24.0)))
             if new_budget > self._total_budget_db:

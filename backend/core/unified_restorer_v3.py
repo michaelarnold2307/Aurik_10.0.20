@@ -1833,10 +1833,21 @@ class UnifiedRestorerV3:
             )
             return None
         _rctx = getattr(self, "_restoration_context", {}) or {}
+        # §GGB-Propagation (2026-09-13): material_type steckt oft schon in der
+        # DQR-Meta, bevor _restoration_context befüllt ist — Produktionsbefund:
+        # §GGB-1-Log mit mat=unknown trotz erkannter Träger (vinyl).
+        # Fallback-Kette: _restoration_context → DQR-Meta → unknown.
+        _dqr_meta_mat = None
+        try:
+            _dqr_ctx = getattr(self, "_dqr_dict", None) or {}
+            _dqr_meta_mat = _dqr_ctx.get("meta", {}).get("material_type")
+        except Exception:
+            _dqr_meta_mat = None
+        _mat_str = str(_rctx.get("material_type") or _dqr_meta_mat or "unknown")
         return CalibrationContext(
             restorability_score=float(getattr(self, "_last_restorability_score", 70.0) or 70.0),
             transfer_chain_depth=int(len(_rctx.get("transfer_chain", []) or []) or 1),
-            material_type=str(_rctx.get("material_type", "unknown")),
+            material_type=_mat_str,
             snr_db=float(_rctx.get("snr_db", 30.0) or 30.0),
             bandwidth_hz=float(_rctx.get("bandwidth_hz", 15000.0) or 15000.0),
             era_decade=int(_rctx.get("decade", 0) or 0) or None,
