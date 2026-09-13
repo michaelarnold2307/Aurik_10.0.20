@@ -359,6 +359,15 @@
 15. **SOTA-HU-V1** (niedrig) · Kalman-getracktes Notch-Filter für Netzfrequenz-Drift (phase_02).
 16. **SOTA-D3+D4** (niedrig) · Multiresolution-Split (neuronal 2–5 kHz, DSP außerhalb) +
     APPLADE-Maskierungs-Loss-Variante (DGT-Domäne).
+17. **SOTA-VOCAL-INPAINT** · SOTA-Langlückenfüller FÜR GESANG (fehlt — Befund 2026-09-13:
+    phase_55 drosselt bei vocal_confidence ≥ 0,40 bewusst die Füll-Stärke statt zu füllen;
+    DiffWave ist Sprach-domänen-passend, aber ohne Vokal-Finetune und ohne Naht-Gates;
+    GaCELA ist instrumental trainiert).
+    Pfad A (bevorzugt): DiffWave als Vokal-Lückenfüller + Vokal-Finetune
+    (MUSDB18-HQ-Vocals, A1-Loss) + IN-V1/V2-Naht-Gates.
+    Pfad B: GaCELA-Vokal-Finetune (Trainings-Code im Upstream vorhanden).
+    Akzeptanz: Never-worsen-Benchmark auf synthetischen Vokal-Lücken (Ground Truth bekannt),
+    ΔSDR ≥ 0 je Segment, VQI/Sänger-Identität nicht verschlechtert (Witness).
 
 ---
 
