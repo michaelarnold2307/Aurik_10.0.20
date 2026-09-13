@@ -367,6 +367,32 @@ class ReverbReduction(PhaseInterface):
         except Exception as _nmr_exc_20:  # pylint: disable=broad-except
             logger.debug("Verarbeitungsschritt20 §V40 NMR nicht blockierend: %s", _nmr_exc_20)
 
+        # §SOTA-DR-V1 (2026-09-13): RT60-Witness (DeepFilterNet-Trocken-Zerlegung)
+        # passt die Dereverb-Stärke an die gemessene Nachhallzeit an — mehr Hall
+        # ⇒ mehr Reduktion; trockenes Material bleibt unberührt (conf-Gate).
+        _rt60_p20_sec: float | None = None
+        _rt60_p20_conf: float | None = None
+        try:
+            from plugins.deepfilternet_v3_ii_plugin import get_loaded_deepfilternet_plugin as _dfn_loaded_20
+            from plugins.deepfilternet_v3_ii_plugin import rt60_strength_delta as _rt60_delta_fn_20
+
+            _dfn_p20 = _dfn_loaded_20()
+            if _dfn_p20 is not None and hasattr(_dfn_p20, "estimate_rt60_sec"):
+                _rt60_res_20 = _dfn_p20.estimate_rt60_sec(audio, sample_rate)
+                if _rt60_res_20 is not None:
+                    _rt60_p20_sec, _rt60_p20_conf = _rt60_res_20
+                    _rt60_delta_20 = _rt60_delta_fn_20(_rt60_p20_sec, _rt60_p20_conf)
+                    if _rt60_delta_20 > 0.0:
+                        _effective_strength = float(np.clip(_effective_strength + _rt60_delta_20, 0.0, 1.0))
+                        logger.debug(
+                            "Verarbeitungsschritt 20 §SOTA-DR-V1: RT60=%.2f s (conf %.2f) → delta=%.3f",
+                            _rt60_p20_sec,
+                            _rt60_p20_conf,
+                            _rt60_delta_20,
+                        )
+        except Exception as _rt60_exc_20:  # pylint: disable=broad-except
+            logger.debug("Verarbeitungsschritt 20 §SOTA-DR-V1 nicht blockierend: %s", _rt60_exc_20)
+
         # §2.51 Locality: der Faktor dämpft die FINALE Stärke (auch ohne NMR-Feedback) —
         # locality < 1 garantiert eff < 1.
         _effective_strength = float(np.clip(_effective_strength * phase_locality_factor, 0.0, 1.0))
@@ -540,6 +566,8 @@ class ReverbReduction(PhaseInterface):
                     # §2.51 Locality-Vertrag: skalierte Soll-Stärke bleibt sichtbar.
                     "phase_locality_factor": phase_locality_factor,
                     "effective_strength": _effective_strength,
+                    "rt60_estimate_sec": _rt60_p20_sec,
+                    "rt60_confidence": _rt60_p20_conf,
                 },
             )
 
@@ -706,6 +734,8 @@ class ReverbReduction(PhaseInterface):
                         "ml_metadata": ml_result.metadata,
                         "phase_locality_factor": phase_locality_factor,
                         "effective_strength": _effective_strength,
+                        "rt60_estimate_sec": _rt60_p20_sec,
+                        "rt60_confidence": _rt60_p20_conf,
                         "loudness_makeup_db": float(_makeup_gain_db),
                         "vocal_guard_active": bool(_vocal_detected_20),
                         "vocal_confidence": float(_vocal_conf_20),

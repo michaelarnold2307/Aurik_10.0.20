@@ -313,6 +313,32 @@ class AdvancedDereverbPhase(PhaseInterface):
         except Exception as _nmr_exc_49:  # pylint: disable=broad-except
             logger.debug("Verarbeitungsschritt49 §V40 NMR nicht blockierend: %s", _nmr_exc_49)
 
+        # §SOTA-DR-V1 (2026-09-13): RT60-Witness (DeepFilterNet-Trocken-Zerlegung)
+        # — gleicher Mechanismus wie phase_20: gemessene Nachhallzeit skaliert die
+        # Dereverb-Stärke, trockenes Material bleibt unberührt (conf-Gate).
+        _rt60_p49_sec: float | None = None
+        _rt60_p49_conf: float | None = None
+        try:
+            from plugins.deepfilternet_v3_ii_plugin import get_loaded_deepfilternet_plugin as _dfn_loaded_49
+            from plugins.deepfilternet_v3_ii_plugin import rt60_strength_delta as _rt60_delta_fn_49
+
+            _dfn_p49 = _dfn_loaded_49()
+            if _dfn_p49 is not None and hasattr(_dfn_p49, "estimate_rt60_sec"):
+                _rt60_res_49 = _dfn_p49.estimate_rt60_sec(audio, sample_rate)
+                if _rt60_res_49 is not None:
+                    _rt60_p49_sec, _rt60_p49_conf = _rt60_res_49
+                    _rt60_delta_49 = _rt60_delta_fn_49(_rt60_p49_sec, _rt60_p49_conf)
+                    if _rt60_delta_49 > 0.0:
+                        effective_strength = float(np.clip(effective_strength + _rt60_delta_49, 0.0, 1.0))
+                        logger.debug(
+                            "Verarbeitungsschritt 49 §SOTA-DR-V1: RT60=%.2f s (conf %.2f) → delta=%.3f",
+                            _rt60_p49_sec,
+                            _rt60_p49_conf,
+                            _rt60_delta_49,
+                        )
+        except Exception as _rt60_exc_49:  # pylint: disable=broad-except
+            logger.debug("Verarbeitungsschritt 49 §SOTA-DR-V1 nicht blockierend: %s", _rt60_exc_49)
+
         if effective_strength <= 1e-6:
             dry = np.nan_to_num(audio, nan=0.0, posinf=0.0, neginf=0.0)
             dry = np.clip(dry, -1.0, 1.0)
@@ -1076,6 +1102,8 @@ class AdvancedDereverbPhase(PhaseInterface):
                 "strength": strength,
                 "phase_locality_factor": phase_locality_factor,
                 "effective_strength": effective_strength,
+                "rt60_estimate_sec": _rt60_p49_sec,
+                "rt60_confidence": _rt60_p49_conf,
                 "wpe_delay": "adaptive_schroeder",
                 "wpe_order": "adaptive_schroeder",
                 "wpe_iterations": self._WPE_ITERATIONS,

@@ -1,6 +1,6 @@
 # TASK_CHANGES — Live-Ledger der aktuellen Aufgabe
 
-> Generiert von `scripts/change_ledger.py snapshot` (Base: `HEAD`, Stand: 2026-09-13 23:14 CEST).
+> Generiert von `scripts/change_ledger.py snapshot` (Base: `HEAD`, Stand: 2026-09-13 23:56 CEST).
 > CI (`ci-lite.yml` pr-evidence-gate) erzwingt Abdeckung: jede geänderte Code-Datei muss hier stehen.
 
 ## Geänderte Dateien
@@ -8,15 +8,27 @@
 | Status | Pfad | Art |
 |---|---|---|
 | M | .github/FILE_REGISTRY.md | modifiziert |
-| M | TASK_CHANGES.md | modifiziert |
+| M | backend/core/phases/phase_20_reverb_reduction.py | modifiziert |
+| M | backend/core/phases/phase_49_advanced_dereverb.py | modifiziert |
 | M | docs/TODOS_SOTA_ROADMAP.md | modifiziert |
-| M | plugins/muq_plugin.py | modifiziert |
-| M | tests/unit/test_muq_plugin.py | modifiziert |
-| ?? | docs/reports/current/2026-09-13_muq_plugin_direction.json | ungetrackt |
-| ?? | scripts/validate_muq_plugin_direction.py | ungetrackt |
+| M | plugins/deepfilternet_v3_ii_plugin.py | modifiziert |
+| M | tests/unit/test_phase_20_reverb_reduction.py | modifiziert |
+| ?? | tests/unit/test_deepfilternet_rt60_estimator.py | ungetrackt |
 
 ## Entscheidungen
 
+- **SOTA-DR-V1 RT60-Witness verdrahtet (2026-09-13)**: `estimate_rt60_sec` im
+  DeepFilterNet-Plugin (DFN-Trocken-Zerlegung → Schröder-T30 → RT60 +
+  Modell-Diskriminator exponentiell vs. stationär gegen die Denoiser-Rausch-Artefakte)
+  steuert die Dereverb-Stärke in phase_20/49 über `rt60_strength_delta`
+  (neutral < 0,8 s, conf < 0,5 ⇒ 0, Cap +0,35) — nie-worsen-Schutz bleibt bei den
+  Phasen-eigenen Gates (reverb_severity/Primum-non-nocere). Befund aus dem
+  Real-Smoke: der DFN entfernt auch Rauschen, die RT60-Präzision auf echtem
+  Material ist begrenzt — deshalb nur konservativer, gedeckelter Einfluss
+  (Metriken sind Zeugen, Hörordnung §8a); Metadaten `rt60_estimate_sec`/
+  `rt60_confidence` in beiden Phasen. 7 neue Tests (Ground-Truth 0,6 s ±25 %,
+  trocken ⇒ conf=0, Layouts, NaN/Inf, Determinismus, Delta-Gates) +
+  2 Wiring-Tests in phase_20 — 17/17 grün.
 - **SOTA-MuQ RICHTUNGS-VALIDIERT (2026-09-13, Abschluss des Befunds)**: Die
   MOS-Richtungs-Inversion des Plugins ist behoben und 1:1-validiert.
   Ursache war NUR die Plugin-Audio-Kette: `_center_window` (zentrierte 20 s) +

@@ -324,6 +324,90 @@ class DeepFilterNetV3Plugin:
             out = out[np.newaxis, :]
         return np.clip(out, -1.0, 1.0)  # type: ignore[no-any-return]
 
+    def estimate_rt60_sec(self, audio: np.ndarray, sr: int, max_segment_s: float = 12.0) -> tuple[float, float] | None:
+        """Blinde RT60-Schätzung über die DFN-Trocken-Zerlegung (§SOTA-DR-V1).
+
+        Methode: DeepFilterNet (Musik-Finetune) entfernt Hall anteilig — die
+        Differenz Eingang − trocken ≈ Hallanteil. Schröder-Rückwärtsintegration
+        der Hall-Energie liefert die Abklingkurve; RT60 = 2 × t(−5 dB → −35 dB)
+        (T30-Konvention, robust gegen Anfangsreflexionen). Confidence aus dem
+        Hall-Energie-Anteil am Gesamtsignal (kein Hall ⇒ conf klein ⇒ Aufrufer
+        ignoriert den Wert). Deterministisch (§G5 (GEBOTE.md)): keine
+        Zufallsquellen, ONNX-Inferenz fix; kein Modell ⇒ None
+        (§V6 (copilot-instructions.md)-Fallback).
+
+        Args:
+            audio: float32 mono/stereo (Layout-agnostisch).
+            sr:    Sample-Rate in Hz (wird intern auf 48 kHz resampled).
+            max_segment_s: Segmentlänge (zentriert) — 12 s reichen für T30.
+
+        Returns:
+            (rt60_s, confidence) ∈ ([0.05, 3.0], [0, 1]) oder None.
+        """
+        if self._enc is None:
+            return None
+        arr = np.nan_to_num(np.asarray(audio, dtype=np.float32), nan=0.0, posinf=0.0, neginf=0.0)
+        if arr.ndim == 2:
+            # (C, N) channels-first (C klein) ⇒ mean(axis=0); (N, C) ⇒ mean(axis=1).
+            arr = arr.mean(axis=0) if arr.shape[0] <= 8 else arr.mean(axis=1)
+        n_seg = int(max_segment_s * sr)
+        if arr.size <= n_seg:
+            seg: np.ndarray = np.asarray(arr, dtype=np.float32)
+        else:
+            start = (arr.size - n_seg) // 2
+            seg = np.asarray(arr[start : start + n_seg], dtype=np.float32)
+        try:
+            dry = self.enhance(seg, sr)
+        except Exception as _enh_exc:
+            logger.warning("RT60: DFN-Inferenz fehlgeschlagen (%s) — None (§V6 (copilot-instructions.md)).", _enh_exc)
+            return None
+        n = min(seg.size, dry.size)
+        seg_c = seg[:n].astype(np.float64)
+        rev: np.ndarray = np.asarray(seg_c - dry[:n].astype(np.float64), dtype=np.float64)
+        e_total = float(np.sum(seg_c**2)) + 1e-12
+        e_rev = float(np.sum(rev**2))
+        ratio = e_rev / e_total
+        # Schröder-Rückwärtsintegration ⇒ Abklingkurve (0 dB = Peak)
+        edc: np.ndarray = np.cumsum(rev[::-1] ** 2)[::-1]
+        edc = edc / (float(np.max(edc)) + 1e-12)
+        edc_db = 10.0 * np.log10(edc + 1e-12)
+        t_samples = np.arange(n, dtype=np.float64)
+        i5 = int(np.argmax(edc_db <= -5.0))
+        i35 = int(np.argmax(edc_db <= -35.0))
+        if i35 <= i5:  # −35 dB nie erreicht: Steigung −5 dB → Minimum extrapolieren
+            i_min = int(np.argmin(edc_db))
+            min_db = float(edc_db[i_min])
+            if min_db > -20.0 or i_min <= i5:
+                return float(np.clip(0.05, 0.05, 3.0)), 0.0
+            slope_db_per_s = (min_db - (-5.0)) / ((i_min - i5) / float(sr))
+            t60 = 2.0 * (-35.0 - (-5.0)) / slope_db_per_s
+        else:
+            t60 = 2.0 * (t_samples[i35] - t_samples[i5]) / float(sr)
+        if not np.isfinite(t60) or t60 <= 0.0:
+            return 0.05, 0.0
+        rt60 = float(np.clip(t60, 0.05, 3.0))
+        # Modell-Diskriminator exponentiell vs. stationär: der DFN entfernt auch
+        # Rauschen — reines Rauschen ergäbe sonst einen hohen „Hall“-Anteil.
+        # Exponentieller Hall ⇒ EDC linear in dB; stationärer Rest ⇒ EDC linear
+        # in Energie (⇒ stark konkav in dB). Qualität = Residuen-Verhältnis.
+        _i_end = i35 if i35 > i5 else int(np.argmin(edc_db))
+        if _i_end <= i5 + 8:
+            return rt60, 0.0
+        _t_w = t_samples[i5 : _i_end + 1]
+        _e_w = edc[i5 : _i_end + 1]
+        _d_w = edc_db[i5 : _i_end + 1]
+        _pa = np.polyfit(_t_w, _d_w, 1)
+        _res_a = float(np.sqrt(np.mean((_d_w - np.polyval(_pa, _t_w)) ** 2)))
+        _pb = np.polyfit(_t_w, _e_w, 1)
+        _pred_b = np.polyval(_pb, _t_w)
+        _pred_b_db = 10.0 * np.log10(np.clip(_pred_b, 1e-12, None))
+        _res_b = float(np.sqrt(np.mean((_d_w - _pred_b_db) ** 2)))
+        _expo_quality = float(_res_b / (_res_a + _res_b + 1e-9))
+        confidence = float(np.clip(4.0 * ratio * _expo_quality, 0.0, 1.0))
+        if confidence < 0.05:
+            confidence = 0.0
+        return rt60, confidence
+
     # ── Internal ────────────────────────────────────────────────────────────
 
     def _enhance_channel(self, mono: np.ndarray, sr: int) -> np.ndarray:
@@ -709,6 +793,20 @@ class DeepFilterNetV3Plugin:
 
 
 # ── Singleton ───────────────────────────────────────────────────────────────
+
+
+def rt60_strength_delta(rt60_s: float, confidence: float) -> float:
+    """§SOTA-DR-V1: konservatives Stärke-Delta aus dem RT60-Witness.
+
+    Neutral unter 0,8 s; conf < 0,5 ⇒ kein Eingriff. Maximal +0,35 — die
+    Phasen-eigenen Never-worsen-Gates (reverb_severity/Primum-non-nocere)
+    bleiben der harte Schutz. Befund 2026-09-13: Der DFN entfernt auch
+    Rauschen — die Präzision auf echtem Material ist begrenzt, deshalb
+    nur moderater, gedeckelter Einfluss (Metriken sind Zeugen, Hörordnung §8a).
+    """
+    if confidence < 0.5 or not np.isfinite(rt60_s):
+        return 0.0
+    return float(np.clip((rt60_s - 0.8) * 0.35, 0.0, 0.35))
 
 
 def get_deepfilternet_plugin() -> DeepFilterNetV3Plugin:
