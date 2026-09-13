@@ -363,11 +363,20 @@
     phase_55 drosselt bei vocal_confidence ≥ 0,40 bewusst die Füll-Stärke statt zu füllen;
     DiffWave ist Sprach-domänen-passend, aber ohne Vokal-Finetune und ohne Naht-Gates;
     GaCELA ist instrumental trainiert).
-    Pfad A (bevorzugt): DiffWave als Vokal-Lückenfüller + Vokal-Finetune
-    (MUSDB18-HQ-Vocals, A1-Loss) + IN-V1/V2-Naht-Gates.
-    Pfad B: GaCELA-Vokal-Finetune (Trainings-Code im Upstream vorhanden).
-    Akzeptanz: Never-worsen-Benchmark auf synthetischen Vokal-Lücken (Ground Truth bekannt),
-    ΔSDR ≥ 0 je Segment, VQI/Sänger-Identität nicht verschlechtert (Witness).
+    Kandidaten: DiffWave-Vokal-Finetune (HAUPTWEG, ~2M Parameter, Plugin bereits in
+    phase_55 verdrahtet; MUSDB18-HQ-Vocals lokal), AudioLDM2-Zero-Shot (Baseline),
+    GaCELA-Vokal-Finetune (Pfad B, Upstream-Trainingscode vorhanden), RVC
+    (2024/25-Singstimmen-SOTA, MIT — Konversions-Semantik, später).
+    Umsetzung in 4 Schritten:
+    - VOCAL-INPAINT-S1: Baseline-Benchmark — synthetische Vokal-Lücken in
+      MUSDB-Test-Vocals: AudioLDM2-Zero-Shot vs. DiffWave-Mel-Interpolation vs.
+      DSP-Inpainting (Messlatte).
+    - VOCAL-INPAINT-S2: DiffWave-Vokal-Finetune (A1-Hör-Loss, Encoder-Frozen,
+      Validierungs-Early-Stop — EAR-VAE-Rezept, GPU).
+    - VOCAL-INPAINT-S3: IN-V1/V2-Naht-Gates + Verdrahtung in phase_55 (ersetzt
+      die Drosselung bei vocal_confidence ≥ 0,40).
+    - VOCAL-INPAINT-S4: Verifikation — ΔSDR ≥ 0 je Segment, VQI/Sänger-Identität
+      per Resemblyzer-Witness unverändert, Determinismus.
 
 ---
 
