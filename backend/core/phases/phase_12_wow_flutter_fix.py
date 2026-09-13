@@ -3614,15 +3614,48 @@ class WowFlutterFix(PhaseInterface):
             times, warp_est, quality = spectral_warp_estimate(audio_mono, sample_rate)
             if len(warp_est) < 4:
                 return sf_samples
-            stretch_est = 1.0 / np.clip(warp_est, 0.90, 1.10)
+            # §WF-V2-Amplituden-Gate (2026-09-13, Witness-Befund 11:24: pitch_instability/
+            # air_loss/roughness/pre_echo): Mechanisches Wow liegt bei ±0,2…±2 % —
+            # die Versorgung wird auf ±2 % gedeckelt (statt ±10 %). Größere
+            # Abweichungen sind kein Wow, sondern musikalischer Inhalt oder
+            # Schätzfehler und gehören NICHT in den Zero-Consensus-Pfad.
+            stretch_est = 1.0 / np.clip(warp_est, 0.98, 1.02)
             _flat = bool(np.max(np.abs(sf_samples - 1.0)) < 0.002)
+
+            # §WF-V2-Härtung (2026-09-13, §v10.709-Befund): Wow ist mechanisch und
+            # langsam (< 4 Hz) — musikalische Modulation (Vibrato, Bends) und
+            # Schätzrauschen liegen höher. Die Versorgung darf nur anspringen,
+            # wenn die Deviation-Trajektorie vom Wow-Band dominiert wird — sonst
+            # korrigiert sie musikalischen Inhalt (artikulation/tonal_center-
+            # Degradation, Produktionsbefund nach Verarbeitungsschritt 12).
+            def _wow_band_fraction(dev_traj: np.ndarray, t_grid: np.ndarray) -> float:
+                _d = np.asarray(dev_traj, dtype=np.float64)
+                if _d.size < 8:
+                    return 0.0
+                _d = _d - float(np.mean(_d))  # Trend entfernen
+                _sp = np.abs(np.fft.rfft(_d)) ** 2
+                if t_grid.size > 1 and t_grid[-1] > t_grid[0]:
+                    _dt = float((t_grid[-1] - t_grid[0]) / max(t_grid.size - 1, 1))
+                else:
+                    _dt = 1.0 / max(1, sample_rate)
+                _freqs = np.fft.rfftfreq(_d.size, d=_dt)
+                _total = float(np.sum(_sp)) + 1e-12
+                return float(np.sum(_sp[_freqs <= 4.0]) / _total)
+
+            _wow_frac = _wow_band_fraction(stretch_est - 1.0, times)
             if _flat:
-                # Zero-Consensus-Versorgung: nur bei hoher, konsistenter Qualität.
-                if float(np.median(quality)) >= 0.55 and float(np.max(np.abs(stretch_est - 1.0))) >= 0.004:
+                # Zero-Consensus-Versorgung: nur bei hoher, konsistenter Qualität
+                # UND mechanischem Wow-Profil (< 4 Hz dominiert).
+                if (
+                    float(np.median(quality)) >= 0.55
+                    and float(np.max(np.abs(stretch_est - 1.0))) >= 0.004
+                    and _wow_frac >= 0.6
+                ):
                     logger.info(
-                        "§WF-V2 Spektral-Warp-Versorgung (Zero-Consensus): median_quality=%.3f, max_dev=%.4f",
+                        "§WF-V2 Spektral-Warp-Versorgung (Zero-Consensus): median_quality=%.3f, max_dev=%.4f, wow_band=%.2f",
                         float(np.median(quality)),
                         float(np.max(np.abs(stretch_est - 1.0))),
+                        _wow_frac,
                     )
                     # Auf das Raster der Eingabe-Trajektorie interpolieren — die
                     # Spektral-Schätzung hat ihr eigenes Frame-Grid (hop=1024).
@@ -3640,7 +3673,9 @@ class WowFlutterFix(PhaseInterface):
             _cons_arr, _agree_arr = consensus_warp(
                 sf_samples, None, stretch_est, times, quality_b=quality, tol=0.01, min_quality=0.5
             )
-            if float(_agree_arr.mean()) > 0.25:
+            # Konsens nur bei belastbarer Mehrheit (≥ 50 %) UND hoher Spektral-
+            # Qualität — 25 % reichte für jitter-behaftete Verfeinerungen.
+            if float(_agree_arr.mean()) >= 0.5 and float(np.median(quality)) >= 0.55:
                 logger.info(
                     "§WF-V2 Spektral-Warp-Konsens: %.0f%% Frames übereinstimmend", float(_agree_arr.mean()) * 100.0
                 )

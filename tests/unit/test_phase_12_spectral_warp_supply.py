@@ -156,3 +156,49 @@ def test_consensus_disagreement_keeps_f0_trajectory(monkeypatch) -> None:
     audio = np.zeros(SR, dtype=np.float32)
     out = WowFlutterFix()._spectral_warp_supply_or_consensus(audio, sf, SR)
     assert np.array_equal(out, sf)
+
+
+def test_vibrato_like_modulation_not_supplied() -> None:
+    """WF-V2-Härtung (§v10.709-Befund): Musikalische Modulation (Vibrato-artig,
+    6 Hz) liegt außerhalb des mechanischen Wow-Bands (< 4 Hz) — die Versorgung
+    darf sie NICHT korrigieren (sonst artikulation/tonal_center-Degradation)."""
+    n = SR * 4
+    t = np.arange(n) / SR
+    rng = np.random.default_rng(42)
+    x = np.zeros(n)
+    for k, a in enumerate([0.5, 0.28, 0.22, 0.14], start=1):
+        x += a * np.sin(2 * np.pi * 220.0 * k * t + rng.uniform(0, 2 * np.pi))
+    x = (0.5 * x / np.max(np.abs(x))).astype(np.float32)
+    _ratio_6hz = 1.0 + 0.02 * np.sin(2 * np.pi * 6.0 * t)
+    pos = np.cumsum(_ratio_6hz) / SR
+    pos = pos - pos[0]
+    warped = bandlimited_warp(x, np.clip(pos * SR, 0, n - 1)).astype(np.float32)
+
+    times, warp_est, quality = spectral_warp_estimate(warped, SR)
+    # Sanity: Der Schätzer SIEHT die Modulation (Deviation über dem Gate) —
+    # die Wow-Band-Härtung muss die Versorgung trotzdem verweigern.
+    assert float(np.max(np.abs(warp_est - 1.0))) >= 0.004
+    assert float(np.median(quality)) >= 0.55
+
+    flat = np.ones(len(times), dtype=np.float32)
+    out = WowFlutterFix()._spectral_warp_supply_or_consensus(warped, flat, SR)
+    assert np.array_equal(out, flat)
+
+
+def test_consensus_requires_majority(monkeypatch) -> None:
+    """Konsens erst ab ≥ 50 % Übereinstimmung — 30 % bleiben bei der F0-Trajektorie."""
+    n = 200
+    t = np.arange(n, dtype=np.float64)
+    sf = (1.0 + 0.004 * np.sin(2 * np.pi * 0.02 * t)).astype(np.float32)
+
+    def _fake_estimate(audio, sr, **kwargs):
+        # 30 % Übereinstimmung: 60 Frames exakt, 140 um 0,03 versetzt
+        warp = np.empty(n, dtype=np.float64)
+        warp[:60] = 1.0 / sf[:60]
+        warp[60:] = 1.0 / (sf[60:] + 0.03)
+        return np.arange(n, dtype=np.float64), warp, np.full(n, 0.9)
+
+    monkeypatch.setattr("backend.core.dsp.warp_estimator.spectral_warp_estimate", _fake_estimate)
+    audio = np.zeros(SR, dtype=np.float32)
+    out = WowFlutterFix()._spectral_warp_supply_or_consensus(audio, sf, SR)
+    assert np.array_equal(out, sf)
