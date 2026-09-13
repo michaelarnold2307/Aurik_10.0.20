@@ -8,7 +8,7 @@
 # GPU-Unterstützung:
 #   NVIDIA CUDA → .venv_gpu mit torch+cuda + onnxruntime-gpu
 #   AMD ROCm    → .venv_gpu mit torch+rocm + onnxruntime-rocm
-#   Kein GPU    → .venv_aurik (CPU-only)
+#   Kein GPU    → .venv_aurik (CPU + onnxruntime-rocm, falls installiert)
 #   Windows/AMD → DirectML in .venv_aurik (kein separates venv nötig)
 #
 # Hinweis für ROCm: GPU-venv sollte auf ext4 liegen, da ROCm GPU Code Objects

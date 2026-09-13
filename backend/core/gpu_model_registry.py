@@ -199,6 +199,7 @@ PLUGIN_MODEL_HINTS: dict[str, str] = {
     "Silero": "models/silero/silero_en_v5.onnx",
     "Whisper": "models/whisper/whisper_tiny.onnx",
     "BSRoFormer": "models/bs_roformer/bs_roformer_317_core.onnx",
+    "BanquetVinyl": "models/banquet/banquet_vinyl_final.onnx",
 }
 
 

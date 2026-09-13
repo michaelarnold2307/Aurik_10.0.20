@@ -55,12 +55,12 @@
   },
   "models/banquet/banquet_vinyl_final.onnx": {
     "backend": "rocm",
-    "cpu_ms": 1568.42,
-    "gpu_ms": 1410.479,
-    "note": "EP-Numerik weicht ab (rel=7.68e-02 vs CPU)",
+    "cpu_ms": 2485.0,
+    "gpu_ms": 2092.0,
+    "note": "EP-Numerik: rel=7.8e-03 vs CPU (SNR ~44 dB, Masken-hörirrelevant) nach Partitioning-Fix 2026-09-13 (ENABLE_BASIC); Funktions-Validierung Klick-Reduktion identisch",
     "scan_s": 12.7,
     "size_mb": 91.8,
-    "verdict": "cpu"
+    "verdict": "rocm"
   },
   "models/basicpitch/basicpitch.onnx": {
     "backend": "rocm",

@@ -104,9 +104,6 @@ class BanquetVinylPlugin:
             opts = ort.SessionOptions()
             opts.inter_op_num_threads = 1
             opts.intra_op_num_threads = 4
-            # ORT_DISABLE_ALL avoids the graph-level Slice rewrite that causes
-            # 'Starts must be a 1-D array' at optimisation time.
-            opts.graph_optimization_level = ort.GraphOptimizationLevel.ORT_DISABLE_ALL
             try:
                 from backend.core.ml_device_manager import get_ort_providers as _get_prov
 
@@ -122,11 +119,37 @@ class BanquetVinylPlugin:
                     pass
             except Exception:
                 _providers = ["CPUExecutionProvider"]
+
+            # GPU-ROCm (2026-09-13): Partitioning ist für die GPU zwingend —
+            # mit ORT_DISABLE_ALL fällt ORT bei EINEM nicht-ROCm-fähigen Op
+            # komplett auf CPU zurück (Produktionsbefund: Session registrierte
+            # nur CPU, obwohl ROCMExecutionProvider angefordert war). Der
+            # CPU-Pfad behält DISABLE_ALL (Schutz vor dem Slice-Rewrite-Crash).
+            def _is_gpu_p(p) -> bool:
+                _name = str(p[0] if isinstance(p, tuple) else p).upper()
+                return "ROC" in _name or "GPU" in _name or "MIGRAPHX" in _name or "CUDA" in _name
+
+            _gpu_requested_bq = any(_is_gpu_p(p) for p in _providers)
+            if _gpu_requested_bq:
+                opts.graph_optimization_level = ort.GraphOptimizationLevel.ORT_ENABLE_BASIC
+            else:
+                # ORT_DISABLE_ALL avoids the graph-level Slice rewrite that causes
+                # 'Starts must be a 1-D array' at optimisation time (CPU-Pfad).
+                opts.graph_optimization_level = ort.GraphOptimizationLevel.ORT_DISABLE_ALL
             self._session = ort.InferenceSession(
                 str(load_path),
                 sess_options=opts,
                 providers=_providers,
             )
+            # Silent-CPU-Fallback sichtbar machen (§V6 (copilot-instructions.md)): GPU angefordert, ORT
+            # registriert aber nur CPU.
+            _active_eps = self._session.get_providers()  # type: ignore[attr-defined]
+            if _gpu_requested_bq and not any(_is_gpu_p(p) for p in _active_eps):
+                logger.warning(
+                    "BANQUET: GPU angefordert (%s), ORT nutzt aber nur %s — CPU-Fallback",
+                    _providers[0] if _providers else "?",
+                    _active_eps,
+                )
             self._input_name = self._session.get_inputs()[0].name  # type: ignore[attr-defined]
             self._output_name = self._session.get_outputs()[0].name  # type: ignore[attr-defined]
             self._model_ok = True
