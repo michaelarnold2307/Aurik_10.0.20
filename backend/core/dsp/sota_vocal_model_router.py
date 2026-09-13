@@ -117,6 +117,13 @@ class SotaVocalModelRouter:
                     if str(exc) != "roformer_fallback_result":
                         attempts.append(f"bs_roformer:{type(exc).__name__}")
                     logger.debug("§SMR-1 BS-RoFormer separation nicht verfuegbar: %s", exc)
+                # §SMR-1 Transparenz (2026-09-13): Grund im INFO-Log sichtbar machen,
+                # damit im Produktionslauf erkennbar ist, WARUM BSRoFormer nicht
+                # genutzt wurde (vorher nur DEBUG — Nutzer sah nur den Demucs-Load).
+                logger.info(
+                    "§SMR-1 BS-RoFormer nicht genutzt — Grund: %s → Fallback-Separator",
+                    " | ".join(attempts) if attempts else "unbekannt",
+                )
 
         def _try_demucs() -> StemSeparationRouteResult | None:
             _available_mem = self._available_memory_gb()

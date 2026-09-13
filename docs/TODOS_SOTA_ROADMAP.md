@@ -322,28 +322,35 @@
 | SOTA-C3 | Preference-Lern-Schleife (Veto→sounds_artificial) | 4b783d18 | nicht-persistierend |
 | SOTA-A1 | Maskierungs-Informierte Trainings-Loss (torch, differenzierbar) | 4b783d18 | EAR-VAE-Finetune nutzt sie |
 | SOTA-WF-V1+V3 | Bandbegrenztes Resampling + Kalman-Glättung in phase_12 | ba151793 | tests 8 grün |
+| SOTA-WF-V2 | Log-f-Zentroid-Warp-Schätzer + Zero-Consensus-Versorgung im Hauptfluss (Mono-Referenz, §2.51) | 86a10e10 | Akzeptanz 6,9 % < 10 %; 8 Tests grün |
+| SOTA-IN-V1+V2 | Naht-Gates um phase_55-Kandidaten: Hüllkurven-Alignment + Band-weise Additive-Kappung (Kontext + 6 dB) | 09124e12 | 7 Tests grün; 253 phase_55/Inpainting-Tests grün |
 
 ### OFFEN (Reihenfolge = Ausführung)
 
-1. **SOTA-WF-V2** · Spektral-Warp-Schätzer in den Zero-Consensus-Pfad von phase_12
-   verdrahten (Modul `warp_estimator.py` + Konsens-Gate existieren bereits).
-   Wirkung: Wow/Flutter-Korrektur auch in instrumental/dichten Passagen.
-   Akzeptanz: Test mit synthetisch gewarptem Musik-Segment (bekannter Warp) —
-   Konsens-Trajektorie weicht < 10 % vom Soll ab.
+1. **SOTA-WF-V2** · ✅ ERLEDIGT (86a10e10, 2026-09-13) — Versorgung läuft EINMAL im
+   Hauptfluss vor dem M/S-Split (Mid/Side identische Faktoren, §2.51);
+   Schätzer auf Log-f-Zentroid umgestellt (exakt unter uniformem Zeit-Warp).
 2. **SOTA-ML-V1** · FlashSR-Musik-Finetune (MUSDB-HQ lowpass→original, A1-Loss,
    Encoder-Frozen, Validierungs-Early-Stop). VORAB: AERO-vs-FlashSR-Benchmark auf
    Musik als Kandidatenwahl (§V7: eine Lösung pro Rolle).
    Akzeptanz: Never-worsen-Benchmark wie EAR-VAE (ΔSDR/ΔSegSNR ≥ 0 je Segment).
+   Status 2026-09-13: GPU-gebunden — ROCm (7900 XTX, 24 GB) am Nutzersystem via
+   `.venv_aurik` (torch 2.11.0+rocm7.2) verfügbar; CI/Agent-Env CPU-only.
 3. **SOTA-ML-V2** · BigVGAN-v2 Musik-/Vokal-Finetune für den Repair-Pfad (B5-gegated).
+   Status 2026-09-13: GPU-gebunden (wie SOTA-ML-V1).
 4. **SOTA-ML-V3** · MP-SENet: Musik-Finetune ODER De-Wiring (gemessen −5,9…−8,5 dB
    out-of-domain; Entscheidung anhand eines 3-Song-Vorher/Nachher-Benchmarks).
+   Status 2026-09-13: GPU-gebunden (Benchmark + Finetune).
 5. **SOTA-ML-V4** · UTMOS-Musik-MOS-Validierung: Delta-Kalibrierung auf MUSDB-Paaren
    (kein Finetune möglich — nur Schwelle/-Richtung validieren).
+   Status 2026-09-13: GPU-gebunden (UTMOS-Inferenz + MUSDB-Paare).
 6. **SOTA-GACELA** · GaCELA-Integration (musik-nativ, KEIN Training): ltfatpy-Blocker
    lösen oder Inverter portieren + IN-V1/V2-Gates — einziger musik-nativer
    Lang-Lücken-Inpainter (375–1500 ms).
-7. **SOTA-IN-V1+V2** · Inpainting-Naht-Gates um phase_55 (DiffWave/AudioLDM2/CQT-Diff+):
-   additive_synthesis_gate + C2-artiges Hüllkurven-Alignment.
+   Status 2026-09-13: OFFEN — ltfatpy-Blocker steht weiterhin (Inverter-Port nötig).
+7. **SOTA-IN-V1+V2** · ✅ ERLEDIGT (09124e12, 2026-09-13) — `inpainting_seam_gate.py`
+   am Splice-Punkt jedes phase_55-Kandidaten (nach local_ratio-Blend, Fehler →
+   unveränderter Kandidat + Debug-Log).
 8. **SOTA-C4** · DDSP: neuronale EQ-/Dynamik-Parameter-Prädiktion (CLAP/BEATs-
    Embeddings) für phase_04/16/17 — DSP führt aus, nie Wellenform-Generierung.
 9. **SOTA-TP-V1+V2** · Neurale Onset-Detektion (BEATs) als Konsens mit Spectral Flux +
@@ -356,7 +363,11 @@
 13. **SOTA-WF-V4** · Neuraler Warp-Schätzer (2025/26-Checkpoint) mit Never-worsen-Gate.
 14. **SOTA-WF-CASS** · Scrape-Flutter-Restpfad für Cassette (Breitband-Modulations-
     Kompensation/Denoise) — separat vom gemeinsamen Warp.
-15. **SOTA-HU-V1** (niedrig) · Kalman-getracktes Notch-Filter für Netzfrequenz-Drift (phase_02).
+15. **SOTA-HU-V1** (niedrig, OFFEN) · Kalman-getracktes Notch-Filter für Netzfrequenz-Drift (phase_02).
+    Validierung 2026-09-13: Kalman-Drift-Tracking empirisch bestätigt (Notch folgt 49,8→50,2 Hz-Drift,
+    ~30 dB Dämpfung auf der Harmonischen). Modul bewusst NICHT committet: Wiring in phase_02 +
+    Unit-Tests fehlen — als ungetesteter/unverdrahteter Code wäre das ein Totcode-/§V7-Verstoß.
+    Nächster Schritt: Wiring hinter der phase_02-Hum-Erkennung + `tests/unit/test_hum_drift_tracker.py`.
 16. **SOTA-D3+D4** (niedrig) · Multiresolution-Split (neuronal 2–5 kHz, DSP außerhalb) +
     APPLADE-Maskierungs-Loss-Variante (DGT-Domäne).
 17. **SOTA-VOCAL-INPAINT** · SOTA-Langlückenfüller FÜR GESANG (fehlt — Befund 2026-09-13:
