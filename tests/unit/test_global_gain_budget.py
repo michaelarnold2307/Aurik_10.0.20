@@ -10,6 +10,7 @@ Komponente bestimmt die Budget-Regel.
 from __future__ import annotations
 
 from backend.core.global_gain_budget import GlobalGainBudget, _is_tape_family
+from backend.core.klang_guards import GuardWisdom
 
 
 def test_tape_family_pure_and_combined() -> None:
@@ -53,3 +54,14 @@ def test_unknown_material_unchanged_behavior() -> None:
     ggb = GlobalGainBudget()
     ggb.configure_for_chain_depth(4, snr_db=30.0, material="unknown")
     assert ggb._total_budget_db == 12.0
+
+
+def test_guard_wisdom_combined_material_thresholds() -> None:
+    """GuardWisdom.adaptive_threshold: Kombinationen nutzen den Faktor der
+    EMPFINDLICHSTEN Komponente (max) — ein Vinyl-Rip mit MP3-Artefakten
+    bleibt primär Vinyl."""
+    assert GuardWisdom(material="vinyl+digital").adaptive_threshold("x", 1.0) == 1.1
+    assert GuardWisdom(material="wax_cylinder+cd_digital").adaptive_threshold("x", 1.0) == 1.5
+    assert GuardWisdom(material="cassette/mp3").adaptive_threshold("x", 1.0) == 1.15
+    assert GuardWisdom(material="unknown").adaptive_threshold("x", 1.0) == 1.0
+    assert GuardWisdom(material="shellac").adaptive_threshold("x", 1.0) == 1.3

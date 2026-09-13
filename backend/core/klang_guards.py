@@ -340,6 +340,17 @@ def apply_listening_mode_to_weights(
 # ═══════════════════════════════════════════════════════════════════════════════
 
 
+def _split_material_components(material: str) -> list[str]:
+    """Material-Kombinations-Strings in Komponenten zerlegen ("vinyl+digital")."""
+    if not material:
+        return []
+    return [
+        p.strip().lower()
+        for p in str(material).replace("+", " ").replace("/", " ").replace(",", " ").split()
+        if p.strip()
+    ]
+
+
 class GuardWisdom:
     """Sammelt Guard-Ergebnisse über alle Phasen und leitet Korrekturen ab."""
 
@@ -370,16 +381,24 @@ class GuardWisdom:
         return False, 1.0
 
     def adaptive_threshold(self, guard_name: str, base_threshold: float) -> float:
-        """Passt Schwellwerte an Material und Genre an."""
-        # Material-spezifische Lockerung
-        material_factor = {
-            "wax_cylinder": 1.5,
-            "shellac": 1.3,
-            "vinyl": 1.1,
-            "tape": 1.0,
-            "cassette": 1.15,
-            "cd_digital": 0.8,
-        }.get(self._material, 1.0)
+        """Passt Schwellwerte an Material und Genre an.
+
+        §Mixtape-Realität (2026-09-13): Kombinierte Material-Strings
+        ("vinyl+digital", "cassette/mp3") — die EMPFINDLICHSTE Komponente
+        bestimmt die Lockerung (max-Faktor = mehr Schutz für das empfindlichere
+        Erbe; ein Vinyl-Rip mit MP3-Artefakten bleibt primär Vinyl).
+        """
+        _material_factor = 1.0
+        for _part in _split_material_components(self._material):
+            _component_factor = {
+                "wax_cylinder": 1.5,
+                "shellac": 1.3,
+                "vinyl": 1.1,
+                "tape": 1.0,
+                "cassette": 1.15,
+                "cd_digital": 0.8,
+            }.get(_part, 1.0)
+            _material_factor = max(_material_factor, _component_factor)
         # Genre-spezifische Lockerung
         genre_factor = {
             "schlager": 0.9,
@@ -389,7 +408,7 @@ class GuardWisdom:
             "metal": 1.2,
             "electronic": 1.15,
         }.get(self._genre, 1.0)
-        return base_threshold * material_factor * genre_factor
+        return base_threshold * _material_factor * genre_factor
 
     def snapshot(self) -> dict:
         return {
