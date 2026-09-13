@@ -400,12 +400,14 @@
     (b) `melbandroformer_optimized.onnx` (das tatsächlich geladene Modell):
     Scan scheiterte (CPU-Load NameError) → keine Messdaten → fail-closed cpu.
     Schritte:
-    - BSR-GPU-S1: Numerik-Drift des ROCm-EP lokalisieren (Attention-/Einsum-Kernel);
-      ggf. ONNX-Umexport mit ROCm-tauglichen Op-Zerlegungen.
-    - BSR-GPU-S2: `onnx_gpu_compat_scan.py`-NameError bei
-      `melbandroformer_optimized.onnx` beheben + CPU-vs-ROCm-Benchmark nachholen.
-    - BSR-GPU-S3: Erst wenn beide Kriterien grün (strikt schneller + rel ≤ 1e-3):
-      Registry-Einträge auf `rocm` stellen, Trennung per GPU fahren.
+    - BSR-GPU-S1: ✅ Softmax-Kernel als erster defekter Op identifiziert (rel 3,5 an Knoten 454,
+      erste Attention) + Fix-Modul `onnx_softmax_rewrite.py` (Softmax → ReduceMax/Sub/Exp/
+      ReduceSum/Div, opset-bewusst, 6 Tests grün). ABER: Validierung der .rocm_safe.onnx zeigt
+      rel=6,66 — WEITERE numerisch defekte Ops vorhanden (Bisektion fortsetzen;
+      `scripts/diagnose_bsr_rocm_numerics.py` ist das Werkzeug dafür).
+    - BSR-GPU-S2: ✅ Scan läuft auf dem Original (NameError weg): CPU 4845 ms, ROCm 474 ms
+      (10,2×), aber rel=6,11 → Verdict cpu bestätigt.
+    - BSR-GPU-S3: ❌ NICHT ERREICHT — solange rel > 1e-3 bleibt CPU korrekt (fail-closed).
     Akzeptanz: Scan-Verdict `rocm` mit rel ≤ 1e-3; Determinis­mus auf GPU
     (gleicher Input + Device ⇒ bit-identisch, §G5); GPU-Lauf ≤ CPU-Laufzeit;
     SLR-VQI-Gate ≥ 0,72 weiterhin bestanden.
