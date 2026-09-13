@@ -15266,6 +15266,28 @@ class UnifiedRestorerV3:
                                     record_veto_to_preferences("feedback_chain", _veto_result.reasons)
                                 except Exception as _plv_exc:  # pylint: disable=broad-except
                                     logger.debug("§C3 Preference-Aufzeichnung nicht anwendbar: %s", _plv_exc)
+                            # §Witness-SOTA C1-Consumer: UTMOS-MOS-Delta als ZEUGE —
+                            # nur eine klare MOS-Regression gegenüber der Pre-FC-
+                            # Referenz reduziert die Enhancement-Familie SOFORT.
+                            try:
+                                from backend.core.dsp.utmos_delta_gate import (  # pylint: disable=import-outside-toplevel
+                                    utmos_delta_veto,
+                                )
+
+                                _ut_veto = utmos_delta_veto(
+                                    self._song_calibration_profile,
+                                    _fc_veto_ref,
+                                    restored_audio,
+                                    sample_rate,
+                                    stage="feedback_chain_utmos",
+                                )
+                                if _ut_veto is not None:
+                                    self._restoration_context["utmos_veto"] = {
+                                        "stage": "feedback_chain",
+                                        "reasons": _ut_veto.reasons,
+                                    }
+                            except Exception as _utv_exc:  # pylint: disable=broad-except
+                                logger.debug("§C1 UTMOS-Veto nicht anwendbar: %s", _utv_exc)
                         except Exception as _wv_exc:  # pylint: disable=broad-except
                             logger.debug("§Witness-Veto Korrektur nicht anwendbar: %s", _wv_exc)
                 except Exception as _fc_veto_exc:  # pylint: disable=broad-except
