@@ -166,11 +166,12 @@ das bewährte Vorgehen (Encoder-Frozen, Validierungs-Early-Stop, Never-worsen).
 | KIM Music/Vocal | MDX23C (Musik) | Klarheit | ✅ | keine |
 | BANQUET | Vinyl (Knistern) | Crackle/Klick | ✅ | keine |
 | Whisper/Resemblyzer | Sprache | Lyrics/Stimm-Identität | ✅ zweckrichtig (Gesang) | keine |
-| GaCELA/AERO | Sprache | (nicht in Produktion) | — | keine (nicht einhängen) |
+| GaCELA | **Musik** (Maestro + FMA — verifiziert) | Lang-Lücken-Inpainting (375–1500 ms) | ✅ musik-nativ | **Kein Training nötig** — INTEGRATION: ltfatpy-Blocker lösen/Inverter portieren + IN-V1/V2-Gates (einziger musik-nativer Lang-Lücken-Inpainter) |
+| AERO | 12k→48k SR (Rolle = FlashSR) | nicht in Produktion | ⚠️ Redundant zu FlashSR | **Kein Training** — nur Benchmark AERO vs. FlashSR auf Musik als Kandidatenwahl für ML-V1 (§V7: eine Lösung pro Rolle) |
 
-Priorität: ML-V1 (FlashSR — direkt im HF-Hörbereich) → ML-V2 (BigVGAN) →
-ML-V3 (MP-SENet entscheiden) → ML-V4 (UTMOS-Kalibrierung).
-Alle mit A1-Hör-Loss + Encoder-Frozen-Verfahren + Never-worsen-Benchmark wie EAR-VAE.
+Priorität: ML-V1 (FlashSR — direkt im HF-Hörbereich; AERO-Benchmark als Kandidatenwahl) →
+ML-V2 (BigVGAN) → ML-V3 (MP-SENet entscheiden) → ML-V4 (UTMOS-Kalibrierung) →
+GaCELA-Integration (musik-nativ, kein Training).
 
 ## Priorisierte Gesamt-Reihenfolge
 
