@@ -1,7 +1,7 @@
 {
   "_summary": {
     "counts": {
-      "cpu": 46,
+      "cpu": 47,
       "migraphx": 0,
       "rocm": 12
     },
@@ -338,6 +338,15 @@
     "gpu_ms": 473.908,
     "note": "EP-Numerik weicht ab (rel=6.11e+00 vs CPU)",
     "scan_s": 15.9,
+    "size_mb": 859.5,
+    "verdict": "cpu"
+  },
+  "models/melbandroformer/melbandroformer_optimized.onnx.rocm_safe.onnx": {
+    "backend": "rocm",
+    "cpu_ms": 3938.826,
+    "gpu_ms": 6054.752,
+    "note": "EP-Numerik weicht ab (rel=6.66e+00 vs CPU)",
+    "scan_s": 19.2,
     "size_mb": 859.5,
     "verdict": "cpu"
   },
