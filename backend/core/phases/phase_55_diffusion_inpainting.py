@@ -1021,6 +1021,18 @@ def _process_channel(
             source_segment = channel[start:end]
             candidate = source_segment + local_ratio * (candidate[: end - start] - source_segment)
 
+        # §Witness-SOTA IN-V1+V2: Naht-Gates um den Inpainting-Kandidaten.
+        # IN-V2: Hüllkurven-Alignment an beide Nähte (keine Pegelsprünge).
+        # IN-V1: Band-weise Additive-Kappung auf Kontext + 6 dB (Never-worsen).
+        try:
+            from backend.core.dsp.inpainting_seam_gate import inpainting_seam_gate as _isg
+
+            _cand_gated, _isg_report = _isg(channel, candidate[: end - start], start, end, sample_rate)
+            candidate = _cand_gated
+            stats["inpainting_seam_gate_applied"] = bool(_isg_report.get("applied", False))
+        except Exception as _isg_exc:
+            logger.debug("§IN-V1/V2 Naht-Gate nicht anwendbar (%s) — Kandidat unverändert", _isg_exc)
+
         result[start:end] = np.clip(
             np.nan_to_num(candidate[: end - start], nan=0.0, posinf=0.0, neginf=0.0),
             -1.0,
