@@ -19,7 +19,11 @@ _PRE_WIN_S = 0.020  # 20 ms Vor-Fenster
 _GAP_S = 0.002  # 2 ms Schutzabstand zum Onset
 _POST_WIN_S = 0.010  # 10 ms Onset-Fenster
 _ENV_WIN_S = 0.005  # 5 ms Hüllkurven-Raster
-_ONSET_RISE = 4.0  # Hüllkurven-Anstieg × Median = Onset-Kandidat
+_ONSET_RISE = 4.0  # Hüllkurven-Anstieg × lokaler Baseline = Onset-Kandidat
+_LOCAL_WIN_S = 1.0  # Lokales Referenz-Fenster (±0,5 s) für die Onset-Baseline
+_LOCAL_PERC = 10.0  # Baseline = 10. Perzentil des lokalen Fensters (robust ggü. Lautheit)
+_FWD_MASK_DB = 18.0  # Forward-Masking (Zwicker & Fastl §7.2): Pre-Energie unter
+# Onset-Pegel − 18 dB ist nicht hörbar → kein Befund
 
 
 def pre_echo_ratio_db(x_before: np.ndarray, x_after: np.ndarray, sr: int) -> float:
@@ -47,10 +51,24 @@ def pre_echo_ratio_db(x_before: np.ndarray, x_after: np.ndarray, sr: int) -> flo
 
     env_a = np.sqrt(np.mean(after[idx] ** 2, axis=1)) + 1e-12
     env_d = np.sqrt(np.mean(delta[idx] ** 2, axis=1)) + 1e-12
+    # Hinzugefügte (positive) Delta-Energie je Frame — für das Audibility-Gate.
+    # |delta|² allein ist vorzeichenblind: Klick-ENTFERNUNG im Vor-Fenster zählt
+    # sonst wie Pre-Echo-HINZUFÜGUNG (False-Positive bei Declickern).
+    env_d_pos = np.sqrt(np.mean(np.maximum(delta[idx], 0.0) ** 2, axis=1)) + 1e-18
 
-    # Onset-Kandidaten: Nach-Hüllkurve steigt stark relativ zum lokalen Median.
-    med = float(np.median(env_a)) + 1e-12
-    rise = env_a / med
+    # Onset-Kandidaten: Nach-Hüllkurve steigt stark relativ zur LOKALEN Baseline
+    # (10. Perzentil über ±0,5 s) — der globale Median verschluckt Anstiege in
+    # lauten Passagen (Produktionsbefund: 6,3×-Attack als 1,85× gemessen).
+    _loc_win = max(4, int(_LOCAL_WIN_S / _ENV_WIN_S))
+    _floor = float(np.max(env_a)) * 10.0 ** (-60.0 / 20.0)  # −60 dB unter Song-Peak:
+    # Stille erzeugt keine Onsets (Baseline ≈ 0 würde jedes Rauschen als Anstieg
+    # werten — Produktionsbefund auf realem Song-Anfang).
+    _loc_base = np.zeros(n_frames, dtype=np.float64)
+    for f in range(n_frames):
+        _lo = max(0, f - _loc_win)
+        _hi = min(n_frames, f + _loc_win + 1)
+        _loc_base[f] = max(float(np.percentile(env_a[_lo:_hi], _LOCAL_PERC)), _floor)
+    rise = env_a / (_loc_base + 1e-12)
     onset_frames = np.where(rise > _ONSET_RISE)[0]
     if onset_frames.size == 0:
         return -200.0
@@ -60,11 +78,17 @@ def pre_echo_ratio_db(x_before: np.ndarray, x_after: np.ndarray, sr: int) -> flo
     post_frames = max(1, int(_POST_WIN_S / _ENV_WIN_S))
 
     worst_db = -200.0
+    _mask_floor_db = 10.0 ** (-_FWD_MASK_DB / 10.0)
     for _of in onset_frames:
         _pre_lo = max(0, _of - pre_frames)
         _pre_hi = max(0, _of - gap_frames)
         _post_hi = min(n_frames, _of + post_frames)
         if _pre_hi <= _pre_lo or _post_hi <= _of:
+            continue
+        # Forward-Masking-Gate: Nur HINZUGEFÜGTE Vor-Fenster-Energie, die über
+        # Onset-Pegel − 18 dB liegt, kann als Pre-Echo hörbar sein.
+        _added_pre_e = float(np.mean(env_d_pos[_pre_lo:_pre_hi] ** 2))
+        if _added_pre_e < float(env_a[_of] ** 2) * _mask_floor_db:
             continue
         _pre_e = float(np.mean(env_d[_pre_lo:_pre_hi] ** 2)) + 1e-18
         _post_e = float(np.mean(env_d[_of:_post_hi] ** 2)) + 1e-18
