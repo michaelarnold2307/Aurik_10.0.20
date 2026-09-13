@@ -388,6 +388,23 @@
       die Drosselung bei vocal_confidence ≥ 0,40).
     - VOCAL-INPAINT-S4: Verifikation — ΔSDR ≥ 0 je Segment, VQI/Sänger-Identität
       per Resemblyzer-Witness unverändert, Determinismus.
+18. **SOTA-BSR-GPU** · BSRoFormer/MelBandRoFormer auf ROCm-GPU freigeben (Stem-Trennung
+    läuft aktuell auf CPU — funktional korrekt, aber langsam). Beleg 2026-09-13
+    (`backend/core/gpu_model_registry.json`, `scripts/onnx_gpu_compat_scan.py`):
+    (a) `bs_roformer_317_core.onnx`: ROCm-EP 5,4× schneller (189 ms vs. 1025 ms CPU),
+    aber EP-Numerik weicht ab (rel=6.18 vs. CPU) → Verdict cpu;
+    (b) `melbandroformer_optimized.onnx` (das tatsächlich geladene Modell):
+    Scan scheiterte (CPU-Load NameError) → keine Messdaten → fail-closed cpu.
+    Schritte:
+    - BSR-GPU-S1: Numerik-Drift des ROCm-EP lokalisieren (Attention-/Einsum-Kernel);
+      ggf. ONNX-Umexport mit ROCm-tauglichen Op-Zerlegungen.
+    - BSR-GPU-S2: `onnx_gpu_compat_scan.py`-NameError bei
+      `melbandroformer_optimized.onnx` beheben + CPU-vs-ROCm-Benchmark nachholen.
+    - BSR-GPU-S3: Erst wenn beide Kriterien grün (strikt schneller + rel ≤ 1e-3):
+      Registry-Einträge auf `rocm` stellen, Trennung per GPU fahren.
+    Akzeptanz: Scan-Verdict `rocm` mit rel ≤ 1e-3; Determinis­mus auf GPU
+    (gleicher Input + Device ⇒ bit-identisch, §G5); GPU-Lauf ≤ CPU-Laufzeit;
+    SLR-VQI-Gate ≥ 0,72 weiterhin bestanden.
 
 ---
 
