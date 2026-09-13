@@ -1,20 +1,14 @@
 # TASK_CHANGES — Live-Ledger der aktuellen Aufgabe
 
-> Generiert von `scripts/change_ledger.py snapshot` (Base: `HEAD`, Stand: 2026-09-13 00:22 CEST).
+> Generiert von `scripts/change_ledger.py snapshot` (Base: `HEAD`, Stand: 2026-09-13 02:31 CEST).
 > CI (`ci-lite.yml` pr-evidence-gate) erzwingt Abdeckung: jede geänderte Code-Datei muss hier stehen.
 
 ## Geänderte Dateien
 
 | Status | Pfad | Art |
 |---|---|---|
-| M | backend/core/dsp/witness_correction_loop.py | modifiziert |
-| M | backend/core/hybrid/hybrid_nvsr.py | modifiziert |
-| M | backend/core/preference_learner.py | modifiziert |
-| M | backend/core/unified_restorer_v3.py | modifiziert |
-| M | backend/core/vocoder_chain.py | modifiziert |
-| M | tests/unit/test_witness_correction_loop.py | modifiziert |
-| ?? | backend/core/dsp/additive_synthesis_gate.py | ungetrackt |
-| ?? | tests/unit/test_additive_synthesis_gate.py | ungetrackt |
+| M | backend/core/hybrid/hybrid_ml_denoiser.py | modifiziert |
+| ?? | plugins/ear_vae_denoiser.py | ungetrackt |
 
 ## Entscheidungen
 

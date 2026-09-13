@@ -74,6 +74,7 @@ class DenoiseConfig:
     enable_psychoacoustic_fusion: bool = (
         True  # §Witness-SOTA H1+H2: Masking-Fusion + Musical-Noise-Gate um die ML-Stufe
     )
+    ear_vae_mode: bool = False  # Quality-Mode: EAR-VAE (musik-finetuned) als ML-Kandidat statt DeepFilterNet
 
 
 @dataclass
@@ -209,6 +210,32 @@ class HybridMLDenoiser:
                     audio, dfn_meta = self._apply_dfn(audio, sample_rate)
                     dfn_applied = True
                     metadata["dfn"] = dfn_meta
+
+                    # §Witness-SOTA EAR-VAE: Quality-Mode-Kandidat (musik-finetuneter
+                    # Stereo-VAE-Denoiser). Der Kandidat wird von derselben
+                    # H1-Masking-Fusion + H2-Gate abgesichert — kein Risiko über
+                    # das Never-worsen-Konstrukt hinaus (§V6 (copilot-instructions.md)-
+                    # Ersatzpfad: bei Fehler bleibt der DeepFilterNet-Kandidat bestehen).
+                    if self.config.ear_vae_mode:
+                        try:
+                            from plugins.ear_vae_denoiser import (
+                                get_ear_vae_denoiser,  # pylint: disable=import-outside-toplevel
+                            )
+
+                            _earvae = get_ear_vae_denoiser()
+                            _earvae_out = _earvae.denoise(audio, sample_rate)
+                            if _earvae_out is not None and np.asarray(_earvae_out).shape[-1] == audio.shape[-1]:
+                                audio = np.asarray(_earvae_out, dtype=np.float32)
+                                metadata["ear_vae"] = {"success": True, "model": "ear_vae_music_finetuned"}
+                                logger.info("EAR-VAE-Kandidat übernommen (H1-Fusion sichert ab)")
+                            else:
+                                metadata["ear_vae"] = {"success": False, "reason": "unavailable_or_mismatch"}
+                        except Exception as _ev_exc:  # pylint: disable=broad-except
+                            metadata["ear_vae"] = {"success": False, "error": str(_ev_exc)}
+                            logger.warning(
+                                "§V6 (copilot-instructions.md) EAR-VAE-Kandidat nicht anwendbar (%s) — DeepFilterNet-Kandidat bleibt",
+                                _ev_exc,
+                            )
 
                     # §Witness-SOTA H1+H2: Die ML-Stufe (Kandidat) darf sich nur
                     # dort durchsetzen, wo sie gegenüber dem OMLSA-Baseline
