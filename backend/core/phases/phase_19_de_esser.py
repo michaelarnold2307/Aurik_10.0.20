@@ -3259,7 +3259,30 @@ class DeEsserPhase(PhaseInterface):
                         # → Formant-Tiebreaker auch bei höherer Confidence aktivieren
                         _td_gender = len(kwargs.get("transfer_chain", []) or [])
                         _conf_threshold = 0.75 if _td_gender >= 4 else 0.50
-                        if f0 < 150 and chars.confidence < _conf_threshold:
+                        # ── Wurzel-Fix Contralto (2026-09-13) ─────────────────
+                        # Vokaltrakt-Anatomie (Formanten) ist das härtere Merkmal
+                        # als F0: F1 weiblich-typisch + (F2 weiblich ODER degradiert
+                        # durch MP3/Bandbreitenverlust) ⇒ tiefe Frauenstimme —
+                        # UNABHÄNGIG von der Classifier-Confidence. Vorher lief
+                        # dieser Fall bei conf ≥ Schwelle in das pauschale
+                        # `f0 < 150 → MALE` und wurde erst vom §v10.303.11-
+                        # Override repariert (Symptom-Ebene, Produktionsbefund:
+                        # Elke-Best-ähnlicher Alt, F0=103 Hz, F1=314 Hz,
+                        # F2 degradiert → „male“ mit 0,95).
+                        _f1_in_female_c = 310.0 <= _f1_val <= 860.0
+                        _f2_in_female_c = 920.0 <= _f2_val <= 2790.0
+                        _f2_degraded_c = _f2_val < 50.0 or float(kwargs.get("bandwidth_loss", 0.0) or 0.0) > 0.5
+                        _contralto_evidence = _f1_in_female_c and (_f2_in_female_c or _f2_degraded_c)
+                        if f0 < 150 and _contralto_evidence:
+                            gender_str = VocalGender.FEMALE
+                            logger.info(
+                                "🎤 Wurzel-Klassifikation: F0=%.0f Hz F1=%.0f F2=%.0f (%s) → FEMALE (Contralto-Anatomie)",
+                                f0,
+                                _f1_val,
+                                _f2_val,
+                                "degradiert" if _f2_degraded_c else "weiblich-typisch",
+                            )
+                        elif f0 < 150 and chars.confidence < _conf_threshold:
                             # Ambiguous F0 — use formant structure as tiebreaker
                             if _f1_val > 450 or _formant_ratio > 2.3:
                                 gender_str = VocalGender.FEMALE  # Female formant pattern

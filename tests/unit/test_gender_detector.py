@@ -236,3 +236,52 @@ class TestDetectIntegration:
         assert abs(result.fundamental_freq - 250) <= 20, (
             f"fundamental_freq={result.fundamental_freq:.1f} too far from 250 Hz"
         )
+
+
+def test_deesser_contralto_root_classification(monkeypatch, caplog):
+    """Wurzel-Fix Contralto (2026-09-13): Tiefe F0 (103 Hz) + weibliche
+    Formant-Anatomie (F1=314) + degradiertes F2 (MP3/Bandbreitenverlust) →
+    FEMALE direkt in der Klassifikation — ohne §v10.303.11-Override.
+    Produktionsbefund: Classifier sagte „male“ (confidence 0,95), erst der
+    Override korrigierte auf FEMALE."""
+    import logging
+
+    from backend.core.phases import phase_19_de_esser as _p19
+
+    class _FakeChars:
+        class _Gender:
+            value = "male"
+
+        gender = _Gender()
+        confidence = 0.95
+        fundamental_freq = 80.0  # weicht >15 % von pYIN-F0=103 ab → pYIN-Pfad
+        formants = [314.0, 735.0]
+
+    class _FakeDetector:
+        def __init__(self, sample_rate=None):
+            pass
+
+        def detect(self, mono):
+            return _FakeChars()
+
+    monkeypatch.setattr(_p19, "_RobustGenderDetector", _FakeDetector)
+    monkeypatch.setattr(_p19, "_HAS_ROBUST_GENDER", True)
+    monkeypatch.setattr("librosa.pyin", lambda *a, **k: _fake_pyin())
+
+    audio = np.zeros(24000, dtype=np.float32)
+    phase = _p19.DeEsserPhase()
+    with caplog.at_level(logging.INFO):
+        gender = phase._detect_gender_robust(audio, 48000, bandwidth_loss=0.6)
+    assert gender == "female"
+    assert any("Wurzel-Klassifikation" in r.message for r in caplog.records)
+    assert not any("CONTRALTO erkannt" in r.message for r in caplog.records)
+
+
+def _fake_pyin():
+    import numpy as _np
+
+    _n = 120
+    f0 = _np.full(_n, 103.0, dtype=_np.float64)
+    voiced = _np.full(_n, True)
+    prob = _np.full(_n, 0.95, dtype=_np.float64)
+    return f0, voiced, prob
