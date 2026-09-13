@@ -64,6 +64,19 @@ _AIR_HI_HZ = 20000.0
 _AIR_LOSS_DB = 2.0
 _ROUGHNESS_RISE_ASPER = 0.35
 _PRE_ECHO_DB = -12.0
+# §Residual-Defekt-Zeugen (2026-09-13): Gedämpfter Gesang + Rest-Verzerrung.
+# Klarheitsband des Gesangs (2–6 kHz) — Dämpfung dort = gedämpfter Gesang.
+_CLARITY_LO_HZ = 2000.0
+_CLARITY_HI_HZ = 6000.0
+_VOCAL_MUFFLED_DB = 2.5
+# Rest-Clipping nach der zuständigen Phase: Anteil ±1 gepinnter Samples.
+_FLAT_TOP_RESIDUAL = 0.0005
+_DEFECT_OWNER_PHASES = {
+    "phase_07_declip_repair",
+    "phase_09_crackle_removal",
+    "phase_15_stereo_balance",
+    "phase_19_de_esser",
+}
 _TRANSIENT_WIN = 0.005  # 5-ms-Envelope für Transienten-Steigung
 
 
@@ -88,6 +101,8 @@ class ListeningWitnessResult:
     ild_drift_db: float = 0.0
     iacc_drop: float = 0.0
     pre_echo_db: float = 0.0
+    vocal_muffled_db: float = 0.0
+    distortion_residual_flat_top: float = 0.0
     findings: list[str] = field(default_factory=list)
 
     def as_dict(self) -> dict:
@@ -440,6 +455,20 @@ def evaluate_listening_witness(
     except Exception as _p4_exc:
         logger.debug("§Witness-SOTA P4 nicht verfügbar: %s", _p4_exc)
 
+    # §Residual-Defekt-Zeugen (2026-09-13): Der Witness soll NICHT delta-only
+    # urteilen — gedämpften und verzerrten Gesang erkennt er am RESTZUSTAND:
+    # 1. vocal_muffled: Klarheitsband (2–6 kHz) NACH der Phase gedämpft,
+    #    UND die Phase hat die Verzerrung nicht reduziert — Dämpfung ohne
+    #    Heilung ist das Verbotene (Gesang opfern statt Defekt beheben).
+    # 2. vocal_distorted_residual: Rest-Clipping (Flat-Tops) nach der
+    #    zuständigen Phase — gewarnt wird nur, wenn der Defekt NOCH da ist.
+    _clarity_a = _band_energy_ratio_db(a, sr, _CLARITY_LO_HZ, _CLARITY_HI_HZ)
+    _clarity_b = _band_energy_ratio_db(b, sr, _CLARITY_LO_HZ, _CLARITY_HI_HZ)
+    clarity_drop = _clarity_a - _clarity_b
+    _distortion_removed = _flat_b < _flat_a - _FLAT_TOP_RESIDUAL * 0.5
+    _muffled = clarity_drop > _VOCAL_MUFFLED_DB and not _distortion_removed
+    _residual = _flat_b if phase_id in _DEFECT_OWNER_PHASES else 0.0
+
     result = ListeningWitnessResult(
         phase_id=phase_id,
         pitch_drift_cents=pitch_delta,
@@ -458,6 +487,8 @@ def evaluate_listening_witness(
         ild_drift_db=_ild_drift,
         iacc_drop=_iacc_drop,
         pre_echo_db=_pre_echo_db,
+        vocal_muffled_db=max(clarity_drop, 0.0),
+        distortion_residual_flat_top=_residual,
     )
 
     if result.pitch_drift_cents > _PITCH_DRIFT_CENTS:
@@ -486,4 +517,8 @@ def evaluate_listening_witness(
         result.findings.append("stereo_collapse")
     if result.pre_echo_db > _PRE_ECHO_DB:
         result.findings.append("pre_echo")
+    if _muffled:
+        result.findings.append("vocal_muffled")
+    if _residual > _FLAT_TOP_RESIDUAL:
+        result.findings.append("vocal_distorted_residual")
     return result

@@ -269,3 +269,50 @@ def test_transient_smearing_detected() -> None:
     res = evaluate_listening_witness(x, y, sr, "transient_test")
     assert res.transient_smear_ratio > 0.35, f"Verschmierung nicht erkannt: {res.transient_smear_ratio:.3f}"
     assert "transient_smearing" in res.findings
+
+
+def test_vocal_muffled_detection():
+    """§Residual-Defekt-Zeuge (2026-09-13): Dämpfung des Klarheitsbands
+    (2–6 kHz) ohne Defekt-Reduktion → vocal_muffled."""
+    from scipy.signal import butter, filtfilt
+
+    sr = 48000
+    rng = np.random.default_rng(21)
+    t = np.arange(sr * 4) / sr
+    x = (0.35 * np.sin(2 * np.pi * 220 * t) + 0.15 * rng.standard_normal(len(t))).astype(np.float32)
+    x = x + (0.1 * np.sin(2 * np.pi * 3200 * t)).astype(np.float32)
+    b, a = butter(2, [2000 / (sr / 2), 6000 / (sr / 2)], btype="bandstop")
+    y = filtfilt(b, a, x.astype(np.float64)).astype(np.float32)
+    res = evaluate_listening_witness(x, y, sr, "phase_04_eq_correction")
+    assert "vocal_muffled" in res.findings
+    assert res.vocal_muffled_db > 2.5
+
+
+def test_vocal_distorted_residual_for_defect_owner():
+    """§Residual-Defekt-Zeuge: Rest-Clipping nach der zuständigen Phase → Warnung."""
+    sr = 48000
+    t = np.arange(sr * 2) / sr
+    x = (0.35 * np.sin(2 * np.pi * 220 * t)).astype(np.float32)
+    y = np.clip(x * 3.0, -1.0, 1.0).astype(np.float32)  # stark geclippt
+    res = evaluate_listening_witness(x, y, sr, "phase_09_crackle_removal")
+    assert "vocal_distorted_residual" in res.findings
+
+
+def test_no_residual_warning_when_defect_healed():
+    """§Residual-Defekt-Zeuge: Defekt behoben → KEINE Rest-Warnung."""
+    sr = 48000
+    t = np.arange(sr * 2) / sr
+    x_clean = (0.35 * np.sin(2 * np.pi * 220 * t)).astype(np.float32)
+    clipped = np.clip(x_clean * 3.0, -1.0, 1.0).astype(np.float32)
+    res = evaluate_listening_witness(clipped, x_clean, sr, "phase_09_crackle_removal")
+    assert "vocal_distorted_residual" not in res.findings
+
+
+def test_non_owner_phase_no_residual_warning():
+    """Nur die zuständige Phase warnt über Rest-Defekte."""
+    sr = 48000
+    t = np.arange(sr * 2) / sr
+    x = (0.35 * np.sin(2 * np.pi * 220 * t)).astype(np.float32)
+    y = np.clip(x * 3.0, -1.0, 1.0).astype(np.float32)
+    res = evaluate_listening_witness(x, y, sr, "phase_12_wow_flutter_fix")
+    assert "vocal_distorted_residual" not in res.findings
