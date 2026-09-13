@@ -301,6 +301,67 @@
 
 ---
 
+## Welle 2026-09-12/13 — Wohlklang-SOTA-Gesamtmaßnahmen (Maskierung, Hybrid-Gates, Finetunes)
+
+> Quelle: `docs/PHASE_SOTA_GAP_ANALYSE.md` (alle 64 Phasen + ML-Trainingsdomänen-Matrix §5,
+> verifiziert gegen die 69 Phasen-Dateien). Reihenfolge = Hör-Gewinn je Aufwand.
+> IDs: `SOTA-*`; Akzeptanz = Never-worsen-Test + Determinismus + §V6 (copilot-instructions.md)-Fallback.
+
+### ABGESCHLOSSEN (diese Welle, mit Commits)
+
+| ID | Maßnahme | Commit | Beleg |
+|---|---|---|---|
+| SOTA-WIT-P1…P4 | Witness: Johnston-Maskierung, Rauigkeit, ITD/ILD, Pre-Echo | 56492ce8 | tests 27 grün |
+| SOTA-C1…C3 | Rekombinations-Gates (Alignment, Bark-Residuum, Stereo-Check) | 19506b3e | tests 6 grün |
+| SOTA-DECLIP | APPLADE + PnP-ADMM + GPU-Finetune (ΔSDR +1,2…+1,7 dB) | 07fcc8df | ONNX in Produktion |
+| SOTA-DENOISE | EAR-VAE-Musik-Finetune v2 (ΔSDR +4,83 dB, Never-worsen ja) | 98276a32 | Final-Benchmark 3 Songs |
+| SOTA-H1+H2 | Masking-Fusion + Musical-Noise-Gate um Denoiser | 6ab0dd2a | tests 7 grün |
+| SOTA-H3 | Witness-Veto→global_scalar (delta-basiert, Clamping) | 6ab0dd2a | tests 7 grün |
+| SOTA-B4+B5 | Synthesis-Gates um FlashSR/BigVGAN (masking, Onset-Schutz) | 4b783d18 | tests 21 grün |
+| SOTA-C1-CON | UTMOS-Delta-Veto als Zeuge im FC-Regelkreis | 306d0a16 | tests 4 grün |
+| SOTA-C3 | Preference-Lern-Schleife (Veto→sounds_artificial) | 4b783d18 | nicht-persistierend |
+| SOTA-A1 | Maskierungs-Informierte Trainings-Loss (torch, differenzierbar) | 4b783d18 | EAR-VAE-Finetune nutzt sie |
+| SOTA-WF-V1+V3 | Bandbegrenztes Resampling + Kalman-Glättung in phase_12 | ba151793 | tests 8 grün |
+
+### OFFEN (Reihenfolge = Ausführung)
+
+1. **SOTA-WF-V2** · Spektral-Warp-Schätzer in den Zero-Consensus-Pfad von phase_12
+   verdrahten (Modul `warp_estimator.py` + Konsens-Gate existieren bereits).
+   Wirkung: Wow/Flutter-Korrektur auch in instrumental/dichten Passagen.
+   Akzeptanz: Test mit synthetisch gewarptem Musik-Segment (bekannter Warp) —
+   Konsens-Trajektorie weicht < 10 % vom Soll ab.
+2. **SOTA-ML-V1** · FlashSR-Musik-Finetune (MUSDB-HQ lowpass→original, A1-Loss,
+   Encoder-Frozen, Validierungs-Early-Stop). VORAB: AERO-vs-FlashSR-Benchmark auf
+   Musik als Kandidatenwahl (§V7: eine Lösung pro Rolle).
+   Akzeptanz: Never-worsen-Benchmark wie EAR-VAE (ΔSDR/ΔSegSNR ≥ 0 je Segment).
+3. **SOTA-ML-V2** · BigVGAN-v2 Musik-/Vokal-Finetune für den Repair-Pfad (B5-gegated).
+4. **SOTA-ML-V3** · MP-SENet: Musik-Finetune ODER De-Wiring (gemessen −5,9…−8,5 dB
+   out-of-domain; Entscheidung anhand eines 3-Song-Vorher/Nachher-Benchmarks).
+5. **SOTA-ML-V4** · UTMOS-Musik-MOS-Validierung: Delta-Kalibrierung auf MUSDB-Paaren
+   (kein Finetune möglich — nur Schwelle/-Richtung validieren).
+6. **SOTA-GACELA** · GaCELA-Integration (musik-nativ, KEIN Training): ltfatpy-Blocker
+   lösen oder Inverter portieren + IN-V1/V2-Gates — einziger musik-nativer
+   Lang-Lücken-Inpainter (375–1500 ms).
+7. **SOTA-IN-V1+V2** · Inpainting-Naht-Gates um phase_55 (DiffWave/AudioLDM2/CQT-Diff+):
+   additive_synthesis_gate + C2-artiges Hüllkurven-Alignment.
+8. **SOTA-C4** · DDSP: neuronale EQ-/Dynamik-Parameter-Prädiktion (CLAP/BEATs-
+   Embeddings) für phase_04/16/17 — DSP führt aus, nie Wellenform-Generierung.
+9. **SOTA-TP-V1+V2** · Neurale Onset-Detektion (BEATs) als Konsens mit Spectral Flux +
+   neurale Phasen-Schätzung für Transienten-Frames (phase_08/36).
+10. **SOTA-HR-V1** · BigVGAN-Repair-Pfad mit additive_synthesis_gate in
+    phase_07_harmonic_restoration.
+11. **SOTA-CR-V1** · BANQUET-Klick-Detektion als zusätzlicher Detektor im
+    Multi-Scale-Konsens von phase_01 (ML detektiert, RBME rekonstruiert).
+12. **SOTA-DR-V1** · Neurale RT60-Schätzung steuert Dereverb-Parameter (phase_20/49).
+13. **SOTA-WF-V4** · Neuraler Warp-Schätzer (2025/26-Checkpoint) mit Never-worsen-Gate.
+14. **SOTA-WF-CASS** · Scrape-Flutter-Restpfad für Cassette (Breitband-Modulations-
+    Kompensation/Denoise) — separat vom gemeinsamen Warp.
+15. **SOTA-HU-V1** (niedrig) · Kalman-getracktes Notch-Filter für Netzfrequenz-Drift (phase_02).
+16. **SOTA-D3+D4** (niedrig) · Multiresolution-Split (neuronal 2–5 kHz, DSP außerhalb) +
+    APPLADE-Maskierungs-Loss-Variante (DGT-Domäne).
+
+---
+
 ## Hintergrund (damit die nächste Session sofort einsteigt)
 
 - **Session-Report:** `docs/reports/current/2026-09-08_envelope_root_cause_sota_fixes_matrix.md`

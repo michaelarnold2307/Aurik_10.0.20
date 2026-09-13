@@ -173,7 +173,53 @@ Priorität: ML-V1 (FlashSR — direkt im HF-Hörbereich; AERO-Benchmark als Kand
 ML-V2 (BigVGAN) → ML-V3 (MP-SENet entscheiden) → ML-V4 (UTMOS-Kalibrierung) →
 GaCELA-Integration (musik-nativ, kein Training).
 
-## Priorisierte Gesamt-Reihenfolge
+## 6. DSP-SOTA-Matrix — alle DSP-Verfahren im Kontext ihrer Aurik-Aufgabe
+
+Systematischer Abgleich jedes DSP-Kerns gegen die 2026-Referenzklasse.
+Legende: ✅ = Referenzklasse erreicht · 🟡 = brauchbar, Präzisions-Lücke ·
+🔴 = veraltet/überholt — Maßnahme in der Roadmap (docs/TODOS_SOTA_ROADMAP.md).
+
+| Domäne (Phasen) | Aurik-DSP | 2026-Referenz | Urteil |
+|---|---|---|---|
+| Klick-Rekonstruktion (01) | RBME: AR(16)-Prior + iterative Sparse-Bayesian-Inpainting (Roux & Bimbot 2014), Multi-Scale | RX-De-click/De-crackle-Klasse | ✅ |
+| Klick-Detektion (01) | Multi-Scale-DSP (Schwellwert/Steigung) | neuronale Detektion (BANQUET) als Zusatz | 🟡 → SOTA-CR-V1 |
+| Hum (02) | Multi-Fundamental + adaptive Notches | RX-De-hum (harmonic comb) | ✅ (Drift-Tracking optional: HU-V1) |
+| Denoise (03) | OMLSA (Cohen)/IMCRA + H1/H2-Gates + EAR-VAE | neuronale Denoiser + psychoakustische Fusion | ✅ |
+| EQ (04) | adaptive Spektral-Analyse + Matching | Ozone-Match-EQ mit Maskierungs-Gewichtung | 🟡 → SOTA-C4 (DDSP-Parameter) |
+| Rumble (05) | DC-Block + subsonic-Filter | De-rumble-Klasse | ✅ |
+| Bandbreite (06) | SBR/LPC + FlashSR (B4-gegated) | neuronale BWE mit Masking-Gate | ✅ (nach ML-V1 vollständig) |
+| Declip (07) | APPLADE-PnP-ADMM + CQT-Diff+ (Never-worsen-Router) | A-SPADE-Klasse | ✅ |
+| Harmonik (07h) | DSP-Harmonik-Synthese (fehlende Obertöne) | neuronaler Vocoder-Repair | 🟡 → SOTA-HR-V1 |
+| Transienten (08/36) | Spectral-Flux-Onsets, Multi-Band-Shaping, Log-Domain-Ballistik | SPL-Transient-Designer-Klasse + neurale Onsets | 🟡 → SOTA-TP-V1/V2 |
+| Knistern (09) | Multi-Scale-DSP + BANQUET (ML) | BANQUET-Klasse | ✅ |
+| Kompression/Limiter (10/11/47) | Multi-Band, True-Peak (BS.1770-4, 4×-Oversampling, ISP) | Ozone-Limiter-Klasse | ✅ |
+| Wow/Flutter (12) | pYIN+CREPE-Hybrid, Phasen-Vocoder (Laroche/Dolson, Driedger/Müller), WF-V1/V3 (Resampling+Kalman) | Capstan-Klasse | 🟡 → SOTA-WF-V2/V4/CASS |
+| Stereo/Phase (13/14/15/25/32/33/34/48) | M/S, Gerzon-Korrektur, IACC-Guard, Lauridsen | Referenzklasse | ✅ |
+| Mastering-EQ (16/17) | Multi-Band-Linear-Phase + Polish | Ozone-Klasse | 🟡 → SOTA-C4 |
+| Noise-Gate (18) | Multi-Band-Frequenz-Gate | Maskierungs-Floor-Gating | 🟡 (H2-Logik übertragbar — niedrig) |
+| De-Esser (19/43) | Gender-adaptiv v4 + ML-Feinveredelung (streng gegated) | SPL-/RX-Klasse | ✅ |
+| Dereverb (20/49) | OMLSA/IMCRA-Dereverb, WPE (vereinfacht) + Transienten-Erhalt | WPE/OMLSA-Klasse | ✅ (Parameter: DR-V1) |
+| Inpainting (23/50/55) | IMCRA-Floor + vektoriert/STFT; DDPM-inspirierte Diffusion + DiffWave/AudioLDM2-Option | generative Inpainting mit Naht-Gates | 🟡 → SOTA-IN-V1/V2 + GaCELA |
+| Dropout (24) | Multi-Modal-Detektion + Reparatur | RX-Spectral-Repair-Klasse | ✅ |
+| Azimuth (25) | Multi-Band-Phasen-Alignment + HF-Restaurierung | Referenzklasse | ✅ |
+| Expansion (26) | Multi-Band up/down | Referenzklasse | ✅ |
+| Klick/Pop v3 (27) | AR-Residual + Consistent Wiener | SOTA (Literaturklasse) | ✅ |
+| Surface/Hiss/Mod-Noise (28/29/59) | IMCRA/OMLSA/MMSE-LSA; Esquef & Biscainho 2006 | Referenzklasse | ✅ |
+| DC (30) | drift-tracking DC | trivial, ✅ | ✅ |
+| Speed/Pitch (31) | pYIN + Time-Stretch | ✅ (SP-V1 geteilt mit WF-V1) | ✅ |
+| Multiband/M/S-Dynamik (34/35) | 4-Band M/S | Referenzklasse | ✅ |
+| Bass/Präsenz/Air (37/38/39) | Harmonik-Synthese + Shelving | Aphex-Klasse | ✅ (Parameter: C4) |
+| Loudness (40) | BS.1770-4/EBU-R128 komplett | Standard | ✅ |
+| Output (41) | Resampling + POW-r-Dither | Standard | ✅ |
+| Instrumente (44/45/51/52) | Transient/Harmonik/Präsenz-DSP (Tier-1-Hybrid) | Zweck-DSP-Klasse | ✅ |
+| Semantik (53) | CLAP/BEATs/Chromagramm-Kaskade | Referenzklasse | ✅ |
+| Transparent Dynamics (54) | Maskierungs-Zonen-Kompression | psychoakustische Kompression | ✅ |
+| Spezial-Defekte (56–64) | Band-Gap, Print-Through-LMS, IGD, Groove-Echo, Crosstalk-α-Inverse (IEC 60098), IMD-Bispektrum, Splice, Vocal-Naturalness | exakte physikalische Modelle | ✅ |
+| Stem-NR (66) | getrennte Vokal/Begleitung-NR + C1–C3 + KIM2 | Referenzklasse | ✅ |
+
+Kernaussage: Der DSP-Unterbau ist flächendeckend auf Referenzklasse; die
+verbleibenden 🟡 sind gezielt dort, wo ML-Messung DSP-Parameter schärfen kann
+(Detektion, EQ/Dynamik-Ziele, Warp-Schätzung) — genau die Maßnahmen der Roadmap.
 
 1. WF-V1 → WF-V2 → WF-V3 (Wow/Flutter, größter Einzelhebel)
 2. ML-V1 → ML-V2 → ML-V3 → ML-V4 (Musik-Finetunes der sprach-vortrainierten Modelle)
