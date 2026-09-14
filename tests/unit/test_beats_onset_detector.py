@@ -39,6 +39,25 @@ def test_curve_none_without_model(monkeypatch: pytest.MonkeyPatch) -> None:
     assert curve is None and cs == 0 and ce == 0
 
 
+def test_pooled_embedding_with_fake_tokens(monkeypatch: pytest.MonkeyPatch) -> None:
+    fake_tokens = np.random.RandomState(7).randn(40, 768).astype(np.float32)
+    monkeypatch.setattr(bod, "beats_available", lambda: True)
+    monkeypatch.setattr(bod, "_tokens_for_window", lambda seg: fake_tokens)
+    x = _clicks(16000, 2.0, [1.0])
+    e1 = bod.beats_pooled_embedding(x, 16000)
+    e2 = bod.beats_pooled_embedding(x, 16000)
+    assert e1 is not None and e2 is not None
+    assert e1.shape == (768,)
+    assert np.all(np.isfinite(e1))
+    assert abs(float(np.linalg.norm(e1)) - 1.0) < 1e-4  # L2-normiert
+    assert np.array_equal(e1, e2)  # deterministisch
+
+
+def test_pooled_embedding_none_without_model(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(bod, "beats_available", lambda: False)
+    assert bod.beats_pooled_embedding(_clicks(16000, 1.0, [0.5]), 16000) is None
+
+
 def test_witness_stats_agreement() -> None:
     sr = 16000
     curve = np.zeros(sr, dtype=np.float32)

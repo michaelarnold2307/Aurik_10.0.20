@@ -75,6 +75,11 @@ def _data_check(args: argparse.Namespace) -> int:
         n = _write_vocals_wavs(tracks, data_dir)
         print(f"WAVs geschrieben: {n}")
         sys.path.insert(0, str(_UPSTREAM))
+        # F2-Entblockung 2026-09-14: eigener NumPy-Gabor-Shim ersetzt tifresi
+        # (ltfatpy-Blocker) — installieren VOR dem Upstream-Import.
+        from gacela_gabor_shim import install_tifresi_shim
+
+        install_tifresi_shim()
         try:
             from data.audioLoader import AudioLoader
             from data.trainDataset import TrainDataset
@@ -104,6 +109,9 @@ def _train(args: argparse.Namespace) -> int:
         print("--data-folder fehlt: erst mit MUSDB-Vocals als WAV-Ordner befüllen.")
         return 2
     sys.path.insert(0, str(_UPSTREAM))
+    from gacela_gabor_shim import install_tifresi_shim
+
+    install_tifresi_shim()
     import torch
     from data.audioLoader import AudioLoader
     from data.trainDataset import TrainDataset

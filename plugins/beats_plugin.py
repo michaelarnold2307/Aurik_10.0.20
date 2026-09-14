@@ -71,7 +71,7 @@ _TAG_INDEX_MAP: dict[str, list[int]] = {
 }
 
 # Cache für BEATs-Inferenz (FIFO, 128 Einträge)
-_tags_cache: dict[str, dict[str, float]] = {}
+_tags_cache: dict[str, tuple[dict[str, float], str]] = {}
 _tags_cache_lock = threading.Lock()
 _CACHE_MAX = 128
 
@@ -115,7 +115,13 @@ class BeatsPlugin:
     def __init__(self) -> None:
         self._session = None
         self._model_loaded: bool = False
+        self._encoder_only: bool = False
         self._load_onnx()
+
+    @property
+    def beats_encoder_only(self) -> bool:
+        """True, wenn der lokale ONNX ein Encoder-Export ohne Tagger-Head ist."""
+        return self._encoder_only
 
     def _load_onnx(self) -> None:
         """Lädt BEATs ONNX-Session; PANNs-Fallback bei Fehler."""
@@ -154,9 +160,10 @@ class BeatsPlugin:
             _inp.shape[-1] if _inp.shape else 0
             _out_last_dim_out = _out.shape[-1] if _out.shape else 0
             if _inp_rank == 3 or int(_out_last_dim_out or 0) == 768:
-                logger.debug(
-                    "beats_plugin: embedding-only model erkannt (Eingabe=%s, Ausgabe=%s) "
-                    "— no AudioSet-527 head; routing to spectral DSP Ersatzpfad.",
+                self._encoder_only = True
+                logger.info(
+                    "beats_plugin: Encoder-Export ohne Tagger-Head erkannt (Eingabe=%s, Ausgabe=%s) — "
+                    "Tags über PANNs-Ersatzpfad, Embeddings über den Encoder (§SOTA-TP-V1-Befund 2026-09-14).",
                     _inp.shape,
                     _out.shape,
                 )
@@ -223,16 +230,17 @@ class BeatsPlugin:
         assert sr == 48_000, f"SR muss 48000 Hz sein, erhalten: {sr}"
         audio = np.nan_to_num(audio.astype(np.float32), nan=0.0, posinf=0.0, neginf=0.0)
 
-        # Cache-Check
+        # Cache-Check — Tag-Quelle (beats_onnx | panns_fallback) wird mitgecacht,
+        # damit der Cache-Pfad nie eine falsche Modell-Herkunft behauptet.
         key = _cache_key(audio, sr)
         with _tags_cache_lock:
             if key in _tags_cache:
-                cached_tags = _tags_cache[key]
+                cached_tags, cached_source = _tags_cache[key]
                 top = sorted(cached_tags.items(), key=lambda x: x[1], reverse=True)[:top_k]
                 return BeatsResult(
                     tags=cached_tags,
-                    embeddings=np.zeros(768, dtype=np.float32),
-                    model_used="beats_onnx_cached",
+                    embeddings=self._encoder_embeddings(audio, sr),
+                    model_used=f"{cached_source}_cached",
                     top_k=top,
                 )
 
@@ -241,14 +249,32 @@ class BeatsPlugin:
         else:
             result = self._panns_fallback(audio, sr, top_k)
 
+        # Encoder-Export: echte 768-dim-Embeddings statt Nullen.
+        if self._encoder_only:
+            _emb = self._encoder_embeddings(audio, sr)
+            result.embeddings = _emb if _emb is not None else result.embeddings
+
         # Cache schreiben (FIFO)
         with _tags_cache_lock:
             if len(_tags_cache) >= _CACHE_MAX:
                 oldest = next(iter(_tags_cache))
                 del _tags_cache[oldest]
-            _tags_cache[key] = result.tags
+            _tags_cache[key] = (result.tags, result.model_used)
 
         return result
+
+    def _encoder_embeddings(self, audio: np.ndarray, sr: int) -> np.ndarray:
+        """768-dim-Embeddings über den BEATs-Encoder; Nullen bei Nichtverfügbarkeit."""
+        try:
+            from backend.core.dsp.beats_onset_detector import beats_pooled_embedding as _bpe
+
+            _emb = _bpe(audio, sr)
+            if _emb is not None:
+                return _emb
+        except Exception as _exc:
+            logger.debug("beats_plugin: Encoder-Embeddings nicht verfügbar (unkritisch): %s", _exc)
+        _zeros_emb: np.ndarray = np.zeros(768, dtype=np.float32)
+        return _zeros_emb
 
     def _infer_onnx(self, audio: np.ndarray, sr: int, top_k: int) -> BeatsResult:
         """BEATs ONNX-Inferenz → 527 AudioSet-Scores."""

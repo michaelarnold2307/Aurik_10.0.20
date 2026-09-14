@@ -415,9 +415,13 @@
    Folge-Schritt. 6 Tests grün inkl. echtem Encoder-Smoke.
    **Befund dabei:** plugins/beats_plugin.py füttert den ENCODER-ONNX mit
    Roh-Audio statt fbank (Rank-Mismatch) und interpretiert Token-Output als
-   527-Scores — der Tagger-Pfad läuft nie (stiller DSP-Fallback). Fix ist ein
-   eigener Task (Tagger-Head-ONNX oder Head auf Tokens). TP-V2 bleibt offen
-   (Modell + Quelle fehlen).
+   527-Scores — der Tagger-Pfad läuft nie (stiller DSP-Fallback).
+   **Plugin-Seite ERLEDIGT (2026-09-14, Nachtrag):** Erkennung des
+   Encoder-Exports (`beats_encoder_only`-Property, beim Laden), echte
+   768-dim-Embeddings über den Encoder statt Nullen, ehrliche Cache-Herkunft
+   (kein falsches „beats_onnx_cached“); 8 Tests. Offen bleibt nur der
+   TAGGER-HEAD selbst (Head auf Tokens trainieren oder Tagger-ONNX
+   beschaffen — GPU-Aufgabe). TP-V2 bleibt offen (Modell + Quelle fehlen).
 10. **SOTA-HR-V1** · BigVGAN-Repair-Pfad mit additive_synthesis_gate in
     phase_07_harmonic_restoration.
 11. **SOTA-CR-V1** · ✅ ERLEDIGT (36b452b4, 2026-09-13) — BANQUET-Klick-Detektion als
@@ -715,9 +719,14 @@ sauberen Referenzen (Muster ML-V3-Negativbefund).
 
 **F2-Vorbereitung 2026-09-14:** `scripts/train_gacela_vocal_inpaint.py`
 (Upstream-Trainingsspiegel + MUSDB→22,05-kHz-WAV-Datenpfad, --data-check
-2 Tests grün). **Blocker:** tifresi/ltfatpy (C-Build, kein Binary-Wheel) für
- den Upstream-GaussTruncTF-STFT — Pfade: ltfatpy mit Toolchain bauen ODER
- den STFT portieren (Roadmap-KERN-Hinweis); danach F2-Smoke auf der GPU.
+2 Tests grün). **ENTBLOCKT (2026-09-14, Nachtrag):** Der tifresi/ltfatpy-
+Blocker (C-Build, kein Binary-Wheel) ist über einen eigenen NumPy-Gabor-Shim
+(`scripts/gacela_gabor_shim.py`, Truncated-Gaussian 1024/256, Forward-DGT +
+log_spectrogram/preprocess_signal per sys.modules-Injektion) umgangen — der
+Upstream-TrainDataset liefert damit end-to-end korrekte Spektrogramme
+(Data-Check grün, 6 Shim-Tests). Kein Vendoring (tifresi-Lizenzlage
+MIT/GPLv3 unklar); die Inversion (PGHI) wird vom Training nicht benötigt.
+Nächster Schritt: F2-Smoke auf der GPU nach F1.
 | F3 | BigVGAN-v2 Musik+Vokal | bigvgan_v2.pth lokal | Spektral-Repair ML-V2/HR-V1 | MUSDB-HQ | ΔSDR ≥ +2 dB |
 | F4 | FlashSR-Musik | Checkpoint lokal | Hochband-Rekonstruktion (aus ML-V1-VORAB: Kandidatenwahl) | MUSDB-HQ | ΔSDR ≥ +2 dB |
 | F5 | DDSP-Prädiktor (C4) | CLAP/BEATs-Encoder lokal | EQ/Dynamik-Prädiktion | MUSDB-HQ + Effekt-Paare | MOS-Witness (MuQ) |

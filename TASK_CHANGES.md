@@ -1,6 +1,6 @@
 # TASK_CHANGES — Live-Ledger der aktuellen Aufgabe
 
-> Generiert von `scripts/change_ledger.py snapshot` (Base: `HEAD`, Stand: 2026-09-14 05:40 CEST).
+> Generiert von `scripts/change_ledger.py snapshot` (Base: `HEAD`, Stand: 2026-09-14 06:25 CEST).
 > CI (`ci-lite.yml` pr-evidence-gate) erzwingt Abdeckung: jede geänderte Code-Datei muss hier stehen.
 
 ## Geänderte Dateien
@@ -8,21 +8,15 @@
 | Status | Pfad | Art |
 |---|---|---|
 | M | .github/FILE_REGISTRY.md | modifiziert |
-| M | backend/core/phases/phase_08_transient_preservation.py | modifiziert |
-| M | backend/core/phases/phase_36_transient_shaper.py | modifiziert |
-| M | backend/core/phases/phase_55_diffusion_inpainting.py | modifiziert |
+| M | backend/core/dsp/beats_onset_detector.py | modifiziert |
 | M | docs/TODOS_SOTA_ROADMAP.md | modifiziert |
-| M | docs/guides/MUSHRA_STUDIENPROTOKOLL.md | modifiziert |
-| M | scripts/train_diffwave_vocal_inpaint.py | modifiziert |
-| M | tests/unit/test_phase_55_diffusion_inpainting.py | modifiziert |
-| ?? | backend/core/dsp/beats_onset_detector.py | ungetrackt |
-| ?? | backend/core/dsp/diffwave_model.py | ungetrackt |
-| ?? | backend/core/dsp/diffwave_torch_inpaint.py | ungetrackt |
+| M | plugins/beats_plugin.py | modifiziert |
+| M | scripts/train_gacela_vocal_inpaint.py | modifiziert |
+| M | tests/unit/test_beats_onset_detector.py | modifiziert |
 | ?? | docs/reports/current/2026-09-14_diffwave_vocal_finetune.json | ungetrackt |
-| ?? | scripts/train_gacela_vocal_inpaint.py | ungetrackt |
-| ?? | tests/unit/test_beats_onset_detector.py | ungetrackt |
-| ?? | tests/unit/test_diffwave_torch_inpaint.py | ungetrackt |
-| ?? | tests/unit/test_gacela_vocal_prep.py | ungetrackt |
+| ?? | scripts/gacela_gabor_shim.py | ungetrackt |
+| ?? | tests/unit/test_beats_plugin_encoder_only.py | ungetrackt |
+| ?? | tests/unit/test_gacela_gabor_shim.py | ungetrackt |
 
 ## Entscheidungen
 
@@ -50,7 +44,6 @@
   - **F1-Tuning:** Micro-Benchmark zeigte A1-Loss ≈ 0,2 s/Batch (nicht der
     Flaschenhals — die Conv-Kernels mit MIOpen-Fallback sind es); cudnn.benchmark
     aktiviert + Neustart mit batch 32/windows 16 (~4-6 min/Epoch statt 24 min).
-
 - **SOTA-VOCAL-INPAINT-S2/F1: DiffWave-Vokal-Finetune-Infrastruktur (2026-09-14)**:
   `scripts/train_diffwave_vocal_inpaint.py` — philovivero/DiffWave-vocoder
   (MIT) nach dem Checkpoint portiert (Wrapper-Module `*.conv.weight`/

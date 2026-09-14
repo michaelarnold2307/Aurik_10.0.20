@@ -107,6 +107,45 @@ def _tokens_for_window(mono_16k: np.ndarray) -> np.ndarray | None:
         return None
 
 
+def beats_pooled_embedding(audio: np.ndarray, sr: int, max_window_s: float = _MAX_WINDOW_S) -> np.ndarray | None:
+    """BEATs-Encoder-Embedding (768-dim, Mean-Pool über die Token-Zeitachse).
+
+    Nutzt den ENCODER-Export sinnvoll (plugins/beats_plugin.py hat keinen
+    Tagger-Head-ONNX — siehe Befund 2026-09-14). Deterministisch (festes
+    Fenster); None bei Fehler/fehlendem Modell (§V6 (copilot-instructions.md)).
+    """
+    if not beats_available():
+        return None
+    try:
+        from math import gcd
+
+        from scipy.signal import resample_poly
+
+        arr = np.nan_to_num(np.asarray(audio, dtype=np.float32), nan=0.0, posinf=0.0, neginf=0.0)
+        mono = arr.mean(axis=0) if arr.ndim == 2 else arr
+        if mono.size < _MODEL_SR // 2:
+            return None
+        if sr != _MODEL_SR:
+            g = gcd(sr, _MODEL_SR)
+            mono16 = resample_poly(mono, _MODEL_SR // g, sr // g).astype(np.float32)
+        else:
+            mono16 = mono
+        n_win = int(max_window_s * _MODEL_SR)
+        if len(mono16) > n_win:
+            start16 = (len(mono16) - n_win) // 2
+            mono16 = mono16[start16 : start16 + n_win]
+        tokens = _tokens_for_window(mono16)
+        if tokens is None:
+            return None
+        emb = np.asarray(tokens.mean(axis=0), dtype=np.float32)
+        norm = float(np.linalg.norm(emb)) + 1e-12
+        _emb_out: np.ndarray = (emb / norm).astype(np.float32)
+        return _emb_out
+    except Exception as _exc:
+        logger.warning("beats_onset_detector: Embedding fehlgeschlagen (%s) — None.", _exc)
+        return None
+
+
 def beats_onset_curve(
     audio: np.ndarray, sr: int, max_window_s: float = _MAX_WINDOW_S
 ) -> tuple[np.ndarray | None, int, int]:
