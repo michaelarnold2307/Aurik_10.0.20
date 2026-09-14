@@ -372,6 +372,26 @@ class TransientPreservationPhase(PhaseInterface):
         # Step 1: Detect onsets (transients) using spectral flux
         onset_times, onset_strengths = self._detect_onsets_spectral_flux(audio, float(params["detection_sensitivity"]))
 
+        # §SOTA-TP-V1 (2026-09-14): BEATs-Onset-Witness — Konsens-Statistik über
+        # die Superflux-Detektion (ZEUGE, nicht Richter — Hörordnung §8a).
+        _onset_witness_08: dict[str, float | int] | None = None
+        _qm_08 = str(kwargs.get("quality_mode", "balanced")).lower()
+        if _qm_08 not in ("fast", "lightweight", "draft"):
+            try:
+                from backend.core.dsp.beats_onset_detector import beats_onset_curve as _boc_08
+                from backend.core.dsp.beats_onset_detector import onset_witness_stats as _ows_08
+
+                _curve_08, _cs_08, _ce_08 = _boc_08(audio, sample_rate)
+                if _curve_08 is not None:
+                    _onset_witness_08 = _ows_08(onset_times, onset_strengths, _curve_08, sample_rate, _cs_08, _ce_08)
+                    logger.debug(
+                        "Verarbeitungsschritt_08 §SOTA-TP-V1: BEATs bestätigt %d/%d Onsets",
+                        _onset_witness_08.get("n_confirmed", 0),
+                        _onset_witness_08.get("n_onsets", 0),
+                    )
+            except Exception as _tp_exc_08:
+                logger.debug("Verarbeitungsschritt_08 §SOTA-TP-V1 nicht blockierend: %s", _tp_exc_08)
+
         if len(onset_times) == 0:
             audio = np.nan_to_num(audio, nan=0.0, posinf=0.0, neginf=0.0)
 
@@ -658,6 +678,7 @@ class TransientPreservationPhase(PhaseInterface):
             metadata={
                 "algorithm": "multiband_transient_shaper_v2",
                 "detection_method": "spectral_flux",
+                "onset_witness_beats": _onset_witness_08 or {},
                 "onset_times": onset_times.tolist() if len(onset_times) < 100 else [],
                 "attack_gain_db_per_band": params["attack_gain_db"],
                 "sustain_gain_db_per_band": params["sustain_gain_db"],

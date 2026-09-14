@@ -1,6 +1,6 @@
 # TASK_CHANGES — Live-Ledger der aktuellen Aufgabe
 
-> Generiert von `scripts/change_ledger.py snapshot` (Base: `HEAD`, Stand: 2026-09-14 04:55 CEST).
+> Generiert von `scripts/change_ledger.py snapshot` (Base: `HEAD`, Stand: 2026-09-14 05:40 CEST).
 > CI (`ci-lite.yml` pr-evidence-gate) erzwingt Abdeckung: jede geänderte Code-Datei muss hier stehen.
 
 ## Geänderte Dateien
@@ -8,11 +8,48 @@
 | Status | Pfad | Art |
 |---|---|---|
 | M | .github/FILE_REGISTRY.md | modifiziert |
+| M | backend/core/phases/phase_08_transient_preservation.py | modifiziert |
+| M | backend/core/phases/phase_36_transient_shaper.py | modifiziert |
+| M | backend/core/phases/phase_55_diffusion_inpainting.py | modifiziert |
 | M | docs/TODOS_SOTA_ROADMAP.md | modifiziert |
+| M | docs/guides/MUSHRA_STUDIENPROTOKOLL.md | modifiziert |
+| M | scripts/train_diffwave_vocal_inpaint.py | modifiziert |
+| M | tests/unit/test_phase_55_diffusion_inpainting.py | modifiziert |
+| ?? | backend/core/dsp/beats_onset_detector.py | ungetrackt |
+| ?? | backend/core/dsp/diffwave_model.py | ungetrackt |
+| ?? | backend/core/dsp/diffwave_torch_inpaint.py | ungetrackt |
 | ?? | docs/reports/current/2026-09-14_diffwave_vocal_finetune.json | ungetrackt |
-| ?? | scripts/train_diffwave_vocal_inpaint.py | ungetrackt |
+| ?? | scripts/train_gacela_vocal_inpaint.py | ungetrackt |
+| ?? | tests/unit/test_beats_onset_detector.py | ungetrackt |
+| ?? | tests/unit/test_diffwave_torch_inpaint.py | ungetrackt |
+| ?? | tests/unit/test_gacela_vocal_prep.py | ungetrackt |
 
 ## Entscheidungen
+
+- **S3/TP-V1/F2-Vorbereitung + Docs (2026-09-14, parallel zum F1-Training)**:
+  - **VOCAL-INPAINT-S3 VORBEREITET:** `backend/core/dsp/diffwave_torch_inpaint.py`
+    (Torch-Runtime: Finetune-Checkpoint bevorzugt, DDIM 50 Schritte, blake2b-Seed
+    aus Input+Gap — §G5 (GEBOTE.md)) + phase_55-Verdrahtung (`_try_diffwave_vocal`
+    in der Kaskade nach GaCELA, nur bei vocals_confidence ≥ 0,40 UND
+    diffwave_vocal_ready(); Entdrosselung in `_derive_safe_inpainting_strength`;
+    Metadaten `diffwave_vocal_fill_ready`/`diffwave_vocal_used`). Aktivierungsvertrag:
+    ohne F1-Checkpoint bleibt die Drosselung der Status quo. Geteiltes
+    Modell-Modul `diffwave_model.py` (philovivero-Port, strict 0/0). 14 Tests grün.
+  - **SOTA-TP-V1 V1-VERDRAHTET (Witness-Modus):** `beats_onset_detector.py` —
+    Kaldi-fbank → BEATs-iter3-Encoder (fbank→768-Tokens, CPU) → Token-Differenz als
+    Onset-Kurve; Konsens-Statistik in phase_08 (Superflux) und phase_36
+    (Vollband-Envelope) als Metadaten — ZEUGE, nicht Richter (Hörordnung §8a).
+    Befund: beats_plugin.py-Tagger-Pfad ist zum Encoder-ONNX inkompatibel
+    (Roh-Audio statt fbank → Rank-Mismatch → immer DSP-Fallback) — eigener Task.
+    6 Tests grün inkl. echtem Encoder-Smoke (2-s-CPU < 2 s).
+  - **F2-VORBEREITET:** `scripts/train_gacela_vocal_inpaint.py` — Upstream-
+    Trainingsspiegel (gacela_upstream, MIT) + MUSDB→22,05-kHz-WAV-Datenpfad
+    (--data-check, 2 Tests grün). Blocker: tifresi/ltfatpy (C-Build, kein Wheel).
+  - **Docs:** MUSHRA-Protokoll §10 (konkreter Studienplan, P1-4) +
+    P2-1-Refactor-Plan als existent verlinkt (docs/P2_1_MONOLITH_REFACTOR_PLAN.md).
+  - **F1-Tuning:** Micro-Benchmark zeigte A1-Loss ≈ 0,2 s/Batch (nicht der
+    Flaschenhals — die Conv-Kernels mit MIOpen-Fallback sind es); cudnn.benchmark
+    aktiviert + Neustart mit batch 32/windows 16 (~4-6 min/Epoch statt 24 min).
 
 - **SOTA-VOCAL-INPAINT-S2/F1: DiffWave-Vokal-Finetune-Infrastruktur (2026-09-14)**:
   `scripts/train_diffwave_vocal_inpaint.py` — philovivero/DiffWave-vocoder
@@ -38,7 +75,6 @@
   **Entscheidung: Plugin-Neuanlage verschoben** — FlanT5-Text-Conditioning fehlt
   lokal (nur CLAP-Audio nutzbar), die VOCAL-INPAINT-Baseline-Rolle ist durch S1
   obsolet, und der GPU-Finetune F1 hat Priorität. Roadmap-Korrektur eingepflegt.
-
 - **SOTA-DR-V1 RT60-Witness verdrahtet (2026-09-13)**: `estimate_rt60_sec` im
   DeepFilterNet-Plugin (DFN-Trocken-Zerlegung → Schröder-T30 → RT60 +
   Modell-Diskriminator exponentiell vs. stationär gegen die Denoiser-Rausch-Artefakte)

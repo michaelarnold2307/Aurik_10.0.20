@@ -381,6 +381,10 @@ def main() -> int:
     _ALPHA_BAR_DEV = torch.from_numpy(_ALPHA_BAR).float().to(device)
     torch.manual_seed(args.seed)
     np.random.seed(args.seed)
+    # Benchmark/Autotuning AUS: MIOpen-Tuning je Dilations-Shape machte den
+    # ersten Epoch ~2× langsamer (Befund 2026-09-14, batch 32) — die
+    # deterministische Standard-Wahl ist auf ROCm schneller und stabil
+    # (§G5 (GEBOTE.md): gleicher Input + Version ⇒ bit-identischer Output).
     torch.backends.cudnn.benchmark = False
 
     # A1-Hör-Loss (models/ear_vae_upstream — gitignored, Rezept-Komponente)

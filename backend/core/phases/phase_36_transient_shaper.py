@@ -325,12 +325,44 @@ class TransientShaper(PhaseInterface):
         except Exception as _hg36_exc:
             logger.debug("§2.46e Verarbeitungsschritt_36 HallucinationGuard (nicht blockierend): %s", _hg36_exc)
 
+        # §SOTA-TP-V1 (2026-09-14): BEATs-Onset-Witness — Konsens mit der eigenen
+        # Envelope-Detektion auf dem Vollband (ZEUGE, nicht Richter — Hörordnung §8a).
+        _onset_witness_36: dict[str, float | int] | None = None
+        _qm_36 = str(kwargs.get("quality_mode", "balanced")).lower()
+        if _qm_36 not in ("fast", "lightweight", "draft"):
+            try:
+                from backend.core.dsp.beats_onset_detector import beats_onset_curve as _boc_36
+                from backend.core.dsp.beats_onset_detector import onset_witness_stats as _ows_36
+
+                _mono36 = (
+                    audio.mean(axis=0)
+                    if (audio.ndim == 2 and audio.shape[0] == 2 and audio.shape[1] > 2)
+                    else (audio.mean(axis=1) if audio.ndim == 2 else audio)
+                )
+                _attack36 = max(8, int(0.005 * sample_rate))
+                _env36 = self._compute_envelope(_mono36.astype(np.float32), _attack36, int(0.100 * sample_rate))
+                _mask36 = self._detect_transients(_env36, _attack36)
+                _times36 = np.flatnonzero(_mask36).astype(np.float64) / sample_rate
+                _curve_36, _cs_36, _ce_36 = _boc_36(audio, sample_rate)
+                if _curve_36 is not None and _times36.size:
+                    _onset_witness_36 = _ows_36(
+                        _times36, np.ones(len(_times36), dtype=np.float32), _curve_36, sample_rate, _cs_36, _ce_36
+                    )
+                    logger.debug(
+                        "Verarbeitungsschritt_36 §SOTA-TP-V1: BEATs bestätigt %d/%d Transienten",
+                        _onset_witness_36.get("n_confirmed", 0),
+                        _onset_witness_36.get("n_onsets", 0),
+                    )
+            except Exception as _tp_exc_36:
+                logger.debug("Verarbeitungsschritt_36 §SOTA-TP-V1 nicht blockierend: %s", _tp_exc_36)
+
         return PhaseResult(
             success=True,
             audio=shaped_audio,
             execution_time_seconds=execution_time,
             metadata={
                 "material": material.name,
+                "onset_witness_beats": _onset_witness_36 or {},
                 "transient_boost_db": float(transient_boost_db),
                 "peak_before": float(np.percentile(np.abs(audio), 99.9)),  # V08: percentile not np.max
                 "peak_after": float(np.percentile(np.abs(shaped_audio), 99.9)),  # V08: percentile not np.max

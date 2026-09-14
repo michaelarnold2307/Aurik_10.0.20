@@ -643,6 +643,32 @@ def _try_gacela_plugin(channel: np.ndarray, start: int, end: int, sample_rate: i
         return None
 
 
+def _try_diffwave_vocal(channel: np.ndarray, start: int, end: int, sample_rate: int) -> np.ndarray | None:
+    """§SOTA-VOCAL-INPAINT-S3 (2026-09-14): Finetunter DiffWave-Torch-Pfad für Gesangslücken.
+
+    Aktiv nur bei vorhandenem F1-Checkpoint (diffwave_vocal_ready()) — solange
+    F1 nicht abgeschlossen ist, bleibt die bisherige Drosselung der Status quo.
+    Deterministisch (input-abgeleiteter Seed, §G5 (GEBOTE.md)); jeder Fehler ⇒
+    None (§V6 (copilot-instructions.md)-Fallback auf DSP/NMF).
+    """
+    try:
+        from backend.core.dsp.diffwave_torch_inpaint import diffwave_inpaint_gap, diffwave_vocal_ready
+
+        if not diffwave_vocal_ready():
+            return None
+        gap_len = end - start
+        if gap_len <= 0:
+            return None
+        _fill = diffwave_inpaint_gap(channel, start, end, sample_rate)
+        if _fill is None:
+            return None
+        _seg: np.ndarray = np.asarray(_fill[:gap_len], dtype=np.float32)
+        return _seg
+    except Exception as e:
+        logger.debug("DiffWave-Vokal nicht verfügbar (Verarbeitungsschritt_55): %s", e)
+        return None
+
+
 def _try_consistency_model_inpainting(channel: np.ndarray, start: int, end: int, sample_rate: int) -> np.ndarray | None:
     """Priority 0.8: Consistency Model inpainting (Song et al. 2023, ICML).
 
@@ -872,6 +898,7 @@ def _process_channel(
     restorability_score: float = 65.0,
     protected_zones: list[tuple[float, float, float]] | None = None,
     base_strength: float = 1.0,
+    vocals_confidence: float = 0.0,
 ) -> tuple[np.ndarray, dict]:
     """Inpainting für einen Mono-Kanal. Returns (repaired, stats)."""
     result = channel.copy()
@@ -1062,6 +1089,25 @@ def _process_channel(
                                 stats["plugin_used"] = True
                                 stats["gacela_used"] = stats.get("gacela_used", 0) + 1
 
+                        if plugin_result is None and vocals_confidence >= 0.40:
+                            # §SOTA-VOCAL-INPAINT-S3 (2026-09-14): Finetunter
+                            # DiffWave-Vokal-Pfad — ersetzt für Gesangs-Lücken die
+                            # bisherige Drosselung, sobald der F1-Checkpoint
+                            # existiert (diffwave_vocal_ready()). Deterministisch
+                            # (§G5 (GEBOTE.md)), §V6 (copilot-instructions.md)-
+                            # Fallback auf DSP/NMF bei Fehler/Fehlen.
+                            try:
+                                plugin_result = _try_diffwave_vocal(channel, start, end, sample_rate)
+                            except Exception:
+                                plugin_result = None
+                            if plugin_result is not None:
+                                logger.debug(
+                                    "Verarbeitungsschritt_55: DiffWave-Vokal Inpainting OK (gap=%.1f ms)", gap_ms
+                                )
+                                candidate = plugin_result[: end - start]
+                                stats["plugin_used"] = True
+                                stats["diffwave_vocal_used"] = stats.get("diffwave_vocal_used", 0) + 1
+
                         if plugin_result is None:
                             # Priorität 2+: DSP AR-Diffusion → NMF-β IS-Divergenz (§2.47 Fallback-Pflicht)
                             try:
@@ -1163,10 +1209,16 @@ class DiffusionInpaintingPhase(PhaseInterface):
         effective_strength: float,
         material_key: str,
         vocals_confidence: float,
+        vocal_fill_ready: bool = False,
     ) -> float:
-        """Reduce wet blend for content that is prone to synthetic overfill artifacts."""
+        """Reduce wet blend for content that is prone to synthetic overfill artifacts.
+
+        §SOTA-VOCAL-INPAINT-S3 (2026-09-14): Bei aktivem Finetune-Pfad
+        (vocal_fill_ready) entfällt die Gesangs-Drosselung — der Fill wird
+        deterministisch erzeugt und durchläuft die IN-V1/V2-Naht-Gates.
+        """
         strength = float(effective_strength)
-        if vocals_confidence >= 0.40:
+        if vocals_confidence >= 0.40 and not vocal_fill_ready:
             strength *= 0.78
         _is_analog_sensitive = any(
             token in material_key for token in ("vinyl", "shellac", "wax_cylinder", "wire_recording", "lacquer_disc")
@@ -1174,7 +1226,7 @@ class DiffusionInpaintingPhase(PhaseInterface):
         if _is_analog_sensitive:
             strength *= 0.85
         # Prevent tonal-center drift spikes from aggressive diffuse fill on vocal analog material.
-        if _is_analog_sensitive and vocals_confidence >= 0.40:
+        if _is_analog_sensitive and vocals_confidence >= 0.40 and not vocal_fill_ready:
             strength = min(strength, 0.58)
         return float(np.clip(strength, 0.0, 1.0))
 
@@ -1405,7 +1457,19 @@ class DiffusionInpaintingPhase(PhaseInterface):
         _vocals_conf = float(kwargs.get("panns_vocals_confidence", 0.0))
         if _vocals_conf == 0.0:  # Fallback: direct callers may use panns_singing key
             _vocals_conf = float(kwargs.get("panns_singing", 0.0))
-        safe_strength = self._derive_safe_inpainting_strength(effective_strength, _mat_key, _vocals_conf)
+        # §SOTA-VOCAL-INPAINT-S3 (2026-09-14): DiffWave-Finetune-Pfad aktiv, sobald
+        # der F1-Checkpoint existiert — entdrosselt die Gesangs-Lückenfüllung.
+        _vocal_fill_ready = False
+        if _vocals_conf >= 0.40:
+            try:
+                from backend.core.dsp.diffwave_torch_inpaint import diffwave_vocal_ready as _dw_ready_55
+
+                _vocal_fill_ready = bool(_dw_ready_55())
+            except Exception:
+                _vocal_fill_ready = False
+        safe_strength = self._derive_safe_inpainting_strength(
+            effective_strength, _mat_key, _vocals_conf, vocal_fill_ready=_vocal_fill_ready
+        )
 
         # §V41 ForwardMaskingGuard — Enhancement-Stärke in post-transienten Masking-Zonen erhöhen
         if _vocals_conf >= 0.25 and effective_strength > 0.0:
@@ -1556,6 +1620,7 @@ class DiffusionInpaintingPhase(PhaseInterface):
                     restorability_score=_restorability_score,
                     protected_zones=_p55_pz,
                     base_strength=safe_strength,
+                    vocals_confidence=_vocals_conf,
                 )
             except Exception as _ch55_exc:
                 logger.warning(
@@ -1622,6 +1687,7 @@ class DiffusionInpaintingPhase(PhaseInterface):
                         restorability_score=_restorability_score,
                         protected_zones=_p55_pz,
                         base_strength=safe_strength,
+                        vocals_confidence=_vocals_conf,
                     )
                 except Exception as _ch55_exc:
                     logger.warning(
@@ -1841,6 +1907,7 @@ class DiffusionInpaintingPhase(PhaseInterface):
                 "safe_strength": safe_strength,
                 "per_gap_local_strength_oracle": True,
                 "panns_vocals_confidence": _vocals_conf,
+                "diffwave_vocal_fill_ready": bool(_vocal_fill_ready),
                 "bw_cap_hz": _bw_cap_hz,
                 "rms_drop_db": 0.0,
                 "loudness_makeup_db": 0.0,

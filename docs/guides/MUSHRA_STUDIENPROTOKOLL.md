@@ -91,3 +91,37 @@ Ein Release-Kandidat gilt als extern validiert, wenn alle Punkte erfuellt sind:
 
 - Ohne externen Studienreport: keine Schwellwertverschaerfung oder -lockerung in `.github/specs/01` und `.github/specs/07`
 - Jede Aenderung muss auf einen Studienreport verweisen (Dateipfad + Datum + Commit)
+
+## 10. Vorbereitung 2026-09 — konkreter Studienplan (P1-4)
+
+> Ergänzung vom 2026-09-14; ersetzt nicht §2–§9, sondern konkretisiert den Einstieg.
+
+**Stimuli-Set (Pilot, 6 Szenarien × 30 s, Seed 42):**
+
+1. Vinyl worn (rock_1970s_worn) — Restoration
+2. Cassette Wow (cassette_1980s_wow) — Restoration
+3. MP3 64 kbps (mp3_64kbps_artifacts) — Restoration
+4. CD clipped (cd_clipped_2000s) — Restoration
+5. Reel dropout (reel_1940s_dropout) — Restoration
+6. Studio2026-Szenario (e2e_jazz_studio2026) — studio2026
+
+Quellen: `test_audio/` (Inputs) + `output/supervised_run/` (Aurik-Ausgaben,
+2026-09-Batch, Exit 0). Bedingungen je Szenario: Hidden Reference, Low Anchor
+(3,5-kHz-Tiefpass, −6 LUFS), Aurik-Ausgabe, interne Vorversion, externer
+Wettbewerber (erst nach Lizenzklärung, sonst 4 Bedingungen).
+
+**Ablauf:**
+
+- Lautheitsabgleich BS.1770-5 (existiert im Export-Pfad) + 500-ms-Crossfades.
+- Training-Block (2 Szenarien) vor dem Testblock; Reihenfolge Latin-Square.
+- Pilot n=12 (intern) → Hauptstudie n≥30; Ausschlusskriterien nach §3.
+
+**Tooling (lokal vorhanden):**
+
+- `tests/test_blindtest_metrics.py` — Auswertemetriken (MUSHRA-konforme
+  Differenz-/CI-Statistik) bereits im Repo und per Hook verdrahtet.
+- Fehlend: Stimuli-Builder (Cut/Normalisierung/LUFS) + Web-MUSHRA-Deployment —
+  als eigene Teilschritte vor dem Pilot.
+
+**Meilensteine:** Stimuli-Builder → Pilot (n=12) → Auswertung + ggf.
+Design-Fixes → Hauptstudie (n≥30) → Studienreport nach §8.

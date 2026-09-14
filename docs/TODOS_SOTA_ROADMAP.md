@@ -135,6 +135,10 @@
   `v10.900 §9.3` (CPU-Referenz).
 - **Akzeptanz:** Studienbericht + statistische Auswertung im Repo; GPU-A/B-Bit-Identität oder dokumentierte
   tolerierte Abweichung.
+- **Vorbereitung 2026-09-14:** Konkreter Studienplan erstellt —
+  docs/guides/MUSHRA_STUDIENPROTOKOLL.md §10 (6 Pilot-Szenarien aus
+  test_audio/output, Bedingungen, n=12-Pilot → n≥30, Latin-Square,
+  Tooling-Hinweise; Auswertemetriken tests/test_blindtest_metrics.py vorhanden).
 
 ## TODO-P1-5 · §v10.709 authentizitaet-Erhalt nach phase_12_wow_flutter_fix
 
@@ -297,6 +301,9 @@
   Drift-Baseline nachgezogen. Negativtest: BOM-Datei und BOM-lose UTF-16LE-Datei → EXIT 1.
 - **Offen (Folge-Session):** Refactor-Plan für das 45.309-Zeilen-God-Object
   `unified_restorer_v3.py` (Budget-, Gate-, Recovery-, Chunk-Logik getrennt) als Doc skizzieren.
+- **ERLEDIGT (2026-09-14):** Der Refactor-Plan existiert bereits als
+  `docs/P2_1_MONOLITH_REFACTOR_PLAN.md` (2026-09-09, Fassaden-Split in
+  5 Phasen) — dieser Eintrag dient nur noch als Nachweis-Link.
 - **Akzeptanz (erfüllt):** `file` meldet UTF-8 für alle .py; Guard verhindert Regressionen.
 
 ---
@@ -399,6 +406,18 @@
    Embeddings) für phase_04/16/17 — DSP führt aus, nie Wellenform-Generierung.
 9. **SOTA-TP-V1+V2** · Neurale Onset-Detektion (BEATs) als Konsens mit Spectral Flux +
    neurale Phasen-Schätzung für Transienten-Frames (phase_08/36).
+   Status 2026-09-14: **TP-V1 V1-VERDRAHTET (Witness-Modus)** —
+   `backend/core/dsp/beats_onset_detector.py`: Kaldi-fbank (25/10 ms, 128 Bins)
+   → BEATs-iter3-Encoder-ONNX (fbank→768-Tokens, CPU) → zeitliche
+   Token-Differenz als Onset-Kurve; Konsens-Statistik in phase_08 (Superflux)
+   und phase_36 (Vollband-Envelope) als Metadaten (`onset_witness_beats`) —
+   ZEUGE, nicht Richter (Hörordnung §8a); adaptive-Schwelle-Stufe als
+   Folge-Schritt. 6 Tests grün inkl. echtem Encoder-Smoke.
+   **Befund dabei:** plugins/beats_plugin.py füttert den ENCODER-ONNX mit
+   Roh-Audio statt fbank (Rank-Mismatch) und interpretiert Token-Output als
+   527-Scores — der Tagger-Pfad läuft nie (stiller DSP-Fallback). Fix ist ein
+   eigener Task (Tagger-Head-ONNX oder Head auf Tokens). TP-V2 bleibt offen
+   (Modell + Quelle fehlen).
 10. **SOTA-HR-V1** · BigVGAN-Repair-Pfad mit additive_synthesis_gate in
     phase_07_harmonic_restoration.
 11. **SOTA-CR-V1** · ✅ ERLEDIGT (36b452b4, 2026-09-13) — BANQUET-Klick-Detektion als
@@ -481,6 +500,15 @@
       Never-worsen vs. Zero-Shot je Lücke.
     - VOCAL-INPAINT-S3: IN-V1/V2-Naht-Gates + Verdrahtung in phase_55 (ersetzt
       die Drosselung bei vocal_confidence ≥ 0,40).
+      **Status 2026-09-14: VORBEREITET** — `backend/core/dsp/diffwave_torch_inpaint.py`
+      (Torch-Runtime: Finetune-Checkpoint, DDIM 50 Schritte, input-abgeleiteter
+      Seed §G5 (GEBOTE.md)) + phase_55-Verdrahtung (`_try_diffwave_vocal` in der
+      Kaskade nach GaCELA, Entdrosselung in `_derive_safe_inpainting_strength`,
+      Metadaten `diffwave_vocal_fill_ready`/`diffwave_vocal_used`).
+      **Aktivierungsvertrag:** erst bei vorhandenem F1-Checkpoint
+      (diffwave_vocal_ready()) — bis dahin bleibt die Drosselung der Status quo.
+      Naht-Gates IN-V1/V2 laufen generisch nach der Kaskade (bestehend).
+      14 Tests grün (Modul + Wiring).
     - VOCAL-INPAINT-S4: Verifikation — ΔSDR ≥ 0 je Segment, VQI/Sänger-Identität
       per Resemblyzer-Witness unverändert, Determinismus.
 18. **SOTA-BSR-GPU** · BSRoFormer/MelBandRoFormer auf ROCm-GPU freigeben (Stem-Trennung
@@ -684,6 +712,12 @@ sauberen Referenzen (Muster ML-V3-Negativbefund).
 |---|---|---|---|---|---|
 | F1 | DiffWave-Vokal (HAUPTWEG) | DiffWave-Checkpoint lokal | Langlücken-Reparatur ΔSDR ≥ 0 (S1: −1,7 dB) | MUSDB-Vocals | P1-Metrik |
 | F2 | GaCELA-Vokal (Pfad B) | Trainingscode lokal | 375–1500 ms, Sänger-Identität via Resemblyzer-Witness (jetzt ONNX live) | MUSDB-Vocals | P1-Metrik |
+
+**F2-Vorbereitung 2026-09-14:** `scripts/train_gacela_vocal_inpaint.py`
+(Upstream-Trainingsspiegel + MUSDB→22,05-kHz-WAV-Datenpfad, --data-check
+2 Tests grün). **Blocker:** tifresi/ltfatpy (C-Build, kein Binary-Wheel) für
+ den Upstream-GaussTruncTF-STFT — Pfade: ltfatpy mit Toolchain bauen ODER
+ den STFT portieren (Roadmap-KERN-Hinweis); danach F2-Smoke auf der GPU.
 | F3 | BigVGAN-v2 Musik+Vokal | bigvgan_v2.pth lokal | Spektral-Repair ML-V2/HR-V1 | MUSDB-HQ | ΔSDR ≥ +2 dB |
 | F4 | FlashSR-Musik | Checkpoint lokal | Hochband-Rekonstruktion (aus ML-V1-VORAB: Kandidatenwahl) | MUSDB-HQ | ΔSDR ≥ +2 dB |
 | F5 | DDSP-Prädiktor (C4) | CLAP/BEATs-Encoder lokal | EQ/Dynamik-Prädiktion | MUSDB-HQ + Effekt-Paare | MOS-Witness (MuQ) |
