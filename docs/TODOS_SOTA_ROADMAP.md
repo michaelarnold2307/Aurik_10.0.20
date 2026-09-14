@@ -743,6 +743,18 @@ Upstream-TrainDataset liefert damit end-to-end korrekte Spektrogramme
 (Data-Check grün, 6 Shim-Tests). Kein Vendoring (tifresi-Lizenzlage
 MIT/GPLv3 unklar); die Inversion (PGHI) wird vom Training nicht benötigt.
 Nächster Schritt: F2-Smoke auf der GPU nach F1.
+
+**F2-LAUF 2026-09-14: ABGESCHLOSSEN** (EXIT=0, 10 Epochs, 100 Tracks, ~2,5 h,
+batch 64, Checkpoints `output/gacela_f2/gacela_vocal_ft_checkpoints/`; zusätzliche
+Loop-Fixes: num_workers=0 [Fork-Deadlock], librosa-mel-API, CUDA-dtype im Shim,
+essentia-Summaries aus, Epoch-Länge 10 Items/Datei, Save-Intervall 1000).
+**Validierung** (`scripts/validate_gacela_vocal_inpaint.py`, 3 Test-Tracks × 3 native
+743-ms-Lücken, Seed 42, Report `docs/reports/current/2026-09-14_gacela_vocal_val.json`):
+**mean SDR −0,37 dB — Gate ≥ 0 dB KNAPP VERFEHLT** (nach 10 Epochs from-scratch
+bereits nahe an der Never-worsen-Linie; Einzelwerte +0,19 … −2,74 dB).
+Witness: 0,74-s-Segmente sind für den Resemblyzer-VAD zu kurz (cos=None, best-effort).
+**Nächster Schritt:** F2-Verlängerung auf 30–50 Epochs (der Lauf war der erste
+from-scratch-Wurf; das Gate wird bei weiterem Training erwartbar gekreuzt).
 | F3 | BigVGAN-v2 Musik+Vokal | bigvgan_v2.pth lokal | Spektral-Repair ML-V2/HR-V1 | MUSDB-HQ | ΔSDR ≥ +2 dB |
 | F4 | FlashSR-Musik | Checkpoint lokal | Hochband-Rekonstruktion (aus ML-V1-VORAB: Kandidatenwahl) | MUSDB-HQ | ΔSDR ≥ +2 dB |
 | F5 | DDSP-Prädiktor (C4) | CLAP/BEATs-Encoder lokal | EQ/Dynamik-Prädiktion | MUSDB-HQ + Effekt-Paare | MOS-Witness (MuQ) |

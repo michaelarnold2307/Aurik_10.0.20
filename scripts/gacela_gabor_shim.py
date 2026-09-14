@@ -99,6 +99,10 @@ class GaussTruncTFShim:
         im Spektrogramm-Raum.
         """
         mag = np.asarray(magnitude_spectrogram, dtype=np.float64)
+        if mag.shape[0] == self.stft_channels // 2:
+            # Nyquist-Reihe auffüllen (Upstream-Konvention: „last freq column
+            # with zeros“) — _analyze liefert stets 513 Bins zurück.
+            mag = np.concatenate([mag, np.zeros((1, mag.shape[1]), dtype=np.float64)], axis=0)
         mag = mag[: self.stft_channels // 2 + 1]
         n_frames = mag.shape[1]
         g_m = self._g[: self.stft_channels]

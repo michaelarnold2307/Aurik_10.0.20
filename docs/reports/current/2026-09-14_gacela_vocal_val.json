@@ -1,0 +1,65 @@
+{
+  "date": "2026-09-14",
+  "script": "scripts/validate_gacela_vocal_inpaint.py",
+  "ckpt": "output/gacela_f2/gacela_vocal_ft_checkpoints/09_0499.pt",
+  "n_gaps": 9,
+  "mean_sdr_db": -0.37,
+  "min_sdr_db": -2.73,
+  "gate_mean_sdr_ge_0": false,
+  "results": [
+    {
+      "track": "BKS - Bulldozer",
+      "gap": 0,
+      "sdr_db": -1.06,
+      "witness_cos": null
+    },
+    {
+      "track": "BKS - Bulldozer",
+      "gap": 1,
+      "sdr_db": 0.08,
+      "witness_cos": null
+    },
+    {
+      "track": "BKS - Bulldozer",
+      "gap": 2,
+      "sdr_db": 0.94,
+      "witness_cos": null
+    },
+    {
+      "track": "Secretariat - Borderline",
+      "gap": 0,
+      "sdr_db": 0.62,
+      "witness_cos": null
+    },
+    {
+      "track": "Secretariat - Borderline",
+      "gap": 1,
+      "sdr_db": -1.54,
+      "witness_cos": null
+    },
+    {
+      "track": "Secretariat - Borderline",
+      "gap": 2,
+      "sdr_db": 0.13,
+      "witness_cos": null
+    },
+    {
+      "track": "Speak Softly - Broken Man",
+      "gap": 0,
+      "sdr_db": 0.19,
+      "witness_cos": null
+    },
+    {
+      "track": "Speak Softly - Broken Man",
+      "gap": 1,
+      "sdr_db": -2.73,
+      "witness_cos": null
+    },
+    {
+      "track": "Speak Softly - Broken Man",
+      "gap": 2,
+      "sdr_db": 0.07,
+      "witness_cos": null
+    }
+  ]
+}
