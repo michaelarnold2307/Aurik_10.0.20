@@ -891,6 +891,16 @@ class ClickRemovalPhase(PhaseInterface):
         _skipped_subaudible_01 = 0
         mono_ref = audio  # Mono-Referenz für Kontext-RMS
 
+        # §SOTA-PSY-A5 (2026-09-14): Forward-Masking-Zonen einmal pro Kanal —
+        # post-transiente Nachmaskierungs-Fenster, in denen das Ohr weniger hört.
+        _fmz_01: list[object] = []
+        try:
+            from backend.core.dsp.temporal_masking import get_forward_masking_guard as _fmg_01
+
+            _fmz_01 = list(_fmg_01().compute_zones(mono_ref, sample_rate))
+        except Exception as _psy_exc_01a:
+            logger.debug("Verarbeitungsschritt_01 §SOTA-PSY-A5 nicht blockierend: %s", _psy_exc_01a)
+
         for click in severe_clicks:
             if not self._channel_click_requires_repair(repaired, click, thresholds):
                 continue
@@ -919,6 +929,12 @@ class ClickRemovalPhase(PhaseInterface):
                     continue
             except Exception as _psy_exc_01:
                 logger.debug("Verarbeitungsschritt_01 §SOTA-PSY-A1 nicht blockierend: %s", _psy_exc_01)
+            # §SOTA-PSY-A5 (2026-09-14): Reparatur in Forward-Masking-Zonen
+            # dämpfen — das Ohr hört dort kaum, Artefakt-Risiko sinkt.
+            for _z_01 in _fmz_01:
+                if getattr(_z_01, "start_sample", 0) <= start_idx < getattr(_z_01, "end_sample", 0):
+                    local_s = float(local_s * 0.6)
+                    break
             if use_ml and self._repair_click_patch_ml(repaired, sample_rate, click, panns_singing=panns_singing):
                 ml_repaired += 1
                 if local_s < 1.0:
