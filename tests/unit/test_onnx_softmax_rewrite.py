@@ -6,10 +6,14 @@ gleichwertig, aber ohne den defekten ROCm-Softmax-Kernel.
 
 from __future__ import annotations
 
+import pytest
+
+pytest.importorskip("onnx")  # CI-Minimal-Umgebung (cross-platform)
+pytest.importorskip("onnxruntime")  # CI-Minimal-Umgebung (cross-platform)
+
 import numpy as np
 import onnx
 import onnxruntime as ort
-import pytest
 from onnx import TensorProto, helper
 
 from backend.core.dsp.onnx_softmax_rewrite import rewrite_softmax_to_primitives

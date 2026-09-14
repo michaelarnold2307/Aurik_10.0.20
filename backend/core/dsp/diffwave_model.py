@@ -19,6 +19,7 @@ Determinismus (§G5 (GEBOTE.md)): reine Module ohne Zufallsquellen.
 from __future__ import annotations
 
 import math
+from typing import Any
 
 import numpy as np
 import torch
@@ -45,28 +46,28 @@ _ALPHA_BAR = np.cumprod(_ALPHAS)
 
 
 class Conv1d(nn.Module):
-    def __init__(self, *args, **kwargs) -> None:  # type: ignore[no-untyped-def]
+    def __init__(self, in_channels: int, out_channels: int, kernel_size: int, **kwargs: Any) -> None:
         super().__init__()
-        self.conv = nn.Conv1d(*args, **kwargs)
+        self.conv = nn.Conv1d(in_channels, out_channels, kernel_size, **kwargs)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
-        return self.conv(x)
+        return self.conv(x)  # type: ignore[no-any-return]  # nn.Module.__call__ ist in den torch-Stubs Any
 
 
 class Linear(nn.Module):
-    def __init__(self, *args, **kwargs) -> None:  # type: ignore[no-untyped-def]
+    def __init__(self, in_features: int, out_features: int, **kwargs: Any) -> None:
         super().__init__()
-        self.w = nn.Linear(*args, **kwargs)
+        self.w = nn.Linear(in_features, out_features, **kwargs)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
-        return self.w(x)
+        return self.w(x)  # type: ignore[no-any-return]  # nn.Module.__call__ ist in den torch-Stubs Any
 
 
 class SpectrogramUpsampler(nn.Module):
     def __init__(self) -> None:
         super().__init__()
-        self.conv1 = nn.ConvTranspose2d(1, 1, [3, 32], stride=[1, 16], padding=[1, 16])
-        self.conv2 = nn.ConvTranspose2d(1, 1, [3, 32], stride=[1, 16], padding=[1, 16])
+        self.conv1 = nn.ConvTranspose2d(1, 1, (3, 32), stride=(1, 16), padding=(1, 16))
+        self.conv2 = nn.ConvTranspose2d(1, 1, (3, 32), stride=(1, 16), padding=(1, 16))
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         x = torch.unsqueeze(x, 1)  # [B,1,80,T]
@@ -141,7 +142,7 @@ class DiffWave(nn.Module):
         x = self.skip_projection(skip) / math.sqrt(len(self.residual_layers))
         x = F.relu(x)
         x = self.output_projection(x)
-        return x.squeeze(1)
+        return x.squeeze(1)  # type: ignore[no-any-return]  # nn.Module.__call__ ist in den torch-Stubs Any
 
 
 def mel_matrix(n_bins: int, sr: int) -> np.ndarray:

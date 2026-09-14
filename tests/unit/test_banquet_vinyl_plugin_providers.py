@@ -9,6 +9,10 @@ CPU; zusätzlich Warnung bei stillem CPU-Fallback (§V6 (copilot-instructions.md
 
 from __future__ import annotations
 
+import pytest
+
+pytest.importorskip("onnxruntime")  # CI-Minimal-Umgebung (cross-platform)
+
 import onnxruntime as _real_ort
 
 

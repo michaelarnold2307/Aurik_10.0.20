@@ -156,7 +156,7 @@ class MixedOp(nn.Module):
         weights = F.softmax(self.alpha, dim=0)
 
         # Weighted sum of operations
-        op_outputs = [w * cast(nn.Module, op)(x) for w, op in zip(weights, self.operations.values())]
+        op_outputs = [w * op(x) for w, op in zip(weights, self.operations.values())]
         output = torch.stack(op_outputs, dim=0).sum(dim=0)
 
         return output

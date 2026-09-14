@@ -510,7 +510,7 @@ class PsychoacousticMaskingLoss(nn.Module):
         # 27 dB/Bark spreading slope
         spread_db = -27.0 * dz
         spread_linear = 10.0 ** (spread_db / 10.0)
-        return cast(torch.Tensor, spread_linear)
+        return spread_linear
 
     def forward(self, output: torch.Tensor, target: torch.Tensor) -> tuple[torch.Tensor, dict[str, float]]:
         """

@@ -99,4 +99,5 @@ def _moving_average(x: np.ndarray, window: int) -> np.ndarray:
     # ~0 ziehen und die Trajektorie an den Enden massiv verzerren.
     pad = window // 2
     xp = np.concatenate([np.full(pad, x[0], dtype=np.float64), x, np.full(pad, x[-1], dtype=np.float64)])
-    return cast(np.ndarray, np.convolve(xp, k, mode="valid"))
+    convolved: np.ndarray = np.convolve(xp, k, mode="valid")
+    return convolved
