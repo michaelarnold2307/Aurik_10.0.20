@@ -1,17 +1,13 @@
 # TASK_CHANGES — Live-Ledger der aktuellen Aufgabe
 
-> Generiert von `scripts/change_ledger.py snapshot` (Base: `HEAD`, Stand: 2026-09-14 10:02 CEST).
+> Generiert von `scripts/change_ledger.py snapshot` (Base: `HEAD`, Stand: 2026-09-14 10:24 CEST).
 > CI (`ci-lite.yml` pr-evidence-gate) erzwingt Abdeckung: jede geänderte Code-Datei muss hier stehen.
 
 ## Geänderte Dateien
 
 | Status | Pfad | Art |
 |---|---|---|
-| M | docs/TODOS_SOTA_ROADMAP.md | modifiziert |
-| M | scripts/gacela_gabor_shim.py | modifiziert |
-| M | scripts/train_diffwave_vocal_inpaint.py | modifiziert |
 | M | scripts/train_gacela_vocal_inpaint.py | modifiziert |
-| M | tests/unit/test_gacela_gabor_shim.py | modifiziert |
 
 ## Entscheidungen
 

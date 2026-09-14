@@ -189,12 +189,15 @@ def _train(args: argparse.Namespace) -> int:
         "optimizer": params_optimization,
         "split": signal_split,
         "log_interval": 100,
-        "tensorboard_interval": 500,
+        # Tensorboard-Summaries praktisch aus: die Griffin-Lim-Inversion im
+        # Upstream-Summarizer ist mit dem NumPy-Shim zu langsam (Diagnostik,
+        # kein Trainingsbestandteil) — Befund 2026-09-14, F2-Smoke.
+        "tensorboard_interval": 10**9,
         "spectrogram_shape": params["net"]["shape"],
         "gamma_gp": params["net"]["gamma_gp"],
         "save_path": args.save_path,
         "experiment_name": args.experiment_name,
-        "save_interval": 10000,
+        "save_interval": 1000,  # F2: ~1 Epoch bei 100 Tracks × 10 Items
         "fft_length": 1024,
         "fft_hop_size": 256,
         "sampling_rate": _SR,
