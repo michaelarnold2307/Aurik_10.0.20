@@ -711,6 +711,21 @@ class TestApolloPlugin:
 
     test_02_repair_finite = pytest.mark.timeout(90)(test_02_repair_finite)
 
+    def test_02b_dsp_fallback_terminates(self):
+        """Regression (2026-09-14): _repair_dsp_fallback lief endlos — der letzte
+        Chunk pinnte chunk_pos auf n - overlap_samples und wiederholte ihn ewig
+        (60-s-Timeout im Windows-CI ohne ONNX-Modell). Der Fallback muss für
+        kurze UND lange Signale terminieren und finit bleiben."""
+        from plugins.apollo_plugin import ApolloPlugin
+
+        ap = object.__new__(ApolloPlugin)
+        rng = np.random.RandomState(0)
+        for n in (4_800, 500_000):
+            audio = (rng.randn(n) * 0.1).astype(np.float32)
+            out = ap._repair_dsp_fallback(audio, SR, "mp3_low")
+            assert out.shape == audio.shape, out.shape
+            _assert_finite(out, "ApolloPlugin._repair_dsp_fallback")
+
     def test_03_budget_zero_after_cleanup(self):
         _reset_budget()
         from plugins.apollo_plugin import get_apollo

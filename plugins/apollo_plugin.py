@@ -703,6 +703,12 @@ class ApolloPlugin:
                 norm_w[result_start:result_end] += window[: result_end - result_start]
 
             chunk_pos = chunk_end - overlap_samples  # Overlap for smooth transitions
+            if chunk_end >= n:
+                # Letzter Chunk verarbeitet — ohne break würde chunk_pos bei
+                # n - overlap_samples fixiert und der letzte Chunk endlos
+                # re-verarbeitet (Befund 2026-09-14: 60-s-Timeout im Windows-CI,
+                # Apollo-DSP-Fallback ohne ONNX-Modell).
+                break
 
         # Normalize by window
         norm_w = np.where(norm_w > 1e-10, norm_w, 1.0)
