@@ -434,6 +434,7 @@ class DeEsserPhase(PhaseInterface):
         defect_locations: dict[str, list[tuple[float, float]]] | None,
         event_metadata: dict[str, dict] | None = None,
         protected_zones: list[tuple[float, float, float]] | None = None,
+        audio: np.ndarray | None = None,
     ) -> tuple[np.ndarray, float]:
         if n_samples <= 0:
             return np.zeros(0, dtype=np.float32), 0.0
@@ -456,6 +457,23 @@ class DeEsserPhase(PhaseInterface):
                 s = max(0, int(max(0.0, start_s) * sample_rate) - pad)
                 e = min(n_samples, int(max(0.0, end_s) * sample_rate) + pad)
                 if e > s:
+                    # §SOTA-PSY-A1 (2026-09-14): subaudible Sibilanten (unter der
+                    # Maskierungsschwelle) bleiben ungezähmt — §4-Vertrag.
+                    # Band 4–12 kHz: Sibilanten-Zischlaute liegen typischerweise hier.
+                    if audio is not None:
+                        try:
+                            from backend.core.dsp.audibility_gate import defect_audibility as _aud_19
+
+                            _aud_res_19 = _aud_19(audio, sample_rate, s, e, lo_hz=4000.0, hi_hz=12000.0)
+                            if bool(_aud_res_19.get("skippable", False)):
+                                logger.debug(
+                                    "Verarbeitungsschritt_19 §SOTA-PSY-A1: Sibilant [%d:%d] unter der Maskierungsschwelle — übersprungen.",
+                                    s,
+                                    e,
+                                )
+                                continue
+                        except Exception as _psy_exc_19:
+                            logger.debug("Verarbeitungsschritt_19 §SOTA-PSY-A1 nicht blockierend: %s", _psy_exc_19)
                     strength = DeEsserPhase._local_sibilance_event_strength(norm_key, loc, event_metadata)
                     mask[s:e] = np.maximum(mask[s:e], strength)
         if not np.any(mask):
@@ -1886,6 +1904,7 @@ class DeEsserPhase(PhaseInterface):
             defect_locations=kwargs.get("defect_locations"),
             event_metadata=kwargs.get("defect_event_metadata"),
             protected_zones=self._collect_protected_zones(kwargs),
+            audio=audio,
         )
         if _sib_locality19.size > 0:
             if deessed_audio.ndim == 2:

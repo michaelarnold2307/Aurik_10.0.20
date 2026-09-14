@@ -353,6 +353,7 @@ class SpectralRepairPhase(PhaseInterface):
         defect_locations: dict[str, list[tuple[float, float]]] | None,
         event_metadata: dict[str, dict] | None = None,
         protected_zones: list[tuple[float, float, float]] | None = None,
+        audio: np.ndarray | None = None,
     ) -> tuple[np.ndarray, float]:
         if n_samples <= 0 or sample_rate <= 0:
             return np.zeros(0, dtype=np.float32), 0.0
@@ -400,6 +401,23 @@ class SpectralRepairPhase(PhaseInterface):
                 start = max(0, start - pad)
                 end = min(n_samples, end + pad)
                 if end > start:
+                    # §SOTA-PSY-A1 (2026-09-14): subaudible Spektral-Defekte (unter der
+                    # Maskierungsschwelle) bleiben unrepartiert — §4-Vertrag.
+                    # Default-Band 800 Hz–10 kHz deckt Pre-Echo/Aliasing/Lücken ab.
+                    if audio is not None:
+                        try:
+                            from backend.core.dsp.audibility_gate import defect_audibility as _aud_50
+
+                            _aud_res_50 = _aud_50(audio, sample_rate, start, end, lo_hz=800.0, hi_hz=10000.0)
+                            if bool(_aud_res_50.get("skippable", False)):
+                                logger.debug(
+                                    "Verarbeitungsschritt_50 §SOTA-PSY-A1: Defekt [%d:%d] unter der Maskierungsschwelle — übersprungen.",
+                                    start,
+                                    end,
+                                )
+                                continue
+                        except Exception as _psy_exc_50:
+                            logger.debug("Verarbeitungsschritt_50 §SOTA-PSY-A1 nicht blockierend: %s", _psy_exc_50)
                     strength = SpectralRepairPhase._local_event_strength(key, loc, event_metadata)
                     mask[start:end] = np.maximum(mask[start:end], strength)
 
@@ -659,6 +677,7 @@ class SpectralRepairPhase(PhaseInterface):
             kwargs.get("defect_locations"),
             kwargs.get("defect_event_metadata"),
             self._collect_protected_zones(kwargs),
+            audio=audio,
         )
         if _local_coverage50 > 0.0:
             _local_wet50 = _local_profile50[:, np.newaxis] if repaired_audio.ndim == 2 else _local_profile50

@@ -423,6 +423,30 @@ class StemTargetedNRPhase(PhaseInterface):
             )
             audio_combined = np.clip(audio_combined, -1.0, 1.0)
 
+        # §SOTA-PSY-A1 (2026-09-14): subaudible Stem-NR-Änderung (Delta unter der
+        # Maskierungsschwelle) bleibt unangetastet — §4-Vertrag.
+        # Phase 66 hat keine defect_locations, sondern arbeitet global über die
+        # Stem-Rekombination. Deshalb wird die Gesamt-Entscheidung gegated: Das
+        # Delta (audio - audio_combined) wird über das ganze Signal auf Hörbarkeit
+        # geprüft; bei skippable wird das Dry-Signal zurückgegeben (fail-open,
+        # §V6 (copilot-instructions.md)). Band 80 Hz–16 kHz deckt Stimm- und
+        # Begleitungs-Instrumentalspektrum ab.
+        try:
+            from backend.core.dsp.audibility_gate import defect_audibility as _aud_66
+
+            _p66_delta = (audio[: audio_combined.shape[0]] - audio_combined).astype(np.float32)
+            _p66_delta_mono = self._to_mono_mix(_p66_delta) if _p66_delta.ndim == 2 else _p66_delta
+            _aud_res_66 = _aud_66(
+                _p66_delta_mono.astype(np.float32), sample_rate, 0, len(_p66_delta_mono), lo_hz=80.0, hi_hz=16000.0
+            )
+            if bool(_aud_res_66.get("skippable", False)):
+                logger.debug(
+                    "Verarbeitungsschritt_66 §SOTA-PSY-A1: Stem-NR-Delta unter der Maskierungsschwelle — Dry-Signal zurückgegeben."
+                )
+                return _passthrough("PSY-A1: subaudible Stem-NR-Delta (Dry zurückgegeben)")
+        except Exception as _psy_exc_66:
+            logger.debug("Verarbeitungsschritt_66 §SOTA-PSY-A1 nicht blockierend: %s", _psy_exc_66)
+
         # --- §2.46e HallucinationGuard (Studio 2026: additive Operation) ---
         if "studio" in quality_mode or "2026" in quality_mode:
             try:

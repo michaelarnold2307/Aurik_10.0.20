@@ -534,6 +534,37 @@ class VocalNaturalnessRestorationPhase(PhaseInterface):
         result = np.nan_to_num(result, nan=0.0, posinf=0.0, neginf=0.0)
         result = np.clip(result, -1.0, 1.0)
 
+        # §SOTA-PSY-A1 (2026-09-14): subaudible Vokal-Änderung (Delta unter der
+        # Maskierungsschwelle) bleibt unangetastet — §4-Vertrag.
+        # Phase 65 hat keine defect_locations, sondern arbeitet global (Tilt/HNR/
+        # Formant). Deshalb wird hier die Gesamt-Entscheidung gegated: Das Delta
+        # (result - audio) wird über das ganze Signal auf Hörbarkeit geprüft; bei
+        # skippable wird das Dry-Signal zurückgegeben (fail-open, §V6 (copilot-instructions.md)).
+        # Band 80 Hz–16 kHz: Formant-/Tilt-Änderungen des Vokalspektrums.
+        if audio is not None:
+            try:
+                from backend.core.dsp.audibility_gate import defect_audibility as _aud_65
+
+                _p65_delta = (result - audio).astype(np.float32)
+                _p65_delta_mono = (
+                    _p65_delta if _p65_delta.ndim == 1 else _p65_delta.mean(axis=1 if _p65_delta.shape[0] == 2 else 0)
+                )
+                _aud_res_65 = _aud_65(_p65_delta_mono, sample_rate, 0, len(_p65_delta_mono), lo_hz=80.0, hi_hz=16000.0)
+                if bool(_aud_res_65.get("skippable", False)):
+                    logger.debug(
+                        "Verarbeitungsschritt_65 §SOTA-PSY-A1: Vokal-Delta unter der Maskierungsschwelle — Dry-Signal zurückgegeben."
+                    )
+                    _p65_meta["subaudible_defects_skipped"] = True
+                    return PhaseResult(
+                        success=True,
+                        audio=np.clip(np.nan_to_num(audio, nan=0.0, posinf=0.0, neginf=0.0), -1.0, 1.0),
+                        execution_time_seconds=time.time() - t0,
+                        metadata=_p65_meta,
+                        metrics={"activation_triggered": 1, "subaudible_defects_skipped": 1},
+                    )
+            except Exception as _psy_exc_65:
+                logger.debug("Verarbeitungsschritt_65 §SOTA-PSY-A1 nicht blockierend: %s", _psy_exc_65)
+
         # §2.36 LyricsGuided-Phonemgrenzen-Schutz (RELEASE_MUST ab 9.10.x):
         # Konsonanten-Bursts (Plosive/Frikative < 20 ms) müssen in phase_65 erhalten bleiben —
         # DSP-Eingriffe (Tilt, HNR-Blend) dürfen Artikulation nicht glätten.

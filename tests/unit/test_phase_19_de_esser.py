@@ -457,3 +457,55 @@ class TestPhase19MusicalGoalMetrics:
         assert result.metrics["musical_goal_artikulation"] == pytest.approx(
             float(np.clip(result.metrics["intelligibility_articulation_ratio"], 0.0, 1.0)), abs=1e-6
         )
+
+
+# ---------------------------------------------------------------------------
+# §SOTA-PSY-A1: subaudible Sibilanten werden übersprungen (Maske leer)
+# ---------------------------------------------------------------------------
+
+
+class TestPsyA1SubaudibleGate:
+    def _masked_defect_audio(self, amp: float = 0.001) -> np.ndarray:
+        sr = 48000
+        rng = np.random.RandomState(1)
+        x = (rng.randn(sr) * 0.05).astype(np.float32)  # Masker
+        c = sr // 2
+        x[c : c + 64] += amp  # winziger (subaudibler) Defekt
+        return x
+
+    def test_subaudible_sibilant_skippable_mask_empty(self):
+        from backend.core.phases.phase_19_de_esser import DeEsserPhase
+
+        phase = DeEsserPhase(gender_type="male")
+        x = self._masked_defect_audio(amp=0.001)
+        mask, coverage = phase._build_sibilance_locality_profile(
+            len(x), SR, {"sibilance": [(0.49, 0.51)]}, event_metadata=None, audio=x
+        )
+        assert np.all(mask == 1.0), "Subaudibler Sibilant muss zu leerer (repariere-überall) Maske führen"
+
+    def test_audible_sibilant_not_skipped_mask_localized(self):
+        from backend.core.phases.phase_19_de_esser import DeEsserPhase
+
+        phase = DeEsserPhase(gender_type="male")
+        t = np.linspace(0, 1.0, SR, endpoint=False, dtype=np.float32)
+        x = (0.1 * np.sin(2 * np.pi * 440 * t)).astype(np.float32)
+        c = SR // 2
+        x[c : c + 64] += 1.0
+        mask, coverage = phase._build_sibilance_locality_profile(
+            len(x), SR, {"sibilance": [(0.49, 0.51)]}, event_metadata=None, audio=x
+        )
+        assert float(np.mean(mask)) < 1.0, "Hörbarer Sibilant muss eine lokale Maske (Mittelwert < 1) erzeugen"
+
+    def test_fail_open_on_error(self, monkeypatch):
+        import backend.core.dsp.masking_model as mm
+        from backend.core.phases.phase_19_de_esser import DeEsserPhase
+
+        monkeypatch.setattr(
+            mm, "compute_masking_threshold_db", lambda *a, **k: (_ for _ in ()).throw(RuntimeError("kaputt"))
+        )
+        phase = DeEsserPhase(gender_type="male")
+        x = (np.random.RandomState(2).randn(SR) * 0.05).astype(np.float32)
+        mask, coverage = phase._build_sibilance_locality_profile(
+            len(x), SR, {"sibilance": [(0.49, 0.51)]}, event_metadata=None, audio=x
+        )
+        assert coverage >= 0.0

@@ -286,6 +286,7 @@ class ModulationNoiseReductionPhase(PhaseInterface):
         defect_locations: dict[str, list[tuple[float, float]]] | None,
         event_metadata: dict[str, dict] | None = None,
         protected_zones: list[tuple[float, float, float]] | None = None,
+        audio: np.ndarray | None = None,
     ) -> tuple[np.ndarray, float]:
         if n_samples <= 0:
             return np.zeros(0, dtype=np.float32), 0.0
@@ -307,6 +308,23 @@ class ModulationNoiseReductionPhase(PhaseInterface):
                 s = max(0, s - pad)
                 e = min(n_samples, e + pad)
                 if e > s:
+                    # §SOTA-PSY-A1 (2026-09-14): subaudible Modulations-Rauschen (unter der
+                    # Maskierungsschwelle) bleibt ungedämpft — §4-Vertrag.
+                    # Band 200 Hz–8 kHz: Modulations-/Breathing-Artefakte liegen typischerweise hier.
+                    if audio is not None:
+                        try:
+                            from backend.core.dsp.audibility_gate import defect_audibility as _aud_59
+
+                            _aud_res_59 = _aud_59(audio, sample_rate, s, e, lo_hz=200.0, hi_hz=8000.0)
+                            if bool(_aud_res_59.get("skippable", False)):
+                                logger.debug(
+                                    "Verarbeitungsschritt_59 §SOTA-PSY-A1: Defekt [%d:%d] unter der Maskierungsschwelle — übersprungen.",
+                                    s,
+                                    e,
+                                )
+                                continue
+                        except Exception as _psy_exc_59:
+                            logger.debug("Verarbeitungsschritt_59 §SOTA-PSY-A1 nicht blockierend: %s", _psy_exc_59)
                     strength = ModulationNoiseReductionPhase._local_event_strength(key, loc, event_metadata)
                     mask[s:e] = np.maximum(mask[s:e], strength)
         if not np.any(mask):
@@ -438,6 +456,7 @@ class ModulationNoiseReductionPhase(PhaseInterface):
             defect_locations=kwargs.get("defect_locations"),
             event_metadata=kwargs.get("defect_event_metadata"),
             protected_zones=self._collect_protected_zones(kwargs),
+            audio=audio,
         )
         result_audio = self._blend_with_locality(audio, result_audio, _locality_profile)
         elapsed = _time.perf_counter() - t0

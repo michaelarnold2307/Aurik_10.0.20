@@ -238,6 +238,7 @@ class SpectralRepair(PhaseInterface):
         sample_rate: int,
         defect_locations: dict[str, list[tuple[float, float]]] | None,
         defect_event_metadata: dict[str, Any] | None = None,
+        audio: np.ndarray | None = None,
     ) -> tuple[np.ndarray, float]:
         """Zeitlokale Blendmaske fuer Pre-Echo/Aliasing/Codec-Spektralreparaturen."""
         if n_samples <= 0 or sample_rate <= 0:
@@ -309,6 +310,23 @@ class SpectralRepair(PhaseInterface):
                 s = int(max(0.0, start_s - pad) * sample_rate)
                 e = int(min(float(n_samples) / float(sample_rate), end_s + pad) * sample_rate)
                 if e > s:
+                    # §SOTA-PSY-A1 (2026-09-14): subaudible Spektral-Defekte (unter der
+                    # Maskierungsschwelle) bleiben unrepartiert — §4-Vertrag.
+                    # Default-Band 800 Hz–10 kHz deckt Pre-Echo/Aliasing/Spektral-Lücken ab.
+                    if audio is not None:
+                        try:
+                            from backend.core.dsp.audibility_gate import defect_audibility as _aud_23
+
+                            _aud_res_23 = _aud_23(audio, sample_rate, s, e, lo_hz=800.0, hi_hz=10000.0)
+                            if bool(_aud_res_23.get("skippable", False)):
+                                logger.debug(
+                                    "Verarbeitungsschritt_23 §SOTA-PSY-A1: Defekt [%d:%d] unter der Maskierungsschwelle — übersprungen.",
+                                    s,
+                                    e,
+                                )
+                                continue
+                        except Exception as _psy_exc_23:
+                            logger.debug("Verarbeitungsschritt_23 §SOTA-PSY-A1 nicht blockierend: %s", _psy_exc_23)
                     mask[s:e] = np.maximum(mask[s:e], event_strength)
 
         if float(np.mean(mask)) <= 1e-6:
@@ -1248,6 +1266,7 @@ class SpectralRepair(PhaseInterface):
                 int(sample_rate),
                 kwargs.get("defect_locations"),
                 kwargs.get("defect_event_metadata"),
+                audio=audio,
             )
             if _locality_profile23.size > 0 and _defect_locality_coverage23 > 0.0:
                 if repaired_audio.ndim == 2:

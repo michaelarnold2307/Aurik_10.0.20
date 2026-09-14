@@ -271,3 +271,48 @@ def test_phase_locality_factor_scales_effective_strength(monkeypatch):
     assert float(res_local.metadata.get("effective_strength", 0.0)) < float(
         res_full.metadata.get("effective_strength", 1.0)
     )
+
+
+# ---------------------------------------------------------------------------
+# §SOTA-PSY-A1: subaudibles Vokal-Delta wird gegated (Dry-Passthrough)
+# ---------------------------------------------------------------------------
+
+
+def test_psy_a1_subaudible_delta_passthrough(monkeypatch):
+    """Gate meldet skippable ⇒ Phase gibt Dry zurück (Verifikation aller Stufen)."""
+    phase = _make_phase()
+    sr = 48000
+    audio = _make_vocal_audio(sr)
+    pre_nr = np.asarray(audio * 0.1, dtype=np.float32)
+
+    # Erzwinge ein audibles Delta durch Tilt-Änderung, aber Gate auf skippable.
+    def _fake_tilt(arr, _sr):
+        return 4.0 if float(np.mean(np.abs(arr))) > 0.08 else 0.0
+
+    def _fake_shelf(arr, _sr, _hz, boost_db, _stype="low"):
+        return (arr * (1.0 + 0.05 * float(boost_db))).astype(arr.dtype)
+
+    import backend.core.phases.phase_65_vocal_naturalness_restoration as p65
+
+    monkeypatch.setattr(p65, "_estimate_spectral_tilt_db", _fake_tilt)
+    monkeypatch.setattr(p65, "_apply_shelving_eq", _fake_shelf)
+
+    import backend.core.dsp.audibility_gate as ag
+
+    monkeypatch.setattr(
+        ag,
+        "defect_audibility",
+        lambda *a, **kw: {"audible": False, "delta_db": 0.0, "threshold_db": 0.0, "skippable": True},
+    )
+
+    result = phase.process(
+        audio.copy(),
+        sr,
+        quality_mode="restoration",
+        panns_singing=0.8,
+        pre_nr_audio=pre_nr,
+        strength=1.0,
+        phase_locality_factor=1.0,
+    )
+    assert result.metadata.get("subaudible_defects_skipped") is True
+    np.testing.assert_array_almost_equal(result.audio, audio, decimal=5)
