@@ -650,6 +650,22 @@ class ClickPopRemoval(PhaseInterface):
             if start < 10 or end >= len(audio) - 10:
                 continue
 
+            # §SOTA-PSY-A1 (2026-09-14): subaudible Klick/Pops (unter der
+            # Maskierungsschwelle) nicht reparieren — §4-Vertrag der Hörordnung.
+            try:
+                from backend.core.dsp.audibility_gate import defect_audibility as _aud_27
+
+                _aud_res_27 = _aud_27(audio, _sr, start, end, lo_hz=1200.0, hi_hz=16000.0)
+                if bool(_aud_res_27.get("skippable", False)):
+                    logger.debug(
+                        "Verarbeitungsschritt_27 §SOTA-PSY-A1: Klick/Pop [%d:%d] unter der Maskierungsschwelle — übersprungen.",
+                        start,
+                        end,
+                    )
+                    continue
+            except Exception as _psy_exc_27:
+                logger.debug("Verarbeitungsschritt_27 §SOTA-PSY-A1 nicht blockierend: %s", _psy_exc_27)
+
             # Choose repair strategy
             if click_type == "click" or duration < 5:
                 # Cubic interpolation
