@@ -640,6 +640,15 @@ class ClickPopRemoval(PhaseInterface):
         _sr = config.get("sample_rate", 48000)
         _pz = protected_zones or []
 
+        # §SOTA-PSY-A5 (2026-09-14): Forward-Masking-Zonen einmal pro Kanal.
+        _fmz_27: list[object] = []
+        try:
+            from backend.core.dsp.temporal_masking import get_forward_masking_guard as _fmg_27
+
+            _fmz_27 = list(_fmg_27().compute_zones(audio, _sr))
+        except Exception as _psy_exc_27a:
+            logger.debug("Verarbeitungsschritt_27 §SOTA-PSY-A5 nicht blockierend: %s", _psy_exc_27a)
+
         for click in classified_clicks:
             start = click["start"]
             end = click["end"]
@@ -681,6 +690,12 @@ class ClickPopRemoval(PhaseInterface):
             repair_strength = self._compute_click_local_strength(
                 audio, start, end, int(_sr), float(_base_repair_strength), _pz
             )
+            # §SOTA-PSY-A5 (2026-09-14): Forward-Masking-Zonen — Reparatur dort
+            # dämpfen (das Ohr hört post-transient kaum, kein Nachschlag-Artefakt).
+            for _z_27 in _fmz_27:
+                if getattr(_z_27, "start_sample", 0) <= start < getattr(_z_27, "end_sample", 0):
+                    repair_strength = float(repair_strength * 0.6)
+                    break
             # Apply repair with strength blending
             repaired[start : end + 1] = (
                 repaired[start : end + 1] * (1 - repair_strength) + repaired_segment * repair_strength

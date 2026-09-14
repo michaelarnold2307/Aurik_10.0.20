@@ -197,6 +197,29 @@ class TruePeakLimiterPhase(PhaseInterface):
         tp_after = self._true_peak_dbfs(processed, sample_rate)
         gain_reduction_db = tp_before - tp_after
 
+        # §SOTA-PSY-A7 (2026-09-14): Kurzzeit-Loudness-Witness (Sone) — der
+        # Limiter darf die WAHRGENOMMENE Lautheit nicht erhöhen (ZEUGE, nicht
+        # Richter); der wahrnehmungs-basierte Cap ist Folge-Schritt.
+        _psy7: dict[str, float] = {}
+        try:
+            from backend.core.dsp.temporal_loudness import temporal_loudness as _tl47
+
+            _pre47 = _tl47(audio.mean(axis=0) if audio.ndim == 2 else audio, sample_rate)
+            _post47 = _tl47(processed.mean(axis=0) if processed.ndim == 2 else processed, sample_rate)
+            _psy7 = {
+                "peak_stl_before_sone": round(_pre47.peak_stl_sone, 3),
+                "peak_stl_after_sone": round(_post47.peak_stl_sone, 3),
+                "integrated_ltl_before_sone": round(_pre47.integrated_ltl_sone, 3),
+                "integrated_ltl_after_sone": round(_post47.integrated_ltl_sone, 3),
+            }
+            logger.debug(
+                "Verarbeitungsschritt_47 §SOTA-PSY-A7: peak STL %.2f → %.2f Sone",
+                _pre47.peak_stl_sone,
+                _post47.peak_stl_sone,
+            )
+        except Exception as _psy_exc_47:
+            logger.debug("Verarbeitungsschritt_47 §SOTA-PSY-A7 nicht blockierend: %s", _psy_exc_47)
+
         logger.info(
             "Verarbeitungsschritt 47 TruePeak: ceiling=%.1f dBFS, TP %+.2f → %+.2f dBFS, GR=%.2f dB, t=%.3fs",
             ceiling_dbfs,
@@ -214,6 +237,7 @@ class TruePeakLimiterPhase(PhaseInterface):
             execution_time_seconds=time.time() - t0,
             metadata={
                 "ceiling_dbfs": ceiling_dbfs,
+                "short_term_loudness": _psy7,
                 "true_peak_before_dbfs": tp_before,
                 "true_peak_after_dbfs": tp_after,
                 "gain_reduction_db": gain_reduction_db,

@@ -953,6 +953,25 @@ def _process_channel(
             break
 
         gap_ms = (end - start) / sample_rate * 1000
+        # §SOTA-PSY-A1 (2026-09-14): subaudible Lücken (Dropout unter der
+        # Maskierungsschwelle) nicht füllen — §4-Vertrag der Hörordnung;
+        # Nichtstun erhält den Status quo und spart die teuerste Kaskade.
+        try:
+            from backend.core.dsp.audibility_gate import defect_audibility as _aud_55
+
+            _aud_res_55 = _aud_55(channel, sample_rate, start, end, lo_hz=200.0, hi_hz=16000.0)
+            if bool(_aud_res_55.get("skippable", False)):
+                stats["subaudible_gaps_skipped"] = stats.get("subaudible_gaps_skipped", 0) + 1
+                logger.debug(
+                    "Verarbeitungsschritt_55 §SOTA-PSY-A1: Lücke [%d:%d] (%.1f ms) unter der Maskierungsschwelle — übersprungen.",
+                    start,
+                    end,
+                    gap_ms,
+                )
+                continue
+        except Exception as _psy_exc_55:
+            logger.debug("Verarbeitungsschritt_55 §SOTA-PSY-A1 nicht blockierend: %s", _psy_exc_55)
+
         local_strength = DiffusionInpaintingPhase._compute_inpainting_local_strength(
             channel,
             start,

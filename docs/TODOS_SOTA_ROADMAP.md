@@ -832,6 +832,21 @@ Sänger-Identität, MuQ-MOS nicht schlechter als Baseline).
 3. Parallel: WF-V4-Quelle klären, TP-V2-Quelle klären, BEATs-Tagger-Head (GPU).
 4. Ausbaustufen (optional, dokumentiert): PSY-A2 (Zwicker), PSY-A6 (CIPIC), PSY-A7.
 
+### E2. Umsetzungs-Warteschlange 2026-09-14 (alle Empfehlungs-Punkte)
+
+| ID | Punkt | Status | Rezept/Aktion |
+|---|---|---|---|
+| Q1 | PSY-A5-Rollout phase_27/64 (Forward-Masking ×0,6) | **ERLEDIGT 2026-09-14** (phase_01/27/64; 26+17+12 Tests grün) | Muster: Zonen einmal pro Kanal via get_forward_masking_guard, Dämpfung im Reparatur-Loop |
+| Q2 | PSY-A1 in phase_55 (subaudible Lücken nicht füllen) | **ERLEDIGT 2026-09-14** (defect_audibility-Gate vor der Kaskade, Zähler `subaudible_gaps_skipped`) | defect_audibility auf die Gap-Region, skip → Kaskade überspringen |
+| Q3 | PSY-A7: Kurzzeit-Loudness-Steuerung für 40/47 | **V1-VERDRAHTET 2026-09-14** — phase_47 führt STL/LTL-Witness (Sone, Metadaten `short_term_loudness`); wahrnehmungs-basierter Cap bleibt Folge-Schritt | temporal_loudness() nutzt ERB-Kurzzeit-Modell (vorhanden) |
+| Q4 | WIT-M1: MuQ-Backbone-Fix (MOS-Richtung) | **NACH F1 (GPU)** | MuQ-Eval-Backbone beschaffen ODER A1-Head auf msd-iter neu trainieren; dann Richtungs-Validierung (Muster validate_muq_plugin_direction.py) — erst danach MuQ als Gate-Stimme |
+| Q5 | F2-Verlängerung 30–50 Epochs | **NACH F1 (GPU)** | `python scripts/train_gacela_vocal_inpaint.py --train --data-folder data/gacela_vocals_train --epochs 40 --batch 64 --save-path output/gacela_f2_v2/ --experiment-name gacela_vocal_ft` (lädt/startet neu; Checkpoint-Warmstart aus output/gacela_f2 prüfen) |
+| Q6 | F3: BigVGAN (HR-V1 + 23/50 + 03) | **NACH F1 (GPU)** | bigvgan_v2.pth lokal; Torch-Runtime nach S3-Muster + phase_07-Verdrahtung mit Aktivierungsvertrag |
+| Q7 | F5/C4: DDSP-Prädiktor | **NACH F1 (GPU)** | CLAP-Encoder lokal; EQ/Dynamik-Parameter-Prädiktion für 04/16/17, DSP führt aus |
+| Q8 | PSY-A1-Rest (masken-basierte Phasen 19/23/50/56/59/65/66) | **NACH Q2** | Profil-Fallback-Refactor (phase_56-Befund: leere Maske ⇒ „repariere überall“) dann Gate je Phase |
+| Q9 | PSY-A2 (Zwicker ISO 532-1) | AUSBAUSTUFE | präzisere Maskierungsschwelle — verbessert alle PSY-A1-Gates |
+| Q10 | PSY-A6 (CIPIC-HRIR) | AUSBAUSTUFE | personalisierte Bühnen-Bewertung |
+
 ---
 
 ## Hintergrund (damit die nächste Session sofort einsteigt)
