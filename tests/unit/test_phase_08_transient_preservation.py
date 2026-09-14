@@ -105,11 +105,11 @@ def test_psy_a1_real_band_does_not_deactivate_phase():
 
 def test_psy_a1_bump_gate_stereo_runs_without_collapse(monkeypatch):
     """Stereo-Robustheit (Muster A): das Gate nutzt die ravelte Original-Eingabe und
-    überspringt den Bump ohne das Signal zusätzlich zu kollabieren.
+    überspringt den Bump; der Rückgabe-Pfad restauriert das (C, N)-Layout.
 
-    Hinweis: phase_08 hat einen vorbestehenden (N,C)-Return-Bug im Hauptpfad
-    (kein restore_layout) — dieser Test prüft die Gate-Invariante (kein Crash,
-    Gesamtsamplezahl erhalten), nicht den vorbestehenden Layout-Rückbau.
+    Befund 2026-09-14: der Hauptpfad gab Stereo zuvor channels-last (N, 2)
+    zurück (kein restore_layout) — mit dem _restore_08-Fix muss die exakte
+    (2, N)-Form erhalten bleiben (AGENTS.md Stereo-Layout-Invariante).
     """
     import backend.core.dsp.audibility_gate as ag
 
@@ -131,6 +131,7 @@ def test_psy_a1_bump_gate_stereo_runs_without_collapse(monkeypatch):
         defect_locations={"transport_bump": [(0.1, 0.12), (0.3, 0.32)]},
     )
     assert result.success is True
+    assert result.audio.shape == audio.shape, f"Layout-Kollaps: {result.audio.shape} statt {audio.shape}"
     assert result.audio.size == audio.size, f"Gesamtsamplezahl kollabiert: {result.audio.size} statt {audio.size}"
     assert np.isfinite(result.audio).all()
     assert result.modifications.get("transport_bumps_repaired", 0) == 0

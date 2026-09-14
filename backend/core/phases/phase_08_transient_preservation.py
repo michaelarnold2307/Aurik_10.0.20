@@ -286,6 +286,14 @@ class TransientPreservationPhase(PhaseInterface):
         start_time = time.time()
         audio, _p08_transposed = to_channels_last(audio)
 
+        def _restore_08(_x: np.ndarray) -> np.ndarray:
+            """Stereo-Layout-Invariante: (N, C) → (C, N) zurück, wie der Eingang war.
+
+            Befund 2026-09-14: ohne Restauration gab phase_08 bei Stereo-(2, N)-Eingabe
+            channels-last (N, 2) zurück (AGENTS.md Stereo-Layout-Invariante).
+            """
+            return _x.T if (_p08_transposed and _x.ndim == 2) else _x
+
         # §2.47 PMGG-Retry: locality_factor skaliert finale Intensität bei Retries
         phase_locality_factor = float(np.clip(float(kwargs.get("phase_locality_factor", 1.0)), 0.35, 1.0))
         _pmgg_strength = float(kwargs.get("strength", 1.0))
@@ -324,7 +332,7 @@ class TransientPreservationPhase(PhaseInterface):
             passthrough = np.nan_to_num(audio.copy(), nan=0.0, posinf=0.0, neginf=0.0)
             passthrough = np.clip(passthrough, -1.0, 1.0)
             return create_phase_result(
-                audio=passthrough,
+                audio=_restore_08(passthrough),
                 modifications={
                     "transient_preserved": False,
                     "reason": "zero effective strength",
@@ -398,7 +406,7 @@ class TransientPreservationPhase(PhaseInterface):
             audio = np.clip(audio, -1.0, 1.0)
 
             return create_phase_result(
-                audio=audio,
+                audio=_restore_08(audio),
                 modifications={"transient_preserved": False, "reason": "no transients detected"},
                 warnings=[],
                 metadata={
@@ -679,7 +687,7 @@ class TransientPreservationPhase(PhaseInterface):
             logger.debug("Verarbeitungsschritt08 §SOTA-Bump-Repair nicht blockierend: %s", _tb_exc)
 
         return create_phase_result(
-            audio=enhanced,
+            audio=_restore_08(enhanced),
             modifications={
                 "transient_preserved": True,
                 "num_transients": len(onset_times),
