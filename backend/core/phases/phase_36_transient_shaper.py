@@ -356,6 +356,49 @@ class TransientShaper(PhaseInterface):
             except Exception as _tp_exc_36:
                 logger.debug("Verarbeitungsschritt_36 §SOTA-TP-V1 nicht blockierend: %s", _tp_exc_36)
 
+        # §SOTA-PSY-A1 (2026-09-14): subaudible Transienten-Änderung (Delta unter der
+        # Maskierungsschwelle) bleibt unangetastet — §4-Vertrag.
+        # Phase 36 arbeitet global (keine defect_locations) ⇒ Gesamt-Entscheidung
+        # gegated: Das Delta (shaped_audio - audio) wird über das ganze Signal auf
+        # Hörbarkeit geprüft; bei skippable wird das Dry-Signal zurückgegeben
+        # (fail-open, §V6 (copilot-instructions.md)). Band 800 Hz–10 kHz: Transienten
+        # sind breitbandig. Layout channels-first (C, N) — mean(axis=0) für Stereo.
+        try:
+            from backend.core.dsp.audibility_gate import defect_audibility as _aud_36
+
+            _p36_delta = (shaped_audio - audio).astype(np.float32)
+            if _p36_delta.ndim == 1:
+                _p36_delta_mono = _p36_delta
+            elif _p36_delta.shape[0] <= 2:
+                # Channels-first (C, N) — Stereo-Layout-Invariante (AGENTS.md).
+                _p36_delta_mono = _p36_delta.mean(axis=0)
+            else:
+                # Channels-last (N, C) — defensiv.
+                _p36_delta_mono = _p36_delta.mean(axis=1)
+            _aud_res_36 = _aud_36(_p36_delta_mono, sample_rate, 0, len(_p36_delta_mono), lo_hz=800.0, hi_hz=10000.0)
+            if bool(_aud_res_36.get("skippable", False)):
+                logger.debug(
+                    "Verarbeitungsschritt_36 §SOTA-PSY-A1: Transienten-Delta unter der Maskierungsschwelle — Dry-Signal zurückgegeben."
+                )
+                _p36_dry = np.clip(np.nan_to_num(audio, nan=0.0, posinf=0.0, neginf=0.0), -1.0, 1.0)
+                return PhaseResult(
+                    success=True,
+                    audio=_p36_dry,
+                    execution_time_seconds=execution_time,
+                    metadata={
+                        "material": material.name,
+                        "algorithm": "psy_a1_dry_passthrough",
+                        "subaudible_defects_skipped": True,
+                        "phase_locality_factor": phase_locality_factor,
+                        "effective_strength": _effective_strength,
+                        "rms_drop_db": 0.0,
+                        "loudness_makeup_db": 0.0,
+                    },
+                    warnings=[],
+                )
+        except Exception as _psy_exc_36:
+            logger.debug("Verarbeitungsschritt_36 §SOTA-PSY-A1 nicht blockierend: %s", _psy_exc_36)
+
         return PhaseResult(
             success=True,
             audio=shaped_audio,
@@ -643,7 +686,12 @@ class TransientShaper(PhaseInterface):
     def _measure_transient_energy(self, audio: np.ndarray, sample_rate: int) -> float:
         """Misst transient energy (high-frequency content in first 20ms)."""
         if audio.ndim == 2:
-            audio = audio[:, 0]  # Use left channel
+            # §SOTA-PSY-A1 (2026-09-14): Layout-korrekte Kanal-Extraktion.
+            # channels-first (2, N) → links = audio[0]; channels-last (N, 2) → audio[:, 0].
+            if audio.shape[0] <= 2 and audio.shape[1] > audio.shape[0]:
+                audio = audio[0]
+            else:
+                audio = audio[:, 0]  # Use left channel
 
         # High-pass filter (removes bass, focuses on transients)
         sos = signal.butter(4, 2000, btype="high", fs=sample_rate, output="sos")

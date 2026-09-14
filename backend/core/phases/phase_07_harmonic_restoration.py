@@ -460,6 +460,10 @@ class HarmonicRestorationPhase(PhaseInterface):
             logger.warning("Verarbeitungsschritt_07_harmonic_restoration.py::verarbeiten Ersatzpfad: %s", e)
         assert sample_rate == 48000, f"SR muss 48000 Hz sein, erhalten: {sample_rate}"
         audio, _p07_transposed = to_channels_last(audio)
+        # §SOTA-PSY-A1: Referenz auf die ORIGINAL-Eingabe (channels-last) speichern.
+        # `audio` wird weiter unten in-place verändert (DDSP/ML-Inpainting) — das
+        # Delta-Gate und der Dry-Rückgabe-Pfad müssen gegen das echte Original gehen.
+        _p07_input = audio.copy()
         start_time = time.time()
 
         # §2.47 PMGG-Retry: locality_factor skaliert finale Intensität bei Retries
@@ -1192,6 +1196,58 @@ class HarmonicRestorationPhase(PhaseInterface):
                         )
             except Exception as _con_exc:
                 logger.debug("§Gap5 Console-Character (nicht blockierend): %s", _con_exc)
+
+        # §SOTA-PSY-A1 (2026-09-14): subaudible Harmonik-Synthese (Delta unter der
+        # Maskierungsschwelle) bleibt unangetastet — §4-Vertrag.
+        # Phase 07 arbeitet global (keine defect_locations) ⇒ Gesamt-Entscheidung
+        # gegated: Das Delta (restored - audio) wird über das ganze Signal auf
+        # Hörbarkeit geprüft; bei skippable wird das Dry-Signal zurückgegeben
+        # (fail-open, §V6 (copilot-instructions.md)). Band 2000 Hz–16 kHz:
+        # Harmonik-Reihen. Layout: hier noch channels-last (N, C) nach
+        # to_channels_last — mean(axis=1).
+        try:
+            from backend.core.dsp.audibility_gate import defect_audibility as _aud_07
+
+            _p07_delta = (restored - _p07_input).astype(np.float32)
+            if _p07_delta.ndim == 1:
+                _p07_delta_mono = _p07_delta
+            elif _p07_delta.shape[1] <= 2:
+                # Channels-last (N, C) — Layout nach to_channels_last (Stereo-Layout-Invariante).
+                _p07_delta_mono = _p07_delta.mean(axis=1)
+            else:
+                # Channels-first (C, N) — defensiv.
+                _p07_delta_mono = _p07_delta.mean(axis=0)
+            _aud_res_07 = _aud_07(_p07_delta_mono, sample_rate, 0, len(_p07_delta_mono), lo_hz=2000.0, hi_hz=16000.0)
+            if bool(_aud_res_07.get("skippable", False)):
+                logger.debug(
+                    "Verarbeitungsschritt_07 §SOTA-PSY-A1: Harmonik-Delta unter der Maskierungsschwelle — Dry-Signal zurückgegeben."
+                )
+                _p07_dry = np.clip(np.nan_to_num(_p07_input, nan=0.0, posinf=0.0, neginf=0.0), -1.0, 1.0)
+                # Layout-Restauration wie im Hauptpfad (restore_layout) — ohne sie
+                # würde Stereo hier channels-last zurückgegeben (Befund a8929178).
+                _p07_dry = restore_layout(_p07_dry, _p07_transposed)
+                return create_phase_result(
+                    audio=_p07_dry,
+                    modifications={
+                        "harmonic_restored": False,
+                        "reason": "subaudible Harmonik-Delta (PSY-A1)",
+                        "phase_locality_factor": phase_locality_factor,
+                        "effective_strength": _effective_strength,
+                    },
+                    warnings=[],
+                    metadata={
+                        "algorithm": "psy_a1_dry_passthrough",
+                        "subaudible_defects_skipped": True,
+                        "material_type": material_type,
+                        "execution_time_seconds": execution_time,
+                        "phase_locality_factor": phase_locality_factor,
+                        "effective_strength": _effective_strength,
+                        "rms_drop_db": 0.0,
+                        "loudness_makeup_db": 0.0,
+                    },
+                )
+        except Exception as _psy_exc_07:
+            logger.debug("Verarbeitungsschritt_07 §SOTA-PSY-A1 nicht blockierend: %s", _psy_exc_07)
 
         restored = restore_layout(restored, _p07_transposed)
 

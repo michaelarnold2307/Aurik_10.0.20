@@ -1075,6 +1075,56 @@ class FrequencyRestorationPhase(PhaseInterface):
             except Exception as _se_exc:
                 logger.debug("§2.71 Envelope nicht blockierend: %s", _se_exc)
 
+        # §SOTA-PSY-A1 (2026-09-14): subaudible HF-Synthese (Delta unter der
+        # Maskierungsschwelle) bleibt unangetastet — §4-Vertrag.
+        # Phase 06 arbeitet global (keine defect_locations) ⇒ Gesamt-Entscheidung
+        # gegated: Das Delta (restored - audio) wird über das ganze Signal auf
+        # Hörbarkeit geprüft; bei skippable wird das Dry-Signal zurückgegeben
+        # (fail-open, §V6 (copilot-instructions.md)).
+        # BAND KRITISCH: 8000–20000 Hz — die Phase synthetisiert 8–20 kHz; ein
+        # Default-Band 800–10000 Hz würde den Delta immer als subaudibel messen
+        # und die Phase deaktivieren. Layout unverändert (channels-first (C, N)).
+        try:
+            from backend.core.dsp.audibility_gate import defect_audibility as _aud_06
+
+            _p06_delta = (restored - audio).astype(np.float32)
+            if _p06_delta.ndim == 1:
+                _p06_delta_mono = _p06_delta
+            elif _p06_delta.shape[0] <= 2:
+                # Channels-first (C, N) — Stereo-Layout-Invariante (AGENTS.md).
+                _p06_delta_mono = _p06_delta.mean(axis=0)
+            else:
+                # Channels-last (N, C) — defensiv.
+                _p06_delta_mono = _p06_delta.mean(axis=1)
+            _aud_res_06 = _aud_06(_p06_delta_mono, sample_rate, 0, len(_p06_delta_mono), lo_hz=8000.0, hi_hz=20000.0)
+            if bool(_aud_res_06.get("skippable", False)):
+                logger.debug(
+                    "Verarbeitungsschritt_06 §SOTA-PSY-A1: HF-Delta unter der Maskierungsschwelle — Dry-Signal zurückgegeben."
+                )
+                _p06_dry = np.clip(np.nan_to_num(audio, nan=0.0, posinf=0.0, neginf=0.0), -1.0, 1.0)
+                return create_phase_result(
+                    audio=_p06_dry,
+                    modifications={
+                        "frequency_restored": False,
+                        "reason": "subaudible HF-Delta (PSY-A1)",
+                        "phase_locality_factor": phase_locality_factor,
+                        "effective_strength": _effective_strength,
+                    },
+                    warnings=[],
+                    metadata={
+                        "algorithm": "psy_a1_dry_passthrough",
+                        "subaudible_defects_skipped": True,
+                        "material_type": material_type,
+                        "execution_time_seconds": execution_time,
+                        "phase_locality_factor": phase_locality_factor,
+                        "effective_strength": _effective_strength,
+                        "rms_drop_db": 0.0,
+                        "loudness_makeup_db": 0.0,
+                    },
+                )
+        except Exception as _psy_exc_06:
+            logger.debug("Verarbeitungsschritt_06 §SOTA-PSY-A1 nicht blockierend: %s", _psy_exc_06)
+
         return create_phase_result(
             audio=restored,
             modifications={
@@ -2192,8 +2242,14 @@ class FrequencyRestorationPhase(PhaseInterface):
         """
         Misst RMS energy above frequency threshold.
         """
-        # Convert to mono
-        mono = np.mean(audio, axis=1) if audio.ndim == 2 else audio
+        # Convert to mono — Layout-korrekt (channels-first (2,N) vs channels-last (N,2)).
+        if audio.ndim == 2:
+            if audio.shape[0] <= 2 and audio.shape[1] > audio.shape[0]:
+                mono = np.mean(audio, axis=0)  # (2, N) channels-first
+            else:
+                mono = np.mean(audio, axis=1)  # (N, 2) channels-last
+        else:
+            mono = audio
 
         # High-pass filter
         nyquist = self.sample_rate / 2

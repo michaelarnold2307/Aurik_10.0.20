@@ -1,16 +1,21 @@
 # TASK_CHANGES — Live-Ledger der aktuellen Aufgabe
 
-> Generiert von `scripts/change_ledger.py snapshot` (Base: `HEAD`, Stand: 2026-09-14 19:22 CEST).
+> Generiert von `scripts/change_ledger.py snapshot` (Base: `HEAD`, Stand: 2026-09-14 19:47 CEST).
 > CI (`ci-lite.yml` pr-evidence-gate) erzwingt Abdeckung: jede geänderte Code-Datei muss hier stehen.
 
 ## Geänderte Dateien
 
 | Status | Pfad | Art |
 |---|---|---|
-| M | backend/core/phases/phase_23_spectral_repair.py | modifiziert |
-| M | backend/core/phases/phase_50_spectral_repair.py | modifiziert |
-| M | backend/core/phases/phase_65_vocal_naturalness_restoration.py | modifiziert |
-| M | tests/unit/test_phase_65_vocal_naturalness_restoration.py | modifiziert |
+| M | backend/core/phases/phase_06_frequency_restoration.py | modifiziert |
+| M | backend/core/phases/phase_07_harmonic_restoration.py | modifiziert |
+| M | backend/core/phases/phase_08_transient_preservation.py | modifiziert |
+| M | backend/core/phases/phase_36_transient_shaper.py | modifiziert |
+| M | docs/TODOS_SOTA_ROADMAP.md | modifiziert |
+| M | tests/unit/test_phase_06_frequency_restoration.py | modifiziert |
+| M | tests/unit/test_phase_08_transient_preservation.py | modifiziert |
+| ?? | tests/unit/test_phase_07_harmonic_restoration.py | ungetrackt |
+| ?? | tests/unit/test_phase_36_transient_shaper.py | ungetrackt |
 
 ## Entscheidungen
 

@@ -549,6 +549,26 @@ class TransientPreservationPhase(PhaseInterface):
                     if _end <= _s + 2:
                         continue
 
+                    # §SOTA-PSY-A1 (2026-09-14): subaudible Transport-Bumps (unter der
+                    # Maskierungsschwelle) bleiben unrepariert — §4-Vertrag.
+                    # „audio“ ist die Original-Eingabe (Defekt unverändert enthalten),
+                    # nur channels-last normalisiert — defect_audibility ravelt das
+                    # Signal, Layout daher unkritisch. Band 200–8000 Hz: Breitband-
+                    # Transienten mit Low-Mid-Schwerpunkt.
+                    try:
+                        from backend.core.dsp.audibility_gate import defect_audibility as _aud_08
+
+                        _aud_res_08 = _aud_08(audio, sample_rate, _s, _end, lo_hz=200.0, hi_hz=8000.0)
+                        if bool(_aud_res_08.get("skippable", False)):
+                            logger.debug(
+                                "Verarbeitungsschritt_08 §SOTA-PSY-A1: Transport-Bump [%d:%d] unter der Maskierungsschwelle — übersprungen.",
+                                _s,
+                                _end,
+                            )
+                            continue
+                    except Exception as _psy_exc_08:
+                        logger.debug("Verarbeitungsschritt_08 §SOTA-PSY-A1 nicht blockierend: %s", _psy_exc_08)
+
                     _dur_s = (_end - _s) / sample_rate
                     _segment = _channels[:, _s:_end]
                     _seg_mono = np.mean(_segment, axis=0)
