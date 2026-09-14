@@ -187,7 +187,7 @@ def get_muq_model() -> Any | None:
             try:
                 _model = MuQ.from_pretrained(_MODEL_ID)
             except Exception as _id_exc:
-                logger.debug("MuQ: HF-ID-Load fehlgeschlagen (%s) — lokaler Pfad-Fallback", _id_exc)
+                logger.debug("MuQ: HF-ID-Laden fehlgeschlagen (%s) — lokaler Pfad-Ersatz", _id_exc)
                 _model = MuQ.from_pretrained(str(_dir))
             _model.to(_resolve_device())
             # BatchNorm-Statistiken aus dem A1-Checkpoint nachladen (Befund
@@ -286,11 +286,15 @@ def _mos_eval_window(mono: np.ndarray, sr: int) -> np.ndarray:
     except Exception:  # pragma: no cover
         _librosa = None
     if int(sr) != _TARGET_SR:
-        if _librosa is not None:
-            mono = np.asarray(_librosa.resample(mono, orig_sr=int(sr), target_sr=_TARGET_SR), dtype=np.float32)
-        elif torchaudio is not None and torch is not None:
+        # WIT-M1-Fix (2026-09-14): MuQ-Eval resampled exakt mit
+        # torchaudio.functional.resample (Kaiser-Sinc) — librosa nutzt einen
+        # anderen Filter; die abweichenden Embeddings können die invertierte
+        # MOS-Richtung des gefrorenen A1-Heads erklären. Eval-exakt zuerst.
+        if torchaudio is not None and torch is not None:
             _wav = torch.from_numpy(np.asarray(mono, dtype=np.float32)).float()
             mono = torchaudio.functional.resample(_wav, int(sr), _TARGET_SR).numpy().astype(np.float32)
+        elif _librosa is not None:
+            mono = np.asarray(_librosa.resample(mono, orig_sr=int(sr), target_sr=_TARGET_SR), dtype=np.float32)
     if mono.size >= n_target:
         _clip: np.ndarray = np.asarray(mono[:n_target], dtype=np.float32)
         return _clip

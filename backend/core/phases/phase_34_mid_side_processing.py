@@ -588,6 +588,27 @@ class MidSideProcessing(PhaseInterface):
 
         audio_processed = np.nan_to_num(audio_processed, nan=0.0, posinf=0.0, neginf=0.0)
         audio_processed = np.clip(audio_processed, -1.0, 1.0)
+
+        # §SOTA-PSY-A3 (2026-09-14): BMLD-Witness — binaurale Maskierungs-
+        # Freisetzung als Metadatum (ZEUGE, nicht Richter — Hörordnung §8a).
+        try:
+            from backend.core.dsp.binaural_masking import binaural_masking_advantage as _bma34
+
+            _bres34 = _bma34(audio, sample_rate)
+            metadata["binaural_masking_advantage"] = {
+                "release_db": round(_bres34.release_db, 3),
+                "nr_floor_release_db": round(_bres34.nr_floor_release_db, 3),
+                "ec_gain_db": round(_bres34.ec_gain_db, 3),
+            }
+            logger.debug(
+                "Verarbeitungsschritt_34 §SOTA-PSY-A3: BMLD-Freisetzung %.2f dB (Cap %.2f dB, EC %.2f dB)",
+                _bres34.release_db,
+                _bres34.nr_floor_release_db,
+                _bres34.ec_gain_db,
+            )
+        except Exception as _psy_exc_34:
+            logger.debug("Verarbeitungsschritt_34 §SOTA-PSY-A3 nicht blockierend: %s", _psy_exc_34)
+
         return PhaseResult(
             success=True,
             audio=audio_processed.astype(audio.dtype),

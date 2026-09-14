@@ -220,7 +220,18 @@ def _train(args: argparse.Namespace) -> int:
         drop_last=True,
     )
     gan = GANSystem(gan_args)
-    for epoch in range(args.epochs):
+
+    # F2-Verlängerung (2026-09-14): Warmstart aus einem früheren Checkpoint.
+    start_epoch = 0
+    if args.resume_epoch > 0:
+        from utils.torchModelSaver import TorchModelSaver
+
+        _saver = TorchModelSaver(args.experiment_name, args.save_path)
+        _saver.loadModel(gan, 499, args.resume_epoch - 1)
+        start_epoch = args.resume_epoch
+        print(f"Resume aus {args.resume_epoch - 1:02d}_0499.pt — starte bei Epoch {start_epoch}")
+
+    for epoch in range(start_epoch, start_epoch + args.epochs):
         _step, can_restart = gan.train(train_loader, epoch, 0)
         if not can_restart:
             break
@@ -257,6 +268,12 @@ def main() -> int:
     ap.add_argument("--epochs", type=int, default=10)
     ap.add_argument("--batch", type=int, default=64)
     ap.add_argument("--md", type=int, default=32)
+    ap.add_argument(
+        "--resume-epoch",
+        type=int,
+        default=0,
+        help="Warmstart: Epoch-Nummer des 04_0499.pt-Checkpoints (z. B. 10 für 09_0499.pt)",
+    )
     ap.add_argument("--data-folder", type=str, default="")
     ap.add_argument(
         "--save-path", type=str, default="output/gacela_f2/"

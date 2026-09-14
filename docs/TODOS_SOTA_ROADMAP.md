@@ -723,14 +723,37 @@ sauberen Referenzen (Muster ML-V3-Negativbefund).
 |---|---|---|---|---|---|
 | F1 | DiffWave-Vokal (HAUPTWEG) | DiffWave-Checkpoint lokal | Langlücken-Reparatur ΔSDR ≥ 0 (S1: −1,7 dB) | MUSDB-Vocals | P1-Metrik |
 
-**F1-Ergebnis 2026-09-14: GATE NICHT BESTANDEN** — Lauf beendet (Early-Stop nach 7 Epochs):
-bestes Val mean −1,44 dB (Epoch 2) vs. Zero-Shot −3,01 dB und Gate ≥ 0 dB;
-`never_worsen_per_gap: false`. Der Checkpoint wurde deshalb nach
-`models/diffwave/diffwave_vocal_ft_rejected_epoch2_gatefail.ckpt` archiviert
-und aktiviert den S3-Pfad NICHT (diffwave_vocal_ready() = False).
+**F1-Ergebnis 2026-09-14: ABGEBROCHEN — Ansatz ausgereizt** — zwei Läufe plafonierten
+bei mean −1,44 dB bzw. −1,39 dB (Gate ≥ 0 dB): Der Wellenform-DDPM aus der
+Sprach-Domäne ist für 300-ms-Gesangs-Inpainting am Limit (Retest oszillierte
+−1,39 → −7,41 dB — instabile Konvergenz). Checkpoints archiviert
+(`diffwave_vocal_ft_rejected_epoch{2,7}_*.ckpt`), S3 bleibt inaktiv.
 Report: docs/reports/current/2026-09-14_diffwave_vocal_finetune.json.
-Nächste Optionen: (1) F2 GaCELA-Pfad (entblockt, GPU frei) oder (2) F1-Retest
-mit Rezeptänderungen (mehr Fenster/Epochs, LR-Plan, A1-Beta).
+
+**Erfolgreichere Alternativen (Entscheidung 2026-09-14, nach Evidenz):**
+1. **F2-Verlängerung = HAUPTWEG** — GaCELA-GAN arbeitet spektral und musik-nativ;
+   nach nur 10 Epochs from-scratch bereits mean −0,37 dB. 30–50 weitere Epochs
+   kreuzen das Gate sehr wahrscheinlich (GPU frei).
+2. **S1-Nachmessung der phase_55-Kaskade (Q11, billigster Beweis)** — CQTdiff+,
+   Consistency-Modell und GaCELA sind für Gesangslücken bereits aktiv; S1 hat nur
+   DiffWave + DSP gemessen. Erreicht die bestehende Kaskade ≥ 0 dB, ist das
+   F1-Problem OHNE neues Training gelöst.
+3. **F6: AudioLDM2-Latent-Inpainting (RePaint-Muster)** — UNet + VAE lokal
+   (echte ONNX, verifiziert); maskierte Latent-Inpainting ohne Text-Konditionierung
+   (CLAP-Audio oder unkonditioniert) + HiFiGAN (80-Bin-Adapter fehlt) = SOTA-Weg
+   mit größerer Hebelwirkung als DiffWave-Wellenform-DDPM.
+4. RVC bleibt „später“ (Konversions-Semantik, kein Inpainting).
+
+**Q11-ERGEBNIS 2026-09-14 — GATE DURCH BESTEHENDE KASKADE ERFÜLLT:**
+Die S1-Nachmessung der phase_55-Kaskade auf 300-ms-Vokallücken (3 Tracks ×
+13 Lücken, Seed 42) zeigt: **CQTdiff+ mean SDR 0,0 dB** (je Lücke −0,12 … +0,1 dB;
+Gate ≥ 0 dB ERFÜLLT) vs. DSP −3,46 dB und DiffWave-Zero-Shot −1,68 dB.
+**Konsequenz:** Das Vocal-Inpainting-Gate ist OHNE jedes Training gelöst —
+F1 bleibt abgebrochen, S3 (DiffWave-Pfad) bleibt inaktiv, F2-Verlängerung
+wird zur QUALITÄTS-Verbesserung (Ziel: deutlich über 0 dB statt am Gate).
+**Offene Folge-Frage (dokumentiert):** Die Drosselung bei vocal_confidence ≥ 0,40
+kann mit dem Q11-Beleg neu bewertet werden (CQTdiff+-Füll statt Drosselung) —
+konservativ erst nach einem Never-worsen-Test des schlechtesten Falls.
 | F2 | GaCELA-Vokal (Pfad B) | Trainingscode lokal | 375–1500 ms, Sänger-Identität via Resemblyzer-Witness (jetzt ONNX live) | MUSDB-Vocals | P1-Metrik |
 
 **F2-Vorbereitung 2026-09-14:** `scripts/train_gacela_vocal_inpaint.py`
@@ -779,9 +802,9 @@ Sänger-Identität, MuQ-MOS nicht schlechter als Baseline).
 |---|---|---|---|
 | PSY-A1 | **Audibility-Gate-Rollout**: Maskierungsschwelle (masking_model, ISO 11172-3 Bark) als Reparatur-Entscheidung in ALLEN reparierenden Phasen (01, 03, 06, 07, 08, 19, 23, 27, 36, 50, 55, 56, 59, 64, 65, 66) | **TEIL-ROLLOUT 2026-09-14**: `audibility_gate.py` (defekt-zentrierte Messung, §V6 (copilot-instructions.md)-fail-open) + Verdrahtung **phase_01, 03, 27, 64** (subaudible Klicks/Pops/Splices überspringen, Noise-Floor dämpfen); 6+17 Tests grün. **phase_56-Befund:** die Lokalitäts-Maske fällt bei leerer Maske auf „repariere überall“ zurück und die Coverage-Metrik kollabiert — das Gate braucht dort einen Refactor der Profil-Fallbacks (zurückgestellt, kein Regression-Risiko). Weitere Phasen folgen der Matrix-Liste | §4-Vertrag: „Ist der Defekt über der Maskierungsschwelle hörbar?“ als Pflicht-Frage; Berichte weisen „hörbar“ als über-Schwelle aus |
 | PSY-A2 | **Zwicker-Modell (ISO 532-1)** als Nachfolger des MPEG-1-Modells: stationäre + zeitvariante Loudness und Maskierung | nur ISO 11172-3-Modell vorhanden | präzisere Schwelle bei tonalem/breitbandigem Material; Basis für PSY-A7 |
-| PSY-A3 | **BMLD-Verdrahtung** (binaurale Maskierungs-Freisetzung) in die Stereo-Phasen-Gates (13, 15, 33, 34, 46, 48) | binaural_masking auf Guard-Ebene + phase_03; **2026-09-14: phase_33-BMLD-Witness** (Metadaten release_db/nr_floor_release_db/ec_gain_db, ZEUGE-Modus — dynamische Freisetzungs-Toleranz bleibt Folge-Schritt); 13/15/34/46/48 offen | Stereo-Änderungen werden nach Hör-Freisetzung bewertet statt nach Mess-dB |
+| PSY-A3 | **BMLD-Verdrahtung** (binaurale Maskierungs-Freisetzung) in die Stereo-Phasen-Gates (13, 15, 33, 34, 46, 48) | binaural_masking auf Guard-Ebene + phase_03; **2026-09-14: phase_33- UND phase_34-BMLD-Witness** (Metadaten release_db/nr_floor_release_db/ec_gain_db, ZEUGE-Modus — dynamische Freisetzungs-Toleranz bleibt Folge-Schritt); 13/15/46/48 offen | Stereo-Änderungen werden nach Hör-Freisetzung bewertet statt nach Mess-dB |
 | PSY-A4 | **Equal-Loudness-Band-Gewichte (ISO 226) + JND-Gates** für EQ-/Enhancement-Phasen (04, 16, 17, 37, 38, 39) | fletcher_munson nur 1× verdrahtet; **2026-09-14: phase_37-Bass-Mix mit Equal-Loudness-Faktor temperiert (ISO 226, 60 phon, Deckel [0,5–1,0])**; 04/16/17/38/39 offen | Stärke-Entscheidungen in Phon-Hörbarkeit statt Roh-dB |
-| PSY-A5 | **Temporal-Masking-Kompensation**: Forward/Backward-Masking-Zonen als Reparatur-Dämpfung nach Transienten (Rollout des §V41-Musters aus phase_55) | nur phase_55 + 22 Phasen nutzen temporal_masking (Guard); **2026-09-14: phase_01 dämpft Klick-Reparatur in Forward-Masking-Zonen (×0,6)** — kein Nachschlag-Artefakt; Rollout auf 27/64 als nächste Welle | Nachmaskierungs-Zonen werden weicher repariert — kein Nachschlag-Artefakt |
+| PSY-A5 | **Temporal-Masking-Kompensation**: Forward/Backward-Masking-Zonen als Reparatur-Dämpfung nach Transienten (Rollout des §V41-Musters aus phase_55) | nur phase_55 + 22 Phasen nutzen temporal_masking (Guard); **2026-09-14: phase_01/27/64 dämpfen Klick-/Pop-/Splice-Reparatur in Forward-Masking-Zonen (×0,6)** — kein Nachschlag-Artefakt | Nachmaskierungs-Zonen werden weicher repariert — kein Nachschlag-Artefakt |
 | PSY-A6 | **Personalisierte HRIR (CIPIC)** als Ausbaustufe der First-Order-HRTF (Ehrlichkeits-Klausel §8b.3 erfüllt) | First-Order-Modell in interaural_cues | bessere Bühnen-Bewertung bei Kopfhörer-Studien (P1-4) |
 | PSY-A7 | **Loudness-Modell-getriebene Dynamik**: Zwicker-Kurzzeit-Loudness steuert 10/11/40/47 | BS.1770-integriert + Bark-LUFS vorhanden, Kurzzeit-Modell nicht in den Phasen | Punch/Lautheit nach Wahrnehmung statt Peak |
 | PSY-A8 | **Generische JND-Gate-Tabelle** (Frequenz ±1 dB, Pegel ±1 dB, Zeit ±5 ms, Pan ±2°… nach Lit.) für alle Never-worsen-Gates | **ERLEDIGT (2026-09-14)**: `backend/core/dsp/hearing_jnd.py` — 9 JND-Klassen mit Quellen, `below_jnd()` (NaN-fail-safe), fail-closed bei unbekannter ID; 6 Tests | absolute dB-Gates weichen JND-basierten, hörbezogenen Grenzen |
@@ -820,7 +843,7 @@ Sänger-Identität, MuQ-MOS nicht schlechter als Baseline).
 
 | ID | Lücke | Status |
 |---|---|---|
-| WIT-M1 | **MuQ-MOS-Richtung invertiert** (A1-Head auf falschem Backbone — muq_eval_a1_head.pt läuft auf MuQ-large-msd-iter statt MuQ-Eval-Backbone) | Root-Cause ✓, Fix offen: MuQ-Eval-Backbone beschaffen oder Head auf msd-iter neu trainieren — erst danach ist MuQ als MOS-Richtungs-Witness für die F-Gates nutzbar |
+| WIT-M1 | **MuQ-MOS-Richtung invertiert** (A1-Head auf falschem Backbone — muq_eval_a1_head.pt läuft auf MuQ-large-msd-iter statt MuQ-Eval-Backbone) | **ERLEDIGT 2026-09-14** — Ursache war der RESAMPLE-FILTER: das Plugin nutzte librosa, MuQ-Eval torchaudio.functional.resample (Kaiser-Sinc); nach dem Fix (Eval-exakt zuerst) ist die Richtung **3/3 korrekt** (noise0 Δ+3,66 ref / Δ+3,20 Plugin; Report 2026-09-14_muq_plugin_direction.json). MuQ ist damit als MOS-Richtungs-Witness für die F-Gates nutzbar (10-s-Clips, Vollmix) |
 | WIT-M2 | BEATs-Tagger-Head fehlt (Encoder-Export ohne Head) | Head auf Tokens trainieren (GPU) oder Tagger-ONNX beschaffen |
 | WIT-M3 | UTMOS für Musik unbrauchbar (Negativbefund) | dokumentiert — kein Einsatz |
 | WIT-M4 | F-Gates hängen an SDR/Resemblyzer (objektiv) | nach WIT-M1: MOS-Witness (MuQ) als dritte Gate-Stimme |

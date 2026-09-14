@@ -1,16 +1,21 @@
 # TASK_CHANGES — Live-Ledger der aktuellen Aufgabe
 
-> Generiert von `scripts/change_ledger.py snapshot` (Base: `HEAD`, Stand: 2026-09-14 16:12 CEST).
+> Generiert von `scripts/change_ledger.py snapshot` (Base: `HEAD`, Stand: 2026-09-14 17:31 CEST).
 > CI (`ci-lite.yml` pr-evidence-gate) erzwingt Abdeckung: jede geänderte Code-Datei muss hier stehen.
 
 ## Geänderte Dateien
 
 | Status | Pfad | Art |
 |---|---|---|
-| M | backend/core/phases/phase_27_click_pop_removal.py | modifiziert |
-| M | backend/core/phases/phase_47_truepeak_limiter.py | modifiziert |
+| M | TASK_CHANGES.md | modifiziert |
+| M | backend/core/phases/phase_34_mid_side_processing.py | modifiziert |
 | M | backend/core/phases/phase_55_diffusion_inpainting.py | modifiziert |
 | M | docs/TODOS_SOTA_ROADMAP.md | modifiziert |
+| A | docs/reports/current/2026-09-14_muq_plugin_direction.json | neu |
+| A | docs/reports/current/2026-09-14_vocal_inpaint_baseline.json | neu |
+| M | plugins/muq_plugin.py | modifiziert |
+| M | scripts/benchmark_vocal_inpaint_baseline.py | modifiziert |
+| M | scripts/train_gacela_vocal_inpaint.py | modifiziert |
 
 ## Entscheidungen
 

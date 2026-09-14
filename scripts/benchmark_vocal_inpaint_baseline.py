@@ -40,6 +40,30 @@ _GAP_S = 0.300
 _N_GAPS = 5
 
 
+def _cascade_arm(
+    fn,
+    vocals: np.ndarray,
+    p: int,
+    gap_len: int,
+    gap_ms: float,
+    lo_ms: float = 0.0,
+    hi_ms: float = 1e9,
+) -> tuple[float, float]:
+    """Q11-Arm: Kaskaden-Funktion je Lücke messen (nie blockierend)."""
+    if not (lo_ms <= gap_ms <= hi_ms):
+        return float("-inf"), 0.0
+    try:
+        t0 = time.perf_counter()
+        fill = fn(vocals, p, p + gap_len, _TARGET_SR)
+        dt = time.perf_counter() - t0
+        if fill is None or len(fill) < gap_len:
+            return float("-inf"), dt
+        return _sdr(fill[:gap_len], vocals[p : p + gap_len]), dt
+    except Exception as _q11_exc:
+        print(f"  Q11-Arm {getattr(fn, '__name__', '?')} nicht verfügbar: {_q11_exc}")
+        return float("-inf"), 0.0
+
+
 def _sdr(est: np.ndarray, ref: np.ndarray) -> float:
     err = est - ref
     den = float(np.sum(err**2))
@@ -98,7 +122,14 @@ def main() -> int:
     args = ap.parse_args()
 
     sys.path.insert(0, str(_ROOT))
-    from backend.core.phases.phase_55_diffusion_inpainting import _adaptive_steps, _inpaint_gap_dsp
+    from backend.core.phases.phase_55_diffusion_inpainting import (
+        _adaptive_steps,
+        _inpaint_gap_dsp,
+        _try_consistency_model_inpainting,
+        _try_cqtdiff_plus_plugin,
+        _try_dac_token_inpainting,
+        _try_gacela_plugin,
+    )
     from plugins.diffwave_plugin import inpaint as diffwave_inpaint
 
     tracks = sorted(p for p in _MUSDB.glob("*") if p.is_dir())
@@ -140,12 +171,25 @@ def main() -> int:
             # Stille-Baseline
             sil_sdr = _sdr(np.zeros_like(orig), orig)
 
+            # Q11 (2026-09-14): bestehende phase_55-Kaskade je Lücke — der
+            # billigste Beweis, ob ein Vokal-Finetune überhaupt nötig ist.
+            cqtd_sdr, cqtd_dt = _cascade_arm(_try_cqtdiff_plus_plugin, vocals, p, gap_len, _GAP_S * 1000.0, lo_ms=50.0)
+            cons_sdr, cons_dt = _cascade_arm(_try_consistency_model_inpainting, vocals, p, gap_len, _GAP_S * 1000.0)
+            dac_sdr, dac_dt = _cascade_arm(_try_dac_token_inpainting, vocals, p, gap_len, _GAP_S * 1000.0, lo_ms=50.0)
+            gac_sdr, gac_dt = _cascade_arm(
+                _try_gacela_plugin, vocals, p, gap_len, _GAP_S * 1000.0, lo_ms=375.0, hi_ms=1500.0
+            )
+
             row["gaps"].append(
                 {
                     "pos_s": round(p / _TARGET_SR, 2),
                     "sdr_dsp_db": round(dsp_sdr, 2),
                     "sdr_diffwave_db": round(dw_sdr, 2),
                     "sdr_silence_db": round(sil_sdr, 2),
+                    "sdr_cqtdiff_db": round(cqtd_sdr, 2),
+                    "sdr_consistency_db": round(cons_sdr, 2),
+                    "sdr_dac_db": round(dac_sdr, 2),
+                    "sdr_gacela_db": round(gac_sdr, 2),
                     "delta_dsp_db": round(dsp_sdr - sil_sdr, 2),
                     "delta_diffwave_db": round(dw_sdr - sil_sdr, 2),
                     "dsp_s": round(dsp_dt, 2),

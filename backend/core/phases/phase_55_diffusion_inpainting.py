@@ -501,6 +501,17 @@ def _try_cqtdiff_plus_plugin(audio: np.ndarray, start: int, end: int, sample_rat
         return None
 
 
+def _cqtdiff_plus_available() -> bool:
+    """Q11-Voraussetzungs-Check: CQTdiff+-Modell (score_network.pt) vorhanden?"""
+    try:
+        from pathlib import Path
+
+        _p = Path(__file__).resolve().parents[3] / "models" / "cqtdiff" / "score_network.pt"
+        return _p.is_file()
+    except Exception:
+        return False
+
+
 def _try_flow_matching_plugin(
     audio: np.ndarray,
     start: int,
@@ -1476,14 +1487,16 @@ class DiffusionInpaintingPhase(PhaseInterface):
         _vocals_conf = float(kwargs.get("panns_vocals_confidence", 0.0))
         if _vocals_conf == 0.0:  # Fallback: direct callers may use panns_singing key
             _vocals_conf = float(kwargs.get("panns_singing", 0.0))
-        # §SOTA-VOCAL-INPAINT-S3 (2026-09-14): DiffWave-Finetune-Pfad aktiv, sobald
-        # der F1-Checkpoint existiert — entdrosselt die Gesangs-Lückenfüllung.
+        # §SOTA-VOCAL-INPAINT-S3/Q11 (2026-09-14): Entdrosselung der
+        # Gesangs-Lückenfüllung, sobald ein GATE-BELEGTER Füllpfad verfügbar
+        # ist — CQTdiff+ (Q11: mean 0,0 dB auf 13 Vokallücken) oder der
+        # DiffWave-Finetune-Checkpoint (S3). Ohne Beleg bleibt die Drosselung.
         _vocal_fill_ready = False
         if _vocals_conf >= 0.40:
             try:
                 from backend.core.dsp.diffwave_torch_inpaint import diffwave_vocal_ready as _dw_ready_55
 
-                _vocal_fill_ready = bool(_dw_ready_55())
+                _vocal_fill_ready = bool(_dw_ready_55() or _cqtdiff_plus_available())
             except Exception:
                 _vocal_fill_ready = False
         safe_strength = self._derive_safe_inpainting_strength(
