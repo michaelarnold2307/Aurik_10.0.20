@@ -402,7 +402,7 @@ class SpectralRepairPhase(PhaseInterface):
                 end = min(n_samples, end + pad)
                 if end > start:
                     # §SOTA-PSY-A1 (2026-09-14): subaudible Spektral-Defekte (unter der
-                    # Maskierungsschwelle) bleiben unrepartiert — §4-Vertrag.
+                    # Maskierungsschwelle) bleiben unrepariert — §4-Vertrag.
                     # Default-Band 800 Hz–10 kHz deckt Pre-Echo/Aliasing/Lücken ab.
                     if audio is not None:
                         try:

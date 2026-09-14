@@ -546,18 +546,29 @@ class VocalNaturalnessRestorationPhase(PhaseInterface):
                 from backend.core.dsp.audibility_gate import defect_audibility as _aud_65
 
                 _p65_delta = (result - audio).astype(np.float32)
-                _p65_delta_mono = (
-                    _p65_delta if _p65_delta.ndim == 1 else _p65_delta.mean(axis=1 if _p65_delta.shape[0] == 2 else 0)
-                )
+                if _p65_delta.ndim == 1:
+                    _p65_delta_mono = _p65_delta
+                elif _p65_delta.shape[1] <= 2:
+                    # Channels-last (N, C) — Layout nach to_channels_last (Zeile 243).
+                    # mean(axis=0) würde hier über die ZEIT kollabieren (Stereo-Layout-Invariante).
+                    _p65_delta_mono = _p65_delta.mean(axis=1)
+                else:
+                    # Channels-first (C, N) — defensiv, falls das Layout nicht normalisiert ist.
+                    _p65_delta_mono = _p65_delta.mean(axis=0)
                 _aud_res_65 = _aud_65(_p65_delta_mono, sample_rate, 0, len(_p65_delta_mono), lo_hz=80.0, hi_hz=16000.0)
                 if bool(_aud_res_65.get("skippable", False)):
                     logger.debug(
                         "Verarbeitungsschritt_65 §SOTA-PSY-A1: Vokal-Delta unter der Maskierungsschwelle — Dry-Signal zurückgegeben."
                     )
                     _p65_meta["subaudible_defects_skipped"] = True
+                    # Layout-Restauration wie im Hauptpfad (result.T vor dem Return) —
+                    # ohne sie würde Stereo hier channels-last zurückgegeben (Befund 2026-09-14).
+                    _p65_dry = np.clip(np.nan_to_num(audio, nan=0.0, posinf=0.0, neginf=0.0), -1.0, 1.0)
+                    if _p65_transposed:
+                        _p65_dry = _p65_dry.T
                     return PhaseResult(
                         success=True,
-                        audio=np.clip(np.nan_to_num(audio, nan=0.0, posinf=0.0, neginf=0.0), -1.0, 1.0),
+                        audio=_p65_dry,
                         execution_time_seconds=time.time() - t0,
                         metadata=_p65_meta,
                         metrics={"activation_triggered": 1, "subaudible_defects_skipped": 1},

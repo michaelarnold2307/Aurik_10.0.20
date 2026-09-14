@@ -316,3 +316,49 @@ def test_psy_a1_subaudible_delta_passthrough(monkeypatch):
     )
     assert result.metadata.get("subaudible_defects_skipped") is True
     np.testing.assert_array_almost_equal(result.audio, audio, decimal=5)
+
+
+def test_psy_a1_subaudible_delta_stereo_layout_restored(monkeypatch):
+    """Stereo-Layout-Invariante: Gate-Frühreturn restauriert (C, N) statt (N, C).
+
+    Befund 2026-09-14: mean über die falsche Achse kollabierte das Stereo-Delta
+    auf 2 Samples und der Frühreturn gab channels-last zurück (AGENTS.md
+    Stereo-Layout-Invariante).
+    """
+    phase = _make_phase()
+    sr = 48000
+    mono = _make_vocal_audio(sr)
+    audio = np.vstack([mono, mono * 0.9]).astype(np.float32)  # channels-first (2, N)
+    pre_nr = np.asarray(audio * 0.1, dtype=np.float32)
+
+    def _fake_tilt(arr, _sr):
+        return 4.0 if float(np.mean(np.abs(arr))) > 0.08 else 0.0
+
+    def _fake_shelf(arr, _sr, _hz, boost_db, _stype="low"):
+        return (arr * (1.0 + 0.05 * float(boost_db))).astype(arr.dtype)
+
+    import backend.core.phases.phase_65_vocal_naturalness_restoration as p65
+
+    monkeypatch.setattr(p65, "_estimate_spectral_tilt_db", _fake_tilt)
+    monkeypatch.setattr(p65, "_apply_shelving_eq", _fake_shelf)
+
+    import backend.core.dsp.audibility_gate as ag
+
+    monkeypatch.setattr(
+        ag,
+        "defect_audibility",
+        lambda *a, **kw: {"audible": False, "delta_db": 0.0, "threshold_db": 0.0, "skippable": True},
+    )
+
+    result = phase.process(
+        audio.copy(),
+        sr,
+        quality_mode="restoration",
+        panns_singing=0.8,
+        pre_nr_audio=pre_nr,
+        strength=1.0,
+        phase_locality_factor=1.0,
+    )
+    assert result.metadata.get("subaudible_defects_skipped") is True
+    assert result.audio.shape == audio.shape, f"Layout-Kollaps: {result.audio.shape} statt {audio.shape}"
+    np.testing.assert_array_almost_equal(result.audio, audio, decimal=5)
