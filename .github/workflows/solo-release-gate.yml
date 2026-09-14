@@ -67,7 +67,9 @@ jobs:
   normative-guard:
     name: Normative Guard
     runs-on: ubuntu-22.04
-    timeout-minutes: 12
+    # Befund 2026-09-14: der CLI/GUI-Paritätstest führt die ECHTE Vollpipeline
+    # zweimal aus (CLI-Form + GUI-Form) — 12 min reichen dafür nicht mehr.
+    timeout-minutes: 60
 
     steps:
       - name: Checkout
@@ -100,6 +102,8 @@ jobs:
             tests/normative/test_no_production_stubs.py \
             tests/normative/test_full_pipeline_determinism.py \
             tests/normative/test_p2_audit_and_deployment_mode.py \
+            tests/normative/test_cli_gui_output_parity.py \
+            --run-heavy-tests \
             -p no:xdist \
             --override-ini="addopts=--strict-markers --import-mode=importlib" \
             --timeout=30 \
