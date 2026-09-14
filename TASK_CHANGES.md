@@ -1,18 +1,13 @@
 # TASK_CHANGES — Live-Ledger der aktuellen Aufgabe
 
-> Generiert von `scripts/change_ledger.py snapshot` (Base: `HEAD`, Stand: 2026-09-14 20:37 CEST).
+> Generiert von `scripts/change_ledger.py snapshot` (Base: `HEAD`, Stand: 2026-09-14 21:20 CEST).
 > CI (`ci-lite.yml` pr-evidence-gate) erzwingt Abdeckung: jede geänderte Code-Datei muss hier stehen.
 
 ## Geänderte Dateien
 
 | Status | Pfad | Art |
 |---|---|---|
-| M | backend/core/dsp/diffwave_model.py | modifiziert |
-| M | backend/core/dsp/warp_kalman.py | modifiziert |
-| M | backend/core/optimization/neural_architecture_search.py | modifiziert |
-| M | backend/core/optimization/perceptual_loss.py | modifiziert |
-| M | tests/unit/test_banquet_vinyl_plugin_providers.py | modifiziert |
-| M | tests/unit/test_onnx_softmax_rewrite.py | modifiziert |
+| M | .github/workflows/ci-cross-platform.yml | modifiziert |
 
 ## Entscheidungen
 

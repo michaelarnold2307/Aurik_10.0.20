@@ -35,7 +35,11 @@ jobs:
           - macos-14  # Apple Silicon (M1+), GitHub-hosted
         python:
           - "3.10"
-    timeout-minutes: 30
+    # Befund 2026-09-14: 30 min reichen nicht — der normative Scope (tests/unit +
+    # test_no_production_stubs, ~16,6k Tests) läuft auf den Runnern ~65+ min;
+    # die Jobs wurden am 30-min-Limit gecancelt (Sammlung-Fix hatte sie erstmals
+    # über die Collection hinaus gebracht).
+    timeout-minutes: 120
 
     steps:
       - uses: actions/checkout@v5
