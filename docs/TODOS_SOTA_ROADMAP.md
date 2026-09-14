@@ -754,7 +754,7 @@ wird zur QUALITÄTS-Verbesserung (Ziel: deutlich über 0 dB statt am Gate).
 **Offene Folge-Frage (dokumentiert):** Die Drosselung bei vocal_confidence ≥ 0,40
 kann mit dem Q11-Beleg neu bewertet werden (CQTdiff+-Füll statt Drosselung) —
 konservativ erst nach einem Never-worsen-Test des schlechtesten Falls.
-| F2 | GaCELA-Vokal (Pfad B) | Trainingscode lokal | 375–1500 ms, Sänger-Identität via Resemblyzer-Witness (jetzt ONNX live) | MUSDB-Vocals | P1-Metrik |
+| F2 | GaCELA-Vokal (Pfad B) | **TRAINIERT 2026-09-14/15**: 30 Epochs (10→39) auf MUSDB-Vocals, Checkpoint 39_0499, S1-Val 9 Lücken | **S1-Validierung (2026-09-15): mean ΔSDR −2.46 dB vs. Ground-Truth (Gate ≥ 0 dB NICHT bestanden) ⇒ NICHT aktiviert** (Gate schließt korrekt fail-closed). Witness=None (Resemblyzer im Val-Lauf nicht verfügbar). Nächste Optionen: EAR-VAE-Rezept nachtrainieren, Gate auf ΔSDR vs. DSP-Baseline kalibrieren, oder Pfad B verwerfen | MUSDB-Vocals | P1-Metrik |
 
 **F2-Vorbereitung 2026-09-14:** `scripts/train_gacela_vocal_inpaint.py`
 (Upstream-Trainingsspiegel + MUSDB→22,05-kHz-WAV-Datenpfad, --data-check
