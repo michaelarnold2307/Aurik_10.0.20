@@ -447,6 +447,26 @@ class DenoisePhase(PhaseInterface):
             params["bands"] = _bands_adaptive
             params["_noise_floor_db"] = _nf["noise_floor_db"]
             params["_estimated_snr_db"] = _nf["estimated_snr_db"]
+            # §SOTA-PSY-A1 (2026-09-14): Liegt der Noise-Floor unter der
+            # Maskierungsschwelle, ist das Rauschen NICHT hörbar — die
+            # Reduktion wird gedämpft statt Musik anzugreifen (§4-Vertrag).
+            try:
+                from backend.core.dsp.masking_model import compute_masking_threshold_db as _cmt03
+
+                _thr03, _bands03 = _cmt03(audio.mean(axis=0) if audio.ndim == 2 else audio, sample_rate)
+                _thr_floor03 = float(np.percentile(_thr03, 30))
+                _nf_db03 = float(_nf.get("noise_floor_db", 0.0))
+                if _nf_db03 < _thr_floor03:
+                    for _bname03, _b03 in _bands_adaptive.items():
+                        _b03["reduction"] = float(np.clip(_b03.get("reduction", 0.5) * 0.4, 0.03, 0.9))
+                    params["_noise_floor_sub_threshold"] = True
+                    logger.info(
+                        "Verarbeitungsschritt_03 §SOTA-PSY-A1: Noise-Floor %.1f dB unter Maskierungsschwelle %.1f dB — Reduktion gedämpft.",
+                        _nf_db03,
+                        _thr_floor03,
+                    )
+            except Exception as _psy_exc_03:
+                logger.debug("Verarbeitungsschritt_03 §SOTA-PSY-A1 nicht blockierend: %s", _psy_exc_03)
             # §BMLD (binaural_masking.py): Binaurale Maskierungs-Freisetzung —
             # interaural unkorreliertes Rauschen ist fürs Ohr bis zu ~15 dB
             # besser maskiert; die NR-Reduktion wird entsprechend GEDÄMPFT,

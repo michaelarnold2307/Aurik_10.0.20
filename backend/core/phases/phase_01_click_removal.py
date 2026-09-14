@@ -888,6 +888,7 @@ class ClickRemovalPhase(PhaseInterface):
         """
         repaired = audio.copy()
         ml_repaired = 0
+        _skipped_subaudible_01 = 0
         mono_ref = audio  # Mono-Referenz für Kontext-RMS
 
         for click in severe_clicks:
@@ -901,6 +902,23 @@ class ClickRemovalPhase(PhaseInterface):
             )
             if local_s <= 0.0:
                 continue
+            # §SOTA-PSY-A1 (2026-09-14): subaudible Klicks (unter der
+            # Maskierungsschwelle) nicht reparieren — §4-Vertrag der
+            # Hörordnung; Nichtstun erhält den Status quo.
+            try:
+                from backend.core.dsp.audibility_gate import defect_audibility as _aud_01
+
+                _aud_res_01 = _aud_01(mono_ref, sample_rate, start_idx, end_idx, lo_hz=1200.0, hi_hz=16000.0)
+                if bool(_aud_res_01.get("skippable", False)):
+                    _skipped_subaudible_01 += 1
+                    logger.debug(
+                        "Verarbeitungsschritt_01 §SOTA-PSY-A1: Klick [%d:%d] unter der Maskierungsschwelle — übersprungen.",
+                        start_idx,
+                        end_idx,
+                    )
+                    continue
+            except Exception as _psy_exc_01:
+                logger.debug("Verarbeitungsschritt_01 §SOTA-PSY-A1 nicht blockierend: %s", _psy_exc_01)
             if use_ml and self._repair_click_patch_ml(repaired, sample_rate, click, panns_singing=panns_singing):
                 ml_repaired += 1
                 if local_s < 1.0:
@@ -934,6 +952,11 @@ class ClickRemovalPhase(PhaseInterface):
             else:
                 repaired = repaired_copy
 
+        if _skipped_subaudible_01 > 0:
+            logger.info(
+                "Verarbeitungsschritt_01 §SOTA-PSY-A1: %d Klick(s) unter der Maskierungsschwelle übersprungen.",
+                _skipped_subaudible_01,
+            )
         return repaired, ml_repaired
 
     def _apply_click_repair_to_channel(self, audio: np.ndarray, click: dict[str, Any]) -> np.ndarray:
