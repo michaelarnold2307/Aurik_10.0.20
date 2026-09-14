@@ -139,6 +139,13 @@
   docs/guides/MUSHRA_STUDIENPROTOKOLL.md §10 (6 Pilot-Szenarien aus
   test_audio/output, Bedingungen, n=12-Pilot → n≥30, Latin-Square,
   Tooling-Hinweise; Auswertemetriken tests/test_blindtest_metrics.py vorhanden).
+- **Stimuli-Builder 2026-09-14:** `scripts/build_mushra_stimuli.py` (Seed 42, BS.1770-Abgleich,
+  Low-Anchor −6 LUFS, Manifest ohne Zeitstempel, 6 Tests grün) + Pilot-Set gebaut unter
+  `output/mushra_study/pilot/` — 3/6 Szenarien mit Aurik-Stimulus.
+  **Befund:** 3 Szenarien (cassette_1980s_wow, mp3_64kbps_artifacts, cd_clipped_2000s) haben
+  leere 50-Byte-Exports in output/supervised_run (Quality-Gate-Fail ~0,48 < 0,55 → Datei
+  ohne Audio, rc=0, Status „ok“) — §0c (copilot-instructions.md)-Verstoß: bestmögliches
+  sicheres Ergebnis mit Status „degraded“ fehlt. Eigener Bug-Hunt-Task (nächste Empfehlung).
 
 ## TODO-P1-5 · §v10.709 authentizitaet-Erhalt nach phase_12_wow_flutter_fix
 
