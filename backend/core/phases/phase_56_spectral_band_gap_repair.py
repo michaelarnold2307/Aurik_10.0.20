@@ -701,6 +701,7 @@ class SpectralBandGapRepairPhase(PhaseInterface):
         defect_locations: dict[str, list[tuple[float, float]]] | None,
         event_metadata: dict[str, Any] | None = None,
         protected_zones: list[tuple[float, float, float]] | None = None,
+        audio: np.ndarray | None = None,
     ) -> tuple[np.ndarray, float]:
         """Erzeugt lokale Blendmaske für HEAD_WEAR/TAPE_HEAD_CLOG-Reparatur."""
         if n_samples <= 0 or sample_rate <= 0:
@@ -726,6 +727,22 @@ class SpectralBandGapRepairPhase(PhaseInterface):
                 s = max(0, s - pad)
                 e = min(n_samples, e + pad)
                 if e > s:
+                    # §SOTA-PSY-A1 (2026-09-14): subaudible Band-Lücken (unter der
+                    # Maskierungsschwelle) bleiben unrepariert — §4-Vertrag.
+                    if audio is not None:
+                        try:
+                            from backend.core.dsp.audibility_gate import defect_audibility as _aud_56
+
+                            _aud_res_56 = _aud_56(audio, sample_rate, s, e, lo_hz=200.0, hi_hz=6000.0)
+                            if bool(_aud_res_56.get("skippable", False)):
+                                logger.debug(
+                                    "Verarbeitungsschritt_56 §SOTA-PSY-A1: Band-Lücke [%d:%d] unter der Maskierungsschwelle — übersprungen.",
+                                    s,
+                                    e,
+                                )
+                                continue
+                        except Exception as _psy_exc_56:
+                            logger.debug("Verarbeitungsschritt_56 §SOTA-PSY-A1 nicht blockierend: %s", _psy_exc_56)
                     event_strength = SpectralBandGapRepairPhase._local_event_strength(key, loc, event_metadata)
                     mask[s:e] = np.maximum(mask[s:e], event_strength)
 
@@ -936,6 +953,7 @@ class SpectralBandGapRepairPhase(PhaseInterface):
             defect_locations=kwargs.get("defect_locations"),
             event_metadata=kwargs.get("defect_event_metadata"),
             protected_zones=self._collect_protected_zones(kwargs),
+            audio=audio,
         )
         if _locality_profile.size > 0:
             if out.ndim == 2:

@@ -59,6 +59,19 @@ def test_defect_audibility_deterministic_and_edge_cases() -> None:
     assert edge["skippable"] is True
 
 
+def test_defect_audibility_long_region_center_burst() -> None:
+    """Lange Defekt-Region: der Burst in der MITTE muss gemessen werden (phase_56-Befund)."""
+    sr = 48000
+    t = np.linspace(0, 2.0, 2 * sr, endpoint=False)
+    sine = (0.1 * np.sin(2 * np.pi * 440 * t)).astype(np.float32)
+    c = int(0.25 * sr)
+    sine[c : c + 64] += 1.0
+    d0, d1 = int(0.2 * sr), int(0.3 * sr)  # Region deutlich länger als 512 Samples
+    res = ag.defect_audibility(sine, sr, d0, d1, lo_hz=200.0, hi_hz=6000.0)
+    assert res["audible"] is True
+    assert res["skippable"] is False
+
+
 def test_defect_audibility_fail_open_on_error(monkeypatch: pytest.MonkeyPatch) -> None:
     """§V6 (copilot-instructions.md): Fehler im Modell → Reparatur freigegeben (fail-open)."""
     import backend.core.dsp.masking_model as mm

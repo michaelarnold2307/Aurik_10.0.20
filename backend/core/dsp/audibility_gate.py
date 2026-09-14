@@ -85,7 +85,11 @@ def defect_audibility(
             pad_l = (n_fft_d - len(seg)) // 2
             seg = np.pad(seg, (pad_l, n_fft_d - len(seg) - pad_l))
         else:
-            seg = seg[:n_fft_d]
+            # ZENTRUM statt Anfang: lange Defekt-Regionen (z. B. gepaddete
+            # Splice-Fenster) tragen die Defekt-Energie meist in der Mitte —
+            # der Anfang wäre reiner Kontext (Befund 2026-09-14, phase_56).
+            off = (len(seg) - n_fft_d) // 2
+            seg = seg[off : off + n_fft_d]
         win = np.hanning(n_fft_d)
         spec_d = np.abs(np.fft.rfft(seg * win, n=n_fft_d)) ** 2
         freqs = np.fft.rfftfreq(n_fft_d, d=1.0 / sr)

@@ -37,6 +37,16 @@ def sine_440_2s():
     return np.sin(2 * np.pi * 440 * t).astype(np.float32)
 
 
+def _with_audible_defects(sine: np.ndarray, regions: list[tuple[float, float]]) -> np.ndarray:
+    """Leiser Sinus (0,1) + kräftige Breitband-Bursts — hörbar fürs PSY-A1-Gate
+    (ein Vollpegel-Sinus maskiert selbst 0,6-Amplituden-Bursts, Schwelle ~50 dB)."""
+    audio = (sine * 0.1).astype(np.float32)
+    for lo, hi in regions:
+        c = int((lo + hi) / 2 * SR)
+        audio[c : c + 64] += 1.0
+    return audio
+
+
 @pytest.fixture(scope="module")
 def noisy_audio():
     np.random.seed(42)
@@ -140,14 +150,14 @@ class TestPhase56Process:
         monkeypatch.setattr(phase, "_mrsa_gain_refinement", lambda pre, post, sr: post)
 
         result = phase.process(
-            sine_440_2s,
+            _with_audible_defects(sine_440_2s, [(0.20, 0.30)]),
             sample_rate=SR,
             confidence=1.0,
             strength=1.0,
             defect_locations={"head_wear": [(0.20, 0.30)]},
         )
         assert result.success is True
-        diff = np.abs(result.audio - sine_440_2s)
+        diff = np.abs(result.audio - sine_440_2s * 0.1)
         in_region = float(np.mean(diff[int(0.21 * SR) : int(0.29 * SR)]))
         out_region = float(np.mean(diff[int(1.40 * SR) : int(1.70 * SR)]))
         assert in_region > out_region * 2.0
@@ -161,7 +171,7 @@ class TestPhase56Process:
         monkeypatch.setattr(phase, "_mrsa_gain_refinement", lambda pre, post, sr: post)
 
         result = phase.process(
-            sine_440_2s,
+            _with_audible_defects(sine_440_2s, [(0.20, 0.50), (1.20, 1.50)]),
             sample_rate=SR,
             confidence=1.0,
             strength=1.0,
@@ -172,7 +182,7 @@ class TestPhase56Process:
             },
         )
         assert result.success is True
-        diff = np.abs(result.audio - sine_440_2s)
+        diff = np.abs(result.audio - sine_440_2s * 0.1)
         clog_region = float(np.mean(diff[int(0.25 * SR) : int(0.45 * SR)]))
         dip_region = float(np.mean(diff[int(1.25 * SR) : int(1.45 * SR)]))
         assert clog_region > dip_region * 1.25
@@ -185,7 +195,7 @@ class TestPhase56Process:
         monkeypatch.setattr(phase, "_mrsa_gain_refinement", lambda pre, post, sr: post)
 
         free = phase.process(
-            sine_440_2s,
+            _with_audible_defects(sine_440_2s, [(1.20, 1.50)]),
             sample_rate=SR,
             confidence=1.0,
             strength=1.0,
@@ -193,7 +203,7 @@ class TestPhase56Process:
             defect_event_metadata={"tape_head_clog": {"severity": 0.95, "confidence": 0.95}},
         )
         capped = phase.process(
-            sine_440_2s,
+            _with_audible_defects(sine_440_2s, [(1.20, 1.50)]),
             sample_rate=SR,
             confidence=1.0,
             strength=1.0,
@@ -202,11 +212,15 @@ class TestPhase56Process:
             vibrato_zones=[(1.10, 1.60)],
         )
         free_delta = float(
-            np.mean(np.abs(free.audio[int(1.25 * SR) : int(1.45 * SR)] - sine_440_2s[int(1.25 * SR) : int(1.45 * SR)]))
+            np.mean(
+                np.abs(free.audio[int(1.25 * SR) : int(1.45 * SR)] - sine_440_2s[int(1.25 * SR) : int(1.45 * SR)] * 0.1)
+            )
         )
         capped_delta = float(
             np.mean(
-                np.abs(capped.audio[int(1.25 * SR) : int(1.45 * SR)] - sine_440_2s[int(1.25 * SR) : int(1.45 * SR)])
+                np.abs(
+                    capped.audio[int(1.25 * SR) : int(1.45 * SR)] - sine_440_2s[int(1.25 * SR) : int(1.45 * SR)] * 0.1
+                )
             )
         )
         assert capped_delta < free_delta * 0.55

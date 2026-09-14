@@ -800,7 +800,7 @@ Sänger-Identität, MuQ-MOS nicht schlechter als Baseline).
 
 | ID | Maßnahme | Ist (2026-09-14) | Ziel/Wirkung |
 |---|---|---|---|
-| PSY-A1 | **Audibility-Gate-Rollout**: Maskierungsschwelle (masking_model, ISO 11172-3 Bark) als Reparatur-Entscheidung in ALLEN reparierenden Phasen (01, 03, 06, 07, 08, 19, 23, 27, 36, 50, 55, 56, 59, 64, 65, 66) | **TEIL-ROLLOUT 2026-09-14**: `audibility_gate.py` (defekt-zentrierte Messung, §V6 (copilot-instructions.md)-fail-open) + Verdrahtung **phase_01, 03, 27, 64** (subaudible Klicks/Pops/Splices überspringen, Noise-Floor dämpfen); 6+17 Tests grün. **phase_56-Befund:** die Lokalitäts-Maske fällt bei leerer Maske auf „repariere überall“ zurück und die Coverage-Metrik kollabiert — das Gate braucht dort einen Refactor der Profil-Fallbacks (zurückgestellt, kein Regression-Risiko). Weitere Phasen folgen der Matrix-Liste | §4-Vertrag: „Ist der Defekt über der Maskierungsschwelle hörbar?“ als Pflicht-Frage; Berichte weisen „hörbar“ als über-Schwelle aus |
+| PSY-A1 | **Audibility-Gate-Rollout**: Maskierungsschwelle (masking_model, ISO 11172-3 Bark) als Reparatur-Entscheidung in ALLEN reparierenden Phasen (01, 03, 06, 07, 08, 19, 23, 27, 36, 50, 55, 56, 59, 64, 65, 66) | **TEIL-ROLLOUT 2026-09-14**: `audibility_gate.py` (defekt-zentrierte Messung, §V6 (copilot-instructions.md)-fail-open) + Verdrahtung **phase_01, 03, 27, 55, 56, 64** (subaudible Klicks/Pops/Splices/Lücken/Band-Lücken überspringen, Noise-Floor dämpfen); 7 Gate- + 45 phase_56- + 17 phase_64-Tests grün. **Gate-Fix dabei:** lange Defekt-Regionen werden ZENTRAL (Mitte) statt am Anfang gemessen. 06/07/08/19/23/36/50/59/65/66 offen | §4-Vertrag: „Ist der Defekt über der Maskierungsschwelle hörbar?“ als Pflicht-Frage; Berichte weisen „hörbar“ als über-Schwelle aus |
 | PSY-A2 | **Zwicker-Modell (ISO 532-1)** als Nachfolger des MPEG-1-Modells: stationäre + zeitvariante Loudness und Maskierung | nur ISO 11172-3-Modell vorhanden | präzisere Schwelle bei tonalem/breitbandigem Material; Basis für PSY-A7 |
 | PSY-A3 | **BMLD-Verdrahtung** (binaurale Maskierungs-Freisetzung) in die Stereo-Phasen-Gates (13, 15, 33, 34, 46, 48) | binaural_masking auf Guard-Ebene + phase_03; **2026-09-14: phase_33- UND phase_34-BMLD-Witness** (Metadaten release_db/nr_floor_release_db/ec_gain_db, ZEUGE-Modus — dynamische Freisetzungs-Toleranz bleibt Folge-Schritt); 13/15/46/48 offen | Stereo-Änderungen werden nach Hör-Freisetzung bewertet statt nach Mess-dB |
 | PSY-A4 | **Equal-Loudness-Band-Gewichte (ISO 226) + JND-Gates** für EQ-/Enhancement-Phasen (04, 16, 17, 37, 38, 39) | fletcher_munson nur 1× verdrahtet; **2026-09-14: phase_37-Bass-Mix mit Equal-Loudness-Faktor temperiert (ISO 226, 60 phon, Deckel [0,5–1,0])**; 04/16/17/38/39 offen | Stärke-Entscheidungen in Phon-Hörbarkeit statt Roh-dB |
@@ -866,9 +866,67 @@ Sänger-Identität, MuQ-MOS nicht schlechter als Baseline).
 | Q5 | F2-Verlängerung 30–50 Epochs | **NACH F1 (GPU)** | `python scripts/train_gacela_vocal_inpaint.py --train --data-folder data/gacela_vocals_train --epochs 40 --batch 64 --save-path output/gacela_f2_v2/ --experiment-name gacela_vocal_ft` (lädt/startet neu; Checkpoint-Warmstart aus output/gacela_f2 prüfen) |
 | Q6 | F3: BigVGAN (HR-V1 + 23/50 + 03) | **NACH F1 (GPU)** | bigvgan_v2.pth lokal; Torch-Runtime nach S3-Muster + phase_07-Verdrahtung mit Aktivierungsvertrag |
 | Q7 | F5/C4: DDSP-Prädiktor | **NACH F1 (GPU)** | CLAP-Encoder lokal; EQ/Dynamik-Parameter-Prädiktion für 04/16/17, DSP führt aus |
-| Q8 | PSY-A1-Rest (masken-basierte Phasen 19/23/50/56/59/65/66) | **NACH Q2** | Profil-Fallback-Refactor (phase_56-Befund: leere Maske ⇒ „repariere überall“) dann Gate je Phase |
+| Q8 | PSY-A1-Rest (masken-basierte Phasen 19/23/50/56/59/65/66) | **phase_56 ERLEDIGT 2026-09-14** (Audio-Plumbing + Gate; 45 Tests grün) — 19/23/50/59/65/66 folgen demselben Muster | Profil-Fallback-Refactor (phase_56-Befund: leere Maske ⇒ „repariere überall“) dann Gate je Phase |
 | Q9 | PSY-A2 (Zwicker ISO 532-1) | AUSBAUSTUFE | präzisere Maskierungsschwelle — verbessert alle PSY-A1-Gates |
 | Q10 | PSY-A6 (CIPIC-HRIR) | AUSBAUSTUFE | personalisierte Bühnen-Bewertung |
+
+---
+
+## MODELL-LIZENZEN (Governance 2026-09-14)
+
+> Lizenz-Register der genutzten Modelle — rechtlich ehrliche Einordnung.
+> Kein Rechtsgutachten; bei Kommerzialisierung durch Fachanwalt prüfen lassen.
+
+| Modell | Lizenz | Kommerziell ok? | Anmerkung |
+|---|---|---|---|
+| DiffWave (philovivero) | MIT | ✅ | Port dokumentiert (diffwave_model.py); Finetune-Checkpoints dürfen unter eigener Lizenz stehen (MIT erlaubt Sublizenzierung, Hinweis beibehalten) |
+| GaCELA (Upstream-Code) | MIT | ✅ | F2-Checkpoint wurde FROM SCRATCH (Random-Init) trainiert ⇒ eigene Gewichte; Architektur folgt MIT-Code |
+| BEATs (Microsoft) | MIT (Code+Checkpoints) | ✅ | iter3-ONNX lokal |
+| BS-RoFormer | MIT | ✅ | |
+| MuQ / MuQ-Eval-A1 | MIT | ✅ | |
+| CQTdiff+ | **MIT** (verifiziert 2026-09-14, models/cqtdiff/LICENSE) | ✅ | |
+| BigVGAN (NVIDIA) | MIT | ✅ | |
+| HiFiGAN (jik876) | MIT | ✅ | |
+| PANNs Cnn14 | MIT | ✅ | Ersatz-Tagger |
+| Resemblyzer | MIT | ✅ | |
+| DeepFilterNet | MIT | ✅ | |
+| AudioLDM2 | **NC-restriktiv** (Model-Card, Forschung) | ❌ | Kommerzielle Nutzung der exportierten ONNX klären bzw. durch eigenes Training ersetzen (F6) |
+| essentia | AGPL-3.0 | ⚠️ | NUR Trainings-Zeit (Tensorboard-Summaries), nicht im Produkt-Code — bei Distribution der Trainings-Umgebung prüfen |
+| MUSDB18/HQ (Trainingsdaten F1/F2) | CC BY-NC-SA 4.0 | ❌ | **Daten-Lizenz:** auf NC-Daten trainierte Gewichte erben die Einschränkung — für kommerzielle Modelle auf eigenes/lizenziertes Vokalmaterial wechseln |
+| RVC/hubert | MIT-Code / hubert NC | ❌ | daher „später“ |
+
+**Leitlinien (rechtlich tragfähige Wege zu einem EIGENEN Modell):**
+1. **From-Scratch + eigene Daten** = bulletproof: eigenes Training auf selbst
+   lizenziertem Material, Architektur aus MIT-Code ⇒ Checkpoint trägt deine Lizenz.
+2. **MIT-Basis + Finetune** = erlaubt: MIT gestattet Modifikation UND
+   Sublizenzierung — du darfst den Finetune unter eigener Lizenz veröffentlichen,
+   MIT-Text + Copyright-Hinweis der Basis beibehalten.
+3. **NC-Basen/Daten lassen sich NICHT „wegverbessern“**: Eine drastische
+   Verbesserung ist rechtlich kein lizenzbefreiender Transformationsakt — die
+   NC-/SA-Klausel bleibt an den (eingebetteten) Gewichten bzw. Datenableitungen
+   haften. Einziger Ausweg: Basis/Daten austauschen.
+4. **Gewichts-Copyright ist ungeklärt**: Ob Modellgewichte überhaupt
+   urheberrechtlich schutzfähig sind, ist gerichtlich unentschieden — darauf
+   darf KEINE Lizenzentscheidung gebaut werden.
+
+---
+
+## AUSBAU-EMPFEHLUNGEN 2026-09-14 — Differenzierung zu anderen Restaurierungslösungen
+
+> Zusätzliche Optimierungen, die Aurik qualitativ UND performance-seitig
+> einzigartig positionieren — auf dem bereits Erreichten aufbauend
+> (Hörordnungs-Gates, Witnesses, Determinismus, ROCm).
+
+| ID | Hebel | Wirkung | Umsetzung |
+|---|---|---|---|
+| R1 | **Wahrnehmungs-Budget-Bilanz** (PSY-B): jede Phase verbraucht ein JND-Budget; die Kette bilanziert die Gesamt-Hörbarkeit (wie ein Wahrnehmungs-Wasserzeichen) | „Klangtreu“ wird messbar statt Absichtserklärung — kein anderes Werkzeug bilanziert Reparaturen in JND-Einheiten | `hearing_jnd.py` liegt vor; Budget-Metadaten je Phase + Summenbericht im Export |
+| R2 | **MuQ-MOS-Export-Gate** (WIT-M4-Umsetzung): MOS-Delta (out vs. in) als Release-Gate — jetzt möglich, da WIT-M1 die Richtung repariert hat | Hör-Qualität entscheidet über den Export, nicht nur True-Peak/LUFS | MuQ-Plugin (10-s-Clips) als dritte Gate-Stimme im Export-Qualitäts-Gate verdrahten |
+| R3 | **ROCm-Beschleunigung aller ML-Modelle** (PERF-A): CQTdiff+, MuQ, BEATs, DeepFilterNet auf Torch-ROCm (Muster bsr317_torch_rocm: 42×) | Echte GPU-Performance-Story auf AMD-Hardware; ORT-ROCm-Kernel-Bug bleibt umgangen | Ports nach dem BSR-Muster, Paritäts-Tests je Modell |
+| R4 | **Audibility-First-Scheduling** (PERF-B): billige Detektion zuerst, teure Reparatur nur bei Hörbarkeit — als globales Prinzip formalisiert + als Benchmark gemessen | Rechenzeit sinkt dort, wo das Ohr nichts hört (PSY-A1 rollt das bereits aus) | Benchmark „PSY-A1-Einsparung“ je Phase + Scheduling-Formalisierung |
+| R5 | **Determinismus-Zertifikat** (TRUST-A): bit-identische Läufe je Version als Studio-Feature + CI-Nachweis | Reproduzierbares Remastering ist ein Alleinstellungsmerkmal für Studios/Archive | CI-Test „gleicher Input ⇒ MD5-identischer Output“ je Release dokumentieren |
+| R6 | **Per-Song-Zielklang** (C4/DDSP, = Q7): EQ/Dynamik-Parameter aus CLAP/BEATs-Embeddings vorhergesagt, DSP führt aus | Kein Mitbewerber lernt den Zielklang pro Song — Studio-Wohlklang statt fester Zielkurven | GPU nach F2 (F5) |
+| R7 | **Adaptive Phase-Rescheduling nach Hör-Impact** (PERF-C): Reihenfolge/Budget der Phasen nach erwartetem Hör-Gewinn | Wall-Clock-Budget trifft die hörbarste Verbesserung zuerst | auf bestehendem wall_budget_s aufbauen; Impact-Schätzer aus PSY-A1 |
+| R8 | **Sparse Repair** (PERF-D): Reparatur nur in Defekt-Nähe statt Vollband | Rechenzeit + Artefakt-Risiko sinken gemeinsam | Defekt-Masken (bereits vorhanden) als Rechen-Masken nutzen |
 
 ---
 
