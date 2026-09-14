@@ -36,6 +36,7 @@ def defect_audibility(
     lo_hz: float = _DEFAULT_LO_HZ,
     hi_hz: float = _DEFAULT_HI_HZ,
     context_ms: float = _DEFAULT_CONTEXT_MS,
+    model: str = "mpeg1",
 ) -> dict[str, float | bool]:
     """Verdikt über die Hörbarkeit eines Defekts oberhalb der Maskierungsschwelle.
 
@@ -45,6 +46,11 @@ def defect_audibility(
         defect_start/defect_end: Defektgrenzen in Samples.
         lo_hz/hi_hz: relevante Bandgrenzen (Default 800 Hz–10 kHz).
         context_ms: Kontextbreite links/rechts als Masker-Schätzung.
+        model: Maskierungsmodell — "mpeg1" (ISO 11172-3, Default) oder
+            "zwicker" (§SOTA-PSY-A2/Q9, ISO 532-1). Default "mpeg1" ändert
+            das Bestandsverhalten NICHT (§G5 (GEBOTE.md) Determinismus);
+            bei Import-/Berechnungsfehlern des Zwicker-Pfades wird auf
+            MPEG-1 zurückgefallen (fail-open §V6 (copilot-instructions.md)).
 
     Returns:
         {"audible", "delta_db", "threshold_db", "skippable"} — deterministisch.
@@ -60,14 +66,22 @@ def defect_audibility(
     ctx = int(context_ms * sr / 1000.0)
     w0 = max(0, d0 - ctx)
     w1 = min(n, d1 + ctx)
+    before = arr[w0:w1].copy()
+    before[d0 - w0 : d1 - w0] = 0.0
+    if model == "zwicker":
+        try:
+            return _defect_audibility_zwicker(arr, sr, d0, d1, before, lo_hz, hi_hz)
+        except Exception as _exc:  # §V6 (copilot-instructions.md): Rückfall MPEG-1
+            logger.debug(
+                "Zwicker-Gate fehlgeschlagen (%s) — Rückfall auf MPEG-1 (§V6 (copilot-instructions.md)).", _exc
+            )
+            # durchfallen zum MPEG-1-Pfad unten
     try:
         from backend.core.dsp.masking_model import bark_band_edges, compute_masking_threshold_db
 
         # Masker = Kontext (Defekt-Region im „Vorher“ genullt); Schwelle über
         # das 75. Perzentil der Frame-Schwellen je Band (robust gegen
         # einzelne Ausreißer-Frames).
-        before = arr[w0:w1].copy()
-        before[d0 - w0 : d1 - w0] = 0.0
         thr, _ = compute_masking_threshold_db(before, sr)
         edges = bark_band_edges(sr)
         band_idx = np.where((edges[:-1] < hi_hz) & (edges[1:] > lo_hz))[0]
@@ -109,3 +123,57 @@ def defect_audibility(
             "Audibility-Gate fehlgeschlagen (%s) — Reparatur freigegeben (§V6 (copilot-instructions.md)).", _exc
         )
         return {"audible": True, "delta_db": 0.0, "threshold_db": 0.0, "skippable": False}
+
+
+def _defect_audibility_zwicker(
+    arr: np.ndarray,
+    sr: int,
+    d0: int,
+    d1: int,
+    before: np.ndarray,
+    lo_hz: float,
+    hi_hz: float,
+) -> dict[str, float | bool]:
+    """Zwicker-Pfad des Audibility-Gates (§SOTA-PSY-A2/Q9, ISO 532-1).
+
+    Maskierungsschwelle aus ``zwicker_masking_threshold_db`` (dB SPL) statt
+    des MPEG-1-Bark-Modells. Der Defekt-Delta wird in derselben dB-SPL-Domäne
+    gemessen (Kurzform im 1/3-Oktav-Band des relevanten Bereichs), damit
+    ``audible = delta_db > threshold_db`` semantisch konsistent bleibt.
+
+    Fehler propagieren nach oben (dort Rückfall auf MPEG-1 gemäß
+    §V6 (copilot-instructions.md)). Deterministisch, layout-sicher.
+    """
+    from backend.core.dsp.zwicker_loudness import zwicker_masking_threshold_db
+
+    thr_spl, freq_hz = zwicker_masking_threshold_db(before, sr)
+    # Schwelle auf [lo,hi] beschränkt; 75. Perzentil wie im MPEG-1-Pfad als
+    # robuste Zusammenfassung gegen Ausreißer.
+    band = (freq_hz >= lo_hz) & (freq_hz <= hi_hz)
+    if not band.any():
+        return {"audible": False, "delta_db": 0.0, "threshold_db": 0.0, "skippable": True}
+    threshold_db = float(np.max(np.percentile(thr_spl[band], 75)))
+
+    # Defekt-Delta: dB SPL des lautesten 1/3-Oktav-Bands im zentrierten Signal
+    # (analog zur defekt-zentrierten Messung des MPEG-1-Pfades).
+    from backend.core.dsp.zwicker_loudness import _third_octave_levels_db_spl
+
+    seg = arr[d0:d1].astype(np.float64)
+    n_fft_d = 512
+    if len(seg) < n_fft_d:
+        pad_l = (n_fft_d - len(seg)) // 2
+        seg = np.pad(seg, (pad_l, n_fft_d - len(seg) - pad_l))
+    else:
+        off = (len(seg) - n_fft_d) // 2
+        seg = seg[off : off + n_fft_d]
+    levels = _third_octave_levels_db_spl(seg, sr)
+    delta_db = float(np.max(levels))
+    delta_db = max(delta_db, -200.0)
+
+    audible = bool(delta_db > threshold_db)
+    return {
+        "audible": audible,
+        "delta_db": round(delta_db, 2),
+        "threshold_db": round(threshold_db, 2),
+        "skippable": not audible,
+    }

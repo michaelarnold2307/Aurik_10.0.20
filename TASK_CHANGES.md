@@ -1,14 +1,18 @@
 # TASK_CHANGES — Live-Ledger der aktuellen Aufgabe
 
-> Generiert von `scripts/change_ledger.py snapshot` (Base: `HEAD`, Stand: 2026-09-14 22:42 CEST).
+> Generiert von `scripts/change_ledger.py snapshot` (Base: `HEAD`, Stand: 2026-09-14 23:53 CEST).
 > CI (`ci-lite.yml` pr-evidence-gate) erzwingt Abdeckung: jede geänderte Code-Datei muss hier stehen.
 
 ## Geänderte Dateien
 
 | Status | Pfad | Art |
 |---|---|---|
-| M | .github/workflows/solo-release-gate.yml | modifiziert |
-| ?? | tests/normative/test_cli_gui_output_parity.py | ungetrackt |
+| M | .github/FILE_REGISTRY.md | modifiziert |
+| M | TASK_CHANGES.md | modifiziert |
+| M | backend/core/dsp/audibility_gate.py | modifiziert |
+| M | docs/TODOS_SOTA_ROADMAP.md | modifiziert |
+| ?? | backend/core/dsp/zwicker_loudness.py | ungetrackt |
+| ?? | tests/unit/test_zwicker_loudness.py | ungetrackt |
 
 ## Entscheidungen
 
