@@ -188,6 +188,29 @@ def _apply_splice_repair(
     n = len(out)
     _sr = max(int(sample_rate), 1)
     for sp in splice_points:
+        # §SOTA-PSY-A1 (2026-09-14): subaudible Splices (Klick unter der
+        # Maskierungsschwelle) nicht anfassen — §4-Vertrag der Hörordnung.
+        try:
+            from backend.core.dsp.audibility_gate import defect_audibility as _aud_64
+
+            _click_half_64 = min(32, crossfade_samples // 2)
+            _aud_res_64 = _aud_64(
+                original,
+                _sr,
+                max(0, int(sp) - _click_half_64),
+                min(len(original), int(sp) + _click_half_64),
+                lo_hz=1200.0,
+                hi_hz=16000.0,
+            )
+            if bool(_aud_res_64.get("skippable", False)):
+                logger.debug(
+                    "Verarbeitungsschritt_64 §SOTA-PSY-A1: Splice @%d unter der Maskierungsschwelle — übersprungen.",
+                    int(sp),
+                )
+                continue
+        except Exception as _psy_exc_64:
+            logger.debug("Verarbeitungsschritt_64 §SOTA-PSY-A1 nicht blockierend: %s", _psy_exc_64)
+
         _local_str = _compute_splice_local_strength(
             original=original,
             splice_idx=int(sp),
