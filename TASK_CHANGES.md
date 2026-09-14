@@ -1,15 +1,43 @@
 # TASK_CHANGES — Live-Ledger der aktuellen Aufgabe
 
-> Generiert von `scripts/change_ledger.py snapshot` (Base: `HEAD`, Stand: 2026-09-14 00:07 CEST).
+> Generiert von `scripts/change_ledger.py snapshot` (Base: `HEAD`, Stand: 2026-09-14 04:55 CEST).
 > CI (`ci-lite.yml` pr-evidence-gate) erzwingt Abdeckung: jede geänderte Code-Datei muss hier stehen.
 
 ## Geänderte Dateien
 
 | Status | Pfad | Art |
 |---|---|---|
+| M | .github/FILE_REGISTRY.md | modifiziert |
 | M | docs/TODOS_SOTA_ROADMAP.md | modifiziert |
+| ?? | docs/reports/current/2026-09-14_diffwave_vocal_finetune.json | ungetrackt |
+| ?? | scripts/train_diffwave_vocal_inpaint.py | ungetrackt |
 
 ## Entscheidungen
+
+- **SOTA-VOCAL-INPAINT-S2/F1: DiffWave-Vokal-Finetune-Infrastruktur (2026-09-14)**:
+  `scripts/train_diffwave_vocal_inpaint.py` — philovivero/DiffWave-vocoder
+  (MIT) nach dem Checkpoint portiert (Wrapper-Module `*.conv.weight`/
+  `*.w.weight` exakt nachgebildet, strict load **0 fehlend/0 überzählig**;
+  Checkpoint-Konventionen: WIN=16368 Samples, Mel T=65 via Reflect-Padding —
+  die Plugin-ONNX nutzt dagegen einen adaptierten Conditioner, Export-Anpassung
+  ist Folge-Schritt). Rezept nach EAR-VAE: L1-Noise-Loss + A1-Hör-Loss
+  (--masking-beta 0.3, models/ear_vae_upstream/masking_loss.py), Adam LR 5e-5,
+  Seed 42, Early-Stop Patience 5. Training mit Laufzeit-Semantik: Konditionierung
+  = Mel des GAPPTEN Fensters; Validierung = S1-Protokoll (3 Tracks × 5 Lücken à
+  300 ms, 50 DDIM-Schritte, deterministisches Startrauschen je Lücke) +
+  Zero-Shot-Baseline vor dem Training (gemessen: mean −3,01 dB, min −9,11 dB).
+  Smoke (1 Epoch, 2 Tracks) grün: Baseline erfasst, Epoch trainiert,
+  Val −3,03 dB, Report + Checkpoint geschrieben. **Voller Lauf (60 Epochs,
+  50 Train-Tracks, batch 16) läuft auf der 7900 XTX** — Ergebnis-Report
+  docs/reports/current/DATUM_diffwave_vocal_finetune.json.
+- **AudioLDM2: FS-Korrektur + Plugin-Entscheidung (2026-09-14)**: Die ONNX-Dateien
+  (audioldm2.onnx 1,39 GB, vae_decoder.onnx 132 MB) sind REAL — Sessions geladen,
+  Kontrakte verifiziert (UNet [B,8,H,W] + Doppel-Conditioning; VAE → Mel [B,1,bins,T];
+  HiFiGAN [1,80,seq] → 116-ms-Chunks, gleitend zu fahren). Der frühere
+  „0-Bytes-Artefakt“-Befund war ein Messfehler; es fehlt NUR das Plugin.
+  **Entscheidung: Plugin-Neuanlage verschoben** — FlanT5-Text-Conditioning fehlt
+  lokal (nur CLAP-Audio nutzbar), die VOCAL-INPAINT-Baseline-Rolle ist durch S1
+  obsolet, und der GPU-Finetune F1 hat Priorität. Roadmap-Korrektur eingepflegt.
 
 - **SOTA-DR-V1 RT60-Witness verdrahtet (2026-09-13)**: `estimate_rt60_sec` im
   DeepFilterNet-Plugin (DFN-Trocken-Zerlegung → Schröder-T30 → RT60 +

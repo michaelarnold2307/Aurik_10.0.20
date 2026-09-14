@@ -461,16 +461,24 @@
       Report `docs/reports/current/2026-09-13_vocal_inpaint_baseline.json`):
       **DSP-Messlatte mean SDR −3,46 dB vs. Stille-Baseline (0 dB), DiffWave-Zero-Shot
       −1,69 dB — beide unter Never-worsen (min −7,2/−3,7 dB), DiffWave im Mittel +1,77 dB
-      über DSP.** AudioLDM2-Zero-Shot entfällt vollständig — sowohl
-      `plugins/audiolm2_plugin.py` als auch `models/audiolm2/` sind
-      Dateisystem-Artefakte (listdir-Einträge ohne stat, 0 Bytes real);
-      Neuanlage bräuchte Checkpoint-Download (~5–10 GB, HuggingFace) +
-      ONNX-Export + Plugin — eigene Session. Interpretation: Der Sprach-Checkpoint
+      über DSP.** AudioLDM2-Zero-Shot entfällt weiterhin — das PLUGIN fehlt
+      (`plugins/audiolm2_plugin.py` existiert nicht); **FS-Korrektur 2026-09-14:**
+      die ONNX-Dateien `models/audioldm2/` sind real (1,39 GB + 132 MB, Kontrakte
+      verifiziert) — der frühere „0-Bytes-Artefakt“-Befund war ein Messfehler.
+      Plugin-Entscheidung: Neuanlage verschoben (FlanT5 fehlt lokal, Rolle durch
+      S1 obsolet, GPU-Finetune F1 hat Priorität). Interpretation: Der Sprach-Checkpoint
       füllt Singstimmen bereits besser als der DSP-Pfad, aber noch unter der Messlatte
       „Nichts-Tun“ — der Vokal-Finetune (S2) hat eine quantifizierte Ziellücke (ΔSDR ≥ 0
       je Lücke, aktuell −1,7 dB).
     - VOCAL-INPAINT-S2: DiffWave-Vokal-Finetune (A1-Hör-Loss, Encoder-Frozen,
       Validierungs-Early-Stop — EAR-VAE-Rezept, GPU).
+      **Status 2026-09-14: LÄUFT** — `scripts/train_diffwave_vocal_inpaint.py`
+      (philovivero-Port, strict load 0/0; WIN=16368, Mel T=65 — Checkpoint-
+      Konventionen; die Plugin-ONNX nutzt einen adaptierten Conditioner,
+      Export-Anpassung ist Folge-Schritt). Smoke grün (Baseline mean −3,01 dB,
+      1 Epoch Val −3,03 dB); voller Lauf (60 Epochs, 50 Train-Tracks, batch 16)
+      auf der 7900 XTX. Gate: mean Val-SDR ≥ 0 dB (S1-Ziellücke: −1,7 dB) +
+      Never-worsen vs. Zero-Shot je Lücke.
     - VOCAL-INPAINT-S3: IN-V1/V2-Naht-Gates + Verdrahtung in phase_55 (ersetzt
       die Drosselung bei vocal_confidence ≥ 0,40).
     - VOCAL-INPAINT-S4: Verifikation — ΔSDR ≥ 0 je Segment, VQI/Sänger-Identität
@@ -533,14 +541,22 @@
   (2026-09-13): `audioldm2.onnx` = UNet (IN: sample[B,8,H,W], timestep[1],
   encoder_hidden_states_0 [B,T,768] = FlanT5, encoder_hidden_states_1 [B,T,1024]
   = CLAP, attention_mask; OUT: out_sample[B,8,H,W]); `vae_decoder.onnx` = latent
-  [B,8,H,W] → mel_spectrogram [B,1,bins,T]. **OFFEN: Plugin-Neuanlage**
-  (`plugins/audiolm2_plugin.py` ist ein FS-Artefakt). Voraussetzungen präzisiert:
+  [B,8,H,W] → mel_spectrogram [B,1,bins,T].
+  **FS-KORREKTUR (2026-09-14):** Die ONNX-Dateien sind REAL (stat-geprüft,
+  Sessions geladen, Kontrakte verifiziert) — der frühere „0-Bytes-Artefakt“-
+  Befund betraf nur das fehlende Plugin. **PLUGIN-ENTSCHEIDUNG (2026-09-14):
+  Neuanlage verschoben** — FlanT5-Text-Conditioning ist nicht lokal
+  (nur CLAP-Audio wäre nutzbar); die Rolle als VOCAL-INPAINT-Baseline ist
+  durch S1 obsolet, und der GPU-Finetune F1 (DiffWave, HAUPTWEG) läuft mit
+  Priorität. Reaktivierung, sobald ein Anwendungsfall mit CLAP-Audio-
+  Conditioning steht. Voraussetzungen präzisiert:
   (1) Vocoder ✓ **vorhanden**: `models/hifi_gan/hifi_gan.onnx` (37,3 MB,
-  validiert: IN [1,80,seq] → OUT [1,1,256·seq]) + `plugins/hifigan_plugin.py`
-  (PLM „HiFiGAN“, 22.05 kHz) — **Achtung Mel-Bin-Adapter:** HiFiGAN erwartet
-  80 Bins, AudioLDM2-VAE liefert 64 Bins → Bin-Mapping/Re-Projektion im Plugin
-  nötig; (2) Conditioning-Embeddings (CLAP-Audio/FlanT5) müssen extern erzeugt
-  werden — CLAP-Encoder lokal ✓ (C4), als Embedding-Quelle verdrahten;
+  validiert: IN [1,80,seq] → OUT [1,1,2560] = 116-ms-Chunks, gleitend zu fahren)
+  + `plugins/hifigan_plugin.py` (PLM „HiFiGAN“, 22.05 kHz) — **Achtung
+  Mel-Bin-Adapter:** HiFiGAN erwartet 80 Bins, AudioLDM2-VAE liefert 64 Bins
+  → Bin-Mapping/Re-Projektion im Plugin nötig; (2) Conditioning-Embeddings
+  (CLAP-Audio/FlanT5) müssen extern erzeugt werden — CLAP-Encoder lokal ✓ (C4),
+  als Embedding-Quelle verdrahten; FlanT5 fehlt lokal;
   (3) VOCAL-INPAINT-S1-Benchmark um AudioLDM2-Arm ergänzen.
 - **Resemblyzer** — `models/resemblyzer/resemblyzer/pretrained.pt` → **ONNX
   exportiert** `models/resemblyzer/resemblyzer_voice_encoder.onnx` (2026-09-13,
