@@ -115,6 +115,7 @@ class CQTdiffPlusPlugin:
     MIN_GAP_MS: float = 50.0  # Untergrenze für CQTdiff+ (sonst NMF-β)
     MAX_GAP_MS: float = 999.0  # Obergrenze (über 1 s → Fallback)
     DIFFUSION_STEPS: int = 3  # EDM-Schritte (CPU-Kompromiss: 3×9s≈27s; full quality: T=35)
+    _FULL_STEPS: int = 35  # R3/CQT-GPU: volle Qualität auf GPU-Hosts (F2-frei validierbar)
     _CQTDIFF_SR: int = 22050  # Modell-Sample-Rate
     _AUDIO_LEN: int = 65536  # Feste Fenster-Länge des Modells
     _SIGMA_MAX: float = 10.0  # EDM σ_max (Maestro-Checkpoint)
@@ -372,14 +373,20 @@ class CQTdiffPlusPlugin:
         cqt = self._cqt_transform
         y_t = torch.from_numpy(y_obs).unsqueeze(0)
         known_t = torch.from_numpy(known).unsqueeze(0)
-        sigmas = torch.linspace(self._SIGMA_MAX, self._SIGMA_MIN, self.DIFFUSION_STEPS + 1)
+        # R3/CQT-GPU (2026-09-14): Auf GPU-Hosts mit TorchScript-Score-Netz die
+        # vollen 35 EDM-Schritte fahren — der 3-Schritt-CPU-Kompromiss bleibt
+        # Fallback. Der ONNX-Spectral-Core bleibt bis zur GPU-Paritäts-Prüfung
+        # (Registry-Verdict „cpu“ → nach F2 heben) der CPU-Pfad.
+        _gpu_35 = self._device != "cpu" and self._torch_model is not None
+        _eff_steps = self._FULL_STEPS if _gpu_35 else self.DIFFUSION_STEPS
+        sigmas = torch.linspace(self._SIGMA_MAX, self._SIGMA_MIN, _eff_steps + 1)
         sigmas[-1] = 0.0
         generator = torch.Generator(device="cpu").manual_seed(0)
         x = y_t + torch.randn(y_t.shape, generator=generator) * sigmas[0]
         x = torch.where(known_t, y_t, x)
 
         with torch.no_grad():
-            for index in range(self.DIFFUSION_STEPS):
+            for index in range(_eff_steps):
                 sigma = sigmas[index]
                 cqt_input = cqt.fwd(x).permute(0, 3, 2, 1).contiguous().numpy().astype(np.float32)
                 score_cqt = self._session.run(

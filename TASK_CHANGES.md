@@ -1,21 +1,26 @@
 # TASK_CHANGES — Live-Ledger der aktuellen Aufgabe
 
-> Generiert von `scripts/change_ledger.py snapshot` (Base: `HEAD`, Stand: 2026-09-14 17:31 CEST).
+> Generiert von `scripts/change_ledger.py snapshot` (Base: `HEAD`, Stand: 2026-09-14 18:35 CEST).
 > CI (`ci-lite.yml` pr-evidence-gate) erzwingt Abdeckung: jede geänderte Code-Datei muss hier stehen.
 
 ## Geänderte Dateien
 
 | Status | Pfad | Art |
 |---|---|---|
+| M | .github/FILE_REGISTRY.md | modifiziert |
 | M | TASK_CHANGES.md | modifiziert |
-| M | backend/core/phases/phase_34_mid_side_processing.py | modifiziert |
-| M | backend/core/phases/phase_55_diffusion_inpainting.py | modifiziert |
+| M | backend/core/dsp/audibility_gate.py | modifiziert |
+| M | backend/core/export_quality_gate.py | modifiziert |
+| M | backend/core/gpu_model_registry.py | modifiziert |
+| M | backend/core/phases/phase_56_spectral_band_gap_repair.py | modifiziert |
 | M | docs/TODOS_SOTA_ROADMAP.md | modifiziert |
-| A | docs/reports/current/2026-09-14_muq_plugin_direction.json | neu |
-| A | docs/reports/current/2026-09-14_vocal_inpaint_baseline.json | neu |
-| M | plugins/muq_plugin.py | modifiziert |
-| M | scripts/benchmark_vocal_inpaint_baseline.py | modifiziert |
-| M | scripts/train_gacela_vocal_inpaint.py | modifiziert |
+| A | docs/reports/current/2026-09-14_gpu_selftest.json | neu |
+| M | plugins/cqtdiff_plus_plugin.py | modifiziert |
+| A | scripts/nvidia_gpu_selftest.py | neu |
+| A | tests/unit/test_export_quality_gate_muq_witness.py | neu |
+| M | tests/unit/test_gpu_model_registry.py | modifiziert |
+| M | tests/unit/test_hearing_jnd_audibility_gate.py | modifiziert |
+| M | tests/unit/test_phase_56_spectral_band_gap_repair.py | modifiziert |
 
 ## Entscheidungen
 

@@ -44,6 +44,9 @@ _STEREO_CORR_WARN: float = -0.3  # Warnung bei < −0.3
 # Fatigue
 _FATIGUE_WARN: float = 0.4
 
+# R2: MuQ-MOS-Delta-Witness — nur Annotation, nie Hardstop (§0c)
+_MUQ_MOS_MARGIN: float = 0.2
+
 
 @dataclass
 class ExportQualityResult:
@@ -57,6 +60,10 @@ class ExportQualityResult:
     fatigue_ok: bool = True
     stereo_correlation: float = 1.0
     stereo_ok: bool = True
+    muq_mos_in: float | None = None
+    muq_mos_out: float | None = None
+    muq_mos_delta: float | None = None
+    muq_mos_degraded: bool = False
     warnings: list[str] = field(default_factory=list)
     errors: list[str] = field(default_factory=list)
 
@@ -70,6 +77,7 @@ class ExportQualityGate:
         sr: int,
         *,
         is_studio_2026: bool = False,
+        reference_audio: np.ndarray | None = None,
     ) -> ExportQualityResult:
         """Führt alle Export-Qualitätsprüfungen durch.
 
@@ -137,6 +145,29 @@ class ExportQualityGate:
                 except Exception:
                     result.stereo_correlation = 1.0
 
+            # ── 5. MuQ-MOS-Witness (R2, SOFT — entscheidet NIE über Export) ──
+            # §0c-Export-Vertrag: Das Gate blockt nie; das bestmögliche Ergebnis
+            # wird IMMER exportiert. Der MOS-Witness annotiert nur: fällt der
+            # Output unter (Input − Marge), wird der Status „degraded“ gesetzt —
+            # der Nutzer verliert keine Rechen-/Wartezeit durch Hardstops.
+            if reference_audio is not None:
+                try:
+                    from plugins.muq_plugin import estimate_muq_mos as _mos_fn
+
+                    _mos_in = _mos_fn(reference_audio, sr)
+                    _mos_out = _mos_fn(audio, sr)
+                    if _mos_in is not None and _mos_out is not None:
+                        result.muq_mos_in = round(float(_mos_in), 3)
+                        result.muq_mos_out = round(float(_mos_out), 3)
+                        result.muq_mos_delta = round(float(_mos_out) - float(_mos_in), 3)
+                        if result.muq_mos_delta < -_MUQ_MOS_MARGIN:
+                            result.muq_mos_degraded = True
+                            result.warnings.append(
+                                f"MuQ-MOS Δ {result.muq_mos_delta:+.2f} < −{_MUQ_MOS_MARGIN} — Export bleibt, Status: degraded (§0c)"
+                            )
+                except Exception as _mos_exc:
+                    logger.debug("ExportQualityGate MuQ-Witness nicht verfügbar (unkritisch): %s", _mos_exc)
+
         except Exception as exc:
             logger.warning("ExportQualityGate fehlgeschlagen: %s", exc)
             result.warnings.append(f"Messung fehlgeschlagen: {exc}")
@@ -200,6 +231,11 @@ def check_export_quality(
     audio: np.ndarray,
     sr: int,
     is_studio_2026: bool = False,
+    reference_audio: np.ndarray | None = None,
 ) -> ExportQualityResult:
-    """Convenience-Funktion für ExportQualityGate.check()."""
-    return ExportQualityGate.check(audio, sr, is_studio_2026=is_studio_2026)
+    """Convenience-Funktion für ExportQualityGate.check().
+
+    reference_audio: R2-MuQ-MOS-Witness (SOFT) — Vergleichsbasis Input;
+    fehlt sie, wird der Witness übersprungen. Blockiert NIE den Export (§0c).
+    """
+    return ExportQualityGate.check(audio, sr, is_studio_2026=is_studio_2026, reference_audio=reference_audio)

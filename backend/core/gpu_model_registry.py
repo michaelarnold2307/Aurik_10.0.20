@@ -130,13 +130,15 @@ def apply_gpu_policy(providers: Sequence[_Provider], model_path: str | Path) -> 
         )
         return ["CPUExecutionProvider"]
     if _verdict == "migraphx":
-        return ["MIGraphXExecutionProvider", "CPUExecutionProvider"]
+        # NVIDIA-fähig: CUDA-EP in der Kette, damit dasselbe Register auch auf
+        # CUDA-Hosts GPU nutzt (ORT ignoriert nicht verfügbare Provider).
+        return ["MIGraphXExecutionProvider", "CUDAExecutionProvider", "CPUExecutionProvider"]
     if _verdict == "rocm":
         # ROCm bereits angefordert → Aufrufer-Optionen (fp16-Tupel) beibehalten;
         # sonst (z.B. MIGraphX-Request) auf ROCm downgraden (Registry-Verdict).
         if any(_pname(p) == "ROCMExecutionProvider" for p in _providers):
             return _providers
-        return ["ROCMExecutionProvider", "CPUExecutionProvider"]
+        return ["ROCMExecutionProvider", "CUDAExecutionProvider", "CPUExecutionProvider"]
     return _providers
 
 

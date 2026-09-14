@@ -44,13 +44,13 @@ def test_cpu_verdict_forces_cpu_even_on_gpu_request(monkeypatch) -> None:
 def test_migraphx_verdict_sets_migraphx_first(monkeypatch) -> None:
     _setup_registry(monkeypatch, {"models/x/foo.onnx": {"verdict": "migraphx"}})
     out = apply_gpu_policy(["ROCMExecutionProvider", "CPUExecutionProvider"], "models/x/foo.onnx")
-    assert out == ["MIGraphXExecutionProvider", "CPUExecutionProvider"]
+    assert out == ["MIGraphXExecutionProvider", "CUDAExecutionProvider", "CPUExecutionProvider"]
 
 
 def test_rocm_verdict_downgrades_migraphx_request(monkeypatch) -> None:
     _setup_registry(monkeypatch, {"models/x/foo.onnx": {"verdict": "rocm"}})
     out = apply_gpu_policy(["MIGraphXExecutionProvider", "CPUExecutionProvider"], "models/x/foo.onnx")
-    assert out == ["ROCMExecutionProvider", "CPUExecutionProvider"]
+    assert out == ["ROCMExecutionProvider", "CUDAExecutionProvider", "CPUExecutionProvider"]
 
 
 def test_cpu_only_caller_never_gets_gpu(monkeypatch) -> None:
