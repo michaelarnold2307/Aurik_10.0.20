@@ -722,6 +722,15 @@ sauberen Referenzen (Muster ML-V3-Negativbefund).
 | # | Finetune | Basis | Ziel | Daten | Gate |
 |---|---|---|---|---|---|
 | F1 | DiffWave-Vokal (HAUPTWEG) | DiffWave-Checkpoint lokal | Langlücken-Reparatur ΔSDR ≥ 0 (S1: −1,7 dB) | MUSDB-Vocals | P1-Metrik |
+
+**F1-Ergebnis 2026-09-14: GATE NICHT BESTANDEN** — Lauf beendet (Early-Stop nach 7 Epochs):
+bestes Val mean −1,44 dB (Epoch 2) vs. Zero-Shot −3,01 dB und Gate ≥ 0 dB;
+`never_worsen_per_gap: false`. Der Checkpoint wurde deshalb nach
+`models/diffwave/diffwave_vocal_ft_rejected_epoch2_gatefail.ckpt` archiviert
+und aktiviert den S3-Pfad NICHT (diffwave_vocal_ready() = False).
+Report: docs/reports/current/2026-09-14_diffwave_vocal_finetune.json.
+Nächste Optionen: (1) F2 GaCELA-Pfad (entblockt, GPU frei) oder (2) F1-Retest
+mit Rezeptänderungen (mehr Fenster/Epochs, LR-Plan, A1-Beta).
 | F2 | GaCELA-Vokal (Pfad B) | Trainingscode lokal | 375–1500 ms, Sänger-Identität via Resemblyzer-Witness (jetzt ONNX live) | MUSDB-Vocals | P1-Metrik |
 
 **F2-Vorbereitung 2026-09-14:** `scripts/train_gacela_vocal_inpaint.py`
