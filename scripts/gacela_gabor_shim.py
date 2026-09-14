@@ -77,7 +77,7 @@ def preprocess_signal(y: np.ndarray, m: int = 1024) -> np.ndarray:
 
 
 class GaussTruncTFShim:
-    """Drop-in-Ersatz für tifresi.stft.GaussTruncTF (Forward-Pfad, Betrag)."""
+    """Drop-in-Ersatz für tifresi.stft.GaussTruncTF (Forward + Inversion)."""
 
     def __init__(self, hop_size: int = 256, stft_channels: int = 1024, min_height: float = 1e-4) -> None:
         assert np.mod(stft_channels, 2) == 0, "stft_channels muss gerade sein"
@@ -91,9 +91,70 @@ class GaussTruncTFShim:
             mag = mag / np.max(mag)
         return mag
 
+    def invert_spectrogram(self, magnitude_spectrogram: np.ndarray, iterations: int = 32) -> np.ndarray:
+        """Griffin-Lim mit der eigenen DGT (selbstkonsistent, rein NumPy).
+
+        Liefert hop*N Samples; die Inversion ist nur für die Tensorboard-
+        Hör-Summaries gedacht — der Trainings-Loss arbeitet ausschließlich
+        im Spektrogramm-Raum.
+        """
+        mag = np.asarray(magnitude_spectrogram, dtype=np.float64)
+        mag = mag[: self.stft_channels // 2 + 1]
+        n_frames = mag.shape[1]
+        g_m = self._g[: self.stft_channels]
+        phase = np.exp(1.0j * 2.0 * np.pi * np.random.RandomState(0).rand(*mag.shape)).astype(np.complex128)
+        x = np.zeros(self.hop_size * n_frames, dtype=np.float64)
+        for _ in range(iterations):
+            z = mag * phase
+            x = self._synthesize(z, g_m, n_frames)
+            phase = np.exp(1.0j * np.angle(self._analyze(x, g_m, n_frames)))
+        return x.astype(np.float64)
+
+    def _analyze(self, x: np.ndarray, g_m: np.ndarray, n_frames: int) -> np.ndarray:
+        out = np.zeros((self.stft_channels // 2 + 1, n_frames), dtype=np.complex128)
+        for n in range(n_frames):
+            start = n * self.hop_size
+            seg = np.zeros(self.stft_channels, dtype=np.float64)
+            seg_len = min(self.stft_channels, len(x) - start)
+            seg[:seg_len] = x[start : start + seg_len]
+            out[:, n] = np.fft.rfft(seg * g_m, n=self.stft_channels)
+        return out
+
+    def _synthesize(self, z: np.ndarray, g_m: np.ndarray, n_frames: int) -> np.ndarray:
+        x = np.zeros(self.hop_size * n_frames, dtype=np.float64)
+        wsum = np.zeros(self.hop_size * n_frames, dtype=np.float64)
+        for n in range(n_frames):
+            frame = np.fft.irfft(z[:, n], n=self.stft_channels)
+            start = n * self.hop_size
+            seg_len = min(self.stft_channels, len(x) - start)
+            x[start : start + seg_len] += (g_m * frame)[:seg_len]
+            wsum[start : start + seg_len] += (g_m**2)[:seg_len]
+        wsum[wsum < 1e-12] = 1.0
+        return x / wsum
+
+
+def inv_log_spectrogram(log_spec: np.ndarray) -> np.ndarray:
+    """Inverse der Log-Spektrogramm-Darstellung (10 ** (x/10)); torch-bewusst."""
+    if isinstance(log_spec, np.ndarray) or not hasattr(log_spec, "device"):
+        return 10 ** (np.asarray(log_spec, dtype=np.float64) / 10)
+    import torch
+
+    return torch.pow(10, log_spec / 10)  # im Input-dtype (float32) bleiben
+
+
+def projection_loss(target_spectrogram: np.ndarray, original_spectrogram: np.ndarray) -> float:
+    """Relative Betrags-Fehler in dB (Formel des Upstream-Trainings)."""
+    tgt = np.abs(np.asarray(target_spectrogram, dtype=np.float64))
+    org = np.abs(np.asarray(original_spectrogram, dtype=np.float64))
+    denom = float(np.linalg.norm(tgt - org, "fro"))
+    norm_tgt = float(np.linalg.norm(tgt, "fro"))
+    if denom < 1e-12 or norm_tgt < 1e-12:
+        return 120.0
+    return float(20.0 * np.log10(norm_tgt / denom))
+
 
 def install_tifresi_shim() -> None:
-    """Legt Fake-Pakete tifresi/tifresi.stft/transforms/utils in sys.modules.
+    """Legt Fake-Pakete tifresi/tifresi.stft/transforms/utils/metrics in sys.modules.
 
     Danach importiert `data.audioLoader` im Upstream fehlerfrei und nutzt
     diese NumPy-Implementierung statt ltfatpy.
@@ -105,12 +166,17 @@ def install_tifresi_shim() -> None:
     stft_mod.GaussTruncTF = GaussTruncTFShim  # type: ignore[attr-defined]
     transforms_mod = types.ModuleType("tifresi.transforms")
     transforms_mod.log_spectrogram = log_spectrogram  # type: ignore[attr-defined]
+    transforms_mod.inv_log_spectrogram = inv_log_spectrogram  # type: ignore[attr-defined]
     utils_mod = types.ModuleType("tifresi.utils")
     utils_mod.preprocess_signal = preprocess_signal  # type: ignore[attr-defined]
+    metrics_mod = types.ModuleType("tifresi.metrics")
+    metrics_mod.projection_loss = projection_loss  # type: ignore[attr-defined]
     pkg.stft = stft_mod  # type: ignore[attr-defined]
     pkg.transforms = transforms_mod  # type: ignore[attr-defined]
     pkg.utils = utils_mod  # type: ignore[attr-defined]
+    pkg.metrics = metrics_mod  # type: ignore[attr-defined]
     sys.modules["tifresi"] = pkg
     sys.modules["tifresi.stft"] = stft_mod
     sys.modules["tifresi.transforms"] = transforms_mod
     sys.modules["tifresi.utils"] = utils_mod
+    sys.modules["tifresi.metrics"] = metrics_mod

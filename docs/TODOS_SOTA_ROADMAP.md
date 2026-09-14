@@ -753,6 +753,75 @@ Sänger-Identität, MuQ-MOS nicht schlechter als Baseline).
 
 ---
 
+## SOTA-EXPANSIONSMATRIX 2026-09-14 — Hörfähigkeits-Ausbaustufe (alle Phasen)
+
+> Vollständige Lücken-Inventur (außer F1/F2): Was fehlt, um jede Hybrid- und
+> jede pure DSP-Phase auf maximale SOTA-Ausbaustufe für das menschliche Gehör
+> zu heben — modelliert nach Hörordnung §4 (Maskierungsschwelle als
+> Reparaturziel) und §8b (interaurale Hörfähigkeiten). Quellen der Ist-Werte:
+> Verdrahtungs-Inventur 2026-09-14 (grep über backend/core/phases).
+
+### A. Psychoakustische Querschnitts-Maßnahmen („Gehör nachbilden“)
+
+| ID | Maßnahme | Ist (2026-09-14) | Ziel/Wirkung |
+|---|---|---|---|
+| PSY-A1 | **Audibility-Gate-Rollout**: Maskierungsschwelle (masking_model, ISO 11172-3 Bark) als Reparatur-Entscheidung in ALLEN reparierenden Phasen (01, 03, 06, 07, 08, 19, 23, 27, 36, 50, 55, 56, 59, 64, 65, 66) | nur 2 Phasen verdrahtet | §4-Vertrag: „Ist der Defekt über der Maskierungsschwelle hörbar?“ als Pflicht-Frage; Berichte weisen „hörbar“ als über-Schwelle aus |
+| PSY-A2 | **Zwicker-Modell (ISO 532-1)** als Nachfolger des MPEG-1-Modells: stationäre + zeitvariante Loudness und Maskierung | nur ISO 11172-3-Modell vorhanden | präzisere Schwelle bei tonalem/breitbandigem Material; Basis für PSY-A7 |
+| PSY-A3 | **BMLD-Verdrahtung** (binaurale Maskierungs-Freisetzung) in die Stereo-Phasen-Gates (13, 15, 33, 34, 46, 48) | binaural_masking nur auf Guard-Ebene (3 Stellen) | Stereo-Änderungen werden nach Hör-Freisetzung bewertet statt nach Mess-dB |
+| PSY-A4 | **Equal-Loudness-Band-Gewichte (ISO 226) + JND-Gates** für EQ-/Enhancement-Phasen (04, 16, 17, 37, 38, 39) | fletcher_munson nur 1× verdrahtet | Stärke-Entscheidungen in Phon-Hörbarkeit statt Roh-dB |
+| PSY-A5 | **Temporal-Masking-Kompensation**: Forward/Backward-Masking-Zonen als Reparatur-Dämpfung nach Transienten (Rollout des §V41-Musters aus phase_55) | nur phase_55 + 22 Phasen nutzen temporal_masking (Guard) | Nachmaskierungs-Zonen werden weicher repariert — kein Nachschlag-Artefakt |
+| PSY-A6 | **Personalisierte HRIR (CIPIC)** als Ausbaustufe der First-Order-HRTF (Ehrlichkeits-Klausel §8b.3 erfüllt) | First-Order-Modell in interaural_cues | bessere Bühnen-Bewertung bei Kopfhörer-Studien (P1-4) |
+| PSY-A7 | **Loudness-Modell-getriebene Dynamik**: Zwicker-Kurzzeit-Loudness steuert 10/11/40/47 | BS.1770-integriert + Bark-LUFS vorhanden, Kurzzeit-Modell nicht in den Phasen | Punch/Lautheit nach Wahrnehmung statt Peak |
+| PSY-A8 | **Generische JND-Gate-Tabelle** (Frequenz ±1 dB, Pegel ±1 dB, Zeit ±5 ms, Pan ±2°… nach Lit.) für alle Never-worsen-Gates | JNDs nur in interaural_cues kodifiziert | absolute dB-Gates weichen JND-basierten, hörbezogenen Grenzen |
+
+### B. Hybrid-Phasen: offene SOTA-Maßnahmen
+
+| Phase | Ist | Offene SOTA-Maßnahme |
+|---|---|---|
+| 03 denoise | BSR-Stem-NR (66) + DSP-Kaskade; MP-SENet de-wired (Negativbefund) | musik-nativer Denoiser-Finetune (F3 BigVGAN-Spektrallinie; DeepFilterNet-Musik-Finetune als Alternative prüfen) |
+| 04/16/17 EQ/Dynamik | DSP + Zielkurven | **SOTA-C4**: DDSP-Prädiktor (CLAP/BEATs-Embeddings → EQ/Dynamik-Parameter, DSP führt aus) — GPU (F5); CLAP-Encoder lokal vorhanden |
+| 07 harmonisch | DSP-Harmonic-Restoration | **SOTA-HR-V1**: BigVGAN-Repair-Pfad + additive_synthesis_gate (bigvgan_v2.pth lokal) — GPU (F3) |
+| 08/36 Transienten | Superflux/Envelope + BEATs-Witness (TP-V1, V1) | **SOTA-TP-V2**: neurale Phasen-Schätzung für Transienten-Frames (Modell + Quelle klären); adaptive Schwelle aus TP-V1-Konsens |
+| 19/43 De-Esser | DSP (19) + ML-Deesser (43) | Sibilanten-Maskierungs-Gate (PSY-A1) — sonst SOTA |
+| 20/49 Dereverb | DR-V1-Verdrahtung (RT60-Witness, konservativ gedeckelt) | präziser neuraler RT60-Regressor (GPU-Training); PSY-A1-Gate für Dry/Wet |
+| 23/50 Spektral-Repair | DSP/NMF | neuronale Spektral-Inpainting-Basis (F3/F4) |
+| 55 Inpainting | Kaskade (FlowMatching, Consistency, CQTdiff+, DAC, GaCELA, DiffWave-S3-vorbereitet) | **F1/F2 laufen**; danach S4-Verifikation |
+| 58 Lyrics-guided | vorhanden (DSP-geführt) | CLAP-Audio-Conditioning für Text-/Semantik-Führung (C4-Embedding-Quelle) |
+| 66 Stem-NR | BSR-Stems + Per-Stem-Kette ✓ | PSY-A1-Gate pro Stem; BSR-GPU-Beschleunigung ✓ (Torch-ROCm) |
+
+### C. Pure-DSP-Phasen: offene SOTA-Maßnahmen
+
+| Phase | Ist | Offene SOTA-Maßnahme |
+|---|---|---|
+| 01 Klicks | ✓ CR-V1 (BANQUET-Konsens) | PSY-A1-Gate (subaudible Klicks nicht zählen) |
+| 02 Hum | ✓ HU-V1 (Kalman + LSQ) | PSY-A1-Gate |
+| 05 Rumpel / 25 Azimut / 31 Speed-Pitch / 62 Crosstalk / 63 Intermodulation / 64 Splice | DSP-Stand (funktional) | PSY-A1-Gates; 64: GaCELA/DiffWave-Fill-Reuse prüfen |
+| 12 Wow-Flutter | ✓ WF-CASS (30-Hz-AM); DSP-Kompensation | **SOTA-WF-V4**: neuraler Warp-Schätzer (Checkpoint-Quelle klären + Download) |
+| 13/15/33/34/46/48 Stereo/Bühne | DSP + interaural-Guard | PSY-A3 (BMLD-Gates); PSY-A6 (HRIR-Ausbaustufe) |
+| 32 Mono→Stereo | DSP-Upmix | optional: BSR-Stem-basierte Verbreiterung (musik-nativ) |
+| 37/38/39 Bass/Presence/Air | DSP | PSY-A4 (Equal-Loudness-JND-Gewichte) |
+| 40/47 Loudness/TP | BS.1770 ✓ | PSY-A7 (Zwicker-Kurzzeit-Loudness-Steuerung) |
+| 59 Modulationsrauschen | DSP | SOTA-D3+D4 (niedrig): Multiresolution-Split + APPLADE-Maskierungs-Loss |
+| 65 Vocal-Natürlichkeit | DSP + Resemblyzer-Witness (Ebene-1) | Sänger-Identitäts-Witness als Per-Phase-Gate (S4-Muster) |
+
+### D. Witness-/Modell-Lücken (Qualitäts-Urteile)
+
+| ID | Lücke | Status |
+|---|---|---|
+| WIT-M1 | **MuQ-MOS-Richtung invertiert** (A1-Head auf falschem Backbone — muq_eval_a1_head.pt läuft auf MuQ-large-msd-iter statt MuQ-Eval-Backbone) | Root-Cause ✓, Fix offen: MuQ-Eval-Backbone beschaffen oder Head auf msd-iter neu trainieren — erst danach ist MuQ als MOS-Richtungs-Witness für die F-Gates nutzbar |
+| WIT-M2 | BEATs-Tagger-Head fehlt (Encoder-Export ohne Head) | Head auf Tokens trainieren (GPU) oder Tagger-ONNX beschaffen |
+| WIT-M3 | UTMOS für Musik unbrauchbar (Negativbefund) | dokumentiert — kein Einsatz |
+| WIT-M4 | F-Gates hängen an SDR/Resemblyzer (objektiv) | nach WIT-M1: MOS-Witness (MuQ) als dritte Gate-Stimme |
+
+### E. Prioritäten-Empfehlung (nach GPU-Verfügbarkeit)
+
+1. Jetzt (CPU): PSY-A1-Gate-Rollout beginnend bei phase_01/03/08; PSY-A3 in phase_33/34; PSY-A8-JND-Tabelle als Modul.
+2. Nach F1/F2: S4-Verifikation → F3 (BigVGAN, bedient HR-V1 + 23/50) → F5 (C4) → WIT-M1 (MuQ-Backbone).
+3. Parallel: WF-V4-Quelle klären, TP-V2-Quelle klären, BEATs-Tagger-Head (GPU).
+4. Ausbaustufen (optional, dokumentiert): PSY-A2 (Zwicker), PSY-A6 (CIPIC), PSY-A7.
+
+---
+
 ## Hintergrund (damit die nächste Session sofort einsteigt)
 
 - **Session-Report:** `docs/reports/current/2026-09-08_envelope_root_cause_sota_fixes_matrix.md`

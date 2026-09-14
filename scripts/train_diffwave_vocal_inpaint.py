@@ -44,7 +44,8 @@ from scipy.signal import resample_poly
 _ROOT = Path(__file__).resolve().parent.parent
 _MUSDB = _ROOT / "data" / "musdb18hq"
 _CKPT = _ROOT / "models" / "diffwave" / "diffwave.ckpt"
-_OUT_CKPT = _ROOT / "models" / "diffwave" / "diffwave_vocal_ft.ckpt"
+_OUT_CKPT = _ROOT / "models" / "diffwave" / "diffwave_vocal_ft_candidate.ckpt"
+_OUT_CKPT_FINAL = _ROOT / "models" / "diffwave" / "diffwave_vocal_ft.ckpt"
 _REPORT_DIR = _ROOT / "docs" / "reports" / "current"
 
 _SR = 22050
@@ -365,12 +366,12 @@ def _val_gaps_sdr(
 
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__)
-    ap.add_argument("--epochs", type=int, default=60)
-    ap.add_argument("--lr", type=float, default=5e-5)
+    ap.add_argument("--epochs", type=int, default=80)
+    ap.add_argument("--lr", type=float, default=2e-4)
     ap.add_argument("--batch", type=int, default=16)
     ap.add_argument("--windows-per-track", type=int, default=32)
     ap.add_argument("--masking-beta", type=float, default=0.3)
-    ap.add_argument("--patience", type=int, default=5)
+    ap.add_argument("--patience", type=int, default=10)
     ap.add_argument("--seed", type=int, default=42)
     ap.add_argument("--smoke", action="store_true", help="1 Epoch, 2 Tracks (Setup-Test)")
     ap.add_argument("--skip-a1", action="store_true", help="A1-Hör-Loss deaktivieren")
@@ -417,6 +418,10 @@ def main() -> int:
         return 2
 
     opt = torch.optim.Adam([p for p in model.parameters() if p.requires_grad], lr=args.lr)
+    # F1-Retest-Rezept (2026-09-14): Cosinus-Decay statt konstantem LR — der
+    # F1-Lauf 1 stagnierte bei L1~1,09 und überfitete früh; der Decay erzwingt
+    # größere Schritte am Anfang und stabile Feinjustage am Ende.
+    scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(opt, T_max=max(1, args.epochs), eta_min=1e-5)
 
     # Zero-Shot-Baseline VOR dem Training (Never-worsen-Referenz, S1-Vergleich)
     model.eval()
@@ -491,6 +496,7 @@ def main() -> int:
         print(
             f"Epoch {epoch + 1}/{args.epochs}: Loss={train_loss:.6f} | Val-SDR mean={val_mean:+.2f} dB min={val_min:+.2f} dB [{dt:.0f}s]{tag}"
         )
+        scheduler.step()
         if no_improve >= args.patience:
             print(f"Early-Stop nach {args.epochs - (epoch + 1)} Runden ohne Verbesserung (Patience {args.patience}).")
             break
@@ -515,6 +521,21 @@ def main() -> int:
     out.write_text(json.dumps(report, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
     print(f"\nReport: {out}")
     print(json.dumps({k: v for k, v in report.items() if k != "history"}, indent=2))
+
+    # §SOTA-VOCAL-INPAINT-S3-Aktivierungsvertrag (2026-09-14): Der Checkpoint
+    # trägt den kanonischen Namen (diffwave_vocal_ready() = True) NUR bei
+    # bestandenem Gate — sonst bleibt der S3-Pfad inaktiv (Never-worsen).
+    gate_ok = best_val > float("-inf") and best_val >= 0.0
+    if _OUT_CKPT.is_file():
+        if gate_ok:
+            _OUT_CKPT.rename(_OUT_CKPT_FINAL)
+            print(f"Gate BESTANDEN — Checkpoint aktiviert: {_OUT_CKPT_FINAL.name}")
+        else:
+            _rejected = _OUT_CKPT.with_name(f"diffwave_vocal_ft_rejected_epoch{best_epoch + 1}_gatefail.ckpt")
+            _OUT_CKPT.rename(_rejected)
+            print(f"Gate NICHT BESTANDEN — Kandidat archiviert als {_rejected.name} (S3 bleibt inaktiv).")
+    else:
+        print("Kein Kandidat gespeichert (keine Verbesserung gegen Baseline).")
     return 0
 
 

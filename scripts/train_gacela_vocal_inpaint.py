@@ -143,12 +143,14 @@ def _train(args: argparse.Namespace) -> int:
         },
     }
     params_stft_discriminator = {
+        "batch_size": args.batch,
         "stride": [2, 2, 2, 2, 2],
         "nfilter": [md, 2 * md, 4 * md, 8 * md, 16 * md],
         "shape": [[5, 5], [5, 5], [5, 5], [5, 5], [5, 5]],
         "data_size": 2,
     }
     params_mel_discriminator = {
+        "batch_size": args.batch,
         "stride": [2, 2, 2, 2, 2],
         "nfilter": [md // 4, md // 2, md, 2 * md, 4 * md],
         "shape": [[5, 5], [5, 5], [5, 5], [5, 5], [5, 5]],
@@ -187,6 +189,7 @@ def _train(args: argparse.Namespace) -> int:
         "optimizer": params_optimization,
         "split": signal_split,
         "log_interval": 100,
+        "tensorboard_interval": 500,
         "spectrogram_shape": params["net"]["shape"],
         "gamma_gp": params["net"]["gamma_gp"],
         "save_path": args.save_path,
@@ -204,7 +207,14 @@ def _train(args: argparse.Namespace) -> int:
         str(args.data_folder), window_size=1024, audio_loader=loader, examples_per_file=32, file_usages=30
     )
     train_loader = torch.utils.data.DataLoader(
-        ds, batch_size=args.batch // 32, shuffle=True, num_workers=4, drop_last=True
+        ds,
+        batch_size=args.batch // 32,
+        shuffle=True,
+        # num_workers=0 erzwingen: das Upstream-Dataset startet Daemon-Threads
+        # im __init__ — mit forkenden DataLoader-Workern entsteht ein
+        # Deadlock (leere _loaded_files im Kind, 0 % CPU; Befund 2026-09-14).
+        num_workers=0,
+        drop_last=True,
     )
     gan = GANSystem(gan_args)
     for epoch in range(args.epochs):
@@ -217,21 +227,43 @@ def _train(args: argparse.Namespace) -> int:
     return 0
 
 
+def _prepare_data(args: argparse.Namespace) -> int:
+    """MUSDB-Train-Vocals als 22,05-kHz-WAVs in einen persistenten Ordner schreiben."""
+    tracks = sorted(p for p in (_MUSDB / "train").glob("*") if p.is_dir())
+    if args.limit > 0:
+        rng = np.random.RandomState(args.seed)
+        idx = np.sort(rng.choice(len(tracks), size=min(args.limit, len(tracks)), replace=False))
+        tracks = [tracks[int(i)] for i in idx]
+    out_dir = Path(args.data_folder)
+    if not out_dir.is_absolute():
+        out_dir = _ROOT / out_dir
+    out_dir.mkdir(parents=True, exist_ok=True)
+    n = _write_vocals_wavs(tracks, out_dir)
+    print(f"Vokal-WAVs geschrieben: {n} nach {out_dir}")
+    return 0 if n > 0 else 2
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--data-check", action="store_true", help="Upstream-Datenpfad mit MUSDB-Vocals prüfen (Default)")
+    ap.add_argument("--prepare-data", action="store_true", help="MUSDB-Train-Vocals als WAV-Ordner aufbereiten")
     ap.add_argument("--train", action="store_true", help="Upstream-Trainingsspiegel (GPU, F2-Session)")
     ap.add_argument("--tracks", type=int, default=2)
+    ap.add_argument("--limit", type=int, default=0, help="Max. Tracks für --prepare-data (0 = alle)")
     ap.add_argument("--seed", type=int, default=42)
     ap.add_argument("--epochs", type=int, default=10)
     ap.add_argument("--batch", type=int, default=64)
     ap.add_argument("--md", type=int, default=32)
     ap.add_argument("--data-folder", type=str, default="")
-    ap.add_argument("--save-path", type=str, default="saved_results/")
+    ap.add_argument(
+        "--save-path", type=str, default="output/gacela_f2/"
+    )  # Trailing-/ wegen Upstream-Pfad-Konkatenation
     ap.add_argument("--experiment-name", type=str, default="gacela_vocal_ft")
     args = ap.parse_args()
     if args.train:
         return _train(args)
+    if args.prepare_data:
+        return _prepare_data(args)
     return _data_check(args)
 
 

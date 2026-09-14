@@ -59,6 +59,33 @@ def test_log_spectrogram_range() -> None:
     assert float(np.min(log_spec)) == pytest.approx(10.0 * np.log10(peak) - 50.0, abs=1e-6)
 
 
+def test_invert_spectrogram_self_consistent() -> None:
+    """Griffin-Lim: Re-Analyse der Inversion reproduziert das Ziel-Magnituden-Spektrum."""
+    obj = shim.GaussTruncTFShim(256, 1024)
+    rng = np.random.RandomState(3)
+    x = (rng.randn(2048 * 8) * 0.05).astype(np.float64)
+    mag = obj.spectrogram(x, normalize=False)
+    y = obj.invert_spectrogram(mag, iterations=8)
+    assert len(y) == 256 * mag.shape[1]
+    mag2 = obj.spectrogram(y, normalize=False)
+    rel = float(np.linalg.norm(mag - mag2) / np.linalg.norm(mag))
+    assert rel < 0.35  # nach 8 Iterationen klar konvergent
+
+
+def test_inv_log_spectrogram_roundtrip() -> None:
+    x = np.array([[1.0, 2.0], [0.5, -1.0]], dtype=np.float64)
+    assert np.allclose(shim.inv_log_spectrogram(x), 10 ** (x / 10))
+
+
+def test_projection_loss_range() -> None:
+    tgt = np.abs(np.random.RandomState(4).randn(32, 16)).astype(np.float64)
+    org = tgt * 0.5
+    v = shim.projection_loss(tgt, org)
+    assert np.isfinite(v)
+    assert 0.0 < v < 30.0
+    assert shim.projection_loss(tgt, tgt) == 120.0  # identisch → Kappe
+
+
 def test_preprocess_signal_length(monkeypatch) -> None:
     import librosa
 
