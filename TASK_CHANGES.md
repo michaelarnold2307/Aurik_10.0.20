@@ -1,6 +1,6 @@
 # TASK_CHANGES — Live-Ledger der aktuellen Aufgabe
 
-> Generiert von `scripts/change_ledger.py snapshot` (Base: `HEAD`, Stand: 2026-09-15 16:41 CEST).
+> Generiert von `scripts/change_ledger.py snapshot` (Base: `HEAD`, Stand: 2026-09-15 17:00 CEST).
 > CI (`ci-lite.yml` pr-evidence-gate) erzwingt Abdeckung: jede geänderte Code-Datei muss hier stehen.
 
 ## Geänderte Dateien
@@ -9,10 +9,9 @@
 |---|---|---|
 | M | .github/FILE_REGISTRY.md | modifiziert |
 | M | TASK_CHANGES.md | modifiziert |
-| M | backend/core/phases/phase_07_harmonic_restoration.py | modifiziert |
 | M | docs/TODOS_SOTA_ROADMAP.md | modifiziert |
-| M | plugins/bigvgan_v2_plugin.py | modifiziert |
-| ?? | tests/unit/test_hr_v1_activation_contract.py | ungetrackt |
+| M | scripts/artifact_freedom_diagnosis.py | modifiziert |
+| ?? | tests/unit/test_p0_1_hot_phase_report.py | ungetrackt |
 
 ## Entscheidungen
 
@@ -61,6 +60,14 @@
   reicht nicht) + phase_07-`hr_v1`-Witness (attempted=False ⇒ Status quo).
   Tests: test_hr_v1_activation_contract.py (4 Fälle). BigVGAN-Synthese-Pfad,
   23/50/03-Verdrahtung und F3-Training bleiben GPU-gebunden (Roadmap Q6).
+- **P0-1 Laufzeit (Messung + CPU/GPU-Aufteilung, 2026-09-15):** Hot-Phase-Analyse
+  `compute_hot_phases()` im Diagnose-Skript (rt_factor je Phase, Hot-Liste ab
+  0,5× RT; test_p0_1_hot_phase_report.py, 3 Fälle). Befund (20-s-Track):
+  phase_01 4,4× RT (DSP-Multiscale, kein ML — Decimation-Empfehlung,
+  Qualitäts-sensitiv), phase_19 1,6×, phase_07 0,66×. CPU-Gewinne aus dieser
+  Welle: R8-Sparse-Repair phase_59 (Rechen-Maske), PSY-A1-Gates (subaudible
+  skips), Residency-Policy (Warm-up-Amortisierung). 53×→32×-Rest braucht die
+  GPU-Buildouts F1–F5/ROCm — als GPU-GEBUNDEN dokumentiert (Roadmap P0-1).
 - **SOTA-Roadmap-Abschluss — Welle 2 (2026-09-15, CPU-schließbare Restpunkte A–G)**:
   - **D (change_ledger-Trailing-Newline-Fix):** `scripts/change_ledger.py` schrieb
     nach einem Snapshot eine LEERZEILE + Newline ans Dateiende (Lines-Block

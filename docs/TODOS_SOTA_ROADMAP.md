@@ -1107,7 +1107,7 @@ Alle CPU-schließbaren Punkte der Offene-Punkte-Matrix sind umgesetzt und getest
 
 | Punkt | Status | Begründung / nächster Schritt |
 |---|---|---|
-| TODO-P0-1 (53×→32×-Laufzeit) | **EXTERN BLOCKIERT (Laufzeit)** | hängt an den GPU-Buildouts F1–F5 + Residency-Gewinnen; kein CPU-Fix möglich |
+| TODO-P0-1 (53×→32×-Laufzeit) | **TEIL-ERLEDIGT (Messung) 2026-09-15; Rest GPU-GEBUNDEN** | Hot-Phase-Messung geliefert: `compute_hot_phases` im Diagnose-Skript (rt_factor je Phase, Hot-Liste ab 0,5× RT, test_p0_1_hot_phase_report.py). Befund (20-s-Track): phase_01 4,4× RT (DSP-Multiscale, kein ML — Empfehlung Decimation, Qualitäts-sensitiv), phase_19 1,6×, phase_07 0,66×; CPU-Gewinne geliefert: R8-Sparse-Repair phase_59, PSY-A1-Gates (subaudible skips), Residency-Policy; ML-Haupttreiber (03/55) + 53×→32×-Rest brauchen F1–F5/ROCm | hängt an den GPU-Buildouts F1–F5 + Residency-Gewinnen; kein CPU-Fix möglich |
 | TODO-P0-2 (Per-Session-Kompilierung) | **EXTERN BLOCKIERT** | ONNX-Compile-Strategie; Folge von P0-1/C |
 | TODO-P0-3 (Budget-Wahrheit) | ✅ GESCHLOSSEN 2026-09-15 | s. o. A |
 | TODO-P1-1 (Residency) | ✅ GESCHLOSSEN 2026-09-15 (Policy) | s. o. C; Laufzeit-Gewinn misst P0-1 |

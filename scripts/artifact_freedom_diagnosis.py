@@ -171,6 +171,25 @@ def compute_fail_delta_violations(report: dict, fail_delta: float) -> list[dict]
     ]
 
 
+def compute_hot_phases(report: dict, input_seconds: float, hot_rt_threshold: float = 0.5) -> list[dict]:
+    """§SOTA-P0-1 (2026-09-15): Hot-Phase-Analyse — rt_factor je Phase aus wall_ms.
+
+    ``hot_rt_threshold`` = RT-Faktor, ab dem eine Phase als Hot-Phase gilt
+    (Default 0,5× RT — alles darüber dominiert das End-to-End-Budget).
+    """
+    hot: list[dict] = []
+    for e in report.get("phases", []):
+        wall_ms = e.get("wall_ms")
+        if wall_ms is None or input_seconds <= 0:
+            continue
+        rt = float(wall_ms) / 1000.0 / float(input_seconds)
+        e["rt_factor"] = round(rt, 3)
+        if rt >= float(hot_rt_threshold):
+            hot.append({"phase": e["phase"], "rt_factor": round(rt, 3), "wall_ms": round(float(wall_ms), 1)})
+    hot.sort(key=lambda h: -h["rt_factor"])
+    return hot
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description="§SOTA-P1 artifact_freedom-Diagnose je Phase")
     parser.add_argument("--input", type=str, default="test_audio/Elke Best - 30 Sekunden.mp3")
@@ -193,6 +212,12 @@ def main() -> int:
     report = run_diagnosis(audio)
     report["input_file"] = args.input
     report["input_seconds"] = round(len(audio) / SR, 2)
+    _hot = compute_hot_phases(report, len(audio) / SR)
+    report["hot_phases"] = _hot
+    if _hot:
+        print("\nHot-Phasen (rt_factor ≥ 0,5× RT):")
+        for _h in _hot:
+            print(f"   {_h['phase']}: {_h['rt_factor']:.2f}× RT ({_h['wall_ms']:.0f} ms)")
 
     os.makedirs(os.path.dirname(args.out), exist_ok=True)
     with open(args.out, "w", encoding="utf-8") as fh:

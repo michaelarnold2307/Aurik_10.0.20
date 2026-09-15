@@ -250,6 +250,7 @@
 | tests/unit/test_r8_sparse_repair_rollout_59.py | ACTIVE | testing/unit | ja | — | §SOTA-R8-Rollout-Tests (2026-09-15): phase_59-Defekt-Maske-als-Rechen-Maske — sparse_repair-Metadatum bei defect_locations, Vollrepair-Fallback ohne Maske, sauberes Signal bleibt nah (Never-worsen), Determinismus |
 | tests/unit/test_psy_a3_bmld_tolerance.py | ACTIVE | testing/unit | ja | — | §SOTA-PSY-A3-Toleranz-Tests (2026-09-15): bmld_tolerance_factor — 0→1,0, Cap 8 dB→1,10, linearer Mittelwert, Nie < 1,0 (NaN/negativ), Cap nach oben; phase_33 meldet binaural_masking_release_tolerance_factor ≥ 1,0 |
 | tests/unit/test_hr_v1_activation_contract.py | ACTIVE | testing/unit | ja | — | §SOTA-HR-V1-Aktivierungsvertrag-Tests (2026-09-15): bigvgan_v2_ready fail-closed (False ohne Flag), hr_v1_activation_status (f3_validation_pending + checkpoint_present), Flag als einzige Schaltstelle, phase_07-hr_v1-Witness (attempted=False) |
+| tests/unit/test_p0_1_hot_phase_report.py | ACTIVE | testing/unit | ja | — | §SOTA-P0-1-Tests (2026-09-15): compute_hot_phases — rt_factor je Phase, Hot-Liste ab Schwelle absteigend, Fehler-Phasen übersprungen, Schwellwert respektiert |
 
 ## Pflege-Regeln
 
