@@ -1,6 +1,6 @@
 # TASK_CHANGES — Live-Ledger der aktuellen Aufgabe
 
-> Generiert von `scripts/change_ledger.py snapshot` (Base: `HEAD`, Stand: 2026-09-15 16:25 CEST).
+> Generiert von `scripts/change_ledger.py snapshot` (Base: `HEAD`, Stand: 2026-09-15 16:41 CEST).
 > CI (`ci-lite.yml` pr-evidence-gate) erzwingt Abdeckung: jede geänderte Code-Datei muss hier stehen.
 
 ## Geänderte Dateien
@@ -9,10 +9,10 @@
 |---|---|---|
 | M | .github/FILE_REGISTRY.md | modifiziert |
 | M | TASK_CHANGES.md | modifiziert |
-| M | backend/core/dsp/binaural_masking.py | modifiziert |
-| M | backend/core/phases/phase_33_stereo_width_limiter.py | modifiziert |
+| M | backend/core/phases/phase_07_harmonic_restoration.py | modifiziert |
 | M | docs/TODOS_SOTA_ROADMAP.md | modifiziert |
-| ?? | tests/unit/test_psy_a3_bmld_tolerance.py | ungetrackt |
+| M | plugins/bigvgan_v2_plugin.py | modifiziert |
+| ?? | tests/unit/test_hr_v1_activation_contract.py | ungetrackt |
 
 ## Entscheidungen
 
@@ -54,6 +54,13 @@
     Metadatum `binaural_masking_release_tolerance_factor`; Tests:
     test_psy_a3_bmld_tolerance.py (6 Fälle). 13/15/46/48-Toleranz = Folge-Slice
     (Muster dokumentiert).
+- **GPU-Buildouts (Q6/F3, CPU-Vorbereitung 2026-09-15):** HR-V1-Aktivierungsvertrag
+  verdrahtet — `bigvgan_v2_ready()`/`hr_v1_activation_status()` in
+  `plugins/bigvgan_v2_plugin.py` (fail-closed: Flag `BIGVGAN_V2_HR_ACTIVATED` =
+  einzige Schaltstelle, nur F3-Validierung stellt sie um; Checkpoint allein
+  reicht nicht) + phase_07-`hr_v1`-Witness (attempted=False ⇒ Status quo).
+  Tests: test_hr_v1_activation_contract.py (4 Fälle). BigVGAN-Synthese-Pfad,
+  23/50/03-Verdrahtung und F3-Training bleiben GPU-gebunden (Roadmap Q6).
 - **SOTA-Roadmap-Abschluss — Welle 2 (2026-09-15, CPU-schließbare Restpunkte A–G)**:
   - **D (change_ledger-Trailing-Newline-Fix):** `scripts/change_ledger.py` schrieb
     nach einem Snapshot eine LEERZEILE + Newline ans Dateiende (Lines-Block

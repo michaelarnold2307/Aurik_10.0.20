@@ -97,6 +97,29 @@ class VocoderResult:
 _instance: BigVGANv2Plugin | None = None
 _lock = threading.Lock()
 
+# §SOTA-HR-V1 (Q6/F3, 2026-09-15): AKTIVIERUNGSVERTRAG — der BigVGAN-v2-Repair-
+# Pfad (phase_07 HR-V1, additive_synthesis_gate) bleibt bis zur F3-Validierung
+# (GPU-Training/Port + A/B-Befund af/HNR ≥ DSP-Pfad) DEAKTIVIERT. Diese Flag ist
+# die EINZIGE Schaltstelle; sie wird nur durch einen validierten Checkpoint-
+# Befund umgestellt — ohne sie bleibt der Status quo (fail-closed).
+BIGVGAN_V2_HR_ACTIVATED: bool = False
+
+
+def bigvgan_v2_ready() -> bool:
+    """HR-V1-Bereitschaft (fail-closed): Checkpoint vorhanden UND F3-validiert."""
+    if not BIGVGAN_V2_HR_ACTIVATED:
+        return False
+    return bool((BigVGANv2Plugin.MODELS_DIR / "bigvgan_v2.pth").exists())
+
+
+def hr_v1_activation_status() -> dict[str, object]:
+    """Aktivierungs-Witness für phase_07-Metadaten (ZEUGE, Hörordnung §8a)."""
+    return {
+        "activated": bool(BIGVGAN_V2_HR_ACTIVATED),
+        "checkpoint_present": bool((BigVGANv2Plugin.MODELS_DIR / "bigvgan_v2.pth").exists()),
+        "reason": "activated" if BIGVGAN_V2_HR_ACTIVATED else "f3_validation_pending",
+    }
+
 
 class BigVGANv2Plugin:
     """BigVGAN-v2 Neuronaler Vocoder-Plugin für Aurik 10.0.0.

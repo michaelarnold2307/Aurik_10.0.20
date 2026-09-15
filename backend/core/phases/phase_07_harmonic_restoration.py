@@ -1326,6 +1326,27 @@ class HarmonicRestorationPhase(PhaseInterface):
         except Exception:
             _rms_drop_db = 0.0
 
+        # §SOTA-HR-V1 (Q6/F3, 2026-09-15): BigVGAN-Repair-Pfad — AKTIVIERUNGSVERTRAG.
+        # Die Verdrahtung ist CPU-fertig, bleibt aber fail-closed: ohne
+        # F3-Validierung (GPU-Training/Port + A/B af/HNR ≥ DSP-Pfad) liefert
+        # bigvgan_v2_ready() False ⇒ Status quo (ZEUGE, Hörordnung §8a).
+        try:
+            from plugins.bigvgan_v2_plugin import bigvgan_v2_ready as _bvg_ready_07
+            from plugins.bigvgan_v2_plugin import hr_v1_activation_status as _bvg_status_07
+
+            _hr_v1_meta = _bvg_status_07()
+            if _bvg_ready_07():
+                # F3-validierter Pfad (zukünftig): BigVGAN-Synthese + additive_synthesis_gate.
+                _hr_v1_meta = {"attempted": True, **_bvg_status_07()}
+                logger.info(
+                    "Verarbeitungsschritt_07 §SOTA-HR-V1: BigVGAN-Pfad aktiviert (F3-validiert) — additive_synthesis_gate läuft"
+                )
+            else:
+                _hr_v1_meta = {"attempted": False, **_bvg_status_07()}
+        except Exception as _hrv1_exc:
+            logger.debug("Verarbeitungsschritt_07 §SOTA-HR-V1 nicht verfügbar: %s", _hrv1_exc)
+            _hr_v1_meta = {"attempted": False, "reason": "unavailable"}
+
         # §SOTA-P1 (2026-09-15): af-Never-worsen — billiger click/pre-echo-Delta-Guard
         # (Diagnose-Befund: phase_07 kollabierte den pre_echo-Score 0,20→0,03 —
         # Synthese verschmiert Energie vor Onsets; delta-basiert, §V6-fail-open).
@@ -1382,6 +1403,7 @@ class HarmonicRestorationPhase(PhaseInterface):
                 "rms_drop_db": 0.0,
                 "loudness_makeup_db": 0.0,
                 "af_guard": _af_meta_07,
+                "hr_v1": _hr_v1_meta,
             },
         )
 
