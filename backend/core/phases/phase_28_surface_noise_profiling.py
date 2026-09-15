@@ -287,19 +287,34 @@ class SurfaceNoiseProfiling(PhaseInterface):
         start_time = time.time()
         self.validate_input(audio)
 
+        # Stärke-Vertrag ZUERST auflösen (Bugfix 2026-09-15): die §v10.754-
+        # Pre-Stage darf nur bei aktivem NR-Entscheid laufen — strength=0
+        # (bzw. digitales Material) muss bit-identischen Passthrough liefern.
+        phase_locality_factor = float(kwargs.get("phase_locality_factor", 1.0))
+        phase_locality_factor = float(np.clip(phase_locality_factor, 0.35, 1.0))
+        _pmgg_strength = float(kwargs.get("strength", 1.0))
+        _effective_strength = float(np.clip(_pmgg_strength * phase_locality_factor, 0.0, 1.0))
+        _goal_hint_scalar = self._goal_hint_strength_scalar(kwargs)
+        _effective_strength = float(np.clip(_effective_strength * _goal_hint_scalar, 0.0, 1.0))
+        _mat_str = str(getattr(material, "value", material) or "").lower()
+        _digital_mats = {"cd_digital", "cd", "dat", "streaming", "digital"}
+        _snr_28 = float(kwargs.get("snr_db", kwargs.get("snr", 0.0)) or 0.0)
+        _skip_pre28 = _effective_strength <= 0.0 or _mat_str in _digital_mats or _snr_28 > 40.0
+
         # §v10.754 (2026-09-09): Harmonisch-bewusste Floor-Schätzung als
         # Pre-Stage — bei hoher Konsens-Konfidenz wird der systematische
         # Rausch-Floor vor der OMLSA-Kette entfernt (Musikbins bleiben
         # unangetastet). Sonst klassisch (Zwei-Pfad-Muster, §V7-Guard).
-        try:
-            from backend.core.dsp.harmonic_aware_noise_estimator import (
-                subtract_noise_floor as _ha_sub754,
-            )
+        if not _skip_pre28:
+            try:
+                from backend.core.dsp.harmonic_aware_noise_estimator import (
+                    subtract_noise_floor as _ha_sub754,
+                )
 
-            audio = _ha_sub754(audio, sample_rate, over_subtraction_db=6.0)
-            logger.info("Verarbeitungsschritt 28: Harmonisch-bewusster Floor aktiv (§v10.754)")
-        except Exception as _ha_exc:
-            logger.debug("Verarbeitungsschritt 28: Harmonisch-bewusster Floor nicht verfügbar: %s", _ha_exc)
+                audio = _ha_sub754(audio, sample_rate, over_subtraction_db=6.0)
+                logger.info("Verarbeitungsschritt 28: Harmonisch-bewusster Floor aktiv (§v10.754)")
+            except Exception as _ha_exc:
+                logger.debug("Verarbeitungsschritt 28: Harmonisch-bewusster Floor nicht verfügbar: %s", _ha_exc)
 
         # §2.46f Natural-Performance-Artifacts-Guard — detect protected breath/vibrato zones before NR
         _npa_result_28 = None
@@ -312,19 +327,9 @@ class SurfaceNoiseProfiling(PhaseInterface):
         except Exception as _npa_exc_28:
             logger.debug("§2.46f NPA detection nicht blockierend: %s", _npa_exc_28)
 
-        phase_locality_factor = float(kwargs.get("phase_locality_factor", 1.0))
-        phase_locality_factor = float(np.clip(phase_locality_factor, 0.35, 1.0))
-        _pmgg_strength = float(kwargs.get("strength", 1.0))
-        _effective_strength = float(np.clip(_pmgg_strength * phase_locality_factor, 0.0, 1.0))
-        _goal_hint_scalar = self._goal_hint_strength_scalar(kwargs)
-        _effective_strength = float(np.clip(_effective_strength * _goal_hint_scalar, 0.0, 1.0))
-
         # §v10.96 Defekt-basiertes Skip-Gate: Surface-Noise nur auf analogen Trägern.
         # Digitales Material (CD/DAT/Streaming) hat physikalisch kein Oberflächenrauschen.
         # SNR > 40 dB → Rauschboden bereits unterhalb psychoakustischer Wahrnehmbarkeit.
-        _mat_str = str(getattr(material, "value", material) or "").lower()
-        _digital_mats = {"cd_digital", "cd", "dat", "streaming", "digital"}
-        _snr_28 = float(kwargs.get("snr_db", kwargs.get("snr", 0.0)) or 0.0)
         if _mat_str in _digital_mats or _snr_28 > 40.0:
             _reason = f"digital_material={_mat_str}" if _mat_str in _digital_mats else f"snr={_snr_28:.0f}dB"
             logger.info(
@@ -334,30 +339,34 @@ class SurfaceNoiseProfiling(PhaseInterface):
             _effective_strength = 0.0
 
         # §V40 NMR-Feedback: NR-Stärke adaptiv anpassen (FeedbackChain-aware).
-        try:
-            from backend.core.dsp.nmr_feedback import (
-                compute_nmr_score as _nmr_fn_28,
-            )
+        # Vertrag Zero-Strength-Passthrough: NMR darf einen explizit deaktivierten
+        # NR-Entscheid (strength=0 bzw. digitales Material) nicht reaktivieren —
+        # sonst verletzt strength=0 den bit-identischen Passthrough (Bugfix 2026-09-15).
+        if _effective_strength > 0.0:
+            try:
+                from backend.core.dsp.nmr_feedback import (
+                    compute_nmr_score as _nmr_fn_28,
+                )
 
-            _nmr_result_28 = _nmr_fn_28(audio, sample_rate)
-            if not _nmr_result_28.ok:
-                logger.warning(
-                    "Verarbeitungsschritt28 §V40 NMR: nmr_above_masking → §2.45 Minimal-Intervention prüfen",
+                _nmr_result_28 = _nmr_fn_28(audio, sample_rate)
+                if not _nmr_result_28.ok:
+                    logger.warning(
+                        "Verarbeitungsschritt28 §V40 NMR: nmr_above_masking → §2.45 Minimal-Intervention prüfen",
+                    )
+                _effective_strength = float(
+                    np.clip(
+                        _effective_strength + _nmr_result_28.recommended_nr_strength_delta,
+                        0.0,
+                        1.0,
+                    )
                 )
-            _effective_strength = float(
-                np.clip(
-                    _effective_strength + _nmr_result_28.recommended_nr_strength_delta,
-                    0.0,
-                    1.0,
+                logger.debug(
+                    "Verarbeitungsschritt28 §V40 NMR: delta=%.3f → eff_str=%.3f",
+                    _nmr_result_28.recommended_nr_strength_delta,
+                    _effective_strength,
                 )
-            )
-            logger.debug(
-                "Verarbeitungsschritt28 §V40 NMR: delta=%.3f → eff_str=%.3f",
-                _nmr_result_28.recommended_nr_strength_delta,
-                _effective_strength,
-            )
-        except Exception as _nmr_exc_28:
-            logger.debug("Verarbeitungsschritt28 §V40 NMR nicht blockierend: %s", _nmr_exc_28)
+            except Exception as _nmr_exc_28:
+                logger.debug("Verarbeitungsschritt28 §V40 NMR nicht blockierend: %s", _nmr_exc_28)
 
         _material_key = str(getattr(material, "name", material)).lower()
         _panns_tags = {k: float(v) for k, v in kwargs.get("panns_tags", {}).items() if isinstance(v, (int, float, str))}

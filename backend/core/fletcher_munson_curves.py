@@ -570,6 +570,52 @@ def apply_loudness_compensation(
     return compensated
 
 
+def equal_loudness_strength_factor(
+    frequencies: float | np.ndarray,
+    target_phon: int = 60,
+    reference_freq_hz: float = 1000.0,
+    min_factor: float = 0.5,
+) -> float | np.ndarray:
+    """§SOTA-PSY-A4: Equal-Loudness-Temperierfaktor (ISO 226).
+
+    Temperiert eine EQ-/Enhancement-Stärke in Phon-Hörbarkeit statt Roh-dB:
+    In Frequenzbereichen, die das Ohr beim Ziel-Phon-Pegel schlechter auflöst
+    als bei der 1-kHz-Referenz, wird die Stärke proportional reduziert —
+    konservativer Deckel [min_factor, 1.0], nie über Design-Pegel.
+
+    ``factor(f) = clip(L(target_phon, ref) / L(target_phon, f), min, 1)``
+    mit L = SPL der Equal-Loudness-Kontur bei target_phon.
+
+    Hinweis (Bugfix 2026-09-15): Die Vorläufer-Verdrahtung in phase_37 nutzte
+    ``get_fletcher_munson_curve`` (Korrekturkurve mit negativen dB-Werten) —
+    dadurch degenerierte der Faktor über die Division durch den
+    ``max(..., 1e-9)``-Guard immer auf das 0,5-Floor. Diese Funktion rechnet
+    direkt mit den Kontur-SPLs (kein Vorzeichen-Problem).
+
+    Args:
+        frequencies: Frequenz(en) in Hz (Band-Mitte des Enhancement).
+        target_phon: Ziel-Phon-Pegel (Default 60, wie phase_37).
+        reference_freq_hz: Referenzfrequenz für die Sensitivitäts-Normierung.
+        min_factor: Konservativ-Floor (Default 0,5 — nie unter die halbe Stärke).
+
+    Returns:
+        Faktor ∈ [min_factor, 1.0] (float oder ndarray je nach Eingabe).
+        NaN/Inf-Eingaben ergeben 1.0 (keine Temperierung bei Müll-Daten, §0a).
+    """
+    arr = np.atleast_1d(np.asarray(frequencies, dtype=np.float64))
+    arr = np.nan_to_num(arr, nan=0.0, posinf=0.0, neginf=0.0)
+    processor = FletcherMunsonProcessor()
+    contour = processor.get_contour(int(target_phon))
+    spl_ref = float(np.asarray(contour.get_spl_at_frequency(np.array([float(reference_freq_hz)])))[0])
+    spl_f = np.asarray(contour.get_spl_at_frequency(arr), dtype=np.float64)
+    spl_f = np.nan_to_num(spl_f, nan=0.0, posinf=0.0, neginf=0.0)
+    denom = np.where(np.abs(spl_f) < 1e-9, 1.0, spl_f)
+    factor = np.clip(np.where(arr <= 0.0, 1.0, spl_ref / denom), float(min_factor), 1.0)
+    if np.isscalar(frequencies) or isinstance(frequencies, float):
+        return float(factor[0])
+    return factor  # type: ignore[no-any-return]
+
+
 if __name__ == "__main__":
     """Demo Fletcher-Munson processor"""
     logger.debug("\n" + "=" * 70)

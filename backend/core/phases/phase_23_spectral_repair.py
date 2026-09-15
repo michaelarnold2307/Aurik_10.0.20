@@ -1915,7 +1915,8 @@ class SpectralRepair(PhaseInterface):
                         self._flashsr_last_bw_gain_hz,
                         self._flashsr_pass_count + 1,
                     )
-                return np.nan_to_num(audio, nan=0.0)  # type: ignore[no-any-return]
+                    _report(100.0, "FlashSR Early-Exit")
+                    return np.nan_to_num(audio, nan=0.0)  # type: ignore[no-any-return]
                 # ML-based repair with FlashSR
                 log_mode_decision("phase_23", True, f"Defect severity: {defect_severity:.2%}")
                 _report(55.0, "FlashSR")

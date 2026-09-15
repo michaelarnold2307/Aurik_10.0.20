@@ -1521,8 +1521,11 @@ class VocalEnhancement(PhaseInterface):
                         try:
                             voc_mono, inst_mono = demucs.separate_vocals(audio_mono, sr)
                         except TypeError:
-                            # Backward compatibility for older plugin stubs in tests.
-                            voc_mono, inst_mono = demucs.separate_vocals(audio_mono, sr)
+                            # Backward-Kompatibilität für ältere Plugin-Stubs: Legacy-Signatur
+                            # mit prefer_mdx23c-Kwarg. §v10.739: MDX23C entfernt → immer False.
+                            # (Bugfix 2026-09-15: der Retry wiederholte zuvor exakt denselben
+                            # Zwei-Arg-Aufruf — ein identischer TypeError war garantiert.)
+                            voc_mono, inst_mono = demucs.separate_vocals(audio_mono, sr, prefer_mdx23c=False)  # type: ignore[call-arg]
                         n = min(len(audio_mono), len(voc_mono), len(inst_mono))
                         if audio.ndim == 2:
                             vocals_out, instr_out = self._wiener_stereo_from_mono(

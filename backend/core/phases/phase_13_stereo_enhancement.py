@@ -322,6 +322,28 @@ class StereoEnhancementPhaseV2(PhaseInterface):
         if 0.0 < _effective_strength < 1.0:
             enhanced_audio = audio + _effective_strength * (enhanced_audio - audio)
             enhanced_audio = np.clip(enhanced_audio, -1.0, 1.0)
+        # §SOTA-PSY-A3 (2026-09-15): BMLD-Witness — die binaurale
+        # Maskierungs-Freisetzung wird gemessen und als Metadatum geführt
+        # (ZEUGE, nicht Richter — Hörordnung §8a; Muster phase_33/34).
+        _bml_13: dict[str, float] = {}
+        if audio.ndim == 2 and min(audio.shape) == 2:
+            try:
+                from backend.core.dsp.binaural_masking import binaural_masking_advantage as _bma13
+
+                _bres13 = _bma13(audio, sample_rate)
+                _bml_13 = {
+                    "release_db": _bres13.release_db,
+                    "nr_floor_release_db": _bres13.nr_floor_release_db,
+                    "ec_gain_db": _bres13.ec_gain_db,
+                }
+                logger.debug(
+                    "Verarbeitungsschritt_13 §SOTA-PSY-A3: BMLD-Freisetzung %.2f dB (Cap %.2f dB, EC %.2f dB)",
+                    _bres13.release_db,
+                    _bres13.nr_floor_release_db,
+                    _bres13.ec_gain_db,
+                )
+            except Exception as _psy_exc_13:
+                logger.debug("Verarbeitungsschritt_13 §SOTA-PSY-A3 nicht blockierend: %s", _psy_exc_13)
         return PhaseResult(
             success=True,
             audio=enhanced_audio,
@@ -332,6 +354,7 @@ class StereoEnhancementPhaseV2(PhaseInterface):
                 "algorithm": "multiband_ms_processing_v2",
                 "num_bands": 4,
                 "band_splits_hz": self.BAND_SPLITS,
+                "binaural_masking_advantage": _bml_13,
                 "phase_locality_factor": phase_locality_factor,
                 "effective_strength": _effective_strength,
                 "rms_drop_db": 0.0,

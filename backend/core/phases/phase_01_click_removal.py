@@ -511,6 +511,7 @@ class ClickRemovalPhase(PhaseInterface):
                 "long": stats_mono["long"],
                 "transients_preserved": stats_mono["transients_preserved"],
                 "ml_repaired": ml_repaired_count,
+                "subaudible_skipped": int(stats_mono.get("subaudible_skipped", 0)),
             }
         else:
             result_audio, stats = self._remove_clicks_professional(
@@ -534,6 +535,7 @@ class ClickRemovalPhase(PhaseInterface):
                 "long": stats["long"],
                 "transients_preserved": stats["transients_preserved"],
                 "ml_repaired": ml_repaired_count,
+                "subaudible_skipped": int(stats.get("subaudible_skipped", 0)),
             }
 
         execution_time = time.monotonic() - start_time
@@ -607,6 +609,7 @@ class ClickRemovalPhase(PhaseInterface):
                 "long_clicks": click_types["long"],
                 "transients_preserved": click_types["transients_preserved"],
                 "ml_repaired": ml_repaired_count,
+                "subaudible_skipped": int(click_types.get("subaudible_skipped", 0)),
                 "ml_usage_ratio": ml_ratio,
                 "preservation_ratio": preservation_ratio,
                 "material_type": material_type,
@@ -879,7 +882,7 @@ class ClickRemovalPhase(PhaseInterface):
         panns_singing: float = 0.0,
         base_strength: float = 1.0,
         protected_zones: list[tuple[float, float, float]] | None = None,
-    ) -> tuple[np.ndarray, int]:
+    ) -> tuple[np.ndarray, int, int]:
         """Wendet einen gekoppelten Reparaturplan kanalweise und ereignislokal an.
 
         §V38 v10.0.0: Per-Event-Strength-Oracle — jedes Click-Event erhält eine
@@ -973,7 +976,7 @@ class ClickRemovalPhase(PhaseInterface):
                 "Verarbeitungsschritt_01 §SOTA-PSY-A1: %d Klick(s) unter der Maskierungsschwelle übersprungen.",
                 _skipped_subaudible_01,
             )
-        return repaired, ml_repaired
+        return repaired, ml_repaired, _skipped_subaudible_01
 
     def _apply_click_repair_to_channel(self, audio: np.ndarray, click: dict[str, Any]) -> np.ndarray:
         """Wendet die passende lokale DSP-Reparatur für ein einzelnes Click-Event an."""
@@ -1046,7 +1049,7 @@ class ClickRemovalPhase(PhaseInterface):
                     time.monotonic() - (start_time or time.monotonic()),
                 )
             # §V38: per-event local strength via mono_mix als Kontext-Referenz
-            channel_repaired, channel_ml = self._apply_click_plan_to_channel(
+            channel_repaired, channel_ml, channel_skipped = self._apply_click_plan_to_channel(
                 repaired[:, channel_idx],
                 sample_rate,
                 severe_clicks,
@@ -1059,6 +1062,9 @@ class ClickRemovalPhase(PhaseInterface):
             )
             repaired[:, channel_idx] = channel_repaired
             ml_used_any = ml_used_any or channel_ml > 0
+            # §SOTA-R4 (2026-09-15): PSY-A1-Skip-Zählung für den
+            # Audibility-First-Benchmark exportieren (subaudible Klicks).
+            stats["subaudible_skipped"] = int(stats.get("subaudible_skipped", 0)) + int(channel_skipped)
 
         for click in severe_clicks + normal_clicks:
             duration = int(click["end"]) - int(click["start"]) + 1

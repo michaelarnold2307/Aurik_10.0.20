@@ -1657,12 +1657,9 @@ class TestPhase42VocalEnhancement:
         assert 0.0 < eff < 1.0
         assert float(result.metadata.get("phase_locality_factor", 1.0)) <= 0.4 + 1e-6
 
-    def test_stem_separation_skips_roformer_for_long_audio_and_uses_fallback(self, monkeypatch):
-        class _FakeMDX:
-            def process(self, audio, sr, stem="vocals"):
-                assert sr == SR
-                scale = 0.6 if stem == "vocals" else 0.4
-                return np.asarray(audio, dtype=np.float32) * scale
+    def test_stem_separation_skips_roformer_for_long_audio_and_uses_hpss_fallback(self, monkeypatch):
+        """§v10.739: MDX23C entfernt — langes Audio skippt bs_roformer per
+        Preflight und landet im HPSS-Tertiärpfad (hpss_tertiary, 0.30)."""
 
         class _VM:
             available = 6 * 1024**3
@@ -1684,8 +1681,8 @@ class TestPhase42VocalEnhancement:
         vocals_out, instr_out, confidence, model_name = stems
         assert vocals_out.shape == long_stereo.shape
         assert instr_out.shape == long_stereo.shape
-        assert model_name == "mdx23c_kim_vocal_2"
-        assert confidence == 0.65
+        assert model_name == "hpss_tertiary"
+        assert confidence == 0.30
 
     def test_stem_separation_prefers_roformer_for_short_audio_when_available(self, monkeypatch):
         class _FakeSep:
@@ -1720,13 +1717,14 @@ class TestPhase42VocalEnhancement:
         assert model_name == "bs_roformer_fake"
         assert abs(confidence - 0.77) < 1e-6
 
-    def test_stem_separation_uses_demucs_native_before_mdx(self, monkeypatch):
+    def test_stem_separation_uses_demucs_native_before_hpss(self, monkeypatch):
+        """§v10.739: MDX23C entfernt — native HTDemucs (live) vor HPSS."""
+
         class _FakeDemucs:
             _session = object()
 
-            def separate_vocals(self, audio, sr, prefer_mdx23c=True):
+            def separate_vocals(self, audio, sr):
                 assert sr == SR
-                assert prefer_mdx23c is False
                 a = np.asarray(audio, dtype=np.float32)
                 return a * 0.55, a * 0.45
 
@@ -1734,9 +1732,6 @@ class TestPhase42VocalEnhancement:
             available = 6 * 1024**3
 
         import backend.core.phases.phase_42_vocal_enhancement as mod42
-
-        def _boom_mdx():
-            raise AssertionError("mdx23c should not be called when native demucs is available")
 
         monkeypatch.setattr(
             mod42.psutil if hasattr(mod42, "psutil") else __import__("psutil"), "virtual_memory", lambda: _VM()

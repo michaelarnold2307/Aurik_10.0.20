@@ -411,6 +411,26 @@ class AirBandEnhancement(PhaseInterface):
                 config["shelf_gain_db"],
                 config["exciter_mix"],
             )
+        # §SOTA-PSY-A4 (2026-09-15): Equal-Loudness-Gewichtung (ISO 226) —
+        # Air-Band-Stärke in Phon-Hörbarkeit statt Roh-dB: oberhalb ~11 kHz
+        # sinkt die Empfindlichkeit wieder → Shelf-Gain/Exciter-Mix werden
+        # temperiert (Deckel [0,5, 1,0], nie über Design-Pegel). Nicht
+        # blockierend (§V6 (copilot-instructions.md)).
+        _els_factor_39: float = 1.0
+        try:
+            from backend.core.fletcher_munson_curves import equal_loudness_strength_factor as _elsf39
+
+            _els_factor_39 = float(_elsf39(float(config["shelf_freq_hz"]), target_phon=60))
+            config["shelf_gain_db"] = float(config["shelf_gain_db"] * _els_factor_39)
+            config["exciter_mix"] = float(config["exciter_mix"] * _els_factor_39)
+            logger.debug(
+                "Verarbeitungsschritt_39 §SOTA-PSY-A4: Equal-Loudness-Faktor %.3f (shelf %.0f Hz)",
+                _els_factor_39,
+                float(config["shelf_freq_hz"]),
+            )
+        except Exception as _psy_exc_39:
+            logger.debug("Verarbeitungsschritt_39 §SOTA-PSY-A4 nicht blockierend: %s", _psy_exc_39)
+
         # Measure initial HF energy
         hf_energy_before = self._measure_hf_energy(audio, sample_rate)
 
@@ -607,6 +627,7 @@ class AirBandEnhancement(PhaseInterface):
                 "phase_locality_factor": phase_locality_factor,
                 "effective_strength": _effective_strength,
                 "spectral_tilt_capped": _tilt_capped_p39,
+                "equal_loudness_factor": round(_els_factor_39, 4),
                 "hg_score_penalty": _hg_score_penalty_39,
                 "hg_rollback": _hg_rollback_39,
                 "rms_drop_db": 0.0,

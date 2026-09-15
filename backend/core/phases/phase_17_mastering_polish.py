@@ -584,6 +584,24 @@ class MasteringPolishPhase(PhaseInterface):
         eq_audio = audio.copy()
         band_gains = {}
 
+        # §SOTA-PSY-A4 (2026-09-15): Equal-Loudness-Faktoren (ISO 226) je Band-Mitte —
+        # Bass-/Luftband-Gains in Phon-Hörbarkeit statt Roh-dB temperiert
+        # (Deckel [0,5, 1,0], nie über Design-Pegel). Nicht blockierend (§V6 (copilot-instructions.md)).
+        _els_factors_17: dict[str, float] = {}
+        try:
+            from backend.core.fletcher_munson_curves import equal_loudness_strength_factor as _elsf17
+
+            _band_names_17 = list(eq_config.keys())
+            _band_freqs_17 = np.asarray([float(_cfg[0]) for _cfg in eq_config.values()], dtype=np.float64)
+            _factors_17 = np.asarray(_elsf17(_band_freqs_17, target_phon=60), dtype=np.float64)
+            _els_factors_17 = {_bn: float(_factors_17[_i]) for _i, _bn in enumerate(_band_names_17)}
+            logger.debug(
+                "Verarbeitungsschritt_17 §SOTA-PSY-A4: Equal-Loudness-Faktoren %s",
+                {_k: round(_v, 3) for _k, _v in _els_factors_17.items()},
+            )
+        except Exception as _psy_exc_17:
+            logger.debug("Verarbeitungsschritt_17 §SOTA-PSY-A4 nicht blockierend: %s", _psy_exc_17)
+
         # Für jeden Band: Parametric EQ (Peaking Filter) mit adaptivem Gain
         for band_name, (center_freq, gain_db, q) in eq_config.items():
             # §v10: Spektrale Abweichung moduliert den Template-Gain
@@ -593,6 +611,7 @@ class MasteringPolishPhase(PhaseInterface):
             if band_name in _deviations:
                 _spec_factor = float(np.clip(1.0 + _deviations[band_name] / 6.0, 0.3, 1.7))
             gain_db = gain_db * strength * _spec_factor  # Scale by PMGG strength + spectrum
+            gain_db = gain_db * _els_factors_17.get(band_name, 1.0)  # §SOTA-PSY-A4 ISO 226
             if abs(gain_db) > 0.1:  # Nur wenn signifikanter Gain
                 # Peaking Filter (Bell EQ)
                 # iirpeak gibt (b, a) zurück, nicht sos

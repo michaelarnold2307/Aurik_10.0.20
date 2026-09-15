@@ -504,6 +504,43 @@ def get_torch_device(plugin_name: str = "") -> str:
         return "cpu"
 
 
+def _filter_to_available_ort_providers(providers: list[_Provider], plugin_name: str) -> list[_Provider]:
+    """Filtert Provider gegen den installierten ORT-Build (§SOTA-Fix 2026-09-15).
+
+    Produktionsbefund: ORT bricht auf C++-Ebene ab (std::terminate/SIGABRT,
+    „Unknown Provider Type: ROCMExecutionProvider"), wenn ein Provider
+    übergeben wird, den das installierte onnxruntime nicht registriert hat
+    (CPU-only-ORT bei gleichzeitig aktivem MIGraphX-GPU-Detektor). Fail-closed
+    auf CPU mit Warnung (§V6 (copilot-instructions.md): nie still).
+    """
+    try:
+        import onnxruntime as _ort_probe
+
+        _available = list(_ort_probe.get_available_providers())
+    except Exception as _exc:
+        logger.debug("ORT-Provider-Validierung nicht möglich (%s) — CPU-only", _exc)
+        return ["CPUExecutionProvider"]
+    _filtered: list[_Provider] = []
+    _dropped = False
+    for _p in providers:
+        _name = _p[0] if isinstance(_p, tuple) else str(_p)
+        if _name in _available:
+            _filtered.append(_p)
+        else:
+            _dropped = True
+    if _dropped:
+        logger.warning(
+            "ORT-Provider %s für %s nicht im ORT-Build registriert (verfügbar: %s) — auf %s gefiltert (§V6 (copilot-instructions.md))",
+            providers,
+            plugin_name,
+            _available,
+            _filtered or ["CPUExecutionProvider"],
+        )
+    if not _filtered:
+        return ["CPUExecutionProvider"]
+    return _filtered
+
+
 def get_ort_providers(plugin_name: str = "") -> list[_Provider]:
     """Gibt the ONNX Runtime provider list for *plugin_name* zurück.
 
@@ -516,7 +553,9 @@ def get_ort_providers(plugin_name: str = "") -> list[_Provider]:
         _providers = get_ml_device_manager().get_ort_providers(plugin_name)
         from backend.core.gpu_model_registry import apply_gpu_policy_for_plugin
 
-        return list(apply_gpu_policy_for_plugin(_providers, plugin_name))
+        return _filter_to_available_ort_providers(
+            list(apply_gpu_policy_for_plugin(_providers, plugin_name)), plugin_name
+        )
     except Exception as exc:
         logger.debug("get_ort_providers Ersatzpfad to CPU: %s", exc)
         return ["CPUExecutionProvider"]
@@ -532,7 +571,9 @@ def get_ort_providers_fp16(plugin_name: str = "") -> list[_Provider]:
         _providers = get_ml_device_manager().get_ort_providers_fp16(plugin_name)
         from backend.core.gpu_model_registry import apply_gpu_policy_for_plugin
 
-        return list(apply_gpu_policy_for_plugin(_providers, plugin_name))
+        return _filter_to_available_ort_providers(
+            list(apply_gpu_policy_for_plugin(_providers, plugin_name)), plugin_name
+        )
     except Exception as exc:
         logger.debug("get_ort_providers_fp16 Ersatzpfad to CPU: %s", exc)
         return ["CPUExecutionProvider"]

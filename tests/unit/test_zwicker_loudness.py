@@ -101,10 +101,11 @@ def test_masking_threshold_sanity_and_monotonicity() -> None:
     assert thr[i1k] <= exc[i1k] + 0.1
 
     # 2. Schwelle bei 2 kHz: deutlich UNTER der Masker-Erregung (bei 1 kHz) und
-    #    auf/über der Ruhehörschwelle (Floor, niemals unter 0 dB SPL — die
-    #    Ruhehörschwelle liegt bei keinem Band unter ~1 dB).
+    #    auf/über der Ruhehörschwelle. Mit den EXAKTEN DIN-45631-L_TQ-Tabellen
+    #    (Update 2026-09-15) liegt der Tiefstwert bei −4,1 dB (3,15 kHz) und
+    #    2 kHz bei −3,0 dB — der Floor ist also negativ und physikalisch korrekt.
     assert thr[i2k] < exc[i1k] - 25.0
-    assert thr[i2k] >= 0.0  # nie unter den tiefsten Ruhehörschwellen-Floor
+    assert thr[i2k] >= float(np.min(zl._TQ)) - 1e-6  # nie unter L_TQ-Floor
 
     # 3. Monotonie an einer Frequenz, wo Maskierung real ist (~1,3 kHz):
     #    lauterer Masker ⇒ höhere Schwelle.

@@ -58,15 +58,60 @@ _ONNX_MEL_N_FFT = 400
 _ONNX_MEL_HOP = 160
 _ONNX_MEL_N_MELS = 40
 
-# Lokales Resemblyzer-Paket aus models/rezemblyzer/ einbinden (offline-fähig,
+# Lokales Resemblyzer-Paket aus models/resemblyzer/ einbinden (offline-fähig,
 # kein pip install nötig). Pfad wird nur einmalig in sys.path eingetragen.
+# Bugfix 2026-09-15: der Pfad zeigte auf "models/rezemblyzer" (Tippfehler mit
+# "z") — das Verzeichnis existiert nicht, daher war der Package-Pfad nie
+# erreichbar und die Kaskade sprang immer auf ONNX (bzw. None ohne onnxruntime).
 _LOCAL_RESEMBLYZER_DIR = os.path.join(
     os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
     "models",
-    "rezemblyzer",
+    "resemblyzer",
 )
 if os.path.isdir(_LOCAL_RESEMBLYZER_DIR) and _LOCAL_RESEMBLYZER_DIR not in sys.path:
     sys.path.insert(0, _LOCAL_RESEMBLYZER_DIR)
+
+logger = logging.getLogger(__name__)
+
+
+def _ensure_webrtcvad_shim() -> None:
+    """webrtcvad-Import-Shim für das vendored Resemblyzer-Paket (§0j offline-fähig).
+
+    Das unveränderte Vendored-Paket (models/resemblyzer, MIT) importiert
+    webrtcvad in audio.py auf Modulebene. Ohne das Modul schlägt der
+    Package-Pfad der Kaskade (Package→ONNX→None) immer fehl, obwohl torch
+    verfügbar ist. Der Shim liefert einen Minimal-Stub: ``trim_long_silences``
+    deaktiviert damit die VAD-Trimmung (alles als Sprache gewertet) — für den
+    Pre/Post-Witness-Vergleich unkritisch, da beide Seiten identisch
+    vorverarbeitet werden. Echtes webrtcvad wird bevorzugt, falls installiert.
+    """
+    import types
+
+    if "webrtcvad" in sys.modules:
+        return
+    try:
+        import webrtcvad
+    except Exception:
+
+        class _Vad:
+            """Stub: alle Frames gelten als Sprache (keine VAD-Trimmung)."""
+
+            def __init__(self, mode: int = 3) -> None:
+                self._mode = mode
+
+            def set_mode(self, mode: int) -> None:
+                self._mode = mode
+
+            def is_speech(self, buf: bytes, sample_rate: int) -> bool:
+                return True
+
+        _mod = types.ModuleType("webrtcvad")
+        _mod.Vad = _Vad  # type: ignore[attr-defined]
+        sys.modules["webrtcvad"] = _mod
+        logger.debug("resemblyzer_plugin: webrtcvad nicht installiert — Import-Shim aktiv (keine VAD-Trimmung)")
+
+
+_ensure_webrtcvad_shim()
 
 try:
     from resemblyzer import VoiceEncoder as _ResemblyzerVoiceEncoder
@@ -74,8 +119,6 @@ try:
 except Exception:
     _ResemblyzerVoiceEncoder = None
     _resemblyzer_preprocess_wav = None
-
-logger = logging.getLogger(__name__)
 
 
 # ---------------------------------------------------------------------------
@@ -126,10 +169,10 @@ class ResemblyzerPlugin:
             # CPU-only: Resemblyzer ist leichtgewichtig (§0j)
             self._encoder = _ResemblyzerVoiceEncoder("cpu")
             self._preprocess_wav_fn = _resemblyzer_preprocess_wav
-            logger.info("resemblyzer_plugin: VoiceEncoder loaded (256-dim d-vector, CPU, §2.35c)")
+            logger.info("resemblyzer_plugin: VoiceEncoder geladen (256-dim d-vector, CPU, §2.35c)")
         except Exception as exc:
             logger.warning(
-                "resemblyzer_plugin: Resemblyzer-Package nicht verfügbar — ONNX-Fallback wird geprüft: %s", exc
+                "resemblyzer_plugin: Resemblyzer-Package nicht verfügbar — ONNX-Ersatzpfad wird geprüft: %s", exc
             )
             self._encoder = None
             self._preprocess_wav_fn = None
@@ -151,7 +194,7 @@ class ResemblyzerPlugin:
             self._onnx_session = _ort.InferenceSession(_ONNX_MODEL_PATH, providers=["CPUExecutionProvider"])
             logger.info("resemblyzer_plugin: VoiceEncoder-ONNX geladen (256-dim d-vector, CPU, §2.35c)")
         except Exception as exc:
-            logger.warning("resemblyzer_plugin: ONNX-Laden fehlgeschlagen — DSP-Fallback aktiv: %s", exc)
+            logger.warning("resemblyzer_plugin: ONNX-Laden fehlgeschlagen — DSP-Ersatzpfad aktiv: %s", exc)
             self._onnx_session = None
 
     # ------------------------------------------------------------------

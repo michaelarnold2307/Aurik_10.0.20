@@ -7,9 +7,10 @@ psychoakustische Maskierungsschwelle (Erregungsmuster + Maskierungsflanken),
 die das Gate austauschbar zum MPEG-1-``compute_masking_threshold_db`` nutzen
 kann (siehe ``audibility_gate.defect_audibility(..., model="zwicker")``).
 
-Zeitvariante (kurz-/langzeitintegrierte) Lautheit ist NICHT Teil dieses
-Moduls — dafür existiert ``temporal_loudness.py`` (Moore-Glasberg-Basis) bzw.
-bleibt als Folge-Schritt der PSY-A7-/PSY-A2-Teilaufgabe offen.
+Zeitvariante Lautheit (kurz-/langzeitintegriert): ``compute_time_varying_loudness``
+in DIESEM Modul (DIN-45631/A1-Struktur: gefensterte Kurzzeit-Lautheit + Angriffs-/
+Abkling-Zeitbewertung + N5/N10-Perzentile) — PSY-A2-Folge-Schritt 2026-09-15.
+``temporal_loudness.py`` (Moore-Glasberg-Basis) bleibt unabhängig davon bestehen.
 
 Konzeption (Zwicker & Fastl „Psychoacoustics: Facts and Models", ISO 532-1):
 
@@ -37,10 +38,9 @@ ad-hoc-Steigungs-Interpolation, kein zeitvariantes Modell):
   * B) Ruhehörschwelle: harter Gate (N' = 0 unterhalb der Ruhehörschwelle
     L_TQ) statt des glatten ISO-Übergangs. Physikalisch plausibel, deterministisch.
 
-  * C) a0-/L_TQ-Tabellen: Näherungswerte nach Struktur von ISO 532-1 / ISO 226
-    (0 dB bei 1 kHz für a0, Minimum ~1 dB bei 1–5 kHz für L_TQ). Keine gewerteten
-    Goldwerte — für die Gate-Nutzung zählen relative Beziehungen (Monotonie,
-    Schwelle zwischen Erregung und Ruhehörschwelle), nicht Absolutwerte.
+  * C) a0-/L_TQ-Tabellen: EXAKT nach DIN 45631 (Zwicker-Verfahren) /
+    ISO 532-1:2017, wie in Zwicker & Fastl (3. Aufl.) abgedruckt
+    (Update 2026-09-15; vorher Näherungswerte — Session-Ertrag P5).
 
   * D) Referenz-Kalibrierung: das Modul nimmt die digitale Vollaussteuerung als
     0 dBFS ≡ 100 dB SPL an (dokumentierte Konstante ``_DB_SPL_FULL_SCALE``).
@@ -62,7 +62,7 @@ getroffen, jede Achse mit Länge 2 wird zu einem Kanal gemittelt.
 from __future__ import annotations
 
 import logging
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 import numpy as np
 
@@ -93,7 +93,11 @@ _BARK_STEP = 0.5
 _BARK_MAX = 24.0
 
 # ── 1/3-Oktav-Bänder: Mitten (Hz), Übertragungsfaktor a0 (dB), Ruhehörschwelle ─
-# Näherungswerte nach ISO 532-1 / ISO 226-Struktur (0 dB a0 bei 1 kHz).
+# EXAKTE Tabellen nach DIN 45631 (Zwicker-Verfahren) / ISO 532-1:2017 (Annex),
+# wie in Zwicker & Fastl „Psychoacoustics: Facts and Models“ (3. Aufl.) und den
+# DIN-45631-Referenzimplementierungen abgedruckt (a0[1 kHz] = 0 dB,
+# L_TQ[1 kHz] = 0 dB). Ersetzt die Näherungswerte von 2026-09-14 (PSY-A2/Q9
+# Folge-Schritt „exakte a0/L_TQ-Tabellen“, Session-Ertrag 2026-09-15).
 _THIRD_OCTAVE_CENTERS_HZ: tuple[float, ...] = (
     25.0,
     31.5,
@@ -127,63 +131,63 @@ _THIRD_OCTAVE_CENTERS_HZ: tuple[float, ...] = (
 
 _A0_DB: tuple[float, ...] = (
     -32.0,
-    -26.2,
-    -21.2,
-    -17.0,
-    -13.6,
-    -10.5,
-    -8.0,
-    -5.9,
-    -4.2,
-    -2.7,
-    -1.5,
-    -0.6,
-    -0.1,
-    0.0,
-    0.3,
-    0.5,
-    0.0,
-    -0.8,
-    -1.6,
-    -2.4,
-    -3.2,
-    -3.9,
+    -27.5,
+    -23.0,
+    -19.2,
+    -15.9,
+    -13.0,
+    -10.3,
+    -8.1,
+    -6.2,
     -4.4,
-    -4.7,
-    -5.1,
-    -5.6,
-    -5.9,
-    -6.0,
+    -3.0,
+    -1.9,
+    -1.0,
+    -0.3,
+    0.5,
+    0.9,
+    0.0,
+    -0.7,
+    -2.2,
+    -3.8,
+    -5.0,
+    -5.8,
+    -6.5,
+    -6.8,
+    -7.2,
+    -7.8,
+    -9.0,
+    -10.8,
 )
 
 _THRESHOLD_IN_QUIET_DB: tuple[float, ...] = (
     65.0,
     57.0,
-    50.0,
+    49.5,
     44.0,
-    38.0,
-    32.0,
-    26.0,
-    20.0,
-    15.0,
-    12.0,
-    9.0,
+    38.5,
+    32.5,
+    27.0,
+    22.0,
+    17.5,
+    13.5,
+    10.0,
     7.0,
-    5.0,
-    4.0,
+    4.5,
     3.0,
+    1.5,
+    0.7,
+    0.0,
+    -0.6,
+    -1.7,
+    -3.0,
+    -3.9,
+    -4.1,
+    -3.9,
+    -3.0,
+    -0.8,
     2.5,
-    2.0,
-    2.5,
-    3.5,
-    4.0,
-    3.5,
-    2.0,
-    1.0,
-    1.0,
-    2.0,
-    4.0,
-    8.0,
+    6.8,
     12.0,
 )
 
@@ -431,3 +435,100 @@ def zwicker_masking_threshold_db(x: np.ndarray, sr: int) -> tuple[np.ndarray, np
 
     freq_hz = _bark_to_hz(bark)
     return thr, freq_hz
+
+
+@dataclass
+class TimeVaryingLoudnessResult:
+    """Zeitvariante Zwicker-Lautheit (DIN-45631/A1-Struktur).
+
+    Attributes:
+        time_seconds: Zeitachse (Frame-Mitten) der Kurzzeit-Lautheit.
+        loudness_sone_t: zeitbewertete Kurzzeit-Lautheit N(t) in sone.
+        n5_sone: N5 — 95. Perzentil von N(t) (DIN 45631/A1).
+        n10_sone: N10 — 90. Perzentil von N(t).
+        mean_sone: Mittelwert von N(t).
+        peak_sone: Maximum von N(t).
+    """
+
+    time_seconds: np.ndarray = field(default_factory=lambda: np.asarray([], dtype=np.float64))
+    loudness_sone_t: np.ndarray = field(default_factory=lambda: np.asarray([], dtype=np.float64))
+    n5_sone: float = 0.0
+    n10_sone: float = 0.0
+    mean_sone: float = 0.0
+    peak_sone: float = 0.0
+
+
+def compute_time_varying_loudness(
+    x: np.ndarray,
+    sr: int,
+    window_ms: float = 42.7,
+    hop_ms: float = 10.0,
+    attack_ms: float = 5.0,
+    release_ms: float = 100.0,
+) -> TimeVaryingLoudnessResult:
+    """Zeitvariante Zwicker-Lautheit N(t) nach DIN-45631/A1-Struktur (PSY-A2, P5).
+
+    Kurzzeit-Lautheit je gefenstertem Segment (stationäre ISO-532-1-Rechnung),
+    dann nichtlineare Zeitbewertung: schneller Angriff (~5 ms), langsames
+    Abklingen (~100 ms — DIN 45631/A1 nutzt 20–100 ms pegelabhängig; hier die
+    konservative obere Grenze). N5/N10 sind die Exzedenz-Perzentile von N(t).
+
+    Deterministisch (§G5 (GEBOTE.md)), NaN/Inf-geschützt (§0a), Stereo → Mittel (Layout-
+    Invariante wie im stationären Pfad).
+
+    Args:
+        x: Mono-/Stereo-Signal.
+        sr: Abtastrate.
+        window_ms: Fensterlänge je Segment (Default 42,7 ms ≈ 2048 @ 48 kHz).
+        hop_ms: Hop zwischen Segmenten (Default 10 ms).
+        attack_ms: Angriffs-Zeitkonstante (Default 5 ms).
+        release_ms: Abkling-Zeitkonstante (Default 100 ms, DIN-obere Grenze).
+
+    Returns:
+        TimeVaryingLoudnessResult — leere Zeitachse wenn kein vollständiges
+        Segment passt (kein Fehler).
+    """
+    mono = _to_mono(x)
+    win = max(16, int(round(window_ms * sr / 1000.0)))
+    hop = max(1, int(round(hop_ms * sr / 1000.0)))
+    if len(mono) < win or sr <= 0:
+        return TimeVaryingLoudnessResult()
+
+    n_frames = 1 + (len(mono) - win) // hop
+    hann = np.hanning(win)
+    # Energieerhalt: Hann reduziert die RMS um sqrt(3/8) ≈ 0,612 — ohne
+    # Korrektur würde die Kurzzeit-Lautheit stationärer Töne systematisch
+    # unterschätzt (Befund im P5-Test 2026-09-15).
+    hann_gain = float(np.sqrt(np.mean(hann**2)))
+    times = np.empty(n_frames, dtype=np.float64)
+    levels = np.empty(n_frames, dtype=np.float64)
+    for i in range(n_frames):
+        s0 = i * hop
+        seg = mono[s0 : s0 + win] * (hann / max(hann_gain, 1e-9))
+        levels[i] = compute_zwicker_loudness(seg, sr).loudness_sone
+        times[i] = (s0 + win / 2.0) / sr
+
+    # Nichtlineare Zeitbewertung (DIN 45631/A1-Struktur):
+    # Angriff steigt exponentiell Richtung Ziel, Abklingen fällt exponentiell.
+    dt = hop / sr
+    a_coef = float(np.exp(-dt / max(attack_ms / 1000.0, 1e-6)))
+    r_coef = float(np.exp(-dt / max(release_ms / 1000.0, 1e-6)))
+    smoothed = np.empty(n_frames, dtype=np.float64)
+    prev = 0.0
+    for i in range(n_frames):
+        s_t = float(levels[i])
+        if s_t >= prev:
+            prev = s_t + (prev - s_t) * a_coef
+        else:
+            prev = s_t + (prev - s_t) * r_coef
+        smoothed[i] = prev
+
+    smoothed = np.nan_to_num(smoothed, nan=0.0, posinf=0.0, neginf=0.0)
+    return TimeVaryingLoudnessResult(
+        time_seconds=np.asarray(times, dtype=np.float64),
+        loudness_sone_t=np.asarray(smoothed, dtype=np.float64),
+        n5_sone=float(np.percentile(smoothed, 95.0)),
+        n10_sone=float(np.percentile(smoothed, 90.0)),
+        mean_sone=float(np.mean(smoothed)),
+        peak_sone=float(np.max(smoothed)),
+    )

@@ -363,6 +363,29 @@ class PresenceBoost(PhaseInterface):
                 config["upper_gain_db"],
             )
 
+        # §SOTA-PSY-A4 (2026-09-15): Equal-Loudness-Gewichtung (ISO 226) —
+        # Presence-Gains in Phon-Hörbarkeit statt Roh-dB: der Faktor an den
+        # Band-Mitten (2–5 kHz) liegt per Deckel [0,5, 1,0] bei 1,0 (das Ohr
+        # ist dort empfindlicher als bei 1 kHz — nie über Design-Pegel), wird
+        # aber gemessen und als Metadatum geführt (ZEUGE, Hörordnung §8a).
+        # Nicht blockierend (§V6 (copilot-instructions.md)).
+        _els_factors_38: dict[str, float] = {}
+        try:
+            from backend.core.fletcher_munson_curves import equal_loudness_strength_factor as _elsf38
+
+            _f_lo_38 = float(config.get("lower_center_hz", 2750.0))
+            _f_hi_38 = float(config.get("upper_center_hz", 4750.0))
+            _factors_38 = np.asarray(_elsf38(np.array([_f_lo_38, _f_hi_38]), target_phon=60), dtype=np.float64)
+            _els_factors_38 = {"lower": float(_factors_38[0]), "upper": float(_factors_38[1])}
+            config["lower_gain_db"] = float(config["lower_gain_db"] * _els_factors_38["lower"])
+            config["upper_gain_db"] = float(config["upper_gain_db"] * _els_factors_38["upper"])
+            logger.debug(
+                "Verarbeitungsschritt_38 §SOTA-PSY-A4: Equal-Loudness-Faktoren %s",
+                {_k: round(_v, 3) for _k, _v in _els_factors_38.items()},
+            )
+        except Exception as _psy_exc_38:
+            logger.debug("Verarbeitungsschritt_38 §SOTA-PSY-A4 nicht blockierend: %s", _psy_exc_38)
+
         # §2.51 M/S-Domain: Presence EQ auf Mid voll, Side konservativ (\u00d72 Threshold)
         if is_stereo:
             _ch0, _ch1 = stereo_channel_view(audio)
@@ -453,6 +476,7 @@ class PresenceBoost(PhaseInterface):
                 "rt_factor": float(rt_factor),
                 "phase_locality_factor": phase_locality_factor,
                 "effective_strength": _effective_strength,
+                "equal_loudness_factors": _els_factors_38,
                 "rms_drop_db": 0.0,
                 "loudness_makeup_db": 0.0,
             },

@@ -347,6 +347,28 @@ class SpatialEnhancementPhase(PhaseInterface):
         except Exception as _hg_exc_46:
             logger.debug("Verarbeitungsschritt46 §2.46e Hallucination-Guard (nicht blockierend): %s", _hg_exc_46)
 
+        # §SOTA-PSY-A3 (2026-09-15): BMLD-Witness (Muster phase_33/34 —
+        # ZEUGE, nicht Richter, Hörordnung §8a).
+        _bml_46: dict[str, float] = {}
+        if audio.ndim == 2 and min(audio.shape) == 2:
+            try:
+                from backend.core.dsp.binaural_masking import binaural_masking_advantage as _bma46
+
+                _bres46 = _bma46(audio, sample_rate)
+                _bml_46 = {
+                    "release_db": _bres46.release_db,
+                    "nr_floor_release_db": _bres46.nr_floor_release_db,
+                    "ec_gain_db": _bres46.ec_gain_db,
+                }
+                logger.debug(
+                    "Verarbeitungsschritt_46 §SOTA-PSY-A3: BMLD-Freisetzung %.2f dB (Cap %.2f dB, EC %.2f dB)",
+                    _bres46.release_db,
+                    _bres46.nr_floor_release_db,
+                    _bres46.ec_gain_db,
+                )
+            except Exception as _psy_exc_46:
+                logger.debug("Verarbeitungsschritt_46 §SOTA-PSY-A3 nicht blockierend: %s", _psy_exc_46)
+
         return PhaseResult(
             success=True,
             audio=processed,
@@ -360,6 +382,7 @@ class SpatialEnhancementPhase(PhaseInterface):
                 "iacc": iacc_val,
                 "side_reduction": side_reduction,
                 "side_width_gain": _side_width_gain,
+                "binaural_masking_advantage": _bml_46,
                 "phase_locality_factor": phase_locality_factor,
                 "effective_strength": effective_strength,
                 "rms_drop_db": 0.0,

@@ -235,15 +235,19 @@ class BassEnhancement(PhaseInterface):
         config = dict(self.ENHANCEMENT_CONFIG.get(_mk, self.ENHANCEMENT_CONFIG[MaterialType.CD_DIGITAL]))  # type: ignore[call-overload]
         config["harmonic_2_gain"] = float(config["harmonic_2_gain"] * _effective_strength)
         config["harmonic_3_gain"] = float(config["harmonic_3_gain"] * _effective_strength)
-        # §SOTA-PSY-A4 (2026-09-14): Equal-Loudness-Gewichtung (ISO 226) —
+        # §SOTA-PSY-A4 (2026-09-14, Bugfix 2026-09-15): Equal-Loudness-Gewichtung (ISO 226) —
         # ein Bass-Boost ist in Phon weniger hörbar als ein 1-kHz-Boost; der
         # Mix wird mit dem Sensitivitäts-Verhältnis (1 kHz zu Bass-Mitte)
         # temperiert, Konservativ-Deckel [0,5, 1,0] (nie über Design-Pegel).
+        # Bugfix: die Vorläufer-Version nutzte die Korrekturkurve
+        # (get_fletcher_munson_curve, negative dB-Werte) — dadurch degenerierte
+        # der Faktor über den max(..., 1e-9)-Guard immer auf das 0,5-Floor.
+        # Jetzt: equal_loudness_strength_factor() direkt aus den Kontur-SPLs
+        # (80 Hz @ 60 phon → ≈ 0,556 statt des 0,5-Floor-Artefakts).
         try:
-            from backend.core.fletcher_munson_curves import get_fletcher_munson_curve as _fm37
+            from backend.core.fletcher_munson_curves import equal_loudness_strength_factor as _elsf37
 
-            _curve37 = _fm37(np.array([80.0, 1000.0]), target_phon=60, reference_phon=80)
-            _sens_ratio37 = float(np.clip(float(_curve37[1]) / max(float(_curve37[0]), 1e-9), 0.5, 1.0))
+            _sens_ratio37 = float(_elsf37(80.0, target_phon=60))
             config["mix"] = float(config["mix"] * _sens_ratio37)
             logger.debug(
                 "Verarbeitungsschritt_37 §SOTA-PSY-A4: Equal-Loudness-Faktor %.3f auf Bass-Mix (ISO 226, 60 phon)",

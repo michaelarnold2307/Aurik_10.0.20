@@ -295,6 +295,27 @@ class FinalEQ(PhaseInterface):
             else:
                 _band["gain_db"] = float(_nominal_gain * _effective_strength)
 
+        # §SOTA-PSY-A4 (2026-09-15): Equal-Loudness-Gewichtung (ISO 226) —
+        # Band-Gains in Phon-Hörbarkeit statt Roh-dB: Bass-/Luftband-Korrekturen
+        # werden mit dem Sensitivitäts-Verhältnis zur 1-kHz-Referenz temperiert
+        # (Deckel [0,5, 1,0], nie über Design-Pegel). Nicht blockierend (§V6 (copilot-instructions.md)).
+        _els_factors_16: dict[str, float] = {}
+        try:
+            from backend.core.fletcher_munson_curves import equal_loudness_strength_factor as _elsf16
+
+            _band_freqs_16 = np.asarray([float(_b["freq"]) for _b in config.values()], dtype=np.float64)
+            _factors_16 = np.asarray(_elsf16(_band_freqs_16, target_phon=60), dtype=np.float64)
+            for _f_idx, (_band_key, _band) in enumerate(config.items()):
+                _f16 = float(_factors_16[_f_idx])
+                _band["gain_db"] = float(float(_band["gain_db"]) * _f16)
+                _els_factors_16[_band_key] = _f16
+            logger.debug(
+                "Verarbeitungsschritt_16 §SOTA-PSY-A4: Equal-Loudness-Faktoren %s",
+                {_k: round(_v, 3) for _k, _v in _els_factors_16.items()},
+            )
+        except Exception as _psy_exc_16:
+            logger.debug("Verarbeitungsschritt_16 §SOTA-PSY-A4 nicht blockierend: %s", _psy_exc_16)
+
         # Total-Gain-Check nach adaptiver Skalierung
         total_gain = sum(abs(float(band["gain_db"])) for band in config.values())
         if total_gain < 0.5:
@@ -417,6 +438,7 @@ class FinalEQ(PhaseInterface):
                 "clipping_prevented": clipping_prevented,
                 "phase_locality_factor": phase_locality_factor,
                 "effective_strength": _effective_strength,
+                "equal_loudness_factors": {_k: round(_v, 4) for _k, _v in _els_factors_16.items()},
                 "rt_factor": float(rt_factor),
                 "rms_drop_db": 0.0,
                 "loudness_makeup_db": 0.0,

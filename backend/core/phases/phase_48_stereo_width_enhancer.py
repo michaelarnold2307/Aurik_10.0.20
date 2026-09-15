@@ -334,6 +334,28 @@ class StereoWidthEnhancerPhase(PhaseInterface):
             side_reduction,
         )
 
+        # §SOTA-PSY-A3 (2026-09-15): BMLD-Witness (Muster phase_33/34 —
+        # ZEUGE, nicht Richter, Hörordnung §8a).
+        _bml_48: dict[str, float] = {}
+        if audio.ndim == 2 and min(audio.shape) == 2:
+            try:
+                from backend.core.dsp.binaural_masking import binaural_masking_advantage as _bma48
+
+                _bres48 = _bma48(audio, sample_rate)
+                _bml_48 = {
+                    "release_db": _bres48.release_db,
+                    "nr_floor_release_db": _bres48.nr_floor_release_db,
+                    "ec_gain_db": _bres48.ec_gain_db,
+                }
+                logger.debug(
+                    "Verarbeitungsschritt_48 §SOTA-PSY-A3: BMLD-Freisetzung %.2f dB (Cap %.2f dB, EC %.2f dB)",
+                    _bres48.release_db,
+                    _bres48.nr_floor_release_db,
+                    _bres48.ec_gain_db,
+                )
+            except Exception as _psy_exc_48:
+                logger.debug("Verarbeitungsschritt_48 §SOTA-PSY-A3 nicht blockierend: %s", _psy_exc_48)
+
         return PhaseResult(
             success=True,
             audio=processed,
@@ -343,6 +365,7 @@ class StereoWidthEnhancerPhase(PhaseInterface):
                 "diffuse": diffuse,
                 "iacc": iacc_val,
                 "side_reduction": side_reduction,
+                "binaural_masking_advantage": _bml_48,
                 "phase_locality_factor": phase_locality_factor,
                 "effective_strength": effective_strength,
                 "rms_drop_db": 0.0,

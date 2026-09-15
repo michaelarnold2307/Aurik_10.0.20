@@ -667,6 +667,27 @@ class EQCorrectionPhase(PhaseInterface):
             except Exception as _mic_exc_p04:
                 logger.debug("MicChar Protection-EQ nicht blockierend: %s", _mic_exc_p04)
 
+        # §SOTA-PSY-A4 (2026-09-15): Equal-Loudness-Gewichtung (ISO 226) —
+        # Kurven-Punkte in Phon-Hörbarkeit statt Roh-dB: Bass-/Luftband-Korrekturen
+        # werden mit dem Sensitivitäts-Verhältnis zur 1-kHz-Referenz temperiert
+        # (Deckel [0,5, 1,0], nie über Design-Pegel). Nicht blockierend (§V6 (copilot-instructions.md)).
+        _els_factors_04: dict[float, float] = {}
+        try:
+            from backend.core.fletcher_munson_curves import equal_loudness_strength_factor as _elsf04
+
+            _freqs_04 = np.asarray(sorted(float(_f) for _f in adjusted_curve.keys()), dtype=np.float64)
+            _factors_04 = np.asarray(_elsf04(_freqs_04, target_phon=60), dtype=np.float64)
+            for _f04, _factor_04 in zip(_freqs_04, _factors_04):
+                _fkey_04 = float(_f04)
+                adjusted_curve[_fkey_04] = float(adjusted_curve[_fkey_04]) * float(_factor_04)
+                _els_factors_04[_fkey_04] = float(_factor_04)
+            logger.debug(
+                "Verarbeitungsschritt_04 §SOTA-PSY-A4: Equal-Loudness-Faktoren %s",
+                {_k: round(_v, 3) for _k, _v in _els_factors_04.items()},
+            )
+        except Exception as _psy_exc_04:
+            logger.debug("Verarbeitungsschritt_04 §SOTA-PSY-A4 nicht blockierend: %s", _psy_exc_04)
+
         # Step 2: Apply Multi-Band Parametric EQ
         eq_audio = self._apply_parametric_eq_professional(audio, adjusted_curve, params)
 
@@ -831,6 +852,7 @@ class EQCorrectionPhase(PhaseInterface):
                 "head_bump_speed_ips": tape_speed_ips if head_bump_applied else None,
                 "dolby_nr_applied": dolby_nr_applied,
                 "dolby_nr_type": dolby_nr_type if dolby_nr_applied else "none",
+                "equal_loudness_factors": {_k: round(_v, 4) for _k, _v in _els_factors_04.items()},
             },
             warnings=[f"High EQ correction: {total_correction:.1f} dB total"] if total_correction > 30 else [],
             metadata={

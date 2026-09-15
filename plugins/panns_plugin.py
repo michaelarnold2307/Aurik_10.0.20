@@ -256,10 +256,28 @@ class PANNsPlugin(MLPluginBase):  # §A2
                 sess_options.graph_optimization_level = ort.GraphOptimizationLevel.ORT_ENABLE_BASIC
                 logger.info("PANNs ONNX: CPU-Inferenz")
 
+            # §SOTA-Fix 2026-09-15: ORT bricht auf C++-Ebene ab (std::terminate /
+            # SIGABRT), wenn ein Provider übergeben wird, den das installierte
+            # onnxruntime-Build nicht registriert hat (Produktionsbefund:
+            # ROCMExecutionProvider auf CPU-only-ORT). Filter: nur Provider
+            # übergeben, die get_available_providers() kennt; sonst CPU-only
+            # (fail-closed, §V6 (copilot-instructions.md)).
+            _avail_ort_providers = list(ort.get_available_providers())
+            _filtered_providers = [p for p in _providers if p in _avail_ort_providers]
+            if not _filtered_providers:
+                _filtered_providers = ["CPUExecutionProvider"]
+            if _filtered_providers != _providers:
+                logger.warning(
+                    "PANNs: Provider %s nicht im ORT-Build registriert (verfügbar: %s) — auf %s gefiltert (§V6 (copilot-instructions.md))",
+                    _providers,
+                    _avail_ort_providers,
+                    _filtered_providers,
+                )
+
             self._session = ort.InferenceSession(
                 str(self._ONNX_PATH),
                 sess_options=sess_options,
-                providers=_providers,
+                providers=_filtered_providers,
             )
             _active_providers = cast(Any, self._session).get_providers()
             if device == "cuda" and not any(

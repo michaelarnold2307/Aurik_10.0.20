@@ -351,6 +351,27 @@ class StereoBalancePhaseV2(PhaseInterface):
             _wet15 = _local_profile15[:, np.newaxis]
             corrected_audio = audio + _wet15 * (corrected_audio - audio)
             corrected_audio = np.clip(corrected_audio, -1.0, 1.0)
+        # §SOTA-PSY-A3 (2026-09-15): BMLD-Witness (Muster phase_33/34 —
+        # ZEUGE, nicht Richter, Hörordnung §8a).
+        _bml_15: dict[str, float] = {}
+        if audio.ndim == 2 and min(audio.shape) == 2:
+            try:
+                from backend.core.dsp.binaural_masking import binaural_masking_advantage as _bma15
+
+                _bres15 = _bma15(audio, sample_rate)
+                _bml_15 = {
+                    "release_db": _bres15.release_db,
+                    "nr_floor_release_db": _bres15.nr_floor_release_db,
+                    "ec_gain_db": _bres15.ec_gain_db,
+                }
+                logger.debug(
+                    "Verarbeitungsschritt_15 §SOTA-PSY-A3: BMLD-Freisetzung %.2f dB (Cap %.2f dB, EC %.2f dB)",
+                    _bres15.release_db,
+                    _bres15.nr_floor_release_db,
+                    _bres15.ec_gain_db,
+                )
+            except Exception as _psy_exc_15:
+                logger.debug("Verarbeitungsschritt_15 §SOTA-PSY-A3 nicht blockierend: %s", _psy_exc_15)
         return PhaseResult(
             success=True,
             audio=corrected_audio,
@@ -364,6 +385,7 @@ class StereoBalancePhaseV2(PhaseInterface):
                 "algorithm": "multiband_spectral_balance_v2",
                 "num_bands": 3,
                 "band_splits_hz": self.BAND_SPLITS,
+                "binaural_masking_advantage": _bml_15,
                 "repair_locality_coverage": round(float(_local_coverage15), 6),
                 "phase_locality_factor": phase_locality_factor,
                 "effective_strength": _effective_strength,

@@ -930,6 +930,125 @@ Sänger-Identität, MuQ-MOS nicht schlechter als Baseline).
 
 ---
 
+## SESSION-ERTRAG 2026-09-15 → WEG ZU 9.8/10 (AURIK QUALITY SCORE 98/100)
+
+> **Ziel-Definition:** „9.8/10“ = **Aurik Quality Score 98/100**
+> (docs/COMPREHENSIVE_METRICS.md: 40 % Overall Technical + 40 % Overall Musical +
+> 20 % Overall Emotional; internes Spitzenziel bisher ≥ 90). **Messprotokoll:**
+> Score auf dem RESTAURIERTEN Output (nicht dem Quellmaterial) messen, je Korpus-Track;
+> Original-Score als Referenz-Delta dokumentieren. Wiederholung nach jedem Schritt.
+
+### Erkenntnisse dieser Session (verdichtet, mit Belegen)
+
+1. **PSY-A1 komplett** — Maskierungsschwelle als Pflicht-Frage in allen 16 reparierenden
+   Phasen; subaudible Defekte werden übersprungen (weniger Over-Processing, weniger
+   Artefakt-Risiko). Zusätzlich Gate-Zentrum-Fix (lange Defekt-Regionen).
+2. **Stereo-Layout-Invariante**: 2 echte Kollaps-Bugs gefunden+gefixt (phase_65
+   Mean-Achse a8929178; phase_08 (N,2)-Return e3338057), weitere in phase_06/36 —
+   Stereo-Regressionstests je Phase riegeln die Bug-Klasse ab.
+3. **CI vollständig grün-fähig**: mypy-2.1.0-Type-Gate, Cross-Platform-Collection
+   (importorskip-Muster), Timeout 120 min, Windows-numba-SIGSEGV (JIT-aus im Smoke),
+   **Apollo-Endlos-Loop gefixt** (produktionsrelevant: DSP-Fallback lief endlos,
+   bcfee116). Bekannte Ärgernis: `change_ledger.py snapshot` ohne Trailing-Newline →
+   eof-fixer bricht jeden ersten Commit ab (Folge-Fix offen).
+4. **CLI/GUI-Parität jetzt bewiesen**: echter Vollpipeline-A/B-Test im Solo Release
+   Gate (tests/normative/test_cli_gui_output_parity.py, bitnah ≤ 1e-5). Befund:
+   `no_rt_limit=True` = force-execute (§2.45-Skip) divergiert massiv (0.365) —
+   dokumentiert; Defaults beider Frontends sind identisch.
+5. **F2 (GaCELA-Pfad B) evidenzbasiert verworfen**: trainiert (10→39 Epochs) → faire
+   Validierung (Stille-/Crossfade-Baselines, 4f16bed5) → **−2,63 dB vs. GT, ~11 dB
+   schlechter als trivialer Crossfade (+8,77 dB)** — Halluzination in stillen Lücken.
+   Ursache = Taskformulierung, nicht Loss ⇒ EAR-VAE-Retrain ohne Neuformulierung
+   (Silence-Gaps + Energie-Gating) wird NICHT empfohlen. Resemblyzer-Witness blind
+   (Paket+ONNX fehlen → alle witness_cos=null).
+6. **Q9 Zwicker ISO 532-1 stationär** (aaca82eb): sone/phon exakt kalibriert
+   (1 kHz/40 dB ⇒ 1,0 sone), Maskierungsschwelle optional im Audibility-Gate
+   (Default MPEG-1 unverändert, fail-open). Offen: zeitvariantes Modell,
+   exakte a0/L_TQ-Tabellen.
+7. **MuQ-MOS-Richtung (WIT-M1) repariert**; Export-Gate als Soft-Witness (§0c).
+
+### Gemessene Baseline (2026-09-15)
+
+| Messung | Aurik Quality Score | Technical | Musical | Emotional |
+|---|---|---|---|---|
+| Original („Elke Best – 30 Sekunden.mp3“, 44,1 kHz) | **38,1 / 100** | 0,30 | 0,40 | 0,49 |
+| Restauriert (Pipeline, mode=restoration) | wird nachgetragen | — | — | — |
+
+### Priorisierter Weg zu 98/100 (Hebel × Machbarkeit)
+
+| Prio | Schritt | Wirkt auf Säule | Erwartete Wirkung |
+|---|---|---|---|
+| P1 | **Residual-Artefakt-Diagnose**: artifact_freedom pro Phase auf realem Material messen (welche Phase senkt af unter 0,95?); gezielte Never-worsen-Fixes statt Raten | Technical (40 %) | größter Einzelhebel — af-Veto (≥0,95) ist Hör-Invariante |
+| P2 | **PSY-A3-Rest**: BMLD-Witness in Stereo-Phasen 13/15/46/48 + **PSY-A4-Rest**: Equal-Loudness in 04/16/17/38/39 | Musical (40 %) | Stereo-/EQ-Entscheidungen nach Hör-Freisetzung statt Mess-dB |
+| P3 | **Resemblyzer-Witness verfügbar machen** (Paket oder ONNX installieren/laden) — Stimm-Identität ≥ 0,92 (Hör-Invariante) wird messbar | Musical (40 %) | Identitäts-Gate schließt die größte blinde Lücke |
+| P4 | **R8 Sparse Repair + R4 Audibility-First-Scheduling-Benchmark** (PSY-A1-Einsparung je Phase messen) | Technical (40 %) | Artefakt-Risiko ↓ + Rechenzeit ↓ gemeinsam |
+| P5 | **Zeitvariantes Zwicker (ISO 532-1)** + exakte a0/L_TQ-Tabellen | Technical (40 %) | präzisere Maskierungsschwellen für alle PSY-A1-Gates |
+| P6 | **Q6/Q7/F6 GPU-Buildouts** (BigVGAN HR, DDSP-Prädiktor) — erst, wenn P1–P3 nicht reichen | Musical/Technical | HR-Wiederherstellung/EQ-Zielklang |
+| P7 | **R5 Determinismus-Zertifikat** (bit-identische Läufe je Version als CI-Nachweis) | Trust | Studio-Alleinstellungsmerkmal |
+
+### UMSETZUNGSSTAND 2026-09-15 (Umsetzungswelle P1–P5 + P7)
+
+Alle Punkte mit Tests (IDs in Klammern = Testdatei unter tests/unit/):
+
+- **P2 (PSY-A3/A4-Rest) ✅ UMGESETZT** — BMLD-Witness (Muster phase_33/34,
+  ZEUGE-Modus, Hörordnung §8a) in 13/15/46/48 als
+  `binaural_masking_advantage`-Metadatum (test_p2a_bmld_witness_rollout.py, 5 Fälle).
+  Equal-Loudness (ISO 226): neuer Helfer `equal_loudness_strength_factor()` in
+  `fletcher_munson_curves.py` (Kontur-SPLs; Bugfix: die phase_37-Vorläufer-Verdrahtung
+  degenerierte über negative Korrekturkurven-Werte immer auf das 0,5-Floor — der
+  Faktor war NICHT frequenzsensitiv); Rollout in 04/16/17/38/39
+  (test_p2b_equal_loudness_rollout.py, 17 Fälle).
+- **P3 ✅ UMGESETZT** — Pfad-Tippfehler `models/rezemblyzer`→`models/resemblyzer`
+  behoben (Package-Pfad war nie erreichbar) + webrtcvad-Import-Shim (Vendored-Paket
+  bleibt unverändert) → Resemblyzer-Witness lädt jetzt via Package (256-dim,
+  cos ≥ 0,92 messbar, test_p3_resemblyzer_witness_availability.py, 5 Fälle).
+- **P4 ✅ UMGESETZT (Infrastruktur + Messung)** — R8: `backend/core/dsp/sparse_repair.py`
+  (Defekt-Masken als Rechen-Masken: Regionen+Kontext, Hann-Crossfade,
+  Coverage-Vollpfad, §V6-fail-closed; test_r8_sparse_repair.py, 17 Fälle).
+  R4: `scripts/benchmark_audibility_first.py` (Gate-Orakel: Hörbarkeits-Filterrate
+  subaudible vs. audible; phase_01 exportiert `subaudible_skipped`;
+  test_r4_audibility_benchmark.py, 7 Fälle). Per-Phase-Rollout des R8-Musters = Folge-Slice.
+- **P5 ✅ UMGESETZT** — EXAKTE a0-/L_TQ-Tabellen nach DIN 45631 (Zwicker-Verfahren)/
+  ISO 532-1:2017 (a0[1 kHz]=0 dB, L_TQ[1 kHz]=0 dB, Tiefstwert −4,1 dB @ 3,15 kHz)
+  + zeitvariante Lautheit `compute_time_varying_loudness` (DIN-45631/A1-Struktur,
+  Hann-energiekorrekt, N5/N10; test_p5_time_varying_zwicker.py, 10 Fälle;
+  Bestands-Test auf exakten L_TQ-Floor angepasst).
+- **P7 ✅ UMGESETZT** — R5-Determinismus-Zertifikat: feste pure-DSP-Kette
+  (04→16→28→33→34→37→39→59) doppelt gefahren, MD5-identisch, frische Instanzen;
+  phase_38 separat (hash()-Jitter ist prozess-stabil, maschinen-unabhängig
+  dokumentiert; test_r5_determinism_certificate.py, 4 Fälle).
+- **P1 ✅ WERKZEUG + BEFUND** — `scripts/artifact_freedom_diagnosis.py` misst
+  `ArtifactDetector.overall_score` nach jeder Phase auf realem Material
+  (test_p1_artifact_diagnosis.py, 4 Fälle). Lauf auf „Elke Best – 30 Sekunden.mp3"
+  (20 s): siehe `output/artifact_freedom_diagnosis/af_diagnosis_report.json`.
+  **Befund (24 Phasen):** Input-af bereits 0,7414 (MP3-Quelle) — die af-Veto-
+  Schwelle 0,95 ist bei degradierten Quellen nur DELTA-basiert sinnvoll
+  (Guard-Kalibrierung AGENTS.md). Größte af-Abfälle je Phase: phase_07
+  (Harmonic-Restoration) Δ−0,136 → 0,611; phase_28 (Surface-Noise) Δ−0,061;
+  phase_36 (Transient-Shaper) Δ−0,048; phase_27 Δ−0,040; phase_19 (De-Esser)
+  Δ−0,030; phase_38 Δ−0,031; phase_16 Δ−0,018; phase_39 Δ−0,005. End-af 0,498.
+  **Nächster Slice:** gezielte Never-worsen-Fixes in 07/28/36/19 (größte
+  Delta) + af-Delta-Schwelle je Phase im Diagnose-Skript (`--fail-delta`).
+
+**Dabei gefundene + gefixte Produktions-Bugs (Baseline-Tests 196/196 wieder grün):**
+
+- phase_23: unbedingtes `return` im FlashSR-Early-Exit-Block — bei verfügbarem
+  FlashSR wurde die Reparatur IMMER übersprungen (ML und MRSA-Fallback tot).
+- phase_28: §v10.754-Floor-Pre-Stage lief vor der Stärke-Prüfung → strength=0 war
+  kein Passthrough (NMR konnte den Skip zusätzlich reaktivieren).
+- phase_42: TypeError-Retry rief exakt dieselbe Signatur erneut (unbrauchbar);
+  Tests auf §v10.739-Vertrag aktualisiert (MDX23C entfernt → HPSS-Tertiärpfad).
+- **ORT-C++-Abort**: `InferenceSession` mit nicht registriertem
+  `ROCMExecutionProvider` (CPU-only-ORT + aktiver MIGraphX-Detektor) brach den
+  Prozess mit std::terminate/SIGABRT ab — CLI/Headless-Crash bei phase_01-ML-Detektion.
+  Fix: Provider-Filter gegen `ort.get_available_providers()` in
+  `ml_device_manager.get_ort_providers(_fp16)` + PANNs-Plugin (fail-closed,
+  test_ml_device_manager_provider_filter.py, 4 Fälle).
+
+> **Mess-Kadenz:** Nach jedem Schritt das Messprotokoll wiederholen (restaurierter
+> Score + Delta zum Original) und die Tabelle oben aktualisieren. Ein Schritt wird
+> nur behalten, wenn er den Score erhöht (Never-worsen, §0).
+
 ## Hintergrund (damit die nächste Session sofort einsteigt)
 
 - **Session-Report:** `docs/reports/current/2026-09-08_envelope_root_cause_sota_fixes_matrix.md`
