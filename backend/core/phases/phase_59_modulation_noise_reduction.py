@@ -441,14 +441,6 @@ class ModulationNoiseReductionPhase(PhaseInterface):
                 warnings=["Modulation noise reduction skipped due to zero effective strength"],
             )
         _rms_in_db = _rms_dbfs_gated(audio)
-        result_audio = apply(
-            audio,
-            sample_rate,
-            strength=_effective_strength,
-            defect_scores=_defect_scores,
-            min_modulation_noise_score=_profile_59["min_modulation_noise_score"],
-            g_floor=_profile_59["g_floor"],
-        )
         _n_profile_samples = audio.shape[-1] if audio.ndim == 2 and audio.shape[0] == 2 else audio.shape[0]
         _locality_profile, _locality_coverage = self._build_locality_profile(
             n_samples=int(_n_profile_samples),
@@ -458,6 +450,53 @@ class ModulationNoiseReductionPhase(PhaseInterface):
             protected_zones=self._collect_protected_zones(kwargs),
             audio=audio,
         )
+        # §SOTA-R8 (2026-09-15): Sparse Repair — die Defekt-Maske wird zur
+        # RECHEN-MASKE: das spektrale Gating läuft nur in Defekt-Nähe statt
+        # Vollband (Rechenzeit + Artefakt-Risiko sinken gemeinsam; bei
+        # Coverage ≥ 0,85 ein einziger Vollrepair). Sub-STFT-Fenster bleiben
+        # unverändert (kein sinnvolles Gating möglich).
+        try:
+            from backend.core.dsp.sparse_repair import sparse_windowed_repair as _sparse59
+
+            def _repair_window_59(_w: np.ndarray) -> np.ndarray:
+                if _w.shape[-1] < 2048:
+                    return _w  # zu kurz für sinnvolles STFT — Fenster unverändert
+                return apply(
+                    _w,
+                    sample_rate,
+                    strength=_effective_strength,
+                    defect_scores=_defect_scores,
+                    min_modulation_noise_score=_profile_59["min_modulation_noise_score"],
+                    g_floor=_profile_59["g_floor"],
+                )
+
+            _sp59 = _sparse59(
+                audio,
+                sample_rate,
+                _locality_profile > 0.05,
+                _repair_window_59,
+                context_ms=25.0,
+                crossfade_ms=5.0,
+                coverage_threshold=0.85,
+            )
+            result_audio = _sp59.audio
+            _sparse_meta_59 = {
+                "regions_repaired": int(_sp59.regions_repaired),
+                "coverage": round(float(_sp59.coverage), 4),
+                "full_repair": bool(_sp59.full_repair),
+                "skipped": bool(_sp59.skipped),
+            }
+        except Exception as _sp59_exc:
+            logger.debug("Verarbeitungsschritt_59 §SOTA-R8 sparse repair nicht anwendbar: %s", _sp59_exc)
+            result_audio = apply(
+                audio,
+                sample_rate,
+                strength=_effective_strength,
+                defect_scores=_defect_scores,
+                min_modulation_noise_score=_profile_59["min_modulation_noise_score"],
+                g_floor=_profile_59["g_floor"],
+            )
+            _sparse_meta_59 = {"regions_repaired": 0, "coverage": 1.0, "full_repair": True, "skipped": False}
         result_audio = self._blend_with_locality(audio, result_audio, _locality_profile)
         elapsed = _time.perf_counter() - t0
 
@@ -669,5 +708,6 @@ class ModulationNoiseReductionPhase(PhaseInterface):
                 "effective_strength": _effective_strength,
                 "rms_drop_db": round(float(min(0.0, _rms_drop)), 3),
                 "loudness_makeup_db": 0.0,
+                "sparse_repair": _sparse_meta_59,
             },
         )

@@ -491,6 +491,16 @@ class MasteringPolishPhase(PhaseInterface):
                     "Verarbeitungsschritt_Verarbeitungsschritt_17_mastering_polish: unkritisch exception: %s", _e
                 )
 
+        # §SOTA-P1 (2026-09-15): af-Never-worsen — billiger click/pre-echo-Delta-Guard
+        # (Diagnose-Befund: phase_17 senkte den click-Score; delta-basiert, §V6-fail-open).
+        try:
+            from backend.core.dsp.artifact_freedom_guard import af_fast_never_worsen as _afg_17
+
+            mastered, _af_meta_17 = _afg_17(audio, mastered, sample_rate)
+        except Exception as _afg17_exc:
+            logger.debug("Verarbeitungsschritt_17 §SOTA-P1 af-Guard nicht anwendbar: %s", _afg17_exc)
+            _af_meta_17 = {"af_guard_applied": False, "af_guard_wet": 1.0}
+
         return PhaseResult(
             success=True,
             audio=mastered,
@@ -503,6 +513,7 @@ class MasteringPolishPhase(PhaseInterface):
                 "effective_strength": _effective_strength,
                 "rms_drop_db": 0.0,
                 "loudness_makeup_db": 0.0,
+                "af_guard": _af_meta_17,
             },
             metrics={
                 "rms_change_db": float(rms_change_db),

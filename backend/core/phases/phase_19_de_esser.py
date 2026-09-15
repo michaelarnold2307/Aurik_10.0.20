@@ -2105,6 +2105,17 @@ class DeEsserPhase(PhaseInterface):
         except Exception as _pf19_exc:
             logger.debug("§v10.19 Verarbeitungsschritt_19 Präsenz/Formant-Pfad (nicht blockierend): %s", _pf19_exc)
 
+        # §SOTA-P1 (2026-09-15): af-Never-worsen — billiger click/pre-echo-Delta-Guard
+        # (Diagnose-Befund: phase_19 kollabierte den click-Score 0,74→0,27 — harte
+        # Spektral-Kanten; delta-basiert zurückblenden, §V6-fail-open).
+        try:
+            from backend.core.dsp.artifact_freedom_guard import af_fast_never_worsen as _afg_19
+
+            deessed_audio, _af_meta_19 = _afg_19(audio, deessed_audio, sample_rate)
+        except Exception as _afg19_exc:
+            logger.debug("Verarbeitungsschritt_19 §SOTA-P1 af-Guard nicht anwendbar: %s", _afg19_exc)
+            _af_meta_19 = {"af_guard_applied": False, "af_guard_wet": 1.0}
+
         return _phase_result(
             success=True,
             audio=deessed_audio,
@@ -2154,6 +2165,7 @@ class DeEsserPhase(PhaseInterface):
                 # §v10.19 Präsenz/Formant-Pfad
                 "presence_formant_applied": _presence_formant_applied,
                 "presence_formant_witness": _presence_formant_witness,
+                "af_guard": _af_meta_19,
             },
             metrics={
                 "sibilance_reduction_db": float(sibilance_reduction_db),  # type: ignore[arg-type]

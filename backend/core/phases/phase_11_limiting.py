@@ -296,6 +296,16 @@ class LimitingPhase(PhaseInterface):
         if 0.0 < _effective_strength < 1.0:
             limited_audio = audio + _effective_strength * (limited_audio - audio)
             limited_audio = np.clip(limited_audio, -1.0, 1.0)
+        # §SOTA-PSY-A7 (2026-09-15): wahrnehmungs-basierter Loudness-Cap (Rollout 10/11/40)
+        try:
+            from backend.core.dsp.perceptual_loudness_cap import perceptual_loudness_cap as _plc11
+
+            limited_audio, _plc_meta11 = _plc11(
+                audio, limited_audio, sample_rate, phase_label="Verarbeitungsschritt_11"
+            )
+        except Exception as _plc11_exc:
+            logger.debug("Verarbeitungsschritt_11 §SOTA-PSY-A7 nicht anwendbar: %s", _plc11_exc)
+            _plc_meta11 = {"loudness_cap_applied": False, "loudness_cap_wet": 1.0}
         return PhaseResult(
             success=True,
             audio=limited_audio,
@@ -307,6 +317,7 @@ class LimitingPhase(PhaseInterface):
                 "base_ceiling_db": base_ceiling_db,
                 "oversample_factor": oversample_factor,
                 "soft_clip_knee_db": soft_clip_knee_db,
+                "loudness_cap": _plc_meta11,
                 "phase_locality_factor": phase_locality_factor,
                 "effective_strength": _effective_strength,
                 "band_metrics": band_metrics,

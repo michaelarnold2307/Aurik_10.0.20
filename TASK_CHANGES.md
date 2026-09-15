@@ -1,6 +1,6 @@
 # TASK_CHANGES — Live-Ledger der aktuellen Aufgabe
 
-> Generiert von `scripts/change_ledger.py snapshot` (Base: `HEAD`, Stand: 2026-09-15 12:55 CEST).
+> Generiert von `scripts/change_ledger.py snapshot` (Base: `HEAD`, Stand: 2026-09-15 16:11 CEST).
 > CI (`ci-lite.yml` pr-evidence-gate) erzwingt Abdeckung: jede geänderte Code-Datei muss hier stehen.
 
 ## Geänderte Dateien
@@ -8,22 +8,56 @@
 | Status | Pfad | Art |
 |---|---|---|
 | M | .github/FILE_REGISTRY.md | modifiziert |
-| M | backend/core/performance_guard.py | modifiziert |
-| M | backend/core/phases/phase_47_truepeak_limiter.py | modifiziert |
-| M | backend/core/unified_restorer_v3.py | modifiziert |
+| M | TASK_CHANGES.md | modifiziert |
+| A | backend/core/dsp/artifact_freedom_guard.py | neu |
+| A | backend/core/dsp/perceptual_loudness_cap.py | neu |
+| M | backend/core/phases/phase_07_harmonic_restoration.py | modifiziert |
+| M | backend/core/phases/phase_10_compression.py | modifiziert |
+| M | backend/core/phases/phase_11_limiting.py | modifiziert |
+| M | backend/core/phases/phase_17_mastering_polish.py | modifiziert |
+| M | backend/core/phases/phase_19_de_esser.py | modifiziert |
+| M | backend/core/phases/phase_38_presence_boost.py | modifiziert |
+| M | backend/core/phases/phase_40_loudness_normalization.py | modifiziert |
+| M | backend/core/phases/phase_59_modulation_noise_reduction.py | modifiziert |
 | M | docs/TODOS_SOTA_ROADMAP.md | modifiziert |
-| M | docs/UNIFIED_RESTORER_V3_SPEC.md | modifiziert |
-| M | scripts/change_ledger.py | modifiziert |
-| ?? | backend/core/dsp/perceptual_budget.py | ungetrackt |
-| ?? | backend/core/ml/residency_policy.py | ungetrackt |
-| ?? | tests/unit/test_0c_degraded_export_contract.py | ungetrackt |
-| ?? | tests/unit/test_p0_3_budget_truth.py | ungetrackt |
-| ?? | tests/unit/test_p1_1_residency_policy.py | ungetrackt |
-| ?? | tests/unit/test_psy_a7_loudness_cap.py | ungetrackt |
-| ?? | tests/unit/test_r1_perceptual_budget.py | ungetrackt |
+| M | scripts/artifact_freedom_diagnosis.py | modifiziert |
+| A | tests/unit/test_af_never_worsen_guard.py | neu |
+| A | tests/unit/test_psy_a7_loudness_cap_rollout.py | neu |
+| ?? | tests/unit/test_r8_sparse_repair_rollout_59.py | ungetrackt |
 
 ## Entscheidungen
 
+- **SOTA-Roadmap Folge-Slices 3a + 3b (2026-09-15, af-Never-worsen + PSY-A7-Rollout)**:
+  - **3a (af-Never-worsen in 07/17/19/38):** Sub-Score-Analyse lokalisierte den
+    af-Schaden auf click + pre_echo (phase_07: pre_echo 0,20→0,03; phase_19:
+    click 0,74→0,27; phase_17/38 click-Degradation). `_detect_spectral_holes`
+    kostet 14,4 s/20 s (0,72× RT) — produktionsuntauglich je Phase; die billigen
+    Komponenten click+pre_echo (≈0,008× RT) bilden den Schaden ab. Neuer Helfer
+    `backend/core/dsp/artifact_freedom_guard.py`: delta-basierter proportionaler
+    Rückblend (wet = 1 − Überschuss/Toleranz, zentrale Toleranz 0,02, §V6-fail-open,
+    layout-sicher) — verdrahtet in phase_07/17/19/38 (Metadatum `af_guard`).
+    Diagnose-Skript: `--fail-delta`-CI-Gate (Exit 3) + `compute_fail_delta_violations`.
+    **Wirkung (Diagnose-Vergleich Elke-Best-20s):** phase_07 Δ−0,136→−0,049;
+    phase_17 −0,084→+0,002; phase_19 −0,062→0,000; phase_38 −0,043→+0,061;
+    Ketten-Min-af 0,473→0,631. Tests: test_af_never_worsen_guard.py (11 Fälle).
+  - **3b (PSY-A7-Rollout 10/11/40):** `backend/core/dsp/perceptual_loudness_cap.py`
+    (Muster phase_47) mit interner temporal_loudness-Messung + Headroom-Variante:
+    10/11 nie über Input-Lautheit (headroom 1,0); phase_40 kappt Kurzzeit-Pumping
+    über dem Uniform-Gain (headroom = 10^(gain_db/20)) — die Ziel-LUFS-Anhebung
+    bleibt legitim. Verdrahtet in phase_10/11/40 (Metadatum `loudness_cap`);
+    phase_11/phase_19-Early-Exits (ohne Bearbeitung) bewusst ohne Guard.
+    Tests: test_psy_a7_loudness_cap_rollout.py (8 Fälle). Roadmap-ABSCHLUSS-Matrix
+    aktualisiert (P1-Folge + PSY-A7 10/11/40 = GESCHLOSSEN).
+  - **3c (R8-Per-Phase-Sparse-Repair, phase_59):** Die Lokalitäts-Maske der
+    Modulationsrausch-Reduktion war bisher nur BLEND-Maske — das teure
+    spektrale Gating lief Vollband. Jetzt wird sie zur RECHEN-MASKE:
+    `sparse_windowed_repair` (context 25 ms, Hann-Crossfade 5 ms,
+    Coverage-Fallback 0,85 = ein Vollrepair) mit repair_fn = `apply()`;
+    Sub-STFT-Fenster (< 2048 Samples) bleiben bewusst unverändert;
+    Metadatum `sparse_repair` (regions_repaired/coverage/full_repair/skipped).
+    Ohne defect_locations bleibt die Maske all-ones ⇒ Verhalten identisch zu vorher.
+    Tests: test_r8_sparse_repair_rollout_59.py (4 Fälle). Weitere Phasen = Folge-Slice
+    (Muster dokumentiert).
 - **SOTA-Roadmap-Abschluss — Welle 2 (2026-09-15, CPU-schließbare Restpunkte A–G)**:
   - **D (change_ledger-Trailing-Newline-Fix):** `scripts/change_ledger.py` schrieb
     nach einem Snapshot eine LEERZEILE + Newline ans Dateiende (Lines-Block
@@ -71,7 +105,6 @@
     Layout-sichere Kanalextraktion (shape[0]==2 ∧ shape[1]>2 → audio[0], sonst
     audio[:, 0]) + DC-Messung über stereo_channel_view;
     beide Stereo-Axis-Matrix-Tests (phase_30/phase_39) jetzt grün.
-
 - **S3/TP-V1/F2-Vorbereitung + Docs (2026-09-14, parallel zum F1-Training)**:
   - **VOCAL-INPAINT-S3 VORBEREITET:** `backend/core/dsp/diffwave_torch_inpaint.py`
     (Torch-Runtime: Finetune-Checkpoint bevorzugt, DDIM 50 Schritte, blake2b-Seed

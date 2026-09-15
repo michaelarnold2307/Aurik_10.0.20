@@ -162,11 +162,26 @@ def run_diagnosis(audio: np.ndarray) -> dict:
     return report
 
 
+def compute_fail_delta_violations(report: dict, fail_delta: float) -> list[dict]:
+    """CI-Gate-Helfer: alle Phasen mit af_delta < -fail_delta (delta-basiert)."""
+    return [
+        {"phase": e["phase"], "af_delta": round(e["af_delta"], 4)}
+        for e in report.get("phases", [])
+        if e.get("af_delta") is not None and e["af_delta"] < -fail_delta
+    ]
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description="§SOTA-P1 artifact_freedom-Diagnose je Phase")
     parser.add_argument("--input", type=str, default="test_audio/Elke Best - 30 Sekunden.mp3")
     parser.add_argument("--max-s", type=float, default=20.0)
     parser.add_argument("--out", type=str, default="output/artifact_freedom_diagnosis/af_diagnosis_report.json")
+    parser.add_argument(
+        "--fail-delta",
+        type=float,
+        default=None,
+        help="CI-Gate: Exit 3, wenn eine Phase af um mehr als diesen Betrag absenkt (delta-basiert, Never-worsen)",
+    )
     args = parser.parse_args()
 
     if not os.path.exists(args.input):
@@ -184,6 +199,18 @@ def main() -> int:
         json.dump(report, fh, indent=2, ensure_ascii=False)
     print(f"\nMin-af: {report['min_af']} | Kandidaten < {AF_FLOOR}: {report['candidates_below_floor'] or 'keine'}")
     print(f"Report: {args.out}")
+    if args.fail_delta is not None:
+        _violations = compute_fail_delta_violations(report, args.fail_delta)
+        report["fail_delta"] = args.fail_delta
+        report["fail_delta_violations"] = _violations
+        with open(args.out, "w", encoding="utf-8") as fh:
+            json.dump(report, fh, indent=2, ensure_ascii=False)
+        if _violations:
+            print(f"\n❌ --fail-delta {args.fail_delta}: {len(_violations)} Phase(n) unterschreiten die Schwelle:")
+            for _v in _violations:
+                print(f"   {_v['phase']}: Δ{_v['af_delta']:+.4f}")
+            return 3
+        print(f"\n✅ --fail-delta {args.fail_delta}: keine Phase unterschreitet die Schwelle.")
     return 0
 
 

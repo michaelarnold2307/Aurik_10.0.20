@@ -652,6 +652,19 @@ class LoudnessNormalizationPhase(PhaseInterface):
         normalized = np.nan_to_num(normalized, nan=0.0, posinf=0.0, neginf=0.0)
         normalized = np.clip(normalized, -1.0, 1.0)
         normalized = restore_layout(normalized, _p40_transposed)
+        # §SOTA-PSY-A7 (2026-09-15): wahrnehmungs-basierter Loudness-Cap — die
+        # Ziel-LUFS-Anhebung (gain_db > 0) ist legitim (Headroom = Uniform-Gain);
+        # Kurzzeit-Pumping darüber hinaus wird Richtung Input zurückgenommen.
+        try:
+            from backend.core.dsp.perceptual_loudness_cap import perceptual_loudness_cap as _plc40
+
+            _headroom40 = float(10 ** (float(gain_db) / 20.0)) if float(gain_db) > 0 else 1.0
+            normalized, _plc_meta40 = _plc40(
+                audio, normalized, sample_rate, phase_label="Verarbeitungsschritt_40", headroom_lin=_headroom40
+            )
+        except Exception as _plc40_exc:
+            logger.debug("Verarbeitungsschritt_40 §SOTA-PSY-A7 nicht anwendbar: %s", _plc40_exc)
+            _plc_meta40 = {"loudness_cap_applied": False, "loudness_cap_wet": 1.0}
         return PhaseResult(
             success=True,
             audio=normalized,
@@ -673,6 +686,7 @@ class LoudnessNormalizationPhase(PhaseInterface):
                 "amplitude_drift_correction_applied": _drift_correction_applied,
                 "amplitude_drift_gain_range_db": _drift_gain_range_db,
                 "amplitude_drift_locality_coverage": float(_drift_locality_coverage),
+                "loudness_cap": _plc_meta40,
             },
             metrics={
                 "integrated_lufs_before": float(integrated_lufs),

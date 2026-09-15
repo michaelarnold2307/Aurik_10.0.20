@@ -1117,15 +1117,15 @@ Alle CPU-schließbaren Punkte der Offene-Punkte-Matrix sind umgesetzt und getest
 | TODO-P1-5 … P1-12 | ✅ GESCHLOSSEN 2026-09-08 | Status im jeweiligen Abschnitt |
 | PSY-A1/A2/A3/A4/A5/A8 | ✅ GESCHLOSSEN 2026-09-14/15 | Rollouts in den Tabellenzeilen; PSY-A2-zeitvariant via P5 |
 | PSY-A6 (CIPIC-HRIR) | AUSBAUSTUFE (dokumentiert) | persönliche HRIR; nicht blockierend |
-| PSY-A7 (10/11/40) | FOLGE-SLICE | phase_47-Cap umgesetzt; 10/11/40 nach P0-1 |
-| R1/R4/R5/R8 | ✅ GESCHLOSSEN 2026-09-15 | s. o. G + Welle 1 (R4-Benchmark, R5-Zertifikat, R8-Infrastruktur); R8-Per-Phase-Rollout = Folge-Slice |
+| R1/R4/R5/R8 | ✅ GESCHLOSSEN 2026-09-15 | s. o. G + Welle 1 (R4-Benchmark, R5-Zertifikat, R8-Infrastruktur); R8-Per-Phase-Rollout: phase_59 umgesetzt (Defekt-Maske als Rechen-Maske, sub-STFT-Fenster unverändert, Coverage-Fallback ≥0,85), weitere Phasen = Folge-Slice |
 | R2 (MuQ-MOS-Gate) | **GPU-GEBUNDEN** | erst nach WIT-M1 (MuQ-Backbone-Richtung) |
 | R3 (ROCm alle Modelle) | **GPU-GEBUNDEN** | Ports nach BSR-Muster |
 | R6 (Per-Song-Zielklang DDSP) | **GPU-GEBUNDEN** | F5/C4 |
 | R7 (Adaptive Rescheduling) | FOLGE-SLICE | auf wall_budget_s aufbauend, nach P0-1 |
 | F1/F2/F3/F5, Q4–Q7 (GPU-Buildouts) | **GPU-GEBUNDEN** | Trainings-/Port-Arbeit auf ROCm |
 | WF-V4 (neuraler Warp-Schätzer), TP-V2 | **EXTERN BLOCKIERT (Checkpoint-Quelle)** | Quelle klären + Download |
-| P1-Folge (af-Never-worsen in 07/17/19/38) | FOLGE-SLICE | Diagnose-Befund liegt vor (Delta je Phase); gezielte Fixes nächste Session |
+| P1-Folge (af-Never-worsen in 07/17/19/38) | ✅ GESCHLOSSEN 2026-09-15 | `artifact_freedom_guard.py` (billiger click/pre-echo-Delta-Guard, ≈0,008× RT) in 07/17/19/38 + `--fail-delta`-CI-Gate im Diagnose-Skript; Diagnose-Vergleich: phase_07 Δ−0,136→−0,049, phase_17 −0,084→+0,002, phase_19 −0,062→0,000, phase_38 −0,043→+0,061; Ketten-Min-af 0,473→0,631 |
+| PSY-A7 (10/11/40) | ✅ GESCHLOSSEN 2026-09-15 | `perceptual_loudness_cap.py` (Rollout-Helfer mit Headroom-Variante) in 10/11/40: 10/11 nie über Input-Lautheit, 40 kappt Kurzzeit-Pumping über dem Uniform-Gain (Ziel-LUFS-Anhebung bleibt legitim); test_psy_a7_loudness_cap_rollout.py |
 
 > **Mess-Kadenz:** Nach jedem Schritt das Messprotokoll wiederholen (restaurierter
 > Score + Delta zum Original) und die Tabelle oben aktualisieren. Ein Schritt wird

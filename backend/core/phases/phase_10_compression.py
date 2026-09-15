@@ -42,6 +42,7 @@ Version: 2.0.0 Professional
 
 import logging
 import time
+from typing import Any
 
 import numpy as np
 from scipy import ndimage, signal
@@ -291,7 +292,7 @@ class CompressionPhase(PhaseInterface):
                 },
             )
 
-        metadata = {
+        metadata: dict[str, Any] = {
             "phase": "10_compression_v2_professional",
             "material": phase_material.value,
             "sample_rate": sample_rate,
@@ -399,6 +400,17 @@ class CompressionPhase(PhaseInterface):
             _gr = float(_bm.get("max_gain_reduction_db", 0.0))
             if _gr > 0.5:  # Nur signifikante Kompression (>0.5 dB) melden
                 _per_band_gain_db[str(_bn)] = round(_gr, 1)
+        # §SOTA-PSY-A7 (2026-09-15): wahrnehmungs-basierter Loudness-Cap (Rollout 10/11/40)
+        try:
+            from backend.core.dsp.perceptual_loudness_cap import perceptual_loudness_cap as _plc10
+
+            audio_processed, _plc_meta10 = _plc10(
+                audio, audio_processed, sample_rate, phase_label="Verarbeitungsschritt_10"
+            )
+        except Exception as _plc10_exc:
+            logger.debug("Verarbeitungsschritt_10 §SOTA-PSY-A7 nicht anwendbar: %s", _plc10_exc)
+            _plc_meta10 = {"loudness_cap_applied": False, "loudness_cap_wet": 1.0}
+        metadata["loudness_cap"] = _plc_meta10
         return PhaseResult(
             success=True,
             audio=audio_processed.astype(audio.dtype),

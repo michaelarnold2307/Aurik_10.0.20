@@ -465,6 +465,15 @@ class PresenceBoost(PhaseInterface):
                 )
         except Exception as _v22_38_exc:
             logger.debug("§V22 Verarbeitungsschritt_38 transient_guard nicht blockierend: %s", _v22_38_exc)
+        # §SOTA-P1 (2026-09-15): af-Never-worsen — billiger click/pre-echo-Delta-Guard
+        # (Diagnose-Befund: phase_38 senkte den click-Score; delta-basiert, §V6-fail-open).
+        try:
+            from backend.core.dsp.artifact_freedom_guard import af_fast_never_worsen as _afg_38
+
+            enhanced_audio, _af_meta_38 = _afg_38(audio, enhanced_audio, sample_rate)
+        except Exception as _afg38_exc:
+            logger.debug("Verarbeitungsschritt_38 §SOTA-P1 af-Guard nicht anwendbar: %s", _afg38_exc)
+            _af_meta_38 = {"af_guard_applied": False, "af_guard_wet": 1.0}
         return PhaseResult(
             success=True,
             audio=enhanced_audio,
@@ -479,6 +488,7 @@ class PresenceBoost(PhaseInterface):
                 "equal_loudness_factors": _els_factors_38,
                 "rms_drop_db": 0.0,
                 "loudness_makeup_db": 0.0,
+                "af_guard": _af_meta_38,
             },
             warnings=[],
         )
