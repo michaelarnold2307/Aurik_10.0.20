@@ -988,6 +988,11 @@ Sänger-Identität, MuQ-MOS nicht schlechter als Baseline).
 
 ### UMSETZUNGSSTAND 2026-09-15 (Umsetzungswelle P1–P5 + P7)
 
+> **Folge-Konzept:** `docs/GESAMTKONZEPT_PERFORMANCE_WOHLKLANG.md` — wie die
+> Restaurierung aller Importsongs performance-seitig maximiert wird, ohne den
+> Wohlklang zu kompromittieren (Audibility-First, vier Hebel, Sicherungsnetze,
+> Maßnahmen-Roadmap, Verbotsliste).
+
 Alle Punkte mit Tests (IDs in Klammern = Testdatei unter tests/unit/):
 
 - **P2 (PSY-A3/A4-Rest) ✅ UMGESETZT** — BMLD-Witness (Muster phase_33/34,

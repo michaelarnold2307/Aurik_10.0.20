@@ -235,6 +235,7 @@
 | tests/unit/test_p5_time_varying_zwicker.py | ACTIVE | testing/unit | ja | — | §SOTA-P5-Tests (2026-09-15): exakte DIN-45631-a0/L_TQ-Tabellen + compute_time_varying_loudness (N5/N10, Angriff<Abklingen, Determinismus, Stereo-Mittel, kurze Eingaben) |
 | tests/unit/test_p1_artifact_diagnosis.py | ACTIVE | testing/unit | ja | — | §SOTA-P1-Tests (2026-09-15): Diagnose-Messpfad (af je Phase, Delta, below_floor), Fehler-Phasen unterbrechen die Kette nicht, Determinismus |
 | tests/unit/test_ml_device_manager_provider_filter.py | ACTIVE | testing/unit | ja | — | ORT-Provider-Filter-Tests (2026-09-15):_filter_to_available_ort_providers — unbekannter Provider → CPU (fail-closed, §V6), bekannte erhalten, ORT-Probe-Fehler → CPU |
+| docs/GESAMTKONZEPT_PERFORMANCE_WOHLKLANG.md | ACTIVE | docs | ja | — | Gesamtkonzept (2026-09-15): Performance-Restaurierung aller Importsongs ohne Wohlklang-Kompromisse — Audibility-First-Leitprinzip, vier Hebel (Zeit/Raum/Modell/Mess-Ebene), psychoakustische Sicherungsnetze, Budget-Modell, Maßnahmen-Roadmap (P1–P3), Mess-/Gate-Protokoll, Verbotsliste |
 
 ## Pflege-Regeln
 
