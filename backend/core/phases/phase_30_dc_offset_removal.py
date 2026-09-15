@@ -226,7 +226,11 @@ class DCOffsetRemoval(PhaseInterface):
         _original_audio = np.asarray(audio, dtype=np.float32).copy()
 
         # Measure DC offset before removal
-        dc_offset_before = [float(np.mean(audio[:, ch])) for ch in range(2)] if is_stereo else [float(np.mean(audio))]
+        if is_stereo:
+            _dc_l30, _dc_r30 = stereo_channel_view(audio)
+            dc_offset_before = [float(np.mean(_dc_l30)), float(np.mean(_dc_r30))]
+        else:
+            dc_offset_before = [float(np.mean(audio))]
 
         # Measure subsonic energy before removal
         subsonic_energy_before = self._measure_subsonic_energy(audio, sample_rate, config["cutoff_hz"])  # type: ignore[arg-type]
@@ -242,7 +246,8 @@ class DCOffsetRemoval(PhaseInterface):
 
         # Measure DC offset after removal
         if is_stereo:
-            dc_offset_after = [float(np.mean(audio_processed[:, ch])) for ch in range(2)]
+            _dc_l30a, _dc_r30a = stereo_channel_view(audio_processed)
+            dc_offset_after = [float(np.mean(_dc_l30a)), float(np.mean(_dc_r30a))]
         else:
             dc_offset_after = [float(np.mean(audio_processed))]
 
@@ -417,7 +422,13 @@ class DCOffsetRemoval(PhaseInterface):
         """Misst RMS energy in subsonic band (<cutoff_hz)."""
         # Extract subsonic band
         if audio.ndim == 2:
-            audio = audio[:, 0]  # Use first channel for measurement
+            # Stereo-Layout-Invariante (AGENTS.md §3): channels-first (2, N) → audio[0],
+            # channels-last (N, 2) → audio[:, 0]. audio[:, 0] auf (2, N) kollabierte
+            # auf 2 Samples → sosfiltfilt-ValueError (Stereo-Axis-Matrix-Befund).
+            if audio.shape[0] == 2 and audio.shape[1] > 2:
+                audio = audio[0]
+            else:
+                audio = audio[:, 0]  # Use first channel for measurement
 
         # Low-pass filter
         sos = signal.butter(4, cutoff_hz, btype="low", fs=sample_rate, output="sos")

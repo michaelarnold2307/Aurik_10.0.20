@@ -135,7 +135,11 @@ def snapshot(base: str, paths: list[str]) -> int:
         *_dec_block,
         "",
     ]
-    LEDGER.write_text("\n".join(lines) + "\n", encoding="utf-8")
+    # Bugfix 2026-09-15: join + "\n" endete auf einer LEERZEILE + Newline
+    # (der Lines-Block schließt mit ""), das räumt der eof-fixer-Hook auf →
+    # jeder ERSTE Commit nach einem snapshot wurde abgebrochen. Jetzt: genau
+    # EIN abschließendes Newline, keine Leerzeile am Dateiende.
+    LEDGER.write_text("\n".join(lines).rstrip("\n") + "\n", encoding="utf-8")
     print(f"Ledger geschrieben: {LEDGER.relative_to(ROOT)} ({len(rows)} Einträge)")
     return 0
 

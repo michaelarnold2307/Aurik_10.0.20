@@ -71,6 +71,14 @@
 - **Beleg:** `.github/copilot-instructions.md` Performance-Budget; `backend/core/performance_guard.py:46,53,120–130,293`.
 - **Akzeptanz:** Eine Budget-Norm mit Querverweisen; Benchmark-Matrix meldet Verletzungen ehrlich;
   nach TODO-P0-1 neu kalibriert (Ziel: 32× wieder erreichbar).
+- **Status 2026-09-15: UMGESETZT** — `PerformanceGuard.get_budget_truth_report()` weist
+  Wand-/Processing-/Analytics-Zeit GETRENNT aus (`rt_wall` = Anwender-Wartezeit,
+  `rt_processing` = Budget-Last; der 30-s-Floor wird als `budget_duration_s` neben der
+  echten `audio_duration_s` ausgewiesen statt verschleiert); EINE Budget-Norm 32× für alle
+  Modi in Code (`LIMIT_* == 32.0`), Norm-Kette (`copilot-instructions.md` §2.38 KMV) und
+  Doku (`docs/UNIFIED_RESTORER_V3_SPEC.md` — veraltete „3× RT“-Angaben bereinigt) konsistent;
+  `tests/unit/test_p0_3_budget_truth.py` (4 Fälle). Rekalibrierung der Realität (53×→32×)
+  bleibt an TODO-P0-1 gebunden (extern blockiert: Laufzeit-Optimierung der F-Reihe).
 
 ## TODO-P1-1 · Modell-Residency & Warm-up-Policy
 
@@ -81,6 +89,14 @@
 - **Beleg:** Session-Befund (jede Matrix-Zelle lädt Modelle neu); `spec 15 §15.9` (InferenceSessionManager
   Roadmap); `copilot-instructions.md` §G1.
 - **Akzeptanz:** Zweiter Lauf in derselben Session ohne Modell-Nachladen; Determinismus-Nachweis je Song.
+- **Status 2026-09-15: POLICY-EBENE UMGESETZT** — `backend/core/ml/residency_policy.py`:
+  `ResidencyTier` (ALWAYS/SESSION/ONESHOT) + `RESIDENCY_TABLE` für die Plugin-Modelle,
+  Warm-up-Amortisierung (`mark_warmed()`/`is_warmed()` — einmal je Prozess),
+  §G1-Batching-Vertrag (`song_seed()`: blake2b aus Song-Identität + Master-Seed,
+  deterministische Song-Isolation; Multi-Song-Läufe sequenziell auf warmen Modellen);
+  `tests/unit/test_p1_1_residency_policy.py` (5 Fälle). Plugins sind bereits Singletons
+  (einmal Laden je Prozess) und decken den Residency-Fall damit ab — die Policy
+  formalisiert die Einstufung neuer Modelle.
 
 ## TODO-P1-2 · Separation auf VS-1/GSEP + Demucs v5 heben
 
@@ -145,7 +161,12 @@
   **Befund:** 3 Szenarien (cassette_1980s_wow, mp3_64kbps_artifacts, cd_clipped_2000s) haben
   leere 50-Byte-Exports in output/supervised_run (Quality-Gate-Fail ~0,48 < 0,55 → Datei
   ohne Audio, rc=0, Status „ok“) — §0c (copilot-instructions.md)-Verstoß: bestmögliches
-  sicheres Ergebnis mit Status „degraded“ fehlt. Eigener Bug-Hunt-Task (nächste Empfehlung).
+  sicheres Ergebnis mit Status „degraded“ fehlt. **§0c-Bug geschlossen 2026-09-15:**
+  Export-Gate-Fail ⇒ voller Audio-Export mit Strategie „degraded“
+  (`backend/core/export_workflow._resolve_export_strategy`, FQF autoritativ,
+  Recovery-Kennzeichen → „recovered“); `tests/unit/test_0c_degraded_export_contract.py`
+  (7 Fälle). Die MUSHRA-Studie selbst bleibt extern blockiert (menschliche Hörer n≥30,
+  Pilot-Wiederholung mit dem Fix möglich).
 
 ## TODO-P1-5 · §v10.709 authentizitaet-Erhalt nach phase_12_wow_flutter_fix
 
@@ -802,11 +823,11 @@ Sänger-Identität, MuQ-MOS nicht schlechter als Baseline).
 |---|---|---|---|
 | PSY-A1 | **Audibility-Gate-Rollout**: Maskierungsschwelle (masking_model, ISO 11172-3 Bark) als Reparatur-Entscheidung in ALLEN reparierenden Phasen (01, 03, 06, 07, 08, 19, 23, 27, 36, 50, 55, 56, 59, 64, 65, 66) | **TEIL-ROLLOUT 2026-09-14**: `audibility_gate.py` (defekt-zentrierte Messung, §V6 (copilot-instructions.md)-fail-open) + Verdrahtung **phase_01, 03, 06, 07, 08, 19, 23, 27, 36, 50, 55, 56, 59, 64, 65, 66** (subaudible Klicks/Pops/Splices/Lücken/Band-Lücken/Sibilanten/Spektral-Defekte/Modulations-Rauschen überspringen, Noise-Floor dämpfen, Vokal-/Stem-Delta gate-n); 7 Gate- + 45 phase_56- + 17 phase_64-Tests grün. **Gate-Fix dabei:** lange Defekt-Regionen werden ZENTRAL (Mitte) statt am Anfang gemessen. **06/07/08/36 erledigt 2026-09-14** — Rollout vollständig | §4-Vertrag: „Ist der Defekt über der Maskierungsschwelle hörbar?“ als Pflicht-Frage; Berichte weisen „hörbar“ als über-Schwelle aus |
 | PSY-A2 | **Zwicker-Modell (ISO 532-1)** als Nachfolger des MPEG-1-Modells: stationäre + zeitvariante Loudness und Maskierung | stationäres Zwicker ISO 532-1 vorhanden + optional im Audibility-Gate; zeitvariantes Loudness bleibt offen | präzisere Schwelle bei tonalem/breitbandigem Material; Basis für PSY-A7 |
-| PSY-A3 | **BMLD-Verdrahtung** (binaurale Maskierungs-Freisetzung) in die Stereo-Phasen-Gates (13, 15, 33, 34, 46, 48) | binaural_masking auf Guard-Ebene + phase_03; **2026-09-14: phase_33- UND phase_34-BMLD-Witness** (Metadaten release_db/nr_floor_release_db/ec_gain_db, ZEUGE-Modus — dynamische Freisetzungs-Toleranz bleibt Folge-Schritt); 13/15/46/48 offen | Stereo-Änderungen werden nach Hör-Freisetzung bewertet statt nach Mess-dB |
-| PSY-A4 | **Equal-Loudness-Band-Gewichte (ISO 226) + JND-Gates** für EQ-/Enhancement-Phasen (04, 16, 17, 37, 38, 39) | fletcher_munson nur 1× verdrahtet; **2026-09-14: phase_37-Bass-Mix mit Equal-Loudness-Faktor temperiert (ISO 226, 60 phon, Deckel [0,5–1,0])**; 04/16/17/38/39 offen | Stärke-Entscheidungen in Phon-Hörbarkeit statt Roh-dB |
+| PSY-A3 | **BMLD-Verdrahtung** (binaurale Maskierungs-Freisetzung) in die Stereo-Phasen-Gates (13, 15, 33, 34, 46, 48) | binaural_masking auf Guard-Ebene + phase_03; **2026-09-14: phase_33- UND phase_34-BMLD-Witness**; **2026-09-15: Rollout 13/15/46/48 abgeschlossen** (`binaural_masking_advantage`-Metadatum, ZEUGE-Modus, Hörordnung §8a; test_p2a_bmld_witness_rollout.py, 5 Fälle) — dynamische Freisetzungs-Toleranz bleibt Folge-Schritt | Stereo-Änderungen werden nach Hör-Freisetzung bewertet statt nach Mess-dB |
+| PSY-A4 | **Equal-Loudness-Band-Gewichte (ISO 226) + JND-Gates** für EQ-/Enhancement-Phasen (04, 16, 17, 37, 38, 39) | fletcher_munson nur 1× verdrahtet; **2026-09-14: phase_37-Bass-Mix mit Equal-Loudness-Faktor temperiert (ISO 226, 60 phon, Deckel [0,5–1,0])**; **2026-09-15: Rollout 04/16/17/38/39 abgeschlossen** (`equal_loudness_strength_factor()` + phase_37-Bugfix: degenerierte Korrekturkurve fror den Faktor auf dem 0,5-Floor ein; test_p2b_equal_loudness_rollout.py, 17 Fälle) | Stärke-Entscheidungen in Phon-Hörbarkeit statt Roh-dB |
 | PSY-A5 | **Temporal-Masking-Kompensation**: Forward/Backward-Masking-Zonen als Reparatur-Dämpfung nach Transienten (Rollout des §V41-Musters aus phase_55) | nur phase_55 + 22 Phasen nutzen temporal_masking (Guard); **2026-09-14: phase_01/27/64 dämpfen Klick-/Pop-/Splice-Reparatur in Forward-Masking-Zonen (×0,6)** — kein Nachschlag-Artefakt | Nachmaskierungs-Zonen werden weicher repariert — kein Nachschlag-Artefakt |
 | PSY-A6 | **Personalisierte HRIR (CIPIC)** als Ausbaustufe der First-Order-HRTF (Ehrlichkeits-Klausel §8b.3 erfüllt) | First-Order-Modell in interaural_cues | bessere Bühnen-Bewertung bei Kopfhörer-Studien (P1-4) |
-| PSY-A7 | **Loudness-Modell-getriebene Dynamik**: Zwicker-Kurzzeit-Loudness steuert 10/11/40/47 | BS.1770-integriert + Bark-LUFS vorhanden, Kurzzeit-Modell nicht in den Phasen | Punch/Lautheit nach Wahrnehmung statt Peak |
+| PSY-A7 | **Loudness-Modell-getriebene Dynamik**: Zwicker-Kurzzeit-Loudness steuert 10/11/40/47 | BS.1770-integriert + Bark-LUFS vorhanden; **2026-09-15: phase_47 wahrnehmungs-basierter Loudness-Cap** (peak STL Sone, Marge max(0,15 Sone, 5 %), proportionaler Blend Richtung Input, Never-worsen Hörordnung §4/§8a; test_psy_a7_loudness_cap.py, 6 Fälle); 10/11/40 offen (Folge-Slice) | Punch/Lautheit nach Wahrnehmung statt Peak |
 | PSY-A8 | **Generische JND-Gate-Tabelle** (Frequenz ±1 dB, Pegel ±1 dB, Zeit ±5 ms, Pan ±2°… nach Lit.) für alle Never-worsen-Gates | **ERLEDIGT (2026-09-14)**: `backend/core/dsp/hearing_jnd.py` — 9 JND-Klassen mit Quellen, `below_jnd()` (NaN-fail-safe), fail-closed bei unbekannter ID; 6 Tests | absolute dB-Gates weichen JND-basierten, hörbezogenen Grenzen |
 
 ### B. Hybrid-Phasen: offene SOTA-Maßnahmen
@@ -861,7 +882,7 @@ Sänger-Identität, MuQ-MOS nicht schlechter als Baseline).
 |---|---|---|---|
 | Q1 | PSY-A5-Rollout phase_27/64 (Forward-Masking ×0,6) | **ERLEDIGT 2026-09-14** (phase_01/27/64; 26+17+12 Tests grün) | Muster: Zonen einmal pro Kanal via get_forward_masking_guard, Dämpfung im Reparatur-Loop |
 | Q2 | PSY-A1 in phase_55 (subaudible Lücken nicht füllen) | **ERLEDIGT 2026-09-14** (defect_audibility-Gate vor der Kaskade, Zähler `subaudible_gaps_skipped`) | defect_audibility auf die Gap-Region, skip → Kaskade überspringen |
-| Q3 | PSY-A7: Kurzzeit-Loudness-Steuerung für 40/47 | **V1-VERDRAHTET 2026-09-14** — phase_47 führt STL/LTL-Witness (Sone, Metadaten `short_term_loudness`); wahrnehmungs-basierter Cap bleibt Folge-Schritt | temporal_loudness() nutzt ERB-Kurzzeit-Modell (vorhanden) |
+| Q3 | PSY-A7: Kurzzeit-Loudness-Steuerung für 40/47 | **CAP UMGESETZT 2026-09-15 (phase_47)** — `_perceptual_loudness_cap`: peak-STL-Überschreitung > Marge ⇒ proportionaler Blend Richtung Input (Never-worsen §4/§8a, §V6-fail-closed); STL/LTL-Witness (2026-09-14) + 6 Tests. 10/11/40 = Folge-Slice | temporal_loudness() nutzt ERB-Kurzzeit-Modell (vorhanden) |
 | Q4 | WIT-M1: MuQ-Backbone-Fix (MOS-Richtung) | **NACH F1 (GPU)** | MuQ-Eval-Backbone beschaffen ODER A1-Head auf msd-iter neu trainieren; dann Richtungs-Validierung (Muster validate_muq_plugin_direction.py) — erst danach MuQ als Gate-Stimme |
 | Q5 | F2-Verlängerung 30–50 Epochs | **NACH F1 (GPU)** | `python scripts/train_gacela_vocal_inpaint.py --train --data-folder data/gacela_vocals_train --epochs 40 --batch 64 --save-path output/gacela_f2_v2/ --experiment-name gacela_vocal_ft` (lädt/startet neu; Checkpoint-Warmstart aus output/gacela_f2 prüfen) |
 | Q6 | F3: BigVGAN (HR-V1 + 23/50 + 03) | **NACH F1 (GPU)** | bigvgan_v2.pth lokal; Torch-Runtime nach S3-Muster + phase_07-Verdrahtung mit Aktivierungsvertrag |
@@ -919,7 +940,7 @@ Sänger-Identität, MuQ-MOS nicht schlechter als Baseline).
 
 | ID | Hebel | Wirkung | Umsetzung |
 |---|---|---|---|
-| R1 | **Wahrnehmungs-Budget-Bilanz** (PSY-B): jede Phase verbraucht ein JND-Budget; die Kette bilanziert die Gesamt-Hörbarkeit (wie ein Wahrnehmungs-Wasserzeichen) | „Klangtreu“ wird messbar statt Absichtserklärung — kein anderes Werkzeug bilanziert Reparaturen in JND-Einheiten | `hearing_jnd.py` liegt vor; Budget-Metadaten je Phase + Summenbericht im Export |
+| R1 | **Wahrnehmungs-Budget-Bilanz** (PSY-B): jede Phase verbraucht ein JND-Budget; die Kette bilanziert die Gesamt-Hörbarkeit (wie ein Wahrnehmungs-Wasserzeichen) | „Klangtreu“ wird messbar statt Absichtserklärung — kein anderes Werkzeug bilanziert Reparaturen in JND-Einheiten | `hearing_jnd.py` liegt vor; **ERLEDIGT 2026-09-15**: `perceptual_budget.py` (level/loudness/IACC/Centroid in JND-Einheiten via hearing_jnd, layout-sicher, §V6-fail-closed) + `summarize_budget`-Summenbericht + `perceptual_budget_summary` im RestorationResult (pipeline_total); test_r1_perceptual_budget.py, 9 Fälle |
 | R2 | **MuQ-MOS-Export-Gate** (WIT-M4-Umsetzung): MOS-Delta (out vs. in) als Release-Gate — jetzt möglich, da WIT-M1 die Richtung repariert hat | Hör-Qualität entscheidet über den Export, nicht nur True-Peak/LUFS | MuQ-Plugin (10-s-Clips) als dritte Gate-Stimme im Export-Qualitäts-Gate verdrahten |
 | R3 | **ROCm-Beschleunigung aller ML-Modelle** (PERF-A): CQTdiff+, MuQ, BEATs, DeepFilterNet auf Torch-ROCm (Muster bsr317_torch_rocm: 42×) | Echte GPU-Performance-Story auf AMD-Hardware; ORT-ROCm-Kernel-Bug bleibt umgangen | Ports nach dem BSR-Muster, Paritäts-Tests je Modell |
 | R4 | **Audibility-First-Scheduling** (PERF-B): billige Detektion zuerst, teure Reparatur nur bei Hörbarkeit — als globales Prinzip formalisiert + als Benchmark gemessen | Rechenzeit sinkt dort, wo das Ohr nichts hört (PSY-A1 rollt das bereits aus) | Benchmark „PSY-A1-Einsparung“ je Phase + Scheduling-Formalisierung |
@@ -1049,6 +1070,62 @@ Alle Punkte mit Tests (IDs in Klammern = Testdatei unter tests/unit/):
   Fix: Provider-Filter gegen `ort.get_available_providers()` in
   `ml_device_manager.get_ort_providers(_fp16)` + PANNs-Plugin (fail-closed,
   test_ml_device_manager_provider_filter.py, 4 Fälle).
+
+### UMSETZUNGSSTAND 2026-09-15 — WELLE 2 (CPU-schließbare Restpunkte A–G)
+
+Alle CPU-schließbaren Punkte der Offene-Punkte-Matrix sind umgesetzt und getestet
+(Testdateien unter tests/unit/, IDs in Klammern):
+
+- **D ✅** — `scripts/change_ledger.py` schrieb nach einem Snapshot eine
+  LEERZEILE + Newline ans Dateiende; der eof-fixer-Hook räumte das auf ⇒
+  jeder ERSTE Commit nach einem Snapshot wurde abgebrochen. Fix: genau EIN
+  abschließendes Newline (`.rstrip("\n") + "\n"`).
+- **B ✅ (§0c, P1-4-Befund)** — Export-Quality-Gate-Fail ⇒ voller Audio-Export
+  mit Strategie „degraded“ statt 50-Byte-WAV/rc=0:
+  `backend/core/export_workflow._resolve_export_strategy` (FQF autoritativ,
+  Recovery-Kennzeichen → „recovered“); test_0c_degraded_export_contract.py (7 Fälle).
+- **A ✅ (TODO-P0-3)** — Budget-Wahrheit: `get_budget_truth_report()`
+  (Wand/Processing/Analytics getrennt, 30-s-Floor ausgewiesen), EINE 32×-Norm
+  über Code/Norm-Kette/Doku (test_p0_3_budget_truth.py, 4 Fälle).
+- **C ✅ (TODO-P1-1)** — Modell-Residency & Warm-up-Policy:
+  `backend/core/ml/residency_policy.py` (ResidencyTier, Warm-up-Amortisierung,
+  §G1-song_seed; test_p1_1_residency_policy.py, 5 Fälle).
+- **E ✅ (PSY-A7, phase_47)** — wahrnehmungs-basierter Loudness-Cap (peak STL
+  Sone, Marge, proportionaler Blend Richtung Input; Never-worsen §4/§8a;
+  test_psy_a7_loudness_cap.py, 6 Fälle). 10/11/40 = Folge-Slice.
+- **G ✅ (SOTA-R1)** — Wahrnehmungs-Budget-Bilanz:
+  `backend/core/dsp/perceptual_budget.py` (JND-Einheiten via hearing_jnd,
+  layout-sicherer Mono-Downmix, §V6-fail-closed) + Summenbericht +
+  `perceptual_budget_summary` im RestorationResult (test_r1_perceptual_budget.py, 9 Fälle).
+- **Stereo-Layout-Fixes (Stereo-Axis-Matrix-Befunde)** — phase_30
+  (Subsonic-/DC-Messung) und phase_39 (HF-Energie-Messung) kollabierten
+  channels-first (2, N) via `audio[:, 0]` auf 2 Samples → sosfiltfilt-ValueError.
+  Layout-sichere Kanalextraktion + DC-Messung via `stereo_channel_view`;
+  beide Stereo-Axis-Matrix-Tests (phase_30/phase_39) grün.
+
+### ROADMAP-ABSCHLUSS-MATRIX (alle noch offenen Punkte, Stand 2026-09-15)
+
+| Punkt | Status | Begründung / nächster Schritt |
+|---|---|---|
+| TODO-P0-1 (53×→32×-Laufzeit) | **EXTERN BLOCKIERT (Laufzeit)** | hängt an den GPU-Buildouts F1–F5 + Residency-Gewinnen; kein CPU-Fix möglich |
+| TODO-P0-2 (Per-Session-Kompilierung) | **EXTERN BLOCKIERT** | ONNX-Compile-Strategie; Folge von P0-1/C |
+| TODO-P0-3 (Budget-Wahrheit) | ✅ GESCHLOSSEN 2026-09-15 | s. o. A |
+| TODO-P1-1 (Residency) | ✅ GESCHLOSSEN 2026-09-15 (Policy) | s. o. C; Laufzeit-Gewinn misst P0-1 |
+| TODO-P1-2 (VS-1/GSEP + Demucs v5) | **EXTERN BLOCKIERT (Gewichte)** | VS-1/GSEP: keine offiziellen öffentlichen Weights verifizierbar (SongEval nicht erreichbar); Demucs v5-Beschaffung offen |
+| TODO-P1-3 (Audibility-Guards) | ✅ GESCHLOSSEN 2026-09-08 | SCK/WBG/ATI/Formant/Gain-Step umgesetzt |
+| TODO-P1-4 (Blind-Hörstudie) | **EXTERN BLOCKIERT (menschliche Hörer)** | §0c-Export-Bug geschlossen (B); n≥30-Studie braucht Hörer |
+| TODO-P1-5 … P1-12 | ✅ GESCHLOSSEN 2026-09-08 | Status im jeweiligen Abschnitt |
+| PSY-A1/A2/A3/A4/A5/A8 | ✅ GESCHLOSSEN 2026-09-14/15 | Rollouts in den Tabellenzeilen; PSY-A2-zeitvariant via P5 |
+| PSY-A6 (CIPIC-HRIR) | AUSBAUSTUFE (dokumentiert) | persönliche HRIR; nicht blockierend |
+| PSY-A7 (10/11/40) | FOLGE-SLICE | phase_47-Cap umgesetzt; 10/11/40 nach P0-1 |
+| R1/R4/R5/R8 | ✅ GESCHLOSSEN 2026-09-15 | s. o. G + Welle 1 (R4-Benchmark, R5-Zertifikat, R8-Infrastruktur); R8-Per-Phase-Rollout = Folge-Slice |
+| R2 (MuQ-MOS-Gate) | **GPU-GEBUNDEN** | erst nach WIT-M1 (MuQ-Backbone-Richtung) |
+| R3 (ROCm alle Modelle) | **GPU-GEBUNDEN** | Ports nach BSR-Muster |
+| R6 (Per-Song-Zielklang DDSP) | **GPU-GEBUNDEN** | F5/C4 |
+| R7 (Adaptive Rescheduling) | FOLGE-SLICE | auf wall_budget_s aufbauend, nach P0-1 |
+| F1/F2/F3/F5, Q4–Q7 (GPU-Buildouts) | **GPU-GEBUNDEN** | Trainings-/Port-Arbeit auf ROCm |
+| WF-V4 (neuraler Warp-Schätzer), TP-V2 | **EXTERN BLOCKIERT (Checkpoint-Quelle)** | Quelle klären + Download |
+| P1-Folge (af-Never-worsen in 07/17/19/38) | FOLGE-SLICE | Diagnose-Befund liegt vor (Delta je Phase); gezielte Fixes nächste Session |
 
 > **Mess-Kadenz:** Nach jedem Schritt das Messprotokoll wiederholen (restaurierter
 > Score + Delta zum Original) und die Tabelle oben aktualisieren. Ein Schritt wird

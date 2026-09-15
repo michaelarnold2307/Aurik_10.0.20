@@ -22168,6 +22168,15 @@ class UnifiedRestorerV3:
                 )
             except Exception as _ph_t_exc:
                 logger.debug("Pipeline-Phasen-Laufzeit nicht berechenbar: %s", _ph_t_exc)
+        # §SOTA-R1 (2026-09-15): Wahrnehmungs-Budget-Bilanz — Input vs. Output in
+        # JND-Einheiten (Wahrnehmungs-Wasserzeichen; hearing_jnd, PSY-A8).
+        _perceptual_budget_summary: dict = {}
+        try:
+            from backend.core.dsp.perceptual_budget import measure_perceptual_budget as _mpb
+
+            _perceptual_budget_summary = _mpb(audio, restored_audio, sample_rate, phase="pipeline_total").as_dict()
+        except Exception as _mpb_exc:
+            logger.debug("§SOTA-R1 Wahrnehmungs-Bilanz nicht verfügbar: %s", _mpb_exc)
         result = RestorationResult(
             audio=restored_audio,
             config=self.config,
@@ -22206,6 +22215,15 @@ class UnifiedRestorerV3:
                 # für das Matrix-Harness-Budget-Gate; export_flac_s bleibt null
                 # (Export läuft außerhalb des Restorers).
                 "pipeline_budget_timings": dict(_budget_timings),
+                # §P0-3 Budget-Wahrheit: ehrliches Wand-/Processing-/Analytics-Reporting
+                # (rt_wall = was der Anwender wartet, rt_processing = Budget-Last).
+                "performance_guard_report": (
+                    self.performance_guard.get_budget_truth_report()
+                    if getattr(self, "performance_guard", None) is not None
+                    else {}
+                ),
+                # §SOTA-R1: Wahrnehmungs-Budget-Bilanz (JND-Einheiten, PSY-A8)
+                "perceptual_budget_summary": _perceptual_budget_summary,
                 "quality_risk_flags": list(_quality_risk_flags),
                 "fail_reasons": list(_fail_reasons),
                 "degradation_status": _degradation_status,

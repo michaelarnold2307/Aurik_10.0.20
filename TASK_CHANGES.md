@@ -1,6 +1,6 @@
 # TASK_CHANGES — Live-Ledger der aktuellen Aufgabe
 
-> Generiert von `scripts/change_ledger.py snapshot` (Base: `HEAD`, Stand: 2026-09-15 11:45 CEST).
+> Generiert von `scripts/change_ledger.py snapshot` (Base: `HEAD`, Stand: 2026-09-15 12:55 CEST).
 > CI (`ci-lite.yml` pr-evidence-gate) erzwingt Abdeckung: jede geänderte Code-Datei muss hier stehen.
 
 ## Geänderte Dateien
@@ -8,10 +8,69 @@
 | Status | Pfad | Art |
 |---|---|---|
 | M | .github/FILE_REGISTRY.md | modifiziert |
+| M | backend/core/performance_guard.py | modifiziert |
+| M | backend/core/phases/phase_47_truepeak_limiter.py | modifiziert |
+| M | backend/core/unified_restorer_v3.py | modifiziert |
 | M | docs/TODOS_SOTA_ROADMAP.md | modifiziert |
-| ?? | docs/GESAMTKONZEPT_PERFORMANCE_WOHLKLANG.md | ungetrackt |
+| M | docs/UNIFIED_RESTORER_V3_SPEC.md | modifiziert |
+| M | scripts/change_ledger.py | modifiziert |
+| ?? | backend/core/dsp/perceptual_budget.py | ungetrackt |
+| ?? | backend/core/ml/residency_policy.py | ungetrackt |
+| ?? | tests/unit/test_0c_degraded_export_contract.py | ungetrackt |
+| ?? | tests/unit/test_p0_3_budget_truth.py | ungetrackt |
+| ?? | tests/unit/test_p1_1_residency_policy.py | ungetrackt |
+| ?? | tests/unit/test_psy_a7_loudness_cap.py | ungetrackt |
+| ?? | tests/unit/test_r1_perceptual_budget.py | ungetrackt |
 
 ## Entscheidungen
+
+- **SOTA-Roadmap-Abschluss — Welle 2 (2026-09-15, CPU-schließbare Restpunkte A–G)**:
+  - **D (change_ledger-Trailing-Newline-Fix):** `scripts/change_ledger.py` schrieb
+    nach einem Snapshot eine LEERZEILE + Newline ans Dateiende (Lines-Block
+    schließt mit „“); der eof-fixer-Hook räumte das auf ⇒ jeder ERSTE Commit
+    nach einem Snapshot wurde abgebrochen. Fix: `.rstrip("\n") + "\n"` — genau
+    EIN abschließendes Newline (od-Check verifiziert).
+  - **B (§0c-Export-Bug, P1-4-Befund):** Export-Quality-Gate-Fail erzeugte
+    50-Byte-WAVs (Header + 2 Samples) mit rc=0/Status „ok“ — §0c
+    (copilot-instructions.md)-Verstoß. Regressionstest auf dem aktuellen
+    Export-Pfad (`backend/core/export_workflow`): Gate-Fail ⇒ volle Audio-Länge
+    - Strategie „degraded“; FQF autoritativ; Recovery-Kennzeichen → „recovered“
+    (test_0c_degraded_export_contract.py, 7 Fälle).
+  - **A (TODO-P0-3 Budget-Wahrheit):** `PerformanceGuard.get_budget_truth_report()`
+    weist Wand-/Processing-/Analytics-Zeit getrennt aus; echte Audio-Dauer
+    (`audio_duration_s`) neben dem 30-s-Floor (`budget_duration_s`) statt
+    Verschleierung; zero-safe vor start_monitoring. EINE 32×-Norm über Code
+    (LIMIT_* == 32.0), Norm-Kette (§2.38 KMV) und Doku
+    (`docs/UNIFIED_RESTORER_V3_SPEC.md` — veraltete „3× RT“-Angaben bereinigt);
+    Verdrahtung im RestorationResult (`performance_guard_report`);
+    test_p0_3_budget_truth.py, 4 Fälle.
+  - **C (TODO-P1-1 Modell-Residency & Warm-up-Policy):** `backend/core/ml/residency_policy.py`
+    — ResidencyTier (ALWAYS/SESSION/ONESHOT) + RESIDENCY_TABLE, Warm-up-
+    Amortisierung (mark_warmed()/is_warmed(), einmal je Prozess), §G1-Batching-
+    Vertrag (song_seed(): blake2b aus Song-Identität + Master-Seed, deterministische
+    Song-Isolation); test_p1_1_residency_policy.py, 5 Fälle.
+  - **E (PSY-A7, phase_47):** wahrnehmungs-basierter Loudness-Cap
+    `_perceptual_loudness_cap` — peak-STL-Überschreitung (Sone) > Marge
+    (max(0,15 Sone, 5 %)) ⇒ proportionaler Blend Richtung Input (Never-worsen
+    Hörordnung §4/§8a, §V6-fail-closed); test_psy_a7_loudness_cap.py, 6 Fälle.
+  - **G (SOTA-R1 Wahrnehmungs-Budget-Bilanz):** `backend/core/dsp/perceptual_budget.py`
+    — level_broadband/loudness_ratio/iacc/frequency_1khz in JND-Einheiten via
+    hearing_jnd (PSY-A8); layout-sicherer Mono-Downmix ((C,N)/(N,C) — mean(axis=0)
+    auf channels-last kollabierte auf C Samples); §V6-fail-closed je Messgröße;
+    summarize_budget-Summenbericht; `perceptual_budget_summary` im
+    RestorationResult (pipeline_total); test_r1_perceptual_budget.py, 9 Fälle.
+  - **Roadmap-Status:** TODO-P0-3/TODO-P1-1/§0c (P1-4-Befund) als UMGESETZT
+    markiert; PSY-A3/A4/A7-Tabellenzeilen aktualisiert; neue
+    ROADMAP-ABSCHLUSS-MATRIX (alle noch offenen Punkte als GPU-GEBUNDEN /
+    EXTERN BLOCKIERT / FOLGE-SLICE klassifiziert). FILE_REGISTRY-Einträge
+    für 2 Code- + 5 Testdateien. Alle 40 neuen Tests grün.
+  - **Stereo-Layout-Fixes (Stereo-Axis-Matrix-Befunde):** phase_30
+    (`_measure_subsonic_energy` + DC-Messung vor/nach) und phase_39
+    (`_measure_hf_energy`) kollabierten channels-first (2, N) via `audio[:, 0]`
+    auf 2 Samples → scipy-sosfiltfilt-ValueError (AGENTS.md Stereo-Invariante).
+    Layout-sichere Kanalextraktion (shape[0]==2 ∧ shape[1]>2 → audio[0], sonst
+    audio[:, 0]) + DC-Messung über stereo_channel_view;
+    beide Stereo-Axis-Matrix-Tests (phase_30/phase_39) jetzt grün.
 
 - **S3/TP-V1/F2-Vorbereitung + Docs (2026-09-14, parallel zum F1-Training)**:
   - **VOCAL-INPAINT-S3 VORBEREITET:** `backend/core/dsp/diffwave_torch_inpaint.py`

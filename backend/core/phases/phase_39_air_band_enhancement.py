@@ -724,7 +724,13 @@ class AirBandEnhancement(PhaseInterface):
     def _measure_hf_energy(self, audio: np.ndarray, sample_rate: int) -> float:
         """Misst high-frequency energy (12-20 kHz RMS, cached SOS filter)."""
         if audio.ndim == 2:
-            audio = audio[:, 0]  # Use left channel
+            # Stereo-Layout-Invariante (AGENTS.md §3): channels-first (2, N) → audio[0],
+            # channels-last (N, 2) → audio[:, 0]. audio[:, 0] auf (2, N) kollabierte
+            # auf 2 Samples → sosfiltfilt-ValueError (Stereo-Axis-Matrix-Befund).
+            if audio.shape[0] == 2 and audio.shape[1] > 2:
+                audio = audio[0]
+            else:
+                audio = audio[:, 0]  # Use left channel
         with self._cache_lock:
             if sample_rate not in self._sos_air_cache:
                 self._sos_air_cache[sample_rate] = signal.butter(

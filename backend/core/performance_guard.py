@@ -240,6 +240,7 @@ class PerformanceGuard:
         self.skipped_phases: list[str] = []
         self.start_time: float | None = None
         self.audio_duration: float | None = None
+        self._raw_audio_duration: float | None = None  # §P0-3: echte Audio-Dauer (vor 30-s-Floor)
         self.current_rt_factor: float = 0.0
         self.warnings: list[str] = []
         self._skip_warned_phase_ids: set[str] = set()
@@ -270,6 +271,9 @@ class PerformanceGuard:
             # audio_duration bleibt None → should_skip_phase gibt False zurück
             return
         self.start_time = time.perf_counter()
+        # §P0-3 Budget-Wahrheit: echte Audio-Dauer separat festhalten — der
+        # Report weist sie neben der effektiven Budget-Basis (30-s-Floor) aus.
+        self._raw_audio_duration = float(audio_duration_seconds)
         # Minimum 30s floor for RT calculation — prevents fixed overhead
         # (DefectScanner, EraClassifier, CausalDefect, FeedbackChain, etc.)
         # from dominating on short clips/excerpts (e.g. 10s multi-pass chunks)
@@ -304,6 +308,46 @@ class PerformanceGuard:
                 seconds,
                 self._analytics_overhead_s,
             )
+
+    def get_budget_truth_report(self) -> dict[str, float]:
+        """§P0-3 Budget-Wahrheit: ehrliches Messzeit-Reporting.
+
+        Weist Wand- und Verarbeitungszeit GETRENNT aus — die Analytics-Zeit
+        (goal measurements, PMGG, FeedbackChain) wird nicht verschleiert,
+        sondern separat dokumentiert: ``rt_wall`` = was der Anwender wartet,
+        ``rt_processing`` = was das Phasen-Budget belastet. Damit ist die
+        Diskrepanz zwischen Guard-Limit (32×) und gefühlter Wand-Zeit
+        (Analytics-Anteil) nachvollziehbar statt versteckt.
+
+        Zeit-Bilanz (deterministisch, zero-safe vor ``start_monitoring``):
+        - ``audio_duration_s`` = echte Audio-Dauer (vor dem 30-s-Floor);
+          ``budget_duration_s`` = effektive Budget-Basis des Guards
+          (``max(30 s, audio_duration)`` — die RT-Faktoren rechnen darauf).
+        - ``wall_elapsed_s`` = erlebte Wand-Zeit; in Produktion steckt der
+          Analytics-Anteil bereits in der Messzeit, im Test wird er simuliert
+          — daher ``max(Messzeit, Analytics-Anteil)``.
+        - ``processing_elapsed_s`` = Messzeit abzüglich Analytics-Anteil
+          (nie negativ): genau die Last, die das Phasen-Budget trägt.
+        """
+        _dur = float(self.audio_duration) if self.audio_duration else 0.0
+        _raw_dur = float(self._raw_audio_duration) if self._raw_audio_duration else 0.0
+        _analytics = max(0.0, float(self._analytics_overhead_s))
+        if self.start_time is None:
+            _wall_raw = 0.0
+        else:
+            _wall_raw = max(0.0, time.perf_counter() - self.start_time)
+        _wall = max(_wall_raw, _analytics)
+        _proc = max(0.0, _wall_raw - _analytics)
+        return {
+            "audio_duration_s": round(_raw_dur, 3),
+            "budget_duration_s": round(float(self.audio_duration or 0.0), 3),
+            "wall_elapsed_s": round(float(_wall), 3),
+            "analytics_overhead_s": round(float(_analytics), 3),
+            "processing_elapsed_s": round(float(_proc), 3),
+            "rt_wall": round(float(_wall / _dur), 3) if _dur > 0 else 0.0,
+            "rt_processing": round(float(_proc / _dur), 3) if _dur > 0 else 0.0,
+            "target_rt_factor": round(float(self.target_rt_factor), 3),
+        }
 
     def set_never_skip_phases(self, phase_ids: list[str] | tuple[str, ...] | set[str]) -> None:
         """Setzt Phasen, die zur Laufzeit niemals geskippt werden dürfen.

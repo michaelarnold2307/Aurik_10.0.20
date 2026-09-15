@@ -35,7 +35,7 @@ The **UnifiedRestorerV3** is the **main orchestrator** for Aurik 10.0.0's audio 
 
 - **DefectScanner:** Material detection + 62 defect types analysis
 - **Adaptive Phase Selection:** Only run phases needed for detected defects
-- **PerformanceGuard:** Enforce 3× RT limit with adaptive skipping
+- **PerformanceGuard:** Enforce 32× RT limit (alle Modi, §2.38 KMV) with adaptive skipping
 - **AdaptiveCoreScheduler:** (Future) Parallel multi-core execution
 - **Quality Estimation:** Predict restoration quality before/after processing
 
@@ -61,7 +61,7 @@ v8.0: MEDIUM-FIRST WORKFLOW
 
 Problems:
 - Wastes time on unnecessary phases (e.g., hum removal on clean audio)
-- No performance guarantees (can exceed 3× RT)
+- No performance guarantees (can exceed 32× RT)
 - Fixed phase order (no dependency optimization)
 - All-or-nothing (no adaptive skipping)
 ```
@@ -79,7 +79,7 @@ v10.0.0: DEFECT-FIRST WORKFLOW
 │    Example: hum severity 0.1 → skip hum_removal
 │    ↓                                          │
 │ 3. PerformanceGuard.start_monitoring()       │
-│    → Begin RT tracking (enforce 3× RT limit) │
+│    → Begin RT tracking (enforce 32× RT limit) │
 │    ↓                                          │
 │ 4. _execute_pipeline(selected_phases)        │
 │    → Run phases with adaptive skipping       │
@@ -96,7 +96,7 @@ v10.0.0: DEFECT-FIRST WORKFLOW
 Benefits:
 ✅ Faster: Only run needed phases (50% reduction typical)
 ✅ Smart: Adapt to actual defects, not assumed material profile
-✅ Guaranteed: 3× RT limit enforced (or report failure)
+✅ Guaranteed: 32× RT limit enforced (or report failure)
 ✅ Flexible: Three quality modes (fast/balanced/quality)
 ```
 
@@ -417,7 +417,7 @@ class UnifiedRestorerV3:
 
         Raises:
             ValueError: Invalid audio or sample_rate
-            PerformanceError: If 3× RT limit exceeded (FAST/BALANCED modes)
+            PerformanceError: If 32× RT limit exceeded (alle Modi, §2.38 KMV)
         """
 ```
 
@@ -601,7 +601,7 @@ result = restorer.restore(audio, sr)
 |----------------------|------------------------------|--------------------------------|
 | **Material Input**   | Required (manual selection)  | Auto-detected by DefectScanner |
 | **Phase Selection**  | Fixed set per material       | Adaptive per detected defects  |
-| **Performance**      | No guarantees                | 3× RT enforced                 |
+| **Performance**      | No guarantees                | 32× RT enforced (alle Modi)    |
 | **Quality Modes**    | Presets (fast/balanced/etc.) | Modes (FAST/BALANCED/QUALITY)  |
 | **Skipping**         | All-or-nothing               | Adaptive per phase priority    |
 | **Result Object**    | dict                         | RestorationResult dataclass    |

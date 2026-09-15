@@ -55,6 +55,45 @@ _ATTACK_MS = 0.1  # Gain-Reduction Attack
 _RELEASE_MS = 100.0  # Gain-Reduction Release
 
 
+def _perceptual_loudness_cap(
+    audio: np.ndarray,
+    processed: np.ndarray,
+    psy7: dict[str, float],
+    ceiling_lin: float,
+) -> tuple[np.ndarray, dict[str, float]]:
+    """§SOTA-PSY-A7: wahrnehmungs-basierter Loudness-Cap (Never-worsen).
+
+    Der Limiter darf die Kurzzeit-Lautheit (peak STL, Sone) nicht über den
+    Input hinaus anheben. Überschreitet ``processed`` die Input-Lautheit um
+    mehr als die konservative Marge (max(0,15 Sone, 5 % des Inputs)), wird die
+    Bearbeitung proportional Richtung Input zurückgenommen (linearer Blend).
+    Deterministisch, layout-sicher, fail-closed (Fehler → unverändert).
+    """
+    try:
+        _stl_before = float(psy7.get("peak_stl_before_sone", 0.0) or 0.0)
+        _stl_after = float(psy7.get("peak_stl_after_sone", 0.0) or 0.0)
+        _margin = max(0.15, 0.05 * max(_stl_before, 1e-9))
+        if _stl_after <= _stl_before + _margin:
+            psy7["loudness_cap_applied"] = False
+            return processed, psy7
+        _cap_wet = float(np.clip((_stl_before + _margin) / max(_stl_after, 1e-9), 0.0, 1.0))
+        capped = audio + _cap_wet * (processed - audio)
+        capped = np.clip(np.nan_to_num(capped, nan=0.0, posinf=0.0, neginf=0.0), -ceiling_lin, ceiling_lin)
+        logger.warning(
+            "Verarbeitungsschritt_47 §SOTA-PSY-A7 Loudness-Cap: peak STL %.2f → %.2f Sone über Marge %.2f — wet=%.2f",
+            _stl_before,
+            _stl_after,
+            _margin,
+            _cap_wet,
+        )
+        psy7["loudness_cap_applied"] = True
+        psy7["loudness_cap_wet"] = round(_cap_wet, 3)
+        return capped.astype(np.float32), psy7
+    except Exception as _cap_exc:  # §V6 (copilot-instructions.md): nie blockierend
+        logger.debug("Verarbeitungsschritt_47 §SOTA-PSY-A7 Loudness-Cap nicht anwendbar: %s", _cap_exc)
+        return processed, psy7
+
+
 class TruePeakLimiterPhase(PhaseInterface):
     """
     TruePeak Limiter nach ITU-R BS.1770 / AES17.
@@ -219,6 +258,13 @@ class TruePeakLimiterPhase(PhaseInterface):
             )
         except Exception as _psy_exc_47:
             logger.debug("Verarbeitungsschritt_47 §SOTA-PSY-A7 nicht blockierend: %s", _psy_exc_47)
+
+        # §SOTA-PSY-A7 (2026-09-15): wahrnehmungs-basierter Cap — der Limiter
+        # darf die Kurzzeit-Lautheit (Sone) nicht über den Input hinaus
+        # anheben; andernfalls wird die Bearbeitung proportional Richtung
+        # Input zurückgenommen (Never-worsen, Hörordnung §4/§8a).
+        if _psy7:
+            processed, _psy7 = _perceptual_loudness_cap(audio, processed, _psy7, ceiling_lin)
 
         logger.info(
             "Verarbeitungsschritt 47 TruePeak: ceiling=%.1f dBFS, TP %+.2f → %+.2f dBFS, GR=%.2f dB, t=%.3fs",
