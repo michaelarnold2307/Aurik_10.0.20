@@ -1,48 +1,13 @@
 # TASK_CHANGES — Live-Ledger der aktuellen Aufgabe
 
-> Generiert von `scripts/change_ledger.py snapshot` (Base: `HEAD`, Stand: 2026-09-15 10:59 CEST).
+> Generiert von `scripts/change_ledger.py snapshot` (Base: `HEAD`, Stand: 2026-09-15 11:35 CEST).
 > CI (`ci-lite.yml` pr-evidence-gate) erzwingt Abdeckung: jede geänderte Code-Datei muss hier stehen.
 
 ## Geänderte Dateien
 
 | Status | Pfad | Art |
 |---|---|---|
-| M | .github/FILE_REGISTRY.md | modifiziert |
-| M | TASK_CHANGES.md | modifiziert |
-| A | backend/core/dsp/sparse_repair.py | neu |
-| M | backend/core/dsp/zwicker_loudness.py | modifiziert |
-| M | backend/core/fletcher_munson_curves.py | modifiziert |
-| M | backend/core/ml_device_manager.py | modifiziert |
-| M | backend/core/phases/phase_01_click_removal.py | modifiziert |
-| M | backend/core/phases/phase_04_eq_correction.py | modifiziert |
-| M | backend/core/phases/phase_13_stereo_enhancement.py | modifiziert |
-| M | backend/core/phases/phase_15_stereo_balance.py | modifiziert |
-| M | backend/core/phases/phase_16_final_eq.py | modifiziert |
-| M | backend/core/phases/phase_17_mastering_polish.py | modifiziert |
-| M | backend/core/phases/phase_23_spectral_repair.py | modifiziert |
-| M | backend/core/phases/phase_28_surface_noise_profiling.py | modifiziert |
-| M | backend/core/phases/phase_37_bass_enhancement.py | modifiziert |
-| M | backend/core/phases/phase_38_presence_boost.py | modifiziert |
-| M | backend/core/phases/phase_39_air_band_enhancement.py | modifiziert |
-| M | backend/core/phases/phase_42_vocal_enhancement.py | modifiziert |
-| M | backend/core/phases/phase_46_spatial_enhancement.py | modifiziert |
-| M | backend/core/phases/phase_48_stereo_width_enhancer.py | modifiziert |
 | M | docs/TODOS_SOTA_ROADMAP.md | modifiziert |
-| M | plugins/panns_plugin.py | modifiziert |
-| M | plugins/resemblyzer_plugin.py | modifiziert |
-| A | scripts/artifact_freedom_diagnosis.py | neu |
-| A | scripts/benchmark_audibility_first.py | neu |
-| A | tests/unit/test_ml_device_manager_provider_filter.py | neu |
-| A | tests/unit/test_p1_artifact_diagnosis.py | neu |
-| A | tests/unit/test_p2a_bmld_witness_rollout.py | neu |
-| A | tests/unit/test_p2b_equal_loudness_rollout.py | neu |
-| A | tests/unit/test_p3_resemblyzer_witness_availability.py | neu |
-| A | tests/unit/test_p5_time_varying_zwicker.py | neu |
-| M | tests/unit/test_phases_mid_late.py | modifiziert |
-| A | tests/unit/test_r4_audibility_benchmark.py | neu |
-| A | tests/unit/test_r5_determinism_certificate.py | neu |
-| A | tests/unit/test_r8_sparse_repair.py | neu |
-| M | tests/unit/test_zwicker_loudness.py | modifiziert |
 
 ## Entscheidungen
 

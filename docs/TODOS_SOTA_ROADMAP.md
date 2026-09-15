@@ -1021,13 +1021,13 @@ Alle Punkte mit Tests (IDs in Klammern = Testdatei unter tests/unit/):
   `ArtifactDetector.overall_score` nach jeder Phase auf realem Material
   (test_p1_artifact_diagnosis.py, 4 Fälle). Lauf auf „Elke Best – 30 Sekunden.mp3"
   (20 s): siehe `output/artifact_freedom_diagnosis/af_diagnosis_report.json`.
-  **Befund (24 Phasen):** Input-af bereits 0,7414 (MP3-Quelle) — die af-Veto-
+  **Befund (25 Phasen, komplett):** Input-af bereits 0,7414 (MP3-Quelle) — die af-Veto-
   Schwelle 0,95 ist bei degradierten Quellen nur DELTA-basiert sinnvoll
   (Guard-Kalibrierung AGENTS.md). Größte af-Abfälle je Phase: phase_07
-  (Harmonic-Restoration) Δ−0,136 → 0,611; phase_28 (Surface-Noise) Δ−0,061;
-  phase_36 (Transient-Shaper) Δ−0,048; phase_27 Δ−0,040; phase_19 (De-Esser)
-  Δ−0,030; phase_38 Δ−0,031; phase_16 Δ−0,018; phase_39 Δ−0,005. End-af 0,498.
-  **Nächster Slice:** gezielte Never-worsen-Fixes in 07/28/36/19 (größte
+  (Harmonic-Restoration) Δ−0,136; phase_17 (Mastering-Polish) Δ−0,084;
+  phase_19 (De-Esser) Δ−0,062; phase_38 Δ−0,043; phase_39 Δ−0,031;
+  phase_16 Δ−0,018; phase_36 Δ−0,017. Min-af 0,473 (phase_19).
+  **Nächster Slice:** gezielte Never-worsen-Fixes in 07/17/19/38 (größte
   Delta) + af-Delta-Schwelle je Phase im Diagnose-Skript (`--fail-delta`).
 
 **Dabei gefundene + gefixte Produktions-Bugs (Baseline-Tests 196/196 wieder grün):**
