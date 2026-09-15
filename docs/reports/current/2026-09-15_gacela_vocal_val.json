@@ -3,62 +3,83 @@
   "script": "scripts/validate_gacela_vocal_inpaint.py",
   "ckpt": "output/gacela_f2/gacela_vocal_ft_checkpoints/39_0499.pt",
   "n_gaps": 9,
-  "mean_sdr_db": -2.46,
-  "min_sdr_db": -7.62,
+  "mean_sdr_db": -2.63,
+  "mean_sdr_silence_db": -8.64,
+  "mean_sdr_xfade_db": 8.77,
+  "min_sdr_db": -6.09,
   "gate_mean_sdr_ge_0": false,
+  "gate_beats_baseline": false,
   "results": [
     {
       "track": "BKS - Bulldozer",
       "gap": 0,
-      "sdr_db": -3.21,
+      "sdr_db": -4.17,
+      "sdr_silence_db": 0.17,
+      "sdr_xfade_db": 0.25,
       "witness_cos": null
     },
     {
       "track": "BKS - Bulldozer",
       "gap": 1,
-      "sdr_db": -2.38,
+      "sdr_db": -2.78,
+      "sdr_silence_db": 0.13,
+      "sdr_xfade_db": 1.89,
       "witness_cos": null
     },
     {
       "track": "BKS - Bulldozer",
       "gap": 2,
-      "sdr_db": -7.62,
+      "sdr_db": -6.09,
+      "sdr_silence_db": -41.69,
+      "sdr_xfade_db": 74.4,
       "witness_cos": null
     },
     {
       "track": "Secretariat - Borderline",
       "gap": 0,
-      "sdr_db": -2.21,
+      "sdr_db": -2.89,
+      "sdr_silence_db": -31.21,
+      "sdr_xfade_db": -4.92,
       "witness_cos": null
     },
     {
       "track": "Secretariat - Borderline",
       "gap": 1,
-      "sdr_db": -3.57,
+      "sdr_db": -4.43,
+      "sdr_silence_db": 0.09,
+      "sdr_xfade_db": -1.1,
       "witness_cos": null
     },
     {
       "track": "Secretariat - Borderline",
       "gap": 2,
-      "sdr_db": -0.32,
+      "sdr_db": -0.71,
+      "sdr_silence_db": 0.17,
+      "sdr_xfade_db": 1.18,
       "witness_cos": null
     },
     {
       "track": "Speak Softly - Broken Man",
       "gap": 0,
-      "sdr_db": -1.06,
+      "sdr_db": -1.76,
+      "sdr_silence_db": 0.09,
+      "sdr_xfade_db": 5.27,
       "witness_cos": null
     },
     {
       "track": "Speak Softly - Broken Man",
       "gap": 1,
-      "sdr_db": -0.69,
+      "sdr_db": -0.17,
+      "sdr_silence_db": -5.64,
+      "sdr_xfade_db": 1.16,
       "witness_cos": null
     },
     {
       "track": "Speak Softly - Broken Man",
       "gap": 2,
-      "sdr_db": -1.04,
+      "sdr_db": -0.67,
+      "sdr_silence_db": 0.13,
+      "sdr_xfade_db": 0.76,
       "witness_cos": null
     }
   ]

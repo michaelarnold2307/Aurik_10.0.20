@@ -157,6 +157,22 @@ def _witness_cos(orig_seg: np.ndarray, gen_seg: np.ndarray) -> float | None:
         return None
 
 
+def _baseline_fill_mags(left: np.ndarray, right: np.ndarray, gap_bins: int) -> tuple[np.ndarray, np.ndarray]:
+    """Triviale deterministische Baseline-Fills im Log-Mel-Raum.
+
+    Returns (silence_mag, xfade_mag):
+      - Stille: Null-Log-Mel (Standard-Silence-Floor via inv_log_spectrogram)
+      - Crossfade: lineare Interpolation zwischen letzter linker und erster
+        rechter Border-Spalte (klassischer Inpaint-Trivialfill)
+    Beide sind deterministisch (§G5 (GEBOTE.md)) und brauchen kein Modell.
+    """
+    n_bins = left.shape[0]
+    w = np.linspace(0.0, 1.0, gap_bins, dtype=np.float64)[None, :]
+    xfade_logmel = left[:, -1:].astype(np.float64) * (1.0 - w) + right[:, :1].astype(np.float64) * w
+    silence_logmel = np.zeros((n_bins, gap_bins), dtype=np.float64)
+    return silence_logmel, xfade_logmel
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--ckpt", type=str, default="output/gacela_f2/gacela_vocal_ft_checkpoints/09_0499.pt")
@@ -219,36 +235,60 @@ def main() -> int:
             gt_mag = shim.inv_log_spectrogram(25.0 * (gt - 1.0))
             gen_audio = shim.GaussTruncTFShim(256, 1024).invert_spectrogram(gen_mag, iterations=16)
             gt_audio = shim.GaussTruncTFShim(256, 1024).invert_spectrogram(gt_mag, iterations=16)
+            # Faire Baselines (§SOTA-F2-Evaluation 2026-09-15): SDR vs GT allein
+            # ist für hallucinierten Inpaint praktisch unerreichbar — entscheidend
+            # ist, ob der ML-Fill die trivialen Fills (Stille/Crossfade) schlägt.
+            silence_logmel, xfade_logmel = _baseline_fill_mags(left, right, _GAP_BINS)
+            silence_mag = shim.inv_log_spectrogram(25.0 * (silence_logmel - 1.0))
+            xfade_mag = shim.inv_log_spectrogram(25.0 * (xfade_logmel - 1.0))
+            silence_audio = shim.GaussTruncTFShim(256, 1024).invert_spectrogram(silence_mag, iterations=16)
+            xfade_audio = shim.GaussTruncTFShim(256, 1024).invert_spectrogram(xfade_mag, iterations=16)
             sdr = _sdr_db(gt_audio, gen_audio)
+            sdr_silence = _sdr_db(gt_audio, silence_audio)
+            sdr_xfade = _sdr_db(gt_audio, xfade_audio)
             cos = _witness_cos(gt_audio, gen_audio)
             results.append(
                 {
                     "track": track.name,
                     "gap": g,
                     "sdr_db": round(sdr, 2),
+                    "sdr_silence_db": round(sdr_silence, 2),
+                    "sdr_xfade_db": round(sdr_xfade, 2),
                     "witness_cos": round(cos, 3) if cos is not None else None,
                 }
             )
-            print(f"{track.name} gap{g}: SDR={sdr:+.2f} dB witness_cos={cos}")
+            print(
+                f"{track.name} gap{g}: SDR={sdr:+.2f} dB "
+                f"(Stille={sdr_silence:+.2f}, XFade={sdr_xfade:+.2f}) witness_cos={cos}"
+            )
 
     if not results:
         print("Keine Lücken validiert.")
         return 3
     mean_sdr = float(np.mean([r["sdr_db"] for r in results]))
+    mean_silence = float(np.mean([r["sdr_silence_db"] for r in results]))
+    mean_xfade = float(np.mean([r["sdr_xfade_db"] for r in results]))
+    best_baseline = max(mean_silence, mean_xfade)
     report = {
         "date": f"{date.today().isoformat()}",
         "script": "scripts/validate_gacela_vocal_inpaint.py",
         "ckpt": args.ckpt,
         "n_gaps": len(results),
         "mean_sdr_db": round(mean_sdr, 2),
+        "mean_sdr_silence_db": round(mean_silence, 2),
+        "mean_sdr_xfade_db": round(mean_xfade, 2),
         "min_sdr_db": round(float(np.min([r["sdr_db"] for r in results])), 2),
         "gate_mean_sdr_ge_0": mean_sdr >= 0.0,
+        "gate_beats_baseline": mean_sdr > best_baseline,
         "results": results,
     }
     out = _REPORT_DIR / f"{date.today().isoformat()}_gacela_vocal_val.json"
     out.write_text(json.dumps(report, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
     print(f"Report: {out}")
-    print(f"mean SDR = {mean_sdr:+.2f} dB (Gate ≥ 0: {report['gate_mean_sdr_ge_0']})")
+    print(
+        f"mean SDR = {mean_sdr:+.2f} dB (Stille {mean_silence:+.2f}, XFade {mean_xfade:+.2f}) — "
+        f"Gate ≥ 0: {report['gate_mean_sdr_ge_0']} | schlägt Baseline: {report['gate_beats_baseline']}"
+    )
     return 0
 
 
