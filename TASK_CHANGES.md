@@ -1,6 +1,6 @@
 # TASK_CHANGES — Live-Ledger der aktuellen Aufgabe
 
-> Generiert von `scripts/change_ledger.py snapshot` (Base: `HEAD`, Stand: 2026-09-15 16:11 CEST).
+> Generiert von `scripts/change_ledger.py snapshot` (Base: `HEAD`, Stand: 2026-09-15 16:25 CEST).
 > CI (`ci-lite.yml` pr-evidence-gate) erzwingt Abdeckung: jede geänderte Code-Datei muss hier stehen.
 
 ## Geänderte Dateien
@@ -9,21 +9,10 @@
 |---|---|---|
 | M | .github/FILE_REGISTRY.md | modifiziert |
 | M | TASK_CHANGES.md | modifiziert |
-| A | backend/core/dsp/artifact_freedom_guard.py | neu |
-| A | backend/core/dsp/perceptual_loudness_cap.py | neu |
-| M | backend/core/phases/phase_07_harmonic_restoration.py | modifiziert |
-| M | backend/core/phases/phase_10_compression.py | modifiziert |
-| M | backend/core/phases/phase_11_limiting.py | modifiziert |
-| M | backend/core/phases/phase_17_mastering_polish.py | modifiziert |
-| M | backend/core/phases/phase_19_de_esser.py | modifiziert |
-| M | backend/core/phases/phase_38_presence_boost.py | modifiziert |
-| M | backend/core/phases/phase_40_loudness_normalization.py | modifiziert |
-| M | backend/core/phases/phase_59_modulation_noise_reduction.py | modifiziert |
+| M | backend/core/dsp/binaural_masking.py | modifiziert |
+| M | backend/core/phases/phase_33_stereo_width_limiter.py | modifiziert |
 | M | docs/TODOS_SOTA_ROADMAP.md | modifiziert |
-| M | scripts/artifact_freedom_diagnosis.py | modifiziert |
-| A | tests/unit/test_af_never_worsen_guard.py | neu |
-| A | tests/unit/test_psy_a7_loudness_cap_rollout.py | neu |
-| ?? | tests/unit/test_r8_sparse_repair_rollout_59.py | ungetrackt |
+| ?? | tests/unit/test_psy_a3_bmld_tolerance.py | ungetrackt |
 
 ## Entscheidungen
 
@@ -57,6 +46,13 @@
     Metadatum `sparse_repair` (regions_repaired/coverage/full_repair/skipped).
     Ohne defect_locations bleibt die Maske all-ones ⇒ Verhalten identisch zu vorher.
     Tests: test_r8_sparse_repair_rollout_59.py (4 Fälle). Weitere Phasen = Folge-Slice
+    (Muster dokumentiert).
+  - **3d (BMLD-dynamische Freisetzungs-Toleranz, phase_33):** `bmld_tolerance_factor()`
+    in `binaural_masking.py` — release_db linear 1,0→1,10 (Cap 8 dB ≡_BMLD_CAP_DB),
+    nie < 1,0 (Never-worsen), NaN-sicher. phase_33 multipliziert den Breiten-Cap
+    je Band mit dem Faktor (ZEUGE → Toleranz-Anpassung; vorher reiner Witness).
+    Metadatum `binaural_masking_release_tolerance_factor`; Tests:
+    test_psy_a3_bmld_tolerance.py (6 Fälle). 13/15/46/48-Toleranz = Folge-Slice
     (Muster dokumentiert).
 - **SOTA-Roadmap-Abschluss — Welle 2 (2026-09-15, CPU-schließbare Restpunkte A–G)**:
   - **D (change_ledger-Trailing-Newline-Fix):** `scripts/change_ledger.py` schrieb

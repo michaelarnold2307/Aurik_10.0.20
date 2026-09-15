@@ -296,7 +296,37 @@ class StereoWidthLimiterPhaseV2(PhaseInterface):
         _mat_fallback_33 = self.MAX_WIDTH_PER_BAND.get(
             _mat_enum_33, self.MAX_WIDTH_PER_BAND.get(MaterialType.VINYL, [0.5, 0.7, 0.9, 0.8])
         )
-        max_widths = [float(v * _effective_strength) for v in _mat_fallback_33]
+        # §SOTA-PSY-A3 (2026-09-15): BMLD-dynamische Freisetzungs-Toleranz —
+        # hohe binaurale Freisetzung entspannt den Breiten-Cap begrenzt
+        # (ZEUGE → Toleranz-Anpassung; Never-worsen: Faktor ≥ 1,0, max. +10 %).
+        _bml_33: dict[str, float] = {}
+        _bmld_factor_33 = 1.0
+        if audio.ndim == 2 and min(audio.shape) == 2:
+            try:
+                from backend.core.dsp.binaural_masking import (
+                    binaural_masking_advantage as _bma33,
+                )
+                from backend.core.dsp.binaural_masking import (
+                    bmld_tolerance_factor as _btf33,
+                )
+
+                _bres33 = _bma33(audio, sample_rate)
+                _bml_33 = {
+                    "release_db": _bres33.release_db,
+                    "nr_floor_release_db": _bres33.nr_floor_release_db,
+                    "ec_gain_db": _bres33.ec_gain_db,
+                }
+                _bmld_factor_33 = _btf33(_bres33.release_db)
+                logger.debug(
+                    "Verarbeitungsschritt_33 §SOTA-PSY-A3: BMLD-Freisetzung %.2f dB (Cap %.2f dB, EC %.2f dB) — Toleranz-Faktor %.3f",
+                    _bres33.release_db,
+                    _bres33.nr_floor_release_db,
+                    _bres33.ec_gain_db,
+                    _bmld_factor_33,
+                )
+            except Exception as _bml33_exc:
+                logger.debug("Verarbeitungsschritt_33 §SOTA-PSY-A3 nicht blockierend: %s", _bml33_exc)
+        max_widths = [float(v * _effective_strength * _bmld_factor_33) for v in _mat_fallback_33]
         side_bands_limited = []
 
         band_metrics = []
@@ -326,30 +356,6 @@ class StereoWidthLimiterPhaseV2(PhaseInterface):
 
         execution_time = time.time() - start_time
 
-        # §SOTA-PSY-A3 (2026-09-14): BMLD-Witness — die binaurale
-        # Maskierungs-Freisetzung wird gemessen und als Metadatum geführt
-        # (ZEUGE, nicht Richter — Hörordnung §8a); die dynamische
-        # Freisetzungs-Toleranz für die Breiten-Limits ist Folge-Schritt.
-        _bml_33: dict[str, float] = {}
-        if audio.ndim == 2 and min(audio.shape) == 2:
-            try:
-                from backend.core.dsp.binaural_masking import binaural_masking_advantage as _bma33
-
-                _bres33 = _bma33(audio, sample_rate)
-                _bml_33 = {
-                    "release_db": _bres33.release_db,
-                    "nr_floor_release_db": _bres33.nr_floor_release_db,
-                    "ec_gain_db": _bres33.ec_gain_db,
-                }
-                logger.debug(
-                    "Verarbeitungsschritt_33 §SOTA-PSY-A3: BMLD-Freisetzung %.2f dB (Cap %.2f dB, EC %.2f dB)",
-                    _bres33.release_db,
-                    _bres33.nr_floor_release_db,
-                    _bres33.ec_gain_db,
-                )
-            except Exception as _psy_exc_33:
-                logger.debug("Verarbeitungsschritt_33 §SOTA-PSY-A3 nicht blockierend: %s", _psy_exc_33)
-
         logger.info(
             "Width limiting: Width %.2f -> %.2f (reduced %.1f%%), mono-compat: %.3f",
             width_before,
@@ -369,6 +375,7 @@ class StereoWidthLimiterPhaseV2(PhaseInterface):
                 "width_limiting_applied": True,
                 "algorithm": "psychoacoustic_multiband_limiting_v2",
                 "binaural_masking_advantage": _bml_33,
+                "binaural_masking_release_tolerance_factor": round(_bmld_factor_33, 4),
                 "width_limiter_profile": width_limiter_profile,
                 "num_bands": 4,
                 "band_splits_hz": self.BAND_SPLITS,

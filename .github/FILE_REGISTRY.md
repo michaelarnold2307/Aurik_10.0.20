@@ -248,6 +248,7 @@
 | tests/unit/test_af_never_worsen_guard.py | ACTIVE | testing/unit | ja | — | §SOTA-P1-Folge-Tests (2026-09-15): af-Fast-Never-worsen — Passthrough bei identisch/enabled=False/Kurzsignal, Click-Rückblend, Determinismus, NaN; Phasen-Verdrahtung 07/17/19/38 (af_guard-Metadatum, phase_19-Early-Exit dokumentiert); compute_fail_delta_violations-CI-Gate |
 | tests/unit/test_psy_a7_loudness_cap_rollout.py | ACTIVE | testing/unit | ja | — | §SOTA-PSY-A7-Rollout-Tests (2026-09-15): perceptual_loudness_cap — kein Cap bei Nicht-Anhebung, Cap bei Anhebung, Headroom erlaubt Uniform-Gain/kappt Pumping, Determinismus, NaN; Verdrahtung 10/11/40 (loudness_cap-Metadatum, phase_11-Early-Exit dokumentiert) |
 | tests/unit/test_r8_sparse_repair_rollout_59.py | ACTIVE | testing/unit | ja | — | §SOTA-R8-Rollout-Tests (2026-09-15): phase_59-Defekt-Maske-als-Rechen-Maske — sparse_repair-Metadatum bei defect_locations, Vollrepair-Fallback ohne Maske, sauberes Signal bleibt nah (Never-worsen), Determinismus |
+| tests/unit/test_psy_a3_bmld_tolerance.py | ACTIVE | testing/unit | ja | — | §SOTA-PSY-A3-Toleranz-Tests (2026-09-15): bmld_tolerance_factor — 0→1,0, Cap 8 dB→1,10, linearer Mittelwert, Nie < 1,0 (NaN/negativ), Cap nach oben; phase_33 meldet binaural_masking_release_tolerance_factor ≥ 1,0 |
 
 ## Pflege-Regeln
 

@@ -67,6 +67,23 @@ _BMLD_MAX_DB: float = 15.0  # Levitt (1971): Frequenzmaximum ~500 Hz
 _BMLD_CAP_DB: float = 8.0  # produktiver Cap für NR-Floor-Freisetzung
 _MIN_BAND_SAMPLES: int = 64
 
+# §SOTA-PSY-A3 (2026-09-15): dynamische Freisetzungs-Toleranz — hohe binaurale
+# Freisetzung entspannt Stereo-Toleranzen begrenzt (ZEUGE → Toleranz-Anpassung).
+BMLD_TOLERANCE_RELEASE_CAP_DB: float = _BMLD_CAP_DB  # ab hier volle Toleranz
+BMLD_MAX_TOLERANCE_FACTOR: float = 1.10  # max. +10 % Breiten-Cap-Entspannung
+
+
+def bmld_tolerance_factor(release_db: float) -> float:
+    """§SOTA-PSY-A3: BMLD-dynamische Freisetzungs-Toleranz (Never-worsen).
+
+    Linear von 1,0 (keine Freisetzung) auf ``BMLD_MAX_TOLERANCE_FACTOR`` bei
+    ``release_db ≥ BMLD_TOLERANCE_RELEASE_CAP_DB``; nie < 1,0 (nie strenger).
+    Deterministisch, NaN-sicher, layout-unabhängig.
+    """
+    _r = float(np.clip(np.nan_to_num(release_db, nan=0.0), 0.0, BMLD_TOLERANCE_RELEASE_CAP_DB))
+    _r /= BMLD_TOLERANCE_RELEASE_CAP_DB
+    return float(1.0 + (BMLD_MAX_TOLERANCE_FACTOR - 1.0) * _r)
+
 
 @dataclass
 class BinauralMaskingResult:
