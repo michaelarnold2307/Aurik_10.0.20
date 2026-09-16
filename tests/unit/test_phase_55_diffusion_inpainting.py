@@ -95,3 +95,84 @@ def test_derive_safe_strength_unthrottled_when_ready(phase) -> None:
     # Nicht-Analog + Gesang: keine Reduktion
     digital_vocal = phase._derive_safe_inpainting_strength(1.0, "cd_digital", 0.9, vocal_fill_ready=True)
     assert digital_vocal == pytest.approx(1.0)
+
+
+def test_vocal_gap_cqtdiff_first_s4(monkeypatch: pytest.MonkeyPatch) -> None:
+    """§SOTA-VOCAL-INPAINT S4 (2026-09-16): Gesangslücken (≥ 50 ms) versuchen
+    CQTdiff+ VOR FlowMatching (Evidenz: S4 mean −2,76 dB vs. Q11 0,0 dB)."""
+    from backend.core.phases import phase_55_diffusion_inpainting as p55
+
+    calls: list[str] = []
+    fake = np.full(14400, 0.1, dtype=np.float32)
+
+    def _fake_cqtdiff(channel, start, end, sr):
+        calls.append("cqtdiff")
+        return fake
+
+    def _fake_flow(channel, start, end, sr, goal_weights=None, restorability_score=65.0):
+        calls.append("flow")
+        return fake
+
+    monkeypatch.setattr(p55, "_try_cqtdiff_plus_plugin", _fake_cqtdiff)
+    monkeypatch.setattr(p55, "_try_flow_matching_plugin", _fake_flow)
+    monkeypatch.setattr(
+        "backend.core.dsp.audibility_gate.defect_audibility",
+        lambda *a, **k: {"skippable": False},
+    )
+
+    sr = 48000
+    gap = (sr // 2, sr // 2 + 14400)
+    t = np.linspace(0, 2, sr * 2, endpoint=False, dtype=np.float32)
+    channel = (0.3 * np.sin(2 * np.pi * 440 * t)).astype(np.float32)
+    channel[gap[0] : gap[1]] = 0.0  # echte Lücke (Stille-Region)
+    _, stats = p55._process_channel(
+        channel,
+        sr,
+        20.0,
+        precomputed_gaps=[gap],
+        wall_budget_s=60.0,
+        vocals_confidence=0.60,
+    )
+    assert calls and calls[0] == "cqtdiff"
+    assert "flow" not in calls
+    assert stats.get("s4_vocal_cqtdiff_first", 0) == 1
+
+
+def test_non_vocal_gap_keeps_flow_matching_first(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Status quo ohne Vokal-Konfidenz: FlowMatching bleibt TIER-0 erster Versuch."""
+    from backend.core.phases import phase_55_diffusion_inpainting as p55
+
+    calls: list[str] = []
+    fake = np.full(14400, 0.1, dtype=np.float32)
+
+    def _fake_cqtdiff(channel, start, end, sr):
+        calls.append("cqtdiff")
+        return fake
+
+    def _fake_flow(channel, start, end, sr, goal_weights=None, restorability_score=65.0):
+        calls.append("flow")
+        return fake
+
+    monkeypatch.setattr(p55, "_try_cqtdiff_plus_plugin", _fake_cqtdiff)
+    monkeypatch.setattr(p55, "_try_flow_matching_plugin", _fake_flow)
+    monkeypatch.setattr(
+        "backend.core.dsp.audibility_gate.defect_audibility",
+        lambda *a, **k: {"skippable": False},
+    )
+
+    sr = 48000
+    gap = (sr // 2, sr // 2 + 14400)
+    t = np.linspace(0, 2, sr * 2, endpoint=False, dtype=np.float32)
+    channel = (0.3 * np.sin(2 * np.pi * 440 * t)).astype(np.float32)
+    channel[gap[0] : gap[1]] = 0.0  # echte Lücke (Stille-Region)
+    _, stats = p55._process_channel(
+        channel,
+        sr,
+        20.0,
+        precomputed_gaps=[gap],
+        wall_budget_s=60.0,
+        vocals_confidence=0.0,
+    )
+    assert calls and calls[0] == "flow"
+    assert "cqtdiff" not in calls
+    assert stats.get("flow_matching_tier0_used", 0) == 1

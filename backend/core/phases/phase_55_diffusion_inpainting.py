@@ -1073,18 +1073,34 @@ def _process_channel(
             # Priorität 0 [TIER-0]: FlowMatchingPlugin (Lipman et al. 2023, §4.4 SOTA-Matrix primär)
             # Flow Matching: 4–16 Schritte statt 50–200 DDPM-Schritte → 10–50× schneller,
             # gleichwertige oder bessere Qualität. Aktiviert für Lücken aller Größen (20 ms – 30 s).
-            plugin_result = _try_flow_matching_plugin(
-                channel,
-                start,
-                end,
-                sample_rate,
-                goal_weights=goal_weights,
-                restorability_score=restorability_score,
+            # §SOTA-VOCAL-INPAINT S4 (2026-09-16): A/B-Evidenz auf 300-ms-Gesangslücken —
+            # FlowMatching TIER-0 lag mit mean −2,76 dB UNTER der Stille-Baseline (S4-Lauf),
+            # CQTdiff+ erreicht mean 0,0 dB (Q11) ⇒ für Gesangslücken (≥ 50 ms) bekommt
+            # CQTdiff+ den ersten Versuch; FlowMatching bleibt erster Fallback
+            # (Hörordnung: Metriken sind Zeugen; Prioritäts-Reihenfolge nach Evidenz, keine
+            # phasen-individuellen Schwellwerte, §V7-konform).
+            _vocal_gap_cqtdiff_first = vocals_confidence >= 0.40 and gap_ms >= 50.0
+            plugin_result = (
+                _try_cqtdiff_plus_plugin(channel, start, end, sample_rate) if _vocal_gap_cqtdiff_first else None
             )
+            _won_flow_matching = False
+            if plugin_result is not None:
+                stats["s4_vocal_cqtdiff_first"] = stats.get("s4_vocal_cqtdiff_first", 0) + 1
+            else:
+                plugin_result = _try_flow_matching_plugin(
+                    channel,
+                    start,
+                    end,
+                    sample_rate,
+                    goal_weights=goal_weights,
+                    restorability_score=restorability_score,
+                )
+                _won_flow_matching = plugin_result is not None
             if plugin_result is not None:
                 candidate = plugin_result[: end - start]
                 stats["plugin_used"] = True
-                stats["flow_matching_tier0_used"] = stats.get("flow_matching_tier0_used", 0) + 1
+                if _won_flow_matching:
+                    stats["flow_matching_tier0_used"] = stats.get("flow_matching_tier0_used", 0) + 1
             else:
                 # Priorität 0.8: Consistency Model (Song et al. 2023) — 1-Schritt-Diffusions-Inpainting.
                 plugin_result = _try_consistency_model_inpainting(channel, start, end, sample_rate)

@@ -55,6 +55,26 @@ import numpy as np
 
 logger = logging.getLogger(__name__)
 
+
+def _derived_rng(*inputs: object) -> np.random.Generator:
+    """§G5 (GEBOTE.md): input-abgeleiteter Seed für FlowAudio-Rauschen.
+
+    Gleicher Input ⇒ bit-identische Synthese (Determinismus-Zertifikat);
+    kapselt den globalen np.random-Zustand nicht an.
+    """
+    import hashlib
+
+    digest = hashlib.blake2b(digest_size=8)
+    for obj in inputs:
+        if isinstance(obj, str):
+            digest.update(obj.encode("utf-8"))
+        else:
+            arr = np.asarray(obj)
+            digest.update(np.ascontiguousarray(arr.astype(np.float32)).tobytes())
+        digest.update(b"\x00")
+    return np.random.default_rng(int.from_bytes(digest.digest(), "little"))
+
+
 # ───────────────────────────────────────────────────────────────────────────
 # Constants
 # ───────────────────────────────────────────────────────────────────────────
@@ -367,8 +387,14 @@ def _synthesize_sinusoidal(
         freq_hz = freq_bin * sr / n_fft
         if freq_hz < 20.0 or freq_hz > sr / 2.0 - 100.0:
             continue
-        # Random initial phase for naturalness
-        phase = np.random.uniform(0, 2 * np.pi)
+        # Random initial phase for naturalness — input-abgeleitet (§G5 (GEBOTE.md), deterministisch)
+        _rng = _derived_rng(
+            np.array([f for f, _ in partials], dtype=np.float32),
+            np.array([a for _, a in partials], dtype=np.float32),
+            float(length),
+            float(sr),
+        )
+        phase = _rng.uniform(0, 2 * np.pi)
         output += amp * np.sin(2.0 * np.pi * freq_hz * t + phase)
 
     # Robust level match (no RMS normalization)
@@ -448,8 +474,9 @@ def _build_target_estimate(
     else:
         envelope = np.ones(_N_FFT // 2 + 1, dtype=np.float32)
 
-    # 5. Shape white noise with spectral envelope
-    white_noise = np.random.randn(gap_length).astype(np.float32)
+    # 5. Shape white noise with spectral envelope (input-abgeleiteter Seed, §G5 (GEBOTE.md))
+    _rng = _derived_rng(np.asarray(envelope, dtype=np.float32), float(gap_length))
+    white_noise = _rng.standard_normal(gap_length).astype(np.float32)
     noise_stft = _stft(white_noise, _N_FFT, _HOP)
     noise_mag = np.abs(noise_stft)
 
@@ -813,7 +840,7 @@ class FlowAudioModel:
             post_ctx = conditioning[mid:].astype(np.float32)
 
         if len(pre_ctx) == 0 and len(post_ctx) == 0:
-            logger.warning("FlowAudio: no context available, cannot inpaint")
+            logger.warning("FlowAudio: kein Kontext verfügbar — Inpainting nicht möglich")
             return None
 
         # ── Build target estimate x_1 ──
@@ -831,7 +858,15 @@ class FlowAudioModel:
             np.sqrt(np.mean(pre_ctx**2)) if len(pre_ctx) > 0 else 0.01,
             np.sqrt(np.mean(post_ctx**2)) if len(post_ctx) > 0 else 0.01,
         )
-        x_0 = np.random.randn(gap_length).astype(np.float32) * ctx_rms * 0.5
+        _rng = _derived_rng(
+            np.asarray(pre_ctx, dtype=np.float32),
+            np.asarray(post_ctx, dtype=np.float32),
+            float(gap_length),
+            float(gap_start),
+            float(gap_end),
+            repr(sorted(goal_weights.items())) if goal_weights else "",
+        )
+        x_0 = _rng.standard_normal(gap_length).astype(np.float32) * ctx_rms * 0.5
 
         # ── Spectral envelope for regularization ──
         ctx_combined = (
@@ -845,7 +880,7 @@ class FlowAudioModel:
         try:
             generated = _solve_flow_ode(x_0, x_1, n_steps, context_envelope)
         except Exception as exc:
-            logger.warning("FlowAudio ODE solver failed: %s", exc)
+            logger.warning("FlowAudio: ODE-Löser fehlgeschlagen: %s", exc)
             return None
 
         # ── PGHI finalization + crossfade ──
@@ -859,7 +894,7 @@ class FlowAudioModel:
                 restorability_score=restorability_score,
             )
         except Exception as exc:
-            logger.warning("FlowAudio PGHI finalization failed: %s", exc)
+            logger.warning("FlowAudio: PGHI-Finalisierung fehlgeschlagen: %s", exc)
             return None
 
         # Final NaN/Inf/shape guard

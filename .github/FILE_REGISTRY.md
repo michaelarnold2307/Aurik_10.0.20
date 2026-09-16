@@ -32,6 +32,8 @@
 | scripts/file_registry_check.py | ACTIVE | tooling/ci | ja | — | Write-Gate `aurik-file-lifecycle`; validiert diese Registry (R1–R7) |
 | scripts/change_ledger.py | ACTIVE | tooling/ci | ja | — | TASK_CHANGES.md (snapshot/check); CI-Abdeckungs-Gate |
 | scripts/validate_hr_v1.py | ACTIVE | tooling/validation | ja | — | §SOTA-HR-V1 (F3, 2026-09-16): BigVGAN-A/B-Validierung (af+HNR-Gates, Never-worsen) für den HR-V1-Aktivierungsvertrag in phase_07; Exit 0 = besteht / 1 = verschlechtert / 2 = Setup-Fehler (fail-closed) |
+| scripts/validate_vocal_inpaint_s4.py | ACTIVE | tooling/validation | ja | — | §SOTA-VOCAL-INPAINT S4 (2026-09-16): Verifikation der phase_55-Kaskade auf 300-ms-Gesangslücken (ΔSDR ≥ 0 je Segment, Resemblyzer-Witness cos ≥ 0,92, Determinismus; Exit 0/1/2) |
+| docs/reports/current/2026-09-16_vocal_inpaint_s4.json | ACTIVE | docs/reports | ja | — | S4-Evidenz (2026-09-16): Lauf 1 mean −2,76 dB (FlowMatching-first) ⇒ Reorder CQTdiff+-first + FlowAudio-§G5-Fix; Lauf 2 mean +0,005 dB, Determinismus bit-identisch, striktes Segment-Gate marginal offen |
 | docs/reports/current/2026-09-16_hr_v1_bigvgan_ab_validation.md | ACTIVE | docs/reports | ja | — | HR-V1-A/B-Validierungsbeleg (2026-09-16): af +0,0073 / HNR +4,42 dB ⇒ PASS; Flag bleibt bis Test-Suite-Anpassung + UV3-Budget-Nachweis OFF |
 | scripts/repo_search.py | ACTIVE | tooling/agents | ja | — | BM25-Suche mit Status-Gewichtung; `--before-create` vor Dateianlage |
 | scripts/export_bigvgan_v2_onnx.py | ACTIVE | tooling/ml-export | ja | — | Exportiert den BigVGAN-v2-Generator aus `bigvgan_v2.pth` nach ONNX und prüft PyTorch-Parität |

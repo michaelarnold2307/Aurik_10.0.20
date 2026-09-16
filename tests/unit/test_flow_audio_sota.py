@@ -535,3 +535,21 @@ class TestSingleton:
         assert len(errors) == 0
         # All threads should get same instance
         assert len(set(results)) == 1
+
+
+class TestDeterminism:
+    """§G5 (GEBOTE.md): FlowAudio-Rauschen ist input-abgeleitet geseedet —
+    identischer Input ⇒ bit-identische Synthese (S4-Befund 2026-09-16)."""
+
+    def test_synthesize_sinusoidal_bit_identical(self) -> None:
+        partials = [(100, 0.5), (200, 0.3), (300, 0.2)]
+        a = _synthesize_sinusoidal(partials, 4800, _N_FFT, _SR)
+        b = _synthesize_sinusoidal(partials, 4800, _N_FFT, _SR)
+        assert np.array_equal(a, b)
+
+    def test_build_target_estimate_bit_identical(self) -> None:
+        pre = _make_audio(0.5, freq=330.0)
+        post = _make_audio(0.5, freq=392.0)
+        a = _build_target_estimate(pre, post, 4800, _SR)
+        b = _build_target_estimate(pre, post, 4800, _SR)
+        assert np.array_equal(a, b)
