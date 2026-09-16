@@ -1,14 +1,15 @@
 # TASK_CHANGES — Live-Ledger der aktuellen Aufgabe
 
-> Generiert von `scripts/change_ledger.py snapshot` (Base: `HEAD`, Stand: 2026-09-16 23:27 CEST).
+> Generiert von `scripts/change_ledger.py snapshot` (Base: `HEAD`, Stand: 2026-09-17 00:31 CEST).
 > CI (`ci-lite.yml` pr-evidence-gate) erzwingt Abdeckung: jede geänderte Code-Datei muss hier stehen.
 
 ## Geänderte Dateien
 
 | Status | Pfad | Art |
 |---|---|---|
-| M | backend/core/feedback_chain.py | modifiziert |
+| M | .github/FILE_REGISTRY.md | modifiziert |
 | M | docs/TODOS_SOTA_ROADMAP.md | modifiziert |
+| ?? | docs/reports/supervised_runs/2026-09-16_elke_best_225s.md | ungetrackt |
 
 ## Entscheidungen
 

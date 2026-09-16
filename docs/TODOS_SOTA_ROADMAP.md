@@ -1174,8 +1174,14 @@ Alle CPU-schließbaren Punkte der Offene-Punkte-Matrix sind umgesetzt und getest
 ## Überwachter 225-s-Lauf 2026-09-16 (Elke Best, voller Song) — Befunde & Abarbeitung
 
 > Ausführung: `cli/aurik_cli.py --mode Restoration --bit-depth 24`, voller Song
-> (225,3 s @ 44,1 kHz, mp3→vinyl-Kette). Lauf: `output/supervised_run/elke_225s_supervised_v1020.{log,wav}`.
+> (225,3 s @ 44,1 kHz, mp3→vinyl-Kette). Lauf: `output/supervised_run/elke_225s_supervised_v1020.{log,wav}`,
+> Report: `docs/reports/supervised_runs/2026-09-16_elke_best_225s.md`.
 > Vollsuite vor Lauf: 16 948 passed / 0 failed (Commit 9e51c4b).
+> **Lauf-Ergebnis (RUN_RC=0):** Export ordnungsgemäß (PCM_24, 48 kHz, 225,33 s,
+> Quality-Gate passed=True/ok, OneTakeExport PASS TP=−1,7 dBTP/LUFS=−16,
+> Peak −8,6 dBFS, kein Clipping/NaN/Inf); HPI 0,87 passed; MUSHRA 95,1 Excellent;
+> §Hörbarkeits-Gate BESTANDEN (total=0 → keine hörbaren Restdefekte);
+> GOAL_SCORECARD violations=0; Gesamtlaufzeit ~2 h 03 min ≈ 33× RT (224-s-Akzeptanz ≤ 40 min verfehlt — P0-1).
 > Zweck: Plausibilitäts-, Bug- und Optimierungsprüfung für ALLE Importsongs
 > (Wohlklang für das menschliche Ohr + maximale Performance) — nicht nur dieser Song.
 
