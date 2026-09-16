@@ -1,18 +1,14 @@
 # TASK_CHANGES — Live-Ledger der aktuellen Aufgabe
 
-> Generiert von `scripts/change_ledger.py snapshot` (Base: `HEAD`, Stand: 2026-09-16 23:09 CEST).
+> Generiert von `scripts/change_ledger.py snapshot` (Base: `HEAD`, Stand: 2026-09-16 23:27 CEST).
 > CI (`ci-lite.yml` pr-evidence-gate) erzwingt Abdeckung: jede geänderte Code-Datei muss hier stehen.
 
 ## Geänderte Dateien
 
 | Status | Pfad | Art |
 |---|---|---|
-| M | .github/FILE_REGISTRY.md | modifiziert |
-| M | backend/core/musical_goals/musical_goals_metrics.py | modifiziert |
-| M | backend/core/phases/phase_09_crackle_removal.py | modifiziert |
+| M | backend/core/feedback_chain.py | modifiziert |
 | M | docs/TODOS_SOTA_ROADMAP.md | modifiziert |
-| M | plugins/panns_plugin.py | modifiziert |
-| ?? | tests/unit/test_panns_rocm_provider_filter.py | ungetrackt |
 
 ## Entscheidungen
 

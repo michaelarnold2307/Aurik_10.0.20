@@ -1190,13 +1190,15 @@ Alle CPU-schließbaren Punkte der Offene-Punkte-Matrix sind umgesetzt und getest
 | SUP-F5 (DIAGNOSTIK) | `RestorabilityEstimator: time Grenze exceeded (19,17 s > 5,0 s)` — Erst-Ladezeit des MuQ-GPU-Modells sprengt den 5-s-Guard; einmalig je Prozess, Meldung ist Rauschen. | OFFEN (kosmetisch): Guard beim Erst-Load suspendieren oder First-Call-Budget erhöhen — Folge-Slice |
 | SUP-F6 (DIAGNOSTIK) | Reinhör-Witness meldet `pre_echo`/`roughness_increase` bei ~0-Deltas (pitch=0.0c, loud=0.0dB) — Schwellwert-Kalibrierung prüfen (report-only, keine Rollbacks). | OFFEN (niedrig, report-only): Kalibrierungs-Check der Witness-Schwellen |
 | SUP-F7 (VERIFIKATION) | Export-Gate arbeitet korrekt delta-basiert: `af=0.000 verworfen (false-positive gegen degraded Eingabe)` + OneTakeExport BEST-EFFORT (LUFS −19,3 für ruhigen Vintage) — §0c-Vertrag hält. | ✅ BELEG (kein Fix nötig) |
+| SUP-F8 (DIAGNOSTIK, alle Songs) | WohlklangOrdnungGate-Audit meldete §Ebene-3-Verletzungen bei mikroskopischen Deltas (Audit-Epsilon 1e-9 vs. FC-Veto 0.012) — irreführende „Stufe-4-Gewinn auf Kosten Stufe-1“-Warnungen, während der korrekte Veto still blieb. | ✅ GEFIXT 2026-09-16: Audit-Schwelle = GPP-REGRESSION_EPSILON (eine Quelle der Wahrheit, kein neuer Schwellwert) |
 
 ### Abarbeitungsstand
 
 1. ✅ SUP-F1 (PANNs-ROCm-Tupel-Filter) — gefixt + getestet.
 2. ✅ SUP-F2 (BANQUET-SR/PCM-Fix) — gefixt; Verifikation im nächsten Lauf.
 3. ✅ SUP-F3 (§V44-Meldung) — gefixt.
-4. SUP-F4/F5/F6 — dokumentiert; F4-Rest GPU-gebunden, F5/F6 Folge-Slices.
+4. ✅ SUP-F8 (WohlklangOrdnung-Audit-Epsilon) — gefixt.
+5. SUP-F4/F5/F6 — dokumentiert; F4-Rest GPU-gebunden, F5/F6 Folge-Slices.
 
 ## Hintergrund (damit die nächste Session sofort einsteigt)
 

@@ -1106,7 +1106,13 @@ class FeedbackChain:
                             str(_g_ho): float(_curr_goals.get(_g_ho, _v_prev)) - float(_v_prev)
                             for _g_ho, _v_prev in _prev_goals.items()
                         }
-                        self.last_wohlklang_audit = _WOGate().evaluate(_wo_deltas).to_dict()
+                        # §SUP-F8 (2026-09-16): Audit-Schwelle = GPP-REGRESSION_EPSILON
+                        # (eine Quelle der Wahrheit). Vorher lief das Audit auf der
+                        # numerischen 1e-9-Untergrenze und meldete Verletzungen für
+                        # mikroskopische Deltas, die der FC-Veto (0.012) korrekt
+                        # ignorierte — irreführende §Ebene-3-Warnungen auf jedem Song.
+                        _wo_eps = float(getattr(_gpp, "REGRESSION_EPSILON", 0.012))
+                        self.last_wohlklang_audit = _WOGate().evaluate(_wo_deltas, threshold=_wo_eps).to_dict()
                     except Exception as _wo_exc:
                         logger.debug("WohlklangOrdnungGate in FeedbackChain nicht verfügbar: %s", _wo_exc)
                     if _ho_dropped_tier < _ho_gained_tier:
