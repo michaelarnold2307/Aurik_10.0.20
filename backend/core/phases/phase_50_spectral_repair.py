@@ -876,11 +876,21 @@ class SpectralRepairPhase(PhaseInterface):
         _rms_drop_50 = 20.0 * np.log10(max(_rms_out_50 / _rms_in_50, 1e-30)) if _rms_in_50 > 1e-8 else 0.0
         # §v10.101: Garantiere ndarray — verhindert tuple-ndim im PMGG/Steering-Pfad
         _safe_audio = np.asarray(repaired_audio, dtype=np.float32)
+        # §SOTA-HR-V1 (Q6/F3, 2026-09-16): BigVGAN-Repair-Kandidat hinter dem
+        # F3-Aktivierungsvertrag (fail-closed; Witness hr_v1 wie phase_07).
+        try:
+            from plugins.bigvgan_v2_plugin import apply_hr_v1_additive as _hrv1_apply_50
+
+            _safe_audio, _hr_v1_meta_50 = _hrv1_apply_50(_safe_audio, sample_rate)
+        except Exception as _hrv1_exc_50:
+            logger.debug("Verarbeitungsschritt_50 §SOTA-HR-V1 nicht verfügbar: %s", _hrv1_exc_50)
+            _hr_v1_meta_50 = {"attempted": False, "reason": "unavailable"}
         return PhaseResult(
             success=True,
             audio=_safe_audio,
             execution_time_seconds=time.time() - t0,
             metadata={
+                "hr_v1": _hr_v1_meta_50,
                 "threshold_factor": threshold_factor,
                 "threshold_factor_effective": threshold_factor_eff,
                 "threshold_runtime_profile": dict(_runtime_profile_50),

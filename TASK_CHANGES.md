@@ -1,6 +1,6 @@
 # TASK_CHANGES — Live-Ledger der aktuellen Aufgabe
 
-> Generiert von `scripts/change_ledger.py snapshot` (Base: `HEAD`, Stand: 2026-09-16 07:36 CEST).
+> Generiert von `scripts/change_ledger.py snapshot` (Base: `HEAD`, Stand: 2026-09-16 08:44 CEST).
 > CI (`ci-lite.yml` pr-evidence-gate) erzwingt Abdeckung: jede geänderte Code-Datei muss hier stehen.
 
 ## Geänderte Dateien
@@ -8,14 +8,41 @@
 | Status | Pfad | Art |
 |---|---|---|
 | M | .github/FILE_REGISTRY.md | modifiziert |
+| M | TASK_CHANGES.md | modifiziert |
+| M | backend/core/phases/phase_03_denoise.py | modifiziert |
 | M | backend/core/phases/phase_07_harmonic_restoration.py | modifiziert |
+| M | backend/core/phases/phase_23_spectral_repair.py | modifiziert |
+| M | backend/core/phases/phase_50_spectral_repair.py | modifiziert |
+| M | backend/core/phases/phase_55_diffusion_inpainting.py | modifiziert |
 | M | docs/TODOS_SOTA_ROADMAP.md | modifiziert |
+| A | docs/reports/current/2026-09-16_vocal_inpaint_s4.json | neu |
+| M | plugins/bigvgan_v2_plugin.py | modifiziert |
+| M | plugins/flow_audio_sota.py | modifiziert |
+| A | scripts/validate_vocal_inpaint_s4.py | neu |
+| M | tests/unit/test_flow_audio_sota.py | modifiziert |
 | M | tests/unit/test_hr_v1_activation_contract.py | modifiziert |
-| ?? | docs/reports/current/2026-09-16_hr_v1_bigvgan_ab_validation.md | ungetrackt |
-| ?? | scripts/validate_hr_v1.py | ungetrackt |
+| M | tests/unit/test_phase_55_diffusion_inpainting.py | modifiziert |
 
 ## Entscheidungen
 
+- **S4-Verifikation (VOCAL-INPAINT-S4, GPU-Punkt) — formal durchgeführt, 2 Produktions-Bugs behoben (2026-09-16)**:
+  - Harness `scripts/validate_vocal_inpaint_s4.py`: Kaskaden-Ausgang je 300-ms-
+    Gesangslücke (13 Lücken, 3 MUSDB-Tracks, Seed 42), ΔSDR ≥ 0 je Segment,
+    Resemblyzer-Witness cos ≥ 0,92, Bit-Determinismus; Exit 0/1/2.
+  - **Lauf 1 (Status quo):** FlowMatching TIER-0 mean **−2,76 dB** (alle 13
+    Segmente unter der Stille-Baseline) — Q11 hatte nur den CQTdiff+-Arm
+    gemessen (0,0 dB); FlowAudio reproduzierte sich nicht bit-identisch.
+  - **Fix 1 (§G5):** `plugins/flow_audio_sota.py` nutzt jetzt
+    input-abgeleitete blake2b-Seeds (`_derived_rng`) für Partial-Phasen,
+    Shaped-Noise und x_0 — 2 Determinismus-Tests (bit-identisch).
+  - **Fix 2 (Evidenz-Reorder):** phase_55 versucht für Gesangslücken
+    (≥ 50 ms, vocals_confidence ≥ 0,40) CQTdiff+ VOR FlowMatching;
+    FlowMatching bleibt erster Fallback (keine phasen-individuellen
+    Schwellwerte, §V7-konform; 2 Prioritäts-Tests).
+  - **Lauf 2:** mean **+0,005 dB**, Determinismus bit-identisch ✅; striktes
+    Per-Segment-Gate (min −0,12 dB) und Witness in allen Fenstern (min cos
+    0,763) bleiben marginal offen — Hebel ist der GPU-Finetune der F-Reihe.
+    Beleg: `docs/reports/current/2026-09-16_vocal_inpaint_s4.json`.
 - **SOTA-HR-V1: Synthese-Pfad hinter F3-Aktivierungsvertrag + A/B-Validierung (2026-09-16)**:
   - phase_07 verdrahtet den BigVGAN-Repair-Pfad hinter `bigvgan_v2_ready()`
     (Flag = einzige Schaltstelle, fail-closed): Synthese →
@@ -35,6 +62,16 @@
     Pfad B verworfen; unterbrochener Resume-Lauf wird nicht fortgesetzt);
     Q6/F3 mit A/B-PASS dokumentiert; Phase-Tabelle (07/55) aktualisiert.
 
+- **Q6/F3: 23/50/03-Verdrahtung (2026-09-16)**:
+  - Gemeinsamer Helfer `plugins.bigvgan_v2_plugin.apply_hr_v1_additive()` —
+    EINE Schaltstelle (fail-closed via `bigvgan_v2_ready()`, Synthese →
+    additive_synthesis_gate, Übernahme nur bei bands_released > 0,
+    §V6-Warnung beim ML→DSP-Fallback, layout-agnostisch).
+  - phase_07 auf den Helfer umgestellt (Verhalten identisch); `hr_v1`-Witness
+    in phase_23 (Hauptpfad), phase_50 (Hauptpfad) und phase_03 (DSP- und
+    ML-Hybrid-Pfad) exportiert — Flag aus ⇒ attempted=False, Status quo.
+  - Tests: test_hr_v1_activation_contract.py von 6 auf 9 Fälle
+    (23/50/03-Witness); 53 weitere Phase-Tests grün.
 - **SOTA-Roadmap Folge-Slices 3a + 3b (2026-09-15, af-Never-worsen + PSY-A7-Rollout)**:
   - **3a (af-Never-worsen in 07/17/19/38):** Sub-Score-Analyse lokalisierte den
     af-Schaden auf click + pre_echo (phase_07: pre_echo 0,20→0,03; phase_19:

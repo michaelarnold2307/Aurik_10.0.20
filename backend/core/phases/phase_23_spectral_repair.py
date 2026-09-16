@@ -1552,11 +1552,22 @@ class SpectralRepair(PhaseInterface):
                 "§V24 (Spec-Vintage-Guard) Verarbeitungsschritt_23 spectral_color (nicht blockierend): %s", _sc23_exc
             )
 
+        # §SOTA-HR-V1 (Q6/F3, 2026-09-16): BigVGAN-Repair-Kandidat hinter dem
+        # F3-Aktivierungsvertrag (fail-closed; Witness hr_v1 wie phase_07).
+        try:
+            from plugins.bigvgan_v2_plugin import apply_hr_v1_additive as _hrv1_apply_23
+
+            repaired_audio, _hr_v1_meta_23 = _hrv1_apply_23(repaired_audio, sample_rate)
+        except Exception as _hrv1_exc_23:
+            logger.debug("Verarbeitungsschritt_23 §SOTA-HR-V1 nicht verfügbar: %s", _hrv1_exc_23)
+            _hr_v1_meta_23 = {"attempted": False, "reason": "unavailable"}
+
         _result = PhaseResult(
             success=True,
             audio=repaired_audio,
             execution_time_seconds=execution_time,
             metadata={
+                "hr_v1": _hr_v1_meta_23,
                 "material": _material_meta_key23,
                 "defect_reduction_percent": float(defect_reduction * 100),
                 "spectral_coherence": float(spectral_coherence),

@@ -547,6 +547,24 @@
       14 Tests grün (Modul + Wiring).
     - VOCAL-INPAINT-S4: Verifikation — ΔSDR ≥ 0 je Segment, VQI/Sänger-Identität
       per Resemblyzer-Witness unverändert, Determinismus.
+      **Status 2026-09-16 — FORMAL DURCHGEFÜHRT (zwei Produktions-Bugs gefunden + behoben):**
+      Harness `scripts/validate_vocal_inpaint_s4.py` (Kaskaden-Ausgang je Lücke,
+      Witness cos ≥ 0,92, Bit-Determinismus; Exit 0/1/2).
+      Lauf 1 (Produktions-Status quo) fand: (a) FlowMatching TIER-0 lag auf
+      300-ms-Gesangslücken mit mean −2,76 dB UNTER der Stille-Baseline (alle 13
+      Segmente negativ; Q11 hatte nur den CQTdiff+-Arm gemessen: 0,0 dB);
+      (b) FlowAudio nutzte ungeseedetes `np.random` ⇒ §G5-Verstoß (S4-Gate
+      „Determinismus" schlug an).
+      Fixes: (a) phase_55 versucht für Gesangslücken (≥ 50 ms,
+      vocals_confidence ≥ 0,40) jetzt CQTdiff+ VOR FlowMatching (Evidenz-Reorder,
+      keine phasen-individuellen Schwellwerte, §V7-konform); (b) FlowAudio-
+      Synthese ist input-geseedet deterministisch (blake2b aus Kontext/Partialen,
+      2 Determinismus-Tests).
+      Lauf 2: mean ΔSDR **+0,005 dB** (min −0,12 dB), **Determinismus
+      bit-identisch** ✅. Striktes Per-Segment-Gate (ΔSDR ≥ 0) und Witness
+      cos ≥ 0,92 in allen Fenstern bleiben marginal offen (CQTdiff+-Modellqualität
+      am Gate — GPU-Finetune der F-Reihe ist der Hebel); Beleg:
+      `docs/reports/current/2026-09-16_vocal_inpaint_s4.json`.
 18. **SOTA-BSR-GPU** · BSRoFormer/MelBandRoFormer auf ROCm-GPU freigeben (Stem-Trennung
     läuft aktuell auf CPU — funktional korrekt, aber langsam). Beleg 2026-09-13
     (`backend/core/gpu_model_registry.json`, `scripts/onnx_gpu_compat_scan.py`):
@@ -776,6 +794,16 @@ Gate ≥ 0 dB ERFÜLLT) vs. DSP −3,46 dB und DiffWave-Zero-Shot −1,68 dB.
 **Konsequenz:** Das Vocal-Inpainting-Gate ist OHNE jedes Training gelöst —
 F1 bleibt abgebrochen, S3 (DiffWave-Pfad) bleibt inaktiv, F2-Verlängerung
 wird zur QUALITÄTS-Verbesserung (Ziel: deutlich über 0 dB statt am Gate).
+**S4-KORREKTUR 2026-09-16:** Die formale S4-Verifikation zeigte, dass die
+PRODUKTIONS-Kaskade den TIER-0-Arm FlowMatching bevorzugte — der lag auf
+denselben 300-ms-Gesangslücken mit mean −2,76 dB unter der Stille-Baseline
+(alle 13 Segmente negativ); Q11 hatte nur den CQTdiff+-Arm gemessen (0,0 dB).
+Fix: Für Gesangslücken (≥ 50 ms, vocals_confidence ≥ 0,40) bekommt CQTdiff+
+jetzt den ersten Versuch, FlowMatching bleibt erster Fallback; zusätzlich
+§G5-Fix im FlowAudio (input-geseedetes Rauschen statt ungeseedetem
+`np.random`). Re-Lauf: mean **+0,005 dB**, Determinismus bit-identisch ✅ —
+striktes Per-Segment-Gate marginal offen (min −0,12 dB, Witness min cos 0,763);
+Hebel = GPU-Finetune der F-Reihe. Beleg: `docs/reports/current/2026-09-16_vocal_inpaint_s4.json`.
 **Offene Folge-Frage — ERLEDIGT (2026-09-15):** Die Gesangs-Drosselung in
 `_derive_safe_inpainting_strength` entfällt (§Q11: Kaskade mean 0,0 dB /
 Worst-Case-Lücke −0,12 dB — nie schlechter als kein Füll ⇒ Never-worsen-Test des
@@ -843,14 +871,14 @@ Sänger-Identität, MuQ-MOS nicht schlechter als Baseline).
 
 | Phase | Ist | Offene SOTA-Maßnahme |
 |---|---|---|
-| 03 denoise | BSR-Stem-NR (66) + DSP-Kaskade; MP-SENet de-wired (Negativbefund) | musik-nativer Denoiser-Finetune (F3 BigVGAN-Spektrallinie; DeepFilterNet-Musik-Finetune als Alternative prüfen) |
+| 03 denoise | BSR-Stem-NR (66) + DSP-Kaskade; MP-SENet de-wired (Negativbefund) | **HR-V1-Witness verdrahtet (Q6, fail-closed)**; musik-nativer Denoiser-Finetune (F3 BigVGAN-Spektrallinie; DeepFilterNet-Musik-Finetune als Alternative prüfen) |
 | 04/16/17 EQ/Dynamik | DSP + Zielkurven | **SOTA-C4**: DDSP-Prädiktor (CLAP/BEATs-Embeddings → EQ/Dynamik-Parameter, DSP führt aus) — GPU (F5); CLAP-Encoder lokal vorhanden |
 | 07 harmonisch | DSP-Harmonic-Restoration | **SOTA-HR-V1**: BigVGAN-Repair-Pfad + additive_synthesis_gate in phase_07 verdrahtet (Aktivierungsvertrag fail-closed, attempted/applied-Witness); A/B-Validierung via `scripts/validate_hr_v1.py` — Flag-Entscheid GPU (F3) |
 | 08/36 Transienten | Superflux/Envelope + BEATs-Witness (TP-V1, V1) | **SOTA-TP-V2**: neurale Phasen-Schätzung für Transienten-Frames (Modell + Quelle klären); adaptive Schwelle aus TP-V1-Konsens |
 | 19/43 De-Esser | DSP (19) + ML-Deesser (43) | Sibilanten-Maskierungs-Gate (PSY-A1) — sonst SOTA |
 | 20/49 Dereverb | DR-V1-Verdrahtung (RT60-Witness, konservativ gedeckelt) | präziser neuraler RT60-Regressor (GPU-Training); PSY-A1-Gate für Dry/Wet |
-| 23/50 Spektral-Repair | DSP/NMF | neuronale Spektral-Inpainting-Basis (F3/F4) |
-| 55 Inpainting | Kaskade (FlowMatching, Consistency, CQTdiff+, DAC, GaCELA, DiffWave-S3-vorbereitet) | F2 trainiert + fair validiert ⇒ verworfen (fail-closed, 2026-09-15); F1 abgebrochen; S4-Verifikation offen (GPU) |
+| 23/50 Spektral-Repair | DSP/NMF | **HR-V1-Witness verdrahtet (Q6, fail-closed)**; neuronale Spektral-Inpainting-Basis (F3/F4) |
+| 55 Inpainting | Kaskade (FlowMatching, Consistency, CQTdiff+, DAC, GaCELA, DiffWave-S3-vorbereitet) | F2 trainiert + fair validiert ⇒ verworfen (fail-closed, 2026-09-15); F1 abgebrochen; **S4-Verifikation 2026-09-16: formal durchgeführt — CQTdiff+-first für Gesangslücken (Evidenz-Reorder) + FlowAudio-§G5-Determinismus-Fix; mean ΔSDR +0,005 dB, striktes Segment-Gate marginal offen (GPU-Finetune-Folge)** |
 | 58 Lyrics-guided | vorhanden (DSP-geführt) | CLAP-Audio-Conditioning für Text-/Semantik-Führung (C4-Embedding-Quelle) |
 | 66 Stem-NR | BSR-Stems + Per-Stem-Kette ✓ | PSY-A1-Gate pro Stem; BSR-GPU-Beschleunigung ✓ (Torch-ROCm) |
 
@@ -894,7 +922,7 @@ Sänger-Identität, MuQ-MOS nicht schlechter als Baseline).
 | Q3 | PSY-A7: Kurzzeit-Loudness-Steuerung für 40/47 | **CAP UMGESETZT 2026-09-15 (phase_47)** — `_perceptual_loudness_cap`: peak-STL-Überschreitung > Marge ⇒ proportionaler Blend Richtung Input (Never-worsen §4/§8a, §V6-fail-closed); STL/LTL-Witness (2026-09-14) + 6 Tests. 10/11/40 = Folge-Slice ✅ (perceptual_loudness_cap, 8 Tests) | temporal_loudness() nutzt ERB-Kurzzeit-Modell (vorhanden) |
 | Q4 | WIT-M1: MuQ-Backbone-Fix (MOS-Richtung) | **NACH F1 (GPU)** | MuQ-Eval-Backbone beschaffen ODER A1-Head auf msd-iter neu trainieren; dann Richtungs-Validierung (Muster validate_muq_plugin_direction.py) — erst danach MuQ als Gate-Stimme |
 | Q5 | F2-Verlängerung 30–50 Epochs | **GESCHLOSSEN 2026-09-16 (obsolet):** Die faire S1-Validierung hat Pfad B mit diesem Setup verworfen (halluzinierte Vokal-Inhalte in stillen Lücken, ~11 dB schlechter als Crossfade — Taskformulierungs-, kein Verlustfunktions-Problem). Eine bloße Epoch-Verlängerung ändert daran nichts; Q5 entfällt. Der 2026-09-16 05:11 gestartete Resume-Lauf (`--resume-epoch 4 --epochs 40`, Log `output/gacela_f2/train_log_epoch4_40.txt`) wurde vom Runtime-Neustart unterbrochen (kein neuer Checkpoint) und wird bewusst NICHT fortgesetzt. | — |
-| Q6 | F3: BigVGAN (HR-V1 + 23/50 + 03) | **CPU-VORBEREITUNG VOLLSTÄNDIG 2026-09-16** + **A/B-PASS auf der GPU**: Aktivierungsvertrag verdrahtet — `bigvgan_v2_ready()`/`hr_v1_activation_status()` im Plugin (fail-closed, Flag = einzige Schaltstelle) + phase_07-Synthese-Pfad (attempted/applied-Witness, §V6-Warnung beim ML→DSP-Fallback) + `scripts/validate_hr_v1.py` (af+HNR-Gate, Exit 0/1/2). Tests: test_hr_v1_activation_contract.py (6 Fälle, inkl. fail-closed-Synthese-Fallback). **A/B-Validierung 2026-09-16 (Elke-Best-20s, Torch-ROCm): af +0,0073 (≥ −0,02 ✓), HNR +4,42 dB (≥ −0,5 ✓), PQS 4,52, 26 Bänder ⇒ PASS** (Beleg: `docs/reports/current/2026-09-16_hr_v1_bigvgan_ab_validation.md`). Flag bleibt bewusst OFF bis Test-Suite-Anpassung + UV3-Budget-Nachweis (Rollout, >10× RT); 23/50/03-Verdrahtung + F3-Finetune bleiben **GPU-GEBUNDEN**. | bigvgan_v2.pth lokal; Torch-Runtime nach S3-Muster + phase_07-Verdrahtung mit Aktivierungsvertrag |
+| Q6 | F3: BigVGAN (HR-V1 + 23/50 + 03) | **CPU-VORBEREITUNG VOLLSTÄNDIG 2026-09-16** + **A/B-PASS auf der GPU**: Aktivierungsvertrag verdrahtet — `bigvgan_v2_ready()`/`hr_v1_activation_status()` im Plugin (fail-closed, Flag = einzige Schaltstelle) + phase_07-Synthese-Pfad (attempted/applied-Witness, §V6-Warnung beim ML→DSP-Fallback) + `scripts/validate_hr_v1.py` (af+HNR-Gate, Exit 0/1/2). Tests: test_hr_v1_activation_contract.py (6 Fälle, inkl. fail-closed-Synthese-Fallback). **A/B-Validierung 2026-09-16 (Elke-Best-20s, Torch-ROCm): af +0,0073 (≥ −0,02 ✓), HNR +4,42 dB (≥ −0,5 ✓), PQS 4,52, 26 Bänder ⇒ PASS** (Beleg: `docs/reports/current/2026-09-16_hr_v1_bigvgan_ab_validation.md`). **23/50/03-Verdrahtung ✅ 2026-09-16**: gemeinsamer Helfer `apply_hr_v1_additive()` (eine Schaltstelle, layout-agnostisch) + `hr_v1`-Witness in phase_23/50/03 (9 Contract-Tests). Flag bleibt bewusst OFF bis Test-Suite-Anpassung + UV3-Budget-Nachweis (Rollout, >10× RT); F3-Finetune bleibt **GPU-GEBUNDEN**. | bigvgan_v2.pth lokal; Torch-Runtime nach S3-Muster + phase_07-Verdrahtung mit Aktivierungsvertrag |
 | Q7 | F5/C4: DDSP-Prädiktor | **NACH F1 (GPU)** | CLAP-Encoder lokal; EQ/Dynamik-Parameter-Prädiktion für 04/16/17, DSP führt aus |
 | Q8 | PSY-A1-Rest (masken-basierte Phasen 19/23/50/56/59/65/66) | **ERLEDIGT 2026-09-14** (Phasen 19/23/50/59/65/66 nach phase_56-Muster verdrahtet) | Profil-Fallback-Refactor (phase_56-Befund: leere Maske ⇒ „repariere überall“) dann Gate je Phase |
 | Q9 | PSY-A2 (Zwicker ISO 532-1) | **STATIONÄR ERLEDIGT** | präzisere Maskierungsschwelle — verbessert alle PSY-A1-Gates |

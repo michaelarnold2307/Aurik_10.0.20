@@ -724,3 +724,55 @@ def synthesize_audio(
         VocoderResult
     """
     return get_bigvgan_v2().synthesize(audio, sr, mode=mode)
+
+
+def apply_hr_v1_additive(audio: np.ndarray, sample_rate: int) -> tuple[np.ndarray, dict[str, object]]:
+    """§SOTA-HR-V1 (F3, 2026-09-16): BigVGAN-Repair hinter dem Aktivierungsvertrag.
+
+    Fail-closed: ohne ``bigvgan_v2_ready()`` bleibt der Eingang unverändert
+    (attempted=False). Sonst Synthese → ``additive_synthesis_gate``
+    (maskierungs-bewusst, Never-worsen, §B5) → Übernahme nur bei
+    bands_released > 0. Liefert (audio, meta); ML→DSP-Fallback warnt +
+    begründet (§V6 (copilot-instructions.md)). Layout-agnostisch (wie das Gate).
+    """
+    meta: dict[str, object] = dict(hr_v1_activation_status())
+    if not bigvgan_v2_ready():
+        return audio, {"attempted": False, **meta}
+    meta = {"attempted": True, "applied": False, **meta}
+    try:
+        from backend.core.dsp.additive_synthesis_gate import additive_synthesis_gate
+
+        mono = (
+            audio.mean(axis=0)
+            if (audio.ndim == 2 and audio.shape[0] == 2 and audio.shape[1] > 2)
+            else (audio.mean(axis=1) if audio.ndim == 2 else audio)
+        ).astype(np.float32)
+        voc = synthesize_audio(mono, sample_rate)
+        if str(getattr(voc, "model_used", "none")) != "none":
+            gated, rep = additive_synthesis_gate(
+                np.asarray(voc.audio, dtype=np.float32),
+                audio,
+                sample_rate,
+                model="bigvgan_v2",
+            )
+            meta["pqs_mos"] = round(float(getattr(voc, "pqs_mos", 0.0)), 3)
+            meta["bands_released"] = int(rep.get("bands_released", 0))
+            if int(rep.get("bands_released", 0)) > 0:
+                audio = np.clip(
+                    np.nan_to_num(gated, nan=0.0, posinf=0.0, neginf=0.0),
+                    -1.0,
+                    1.0,
+                ).astype(np.float32)
+                meta["applied"] = True
+                logger.info(
+                    "§SOTA-HR-V1: BigVGAN-additiv freigegeben — bands_released=%d, PQS=%.2f",
+                    int(rep.get("bands_released", 0)),
+                    float(getattr(voc, "pqs_mos", 0.0)),
+                )
+    except Exception as _hr_syn_exc:
+        # §V6 (copilot-instructions.md): ML→DSP-Fallback MUSS warnen + begründen.
+        logger.warning(
+            "§SOTA-HR-V1: BigVGAN-Synthese fehlgeschlagen (%s) → DSP-Status quo beibehalten (fail-closed)",
+            _hr_syn_exc,
+        )
+    return audio, meta
