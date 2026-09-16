@@ -562,7 +562,20 @@ class SpeedPitchCorrectionPhase(PhaseInterface):
                 )
 
         # Apply correction if error significant (>0.3%)
-        if abs(speed_error_percent) > 0.3:
+        # §SOTA-PSY-A1/PSY-A8 (2026-09-16): Die Schwelle ist Hör-JND-gestützt —
+        # 0,3 % Speed-Fehler ≈ 5,2 Cent Tonhöhen-Abweichung und liegt damit
+        # deutlich über der Frequenz-JND (0,2 % rel, hearing_jnd). Die JND
+        # wird als Untergrenze formalisiert (max-Floor; Bestandsverhalten
+        # bleibt identisch, wird aber literatur-basiert dokumentiert).
+        try:
+            from backend.core.dsp.hearing_jnd import jnd as _jnd_31
+
+            _speed_jnd_floor_pct_31 = float(_jnd_31("frequency_1khz")) * 100.0
+        except Exception as _jnd31_exc:
+            logger.debug("Verarbeitungsschritt_31 §PSY-A8 JND-Tabelle nicht verfügbar: %s", _jnd31_exc)
+            _speed_jnd_floor_pct_31 = 0.2
+        _speed_error_threshold_pct_31 = max(0.3, _speed_jnd_floor_pct_31)
+        if abs(speed_error_percent) > _speed_error_threshold_pct_31:
             # Calculate corrected ratio
             _cs2_p31 = float(params["correction_strength"])  # type: ignore[arg-type]
             correction_ratio = 1.0 + (speed_ratio - 1.0) * _cs2_p31
@@ -708,7 +721,7 @@ class SpeedPitchCorrectionPhase(PhaseInterface):
             audio=audio,
             modifications={
                 "processing": "skipped",
-                "reason": f"speed error {speed_error_percent:.2f}% below 0.3% threshold",
+                "reason": f"speed error {speed_error_percent:.2f}% below {_speed_error_threshold_pct_31:.2f}% threshold (JND-gestützt, §PSY-A8)",
                 "detected_pitch_hz": detected_pitch,
                 "a4_reference_hz": reference_pitch,
                 "tuning_offset_cents": tuning_offset_cents,

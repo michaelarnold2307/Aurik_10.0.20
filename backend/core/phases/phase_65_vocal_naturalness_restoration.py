@@ -76,6 +76,66 @@ def _to_mono_float64(audio: np.ndarray) -> np.ndarray:
     return a.flatten()  # type: ignore[no-any-return]
 
 
+_SINGER_IDENTITY_MIN_COS_65 = 0.92
+
+
+def _apply_singer_identity_witness(
+    pre_audio: np.ndarray,
+    post_audio: np.ndarray,
+    sr: int,
+    _plugin_getter: Any = None,
+) -> tuple[np.ndarray, dict[str, Any]]:
+    """§SOTA-P65 (S4-Muster, 2026-09-16): Sänger-Identitäts-Witness als Per-Phase-Gate.
+
+    Resemblyzer cos(pre, post) ≥ 0,92 (Hörordnung Ebene 1); darunter wird
+    proportional Richtung Input geblendet (Never-worsen für die Stimm-Identität).
+    Zeuge, kein Richter (Hörordnung §8a): ohne Modell/Embedding wird ``post``
+    unverändert zurückgegeben (§V6 (copilot-instructions.md)-non-blocking).
+
+    Args:
+        pre_audio/post_audio: Audio vor/nach dem DSP-Eingriff (beliebiges Layout).
+        sr: Abtastrate (48000).
+        _plugin_getter: Nur für Tests — Callable, das das Resemblyzer-Plugin liefert.
+
+    Returns:
+        (blended_post, meta) — meta enthält "singer_identity_cosine" und
+        optional "singer_identity_blend". Deterministisch.
+    """
+    meta: dict[str, Any] = {}
+    try:
+        _getter65 = _plugin_getter
+        if _getter65 is None:
+            from plugins.resemblyzer_plugin import get_resemblyzer_plugin
+
+            _getter65 = get_resemblyzer_plugin
+        _rz65 = _getter65()
+        if not _rz65.available():
+            return post_audio, meta
+        _pre_mono_w = _to_mono_float64(np.asarray(pre_audio)).astype(np.float32)
+        _post_mono_w = _to_mono_float64(np.asarray(post_audio)).astype(np.float32)
+        _emb_pre65 = _rz65.embed(_pre_mono_w, sr)
+        _emb_post65 = _rz65.embed(_post_mono_w, sr)
+        if _emb_pre65 is None or _emb_post65 is None:
+            return post_audio, meta
+        _cos65 = float(_rz65.cosine_similarity(_emb_pre65, _emb_post65))
+        meta["singer_identity_cosine"] = round(_cos65, 4)
+        if _cos65 < _SINGER_IDENTITY_MIN_COS_65:
+            _blend65 = float(np.clip(_cos65 / _SINGER_IDENTITY_MIN_COS_65, 0.1, 0.8))
+            meta["singer_identity_blend"] = round(_blend65, 4)
+            logger.warning(
+                "§SOTA-P65 Sänger-Identitäts-Witness: cos=%.3f < %.2f → Blend %.2f Richtung Input",
+                _cos65,
+                _SINGER_IDENTITY_MIN_COS_65,
+                _blend65,
+            )
+            _blended65 = (_blend65 * post_audio + (1.0 - _blend65) * pre_audio).astype(np.float32)
+            return _blended65, meta
+        return post_audio, meta
+    except Exception as _p65_witness_exc:
+        logger.debug("§SOTA-P65 Sänger-Identitäts-Witness nicht blockierend: %s", _p65_witness_exc)
+        return post_audio, meta
+
+
 def _estimate_spectral_tilt_db(audio_mono: np.ndarray, sr: int) -> float:
     """Schätzt Spektral-Tilt als Steigung der Power-Spektrumdichte (dB/oct).
 
@@ -708,6 +768,15 @@ class VocalNaturalnessRestorationPhase(PhaseInterface):
                 logger.warning("§2.46e Verarbeitungsschritt_65 HallucinationGuard: rollback (spectral_novelty > 0.15)")
         except Exception as _hg65_exc:
             logger.debug("§2.46e Verarbeitungsschritt_65 HallucinationGuard (nicht blockierend): %s", _hg65_exc)
+
+        # §SOTA-P65 (S4-Muster, 2026-09-16): Sänger-Identitäts-Witness als
+        # Per-Phase-Gate (Zeuge, kein Richter — Hörordnung §8a;
+        # §V6 (copilot-instructions.md)-non-blocking).
+        try:
+            result, _p65_witness_meta = _apply_singer_identity_witness(audio, result, sample_rate)
+            _p65_meta.update(_p65_witness_meta)
+        except Exception as _p65_id_exc:
+            logger.debug("§SOTA-P65 Sänger-Identitäts-Witness nicht blockierend: %s", _p65_id_exc)
 
         # V19 Noise-Textur-Invariante (§NTI): Residual-Rauschen darf Material-Profil nicht ändern (non-blocking)
         try:

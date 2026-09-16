@@ -99,8 +99,18 @@ def test_estimator_without_muq_keeps_dsp_mos(monkeypatch: pytest.MonkeyPatch) ->
 )
 def test_embedding_deterministic_and_shape(monkeypatch: pytest.MonkeyPatch) -> None:
     """Echtes Modell: deterministisch (§G5 (GEBOTE.md)) und 1024-dim Embedding."""
-    # Im Test-Kontext meldet der Device-Manager ggf. CPU — CPU-Pfad explizit erlauben.
+    # Ambient-Hermetik (Muster: All-Phases-Smoke): nach vielen Modell-Ladungen
+    # der Vollsuite kann das ML-Speicherbudget den MuQ-Load ablehnen und den
+    # Singleton dauerhaft auf None setzen — Budget hier neutralisieren und
+    # einen abgelehnten Ladeversuch zurücksetzen.
+    import backend.core.ml_memory_budget as _budget_mq
+
+    monkeypatch.setattr(_budget_mq, "try_allocate", lambda name, size: True)
+    if mq._model is None and mq._model_attempted:
+        mq._model_attempted = False
+    # CPU erzwingen: ROCm-GPU-Inferenz ist nicht bit-deterministisch (§G5 (GEBOTE.md)).
     monkeypatch.setenv("AURIK_MUQ_CPU", "1")
+    monkeypatch.setenv("AURIK_MUQ_GPU", "0")
     rng = np.random.RandomState(0)
     audio = rng.randn(2, 48000).astype(np.float32) * 0.1
 

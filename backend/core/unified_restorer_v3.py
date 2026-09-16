@@ -23025,7 +23025,14 @@ class UnifiedRestorerV3:
         try:
             from backend.core.one_take_export import OneTakeExport
 
-            _ote = OneTakeExport.prepare(restored_audio, sample_rate, is_studio_2026=self.is_studio_mode())
+            # R2/WIT-M4 (2026-09-16): MuQ-MOS-Witness — Original-Input als
+            # Vergleichsbasis (SOFT; der Witness blockt nie, §0c).
+            _ote = OneTakeExport.prepare(
+                restored_audio,
+                sample_rate,
+                is_studio_2026=self.is_studio_mode(),
+                reference_audio=audio,
+            )
             if _ote.passed or _ote.retries < 3:
                 restored_audio = _ote.audio
                 logger.info(
@@ -23033,6 +23040,11 @@ class UnifiedRestorerV3:
                 )
             else:
                 logger.warning("OneTakeExport FAIL: %s", _ote.quality_report.get("errors", []))
+            _muq_delta_ote = _ote.quality_report.get("muq_mos_delta")
+            if _muq_delta_ote is not None and hasattr(result, "metadata") and isinstance(result.metadata, dict):
+                result.metadata["export_muq_mos_delta"] = float(_muq_delta_ote)
+                result.metadata["export_muq_mos_in"] = _ote.quality_report.get("muq_mos_in")
+                result.metadata["export_muq_mos_out"] = _ote.quality_report.get("muq_mos_out")
         except Exception:
             logger.debug("OneTakeExport not verfuegbar", exc_info=True)
         if hasattr(result, "audio"):
@@ -45920,7 +45932,14 @@ class UnifiedRestorerV3:
                 try:
                     from backend.core.one_take_export import OneTakeExport
 
-                    _ote_c = OneTakeExport.prepare(output, sample_rate, is_studio_2026=self.is_studio_mode())
+                    # R2/WIT-M4 (2026-09-16): MuQ-MOS-Witness (SOFT, §0c) —
+                    # Vergleichsbasis = voller Song-Input.
+                    _ote_c = OneTakeExport.prepare(
+                        output,
+                        sample_rate,
+                        is_studio_2026=self.is_studio_mode(),
+                        reference_audio=audio,
+                    )
                     if _ote_c.passed or _ote_c.retries < 3:
                         output = _ote_c.audio
                         logger.info(

@@ -1383,6 +1383,18 @@ def build_export_quality_gate_payload(result: object) -> dict[str, Any]:
             "passed": bool(_wcs_gate.get("passed", False)),
         },
         "threshold_evidence": dict(_threshold_evidence) if _threshold_evidence else {},
+        "muq_mos_witness": {
+            # R2/WIT-M4 (2026-09-16): SOFT-Witness aus der OneTake-Phase —
+            # informativ für UI/Reporter, ändert NIE das Gate-Urteil (§0c).
+            "available": bool(
+                meta.get("export_muq_mos_delta") is not None
+                or meta.get("export_muq_mos_in") is not None
+                or meta.get("export_muq_mos_out") is not None
+            ),
+            "muq_mos_in": float(meta.get("export_muq_mos_in", 0.0) or 0.0),
+            "muq_mos_out": float(meta.get("export_muq_mos_out", 0.0) or 0.0),
+            "muq_mos_delta": float(meta.get("export_muq_mos_delta", 0.0) or 0.0),
+        },
         "user_confidence_summary": {
             "confidence_level": _confidence_level,
             "listener_message": _listener_message,

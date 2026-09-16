@@ -886,16 +886,16 @@ Sänger-Identität, MuQ-MOS nicht schlechter als Baseline).
 
 | Phase | Ist | Offene SOTA-Maßnahme |
 |---|---|---|
-| 01 Klicks | ✓ CR-V1 (BANQUET-Konsens) | PSY-A1-Gate (subaudible Klicks nicht zählen) |
-| 02 Hum | ✓ HU-V1 (Kalman + LSQ) | PSY-A1-Gate |
-| 05 Rumpel / 25 Azimut / 31 Speed-Pitch / 62 Crosstalk / 63 Intermodulation / 64 Splice | DSP-Stand (funktional) | PSY-A1-Gates; 64: GaCELA/DiffWave-Fill-Reuse prüfen |
+| 01 Klicks | ✓ CR-V1 (BANQUET-Konsens) | ✓ PSY-A1-Gate (subaudible Klicks werden nicht gezählt, `subaudible_skipped`) |
+| 02 Hum | ✓ HU-V1 (Kalman + LSQ) | ✓ PSY-A1-Gate (Maskierungs-Early-Termination, §Muster 2) |
+| 05 Rumpel / 25 Azimut / 31 Speed-Pitch / 62 Crosstalk / 63 Intermodulation / 64 Splice | DSP-Stand (funktional) | ✓ 05/62/63 Maskierungs-Gates vorhanden; ✓ 25/31 JND-formalisiert 2026-09-16 (PSY-A8, `hearing_jnd`); 64: GaCELA verworfen (fail-closed 2026-09-15) → Fill-Reuse nicht anwendbar, DiffWave-S3 bleibt inaktiv vorbereitet |
 | 12 Wow-Flutter | ✓ WF-CASS (30-Hz-AM); DSP-Kompensation | **SOTA-WF-V4**: neuraler Warp-Schätzer (Checkpoint-Quelle klären + Download) |
 | 13/15/33/34/46/48 Stereo/Bühne | DSP + interaural-Guard | PSY-A3 (BMLD-Gates); PSY-A6 (HRIR-Ausbaustufe) |
 | 32 Mono→Stereo | DSP-Upmix | optional: BSR-Stem-basierte Verbreiterung (musik-nativ) |
 | 37/38/39 Bass/Presence/Air | DSP | PSY-A4 (Equal-Loudness-JND-Gewichte) |
 | 40/47 Loudness/TP | BS.1770 ✓ | PSY-A7 (Zwicker-Kurzzeit-Loudness-Steuerung) |
 | 59 Modulationsrauschen | DSP | SOTA-D3+D4 (niedrig): Multiresolution-Split + APPLADE-Maskierungs-Loss |
-| 65 Vocal-Natürlichkeit | DSP + Resemblyzer-Witness (Ebene-1) | Sänger-Identitäts-Witness als Per-Phase-Gate (S4-Muster) |
+| 65 Vocal-Natürlichkeit | DSP + Resemblyzer-Witness (Ebene-1) | ✓ GESCHLOSSEN 2026-09-16: Sänger-Identitäts-Witness als Per-Phase-Gate (`_apply_singer_identity_witness`, S4-Muster: cos ≥ 0,92, sonst proportionaler Blend Richtung Input, non-blocking §V6) |
 
 ### D. Witness-/Modell-Lücken (Qualitäts-Urteile)
 
@@ -904,7 +904,7 @@ Sänger-Identität, MuQ-MOS nicht schlechter als Baseline).
 | WIT-M1 | **MuQ-MOS-Richtung invertiert** (A1-Head auf falschem Backbone — muq_eval_a1_head.pt läuft auf MuQ-large-msd-iter statt MuQ-Eval-Backbone) | **ERLEDIGT 2026-09-14** — Ursache war der RESAMPLE-FILTER: das Plugin nutzte librosa, MuQ-Eval torchaudio.functional.resample (Kaiser-Sinc); nach dem Fix (Eval-exakt zuerst) ist die Richtung **3/3 korrekt** (noise0 Δ+3,66 ref / Δ+3,20 Plugin; Report 2026-09-14_muq_plugin_direction.json). MuQ ist damit als MOS-Richtungs-Witness für die F-Gates nutzbar (10-s-Clips, Vollmix) |
 | WIT-M2 | BEATs-Tagger-Head fehlt (Encoder-Export ohne Head) | Head auf Tokens trainieren (GPU) oder Tagger-ONNX beschaffen |
 | WIT-M3 | UTMOS für Musik unbrauchbar (Negativbefund) | dokumentiert — kein Einsatz |
-| WIT-M4 | F-Gates hängen an SDR/Resemblyzer (objektiv) | nach WIT-M1: MOS-Witness (MuQ) als dritte Gate-Stimme |
+| WIT-M4 | F-Gates hängen an SDR/Resemblyzer (objektiv) | ✅ ERLEDIGT 2026-09-16 — MuQ-MOS als dritte Gate-Stimme im Export-Quality-Gate **produktionsverdrahtet** (R2: `reference_audio` wird aus beiden uv3-Pfaden durchgereicht; SOFT-Witness, blockt nie, §0c) |
 
 ### E. Prioritäten-Empfehlung (nach GPU-Verfügbarkeit)
 
@@ -1155,15 +1155,17 @@ Alle CPU-schließbaren Punkte der Offene-Punkte-Matrix sind umgesetzt und getest
 | PSY-A1/A2/A3/A4/A5/A8 | ✅ GESCHLOSSEN 2026-09-14/15 | Rollouts in den Tabellenzeilen; PSY-A2-zeitvariant via P5 |
 | PSY-A6 (CIPIC-HRIR) | AUSBAUSTUFE (dokumentiert) | persönliche HRIR; nicht blockierend |
 | R1/R4/R5/R8 | ✅ GESCHLOSSEN 2026-09-15 | s. o. G + Welle 1 (R4-Benchmark, R5-Zertifikat, R8-Infrastruktur); R8-Per-Phase-Rollout: phase_59 umgesetzt (Defekt-Maske als Rechen-Maske, sub-STFT-Fenster unverändert, Coverage-Fallback ≥0,85), weitere Phasen = Folge-Slice |
-| R2 (MuQ-MOS-Gate) | **GPU-GEBUNDEN** | erst nach WIT-M1 (MuQ-Backbone-Richtung) |
+| R2 (MuQ-MOS-Gate) | ✅ GESCHLOSSEN 2026-09-16 | **Produktionsverdrahtung**: `OneTakeExport.prepare(reference_audio=…)` + `one_take_prepare` + beide uv3-Pfade (Whole-Song + Chunked) reichen den Original-Input an `ExportQualityGate.check` durch; MuQ-Felder im Quality-Report, in `result.metadata` (`export_muq_mos_delta/in/out`) und im Bridge-Payload (`muq_mos_witness`). Witness bleibt **SOFT** (blockt nie, §0c — WIT-M4: Zeuge, kein Richter). Tests: `test_r2_muq_mos_export_wiring.py` |
 | R3 (ROCm alle Modelle) | **GPU-GEBUNDEN** | Ports nach BSR-Muster |
 | R6 (Per-Song-Zielklang DDSP) | **GPU-GEBUNDEN** | F5/C4 |
+| PSY-A1-Rest (25/31 JND) + P65-Witness | ✅ GESCHLOSSEN 2026-09-16 | **phase_25**: Azimut-Schwelle JND-basiert (ITD-JND 30 µs × 3,5 ≈ 5 Samples @ 48 kHz, SR-unabhängig, HF-Floor ≥ Pegel-JND; Bestandsverhalten bit-identisch). **phase_31**: 0,3-%-Speed-Schwelle als JND-gestützt dokumentiert (max-Floor mit Frequenz-JND 0,2 %). **phase_65**: Sänger-Identitäts-Witness als Per-Phase-Gate (`_apply_singer_identity_witness`, S4-Muster: Resemblyzer cos ≥ 0,92, sonst proportionaler Blend Richtung Input, non-blocking §V6). Tests: `test_psy_a1_jnd_gates_25_31.py`, `test_phase_65_singer_identity_witness.py` |
 | R7 (Adaptive Rescheduling) | FOLGE-SLICE | auf wall_budget_s aufbauend, nach P0-1 |
 | F1/F3/F5, Q4/Q7 + F3-Finetune-Teil (GPU-Buildouts) | **GPU-GEBUNDEN** | Trainings-/Port-Arbeit auf ROCm; **F2 + Q5 GESCHLOSSEN 2026-09-16** (faire S1-Validierung verwarf Pfad B, fail-closed); **F3-A/B-Teilvalidierung PASS 2026-09-16** (af +0,0073, HNR +4,42 dB — Flag-Rollout offen bis Test-Suite-Anpassung + UV3-Budget-Nachweis) |
 | WF-V4 (neuraler Warp-Schätzer), TP-V2 | **EXTERN BLOCKIERT (Checkpoint-Quelle)** | Quelle klären + Download |
 | P1-Folge (af-Never-worsen in 07/17/19/38) | ✅ GESCHLOSSEN 2026-09-15 | `artifact_freedom_guard.py` (billiger click/pre-echo-Delta-Guard, ≈0,008× RT) in 07/17/19/38 + `--fail-delta`-CI-Gate im Diagnose-Skript; Diagnose-Vergleich: phase_07 Δ−0,136→−0,049, phase_17 −0,084→+0,002, phase_19 −0,062→0,000, phase_38 −0,043→+0,061; Ketten-Min-af 0,473→0,631 |
 | PSY-A7 (10/11/40) | ✅ GESCHLOSSEN 2026-09-15 | `perceptual_loudness_cap.py` (Rollout-Helfer mit Headroom-Variante) in 10/11/40: 10/11 nie über Input-Lautheit, 40 kappt Kurzzeit-Pumping über dem Uniform-Gain (Ziel-LUFS-Anhebung bleibt legitim); test_psy_a7_loudness_cap_rollout.py |
 | Defizit-Sweep (57 vorbestehende Unit-Fehlschläge) | ✅ GESCHLOSSEN 2026-09-15 | Test-Drift auf aktuelle Specs (§v10.739 MDX23C-Entfernung, §v10.748 ONNX-first, §Q11 Gesangs-Drosselung, §v10.742 Residency, §2.53b-Log) + echte Bugs (phase_29-Strength-Vertrag −14 dB→~0, SeparationFidelity-Cache 0,746-vs-0,996, Router-TypeError-Retry, htdemucs-Duck-Typing, lyrics-Crossfade-Broadcast, MuQ/easydict-Imports); 2 Commits, Pre-Commit grün |
+| Defizit-Sweep 2 (5 Vollsuite-Fehlschläge 2026-09-16) | ✅ GESCHLOSSEN 2026-09-16 — **Vollsuite 16948 passed / 0 failed bestätigt** | i18n-Gap (alle 17 help.error.*-Keys DE+EN, Tests auf übersetzte Texte); Gacela-Shim idempotent + data/utils-Cache-Purge; MuQ-sys.path-Pollution (scoped try/finally, Validierungs-Skript eigenständig); BS-RoFormer-CPU-Retry explizit CPUExecutionProvider; MuQ-Determinismus: AURIK_MUQ_GPU=0 vor dem Singleton-Cache geehrt + Device-Sync für warmgeladene Modelle + Test-Hermetik gegen ML-Speicherbudget-Erschöpfung; §2.46f Edge-Gain-Cap + Konvex-Edge-Taper im phase_03-ML-Pfad (neues Modul edge_gain_cap.py, 8 Tests — Intro/Outro nie > +2 dB über Original und hochkorreliert, auch nach warmem ML-Zustand) |
 
 > **Mess-Kadenz:** Nach jedem Schritt das Messprotokoll wiederholen (restaurierter
 > Score + Delta zum Original) und die Tabelle oben aktualisieren. Ein Schritt wird

@@ -224,8 +224,18 @@ def _resolve_device() -> Any:
     der Device-Manager noch CPU melden, obwohl ROCm-torch die GPU sieht —
     dann wird die GPU verwendet, damit der 5-s-Guard des Estimators (§2.26)
     eingehalten wird. Produktion (GUI) liefert der Manager ohnehin CUDA.
+
+    §G5 (GEBOTE.md)/Defizit-Fix 2026-09-16: `AURIK_MUQ_GPU=0` erzwingt CPU
+    (bit-deterministisch) — ROCm-GPU-Inferenz ist nach Messung NICHT
+    bit-deterministisch (vgl. MuLan-Befund), der Schalter ist der explizite
+    Opt-out für Determinismus-Kontexte (Tests, §G5-Zertifikate).
     """
     global _device
+    # §G5 (GEBOTE.md): Der Determinismus-Opt-out wird VOR dem Cache geprüft —
+    # sonst ignoriert ein bereits warmgeladener GPU-Singleton den Schalter.
+    if os.environ.get("AURIK_MUQ_GPU", "").strip() == "0":
+        _device = torch.device("cpu") if torch is not None else "cpu"
+        return _device
     if _device is not None:
         return _device
     _dev: Any = None
@@ -246,11 +256,16 @@ def _resolve_device() -> Any:
 
 
 def _ml_allowed_on_device(device: Any) -> bool:
-    """GPU-Standard; CPU nur mit explizitem Opt-in (5-s-Guard des Estimators)."""
+    """GPU-Standard; CPU nur mit explizitem Opt-in (5-s-Guard des Estimators).
+
+    AURIK_MUQ_GPU=0 (Determinismus-Opt-out) impliziert CPU-Freigabe.
+    """
     dev_str = str(device)
     if "cpu" not in dev_str:
         return True
     if os.environ.get("AURIK_MUQ_CPU", "0") == "1":
+        return True
+    if os.environ.get("AURIK_MUQ_GPU", "").strip() == "0":
         return True
     logger.warning("MuQ: CPU-Gerät ohne AURIK_MUQ_CPU=1 — ML-Schätzung übersprungen (5-s-Guard §2.26)")
     return False
@@ -311,6 +326,12 @@ def extract_embedding(audio: Any, sr: int) -> np.ndarray | None:
         _dev = _resolve_device()
         if not _ml_allowed_on_device(_dev):
             return None
+        # Warm-GPU-Singleton + CPU-Anforderung (AURIK_MUQ_GPU=0): das Modell
+        # auf das Zielgerät bewegen — sonst Device-Mismatch statt Fallback
+        # (Defizit-Fix 2026-09-16; .to() ist idempotent/cheap bei Gleichheit).
+        _first_param = next(model.parameters(), None)
+        if _first_param is not None and str(_first_param.device) != str(_dev):
+            model.to(_dev)
         arr = np.asarray(audio, dtype=np.float32)
         arr = np.nan_to_num(arr, nan=0.0, posinf=0.0, neginf=0.0)
         if arr.ndim == 2:
@@ -374,11 +395,16 @@ def _get_ref_embeddings() -> np.ndarray | None:
             )
             return None
         try:
-            import soundfile as sf
+            from backend.file_import import load_audio_file
 
             emb_list: list[np.ndarray] = []
             for path in sorted(_REF_DIR.glob("*.wav")):
-                data, file_sr = sf.read(str(path), dtype="float32")
+                _ld = load_audio_file(str(path))
+                data = _ld.get("audio") if isinstance(_ld, dict) else None
+                file_sr = _ld.get("sr") if isinstance(_ld, dict) else None
+                if data is None or file_sr is None:
+                    logger.warning("MuQ-Referenz-Einbettung fehlgeschlagen für %s (Datei nicht lesbar)", path.name)
+                    continue
                 emb = extract_embedding(data, int(file_sr))
                 if emb is None:
                     logger.warning("MuQ-Referenz-Einbettung fehlgeschlagen für %s", path.name)
@@ -472,28 +498,41 @@ try:
     import importlib.util as _ilu
     import sys
 
+    # §SOTA-Hygiene (2026-09-16, Defizit-Fix): models/muq_eval/src enthält
+    # GENERISCHE Modulnamen (data.py, model.py, encoders.py). Ein dauerhaftes
+    # sys.path-Insert an Position 0 kaperte jedes spätere `import data`/
+    # `import model` im Prozess (u. a. brach es den Gacela-Upstream-Import
+    # mit "'data' is not a package"). Der Import läuft jetzt in einem
+    # scoped Kontext: sys.path wird nach dem Laden exakt wiederhergestellt;
+    # die geladenen src.*-Module bleiben in sys.modules.
     _muq_eval_root = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "models", "muq_eval")
-    if _muq_eval_root not in sys.path:
-        sys.path.insert(0, _muq_eval_root)
-        sys.path.insert(0, os.path.join(_muq_eval_root, "src"))
-    if "peft" not in sys.modules:
-        _peft_stub = _ilu.module_from_spec(_ilm.ModuleSpec("peft", loader=None))
-        # Attribute via __dict__ (weder setattr noch direkte Zuweisung):
-        # B010-sicher und mypy-sauber (kein attr-defined).
-        _peft_stub.__dict__.update(
-            {
-                "LoraConfig": lambda **kw: None,
-                "get_peft_model": lambda m, c: m,
-            }
-        )
-        sys.modules["peft"] = _peft_stub
-    import plugins._vendor_muq as _vendor_muq_alias
+    _saved_sys_path_muq = list(sys.path)
+    try:
+        if _muq_eval_root not in sys.path:
+            sys.path.insert(0, _muq_eval_root)
+            sys.path.insert(0, os.path.join(_muq_eval_root, "src"))
+        if "peft" not in sys.modules:
+            _peft_stub = _ilu.module_from_spec(_ilm.ModuleSpec("peft", loader=None))
+            # Attribute via __dict__ (weder setattr noch direkte Zuweisung):
+            # B010-sicher und mypy-sauber (kein attr-defined).
+            _peft_stub.__dict__.update(
+                {
+                    "LoraConfig": lambda **kw: None,
+                    "get_peft_model": lambda m, c: m,
+                }
+            )
+            sys.modules["peft"] = _peft_stub
+        import plugins._vendor_muq as _vendor_muq_alias
 
-    sys.modules.setdefault("muq", _vendor_muq_alias)
-    from src.encoders import AttentionPooling as _MuQEvalAttentionPooling
-    from src.model import PredictionHead as _MuQEvalPredictionHead
+        sys.modules.setdefault("muq", _vendor_muq_alias)
+        from src.encoders import AttentionPooling as _MuQEvalAttentionPooling
+        from src.model import PredictionHead as _MuQEvalPredictionHead
 
-    _MUQ_EVAL_CLASSES = True
+        _MUQ_EVAL_CLASSES = True
+    finally:
+        # Exakte Wiederherstellung: kein globaler sys.path-Seiteneffekt
+        # (§V7 (copilot-instructions.md)).
+        sys.path[:] = _saved_sys_path_muq
 except Exception as _muq_eval_exc:
     logger.debug("MuQ-Eval-Originalklassen nicht ladbar (%s) — Plugin-Klassen bleiben", _muq_eval_exc)
     _MUQ_EVAL_CLASSES = False
@@ -553,6 +592,16 @@ def estimate_muq_mos(audio: Any, sr: int) -> float | None:
         _dev = _resolve_device()
         if not _ml_allowed_on_device(_dev):
             return None
+        # Warm-GPU-Singletons + CPU-Anforderung (AURIK_MUQ_GPU=0): Backbone
+        # UND A1-Module auf das Zielgerät bewegen (Defizit-Fix 2026-09-16).
+        _first_param_mos = next(model.parameters(), None)
+        if _first_param_mos is not None and str(_first_param_mos.device) != str(_dev):
+            model.to(_dev)
+        pooling, head = _modules
+        _first_param_pool = next(pooling.parameters(), None)
+        if _first_param_pool is not None and str(_first_param_pool.device) != str(_dev):
+            pooling.to(_dev)
+            head.to(_dev)
         arr = np.asarray(audio, dtype=np.float32)
         arr = np.nan_to_num(arr, nan=0.0, posinf=0.0, neginf=0.0)
         if arr.ndim == 2:
@@ -564,7 +613,6 @@ def estimate_muq_mos(audio: Any, sr: int) -> float | None:
             mono = arr
         mono = _mos_eval_window(mono, sr)
         wav = torch.from_numpy(mono).unsqueeze(0).to(_dev)
-        pooling, head = _modules
         with torch.no_grad():
             out = model(wav, output_hidden_states=True)
             pooled = pooling(out.last_hidden_state.to(_dev))

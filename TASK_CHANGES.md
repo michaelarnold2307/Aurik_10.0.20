@@ -1,6 +1,6 @@
 # TASK_CHANGES — Live-Ledger der aktuellen Aufgabe
 
-> Generiert von `scripts/change_ledger.py snapshot` (Base: `HEAD`, Stand: 2026-09-16 09:47 CEST).
+> Generiert von `scripts/change_ledger.py snapshot` (Base: `HEAD`, Stand: 2026-09-16 21:42 CEST).
 > CI (`ci-lite.yml` pr-evidence-gate) erzwingt Abdeckung: jede geänderte Code-Datei muss hier stehen.
 
 ## Geänderte Dateien
@@ -8,12 +8,94 @@
 | Status | Pfad | Art |
 |---|---|---|
 | M | .github/FILE_REGISTRY.md | modifiziert |
+| M | Aurik10/i18n/**init**.py | modifiziert |
+| M | TASK_CHANGES.md | modifiziert |
+| M | backend/api/bridge.py | modifiziert |
+| M | backend/core/one_take_export.py | modifiziert |
+| M | backend/core/phases/phase_03_denoise.py | modifiziert |
+| M | backend/core/phases/phase_25_azimuth_correction.py | modifiziert |
+| M | backend/core/phases/phase_31_speed_pitch_correction.py | modifiziert |
+| M | backend/core/phases/phase_65_vocal_naturalness_restoration.py | modifiziert |
+| M | backend/core/unified_restorer_v3.py | modifiziert |
 | M | docs/TODOS_SOTA_ROADMAP.md | modifiziert |
-| ?? | docs/reports/current/2026-09-16_ddsp_c4_first_run.md | ungetrackt |
-| ?? | scripts/train_ddsp_predictor_c4.py | ungetrackt |
+| M | plugins/bs_roformer_plugin.py | modifiziert |
+| M | plugins/muq_plugin.py | modifiziert |
+| M | scripts/gacela_gabor_shim.py | modifiziert |
+| M | scripts/validate_muq_plugin_direction.py | modifiziert |
+| M | tests/unit/test_gacela_gabor_shim.py | modifiziert |
+| M | tests/unit/test_help_system_errorsimplifier.py | modifiziert |
+| M | tests/unit/test_muq_plugin.py | modifiziert |
+| ?? | backend/core/dsp/edge_gain_cap.py | ungetrackt |
+| ?? | tests/unit/test_edge_gain_cap.py | ungetrackt |
+| ?? | tests/unit/test_phase_65_singer_identity_witness.py | ungetrackt |
+| ?? | tests/unit/test_psy_a1_jnd_gates_25_31.py | ungetrackt |
+| ?? | tests/unit/test_r2_muq_mos_export_wiring.py | ungetrackt |
 
 ## Entscheidungen
 
+- **Defizit-Sweep 2026-09-16 (5 Vollsuite-Fehlschläge behoben)**:
+  - **i18n-Gap**: `help.error.generic` (und alle 17 `help.error.*`-Keys) fehlten in
+    DE+EN — der ErrorSimplifier zeigte rohe Keys. Keys ergänzt; Tests auf
+    übersetzte Texte umgestellt (test_help_system_errorsimplifier.py,
+    test_every_t_key_has_translation grün).
+  - **Gacela-Shim ordnungsrobust**: `install_tifresi_shim()` hatte einen
+    Early-Return, wenn `tifresi` bereits (partiell) in sys.modules war
+    (z. B. nach GACELA-Plugin-Inferenz via models/gacela/tifresi-Stub) →
+    partielles Paket, Importfehler je nach Test-Reihenfolge. Shim ist jetzt
+    idempotent (vollständiger Ersatz); Test purgt zusätzlich data/data.*/
+    utils/utils.worker aus dem Modul-Cache.
+  - **MuQ-sys.path-Pollution (Root-Cause)**: muq_plugin inserierte
+    `models/muq_eval/src` (generische Namen: data.py, model.py) dauerhaft an
+    sys.path[0] — kaperte jedes spätere `import data` im Prozess
+    ("'data' is not a package" im Gacela-Upstream-Import; Test-Ordnungsbruch
+    muq↔gacela). Fix: scoped Import mit try/finally-Restore (§V7);
+    `scripts/validate_muq_plugin_direction.py` macht seinen eigenen
+    sys.path-Setup (kein Plugin-Seiteneffekt mehr).
+  - **BS-RoFormer-CPU-Retry-Vertrag**: `_build_cpu_session()` baute über
+    get_onnx_providers auf ROCm-Maschinen erneut eine GPU-Session (der
+    gerade fehlgeschlagene Kernel erneut) — Kontrakt ist CPU-only.
+    Fix: providers=["CPUExecutionProvider"] explizit; Test-Vertrag grün.
+  - **MuQ-Determinismus-Schalter**: `AURIK_MUQ_GPU=0` wird jetzt im Plugin
+    geehrt (vor dem Singleton-Cache!) und erzwingt CPU-Inferenz — ROCm-GPU-
+    Inferenz ist nicht bit-deterministisch (§G5 (GEBOTE.md), MuLan-Befund);
+    der Test test_embedding_deterministic_and_shape nutzt genau diesen
+    Schalter und ist damit ordnungs-stabil.
+  - **§2.46f Edge-Gain-Cap (neues Modul backend/core/dsp/edge_gain_cap.py)**:
+    Root-Cause der letzten Ordnungs-Fehlschläge: der phase_03-ML-Pfad
+    (warme Modelle nach All-Phases-Smoke) restauriert den Pegel über
+    `_p03_out` NACH dem Konvex-Edge-Taper — das Intro konnte dadurch
+    +2,8 dB über Original liegen (Test-Bar +2 dB). Der Cap (nur Absenkung,
+    50-ms-Crossfade zur Referenz, layout-tolerant, 2 % Marge) läuft im
+    DSP-Pfad vor dem Return UND im ML-Pfad NACH `_p03_out`; zusätzlich
+    `apply_edge_taper_convex` (0,5-s-Fade Richtung Eintritts-Audio) im
+    ML-Pfad für die Korrelations-Invariante. 8 Unit-Tests; smoke+edge-
+    Paarungen jetzt grün.
+  - **MuQ-Device-Sync**: `extract_embedding`/`estimate_muq_mos` bewegen das
+    warmgeladene Modell (und die A1-Module) auf das Zielgerät, wenn sich
+    `_resolve_device` nach dem Warm-up ändert (AURIK_MUQ_GPU=0 bei bereits
+    GPU-geladenem Singleton) — vorher Device-Mismatch → None statt
+    Fallback (§V6).
+  - Verifikation: 5. Vollsuite-Bestätigungslauf im Hintergrund (Nachweis folgt).
+- **SOTA-Roadmap-Rest (CPU) — R2-Verdrahtung + PSY-A1/A8-JND-Gates + P65-Witness (2026-09-16)**:
+  - **R2/WIT-M4 (MuQ-MOS-Gate):** `OneTakeExport.prepare(reference_audio=…)` +
+    `one_take_prepare` erweitert; beide uv3-Pfade (Whole-Song + Chunked)
+    reichen den Original-Input an `ExportQualityGate.check` durch; MuQ-Felder
+    im Quality-Report + `result.metadata` (export_muq_mos_*); Bridge-Payload
+    `build_export_quality_gate_payload` surft `muq_mos_witness` (available/
+    in/out/delta) informativ. Witness bleibt SOFT (blockt nie, §0c).
+    Tests: test_r2_muq_mos_export_wiring.py (6 Fälle).
+  - **PSY-A1/A8 (phase_25/31):** Azimut-Schwelle JND-basiert (ITD-JND 30 µs ×
+    3,5 ≈ 5 Samples @ 48 kHz, SR-unabhängig; HF-Floor ≥ Pegel-JND) —
+    Bestandsverhalten bit-identisch. Speed-Schwelle (0,3 %) als JND-gestützt
+    dokumentiert (max-Floor mit Frequenz-JND 0,2 %). Tests:
+    test_psy_a1_jnd_gates_25_31.py (5 Fälle).
+  - **SOTA-P65 (S4-Muster):** `_apply_singer_identity_witness` in phase_65 —
+    Resemblyzer cos(pre, post) ≥ 0,92, sonst proportionaler Blend Richtung
+    Input; non-blocking (§V6) und layout-sicher. Tests:
+    test_phase_65_singer_identity_witness.py (6 Fälle).
+  - Roadmap-Status nachgezogen (TODOS_SOTA_ROADMAP.md: Tabelle C, WIT-M4,
+    Abschluss-Matrix); FILE_REGISTRY + repo_search-Before-Create für die 3
+    neuen Testdateien durchgeführt.
 - **SOTA-C4/F5: DDSP-Prädiktor-Harness + Erstlauf (2026-09-16, Negativbefund)**:
   - Neues Skript `scripts/train_ddsp_predictor_c4.py` (--precompute/--train/--smoke):
     MUSDB18-HQ-Effekt-Paare (deterministische 3-Band-RBJ-EQ + Soft-Knee-Kompressor,
@@ -25,7 +107,6 @@
     Head NICHT aktiviert (fail-closed). Taskformulierung braucht DDSP-artigen
     Mel-Encoder oder Audio-Frontend (BEATs/MERT) — Folgeschritt GPU.
     Beleg: `docs/reports/current/2026-09-16_ddsp_c4_first_run.md`.
-
 - **S4-Verifikation (VOCAL-INPAINT-S4, GPU-Punkt) — formal durchgeführt, 2 Produktions-Bugs behoben (2026-09-16)**:
   - Harness `scripts/validate_vocal_inpaint_s4.py`: Kaskaden-Ausgang je 300-ms-
     Gesangslücke (13 Lücken, 3 MUSDB-Tracks, Seed 42), ΔSDR ≥ 0 je Segment,

@@ -67,6 +67,7 @@ class OneTakeExport:
         *,
         is_studio_2026: bool = False,
         iterative: bool = False,
+        reference_audio: np.ndarray | None = None,
     ) -> OneTakeResult:
         """Bereitet Audio für den Export vor — mit Auto-Korrektur.
 
@@ -77,6 +78,9 @@ class OneTakeExport:
             iterative: §v10.0.5 2-Pass-Mode — nach Korrektur wird eine
                        zweite Verifikation durchgeführt. Bei Restfehlern
                        wird eine finale Feinkorrektur angewandt.
+            reference_audio: R2/WIT-M4-MuQ-MOS-Witness (SOFT): Original-Input
+                       als Vergleichsbasis; fehlt sie, wird der Witness
+                       übersprungen. Blockiert NIE den Export (§0c).
 
         Returns:
             OneTakeResult mit export-bereitem Audio.
@@ -93,12 +97,21 @@ class OneTakeExport:
         current = _compensate_denoise_learning_dip(current, sr)
 
         for attempt in range(_MAX_RETRIES + 1):
-            check = ExportQualityGate.check(current.astype(np.float32), sr, is_studio_2026=is_studio_2026)
+            check = ExportQualityGate.check(
+                current.astype(np.float32),
+                sr,
+                is_studio_2026=is_studio_2026,
+                reference_audio=reference_audio,
+            )
             result.quality_report = {
                 "true_peak_dbtp": check.true_peak_dbtp,
                 "integrated_lufs": check.integrated_lufs,
                 "fatigue_score": check.fatigue_score,
                 "stereo_correlation": check.stereo_correlation,
+                "muq_mos_in": check.muq_mos_in,
+                "muq_mos_out": check.muq_mos_out,
+                "muq_mos_delta": check.muq_mos_delta,
+                "muq_mos_degraded": check.muq_mos_degraded,
                 "warnings": check.warnings,
                 "errors": check.errors,
                 "attempt": attempt,
@@ -115,7 +128,12 @@ class OneTakeExport:
                 # eine zweite Verifikation. Bei True-Peak-Resten
                 # (knapp über 0 dBTP) finale Feinkorrektur anwenden.
                 if iterative and attempt < _MAX_RETRIES:
-                    check2 = ExportQualityGate.check(current.astype(np.float32), sr, is_studio_2026=is_studio_2026)
+                    check2 = ExportQualityGate.check(
+                        current.astype(np.float32),
+                        sr,
+                        is_studio_2026=is_studio_2026,
+                        reference_audio=reference_audio,
+                    )
                     if -0.3 < check2.true_peak_dbtp <= 1.0:  # §v10.35: auch TP=0.0 triggert
                         _tp_reduction = check2.true_peak_dbtp * 0.5
                         _gain = 10.0 ** (-_tp_reduction / 20.0)
@@ -358,6 +376,11 @@ def one_take_prepare(
     audio: np.ndarray,
     sr: int,
     is_studio_2026: bool = False,
+    reference_audio: np.ndarray | None = None,
 ) -> OneTakeResult:
-    """Convenience-Funktion: bereitet Audio für One-Take-Export vor."""
-    return OneTakeExport.prepare(audio, sr, is_studio_2026=is_studio_2026)
+    """Convenience-Funktion: bereitet Audio für One-Take-Export vor.
+
+    reference_audio: R2-MuQ-MOS-Witness (SOFT) — Original-Input als
+    Vergleichsbasis; fehlt sie, wird der Witness übersprungen (§0c).
+    """
+    return OneTakeExport.prepare(audio, sr, is_studio_2026=is_studio_2026, reference_audio=reference_audio)

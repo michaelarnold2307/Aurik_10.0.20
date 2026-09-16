@@ -27,8 +27,6 @@ from typing import Any
 
 import numpy as np
 
-from backend.core.gpu_model_registry import get_onnx_providers  # §v10.40c Registry-GPU-Policy
-
 logger = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
@@ -293,9 +291,12 @@ class BSRoFormerPlugin:
         try:
             import onnxruntime as ort
 
-            return ort.InferenceSession(
-                self._session_model_path, providers=get_onnx_providers(self._session_model_path)
-            )
+            # CPU-only ist der Kontrakt dieser Funktion (Name + Docstring +
+            # Test-Vertrag test_bs_roformer_build_cpu_session_...): auf
+            # ROCm-fähigen Maschinen lieferte get_onnx_providers() ROCm-first
+            # und der „CPU-Retry“ baute den gerade fehlgeschlagenen GPU-Pfad
+            # erneut. Explizit nur CPUExecutionProvider (Defizit-Fix 2026-09-16).
+            return ort.InferenceSession(self._session_model_path, providers=["CPUExecutionProvider"])
         except Exception as _exc:
             logger.warning("MelBandRoformer: CPU-Sitzung-Rebuild fehlgeschlagen: %s", _exc)
             return None

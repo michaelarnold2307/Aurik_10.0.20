@@ -95,13 +95,19 @@ def _first10_resample24k(x: np.ndarray) -> np.ndarray:
 
 def _build_ref_model() -> tuple[object, object, object]:
     """MusicQualityModel (A1) + torch/cuda-Handles — 1:1 wie validiert."""
+    import sys
+
     import torch
     from omegaconf import OmegaConf
 
-    import plugins.muq_plugin as _mq
-
-    _ = _mq
-    from src.model import MusicQualityModel  # models/muq_eval/src (sys.path via Plugin)
+    # Eigenständiger sys.path-Setup statt Seiteneffekt des Plugins (§SOTA-Hygiene
+    # 2026-09-16: muq_plugin restauriert sein sys.path jetzt nach dem Laden).
+    _muq_eval_root = str(Path(__file__).resolve().parent.parent / "models" / "muq_eval")
+    _muq_eval_src = str(Path(_muq_eval_root) / "src")
+    for _p in (_muq_eval_src, _muq_eval_root):
+        if _p not in sys.path:
+            sys.path.insert(0, _p)
+    from src.model import MusicQualityModel
 
     snap_base = Path.home() / ".cache" / "huggingface" / "hub" / "models--zhudi2825--MuQ-Eval-A1" / "snapshots"
     snap_dirs = sorted(snap_base.glob("*"))

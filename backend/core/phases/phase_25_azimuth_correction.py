@@ -455,7 +455,25 @@ class AzimuthCorrectionPhaseV2(PhaseInterface):
         # Step 4: Check if correction needed
         # Primary criterion: Significant phase shift detected
         # Secondary criterion: HF loss exceeds threshold
-        needs_correction = (max_phase_shift > 5.0) or (hf_loss_db > self.HF_LOSS_THRESHOLD_DB)
+        # §SOTA-PSY-A1/PSY-A8 (2026-09-16): Hör-JND-basierte Schwellen statt
+        # fester Sample-Konstanten (Hörordnung §4/§8b). ITD-JND (30 µs,
+        # hearing_jnd) × konservativem Faktor 3,5 ≈ 5 Samples @ 48 kHz —
+        # Bestandsverhalten bleibt bit-identisch, wird aber SR-unabhängig und
+        # literatur-basiert; das HF-Kriterium fällt nie unter die Pegel-JND.
+        try:
+            from backend.core.dsp.hearing_jnd import jnd as _jnd_25
+
+            _azimuth_jnd_threshold_sec_25 = float(_jnd_25("itd_tone")) * 3.5
+            _hf_jnd_floor_25 = float(_jnd_25("level_tone_1khz"))
+        except Exception as _jnd25_exc:
+            logger.debug("Verarbeitungsschritt_25 §PSY-A8 JND-Tabelle nicht verfügbar: %s", _jnd25_exc)
+            _azimuth_jnd_threshold_sec_25 = 5.0 / 48000.0
+            _hf_jnd_floor_25 = 0.0
+        _max_phase_shift_sec_25 = float(max_phase_shift) / float(sample_rate)
+        _hf_loss_threshold_db_25 = max(float(self.HF_LOSS_THRESHOLD_DB), _hf_jnd_floor_25)
+        needs_correction = (_max_phase_shift_sec_25 > _azimuth_jnd_threshold_sec_25) or (
+            hf_loss_db > _hf_loss_threshold_db_25
+        )
 
         if not needs_correction:
             logger.debug(
@@ -484,8 +502,8 @@ class AzimuthCorrectionPhaseV2(PhaseInterface):
                 metrics={
                     "max_phase_shift_samples": float(max_phase_shift),
                     "hf_loss_db": float(hf_loss_db),
-                    "threshold_phase_shift": 5.0,
-                    "threshold_hf_loss_db": self.HF_LOSS_THRESHOLD_DB,
+                    "threshold_phase_shift": round(float(_azimuth_jnd_threshold_sec_25 * sample_rate), 2),
+                    "threshold_hf_loss_db": round(float(_hf_loss_threshold_db_25), 2),
                 },
             )
 

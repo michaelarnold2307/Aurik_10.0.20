@@ -162,9 +162,14 @@ def install_tifresi_shim() -> None:
 
     Danach importiert `data.audioLoader` im Upstream fehlerfrei und nutzt
     diese NumPy-Implementierung statt ltfatpy.
+
+    Idempotent: existiert bereits ein (ggf. nur teilweise geladenes)
+    `tifresi` in sys.modules — z. B. durch die GACELA-Plugin-Inferenz,
+    die das lokale models/gacela/tifresi-Stub-Paket importiert — wird es
+    VOLLSTÄNDIG ersetzt statt frühzeitig zurückzukehren. Ein Early-Return
+    hinterließ früher ein partielles Paket (transforms/metrics fehlten),
+    was je nach Test-Reihenfolge Importfehler im Upstream auslöste.
     """
-    if "tifresi" in sys.modules:
-        return
     pkg = types.ModuleType("tifresi")
     stft_mod = types.ModuleType("tifresi.stft")
     stft_mod.GaussTruncTF = GaussTruncTFShim  # type: ignore[attr-defined]

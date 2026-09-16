@@ -1973,9 +1973,39 @@ class DenoisePhase(PhaseInterface):
                     logger.debug("Verarbeitungsschritt_03 §SOTA-HR-V1 nicht verfügbar: %s", _hrv1_exc_03ml)
                     _hr_v1_meta_03ml = {"attempted": False, "reason": "unavailable"}
 
+                # §2.46f Edge-Gain-Cap (Defizit-Fix 2026-09-16): NACH der
+                # §0-Level-Restauration anwenden — _p03_out skaliert den
+                # loudness-normalisierten ML-Ausgang zurück auf Eingangspegel,
+                # ein Cap davor wäre wirkungslos. Referenz = Eintritts-Audio.
+                _ml_final_p03 = _p03_out(ml_result.audio)
+                try:
+                    from backend.core.dsp.edge_gain_cap import apply_edge_gain_cap as _egc03ml
+
+                    _ml_final_p03 = _egc03ml(
+                        np.asarray(_p03_entry_audio, dtype=np.float32),
+                        np.asarray(_ml_final_p03, dtype=np.float32),
+                        sample_rate,
+                    )
+                except Exception as _egc03ml_exc:
+                    logger.debug("Verarbeitungsschritt_03 ML §2.46f Edge-Gain-Cap nicht blockierend: %s", _egc03ml_exc)
+                # §2.46f Konvex-Edge-Taper: der ML-Pfad umgeht die DSP-Kaskade
+                # (dort läuft der Taper) — Intro/Outro konvex Richtung
+                # Eintritts-Audio blenden, damit die Randzonen hochkorreliert
+                # mit dem Original bleiben (Similarity-Invariante des Tests).
+                try:
+                    from backend.core.dsp.edge_gain_cap import apply_edge_taper_convex as _etc03ml
+
+                    _ml_final_p03 = _etc03ml(
+                        np.asarray(_p03_entry_audio, dtype=np.float32),
+                        np.asarray(_ml_final_p03, dtype=np.float32),
+                        sample_rate,
+                    )
+                except Exception as _etc03ml_exc:
+                    logger.debug("Verarbeitungsschritt_03 ML §2.46f Edge-Taper nicht blockierend: %s", _etc03ml_exc)
+
                 # §2.51 Rückkonversion via globale _p03_out() Normalisierung
                 return create_phase_result(
-                    audio=_p03_out(ml_result.audio),
+                    audio=_ml_final_p03,
                     modifications={
                         "noise_reduction_db": _effective_noise_reduction_db,
                         "ml_raw_noise_reduction_db": noise_reduction_db,
@@ -2756,6 +2786,22 @@ class DenoisePhase(PhaseInterface):
         except Exception as _hrv1_exc_03:
             logger.debug("Verarbeitungsschritt_03 §SOTA-HR-V1 nicht verfügbar: %s", _hrv1_exc_03)
             _hr_v1_meta_03 = {"attempted": False, "reason": "unavailable"}
+
+        # §2.46f Edge-Gain-Cap (Defizit-Fix 2026-09-16): additive Nach-Schritte
+        # (V21 Noise-Floor, Timbral-Resynth, HR-V1) laufen NACH dem Konvex-
+        # Edge-Taper und können die Randzonen über die +2-dB-Marge heben.
+        # Der Cap skaliert die Zone sanft zurück (nur Absenkung, 50-ms-
+        # Crossfade an der Innenkante, non-blocking §V6 (copilot-instructions.md)).
+        try:
+            from backend.core.dsp.edge_gain_cap import apply_edge_gain_cap as _egc03
+
+            result_audio = _egc03(
+                np.asarray(_post_nr_guard_ref_audio, dtype=np.float32),
+                np.asarray(result_audio, dtype=np.float32),
+                sample_rate,
+            )
+        except Exception as _egc03_exc:
+            logger.debug("Verarbeitungsschritt_03 §2.46f Edge-Gain-Cap nicht blockierend: %s", _egc03_exc)
 
         return create_phase_result(
             audio=_p03_out(result_audio),
