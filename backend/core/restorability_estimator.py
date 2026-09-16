@@ -271,6 +271,10 @@ class RestorabilityEstimator:
         # ----------------------------------------------------------------
         _muq_mos: float | None = None
         _muq_witness: float | None = None
+        # SUP-F5 (2026-09-16): Der MuQ-ML-Prior wird separat getaktet — der
+        # einmalige Modell-Erst-Load (GPU, gemessen 19,2 s) ist KEIN Verbrauch
+        # des §2.26-DSP-Budgets und darf die 5-s-Warnung nicht auslösen.
+        _muq_elapsed = 0.0
         try:
             from plugins.muq_plugin import estimate_muq_mos as _muq_mos_fn
             from plugins.muq_plugin import estimate_quality_witness as _muq_witness_fn
@@ -284,8 +288,10 @@ class RestorabilityEstimator:
             if len(_muq_in) > _max_muq_samples:
                 _muq_start = (len(_muq_in) - _max_muq_samples) // 2
                 _muq_in = _muq_in[_muq_start : _muq_start + _max_muq_samples]
+            _t_muq0 = time.perf_counter()
             _muq_witness = _muq_witness_fn(_muq_in, sr)
             _muq_mos = _muq_mos_fn(_muq_in, sr)
+            _muq_elapsed = time.perf_counter() - _t_muq0
         except Exception as _muq_exc:
             logger.warning(
                 "MuQ-Qualitätsprior nicht verfügbar (%s) — DSP-MOS bleibt aktiv (§V6 (copilot-instructions.md))",
@@ -315,11 +321,18 @@ class RestorabilityEstimator:
         limiting_defects = limiting_defects[:3]
 
         _elapsed = time.perf_counter() - _t0
-        if _elapsed > 5.0:
+        _elapsed_dsp = _elapsed - _muq_elapsed
+        if _elapsed_dsp > 5.0:
             logger.warning(
-                "RestorabilityEstimator: time Grenze exceeded (%.2fs > 5.0s) — Ergebnis may be partial. material=%s",
-                _elapsed,
+                "RestorabilityEstimator: DSP-Budget exceeded (%.2fs > 5.0s) — Ergebnis may be partial. material=%s",
+                _elapsed_dsp,
                 material,
+            )
+        elif _muq_elapsed > 5.0:
+            logger.info(
+                "RestorabilityEstimator: MuQ-ML-Prior %.2fs (Erst-Load einmalig je Prozess) — DSP-Anteil %.2fs im Budget",
+                _muq_elapsed,
+                _elapsed_dsp,
             )
 
         return RestorabilityResult(

@@ -770,6 +770,7 @@ class AdaptiveDeEsserPhase(PhaseInterface):
         # Non-sibilant regions revert to the original signal so harmonic vowel and instrumental
         # passages are not inadvertently de-essed (iZotope RX-class time-domain gating).
         _ptl_gate43 = kwargs.get("phoneme_timeline")
+        _subaudible_skipped43 = 0
         if _ptl_gate43 is not None:
             _sib_segs43 = _ptl_gate43.sibilant_segments()
             if _sib_segs43:
@@ -779,6 +780,12 @@ class AdaptiveDeEsserPhase(PhaseInterface):
                     _n43 = x.shape[1]  # channels-first: N = shape[1]
                 else:
                     _n43 = x.shape[0]  # channels-last oder mono: N = shape[0]
+                # §SOTA-PSY-A1 (2026-09-16): Mono-Referenz für das Audibility-Gate
+                # (gleicher Mix wie die Linked-Stereo-Detektion).
+                if x.ndim == 2:
+                    _aud_ref43 = np.mean(x, axis=0) if x.shape[0] == 2 else np.mean(x, axis=1)
+                else:
+                    _aud_ref43 = x
                 _gate43 = np.zeros(_n43, dtype=np.float32)
                 _fade43 = max(2, int(sample_rate * 0.005))  # 5 ms cosine fade
                 for _seg43 in _sib_segs43:
@@ -786,6 +793,23 @@ class AdaptiveDeEsserPhase(PhaseInterface):
                     _e43 = min(_n43, int(_seg43.end_s * sample_rate))
                     if _e43 <= _s43:
                         continue
+                    # §SOTA-PSY-A1 (2026-09-16): subaudible Sibilanten (unter der
+                    # Maskierungsschwelle) bleiben ungezähmt — §4-Vertrag.
+                    # Band 4–12 kHz: Sibilanten-Zischlaute liegen typischerweise hier.
+                    try:
+                        from backend.core.dsp.audibility_gate import defect_audibility as _aud_43
+
+                        _aud_res_43 = _aud_43(_aud_ref43, sample_rate, _s43, _e43, lo_hz=4000.0, hi_hz=12000.0)
+                        if bool(_aud_res_43.get("skippable", False)):
+                            _subaudible_skipped43 += 1
+                            logger.debug(
+                                "Verarbeitungsschritt_43 §SOTA-PSY-A1: Sibilant [%d:%d] unter der Maskierungsschwelle — übersprungen.",
+                                _s43,
+                                _e43,
+                            )
+                            continue  # Segment bleibt Original (gate=0)
+                    except Exception as _aud43_exc:
+                        logger.debug("Verarbeitungsschritt 43 §SOTA-PSY-A1 nicht verfügbar: %s", _aud43_exc)
                     _gate43[_s43:_e43] = 1.0
                     _fi43 = min(_fade43, _e43 - _s43)
                     _gate43[_s43 : _s43 + _fi43] = np.sin(np.linspace(0.0, np.pi / 2.0, _fi43)) ** 2
@@ -1063,6 +1087,7 @@ class AdaptiveDeEsserPhase(PhaseInterface):
                 "sibilance_ratio": _intensity_profile.sibilance_ratio,
                 "fricative_drive": _intensity_profile.fricative_drive,
                 "sibilance_locality_coverage": float(_sib_locality_coverage43),
+                "subaudible_sibilants_skipped": int(_subaudible_skipped43),
                 "rms_drop_db": 0.0,
                 "loudness_makeup_db": 0.0,
             },

@@ -98,3 +98,31 @@ def test_deterministic() -> None:
     length = int(0.03 * SR)
     y[SR - length : SR] += 0.5 * x[SR : SR + length]
     assert pre_echo_ratio_db(x, y, SR) == pre_echo_ratio_db(x, y, SR)
+
+
+def test_quiet_onset_with_micro_noise_is_no_pre_echo() -> None:
+    """SUP-F6 (2026-09-16): ≈0-Delta-Phasen (phase_01 micro_fallback Δ=+0,00 dB)
+    feuerten pre_echo — Delta-Rauschen passierte bei leisen Onsets die relativen
+    Maskierungs-Schwellen (die gegen 0 gehen). Die absolute Hörbarkeits-Schwelle
+    (−60 dB unter Song-Peak) blockt das."""
+    rng = np.random.default_rng(23)
+    t = np.arange(SR * 2) / SR
+    x = (0.005 * np.sin(2 * np.pi * 440 * t) + 1e-5 * rng.standard_normal(SR * 2)).astype(np.float32)
+    x[SR:] *= 6.0  # leiser Onset — Peak bleibt klein (0,03)
+    y = x + (3e-4 * rng.standard_normal(SR * 2)).astype(np.float32)
+    assert pre_echo_ratio_db(x, y, SR) <= -12.0
+
+
+def test_limiter_like_peak_attenuation_is_no_pre_echo() -> None:
+    """SUP-F6 (2026-09-16): phase_47_truepeak_limiter (best_effort, drop=+0,01 dB)
+    meldete pre_echo bei pitch=0.0c/loud=0.0dB — weiche Peak-Dämpfung ist keine
+    Pre-Echo-HINZUFÜGUNG (positive Delta-Hälfte bleibt unter jeder Schwelle)."""
+    x = _attack_signal()
+    rng = np.random.default_rng(5)
+    y = x.copy()
+    _thr = 0.7 * float(np.abs(x).max())
+    _pk = np.where(np.abs(x) > _thr)[0]
+    _sel = rng.choice(_pk, size=min(2000, len(_pk)), replace=False)
+    for _p in _sel:
+        y[_p] = np.sign(y[_p]) * (_thr + 0.8 * (np.abs(y[_p]) - _thr))
+    assert pre_echo_ratio_db(x, y, SR) <= -12.0

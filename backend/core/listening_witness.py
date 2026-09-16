@@ -63,6 +63,13 @@ _AIR_LO_HZ = 8000.0
 _AIR_HI_HZ = 20000.0
 _AIR_LOSS_DB = 2.0
 _ROUGHNESS_RISE_ASPER = 0.35
+# SUP-F6 (2026-09-16): Der Rauigkeits-Schätzer (roughness_model) ist eine
+# RELATIVE Skala (Modulationstiefe, ~10⁴ auf realer Musik) — eine absolute
+# 0,35-Schwelle feuerte deshalb bei JEDER Hüllkurven-Änderung (~0-Delta-Phasen:
+# +1,16 bei harmlosem 30-Hz-Hochpass auf dem Elke-Best-Export). Unter ~35 %
+# relativem Anstieg (2× Vassilakis-JND ≈ 17 %) wird auf 0 geklemmt — Finding
+# UND Veto-Schwelle (witness_correction_loop) erben EINE Wahrheitsquelle.
+_ROUGHNESS_RISE_REL = 0.35
 _PRE_ECHO_DB = -12.0
 # §Residual-Defekt-Zeugen (2026-09-13): Gedämpfter Gesang + Rest-Verzerrung.
 # Klarheitsband des Gesangs (2–6 kHz) — Dämpfung dort = gedämpfter Gesang.
@@ -418,12 +425,18 @@ def evaluate_listening_witness(
     _roughness_rise = 0.0
     try:
         from backend.core.dsp.masking_model import band_audibility as _ba
+        from backend.core.dsp.roughness_model import compute_roughness_asper as _cra
         from backend.core.dsp.roughness_model import roughness_rise_asper as _rra
 
         _air_aud = _ba(a, b, sr, _AIR_LO_HZ, _AIR_HI_HZ)
         _masked_residual_db = float(_air_aud.get("delta_db", 0.0))
         _air_audible = bool(_air_aud.get("audible", False))
         _roughness_rise = _rra(a, b, sr)
+        _roughness_before = float(_cra(a, sr))
+        # JND-Kalibrierung (SUP-F6): Unterhalb des relativen JND-Anteils ist
+        # der Anstieg nicht als Rauigkeits-Zuwachs hörbar → auf 0 klemmen.
+        if _roughness_rise <= max(_ROUGHNESS_RISE_ASPER, _ROUGHNESS_RISE_REL * _roughness_before):
+            _roughness_rise = 0.0
     except Exception as _sota_exc:
         logger.debug("§Witness-SOTA P1/P2 nicht verfügbar: %s", _sota_exc)
 

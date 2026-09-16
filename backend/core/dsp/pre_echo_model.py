@@ -50,7 +50,6 @@ def pre_echo_ratio_db(x_before: np.ndarray, x_after: np.ndarray, sr: int) -> flo
     idx = np.arange(hop)[None, :] + hop * np.arange(n_frames)[:, None]
 
     env_a = np.sqrt(np.mean(after[idx] ** 2, axis=1)) + 1e-12
-    env_d = np.sqrt(np.mean(delta[idx] ** 2, axis=1)) + 1e-12
     # Hinzugefügte (positive) Delta-Energie je Frame — für das Audibility-Gate.
     # |delta|² allein ist vorzeichenblind: Klick-ENTFERNUNG im Vor-Fenster zählt
     # sonst wie Pre-Echo-HINZUFÜGUNG (False-Positive bei Declickern).
@@ -79,6 +78,13 @@ def pre_echo_ratio_db(x_before: np.ndarray, x_after: np.ndarray, sr: int) -> flo
 
     worst_db = -200.0
     _mask_floor_db = 10.0 ** (-_FWD_MASK_DB / 10.0)
+    # SUP-F6 (2026-09-16): Absolute Hörbarkeits-Schwelle — hinzugefügte
+    # Pre-Energie unter −60 dB des Song-Peaks (gleiche Konstante wie die
+    # Onset-Baseline) ist unter jeder Maskierungsbedingung unhörbar. Bei
+    # leisen Onsets gehen die relativen Schwellen gegen 0 und Delta-Rauschen
+    # ≈0-Delta-Phasen (phase_01 micro_fallback Δ=+0,00 dB, phase_47-Limiter)
+    # passierte sie — Produktionsbefund 2026-09-16.
+    _abs_floor_e = (float(np.max(env_a)) * 10.0 ** (-60.0 / 20.0)) ** 2
     for _of in onset_frames:
         _pre_lo = max(0, _of - pre_frames)
         _pre_hi = max(0, _of - gap_frames)
@@ -90,8 +96,23 @@ def pre_echo_ratio_db(x_before: np.ndarray, x_after: np.ndarray, sr: int) -> flo
         _added_pre_e = float(np.mean(env_d_pos[_pre_lo:_pre_hi] ** 2))
         if _added_pre_e < float(env_a[_of] ** 2) * _mask_floor_db:
             continue
-        _pre_e = float(np.mean(env_d[_pre_lo:_pre_hi] ** 2)) + 1e-18
-        _post_e = float(np.mean(env_d[_of:_post_hi] ** 2)) + 1e-18
+        if _added_pre_e < _abs_floor_e:
+            continue
+        # SUP-F6 (2026-09-16): Zweite Audibility-Schwelle — hinzugefügte
+        # Pre-Energie unter dem lokalen Vor-Fenster-Signalpegel − 18 dB ist
+        # maskiert und löst KEINEN Befund aus. Bisher erzeugte Delta-Rauschen
+        # (≈0-Delta-Phasen, z. B. Limiter bei pitch=0.0c/loud=0.0dB) einen
+        # Pre-Echo-Befund, weil das Verhältnis zweier Rausch-Energien beliebig
+        # groß werden kann.
+        _pre_signal_e = float(np.mean(env_a[_pre_lo:_pre_hi] ** 2)) + 1e-18
+        if _added_pre_e < _pre_signal_e * _mask_floor_db:
+            continue
+        # SUP-F6 (2026-09-16): Das Verhältnis wird auf HINZUGEFÜGTER Energie
+        # (positive Delta-Hälfte) gebildet — die signierte Delta-Energie zählte
+        # Klick-ENTFERNUNG im Vor-Fenster wie eine Pre-Echo-HINZUFÜGUNG
+        # (False-Positive bei phase_01/23, Produktionsbefund 2026-09-16).
+        _pre_e = float(np.mean(env_d_pos[_pre_lo:_pre_hi] ** 2)) + 1e-18
+        _post_e = float(np.mean(env_d_pos[_of:_post_hi] ** 2)) + 1e-18
         ratio_db = 10.0 * np.log10(_pre_e / _post_e)
         worst_db = max(worst_db, ratio_db)
     return float(round(worst_db, 2))

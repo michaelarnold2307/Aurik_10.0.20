@@ -1,18 +1,56 @@
 # TASK_CHANGES — Live-Ledger der aktuellen Aufgabe
 
-> Generiert von `scripts/change_ledger.py snapshot` (Base: `HEAD`, Stand: 2026-09-17 00:31 CEST).
+> Generiert von `scripts/change_ledger.py snapshot` (Base: `HEAD`, Stand: 2026-09-17 01:19 CEST).
 > CI (`ci-lite.yml` pr-evidence-gate) erzwingt Abdeckung: jede geänderte Code-Datei muss hier stehen.
 
 ## Geänderte Dateien
 
 | Status | Pfad | Art |
 |---|---|---|
-| M | .github/FILE_REGISTRY.md | modifiziert |
+| M | backend/core/dsp/pre_echo_model.py | modifiziert |
+| M | backend/core/listening_witness.py | modifiziert |
+| M | backend/core/phases/phase_43_ml_deesser.py | modifiziert |
+| M | backend/core/restorability_estimator.py | modifiziert |
 | M | docs/TODOS_SOTA_ROADMAP.md | modifiziert |
-| ?? | docs/reports/supervised_runs/2026-09-16_elke_best_225s.md | ungetrackt |
+| M | tests/unit/test_listening_witness.py | modifiziert |
+| M | tests/unit/test_phase_43_ml_deesser.py | modifiziert |
+| M | tests/unit/test_pre_echo_model.py | modifiziert |
+| ?? | docs/reports/supervised_runs/2026-09-16_elke_best_225s_export_analyse.md | ungetrackt |
 
 ## Entscheidungen
 
+- **Defizit-Abarbeitung 2026-09-17 (SUP-F5/F6, PSY-A1-43, Budget-Wahrheit)**:
+  - SUP-F5 (DIAGNOSTIK): `RestorabilityEstimator` taktet den MuQ-ML-Prior jetzt
+    separat und zieht ihn vom §2.26-DSP-Budget ab — der einmalige
+    Modell-Erst-Load (gemessen 19,2 s) löst keine 5-s-Budget-Warnung mehr aus;
+    geprüft wird nur noch der echte DSP-Anteil (INFO „Erst-Load einmalig je
+    Prozess“ statt WARNING).
+  - SUP-F6 (DIAGNOSTIK, Kalibrierung statt Workaround): (a)
+    `pre_echo_model` bildet das Verhältnis nur noch auf HINZUGEFÜGTER Energie
+    (positive Delta-Hälfte — Klick-ENTFERNUNG zählte vorher wie eine
+    Pre-Echo-HINZUFÜGUNG), ergänzt um eine lokale Vor-Fenster-Audibility-
+    Schwelle (−18 dB) und eine absolute −60-dB-Hörbarkeits-Schwelle für leise
+    Onsets (Produktionsfall phase_01 micro_fallback Δ=+0,00 dB und
+    phase_47-Limiter reproduziert → jetzt −200). (b) `listening_witness`
+    klemmt den Rauigkeits-Anstieg unterhalb des relativen JND (≤ 35 % =
+    2× Vassilakis-JND ≈ 17 %; Befund: harmloser 30-Hz-Hochpass = +1,16 auf
+    Skala ~35632) auf 0 — Findings UND Veto-Loop erben EINE Wahrheitsquelle.
+    2 neue Fälle je Testdatei (test_pre_echo_model, test_listening_witness).
+  - PSY-A1 phase_43 (Sibilanten-Maskierungs-Gate): subaudible Sibilanten-
+    Segmente (unter Maskierungsschwelle, Band 4–12 kHz, Muster phase_19)
+    bleiben ungezähmt; Zähler `subaudible_sibilants_skipped`;
+    test_phase_43_ml_deesser (48 Tests grün).
+  - Budget-Wahrheit (Profiling auf dem Elke-Best-Export): phase_01s
+    4,4×-RT-Attribution „DSP-Multiscale“ war falsch — Multiscale kostet nur
+    ~3 s/225 s (11 % der Phasen-Zeit); Treiber sind der einmalige
+    BANQUET-ML-Load (0,78 s/Prozess) + Device-Detection (0,26 s) bzw. im Lauf
+    die CPU-Inferenz. R8-Rollout auf 01/19 daher evidenzbasiert BEENDET
+    (phase_19 hat das Sparse-Muster bereits als Segment-Gate).
+  - F3/HR-V1-Budget-Messung (Torch-ROCm): 2,5× RT (25,05 s/10 s, 26 Bänder,
+    PQS 4,93) — Flag bleibt vertragsgemäß OFF bis Gesamt-Budget-Nachweis
+    (aktuell 33× RT > 32×-Ziel); Activation-Contract-Tests sind flag-bewusst.
+  - Roadmap/FILE_REGISTRY nachgezogen; Export-Analyse-Report ergänzt
+    (0 eingeführte Restdefekte, MuQ 4,84→4,85).
 - **Überwachter 225-s-Lauf 2026-09-16 (Elke Best, voller Song) — Befunde & Fixes**:
   - SUP-F1 (PERF): PANNs-ROCm-Provider-Filter verglich (Name, Options)-Tupel
     gegen String-Namen → GPU immer verworfen, PANNs dauerhaft CPU. Fix:

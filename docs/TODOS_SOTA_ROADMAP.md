@@ -875,7 +875,7 @@ Sänger-Identität, MuQ-MOS nicht schlechter als Baseline).
 | 04/16/17 EQ/Dynamik | DSP + Zielkurven | **SOTA-C4**: DDSP-Prädiktor (Embeddings → EQ/Dynamik-Parameter, DSP führt aus) — GPU (F5); Harness + Erstlauf 2026-09-16 (CLAP-eingefroren ⇒ Negativbefund, s. F5-Zeile); nächster Schritt DDSP-Mel-Encoder |
 | 07 harmonisch | DSP-Harmonic-Restoration | **SOTA-HR-V1**: BigVGAN-Repair-Pfad + additive_synthesis_gate in phase_07 verdrahtet (Aktivierungsvertrag fail-closed, attempted/applied-Witness); A/B-Validierung via `scripts/validate_hr_v1.py` — Flag-Entscheid GPU (F3) |
 | 08/36 Transienten | Superflux/Envelope + BEATs-Witness (TP-V1, V1) | **SOTA-TP-V2**: neurale Phasen-Schätzung für Transienten-Frames (Modell + Quelle klären); adaptive Schwelle aus TP-V1-Konsens |
-| 19/43 De-Esser | DSP (19) + ML-Deesser (43) | Sibilanten-Maskierungs-Gate (PSY-A1) — sonst SOTA |
+| 19/43 De-Esser | DSP (19) + ML-Deesser (43) | Sibilanten-Maskierungs-Gate (PSY-A1) ✅ 19 ERLEDIGT 2026-09-14, **43 ERLEDIGT 2026-09-16** (Segment-Gate: subaudible Sibilanten bleiben Original, Zähler `subaudible_sibilants_skipped`) — sonst SOTA |
 | 20/49 Dereverb | DR-V1-Verdrahtung (RT60-Witness, konservativ gedeckelt) | präziser neuraler RT60-Regressor (GPU-Training); PSY-A1-Gate für Dry/Wet |
 | 23/50 Spektral-Repair | DSP/NMF | **HR-V1-Witness verdrahtet (Q6, fail-closed)**; neuronale Spektral-Inpainting-Basis (F3/F4) |
 | 55 Inpainting | Kaskade (FlowMatching, Consistency, CQTdiff+, DAC, GaCELA, DiffWave-S3-vorbereitet) | F2 trainiert + fair validiert ⇒ verworfen (fail-closed, 2026-09-15); F1 abgebrochen; **S4-Verifikation 2026-09-16: formal durchgeführt — CQTdiff+-first für Gesangslücken (Evidenz-Reorder) + FlowAudio-§G5-Determinismus-Fix; mean ΔSDR +0,005 dB, striktes Segment-Gate marginal offen (GPU-Finetune-Folge)** |
@@ -1144,7 +1144,7 @@ Alle CPU-schließbaren Punkte der Offene-Punkte-Matrix sind umgesetzt und getest
 
 | Punkt | Status | Begründung / nächster Schritt |
 |---|---|---|
-| TODO-P0-1 (53×→32×-Laufzeit) | **TEIL-ERLEDIGT (Messung) 2026-09-15; Rest GPU-GEBUNDEN** | Hot-Phase-Messung geliefert: `compute_hot_phases` im Diagnose-Skript (rt_factor je Phase, Hot-Liste ab 0,5× RT, test_p0_1_hot_phase_report.py). Befund (20-s-Track): phase_01 4,4× RT (DSP-Multiscale, kein ML — Empfehlung Decimation, Qualitäts-sensitiv), phase_19 1,6×, phase_07 0,66×; CPU-Gewinne geliefert: R8-Sparse-Repair phase_59, PSY-A1-Gates (subaudible skips), Residency-Policy; ML-Haupttreiber (03/55) + 53×→32×-Rest brauchen F1–F5/ROCm | hängt an den GPU-Buildouts F1–F5 + Residency-Gewinnen; kein CPU-Fix möglich |
+| TODO-P0-1 (53×→32×-Laufzeit) | **TEIL-ERLEDIGT (Messung) 2026-09-15; Rest GPU-GEBUNDEN** | Hot-Phase-Messung geliefert: `compute_hot_phases` im Diagnose-Skript (rt_factor je Phase, Hot-Liste ab 0,5× RT, test_p0_1_hot_phase_report.py). **Attributions-Korrektur 2026-09-16 (Profiling):** phase_01s 4,4×-RT-Attribution „DSP-Multiscale“ war falsch — Multiscale kostet nur 3 s/225 s; Treiber sind ML-Load/-Inferenz (BANQUET/Device-Detection). CPU-Gewinne geliefert: R8-Sparse-Repair phase_59, PSY-A1-Gates (subaudible skips), Residency-Policy; ML-Haupttreiber (03/55) + 53×→32×-Rest brauchen F1–F5/ROCm | hängt an den GPU-Buildouts F1–F5 + Residency-Gewinnen; kein CPU-Fix möglich |
 | TODO-P0-2 (Per-Session-Kompilierung) | **EXTERN BLOCKIERT** | ONNX-Compile-Strategie; Folge von P0-1/C |
 | TODO-P0-3 (Budget-Wahrheit) | ✅ GESCHLOSSEN 2026-09-15 | s. o. A |
 | TODO-P1-1 (Residency) | ✅ GESCHLOSSEN 2026-09-15 (Policy) | s. o. C; Laufzeit-Gewinn misst P0-1 |
@@ -1154,13 +1154,13 @@ Alle CPU-schließbaren Punkte der Offene-Punkte-Matrix sind umgesetzt und getest
 | TODO-P1-5 … P1-12 | ✅ GESCHLOSSEN 2026-09-08 | Status im jeweiligen Abschnitt |
 | PSY-A1/A2/A3/A4/A5/A8 | ✅ GESCHLOSSEN 2026-09-14/15 | Rollouts in den Tabellenzeilen; PSY-A2-zeitvariant via P5 |
 | PSY-A6 (CIPIC-HRIR) | AUSBAUSTUFE (dokumentiert) | persönliche HRIR; nicht blockierend |
-| R1/R4/R5/R8 | ✅ GESCHLOSSEN 2026-09-15 | s. o. G + Welle 1 (R4-Benchmark, R5-Zertifikat, R8-Infrastruktur); R8-Per-Phase-Rollout: phase_59 umgesetzt (Defekt-Maske als Rechen-Maske, sub-STFT-Fenster unverändert, Coverage-Fallback ≥0,85), weitere Phasen = Folge-Slice |
+| R1/R4/R5/R8 | ✅ GESCHLOSSEN 2026-09-15 | s. o. G + Welle 1 (R4-Benchmark, R5-Zertifikat, R8-Infrastruktur); **R8-Per-Phase-Rollout: phase_59 umgesetzt** (Defekt-Maske als Rechen-Maske, sub-STFT-Fenster unverändert, Coverage-Fallback ≥0,85). **Folge-Befund 2026-09-16 (Profiling):** ein Rollout auf phase_01/19 hätte KEINEN Nutzen — die Roadmap-Attribution „phase_01 = DSP-Multiscale-Bottleneck“ war falsch: `_detect_clicks_multiscale` kostet nur ~3 s/225 s (0,013× RT, 11 % der Phasen-Zeit); Treiber sind der einmalige BANQUET-ML-Load (0,78 s/Prozess, 62 %) und die ML-Device-Detection (0,26 s) bzw. im Lauf die CPU-Inferenz nach SUP-F2. phase_19 hat das Sparse-Muster bereits (segment-selektives Gate). R8-Rollout damit EVIDENZBASIERT BEENDET — der P0-1-Rest ist GPU-/ML-gebunden (R3) |
 | R2 (MuQ-MOS-Gate) | ✅ GESCHLOSSEN 2026-09-16 | **Produktionsverdrahtung**: `OneTakeExport.prepare(reference_audio=…)` + `one_take_prepare` + beide uv3-Pfade (Whole-Song + Chunked) reichen den Original-Input an `ExportQualityGate.check` durch; MuQ-Felder im Quality-Report, in `result.metadata` (`export_muq_mos_delta/in/out`) und im Bridge-Payload (`muq_mos_witness`). Witness bleibt **SOFT** (blockt nie, §0c — WIT-M4: Zeuge, kein Richter). Tests: `test_r2_muq_mos_export_wiring.py` |
 | R3 (ROCm alle Modelle) | **GPU-GEBUNDEN** | Ports nach BSR-Muster |
 | R6 (Per-Song-Zielklang DDSP) | **GPU-GEBUNDEN** | F5/C4 |
-| PSY-A1-Rest (25/31 JND) + P65-Witness | ✅ GESCHLOSSEN 2026-09-16 | **phase_25**: Azimut-Schwelle JND-basiert (ITD-JND 30 µs × 3,5 ≈ 5 Samples @ 48 kHz, SR-unabhängig, HF-Floor ≥ Pegel-JND; Bestandsverhalten bit-identisch). **phase_31**: 0,3-%-Speed-Schwelle als JND-gestützt dokumentiert (max-Floor mit Frequenz-JND 0,2 %). **phase_65**: Sänger-Identitäts-Witness als Per-Phase-Gate (`_apply_singer_identity_witness`, S4-Muster: Resemblyzer cos ≥ 0,92, sonst proportionaler Blend Richtung Input, non-blocking §V6). Tests: `test_psy_a1_jnd_gates_25_31.py`, `test_phase_65_singer_identity_witness.py` |
+| PSY-A1-Rest (25/31 JND) + P65-Witness | ✅ GESCHLOSSEN 2026-09-16 | **phase_25**: Azimut-Schwelle JND-basiert (ITD-JND 30 µs × 3,5 ≈ 5 Samples @ 48 kHz, SR-unabhängig, HF-Floor ≥ Pegel-JND; Bestandsverhalten bit-identisch). **phase_31**: 0,3-%-Speed-Schwelle als JND-gestützt dokumentiert (max-Floor mit Frequenz-JND 0,2 %). **phase_65**: Sänger-Identitäts-Witness als Per-Phase-Gate (`_apply_singer_identity_witness`, S4-Muster: Resemblyzer cos ≥ 0,92, sonst proportionaler Blend Richtung Input, non-blocking §V6). **phase_43 (2026-09-16): Sibilanten-Maskierungs-Gate verdrahtet** — subaudible Sibilanten-Segmente (unter Maskierungsschwelle, Band 4–12 kHz, Muster phase_19) bleiben ungezähmt, Zähler `subaudible_sibilants_skipped`; test_phase_43_ml_deesser (48 Tests grün). Damit ist die PSY-A1-Expansionsmatrix-Zeile für 19/43 vollständig. Tests: `test_psy_a1_jnd_gates_25_31.py`, `test_phase_65_singer_identity_witness.py` |
 | R7 (Adaptive Rescheduling) | FOLGE-SLICE | auf wall_budget_s aufbauend, nach P0-1 |
-| F1/F3/F5, Q4/Q7 + F3-Finetune-Teil (GPU-Buildouts) | **GPU-GEBUNDEN** | Trainings-/Port-Arbeit auf ROCm; **F2 + Q5 GESCHLOSSEN 2026-09-16** (faire S1-Validierung verwarf Pfad B, fail-closed); **F3-A/B-Teilvalidierung PASS 2026-09-16** (af +0,0073, HNR +4,42 dB — Flag-Rollout offen bis Test-Suite-Anpassung + UV3-Budget-Nachweis) |
+| F1/F3/F5, Q4/Q7 + F3-Finetune-Teil (GPU-Buildouts) | **GPU-GEBUNDEN** | Trainings-/Port-Arbeit auf ROCm; **F2 + Q5 GESCHLOSSEN 2026-09-16** (faire S1-Validierung verwarf Pfad B, fail-closed); **F3-A/B-Teilvalidierung PASS 2026-09-16** (af +0,0073, HNR +4,42 dB — Flag-Rollout offen bis Test-Suite-Anpassung + UV3-Budget-Nachweis). **Budget-Messung 2026-09-16:** HR-V1-Synthese (Torch-ROCm, Elke-Best-Material) = **2,5× RT** (25,05 s für 10 s, 26 Bänder released, PQS 4,93); CPU >10× RT. Da der Gesamtlauf aktuell bei 33× RT liegt (32×-Ziel), bleibt das Flag vertragsgemäß OFF bis der Gesamt-Budget-Nachweis mit Headroom steht — die Activation-Contract-Tests sind bereits flag-bewusst (beide Zustände). Nächster Schritt: R3/ROCm-Ports + P0-1-Gewinne, dann Flag-Flip als Einzeiler |
 | WF-V4 (neuraler Warp-Schätzer), TP-V2 | **EXTERN BLOCKIERT (Checkpoint-Quelle)** | Quelle klären + Download |
 | P1-Folge (af-Never-worsen in 07/17/19/38) | ✅ GESCHLOSSEN 2026-09-15 | `artifact_freedom_guard.py` (billiger click/pre-echo-Delta-Guard, ≈0,008× RT) in 07/17/19/38 + `--fail-delta`-CI-Gate im Diagnose-Skript; Diagnose-Vergleich: phase_07 Δ−0,136→−0,049, phase_17 −0,084→+0,002, phase_19 −0,062→0,000, phase_38 −0,043→+0,061; Ketten-Min-af 0,473→0,631 |
 | PSY-A7 (10/11/40) | ✅ GESCHLOSSEN 2026-09-15 | `perceptual_loudness_cap.py` (Rollout-Helfer mit Headroom-Variante) in 10/11/40: 10/11 nie über Input-Lautheit, 40 kappt Kurzzeit-Pumping über dem Uniform-Gain (Ziel-LUFS-Anhebung bleibt legitim); test_psy_a7_loudness_cap_rollout.py |
@@ -1193,8 +1193,8 @@ Alle CPU-schließbaren Punkte der Offene-Punkte-Matrix sind umgesetzt und getest
 | SUP-F2 (QUALITÄT, alle Songs) | **BANQUET-Temp-WAV hart auf 44,1 kHz kodiert** (Pipeline fährt 48 kHz → Speed-/Pitch-Korruption des ML-Pfades) **+ Float-WAV**, das externe Reader (Docker/scipy) als „Format not recognised“ ablehnen → ML-Knistern-Pfad tot, DSP-Ersatz lief. | ✅ GEFIXT 2026-09-16: echte `sample_rate` + `subtype="PCM_16"` in `phase_09_crackle_removal._remove_crackle_ml` |
 | SUP-F3 (DIAGNOSTIK, alle Songs) | **§V44-Meldung invertiert**: `ok=False` (IACC ≥ 0,70 = schmales Stereobild) wurde als „Mono-Kompatibilitätswarnung“ geloggt — Near-Mono-Vintage (IACC=0,89) ist perfekt mono-kompatibel; irreführende Warnung auf allen schmal-stereofonen Songs. | ✅ GEFIXT 2026-09-16: Meldung korrigiert („schmales Stereobild, kein Defekt“) |
 | SUP-F4 (PERF) | **Chunk-1-Laufzeit 62,2× RT** (1866 s für 30 s) — P0-1-Ziel 32×, 224-s-Akzeptanz ≤ 40 min; ML-Schwere Treiber: MuQ/MERT/RMVPE/PESTO/CREPE-Ladungen + PANNs-CPU-Bug (SUP-F1). Vollauflösung hängt an GPU-Buildouts + Residency (P0-1-Matrix). | TEIL-BEHOBEN (SUP-F1); Rest = GPU-GEBUNDEN (F-Reihe) — Dokumentation P0-1 |
-| SUP-F5 (DIAGNOSTIK) | `RestorabilityEstimator: time Grenze exceeded (19,17 s > 5,0 s)` — Erst-Ladezeit des MuQ-GPU-Modells sprengt den 5-s-Guard; einmalig je Prozess, Meldung ist Rauschen. | OFFEN (kosmetisch): Guard beim Erst-Load suspendieren oder First-Call-Budget erhöhen — Folge-Slice |
-| SUP-F6 (DIAGNOSTIK) | Reinhör-Witness meldet `pre_echo`/`roughness_increase` bei ~0-Deltas (pitch=0.0c, loud=0.0dB) — Schwellwert-Kalibrierung prüfen (report-only, keine Rollbacks). | OFFEN (niedrig, report-only): Kalibrierungs-Check der Witness-Schwellen |
+| SUP-F5 (DIAGNOSTIK) | `RestorabilityEstimator: time Grenze exceeded (19,17 s > 5,0 s)` — Erst-Ladezeit des MuQ-GPU-Modells sprengt den 5-s-Guard; einmalig je Prozess, Meldung ist Rauschen. | ✅ GEFIXT 2026-09-16: MuQ-ML-Prior wird separat getaktet und vom §2.26-DSP-Budget abgezogen — der einmalige Modell-Erst-Load löst keine Budget-Warnung mehr aus (nur noch INFO „Erst-Load einmalig je Prozess“); das 5-s-Budget prüft jetzt den echten DSP-Anteil |
+| SUP-F6 (DIAGNOSTIK) | Reinhör-Witness meldet `pre_echo`/`roughness_increase` bei ~0-Deltas (pitch=0.0c, loud=0.0dB) — Schwellwert-Kalibrierung prüfen (report-only, keine Rollbacks). | ✅ GEFIXT 2026-09-16 (Kalibrierung, keine Workarounds): (a) `pre_echo_model`: Ratio wird auf HINZUGEFÜGTER Energie (positive Delta-Hälfte) gebildet + zweite Audibility-Schwelle relativ zum lokalen Vor-Fenster-Signal + absolute −60-dB-Hörbarkeits-Schwelle (leise Onsets, wo relative Schwellen gegen 0 gehen — Produktionsfall phase_01 micro_fallback Δ=+0,00 dB und phase_47-Limiter reproduziert: jetzt −200). (b) `listening_witness`: Rauigkeits-Anstieg wird JND-gegated (≤ 35 % relativer Anstieg = 2× Vassilakis-JND ≈ 17 % → auf 0 geklemmt; Produktionsbefund: harmloser 30-Hz-Hochpass ergab +1,16 bei Skala ~35632 auf realer Musik) — Findings UND Veto-Loop erben EINE Wahrheitsquelle. Tests: test_pre_echo_model (2 neue Fälle), test_listening_witness (2 neue Fälle) |
 | SUP-F7 (VERIFIKATION) | Export-Gate arbeitet korrekt delta-basiert: `af=0.000 verworfen (false-positive gegen degraded Eingabe)` + OneTakeExport BEST-EFFORT (LUFS −19,3 für ruhigen Vintage) — §0c-Vertrag hält. | ✅ BELEG (kein Fix nötig) |
 | SUP-F8 (DIAGNOSTIK, alle Songs) | WohlklangOrdnungGate-Audit meldete §Ebene-3-Verletzungen bei mikroskopischen Deltas (Audit-Epsilon 1e-9 vs. FC-Veto 0.012) — irreführende „Stufe-4-Gewinn auf Kosten Stufe-1“-Warnungen, während der korrekte Veto still blieb. | ✅ GEFIXT 2026-09-16: Audit-Schwelle = GPP-REGRESSION_EPSILON (eine Quelle der Wahrheit, kein neuer Schwellwert) |
 
@@ -1204,7 +1204,34 @@ Alle CPU-schließbaren Punkte der Offene-Punkte-Matrix sind umgesetzt und getest
 2. ✅ SUP-F2 (BANQUET-SR/PCM-Fix) — gefixt; Verifikation im nächsten Lauf.
 3. ✅ SUP-F3 (§V44-Meldung) — gefixt.
 4. ✅ SUP-F8 (WohlklangOrdnung-Audit-Epsilon) — gefixt.
-5. SUP-F4/F5/F6 — dokumentiert; F4-Rest GPU-gebunden, F5/F6 Folge-Slices.
+5. ✅ SUP-F5 (RestorabilityEstimator-Budget) + SUP-F6 (Witness-Kalibrierung) — gefixt 2026-09-16 (s. Matrix); SUP-F4-Rest GPU-gebunden.
+6. ✅ PSY-A1 phase_43 (Sibilanten-Maskierungs-Gate) — verdrahtet 2026-09-16.
+7. ✅ R8-Rollout — evidenzbasiert BEENDET (Profiling: phase_01/19-Rollout ohne Nutzen; Attribution korrigiert).
+8. ✅ F3-Budget-Messung (HR-V1 = 2,5× RT GPU) — Flag bleibt vertragsgemäß OFF bis Gesamt-Budget-Nachweis.
+
+### Export-Analyse 2026-09-16 (Restdefekte + Optimierungspotenzial)
+
+> Gemessen auf der exportierten Datei (Mono-Mix, 48 kHz) vs. Original:
+> Report: `docs/reports/supervised_runs/2026-09-16_elke_best_225s_export_analyse.md`.
+
+| Befund | Wert | Bewertung |
+|---|---|---|
+| Eingeführte Restdefekte (Restaurierungs-Schäden) | **0** — Oktavband-Δ exakt ±0,00 dB (alle 7 Bänder), Rauigkeit +0,000 asper, Pre-Echo −200 dB (Floor), af=0,998, §Hörbarkeits-Gate total=0 | ✅ Never-worsen perfekt eingehalten |
+| MuQ-MOS (10-s-Clips) | orig 4,84 → rest 4,85 (Δ +0,01) | ✅ keine Qualitäts-Verschlechterung |
+| Crest / Spektral-Zentroid | 4,1 → 4,1 · 621 → 625 Hz | ✅ Dynamik-/Klangcharakter erhalten |
+| Verbliebene Quell-Charakteristika (Scanner-Flags) | bandwidth_loss 0,99, hf_remanence_loss 0,98, inner_groove_distortion 0,97, wow/flutter, reverb_excess, soft_saturation | Ära-authentisch (1960er-Vinyl-Kette, BW 12,9 kHz) — Hörordnung Stufe 1 (authentizitaet) verbietet aggressive „Korrektur“ |
+
+**Optimierungspotenzial (maximaler Wohlklang, geordnet):**
+1. **HF-Rekonstruktion > 12,9 kHz** (bandwidth_loss/hf_remanence_loss conf≈0,99) →
+   SOTA-ML-V1 FlashSR-Finetune / HR-V1 BigVGAN (GPU F4/F3, additive_synthesis_gate)
+   — Hebel: Air/Presence (MUSHRA-Proxy VocPres=0,500, ISO226=0,254).
+2. **BANQUET-ML-Knistern-Pfad** war im Lauf tot (SUP-F2-Fix greift ab nächstem Lauf)
+   → Rest-Innenrillen-Distortion adressierbar.
+3. **PANNs-GPU (SUP-F1)** — verbessert Gesangs-Detektion in 01/19/43/65 (nächster Lauf).
+4. **Lautheit**: Datei ≈ −18,4 LUFS — OneTakeExport hat −16-Ziel angewendet (PASS);
+   optional moderates Ziel für moderne Wiedergabe.
+5. **Wow/Flutter/Hall**: bewusst erhalten (musikalische Modulation/Hörordnung) —
+   WF-V4 wäre der einzige authentizitätssichere Weg (extern blockiert).
 
 ## Hintergrund (damit die nächste Session sofort einsteigt)
 

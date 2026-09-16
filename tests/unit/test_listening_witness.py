@@ -316,3 +316,43 @@ def test_non_owner_phase_no_residual_warning():
     y = np.clip(x * 3.0, -1.0, 1.0).astype(np.float32)
     res = evaluate_listening_witness(x, y, sr, "phase_12_wow_flutter_fix")
     assert "vocal_distorted_residual" not in res.findings
+
+
+def _faded_carrier_am(am_depth: float) -> np.ndarray:
+    """Reiner Träger mit kurzen Fades (gegen Hilbert-Kantenartefakte) und
+    steuerbarer 30-Hz-AM-Tiefe im Rauigkeitsband."""
+    t = np.arange(N) / SR
+    carrier = 0.5 * np.sin(2 * np.pi * 220.0 * t)
+    fade = int(0.05 * SR)
+    w = np.ones(N)
+    w[:fade] = np.hanning(2 * fade)[:fade]
+    w[-fade:] = np.hanning(2 * fade)[fade:]
+    carrier = carrier * w
+    am = 1.0 + am_depth * np.sin(2 * np.pi * 30.0 * t)
+    x = carrier * am
+    return (x / np.max(np.abs(x))).astype(np.float32)
+
+
+def test_roughness_rise_below_relative_jnd_is_clamped() -> None:
+    """SUP-F6 (2026-09-16): Der Rauigkeits-Schätzer ist eine relative Skala
+    (~10⁴ auf realer Musik) — kleine, unhörbare Hüllkurven-Änderungen müssen
+    KEIN roughness_increase mehr melden (JND-Gate: < 35 % relativer Anstieg
+    wird auf 0 geklemmt; Produktionsbefund: +1,16 bei harmlosem 30-Hz-Hochpass
+    auf dem Elke-Best-Export). 12,5 % AM-Tiefen-Zunahme liegt unter dem
+    Vassilakis-JND (~17 %) → kein Befund."""
+    x = _faded_carrier_am(0.4)
+    y = _faded_carrier_am(0.45)  # +12,5 % relative Tiefe — unter JND
+    res = evaluate_listening_witness(x, y, SR, "phase_x")
+    assert "roughness_increase" not in res.findings
+    assert res.roughness_rise_asper == 0.0
+
+
+def test_roughness_rise_above_relative_jnd_still_fires() -> None:
+    """SUP-F6-Gegenprobe: Ein echter Rauigkeits-Regress (30-Hz-AM-Tiefe von
+    0 auf 80 %) muss weiterhin gemeldet werden — das JND-Gate darf
+    True-Positive nicht schlucken."""
+    x = _faded_carrier_am(0.0)
+    y = _faded_carrier_am(0.8)  # hörbare Rauigkeit: volle Modulationstiefe
+    res = evaluate_listening_witness(x, y, SR, "phase_x")
+    assert "roughness_increase" in res.findings
+    assert res.roughness_rise_asper > 0.0
