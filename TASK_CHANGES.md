@@ -1,6 +1,6 @@
 # TASK_CHANGES — Live-Ledger der aktuellen Aufgabe
 
-> Generiert von `scripts/change_ledger.py snapshot` (Base: `HEAD`, Stand: 2026-09-16 08:44 CEST).
+> Generiert von `scripts/change_ledger.py snapshot` (Base: `HEAD`, Stand: 2026-09-16 09:47 CEST).
 > CI (`ci-lite.yml` pr-evidence-gate) erzwingt Abdeckung: jede geänderte Code-Datei muss hier stehen.
 
 ## Geänderte Dateien
@@ -8,22 +8,23 @@
 | Status | Pfad | Art |
 |---|---|---|
 | M | .github/FILE_REGISTRY.md | modifiziert |
-| M | TASK_CHANGES.md | modifiziert |
-| M | backend/core/phases/phase_03_denoise.py | modifiziert |
-| M | backend/core/phases/phase_07_harmonic_restoration.py | modifiziert |
-| M | backend/core/phases/phase_23_spectral_repair.py | modifiziert |
-| M | backend/core/phases/phase_50_spectral_repair.py | modifiziert |
-| M | backend/core/phases/phase_55_diffusion_inpainting.py | modifiziert |
 | M | docs/TODOS_SOTA_ROADMAP.md | modifiziert |
-| A | docs/reports/current/2026-09-16_vocal_inpaint_s4.json | neu |
-| M | plugins/bigvgan_v2_plugin.py | modifiziert |
-| M | plugins/flow_audio_sota.py | modifiziert |
-| A | scripts/validate_vocal_inpaint_s4.py | neu |
-| M | tests/unit/test_flow_audio_sota.py | modifiziert |
-| M | tests/unit/test_hr_v1_activation_contract.py | modifiziert |
-| M | tests/unit/test_phase_55_diffusion_inpainting.py | modifiziert |
+| ?? | docs/reports/current/2026-09-16_ddsp_c4_first_run.md | ungetrackt |
+| ?? | scripts/train_ddsp_predictor_c4.py | ungetrackt |
 
 ## Entscheidungen
+
+- **SOTA-C4/F5: DDSP-Prädiktor-Harness + Erstlauf (2026-09-16, Negativbefund)**:
+  - Neues Skript `scripts/train_ddsp_predictor_c4.py` (--precompute/--train/--smoke):
+    MUSDB18-HQ-Effekt-Paare (deterministische 3-Band-RBJ-EQ + Soft-Knee-Kompressor,
+    Parameter = Label) → LAION-CLAP-Embeddings (eingefroren, 512-dim) → MLP-Head
+    (512→256→128→6, MSE). Cache-Pipeline + song-weiser 80/20-Split, Seed 42 (§G5 (GEBOTE.md)).
+  - Erstlauf: 40 Songs × 12 Segmente = 480 Paare, 25 Epochs — best val_MAE 0,2447
+    vs. Mittelwert-Baseline 0,2455 ⇒ **KEIN Signalanteil**: semantisches CLAP trägt
+    Produktions-EQ/Dynamik-Parameter nicht (zusätzlich schlecht gestellte Aufgabe).
+    Head NICHT aktiviert (fail-closed). Taskformulierung braucht DDSP-artigen
+    Mel-Encoder oder Audio-Frontend (BEATs/MERT) — Folgeschritt GPU.
+    Beleg: `docs/reports/current/2026-09-16_ddsp_c4_first_run.md`.
 
 - **S4-Verifikation (VOCAL-INPAINT-S4, GPU-Punkt) — formal durchgeführt, 2 Produktions-Bugs behoben (2026-09-16)**:
   - Harness `scripts/validate_vocal_inpaint_s4.py`: Kaskaden-Ausgang je 300-ms-
@@ -61,7 +62,6 @@
   - Roadmap: Q5 (F2-Verlängerung) GESCHLOSSEN (obsolet — S1-Validierung hat
     Pfad B verworfen; unterbrochener Resume-Lauf wird nicht fortgesetzt);
     Q6/F3 mit A/B-PASS dokumentiert; Phase-Tabelle (07/55) aktualisiert.
-
 - **Q6/F3: 23/50/03-Verdrahtung (2026-09-16)**:
   - Gemeinsamer Helfer `plugins.bigvgan_v2_plugin.apply_hr_v1_additive()` —
     EINE Schaltstelle (fail-closed via `bigvgan_v2_ready()`, Synthese →
