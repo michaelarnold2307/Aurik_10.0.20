@@ -884,6 +884,13 @@ class CrackleRemovalPhase(PhaseInterface):
                 _onnx_ok = True
                 execution_time = time.time() - start_time
                 crackle_reduction_db = self._measure_crackle_reduction(audio, restored)
+                # §SOTA-Test-Vertrag: auch der ML-Pfad meldet die DSP-Detektionszahl
+                # (Transparenz: wie viele Regionen die Kette erkannt hat).
+                try:
+                    _t_s9, _t_m9, _t_l9 = self._detect_transients_multiscale(audio, params)
+                    _cr_ml9 = self._classify_crackle_regions(audio, _t_s9, _t_m9, _t_l9, params)
+                except Exception:
+                    _cr_ml9 = []
                 restored = np.nan_to_num(restored, nan=0.0, posinf=0.0, neginf=0.0)
 
                 restored = np.clip(restored, -1.0, 1.0)
@@ -895,6 +902,7 @@ class CrackleRemovalPhase(PhaseInterface):
                     modifications={
                         "method": "ml_banquet_vinyl_onnx_direct",
                         "crackle_reduction_db": crackle_reduction_db,
+                        "crackle_regions_found": len(_cr_ml9),
                         "material_type": material_type,
                     },
                     warnings=[f"B11 HF-Rauschfloor-Anstieg {_hf_delta_09:+.1f} dB — Rollback auf Dry"]
@@ -907,6 +915,8 @@ class CrackleRemovalPhase(PhaseInterface):
                         "algorithm_version": "2.1_onnx_direct",
                         "execution_time_seconds": execution_time,
                         "b11_hf_floor_delta_db": round(_hf_delta_09, 2),
+                        "effective_strength": _effective_strength,
+                        "phase_locality_factor": phase_locality_factor,
                     },
                 )
             except Exception as exc:
@@ -958,6 +968,8 @@ class CrackleRemovalPhase(PhaseInterface):
                                 "algorithm_version": "2.0_ml_hybrid",
                                 "execution_time_seconds": execution_time,
                                 "b11_hf_floor_delta_db": round(_hf_delta_09, 2),
+                                "effective_strength": _effective_strength,
+                                "phase_locality_factor": phase_locality_factor,
                             },
                         )
                     except Exception as exc2:

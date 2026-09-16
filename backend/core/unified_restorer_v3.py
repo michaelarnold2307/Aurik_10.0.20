@@ -8179,7 +8179,7 @@ class UnifiedRestorerV3:
         # §2.53b: Log immediately so test mock-patched pipelines capture these messages
         # before intermediate analysis steps that may be incomplete/mocked.
         if _precomputed_phase_plan:
-            logger.info("Überspringen deaktiviert: deterministischer PID-Executor aktiv")
+            logger.info("Überspringen deaktiviert: vorberechneter Phasenplan aktiv (deterministischer PID-Executor)")
             logger.info(
                 "§PID PhaseInteractionDenker-Plan aktiv: %d Phasen (UV3 _select/_optimieren übersprungen)",
                 len(_precomputed_phase_plan),
@@ -12345,7 +12345,7 @@ class UnifiedRestorerV3:
             # Keine autonome _select/_optimize-Planung mehr, damit Denker-Plan
             # und UV3-Ausführung nicht auseinanderlaufen.
             # §2.53b: Phase Skipping deaktiviert — als erstes loggen damit auch bei frühem Mock-Return sichtbar
-            logger.info("Überspringen deaktiviert: deterministischer PID-Executor aktiv")
+            logger.info("Überspringen deaktiviert: vorberechneter Phasenplan aktiv (deterministischer PID-Executor)")
             logger.info(
                 "§PID PhaseInteractionDenker-Plan aktiv: %d Phasen (UV3 _select/_optimieren übersprungen)",
                 len(_precomputed_phase_plan),
@@ -12840,7 +12840,7 @@ class UnifiedRestorerV3:
             _enable_phase_skipping = False
             # §2.53b: immer loggen — auch wenn phase_skipper=None (dann war _enable_phase_skipping
             # bereits False, aber der Test braucht den Log-Eintrag als Beweis)
-            logger.info("Überspringen deaktiviert: deterministischer PID-Executor aktiv")
+            logger.info("Überspringen deaktiviert: vorberechneter Phasenplan aktiv (deterministischer PID-Executor)")
         elif not self.phase_skipper and not _precomputed_phase_plan:
             pass  # phase_skipper=None + kein precomputed_plan: kein Log nötig
 
@@ -20028,7 +20028,7 @@ class UnifiedRestorerV3:
                 )
                 logger.warning(
                     "§2.49 Ausgabe-Gate: artifact_freedom=%.3f < %.3f — "
-                    "kein kompatibler Rollback-Checkpoint (fail-closed auf Originalsignal)",
+                    "kein kompatibler Rollback-Checkpoint (fail-closed auf Original)",
                     _artifact_freedom_for_hpi,
                     _afg_af_min,
                 )

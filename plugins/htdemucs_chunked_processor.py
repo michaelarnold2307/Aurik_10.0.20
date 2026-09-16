@@ -27,12 +27,54 @@ Psychoakustik (ERB-Bandbewertung):
 from __future__ import annotations
 
 import logging
-from typing import TYPE_CHECKING, cast
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
 
 if TYPE_CHECKING:
     from plugins.htdemucs_plugin import HtdemucsPlugin
+
+
+def _stem_dict(result: Any) -> dict[str, np.ndarray]:
+    """Normalisiert Stem-Ergebnisse auf die 4 kanonischen Stems (Duck-Typing).
+
+    DemucsV4 ``separate()`` liefert ein dict, ältere MDX23C-/HTDemucs-Pfade
+    attribut-basierte Ergebnisse (``.vocals``) oder ein ``.as_dict()``.
+    6-Stem-Ergebnisse (guitar/piano/…) werden auf „other“ addiert — der
+    Chunked-Processor arbeitet immer mit vocals/drums/bass/other
+    (§V7 (copilot-instructions.md): keine Pfad-spezifischen Annahmen).
+    """
+    if isinstance(result, dict):
+        raw = {str(k): np.asarray(v, dtype=np.float32) for k, v in result.items()}
+    else:
+        if hasattr(result, "as_dict") and callable(result.as_dict):
+            raw = {str(k): np.asarray(v, dtype=np.float32) for k, v in result.as_dict().items()}
+        else:
+            raw = {
+                "vocals": np.asarray(result.vocals, dtype=np.float32),
+                "drums": np.asarray(result.drums, dtype=np.float32),
+                "bass": np.asarray(result.bass, dtype=np.float32),
+                "other": np.asarray(result.other, dtype=np.float32),
+            }
+    _canonical: dict[str, Any] = {
+        "vocals": raw.get("vocals"),
+        "drums": raw.get("drums"),
+        "bass": raw.get("bass"),
+        "other": raw.get("other"),
+    }
+    _ref_shape = next((np.shape(v) for v in _canonical.values() if v is not None), None)
+    for _key, _val in raw.items():
+        if _key in _canonical or _canonical.get(_key) is not None:
+            continue
+        # Unbekannte Stems (guitar/piano/…) additiv auf „other“
+        _canonical["other"] = _val if _canonical["other"] is None else _canonical["other"] + _val
+    for _key in list(_canonical):
+        if _canonical[_key] is None:
+            if _ref_shape is None:
+                raise ValueError("Stem-Ergebnis ohne erkennbare Stems")
+            _canonical[_key] = np.zeros(_ref_shape, dtype=np.float32)
+    return _canonical
+
 
 from plugins.htdemucs_plugin import SeparationResult
 
@@ -119,19 +161,21 @@ class ChunkedProcessor:
             else:
                 result_48k = self.plugin.separate(audio_2ch, 48000)
             # Längen-Normalisierung (MDX23C kann ±1 Sample liefern)
-            if getattr(result_48k, "vocals", None) is not None and result_48k.vocals.shape[-1] != orig_length:
+            _stems48 = _stem_dict(result_48k)
+            if _stems48.get("vocals") is not None and _stems48["vocals"].shape[-1] != orig_length:
                 _trim_fn = lambda _v: (
                     _v[..., :orig_length]
                     if _v.shape[-1] > orig_length
                     else np.pad(_v, ((0, 0),) * (_v.ndim - 1) + ((0, orig_length - _v.shape[-1]),), mode="constant")
                 )
-                result_48k = SeparationResult(
-                    vocals=_trim_fn(result_48k.vocals),
-                    drums=_trim_fn(result_48k.drums),
-                    bass=_trim_fn(result_48k.bass),
-                    other=_trim_fn(result_48k.other),
-                    sr=result_48k.sr,
-                )
+                _stems48 = {k: _trim_fn(v) for k, v in _stems48.items()}
+            result_48k = SeparationResult(
+                vocals=_stems48["vocals"],
+                drums=_stems48["drums"],
+                bass=_stems48["bass"],
+                other=_stems48["other"],
+                sr=result_48k.sr if hasattr(result_48k, "sr") else 48000,
+            )
             # Mono-Restore wenn nötig
             if orig_shape_mono:
                 return SeparationResult(
@@ -141,7 +185,7 @@ class ChunkedProcessor:
                     other=result_48k.other[0],
                     sr=result_48k.sr,
                 )
-            return cast(SeparationResult, result_48k)
+            return result_48k
 
         # Initialisiere Output-Stems (Akkumulator)
         stems_out: dict[str, np.ndarray] = {
@@ -191,7 +235,7 @@ class ChunkedProcessor:
                     separated = _direct_fn(chunk)
                 else:
                     separated = self.plugin.separate(chunk, 48000)
-                stems_chunk: dict[str, np.ndarray] = separated.as_dict()
+                stems_chunk: dict[str, np.ndarray] = _stem_dict(separated)
                 logger.debug("Chunk %d: separation erfolgreich", chunk_idx)
             except Exception as e:
                 logger.error("Chunk %d: separation fehlgeschlagen: %s", chunk_idx, e)

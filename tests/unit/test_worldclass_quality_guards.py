@@ -74,7 +74,7 @@ def test_gui_fallback_export_reapplies_export_guard_after_final_audio_mutations(
     repo_root = Path(__file__).resolve().parents[2]
     src = (repo_root / "Aurik10" / "ui" / "modern_window.py").read_text(encoding="utf-8")
 
-    quiet_edge_idx = src.index("Fallback quiet-edge guard skipped")
+    quiet_edge_idx = src.index("Ersatzpfad: Quiet-Edge-Guard übersprungen")
     guard_idx = src.index("_fallback_audio = _export_guard(_fallback_audio)", quiet_edge_idx)
     write_idx = src.index('sf.write(_tmp_path, _fallback_audio, write_sr, format="WAV", subtype="PCM_24")', guard_idx)
 

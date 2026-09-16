@@ -342,9 +342,9 @@ class TestPhase42StemSafety:
         )
 
     def test_try_stem_separation_rejects_low_sdri_roformer(self, monkeypatch):
+        """§v10.739: low-SDRI-Roformer wird abgelehnt → HPSS-Tertiärpfad (MDX23C entfernt)."""
         from backend.core.phases.phase_42_vocal_enhancement import VocalEnhancement
         from plugins import bs_roformer_plugin as rof_mod
-        from plugins import mdx23c_plugin as mdx_mod
 
         class _FakeSep:
             def __init__(self, vocals: np.ndarray):
@@ -358,13 +358,7 @@ class TestPhase42StemSafety:
             def separate(self, audio, sr, stems=None):
                 return _FakeSep(np.asarray(audio, dtype=np.float32) * 0.4)
 
-        class _FakeMDX:
-            def process(self, audio, sr, stem="vocals"):
-                x = np.asarray(audio, dtype=np.float32)
-                return x * (0.45 if stem == "vocals" else 0.55)
-
         monkeypatch.setattr(rof_mod, "get_bs_roformer", lambda: _FakeRoformer())
-        monkeypatch.setattr(mdx_mod, "get_mdx23c_plugin", lambda: _FakeMDX())
 
         phase = VocalEnhancement()
         mono = _make_vocal(0.5)
@@ -374,4 +368,4 @@ class TestPhase42StemSafety:
 
         assert result is not None
         _, _, _, model_used = result
-        assert model_used == "mdx23c_kim_vocal_2"
+        assert model_used == "hpss_tertiary"

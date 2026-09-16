@@ -1918,7 +1918,8 @@ class HarmonicRestorationPhase(PhaseInterface):
             logger.warning("Verarbeitungsschritt_07_harmonic_restoration.py::_anwenden_mono Ersatzpfad: %s", e)
             return np.nan_to_num(audio, nan=0.0, posinf=0.0, neginf=0.0)  # type: ignore[no-any-return]
 
-    def _measure_h2_ratio(self, audio: np.ndarray, sample_rate: int) -> float:
+    @staticmethod
+    def _measure_h2_ratio(audio: np.ndarray, sample_rate: int) -> float:
         """Schätzt H2/H1 amplitude ratio via multi-frame FFT averaging.
 
         Averages over up to 8 non-overlapping 2048-sample frames from the

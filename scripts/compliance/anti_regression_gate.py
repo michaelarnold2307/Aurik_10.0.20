@@ -478,9 +478,9 @@ def main() -> None:
         all_issues.extend(check_absolute_bw_loss(safe_filepath))
         all_issues.extend(check_defect_classification(safe_filepath))
         all_issues.extend(check_surgical_architecture(safe_filepath))
-        all_issues.extend(check_hardcoded_venv_in_subprocess(safe_filepath))
-        all_issues.extend(check_missing_wav_retry(safe_filepath))
-        all_issues.extend(check_unsafe_wavfile_unpack(safe_filepath))
+        all_issues.extend(check_hardcoded_venv_in_subprocess(fp))
+        all_issues.extend(check_missing_wav_retry(fp))
+        all_issues.extend(check_unsafe_wavfile_unpack(fp))
         all_issues.extend(check_dual_path_audio_callback(safe_filepath))
         all_issues.extend(check_name_error_risk(safe_filepath))
 

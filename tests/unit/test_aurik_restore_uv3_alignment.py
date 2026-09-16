@@ -75,23 +75,16 @@ class TestAurikRestoreUv3Alignment:
         assert np.allclose(out, audio, atol=1e-6)
         assert "DiffWave lieferte kein Ergebnis — Dry-Passthrough (§V6 (copilot-instructions.md))" in caplog.text
 
-    def test_rekonstruktion_warns_and_passes_dry_on_none(self, monkeypatch, caplog):
-        class _FakeMdx:
-            def process(self, audio: np.ndarray, sr: int, stem: str = "vocals"):
-                return None
-
-        monkeypatch.setitem(
-            sys.modules,
-            types.SimpleNamespace(MDX23CPlugin=lambda: _FakeMdx()),
-        )
+    def test_rekonstruktion_warns_and_passes_dry_on_none(self, caplog):
+        """§v10.739 (2026-09-09): MDX23C entfernt — rekonstruktion = Dry-Passthrough."""
         import backend.aurik_restore as ar
 
         audio = _sine()
-        with caplog.at_level(logging.WARNING, logger="backend.aurik_restore"):
+        with caplog.at_level(logging.INFO, logger="backend.aurik_restore"):
             out, sr = ar.rekonstruktion(audio, SR)
         assert sr == SR
         assert np.allclose(out, audio, atol=1e-6)
-        assert "keinen Vocal-Stem — Dry-Passthrough (§V6 (copilot-instructions.md))" in caplog.text
+        assert "MDX23C entfernt (§v10.739)" in caplog.text
 
     def test_quality_gates_fail_closed_without_utmos(self, monkeypatch, caplog):
         monkeypatch.setitem(sys.modules, "plugins.utmos_plugin", _ImportErrorModule())

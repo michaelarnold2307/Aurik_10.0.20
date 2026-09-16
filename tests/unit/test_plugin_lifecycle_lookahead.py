@@ -37,11 +37,19 @@ def _register_fake(mgr: PluginLifecycleManager, name: str, unloaded: dict[str, b
 class TestEvictForPhaseWindow:
     """evict_for_phase_window schützt Modelle aller anstehenden Phasen."""
 
-    def test_protects_model_needed_by_later_phase(self) -> None:
-        """AudioSR (phase_06 → phase_23) darf vor phase_06 NICHT entladen werden."""
+    def test_protects_model_needed_by_later_phase(self, monkeypatch) -> None:
+        """AudioSR (phase_06 → phase_23) darf vor phase_06 NICHT entladen werden.
+
+        §v10.742: Proaktive Look-Ahead-Entladung läuft nur bei echtem
+        Speicherdruck (≥ 75 % des ML-Limits) — ohne Druck gilt Residency.
+        """
         mgr = _make_manager()
         unloaded: dict[str, bool] = {}
         try:
+            import backend.core.ml_memory_budget as _mbb
+
+            monkeypatch.setattr(_mbb, "_total_gb", 9.0)
+            monkeypatch.setattr(_mbb, "ML_MAX_GB", 10.0)  # 90 % ≥ 75 % → Druck
             _register_fake(mgr, "AudioSR", unloaded)
             _register_fake(mgr, "DemucsV4", unloaded)  # von keiner Fensterphase gebraucht
             # Fenster: phase_06 (AudioSR) → DSP → phase_23 (Apollo, AudioSR).

@@ -273,47 +273,38 @@ class TestDiffWaveNMFInpainting:
 
 
 class TestMDX23CPrimarySeparator:
-    """P5: MDX23C (Kim_Vocal_2) ist der produktionsreife Primär-Separator.
+    """§v10.739 (2026-09-09): MDX23C entfernt — DemucsV4 ist der produktive Primär-Separator.
 
-    HTDemucs 6s verbleibt als experimenteller Legacy-Fallback.
-    Verifiziert Plugin-Funktionalität und Manifest-Konsistenz.
+    Die Klasse verifiziert den AKTUELLEN Vertrag (DemucsV4-API + §v10.739-Entfernung),
+    nicht mehr den historischen P1-10-Stand.
     """
 
-    def test_01_mdx23c_plugin_importable(self):
-        """MDX23CPlugin muss importierbar sein."""
-        from plugins.mdx23c_plugin import MDX23CPlugin
+    def test_01_demucs_v4_plugin_importable(self):
+        """DemucsV4Plugin muss importierbar sein (MDX23C-Ersatz, §v10.739)."""
+        from plugins.demucs_v4_plugin import DemucsV4Plugin
 
-        assert MDX23CPlugin is not None
+        assert DemucsV4Plugin is not None
 
-    def test_02_mdx23c_returns_ndarray(self):
-        """MDX23CPlugin.process() muss ein ndarray zurückgeben."""
-        from plugins.mdx23c_plugin import MDX23CPlugin
+    def test_02_demucs_separate_returns_dict_contract(self):
+        """DemucsV4Plugin.separate() ist als dict-Stem-Rückgabe deklariert."""
+        import inspect
 
-        plugin = MDX23CPlugin()
-        audio = _sine(440.0, dur_s=2.0, sr=48000)
-        result = plugin.process(audio, sr=48000, stem="vocals")
-        assert isinstance(result, np.ndarray), f"Kein ndarray: {type(result)}"
+        from plugins.demucs_v4_plugin import DemucsV4Plugin
 
-    def test_03_mdx23c_result_finite(self):
-        """Ergebnis-Array muss finite sein."""
-        from plugins.mdx23c_plugin import MDX23CPlugin
+        sig = inspect.signature(DemucsV4Plugin.separate)
+        assert "dict" in str(sig.return_annotation), f"separate() muss dict zurückgeben: {sig.return_annotation}"
 
-        plugin = MDX23CPlugin()
-        audio = _sine(440.0, dur_s=2.0, sr=48000)
-        result = plugin.process(audio, sr=48000, stem="vocals")
-        assert np.isfinite(result).all(), "NaN/Inf im MDX23C-Ergebnis"
+    def test_03_demucs_module_importable(self):
+        """Modulebene separate_stems importierbar und finite-fähig (kein Modell-Load)."""
+        from plugins.demucs_v4_plugin import separate_stems
 
-    def test_04_mdx23c_separate_all_stems(self):
-        """separate_all_stems() muss Dict mit vocals/inst zurückgeben."""
-        from plugins.mdx23c_plugin import MDX23CPlugin
+        assert callable(separate_stems)
 
-        plugin = MDX23CPlugin()
-        audio = _noise(dur_s=2.0, sr=48000)
-        if audio.ndim == 1:
-            audio = np.stack([audio, audio])
-        result = plugin.separate_all_stems(audio, sr=48000)
-        assert isinstance(result, dict), f"Kein dict: {type(result)}"
-        assert "vocals" in result or "inst" in result, f"Stems fehlen: {list(result.keys())}"
+    def test_04_demucs_convenience_vocals_instruments(self):
+        """separate_vocals_instruments() existiert (Vokal/Instrumental-Tupel)."""
+        from plugins.demucs_v4_plugin import separate_vocals_instruments
+
+        assert callable(separate_vocals_instruments)
 
     def test_05_htdemucs_still_in_manifest(self):
         """htdemucs_6s ist PRODUKTIV (nicht experimental) — §Fix 2026-09-08.
@@ -336,21 +327,22 @@ class TestMDX23CPrimarySeparator:
         fallback = entry.get("fallback", "")
         assert fallback, "Kein fallback-Eintrag für htdemucs_6s"
 
-    def test_07_mdx23c_convenience_functions(self):
-        """Convenience-Funktionen separate_vocals/separate_stems müssen existieren."""
-        from plugins.mdx23c_plugin import separate_stems, separate_vocals
+    def test_07_mdx23c_module_removed(self):
+        """§v10.739: plugins.mdx23c_plugin existiert NICHT mehr (Registry ohne Gewichte)."""
+        import importlib.util
 
-        assert callable(separate_vocals)
-        assert callable(separate_stems)
+        assert importlib.util.find_spec("plugins.mdx23c_plugin") is None, (
+            "§v10.739 verletzt: plugins.mdx23c_plugin darf nicht mehr existieren"
+        )
 
-    def test_08_htdemucs_facade_routes_to_mdx23c(self):
-        """htdemucs_plugin Facade muss auf MDX23CPlugin routen."""
+    def test_08_htdemucs_facade_routes_to_demucs_v4(self):
+        """htdemucs_plugin Facade routet auf DemucsV4Plugin (§v10.739)."""
         from plugins.htdemucs_plugin import get_htdemucs_plugin
 
         plugin = get_htdemucs_plugin()
-        # Muss eine MDX23CPlugin-Instanz sein (oder None wenn nicht verfügbar)
+        # Muss eine DemucsV4Plugin-Instanz sein (oder None wenn nicht verfügbar)
         if plugin is not None:
-            assert type(plugin).__name__ == "MDX23CPlugin"
+            assert type(plugin).__name__ == "DemucsV4Plugin"
 
 
 # ===========================================================================

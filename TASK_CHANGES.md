@@ -1,20 +1,29 @@
 # TASK_CHANGES — Live-Ledger der aktuellen Aufgabe
 
-> Generiert von `scripts/change_ledger.py snapshot` (Base: `HEAD`, Stand: 2026-09-15 18:27 CEST).
+> Generiert von `scripts/change_ledger.py snapshot` (Base: `HEAD`, Stand: 2026-09-16 05:18 CEST).
 > CI (`ci-lite.yml` pr-evidence-gate) erzwingt Abdeckung: jede geänderte Code-Datei muss hier stehen.
 
 ## Geänderte Dateien
 
 | Status | Pfad | Art |
 |---|---|---|
-| M | .github/FILE_REGISTRY.md | modifiziert |
-| M | TASK_CHANGES.md | modifiziert |
-| M | backend/core/phases/phase_13_stereo_enhancement.py | modifiziert |
-| M | backend/core/phases/phase_15_stereo_balance.py | modifiziert |
-| M | backend/core/phases/phase_46_spatial_enhancement.py | modifiziert |
-| M | backend/core/phases/phase_48_stereo_width_enhancer.py | modifiziert |
-| M | docs/TODOS_SOTA_ROADMAP.md | modifiziert |
-| ?? | tests/unit/test_psy_a3_bmld_tolerance_rollout.py | ungetrackt |
+| M | Aurik10/i18n/**init**.py | modifiziert |
+| M | backend/core/lyrics_guided_enhancement.py | modifiziert |
+| M | backend/core/phases/phase_07_harmonic_restoration.py | modifiziert |
+| M | backend/core/phases/phase_09_crackle_removal.py | modifiziert |
+| M | backend/core/phases/phase_20_reverb_reduction.py | modifiziert |
+| M | backend/core/phases/phase_49_advanced_dereverb.py | modifiziert |
+| M | backend/core/unified_restorer_v3.py | modifiziert |
+| M | plugins/htdemucs_chunked_processor.py | modifiziert |
+| M | scripts/compliance/anti_regression_gate.py | modifiziert |
+| M | tests/unit/calibration_context_linter_baseline.txt | modifiziert |
+| M | tests/unit/test_aurik_restore_uv3_alignment.py | modifiziert |
+| M | tests/unit/test_p1_p10_changes.py | modifiziert |
+| M | tests/unit/test_phase42_psychoacoustics.py | modifiziert |
+| M | tests/unit/test_plugin_lifecycle_lookahead.py | modifiziert |
+| M | tests/unit/test_segment_probe_calibrator.py | modifiziert |
+| M | tests/unit/test_sota_gap_closures.py | modifiziert |
+| M | tests/unit/test_worldclass_quality_guards.py | modifiziert |
 
 ## Entscheidungen
 

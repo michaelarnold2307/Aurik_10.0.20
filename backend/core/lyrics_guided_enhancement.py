@@ -360,7 +360,10 @@ class ContentAwareProcessor:
 
             def _crossfade_seg(_orig: np.ndarray, _new: np.ndarray, _xfade_len: int) -> np.ndarray:
                 """Linear-Crossfade für korrelierte Signale (Summe der Fades = 1)."""
-                if _xfade_len <= 8:
+                # Segmente kürzer als 2× Fade können nicht sinnvoll überblendet
+                # werden (Fade würde das ganze Segment überdecken) — Produktionsbefund:
+                # Broadcast-Fehler (1440,) vs. kurzer Segmentlänge.
+                if _xfade_len <= 8 or _xfade_len * 2 >= len(_new):
                     return _new
                 _f = np.linspace(0.0, 1.0, _xfade_len, dtype=np.float64)
                 _mix = _new.copy()

@@ -288,9 +288,9 @@ def test_precomputed_plan_disables_phase_skipping(sr, short_audio):
             messages.append(_r.getMessage())
         except (TypeError, ValueError):
             messages.append(str(_r.msg))
-    skip_disabled_logged = any("Phase Skipping deaktiviert" in m and "precomputed_phase_plan" in m for m in messages)
+    skip_disabled_logged = any("Überspringen deaktiviert" in m and "Phasenplan" in m for m in messages)
     assert skip_disabled_logged, (
-        "§2.53b: UV3 muss 'Phase Skipping deaktiviert: precomputed_phase_plan aktiv' loggen. "
+        "§2.53b: UV3 muss 'Überspringen deaktiviert: vorberechneter Phasenplan aktiv' loggen. "
         f"Geloggte Meldungen: {messages[:10]}"
     )
 
