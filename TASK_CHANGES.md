@@ -1,6 +1,6 @@
 # TASK_CHANGES — Live-Ledger der aktuellen Aufgabe
 
-> Generiert von `scripts/change_ledger.py snapshot` (Base: `HEAD`, Stand: 2026-09-16 21:42 CEST).
+> Generiert von `scripts/change_ledger.py snapshot` (Base: `HEAD`, Stand: 2026-09-16 23:09 CEST).
 > CI (`ci-lite.yml` pr-evidence-gate) erzwingt Abdeckung: jede geänderte Code-Datei muss hier stehen.
 
 ## Geänderte Dateien
@@ -8,31 +8,29 @@
 | Status | Pfad | Art |
 |---|---|---|
 | M | .github/FILE_REGISTRY.md | modifiziert |
-| M | Aurik10/i18n/**init**.py | modifiziert |
-| M | TASK_CHANGES.md | modifiziert |
-| M | backend/api/bridge.py | modifiziert |
-| M | backend/core/one_take_export.py | modifiziert |
-| M | backend/core/phases/phase_03_denoise.py | modifiziert |
-| M | backend/core/phases/phase_25_azimuth_correction.py | modifiziert |
-| M | backend/core/phases/phase_31_speed_pitch_correction.py | modifiziert |
-| M | backend/core/phases/phase_65_vocal_naturalness_restoration.py | modifiziert |
-| M | backend/core/unified_restorer_v3.py | modifiziert |
+| M | backend/core/musical_goals/musical_goals_metrics.py | modifiziert |
+| M | backend/core/phases/phase_09_crackle_removal.py | modifiziert |
 | M | docs/TODOS_SOTA_ROADMAP.md | modifiziert |
-| M | plugins/bs_roformer_plugin.py | modifiziert |
-| M | plugins/muq_plugin.py | modifiziert |
-| M | scripts/gacela_gabor_shim.py | modifiziert |
-| M | scripts/validate_muq_plugin_direction.py | modifiziert |
-| M | tests/unit/test_gacela_gabor_shim.py | modifiziert |
-| M | tests/unit/test_help_system_errorsimplifier.py | modifiziert |
-| M | tests/unit/test_muq_plugin.py | modifiziert |
-| ?? | backend/core/dsp/edge_gain_cap.py | ungetrackt |
-| ?? | tests/unit/test_edge_gain_cap.py | ungetrackt |
-| ?? | tests/unit/test_phase_65_singer_identity_witness.py | ungetrackt |
-| ?? | tests/unit/test_psy_a1_jnd_gates_25_31.py | ungetrackt |
-| ?? | tests/unit/test_r2_muq_mos_export_wiring.py | ungetrackt |
+| M | plugins/panns_plugin.py | modifiziert |
+| ?? | tests/unit/test_panns_rocm_provider_filter.py | ungetrackt |
 
 ## Entscheidungen
 
+- **Überwachter 225-s-Lauf 2026-09-16 (Elke Best, voller Song) — Befunde & Fixes**:
+  - SUP-F1 (PERF): PANNs-ROCm-Provider-Filter verglich (Name, Options)-Tupel
+    gegen String-Namen → GPU immer verworfen, PANNs dauerhaft CPU. Fix:
+    Tupel-Name auspacken; Regressionstest test_panns_rocm_provider_filter.py.
+  - SUP-F2 (QUALITÄT): BANQUET-Temp-WAV hart 44,1 kHz (Pipeline 48 kHz →
+    Speed-/Pitch-Korruption) + Float-WAV (Docker/scipy: „Format not
+    recognised“). Fix: echte sample_rate + PCM_16 in phase_09.
+  - SUP-F3 (DIAGNOSTIK): §V44-Meldung „Mono-Kompatibilitätswarnung“ war
+    invertiert (ok=False = IACC ≥ 0,70 = schmales Stereobild, perfekt
+    mono-kompatibel). Meldung korrigiert.
+  - SUP-F4/F5/F6 dokumentiert (62,2× RT Chunk-1; Restorability-5-s-Guard;
+    Reinhör-Witness-Kalibrierung) — F4-Rest GPU-gebunden.
+  - Befunde in docs/TODOS_SOTA_ROADMAP.md (neuer Abschnitt).
+  - Lauf läuft im Hintergrund weiter
+    (output/supervised_run/elke_225s_supervised_v1020.log).
 - **Defizit-Sweep 2026-09-16 (5 Vollsuite-Fehlschläge behoben)**:
   - **i18n-Gap**: `help.error.generic` (und alle 17 `help.error.*`-Keys) fehlten in
     DE+EN — der ErrorSimplifier zeigte rohe Keys. Keys ergänzt; Tests auf

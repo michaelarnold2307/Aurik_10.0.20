@@ -1171,6 +1171,33 @@ Alle CPU-schließbaren Punkte der Offene-Punkte-Matrix sind umgesetzt und getest
 > Score + Delta zum Original) und die Tabelle oben aktualisieren. Ein Schritt wird
 > nur behalten, wenn er den Score erhöht (Never-worsen, §0).
 
+## Überwachter 225-s-Lauf 2026-09-16 (Elke Best, voller Song) — Befunde & Abarbeitung
+
+> Ausführung: `cli/aurik_cli.py --mode Restoration --bit-depth 24`, voller Song
+> (225,3 s @ 44,1 kHz, mp3→vinyl-Kette). Lauf: `output/supervised_run/elke_225s_supervised_v1020.{log,wav}`.
+> Vollsuite vor Lauf: 16 948 passed / 0 failed (Commit 9e51c4b).
+> Zweck: Plausibilitäts-, Bug- und Optimierungsprüfung für ALLE Importsongs
+> (Wohlklang für das menschliche Ohr + maximale Performance) — nicht nur dieser Song.
+
+### Befunde (Reihenfolge = empfohlene Abarbeitung)
+
+| ID | Befund | Status |
+|---|---|---|
+| SUP-F1 (PERF, alle Songs) | **PANNs lief auf ROCm immer CPU**: der lokale Provider-Filter verglich (Name, Options)-TUPEL gegen String-Namen → GPU-Provider wurde immer verworfen (`PANNs: GPU-Inferenz angefordert …, aber Sitzung nutzt nur CPU`). | ✅ GEFIXT 2026-09-16: Tupel-Name wird ausgepackt; Regressionstest `test_panns_rocm_provider_filter.py` (2 Fälle) |
+| SUP-F2 (QUALITÄT, alle Songs) | **BANQUET-Temp-WAV hart auf 44,1 kHz kodiert** (Pipeline fährt 48 kHz → Speed-/Pitch-Korruption des ML-Pfades) **+ Float-WAV**, das externe Reader (Docker/scipy) als „Format not recognised“ ablehnen → ML-Knistern-Pfad tot, DSP-Ersatz lief. | ✅ GEFIXT 2026-09-16: echte `sample_rate` + `subtype="PCM_16"` in `phase_09_crackle_removal._remove_crackle_ml` |
+| SUP-F3 (DIAGNOSTIK, alle Songs) | **§V44-Meldung invertiert**: `ok=False` (IACC ≥ 0,70 = schmales Stereobild) wurde als „Mono-Kompatibilitätswarnung“ geloggt — Near-Mono-Vintage (IACC=0,89) ist perfekt mono-kompatibel; irreführende Warnung auf allen schmal-stereofonen Songs. | ✅ GEFIXT 2026-09-16: Meldung korrigiert („schmales Stereobild, kein Defekt“) |
+| SUP-F4 (PERF) | **Chunk-1-Laufzeit 62,2× RT** (1866 s für 30 s) — P0-1-Ziel 32×, 224-s-Akzeptanz ≤ 40 min; ML-Schwere Treiber: MuQ/MERT/RMVPE/PESTO/CREPE-Ladungen + PANNs-CPU-Bug (SUP-F1). Vollauflösung hängt an GPU-Buildouts + Residency (P0-1-Matrix). | TEIL-BEHOBEN (SUP-F1); Rest = GPU-GEBUNDEN (F-Reihe) — Dokumentation P0-1 |
+| SUP-F5 (DIAGNOSTIK) | `RestorabilityEstimator: time Grenze exceeded (19,17 s > 5,0 s)` — Erst-Ladezeit des MuQ-GPU-Modells sprengt den 5-s-Guard; einmalig je Prozess, Meldung ist Rauschen. | OFFEN (kosmetisch): Guard beim Erst-Load suspendieren oder First-Call-Budget erhöhen — Folge-Slice |
+| SUP-F6 (DIAGNOSTIK) | Reinhör-Witness meldet `pre_echo`/`roughness_increase` bei ~0-Deltas (pitch=0.0c, loud=0.0dB) — Schwellwert-Kalibrierung prüfen (report-only, keine Rollbacks). | OFFEN (niedrig, report-only): Kalibrierungs-Check der Witness-Schwellen |
+| SUP-F7 (VERIFIKATION) | Export-Gate arbeitet korrekt delta-basiert: `af=0.000 verworfen (false-positive gegen degraded Eingabe)` + OneTakeExport BEST-EFFORT (LUFS −19,3 für ruhigen Vintage) — §0c-Vertrag hält. | ✅ BELEG (kein Fix nötig) |
+
+### Abarbeitungsstand
+
+1. ✅ SUP-F1 (PANNs-ROCm-Tupel-Filter) — gefixt + getestet.
+2. ✅ SUP-F2 (BANQUET-SR/PCM-Fix) — gefixt; Verifikation im nächsten Lauf.
+3. ✅ SUP-F3 (§V44-Meldung) — gefixt.
+4. SUP-F4/F5/F6 — dokumentiert; F4-Rest GPU-gebunden, F5/F6 Folge-Slices.
+
 ## Hintergrund (damit die nächste Session sofort einsteigt)
 
 - **Session-Report:** `docs/reports/current/2026-09-08_envelope_root_cause_sota_fixes_matrix.md`

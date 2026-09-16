@@ -263,7 +263,13 @@ class PANNsPlugin(MLPluginBase):  # §A2
             # übergeben, die get_available_providers() kennt; sonst CPU-only
             # (fail-closed, §V6 (copilot-instructions.md)).
             _avail_ort_providers = list(ort.get_available_providers())
-            _filtered_providers = [p for p in _providers if p in _avail_ort_providers]
+            # §SOTA-Fix 2026-09-16: get_onnx_providers liefert (Name, Options)-
+            # TUPEL — der Namensvergleich muss das Tupel auspacken, sonst wird
+            # der GPU-Provider auf ROCm-Maschinen IMMER verworfen (PANNs lief
+            # dauerhaft CPU — Defizit-Fix, belegt im überwachten 225-s-Lauf).
+            _filtered_providers = [
+                p for p in _providers if ((p[0] if isinstance(p, tuple) else str(p)) in _avail_ort_providers)
+            ]
             if not _filtered_providers:
                 _filtered_providers = ["CPUExecutionProvider"]
             if _filtered_providers != _providers:

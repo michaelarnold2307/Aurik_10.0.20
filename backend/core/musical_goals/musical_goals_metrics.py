@@ -2798,15 +2798,19 @@ class SpatialDepthMetric:
             iacc = _iacc_res_v44.iacc
             _sds_v44 = _iacc_res_v44.spatial_depth_score  # §V44: primärer Proxy
             if not _iacc_res_v44.ok:
+                # §SOTA-Fix 2026-09-16: `ok=False` heißt hier „IACC ≥ 0,70 = schmales
+                # Stereobild“ — KEIN Mono-Kompatibilitätsproblem (Near-Mono ist
+                # perfekt mono-kompatibel). Die alte Meldung war irreführend und
+                # warnte auf allen schmal-stereofonen Vintage-Songs.
                 with self._mono_warn_lock:
                     if self._mono_warn_count < self._MONO_WARN_LIMIT:
                         logger.info(
-                            "SpatialDepthMetric §V44: IACC=%.3f → Mono-Kompatibilitätswarnung",
+                            "SpatialDepthMetric §V44: IACC=%.3f ≥ 0,70 → schmales Stereobild (Near-Mono, kein Defekt)",
                             iacc,
                         )
                         self._mono_warn_count += 1
                     elif self._mono_warn_count == self._MONO_WARN_LIMIT:
-                        logger.debug("SpatialDepthMetric §V44: weitere Mono-Kompatibilitätswarnungen unterdrückt")
+                        logger.debug("SpatialDepthMetric §V44: weitere Meldungen unterdrückt")
                         self._mono_warn_count += 1
         except Exception as _v44_exc:
             logger.debug("SpatialDepthMetric §V44 stereo_guard.berechnen_iacc nicht blockierend: %s", _v44_exc)

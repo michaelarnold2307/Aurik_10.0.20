@@ -595,7 +595,9 @@ class CrackleRemovalPhase(PhaseInterface):
             _restored = (_restored / _peak09 * 0.99).astype(np.float32)
         return np.nan_to_num(np.clip(_restored, -1.0, 1.0).astype(np.float32), nan=0.0)  # type: ignore[no-any-return]
 
-    def _remove_crackle_ml(self, audio: np.ndarray, banquet_plugin, params: dict[str, Any]) -> np.ndarray:
+    def _remove_crackle_ml(
+        self, audio: np.ndarray, banquet_plugin, params: dict[str, Any], sample_rate: int = 48000
+    ) -> np.ndarray:
         """
         Entfernt crackle using BANQUET ML model (vinyl-specialized).
 
@@ -619,10 +621,15 @@ class CrackleRemovalPhase(PhaseInterface):
                 tmp_out_path = tmp_out.name
 
             try:
-                # Write input — Layout normalisieren: soundfile erwartet (N, C)
-                sr = 44100  # Assume 44.1kHz (standard for audio restoration)
+                # Write input — Layout normalisieren: soundfile erwartet (N, C).
+                # §SOTA-Fix 2026-09-16: die Sample-Rate war HART auf 44.1 kHz
+                # kodiert, obwohl die Pipeline 48 kHz fährt (Speed-/Pitch-
+                # Korruption des ML-Pfades für ALLE Songs) — jetzt die echte
+                # SR verwenden. PCM_16 statt Float-WAV: externe Reader
+                # (Docker/scipy) meldeten sonst „Format not recognised".
+                sr = int(sample_rate)
                 _to_write = audio.T if audio.ndim == 2 else audio
-                sf.write(tmp_in_path, _to_write, sr)
+                sf.write(tmp_in_path, _to_write, sr, subtype="PCM_16")
 
                 # Process with BANQUET — Datei-API des Plugins; process() nimmt
                 # Audio-Arrays, Pfade ergeben 'str' object has no attribute
@@ -931,7 +938,7 @@ class CrackleRemovalPhase(PhaseInterface):
                 banquet = self._get_banquet_plugin()
                 if banquet is not None:
                     try:
-                        restored = self._remove_crackle_ml(audio, banquet, params)
+                        restored = self._remove_crackle_ml(audio, banquet, params, sample_rate)
                         if 0.0 < _effective_strength < 1.0:
                             _, _, _, _cr_ml = self._compute_crackle_regions_with_protection(audio, params)
                             restored = self._apply_region_selective_strength_blend(
