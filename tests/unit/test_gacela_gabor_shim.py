@@ -110,6 +110,11 @@ def test_install_shim_makes_upstream_import_work(tmp_path, monkeypatch) -> None:
     data_dir = Path("models/gacela_upstream/data")
     assert data_dir.is_dir()
     monkeypatch.setattr(sys, "path", [str(data_dir.parent), str(data_dir)] + sys.path)
+    # Ordnungs-Robustheit: andere Suiten können audioLoader/baseDataset bereits
+    # (teilweise) importiert haben — Cache-Einträge entfernen, damit der
+    # Shim-Import deterministisch den sauberen Pfad prüft.
+    for _m in ("audioLoader", "baseDataset", "trainDataset"):
+        sys.modules.pop(_m, None)
     try:
         importlib.import_module("audioLoader")
         importlib.import_module("baseDataset")

@@ -1,18 +1,15 @@
 # TASK_CHANGES — Live-Ledger der aktuellen Aufgabe
 
-> Generiert von `scripts/change_ledger.py snapshot` (Base: `HEAD`, Stand: 2026-09-16 06:17 CEST).
+> Generiert von `scripts/change_ledger.py snapshot` (Base: `HEAD`, Stand: 2026-09-16 06:50 CEST).
 > CI (`ci-lite.yml` pr-evidence-gate) erzwingt Abdeckung: jede geänderte Code-Datei muss hier stehen.
 
 ## Geänderte Dateien
 
 | Status | Pfad | Art |
 |---|---|---|
-| M | backend/core/dsp/sota_vocal_model_router.py | modifiziert |
-| M | backend/core/musical_goals/musical_goals_metrics.py | modifiziert |
-| M | backend/core/phases/phase_29_tape_hiss_reduction.py | modifiziert |
-| M | tests/unit/test_phase58_lge_hardening.py | modifiziert |
-| M | tests/unit/test_sota_vocal_model_router.py | modifiziert |
-| M | tests/unit/test_v95_modules.py | modifiziert |
+| M | TASK_CHANGES.md | modifiziert |
+| M | docs/TODOS_SOTA_ROADMAP.md | modifiziert |
+| M | tests/unit/test_gacela_gabor_shim.py | modifiziert |
 
 ## Entscheidungen
 
@@ -73,6 +70,19 @@
   Welle: R8-Sparse-Repair phase_59 (Rechen-Maske), PSY-A1-Gates (subaudible
   skips), Residency-Policy (Warm-up-Amortisierung). 53×→32×-Rest braucht die
   GPU-Buildouts F1–F5/ROCm — als GPU-GEBUNDEN dokumentiert (Roadmap P0-1).
+- **Defizit-Sweep (2026-09-15, 57 vorbestehende Unit-Fehlschläge):** zwei
+  Fix-Wellen (Commits 757a2ed0 + ccaf775b) — Test-Drift auf aktuelle Specs
+  (§v10.739 MDX23C-Entfernung: p1_p10/phase42/Router-Tests; §v10.748 ONNX-first:
+  MERT-Test use_onnx=False; §Q11: phase_55-Gesangs-Drosselung entfällt;
+  §v10.742-Residency: plugin-lifecycle-Druck-Mock; §2.53b: deutscher Log-Text)
+  plus echte Produktions-Bugs: htdemucs_chunked_processor-Duck-Typing
+  (dict/6-Stem→4 kanonisch), phase_29-Strength-Vertrag (−14 dB→~0 dB,
+  garantierter Letzter-Blend), SeparationFidelity-Metrik-Cache
+  (0,746-vs-0,996-Aufrufabhängigkeit), Router-TypeError-Retry
+  (prefer_mdx23c=False), lyrics-Crossfade-Broadcast, MuQ/easydict-
+  Graceful-Imports, phase_09-ML-Pfad-Metadaten, phase_07-h2-Statikmethode,
+  anti_regression_gate-Registrierung. Kalibrierungs-Baseline + kim-Manifest
+  aktualisiert. Roadmap: Defizit-Sweep-Zeile GESCHLOSSEN.
 - **SOTA-Roadmap-Abschluss — Welle 2 (2026-09-15, CPU-schließbare Restpunkte A–G)**:
   - **D (change_ledger-Trailing-Newline-Fix):** `scripts/change_ledger.py` schrieb
     nach einem Snapshot eine LEERZEILE + Newline ans Dateiende (Lines-Block

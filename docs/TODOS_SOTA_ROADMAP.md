@@ -1131,6 +1131,7 @@ Alle CPU-schließbaren Punkte der Offene-Punkte-Matrix sind umgesetzt und getest
 | WF-V4 (neuraler Warp-Schätzer), TP-V2 | **EXTERN BLOCKIERT (Checkpoint-Quelle)** | Quelle klären + Download |
 | P1-Folge (af-Never-worsen in 07/17/19/38) | ✅ GESCHLOSSEN 2026-09-15 | `artifact_freedom_guard.py` (billiger click/pre-echo-Delta-Guard, ≈0,008× RT) in 07/17/19/38 + `--fail-delta`-CI-Gate im Diagnose-Skript; Diagnose-Vergleich: phase_07 Δ−0,136→−0,049, phase_17 −0,084→+0,002, phase_19 −0,062→0,000, phase_38 −0,043→+0,061; Ketten-Min-af 0,473→0,631 |
 | PSY-A7 (10/11/40) | ✅ GESCHLOSSEN 2026-09-15 | `perceptual_loudness_cap.py` (Rollout-Helfer mit Headroom-Variante) in 10/11/40: 10/11 nie über Input-Lautheit, 40 kappt Kurzzeit-Pumping über dem Uniform-Gain (Ziel-LUFS-Anhebung bleibt legitim); test_psy_a7_loudness_cap_rollout.py |
+| Defizit-Sweep (57 vorbestehende Unit-Fehlschläge) | ✅ GESCHLOSSEN 2026-09-15 | Test-Drift auf aktuelle Specs (§v10.739 MDX23C-Entfernung, §v10.748 ONNX-first, §Q11 Gesangs-Drosselung, §v10.742 Residency, §2.53b-Log) + echte Bugs (phase_29-Strength-Vertrag −14 dB→~0, SeparationFidelity-Cache 0,746-vs-0,996, Router-TypeError-Retry, htdemucs-Duck-Typing, lyrics-Crossfade-Broadcast, MuQ/easydict-Imports); 2 Commits, Pre-Commit grün |
 
 > **Mess-Kadenz:** Nach jedem Schritt das Messprotokoll wiederholen (restaurierter
 > Score + Delta zum Original) und die Tabelle oben aktualisieren. Ein Schritt wird
