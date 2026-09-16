@@ -1336,11 +1336,47 @@ class HarmonicRestorationPhase(PhaseInterface):
 
             _hr_v1_meta = _bvg_status_07()
             if _bvg_ready_07():
-                # F3-validierter Pfad (zukünftig): BigVGAN-Synthese + additive_synthesis_gate.
-                _hr_v1_meta = {"attempted": True, **_bvg_status_07()}
-                logger.info(
-                    "Verarbeitungsschritt_07 §SOTA-HR-V1: BigVGAN-Pfad aktiviert (F3-validiert) — additive_synthesis_gate läuft"
-                )
+                # §SOTA-HR-V1 (F3, 2026-09-15): BigVGAN-Synthese + additive_synthesis_gate
+                # (maskierungs-bewusst, Never-worsen, §B5) — nur hinter dem
+                # F3-Aktivierungsvertrag erreichbar.
+                _hr_v1_meta = {"attempted": True, "applied": False, **_bvg_status_07()}
+                try:
+                    from backend.core.dsp.additive_synthesis_gate import additive_synthesis_gate as _asg_07
+                    from plugins.bigvgan_v2_plugin import synthesize_audio as _bvg_syn_07
+
+                    _hr_mono_07 = (
+                        restored.mean(axis=0)
+                        if (restored.ndim == 2 and restored.shape[0] == 2 and restored.shape[1] > 2)
+                        else (restored.mean(axis=1) if restored.ndim == 2 else restored)
+                    ).astype(np.float32)
+                    _hr_voc_07 = _bvg_syn_07(_hr_mono_07, sample_rate)
+                    if str(getattr(_hr_voc_07, "model_used", "none")) != "none":
+                        _hr_gated_07, _asg_rep_07 = _asg_07(
+                            np.asarray(_hr_voc_07.audio, dtype=np.float32),
+                            restored,
+                            sample_rate,
+                            model="bigvgan_v2",
+                        )
+                        _hr_v1_meta["pqs_mos"] = round(float(getattr(_hr_voc_07, "pqs_mos", 0.0)), 3)
+                        _hr_v1_meta["bands_released"] = int(_asg_rep_07.get("bands_released", 0))
+                        if int(_asg_rep_07.get("bands_released", 0)) > 0:
+                            restored = np.clip(
+                                np.nan_to_num(_hr_gated_07, nan=0.0, posinf=0.0, neginf=0.0),
+                                -1.0,
+                                1.0,
+                            ).astype(np.float32)
+                            _hr_v1_meta["applied"] = True
+                            logger.info(
+                                "Verarbeitungsschritt_07 §SOTA-HR-V1: BigVGAN-additiv freigegeben — bands_released=%d, PQS=%.2f",
+                                _asg_rep_07.get("bands_released", 0),
+                                float(getattr(_hr_voc_07, "pqs_mos", 0.0)),
+                            )
+                except Exception as _hr_syn_exc:
+                    # §V6 (copilot-instructions.md): ML→DSP-Fallback MUSS warnen + begründen.
+                    logger.warning(
+                        "Verarbeitungsschritt_07 §SOTA-HR-V1: BigVGAN-Synthese fehlgeschlagen (%s) → DSP-Status quo beibehalten (fail-closed)",
+                        _hr_syn_exc,
+                    )
             else:
                 _hr_v1_meta = {"attempted": False, **_bvg_status_07()}
         except Exception as _hrv1_exc:

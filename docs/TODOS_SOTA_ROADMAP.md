@@ -451,7 +451,11 @@
    TAGGER-HEAD selbst (Head auf Tokens trainieren oder Tagger-ONNX
    beschaffen — GPU-Aufgabe). TP-V2 bleibt offen (Modell + Quelle fehlen).
 10. **SOTA-HR-V1** · BigVGAN-Repair-Pfad mit additive_synthesis_gate in
-    phase_07_harmonic_restoration.
+    phase_07_harmonic_restoration. **Status 2026-09-16:** Synthese-Pfad
+    CPU-verdrahtet hinter dem F3-Aktivierungsvertrag (fail-closed,
+    attempted/applied-Witness, §V6-Fallback-Warnung) + A/B-Validierungsskript
+    `scripts/validate_hr_v1.py` (af+HNR-Gates, Exit 0/1/2); Aktivierung bleibt
+    bis zum F3-GPU-Befund aus (Flag = einzige Schaltstelle).
 11. **SOTA-CR-V1** · ✅ ERLEDIGT (36b452b4, 2026-09-13) — BANQUET-Klick-Detektion als
     zusätzlicher Detektor im Multi-Scale-Konsens von phase_01 (ML detektiert,
     RBME rekonstruiert): `_detect_clicks_banquet_ml` + `_merge_click_regions`
@@ -804,7 +808,7 @@ bereits nahe an der Never-worsen-Linie; Einzelwerte +0,19 … −2,74 dB).
 Witness: 0,74-s-Segmente sind für den Resemblyzer-VAD zu kurz (cos=None, best-effort).
 **Nächster Schritt:** F2-Verlängerung auf 30–50 Epochs (der Lauf war der erste
 from-scratch-Wurf; das Gate wird bei weiterem Training erwartbar gekreuzt).
-| F3 | BigVGAN-v2 Musik+Vokal | bigvgan_v2.pth lokal | Spektral-Repair ML-V2/HR-V1 | MUSDB-HQ | ΔSDR ≥ +2 dB |
+| F3 | BigVGAN-v2 Musik+Vokal | bigvgan_v2.pth lokal | Spektral-Repair ML-V2/HR-V1 | MUSDB-HQ | ΔSDR ≥ +2 dB | **A/B-Teilvalidierung 2026-09-16: af/HNR-Gates PASS (af +0,0073, HNR +4,42 dB, PQS 4,52)** — Aktivierungs-Flag bleibt bis Test-Suite-Anpassung + UV3-Budget-Nachweis OFF; MUSDB-ΔSDR-Finetune-Gate weiter offen |
 | F4 | FlashSR-Musik | Checkpoint lokal | Hochband-Rekonstruktion (aus ML-V1-VORAB: Kandidatenwahl) | MUSDB-HQ | ΔSDR ≥ +2 dB |
 | F5 | DDSP-Prädiktor (C4) | CLAP/BEATs-Encoder lokal | EQ/Dynamik-Prädiktion | MUSDB-HQ + Effekt-Paare | MOS-Witness (MuQ) |
 
@@ -841,12 +845,12 @@ Sänger-Identität, MuQ-MOS nicht schlechter als Baseline).
 |---|---|---|
 | 03 denoise | BSR-Stem-NR (66) + DSP-Kaskade; MP-SENet de-wired (Negativbefund) | musik-nativer Denoiser-Finetune (F3 BigVGAN-Spektrallinie; DeepFilterNet-Musik-Finetune als Alternative prüfen) |
 | 04/16/17 EQ/Dynamik | DSP + Zielkurven | **SOTA-C4**: DDSP-Prädiktor (CLAP/BEATs-Embeddings → EQ/Dynamik-Parameter, DSP führt aus) — GPU (F5); CLAP-Encoder lokal vorhanden |
-| 07 harmonisch | DSP-Harmonic-Restoration | **SOTA-HR-V1**: BigVGAN-Repair-Pfad + additive_synthesis_gate (bigvgan_v2.pth lokal) — GPU (F3) |
+| 07 harmonisch | DSP-Harmonic-Restoration | **SOTA-HR-V1**: BigVGAN-Repair-Pfad + additive_synthesis_gate in phase_07 verdrahtet (Aktivierungsvertrag fail-closed, attempted/applied-Witness); A/B-Validierung via `scripts/validate_hr_v1.py` — Flag-Entscheid GPU (F3) |
 | 08/36 Transienten | Superflux/Envelope + BEATs-Witness (TP-V1, V1) | **SOTA-TP-V2**: neurale Phasen-Schätzung für Transienten-Frames (Modell + Quelle klären); adaptive Schwelle aus TP-V1-Konsens |
 | 19/43 De-Esser | DSP (19) + ML-Deesser (43) | Sibilanten-Maskierungs-Gate (PSY-A1) — sonst SOTA |
 | 20/49 Dereverb | DR-V1-Verdrahtung (RT60-Witness, konservativ gedeckelt) | präziser neuraler RT60-Regressor (GPU-Training); PSY-A1-Gate für Dry/Wet |
 | 23/50 Spektral-Repair | DSP/NMF | neuronale Spektral-Inpainting-Basis (F3/F4) |
-| 55 Inpainting | Kaskade (FlowMatching, Consistency, CQTdiff+, DAC, GaCELA, DiffWave-S3-vorbereitet) | **F1/F2 laufen**; danach S4-Verifikation |
+| 55 Inpainting | Kaskade (FlowMatching, Consistency, CQTdiff+, DAC, GaCELA, DiffWave-S3-vorbereitet) | F2 trainiert + fair validiert ⇒ verworfen (fail-closed, 2026-09-15); F1 abgebrochen; S4-Verifikation offen (GPU) |
 | 58 Lyrics-guided | vorhanden (DSP-geführt) | CLAP-Audio-Conditioning für Text-/Semantik-Führung (C4-Embedding-Quelle) |
 | 66 Stem-NR | BSR-Stems + Per-Stem-Kette ✓ | PSY-A1-Gate pro Stem; BSR-GPU-Beschleunigung ✓ (Torch-ROCm) |
 
@@ -889,8 +893,8 @@ Sänger-Identität, MuQ-MOS nicht schlechter als Baseline).
 | Q2 | PSY-A1 in phase_55 (subaudible Lücken nicht füllen) | **ERLEDIGT 2026-09-14** (defect_audibility-Gate vor der Kaskade, Zähler `subaudible_gaps_skipped`) | defect_audibility auf die Gap-Region, skip → Kaskade überspringen |
 | Q3 | PSY-A7: Kurzzeit-Loudness-Steuerung für 40/47 | **CAP UMGESETZT 2026-09-15 (phase_47)** — `_perceptual_loudness_cap`: peak-STL-Überschreitung > Marge ⇒ proportionaler Blend Richtung Input (Never-worsen §4/§8a, §V6-fail-closed); STL/LTL-Witness (2026-09-14) + 6 Tests. 10/11/40 = Folge-Slice | temporal_loudness() nutzt ERB-Kurzzeit-Modell (vorhanden) |
 | Q4 | WIT-M1: MuQ-Backbone-Fix (MOS-Richtung) | **NACH F1 (GPU)** | MuQ-Eval-Backbone beschaffen ODER A1-Head auf msd-iter neu trainieren; dann Richtungs-Validierung (Muster validate_muq_plugin_direction.py) — erst danach MuQ als Gate-Stimme |
-| Q5 | F2-Verlängerung 30–50 Epochs | **NACH F1 (GPU)** | `python scripts/train_gacela_vocal_inpaint.py --train --data-folder data/gacela_vocals_train --epochs 40 --batch 64 --save-path output/gacela_f2_v2/ --experiment-name gacela_vocal_ft` (lädt/startet neu; Checkpoint-Warmstart aus output/gacela_f2 prüfen) |
-| Q6 | F3: BigVGAN (HR-V1 + 23/50 + 03) | **CPU-VORBEREITUNG 2026-09-15**: Aktivierungsvertrag verdrahtet — `bigvgan_v2_ready()`/`hr_v1_activation_status()` im Plugin (fail-closed, Flag = einzige Schaltstelle) + phase_07-`hr_v1`-Witness (attempted=False, Status quo); BigVGAN-Synthese-Pfad, 23/50/03-Verdrahtung und F3-Training bleiben **GPU-GEBUNDEN** (test_hr_v1_activation_contract.py, 4 Fälle) | bigvgan_v2.pth lokal; Torch-Runtime nach S3-Muster + phase_07-Verdrahtung mit Aktivierungsvertrag |
+| Q5 | F2-Verlängerung 30–50 Epochs | **GESCHLOSSEN 2026-09-16 (obsolet):** Die faire S1-Validierung hat Pfad B mit diesem Setup verworfen (halluzinierte Vokal-Inhalte in stillen Lücken, ~11 dB schlechter als Crossfade — Taskformulierungs-, kein Verlustfunktions-Problem). Eine bloße Epoch-Verlängerung ändert daran nichts; Q5 entfällt. Der 2026-09-16 05:11 gestartete Resume-Lauf (`--resume-epoch 4 --epochs 40`, Log `output/gacela_f2/train_log_epoch4_40.txt`) wurde vom Runtime-Neustart unterbrochen (kein neuer Checkpoint) und wird bewusst NICHT fortgesetzt. | — |
+| Q6 | F3: BigVGAN (HR-V1 + 23/50 + 03) | **CPU-VORBEREITUNG VOLLSTÄNDIG 2026-09-16** + **A/B-PASS auf der GPU**: Aktivierungsvertrag verdrahtet — `bigvgan_v2_ready()`/`hr_v1_activation_status()` im Plugin (fail-closed, Flag = einzige Schaltstelle) + phase_07-Synthese-Pfad (attempted/applied-Witness, §V6-Warnung beim ML→DSP-Fallback) + `scripts/validate_hr_v1.py` (af+HNR-Gate, Exit 0/1/2). Tests: test_hr_v1_activation_contract.py (6 Fälle, inkl. fail-closed-Synthese-Fallback). **A/B-Validierung 2026-09-16 (Elke-Best-20s, Torch-ROCm): af +0,0073 (≥ −0,02 ✓), HNR +4,42 dB (≥ −0,5 ✓), PQS 4,52, 26 Bänder ⇒ PASS** (Beleg: `docs/reports/current/2026-09-16_hr_v1_bigvgan_ab_validation.md`). Flag bleibt bewusst OFF bis Test-Suite-Anpassung + UV3-Budget-Nachweis (Rollout, >10× RT); 23/50/03-Verdrahtung + F3-Finetune bleiben **GPU-GEBUNDEN**. | bigvgan_v2.pth lokal; Torch-Runtime nach S3-Muster + phase_07-Verdrahtung mit Aktivierungsvertrag |
 | Q7 | F5/C4: DDSP-Prädiktor | **NACH F1 (GPU)** | CLAP-Encoder lokal; EQ/Dynamik-Parameter-Prädiktion für 04/16/17, DSP führt aus |
 | Q8 | PSY-A1-Rest (masken-basierte Phasen 19/23/50/56/59/65/66) | **ERLEDIGT 2026-09-14** (Phasen 19/23/50/59/65/66 nach phase_56-Muster verdrahtet) | Profil-Fallback-Refactor (phase_56-Befund: leere Maske ⇒ „repariere überall“) dann Gate je Phase |
 | Q9 | PSY-A2 (Zwicker ISO 532-1) | **STATIONÄR ERLEDIGT** | präzisere Maskierungsschwelle — verbessert alle PSY-A1-Gates |

@@ -31,6 +31,8 @@
 | scripts/repo_graph.py | ACTIVE | tooling/ci | ja | — | Import-Graph, Symbole, Duplikat-Check; konsolidiert audit_silent_dead_imports.py + audit_bridge_coverage.py |
 | scripts/file_registry_check.py | ACTIVE | tooling/ci | ja | — | Write-Gate `aurik-file-lifecycle`; validiert diese Registry (R1–R7) |
 | scripts/change_ledger.py | ACTIVE | tooling/ci | ja | — | TASK_CHANGES.md (snapshot/check); CI-Abdeckungs-Gate |
+| scripts/validate_hr_v1.py | ACTIVE | tooling/validation | ja | — | §SOTA-HR-V1 (F3, 2026-09-16): BigVGAN-A/B-Validierung (af+HNR-Gates, Never-worsen) für den HR-V1-Aktivierungsvertrag in phase_07; Exit 0 = besteht / 1 = verschlechtert / 2 = Setup-Fehler (fail-closed) |
+| docs/reports/current/2026-09-16_hr_v1_bigvgan_ab_validation.md | ACTIVE | docs/reports | ja | — | HR-V1-A/B-Validierungsbeleg (2026-09-16): af +0,0073 / HNR +4,42 dB ⇒ PASS; Flag bleibt bis Test-Suite-Anpassung + UV3-Budget-Nachweis OFF |
 | scripts/repo_search.py | ACTIVE | tooling/agents | ja | — | BM25-Suche mit Status-Gewichtung; `--before-create` vor Dateianlage |
 | scripts/export_bigvgan_v2_onnx.py | ACTIVE | tooling/ml-export | ja | — | Exportiert den BigVGAN-v2-Generator aus `bigvgan_v2.pth` nach ONNX und prüft PyTorch-Parität |
 | scripts/benchmark_effizienz_matrix.py | ACTIVE | tooling/benchmark | ja | — | Effizienz-Matrix-Benchmark: UV3-Modi (FAST/BALANCED/MAXIMUM) × Ebenen-Schalter (PMGG/Adaptive-Skipping); Stufen-Timing, RSS-Verlauf, JSON-Report; CI-Gate via --ci (--enforce-budget gegen copilot-instructions §Performance-Budget aus metadata[pipeline_budget_timings], --bootstrap-ci 95 %-CI, --profile-top-phases, --repeats N mit deterministischer Seed-Folge AURIK_MASTER_SEED=42+i) (2026-09-06) |

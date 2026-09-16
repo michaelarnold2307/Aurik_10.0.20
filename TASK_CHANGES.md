@@ -1,17 +1,39 @@
 # TASK_CHANGES — Live-Ledger der aktuellen Aufgabe
 
-> Generiert von `scripts/change_ledger.py snapshot` (Base: `HEAD`, Stand: 2026-09-16 06:50 CEST).
+> Generiert von `scripts/change_ledger.py snapshot` (Base: `HEAD`, Stand: 2026-09-16 07:36 CEST).
 > CI (`ci-lite.yml` pr-evidence-gate) erzwingt Abdeckung: jede geänderte Code-Datei muss hier stehen.
 
 ## Geänderte Dateien
 
 | Status | Pfad | Art |
 |---|---|---|
-| M | TASK_CHANGES.md | modifiziert |
+| M | .github/FILE_REGISTRY.md | modifiziert |
+| M | backend/core/phases/phase_07_harmonic_restoration.py | modifiziert |
 | M | docs/TODOS_SOTA_ROADMAP.md | modifiziert |
-| M | tests/unit/test_gacela_gabor_shim.py | modifiziert |
+| M | tests/unit/test_hr_v1_activation_contract.py | modifiziert |
+| ?? | docs/reports/current/2026-09-16_hr_v1_bigvgan_ab_validation.md | ungetrackt |
+| ?? | scripts/validate_hr_v1.py | ungetrackt |
 
 ## Entscheidungen
+
+- **SOTA-HR-V1: Synthese-Pfad hinter F3-Aktivierungsvertrag + A/B-Validierung (2026-09-16)**:
+  - phase_07 verdrahtet den BigVGAN-Repair-Pfad hinter `bigvgan_v2_ready()`
+    (Flag = einzige Schaltstelle, fail-closed): Synthese →
+    `additive_synthesis_gate` (Never-worsen, §B5) → nur bei
+    `bands_released > 0` Übernahme; Witness `hr_v1` (attempted/applied).
+    ML→DSP-Fallback loggt jetzt `logger.warning` + Begründung (§V6 statt
+    DEBUG). Tests: test_hr_v1_activation_contract.py von 4 auf 6 Fälle
+    (fail-closed-Synthese-Fehler, model_used=none ⇒ kein Eingriff).
+  - Neues Skript `scripts/validate_hr_v1.py`: A/B-Gate (af ≥ −0,02,
+    HNR ≥ −0,5 dB, Exit 0/1/2) — **Lauf 2026-09-16 (Elke-Best-20s,
+    Torch-ROCm): af +0,0073, HNR +4,42 dB, PQS 4,52, 26 Bänder ⇒ PASS**
+    (Beleg: `docs/reports/current/2026-09-16_hr_v1_bigvgan_ab_validation.md`).
+    `BIGVGAN_V2_HR_ACTIVATED` bleibt bewusst OFF: Rollout-Voraussetzungen
+    sind Test-Suite-Anpassung auf den aktivierten Pfad und ein
+    UV3-Performance-Budget-Nachweis (BigVGAN-Inferenz ≫ 10× RT).
+  - Roadmap: Q5 (F2-Verlängerung) GESCHLOSSEN (obsolet — S1-Validierung hat
+    Pfad B verworfen; unterbrochener Resume-Lauf wird nicht fortgesetzt);
+    Q6/F3 mit A/B-PASS dokumentiert; Phase-Tabelle (07/55) aktualisiert.
 
 - **SOTA-Roadmap Folge-Slices 3a + 3b (2026-09-15, af-Never-worsen + PSY-A7-Rollout)**:
   - **3a (af-Never-worsen in 07/17/19/38):** Sub-Score-Analyse lokalisierte den

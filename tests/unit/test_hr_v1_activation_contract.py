@@ -47,3 +47,45 @@ class TestPhase07HrV1Witness:
         assert hr is not None, "phase_07 meldet kein hr_v1-Metadatum"
         assert hr.get("attempted") is False  # Aktivierungsvertrag: Status quo
         assert np.isfinite(np.asarray(res.audio)).all()
+
+
+class TestPhase07HrV1ActivatedFallback:
+    """Aktivierter Zweig (Flag ON, Checkpoint vorhanden) — ohne GPU:
+    Synthese-Fehler und Modell-Leerlauf müssen fail-closed auf DSP fallen."""
+
+    @staticmethod
+    def _run_phase07() -> "object":
+        from backend.core.defect_scanner import MaterialType
+        from backend.core.phases.phase_07_harmonic_restoration import HarmonicRestorationPhase
+
+        t = np.linspace(0, 1, 48000, endpoint=False, dtype=np.float32)
+        x = (0.2 * np.sin(2 * np.pi * 440 * t)).astype(np.float32)
+        return HarmonicRestorationPhase().process(x, sample_rate=48000, material_type=MaterialType.VINYL)
+
+    def test_synthesis_failure_falls_back_dsp(self, monkeypatch):
+        monkeypatch.setattr(bvg, "BIGVGAN_V2_HR_ACTIVATED", True)
+
+        def _raise(*_a, **_k):
+            raise RuntimeError("simulierter Synthese-Fehler")
+
+        monkeypatch.setattr(bvg, "synthesize_audio", _raise)
+        res = self._run_phase07()
+        hr = res.metadata.get("hr_v1")
+        assert hr.get("attempted") is True
+        assert hr.get("applied") is False  # §V6-fail-closed: DSP-Status quo
+        assert np.isfinite(np.asarray(res.audio)).all()
+
+    def test_model_used_none_keeps_dsp(self, monkeypatch):
+        from types import SimpleNamespace
+
+        monkeypatch.setattr(bvg, "BIGVGAN_V2_HR_ACTIVATED", True)
+
+        def _none(*_a, **_k):
+            return SimpleNamespace(audio=np.zeros(48000, dtype=np.float32), model_used="none", pqs_mos=0.0)
+
+        monkeypatch.setattr(bvg, "synthesize_audio", _none)
+        res = self._run_phase07()
+        hr = res.metadata.get("hr_v1")
+        assert hr.get("attempted") is True
+        assert hr.get("applied") is False  # kein Modell-Ergebnis ⇒ kein Eingriff
+        assert np.isfinite(np.asarray(res.audio)).all()
