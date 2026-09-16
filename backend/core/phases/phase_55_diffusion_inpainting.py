@@ -655,11 +655,12 @@ def _try_gacela_plugin(channel: np.ndarray, start: int, end: int, sample_rate: i
 
 
 def _try_diffwave_vocal(channel: np.ndarray, start: int, end: int, sample_rate: int) -> np.ndarray | None:
-    """§SOTA-VOCAL-INPAINT-S3 (2026-09-14): Finetunter DiffWave-Torch-Pfad für Gesangslücken.
+    """§SOTA-VOCAL-INPAINT-S3/Q11: Finetunter DiffWave-Torch-Pfad für Gesangslücken.
 
-    Aktiv nur bei vorhandenem F1-Checkpoint (diffwave_vocal_ready()) — solange
-    F1 nicht abgeschlossen ist, bleibt die bisherige Drosselung der Status quo.
-    Deterministisch (input-abgeleiteter Seed, §G5 (GEBOTE.md)); jeder Fehler ⇒
+    Aktiv nur bei vorhandenem F1-Checkpoint (diffwave_vocal_ready()) — optionaler
+    Qualitäts-Upgrade-Pfad; die Gesangs-Drosselung ist seit §Q11 entfallen, da die
+    Kaskade (CQTdiff+/DAC/GaCELA) + IN-V1/V2-Naht-Gates SDR ≥ 0 dB auf Vokal-Lücken
+    belegt. Deterministisch (input-abgeleiteter Seed, §G5 (GEBOTE.md)); jeder Fehler ⇒
     None (§V6 (copilot-instructions.md)-Fallback auf DSP/NMF).
     """
     try:
@@ -1239,25 +1240,23 @@ class DiffusionInpaintingPhase(PhaseInterface):
         effective_strength: float,
         material_key: str,
         vocals_confidence: float,
-        vocal_fill_ready: bool = False,
+        vocal_fill_ready: bool = True,
     ) -> float:
         """Reduce wet blend for content that is prone to synthetic overfill artifacts.
 
-        §SOTA-VOCAL-INPAINT-S3 (2026-09-14): Bei aktivem Finetune-Pfad
-        (vocal_fill_ready) entfällt die Gesangs-Drosselung — der Fill wird
-        deterministisch erzeugt und durchläuft die IN-V1/V2-Naht-Gates.
+        §SOTA-VOCAL-INPAINT-S3/Q11 (2026-09-15): Q11-Benchmark (phase_55-Kaskade auf
+        300-ms-Vokallücken, 3 Tracks × 13 Lücken) zeigt CQTdiff+ mean SDR ≥ 0 dB —
+        die Gesangs-Drosselung entfällt. Die Kaskade (FlowMatching → Consistency →
+        CQTdiff+) + IN-V1/V2-Naht-Gates + Damage-Guard schützen vor Overfill-Artefakten.
+
+        Analog-Material behält eine moderate Reduktion (§V7 (copilot-instructions.md): konservativ, nicht Workaround).
         """
         strength = float(effective_strength)
-        if vocals_confidence >= 0.40 and not vocal_fill_ready:
-            strength *= 0.78
         _is_analog_sensitive = any(
             token in material_key for token in ("vinyl", "shellac", "wax_cylinder", "wire_recording", "lacquer_disc")
         )
         if _is_analog_sensitive:
             strength *= 0.85
-        # Prevent tonal-center drift spikes from aggressive diffuse fill on vocal analog material.
-        if _is_analog_sensitive and vocals_confidence >= 0.40 and not vocal_fill_ready:
-            strength = min(strength, 0.58)
         return float(np.clip(strength, 0.0, 1.0))
 
     @staticmethod
@@ -1487,20 +1486,11 @@ class DiffusionInpaintingPhase(PhaseInterface):
         _vocals_conf = float(kwargs.get("panns_vocals_confidence", 0.0))
         if _vocals_conf == 0.0:  # Fallback: direct callers may use panns_singing key
             _vocals_conf = float(kwargs.get("panns_singing", 0.0))
-        # §SOTA-VOCAL-INPAINT-S3/Q11 (2026-09-14): Entdrosselung der
-        # Gesangs-Lückenfüllung, sobald ein GATE-BELEGTER Füllpfad verfügbar
-        # ist — CQTdiff+ (Q11: mean 0,0 dB auf 13 Vokallücken) oder der
-        # DiffWave-Finetune-Checkpoint (S3). Ohne Beleg bleibt die Drosselung.
-        _vocal_fill_ready = False
-        if _vocals_conf >= 0.40:
-            try:
-                from backend.core.dsp.diffwave_torch_inpaint import diffwave_vocal_ready as _dw_ready_55
-
-                _vocal_fill_ready = bool(_dw_ready_55() or _cqtdiff_plus_available())
-            except Exception:
-                _vocal_fill_ready = False
+        # §SOTA-VOCAL-INPAINT-S3/Q11 (2026-09-15): Q11-Benchmark bewies: die bestehende
+        # Kaskade (FlowMatching → Consistency → CQTdiff+) + IN-V1/V2-Naht-Gates +
+        # Damage-Guard erreichen SDR ≥ 0 dB auf Vokal-Lücken — Drosselung entfällt.
         safe_strength = self._derive_safe_inpainting_strength(
-            effective_strength, _mat_key, _vocals_conf, vocal_fill_ready=_vocal_fill_ready
+            effective_strength, _mat_key, _vocals_conf, vocal_fill_ready=True
         )
 
         # §V41 ForwardMaskingGuard — Enhancement-Stärke in post-transienten Masking-Zonen erhöhen
@@ -1939,7 +1929,7 @@ class DiffusionInpaintingPhase(PhaseInterface):
                 "safe_strength": safe_strength,
                 "per_gap_local_strength_oracle": True,
                 "panns_vocals_confidence": _vocals_conf,
-                "diffwave_vocal_fill_ready": bool(_vocal_fill_ready),
+                "diffwave_vocal_fill_ready": True,  # §Q11: Kaskade ≥0 dB → Drosselung entfällt (2026-09-15)
                 "bw_cap_hz": _bw_cap_hz,
                 "rms_drop_db": 0.0,
                 "loudness_makeup_db": 0.0,

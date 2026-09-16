@@ -170,6 +170,36 @@ class SpatialEnhancementPhase(PhaseInterface):
         effective_strength = float(kwargs.get("strength", 1.0)) * phase_locality_factor
         effective_strength = float(np.clip(effective_strength, 0.0, 1.0))
 
+        # §SOTA-PSY-A3 (2026-09-15): BMLD-dynamische Freisetzungs-Toleranz —
+        # Freisetzung entspannt die Enhancement-Stärke begrenzt (Muster phase_33).
+        _bml_46: dict[str, float] = {}
+        _bmld_factor_46 = 1.0
+        if audio.ndim == 2 and min(audio.shape) == 2:
+            try:
+                from backend.core.dsp.binaural_masking import (
+                    binaural_masking_advantage as _bma46,
+                )
+                from backend.core.dsp.binaural_masking import (
+                    bmld_tolerance_factor as _btf46,
+                )
+
+                _bres46 = _bma46(audio, sample_rate)
+                _bml_46 = {
+                    "release_db": _bres46.release_db,
+                    "nr_floor_release_db": _bres46.nr_floor_release_db,
+                    "ec_gain_db": _bres46.ec_gain_db,
+                }
+                _bmld_factor_46 = _btf46(_bres46.release_db)
+                logger.debug(
+                    "Verarbeitungsschritt_46 §SOTA-PSY-A3: BMLD-Freisetzung %.2f dB (Cap %.2f dB, EC %.2f dB) — Toleranz-Faktor %.3f",
+                    _bres46.release_db,
+                    _bres46.nr_floor_release_db,
+                    _bres46.ec_gain_db,
+                    _bmld_factor_46,
+                )
+            except Exception as _psy_exc_46:
+                logger.debug("Verarbeitungsschritt_46 §SOTA-PSY-A3 nicht blockierend: %s", _psy_exc_46)
+
         # §V41 ForwardMaskingGuard — Enhancement-Stärke in post-transienten Masking-Zonen erhöhen
         _panns_s_46 = float(
             kwargs.get("panns_singing", kwargs.get("panns_singing_confidence", kwargs.get("vocal_confidence", 0.0)))
@@ -188,6 +218,7 @@ class SpatialEnhancementPhase(PhaseInterface):
                     effective_strength = float(np.clip(effective_strength + _zone_frac_46 * 0.15, 0.0, 1.0))
             except Exception as _fmg_exc_46:
                 logger.debug("Verarbeitungsschritt46 §V41 ForwardMaskingGuard nicht blockierend: %s", _fmg_exc_46)
+        effective_strength = float(np.clip(effective_strength * _bmld_factor_46, 0.0, 1.0))
 
         if effective_strength <= 1e-6:
             dry = np.nan_to_num(audio, nan=0.0, posinf=0.0, neginf=0.0)
@@ -348,26 +379,7 @@ class SpatialEnhancementPhase(PhaseInterface):
             logger.debug("Verarbeitungsschritt46 §2.46e Hallucination-Guard (nicht blockierend): %s", _hg_exc_46)
 
         # §SOTA-PSY-A3 (2026-09-15): BMLD-Witness (Muster phase_33/34 —
-        # ZEUGE, nicht Richter, Hörordnung §8a).
-        _bml_46: dict[str, float] = {}
-        if audio.ndim == 2 and min(audio.shape) == 2:
-            try:
-                from backend.core.dsp.binaural_masking import binaural_masking_advantage as _bma46
-
-                _bres46 = _bma46(audio, sample_rate)
-                _bml_46 = {
-                    "release_db": _bres46.release_db,
-                    "nr_floor_release_db": _bres46.nr_floor_release_db,
-                    "ec_gain_db": _bres46.ec_gain_db,
-                }
-                logger.debug(
-                    "Verarbeitungsschritt_46 §SOTA-PSY-A3: BMLD-Freisetzung %.2f dB (Cap %.2f dB, EC %.2f dB)",
-                    _bres46.release_db,
-                    _bres46.nr_floor_release_db,
-                    _bres46.ec_gain_db,
-                )
-            except Exception as _psy_exc_46:
-                logger.debug("Verarbeitungsschritt_46 §SOTA-PSY-A3 nicht blockierend: %s", _psy_exc_46)
+        # ZEUGE, nicht Richter, Hörordnung §8a; Faktor s. o.).
 
         return PhaseResult(
             success=True,
@@ -383,6 +395,7 @@ class SpatialEnhancementPhase(PhaseInterface):
                 "side_reduction": side_reduction,
                 "side_width_gain": _side_width_gain,
                 "binaural_masking_advantage": _bml_46,
+                "binaural_masking_release_tolerance_factor": round(_bmld_factor_46, 4),
                 "phase_locality_factor": phase_locality_factor,
                 "effective_strength": effective_strength,
                 "rms_drop_db": 0.0,

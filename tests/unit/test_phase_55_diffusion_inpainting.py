@@ -78,12 +78,20 @@ def test_try_diffwave_vocal_failure_returns_none(monkeypatch: pytest.MonkeyPatch
 
 
 def test_derive_safe_strength_unthrottled_when_ready(phase) -> None:
-    """S3: Bei aktivem Finetune-Pfad entfällt die Gesangs-Drosselung (0.78/Cap 0.58)."""
-    # Analog + Gesang, ohne Fill: 1.0 × 0.78 × 0.85 = 0.663 → Cap 0.58
-    throttled = phase._derive_safe_inpainting_strength(1.0, "vinyl", 0.5, vocal_fill_ready=False)
-    assert throttled == pytest.approx(0.58)
-    # Mit Fill: nur Analog-Faktor bleibt (0.85), keine Gesangs-Drosselung
-    unthrottled = phase._derive_safe_inpainting_strength(1.0, "vinyl", 0.5, vocal_fill_ready=True)
-    assert unthrottled == pytest.approx(0.85)
-    # Ohne Gesang bleibt alles wie bisher
-    assert phase._derive_safe_inpainting_strength(1.0, "vinyl", 0.1, vocal_fill_ready=True) == pytest.approx(0.85)
+    """§Q11 (2026-09-15): Kaskade ≥ 0 dB auf Vokal-Lücken → Gesangs-Drosselung entfällt.
+
+    Nur Analog-Faktor (0.85) bleibt als moderate Reduktion für analoges Material.
+    Die IN-V1/V2-Naht-Gates + Damage-Guard schützen vor Overfill-Artefakten.
+    """
+    # Analog + Gesang: nur Analog-Faktor (0.85), keine Gesangs-Drosselung mehr
+    analog_vocal = phase._derive_safe_inpainting_strength(1.0, "vinyl", 0.5, vocal_fill_ready=True)
+    assert analog_vocal == pytest.approx(0.85)
+    # Analog + Gesang mit explizitem False (Default ist True): ebenfalls keine Drosselung
+    analog_vocal_legacy = phase._derive_safe_inpainting_strength(1.0, "vinyl", 0.5, vocal_fill_ready=False)
+    assert analog_vocal_legacy == pytest.approx(0.85)
+    # Ohne Gesang: Analog-Faktor unverändert
+    no_vocals = phase._derive_safe_inpainting_strength(1.0, "vinyl", 0.1, vocal_fill_ready=True)
+    assert no_vocals == pytest.approx(0.85)
+    # Nicht-Analog + Gesang: keine Reduktion
+    digital_vocal = phase._derive_safe_inpainting_strength(1.0, "cd_digital", 0.9, vocal_fill_ready=True)
+    assert digital_vocal == pytest.approx(1.0)

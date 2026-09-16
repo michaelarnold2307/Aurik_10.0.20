@@ -242,13 +242,42 @@ class StereoWidthEnhancerPhase(PhaseInterface):
                 "Verarbeitungsschritt_48: Restoration-Betriebsart — Strength auf %.2f, Width-Cap 1.08 (Gesang-Präsenz-Schutz)",
                 effective_strength,
             )
+        # §SOTA-PSY-A3 (2026-09-15): BMLD-dynamische Freisetzungs-Toleranz —
+        # Freisetzung entspannt den Breiten-Cap begrenzt (Muster phase_33; Never-worsen).
+        _bml_48: dict[str, float] = {}
+        _bmld_factor_48 = 1.0
+        if audio.ndim == 2 and min(audio.shape) == 2:
+            try:
+                from backend.core.dsp.binaural_masking import (
+                    binaural_masking_advantage as _bma48,
+                )
+                from backend.core.dsp.binaural_masking import (
+                    bmld_tolerance_factor as _btf48,
+                )
+
+                _bres48 = _bma48(audio, sample_rate)
+                _bml_48 = {
+                    "release_db": _bres48.release_db,
+                    "nr_floor_release_db": _bres48.nr_floor_release_db,
+                    "ec_gain_db": _bres48.ec_gain_db,
+                }
+                _bmld_factor_48 = _btf48(_bres48.release_db)
+                logger.debug(
+                    "Verarbeitungsschritt_48 §SOTA-PSY-A3: BMLD-Freisetzung %.2f dB (Cap %.2f dB, EC %.2f dB) — Toleranz-Faktor %.3f",
+                    _bres48.release_db,
+                    _bres48.nr_floor_release_db,
+                    _bres48.ec_gain_db,
+                    _bmld_factor_48,
+                )
+            except Exception as _psy_exc_48:
+                logger.debug("Verarbeitungsschritt_48 §SOTA-PSY-A3 nicht blockierend: %s", _psy_exc_48)
         _p48_width_default = _DEFAULT_WIDTH if _p48_studio else 1.08
         width: float = float(kwargs.get("width", _p48_width_default))
         if not _p48_studio:
-            width = float(np.clip(width, 1.0, 1.08))
+            width = float(np.clip(width, 1.0, 1.08 * _bmld_factor_48))
         diffuse: bool = bool(kwargs.get("diffuse", True))
         iacc_guard: bool = bool(kwargs.get("iacc_guard", True))
-        width = max(0.0, width) * effective_strength
+        width = max(0.0, width) * effective_strength * _bmld_factor_48
 
         if audio.ndim == 1:
             audio = np.nan_to_num(audio, nan=0.0, posinf=0.0, neginf=0.0)
@@ -335,26 +364,7 @@ class StereoWidthEnhancerPhase(PhaseInterface):
         )
 
         # §SOTA-PSY-A3 (2026-09-15): BMLD-Witness (Muster phase_33/34 —
-        # ZEUGE, nicht Richter, Hörordnung §8a).
-        _bml_48: dict[str, float] = {}
-        if audio.ndim == 2 and min(audio.shape) == 2:
-            try:
-                from backend.core.dsp.binaural_masking import binaural_masking_advantage as _bma48
-
-                _bres48 = _bma48(audio, sample_rate)
-                _bml_48 = {
-                    "release_db": _bres48.release_db,
-                    "nr_floor_release_db": _bres48.nr_floor_release_db,
-                    "ec_gain_db": _bres48.ec_gain_db,
-                }
-                logger.debug(
-                    "Verarbeitungsschritt_48 §SOTA-PSY-A3: BMLD-Freisetzung %.2f dB (Cap %.2f dB, EC %.2f dB)",
-                    _bres48.release_db,
-                    _bres48.nr_floor_release_db,
-                    _bres48.ec_gain_db,
-                )
-            except Exception as _psy_exc_48:
-                logger.debug("Verarbeitungsschritt_48 §SOTA-PSY-A3 nicht blockierend: %s", _psy_exc_48)
+        # ZEUGE, nicht Richter, Hörordnung §8a; Faktor s. o.).
 
         return PhaseResult(
             success=True,
@@ -366,6 +376,7 @@ class StereoWidthEnhancerPhase(PhaseInterface):
                 "iacc": iacc_val,
                 "side_reduction": side_reduction,
                 "binaural_masking_advantage": _bml_48,
+                "binaural_masking_release_tolerance_factor": round(_bmld_factor_48, 4),
                 "phase_locality_factor": phase_locality_factor,
                 "effective_strength": effective_strength,
                 "rms_drop_db": 0.0,

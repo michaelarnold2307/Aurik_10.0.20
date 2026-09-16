@@ -1,6 +1,6 @@
 # TASK_CHANGES — Live-Ledger der aktuellen Aufgabe
 
-> Generiert von `scripts/change_ledger.py snapshot` (Base: `HEAD`, Stand: 2026-09-15 17:00 CEST).
+> Generiert von `scripts/change_ledger.py snapshot` (Base: `HEAD`, Stand: 2026-09-15 18:27 CEST).
 > CI (`ci-lite.yml` pr-evidence-gate) erzwingt Abdeckung: jede geänderte Code-Datei muss hier stehen.
 
 ## Geänderte Dateien
@@ -9,9 +9,12 @@
 |---|---|---|
 | M | .github/FILE_REGISTRY.md | modifiziert |
 | M | TASK_CHANGES.md | modifiziert |
+| M | backend/core/phases/phase_13_stereo_enhancement.py | modifiziert |
+| M | backend/core/phases/phase_15_stereo_balance.py | modifiziert |
+| M | backend/core/phases/phase_46_spatial_enhancement.py | modifiziert |
+| M | backend/core/phases/phase_48_stereo_width_enhancer.py | modifiziert |
 | M | docs/TODOS_SOTA_ROADMAP.md | modifiziert |
-| M | scripts/artifact_freedom_diagnosis.py | modifiziert |
-| ?? | tests/unit/test_p0_1_hot_phase_report.py | ungetrackt |
+| ?? | tests/unit/test_psy_a3_bmld_tolerance_rollout.py | ungetrackt |
 
 ## Entscheidungen
 
@@ -51,8 +54,12 @@
     nie < 1,0 (Never-worsen), NaN-sicher. phase_33 multipliziert den Breiten-Cap
     je Band mit dem Faktor (ZEUGE → Toleranz-Anpassung; vorher reiner Witness).
     Metadatum `binaural_masking_release_tolerance_factor`; Tests:
-    test_psy_a3_bmld_tolerance.py (6 Fälle). 13/15/46/48-Toleranz = Folge-Slice
-    (Muster dokumentiert).
+    test_psy_a3_bmld_tolerance.py (6 Fälle). **Rollout 13/15/46/48 (2026-09-15):**
+    gleicher Faktor auf phase_48-Breiten-Cap, phase_13-Breiten-Faktoren,
+    phase_15-Korrektur-Stärke, phase_46-Enhancement-Stärke (MIN_CORRELATION-
+    und IACC-Guards bleiben unverändert schützend); phase_13-already_wide-
+    Early-Exit trägt Witness+Faktor ebenfalls. Tests:
+    test_psy_a3_bmld_tolerance_rollout.py (1 Fall). PSY-A3 damit vollständig.
 - **GPU-Buildouts (Q6/F3, CPU-Vorbereitung 2026-09-15):** HR-V1-Aktivierungsvertrag
   verdrahtet — `bigvgan_v2_ready()`/`hr_v1_activation_status()` in
   `plugins/bigvgan_v2_plugin.py` (fail-closed: Flag `BIGVGAN_V2_HR_ACTIVATED` =

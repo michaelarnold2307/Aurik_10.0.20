@@ -290,10 +290,39 @@ class StereoBalancePhaseV2(PhaseInterface):
             )
 
         # Get material-specific parameters
+        # §SOTA-PSY-A3 (2026-09-15): BMLD-dynamische Freisetzungs-Toleranz —
+        # Freisetzung entspannt die Korrektur-Stärke begrenzt (Muster phase_33).
+        _bml_15: dict[str, float] = {}
+        _bmld_factor_15 = 1.0
+        if audio.ndim == 2 and min(audio.shape) == 2:
+            try:
+                from backend.core.dsp.binaural_masking import (
+                    binaural_masking_advantage as _bma15,
+                )
+                from backend.core.dsp.binaural_masking import (
+                    bmld_tolerance_factor as _btf15,
+                )
+
+                _bres15 = _bma15(audio, sample_rate)
+                _bml_15 = {
+                    "release_db": _bres15.release_db,
+                    "nr_floor_release_db": _bres15.nr_floor_release_db,
+                    "ec_gain_db": _bres15.ec_gain_db,
+                }
+                _bmld_factor_15 = _btf15(_bres15.release_db)
+                logger.debug(
+                    "Verarbeitungsschritt_15 §SOTA-PSY-A3: BMLD-Freisetzung %.2f dB (Cap %.2f dB, EC %.2f dB) — Toleranz-Faktor %.3f",
+                    _bres15.release_db,
+                    _bres15.nr_floor_release_db,
+                    _bres15.ec_gain_db,
+                    _bmld_factor_15,
+                )
+            except Exception as _psy_exc_15:
+                logger.debug("Verarbeitungsschritt_15 §SOTA-PSY-A3 nicht blockierend: %s", _psy_exc_15)
         strength_per_band = list(
             self.CORRECTION_STRENGTH.get(material_enum, self.CORRECTION_STRENGTH[MaterialType.VINYL])
         )
-        strength_per_band = [float(s * _effective_strength) for s in strength_per_band]
+        strength_per_band = [float(s * _effective_strength * _bmld_factor_15) for s in strength_per_band]
         threshold_per_band = self.DETECTION_THRESHOLD.get(
             material_enum,
             self.DETECTION_THRESHOLD[MaterialType.VINYL],
@@ -352,26 +381,7 @@ class StereoBalancePhaseV2(PhaseInterface):
             corrected_audio = audio + _wet15 * (corrected_audio - audio)
             corrected_audio = np.clip(corrected_audio, -1.0, 1.0)
         # §SOTA-PSY-A3 (2026-09-15): BMLD-Witness (Muster phase_33/34 —
-        # ZEUGE, nicht Richter, Hörordnung §8a).
-        _bml_15: dict[str, float] = {}
-        if audio.ndim == 2 and min(audio.shape) == 2:
-            try:
-                from backend.core.dsp.binaural_masking import binaural_masking_advantage as _bma15
-
-                _bres15 = _bma15(audio, sample_rate)
-                _bml_15 = {
-                    "release_db": _bres15.release_db,
-                    "nr_floor_release_db": _bres15.nr_floor_release_db,
-                    "ec_gain_db": _bres15.ec_gain_db,
-                }
-                logger.debug(
-                    "Verarbeitungsschritt_15 §SOTA-PSY-A3: BMLD-Freisetzung %.2f dB (Cap %.2f dB, EC %.2f dB)",
-                    _bres15.release_db,
-                    _bres15.nr_floor_release_db,
-                    _bres15.ec_gain_db,
-                )
-            except Exception as _psy_exc_15:
-                logger.debug("Verarbeitungsschritt_15 §SOTA-PSY-A3 nicht blockierend: %s", _psy_exc_15)
+        # ZEUGE, nicht Richter, Hörordnung §8a; Faktor s. o.).
         return PhaseResult(
             success=True,
             audio=corrected_audio,
@@ -386,6 +396,7 @@ class StereoBalancePhaseV2(PhaseInterface):
                 "num_bands": 3,
                 "band_splits_hz": self.BAND_SPLITS,
                 "binaural_masking_advantage": _bml_15,
+                "binaural_masking_release_tolerance_factor": round(_bmld_factor_15, 4),
                 "repair_locality_coverage": round(float(_local_coverage15), 6),
                 "phase_locality_factor": phase_locality_factor,
                 "effective_strength": _effective_strength,

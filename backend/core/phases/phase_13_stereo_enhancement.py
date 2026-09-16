@@ -227,8 +227,38 @@ class StereoEnhancementPhaseV2(PhaseInterface):
             )
 
         # Get material-specific parameters
+        # §SOTA-PSY-A3 (2026-09-15): BMLD-dynamische Freisetzungs-Toleranz —
+        # Freisetzung entspannt die Breiten-Faktoren begrenzt (Muster phase_33;
+        # die MIN_CORRELATION-Guards bleiben unverändert schützend).
+        _bml_13: dict[str, float] = {}
+        _bmld_factor_13 = 1.0
+        if audio.ndim == 2 and min(audio.shape) == 2:
+            try:
+                from backend.core.dsp.binaural_masking import (
+                    binaural_masking_advantage as _bma13,
+                )
+                from backend.core.dsp.binaural_masking import (
+                    bmld_tolerance_factor as _btf13,
+                )
+
+                _bres13 = _bma13(audio, sample_rate)
+                _bml_13 = {
+                    "release_db": _bres13.release_db,
+                    "nr_floor_release_db": _bres13.nr_floor_release_db,
+                    "ec_gain_db": _bres13.ec_gain_db,
+                }
+                _bmld_factor_13 = _btf13(_bres13.release_db)
+                logger.debug(
+                    "Verarbeitungsschritt_13 §SOTA-PSY-A3: BMLD-Freisetzung %.2f dB (Cap %.2f dB, EC %.2f dB) — Toleranz-Faktor %.3f",
+                    _bres13.release_db,
+                    _bres13.nr_floor_release_db,
+                    _bres13.ec_gain_db,
+                    _bmld_factor_13,
+                )
+            except Exception as _psy_exc_13:
+                logger.debug("Verarbeitungsschritt_13 §SOTA-PSY-A3 nicht blockierend: %s", _psy_exc_13)
         width_factors = list(self.WIDTH_FACTORS.get(material_type, self.WIDTH_FACTORS[MaterialType.VINYL]))
-        width_factors = [float(1.0 + (w - 1.0) * _effective_strength) for w in width_factors]
+        width_factors = [float(1.0 + (w - 1.0) * _effective_strength * _bmld_factor_13) for w in width_factors]
         min_correlations = self.MIN_CORRELATION.get(material_type, self.MIN_CORRELATION[MaterialType.VINYL])
         haas_delays = self.HAAS_DELAY_MS.get(material_type, self.HAAS_DELAY_MS[MaterialType.VINYL])
         decorr_orders = self.DECORRELATION_ORDER.get(material_type, self.DECORRELATION_ORDER[MaterialType.VINYL])
@@ -261,6 +291,8 @@ class StereoEnhancementPhaseV2(PhaseInterface):
                     "enhancement_applied": False,
                     "algorithm": "stereo_enhancement_no_op",
                     "reason": "already_wide_stereo",
+                    "binaural_masking_advantage": _bml_13,
+                    "binaural_masking_release_tolerance_factor": round(_bmld_factor_13, 4),
                     "phase_locality_factor": phase_locality_factor,
                     "effective_strength": _effective_strength,
                     "rms_drop_db": 0.0,
@@ -324,26 +356,7 @@ class StereoEnhancementPhaseV2(PhaseInterface):
             enhanced_audio = np.clip(enhanced_audio, -1.0, 1.0)
         # §SOTA-PSY-A3 (2026-09-15): BMLD-Witness — die binaurale
         # Maskierungs-Freisetzung wird gemessen und als Metadatum geführt
-        # (ZEUGE, nicht Richter — Hörordnung §8a; Muster phase_33/34).
-        _bml_13: dict[str, float] = {}
-        if audio.ndim == 2 and min(audio.shape) == 2:
-            try:
-                from backend.core.dsp.binaural_masking import binaural_masking_advantage as _bma13
-
-                _bres13 = _bma13(audio, sample_rate)
-                _bml_13 = {
-                    "release_db": _bres13.release_db,
-                    "nr_floor_release_db": _bres13.nr_floor_release_db,
-                    "ec_gain_db": _bres13.ec_gain_db,
-                }
-                logger.debug(
-                    "Verarbeitungsschritt_13 §SOTA-PSY-A3: BMLD-Freisetzung %.2f dB (Cap %.2f dB, EC %.2f dB)",
-                    _bres13.release_db,
-                    _bres13.nr_floor_release_db,
-                    _bres13.ec_gain_db,
-                )
-            except Exception as _psy_exc_13:
-                logger.debug("Verarbeitungsschritt_13 §SOTA-PSY-A3 nicht blockierend: %s", _psy_exc_13)
+        # (ZEUGE, nicht Richter — Hörordnung §8a; Muster phase_33/34; Faktor s. o.).
         return PhaseResult(
             success=True,
             audio=enhanced_audio,
@@ -355,6 +368,7 @@ class StereoEnhancementPhaseV2(PhaseInterface):
                 "num_bands": 4,
                 "band_splits_hz": self.BAND_SPLITS,
                 "binaural_masking_advantage": _bml_13,
+                "binaural_masking_release_tolerance_factor": round(_bmld_factor_13, 4),
                 "phase_locality_factor": phase_locality_factor,
                 "effective_strength": _effective_strength,
                 "rms_drop_db": 0.0,
