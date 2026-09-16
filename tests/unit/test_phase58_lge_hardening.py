@@ -39,7 +39,7 @@ def test_phase58_enhance_retry_second_attempt_success(monkeypatch):
         def __init__(self):
             self.calls = 0
 
-        def enhance(self, audio_in, sample_rate):
+        def enhance(self, audio_in, sample_rate, strength: float = 1.0):
             self.calls += 1
             if self.calls == 1:
                 raise ValueError("transient failure")

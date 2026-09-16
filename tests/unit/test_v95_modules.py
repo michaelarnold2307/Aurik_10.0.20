@@ -170,9 +170,12 @@ class TestPhase55DiffusionInpainting:
 
     def test_safe_strength_dampens_vocal_vinyl(self, phase55):
         safe = phase55._derive_safe_inpainting_strength(1.0, "materialtype.vinyl", 0.8)
+        assert safe == pytest.approx(0.85, rel=1e-6)
+        # §Q11 (2026-09-15): Gesangs-Drosselung entfällt (CQTdiff+ mean SDR ≥ 0 dB) —
+        # Analog-Material behält nur die moderate 0,85-Reduktion, keine Vocal-Kappe.
         safe = phase55._derive_safe_inpainting_strength(1.0, "vinyl", 0.9)
-        assert safe == pytest.approx(0.58, rel=1e-6)
-        assert safe <= 0.84 * 0.90 + 1e-9
+        assert safe == pytest.approx(0.85, rel=1e-6)
+        assert safe <= 0.90 + 1e-9
 
     def test_safe_strength_keeps_nonvocal_unknown(self, phase55):
         safe = phase55._derive_safe_inpainting_strength(0.6, "unknown", 0.05)
@@ -931,7 +934,9 @@ class TestMertPluginInit:
             unittest.mock.patch("backend.core.ml_memory_budget.is_system_thrashing", return_value=False),
             unittest.mock.patch.dict("os.environ", {"AURIK_SAFE_VALIDATION_PROFILE": "0"}),
         ):
-            plugin = MertPlugin(model_dir=str(d))
+            plugin = MertPlugin(
+                model_dir=str(d), use_onnx=False
+            )  # §v10.748: ONNX-first ist Default — fairseq-Pfad explizit
         assert plugin._model_type == "mert_fairseq"
         assert plugin.model_available is True
 

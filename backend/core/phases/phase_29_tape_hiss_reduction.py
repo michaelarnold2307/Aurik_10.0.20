@@ -535,6 +535,9 @@ class TapeHissReductionPhase(PhaseInterface):
         self.sample_rate = sample_rate
         self.validate_input(audio)
         audio, _p29_transposed = to_channels_last(audio)
+        # §PMM-Scaling-Fix: pristine Input-Referenz für den finalen Strength-Blend
+        # (audio wird später teils durch Guard-Blends reassigned).
+        _p29_input_ref = np.asarray(audio, dtype=np.float32)
 
         # §v10.754 (2026-09-09): Harmonisch-bewusste Floor-Schätzung als
         # Pre-Stage (identisch zu Phase 28) — systematischer Rausch-Floor
@@ -735,7 +738,9 @@ class TapeHissReductionPhase(PhaseInterface):
             )
 
         if _p29_snr_bypass:
-            _pass = np.nan_to_num(audio.copy(), nan=0.0, posinf=0.0, neginf=0.0)
+            # §PMM-Scaling-Fix: pristine Input zurückgeben — die §v10.754-Pre-Stage
+            # darf den Dry-Bypass nicht mit Floor-Korrekturen einfärben (§0).
+            _pass = np.nan_to_num(_p29_input_ref.copy(), nan=0.0, posinf=0.0, neginf=0.0)
             _pass = np.clip(_pass, -1.0, 1.0)
             return PhaseResult(
                 success=True,
@@ -1540,6 +1545,15 @@ class TapeHissReductionPhase(PhaseInterface):
                     )
             except Exception as _se_exc:
                 logger.debug("§2.71 Envelope nicht blockierend: %s", _se_exc)
+
+        # §PMM-Scaling-Fix (2026-09-15): garantierter Strength-Blend als LETZTE
+        # Instanz — interne Guards (HNR/Pumpen/BandAnchor) liefen teils mit
+        # festen Blends und überschrieben den §0-Strength-Vertrag
+        # (Produktionsbefund: strength=0.10 → RMS-Drop −14 dB statt ~−0,5 dB).
+        audio_processed = _p29_input_ref + _effective_strength * (audio_processed - _p29_input_ref)
+        audio_processed = np.clip(np.nan_to_num(audio_processed, nan=0.0, posinf=0.0, neginf=0.0), -1.0, 1.0).astype(
+            np.float32
+        )
 
         return PhaseResult(
             success=True,

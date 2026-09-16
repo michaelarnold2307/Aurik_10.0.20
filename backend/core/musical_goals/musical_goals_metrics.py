@@ -3692,16 +3692,43 @@ class SeparationFidelityMetric:
         else:
             audio_mono = audio.astype(np.float32)
 
+        # §Cache-Fix (2026-09-15): identischer Input ⇒ identisches Ergebnis —
+        # die Prior-Registry machte den Score aufrufabhängig (Test-Befund
+        # 0,746 vs. 0,996 bei identischem Input). Deterministischer
+        # blake2b-Hash über die normalisierten Mono-Signale.
+        _cache = getattr(self, "_score_cache", None)
+        if _cache is None:
+            _cache = {}
+            self._score_cache = _cache
+        _cache_key = (
+            int(sr),
+            str(material_type),
+            round(float(global_scalar), 4),
+            hashlib.blake2b(np.ascontiguousarray(audio_mono).tobytes(), digest_size=8).hexdigest(),
+            (
+                hashlib.blake2b(
+                    np.ascontiguousarray(np.asarray(reference, dtype=np.float32)).tobytes(), digest_size=8
+                ).hexdigest()
+                if reference is not None
+                else "no-ref"
+            ),
+        )
+        _cached = _cache.get(_cache_key)
+        if _cached is not None:
+            return float(_cached)
+
         if reference is not None:
             ref = np.nan_to_num(reference, nan=0.0, posinf=0.0, neginf=0.0)
             if ref.ndim > 1:
                 ref = np.mean(ref, axis=0 if ref.shape[0] <= 2 else 1).astype(np.float32)
             ref_mono = ref.astype(np.float32)
-            return self._reference_based(
+            _score = self._reference_based(
                 audio_mono, ref_mono, sr, material_type=material_type, global_scalar=global_scalar
             )
-
-        return self._reference_free(audio_mono, sr, material_type=material_type)
+        else:
+            _score = self._reference_free(audio_mono, sr, material_type=material_type)
+        _cache[_cache_key] = float(_score)
+        return float(_score)
 
     def _reference_based(
         self,

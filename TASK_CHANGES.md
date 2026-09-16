@@ -1,29 +1,18 @@
 # TASK_CHANGES — Live-Ledger der aktuellen Aufgabe
 
-> Generiert von `scripts/change_ledger.py snapshot` (Base: `HEAD`, Stand: 2026-09-16 05:18 CEST).
+> Generiert von `scripts/change_ledger.py snapshot` (Base: `HEAD`, Stand: 2026-09-16 06:17 CEST).
 > CI (`ci-lite.yml` pr-evidence-gate) erzwingt Abdeckung: jede geänderte Code-Datei muss hier stehen.
 
 ## Geänderte Dateien
 
 | Status | Pfad | Art |
 |---|---|---|
-| M | Aurik10/i18n/**init**.py | modifiziert |
-| M | backend/core/lyrics_guided_enhancement.py | modifiziert |
-| M | backend/core/phases/phase_07_harmonic_restoration.py | modifiziert |
-| M | backend/core/phases/phase_09_crackle_removal.py | modifiziert |
-| M | backend/core/phases/phase_20_reverb_reduction.py | modifiziert |
-| M | backend/core/phases/phase_49_advanced_dereverb.py | modifiziert |
-| M | backend/core/unified_restorer_v3.py | modifiziert |
-| M | plugins/htdemucs_chunked_processor.py | modifiziert |
-| M | scripts/compliance/anti_regression_gate.py | modifiziert |
-| M | tests/unit/calibration_context_linter_baseline.txt | modifiziert |
-| M | tests/unit/test_aurik_restore_uv3_alignment.py | modifiziert |
-| M | tests/unit/test_p1_p10_changes.py | modifiziert |
-| M | tests/unit/test_phase42_psychoacoustics.py | modifiziert |
-| M | tests/unit/test_plugin_lifecycle_lookahead.py | modifiziert |
-| M | tests/unit/test_segment_probe_calibrator.py | modifiziert |
-| M | tests/unit/test_sota_gap_closures.py | modifiziert |
-| M | tests/unit/test_worldclass_quality_guards.py | modifiziert |
+| M | backend/core/dsp/sota_vocal_model_router.py | modifiziert |
+| M | backend/core/musical_goals/musical_goals_metrics.py | modifiziert |
+| M | backend/core/phases/phase_29_tape_hiss_reduction.py | modifiziert |
+| M | tests/unit/test_phase58_lge_hardening.py | modifiziert |
+| M | tests/unit/test_sota_vocal_model_router.py | modifiziert |
+| M | tests/unit/test_v95_modules.py | modifiziert |
 
 ## Entscheidungen
 

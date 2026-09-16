@@ -146,8 +146,12 @@ class SotaVocalModelRouter:
                 try:
                     stems = demucs.separate(reference, sr)
                 except TypeError:
-                    # Backward compatibility for older plugin stubs in tests.
-                    stems = demucs.separate(reference, sr)
+                    # Backward-Kompatibilität für ältere Plugin-Stubs: Legacy-Signatur
+                    # mit prefer_mdx23c-Kwarg. §v10.739: MDX23C entfernt → immer False.
+                    # (Bugfix 2026-09-15: der Retry wiederholte zuvor exakt denselben
+                    # Zwei-Arg-Aufruf — ein identischer TypeError war garantiert;
+                    # Muster phase_42.)
+                    stems = demucs.separate(reference, sr, prefer_mdx23c=False)  # type: ignore[call-arg]
                 if isinstance(stems, dict) and stems:
                     vocal, instrumental = self._stems_to_vocal_instr(stems, reference)
                     return StemSeparationRouteResult(
