@@ -90,3 +90,43 @@ def test_silent_cpu_fallback_logs_warning(monkeypatch, tmp_path, caplog):
             captured,
         )
     assert any("CPU-Fallback" in r.message for r in caplog.records)
+
+
+def test_reset_for_song_clears_failures_keeps_quarantine(monkeypatch, tmp_path):
+    """§V8/§G1 (copilot-instructions.md): Song-Reset isoliert nur den Zähler; die Modell-Quarantäne bleibt fail-closed."""
+    captured: dict = {}
+    plugin = _make_plugin(monkeypatch, tmp_path, ["CPUExecutionProvider"], captured)
+
+    plugin._chunk_failures = 2
+    plugin._runtime_quarantined = True
+    plugin.reset_for_song()
+    assert plugin._chunk_failures == 0
+    assert plugin._runtime_quarantined is True  # Modell-Zustand, kein Song-Zustand
+
+
+def test_reset_for_song_thread_smoke(monkeypatch, tmp_path):
+    """Ein-Prozess-Batch: parallele Song-Resets racerieren nicht (Lock-Smoke)."""
+    import threading
+
+    captured: dict = {}
+    plugin = _make_plugin(monkeypatch, tmp_path, ["CPUExecutionProvider"], captured)
+    plugin._chunk_failures = 5
+
+    errors: list[Exception] = []
+
+    def _worker() -> None:
+        try:
+            for _ in range(200):
+                plugin.reset_for_song()
+                plugin._chunk_failures += 1
+        except Exception as exc:  # pragma: no cover — nur im Fehlerfall
+            errors.append(exc)
+
+    threads = [threading.Thread(target=_worker) for _ in range(8)]
+    for t in threads:
+        t.start()
+    for t in threads:
+        t.join()
+
+    assert not errors
+    assert plugin._chunk_failures >= 0

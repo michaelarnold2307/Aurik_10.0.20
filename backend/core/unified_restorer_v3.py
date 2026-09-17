@@ -45617,6 +45617,16 @@ class UnifiedRestorerV3:
 
             self._in_chunked = True
 
+            # §V8/§G1 (copilot-instructions.md) Song-Isolation (Ein-Prozess-Batch,
+            # P6): BANQUET-Transient-State je Song zurücksetzen; die Session bleibt
+            # geladen (Load-Amortisierung über Songs — Singleton je Prozess).
+            try:
+                from plugins.banquet_vinyl_plugin import get_banquet_plugin as _get_bvq_song
+
+                _get_bvq_song().reset_for_song()
+            except Exception as _bvq_exc:
+                logger.debug("BANQUET-Zurücksetzung je Song nicht verfügbar (unkritisch): %s", _bvq_exc)
+
             _chunk_kwargs = {k: v for k, v in kwargs.items() if k not in ("chunked", "use_chunked_streaming")}
             # §P0-1 Song-Ebene-Analytik: End-Gate-Kaskade nur auf dem letzten
             # Chunk; die Stufe-2-Nachbehandlung (m1b) führt sie einmal auf dem

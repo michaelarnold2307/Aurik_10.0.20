@@ -61,6 +61,10 @@ class BanquetVinylPlugin:
         self._model_ok: bool = False
         self._chunk_failures: int = 0
         self._runtime_quarantined: bool = False
+        # Transient-State-Schutz: Der Singleton wird im Ein-Prozess-Batch
+        # (ThreadPool) von mehreren Songs parallel genutzt — Zähler/Quarantäne
+        # dürfen nicht racerieren (§V8/§G1 (copilot-instructions.md)).
+        self._state_lock = threading.Lock()
 
         if model_dir is not None:
             model_path = Path(model_dir) / "banquet_vinyl_final.onnx"
@@ -70,6 +74,18 @@ class BanquetVinylPlugin:
 
         self._model_path = model_path
         self._try_load_model()
+
+    def reset_for_song(self) -> None:
+        """§V8/§G1 (copilot-instructions.md) Song-Isolation: Setzt den
+        song-adaptiven Transient-State (Fehler-Zähler) zurück.
+
+        Das Modell selbst (Session/Quarantäne) ist Prozess-Zustand und bleibt
+        geladen — Quarantäne bedeutet ein deterministisch defektes Modell und
+        bleibt fail-closed (§V6 (copilot-instructions.md)) Song-übergreifend
+        aktiv; nur der je-Song-Zähler wird isoliert.
+        """
+        with self._state_lock:
+            self._chunk_failures = 0
 
     # ------------------------------------------------------------------
     # Name of the patched ONNX whose 0-D Slice tensors (val_21/val_22) have
@@ -303,26 +319,28 @@ class BanquetVinylPlugin:
                     raw_out_arr = np.asarray(raw_out, dtype=np.float32)
                     raw_out = np.nan_to_num(raw_out_arr, nan=0.0, posinf=0.0, neginf=0.0)
                     chunk_out = self._extract_output(raw_out, channels, chunk_len, stft_ctx)
-                    self._chunk_failures = 0
+                    with self._state_lock:
+                        self._chunk_failures = 0
                 except Exception as exc:
                     logger.warning("ML→DSP-Ersatzpfad aktiviert", exc_info=True)  # §V6 (copilot-instructions.md)
                     logger.debug("ONNX-Chunk-Fehler: %s — DSP für diesen Chunk", exc)
-                    self._chunk_failures += 1
-                    # Quarantine ONNX path after repeated deterministic failures.
-                    if self._chunk_failures >= 3:
-                        self._runtime_quarantined = True
-                        self._model_ok = False
-                        self._session = None
-                        logger.warning(
-                            "BANQUET ONNX zur Laufzeit deaktiviert (wiederholte Chunk-Fehler)."
-                            " Nutze DSP-Ersatzpfad fuer Stabilitaet."
-                        )
-                        try:
-                            from backend.core.ml_memory_budget import release as _rel
+                    with self._state_lock:
+                        self._chunk_failures += 1
+                        # Quarantine ONNX path after repeated deterministic failures.
+                        if self._chunk_failures >= 3:
+                            self._runtime_quarantined = True
+                            self._model_ok = False
+                            self._session = None
+                            logger.warning(
+                                "BANQUET ONNX zur Laufzeit deaktiviert (wiederholte Chunk-Fehler)."
+                                " Nutze DSP-Ersatzpfad fuer Stabilitaet."
+                            )
+                            try:
+                                from backend.core.ml_memory_budget import release as _rel
 
-                            _rel("BanquetVinyl")
-                        except Exception as _exc:
-                            logger.debug("Plugin operation fehlgeschlagen (unkritisch): %s", _exc)
+                                _rel("BanquetVinyl")
+                            except Exception as _exc:
+                                logger.debug("Plugin operation fehlgeschlagen (unkritisch): %s", _exc)
                     chunk_out = self._process_dsp(chunk, self.TARGET_SR, strength)
 
             actual = end - pos
