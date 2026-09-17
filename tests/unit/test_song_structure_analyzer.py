@@ -167,6 +167,54 @@ class TestRepetitionAwareLabels:
         out += (0.01 * rng.standard_normal(n)).astype(np.float32)
         return out.astype(np.float32)
 
+    def test_ana2_vocal_scorer_overrides_flatness(self):
+        """§SOTA-Analogie-Korrektur 2026-09-17 (ANA-2): ein per-Segment-Scorer
+        (PANNs-Singing) ist die definierende Vokal-Evidenz und ersetzt den
+        Flatness-Proxy; None ⇒ DSP-Verhalten unverändert."""
+        from backend.core.song_structure_analyzer import get_song_structure_analyzer
+
+        sr = 48000
+        n = int(sr * 1.0)
+        noise = (0.05 * np.random.default_rng(1).standard_normal(n)).astype(np.float32)
+        analyzer = get_song_structure_analyzer()
+        segs_no_scorer = analyzer.analyze_structure(noise, sr, panns_singing_confidence=0.5)
+        segs_voc = analyzer.analyze_structure(
+            noise, sr, panns_singing_confidence=0.5, vocal_scorer=lambda m, s, t0, t1: 0.9
+        )
+        segs_instr = analyzer.analyze_structure(
+            noise, sr, panns_singing_confidence=0.5, vocal_scorer=lambda m, s, t0, t1: 0.0
+        )
+        assert any(s.has_vocals for s in segs_voc)
+        assert not any(s.has_vocals for s in segs_instr)
+        # Fallback bei None-Score (z. B. zu kurzes Fenster) ⇒ Proxy-Verhalten
+        segs_none = analyzer.analyze_structure(
+            noise, sr, panns_singing_confidence=0.5, vocal_scorer=lambda m, s, t0, t1: None
+        )
+        assert [s.has_vocals for s in segs_none] == [s.has_vocals for s in segs_no_scorer]
+
+    def test_ana6_shift_structure_to_chunk(self):
+        """§SOTA-Analogie-Korrektur 2026-09-17 (ANA-6): Ganz-Song-Struktur wird
+        im Chunk-Modus einmal berechnet und je Chunk chunk-lokal verschoben/
+        geclippt (Konsumenten PIM/VQI arbeiten chunk-lokal)."""
+        from backend.core.song_structure_analyzer import SongSegment
+        from backend.core.unified_restorer_v3 import _shift_structure_to_chunk
+
+        segs = [
+            SongSegment(0.0, 10.0, "intro", 0.3, False, False),
+            SongSegment(10.0, 40.0, "chorus", 0.8, True, True),
+            SongSegment(40.0, 100.0, "verse", 0.5, True, False),
+        ]
+        # Chunk 1 (30–60 s): chorus ab 10 s + verse bis Chunk-Ende
+        out1 = _shift_structure_to_chunk(segs, int(48000 * 30), 48000, 30.0)
+        assert [(s.start_s, s.end_s, s.label) for s in out1] == [(0.0, 10.0, "chorus"), (10.0, 30.0, "verse")]
+        # Chunk 0 (Offset 0): intro + chorus, am Chunk-Ende geclippt
+        out0 = _shift_structure_to_chunk(segs, 0, 48000, 30.0)
+        assert [(s.start_s, s.end_s, s.label) for s in out0] == [(0.0, 10.0, "intro"), (10.0, 30.0, "chorus")]
+        # Chunk ohne Überlappung → leer
+        assert _shift_structure_to_chunk(segs, int(48000 * 120), 48000, 30.0) == []
+        # Labels/Flags bleiben erhalten
+        assert out1[0].label == "chorus" and out1[0].is_climax
+
     def test_ssm_boundaries_detect_aba_transitions(self):
         """§SOTA-Analogie-Korrektur 2026-09-17: das kanonische SSM-Modul
         (dsp/ssm_segmentation.py) erkennt die A→B- und B→A-Übergänge eines

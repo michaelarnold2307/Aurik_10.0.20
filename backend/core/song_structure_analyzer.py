@@ -164,6 +164,7 @@ class SongStructureAnalyzer:
         audio: np.ndarray,
         sr: int,
         panns_singing_confidence: float = 0.0,
+        vocal_scorer=None,
     ) -> list[SongSegment]:
         """Analysiert die Song-Struktur via librosa Boundary-Erkennung.
 
@@ -171,13 +172,17 @@ class SongStructureAnalyzer:
             audio: Float32-Audio (mono oder stereo).
             sr:    Sample-Rate in Hz.
             panns_singing_confidence: Ø PANNs Singing-Score für das Stück (global).
+            vocal_scorer: Optionaler Callable (mono, sr, t0_s, t1_s) -> float | None
+                — §SOTA-Analogie-Korrektur 2026-09-17 (ANA-2): die definierende
+                per-Segment-Evidenz (PANNs-Singing) ersetzt den
+                Flatness-Proxy; None ⇒ DSP-Proxy unverändert.
 
         Returns:
             Liste von SongSegment-Objekten, sortiert nach start_s.
             Laufzeit: ≤ 2 s / Minute Audio (Pflicht §2.52b).
         """
         try:
-            return self._analyze_librosa(audio, sr, panns_singing_confidence)
+            return self._analyze_librosa(audio, sr, panns_singing_confidence, vocal_scorer=vocal_scorer)
         except Exception as exc:
             logger.warning(
                 "SongStructureAnalyzer.analyze_structure fehlgeschlagen: %s — Ersatzpfad: single segment", exc
@@ -199,6 +204,7 @@ class SongStructureAnalyzer:
         audio: np.ndarray,
         sr: int,
         panns_singing_confidence: float,
+        vocal_scorer=None,
     ) -> list[SongSegment]:
         import librosa  # pylint: disable=import-outside-toplevel
 
@@ -278,7 +284,9 @@ class SongStructureAnalyzer:
             i0 = max(0, int(t0 * sr))
             i1 = min(len(mono), int(t1 * sr))
             seg_audio = mono[i0:i1]
-            has_vocals = self._estimate_vocal_activity(seg_audio, sr, panns_singing_confidence)
+            has_vocals = self._estimate_vocal_activity(
+                seg_audio, sr, panns_singing_confidence, scorer=vocal_scorer, t0=float(t0), t1=float(t1)
+            )
 
             segments.append(
                 SongSegment(
@@ -349,8 +357,22 @@ class SongStructureAnalyzer:
         seg_audio: np.ndarray,
         sr: int,
         panns_confidence: float,
+        scorer=None,
+        t0: float = 0.0,
+        t1: float = 0.0,
     ) -> bool:
-        """Einfacher Vokal-Aktivitäts-Schätzer: spectral flatness + globale PANNs-Konfidenz."""
+        """Vokal-Aktivitäts-Schätzer: per-Segment-Scorer (PANNs) als
+        definierende Evidenz, spectral flatness + globale PANNs-Konfidenz als
+        DSP-Proxy (§SOTA-Analogie-Korrektur 2026-09-17, ANA-2)."""
+        if scorer is not None:
+            try:
+                _score = scorer(seg_audio, sr, t0, t1)
+                if isinstance(_score, (int, float)):
+                    _s = float(_score)
+                    if np.isfinite(_s):
+                        return _s >= 0.30
+            except Exception as _scorer_exc:
+                logger.debug("song_structure_analyzer.py::vocal_scorer Ersatzpfad: %s", _scorer_exc)
         if len(seg_audio) < 512:
             return panns_confidence >= 0.35
         try:

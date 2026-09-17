@@ -74,6 +74,11 @@ _TAG_INDEX_MAP: dict[str, list[int]] = {
     # Idx 27=Singing, 32=Male singing, 33=Female singing, 34=Child singing,
     #     254=Vocal music, 255=A capella, 266=Song
     "Vocals": [27, 32, 33, 34],
+    # §SOTA-Analogie-Korrektur 2026-09-17 (ANA-3): Gender-Klassen separat
+    # exponiert — der Gender-Prior der De-Esser (phase_19) braucht den
+    # Abstand Male/Female-Singing, nicht das Gruppen-Maximum.
+    "Male singing": [32],
+    "Female singing": [33],
     "Speech": [0, 1, 2, 3],
     # Idx 0=Speech, 1=Male speech, 2=Female speech, 3=Child speech
     # Saiteninstrumente (§2.9: Threshold ≥ 0.50)

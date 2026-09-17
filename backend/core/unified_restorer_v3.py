@@ -1464,6 +1464,69 @@ def _build_waerme_focus_rescue_candidate(
         return None, _meta
 
 
+def _shift_structure_to_chunk(
+    segments: list,
+    chunk_start_sample: int,
+    sample_rate: int,
+    chunk_duration_s: float,
+) -> list:
+    """§SOTA-Analogie-Korrektur 2026-09-17 (ANA-6): Ganz-Song-Struktur-Segmente
+    auf das Chunk-Fenster verschieben und clippen — die per-Chunk-Konsumenten
+    (PIM-Intensität, VQI-Segmente, Strength-Skalare) arbeiten chunk-lokal
+    (0..chunk_duration_s). Determinismus (§G5 (GEBOTE.md)): reine Funktion.
+    """
+    out: list = []
+    off_s = float(chunk_start_sample) / max(1, int(sample_rate))
+    for seg in segments:
+        s0 = float(getattr(seg, "start_s", 0.0) or 0.0) - off_s
+        s1 = float(getattr(seg, "end_s", 0.0) or 0.0) - off_s
+        if s1 <= 0.0 or s0 >= chunk_duration_s:
+            continue
+        s0 = max(0.0, s0)
+        s1 = min(chunk_duration_s, s1)
+        out.append(
+            type(seg)(
+                start_s=round(s0, 6),
+                end_s=round(s1, 6),
+                label=str(getattr(seg, "label", "unknown") or "unknown"),
+                energy_level=float(getattr(seg, "energy_level", 0.5) or 0.5),
+                has_vocals=bool(getattr(seg, "has_vocals", False)),
+                is_climax=bool(getattr(seg, "is_climax", False)),
+            )
+        )
+    return out
+
+
+def _build_vocal_scorer_if_gpu():
+    """§SOTA-Analogie-Korrektur 2026-09-17 (ANA-2): per-Segment-PANNs-Scorer —
+    nur bei verfügbarer GPU (Budget §2.52b; auf CPU bleibt der Flatness-Proxy
+    aktiv). Rückgabe: Callable (mono, sr, t0_s, t1_s) -> float | None oder None.
+    """
+    try:
+        import torch as _t_ssa
+
+        if not _t_ssa.cuda.is_available():
+            return None
+        from plugins.panns_plugin import get_panns_plugin as _gpp_ssa
+
+        _plug_ssa = _gpp_ssa()
+
+        def _scorer(mono, sr, t0, t1):
+            try:
+                i0 = int(t0 * sr)
+                i1 = min(len(mono), int(t1 * sr))
+                if i1 - i0 < sr // 10:
+                    return None
+                _tags = _plug_ssa.get_tags(np.asarray(mono[i0:i1], dtype=np.float32), sr)
+                return float(_tags.get("Singing voice", 0.0))
+            except Exception:
+                return None
+
+        return _scorer
+    except Exception:
+        return None
+
+
 def _should_use_chunked_path(
     n_total: int,
     sample_rate: int,
@@ -12626,9 +12689,24 @@ class UnifiedRestorerV3:
 
             _ssa_audio = audio
             _ssa_panns = float(getattr(self, "_panns_singing", 0.0))
-            self._ssa_segments = get_song_structure_analyzer().analyze_structure(
-                _ssa_audio, sample_rate, panns_singing_confidence=_ssa_panns
-            )
+            _pre_ssa = kwargs.get("_precomputed_song_structure")
+            if _pre_ssa:
+                # §SOTA-Analogie-Korrektur 2026-09-17 (ANA-6): einmalig
+                # berechnete Ganz-Song-Struktur übernehmen und auf das
+                # Chunk-Fenster verschieben (Konsumenten wie PIM/VQI arbeiten
+                # chunk-lokal).
+                _chunk_smp_ana6 = int(kwargs.get("chunk_start_sample", 0) or 0)
+                _chunk_dur_ana6 = (audio.shape[1] if audio.ndim == 2 else len(audio)) / max(1, sample_rate)
+                self._ssa_segments = _shift_structure_to_chunk(
+                    list(_pre_ssa), _chunk_smp_ana6, sample_rate, _chunk_dur_ana6
+                )
+            else:
+                self._ssa_segments = get_song_structure_analyzer().analyze_structure(
+                    _ssa_audio,
+                    sample_rate,
+                    panns_singing_confidence=_ssa_panns,
+                    vocal_scorer=_build_vocal_scorer_if_gpu(),
+                )
             if self._ssa_segments:
                 _n_climax = sum(1 for s in self._ssa_segments if s.is_climax)
                 _n_verse = sum(1 for s in self._ssa_segments if s.label == "verse")
@@ -45516,6 +45594,38 @@ class UnifiedRestorerV3:
             # assemblierten Song aus. _chunked_last wird im Loop gesetzt.
             _chunk_kwargs["_chunked_tail_skip"] = True
             _chunk_kwargs["_chunked_last"] = False
+
+            # §SOTA-Analogie-Korrektur 2026-09-17 (ANA-6): Song-Struktur EINMAL
+            # auf dem GESAMTEN Song berechnen — vorher lief die §2.52b-Analyse
+            # pro 30-s-Chunk (k-Heuristik ⇒ „2 Segmente“ je Chunk), die
+            # segment-adaptive Stärke war im Chunk-Modus grob. Der Restore-
+            # Aufruf je Chunk übernimmt die Struktur und verschiebt sie
+            # chunk-lokal (§V7 (copilot-instructions.md): eine Analyse, ein Song).
+            try:
+                from backend.core.song_structure_analyzer import get_song_structure_analyzer as _ssa_ana6
+
+                if audio.ndim == 2:
+                    _mono_ana6 = (
+                        audio.mean(axis=0)
+                        if (audio.shape[0] <= 8 and audio.shape[1] > audio.shape[0])
+                        else audio.mean(axis=1)
+                    )
+                else:
+                    _mono_ana6 = audio
+                _song_structure_ana6 = _ssa_ana6().analyze_structure(
+                    np.asarray(_mono_ana6, dtype=np.float32),
+                    sample_rate,
+                    panns_singing_confidence=float(getattr(self, "_panns_singing", 0.0)),
+                    vocal_scorer=_build_vocal_scorer_if_gpu(),
+                )
+                if _song_structure_ana6:
+                    _chunk_kwargs["_precomputed_song_structure"] = _song_structure_ana6
+                    logger.info(
+                        "§2.52b ANA-6: Song-Struktur EINMAL berechnet (%d Segmente) — wird je Chunk wiederverwendet",
+                        len(_song_structure_ana6),
+                    )
+            except Exception as _ana6_exc:
+                logger.debug("§2.52b ANA-6 Hoist nicht verfügbar (Chunk-Ersatzpfad bleibt): %s", _ana6_exc)
 
             # §v10.451: audio.shape[0] für Sample-Zahl
             _n_total = audio.shape[0]

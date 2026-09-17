@@ -771,6 +771,7 @@ class DeEsserPhase(PhaseInterface):
                 bandwidth_loss=_bw_loss_pre,
                 transfer_chain=kwargs.get("transfer_chain", []),
                 defect_scores=kwargs.get("defect_scores", {}),
+                panns_tags=kwargs.get("panns_tags", {}),
             )
             self.gender = detected_gender
             self.vocal_profile = VOCAL_PROFILES[detected_gender]
@@ -3229,6 +3230,21 @@ class DeEsserPhase(PhaseInterface):
         Klassifikation, besonders bei tiefen Frauenstimmen.
         """
         mono = np.mean(audio, axis=1) if audio.ndim == 2 else audio
+
+        # ── §SOTA-Analogie-Korrektur 2026-09-17 (ANA-3): PANNs-Gender-Prior ──
+        # Die definierende Evidenz (Male/Female-Singing-Klassen 32/33) ist in
+        # den EINMALIG berechneten PANNs-Tags bereits enthalten; bei klarem
+        # Abstand (> 0,10, Mindest-Score 0,25) ersetzt der ML-Prior die
+        # DSP-Heuristik — sonst bleibt der robuste DSP-Pfad unverändert.
+        _tags19 = kwargs.get("panns_tags") or {}
+        _male19 = float(_tags19.get("Male singing", 0.0) or 0.0)
+        _female19 = float(_tags19.get("Female singing", 0.0) or 0.0)
+        if _male19 >= 0.25 and _male19 > _female19 + 0.10:
+            logger.debug("🎤 PANNs-Gender-Prior: male (%.2f vs %.2f)", _male19, _female19)
+            return "male"
+        if _female19 >= 0.25 and _female19 > _male19 + 0.10:
+            logger.debug("🎤 PANNs-Gender-Prior: female (%.2f vs %.2f)", _female19, _male19)
+            return "female"
 
         # ── §2.11 Librosa pYIN F0 (wenn verfügbar) ─────────────────
         _pyin_f0: float | None = None
