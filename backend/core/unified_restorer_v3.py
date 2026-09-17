@@ -13240,16 +13240,26 @@ class UnifiedRestorerV3:
 
         # §2.36 LGE Pre-Phase: Transkription auf Originalaudio (genauere Phonemkarte als auf NR-Output)
         _lge_trans_pre: Any = None
+        _lge_hoisted = False
         _lge_saliency_for_eap: np.ndarray | None = None  # §2.36/§2.44: Lyrics-Salienz für EAP
         try:
             from backend.core.lyrics_guided_enhancement import (
                 get_lyrics_guided_enhancement as _get_lge_pre,
             )
 
-            _, _lge_trans_pre = _get_lge_pre().enhance(original_audio_for_goals, sample_rate)
+            _pre_lge = kwargs.get("_precomputed_lge_trans")
+            if _pre_lge is not None:
+                # §P0-1-Hoist 2026-09-17: Transkription EINMAL auf dem ganzen Song
+                # (in _restore_chunked berechnet) — Whisper lief vorher 8× je
+                # Chunk, die per-Chunk-Timelines hatten verschiedene Segmentzahlen.
+                _lge_trans_pre = _pre_lge
+                _lge_hoisted = True
+            else:
+                _, _lge_trans_pre = _get_lge_pre().enhance(original_audio_for_goals, sample_rate)
             logger.debug(
-                "§2.36 LGE Pre-Verarbeitungsschritt: Phonemkarte aus Originalaudio (%d Segmente)",
+                "§2.36 LGE Pre-Verarbeitungsschritt: Phonemkarte aus Originalaudio (%d Segmente, hoisted=%s)",
                 len(_lge_trans_pre.words) if _lge_trans_pre is not None else 0,
+                _lge_hoisted,
             )
         except Exception as _lge_p_exc:
             logger.debug("LGE Pre-Verarbeitungsschritt-Transkription nicht verfügbar: %s", _lge_p_exc)
@@ -13294,6 +13304,19 @@ class UnifiedRestorerV3:
                         _ptl_lang_resolved,
                     )
                 _phoneme_timeline = _PTL.build_from_transcription(_lge_trans_pre, _ptl_lang_resolved)
+                if _lge_hoisted:
+                    # §P0-1-Hoist 2026-09-17: Ganz-Song-Segmente chunk-lokal verschieben
+                    # (Konsumenten 19/24/43/56/MDEM arbeiten chunk-lokal — Muster ANA-6).
+                    _chunk_off_tl = float(int(kwargs.get("chunk_start_sample", 0) or 0)) / max(1, sample_rate)
+                    if _chunk_off_tl > 0.0:
+                        _kept_tl = []
+                        for _seg_tl in _phoneme_timeline.segments:
+                            _seg_tl.start_s = float(getattr(_seg_tl, "start_s", 0.0) or 0.0) - _chunk_off_tl
+                            _seg_tl.end_s = float(getattr(_seg_tl, "end_s", 0.0) or 0.0) - _chunk_off_tl
+                            if _seg_tl.end_s > 0.0:
+                                _kept_tl.append(_seg_tl)
+                        _phoneme_timeline.segments = _kept_tl
+                        _phoneme_timeline.duration_s = max(0.0, float(_phoneme_timeline.duration_s) - _chunk_off_tl)
             else:
                 _n_samp_ptl = (
                     original_audio_for_goals.shape[-1]
@@ -45632,6 +45655,25 @@ class UnifiedRestorerV3:
                     )
             except Exception as _ana6_exc:
                 logger.debug("§2.52b ANA-6 Hoist nicht verfügbar (Chunk-Ersatzpfad bleibt): %s", _ana6_exc)
+
+            # §P0-1-Hoist 2026-09-17: LGE-Transkription EINMAL auf dem GESAMTEN Song
+            # (Whisper lief vorher 8× je Chunk — die per-Chunk-Timelines hatten
+            # deshalb verschiedene Segmentzahlen). Jeder Chunk baut seine Timeline
+            # aus der gemeinsamen Transkription (Zeitverschiebung in restore()).
+            try:
+                from backend.core.lyrics_guided_enhancement import (
+                    get_lyrics_guided_enhancement as _get_lge_hoist,
+                )
+
+                _, _song_lge_trans = _get_lge_hoist().enhance(audio, sample_rate)
+                if _song_lge_trans is not None:
+                    _chunk_kwargs["_precomputed_lge_trans"] = _song_lge_trans
+                    logger.info(
+                        "§2.36 P0-1-Hoist: LGE-Transkription EINMAL berechnet (%d Wörter) — wird je Chunk wiederverwendet",
+                        len(getattr(_song_lge_trans, "words", []) or []),
+                    )
+            except Exception as _lge_hoist_exc:
+                logger.debug("§2.36 LGE-Hoist nicht verfügbar (Chunk-Ersatzpfad bleibt): %s", _lge_hoist_exc)
 
             # §v10.451: audio.shape[0] für Sample-Zahl
             _n_total = audio.shape[0]
