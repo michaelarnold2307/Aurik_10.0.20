@@ -13164,10 +13164,39 @@ class UnifiedRestorerV3:
             from backend.core.phoneme_timeline import PhonemeTimeline as _PTL
 
             if _lge_trans_pre is not None:
-                _phoneme_timeline = _PTL.build_from_transcription(
-                    _lge_trans_pre,
-                    getattr(_lge_trans_pre, "language", "unknown"),
-                )
+                _ptl_trans_lang = str(getattr(_lge_trans_pre, "language", "unknown") or "unknown")
+                _ptl_trans_conf = float(getattr(_lge_trans_pre, "overall_confidence", 0.0) or 0.0)
+                # §SOTA-Analogie-Korrektur 2026-09-17 (Sprach-Konsens-Gate):
+                # die sprach-spezifische Sibilanten-Bandwahl der De-Esser
+                # (de: 5,5–8,5 kHz, es: 4,5–7 kHz) darf nicht blind einer
+                # niedrig-konfidenten Transkription folgen (Produktionsbefund:
+                # deutscher Elke-Best-Song → Whisper „es“ bei conf 0,03–0,56
+                # → spanische Band). Zweite, unabhängige Stimme:
+                # LPC-Formant-Detektor; Uneinigkeit ⇒ neutrale „unknown“-Band.
+                _lpc_lang_ptl = "unknown"
+                try:
+                    _mono_ptl_lpc = (
+                        np.mean(original_audio_for_goals, axis=0)
+                        if original_audio_for_goals.ndim == 2
+                        else original_audio_for_goals
+                    )
+                    from backend.core.phoneme_timeline import _detect_language as _ptl_detect_lang
+
+                    _lpc_lang_ptl, _ = _ptl_detect_lang(np.asarray(_mono_ptl_lpc, dtype=np.float32), sample_rate)
+                except Exception as _lpc_ptl_exc:
+                    logger.debug("LPC-Sprach-Detektor nicht verfügbar: %s", _lpc_ptl_exc)
+                from backend.core.phoneme_timeline import resolve_language_consensus as _ptl_resolve
+
+                _ptl_lang_resolved = _ptl_resolve(_ptl_trans_lang, _ptl_trans_conf, _lpc_lang_ptl)
+                if _ptl_lang_resolved != _ptl_trans_lang:
+                    logger.info(
+                        "§2.36a Sprach-Konsens: trans=%s@%.2f lpc=%s → %s (neutrale Band)",
+                        _ptl_trans_lang,
+                        _ptl_trans_conf,
+                        _lpc_lang_ptl,
+                        _ptl_lang_resolved,
+                    )
+                _phoneme_timeline = _PTL.build_from_transcription(_lge_trans_pre, _ptl_lang_resolved)
             else:
                 _n_samp_ptl = (
                     original_audio_for_goals.shape[-1]

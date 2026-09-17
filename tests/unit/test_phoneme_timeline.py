@@ -34,6 +34,7 @@ from backend.core.phoneme_timeline import (
     PhonemeTimelineSegment,
     _detect_language,
     get_phoneme_timeline_builder,
+    resolve_language_consensus,
 )
 
 # ─── Fixtures & helpers ───────────────────────────────────────────────────────
@@ -799,3 +800,34 @@ class TestSegmentSelectiveGate:
         result = phase.process(audio, self.SR, MaterialType.UNKNOWN, phoneme_timeline=tl)
         assert result.success
         assert np.isfinite(result.audio).all()
+
+
+class TestLanguageConsensus:
+    """§SOTA-Analogie-Korrektur 2026-09-17: Sprach-Konsens-Gate für die
+    sprach-spezifische Sibilanten-Bandwahl (Produktionsbefund: deutscher
+    Song → Whisper „es“ bei conf 0,03–0,56 → falsche Band)."""
+
+    def test_high_confidence_trusts_transcription(self):
+        assert resolve_language_consensus("de", 0.9, "es") == "de"
+
+    def test_low_confidence_yields_unknown(self):
+        assert resolve_language_consensus("es", 0.03, "de") == "unknown"
+        assert resolve_language_consensus("es", 0.49, "es") == "unknown"
+
+    def test_mid_confidence_requires_consensus(self):
+        # Übereinstimmung beider Detektoren → Sprache
+        assert resolve_language_consensus("de", 0.56, "de") == "de"
+        # Uneinigkeit → neutrale unknown-Band
+        assert resolve_language_consensus("es", 0.56, "de") == "unknown"
+        # LPC nicht verfügbar → unknown
+        assert resolve_language_consensus("es", 0.56, None) == "unknown"
+
+    def test_invalid_or_unknown_language(self):
+        assert resolve_language_consensus("xx", 0.9, "de") == "unknown"
+        assert resolve_language_consensus("unknown", 0.9, "de") == "unknown"
+        assert resolve_language_consensus("", 0.9, "de") == "unknown"
+
+    def test_deterministic(self):
+        a = resolve_language_consensus("es", 0.56, "de")
+        b = resolve_language_consensus("es", 0.56, "de")
+        assert a == b == "unknown"

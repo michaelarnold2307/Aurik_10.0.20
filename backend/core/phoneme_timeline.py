@@ -380,6 +380,43 @@ class PhonemeTimeline:
         )
 
 
+def resolve_language_consensus(
+    transcription_language: str,
+    transcription_confidence: float,
+    lpc_language: str | None = None,
+) -> str:
+    """§SOTA-Analogie-Korrektur 2026-09-17: Sprach-Konsens-Gate für die
+    sprach-spezifische Sibilanten-Bandwahl der De-Esser (19/43).
+
+    Die Bandwahl (de: 5,5–8,5 kHz, es: 4,5–7 kHz, …) darf nicht blind einer
+    niedrig-konfidenten Transkriptions-Sprache folgen (Produktionsbefund:
+    deutscher Elke-Best-Song → Whisper „es“ bei conf 0,03–0,56 → spanische
+    Band). Zwei unabhängige Stimmen: Transkription (Whisper) + LPC-Formant-
+    Detektor; Uneinigkeit ⇒ neutrale „unknown“-Band (4–8 kHz) — eine falsche
+    spezifische Band schadet dem De-Esser mehr als die neutrale.
+
+    Regeln (deterministisch):
+      - transcription_confidence ≥ 0,7 → Sprache der Transkription
+      - < 0,5 → „unknown“ (keine Evidenz für eine spezifische Band)
+      - 0,5…0,7 → Konsens: nur wenn LPC dieselbe Sprache liefert
+      - unbekannte/invalide Sprache → „unknown“
+    """
+    lang = str(transcription_language or "unknown").strip().lower()
+    if lang not in _FORMANT_TABLE and lang != "unknown":
+        lang = "unknown"
+    conf = float(np.nan_to_num(float(transcription_confidence or 0.0), nan=0.0))
+    if lang == "unknown":
+        return "unknown"
+    if conf >= 0.7:
+        return lang
+    if conf < 0.5:
+        return "unknown"
+    lpc = str(lpc_language or "unknown").strip().lower()
+    if lpc == lang:
+        return lang
+    return "unknown"
+
+
 # ─── Language detection ──────────────────────────────────────────────────────
 
 

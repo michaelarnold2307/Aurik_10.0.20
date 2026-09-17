@@ -1,19 +1,16 @@
 # TASK_CHANGES — Live-Ledger der aktuellen Aufgabe
 
-> Generiert von `scripts/change_ledger.py snapshot` (Base: `HEAD`, Stand: 2026-09-17 02:45 CEST).
+> Generiert von `scripts/change_ledger.py snapshot` (Base: `HEAD`, Stand: 2026-09-17 03:10 CEST).
 > CI (`ci-lite.yml` pr-evidence-gate) erzwingt Abdeckung: jede geänderte Code-Datei muss hier stehen.
 
 ## Geänderte Dateien
 
 | Status | Pfad | Art |
 |---|---|---|
-| M | .github/FILE_REGISTRY.md | modifiziert |
-| M | backend/core/musical_structure_analyzer.py | modifiziert |
-| M | backend/core/song_structure_analyzer.py | modifiziert |
+| M | backend/core/phoneme_timeline.py | modifiziert |
+| M | backend/core/unified_restorer_v3.py | modifiziert |
 | M | docs/TODOS_SOTA_ROADMAP.md | modifiziert |
-| M | docs/reports/current/2026-09-17_song_structure_sota_abgleich.md | modifiziert |
-| M | tests/unit/test_song_structure_analyzer.py | modifiziert |
-| ?? | backend/core/dsp/ssm_segmentation.py | ungetrackt |
+| M | tests/unit/test_phoneme_timeline.py | modifiziert |
 
 ## Entscheidungen
 
