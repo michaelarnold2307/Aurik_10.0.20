@@ -12638,11 +12638,30 @@ class UnifiedRestorerV3:
                     _n_climax,
                     _n_verse,
                 )
+                # §SOTA-Analogie-Korrektur 2026-09-17 (ANA-5): BPM-Metadatum —
+                # der Spec §2.52b erwähnt Beat-Tracking, implementiert war es
+                # nie; die BPM-Schätzung existierte nur ungenutzt im
+                # §2.17-MusicalStructureAnalyzer (Energie-Onset-Autokorrelation).
+                _ssa_bpm = 0.0
+                try:
+                    from backend.core.musical_structure_analyzer import MusicalStructureAnalyzer as _MSA_ssa
+
+                    _ssa_mono = _ssa_audio
+                    if _ssa_audio.ndim == 2:
+                        _ssa_mono = (
+                            _ssa_audio.mean(axis=0)
+                            if (_ssa_audio.shape[0] <= 8 and _ssa_audio.shape[1] > _ssa_audio.shape[0])
+                            else _ssa_audio.mean(axis=1)
+                        )
+                    _ssa_bpm = float(_MSA_ssa._estimate_bpm(np.asarray(_ssa_mono, dtype=np.float32), sample_rate))
+                except Exception as _bpm_exc_ssa:
+                    logger.debug("§2.52b BPM nicht verfügbar: %s", _bpm_exc_ssa)
                 if isinstance(getattr(self, "_phase_metadata_accumulator", None), dict):
                     self._phase_metadata_accumulator["song_structure"] = {
                         "n_segments": len(self._ssa_segments),
                         "n_climax": _n_climax,
                         "n_verse": _n_verse,
+                        "bpm": round(_ssa_bpm, 1),
                         "labels": [s.label for s in self._ssa_segments],
                     }
         except Exception as _ssa_exc:

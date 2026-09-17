@@ -182,6 +182,21 @@ class GuitarEnhancementPhase(PhaseInterface):
             except Exception as _fmg_exc_44:
                 logger.debug("Verarbeitungsschritt44 §V41 ForwardMaskingGuard nicht blockierend: %s", _fmg_exc_44)
 
+        # §SOTA-PSY-A4 (2026-09-17): Equal-Loudness-Temperierung —
+        # Gitarren-Enhancement wirkt im Präsenz-Band (~3 kHz), wo das Gehör
+        # bei 60 phon am empfindlichsten ist; der Faktor (≤ 1) temperiert die
+        # Stärke in PHON statt in Roh-dB (Muster 04/16/17/37/38/39 —
+        # letzte Phase ohne diese PSY-A4-Verdrahtung).
+        if _effective_strength > 0.0:
+            try:
+                from backend.core.fletcher_munson_curves import equal_loudness_strength_factor as _elsf_44
+
+                _f_els_44 = float(np.asarray(_elsf_44(np.array([3000.0]), target_phon=60))[0])
+                _effective_strength = float(np.clip(_effective_strength * _f_els_44, 0.0, 1.0))
+                logger.debug("Verarbeitungsschritt_44 §SOTA-PSY-A4: Equal-Loudness-Faktor %.3f @3 kHz", _f_els_44)
+            except Exception as _psy_exc_44:
+                logger.debug("Verarbeitungsschritt_44 §SOTA-PSY-A4 nicht blockierend: %s", _psy_exc_44)
+
         if _effective_strength <= 0.0:
             audio = np.nan_to_num(audio, nan=0.0, posinf=0.0, neginf=0.0)
             audio = np.clip(audio, -1.0, 1.0)

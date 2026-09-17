@@ -1248,16 +1248,23 @@ Keine Nachrüstung nötig.
 
 ### AUF-2 · Gates-Sweep über alle Phasen (Inventar + Nachrüstung)
 
-Inventar (Scan 2026-09-17, Korrektur früherer Grep-Muster):
+Inventar (Scan 2026-09-17, **Korrektur 2026-09-17** — der erste Grep-basierte
+Scan war FALSCH-NEGATIV: mit vollständigen Mustern
+(psychoacoustic/onset/mikrodynamik/NPA/noise-texture/spectral-color/HNR/
+loudness/delta) haben ALLE Phasen Guard-Ketten):
 
-- **Ohne jedes Gate** (nach Nachrüstung): 18 noise_gate, 32 mono_to_stereo,
-  52 piano_restoration, 54 transparent_dynamics, 57 print_through,
-  61 groove_echo, 62 crosstalk (nur Onset-Schutz), glue/interface
-  (bewusst), 21/35/42 (verboten) sowie Analyse-/Passiv-Phasen
-  (28/30/41/53 — bewusst ohne Gate).
-- **Roadmap-Korrektur**: Die Behauptung „05/62/63 Maskierungs-Gates vorhanden“
-  ist nur für 05 (is_below_masking-Early-Termination, Zeile ~365) und 63
-  (20-dB-Peak-Gate) korrekt; 62 hat KEIN Maskierungs-Gate (Backlog).
+- **Verifiziert vollständig gegated** (Scan 2026-09-17): 18 (psychoakust.
+  Masking, Onset, Mikrodynamik, NPA, Noise-Textur, Spektralfarbe, HNR),
+  32 (Masking, Loudness, Delta), 54 (Masking, Onset, NPA, Spektralfarbe),
+  57 (Masking, Mikrodynamik, NPA, Noise-Textur), 61 (Masking, Onset,
+  Mikrodynamik, NPA, Noise-Textur), **62 (Masking-Clamp §2.62, Onset,
+  Mikrodynamik, NPA, Noise-Textur, Spektralfarbe — die frühere
+  Roadmap-Behauptung „62 ohne Maskierungs-Gate“ war FALSCH)**.
+- **Echte Rest-Lücke (klein):** 44/45 (Enhancement) haben Loudness-/Delta-/
+  Temporal-Masking-Guards, aber KEINE PSY-A4-Equal-Loudness-Temperierung
+  (im Gegensatz zu 04/16/17/37/38/39) — Backlog mit Rezept.
+- Analyse-/Passiv-Phasen (28/30/41/53) und verbotene Phasen (21/35/42)
+  bewusst ohne Gate — korrekt.
 
 **Nachgerüstet 2026-09-17:**
 - **phase_09 crackle_removal** — `_apply_audibility_gate_to_regions`
@@ -1270,11 +1277,13 @@ Inventar (Scan 2026-09-17, Korrektur früherer Grep-Muster):
   `_remove_crackle_ml(..., sample_rate)` rot — nicht bemerkt, weil der
   grüne Vollsuite-Stand davor lag).
 
-**Backlog (Rezept je Phase, Folge-Slice):** 62 (defect_audibility je
-Crosstalk-Region), 54 (perceptual_loudness_cap-Headroom-Variante wie 40),
-44/45 (PSY-A4 equal_loudness_strength_factor für Enhancement-Stärke),
-52/57/61 (defect_audibility je Region, Muster 09), 18 (PSY-A8-JND-Schwelle),
-32 (PSY-A3-BMLD-Witness).
+**Backlog (Rezept je Phase, Folge-Slice):** —
+**44/45 ✅ UMGESETZT 2026-09-17** (PSY-A4-Verdrahtung nach Muster
+04/16/17/37/38/39; Hinweis: der Equal-Loudness-Faktor bei 3–3,5 kHz/60 phon
+ist EXAKT 1,0 — das Präsenz-Band ist die Referenz der ISO-226-Kurve, die
+Temperierung ist dort neutral und schützt zukünftige Kurvenänderungen).
+Alle übrigen früher als „gate-los“ gelisteten Phasen haben verifizierte
+Guard-Ketten (s. o. Korrektur) — kein Handlungsbedarf.
 
 ### AUF-3 · Songaufbauanalyse — SOTA-Abgleich & Upgrade
 
@@ -1319,7 +1328,7 @@ Chunk-Modus-Struktur (siehe AUF-4).
 | ANA-2 | **Vokal-Aktivität**: `_estimate_vocal_activity` (spectral flatness + GLOBALE PANNs-Konfidenz) — die definierende Evidenz (per-Segment-PANNs-Singing) ist im Plugin vorhanden (`get_tags`, Positions-Fenster), wird aber nicht je Segment genutzt | BACKLOG (Rezept): UV3 berechnet einmalig per-Segment-PANNs (GPU seit SUP-F1) und reicht ein Array durch; Analyzer nutzt es statt des Flatness-Proxys |
 | ANA-3 | **Gender-Detektion** (phase_19 `_detect_gender_robust`): F0-/Formant-Heuristik ohne ML-Klassifikator; konsumiert von 19/43 (Sibilanten-Bänder) | BACKLOG (GPU): ML-Gender-/Vokal-Klassifikator (PANNs-Klassen oder Torch-Modell) als Prior mit Heuristik-Fallback |
 | ANA-4 | **Tonart-Erkennung dupliziert**: `phase_53._estimate_key` (Krumhansl, Dur/Moll, ganzer Song) UND `genre_classifier._estimate_key_dsp` (Pitch-Class-Argmax des LETZTEN Frames, nur Dur) — zwei Implementierungen (§V7 (copilot-instructions.md)) | ✅ **UMGESETZT 2026-09-17**: kanonisches Modul `backend/core/dsp/key_estimation.py` (Krumhansl, strukturiertes (root, mode)); phase_53 formatiert „C major“, genre_classifier „C-Dur“/„C-Moll“ (Qualitäts-Gewinn: ganzer Song + Dur/Moll statt Last-Frame-Argmax); 144 Tests grün |
-| ANA-5 | **§2.52b-Beat-Tracking im Spec erwähnt, nicht implementiert** — BPM existiert aber in `musical_structure_analyzer._estimate_bpm` | BACKLOG: BPM als Metadatum in die §2.52b-Struktur übernehmen (CPU) |
+| ANA-5 | **§2.52b-Beat-Tracking im Spec erwähnt, nicht implementiert** — BPM existiert aber in `musical_structure_analyzer._estimate_bpm` | ✅ **UMGESETZT 2026-09-17**: BPM-Metadatum (`bpm`) wird im §2.52b-Block der UV3-Pipeline aus der vorhandenen Energie-Onset-Autokorrelation berechnet und in `song_structure`-Metadata geführt — Spec-Lücke geschlossen, eine BPM-Quelle |
 | ANA-6 | **Chunk-Modus**: beide Struktur-Analysen + SectionGoalAdapter laufen PRO CHUNK (Log: 4/2/3/2 Sektionen) — segment-adaptive Stärke ist im Chunk-Modus grob | BACKLOG (Rezept): Struktur EINMAL vor dem Chunk-Loop auf dezimiertem Ganz-Song-Probe; Wiederverwendung je Chunk |
 | ANA-7 | **Phonem-Sprache blind vertraut**: die sprach-spezifische Sibilanten-Bandwahl der De-Esser (de 5,5–8,5 kHz / es 4,5–7 kHz) folgte blind `transcription.language` — Produktionsbefund: deutscher Elke-Best-Song → Whisper „es“ bei conf 0,03–0,56 → SPANISCHE Band auf deutschem Gesang | ✅ **UMGESETZT 2026-09-17**: `resolve_language_consensus()` (phoneme_timeline) — conf ≥ 0,7 → Transkription; < 0,5 → „unknown“ (neutrale 4–8-kHz-Band); 0,5…0,7 → Konsens mit LPC-Formant-Detektor; Verdrahtung in unified_restorer_v3 (§2.36a-Block); 5 neue Tests |
 | ANA-8 | **IPA-Formant-Ziele Stellvertreter**: `has_ipa` immer False (Decoder-ONNX fehlt) → `formant_target_for_range()` lieferte für JEDEN Vokal den generischen Schwa-Zentroid (500/1500 Hz) — ein Konstantwert statt Evidenz; phase_56-Formant-Boost zielte damit immer auf dieselben Frequenzen | ✅ **UMGESETZT 2026-09-17**: optionaler `audio`-Parameter — ohne IPA misst der Fallback die ECHTEN dominanten Spektral-Peaks des Vokal-Segments (60 Hz–4 kHz, ≥ 100 Hz Abstand, deterministisch FFT); phase_56 übergibt das Audio. Tests: TestAna8LpcFormantFallback (2 Fälle); 115 Tests grün. Offen bleibt nur die IPA-Feinstruktur (Decoder-ONNX, extern) |
