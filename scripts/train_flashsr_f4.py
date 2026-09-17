@@ -87,7 +87,9 @@ def mr_stft_loss(x: torch.Tensor, y: torch.Tensor) -> torch.Tensor:
     return sc / len(STFT_SIZES) + mag / len(STFT_SIZES)
 
 
-def load_track(path: Path) -> np.ndarray:
+def load_track(path: Path) -> tuple[np.ndarray, np.ndarray]:
+    """(track_48k, track_16k) — die 16-kHz-Basis wird EINMAL je Track resampelt
+    (Kaiser-Sinc, Produktions-identisch) statt je Crop (~0,2 s/Schritt gespart)."""
     import librosa
     import scipy.io.wavfile as wav
 
@@ -97,22 +99,23 @@ def load_track(path: Path) -> np.ndarray:
     data = data.astype(np.float32) / max(float(np.abs(data).max()), 1e-9)
     if sr != SR_HI:
         data = librosa.resample(data, orig_sr=sr, target_sr=SR_HI)
-    return data
+    lo = librosa.resample(data.astype(np.float32), orig_sr=SR_HI, target_sr=SR_LO)
+    return data.astype(np.float32), lo.astype(np.float32)
 
 
-def crop_pair(track: np.ndarray, rng: np.random.Generator) -> tuple[torch.Tensor, torch.Tensor]:
+def crop_pair(track: tuple[np.ndarray, np.ndarray], rng: np.random.Generator) -> tuple[torch.Tensor, torch.Tensor]:
     """(input_16k [IN_N], target_48k [CROP_N]) — deterministisch via rng.
 
-    Die 16-kHz-Basis wird mit der PRODUKTIONS-identischen Kaiser-Sinc-
-    Resampling (librosa) erzeugt — naive 3:1-Dezimation aliasiert HF-Anteile
-    in die Basis und würde dem Modell die falsche Aufgabe stellen.
+    Beide Bänder stammen aus dem EINMALIG resampelten Track-Paar — die naive
+    3:1-Dezimation würde HF-Anteile aliasieren und dem Modell die falsche
+    Aufgabe stellen; per-Crop-Resampling war der Laufzeit-Befund (~0,2 s).
     """
-    import librosa
-
-    s = int(rng.integers(0, max(1, len(track) - CROP_N)))
-    hi = track[s : s + CROP_N]
-    lo = librosa.resample(hi.astype(np.float32), orig_sr=SR_HI, target_sr=SR_LO)
-    return torch.from_numpy(lo.astype(np.float32)), torch.from_numpy(hi.astype(np.float32))
+    hi_arr, lo_arr = track
+    s = int(rng.integers(0, max(1, len(hi_arr) - CROP_N)))
+    hi = hi_arr[s : s + CROP_N]
+    s_lo = int(s * SR_LO / SR_HI)
+    lo = lo_arr[s_lo : s_lo + IN_N]
+    return torch.from_numpy(lo), torch.from_numpy(hi)
 
 
 def val_loss(model: torch.nn.Module, device: torch.device, tracks: list[np.ndarray], rng: np.random.Generator) -> float:
@@ -156,6 +159,8 @@ def main() -> int:
         torch.cuda.manual_seed_all(args.seed)
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    if device.type == "cuda":
+        torch.backends.cudnn.benchmark = True  # Kernel-Autotuning (ROCm/MIOpen-Fallback-Fix)
     logger.info("F4 FlashSR-Finetune — Gerät: %s", device)
 
     data_root = Path(args.data_dir)
