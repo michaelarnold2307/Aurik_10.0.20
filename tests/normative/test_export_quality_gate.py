@@ -27,8 +27,14 @@ def test_export_requires_recovery_metadata_when_quality_gate_fails(tmp_path) -> 
         "required_gates": ["musical_goals", "pqs", "oqs"],
     }
 
-    with pytest.raises(RuntimeError):
-        export_audio(audio, 48_000, "best_effort", quality_gate=quality_gate, output_dir=str(tmp_path))
+    path = export_audio(audio, 48_000, "best_effort", quality_gate=quality_gate, output_dir=str(tmp_path))
+    assert path.endswith(".wav")
+
+    meta_path = tmp_path / "best_effort.json"
+    assert meta_path.exists()
+    payload = meta_path.read_text(encoding="utf-8")
+    assert '"quality_gate_passed": false' in payload
+    assert '"export_strategy": "degraded"' in payload
 
 
 @pytest.mark.normative

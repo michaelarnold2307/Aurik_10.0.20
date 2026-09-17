@@ -253,15 +253,20 @@ def test_quality_gate_prefers_structured_error_code_when_fail_reason_missing():
 
 
 def test_export_audio_blocks_failed_gate_without_recovery(temp_export_dir):
-    """Failed quality gate without recovery metadata must block export."""
+    """Failed quality gate without recovery metadata exports degraded output."""
     audio = np.zeros(1000, dtype=np.float32)
     quality_gate = {
         "passed": False,
         "fail_reason": "PQS unter Mindestschwelle",
     }
 
-    with pytest.raises(RuntimeError):
-        export_audio(audio, 48_000, "blocked.wav", quality_gate=quality_gate)
+    path = export_audio(audio, 48_000, "blocked.wav", quality_gate=quality_gate)
+    assert os.path.exists(path)
+    meta_path = os.path.join("export", "blocked.json")
+    assert os.path.exists(meta_path)
+    with open(meta_path, encoding="utf-8") as f:
+        payload = f.read()
+    assert '"export_strategy": "degraded"' in payload
 
 
 def test_export_audio_sets_recovered_strategy(temp_export_dir):
