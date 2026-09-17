@@ -23148,31 +23148,37 @@ class UnifiedRestorerV3:
         except Exception as _polish_exc:
             logger.debug("§P1-8 FinalPolish not verfuegbar: %s", _polish_exc)
 
-        try:
-            from backend.core.one_take_export import OneTakeExport
+        # §P1-8-Korrektur 2026-09-17: Im Chunk-Modus läuft der Export EINMAL
+        # nach der Assembly (in _restore_chunked) — ein Per-Chunk-Export
+        # meldete „OneTakeExport PASS“ vor dem finalen Ergebnis und weckte
+        # falsche Hoffnungen (GUI-Befund: „Export der Restaurierung“ während
+        # das Terminal weiter restaurierte).
+        if not _chunked_tail_skip:
+            try:
+                from backend.core.one_take_export import OneTakeExport
 
-            # R2/WIT-M4 (2026-09-16): MuQ-MOS-Witness — Original-Input als
-            # Vergleichsbasis (SOFT; der Witness blockt nie, §0c).
-            _ote = OneTakeExport.prepare(
-                restored_audio,
-                sample_rate,
-                is_studio_2026=self.is_studio_mode(),
-                reference_audio=audio,
-            )
-            if _ote.passed or _ote.retries < 3:
-                restored_audio = _ote.audio
-                logger.info(
-                    "§P1-8 OneTakeExport (nach m1b): %d retries, corrections=%s", _ote.retries, _ote.corrections
+                # R2/WIT-M4 (2026-09-16): MuQ-MOS-Witness — Original-Input als
+                # Vergleichsbasis (SOFT; der Witness blockt nie, §0c).
+                _ote = OneTakeExport.prepare(
+                    restored_audio,
+                    sample_rate,
+                    is_studio_2026=self.is_studio_mode(),
+                    reference_audio=audio,
                 )
-            else:
-                logger.warning("OneTakeExport FAIL: %s", _ote.quality_report.get("errors", []))
-            _muq_delta_ote = _ote.quality_report.get("muq_mos_delta")
-            if _muq_delta_ote is not None and hasattr(result, "metadata") and isinstance(result.metadata, dict):
-                result.metadata["export_muq_mos_delta"] = float(_muq_delta_ote)
-                result.metadata["export_muq_mos_in"] = _ote.quality_report.get("muq_mos_in")
-                result.metadata["export_muq_mos_out"] = _ote.quality_report.get("muq_mos_out")
-        except Exception:
-            logger.debug("OneTakeExport not verfuegbar", exc_info=True)
+                if _ote.passed or _ote.retries < 3:
+                    restored_audio = _ote.audio
+                    logger.info(
+                        "§P1-8 OneTakeExport (nach m1b): %d retries, corrections=%s", _ote.retries, _ote.corrections
+                    )
+                else:
+                    logger.warning("OneTakeExport FAIL: %s", _ote.quality_report.get("errors", []))
+                _muq_delta_ote = _ote.quality_report.get("muq_mos_delta")
+                if _muq_delta_ote is not None and hasattr(result, "metadata") and isinstance(result.metadata, dict):
+                    result.metadata["export_muq_mos_delta"] = float(_muq_delta_ote)
+                    result.metadata["export_muq_mos_in"] = _ote.quality_report.get("muq_mos_in")
+                    result.metadata["export_muq_mos_out"] = _ote.quality_report.get("muq_mos_out")
+            except Exception:
+                logger.debug("OneTakeExport not verfuegbar", exc_info=True)
         if hasattr(result, "audio"):
             result.audio = restored_audio
 
@@ -46086,27 +46092,29 @@ class UnifiedRestorerV3:
             # OneTakeExport (LUFS/True-Peak-Zielkorrektur, idempotent);
             # FinalPolish (Era-EQ) lief bereits je Chunk und darf nicht
             # doppelt angewendet werden.
-            if _m1b_chunked_flag:
-                try:
-                    from backend.core.one_take_export import OneTakeExport
+            # §P1-8-Korrektur 2026-09-17: UNBEDINGT auf dem assemblierten Song
+            # laufen lassen (vorher nur bei m1b-Flag — der Per-Chunk-Export
+            # ist seit heute deaktiviert, der finale Export darf nie fehlen).
+            try:
+                from backend.core.one_take_export import OneTakeExport
 
-                    # R2/WIT-M4 (2026-09-16): MuQ-MOS-Witness (SOFT, §0c) —
-                    # Vergleichsbasis = voller Song-Input.
-                    _ote_c = OneTakeExport.prepare(
-                        output,
-                        sample_rate,
-                        is_studio_2026=self.is_studio_mode(),
-                        reference_audio=audio,
+                # R2/WIT-M4 (2026-09-16): MuQ-MOS-Witness (SOFT, §0c) —
+                # Vergleichsbasis = voller Song-Input.
+                _ote_c = OneTakeExport.prepare(
+                    output,
+                    sample_rate,
+                    is_studio_2026=self.is_studio_mode(),
+                    reference_audio=audio,
+                )
+                if _ote_c.passed or _ote_c.retries < 3:
+                    output = _ote_c.audio
+                    logger.info(
+                        "§P1-8 OneTakeExport (nach m1b, chunked): %d retries, corrections=%s",
+                        _ote_c.retries,
+                        _ote_c.corrections,
                     )
-                    if _ote_c.passed or _ote_c.retries < 3:
-                        output = _ote_c.audio
-                        logger.info(
-                            "§P1-8 OneTakeExport (nach m1b, chunked): %d retries, corrections=%s",
-                            _ote_c.retries,
-                            _ote_c.corrections,
-                        )
-                except Exception as _otec_exc:
-                    logger.debug("§P1-8 OneTakeExport chunked nicht blockierend: %s", _otec_exc)
+            except Exception as _otec_exc:
+                logger.debug("§P1-8 OneTakeExport chunked nicht blockierend: %s", _otec_exc)
 
             # §P0-1 (b): Einladungs-Gate einmal auf dem assemblierten Song
             # (reine Analytik, kein Audio-Eingriff).
