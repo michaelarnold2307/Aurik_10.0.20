@@ -432,6 +432,18 @@
    unveränderter Kandidat + Debug-Log).
 8. **SOTA-C4** · DDSP: neuronale EQ-/Dynamik-Parameter-Prädiktion (CLAP/BEATs-
    Embeddings) für phase_04/16/17 — DSP führt aus, nie Wellenform-Generierung.
+   **Status 2026-09-17 (F5-Prämisen-Probe, CPU):** CLAP war Negativbefund
+   (Head lernte nichts über der Mittelwert-Baseline, 2026-09-16). Probe mit
+   dem bereits im Repo vorhandenen BEATs-Encoder (`beats_pooled_embedding`,
+   768-dim, ONNX, CPU): 8-s-Musikfenster (Elke Best) mit ±6-dB-Bass- und
+   +5-dB-Präsenz-EQ — Embedding-Distanzen 0,7e-3…1,8e-3, richtungsrichtig
+   (Bass-Boost > Bass-Cut > Präsenz); CLAP zeigte dort keinen strukturierten
+   Signalanteil. Precompute kostet ~0,4 s je Fenster (CPU). **F5-Plan (GPU
+   nach F3):** V1 = lokaler `_embed()`-Tausch CLAP→BEATs-pooled im
+   wiederverwendbaren C4-Harness (480 Paare, 25 Epochs, ~1 h GPU);
+   V2 = Mel-Spektrogramm-CNN-Encoder (DDSP-Muster) nur bei Negativbefund.
+   Aktivierung des Heads erst bei val-MAE klar unter der Mittelwert-Baseline
+   (0,2455) — kein Blind-Aktivieren.
 9. **SOTA-TP-V1+V2** · Neurale Onset-Detektion (BEATs) als Konsens mit Spectral Flux +
    neurale Phasen-Schätzung für Transienten-Frames (phase_08/36).
    Status 2026-09-14: **TP-V1 V1-VERDRAHTET (Witness-Modus)** —
