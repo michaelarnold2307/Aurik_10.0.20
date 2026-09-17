@@ -1309,9 +1309,14 @@ loudness/delta) haben ALLE Phasen Guard-Ketten):
   Mikrodynamik, NPA, Noise-Textur), **62 (Masking-Clamp §2.62, Onset,
   Mikrodynamik, NPA, Noise-Textur, Spektralfarbe — die frühere
   Roadmap-Behauptung „62 ohne Maskierungs-Gate“ war FALSCH)**.
-- **Echte Rest-Lücke (klein):** 44/45 (Enhancement) haben Loudness-/Delta-/
-  Temporal-Masking-Guards, aber KEINE PSY-A4-Equal-Loudness-Temperierung
-  (im Gegensatz zu 04/16/17/37/38/39) — Backlog mit Rezept.
+- **44/45 PSY-A4:** ✅ ERLEDIGT — Verdrahtung 2026-09-17 in phase_44/45
+  (`equal_loudness_strength_factor` @ 3/3,5 kHz, 60 phon, nicht blockierend;
+  die frühere Notiz „KEINE PSY-A4-Temperierung — Backlog mit Rezept“ war
+  veraltet). Wiring-Tests 2026-09-17 ergänzt: Faktor multipliziert die
+  Effektiv-Stärke (Faktor 0,7 → Stärke ×0,7; 10/10 grün). Hinweis: Bei
+  3–3,5 kHz liegt der ISO-226-Faktor bei 60 phon bei 1,0 (maximale
+  Gehör-Empfindlichkeit) — die Temperierung wirkt dort definitionsgemäß
+  nicht reduzierend, die Verdrahtung ist aber vollständig.
 - Analyse-/Passiv-Phasen (28/30/41/53) und verbotene Phasen (21/35/42)
   bewusst ohne Gate — korrekt.
 
