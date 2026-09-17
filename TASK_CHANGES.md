@@ -1,24 +1,49 @@
 # TASK_CHANGES — Live-Ledger der aktuellen Aufgabe
 
-> Generiert von `scripts/change_ledger.py snapshot` (Base: `HEAD`, Stand: 2026-09-17 01:19 CEST).
+> Generiert von `scripts/change_ledger.py snapshot` (Base: `HEAD`, Stand: 2026-09-17 01:51 CEST).
 > CI (`ci-lite.yml` pr-evidence-gate) erzwingt Abdeckung: jede geänderte Code-Datei muss hier stehen.
 
 ## Geänderte Dateien
 
 | Status | Pfad | Art |
 |---|---|---|
-| M | backend/core/dsp/pre_echo_model.py | modifiziert |
-| M | backend/core/listening_witness.py | modifiziert |
-| M | backend/core/phases/phase_43_ml_deesser.py | modifiziert |
+| M | .github/FILE_REGISTRY.md | modifiziert |
+| M | backend/core/phases/phase_09_crackle_removal.py | modifiziert |
 | M | backend/core/restorability_estimator.py | modifiziert |
+| M | backend/core/song_structure_analyzer.py | modifiziert |
 | M | docs/TODOS_SOTA_ROADMAP.md | modifiziert |
-| M | tests/unit/test_listening_witness.py | modifiziert |
-| M | tests/unit/test_phase_43_ml_deesser.py | modifiziert |
-| M | tests/unit/test_pre_echo_model.py | modifiziert |
-| ?? | docs/reports/supervised_runs/2026-09-16_elke_best_225s_export_analyse.md | ungetrackt |
+| M | tests/unit/test_phase09_crackle_in_vocal_passages.py | modifiziert |
+| M | tests/unit/test_song_structure_analyzer.py | modifiziert |
+| ?? | docs/reports/current/2026-09-17_song_structure_sota_abgleich.md | ungetrackt |
 
 ## Entscheidungen
 
+- **Arbeitsaufträge 2026-09-17 (Songaufbau, Gates-Sweep, Ablauf)**:
+  - AUF-1 phase_43 Audibility-Gate: bereits vorhanden (2026-09-16) — verifiziert,
+    keine Nachrüstung nötig.
+  - AUF-2 Gates-Sweep: Inventar über alle 69 Phasen-Dateien korrigiert
+    (05 hat is_below_masking-Early-Termination, 63 hat 20-dB-Peak-Gate, 62 hat
+    KEIN Maskierungs-Gate — Roadmap-Behauptung korrigiert). Nachgerüstet:
+    **phase_09** `_apply_audibility_gate_to_regions` (subaudible
+    Knistern-Regionen übersprungen, §4; Zähler `subaudible_crackle_skipped`
+    in allen 3 Return-Pfaden; 2 neue Tests). Latenten Test-Drift gefixt:
+    2 Docker-Fallback-Tests waren seit der SUP-F2-Signaturänderung
+    `_remove_crackle_ml(..., sample_rate)` rot. Backlog mit Rezept je Phase:
+    62/54/44/45/52/57/61/18/32.
+  - AUF-3 Songaufbauanalyse: NICHT auf SOTA-Stufe (Elke-Best-225s: 0 Chorus/
+    0 Klimax, 42 s „intro“, 37 s „bridge“ — unabhängiger Chroma-Fenster-Scan
+    belegt Refrain bei ≈44/100/156/192 s). Upgrade `song_structure_analyzer.py`:
+    Fenster-Wiederholungs-Evidenz (`_window_repetition_counts`),
+    Wiederholungs-Labels, Intro/Outro-Caps (≤ 15 %), Klimax = Chorus mit
+    p90 ≥ 98 % des Song-Maximums. Ergebnis deckt sich jetzt vollständig;
+    Laufzeit 1,29 s/min ≤ Budget; 17 Tests grün. Report:
+    `docs/reports/current/2026-09-17_song_structure_sota_abgleich.md`.
+    Rest-Gap dokumentiert: ML-Boundary-Detektor (GPU), Beat-/Downbeat-Tracking,
+    Chunk-Modus-Struktur.
+  - AUF-4 Ablauf: RestorabilityEstimator-Laufzeitkurve ehrlich kalibriert
+    (33× RT gemessen statt 2,5× RT versprochen); BANQUET-Singleton bestätigt
+    (kein Fix nötig); Chunk-Modus-Struktur + Witness-Veto-Zustand als
+    Folge-Slices dokumentiert.
 - **Defizit-Abarbeitung 2026-09-17 (SUP-F5/F6, PSY-A1-43, Budget-Wahrheit)**:
   - SUP-F5 (DIAGNOSTIK): `RestorabilityEstimator` taktet den MuQ-ML-Prior jetzt
     separat und zieht ihn vom §2.26-DSP-Budget ab — der einmalige

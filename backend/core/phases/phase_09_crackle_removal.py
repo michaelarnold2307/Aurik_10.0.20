@@ -215,6 +215,8 @@ class CrackleRemovalPhase(PhaseInterface):
         """Initialisiert Crackle Removal Phase with ML-Hybrid support."""
         super().__init__(sample_rate=sample_rate, **kwargs)
         self._banquet_plugin = None  # Lazy loading (vinyl-specific)
+        # §SOTA-PSY-A1 (2026-09-17): Zähler subaudibler Knistern-Regionen (§4).
+        self._subaudible_crackle_skipped = 0
 
     # §2.45a material-adaptive max allowed RMS drop per phase execution.
     # Crackle removal removes impulsive energy; on vinyl/shellac RMS drop can reach
@@ -513,6 +515,47 @@ class CrackleRemovalPhase(PhaseInterface):
 
         return crackle_regions
 
+    def _apply_audibility_gate_to_regions(
+        self,
+        audio: np.ndarray,
+        crackle_regions: list[tuple[int, int]],
+    ) -> list[tuple[int, int]]:
+        """§SOTA-PSY-A1 (2026-09-17): subaudible Knistern-Regionen (unter der
+        Maskierungsschwelle) überspringen — §4-Vertrag: kein hörbarer Defekt,
+        keine Reparatur (Never-worsen durch Nichtstun). Non-blocking
+        (§V6 (copilot-instructions.md)): bei jedem Fehler bleibt die Liste unverändert.
+
+        Knistern ist breitbandig-impulsiv — das Default-Band des Gates
+        (800 Hz–10 kHz) deckt den hörrelevanten Bereich ab.
+        """
+        if not crackle_regions:
+            return crackle_regions
+        try:
+            from backend.core.dsp.audibility_gate import defect_audibility as _aud_09
+
+            _mono09 = np.asarray(audio, dtype=np.float32)
+            if _mono09.ndim == 2:
+                _mono09 = _mono09.mean(axis=0) if _mono09.shape[0] == 2 else _mono09.mean(axis=1)
+            _kept09: list[tuple[int, int]] = []
+            _skipped09 = 0
+            for _s09, _e09 in crackle_regions:
+                _res09 = _aud_09(_mono09, int(self.sample_rate), int(_s09), int(_e09))
+                if bool(_res09.get("skippable", False)):
+                    _skipped09 += 1
+                    continue
+                _kept09.append((_s09, _e09))
+            if _skipped09:
+                logger.debug(
+                    "Verarbeitungsschritt_09 §SOTA-PSY-A1: %d/%d Knistern-Regionen unter der Maskierungsschwelle — übersprungen.",
+                    _skipped09,
+                    len(crackle_regions),
+                )
+                self._subaudible_crackle_skipped = int(self._subaudible_crackle_skipped) + _skipped09
+            return _kept09
+        except Exception as _aud09_exc:
+            logger.debug("Verarbeitungsschritt 09 §SOTA-PSY-A1 nicht verfügbar: %s", _aud09_exc)
+            return crackle_regions
+
     def _compute_crackle_regions_with_protection(
         self,
         audio: np.ndarray,
@@ -528,6 +571,8 @@ class CrackleRemovalPhase(PhaseInterface):
             params,
         )
         crackle_regions = self._apply_phoneme_protection_to_regions(audio, crackle_regions)
+        # §SOTA-PSY-A1 (2026-09-17): subaudible Knistern-Regionen überspringen (§4).
+        crackle_regions = self._apply_audibility_gate_to_regions(audio, crackle_regions)
         return transients_short, transients_medium, transients_long, crackle_regions
 
     def _get_banquet_plugin(self):
@@ -924,6 +969,7 @@ class CrackleRemovalPhase(PhaseInterface):
                         "b11_hf_floor_delta_db": round(_hf_delta_09, 2),
                         "effective_strength": _effective_strength,
                         "phase_locality_factor": phase_locality_factor,
+                        "subaudible_crackle_skipped": int(self._subaudible_crackle_skipped),
                     },
                 )
             except Exception as exc:
@@ -977,6 +1023,7 @@ class CrackleRemovalPhase(PhaseInterface):
                                 "b11_hf_floor_delta_db": round(_hf_delta_09, 2),
                                 "effective_strength": _effective_strength,
                                 "phase_locality_factor": phase_locality_factor,
+                                "subaudible_crackle_skipped": int(self._subaudible_crackle_skipped),
                             },
                         )
                     except Exception as exc2:
@@ -1208,6 +1255,7 @@ class CrackleRemovalPhase(PhaseInterface):
                 "effective_strength": _effective_strength,
                 "rms_drop_db": round(float(_rms_drop_09), 3),
                 "loudness_makeup_db": round(float(_makeup_09), 3),
+                "subaudible_crackle_skipped": int(self._subaudible_crackle_skipped),
             },
             resolved_defects={
                 "CRACKLE": float(

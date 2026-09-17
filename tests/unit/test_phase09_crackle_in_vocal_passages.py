@@ -379,7 +379,7 @@ def test_process_docker_fallback_uses_region_selective_blend(phase09, monkeypatc
         phase09, "_remove_crackle_onnx_direct", lambda *args, **kwargs: (_ for _ in ()).throw(RuntimeError("onnx_fail"))
     )
     monkeypatch.setattr(phase09, "_get_banquet_plugin", lambda: object())
-    monkeypatch.setattr(phase09, "_remove_crackle_ml", lambda a, plugin, p: np.ones_like(a, dtype=np.float32))
+    monkeypatch.setattr(phase09, "_remove_crackle_ml", lambda a, plugin, p, sr=48000: np.ones_like(a, dtype=np.float32))
     monkeypatch.setattr(phase09, "_measure_crackle_reduction", lambda a, b: 11.0)
     monkeypatch.setattr(
         phase09,
@@ -398,6 +398,57 @@ def test_process_docker_fallback_uses_region_selective_blend(phase09, monkeypatc
     assert outside_mean < 0.60
 
 
+def _crackle_masked_signal() -> np.ndarray:
+    """Träger mit starkem Masker im Gate-Band (4,4 kHz) — subaudibles Knistern
+    liegt unter der so erzeugten Maskierungsschwelle."""
+    n = int(SR * 2.0)
+    rng = np.random.default_rng(19)
+    t = np.arange(n) / SR
+    x = (0.3 * np.sin(2 * np.pi * 220 * t) + 0.2 * np.sin(2 * np.pi * 4400 * t) + 0.01 * rng.standard_normal(n)).astype(
+        np.float32
+    )
+    return x
+
+
+def _crackle_quiet_signal() -> np.ndarray:
+    """Ruhiger Träger ohne Masker im Gate-Band — hörbares Knistern liegt über
+    der absoluten Schwelle."""
+    n = int(SR * 2.0)
+    rng = np.random.default_rng(19)
+    t = np.arange(n) / SR
+    x = (0.3 * np.sin(2 * np.pi * 220 * t) + 0.001 * rng.standard_normal(n)).astype(np.float32)
+    return x
+
+
+def test_psy_a1_subaudible_crackle_regions_filtered(phase09):
+    """§SOTA-PSY-A1 (2026-09-17): Knistern-Regionen unter der Maskierungsschwelle
+    werden übersprungen (§4-Vertrag: kein hörbarer Defekt → keine Reparatur)."""
+    x = _crackle_masked_signal()
+    rng = np.random.default_rng(5)
+    regions = []
+    for _pos in (int(0.5 * SR), int(0.7 * SR), int(0.9 * SR)):
+        x[_pos : _pos + 6] += (0.002 * rng.standard_normal(6)).astype(np.float32)
+        regions.append((_pos, _pos + 48))
+    kept = phase09._apply_audibility_gate_to_regions(x, regions)
+    assert kept == []
+    assert phase09._subaudible_crackle_skipped == 3
+
+
+def test_psy_a1_audible_crackle_regions_kept(phase09):
+    """§SOTA-PSY-A1-Gegenprobe: hörbares Knistern (0,25-Impulse im ruhigen
+    Kontext) muss in der Reparaturliste bleiben — das Gate darf
+    True-Positive nicht schlucken."""
+    x = _crackle_quiet_signal()
+    rng = np.random.default_rng(6)
+    regions = []
+    for _pos in (int(0.5 * SR), int(0.7 * SR), int(0.9 * SR)):
+        x[_pos : _pos + 6] += (0.25 * rng.standard_normal(6)).astype(np.float32)
+        regions.append((_pos, _pos + 48))
+    kept = phase09._apply_audibility_gate_to_regions(x, regions)
+    assert kept == regions
+    assert phase09._subaudible_crackle_skipped == 0
+
+
 def test_process_docker_fallback_without_regions_uses_global_blend(phase09, monkeypatch):
     """Docker-Fallback mit leeren Regionen soll globalen Sicherheitsmix nutzen."""
     n = SR
@@ -411,7 +462,7 @@ def test_process_docker_fallback_without_regions_uses_global_blend(phase09, monk
         phase09, "_remove_crackle_onnx_direct", lambda *args, **kwargs: (_ for _ in ()).throw(RuntimeError("onnx_fail"))
     )
     monkeypatch.setattr(phase09, "_get_banquet_plugin", lambda: object())
-    monkeypatch.setattr(phase09, "_remove_crackle_ml", lambda a, plugin, p: np.ones_like(a, dtype=np.float32))
+    monkeypatch.setattr(phase09, "_remove_crackle_ml", lambda a, plugin, p, sr=48000: np.ones_like(a, dtype=np.float32))
     monkeypatch.setattr(phase09, "_measure_crackle_reduction", lambda a, b: 11.0)
     monkeypatch.setattr(
         phase09,

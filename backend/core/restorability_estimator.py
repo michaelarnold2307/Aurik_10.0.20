@@ -309,7 +309,11 @@ class RestorabilityEstimator:
         # 8. Verarbeitungszeit schätzen (empirische Kurve)
         # ----------------------------------------------------------------
         duration_s = len(mono) / sr
-        processing_estimate = duration_s * 2.5 + 15.0  # ~ 2.5× Realzeit + Overhead
+        # §Budget-Wahrheit (2026-09-17): 2,5× RT + 15 s war gefährlich falsch
+        # (versprach ~9 min für den 225-s-Song; gemessen ~2 h 03 min ≈ 33× RT,
+        # überwachter Lauf 2026-09-16). Ehrliche Nominal-Kurve = gemessenes
+        # 33× RT (P0-1-Ziel: 32×; aktualisiert sich mit den GPU-Buildouts).
+        processing_estimate = duration_s * 33.0 + 15.0  # gemessen ≈ 33× RT (CPU, 2026-09-16)
 
         # ----------------------------------------------------------------
         # 9. Grade und Empfehlungen

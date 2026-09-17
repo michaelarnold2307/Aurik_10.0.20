@@ -1233,6 +1233,79 @@ Alle CPU-schließbaren Punkte der Offene-Punkte-Matrix sind umgesetzt und getest
 5. **Wow/Flutter/Hall**: bewusst erhalten (musikalische Modulation/Hörordnung) —
    WF-V4 wäre der einzige authentizitätssichere Weg (extern blockiert).
 
+## Arbeitsaufträge 2026-09-17 — Songaufbau, Gates-Sweep, Ablauf (Abarbeitung)
+
+> Vier Arbeitsaufträge mit den restlichen Roadmap-Maßnahmen abgearbeitet.
+> Beleg: `docs/reports/current/2026-09-17_song_structure_sota_abgleich.md`;
+> Commit-Stand 2026-09-17 (Session „SOTA-Roadmap + Arbeitsaufträge“).
+
+### AUF-1 · phase_43 Audibility-Gate
+
+✅ **BEREITS VORHANDEN** (2026-09-16, verifiziert): Sibilanten-Maskierungs-Gate
+im Segment-Gate (`defect_audibility`, Band 4–12 kHz, Muster phase_19),
+Zähler `subaudible_sibilants_skipped`, test_phase_43_ml_deesser (48 Tests grün).
+Keine Nachrüstung nötig.
+
+### AUF-2 · Gates-Sweep über alle Phasen (Inventar + Nachrüstung)
+
+Inventar (Scan 2026-09-17, Korrektur früherer Grep-Muster):
+
+- **Ohne jedes Gate** (nach Nachrüstung): 18 noise_gate, 32 mono_to_stereo,
+  52 piano_restoration, 54 transparent_dynamics, 57 print_through,
+  61 groove_echo, 62 crosstalk (nur Onset-Schutz), glue/interface
+  (bewusst), 21/35/42 (verboten) sowie Analyse-/Passiv-Phasen
+  (28/30/41/53 — bewusst ohne Gate).
+- **Roadmap-Korrektur**: Die Behauptung „05/62/63 Maskierungs-Gates vorhanden“
+  ist nur für 05 (is_below_masking-Early-Termination, Zeile ~365) und 63
+  (20-dB-Peak-Gate) korrekt; 62 hat KEIN Maskierungs-Gate (Backlog).
+
+**Nachgerüstet 2026-09-17:**
+- **phase_09 crackle_removal** — `_apply_audibility_gate_to_regions`
+  (subaudible Knistern-Regionen übersprungen, §4; Zähler
+  `subaudible_crackle_skipped` in allen 3 Return-Pfaden). Wichtig: Der
+  BANQUET-ML-Pfad ist seit SUP-F2 (2026-09-16) LIVE und lief vorher ganz
+  ohne Hörbarkeits-Gate. Tests: 2 neue PSY-A1-Fälle (16/16 grün).
+- **Latenter Test-Drift gefixt**: `test_phase09_crackle_in_vocal_passages`
+  (2 Docker-Fallback-Tests waren seit der SUP-F2-Signaturänderung
+  `_remove_crackle_ml(..., sample_rate)` rot — nicht bemerkt, weil der
+  grüne Vollsuite-Stand davor lag).
+
+**Backlog (Rezept je Phase, Folge-Slice):** 62 (defect_audibility je
+Crosstalk-Region), 54 (perceptual_loudness_cap-Headroom-Variante wie 40),
+44/45 (PSY-A4 equal_loudness_strength_factor für Enhancement-Stärke),
+52/57/61 (defect_audibility je Region, Muster 09), 18 (PSY-A8-JND-Schwelle),
+32 (PSY-A3-BMLD-Witness).
+
+### AUF-3 · Songaufbauanalyse — SOTA-Abgleich & Upgrade
+
+**Urteil: NICHT auf SOTA-Stufe; Analyseergebnis deckte sich NICHT mit dem
+Songaufbau** (Elke-Best-225s: 0 Chorus/0 Klimax, 42 s „intro“, 37 s „bridge“
+statt des klaren Strophe/Refrain-Wechsels mit Refrain bei ≈44/100/156/192 s —
+umabhängig per Chroma-Fenster-Scan belegt). **Upgrade umgesetzt** (deterministisch,
+librosa/numpy, §G5): Fenster-Wiederholungs-Evidenz (`_window_repetition_counts`),
+Wiederholungs-Labels (chorus = wiederkehrend + Energie > Median), Intro/Outro nur
+für kurze Rand-Segmente, Klimax = Chorus mit p90 ≥ 98 % des Song-Maximums.
+Ergebnis deckt sich jetzt VOLLSTÄNDIG mit der unabhängigen Analyse; Laufzeit
+1,29 s/min ≤ Budget. 17 Tests grün. Rest SOTA-Gap (GPU/dokumentiert):
+ML-Boundary-Detektor, Beat-/Downbeat-Tracking (Spec erwähnt, fehlt),
+Chunk-Modus-Struktur (siehe AUF-4).
+
+### AUF-4 · Ablauf- & Analyse-Verbesserungen
+
+1. ✅ **Ehrliche Laufzeit-Schätzung**: RestorabilityEstimator versprach
+   2,5× RT + 15 s (≈ 9 min für 225 s) — gemessen ≈ 33× RT (~2 h). Kurve auf
+   33× RT kalibriert (Budget-Wahrheit; aktualisiert sich mit P0-1/GPU-Gewinnen).
+2. **Chunk-Modus**: `analyze_structure` läuft pro 30-s-Chunk (k=2, „2 Segmente“
+   im Lauf-Log) — Rezept: Struktur EINMAL vor dem Chunk-Loop auf dezimiertem
+   Ganz-Song-Probe + Wiederverwendung (Folge-Slice).
+3. ✅ **BANQUET-Load**: Singleton + Quarantäne vorhanden (0,78 s einmal je
+   Prozess, kein Fix nötig) — dokumentiert; CPU-Inferenz-Kosten bleiben
+   R3/GPU-gebunden.
+4. **Witness-Veto-Loop**: verdrahtet, aber im Lauf 0× aktiv (Schwellen greifen
+   erst bei echten Regressionen) — Zustand dokumentiert.
+
+---
+
 ## Hintergrund (damit die nächste Session sofort einsteigt)
 
 - **Session-Report:** `docs/reports/current/2026-09-08_envelope_root_cause_sota_fixes_matrix.md`

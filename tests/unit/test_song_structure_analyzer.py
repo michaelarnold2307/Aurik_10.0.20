@@ -144,6 +144,103 @@ class TestAnalyzeStructure:
         assert n_vocal_with >= n_vocal_no
 
 
+class TestRepetitionAwareLabels:
+    """§SOTA-Upgrade 2026-09-17: Der Refrain ist der WIEDERKEHRENDE Abschnitt —
+    ohne Wiederholungs-Evidenz erkannte der Analyzer auf realem Material 0
+    Chorus (Produktionsbefund Elke-Best-225s)."""
+
+    @staticmethod
+    def _section(chords: list[list[float]], sr: int, dur_s: float, amp: float) -> np.ndarray:
+        """Harmonischer Block: je 1 s Akkord (Sinus-Stapel) + leises Rauschen."""
+        # Deterministischer Seed (§G5 (GEBOTE.md)): kein hash() (PYTHONHASHSEED-abhängig).
+        _seed = int(sum(round(f * 1000) for chord in chords for f in chord) + amp * 1000) % (2**32)
+        rng = np.random.default_rng(_seed)
+        n = int(sr * dur_s)
+        t = np.arange(n) / sr
+        out = np.zeros(n, dtype=np.float32)
+        sec = int(sr * 1.0)
+        for i, chord in enumerate(chords):
+            seg = out[i * sec : (i + 1) * sec]
+            for f in chord:
+                seg += (np.sin(2 * np.pi * f * t[i * sec : (i + 1) * sec])).astype(np.float32)
+        out = amp * out / max(float(np.abs(out).max()), 1e-9)
+        out += (0.01 * rng.standard_normal(n)).astype(np.float32)
+        return out.astype(np.float32)
+
+    def test_assign_label_chorus_from_repetition(self):
+        """§SOTA-Upgrade 2026-09-17: matches ≥ 1 + Energie > Median ⇒ chorus;
+        wiederholte ruhigere Abschnitte bleiben verse; Einzelgänger = bridge."""
+        from backend.core.song_structure_analyzer import SongStructureAnalyzer
+
+        a = SongStructureAnalyzer()
+        # wiederkehrend + energiereich → chorus
+        assert (
+            a._assign_label(2, 6, 0.7, True, 180.0, 60.0, matches=1, energy_median=0.5, seg_duration=20.0) == "chorus"
+        )
+        # wiederkehrend + leise → verse
+        assert a._assign_label(2, 6, 0.4, True, 180.0, 60.0, matches=1, energy_median=0.5, seg_duration=20.0) == "verse"
+        # einmalig + kontrastierend (Mitte, leise) → bridge
+        assert (
+            a._assign_label(2, 6, 0.4, True, 180.0, 60.0, matches=0, energy_median=0.5, seg_duration=20.0) == "bridge"
+        )
+        # kurzes Rand-Segment → intro/outro
+        assert a._assign_label(0, 6, 0.4, True, 180.0, 0.0, matches=0, energy_median=0.5, seg_duration=10.0) == "intro"
+        assert (
+            a._assign_label(5, 6, 0.4, True, 180.0, 170.0, matches=0, energy_median=0.5, seg_duration=10.0) == "outro"
+        )
+        # kein Vokal → instrumental
+        assert (
+            a._assign_label(2, 6, 0.4, False, 180.0, 60.0, matches=0, energy_median=0.5, seg_duration=20.0)
+            == "instrumental"
+        )
+
+    def test_window_repetition_counts(self):
+        """§SOTA-Upgrade 2026-09-17: wiederholte 8-s-Chroma-Blöcke werden
+        segment-übergreifend gezählt (Refrain-Evidenz)."""
+        from backend.core.song_structure_analyzer import SongSegment, _window_repetition_counts
+
+        sr = 48000
+        hop = 512
+        seg_dur = int(48.0 * sr / hop)  # 48 s je Segment in Frames
+        rng = np.random.default_rng(3)
+        # 3 Segmente: [A|B|A] — Block A wiederholt sich über Segmente 0 und 2.
+        block_a = rng.standard_normal((12, seg_dur)).astype(np.float32)
+        block_b = rng.standard_normal((12, seg_dur)).astype(np.float32)
+        chroma = np.concatenate([block_a, block_b, block_a], axis=1)
+        norm = np.linalg.norm(chroma, axis=0, keepdims=True) + 1e-12
+        chroma_n = (chroma / norm).astype(np.float32)
+        segments = [
+            SongSegment(0.0, 48.0, "unknown", 0.5, True, False),
+            SongSegment(48.0, 96.0, "unknown", 0.5, True, False),
+            SongSegment(96.0, 144.0, "unknown", 0.5, True, False),
+        ]
+        counts = _window_repetition_counts(chroma_n, hop, sr, segments)
+        # Segment 0 und 2 tragen die Wiederholung; Segment 1 höchstens die
+        # Grenz-Fenster (Fenster, die die 48-s-Grenze überlappen).
+        assert counts[0] >= 8
+        assert counts[2] >= 8
+        assert counts[1] <= 2
+
+    def test_deterministic(self):
+        """§G5 (GEBOTE.md): identischer Input ⇒ identische Struktur (Real-Material-Muster:
+        wiederholter Block über Segmentgrenzen)."""
+        from backend.core.song_structure_analyzer import get_song_structure_analyzer
+
+        sr = 48000
+        parts = []
+        for _ in range(2):
+            parts.append(self._section([[220.0, 261.63, 329.63], [220.0, 246.94, 329.63]], sr, 8.0, 0.5))
+            parts.append(self._section([[174.61, 220.0, 261.63], [196.0, 246.94, 293.66]], sr, 8.0, 0.8))
+        audio = np.concatenate(parts)
+
+        analyzer = get_song_structure_analyzer()
+        a = analyzer.analyze_structure(audio, sr, panns_singing_confidence=0.8)
+        b = analyzer.analyze_structure(audio, sr, panns_singing_confidence=0.8)
+        assert [(s.start_s, s.end_s, s.label, s.is_climax) for s in a] == [
+            (s.start_s, s.end_s, s.label, s.is_climax) for s in b
+        ]
+
+
 class TestGetStrengthScalar:
     def test_none_returns_1(self):
         from backend.core.song_structure_analyzer import get_song_structure_analyzer
