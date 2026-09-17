@@ -61,7 +61,8 @@ CFG = {
     "fmax": None,
 }
 SR = CFG["sampling_rate"]
-CROP_S = 1.0  # 1536-Kanal-Modell: 2-s-Crops × Batch 4 sprengten 24 GB VRAM (OOM-Befund)
+CROP_S = 0.5  # 1536-Kanal-Modell: 2-s-Crops × Batch 4 sprengten 24 GB VRAM (OOM-Befund);
+# 0,5 s halbiert die Schritt-Zeit (~3 s → ~1,5 s bei Batch 4) und bleibt lokal genug
 CROP_N = int(CROP_S * SR)
 STFT_SIZES = [512, 1024, 2048]
 
@@ -181,8 +182,9 @@ def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--smoke", action="store_true", help="3 Schritte auf 1 Track")
     ap.add_argument("--epochs", type=int, default=30)
-    ap.add_argument("--batch-size", type=int, default=2)
+    ap.add_argument("--batch-size", type=int, default=4)
     ap.add_argument("--lr", type=float, default=1e-4)
+    ap.add_argument("--no-amp", action="store_true", help="FP32 statt fp16 (ROCm-Kernel-Diagnose)")
     ap.add_argument("--steps-per-epoch", type=int, default=2000)
     ap.add_argument("--checkpoint", type=str, default="models/bigvgan/bigvgan_v2.pth")
     ap.add_argument("--data-dir", type=str, default="data/musdb18hq")
@@ -198,6 +200,8 @@ def main() -> int:
         torch.cuda.manual_seed_all(args.seed)
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    if device.type == "cuda":
+        torch.backends.cudnn.benchmark = True  # Kernel-Autotuning (ROCm/MIOpen-Fallback-Fix)
     logger.info("F3 BigVGAN-Finetune — Gerät: %s", device)
 
     data_root = Path(args.data_dir)
@@ -220,7 +224,20 @@ def main() -> int:
     n_params = sum(p.numel() for p in model.parameters())
     logger.info("Modell geladen (%d Parameter) aus %s", n_params, checkpoint)
 
-    opt = torch.optim.AdamW(model.parameters(), lr=args.lr, betas=(0.8, 0.99), weight_decay=1e-2)
+    # §F3-Perf (2026-09-17): untere, sprach-generische Stufen einfrieren
+    # (EAR-VAE-Rezept: „Encoder-Frozen“) — die Musik-Adaption findet in den
+    # oberen Stufen statt; spart ~40 % Backward-Zeit und verhindert Drift.
+    _frozen = 0
+    for _name, _p in model.named_parameters():
+        if _name.startswith(("conv_pre.", "ups.0.", "resblocks.0.", "resblocks.1.", "resblocks.2.")):
+            _p.requires_grad = False
+            _frozen += 1
+    if _frozen:
+        logger.info("Untere Layer eingefroren (%d Parameter-Gruppen)", _frozen)
+
+    opt = torch.optim.AdamW(
+        filter(lambda p: p.requires_grad, model.parameters()), lr=args.lr, betas=(0.8, 0.99), weight_decay=1e-2
+    )
     scaler = torch.cuda.amp.GradScaler(enabled=device.type == "cuda")
 
     rng = np.random.default_rng(args.seed)
@@ -251,7 +268,7 @@ def main() -> int:
         for step in range(steps_per_epoch):
             tr = train_tracks[int(rng.integers(0, len(train_tracks)))]
             x = random_crops(tr, args.batch_size, rng).to(device)
-            with torch.cuda.amp.autocast(enabled=device.type == "cuda"):
+            with torch.cuda.amp.autocast(enabled=(device.type == "cuda" and not args.no_amp)):
                 mel = extract_mel(x)
                 y = model(mel)
                 y = y.squeeze(1)  # [B, 1, T] → [B, T]
