@@ -1,6 +1,6 @@
 # TASK_CHANGES — Live-Ledger der aktuellen Aufgabe
 
-> Generiert von `scripts/change_ledger.py snapshot` (Base: `HEAD`, Stand: 2026-09-17 12:43 CEST).
+> Generiert von `scripts/change_ledger.py snapshot` (Base: `HEAD`, Stand: 2026-09-17 13:15 CEST).
 > CI (`ci-lite.yml` pr-evidence-gate) erzwingt Abdeckung: jede geänderte Code-Datei muss hier stehen.
 
 ## Geänderte Dateien
@@ -9,7 +9,7 @@
 |---|---|---|
 | M | .github/FILE_REGISTRY.md | modifiziert |
 | M | docs/TODOS_SOTA_ROADMAP.md | modifiziert |
-| ?? | scripts/train_bigvgan_f3.py | ungetrackt |
+| ?? | scripts/train_flashsr_f4.py | ungetrackt |
 
 ## Entscheidungen
 
