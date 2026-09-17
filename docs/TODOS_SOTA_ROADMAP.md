@@ -607,6 +607,19 @@
       `model_used=bs_roformer_317_torch_rocm` mit beiden Stems bestanden.
     - Offen bleibt nur S3 im ONNX-EP-Sinn (numerisch defekte ORT-ROCm-Kernels)
       — durch den PyTorch-Pfad funktional überholt, ONNX-CPU bleibt Fallback.
+19. **SOTA-ML-V5** · BANQUET-Re-Export mit dynamischer Batch-Dim (Mini-Batch-Inferenz
+    der 0,5-s-OLA-Fenster). Beleg 2026-09-17 (gemessen, CPU-Session):
+    `banquet_vinyl_final.onnx` ist per Konstruktion batch-1-spezifisch — die
+    Batch-Dim ist statisch `[1,128,128,128]` und 48+ bandweise
+    Squeeze/Unsqueeze-Reshapes (`node_view*` → `[128,128,128]`,
+    `node_Reshape_*` → `[128,128,512]`, `node_view*` → `[1,128,128,512]`)
+    tragen konstante Ziel-Shapes; ein dynamischer Batch bricht im ersten
+    `node_view`-Reshape (gemessener ORT-Fehler „input_shape_size == size
+    was false“). `add_free_dimension_override` greift bei hart statischen
+    Dims nicht. Damit bleibt der ROCm-Deckel bei ~1,19× (2485→2092 ms je
+    1-s-Fenster, Registry 2026-09-13). Schritt: Re-Export aus dem
+    Original-Training mit symbolischer Batch-Dim, dann GPU-Paritäts-Scan
+    (rel ≤ 1e-3, §G5). GPU-gebunden.
 
 ---
 
@@ -1144,7 +1157,7 @@ Alle CPU-schließbaren Punkte der Offene-Punkte-Matrix sind umgesetzt und getest
 
 | Punkt | Status | Begründung / nächster Schritt |
 |---|---|---|
-| TODO-P0-1 (53×→32×-Laufzeit) | **TEIL-ERLEDIGT (Messung) 2026-09-15; Rest GPU-GEBUNDEN** | Hot-Phase-Messung geliefert: `compute_hot_phases` im Diagnose-Skript (rt_factor je Phase, Hot-Liste ab 0,5× RT, test_p0_1_hot_phase_report.py). **Attributions-Korrektur 2026-09-16 (Profiling):** phase_01s 4,4×-RT-Attribution „DSP-Multiscale“ war falsch — Multiscale kostet nur 3 s/225 s; Treiber sind ML-Load/-Inferenz (BANQUET/Device-Detection). **Song-Level-Hoists 2026-09-17 (je Chunk-Wiederholung entfernt):** Struktur-Hoist ANA-6 ✅, **LGE-Transkription-Hoist ✅ (Whisper 8×→1×, Timeline je Chunk zeitverschoben, commit 3bfa5215)**, Export nur nach Assembly ✅ (04a52839); PANNs-Tags + Defect-Scores + Gender sind bereits Song-Ebene (Pre-Analyse-Cache, verifiziert). OFFEN: BANQUET/DFN/Pitch-Inferenz je Chunk (Song-Level- oder R3-GPU-Ports), Ein-Prozess-Batch, DAG-Parallelität, Analyse-Cache je Datei-Hash | hängt an den GPU-Buildouts F1–F5 + Residency-Gewinnen + den restlichen Hoists |
+| TODO-P0-1 (53×→32×-Laufzeit) | **TEIL-ERLEDIGT (Messung) 2026-09-15; Rest GPU-GEBUNDEN** | Hot-Phase-Messung geliefert: `compute_hot_phases` im Diagnose-Skript (rt_factor je Phase, Hot-Liste ab 0,5× RT, test_p0_1_hot_phase_report.py). **Attributions-Korrektur 2026-09-16 (Profiling):** phase_01s 4,4×-RT-Attribution „DSP-Multiscale“ war falsch — Multiscale kostet nur 3 s/225 s; Treiber sind ML-Load/-Inferenz (BANQUET/Device-Detection). **Song-Level-Hoists 2026-09-17 (je Chunk-Wiederholung entfernt):** Struktur-Hoist ANA-6 ✅, **LGE-Transkription-Hoist ✅ (Whisper 8×→1×, Timeline je Chunk zeitverschoben, commit 3bfa5215)**, Export nur nach Assembly ✅ (04a52839); PANNs-Tags + Defect-Scores + Gender sind bereits Song-Ebene (Pre-Analyse-Cache, verifiziert). **R3-GPU-Ports 2026-09-17 abgeschlossen (Registry-Verdikte + Produktions-Vertragstest `test_production_registry_verdicts_restoration_models`):** BANQUET → ROCm ✅ (Partitioning-Fix 2026-09-13, Funktions-Validierung identisch; Deckel 1,19× — der Export ist batch-1-spezifisch, Mini-Batch scheitert in `node_view`-Reshapes, gemessen), CRePE-Pitch → ROCm ✅ (28×), DeepFilterNet → ehrlich CPU ✅ (GPU-Overhead dominiert bei Mini-Modellen). Ein Song-Level-Hoist der Inferenz ist NICHT äquivalent (phase_09 verarbeitet den phase_08-Ausgang je Chunk) — R3 war der korrekte Weg. OFFEN: Ein-Prozess-Batch, DAG-Parallelität, Analyse-Cache je Datei-Hash | hängt an den GPU-Buildouts F1–F5 + Residency-Gewinnen + den restlichen Hoists |
 | TODO-P0-2 (Per-Session-Kompilierung) | **EXTERN BLOCKIERT** | ONNX-Compile-Strategie; Folge von P0-1/C |
 | TODO-P0-3 (Budget-Wahrheit) | ✅ GESCHLOSSEN 2026-09-15 | s. o. A |
 | TODO-P1-1 (Residency) | ✅ GESCHLOSSEN 2026-09-15 (Policy) | s. o. C; Laufzeit-Gewinn misst P0-1 |
