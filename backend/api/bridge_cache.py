@@ -20,8 +20,11 @@ from __future__ import annotations
 import hashlib
 import logging
 import os
+import pickle
+import shutil
 import threading
 from collections import OrderedDict
+from pathlib import Path
 from typing import Any
 
 logger = logging.getLogger(__name__)
@@ -34,6 +37,13 @@ logger = logging.getLogger(__name__)
 _ANALYSIS_CACHE_MAX = 64
 _CONTENT_CHUNK = 4096  # Bytes vom Anfang + Ende für SHA-256 Content-Key
 _CONTENT_KEY_CACHE_MAX = 512
+
+# Disk-Persistenz der Analyse-Caches (Prozess-übergreifend, §G5 (copilot-instructions.md)-deterministisch).
+# Kill-Switch für Tests/Nutzer: AURIK_ANALYSIS_CACHE=0 deaktiviert die Platte;
+# AURIK_ANALYSIS_CACHE_DIR überschreibt das Verzeichnis.
+_DISK_CACHE_SCHEMA = 1
+_DISK_CACHE_DISABLED = os.environ.get("AURIK_ANALYSIS_CACHE", "1").strip().lower() not in ("", "1", "true", "yes")
+_disk_write_lock = threading.Lock()
 
 
 # ---------------------------------------------------------------------------
@@ -182,6 +192,117 @@ def content_cache_key(file_path: str) -> str:
 
 
 # ---------------------------------------------------------------------------
+# Disk-Persistenz (Read-/Write-Through unter dem In-Memory-LRU)
+# ---------------------------------------------------------------------------
+
+
+def _disk_cache_root() -> Path:
+    """Verzeichnis der Platten-Caches (Env-overridable, z. B. für Tests)."""
+    _env = os.environ.get("AURIK_ANALYSIS_CACHE_DIR")
+    if _env:
+        return Path(_env)
+    return Path(__file__).resolve().parent.parent.parent / "output" / "analysis_cache"
+
+
+def _analysis_cache_version() -> str:
+    """Analyse-Code-Version für die Cache-Invalidierung (§G5 (copilot-instructions.md): Version im Key)."""
+    try:
+        from backend.core.version import AURIK_VERSION  # lazy: leaf-Modul, kein Zyklus
+
+        return str(AURIK_VERSION)
+    except Exception as _exc:
+        logger.debug("bridge: AURIK_VERSION nicht lesbar (%s) — Zwischenspeicher-Version 'unbekannt'", _exc)
+        return "unknown"
+
+
+def _disk_path(subdir: str, key: str) -> Path:
+    """Plattenpfad eines Eintrags; Dateiname = SHA-256(key) (pfad-/zeichen-sicher)."""
+    return _disk_cache_root() / subdir / (hashlib.sha256(key.encode()).hexdigest() + ".pkl")
+
+
+def _disk_write(subdir: str, key: str, payload: object) -> None:
+    """Schreibt ein Analyse-Ergebnis atomar auf Platte (tmp + os.replace).
+
+    Fehler sind nie blockierend (§V6 (copilot-instructions.md)): Analyse wird
+    dann beim nächsten Prozess schlicht neu berechnet.
+    """
+    if _DISK_CACHE_DISABLED:
+        return
+    try:
+        _target = _disk_path(subdir, key)
+        _target.parent.mkdir(parents=True, exist_ok=True)
+        _envelope = {
+            "schema": _DISK_CACHE_SCHEMA,
+            "version": _analysis_cache_version(),
+            "key": key,
+            "payload": payload,
+        }
+        _tmp = _target.with_name(_target.name + f".tmp{os.getpid()}")
+        with _disk_write_lock:
+            with open(_tmp, "wb") as _fh:
+                pickle.dump(_envelope, _fh, protocol=pickle.HIGHEST_PROTOCOL)
+            os.replace(_tmp, _target)
+        logger.debug("bridge: Analyse-Zwischenspeicher (Platte) geschrieben %s/%.8s…", subdir, key)
+    except Exception as exc:
+        logger.warning(
+            "bridge: Analyse-Zwischenspeicher (Platte) schreiben fehlgeschlagen (%s) — Analyse wird neu berechnet (§V6 (copilot-instructions.md))",
+            exc,
+        )
+
+
+def _disk_read(subdir: str, key: str) -> object | None:
+    """Lädt ein Analyse-Ergebnis von Platte; ``None`` bei Miss/Versionswechsel/Fehler.
+
+    Versions- oder Schema-Mismatch sowie nicht lesbare Einträge werden
+    sichtbar (§V6 (copilot-instructions.md)) verworfen und gelöscht — nie still verwendet.
+    """
+    if _DISK_CACHE_DISABLED:
+        return None
+    _target = _disk_path(subdir, key)
+    if not _target.is_file():
+        return None
+    try:
+        with open(_target, "rb") as _fh:
+            _envelope = pickle.load(_fh)  # nosec B301 — lokaler Nutzer-Cache im Projekt-Ausgabeverzeichnis (gleiche Vertrauensdomäne wie Modelldateien); fremde/manipulierte Einträge werden bei Fehler verworfen (§V6 (copilot-instructions.md))
+        if not isinstance(_envelope, dict) or _envelope.get("schema") != _DISK_CACHE_SCHEMA:
+            logger.warning("bridge: Analyse-Zwischenspeicher (Platte) Schema-Abweichung — Eintrag verworfen")
+            _target.unlink(missing_ok=True)
+            return None
+        if _envelope.get("version") != _analysis_cache_version():
+            logger.info(
+                "bridge: Analyse-Zwischenspeicher (Platte) Versionswechsel (%s → %s) — Eintrag verworfen",
+                _envelope.get("version"),
+                _analysis_cache_version(),
+            )
+            _target.unlink(missing_ok=True)
+            return None
+        return _envelope.get("payload")
+    except Exception as exc:
+        logger.warning(
+            "bridge: Analyse-Zwischenspeicher (Platte) laden fehlgeschlagen (%s) — Analyse wird neu berechnet (§V6 (copilot-instructions.md))",
+            exc,
+        )
+        try:
+            _target.unlink(missing_ok=True)
+        except OSError as _del_exc:
+            logger.debug(
+                "bridge: Analyse-Zwischenspeicher (Platte) löschen nach Ladefehler nicht möglich (%s)", _del_exc
+            )
+        return None
+
+
+def _disk_clear(subdir: str, key: str | None) -> None:
+    """Löscht einen Platten-Eintrag (key) oder den ganzen Teil-Cache (key=None)."""
+    try:
+        if key is not None:
+            _disk_path(subdir, key).unlink(missing_ok=True)
+        else:
+            shutil.rmtree(_disk_cache_root() / subdir, ignore_errors=True)
+    except Exception as exc:
+        logger.debug("bridge: Analyse-Zwischenspeicher (Platte) löschen fehlgeschlagen (%s)", exc)
+
+
+# ---------------------------------------------------------------------------
 # Singleton caches — one per analysis type for independent eviction
 # ---------------------------------------------------------------------------
 
@@ -204,6 +325,7 @@ def cache_defect_result(file_path: str, result: object) -> None:
     """
     key = content_cache_key(file_path)
     _defect_lru.put(key, result, path_alias=file_path)
+    _disk_write("defect", key, result)
     logger.debug("bridge: DefectScan zwischengespeichert for '%s' (key=%.8s…)", file_path, key)
 
 
@@ -213,6 +335,10 @@ def get_cached_defect_result(file_path: str) -> object | None:
     result = _defect_lru.get(key)
     if result is None:
         result = _defect_lru.get_by_path(file_path)
+    if result is None:
+        result = _disk_read("defect", key)
+        if result is not None:
+            _defect_lru.put(key, result, path_alias=file_path)
     return result
 
 
@@ -221,8 +347,10 @@ def clear_defect_cache(file_path: str | None = None) -> None:
     if file_path is not None:
         key = content_cache_key(file_path)
         _defect_lru.remove(key)
+        _disk_clear("defect", key)
     else:
         _defect_lru.clear()
+        _disk_clear("defect", None)
 
 
 # ---------------------------------------------------------------------------
@@ -245,6 +373,7 @@ def cache_era_genre_result(
         {"era_result": era_result, "genre_result": genre_result},
         path_alias=file_path,
     )
+    _disk_write("era_genre", key, {"era_result": era_result, "genre_result": genre_result})
     logger.debug("bridge: Era/Genre zwischengespeichert for '%s' (key=%.8s…)", file_path, key)
 
 
@@ -258,6 +387,11 @@ def get_cached_era_genre_result(file_path: str) -> dict[str, object] | None:
     result = _era_genre_lru.get(key)
     if result is None:
         result = _era_genre_lru.get_by_path(file_path)
+    if result is None:
+        _disk = _disk_read("era_genre", key)
+        if isinstance(_disk, dict):
+            result = _disk
+            _era_genre_lru.put(key, result, path_alias=file_path)
     return result
 
 
@@ -266,8 +400,10 @@ def clear_era_genre_cache(file_path: str | None = None) -> None:
     if file_path is not None:
         key = content_cache_key(file_path)
         _era_genre_lru.remove(key)
+        _disk_clear("era_genre", key)
     else:
         _era_genre_lru.clear()
+        _disk_clear("era_genre", None)
 
 
 # ---------------------------------------------------------------------------
@@ -279,6 +415,7 @@ def cache_medium_result(file_path: str, result: object) -> None:
     """Cache a MediumClassifier result for *file_path*."""
     key = content_cache_key(file_path)
     _medium_lru.put(key, result, path_alias=file_path)
+    _disk_write("medium", key, result)
     logger.debug("bridge: Medium zwischengespeichert for '%s' (key=%.8s…)", file_path, key)
 
 
@@ -288,6 +425,10 @@ def get_cached_medium_result(file_path: str) -> object | None:
     result = _medium_lru.get(key)
     if result is None:
         result = _medium_lru.get_by_path(file_path)
+    if result is None:
+        result = _disk_read("medium", key)
+        if result is not None:
+            _medium_lru.put(key, result, path_alias=file_path)
     return result
 
 
@@ -295,11 +436,13 @@ def clear_medium_cache(file_path: str | None = None) -> None:
     """Invalidate medium cache entry for *file_path*, or entire cache when ``None``."""
     if file_path is None:
         _medium_lru.clear()
+        _disk_clear("medium", None)
         logger.debug("bridge: Medium-Zwischenspeicher vollständig geleert.")
     else:
         key = content_cache_key(file_path)
         _medium_lru.remove(key)
         _medium_lru.remove(file_path)  # remove() handles path-alias too
+        _disk_clear("medium", key)
         logger.debug("bridge: Medium-Zwischenspeicher für '%s' geleert.", file_path)
 
 
@@ -312,6 +455,7 @@ def cache_restorability_result(file_path: str, result: object) -> None:
     """Cache a RestorabilityEstimator result for *file_path*."""
     key = content_cache_key(file_path)
     _restorability_lru.put(key, result, path_alias=file_path)
+    _disk_write("restorability", key, result)
     logger.debug("bridge: Restorability zwischengespeichert for '%s' (key=%.8s…)", file_path, key)
 
 
@@ -321,4 +465,8 @@ def get_cached_restorability_result(file_path: str) -> object | None:
     result = _restorability_lru.get(key)
     if result is None:
         result = _restorability_lru.get_by_path(file_path)
+    if result is None:
+        result = _disk_read("restorability", key)
+        if result is not None:
+            _restorability_lru.put(key, result, path_alias=file_path)
     return result
