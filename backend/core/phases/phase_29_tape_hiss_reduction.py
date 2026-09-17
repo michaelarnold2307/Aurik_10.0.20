@@ -1555,6 +1555,47 @@ class TapeHissReductionPhase(PhaseInterface):
             np.float32
         )
 
+        # §SOTA-Analogie-Korrektur 2026-09-17 (ANA-11): Konsonanten-Schutz.
+        # Plosive/Frikative sind die Artikulations-Anker des Gesangs — die
+        # DSP-Schutzmaske (phoneme_boundary_detector) existierte dafür, war
+        # aber in der Produktion UNGENUTZT (0 Aufrufe, Lauf-Befund). NACH
+        # allen Guards (die teils ersetzend blenden) wird das NR-Ergebnis in
+        # Konsonanten-Frames sanft Richtung Input zurückgeblendet —
+        # Zischlaute bleiben artikuliert (Wohlklang, Never-worsen durch
+        # Nichtstun).
+        try:
+            from backend.core.dsp.phoneme_boundary_detector import (  # pylint: disable=import-outside-toplevel
+                detect_phoneme_protection_mask_dsp as _p29_prot,
+            )
+
+            _mono_p29 = _p29_input_ref.mean(axis=1) if _p29_input_ref.ndim == 2 else _p29_input_ref
+            _prot_p29 = _p29_prot(np.asarray(_mono_p29, dtype=np.float32), sample_rate)
+            if bool(np.any(_prot_p29)):
+                _prot_frac = float(np.mean(_prot_p29))
+                if _prot_frac < 0.90:  # fast alles Konsonant → Maske nutzlos (Instrumental-Case)
+                    _p29_blend = float(np.clip(0.35 * _effective_strength, 0.05, 0.35))
+                    _w_p29 = np.asarray(_prot_p29, dtype=np.float32)
+                    _sm29 = max(1, int(0.004 * sample_rate))
+                    _w_p29 = np.convolve(
+                        _w_p29,
+                        np.ones(2 * _sm29 + 1, dtype=np.float32) / float(2 * _sm29 + 1),
+                        mode="same",
+                    )
+                    _w_p29 = np.clip(_w_p29 * _p29_blend, 0.0, _p29_blend)
+                    if audio_processed.ndim == 2:
+                        _w_p29 = _w_p29[:, np.newaxis]
+                    audio_processed = (1.0 - _w_p29) * audio_processed + _w_p29 * _p29_input_ref
+                    audio_processed = np.clip(
+                        np.nan_to_num(audio_processed, nan=0.0, posinf=0.0, neginf=0.0), -1.0, 1.0
+                    ).astype(np.float32)
+                    logger.debug(
+                        "Verarbeitungsschritt_29 §ANA-11 Konsonanten-Schutz: %.1f%% Frames, Blend max %.2f",
+                        100.0 * _prot_frac,
+                        _p29_blend,
+                    )
+        except Exception as _p29_prot_exc:
+            logger.debug("Verarbeitungsschritt 29 §ANA-11 Konsonanten-Schutz nicht verfügbar: %s", _p29_prot_exc)
+
         return PhaseResult(
             success=True,
             audio=restore_layout(audio_processed, _p29_transposed),
