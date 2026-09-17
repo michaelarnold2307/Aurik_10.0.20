@@ -831,3 +831,65 @@ class TestLanguageConsensus:
         a = resolve_language_consensus("es", 0.56, "de")
         b = resolve_language_consensus("es", 0.56, "de")
         assert a == b == "unknown"
+
+
+class TestAna9ConfidenceGate:
+    """§SOTA-Analogie-Korrektur 2026-09-17 (ANA-9): Segmente aus sehr
+    niedrig-konfidenten Transkriptionen werden als „silence“ geführt und
+    steuern die phonem-targeted Gates nicht mehr."""
+
+    def test_low_confidence_word_becomes_silence(self):
+        trans = _FakeTrans(
+            words=[
+                _FakeWord(0.0, 0.4, "vowel_stressed", confidence=0.05, is_stressed=True),
+                _FakeWord(0.4, 0.8, "vowel_stressed", confidence=0.9, is_stressed=True),
+            ],
+            duration_s=1.0,
+        )
+        tl = PhonemeTimeline.build_from_transcription(trans, "de")
+        assert tl.segments[0].phoneme_class == "silence"
+        assert not tl.segments[0].is_stressed
+        assert tl.segments[1].phoneme_class == "vowel_stressed"
+
+    def test_low_confidence_sibilants_dropped_from_segment_query(self):
+        trans = _FakeTrans(
+            words=[
+                _FakeWord(0.0, 0.4, "fricative", confidence=0.10),
+                _FakeWord(0.4, 0.8, "fricative", confidence=0.8),
+            ],
+            duration_s=1.0,
+        )
+        tl = PhonemeTimeline.build_from_transcription(trans, "de")
+        sib = tl.sibilant_segments()
+        assert len(sib) == 1
+        assert sib[0].start_s == 0.4
+
+
+class TestAna8LpcFormantFallback:
+    """§SOTA-Analogie-Korrektur 2026-09-17 (ANA-8): ohne IPA-Decoder wird der
+    generische Schwa-Zentroid durch die ECHTEN gemessenen Vokal-Formanten
+    (Burg-LPC) des Segment-Audios ersetzt."""
+
+    def test_lpc_fallback_measures_real_formants(self):
+        sr = 48000
+        t = np.arange(int(sr * 0.5)) / sr
+        # Sägezahn bei 220 Hz: Resonanzen bei n×220 → F1 ≈ 220, F2 ≈ 440
+        audio = (2.0 * (t * 220.0 % 1.0) - 1.0).astype(np.float32) * 0.3
+        trans = _FakeTrans(
+            words=[_FakeWord(0.05, 0.45, "vowel_stressed", confidence=0.9, is_stressed=True)], duration_s=0.5
+        )
+        tl = PhonemeTimeline.build_from_transcription(trans, "de")
+        target = tl.formant_target_for_range(0.0, 0.5, audio=audio, sr=sr)
+        assert target is not None
+        f1, f2 = target
+        # Gemessene Formanten statt des generischen (500, 1500)-Zentroids
+        assert f1 < 400.0, f"F1 {f1:.0f} Hz unplausibel für 220-Hz-Sägezahn"
+        assert abs(f2 - 440.0) < 250.0, f"F2 {f2:.0f} Hz nicht nahe 2. Harmonischer"
+
+    def test_lpc_fallback_without_audio_returns_generic_centroid(self):
+        trans = _FakeTrans(
+            words=[_FakeWord(0.05, 0.45, "vowel_stressed", confidence=0.9, is_stressed=True)], duration_s=0.5
+        )
+        tl = PhonemeTimeline.build_from_transcription(trans, "de")
+        target = tl.formant_target_for_range(0.0, 0.5)
+        assert target == (500.0, 1500.0)

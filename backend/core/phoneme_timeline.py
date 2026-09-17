@@ -143,6 +143,12 @@ _PTYPE_TO_CLASS: dict[str, str] = {
     "mixed": "silence",
 }
 
+# §SOTA-Analogie-Korrektur 2026-09-17 (ANA-9): Konfidenz-Gate — Segmente aus
+# einer sehr niedrig-konfidenten Transkription (Produktionsbefund: overall
+# 0,03 auf dem Elke-Lauf) dürfen die phonem-targeted Gates (19/24/43/56/MDEM)
+# nicht steuern; sie werden als „silence“ geführt (neutrale Gate-Reaktion).
+_MIN_TIMELINE_CONF = 0.30
+
 
 # ─── Dataclasses ─────────────────────────────────────────────────────────────
 
@@ -224,7 +230,9 @@ class PhonemeTimeline:
         """
         return [s for s in self.segments if s.phoneme_class == "vowel_stressed"]
 
-    def formant_target_for_range(self, start_s: float, end_s: float) -> tuple[float, float] | None:
+    def formant_target_for_range(
+        self, start_s: float, end_s: float, audio=None, sr: int | None = None
+    ) -> tuple[float, float] | None:
         """Gibt (F1_hz, F2_hz) for the dominant vowel phoneme in [start_s, end_s] zurück.
 
         Looks up the language-specific formant reference table for the most
@@ -259,6 +267,28 @@ class PhonemeTimeline:
             )
         # Fallback: schwa as generic vowel centroid
         f1, f2 = table.get("ə", (500.0, 1500.0))
+        # §SOTA-Analogie-Korrektur 2026-09-17 (ANA-8): statt des generischen
+        # Schwa-Zentroids die ECHTEN Vokal-Formanten des Segments MESSEN
+        # (LPC-Spektral-Peaks) — die IPA-Tabellen sind ohne Decoder-ONNX tot
+        # (has_ipa=False, Doku-Head); ein Konstantwert für alle Vokale ist
+        # Stellvertreter-Evidenz, die Messung ist die definierende.
+        if audio is not None:
+            try:
+                _arr = np.asarray(audio, dtype=np.float32)
+                if _arr.ndim == 2:
+                    _mono_ft = _arr.mean(axis=0) if (_arr.shape[0] <= 2 and _arr.shape[1] > 2) else _arr.mean(axis=1)
+                else:
+                    _mono_ft = _arr
+                _sr_ft = max(1, int(sr or 48000))
+                i0 = max(0, int(best.start_s * _sr_ft))
+                i1 = min(len(_mono_ft), max(i0 + 1, int(best.end_s * _sr_ft)))
+                _seg = _mono_ft[i0:i1]
+                if len(_seg) >= 256:
+                    _fmts = _segment_formant_peaks(_seg, _sr_ft)
+                    if len(_fmts) >= 2:
+                        f1, f2 = float(_fmts[0]), float(_fmts[1])
+            except Exception as _lpc_ft_exc:
+                logger.debug("formant_target_for_range: LPC-Ersatzpfad — %s", _lpc_ft_exc)
         return (
             float(np.nan_to_num(f1, nan=500.0)),
             float(np.nan_to_num(f2, nan=1500.0)),
@@ -346,6 +376,11 @@ class PhonemeTimeline:
             )
             is_stressed = bool(getattr(word, "is_stressed", False))
 
+            # §SOTA-Analogie-Korrektur 2026-09-17 (ANA-9): Konfidenz-Gate.
+            if conf < _MIN_TIMELINE_CONF:
+                pclass = "silence"
+                is_stressed = False
+
             # Promote unstressed vowel to stressed if flag is set
             if pclass == "vowel_unstressed" and is_stressed:
                 pclass = "vowel_stressed"
@@ -415,6 +450,43 @@ def resolve_language_consensus(
     if lpc == lang:
         return lang
     return "unknown"
+
+
+def _segment_formant_peaks(seg: np.ndarray, sr: int) -> list[float]:
+    """§SOTA-Analogie-Korrektur 2026-09-17 (ANA-8): robuste F1/F2-Schätzung
+    über die stärksten Peaks des geglätteten Segment-Magnitudenspektrums
+    (60 Hz–4 kHz, ≥ 100 Hz Abstand). Deterministisch (§G5 (GEBOTE.md)),
+    rein numpy — keine LPC-Polen-Analyse (die ist auf echte Sprachspektren
+    kalibriert und liefert für periodische/synthetische Vokal-Signale
+    instabile Ergebnisse). Für das Formant-Ziel von phase_56 (Partial-Boost
+    nahe F1/F2) sind die dominanten Harmonischen des Vokals genau die
+    richtige Evidenz — statt des generischen Schwa-Zentroids (500/1500 Hz).
+    """
+    arr = np.asarray(seg, dtype=np.float64)
+    n = len(arr)
+    if n < 64:
+        return []
+    win = np.hanning(n)
+    spec = np.abs(np.fft.rfft((arr - arr.mean()) * win))
+    freqs = np.fft.rfftfreq(n, 1.0 / sr)
+    band = (freqs >= 60.0) & (freqs <= 4000.0)
+    s_b, f_b = spec[band], freqs[band]
+    # Glättung (gleitender Mittelwert) gegen Rausch-Spitzen
+    _k = max(1, int(30.0 * n / sr))
+    _kern = np.ones(_k) / _k
+    s_s = np.convolve(s_b, _kern, mode="same")
+    peaks: list[tuple[float, float]] = []
+    for i in range(1, len(s_s) - 1):
+        if s_s[i] > s_s[i - 1] and s_s[i] >= s_s[i + 1]:
+            peaks.append((float(s_s[i]), float(f_b[i])))
+    peaks.sort(reverse=True)
+    out: list[float] = []
+    for _h, _f in peaks:
+        if all(abs(_f - _o) > 100.0 for _o in out):
+            out.append(_f)
+        if len(out) >= 2:
+            break
+    return sorted(out)
 
 
 # ─── Language detection ──────────────────────────────────────────────────────

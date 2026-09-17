@@ -1216,7 +1216,11 @@ class SpectralBandGapRepairPhase(PhaseInterface):
             if _ptl_56 is not None:
                 try:
                     _dur_s = mono.shape[-1] / sr
-                    _f_target = _ptl_56.formant_target_for_range(0.0, _dur_s)
+                    # §SOTA-Analogie-Korrektur 2026-09-17 (ANA-8): Audio
+                    # mitgeben — ohne IPA-Decoder misst der Fallback die
+                    # ECHTEN Vokal-Formanten per Burg-LPC statt eines
+                    # generischen Schwa-Zentroids (500/1500 Hz).
+                    _f_target = _ptl_56.formant_target_for_range(0.0, _dur_s, audio=mono, sr=sr)
                     if _f_target is not None:
                         _freq_per_bin = sr / n_fft
                         for _f_hz in _f_target:
