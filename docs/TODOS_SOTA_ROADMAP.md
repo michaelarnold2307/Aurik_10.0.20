@@ -1153,11 +1153,47 @@ Alle CPU-schließbaren Punkte der Offene-Punkte-Matrix sind umgesetzt und getest
   Layout-sichere Kanalextraktion + DC-Messung via `stereo_channel_view`;
   beide Stereo-Axis-Matrix-Tests (phase_30/phase_39) grün.
 
+## PERFORMANCE-MASSNAHMENKATALOG 2026-09-17 — drastische Laufzeit-Steigerung (Evidenz & Entscheidungen)
+
+> Ziel: 53×→32×-RT (TODO-P0-1) ohne Qualitätskompromiss. Zusammenfassung der
+> gemessenen Hebel, der umgesetzten Maßnahmen und der bewusst NICHT
+> verfolgten Wege (mit Begründung). Reihenfolge = erwarteter Gewinn je Aufwand.
+
+| # | Maßnahme | Status | Erwarteter Gewinn | Qualitätsrisiko | Beleg |
+|---|---|---|---|---|---|
+| P1 | Song-Level-Hoists (je-Chunk-Wiederholung entfernt): Struktur ANA-6, LGE-Transkription Whisper 8×→1×, Export nur nach Assembly | ✅ 2026-09-17 | LGE: 7× Whisper-Zeit; Export: 1× je Song statt 8× | keines (identische Rechnung, Timeline je Chunk zeitverschoben) | 615f373d, 3bfa5215, 04a52839 |
+| P2 | R3-GPU-Ports: BANQUET ROCm, CRePE-Pitch ROCm (28×), DeepFilterNet ehrlich CPU | ✅ 2026-09-13/17 | BANQUET 1,19× (Deckel: Export batch-1-spezifisch), CRePE 28× | keines (Parität validiert: BANQUET rel 7,8e-3 hörirrelevant, Klick-Reduktion identisch) | `gpu_model_registry.json` + `test_production_registry_verdicts_restoration_models` (18d365bd) |
+| P3 | Analyse-Cache je Datei-Hash (Disk-Persistenz der Bridge-Caches, Read-/Write-Through, AURIK_VERSION-Invalidierung, §V6 (copilot-instructions.md)-fail-closed) | ✅ 2026-09-17 | Wiederholungsläufe am selben Song überspringen die KOMPLETTE Voranalyse (Medium/Era/Genre/Defects/Restorability) über Prozessgrenzen | keines (bit-exakter Roundtrip; Version im Key, §G5 (copilot-instructions.md)) | dd1b91dd, 27 Tests grün |
+| P4 | F4/F5 FlashSR-/DDSP-Finetunes (ML-Load/Inferenz-Treiber) | 🔄 läuft (F4 Epoche 0/12: A1=0.0120, Val=0.4562; F3/F5 danach) | Qualitäts- und Laufzeit-Gewinn (Fixkosten amortisieren) | Finetune = Qualitäts-GEWINN, kein Kompromiss | Shells wqt4o062/vck3tbxs, SOTA-ML-V1/V2 |
+| P5 | BANQUET-Mini-Batch via dynamischer Batch-Dim (SOTA-ML-V5) | 🔜 Re-Export nötig (GPU) | potenziell deutlich über 1,19× (0,5-s-Fenster-Inferenz gebündelt) | keiner — erfordert Parity-Scan rel ≤ 1e-3 nach Re-Export | Messung 2026-09-17: statische Dim `[1,128,128,128]`, 48+ bandweise Squeeze/Unsqueeze-Reshapes (`node_view`) mit konstanten Ziel-Shapes; ORT-Fehler bei B=2; `add_free_dimension_override` greift nicht |
+| P6 | Ein-Prozess-Batch (Songs in einem Prozess statt Prozess je Song) | 🔜 offen | entfällt Prozess-Start + Modell-Loads je Song (BANQUET 0,78 s, Device-Detection 0,26 s, …) | keines — §V8/§G1-Song-Isolation bleibt via Stateful-Reset (Circuit-Breaker/Caches/Lernparameter je Song) | Profiling 2026-09-16 (ML-Load = 62 % der Phasen-Zeit) |
+| P7 | DAG-Parallelität der Analyse (PANNs/Whisper/Defects/Gender parallel über CPU-Kerne) | 🔜 offen | Analyse-Wandzeit ≈ max(Modul) statt Summe | keines — Module datenfluss-unabhängig | `run_pre_analysis` nutzt bereits ThreadPoolExecutor (max_workers=4); Batch-Ebene fehlt |
+
+### Bewusst NICHT verfolgt (Qualitätskompromiss — mit Begründung)
+
+| Maßnahme | Warum verworfen |
+|---|---|
+| Restore-Chunks parallelisieren | Verstoß §V7 (copilot-instructions.md): geschlossener Regelkreis — `global_scalar`/Stärke-Entscheidungen lernen sequenziell pro Song; parallele Chunks umgehen die zentrale Stärke-Steuerung |
+| Song-Level-Hoist der BANQUET-/DFN-/Pitch-Inferenz | NICHT äquivalent: phase_09 verarbeitet den phase_08-Ausgang je Chunk (Declick/Hum ändern das Signal vor der Knistern-Entfernung) — Vorlauf auf dem Roh-Song ≠ je-Chunk-Ergebnis |
+| Quantisierung (int8/bf16) ohne Parity-Scan | BSR-Präzedenz: ORT-ROCm-Softmax rel=3,5 (Knoten 454) — Quantisierung nur mit gemessenem rel ≤ 1e-3 je Modell freigeben |
+| Phasen skippen außerhalb der Audibility-Gates | verboten — die Gates sind die einzige zulässige Schwelle (Hörordnung) |
+| BANQUET-Mini-Batch per chirurgischem Graph-Patch | Export ist per Konstruktion batch-1-spezifisch (48+ bandweise Squeeze/Unsqueeze-Reshapes mit konstanten Ziel-Shapes; B=2 bricht im ersten `node_view`); Patch = Dutzende koordinierte Rewrites inkl. RNN-Zellen — nur Re-Export vertretbar (→ SOTA-ML-V5) |
+
+### Gemessene Hot-Phase-Wahrheit (Profiling 2026-09-16)
+
+- Treiber sind ML-Load/-Inferenz (BANQUET 0,78 s/Prozess = 62 % der Phasen-Zeit,
+  Device-Detection 0,26 s), NICHT DSP-Multiscale (nur ~3 s/225 s, 0,013× RT) —
+  die frühere Attribution „phase_01 = Multiscale-Bottleneck“ war falsch.
+- BSR-Torch-ROCm-Port als Muster für künftige Ports: 41,8× (461 ms vs. 19,3 s),
+  Parität max_abs ≈ 1e-5, wenn ORT-ROCm-EP-Kernels numerisch defekt sind (SOTA-BSR-GPU).
+
+---
+
 ### ROADMAP-ABSCHLUSS-MATRIX (alle noch offenen Punkte, Stand 2026-09-15)
 
 | Punkt | Status | Begründung / nächster Schritt |
 |---|---|---|
-| TODO-P0-1 (53×→32×-Laufzeit) | **TEIL-ERLEDIGT (Messung) 2026-09-15; Rest GPU-GEBUNDEN** | Hot-Phase-Messung geliefert: `compute_hot_phases` im Diagnose-Skript (rt_factor je Phase, Hot-Liste ab 0,5× RT, test_p0_1_hot_phase_report.py). **Attributions-Korrektur 2026-09-16 (Profiling):** phase_01s 4,4×-RT-Attribution „DSP-Multiscale“ war falsch — Multiscale kostet nur 3 s/225 s; Treiber sind ML-Load/-Inferenz (BANQUET/Device-Detection). **Song-Level-Hoists 2026-09-17 (je Chunk-Wiederholung entfernt):** Struktur-Hoist ANA-6 ✅, **LGE-Transkription-Hoist ✅ (Whisper 8×→1×, Timeline je Chunk zeitverschoben, commit 3bfa5215)**, Export nur nach Assembly ✅ (04a52839); PANNs-Tags + Defect-Scores + Gender sind bereits Song-Ebene (Pre-Analyse-Cache, verifiziert). **R3-GPU-Ports 2026-09-17 abgeschlossen (Registry-Verdikte + Produktions-Vertragstest `test_production_registry_verdicts_restoration_models`):** BANQUET → ROCm ✅ (Partitioning-Fix 2026-09-13, Funktions-Validierung identisch; Deckel 1,19× — der Export ist batch-1-spezifisch, Mini-Batch scheitert in `node_view`-Reshapes, gemessen), CRePE-Pitch → ROCm ✅ (28×), DeepFilterNet → ehrlich CPU ✅ (GPU-Overhead dominiert bei Mini-Modellen). Ein Song-Level-Hoist der Inferenz ist NICHT äquivalent (phase_09 verarbeitet den phase_08-Ausgang je Chunk) — R3 war der korrekte Weg. **Analyse-Cache je Datei-Hash 2026-09-17 ✅ (Disk-Persistenz der Bridge-Analyse-Caches `output/analysis_cache/`, Read-/Write-Through unter dem In-Memory-LRU, AURIK_VERSION-Invalidierung, §V6-fail-closed, Kill-Switch AURIK_ANALYSIS_CACHE=0, 6 neue + 21 bestehende Tests grün):** Wiederholungsläufe am selben Song überspringen die komplette Voranalyse über Prozessgrenzen. OFFEN: Ein-Prozess-Batch, DAG-Parallelität | hängt an den GPU-Buildouts F1–F5 + Residency-Gewinnen + den restlichen Hoists |
+| TODO-P0-1 (53×→32×-Laufzeit) | **TEIL-ERLEDIGT (Messung) 2026-09-15; Rest GPU-GEBUNDEN** | Hot-Phase-Messung geliefert: `compute_hot_phases` im Diagnose-Skript (rt_factor je Phase, Hot-Liste ab 0,5× RT, test_p0_1_hot_phase_report.py). **Attributions-Korrektur 2026-09-16 (Profiling):** phase_01s 4,4×-RT-Attribution „DSP-Multiscale“ war falsch — Multiscale kostet nur 3 s/225 s; Treiber sind ML-Load/-Inferenz (BANQUET/Device-Detection). **Song-Level-Hoists 2026-09-17 (je Chunk-Wiederholung entfernt):** Struktur-Hoist ANA-6 ✅, **LGE-Transkription-Hoist ✅ (Whisper 8×→1×, Timeline je Chunk zeitverschoben, commit 3bfa5215)**, Export nur nach Assembly ✅ (04a52839); PANNs-Tags + Defect-Scores + Gender sind bereits Song-Ebene (Pre-Analyse-Cache, verifiziert). **R3-GPU-Ports 2026-09-17 abgeschlossen (Registry-Verdikte + Produktions-Vertragstest `test_production_registry_verdicts_restoration_models`):** BANQUET → ROCm ✅ (Partitioning-Fix 2026-09-13, Funktions-Validierung identisch; Deckel 1,19× — der Export ist batch-1-spezifisch, Mini-Batch scheitert in `node_view`-Reshapes, gemessen), CRePE-Pitch → ROCm ✅ (28×), DeepFilterNet → ehrlich CPU ✅ (GPU-Overhead dominiert bei Mini-Modellen). Ein Song-Level-Hoist der Inferenz ist NICHT äquivalent (phase_09 verarbeitet den phase_08-Ausgang je Chunk) — R3 war der korrekte Weg. **Analyse-Cache je Datei-Hash 2026-09-17 ✅ (Disk-Persistenz der Bridge-Analyse-Caches `output/analysis_cache/`, Read-/Write-Through unter dem In-Memory-LRU, AURIK_VERSION-Invalidierung, §V6-fail-closed, Kill-Switch AURIK_ANALYSIS_CACHE=0, 6 neue + 21 bestehende Tests grün):** Wiederholungsläufe am selben Song überspringen die komplette Voranalyse über Prozessgrenzen. OFFEN: Ein-Prozess-Batch, DAG-Parallelität (Katalog: PERFORMANCE-MASSNAHMENKATALOG unten) | hängt an den GPU-Buildouts F1–F5 + Residency-Gewinnen + den restlichen Hoists |
 | TODO-P0-2 (Per-Session-Kompilierung) | **EXTERN BLOCKIERT** | ONNX-Compile-Strategie; Folge von P0-1/C |
 | TODO-P0-3 (Budget-Wahrheit) | ✅ GESCHLOSSEN 2026-09-15 | s. o. A |
 | TODO-P1-1 (Residency) | ✅ GESCHLOSSEN 2026-09-15 (Policy) | s. o. C; Laufzeit-Gewinn misst P0-1 |
