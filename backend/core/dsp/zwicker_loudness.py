@@ -237,7 +237,7 @@ def _third_octave_levels_db_spl(x: np.ndarray, sr: int) -> np.ndarray:
         return np.full(_TQ.shape, -1e3, dtype=np.float64)  # type: ignore[no-any-return]
     spec = np.fft.rfft(x)
     # Einseitige Leistungsdichte (Parseval): |X[0]|² + 2·Σ|X[k]|² + |X[N/2]|² = N·Σx²
-    power = np.abs(spec) ** 2
+    power = np.asarray(np.abs(spec) ** 2, dtype=np.float64)
     power[1:-1] *= 2.0
     freqs = np.fft.rfftfreq(n, d=1.0 / sr)
 
