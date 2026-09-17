@@ -73,11 +73,35 @@ chorus, Klimax am Energie-Peak, Intro/Outro-Klammer korrekt). Laufzeit 4,83 s /
 Refrains bekommen die schützenden Skalare (NR × 0,85, Kompression × 0,70) —
 vorher liefen die Skalare praktisch nur für „verse“ (der Default-Fall).
 
+## Analogie-Korrektur 2026-09-17 (zweite Iteration): kanonische SSM-Grenzen
+
+Dieselbe Fehlerklasse fand sich AUCH bei der Grenz-Erkennung selbst: Der
+§2.52b-Analysator nutzte eine agglomerative k-Heuristik (1 Grenze / 30 s),
+während die definierende Evidenz — die Novelty-Kurve der Self-Similarity-
+Matrix (Foote 2000) — bereits im §2.17-MusicalStructureAnalyzer implementiert
+war. Zwei Analysatoren, zwei Methoden, potenziell widersprüchliche
+Sektions-Karten in EINEM Lauf (§V7 (copilot-instructions.md)).
+
+**Korrektur:** `backend/core/dsp/ssm_segmentation.py` ist jetzt die EINE
+kanonische SSM-Methode (Checkerboard-Novelty, Gauß-Glättung, Peak-Picking);
+§2.17 delegiert (verhaltensidentisch, 37 Tests grün), §2.52b nutzt sie primär
+(agglomerativer Fallback bleibt). Zusätzlich: Intro/Outro nur noch für das
+ERSTE/letzte Segment (die Positionsregel `relative_pos ≥ 0,85` verschluckte
+den 156-s-Refrain als „outro“).
+
+Ergebnis Elke-Best-225s: **12 evidenz-basierte Segmente** (statt 7
+Heuristik-Segmente) — Intro 0–7,5 s (Klammer mit dem Outro-Material),
+Refrain-Segmente ≈39,5/96/129,5/137/151,5/180,5 s decken alle vier
+unabhängig belegten Refrain-Positionen ab, Klimax am Energie-Peak;
+Laufzeit unverändert 1,28 s/min ≤ Budget. Neuer Test:
+`test_ssm_boundaries_detect_aba_transitions` ([A|B|A] → Übergänge erkannt).
+
 ## Verbleibende SOTA-Lücke (dokumentiert, GPU-gebunden)
 
 - **ML-Boundary-Detektor** (MSAF/SALAMI-Klasse oder MERT-basierter
-  Boundary-Modelle, 2024/25) statt der heuristischen k-Wahl (1 Segment / 30 s)
-  — benötigt Modell-Gewichte + GPU-Port (Muster: BSR-Torch-ROCm).
+  Boundary-Modelle, 2024/25) als optionale Verbesserung ÜBER der jetzt
+  kanonischen SSM-Methode — benötigt Modell-Gewichte + GPU-Port
+  (Muster: BSR-Torch-ROCm).
 - **Beat-synchrones Downbeat-/Bar-Tracking** (Spec §2.52b erwähnt Beat-Tracking;
   heute nicht implementiert) — librosa-beat als DSP-Zwischenschritt möglich
   (CPU, Folge-Slice).
@@ -88,7 +112,10 @@ vorher liefen die Skalare praktisch nur für „verse“ (der Default-Fall).
 
 ## Tests
 
-- `tests/unit/test_song_structure_analyzer.py`: 17 Tests grün, davon neu:
+- `tests/unit/test_song_structure_analyzer.py`: 18 Tests grün, davon neu:
+  `test_ssm_boundaries_detect_aba_transitions` (kanonische SSM-Methode),
   `test_assign_label_chorus_from_repetition` (Entscheidungslogik),
   `test_window_repetition_counts` (Fenster-Evidenz [A|B|A] ⇒ Segmente 0/2),
-  `test_deterministic` (§G5).
+  `test_deterministic` (§G5 (GEBOTE.md)).
+- `tests/unit/test_musical_structure_analyzer.py`: 37 Tests grün
+  (Delegation verhaltensidentisch).

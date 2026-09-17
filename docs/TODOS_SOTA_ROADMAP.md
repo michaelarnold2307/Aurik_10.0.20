@@ -1306,6 +1306,24 @@ Chunk-Modus-Struktur (siehe AUF-4).
 
 ---
 
+## SOTA-Analogie-Sweep 2026-09-17 — weitere Korrekturen nach dem Songaufbau-Muster
+
+> Frage: „Weitere SOTA-Korrekturmöglichkeiten analog zur Songaufbauerkennung?“
+> Muster: Analyse-/Entscheidungskomponenten, die auf Stellvertreter-Heuristiken
+> statt auf die definierende Evidenz bauen (oder Rollen duplizieren, §V7
+> (copilot-instructions.md)).
+
+| # | Befund (Fehlerklasse) | Status 2026-09-17 |
+|---|---|---|
+| ANA-1 | **Grenz-Erkennung dupliziert**: §2.52b nutzte agglomerative k-Heuristik (1/30 s), §2.17 hatte bereits die definierende SSM/Checkerboard-Novelty (Foote 2000) — zwei Analysatoren, zwei Methoden, potenziell widersprüchliche Sektions-Karten | ✅ **UMGESETZT**: kanonisches Modul `backend/core/dsp/ssm_segmentation.py`; §2.17 delegiert (37 Tests grün), §2.52b nutzt SSM primär (agglomerativer Fallback); Intro/Outro nur noch erstes/letztes Segment (Positionsregel verschluckte den 156-s-Refrain). Elke-Best: 12 evidenz-basierte Segmente, alle 4 Refrains + Klimax, 1,28 s/min ≤ Budget; neuer Test test_ssm_boundaries_detect_aba_transitions |
+| ANA-2 | **Vokal-Aktivität**: `_estimate_vocal_activity` (spectral flatness + GLOBALE PANNs-Konfidenz) — die definierende Evidenz (per-Segment-PANNs-Singing) ist im Plugin vorhanden (`get_tags`, Positions-Fenster), wird aber nicht je Segment genutzt | BACKLOG (Rezept): UV3 berechnet einmalig per-Segment-PANNs (GPU seit SUP-F1) und reicht ein Array durch; Analyzer nutzt es statt des Flatness-Proxys |
+| ANA-3 | **Gender-Detektion** (phase_19 `_detect_gender_robust`): F0-/Formant-Heuristik ohne ML-Klassifikator; konsumiert von 19/43 (Sibilanten-Bänder) | BACKLOG (GPU): ML-Gender-/Vokal-Klassifikator (PANNs-Klassen oder Torch-Modell) als Prior mit Heuristik-Fallback |
+| ANA-4 | **Tonart-Erkennung dupliziert**: `phase_53._estimate_key` UND `genre_classifier._estimate_key(+_dsp)` — zwei Implementierungen (§V7); Konsum in EQ-/Harmonik-Phasen (07/16/31) unklar | BACKLOG: kanonisieren (eine Quelle), Konsumenten prüfen |
+| ANA-5 | **§2.52b-Beat-Tracking im Spec erwähnt, nicht implementiert** — BPM existiert aber in `musical_structure_analyzer._estimate_bpm` | BACKLOG: BPM als Metadatum in die §2.52b-Struktur übernehmen (CPU) |
+| ANA-6 | **Chunk-Modus**: beide Struktur-Analysen + SectionGoalAdapter laufen PRO CHUNK (Log: 4/2/3/2 Sektionen) — segment-adaptive Stärke ist im Chunk-Modus grob | BACKLOG (Rezept): Struktur EINMAL vor dem Chunk-Loop auf dezimiertem Ganz-Song-Probe; Wiederverwendung je Chunk |
+
+---
+
 ## Hintergrund (damit die nächste Session sofort einsteigt)
 
 - **Session-Report:** `docs/reports/current/2026-09-08_envelope_root_cause_sota_fixes_matrix.md`

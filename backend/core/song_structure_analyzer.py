@@ -217,15 +217,37 @@ class SongStructureAnalyzer:
         chroma = librosa.feature.chroma_stft(y=mono, sr=sr, hop_length=hop)
         features = np.vstack([mfcc, chroma])  # (24, T)
 
-        # Anzahl Boundaries heuristisch: 1 pro ~30 s, min 2, max 12
-        k = max(2, min(12, int(duration_s / 30) + 1))
+        # Boundary-Erkennung: SSM + Checkerboard-Novelty (Foote 2000) — die
+        # kanonische Methode aus dsp/ssm_segmentation.py, geteilt mit dem
+        # §2.17-MusicalStructureAnalyzer (§SOTA-Analogie-Korrektur 2026-09-17:
+        # die agglomerative k-Heuristik „1 Grenze / 30 s“ war dieselbe
+        # Fehlerklasse wie die Label-Heuristik — die definierende
+        # Novelty-Evidenz existierte bereits im §2.17-Analysator,
+        # §V7 (copilot-instructions.md): EINE Grenz-Methode pro Rolle).
+        _hop_ssm = max(1, int(sr * 0.5))
+        boundary_times: np.ndarray
         try:
-            boundaries = librosa.segment.agglomerative(features, k)  # type: ignore[attr-defined]
-            boundary_times = librosa.frames_to_time(boundaries, sr=sr, hop_length=hop)
+            _chroma_ssm = librosa.feature.chroma_cqt(y=mono, sr=sr, hop_length=_hop_ssm, bins_per_octave=36).astype(
+                np.float32
+            )
+            from backend.core.dsp.ssm_segmentation import (  # pylint: disable=import-outside-toplevel
+                ssm_boundaries_from_chroma,
+            )
+
+            _bounds_ssm, _ = ssm_boundaries_from_chroma(_chroma_ssm, _hop_ssm, sr, duration_s)
+            if len(_bounds_ssm) < 3 or (len(_bounds_ssm) - 1) > 60:
+                raise RuntimeError("SSM liefert keine brauchbaren Grenzen — agglomerativer Ersatzpfad")
+            boundary_times = np.asarray([float(_b) / sr for _b in _bounds_ssm], dtype=np.float64)
         except Exception:
-            # Fallback: gleichmäßige Aufteilung
-            n = max(2, int(duration_s / 30))
-            boundary_times = np.linspace(0, duration_s, n + 1)[1:-1]
+            # Fallback: bestehende agglomerative/uniform-Heuristik
+            k = max(2, min(12, int(duration_s / 30) + 1))
+            try:
+                boundaries = librosa.segment.agglomerative(features, k)  # type: ignore[attr-defined]
+                boundary_times = librosa.frames_to_time(boundaries, sr=sr, hop_length=hop)
+            except Exception:
+                # Fallback: gleichmäßige Aufteilung
+                n = max(2, int(duration_s / 30))
+                boundary_times = np.linspace(0, duration_s, n + 1)[1:-1]
 
         # Segment-Grenzen aufbauen
         times = [0.0, *boundary_times.tolist(), duration_s]
@@ -367,9 +389,14 @@ class SongStructureAnalyzer:
         if not has_vocals:
             return "instrumental"
 
-        if relative_pos <= 0.15 and seg_duration <= _INTRO_MAX_FRAC * duration_s:
+        # Intro/Outro nur für das ERSTE/letzte Segment UND kurze Dauer
+        # (§SOTA-Analogie-Korrektur 2026-09-17: relative_pos ≥ 0,85
+        # etikettierte vorletzte Segmente als outro und verschluckte den
+        # 156-s-Refrain — Positionsregeln ohne Längen-/Klammer-Evidenz sind
+        # dieselbe Fehlerklasse wie die alte Label-Heuristik).
+        if idx == 0 and seg_duration <= _INTRO_MAX_FRAC * duration_s:
             return "intro"
-        if relative_pos >= 0.85 and seg_duration <= _OUTRO_MAX_FRAC * duration_s:
+        if idx == n_segments - 1 and seg_duration <= _OUTRO_MAX_FRAC * duration_s:
             return "outro"
 
         # Wiederholungs-Evidenz: Chorus = wiederkehrend + energiereich

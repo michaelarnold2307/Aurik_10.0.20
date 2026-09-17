@@ -1,6 +1,6 @@
 # TASK_CHANGES — Live-Ledger der aktuellen Aufgabe
 
-> Generiert von `scripts/change_ledger.py snapshot` (Base: `HEAD`, Stand: 2026-09-17 01:51 CEST).
+> Generiert von `scripts/change_ledger.py snapshot` (Base: `HEAD`, Stand: 2026-09-17 02:45 CEST).
 > CI (`ci-lite.yml` pr-evidence-gate) erzwingt Abdeckung: jede geänderte Code-Datei muss hier stehen.
 
 ## Geänderte Dateien
@@ -8,16 +8,35 @@
 | Status | Pfad | Art |
 |---|---|---|
 | M | .github/FILE_REGISTRY.md | modifiziert |
-| M | backend/core/phases/phase_09_crackle_removal.py | modifiziert |
-| M | backend/core/restorability_estimator.py | modifiziert |
+| M | backend/core/musical_structure_analyzer.py | modifiziert |
 | M | backend/core/song_structure_analyzer.py | modifiziert |
 | M | docs/TODOS_SOTA_ROADMAP.md | modifiziert |
-| M | tests/unit/test_phase09_crackle_in_vocal_passages.py | modifiziert |
+| M | docs/reports/current/2026-09-17_song_structure_sota_abgleich.md | modifiziert |
 | M | tests/unit/test_song_structure_analyzer.py | modifiziert |
-| ?? | docs/reports/current/2026-09-17_song_structure_sota_abgleich.md | ungetrackt |
+| ?? | backend/core/dsp/ssm_segmentation.py | ungetrackt |
 
 ## Entscheidungen
 
+- **SOTA-Analogie-Sweep 2026-09-17 (ANA-1 umgesetzt, ANA-2…6 Backlog)**:
+  Frage „Weitere SOTA-Korrekturmöglichkeiten analog zur Songaufbauerkennung?“
+  — systematischer Sweep nach Komponenten, die auf Stellvertreter-Heuristiken
+  statt definierender Evidenz bauen oder Rollen duplizieren (§V7
+  (copilot-instructions.md)). **ANA-1 UMGESETZT:** Die §2.52b-Grenz-Erkennung
+  nutzte eine agglomerative k-Heuristik, während die definierende
+  SSM/Checkerboard-Novelty (Foote 2000) bereits im §2.17-Analysator lag —
+  kanonisches Modul `backend/core/dsp/ssm_segmentation.py` (Write-Gate
+  geprüft, Registry-Eintrag vorhanden); §2.17 delegiert (verhaltensidentisch,
+  37 Tests), §2.52b nutzt SSM primär mit agglomerativem Fallback;
+  Intro/Outro nur noch für das erste/letzte Segment (Positionsregel
+  verschluckte den 156-s-Refrain als „outro“). Elke-Best-225s: 12
+  evidenz-basierte Segmente (statt 7), alle 4 Refrain-Positionen + Klimax,
+  Laufzeit 1,28 s/min ≤ Budget; neuer Test
+  `test_ssm_boundaries_detect_aba_transitions`.
+  **Backlog ANA-2…6** (Rezepte in der Roadmap-Tabelle): per-Segment-PANNs
+  statt Flatness-Proxy (ANA-2), ML-Gender-Klassifikator (ANA-3),
+  Tonart-Erkennung kanonisieren (ANA-4, phase_53/genre_classifier doppelt),
+  BPM aus §2.17 in §2.52b übernehmen (ANA-5, Spec erwähnt Beat-Tracking),
+  Chunk-Modus-Struktur einmal pro Song (ANA-6).
 - **Arbeitsaufträge 2026-09-17 (Songaufbau, Gates-Sweep, Ablauf)**:
   - AUF-1 phase_43 Audibility-Gate: bereits vorhanden (2026-09-16) — verifiziert,
     keine Nachrüstung nötig.

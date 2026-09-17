@@ -167,6 +167,36 @@ class TestRepetitionAwareLabels:
         out += (0.01 * rng.standard_normal(n)).astype(np.float32)
         return out.astype(np.float32)
 
+    def test_ssm_boundaries_detect_aba_transitions(self):
+        """§SOTA-Analogie-Korrektur 2026-09-17: das kanonische SSM-Modul
+        (dsp/ssm_segmentation.py) erkennt die A→B- und B→A-Übergänge eines
+        [A|B|A]-Songs über die Novelty-Kurve (definierende Evidenz statt
+        k-Heuristik)."""
+        from backend.core.dsp.ssm_segmentation import ssm_boundaries_from_chroma
+
+        sr = 48000
+        hop = int(sr * 0.5)
+        seg_frames = int(48.0 * sr / hop)
+        rng = np.random.default_rng(11)
+        # Zeitlich KOHÄRENTE Blöcke (konstantes Chroma + leichtes Rauschen):
+        # unabhängige Zufalls-Frames hätten keine Block-Struktur (gemessen).
+        _base_a = rng.standard_normal(12).astype(np.float32)
+        _base_b = rng.standard_normal(12).astype(np.float32)
+        block_a = np.repeat(_base_a[:, None], seg_frames, axis=1) + 0.05 * rng.standard_normal((12, seg_frames)).astype(
+            np.float32
+        )
+        block_b = np.repeat(_base_b[:, None], seg_frames, axis=1) + 0.05 * rng.standard_normal((12, seg_frames)).astype(
+            np.float32
+        )
+        chroma = np.concatenate([block_a, block_b, block_a], axis=1)
+        bounds, conf = ssm_boundaries_from_chroma(chroma, hop, sr, duration_s=144.0)
+        b_s = [b / sr for b in bounds]
+        assert 0.0 <= conf <= 1.0
+        # Grenzen nahe den Übergängen bei 48 s und 96 s
+        assert any(45.0 <= t <= 51.0 for t in b_s), f"kein A→B-Übergang: {b_s}"
+        assert any(93.0 <= t <= 99.0 for t in b_s), f"kein B→A-Übergang: {b_s}"
+        assert b_s[0] == 0.0
+
     def test_assign_label_chorus_from_repetition(self):
         """§SOTA-Upgrade 2026-09-17: matches ≥ 1 + Energie > Median ⇒ chorus;
         wiederholte ruhigere Abschnitte bleiben verse; Einzelgänger = bridge."""

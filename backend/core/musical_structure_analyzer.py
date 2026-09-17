@@ -199,54 +199,23 @@ class MusicalStructureAnalyzer:
         if n_frames < 2 * self._SSM_KERNEL_SIZE + 4:
             return self._uniform_segment(n, sr, duration_s)
 
-        # 2. Normalise each chroma frame to unit length
-        col_norms = np.linalg.norm(chroma, axis=0, keepdims=True) + 1e-8
-        chroma_n = chroma / col_norms  # (12, T)
+        # 2.–6. Kanonische SSM-Segmentierung (Foote 2000) — geteilt mit dem
+        # §2.52b-SongStructureAnalyzer (§SOTA-Analogie-Korrektur 2026-09-17:
+        # EINE Grenz-Methode für beide Struktur-Analysatoren,
+        # §V7 (copilot-instructions.md)).
+        from backend.core.dsp.ssm_segmentation import (
+            ssm_boundaries_from_chroma,  # pylint: disable=import-outside-toplevel
+        )
 
-        # 3. Self-Similarity Matrix (cosine)
-        ssm = chroma_n.T @ chroma_n  # (T, T)  values in [-1, 1]
-        ssm = np.clip((ssm + 1.0) / 2.0, 0.0, 1.0)  # rescale to [0, 1]
-
-        # 4. Checkerboard kernel novelty (Foote 2000)
-        novelty = self._checkerboard_novelty(ssm, self._SSM_KERNEL_SIZE)
-
-        # 5. Gaussian smooth
-        novelty = self._gauss_smooth(novelty, self._SSM_NOVELTY_SIGMA)
-
-        # 6. Peak picking — frame positions of segment boundaries
-        min_seg_frames = max(2, int(self._MIN_SEG_S / self._SSM_HOP_S))
-        boundary_frames = self._pick_peaks(novelty, min_dist=min_seg_frames)
-
-        # Always include start and end
-        boundary_frames = sorted({0, *boundary_frames, n_frames})
-        boundary_frames = [b for b in boundary_frames if 0 <= b <= n_frames]
-
-        # Convert frames → samples
-        bounds_samples: list[int] = []
-        for f in boundary_frames:
-            samp = min(n, max(0, f * hop))
-            bounds_samples.append(samp)
-        if not bounds_samples or bounds_samples[-1] != n:
-            bounds_samples.append(n)
-        if bounds_samples[0] != 0:
-            bounds_samples.insert(0, 0)
-
-        # Deduplicate while preserving order
-        seen: set[int] = set()
-        bounds_unique: list[int] = []
-        for b in bounds_samples:
-            if b not in seen:
-                seen.add(b)
-                bounds_unique.append(b)
-        bounds_unique.sort()
-
-        # Confidence: ratio of novelty peak variance (higher = clearer structure)
-        if novelty.std() > 0:
-            conf = float(np.clip(novelty.std() * 4.0 + 0.5, 0.0, 1.0))
-        else:
-            conf = 0.4
-        conf = float(np.clip(conf + min(0.3, duration_s / 180.0), 0.0, 1.0))
-        return bounds_unique, conf
+        return ssm_boundaries_from_chroma(
+            chroma,
+            hop,
+            sr,
+            duration_s,
+            kernel_half_size=self._SSM_KERNEL_SIZE,
+            sigma=self._SSM_NOVELTY_SIGMA,
+            min_seg_s=self._MIN_SEG_S,
+        )
 
     @classmethod
     def _normalize_boundaries(cls, bounds: list[int], n_samples: int) -> list[int]:
@@ -265,67 +234,6 @@ class MusicalStructureAnalyzer:
         reduced[0] = 0
         reduced[-1] = n_samples
         return sorted(set(reduced))
-
-    @staticmethod
-    def _checkerboard_novelty(ssm: np.ndarray, kernel_half_size: int = 8) -> np.ndarray:
-        """Wendet Schachbrett-Kernel auf SSM an und gibt Novelty-Kurve zurück.
-
-        Foote (2000): kernel is +1 on the diagonal blocks, -1 on off-diagonal.
-        """
-        n = ssm.shape[0]
-        k = max(1, int(kernel_half_size))
-        novelty = np.zeros(n, dtype=np.float32)
-
-        # Build +1/-1 Gaussian-tapered checkerboard kernel
-        g = np.exp(-(np.arange(-k, k + 1) ** 2) / (2.0 * (k / 2.0) ** 2))
-        kernel = np.outer(g, g)
-        mask = np.ones((2 * k + 1, 2 * k + 1), dtype=np.float32)
-        mask[:k, k + 1 :] = -1.0
-        mask[k + 1 :, :k] = -1.0
-        mask[:k, :k] = 1.0
-        mask[k + 1 :, k + 1 :] = 1.0
-        mask[k, :] = 0.0
-        mask[:, k] = 0.0
-        kernel = kernel * mask
-
-        for t in range(k, n - k):
-            block = ssm[t - k : t + k + 1, t - k : t + k + 1]
-            novelty[t] = float(np.sum(block * kernel))
-
-        # Clip negative values (only peaks matter)
-        novelty = np.clip(novelty, 0.0, None)
-        return novelty  # type: ignore[no-any-return]
-
-    @staticmethod
-    def _gauss_smooth(x: np.ndarray, sigma: float) -> np.ndarray:
-        """1-D Gaussian smoothing via convolution."""
-        if sigma <= 0:
-            return x
-        half = max(1, int(3 * sigma))
-        t = np.arange(-half, half + 1)
-        kernel = np.exp(-(t**2) / (2 * sigma**2)).astype(np.float32)
-        kernel /= kernel.sum()
-        return np.convolve(x, kernel, mode="same").astype(np.float32)  # type: ignore[no-any-return]
-
-    @staticmethod
-    def _pick_peaks(novelty: np.ndarray, min_dist: int = 8) -> list[int]:
-        """Einfaches peak picking with minimum distance constraint."""
-        n = len(novelty)
-        if n == 0:
-            return []
-        threshold = novelty.mean() + 0.5 * novelty.std()
-        peaks: list[int] = []
-        last_peak = -min_dist - 1
-        for i in range(1, n - 1):
-            if (
-                novelty[i] > threshold
-                and novelty[i] >= novelty[i - 1]
-                and novelty[i] >= novelty[i + 1]
-                and (i - last_peak) >= min_dist
-            ):
-                peaks.append(i)
-                last_peak = i
-        return peaks
 
     @staticmethod
     def _stft_chroma(mono: np.ndarray, sr: int, hop: int) -> np.ndarray:
