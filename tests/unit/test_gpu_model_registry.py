@@ -65,3 +65,19 @@ def test_load_registry_missing_file_returns_empty(monkeypatch) -> None:
     monkeypatch.setattr(_mod, "_REGISTRY_PATH", Path("/tmp/does_not_exist_reg.json"))
     _mod._cache = None
     assert load_registry(force=True) == {}
+
+
+def test_production_registry_verdicts_restoration_models() -> None:
+    """Produktions-Vertrag: R3-Ports der Restaurations-Modelle (2026-09-13/16).
+
+    Schützt die gemessenen Verdikte vor stiller Regenerierungs-Regression:
+    BANQUET (Partitioning-Fix, Funktions-Validierung identisch) und CRePE
+    laufen auf ROCm; DeepFilterNet bleibt ehrlich auf CPU (GPU-Overhead
+    dominiert bei Mini-Modellen).
+    """
+    import backend.core.gpu_model_registry as _mod
+
+    _mod._cache = None  # Isolation: vorherige Tests cachen Temp-Registries (direkte Zuweisung)
+    assert verdict_for_model("models/banquet/banquet_vinyl_final.onnx") == "rocm"
+    assert verdict_for_model("models/crepe/crepe.onnx") == "rocm"
+    assert verdict_for_model("models/deepfilternet_v3_ii/dec.onnx") == "cpu"
