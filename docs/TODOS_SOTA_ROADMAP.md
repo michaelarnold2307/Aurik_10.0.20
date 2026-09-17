@@ -836,7 +836,7 @@ bereits nahe an der Never-worsen-Linie; Einzelwerte +0,19 … −2,74 dB).
 Witness: 0,74-s-Segmente sind für den Resemblyzer-VAD zu kurz (cos=None, best-effort).
 **Nächster Schritt:** F2-Verlängerung auf 30–50 Epochs (der Lauf war der erste
 from-scratch-Wurf; das Gate wird bei weiterem Training erwartbar gekreuzt).
-| F3 | BigVGAN-v2 Musik+Vokal | bigvgan_v2.pth lokal | Spektral-Repair ML-V2/HR-V1 | MUSDB-HQ | ΔSDR ≥ +2 dB | **A/B-Teilvalidierung 2026-09-16: af/HNR-Gates PASS (af +0,0073, HNR +4,42 dB, PQS 4,52)** — Aktivierungs-Flag bleibt bis Test-Suite-Anpassung + UV3-Budget-Nachweis OFF; MUSDB-ΔSDR-Finetune-Gate weiter offen |
+| F3 | BigVGAN-v2 Musik+Vokal | bigvgan_v2.pth lokal | Spektral-Repair ML-V2/HR-V1 | MUSDB-HQ | ΔSDR ≥ +2 dB | **A/B-Teilvalidierung 2026-09-16: af/HNR-Gates PASS (af +0,0073, HNR +4,42 dB, PQS 4,52)**; **FINETUNE LÄUFT 2026-09-17**: `scripts/train_bigvgan_f3.py` (MUSDB18-HQ-Rekonstruktion, A1+MR-STFT, AdamW, fp16, Early-Stop, Seed 42; Smoke grün A1 0,17→0,12) — Gate-Messung (ΔSDR ≥ +2 dB) nach dem Lauf via scripts/validate_hr_v1.py; Flag-Rollout erst danach + Budget-Nachweis |
 | F4 | FlashSR-Musik | Checkpoint lokal | Hochband-Rekonstruktion (aus ML-V1-VORAB: Kandidatenwahl) | MUSDB-HQ | ΔSDR ≥ +2 dB |
 | F5 | DDSP-Prädiktor (C4) | CLAP/BEATs-Encoder lokal | EQ/Dynamik-Prädiktion | MUSDB-HQ + Effekt-Paare | MOS-Witness (MuQ) | **Erstlauf 2026-09-16: Harness `scripts/train_ddsp_predictor_c4.py` (480 Effekt-Paare, CLAP-eingefroren → MLP) — val_MAE 0,2447 ≈ Baseline 0,2455 ⇒ NEGATIV: semantisches CLAP trägt die Effekt-Parameter nicht; Taskformulierung braucht DDSP-artigen Mel-Encoder (Folgeschritt, GPU). Beleg: `docs/reports/current/2026-09-16_ddsp_c4_first_run.md` |
 
