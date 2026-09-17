@@ -833,6 +833,44 @@ class TestLanguageConsensus:
         assert a == b == "unknown"
 
 
+class TestKeyEstimationCanonical:
+    """§SOTA-Analogie-Korrektur 2026-09-17 (ANA-4): EINE kanonische
+    Krumhansl-Tonart-Methode (dsp/key_estimation.py) für phase_53 UND
+    genre_classifier — vorher zwei Implementierungen (§V7 (copilot-instructions.md))."""
+
+    def test_c_major_progression_yields_c_major(self):
+        from backend.core.dsp.key_estimation import estimate_key_krumhansl
+
+        sr = 48000
+        chords = [
+            [261.63, 329.63, 392.0],  # C-Dur
+            [174.61, 220.0, 261.63],  # F-Dur
+            [196.0, 246.94, 293.66],  # G-Dur
+            [261.63, 329.63, 392.0],  # C-Dur
+        ]
+        parts = []
+        for chord in chords:
+            t = np.arange(int(sr * 2.0)) / sr
+            seg = np.zeros(int(sr * 2.0), dtype=np.float64)
+            for f in chord:
+                seg += np.sin(2 * np.pi * f * t)
+            parts.append((seg / np.max(np.abs(seg)) * 0.3).astype(np.float64))
+        audio = np.concatenate(parts)
+        root, mode = estimate_key_krumhansl(audio, sr)
+        assert root == 0, f"C-Dur-Kadenz als root={root} erkannt"
+        assert mode == "major"
+
+    def test_deterministic(self):
+        from backend.core.dsp.key_estimation import estimate_key_krumhansl
+
+        sr = 48000
+        t = np.arange(int(sr * 2.0)) / sr
+        audio = (0.3 * (np.sin(2 * np.pi * 261.63 * t) + np.sin(2 * np.pi * 329.63 * t))).astype(np.float64)
+        a = estimate_key_krumhansl(audio, sr)
+        b = estimate_key_krumhansl(audio, sr)
+        assert a == b
+
+
 class TestAna9ConfidenceGate:
     """§SOTA-Analogie-Korrektur 2026-09-17 (ANA-9): Segmente aus sehr
     niedrig-konfidenten Transkriptionen werden als „silence“ geführt und

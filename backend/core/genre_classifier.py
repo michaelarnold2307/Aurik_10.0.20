@@ -93,22 +93,22 @@ _KEY_NAMES_DSP = ["C", "C#", "D", "Eb", "E", "F", "F#", "G", "Ab", "A", "Bb", "H
 
 
 def _estimate_key_dsp(mono: np.ndarray, sr: int) -> str:
-    """Tonart via Pitch-Class-Profile (FFT) — deterministisch, kein numba."""
+    """Tonart via kanonischer Krumhansl-Schätzung (dsp/key_estimation.py) —
+    deterministisch, kein numba. §SOTA-Analogie-Korrektur 2026-09-17 (ANA-4):
+    vorher Pitch-Class-Argmax des LETZTEN Frames (nur Dur); jetzt dieselbe
+    Methode wie phase_53, formatiert auf die deutschen Namens-Tabellen."""
     n = len(mono)
     if n < 4096:
         return "Unbekannt"
-    n_fft = 1 << int(np.log2(min(n, 16384)))
-    frame = mono[-n_fft:] * np.hanning(n_fft)
-    mag = np.abs(np.fft.rfft(frame.astype(np.float64)))
-    freqs = np.fft.rfftfreq(n_fft, d=1.0 / float(sr))
-    # MIDI-Pitch-Klassen: p = round(69 + 12*log2(f/440)) mod 12
-    with np.errstate(divide="ignore", invalid="ignore"):
-        midi = np.round(69.0 + 12.0 * np.log2(np.maximum(freqs, 1e-9) / 440.0))
-    valid = (freqs >= 55.0) & np.isfinite(midi)
-    pc = midi[valid].astype(int) % 12
-    pcp = np.bincount(pc, weights=mag[valid], minlength=12)
-    idx = int(np.argmax(pcp))
-    return f"{_KEY_NAMES_DSP[idx]}-Dur"
+    try:
+        from backend.core.dsp.key_estimation import estimate_key_krumhansl as _kest_dsp
+
+        _root, _mode = _kest_dsp(mono, sr)
+        _suffix = "Dur" if _mode == "major" else "Moll"
+        return f"{_KEY_NAMES_DSP[_root]}-{_suffix}"
+    except Exception as _kest_exc:
+        logger.warning("genre_classifier.py::_estimate_key_dsp Ersatzpfad: %s", _kest_exc)
+        return "Unbekannt"
 
 
 class GermanSchlagerClassifier:

@@ -1,16 +1,19 @@
 # TASK_CHANGES — Live-Ledger der aktuellen Aufgabe
 
-> Generiert von `scripts/change_ledger.py snapshot` (Base: `HEAD`, Stand: 2026-09-17 04:05 CEST).
+> Generiert von `scripts/change_ledger.py snapshot` (Base: `HEAD`, Stand: 2026-09-17 04:19 CEST).
 > CI (`ci-lite.yml` pr-evidence-gate) erzwingt Abdeckung: jede geänderte Code-Datei muss hier stehen.
 
 ## Geänderte Dateien
 
 | Status | Pfad | Art |
 |---|---|---|
-| M | backend/core/phases/phase_56_spectral_band_gap_repair.py | modifiziert |
-| M | backend/core/phoneme_timeline.py | modifiziert |
+| M | .github/FILE_REGISTRY.md | modifiziert |
+| M | backend/core/genre_classifier.py | modifiziert |
+| M | backend/core/phases/phase_53_semantic_audio.py | modifiziert |
 | M | docs/TODOS_SOTA_ROADMAP.md | modifiziert |
+| M | tests/unit/test_genre_classifier_dsp_fallbacks.py | modifiziert |
 | M | tests/unit/test_phoneme_timeline.py | modifiziert |
+| ?? | backend/core/dsp/key_estimation.py | ungetrackt |
 
 ## Entscheidungen
 

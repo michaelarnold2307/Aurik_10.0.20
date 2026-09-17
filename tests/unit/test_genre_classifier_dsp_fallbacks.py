@@ -46,7 +46,10 @@ def test_onset_rate_dsp_steady_sine_is_low() -> None:
 
 
 def test_estimate_key_dsp_a440_is_a() -> None:
-    assert _estimate_key_dsp(_sine(440.0, n=SR), SR) == "A-Dur"
+    # §SOTA-Analogie-Korrektur 2026-09-17 (ANA-4): kanonische Krumhansl-Methode —
+    # für einen EINZELTON ist nur die Wurzel definiert (Dur/Moll unbestimmt);
+    # der alte Argmax-Pfad erzwang fälschlich immer „-Dur“.
+    assert _estimate_key_dsp(_sine(440.0, n=SR), SR).startswith("A-")
 
 
 def test_estimate_key_dsp_short_signal_unknown() -> None:
@@ -75,4 +78,4 @@ def test_estimate_key_numba_defect_uses_dsp_path() -> None:
         side_effect=AttributeError("'function' object has no attribute 'get_call_template'"),
     ):
         key = clf._estimate_key(sine, SR)
-    assert key == "A-Dur"
+    assert key.startswith("A-")  # §ANA-4: Einzelton → Wurzel definiert, Modus unbestimmt

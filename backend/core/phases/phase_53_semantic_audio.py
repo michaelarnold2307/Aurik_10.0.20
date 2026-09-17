@@ -63,9 +63,6 @@ except Exception as e:
 _beats_factory: Any = _beats_factory_impl
 
 
-_MAJOR_PROFILE = np.array([6.35, 2.23, 3.48, 2.33, 4.38, 4.09, 2.52, 5.19, 2.39, 3.66, 2.29, 2.88])
-_MINOR_PROFILE = np.array([6.33, 2.68, 3.52, 5.38, 2.60, 3.53, 2.54, 4.75, 3.98, 2.69, 3.34, 3.17])
-
 _NOTE_NAMES = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"]
 
 _CANONICAL_GENRE_FALLBACK = "Unbekannt"
@@ -150,64 +147,18 @@ def _estimate_bpm(mono: np.ndarray, sr: int) -> float:
 
 
 def _estimate_key(mono: np.ndarray, sr: int) -> str:
-    """Chromagramm + Krumhansl-Profile → Tonart-Schätzung."""
-    # **GUARD: Short-Audio-Buffer (§2.47, §0 Primum non nocere)**
-    MIN_AUDIO_SAMPLES = 512  # 10 ms @ 48 kHz
-    if len(mono) < MIN_AUDIO_SAMPLES:
-        return "C major"  # Default fallback for ultra-short audio
+    """Tonart-Schätzung — kanonische Krumhansl-Methode aus
+    dsp/key_estimation.py (§SOTA-Analogie-Korrektur 2026-09-17, ANA-4:
+    EINE Methode pro Rolle — vorher existierten zwei Implementierungen
+    hier und in genre_classifier)."""
+    try:
+        from backend.core.dsp.key_estimation import estimate_key_krumhansl as _kest
 
-    n_fft = 4096
-    hop = 1024
-    # §v10.103 noverlap-Guard: clamp noverlap < nperseg für kurzes Audio
-    _noverlap = min(n_fft - hop, max(0, n_fft - 1))
-    f, _t, Zxx = sig.stft(mono, fs=sr, nperseg=n_fft, noverlap=_noverlap, window="hann")
-    mag = np.abs(Zxx)
-
-    # Frequenz → Chroma-Bin (12-stufige gleichmäßige Stimmung, A4=440 Hz)
-    eps = 1e-8
-    freqs = f[1:]  # Gleichstromanteil überspringen
-    mag = mag[1:, :]  # entsprechend kürzen
-    chroma = np.zeros(12)
-    for i, freq in enumerate(freqs):
-        if freq < 27.5:
-            continue
-        midi = 69 + 12 * np.log2(freq / 440.0 + eps)
-        chroma_bin = round(midi) % 12
-        chroma[chroma_bin] += float(np.mean(mag[i]))
-
-    if chroma.sum() < eps:
+        _root, _mode = _kest(mono, sr)
+        return f"{_NOTE_NAMES[_root]} {_mode}"
+    except Exception as _key_exc:
+        logger.debug("_estimate_key kanonischer Ersatzpfad: %s", _key_exc)
         return "C major"
-
-    chroma = chroma / (chroma.sum() + eps)
-
-    # Verschiebe das Profil für alle 12 Tonarten, wähle besten Pearson-r
-    best_r = -2.0
-    best_key = "C"
-    best_mode = "major"
-    # Pre-compute profile vectors for guarded Pearson correlation (§VERBOTEN: np.corrcoef)
-    _maj_g = np.asarray(_MAJOR_PROFILE, dtype=np.float64)
-    _min_g = np.asarray(_MINOR_PROFILE, dtype=np.float64)
-    _maj_g = _maj_g - _maj_g.mean()
-    _min_g = _min_g - _min_g.mean()
-    _maj_norm_g = np.linalg.norm(_maj_g)
-    _min_norm_g = np.linalg.norm(_min_g)
-    for root in range(12):
-        shifted = np.roll(chroma, -root)
-        _shf_g = np.asarray(shifted, dtype=np.float64)
-        _shf_g = _shf_g - _shf_g.mean()
-        _shf_norm_g = np.linalg.norm(_shf_g)
-        r_maj = float(np.dot(_shf_g, _maj_g) / (_shf_norm_g * _maj_norm_g + 1e-12))
-        r_min = float(np.dot(_shf_g, _min_g) / (_shf_norm_g * _min_norm_g + 1e-12))
-        if r_maj > best_r:
-            best_r = r_maj
-            best_key = _NOTE_NAMES[root]
-            best_mode = "major"
-        if r_min > best_r:
-            best_r = r_min
-            best_key = _NOTE_NAMES[root]
-            best_mode = "minor"
-
-    return f"{best_key} {best_mode}"
 
 
 def _estimate_genre_hint(mono: np.ndarray, sr: int) -> str:
