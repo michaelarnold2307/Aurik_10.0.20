@@ -1375,8 +1375,13 @@ class ClickRemovalPhase(PhaseInterface):
                         np.arange(_mono.size),
                         _mono,
                     ).astype(np.float32)
-            _processed = _plugin._process_onnx(_mono, strength=1.0)
-            _processed = np.nan_to_num(np.asarray(_processed, dtype=np.float32), nan=0.0, posinf=0.0, neginf=0.0)
+            # §PERF-R (2026-09-18): _process_onnx erwartet 2-D [channels, N] —
+            # der 1-D-Mono-Aufruf warf ValueError und machte CR-V1 auch nach
+            # dem Model-Load-Fix funktionslos (70 Fehlschläge je Chunk im
+            # 225-s-Lauf). Jetzt 2-D übergeben und zurück auf 1-D bringen.
+            _processed_2d = _plugin._process_onnx(_mono[np.newaxis, :], strength=1.0)
+            _processed = np.asarray(_processed_2d[0], dtype=np.float32)
+            _processed = np.nan_to_num(_processed, nan=0.0, posinf=0.0, neginf=0.0)
             if _processed.shape != _mono.shape:
                 return []
             _delta = np.abs(_mono - _processed)

@@ -42,7 +42,10 @@ class _FakeBanquetPlugin:
             raise RuntimeError("simulated banquett failure")
         out = np.array(audio, dtype=np.float32, copy=True)
         if out.size > self._click_center + 64:
-            out[self._click_center - 8 : self._click_center + 8] *= 0.15  # Klick deutlich abgeschwächt
+            if out.ndim == 2:  # §PERF-R (2026-09-18): Aufruf jetzt 2-D [channels, N]
+                out[0, self._click_center - 8 : self._click_center + 8] *= 0.15  # Klick deutlich abgeschwächt
+            else:
+                out[self._click_center - 8 : self._click_center + 8] *= 0.15
         return out
 
 
