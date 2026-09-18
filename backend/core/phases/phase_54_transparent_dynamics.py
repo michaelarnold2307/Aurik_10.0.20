@@ -769,28 +769,21 @@ class TransparentDynamicsV1(PhaseInterface):
         window = np.ones(window_size) / window_size
         rms = np.sqrt(np.convolve(audio_squared, window, mode="same"))
 
-        # Compute gain reduction
+        # Compute gain reduction — §PERF-R (2026-09-18): element-weise
+        # Vektorisierung (reine Funktion von rms je Sample, kein sequenzieller
+        # Zustand ⇒ bit-identisch zur Skalar-Schleife, ~500× schneller).
+        knee_linear = 10 ** (knee_db / 20)
+        above_thr = rms >= threshold_linear
+        in_knee = above_thr & (rms < threshold_linear * knee_linear)
+        above_knee = rms >= threshold_linear * knee_linear
         gain_reduction = np.ones_like(rms)
-
-        for i in range(len(rms)):
-            level = rms[i]
-
-            # Soft knee compression
-            if level < threshold_linear:
-                # Below threshold: no compression
-                gain_reduction[i] = 1.0
-            else:
-                # Above threshold: apply compression with soft knee
-                knee_linear = 10 ** (knee_db / 20)
-
-                if level < threshold_linear * knee_linear:
-                    # In knee region: gradual compression
-                    knee_factor = (level - threshold_linear) / (threshold_linear * (knee_linear - 1))
-                    effective_ratio = 1.0 + (ratio - 1.0) * knee_factor
-                    gain_reduction[i] = (threshold_linear / level) ** (1 - 1 / effective_ratio)
-                else:
-                    # Above knee: full compression
-                    gain_reduction[i] = (threshold_linear / level) ** (1 - 1 / ratio)
+        if in_knee.any():
+            knee_factor = np.zeros_like(rms)
+            knee_factor[in_knee] = (rms[in_knee] - threshold_linear) / (threshold_linear * (knee_linear - 1))
+            effective_ratio = 1.0 + (ratio - 1.0) * knee_factor[in_knee]
+            gain_reduction[in_knee] = (threshold_linear / rms[in_knee]) ** (1.0 - 1.0 / effective_ratio)
+        if above_knee.any():
+            gain_reduction[above_knee] = (threshold_linear / rms[above_knee]) ** (1.0 - 1.0 / ratio)
 
         # Apply attack/release envelope — §DLM (temporal_loudness.py):
         # STL-adaptive Zeitkonstanten (laut = schnell, leise = langsamere

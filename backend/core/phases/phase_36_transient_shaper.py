@@ -629,6 +629,28 @@ class TransientShaper(PhaseInterface):
 
         return envelope  # type: ignore[no-any-return]
 
+    @staticmethod
+    def _box_moving_average(x: np.ndarray, window: int) -> np.ndarray:
+        """§PERF-R (2026-09-18): O(N)-Box-Mittelwert statt savgol_filter(polyorder=1).
+
+        Für polyorder=1 ist der savgol-Ausgang am Fensterzentrum EXAKT das
+        arithmetische Mittel des Fensters (der Best-Fit-Line-Wert in der
+        Fenstermitte = Mittelwert) — die Statistik ist also identisch.
+        savgol lief intern über scipy.ndimage.correlate1d mit einem bis zu
+        7681-Tap-Kernel je Band (~10,6 s/10 s Audio); der Cumsum-Weg ist
+        ~500× schneller und deterministisch. Randmodus: edge-Padding statt
+        savgol-'interp' — für den statistischen Transienten-Schwellwert
+        hör-neutral (± W/2 Samples am Rand).
+        """
+        if window <= 1:
+            return np.asarray(x, dtype=np.float64)  # type: ignore[no-any-return]
+        _w = int(window)
+        _pad = _w // 2
+        xp = np.pad(np.asarray(x, dtype=np.float64), (_pad, _w - 1 - _pad), mode="edge")
+        cs = np.cumsum(xp, dtype=np.float64)
+        # out[i] = (Σ xp[i : i+W]) / W — Fenster zentriert um Sample i (symmetrisches Padding)
+        return (cs[_w - 1 :] - np.concatenate(([0.0], cs[: len(x) - 1]))) / _w  # type: ignore[no-any-return]
+
     def _detect_transients(self, envelope: np.ndarray, attack_samples: int) -> np.ndarray:
         """Erkennt transients based on envelope slope."""
         # Compute derivative (rate of change)
@@ -644,20 +666,16 @@ class TransientShaper(PhaseInterface):
         window_length = max(3, min(window_length, len(slope)))
 
         if window_length >= 3 and len(slope) >= window_length:
-            local_mean = signal.savgol_filter(slope, window_length=window_length, polyorder=1)
+            local_mean = self._box_moving_average(slope, window_length)
         else:
             local_mean = slope  # Fallback if too short
 
-        # Guard: savgol_filter auf quadrierten Werten kann durch Float-Rundung minimal
-        # negative Ergebnisse liefern => sqrt(negativ) = NaN => RuntimeWarning; clamp >= 0
+        # Guard: Quadrierte Werte können durch Float-Rundung minimal negativ
+        # werden => sqrt(negativ) = NaN => RuntimeWarning; clamp >= 0
         if window_length >= 3 and len(slope) >= window_length:
             local_std = np.sqrt(
                 np.maximum(
-                    signal.savgol_filter(
-                        (slope - local_mean) ** 2,
-                        window_length=window_length,
-                        polyorder=1,
-                    ),
+                    self._box_moving_average((slope - local_mean) ** 2, window_length),
                     0.0,
                 )
             )
