@@ -155,6 +155,16 @@ passieren — sonst wird sie verworfen:
    Rauschen täuschte OK vor) → verdict=cpu (4. bestätigter ORT-ROCm-Fall).
    Scan-Methodik erweitert: const05-Feed im Paritäts-Check
    (scripts/onnx_gpu_compat_scan.py), sonst passiert diese Bug-Klasse erneut.
+   **Whisper + MuQ (gleiche Runde):** whisper_tiny rel ≈ 0.98 (max|Δ| 13.5),
+   muq_mulan rel ≈ 0.59 auf echten Audio-Feeds — beide aus der GPU-Liste
+   genommen bzw. auf cpu gestellt (5./6. bestätigter Fall). **Whisper hat die
+   hochwertige Lösung bekommen (§SOTA-ML-V6):** HF-Whisper-Tiny-Torch-Encoder
+   auf ROCm (backend/core/dsp/whisper_torch_rocm.py) — Gewichte identisch zum
+   ONNX-Export, Parität rel ≤ 1e-4 vs. ONNX-CPU, deterministisch, ~6.9 ms je
+   30-s-Fenster (~14× schneller als der korrekte CPU-Pfad); der Transcriber
+   bevorzugt den Torch-Kern mit ONNX-CPU-Fallback. Offen: Whisper-Decoder
+   (merged, Aufmerksamkeit) + Turbo-fp16 — Folge-Hebel; MuQ-Torch-Port
+   (mulan/-Quelle + safetensors liegen vor).
 
 **Phase 3 — strukturell:**
 7. P2-1-Monolith-Split als Enabler für saubere Deferral-/Residency-Grenzen.

@@ -127,6 +127,11 @@ class LyricsTranscriber:
         self._session_loaded: bool = False
         self._turbo_active: bool = False  # §v10.751: Turbo-fp16-Encoder (128 Mel-Bins) aktiv
         self._turbo_decoder_active: bool = False
+        # §SOTA-ML-V6 (2026-09-18): Whisper-Tiny-Torch-ROCm-Encoder
+        # (paritätsverifiziert rel ≤ 1e-4 vs. ONNX-CPU; ORT-ROCm ist numerisch
+        # defekt). Fail-closed: None → ONNX-CPU-Pfad (§V6 (copilot-instructions.md)).
+        self._torch_core: dict | None = None
+        self._torch_resolved: bool = False
         self._load_onnx()
 
     def _load_turbo_decoder(self, providers: list[_Provider]) -> bool:
@@ -328,7 +333,8 @@ class LyricsTranscriber:
             audio_16k, n_mels=128 if self._turbo_active else 80
         )  # §v10.751: Turbo nutzt 128 Mel-Bins
 
-        # 3. ONNX-Encoder-Forward
+        # 3. Encoder-Forward — §SOTA-ML-V6: Torch-ROCm bevorzugt (korrekt + ~14×
+        #    schneller als ONNX-CPU), sonst ONNX-CPU (§V6 (copilot-instructions.md)).
         encoder_out: np.ndarray | None = None
         _plm = None
         try:
@@ -339,11 +345,30 @@ class LyricsTranscriber:
         except Exception:
             logger.warning("lyrics_transcriber_plugin.py::_transcribe_onnx Ersatzpfad", exc_info=True)
         try:
-            input_name = self._session.get_inputs()[0].name  # type: ignore[union-attr]
-            outputs = self._session.run(None, {input_name: mel})  # type: ignore[union-attr]
-            encoder_out = outputs[0] if outputs else None
-            if encoder_out is not None:
-                encoder_out = np.nan_to_num(encoder_out, nan=0.0, posinf=0.0, neginf=0.0)
+            if not self._turbo_active:
+                if not self._torch_resolved:
+                    self._torch_resolved = True
+                    try:
+                        from backend.core.dsp.whisper_torch_rocm import get_whisper_torch_core as _wtc
+
+                        self._torch_core = _wtc()
+                    except Exception as _wt_exc:
+                        logger.debug("Whisper-Torch-Kern-Auflösung nicht blockierend: %s", _wt_exc)
+                        self._torch_core = None
+                if self._torch_core is not None:
+                    try:
+                        from backend.core.dsp.whisper_torch_rocm import encode_whisper_torch_mel as _wtm
+
+                        encoder_out = np.nan_to_num(_wtm(self._torch_core, mel), nan=0.0, posinf=0.0, neginf=0.0)
+                    except Exception as _wt_exc:
+                        logger.debug("Whisper-Torch-Encoder fehlgeschlagen (%s) — ONNX-CPU-Pfad", _wt_exc)
+                        encoder_out = None
+            if encoder_out is None:
+                input_name = self._session.get_inputs()[0].name  # type: ignore[union-attr]
+                outputs = self._session.run(None, {input_name: mel})  # type: ignore[union-attr]
+                encoder_out = outputs[0] if outputs else None
+                if encoder_out is not None:
+                    encoder_out = np.nan_to_num(encoder_out, nan=0.0, posinf=0.0, neginf=0.0)
         except Exception as exc:
             logger.debug("Whisper-Encoder fehlgeschlagen: %s", exc)
         finally:

@@ -404,6 +404,15 @@
     "size_mb": 9.0,
     "verdict": "cpu"
   },
+  "models/muq_mulan/muq_mulan.onnx": {
+    "backend": "rocm",
+    "cpu_ms": 2193.0,
+    "gpu_ms": 89.0,
+    "note": "EP-Numerik weicht ab (Bug-Jagd 2026-09-18): rel ≈ 0.59, max|Δ| 2.8 auf echten Audio-Feeds (5-s-Probe) — Attention-/Softmax-Kernels, 6. bestätigter ORT-ROCm-Defekt. CPU ist der korrekte Pfad (Qualitätswitness!); Folge-Hebel: Torch-ROCm-Port (models/muq_mulan/mulan/ + model.safetensors liegen vor).",
+    "scan_s": 0.0,
+    "size_mb": 623.5,
+    "verdict": "cpu"
+  },
   "models/nvsr/nvsr.onnx": {
     "backend": null,
     "cpu_ms": null,

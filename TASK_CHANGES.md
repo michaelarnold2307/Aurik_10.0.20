@@ -1,15 +1,19 @@
 # TASK_CHANGES — Live-Ledger der aktuellen Aufgabe
 
-> Generiert von `scripts/change_ledger.py snapshot` (Base: `HEAD`, Stand: 2026-09-18 19:03 CEST).
+> Generiert von `scripts/change_ledger.py snapshot` (Base: `HEAD`, Stand: 2026-09-18 19:52 CEST).
 > CI (`ci-lite.yml` pr-evidence-gate) erzwingt Abdeckung: jede geänderte Code-Datei muss hier stehen.
 
 ## Geänderte Dateien
 
 | Status | Pfad | Art |
 |---|---|---|
+| M | .github/FILE_REGISTRY.md | modifiziert |
 | M | backend/core/gpu_model_registry.json | modifiziert |
+| M | backend/core/ml_device_manager.py | modifiziert |
 | M | docs/GESAMTKONZEPT_PERFORMANCE_WOHLKLANG.md | modifiziert |
-| M | scripts/onnx_gpu_compat_scan.py | modifiziert |
+| M | plugins/lyrics_transcriber_plugin.py | modifiziert |
+| ?? | backend/core/dsp/whisper_torch_rocm.py | ungetrackt |
+| ?? | tests/unit/test_whisper_torch_rocm.py | ungetrackt |
 
 ## Entscheidungen
 

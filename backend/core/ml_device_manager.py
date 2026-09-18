@@ -386,15 +386,21 @@ _HEAVY_ML_PLUGINS: frozenset[str] = frozenset(
         # "ApolloPlugin",  # apollo_plugin — restorative ML → CPU-Force §v10.733
         "CQTDiffPlus",  # cqtdiff_plus_plugin — diffusion inpainting
         "Gacela",  # gacela_plugin — audio inpainting
-        "MuQ-310M",  # muq_plugin — MuQ-Eval-A1-Qualitätswitness (310M Params, ~1,2 GB fp32);
-        # CPU kostete 11,2 s für 20 s Audio und sprengte das 5-s-Budget des
-        # RestorabilityEstimators (Produktionsbefund 2026-09-13) → GPU.
+        "MuQ-310M",  # muq_plugin — MuQ-Eval-A1-Qualitätswitness (310M Params, ~1,2 GB fp32).
+        # §Bug-Jagd 2026-09-18: Der Registry-Verdict für muq_mulan.onnx ist "cpu"
+        # (ORT-ROCm-Attention/Softmax numerisch falsch, rel ≈ 0.59) — der GPU-Listeneintrag
+        # bietet ROCm nur AN; apply_gpu_policy erzwingt CPU. CPU kostet ~11 s je 20-s-Segment
+        # (Produktionsbefund 2026-09-13) — Qualitätswitness ist korrekt-wichtig;
+        # Folge-Hebel: Torch-ROCm-Port (models/muq_mulan/mulan/ + model.safetensors).
         "MPSENet",  # mp_senet plugin — speech enhancement
         "AudioLDM2",  # audioldm2_plugin — diffusion ONNX (~1.3 GB)
         # --- Neural Enhancement (GPU-accelerated on AMD ROCm) ---
         "DeepFilterNetV3",  # deepfilternet_v3_ii_plugin — 3x enc/dec ONNX (~150 MB)
-        "WhisperTiny",  # lyrics_transcriber/phase-58 — whisper_tiny.onnx (39 MB) — §v10.749: ROCm 24.5× gemessen
-        "WhisperTurbo",  # lyrics_transcriber — whisper-large-v3-turbo fp16-Encoder (GPU-only, §v10.751)
+        # "WhisperTiny",  # §v10.749 WIDERRUFEN (Bug-Jagd 2026-09-18): ORT-ROCm rechnet
+        # "WhisperTurbo",  # die Whisper-Encoder numerisch falsch (tiny: rel ≈ 0.98, max|Δ| 13.5
+        #                    auf echten Mel-Feeds — Softmax-Attention-Kernels, 5. bestätigter
+        #                    ORT-ROCm-Defekt). CPU-Referenzpfad (tiny fp32, 98 ms je 30-s-Fenster)
+        #                    bleibt der deterministische Pfad (§G5 (GEBOTE.md)).
         #                     Computationally intensive DF-filter; ROCm accelerates
         #                     the iterative ERB-inverse + deep filtering significantly.
         # --- Quality / Scoring (heavy Transformer backbones) ---
