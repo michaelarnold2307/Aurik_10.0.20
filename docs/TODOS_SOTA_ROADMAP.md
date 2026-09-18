@@ -1224,12 +1224,27 @@ Laufzeit je Chunk vernichteten:
    der BANQUET-Klick-Detektor-Konsens (SOTA-CR-V1) war stumm deaktiviert.
    Fix: ehrlicher Check über `ensure_model_loaded()`; Feature läuft wie
    spezifiziert (Test-Fakes angepasst, Konsens-Suite grün).
+4. **Zweite BANQUET-Session im phase_09-Fallback (R-C, behoben 2026-09-18):**
+   Der Docker-Fallback erzeugte je Phase-Instanz eine NEUE
+   `BanquetVinylPlugin()`-Instanz (zweite ≈0,8-GB-Session, je Chunk neu
+   geladen, §V7). Fix: kanonisches Singleton `get_banquet_plugin()` mit
+   `ensure_model_loaded()`-Selbstheilung.
+5. **Tote Readiness-Probes (R-D, behoben 2026-09-18):**
+   `ml_model_readiness` probte `phase_09._get_banquet_onnx_session` (existiert
+   seit dem §V7-Fix 2026-09-13 nicht mehr ⇒ dauerhaft falsches „BANQUET nicht
+   verfügbar“) und das nicht existierende `plugins.convtasnet_plugin`
+   (Phantom-Ladefehler im Selbstcheck, Modell de-wired). Fix: ehrliche
+   Plugin-Probes bzw. Registrierung entfernt — Selbstcheck jetzt 39/39, 0
+   Phantom-Fehler (§V6 (copilot-instructions.md)-Ehrlichkeit).
 
 Damit: BANQUET-ML bleibt über alle Chunks aktiv, CR-V1 aktiv, keine
 Modell-Reloads je Chunk — plus P8/P10 (Fenster-Parallelität, Default 4,
 1,58× CPU / 1,61× GPU, bit-identisch) und R7 (Hör-Impact-Deferral).
 Laufzeit-Erwartung: BANQUET-Phase (dominant, 62 %) sinkt auf ~45–60 % der
 bisherigen Zeit, dazu entfallen die Per-Chunk-Reloads vollständig.
+Verifikation: 225,3-s-Referenzlauf mit PERF-R-Stand läuft
+(`output/supervised_run/elke_225s_perfr_v1021.{log,wav}`) — P12-
+Hot-Phase-Nachmessung folgt nach Laufende.
 
 ### Gemessene Hot-Phase-Wahrheit (Profiling 2026-09-16)
 
