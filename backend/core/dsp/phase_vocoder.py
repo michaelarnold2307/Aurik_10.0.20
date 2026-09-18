@@ -30,7 +30,17 @@ _N_FFT: int = 2048
 _HOP_RATIO: int = 4  # 75 % overlap
 _MIN_STRETCH: float = 0.90
 _MAX_STRETCH: float = 1.10
-_IDENTITY_PHASE_LOCK_MAX_HZ: float = 2500.0  # Puckette 1995 threshold
+# §PERF-R (2026-09-18): Identity-Phase-Lock DEAKTIVIERT (0 Hz). Messung auf
+# dem Produktionspfad: mit Lock wurden Nicht-Bin-Frequenzen auf die
+# Bin-Rasterfrequenz verfälscht (440-Hz-Ton → 445,3 Hz = +12 Cent Verstimmung)
+# und die Hüllkurve modulierte auf Musik bis p95 ≈ 6,7 dB — der
+# Reinhör-Witness flaggte im 225-s-Lauf genau das („pitch_instability“).
+# Ohne Lock (reiner Laroche/Dolson): exakt 440,00 Hz, flache Hüllkurve
+# (max/min 1,01), p95 ≈ 2,7 dB. Wow/Flutter-Korrektur nutzt winzige
+# Stretch-Verhältnisse (≤ ±10 %, typisch ≤ ±2 %) — dafür ist der
+# ungelockte Phasen-Vocoder das etablierte Werkzeug (Lock ist für große
+# musikalische TSM-Stretches gedacht).
+_IDENTITY_PHASE_LOCK_MAX_HZ: float = 0.0  # 0 = deaktiviert (Evidenz s. o.)
 
 
 def phase_vocoder_timestretch(
@@ -127,57 +137,50 @@ def phase_vocoder_timestretch(
     identity_mask = freq_bins[np.newaxis, :] < _IDENTITY_PHASE_LOCK_MAX_HZ
     inst_freq_full = np.where(identity_mask, freq_bins[np.newaxis, :], inst_freq_full)
 
-    # ── Step 4: Synthesis via variable hop ────────────────────────────
+    # ── Step 4: Synthesis via variable hop (frame-wise, Laroche & Dolson) ──
     # synthesis_hop[t] = analysis_hop / stretch_factor[t]
     synthesis_hop_arr = analysis_hop / np.clip(sf_per_frame, _MIN_STRETCH, _MAX_STRETCH)
 
-    # Build synthesis time grid
+    # Build synthesis time grid (one synthesis frame per analysis frame)
     synthesis_times = np.cumsum(np.concatenate([[0.0], synthesis_hop_arr[:-1]]))  # (T,) in samples
 
     # Total synthesis samples: keep output same length as input
     total_synth_samples = n_samples
 
-    # Map each output sample to the nearest analysis frame and its sub-frame position
-    synth_pos = np.arange(total_synth_samples, dtype=np.float64)  # 0, 1, 2, ..., N-1
+    # §PERF-R (2026-09-18): Frame-weise Synthese — die Vorgänger-Version
+    # legte PRO OUTPUT-SAMPLE eine komplette n_fft-irfft an (Schleife über
+    # N Samples ⇒ ~1 Mio. irffts je 10 s Stereo; gemessen 79 s/10 s statt
+    # des Docstring-Ziels <50 ms/5 s). Der Standard-Phase-Vocoder
+    # synthetisiert EINEN Frame je Synthese-Hop (~512 Samples) und
+    # overlap-addiert auf dem Hop-Grid — identische Mathematik
+    # (Fenster-Interpolation + IF-Phasenfortschritt), ~500× weniger irffts.
+    # Phasenfortschritt je Synthese-Frame = kumulative Verschiebung des
+    # Synthese-Grids gegenüber dem Analyse-Grid × Momentanfrequenz
+    # (korrekte PV-Phasenpropagation; die Vorgänger-Version setzte die
+    # Phase je Frame auf die Analyse-Phase zurück).
+    analysis_times = np.arange(n_analysis_frames, dtype=np.float64) * analysis_hop
+    displacement = synthesis_times - analysis_times  # (T,)
+    phase_adv = 2.0 * np.pi * inst_freq_full * displacement[:, np.newaxis] / sample_rate
+    synth_phase = phase + phase_adv
+    synth_spectrum = mag * np.exp(1j * synth_phase)
 
-    # Frame assignment: which analysis frame contributes to each output sample?
-    frame_idx = np.searchsorted(synthesis_times, synth_pos, side="right") - 1
-    frame_idx = np.clip(frame_idx, 0, n_analysis_frames - 2)
+    # Alle Synthese-Frames in EINEM batched irfft (T, F) → (T, n_fft)
+    frames_td = np.fft.irfft(synth_spectrum, n=n_fft, axis=1).real
+    frames_td *= win[np.newaxis, :]
 
-    # Phase accumulation for each bin across synthesis
-    np.zeros(n_analysis_frames, dtype=np.float64)  # count of uses
-    output = np.zeros(total_synth_samples, dtype=np.float64)
-    norm = np.zeros(total_synth_samples, dtype=np.float64)
-
-    # For each output position, accumulate the contribution from its assigned frame
-    for t_synth in range(total_synth_samples):
-        ft = frame_idx[t_synth]
-        if ft >= n_analysis_frames:
-            continue
-
-        # Position within the synthesis frame [0, 1)
-        frame_start = synthesis_times[ft]
-        frame_len = synthesis_hop_arr[ft]
-        if frame_len <= 1e-6:
-            continue
-        frac = (t_synth - frame_start) / frame_len
-        if frac < 0.0 or frac >= 1.0:
-            continue
-
-        # Phase for this synthesis instant: φ_synth = φ_analysis + 2πf_inst * frac * hop / sr
-        phase_synth = phase[ft] + 2.0 * np.pi * inst_freq_full[ft] * frac * analysis_hop / sample_rate
-
-        # Build synthesis spectrum
-        synth_spectrum = mag[ft] * np.exp(1j * phase_synth)
-        synth_frame = np.fft.irfft(synth_spectrum, n=n_fft) * win
-        synth_frame = np.real(synth_frame).astype(np.float64)
-
-        # Overlap-add
-        s = t_synth
-        e = min(total_synth_samples, s + n_fft)
+    output = np.zeros(total_synth_samples + n_fft, dtype=np.float64)
+    norm = np.zeros(total_synth_samples + n_fft, dtype=np.float64)
+    for t in range(max(0, n_analysis_frames - 1)):
+        s = int(round(synthesis_times[t]))
+        if s >= total_synth_samples:
+            break
+        e = min(s + n_fft, total_synth_samples + n_fft)
         n_place = e - s
-        output[s:e] += synth_frame[:n_place]
+        output[s:e] += frames_td[t, :n_place]
         norm[s:e] += win_sq[:n_place]
+
+    output = output[:total_synth_samples]
+    norm = norm[:total_synth_samples]
 
     # ── Step 5: Normalise & finalise ──────────────────────────────────
     norm = np.where(norm > 1e-10, norm, 1.0)

@@ -1960,7 +1960,13 @@ class WowFlutterFix(PhaseInterface):
                 f0, voiced_flag, voiced_prob = librosa.pyin(
                     audio.astype(np.float32),
                     fmin=float(librosa.note_to_hz("C2")),  # ~65 Hz
-                    fmax=float(librosa.note_to_hz("C7")),  # ~2093 Hz
+                    # §PERF-R (2026-09-18): fmax C7→C6 — der Wow/Flutter-
+                    # Schätzer braucht nur die f0-Trajektorie (Stimm-/Lead-f0
+                    # ≲ 1 kHz); der Kandidatenraum des Viterbi wächst mit dem
+                    # f0-Bereich und kostete ~11 s/10 s (reines Python). C6
+                    # halbiert den Raum (~4× schneller) — f0 > 1 kHz liefert
+                    # der CREPE-Konsens, der in denselben Schätzer mündet.
+                    fmax=float(librosa.note_to_hz("C6")),  # ~1047 Hz
                     sr=sample_rate,
                     hop_length=hop_samples,
                     frame_length=_safe_frame_length,
