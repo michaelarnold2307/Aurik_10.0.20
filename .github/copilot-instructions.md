@@ -147,6 +147,12 @@ Jedes VERBOT definiert eine unzulässige Handlung. Verstöße sind Build-Fehler.
    paritätsverifizierte, GPU-deterministische Torch-ROCm-Kerne ersetzt
    (backend/core/dsp/*_torch_rocm.py, §SOTA-ML-V5–V9); deren ONNX-Sessions bleiben
    reiner Qualitäts-Fallback auf CPU (§V6).
+10. **Gesangs-Gate (2026-09-18)**: Gesangsgeführte Bearbeitung (Phonem-DSP) nur
+   auf bestätigtem Gesang — `vocal_presence` (p(no_speech), Token-Konfidenz,
+   physiologische Wortdichte ≤ 12 W/s) < 0.15 → Signal bleibt bit-identisch;
+   Wörter mit confidence < 0.30 werden übersprungen; unsichere Präsenz
+   skaliert die Stärke linear. Schutz gegen Sprachmodell-Halluzinationen
+   auf Instrumental-Passagen (Never-worsen, Hörordnung §1).
 
 ---
 

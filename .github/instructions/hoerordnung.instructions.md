@@ -33,6 +33,15 @@ numerisch gegen den kanonischen ONNX-CPU-Zeugen paritätsverifiziert ist
 Kerne mit Paritäts- und Determinismus-Nachweis (§G5 (copilot-instructions.md)),
 ONNX als reiner CPU-Fallback (§V6 (copilot-instructions.md)).
 
+**Gesangs-Gate (2026-09-18):** Gesangsgeführte Bearbeitung (Phonem-DSP,
+LyricsGuidedEnhancement) ist eine Never-worsen-Ausnahme: Sie darf nur auf
+bestätigtem Gesang wirken. Sprachmodelle halluzinieren auf Instrumental-
+Musik (gemessen: 24 Wörter/s — physiologisch unmöglich) — deshalb gilt:
+`vocal_presence` (p(no_speech), Token-Konfidenz, Wortdichte ≤ 12 W/s) unter
+0,15 → Signal bleibt bit-identisch; schwache Wörter (confidence < 0,30)
+werden übersprungen; unsichere Präsenz skaliert die Stärke linear. Das Ohr
+entscheidet nie auf der Grundlage halluzinierter „Evidenz“.
+
 ## 2. Die vier Ebenen
 
 Jede Ebene dominiert die darunterliegende. Eine Entscheidung auf Ebene n darf
