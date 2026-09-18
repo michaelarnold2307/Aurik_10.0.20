@@ -278,6 +278,13 @@ auf ONNX-CPU, §V6): BANQUET-Vinyl (~160 ms je 1-s-Fenster, 11,8×/19,5×),
 Whisper-Tiny-Encoder+Decoder (~6,9 ms je 30-s-Fenster), FCPE (~1,6 ms je
 10-s-Mel), MuQ-MuLan (~29 ms je 10-s-Embedding), BS-RoFormer-317 (~46×).
 Jeder Wechsel des GPU-Backends erfordert den Paritäts-Nachweis nach §III.9.
+**Whisper-Turbo (Opt-in, §SOTA-ML-V10):** AURIK_WHISPER_TURBO=1 aktiviert
+whisper-large-v3-turbo (fp16, 128 Mel-Bins) für bessere Wortgrenzen der
+gesangsgeführten Bearbeitung. Gemessener fp16-Präzisionsboden des Modells
+selbst: rel ≈ 0,14 (CPU-fp16 vs. CPU-fp32) — GPU-fp16 liegt darin
+(rel ≈ 0,13 vs. fp32, deterministisch). Kein Paritäts-Defekt, sondern die
+offizielle Turbo-fp16-Präzision; der fp32-Tiny-Kern bleibt der
+paritätsbewiesene Default.
 
 ## Bug-Klassen (normativ, synchron zu Spec 10)
 

@@ -328,10 +328,25 @@ class LyricsTranscriber:
         # 1. Auf 16 kHz resampeln (Whisper-Eingangs-SR)
         audio_16k = self._resample_to_whisper(mono, sr)
 
-        # 2. Log-Mel-Spektrogramm [1, 80, 3000]
-        mel = self._compute_log_mel(
-            audio_16k, n_mels=128 if self._turbo_active else 80
-        )  # §v10.751: Turbo nutzt 128 Mel-Bins
+        # §SOTA-ML-V10 (2026-09-18): Torch-Kern zuerst auflösen — seine Mel-Bin-Zahl
+        # bestimmt den Mel (Tiny = 80, Turbo = 128).
+        if not self._torch_resolved:
+            self._torch_resolved = True
+            try:
+                from backend.core.dsp.whisper_torch_rocm import get_whisper_torch_core as _wtc
+
+                self._torch_core = _wtc()
+            except Exception as _wt_exc:
+                logger.debug("Whisper-Torch-Kern-Auflösung nicht blockierend: %s", _wt_exc)
+                self._torch_core = None
+
+        # 2. Log-Mel-Spektrogramm [1, n_mels, 3000]
+        _n_mels = (
+            128
+            if (self._turbo_active or (self._torch_core is not None and self._torch_core.get("n_mels", 80) == 128))
+            else 80
+        )
+        mel = self._compute_log_mel(audio_16k, n_mels=_n_mels)  # §v10.751: Turbo nutzt 128 Mel-Bins
 
         # 3. Encoder-Forward — §SOTA-ML-V6: Torch-ROCm bevorzugt (korrekt + ~14×
         #    schneller als ONNX-CPU), sonst ONNX-CPU (§V6 (copilot-instructions.md)).
@@ -346,15 +361,6 @@ class LyricsTranscriber:
             logger.warning("lyrics_transcriber_plugin.py::_transcribe_onnx Ersatzpfad", exc_info=True)
         try:
             if not self._turbo_active:
-                if not self._torch_resolved:
-                    self._torch_resolved = True
-                    try:
-                        from backend.core.dsp.whisper_torch_rocm import get_whisper_torch_core as _wtc
-
-                        self._torch_core = _wtc()
-                    except Exception as _wt_exc:
-                        logger.debug("Whisper-Torch-Kern-Auflösung nicht blockierend: %s", _wt_exc)
-                        self._torch_core = None
                 if self._torch_core is not None:
                     try:
                         from backend.core.dsp.whisper_torch_rocm import encode_whisper_torch_mel as _wtm

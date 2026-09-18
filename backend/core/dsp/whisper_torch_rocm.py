@@ -27,40 +27,44 @@ import numpy as np
 
 logger = logging.getLogger(__name__)
 
-# HF-Snapshot-Name (lokal gecacht, deterministisch — kein Netz zur Laufzeit).
+# HF-Snapshot-Namen (lokal gecacht, deterministisch — kein Netz zur Laufzeit).
 _SNAPSHOT_PREFIX = "models--openai--whisper-tiny"
+_TURBO_SNAPSHOT_PREFIX = "models--openai--whisper-large-v3-turbo"
 
 _lock = threading.Lock()
 _core = None
 _core_resolved = False
 
 
-def _find_snapshot() -> str | None:
+def _find_snapshot(prefix: str = _SNAPSHOT_PREFIX) -> str | None:
     """Sucht den lokal gecachten HF-Snapshot (ohne Netz)."""
     from pathlib import Path
 
     hub = Path.home() / ".cache" / "huggingface" / "hub"
-    for entry in hub.glob(f"{_SNAPSHOT_PREFIX}/snapshots/*"):
+    for entry in hub.glob(f"{prefix}/snapshots/*"):
         if (entry / "model.safetensors").exists() and (entry / "config.json").exists():
             return str(entry)
     return None
 
 
-def _build_core():
+def _build_core(turbo: bool = False):
     import torch  # pylint: disable=import-outside-toplevel
     from transformers import (  # pylint: disable=import-outside-toplevel
         WhisperForConditionalGeneration,
         WhisperProcessor,
     )
 
-    snapshot = _find_snapshot()
+    snapshot = _find_snapshot(_TURBO_SNAPSHOT_PREFIX if turbo else _SNAPSHOT_PREFIX)
     if snapshot is None:
-        raise RuntimeError("Whisper-Tiny-Snapshot nicht lokal gecacht (HF-Hub) — ONNX-CPU-Pfad bleibt")
+        raise RuntimeError("Whisper-Snapshot nicht lokal gecacht (HF-Hub) — ONNX-CPU-Pfad bleibt")
+    kwargs = {"local_files_only": True}
+    if turbo:
+        kwargs["torch_dtype"] = torch.float16
     model = WhisperForConditionalGeneration.from_pretrained(  # nosec B615 — commit-gepinnter Snapshot, kein Netz
-        snapshot, local_files_only=True
+        snapshot, **kwargs
     ).eval()
     processor = WhisperProcessor.from_pretrained(snapshot, local_files_only=True)  # nosec B615
-    return {"model": model, "processor": processor}
+    return {"model": model, "processor": processor, "n_mels": 128 if turbo else 80}
 
 
 def get_whisper_torch_core() -> dict | None:
@@ -72,15 +76,30 @@ def get_whisper_torch_core() -> dict | None:
             return _core
         _core_resolved = True
         try:
+            import os as _os
+
             import torch  # pylint: disable=import-outside-toplevel
 
             if not torch.cuda.is_available():
                 logger.debug("§SOTA-ML-V6 Whisper-Torch-ROCm nicht verfügbar — ONNX-CPU-Pfad bleibt")
                 return None
-            bundle = _build_core()
+            # §SOTA-ML-V10 (2026-09-18): Turbo-Upgrade per Opt-in
+            # (AURIK_WHISPER_TURBO=1, fp16, 128 Mel-Bins) — bessere
+            # Wortgrenzen für die gesangsgeführte Bearbeitung; Tiny bleibt
+            # der Default (deterministisch, 80 Bins, ONNX-Parität belegt).
+            _turbo = _os.environ.get("AURIK_WHISPER_TURBO", "0") == "1"
+            if _turbo and _find_snapshot(_TURBO_SNAPSHOT_PREFIX) is None:
+                logger.warning("§SOTA-ML-V10 Whisper-Turbo angefordert, Snapshot fehlt — Tiny-Kern aktiv")
+                _turbo = False
+            bundle = _build_core(turbo=_turbo)
             bundle["model"] = bundle["model"].to("cuda")
             _core = bundle
-            logger.info("§SOTA-ML-V6 Whisper-Tiny-Torch-Encoder auf ROCm geladen (%s)", torch.cuda.get_device_name(0))
+            logger.info(
+                "§SOTA-ML-V%s Whisper-Torch-Encoder auf ROCm geladen (%s, %d Mel-Bins)",
+                "10" if _turbo else "6",
+                torch.cuda.get_device_name(0),
+                bundle["n_mels"],
+            )
             return _core  # type: ignore[no-any-return]
         except Exception as exc:  # pylint: disable=broad-except
             logger.warning("§SOTA-ML-V6 Whisper-Torch-Kern nicht ladbar: %s — ONNX-CPU-Pfad bleibt", exc)
@@ -103,14 +122,17 @@ def encode_whisper_torch_mel(core: dict, mel: np.ndarray) -> np.ndarray:
     import torch  # pylint: disable=import-outside-toplevel
 
     m = np.asarray(mel, dtype=np.float32)
-    if m.ndim != 3 or m.shape[1] != 80:
-        raise ValueError(f"Whisper-Torch: erwartet [B,80,T]-Mel, bekam {m.shape}")
+    _n_mels = int(core.get("n_mels", 80))
+    if m.ndim != 3 or m.shape[1] != _n_mels:
+        raise ValueError(f"Whisper-Torch: erwartet [B,{_n_mels},T]-Mel, bekam {m.shape}")
     m = np.nan_to_num(m, nan=0.0, posinf=0.0, neginf=0.0)
+    _dtype = next(core["model"].parameters()).dtype
     with torch.no_grad():
         out = (
             core["model"]
-            .get_encoder()(torch.from_numpy(m).to(next(core["model"].parameters()).device))
-            .last_hidden_state.cpu()
+            .get_encoder()(torch.from_numpy(m).to(next(core["model"].parameters()).device, dtype=_dtype))
+            .last_hidden_state.float()
+            .cpu()
             .numpy()
         )
     out = np.nan_to_num(out, nan=0.0, posinf=0.0, neginf=0.0)
@@ -134,9 +156,10 @@ def encode_whisper_torch(core: dict, audio_16k: np.ndarray) -> np.ndarray:
         raise ValueError(f"Whisper-Torch: erwartet 16-kHz-Mono (1-D), bekam {x.shape}")
     x = np.nan_to_num(x, nan=0.0, posinf=0.0, neginf=0.0)
     feats = core["processor"](x, sampling_rate=16000, return_tensors="pt")
-    mel = feats.input_features.to(next(core["model"].parameters()).device)
+    _dtype = next(core["model"].parameters()).dtype
+    mel = feats.input_features.to(next(core["model"].parameters()).device, dtype=_dtype)
     with torch.no_grad():
-        out = core["model"].get_encoder()(mel).last_hidden_state.cpu().numpy()
+        out = core["model"].get_encoder()(mel).last_hidden_state.float().cpu().numpy()
     out = np.nan_to_num(out, nan=0.0, posinf=0.0, neginf=0.0)
     return out.astype(np.float32)  # type: ignore[no-any-return]
 
@@ -164,7 +187,8 @@ def transcribe_whisper_torch(core: dict, audio_16k: np.ndarray, language: str = 
     model = core["model"]
     device = next(model.parameters()).device
     feats = processor(x, sampling_rate=16000, return_tensors="pt")
-    mel = feats.input_features.to(device)
+    _dtype = next(model.parameters()).dtype
+    mel = feats.input_features.to(device, dtype=_dtype)
     with torch.no_grad():
         gen = model.generate(
             mel,
@@ -177,7 +201,8 @@ def transcribe_whisper_torch(core: dict, audio_16k: np.ndarray, language: str = 
             temperature=0.0,
         )
     ids = gen.sequences[0].tolist()
-    times = torch.cat(gen.token_timestamps).cpu().numpy()[0] if gen.token_timestamps is not None else np.zeros(len(ids))
+    _timestamps = getattr(gen, "token_timestamps", None)
+    times = torch.cat(_timestamps).cpu().numpy()[0] if _timestamps else np.zeros(len(ids))
     # Token-Wahrscheinlichkeiten: Scores sind [1, vocab] je Schritt (shifted).
     probs: list[float] = []
     if gen.scores:
