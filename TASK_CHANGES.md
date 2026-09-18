@@ -1,16 +1,14 @@
 # TASK_CHANGES — Live-Ledger der aktuellen Aufgabe
 
-> Generiert von `scripts/change_ledger.py snapshot` (Base: `HEAD`, Stand: 2026-09-18 21:18 CEST).
+> Generiert von `scripts/change_ledger.py snapshot` (Base: `HEAD`, Stand: 2026-09-18 21:25 CEST).
 > CI (`ci-lite.yml` pr-evidence-gate) erzwingt Abdeckung: jede geänderte Code-Datei muss hier stehen.
 
 ## Geänderte Dateien
 
 | Status | Pfad | Art |
 |---|---|---|
-| M | .github/copilot-instructions.md | modifiziert |
-| M | .github/instructions/dsp.instructions.md | modifiziert |
-| M | AGENTS.md | modifiziert |
-| M | docs/TODOS_SOTA_ROADMAP.md | modifiziert |
+| M | .github/instructions/hoerordnung.instructions.md | modifiziert |
+| M | .github/specs/07_quality_and_tests.md | modifiziert |
 
 ## Entscheidungen
 

@@ -24,6 +24,15 @@ Ausnahme: Die Härte-Invarianten der Ebene 1 (§3) sind selbst die oberste
 Entscheidungsinstanz — sie sind die operationalisierte Form dessen, was das
 Ohr niemals akzeptiert.
 
+**GPU-Backends sind Zeugen-Träger (2026-09-18, §III.9 (copilot-instructions.md)):**
+Ein Beschleuniger (ROCm/MIGraphX/CUDA) darf Messwerte nur liefern, wenn er
+numerisch gegen den kanonischen ONNX-CPU-Zeugen paritätsverifiziert ist
+(rel ≤ 1e-3 auf strukturierten Feeds). Numerisch abweichende Kernels
+(6 dokumentierte ORT-ROCm-Defekte, rel 0,19–0,98) hätten sonst als
+„Evidenz“ entschieden — das verletzt die Zeugen-Rolle. Deshalb: Torch-ROCm-
+Kerne mit Paritäts- und Determinismus-Nachweis (§G5 (copilot-instructions.md)),
+ONNX als reiner CPU-Fallback (§V6 (copilot-instructions.md)).
+
 ## 2. Die vier Ebenen
 
 Jede Ebene dominiert die darunterliegende. Eine Entscheidung auf Ebene n darf

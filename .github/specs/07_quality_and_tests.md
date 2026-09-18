@@ -388,7 +388,13 @@ automatisch geprüft werden.
 > Die nachstehenden Werte gelten **pro Minute Audio** und sind mit PerformanceGuard-Toleranzen kalibriert.
 > VERBOTEN: niedrigere Limits aus Vorgängerversionen (DefectScanner ≤ 2 s, Pipeline ≤ 120 s) verwenden —
 > diese wurden mit v10.0.0 (Quality-First-Hauptlauf) auf die untenstehenden Werte angehoben.
-> **GPU-Beschleunigung** (ROCm/DirectML) reduziert Heavy-Plugin-Inferenz erheblich; die Limits gelten für CPU-only als Worst Case.
+> **GPU-Beschleunigung (2026-09-18, §III.9 (copilot-instructions.md)):** GPU-Inferenz läuft über
+> paritätsverifizierte, GPU-deterministische Torch-ROCm-Kerne (§SOTA-ML-V5–V9: BANQUET-Vinyl,
+> BS-RoFormer-317, Whisper-Tiny-Encoder+Decoder, FCPE, MuQ-MuLan; 11,8×–50× gemessen).
+> ONNX-EPs außer CPU (ROCm/MIGraphX/CUDA) sind nur nach Paritäts-Nachweis gegen die
+> ONNX-CPU-Referenz auf strukturierten Feeds (rel ≤ 1e-3) zulässig — 6 ORT-ROCm-Kernel-Defekte
+> sind dokumentiert (rel 0,19–0,98) und auf CPU- bzw. Torch-Pfade umgestellt. Die Limits gelten
+> für CPU-only als Worst Case.
 
 | Operation | Limit / Minute Audio |
 | --- | --- |
@@ -580,12 +586,17 @@ Jeder erkannte Defekt wird mit einem **psychoakustischen Salienz-Score** (0.0–
 - ML-Modelle aktiv max.: 16 GB gesamt
 - Großmodelle (MERT 3,9 GB / AudioSR 5,9 GB): nur bei Bedarf (lazy load)
 
-**Device-Policy (§GPU-Mixed-Mode, v10.0.0):**
+**Device-Policy (§GPU-Mixed-Mode, v10.0.0; GPU-Numerik-Parität §III.9 (copilot-instructions.md)):**
 
 ```python
 # Heavy ML Plugins (>200 MB): GPU wenn verfügbar, CPU-Fallback transparent
 from backend.core.ml_device_manager import get_ort_providers, get_torch_device
 providers = get_ort_providers("PluginName")  # ONNX-Runtime
+# GPU-ONNX NUR bei Paritäts-Nachweis (rel <= 1e-3 vs. ONNX-CPU, strukturierte
+# Feeds; scripts/onnx_gpu_compat_scan.py + gpu_model_registry). Numerisch
+# defekte ORT-ROCm-Kernels (bs_roformer, BANQUET, FCPE, basicpitch, Whisper,
+# MuQ-MuLan) sind durch paritätsverifizierte Torch-ROCm-Kerne ersetzt
+# (backend/core/dsp/*_torch_rocm.py); ONNX bleibt reiner CPU-Fallback (§V6).
 device = get_torch_device("PluginName")      # PyTorch
 # Leichtgewichtige Plugins (<200 MB), DSP, Analyse: immer CPU
 providers = ["CPUExecutionProvider"]          # ONNX-Runtime
