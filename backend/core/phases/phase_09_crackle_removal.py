@@ -576,13 +576,20 @@ class CrackleRemovalPhase(PhaseInterface):
         return transients_short, transients_medium, transients_long, crackle_regions
 
     def _get_banquet_plugin(self):
-        """Lazy-load BANQUET Docker plugin (fallback if ONNX direct access fails)."""
+        """Lazy-Zugriff auf das kanonische BANQUET-Singleton (§PERF-R 2026-09-18).
+
+        Vorher erzeugte der Docker-Fallback hier je Phase-Instanz eine NEUE
+        `BanquetVinylPlugin()`-Instanz — eine zweite ONNX-Session (≈0,8 GB)
+        neben dem Singleton, je Chunk neu geladen (§V7 (copilot-instructions.md): EINE Lösung
+        pro Rolle). Das Singleton trägt jetzt `ensure_model_loaded()` und
+        stellt die Session nach PLM-Eviction selbst wieder her.
+        """
         if self._banquet_plugin is None:
             try:
-                from plugins.banquet_vinyl_plugin import BanquetVinylPlugin
+                from plugins.banquet_vinyl_plugin import get_banquet_plugin
 
-                self._banquet_plugin = BanquetVinylPlugin()  # type: ignore[assignment]
-                logger.info("BANQUET Docker plugin geladen (Ersatzpfad path)")
+                self._banquet_plugin = get_banquet_plugin()  # type: ignore[assignment]
+                logger.info("BANQUET Docker plugin geladen (Singleton, Ersatzpfad path)")
             except Exception as e:
                 logger.warning("BANQUET Docker plugin not verfuegbar: %s", e)
                 self._banquet_plugin = False  # type: ignore[assignment]  # Mark as unavailable

@@ -206,7 +206,12 @@ def _register_all() -> None:
     )
     register_ml_check(
         "BANQUET",
-        _probe_function("backend.core.phases.phase_09_crackle_removal", "_get_banquet_onnx_session"),
+        # §PERF-R (2026-09-18): Der alte Probe zielte auf
+        # phase_09_crackle_removal._get_banquet_onnx_session — die Funktion
+        # existiert seit dem §V7 (copilot-instructions.md)-Fix (2026-09-13, kanonischer Plugin-Pfad)
+        # nicht mehr ⇒ ständig falsches „nicht verfügbar“. Jetzt ehrlich:
+        # Modul + Getter-Existenz des kanonischen Singletons.
+        _probe_plugin("plugins.banquet_vinyl_plugin", "get_banquet_plugin"),
     )
 
     # --- Bandwidth Extension / Inpainting ---
