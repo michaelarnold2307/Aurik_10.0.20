@@ -1276,6 +1276,35 @@ Messung: phase_12 95 s → 10,7 s je 10 s Musik (CPU) ⇒ ~5 min Ersparnis je
 Chunk, ~40 min je Song. Neustart des Referenzlaufs mit allen Fixes:
 `output/supervised_run/elke_225s_perfr_v1022.{log,wav}`.
 
+### §PERF-R3 (2026-09-18) — Repo-weiter pYIN-/DSP-Sweep: weitere Chunk-Kostentreiber beseitigt
+
+Folge-Sweep nach demselben Muster (Profil je Phase auf echtem Material):
+
+1. **phase_36 savgol→O(N)-Box-MA:** `savgol_filter(polyorder=1)` ist exakt
+   der Box-Mittelwert am Fensterzentrum; der interne `correlate1d` mit bis
+   zu 7681-Tap-Kernel kostete 10,6 s/10 s. Cumsum-Weg: Abweichung 1e-14
+   (Float-Rauschen), Messung 12,4 s → 1,85 s je 10 s (6,7×).
+2. **phase_54 Soft-Knee-Vektorisierung:** Gain-Reduction-Loop (522k Samples)
+   element-weise vektorisiert (reine Funktion je Sample, bit-identisch);
+   7,0 s → 5,3 s je 10 s. Der STL-adaptive Attack/Release-Follower bleibt
+   bewusst sequenziell.
+3. **pYIN-Viterbi-Sweep (C7→C6):** vier weitere C7-Kandidatenräume auf
+   30-s-Chunks (je ~33–35 s): phase_31 (2×), hybrid_speed_pitch_ml und
+   natural_performance_detector (Vibrato-Zonen der VFA-Kette). C6 halbiert
+   den Raum (~4×); CREPE-Konsens deckt f0 > 1 kHz.
+4. **CR-V1-Funktionalität (Nachtrag zu §PERF-R):** 2-D-Mono-Aufruf — der
+   BANQUET-Klick-Konsens liefert jetzt echte ML-Regionen (Smoke: Klick exakt
+   detektiert).
+
+Befunde OHNE Änderung (bewusst): phase_27 — 3168 `defect_audibility`-Aufrufe
+je Chunk sind der PSY-A1-Vertrag (lokale Maskierung je Defekt-Kontext); ein
+Global-Cache wäre nicht exakt. CREPE: 0,21 s/5 s im Steady-State (die einmalige
+ROCm-Kernel-Kompilierung kostet ~125 s im Erst-Prozess, amortisiert sich).
+FC-Loop und GOAL-Block sind normative Qualitäts-Maschinerie (Hörordnungs-
+Gates arbeiten korrekt — FC bricht bei Ebene-1-Verstoß ab).
+Verifikation: `output/supervised_run/elke_225s_perfr_v1023.{log,wav}` +
+automatische Analyse `…_v1023_analysis.txt` (Chunk-/Phasen-Zeiten, RT).
+
 ### Gemessene Hot-Phase-Wahrheit (Profiling 2026-09-16)
 
 - Treiber sind ML-Load/-Inferenz (BANQUET 0,78 s/Prozess = 62 % der Phasen-Zeit,
