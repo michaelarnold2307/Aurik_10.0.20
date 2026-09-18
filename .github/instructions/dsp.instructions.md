@@ -36,6 +36,15 @@ providers = ["CPUExecutionProvider"]
   (copilot-instructions.md)) + fail-closed-Fallback — Muster: bsr317/
   banquet/whisper/fcpe/muq_mulan_torch_rocm.py.
 
+## Phonem-Klassifikation — sprachadaptiv (§v10.303.52, 2026-09-18)
+
+- Die Detektions-Schwellen (§2.36 ZCR/HF-Dominanz/Plosiv-Kappe) sind
+  sprachabhängig: de (sibilantenreich) permissiver, es/it/pt konservativer,
+  unbekannte Sprachen = Defaults (keine Regression). Quelle:
+  `_LANG_PHONEME_PROFILES` in plugins/lyrics_transcriber_plugin.py.
+- Der Torch-Decoder-Pfad klassifiziert Phoneme je Wort mit diesen Profilen
+  statt eines Einheits-Labels.
+
 ## §2.62 Psychoakustischer Masking-Guard (NR-Algorithmen)
 
 ```python

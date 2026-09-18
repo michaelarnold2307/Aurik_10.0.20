@@ -153,6 +153,9 @@ Jedes VERBOT definiert eine unzulässige Handlung. Verstöße sind Build-Fehler.
    Wörter mit confidence < 0.30 werden übersprungen; unsichere Präsenz
    skaliert die Stärke linear. Schutz gegen Sprachmodell-Halluzinationen
    auf Instrumental-Passagen (Never-worsen, Hörordnung §1).
+   **§v10.303.52:** Die Phonem-Detektions-Schwellen sind sprachadaptiv
+   (Sibilanten-/Plosiv-Inventar; de permissiver, es/it/pt konservativer,
+   unbekannte Sprachen = Defaults).
 
 ---
 

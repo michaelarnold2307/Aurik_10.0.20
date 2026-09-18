@@ -618,7 +618,7 @@ einer Aufführung authentisch erlebt wird.
 | Schicht | Frequenzbereich | Enthält | Technische Bedingung |
 | --- | --- | --- | --- |
 | **Raumluft / Air** | 8–20 kHz | Saiten-Obertöne, Becken-Shimmer, Gesangs-Luft | Noise Floor < −72 dBFS; Phase_06 SBR; Phase_39 Air |
-| **Vokal-Intimität** | 4–8 kHz | Frikative /s/ /f/ /ʃ/, Plosive /p/ /t/, Atem | LyricsGuidedEnhancement: `fricative ×1.55`, `plosive ×1.40` — **nur bei bestätigter Gesangs-Präsenz** (§Gesangs-Gate 2026-09-18: vocal_presence < 0.15 → bit-identisch neutral; Wort-Konfidenz < 0.30 → übersprungen; Halluzinations-Schutz Wortdichte > 12 W/s) |
+| **Vokal-Intimität** | 4–8 kHz | Frikative /s/ /f/ /ʃ/, Plosive /p/ /t/, Atem | LyricsGuidedEnhancement: `fricative ×1.55`, `plosive ×1.40` — **nur bei bestätigter Gesangs-Präsenz** (§Gesangs-Gate 2026-09-18: vocal_presence < 0.15 → bit-identisch neutral; Wort-Konfidenz < 0.30 → übersprungen; Halluzinations-Schutz Wortdichte > 12 W/s); **sprachadaptive Detektions-Schwellen** (§v10.303.52: de permissiver für Sibilanten, es/it/pt konservativer; unbekannte Sprachen = Defaults) |
 | **Instrument-Körper** | 200 Hz–4 kHz | Note-Sustain, Saitenresonanz, Bogen-Kratzen | TDP-Transient-Erhalt + MDEM 400 ms LUFS-Morphing |
 | **Fundament** | 20–200 Hz | Kick-Punch, Bassresonanz, Raummode | BassKraftMetric + Virtual-Pitch (Missing Fundamental) |
 | **Raumtiefe** | Diffus (MS) | Raumluft, Phantom-Center, Tiefenstaffelung | SpatialDepthMetric IACC ≥ 0.70, M/S-Korr. ≥ 0.97 |
