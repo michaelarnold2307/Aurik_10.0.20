@@ -1246,6 +1246,36 @@ Verifikation: 225,3-s-Referenzlauf mit PERF-R-Stand läuft
 (`output/supervised_run/elke_225s_perfr_v1021.{log,wav}`) — P12-
 Hot-Phase-Nachmessung folgt nach Laufende.
 
+### §PERF-R2 (2026-09-18) — Laufzeit-Analyse des Referenzlaufs: phase_12 war der Flaschenhals
+
+Der v1021-Lauf (PERF-R-Stand) lag bei ~29 min/Chunk statt ~15 min Baseline —
+Analyse ergab DREI Ursachen, alle behoben:
+
+1. **Baseline-Kontext:** Im 2026-09-16-Lauf (33× RT) hatte der Orchestrator
+   phase_12 ENTFERNT (`§SURGERY-FIRST: 44→20 Phasen`, Restorability 50) bzw.
+   lief der Pitch-Konsens leer (T=2–4 Frames). Seit dem CRePE-ROCm-Port
+   (18d365bd) liefert der Konsens echte Daten (T=1197) — die volle
+   Wow/Flutter-Korrektur läuft jetzt, kostete aber 348 s/Chunk.
+2. **Pathologischer Vocoder (behoben):** `phase_vocoder.py` legte PRO
+   OUTPUT-SAMPLE eine komplette n_fft-irfft an (~1 Mio. irffts je 10 s
+   Stereo; gemessen 79 s/10 s statt des Docstring-Ziels <50 ms/5 s) und
+   verfälschte mit dem Identity-Phase-Lock Nicht-Bin-Frequenzen aufs
+   Bin-Raster (440 Hz → 445,3 Hz = +12 Cent) bei Hüllkurven-Modulation
+   p95 ≈ 6,7 dB — der Reinhör-Witness flaggte im Lauf „pitch_instability“
+   (pitch=34.0c mod=15.1c) und §v10.709 meldete artikulation-Degradation.
+   Fix: Standard-Frame-weise Synthese (EIN Frame je Synthese-Hop, batched
+   irfft, korrekte PV-Phasenpropagation), Identity-Lock deaktiviert
+   (Wow/Flutter ≤ ±10 % Stretch ⇒ ungelockter Laroche/Dolson ist der
+   etablierte Standard): exakt 440,00 Hz, Hüllkurve flach (1,01),
+   p95 ≈ 2,7 dB. ~400× schneller.
+3. **pYIN-Viterbi (behoben):** librosa-pYIN-Viterbi (reines Python)
+   kostete ~11–14 s je 10 s; fmax C7→C6 (Wow/Flutter braucht nur f0 ≲ 1 kHz,
+   CREPE-Konsens deckt den Rest) ⇒ ~4× schneller.
+
+Messung: phase_12 95 s → 10,7 s je 10 s Musik (CPU) ⇒ ~5 min Ersparnis je
+Chunk, ~40 min je Song. Neustart des Referenzlaufs mit allen Fixes:
+`output/supervised_run/elke_225s_perfr_v1022.{log,wav}`.
+
 ### Gemessene Hot-Phase-Wahrheit (Profiling 2026-09-16)
 
 - Treiber sind ML-Load/-Inferenz (BANQUET 0,78 s/Prozess = 62 % der Phasen-Zeit,
