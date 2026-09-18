@@ -148,6 +148,13 @@ passieren — sonst wird sie verworfen:
    torchfcpe-Quelle liegt im Repo (`models/fcpe/torchfcpe/`,
    `model_conformer_naive.py`), ONNX-Gewichte sind namentlich 1:1 zuzuordnen;
    es fehlen die Laufzeit-Deps `einops` + `local_attention` in der Venv.
+   **Bug-Jagd 2026-09-18 (ROCm-Sweep):** Alle verdict=rocm-Modelle mit
+   Musik-/Struktur-Feeds nachgemessen — aero/bigvgan/crepe/flashsr/gacela/
+   bw_reconstructor/diffwave OK (rel ≤ 6e-5); **basicpitch (beide Varianten)
+   DEFEKT** (rel ≈ 1,9e-2 Musik, 5,3e-2 konstant — Conv+Sigmoid, weißes
+   Rauschen täuschte OK vor) → verdict=cpu (4. bestätigter ORT-ROCm-Fall).
+   Scan-Methodik erweitert: const05-Feed im Paritäts-Check
+   (scripts/onnx_gpu_compat_scan.py), sonst passiert diese Bug-Klasse erneut.
 
 **Phase 3 — strukturell:**
 7. P2-1-Monolith-Split als Enabler für saubere Deferral-/Residency-Grenzen.

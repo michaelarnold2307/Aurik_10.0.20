@@ -57,28 +57,28 @@
     "backend": "rocm",
     "cpu_ms": 2485.0,
     "gpu_ms": 2092.0,
-    "note": "EP-Numerik: rel=7.8e-03 vs CPU (SNR ~44 dB, Masken-h\u00f6rirrelevant) nach Partitioning-Fix 2026-09-13 (ENABLE_BASIC); Funktions-Validierung Klick-Reduktion identisch",
+    "note": "EP-Numerik weicht ab: roh max|Δ| ≈ 0.35 (rel ≈ 5.8e-2) auf echten Plugin-Feats vs CPU (ORT-ROCm-LSTM-Kernels, §SOTA-ML-V5 2026-09-18; der Rausch-Feed des Scans zeigte nur 7.8e-3 und täuschte OK vor). Plugin erzwingt CPU; GPU-Pfad = Torch-ROCm-Kern (backend/core/dsp/banquet_torch_rocm.py, paritätsverifiziert ≤ 2e-6).",
     "scan_s": 12.7,
     "size_mb": 91.8,
-    "verdict": "rocm"
+    "verdict": "cpu"
   },
   "models/basicpitch/basicpitch.onnx": {
     "backend": "rocm",
     "cpu_ms": 2368.411,
     "gpu_ms": 168.37,
-    "note": "",
+    "note": "EP-Numerik weicht auf strukturierten Feeds ab (Musik: rel ≈ 1.9e-2, konstant 0.5: ≈ 5.3e-2 vs CPU; weißes Rauschen täuscht OK vor — Conv+Sigmoid-Graph, 2026-09-18).",
     "scan_s": 10.2,
     "size_mb": 0.2,
-    "verdict": "rocm"
+    "verdict": "cpu"
   },
   "models/basicpitch/basicpitch_nmp.onnx": {
     "backend": "rocm",
     "cpu_ms": 2417.018,
     "gpu_ms": 163.248,
-    "note": "",
+    "note": "EP-Numerik weicht auf strukturierten Feeds ab (Musik: rel ≈ 1.9e-2, konstant 0.5: ≈ 5.3e-2 vs CPU; weißes Rauschen täuscht OK vor — 2026-09-18).",
     "scan_s": 10.5,
     "size_mb": 0.2,
-    "verdict": "rocm"
+    "verdict": "cpu"
   },
   "models/beats/beats_iter3.onnx": {
     "backend": "rocm",

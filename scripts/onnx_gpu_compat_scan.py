@@ -132,7 +132,15 @@ _PARITY_TOL = 1e-3  # rel max|Δ| EP vs CPU; float32-Kernel-Normalabweichung lie
 def _random_feed(rng, inputs: dict, kind: str) -> dict:
     """Zufalls-Feed aus den Dummy-Inputs: 'normal' = Standardnormal; 'sane' =
     uniform(-1,1) mit 0.5 für Skalar-Inputs (Zeit-Konditionierung — t=0 erzeugt
-    z. B. log(0)=NaN in der CPU-Referenz). Int64-Inputs bleiben Null-Dummies."""
+    z. B. log(0)=NaN in der CPU-Referenz); 'const05' = konstant 0.5.
+    Int64-Inputs bleiben Null-Dummies.
+
+    Begründung für 'const05' (Bug-Jagd 2026-09-18): Die ORT-ROCm-Kernels können
+    eingabeabhängig abweichen — basicpitch (Conv+Sigmoid) zeigte auf weißem
+    Rauschen rel ≈ 3e-6 (OK), auf Musik rel ≈ 1.9e-2 und auf konstantem 0.5
+    rel ≈ 5.3e-2 (beide falsch). Strukturierte Feeds gehören deshalb zum
+    Paritäts-Scan, sonst täuscht Rauschen OK vor (§V7 (copilot-instructions.md):
+    Ursache statt Symptom)."""
     _feed: dict = dict(inputs)
     for _k, _v in _feed.items():
         if _v.dtype != np.float32 or _v.size == 0:
@@ -141,6 +149,8 @@ def _random_feed(rng, inputs: dict, kind: str) -> dict:
             _feed[_k] = np.full(_v.shape, 0.5, dtype=np.float32)
         elif kind == "sane":
             _feed[_k] = rng.uniform(-1.0, 1.0, _v.shape).astype(np.float32)
+        elif kind == "const05":
+            _feed[_k] = np.full(_v.shape, 0.5, dtype=np.float32)
         else:
             _feed[_k] = rng.standard_normal(_v.shape).astype(np.float32)
     return _feed
@@ -157,7 +167,7 @@ def _parity_note(cpu_sess, gpu_sess, inputs: dict) -> str:
     _rng = np.random.default_rng(0)
     if not any(v.dtype == np.float32 and v.size > 0 for v in inputs.values()):
         return ""
-    for _kind in ("normal", "sane"):
+    for _kind in ("normal", "sane", "const05"):
         _par = _random_feed(_rng, inputs, _kind)
         try:
             _cpu_out = cpu_sess.run(None, _par)
