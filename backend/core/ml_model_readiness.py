@@ -346,9 +346,10 @@ def _register_all() -> None:
 
     # --- Speech Enhancement / Separation ---
     register_ml_check("SGMSE+", _probe_plugin("plugins.sgmse_plugin", "get_sgmse_plus_plugin", "_model_loaded"))
-    register_ml_check(
-        "ConvTasNet", _probe_plugin("plugins.convtasnet_plugin", "get_convtasnet_plugin", "_model_loaded")
-    )
+    # ConvTasNet: de-wired (kein Plugin-Modul, kein Produktions-Konsument) —
+    # Registrierung entfernt (§PERF-R 2026-09-18): der Probe lief auf ein
+    # nicht existierendes plugins.convtasnet_plugin und meldete im Selbstcheck
+    # dauerhaft eine Phantom-Ladefehler-Warnung (§V6 (copilot-instructions.md)-Ehrlichkeit).
     register_ml_check("MP-SENet", _probe_plugin("plugins.mp_senet_plugin", "get_mp_senet_plugin", "_model_loaded"))
     # --- Selbst trainierte Modelle (§v10.19) ---
     register_ml_check(
