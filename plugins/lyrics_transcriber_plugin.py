@@ -119,6 +119,20 @@ class LyricsTranscriber:
     _PLOSIVE_ENERGY_RATIO: float = 3.0
     _PLOSIVE_MAX_DURATION_S: float = 0.030
     _STRESS_RMS_FACTOR: float = 1.3
+    # §v10.303.52 (2026-09-18): Sprachadaptive Detektions-Schwellen — phonetisch
+    # begründete, konservative Deltas nach dem Sibilanten-/Plosiv-Inventar der
+    # Sprachfamilie (Grundlage: §2.36 Phonem-Klassifikation):
+    #   de (sibilantenreich: /s/, /ʃ/, /ts/): Frikativ-Schwelle etwas tiefer,
+    #       HF-Dominanz-Kriterium leicht permissiver.
+    #   es/it/pt (kürzere, schwächere Frikative): Schwelle höher, HF-Dominanz
+    #       strenger, kürzere Plosiv-Kappe (kein /t/-Verschleifen als Plosiv).
+    #   en/fr/unbekannt: Default (bisherige Werte — keine Regression).
+    _LANG_PHONEME_PROFILES: dict[str, dict[str, float]] = {
+        "de": {"zcr_fricative": 0.26, "hf_ratio": 0.9, "plosive_max_s": 0.030},
+        "es": {"zcr_fricative": 0.34, "hf_ratio": 1.3, "plosive_max_s": 0.025},
+        "it": {"zcr_fricative": 0.34, "hf_ratio": 1.3, "plosive_max_s": 0.025},
+        "pt": {"zcr_fricative": 0.34, "hf_ratio": 1.3, "plosive_max_s": 0.025},
+    }
 
     def __init__(self) -> None:
         self._session: object | None = None
@@ -391,7 +405,7 @@ class LyricsTranscriber:
         if not words:
             words = self._segment_with_torch_decoder(audio_16k, detected_lang)
         if not words:
-            words = self._segment_with_encoder(audio_16k, encoder_out, duration_s)
+            words = self._segment_with_encoder(audio_16k, encoder_out, duration_s, detected_lang)
         overall_conf = float(np.mean([w.confidence for w in words])) if words else 0.0
         overall_conf = max(0.0, min(1.0, overall_conf))
 
@@ -429,6 +443,11 @@ class LyricsTranscriber:
         _out: list[WordTimestamp] = []
         for _w in _tw_words:
             _conf = float(np.clip(float(_w.get("probability", 0.6)), 0.0, 1.0))
+            _i0 = int(max(0.0, float(_w["start"])) * self.WHISPER_SR)
+            _i1 = int(max(_i0 + 1, float(_w["end"]) * self.WHISPER_SR))
+            _seg = audio_16k[_i0:_i1]
+            # §v10.303.52: Sprachadaptive Phonem-Klassifikation statt Einheits-"vowel".
+            _ptype = self._classify_phoneme_type(_seg, self.WHISPER_SR, language or "")
             _out.append(
                 WordTimestamp(
                     word="[vocal]",  # Datenschutz: Wort-Inhalte werden nicht geloggt
@@ -436,7 +455,7 @@ class LyricsTranscriber:
                     end_s=float(_w["end"]),
                     confidence=_conf,
                     is_stressed=False,
-                    phoneme_type="vowel",
+                    phoneme_type=_ptype,
                 )
             )
         return _out
@@ -528,6 +547,7 @@ class LyricsTranscriber:
         audio_16k: np.ndarray,
         encoder_out: np.ndarray | None,
         duration_s: float,
+        language: str = "",
     ) -> list[WordTimestamp]:
         """Energie-basierte Segmentierung, Konfidenz erhöht wenn Encoder aktiv."""
         frame_size = int(0.025 * self.WHISPER_SR)  # 25 ms
@@ -572,7 +592,7 @@ class LyricsTranscriber:
         words: list[WordTimestamp] = []
         for start_s, end_s in segments:
             audio_seg = audio_16k[int(start_s * self.WHISPER_SR) : int(end_s * self.WHISPER_SR)]
-            ptype = self._classify_phoneme_type(audio_seg, self.WHISPER_SR)
+            ptype = self._classify_phoneme_type(audio_seg, self.WHISPER_SR, language)
             is_stressed = self._detect_stress(audio_seg, energy)
             words.append(
                 WordTimestamp(
@@ -763,16 +783,19 @@ class LyricsTranscriber:
     # Phonem-Klassifikation (DSP, §2.36 — sprachunabhängig)
     # ------------------------------------------------------------------
 
-    def _classify_phoneme_type(self, audio_seg: np.ndarray, sr: int) -> str:
+    def _classify_phoneme_type(self, audio_seg: np.ndarray, sr: int, language: str = "") -> str:
         """Klassifiziert Phonem-Typ via ZCR und Spektralenergie.
 
         Algorithmus (§2.36):
             1. ZCR = mean(|sign(x[n]) − sign(x[n−1])| / 2)
             2. FFT → Energie in [0, 4 kHz] und [4, 16 kHz]
-            3. Plosive: peak/rms > 3 UND Dauer < 30 ms
-            4. Fricative: ZCR > 0.30 UND HF > LF
+            3. Plosive: peak/rms > 3 UND Dauer < Sprachprofil-Kappe
+            4. Fricative: ZCR > Sprachprofil-Schwelle UND HF > LF
             5. Vokal: ZCR ≤ 0.20 UND LF > 2 × HF
             6. Mixed: Rest
+
+        §v10.303.52: Die Schwellen 3/4 stammen aus dem Sprachprofil
+        (_LANG_PHONEME_PROFILES); unbekannte Sprachen nutzen die Defaults.
 
         Invariante: Eingabe-Länge < 64 Samples → "mixed" (kein Absturz)
         """
@@ -795,11 +818,15 @@ class LyricsTranscriber:
         duration_s = len(seg) / max(sr, 1)
         peak = float(np.max(np.abs(seg)))
         rms = float(np.sqrt(np.mean(seg**2))) + 1e-10
-        if duration_s < self._PLOSIVE_MAX_DURATION_S and peak / rms > self._PLOSIVE_ENERGY_RATIO:
+        _prof = self._LANG_PHONEME_PROFILES.get((language or "").lower(), {})
+        _zcr_thr = float(_prof.get("zcr_fricative", self._ZCR_FRICATIVE_THRESHOLD))
+        _hf_ratio = float(_prof.get("hf_ratio", 1.0))
+        _plos_cap = float(_prof.get("plosive_max_s", self._PLOSIVE_MAX_DURATION_S))
+        if duration_s < _plos_cap and peak / rms > self._PLOSIVE_ENERGY_RATIO:
             return "plosive"
 
         # Frikativ: hohe ZCR + dominante HF-Energie
-        if zcr > self._ZCR_FRICATIVE_THRESHOLD and energy_hi > energy_lo:
+        if zcr > _zcr_thr and energy_hi > energy_lo * _hf_ratio:
             return "fricative"
 
         # Vokal: niedrige ZCR + dominante LF-Energie

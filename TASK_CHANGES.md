@@ -1,15 +1,15 @@
 # TASK_CHANGES — Live-Ledger der aktuellen Aufgabe
 
-> Generiert von `scripts/change_ledger.py snapshot` (Base: `HEAD`, Stand: 2026-09-18 22:18 CEST).
+> Generiert von `scripts/change_ledger.py snapshot` (Base: `HEAD`, Stand: 2026-09-18 22:41 CEST).
 > CI (`ci-lite.yml` pr-evidence-gate) erzwingt Abdeckung: jede geänderte Code-Datei muss hier stehen.
 
 ## Geänderte Dateien
 
 | Status | Pfad | Art |
 |---|---|---|
-| M | .github/copilot-instructions.md | modifiziert |
-| M | backend/core/dsp/whisper_torch_rocm.py | modifiziert |
+| M | .github/FILE_REGISTRY.md | modifiziert |
 | M | plugins/lyrics_transcriber_plugin.py | modifiziert |
+| ?? | tests/unit/test_lyrics_transcriber_lang_profiles.py | ungetrackt |
 
 ## Entscheidungen
 
