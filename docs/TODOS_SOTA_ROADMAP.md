@@ -1191,6 +1191,16 @@ Alle CPU-schließbaren Punkte der Offene-Punkte-Matrix sind umgesetzt und getest
 | Phasen skippen außerhalb der Audibility-Gates | verboten — die Gates sind die einzige zulässige Schwelle (Hörordnung) |
 | BANQUET-Mini-Batch per chirurgischem Graph-Patch | Export ist per Konstruktion batch-1-spezifisch (48+ bandweise Squeeze/Unsqueeze-Reshapes mit konstanten Ziel-Shapes; B=2 bricht im ersten `node_view`); Patch = Dutzende koordinierte Rewrites inkl. RNN-Zellen — nur Re-Export vertretbar (→ SOTA-ML-V5) |
 
+### Rest-Potenzial nach dem Verifikationslauf (qualitätsneutral, Reihenfolge = Hebel)
+
+| # | Hebel | Erwartung | Status |
+|---|---|---|---|
+| P8 | BANQUET parallele Fenster-Inferenz (Opt-in `AURIK_BANQUET_INFER_PARALLEL`): 0,5-s-Fenster unabhängig, ORT-`run` thread-sicher → ThreadPool über Fenster; OLA bleibt sequenziell → bit-identisch (Test beweist es) | ~4–6× auf phase_09 (dominante Chunk-Kosten, ~60 Fenster × ~2 s je Chunk) auf CPU | ✅ IMPLEMENTIERT (Default aus); Benchmark nach run30 entscheidet Wert (24 Kerne: 4–6 Worker sinnvoll) |
+| P9 | Whisper (LGE) auf Torch-ROCm statt CPU (einmal je Song) | ~10–20× auf dem Transkriptionsschritt | offen (GPU, nach F5) |
+| P10 | ORT-Session-Tuning (BANQUET intra-op 4→N im Zusammenspiel mit P8; weitere CPU-Modelle) | Mikro | offen (Benchmark) |
+| P11 | SOTA-ML-V5: BANQUET-Re-Export mit dynamischer Batch-Dim → GPU-Mini-Batch | potenziell ~5–10× über 1,19×-Deckel | offen (Re-Export) |
+| P12 | Hot-Phase-Nachmessung nach run30 (`compute_hot_phases` auf neuem Lauf-Log) — falls neue Phasen-Treiber sichtbar werden | evidenzbasiert | offen (nach Lauf) |
+
 ### Gemessene Hot-Phase-Wahrheit (Profiling 2026-09-16)
 
 - Treiber sind ML-Load/-Inferenz (BANQUET 0,78 s/Prozess = 62 % der Phasen-Zeit,
