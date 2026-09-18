@@ -24,6 +24,7 @@ from __future__ import annotations
 import hashlib
 import logging
 import math
+import os
 import threading
 from pathlib import Path
 from typing import Any, cast
@@ -146,6 +147,12 @@ class PANNsPlugin(MLPluginBase):  # §A2
     _MODEL_SR: int = 32_000
     _MODEL_SAMPLES: int = 320_000  # 10 s × 32 000 Hz
     _ONNX_PATH: Path = Path(__file__).parent.parent / "models" / "panns" / "panns_wavegram_logmel_cnn14.onnx"
+    # §PERF-R SOTA4-1 (2026-09-18): Parallele Fallback-Fenster-Inferenz
+    # (Opt-in, Default 0 = sequenziell wie bisher). Die Fenster (0.25/0.75)
+    # sind unabhängig; ORT-session.run ist thread-sicher. Das Maximum wird
+    # in FESTER Reihenfolge gebildet ⇒ bit-identisch zum Einzelpfad.
+    # Der Benchmark (nach dem v1023-Lauf) entscheidet den Default-Wert.
+    INFER_PARALLEL: int = max(0, int(os.environ.get("AURIK_PANNS_INFER_PARALLEL", "0")))
 
     def __init__(self) -> None:
         self._session: object | None = None
@@ -542,8 +549,14 @@ class PANNsPlugin(MLPluginBase):  # §A2
             except Exception as _rs_exc:
                 logger.debug("PANNs: Resample für Multi-Window fehlgeschlagen: %s", _rs_exc)
 
-            # Primär-Inferenz: Mitte (position_ratio=0.5)
-            model_input = self._to_model_input(audio, sr, position_ratio=0.5)
+            # Primär-Inferenz: Mitte (position_ratio=0.5) — §PERF-R SOTA4-1:
+            # das bereits resampelte Mono wiederverwenden (identische
+            # 99,9-%-Normalisierung auf dem vollen Signal); _to_model_input
+            # würde erneut resampeln.
+            if _mono_rs is not None:
+                model_input = self._to_model_input_from_resampled(_mono_rs, 0.5)
+            else:
+                model_input = self._to_model_input(audio, sr, position_ratio=0.5)
             try:
                 ort_out = self._session.run(  # type: ignore[attr-defined]
                     None,
@@ -584,14 +597,35 @@ class PANNsPlugin(MLPluginBase):  # §A2
             )
             _is_long_song = _mono_rs is not None and len(_mono_rs) > 2 * self._MODEL_SAMPLES
             if _singing_score_mid < 0.35 and _is_long_song:
-                for _pos in (0.25, 0.75):
+                _mw_positions: tuple[float, ...] = (0.25, 0.75)
+
+                def _mw_run(_pos: float) -> np.ndarray | None:
                     try:
                         assert _mono_rs is not None
                         _inp = self._to_model_input_from_resampled(_mono_rs, _pos)
-                        _out = self._session.run(None, {self._session.get_inputs()[0].name: _inp})  # type: ignore[attr-defined]
-                        scores = np.maximum(scores, _out[0][0])
+                        return np.asarray(  # type: ignore[no-any-return]
+                            self._session.run(None, {self._session.get_inputs()[0].name: _inp})[0][0],  # type: ignore[attr-defined, union-attr]
+                            dtype=np.float32,
+                        )
                     except Exception as _mw_exc:
                         logger.debug("PANNs Multi-Window pos=%.2f fehlgeschlagen: %s", _pos, _mw_exc)
+                        return None
+
+                if self.INFER_PARALLEL > 1:
+                    # §PERF-R SOTA4-1: unabhängige Fenster parallel; Maximum
+                    # in FESTER Reihenfolge (0.25 → 0.75) ⇒ bit-identisch.
+                    from concurrent.futures import ThreadPoolExecutor
+
+                    with ThreadPoolExecutor(max_workers=min(self.INFER_PARALLEL, len(_mw_positions))) as _pool:
+                        _mw_outs = list(_pool.map(_mw_run, _mw_positions))
+                    for _out in _mw_outs:
+                        if _out is not None:
+                            scores = np.maximum(scores, _out)
+                else:
+                    for _pos in _mw_positions:
+                        _out = _mw_run(_pos)
+                        if _out is not None:
+                            scores = np.maximum(scores, _out)
                 _singing_score_final = max(
                     (float(scores[i]) for i in _singing_indices if 0 <= i < len(scores)),
                     default=0.0,
