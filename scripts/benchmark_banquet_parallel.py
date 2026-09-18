@@ -13,7 +13,13 @@ werden beim Import aus der Umgebung gelesen):
 Ausgabe: eine JSON-Zeile auf stdout (wall_s, providers, sha des Outputs).
 Die sha erlaubt den Bit-Identitäts-Nachweis CPU-sequenziell vs. CPU-parallel.
 
-Aufrufbeispiel (Produktions-Env mit ROCm-ORT, 16 Kerne):
+Hinweis §SOTA-ML-V5 (2026-09-18): Der ORT-ROCm-Pfad ist für BANQUET
+abgeschaltet (numerisch defekte LSTM-Kernels); der GPU-Pfad ist der
+Torch-ROCm-Kern (backend/core/dsp/banquet_torch_rocm.py). Dieses Skript
+misst den ONNX-CPU-Pfad (P8/P10-Matrix); GPU-Zahlen liefert der
+Produktionslauf mit AURIK_BANQUET_TORCH=1 + AURIK_BANQUET_TORCH_BATCH=N.
+
+Aufrufbeispiel (16 Kerne):
 
   .venv_aurik/bin/python scripts/benchmark_banquet_parallel.py
 """

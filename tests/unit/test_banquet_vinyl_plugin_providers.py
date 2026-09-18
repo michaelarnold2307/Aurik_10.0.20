@@ -1,10 +1,11 @@
-"""GPU-ROCm (2026-09-13): Provider- und Optimierungs-Level-Logik des BANQUET-Plugins.
+"""BANQUET-Provider-Logik (2026-09-18, §SOTA-ML-V5).
 
-Produktionsbefund: Die Session registrierte nur CPU, obwohl
-ROCMExecutionProvider angefordert war — Ursache: `ORT_DISABLE_ALL`
-(kein Partitioning) → ORT fällt bei EINEM nicht-ROCm-fähigen Op komplett
-auf CPU zurück. Fix: ENABLE_BASIC bei GPU-Request, DISABLE_ALL nur für
-CPU; zusätzlich Warnung bei stillem CPU-Fallback (§V6 (copilot-instructions.md)).
+Befund: Die ORT-ROCm-LSTM-Kernels rechnen das BANQUET-Modell nachweislich
+falsch (roh max|Δ| ≈ 0,35 vs. ONNX-CPU auf echten Plugin-Feats; analog zum
+bs_roformer-Befund rel 6,2). Der paritätsverifizierte Torch-ROCm-Kern
+(backend/core/dsp/banquet_torch_rocm.py, ≤ 2e-6) übernimmt den GPU-Pfad;
+die ONNX-Session bleibt reiner Qualitäts-Fallback und läuft deshalb immer
+auf CPU mit ORT_DISABLE_ALL (Schutz vor dem Slice-Rewrite-Crash).
 """
 
 from __future__ import annotations
@@ -54,16 +55,22 @@ def _make_plugin(monkeypatch, tmp_path, providers, captured):
     return plugin
 
 
-def test_gpu_request_uses_enable_basic(monkeypatch, tmp_path):
-    """GPU-Request → Partitioning aktiv (ENABLE_BASIC) + GPU-Provider durchgereicht."""
+def test_gpu_request_forced_to_cpu_providers(monkeypatch, tmp_path, caplog):
+    """§SOTA-ML-V5: ROCm-Request wird verworfen (numerisch defekte LSTM-Kernels)
+    → Session bekommt nur CPU + DISABLE_ALL + sichtbare Warnung
+    (§V6 (copilot-instructions.md))."""
+    import logging
+
     captured: dict = {}
     gpu_providers = [("ROCMExecutionProvider", {"device_id": 0}), "CPUExecutionProvider"]
-    plugin = _make_plugin(monkeypatch, tmp_path, gpu_providers, captured)
+    with caplog.at_level(logging.WARNING):
+        plugin = _make_plugin(monkeypatch, tmp_path, gpu_providers, captured)
 
     assert plugin._model_ok is True
-    assert captured["providers"] == gpu_providers
+    assert captured["providers"] == ["CPUExecutionProvider"]
     lvl = captured["kwargs"]["sess_options"].graph_optimization_level
-    assert lvl == _real_ort.GraphOptimizationLevel.ORT_ENABLE_BASIC
+    assert lvl == _real_ort.GraphOptimizationLevel.ORT_DISABLE_ALL
+    assert any("ORT-ROCm deaktiviert" in r.message for r in caplog.records)
 
 
 def test_cpu_request_keeps_disable_all(monkeypatch, tmp_path):
@@ -72,24 +79,9 @@ def test_cpu_request_keeps_disable_all(monkeypatch, tmp_path):
     plugin = _make_plugin(monkeypatch, tmp_path, ["CPUExecutionProvider"], captured)
 
     assert plugin._model_ok is True
+    assert captured["providers"] == ["CPUExecutionProvider"]
     lvl = captured["kwargs"]["sess_options"].graph_optimization_level
     assert lvl == _real_ort.GraphOptimizationLevel.ORT_DISABLE_ALL
-
-
-def test_silent_cpu_fallback_logs_warning(monkeypatch, tmp_path, caplog):
-    """§V6 (copilot-instructions.md): GPU angefordert, Session registriert nur CPU → sichtbare Warnung."""
-    import logging
-
-    captured: dict = {}
-    captured["session_providers_override"] = ["CPUExecutionProvider"]
-    with caplog.at_level(logging.WARNING):
-        _make_plugin(
-            monkeypatch,
-            tmp_path,
-            [("ROCMExecutionProvider", {"device_id": 0}), "CPUExecutionProvider"],
-            captured,
-        )
-    assert any("CPU-Fallback" in r.message for r in caplog.records)
 
 
 def test_reset_for_song_clears_failures_keeps_quarantine(monkeypatch, tmp_path):

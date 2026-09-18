@@ -619,19 +619,39 @@
       `model_used=bs_roformer_317_torch_rocm` mit beiden Stems bestanden.
     - Offen bleibt nur S3 im ONNX-EP-Sinn (numerisch defekte ORT-ROCm-Kernels)
       — durch den PyTorch-Pfad funktional überholt, ONNX-CPU bleibt Fallback.
-19. **SOTA-ML-V5** · BANQUET-Re-Export mit dynamischer Batch-Dim (Mini-Batch-Inferenz
-    der 0,5-s-OLA-Fenster). Beleg 2026-09-17 (gemessen, CPU-Session):
+19. **SOTA-ML-V5** · ✅ ERLEDIGT (2026-09-18) — BANQUET-Torch-ROCm-Kern +
+    Batch-Re-Export. Beleg 2026-09-17 (gemessen, CPU-Session):
     `banquet_vinyl_final.onnx` ist per Konstruktion batch-1-spezifisch — die
     Batch-Dim ist statisch `[1,128,128,128]` und 48+ bandweise
     Squeeze/Unsqueeze-Reshapes (`node_view*` → `[128,128,128]`,
     `node_Reshape_*` → `[128,128,512]`, `node_view*` → `[1,128,128,512]`)
     tragen konstante Ziel-Shapes; ein dynamischer Batch bricht im ersten
     `node_view`-Reshape (gemessener ORT-Fehler „input_shape_size == size
-    was false“). `add_free_dimension_override` greift bei hart statischen
-    Dims nicht. Damit bleibt der ROCm-Deckel bei ~1,19× (2485→2092 ms je
-    1-s-Fenster, Registry 2026-09-13). Schritt: Re-Export aus dem
-    Original-Training mit symbolischer Batch-Dim, dann GPU-Paritäts-Scan
-    (rel ≤ 1e-3, §G5). GPU-gebunden.
+    was false“). **Umsetzung (2026-09-18):**
+    (a) *Re-Export* (`scripts/export_banquet_batch_onnx.py` →
+    `models/banquet/banquet_vinyl_batch.onnx`): die 3 geteilten
+    Shape-Konstanten (je 24× verwendet) durch berechnete Shape-Graphen
+    ersetzt (Merge/Dir-Merge/Unmerge mit B×128), h0/c0 als ConstantOfShape;
+    Selbstverifikation: B=1 bit-exakt (Optimizer aus), B=2/3
+    Batch-Unabhängigkeit bit-exakt. Empirie: Mini-Batch über die LSTM-
+    Batch-Achse gewinnt auf ROCm/CPU kaum (~1,1×) — die Kette aus 24
+    LSTM-Zellen ist latenzgebunden, nicht durchsatzgebunden.
+    (b) *Torch-ROCm-Kern* (`backend/core/dsp/banquet_torch_rocm.py`): der
+    ONNX-Kern ist ein 24-Zellen-BSRNN (geteilte LayerNorm, bidir-LSTM
+    128→256, Linear+Residuum, alternierender Achsen-Tausch) — 1:1 aus den
+    ONNX-Gewichten rekonstruiert (W-Gates nativ PyTorch-Ordnung, Bias-Gates
+    gespeichert (i,c,f,o) → perm (0,2,3,1)); Parität ONNX-CPU max|Δ| ≈ 1,9e-6
+    (CPU, Optimizer aus), GPU deterministisch. **~160 ms/Fenster statt ~1,9 s
+    ORT-ROCm (11,8×; B=4 ≈ 97 ms ≈ 19,5×); End-to-End 3-s-Probe 0,88 s statt
+    16,8 s (~19×).**
+    (c) *Qualitäts-Nebenfund:* ORT-ROCm-LSTM-Kernels rechnen das Modell
+    nachweislich falsch (roh max|Δ| ≈ 0,35 vs. ONNX-CPU auf echten
+    Plugin-Feats; bs_roformer-Befund analog) — der ONNX-Fallback läuft
+    deshalb jetzt immer auf CPU (Provider-Filter + §V6-Warnung); der
+    Torch-Kern ist damit nicht nur schneller, sondern auch numerisch
+    korrekt. 7 Unit-Tests grün (`tests/unit/test_banquet_torch_rocm.py`),
+    Provider-Test auf die neue Policy umgestellt. AURIK_BANQUET_TORCH=0
+    = Kill-Switch; AURIK_BANQUET_TORCH_BATCH=4 = Mini-Batch.
 
 ---
 
@@ -1198,7 +1218,7 @@ Alle CPU-schließbaren Punkte der Offene-Punkte-Matrix sind umgesetzt und getest
 | P8 | BANQUET parallele Fenster-Inferenz (`AURIK_BANQUET_INFER_PARALLEL`): 0,5-s-Fenster unabhängig, ORT-`run` thread-sicher → ThreadPool über Fenster; OLA bleibt sequenziell → bit-identisch (Test beweist es) | gemessen (2026-09-18, 16 Kerne, 9 Fenster): CPU 18,2→11,5 s (1,58×), GPU-ROCm 14,2→8,9 s (1,61×); sha über alle Konfigs identisch | ✅ UMGESETZT 2026-09-18: Default 4 (Datenlage entscheidet, `scripts/benchmark_banquet_parallel.py`); Env-Override bleibt |
 | P9 | Whisper (LGE) auf Torch-ROCm statt CPU (einmal je Song) | ~10–20× auf dem Transkriptionsschritt | ✅ UMGESETZT 2026-09-18 (HF-Decoder-Pfad): Gerätewahl cuda:0 bei torch.cuda, Kill-Switch `AURIK_WHISPER_GPU=0`, GPU-Fehler ⇒ sichtbarer CPU-Rückfall (§V6 (copilot-instructions.md)); auf diesem Host inaktiv — HF-Modell-Dateien fehlen (Blob-Store-Symlinks gebrochen) ⇒ ONNX/DSP-Ersatzpfad |
 | P10 | ORT-Session-Tuning (BANQUET intra-op 4→N im Zusammenspiel mit P8) | Mikro; intra_op=4 bleibt Optimum in der gemessenen Matrix | ✅ UMGESETZT 2026-09-18: `AURIK_BANQUET_INTRA_OP_THREADS`-Knopf (Default 4 = bisher); Matrix gemessen (intra_op 1/2/4 × P 0/2/4/6/8) |
-| P11 | SOTA-ML-V5: BANQUET-Re-Export mit dynamischer Batch-Dim → GPU-Mini-Batch | potenziell ~5–10× über 1,19×-Deckel | offen (Re-Export): Trainings-Checkpoint liegt vor (`models/banquet/ev-pre-aug.ckpt`), Trainings-Code fehlt im Repo ⇒ extern gebunden |
+| P11 | SOTA-ML-V5: BANQUET-Re-Export mit dynamischer Batch-Dim → GPU-Mini-Batch | Mini-Batch-Empirie ~1,1× (LSTM-Kette latenzgebunden) — aber **Torch-ROCm-Kern: 11,8×/B=4 19,5× je Fenster, End-to-End ~19×** (3-s-Probe 0,88 s statt 16,8 s) | ✅ UMGESETZT 2026-09-18: Re-Export `scripts/export_banquet_batch_onnx.py` → `banquet_vinyl_batch.onnx` (B=1 bit-exakt, B=2/3 unabhängig) + Torch-Kern `backend/core/dsp/banquet_torch_rocm.py` (Parität ONNX-CPU 1,9e-6, deterministisch) + ORT-ROCm-Defekt beseitigt (ONNX-Fallback jetzt CPU, roh 0,35-Fehler eliminiert) |
 | P12 | Hot-Phase-Nachmessung nach run30 (`compute_hot_phases` auf neuem Lauf-Log) — falls neue Phasen-Treiber sichtbar werden | evidenzbasiert | offen (nach Lauf) |
 
 ### §PERF-R (2026-09-18) — Redundanz-Befund & Höchstperformance-Fixes (qualitätsneutral)

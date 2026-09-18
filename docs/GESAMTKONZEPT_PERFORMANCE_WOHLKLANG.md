@@ -131,6 +131,15 @@ passieren — sonst wird sie verworfen:
 **Phase 2 — GPU (7900 XTX):**
 5. P1-1 Modell-Residency/Warm-up + Multi-Song-Batching (Seed-Isolation je Song).
 6. R3 ROCm-Ports (Muster BSR 42×; Paritäts-Test je Modell).
+   ✅ **BANQUET (SOTA-ML-V5, 2026-09-18):** Torch-ROCm-Kern
+   (`backend/core/dsp/banquet_torch_rocm.py`, 24-Zellen-BSRNN 1:1 aus den
+   ONNX-Gewichten rekonstruiert, Parität ONNX-CPU max|Δ| ≈ 1,9e-6,
+   deterministisch): ~160 ms/Fenster statt ~1,9 s ORT-ROCm (11,8×;
+   B=4 ≈ 19,5×), End-to-End ~19×. Nebenfund: ORT-ROCm-LSTM-Kernels
+   numerisch defekt (roh 0,35) — ONNX-Fallback läuft jetzt immer auf CPU
+   (§V6-Warnung), der Torch-Kern ist damit auch der qualitätskorrekte Pfad.
+   Re-Export mit dynamischer Batch-Dim (`scripts/export_banquet_batch_onnx.py`)
+   bit-verifiziert; Mini-Batch-Empirie ~1,1× (Latenz-, nicht Durchsatzbindung).
 
 **Phase 3 — strukturell:**
 7. P2-1-Monolith-Split als Enabler für saubere Deferral-/Residency-Grenzen.

@@ -68,6 +68,15 @@ class BanquetVinylPlugin:
     # passende intra-op-Zahl gegen Oversubscription (Benchmark:
     # scripts/benchmark_banquet_parallel.py entscheidet den Default).
     INTRA_OP_THREADS: int = max(1, int(os.environ.get("AURIK_BANQUET_INTRA_OP_THREADS", "4")))
+    # §SOTA-ML-V5 (2026-09-18): PyTorch-ROCm-Kern
+    # (backend/core/dsp/banquet_torch_rocm.py) statt ORT-LSTM-Kette.
+    # Paritätsverifiziert (CPU, Optimizer aus): max|Δ| ≈ 1,9e-6 vs. ONNX;
+    # GPU deterministisch (§G5 (copilot-instructions.md)). Benchmark 7900 XTX:
+    # ORT-ROCm ~1,9 s/Fenster → torch ~160 ms (11,8×), B=4 ~97 ms (19,5×).
+    # AURIK_BANQUET_TORCH=0 erzwingt den ONNX-Pfad (Kill-Switch);
+    # AURIK_BANQUET_TORCH_BATCH = Mini-Batch-Fenster je GPU-Lauf (Default 4).
+    TORCH_ENABLED: bool = os.environ.get("AURIK_BANQUET_TORCH", "1") != "0"
+    TORCH_BATCH: int = max(1, int(os.environ.get("AURIK_BANQUET_TORCH_BATCH", "4")))
 
     def __init__(self, model_dir: str | None = None) -> None:
         self._session = None
@@ -76,6 +85,10 @@ class BanquetVinylPlugin:
         self._model_ok: bool = False
         self._chunk_failures: int = 0
         self._runtime_quarantined: bool = False
+        # §SOTA-ML-V5 (2026-09-18): Torch-ROCm-Kern-Zustand.
+        self._torch_core = None
+        self._torch_resolved: bool = False
+        self._torch_quarantined: bool = False
         # §PERF-R (2026-09-18): Einmal-je-Zustand-Retry für den Modell-Load.
         # PLM-Eviction setzt Session/_model_ok zurück UND diesen Flag — der
         # nächste Song lädt das Modell dann EINMAL nach, statt still
@@ -109,6 +122,12 @@ class BanquetVinylPlugin:
         """
         with self._state_lock:
             self._chunk_failures = 0
+            # §SOTA-ML-V5: Transienter torch-Kern-Fehler → nächster Song darf
+            # den (gecachten) Kern erneut versuchen; deterministische Defekte
+            # kosten dann höchstens eine Exception je Song.
+            self._torch_quarantined = False
+            if self._torch_core is None and self._torch_resolved:
+                self._torch_resolved = False
 
     def ensure_model_loaded(self) -> bool:
         """Stellt die Modell-Session wieder her (nach PLM-Eviction) — §PERF-R.
@@ -187,27 +206,27 @@ class BanquetVinylPlugin:
                 _name = str(p[0] if isinstance(p, tuple) else p).upper()
                 return "ROC" in _name or "GPU" in _name or "MIGRAPHX" in _name or "CUDA" in _name
 
-            _gpu_requested_bq = any(_is_gpu_p(p) for p in _providers)
-            if _gpu_requested_bq:
-                opts.graph_optimization_level = ort.GraphOptimizationLevel.ORT_ENABLE_BASIC
-            else:
-                # ORT_DISABLE_ALL avoids the graph-level Slice rewrite that causes
-                # 'Starts must be a 1-D array' at optimisation time (CPU-Pfad).
-                opts.graph_optimization_level = ort.GraphOptimizationLevel.ORT_DISABLE_ALL
+            # §SOTA-ML-V5 (2026-09-18): Die ORT-ROCm-LSTM-Kernels rechnen das
+            # BANQUET-Modell nachweislich falsch (roh max|Δ| ≈ 0,35 vs.
+            # ONNX-CPU auf echten Plugin-Feats; analog zum bs_roformer-Befund
+            # rel 6,2). Der paritätsverifizierte Torch-ROCm-Kern
+            # (backend/core/dsp/banquet_torch_rocm.py, ≤ 2e-6) übernimmt den
+            # GPU-Pfad; die ONNX-Session bleibt reiner Qualitäts-Fallback und
+            # läuft deshalb immer auf CPU (§V6 (copilot-instructions.md)).
+            _providers_cpu_only = [p for p in _providers if not _is_gpu_p(p)]
+            if len(_providers_cpu_only) != len(_providers):
+                logger.warning(
+                    "BANQUET: ORT-ROCm deaktiviert (numerisch defekte LSTM-Kernels, §SOTA-ML-V5) — ONNX-Fallback auf CPU"
+                )
+                _providers = _providers_cpu_only or ["CPUExecutionProvider"]
+            # ORT_DISABLE_ALL avoids the graph-level Slice rewrite that causes
+            # 'Starts must be a 1-D array' at optimisation time (CPU-Pfad).
+            opts.graph_optimization_level = ort.GraphOptimizationLevel.ORT_DISABLE_ALL
             self._session = ort.InferenceSession(
                 str(load_path),
                 sess_options=opts,
                 providers=_providers,
             )
-            # Silent-CPU-Fallback sichtbar machen (§V6 (copilot-instructions.md)): GPU angefordert, ORT
-            # registriert aber nur CPU.
-            _active_eps = self._session.get_providers()  # type: ignore[attr-defined]
-            if _gpu_requested_bq and not any(_is_gpu_p(p) for p in _active_eps):
-                logger.warning(
-                    "BANQUET: GPU angefordert (%s), ORT nutzt aber nur %s — CPU-Fallback",
-                    _providers[0] if _providers else "?",
-                    _active_eps,
-                )
             self._input_name = self._session.get_inputs()[0].name  # type: ignore[attr-defined]
             self._output_name = self._session.get_outputs()[0].name  # type: ignore[attr-defined]
             self._model_ok = True
@@ -356,6 +375,24 @@ class BanquetVinylPlugin:
         out = np.zeros_like(audio)
         weight = np.zeros(n_samples, dtype=np.float32)
 
+        # §SOTA-ML-V5 (2026-09-18): Torch-ROCm-Kern bevorzugt (11,8×),
+        # sonst ORT-Pfad wie bisher. Fail-closed (§V6 (copilot-instructions.md)):
+        # jede Kern-Exception quarantänt den Kern für den Rest des Songs.
+        if self.TORCH_ENABLED and not self._torch_quarantined:
+            if not self._torch_resolved:
+                self._torch_resolved = True
+                try:
+                    from backend.core.dsp.banquet_torch_rocm import (
+                        get_banquet_torch_core,  # pylint: disable=import-outside-toplevel
+                    )
+
+                    self._torch_core = get_banquet_torch_core()
+                except Exception as _t_exc:
+                    logger.debug("BANQUET torch-Kern-Auflösung nicht blockierend: %s", _t_exc)
+                    self._torch_core = None
+            if self._torch_core is not None:
+                return self._process_torch_rocm(audio, channels, chunk_len, hop_len, window, strength)
+
         _parallel = max(0, int(self.INFER_PARALLEL))
 
         if _parallel <= 1:
@@ -404,6 +441,102 @@ class BanquetVinylPlugin:
                 for c in range(channels):
                     out[:, pos0:pos1] += (chunk_out[c] * window)[:actual][np.newaxis, :]
                 weight[pos0:pos1] += window[:actual]
+
+        weight = np.where(weight < 1e-8, 1.0, weight)
+        out /= weight[np.newaxis, :]
+
+        if strength < 1.0:
+            out = strength * out + (1.0 - strength) * audio
+
+        return np.clip(out, -1.0, 1.0)  # type: ignore[no-any-return]
+
+    # ------------------------------------------------------------------
+    def _process_torch_rocm(
+        self,
+        audio: np.ndarray,
+        channels: int,
+        chunk_len: int,
+        hop_len: int,
+        window: np.ndarray,
+        strength: float,
+    ) -> np.ndarray:
+        """§SOTA-ML-V5: OLA über den Torch-ROCm-Kern mit Mini-Batch-Fenstern.
+
+        Fenster in Gruppen à TORCH_BATCH; OLA strikt in Fenster-Reihenfolge →
+        deterministisch (§G5 (copilot-instructions.md)). Die Batch-Achse ist
+        unabhängig (Paritäts-Beweis: B=4 vs. B=1 max|Δ| ≈ 2,4e-6, rel 4e-7).
+        Fail-closed (§V6 (copilot-instructions.md)): Bei Kern-Fehler wird der
+        Rest des Songs über den ONNX-Einzelfenster-Pfad (_infer_window)
+        abgewickelt und der Kern für den Song quarantänt.
+        """
+        from backend.core.dsp.banquet_torch_rocm import restore_banquet_torch  # pylint: disable=import-outside-toplevel
+
+        n_samples = audio.shape[1]
+        out = np.zeros_like(audio)
+        weight = np.zeros(n_samples, dtype=np.float32)
+
+        _jobs: list[tuple[np.ndarray, int, int]] = []
+        pos = 0
+        while pos < n_samples:
+            end = min(pos + chunk_len, n_samples)
+            chunk = audio[:, pos:end]
+            pad = chunk_len - chunk.shape[1]
+            if pad > 0:
+                chunk = np.pad(chunk, ((0, 0), (0, pad)))
+            _jobs.append((chunk, pos, end))
+            pos += hop_len
+
+        _batch = max(1, int(self.TORCH_BATCH))
+        _idx = 0
+        while _idx < len(_jobs):
+            _group = _jobs[_idx : _idx + _batch]
+            _idx += len(_group)
+            _feats: list[np.ndarray] = []
+            _ctxs: list[np.ndarray] = []
+            for _chunk, _p0, _p1 in _group:
+                _feat, _ctx = self._prepare_input(_chunk, channels)
+                _feats.append(_feat)
+                _ctxs.append(_ctx)
+            try:
+                _raw = restore_banquet_torch(self._torch_core, np.concatenate(_feats, axis=0))
+            except Exception as _t_exc:
+                logger.warning(
+                    "BANQUET torch-ROCm-Fehler: %s — ONNX-Einzelfenster für den Rest des Songs"
+                    " (§V6 (copilot-instructions.md))",
+                    _t_exc,
+                )
+                self._torch_quarantined = True
+                self._torch_core = None
+                for (_chunk, _p0, _p1), _ctx in zip(_group, _ctxs):
+                    _chunk_out = self._infer_window(_chunk, channels, chunk_len, strength)
+                    _actual = _p1 - _p0
+                    for c in range(channels):
+                        out[:, _p0:_p1] += (_chunk_out[c] * window)[:_actual][np.newaxis, :]
+                    weight[_p0:_p1] += window[:_actual]
+                break
+            for (_chunk, _p0, _p1), _r, _ctx in zip(_group, _raw, _ctxs):
+                _chunk_out = self._extract_output(_r[np.newaxis], channels, chunk_len, _ctx)
+                _actual = _p1 - _p0
+                for c in range(channels):
+                    out[:, _p0:_p1] += (_chunk_out[c] * window)[:_actual][np.newaxis, :]
+                weight[_p0:_p1] += window[:_actual]
+
+        # Nach einem Kern-Ausfall läuft der Rest über den ONNX-Pfad weiter
+        # (gleiche OLA-Normalisierung und Stärke-Mischung wie _process_onnx).
+        if self._torch_quarantined:
+            pos = _idx * hop_len
+            while pos < n_samples:
+                end = min(pos + chunk_len, n_samples)
+                chunk = audio[:, pos:end]
+                pad = chunk_len - chunk.shape[1]
+                if pad > 0:
+                    chunk = np.pad(chunk, ((0, 0), (0, pad)))
+                chunk_out = self._infer_window(chunk, channels, chunk_len, strength)
+                actual = end - pos
+                for c in range(channels):
+                    out[:, pos:end] += (chunk_out[c] * window)[:actual][np.newaxis, :]
+                weight[pos:end] += window[:actual]
+                pos += hop_len
 
         weight = np.where(weight < 1e-8, 1.0, weight)
         out /= weight[np.newaxis, :]
