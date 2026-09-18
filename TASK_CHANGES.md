@@ -1,22 +1,13 @@
 # TASK_CHANGES — Live-Ledger der aktuellen Aufgabe
 
-> Generiert von `scripts/change_ledger.py snapshot` (Base: `HEAD`, Stand: 2026-09-18 18:29 CEST).
+> Generiert von `scripts/change_ledger.py snapshot` (Base: `HEAD`, Stand: 2026-09-18 18:38 CEST).
 > CI (`ci-lite.yml` pr-evidence-gate) erzwingt Abdeckung: jede geänderte Code-Datei muss hier stehen.
 
 ## Geänderte Dateien
 
 | Status | Pfad | Art |
 |---|---|---|
-| M | .github/FILE_REGISTRY.md | modifiziert |
-| M | TASK_CHANGES.md | modifiziert |
 | M | docs/GESAMTKONZEPT_PERFORMANCE_WOHLKLANG.md | modifiziert |
-| M | docs/TODOS_SOTA_ROADMAP.md | modifiziert |
-| M | plugins/banquet_vinyl_plugin.py | modifiziert |
-| M | scripts/benchmark_banquet_parallel.py | modifiziert |
-| M | tests/unit/test_banquet_vinyl_plugin_providers.py | modifiziert |
-| ?? | backend/core/dsp/banquet_torch_rocm.py | ungetrackt |
-| ?? | scripts/export_banquet_batch_onnx.py | ungetrackt |
-| ?? | tests/unit/test_banquet_torch_rocm.py | ungetrackt |
 
 ## Entscheidungen
 

@@ -140,6 +140,14 @@ passieren — sonst wird sie verworfen:
    (§V6-Warnung), der Torch-Kern ist damit auch der qualitätskorrekte Pfad.
    Re-Export mit dynamischer Batch-Dim (`scripts/export_banquet_batch_onnx.py`)
    bit-verifiziert; Mini-Batch-Empirie ~1,1× (Latenz-, nicht Durchsatzbindung).
+   ⏳ **FCPE (Folge-Hebel, Messung 2026-09-18):** ORT-ROCm auch hier numerisch
+   defekt (Salience max|Δ| ≈ 0,04, rel ≈ 0,19 vs. ORT-CPU — Softmax-/Attention-
+   Kernels; dritter bestätigter Fall nach bs_roformer und BANQUET) → CPU-Policy
+   im Registry bleibt korrekt. ROCm wäre 227 ms vs. 2082 ms CPU je 60-s-Mel
+   (9,2×), aber falsch. Der GPU-Weg führt über einen Torch-ROCm-Port:
+   torchfcpe-Quelle liegt im Repo (`models/fcpe/torchfcpe/`,
+   `model_conformer_naive.py`), ONNX-Gewichte sind namentlich 1:1 zuzuordnen;
+   es fehlen die Laufzeit-Deps `einops` + `local_attention` in der Venv.
 
 **Phase 3 — strukturell:**
 7. P2-1-Monolith-Split als Enabler für saubere Deferral-/Residency-Grenzen.
