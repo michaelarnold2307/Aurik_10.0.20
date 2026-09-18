@@ -226,9 +226,12 @@ def _resolve_device() -> Any:
     eingehalten wird. Produktion (GUI) liefert der Manager ohnehin CUDA.
 
     §G5 (GEBOTE.md)/Defizit-Fix 2026-09-16: `AURIK_MUQ_GPU=0` erzwingt CPU
-    (bit-deterministisch) — ROCm-GPU-Inferenz ist nach Messung NICHT
-    bit-deterministisch (vgl. MuLan-Befund), der Schalter ist der explizite
-    Opt-out für Determinismus-Kontexte (Tests, §G5-Zertifikate).
+    (bit-deterministisch) — ROCm-GPU-Inferenz war nach Messung von 2026-09-16
+    NICHT bit-deterministisch (vgl. MuLan-Befund). **Nachmessung 2026-09-18:**
+    auf dem aktuellen Torch-ROCm-Stack sind zwei aufeinanderfolgende GPU-Läufe
+    bit-identisch (max|Δ| = 0.0, 7900 XTX) — der Befund ist nicht mehr
+    reproduzierbar. Der Schalter bleibt als expliziter Opt-out für
+    Determinismus-Kontexte erhalten (Tests, §G5-Zertifikate).
     """
     global _device
     # §G5 (GEBOTE.md): Der Determinismus-Opt-out wird VOR dem Cache geprüft —

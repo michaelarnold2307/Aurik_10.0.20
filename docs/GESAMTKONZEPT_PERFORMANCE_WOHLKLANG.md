@@ -161,8 +161,17 @@ passieren — sonst wird sie verworfen:
    bevorzugt den Torch-Kern mit ONNX-CPU-Fallback. **MuQ-MuLan ist gelöst
    (§SOTA-ML-V8):** Audio-Turm-Torch-ROCm-Kern (vendorter muq_mulan-Code +
    lokale Gewichte), Parität rel ≈ 3.2e-6 vs. ONNX-CPU, deterministisch,
-   ~29 ms je 10-s-Embedding (~50×); Plugin bevorzugt den Torch-Kern. Offen:
-   Whisper-Decoder (merged, Aufmerksamkeit) + Turbo-fp16 — Folge-Hebel.
+   ~29 ms je 10-s-Embedding (~50×); Plugin bevorzugt den Torch-Kern.
+   **Whisper-Decoder + Turbo (2026-09-18):** GELÖST — Torch-Decoder mit
+   echten Wort-Timestamps (§SOTA-ML-V9), Gesangs-Gate gegen Halluzinationen
+   auf Instrumental-Passagen (vocal_presence/Wortdichte), sprachadaptive
+   Phonem-Schwellen (§v10.303.52), Turbo als validiertes Opt-in
+   (AURIK_WHISPER_TURBO=1; fp16-Präzisionsboden des Modells selbst
+   rel ≈ 0.14 belegt — kein Kernel-Defekt).
+   **MuQ-Witness-Determinismus:** Der Befund „ROCm-GPU nicht bit-deterministisch"
+   (2026-09-16, MuLan) ist auf dem aktuellen Torch-ROCm-Stack nicht mehr
+   reproduzierbar — zwei GPU-Läufe bit-identisch (max|Δ| = 0.0, 7900 XTX);
+   AURIK_MUQ_GPU=0 bleibt als Opt-out für §G5-Zertifikats-Kontexte.
 
 **Phase 3 — strukturell:**
 7. P2-1-Monolith-Split als Enabler für saubere Deferral-/Residency-Grenzen.
