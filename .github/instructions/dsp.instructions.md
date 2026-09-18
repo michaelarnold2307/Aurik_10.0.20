@@ -22,6 +22,20 @@ torch.set_num_threads(os.cpu_count())
 providers = ["CPUExecutionProvider"]
 ```
 
+## GPU-Numerik-Parität (2026-09-18, §SOTA-ML-V5–V9)
+
+- ONNX-EPs außer CPU (ROCm/MIGraphX/CUDA) nur mit Paritäts-Nachweis gegen die
+  ONNX-CPU-Referenz auf strukturierten Feeds (normal/sane/const05, rel ≤ 1e-3;
+  weißes Rauschen täuscht OK vor — Befund basicpitch).
+- Bekannte numerisch defekte ORT-ROCm-Kernels (bs_roformer-Softmax,
+  BANQUET-LSTM, FCPE/Whisper/MuQ-MuLan-Attention, basicpitch-Conv;
+  rel 0,19–0,98 gemessen) sind durch paritätsverifizierte, GPU-deterministische
+  Torch-ROCm-Kerne ersetzt (backend/core/dsp/*_torch_rocm.py); ONNX bleibt
+  reiner CPU-Fallback (§V6 (copilot-instructions.md)).
+- Neue GPU-Kerne: Paritäts-Nachweis + Determinismus-Nachweis (§G5
+  (copilot-instructions.md)) + fail-closed-Fallback — Muster: bsr317/
+  banquet/whisper/fcpe/muq_mulan_torch_rocm.py.
+
 ## §2.62 Psychoakustischer Masking-Guard (NR-Algorithmen)
 
 ```python

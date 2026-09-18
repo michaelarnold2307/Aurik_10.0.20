@@ -111,6 +111,12 @@ Details immer in der normativen Kette (§1) nachlesen.
   PIM-first, RLP-last; Glue Stage immer als vorletzte Phase; 62 DefectTypes
   (keine ad-hoc-Neuen); NaN/Inf-Schutz in jeder Phase (§0a); Logger-Pflicht
   (`logging.getLogger(__name__)`) in jedem Modul.
+- **ML-GPU-Numerik (§III.9)**: ONNX-EPs außer CPU nur mit Paritäts-Nachweis
+  gegen ONNX-CPU auf strukturierten Feeds (rel ≤ 1e-3). Die 6 gemessenen
+  ORT-ROCm-Kernel-Defekte (bs_roformer, BANQUET, FCPE, basicpitch, Whisper,
+  MuQ-MuLan; rel 0,19–0,98) sind durch paritätsverifizierte,
+  deterministische Torch-ROCm-Kerne ersetzt (`backend/core/dsp/*_torch_rocm.py`);
+  ONNX bleibt reiner CPU-Fallback (§V6).
 - **Verbotene Phasen (§0a)**: `phase_21_exciter`,
   `phase_35_multiband_compression`, `phase_42_vocal_enhancement` sind im
   Restoration-Modus verboten.

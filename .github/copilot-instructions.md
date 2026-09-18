@@ -138,6 +138,15 @@ Jedes VERBOT definiert eine unzulässige Handlung. Verstöße sind Build-Fehler.
 6. **NaN/Inf-Schutz**: Jede Phase MUSS `np.nan_to_num()` oder `np.isfinite()` auf Ausgabe-Audio anwenden (§0a).
 7. **Logger-Pflicht**: Jede Python-Datei mit `logger` MUSS `import logging` und `logger = logging.getLogger(__name__)` definieren.
 8. **POW-r Type 3 Dither**: Primäres Dithering-Verfahren. Psychoakustisch optimiert für 48 kHz / 16-bit. 24-bit: reduziert wahrgenommenen Noise Floor ≥ 14 dB unter TPDF.
+9. **ML-GPU-Numerik-Parität (2026-09-18)**: Ein ONNX-EP außer CPU (ROCm/MIGraphX/CUDA)
+   darf nur aktiv sein, wenn die Parität gegen die ONNX-CPU-Referenz mit
+   strukturierten Feeds nachgewiesen ist (rel ≤ 1e-3; scripts/onnx_gpu_compat_scan.py
+   mit normal/sane/const05, sonst täuscht weißes Rauschen OK vor — Befund basicpitch).
+   Bekannte numerisch defekte ORT-ROCm-Kernels (bs_roformer-Softmax, BANQUET-LSTM,
+   FCPE/Whisper/MuQ-MuLan-Attention, basicpitch-Conv; rel 0,19–0,98) sind durch
+   paritätsverifizierte, GPU-deterministische Torch-ROCm-Kerne ersetzt
+   (backend/core/dsp/*_torch_rocm.py, §SOTA-ML-V5–V9); deren ONNX-Sessions bleiben
+   reiner Qualitäts-Fallback auf CPU (§V6).
 
 ---
 
@@ -256,6 +265,13 @@ v10.0.20 reale Per-Operation-Timings als `metadata["pipeline_budget_timings"]`
 nach außen; fehlende Timings werden als `null` dokumentiert (nicht geschätzt).
 Mit `--repeats N` (deterministische Seed-Folge `AURIK_MASTER_SEED = 42+i`,
 §G5) liefert der Harness echte Stichproben für `--bootstrap-ci`.
+
+**GPU-Pfade (Stand 2026-09-18, §SOTA-ML-V5–V9):** GPU-Inferenz läuft über
+paritätsverifizierte Torch-ROCm-Kerne (alle deterministisch, §G5, fail-closed
+auf ONNX-CPU, §V6): BANQUET-Vinyl (~160 ms je 1-s-Fenster, 11,8×/19,5×),
+Whisper-Tiny-Encoder+Decoder (~6,9 ms je 30-s-Fenster), FCPE (~1,6 ms je
+10-s-Mel), MuQ-MuLan (~29 ms je 10-s-Embedding), BS-RoFormer-317 (~46×).
+Jeder Wechsel des GPU-Backends erfordert den Paritäts-Nachweis nach §III.9.
 
 ## Bug-Klassen (normativ, synchron zu Spec 10)
 

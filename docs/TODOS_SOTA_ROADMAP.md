@@ -652,6 +652,23 @@
     korrekt. 7 Unit-Tests grün (`tests/unit/test_banquet_torch_rocm.py`),
     Provider-Test auf die neue Policy umgestellt. AURIK_BANQUET_TORCH=0
     = Kill-Switch; AURIK_BANQUET_TORCH_BATCH=4 = Mini-Batch.
+20. **SOTA-ML-V6–V9** · ✅ ERLEDIGT (2026-09-18) — Numerik-Bug-Jagd über alle
+    GPU-Pfade + Torch-ROCm-Kerne für Whisper, FCPE und MuQ-MuLan. Die
+    ORT-ROCm-Kernels rechneten 6 Modelle eingabeabhängig falsch (gemessen
+    auf echten Musik-/Mel-Feeds; weißes Rauschen täuschte OK vor):
+    basicpitch rel ≈ 1,9e-2, FCPE ≈ 0,19, MuQ-MuLan ≈ 0,59, Whisper-Tiny
+    ≈ 0,98, BANQUET roh 0,35 (plus bs_roformer-Befund von 2026-09-13).
+    **Behebung:** Paritätsverifizierte Torch-ROCm-Kerne
+    (`backend/core/dsp/{whisper,fcpe,muq_mulan}_torch_rocm.py`, Muster
+    bsr317/banquet): Whisper-Tiny-Encoder+Decoder (Parität rel ≤ 1e-4,
+    ~6,9 ms je 30-s-Fenster, echte Wort-Timestamps statt Encoder-Heuristik),
+    FCPE (rel ≈ 4,4e-5, 60-s-Analyse 2,09 s → 0,17 s), MuQ-MuLan
+    (rel ≈ 3,2e-6, ~29 ms je 10-s-Embedding) — alle deterministisch (§G5
+    (copilot-instructions.md)), fail-closed auf ONNX-CPU (§V6
+    (copilot-instructions.md)). Scan-Methodik gehärtet (const05-Feed),
+    Registry-Verdikte korrigiert, Provider-Policy: ONNX-CPU als
+    Qualitäts-Fallback. Normativ verankert: §III.9 (copilot-instructions.md),
+    dsp.instructions.md, AGENTS.md.
 
 ---
 
