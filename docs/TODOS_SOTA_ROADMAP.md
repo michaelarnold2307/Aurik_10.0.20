@@ -1008,7 +1008,7 @@ Sänger-Identität, MuQ-MOS nicht schlechter als Baseline).
 | R4 | **Audibility-First-Scheduling** (PERF-B): billige Detektion zuerst, teure Reparatur nur bei Hörbarkeit — als globales Prinzip formalisiert + als Benchmark gemessen | Rechenzeit sinkt dort, wo das Ohr nichts hört (PSY-A1 rollt das bereits aus) | Benchmark „PSY-A1-Einsparung“ je Phase + Scheduling-Formalisierung |
 | R5 | **Determinismus-Zertifikat** (TRUST-A): bit-identische Läufe je Version als Studio-Feature + CI-Nachweis | Reproduzierbares Remastering ist ein Alleinstellungsmerkmal für Studios/Archive | CI-Test „gleicher Input ⇒ MD5-identischer Output“ je Release dokumentieren |
 | R6 | **Per-Song-Zielklang** (C4/DDSP, = Q7): EQ/Dynamik-Parameter aus CLAP/BEATs-Embeddings vorhergesagt, DSP führt aus | Kein Mitbewerber lernt den Zielklang pro Song — Studio-Wohlklang statt fester Zielkurven | GPU nach F2 (F5) |
-| R7 | **Adaptive Phase-Rescheduling nach Hör-Impact** (PERF-C): Reihenfolge/Budget der Phasen nach erwartetem Hör-Gewinn | Wall-Clock-Budget trifft die hörbarste Verbesserung zuerst | auf bestehendem wall_budget_s aufbauen; Impact-Schätzer aus PSY-A1 |
+| R7 | **Adaptive Phase-Rescheduling nach Hör-Impact** (PERF-C): Deferral-Reihenfolge nach erwartetem Hör-Gewinn statt blinder Fix-Priorität | Wall-Clock-Budget trifft die hörbarste Verbesserung zuerst | ✅ UMGESETZT 2026-09-18 (Kern-Slice): `dsp/hearing_impact.py` (Impact = max Defect-Score der zugeordneten DefectTypes via `DefectPhaseMapper`); Guard: Null-Impact-Deferral (Impact ≤ 0,05, nur bei ≥ 0,60× Target-Druck) + Hör-Impact-Schutz (Impact ≥ 0,6 ⇒ kein Skip). Ohne Scores bit-identisch zum Status quo; deterministisch |
 | R8 | **Sparse Repair** (PERF-D): Reparatur nur in Defekt-Nähe statt Vollband | Rechenzeit + Artefakt-Risiko sinken gemeinsam | Defekt-Masken (bereits vorhanden) als Rechen-Masken nutzen |
 
 ---
@@ -1195,11 +1195,41 @@ Alle CPU-schließbaren Punkte der Offene-Punkte-Matrix sind umgesetzt und getest
 
 | # | Hebel | Erwartung | Status |
 |---|---|---|---|
-| P8 | BANQUET parallele Fenster-Inferenz (Opt-in `AURIK_BANQUET_INFER_PARALLEL`): 0,5-s-Fenster unabhängig, ORT-`run` thread-sicher → ThreadPool über Fenster; OLA bleibt sequenziell → bit-identisch (Test beweist es) | ~4–6× auf phase_09 (dominante Chunk-Kosten, ~60 Fenster × ~2 s je Chunk) auf CPU | ✅ IMPLEMENTIERT (Default aus); Benchmark nach run30 entscheidet Wert (24 Kerne: 4–6 Worker sinnvoll) |
-| P9 | Whisper (LGE) auf Torch-ROCm statt CPU (einmal je Song) | ~10–20× auf dem Transkriptionsschritt | offen (GPU, nach F5) |
-| P10 | ORT-Session-Tuning (BANQUET intra-op 4→N im Zusammenspiel mit P8; weitere CPU-Modelle) | Mikro | offen (Benchmark) |
-| P11 | SOTA-ML-V5: BANQUET-Re-Export mit dynamischer Batch-Dim → GPU-Mini-Batch | potenziell ~5–10× über 1,19×-Deckel | offen (Re-Export) |
+| P8 | BANQUET parallele Fenster-Inferenz (`AURIK_BANQUET_INFER_PARALLEL`): 0,5-s-Fenster unabhängig, ORT-`run` thread-sicher → ThreadPool über Fenster; OLA bleibt sequenziell → bit-identisch (Test beweist es) | gemessen (2026-09-18, 16 Kerne, 9 Fenster): CPU 18,2→11,5 s (1,58×), GPU-ROCm 14,2→8,9 s (1,61×); sha über alle Konfigs identisch | ✅ UMGESETZT 2026-09-18: Default 4 (Datenlage entscheidet, `scripts/benchmark_banquet_parallel.py`); Env-Override bleibt |
+| P9 | Whisper (LGE) auf Torch-ROCm statt CPU (einmal je Song) | ~10–20× auf dem Transkriptionsschritt | ✅ UMGESETZT 2026-09-18 (HF-Decoder-Pfad): Gerätewahl cuda:0 bei torch.cuda, Kill-Switch `AURIK_WHISPER_GPU=0`, GPU-Fehler ⇒ sichtbarer CPU-Rückfall (§V6 (copilot-instructions.md)); auf diesem Host inaktiv — HF-Modell-Dateien fehlen (Blob-Store-Symlinks gebrochen) ⇒ ONNX/DSP-Ersatzpfad |
+| P10 | ORT-Session-Tuning (BANQUET intra-op 4→N im Zusammenspiel mit P8) | Mikro; intra_op=4 bleibt Optimum in der gemessenen Matrix | ✅ UMGESETZT 2026-09-18: `AURIK_BANQUET_INTRA_OP_THREADS`-Knopf (Default 4 = bisher); Matrix gemessen (intra_op 1/2/4 × P 0/2/4/6/8) |
+| P11 | SOTA-ML-V5: BANQUET-Re-Export mit dynamischer Batch-Dim → GPU-Mini-Batch | potenziell ~5–10× über 1,19×-Deckel | offen (Re-Export): Trainings-Checkpoint liegt vor (`models/banquet/ev-pre-aug.ckpt`), Trainings-Code fehlt im Repo ⇒ extern gebunden |
 | P12 | Hot-Phase-Nachmessung nach run30 (`compute_hot_phases` auf neuem Lauf-Log) — falls neue Phasen-Treiber sichtbar werden | evidenzbasiert | offen (nach Lauf) |
+
+### §PERF-R (2026-09-18) — Redundanz-Befund & Höchstperformance-Fixes (qualitätsneutral)
+
+Audit der Chunked-Pipeline ergab **redundante Prozesse**, die Modellwärme und
+Laufzeit je Chunk vernichteten:
+
+1. **Per-Chunk-Cleanup-Churn (R-A, behoben):** Der aggressive
+   End-of-Run-Cleanup lief am Ende JEDES `restore()` — im Chunked-Pfad also
+   nach jedem 30-s-Chunk: Unload von FlashSR/UTMOS/CLAP/MERT/FCPE/BasicPitch
+   + `cleanup_after_file()` ⇒ `force_evict_all()` aller inaktiven Plugins
+   (BANQUET, BS-RoFormer, …) + Budget-Release + GC je Chunk.
+   Fix: Cleanup in `_run_end_of_song_cleanup()` extrahiert, läuft im
+   Chunked-Pfad nur noch EINMAL nach der Song-Assembly; Ganz-Song-Pfad
+   unverändert. Warme Modelle überleben jetzt alle Chunks.
+2. **BANQUET ohne Reload-Pfad (R-B, behoben):** Nach PLM-Eviction verlor das
+   Singleton-Session/`_model_ok` — `_try_load_model` lief nur im `__init__` ⇒
+   Folge-Chunks fielen STILL auf den DSP-Ersatzpfad (§V6 (copilot-instructions.md)-Risiko).
+   Fix: `ensure_model_loaded()` (einmal-je-Eviction-Reload, `_state_lock`,
+   kein Retry-Schleifen); `process()` stellt die Session automatisch wieder her.
+3. **Toter CR-V1-Konsens (R-B2, behoben):** phase_01 prüfte
+   `_plugin._model_loaded` — ein Attribut, das im Plugin NIE existierte ⇒
+   der BANQUET-Klick-Detektor-Konsens (SOTA-CR-V1) war stumm deaktiviert.
+   Fix: ehrlicher Check über `ensure_model_loaded()`; Feature läuft wie
+   spezifiziert (Test-Fakes angepasst, Konsens-Suite grün).
+
+Damit: BANQUET-ML bleibt über alle Chunks aktiv, CR-V1 aktiv, keine
+Modell-Reloads je Chunk — plus P8/P10 (Fenster-Parallelität, Default 4,
+1,58× CPU / 1,61× GPU, bit-identisch) und R7 (Hör-Impact-Deferral).
+Laufzeit-Erwartung: BANQUET-Phase (dominant, 62 %) sinkt auf ~45–60 % der
+bisherigen Zeit, dazu entfallen die Per-Chunk-Reloads vollständig.
 
 ### Gemessene Hot-Phase-Wahrheit (Profiling 2026-09-16)
 
@@ -1230,7 +1260,7 @@ Alle CPU-schließbaren Punkte der Offene-Punkte-Matrix sind umgesetzt und getest
 | R3 (ROCm alle Modelle) | **GPU-GEBUNDEN** | Ports nach BSR-Muster |
 | R6 (Per-Song-Zielklang DDSP) | **GPU-GEBUNDEN** | F5/C4 |
 | PSY-A1-Rest (25/31 JND) + P65-Witness | ✅ GESCHLOSSEN 2026-09-16 | **phase_25**: Azimut-Schwelle JND-basiert (ITD-JND 30 µs × 3,5 ≈ 5 Samples @ 48 kHz, SR-unabhängig, HF-Floor ≥ Pegel-JND; Bestandsverhalten bit-identisch). **phase_31**: 0,3-%-Speed-Schwelle als JND-gestützt dokumentiert (max-Floor mit Frequenz-JND 0,2 %). **phase_65**: Sänger-Identitäts-Witness als Per-Phase-Gate (`_apply_singer_identity_witness`, S4-Muster: Resemblyzer cos ≥ 0,92, sonst proportionaler Blend Richtung Input, non-blocking §V6). **phase_43 (2026-09-16): Sibilanten-Maskierungs-Gate verdrahtet** — subaudible Sibilanten-Segmente (unter Maskierungsschwelle, Band 4–12 kHz, Muster phase_19) bleiben ungezähmt, Zähler `subaudible_sibilants_skipped`; test_phase_43_ml_deesser (48 Tests grün). Damit ist die PSY-A1-Expansionsmatrix-Zeile für 19/43 vollständig. Tests: `test_psy_a1_jnd_gates_25_31.py`, `test_phase_65_singer_identity_witness.py` |
-| R7 (Adaptive Rescheduling) | FOLGE-SLICE | auf wall_budget_s aufbauend, nach P0-1 |
+| R7 (Adaptive Rescheduling) | ✅ UMGESETZT 2026-09-18 (Kern-Slice) | Impact-Schätzer + Null-Impact-Deferral + Hör-Impact-Schutz im PerformanceGuard; ohne Scores Fix-Priorität (bit-identisch); 12 Tests (`test_hearing_impact.py`) |
 | F1/F3/F5, Q4/Q7 + F3-Finetune-Teil (GPU-Buildouts) | **GPU-GEBUNDEN** | Trainings-/Port-Arbeit auf ROCm; **F2 + Q5 GESCHLOSSEN 2026-09-16** (faire S1-Validierung verwarf Pfad B, fail-closed); **F3-A/B-Teilvalidierung PASS 2026-09-16** (af +0,0073, HNR +4,42 dB — Flag-Rollout offen bis Test-Suite-Anpassung + UV3-Budget-Nachweis). **Budget-Messung 2026-09-16:** HR-V1-Synthese (Torch-ROCm, Elke-Best-Material) = **2,5× RT** (25,05 s für 10 s, 26 Bänder released, PQS 4,93); CPU >10× RT. Da der Gesamtlauf aktuell bei 33× RT liegt (32×-Ziel), bleibt das Flag vertragsgemäß OFF bis der Gesamt-Budget-Nachweis mit Headroom steht — die Activation-Contract-Tests sind bereits flag-bewusst (beide Zustände). Nächster Schritt: R3/ROCm-Ports + P0-1-Gewinne, dann Flag-Flip als Einzeiler |
 | WF-V4 (neuraler Warp-Schätzer), TP-V2 | **EXTERN BLOCKIERT (Checkpoint-Quelle)** | Quelle klären + Download |
 | P1-Folge (af-Never-worsen in 07/17/19/38) | ✅ GESCHLOSSEN 2026-09-15 | `artifact_freedom_guard.py` (billiger click/pre-echo-Delta-Guard, ≈0,008× RT) in 07/17/19/38 + `--fail-delta`-CI-Gate im Diagnose-Skript; Diagnose-Vergleich: phase_07 Δ−0,136→−0,049, phase_17 −0,084→+0,002, phase_19 −0,062→0,000, phase_38 −0,043→+0,061; Ketten-Min-af 0,473→0,631 |

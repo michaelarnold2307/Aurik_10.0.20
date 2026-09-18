@@ -13094,6 +13094,18 @@ class UnifiedRestorerV3:
         if self.performance_guard:
             self.performance_guard.start_monitoring(audio_duration)
             self.performance_guard.set_never_skip_phases(_runtime_never_skip_phases)
+            # §PERF-R R7 (2026-09-18): Hör-Impact-Kontext je Lauf setzen —
+            # Null-Impact-Deferral und Hör-Impact-Schutz statt blinder
+            # Fix-Priorität unter Budgetdruck. Ohne Scores bleibt die
+            # bisherige Fix-Prioritäts-Logik bit-identisch aktiv.
+            try:
+                if isinstance(defect_result, dict):
+                    _r7_scores = defect_result.get("defect_scores") or {}
+                else:
+                    _r7_scores = getattr(defect_result, "defect_scores", None) or {}
+                self.performance_guard.set_defect_scores(_r7_scores)
+            except Exception:
+                logger.debug("R7: defect_scores nicht verfügbar — Fix-Priorität unverändert")
 
         # §Vintage-Authentizitäts-Guards — Ära-spezifische Phase-Filter + Strength-Caps
         # §v10.303.43: Dekaden-Grenzen korrigiert auf exakte Jahrzehnt-Grenzen
@@ -23239,63 +23251,14 @@ class UnifiedRestorerV3:
             logger.debug("Restoration summary uebersprungen: %s", _summary_exc)
 
         # --- Aggressive end-of-run memory cleanup (OOM hardening) ---
-        _cleanup_report: dict[str, Any] = {"unloaded": [], "errors": []}
-        try:
-            _unload_specs = [
-                ("plugins.flashsr_plugin", "unload_flashsr", "FlashSR"),
-                ("plugins.utmos_plugin", "unload_utmos", "UTMOS"),
-                ("plugins.laion_clap_plugin", "unload_laion_clap", "LAION-CLAP"),
-                ("plugins.mert_plugin", "unload_mert", "MERT"),
-                # CREPE: keep singleton alive (cache + ONNX session) — ExzellenzDenker
-                # re-uses CREPE right after UV3 finishes.  PLM handles LRU eviction.
-                ("plugins.fcpe_plugin", "unload_fcpe", "FCPE"),
-                ("plugins.basicpitch_plugin", "unload_basicpitch", "BasicPitch"),
-            ]
-            for _mod_name, _fn_name, _label in _unload_specs:
-                try:
-                    _mod = importlib.import_module(_mod_name)
-                    _fn = getattr(_mod, _fn_name, None)
-                    if callable(_fn):
-                        _fn()
-                        _cleanup_report["unloaded"].append(_label)
-                except Exception as _u_exc:
-                    _cleanup_report["errors"].append(f"{_label}: {_u_exc}")
-
-            try:
-                from backend.core.plugin_lifecycle_manager import (
-                    cleanup_after_file as _plm_cleanup_after_file,
-                )
-
-                _cleanup_report["plm_evicted"] = int(_plm_cleanup_after_file())
-            except Exception as _plm_exc:
-                _cleanup_report["errors"].append(f"PLM: {_plm_exc}")
-
-            # Defensive budget release for models without explicit unload hooks.
-            try:
-                from backend.core.ml_memory_budget import release as _ml_release
-
-                for _model_name in ("CREPE", "FCPE", "RMVPE", "BasicPitch"):
-                    _ml_release(_model_name)
-            except Exception as _ml_rel_exc:
-                _cleanup_report["errors"].append(f"ML-Budget-Release: {_ml_rel_exc}")
-
-            gc.collect()
-
-            # Linux/glibc: return free heap pages to OS to reduce RSS between runs.
-            try:
-                import ctypes
-
-                _libc = ctypes.CDLL("libc.so.6")
-                _trim = getattr(_libc, "malloc_trim", None)
-                if callable(_trim):
-                    _cleanup_report["malloc_trim"] = bool(_trim(0))
-            except Exception as _trim_exc:
-                _cleanup_report["errors"].append(f"malloc_trim: {_trim_exc}")
-        except Exception as _cleanup_exc:
-            logger.debug("Final memory cleanup fehlgeschlagen: %s", _cleanup_exc)
-        finally:
+        # §PERF-R (2026-09-18): Im Chunked-Pfad läuft der Cleanup nur noch
+        # EINMAL je Song (in _restore_chunked nach der Song-Assembly) —
+        # ein Per-Chunk-Cleanup evakuierte nach JEDEM Chunk alle warmen
+        # Modelle (force_evict_all) und erzwang Modell-Reloads bzw. stille
+        # ML→DSP-Fallbacks in den Folge-Chunks (Produktionsbefund).
+        if not _chunked_tail_skip:
             with contextlib.suppress(Exception):
-                result.metadata["memory_cleanup"] = _cleanup_report
+                result.metadata["memory_cleanup"] = self._run_end_of_song_cleanup()
 
         # §8.2 / §2.16 / §2.29 — Spec-Felder in RestorationResult schreiben
         result.emotional_arc = _arc_result
@@ -45601,6 +45564,75 @@ class UnifiedRestorerV3:
             panns_singing=float(self._restoration_context.get("panns_singing", 0.0)),
         )
 
+    def _run_end_of_song_cleanup(self) -> dict[str, Any]:
+        """End-of-Song-Cleanup — entlädt schwere Modelle EINMAL je Song.
+
+        §PERF-R (2026-09-18): Im Chunked-Pfad läuft dieser Cleanup nur noch
+        EINMAL nach der Song-Assembly (Aufruf am Ende von `_restore_chunked`);
+        `restore()` überspringt ihn für Chunks (`_chunked_tail_skip`). Vorher
+        räumte der Cleanup nach JEDEM Chunk alle inaktiven Plugins ab
+        (`force_evict_all`) — warme Modelle (BANQUET, BS-RoFormer, MERT,
+        FCPE, …) wurden je Chunk neu geladen bzw. fielen ohne Reload-Pfad
+        still auf DSP zurück (§V6 (copilot-instructions.md)-Risiko).
+        Außerhalb des Chunked-Pfads bleibt das Verhalten unverändert
+        (ein Aufruf am Ende jedes `restore()`).
+        """
+        _cleanup_report: dict[str, Any] = {"unloaded": [], "errors": []}
+        try:
+            _unload_specs = [
+                ("plugins.flashsr_plugin", "unload_flashsr", "FlashSR"),
+                ("plugins.utmos_plugin", "unload_utmos", "UTMOS"),
+                ("plugins.laion_clap_plugin", "unload_laion_clap", "LAION-CLAP"),
+                ("plugins.mert_plugin", "unload_mert", "MERT"),
+                # CREPE: keep singleton alive (cache + ONNX session) — ExzellenzDenker
+                # re-uses CREPE right after UV3 finishes.  PLM handles LRU eviction.
+                ("plugins.fcpe_plugin", "unload_fcpe", "FCPE"),
+                ("plugins.basicpitch_plugin", "unload_basicpitch", "BasicPitch"),
+            ]
+            for _mod_name, _fn_name, _label in _unload_specs:
+                try:
+                    _mod = importlib.import_module(_mod_name)
+                    _fn = getattr(_mod, _fn_name, None)
+                    if callable(_fn):
+                        _fn()
+                        _cleanup_report["unloaded"].append(_label)
+                except Exception as _u_exc:
+                    _cleanup_report["errors"].append(f"{_label}: {_u_exc}")
+
+            try:
+                from backend.core.plugin_lifecycle_manager import (
+                    cleanup_after_file as _plm_cleanup_after_file,
+                )
+
+                _cleanup_report["plm_evicted"] = int(_plm_cleanup_after_file())
+            except Exception as _plm_exc:
+                _cleanup_report["errors"].append(f"PLM: {_plm_exc}")
+
+            # Defensive budget release for models without explicit unload hooks.
+            try:
+                from backend.core.ml_memory_budget import release as _ml_release
+
+                for _model_name in ("CREPE", "FCPE", "RMVPE", "BasicPitch"):
+                    _ml_release(_model_name)
+            except Exception as _ml_rel_exc:
+                _cleanup_report["errors"].append(f"ML-Budget-Release: {_ml_rel_exc}")
+
+            gc.collect()
+
+            # Linux/glibc: return free heap pages to OS to reduce RSS between runs.
+            try:
+                import ctypes
+
+                _libc = ctypes.CDLL("libc.so.6")
+                _trim = getattr(_libc, "malloc_trim", None)
+                if callable(_trim):
+                    _cleanup_report["malloc_trim"] = bool(_trim(0))
+            except Exception as _trim_exc:
+                _cleanup_report["errors"].append(f"malloc_trim: {_trim_exc}")
+        except Exception as _cleanup_exc:
+            logger.debug("Final memory cleanup fehlgeschlagen: %s", _cleanup_exc)
+        return _cleanup_report
+
     def _restore_chunked(
         self,
         audio: np.ndarray,
@@ -46185,10 +46217,17 @@ class UnifiedRestorerV3:
             except Exception:
                 logger.debug("unified_restorer_v3.py:40699: Silent exception absorbed", exc_info=True)
 
+            # §PERF-R (2026-09-18): End-of-Song-Cleanup EINMAL nach der
+            # Song-Assembly — restore() überspringt ihn im Chunked-Pfad
+            # (_chunked_tail_skip), damit warme Modelle über alle Chunks
+            # erhalten bleiben (kein Modell-Load-Churn je Chunk).
+            _cleanup_report = self._run_end_of_song_cleanup()
+
             from backend.core.unified_restorer_v3 import RestorationResult
 
             # §v10.458: Felder aus erstem Chunk für GUI propagieren
             _meta = dict(getattr(_first_result, "metadata", {}) or {})
+            _meta["memory_cleanup"] = _cleanup_report
             _meta["chunked_streaming"] = True
             _meta["chunks_total"] = len(chunks)
             _meta["chunks_completed"] = _chunk_count

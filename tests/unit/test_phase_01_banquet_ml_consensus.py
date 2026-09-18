@@ -22,6 +22,12 @@ class _FakeBanquetPlugin:
         self._click_center = click_center
         self._fail = fail
 
+    def ensure_model_loaded(self) -> bool:
+        # §PERF-R (2026-09-18): Der Phasen-Code prüft jetzt über die
+        # öffentliche Methode statt über das im Plugin nie existierende
+        # `_model_loaded`-Attribut (war immer False → CR-V1 stumm tot).
+        return bool(self._model_loaded)
+
     def _maybe_resample(self, audio, src, tgt):
         if src == tgt:
             return audio, tgt

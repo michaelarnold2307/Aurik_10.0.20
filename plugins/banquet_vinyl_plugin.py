@@ -54,12 +54,20 @@ class BanquetVinylPlugin:
     TARGET_SR: int = 48_000
     CHUNK_SEC: float = 1.0
     OVERLAP_SEC: float = 0.5
-    # Parallele Fenster-Inferenz (Aktivierung optional, Default 0 = aus =
-    # heutiges Verhalten): AURIK_BANQUET_INFER_PARALLEL > 1 startet einen
-    # ThreadPool über die unabhängigen 0,5-s-Fenster (ORT-session.run ist
-    # thread-sicher). Gleiche Rechnung je Fenster → bit-identisch auf CPU;
-    # der Benchmark nach dem Verifikationslauf entscheidet den Wert.
-    INFER_PARALLEL: int = max(0, int(os.environ.get("AURIK_BANQUET_INFER_PARALLEL", "0")))
+    # Parallele Fenster-Inferenz (§PERF-R P8, Default 4): ThreadPool über die
+    # unabhängigen 0,5-s-Fenster (ORT-session.run ist thread-sicher). Gleiche
+    # Rechnung je Fenster → bit-identisch auf CPU UND GPU (Benchmark
+    # scripts/benchmark_banquet_parallel.py, 2026-09-18, 16 Kerne, je 9 Fenster):
+    #   CPU: P=0 18.2 s → P=4 11.5 s (1.58×) | GPU ROCm: P=0 14.2 s → P=4 8.9 s (1.61×)
+    #   sha über alle CPU- bzw. GPU-Konfigurationen jeweils identisch.
+    # P=8 gewinnt auf CPU marginal (10.1 s), überzeichnet aber im 4-Song-Batch;
+    # AURIK_BANQUET_INFER_PARALLEL=0 erzwingt den sequenziellen Pfad.
+    INFER_PARALLEL: int = max(0, int(os.environ.get("AURIK_BANQUET_INFER_PARALLEL", "4")))
+    # §PERF-R P10 (2026-09-18): ORT-intra-op-Threads abstimmbar — Default 4 ist
+    # das bisherige Verhalten; der Parallelpfad (P8) braucht je Kernzahl die
+    # passende intra-op-Zahl gegen Oversubscription (Benchmark:
+    # scripts/benchmark_banquet_parallel.py entscheidet den Default).
+    INTRA_OP_THREADS: int = max(1, int(os.environ.get("AURIK_BANQUET_INTRA_OP_THREADS", "4")))
 
     def __init__(self, model_dir: str | None = None) -> None:
         self._session = None
@@ -68,6 +76,11 @@ class BanquetVinylPlugin:
         self._model_ok: bool = False
         self._chunk_failures: int = 0
         self._runtime_quarantined: bool = False
+        # §PERF-R (2026-09-18): Einmal-je-Zustand-Retry für den Modell-Load.
+        # PLM-Eviction setzt Session/_model_ok zurück UND diesen Flag — der
+        # nächste Song lädt das Modell dann EINMAL nach, statt still
+        # (§V6 (copilot-instructions.md)) dauerhaft auf den DSP-Ersatzpfad zu fallen.
+        self._load_attempted: bool = False
         # Transient-State-Schutz: Der Singleton wird im Ein-Prozess-Batch
         # (ThreadPool) von mehreren Songs parallel genutzt — Zähler/Quarantäne
         # dürfen nicht racerieren (§V8/§G1 (copilot-instructions.md)).
@@ -81,6 +94,9 @@ class BanquetVinylPlugin:
 
         self._model_path = model_path
         self._try_load_model()
+        if not self._model_ok:
+            # Fehlgeschlagener Erst-Load: kein Dauer-Retry je Aufruf.
+            self._load_attempted = True
 
     def reset_for_song(self) -> None:
         """§V8/§G1 (copilot-instructions.md) Song-Isolation: Setzt den
@@ -93,6 +109,25 @@ class BanquetVinylPlugin:
         """
         with self._state_lock:
             self._chunk_failures = 0
+
+    def ensure_model_loaded(self) -> bool:
+        """Stellt die Modell-Session wieder her (nach PLM-Eviction) — §PERF-R.
+
+        Der PLM kann das Singleton nach Datei-/Song-Ende evakuieren
+        (unload_fn setzt Session/`_model_ok` zurück und gibt diesen Flag
+        frei). Der nächste Aufruf lädt das Modell dann EINMAL nach —
+        gleiche Gewichte, deterministisch (§G5 (copilot-instructions.md)) — statt dauerhaft
+        und still (§V6 (copilot-instructions.md)) auf den DSP-Ersatzpfad zu fallen.
+        Kein Retry-Schleifen: nach einem fehlgeschlagenen Load-Versuch
+        bleibt der Flag gesetzt, bis die nächste Eviction ihn zurücksetzt.
+        """
+        if self._runtime_quarantined:
+            return False
+        with self._state_lock:
+            if self._session is None and not self._load_attempted:
+                self._load_attempted = True
+                self._try_load_model()
+        return bool(self._model_ok and self._session is not None)
 
     # ------------------------------------------------------------------
     # Name of the patched ONNX whose 0-D Slice tensors (val_21/val_22) have
@@ -126,7 +161,7 @@ class BanquetVinylPlugin:
 
             opts = ort.SessionOptions()
             opts.inter_op_num_threads = 1
-            opts.intra_op_num_threads = 4
+            opts.intra_op_num_threads = self.INTRA_OP_THREADS
             try:
                 from backend.core.ml_device_manager import get_ort_providers as _get_prov
 
@@ -185,10 +220,18 @@ class BanquetVinylPlugin:
             try:
                 from backend.core.plugin_lifecycle_manager import register_plugin as _reg_plm
 
+                def _unload_bq() -> None:
+                    # §PERF-R (2026-09-18): Eviction setzt auch den Reload-Flag
+                    # zurück, damit ensure_model_loaded() beim nächsten Song
+                    # EINMAL nachladen darf (kein stiller DSP-Dauerverbleib).
+                    self._session = None
+                    self._model_ok = False
+                    self._load_attempted = False
+
                 _reg_plm(
                     "BanquetVinyl",
                     size_gb=0.80,
-                    unload_fn=lambda s=self: setattr(s, "_session", None) or setattr(s, "_model_ok", False),  # type: ignore[func-returns-value,misc]
+                    unload_fn=_unload_bq,
                 )
             except Exception as _exc:
                 logger.debug("Plugin operation fehlgeschlagen (unkritisch): %s", _exc)
@@ -261,6 +304,10 @@ class BanquetVinylPlugin:
 
         resampled, res_sr = self._maybe_resample(audio, sr, self.TARGET_SR)
 
+        if not self._model_ok and not self._runtime_quarantined:
+            # §PERF-R (2026-09-18): Nach PLM-Eviction das Modell EINMAL
+            # nachladen statt still auf DSP zu fallen (§V6 (copilot-instructions.md)).
+            self.ensure_model_loaded()
         if self._model_ok:
             _plm_bvq = None
             try:

@@ -20,8 +20,10 @@ Date: 2026-02-15
 
 import logging
 import time
+from collections.abc import Mapping
 from dataclasses import dataclass, field
 from enum import Enum
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -253,12 +255,25 @@ class PerformanceGuard:
         # This time is excluded from the RT calculation so quality checks do not
         # inflate the RT factor and cause unnecessary phase skipping.
         self._analytics_overhead_s: float = 0.0
+        # §PERF-R R7 (2026-09-18): Hör-Impact-Kontext (DefectType → Score) für
+        # die Deferral-Entscheidung; leer ⇒ bisherige Fix-Priorität.
+        self._defect_scores: dict[Any, float] = {}
 
         logger.info(
             f"PerformanceGuard initialisiert: Betriebsart={mode.value}, "
             f"Target={self.target_rt_factor:.1f}× RT, "
             f"Enforce={enforce_limit}, Adaptive={enable_adaptive_skipping}"
         )
+
+    def set_defect_scores(self, defect_scores: Mapping[Any, float] | None) -> None:
+        """§PERF-R R7 (2026-09-18): Hör-Impact-Kontext je Lauf setzen.
+
+        Leere/None-Maps ⇒ R7 inaktiv (Fix-Priorität wie bisher).
+        """
+        try:
+            self._defect_scores = dict(defect_scores) if defect_scores else {}
+        except Exception:
+            self._defect_scores = {}
 
     def start_monitoring(self, audio_duration_seconds: float):
         """Startet Performance-Monitoring für Audio-File."""
@@ -491,6 +506,36 @@ class PerformanceGuard:
         _elapsed_processing = max(0.0, (time.perf_counter() - self.start_time) - self._analytics_overhead_s)
         current_rt = _elapsed_processing / self.audio_duration if self.audio_duration else 0
 
+        # §PERF-R R7 (2026-09-18): Hör-Impact dieser Phase (None ⇒ Fix-Priorität).
+        _impact: float | None = None
+        try:
+            from backend.core.dsp.hearing_impact import (
+                HIGH_IMPACT_THRESHOLD as _R7_HIGH,
+            )
+            from backend.core.dsp.hearing_impact import (
+                ZERO_IMPACT_THRESHOLD as _R7_ZERO,
+            )
+            from backend.core.dsp.hearing_impact import (
+                estimate_phase_hearing_impact,
+            )
+
+            _impact = estimate_phase_hearing_impact(phase_id, self._defect_scores)
+        except Exception:
+            _impact = None
+
+        # R7 Null-Impact-Deferral: Die Phase repariert auf diesem Audio nichts
+        # Hörbares (Impact ≤ 0.05). PSY-A1-gegatete Reparaturphasen sind dann
+        # ohnehin Passthrough — ihr Deferral ist reine Laufzeit-Ersparnis ohne
+        # Hör-Änderung. Nur bei realem Budgetdruck aktiv (0.60× Target).
+        if _impact is not None and _impact <= _R7_ZERO and current_rt >= (self.target_rt_factor * 0.60):
+            logger.info(
+                "§PERF-R R7 Null-Impact-Deferral: %s (Impact %.2f — kein hörbarer Ziel-Defekt)",
+                phase_id,
+                _impact,
+            )
+            self.skipped_phases.append(phase_id)
+            return True
+
         # Skip-Kriterien basierend auf Phase Priority
         phase_priority = self.PHASE_PRIORITIES.get(short_id, 5)  # Default: Medium
 
@@ -535,6 +580,18 @@ class PerformanceGuard:
                 (estimated_total_time + estimated_remaining_time) / self.audio_duration if self.audio_duration else 0
             )
             should_skip = final_projected_rt_factor > skip_threshold
+
+        # §PERF-R R7 (2026-09-18) Hör-Impact-Schutz: Phasen mit deutlich
+        # hörbarem Ziel-Defekt (Impact ≥ 0.6) werden unter Budgetdruck NICHT
+        # deferred — der Skip trifft zuerst Null-Impact-Phasen (oben) statt
+        # nach fester Prioritäts-Reihenfolge die hörbarste Reparatur.
+        if should_skip and _impact is not None and _impact >= _R7_HIGH:
+            logger.debug(
+                "§PERF-R R7 Hör-Impact-Schutz: %s nicht deferred (Impact %.2f — hörbare Ziel-Defekte)",
+                phase_id,
+                _impact,
+            )
+            should_skip = False
 
         if should_skip:
             # Skip-Warnungen pro Phase nur einmal pro Lauf ausgeben.

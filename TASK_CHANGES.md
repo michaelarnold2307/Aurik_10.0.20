@@ -1,13 +1,25 @@
 # TASK_CHANGES — Live-Ledger der aktuellen Aufgabe
 
-> Generiert von `scripts/change_ledger.py snapshot` (Base: `HEAD`, Stand: 2026-09-17 15:39 CEST).
+> Generiert von `scripts/change_ledger.py snapshot` (Base: `HEAD`, Stand: 2026-09-18 11:47 CEST).
 > CI (`ci-lite.yml` pr-evidence-gate) erzwingt Abdeckung: jede geänderte Code-Datei muss hier stehen.
 
 ## Geänderte Dateien
 
 | Status | Pfad | Art |
 |---|---|---|
-| M | scripts/train_flashsr_f4.py | modifiziert |
+| M | .github/FILE_REGISTRY.md | modifiziert |
+| M | backend/core/lyrics_guided_enhancement.py | modifiziert |
+| M | backend/core/performance_guard.py | modifiziert |
+| M | backend/core/phases/phase_01_click_removal.py | modifiziert |
+| M | backend/core/unified_restorer_v3.py | modifiziert |
+| M | plugins/banquet_vinyl_plugin.py | modifiziert |
+| M | tests/unit/test_banquet_vinyl_plugin_providers.py | modifiziert |
+| M | tests/unit/test_phase_01_banquet_ml_consensus.py | modifiziert |
+| ?? | backend/core/dsp/hearing_impact.py | ungetrackt |
+| ?? | scripts/benchmark_banquet_parallel.py | ungetrackt |
+| ?? | tests/unit/test_end_of_song_cleanup_hoist.py | ungetrackt |
+| ?? | tests/unit/test_hearing_impact.py | ungetrackt |
+| ?? | tests/unit/test_whisper_hf_device_selection.py | ungetrackt |
 
 ## Entscheidungen
 

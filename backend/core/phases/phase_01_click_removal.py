@@ -1355,7 +1355,12 @@ class ClickRemovalPhase(PhaseInterface):
             from plugins.banquet_vinyl_plugin import get_banquet_plugin  # pylint: disable=import-outside-toplevel
 
             _plugin = get_banquet_plugin()
-            if not bool(getattr(_plugin, "_model_loaded", False)):
+            # §PERF-R (2026-09-18): `_model_loaded` existierte im Plugin NIE —
+            # der Check war damit immer False und der CR-V1-BANQUET-Konsens
+            # stumm tot (stiller Ersatzpfad, §V6 (copilot-instructions.md)). Jetzt wird die
+            # Session bei Bedarf EINMAL nachgeladen (nach PLM-Eviction) und
+            # ehrlich geprüft.
+            if not _plugin.ensure_model_loaded():
                 return []
             _mono = safe_to_mono(audio)
             if _mono.size == 0:

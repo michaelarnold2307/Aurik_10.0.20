@@ -165,3 +165,94 @@ def test_infer_parallel_bit_identical_to_sequential(monkeypatch):
     out_par = par._process_onnx(audio.copy(), 1.0)
 
     _np.testing.assert_array_equal(out_seq, out_par)
+
+
+def test_ensure_model_loaded_reloads_once_after_eviction(monkeypatch):
+    """§PERF-R (2026-09-18): Nach PLM-Eviction lädt ensure_model_loaded() das Modell
+    EINMAL nach — kein stiller Dauerverbleib im DSP-Fallback (§V6 (copilot-instructions.md))."""
+    import plugins.banquet_vinyl_plugin as _bp
+
+    calls: list[int] = []
+
+    def _fake_load(self):
+        calls.append(1)
+        self._session = object()
+        self._model_ok = True
+
+    monkeypatch.setattr(_bp.BanquetVinylPlugin, "_try_load_model", _fake_load)
+    p = _bp.BanquetVinylPlugin()
+    assert p._model_ok is True
+    _init_calls = len(calls)  # __init__-Load
+
+    # PLM-Eviction simulieren (unload_fn-Zustand):
+    p._session = None
+    p._model_ok = False
+    p._load_attempted = False
+
+    assert p.ensure_model_loaded() is True
+    assert len(calls) == _init_calls + 1, "Reload muss genau EINMAL erfolgen"
+    assert p.ensure_model_loaded() is True
+    assert len(calls) == _init_calls + 1, "Kein Retry-Schleifen nach erfolgreichem Reload"
+
+
+def test_ensure_model_loaded_no_retry_after_failed_load(monkeypatch):
+    """§PERF-R (2026-09-18): Fehlgeschlagener Reload wird nicht je Aufruf wiederholt."""
+    import plugins.banquet_vinyl_plugin as _bp
+
+    calls: list[int] = []
+
+    def _fake_load(self):
+        calls.append(1)
+        self._model_ok = False
+
+    monkeypatch.setattr(_bp.BanquetVinylPlugin, "_try_load_model", _fake_load)
+    p = _bp.BanquetVinylPlugin()
+    p._model_ok = False
+    p._load_attempted = False
+
+    _init_calls = len(calls)
+    assert p.ensure_model_loaded() is False
+    assert p.ensure_model_loaded() is False
+    assert len(calls) == _init_calls + 1, "Einmal je Eviction-Zustand versuchen, dann fail-closed"
+
+
+def test_process_reloads_after_eviction_instead_of_dsp_fallback(monkeypatch):
+    """§PERF-R (2026-09-18): process() stellt die Session nach Eviction wieder her
+    und nutzt den ML-Pfad statt still auf DSP zu fallen."""
+    import numpy as _np
+
+    import plugins.banquet_vinyl_plugin as _bp
+
+    class _EchoSession:
+        def run(self, output_names, feed_dict):
+            return [_np.asarray(feed_dict["input"], dtype=_np.float32)]
+
+    monkeypatch.setattr(_bp.BanquetVinylPlugin, "_try_load_model", lambda self: None)
+    p = _bp.BanquetVinylPlugin()
+    p._session = _EchoSession()
+    p._input_name = "input"
+    p._output_name = "output"
+    p._model_ok = True
+    p._runtime_quarantined = False
+
+    # Eviction simulieren — die Session-Referenz bleibt für den Reload-Test erhalten:
+    _saved_session = p._session
+    p._session = None
+    p._model_ok = False
+    p._load_attempted = False
+
+    def _fake_load():
+        p._session = _saved_session
+        p._model_ok = True
+
+    monkeypatch.setattr(p, "_try_load_model", _fake_load)
+
+    def _dsp_forbidden(*args, **kwargs):
+        raise AssertionError("DSP-Fallback darf nach Reload nicht mehr laufen")
+
+    monkeypatch.setattr(p, "_process_dsp", _dsp_forbidden)
+
+    audio = _np.random.default_rng(5).standard_normal((1, 48_000)).astype(_np.float32) * 0.05
+    out = p.process(audio, 48_000)
+    assert out is not None
+    assert p._model_ok is True and p._session is not None

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+import os
 import threading
 from collections.abc import Callable
 from dataclasses import dataclass
@@ -664,6 +665,7 @@ class LyricsGuidedEnhancement:
         self._aligner_session: Any = None  # wav2vec2 forced-alignment ONNX session
         self._whisper_hf_processor: Any = None  # §v10.303.50 HF WhisperProcessor
         self._whisper_hf_model: Any = None  # §v10.303.50 HF WhisperForConditionalGeneration
+        self._whisper_hf_device: str = "cpu"  # §PERF-R P9 (2026-09-18): "cpu" oder "cuda:0"
         self._try_load_hf_whisper()  # §v10.303.50: HF decoder path (preferred)
         if self._whisper_hf_model is None:
             self._try_load_onnx()  # Fallback: ONNX encoder-only
@@ -863,6 +865,27 @@ class LyricsGuidedEnhancement:
                 str(model_path), local_files_only=True
             )
             self._whisper_hf_model.eval()
+            # §PERF-R P9 (2026-09-18): Torch-ROCm-Pfad für den HF-Decoder — die
+            # Transkription läuft je Song EINMAL (P1-Hoist), GPU bringt dort
+            # ein Vielfaches auf dem autoregressiven Generierungsschritt.
+            # Kill-Switch AURIK_WHISPER_GPU=0 erzwingt CPU; jeder GPU-Fehler
+            # fällt sichtbar (§V6 (copilot-instructions.md)) auf CPU zurück.
+            self._whisper_hf_device = "cpu"
+            try:
+                if os.environ.get("AURIK_WHISPER_GPU", "1") != "0" and torch.cuda.is_available():
+                    self._whisper_hf_model = self._whisper_hf_model.to("cuda:0")
+                    self._whisper_hf_device = "cuda:0"
+                    logger.info(
+                        "§v10.303.50 HF Whisper Decoder auf GPU (%s) — Transkription beschleunigt",
+                        self._whisper_hf_device,
+                    )
+            except Exception as _gpu_exc:
+                logger.warning("HF Whisper GPU-Transfer fehlgeschlagen (%s) — CPU-Ersatzpfad.", _gpu_exc)
+                try:
+                    self._whisper_hf_model = self._whisper_hf_model.to("cpu")
+                except Exception:
+                    logger.debug("Stiller optionaler Ausnahmefall ignoriert", exc_info=True)
+                self._whisper_hf_device = "cpu"
             logger.info(
                 "§v10.303.50 LyricsGuidedEnhancement: HF Whisper Decoder geladen "
                 "(models/whisper/) — echte Wort-Transkription aktiv",
@@ -1544,15 +1567,42 @@ class LyricsGuidedEnhancement:
                 return_tensors="pt",
             ).input_features
 
+            # §PERF-R P9 (2026-09-18): Input auf das Gerät des Modells heben;
+            # GPU-Fehler zur Laufzeit fällt EINMAL sichtbar auf CPU zurück.
+            _hf_device = getattr(self, "_whisper_hf_device", "cpu")
+            if _hf_device != "cpu":
+                input_features = input_features.to(_hf_device)
+
             # Generate with timestamps
             with torch.no_grad():
-                predicted_ids = self._whisper_hf_model.generate(
-                    input_features,
-                    return_timestamps=True,
-                    max_length=448,
-                )
+                try:
+                    predicted_ids = self._whisper_hf_model.generate(
+                        input_features,
+                        return_timestamps=True,
+                        max_length=448,
+                    )
+                except Exception as _gen_exc:
+                    if _hf_device == "cpu":
+                        raise
+                    logger.warning(
+                        "HF Whisper GPU-Generierung fehlgeschlagen (%s) — CPU-Ersatzpfad EINMAL.",
+                        _gen_exc,
+                    )
+                    try:
+                        self._whisper_hf_model = self._whisper_hf_model.to("cpu")
+                    except Exception:
+                        logger.debug("Stiller optionaler Ausnahmefall ignoriert", exc_info=True)
+                    self._whisper_hf_device = "cpu"
+                    with torch.no_grad():
+                        predicted_ids = self._whisper_hf_model.generate(
+                            input_features.cpu(),
+                            return_timestamps=True,
+                            max_length=448,
+                        )
 
             # Decode full text (RAM only — never logged)
+            if predicted_ids.device.type != "cpu":
+                predicted_ids = predicted_ids.cpu()
             full_text: str = self._whisper_hf_processor.batch_decode(predicted_ids, skip_special_tokens=True)[0].strip()
 
             if not full_text:
