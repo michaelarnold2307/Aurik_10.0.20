@@ -130,3 +130,38 @@ def test_reset_for_song_thread_smoke(monkeypatch, tmp_path):
 
     assert not errors
     assert plugin._chunk_failures >= 0
+
+
+def test_infer_parallel_bit_identical_to_sequential(monkeypatch):
+    """INFER_PARALLEL > 1: parallele Fenster-Inferenz ist bit-identisch zum Einzelpfad (OLA-Reihenfolge fix)."""
+    import numpy as _np
+
+    import plugins.banquet_vinyl_plugin as _bp
+
+    monkeypatch.setattr(_bp.BanquetVinylPlugin, "_try_load_model", lambda self: None)
+
+    class _EchoSession:
+        def run(self, output_names, feed_dict):
+            return [_np.asarray(feed_dict["input"], dtype=_np.float32)]
+
+    def _plugin() -> _bp.BanquetVinylPlugin:
+        p = _bp.BanquetVinylPlugin()
+        p._session = _EchoSession()
+        p._input_name = "input"
+        p._output_name = "output"
+        p._model_ok = True
+        p._runtime_quarantined = False
+        return p
+
+    rng = _np.random.default_rng(11)
+    audio = rng.standard_normal((1, 48_000 * 3)).astype(_np.float32) * 0.05
+
+    seq = _plugin()
+    seq.INFER_PARALLEL = 0
+    out_seq = seq._process_onnx(audio, 1.0)
+
+    par = _plugin()
+    par.INFER_PARALLEL = 4
+    out_par = par._process_onnx(audio.copy(), 1.0)
+
+    _np.testing.assert_array_equal(out_seq, out_par)

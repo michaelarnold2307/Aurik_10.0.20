@@ -9,6 +9,7 @@ Fallback: DSP-Median-Declicker + Butterworth-Hochpass (scipy/numpy).  # §V6 (co
 from __future__ import annotations
 
 import logging
+import os
 import threading
 from pathlib import Path
 
@@ -53,6 +54,12 @@ class BanquetVinylPlugin:
     TARGET_SR: int = 48_000
     CHUNK_SEC: float = 1.0
     OVERLAP_SEC: float = 0.5
+    # Parallele Fenster-Inferenz (Aktivierung optional, Default 0 = aus =
+    # heutiges Verhalten): AURIK_BANQUET_INFER_PARALLEL > 1 startet einen
+    # ThreadPool über die unabhängigen 0,5-s-Fenster (ORT-session.run ist
+    # thread-sicher). Gleiche Rechnung je Fenster → bit-identisch auf CPU;
+    # der Benchmark nach dem Verifikationslauf entscheidet den Wert.
+    INFER_PARALLEL: int = max(0, int(os.environ.get("AURIK_BANQUET_INFER_PARALLEL", "0")))
 
     def __init__(self, model_dir: str | None = None) -> None:
         self._session = None
@@ -302,53 +309,54 @@ class BanquetVinylPlugin:
         out = np.zeros_like(audio)
         weight = np.zeros(n_samples, dtype=np.float32)
 
-        pos = 0
-        while pos < n_samples:
-            end = min(pos + chunk_len, n_samples)
-            chunk = audio[:, pos:end]
-            pad = chunk_len - chunk.shape[1]
-            if pad > 0:
-                chunk = np.pad(chunk, ((0, 0), (0, pad)))
+        _parallel = max(0, int(self.INFER_PARALLEL))
 
-            if self._runtime_quarantined or self._session is None:
-                chunk_out = self._process_dsp(chunk, self.TARGET_SR, strength)
-            else:
-                try:
-                    inp_tensor, stft_ctx = self._prepare_input(chunk, channels)
-                    raw_out = self._session.run([self._output_name], {self._input_name: inp_tensor})[0]
-                    raw_out_arr = np.asarray(raw_out, dtype=np.float32)
-                    raw_out = np.nan_to_num(raw_out_arr, nan=0.0, posinf=0.0, neginf=0.0)
-                    chunk_out = self._extract_output(raw_out, channels, chunk_len, stft_ctx)
-                    with self._state_lock:
-                        self._chunk_failures = 0
-                except Exception as exc:
-                    logger.warning("ML→DSP-Ersatzpfad aktiviert", exc_info=True)  # §V6 (copilot-instructions.md)
-                    logger.debug("ONNX-Chunk-Fehler: %s — DSP für diesen Chunk", exc)
-                    with self._state_lock:
-                        self._chunk_failures += 1
-                        # Quarantine ONNX path after repeated deterministic failures.
-                        if self._chunk_failures >= 3:
-                            self._runtime_quarantined = True
-                            self._model_ok = False
-                            self._session = None
-                            logger.warning(
-                                "BANQUET ONNX zur Laufzeit deaktiviert (wiederholte Chunk-Fehler)."
-                                " Nutze DSP-Ersatzpfad fuer Stabilitaet."
-                            )
-                            try:
-                                from backend.core.ml_memory_budget import release as _rel
+        if _parallel <= 1:
+            pos = 0
+            while pos < n_samples:
+                end = min(pos + chunk_len, n_samples)
+                chunk = audio[:, pos:end]
+                pad = chunk_len - chunk.shape[1]
+                if pad > 0:
+                    chunk = np.pad(chunk, ((0, 0), (0, pad)))
 
-                                _rel("BanquetVinyl")
-                            except Exception as _exc:
-                                logger.debug("Plugin operation fehlgeschlagen (unkritisch): %s", _exc)
-                    chunk_out = self._process_dsp(chunk, self.TARGET_SR, strength)
+                chunk_out = self._infer_window(chunk, channels, chunk_len, strength)
 
-            actual = end - pos
-            for c in range(channels):
-                out[:, pos:end] += (chunk_out[c] * window)[:actual][np.newaxis, :]
-            weight[pos:end] += window[:actual]
+                actual = end - pos
+                for c in range(channels):
+                    out[:, pos:end] += (chunk_out[c] * window)[:actual][np.newaxis, :]
+                weight[pos:end] += window[:actual]
 
-            pos += hop_len
+                pos += hop_len
+        else:
+            # Paralleler Fenster-Pfad (Opt-in): Fenster sind unabhängig,
+            # OLA bleibt sequenziell in Fenster-Reihenfolge → identisches
+            # Ergebnis zum Einzelpfad.
+            _jobs: list[tuple[np.ndarray, int, int]] = []
+            pos = 0
+            while pos < n_samples:
+                end = min(pos + chunk_len, n_samples)
+                chunk = audio[:, pos:end]
+                pad = chunk_len - chunk.shape[1]
+                if pad > 0:
+                    chunk = np.pad(chunk, ((0, 0), (0, pad)))
+                _jobs.append((chunk, pos, end))
+                pos += hop_len
+
+            from concurrent.futures import ThreadPoolExecutor
+
+            with ThreadPoolExecutor(max_workers=_parallel) as _pool:
+                _outs = list(
+                    _pool.map(
+                        lambda _j: self._infer_window(_j[0], channels, chunk_len, strength),
+                        _jobs,
+                    )
+                )
+            for (_, pos0, pos1), chunk_out in zip(_jobs, _outs):
+                actual = pos1 - pos0
+                for c in range(channels):
+                    out[:, pos0:pos1] += (chunk_out[c] * window)[:actual][np.newaxis, :]
+                weight[pos0:pos1] += window[:actual]
 
         weight = np.where(weight < 1e-8, 1.0, weight)
         out /= weight[np.newaxis, :]
@@ -357,6 +365,47 @@ class BanquetVinylPlugin:
             out = strength * out + (1.0 - strength) * audio
 
         return np.clip(out, -1.0, 1.0)  # type: ignore[no-any-return]
+
+    def _infer_window(self, chunk: np.ndarray, channels: int, chunk_len: int, strength: float) -> np.ndarray:
+        """Einzel-Fenster-Inferenz mit ML→DSP-Fallback und Quarantäne-Zählung.
+
+        Wird vom sequenziellen Pfad direkt und vom parallelen Fenster-Pfad
+        (INFER_PARALLEL > 1) über Worker-Threads aufgerufen — deshalb sind
+        alle Zustandsänderungen über `_state_lock` geschützt
+        (§V8/§G1 (copilot-instructions.md)).
+        """
+        if self._runtime_quarantined or self._session is None:
+            return self._process_dsp(chunk, self.TARGET_SR, strength)
+        try:
+            inp_tensor, stft_ctx = self._prepare_input(chunk, channels)
+            raw_out = self._session.run([self._output_name], {self._input_name: inp_tensor})[0]
+            raw_out_arr = np.asarray(raw_out, dtype=np.float32)
+            raw_out = np.nan_to_num(raw_out_arr, nan=0.0, posinf=0.0, neginf=0.0)
+            chunk_out = self._extract_output(raw_out, channels, chunk_len, stft_ctx)
+            with self._state_lock:
+                self._chunk_failures = 0
+            return chunk_out
+        except Exception as exc:
+            logger.warning("ML→DSP-Ersatzpfad aktiviert", exc_info=True)  # §V6 (copilot-instructions.md)
+            logger.debug("ONNX-Chunk-Fehler: %s — DSP für diesen Chunk", exc)
+            with self._state_lock:
+                self._chunk_failures += 1
+                # Quarantine ONNX path after repeated deterministic failures.
+                if self._chunk_failures >= 3:
+                    self._runtime_quarantined = True
+                    self._model_ok = False
+                    self._session = None
+                    logger.warning(
+                        "BANQUET ONNX zur Laufzeit deaktiviert (wiederholte Chunk-Fehler)."
+                        " Nutze DSP-Ersatzpfad fuer Stabilitaet."
+                    )
+                    try:
+                        from backend.core.ml_memory_budget import release as _rel
+
+                        _rel("BanquetVinyl")
+                    except Exception as _exc:
+                        logger.debug("Plugin operation fehlgeschlagen (unkritisch): %s", _exc)
+            return self._process_dsp(chunk, self.TARGET_SR, strength)
 
     def _prepare_input(self, chunk: np.ndarray, channels: int) -> tuple[np.ndarray, np.ndarray]:
         """Konvertiert audio chunk [ch, chunk_len] → ONNX tensor [1, 128, 128, 128].
