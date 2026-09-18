@@ -341,7 +341,13 @@ class HybridSpeedPitch:
             f0, voiced_flag, voiced_probs = librosa.pyin(
                 segment,
                 fmin=librosa.note_to_hz("C2"),  # type: ignore[arg-type]  # ~65 Hz
-                fmax=librosa.note_to_hz("C7"),  # type: ignore[arg-type]  # ~2093 Hz
+                # §PERF-R (2026-09-18): fmax C7→C6 — identische Begründung wie
+                # phase_12: der Speed/Pitch-Schätzer braucht die f0-Trajektorie
+                # (Stimm-/Lead-f0 ≲ 1 kHz); der C7-Kandidatenraum machte den
+                # reinen Python-Viterbi zum Chunk-Kostentreiber (~33 s/30 s).
+                # C6 halbiert den Raum (~4×); f0 > 1 kHz liefert der
+                # CREPE-Konsens desselben Hybrids.
+                fmax=librosa.note_to_hz("C6"),  # type: ignore[arg-type]  # ~1047 Hz
                 sr=sample_rate,
                 frame_length=2048,
                 hop_length=512,

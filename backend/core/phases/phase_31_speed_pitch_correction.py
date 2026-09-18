@@ -930,7 +930,9 @@ class SpeedPitchCorrectionPhase(PhaseInterface):
             f0, voiced_flag, voiced_probs = librosa.pyin(
                 segment,
                 fmin=float(librosa.note_to_hz("C2")),  # ~65 Hz
-                fmax=float(librosa.note_to_hz("C7")),  # ~2093 Hz
+                # §PERF-R (2026-09-18): fmax C7→C6 — f0-Trajektorie ≲ 1 kHz,
+                # Viterbi-Kandidatenraum halbiert (~4×); Konsens via CREPE-Hybrid.
+                fmax=float(librosa.note_to_hz("C6")),  # ~1047 Hz
                 sr=self.sample_rate,
                 frame_length=2048,
                 hop_length=512,
@@ -1026,7 +1028,10 @@ class SpeedPitchCorrectionPhase(PhaseInterface):
             f0, voiced_flag, voiced_probs = librosa.pyin(
                 segment,
                 fmin=float(librosa.note_to_hz("C2")),  # ~65 Hz
-                fmax=float(librosa.note_to_hz("C7")),  # ~2093 Hz
+                # §PERF-R (2026-09-18): fmax C7→C6 — 30-s-Segment × C7-Viterbi
+                # war der phase_31-Chunk-Kostentreiber (~35 s); f0 > 1 kHz
+                # liefert der CREPE-Konsens des Hybrids.
+                fmax=float(librosa.note_to_hz("C6")),  # ~1047 Hz
                 sr=sample_rate,
                 frame_length=2048,
                 hop_length=512,

@@ -301,7 +301,10 @@ def _detect_vibrato_zones(
         f0, voiced_flag, _ = librosa.pyin(
             mono,
             fmin=float(librosa.note_to_hz("C2")),
-            fmax=float(librosa.note_to_hz("C7")),
+            # §PERF-R (2026-09-18): fmax C7→C6 — Vibrato-F0-Trajektorie ≲ 1 kHz;
+            # der C7-Kandidatenraum machte den reinen Python-Viterbi auf
+            # 30-s-Chunks zum Kostentreiber der VFA-Kette (~35 s).
+            fmax=float(librosa.note_to_hz("C6")),
             sr=sr,
             hop_length=hop_length,
             fill_na=None,
