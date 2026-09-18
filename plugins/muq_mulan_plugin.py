@@ -170,7 +170,25 @@ def _to_mono_24k(audio: Any, sr: int) -> np.ndarray:
 
 
 def extract_muq_mulan_embedding(audio: Any, sr: int) -> np.ndarray | None:
-    """Audio-Embedding (768-d float32) via ONNX-GPU; None bei fehlendem Modell."""
+    """Audio-Embedding (768-d float32) via Torch-ROCm (bevorzugt) oder ONNX; None bei fehlendem Modell."""
+    # §SOTA-ML-V8 (2026-09-18): Torch-ROCm-Kern bevorzugt (paritätsverifiziert
+    # rel ≤ 1e-5 vs. ONNX-CPU, deterministisch; der ORT-ROCm-Pfad war numerisch
+    # defekt). Fail-closed: None/Exception → ONNX-Pfad (§V6 (copilot-instructions.md)).
+    try:
+        from backend.core.dsp.muq_mulan_torch_rocm import (  # pylint: disable=import-outside-toplevel
+            embed_muq_mulan_torch as _emt,
+        )
+        from backend.core.dsp.muq_mulan_torch_rocm import (
+            get_muq_mulan_torch_core as _gmt,
+        )
+
+        _core = _gmt()
+        if _core is not None:
+            _clip_t = _to_mono_24k(audio, sr)
+            _out_t = _emt(_core, _clip_t.reshape(1, -1))
+            return np.nan_to_num(np.asarray(_out_t, dtype=np.float32), nan=0.0, posinf=0.0, neginf=0.0)  # type: ignore[no-any-return]
+    except Exception as _t_exc:
+        logger.debug("MuQ-MuLan-Torch-Pfad nicht verfügbar: %s — ONNX-Pfad", _t_exc)
     sess = _get_session()
     if sess is None:
         return None

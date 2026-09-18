@@ -1,6 +1,6 @@
 # TASK_CHANGES — Live-Ledger der aktuellen Aufgabe
 
-> Generiert von `scripts/change_ledger.py snapshot` (Base: `HEAD`, Stand: 2026-09-18 19:52 CEST).
+> Generiert von `scripts/change_ledger.py snapshot` (Base: `HEAD`, Stand: 2026-09-18 20:29 CEST).
 > CI (`ci-lite.yml` pr-evidence-gate) erzwingt Abdeckung: jede geänderte Code-Datei muss hier stehen.
 
 ## Geänderte Dateien
@@ -8,12 +8,13 @@
 | Status | Pfad | Art |
 |---|---|---|
 | M | .github/FILE_REGISTRY.md | modifiziert |
-| M | backend/core/gpu_model_registry.json | modifiziert |
-| M | backend/core/ml_device_manager.py | modifiziert |
 | M | docs/GESAMTKONZEPT_PERFORMANCE_WOHLKLANG.md | modifiziert |
-| M | plugins/lyrics_transcriber_plugin.py | modifiziert |
-| ?? | backend/core/dsp/whisper_torch_rocm.py | ungetrackt |
-| ?? | tests/unit/test_whisper_torch_rocm.py | ungetrackt |
+| M | plugins/fcpe_plugin.py | modifiziert |
+| M | plugins/muq_mulan_plugin.py | modifiziert |
+| ?? | backend/core/dsp/fcpe_torch_rocm.py | ungetrackt |
+| ?? | backend/core/dsp/muq_mulan_torch_rocm.py | ungetrackt |
+| ?? | tests/unit/test_fcpe_torch_rocm.py | ungetrackt |
+| ?? | tests/unit/test_muq_mulan_torch_rocm.py | ungetrackt |
 
 ## Entscheidungen
 

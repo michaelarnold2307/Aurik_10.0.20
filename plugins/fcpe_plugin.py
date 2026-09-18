@@ -200,7 +200,24 @@ class FcpePlugin:
     def __init__(self) -> None:
         self._session: Any = None
         self._crepe_delegate: Any = None
+        # §SOTA-ML-V7 (2026-09-18): Torch-ROCm-Kern-Zustand (fail-closed).
+        self._torch_core: Any = None
+        self._torch_resolved: bool = False
         self._load_model()
+
+    def _resolve_torch_core(self) -> Any:
+        """§SOTA-ML-V7: Torch-ROCm-Kern einmalig auflösen; None → ONNX-CPU-Pfad."""
+        if self._torch_resolved:
+            return self._torch_core
+        self._torch_resolved = True
+        try:
+            from backend.core.dsp.fcpe_torch_rocm import get_fcpe_torch_core as _gtc
+
+            self._torch_core = _gtc()
+        except Exception as _exc:
+            logger.debug("FCPE-Torch-Kern nicht verfügbar: %s — ONNX-CPU-Pfad", _exc)
+            self._torch_core = None
+        return self._torch_core
 
     def _load_model(self) -> None:
         """FCPE ONNX laden; sonst CREPE-Plugin-Delegation registrieren."""
@@ -339,10 +356,21 @@ class FcpePlugin:
             mel = _compute_mel(audio_16k)  # (T, 128)
             n_frames = mel.shape[0]
 
-            # 3) ONNX-Inferenz: mel (1, T, 128) → salience (1, T, 360)
-            #    OOM-Guard: chunk mel in 3000-frame segments for large files
+            # 3) §SOTA-ML-V7 (2026-09-18): Torch-ROCm-Kern bevorzugt
+            #    (paritätsverifiziert rel ≤ 5e-5 vs. ONNX-CPU, deterministisch;
+            #    ORT-ROCm war numerisch defekt). Fail-closed → ONNX-CPU-Pfad.
+            #    OOM-Guard: chunk mel in 3000-frame segments for large files.
             _MAX_CHUNK = 3000
-            if n_frames <= _MAX_CHUNK:
+            _torch_core = self._resolve_torch_core()
+            if _torch_core is not None:
+                from backend.core.dsp.fcpe_torch_rocm import salience_fcpe_torch as _sft
+
+                _sal_chunks: list[np.ndarray] = []
+                for _i in range(0, n_frames, _MAX_CHUNK):
+                    _chunk = mel[_i : _i + _MAX_CHUNK]
+                    _sal_chunks.append(_sft(_torch_core, _chunk[None].astype(np.float32))[0])
+                salience = np.concatenate(_sal_chunks, axis=0)  # (T, 360)
+            elif n_frames <= _MAX_CHUNK:
                 mel_inp = mel[None].astype(np.float32)  # (1, T, 128)
                 [sal_out] = self._session.run(["salience"], {"mel": mel_inp})
                 salience = np.nan_to_num(sal_out[0]).astype(np.float32)  # (T, 360)

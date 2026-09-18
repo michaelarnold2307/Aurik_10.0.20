@@ -140,14 +140,10 @@ passieren — sonst wird sie verworfen:
    (§V6-Warnung), der Torch-Kern ist damit auch der qualitätskorrekte Pfad.
    Re-Export mit dynamischer Batch-Dim (`scripts/export_banquet_batch_onnx.py`)
    bit-verifiziert; Mini-Batch-Empirie ~1,1× (Latenz-, nicht Durchsatzbindung).
-   ⏳ **FCPE (Folge-Hebel, Messung 2026-09-18):** ORT-ROCm auch hier numerisch
-   defekt (Salience max|Δ| ≈ 0,04, rel ≈ 0,19 vs. ORT-CPU — Softmax-/Attention-
-   Kernels; dritter bestätigter Fall nach bs_roformer und BANQUET) → CPU-Policy
-   im Registry bleibt korrekt. ROCm wäre 227 ms vs. 2082 ms CPU je 60-s-Mel
-   (9,2×), aber falsch. Der GPU-Weg führt über einen Torch-ROCm-Port:
-   torchfcpe-Quelle liegt im Repo (`models/fcpe/torchfcpe/`,
-   `model_conformer_naive.py`), ONNX-Gewichte sind namentlich 1:1 zuzuordnen;
-   es fehlen die Laufzeit-Deps `einops` + `local_attention` in der Venv.
+   ✅ **FCPE (§SOTA-ML-V7):** GELÖST — Torch-ROCm-Kern (CFNaiveMelPE aus
+   `models/fcpe/fcpe.pt`), Parität rel ≈ 4.4e-5 vs. ONNX-CPU, deterministisch,
+   ~1.6 ms je 10-s-Mel (Plugin-End-to-End 60 s: 2.09 s → 0.17 s, ~12×);
+   Plugin bevorzugt den Torch-Kern mit ONNX-CPU-Fallback.
    **Bug-Jagd 2026-09-18 (ROCm-Sweep):** Alle verdict=rocm-Modelle mit
    Musik-/Struktur-Feeds nachgemessen — aero/bigvgan/crepe/flashsr/gacela/
    bw_reconstructor/diffwave OK (rel ≤ 6e-5); **basicpitch (beide Varianten)
@@ -162,9 +158,11 @@ passieren — sonst wird sie verworfen:
    auf ROCm (backend/core/dsp/whisper_torch_rocm.py) — Gewichte identisch zum
    ONNX-Export, Parität rel ≤ 1e-4 vs. ONNX-CPU, deterministisch, ~6.9 ms je
    30-s-Fenster (~14× schneller als der korrekte CPU-Pfad); der Transcriber
-   bevorzugt den Torch-Kern mit ONNX-CPU-Fallback. Offen: Whisper-Decoder
-   (merged, Aufmerksamkeit) + Turbo-fp16 — Folge-Hebel; MuQ-Torch-Port
-   (mulan/-Quelle + safetensors liegen vor).
+   bevorzugt den Torch-Kern mit ONNX-CPU-Fallback. **MuQ-MuLan ist gelöst
+   (§SOTA-ML-V8):** Audio-Turm-Torch-ROCm-Kern (vendorter muq_mulan-Code +
+   lokale Gewichte), Parität rel ≈ 3.2e-6 vs. ONNX-CPU, deterministisch,
+   ~29 ms je 10-s-Embedding (~50×); Plugin bevorzugt den Torch-Kern. Offen:
+   Whisper-Decoder (merged, Aufmerksamkeit) + Turbo-fp16 — Folge-Hebel.
 
 **Phase 3 — strukturell:**
 7. P2-1-Monolith-Split als Enabler für saubere Deferral-/Residency-Grenzen.
