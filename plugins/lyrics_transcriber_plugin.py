@@ -378,9 +378,12 @@ class LyricsTranscriber:
                 except Exception:
                     logger.warning("lyrics_transcriber_plugin.py::_transcribe_onnx Ersatzpfad", exc_info=True)
 
-        # 4. Segmentierung mit Encoder-Aktivierungen
+        # 4. Segmentierung: Turbo-Decoder (wenn aktiv) → Torch-Tiny-Decoder
+        #    (§SOTA-ML-V9, echte Wort-Timestamps) → Encoder-Heuristik.
         detected_lang, _lang_conf = self._detect_language_from_mono(audio_16k, self.WHISPER_SR)
         words = self._segment_with_turbo_decoder(encoder_out, duration_s, detected_lang)
+        if not words:
+            words = self._segment_with_torch_decoder(audio_16k, detected_lang)
         if not words:
             words = self._segment_with_encoder(audio_16k, encoder_out, duration_s)
         overall_conf = float(np.mean([w.confidence for w in words])) if words else 0.0
@@ -393,6 +396,44 @@ class LyricsTranscriber:
             duration_s=duration_s,
             fallback_used=False,
         )
+
+    def _segment_with_torch_decoder(
+        self,
+        audio_16k: np.ndarray,
+        language: str,
+    ) -> list[WordTimestamp]:
+        """§SOTA-ML-V9 (2026-09-18): Echte Wort-Timestamps über den Torch-Tiny-
+        Decoder (HF generate mit Timestamp-Tokens) — ersetzt die reine
+        Encoder-Aktivierungs-Heuristik des Tiny-Pfads. Fail-closed: jede
+        Exception/leeres Transkript → leere Liste (§V6 (copilot-instructions.md)).
+        """
+        if self._torch_core is None:
+            return []
+        try:
+            from backend.core.dsp.whisper_torch_rocm import (
+                transcribe_whisper_torch as _twt,  # pylint: disable=import-outside-toplevel
+            )
+
+            _tw_words = _twt(self._torch_core, audio_16k, language or "en")
+        except Exception as _tw_exc:
+            logger.debug("Whisper-Torch-Transkription fehlgeschlagen (%s) — Ersatzpfad", _tw_exc)
+            return []
+        if not _tw_words:
+            return []
+        _out: list[WordTimestamp] = []
+        for _w in _tw_words:
+            _conf = float(np.clip(float(_w.get("probability", 0.6)), 0.0, 1.0))
+            _out.append(
+                WordTimestamp(
+                    word="[vocal]",  # Datenschutz: Wort-Inhalte werden nicht geloggt
+                    start_s=float(_w["start"]),
+                    end_s=float(_w["end"]),
+                    confidence=_conf,
+                    is_stressed=False,
+                    phoneme_type="vowel",
+                )
+            )
+        return _out
 
     def _segment_with_turbo_decoder(
         self,

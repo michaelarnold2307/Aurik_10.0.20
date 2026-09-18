@@ -35,6 +35,9 @@ def _fake_core():
             super().__init__()
             self.encoder = _IdentityEncoder()
 
+        def get_encoder(self):
+            return self.encoder
+
     return {"model": _ModelShell().eval(), "extractor": None}
 
 
@@ -72,6 +75,101 @@ def test_fail_closed_without_snapshot(monkeypatch):
     monkeypatch.setattr(wtr, "_core_resolved", False)
     monkeypatch.setattr(wtr, "_find_snapshot", lambda: None)
     assert wtr.get_whisper_torch_core() is None
+
+
+def test_transcribe_word_grouping(monkeypatch):
+    """§SOTA-ML-V9: Token-Timestamps → Wort-Liste (Stub-generate)."""
+
+    class _Tok:
+        eos_token_id = 6
+
+        @staticmethod
+        def convert_ids_to_tokens(tid):
+            return {
+                0: "<|startoftranscript|>",
+                1: "<|en|>",
+                2: "<|0.00|>",
+                3: "Ġhello",
+                4: "Ġworld",
+                5: "<|2.00|>",
+                6: "<|endoftext|>",
+            }[tid]
+
+        @staticmethod
+        def decode(ids, skip_special_tokens=False):
+            _m = {3: "hello", 4: "world"}
+            return " ".join(_m[i] for i in ids if i in _m)
+
+    class _Feats:
+        def __init__(self):
+            self.input_features = torch.zeros(1, 80, 3000)
+
+    class _Proc:
+        tokenizer = _Tok()
+
+        def __call__(self, x, sampling_rate=16000, return_tensors=None):
+            return _Feats()
+
+    class _Gen:
+        sequences = torch.tensor([[0, 1, 2, 3, 4, 5, 6]])
+        token_timestamps = [torch.tensor([[0.0, 0.0, 0.0, 0.2, 0.4, 2.0, 2.0]])]
+        scores = [torch.zeros(1, 51864) for _ in range(4)]
+
+    class _Model(torch.nn.Module):
+        def __init__(self):
+            super().__init__()
+            self._p = torch.nn.Parameter(torch.zeros(1))
+
+        def generate(self, *a, **kw):
+            return _Gen()
+
+    core = {"model": _Model().eval(), "processor": _Proc()}
+    words = wtr.transcribe_whisper_torch(core, np.zeros(16000 * 5, dtype=np.float32), language="en")
+    assert len(words) == 2
+    assert words[0]["word"] == "hello"
+    assert abs(words[0]["start"] - 0.2) < 1e-6 and abs(words[0]["end"] - 0.2) < 1e-6
+    assert words[1]["word"] == "world"
+    assert abs(words[1]["start"] - 0.4) < 1e-6 and abs(words[1]["end"] - 0.4) < 1e-6
+
+
+def test_transcribe_empty_transcript(monkeypatch):
+    """Leeres Transkript (EOT sofort) → leere Liste, keine Exception."""
+
+    class _Tok:
+        eos_token_id = 6
+
+        @staticmethod
+        def convert_ids_to_tokens(tid):
+            return {0: "<|startoftranscript|>", 1: "<|en|>", 6: "<|endoftext|>"}[tid]
+
+        @staticmethod
+        def decode(ids, skip_special_tokens=False):
+            return ""
+
+    class _Feats:
+        input_features = torch.zeros(1, 80, 3000)
+
+    class _Proc:
+        tokenizer = _Tok()
+
+        def __call__(self, x, sampling_rate=16000, return_tensors=None):
+            return _Feats()
+
+    class _Gen:
+        sequences = torch.tensor([[0, 1, 6]])
+        token_timestamps = [torch.tensor([[0.0, 0.0, 0.0]])]
+        scores = [torch.zeros(1, 51864)]
+
+    class _Model(torch.nn.Module):
+        def __init__(self):
+            super().__init__()
+            self._p = torch.nn.Parameter(torch.zeros(1))
+
+        def generate(self, *a, **kw):
+            return _Gen()
+
+    core = {"model": _Model().eval(), "processor": _Proc()}
+    assert wtr.transcribe_whisper_torch(core, np.zeros(16000, dtype=np.float32)) == []
 
 
 def test_cpu_parity_vs_onnx():

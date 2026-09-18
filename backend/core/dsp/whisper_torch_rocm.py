@@ -48,18 +48,23 @@ def _find_snapshot() -> str | None:
 
 def _build_core():
     import torch  # pylint: disable=import-outside-toplevel
-    from transformers import WhisperFeatureExtractor, WhisperModel  # pylint: disable=import-outside-toplevel
+    from transformers import (  # pylint: disable=import-outside-toplevel
+        WhisperForConditionalGeneration,
+        WhisperProcessor,
+    )
 
     snapshot = _find_snapshot()
     if snapshot is None:
         raise RuntimeError("Whisper-Tiny-Snapshot nicht lokal gecacht (HF-Hub) — ONNX-CPU-Pfad bleibt")
-    model = WhisperModel.from_pretrained(snapshot, local_files_only=True).eval()  # nosec B615 — commit-gepinnter Snapshot, kein Netz
-    extractor = WhisperFeatureExtractor.from_pretrained(snapshot, local_files_only=True)  # nosec B615
-    return {"model": model, "extractor": extractor}
+    model = WhisperForConditionalGeneration.from_pretrained(  # nosec B615 — commit-gepinnter Snapshot, kein Netz
+        snapshot, local_files_only=True
+    ).eval()
+    processor = WhisperProcessor.from_pretrained(snapshot, local_files_only=True)  # nosec B615
+    return {"model": model, "processor": processor}
 
 
 def get_whisper_torch_core() -> dict | None:
-    """Lazy-Singleton: {model, extractor} auf ROCm oder None
+    """Lazy-Singleton: {model, processor} auf ROCm oder None
     (fail-closed, §V6 (copilot-instructions.md))."""
     global _core, _core_resolved
     with _lock:
@@ -104,7 +109,7 @@ def encode_whisper_torch_mel(core: dict, mel: np.ndarray) -> np.ndarray:
     with torch.no_grad():
         out = (
             core["model"]
-            .encoder(torch.from_numpy(m).to(next(core["model"].parameters()).device))
+            .get_encoder()(torch.from_numpy(m).to(next(core["model"].parameters()).device))
             .last_hidden_state.cpu()
             .numpy()
         )
@@ -128,9 +133,94 @@ def encode_whisper_torch(core: dict, audio_16k: np.ndarray) -> np.ndarray:
     if x.ndim != 1 or x.size == 0:
         raise ValueError(f"Whisper-Torch: erwartet 16-kHz-Mono (1-D), bekam {x.shape}")
     x = np.nan_to_num(x, nan=0.0, posinf=0.0, neginf=0.0)
-    feats = core["extractor"](x, sampling_rate=16000, return_tensors="pt")
+    feats = core["processor"](x, sampling_rate=16000, return_tensors="pt")
     mel = feats.input_features.to(next(core["model"].parameters()).device)
     with torch.no_grad():
-        out = core["model"].encoder(mel).last_hidden_state.cpu().numpy()
+        out = core["model"].get_encoder()(mel).last_hidden_state.cpu().numpy()
     out = np.nan_to_num(out, nan=0.0, posinf=0.0, neginf=0.0)
     return out.astype(np.float32)  # type: ignore[no-any-return]
+
+
+def transcribe_whisper_torch(core: dict, audio_16k: np.ndarray, language: str = "en") -> list[dict]:
+    """Whisper-Tiny-Greedy-Transkription mit Token-Timestamps → Wort-Liste.
+
+    §SOTA-ML-V9 (2026-09-18): Der Ort-ROCm-Decoder ist numerisch defekt und der
+    bisherige Tiny-Pfad hatte gar keinen Decoder (Encoder-Aktivierungs-Heuristik).
+    Dieser Pfad liefert echte Wort-Timestamps über generate(return_timestamps=True)
+    (transformers 4.43: Token-Level) + manuelle Wort-Gruppierung an
+    führenden „Ġ“-Tokens; Wort-Zeitraum = min/max der Token-Zeiten,
+    Wahrscheinlichkeit = Mittel der Token-Wahrscheinlichkeiten (output_scores).
+
+    Returns: Liste von dicts {"word", "start", "end", "probability"}
+    (leer bei leerem Transkript, z. B. reinem Musik-Signal). Deterministisch.
+    """
+    import torch  # pylint: disable=import-outside-toplevel
+
+    x = np.asarray(audio_16k, dtype=np.float32)
+    if x.ndim != 1 or x.size == 0:
+        raise ValueError(f"Whisper-Torch: erwartet 16-kHz-Mono (1-D), bekam {x.shape}")
+    x = np.nan_to_num(x, nan=0.0, posinf=0.0, neginf=0.0)
+    processor = core["processor"]
+    model = core["model"]
+    device = next(model.parameters()).device
+    feats = processor(x, sampling_rate=16000, return_tensors="pt")
+    mel = feats.input_features.to(device)
+    with torch.no_grad():
+        gen = model.generate(
+            mel,
+            language=language,
+            return_timestamps=True,
+            output_scores=True,
+            return_dict_in_generate=True,
+            max_new_tokens=224,
+            num_beams=1,
+            temperature=0.0,
+        )
+    ids = gen.sequences[0].tolist()
+    times = torch.cat(gen.token_timestamps).cpu().numpy()[0] if gen.token_timestamps is not None else np.zeros(len(ids))
+    # Token-Wahrscheinlichkeiten: Scores sind [1, vocab] je Schritt (shifted).
+    probs: list[float] = []
+    if gen.scores:
+        for _s in gen.scores:
+            _p = torch.softmax(_s.float(), dim=-1)[0]
+            probs.append(float(_p.max()))
+    if len(probs) < len(ids):
+        probs = [1.0, *probs]  # Kontext-Token ohne Score
+    if len(probs) > len(ids):
+        probs = probs[: len(ids)]
+    while len(probs) < len(ids):
+        probs.append(probs[-1] if probs else 1.0)
+
+    tok = processor.tokenizer
+    words: list[dict] = []
+    _cur: list[int] = []
+    _cur_t: list[float] = []
+    _cur_p: list[float] = []
+
+    def _flush() -> None:
+        nonlocal _cur, _cur_t, _cur_p
+        if _cur:
+            _word = tok.decode(_cur, skip_special_tokens=True).strip()
+            if _word:
+                words.append(
+                    {
+                        "word": _word,
+                        "start": float(min(_cur_t)),
+                        "end": float(max(_cur_t)),
+                        "probability": float(np.mean(_cur_p)),
+                    }
+                )
+        _cur, _cur_t, _cur_p = [], [], []
+
+    for _i, _tid in enumerate(ids):
+        _token = tok.convert_ids_to_tokens(_tid)
+        _is_ts = _token.startswith("<|")
+        _is_word_start = _token.startswith("Ġ") and _cur
+        if _is_ts or _is_word_start:
+            _flush()
+        if not _is_ts and _tid not in (tok.eos_token_id,):
+            _cur.append(_tid)
+            _cur_t.append(float(times[_i]) if _i < len(times) else 0.0)
+            _cur_p.append(probs[_i] if _i < len(probs) else 1.0)
+    _flush()
+    return words
