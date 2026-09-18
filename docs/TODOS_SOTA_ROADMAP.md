@@ -1305,6 +1305,33 @@ Gates arbeiten korrekt — FC bricht bei Ebene-1-Verstoß ab).
 Verifikation: `output/supervised_run/elke_225s_perfr_v1023.{log,wav}` +
 automatische Analyse `…_v1023_analysis.txt` (Chunk-/Phasen-Zeiten, RT).
 
+## TODO SOTA 4 (2026-09-18) — Beschleunigung + höhere Restaurierungsqualität (Welle 4)
+
+> Reihenfolge = (Hör-Gewinn × Machbarkeit) je Aufwand. Mess-Kadenz: Die
+> v1023-Lauf-Endwerte (Hot-Phase-Rangliste) entscheiden die Reihenfolge von
+> SOTA4-1 und SOTA4-2. Kein Trade-off: jede Maßnahme beschleunigt UND/ODER
+> verbessert die Hör-Qualität — Qualitätskompromisse sind ausgeschlossen.
+
+| ID | Maßnahme | Wirkung | Status |
+|---|---|---|---|
+| SOTA4-1 | PANNs-Multi-Window-Parallelisierung (VFA-Kette): Fenster sind unabhängig, ORT-`run` thread-sicher ⇒ ThreadPool nach BANQUET-P8-Muster, bit-identisch | ~10–20 s/Chunk; VFA (≈70 s) entlastet | OFFEN — Messung, sobald die GPU wieder frei ist (nach v1023) |
+| SOTA4-2 | HR-V1-Flag-Rollout (BigVGAN-Repair, `additive_synthesis_gate`): A/B-Validierung bestanden (af +0,0073, HNR +4,42 dB, PQS 4,52) — Budget-Nachweis mit dem neuen Headroom führen | messbar höhere Reparaturqualität (Harmonik/HNR); Kost nur die Synthese-Teile (~2,5× RT/10 s GPU) | OFFEN — Budget-Urteil nach v1023-Werten |
+| SOTA4-3 | F4-FlashSR-Musik-Finetune (HF-Rekonstruktion > 12,9 kHz): größte dokumentierte Qualitätslücke des Referenzmaterials (bandwidth_loss conf=0,99) | Air/Presence (MUSHRA-Proxy VocPres/ISO226) | GPU-GEBUNDEN — Rezept vorhanden (train_flashsr_f4.py), 16k→48k |
+| SOTA4-4 | FCPE-Torch-ROCm-Port nach BSR-Muster (ORT-ROCm-EP rel=0,93 defekt ⇒ derzeit CPU): VORAB echten FCPE-Zeitanteil je Chunk messen | unklar — im phase_12-Profil nicht unter den Top-20; Port lohnt nur bei gemessenem Anteil | VORAB-MESSUNG (nach v1023-Hot-Phase-Liste) |
+| SOTA4-5 | Whisper-GPU (HF-Decoder): auf diesem Host inert (Blob-Store-Symlinks gebrochen ⇒ ONNX/DSP-Fallback), auf anderen Hosts aktiv | ~10–20× auf dem Transkriptionsschritt je Song | DOKUMENTIERT — kein lokaler Aufwand |
+| SOTA4-6 | P11 BANQUET-Mini-Batch (dynamische Batch-Dim): Trainingscode fehlt im Repo (banquet_infer.py ohne Architektur, nur Checkpoint) — optional Architektur-Re-Engineering aus dem Checkpoint | GPU-Deckel 1,19× → potenziell 5–10× auf phase_09 | BLOCKIERT — hoher Aufwand, unsicher; nur nach SOTA4-1…4 |
+| SOTA4-7 | phase_28-Session-Hoist (ONNX-Session je phase_28-Aufruf statt je Prozess) — kleinteiliger Restposten | ~1–3 s/Chunk | OFFEN — Priorisierung nach v1023-Hot-Phase-Liste |
+
+**Akzeptanz je Maßnahme:** (1) bit-identisch oder durch Never-worsen-Gates/
+PMGG/Reinhör-Witness bestätigt (§0/Gesamtkonzept §6); (2) deterministisch
+(§G5 (GEBOTE.md)); (3) Messwerte im Lauf-Protokoll dokumentiert (RT-Faktor
++ Goal-SCORECARD/af-Delta); (4) §V6 (copilot-instructions.md)-Fail-closed unverändert.
+
+**Bewusst NICHT Teil der Welle (Qualitätskopplung, §V7/Hörordnung):**
+Phase-Umordnung (R7-Reihenfolge ändert den Output), FC-Loop-/Gate-Reduktion
+(normative Qualitäts-Maschinerie), Audibility-Globalcache in phase_27 (lokale
+Maskierung je Defekt-Kontext — ein Cache wäre nicht exakt).
+
 ### Gemessene Hot-Phase-Wahrheit (Profiling 2026-09-16)
 
 - Treiber sind ML-Load/-Inferenz (BANQUET 0,78 s/Prozess = 62 % der Phasen-Zeit,
