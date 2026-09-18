@@ -40,6 +40,10 @@ class LyricsTranscriptionResult:
     overall_confidence: float
     duration_s: float
     fallback_used: bool
+    # §Gesangs-Gate (2026-09-18): 1 – p(no_speech) aus dem Whisper-Decoder;
+    # 0 = Instrumental-Passage, 1 = sicherer Gesang. Pfade ohne Decoder-Score
+    # belassen den Default 1.0 (bisheriges Verhalten).
+    vocal_presence: float = 1.0
 
 
 def _assert_no_lyrics_in_log(words: list[WordTimestamp]) -> None:
@@ -325,6 +329,18 @@ class ContentAwareProcessor:
         if transcription.fallback_used or not transcription.words:
             return audio
 
+        # §Gesangs-Gate (2026-09-18): Never-worsen — Instrumental-Passagen bleiben
+        # unangetastet (kein Phonem-DSP auf Halluzinationen), unsichere Präsenz
+        # skaliert die Stärke linear ab.
+        _presence = float(getattr(transcription, "vocal_presence", 1.0))
+        if _presence < 0.15:
+            logger.debug(
+                "Gesangs-Gate: vocal_presence=%.2f — Instrumental-Passage bleibt neutral (Never-worsen)",
+                _presence,
+            )
+            return audio
+        strength = strength * float(np.clip(_presence, 0.0, 1.0))
+
         # §v10.303.50: Text NUR im RAM; erst NACH _assert_no_lyrics_in_log löschen.
         # Hier noch nicht prüfen — Sentiment/Semantic-DSP brauchen den Text.
 
@@ -340,6 +356,10 @@ class ContentAwareProcessor:
         _sil_nr = float(_lp.get("silence_nr_strength", 1.0))
 
         for word in transcription.words:
+            # §Gesangs-Gate (2026-09-18): Schwache Wörter (Decoder-Halluzinationen
+            # auf Instrumental-Passagen) werden übersprungen.
+            if float(getattr(word, "confidence", 1.0)) < 0.30:
+                continue
             i0 = max(0, min(n_samples, int(word.start_s * sr)))
             i1 = max(i0, min(n_samples, int(word.end_s * sr)))
             if i1 - i0 < 32:
@@ -1574,13 +1594,16 @@ class LyricsGuidedEnhancement:
                 input_features = input_features.to(_hf_device)
 
             # Generate with timestamps
+            _gen_kwargs = {
+                "return_timestamps": True,
+                "max_length": 448,
+                # §Gesangs-Gate (2026-09-18): Scores für p(no_speech) + Wort-Konfidenz.
+                "output_scores": True,
+                "return_dict_in_generate": True,
+            }
             with torch.no_grad():
                 try:
-                    predicted_ids = self._whisper_hf_model.generate(
-                        input_features,
-                        return_timestamps=True,
-                        max_length=448,
-                    )
+                    _gen = self._whisper_hf_model.generate(input_features, **_gen_kwargs)
                 except Exception as _gen_exc:
                     if _hf_device == "cpu":
                         raise
@@ -1594,11 +1617,16 @@ class LyricsGuidedEnhancement:
                         logger.debug("Stiller optionaler Ausnahmefall ignoriert", exc_info=True)
                     self._whisper_hf_device = "cpu"
                     with torch.no_grad():
-                        predicted_ids = self._whisper_hf_model.generate(
-                            input_features.cpu(),
-                            return_timestamps=True,
-                            max_length=448,
-                        )
+                        _gen = self._whisper_hf_model.generate(input_features.cpu(), **_gen_kwargs)
+            predicted_ids = _gen.sequences
+            _p_nospeech = 0.0
+            try:
+                _ns_id = self._whisper_hf_processor.tokenizer.convert_tokens_to_ids("<|nospeech|>")
+                if _ns_id is not None and _gen.scores:
+                    _p_nospeech = float(torch.softmax(_gen.scores[0].float(), dim=-1)[0, _ns_id])
+            except Exception:
+                _p_nospeech = 0.0
+            _vocal_presence = float(np.clip(1.0 - _p_nospeech, 0.0, 1.0))
 
             # Decode full text (RAM only — never logged)
             if predicted_ids.device.type != "cpu":
@@ -1621,12 +1649,31 @@ class LyricsGuidedEnhancement:
             words = self._align_phonemes(words, mono_16k, 16_000)
             _detected_lang, _lang_conf = self._detect_language_from_mono(mono_16k, 16_000)
 
+            # §Gesangs-Gate (2026-09-18): Effektive Präsenz — p(no_speech),
+            # Token-Konfidenz und physiologische Wortdichte. Der Tiny-Decoder
+            # halluziniert auf Instrumental-Musik (gemessen: 123 Wörter/5 s =
+            # 24 W/s — physiologisch unmöglich, Gesang ≤ ~12 W/s) mit voller
+            # Konfidenz; no_speech allein genügt daher nicht.
+            _token_conf = 0.0
+            try:
+                if _gen.scores:
+                    _maxes = [float(torch.softmax(_s.float(), dim=-1)[0].max()) for _s in _gen.scores]
+                    _token_conf = float(np.mean(_maxes)) if _maxes else 0.0
+            except Exception:
+                _token_conf = 0.0
+            _density = float(len(words)) / max(dur, 1e-3)
+            if _density > 12.0:
+                _vocal_presence = 0.0  # Halluzination auf Instrumental → neutral
+            else:
+                _vocal_presence = float(np.clip((1.0 - _p_nospeech) * np.clip(_token_conf / 0.6, 0.0, 1.0), 0.0, 1.0))
+
             result = LyricsTranscriptionResult(
                 words=words,
                 language=_detected_lang,
                 overall_confidence=0.75,
                 duration_s=dur,
                 fallback_used=False,
+                vocal_presence=_vocal_presence,
             )
 
             # §v10.303.50 Privacy: clear word text before result leaves method.
