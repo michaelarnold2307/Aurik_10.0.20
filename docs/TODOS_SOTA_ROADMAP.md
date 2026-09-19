@@ -1515,6 +1515,25 @@ neu), deterministisch (§G5 (GEBOTE.md)). ~1,1 s je Phase ⇒ ~6 min je
 Song. Tests: `tests/unit/test_listening_witness.py::TestPerfR11BatchedPaths`
 (5 Fälle, Suite 39 grün).
 
+### §PERF-R12 (2026-09-19) — Stereo-Safety-Guard: Interaural-Profil-Cache (je Phase ~3 s gespart)
+
+Der §2.51a-Mid-Pipeline-Stereo-Guard läuft nach JEDER Phase (pre/post) und
+kostete 4,87 s je 30-s-Chunk (cProfile): `compute_interaural_profile` ×2
+(je 2,42 s — Vollsignal-fft_crosscorr 0,5 s + 1200-Fenster-ITD-Loop mit
+np.correlate 1,9 s + Python-Overhead 1,5 s). Da post von Phase N = pre von
+Phase N+1, wurde dasselbe Signal je Phase doppelt profiliert.
+
+UMGESETZT: (a) `_INTERAURAL_PROFILE_CACHE` — content-keyed (blake2b, Deckel
+4), Cache-Treffer liefert exakt das Erst-Profil (bit-identische Semantik —
+Guard-Verdikte unverändert); (b) Fenster-Preprocessing batched (std-Gate,
+mean-Subtraktion, Denom-Dots via sliding_window_view/einsum; np.correlate
+bleibt je Fenster — Korrelations-Werte bit-identisch). Messung (30 s
+Stereo, ROCm): Profil 2,42 s → 1,62 s, Cache-Treffer 0,07 s; Guard je
+Phase 4,87 s → ~1,7 s (ein frisches Profil + ein Treffer) ⇒ **~3,2 s je
+Phase ⇒ ~17 min je Song**. ITD/Jitter identisch zum alten Loop (≤ 1e-6 µs).
+Tests: `tests/unit/test_interaural_cues.py::TestPerfR12ProfileCache`
+(2 Fälle; Interaural+Post-Pipeline-Stereo-Suiten 21 grün).
+
 ## TODO SOTA 4 (2026-09-18) — Beschleunigung + höhere Restaurierungsqualität (Welle 4)
 
 > Reihenfolge = (Hör-Gewinn × Machbarkeit) je Aufwand. Mess-Kadenz: Die

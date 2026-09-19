@@ -96,3 +96,52 @@ def test_apply_interaural_cues_places_cues() -> None:
     assert itd > 100.0
     # Energie des entfernten Signals ist kleiner als die des nahen Mono-Signals.
     assert float(np.sqrt(np.mean(stereo**2))) < float(np.sqrt(np.mean(mono**2)))
+
+
+class TestPerfR12ProfileCache:
+    """§PERF-R12 (2026-09-19): Content-keyed Interaural-Profil-Cache +
+    batched Fenster-Preprocessing — numerisch äquivalent zum alten
+    Per-Fenster-Loop, deterministisch nach §G5 (GEBOTE.md), Deckel 4."""
+
+    def test_profile_cache_bit_identical_and_bounded(self) -> None:
+        import backend.core.dsp.interaural_cues as ic
+
+        ic._INTERAURAL_PROFILE_CACHE.clear()
+        stereo, _ = _make_stereo(sr=48000, n=96000, itd_us=200.0, ild_db=-3.0)
+        stereo = np.ascontiguousarray(stereo, dtype=np.float64)
+        p1 = ic.compute_interaural_profile(stereo, 48000)
+        p2 = ic.compute_interaural_profile(stereo, 48000)
+        assert p1 is p2  # exakt derselbe Wert (bit-identische Semantik)
+        assert len(ic._INTERAURAL_PROFILE_CACHE) == 1
+        for i in range(6):
+            ic.compute_interaural_profile(stereo + i * 1e-4, 48000)
+        assert len(ic._INTERAURAL_PROFILE_CACHE) <= ic._INTERAURAL_PROFILE_CACHE_MAX
+        assert len(ic._INTERAURAL_PROFILE_CACHE) > 0
+
+    def test_profile_equivalent_to_reference_loop(self) -> None:
+        import backend.core.dsp.interaural_cues as ic
+
+        ic._INTERAURAL_PROFILE_CACHE.clear()
+        sr = 48000
+        stereo32, _ = _make_stereo(sr=sr, n=96000, itd_us=250.0, ild_db=2.0)
+        stereo64 = np.ascontiguousarray(stereo32, dtype=np.float64)
+        prof = ic.compute_interaural_profile(stereo64, sr)
+
+        # Alte Per-Fenster-Schleife (Referenz-Replikation)
+        ch = ic.to_channels_first(stereo64)
+        _l, _r = ch[0], ch[1]
+        win = max(int(round(0.05 * sr)), 256)
+        hop = max(win // 2, 1)
+        max_lag_samples = int(round(0.001 * sr))
+        itds = []
+        for start in range(0, max(len(_l) - win + 1, 1), hop):
+            _w_l = _l[start : start + win]
+            _w_r = _r[start : start + win]
+            if float(np.std(_w_l)) < 1e-8 or float(np.std(_w_r)) < 1e-8:
+                continue
+            _lag, _ = ic._itd_from_cross_correlation(_w_l, _w_r, max_lag_samples)
+            itds.append(_lag / sr * 1e6)
+        ref_itd = float(np.median(itds))
+        ref_jitter = float(np.median(np.abs(np.asarray(itds) - ref_itd)))
+        assert abs(prof.itd_us - ref_itd) < 1e-6
+        assert abs(prof.itd_jitter_us - ref_jitter) < 1e-6

@@ -32,6 +32,7 @@ Cue-Metriken und den Guard-Datentyp, an dem jede HRIR-Erweiterung gemessen wird.
 
 from __future__ import annotations
 
+import hashlib
 import logging
 from dataclasses import dataclass
 from typing import cast
@@ -147,21 +148,35 @@ def _itd_from_cross_correlation(x: np.ndarray, y: np.ndarray, max_lag: int) -> t
     return lag_f, float(peak)
 
 
+_INTERAURAL_PROFILE_CACHE: dict[tuple[int, str], InterauralCueProfile] = {}
+_INTERAURAL_PROFILE_CACHE_MAX = 4
+
+
 def compute_interaural_profile(audio: np.ndarray, sr: int) -> InterauralCueProfile:
     """Berechnet ITD/ILD/IACC eines Stereo- oder Mono-Signals.
 
     §V7 (copilot-instructions.md): layout-sicher via audio_layout — kein
     hartes (N,2)/(2,N)-Annehmen. Mono → itd=0, ild=0, iacc=1.
+    §PERF-R12 (2026-09-19): Content-keyed Profil-Cache — der Stereo-Guard
+    reicht je Phase (pre, post) dieselben Signale mehrfach durch (post von
+    Phase N = pre von Phase N+1); der Cache liefert exakt das Erst-Profil
+    (bit-identische Semantik, Deckel 4).
     """
     arr = np.asarray(audio, dtype=np.float64)
-    if arr.ndim == 1:
-        return InterauralCueProfile(False, 0.0, 0.0, 1.0, 0.0, 1.0)
     if arr.ndim != 2:
+        if arr.ndim == 1:
+            return InterauralCueProfile(False, 0.0, 0.0, 1.0, 0.0, 1.0)
         return InterauralCueProfile(False, 0.0, 0.0, 1.0, 0.0, 1.0)
+    _key = (int(sr), hashlib.blake2b(np.ascontiguousarray(arr).tobytes(), digest_size=8).hexdigest())
+    _cached = _INTERAURAL_PROFILE_CACHE.get(_key)
+    if _cached is not None:
+        return _cached
     ch = to_channels_first(arr)
     if ch.shape[0] < 2:
         mono = mono_mix(ch)
-        return InterauralCueProfile(False, 0.0, 0.0, 1.0, 0.0, _corr_coef(mono, mono))
+        _prof_mono = InterauralCueProfile(False, 0.0, 0.0, 1.0, 0.0, _corr_coef(mono, mono))
+        _store_interaural_profile(_key, _prof_mono)
+        return _prof_mono
     left = ch[0]
     right = ch[1]
 
@@ -173,15 +188,42 @@ def compute_interaural_profile(audio: np.ndarray, sr: int) -> InterauralCueProfi
     # ── ITD über Fenster-Median (robust gegen einzelne fehlgetriggerte Fenster) ──
     win = max(int(round(0.05 * sr)), 256)  # 50 ms Fenster
     hop = max(win // 2, 1)
-    n = len(left)
+    # §PERF-R12: Fenster-Preprocessing batched (std-Gate, mean-Subtraktion,
+    # Denom-Dots) — je Fenster dieselben Werte wie der alte Loop; der
+    # np.correlate-Aufruf bleibt je Fenster (bit-identische Korrelation).
+    _sw_l = np.lib.stride_tricks.sliding_window_view(left, win)[::hop]
+    _sw_r = np.lib.stride_tricks.sliding_window_view(right, win)[::hop]
+    _n_frames = min(_sw_l.shape[0], _sw_r.shape[0])
+    _l_fr = np.ascontiguousarray(_sw_l[:_n_frames])
+    _r_fr = np.ascontiguousarray(_sw_r[:_n_frames])
+    _l_std = _l_fr.std(axis=1)
+    _r_std = _r_fr.std(axis=1)
+    _active = (_l_std >= 1e-8) & (_r_std >= 1e-8)
+    _l_c = _l_fr - _l_fr.mean(axis=1, keepdims=True)
+    _r_c = _r_fr - _r_fr.mean(axis=1, keepdims=True)
+    _denoms = np.sqrt(np.einsum("ij,ij->i", _l_c, _l_c) * np.einsum("ij,ij->i", _r_c, _r_c))
     itds: list[float] = []
-    for start in range(0, max(n - win + 1, 1), hop):
-        _l = left[start : start + win]
-        _r = right[start : start + win]
-        if float(np.std(_l)) < 1e-8 or float(np.std(_r)) < 1e-8:
+    for _i in np.flatnonzero(_active):
+        _denom = float(_denoms[_i])
+        if _denom < 1e-12:
             continue
-        _lag, _ = _itd_from_cross_correlation(_l, _r, max_lag_samples)
-        itds.append(_lag / sr * 1e6)
+        _x = _l_c[_i]
+        _y = _r_c[_i]
+        corr = np.correlate(_x, _y, mode="full") / _denom
+        _nw = len(_x)
+        lag_axis = np.arange(-(_nw - 1), _nw, dtype=np.int64)
+        _max_lag = min(max_lag_samples, _nw - 1)
+        mask = np.abs(lag_axis) <= _max_lag
+        idx = int(np.argmax(np.abs(corr[mask])))
+        lag_f = float(lag_axis[mask][idx])
+        if 0 < idx < int(mask.sum()) - 1:
+            c_prev = float(corr[mask][idx - 1])
+            c_here = float(corr[mask][idx])
+            c_next = float(corr[mask][idx + 1])
+            denom_p = c_prev - 2.0 * c_here + c_next
+            if abs(denom_p) > 1e-12:
+                lag_f = lag_f + 0.5 * (c_prev - c_next) / denom_p
+        itds.append(lag_f / sr * 1e6)
     if itds:
         itd_us = float(np.median(itds))
         itd_jitter_us = float(np.median(np.abs(np.asarray(itds) - itd_us)))
@@ -195,7 +237,7 @@ def compute_interaural_profile(audio: np.ndarray, sr: int) -> InterauralCueProfi
     # ── Lowband-Korrelation (BMLD-relevantes Band 250 Hz–1 kHz) ──
     lowband_corr = _band_limited_corr(left, right, sr, 250.0, 1000.0)
 
-    return InterauralCueProfile(
+    _prof = InterauralCueProfile(
         is_stereo=True,
         itd_us=float(itd_us),
         ild_db=float(ild_db),
@@ -203,6 +245,15 @@ def compute_interaural_profile(audio: np.ndarray, sr: int) -> InterauralCueProfi
         itd_jitter_us=float(itd_jitter_us),
         lowband_corr=float(lowband_corr),
     )
+    _store_interaural_profile(_key, _prof)
+    return _prof
+
+
+def _store_interaural_profile(key: tuple[int, str], prof: InterauralCueProfile) -> None:
+    """Deckel 4 Einträge (Speicher-Schutz, Content-Adressierung)."""
+    if len(_INTERAURAL_PROFILE_CACHE) >= _INTERAURAL_PROFILE_CACHE_MAX:
+        del _INTERAURAL_PROFILE_CACHE[next(iter(_INTERAURAL_PROFILE_CACHE))]
+    _INTERAURAL_PROFILE_CACHE[key] = prof
 
 
 def _band_limited_ild_db(left: np.ndarray, right: np.ndarray, sr: int) -> float:
