@@ -172,6 +172,19 @@ passieren — sonst wird sie verworfen:
    (2026-09-16, MuLan) ist auf dem aktuellen Torch-ROCm-Stack nicht mehr
    reproduzierbar — zwei GPU-Läufe bit-identisch (max|Δ| = 0.0, 7900 XTX);
    AURIK_MUQ_GPU=0 bleibt als Opt-out für §G5-Zertifikats-Kontexte.
+   **v1024-Probe (2026-09-18, selbstbeschaffte Daten):** Vollständiger
+   Pipeline-Lauf (vinyl_test_01.wav, 30 s, aurik_cli): **~141 min = ~282× RT**;
+   Export-Vertrag §0c griff korrekt — Quality-Gate „critical_degraded"
+   (MUSICAL_GOALS_VIOLATION) exportierte das bestmögliche sichere Ergebnis
+   statt Hardstop. LUFS neutral (-17.46 → -17.72). Phasen-Timings je Iteration
+   stehen nicht im CLI-Log (nur Benchmark-Harness liefert sie) — die
+   Feedback-Chain lief 3–4 Iterationen.
+   **Turbo-A/B-Evidenz (instrumentaler Korpus, 3×30 s):** Tiny bleibt auf
+   Instrumental sauber (0–1 Wörter), Turbo halluziniert mehr (je 2 Wörter mit
+   Konfidenz 0.95–0.98 auf Vinyl/Tape). **Entscheidung: Tiny bleibt Default** —
+   ein Turbo-Default würde auf Instrumental-Passagen das Gesangs-Gate
+   unnötig belasten. Eine A/B auf echtem Gesangsmaterial steht aus
+   (Korpus hat keins). Evidenz: /tmp/turbo_ab_evidence.json.
 
 **Phase 3 — strukturell:**
 7. P2-1-Monolith-Split als Enabler für saubere Deferral-/Residency-Grenzen.
