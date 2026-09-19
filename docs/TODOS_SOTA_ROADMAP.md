@@ -1375,6 +1375,41 @@ fehlerhaften v1023_analysis.txt-Attribution) + Folge-Fixes:
    (Chunk-akkurate Maske auf verarbeitetem Audio; WoW/Flutter-Stretch
    macht die Song-Timeline nicht exakt).
 
+### §PERF-R7 (2026-09-19) — phase_54-STL-Follower ohne NumPy-Dispatch (bit-identisch)
+
+Der STL-adaptive Attack/Release-Follower bleibt bewusst sequenziell
+(zustandsbehaftete Rekursion, §PERF-R3-Entscheid), aber je Sample
+``np.clip`` (2×1,44 M) + ``np.exp`` (1,44 M) kosteten gemessen ~9 s von
+14 s Phasenzeit — NaN-sichere Bedingungs-Kaskade + ``math.exp`` rechnen
+**bit-identisch** (gleiche libm-Double-Arithmetik, NaN-Semantik wie
+``np.clip``; Unit-Test pinnt beides). phase_54 auf realem Elke-Material:
+17,83 → 8,36 s je 30 s (2,1×) — Commit 37558bbc.
+
+### §PERF-R8 (2026-09-19) — pYIN mit band-begrenztem Viterbi (bit-identisch)
+
+librosa-0.11.0-``pyin`` dekodiert über ``np.vectorize`` + Zeilen-Loop
+(``sequence._viterbi``) — gemessen 8,6 s je 30-s-Aufruf (48 kHz,
+3841 Frames × 962 Zustände) und dominierte phase_12/phase_31. Die
+pyin-Transition ist ``kron(t_switch[2x2], transition_local(B, w))`` — je
+Zeile nur ``2·w`` Einträge > 0. ``_viterbi_banded`` (neu:
+``backend/core/dsp/pyin_viterbi_fast.py``) nutzt das: Matrix-Operationen
+statt Zeilen-Loop, **bit-identisch** zu ``librosa.sequence.viterbi``
+(verifiziert auf realem Vinyl-, Rausch- und Ton/Stille-Wechsel-Material;
+Tie-Break first-occurrence wie ``np.argmax``; ein Nicht-Band-Zustand
+bräuchte > 701,5 Log-Einheiten Vorsprung — strukturell ausgeschlossen,
+da alle Zustände je Frame denselben Unvoiced-Boden erhalten).
+
+- ``pyin_fast``: 3,63 s vs. 8,74 s librosa je 30-s-Aufruf (2,4×,
+  bit-identisch; Tests auf strukturierten Feeds 8192/48000)
+- verdrahtet: phase_12 ``_estimate_pitch_pyin`` (deckt
+  hybrid.``_apply_pyin`` ab) + phase_31 (3 Stellen) — je mit
+  ``librosa.pyin``-Fallback (§V6 (copilot-instructions.md))
+- phase_12 Produktionspfad (quality) auf realem Elke-Material:
+  **45,5 → 10,6 s je 30-s-Chunk (~4,3×)** — Commit 5e6ae737
+- SOTA4-4-Befund (FCPE): bereits als Torch-ROCm-Kern verdrahtet
+  (§SOTA-ML-V7); kalt 5,56 s (Kern-Build 3,67 s einmalig), warm
+  ~1,9 s je 30-s-Chunk — kein Port nötig
+
 ## TODO SOTA 4 (2026-09-18) — Beschleunigung + höhere Restaurierungsqualität (Welle 4)
 
 > Reihenfolge = (Hör-Gewinn × Machbarkeit) je Aufwand. Mess-Kadenz: Die
@@ -1387,9 +1422,9 @@ fehlerhaften v1023_analysis.txt-Attribution) + Folge-Fixes:
 | SOTA4-1 | PANNs-Multi-Window-Parallelisierung (VFA-Kette): Fenster sind unabhängig, ORT-`run` thread-sicher ⇒ ThreadPool nach BANQUET-P8-Muster, bit-identisch | ~10–20 s/Chunk; VFA (≈70 s) entlastet | ✅ UMGESETZT 2026-09-19 (26df39af): Opt-in-Parallelpfad (`INFER_PARALLEL`, Default 4), Maximum in fester Reihenfolge ⇒ bit-identisch; Resample-Wiederverwendung; Pre-Commit grün |
 | SOTA4-2 | HR-V1-Flag-Rollout (BigVGAN-Repair, `additive_synthesis_gate`): A/B-Validierung bestanden (af +0,0073, HNR +4,42 dB, PQS 4,52) — Budget-Nachweis mit dem neuen Headroom führen | messbar höhere Reparaturqualität (Harmonik/HNR); Kost nur die Synthese-Teile (~2,5× RT/10 s GPU) | OFFEN — Budget-Urteil nach Neumessung mit §PERF-R4-Torch-Pfad (phase_01 ~8× schneller als im v1023-Lauf; Headroom-Urteil nach dem nächsten Lauf) |
 | SOTA4-3 | F4-FlashSR-Musik-Finetune (HF-Rekonstruktion > 12,9 kHz): größte dokumentierte Qualitätslücke des Referenzmaterials (bandwidth_loss conf=0,99) | Air/Presence (MUSHRA-Proxy VocPres/ISO226) | GPU-GEBUNDEN — Rezept vorhanden (train_flashsr_f4.py), 16k→48k |
-| SOTA4-4 | FCPE-Torch-ROCm-Port nach BSR-Muster (ORT-ROCm-EP rel=0,93 defekt ⇒ derzeit CPU): VORAB echten FCPE-Zeitanteil je Chunk messen | unklar — im phase_12-Profil nicht unter den Top-20; Port lohnt nur bei gemessenem Anteil | VORAB-MESSUNG (nach v1023-Hot-Phase-Liste) |
+| SOTA4-4 | FCPE-Torch-ROCm-Port nach BSR-Muster (ORT-ROCm-EP rel=0,93 defekt ⇒ derzeit CPU): VORAB echten FCPE-Zeitanteil je Chunk messen | unklar — im phase_12-Profil nicht unter den Top-20; Port lohnt nur bei gemessenem Anteil | ✅ ERLEDIGT-DURCH-BESTAND 2026-09-19: FCPE ist bereits als Torch-ROCm-Kern umgesetzt und verdrahtet (§SOTA-ML-V7, fcpe_torch_rocm.py — ORT-ROCm-Defekt rel 0,19 beseitigt); Messung im phase_12-Profil: kalt 5,56 s (Kern-Build 3,67 s einmalig), warm ~1,9 s je 30-s-Chunk |
 | SOTA4-5 | Whisper-GPU (HF-Decoder): auf diesem Host inert (Blob-Store-Symlinks gebrochen ⇒ ONNX/DSP-Fallback), auf anderen Hosts aktiv | ~10–20× auf dem Transkriptionsschritt je Song | DOKUMENTIERT — kein lokaler Aufwand |
-| SOTA4-6 | P11 BANQUET-Mini-Batch (dynamische Batch-Dim): Trainingscode fehlt im Repo (banquet_infer.py ohne Architektur, nur Checkpoint) — optional Architektur-Re-Engineering aus dem Checkpoint | GPU-Deckel 1,19× → potenziell 5–10× auf phase_09 | BLOCKIERT — hoher Aufwand, unsicher; nur nach SOTA4-1…4 |
+| SOTA4-6 | P11 BANQUET-Mini-Batch (dynamische Batch-Dim): Trainingscode fehlt im Repo (banquet_infer.py ohne Architektur, nur Checkpoint) — optional Architektur-Re-Engineering aus dem Checkpoint | GPU-Deckel 1,19× → potenziell 5–10× auf phase_09 | ✅ TEILWEISE-DURCH-§PERF-R4 2026-09-19: TORCH_BATCH-Default 4→32 (bit-identisch zu B=4, gemessen 7,85→6,49 s je 30 s; Clamp 40 wegen MIOpen-B≥48-Defekt) — das Re-Engineering des Trainingscodes bleibt gestrichen (kein Qualitäts-Nutzen, nur Batch-Dim) |
 | SOTA4-7 | phase_28-Session-Hoist (ONNX-Session je phase_28-Aufruf statt je Prozess) — kleinteiliger Restposten | ~1–3 s/Chunk | ✅ ERLEDIGT-DURCH-BESTAND 2026-09-19 (Messung): LGE-Whisper ist bereits Singleton (lädt 1× je Prozess, v1023-Log zeigt je Chunk KEINE Whisper-Load-Zeilen); warmes phase_28 = 5,3 s/30 s, davon 1,7 s Chunk-Re-Transkription — bewusst inhärent (Maske muss das VERARBEITETE Chunk-Audio reflektieren, WoW/Flutter-Stretch ⇒ Song-Timeline wäre nicht exakt) |
 
 **Akzeptanz je Maßnahme:** (1) bit-identisch oder durch Never-worsen-Gates/
