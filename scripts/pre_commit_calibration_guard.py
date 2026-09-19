@@ -44,6 +44,7 @@ _PHYSICAL_CONSTANTS: set[str] = {
     "_ORIG_PSD_MAXLEN_S",  # computational budget
     "_ORIG_PSD_NPERSEG",  # FFT parameter
     "_SCAN_CACHE_MAX",  # cache size
+    "_STEREO_METRICS_CACHE_MAX",  # cache size (LRU) — §2.51a Stereo-Metriken-Zwischenspeicher
     "_PEGEL_WARN_DB",  # 6dB peak = perceptual constant
     "_PEGEL_CRIT_DB",  # 12dB peak = perceptual constant
     "_ECHO_MIN_LAG_MS",  # 20ms = phase/echo boundary (Blauert)

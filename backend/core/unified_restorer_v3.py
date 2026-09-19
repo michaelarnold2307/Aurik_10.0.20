@@ -24,6 +24,7 @@ Date: 2026-05-19
 import contextlib
 import dataclasses
 import gc
+import hashlib
 import importlib
 import logging
 
@@ -42,6 +43,7 @@ import sys
 import threading
 import time
 import traceback
+from collections import OrderedDict
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass, field
 from types import SimpleNamespace
@@ -884,6 +886,45 @@ def _compute_stereo_safety_metrics(audio: np.ndarray, sr: int) -> dict[str, floa
     }
 
 
+# ── Stereo-Metriken Content-Zwischenspeicher (Muster R12-Interaural-Cache) ───
+# _compute_stereo_safety_metrics ist eine deterministische Funktion des
+# Audio-Inhalts. Im Phasen-Loop ist der „before"-Zustand der Phase k+1 eine
+# Kopie des „after"-Zustands der Phase k → gleicher Inhalt ⇒ exakt derselbe
+# Wert (bit-identisch, keine Näherung). §V8 (copilot-instructions.md)
+# Song-Isolation: reset_stereo_safety_metrics_cache() in der Session-Init.
+_STEREO_METRICS_CACHE: "OrderedDict[tuple[int, str], dict[str, float | bool]]" = OrderedDict()
+_STEREO_METRICS_CACHE_MAX = 8
+_STEREO_METRICS_LOCK = threading.Lock()
+
+
+def _cached_stereo_safety_metrics(audio: np.ndarray, sample_rate: int) -> dict[str, float | bool]:
+    """Content-Keyed Zugriff; Treffer wird kopiert (Aufrufer-Isolation wie bisher)."""
+    try:
+        _key = (
+            int(sample_rate),
+            hashlib.blake2b(np.ascontiguousarray(audio).tobytes(), digest_size=8).hexdigest(),
+        )
+        with _STEREO_METRICS_LOCK:
+            _hit = _STEREO_METRICS_CACHE.get(_key)
+        if _hit is not None:
+            return dict(_hit)
+        _m = _compute_stereo_safety_metrics(audio, sample_rate)
+        with _STEREO_METRICS_LOCK:
+            _STEREO_METRICS_CACHE[_key] = _m
+            while len(_STEREO_METRICS_CACHE) > _STEREO_METRICS_CACHE_MAX:
+                _STEREO_METRICS_CACHE.popitem(last=False)
+        return _m
+    except Exception as _scm_exc:
+        logger.debug("Stereo-Metriken-Zwischenspeicher nicht verfügbar (%s) — direkte Berechnung", _scm_exc)
+        return _compute_stereo_safety_metrics(audio, sample_rate)
+
+
+def reset_stereo_safety_metrics_cache() -> None:
+    """§V8 (copilot-instructions.md) Song-Isolation: leert den Zwischenspeicher."""
+    with _STEREO_METRICS_LOCK:
+        _STEREO_METRICS_CACHE.clear()
+
+
 def _evaluate_stereo_safety_guard(
     original_audio: np.ndarray,
     restored_audio: np.ndarray,
@@ -899,8 +940,8 @@ def _evaluate_stereo_safety_guard(
     Restoration phases (phase_12 wow/flutter, phase_14 phase_correction) intentionally
     modify inter-channel timing — the mono_drop threshold must reflect this.
     """
-    m_in = _compute_stereo_safety_metrics(original_audio, sample_rate)
-    m_out = _compute_stereo_safety_metrics(restored_audio, sample_rate)
+    m_in = _cached_stereo_safety_metrics(original_audio, sample_rate)
+    m_out = _cached_stereo_safety_metrics(restored_audio, sample_rate)
 
     if not bool(m_out.get("is_stereo", False)):
         return {
@@ -36807,6 +36848,12 @@ class UnifiedRestorerV3:
             _reset_wbc()
         except Exception as _wbc_init_exc:
             logger.debug("Reinhör-Witness Audio-Paket-Zwischenspeicher leeren nicht verfügbar: %s", _wbc_init_exc)
+
+        # §2.51a Stereo-Metriken: Content-Zwischenspeicher pro Song leeren (§V8 (copilot-instructions.md)).
+        try:
+            reset_stereo_safety_metrics_cache()
+        except Exception as _smc_init_exc:
+            logger.debug("Stereo-Metriken-Zwischenspeicher leeren nicht verfügbar: %s", _smc_init_exc)
 
         # §2.45 [RELEASE_MUST] perceptual_delta helper — fast spectral quality proxy.
         # Used in non-PMGG fallback paths to detect phases that degrade audio quality.
