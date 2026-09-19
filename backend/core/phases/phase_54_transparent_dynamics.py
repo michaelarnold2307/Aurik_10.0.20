@@ -57,6 +57,7 @@ Date: 16. Februar 2026
 """
 
 import logging
+import math
 import os
 import time
 
@@ -808,15 +809,34 @@ class TransparentDynamicsV1(PhaseInterface):
         gain_smooth = np.zeros_like(gain_reduction)
         gain_smooth[0] = gain_reduction[0]
 
+        # §PERF-R7 (2026-09-19): der STL-adaptive Follower bleibt bewusst
+        # sequenziell (zustandsbehaftete Rekursion, §PERF-R3-Entscheid), aber
+        # je Sample np.clip (2×1,44 M) + np.exp (1,44 M) kosteten gemessen
+        # ~9 s von 14 s Phasenzeit — NaN-sichere builtin-/math-Varianten
+        # rechnen bit-identisch (gleiche libm-Double-Arithmetik, gleiche
+        # NaN-Semantik wie np.clip via Bedingungs-Kaskade) ohne NumPy-Dispatch.
         for i in range(1, len(gain_reduction)):
             _lratio = float(_loud54[i])
             if gain_reduction[i] < gain_smooth[i - 1]:
                 # Attack (gain going down) — in lauten Passagen schneller
-                alpha_attack = 1.0 - np.exp(-1.0 / max(1.0, attack_samples * float(np.clip(1.0 / _lratio, 0.4, 1.5))))
+                _inv = 1.0 / _lratio
+                if _inv > 1.5:
+                    _cl54 = 1.5
+                elif _inv < 0.4:
+                    _cl54 = 0.4
+                else:
+                    _cl54 = _inv  # NaN fällt hierher ⇒ NaN wie np.clip
+                alpha_attack = 1.0 - math.exp(-1.0 / max(1.0, attack_samples * _cl54))
                 gain_smooth[i] = alpha_attack * gain_reduction[i] + (1 - alpha_attack) * gain_smooth[i - 1]
             else:
                 # Release (gain going up) — in leisen Passagen langsamer
-                alpha_release = 1.0 - np.exp(-1.0 / max(1.0, release_samples * float(np.clip(_lratio, 0.4, 3.0))))
+                if _lratio > 3.0:
+                    _cl54 = 3.0
+                elif _lratio < 0.4:
+                    _cl54 = 0.4
+                else:
+                    _cl54 = _lratio  # NaN fällt hierher ⇒ NaN wie np.clip
+                alpha_release = 1.0 - math.exp(-1.0 / max(1.0, release_samples * _cl54))
                 gain_smooth[i] = alpha_release * gain_reduction[i] + (1 - alpha_release) * gain_smooth[i - 1]
 
         # Modulate compression based on psychoacoustic masking
