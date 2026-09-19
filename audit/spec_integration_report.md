@@ -1,9 +1,9 @@
 # Spec-Integrations-Fehlerprotokoll
 
-- Erzeugt: 2026-09-08T17:23:02.778717
+- Erzeugt: 2026-09-19T10:27:01.496646
 - Fehler: **0** · Warnungen: 0
 
-## INFO (46)
+## INFO (45)
 
 - **[spec_references]** `10_lag_integrity_architecture.md` — Spec ist nur im Index verankert, sonst nirgendwo referenziert
   - Behebung: Spec in der normativen Kette oder im Code verlinken, sonst als obsolet markieren.
@@ -62,8 +62,6 @@
 - **[spec_references]** `v10.18_onnx_export_roadmap.md` — Spec ist nur im Index verankert, sonst nirgendwo referenziert
   - Behebung: Spec in der normativen Kette oder im Code verlinken, sonst als obsolet markieren.
 - **[spec_references]** `v10.19_carrier_chain_reliability.md` — Spec ist nur im Index verankert, sonst nirgendwo referenziert
-  - Behebung: Spec in der normativen Kette oder im Code verlinken, sonst als obsolet markieren.
-- **[spec_references]** `v10.19_resemble_ersatz_sota_roadmap.md` — Spec ist nur im Index verankert, sonst nirgendwo referenziert
   - Behebung: Spec in der normativen Kette oder im Code verlinken, sonst als obsolet markieren.
 - **[spec_references]** `v10.20_dit_post_mortem.md` — Spec ist nur im Index verankert, sonst nirgendwo referenziert
   - Behebung: Spec in der normativen Kette oder im Code verlinken, sonst als obsolet markieren.
