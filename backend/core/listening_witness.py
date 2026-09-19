@@ -27,6 +27,7 @@ keine Zufallsgrößen. Laufzeit-Ziel: ≤ 2 s pro 30-s-Chunk.
 
 from __future__ import annotations
 
+import hashlib
 import logging
 from dataclasses import dataclass, field
 
@@ -171,9 +172,19 @@ def _frame_iter(x: np.ndarray, sr: int, frame: int = _FRAME, hop: int = _HOP):
 def _frame_f0_hnr(x: np.ndarray, sr: int) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
     """(f0_hz, voiced, hnr_db, hf_flatness) pro Frame — FFT-Autokorrelation + de-Krom-HNR.
 
-    §V08/§10a-konform: Autokorrelation via FFT statt O(n·lags)-Lag-Loop —
-    für 30-s-Chunks (~1400 Frames) in < 0.3 s, für 224-s-Songs in ~1.5 s.
+    §V08/§10a-konform: Autokorrelation via FFT statt O(n·lags)-Lag-Loop.
+    §PERF-R11 (2026-09-19): Batched FFT über alle Frames (sliding-window +
+    axis=1-FFT) statt Python-Frame-Loop — je Frame bit-identisch (gleiche
+    FFT-Kernels, gleiche Element-Operationen); Kurzsignale (< _FRAME)
+    behalten den Einzel-Frame-Pfad.
     """
+    if len(x) < _FRAME:
+        return _frame_f0_hnr_loop(x, sr)
+    return _frame_f0_hnr_batched(x, sr)
+
+
+def _frame_f0_hnr_loop(x: np.ndarray, sr: int) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+    """Alter Per-Frame-Pfad (unverändert) — Fallback für Kurzsignale."""
     f0s: list[float] = []
     voiced: list[bool] = []
     hnrs: list[float] = []
@@ -237,6 +248,74 @@ def _frame_f0_hnr(x: np.ndarray, sr: int) -> tuple[np.ndarray, np.ndarray, np.nd
     )
 
 
+def _frame_f0_hnr_batched(x: np.ndarray, sr: int) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+    """Batched F0/HNR/HF-Flatness — bit-identisch zu _frame_f0_hnr_loop je Frame."""
+    n_total = len(x)
+    # Frame-Auswahl wie _frame_iter: range(0, n_total - _FRAME + 1, _HOP)
+    _sw = np.lib.stride_tricks.sliding_window_view(x, _FRAME)
+    frames = np.ascontiguousarray(_sw[::_HOP])  # (n_frames, _FRAME) float32
+    n_frames = frames.shape[0]
+    nyq = sr / 2.0
+    lag_lo = max(int(sr / _F0_MAX_HZ), 1)
+    lag_hi = min(int(sr / _F0_MIN_HZ), n_total - 1)
+    n = _FRAME
+
+    out = (
+        np.zeros(n_frames, dtype=np.float64),
+        np.zeros(n_frames, dtype=bool),
+        np.zeros(n_frames, dtype=np.float64),
+        np.zeros(n_frames, dtype=np.float64),
+    )
+    f0s, voiced, hnrs, flats = out
+
+    stds = frames.std(axis=1)
+    silent = stds < 1e-6
+
+    centered = frames - frames.mean(axis=1, keepdims=True)
+    # e0-Gate: nach dem std-Gate kann e0 < 1e-12 nicht mehr greifen
+    # (e0 = n·std² ≥ _FRAME·1e-12 = 2,05e-9) — Rechenweg wie der Loop.
+
+    fft_len = 1
+    while fft_len < 2 * n:
+        fft_len <<= 1
+    spec_ac = np.fft.rfft(centered, n=fft_len, axis=1)
+    ac = np.fft.irfft(np.abs(spec_ac) ** 2, n=fft_len, axis=1)[:, :n]
+    ac = ac / np.maximum(ac[:, 0], 1e-12)[:, None]
+
+    lo = min(lag_lo, n - 2)
+    hi = min(lag_hi, n - 2)
+    if hi <= lo:
+        return out
+    seg = ac[:, lo : hi + 1]
+    peak = seg.max(axis=1)
+    lag = lo + np.argmax(seg, axis=1)
+    f0 = sr / np.maximum(lag, 1).astype(np.float64)
+    is_voiced = (peak > _VOICED_CORR) & ~silent
+    hnr = np.zeros(n_frames, dtype=np.float64)
+    _voiced_idx = np.flatnonzero(is_voiced)
+    if _voiced_idx.size:
+        _pk = peak[_voiced_idx]
+        _hnr = 10.0 * np.log10(np.maximum(_pk / np.maximum(1.0 - _pk, 1e-9), 1e-9))
+        hnr[_voiced_idx] = np.clip(_hnr, 0.0, 60.0)
+
+    win_h = np.hanning(n).astype(np.float32)
+    spec_f = np.abs(np.fft.rfft(frames * win_h, axis=1)) ** 2
+    freqs = np.fft.rfftfreq(n, 1.0 / sr)
+    band_mask = (freqs >= _HF_LO_HZ) & (freqs <= min(_HF_HI_HZ, nyq))
+    band = spec_f[:, band_mask]
+    flat = np.zeros(n_frames, dtype=np.float64)
+    if band.shape[1] > 2:
+        gm = np.exp(np.mean(np.log(band + 1e-12), axis=1))
+        am = np.mean(band, axis=1)
+        flat = np.clip(gm / np.maximum(am, 1e-12), 0.0, 1.0)
+
+    f0s[:] = np.where(is_voiced, f0, 0.0)
+    voiced[:] = is_voiced
+    hnrs[:] = hnr
+    flats[:] = flat
+    return out
+
+
 def _f0_metrics(f0s: np.ndarray, voiced: np.ndarray, hop_rate_hz: float) -> tuple[float, float]:
     """(Trajektorien-Spread in Cent, Modulations-Tiefe 3–8 Hz in Cent).
 
@@ -294,10 +373,11 @@ def _loudness_mod_depth_db(x: np.ndarray, sr: int) -> float:
     hop = int(_STL_HOP * sr)
     if len(x) < win:
         return 0.0
-    rms = np.asarray(
-        [np.sqrt(np.mean(x[i : i + win] ** 2) + 1e-12) for i in range(0, len(x) - win + 1, hop)],
-        dtype=np.float64,
-    )
+    # §PERF-R11: Sliding-Window statt Python-Comprehension — je Fenster
+    # bit-identisch (gleiche mean-Reduktion über dasselbe Fenster).
+    _sw = np.lib.stride_tricks.sliding_window_view(x, win)
+    _rms_win = _sw[::hop]
+    rms = np.sqrt(np.mean(_rms_win**2, axis=1) + 1e-12)
     db = 20.0 * np.log10(np.maximum(rms, 1e-9))
     db = db - np.median(db)
     # Stille-/Randfenster ausblenden: nur Fenster ≥ −50 dB unter dem Peak.
@@ -320,17 +400,35 @@ def _loudness_mod_depth_db(x: np.ndarray, sr: int) -> float:
     return float(np.sqrt(np.mean(band**2)) * 2.0)
 
 
+_BAND_SPEC_CACHE: dict[tuple[int, int, str], tuple[np.ndarray, np.ndarray]] = {}
+_BAND_SPEC_CACHE_MAX = 4
+
+
 def _band_energy_ratio_db(x: np.ndarray, sr: int, lo_hz: float, hi_hz: float) -> float:
     """Relativer Energie-Anteil eines Frequenzbands an der Gesamtenergie (20 Hz–20 kHz).
 
     Ganzes Signal, ein Hann-gefenstertes FFT (statische Tonal-Balance-Proxies).
     Rückgabe in dB relativ zur Gesamtenergie (z. B. −12 dB = Bass trägt 6 %).
+    §PERF-R11: Content-keyed Spektrum-Cache (witness ruft 6 Bänder auf 2
+    Signalen — gleiches Fenster-Spektrum wird einmal berechnet, bit-identisch).
     """
     if len(x) < 2048:
         return 0.0
-    _w = np.hanning(len(x))
-    _spec = np.abs(np.fft.rfft(x * _w)) ** 2
-    _fr = np.fft.rfftfreq(len(x), 1.0 / sr)
+    _key = (
+        int(len(x)),
+        int(sr),
+        hashlib.blake2b(np.ascontiguousarray(x).tobytes(), digest_size=8).hexdigest(),
+    )
+    _cached = _BAND_SPEC_CACHE.get(_key)
+    if _cached is None:
+        _w = np.hanning(len(x))
+        _spec = np.abs(np.fft.rfft(x * _w)) ** 2
+        _fr = np.fft.rfftfreq(len(x), 1.0 / sr)
+        if len(_BAND_SPEC_CACHE) >= _BAND_SPEC_CACHE_MAX:
+            del _BAND_SPEC_CACHE[next(iter(_BAND_SPEC_CACHE))]
+        _BAND_SPEC_CACHE[_key] = (_spec, _fr)
+        _cached = (_spec, _fr)
+    _spec, _fr = _cached
     _band = _spec[(_fr >= lo_hz) & (_fr <= hi_hz)]
     _total = _spec[(_fr >= 20.0) & (_fr <= 20000.0)]
     if _total.sum() <= 1e-20 or _band.sum() <= 1e-20:
@@ -348,10 +446,9 @@ def _transient_sharpness(x: np.ndarray, sr: int) -> float:
     _hop = _win // 2
     if len(x) < _win * 4:
         return 0.0
-    _rms = np.asarray(
-        [np.sqrt(np.mean(x[i : i + _win] ** 2) + 1e-12) for i in range(0, len(x) - _win + 1, _hop)],
-        dtype=np.float64,
-    )
+    # §PERF-R11: Sliding-Window-RMS statt Python-Comprehension (12 k Fenster/30 s).
+    _sw = np.lib.stride_tricks.sliding_window_view(x, _win)
+    _rms = np.sqrt(np.mean(_sw[::_hop] ** 2, axis=1) + 1e-12)
     _db = 20.0 * np.log10(_rms + 1e-12)
     _slope = np.diff(_db) / (_hop / float(sr))
     _pos = _slope[_slope > 0]

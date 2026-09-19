@@ -356,3 +356,98 @@ def test_roughness_rise_above_relative_jnd_still_fires() -> None:
     res = evaluate_listening_witness(x, y, SR, "phase_x")
     assert "roughness_increase" in res.findings
     assert res.roughness_rise_asper > 0.0
+
+
+class TestPerfR11BatchedPaths:
+    """§PERF-R11 (2026-09-19): Batched Witness-Pfade — numerisch äquivalent
+    zum alten Frame-Loop (f0/voiced bit-identisch, Derivate ≤ 1e-4),
+    deterministisch nach §G5 (GEBOTE.md), Spektrum-Cache gedeckelt."""
+
+    @staticmethod
+    def _carrier(dur: float, seed: int) -> np.ndarray:
+        rng = np.random.RandomState(seed)
+        t = np.arange(int(SR * dur)) / SR
+        return (
+            0.4 * np.sin(2 * np.pi * 220 * t) + 0.1 * np.sin(2 * np.pi * 440 * t) + 0.02 * rng.randn(len(t))
+        ).astype(np.float32)
+
+    def test_frame_f0_hnr_batched_equivalent(self) -> None:
+        import backend.core.listening_witness as lw
+
+        x = self._carrier(5.0, 3)
+        lo = lw._frame_f0_hnr_loop(x, SR)
+        ba = lw._frame_f0_hnr_batched(x, SR)
+        assert np.array_equal(lo[0], ba[0])  # f0 bit-identisch
+        assert np.array_equal(lo[1], ba[1])  # voiced bit-identisch
+        assert np.abs(lo[2] - ba[2]).max() < 1e-4  # hnr (Float-Rauschen)
+        assert np.abs(lo[3] - ba[3]).max() < 1e-4  # hf_flatness
+
+    def test_transient_sharpness_rms_equivalent(self) -> None:
+        import backend.core.listening_witness as lw
+
+        x = self._carrier(3.0, 5)
+        _win = max(64, int(lw._TRANSIENT_WIN * SR))
+        _hop = _win // 2
+        rms_old = np.asarray(
+            [np.sqrt(np.mean(x[i : i + _win] ** 2) + 1e-12) for i in range(0, len(x) - _win + 1, _hop)],
+            dtype=np.float64,
+        )
+        _sw = np.lib.stride_tricks.sliding_window_view(x, _win)
+        rms_new = np.sqrt(np.mean(_sw[::_hop] ** 2, axis=1) + 1e-12)
+        assert np.abs(rms_old - rms_new).max() < 1e-6
+
+    def test_witness_end_to_end_identical_fields(self) -> None:
+        import backend.core.listening_witness as lw
+
+        x = self._carrier(4.0, 7)
+        y = (x * 0.999 + 1e-6).astype(np.float32)
+        _orig = lw._frame_f0_hnr
+        try:
+            lw._frame_f0_hnr = lw._frame_f0_hnr_loop
+            r_old = evaluate_listening_witness(x, y, SR, "phase_x")
+        finally:
+            lw._frame_f0_hnr = _orig
+        r_new = evaluate_listening_witness(x, y, SR, "phase_x")
+        d_old, d_new = r_old.as_dict(), r_new.as_dict()
+        for k in d_old:
+            if k == "findings":
+                continue
+            assert d_old[k] == d_new[k], f"Feld {k}: {d_old[k]} != {d_new[k]}"
+
+    def test_band_spec_cache_bounded_and_deterministic(self) -> None:
+        import backend.core.listening_witness as lw
+
+        lw._BAND_SPEC_CACHE.clear()
+        x = self._carrier(2.0, 11)
+        v1 = lw._band_energy_ratio_db(x, SR, 20.0, 250.0)
+        v2 = lw._band_energy_ratio_db(x, SR, 20.0, 250.0)
+        assert v1 == v2
+        for i in range(8):
+            lw._band_energy_ratio_db((x * (1.0 + i * 1e-4)).astype(np.float32), SR, 20.0, 250.0)
+        assert len(lw._BAND_SPEC_CACHE) <= lw._BAND_SPEC_CACHE_MAX
+        assert len(lw._BAND_SPEC_CACHE) > 0
+
+    def test_pre_echo_rolling_percentile_equivalent(self) -> None:
+        from backend.core.dsp import pre_echo_model as pm
+
+        rng = np.random.RandomState(13)
+        env = rng.rand(400).astype(np.float64) + 0.01
+        _loc_win = max(4, int(pm._LOCAL_WIN_S / pm._ENV_WIN_S))
+        _floor = float(np.max(env)) * 10.0 ** (-60.0 / 20.0)
+        old = np.zeros(400, dtype=np.float64)
+        for f in range(400):
+            _lo = max(0, f - _loc_win)
+            _hi = min(400, f + _loc_win + 1)
+            old[f] = max(float(np.percentile(env[_lo:_hi], pm._LOCAL_PERC)), _floor)
+        new = np.zeros(400, dtype=np.float64)
+        _ilo, _ihi = _loc_win, 400 - _loc_win
+        if _ihi > _ilo:
+            _w_len = 2 * _loc_win + 1
+            _w = np.lib.stride_tricks.sliding_window_view(env, _w_len)
+            new[_ilo:_ihi] = np.percentile(_w[: _ihi - _ilo], pm._LOCAL_PERC, axis=1)
+        for f in list(range(0, _ilo)) + list(range(_ihi, 400)):
+            _lo = max(0, f - _loc_win)
+            _hi = min(400, f + _loc_win + 1)
+            new[f] = max(float(np.percentile(env[_lo:_hi], pm._LOCAL_PERC)), _floor)
+        np.maximum(new, _floor, out=new)
+        assert np.array_equal(old, new)

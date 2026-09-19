@@ -63,10 +63,20 @@ def pre_echo_ratio_db(x_before: np.ndarray, x_after: np.ndarray, sr: int) -> flo
     # Stille erzeugt keine Onsets (Baseline ≈ 0 würde jedes Rauschen als Anstieg
     # werten — Produktionsbefund auf realem Song-Anfang).
     _loc_base = np.zeros(n_frames, dtype=np.float64)
-    for f in range(n_frames):
+    # §PERF-R11: Rollendes Perzentil über sliding_window_view für die
+    # Innen-Frames (bit-identisch — gleiche percentile-Berechnung je Fenster),
+    # Rand-Frames behalten den Loop (geklemmte Fenster).
+    _interior_lo = _loc_win
+    _interior_hi = n_frames - _loc_win
+    if _interior_hi > _interior_lo:
+        _w_len = 2 * _loc_win + 1
+        _w = np.lib.stride_tricks.sliding_window_view(env_a, _w_len)
+        _loc_base[_interior_lo:_interior_hi] = np.percentile(_w[: _interior_hi - _interior_lo], _LOCAL_PERC, axis=1)
+    for f in list(range(0, _interior_lo)) + list(range(_interior_hi, n_frames)):
         _lo = max(0, f - _loc_win)
         _hi = min(n_frames, f + _loc_win + 1)
         _loc_base[f] = max(float(np.percentile(env_a[_lo:_hi], _LOCAL_PERC)), _floor)
+    np.maximum(_loc_base, _floor, out=_loc_base)
     rise = env_a / (_loc_base + 1e-12)
     onset_frames = np.where(rise > _ONSET_RISE)[0]
     if onset_frames.size == 0:

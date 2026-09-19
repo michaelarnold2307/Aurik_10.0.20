@@ -1,15 +1,16 @@
 # TASK_CHANGES — Live-Ledger der aktuellen Aufgabe
 
-> Generiert von `scripts/change_ledger.py snapshot` (Base: `HEAD`, Stand: 2026-09-19 11:05 CEST).
+> Generiert von `scripts/change_ledger.py snapshot` (Base: `HEAD`, Stand: 2026-09-19 11:32 CEST).
 > CI (`ci-lite.yml` pr-evidence-gate) erzwingt Abdeckung: jede geänderte Code-Datei muss hier stehen.
 
 ## Geänderte Dateien
 
 | Status | Pfad | Art |
 |---|---|---|
-| M | .github/specs/01_musical_goals.md | modifiziert |
-| M | audit/spec_integration_report.json | modifiziert |
-| M | audit/spec_integration_report.md | modifiziert |
+| M | backend/core/dsp/pre_echo_model.py | modifiziert |
+| M | backend/core/listening_witness.py | modifiziert |
+| M | docs/TODOS_SOTA_ROADMAP.md | modifiziert |
+| M | tests/unit/test_listening_witness.py | modifiziert |
 
 ## Entscheidungen
 

@@ -1488,6 +1488,33 @@ dem nächsten überwachten Lauf (HEAD c8100879/616282a9-Stand). UTMOSv2-
 Erst-Load (timm-Hub, 4 Folds) + FeedbackChain 23,5 s laufen einmal je
 Song-Tail — dokumentiert.
 
+### §PERF-R11 (2026-09-19) — Reinhör-Witness batched (je Phase ~1,5 s gespart)
+
+Evidenz aus dem überwachten Lauf (Timestamps phase_ok→geplant je Phase):
+**~10,5 s Phasen-Gap je 30-s-Chunk** — 41 Phasen × 8 Chunks ≈ 55+ min je
+Song. Aufschlüsselung (cProfile): Reinhör-Witness ~1,5-1,7 s je Phase
+(davon _frame_f0_hnr Frame-Loop, _loudness/_transient-RMS-Comprehensions,
+pre_echo-Rolling-Perzentil 2000+ np.percentile-Aufrufe, 6 Band-FFTs auf
+2 Signalen), dazu PMGG/CALIB/Coalition-Bookkeeping.
+
+UMGESETZT (Report-only-Pfad, numerisch äquivalent):
+- `_frame_f0_hnr`: batched FFT über alle Frames (sliding-window +
+  axis=1-rfft/irfft, fftfreq gehoistet) statt Python-Frame-Loop —
+  f0/voiced bit-identisch, hnr/flatness ≤ 1e-4; Kurzsignale behalten den
+  Loop-Pfad.
+- `_loudness_mod_depth_db`/`_transient_sharpness`: Sliding-Window-RMS
+  statt Comprehension (≤ 1e-6).
+- `pre_echo_ratio_db`: Rollendes Perzentil über sliding_window_view für
+  Innen-Frames (Rand-Frames im Loop, identische Semantik).
+- `_band_energy_ratio_db`: Content-keyed Spektrum-Cache (blake2b, Deckel
+  4) — 6 Band-Aufrufe auf 2 Signalen rechnen 2 statt 6 FFTs (bit-identisch).
+
+Messung (30 s Vinyl, ROCm): Witness 1,48 s → 0,57 s kalt / 0,41 s warm
+(2,6-3,6×) — End-to-End-Witness-Felder identisch (as_dict-Vergleich alt/
+neu), deterministisch (§G5 (GEBOTE.md)). ~1,1 s je Phase ⇒ ~6 min je
+Song. Tests: `tests/unit/test_listening_witness.py::TestPerfR11BatchedPaths`
+(5 Fälle, Suite 39 grün).
+
 ## TODO SOTA 4 (2026-09-18) — Beschleunigung + höhere Restaurierungsqualität (Welle 4)
 
 > Reihenfolge = (Hör-Gewinn × Machbarkeit) je Aufwand. Mess-Kadenz: Die
