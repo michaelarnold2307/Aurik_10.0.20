@@ -143,3 +143,55 @@ def test_run_end_of_song_cleanup_returns_report_and_evicts_plm(short_audio):
     assert report["plm_evicted"] == 3
     assert set(report["unloaded"]) == set(_UNLOAD_MODULES.values())
     assert "errors" in report
+
+
+# ---------------------------------------------------------------------------
+# keep_warm: Fenster-Eviction überspringt teuer ladbare Modelle,
+# Druck-Eviction und force_evict_all bleiben aktiv (§PLM-Invariante:
+# reines RAM-Scheduling, bit-identisches Audio).
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.unit
+class TestKeepWarm:
+    def test_keep_warm_skips_window_eviction(self):
+        from unittest.mock import patch
+
+        import backend.core.ml_memory_budget as _mbb
+        from backend.core.plugin_lifecycle_manager import PluginLifecycleManager
+
+        plm = PluginLifecycleManager()
+        try:
+            unloaded = {"n": 0}
+
+            def _unload() -> None:
+                unloaded["n"] += 1
+
+            plm.register("TestKeepWarmModel", 0.5, _unload, keep_warm=True)
+            plm.register("TestNormalModel", 0.3, _unload)
+            # §v10.742: Fenster-Eviction läuft nur bei ≥75 % Budget-Belegung — simulieren.
+            with patch.object(_mbb, "_total_gb", 9.0), patch.object(_mbb, "ML_MAX_GB", 10.0):
+                plm.evict_for_phase_window(["phase_02_hum_removal"])
+            with plm._lock:
+                names = set(plm._entries.keys())
+            # keep_warm-Modell bleibt, normales Modell wurde entladen
+            assert "TestKeepWarmModel" in names
+            assert "TestNormalModel" not in names
+            assert unloaded["n"] == 1
+        finally:
+            plm.force_evict_all()
+
+    def test_force_evict_all_evicts_keep_warm(self):
+        from backend.core.plugin_lifecycle_manager import PluginLifecycleManager
+
+        plm = PluginLifecycleManager()
+        unloaded = {"n": 0}
+
+        def _unload() -> None:
+            unloaded["n"] += 1
+
+        plm.register("TestKeepWarmModel", 0.5, _unload, keep_warm=True)
+        plm.force_evict_all()
+        assert unloaded["n"] == 1
+        with plm._lock:
+            assert "TestKeepWarmModel" not in plm._entries

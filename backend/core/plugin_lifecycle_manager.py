@@ -99,17 +99,19 @@ def _release_ml_memory_budget(plugin_name: str) -> None:
 
 
 class _PluginEntry:
-    __slots__ = ("active", "last_used_ts", "name", "size_gb", "unload_fn")
+    __slots__ = ("active", "keep_warm", "last_used_ts", "name", "size_gb", "unload_fn")
 
     def __init__(
         self,
         name: str,
         size_gb: float,
         unload_fn: Callable[[], None],
+        keep_warm: bool = False,
     ) -> None:
         self.name = name
         self.size_gb = size_gb
         self.unload_fn = unload_fn
+        self.keep_warm = keep_warm
         self.last_used_ts: float = time.monotonic()
         self.active: bool = False  # True = darf NICHT evicted werden (Phase läuft)
 
@@ -176,25 +178,31 @@ class PluginLifecycleManager:
         name: str,
         size_gb: float,
         unload_fn: Callable[[], None],
+        keep_warm: bool = False,
     ) -> None:
         """Registriert ein Plugin mit seiner Unload-Funktion.
 
         Idempotent — mehrfacher Aufruf mit demselben `name` aktualisiert
-        nur `last_used_ts` und `size_gb`.
+        nur `last_used_ts`, `size_gb` und `keep_warm`.
 
         Args:
             name:      Eindeutiger Plugin-Name (z. B. 'MelBandRoformer').
             size_gb:   Geschätzter RAM-Verbrauch des Modells in GB.
             unload_fn: Callable das das Modell aus dem RAM entlädt
                        (ruft typisch `global _instance; _instance = None; gc.collect()` auf).
+            keep_warm: Teuer zu ladende Modelle (ONNX-Session > 15 s Ladezeit) von der
+                       Fenster-Eviction ausnehmen — die druckgetriebene Eviction
+                       (evict_if_needed) bleibt davon unberührt (OOM-Sicherheit).
+                       Reines RAM-Scheduling, bit-identisches Audio.
         """
         with self._lock:
             if name in self._entries:
                 self._entries[name].last_used_ts = time.monotonic()
                 self._entries[name].size_gb = size_gb
+                self._entries[name].keep_warm = keep_warm
                 return
-            self._entries[name] = _PluginEntry(name, size_gb, unload_fn)
-            logger.debug("PLM: '%s' registriert (%.2f GB).", name, size_gb)
+            self._entries[name] = _PluginEntry(name, size_gb, unload_fn, keep_warm=keep_warm)
+            logger.debug("PLM: '%s' registriert (%.2f GB, keep_warm=%s).", name, size_gb, keep_warm)
 
     def touch(self, name: str) -> None:
         """Aktualisiert 'last_used_ts' für `name` (vor jeder Plugin-Nutzung aufrufen)."""
@@ -336,7 +344,9 @@ class PluginLifecycleManager:
             # baldige Phase im aktuellen Pipeline-Fenster erneut braucht (vom Orchestrator via
             # evict_for_phase_window gesetzt). Leeres Fenster → exakt Originalverhalten.
             needed = needed | self._lookahead_models
-            candidates = [e for e in self._entries.values() if not e.active and e.name not in needed]
+            candidates = [
+                e for e in self._entries.values() if not e.active and e.name not in needed and not e.keep_warm
+            ]
             # LRU: älteste zuerst
             candidates.sort(key=lambda e: e.last_used_ts)
 
@@ -416,7 +426,9 @@ class PluginLifecycleManager:
             # Fenster persistieren, damit phasen-interne evict_for_phase()-Calls (15 Phasen)
             # dieselbe Look-Ahead-Protektion erben und das Modell nicht doch noch entladen.
             self._lookahead_models = needed
-            candidates = [e for e in self._entries.values() if not e.active and e.name not in needed]
+            candidates = [
+                e for e in self._entries.values() if not e.active and e.name not in needed and not e.keep_warm
+            ]
             # LRU: älteste zuerst
             candidates.sort(key=lambda e: e.last_used_ts)
 
@@ -626,9 +638,9 @@ class PluginLifecycleManager:
 # ---------------------------------------------------------------------------
 
 
-def register_plugin(name: str, size_gb: float, unload_fn: Callable[[], None]) -> None:
+def register_plugin(name: str, size_gb: float, unload_fn: Callable[[], None], keep_warm: bool = False) -> None:
     """Registriert ein Plugin beim globalen Lifecycle-Manager."""
-    get_plugin_lifecycle_manager().register(name, size_gb, unload_fn)
+    get_plugin_lifecycle_manager().register(name, size_gb, unload_fn, keep_warm=keep_warm)
 
 
 def touch_plugin(name: str) -> None:

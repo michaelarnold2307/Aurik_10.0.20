@@ -258,6 +258,7 @@ class BanquetVinylPlugin:
                     "BanquetVinyl",
                     size_gb=0.80,
                     unload_fn=_unload_bq,
+                    keep_warm=True,
                 )
             except Exception as _exc:
                 logger.debug("Plugin operation fehlgeschlagen (unkritisch): %s", _exc)
