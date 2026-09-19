@@ -94,18 +94,81 @@ def apply_onset_protection_mask(
         if not onset_mask_arr.any():
             return post
 
-        # §P1-3 (Hörordnung Ebene 2): Effektive Toleranz = max(fest, lokale
-        # Maskierungs-JND). Transient-Onsets sind laut → maskieren den
-        # Phasen-Delta stark; dann begrenzen wir erst bei größeren
-        # Abweichungen (weniger unnötige Dry-Wet-Blends).
-        _jnd = estimate_delta_masking_jnd_db(pre, post, 48000)
-        _eff_max_db = max(float(max_delta_db), float(_jnd.jnd_db))
-        if _jnd.jnd_db > 0.1:
-            logger.info(
-                "§ATI Onset-Guard: §P1-3 Maskierungs-JND=%.2f dB → Toleranz %.2f dB (fest %.1f dB)",
-                _jnd.jnd_db,
+        # §ATI Fast-Path (bit-identisch, Qualität neutral): Die effektive Toleranz
+        # liegt immer in [max(max_delta_db, 0), max(max_delta_db, 6.0)] (JND-Cap).
+        # Eine Blend-Entscheidung hängt nur dann von der JND-Schätzung ab, wenn
+        # mindestens ein Onset-Frame einen ratio im Entscheidungsband
+        # (10^(eff_min/20), 10^(eff_max/20)) bzw. dessen Kehrwert besitzt. Ist das
+        # Band leer, ist die JND für keine Entscheidung relevant → Toleranz =
+        # eff_max, exakt wie im gesättigten JND-Fall. Der Scan rechnet die
+        # ratio-Werte mit denselben Ausdrücken und derselben Reihenfolge wie die
+        # Blend-Schleife unten (1D: Frames disjunkt → result==post am Lesepunkt)
+        # → bit-identische Ausgabe. Sicherheitspolster ±1 dB absorbiert
+        # Gleitkomma-Rundung; nur wenn das Polster-Band leer ist, wird die JND
+        # übersprungen.
+        _eff_min_db = max(float(max_delta_db), 0.0)
+        _eff_max_db = max(float(max_delta_db), 6.0)
+        _needs_jnd = False
+        if _eff_max_db > _eff_min_db:
+            _scan_pad_db = 1.0
+            _band_hi = float(10.0 ** ((_eff_max_db + _scan_pad_db) / 20.0))
+            _band_lo = float(10.0 ** ((_eff_min_db - _scan_pad_db) / 20.0))
+            _scan_frame_len = 512
+            _scan_n_frames = n // _scan_frame_len
+            if pre.ndim == 2:
+                for _c in range(pre.shape[0]):
+                    _pre_c = pre[_c]
+                    _post_c = post[_c]
+                    for _fi in range(_scan_n_frames):
+                        _start = _fi * _scan_frame_len
+                        _end = _start + _scan_frame_len
+                        if not onset_mask_arr[_start:_end].any():
+                            continue
+                        _pre_rms = float(np.sqrt(np.mean(_pre_c[_start:_end] ** 2) + 1e-12))
+                        if _pre_rms < 1e-9:
+                            continue
+                        _post_rms = float(np.sqrt(np.mean(_post_c[_start:_end] ** 2) + 1e-12))
+                        _ratio = _post_rms / (_pre_rms + 1e-12)
+                        if (_band_lo < _ratio < _band_hi) or (1.0 / _band_hi < _ratio < 1.0 / _band_lo):
+                            _needs_jnd = True
+                            break
+                    if _needs_jnd:
+                        break
+            else:
+                for _fi in range(_scan_n_frames):
+                    _start = _fi * _scan_frame_len
+                    _end = _start + _scan_frame_len
+                    if not onset_mask_arr[_start:_end].any():
+                        continue
+                    _pre_rms = float(np.sqrt(np.mean(pre[_start:_end] ** 2) + 1e-12))
+                    if _pre_rms < 1e-9:
+                        continue
+                    _post_rms = float(np.sqrt(np.mean(post[_start:_end] ** 2) + 1e-12))
+                    _ratio = _post_rms / (_pre_rms + 1e-12)
+                    if (_band_lo < _ratio < _band_hi) or (1.0 / _band_hi < _ratio < 1.0 / _band_lo):
+                        _needs_jnd = True
+                        break
+
+        if _needs_jnd:
+            # §P1-3 (Hörordnung Ebene 2): Effektive Toleranz = max(fest, lokale
+            # Maskierungs-JND). Transient-Onsets sind laut → maskieren den
+            # Phasen-Delta stark; dann begrenzen wir erst bei größeren
+            # Abweichungen (weniger unnötige Dry-Wet-Blends).
+            _jnd = estimate_delta_masking_jnd_db(pre, post, 48000)
+            _eff_max_db = max(float(max_delta_db), float(_jnd.jnd_db))
+            if _jnd.jnd_db > 0.1:
+                logger.info(
+                    "§ATI Onset-Guard: §P1-3 Maskierungs-JND=%.2f dB → Toleranz %.2f dB (fest %.1f dB)",
+                    _jnd.jnd_db,
+                    _eff_max_db,
+                    max_delta_db,
+                )
+        else:
+            logger.debug(
+                "§ATI Onset-Guard: JND-Fast-Path — kein Onset-ratio im Entscheidungsband [%.2f, %.2f] dB, Toleranz %.2f dB",
+                _eff_min_db,
                 _eff_max_db,
-                max_delta_db,
+                _eff_max_db,
             )
 
         # Schutz in Onset-Fenstern anwenden

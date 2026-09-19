@@ -210,3 +210,103 @@ class TestOnsetProtectionEdgeCases:
         mask = np.ones(_N, dtype=bool)
         result = apply_onset_protection_mask(pre, post, mask, max_delta_db=1.5)
         assert float(np.max(np.abs(result))) <= 1.001
+
+
+# ---------------------------------------------------------------------------
+# §ATI JND-Fast-Path (§V26): Sättigungs-Äquivalenz + Fallback
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.unit
+class TestOnsetGuardJNDFastPath:
+    """Der §ATI Fast-Path überspringt die JND-Schätzung nur, wenn kein
+    Onset-ratio im Entscheidungsband liegt — dann ist die Ausgabe exakt
+    identisch zum gesättigten JND-Fall (Toleranz 6.0 dB). Qualität neutral,
+    bit-identisch (§V26)."""
+
+    class _JNDStub:
+        def __init__(self, jnd_db: float):
+            self.jnd_db = jnd_db
+
+    def _onset_setup(self, gain: float) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+        """pre mit Onset-Region; post mit Faktor gain im Onset-Fenster."""
+        pre = _make_noise()
+        onset_start = int(0.1 * SR)
+        onset_end = int(0.12 * SR)
+        pre[onset_start:onset_end] += 0.8
+        post = pre.copy()
+        post[onset_start:onset_end] *= gain
+        mask = np.zeros(_N, dtype=bool)
+        mask[onset_start:onset_end] = True
+        return pre, post, mask
+
+    def test_fast_path_skips_jnd_when_band_empty(self, monkeypatch):
+        """Starker Gain (ratio >> Band): JND darf nicht aufgerufen werden."""
+        import backend.core.dsp.onset_guard as og
+        from backend.core.dsp.onset_guard import apply_onset_protection_mask
+
+        calls = {"n": 0}
+        original = og.estimate_delta_masking_jnd_db
+
+        def spy(*args, **kwargs):
+            calls["n"] += 1
+            return original(*args, **kwargs)
+
+        monkeypatch.setattr(og, "estimate_delta_masking_jnd_db", spy)
+        pre, post, mask = self._onset_setup(gain=8.0)
+        result = apply_onset_protection_mask(pre, post, mask, max_delta_db=1.5)
+        assert calls["n"] == 0, f"Fast-Path darf JND nicht berechnen (calls={calls['n']})"
+        # Onset-Bereich muss begrenzt sein (Blend Richtung pre)
+        raw_diff = float(np.mean(np.abs(post - pre)))
+        result_diff = float(np.mean(np.abs(result - pre)))
+        assert result_diff < raw_diff
+
+    def test_fast_path_equals_saturated_jnd(self, monkeypatch):
+        """Fast-Path-Ausgabe == Ausgabe mit erzwungener JND-Sättigung (6.0 dB)."""
+        import backend.core.dsp.onset_guard as og
+        from backend.core.dsp.onset_guard import apply_onset_protection_mask
+
+        pre, post, mask = self._onset_setup(gain=8.0)
+
+        # Fast-Path (JND wird real nicht berechnet — Band leer)
+        fast = apply_onset_protection_mask(pre, post, mask, max_delta_db=1.5)
+
+        # Referenz: JND gesättigt (Produktionsverhalten 1108/1108)
+        monkeypatch.setattr(og, "estimate_delta_masking_jnd_db", lambda *a, **k: self._JNDStub(6.0))
+        saturated = apply_onset_protection_mask(pre, post, mask, max_delta_db=1.5)
+
+        assert np.array_equal(fast, saturated)
+
+    def test_ambiguous_band_falls_back_to_jnd(self, monkeypatch):
+        """Moderater Gain (ratio im Entscheidungsband): JND muss berechnet werden."""
+        import backend.core.dsp.onset_guard as og
+        from backend.core.dsp.onset_guard import apply_onset_protection_mask
+
+        calls = {"n": 0}
+        original = og.estimate_delta_masking_jnd_db
+
+        def spy(*args, **kwargs):
+            calls["n"] += 1
+            return original(*args, **kwargs)
+
+        monkeypatch.setattr(og, "estimate_delta_masking_jnd_db", spy)
+        pre, post, mask = self._onset_setup(gain=1.55)
+        apply_onset_protection_mask(pre, post, mask, max_delta_db=1.5)
+        assert calls["n"] == 1, f"Fallback muss JND berechnen (calls={calls['n']})"
+
+    def test_fixed_tolerance_above_cap_skips_jnd(self, monkeypatch):
+        """max_delta_db ≥ 6.0 dB: Band kollabiert → JND nie nötig."""
+        import backend.core.dsp.onset_guard as og
+        from backend.core.dsp.onset_guard import apply_onset_protection_mask
+
+        calls = {"n": 0}
+        original = og.estimate_delta_masking_jnd_db
+
+        def spy(*args, **kwargs):
+            calls["n"] += 1
+            return original(*args, **kwargs)
+
+        monkeypatch.setattr(og, "estimate_delta_masking_jnd_db", spy)
+        pre, post, mask = self._onset_setup(gain=1.55)
+        apply_onset_protection_mask(pre, post, mask, max_delta_db=9.0)
+        assert calls["n"] == 0
