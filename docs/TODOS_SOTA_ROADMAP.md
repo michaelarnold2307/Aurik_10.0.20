@@ -1573,7 +1573,7 @@ Tests: `tests/unit/test_benchmark_effizienz_matrix.py::TestPerfR13PhaseGapParser
 
 | # | Maßnahme | Wirkung | Status / nächster Schritt |
 |---|---|---|---|
-| Q1 | **HR-V1-Flag-Flip** (BigVGAN-Repair, additive_synthesis_gate) — A/B validiert | HNR +4,42 dB, af +0,0073, PQS 4,52 auf harmonisch beschädigtem Material | OFFEN — Budget-Urteil aus dem laufenden überwachten Lauf (Session 109w4s1p); Flip = Einzeiler nach Headroom-Nachweis |
+| Q1 | **HR-V1-Flag-Flip** (BigVGAN-Repair, additive_synthesis_gate) — A/B validiert | HNR +4,42 dB, af +0,0073, PQS 4,52 auf harmonisch beschädigtem Material | **BUDGET-URTEIL 2026-09-19: NEGATIV — Flag bleibt OFF.** Überwachter 225-s-Lauf (PERF-R10-Stand): Wall 12 137,5 s ≈ 3 h 22 min (RT-Bericht 32,0×, letzter Chunk 39× RT) — Akzeptanz ≤ 40 min weit verfehlt, KEIN Headroom für die 2,5×-RT-Synthese. Nächste Prüfung nach P1/P2-Gewinnen (GPU-Ports + Gap-Rest); Flip-Mechanik bleibt kartiert (Flag + Ready-Gate-Ausrichtung) |
 | Q2 | **F4-FlashSR-HF-Rekonstruktion > 12,9 kHz** (16k→48k) | Air/Presence — schließt die größte Qualitätslücke (conf 0,99) | **UNBLOCKED (2026-09-19)**: Base-Checkpoint `models/flashsr/models/upsampler.pth` ✓, MUSDB18-HQ (150 Tracks) ✓, Rezept `train_flashsr_f4.py` ✓; Finetune-Lauf 2026-09-17 bei Epoche 6 abgebrochen (val_a1 0,45–0,52, noch nicht konvergiert, best 0,449@E4/0,516@E5) — **Resume** `--resume output/f4_flashsr/checkpoint_epoch6.pt --epochs 12+` nach Ende des Supervised-Laufs (GPU) |
 | Q3 | **Separation-SOTA:** VS-1/GSEP + Demucs v5 | Separierungs-/Quelltreue-Sprung (P1-2) | EXTERN BLOCKIERT — offizielle Gewichte beschaffen (SongEval/Release-Kanäle) |
 | Q4 | **WF-V4 neuraler Warp-Schätzer** | Wow/Flutter-Korrektur ohne Authentizitätsverlust (einziger Hörordnungs-sicherer Weg) | EXTERN BLOCKIERT — Checkpoint-Quelle klären |
@@ -1594,6 +1594,26 @@ Loader (`_try_load_model`) nutzt dagegen `bigvgan_v2.onnx` (VORHANDEN) —
 beim Flip Ready-Gate auf den tatsächlichen Checkpoint ausrichten
 (oder .pth beschaffen), sonst bleibt der Pfad fail-closed. Die
 Activation-Contract-Tests sind bereits flag-bewusst (beide Zustände).
+
+### Überwachter 225-s-Lauf 2026-09-19 (PERF-R10-Stand) — Befunde
+
+`output/supervised_run/elke_225s_perfr_r10.{log,wav}` (Elke Best, Vinyl,
+8 Chunks, 297 Phasen, Wall 12 137,5 s ≈ 3 h 22 min, RT-Bericht 32,0×,
+letzter Chunk 39× RT). **Qualität:** MUSHRA 92,1 (Excellent), UQM 87,2
+PASS, artifact_freedom 0,9869 ✓, Audibility-Gate 0 hörbare Restdefekte ✓,
+Goosebumps 0,979, WCS 0,966 ≥ 0,88 ✓, GOAL_SCORECARD (Song-Tail)
+excellence 0,8203 mit 2 Verletzungen. **Befunde (Abarbeitung nächste
+Session):** (a) **Wohlklang-Ordnung VIOLATION**
+(listening_fatigue/timbre_authentizitaet/transparenz/waerme — lexikografische
+Ebene-1-Prüfung vs. Input; joy_runtime_index zeigt gleichzeitig
+fatigue_index 0,18 — Audit-Abgleich nötig); (b) **DEGRADED_EXPORT**
+(recovery_state_machine; fail_reasons VQI 0,7498 „acceptable" —
+§0c-Vertrag: bestmögliches Ergebnis exportiert); (c) Einladungs-Gate
+Sharpness-Sprung 0,243 (corrected=True); (d) interaction_guard-Rollback
+phase_47_truepeak_limiter (P1/P2-Drift −0,656, tol −0,242) —
+Rollback-Count 3 im Strict-Conflict-Report. Der Lauf lief auf dem
+PERF-R10-Code-Stand (R11/R12 kamen während des Laufs) — die
+Neumessung mit R13-Tooling läuft separat (`output/perf_session_20260919_r13/`).
 
 ## TODO SOTA 4 (2026-09-18) — Beschleunigung + höhere Restaurierungsqualität (Welle 4)
 
