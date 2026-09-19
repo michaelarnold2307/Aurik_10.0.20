@@ -1603,10 +1603,14 @@ letzter Chunk 39× RT). **Qualität:** MUSHRA 92,1 (Excellent), UQM 87,2
 PASS, artifact_freedom 0,9869 ✓, Audibility-Gate 0 hörbare Restdefekte ✓,
 Goosebumps 0,979, WCS 0,966 ≥ 0,88 ✓, GOAL_SCORECARD (Song-Tail)
 excellence 0,8203 mit 2 Verletzungen. **Befunde (Abarbeitung nächste
-Session):** (a) **Wohlklang-Ordnung VIOLATION**
-(listening_fatigue/timbre_authentizitaet/transparenz/waerme — lexikografische
-Ebene-1-Prüfung vs. Input; joy_runtime_index zeigt gleichzeitig
-fatigue_index 0,18 — Audit-Abgleich nötig); (b) **DEGRADED_EXPORT**
+Session):** (a) **Wohlklang-Ordnung VIOLATION — 8 Verstöße dekodiert:**
+`groove` (Stufe 4) und `spatial_depth` (Stufe 4) verbessert auf Kosten von
+`waerme` (Stufe 2), `timbre_authentizitaet` (Stufe 1), `transparenz`
+(Stufe 3), `listening_fatigue` (Stufe 3) — lexikografische Ebene-1-
+Prüfung vs. Input (joy_runtime_index zeigt gleichzeitig fatigue_index
+0,18; FC-Loop hat per-Kandidat-Verstöße bereits verworfen, der Netto-
+Saldo bleibt negativ — Hörordnungs-Forensik: welche Phasen treiben die
+waerme/timbre/transparenz-Senkung?); (b) **DEGRADED_EXPORT**
 (recovery_state_machine; fail_reasons VQI 0,7498 „acceptable" —
 §0c-Vertrag: bestmögliches Ergebnis exportiert); (c) Einladungs-Gate
 Sharpness-Sprung 0,243 (corrected=True); (d) interaction_guard-Rollback
