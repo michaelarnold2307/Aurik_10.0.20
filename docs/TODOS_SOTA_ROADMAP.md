@@ -69,8 +69,10 @@
   Referenz (Digital-Reissue) für realistischeres Knistern-/Rumpel-Bild ohne Musik-Verfärbung.
 
 **Vokal-Hebel (greifen über die F-Reihe bei allen Gesängen):** F1 DiffWave-Vokal + F2 GaCELA
-(Langlücken-Inpainting), F8/F10 (MOS-Wahrheit), F9 (Identitäts-Witness), Harmonic-Inpainting v2 mit
-Formant-/Phonem-Konditionierung (PhonemeTimeline §2.36a existiert), ML-Deesser Musik-Kalibrierung (Phase 43).
+(Langlücken-Inpainting 375–1500 ms), F4 FlashSR (Vokal-Air/Presence >12,9 kHz), F8/F10 (MOS-Wahrheit),
+F9 (Identitäts-Witness), Harmonic-Inpainting v2 mit Formant-/Phonem-Konditionierung
+(PhonemeTimeline §2.36a existiert), ML-Deesser Musik-Kalibrierung (Phase 43 — Sibilanten ohne
+Präsenz-Verlust).
 **Instrumenten-Hebel:** F3 BigVGAN (Transienten/Spektral-Repair), F4 FlashSR (Air/Presence >12,9 kHz),
 F7 SGMSE+ (Tape-Inpainting), F12 BANQUET (Vinyl), Harmonic-Inpainting v2 mit MERT-Instrumentenklassen-
 Konditionierung (Bass-Körper, Streicher-Luft, Percussion-Transienten), Demucs-v5-Separation als
