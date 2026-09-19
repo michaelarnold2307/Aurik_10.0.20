@@ -197,21 +197,31 @@ def run_cell(
         progress: list[dict[str, float | str]] = []
         last_pct: dict[str, Any] = {"pct": -1}
 
-        def _cb(pct: float, phase: str = "", elapsed_s: float = 0.0) -> None:
+        def _cb(pct: float, phase: str = "", elapsed_s: float = 0.0, *_extra: Any) -> None:
             # Dual-Signatur: Restorer ruft teils (pct, name) ohne elapsed_s —
             # Defaults verhindern, dass Events verloren gehen (top_phases=null).
+            # §PERF-R5 (2026-09-19): die Engine übergibt zusätzlich ein 4.
+            # Argument (_live_metrics, unified_restorer_v3.py:8149) — ohne
+            # *_extra endete jeder Phasen-Callback als TypeError im stille
+            # geschluckten except ⇒ 0 Phasen-Events ⇒ top_phases=null.
+            # Phasen-ID bevorzugen (top_phases mit echten IDs statt Erzähltext).
+            _ph_key = phase
+            if _extra:
+                _metrics = _extra[0]
+                if isinstance(_metrics, dict) and _metrics.get("phase_id"):
+                    _ph_key = str(_metrics["phase_id"])
             # Nur relevante Übergänge speichern (kein Spam bei identischem pct).
-            if int(pct) != int(last_pct["pct"]) or phase != last_pct.get("phase"):
+            if int(pct) != int(last_pct["pct"]) or _ph_key != last_pct.get("phase"):
                 progress.append(
                     {
                         "t": round(time.monotonic(), 3),
                         "pct": float(pct),
-                        "phase": str(phase),
+                        "phase": _ph_key,
                         "elapsed_s": round(float(elapsed_s), 3),
                     }
                 )
                 last_pct["pct"] = pct
-                last_pct["phase"] = phase
+                last_pct["phase"] = _ph_key
 
         sampler = RssSampler()
         sampler.start()

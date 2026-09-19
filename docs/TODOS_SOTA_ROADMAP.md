@@ -1236,7 +1236,7 @@ Alle CPU-schließbaren Punkte der Offene-Punkte-Matrix sind umgesetzt und getest
 | P9 | Whisper (LGE) auf Torch-ROCm statt CPU (einmal je Song) | ~10–20× auf dem Transkriptionsschritt | ✅ UMGESETZT 2026-09-18 (HF-Decoder-Pfad): Gerätewahl cuda:0 bei torch.cuda, Kill-Switch `AURIK_WHISPER_GPU=0`, GPU-Fehler ⇒ sichtbarer CPU-Rückfall (§V6 (copilot-instructions.md)); auf diesem Host inaktiv — HF-Modell-Dateien fehlen (Blob-Store-Symlinks gebrochen) ⇒ ONNX/DSP-Ersatzpfad |
 | P10 | ORT-Session-Tuning (BANQUET intra-op 4→N im Zusammenspiel mit P8) | Mikro; intra_op=4 bleibt Optimum in der gemessenen Matrix | ✅ UMGESETZT 2026-09-18: `AURIK_BANQUET_INTRA_OP_THREADS`-Knopf (Default 4 = bisher); Matrix gemessen (intra_op 1/2/4 × P 0/2/4/6/8) |
 | P11 | SOTA-ML-V5: BANQUET-Re-Export mit dynamischer Batch-Dim → GPU-Mini-Batch | Mini-Batch-Empirie ~1,1× (LSTM-Kette latenzgebunden) — aber **Torch-ROCm-Kern: 11,8×/B=4 19,5× je Fenster, End-to-End ~19×** (3-s-Probe 0,88 s statt 16,8 s) | ✅ UMGESETZT 2026-09-18: Re-Export `scripts/export_banquet_batch_onnx.py` → `banquet_vinyl_batch.onnx` (B=1 bit-exakt, B=2/3 unabhängig) + Torch-Kern `backend/core/dsp/banquet_torch_rocm.py` (Parität ONNX-CPU 1,9e-6, deterministisch) + ORT-ROCm-Defekt beseitigt (ONNX-Fallback jetzt CPU, roh 0,35-Fehler eliminiert) |
-| P12 | Hot-Phase-Nachmessung nach run30 (`compute_hot_phases` auf neuem Lauf-Log) — falls neue Phasen-Treiber sichtbar werden | evidenzbasiert | offen (nach Lauf) |
+| P12 | Hot-Phase-Nachmessung nach run30 (`compute_hot_phases` auf neuem Lauf-Log) — falls neue Phasen-Treiber sichtbar werden | evidenzbasiert | ✅ ERLEDIGT 2026-09-19 — WAHRHEIT-KORREKTUR: die v1023_analysis.txt-Attribution (phase_41 2287 s) war FEHLHAFT (phase_41 real 32 s/0,8 %; gemessen geplant→phase_ok je Chunk). Echte Hot-Phasen: phase_01 708 s (BANQUET-ONNX-CPU, s. §PERF-R4), phase_27 460 s, phase_12 364 s, phase_31 357 s, phase_54 308 s. Tooling-Fix: Benchmark-Progress-Callback akzeptiert das 4. Engine-Argument (TypeError-Schluckung behoben) |
 
 ### §PERF-R (2026-09-18) — Redundanz-Befund & Höchstperformance-Fixes (qualitätsneutral)
 
@@ -1342,6 +1342,39 @@ Gates arbeiten korrekt — FC bricht bei Ebene-1-Verstoß ab).
 Verifikation: `output/supervised_run/elke_225s_perfr_v1023.{log,wav}` +
 automatische Analyse `…_v1023_analysis.txt` (Chunk-/Phasen-Zeiten, RT).
 
+### §PERF-R4 (2026-09-19) — v1023-Wahrheit + BANQUET-Torch-Batch-Matrix (qualitätsneutral)
+
+Nachmessung der v1023-Hot-Phasen (geplant→phase_ok je Chunk, statt der
+fehlerhaften v1023_analysis.txt-Attribution) + Folge-Fixes:
+
+1. **v1023-Attributions-Korrektur:** phase_41 kostete real 32 s (0,8 %),
+   nicht 2287 s — die Analyse-Datei ordnete Zwischenphasen-Wallzeit falsch
+   zu. Echte Hot-Phasen (Summe je 30-s-Chunk): phase_01 708 s, phase_27
+   460 s, phase_12 364 s, phase_31 357 s, phase_54 308 s, phase_13 227 s.
+2. **phase_01-Wahrheit:** 65–89 s je Chunk lagen IN
+   `_detect_clicks_banquet_ml` — der v1023-Lauf startete 15:38, der
+   Torch-ROCm-Kern landete erst 18:30 (7f9d1ecc) ⇒ der Lauf nutzte den
+   ONNX-CPU-Parallelpfad (≈75 s/30 s). Mit Torch-Kern (live gemessen):
+   BANQUET 6,8 s/30 s, phase_01 gesamt 10,6 s/30 s auf realem
+   Elke-Material (483 Klicks) — **~8× schneller als im v1023-Lauf**.
+3. **TORCH_BATCH-Matrix (60 reale Elke-Fenster, 7900 XTX):** B=1 11,46 s →
+   B=4 7,85 s → B=32 6,49 s → B=40 6,96 s; max|Δ| vs. B=1 = 6,7e-6
+   (rel 1,7e-7); **B=4 vs B=32 auf GPU bit-identisch (max|Δ|=0,0)**.
+   MIOpen-LSTM bricht ab B ≥ 48 (miopenStatusBadParm). Default 4→32,
+   Clamp [1, 40] (Commit a84db9a4).
+4. **_prepare_input vektorisiert:** 128er-Band-Python-Schleife (7552
+   Iterationen/30-s-Chunk) → np.tile-interleaved — Unit-Test pinnt
+   Bit-Identität gegen die alte Schleife (Commit a84db9a4).
+5. **Benchmark-Tooling-Fix:** Engine-Progress-Callback übergibt 4
+   Positionsargumente (unified_restorer_v3.py:8149); der
+   Effizienz-Matrix-`_cb` akzeptierte 3 ⇒ TypeError still geschluckt ⇒
+   top_phases=null. `*_extra` ergänzt — top_phases liefert jetzt echte
+   Phasen-Wall-Zeiten.
+6. **SOTA4-7-Befund:** LGE-Whisper bereits Singleton (1× je Prozess);
+   verbleibende 1,7 s/Chunk Re-Transkription sind inhärent
+   (Chunk-akkurate Maske auf verarbeitetem Audio; WoW/Flutter-Stretch
+   macht die Song-Timeline nicht exakt).
+
 ## TODO SOTA 4 (2026-09-18) — Beschleunigung + höhere Restaurierungsqualität (Welle 4)
 
 > Reihenfolge = (Hör-Gewinn × Machbarkeit) je Aufwand. Mess-Kadenz: Die
@@ -1351,13 +1384,13 @@ automatische Analyse `…_v1023_analysis.txt` (Chunk-/Phasen-Zeiten, RT).
 
 | ID | Maßnahme | Wirkung | Status |
 |---|---|---|---|
-| SOTA4-1 | PANNs-Multi-Window-Parallelisierung (VFA-Kette): Fenster sind unabhängig, ORT-`run` thread-sicher ⇒ ThreadPool nach BANQUET-P8-Muster, bit-identisch | ~10–20 s/Chunk; VFA (≈70 s) entlastet | OFFEN — Messung, sobald die GPU wieder frei ist (nach v1023) |
-| SOTA4-2 | HR-V1-Flag-Rollout (BigVGAN-Repair, `additive_synthesis_gate`): A/B-Validierung bestanden (af +0,0073, HNR +4,42 dB, PQS 4,52) — Budget-Nachweis mit dem neuen Headroom führen | messbar höhere Reparaturqualität (Harmonik/HNR); Kost nur die Synthese-Teile (~2,5× RT/10 s GPU) | OFFEN — Budget-Urteil nach v1023-Werten |
+| SOTA4-1 | PANNs-Multi-Window-Parallelisierung (VFA-Kette): Fenster sind unabhängig, ORT-`run` thread-sicher ⇒ ThreadPool nach BANQUET-P8-Muster, bit-identisch | ~10–20 s/Chunk; VFA (≈70 s) entlastet | ✅ UMGESETZT 2026-09-19 (26df39af): Opt-in-Parallelpfad (`INFER_PARALLEL`, Default 4), Maximum in fester Reihenfolge ⇒ bit-identisch; Resample-Wiederverwendung; Pre-Commit grün |
+| SOTA4-2 | HR-V1-Flag-Rollout (BigVGAN-Repair, `additive_synthesis_gate`): A/B-Validierung bestanden (af +0,0073, HNR +4,42 dB, PQS 4,52) — Budget-Nachweis mit dem neuen Headroom führen | messbar höhere Reparaturqualität (Harmonik/HNR); Kost nur die Synthese-Teile (~2,5× RT/10 s GPU) | OFFEN — Budget-Urteil nach Neumessung mit §PERF-R4-Torch-Pfad (phase_01 ~8× schneller als im v1023-Lauf; Headroom-Urteil nach dem nächsten Lauf) |
 | SOTA4-3 | F4-FlashSR-Musik-Finetune (HF-Rekonstruktion > 12,9 kHz): größte dokumentierte Qualitätslücke des Referenzmaterials (bandwidth_loss conf=0,99) | Air/Presence (MUSHRA-Proxy VocPres/ISO226) | GPU-GEBUNDEN — Rezept vorhanden (train_flashsr_f4.py), 16k→48k |
 | SOTA4-4 | FCPE-Torch-ROCm-Port nach BSR-Muster (ORT-ROCm-EP rel=0,93 defekt ⇒ derzeit CPU): VORAB echten FCPE-Zeitanteil je Chunk messen | unklar — im phase_12-Profil nicht unter den Top-20; Port lohnt nur bei gemessenem Anteil | VORAB-MESSUNG (nach v1023-Hot-Phase-Liste) |
 | SOTA4-5 | Whisper-GPU (HF-Decoder): auf diesem Host inert (Blob-Store-Symlinks gebrochen ⇒ ONNX/DSP-Fallback), auf anderen Hosts aktiv | ~10–20× auf dem Transkriptionsschritt je Song | DOKUMENTIERT — kein lokaler Aufwand |
 | SOTA4-6 | P11 BANQUET-Mini-Batch (dynamische Batch-Dim): Trainingscode fehlt im Repo (banquet_infer.py ohne Architektur, nur Checkpoint) — optional Architektur-Re-Engineering aus dem Checkpoint | GPU-Deckel 1,19× → potenziell 5–10× auf phase_09 | BLOCKIERT — hoher Aufwand, unsicher; nur nach SOTA4-1…4 |
-| SOTA4-7 | phase_28-Session-Hoist (ONNX-Session je phase_28-Aufruf statt je Prozess) — kleinteiliger Restposten | ~1–3 s/Chunk | OFFEN — Priorisierung nach v1023-Hot-Phase-Liste |
+| SOTA4-7 | phase_28-Session-Hoist (ONNX-Session je phase_28-Aufruf statt je Prozess) — kleinteiliger Restposten | ~1–3 s/Chunk | ✅ ERLEDIGT-DURCH-BESTAND 2026-09-19 (Messung): LGE-Whisper ist bereits Singleton (lädt 1× je Prozess, v1023-Log zeigt je Chunk KEINE Whisper-Load-Zeilen); warmes phase_28 = 5,3 s/30 s, davon 1,7 s Chunk-Re-Transkription — bewusst inhärent (Maske muss das VERARBEITETE Chunk-Audio reflektieren, WoW/Flutter-Stretch ⇒ Song-Timeline wäre nicht exakt) |
 
 **Akzeptanz je Maßnahme:** (1) bit-identisch oder durch Never-worsen-Gates/
 PMGG/Reinhör-Witness bestätigt (§0/Gesamtkonzept §6); (2) deterministisch

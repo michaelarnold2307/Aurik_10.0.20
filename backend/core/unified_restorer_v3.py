@@ -8135,6 +8135,9 @@ class UnifiedRestorerV3:
                         _res_sent.update(_res_new)
                         self._resolved_sent_keys = _res_sent
                     _live_metrics = {
+                        # §PERF-R5 (2026-09-19): Phasen-ID für Maschinen-Konsumenten
+                        # (Effizienz-Matrix top_phases) — GUI ignoriert unbekannte Keys.
+                        "phase_id": str(phase),
                         "mushra": float(getattr(self, "_mqa_mushra", 0.0) or 0.0),
                         "hpi": float(getattr(self, "_phase_deltas", {}).get(phase, {}).get("hpi_live", 0.0) or 0.0),
                         "vqi": float(getattr(self, "_panns_singing", 0.0) or 0.0),
