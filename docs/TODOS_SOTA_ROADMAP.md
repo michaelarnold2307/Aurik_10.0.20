@@ -1574,7 +1574,7 @@ Tests: `tests/unit/test_benchmark_effizienz_matrix.py::TestPerfR13PhaseGapParser
 | # | Maßnahme | Wirkung | Status / nächster Schritt |
 |---|---|---|---|
 | Q1 | **HR-V1-Flag-Flip** (BigVGAN-Repair, additive_synthesis_gate) — A/B validiert | HNR +4,42 dB, af +0,0073, PQS 4,52 auf harmonisch beschädigtem Material | OFFEN — Budget-Urteil aus dem laufenden überwachten Lauf (Session 109w4s1p); Flip = Einzeiler nach Headroom-Nachweis |
-| Q2 | **F4-FlashSR-HF-Rekonstruktion > 12,9 kHz** (16k→48k) | Air/Presence — schließt die größte Qualitätslücke (conf 0,99) | GPU-GEBUNDEN — Rezept vorhanden (`train_flashsr_f4.py`), Finetune auf Musik starten |
+| Q2 | **F4-FlashSR-HF-Rekonstruktion > 12,9 kHz** (16k→48k) | Air/Presence — schließt die größte Qualitätslücke (conf 0,99) | **UNBLOCKED (2026-09-19)**: Base-Checkpoint `models/flashsr/models/upsampler.pth` ✓, MUSDB18-HQ (150 Tracks) ✓, Rezept `train_flashsr_f4.py` ✓; Finetune-Lauf 2026-09-17 bei Epoche 6 abgebrochen (val_a1 0,45–0,52, noch nicht konvergiert, best 0,449@E4/0,516@E5) — **Resume** `--resume output/f4_flashsr/checkpoint_epoch6.pt --epochs 12+` nach Ende des Supervised-Laufs (GPU) |
 | Q3 | **Separation-SOTA:** VS-1/GSEP + Demucs v5 | Separierungs-/Quelltreue-Sprung (P1-2) | EXTERN BLOCKIERT — offizielle Gewichte beschaffen (SongEval/Release-Kanäle) |
 | Q4 | **WF-V4 neuraler Warp-Schätzer** | Wow/Flutter-Korrektur ohne Authentizitätsverlust (einziger Hörordnungs-sicherer Weg) | EXTERN BLOCKIERT — Checkpoint-Quelle klären |
 | Q5 | **Blind-Hörstudie n≥30** (P1-4) | Kalibriert alle Hörordnungs-Schwellen auf echte Hörer | EXTERN — Hörer-Panel organisieren |
