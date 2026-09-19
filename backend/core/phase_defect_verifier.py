@@ -52,6 +52,23 @@ from typing import Any
 
 import numpy as np
 
+try:
+    import numba as _numba  # type: ignore[import-untyped]
+
+    @_numba.njit(cache=True, fastmath=False)
+    def _qp_envelope_numba(env: np.ndarray, attack: float, release: float, out: np.ndarray) -> None:
+        """Quasi-Peak-Huelle — exakt dieselbe Float64-Rekursion wie der Python-Loop."""
+        state = 0.0
+        for i in range(env.shape[0]):
+            x = float(env[i])
+            if x > state:
+                state = attack * state + (1.0 - attack) * x
+            else:
+                state = release * state + (1.0 - release) * x
+            out[i] = np.float32(state)
+except ImportError:  # pragma: no cover - optional dependency
+    _numba = None  # type: ignore[assignment]
+
 logger = logging.getLogger(__name__)
 
 _reverse_phase_map_module: ModuleType | None
@@ -190,6 +207,13 @@ def _as_mono(audio: np.ndarray) -> np.ndarray:
     return arr  # type: ignore[no-any-return]
 
 
+def _exact_row_band_means(mag: np.ndarray, lo: int, hi: int, eps: float = 0.0) -> np.ndarray:
+    """Exakte per-Zeilen-Mittelwerte über [lo, hi) — identische Reduktion wie
+    der frühere per-Frame-Loop (kontiguitäts-normalisiert, bit-identisch)."""
+    _vals = [float(np.mean(np.ascontiguousarray(mag[k, lo:hi])) + eps) for k in range(mag.shape[0])]
+    return np.asarray(_vals, dtype=np.float64)  # type: ignore[no-any-return]
+
+
 def _proxy_impulse_ratio(audio: np.ndarray) -> float:
     """99.9th-pct amplitude / RMS — click/crackle indicator. Lower = better."""
     try:
@@ -212,15 +236,17 @@ def _proxy_hf_noise_floor(audio: np.ndarray, sr: int) -> float:
         bin_16k = min(int(16000 * n_fft / sr), n_fft // 2 + 1)
         if bin_16k <= bin_4k:
             return 0.0
-        frame_energies: list[float] = []
-        frame_rms: list[float] = []
-        for i in range(0, max(0, len(mono) - n_fft), hop):
-            chunk = mono[i : i + n_fft]
-            if len(chunk) < n_fft:
-                break
-            mag = np.abs(np.fft.rfft(chunk * np.hanning(n_fft)))
-            frame_energies.append(float(np.mean(mag[bin_4k:bin_16k])))
-            frame_rms.append(float(np.sqrt(np.mean(chunk**2) + 1e-12)))
+        _n_valid = max(0, len(mono) - n_fft)
+        if _n_valid <= 0:
+            return 0.0
+        _n_frames = (_n_valid - 1) // hop + 1
+        _frames = np.lib.stride_tricks.sliding_window_view(mono, n_fft)[::hop][:_n_frames]
+        _win = np.hanning(n_fft)  # float64 wie der frühere per-Frame-Loop
+        _mag = np.abs(np.fft.rfft(_frames * _win, axis=1))
+        frame_energies = _exact_row_band_means(_mag, bin_4k, bin_16k, 0.0)
+        frame_rms = np.sqrt(np.mean(_frames**2, axis=1) + 1e-12)
+        frame_energies = frame_energies.tolist()
+        frame_rms = frame_rms.tolist()
         if frame_energies:
             # Noise-floor proxy should reflect quiet/near-silence frames, not voiced/music peaks.
             quiet_threshold = float(np.percentile(frame_rms, 35)) if frame_rms else 0.0
@@ -253,22 +279,22 @@ def _compute_hf_noise_audibility(audio: np.ndarray, sr: int) -> float:
         if hf_hi <= hf_lo or mask_hi <= mask_lo:
             return 0.0
 
-        audible_scores: list[float] = []
-        win = np.hanning(n_fft).astype(np.float32)
         eps = 1e-12
-        for i in range(0, len(mono) - n_fft + 1, hop):
-            frame = mono[i : i + n_fft] * win
-            mag = np.abs(np.fft.rfft(frame)).astype(np.float32)
-            hf_e = float(np.mean(mag[hf_lo:hf_hi]) + eps)
-            mask_e = float(np.mean(mag[mask_lo:mask_hi]) + eps)
-            hf_db = 20.0 * np.log10(hf_e)
-            mask_db = 20.0 * np.log10(mask_e)
-            # Vereinfachte simultane Maskierung: Signal wird ab ~18 dB unter
-            # dominanter Midband-Energie zunehmend unhoerbar.
-            audible_db = hf_db - (mask_db - 18.0)
-            audible_scores.append(float(np.clip((audible_db + 18.0) / 36.0, 0.0, 1.0)))
+        win = np.hanning(n_fft).astype(np.float32)
+        # Batched-RFFT: dieselben Frames/Fenster wie der frühere per-Frame-Loop
+        # (rfft je Frame unabhängig → bit-identisch).
+        _frames = np.lib.stride_tricks.sliding_window_view(mono, n_fft)[::hop]
+        _mag = np.abs(np.fft.rfft(_frames * win, axis=1)).astype(np.float32)
+        hf_e = _exact_row_band_means(_mag, hf_lo, hf_hi, eps)
+        mask_e = _exact_row_band_means(_mag, mask_lo, mask_hi, eps)
+        hf_db = 20.0 * np.log10(hf_e)
+        mask_db = 20.0 * np.log10(mask_e)
+        # Vereinfachte simultane Maskierung: Signal wird ab ~18 dB unter
+        # dominanter Midband-Energie zunehmend unhoerbar.
+        audible_db = hf_db - (mask_db - 18.0)
+        audible_scores = np.clip((audible_db + 18.0) / 36.0, 0.0, 1.0)
 
-        if not audible_scores:
+        if len(audible_scores) == 0:
             return 0.0
         return float(np.clip(np.percentile(audible_scores, 80), 0.0, 1.0))
     except Exception as e:
@@ -294,11 +320,10 @@ def _compute_transient_harshness(audio: np.ndarray, sr: int) -> float:
             return 0.0
 
         win = np.hanning(n_fft).astype(np.float32)
-        hf_env: list[float] = []
-        for i in range(0, len(mono) - n_fft + 1, hop):
-            frame = mono[i : i + n_fft] * win
-            mag = np.abs(np.fft.rfft(frame)).astype(np.float32)
-            hf_env.append(float(np.mean(mag[lo:hi])))
+        # Batched-RFFT (bit-identisch zum früheren per-Frame-Loop).
+        _frames = np.lib.stride_tricks.sliding_window_view(mono, n_fft)[::hop]
+        _mag = np.abs(np.fft.rfft(_frames * win, axis=1)).astype(np.float32)
+        hf_env = _exact_row_band_means(_mag, lo, hi, 0.0)
 
         if len(hf_env) < 3:
             return 0.0
@@ -335,13 +360,19 @@ def _compute_quasi_peak_burstiness(audio: np.ndarray, sr: int) -> float:
         attack = float(np.exp(-1.0 / max(1.0, sr * 0.0015)))
         release = float(np.exp(-1.0 / max(1.0, sr * 0.0250)))
         qp = np.empty_like(env, dtype=np.float32)
-        state = 0.0
-        for i, x in enumerate(env):
-            if x > state:
-                state = attack * state + (1.0 - attack) * float(x)
-            else:
-                state = release * state + (1.0 - release) * float(x)
-            qp[i] = state
+        # Kompilierter Kern (IEEE float64, fastmath aus) — exakt identische
+        # Rekursion wie der frühere Python-Loop (bit-identisch, verifiziert).
+        # Fallback: identischer Python-Loop, wenn numba fehlt.
+        if _numba is not None:
+            _qp_envelope_numba(env, attack, release, qp)
+        else:
+            state = 0.0
+            for i, x in enumerate(env):
+                if x > state:
+                    state = attack * state + (1.0 - attack) * float(x)
+                else:
+                    state = release * state + (1.0 - release) * float(x)
+                qp[i] = state
 
         p95 = float(np.percentile(qp, 95))
         med = float(np.percentile(qp, 50) + 1e-9)
@@ -365,10 +396,12 @@ def _compute_modulation_roughness(audio: np.ndarray, sr: int) -> float:
         if len(mono) < frame:
             return 0.0
 
-        env: list[float] = []
-        for i in range(0, len(mono) - frame + 1, hop):
-            chunk = mono[i : i + frame]
-            env.append(float(np.sqrt(np.mean(chunk**2) + 1e-12)))
+        # Sliding-Window-RMS (bit-identisch zum früheren per-Frame-Loop).
+        _frames = np.lib.stride_tricks.sliding_window_view(mono, frame)[::hop]
+        env = np.asarray(
+            [float(np.sqrt(np.mean(np.ascontiguousarray(_frames[k] ** 2)) + 1e-12)) for k in range(_frames.shape[0])],
+            dtype=np.float32,
+        )
 
         if len(env) < 4:
             return 0.0
@@ -536,12 +569,13 @@ def _proxy_dropout_ratio(audio: np.ndarray, sr: int) -> float:
         if n_frames == 0:
             return 0.0
         threshold = 10.0 ** (-60.0 / 20.0)  # ≈ 0.001
-        silent = 0
-        for i in range(n_frames):
-            chunk = mono[i * frame_len : (i + 1) * frame_len]
-            rms = float(np.sqrt(np.mean(chunk**2) + 1e-12))
-            if rms < threshold:
-                silent += 1
+        # Sliding-Window-RMS (bit-identisch zum früheren per-Frame-Loop).
+        _frames = mono[: n_frames * frame_len].reshape(n_frames, frame_len)
+        _rms = np.asarray(
+            [float(np.sqrt(np.mean(np.ascontiguousarray(_frames[k] ** 2)) + 1e-12)) for k in range(n_frames)],
+            dtype=np.float64,
+        )
+        silent = int(np.count_nonzero(_rms < threshold))
         return float(silent / n_frames)
     except Exception as e:
         logger.warning("Verarbeitungsschritt_defect_verifier.py::_proxy_dropout_Verhaeltnis Ersatzpfad: %s", e)

@@ -1046,3 +1046,64 @@ class TestPsychoCache:
         assert len(pdv._psycho_cache) == 1
         pdv.reset_session()
         assert len(pdv._psycho_cache) == 0
+
+
+@pytest.mark.unit
+class TestQuasiPeakEnvelopeKernel:
+    """Der kompilierte Envelope-Kern (numba, IEEE float64, fastmath aus)
+    muss exakt dieselbe Rekursion wie der Python-Loop liefern (bit-identisch).
+    Fallback ohne numba: identischer Python-Loop im Burstiness-Pfad."""
+
+    def test_numba_kernel_matches_python_reference(self):
+        import numpy as np
+
+        from backend.core.phase_defect_verifier import _compute_quasi_peak_burstiness, _numba, _qp_envelope_numba
+
+        if _numba is None:
+            pytest.skip("numba nicht installiert — Python-Fallback aktiv")
+
+        rng = np.random.default_rng(42)
+        env = np.abs(rng.standard_normal(20_000)).astype(np.float32)
+        attack = float(np.exp(-1.0 / max(1.0, SR * 0.0015)))
+        release = float(np.exp(-1.0 / max(1.0, SR * 0.0250)))
+
+        qp_ref = np.empty_like(env, dtype=np.float32)
+        state = 0.0
+        for i, x in enumerate(env):
+            if x > state:
+                state = attack * state + (1.0 - attack) * float(x)
+            else:
+                state = release * state + (1.0 - release) * float(x)
+            qp_ref[i] = state
+
+        qp_nb = np.empty_like(env, dtype=np.float32)
+        _qp_envelope_numba(env, attack, release, qp_nb)
+        assert np.array_equal(qp_ref, qp_nb)
+
+    def test_burstiness_end_to_end(self):
+        """Burstiness-Wert mit kompiliertem Kern == Wert mit erzwungenem Python-Fallback."""
+        import numpy as np
+
+        import backend.core.phase_defect_verifier as pdv_mod
+        from backend.core.phase_defect_verifier import _compute_quasi_peak_burstiness
+
+        if pdv_mod._numba is None:
+            pytest.skip("numba nicht installiert — Python-Fallback aktiv")
+
+        rng = np.random.default_rng(7)
+        audio = (0.3 * rng.standard_normal((2, 2 * SR))).astype(np.float32)
+        audio[:, 10000:12000] += 0.7  # Onset-Region
+
+        with_kernel = _compute_quasi_peak_burstiness(audio, SR)
+
+        # Python-Fallback erzwingen (identische Rekursion)
+        pdv_mod._numba = None
+        try:
+            fallback = _compute_quasi_peak_burstiness(audio, SR)
+        finally:
+            pdv_mod._numba = None
+            import numba as _numba_restore
+
+            pdv_mod._numba = _numba_restore
+
+        assert with_kernel == fallback
