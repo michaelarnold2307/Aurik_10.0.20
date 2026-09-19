@@ -1534,6 +1534,23 @@ Phase ⇒ ~17 min je Song**. ITD/Jitter identisch zum alten Loop (≤ 1e-6 µs).
 Tests: `tests/unit/test_interaural_cues.py::TestPerfR12ProfileCache`
 (2 Fälle; Interaural+Post-Pipeline-Stereo-Suiten 21 grün).
 
+### §PERF-R13 (2026-09-19) — Mess-Tooling: Per-Phase-Exec/Gap-Zerlegung im Zellen-Log
+
+Der Zellen-Log-Handler des Benchmark (`run_cell`) hatte KEINEN
+Zeitstempel-Formatter — die im Docstring seit jeher vorgesehene
+„Phasen-Zeitanalyse aus den ▶/✅-Zeilen“ war damit unmöglich (nur 3 Phasen
+loggen „Profiling: Phase …“). FIX: asctime-Formatter im FileHandler +
+`_parse_phase_timings_from_log()` — zerlegt jede Phase in exec
+(geplant→phase_ok) und gap (phase_ok→nächstes geplant, d. h. Witness/
+Stereo-Guard/PMGG/CALIB/Coalition-Maschinerie) und schreibt sie als
+`phase_gaps`-Feld in das Ergebnis-JSON (n_phases, total_exec_s,
+total_gap_s, top_gaps, je Phase exec_s/gap_s). Validierung auf dem
+Supervised-Log (180 Phasen, 5 Chunks): exec 1657,7 s, gap 4458,3 s —
+Chunk-Grenzen-Gaps (phase_41) sichtbar getrennt. Damit ist der
+R11/R12-Effekt und der P2-Gap-Rest auf dem nächsten Lauf ehrlich messbar.
+Tests: `tests/unit/test_benchmark_effizienz_matrix.py::TestPerfR13PhaseGapParser`
+(2 Fälle, Suite 10 grün).
+
 ## SOTA-RESTHEBEL-MATRIX 2026-09-19 — schöpfen die DSP/ML-Hybride 100 % aus?
 
 **Antwort: NEIN — weder Performance noch Wohlklang sind ausgeschöpft**

@@ -110,3 +110,60 @@ def test_enforce_budget_legacy_fallback_without_timings():
     assert any(x["operation"] == "phase_pipeline_total" for x in violations)
     for _op in ("defect_scanner", "feedback_chain", "excellence_optimizer", "restorability_estimator"):
         assert checks[_op] is None
+
+
+class TestPerfR13PhaseGapParser:
+    """§PERF-R13 (2026-09-19): Per-Phase-Exec/Gap-Zerlegung aus dem
+    Zellen-Log (Zeitstempel-Formatter) — exec = geplant→phase_ok,
+    gap = phase_ok→nächstes geplant."""
+
+    @staticmethod
+    def _line(ts: str, text: str) -> str:
+        return f"[{ts}] INFO    backend.core.unified_restorer_v3:36898  {text}\n"
+
+    def test_parse_exec_and_gap(self, tmp_path):
+        log = tmp_path / "cell.log"
+        lines = [
+            self._line(
+                "2026-09-19 10:00:00,000", "▶ phase_01_click_removal geplant (1/3) — Eviction + RAM-Pruefung folgen"
+            ),
+            self._line(
+                "2026-09-19 10:00:05,000",
+                "OOM_PROBE Stufe=phase_ok Verarbeitungsschritt=phase_01_click_removal rss_gb=3.0",
+            ),
+            self._line(
+                "2026-09-19 10:00:15,500", "▶ phase_02_hum_removal geplant (2/3) — Eviction + RAM-Pruefung folgen"
+            ),
+            self._line(
+                "2026-09-19 10:00:18,000",
+                "OOM_PROBE Stufe=phase_ok Verarbeitungsschritt=phase_02_hum_removal rss_gb=3.1",
+            ),
+            self._line("2026-09-19 10:00:20,000", "▶ phase_03_denoise geplant (3/3) — Eviction + RAM-Pruefung folgen"),
+            self._line(
+                "2026-09-19 10:00:30,000", "OOM_PROBE Stufe=phase_ok Verarbeitungsschritt=phase_03_denoise rss_gb=3.2"
+            ),
+        ]
+        log.write_text("".join(lines), encoding="utf-8")
+        from scripts.benchmark_effizienz_matrix import _parse_phase_timings_from_log
+
+        r = _parse_phase_timings_from_log(log)
+        assert r is not None
+        assert r["n_phases"] == 3
+        assert r["total_exec_s"] == 5.0 + 2.5 + 10.0
+        assert r["total_gap_s"] == 10.5 + 2.0  # phase_03 hat keinen Folge-Gap
+        assert r["phases"][0]["phase"] == "phase_01_click_removal"
+        assert r["phases"][0]["exec_s"] == 5.0
+        assert r["phases"][0]["gap_s"] == 10.5
+        assert r["phases"][2]["gap_s"] is None
+        assert r["top_gaps"][0]["phase"] == "phase_01_click_removal"
+
+    def test_old_format_without_timestamps_returns_none(self, tmp_path):
+        log = tmp_path / "old.log"
+        log.write_text(
+            "▶ phase_01_click_removal geplant (1/3) — Eviction + RAM-Pruefung folgen\n"
+            "OOM_PROBE Stufe=phase_ok Verarbeitungsschritt=phase_01_click_removal\n",
+            encoding="utf-8",
+        )
+        from scripts.benchmark_effizienz_matrix import _parse_phase_timings_from_log
+
+        assert _parse_phase_timings_from_log(log) is None

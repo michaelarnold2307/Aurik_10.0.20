@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 """§v10.8xx benchmark_effizienz_matrix — Effizienz-Profil der UV3-Restaurierung.
-
 Misst Wandzeit, RT-Faktor und Qualitäts-Kennzahlen derselben Audio-Sequenz
 über eine Matrix aus Qualitätsmodi und Ebenen-Schaltern:
 
@@ -48,9 +47,11 @@ gleicher Output-Aufbau); die additiven JSON-Schlüssel sind an ihre Flags gebund
 from __future__ import annotations
 
 import argparse
+import datetime
 import json
 import logging
 import os
+import re
 import sys
 import time
 from collections.abc import Callable
@@ -179,6 +180,12 @@ def run_cell(
     # Phasen-Zeitanalyse aus den ▶/✅-Zeilen möglich).
     file_handler = logging.FileHandler(log_path, encoding="utf-8")
     file_handler.setLevel(logging.INFO)
+    # §PERF-R13 (2026-09-19): Zeitstempel-Formatter — ohne ihn war die
+    # Per-Phase-Gap-Analyse (geplant→phase_ok→nächstes geplant) aus dem
+    # Zellen-Log unmöglich (nur 3 Phasen loggen „Profiling: Phase …“).
+    file_handler.setFormatter(
+        logging.Formatter("%(asctime)s,%(msecs)03d %(levelname)s %(name)s: %(message)s", datefmt="%Y-%m-%d %H:%M:%S")
+    )
     root_logger = logging.getLogger()
     root_logger.addHandler(file_handler)
     try:
@@ -500,6 +507,75 @@ def _top_slowest_phases(progress: list[dict[str, Any]], n: int) -> list[dict[str
     return [{"phase": ph, "wall_s": round(d, 3)} for ph, d in ordered if d >= 0]
 
 
+def _parse_phase_timings_from_log(log_path: Path) -> dict[str, Any] | None:
+    """Per-Phase-Exec/Gap-Zerlegung aus dem Zellen-Log (§PERF-R13).
+
+    Exec = „▶ phase_X geplant (N/M)" → „OOM_PROBE Stufe=phase_ok …";
+    Gap = phase_ok → nächstes „geplant" (Eviction/OOM-Probe/Witness/
+    Stereo-Guard/PMGG/Coalition — die Maschinerie ZWISCHEN den Phasen).
+    Liefert None ohne Zeitstempel-Format (altes Log-Format) oder ohne Phasen.
+    """
+    _ts_re = re.compile(r"\[(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}),(\d{3})\]")
+
+    def _ts(line: str) -> float | None:
+        m = _ts_re.match(line)
+        if not m:
+            return None
+        dt = datetime.datetime.strptime(m.group(1), "%Y-%m-%d %H:%M:%S")
+        return dt.timestamp() + int(m.group(2)) / 1000.0
+
+    if not log_path.exists():
+        return None
+    pairs: list[tuple[float, str, str]] = []  # (ts, kind, phase)
+    with log_path.open(encoding="utf-8", errors="replace") as fh:
+        for line in fh:
+            t = _ts(line)
+            if t is None:
+                continue
+            m = re.search(r"▶ (\S+) geplant \((\d+)/(\d+)\)", line)
+            if m:
+                pairs.append((t, "P", m.group(1)))
+                continue
+            m = re.search(r"OOM_PROBE Stufe=phase_ok Verarbeitungsschritt=(\S+)", line)
+            if m:
+                pairs.append((t, "O", m.group(1)))
+    if not any(k == "P" for _, k, _ in pairs):
+        return None
+    pairs.sort(key=lambda x: x[0])
+    phases: list[dict[str, Any]] = []
+    for i, (t, kind, ph) in enumerate(pairs):
+        if kind != "P":
+            continue
+        j = i + 1
+        while j < len(pairs) and not (pairs[j][1] == "O" and pairs[j][2] == ph):
+            j += 1
+        if j >= len(pairs):
+            continue
+        exec_s = pairs[j][0] - t
+        k = j + 1
+        while k < len(pairs) and pairs[k][1] != "P":
+            k += 1
+        gap_s = pairs[k][0] - pairs[j][0] if k < len(pairs) else None
+        phases.append(
+            {
+                "phase": ph,
+                "exec_s": round(max(exec_s, 0.0), 3),
+                "gap_s": round(gap_s, 3) if gap_s is not None else None,
+            }
+        )
+    if not phases:
+        return None
+    _gaps = [(p["phase"], p["gap_s"]) for p in phases if p.get("gap_s") is not None]
+    _gaps.sort(key=lambda kv: -(kv[1] or 0.0))
+    return {
+        "n_phases": len(phases),
+        "total_exec_s": round(sum(p["exec_s"] for p in phases), 3),
+        "total_gap_s": round(sum(p["gap_s"] or 0.0 for p in phases), 3),
+        "top_gaps": [{"phase": ph, "gap_s": g} for ph, g in _gaps[:8]],
+        "phases": phases,
+    }
+
+
 def main() -> None:
     ap = argparse.ArgumentParser(description="UV3-Effizienz-Matrix-Benchmark")
     ap.add_argument(
@@ -602,6 +678,20 @@ def main() -> None:
                 )
             else:
                 entry["top_phases"] = _top
+
+        # ── §PERF-R13: Per-Phase-Exec/Gap-Zerlegung aus dem Zellen-Log ──
+        _gaps = _parse_phase_timings_from_log(_log_path)
+        entry["phase_gaps"] = _gaps
+        if _gaps is not None:
+            _tg = _gaps["top_gaps"]
+            logger.warning(
+                "Phase-Gap-Zerlegung %s: %d Phasen, exec=%.1fs gap=%.1fs; top gaps: %s",
+                cell.id,
+                _gaps["n_phases"],
+                _gaps["total_exec_s"],
+                _gaps["total_gap_s"],
+                ", ".join(f"{p['phase']}={p['gap_s']}s" for p in _tg[:3]) or "-",
+            )
 
         # ── Feature 2: Bootstrap-95%-CI (quality_ci95 / mushra_ci95) ──
         if bootstrap_ci:
