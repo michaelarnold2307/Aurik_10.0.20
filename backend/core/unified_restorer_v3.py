@@ -36800,6 +36800,14 @@ class UnifiedRestorerV3:
         except Exception as _pdv_init_exc:
             logger.debug("§7 PDV Sitzung zurueckgesetzt fehlgeschlagen (nicht blockierend): %s", _pdv_init_exc)
 
+        # §Witness-Bundle-Zwischenspeicher: Song-Isolation (§V8 (copilot-instructions.md)).
+        try:
+            from backend.core.listening_witness import reset_witness_bundle_cache as _reset_wbc
+
+            _reset_wbc()
+        except Exception as _wbc_init_exc:
+            logger.debug("Reinhör-Witness Audio-Paket-Zwischenspeicher leeren nicht verfügbar: %s", _wbc_init_exc)
+
         # §2.45 [RELEASE_MUST] perceptual_delta helper — fast spectral quality proxy.
         # Used in non-PMGG fallback paths to detect phases that degrade audio quality.
         # PMGG-main-path is covered by PMGG rollback mechanism; this is a safety net only.

@@ -451,3 +451,79 @@ class TestPerfR11BatchedPaths:
             new[f] = max(float(np.percentile(env[_lo:_hi], pm._LOCAL_PERC)), _floor)
         np.maximum(new, _floor, out=new)
         assert np.array_equal(old, new)
+
+
+# ---------------------------------------------------------------------------
+# Audio-Bundle-Zwischenspeicher: exakte Werte, Ketten-Bit-Identität, Reset
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.unit
+class TestWitnessBundleCache:
+    """Der Bundle-Cache liefert exakt die direkten Metrikwerte (bit-identisch)
+    und wird per reset_witness_bundle_cache() geleert (§V8 (copilot-instructions.md))."""
+
+    def test_bundle_values_match_direct_functions(self):
+        from backend.core.listening_witness import (
+            _AIR_HI_HZ,
+            _AIR_LO_HZ,
+            _BASS_HI_HZ,
+            _BASS_LO_HZ,
+            _CLARITY_HI_HZ,
+            _CLARITY_LO_HZ,
+            _band_energy_ratio_db,
+            _frame_f0_hnr,
+            _loudness_mod_depth_db,
+            _transient_sharpness,
+            _witness_audio_bundle,
+            reset_witness_bundle_cache,
+        )
+
+        reset_witness_bundle_cache()
+        x = _tone_vibrato(f0=220.0, vibrato_hz=5.0, depth_cents=30.0)
+        f0, voiced, hnr, flat = _frame_f0_hnr(x, SR)
+        bun = _witness_audio_bundle(x, SR)
+        assert np.array_equal(bun["f0"], f0)
+        assert np.array_equal(bun["voiced"], voiced)
+        assert np.array_equal(bun["hnr"], hnr)
+        assert np.array_equal(bun["flat"], flat)
+        assert bun["loud_mod"] == _loudness_mod_depth_db(x, SR)
+        assert bun["flat_top"] == float(np.mean(np.abs(x) > 0.98))
+        assert bun["bass"] == _band_energy_ratio_db(x, SR, _BASS_LO_HZ, _BASS_HI_HZ)
+        assert bun["air"] == _band_energy_ratio_db(x, SR, _AIR_LO_HZ, _AIR_HI_HZ)
+        assert bun["clarity"] == _band_energy_ratio_db(x, SR, _CLARITY_LO_HZ, _CLARITY_HI_HZ)
+        assert bun["tr"] == _transient_sharpness(x, SR)
+
+    def test_chain_reuse_bit_identical(self):
+        """before(k+1) == Kopie von after(k) → warme Kette liefert identisches Ergebnis."""
+        from backend.core.listening_witness import (
+            _WITNESS_BUNDLE_CACHE,
+            evaluate_listening_witness,
+            reset_witness_bundle_cache,
+        )
+
+        a = _tone_vibrato(f0=220.0, vibrato_hz=5.0, depth_cents=30.0)
+        b = (a * 1.01).astype(np.float32)
+        c = (b * 1.01).astype(np.float32)
+
+        reset_witness_bundle_cache()
+        r_cold = evaluate_listening_witness(b.copy(), c, SR, "phase_03_denoise")
+        reset_witness_bundle_cache()
+        evaluate_listening_witness(a, b, SR, "phase_03_denoise")  # füllt Bundle für b
+        r_warm = evaluate_listening_witness(b.copy(), c, SR, "phase_03_denoise")
+
+        assert r_cold.as_dict() == r_warm.as_dict()
+        assert len(_WITNESS_BUNDLE_CACHE) >= 2
+
+    def test_reset_clears_cache(self):
+        from backend.core.listening_witness import (
+            _WITNESS_BUNDLE_CACHE,
+            _witness_audio_bundle,
+            reset_witness_bundle_cache,
+        )
+
+        reset_witness_bundle_cache()
+        _witness_audio_bundle(_tone_vibrato(), SR)
+        assert len(_WITNESS_BUNDLE_CACHE) == 1
+        reset_witness_bundle_cache()
+        assert len(_WITNESS_BUNDLE_CACHE) == 0

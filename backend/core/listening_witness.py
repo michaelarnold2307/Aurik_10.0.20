@@ -29,7 +29,10 @@ from __future__ import annotations
 
 import hashlib
 import logging
+import threading
+from collections import OrderedDict
 from dataclasses import dataclass, field
+from typing import Any
 
 import numpy as np
 
@@ -457,6 +460,51 @@ def _transient_sharpness(x: np.ndarray, sr: int) -> float:
     return float(np.percentile(_pos, 95.0))
 
 
+# ── Audio-Bundle-Zwischenspeicher (bit-identisch, Qualität neutral) ──────────
+# Die per-Audio-Witness-Metriken (F0/HNR/Flatness, Loudness-Modulation,
+# Flat-Top, Bass, Luftband, Klarheit, Transienten-Schärfe) sind
+# deterministische Funktionen des Audio-Inhalts. Im Phasen-Loop ist der
+# „before"-Zustand der Phase k+1 eine Kopie des „after"-Zustands der Phase k
+# → gleicher Inhalt ⇒ exakt derselbe Wert (keine Näherung).
+# Muster: R12-Interaural-Cache (Blake2b-Content-Key, begrenzter LRU).
+_WITNESS_BUNDLE_CACHE: OrderedDict[tuple[int, str], dict[str, Any]] = OrderedDict()
+_WITNESS_BUNDLE_CACHE_MAX = 8
+_WITNESS_BUNDLE_LOCK = threading.Lock()
+
+
+def reset_witness_bundle_cache() -> None:
+    """§V8 (copilot-instructions.md) Song-Isolation: leert den Bundle-Cache."""
+    with _WITNESS_BUNDLE_LOCK:
+        _WITNESS_BUNDLE_CACHE.clear()
+
+
+def _witness_audio_bundle(x: np.ndarray, sr: int) -> dict[str, Any]:
+    """Alle per-Audio-Witness-Metriken für x — content-keyed, bit-identisch."""
+    _key = (int(sr), hashlib.blake2b(np.ascontiguousarray(x).tobytes(), digest_size=8).hexdigest())
+    with _WITNESS_BUNDLE_LOCK:
+        _hit = _WITNESS_BUNDLE_CACHE.get(_key)
+    if _hit is not None:
+        return _hit
+    f0, voiced, hnr, flat = _frame_f0_hnr(x, sr)
+    bundle: dict[str, object] = {
+        "f0": f0,
+        "voiced": voiced,
+        "hnr": hnr,
+        "flat": flat,
+        "loud_mod": _loudness_mod_depth_db(x, sr),
+        "flat_top": float(np.mean(np.abs(x) > 0.98)),
+        "bass": _band_energy_ratio_db(x, sr, _BASS_LO_HZ, _BASS_HI_HZ),
+        "air": _band_energy_ratio_db(x, sr, _AIR_LO_HZ, _AIR_HI_HZ),
+        "clarity": _band_energy_ratio_db(x, sr, _CLARITY_LO_HZ, _CLARITY_HI_HZ),
+        "tr": _transient_sharpness(x, sr),
+    }
+    with _WITNESS_BUNDLE_LOCK:
+        _WITNESS_BUNDLE_CACHE[_key] = bundle
+        while len(_WITNESS_BUNDLE_CACHE) > _WITNESS_BUNDLE_CACHE_MAX:
+            _WITNESS_BUNDLE_CACHE.popitem(last=False)
+    return bundle
+
+
 def evaluate_listening_witness(
     audio_before: np.ndarray,
     audio_after: np.ndarray,
@@ -469,8 +517,17 @@ def evaluate_listening_witness(
     n = min(len(a), len(b))
     a, b = a[:n], b[:n]
 
-    f0_a, vo_a, hnr_a, flat_a = _frame_f0_hnr(a, sr)
-    f0_b, vo_b, hnr_b, flat_b = _frame_f0_hnr(b, sr)
+    _bun_a = _witness_audio_bundle(a, sr)
+    _bun_b = _witness_audio_bundle(b, sr)
+
+    f0_a = np.asarray(_bun_a["f0"], dtype=np.float64)
+    vo_a = np.asarray(_bun_a["voiced"], dtype=bool)
+    hnr_a = np.asarray(_bun_a["hnr"], dtype=np.float64)
+    flat_a = np.asarray(_bun_a["flat"], dtype=np.float64)
+    f0_b = np.asarray(_bun_b["f0"], dtype=np.float64)
+    vo_b = np.asarray(_bun_b["voiced"], dtype=bool)
+    hnr_b = np.asarray(_bun_b["hnr"], dtype=np.float64)
+    flat_b = np.asarray(_bun_b["flat"], dtype=np.float64)
 
     _hop_rate = float(sr) / float(_HOP)
     _spread_a, mod_a = _f0_metrics(f0_a, vo_a, _hop_rate)
@@ -487,22 +544,22 @@ def evaluate_listening_witness(
         pitch_delta = float(np.median(np.abs(1200.0 * np.log2(_ratio))))
     flat_rise = float(np.median(flat_b) - np.median(flat_a))
 
-    loud_a = _loudness_mod_depth_db(a, sr)
-    loud_b = _loudness_mod_depth_db(b, sr)
+    loud_a = float(_bun_a["loud_mod"])
+    loud_b = float(_bun_b["loud_mod"])
 
     # Flat-Top-Proxy: Anteil an ±1 gepinnter Samples (Clipping/Limiting-Artefakt;
     # periodisch, daher HNR-blind — de-Krom-HNR misst Periodizität, nicht
     # harmonische Verzerrung).
-    _flat_a = float(np.mean(np.abs(a) > 0.98))
-    _flat_b = float(np.mean(np.abs(b) > 0.98))
+    _flat_a = float(_bun_a["flat_top"])
+    _flat_b = float(_bun_b["flat_top"])
 
     # §Witness-Coverage (2026-09-11): Bass-Präsenz + Transienten-Schärfe —
     # klassische „unangenehm“-Defekte (dünner Klang, verschmierte Anschläge),
     # die Pitch/HNR/Loudness nicht abdecken.
-    _bass_a = _band_energy_ratio_db(a, sr, _BASS_LO_HZ, _BASS_HI_HZ)
-    _bass_b = _band_energy_ratio_db(b, sr, _BASS_LO_HZ, _BASS_HI_HZ)
-    _tr_a = _transient_sharpness(a, sr)
-    _tr_b = _transient_sharpness(b, sr)
+    _bass_a = float(_bun_a["bass"])
+    _bass_b = float(_bun_b["bass"])
+    _tr_a = float(_bun_a["tr"])
+    _tr_b = float(_bun_b["tr"])
     bass_drop = _bass_a - _bass_b
     transient_smear = float((_tr_a - _tr_b) / max(_tr_a, 1e-6)) if _tr_a > 1e-6 else 0.0
 
@@ -510,8 +567,8 @@ def evaluate_listening_witness(
     # Luftband-Delta (8–20 kHz) in dB. Gleiche Wahrnehmungsdomäne wie das
     # Brillianz-Goal (Musical-Goals), aber delta-basiert (Witness-Rolle:
     # Regression, nicht Zielwert). Positiv = Brillianz-Gewinn, negativ = Verlust.
-    _air_a = _band_energy_ratio_db(a, sr, _AIR_LO_HZ, _AIR_HI_HZ)
-    _air_b = _band_energy_ratio_db(b, sr, _AIR_LO_HZ, _AIR_HI_HZ)
+    _air_a = float(_bun_a["air"])
+    _air_b = float(_bun_b["air"])
     air_gain = _air_b - _air_a
 
     # §Witness-SOTA P1/P2 (2026-09-12, Hörordnung Ebene 2): Audibility statt
@@ -572,8 +629,8 @@ def evaluate_listening_witness(
     #    Heilung ist das Verbotene (Gesang opfern statt Defekt beheben).
     # 2. vocal_distorted_residual: Rest-Clipping (Flat-Tops) nach der
     #    zuständigen Phase — gewarnt wird nur, wenn der Defekt NOCH da ist.
-    _clarity_a = _band_energy_ratio_db(a, sr, _CLARITY_LO_HZ, _CLARITY_HI_HZ)
-    _clarity_b = _band_energy_ratio_db(b, sr, _CLARITY_LO_HZ, _CLARITY_HI_HZ)
+    _clarity_a = float(_bun_a["clarity"])
+    _clarity_b = float(_bun_b["clarity"])
     clarity_drop = _clarity_a - _clarity_b
     _distortion_removed = _flat_b < _flat_a - _FLAT_TOP_RESIDUAL * 0.5
     _muffled = clarity_drop > _VOCAL_MUFFLED_DB and not _distortion_removed
