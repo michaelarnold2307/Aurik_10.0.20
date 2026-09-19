@@ -41,10 +41,12 @@ Version: 1.0.0 (v10.0.0 — Ursache 7)
 
 from __future__ import annotations
 
+import hashlib
 import importlib
 import logging
 import sys
 import threading
+from collections import OrderedDict
 from types import ModuleType
 from typing import Any
 
@@ -644,6 +646,46 @@ class PhaseDefectVerifier:
         self._telem_lock = threading.RLock()
         self._reverse_map: dict[str, list[str]] | None = None
         self._rmap_lock = threading.Lock()
+        # Content-Keyed-Cache für die 4 psychoakustischen Drift-Helfer
+        # (hf_noise_audibility, transient_harshness, quasi_peak_burstiness,
+        # modulation_roughness). Die Helfer sind deterministische
+        # Funktionen des Audio-Inhalts → gleicher Inhalt ⇒ gleicher Wert
+        # (bit-identisch). §V8 (copilot-instructions.md) Song-Isolation:
+        # reset_session() leert den Zwischenspeicher.
+        self._psycho_cache: OrderedDict[tuple[int, str], dict[str, float]] = OrderedDict()
+        self._psycho_cache_max = 8
+
+    @staticmethod
+    def _psycho_content_key(audio: np.ndarray) -> str:
+        """Blake2b-Content-Hash der Sample-Bytes (Muster: R12-Interaural-Cache)."""
+        return hashlib.blake2b(np.ascontiguousarray(audio).tobytes(), digest_size=8).hexdigest()
+
+    def _cached_psycho_value(self, fn_key: str, audio: np.ndarray, sr: int, fn: Any) -> float:
+        """Bit-identischer Content-Cache um einen deterministischen Drift-Helfer.
+
+        Der Cache liefert exakt den Wert, den die reine Funktion fn(audio, sr)
+        für denselben Inhalt berechnen würde — keine Näherung, keine
+        Entscheidungsänderung. Bei Fehlern: direkte Berechnung (non-blocking).
+        """
+        try:
+            _key = (int(sr), self._psycho_content_key(audio))
+            _entry = self._psycho_cache.get(_key)
+            if _entry is not None:
+                _val = _entry.get(fn_key)
+                if _val is not None:
+                    return float(_val)
+            _val = float(fn(audio, sr))
+            _bucket = self._psycho_cache.get(_key)
+            if _bucket is None:
+                self._psycho_cache[_key] = {fn_key: _val}
+                while len(self._psycho_cache) > self._psycho_cache_max:
+                    self._psycho_cache.popitem(last=False)
+            else:
+                _bucket[fn_key] = _val
+            return _val
+        except Exception as _pc_exc:
+            logger.debug("Psycho-Zwischenspeicher nicht verfügbar (%s) — direkte Berechnung", _pc_exc)
+            return float(fn(audio, sr))
 
     def _get_reverse_map(self) -> dict[str, list[str]]:
         """Lazy-load reverse phase→defect-type map (string names, no circular import)."""
@@ -735,14 +777,14 @@ class PhaseDefectVerifier:
                 _harsh_fn = _compat_helper("_compute_transient_harshness", _compute_transient_harshness)
                 _burst_fn = _compat_helper("_compute_quasi_peak_burstiness", _compute_quasi_peak_burstiness)
                 _mod_fn = _compat_helper("_compute_modulation_roughness", _compute_modulation_roughness)
-                _hf_aud_before = _hf_fn(audio_before, sr)
-                _hf_aud_after = _hf_fn(candidate_audio, sr)
-                _harsh_before = _harsh_fn(audio_before, sr)
-                _harsh_after = _harsh_fn(candidate_audio, sr)
-                _burst_before = _burst_fn(audio_before, sr)
-                _burst_after = _burst_fn(candidate_audio, sr)
-                _mod_before = _mod_fn(audio_before, sr)
-                _mod_after = _mod_fn(candidate_audio, sr)
+                _hf_aud_before = self._cached_psycho_value("hf_noise_audibility", audio_before, sr, _hf_fn)
+                _hf_aud_after = self._cached_psycho_value("hf_noise_audibility", candidate_audio, sr, _hf_fn)
+                _harsh_before = self._cached_psycho_value("transient_harshness", audio_before, sr, _harsh_fn)
+                _harsh_after = self._cached_psycho_value("transient_harshness", candidate_audio, sr, _harsh_fn)
+                _burst_before = self._cached_psycho_value("quasi_peak_burstiness", audio_before, sr, _burst_fn)
+                _burst_after = self._cached_psycho_value("quasi_peak_burstiness", candidate_audio, sr, _burst_fn)
+                _mod_before = self._cached_psycho_value("modulation_roughness", audio_before, sr, _mod_fn)
+                _mod_after = self._cached_psycho_value("modulation_roughness", candidate_audio, sr, _mod_fn)
 
                 for dname, val_before in proxies_before.items():
                     val_after = _proxies_after.get(dname, val_before)
@@ -893,26 +935,44 @@ class PhaseDefectVerifier:
                 try:
                     pdv_list = metadata_store.setdefault("phase_defect_verification", [])
                     psycho_before = {
-                        "hf_noise_audibility": _compat_helper(
-                            "_compute_hf_noise_audibility", _compute_hf_noise_audibility
-                        )(audio_before, sr),
-                        "transient_harshness": _compat_helper(
-                            "_compute_transient_harshness", _compute_transient_harshness
-                        )(audio_before, sr),
-                        "quasi_peak_burstiness": _compat_helper(
-                            "_compute_quasi_peak_burstiness", _compute_quasi_peak_burstiness
-                        )(audio_before, sr),
+                        "hf_noise_audibility": self._cached_psycho_value(
+                            "hf_noise_audibility",
+                            audio_before,
+                            sr,
+                            _compat_helper("_compute_hf_noise_audibility", _compute_hf_noise_audibility),
+                        ),
+                        "transient_harshness": self._cached_psycho_value(
+                            "transient_harshness",
+                            audio_before,
+                            sr,
+                            _compat_helper("_compute_transient_harshness", _compute_transient_harshness),
+                        ),
+                        "quasi_peak_burstiness": self._cached_psycho_value(
+                            "quasi_peak_burstiness",
+                            audio_before,
+                            sr,
+                            _compat_helper("_compute_quasi_peak_burstiness", _compute_quasi_peak_burstiness),
+                        ),
                     }
                     psycho_after = {
-                        "hf_noise_audibility": _compat_helper(
-                            "_compute_hf_noise_audibility", _compute_hf_noise_audibility
-                        )(audio_after, sr),
-                        "transient_harshness": _compat_helper(
-                            "_compute_transient_harshness", _compute_transient_harshness
-                        )(audio_after, sr),
-                        "quasi_peak_burstiness": _compat_helper(
-                            "_compute_quasi_peak_burstiness", _compute_quasi_peak_burstiness
-                        )(audio_after, sr),
+                        "hf_noise_audibility": self._cached_psycho_value(
+                            "hf_noise_audibility",
+                            audio_after,
+                            sr,
+                            _compat_helper("_compute_hf_noise_audibility", _compute_hf_noise_audibility),
+                        ),
+                        "transient_harshness": self._cached_psycho_value(
+                            "transient_harshness",
+                            audio_after,
+                            sr,
+                            _compat_helper("_compute_transient_harshness", _compute_transient_harshness),
+                        ),
+                        "quasi_peak_burstiness": self._cached_psycho_value(
+                            "quasi_peak_burstiness",
+                            audio_after,
+                            sr,
+                            _compat_helper("_compute_quasi_peak_burstiness", _compute_quasi_peak_burstiness),
+                        ),
                     }
                     pdv_list.append(
                         {
@@ -976,3 +1036,4 @@ class PhaseDefectVerifier:
         """Setzt zurück: session telemetry (call before each new restoration run)."""
         with self._telem_lock:
             self._session_telemetry.clear()
+            self._psycho_cache.clear()

@@ -953,3 +953,96 @@ def test_103_thread_safety_reset():
         t.join(timeout=10)
 
     assert not errors, f"Thread errors: {errors}"
+
+
+# ---------------------------------------------------------------------------
+# Content-Keyed Psycho-Cache (§V8 (copilot-instructions.md) Song-Isolation): exakte Werte + Reset
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.unit
+class TestPsychoCache:
+    """Der Content-Cache liefert exakt die direkten Funktionswerte
+    (bit-identisch, keine Näherung) und wird per reset_session() geleert
+    (§V8 (copilot-instructions.md) Song-Isolation)."""
+
+    def test_cached_value_equals_direct(self):
+        from backend.core.phase_defect_verifier import (
+            PhaseDefectVerifier,
+            _compute_hf_noise_audibility,
+            _compute_modulation_roughness,
+            _compute_quasi_peak_burstiness,
+            _compute_transient_harshness,
+        )
+
+        pdv = PhaseDefectVerifier()
+        audio = _sine()
+        for key, fn in [
+            ("hf_noise_audibility", _compute_hf_noise_audibility),
+            ("transient_harshness", _compute_transient_harshness),
+            ("quasi_peak_burstiness", _compute_quasi_peak_burstiness),
+            ("modulation_roughness", _compute_modulation_roughness),
+        ]:
+            direct = float(fn(audio, SR))
+            cached = pdv._cached_psycho_value(key, audio, SR, fn)
+            assert cached == direct, f"{key}: cache {cached} != direkt {direct}"
+
+    def test_check_bit_identical_warm_vs_cold(self):
+        """Ketten-Wiederverwendung (before_k+1 == after_k als Kopie) ändert
+        die Rollback-Entscheidung und Ausgabe nicht — bit-identisch."""
+        from backend.core.phase_defect_verifier import PhaseDefectVerifier
+        from backend.core.unified_restorer_v3 import UnifiedRestorerV3 as _UV3
+
+        pre = _sine()
+        post1 = (pre * 1.02).astype(np.float32)
+        post2 = (post1 * 1.02).astype(np.float32)
+        g0 = _UV3._fast_goal_snapshot(pre, SR, "shellac")
+        g1 = _UV3._fast_goal_snapshot(post1, SR, "shellac")
+        g2 = _UV3._fast_goal_snapshot(post2, SR, "shellac")
+
+        cold = PhaseDefectVerifier()
+        r1 = cold.check(
+            "phase_03_denoise", pre, post1, SR, goal_before=g0, goal_after=g1, goal_targets={}, material_type="shellac"
+        )
+        cold.reset_session()
+        r2 = cold.check(
+            "phase_03_denoise",
+            post1.copy(),
+            post2,
+            SR,
+            goal_before=g1,
+            goal_after=g2,
+            goal_targets={},
+            material_type="shellac",
+        )
+
+        warm = PhaseDefectVerifier()
+        w1 = warm.check(
+            "phase_03_denoise", pre, post1, SR, goal_before=g0, goal_after=g1, goal_targets={}, material_type="shellac"
+        )
+        w2 = warm.check(
+            "phase_03_denoise",
+            post1.copy(),
+            post2,
+            SR,
+            goal_before=g1,
+            goal_after=g2,
+            goal_targets={},
+            material_type="shellac",
+        )
+
+        assert np.array_equal(r1, w1)
+        assert np.array_equal(r2, w2)
+
+    def test_reset_session_clears_cache(self):
+        from backend.core.phase_defect_verifier import (
+            PhaseDefectVerifier,
+            _compute_quasi_peak_burstiness,
+        )
+
+        pdv = PhaseDefectVerifier()
+        audio = _sine()
+        pdv._cached_psycho_value("quasi_peak_burstiness", audio, SR, _compute_quasi_peak_burstiness)
+        assert len(pdv._psycho_cache) == 1
+        pdv.reset_session()
+        assert len(pdv._psycho_cache) == 0

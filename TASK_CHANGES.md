@@ -1,14 +1,14 @@
 # TASK_CHANGES — Live-Ledger der aktuellen Aufgabe
 
-> Generiert von `scripts/change_ledger.py snapshot` (Base: `HEAD`, Stand: 2026-09-19 18:20 CEST).
+> Generiert von `scripts/change_ledger.py snapshot` (Base: `HEAD`, Stand: 2026-09-19 18:43 CEST).
 > CI (`ci-lite.yml` pr-evidence-gate) erzwingt Abdeckung: jede geänderte Code-Datei muss hier stehen.
 
 ## Geänderte Dateien
 
 | Status | Pfad | Art |
 |---|---|---|
-| M | backend/core/dsp/onset_guard.py | modifiziert |
-| M | tests/unit/test_onset_guard.py | modifiziert |
+| M | backend/core/phase_defect_verifier.py | modifiziert |
+| M | tests/unit/test_phase_defect_verifier.py | modifiziert |
 
 ## Entscheidungen
 
