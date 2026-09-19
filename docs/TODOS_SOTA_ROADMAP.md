@@ -1458,13 +1458,35 @@ Qualitätsprüfung: End-Gate-Kaskade 13+ measure_all-Runden — P1/P2-Blends
 measure_all** (~8 s warm ⇒ ~66 s je Song) + Goosebumps/Recovery.
 Warm-Miss-profile von measure_all (8,3 s): 5 ONNX-runs 4,9 s (HTDemucs
 3,5 s budgetiert auf 2/Lauf, VERSA 1,7 s, PANNs-in-VERSA 1,2 s, MERT
-2×0,25 s), transient-hpss 1,0 s, chroma_cqt 0,3 s. **Nächster
-dokumentierter Hebel:** Universal-Cascade-Messkette — VERSA/PANNs/MERT
-je Alpha neu gerechnet, keine Referenz-seitige Wiederverwendung
-(Original-Embeddings sind über alle Alphas identisch); GPU-Ports (R3-
-Muster, Parität rel ≤ 1e-3) bzw. Referenz-Caches sind die qualitätsneutralen
-Wege. UTMOSv2-Erst-Load (timm-Hub, 4 Folds) + FeedbackChain 23,5 s
-laufen einmal je Song-Tail — dokumentiert.
+2×0,25 s), transient-hpss 1,0 s, chroma_cqt 0,3 s.
+
+### §PERF-R10 (2026-09-19) — Referenz-seitige Content-Caches in measure_all
+
+Wahrheits-Korrektur der Hebel-Analyse: VERSA/PANNs/MERT laufen
+KANDIDATEN-seitig (versa.score(audio), PANNs-in-VERSA, MERT auf Waerme/
+Emotionalitaet) — über Alphas NICHT wiederverwendbar; der Rest-Hebel dort
+sind GPU-Ports (R3-Muster, Parität rel ≤ 1e-3). Referenz-seitig pro
+measure_all-Aufruf entfielen dagegen chroma_cqt + spectral_centroid der
+Referenz (Authentizität, ~0,2-0,9 s) und die MERT-Original-Analyse in
+`_compute_mert_similarity` (aesthetic_judgment/holistic_perceptual_gate,
+je Chunk). UMGESETZT: `_MERT_REF_CACHE` + `_AUTH_REF_CACHE`
+(content-keyed blake2b, Deckel 3 Einträge, bit-identische Semantik —
+Cache-Treffer liefert exakt den Erst-Wert, §G5 (GEBOTE.md)-Determinismus
+gepinnt; stft-Fallback-Zweig der Authentizität ignoriert die gecachte
+CQT-Referenz repräsentations-korrekt; §V6 (copilot-instructions.md)
+fail-closed unverändert). Messung 8-Alpha-Kaskaden-Simulation (10 s Vinyl,
+ROCm): 32,3 s → 24,3 s (~0,9 s je Alpha, inkl. Warmlauf-Effekt). Tests:
+`tests/musical_goals/test_musical_goals_metrics.py`
+(TestPerfR10ReferenceCaches, 5 Fälle; Vollsuite der Datei 112 grün).
+
+**Nächster dokumentierter Hebel:** (a) Kaskaden-Messkette — VERSA/PANNs/MERT
+GPU-Ports (R3-Muster, Parität rel ≤ 1e-3) bzw. deren ONNX-Run-Kosten
+(~2,0 s steady-state je Alpha); (b) Per-Phasen-Loop-Overhead
+(PLM-Window-Eviction/OOM-Probes/Steering ≈ 1,6 s je Phase — 64 s je
+10-s-Clip, skaliert mit Chunk-Zahl); (c) SOTA4-2 HR-V1-Budget-Urteil aus
+dem nächsten überwachten Lauf (HEAD c8100879/616282a9-Stand). UTMOSv2-
+Erst-Load (timm-Hub, 4 Folds) + FeedbackChain 23,5 s laufen einmal je
+Song-Tail — dokumentiert.
 
 ## TODO SOTA 4 (2026-09-18) — Beschleunigung + höhere Restaurierungsqualität (Welle 4)
 

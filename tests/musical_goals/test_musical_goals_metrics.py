@@ -1863,5 +1863,122 @@ def test_sep_time_budget_scaling():
     assert _sep_time_budget_s(30.0) >= 10.5
 
 
+class TestPerfR10ReferenceCaches:
+    """§PERF-R10: Content-keyed Referenz-Caches (MERT-Original-Analyse,
+    Authentizität chroma/centroid) — bit-identische Semantik, Deckel,
+    deterministisch nach §G5 (GEBOTE.md)."""
+
+    @staticmethod
+    def _analysis_obj(h: float, t: float, f: float) -> Any:
+        return type(
+            "A",
+            (),
+            {"harmonicity": h, "tonal_consistency": t, "spectral_flux_coherence": f},
+        )()
+
+    def test_mert_reference_analysis_cached_once(self, monkeypatch) -> None:
+        import plugins.mert_plugin as mert_mod
+
+        calls = {"orig": 0, "rest": 0}
+
+        class _FakeMert:
+            _model_type = "onnx"
+
+            def analyze(self, x: NDArray[Any], sr: int) -> Any:
+                if len(x) == 8192:
+                    calls["orig"] += 1
+                    return TestPerfR10ReferenceCaches._analysis_obj(0.7, 0.6, 0.5)
+                calls["rest"] += 1
+                return TestPerfR10ReferenceCaches._analysis_obj(0.8, 0.7, 0.6)
+
+        monkeypatch.setattr(mert_mod, "get_loaded_mert_plugin", lambda: None)
+        monkeypatch.setattr(mert_mod, "get_mert_plugin", lambda: _FakeMert())
+
+        orig = np.zeros(8192, dtype=np.float32)
+        rest = np.ones(4096, dtype=np.float32)
+        s1 = mgm._compute_mert_similarity(orig, rest, 48000)
+        s2 = mgm._compute_mert_similarity(orig, rest, 48000)
+        assert s1 == s2  # Cache-Treffer bit-identisch
+        assert calls["orig"] == 1  # Referenz-Seite nur einmal analysiert
+        assert calls["rest"] == 2
+        mgm._MERT_REF_CACHE.clear()
+        s3 = mgm._compute_mert_similarity(orig, rest, 48000)
+        assert s3 == s1  # Neuberechnung liefert denselben Wert
+        assert calls["orig"] == 2
+
+    def test_auth_reference_features_cached_once(self, monkeypatch) -> None:
+        import librosa
+
+        calls = {"cqt": 0, "centroid": 0}
+        _real_cqt = librosa.feature.chroma_cqt
+        _real_cent = librosa.feature.spectral_centroid
+
+        def _cqt(*a: Any, **k: Any) -> Any:
+            calls["cqt"] += 1
+            return _real_cqt(*a, **k)
+
+        def _cent(*a: Any, **k: Any) -> Any:
+            calls["centroid"] += 1
+            return _real_cent(*a, **k)
+
+        monkeypatch.setattr(librosa.feature, "chroma_cqt", _cqt)
+        monkeypatch.setattr(librosa.feature, "spectral_centroid", _cent)
+
+        sr = 48000
+        n = 3 * sr  # chroma_cqt braucht ≥ 3 s (sonst n_fft-zu-groß → stft-Zweig)
+        rng = np.random.RandomState(5)
+        t = np.arange(n) / sr
+        ref = (0.5 * np.sin(2 * np.pi * 440 * t) + 0.01 * rng.randn(n)).astype(np.float64)
+        f1 = mgm._auth_reference_features(ref, sr, n)
+        assert f1 is not None
+        f2 = mgm._auth_reference_features(ref, sr, n)
+        assert calls["cqt"] == 1 and calls["centroid"] == 1
+        assert np.array_equal(f1[0], f2[0]) and np.array_equal(f1[1], f2[1])
+
+    def test_authentizitaet_bit_identical_with_warm_cache(self) -> None:
+        sr = 48000
+        n = 3 * sr  # chroma_cqt braucht ≥ 3 s
+        t = np.linspace(0, 3.0, n, endpoint=False)
+        ref = (0.5 * np.sin(2 * np.pi * 440 * t)).astype(np.float64)
+        audio = ref * 0.9 + 1e-6  # kein allclose-Shortcut
+        metric = AuthentizitaetMetric(threshold=0.88)
+        mgm._AUTH_REF_CACHE.clear()
+        s_cold = metric.measure(audio, sr, reference=ref)  # füllt Cache
+        assert len(mgm._AUTH_REF_CACHE) == 1
+        s_warm = metric.measure(audio, sr, reference=ref)  # Cache-Treffer
+        mgm._AUTH_REF_CACHE.clear()
+        s_cold2 = metric.measure(audio, sr, reference=ref)
+        assert s_warm == s_cold == s_cold2  # bit-identisch
+        assert len(mgm._AUTH_REF_CACHE) <= mgm._AUTH_REF_CACHE_MAX
+
+    def test_authentizitaet_stft_fallback_ignores_cached_cqt(self) -> None:
+        sr = 48000
+        n_long = 3 * sr  # chroma_cqt braucht ≥ 3 s
+        t_long = np.linspace(0, 3.0, n_long, endpoint=False)
+        ref_long = (0.5 * np.sin(2 * np.pi * 440 * t_long)).astype(np.float64)
+        metric = AuthentizitaetMetric(threshold=0.88)
+        mgm._AUTH_REF_CACHE.clear()
+        # Cache mit gültiger CQT-Referenz füllen (langer Kandidat)
+        metric.measure(ref_long * 0.9, sr, reference=ref_long)
+        assert len(mgm._AUTH_REF_CACHE) == 1
+        # Kurzer Kandidat → chroma_cqt wirft (n_fft zu groß) → stft-Zweig
+        # darf die gecachte CQT-Referenz NICHT verwenden (repräsentations-fremd).
+        short_ref = ref_long[:1024]
+        s_warm = metric.measure(short_ref * 0.9, sr, reference=short_ref)
+        mgm._AUTH_REF_CACHE.clear()
+        s_cold = metric.measure(short_ref * 0.9, sr, reference=short_ref)
+        assert s_warm == s_cold
+
+    def test_caches_bounded(self) -> None:
+        sr = 48000
+        n = 3 * sr  # chroma_cqt braucht ≥ 3 s, sonst füllt der Cache nie
+        rng = np.random.RandomState(7)
+        for i in range(6):
+            ref = (rng.randn(n)).astype(np.float64)
+            mgm._auth_reference_features(ref, sr, n)
+        assert len(mgm._AUTH_REF_CACHE) <= mgm._AUTH_REF_CACHE_MAX
+        assert len(mgm._AUTH_REF_CACHE) > 0
+
+
 if __name__ == "__main__":
     pytest.main([__file__, "-v", "--tb=short"])

@@ -260,6 +260,83 @@ def _get_loaded_mert_plugin_loader() -> Any:
     return _GET_LOADED_MERT_PLUGIN
 
 
+# ---------------------------------------------------------------------------
+# §PERF-R10 Referenz-Cache: In der End-Gate-Kaskade (P1/P2 + Universal-Blends)
+# misst measure_all denselben Referenz-Input (_mg_ref) über viele Runden mit
+# wechselnden Kandidaten — die Referenz-seitigen Analyse-Ergebnisse sind über
+# alle Runden IDENTISCH. Content-keyed Caches (blake2b über die normalisierten
+# Mono-Signale) liefern exakt denselben Wert wie die Neuberechnung
+# (bit-identische Semantik, §G5 (GEBOTE.md)) und vermeiden redundante
+# MERT-ONNX-/chroma_cqt-Berechnungen je Runde. Deckel: 3 Einträge je Cache.
+# ---------------------------------------------------------------------------
+_MERT_REF_CACHE: dict[tuple[int, str], tuple[float, float, float]] = {}
+_MERT_REF_CACHE_MAX = 3
+
+_AUTH_REF_CACHE: dict[tuple[int, str, int], tuple[np.ndarray, np.ndarray]] = {}
+_AUTH_REF_CACHE_MAX = 3
+
+
+def _ref_content_key(audio_mono: np.ndarray, sr: int) -> tuple[int, str]:
+    """Content-Key (sr, blake2b) über das normalisierte Mono-Signal."""
+    return (int(sr), hashlib.blake2b(np.ascontiguousarray(audio_mono).tobytes(), digest_size=8).hexdigest())
+
+
+def _mert_reference_analysis(orig_mono: np.ndarray, sr: int) -> tuple[float, float, float]:
+    """MERT-Analyse der Referenz-Seite mit Content-Cache (§PERF-R10).
+
+    Liefert (harmonicity, tonal_consistency, spectral_flux_coherence) — bei
+    Cache-Treffer exakt die Werte der Erst-Berechnung (bit-identische
+    Semantik). Wirft bei nicht verfügbarem Plugin (wie der alte Pfad),
+    damit der Aufrufer in den Proxy-Fallback läuft — fail-closed nach
+    §V6 (copilot-instructions.md) unverändert.
+    """
+    _key = _ref_content_key(orig_mono, sr)
+    _cached = _MERT_REF_CACHE.get(_key)
+    if _cached is not None:
+        return _cached
+    _loader = _get_loaded_mert_plugin_loader()
+    plugin = _loader()
+    if plugin is None:
+        _loader2 = _get_mert_plugin_loader()
+        plugin = _loader2()
+    a1 = plugin.analyze(orig_mono, sr)
+    _vals = (
+        float(np.clip(getattr(a1, "harmonicity", 0.0), 0.0, 1.0)),
+        float(np.clip(getattr(a1, "tonal_consistency", 0.0), 0.0, 1.0)),
+        float(np.clip(getattr(a1, "spectral_flux_coherence", 0.0), 0.0, 1.0)),
+    )
+    if len(_MERT_REF_CACHE) >= _MERT_REF_CACHE_MAX:
+        del _MERT_REF_CACHE[next(iter(_MERT_REF_CACHE))]
+    _MERT_REF_CACHE[_key] = _vals
+    return _vals
+
+
+def _auth_reference_features(ref_audio: np.ndarray, sr: int, audio_len: int) -> tuple[np.ndarray, np.ndarray] | None:
+    """chroma_cqt + spectral_centroid der Referenz-Seite mit Content-Cache
+    (§PERF-R10). ``ref_audio`` im Original-dtype (Centroid bit-identisch zur
+    Erst-Berechnung), ``audio_len`` (gekappte Kandidaten-Länge) geht in den
+    Key ein, weil der Fallback-Zweig (chroma_stft) über
+    ``min(len(audio), len(ref))`` den n_fft bestimmt. Liefert None bei
+    Fehlern — der Aufrufer behält dann den bestehenden Fallback-Pfad.
+    """
+    _ref_f32 = np.asarray(ref_audio, dtype=np.float32)
+    _key = (*_ref_content_key(_ref_f32, sr), int(audio_len))
+    _cached = _AUTH_REF_CACHE.get(_key)
+    if _cached is not None:
+        return _cached
+    try:
+        with warnings.catch_warnings():
+            warnings.filterwarnings("error", message=".*n_fft=.*too large.*", category=UserWarning)
+            chroma_reference = librosa.feature.chroma_cqt(y=_ref_f32, sr=sr, tuning=0.0)
+        centroid_reference = librosa.feature.spectral_centroid(y=ref_audio, sr=sr)[0]
+    except Exception:
+        return None
+    if len(_AUTH_REF_CACHE) >= _AUTH_REF_CACHE_MAX:
+        del _AUTH_REF_CACHE[next(iter(_AUTH_REF_CACHE))]
+    _AUTH_REF_CACHE[_key] = (chroma_reference, centroid_reference)
+    return _AUTH_REF_CACHE[_key]
+
+
 def _compute_mert_similarity(original: np.ndarray, restored: np.ndarray, sr: int) -> float:
     """Berechnet MERT-Cosine-Similarity zwischen Original und Restauriertem.
 
@@ -279,18 +356,17 @@ def _compute_mert_similarity(original: np.ndarray, restored: np.ndarray, sr: int
         return 1.0  # Zu kurz für sinnvollen Vergleich
 
     try:
+        # §PERF-R10: Referenz-seitige MERT-Analyse aus dem Content-Cache —
+        # identisches Ergebnis wie die Neuberechnung (bit-identische Semantik).
+        h1, t1, f1 = _mert_reference_analysis(orig_mono, sr)
         _loader = _get_loaded_mert_plugin_loader()
         plugin = _loader()
         if plugin is None:
             _loader2 = _get_mert_plugin_loader()
             plugin = _loader2()
-        a1 = plugin.analyze(orig_mono, sr)
         a2 = plugin.analyze(rest_mono, sr)
-        h1 = float(np.clip(getattr(a1, "harmonicity", 0.0), 0.0, 1.0))
         h2 = float(np.clip(getattr(a2, "harmonicity", 0.0), 0.0, 1.0))
-        t1 = float(np.clip(getattr(a1, "tonal_consistency", 0.0), 0.0, 1.0))
         t2 = float(np.clip(getattr(a2, "tonal_consistency", 0.0), 0.0, 1.0))
-        f1 = float(np.clip(getattr(a1, "spectral_flux_coherence", 0.0), 0.0, 1.0))
         f2 = float(np.clip(getattr(a2, "spectral_flux_coherence", 0.0), 0.0, 1.0))
         harm_sim = 1.0 - abs(h1 - h2)
         tonal_sim = 1.0 - abs(t1 - t2)
@@ -1536,20 +1612,29 @@ class AuthentizitaetMetric:
             # chroma_cqt uses numba/_phasor_angles which requires float32 input.
             _audio_f32 = np.asarray(audio, dtype=np.float32)
             _ref_f32 = np.asarray(reference, dtype=np.float32)
+            # §PERF-R10: Referenz-seitige chroma/centroid-Features aus dem
+            # Content-Cache (bit-identische Semantik, Kaskaden-Wiederverwendung).
+            _cached_ref_feats = _auth_reference_features(reference, sr, len(_audio_f32))
+            _ref_feats_from_cache = _cached_ref_feats is not None
+            chroma_reference = _cached_ref_feats[0] if _cached_ref_feats is not None else None
             try:
                 with warnings.catch_warnings():
                     warnings.filterwarnings("error", message=".*n_fft=.*too large.*", category=UserWarning)
                     chroma_current = librosa.feature.chroma_cqt(y=_audio_f32, sr=sr, tuning=0.0)
-                    chroma_reference = librosa.feature.chroma_cqt(y=_ref_f32, sr=sr, tuning=0.0)
+                    if not _ref_feats_from_cache:
+                        chroma_reference = librosa.feature.chroma_cqt(y=_ref_f32, sr=sr, tuning=0.0)
             except Exception:
                 _n_fft = _safe_fft_size(min(len(_audio_f32), len(_ref_f32)), target=2048, minimum=64)
                 _hop = max(16, _n_fft // 4)
                 chroma_current = librosa.feature.chroma_stft(
                     y=_audio_f32, sr=sr, n_fft=_n_fft, hop_length=_hop, n_chroma=12, tuning=0.0
                 )
+                # Cached-CQT-Referenz ist im chroma_stft-Zweig NICHT gültig
+                # (beide Seiten müssen dieselbe Chroma-Repräsentation nutzen).
                 chroma_reference = librosa.feature.chroma_stft(
                     y=_ref_f32, sr=sr, n_fft=_n_fft, hop_length=_hop, n_chroma=12, tuning=0.0
                 )
+                _ref_feats_from_cache = False
 
             # Align lengths
             min_len = min(chroma_current.shape[1], chroma_reference.shape[1])
@@ -1575,7 +1660,11 @@ class AuthentizitaetMetric:
 
             # Spectral Centroid Stability (formant proxy)
             centroid_current = librosa.feature.spectral_centroid(y=audio, sr=sr)[0]
-            centroid_reference = librosa.feature.spectral_centroid(y=reference, sr=sr)[0]
+            centroid_reference = (
+                _cached_ref_feats[1]
+                if _cached_ref_feats is not None and _ref_feats_from_cache
+                else librosa.feature.spectral_centroid(y=reference, sr=sr)[0]
+            )
 
             min_len_centroid = min(len(centroid_current), len(centroid_reference))
             centroid_diff = np.abs(centroid_current[:min_len_centroid] - centroid_reference[:min_len_centroid])
