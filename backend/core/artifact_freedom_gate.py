@@ -1330,14 +1330,37 @@ class ArtifactFreedomGate:
             spectrum = np.abs(np.fft.rfft(padded))
             mag_db = 20.0 * np.log10(spectrum + 1e-12)
 
-            # Find peaks exceeding neighbors by threshold
+            # Gleitfenster-Median (11er-Fenster) vektorisiert — exakt dieselben
+            # Fenster und Median-Werte wie der frühere per-Bin-Loop inkl.
+            # Randfenster (bit-identisch, keine Näherung).
+            _n_bins = len(mag_db)
+            if _n_bins >= 11:
+                _local_med = np.empty(_n_bins, dtype=np.float64)
+                _sw = np.lib.stride_tricks.sliding_window_view(mag_db, 11)
+                _meds = np.median(_sw, axis=1)  # _meds[k] = median(mag_db[k:k+11])
+                _local_med[5 : _n_bins - 5] = _meds  # j in [5, n-6]
+                _local_med[3] = float(np.median(mag_db[0:9]))
+                _local_med[4] = float(np.median(mag_db[0:10]))
+                _local_med[_n_bins - 5] = float(np.median(mag_db[_n_bins - 10 : _n_bins]))
+                _local_med[_n_bins - 4] = float(np.median(mag_db[_n_bins - 9 : _n_bins]))
+            else:
+                _local_med = np.asarray(
+                    [float(np.median(mag_db[max(0, j - 5) : j + 6])) for j in range(_n_bins)],
+                    dtype=np.float64,
+                )
+
+            # Peak-Erkennung vektorisiert (identische Vergleiche wie per-Bin-Loop)
+            _excess = mag_db - _local_med
+            _j_lo = min(3, _n_bins - 1)
+            _j_hi = max(_n_bins - 3, 0)
+            _cand = np.nonzero(_excess[_j_lo:_j_hi] > threshold_db)[0]
+
             frame_peaks: set[int] = set()
-            for j in range(3, len(mag_db) - 3):
-                local_med = float(np.median(mag_db[max(0, j - 5) : j + 6]))
-                excess = mag_db[j] - local_med
-                if excess > threshold_db:
-                    frame_peaks.add(j)
-                    peak_severity[j] = max(peak_severity.get(j, 0.0), float(excess))
+            for _j_off in _cand:
+                j = int(_j_off) + _j_lo
+                excess = float(_excess[j])
+                frame_peaks.add(j)
+                peak_severity[j] = max(peak_severity.get(j, 0.0), excess)
 
             # Update tracker
             new_tracker: dict[int, int] = {}

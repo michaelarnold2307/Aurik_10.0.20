@@ -952,3 +952,101 @@ def test_43_restorative_tolerance_scales_with_restorability():
         f"Heavily degraded material (rest=30) must have >= artifact_freedom than near-pristine (rest=90); "
         f"low_rest={result_low_rest.artifact_freedom:.3f} high_rest={result_high_rest.artifact_freedom:.3f}"
     )
+
+
+# ---------------------------------------------------------------------------
+# §2.49 Vektorisierter Gleitfenster-Median in _detect_metallic_ringing:
+# bit-identisch zur per-Bin-Referenz (§V26-Qualitätsneutralität)
+# ---------------------------------------------------------------------------
+
+
+def _ref_metallic_artifacts(orig, restored, sr, thresholds):
+    """Per-Bin-Referenz (1:1-Kopie der früheren Schleife) — Tupel statt Objekte."""
+    artifacts = []
+    threshold_db = thresholds["metallic_ringing_peak_db"]
+    min_duration_samples = int(0.05 * sr)
+    residual = restored - orig
+    frame_len = int(0.02 * sr)
+    hop = frame_len // 2
+    n_frames = max(1, (len(residual) - frame_len) // hop)
+    n_fft = max(256, frame_len)
+    peak_tracker = {}
+    peak_severity = {}
+    win = np.hanning(frame_len).astype(np.float32)
+    for i in range(n_frames):
+        s = i * hop
+        e = s + frame_len
+        frame = residual[s:e]
+        if len(frame) < frame_len:
+            break
+        padded = np.zeros(n_fft, dtype=np.float32)
+        padded[:frame_len] = frame * win
+        spectrum = np.abs(np.fft.rfft(padded))
+        mag_db = 20.0 * np.log10(spectrum + 1e-12)
+        frame_peaks = set()
+        for j in range(3, len(mag_db) - 3):
+            local_med = float(np.median(mag_db[max(0, j - 5) : j + 6]))
+            excess = mag_db[j] - local_med
+            if excess > threshold_db:
+                frame_peaks.add(j)
+                peak_severity[j] = max(peak_severity.get(j, 0.0), float(excess))
+        new_tracker = {}
+        for b in frame_peaks:
+            new_tracker[b] = peak_tracker.get(b, 0) + 1
+        peak_tracker = new_tracker
+        min_frames = max(1, min_duration_samples // hop)
+        for b, count in peak_tracker.items():
+            if count >= min_frames:
+                rms_db = 20.0 * np.log10(np.sqrt(np.mean(frame**2) + 1e-12) + 1e-12)
+                artifacts.append(
+                    (
+                        b,
+                        float(b * sr / n_fft),
+                        rms_db,
+                        max(0, s - count * hop),
+                        e,
+                        peak_severity.get(b, float(threshold_db)),
+                    )
+                )
+                peak_tracker[b] = 0
+    return artifacts
+
+
+@pytest.mark.unit
+class TestMetallicRingingVectorized:
+    """Der vektorisierte Gleitfenster-Median muss exakt die per-Bin-Werte liefern."""
+
+    def test_vectorized_equals_per_bin_reference(self):
+        from backend.core.artifact_freedom_gate import ArtifactFreedomGate
+
+        rng = np.random.default_rng(99)
+        sr = SR
+        n = 3 * sr
+        orig = (0.2 * rng.standard_normal(n)).astype(np.float32)
+        restored = orig + 0.02 * rng.standard_normal(n).astype(np.float32)
+        restored[20000:30000] += 0.05 * np.sin(2 * np.pi * 4400 * np.arange(10000) / sr).astype(np.float32)
+
+        thresholds = {"metallic_ringing_peak_db": 12.0}
+        gate = ArtifactFreedomGate()
+        ref = _ref_metallic_artifacts(orig, restored, sr, thresholds)
+        new = gate._detect_metallic_ringing(orig, restored, sr, thresholds)
+
+        n_fft = max(256, int(0.02 * sr))
+        assert len(ref) == len(new)
+        for a, b in zip(ref, new):
+            assert a[0] == round(b.frequency_hz * n_fft / sr)
+            assert abs(a[1] - b.frequency_hz) < 1e-9
+            assert abs(a[2] - b.context_rms_dbfs) < 1e-9
+            assert a[3] == b.start_sample and a[4] == b.end_sample
+            assert abs(a[5] - b.severity_db) < 1e-9
+
+    def test_short_input_no_crash(self):
+        from backend.core.artifact_freedom_gate import ArtifactFreedomGate
+
+        gate = ArtifactFreedomGate()
+        # Kurzer Buffer (< 11 Bins nicht erreichbar; Randpfad trotzdem stabil)
+        orig = np.zeros(1000, dtype=np.float32)
+        restored = np.zeros(1000, dtype=np.float32)
+        thresholds = {"metallic_ringing_peak_db": 12.0}
+        res = gate._detect_metallic_ringing(orig, restored, SR, thresholds)
+        assert res == []
