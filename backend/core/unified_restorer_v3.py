@@ -39680,6 +39680,7 @@ class UnifiedRestorerV3:
                 # harmonic enhancement) as musical-noise artifacts because the accumulated residual after N
                 # restoration phases overwhelms the artifact detector thresholds.
                 _afg_phase_input: np.ndarray | None = current_audio.copy() if _artifact_gate is not None else None
+                _t_pg0 = 0.0  # PERF-GAP Instrumentierung (nur aktiv bei AURIK_PERF_GAP=1, sonst Overhead ~0)
                 # §7 PDV: Pre-phase reference for defect proxy comparison (no copy: current_audio is reassigned).
                 _pdv_pre_phase: np.ndarray = current_audio
                 # §PROGRESS: Emit BEFORE phase execution — real-time ML plugin detection
@@ -41081,6 +41082,8 @@ class UnifiedRestorerV3:
                                         _cg_exc,
                                     )
                             _record_oom_probe("phase_ok", phase_id, action=str(_pmgg_entry.action))
+                            if os.environ.get("AURIK_PERF_GAP") == "1":
+                                _t_pg0 = time.perf_counter()
                             # §2.54 FlashSR-Flag: phases after phase_23 get flashsr_applied=True
                             # via _restoration_context so phase_07 can reduce redundant enhancement.
                             if "phase_23" in phase_id:
@@ -41496,6 +41499,8 @@ class UnifiedRestorerV3:
                                         float(getattr(result, "execution_time_seconds", 0.0) or 0.0), 3
                                     ),
                                 )
+                                if os.environ.get("AURIK_PERF_GAP") == "1":
+                                    _t_pg0 = time.perf_counter()
                                 # §Punkt3 Regressionsprotokoll: RMS nach direkter Phase
                                 _rms_after_db = 20.0 * np.log10(float(np.sqrt(np.mean(current_audio**2) + 1e-12)))
                                 self._phase_regression_log[phase_id] = round(_rms_after_db - _rms_before_db, 3)
@@ -41506,6 +41511,9 @@ class UnifiedRestorerV3:
                     # §7 PDV: Post-phase defect verification — Ursache 7 (Primum non nocere).
                     # If a phase measurably WORSENED its primary targeted defect (proxy > +25 %),
                     # roll back to pre-phase audio.  Non-blocking: any exception keeps audio_after.
+                    if os.environ.get("AURIK_PERF_GAP") == "1":
+                        logger.info("PERF-GAP %s: bis PDV %.3fs", phase_id, time.perf_counter() - _t_pg0)
+                        _t_pg1 = time.perf_counter()
                     if phase_id in executed:
                         try:
                             from backend.core.phase_defect_verifier import get_phase_defect_verifier as _get_pdv
@@ -41562,6 +41570,10 @@ class UnifiedRestorerV3:
                             current_audio = _audio_pdv_result
                         except Exception as _pdv_exc:
                             logger.debug("§7 PDV Pruefung (nicht blockierend): %s", _pdv_exc)
+
+                    if os.environ.get("AURIK_PERF_GAP") == "1":
+                        logger.info("PERF-GAP %s: PDV-Block %.3fs", phase_id, time.perf_counter() - _t_pg1)
+                        _t_pg2 = time.perf_counter()
 
                     # §2.51a Mid-pipeline stereo safety: rollback immediately when a single phase
                     # collapses stereo correlation or increases interchannel delay beyond spec.
@@ -41703,6 +41715,8 @@ class UnifiedRestorerV3:
                     # Entwicklung Bugs pro Phase lokalisieren kann.
                     if phase_id in executed and _afg_phase_input is not None:
                         try:
+                            if os.environ.get("AURIK_PERF_GAP") == "1":
+                                logger.info("PERF-GAP %s: Stereo-Block %.3fs", phase_id, time.perf_counter() - _t_pg2)
                             from backend.core.listening_witness import evaluate_listening_witness as _lw_eval
 
                             _lw_res = _lw_eval(_afg_phase_input, current_audio, sample_rate, phase_id)
