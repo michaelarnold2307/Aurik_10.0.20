@@ -858,43 +858,77 @@ class ArtifactFreedomGate:
             # ERB approximation: ERB(f) ≈ 24.7 * (4.37 * f/1000 + 1) (Glasberg & Moore 1990)
             _erb_widths = 24.7 * (4.37 * _freq_axis / 1000.0 + 1.0)
             _masking_threshold = np.full(_n_bins, -120.0, dtype=np.float64)
-            # Simplified spreading: for each bin, masking from ±2 ERB neighbours
-            for _mb in range(_n_bins):
-                if _rest_mag_db[_mb] < -60.0:
-                    continue
-                _erb_w = max(1.0, _erb_widths[_mb])
-                _spread_hz = 2.0 * _erb_w
-                _spread_bins = max(1, int(_spread_hz / max(1.0, sr / (2.0 * _n_bins))))
-                _lo = max(0, _mb - _spread_bins)
-                _hi = min(_n_bins, _mb + _spread_bins + 1)
-                _mask_level = _rest_mag_db[_mb] - 14.5  # simultaneous masking offset
-                _masking_threshold[_lo:_hi] = np.maximum(_masking_threshold[_lo:_hi], _mask_level)
+            # Simplified spreading: for each bin, masking from ±2 ERB neighbours.
+            # Vektorisiert via np.maximum.at: max ist assoziativ/kommutativ →
+            # identisches Ergebnis unabhängig von der Reihenfolge (bit-identisch).
+            _mb_mask = _rest_mag_db >= -60.0
+            if _mb_mask.any():
+                _mb_idx = np.nonzero(_mb_mask)[0]
+                _spread_hz_v = np.maximum(1.0, _erb_widths[_mb_idx]) * 2.0
+                _bin_hz = max(1.0, sr / (2.0 * _n_bins))
+                _spread_bins_v = np.maximum(1, (_spread_hz_v / _bin_hz).astype(np.int64))
+                _lo_v = np.maximum(0, _mb_idx - _spread_bins_v)
+                _hi_v = np.minimum(_n_bins, _mb_idx + _spread_bins_v + 1)
+                _mask_levels = _rest_mag_db[_mb_idx] - 14.5  # simultaneous masking offset
+                _total = int(np.sum(_hi_v - _lo_v))
+                _target_idx = np.empty(_total, dtype=np.int64)
+                _target_vals = np.empty(_total, dtype=np.float64)
+                _off = 0
+                for _v in range(len(_mb_idx)):
+                    _w = int(_hi_v[_v] - _lo_v[_v])
+                    _target_idx[_off : _off + _w] = np.arange(_lo_v[_v], _hi_v[_v])
+                    _target_vals[_off : _off + _w] = _mask_levels[_v]
+                    _off += _w
+                np.maximum.at(_masking_threshold, _target_idx, _target_vals)
 
-            # Median neighbor comparison: peak must exceed neighbors by threshold
-            for j in range(2, len(mag_db) - 2):
-                neighbors = np.median(mag_db[max(0, j - 5) : j + 6])
-                excess = mag_db[j] - neighbors
-                if excess > threshold_db:
-                    # Directional guard: skip if restored energy ≤ original energy
-                    # at this bin — the phase removed a peak (correct), not added one.
-                    if rest_spectrum[j] <= orig_spectrum[j] * 1.05:
-                        continue
-                    # ERB masking guard: skip if the artifact peak is below
-                    # the psychoacoustic masking threshold — it is inaudible.
-                    if j < _n_bins and mag_db[j] < _masking_threshold[j]:
-                        continue
-                    freq_hz = float(j * sr / (2 * len(spectrum)))
-                    artifacts.append(
-                        DetectedArtifact(
-                            artifact_type="musical_noise",
-                            start_sample=start,
-                            end_sample=end,
-                            severity_db=float(excess),
-                            frequency_hz=freq_hz,
-                            context_rms_dbfs=rms_db,
-                        )
+            # Median neighbor comparison: peak must exceed neighbors by threshold.
+            # Gleitfenster-Median (11er-Fenster) vektorisiert — exakt dieselben
+            # Fenster wie der frühere per-Bin-Loop inkl. Randfenster (bit-identisch).
+            _n_bins_mn = len(mag_db)
+            if _n_bins_mn >= 11:
+                _local_med_mn = np.empty(_n_bins_mn, dtype=np.float64)
+                _sw_mn = np.lib.stride_tricks.sliding_window_view(mag_db, 11)
+                _meds_mn = np.median(_sw_mn, axis=1)
+                _local_med_mn[5 : _n_bins_mn - 5] = _meds_mn
+                _local_med_mn[2] = float(np.median(mag_db[0:8]))
+                _local_med_mn[3] = float(np.median(mag_db[0:9]))
+                _local_med_mn[4] = float(np.median(mag_db[0:10]))
+                _local_med_mn[_n_bins_mn - 5] = float(np.median(mag_db[_n_bins_mn - 10 : _n_bins_mn]))
+                _local_med_mn[_n_bins_mn - 4] = float(np.median(mag_db[_n_bins_mn - 9 : _n_bins_mn]))
+                _local_med_mn[_n_bins_mn - 3] = float(np.median(mag_db[_n_bins_mn - 8 : _n_bins_mn]))
+            else:
+                _local_med_mn = np.asarray(
+                    [float(np.median(mag_db[max(0, j - 5) : j + 6])) for j in range(_n_bins_mn)],
+                    dtype=np.float64,
+                )
+            _excess_mn = mag_db - _local_med_mn
+            _j_lo_mn = min(2, _n_bins_mn - 1)
+            _j_hi_mn = max(_n_bins_mn - 2, 0)
+            _cand_mn = np.nonzero(_excess_mn[_j_lo_mn:_j_hi_mn] > threshold_db)[0]
+
+            for _j_off_mn in _cand_mn:
+                j = int(_j_off_mn) + _j_lo_mn
+                excess = float(_excess_mn[j])
+                # Directional guard: skip if restored energy ≤ original energy
+                # at this bin — the phase removed a peak (correct), not added one.
+                if rest_spectrum[j] <= orig_spectrum[j] * 1.05:
+                    continue
+                # ERB masking guard: skip if the artifact peak is below
+                # the psychoacoustic masking threshold — it is inaudible.
+                if j < _n_bins and mag_db[j] < _masking_threshold[j]:
+                    continue
+                freq_hz = float(j * sr / (2 * len(spectrum)))
+                artifacts.append(
+                    DetectedArtifact(
+                        artifact_type="musical_noise",
+                        start_sample=start,
+                        end_sample=end,
+                        severity_db=float(excess),
+                        frequency_hz=freq_hz,
+                        context_rms_dbfs=rms_db,
                     )
-                    break  # one per frame
+                )
+                break  # one per frame
 
         # §B4: Apply temporal masking — artefacts near loud transients are less perceptible.
         # Store as temporal_masking_weight (separate field) so it is not overwritten by

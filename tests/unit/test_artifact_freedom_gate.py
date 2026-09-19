@@ -1050,3 +1050,94 @@ class TestMetallicRingingVectorized:
         thresholds = {"metallic_ringing_peak_db": 12.0}
         res = gate._detect_metallic_ringing(orig, restored, SR, thresholds)
         assert res == []
+
+
+@pytest.mark.unit
+class TestMusicalNoiseVectorized:
+    """§2.49 _detect_musical_noise: Gleitfenster-Median + np.maximum.at
+    bit-identisch zur früheren per-Bin-Implementierung (Referenz im Test)."""
+
+    def _ref_musical_noise(self, orig, restored, sr, threshold_db):
+        from backend.core.artifact_freedom_gate import DetectedArtifact
+
+        artifacts = []
+        residual = restored - orig
+        frame_len = int(0.03 * sr)
+        hop = frame_len // 2
+        n_frames = max(1, (len(restored) - frame_len) // hop)
+        for i in range(n_frames):
+            start = i * hop
+            end = start + frame_len
+            frame = restored[start:end]
+            rms_db = 20.0 * np.log10(np.sqrt(np.mean(frame**2) + 1e-12) + 1e-12)
+            if rms_db > -40.0:
+                continue
+            res_frame = residual[start:end]
+            if len(res_frame) < 64:
+                continue
+            res_rms_db = 20.0 * np.log10(np.sqrt(np.mean(res_frame**2) + 1e-12) + 1e-12)
+            if res_rms_db < -70.0:
+                continue
+            win = np.hanning(len(res_frame))
+            spectrum = np.abs(np.fft.rfft(res_frame * win))
+            mag_db = 20.0 * np.log10(spectrum + 1e-12)
+            rest_spectrum = np.abs(np.fft.rfft(restored[start:end] * win))
+            orig_spectrum = np.abs(np.fft.rfft(orig[start:end] * win))
+            rest_mag_db = 20.0 * np.log10(rest_spectrum + 1e-12)
+            n_bins = len(rest_spectrum)
+            freq_axis = np.arange(n_bins) * sr / (2.0 * n_bins)
+            erb_widths = 24.7 * (4.37 * freq_axis / 1000.0 + 1.0)
+            masking = np.full(n_bins, -120.0, dtype=np.float64)
+            for mb in range(n_bins):
+                if rest_mag_db[mb] < -60.0:
+                    continue
+                spread_bins = max(1, int((2.0 * max(1.0, erb_widths[mb])) / max(1.0, sr / (2.0 * n_bins))))
+                lo = max(0, mb - spread_bins)
+                hi = min(n_bins, mb + spread_bins + 1)
+                masking[lo:hi] = np.maximum(masking[lo:hi], rest_mag_db[mb] - 14.5)
+            for j in range(2, len(mag_db) - 2):
+                neighbors = np.median(mag_db[max(0, j - 5) : j + 6])
+                excess = mag_db[j] - neighbors
+                if excess > threshold_db:
+                    if rest_spectrum[j] <= orig_spectrum[j] * 1.05:
+                        continue
+                    if j < n_bins and mag_db[j] < masking[j]:
+                        continue
+                    artifacts.append(
+                        DetectedArtifact(
+                            artifact_type="musical_noise",
+                            start_sample=start,
+                            end_sample=end,
+                            severity_db=float(excess),
+                            frequency_hz=float(j * sr / (2 * len(spectrum))),
+                            context_rms_dbfs=rms_db,
+                        )
+                    )
+                    break
+        return artifacts
+
+    def test_vectorized_equals_per_bin_reference(self):
+        from backend.core.artifact_freedom_gate import ArtifactFreedomGate
+
+        rng = np.random.default_rng(77)
+        n = 4 * SR
+        orig = (0.1 * rng.standard_normal(n)).astype(np.float32)
+        restored = orig.copy()
+        for base in (SR, 2 * SR):
+            restored[base : base + 30000] = 0.001 * rng.standard_normal(30000).astype(np.float32)
+            orig[base : base + 30000] = 0.0005 * rng.standard_normal(30000).astype(np.float32)
+            restored[base + 1000 : base + 1600] += 0.12 * np.sin(2 * np.pi * 5000 * np.arange(600) / SR).astype(
+                np.float32
+            )
+
+        thresholds = {"musical_noise_peak_db": 6.0}
+        gate = ArtifactFreedomGate()
+        ref = self._ref_musical_noise(orig, restored, SR, 6.0)
+        new = gate._detect_musical_noise(orig, restored, SR, thresholds)
+
+        assert len(ref) == len(new) and len(ref) > 0, f"{len(ref)} vs {len(new)}"
+        for a, b in zip(ref, new):
+            assert a.start_sample == b.start_sample and a.end_sample == b.end_sample
+            assert abs(a.severity_db - b.severity_db) < 1e-12
+            assert abs(a.frequency_hz - b.frequency_hz) < 1e-9
+            assert abs(a.context_rms_dbfs - b.context_rms_dbfs) < 1e-12
