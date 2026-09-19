@@ -320,6 +320,18 @@ class FcpePlugin:
             audio = np.mean(audio, axis=-1)
         audio = np.nan_to_num(np.asarray(audio, dtype=np.float32))
 
+        # §PERF-R14 (2026-09-19): Selbstheilung nach PLM-Eviction (BANQUET-
+        # Muster) — die PLM-Eviction setzt nur die Session auf None; ohne
+        # Reload degradierte der Pfad dauerhaft auf librosa.pyin
+        # (~33 s je 30-s-Chunk, Produktionsbefund Supervised-Lauf).
+        # Fail-closed nach §V6 (copilot-instructions.md): schlägt der Reload
+        # fehl, bleibt die bestehende Fallback-Kette unverändert.
+        if self._session is None and self._crepe_delegate is None and _FCPE_ONNX_PATH.exists():
+            try:
+                self._load_model()
+            except Exception as _reload_exc:
+                logger.debug("FCPE-Reload fehlgeschlagen (Fallback-Kette bleibt): %s", _reload_exc)
+
         if self._session is not None:
             return self._analyze_fcpe_onnx(audio, sr)
         if self._crepe_delegate is not None:
@@ -416,9 +428,15 @@ class FcpePlugin:
                     logger.warning("fcpe_plugin.py::_analyze_fcpe_onnx Ersatzpfad", exc_info=True)
 
     def _analyze_pyin(self, audio: np.ndarray, sr: int) -> CrepeResult:
-        """pYIN DSP-Fallback (Mauch & Dixon 2014)."""
+        """pYIN DSP-Fallback (Mauch & Dixon 2014) — §PERF-R14: pyin_compat
+        (band-begrenzter Viterbi, bit-identisch zu librosa.pyin) statt des
+        langsamen librosa-Pfads; §V6 (copilot-instructions.md)-fail-closed
+        über den eingebauten librosa-Ersatzpfad.
+        """
         try:
             import librosa
+
+            from backend.core.dsp.pyin_viterbi_fast import pyin_compat
 
             seg = audio[: min(len(audio), int(sr * 30.0))]
             # fmin must satisfy: at least 2 periods fit within frame_length.
@@ -426,7 +444,7 @@ class FcpePlugin:
             # floating-point edge warnings in librosa.pyin for sr=48k/frame=2048.
             _fmin_min_hz = (float(sr) / 1024.0) * 1.01
             _fmin_safe = max(float(librosa.note_to_hz("C1")), _fmin_min_hz)
-            f0, _, voiced_probs = librosa.pyin(seg, fmin=_fmin_safe, fmax=2_000.0, sr=sr)
+            f0, _, voiced_probs = pyin_compat(seg, fmin=_fmin_safe, fmax=2_000.0, sr=sr)
             f0 = np.nan_to_num(f0.astype(np.float32))
             voiced_probs = np.nan_to_num(voiced_probs.astype(np.float32))
             times_s = (np.arange(len(f0)) * 512 / sr).astype(np.float32)

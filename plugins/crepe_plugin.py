@@ -256,8 +256,17 @@ class CrepePlugin:
                 logger.debug("CREPE-Zwischenspeicher-Hit: %s", _cache_key)
                 return self._result_cache[_cache_key]
 
-        result = self._analyze_onnx(audio, sr) if self._session is not None else self._analyze_pyin(audio, sr)
+        # §PERF-R14 (2026-09-19): Selbstheilung nach PLM-Eviction — sonst
+        # degradiert der Pfad dauerhaft auf librosa.pyin (~33 s je 30-s-Chunk).
+        # Fail-closed nach §V6 (copilot-instructions.md): Reload-Fehler lässt
+        # die bestehende Fallback-Kette unverändert.
+        if self._session is None and _CREPE_ONNX_PATH.exists():
+            try:
+                self._load_model()
+            except Exception as _reload_exc:
+                logger.debug("CREPE-Reload fehlgeschlagen (Fallback-Kette bleibt): %s", _reload_exc)
 
+        result = self._analyze_onnx(audio, sr) if self._session is not None else self._analyze_pyin(audio, sr)
         with self._cache_lock:
             if len(self._result_cache) >= 128:
                 # LRU-Eviction: ältesten Eintrag entfernen
@@ -380,10 +389,15 @@ class CrepePlugin:
     def _analyze_pyin(self, audio: np.ndarray, sr: int) -> CrepeResult:
         """pYIN-Fallback (Mauch & Dixon 2014) — O(N²), max. 2 Sekunden.
 
-        Post-2018-Fallback gem. §4.2 (erlaubt).
+        Post-2018-Fallback gem. §4.2 (erlaubt). §PERF-R14 (2026-09-19):
+        pyin_compat (band-begrenzter Viterbi, bit-identisch zu librosa.pyin)
+        statt des langsamen librosa-Pfads — §V6 (copilot-instructions.md)-
+        fail-closed über den eingebauten librosa-Ersatzpfad.
         """
         try:
             import librosa
+
+            from backend.core.dsp.pyin_viterbi_fast import pyin_compat
 
             # pYIN: max. 30 s (O(N) per Frame mit librosa-Optimierung; Pytest-Budget)
             seg_len = min(len(audio), int(sr * 30.0))
@@ -395,7 +409,7 @@ class CrepePlugin:
             _min_frame = int(np.ceil((2.0 * sr) / max(_fmin_floor, 1e-6))) + 1
             _frame_length = max(2048, _min_frame)
             _fmin_safe = _fmin_floor
-            f0, _, voiced_probs = librosa.pyin(seg, fmin=_fmin_safe, fmax=2_000.0, sr=sr, frame_length=_frame_length)
+            f0, _, voiced_probs = pyin_compat(seg, fmin=_fmin_safe, fmax=2_000.0, sr=sr, frame_length=_frame_length)
             f0 = np.nan_to_num(f0.astype(np.float32))
             voiced_probs = np.nan_to_num(voiced_probs.astype(np.float32))
             n_frames = len(f0)

@@ -1564,6 +1564,26 @@ Phase ist jetzt der P2-Fokus (PMGG/CALIB/Coalition — phasenabhängig).
 Formatter-Korrektur: Zeitstempel jetzt geklammert (Parser akzeptiert
 beide Formate).
 
+### §PERF-R14 (2026-09-19) — FCPE/CREPE-Selbstheilung nach PLM-Eviction + pyin_compat-Fallback
+
+Produktionsbefund aus dem Supervised-Lauf: phase_31 kostete 33-44 s je
+30-s-Chunk statt ~2-3 s — Timestamps zeigten `FCPE plugin geladen
+(model=dsp_pyin)`, danach 33 s „CREPE"-Detektion. Root-Cause: Die
+PLM-Eviction (Fenster 5 Phasen, FCPE wird zwischen phase_12 und
+phase_31 entladen) setzt nur die Session auf None; die Plugin-Instanz
+blieb ohne Reload im Fallback — und der Fallback rief `librosa.pyin`
+DIREKT (statt des §PERF-R8b-Kerns, 33 s je 30-s-Chunk). UMGESETZT:
+(a) Selbstheilung im `analyze()` beider Plugins (BANQUET-Muster — Reload
+bei session=None, §V6 (copilot-instructions.md)-fail-closed: Reload-
+Fehler lässt die Fallback-Kette unverändert); (b) `_analyze_pyin` beider
+Plugins nutzt `pyin_compat` (bit-identisch zu librosa.pyin, eingebauter
+librosa-Ersatzpfad). Messung (Elke 30 s): FCPE nach simulierter Eviction
+0,53 s mit model=fcpe_onnx (vorher 33 s dsp_pyin); pyin_compat
+bit-identisch verifiziert. ⇒ phase_31 ~33-44 s → ~2-3 s je Chunk
+(~35 s × 8 Chunks ≈ **~5 min je Song**), zusätzlich entlastet phase_12
+(FCPE-Nutzung). Tests: `test_crepe_plugin.py` (Selbstheilungs-Test,
+Fallback-Tests an pyin_compat adaptiert; 10 grün).
+
 ## SOTA-RESTHEBEL-MATRIX 2026-09-19 — schöpfen die DSP/ML-Hybride 100 % aus?
 
 **Antwort: NEIN — weder Performance noch Wohlklang sind ausgeschöpft**
