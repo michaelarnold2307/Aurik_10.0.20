@@ -1,15 +1,15 @@
 # TASK_CHANGES — Live-Ledger der aktuellen Aufgabe
 
-> Generiert von `scripts/change_ledger.py snapshot` (Base: `HEAD`, Stand: 2026-09-19 10:12 CEST).
+> Generiert von `scripts/change_ledger.py snapshot` (Base: `HEAD`, Stand: 2026-09-19 10:27 CEST).
 > CI (`ci-lite.yml` pr-evidence-gate) erzwingt Abdeckung: jede geänderte Code-Datei muss hier stehen.
 
 ## Geänderte Dateien
 
 | Status | Pfad | Art |
 |---|---|---|
-| M | backend/core/phases/phase_49_advanced_dereverb.py | modifiziert |
-| M | docs/TODOS_SOTA_ROADMAP.md | modifiziert |
-| M | tests/unit/test_phase_49_advanced_dereverb.py | modifiziert |
+| M | .github/specs/04_dsp_standards.md | modifiziert |
+| M | audit/spec_integration_report.json | modifiziert |
+| M | audit/spec_integration_report.md | modifiziert |
 
 ## Entscheidungen
 
@@ -36,7 +36,6 @@
   Budget/Determinismus; 16 Tests grün mit Phase-49-Suite); Ruff clean;
   compliance_check.py 1340 Dateien clean; verboten-linter ohne neue
   Befunde (V59-Warning vorbestehend).
-
 - **SOTA-Analogie-Sweep 2026-09-17 (ANA-1 umgesetzt, ANA-2…6 Backlog)**:
   Frage „Weitere SOTA-Korrekturmöglichkeiten analog zur Songaufbauerkennung?“
   — systematischer Sweep nach Komponenten, die auf Stellvertreter-Heuristiken

@@ -588,6 +588,19 @@ INVARIANTE: NatuerlichkeitMetric darf nach phase_49 nicht sinken
 VERBOTEN: Aggressives Dereverb ohne Early-Reflection-Guard (klingt klinisch/steril).
 ```
 
+**WPE-Implementierung (§PERF-R9, v10.0.x):** Die WPE-Normalengleichungen werden
+je Frequenz-Bin über alle Bins als **batched BLAS-Matmul** gerechnet (F-Blöcke,
+Hankel-Struktur via sliding-window statt Per-Bin-Loop) — INVARIANTE: numerisch
+äquivalent zum Per-Bin-Loop (max. Abweichung ≤ 1e-12 relativ; Float-Rauschen der
+batched BLAS-Ordnung, weit unter jeder Gate-Schwelle). Per-Bin-`LinAlgError` ⇒ 0
+für diesen Bin (fail-closed, §V6 (copilot-instructions.md)); Silent-Bins
+(Power-Max < 1e-12) bleiben unberührt; Reverb-Assembly in convolve-Summenordnung.
+Das §2.61 Wall-Time-Budget bleibt bindend — Budget-Prüfung zwischen F-Blöcken,
+bei Erschöpfung Teil-Ergebnis (bereits berechnete Bins). Determinismus
+nach §G5 (GEBOTE.md): gleicher Input + gleiche Version ⇒ bit-identischer Output.
+Beleg: `tests/unit/test_phase_49_advanced_dereverb.py` (Äquivalenz,
+Silent-Bins, Budget-Teil-Ergebnis, Determinismus).
+
 ### §4.5d [RELEASE_MUST] Psychoakustischer Masking-Guard für NR-Algorithmen (v10.0.0)
 
 Ergänzt §4.1 (ISO 11172-3) mit einer **bindenden Gain-Floor-Invariante** für alle NR-Algorithmen.

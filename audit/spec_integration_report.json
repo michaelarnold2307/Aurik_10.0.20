@@ -1,10 +1,10 @@
 {
-  "generated_at": "2026-09-08T17:23:02.771958",
-  "duration_s": 5.756,
+  "generated_at": "2026-09-19T10:27:01.495526",
+  "duration_s": 5.676,
   "totals": {
     "error": 0,
     "warning": 0,
-    "info": 46
+    "info": 45
   },
   "findings": [
     {
@@ -207,13 +207,6 @@
       "check": "spec_references",
       "severity": "info",
       "item": "v10.19_carrier_chain_reliability.md",
-      "detail": "Spec ist nur im Index verankert, sonst nirgendwo referenziert",
-      "recommendation": "Spec in der normativen Kette oder im Code verlinken, sonst als obsolet markieren."
-    },
-    {
-      "check": "spec_references",
-      "severity": "info",
-      "item": "v10.19_resemble_ersatz_sota_roadmap.md",
       "detail": "Spec ist nur im Index verankert, sonst nirgendwo referenziert",
       "recommendation": "Spec in der normativen Kette oder im Code verlinken, sonst als obsolet markieren."
     },
