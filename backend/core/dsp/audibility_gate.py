@@ -28,6 +28,25 @@ _DEFAULT_HI_HZ = 10000.0
 _DEFAULT_CONTEXT_MS = 250.0
 
 
+class SanitizedSignal:
+    """§PERF-R6 (2026-09-19): defekt-unabhängige Signal-Sanitisierung EINMAL je Signal.
+
+    ``defect_audibility`` saniert je Aufruf das KOMPLETTE Signal
+    (``nan_to_num`` + float32-Konvertierung + ``ravel``) — bei 7426
+    Klick-Verdikten je 30-s-Chunk (phase_27, Elke-Material) waren das
+    gemessen 30 s ``nan_to_num`` + 15 s Konvertierungs-Kopien von 52 s
+    Gesamtlaufzeit. Die Sanitisierung hängt nicht vom Defekt ab ⇒ einmal
+    je Signal; die Verdikte bleiben bit-identisch (gleiche Operationen,
+    gleiche Werte).
+    """
+
+    __slots__ = ("arr", "n")
+
+    def __init__(self, x: np.ndarray) -> None:
+        self.arr = np.nan_to_num(np.asarray(x, dtype=np.float32), nan=0.0, posinf=0.0, neginf=0.0).ravel()
+        self.n = len(self.arr)
+
+
 def defect_audibility(
     x: np.ndarray,
     sr: int,
@@ -57,8 +76,27 @@ def defect_audibility(
         skippable = True, wenn der Defekt unter der Schwelle liegt (keine
         Reparatur nötig — §4-Vertrag).
     """
-    arr = np.nan_to_num(np.asarray(x, dtype=np.float32), nan=0.0, posinf=0.0, neginf=0.0).ravel()
-    n = len(arr)
+    return defect_audibility_from_signal(
+        SanitizedSignal(x), sr, defect_start, defect_end, lo_hz, hi_hz, context_ms, model
+    )
+
+
+def defect_audibility_from_signal(
+    sig: SanitizedSignal,
+    sr: int,
+    defect_start: int,
+    defect_end: int,
+    lo_hz: float = _DEFAULT_LO_HZ,
+    hi_hz: float = _DEFAULT_HI_HZ,
+    context_ms: float = _DEFAULT_CONTEXT_MS,
+    model: str = "mpeg1",
+) -> dict[str, float | bool]:
+    """§PERF-R6: Verdikt auf vorbereitetem Signal — identische Semantik/Werte zu
+    ``defect_audibility`` (bit-identisch), aber ohne erneute Vollsignal-
+    Sanitisierung je Aufruf.
+    """
+    arr = sig.arr
+    n = sig.n
     d0 = max(0, int(defect_start))
     d1 = min(n, int(defect_end))
     if d1 <= d0:

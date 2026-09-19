@@ -9,6 +9,20 @@ import backend.core.dsp.audibility_gate as ag
 import backend.core.dsp.hearing_jnd as hj
 
 
+def test_perf_r6_sanitized_signal_identical() -> None:
+    """§PERF-R6: defect_audibility_from_signal == defect_audibility (identische Verdikte)."""
+    rng = np.random.default_rng(21)
+    x = (rng.standard_normal(48000 * 4) * 0.05).astype(np.float32)
+    x[48000:48010] += 0.9  # lauter Klick
+    x[3] = np.nan  # Sanitisierungspfad abdecken
+    sig = ag.SanitizedSignal(x)
+    for s, e in [(48000, 48008), (1000, 1010), (47990, 48030), (0, 3), (48000, 48000)]:
+        a = ag.defect_audibility(x, 48000, s, e)
+        b = ag.defect_audibility_from_signal(sig, 48000, s, e)
+        assert a == b
+        assert isinstance(a["audible"], bool)
+
+
 def test_jnd_known_values() -> None:
     assert hj.jnd("level_broadband") == 1.0
     assert hj.jnd("time_gap") == 0.005

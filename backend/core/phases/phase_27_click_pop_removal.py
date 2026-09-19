@@ -649,6 +649,19 @@ class ClickPopRemoval(PhaseInterface):
         except Exception as _psy_exc_27a:
             logger.debug("Verarbeitungsschritt_27 §SOTA-PSY-A5 nicht blockierend: %s", _psy_exc_27a)
 
+        # §PERF-R6 (2026-09-19): Signal-Sanitisierung EINMAL je Kanal statt je
+        # Klick-Verdikt (7426× je 30-s-Chunk; nan_to_num + float32-Kopie auf
+        # dem Vollsignal kosteten 45 s von 52 s Phasenzeit — gemessen).
+        _aud_sig_27: Any = None
+        _aud_27_sig: Any = None
+        try:
+            from backend.core.dsp.audibility_gate import SanitizedSignal as _San27
+            from backend.core.dsp.audibility_gate import defect_audibility_from_signal as _aud_27_sig
+
+            _aud_sig_27 = _San27(audio)
+        except Exception as _sig27_exc:
+            logger.debug("Verarbeitungsschritt_27 §PERF-R6-Sanitisierung nicht blockierend: %s", _sig27_exc)
+
         for click in classified_clicks:
             start = click["start"]
             end = click["end"]
@@ -664,7 +677,11 @@ class ClickPopRemoval(PhaseInterface):
             try:
                 from backend.core.dsp.audibility_gate import defect_audibility as _aud_27
 
-                _aud_res_27 = _aud_27(audio, _sr, start, end, lo_hz=1200.0, hi_hz=16000.0)
+                _aud_res_27 = (
+                    _aud_27_sig(_aud_sig_27, _sr, start, end, lo_hz=1200.0, hi_hz=16000.0)
+                    if _aud_sig_27 is not None
+                    else _aud_27(audio, _sr, start, end, lo_hz=1200.0, hi_hz=16000.0)
+                )
                 if bool(_aud_res_27.get("skippable", False)):
                     logger.debug(
                         "Verarbeitungsschritt_27 §SOTA-PSY-A1: Klick/Pop [%d:%d] unter der Maskierungsschwelle — übersprungen.",
