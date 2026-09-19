@@ -1551,6 +1551,19 @@ R11/R12-Effekt und der P2-Gap-Rest auf dem nächsten Lauf ehrlich messbar.
 Tests: `tests/unit/test_benchmark_effizienz_matrix.py::TestPerfR13PhaseGapParser`
 (2 Fälle, Suite 10 grün).
 
+**§PERF-R13-Messung 2026-09-19 (Fast-Cell, 10 s Vinyl, saubere Maschine):**
+Per-Phase-Gap (phase_ok→nächstes geplant) = **mean 2,26 s, median 2,05 s,
+min 1,38 s, max 3,58 s** — der R11/R12-Stand halbierte den alten
+~10,5-s-Gap (Supervised-Lauf, Alt-Code) auf ~2,3 s ⇒ **~8 s je Phase ×
+41 Phasen × 8 Chunks ≈ 45 min je Song eingespart** (dazu die Phase-
+Exec-Gewinne aus R9/R11). Gesamt-Wall der Fast-Cell blieb 52,7× RT
+(526,5 s) — die Einzel-Blöcke variieren lauf-zu-lauf (Qualitätsprüfung
+136→74,5 s durch R10-Caches, phase_49-Attribution +27 s = PLM/Cold-
+Load-Rauschen des Einzel-Laufs); der verbleibende Gap-Rest 2,3 s je
+Phase ist jetzt der P2-Fokus (PMGG/CALIB/Coalition — phasenabhängig).
+Formatter-Korrektur: Zeitstempel jetzt geklammert (Parser akzeptiert
+beide Formate).
+
 ## SOTA-RESTHEBEL-MATRIX 2026-09-19 — schöpfen die DSP/ML-Hybride 100 % aus?
 
 **Antwort: NEIN — weder Performance noch Wohlklang sind ausgeschöpft**

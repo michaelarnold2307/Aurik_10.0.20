@@ -184,7 +184,7 @@ def run_cell(
     # Per-Phase-Gap-Analyse (geplant→phase_ok→nächstes geplant) aus dem
     # Zellen-Log unmöglich (nur 3 Phasen loggen „Profiling: Phase …“).
     file_handler.setFormatter(
-        logging.Formatter("%(asctime)s,%(msecs)03d %(levelname)s %(name)s: %(message)s", datefmt="%Y-%m-%d %H:%M:%S")
+        logging.Formatter("[%(asctime)s,%(msecs)03d] %(levelname)s %(name)s: %(message)s", datefmt="%Y-%m-%d %H:%M:%S")
     )
     root_logger = logging.getLogger()
     root_logger.addHandler(file_handler)
@@ -515,7 +515,7 @@ def _parse_phase_timings_from_log(log_path: Path) -> dict[str, Any] | None:
     Stereo-Guard/PMGG/Coalition — die Maschinerie ZWISCHEN den Phasen).
     Liefert None ohne Zeitstempel-Format (altes Log-Format) oder ohne Phasen.
     """
-    _ts_re = re.compile(r"\[(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}),(\d{3})\]")
+    _ts_re = re.compile(r"\[?(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}),(\d{3})\]?")
 
     def _ts(line: str) -> float | None:
         m = _ts_re.match(line)
