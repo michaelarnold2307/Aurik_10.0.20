@@ -1568,6 +1568,16 @@ Tests: `tests/unit/test_interaural_cues.py::TestPerfR12ProfileCache`
 | P4 | **Mess-Tooling:** top_phases um stille Blöcke erweitern (per-Phase-Gap-Attribution) | ehrliche Hebel-Rangliste statt „Phasenauswahl“-Sammellabels | OFFEN — benchmark_effizienz_matrix.py um Gap-Timing ergänzen |
 | P5 | **Demucs-Separations-Budget** (2 echte Läufe je Checker) auf GPU-Mini-Batch oder ehrlich kleineres Modell | measure_all-Erstkosten 3,5 s × 2 je Song entfallen | OFFEN — Qualitätsentscheidung (Hörordnungs-Gate) |
 
+**Q1-Vorbereitung (2026-09-19, Mechanik kartiert):** Flip-Punkt =
+`plugins/bigvgan_v2_plugin.py:105` (`BIGVGAN_V2_HR_ACTIVATED = False` →
+`True`, Einzeiler). Zwei Gates: (a) Budget-Urteil aus dem laufenden
+überwachten Lauf (Synthese 2,5× RT GPU, F3-Messung); (b)
+`bigvgan_v2_ready()` prüft `models/bigvgan/bigvgan_v2.pth` (FEHLT), der
+Loader (`_try_load_model`) nutzt dagegen `bigvgan_v2.onnx` (VORHANDEN) —
+beim Flip Ready-Gate auf den tatsächlichen Checkpoint ausrichten
+(oder .pth beschaffen), sonst bleibt der Pfad fail-closed. Die
+Activation-Contract-Tests sind bereits flag-bewusst (beide Zustände).
+
 ## TODO SOTA 4 (2026-09-18) — Beschleunigung + höhere Restaurierungsqualität (Welle 4)
 
 > Reihenfolge = (Hör-Gewinn × Machbarkeit) je Aufwand. Mess-Kadenz: Die
