@@ -1424,6 +1424,48 @@ da alle Zustände je Frame denselben Unvoiced-Boden erhalten).
   (§SOTA-ML-V7); kalt 5,56 s (Kern-Build 3,67 s einmalig), warm
   ~1,9 s je 30-s-Chunk — kein Port nötig
 
+### §PERF-R9 (2026-09-19) — phase_49 WPE je Bin → batched BLAS (numerisch äquivalent)
+
+Befund Fast-Cell (10 s Vinyl, top_phases): phase_49 30 s je Chunk war
+**Attributions-Artefakt** — im Lauf griff das Reverb-Presence-Gate
+(reverb_sev=0,000 < 0,15 ⇒ WPE übersprungen), die Wall-Zeit lag in
+PLM-Eviction/GC/Gate-Overhead um die Phase. Auf halligem Material (wo WPE
+wirklich läuft) dominiert dagegen der Per-Bin-Loop: `_predict_reverb_band`
+= 88 % der Kanal-Zeit (cProfile, 10 s Vinyl: 1,93 s von 2,18 s).
+
+Fix: `_predict_reverb_bands_batch` — Normalengleichungen als batched
+BLAS-Matmul je F-Block (192 Bins) statt 12+ NumPy-Klein-Aufrufen je Bin;
+Semantik erhalten (Silent-Bins=0, LinAlgError⇒0 je Bin im
+Per-Bin-Fallback-Loop, Reverb-Assembly in convolve-Summenordnung,
+§2.61-Budget-Guard zwischen Blöcken mit Teil-Ergebnis). Messung (48 kHz,
+30 s, WPE aktiv): Per-Band-Loop 1,83 s → 0,91 s (2,0×), voller Kanal
+3,22 s → 1,87 s (1,7×); max|Δ| 4e-14 je Band bzw. 1,4e-8 im Kanal-Ausgang
+(Float-Rauschen der batched BLAS-Ordnung — weit unter jeder Gate-Schwelle,
+§G5 (GEBOTE.md)-Determinismus gepinnt). Tests:
+`test_phase_49_advanced_dereverb.py` (Äquivalenz, Silent-Bins,
+Budget-Teil-Ergebnis, Determinismus — 16 Tests grün mit Phase-49-Suite).
+
+### Fast-Cell-Nachmessung 2026-09-19 (51× RT auf 10 s Vinyl, fast cell)
+
+`scripts/benchmark_effizienz_matrix.py --cells fast --seconds 10
+--profile-top-phases 8` auf `vinyl_test_01.wav` (ROCm-Venv,
+`output/perf_session_20260919/`): Qualitätsprüfung 136 s, Musical Goals
+72 s, Audio-Nachbearbeitung 46 s, phase_49 30 s (Attribution, s. o.),
+Defekt-Countdown 28 s, FeedbackChain 18 s, Phasenauswahl 18 s, Material/
+Ära 16 s — **Engine-Ebene-Kosten = ~50 % des Laufs**. Aufschlüsselung der
+Qualitätsprüfung: End-Gate-Kaskade 13+ measure_all-Runden — P1/P2-Blends
+(2–3 Alphas) + **Universal-Cascade 8 feste Alphas [0,96…0,64] je volle
+measure_all** (~8 s warm ⇒ ~66 s je Song) + Goosebumps/Recovery.
+Warm-Miss-profile von measure_all (8,3 s): 5 ONNX-runs 4,9 s (HTDemucs
+3,5 s budgetiert auf 2/Lauf, VERSA 1,7 s, PANNs-in-VERSA 1,2 s, MERT
+2×0,25 s), transient-hpss 1,0 s, chroma_cqt 0,3 s. **Nächster
+dokumentierter Hebel:** Universal-Cascade-Messkette — VERSA/PANNs/MERT
+je Alpha neu gerechnet, keine Referenz-seitige Wiederverwendung
+(Original-Embeddings sind über alle Alphas identisch); GPU-Ports (R3-
+Muster, Parität rel ≤ 1e-3) bzw. Referenz-Caches sind die qualitätsneutralen
+Wege. UTMOSv2-Erst-Load (timm-Hub, 4 Folds) + FeedbackChain 23,5 s
+laufen einmal je Song-Tail — dokumentiert.
+
 ## TODO SOTA 4 (2026-09-18) — Beschleunigung + höhere Restaurierungsqualität (Welle 4)
 
 > Reihenfolge = (Hör-Gewinn × Machbarkeit) je Aufwand. Mess-Kadenz: Die

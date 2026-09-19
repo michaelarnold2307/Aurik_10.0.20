@@ -1255,7 +1255,6 @@ class AdvancedDereverbPhase(PhaseInterface):
             _iterations,
             t60_frames,
         )
-        _, F = stft_matrix.shape
 
         # §2.61 Wall-Time-Guard: WPE DSP must not run unbounded on long audio.
         # Budget per channel = audio_duration × 2.0 (up to 60s cap, min 10s).
@@ -1277,28 +1276,18 @@ class AdvancedDereverbPhase(PhaseInterface):
             _ema_alpha = 0.93 if getattr(self, "_current_material", "") in ("tape", "reel_tape") else 0.90
             smoothed_power = self._smooth_power(power, alpha=_ema_alpha)
 
-            reverb_estimate = np.zeros_like(stft_matrix)
-            for f in range(F):
-                # §2.61 Wall-Time-Guard: abort bin loop if WPE runtime exceeds budget.
-                if f % 64 == 0 and f > 0:
-                    _wpe_elapsed = time.monotonic() - _wpe_channel_start_t
-                    if _wpe_elapsed > _wpe_max_runtime_s:
-                        logger.warning(
-                            "Verarbeitungsschritt 49 WPE: Grenze %.1fs exhausted at bin %d/%d "
-                            "(elapsed=%.1fs, audio=%.1fs) — partial WPE Ergebnis used",
-                            _wpe_max_runtime_s,
-                            f,
-                            F,
-                            _wpe_elapsed,
-                            _audio_dur_s,
-                        )
-                        _wpe_budget_exhausted = True
-                        break
-                if smoothed_power[:, f].max() < 1e-12:
-                    continue
-                reverb_estimate[:, f] = self._predict_reverb_band(
-                    stft_matrix[:, f], smoothed_power[:, f], D, K, strength
-                )
+            # §PERF-R9: Batched WPE über alle Bins (qualitätsneutral). Der
+            # §2.61 Wall-Time-Guard bleibt aktiv (Budget-Prüfung zwischen
+            # F-Blöcken; Teil-Ergebnis bei Erschöpfung wie zuvor).
+            reverb_estimate, _wpe_budget_exhausted = self._predict_reverb_bands_batch(
+                stft_matrix,
+                smoothed_power,
+                D,
+                K,
+                strength,
+                budget_start=_wpe_channel_start_t,
+                budget_s=_wpe_max_runtime_s,
+            )
             enhanced = stft_matrix - reverb_estimate
             if _wpe_budget_exhausted:
                 break
@@ -1527,6 +1516,103 @@ class AdvancedDereverbPhase(PhaseInterface):
             reverb[valid_start:valid_end] = conv_result[src_start:src_end]
 
         return reverb * strength  # type: ignore[no-any-return]
+
+    @staticmethod
+    def _predict_reverb_bands_batch(
+        y_stft: np.ndarray,
+        power: np.ndarray,
+        D: int,
+        K: int,
+        strength: float,
+        budget_start: float | None = None,
+        budget_s: float | None = None,
+    ) -> tuple[np.ndarray, bool]:
+        """Batch-Variante von ``_predict_reverb_band`` über alle Frequenz-Bins.
+
+        Rechnet die Normalengleichungen je Bin als batched BLAS-Matmul
+        ((F, K, n_eq) @ (n_eq, K)) statt eines Python-Loops mit 12+ NumPy-
+        Klein-Aufrufen je Bin — §PERF-R9 (qualitätsneutral, fail-closed
+        nach §V6 (copilot-instructions.md) unverändert).
+
+        Semantik-Erhalt:
+        - Bins mit ``power.max() < 1e-12`` bleiben 0 (wie der Skip im Caller).
+        - ``LinAlgError`` je Bin ⇒ 0 für diesen Bin (Per-Bin-Fallback-Loop).
+        - Reverb-Assembly in derselben Summations-Reihenfolge wie
+          ``np.convolve`` (k aufsteigend) ⇒ bei identischem g bit-identisch.
+        - §2.61 Wall-Time-Guard: Budget wird zwischen F-Blöcken geprüft;
+          bei Erschöpfung wird das bis dahin berechnete Teil-Ergebnis
+          zurückgegeben (``budget_exhausted=True``), wie der alte Bin-Loop.
+        """
+        T, F = y_stft.shape
+        n_eq = T - D - K
+        if n_eq < K:
+            return np.zeros_like(y_stft), False
+
+        active = power.max(axis=0) >= 1e-12
+        if not active.any():
+            return np.zeros_like(y_stft), False
+
+        # X[t, k, f] = y[t + K - 1 - k, f]  (Hankel, spaltenweise wie der alte Loop)
+        _sw = np.lib.stride_tricks.sliding_window_view(y_stft, K, axis=0)  # (T-K+1, F, K)
+        X = np.ascontiguousarray(_sw[:n_eq, :, ::-1].transpose(0, 2, 1))  # (n_eq, K, F)
+        b = y_stft[D + K :, :]  # (n_eq, F)
+
+        # Gewichtung: identische Formeln wie _predict_reverb_band (vektorisiert über F)
+        w = 1.0 / (power[D + K :, :] + 1e-8)
+        w = w / (w.max(axis=0, keepdims=True) + 1e-12)
+        Xw = X * w[:, None, :]  # (n_eq, K, F)
+
+        reg = 1e-4
+        reverb = np.zeros_like(y_stft)
+        g_all = np.zeros((F, K), dtype=y_stft.dtype)
+
+        _BLOCK = 192
+        _n_done = 0
+        budget_exhausted = False
+        for _fb in range(0, F, _BLOCK):
+            if budget_start is not None and budget_s is not None:
+                if time.monotonic() - budget_start > budget_s:
+                    logger.warning(
+                        "Verarbeitungsschritt 49 WPE: Grenze %.1fs exhausted at bin %d/%d — partial WPE Ergebnis used",
+                        budget_s,
+                        _fb,
+                        F,
+                    )
+                    budget_exhausted = True
+                    break
+            _sl = slice(_fb, min(_fb + _BLOCK, F))
+            Xw_blk = Xw[:, :, _sl]  # (n_eq, K, B)
+            Xh = np.ascontiguousarray(Xw_blk.conj().transpose(2, 1, 0))  # (B, K, n_eq)
+            Xt = np.ascontiguousarray(X[:, :, _sl].transpose(2, 0, 1))  # (B, n_eq, K)
+            A = Xh @ Xt  # (B, K, K) — je Block batched zgemm (gleiche Operanden wie alter Loop)
+            A = A + reg * np.eye(K, dtype=A.dtype)[None, :, :]
+            Bv = Xh @ np.ascontiguousarray(b[:, _sl].transpose(1, 0))[:, :, None]  # (B, K, 1)
+            _g_blk = np.zeros((A.shape[0], K), dtype=y_stft.dtype)
+            _act_blk = active[_sl]
+            if _act_blk.any():
+                try:
+                    _g_blk[_act_blk] = np.linalg.solve(A[_act_blk], Bv[_act_blk])[:, :, 0]
+                except np.linalg.LinAlgError:
+                    # Per-Bin-Fallback: identische Semantik wie _predict_reverb_band
+                    # (LinAlgError ⇒ 0 für diesen Bin).
+                    for _j in range(A.shape[0]):
+                        if not _act_blk[_j]:
+                            continue
+                        try:
+                            _g_blk[_j] = np.linalg.solve(A[_j], Bv[_j])[:, 0]
+                        except np.linalg.LinAlgError:
+                            _g_blk[_j] = 0.0
+            g_all[_sl] = _g_blk
+            # Reverb-Assembly: reverb[t, f] = Σ_k g[f, k] · y[t-D-1-k, f]
+            for k in range(K):
+                reverb[D + K :, _sl] += g_all[_sl, k][None, :] * y_stft[K - 1 - k : K - 1 - k + n_eq, _sl]
+            _n_done += A.shape[0]
+
+        if _n_done < int(active.sum()):
+            # Bins jenseits des Budget-Abbruchs bleiben 0 — Teil-Ergebnis wie zuvor.
+            budget_exhausted = True
+
+        return reverb * strength, budget_exhausted
 
     @staticmethod
     def _apply_wiener_postfilter(

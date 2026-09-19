@@ -1,15 +1,41 @@
 # TASK_CHANGES — Live-Ledger der aktuellen Aufgabe
 
-> Generiert von `scripts/change_ledger.py snapshot` (Base: `HEAD`, Stand: 2026-09-19 05:51 CEST).
+> Generiert von `scripts/change_ledger.py snapshot` (Base: `HEAD`, Stand: 2026-09-19 10:12 CEST).
 > CI (`ci-lite.yml` pr-evidence-gate) erzwingt Abdeckung: jede geänderte Code-Datei muss hier stehen.
 
 ## Geänderte Dateien
 
 | Status | Pfad | Art |
 |---|---|---|
+| M | backend/core/phases/phase_49_advanced_dereverb.py | modifiziert |
 | M | docs/TODOS_SOTA_ROADMAP.md | modifiziert |
+| M | tests/unit/test_phase_49_advanced_dereverb.py | modifiziert |
 
 ## Entscheidungen
+
+- **§PERF-R9 2026-09-19 (phase_49 WPE batched BLAS, qualitätsneutral)**:
+  Fast-Cell-Nachmessung (`benchmark_effizienz_matrix.py --cells fast
+  --seconds 10 --profile-top-phases 8`, vinyl_test_01.wav, ROCm-Venv,
+  `output/perf_session_20260919/`) ergab: Qualitätsprüfung 136 s,
+  Musical Goals 72 s, Audio-Nachbearbeitung 46 s — Engine-Ebene-Kosten
+  ≈ 50 % des Laufs (51× RT). Aufschlüsselung: End-Gate-Kaskade läuft
+  13+ measure_all-Runden (P1/P2 2–3 Alphas + Universal-Cascade 8 feste
+  Alphas je volle 15-Goal-Messung ~8 s warm; VERSA/PANNs/MERT je Alpha
+  neu, keine Referenz-seitige Wiederverwendung — als nächster Hebel
+  dokumentiert, s. Roadmap). phase_49-Attribution (30 s) war
+  PLM-/Gate-Overhead: Reverb-Presence-Gate übersprang WPE auf dem
+  trockenen Material. **UMGESETZT:** `_predict_reverb_bands_batch`
+  ersetzt den Per-Bin-Loop (cProfile: 88 % der Kanal-Zeit auf halligem
+  Material) durch batched BLAS-Matmul je 192-Bin-Block — Semantik
+  erhalten (Silent-Bins=0, LinAlgError⇒0 je Bin, convolve-Summenordnung,
+  §2.61-Budget-Guard mit Teil-Ergebnis). Messung (48 kHz, 30 s, WPE
+  aktiv): Loop 1,83 s → 0,91 s (2,0×), Kanal 3,22 s → 1,87 s (1,7×);
+  max|Δ| 4e-14 je Band / 1,4e-8 Kanal-Ausgang (Float-Rauschen der batched
+  BLAS-Ordnung, §G5 (GEBOTE.md)-Determinismus gepinnt). Tests:
+  test_phase_49_advanced_dereverb.py (Äquivalenz/Silent-Bins/
+  Budget/Determinismus; 16 Tests grün mit Phase-49-Suite); Ruff clean;
+  compliance_check.py 1340 Dateien clean; verboten-linter ohne neue
+  Befunde (V59-Warning vorbestehend).
 
 - **SOTA-Analogie-Sweep 2026-09-17 (ANA-1 umgesetzt, ANA-2…6 Backlog)**:
   Frage „Weitere SOTA-Korrekturmöglichkeiten analog zur Songaufbauerkennung?“
