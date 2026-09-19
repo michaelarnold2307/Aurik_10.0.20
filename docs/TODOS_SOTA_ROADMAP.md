@@ -9,6 +9,75 @@
 
 ---
 
+## ML-TRAININGS-SOTA-ROADMAP — Wohlklang-Trainings auf echter Musik (2026-09-19)
+
+> **Grundsatz:** Ein ML-Modell, das auf Sprachdaten (nicht Musik) trainiert ist und in der
+> Musik-Pipeline eine Wohlklang-Entscheidung trifft, ist ein Konzeptdefizit — das Ohr des
+> Menschen ist die Wahrheit, das Orakel muss die gleiche Domäne hören. Jedes Training läuft
+> über die bestehende F-Reihen-Infrastruktur (GPU 7900 XTX/ROCm, MUSDB18HQ lokal, A1-Loss,
+> Witness-Belege, Early-Stop) und endet NIE mit einem ungeprüften Modell-Wechsel:
+> **ONNX-Export → Torch-ROCm-Paritäts-Gate (rel ≤ 1e-3) → A/B-Gate → Witness-Belege →
+> Hörordnungs-Abnahme → erst dann Feature-Flag-Flip** (`backend/core/music_model_flags.py`).
+> Modell-Verbesserungen sind song-agnostisch → sie greifen bei **allen Gesängen, allen
+> Instrumenten, allen Import-Songs**; Performance-Kopplung über P1-GPU-Ports + P3-Residency,
+> damit die Laufzeit nie steigt.
+
+**Status-Übersicht der Modell-Domänen (Quelle: `backend/core/music_model_flags.py`):**
+
+| Modell | Rolle | Trainingsdomäne | Musik-Finetune |
+|---|---|---|---|
+| DeepFilterNet v3 | Denoise (Spec-04-Kette) | Sprache | ✅ DFN Musik aktiv (`use_df_musik=True`) |
+| MIIPHER | Codec-Artefakte | Sprache (proprietär) | ✅ ersetzt durch MIIPHER-DiT (`use_miipher_dit=True`) |
+| Harmonic-Inpainting-DiT | gedämpfte Obertöne (Phase 07) | Musik | ✅ aktiv (`use_harmonic_inpainting=True`) |
+| EAR-VAE | Restaurations-VAE | Musik | ✅ v2-Finetune (ΔSDR +4,83 dB) |
+| FlashSR | HF-Rekonstruktion >12,9 kHz | Musik (Bandlimit-Synth) | 🔄 **F4 läuft** (Epoche 6→14, GPU) |
+| BigVGAN-v2 | Vocoder/Repair (HR-V1) | Musik | ⬜ **F3 geplant** (Script `train_bigvgan_f3.py` vorhanden) |
+| **SGMSE+** | Tape-Chain Diffusion-Inpainting | **Sprache** | ⬜ **F7 NEU** — kein Checkpoint (`use_sgmse_musik=False`) |
+| **UTMOSv2** | MOS-Orakel in FeedbackChain/ExcellenceOptimizer | **Sprache (BVCC)** | ⬜ **F8 NEU** — Musik-MOS, MUSHRA-kalibriert |
+| **resemblyzer VoiceEncoder** | Vokal-Identität/Witness | **Sprache (LibriSpeech)** | ⬜ **F9 NEU** — Musik-Vokal-Finetune |
+| **VersaSingMOS** | Gesangs-MOS-Gates | Gesang (nahe Musik) | ⬜ **F10 NEU** — Kalibrierung auf verarbeitete Musik-Vocals |
+| BW-Reconstructor v5 | Lacquer/Shellac HF-Band | Musik (selbst trainiert) | ⬜ **F11 NEU** — A1-Gate 0,73 < 1,02 nicht bestanden → Re-Training |
+| BANQUET | Vinyl-Denoise | Musik/Synth | ⬜ **F12 NEU** — Real-Vinyl-Paare (Trainingscode fehlt noch, SOTA4-6) |
+| MP-SENet | Denoise (ex) | Sprache | ❌ de-wired nach Negativmessung (SOTA-ML-V3: −5,9…−8,5 dB) — KEIN Training |
+| Whisper-tiny | Semantische Konditionierung (DiT) | Sprache/Web | ⏭ bewusst nur Konditionierung, kein Wohlklang-Generator |
+
+**Neue F-Aufgaben (Trainings mit Wohlklang-Potenzial):**
+
+- **F7 · SGMSE+ Musik-Finetune** — Basis `models/sgmse_plus/sgmse_plus_core.onnx` (Sprach-Enhancement-
+  Score-Core). Ziel: Tape-Diffusion-Inpainting ohne Sprach-Klangfarbe (Vokalfärbung, Telefonband-
+  Charakter). Daten: MUSDB18HQ + Tape-Rausch-Paare. Gate: ΔSDR ≥ +2 dB + Witness HNR/Brillianz neutral.
+  Status: **offen — kein Checkpoint**.
+- **F8 · UTMOSv2 → Musik-MOS (höchster Oracle-Hebel)** — Basis: UTMOSv2 (Sprach-MOS). Das Modell bewertet
+  heute in FeedbackChain/ExcellenceOptimizer/MUSHRA-Proxy **Musik mit einem Sprach-Qualitätsmaß** —
+  Wohlklang-Entscheidungen (Pareto-Rollbacks, End-Gate) erben damit eine falsche Domänen-Wahrnehmung.
+  Ziel: MOS-Kopf-Finetune auf MUSHRA-Musik-Bewertungen (inkl. eigener A/B-Daten) + Score-Kalibrierung
+  auf HPI/AF. Gate: Korrelation mit MUSHRA ≥ +0,15 vs. Sprach-Original; keine Rollback-Änderung
+  auf den 3 Referenz-Songs ohne Hör-Verbesserung.
+- **F9 · resemblyzer Musik-Vokal-Finetune** — Basis: VoiceEncoder (256-dim d-Vector, sprach-trainiert).
+  Rolle: Vokal-Identitäts-Witness (Finetune-Commits verlangen cos ≥ 0,92). Musik-Finetune verbessert
+  die Identitäts-Treue bei verarbeiteten Vocals (Hall, Sättigung, Bandlimit) — Voraussetzung für
+  schärfere Vokal-Gates (weniger falsch-positive Identitäts-Alarme, mehr erlaubte Heilung).
+- **F10 · VersaSingMOS Musik-Gesang-Kalibrierung** — Gesangs-MOS auf verarbeitete Musik-Vocals
+  (Effektketten, Misch-Material) kalibrieren; Ziel: Vokal-MOS-Gates treffen bei Musik-Pegeln und
+  -Spektren korrekt (heute teils auf trockene Gesangs-Aufnahmen geeicht).
+- **F11 · BW-Reconstructor v5 Re-Training** — A1-HF-Gain-Gate (0,73 < 1,02) nicht bestanden; Modell
+  liegt vor (`models/bw_reconstructor/bw_reconstructor_v5.onnx`), Qualität reicht nicht. Re-Training
+  mit maskierungs-informiertem A1-Loss (Muster SOTA-A1, EAR-VAE) bis Gate ≥ 1,02 — sonst bleibt das
+  DSP-SBR/FlashSR-Paar der HF-Weg (Flag bleibt aus).
+- **F12 · BANQUET Real-Vinyl-Finetune** — Basis: BanquetVinylPlugin (92 MB ONNX). Trainingscode fehlt
+  (SOTA4-6/P11: `banquet_infer.py` ohne Trainings-Teil). Ziel: Paare echter Vinyl-Mitschnitte ↔
+  Referenz (Digital-Reissue) für realistischeres Knistern-/Rumpel-Bild ohne Musik-Verfärbung.
+
+**Vokal-Hebel (greifen über die F-Reihe bei allen Gesängen):** F1 DiffWave-Vokal + F2 GaCELA
+(Langlücken-Inpainting), F8/F10 (MOS-Wahrheit), F9 (Identitäts-Witness), Harmonic-Inpainting v2 mit
+Formant-/Phonem-Konditionierung (PhonemeTimeline §2.36a existiert), ML-Deesser Musik-Kalibrierung (Phase 43).
+**Instrumenten-Hebel:** F3 BigVGAN (Transienten/Spektral-Repair), F4 FlashSR (Air/Presence >12,9 kHz),
+F7 SGMSE+ (Tape-Inpainting), F12 BANQUET (Vinyl), Harmonic-Inpainting v2 mit MERT-Instrumentenklassen-
+Konditionierung (Bass-Körper, Streicher-Luft, Percussion-Transienten), Demucs-v5-Separation als
+Vorstufe (Separation-SOTA, Zeile 1602).
+
+---
+
 ## TODO-P0-1 · Analytik + End-Gate von per-Chunk auf Song-Ebene heben (größter Hebel)
 
 - **Ziel:** Chunks restau­rieren → assemblieren → **einmal** song-weit validieren (GOAL_SCORECARD,
