@@ -1534,6 +1534,40 @@ Phase ⇒ ~17 min je Song**. ITD/Jitter identisch zum alten Loop (≤ 1e-6 µs).
 Tests: `tests/unit/test_interaural_cues.py::TestPerfR12ProfileCache`
 (2 Fälle; Interaural+Post-Pipeline-Stereo-Suiten 21 grün).
 
+## SOTA-RESTHEBEL-MATRIX 2026-09-19 — schöpfen die DSP/ML-Hybride 100 % aus?
+
+**Antwort: NEIN — weder Performance noch Wohlklang sind ausgeschöpft**
+(Evidenz dieser Session):
+
+- **Performance:** überwachter Lauf ~32× RT (Projektion ~2 h für 225 s;
+  Ziel 15-25× RT, Akzeptanz ≤ 40 min), Fast-Cell 51× RT. Die 7900 XTX
+  bleibt in großen Teilen idle: VERSA/PANNs/MERT/HTDemucs laufen als
+  CPU-ONNX (Kaskaden-Messkette ~2 s steady-state je Alpha), und je Phase
+  liefen bis §PERF-R11/R12 ~10,5 s Maschinerie (Witness+Stereo-Guard+
+  PMGG/CALIB/Coalition) — nach R11/R12 noch ~5 s.
+- **Wohlklang:** (a) Der validierte HR-V1-Gewinn (BigVGAN-Harmonik-Repair;
+  A/B: af +0,0073, HNR +4,42 dB, PQS 4,52) ist mangels Budget-Urteil NOCH
+  NICHT aktiviert (Flag off); (b) die größte dokumentierte Qualitätslücke
+  des Referenzmaterials — HF > 12,9 kHz (bandwidth_loss conf=0,99) — ist
+  offen (GPU-Finetune); (c) Separation-SOTA (VS-1/GSEP, Demucs v5) und
+  der neurale Warp-Schätzer (WF-V4) sind extern blockiert (Gewichte).
+
+**Stärkste Maßnahmen (Reihenfolge = Wohlklang-Gewinn × Machbarkeit):**
+
+| # | Maßnahme | Wirkung | Status / nächster Schritt |
+|---|---|---|---|
+| Q1 | **HR-V1-Flag-Flip** (BigVGAN-Repair, additive_synthesis_gate) — A/B validiert | HNR +4,42 dB, af +0,0073, PQS 4,52 auf harmonisch beschädigtem Material | OFFEN — Budget-Urteil aus dem laufenden überwachten Lauf (Session 109w4s1p); Flip = Einzeiler nach Headroom-Nachweis |
+| Q2 | **F4-FlashSR-HF-Rekonstruktion > 12,9 kHz** (16k→48k) | Air/Presence — schließt die größte Qualitätslücke (conf 0,99) | GPU-GEBUNDEN — Rezept vorhanden (`train_flashsr_f4.py`), Finetune auf Musik starten |
+| Q3 | **Separation-SOTA:** VS-1/GSEP + Demucs v5 | Separierungs-/Quelltreue-Sprung (P1-2) | EXTERN BLOCKIERT — offizielle Gewichte beschaffen (SongEval/Release-Kanäle) |
+| Q4 | **WF-V4 neuraler Warp-Schätzer** | Wow/Flutter-Korrektur ohne Authentizitätsverlust (einziger Hörordnungs-sicherer Weg) | EXTERN BLOCKIERT — Checkpoint-Quelle klären |
+| Q5 | **Blind-Hörstudie n≥30** (P1-4) | Kalibriert alle Hörordnungs-Schwellen auf echte Hörer | EXTERN — Hörer-Panel organisieren |
+| Q6 | **PSY-A6 persönliche CIPIC-HRIR** | Binaurale Richtigkeit je Hörer | AUSBAUSTUFE — nicht blockierend |
+| P1 | **R3-Vollausbau: VERSA/PANNs/MERT/HTDemucs → Torch-ROCm-Kerne** (Muster BSR 41,8×/BANQUET; Parität rel ≤ 1e-3) | Kaskaden-Messkette 8 Alphas × ~5 s → <1 s je Alpha; alle CPU-ONNX-Pfade entlastet; GPU ausgelastet | GPU-GEBUNDEN — Ports nach §III.9-Paritätsnachweis (strukturierte Feeds, rel ≤ 1e-3); CRePE/BANQUET/FCPE/Whisper sind Vorbild |
+| P2 | **Phase-Gap-Rest zerlegen** (nach R11/R12 ~5 s je Phase: PMGG-Pre/Post, CALIB-Refresh, Coalition-Bookkeeping, STCG) — Muster R11/R12 (batched, content-cached, bit-identisch) | ~5 s × 41 Phasen × 8 Chunks ≈ 27 min je Song | OFFEN — cProfile/Zeitstempel-Zerlegung des Gap-Blocks; größter sicherer CPU-Hebel nach P1 |
+| P3 | **PLM-Residency:** stabile Modelle über die volle Phase-Sequenz halten (Fenster 5 → alle verbleibenden Phasen, RAM-gedeckelt) | entfällt Reload-Thrash für spät wiederverwendete Modelle | OFFEN — §2.37-Window-Politik mit RAM-Messung kalibrieren |
+| P4 | **Mess-Tooling:** top_phases um stille Blöcke erweitern (per-Phase-Gap-Attribution) | ehrliche Hebel-Rangliste statt „Phasenauswahl“-Sammellabels | OFFEN — benchmark_effizienz_matrix.py um Gap-Timing ergänzen |
+| P5 | **Demucs-Separations-Budget** (2 echte Läufe je Checker) auf GPU-Mini-Batch oder ehrlich kleineres Modell | measure_all-Erstkosten 3,5 s × 2 je Song entfallen | OFFEN — Qualitätsentscheidung (Hörordnungs-Gate) |
+
 ## TODO SOTA 4 (2026-09-18) — Beschleunigung + höhere Restaurierungsqualität (Welle 4)
 
 > Reihenfolge = (Hör-Gewinn × Machbarkeit) je Aufwand. Mess-Kadenz: Die
