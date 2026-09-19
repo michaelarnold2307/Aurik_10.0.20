@@ -997,6 +997,35 @@ wurde auch bei Aufrufen MIT Referenz geliefert.
 > Implementierung: `dsp/dtw_groove.py`, `backend/core/musical_goals/musical_goals_metrics.py`
 > Tests: `tests/unit/test_v9_dsp_pghi_psola_groove.py::TestDtwGrooveOnsetLossGuard`
 
+### §1.4.5c Reference-Caches (§PERF-R10) — Content-keyed, bit-identisch (v10.0.x)
+
+**Motivation:** Die End-Gate-Kaskade misst bis zu 8+ Blend-Kandidaten je Song
+mit derselben Original-Referenz. Referenz-seitige Features (chroma_cqt +
+spectral_centroid der Authentizität, MERT-Original-Analyse von
+`_compute_mert_similarity`) sind über alle Kandidaten identisch.
+
+**Normative Regeln:**
+
+1. **Content-Key:** Cache-Schlüssel = (blake2b-Hash der normalisierten
+   Referenz, sr, gekappte Kandidaten-Länge, die den Fallback-Zweig bestimmt).
+   Gleicher Inhalt ⇒ gleicher Wert (§G5 (copilot-instructions.md)).
+2. **Bit-identische Semantik:** Ein Cache-Treffer liefert exakt den Wert der
+   Erst-Berechnung (kein Approximations-Pfad) — Kaskaden-Entscheidungen
+   ändern sich nicht.
+3. **Repräsentations-Korrektheit:** Wechselt der Kandidaten-Zweig die
+   Chroma-Repräsentation (chroma_cqt → chroma_stft-Fallback), darf die
+   gecachte CQT-Referenz NICHT verwendet werden — beide Seiten müssen
+   dieselbe Repräsentation nutzen.
+4. **Deckel + Isolation:** Max. 3 Einträge (Speicherdeckel);
+   Content-Adressierung macht den Cache song-übergreifend sicher — kein
+   Stateful-Leck zwischen Songs nach §V8 (copilot-instructions.md).
+5. **Fail-closed (§V6 (copilot-instructions.md)):** Fehler beim Füllen ⇒
+   bestehender Fallback-Pfad unverändert (kein Partial-Result).
+
+> Implementierung: `_MERT_REF_CACHE` / `_AUTH_REF_CACHE` in
+> `backend/core/musical_goals/musical_goals_metrics.py`
+> Tests: `tests/musical_goals/test_musical_goals_metrics.py::TestPerfR10ReferenceCaches`
+
 ---
 
 ### §1.4.6 [RELEASE_MUST] TransientEnergyMetric — Algorithmus-Spezifikation (v10.0.0)
