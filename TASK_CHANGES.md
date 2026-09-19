@@ -1,28 +1,13 @@
 # TASK_CHANGES — Live-Ledger der aktuellen Aufgabe
 
-> Generiert von `scripts/change_ledger.py snapshot` (Base: `HEAD`, Stand: 2026-09-19 05:46 CEST).
+> Generiert von `scripts/change_ledger.py snapshot` (Base: `HEAD`, Stand: 2026-09-19 05:51 CEST).
 > CI (`ci-lite.yml` pr-evidence-gate) erzwingt Abdeckung: jede geänderte Code-Datei muss hier stehen.
 
 ## Geänderte Dateien
 
 | Status | Pfad | Art |
 |---|---|---|
-| M | backend/audio_monitor.py | modifiziert |
-| M | backend/core/dsp/level_1_invariants_guard.py | modifiziert |
-| M | backend/core/dsp/natural_performance_detector.py | modifiziert |
-| M | backend/core/dsp/pyin_viterbi_fast.py | modifiziert |
-| M | backend/core/dsp/style_intent_detector.py | modifiziert |
-| M | backend/core/dsp/vocal_register_detector.py | modifiziert |
-| M | backend/core/forensics/analysis_and_modules.py | modifiziert |
-| M | backend/core/harmonic_preservation_guard.py | modifiziert |
-| M | backend/core/hybrid/hybrid_speed_pitch_ml.py | modifiziert |
-| M | backend/core/musical_goals/musical_goals_metrics.py | modifiziert |
-| M | backend/core/phases/phase_19_de_esser.py | modifiziert |
-| M | backend/core/phases/phase_56_spectral_band_gap_repair.py | modifiziert |
-| M | backend/core/singer_voice_model.py | modifiziert |
-| M | backend/core/vocal_ai_enhancement.py | modifiziert |
-| M | backend/core/vocal_focus_analyzer.py | modifiziert |
-| M | backend/core/zone_engine/region_analysis.py | modifiziert |
+| M | docs/TODOS_SOTA_ROADMAP.md | modifiziert |
 
 ## Entscheidungen
 

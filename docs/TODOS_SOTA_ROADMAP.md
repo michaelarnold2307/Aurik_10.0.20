@@ -1406,6 +1406,20 @@ da alle Zustände je Frame denselben Unvoiced-Boden erhalten).
   ``librosa.pyin``-Fallback (§V6 (copilot-instructions.md))
 - phase_12 Produktionspfad (quality) auf realem Elke-Material:
   **45,5 → 10,6 s je 30-s-Chunk (~4,3×)** — Commit 5e6ae737
+- **§PERF-R8b Rollout (7cac4b2e):** ``pyin_compat`` (Drop-in mit
+  eingebautem librosa-Ersatzpfad, §V6 (copilot-instructions.md)) über
+  alle 15 pYIN-Stellen: phase_19 (2), natural_performance_detector,
+  vocal_register_detector (2), style_intent_detector,
+  level_1_invariants_guard, forensics, hybrid_speed_pitch_ml,
+  musical_goals_metrics, phase_56, singer_voice_model,
+  vocal_ai_enhancement, vocal_focus_analyzer, zone_engine,
+  harmonic_preservation_guard, audio_monitor — phase_19 auf Elke:
+  63,4 → 30,1 s je 30-s-Chunk (2,1×)
+- **Fast-Cell-Evidenz (10 s Vinyl, top_phases-Tooling):** Musical-Goals-
+  Evaluation 81 s, Qualitätsprüfung 64 s, ERB-Masking je Chunk 31 s,
+  phase_49 31 s, phase_09 14 s, phase_29 13 s — Engine-Ebene-Analyse-
+  Kosten (Modell-Lasten kalt + je-Chunk-Evaluation) sind der nächste
+  dokumentierte Hebel (eigene Session)
 - SOTA4-4-Befund (FCPE): bereits als Torch-ROCm-Kern verdrahtet
   (§SOTA-ML-V7); kalt 5,56 s (Kern-Build 3,67 s einmalig), warm
   ~1,9 s je 30-s-Chunk — kein Port nötig
