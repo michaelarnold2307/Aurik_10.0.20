@@ -74,9 +74,16 @@ class BanquetVinylPlugin:
     # GPU deterministisch (§G5 (copilot-instructions.md)). Benchmark 7900 XTX:
     # ORT-ROCm ~1,9 s/Fenster → torch ~160 ms (11,8×), B=4 ~97 ms (19,5×).
     # AURIK_BANQUET_TORCH=0 erzwingt den ONNX-Pfad (Kill-Switch);
-    # AURIK_BANQUET_TORCH_BATCH = Mini-Batch-Fenster je GPU-Lauf (Default 4).
+    # AURIK_BANQUET_TORCH_BATCH = Mini-Batch-Fenster je GPU-Lauf (Default 32,
+    # Clamp [1, 40] — MIOpen-Limit, s. §PERF-R4-Matrix unten).
     TORCH_ENABLED: bool = os.environ.get("AURIK_BANQUET_TORCH", "1") != "0"
-    TORCH_BATCH: int = max(1, int(os.environ.get("AURIK_BANQUET_TORCH_BATCH", "4")))
+    # §PERF-R4 (2026-09-19): Mini-Batch-Matrix auf 7900 XTX mit 60 realen
+    # Fenstern (30 s Elke, paritätsverifiziert gegen B=1): B=1 11,46 s →
+    # B=4 7,85 s → B=32 6,49 s → B=40 6,96 s; max|Δ| vs. B=1 = 6,7e-6
+    # (rel 1,7e-7) für alle B ≥ 2. MIOpen-LSTM bricht ab B ≥ 48 mit
+    # miopenStatusBadParm ⇒ Clamp [1, 40] (Quarantäne-Fallback würde sonst
+    # bei User-Override B=64 ausgelöst, §V6 (copilot-instructions.md)).
+    TORCH_BATCH: int = max(1, min(40, int(os.environ.get("AURIK_BANQUET_TORCH_BATCH", "32"))))
 
     def __init__(self, model_dir: str | None = None) -> None:
         self._session = None
@@ -616,23 +623,21 @@ class BanquetVinylPlugin:
             stft_ctx = np.zeros((128, 128), dtype=np.complex64)
             stft_ctx[:, :n_frames] = Zxx[:128, :n_frames].astype(np.complex64)
 
-            feat = np.zeros((1, 128, 128, 128), dtype=np.float32)
-            for b in range(128):
-                bin1 = min(2 * b + 1, Zxx.shape[0] - 1)
-                # 4 real features per frame: real/imag of two consecutive bins
-                r0 = stft_ctx[b, :]  # real part of band-centre bin
-                band_feat = np.stack(
-                    [
-                        r0.real,
-                        r0.imag,
-                        Zxx[bin1, :n_frames].real[:128].astype(np.float32),
-                        Zxx[bin1, :n_frames].imag[:128].astype(np.float32),
-                    ],
-                    axis=0,
-                )  # [4, 128]
-                # Tile 32× to fill hidden_dim=128
-                tiled = np.tile(band_feat, (32, 1))[:128, :]  # [128, 128]
-                feat[0, b, :, :] = tiled
+            # §PERF-R4 (2026-09-19): Band-Schleife vektorisiert — identische
+            # Werte wie die 128er-Python-Schleife (reine Kopien/Stacks/Tiles,
+            # kein neuer Rechenweg): 7552 Schleifendurchläufe je 30-s-Chunk
+            # entfallen.
+            _band_real = stft_ctx.real.astype(np.float32)  # [128, 128]
+            _band_imag = stft_ctx.imag.astype(np.float32)  # [128, 128]
+            _nb_idx = np.minimum(2 * np.arange(128, dtype=np.int64) + 1, Zxx.shape[0] - 1)
+            _nb = Zxx[_nb_idx, :].astype(np.complex64)  # [128, n_frames_stft]
+            _nb_real = np.zeros((128, 128), dtype=np.float32)
+            _nb_imag = np.zeros((128, 128), dtype=np.float32)
+            _nb_real[:, :n_frames] = _nb[:, :n_frames].real.astype(np.float32)
+            _nb_imag[:, :n_frames] = _nb[:, :n_frames].imag.astype(np.float32)
+            _band_feats = np.stack([_band_real, _band_imag, _nb_real, _nb_imag], axis=1)  # [128, 4, 128]
+            feat = np.tile(_band_feats, (1, 32, 1))[:, :128, :]  # [128, 128, 128] — interleaved wie die alte Schleife
+            feat = feat[np.newaxis, :, :, :]  # [1, 128, 128, 128]
 
             std = feat.std()
             if std > 1e-8:

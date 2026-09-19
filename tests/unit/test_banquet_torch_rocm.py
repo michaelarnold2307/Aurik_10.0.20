@@ -81,6 +81,46 @@ def test_cpu_parity_vs_onnx():
     assert np.abs(ref - out).max() <= 1e-4
 
 
+def test_prepare_input_vectorized_bit_identical():
+    """§PERF-R4: vektorisiertes _prepare_input == Referenz-Bandschleife (bit-identisch)."""
+    from plugins.banquet_vinyl_plugin import BanquetVinylPlugin
+
+    plugin = object.__new__(BanquetVinylPlugin)
+    rng = np.random.default_rng(9)
+    mono = (rng.standard_normal(48000) * 0.1).astype(np.float32)
+    chunk = np.vstack([mono, mono * 0.9]).astype(np.float32)
+
+    feat, ctx = plugin._prepare_input(chunk, 2)
+    assert feat.shape == (1, 128, 128, 128)
+    assert ctx.shape == (128, 128)
+
+    # Referenz: die bisherige 128er-Band-Schleife (exakter alter Code-Pfad).
+    from scipy.signal import stft as sci_stft
+
+    _, _, zxx = sci_stft(chunk.mean(axis=0).astype(np.float32), nperseg=512, noverlap=512 - 375, boundary="zeros")
+    n_frames = min(zxx.shape[1], 128)
+    stft_ctx = np.zeros((128, 128), dtype=np.complex64)
+    stft_ctx[:, :n_frames] = zxx[:128, :n_frames].astype(np.complex64)
+    ref = np.zeros((1, 128, 128, 128), dtype=np.float32)
+    for b in range(128):
+        bin1 = min(2 * b + 1, zxx.shape[0] - 1)
+        r0 = stft_ctx[b, :]
+        band_feat = np.stack(
+            [
+                r0.real,
+                r0.imag,
+                zxx[bin1, :n_frames].real[:128].astype(np.float32),
+                zxx[bin1, :n_frames].imag[:128].astype(np.float32),
+            ],
+            axis=0,
+        )
+        ref[0, b, :, :] = np.tile(band_feat, (32, 1))[:128, :]
+    std = ref.std()
+    if std > 1e-8:
+        ref /= std
+    assert np.array_equal(feat, ref)
+
+
 def test_plugin_torch_ola_and_determinism(monkeypatch):
     """Plugin-_process_torch_rocm: OLA-Verdrahtung + Determinismus (§G5 (copilot-instructions.md))."""
     from plugins.banquet_vinyl_plugin import BanquetVinylPlugin
