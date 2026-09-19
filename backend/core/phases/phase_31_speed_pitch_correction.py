@@ -927,16 +927,34 @@ class SpeedPitchCorrectionPhase(PhaseInterface):
 
         try:
             # pYIN: probabilistische Schwellwertverteilung (Mauch & Dixon 2014)
-            f0, voiced_flag, voiced_probs = librosa.pyin(
-                segment,
-                fmin=float(librosa.note_to_hz("C2")),  # ~65 Hz
-                # §PERF-R (2026-09-18): fmax C7→C6 — f0-Trajektorie ≲ 1 kHz,
-                # Viterbi-Kandidatenraum halbiert (~4×); Konsens via CREPE-Hybrid.
-                fmax=float(librosa.note_to_hz("C6")),  # ~1047 Hz
-                sr=self.sample_rate,
-                frame_length=2048,
-                hop_length=512,
-            )
+            # §PERF-R8 (2026-09-19): band-begrenztes Viterbi (bit-identisch zu
+            # librosa 0.11.0) — Fallback librosa.pyin bei jeder Abweichung.
+            try:
+                from backend.core.dsp.pyin_viterbi_fast import pyin_fast as _pyin_fast31
+
+                f0, voiced_flag, voiced_probs = _pyin_fast31(
+                    segment,
+                    fmin=float(librosa.note_to_hz("C2")),  # ~65 Hz
+                    fmax=float(librosa.note_to_hz("C6")),  # ~1047 Hz
+                    sr=self.sample_rate,
+                    frame_length=2048,
+                    hop_length=512,
+                )
+            except Exception as _fast31_exc:
+                logger.debug(
+                    "Verarbeitungsschritt_31 §PERF-R8-pyin_fast nicht nutzbar (%s) — librosa.pyin",
+                    _fast31_exc,
+                )
+                f0, voiced_flag, voiced_probs = librosa.pyin(
+                    segment,
+                    fmin=float(librosa.note_to_hz("C2")),  # ~65 Hz
+                    # §PERF-R (2026-09-18): fmax C7→C6 — f0-Trajektorie ≲ 1 kHz,
+                    # Viterbi-Kandidatenraum halbiert (~4×); Konsens via CREPE-Hybrid.
+                    fmax=float(librosa.note_to_hz("C6")),  # ~1047 Hz
+                    sr=self.sample_rate,
+                    frame_length=2048,
+                    hop_length=512,
+                )
 
             voiced_f0 = f0[voiced_flag]
             voiced_probs_v = voiced_probs[voiced_flag]
@@ -1025,17 +1043,35 @@ class SpeedPitchCorrectionPhase(PhaseInterface):
                 return 0.0, 1.0
 
             # pYIN F0 track with voiced probability weights.
-            f0, voiced_flag, voiced_probs = librosa.pyin(
-                segment,
-                fmin=float(librosa.note_to_hz("C2")),  # ~65 Hz
-                # §PERF-R (2026-09-18): fmax C7→C6 — 30-s-Segment × C7-Viterbi
-                # war der phase_31-Chunk-Kostentreiber (~35 s); f0 > 1 kHz
-                # liefert der CREPE-Konsens des Hybrids.
-                fmax=float(librosa.note_to_hz("C6")),  # ~1047 Hz
-                sr=sample_rate,
-                frame_length=2048,
-                hop_length=512,
-            )
+            # §PERF-R8 (2026-09-19): band-begrenztes Viterbi (bit-identisch) —
+            # Fallback librosa.pyin bei jeder Abweichung.
+            try:
+                from backend.core.dsp.pyin_viterbi_fast import pyin_fast as _pyin_fast31b
+
+                f0, voiced_flag, voiced_probs = _pyin_fast31b(
+                    segment,
+                    fmin=float(librosa.note_to_hz("C2")),  # ~65 Hz
+                    fmax=float(librosa.note_to_hz("C6")),  # ~1047 Hz
+                    sr=sample_rate,
+                    frame_length=2048,
+                    hop_length=512,
+                )
+            except Exception as _fast31b_exc:
+                logger.debug(
+                    "Verarbeitungsschritt_31 §PERF-R8-pyin_fast nicht nutzbar (%s) — librosa.pyin",
+                    _fast31b_exc,
+                )
+                f0, voiced_flag, voiced_probs = librosa.pyin(
+                    segment,
+                    fmin=float(librosa.note_to_hz("C2")),  # ~65 Hz
+                    # §PERF-R (2026-09-18): fmax C7→C6 — 30-s-Segment × C7-Viterbi
+                    # war der phase_31-Chunk-Kostentreiber (~35 s); f0 > 1 kHz
+                    # liefert der CREPE-Konsens des Hybrids.
+                    fmax=float(librosa.note_to_hz("C6")),  # ~1047 Hz
+                    sr=sample_rate,
+                    frame_length=2048,
+                    hop_length=512,
+                )
 
             voiced_f0 = f0[voiced_flag]
             voiced_w = voiced_probs[voiced_flag]  # probability weights
@@ -1388,12 +1424,28 @@ class SpeedPitchCorrectionPhase(PhaseInterface):
         try:
             import librosa
 
-            f0, voiced_flag, _ = librosa.pyin(
-                y_1d.astype(np.float32),
-                fmin=float(librosa.note_to_hz("C2")),
-                fmax=float(librosa.note_to_hz("C7")),
-                sr=sr,
-            )
+            # §PERF-R8 (2026-09-19): band-begrenztes Viterbi (bit-identisch) —
+            # Fallback librosa.pyin bei jeder Abweichung.
+            try:
+                from backend.core.dsp.pyin_viterbi_fast import pyin_fast as _pyin_fast31c
+
+                f0, voiced_flag, _ = _pyin_fast31c(
+                    y_1d.astype(np.float32),
+                    fmin=float(librosa.note_to_hz("C2")),
+                    fmax=float(librosa.note_to_hz("C7")),
+                    sr=sr,
+                )
+            except Exception as _fast31c_exc:
+                logger.debug(
+                    "Verarbeitungsschritt_31 §PERF-R8-pyin_fast nicht nutzbar (%s) — librosa.pyin",
+                    _fast31c_exc,
+                )
+                f0, voiced_flag, _ = librosa.pyin(
+                    y_1d.astype(np.float32),
+                    fmin=float(librosa.note_to_hz("C2")),
+                    fmax=float(librosa.note_to_hz("C7")),
+                    sr=sr,
+                )
             f0 = np.nan_to_num(f0, nan=0.0)
             voiced = voiced_flag & (f0 > 0)
             if not voiced.any():

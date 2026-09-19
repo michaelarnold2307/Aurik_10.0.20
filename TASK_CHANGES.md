@@ -1,16 +1,17 @@
 # TASK_CHANGES — Live-Ledger der aktuellen Aufgabe
 
-> Generiert von `scripts/change_ledger.py snapshot` (Base: `HEAD`, Stand: 2026-09-19 04:05 CEST).
+> Generiert von `scripts/change_ledger.py snapshot` (Base: `HEAD`, Stand: 2026-09-19 05:13 CEST).
 > CI (`ci-lite.yml` pr-evidence-gate) erzwingt Abdeckung: jede geänderte Code-Datei muss hier stehen.
 
 ## Geänderte Dateien
 
 | Status | Pfad | Art |
 |---|---|---|
-| M | TASK_CHANGES.md | modifiziert |
-| M | backend/core/unified_restorer_v3.py | modifiziert |
-| M | docs/TODOS_SOTA_ROADMAP.md | modifiziert |
-| M | scripts/benchmark_effizienz_matrix.py | modifiziert |
+| M | .github/FILE_REGISTRY.md | modifiziert |
+| M | backend/core/phases/phase_12_wow_flutter_fix.py | modifiziert |
+| M | backend/core/phases/phase_31_speed_pitch_correction.py | modifiziert |
+| ?? | backend/core/dsp/pyin_viterbi_fast.py | ungetrackt |
+| ?? | tests/unit/test_pyin_viterbi_fast.py | ungetrackt |
 
 ## Entscheidungen
 

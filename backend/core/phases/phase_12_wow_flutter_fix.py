@@ -1953,25 +1953,45 @@ class WowFlutterFix(PhaseInterface):
             try:
                 import librosa  # always available in .venv_aurik
 
+                from backend.core.dsp.pyin_viterbi_fast import pyin_fast as _pyin_fast12
+
                 hop_samples = max(1, int(self.PITCH_WINDOW_MS * sample_rate / 1000) // self.PITCH_HOP_FACTOR)
                 _safe_frame_length = 1 << int(np.floor(np.log2(min(2048, _n_samples))))
                 _safe_frame_length = max(256, _safe_frame_length)
                 hop_samples = min(hop_samples, max(1, _safe_frame_length // 4))
-                f0, voiced_flag, voiced_prob = librosa.pyin(
-                    audio.astype(np.float32),
-                    fmin=float(librosa.note_to_hz("C2")),  # ~65 Hz
-                    # §PERF-R (2026-09-18): fmax C7→C6 — der Wow/Flutter-
-                    # Schätzer braucht nur die f0-Trajektorie (Stimm-/Lead-f0
-                    # ≲ 1 kHz); der Kandidatenraum des Viterbi wächst mit dem
-                    # f0-Bereich und kostete ~11 s/10 s (reines Python). C6
-                    # halbiert den Raum (~4× schneller) — f0 > 1 kHz liefert
-                    # der CREPE-Konsens, der in denselben Schätzer mündet.
-                    fmax=float(librosa.note_to_hz("C6")),  # ~1047 Hz
-                    sr=sample_rate,
-                    hop_length=hop_samples,
-                    frame_length=_safe_frame_length,
-                    fill_na=0.0,
-                )
+                # §PERF-R8 (2026-09-19): band-begrenztes Viterbi (bit-identisch
+                # zu librosa 0.11.0, ~2,4× schneller; Unit-Test pinnt die
+                # Identität) — Fallback librosa.pyin bei jeder Abweichung.
+                try:
+                    f0, voiced_flag, voiced_prob = _pyin_fast12(
+                        audio.astype(np.float32),
+                        fmin=float(librosa.note_to_hz("C2")),  # ~65 Hz
+                        fmax=float(librosa.note_to_hz("C6")),  # ~1047 Hz
+                        sr=sample_rate,
+                        hop_length=hop_samples,
+                        frame_length=_safe_frame_length,
+                        fill_na=0.0,
+                    )
+                except Exception as _fast12_exc:
+                    logger.debug(
+                        "Verarbeitungsschritt_12 §PERF-R8-pyin_fast nicht nutzbar (%s) — librosa.pyin",
+                        _fast12_exc,
+                    )
+                    f0, voiced_flag, voiced_prob = librosa.pyin(
+                        audio.astype(np.float32),
+                        fmin=float(librosa.note_to_hz("C2")),  # ~65 Hz
+                        # §PERF-R (2026-09-18): fmax C7→C6 — der Wow/Flutter-
+                        # Schätzer braucht nur die f0-Trajektorie (Stimm-/Lead-f0
+                        # ≲ 1 kHz); der Kandidatenraum des Viterbi wächst mit dem
+                        # f0-Bereich und kostete ~11 s/10 s (reines Python). C6
+                        # halbiert den Raum (~4× schneller) — f0 > 1 kHz liefert
+                        # der CREPE-Konsens, der in denselben Schätzer mündet.
+                        fmax=float(librosa.note_to_hz("C6")),  # ~1047 Hz
+                        sr=sample_rate,
+                        hop_length=hop_samples,
+                        frame_length=_safe_frame_length,
+                        fill_na=0.0,
+                    )
                 # voiced_prob gives per-frame confidence; unvoiced → 0
                 f0 = np.nan_to_num(f0, nan=0.0)
                 confidence = np.where(voiced_flag, voiced_prob, 0.0).astype(np.float64)
