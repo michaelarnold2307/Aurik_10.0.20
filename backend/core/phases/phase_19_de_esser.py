@@ -3252,14 +3252,31 @@ class DeEsserPhase(PhaseInterface):
             import librosa as _librosa
 
             _mono_f32 = mono.astype(np.float32)[: min(len(mono), sample_rate * 10)]
-            _f0_pyin, _voiced_flag, _voiced_prob = _librosa.pyin(
-                _mono_f32,
-                fmin=60.0,
-                fmax=700.0,
-                sr=sample_rate,
-                frame_length=2048,
-                win_length=1024,
-            )
+            # §PERF-R8 (2026-09-19): band-begrenztes Viterbi (bit-identisch zu
+            # librosa 0.11.0) — Fallback librosa.pyin bei jeder Abweichung.
+            try:
+                from backend.core.dsp.pyin_viterbi_fast import pyin_fast as _pyin_fast19
+
+                _f0_pyin, _voiced_flag, _voiced_prob = _pyin_fast19(
+                    _mono_f32,
+                    fmin=60.0,
+                    fmax=700.0,
+                    sr=sample_rate,
+                    frame_length=2048,
+                    win_length=1024,
+                )
+            except Exception as _fast19_exc:
+                logger.debug(
+                    "Verarbeitungsschritt_19 §PERF-R8-pyin_fast nicht nutzbar (%s) — librosa.pyin", _fast19_exc
+                )
+                _f0_pyin, _voiced_flag, _voiced_prob = _librosa.pyin(
+                    _mono_f32,
+                    fmin=60.0,
+                    fmax=700.0,
+                    sr=sample_rate,
+                    frame_length=2048,
+                    win_length=1024,
+                )
             # Median über voiced frames (voiced_prob > 0.8)
             _voiced_f0 = _f0_pyin[_voiced_prob > 0.8]
             if len(_voiced_f0) > 10:
@@ -3665,14 +3682,31 @@ class DeEsserPhase(PhaseInterface):
         try:
             import librosa as _librosa
 
-            _f0, _voiced_flag, _voiced_prob = _librosa.pyin(
-                mono,
-                fmin=60.0,
-                fmax=700.0,
-                sr=sample_rate,
-                frame_length=2048,
-                win_length=1024,
-            )
+            # §PERF-R8 (2026-09-19): band-begrenztes Viterbi (bit-identisch) —
+            # Fallback librosa.pyin bei jeder Abweichung.
+            try:
+                from backend.core.dsp.pyin_viterbi_fast import pyin_fast as _pyin_fast19b
+
+                _f0, _voiced_flag, _voiced_prob = _pyin_fast19b(
+                    mono,
+                    fmin=60.0,
+                    fmax=700.0,
+                    sr=sample_rate,
+                    frame_length=2048,
+                    win_length=1024,
+                )
+            except Exception as _fast19b_exc:
+                logger.debug(
+                    "Verarbeitungsschritt_19 §PERF-R8-pyin_fast nicht nutzbar (%s) — librosa.pyin", _fast19b_exc
+                )
+                _f0, _voiced_flag, _voiced_prob = _librosa.pyin(
+                    mono,
+                    fmin=60.0,
+                    fmax=700.0,
+                    sr=sample_rate,
+                    frame_length=2048,
+                    win_length=1024,
+                )
             if _f0 is None or len(_f0) < 10:
                 return timeline
 

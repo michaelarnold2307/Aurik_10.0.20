@@ -709,8 +709,10 @@ class BassKraftMetric:
                 raise RuntimeError("CREPE nicht verfügbar")
         except Exception:
             try:
+                from backend.core.dsp.pyin_viterbi_fast import pyin_compat
+
                 seg_len = min(len(audio), int(sr * 2.0))
-                f0, _, voiced_probs = librosa.pyin(audio[:seg_len], fmin=20, fmax=250, sr=sr)
+                f0, _, voiced_probs = pyin_compat(audio[:seg_len], fmin=20, fmax=250, sr=sr)
                 bass_voiced = np.sum((f0 >= 20) & (f0 <= 120) & (voiced_probs > 0.7))
                 bass_harmonic_strength = float(bass_voiced / max(1, len(f0)))
             except Exception:

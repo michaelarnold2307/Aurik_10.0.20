@@ -86,6 +86,8 @@ except Exception:
 try:
     import librosa
 
+    from backend.core.dsp.pyin_viterbi_fast import pyin_compat
+
     _LIBROSA_OK = True
 except ImportError:
     _LIBROSA_OK = False
@@ -555,7 +557,7 @@ class HarmonicPreservationGuard:
             try:
                 if len(mono) < 8192:
                     raise ValueError("Signal zu kurz für pYIN (< 8192 Samples ≈ 170 ms)")
-                f0_pyin, voiced_flag, _ = librosa.pyin(
+                f0_pyin, voiced_flag, _ = pyin_compat(
                     mono,
                     fmin=50.0,
                     fmax=float(librosa.note_to_hz("C8")),

@@ -245,7 +245,9 @@ def _estimate_f0_dsp(mono: np.ndarray, sr: int) -> np.ndarray:
     try:
         import librosa  # pylint: disable=import-outside-toplevel
 
-        f0, voiced, _ = librosa.pyin(
+        from backend.core.dsp.pyin_viterbi_fast import pyin_compat
+
+        f0, voiced, _ = pyin_compat(
             mono,
             fmin=float(librosa.note_to_hz("C2")),
             fmax=float(librosa.note_to_hz("C7")),

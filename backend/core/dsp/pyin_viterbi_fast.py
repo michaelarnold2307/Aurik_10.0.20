@@ -22,7 +22,7 @@ der Bit-Identitäts-Test (tests/unit/test_pyin_viterbi_fast.py) pinnt
 from __future__ import annotations
 
 import logging
-from typing import Any, Optional, Tuple, Union
+from typing import Any, Optional, Tuple, Union, cast
 
 import numpy as np
 
@@ -221,6 +221,7 @@ def pyin_fast(
     fmax: float,
     sr: float = 22050,
     frame_length: int = 2048,
+    win_length: int | None = None,
     hop_length: int | None = None,
     n_thresholds: int = 100,
     beta_parameters: tuple[float, float] = (2, 18),
@@ -243,6 +244,11 @@ def pyin_fast(
 
     if fmin is None or fmax is None:
         raise ParameterError('both "fmin" and "fmax" must be provided')
+
+    # win_length ist in librosa 0.11.0 deprecated und wirkungslos —
+    # Kompatibilitäts-Parameter, wird wie dort ignoriert.
+    if win_length is not None and win_length != frame_length:
+        logger.debug("pyin_fast: win_length=%s ignoriert (librosa-0.11-Semantik)", win_length)
 
     if hop_length is None:
         hop_length = frame_length // 4
@@ -319,3 +325,20 @@ def pyin_fast(
         f0[~voiced_flag] = fill_na
 
     return f0[..., 0, :], voiced_flag[..., 0, :], voiced_prob[..., 0, :]
+
+
+def pyin_compat(y: np.ndarray, **kwargs: Any) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """§PERF-R8: Drop-in für ``librosa.pyin`` — pyin_fast mit eingebautem Fallback.
+
+    Bit-identisch zu ``librosa.pyin`` (0.11.0); bei jeder Abweichung/Exception
+    fällt die Funktion selbst auf ``librosa.pyin`` zurück
+    (§V6 (copilot-instructions.md) fail-open). Aufrufer müssen nur den Import
+    tauschen — Signatur und Rückgabewerte identisch.
+    """
+    try:
+        return pyin_fast(y, **kwargs)
+    except Exception as _compat_exc:  # pragma: no cover — nur bei Import-/Strukturfehlern
+        logger.debug("§PERF-R8-pyin_compat Ersatzpfad librosa.pyin (%s)", _compat_exc)
+        import librosa
+
+        return cast(tuple[np.ndarray, np.ndarray, np.ndarray], librosa.pyin(y, **kwargs))

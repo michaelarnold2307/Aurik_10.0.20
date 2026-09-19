@@ -411,7 +411,9 @@ class Level1InvariantsGuard:
         try:
             import librosa  # pylint: disable=import-outside-toplevel
 
-            f0, voiced_flag, _voiced_prob = librosa.pyin(audio, fmin=80.0, fmax=800.0, sr=sr)
+            from backend.core.dsp.pyin_viterbi_fast import pyin_compat
+
+            f0, voiced_flag, _voiced_prob = pyin_compat(audio, fmin=80.0, fmax=800.0, sr=sr)
             if voiced_flag is not None and np.sum(voiced_flag) > 10:
                 voiced_f0 = f0[voiced_flag]
                 return float(np.mean(voiced_f0))

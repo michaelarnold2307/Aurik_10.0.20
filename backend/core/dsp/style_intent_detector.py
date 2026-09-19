@@ -166,10 +166,12 @@ class StyleIntentDetector:
         return f0_np, voiced
 
     def _extract_f0_pyin(self, audio: np.ndarray, sr: int) -> tuple[np.ndarray, np.ndarray]:
-        """F0 via librosa.pyin."""
+        """F0 via pYIN — §PERF-R8: pyin_compat (band-begrenztes Viterbi, bit-identisch)."""
         import librosa  # type: ignore[import]  # pylint: disable=import-outside-toplevel
 
-        f0, voiced_flag, _ = librosa.pyin(
+        from backend.core.dsp.pyin_viterbi_fast import pyin_compat
+
+        f0, voiced_flag, _ = pyin_compat(
             audio.astype(np.float64),
             fmin=float(_F0_MIN_HZ),
             fmax=float(_F0_MAX_HZ),

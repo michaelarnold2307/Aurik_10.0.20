@@ -296,9 +296,12 @@ def _detect_vibrato_zones(
     try:
         import librosa  # pylint: disable=import-outside-toplevel
 
-        # PYIN für F0-Schätzung (librosa ≥ 0.10)
+        from backend.core.dsp.pyin_viterbi_fast import pyin_compat
+
+        # PYIN für F0-Schätzung (librosa ≥ 0.10); §PERF-R8: pyin_compat
+        # (band-begrenztes Viterbi, bit-identisch) mit librosa-Fallback.
         hop_length = 512
-        f0, voiced_flag, _ = librosa.pyin(
+        f0, voiced_flag, _ = pyin_compat(
             mono,
             fmin=float(librosa.note_to_hz("C2")),
             # §PERF-R (2026-09-18): fmax C7→C6 — Vibrato-F0-Trajektorie ≲ 1 kHz;

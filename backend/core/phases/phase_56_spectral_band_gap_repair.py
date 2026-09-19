@@ -218,10 +218,12 @@ def _estimate_f0(mono: np.ndarray, sr: int) -> float | None:
     except Exception as exc:
         logger.debug("PESTO f0 estimation fehlgeschlagen: %s", exc)
 
-    # Tier-2: pYIN über librosa
+    # Tier-2: pYIN über librosa (§PERF-R8: pyin_compat — bit-identisch)
     if _LIBROSA_OK:
         try:
-            f0, voiced_flag, _ = librosa.pyin(
+            from backend.core.dsp.pyin_viterbi_fast import pyin_compat
+
+            f0, voiced_flag, _ = pyin_compat(
                 mono,
                 fmin=50.0,  # ≥ 2 Perioden bei frame_length=2048 @48 kHz (min=46.875 Hz)
                 fmax=float(librosa.note_to_hz("C8")),

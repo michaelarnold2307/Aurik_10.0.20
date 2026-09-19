@@ -87,11 +87,13 @@ def _estimate_f0_median(mono: np.ndarray, sr: int) -> float | None:
     except Exception as e:
         logger.warning("vocal_register_detector.py::_estimate_f0_median Ersatzpfad: %s", e)
 
-    # pYIN-Fallback
+    # pYIN-Fallback (§PERF-R8: pyin_compat — bit-identisch, mit librosa-Fallback)
     try:
         import librosa  # type: ignore[import]
 
-        f0_pyin, voiced_flag, _ = librosa.pyin(
+        from backend.core.dsp.pyin_viterbi_fast import pyin_compat
+
+        f0_pyin, voiced_flag, _ = pyin_compat(
             mono.astype(np.float32),
             fmin=50.0,
             fmax=1000.0,
@@ -321,11 +323,13 @@ def detect_vocal_register_temporal(
             voiced_f0 = np.array([])
 
         if len(voiced_f0) < 2:
-            # Fallback pYIN
+            # Fallback pYIN (§PERF-R8: pyin_compat — bit-identisch)
             try:
                 import librosa  # type: ignore[import]
 
-                f0_p, vf, _ = librosa.pyin(seg, fmin=50.0, fmax=1000.0, sr=sr, frame_length=min(2048, seg_len))
+                from backend.core.dsp.pyin_viterbi_fast import pyin_compat
+
+                f0_p, vf, _ = pyin_compat(seg, fmin=50.0, fmax=1000.0, sr=sr, frame_length=min(2048, seg_len))
                 voiced_f0 = f0_p[vf & (f0_p > 0)] if len(f0_p) > 0 else np.array([])
             except Exception:
                 voiced_f0 = np.array([])

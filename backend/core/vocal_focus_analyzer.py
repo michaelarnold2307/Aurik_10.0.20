@@ -610,7 +610,9 @@ class VocalFocusAnalyzer:
                 )
 
             if f0 is None and _librosa is not None:
-                f0, voiced_flag, _ = _librosa.pyin(  # type: ignore[union-attr]
+                from backend.core.dsp.pyin_viterbi_fast import pyin_compat
+
+                f0, voiced_flag, _ = pyin_compat(
                     mono_f,
                     fmin=_librosa.note_to_hz("C2"),  # type: ignore[arg-type]
                     fmax=_librosa.note_to_hz("C7"),  # type: ignore[arg-type]

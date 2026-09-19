@@ -363,9 +363,11 @@ class RegionAnalyzer:
 
         # Region-specific features
         if region.region_type == RegionType.SPEECH:
-            # F0 for speech
+            # F0 for speech (§PERF-R8: pyin_compat — bit-identisch)
             try:
-                f0, voiced_flag, _ = librosa.pyin(region_audio, sr=sr, fmin=80, fmax=400)
+                from backend.core.dsp.pyin_viterbi_fast import pyin_compat
+
+                f0, voiced_flag, _ = pyin_compat(region_audio, sr=sr, fmin=80, fmax=400)
                 voiced_f0 = f0[voiced_flag]
                 if len(voiced_f0) > 0:
                     analysis["f0_mean"] = float(np.nanmean(voiced_f0))

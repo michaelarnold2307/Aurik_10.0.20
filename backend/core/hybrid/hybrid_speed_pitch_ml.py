@@ -329,6 +329,8 @@ class HybridSpeedPitch:
         """
         import librosa
 
+        from backend.core.dsp.pyin_viterbi_fast import pyin_compat
+
         # Auf Fensterlänge begrenzen (max 5 s) für Performance
         max_samples = int(5 * sample_rate)
         segment = audio[:max_samples].astype(np.float32)
@@ -338,7 +340,7 @@ class HybridSpeedPitch:
             return 0.0, 0.0
 
         try:
-            f0, voiced_flag, voiced_probs = librosa.pyin(
+            f0, voiced_flag, voiced_probs = pyin_compat(
                 segment,
                 fmin=librosa.note_to_hz("C2"),  # type: ignore[arg-type]  # ~65 Hz
                 # §PERF-R (2026-09-18): fmax C7→C6 — identische Begründung wie

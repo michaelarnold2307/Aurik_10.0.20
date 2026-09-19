@@ -289,6 +289,8 @@ class GenderDetector:
         try:
             import librosa
 
+            from backend.core.dsp.pyin_viterbi_fast import pyin_compat
+
             n = int(self.sr * max_seconds)
             if len(audio) <= n:
                 windows: list[tuple[int, int]] = [(0, len(audio))]
@@ -297,7 +299,7 @@ class GenderDetector:
                 windows = [(0, n), (mid_start, mid_start + n), (len(audio) - n, len(audio))]
             for _win_start, _win_end in windows:
                 seg = np.asarray(audio[_win_start:_win_end], dtype=np.float32)
-                f0, _voiced_flag, voiced_prob = librosa.pyin(
+                f0, _voiced_flag, voiced_prob = pyin_compat(
                     seg, fmin=60.0, fmax=700.0, sr=self.sr, frame_length=2048, win_length=1024
                 )
                 for _th in (0.4, 0.25):

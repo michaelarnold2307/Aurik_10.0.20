@@ -187,8 +187,10 @@ def compute_f0_stats(audio: np.ndarray, sr: int, fmin: float = 50.0, fmax: float
         Dict mit f0_mean, f0_std, f0_range, voiced_ratio
     """
     try:
-        # PYIN: Probabilistic YIN for pitch tracking
-        f0, voiced_flag, _voiced_probs = librosa.pyin(audio, sr=sr, fmin=fmin, fmax=fmax, frame_length=2048)
+        # PYIN: Probabilistic YIN for pitch tracking (§PERF-R8: pyin_compat)
+        from backend.core.dsp.pyin_viterbi_fast import pyin_compat
+
+        f0, voiced_flag, _voiced_probs = pyin_compat(audio, sr=sr, fmin=fmin, fmax=fmax, frame_length=2048)
 
         # Nur voiced frames berücksichtigen
         voiced_f0 = f0[voiced_flag]

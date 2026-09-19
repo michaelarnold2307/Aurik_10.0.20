@@ -648,8 +648,11 @@ class FeatureExtractor:
             import librosa
             from scipy import signal as scipy_signal
 
-            # Extract pitch using pyin (more robust than crepe for modulation)
-            f0, voiced_flag, _voiced_probs = librosa.pyin(
+            from backend.core.dsp.pyin_viterbi_fast import pyin_compat
+
+            # Extract pitch using pyin (more robust than crepe for modulation);
+            # §PERF-R8: pyin_compat (band-begrenztes Viterbi, bit-identisch)
+            f0, voiced_flag, _voiced_probs = pyin_compat(
                 audio,
                 fmin=float(librosa.note_to_hz("C2")),
                 fmax=float(librosa.note_to_hz("C7")),
