@@ -86,6 +86,15 @@ mit frischen Zahlen aktualisiert:
 | phase_28 surface noise | 80 s | IMCRA/OMLSA (DSP, NumPy) |
 | phase_50 spectral repair | 76 s | STFT/ML-Kandidat |
 
+**P1-Reframe (Befund 2026-09-20):** phase_23 und phase_50 sind reine DSP
+(0 ONNX/torch-Hits im Quelltext) — keine GPU-Port-Kandidaten, sondern
+Numba-Kern-Kandidaten nach dem §PERF-R15-Muster. Die ONNX-ML-Modelle
+(MuQ, CLAP, PANNs, Whisper, BANQUET, FCPE, bs_roformer) sitzen in der
+Pre-Analyse (1× je Song) bzw. in den 6 bereits portierten Torch-ROCm-
+Kernen. Konsequenz: t9 sollte sich auf die ML-Pre-Analyse-Residenz
+(P1-2/P1-6 der Roadmap) konzentrieren; die heißen DSP-Phasen laufen
+über Numba-Kerne (bit-identisch, kein Paritäts-Gate nötig).
+
 Kandidaten-Kriterium P1: ML-/STFT-dominiert UND ONNX-CPU-Fallback aktiv
 (Paritäts-Gate rel ≤ 1e-3 gegen ONNX-CPU auf strukturierten Feeds,
 Torch-ROCm-Kerne in `backend/core/dsp/*_torch_rocm.py`, Einhängung via
