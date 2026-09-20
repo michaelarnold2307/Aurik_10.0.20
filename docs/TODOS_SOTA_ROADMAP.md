@@ -1706,6 +1706,11 @@ laden aus `__pycache__`). Bit-Identität: 6 Größen (64×64 … 2049×60)
 Tests: `tests/unit/test_v9_dsp_pghi_psola_groove.py::TestPghiReconstructor::
 test_15_numba_heapq_bit_identical` (pinnt Kern/heapq-Drift dauerhaft in CI).
 
+**Supervised-Evidenz (Elke 225,3 s, 8 Chunks, Default-Chunking):**
+Ausgabe-WAV **BIT-IDENTISCH** zu r10 (md5 identisch). Gesamt-Laufzeit
+202,6 → 137,7 min (−32 %), Ø Chunk 22,7 → 12,9 min (−43 %),
+Denker-RT 54× → 32,0× bei unveränderter Ausgabe.
+
 ### §PERF-R16 (2026-09-20) — Chunk-Vergrößerung: AURIK_CHUNK_S-Override (Supervised-Evidenz-Enabler)
 
 Struktur-Prüfung P3-Rest: Die Chunk-Dauer-Heuristik (`_chunk_s = 60.0 if

@@ -22,8 +22,19 @@ Je Chunk-Boundary (Elke r10, Log-Zerlegung): ~78 s phase_28-Oszillation,
 | `optimize_for_excellence` (60 s) | 24,02 s | **20,86 s** (kalt) | Mikro-Benchmark |
 | Chunk-Größe | hardcodiert 30/60 s | `AURIK_CHUNK_S` [10–600 s], Default unverändert | 6 Tests |
 
-Evidenz-Lauf (Elke, Default-Chunking) läuft: Bit-Identität vs. r10-WAV +
-Neumessung der Boundary-Kosten nach den Fixes (Ergebnis folgt).
+Evidenz-Lauf (Elke, Default-Chunking, 2026-09-20 08:26–10:44):
+**BIT-IDENTISCH** vs. r10-WAV (md5 `75a54040…` identisch) — damit sind
+`f3e79dcf`+`65a9ecec` end-to-end supervised-validiert (R17 folgt aus den
+Unit-Tests, 12 Fälle bit-identisch).
+
+**Supervised-Gesamtmessung (Elke 225,3 s, 8 Chunks):**
+
+| Metrik | r10 | Evidenz | Delta |
+|---|---|---|---|
+| Gesamt-Laufzeit | 202,6 min | **137,7 min** | **−32 %** |
+| Ø Chunk-Dauer | 1362 s (22,7 min) | **775 s (12,9 min)** | **−43 %** |
+| Realtime-Faktor (Denker) | ~54× | **32,0×** | −41 % |
+| Qualität Q (Denker) | — | **0,778** (K=0,76) | keine Bit-Änderung |
 
 ## 3. Rest-Kosten im Optimize-Pass (60 s, nach R15+R17)
 
@@ -39,19 +50,24 @@ Neumessung der Boundary-Kosten nach den Fixes (Ergebnis folgt).
 ## 4. Offene Hebel — alle bedürfen der Design-Session (nicht bit-identisch
 oder Guard-Struktur betroffen)
 
-1. **m1b-Retry/FeedbackChain** (im Evidenz-Lauf sichtbar: `retries=1,
-   t=44.31s`): Die Retry-Schleife ist Guard-Struktur — ein Early-Out muss
-   hörordnungs-konform entscheiden (Konfliktregel: Metriken sind Zeugen,
-   Hör-Instanz entscheidet, nie gegen Ebene 1).
+1. **m1b-Retry/FeedbackChain** — Evidenz-Lauf: 8 Pässe, je `retries=1,
+   t=25–62 s` (Wert 4,3–4,7). Die Retry-Schleife ist Guard-Struktur — ein
+   Early-Out muss hörordnungs-konform entscheiden (Konfliktregel: Metriken
+   sind Zeugen, Hör-Instanz entscheidet, nie gegen Ebene 1). Zusätzlich:
+   af-Gate verwirft **jeden Chunk** 1× (`Final-Ausgabe af=0.000 verworfen
+   (false-positive gegen degraded)`, 12×) — Kandidat für Cache-/Early-Out-
+   Prüfung in der Design-Session.
 2. **Chunk-Vergrößerung 30→60/120 s**: Enabler liegt (`AURIK_CHUNK_S`).
    Struktur-Befund: per-Chunk-Fixkosten dominieren (LGE-Saliency ~212 s,
    carrier_chain ~48 s, FCPE-Reload ~38 s, Post-Chunk ~168 s).
    Erwartung: 120 s ⇒ 8→2 Chunks, weniger Crossfade-Seams = Qualitäts-Plus.
    ABER: Ausgabe ändert sich (neue Grenz-Positionen) ⇒ Supervised-Validierung
    Pflicht (Export-Quality-Gates + Hör-Check gegen Referenz).
-3. **measure_all 24× im End-Gate-Loop** (t7): 8-Einträge-Content-Hash-Cache
-   existiert bereits; die 24 Aufrufe messen verschiedene Varianten. Kopplung
-   an t6: welche Messungen entfallen dürfen, entscheidet die Hörordnung.
+3. **measure_all im End-Gate-Loop** (t7) — Evidenz-Lauf: **73 Aufrufe,
+   404 s gesamt, max 34 s**; im End-Gate-Loop ~11 s je Aufruf bei 34-s-
+   Kadenz. 8-Einträge-Content-Hash-Cache existiert bereits; die Aufrufe
+   messen verschiedene Varianten. Kopplung an t6: welche Messungen
+   entfallen dürfen, entscheidet die Hörordnung.
 4. **Core-Guard-Rollback-Verhalten** (beobachtet auf synthetischem Signal:
    `tonal_center 1.000→0.956, timbre_authentizitaet 0.896→0.859` → Rollback):
    korrektes Verhalten bei echten Regressionen, verhindert aber naive
