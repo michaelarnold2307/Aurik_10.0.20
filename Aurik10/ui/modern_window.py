@@ -2879,6 +2879,32 @@ class BatchProcessingThread(QThread):
                             except Exception:
                                 logger.debug("Stiller Ersatzpfad dokumentiert (Bug 9/V74)", exc_info=True)
                                 pass
+                        # §v10.802 GUI-Sync: Echte Instanzen-Subtraktion — die kumulierten
+                        # Behebungs-Zählungen des Backends ersetzen die proportionale
+                        # Severity-Schätzung im Echtzeit-Defektzähler (exakt, nie negativ).
+                        _def_prog = (metrics or {}).get("defect_progress") or {}
+                        _res_cnt_live = _def_prog.get("resolved_counts") if isinstance(_def_prog, dict) else None
+                        if _res_cnt_live:
+                            try:
+                                from Aurik10.ui.hearing_gates_summary import apply_resolved_event_counts as _arec
+
+                                _init_evt = getattr(self, "_defect_initial_event_counts", {}) or {}
+                                if _init_evt:
+                                    _rem_evt_exact = _arec(_init_evt, _res_cnt_live)
+                                    self._defect_remaining_event_counts = _rem_evt_exact
+                                    _rem_sum = int(sum(_rem_evt_exact.values()))
+                                    _tot_sum = int(sum(int(v) for v in _init_evt.values()))
+                                    _def_state = dict(getattr(self, "_defect_progress_state", {}) or {})
+                                    _def_state["total"] = _tot_sum
+                                    _def_state["remaining"] = _rem_sum
+                                    _def_state["resolved"] = max(0, _tot_sum - _rem_sum)
+                                    _def_state["resolved_pct"] = int(
+                                        round(100.0 * (_tot_sum - _rem_sum) / max(1, _tot_sum))
+                                    )
+                                    self._defect_progress_state = _def_state
+                            except Exception:
+                                logger.debug("Defekt-Zähl-Subtraktion fehlgeschlagen", exc_info=True)
+                                pass
                         # §GUI-T6: Live-15-Ziel-Radar während der Restaurierung
                         _live_goals = metrics.get("goals")
                         if _live_goals and hasattr(self, "_update_live_goal_radar"):

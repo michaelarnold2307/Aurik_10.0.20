@@ -1269,6 +1269,7 @@ class CrackleRemovalPhase(PhaseInterface):
                     np.clip(1.0 - min(len(crackle_regions) / max(audio.shape[-1] * 0.00005, 1), 0.99), 0.0, 0.3)
                 ),
             },
+            resolved_defect_counts={"CRACKLE": int(len(crackle_regions))},
         )
 
     def _detect_transients_multiscale(

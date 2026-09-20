@@ -8183,6 +8183,11 @@ class UnifiedRestorerV3:
                         "hpi": float(getattr(self, "_phase_deltas", {}).get(phase, {}).get("hpi_live", 0.0) or 0.0),
                         "vqi": float(getattr(self, "_panns_singing", 0.0) or 0.0),
                         "resolved": _res_new,
+                        # §v10.802 GUI-Sync: Echte Behebungs-Zählungen (DefectType → Instanzen)
+                        # für die Chip-Subtraktion in Echtzeit.
+                        "defect_progress": {
+                            "resolved_counts": dict(getattr(self, "_resolved_defect_counts_acc", {}) or {}),
+                        },
                         # §GUI-T6: Live-15-Ziel-Scores für das Radar (leer wenn noch nicht gemessen)
                         "goals": dict(getattr(self, "_live_goal_scores", {}) or {}),
                     }
@@ -36767,6 +36772,9 @@ class UnifiedRestorerV3:
         # §v10.18: resolved_defects accumulator — Phasen melden behobene Defekte
         # (z.B. Phase 07 meldet CLIPPING=0.0 → Phase 23 sieht reduzierte Severity)
         self._resolved_defects_accumulator: dict[str, float] = {}
+        # §v10.802 GUI-Sync: Echte Behebungs-Zählungen (DefectType → Instanzen)
+        # für den Echtzeit-Defektzähler der GUI.
+        self._resolved_defect_counts_acc: dict[str, int] = {}
         # §v10.707: DefectResult-Scores für defektgetriebenen Phase-Skip speichern
         self._defect_result_scores = getattr(defect_result, "scores", {}) or {}
         # §v10.709: Qualitäts-Degradationszähler zurücksetzen
@@ -37085,6 +37093,22 @@ class UnifiedRestorerV3:
             if _resolved:
                 acc = getattr(self, "_resolved_defects_accumulator", {})
                 acc.update(_resolved)
+            # §v10.802 GUI-Sync: Echte Behebungs-Zählungen akkumulieren (DefectType →
+            # Anzahl reparierter Instanzen) — Quelle für den Echtzeit-Defektzähler
+            # der GUI (Subtraktion von den Gesamtdefekten, nicht Severity-Ratio).
+            _res_cnt = getattr(_r, "resolved_defect_counts", None)
+            if _res_cnt:
+                _cnt_acc = getattr(self, "_resolved_defect_counts_acc", None)
+                if _cnt_acc is None:
+                    _cnt_acc = {}
+                    self._resolved_defect_counts_acc = _cnt_acc
+                for _rk, _rv in _res_cnt.items():
+                    try:
+                        _rv_i = int(_rv)
+                    except (TypeError, ValueError):
+                        _rv_i = 1 if _rv else 0
+                    if _rv_i > 0:
+                        _cnt_acc[str(_rk).upper()] = int(_cnt_acc.get(str(_rk).upper(), 0)) + _rv_i
             # §v10.94 Non-Plus-Ultra: Cross-Phase-Metadata-Extraktion.
             # Extrahiert hum_notch_freqs (P02→P37) und compression_per_band_gain
             # (P10→P26) aus PhaseResult.modifications und schreibt sie in

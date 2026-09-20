@@ -140,6 +140,11 @@ class PhaseResult:
     # §v10.18: Defekte, die diese Phase behoben hat (DefectType → neue Severity)
     # Wird vom UV3/Denker konsumiert, um den Defect-Context für Folgephasen zu aktualisieren
     resolved_defects: dict[str, float] = field(default_factory=dict)
+    # §v10.802 GUI-Sync: Echte Behebungs-ZÄHLUNGEN (DefectType → Anzahl reparierter
+    # Instanzen) für den Echtzeit-Defektzähler der GUI — getrennt von
+    # resolved_defects (Residual-Severity), damit die Chips echte Subtraktion
+    # anzeigen können (nicht nur Severity-Ratios).
+    resolved_defect_counts: dict[str, int] = field(default_factory=dict)
     # §0a Passthrough-Semantik: Zero-Strength-/Skip-Pfade dürfen das Signal bit-identisch
     # zurückgeben (kein §v10.62-Soft-Clip). Nur für echte Passthrough-Ergebnisse setzen.
     _skip_soft_clip: bool = field(default=False, repr=False)
@@ -202,6 +207,7 @@ def create_phase_result(
     phase_id: str = "",
     phase_name: str = "",
     resolved_defects: dict[str, float] | None = None,
+    resolved_defect_counts: dict[str, int] | None = None,
 ) -> PhaseResult:
     """Erzeugt ein NaN/Inf-bereinigtes PhaseResult mit Fazit-Log.
 
@@ -274,6 +280,7 @@ def create_phase_result(
         ml_used=ml_used,
         quality_estimate=float(np.clip(quality_estimate, 0.0, 1.0)),
         resolved_defects=resolved_defects or {},
+        resolved_defect_counts=resolved_defect_counts or {},
     )
 
 

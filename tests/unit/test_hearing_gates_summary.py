@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from Aurik10.ui.hearing_gates_summary import (
     apply_resolved_defects,
+    apply_resolved_event_counts,
     hearing_gate_status,
     hearing_gates_details,
     hearing_gates_line,
@@ -116,3 +117,35 @@ class TestApplyResolvedDefects:
         counts = {"hum": 3}
         apply_resolved_defects(counts, ["hum"])
         assert counts == {"hum": 3}
+
+
+class TestApplyResolvedEventCounts:
+    """§v10.802 GUI-Sync: Echte Instanzen-Subtraktion für den Defektzähler."""
+
+    def test_exact_subtraction(self) -> None:
+        init = {"CLICKS": 26, "CRACKLE": 287, "HUM": 4}
+        resolved = {"CLICKS": 10, "CRACKLE": 100}
+        rem = apply_resolved_event_counts(init, resolved)
+        assert rem == {"CLICKS": 16, "CRACKLE": 187, "HUM": 4}
+
+    def test_case_insensitive_keys(self) -> None:
+        init = {"clicks": 26}
+        rem = apply_resolved_event_counts(init, {"CLICKS": 26})
+        assert rem == {"clicks": 0}
+
+    def test_never_negative(self) -> None:
+        init = {"CLICKS": 5}
+        rem = apply_resolved_event_counts(init, {"CLICKS": 99})
+        assert rem == {"CLICKS": 0}
+
+    def test_empty_resolved_keeps_init(self) -> None:
+        init = {"CLICKS": 5}
+        rem = apply_resolved_event_counts(init, None)
+        assert rem == {"CLICKS": 5}
+        rem2 = apply_resolved_event_counts(init, {})
+        assert rem2 == {"CLICKS": 5}
+
+    def test_unknown_types_ignored(self) -> None:
+        init = {"CLICKS": 5}
+        rem = apply_resolved_event_counts(init, {"WOW": 3})
+        assert rem == {"CLICKS": 5}

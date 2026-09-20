@@ -121,3 +121,37 @@ def apply_resolved_defects(counts: dict[str, int], resolved: list[str] | None) -
         if out[key] == 0:
             done.append(key)
     return out, int(sum(out.values())), done
+
+
+def apply_resolved_event_counts(init_counts: dict[str, int], resolved_counts: dict[str, int] | None) -> dict[str, int]:
+    """§v10.802 GUI-Sync: Echte Instanzen-Subtraktion für den Echtzeit-Defektzähler.
+
+    Aus den initialen Event-Zählungen je Defekttyp und den kumulierten
+    Behebungs-Zählungen des Backends (live_metrics["defect_progress"]
+    ["resolved_counts"]) die verbleibenden Zählungen berechnen — exakt,
+    nie negativ, Schlüssel case-insensitiv normalisiert (UPPERCASE).
+
+    Args:
+        init_counts:      {DefectType: initiale Anzahl} aus dem Scan-Payload.
+        resolved_counts:  {DefectType: kumulierte Behebungen} aus dem Backend.
+
+    Returns:
+        {DefectType: verbleibende Anzahl} — fehlende Typen bleiben unverändert.
+    """
+    remaining = dict(init_counts or {})
+    resolved = resolved_counts or {}
+    if not resolved:
+        return remaining
+    for key, val in remaining.items():
+        k = str(key).upper()
+        done = 0
+        for rk, rv in resolved.items():
+            if str(rk).upper() == k:
+                try:
+                    done = int(rv)
+                except (TypeError, ValueError):
+                    done = 1 if rv else 0
+                break
+        if done > 0:
+            remaining[key] = max(0, int(val) - done)
+    return remaining

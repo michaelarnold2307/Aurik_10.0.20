@@ -634,6 +634,7 @@ class ClickRemovalPhase(PhaseInterface):
             resolved_defects={
                 "CLICKS": float(np.clip(1.0 - min(total_clicks / max(audio.shape[-1] * 0.001, 1), 1.0), 0.0, 0.3)),
             },
+            resolved_defect_counts={"CLICKS": int(total_clicks)},
         )
 
     def _build_click_repair_plan(
