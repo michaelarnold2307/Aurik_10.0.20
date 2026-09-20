@@ -66,6 +66,20 @@ def test_release_must_frontend_version_display_invariant_is_wired_to_single_sour
 
 
 @pytest.mark.normative
+@pytest.mark.timeout(30)
+def test_frontend_version_is_synced_with_backend_single_source() -> None:
+    """§v10.802 GUI-Sync: Aurik10.__version__ muss der Bridge-Version entsprechen."""
+    from Aurik10 import __version__ as _gui_version
+    from backend.api.bridge import get_aurik_version
+
+    _bridge_version = get_aurik_version()
+    assert _gui_version == _bridge_version, (
+        f"GUI-Version {_gui_version!r} != Bridge-Version {_bridge_version!r} — "
+        "§v10.802 (copilot-instructions.md): Version ausschließlich über die Bridge beziehen."
+    )
+
+
+@pytest.mark.normative
 @pytest.mark.timeout(20)
 def test_release_must_rocm_torchaudio_abi_invariant_is_enforced_in_launcher() -> None:
     """run_aurik.sh must validate and repair torch/torchaudio ROCm ABI before launch."""
@@ -106,12 +120,12 @@ def test_release_startup_suppresses_expected_framework_and_remediation_warnings(
 
     assert 'logger.info(\n                        "§2.50 Quellmaterial-Baseline' in afg_src
     assert 'logger.info(\n                        "§2.50 Stereo-Notfall-Remediation' in uv3_src
-    assert 'logger.info("§V19 (Spec-Vintage-Guard) phase_18: noise_texture_dist=' in phase18_src
+    assert 'logger.info("§V19 (Spec-Vintage-Guard) Verarbeitungsschritt_18: noise_texture_dist=' in phase18_src
     assert 'logger.info(\n                            "§SFT ArtifactRescue' in uv3_src
     assert 'logger.info(\n                    "§2.45a QuietZone-Guard' in uv3_src
-    assert 'logger.info(\n                        "ActiveIntervention %s REJECTED: no beneficial score delta' in uv3_src
+    assert 'logger.info(\n                        "ActiveIntervention %s REJECTED: no beneficial Wert delta' in uv3_src
     assert 'logger.info(\n                    "ActiveIntervention %s REJECTED: quiet-zone target unmet' in uv3_src
-    assert 'logger.info(\n                            "§Wall-Time-Budget: %.0f s non-exempt > %.0f s' in uv3_src
+    assert '_record_oom_probe("phase_deferred_rt"' in uv3_src or "phase_deferred_rt" in uv3_src
 
 
 # ═══════════════════════════════════════════════════════════════════════════

@@ -3467,3 +3467,15 @@ def evaluate_export_gate(result: Any, audio: Any = None) -> Any:
     from backend.core.go_nogo_export_gate import evaluate
 
     return evaluate(result, audio=audio)
+
+
+def get_aurik_version() -> str:
+    """§V4-Bridge: Single Source of Truth der Produktversion (backend/core/version).
+
+    UI/CLI dürfen backend/core nie direkt importieren (§V4 (copilot-instructions.md)) —
+    dieser Wrapper ist der einzige erlaubte Pfad für die Versionsanzeige
+    (§v10.802 GUI-Sync-Pflicht).
+    """
+    from backend.core.version import __version__
+
+    return __version__

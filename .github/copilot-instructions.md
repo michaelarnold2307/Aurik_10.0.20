@@ -313,6 +313,11 @@ paritätsbewiesene Default.
   nur mit Maintainer-Sign-off (PR-Vertrag §4).
 - **Changelog-Pflicht:** Pro Bump ein `## x.y.z (Datum)`-Block in CHANGELOG.md;
   der „Unreleased“-Block darf höchstens einen Entwicklungszyklus überdauern.
+- **GUI-Sync-Pflicht:** Die GUI-Versionsanzeige (`Aurik10/__init__.py`, Titel,
+  `version_checker`) bezieht die Version ausschließlich über die Bridge
+  (`backend.api.bridge.get_aurik_version`, §V4 (copilot-instructions.md)) —
+  keine zweite hartkodierte Nummer im Frontend. Bei jedem Bump werden GUI-,
+  CLI- und Doku-Referenzen im selben Merge synchronisiert.
 - **Version-Sync-Sweep:** Vor jedem Release einmalig alle Dokument-Referenzen
   (`docs/`, `.github/`) auf die neue Version ziehen (Muster: v10.0.20-Sweep).
 - **Determinismus-Kopplung:** §G5 (copilot-instructions.md) verlangt

@@ -1,18 +1,16 @@
 # TASK_CHANGES — Live-Ledger der aktuellen Aufgabe
 
-> Generiert von `scripts/change_ledger.py snapshot` (Base: `HEAD`, Stand: 2026-09-20 05:54 CEST).
+> Generiert von `scripts/change_ledger.py snapshot` (Base: `HEAD`, Stand: 2026-09-20 06:14 CEST).
 > CI (`ci-lite.yml` pr-evidence-gate) erzwingt Abdeckung: jede geänderte Code-Datei muss hier stehen.
 
 ## Geänderte Dateien
 
 | Status | Pfad | Art |
 |---|---|---|
-| M | .github/FILE_REGISTRY.md | modifiziert |
 | M | .github/copilot-instructions.md | modifiziert |
-| M | .pre-commit-config.yaml | modifiziert |
-| M | CHANGELOG.md | modifiziert |
-| M | backend/core/version.py | modifiziert |
-| ?? | scripts/version_guard.py | ungetrackt |
+| M | Aurik10/**init**.py | modifiziert |
+| M | backend/api/bridge.py | modifiziert |
+| M | tests/normative/test_release_must_new_invariants.py | modifiziert |
 
 ## Entscheidungen
 
