@@ -36,6 +36,39 @@ DEFAULT_CHUNK_DURATION_S: float = 30.0
 DEFAULT_OVERLAP_S: float = 2.0
 DEFAULT_CROSSFADE_S: float = 0.05  # 50ms Crossfade
 
+# §PERF-R16: Grenzen für den AURIK_CHUNK_S-Override (Supervised-Evidenz).
+CHUNK_OVERRIDE_MIN_S: float = 10.0
+CHUNK_OVERRIDE_MAX_S: float = 600.0
+
+
+def select_chunk_duration_s(total_s: float, env_override: str = "") -> tuple[float, bool]:
+    """Chunk-Dauer aus Heuristik + AURIK_CHUNK_S-Override (§PERF-R16).
+
+    Deterministisch (§G5 (GEBOTE.md)): gleiche Eingaben => gleiche Ausgabe.
+    Default unverändert (30s <= 300s Songs, sonst 60s) => bestehende Läufe
+    bleiben bit-identisch. Der Override (10..600s) dient Supervised-Evidenz-
+    läufen für die Chunk-Vergrößerung; ungültige Werte fallen auf die
+    Heuristik zurück und melden applied=False.
+
+    Args:
+        total_s:     Song-Länge in Sekunden.
+        env_override: Wert von AURIK_CHUNK_S (roh, ggf. leer).
+
+    Returns:
+        (chunk_duration_s, applied) — applied=True wenn der Override griff.
+    """
+    base = 60.0 if total_s > 300.0 else 30.0
+    override = env_override.strip()
+    if not override:
+        return base, False
+    try:
+        override_f = float(override)
+    except ValueError:
+        return base, False
+    if CHUNK_OVERRIDE_MIN_S <= override_f <= CHUNK_OVERRIDE_MAX_S:
+        return override_f, True
+    return base, False
+
 
 @dataclass
 class ChunkConfig:

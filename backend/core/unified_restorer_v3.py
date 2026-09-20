@@ -45741,7 +45741,7 @@ class UnifiedRestorerV3:
         RAM O(1) statt O(duration). Alle ML-Modelle bleiben GELADEN.
         """
         try:
-            from backend.core.chunked_streaming import ChunkedPipeline
+            from backend.core.chunked_streaming import ChunkedPipeline, select_chunk_duration_s
 
             self._in_chunked = True
 
@@ -45816,7 +45816,14 @@ class UnifiedRestorerV3:
             # §v10.451: audio.shape[0] für Sample-Zahl
             _n_total = audio.shape[0]
             _total_s = _n_total / sample_rate
-            _chunk_s = 60.0 if _total_s > 300.0 else 30.0
+            # §PERF-R16: Heuristik + AURIK_CHUNK_S-Override (bit-identischer Default).
+            _chunk_s, _chunk_override_applied = select_chunk_duration_s(_total_s, os.environ.get("AURIK_CHUNK_S", ""))
+            if _chunk_override_applied:
+                logger.info(
+                    "§PERF-R16 AURIK_CHUNK_S: Chunk-Größe %.1fs (Heuristik wäre %.1fs)",
+                    _chunk_s,
+                    60.0 if _total_s > 300.0 else 30.0,
+                )
             cp = ChunkedPipeline(chunk_duration_s=_chunk_s)
             chunks = cp.compute_chunks(audio, sample_rate)
             # §P0-1 Safety: einziger Chunk = letzter Chunk (Kaskade nicht verlieren)

@@ -1706,6 +1706,34 @@ laden aus `__pycache__`). Bit-Identität: 6 Größen (64×64 … 2049×60)
 Tests: `tests/unit/test_v9_dsp_pghi_psola_groove.py::TestPghiReconstructor::
 test_15_numba_heapq_bit_identical` (pinnt Kern/heapq-Drift dauerhaft in CI).
 
+### §PERF-R16 (2026-09-20) — Chunk-Vergrößerung: AURIK_CHUNK_S-Override (Supervised-Evidenz-Enabler)
+
+Struktur-Prüfung P3-Rest: Die Chunk-Dauer-Heuristik (`_chunk_s = 60.0 if
+_total_s > 300.0 else 30.0`, seit eb93f7fb ohne dokumentierte Begründung)
+bedingt die Anzahl der Pipeline-Durchläufe je Song. Messung aus
+`output/supervised_run/elke_225s_perfr_r10.log` (225,3 s, 8×30-s-Chunks):
+je Folge-Chunk ~2 min Pre-Analyse-Bypass + ~17-20 min Restore (36-43 Phasen);
+per-Chunk-fixe Schwergewichte: LGE-Saliency ~212 s, carrier_chain ~48 s,
+FCPE-Reload ~38 s, ExcellenceOptimizer ~90-106 s, Post-Chunk-Qualität ~168 s,
+Modell-Reloads ~25 s. => Chunk-Anzahl ist der dominante Kostenmultiplikator;
+30→60 s halbiert die per-Chunk-Fixkosten, 30→120 s viertelt sie (Elke:
+8→4→2 Chunks; 2-s-Overlap/50-ms-Crossfade bleiben, letzter Chunk ≥10 s).
+
+UMGESETZT (bit-identischer Default, §G5 (GEBOTE.md)):
+(a) `select_chunk_duration_s(total_s, env_override)` in
+`backend/core/chunked_streaming.py` — pure Funktion, Override-Grenzen
+[10, 600] s; (b) `_restore_chunked` nutzt sie mit `AURIK_CHUNK_S`
+(gleiches Muster wie AURIK_MASTER_SEED/AURIK_WHOLE_SONG). Ohne Env-Wert
+ändert sich nichts => bestehende Läufe bleiben bit-identisch.
+
+OFFEN (Qualitäts-Entscheid, Design-Session): Die Vergrößerung ändert die
+Chunk-Grenzen => Ausgabe NICHT bit-identisch (neue Crossfade-Positionen,
+längere per-Chunk-Phasenkohärenz — erwartet: weniger Nähte = weniger
+Artefakte, aber Supervised-Validierung Pflicht). Evidenz-Lauf:
+`AURIK_CHUNK_S=120` auf Elke; Gate: Export-Quality-Metriken ≥ Referenz +
+Hör-Check. Tests: `tests/unit/test_chunked_streaming_layouts.py`
+(test_r16_select_*, 6 grün).
+
 ## SOTA-RESTHEBEL-MATRIX 2026-09-19 — schöpfen die DSP/ML-Hybride 100 % aus?
 
 **Antwort: NEIN — weder Performance noch Wohlklang sind ausgeschöpft**

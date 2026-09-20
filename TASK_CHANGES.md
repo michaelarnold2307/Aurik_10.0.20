@@ -1,6 +1,6 @@
 # TASK_CHANGES — Live-Ledger der aktuellen Aufgabe
 
-> Generiert von `scripts/change_ledger.py snapshot` (Base: `HEAD`, Stand: 2026-09-20 07:42 CEST).
+> Generiert von `scripts/change_ledger.py snapshot` (Base: `HEAD`, Stand: 2026-09-20 08:14 CEST).
 > CI (`ci-lite.yml` pr-evidence-gate) erzwingt Abdeckung: jede geänderte Code-Datei muss hier stehen.
 
 ## Geänderte Dateien
@@ -8,9 +8,10 @@
 | Status | Pfad | Art |
 |---|---|---|
 | M | TASK_CHANGES.md | modifiziert |
+| M | backend/core/chunked_streaming.py | modifiziert |
+| M | backend/core/unified_restorer_v3.py | modifiziert |
 | M | docs/TODOS_SOTA_ROADMAP.md | modifiziert |
-| M | dsp/pghi.py | modifiziert |
-| M | tests/unit/test_v9_dsp_pghi_psola_groove.py | modifiziert |
+| M | tests/unit/test_chunked_streaming_layouts.py | modifiziert |
 
 ## Entscheidungen
 
