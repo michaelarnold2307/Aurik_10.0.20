@@ -1,6 +1,6 @@
 # TASK_CHANGES — Live-Ledger der aktuellen Aufgabe
 
-> Generiert von `scripts/change_ledger.py snapshot` (Base: `HEAD`, Stand: 2026-09-20 10:47 CEST).
+> Generiert von `scripts/change_ledger.py snapshot` (Base: `HEAD`, Stand: 2026-09-20 11:12 CEST).
 > CI (`ci-lite.yml` pr-evidence-gate) erzwingt Abdeckung: jede geänderte Code-Datei muss hier stehen.
 
 ## Geänderte Dateien
@@ -8,8 +8,10 @@
 | Status | Pfad | Art |
 |---|---|---|
 | M | TASK_CHANGES.md | modifiziert |
-| M | docs/TODOS_SOTA_ROADMAP.md | modifiziert |
-| M | docs/reports/current/2026-09-20_boundary_machinery_design_session.md | modifiziert |
+| M | plugins/beats_plugin.py | modifiziert |
+| M | plugins/deepfilternet_v3_ii_plugin.py | modifiziert |
+| M | plugins/fcpe_plugin.py | modifiziert |
+| M | plugins/panns_plugin.py | modifiziert |
 
 ## Entscheidungen
 

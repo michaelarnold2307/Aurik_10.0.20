@@ -241,14 +241,18 @@ class DeepFilterNetV3Plugin:
                 self._enc_time_frames = None
             logger.info("deepfilternet_v3_ii_plugin: ONNX models geladen from: %s", d)
             try:
+                from backend.core.ml.residency_policy import should_keep_warm as _should_keep_warm
                 from backend.core.plugin_lifecycle_manager import register_plugin as _reg_plm
 
+                # §SOTA-P1-1: Policy sagt ALWAYS für "deepfilternet" — keep_warm
+                # verhindert die Phasen-Fenster-Eviction (3 Load/Zyklus je Song).
                 _reg_plm(
                     "DeepFilterNetV3",
                     size_gb=0.15,
                     unload_fn=lambda s=self: (  # type: ignore[misc]
                         setattr(s, "_enc", None) or setattr(s, "_dec", None) or setattr(s, "_erb_dec", None)  # type: ignore[func-returns-value]
                     ),
+                    keep_warm=_should_keep_warm("deepfilternet"),
                 )
             except Exception as _exc:
                 logger.debug("Operation fehlgeschlagen (unkritisch): %s", _exc)

@@ -263,12 +263,22 @@ class FcpePlugin:
                 )
                 logger.info("fcpe_plugin: ONNX model geladen: %s (provider=%s)", _FCPE_ONNX_PATH.name, providers[0])
                 try:
+                    from backend.core.ml.residency_policy import should_keep_warm as _should_keep_warm
                     from backend.core.plugin_lifecycle_manager import register_plugin as _reg_plm
 
                     def _unload_fcpe() -> None:
                         self._session = None
 
-                    _reg_plm("FCPE", size_gb=0.07, unload_fn=_unload_fcpe)
+                    # §SOTA-P1-1: Policy sagt ALWAYS für "fcpe" — keep_warm hält die
+                    # ONNX-Session über Phasen-Fenster-Evictions warm (17 Load/Zyklus
+                    # je Song im Supervised-Lauf; die druckgetriebene Eviction bleibt
+                    # als RAM-Hygiene aktiv).
+                    _reg_plm(
+                        "FCPE",
+                        size_gb=0.07,
+                        unload_fn=_unload_fcpe,
+                        keep_warm=_should_keep_warm("fcpe"),
+                    )
                 except Exception as _exc:
                     logger.debug("Operation fehlgeschlagen (unkritisch): %s", _exc)
                 return

@@ -173,12 +173,16 @@ class BeatsPlugin:
             self._model_loaded = True
             logger.info("beats_plugin: ONNX model geladen (%s, §4.4 primary audio tagger)", self._ONNX_PATH.name)
             try:
+                from backend.core.ml.residency_policy import should_keep_warm as _should_keep_warm
                 from backend.core.plugin_lifecycle_manager import register_plugin as _reg_plm
 
+                # §SOTA-P1-1: Policy sagt ALWAYS für "beats" — keep_warm verhindert
+                # die Phasen-Fenster-Eviction (8 Load/Zyklus je Song, Supervised-Befund).
                 _reg_plm(
                     "BEATs",
                     size_gb=0.09,
                     unload_fn=lambda s=self: setattr(s, "_session", None) or setattr(s, "_model_loaded", False),  # type: ignore[func-returns-value,misc]
+                    keep_warm=_should_keep_warm("beats"),
                 )
             except Exception as _exc:
                 logger.debug("Operation fehlgeschlagen (unkritisch): %s", _exc)

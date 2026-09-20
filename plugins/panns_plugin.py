@@ -314,9 +314,17 @@ class PANNsPlugin(MLPluginBase):  # §A2
                 self._use_fp16,
             )
             try:
+                from backend.core.ml.residency_policy import should_keep_warm as _should_keep_warm
                 from backend.core.plugin_lifecycle_manager import register_plugin as _reg_plm
 
-                _reg_plm("PANNs", size_gb=0.66, unload_fn=lambda s=self: setattr(s, "_session", None))  # type: ignore[misc]
+                # §SOTA-P1-1: Policy sagt ALWAYS für "panns" — keep_warm verhindert
+                # die Phasen-Fenster-Eviction (Policy-Konsistenz zu fcpe/beats/...).
+                _reg_plm(
+                    "PANNs",
+                    size_gb=0.66,
+                    unload_fn=lambda s=self: setattr(s, "_session", None),  # type: ignore[misc]
+                    keep_warm=_should_keep_warm("panns"),
+                )
             except Exception as _exc:
                 logger.debug("Operation fehlgeschlagen (unkritisch): %s", _exc)
         except Exception as exc:
