@@ -227,7 +227,14 @@ class TestPghiReconstructor:
             rec._pghi_heapq(mag_f64, phase, visited, dt, do, max_frame, max_bin)
             return np.angle(np.exp(1j * phase)).astype(np.float64)
 
-        for bins, frames, seed in [(64, 64, 1), (512, 256, 3), (1025, 120, 5)]:
+        for bins, frames, seed in [
+            (64, 64, 1),
+            (512, 256, 3),
+            (1025, 120, 5),
+            (2, 50, 6),  # 2 Bins (Minimum für Zentraldifferenz in _pghi)
+            (50, 1, 7),  # 1 Frame
+            (8, 8, 8),  # kleine Matrix
+        ]:
             mag = np.abs(np.random.default_rng(seed).standard_normal((bins, frames)) * 0.3).astype(np.float32)
             out_kernel = rec._pghi(mag.astype(np.float64), rec.win_size, rec.hop, None)
             out_heapq = _ref_heapq(mag.astype(np.float64))
@@ -236,6 +243,25 @@ class TestPghiReconstructor:
                 out_heapq,
                 err_msg=f"Kern/heapq-Drift bei bins={bins} frames={frames}",
             )
+
+        # §PERF-R17: Tie-lastige und konstante Magnituden (Push-Dedup-Pfad)
+        for bins, frames, seed in [(100, 100, 9), (100, 100, 10), (50, 300, 11), (30, 500, 12)]:
+            mag = np.round(np.abs(np.random.default_rng(seed).standard_normal((bins, frames)) * 0.3), 2).astype(
+                np.float32
+            )
+            out_kernel = rec._pghi(mag.astype(np.float64), rec.win_size, rec.hop, None)
+            out_heapq = _ref_heapq(mag.astype(np.float64))
+            np.testing.assert_array_equal(
+                out_kernel,
+                out_heapq,
+                err_msg=f"Kern/heapq-Drift (tie) bei bins={bins} frames={frames}",
+            )
+
+        # Konstante Magnituden (alle Energien gleich => maximale Tie-Situation)
+        mag = np.full((40, 40), 0.5, dtype=np.float32)
+        out_kernel = rec._pghi(mag.astype(np.float64), rec.win_size, rec.hop, None)
+        out_heapq = _ref_heapq(mag.astype(np.float64))
+        np.testing.assert_array_equal(out_kernel, out_heapq, err_msg="Kern/heapq-Drift bei konstantem mag")
 
 
 # ---------------------------------------------------------------------------

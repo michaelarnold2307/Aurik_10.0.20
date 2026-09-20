@@ -1734,6 +1734,22 @@ Artefakte, aber Supervised-Validierung Pflicht). Evidenz-Lauf:
 Hör-Check. Tests: `tests/unit/test_chunked_streaming_layouts.py`
 (test_r16_select_*, 6 grün).
 
+### §PERF-R17 (2026-09-20) — PGHI-Heap Push-Dedup (bit-identisch, ~1,75× auf Produktionsgröße)
+
+cProfile des ExcellenceOptimizer (60-s-Audio) nach §PERF-R15: `_pghi` lief
+2× je Optimize-Pass (Continuity + Harmonic-Boost) auf 1025×5626 Zellen und
+kostete ~6,9 s je Aufruf — der Heap hielt jede Zelle bis zu 4× (Duplikat-
+Pushes von jedem Nachbarn). UMGESETZT: `in_heap`-Flag im Numba-Kern —
+Push nur beim ersten Nachbar-Pop; Phasen-Updates bleiben bei JEDEM
+Nachbar-Pop unverändert (Phase wird erst beim Pop gelesen) ⇒ die Folge der
+distincten Pops und alle Updates sind identisch, nur die Heap-Größe sinkt.
+
+Verifikation: 12 Fälle (64×64 … 2049×60, tie-lastig gerundete + konstante
+Magnituden) `np.array_equal` gegen den heapq-Referenzpfad — ALLE
+BIT-IDENTISCH. Messung 1025×5626: ~6,9 s → ~2,6 s Kern (integriert ~3,9 s
+inkl. Python-Overhead). Tests erweitert: `test_15_numba_heapq_bit_identical`
+(+2-Bin/1-Frame/Tie/konstant-Fälle, 58 grün).
+
 ## SOTA-RESTHEBEL-MATRIX 2026-09-19 — schöpfen die DSP/ML-Hybride 100 % aus?
 
 **Antwort: NEIN — weder Performance noch Wohlklang sind ausgeschöpft**
