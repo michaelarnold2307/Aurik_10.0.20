@@ -1687,6 +1687,25 @@ bit-identisch verifiziert. ⇒ phase_31 ~33-44 s → ~2-3 s je Chunk
 (FCPE-Nutzung). Tests: `test_crepe_plugin.py` (Selbstheilungs-Test,
 Fallback-Tests an pyin_compat adaptiert; 10 grün).
 
+### §PERF-R15 (2026-09-20) — Numba-Heap-Kern für dsp/pghi.py (bit-identisch)
+
+Produktionsbefund aus der Boundary-Maschinerie-Analyse (Chunk-Grenze):
+PGHI kostete 121,6 s je Pass (ExcellenceOptimizer + Post-Chunk-Qualitätsblock
+rufen `pghi_reconstruct_from_stft` aus `dsp/pghi.py`); der Python-heapq-Kern
+in `PghiReconstructor._pghi` ist die einzige Ursache (per-Zelle-heapq-Operationen
+in reinem Python, O(N·F) Zellen je Aufruf). UMGESETZT: Numba-Kern
+(`_pghi_heap_kernel_nb` + `_h_siftdown/_h_siftup/_h_push/_h_pop`) in
+dsp/pghi.py, der die CPython-heapq-Semantik (Tupel-Ordnung -energy,k,m)
+bit-identisch reproduziert (fastmath=False); Heap wächst dynamisch, kein
+Kapazitäts-Limit. Fallback: bei ImportError oder Laufzeitfehler greift
+unverändert der heapq-Pfad mit `logger.warning` (§V6 (copilot-instructions.md)).
+Messung (Einzel-Aufruf, float64): 512×256 Bins 855→77 ms (~11×), 2049×60
+822→64 ms (~13×); JIT einmalig ~3,4 s je Prozess (cache=True, Folgeläufe
+laden aus `__pycache__`). Bit-Identität: 6 Größen (64×64 … 2049×60)
+`np.array_equal` gegen den heapq-Referenzpfad — ALLE BIT-IDENTISCH.
+Tests: `tests/unit/test_v9_dsp_pghi_psola_groove.py::TestPghiReconstructor::
+test_15_numba_heapq_bit_identical` (pinnt Kern/heapq-Drift dauerhaft in CI).
+
 ## SOTA-RESTHEBEL-MATRIX 2026-09-19 — schöpfen die DSP/ML-Hybride 100 % aus?
 
 **Antwort: NEIN — weder Performance noch Wohlklang sind ausgeschöpft**

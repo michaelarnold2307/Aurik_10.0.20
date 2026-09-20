@@ -19,7 +19,8 @@ Warum PGHI?
     schneller als Griffin-Lim (≥ 32 Iterationen) bei vergleichbarer Qualität.
 
 Invarianten:
-    - Keine ML-Abhängigkeit: reine NumPy-Implementierung
+    - Keine ML-Abhängigkeit: reine NumPy-Implementierung;
+      optionaler Numba-Heap-Kern (bit-identisch, heapq-Fallback §V6 (copilot-instructions.md))
     - NaN/Inf-sicher: alle Ausgaben durch nan_to_num + clip
     - Thread-sicher: Singleton mit Double-Checked Locking (§3.2)
     - Fallback: Griffin-Lim+ (32 Iterationen) wenn PGHI numerisch instabil
@@ -39,6 +40,199 @@ from scipy.signal import istft as _scipy_istft
 from scipy.signal import stft as _scipy_stft
 
 logger = logging.getLogger(__name__)
+
+
+# ---------------------------------------------------------------------------
+# Numba-Beschleunigung des PGHI-Heap-Kerns (§PERF-R15)
+# ---------------------------------------------------------------------------
+# Der Python-heapq-Pfad in PghiReconstructor._pghi dominiert die Laufzeit
+# grosser Spektrogramme (bis >100 s/Pass bei 2049 Bins). Der Numba-Kern
+# reproduziert die CPython-heapq-Semantik (siftdown/siftup mit identischer
+# Tupel-Ordnung (-energy, k, m)) bit-identisch; verifiziert gegen den
+# heapq-Pfad auf synthetischen und realen Magnituden. Bei ImportError oder
+# Laufzeitfehler (z.B. ROCm-Venv-numba-Defekt) greift unveraendert der
+# heapq-Pfad (§V6 (copilot-instructions.md)).
+# ---------------------------------------------------------------------------
+try:
+    import numba as _numba  # type: ignore[import-untyped]
+
+    @_numba.njit(cache=True, fastmath=False)
+    def _h_siftdown(h_key, h_k, h_m, h_len, startpos, pos):
+        newk = h_key[pos]
+        newi = h_k[pos]
+        newj = h_m[pos]
+        while pos > startpos:
+            parentpos = (pos - 1) >> 1
+            pk = h_key[parentpos]
+            lt = False
+            if newk < pk:
+                lt = True
+            elif newk == pk:
+                pi = h_k[parentpos]
+                if newi < pi:
+                    lt = True
+                elif newi == pi:
+                    if newj < h_m[parentpos]:
+                        lt = True
+            if lt:
+                h_key[pos] = pk
+                h_k[pos] = h_k[parentpos]
+                h_m[pos] = h_m[parentpos]
+                pos = parentpos
+            else:
+                break
+        h_key[pos] = newk
+        h_k[pos] = newi
+        h_m[pos] = newj
+
+    @_numba.njit(cache=True, fastmath=False)
+    def _h_siftup(h_key, h_k, h_m, h_len, pos):
+        endpos = h_len[0]
+        startpos = pos
+        newk = h_key[pos]
+        newi = h_k[pos]
+        newj = h_m[pos]
+        childpos = 2 * pos + 1
+        while childpos < endpos:
+            rightpos = childpos + 1
+            if rightpos < endpos:
+                ck = h_key[childpos]
+                rk = h_key[rightpos]
+                lt = False
+                if ck < rk:
+                    lt = True
+                elif ck == rk:
+                    ci = h_k[childpos]
+                    ri = h_k[rightpos]
+                    if ci < ri:
+                        lt = True
+                    elif ci == ri:
+                        if h_m[childpos] < h_m[rightpos]:
+                            lt = True
+                if not lt:
+                    childpos = rightpos
+            h_key[pos] = h_key[childpos]
+            h_k[pos] = h_k[childpos]
+            h_m[pos] = h_m[childpos]
+            pos = childpos
+            childpos = 2 * pos + 1
+        h_key[pos] = newk
+        h_k[pos] = newi
+        h_m[pos] = newj
+        _h_siftdown(h_key, h_k, h_m, h_len, startpos, pos)
+
+    @_numba.njit(cache=True, fastmath=False)
+    def _h_push(h_key, h_k, h_m, h_len, key, k, m):
+        idx = h_len[0]
+        h_key[idx] = key
+        h_k[idx] = k
+        h_m[idx] = m
+        h_len[0] = idx + 1
+        _h_siftdown(h_key, h_k, h_m, h_len, 0, idx)
+
+    @_numba.njit(cache=True, fastmath=False)
+    def _h_pop(h_key, h_k, h_m, h_len):
+        idx = h_len[0] - 1
+        last_key = h_key[idx]
+        last_k = h_k[idx]
+        last_m = h_m[idx]
+        h_len[0] = idx
+        if idx > 0:
+            ret_key = h_key[0]
+            ret_k = h_k[0]
+            ret_m = h_m[0]
+            h_key[0] = last_key
+            h_k[0] = last_k
+            h_m[0] = last_m
+            _h_siftup(h_key, h_k, h_m, h_len, 0)
+            return ret_key, ret_k, ret_m
+        return last_key, last_k, last_m
+
+    @_numba.njit(cache=True, fastmath=False)
+    def _pghi_heap_kernel_nb(
+        mag,
+        phase,
+        visited,
+        delta_phi_t,
+        delta_phi_omega,
+        max_frame,
+        max_bin,
+    ):
+        """Heap-gefuehrte Phasenintegration, bit-identisch zum heapq-Pfad."""
+        n_bins = mag.shape[0]
+        n_frames = mag.shape[1]
+        cap = max(n_bins * 2 + 16, 4096)
+        h_key = np.empty(cap, dtype=np.float64)
+        h_k = np.empty(cap, dtype=np.int64)
+        h_m = np.empty(cap, dtype=np.int64)
+        h_len = np.zeros(1, dtype=np.int64)
+
+        for k in range(n_bins):
+            _h_push(h_key, h_k, h_m, h_len, -mag[k, 0], k, 0)
+        if not (max_bin == 0 and max_frame == 0):
+            _h_push(h_key, h_k, h_m, h_len, -mag[max_bin, max_frame], max_bin, max_frame)
+
+        propagated = 0
+        limit = n_bins * n_frames * 2
+        while h_len[0] > 0 and propagated < limit:
+            # Heap dynamisch wachsen lassen (max. 4 Pushes pro Pop).
+            if h_len[0] + 5 >= cap:
+                new_cap = cap * 2
+                nk = np.empty(new_cap, dtype=np.float64)
+                nk[:cap] = h_key
+                nkk = np.empty(new_cap, dtype=np.int64)
+                nkk[:cap] = h_k
+                nm = np.empty(new_cap, dtype=np.int64)
+                nm[:cap] = h_m
+                h_key = nk
+                h_k = nkk
+                h_m = nm
+                cap = new_cap
+
+            neg_energy, k, m = _h_pop(h_key, h_k, h_m, h_len)
+            if visited[k, m]:
+                continue
+            visited[k, m] = True
+            propagated += 1
+
+            current_phase = phase[k, m]
+
+            # Propagation zu Zeitnachbar (m+1)
+            if m + 1 < n_frames and not visited[k, m + 1]:
+                phi_t = current_phase + delta_phi_t[k, m]
+                if phase[k, m + 1] == 0.0:
+                    phase[k, m + 1] = phi_t
+                else:
+                    w = mag[k, m] / (mag[k, m] + mag[k, m + 1] + 1e-10)
+                    phase[k, m + 1] = w * phi_t + (1.0 - w) * phase[k, m + 1]
+                _h_push(h_key, h_k, h_m, h_len, -mag[k, m + 1], k, m + 1)
+
+            # Propagation zu Frequenznachbar (k+1)
+            if k + 1 < n_bins and not visited[k + 1, m]:
+                phi_k = current_phase + delta_phi_omega[k, m]
+                if phase[k + 1, m] == 0.0:
+                    phase[k + 1, m] = phi_k
+                else:
+                    w = mag[k, m] / (mag[k, m] + mag[k + 1, m] + 1e-10)
+                    phase[k + 1, m] = w * phi_k + (1.0 - w) * phase[k + 1, m]
+                _h_push(h_key, h_k, h_m, h_len, -mag[k + 1, m], k + 1, m)
+
+            # Rueckwaerts-Propagation (m-1)
+            if m - 1 >= 0 and not visited[k, m - 1]:
+                phi_t_back = current_phase - delta_phi_t[k, m]
+                if phase[k, m - 1] == 0.0:
+                    phase[k, m - 1] = phi_t_back
+                _h_push(h_key, h_k, h_m, h_len, -mag[k, m - 1], k, m - 1)
+
+            # Rueckwaerts (k-1)
+            if k - 1 >= 0 and not visited[k - 1, m]:
+                phi_k_back = current_phase - delta_phi_omega[k, m]
+                if phase[k - 1, m] == 0.0:
+                    phase[k - 1, m] = phi_k_back
+                _h_push(h_key, h_k, h_m, h_len, -mag[k - 1, m], k - 1, m)
+
+except ImportError:  # pragma: no cover - optionale Abhaengigkeit
+    _numba = None  # type: ignore[assignment]
 
 
 # ---------------------------------------------------------------------------
@@ -294,18 +488,68 @@ class PghiReconstructor:
             rng = np.random.default_rng(seed=42)
             phase[:, 0] = rng.uniform(-math.pi, math.pi, n_bins)
 
-        # Heap-geführte Integration
-        # Priorität: höhere Energie zuerst (min-Heap mit negativer Energie)
-        heap: list[tuple[float, int, int]] = []  # (-energy, bin, frame)
+        # Heap-gefuehrte Integration
+        # Prioritaet: hoehere Energie zuerst (min-Heap mit negativer Energie)
         visited = np.zeros((n_bins, n_frames), dtype=bool)
 
         # Startpunkte: alle Bins des ersten Frames
+        # Ausserdem: Energy-Maximum ueber alle Frames
+        max_frame = int(np.argmax(np.max(mag, axis=0)))
+        max_bin = int(np.argmax(mag[:, max_frame]))
+
+        if _numba is not None:
+            try:
+                _pghi_heap_kernel_nb(
+                    np.ascontiguousarray(mag),
+                    np.ascontiguousarray(phase),
+                    np.ascontiguousarray(visited),
+                    np.ascontiguousarray(delta_phi_t),
+                    np.ascontiguousarray(delta_phi_omega),
+                    max_frame,
+                    max_bin,
+                )
+            except Exception as _nb_exc:
+                logger.warning(
+                    "PGHI: numba-Kern fehlgeschlagen (%s) - heapq-Fallback (§V6 (copilot-instructions.md)).",
+                    _nb_exc,
+                )
+                phase[:] = 0.0
+                if initial_phase is not None:
+                    phase[:, 0] = initial_phase[:, 0] if initial_phase.ndim > 1 else initial_phase
+                else:
+                    rng = np.random.default_rng(seed=42)
+                    phase[:, 0] = rng.uniform(-math.pi, math.pi, n_bins)
+                visited[:] = False
+                self._pghi_heapq(mag, phase, visited, delta_phi_t, delta_phi_omega, max_frame, max_bin)
+        else:
+            self._pghi_heapq(mag, phase, visited, delta_phi_t, delta_phi_omega, max_frame, max_bin)
+
+        # Phasen wrapped auf [-π, π]
+        phase = np.angle(np.exp(1j * phase))
+
+        return phase.astype(np.float64)  # type: ignore[no-any-return]
+
+    def _pghi_heapq(
+        self,
+        mag: np.ndarray,
+        phase: np.ndarray,
+        visited: np.ndarray,
+        delta_phi_t: np.ndarray,
+        delta_phi_omega: np.ndarray,
+        max_frame: int,
+        max_bin: int,
+    ) -> None:
+        """Python-heapq-Pfad (Fallback; exakt die urspruengliche Implementierung).
+
+        Der Numba-Kern in `_pghi` reproduziert diesen Pfad bit-identisch;
+        diese Methode bleibt als Referenz und fuer Umgebungen ohne numba
+        bzw. mit numba-Defekten (z.B. ROCm-Venv) aktiv.
+        """
+        n_bins, n_frames = mag.shape
+        heap: list[tuple[float, int, int]] = []  # (-energy, bin, frame)
         for k in range(n_bins):
             energy = mag[k, 0]
             heapq.heappush(heap, (-energy, k, 0))
-        # Außerdem: Energy-Maximum über alle Frames
-        max_frame = int(np.argmax(np.max(mag, axis=0)))
-        max_bin = int(np.argmax(mag[:, max_frame]))
         if not (max_bin == 0 and max_frame == 0):
             heapq.heappush(heap, (-mag[max_bin, max_frame], max_bin, max_frame))
 
@@ -323,7 +567,7 @@ class PghiReconstructor:
             if m + 1 < n_frames and not visited[k, m + 1]:
                 # Phase in Zeitrichtung: φ[k, m+1] ≈ φ[k, m] + δφ_t[k, m]
                 phi_t = current_phase + delta_phi_t[k, m]
-                # Gewichtetes Mittel mit Vorwärtspropagation
+                # Gewichtetes Mittel mit Vorwaertspropagation
                 if phase[k, m + 1] == 0.0:
                     phase[k, m + 1] = phi_t
                 else:
@@ -342,14 +586,14 @@ class PghiReconstructor:
                     phase[k + 1, m] = w * phi_k + (1.0 - w) * phase[k + 1, m]
                 heapq.heappush(heap, (-mag[k + 1, m], k + 1, m))
 
-            # Rückwärts-Propagation (m-1)
+            # Rueckwaerts-Propagation (m-1)
             if m - 1 >= 0 and not visited[k, m - 1]:
                 phi_t_back = current_phase - delta_phi_t[k, m]
                 if phase[k, m - 1] == 0.0:
                     phase[k, m - 1] = phi_t_back
                 heapq.heappush(heap, (-mag[k, m - 1], k, m - 1))
 
-            # Rückwärts (k-1)
+            # Rueckwaerts (k-1)
             if k - 1 >= 0 and not visited[k - 1, m]:
                 phi_k_back = current_phase - delta_phi_omega[k, m]
                 if phase[k - 1, m] == 0.0:

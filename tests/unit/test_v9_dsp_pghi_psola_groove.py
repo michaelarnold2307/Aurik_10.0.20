@@ -188,6 +188,55 @@ class TestPghiReconstructor:
 
             PghiReconstructor(sr=44100)
 
+    def test_15_numba_heapq_bit_identical(self):
+        """Numba-Heap-Kern reproduziert den heapq-Pfad bit-identisch (§PERF-R15).
+
+        Der Kern in `_pghi` (aktiv wenn numba importierbar ist) muss exakt
+        dieselben rekonstruierten Phasen liefern wie `_pghi_heapq`. Dies
+        pinnt die bit-Identität beider Pfade dauerhaft in CI.
+        """
+        import math
+
+        import dsp.pghi as _pg
+        from dsp.pghi import PghiReconstructor
+
+        if _pg._numba is None:
+            pytest.skip("numba nicht verfuegbar")
+
+        rec = PghiReconstructor(sr=48000, win_size=2048, hop=256)
+
+        def _ref_heapq(mag_f64: np.ndarray) -> np.ndarray:
+            n_bins, n_frames = mag_f64.shape
+            log_mag = np.log(mag_f64 + rec.tol)
+            k_idx = np.arange(n_bins)
+            dt = np.tile(
+                2.0 * math.pi * rec.hop * k_idx[:, np.newaxis] / rec.win_size,
+                (1, n_frames),
+            )
+            dlog = np.zeros_like(log_mag)
+            dlog[1:-1, :] = (log_mag[2:, :] - log_mag[:-2, :]) / 2.0
+            dlog[0, :] = log_mag[1, :] - log_mag[0, :]
+            dlog[-1, :] = log_mag[-1, :] - log_mag[-2, :]
+            do = -rec.gamma * dlog * rec.win_size / (2.0 * math.pi)
+            phase = np.zeros((n_bins, n_frames), dtype=np.float64)
+            rng = np.random.default_rng(seed=42)
+            phase[:, 0] = rng.uniform(-math.pi, math.pi, n_bins)
+            visited = np.zeros((n_bins, n_frames), dtype=bool)
+            max_frame = int(np.argmax(np.max(mag_f64, axis=0)))
+            max_bin = int(np.argmax(mag_f64[:, max_frame]))
+            rec._pghi_heapq(mag_f64, phase, visited, dt, do, max_frame, max_bin)
+            return np.angle(np.exp(1j * phase)).astype(np.float64)
+
+        for bins, frames, seed in [(64, 64, 1), (512, 256, 3), (1025, 120, 5)]:
+            mag = np.abs(np.random.default_rng(seed).standard_normal((bins, frames)) * 0.3).astype(np.float32)
+            out_kernel = rec._pghi(mag.astype(np.float64), rec.win_size, rec.hop, None)
+            out_heapq = _ref_heapq(mag.astype(np.float64))
+            np.testing.assert_array_equal(
+                out_kernel,
+                out_heapq,
+                err_msg=f"Kern/heapq-Drift bei bins={bins} frames={frames}",
+            )
+
 
 # ---------------------------------------------------------------------------
 # PSOLA-Tests
