@@ -31,6 +31,7 @@
 | scripts/repo_graph.py | ACTIVE | tooling/ci | ja | — | Import-Graph, Symbole, Duplikat-Check; konsolidiert audit_silent_dead_imports.py + audit_bridge_coverage.py |
 | scripts/file_registry_check.py | ACTIVE | tooling/ci | ja | — | Write-Gate `aurik-file-lifecycle`; validiert diese Registry (R1–R7) |
 | scripts/change_ledger.py | ACTIVE | tooling/ci | ja | — | TASK_CHANGES.md (snapshot/check); CI-Abdeckungs-Gate |
+| scripts/version_guard.py | ACTIVE | tooling/ci | ja | — | §v10.802 Version-Guard (Bump-Konsistenz, Warnstufe): feat-Commits ohne Minor-Bump / fix-perf ohne Patch-Bump seit letzter version.py-Änderung |
 | scripts/validate_hr_v1.py | ACTIVE | tooling/validation | ja | — | §SOTA-HR-V1 (F3, 2026-09-16): BigVGAN-A/B-Validierung (af+HNR-Gates, Never-worsen) für den HR-V1-Aktivierungsvertrag in phase_07; Exit 0 = besteht / 1 = verschlechtert / 2 = Setup-Fehler (fail-closed) |
 | scripts/validate_vocal_inpaint_s4.py | ACTIVE | tooling/validation | ja | — | §SOTA-VOCAL-INPAINT S4 (2026-09-16): Verifikation der phase_55-Kaskade auf 300-ms-Gesangslücken (ΔSDR ≥ 0 je Segment, Resemblyzer-Witness cos ≥ 0,92, Determinismus; Exit 0/1/2) |
 | scripts/train_ddsp_predictor_c4.py | ACTIVE | tooling/ml-training | ja | — | §SOTA-C4/F5 (2026-09-16): DDSP-Prädiktor-Training — MUSDB-Effekt-Paare (3-Band-EQ + Soft-Knee-Kompressor, deterministisch) → LAION-CLAP-Embeddings (eingefroren, 512-dim) → MLP-Head (6 Parameter); --precompute/--train/--smoke; Cache in output/ddsp_c4/, Head nach models/ddsp_predictor/ |

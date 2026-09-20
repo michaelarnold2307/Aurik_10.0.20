@@ -1,15 +1,18 @@
 # TASK_CHANGES — Live-Ledger der aktuellen Aufgabe
 
-> Generiert von `scripts/change_ledger.py snapshot` (Base: `HEAD`, Stand: 2026-09-19 22:55 CEST).
+> Generiert von `scripts/change_ledger.py snapshot` (Base: `HEAD`, Stand: 2026-09-20 05:54 CEST).
 > CI (`ci-lite.yml` pr-evidence-gate) erzwingt Abdeckung: jede geänderte Code-Datei muss hier stehen.
 
 ## Geänderte Dateien
 
 | Status | Pfad | Art |
 |---|---|---|
-| M | backend/core/plugin_lifecycle_manager.py | modifiziert |
-| M | plugins/banquet_vinyl_plugin.py | modifiziert |
-| M | tests/unit/test_end_of_song_cleanup_hoist.py | modifiziert |
+| M | .github/FILE_REGISTRY.md | modifiziert |
+| M | .github/copilot-instructions.md | modifiziert |
+| M | .pre-commit-config.yaml | modifiziert |
+| M | CHANGELOG.md | modifiziert |
+| M | backend/core/version.py | modifiziert |
+| ?? | scripts/version_guard.py | ungetrackt |
 
 ## Entscheidungen
 

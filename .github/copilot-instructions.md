@@ -298,3 +298,27 @@ paritätsbewiesene Default.
 | SPEC-GAP | Spec-Anforderung implementiert aber nicht getestet oder nur partiell | P2 |
 | TYPE-SAFETY | mypy-Fehler (no-any-return, override, etc.) | P3 |
 | TEST-DESIGN | Test-Assertion bricht durch nichtlineare Guards (deterministisch) | P2 |
+
+## §v10.802 Versionierungs-Vertrag (Version-Sync)
+
+`backend/core/version.py` ist die Single Source of Truth. Bump-Regeln:
+
+- **Patch-Bump (x.y.z+1):** fix-/perf-Commits (qualitätsneutral, bit-identisch
+  belegt) oder ein kumulierter Batch solcher Commits — im selben Merge wie die
+  Änderungen, nie als Dauer-„Unreleased“-Zustand.
+- **Minor-Bump (x.y+1.0):** feat-Commits (neue Fähigkeiten ohne Hörordnungs-
+  Brüche). Release-Kriterien: alle A/B-Gates, Paritäts-Gates (rel ≤ 1e-3) und
+  Witness-Belege der enthaltenen Features bestanden.
+- **Major-Bump (x+1.0.0):** Hörordnungs-Brüche oder inkompatible Änderungen —
+  nur mit Maintainer-Sign-off (PR-Vertrag §4).
+- **Changelog-Pflicht:** Pro Bump ein `## x.y.z (Datum)`-Block in CHANGELOG.md;
+  der „Unreleased“-Block darf höchstens einen Entwicklungszyklus überdauern.
+- **Version-Sync-Sweep:** Vor jedem Release einmalig alle Dokument-Referenzen
+  (`docs/`, `.github/`) auf die neue Version ziehen (Muster: v10.0.20-Sweep).
+- **Determinismus-Kopplung:** §G5 (copilot-instructions.md) verlangt
+  „gleiche Version ⇒ gleicher Output“ — Mess-Baselines (perf_session,
+  A/B-Läufe) referenzieren die version.py-Nummer; ohne Bump wird die
+  Reproduzierbarkeits-Kette gebrochen.
+
+Prüfung: `scripts/version_guard.py` — warnt bei feat-Commits ohne Minor-Bump
+bzw. fix/perf-Batches ohne Patch-Bump seit der letzten `version.py`-Änderung.

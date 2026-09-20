@@ -1,6 +1,37 @@
-# Changelog — Aurik 10.0.20
+# Changelog — Aurik 10.0.21
 
-## Unreleased (nach 10.0.20)
+## Unreleased (nach 10.0.21)
+
+*SOTA-Roadmap offen: t6 Boundary-Maschinerie (ExcellenceOptimizer/PGHI-Struktur), t7 Musical-Goals-Metriken, t8-Rest Chunk-Vergrößerung, P1-GPU-Ports, F-Trainings (F3/F4/F7–F12).*
+
+## 10.0.21 (2026-09-20)
+
+### ⚡ Performance-Kampagne — bit-identische Optimierungen (2026-09-19/20)
+
+Alle Änderungen qualitätsneutral (Wohlklang unverändert), je mit
+Referenzvergleich bit-identisch belegt; Messungen auf identischer 10-s-Zelle
+(AURIK_PERF_GAP=1):
+
+- **§V26 Onset-Guard** (`b9748b63`): JND-Sättigungs-Fast-Path — 217/217 Fälle
+  bit-identisch; Guard-Kern 19,9 → 4,5 ms.
+- **§7 PDV Content-Zwischenspeicher** (`b98dd9e2`): Blake2b-Content-Key,
+  Ketten-Wiederverwendung; 1951 → 1103 ms/Phase.
+- **Reinhör-Witness Audio-Paket-Zwischenspeicher** (`7b02e092`): Bundling der
+  per-Audio-Metriken, bit-identisch.
+- **§2.51a Stereo-Metriken-Zwischenspeicher** (`878e0772`): Content-Key + LRU.
+- **§2.49 AFG `_detect_metallic_ringing`** (`b8ed012c`): Gleitfenster-Median
+  vektorisiert — 7398 → 233 ms (32×), 114 Artefakte bit-identisch.
+- **§2.49 AFG `_detect_musical_noise`** (`1d8b666a`): ERB-Masking via
+  np.maximum.at + Gleitfenster-Median — 114 Artefakte bit-identisch, 5×.
+- **PERF-GAP-Instrumentierung** (`f8260c31`): env-gegatete Phasen-Gap-Zerlegung
+  (AURIK_PERF_GAP=1), Overhead ~0 im Normalbetrieb.
+- **§7 PDV Burstiness-numba-Kern + 5 Helfer-Vektorisierungen** (`415bb9a2`):
+  IEEE-Float64-Kern bit-identisch zum Python-Loop (1010 ms → 1 ms warm);
+  Batched-RFFT + exakte per-Zeilen-Mittelwerte. **PDV-Block 48,8 → 3,8 s/Pass
+  (mean 1355 → 104 ms, max 8,8 → 0,8 s).**
+- **PLM keep_warm** (`f29febe9`): BANQUET bleibt über Pipeline-Pässe warm —
+  validiert 1× Load / 0 Evictions (vorher 2×/2×, ~36 s/Pass gespart);
+  druckgetriebene Eviction unverändert aktiv (OOM-sicher).
 
 ### 🕵️ Forensik-Konsistenz: Material-Veto, Ketten-Ordnung, Cross-Validation (2026-09-06)
 
