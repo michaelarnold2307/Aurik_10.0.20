@@ -80,6 +80,38 @@ Vorstufe (Separation-SOTA, Zeile 1602).
 
 ---
 
+## TODO-T6-1 · ExcellenceOptimizer: Core-Guard-Rollback-Verschwendung (validiert 2026-09-20)
+
+- **Ziel:** Die ~106 s ExcellenceOptimizer-Arbeit je Zellen-Pass (~28 min pro Voll-Song) dürfen
+  nicht mehr verworfen werden — entweder wird die Arbeit vermieden ODER der Wohlklang-Gewinn
+  erhalten (nie: Qualitätsreduktion).
+- **Beleg (validiert, 2 identische Zellen 2026-09-19/20):** In BEIDEN Läufen
+  `ExcellenceOptimizer Core-Guard: Rollback wegen Kernziel-Regressionen` —
+  `steps=['harmonic_boost', 'ola_crossfade', 'core_guard_rollback', …]`, Δrms=+0,00 dB.
+  Treiber: `spatial_depth` 0,720→0,381 bzw. 0,720→0,354 (Kollaps ~0,35) plus
+  natuerlichkeit/timbre_authentizitaet −0,02…−0,06 bei harm=+2,7…+3,1 dB. cProfile:
+  PGHI-Rekonstruktion = 121,6 s je optimize() — die gesamte Arbeit wird verworfen.
+- **Struktur-Befund:** PGHI (Heap-Propagation, ~3,8 Mio. Zellen je 10-s-Puffer) läuft VOR der
+  Pareto-/Core-Guard-Prüfung; ein bit-identischer Early-Out ist unmöglich, weil die
+  Rollback-Entscheidung die Post-Audio-Messung braucht. PGHI selbst ist nicht
+  bit-identisch vektorisierbar (Python-heapq-Tie-Break-Reihenfolge).
+- **Design-Entscheidung (Hörordnungs-relevant — braucht Sign-off):**
+  (A) **Schritt-granulare Guards:** Nach JEDEM Optimizer-Schritt Core-Ziele messen; nur
+  regressierende Schritte verwerfen, nicht-regressierende behalten (z.B. OLA-Crossfade
+  behalten, Harmonic-Boost verwerfen). Verhaltensänderung: Ergebnis ≠ Original (OLA bleibt)
+  — erfordert A/B-Abnahme.
+  (B) **Spatial-Depth-Pre-Guard (Heuristik):** Vor dem teuren PGHI den Boost auf einem
+  2-s-Excerpt approximieren und spatial_depth-Delta messen; Kollaps > Schwelle ⇒ voller
+  Boost übersprungen (wie heute verworfen). Nicht bit-identisch — erfordert
+  Korpus-Verifikation (Entscheidung darf sich gegenüber heute nie zum Schlechteren drehen).
+  (C) **PGHI-Kern-Beschleunigung:** numba-Port mit exakter CPython-heapq-Semantik
+  (Tie-Break (−mag, k, m) lexikografisch) — 50–100×, bit-identisch nur mit
+  Referenz-Vergleich über große Korpora; hoher Aufwand, kein Qualitätsrisiko.
+- **Empfehlung:** Erst (C) evaluieren (kein Wohlklang-Risiko), parallel (A) als
+  Hörordnungs-Design-Session vorbereiten; (B) nur falls (A)/(C) scheitern.
+
+---
+
 ## TODO-P0-1 · Analytik + End-Gate von per-Chunk auf Song-Ebene heben (größter Hebel)
 
 - **Ziel:** Chunks restau­rieren → assemblieren → **einmal** song-weit validieren (GOAL_SCORECARD,
