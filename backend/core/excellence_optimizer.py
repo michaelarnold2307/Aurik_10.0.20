@@ -48,6 +48,7 @@ from __future__ import annotations
 import logging
 import threading
 from dataclasses import dataclass, field, replace
+from typing import Any
 
 import numpy as np
 import scipy.signal as spsig
@@ -1071,6 +1072,15 @@ class ExcellenceOptimizer:
             _checker = get_checker()  # §v10.101: Singleton statt neuer Instanz → Cache wirkt
             _goals_before = _checker.measure_all(audio, self.sample_rate)
             _goals_after = _checker.measure_all(out.astype(audio.dtype), self.sample_rate)
+
+            def _goal_val(container: Any, key: str, default: float) -> float:
+                """Container-agnostisch: measure_all liefert je nach Checker
+                dict ODER SimpleNamespace (Produktionsbefund 2026-09-21:
+                AttributeError 'SimpleNamespace' has no attribute 'get')."""
+                if isinstance(container, dict):
+                    return float(container.get(key, default))
+                return float(getattr(container, key, default) or default)
+
             _core_goals = {
                 "natuerlichkeit",
                 "authentizitaet",
@@ -1088,8 +1098,8 @@ class ExcellenceOptimizer:
                 ("authentizitaet", "spatial_depth"),
                 ("natuerlichkeit", "waerme"),
             ]:
-                _da = _goals_after.get(_ga, 1.0) - _goals_before.get(_ga, 1.0)
-                _db = _goals_after.get(_gb, 1.0) - _goals_before.get(_gb, 1.0)
+                _da = _goal_val(_goals_after, _ga, 1.0) - _goal_val(_goals_before, _ga, 1.0)
+                _db = _goal_val(_goals_after, _gb, 1.0) - _goal_val(_goals_before, _gb, 1.0)
                 if _da < -0.005 and _db > 0.005:
                     _conflict = _gpp.resolve_conflict(_ga, _gb, _da, _db)
                     _entry = (
@@ -1104,8 +1114,8 @@ class ExcellenceOptimizer:
             # wird der Optimizer-Schritt verworfen (Primum non nocere, §0).
             _core_regressions: list[str] = []
             for _g in _core_goals:
-                _before = float(_goals_before.get(_g, 1.0))
-                _after = float(_goals_after.get(_g, _before))
+                _before = _goal_val(_goals_before, _g, 1.0)
+                _after = _goal_val(_goals_after, _g, _before)
                 if np.isfinite(_before) and np.isfinite(_after) and (_after < _before - _core_drop_threshold):
                     _core_regressions.append(f"{_g}:{_before:.3f}->{_after:.3f}")
 

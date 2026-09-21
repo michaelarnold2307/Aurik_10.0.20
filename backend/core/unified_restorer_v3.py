@@ -18573,9 +18573,17 @@ class UnifiedRestorerV3:
         # §G3 (GEBOTE.md): Chroma-Korrelation und LUFS-Delta für Export-Gate berechnen
         _chroma_corr_for_result: float | None = None
         _lufs_delta_for_result: float | None = None
-        # Chroma: tonal_center Goal-Score ist direkt die Chroma Pearson-Korrelation
+        # Chroma: tonal_center Goal-Score ist direkt die Chroma Pearson-Korrelation.
+        # Container-agnostisch: Goal-Scores kommen teils als dict, teils als
+        # SimpleNamespace an (Produktionsbefund 2026-09-21: AttributeError
+        # 'SimpleNamespace' has no attribute 'get' im Whole-Song-Mode).
         if _musical_goal_scores:
-            _chroma_corr_for_result = float(_musical_goal_scores.get("tonal_center", 0.0))
+            _mgs_val = (
+                _musical_goal_scores.get("tonal_center", 0.0)
+                if isinstance(_musical_goal_scores, dict)
+                else getattr(_musical_goal_scores, "tonal_center", 0.0)
+            )
+            _chroma_corr_for_result = float(_mgs_val or 0.0)
         # LUFS-Delta: Differenz zwischen Original und Restauriert
         try:
             import pyloudnorm as _pyln

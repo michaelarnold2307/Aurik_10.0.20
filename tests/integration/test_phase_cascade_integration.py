@@ -455,15 +455,24 @@ class TestVocalQualityGateCascade:
             "vocal_warmth",
         }
 
-        assert hasattr(result, "scores"), "VQI-Resultat hat kein .scores"
-        scores = result.scores if hasattr(result, "scores") else getattr(result, "data", {})
+        assert result.pre_scores is not None or result.post_scores is not None, "VQI ohne Scores"
+        import dataclasses as _dc
 
-        # Wenn scores ein dict ist, prüfe die Keys
+        _score_obj = result.pre_scores if result.pre_scores is not None else result.post_scores
+        scores = _dc.asdict(_score_obj) if _score_obj is not None else {}
+
+        # Wenn scores ein dict ist, prüfe die Keys (aktuelle API-Namen)
         if isinstance(scores, dict):
-            missing = required_dims - set(scores.keys())
-            assert len(missing) == 0 or len(required_dims & set(scores.keys())) >= 4, (
-                f"VQI fehlt Dimensionen: {missing}"
-            )
+            current_dims = {
+                "formant_integrity",
+                "breath_naturalness",
+                "sibilance_retention",
+                "intelligibility",
+                "comfort",
+                "timbre_warmth",
+            }
+            missing = current_dims - set(scores.keys())
+            assert len(missing) == 0, f"VQI fehlt Dimensionen: {missing}"
 
 
 # ═══════════════════════════════════════════════════════════════════════
@@ -491,10 +500,22 @@ class TestFeedbackChainCascade:
         from backend.core.phases.phase_01_click_removal import ClickRemovalPhase
         from backend.core.phases.phase_03_denoise import DenoisePhase
 
-        phases = [ClickRemovalPhase(), DenoisePhase()]
+        def _p01(audio: np.ndarray, sr: int, **_kw) -> np.ndarray:
+            res = ClickRemovalPhase().process(audio, sample_rate=sr)
+            return np.asarray(res.audio, dtype=np.float32)
+
+        def _p03(audio: np.ndarray, sr: int, **_kw) -> np.ndarray:
+            res = DenoisePhase().process(audio)
+            return np.asarray(res.audio, dtype=np.float32)
+
+        # FeedbackChain-Phasen-Listen-Modus erwartet (phase_id, callable, kwargs).
+        phases = [
+            ("phase_01_click_removal", _p01, {}),
+            ("phase_03_denoise", _p03, {}),
+        ]
 
         fc = FeedbackChain(max_iterations=2)
-        result = fc.run(audio.copy(), sr, phases)
+        result = fc.run(audio.copy(), phases, sr=sr)
 
         assert result is not None
         assert hasattr(result, "audio")

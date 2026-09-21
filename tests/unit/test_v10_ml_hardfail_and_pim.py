@@ -374,7 +374,14 @@ class TestNoSilentFallback:
         for py_file in plugin_dir.glob("*.py"):
             content = py_file.read_text()
             has_fallback = "fallback" in content.lower() or "except" in content
-            has_warning = "logger.warning" in content or "logger.error" in content
+            # §V6 (copilot-instructions.md): Warn-Logging in Fallback-Pfaden —
+            # unabhängig vom Logger-Namen (`logger` ODER `log`).
+            has_warning = (
+                "logger.warning" in content
+                or "logger.error" in content
+                or "log.warning" in content
+                or "log.error" in content
+            )
             if has_fallback and not has_warning:
                 # Nur relevant wenn es tatsächlich Fallback-Logik gibt
                 if "except ImportError" in content or "except Exception" in content:

@@ -1878,7 +1878,7 @@ def get_feedback_chain():
     Usage::
 
         fc = get_feedback_chain()
-        result = fc.run(audio, sr, phase_fns, target_score=0.78)
+        result = fc.run(audio, phase_fns, sr=48000)
     """
     from backend.core.feedback_chain import get_feedback_chain as _get  # type: ignore[import]
 

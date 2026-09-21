@@ -316,6 +316,10 @@ class DefectAnalysisResult:
 
     def get_total_severity(self) -> float:
         """Gesamtschwere aller Defekte (gewichtet)."""
+        # Leerer Scan (keine Defekte) → 0.0 statt ZeroDivisionError
+        # (Produktionsbefund 2026-09-21: Whole-Song-Mode mit leerem Score-Set).
+        if not self.scores:
+            return 0.0
         return sum(score.severity * score.confidence for score in self.scores.values()) / len(self.scores)
 
     def get_top_defects_perceptual(
