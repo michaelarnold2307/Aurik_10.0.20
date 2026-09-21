@@ -12559,6 +12559,7 @@ class UnifiedRestorerV3:
                 }
                 _sel_set_prerisk = set(selected_phases)
                 _removed_risk_phases: list[str] = []
+                _removed_full_phases: list[str] = []
 
                 def _focus_score(*needle_parts: str) -> float:
                     _focus = _rctx_prerisk.get("defect_focus_scores", {})
@@ -12598,10 +12599,11 @@ class UnifiedRestorerV3:
                     # vollständig aus dem Prerisk-Set entfernt (§0a-Preflight).
                     if "phase_17_mastering_polish" in _sel_set_prerisk:
                         _sel_set_prerisk.remove("phase_17_mastering_polish")
+                        _removed_full_phases.append("phase_17_mastering_polish")
                         if isinstance(getattr(self, "_conductor_strength_hints", None), dict):
                             self._conductor_strength_hints.pop("phase_17_mastering_polish", None)
                         logger.info(
-                            "Preflight-Risk-Guard hatte Verarbeitungsschritt entfernt: Verarbeitungsschritt_17_mastering_polish "
+                            "Preflight-Risk-Guard hatte Phase entfernt: phase_17_mastering_polish "
                             "(vocal-analog Restoration, NOVELTY_CRIT/HNR_DROP/ECHO-Lage)"
                         )
 
@@ -12612,24 +12614,25 @@ class UnifiedRestorerV3:
 
                     _removed_risk_phases = _risk_reduced_phases
 
-                if _removed_risk_phases:
+                if _removed_risk_phases or _removed_full_phases:
                     selected_phases = [p for p in selected_phases if p in _sel_set_prerisk]
                     logger.info(
                         "Preflight-Risk-Guard: %d Verarbeitungsschritt(n) entschärft (panns=%.2f material=%s evidence=%.2f): %s",
-                        len(_removed_risk_phases),
+                        len(_removed_risk_phases) + len(_removed_full_phases),
                         _panns_prerisk,
                         _mat_key_prerisk,
                         _hard_spectral_need,
-                        _removed_risk_phases,
+                        _removed_risk_phases + _removed_full_phases,
                     )
                     if isinstance(getattr(self, "_phase_metadata_accumulator", None), dict):
                         self._phase_metadata_accumulator["preflight_risk_guard"] = {
                             "panns_singing": round(_panns_prerisk, 3),
                             "material": _mat_key_prerisk,
                             "risk_reduced_phases": list(_risk_reduced_phases),
+                            "removed_phases": list(_removed_full_phases),
                             "spectral_evidence": round(_hard_spectral_need, 3),
                         }
-                    _rctx_prerisk["preflight_risk_removed_phases"] = []  # v10.13: keine Phasen mehr entfernt
+                    _rctx_prerisk["preflight_risk_removed_phases"] = list(_removed_full_phases)
                     _rctx_prerisk["preflight_risk_reduced_phases"] = list(_risk_reduced_phases)
         except Exception as _prerisk_exc:
             logger.debug("Preflight-Risk-Guard nicht blockierend: %s", _prerisk_exc)

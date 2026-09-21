@@ -3377,6 +3377,32 @@ class DeEsserPhase(PhaseInterface):
                     f0 = chars.fundamental_freq
                     formants = chars.formants
 
+                # ── Wurzel-Fix Contralto: UNABHÄNGIG vom pYIN-Override-Pfad ──
+                # (2026-09-21): Der schnelle pyin_viterbi_fast-Pfad liefert bei
+                # Stille/leisen Passagen keine F0 → der pYIN-Override-Zweig, in
+                # dem die Formant-Anatomie bisher verschachtelt war, wird nie
+                # betreten; das männliche Verdikt des Classifiers blieb stehen
+                # und der §v10.303.11-Notfall-Override musste es reparieren
+                # (Symptom-Ebene). Die Vokaltrakt-Anatomie (F1 weiblich-typisch
+                # + F2 weiblich ODER durch Bandbreitenverlust degradiert) ist
+                # das härtere Merkmal als F0 — sie entscheidet jetzt direkt an
+                # der Wurzel, unabhängig von der F0-Quelle.
+                if gender_str == VocalGender.MALE and len(formants) >= 2:
+                    _f1v_root = float(formants[0])
+                    _f2v_root = float(formants[1])
+                    _f2_deg_root = _f2v_root < 50.0 or float(kwargs.get("bandwidth_loss", 0.0) or 0.0) > 0.5
+                    _f1f_root = 310.0 <= _f1v_root <= 860.0
+                    _f2f_root = 920.0 <= _f2v_root <= 2790.0
+                    if f0 < 150.0 and _f1f_root and (_f2f_root or _f2_deg_root):
+                        gender_str = VocalGender.FEMALE
+                        logger.warning(
+                            "🎤 Wurzel-Klassifikation: F0=%.0f Hz F1=%.0f F2=%.0f (%s) → FEMALE (Contralto-Anatomie)",
+                            f0,
+                            _f1v_root,
+                            _f2v_root,
+                            "degradiert" if _f2_deg_root else "weiblich-typisch",
+                        )
+
                 # ── §2.9 Contralto-Erkennung ─────────────────────────────
                 # Eine Kontra-Altistin (tiefe Frauenstimme, z. B. Tracy Chapman,
                 # Cher, Nina Simone) hat F0 im männlichen Bereich (150–180 Hz),
@@ -3437,6 +3463,21 @@ class DeEsserPhase(PhaseInterface):
                             _formant_note = "F2 degradiert (§v10.303.11)"
                         else:
                             _formant_note = "Notfall-Regel"
+                        # §v10.303.11: Wurzel-Klassifikation protokollieren, BEVOR der
+                        # Contralto-Override das Ergebnis überschreibt — sonst ist
+                        # das widersprochene 'male'-Verdikt nicht mehr auditierbar.
+                        # WARNING-Niveau: Modul-Logger filtert INFO im Testlauf, und
+                        # ein Override ist ein warnwürdiges Korrektur-Ereignis.
+                        logger.warning(
+                            "Wurzel-Klassifikation: 'male' (F0=%.0f Hz%s, Konfidenz=%.2f) — "
+                            "Contralto-Override auf 'female' wegen %s (F1=%.0f Hz, F2=%.0f Hz).",
+                            f0,
+                            _octave_note,
+                            confidence,
+                            _formant_note,
+                            formants[0],
+                            formants[1],
+                        )
                         logger.warning(
                             "🎤 CONTRALTO erkannt — classifier said 'male' (F0=%.0f Hz%s, "
                             "confidence=%.2f) — %s: F1=%.0f Hz in [%.0f–%.0f], "
