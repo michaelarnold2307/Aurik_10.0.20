@@ -349,6 +349,11 @@ def collect_python_files(roots: list[Path]) -> list[Path]:
             parts = set(p.parts)
             if parts & EXCLUDE_DIRS:
                 continue
+            # _vendor_* = unverändert kopierter Drittanbieter-Code (MIT, LICENSE
+            # beiliegend) — wie in aurik_verboten_linter.py SKIP_DIRS ausgenommen
+            # (R01-print()-Fund in plugins/_vendor_muq/modules/rvq.py:152, 2026-09-21).
+            if any(part.startswith("_vendor_") for part in p.parts):
+                continue
             files.append(p)
     return sorted(files)
 

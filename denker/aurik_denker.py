@@ -369,6 +369,7 @@ class AurikDenker:
         output_path: str = "",
         no_rt_limit: bool = False,
         phase_strength_oracle_rollout: str | None = None,
+        _nw_retry: bool = False,
     ) -> AurikErgebnis:
         """Vollständige Aurik-Restaurierung: 8 Stufen orchestriert.
 
@@ -465,6 +466,7 @@ class AurikDenker:
                 output_path=output_path,
                 no_rt_limit=no_rt_limit,
                 phase_strength_oracle_rollout=phase_strength_oracle_rollout,
+                _nw_retry=_nw_retry,
             )
         except MemoryError as exc:
             elapsed = time.perf_counter() - t_start
@@ -534,6 +536,7 @@ class AurikDenker:
             output_path=kwargs.get("output_path", ""),
             no_rt_limit=bool(kwargs.get("no_rt_limit", False)),
             phase_strength_oracle_rollout=kwargs.get("phase_strength_oracle_rollout"),
+            _nw_retry=bool(kwargs.get("_nw_retry", False)),
         )
 
     @staticmethod
@@ -1186,6 +1189,7 @@ class AurikDenker:
         output_path: str = "",
         no_rt_limit: bool = False,
         phase_strength_oracle_rollout: str | None = None,
+        _nw_retry: bool = False,
     ) -> AurikErgebnis:
         """Führt die 10-stufige Restaurierungs-Pipeline aus.
 
@@ -3047,6 +3051,68 @@ class AurikDenker:
                 _get_song_strategy_cache().store(_ssc_entry)
             except Exception as _ssc_store_exc:
                 logger.debug("§SSC-1 Zwischenspeicher-Store nicht blockierend: %s", _ssc_store_exc)
+
+        # §v10.26 Autonomer Never-worsen-Arbiter mit Parameter-Retry-Leiter (SOTA):
+        #   1. Ausgabe referenzfrei gegen die Eingabe prüfen.
+        #   2. Verschlechterung → autonomer Retry mit ANDEREN Parametern
+        #      (mode=balanced, reduzierter ML-Einsatz) statt sofortigem Rücksprung.
+        #   3. Erst wenn auch der Retry schlechter ist → Eingabe (Never-worsen).
+        # Keine externen Eingriffe; deterministisch (§G5 (GEBOTE.md)); Rekursion max. 1 Stufe.
+        if not _nw_retry:
+            try:
+                from backend.core.dsp.autonomous_quality_arbiter import resolve_never_worsen
+
+                _era_arb = None
+                try:
+                    import re as _re_arb
+
+                    _era_str = str(stage_notes.get("era", "")) if isinstance(stage_notes, dict) else ""
+                    _m = _re_arb.search(r"(\d{4})", _era_str)
+                    if _m:
+                        _era_arb = int(_m.group(1)) // 10 * 10
+                except Exception:  # pylint: disable=broad-except — Metadatum, nicht kritisch
+                    _era_arb = None
+
+                def _nw_retry_fn() -> np.ndarray | None:
+                    """Balanced-Pass mit anderen Parametern (gecachte Voranalysen)."""
+                    _retry_result = self._orchestriere(
+                        audio,
+                        sr,
+                        audio_duration_s,
+                        t_start,
+                        mode="balanced",  # andere Parameter: weniger aggressiv
+                        cached_era_result=cached_era_result,
+                        cached_genre_result=cached_genre_result,
+                        cached_defect_result=cached_defect_result,
+                        cached_medium_result=cached_medium_result,
+                        cached_restorability_result=cached_restorability_result,
+                        input_path=input_path,
+                        output_path=output_path,
+                        no_rt_limit=no_rt_limit,
+                        _nw_retry=True,
+                    )
+                    _retry_audio = _normalize_audio_output_layout(np.asarray(_retry_result.audio, dtype=np.float32))
+                    return np.clip(np.nan_to_num(_retry_audio, nan=0.0, posinf=0.0, neginf=0.0), -1.0, 1.0)
+
+                _lad = resolve_never_worsen(
+                    audio,
+                    aktuelles_audio,
+                    retry_fn=_nw_retry_fn,
+                    sr=int(sr),
+                    material_key=str(material),
+                    era_decade=_era_arb,
+                )
+                if _lad.status != "accepted":
+                    aktuelles_audio = _lad.chosen_audio
+                    _degradation_status = {
+                        "retry_balanced": "never_worsen_retry_balanced",
+                        "reverted": "never_worsen_reverted",
+                    }[_lad.status]
+                    warnings.append(_lad.note)
+                    if isinstance(_rest_metadata, dict):
+                        _rest_metadata["never_worsen"] = _lad.metadata
+            except Exception as _arb_exc:  # pylint: disable=broad-except — §V6 (copilot-instructions.md): nie still degradieren
+                logger.warning("Never-worsen-Arbiter nicht verfügbar — Ausgabe unverändert: %s", _arb_exc)
 
         return AurikErgebnis(
             audio=aktuelles_audio,

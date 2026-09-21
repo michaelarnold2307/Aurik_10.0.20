@@ -30,7 +30,7 @@ YELLOW := \033[0;33m
 RED := \033[0;31m
 RESET := \033[0m
 
-.PHONY: help fmt lint typecheck quality compliance compliance-full test test-clean test-spec-gate test-spec-gate-core test-amrb-gate test-competitive-gate clean pre-commit-install \
+.PHONY: help fmt lint typecheck quality compliance compliance-full test test-clean test-spec-gate test-spec-gate-core test-amrb-gate test-competitive-gate test-release-gui clean pre-commit-install \
         black isort autoflake ruff flake8 pylint mypy bandit
 
 # ---------------------------------------------------------------------------
@@ -189,7 +189,7 @@ test-clean: test
 
 test-spec-gate:
 	@echo "$(YELLOW)⚙ Full Spec Gate (integration + normative, ungefiltert)...$(RESET)"
-	$(PYTEST_CLEAN) tests/integration tests/normative \
+	QT_QPA_PLATFORM=offscreen $(PYTEST_CLEAN) tests/integration tests/normative \
 		-p no:xdist \
 		--run-heavy-tests --run-gui-tests \
 		--override-ini="addopts=--strict-markers --import-mode=importlib" \
@@ -197,7 +197,7 @@ test-spec-gate:
 
 test-spec-gate-core:
 	@echo "$(YELLOW)⚙ Spec Gate Core (ohne AMRB/Competitive-Langläufer)...$(RESET)"
-	$(PYTEST_CLEAN) tests/integration tests/normative \
+	QT_QPA_PLATFORM=offscreen $(PYTEST_CLEAN) tests/integration tests/normative \
 		-p no:xdist \
 		--run-heavy-tests --run-gui-tests \
 		-m "not amrb and not competitive" \
@@ -217,6 +217,17 @@ test-competitive-gate:
 		-p no:xdist \
 		--run-heavy-tests --run-gui-tests \
 		--timeout=1200 --tb=short -q --disable-warnings --no-header --maxfail=1
+
+test-release-gui:
+	@echo "$(YELLOW)⚙ Release-GUI-Gate (SIGTERM/Notfall-Checkpoint & GUI-Invarianten, headless)...$(RESET)"
+	QT_QPA_PLATFORM=offscreen $(PYTEST_CLEAN) \
+		tests/normative/test_stability_invariants.py \
+		tests/normative/test_e2e_gui_smoke.py \
+		tests/normative/test_kmv_stufe2.py \
+		-p no:xdist \
+		-m gui \
+		--run-heavy-tests --run-gui-tests \
+		--timeout=120 --tb=short -q --disable-warnings --no-header --maxfail=5
 
 test-all:
 	@echo "$(YELLOW)⚙ Alle Tests (2 Worker)...$(RESET)"

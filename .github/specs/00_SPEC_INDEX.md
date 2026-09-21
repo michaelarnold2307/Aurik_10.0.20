@@ -80,6 +80,8 @@ Stand: 94 Specs.
 | v10.22_model_orchestration.md | §v10.22 Aurik-Modell-Orchestrierung — Die perfekte Kombination |
 | v10.23_album_prior.md | §v10.23 Album-Prior — Albumweite Tonträgerketten-Kohärenz |
 | v10.24_architecture_reference.md | §v10.24 Aurik-Architektur — Vollständige Referenz |
+| v10.25_echtmusik_training.md | §v10.25 — Echtmusik-Trainings-Roadmap: Welche ML-Modelle auf echte Musik trainiert werden müssen |
+| v10.26_autonomer_never_worsen_arbiter.md | §v10.26 — Autonomer Never-worsen-Arbiter mit Parameter-Retry-Leiter (Selbstkorrektur am Pipeline-Ende) |
 | v10.303.17_phase0_architecture.md | §v10.306 — Phase-0 ML-Pre-Processor Architektur (4-Stufen) |
 | v10.303.23_fine_tuning_spec.md | §v10.303.23 Phase-0 Modell-Fine-Tuning Spezifikation |
 | v10.303.5_deesser_crest_graduated_material_adaptive.md | §v10.303.5 — De-Esser: Crest-Faktor + Graduierte Response + Material-Adaptivität |

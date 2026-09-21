@@ -36,6 +36,8 @@ import numpy as np
 import onnxruntime as ort
 from scipy.signal import resample_poly
 
+from backend.file_import import load_audio_file
+
 log = logging.getLogger(__name__)
 
 _PROJECT = Path(__file__).resolve().parent.parent
@@ -60,8 +62,16 @@ class MERTQualityGate:
         device: str = "cuda",
         gpu_id: int = 0,
     ):
-        providers = ["ROCMExecutionProvider", "CPUExecutionProvider"] if device == "cuda" else ["CPUExecutionProvider"]
-        provider_options = [{"device_id": str(gpu_id)}, {}] if device == "cuda" else []
+        # §V6 (copilot-instructions.md)/§III.9: EP-Auswahl nur nach Verfügbarkeit; provider_options muss
+        # dieselbe Länge wie providers haben (ort wirft sonst „EP Error“ beim
+        # CPU-Fallback — Produktionsbefund 2026-09-20: Score-Ausfall im Gate).
+        _available = ort.get_available_providers()
+        if device == "cuda" and "ROCMExecutionProvider" in _available:
+            providers = ["ROCMExecutionProvider", "CPUExecutionProvider"]
+            provider_options: list[dict] | None = [{"device_id": str(gpu_id)}, {}]
+        else:
+            providers = ["CPUExecutionProvider"]
+            provider_options = None
 
         mert_path = Path(mert_onnx)
         if not mert_path.is_absolute():
@@ -83,14 +93,67 @@ class MERTQualityGate:
         log.info("MERT Quality Gate: initialized")
 
     def _load_or_compute_centroid(self):
-        """Load pre-computed clean music centroid, or compute from available data."""
+        """Lädt das Clean-Musik-Zentroid; self-heal bei Dimensions-Mismatch.
+
+        mert_330m.onnx liefert 1024-dim Features — ältere Zentroide (768-dim,
+        MERT-95m/fairseq) würden in score_chunk einen Dot-Dim-Fehler werfen.
+        """
         centroid_path = _PROJECT / "models" / "mert" / "clean_music_centroid.npy"
+        expected_dim = int(self.session.get_outputs()[0].shape[-1])
         if centroid_path.exists():
-            self._clean_centroid = np.load(centroid_path)
-            log.info(f"MERT Quality Gate: loaded clean centroid from {centroid_path}")
-        else:
-            log.warning("MERT Quality Gate: no centroid file — quality scores will be uncalibrated")
-            self._clean_centroid = np.zeros(768, dtype=np.float32)
+            loaded = np.load(centroid_path)
+            if loaded.ndim == 1 and loaded.shape[0] == expected_dim:
+                self._clean_centroid = loaded
+                log.info("MERT Quality Gate: Clean-Zentroid geladen (%d-dim)", expected_dim)
+                return
+            log.warning(
+                "MERT Quality Gate: Zentroid-Dimensionen passen nicht (%s != %d) — "
+                "Neuberechnung aus corpus/*/clean/*.wav",
+                getattr(loaded, "shape", None),
+                expected_dim,
+            )
+        self._clean_centroid = self._compute_clean_centroid(expected_dim)
+
+    def _compute_clean_centroid(self, expected_dim: int) -> np.ndarray:
+        """Mittelt MERT-Features über alle Clean-Dateien des Echt-Audio-Corpus (§15.2)."""
+        clean_files = sorted((_PROJECT / "corpus").rglob("*clean*.wav"))
+        if not clean_files:
+            log.warning("MERT Quality Gate: keine Corpus-Clean-Dateien — Scores unkalibriert")
+            return cast(np.ndarray, np.zeros(expected_dim, dtype=np.float32))
+        acc = np.zeros(expected_dim, dtype=np.float64)
+        count = 0
+        for path in clean_files:
+            try:
+                _loaded = load_audio_file(str(path))
+                if not _loaded or _loaded.get("error"):
+                    continue
+                y = np.asarray(_loaded.get("audio"), dtype=np.float32)
+                sr = int(_loaded.get("sr") or MERT_SR)
+                if y.ndim > 1:
+                    y = y.mean(axis=1)
+                if sr != MERT_SR:
+                    y = self._resample(y, sr, MERT_SR)
+                feat = self._extract_features(y)
+                acc += feat.mean(axis=0).astype(np.float64)
+                count += 1
+            except Exception as exc:  # pylint: disable=broad-except — §V6 (copilot-instructions.md): Datei-übersprung sichtbar
+                log.warning("MERT Quality Gate: Clean-Datei %s übersprungen (%s)", path, exc)
+        if count == 0:
+            log.warning("MERT Quality Gate: keine nutzbare Clean-Datei — Scores unkalibriert")
+            return cast(np.ndarray, np.zeros(expected_dim, dtype=np.float32))
+        centroid = (acc / count).astype(np.float32)
+        try:
+            centroid_path = _PROJECT / "models" / "mert" / "clean_music_centroid.npy"
+            np.save(centroid_path, centroid)
+            log.info(
+                "MERT Quality Gate: Clean-Zentroid (%d-dim, %d Dateien) gespeichert: %s",
+                expected_dim,
+                count,
+                centroid_path,
+            )
+        except OSError as exc:
+            log.warning("MERT Quality Gate: Zentroid-Speicherung fehlgeschlagen (%s)", exc)
+        return cast(np.ndarray, centroid)
 
     def _resample(self, audio: np.ndarray, orig_sr: int, target_sr: int) -> np.ndarray:
         if orig_sr == target_sr:

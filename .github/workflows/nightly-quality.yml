@@ -85,6 +85,7 @@ jobs:
             tests/normative/test_export_quality_gate.py \
             tests/normative/test_fault_injection_fallbacks.py \
             tests/normative/test_sample_rate_48k_gate.py \
+            tests/unit/test_autonomous_quality_arbiter.py \
             -p no:xdist \
             --override-ini="addopts=--strict-markers --import-mode=importlib" \
             --timeout=30 \

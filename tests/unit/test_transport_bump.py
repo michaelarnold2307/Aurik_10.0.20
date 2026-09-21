@@ -4,12 +4,13 @@ import pytest
 
 """Tests für TRANSPORT_BUMP – Erkennung, kausales Reasoning und Reparatur.
 
-≥ 40 Unit-Tests: synthetische Signale, kein echtes Audio.
+≥ 46 Unit-Tests: synthetische Signale + Echtaudio-Corpus-Träger (reel_tape clean).
 Prüft:
   - DefectType.TRANSPORT_BUMP enum
   - DefectScanner._detect_transport_bump() mit synthetischen Bump-Signalen
+    und injizierten Bumps auf echter Musik (Never-worsen, keine False Positives)
   - CausalDefectReasoner: routing, material priors, cause params
-  - Phase 12 _repair_transport_bumps() Reparaturmethode
+  - Phase 12 _repair_transport_bumps() Reparaturmethode (inkl. Determinismus)
   - Hilfsmethoden: _smooth_bump_envelope, _local_pitch_flatten, _quick_pitch_estimate
   - Edge-Cases: Stille, kurze Dateien, Stereo, NaN/Inf-Guards
 """
@@ -639,3 +640,118 @@ class TestUV3PhaseSelection:
         p12_path = Path(__file__).parent.parent.parent / "backend" / "core" / "phases" / "phase_12_wow_flutter_fix.py"
         content = p12_path.read_text(encoding="utf-8")
         assert "defect_locations" in content
+
+
+# ---------------------------------------------------------------------------
+# 9. Echtaudio-Träger + Never-worsen + Determinismus (2026-09-21, §v10.26-Folge)
+# ---------------------------------------------------------------------------
+
+
+def _load_real_carrier() -> tuple[np.ndarray, int]:
+    """Echte Musik aus dem Aurik-Corpus (clean reel_tape, 48 kHz) als Träger."""
+    from pathlib import Path
+
+    import scipy.io.wavfile as _wf
+
+    p = (
+        Path(__file__).resolve().parent.parent.parent
+        / "corpus"
+        / "reel_tape"
+        / "clean"
+        / "reel_classical_1960s_clean.wav"
+    )
+    if not p.exists():
+        pytest.skip("Real-Audio-Korpus nicht verfügbar")
+    sr, x = _wf.read(str(p))
+    x = x.astype(np.float32) / 32768.0
+    if x.ndim == 2:
+        x = x.mean(axis=1)  # channels-last (N, 2) → Mono-Träger
+    return x.astype(np.float32), int(sr)
+
+
+def _inject_bump_real(
+    audio: np.ndarray, sr: int, start_s: float, dur_s: float = 0.15, amp_dev: float = 0.6
+) -> np.ndarray:
+    """Transport-Bump (Energie-Dropout + LF-Stoß) in echten Träger einbetten."""
+    out = audio.copy()
+    s = int(start_s * sr)
+    e = min(int((start_s + dur_s) * sr), len(out))
+    drop = min((e - s) // 3, int(0.030 * sr))
+    if drop > 0:
+        out[s : s + drop] *= 0.03  # Band-Kontakt verloren → Fast-Stille
+    r0 = s + drop
+    if r0 < e:
+        t = np.arange(e - r0, dtype=np.float64) / sr
+        lf = (np.sin(2 * np.pi * 30.0 * t) * 0.5 * amp_dev).astype(np.float32)
+        out[r0:e] = out[r0:e] * (1.0 + amp_dev) + lf
+    return np.clip(out, -1.0, 1.0).astype(np.float32)
+
+
+@pytest.mark.unit
+class TestRealAudioTransportBump:
+    """Erkennung + Reparatur auf echtem Musik-Träger statt reinem Sinus."""
+
+    @staticmethod
+    def _scanner():
+        from backend.core.defect_scanner import DefectScanner
+
+        return DefectScanner(sample_rate=SR)
+
+    @staticmethod
+    def _phase():
+        from backend.core.phases.phase_12_wow_flutter_fix import WowFlutterFix
+
+        return WowFlutterFix()
+
+    def test_60_real_music_clean_no_false_positive(self):
+        """Saubere echte Musik darf keinen TRANSPORT_BUMP vortäuschen."""
+        carrier, _ = _load_real_carrier()
+        result = self._scanner()._detect_transport_bump(carrier)
+        assert result.severity < 0.15, f"False positive auf sauberer Musik: severity={result.severity:.3f}"
+
+    def test_61_real_music_bump_detected_with_location(self):
+        """Injizierter Bump muss in realer Musik erkannt und lokalisiert werden."""
+        carrier, sr = _load_real_carrier()
+        true_start = 5.0
+        audio = _inject_bump_real(carrier, sr, true_start)
+        result = self._scanner()._detect_transport_bump(audio)
+        assert result.severity > 0.05, f"Bump auf realer Musik nicht erkannt: severity={result.severity:.3f}"
+        if result.locations:
+            assert any(abs(loc[0] - true_start) < 0.3 for loc in result.locations), f"Lokalisierung: {result.locations}"
+
+    def test_62_real_music_repair_never_worsen_outside_bump(self):
+        """Reparatur darf außerhalb der Bump-Region nichts hörbar verschlechtern."""
+        carrier, sr = _load_real_carrier()
+        true_start = 5.0
+        audio = _inject_bump_real(carrier, sr, true_start)
+        locs = [(true_start, true_start + 0.15)]
+        repaired, n = self._phase()._repair_transport_bumps(audio, sr, locs, 0.85)
+        assert n == 1
+        lo = int((true_start - 0.5) * sr)
+        hi = int((true_start + 0.6) * sr)
+        outside = np.concatenate([repaired[:lo], repaired[hi:]])
+        ref = np.concatenate([audio[:lo], audio[hi:]])
+        assert np.max(np.abs(outside - ref)) < 0.02, "Reparatur veränderte Audio außerhalb der Bump-Region"
+
+    def test_63_real_music_repair_shape_and_finite(self):
+        carrier, sr = _load_real_carrier()
+        audio = _inject_bump_real(carrier, sr, 4.0)
+        repaired, _ = self._phase()._repair_transport_bumps(audio, sr, [(4.0, 4.15)], 0.85)
+        assert repaired.shape == audio.shape
+        assert np.isfinite(repaired).all(), "NaN/Inf im Reparatur-Ergebnis (Echtaudio)"
+
+    def test_64_repair_determinism_bit_identical(self):
+        """Gleiche Eingabe + Seed ⇒ bit-identisches Ergebnis (§G5 (GEBOTE.md))."""
+        audio = _make_bump_audio(bump_start_s=1.0, bump_dur_s=0.15)
+        locs = [(1.0, 1.15)]
+        phase = self._phase()
+        r1, _ = phase._repair_transport_bumps(audio.copy(), SR, locs, 0.85)
+        r2, _ = phase._repair_transport_bumps(audio.copy(), SR, locs, 0.85)
+        np.testing.assert_array_equal(r1, r2)
+
+    def test_65_clean_real_music_passthrough_empty_locations(self):
+        """Ohne Fundstellen bleibt echte Musik bit-identisch (Never-worsen)."""
+        carrier, sr = _load_real_carrier()
+        result, n = self._phase()._repair_transport_bumps(carrier, sr, [], 0.85)
+        assert n == 0
+        np.testing.assert_array_equal(result, carrier)

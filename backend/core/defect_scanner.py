@@ -4689,6 +4689,22 @@ class DefectScanner:
                         _suppressed_head_dip_locations.append((_t_start_hd, _t_end_hd))
                         continue
 
+                    # §v10.26-Folge (2026-09-21, Echtaudio-Befund): Fade-ins an
+                    # Dateigrenzen sind keine Transport-Bumps. Ein echter Bump
+                    # kommt aus einem ETABLIERTEN Vorniveau (≥ 50 % der lokalen
+                    # Baseline über 150 ms davor). Ohne Vorniveau (Dateianfang,
+                    # Einblendung aus Stille) wird das Event verworfen —
+                    # klassische Musik mit weichen Einsätzen löste sonst False
+                    # Positives aus (Befund: severity 0,286 auf sauberem
+                    # reel_classical_1960s_clean, Event bei 0,0–0,085 s).
+                    _pre_frames = max(1, int(0.150 / hop_s))
+                    if start_frame < _pre_frames:
+                        continue
+                    _pre_rms = float(np.max(rms_env[start_frame - _pre_frames : start_frame]))
+                    _local_base = max(float(rms_baseline[start_frame]), 1e-6)
+                    if _pre_rms < 0.5 * _local_base:
+                        continue
+
                     t_start = max(0.0, float(start_frame * hop) / sr - 0.015)
                     t_end = min(float(n) / sr, float(end_frame * hop + win) / sr + 0.015)
                     locations.append((t_start, t_end))

@@ -24,6 +24,9 @@
 - [ ] `test_release_must_0m_0q_contract.py` — 0 TODO/FIXME/HACK/Q in Release-Pfaden
 - [ ] `test_stability_invariants.py` — alle Invarianten erfüllt
 - [ ] `test_no_stale_test_markers.py` — keine veralteten Marker
+- [ ] `test_autonomous_quality_arbiter.py` — autonomer Never-worsen-Arbiter mit Parameter-Retry-Leiter (§v10.25)
+- [ ] `make test-release-gui` grün — SIGTERM/Notfall-Checkpoint- und GUI-Invarianten (headless offscreen)
+- [ ] `python scripts/release_must_coverage_check.py` — RELEASE_MUST 100 % abgedeckt
 
 ### 4. Performance
 - [ ] `scripts/ci_benchmark_gate.py` — keine Regression
