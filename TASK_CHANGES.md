@@ -1,17 +1,42 @@
 # TASK_CHANGES — Live-Ledger der aktuellen Aufgabe
 
-> Generiert von `scripts/change_ledger.py snapshot` (Base: `HEAD`, Stand: 2026-09-20 11:12 CEST).
+> Generiert von `scripts/change_ledger.py snapshot` (Base: `HEAD`, Stand: 2026-09-21 13:28 CEST).
 > CI (`ci-lite.yml` pr-evidence-gate) erzwingt Abdeckung: jede geänderte Code-Datei muss hier stehen.
 
 ## Geänderte Dateien
 
 | Status | Pfad | Art |
 |---|---|---|
+| M | .github/specs/18_subprocess_contract_and_wav_retry.md | modifiziert |
+| M | .github/specs/v10.15_df_musik_finetune.md | modifiziert |
+| M | .github/specs/v10.16_sgmse_musik_finetune.md | modifiziert |
+| M | .github/specs/v10.17_mp_senet_musik_finetune.md | modifiziert |
+| M | Aurik10/Aurik10.spec | modifiziert |
+| M | Aurik10/README_PREMIUM_GUI.md | modifiziert |
+| M | Aurik10/core/aurik_icons.py | modifiziert |
+| M | Aurik10/ui/modern_window.py | modifiziert |
 | M | TASK_CHANGES.md | modifiziert |
-| M | plugins/beats_plugin.py | modifiziert |
-| M | plugins/deepfilternet_v3_ii_plugin.py | modifiziert |
-| M | plugins/fcpe_plugin.py | modifiziert |
-| M | plugins/panns_plugin.py | modifiziert |
+| M | audit/daily_real_audio_gate_status.json | modifiziert |
+| M | audit/daily_real_audio_gate_status.md | modifiziert |
+| M | backend/core/music_model_flags.py | modifiziert |
+| M | backend/core/phases/phase_20_reverb_reduction.py | modifiziert |
+| M | backend/core/runtime_env_selector.py | modifiziert |
+| M | plugins/apollo_phase0_integration.py | modifiziert |
+| M | plugins/flashsr_plugin.py | modifiziert |
+| M | plugins/mp_senet_plugin.py | modifiziert |
+| M | plugins/sgmse_plugin.py | modifiziert |
+| M | run_aurik.sh | modifiziert |
+| M | scripts/export_gacela_onnx.py | modifiziert |
+| M | scripts/export_mp_senet_onnx.py | modifiziert |
+| M | scripts/lint_import_shadow.py | modifiziert |
+| M | scripts/measure_all_defects.py | modifiziert |
+| M | scripts/train_clap_material_classifier.py | modifiziert |
+| M | scripts/train_df_musik.py | modifiziert |
+| M | scripts/train_sgmse_musik.py | modifiziert |
+| ?? | .github/specs/v10.25_echtmusik_training.md | ungetrackt |
+| ?? | scripts/ab_test_exports.py | ungetrackt |
+| ?? | scripts/evaluate_musik_models.py | ungetrackt |
+| ?? | scripts/export_flashsr_onnx.py | ungetrackt |
 
 ## Entscheidungen
 
