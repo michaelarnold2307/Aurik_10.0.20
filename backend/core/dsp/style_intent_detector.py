@@ -77,8 +77,17 @@ class StyleIntentDetector:
     """
 
     def __init__(self) -> None:
-        self._fcpe_available: bool = importlib.util.find_spec("torchfcpe") is not None
-        self._pyin_available: bool = importlib.util.find_spec("librosa") is not None
+        # §V6 (copilot-instructions.md): find_spec darf nie crashen — Namespace-Pakete
+        # (z. B. torchfcpe nach Fremd-Import) werfen ValueError("__spec__ is None").
+        # Voll-Suite-Befund Chunk 52: StyleIntentDetector-Singleton brach im Chunk-Verbund.
+        def _spec_available(name: str) -> bool:
+            try:
+                return importlib.util.find_spec(name) is not None
+            except (ValueError, ModuleNotFoundError, ImportError):
+                return False
+
+        self._fcpe_available: bool = _spec_available("torchfcpe")
+        self._pyin_available: bool = _spec_available("librosa")
         self._fcpe_initialized: bool = False
         self._fcpe_model: Any = None  # lazy-init in _extract_f0_fcpe
         if self._fcpe_available:
