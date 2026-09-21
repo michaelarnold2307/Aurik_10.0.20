@@ -162,3 +162,32 @@ class TestRecycleNoNewThresholds:
     def test_no_hardcoded_tier_map(self) -> None:
         """Das Gate darf keine eigene, neu erfundene Stufen-Reihenfolge besitzen."""
         assert not hasattr(WohlklangOrdnungGate, "HEARING_TIER_MAP")
+
+
+class TestProduktionsbefundQualityModeE2E:
+    """2026-09-21: groove-Gewinn auf Kosten höherrangiger Goals muss als
+    VIOLATION gemeldet werden — der FC-Callback verwirft dann den Kandidaten
+    (Gate-Verdikt als Entscheidungs-Instanz, nicht nur Dokumentation)."""
+
+    def test_groove_at_cost_of_authentizitaet_is_violation(self) -> None:
+        gate = make_gate()
+        res = gate.evaluate({"groove": 0.02, "authentizitaet": -0.004})
+        assert res.status == VIOLATION
+        assert "authentizitaet" in res.violated_goals
+
+    def test_groove_at_cost_of_same_tier_goal_is_pass(self) -> None:
+        """groove (Stufe 4) auf Kosten von brillanz (Stufe 4) ist ein
+        Zielkonflikt innerhalb derselben Stufe — erlaubt (Tie)."""
+        gate = make_gate()
+        res = gate.evaluate({"groove": 0.02, "brillanz": -0.004})
+        assert res.status == PASS
+
+    def test_tiny_higher_ranked_drop_still_violation(self) -> None:
+        """Das Gate nutzt nur die numerische Untergrenze (1e-9) — kleine
+        Senkungen dürfen NICHT durch ein größeres Epsilon ignoriert werden
+        (Produktionsbefund: REGRESSION_EPSILON verschluckte die Senkungen,
+        das Gate meldete sie korrekt)."""
+        gate = make_gate()
+        res = gate.evaluate({"groove": 0.02, "authentizitaet": -0.0005})
+        assert res.status == VIOLATION
+        assert "authentizitaet" in res.violated_goals

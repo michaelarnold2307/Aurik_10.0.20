@@ -15372,6 +15372,24 @@ class UnifiedRestorerV3:
                                     self._last_wohlklang_audit = _WOGate_cb().evaluate(_wo_deltas_cb).to_dict()
                                 except Exception as _wo_cb_exc:
                                     logger.debug("WohlklangOrdnungGate im FC-Callback nicht verfügbar: %s", _wo_cb_exc)
+                                # §Ebene-3 (2026-09-21): Das Gate-Verdikt ist die
+                                # ENTSCHEIDUNGS-Instanz, nicht nur Dokumentation —
+                                # bei VIOLATION wird der Kandidat verworfen.
+                                # Produktionsbefund (Quality-Mode-E2E): groove
+                                # (Stufe 4) wurde auf Kosten von authentizitaet/
+                                # emotionalitaet (Stufe 1) verbessert und trotz
+                                # Audit akzeptiert, weil die GPP-Tier-Heuristik
+                                # mit größerem REGRESSION_EPSILON die kleinen
+                                # Senkungen ignorierte, das Gate (1e-9) aber
+                                # korrekt als Verstoß meldete.
+                                _wo_audit_cb = self._last_wohlklang_audit or {}
+                                if _wo_audit_cb.get("status") == "VIOLATION":
+                                    _wo_detail_cb = str(_wo_audit_cb.get("detail") or "unbekannt")
+                                    logger.warning(
+                                        "§FC-GPP: Wohlklang-Ordnungs-Verstoß (%s) — Kandidat verworfen",
+                                        _wo_detail_cb,
+                                    )
+                                    return True, f"Wohlklang-Ordnungs-Verstoß: {_wo_detail_cb}"
                                 if _ho_dropped_tier < _ho_gained_tier:
                                     logger.warning(
                                         "§FC-GPP: Hörordnungs-Verstoß (Senkung Stufe %d gegen Gewinn Stufe %d) — Kandidat verworfen",
