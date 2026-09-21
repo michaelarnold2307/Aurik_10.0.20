@@ -6,7 +6,7 @@
       "rocm": 12
     },
     "generated_by": "scripts/onnx_gpu_compat_scan.py",
-    "rule": "GPU nur wenn strikt schneller als CPU UND numerisch parit\u00e4tisch (rel<=1e-3); MIGraphX <= 200 MB"
+    "rule": "GPU nur wenn strikt schneller als CPU UND numerisch paritätisch (rel<=1e-3); MIGraphX <= 200 MB"
   },
   "models/aero/aero_12_48.onnx": {
     "backend": "rocm",
@@ -54,13 +54,7 @@
     "verdict": "cpu"
   },
   "models/banquet/banquet_vinyl_final.onnx": {
-    "backend": "rocm",
-    "cpu_ms": 2485.0,
-    "gpu_ms": 2092.0,
-    "note": "EP-Numerik weicht ab: roh max|Δ| ≈ 0.35 (rel ≈ 5.8e-2) auf echten Plugin-Feats vs CPU (ORT-ROCm-LSTM-Kernels, §SOTA-ML-V5 2026-09-18; der Rausch-Feed des Scans zeigte nur 7.8e-3 und täuschte OK vor). Plugin erzwingt CPU; GPU-Pfad = Torch-ROCm-Kern (backend/core/dsp/banquet_torch_rocm.py, paritätsverifiziert ≤ 2e-6).",
-    "scan_s": 12.7,
-    "size_mb": 91.8,
-    "verdict": "cpu"
+    "verdict": "rocm"
   },
   "models/basicpitch/basicpitch.onnx": {
     "backend": "rocm",
