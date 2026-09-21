@@ -17827,10 +17827,15 @@ class UnifiedRestorerV3:
                     embedding_vec=_original_embedding.vector if _original_embedding is not None else None,
                     era_warmstart=_era_ws,
                 )
-                # goal_scores für echten MOO vorberechnen (§2.5 Spec 03)
-                _gp_goal_scores_ref = (
-                    {k: float(v) for k, v in _musical_goal_scores.items()} if _musical_goal_scores else None
-                )
+                # goal_scores für echten MOO vorberechnen (§2.5 Spec 03) —
+                # container-agnostisch: dict ODER SimpleNamespace
+                # (Produktionsbefund 2026-09-21: 'SimpleNamespace' hat kein .items).
+                if isinstance(_musical_goal_scores, dict):
+                    _gp_goal_scores_ref = {k: float(v) for k, v in _musical_goal_scores.items()}
+                elif _musical_goal_scores is not None and hasattr(_musical_goal_scores, "__dict__"):
+                    _gp_goal_scores_ref = {k: float(v) for k, v in vars(_musical_goal_scores).items()}
+                else:
+                    _gp_goal_scores_ref = None
             except Exception as _gp_prep_exc:
                 logger.warning("§G23 GP-Vorbereitung (vor MDEM) nicht verfügbar: %s", _gp_prep_exc, exc_info=True)
 
@@ -45681,13 +45686,22 @@ class UnifiedRestorerV3:
         if chunked_tail_skip and not chunked_last:
             logger.debug("§P0-1: measure_all für Chunk übersprungen (song-global nach Assembly)")
             return {}
-        return mg_checker.measure_all(
+        _result = mg_checker.measure_all(
             audio,
             sample_rate,
             reference=reference,
             material_type=material_type,
             panns_singing=float(self._restoration_context.get("panns_singing", 0.0)),
         )
+        # Container-Normalisierung (Produktionsbefund 2026-09-21): Der
+        # get_checker()-Singleton liefert SimpleNamespace, die übrigen
+        # Verbraucher von _musical_goal_scores erwarten dict
+        # (.items/.get/.keys) — sonst AttributeError im Whole-Song-Mode.
+        if isinstance(_result, dict):
+            return _result
+        if _result is not None and hasattr(_result, "__dict__"):
+            return {k: v for k, v in vars(_result).items() if not k.startswith("_")}
+        return {}
 
     def _run_end_of_song_cleanup(self) -> dict[str, Any]:
         """End-of-Song-Cleanup — entlädt schwere Modelle EINMAL je Song.

@@ -16,9 +16,15 @@ import plugins.muq_mulan_plugin as mm
 
 
 def test_fallback_without_onnx(monkeypatch: pytest.MonkeyPatch) -> None:
-    """Ohne ONNX liefern alle Schätzer None — kein stiller Crash (§V6 (copilot-instructions.md))."""
+    """Ohne ONNX UND ohne Torch-Kern liefern alle Schätzer None — kein
+    stiller Crash (§V6 (copilot-instructions.md)). Der Torch-ROCm-Kern
+    (§SOTA-ML-V8) ist primär; der None-Vertrag gilt nur, wenn BEIDE
+    Engines fehlen."""
     monkeypatch.setattr(mm, "_ONNX_PATH", mm._PROJECT_ROOT / "models" / "muq_mulan" / "does_not_exist.onnx")
     monkeypatch.setattr(mm, "_get_session", lambda: None)
+    import backend.core.dsp.muq_mulan_torch_rocm as _tr
+
+    monkeypatch.setattr(_tr, "get_muq_mulan_torch_core", lambda: None)
 
     assert mm.is_available() is False
     silence = np.zeros(48000, dtype=np.float32)

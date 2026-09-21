@@ -32,7 +32,7 @@ import logging
 import os
 import threading
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 import numpy as np
 
@@ -60,8 +60,18 @@ _ref_attempted: bool = False
 
 
 def is_available() -> bool:
-    """True, wenn die exportierte ONNX-Datei vorhanden ist."""
-    return _ONNX_PATH.is_file()
+    """True, wenn ONNX ODER der Torch-ROCm-Kern verfügbar ist (§SOTA-ML-V8,
+    2026-09-18: Torch primär, ONNX CPU-Fallback)."""
+    if _ONNX_PATH.is_file():
+        return True
+    try:
+        from backend.core.dsp.muq_mulan_torch_rocm import (  # pylint: disable=import-outside-toplevel
+            get_muq_mulan_torch_core as _gmt_avail,
+        )
+
+        return _gmt_avail() is not None
+    except Exception:
+        return False
 
 
 def _get_session() -> Any | None:
@@ -186,7 +196,13 @@ def extract_muq_mulan_embedding(audio: Any, sr: int) -> np.ndarray | None:
         if _core is not None:
             _clip_t = _to_mono_24k(audio, sr)
             _out_t = _emt(_core, _clip_t.reshape(1, -1))
-            return np.nan_to_num(np.asarray(_out_t, dtype=np.float32), nan=0.0, posinf=0.0, neginf=0.0)  # type: ignore[no-any-return]
+            # Vertrags-Angleichung an den ONNX-Pfad: (768,)-Shape + L2-Norm
+            # (sonst Batch-Dimension (1, 768) und unnormierte Embeddings).
+            _emb_t = np.asarray(_out_t, dtype=np.float32).reshape(-1)
+            _norm_t = float(np.linalg.norm(_emb_t))
+            if _norm_t > 1e-12:
+                _emb_t = _emb_t / _norm_t
+            return cast(np.ndarray, np.nan_to_num(_emb_t, nan=0.0, posinf=0.0, neginf=0.0))
     except Exception as _t_exc:
         logger.debug("MuQ-MuLan-Torch-Pfad nicht verfügbar: %s — ONNX-Pfad", _t_exc)
     sess = _get_session()
