@@ -331,6 +331,46 @@ def optimize_naturalness(
     else:
         improvements.insert(0, "Natürlichkeit erhalten – bereits optimal.")
 
+    # ── §Ebene-3 Wohlklang-Ordnung (2026-09-21) ────────────────────────
+    # Lexikografische Hörordnung am Optimizer-Ende durchsetzen: HPE ist ein
+    # Skalar — niederrangige Goal-Gewinne (z. B. groove, Stufe 4) auf Kosten
+    # höherrangiger (authentizitaet/emotionalitaet Stufe 1, waerme Stufe 2)
+    # können ΔHPE ≥ 0 ergeben und wären sonst unsichtbar. Bei Verstoß:
+    # Never-worsen-Rücksprung auf das Eingangs-Signal (hoerordnung §5/§8).
+    try:
+        from backend.core.musical_goals.musical_goals_metrics import MusicalGoalsChecker
+        from backend.core.wohlklang_ordnung_gate import (
+            VIOLATION as _WO_VIOLATION,
+        )
+        from backend.core.wohlklang_ordnung_gate import (
+            WohlklangOrdnungGate,
+        )
+
+        _wo_checker = MusicalGoalsChecker()
+        _wo_before = _wo_checker.measure_all(_entry_audio, sr, material_type=material)
+        _wo_after = _wo_checker.measure_all(arr, sr, material_type=material)
+        _wo_deltas: dict[str, float] = {}
+        for _wo_k in set(_wo_before) | set(_wo_after):
+            try:
+                _wo_b = float(_wo_before.get(_wo_k, 0.0))
+                _wo_a = float(_wo_after.get(_wo_k, 0.0))
+            except (TypeError, ValueError):
+                continue
+            _wo_deltas[str(_wo_k)] = _wo_a - _wo_b
+        _wo_verdict = WohlklangOrdnungGate().evaluate(_wo_deltas)
+        if _wo_verdict.status == _WO_VIOLATION:
+            logger.warning(
+                "NaturalnessOptimizer: Wohlklang-Ordnungs-Verstoß (%s) — Never-worsen: Eingangs-Signal beibehalten",
+                _wo_verdict.detail,
+            )
+            arr = _entry_audio.copy()
+            hpe_after = hpe_before
+            # Veraltete Gewinn-Meldung entfernen — der Rollback macht sie unwahr.
+            improvements[:] = [i for i in improvements if not str(i).startswith("Natürlichkeit:")]
+            improvements.insert(0, "Wohlklang-Ordnung geschützt (niederrangiger Gewinn verworfen)")
+    except Exception as _wo_exc:
+        logger.debug("NaturalnessOptimizer: Wohlklang-Ordnungs-Gate nicht verfügbar: %s", _wo_exc)
+
     return NaturalnessResult(
         audio=_restore_layout(arr),
         hpe_before=hpe_before,
