@@ -536,6 +536,83 @@ class TestVocalAIPerformance:
         assert isinstance(result, VocalEnhancementResult)
 
 
+class TestContraltoRootFix:
+    """§v10.303.11 Wurzel-Fix (2026-09-21): F2-Degradations-Evidenz und
+    autonome Bandbreiten-Verlust-Messung im GenderDetector selbst.
+
+    Produktionsbefund: Alt-Stimme F0=150 Hz, F1=355 Hz (weiblich), F2=740 Hz
+    (durch Bandbreitenverlust unter die weibliche Schwelle gedrückt) lief
+    vorher als 'male' @ 0.94 durch die Wurzelklassifikation.
+    """
+
+    @staticmethod
+    def _detector() -> GenderDetector:
+        return GenderDetector(sample_rate=48000)
+
+    def test_override_degraded_f2_classifies_female(self):
+        """F2 degradiert (Bandbreitenverlust) + F1 weiblich → FEMALE."""
+        gender, conf = self._detector()._apply_contralto_override(
+            VoiceGender.MALE, 0.94, 150.0, [355.0, 740.0], bandwidth_loss=0.6
+        )
+        assert gender == VoiceGender.FEMALE
+        assert conf >= 0.65  # §19 Confidence-Floor
+
+    def test_override_missing_f2_classifies_female(self):
+        """F2-Messung fehlt (< 50 Hz) + F1 weiblich → FEMALE."""
+        gender, _ = self._detector()._apply_contralto_override(
+            VoiceGender.MALE, 0.9, 150.0, [355.0, 30.0], bandwidth_loss=0.0
+        )
+        assert gender == VoiceGender.FEMALE
+
+    def test_override_healthy_f2_out_of_range_stays_male(self):
+        """Gesunde F2-Messung unter der weiblichen Schwelle (männliches
+        /u/-Profil) ist Evidenz FÜR male — kein Override (kein False-Positive)."""
+        gender, _ = self._detector()._apply_contralto_override(
+            VoiceGender.MALE, 0.94, 150.0, [355.0, 740.0], bandwidth_loss=0.0
+        )
+        assert gender == VoiceGender.MALE
+
+    def test_override_healthy_f2_in_range_female(self):
+        gender, conf = self._detector()._apply_contralto_override(
+            VoiceGender.MALE, 0.7, 150.0, [355.0, 1100.0], bandwidth_loss=0.0
+        )
+        assert gender == VoiceGender.FEMALE
+        assert conf >= 0.65
+
+    def test_override_octave_candidate_degraded_female(self):
+        """Oktavfehler: F0=70 Hz, 2×F0=140 Hz in Zone + F1 weiblich + F2
+        degradiert → FEMALE."""
+        gender, _ = self._detector()._apply_contralto_override(
+            VoiceGender.MALE, 0.8, 70.0, [355.0, 740.0], bandwidth_loss=0.7
+        )
+        assert gender == VoiceGender.FEMALE
+
+    def test_override_healthy_f2_at_male_bound_stays_male_despite_loss(self):
+        """SOTA-Gate-Befund g09: F2 an der männlichen Untergrenze (840 Hz)
+        ist gesunde Anatomie-Evidenz FÜR male — auch bei hohem
+        Bandbreiten-Verlust kein Override (kein False-Positive)."""
+        gender, _ = self._detector()._apply_contralto_override(
+            VoiceGender.MALE, 0.9, 120.0, [500.0, 840.0], bandwidth_loss=0.9
+        )
+        assert gender == VoiceGender.MALE
+
+    def test_override_f0_outside_zone_stays_male(self):
+        """F0 außerhalb der Contralto-Zone → kein Override."""
+        gender, _ = self._detector()._apply_contralto_override(
+            VoiceGender.MALE, 0.9, 260.0, [355.0, 740.0], bandwidth_loss=0.9
+        )
+        assert gender == VoiceGender.MALE
+
+    def test_override_f2_below_male_without_hint_stays_male(self):
+        """Ohne verlässlichen Bandbreiten-Hint (None) gilt reine Anatomie:
+        F2 unter der männlichen Untergrenze ist gesunde male-Evidenz —
+        kein Override (Bariton-Schutz, Befund 2026-09-21)."""
+        gender, _ = self._detector()._apply_contralto_override(
+            VoiceGender.MALE, 0.9, 130.0, [400.0, 780.0], bandwidth_loss=None
+        )
+        assert gender == VoiceGender.MALE
+
+
 # ============================================================
 # MAIN TEST RUNNER
 # ============================================================

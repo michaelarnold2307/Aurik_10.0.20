@@ -149,12 +149,19 @@ class GenderDetector:
             },
         }
 
-    def detect(self, audio: np.ndarray) -> VoiceCharacteristics:
+    def detect(self, audio: np.ndarray, bandwidth_loss: float | None = None) -> VoiceCharacteristics:
         """
         Erkennt voice characteristics including gender.
 
         Args:
             audio: Audio signal (mono)
+            bandwidth_loss: Optionaler, ZUVERLÄSSIGER Bandbreiten-Verlust-Hint
+                (0.0–1.0) aus dem Rekonstruktions-Kontext (§v10.303.11). None =
+                keine externe Evidenz — die Wurzelklassifikation verlässt sich
+                dann ausschließlich auf die Anatomie (F0/F1/F2). Ein autonomer
+                Signal-Proxy wurde bewusst VERWORFEN: er konnte „bandbegrenzte
+                Aufnahme" nicht von „harmonikarmer Stimme" unterscheiden
+                (False-Positive bei Bariton-Synthese, Befund 2026-09-21).
 
         Returns:
             VoiceCharacteristics with detected attributes
@@ -190,7 +197,9 @@ class GenderDetector:
         gender, confidence = self._classify_gender(fundamental_freq, formants)
 
         # §19 Contralto-Override: tiefe Frauenstimmen mit weiblichen Formanten
-        gender, confidence = self._apply_contralto_override(gender, confidence, fundamental_freq, formants)
+        gender, confidence = self._apply_contralto_override(
+            gender, confidence, fundamental_freq, formants, bandwidth_loss=bandwidth_loss
+        )
 
         # Detect breathiness
         breathiness = self._detect_breathiness(audio)
@@ -320,15 +329,25 @@ class GenderDetector:
         confidence: float,
         fundamental_freq: float,
         formants: list[float],
+        bandwidth_loss: float | None = None,
     ) -> tuple[VoiceGender, float]:
         """§19 Contralto-Override (Zone 120–240 Hz, Spec 19 „Contralto-Zonen-
-        Erweiterung" 2026-08-22; Befund Elke Best 2026-09-08).
+        Erweiterung" 2026-08-22; Befund Elke Best 2026-09-08; Wurzel-Fix
+        F2-Degradation 2026-09-21).
 
         Tiefe Frauenstimmen haben F0 im männlichen Bereich, aber weibliche
         Formanten (kürzerer Vokaltrakt → höheres F1/F2). Formanten sind das
         anatomisch härtere Merkmal als F0 → F1 UND F2 weiblich-typisch bei
         F0 in der Contralto-Zone (inkl. Oktavfehler: 2×F0 in Zone) → FEMALE
         mit Confidence-Floor 0.65 (§19).
+
+        §v10.303.11-Erweiterung (nur mit VERLÄSSIGEM Hint): Bei MP3-/
+        Bandbreitenverlust wird F2 unter die weibliche Schwelle gedrückt —
+        dann ist F1 allein ausreichend, ABER nur wenn (a) F2 unter der
+        MÄNNLICHEN Untergrenze liegt (Anatomie mit male unvereinbar) und
+        (b) der Bandbreiten-Verlust-Hint > 0.5 ist. Fehlt der Hint (None),
+        gilt die reine Anatomie: F2 unterhalb der männlichen Untergrenze
+        ist dann gesunde male-Evidenz (z. B. männliches /u/), kein Override.
         """
         if gender == VoiceGender.FEMALE or fundamental_freq <= 0 or len(formants) < 2:
             return gender, confidence
@@ -343,16 +362,25 @@ class GenderDetector:
             if (fundamental_freq < _zone_low and _zone_low <= 2.0 * fundamental_freq <= _zone_high)
             else fundamental_freq
         )
-        if (
-            _zone_low <= _effective_f0 <= _zone_high
-            and _female_f1[0] <= f1 <= _female_f1[1]
-            and _female_f2[0] <= f2 <= _female_f2[1]
-        ):
+        _f2_missing = f2 < 50.0
+        # Anatomischer Diskriminator: F2 UNTER der männlichen Untergrenze ist
+        # mit einem gesunden männlichen Vokaltrakt unvereinbar (männliches F2
+        # beginnt bei 840 Hz) — erst dann darf ein VERLÄSSIGER Bandbreiten-
+        # Verlust-Hint als Degradations-Evidenz gelten. Gesunde Messung bei/
+        # über der männlichen Untergrenze bleibt Evidenz FÜR male (Befund g09:
+        # F2=840 Hz bei Bariton-Synthese, kein False-Positive).
+        _male_f2_low = float(self.formant_ranges[VoiceGender.MALE]["f2"][0])
+        _f2_below_male = f2 < _male_f2_low
+        _f2_degraded = _f2_missing or (bandwidth_loss is not None and float(bandwidth_loss) > 0.5 and _f2_below_male)
+        _f1_in_female = _female_f1[0] <= f1 <= _female_f1[1]
+        _f2_in_female = _female_f2[0] <= f2 <= _female_f2[1]
+        if _zone_low <= _effective_f0 <= _zone_high and _f1_in_female and (_f2_in_female or _f2_degraded):
             logger.debug(
-                "Contralto-Override: F0=%.0f Hz F1=%.0f F2=%.0f → FEMALE",
+                "Contralto-Override: F0=%.0f Hz F1=%.0f F2=%.0f (bw_hint=%s) → FEMALE",
                 fundamental_freq,
                 f1,
                 f2,
+                "None" if bandwidth_loss is None else f"{float(bandwidth_loss):.2f}",
             )
             return VoiceGender.FEMALE, max(float(confidence), 0.65)
         return gender, confidence

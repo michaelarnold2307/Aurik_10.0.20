@@ -3293,7 +3293,16 @@ class DeEsserPhase(PhaseInterface):
         if _HAS_ROBUST_GENDER and _RobustGenderDetector is not None:
             try:
                 detector = _RobustGenderDetector(sample_rate=sample_rate)
-                chars = detector.detect(mono)
+                # §v10.303.11: Verlässlichen Bandbreiten-Verlust-Hint aus dem
+                # Rekonstruktions-Kontext an die Wurzelklassifikation reichen
+                # (nur dann darf F2-Degradation den Contralto-Override tragen).
+                _bw_hint = kwargs.get("bandwidth_loss")
+                _bw_hint = float(_bw_hint) if _bw_hint is not None else None
+                try:
+                    chars = detector.detect(mono, bandwidth_loss=_bw_hint)
+                except TypeError:
+                    # Ältere/fake Detektor-Signaturen ohne bandwidth_loss-Parameter
+                    chars = detector.detect(mono)
 
                 # §2.11: Wenn pYIN-F0 verfügbar und signifikant anders als
                 # autocorrelation-F0 → pYIN bevorzugen (robuster gegen Vibrato,
