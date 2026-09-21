@@ -302,7 +302,8 @@ def main():
     audio_path = args.audio
     if not audio_path:
         candidates = [
-            Path("test_audio") / "Elke Best - Du wolltest nur ein Abenteuer, aber ich suchte einen Freund.mp3",
+            Path("test_audio")
+            / "Testkünstlerin (Schlager) - Du wolltest nur ein Abenteuer, aber ich suchte einen Freund.mp3",
             Path("output_audio") / "*.wav",
         ]
         for cand in candidates:

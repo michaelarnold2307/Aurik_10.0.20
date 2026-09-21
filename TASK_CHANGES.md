@@ -74,7 +74,7 @@
   geprüft, Registry-Eintrag vorhanden); §2.17 delegiert (verhaltensidentisch,
   37 Tests), §2.52b nutzt SSM primär mit agglomerativem Fallback;
   Intro/Outro nur noch für das erste/letzte Segment (Positionsregel
-  verschluckte den 156-s-Refrain als „outro“). Elke-Best-225s: 12
+  verschluckte den 156-s-Refrain als „outro“). Test-Track-225s: 12
   evidenz-basierte Segmente (statt 7), alle 4 Refrain-Positionen + Klimax,
   Laufzeit 1,28 s/min ≤ Budget; neuer Test
   `test_ssm_boundaries_detect_aba_transitions`.
@@ -95,7 +95,7 @@
     2 Docker-Fallback-Tests waren seit der SUP-F2-Signaturänderung
     `_remove_crackle_ml(..., sample_rate)` rot. Backlog mit Rezept je Phase:
     62/54/44/45/52/57/61/18/32.
-  - AUF-3 Songaufbauanalyse: NICHT auf SOTA-Stufe (Elke-Best-225s: 0 Chorus/
+  - AUF-3 Songaufbauanalyse: NICHT auf SOTA-Stufe (Test-Track-225s: 0 Chorus/
     0 Klimax, 42 s „intro“, 37 s „bridge“ — unabhängiger Chroma-Fenster-Scan
     belegt Refrain bei ≈44/100/156/192 s). Upgrade `song_structure_analyzer.py`:
     Fenster-Wiederholungs-Evidenz (`_window_repetition_counts`),
@@ -130,7 +130,7 @@
     Segmente (unter Maskierungsschwelle, Band 4–12 kHz, Muster phase_19)
     bleiben ungezähmt; Zähler `subaudible_sibilants_skipped`;
     test_phase_43_ml_deesser (48 Tests grün).
-  - Budget-Wahrheit (Profiling auf dem Elke-Best-Export): phase_01s
+  - Budget-Wahrheit (Profiling auf dem Test-Track-Export): phase_01s
     4,4×-RT-Attribution „DSP-Multiscale“ war falsch — Multiscale kostet nur
     ~3 s/225 s (11 % der Phasen-Zeit); Treiber sind der einmalige
     BANQUET-ML-Load (0,78 s/Prozess) + Device-Detection (0,26 s) bzw. im Lauf
@@ -141,7 +141,7 @@
     (aktuell 33× RT > 32×-Ziel); Activation-Contract-Tests sind flag-bewusst.
   - Roadmap/FILE_REGISTRY nachgezogen; Export-Analyse-Report ergänzt
     (0 eingeführte Restdefekte, MuQ 4,84→4,85).
-- **Überwachter 225-s-Lauf 2026-09-16 (Elke Best, voller Song) — Befunde & Fixes**:
+- **Überwachter 225-s-Lauf 2026-09-16 (Testkünstlerin (Schlager), voller Song) — Befunde & Fixes**:
   - SUP-F1 (PERF): PANNs-ROCm-Provider-Filter verglich (Name, Options)-Tupel
     gegen String-Namen → GPU immer verworfen, PANNs dauerhaft CPU. Fix:
     Tupel-Name auspacken; Regressionstest test_panns_rocm_provider_filter.py.
@@ -257,7 +257,7 @@
     DEBUG). Tests: test_hr_v1_activation_contract.py von 4 auf 6 Fälle
     (fail-closed-Synthese-Fehler, model_used=none ⇒ kein Eingriff).
   - Neues Skript `scripts/validate_hr_v1.py`: A/B-Gate (af ≥ −0,02,
-    HNR ≥ −0,5 dB, Exit 0/1/2) — **Lauf 2026-09-16 (Elke-Best-20s,
+    HNR ≥ −0,5 dB, Exit 0/1/2) — **Lauf 2026-09-16 (Test-Track-20s,
     Torch-ROCm): af +0,0073, HNR +4,42 dB, PQS 4,52, 26 Bänder ⇒ PASS**
     (Beleg: `docs/reports/current/2026-09-16_hr_v1_bigvgan_ab_validation.md`).
     `BIGVGAN_V2_HR_ACTIVATED` bleibt bewusst OFF: Rollout-Voraussetzungen
@@ -286,7 +286,7 @@
     Rückblend (wet = 1 − Überschuss/Toleranz, zentrale Toleranz 0,02, §V6-fail-open,
     layout-sicher) — verdrahtet in phase_07/17/19/38 (Metadatum `af_guard`).
     Diagnose-Skript: `--fail-delta`-CI-Gate (Exit 3) + `compute_fail_delta_violations`.
-    **Wirkung (Diagnose-Vergleich Elke-Best-20s):** phase_07 Δ−0,136→−0,049;
+    **Wirkung (Diagnose-Vergleich Test-Track-20s):** phase_07 Δ−0,136→−0,049;
     phase_17 −0,084→+0,002; phase_19 −0,062→0,000; phase_38 −0,043→+0,061;
     Ketten-Min-af 0,473→0,631. Tests: test_af_never_worsen_guard.py (11 Fälle).
   - **3b (PSY-A7-Rollout 10/11/40):** `backend/core/dsp/perceptual_loudness_cap.py`
@@ -640,7 +640,7 @@
   Probelauf 2 (jazz_vinyl): Exit 0 statt 5, EP-Errors weg,
   echte HTDemucs-Separation (Prior 0.977), Export-Datei vorhanden (degraded, Pegelabfall
   8.13 dB). Komplettlauf über alle kurzen Songs läuft im Hintergrund
-  (output/supervised_run/); lange Songs (30s/60s/226s Elke Best) folgen sequenziell.
+  (output/supervised_run/); lange Songs (30s/60s/226s Testkünstlerin (Schlager)) folgen sequenziell.
 - **Stereo-Kollaps (9./10. Bug, aus Batch-Log „measure_all: Signal degeneriert (2 Samples)“)**:
   (9) `_evaluate_stereo_safety_guard` deklarierte `tp_out > -1 dBTP` als HARD-FAIL — bei
   normal gemastertem Stereo (TP ≈ 0 dB) rollt das JEDE Phase zurück (Produktionsbefund:

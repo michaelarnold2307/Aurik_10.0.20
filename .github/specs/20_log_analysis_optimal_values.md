@@ -354,13 +354,13 @@ Alle Ableitungen sind durch die genannten Log-Zeilen und Code-Stellen belegbar.
 
 ---
 
-## §20.13 — Live-Run-Analyse: Elke Best (225s, cassette, 43 Phasen, 4h Laufzeit)
+## §20.13 — Live-Run-Analyse: Testkünstlerin (Schlager) (225s, cassette, 43 Phasen, 4h Laufzeit)
 
 ### §20.13.1 — Run-Metriken
 
 | Metrik | Wert |
 |--------|------|
-| Datei | Elke Best — Du wolltest nur ein Abenteuer (MP3, 44100→48000 Hz) |
+| Datei | Testkünstlerin (Schlager) — Du wolltest nur ein Abenteuer (MP3, 44100→48000 Hz) |
 | Kette | reel_tape → vinyl → cassette → mp3_low |
 | Material | cassette (DefectScanner), reel_tape (EraClassifier) |
 | Restorability | 63,5 (FAIR) |
@@ -436,7 +436,7 @@ if _td_p06 >= 4 and use_ml_hybrid:
         # ML erlaubt mit reduziertem Cap
 ```
 
-**Wirkung auf Elke-Best-Datei:** Terminal=mp3_low → ML aktiv mit 0.50-Cap (statt DSP-only).
+**Wirkung auf Test-Track-Datei:** Terminal=mp3_low → ML aktiv mit 0.50-Cap (statt DSP-only).
 Erwartung: Frequenzrestauration mit NVSR/FlashSR-Unterstützung, +10–15% BW-Gewinn.
 
 ### §20.14.2 — CIG: 5% Group-Delay-Headroom
@@ -465,4 +465,4 @@ Keine hörbaren Auswirkungen (42ms < 50ms Hörbarkeitsschwelle nach Blauert 1997
 | Version | Datum | Änderung |
 |---------|-------|----------|
 | 10.0.300 | 2026-08-04 | Initial: Logbasierte Tiefenanalyse, 6 Fixes implementiert, Optimalwerte dokumentiert |
-| 10.0.301 | 2026-08-04 | Live-Run-Analyse (Elke Best, 4h/43 Phasen/HPI 0,768): 5 Folgeprobleme identifiziert, 2 Fixes implementiert (§20.13–§20.14) |
+| 10.0.301 | 2026-08-04 | Live-Run-Analyse (Testkünstlerin (Schlager), 4h/43 Phasen/HPI 0,768): 5 Folgeprobleme identifiziert, 2 Fixes implementiert (§20.13–§20.14) |

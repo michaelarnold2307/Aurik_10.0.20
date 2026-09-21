@@ -4,7 +4,7 @@ Tests for Phase 12 Tape Head Contact Level Stabilizer (Step 6c).
 Validates the autonomous detection and repair of gradual level dips
 caused by tape-head pressure variation / capstan irregularity.
 
-Defect morphology (from real cassette analysis — Elke Best):
+Defect morphology (from real cassette analysis — Testkünstlerin (Schlager)):
   - Gradual fade-down: 60-100 ms onset
   - Minimum depth: 10-25 dB below local context level
   - Sharp recovery: < 25 ms back to normal

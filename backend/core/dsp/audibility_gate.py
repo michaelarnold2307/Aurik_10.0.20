@@ -33,7 +33,7 @@ class SanitizedSignal:
 
     ``defect_audibility`` saniert je Aufruf das KOMPLETTE Signal
     (``nan_to_num`` + float32-Konvertierung + ``ravel``) — bei 7426
-    Klick-Verdikten je 30-s-Chunk (phase_27, Elke-Material) waren das
+    Klick-Verdikten je 30-s-Chunk (phase_27, Test-Material) waren das
     gemessen 30 s ``nan_to_num`` + 15 s Konvertierungs-Kopien von 52 s
     Gesamtlaufzeit. Die Sanitisierung hängt nicht vom Defekt ab ⇒ einmal
     je Signal; die Verdikte bleiben bit-identisch (gleiche Operationen,

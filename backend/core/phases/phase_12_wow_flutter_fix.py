@@ -2658,7 +2658,7 @@ class WowFlutterFix(PhaseInterface):
 
         Sicherheitsdesign (IEC 60386 §5.2):
           - Dieselbe Methode wie DefectScanner._detect_wow() — funktioniert bei
-            SNR = -1 dB (bestätigt: DefectScanner erkennt wow=1.00 für Elke Best)
+            SNR = -1 dB (bestätigt: DefectScanner erkennt wow=1.00 für Testkünstlerin (Schlager))
           - Keine Voiced-Detection nötig — arbeitet auf beliebigem Audiosignal
           - Bandpass 80–4000 Hz isoliert stimmhafte/Instruments-Frequenzen
           - Hilbert-Transform → Instantan-Phase → Instantan-Frequenz pro Sample

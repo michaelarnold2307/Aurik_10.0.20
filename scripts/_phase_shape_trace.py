@@ -29,7 +29,9 @@ for lib in ("matplotlib", "PIL", "urllib3", "numba", "filelock", "acoustics", "t
 import numpy as np
 
 INPUT_FILE = str(
-    PROJECT_ROOT / "test_audio" / "Elke Best - Du wolltest nur ein Abenteuer, aber ich suchte einen Freund.mp3"
+    PROJECT_ROOT
+    / "test_audio"
+    / "Testkünstlerin (Schlager) - Du wolltest nur ein Abenteuer, aber ich suchte einen Freund.mp3"
 )
 if not os.path.exists(INPUT_FILE):
     print(f"[FEHLER] Input nicht gefunden: {INPUT_FILE}")

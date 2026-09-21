@@ -1,7 +1,7 @@
 {
   "cases": [
     {
-      "audio_path": "test_audio/Elke Best - 30 Sekunden.mp3",
+      "audio_path": "test_audio/Testkünstlerin (Schlager) - 30 Sekunden.mp3",
       "case_id": "real_schlager_001",
       "material": "mp3_low",
       "mode": "restoration",
@@ -9,7 +9,7 @@
       "vocal_focus": true
     },
     {
-      "audio_path": "test_audio/Elke Best - Du wolltest nur ein Abenteuer, aber ich suchte einen Freund.mp3",
+      "audio_path": "test_audio/Testkünstlerin (Schlager) - Du wolltest nur ein Abenteuer, aber ich suchte einen Freund.mp3",
       "case_id": "real_schlager_002",
       "material": "mp3_low",
       "mode": "restoration",

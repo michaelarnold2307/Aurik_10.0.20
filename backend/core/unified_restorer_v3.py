@@ -5852,7 +5852,7 @@ class UnifiedRestorerV3:
                 result["micro_dynamics"] = float(_np.clip(result["micro_dynamics"] * 1.065, 0.0, 1.0))
 
             # --- P3: Emotionalitaet proxy — bass-drive + mikrodynamische Lebendigkeit
-            # §2.64 v10.0.0b: Reiner Bass-Energie-Quotient × 3.0 gab 0.654 für Elke Best
+            # §2.64 v10.0.0b: Reiner Bass-Energie-Quotient × 3.0 gab 0.654 für Testkünstlerin (Schlager)
             # (Kassette, 1970er) obwohl PMGG-Endwert 1.000. Root-Cause: emotionale Intensität
             # wird nicht allein durch Bassenergie bestimmt, sondern durch dynamic range
             # (Mikrodynamik = wie lebendig das Signal atmet). Fix: 25 % Bass-Drive +
@@ -8952,7 +8952,7 @@ class UnifiedRestorerV3:
                 # §v10.731 (2026-09-09): Era-Decade in den Kontext schreiben —
                 # calibrate_pipeline_guards() liest _rc.get("decade", 1980) und
                 # die Phasen lesen _ctx.get("decade") — BEIDE Keys wurden NIE
-                # gesetzt (Befund Elke-Best-Lauf 2026-09-09: EraClassifier
+                # gesetzt (Befund Test-Track-Lauf 2026-09-09: EraClassifier
                 # decade=1970, §CALIB-Audits aber era=unknown/Default-1980).
                 _era_d_ctx = int(getattr(_era_result, "decade", 0) or 0)
                 if _era_d_ctx:
@@ -11838,7 +11838,7 @@ class UnifiedRestorerV3:
         try:
             # §0p [RELEASE_MUST]: vocal_detected Schwelle = 0.35 (VQI-Gate-Threshold aus §0p)
             # _compute_vocal_presence_confidence() gibt 0.35 via Music+Vocal-Heuristik zurück;
-            # der alte Threshold 0.40 schloss genau diese Heuristik-Fälle aus (Elke Best 1970er).
+            # der alte Threshold 0.40 schloss genau diese Heuristik-Fälle aus (Testkünstlerin (Schlager) 1970er).
             _vocal_detected = bool(
                 getattr(self, "_restoration_context", {}).get("panns_vocals_confidence", 0.0) >= 0.35
             )
@@ -13341,7 +13341,7 @@ class UnifiedRestorerV3:
                 # die sprach-spezifische Sibilanten-Bandwahl der De-Esser
                 # (de: 5,5–8,5 kHz, es: 4,5–7 kHz) darf nicht blind einer
                 # niedrig-konfidenten Transkription folgen (Produktionsbefund:
-                # deutscher Elke-Best-Song → Whisper „es“ bei conf 0,03–0,56
+                # deutscher Test-Track-Song → Whisper „es“ bei conf 0,03–0,56
                 # → spanische Band). Zweite, unabhängige Stimme:
                 # LPC-Formant-Detektor; Uneinigkeit ⇒ neutrale „unknown“-Band.
                 _lpc_lang_ptl = "unknown"
@@ -17150,7 +17150,7 @@ class UnifiedRestorerV3:
             # §v10.732 (2026-09-09): Fehlende Scores NICHT auf 0.0 setzen — 0.0
             # heißt „katastrophal gescheitert" und vergiftet _musical_goals_passed,
             # _musical_excellence_score, PQS-MOS und die ExzellenzDenker-Entscheidung
-            # (Befund Elke-Best-Lauf: 15 fehlende Goals → PQS-MOS=1.9 → Rollback-
+            # (Befund Test-Track-Lauf: 15 fehlende Goals → PQS-MOS=1.9 → Rollback-
             # Signale auf jedem Nicht-Letzten-Chunk). Nur GEMESSENE Goals zählen.
             _measured_goals = {k: v for k, v in _musical_goal_scores.items() if k in _goal_vector_keys}
 
@@ -28008,7 +28008,7 @@ class UnifiedRestorerV3:
         # sodass Phase 19/42/43 das erkannte Geschlecht via kwargs erhalten.
         # §v10.734 (2026-09-09): Song-global vorberechnetes Gender (Mittelfenster
         # aus _restore_chunked) hat Vorrang — Chunk-0-Intros lieferten sonst
-        # F0=0.0 → unknown (Befund Elke-Best-Lauf 2). Wert kommt über
+        # F0=0.0 → unknown (Befund Test-Track-Lauf 2). Wert kommt über
         # self._precomputed_vocal_gender (in restore() gepoppt).
         _precomputed_gender = getattr(self, "_precomputed_vocal_gender", None)
         self._detected_vocal_gender = "unknown"
@@ -40531,7 +40531,7 @@ class UnifiedRestorerV3:
                             # Prüft nach JEDER Phase ob P1/P2-Ziele unter material-adaptive
                             # Schwellwerte gefallen sind. Bei 3 konsekutiven Degradationen
                             # → Emergency-Stop + Revert auf besten Checkpoint.
-                            # Verhindert das "Elke-Best-Szenario": 327 Phasen, Qualität
+                            # Verhindert das "Test-Track-Szenario": 327 Phasen, Qualität
                             # zerstört, Export-Gate blockiert — alles zu spät.
                             # §v10.14: Überspringen wenn Phase sich selbst deaktiviert hat
                             # (Continuous-Noise-Guard, Material-Passthrough etc.) —

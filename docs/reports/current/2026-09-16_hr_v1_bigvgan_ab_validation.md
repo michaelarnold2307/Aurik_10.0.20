@@ -8,7 +8,7 @@
 
 | Feld | Wert |
 |---|---|
-| Eingabe | `test_audio/Elke Best - 30 Sekunden.mp3` (20,0 s, Mono 48 kHz) |
+| Eingabe | `test_audio/Testkünstlerin (Schlager) - 30 Sekunden.mp3` (20,0 s, Mono 48 kHz) |
 | DSP-Pfad | `HarmonicRestorationPhase.process()` (Status quo, ohne BigVGAN) |
 | BigVGAN-Pfad | `synthesize_audio` (bigvgan_v2.pth, ONNX-Runtime, Torch 2.11 ROCm 7.2) + `additive_synthesis_gate` (model=bigvgan_v2) |
 | Gates | af-Delta ≥ −0,02 (click/pre-echo-Proxy aus `artifact_freedom_guard`), HNR-Delta ≥ −0,5 dB (Boersma-1993-Autokorrelation) |
@@ -24,7 +24,7 @@
 | bands_released | — | 26 | — | — | Zeuge |
 
 ```text
-Input: test_audio/Elke Best - 30 Sekunden.mp3 (20.0 s, Mono 48000 Hz)
+Input: test_audio/Testkünstlerin (Schlager) - 30 Sekunden.mp3 (20.0 s, Mono 48000 Hz)
 DSP-Pfad:       af=0.4582  HNR=-4.62 dB
 BigVGAN-Pfad:   af=0.4655  HNR=-0.20 dB  (PQS=4.52, bands_released=26)
 Deltas: af +0.0073 (Toleranz −0.02) | HNR +4.42 dB (Toleranz −0.5)

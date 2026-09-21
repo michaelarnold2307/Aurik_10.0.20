@@ -145,7 +145,7 @@ _PTYPE_TO_CLASS: dict[str, str] = {
 
 # §SOTA-Analogie-Korrektur 2026-09-17 (ANA-9): Konfidenz-Gate — Segmente aus
 # einer sehr niedrig-konfidenten Transkription (Produktionsbefund: overall
-# 0,03 auf dem Elke-Lauf) dürfen die phonem-targeted Gates (19/24/43/56/MDEM)
+# 0,03 auf dem Test-Lauf) dürfen die phonem-targeted Gates (19/24/43/56/MDEM)
 # nicht steuern; sie werden als „silence“ geführt (neutrale Gate-Reaktion).
 _MIN_TIMELINE_CONF = 0.30
 
@@ -425,7 +425,7 @@ def resolve_language_consensus(
 
     Die Bandwahl (de: 5,5–8,5 kHz, es: 4,5–7 kHz, …) darf nicht blind einer
     niedrig-konfidenten Transkriptions-Sprache folgen (Produktionsbefund:
-    deutscher Elke-Best-Song → Whisper „es“ bei conf 0,03–0,56 → spanische
+    deutscher Test-Track-Song → Whisper „es“ bei conf 0,03–0,56 → spanische
     Band). Zwei unabhängige Stimmen: Transkription (Whisper) + LPC-Formant-
     Detektor; Uneinigkeit ⇒ neutrale „unknown“-Band (4–8 kHz) — eine falsche
     spezifische Band schadet dem De-Esser mehr als die neutrale.

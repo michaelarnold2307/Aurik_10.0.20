@@ -1,6 +1,6 @@
 # TODOS — SOTA-Roadmap & Lücken-Schluss (nächste Sessions)
 
-> **Stand:** 2026-09-08 · Quelle: Matrix-Endlauf (3 Zellen, Elke-Best-Vinyl) + unabhängige
+> **Stand:** 2026-09-08 · Quelle: Matrix-Endlauf (3 Zellen, Test-Track-Vinyl) + unabhängige
 > Spec-vs-SOTA-Tiefenanalyse (`docs/reports/current/2026-09-08_envelope_root_cause_sota_fixes_matrix.md`).
 > **Wie erkannt wird:** Jede Aufgabe hat eine TODO-ID (`TODO-P0-1` …), Ziel, Wirkung,
 > Beleg (Pfad:Zeile) und Akzeptanzkriterium. Agenten: Aufgabe mit ID greppen, Beleg lesen, umsetzen,
@@ -538,7 +538,7 @@ Vorstufe (Separation-SOTA, Zeile 1602).
    **Status 2026-09-17 (F5-Prämisen-Probe, CPU):** CLAP war Negativbefund
    (Head lernte nichts über der Mittelwert-Baseline, 2026-09-16). Probe mit
    dem bereits im Repo vorhandenen BEATs-Encoder (`beats_pooled_embedding`,
-   768-dim, ONNX, CPU): 8-s-Musikfenster (Elke Best) mit ±6-dB-Bass- und
+   768-dim, ONNX, CPU): 8-s-Musikfenster (Testkünstlerin (Schlager)) mit ±6-dB-Bass- und
    +5-dB-Präsenz-EQ — Embedding-Distanzen 0,7e-3…1,8e-3, richtungsrichtig
    (Bass-Boost > Bass-Cut > Präsenz); CLAP zeigte dort keinen strukturierten
    Signalanteil. Precompute kostet ~0,4 s je Fenster (CPU). **F5-Plan (GPU
@@ -1087,7 +1087,7 @@ Sänger-Identität, MuQ-MOS nicht schlechter als Baseline).
 | Q3 | PSY-A7: Kurzzeit-Loudness-Steuerung für 40/47 | **CAP UMGESETZT 2026-09-15 (phase_47)** — `_perceptual_loudness_cap`: peak-STL-Überschreitung > Marge ⇒ proportionaler Blend Richtung Input (Never-worsen §4/§8a, §V6-fail-closed); STL/LTL-Witness (2026-09-14) + 6 Tests. 10/11/40 = Folge-Slice ✅ (perceptual_loudness_cap, 8 Tests) | temporal_loudness() nutzt ERB-Kurzzeit-Modell (vorhanden) |
 | Q4 | WIT-M1: MuQ-Backbone-Fix (MOS-Richtung) | **NACH F1 (GPU)** | MuQ-Eval-Backbone beschaffen ODER A1-Head auf msd-iter neu trainieren; dann Richtungs-Validierung (Muster validate_muq_plugin_direction.py) — erst danach MuQ als Gate-Stimme |
 | Q5 | F2-Verlängerung 30–50 Epochs | **GESCHLOSSEN 2026-09-16 (obsolet):** Die faire S1-Validierung hat Pfad B mit diesem Setup verworfen (halluzinierte Vokal-Inhalte in stillen Lücken, ~11 dB schlechter als Crossfade — Taskformulierungs-, kein Verlustfunktions-Problem). Eine bloße Epoch-Verlängerung ändert daran nichts; Q5 entfällt. Der 2026-09-16 05:11 gestartete Resume-Lauf (`--resume-epoch 4 --epochs 40`, Log `output/gacela_f2/train_log_epoch4_40.txt`) wurde vom Runtime-Neustart unterbrochen (kein neuer Checkpoint) und wird bewusst NICHT fortgesetzt. | — |
-| Q6 | F3: BigVGAN (HR-V1 + 23/50 + 03) | **CPU-VORBEREITUNG VOLLSTÄNDIG 2026-09-16** + **A/B-PASS auf der GPU**: Aktivierungsvertrag verdrahtet — `bigvgan_v2_ready()`/`hr_v1_activation_status()` im Plugin (fail-closed, Flag = einzige Schaltstelle) + phase_07-Synthese-Pfad (attempted/applied-Witness, §V6-Warnung beim ML→DSP-Fallback) + `scripts/validate_hr_v1.py` (af+HNR-Gate, Exit 0/1/2). Tests: test_hr_v1_activation_contract.py (6 Fälle, inkl. fail-closed-Synthese-Fallback). **A/B-Validierung 2026-09-16 (Elke-Best-20s, Torch-ROCm): af +0,0073 (≥ −0,02 ✓), HNR +4,42 dB (≥ −0,5 ✓), PQS 4,52, 26 Bänder ⇒ PASS** (Beleg: `docs/reports/current/2026-09-16_hr_v1_bigvgan_ab_validation.md`). **23/50/03-Verdrahtung ✅ 2026-09-16**: gemeinsamer Helfer `apply_hr_v1_additive()` (eine Schaltstelle, layout-agnostisch) + `hr_v1`-Witness in phase_23/50/03 (9 Contract-Tests). Flag bleibt bewusst OFF bis Test-Suite-Anpassung + UV3-Budget-Nachweis (Rollout, >10× RT); F3-Finetune bleibt **GPU-GEBUNDEN**. | bigvgan_v2.pth lokal; Torch-Runtime nach S3-Muster + phase_07-Verdrahtung mit Aktivierungsvertrag |
+| Q6 | F3: BigVGAN (HR-V1 + 23/50 + 03) | **CPU-VORBEREITUNG VOLLSTÄNDIG 2026-09-16** + **A/B-PASS auf der GPU**: Aktivierungsvertrag verdrahtet — `bigvgan_v2_ready()`/`hr_v1_activation_status()` im Plugin (fail-closed, Flag = einzige Schaltstelle) + phase_07-Synthese-Pfad (attempted/applied-Witness, §V6-Warnung beim ML→DSP-Fallback) + `scripts/validate_hr_v1.py` (af+HNR-Gate, Exit 0/1/2). Tests: test_hr_v1_activation_contract.py (6 Fälle, inkl. fail-closed-Synthese-Fallback). **A/B-Validierung 2026-09-16 (Test-Track-20s, Torch-ROCm): af +0,0073 (≥ −0,02 ✓), HNR +4,42 dB (≥ −0,5 ✓), PQS 4,52, 26 Bänder ⇒ PASS** (Beleg: `docs/reports/current/2026-09-16_hr_v1_bigvgan_ab_validation.md`). **23/50/03-Verdrahtung ✅ 2026-09-16**: gemeinsamer Helfer `apply_hr_v1_additive()` (eine Schaltstelle, layout-agnostisch) + `hr_v1`-Witness in phase_23/50/03 (9 Contract-Tests). Flag bleibt bewusst OFF bis Test-Suite-Anpassung + UV3-Budget-Nachweis (Rollout, >10× RT); F3-Finetune bleibt **GPU-GEBUNDEN**. | bigvgan_v2.pth lokal; Torch-Runtime nach S3-Muster + phase_07-Verdrahtung mit Aktivierungsvertrag |
 | Q7 | F5/C4: DDSP-Prädiktor | **HARNESS + ERSTLAUF 2026-09-16 (Negativbefund)**: `scripts/train_ddsp_predictor_c4.py` — MUSDB-Effekt-Paare → CLAP-eingefroren → MLP (val_MAE 0,2447 ≈ Baseline 0,2455); Taskformulierung braucht DDSP-artigen Mel-Encoder ⇒ Folgeschritt GPU | CLAP-Encoder lokal; EQ/Dynamik-Parameter-Prädiktion für 04/16/17, DSP führt aus |
 | Q8 | PSY-A1-Rest (masken-basierte Phasen 19/23/50/56/59/65/66) | **ERLEDIGT 2026-09-14** (Phasen 19/23/50/59/65/66 nach phase_56-Muster verdrahtet) | Profil-Fallback-Refactor (phase_56-Befund: leere Maske ⇒ „repariere überall“) dann Gate je Phase |
 | Q9 | PSY-A2 (Zwicker ISO 532-1) | **STATIONÄR ERLEDIGT** | präzisere Maskierungsschwelle — verbessert alle PSY-A1-Gates |
@@ -1194,7 +1194,7 @@ Sänger-Identität, MuQ-MOS nicht schlechter als Baseline).
 
 | Messung | Aurik Quality Score | Technical | Musical | Emotional |
 |---|---|---|---|---|
-| Original („Elke Best – 30 Sekunden.mp3“, 44,1 kHz) | **38,1 / 100** | 0,30 | 0,40 | 0,49 |
+| Original („Testkünstlerin (Schlager) – 30 Sekunden.mp3“, 44,1 kHz) | **38,1 / 100** | 0,30 | 0,40 | 0,49 |
 | Restauriert (Pipeline, mode=restoration) | wird nachgetragen | — | — | — |
 
 ### Priorisierter Weg zu 98/100 (Hebel × Machbarkeit)
@@ -1247,7 +1247,7 @@ Alle Punkte mit Tests (IDs in Klammern = Testdatei unter tests/unit/):
   dokumentiert; test_r5_determinism_certificate.py, 4 Fälle).
 - **P1 ✅ WERKZEUG + BEFUND** — `scripts/artifact_freedom_diagnosis.py` misst
   `ArtifactDetector.overall_score` nach jeder Phase auf realem Material
-  (test_p1_artifact_diagnosis.py, 4 Fälle). Lauf auf „Elke Best – 30 Sekunden.mp3"
+  (test_p1_artifact_diagnosis.py, 4 Fälle). Lauf auf „Testkünstlerin (Schlager) – 30 Sekunden.mp3"
   (20 s): siehe `output/artifact_freedom_diagnosis/af_diagnosis_report.json`.
   **Befund (25 Phasen, komplett):** Input-af bereits 0,7414 (MP3-Quelle) — die af-Veto-
   Schwelle 0,95 ist bei degradierten Quellen nur DELTA-basiert sinnvoll
@@ -1459,8 +1459,8 @@ fehlerhaften v1023_analysis.txt-Attribution) + Folge-Fixes:
    Torch-ROCm-Kern landete erst 18:30 (7f9d1ecc) ⇒ der Lauf nutzte den
    ONNX-CPU-Parallelpfad (≈75 s/30 s). Mit Torch-Kern (live gemessen):
    BANQUET 6,8 s/30 s, phase_01 gesamt 10,6 s/30 s auf realem
-   Elke-Material (483 Klicks) — **~8× schneller als im v1023-Lauf**.
-3. **TORCH_BATCH-Matrix (60 reale Elke-Fenster, 7900 XTX):** B=1 11,46 s →
+   Test-Material (483 Klicks) — **~8× schneller als im v1023-Lauf**.
+3. **TORCH_BATCH-Matrix (60 reale Testkünstlerin-Fenster, 7900 XTX):** B=1 11,46 s →
    B=4 7,85 s → B=32 6,49 s → B=40 6,96 s; max|Δ| vs. B=1 = 6,7e-6
    (rel 1,7e-7); **B=4 vs B=32 auf GPU bit-identisch (max|Δ|=0,0)**.
    MIOpen-LSTM bricht ab B ≥ 48 (miopenStatusBadParm). Default 4→32,
@@ -1485,7 +1485,7 @@ Der STL-adaptive Attack/Release-Follower bleibt bewusst sequenziell
 ``np.clip`` (2×1,44 M) + ``np.exp`` (1,44 M) kosteten gemessen ~9 s von
 14 s Phasenzeit — NaN-sichere Bedingungs-Kaskade + ``math.exp`` rechnen
 **bit-identisch** (gleiche libm-Double-Arithmetik, NaN-Semantik wie
-``np.clip``; Unit-Test pinnt beides). phase_54 auf realem Elke-Material:
+``np.clip``; Unit-Test pinnt beides). phase_54 auf realem Test-Material:
 17,83 → 8,36 s je 30 s (2,1×) — Commit 37558bbc.
 
 ### §PERF-R8 (2026-09-19) — pYIN mit band-begrenztem Viterbi (bit-identisch)
@@ -1507,7 +1507,7 @@ da alle Zustände je Frame denselben Unvoiced-Boden erhalten).
 - verdrahtet: phase_12 ``_estimate_pitch_pyin`` (deckt
   hybrid.``_apply_pyin`` ab) + phase_31 (3 Stellen) — je mit
   ``librosa.pyin``-Fallback (§V6 (copilot-instructions.md))
-- phase_12 Produktionspfad (quality) auf realem Elke-Material:
+- phase_12 Produktionspfad (quality) auf realem Test-Material:
   **45,5 → 10,6 s je 30-s-Chunk (~4,3×)** — Commit 5e6ae737
 - **§PERF-R8b Rollout (7cac4b2e):** ``pyin_compat`` (Drop-in mit
   eingebautem librosa-Ersatzpfad, §V6 (copilot-instructions.md)) über
@@ -1516,7 +1516,7 @@ da alle Zustände je Frame denselben Unvoiced-Boden erhalten).
   level_1_invariants_guard, forensics, hybrid_speed_pitch_ml,
   musical_goals_metrics, phase_56, singer_voice_model,
   vocal_ai_enhancement, vocal_focus_analyzer, zone_engine,
-  harmonic_preservation_guard, audio_monitor — phase_19 auf Elke:
+  harmonic_preservation_guard, audio_monitor — phase_19 auf Testkünstlerin:
   63,4 → 30,1 s je 30-s-Chunk (2,1×)
 - **Fast-Cell-Evidenz (10 s Vinyl, top_phases-Tooling):** Musical-Goals-
   Evaluation 81 s, Qualitätsprüfung 64 s, ERB-Masking je Chunk 31 s,
@@ -1680,7 +1680,7 @@ DIREKT (statt des §PERF-R8b-Kerns, 33 s je 30-s-Chunk). UMGESETZT:
 bei session=None, §V6 (copilot-instructions.md)-fail-closed: Reload-
 Fehler lässt die Fallback-Kette unverändert); (b) `_analyze_pyin` beider
 Plugins nutzt `pyin_compat` (bit-identisch zu librosa.pyin, eingebauter
-librosa-Ersatzpfad). Messung (Elke 30 s): FCPE nach simulierter Eviction
+librosa-Ersatzpfad). Messung (Testkünstlerin 30 s): FCPE nach simulierter Eviction
 0,53 s mit model=fcpe_onnx (vorher 33 s dsp_pyin); pyin_compat
 bit-identisch verifiziert. ⇒ phase_31 ~33-44 s → ~2-3 s je Chunk
 (~35 s × 8 Chunks ≈ **~5 min je Song**), zusätzlich entlastet phase_12
@@ -1706,7 +1706,7 @@ laden aus `__pycache__`). Bit-Identität: 6 Größen (64×64 … 2049×60)
 Tests: `tests/unit/test_v9_dsp_pghi_psola_groove.py::TestPghiReconstructor::
 test_15_numba_heapq_bit_identical` (pinnt Kern/heapq-Drift dauerhaft in CI).
 
-**Supervised-Evidenz (Elke 225,3 s, 8 Chunks, Default-Chunking):**
+**Supervised-Evidenz (Testkünstlerin 225,3 s, 8 Chunks, Default-Chunking):**
 Ausgabe-WAV **BIT-IDENTISCH** zu r10 (md5 identisch). Gesamt-Laufzeit
 202,6 → 137,7 min (−32 %), Ø Chunk 22,7 → 12,9 min (−43 %),
 Denker-RT 54× → 32,0× bei unveränderter Ausgabe.
@@ -1721,7 +1721,7 @@ je Folge-Chunk ~2 min Pre-Analyse-Bypass + ~17-20 min Restore (36-43 Phasen);
 per-Chunk-fixe Schwergewichte: LGE-Saliency ~212 s, carrier_chain ~48 s,
 FCPE-Reload ~38 s, ExcellenceOptimizer ~90-106 s, Post-Chunk-Qualität ~168 s,
 Modell-Reloads ~25 s. => Chunk-Anzahl ist der dominante Kostenmultiplikator;
-30→60 s halbiert die per-Chunk-Fixkosten, 30→120 s viertelt sie (Elke:
+30→60 s halbiert die per-Chunk-Fixkosten, 30→120 s viertelt sie (Testkünstlerin:
 8→4→2 Chunks; 2-s-Overlap/50-ms-Crossfade bleiben, letzter Chunk ≥10 s).
 
 UMGESETZT (bit-identischer Default, §G5 (GEBOTE.md)):
@@ -1735,7 +1735,7 @@ OFFEN (Qualitäts-Entscheid, Design-Session): Die Vergrößerung ändert die
 Chunk-Grenzen => Ausgabe NICHT bit-identisch (neue Crossfade-Positionen,
 längere per-Chunk-Phasenkohärenz — erwartet: weniger Nähte = weniger
 Artefakte, aber Supervised-Validierung Pflicht). Evidenz-Lauf:
-`AURIK_CHUNK_S=120` auf Elke; Gate: Export-Quality-Metriken ≥ Referenz +
+`AURIK_CHUNK_S=120` auf Testkünstlerin; Gate: Export-Quality-Metriken ≥ Referenz +
 Hör-Check. Tests: `tests/unit/test_chunked_streaming_layouts.py`
 (test_r16_select_*, 6 grün).
 
@@ -1801,7 +1801,7 @@ Activation-Contract-Tests sind bereits flag-bewusst (beide Zustände).
 
 ### Überwachter 225-s-Lauf 2026-09-19 (PERF-R10-Stand) — Befunde
 
-`output/supervised_run/elke_225s_perfr_r10.{log,wav}` (Elke Best, Vinyl,
+`output/supervised_run/elke_225s_perfr_r10.{log,wav}` (Testkünstlerin (Schlager), Vinyl,
 8 Chunks, 297 Phasen, Wall 12 137,5 s ≈ 3 h 22 min, RT-Bericht 32,0×,
 letzter Chunk 39× RT). **Qualität:** MUSHRA 92,1 (Excellent), UQM 87,2
 PASS, artifact_freedom 0,9869 ✓, Audibility-Gate 0 hörbare Restdefekte ✓,
@@ -1880,7 +1880,7 @@ Maskierung je Defekt-Kontext — ein Cache wäre nicht exakt).
 | R6 (Per-Song-Zielklang DDSP) | **GPU-GEBUNDEN** | F5/C4 |
 | PSY-A1-Rest (25/31 JND) + P65-Witness | ✅ GESCHLOSSEN 2026-09-16 | **phase_25**: Azimut-Schwelle JND-basiert (ITD-JND 30 µs × 3,5 ≈ 5 Samples @ 48 kHz, SR-unabhängig, HF-Floor ≥ Pegel-JND; Bestandsverhalten bit-identisch). **phase_31**: 0,3-%-Speed-Schwelle als JND-gestützt dokumentiert (max-Floor mit Frequenz-JND 0,2 %). **phase_65**: Sänger-Identitäts-Witness als Per-Phase-Gate (`_apply_singer_identity_witness`, S4-Muster: Resemblyzer cos ≥ 0,92, sonst proportionaler Blend Richtung Input, non-blocking §V6). **phase_43 (2026-09-16): Sibilanten-Maskierungs-Gate verdrahtet** — subaudible Sibilanten-Segmente (unter Maskierungsschwelle, Band 4–12 kHz, Muster phase_19) bleiben ungezähmt, Zähler `subaudible_sibilants_skipped`; test_phase_43_ml_deesser (48 Tests grün). Damit ist die PSY-A1-Expansionsmatrix-Zeile für 19/43 vollständig. Tests: `test_psy_a1_jnd_gates_25_31.py`, `test_phase_65_singer_identity_witness.py` |
 | R7 (Adaptive Rescheduling) | ✅ UMGESETZT 2026-09-18 (Kern-Slice) | Impact-Schätzer + Null-Impact-Deferral + Hör-Impact-Schutz im PerformanceGuard; ohne Scores Fix-Priorität (bit-identisch); 12 Tests (`test_hearing_impact.py`) |
-| F1/F3/F5, Q4/Q7 + F3-Finetune-Teil (GPU-Buildouts) | **GPU-GEBUNDEN** | Trainings-/Port-Arbeit auf ROCm; **F2 + Q5 GESCHLOSSEN 2026-09-16** (faire S1-Validierung verwarf Pfad B, fail-closed); **F3-A/B-Teilvalidierung PASS 2026-09-16** (af +0,0073, HNR +4,42 dB — Flag-Rollout offen bis Test-Suite-Anpassung + UV3-Budget-Nachweis). **Budget-Messung 2026-09-16:** HR-V1-Synthese (Torch-ROCm, Elke-Best-Material) = **2,5× RT** (25,05 s für 10 s, 26 Bänder released, PQS 4,93); CPU >10× RT. Da der Gesamtlauf aktuell bei 33× RT liegt (32×-Ziel), bleibt das Flag vertragsgemäß OFF bis der Gesamt-Budget-Nachweis mit Headroom steht — die Activation-Contract-Tests sind bereits flag-bewusst (beide Zustände). Nächster Schritt: R3/ROCm-Ports + P0-1-Gewinne, dann Flag-Flip als Einzeiler |
+| F1/F3/F5, Q4/Q7 + F3-Finetune-Teil (GPU-Buildouts) | **GPU-GEBUNDEN** | Trainings-/Port-Arbeit auf ROCm; **F2 + Q5 GESCHLOSSEN 2026-09-16** (faire S1-Validierung verwarf Pfad B, fail-closed); **F3-A/B-Teilvalidierung PASS 2026-09-16** (af +0,0073, HNR +4,42 dB — Flag-Rollout offen bis Test-Suite-Anpassung + UV3-Budget-Nachweis). **Budget-Messung 2026-09-16:** HR-V1-Synthese (Torch-ROCm, Test-Track-Material) = **2,5× RT** (25,05 s für 10 s, 26 Bänder released, PQS 4,93); CPU >10× RT. Da der Gesamtlauf aktuell bei 33× RT liegt (32×-Ziel), bleibt das Flag vertragsgemäß OFF bis der Gesamt-Budget-Nachweis mit Headroom steht — die Activation-Contract-Tests sind bereits flag-bewusst (beide Zustände). Nächster Schritt: R3/ROCm-Ports + P0-1-Gewinne, dann Flag-Flip als Einzeiler |
 | WF-V4 (neuraler Warp-Schätzer), TP-V2 | **EXTERN BLOCKIERT (Checkpoint-Quelle)** | Quelle klären + Download |
 | P1-Folge (af-Never-worsen in 07/17/19/38) | ✅ GESCHLOSSEN 2026-09-15 | `artifact_freedom_guard.py` (billiger click/pre-echo-Delta-Guard, ≈0,008× RT) in 07/17/19/38 + `--fail-delta`-CI-Gate im Diagnose-Skript; Diagnose-Vergleich: phase_07 Δ−0,136→−0,049, phase_17 −0,084→+0,002, phase_19 −0,062→0,000, phase_38 −0,043→+0,061; Ketten-Min-af 0,473→0,631 |
 | PSY-A7 (10/11/40) | ✅ GESCHLOSSEN 2026-09-15 | `perceptual_loudness_cap.py` (Rollout-Helfer mit Headroom-Variante) in 10/11/40: 10/11 nie über Input-Lautheit, 40 kappt Kurzzeit-Pumping über dem Uniform-Gain (Ziel-LUFS-Anhebung bleibt legitim); test_psy_a7_loudness_cap_rollout.py |
@@ -1891,7 +1891,7 @@ Maskierung je Defekt-Kontext — ein Cache wäre nicht exakt).
 > Score + Delta zum Original) und die Tabelle oben aktualisieren. Ein Schritt wird
 > nur behalten, wenn er den Score erhöht (Never-worsen, §0).
 
-## Überwachter 225-s-Lauf 2026-09-16 (Elke Best, voller Song) — Befunde & Abarbeitung
+## Überwachter 225-s-Lauf 2026-09-16 (Testkünstlerin (Schlager), voller Song) — Befunde & Abarbeitung
 
 > Ausführung: `cli/aurik_cli.py --mode Restoration --bit-depth 24`, voller Song
 > (225,3 s @ 44,1 kHz, mp3→vinyl-Kette). Lauf: `output/supervised_run/elke_225s_supervised_v1020.{log,wav}`,
@@ -2013,7 +2013,7 @@ Guard-Ketten (s. o. Korrektur) — kein Handlungsbedarf.
 ### AUF-3 · Songaufbauanalyse — SOTA-Abgleich & Upgrade
 
 **Urteil: NICHT auf SOTA-Stufe; Analyseergebnis deckte sich NICHT mit dem
-Songaufbau** (Elke-Best-225s: 0 Chorus/0 Klimax, 42 s „intro“, 37 s „bridge“
+Songaufbau** (Test-Track-225s: 0 Chorus/0 Klimax, 42 s „intro“, 37 s „bridge“
 statt des klaren Strophe/Refrain-Wechsels mit Refrain bei ≈44/100/156/192 s —
 umabhängig per Chroma-Fenster-Scan belegt). **Upgrade umgesetzt** (deterministisch,
 librosa/numpy, §G5): Fenster-Wiederholungs-Evidenz (`_window_repetition_counts`),
@@ -2049,13 +2049,13 @@ Chunk-Modus-Struktur (siehe AUF-4).
 
 | # | Befund (Fehlerklasse) | Status 2026-09-17 |
 |---|---|---|
-| ANA-1 | **Grenz-Erkennung dupliziert**: §2.52b nutzte agglomerative k-Heuristik (1/30 s), §2.17 hatte bereits die definierende SSM/Checkerboard-Novelty (Foote 2000) — zwei Analysatoren, zwei Methoden, potenziell widersprüchliche Sektions-Karten | ✅ **UMGESETZT**: kanonisches Modul `backend/core/dsp/ssm_segmentation.py`; §2.17 delegiert (37 Tests grün), §2.52b nutzt SSM primär (agglomerativer Fallback); Intro/Outro nur noch erstes/letztes Segment (Positionsregel verschluckte den 156-s-Refrain). Elke-Best: 12 evidenz-basierte Segmente, alle 4 Refrains + Klimax, 1,28 s/min ≤ Budget; neuer Test test_ssm_boundaries_detect_aba_transitions |
+| ANA-1 | **Grenz-Erkennung dupliziert**: §2.52b nutzte agglomerative k-Heuristik (1/30 s), §2.17 hatte bereits die definierende SSM/Checkerboard-Novelty (Foote 2000) — zwei Analysatoren, zwei Methoden, potenziell widersprüchliche Sektions-Karten | ✅ **UMGESETZT**: kanonisches Modul `backend/core/dsp/ssm_segmentation.py`; §2.17 delegiert (37 Tests grün), §2.52b nutzt SSM primär (agglomerativer Fallback); Intro/Outro nur noch erstes/letztes Segment (Positionsregel verschluckte den 156-s-Refrain). Test-Track: 12 evidenz-basierte Segmente, alle 4 Refrains + Klimax, 1,28 s/min ≤ Budget; neuer Test test_ssm_boundaries_detect_aba_transitions |
 | ANA-2 | **Vokal-Aktivität**: `_estimate_vocal_activity` (spectral flatness + GLOBALE PANNs-Konfidenz) — die definierende Evidenz (per-Segment-PANNs-Singing) ist im Plugin vorhanden (`get_tags`, Positions-Fenster), wird aber nicht je Segment genutzt | ✅ **UMGESETZT 2026-09-17**: `analyze_structure(vocal_scorer=…)` — optionaler per-Segment-Scorer ersetzt den Flatness-Proxy; UV3 baut den PANNs-Scorer GPU-gated (`_build_vocal_scorer_if_gpu`, CPU ⇒ Proxy unverändert, Budget §2.52b); Tests: test_ana2_vocal_scorer_overrides_flatness |
 | ANA-3 | **Gender-Detektion** (phase_19 `_detect_gender_robust`): F0-/Formant-Heuristik ohne ML-Klassifikator; konsumiert von 19/43 (Sibilanten-Bänder) | ✅ **UMGESETZT 2026-09-17 (OHNE neue Inferenz)**: die Male/Female-Singing-Klassen (32/33) waren in den einmalig berechneten PANNs-Tags enthalten, aber nicht exponiert — jetzt als eigene Keys im Plugin-Resultat + ML-Prior in `_detect_gender_robust` (Abstand > 0,10, Score ≥ 0,25 ⇒ male/female; sonst unveränderte DSP-Heuristik) |
 | ANA-4 | **Tonart-Erkennung dupliziert**: `phase_53._estimate_key` (Krumhansl, Dur/Moll, ganzer Song) UND `genre_classifier._estimate_key_dsp` (Pitch-Class-Argmax des LETZTEN Frames, nur Dur) — zwei Implementierungen (§V7 (copilot-instructions.md)) | ✅ **UMGESETZT 2026-09-17**: kanonisches Modul `backend/core/dsp/key_estimation.py` (Krumhansl, strukturiertes (root, mode)); phase_53 formatiert „C major“, genre_classifier „C-Dur“/„C-Moll“ (Qualitäts-Gewinn: ganzer Song + Dur/Moll statt Last-Frame-Argmax); 144 Tests grün |
 | ANA-5 | **§2.52b-Beat-Tracking im Spec erwähnt, nicht implementiert** — BPM existiert aber in `musical_structure_analyzer._estimate_bpm` | ✅ **UMGESETZT 2026-09-17**: BPM-Metadatum (`bpm`) wird im §2.52b-Block der UV3-Pipeline aus der vorhandenen Energie-Onset-Autokorrelation berechnet und in `song_structure`-Metadata geführt — Spec-Lücke geschlossen, eine BPM-Quelle |
 | ANA-6 | **Chunk-Modus**: beide Struktur-Analysen + SectionGoalAdapter liefen PRO CHUNK (Log: 4/2/3/2 Sektionen) — segment-adaptive Stärke war im Chunk-Modus grob | ✅ **UMGESETZT 2026-09-17**: `_restore_chunked` berechnet die §2.52b-Struktur EINMAL auf dem GESAMTEN Song und reicht sie als `_precomputed_song_structure` durch; `restore()` übernimmt sie und verschiebt/clippt sie chunk-lokal (`_shift_structure_to_chunk`, reine Funktion — PIM/VQI/Strength-Konsumenten bleiben zeitkorrekt); Test: test_ana6_shift_structure_to_chunk |
-| ANA-7 | **Phonem-Sprache blind vertraut**: die sprach-spezifische Sibilanten-Bandwahl der De-Esser (de 5,5–8,5 kHz / es 4,5–7 kHz) folgte blind `transcription.language` — Produktionsbefund: deutscher Elke-Best-Song → Whisper „es“ bei conf 0,03–0,56 → SPANISCHE Band auf deutschem Gesang | ✅ **UMGESETZT 2026-09-17**: `resolve_language_consensus()` (phoneme_timeline) — conf ≥ 0,7 → Transkription; < 0,5 → „unknown“ (neutrale 4–8-kHz-Band); 0,5…0,7 → Konsens mit LPC-Formant-Detektor; Verdrahtung in unified_restorer_v3 (§2.36a-Block); 5 neue Tests |
+| ANA-7 | **Phonem-Sprache blind vertraut**: die sprach-spezifische Sibilanten-Bandwahl der De-Esser (de 5,5–8,5 kHz / es 4,5–7 kHz) folgte blind `transcription.language` — Produktionsbefund: deutscher Test-Track-Song → Whisper „es“ bei conf 0,03–0,56 → SPANISCHE Band auf deutschem Gesang | ✅ **UMGESETZT 2026-09-17**: `resolve_language_consensus()` (phoneme_timeline) — conf ≥ 0,7 → Transkription; < 0,5 → „unknown“ (neutrale 4–8-kHz-Band); 0,5…0,7 → Konsens mit LPC-Formant-Detektor; Verdrahtung in unified_restorer_v3 (§2.36a-Block); 5 neue Tests |
 | ANA-8 | **IPA-Formant-Ziele Stellvertreter**: `has_ipa` immer False (Decoder-ONNX fehlt) → `formant_target_for_range()` lieferte für JEDEN Vokal den generischen Schwa-Zentroid (500/1500 Hz) — ein Konstantwert statt Evidenz; phase_56-Formant-Boost zielte damit immer auf dieselben Frequenzen | ✅ **UMGESETZT 2026-09-17**: optionaler `audio`-Parameter — ohne IPA misst der Fallback die ECHTEN dominanten Spektral-Peaks des Vokal-Segments (60 Hz–4 kHz, ≥ 100 Hz Abstand, deterministisch FFT); phase_56 übergibt das Audio. Tests: TestAna8LpcFormantFallback (2 Fälle); 115 Tests grün. Offen bleibt nur die IPA-Feinstruktur (Decoder-ONNX, extern) |
 | ANA-9 | **Niedrig-konfidente Phonem-Segmente treiben Gates ungefiltert**: Timeline-Segmente aus einer 3-%-Transkription steuerten trotzdem Segment-Gates in 19/24/43/56 (confidence wurde nur gespeichert, nie gegated) | ✅ **UMGESETZT 2026-09-17**: Konfidenz-Gate `_MIN_TIMELINE_CONF = 0,30` in `build_from_transcription` — niedrig-konfidente Wörter werden als „silence“ geführt (neutrale Gate-Reaktion, is_stressed=False); Tests: TestAna9ConfidenceGate (2 Fälle) |
 | ANA-10 | **Zweite Phonem-Quelle dupliziert** (§V7 (copilot-instructions.md)): `lyrics_guided_enhancement.get_phoneme_mask` (DSP-Phonemkarte, hop 512) vs. PhonemeTimeline (Transkription) — zwei Phonem-Repräsentationen; zusätzlich `styles_zones` mit conf=0,00 im Lauf (Style-Führung inert) | ✅ **ROLLEN GEKLÄRT 2026-09-17 (dokumentiert, kein Code-Fix nötig):** PhonemeTimeline (Transkription) = Kanon für KLASSEN-Gates in 19/24/43/56/MDEM; LGE-Phonemkarte (DSP) = Kanon für Saliency-/Plosiv-Schutz in 09/58 (läuft auch ohne Transkription). Zwei Rollen, zwei Quellen — keine Duplikation im Sinne §V7. `styles_zones` conf=0 ⇒ Style-Führung bleibt inert (dokumentiert) |

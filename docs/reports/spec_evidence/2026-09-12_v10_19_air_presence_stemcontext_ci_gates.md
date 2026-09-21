@@ -22,7 +22,7 @@ Datum: 2026-09-12 | Spec: `.github/specs/v10.19_sprachmodell_ersatz_sota_roadmap
 
 #### 2. Datengrundlage
 
-- **Datensätze/Szenarien:** synthetische Signale (220/440 Hz + 12-kHz-Air-Komponente, weißes Rauschen, Stereo-Duplikat) + echtes Material (test_audio/Elke Best, Kurz-Batch) für den überwachten Lauf.
+- **Datensätze/Szenarien:** synthetische Signale (220/440 Hz + 12-kHz-Air-Komponente, weißes Rauschen, Stereo-Duplikat) + echtes Material (test_audio/Testkünstlerin (Schlager), Kurz-Batch) für den überwachten Lauf.
 - **Umfang (n):** n=6 Unit-Tests air_presence + n=5 Unit-Tests stem_context; Witness-Kalibrierung über N≥3 Songs im überwachten Run.
 - **Material- und Modusabdeckung:** Stereo/Mono, channels-first/-last, float32, 48 kHz.
 - **Ausschlusskriterien:** Signale < 512 Samples (STFT-Fenster 2048), strength=0 (Passthrough-Pfad).

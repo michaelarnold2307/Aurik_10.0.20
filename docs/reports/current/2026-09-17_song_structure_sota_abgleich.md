@@ -3,7 +3,7 @@
 > Arbeitsauftrag 2026-09-17: Ist die Songaufbauanalyse auf maximaler
 > SOTA-Ausbaustufe? Deckt sich das Analyseergebnis mit einer unabhängigen
 > Analyse des Songaufbaus?
-> Referenzmaterial: Elke Best, voller Song (225,3 s @ 48 kHz, Export des
+> Referenzmaterial: Testkünstlerin (Schlager), voller Song (225,3 s @ 48 kHz, Export des
 > überwachten Laufs `output/supervised_run/elke_225s_supervised_v1020.wav`).
 
 ## Befund VOR dem Upgrade
@@ -89,7 +89,7 @@ kanonische SSM-Methode (Checkerboard-Novelty, Gauß-Glättung, Peak-Picking);
 ERSTE/letzte Segment (die Positionsregel `relative_pos ≥ 0,85` verschluckte
 den 156-s-Refrain als „outro“).
 
-Ergebnis Elke-Best-225s: **12 evidenz-basierte Segmente** (statt 7
+Ergebnis Test-Track-225s: **12 evidenz-basierte Segmente** (statt 7
 Heuristik-Segmente) — Intro 0–7,5 s (Klammer mit dem Outro-Material),
 Refrain-Segmente ≈39,5/96/129,5/137/151,5/180,5 s decken alle vier
 unabhängig belegten Refrain-Positionen ab, Klimax am Energie-Peak;

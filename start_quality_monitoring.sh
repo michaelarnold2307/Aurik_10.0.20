@@ -44,8 +44,8 @@ done
 
 # Audio suchen wenn nicht angegeben
 if [ -z "$AUDIO_PATH" ]; then
-    if [ -f "test_audio/Elke Best - Du wolltest nur ein Abenteuer, aber ich suchte einen Freund.mp3" ]; then
-        AUDIO_PATH="test_audio/Elke Best - Du wolltest nur ein Abenteuer, aber ich suchte einen Freund.mp3"
+    if [ -f "test_audio/Testkünstlerin (Schlager) - Du wolltest nur ein Abenteuer, aber ich suchte einen Freund.mp3" ]; then
+        AUDIO_PATH="test_audio/Testkünstlerin (Schlager) - Du wolltest nur ein Abenteuer, aber ich suchte einen Freund.mp3"
     else
         # Findet erste MP3 in test_audio
         AUDIO_PATH=$(find test_audio -name "*.mp3" -type f | head -1)

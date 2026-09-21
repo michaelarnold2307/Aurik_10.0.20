@@ -810,7 +810,8 @@ def main():
     # Standard-Audio wenn nicht angegeben
     if not args.audio:
         default_audio = (
-            Path("test_audio") / "Elke Best - Du wolltest nur ein Abenteuer, aber ich suchte einen Freund.mp3"
+            Path("test_audio")
+            / "Testkünstlerin (Schlager) - Du wolltest nur ein Abenteuer, aber ich suchte einen Freund.mp3"
         )
         if default_audio.exists():
             args.audio = str(default_audio)

@@ -7,7 +7,7 @@
 **Ziel:** Nachweis, dass der GPU-Pfad (ROCm 7.2.4) dem CPU-Pfad qualitativ
 gleichwertig ist — Metriken als Zeugen, die Hör-Instanz entscheidet (Hörordnung §8a).
 
-1. **CPU-Referenz:** Lauf mit `AURIK_FORCE_CPU=1` (224-s-Elke-Best) → Bit-Referenz
+1. **CPU-Referenz:** Lauf mit `AURIK_FORCE_CPU=1` (224-s-Test-Track) → Bit-Referenz
    + alle Song-Metriken (PQS-MOS, Goal-Vektor, n_audible, LUFS-I).
 2. **GPU-Lauf:** gleicher Input ohne FORCE_CPU → gleiche Metriken.
 3. **A/B-Regeln:**
@@ -19,7 +19,7 @@ gleichwertig ist — Metriken als Zeugen, die Hör-Instanz entscheidet (Hörordn
 
 ## 2. Hörstudien-Vorbereitung (GO/NO-GO, beraten docs/guides/GO_NO_GO_DECISION_PROTOCOL.md)
 
-- **Panels:** (a) Restaurations-Referenz: Elke Best 224 s, (b) Shellac/78rpm-Sample,
+- **Panels:** (a) Restaurations-Referenz: Testkünstlerin (Schlager) 224 s, (b) Shellac/78rpm-Sample,
   (c) Rausch-Sample (mp3_low 128 kbps).
 - **Bewertungsskala:** 1–5 pro Hör-Invariante (Natürlichkeit, Artikulation,
   Wärme, Brillanz, Authentizität) + freie Kommentare; ≥ 2 Hörer empfohlen.

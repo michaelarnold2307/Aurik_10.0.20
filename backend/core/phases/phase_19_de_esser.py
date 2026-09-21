@@ -3340,7 +3340,7 @@ class DeEsserPhase(PhaseInterface):
                         # dieser Fall bei conf ≥ Schwelle in das pauschale
                         # `f0 < 150 → MALE` und wurde erst vom §v10.303.11-
                         # Override repariert (Symptom-Ebene, Produktionsbefund:
-                        # Elke-Best-ähnlicher Alt, F0=103 Hz, F1=314 Hz,
+                        # Test-Track-ähnlicher Alt, F0=103 Hz, F1=314 Hz,
                         # F2 degradiert → „male“ mit 0,95).
                         _f1_in_female_c = 310.0 <= _f1_val <= 860.0
                         _f2_in_female_c = 920.0 <= _f2_val <= 2790.0

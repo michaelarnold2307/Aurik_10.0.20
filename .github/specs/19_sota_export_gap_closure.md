@@ -4,9 +4,9 @@
 
 ---
 
-## 1. Diagnose: 5 lokale Bugs aus dem Elke-Best-Lauf
+## 1. Diagnose: 5 lokale Bugs aus dem Test-Track-Lauf
 
-Der Lauf vom 03.08.2026 (Elke Best, 225s, cassette/mp3_low, depth=4) produzierte
+Der Lauf vom 03.08.2026 (Testkünstlerin (Schlager), 225s, cassette/mp3_low, depth=4) produzierte
 **102 WARNING + 2 ERROR** Log-Einträge. Die Analyse identifizierte 5 lokale Bugs:
 
 ### 1.1 Bug 14: tuple-ndim (8 Einträge)

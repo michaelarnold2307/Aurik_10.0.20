@@ -1,5 +1,5 @@
 """
-Standalone-Messung: UnifiedRestorerV3 mit QualityMode.QUALITY auf Elke Best.mp3
+Standalone-Messung: UnifiedRestorerV3 mit QualityMode.QUALITY auf Testkünstlerin (Schlager).mp3
 Vergleicht gemessene Goal-Scores gegen kanonische §0-Schwellen.
 Aurik 10.0.0 — 2026-04-19
 """
@@ -14,7 +14,9 @@ import numpy as np
 ROOT = Path(__file__).parent.parent
 sys.path.insert(0, str(ROOT))
 
-AUDIO_PATH = ROOT / "test_audio" / "Elke Best - Du wolltest nur ein Abenteuer, aber ich suchte einen Freund.mp3"
+AUDIO_PATH = (
+    ROOT / "test_audio" / "Testkünstlerin (Schlager) - Du wolltest nur ein Abenteuer, aber ich suchte einen Freund.mp3"
+)
 
 from backend.core.calibration_matrix import CANONICAL_THRESHOLDS_RESTORATION as CANONICAL
 

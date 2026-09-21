@@ -86,7 +86,7 @@ _CLIMAX_SCALAR = 0.85
 # §SOTA-Upgrade 2026-09-17 (Wiederholungs-Evidenz, deterministisch):
 # Der Refrain ist per Definition der WIEDERKEHRENDE Abschnitt — ohne
 # Wiederholungs-Nachweis kann ein Analyzer keinen Chorus erkennen
-# (Produktionsbefund: Elke-Best-225s — 0 Chorus/0 Klimax trotz klarem
+# (Produktionsbefund: Test-Track-225s — 0 Chorus/0 Klimax trotz klarem
 # Refrain-Motiv bei ≈44/100/156/192 s). Segment-MITTELWERTE sind dafür
 # unbrauchbar (schlüsseldominiert, alle Korrelationen ≈0,65 — gemessen);
 # die Wiederholung zeigt sich erst auf 8-s-FENSTER-Niveau.
@@ -424,7 +424,7 @@ class SongStructureAnalyzer:
         # Wiederholungs-Evidenz: Chorus = wiederkehrend + energiereich
         # (strikt über dem Median — wiederholte STROPHEN bleiben Strophen;
         # Median-Gleichstand ist kein Energie-Argument, Produktionsbefund
-        # Elke-Best: Segment 116,6–155,1 mit en=Median wurde fälschlich chorus).
+        # Test-Track: Segment 116,6–155,1 mit en=Median wurde fälschlich chorus).
         if matches >= 1:
             if energy > energy_median:
                 return "chorus"

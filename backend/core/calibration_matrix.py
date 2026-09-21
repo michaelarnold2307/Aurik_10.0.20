@@ -443,7 +443,7 @@ _MATERIAL_BIAS: dict[str, dict[str, float]] = {
         # §09.2 Realmesspflichtige Ergänzung (v10.0.0 Echtmessung 2026-05-20):
         # emotionalitaet: Kassetten-AGC-Kompressionsschaltkreis reduziert dynamische Modulation;
         # 12-kHz-BW-Ceiling (IEC 60094-1 Type I) begrenzt tonale Bandbreite für Arousal-Messungen.
-        # Echtmessung Original-Kassette (Elke Best, 1970er, Schlager, measure_all() mit panns=0.7):
+        # Echtmessung Original-Kassette (Testkünstlerin (Schlager), 1970er, Schlager, measure_all() mit panns=0.7):
         #   Original = 0.782. Canon = 0.840. Kappa_min = 0.27.
         #   Physikalisches Ceiling ~0.781 → bias = (0.781-0.840)/0.27 = -0.219 ≈ -0.22.
         # Ohne diesen Bias löst §GOAL_BASELINE_CHECK fälschlicherweise Recovery-Phasen aus,

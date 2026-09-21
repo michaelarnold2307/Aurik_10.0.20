@@ -1,6 +1,6 @@
 """Regressionstest für den PANNs-ROCm-Provider-Filter (§SOTA-Fix 2026-09-16).
 
-Produktionsbefund (überwachter 225-s-Elke-Best-Lauf): PANNs' lokaler
+Produktionsbefund (überwachter 225-s-Test-Track-Lauf): PANNs' lokaler
 Provider-Filter verglich (Name, Options)-TUPEL gegen String-Namen —
 der ROCm-GPU-Provider wurde dadurch IMMER verworfen und PANNs lief
 dauerhaft CPU-only. Dieser Test friert das korrigierte Verhalten ein.

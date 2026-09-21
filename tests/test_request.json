@@ -1,5 +1,5 @@
 {
-  "audio": "audio_examples/Elke Best - Du wolltest nur ein Abenteuer, aber ich suchte einen Freund.mp3",
+  "audio": "audio_examples/Testkünstlerin (Schlager) - Du wolltest nur ein Abenteuer, aber ich suchte einen Freund.mp3",
   "input_path": "test_input.wav",
   "output_path": "test_output.wav",
   "policy": "default"

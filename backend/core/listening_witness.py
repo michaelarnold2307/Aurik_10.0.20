@@ -70,7 +70,7 @@ _ROUGHNESS_RISE_ASPER = 0.35
 # SUP-F6 (2026-09-16): Der Rauigkeits-Schätzer (roughness_model) ist eine
 # RELATIVE Skala (Modulationstiefe, ~10⁴ auf realer Musik) — eine absolute
 # 0,35-Schwelle feuerte deshalb bei JEDER Hüllkurven-Änderung (~0-Delta-Phasen:
-# +1,16 bei harmlosem 30-Hz-Hochpass auf dem Elke-Best-Export). Unter ~35 %
+# +1,16 bei harmlosem 30-Hz-Hochpass auf dem Test-Track-Export). Unter ~35 %
 # relativem Anstieg (2× Vassilakis-JND ≈ 17 %) wird auf 0 geklemmt — Finding
 # UND Veto-Schwelle (witness_correction_loop) erben EINE Wahrheitsquelle.
 _ROUGHNESS_RISE_REL = 0.35

@@ -169,3 +169,23 @@ backend/core/dsp/__pycache__/
 # Kun runtime UI state
 .kun-canvas/
 export_log.txt
+
+# Release-Ausschluss (2026-09-21): interne Dev-Artefakte bleiben lokal,
+# werden aber nicht veröffentlicht.
+.phase_8_commit_summary.sh
+PHASE_8_COMPLETION_REPORT.md
+docs/SESSION_INSIGHTS_*.md
+docs/reports/current/FEATURE_COMPLETION_REPORT_*.md
+docs/reports/phase_completion/
+error_guard_gaps.json
+gpu_capabilities.json
+_aurik_run_excellence.py
+log_parser_analysis.py
+full_run_warning_audit.py
+validate_real_audio_elke_best.py
+validate_real_audio_fast.py
+post_sota_fix_validation.py
+scripts/_scan_elke_best.py
+audit/security_bandit_report.json
+scripts/_debug_restoration_run.py
+scripts/run30_elke_verify.py

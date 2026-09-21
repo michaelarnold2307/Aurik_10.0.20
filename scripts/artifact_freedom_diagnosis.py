@@ -4,7 +4,7 @@
 Session-Ertrag 2026-09-15, P1: „artifact_freedom pro Phase auf realem Material
 messen (welche Phase senkt af unter 0,95?); gezielte Never-worsen-Fixes statt
 Raten." Dieses Skript fährt die reparierenden/enhancenden Phasen in
-Pipeline-Reihenfolge über einen echten Track (Default: „Elke Best – 30
+Pipeline-Reihenfolge über einen echten Track (Default: „Testkünstlerin (Schlager) – 30
 Sekunden.mp3") und misst nach jeder Phase ``ArtifactDetector.overall_score``
 (af). Phasen, die af unter 0,95 drücken, werden als Kandidaten markiert.
 
@@ -192,7 +192,7 @@ def compute_hot_phases(report: dict, input_seconds: float, hot_rt_threshold: flo
 
 def main() -> int:
     parser = argparse.ArgumentParser(description="§SOTA-P1 artifact_freedom-Diagnose je Phase")
-    parser.add_argument("--input", type=str, default="test_audio/Elke Best - 30 Sekunden.mp3")
+    parser.add_argument("--input", type=str, default="test_audio/Testkünstlerin (Schlager) - 30 Sekunden.mp3")
     parser.add_argument("--max-s", type=float, default=20.0)
     parser.add_argument("--out", type=str, default="output/artifact_freedom_diagnosis/af_diagnosis_report.json")
     parser.add_argument(

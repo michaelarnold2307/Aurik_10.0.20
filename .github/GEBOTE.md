@@ -354,7 +354,7 @@ Der ExcellenceOptimizer ist auf iZotope-RX11-Niveau kalibriert (Naturalness 0.86
 
 ## Kategorie XVIII — Laufzeit-Qualitätsgarantien (§G122–§G130)
 
-> §v10.702 — Prämissen aus dem Produktionslauf „Elke Best" (Kassette, 4-stufige Kette, 224 s, 44 Phasen, QualityGate Δ=0.0).
+> §v10.702 — Prämissen aus dem Produktionslauf „Testkünstlerin (Schlager)" (Kassette, 4-stufige Kette, 224 s, 44 Phasen, QualityGate Δ=0.0).
 > Diese Kategorie definiert die aus 10 identifizierten Laufzeit-Regressionen abgeleiteten unverhandelbaren GEBOTE.
 
 | ID | Regel | Beschreibung |

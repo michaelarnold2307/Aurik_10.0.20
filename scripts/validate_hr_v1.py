@@ -88,7 +88,7 @@ def bigvgan_path(mono: np.ndarray) -> tuple[np.ndarray, dict[str, float]]:
 
 def main() -> int:
     ap = argparse.ArgumentParser(description="§SOTA-HR-V1 BigVGAN-A/B-Validierung (af + HNR)")
-    ap.add_argument("--input", type=str, default="test_audio/Elke Best - 30 Sekunden.mp3")
+    ap.add_argument("--input", type=str, default="test_audio/Testkünstlerin (Schlager) - 30 Sekunden.mp3")
     ap.add_argument("--max-s", type=float, default=20.0)
     args = ap.parse_args()
 

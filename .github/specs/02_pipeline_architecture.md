@@ -2932,7 +2932,7 @@ self._artifact_freedom_score = float(min(_min_per_phase_afg_score, _iad_af_penal
 
 **Invariante**: IAD-Penalty wird gesetzt für **jedes** `has_artifacts=True` — unabhängig vom Rescue-Threshold. Selbst `fraction=0.010` mit Typen `ml_hallucination`/`musical_noise` = `af_penalty=0.90` → VETO (< 0.95). Der Dry/Wet-Rescue-Blend (`_IAD_RESCUE_THRESHOLD=0.05`) ist ein separater Schritt und darf die Penalty-Logik nicht blockieren.
 
-**Gap-Fix v10.0.0**: Die ursprüngliche Implementierung setzte die Penalty nur innerhalb des `if fraction >= 0.05`-Blocks — damit war `fraction=0.025` (Elke-Best-Fall, Typen `ml_hallucination, musical_noise`) vollständig unsichtbar für den HPG-VETO. **VERBOTEN**: Penalty-Berechnung innerhalb eines Rescue-Threshold-Guards.
+**Gap-Fix v10.0.0**: Die ursprüngliche Implementierung setzte die Penalty nur innerhalb des `if fraction >= 0.05`-Blocks — damit war `fraction=0.025` (Test-Track-Fall, Typen `ml_hallucination, musical_noise`) vollständig unsichtbar für den HPG-VETO. **VERBOTEN**: Penalty-Berechnung innerhalb eines Rescue-Threshold-Guards.
 
 ### §2.49b [RELEASE_MUST] Post-Pipeline Kumulativer Stereo-Collapse-Guard (v10.0.0)
 

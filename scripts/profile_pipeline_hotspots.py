@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """cProfile-Hotspot-Analyse für die DSP-Phasen (P2-Perf, 2026-09-09).
 
-Profilert einen 10-s-Slice des Elke-Best-Songs im Quality-Modus auf dem
+Profilert einen 10-s-Slice des Test-Track-Songs im Quality-Modus auf dem
 Ganzsong-Pfad (AURIK_WHOLE_SONG=1 — der zukünftige Default) und schreibt
 die Top-40-Cumtime-Funktionen nach /tmp/aurik_profile.txt.
 
@@ -28,7 +28,7 @@ def main() -> int:
     from backend.core.performance_guard import QualityMode
     from backend.core.unified_restorer_v3 import RestorationConfig, UnifiedRestorerV3
 
-    src = "test_audio/Elke Best - Du wolltest nur ein Abenteuer, aber ich suchte einen Freund.mp3"
+    src = "test_audio/Testkünstlerin (Schlager) - Du wolltest nur ein Abenteuer, aber ich suchte einen Freund.mp3"
     y, sr = sf.read(src, dtype="float32", always_2d=True)
     y = np.asarray(y[: sr * 10], dtype=np.float32)  # 10-s-Slice
 

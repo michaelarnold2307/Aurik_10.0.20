@@ -1,13 +1,13 @@
 # Boundary-Maschinerie — Messstand & Design-Session-Entscheidungen
 
-> **Stand:** 2026-09-20 · Quelle: Elke-Supervised-Lauf r10 (225,3 s, 8×30-s-Chunks),
+> **Stand:** 2026-09-20 · Quelle: Testkünstlerin-Supervised-Lauf r10 (225,3 s, 8×30-s-Chunks),
 > Mikro-Benchmarks auf 60-s-Produktionsgröße, cProfile-Zerlegung.
 > Commits dieser Session: `f3e79dcf` (§PERF-R15 PGHI-Numba), `65a9ecec`
 > (§PERF-R16 AURIK_CHUNK_S), `55f48dcc` (§PERF-R17 PGHI-Push-Dedup).
 
 ## 1. Ausgangslage (vor §PERF-R15/17)
 
-Je Chunk-Boundary (Elke r10, Log-Zerlegung): ~78 s phase_28-Oszillation,
+Je Chunk-Boundary (Testkünstlerin r10, Log-Zerlegung): ~78 s phase_28-Oszillation,
 ~89–106 s ExcellenceOptimizer, ~168 s Post-Chunk-Qualitätsblock,
 ~25 s Modell-Reloads, PGHI 121,6 s — zusammen ~552 s Fenster je Grenze,
 8 Chunks ⇒ ~70 min Boundary-Kosten je Song.
@@ -22,12 +22,12 @@ Je Chunk-Boundary (Elke r10, Log-Zerlegung): ~78 s phase_28-Oszillation,
 | `optimize_for_excellence` (60 s) | 24,02 s | **20,86 s** (kalt) | Mikro-Benchmark |
 | Chunk-Größe | hardcodiert 30/60 s | `AURIK_CHUNK_S` [10–600 s], Default unverändert | 6 Tests |
 
-Evidenz-Lauf (Elke, Default-Chunking, 2026-09-20 08:26–10:44):
+Evidenz-Lauf (Testkünstlerin, Default-Chunking, 2026-09-20 08:26–10:44):
 **BIT-IDENTISCH** vs. r10-WAV (md5 `75a54040…` identisch) — damit sind
 `f3e79dcf`+`65a9ecec` end-to-end supervised-validiert (R17 folgt aus den
 Unit-Tests, 12 Fälle bit-identisch).
 
-**Supervised-Gesamtmessung (Elke 225,3 s, 8 Chunks):**
+**Supervised-Gesamtmessung (Testkünstlerin 225,3 s, 8 Chunks):**
 
 | Metrik | r10 | Evidenz | Delta |
 |---|---|---|---|
@@ -83,7 +83,7 @@ oder Guard-Struktur betroffen)
 
 ## 6. Anhang: P1-Voranalyse (Per-Phase-Dauern, r10-Log, alte Timing-Basis)
 
-Akkumulierte Phase-Dauern über den ganzen Elke-Lauf (225 s, 8 Chunks) —
+Akkumulierte Phase-Dauern über den ganzen Test-Lauf (225 s, 8 Chunks) —
 Grundlage für die GPU-Port-Priorisierung; wird nach dem Evidenz-Lauf
 mit frischen Zahlen aktualisiert:
 

@@ -1142,7 +1142,7 @@ class SpectralRepair(PhaseInterface):
 
         # §Waerme-Rescue: Analog-Materialien (vinyl/shellac/tape) haben spezifische LF-Wärme.
         # MRSA-Inpainting halluziniert HF-Inhalt der die E(200-800 Hz)/E(800-3000 Hz)-Ratio
-        # reduziert → waerme fällt katastrophal (Elke Best: 0.93→0.62, −0.31).
+        # reduziert → waerme fällt katastrophal (Testkünstlerin (Schlager): 0.93→0.62, −0.31).
         # Tilt-cap allein reicht nicht: cap=0.63 aber waerme−0.31 weil MRSA HF massiv boosted.
         # Rescue: nach tilt-cap messen; wenn Wärme-Verlust > 0.15, Original zurückblenden bis
         # Verlust ≤ 0.15 — bewahrt Ära-/Träger-Klang ohne MRSA vollständig zu deaktivieren.
@@ -1160,7 +1160,7 @@ class SpectralRepair(PhaseInterface):
         )
         # §Waerme-Rescue gilt für BEIDE Pfade (ADMM + Inpainting):
         # ADMM-Declipping verändert primär Clipping-Peaks, nicht die LF/MF-Energiebilanz —
-        # aber Vinyl-Material mit mp3_low-Kette (Elke Best) zeigt waerme=0.694 < 0.740
+        # aber Vinyl-Material mit mp3_low-Kette (Testkünstlerin (Schlager)) zeigt waerme=0.694 < 0.740
         # auch ohne aktiven ADMM-Waerme-Drop. Rescue kostet < 1 ms → immer anwenden.
         try:
             _mat_k23_wr = str(self._current_material).lower().replace(" ", "_").replace("-", "_")

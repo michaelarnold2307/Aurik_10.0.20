@@ -150,7 +150,7 @@ if envelope is not None:
 `_batch_intelligence.store()` im `BatchSessionLearner` persistiert (song_id-basiert).
 Folgende Songs derselben Session laden Stimmparameter als Prior.
 
-**Problem:** Aurik analysiert Elke Bests Stimme jedes Mal neu — Vibrato, Formanten,
+**Problem:** Aurik analysiert Testkünstlerin (Schlager)s Stimme jedes Mal neu — Vibrato, Formanten,
 Register — obwohl der Song-ID `eb49f1d4` bekannt ist. Kein Transfer zwischen
 Restaurierungen desselben Künstlers.
 

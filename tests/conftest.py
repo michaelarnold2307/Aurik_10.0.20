@@ -283,7 +283,7 @@ def real_audio_gate_case() -> dict[str, object]:
     preferred = [
         Path(project_root)
         / "test_audio"
-        / "Elke Best - Du wolltest nur ein Abenteuer, aber ich suchte einen Freund.mp3",
+        / "Testkünstlerin (Schlager) - Du wolltest nur ein Abenteuer, aber ich suchte einen Freund.mp3",
         *candidates,
     ]
     audio_path = next((p for p in preferred if p.exists()), None)
@@ -319,8 +319,10 @@ def real_audio_corpus_cases() -> list[dict[str, object]]:
 def _real_audio_candidate_paths() -> list[Path]:
     root = Path(project_root)
     return [
-        root / "test_audio" / "Elke Best - Du wolltest nur ein Abenteuer, aber ich suchte einen Freund.mp3",
-        root / "test_audio" / "Elke Best - 30 Sekunden.mp3",
+        root
+        / "test_audio"
+        / "Testkünstlerin (Schlager) - Du wolltest nur ein Abenteuer, aber ich suchte einen Freund.mp3",
+        root / "test_audio" / "Testkünstlerin (Schlager) - 30 Sekunden.mp3",
         root / "test_audio" / "tape" / "cassette_1980s_wow.wav",
         root / "test_audio" / "tape" / "reel_1940s_dropout.wav",
         root / "test_audio" / "vinyl" / "jazz_1950s_scratched.wav",
@@ -329,7 +331,9 @@ def _real_audio_candidate_paths() -> list[Path]:
         root / "test_audio" / "digital" / "cd_clipped_2000s.wav",
         root / "test_audio" / "vocals" / "opera_sibilance.wav",
         root / "test_audio" / "vocals" / "choir_breaths.wav",
-        root / "audio_examples" / "Elke Best - Du wolltest nur ein Abenteuer, aber ich suchte einen Freund.mp3",
+        root
+        / "audio_examples"
+        / "Testkünstlerin (Schlager) - Du wolltest nur ein Abenteuer, aber ich suchte einen Freund.mp3",
         root / "audio_examples" / "Elke_Best_Freund.mp3",
         root / "temp_repro" / "repro_input.mp3",
     ]

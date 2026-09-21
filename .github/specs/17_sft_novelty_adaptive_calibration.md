@@ -4,13 +4,13 @@
 
 ---
 
-## 1. Tiefenanalyse: Was der Elke-Best-Lauf offenbart hat
+## 1. Tiefenanalyse: Was der Test-Track-Lauf offenbart hat
 
 ### 1.1 Der Import-Song
 
 | Eigenschaft | Wert |
 |------------|------|
-| Datei | `Elke Best - Du wolltest nur ein Abenteuer.mp3` |
+| Datei | `Testkünstlerin (Schlager) - Du wolltest nur ein Abenteuer.mp3` |
 | Dauer | 225.3 s |
 | Format | MP3 (mp3_low, stark komprimiert) |
 | Material (auto-detektiert) | Kassette (Band) |
@@ -159,7 +159,7 @@ Die NOVELTY_CRIT-Logik bestraft Reparatur-Phasen für ihre PLANMÄSSIGE Spektral
 Mit korrekter Repair-Klassifikation und adaptiver Kalibrierung:
 
 ```
-Beispiel Phase 12 (Transport Bumps, Elke Best):
+Beispiel Phase 12 (Transport Bumps, Testkünstlerin (Schlager)):
   Vorher: strength 0.491 × wet 0.05 = 2.5%  effektiv → BUMPS HÖRBAR
   Jetzt:  strength 0.491 × wet 0.45 = 22.1% effektiv → BUMPS UNHÖRBAR
   + PROTECTED_PHASES floor 0.40 → minimum 18% effektiv
@@ -174,7 +174,7 @@ Beispiel Phase 12 (Transport Bumps, Elke Best):
 
 `joint_calibrate()` berechnet pro Phase einen Utility-Wert aus den Goal-Gaps (Ziel − Ist). Wenn die Gaps klein sind (weil der Pre-Snapshot nahe an den Zielen liegt), wird utility ≈ 0 → strength = `min_strength` = 0.10.
 
-Im Elke-Best-Lauf: **0 Phasen geboostet, 43 Phasen gedämpft (alle unter 0.30).**
+Im Test-Track-Lauf: **0 Phasen geboostet, 43 Phasen gedämpft (alle unter 0.30).**
 
 ### 4.2 Korrektur
 
@@ -302,7 +302,7 @@ Die Phasen, die KEINE Gefahren-Signale haben (die Mehrheit), laufen mit wet≥0.
 
 ### 9.1 Zu validieren durch nächsten Pipeline-Lauf
 
-- [ ] NOVELTY_CRIT wird für Elke Best bei Schwelle 0.55 nicht mehr ausgelöst
+- [ ] NOVELTY_CRIT wird für Testkünstlerin (Schlager) bei Schwelle 0.55 nicht mehr ausgelöst
 - [ ] Quality-Score verbessert sich von 43→43 auf mindestens 43→55
 - [ ] Transport Bumps sind im Export unhörbar (< −60 dBFS residuell)
 - [ ] GrooveMetric Onset-Erhalt > 80% (vorher 8%)

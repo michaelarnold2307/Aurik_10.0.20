@@ -505,7 +505,7 @@ def test_cassette_emotionalitaet_floor_compatible_with_real_measurement():
 
     Ohne diesen Bias löst §GOAL_BASELINE_CHECK fälschlicherweise Recovery-Phasen aus,
     da das Kassetten-Original den Floor physikalisch nicht erreichen kann.
-    Echtmessung: Elke Best, Kassette, 1970er, Schlager, measure_all(panns=0.7) = 0.782.
+    Echtmessung: Testkünstlerin (Schlager), Kassette, 1970er, Schlager, measure_all(panns=0.7) = 0.782.
     """
     cassette_floor = get_material_floor("cassette", "emotionalitaet")
     real_original_score = 0.782  # measure_all() Echtmessung 2026-05-20

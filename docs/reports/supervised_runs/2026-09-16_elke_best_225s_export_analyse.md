@@ -1,4 +1,4 @@
-# Export-Analyse 2026-09-16 — Elke Best 225 s: Restdefekte & Optimierungspotenzial
+# Export-Analyse 2026-09-16 — Testkünstlerin (Schlager) 225 s: Restdefekte & Optimierungspotenzial
 
 > Gegenstand: `output/supervised_run/elke_225s_supervised_v1020.wav` (PCM_24, 48 kHz,
 > 225,33 s) vs. Original-MP3 (225,3 s @ 44,1 kHz, auf 48 kHz resampelt für

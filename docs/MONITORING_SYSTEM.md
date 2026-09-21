@@ -151,7 +151,7 @@ Wenn kritische Anomalien erkannt werden:
 ```json
 {
   "wall_time_s": 1245.3,
-  "audio_path": "test_audio/Elke.mp3",
+  "audio_path": "test_audio/Test_Track.mp3",
   "mode": "restoration",
   "checkpoints": [
     {

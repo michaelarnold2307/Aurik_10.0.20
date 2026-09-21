@@ -631,7 +631,7 @@ Sortierte Liste `[(material_key, confidence)]` nach Signalketten-Reihenfolge (Di
 
 **Test-Invariante**: `tests/unit/test_vinyl_tape_mp3_chain_detection.py::TestInferAnalogSourceWithDisc::test_vinyl_reel_tape_mp3_full_chain_production_case` muss grün bleiben.
 
-**Referenz-Fingerabdruck (Elke, Feb 2026):**
+**Referenz-Fingerabdruck (Testkünstlerin, Feb 2026):**
 
 | Merkmal | Messwert | Diagnose |
 | --- | --- | --- |
@@ -731,7 +731,7 @@ if result.transfer_chain:
 
 **VERBOTEN**: `MediumClassifier.classify_medium()` für Tonträgerketten-Erkennung. `MediumClassifier` kennt keinen Dateiendungs-Kontext und kann bei codec-enkodiertem Material "unknown" zurückgeben.
 
-**Referenz-Fingerabdruck (Elke, Feb 2026):**
+**Referenz-Fingerabdruck (Testkünstlerin, Feb 2026):**
 
 | Merkmal | Messwert | Diagnose |
 | --- | --- | --- |

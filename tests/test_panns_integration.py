@@ -27,8 +27,10 @@ def test_panns_integration():
     """Test PANNS integration with AnalysisEngineAdapter (pytest-automatisiert)."""
     candidates = [
         Path("audio_examples/Elke_Best_Freund.mp3"),
-        Path("audio_examples/Elke Best - Du wolltest nur ein Abenteuer, aber ich suchte einen Freund.mp3"),
-        Path("test_audio/Elke Best - Du wolltest nur ein Abenteuer, aber ich suchte einen Freund.mp3"),
+        Path(
+            "audio_examples/Testkünstlerin (Schlager) - Du wolltest nur ein Abenteuer, aber ich suchte einen Freund.mp3"
+        ),
+        Path("test_audio/Testkünstlerin (Schlager) - Du wolltest nur ein Abenteuer, aber ich suchte einen Freund.mp3"),
     ]
     test_audio = next((p for p in candidates if p.exists()), None)
     if test_audio is None:

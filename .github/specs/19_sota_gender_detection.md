@@ -158,9 +158,9 @@ Frauenstimmen). Regeln:
 - **Confidence**: Der Override setzt confidence auf **0.65** (Contralto-Floor)
   und erbt nicht die Confidence des widersprochenen 'male'-Urteils.
 
-### §19.2b Umsetzung im Pipeline-Level GenderDetector — Befund Elke Best (2026-09-08)
+### §19.2b Umsetzung im Pipeline-Level GenderDetector — Befund Testkünstlerin (Schlager) (2026-09-08)
 
-**Symptom:** Gender wird bei Elke Best (Mezzosopran/Alt, volles Pop-Arrangement)
+**Symptom:** Gender wird bei Testkünstlerin (Schlager) (Mezzosopran/Alt, volles Pop-Arrangement)
 als `UNKNOWN` bzw. `MALE` erkannt — obwohl die älteren Logs (`logs/elke_best_*.log`)
 „Auto-detected gender: female" zeigten. Die §19.2-Architektur war bis dahin nur in
 `phase_19_de_esser._detect_gender_robust` umgesetzt — NICHT im Pipeline-Level
@@ -191,7 +191,7 @@ Detektor `vocal_ai_enhancement.GenderDetector`, den `unified_restorer_v3`
 
 **Evidenz:** `_elke_60s_excerpt.wav`: vorher F0=111.1 Hz, Formanten [325, 704, 1083]
 → MALE 0.93; nachher pYIN-F0=323.2 Hz, voiced-Formanten [353, 741, 1117] → FEMALE 0.92.
-`Elke Best - 30 Sekunden.mp3`: 94.5 Hz → 358.6 Hz → FEMALE 0.92. Regressionstests G09a–G09d
+`Testkünstlerin (Schlager) - 30 Sekunden.mp3`: 94.5 Hz → 358.6 Hz → FEMALE 0.92. Regressionstests G09a–G09d
 in `tests/normative/test_gender_detection_sota_gate.py` (G09a echt, Modell-unabhängig,
 skip ohne Testaudio).
 

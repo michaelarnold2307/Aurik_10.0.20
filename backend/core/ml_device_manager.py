@@ -380,7 +380,7 @@ _HEAVY_ML_PLUGINS: frozenset[str] = frozenset(
         "HiFiGAN",  # hifigan_plugin — neural vocoder fallback path
         # §v10.733 (2026-09-09): ApolloPlugin NICHT mehr GPU-fähig — das TorchScript
         # enthält torch.stft im Graphen; stft wird im TorchScript-Interpreter auf
-        # CUDA/ROCm nicht unterstützt (Befund Elke-Best-Lauf: „GPU-Inferenz
+        # CUDA/ROCm nicht unterstützt (Befund Test-Track-Lauf: „GPU-Inferenz
         # fehlgeschlagen ... stft"). CPU-Force gemäß GPU-Policy (inkompatible
         # Modelle laufen auf CPU).
         # "ApolloPlugin",  # apollo_plugin — restorative ML → CPU-Force §v10.733

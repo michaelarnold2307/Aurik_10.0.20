@@ -1,6 +1,6 @@
 # Session-Report: Envelope-Root-Cause, SOTA-Fixes & Matrix-Endlauf
 
-**Datum:** 2026-09-07/08 · **Branch:** main · **Testclip:** „Elke Best — Du wolltest nur ein Abenteuer…" (1977, Vinyl, 224.3 s, 48 kHz, mono-kompatibles Stereomaterial)
+**Datum:** 2026-09-07/08 · **Branch:** main · **Testclip:** „Testkünstlerin (Schlager) — Du wolltest nur ein Abenteuer…" (1977, Vinyl, 224.3 s, 48 kHz, mono-kompatibles Stereomaterial)
 
 ---
 

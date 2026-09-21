@@ -9,7 +9,7 @@ für beide Modi: QUALITY (Restoration) und BALANCED (Studio 2026).
 Anforderungen:
     pytest.mark.e2e
     Timeout: 600 s
-    Audio-Testdatei: audio_examples/Elke Best - Du wolltest nur ein Abenteuer, aber ich suchte einen Freund.mp3
+    Audio-Testdatei: audio_examples/Testkünstlerin (Schlager) - Du wolltest nur ein Abenteuer, aber ich suchte einen Freund.mp3
     Fallback:        audio_examples/Elke_Best_Freund.mp3
 
 Spec-Referenz: §0, §2.44, §2.45, §2.49, §8.1, §8.2 (copilot-instructions.md v10.14.x)
@@ -28,9 +28,13 @@ import pytest
 # ---------------------------------------------------------------------------
 _PROJECT_ROOT = pathlib.Path(__file__).parent.parent
 _AUDIO_CANDIDATES = [
-    _PROJECT_ROOT / "audio_examples" / "Elke Best - Du wolltest nur ein Abenteuer, aber ich suchte einen Freund.mp3",
+    _PROJECT_ROOT
+    / "audio_examples"
+    / "Testkünstlerin (Schlager) - Du wolltest nur ein Abenteuer, aber ich suchte einen Freund.mp3",
     _PROJECT_ROOT / "audio_examples" / "Elke_Best_Freund.mp3",
-    _PROJECT_ROOT / "test_audio" / "Elke Best - Du wolltest nur ein Abenteuer, aber ich suchte einen Freund.mp3",
+    _PROJECT_ROOT
+    / "test_audio"
+    / "Testkünstlerin (Schlager) - Du wolltest nur ein Abenteuer, aber ich suchte einen Freund.mp3",
 ]
 _AUDIO_FILE: pathlib.Path | None = next((p for p in _AUDIO_CANDIDATES if p.exists()), None)
 _OUTPUT_DIR = _PROJECT_ROOT / "test_output"

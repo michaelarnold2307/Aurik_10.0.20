@@ -110,7 +110,7 @@
     {
       "category": "Audio Quality",
       "criterion_id": "R5",
-      "evidence": "Real-Audio-Stereo + Segmente validiert (/media/michael/Software 4TB/Aurik_Standalone/test_audio/Elke Best - Du wolltest nur ein Abenteuer, aber ich suchte einen Freund.mp3, worst_segment=1)",
+      "evidence": "Real-Audio-Stereo + Segmente validiert (/media/michael/Software 4TB/Aurik_Standalone/test_audio/Testkünstlerin (Schlager) - Du wolltest nur ein Abenteuer, aber ich suchte einen Freund.mp3, worst_segment=1)",
       "name": "Vocals in Stereo pr\u00e4serviert",
       "notes": "global corr 0.758->0.761; worst segment 1 corr 0.747->0.757",
       "severity": "MUST",

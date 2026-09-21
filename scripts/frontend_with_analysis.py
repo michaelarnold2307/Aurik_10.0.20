@@ -41,7 +41,8 @@ class FrontendWithAnalysisSupervisor:
     def _find_default_audio(self) -> str:
         """Findet eine Standard-Audio-Datei."""
         candidates = [
-            Path("test_audio") / "Elke Best - Du wolltest nur ein Abenteuer, aber ich suchte einen Freund.mp3",
+            Path("test_audio")
+            / "Testkünstlerin (Schlager) - Du wolltest nur ein Abenteuer, aber ich suchte einen Freund.mp3",
             Path("test_audio") / "tape" / "*.mp3",
             Path("test_audio") / "vinyl" / "*.mp3",
         ]

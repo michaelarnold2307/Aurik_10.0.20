@@ -220,7 +220,7 @@ class TestFixAbcCassetteHissNoveltyFlutter:
     """Linter-Guard-Tests für Fix A (Phase 29 Kassette+MP3), Fix B (SFT NOVELTY_CRIT
     Restoration-Rollback) und Fix C (Phase 12 Kassette confidence-Threshold).
 
-    Root Causes (Elke Best Restoration, v10.0.0):
+    Root Causes (Testkünstlerin (Schlager) Restoration, v10.0.0):
     - Fix A: Phase 29 Bypass mit falschem 22.0 dB Threshold und 8kHz+ Hiss-Band.
       Kassetten-Hiss liegt in 4-8 kHz (MP3 schneidet 8kHz+ weg) → immer bypass.
     - Fix B: SFT ArtifactRescue setzte wet=0.30 auch bei NOVELTY_CRIT=0.551

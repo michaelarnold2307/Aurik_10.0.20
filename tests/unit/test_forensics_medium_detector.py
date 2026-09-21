@@ -730,7 +730,7 @@ class TestCodecStageConfidence:
         assert MediumDetector._codec_stage_confidence(fp) == pytest.approx(0.90)
 
     def test_real_schlager_mp3_low_above_kpi_threshold(self):
-        """Real-Song-Fingerprint (Elke Best, 13.7 kHz BW, Artefakt 0.086) → ≥ 0.45 KPI-Schwelle."""
+        """Real-Song-Fingerprint (Testkünstlerin (Schlager), 13.7 kHz BW, Artefakt 0.086) → ≥ 0.45 KPI-Schwelle."""
         fp = SpectralFingerprint(effective_bandwidth_hz=13_729.0, codec_artifact_score=0.086, codec_type_code=0.0)
         conf = MediumDetector._codec_stage_confidence(fp)
         assert conf >= 0.45

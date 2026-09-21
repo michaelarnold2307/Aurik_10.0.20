@@ -131,7 +131,7 @@ def test_runtime_budget() -> None:
     assert dt < 5.0, f"Witness zu langsam: {dt:.1f}s"
 
 
-# ─── Echte Musik (Elke Best, Projekt-Testaudio) ──────────────────────────────
+# ─── Echte Musik (Testkünstlerin (Schlager), Projekt-Testaudio) ──────────────────────────────
 
 
 def _load_real(path: Path) -> tuple[np.ndarray, int]:
@@ -141,15 +141,15 @@ def _load_real(path: Path) -> tuple[np.ndarray, int]:
     return data.astype(np.float32), int(sr)
 
 
-_REAL_30 = Path(__file__).resolve().parent.parent.parent / "test_audio" / "Elke Best - 30 Sekunden.mp3"
+_REAL_30 = Path(__file__).resolve().parent.parent.parent / "test_audio" / "Testkünstlerin (Schlager) - 30 Sekunden.mp3"
 _REAL_224 = (
     Path(__file__).resolve().parent.parent.parent
     / "test_audio"
-    / "Elke Best - Du wolltest nur ein Abenteuer, aber ich suchte einen Freund.mp3"
+    / "Testkünstlerin (Schlager) - Du wolltest nur ein Abenteuer, aber ich suchte einen Freund.mp3"
 )
 
 
-@pytest.mark.skipif(not _REAL_30.exists(), reason="Elke-Best-Testaudio (30 s) fehlt")
+@pytest.mark.skipif(not _REAL_30.exists(), reason="Test-Track-Testaudio (30 s) fehlt")
 def test_real_music_no_findings_on_identity() -> None:
     """Echte Musik, identisches Audio ⇒ keine Befunde (keine False-Positives)."""
     x, sr = _load_real(_REAL_30)
@@ -157,7 +157,7 @@ def test_real_music_no_findings_on_identity() -> None:
     assert res.findings == []
 
 
-@pytest.mark.skipif(not _REAL_30.exists(), reason="Elke-Best-Testaudio (30 s) fehlt")
+@pytest.mark.skipif(not _REAL_30.exists(), reason="Test-Track-Testaudio (30 s) fehlt")
 def test_real_music_deterministic() -> None:
     x, sr = _load_real(_REAL_30)
     y = np.roll(x, 137)
@@ -166,7 +166,7 @@ def test_real_music_deterministic() -> None:
     assert r1.as_dict() == r2.as_dict()
 
 
-@pytest.mark.skipif(not _REAL_30.exists(), reason="Elke-Best-Testaudio (30 s) fehlt")
+@pytest.mark.skipif(not _REAL_30.exists(), reason="Test-Track-Testaudio (30 s) fehlt")
 def test_real_music_pitch_shift_detected() -> None:
     """Echte Musik +100 Cent (Längen-erhaltend) ⇒ pitch_instability."""
     from scipy.signal import resample_poly
@@ -181,7 +181,7 @@ def test_real_music_pitch_shift_detected() -> None:
     assert "pitch_instability" in res.findings
 
 
-@pytest.mark.skipif(not _REAL_30.exists(), reason="Elke-Best-Testaudio (30 s) fehlt")
+@pytest.mark.skipif(not _REAL_30.exists(), reason="Test-Track-Testaudio (30 s) fehlt")
 def test_real_music_pumping_detected() -> None:
     """Echte Musik mit 2-Hz-AM nach der Phase ⇒ loudness_pumping."""
     x, sr = _load_real(_REAL_30)
@@ -192,7 +192,7 @@ def test_real_music_pumping_detected() -> None:
     assert "loudness_pumping" in res.findings
 
 
-@pytest.mark.skipif(not _REAL_224.exists(), reason="Elke-Best-Testaudio (224 s) fehlt")
+@pytest.mark.skipif(not _REAL_224.exists(), reason="Test-Track-Testaudio (224 s) fehlt")
 def test_real_music_224s_runtime() -> None:
     """224-s-Song: Witness bleibt im Budget (FFT-Autokorrelation, §V08/§10a)."""
     x, sr = _load_real(_REAL_224)
@@ -203,7 +203,7 @@ def test_real_music_224s_runtime() -> None:
     assert dt < 30.0, f"Witness auf 224 s zu langsam: {dt:.1f}s"
 
 
-@pytest.mark.skipif(not _REAL_30.exists(), reason="Elke-Best-Testaudio (30 s) fehlt")
+@pytest.mark.skipif(not _REAL_30.exists(), reason="Test-Track-Testaudio (30 s) fehlt")
 def test_silence_pad_no_false_positive() -> None:
     """§Witness-Fix 2026-09-11: 100-ms-Silence-Pad am Anfang darf kein
     loudness_pumping auslösen — der Silence→Musik-Schritt am Rand war die
@@ -338,7 +338,7 @@ def test_roughness_rise_below_relative_jnd_is_clamped() -> None:
     (~10⁴ auf realer Musik) — kleine, unhörbare Hüllkurven-Änderungen müssen
     KEIN roughness_increase mehr melden (JND-Gate: < 35 % relativer Anstieg
     wird auf 0 geklemmt; Produktionsbefund: +1,16 bei harmlosem 30-Hz-Hochpass
-    auf dem Elke-Best-Export). 12,5 % AM-Tiefen-Zunahme liegt unter dem
+    auf dem Test-Track-Export). 12,5 % AM-Tiefen-Zunahme liegt unter dem
     Vassilakis-JND (~17 %) → kein Befund."""
     x = _faded_carrier_am(0.4)
     y = _faded_carrier_am(0.45)  # +12,5 % relative Tiefe — unter JND

@@ -180,7 +180,7 @@ class GenderDetector:
         fundamental_freq = self._detect_f0(audio)
 
         # §2.11/§19.2: pYIN-Override — pYIN gewinnt, wenn die Autokorrelation
-        # kein voiced Segment fand (Intro > 3 s, Befund Elke Best) oder die
+        # kein voiced Segment fand (Intro > 3 s, Befund Testkünstlerin (Schlager)) oder die
         # Abweichung > 15 % beträgt (Oktavfehler, Bass-Masking, Vibrato).
         if pyin_f0 is not None and pyin_f0 > 0:
             if fundamental_freq <= 0:
@@ -284,10 +284,10 @@ class GenderDetector:
         pYIN ist ein probabilistisches Pitch-Modell mit Voicing-Confidence:
         robust gegen polyphones Material, Vibrato und lange Intros (die
         Scanning-Autokorrelation betrachtet nur die ersten ~3 s, Befund
-        Elke Best 2026-09-08). Gibt (median_f0, voiced_frame_times) zurück;
+        Testkünstlerin (Schlager) 2026-09-08). Gibt (median_f0, voiced_frame_times) zurück;
         (None, None) wenn < 10 voiced Frames existieren.
 
-        Befund Elke Best (2026-09-08, gemessen): pYIN-Voicing-Confidence liegt
+        Befund Testkünstlerin (Schlager) (2026-09-08, gemessen): pYIN-Voicing-Confidence liegt
         bei vollem Pop-Arrangement fast nie über 0.8 (p90 ≈ 0.2, max ≈ 0.85) —
         die Schwelle 0.8 findet daher nichts. Gestufte Schwelle (0.4 → 0.25)
         plus NaN-Filter; der Median über viele Frames bleibt dadurch robust.
@@ -332,7 +332,7 @@ class GenderDetector:
         bandwidth_loss: float | None = None,
     ) -> tuple[VoiceGender, float]:
         """§19 Contralto-Override (Zone 120–240 Hz, Spec 19 „Contralto-Zonen-
-        Erweiterung" 2026-08-22; Befund Elke Best 2026-09-08; Wurzel-Fix
+        Erweiterung" 2026-08-22; Befund Testkünstlerin (Schlager) 2026-09-08; Wurzel-Fix
         F2-Degradation 2026-09-21).
 
         Tiefe Frauenstimmen haben F0 im männlichen Bereich, aber weibliche
@@ -392,7 +392,7 @@ class GenderDetector:
         §19.2 (2026-09-08): Wenn pYIN-voiced-Zeitpunkte übergeben werden,
         werden Formanten NUR aus stimmhaften Frames geschätzt (Gate ±12 ms um
         die Frame-Mitte). Ohne Gate kontaminiert der Instrumentalanteil den
-        Frame-Durchschnitt (Befund Elke Best: F2=704 Hz statt weiblich).
+        Frame-Durchschnitt (Befund Testkünstlerin (Schlager): F2=704 Hz statt weiblich).
         Liefert das Gate keine Frames, fällt der Schätzer auf den
         ungegateten Durchschnitt zurück (pYIN/Frame-Raster-Diskrepanz).
 

@@ -29,8 +29,8 @@ def test_make_artist_hash_deterministic():
     from backend.core.artist_knowledge_base import get_artist_knowledge_base
 
     akb = get_artist_knowledge_base()
-    h1 = akb.make_artist_hash("Elke Best")
-    h2 = akb.make_artist_hash("Elke Best")
+    h1 = akb.make_artist_hash("Testkünstlerin (Schlager)")
+    h2 = akb.make_artist_hash("Testkünstlerin (Schlager)")
     assert h1 == h2
 
 

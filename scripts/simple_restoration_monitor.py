@@ -302,7 +302,7 @@ Beispiele:
   # Headless (nur Monitor, kein GUI)
   python scripts/simple_restoration_monitor.py --audio my_song.mp3 --headless
 
-  # Mit Standard-Elke-Best-Audio
+  # Mit Standard-Test-Track-Audio
   python scripts/simple_restoration_monitor.py
         """,
     )
@@ -326,7 +326,9 @@ Beispiele:
     # Audio suchen
     audio_path = args.audio
     if not audio_path:
-        default_path = "test_audio/Elke Best - Du wolltest nur ein Abenteuer, aber ich suchte einen Freund.mp3"
+        default_path = (
+            "test_audio/Testkünstlerin (Schlager) - Du wolltest nur ein Abenteuer, aber ich suchte einen Freund.mp3"
+        )
         if Path(default_path).exists():
             audio_path = default_path
         else:

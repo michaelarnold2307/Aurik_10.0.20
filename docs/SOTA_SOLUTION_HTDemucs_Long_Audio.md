@@ -479,4 +479,4 @@ def test_end_to_end_restoration_with_chunked_separation():
 1. **Heute**: Review & Approval dieses SOTA-Designs
 2. **Morgen**: Phase 1 Implementation (ChunkedProcessor)
 3. **+3 Tage**: Phase 2/3 Integration + Full Testing
-4. **+5 Tage**: Validation auf echten Audio-Samples (Elke Best etc)
+4. **+5 Tage**: Validation auf echten Audio-Samples (Testkünstlerin (Schlager) etc)

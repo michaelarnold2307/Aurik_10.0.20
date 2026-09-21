@@ -94,7 +94,7 @@ Phase 40: ±8 dB Cap, uniformer Gain, keine Gate-Sprünge.
 
 ## §13.8 Artist/Track-Fingerprint (§13.11 ROADMAP)
 
-**Konzept:** Elke-Best-Stimmenmodell persistieren, beim nächsten Song wiederverwenden.
+**Konzept:** Test-Track-Stimmenmodell persistieren, beim nächsten Song wiederverwenden.
 BatchSessionLearner existiert bereits — Transfer-Learning für Künstler-Fingerprints:
 
 - Stimm-Modell (Formanten, Vibrato-Rate, HNR, spektrale Hüllkurve)

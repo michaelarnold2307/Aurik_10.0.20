@@ -114,7 +114,7 @@ passieren — sonst wird sie verworfen:
   MAXIMUM (alle Zeugen aktiv). Die Staffel definiert nur das BUDGET, nie die
   Hörbarkeits-Schwellen — die bleiben in allen Modi identisch (Wohlklang-Primat).
 - **Messgrößen je Maßnahme:** (a) RT-Faktor auf dem 224-s-Referenzlauf,
-  (b) AURIK Quality Score + af-Delta (P1-Diagnose) auf „Elke Best"-Korpus,
+  (b) AURIK Quality Score + af-Delta (P1-Diagnose) auf „Testkünstlerin (Schlager)"-Korpus,
   (c) R5-Zertifikat (bit-identisch), (d) Restorer-Suiten.
 
 ---

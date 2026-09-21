@@ -3673,7 +3673,7 @@ class MicroDynamicsMetric:
 def _sep_time_budget_s(duration_s: float) -> float:
     """Längen-kalibriertes HTDemucs-Zeitbudget (§Separation-SOTA).
 
-    Kalibriert am Elke-Best-Referenzlauf: ~0.35× RT auf CPU (Modell-Warm-up
+    Kalibriert am Test-Track-Referenzlauf: ~0.35× RT auf CPU (Modell-Warm-up
     ausgenommen — läuft in measure_all vorab außerhalb der Budget-Uhr).
     0.5× RT + 60-s-Floor: Der Floor wurde 2026-09-07 von 3 s auf 60 s
     angehoben — längere Songs/Excerpts und ROCm-erste Läufe brauchen echte

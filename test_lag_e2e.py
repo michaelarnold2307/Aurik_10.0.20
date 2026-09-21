@@ -10,7 +10,7 @@ import numpy as np
 
 sys.path.insert(0, "/media/michael/Software 4TB/Aurik_Standalone")
 
-AUDIO_FILE = "/home/michael/Musik/Elke Best - 30 Sekunden.mp3"
+AUDIO_FILE = "/home/michael/Musik/Testkünstlerin (Schlager) - 30 Sekunden.mp3"
 
 
 def measure_lag(audio, sr, label):

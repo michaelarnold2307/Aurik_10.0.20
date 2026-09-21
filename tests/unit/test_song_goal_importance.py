@@ -1131,7 +1131,7 @@ class TestImprovedSoftCap:
 
 class TestFullFeatureCombinedScenario:
     def test_vocal_schlager_full_analysis(self):
-        """Elke Best scenario: Schlager/1970/vinyl + all features.
+        """Testkünstlerin (Schlager) scenario: Schlager/1970/vinyl + all features.
 
         Tests that vocal harmonics are protected while defect removal
         is still possible (weights must stay in useful range).

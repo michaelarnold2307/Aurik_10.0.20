@@ -375,12 +375,12 @@ class TestFullIntegration:
 
 
 # ===========================================================================
-# G09 — Befund Elke Best (2026-09-08): Pipeline-GenderDetector SOTA
+# G09 — Befund Testkünstlerin (Schlager) (2026-09-08): Pipeline-GenderDetector SOTA
 # ===========================================================================
 
 
 class TestElkeBestSOTA:
-    """G09: Befund Elke Best — der Pipeline-Level GenderDetector
+    """G09: Befund Testkünstlerin (Schlager) — der Pipeline-Level GenderDetector
     (vocal_ai_enhancement) MUSS die Spec-19-Kette umsetzen: pYIN-F0
     (voiced-Median, gestufte Schwelle + NaN-Filter, Fenster-Leiter 0–30 s →
     Mitte → Ende), Formanten NUR aus voiced Frames und den Contralto-
@@ -413,26 +413,26 @@ class TestElkeBestSOTA:
         return sig.astype(np.float32)  # type: ignore[no-any-return]
 
     def test_g09_elke_best_real_audio_is_female(self):
-        """G09a: Echte Elke-Best-Aufnahme → FEMALE (nicht UNKNOWN/MALE)."""
+        """G09a: Echte Test-Track-Aufnahme → FEMALE (nicht UNKNOWN/MALE)."""
         from pathlib import Path
 
         from backend.core.vocal_ai_enhancement import GenderDetector, VoiceGender
 
         _root = Path(__file__).resolve().parents[2]
         _candidates = [
-            _root / "test_audio" / "Elke Best - 30 Sekunden.mp3",
+            _root / "test_audio" / "Testkünstlerin (Schlager) - 30 Sekunden.mp3",
             _root / "test_audio" / "_elke_60s_excerpt.wav",
         ]
         _audio_path = next((p for p in _candidates if p.is_file()), None)
         if _audio_path is None:
-            pytest.skip("Elke-Best-Testaudio nicht vorhanden (gitignored)")
+            pytest.skip("Test-Track-Testaudio nicht vorhanden (gitignored)")
         import librosa
 
         audio, sr = librosa.load(str(_audio_path), sr=SR, mono=True)
         gd = GenderDetector(sample_rate=SR)
         chars = gd.detect(audio)
         assert chars.gender == VoiceGender.FEMALE, (
-            f"Elke Best wurde als {chars.gender.value} erkannt (F0={chars.fundamental_freq:.1f} Hz, "
+            f"Testkünstlerin (Schlager) wurde als {chars.gender.value} erkannt (F0={chars.fundamental_freq:.1f} Hz, "
             f"conf={chars.confidence:.2f}) — erwartet FEMALE"
         )
 

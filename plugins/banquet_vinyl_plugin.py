@@ -78,7 +78,7 @@ class BanquetVinylPlugin:
     # Clamp [1, 40] — MIOpen-Limit, s. §PERF-R4-Matrix unten).
     TORCH_ENABLED: bool = os.environ.get("AURIK_BANQUET_TORCH", "1") != "0"
     # §PERF-R4 (2026-09-19): Mini-Batch-Matrix auf 7900 XTX mit 60 realen
-    # Fenstern (30 s Elke, paritätsverifiziert gegen B=1): B=1 11,46 s →
+    # Fenstern (30 s Testkünstlerin, paritätsverifiziert gegen B=1): B=1 11,46 s →
     # B=4 7,85 s → B=32 6,49 s → B=40 6,96 s; max|Δ| vs. B=1 = 6,7e-6
     # (rel 1,7e-7) für alle B ≥ 2. MIOpen-LSTM bricht ab B ≥ 48 mit
     # miopenStatusBadParm ⇒ Clamp [1, 40] (Quarantäne-Fallback würde sonst

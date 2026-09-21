@@ -147,7 +147,7 @@ class TestAnalyzeStructure:
 class TestRepetitionAwareLabels:
     """§SOTA-Upgrade 2026-09-17: Der Refrain ist der WIEDERKEHRENDE Abschnitt —
     ohne Wiederholungs-Evidenz erkannte der Analyzer auf realem Material 0
-    Chorus (Produktionsbefund Elke-Best-225s)."""
+    Chorus (Produktionsbefund Test-Track-225s)."""
 
     @staticmethod
     def _section(chords: list[list[float]], sr: int, dur_s: float, amp: float) -> np.ndarray:

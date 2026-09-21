@@ -26,7 +26,7 @@ Ablauf (Integration in unified_restorer_v3.py):
   * am Lauf-Ende:       protect_vocal_overdrive(pre=original, post=final)
   * im Export-Pfad:     protect_vocal_overdrive(pre=export_input, post=korrigiert)
 
-Schwellen (kalibriert 2026-09-06 gegen Real-Clip „Elke Best … 1977",
+Schwellen (kalibriert 2026-09-06 gegen Real-Clip „Testkünstlerin (Schlager) … 1977",
 Worst-Frames wiesen Excess bis +21 dB bei 0 dB hartem Clip auf):
   * VOICED_CLIP_HARD_RATIO     = 1e-4   (0,01 % gesättigte Samples in Stimm-Frames)
   * COMB_EXCESS_MODERATE_DB    = +5.0   (p90 über stimmliche Frames)
@@ -51,7 +51,7 @@ COMB_EXCESS_MODERATE_DB = 5.0
 COMB_EXCESS_SEVERE_DB = 10.0
 IMD_EXCESS_SEVERE_DB = 10.0
 # Final-Modus (kumulativ über den ganzen Lauf, pre=Original): moderate
-# IMD-Schwelle. Kalibriert 2026-09-06 am Real-Clip „Elke Best … 1977"
+# IMD-Schwelle. Kalibriert 2026-09-06 am Real-Clip „Testkünstlerin (Schlager) … 1977"
 # (beanstandete Ausgabe: imd_p90=8.2 dB bei comb_p90=3.4 dB — hörbar
 # „buzziger" Gesang, kein Clip): legitime Aufhellung hält comb niedrig,
 # IMD-Anreicherung in Halbvielfach-Lücken ist die Verzerrungs-Signatur.

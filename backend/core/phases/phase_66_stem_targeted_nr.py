@@ -267,7 +267,7 @@ class StemTargetedNRPhase(PhaseInterface):
         quality_mode = str(kwargs.get("quality_mode", "restoration")).strip().lower()
         panns_singing = float(kwargs.get("panns_singing", kwargs.get("panns_singing_confidence", 0.0)))
         # §v10.741 (2026-09-09): §2.9a-Soft-Activation statt hartem 0.40-Gate.
-        # Befund Lauf 4: Elke Best vocal_prob=0.399 < 0.40 → Phase 66 lief auf
+        # Befund Lauf 4: Testkünstlerin (Schlager) vocal_prob=0.399 < 0.40 → Phase 66 lief auf
         # JEDEM Chunk in den Passthrough (Stem-NR komplett inaktiv).
         _vocal_soft = float(kwargs.get("vocal_strength_scale", 0.0) or 0.0)
         if _vocal_soft <= 0.0:

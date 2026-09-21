@@ -136,9 +136,9 @@ Restaurierungsversion: der direkte UV3-Pfad. 285/285 Denker-Tests grün.
 zum Default, die den neuen Referenzlauf mit Nutzer-Audio voraussetzt (§V7: keine
 ungeprüften Strukturänderungen am Qualitätspfad).
 
-## 7. Überwachter 224-s-Lauf (Elke Best) — Befunde & Fixes (2026-09-09)
+## 7. Überwachter 224-s-Lauf (Testkünstlerin (Schlager)) — Befunde & Fixes (2026-09-09)
 
-Der überwachte Lauf (`test_audio/Elke Best - Du wolltest nur ein Abenteuer…`, 225,3 s,
+Der überwachte Lauf (`test_audio/Testkünstlerin (Schlager) - Du wolltest nur ein Abenteuer…`, 225,3 s,
 Quality-Modus) deckte vier echte Qualitäts-Bugs auf — alle behoben und dokumentiert:
 
 | § | Bug (aus INFO/„unknown“-Zeilen) | Fix |

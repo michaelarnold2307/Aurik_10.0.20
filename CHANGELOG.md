@@ -353,7 +353,7 @@ Referenzvergleich bit-identisch belegt; Messungen auf identischer 10-s-Zelle
 - **Ebene 2:** `defect_audibility_gate` — material-/ketten-adaptive JND-Schwelle für Restdefekte
   (ERB-Maskierung, Physical-Cap-Typen).
 - **Ebene 4:** `einladungs_gate` (positives Wohlklang-Gate, VQI-Recovery) +
-  `vocal_overdrive_guard` (hartes Vocal-Schutz-Invariante, kalibriert an Elke Best 1977).
+  `vocal_overdrive_guard` (hartes Vocal-Schutz-Invariante, kalibriert an Testkünstlerin (Schlager) 1977).
 - **GUI (Reife T1):** `hearing_gates_summary` — Ampel/Detail der Hör-Gates im Score-Banner.
 - Werkzeuge: `benchmark_effizienz_matrix` (UV3-Modi-Matrix, RSS/RT/JSON),
   `mushra_harness` (ITU-R BS.1534); Audit `audit/gui_reife_audit_2026-09-06.md`.
