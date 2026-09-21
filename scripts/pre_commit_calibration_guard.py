@@ -66,6 +66,8 @@ _PHYSICAL_CONSTANTS: set[str] = {
     "CREST_MIN_NATURAL",  # set inside calibrate_watchdog_thresholds()
     # Dokumentierte psychoakustische/physikalische Konstanten mit lokaler Herleitung.
     "_HNR_DELTA_THRESHOLD_DB",  # Boersma/HNR: >3 dB HNR-Zuwachs = rauigkeitsrelevanter Eingriff
+    "_HNR_DELTA_MAX_DB",  # Stimm-HNR-Delta-Limit (3 dB) des Vocal-No-Harm-Gates — gleiche Boersma-Kalibrierung
+    "_MAX_RMS_PEAK_REDUCTION_DB",  # §0p kalibrierte Maximal-Reduktion (3 dB) des Dynamic-Preservation-Guards
     "_VOICED_RMS_THRESHOLD",  # Stimmhaftigkeits-Floor fuer ACF-HNR-Schaetzung
     "_PLOSIVE_CREST_FACTOR_MIN",  # Plosiv-Crest-Faktor aus Phonem-Boundary-DSP
     "_LUFS_WINDOW_S",  # 400-ms Mikro-Dynamik-Fenster fuer Goosebumps-Metrik
