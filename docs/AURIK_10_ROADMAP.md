@@ -1,6 +1,6 @@
 # Aurik 10 Roadmap (Historischer Snapshot + aktueller Stand)
 
-> **Aurik 10 ist ein intelligentes, kontextbewusstes Musik- und Gesangs-Restaurierungs-, Reparatur- und Rekonstruktions-System. Aktuelle Version: 10.0.20 (2026-09-06), 69 Phasen-Dateien, ~18.400+ Tests.**
+> **Aurik 10 ist ein intelligentes, kontextbewusstes Musik- und Gesangs-Restaurierungs-, Reparatur- und Rekonstruktions-System. Aktuelle Version: 10.1.0 (2026-09-06), 69 Phasen-Dateien, ~18.400+ Tests.**
 > Hinweis: Diese Roadmap bildet überwiegend einen historischen Planungsstand ab. Für den aktuellen normativen Zustand gilt die normative Kette (`AGENTS.md` §1) mit `.github/specs/` (Index: `00_SPEC_INDEX.md`).
 > Releasepfad-Norm: Bridge -> `AurikDenker.denke(...)` -> `export_guard()`. Aeltere v2-/Server-/Docker-Planpunkte sind `LEGACY_NON_RELEASE`.
 
@@ -1276,7 +1276,7 @@ _Verbleibend: Lyrics-Guided Enhancement Implementation (v10.0-R&D), AutoMix/Auto
 
 ## 🔜 Nächste Meilensteine
 
-Erledigt (2026-09-06, v10.0.20+):
+Erledigt (2026-09-06, v10.1.0+):
 - Ebene-3-Audit-Gate (`WohlklangOrdnungGate`) + GUI-Ampel
 - Matrix-Harness-CI-Gate: Budget-Enforcement, Bootstrap-95 %-CI, Phase-Profiling
 - Per-Operation-Budget-Telemetrie der Pipeline (`pipeline_budget_timings`) — Budget-Gate prüft 5/6 Tabellenzeilen real

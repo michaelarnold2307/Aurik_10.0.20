@@ -15,7 +15,7 @@ Algorithmus (Frequenzbereich):
   3. IFFT → addiere zum Audio
   4. Quantisiere auf Ziel-Bit-Tiefe
 
-Autor: Aurik 10.0.20 — August 2026
+Autor: Aurik 10.1.0 — August 2026
 """
 
 from __future__ import annotations

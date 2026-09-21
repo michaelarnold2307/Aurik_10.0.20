@@ -1,6 +1,6 @@
 # Spec-Evidence: §v10.19 Air-Presence/StemContext-Verdrahtung + CI-Gate-Anpassungen
 
-Datum: 2026-09-12 | Spec: `.github/specs/v10.19_sprachmodell_ersatz_sota_roadmap.md` | Version: 10.0.20
+Datum: 2026-09-12 | Spec: `.github/specs/v10.19_sprachmodell_ersatz_sota_roadmap.md` | Version: 10.1.0
 
 ---
 

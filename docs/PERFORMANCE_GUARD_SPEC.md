@@ -1,6 +1,6 @@
 # PerformanceGuard Specification - Aurik 10
 
-**Version:** 10.0.20 (Doku-Abgleich)  
+**Version:** 10.1.0 (Doku-Abgleich)  
 **Status:** ✅ Production-Ready (Tested)  
 **Location:** `backend/core/performance_guard.py`
 

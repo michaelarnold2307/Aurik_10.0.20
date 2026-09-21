@@ -12,6 +12,7 @@ shift || true
 
 CHUNK_FILES="${AURIK_BATCH_FILES:-8}"
 CHUNK_LIMIT="${AURIK_CHUNK_LIMIT:-0}"
+CHUNK_START="${AURIK_CHUNK_START:-0}"
 LOG_FILE="${AURIK_CHUNK_LOG_FILE:-${SCRIPT_DIR}/logs/pytest_chunked_safe.log}"
 OOM_RETRY_MEM_GB="${AURIK_OOM_RETRY_MEM_GB:-20}"
 OOM_RETRY_SWAP_MB="${AURIK_OOM_RETRY_SWAP_MB:-6144}"
@@ -52,6 +53,7 @@ echo " Dateien      : $TOTAL_FILES" | tee -a "$LOG_FILE"
 echo " Chunk-Groesse: $CHUNK_FILES" | tee -a "$LOG_FILE"
 echo " Chunks gesamt: $TOTAL_CHUNKS" | tee -a "$LOG_FILE"
 echo " Chunk-Limit  : $CHUNK_LIMIT (0 = alle)" | tee -a "$LOG_FILE"
+echo " Chunk-Start  : $CHUNK_START (0 = ab Chunk 1)" | tee -a "$LOG_FILE"
 if [[ "$ULTRA_QUIET" == "1" ]]; then
     echo " Ultra-Quiet  : aktiv (reduzierte Terminal-Ausgabe)" | tee -a "$LOG_FILE"
 fi
@@ -63,6 +65,12 @@ file_idx=0
 
 while [[ "$file_idx" -lt "$TOTAL_FILES" ]]; do
     chunk_idx=$((chunk_idx + 1))
+    if [[ "$CHUNK_START" -gt 0 && "$chunk_idx" -lt "$CHUNK_START" ]]; then
+        # Chunks vor CHUNK_START überspringen (Resume nach behobenem Fehler).
+        file_idx=$((file_idx + CHUNK_FILES))
+        [[ "$file_idx" -gt "$TOTAL_FILES" ]] && file_idx="$TOTAL_FILES"
+        continue
+    fi
     if [[ "$CHUNK_LIMIT" -gt 0 && "$chunk_idx" -gt "$CHUNK_LIMIT" ]]; then
         echo "[chunked-safe] Chunk-Limit erreicht ($CHUNK_LIMIT). Stoppe planmaessig." | tee -a "$LOG_FILE"
         break

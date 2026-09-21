@@ -1,8 +1,35 @@
-# Changelog — Aurik 10.0.21
+# Changelog — Aurik 10.1.0
 
-## Unreleased (nach 10.0.21)
+## 10.1.0 (2026-09-21)
 
-*SOTA-Roadmap offen: t6 Boundary-Maschinerie (ExcellenceOptimizer/PGHI-Struktur), t7 Musical-Goals-Metriken, t8-Rest Chunk-Vergrößerung, P1-GPU-Ports, F-Trainings (F3/F4/F7–F12).*
+### 🔒 Autonome Qualitäts-Wahrheit — Never-worsen-Regelkreis
+
+- **Autonomer Never-worsen-Arbiter** (Spec v10.25): Aurik erkennt Verschlechterung
+  eigenständig (referenz-freie Qualität + Hörordnungs-Witness) und wählt aus eigener
+  Kraft das beste Restaurierungsresultat für Wohlklang und Natürlichkeit.
+- **SOTA-Parameter-Retry-Leiter** (`resolve_never_worsen`, injizierbarer Scorer,
+  `_nw_retry`-Flag, Best-of-Wahl) im Denker verdrahtet — ohne externe Eingriffe.
+
+### 🐛 Bug-Fixes (Voll-Suite-Befunde)
+
+- **LRU-Eviction** (`bridge_cache`): verdrängte Einträge werden jetzt auch vom
+  Platten-Cache gelöscht (vorher las `get_cached_*` den verdrängten Eintrag über
+  den Disk-Fallback zurück — LRU wirkungslos).
+- **Goal-Score-Container** (`unified_restorer_v3._measure_goals_for_tail`): Namespace-
+  Ergebnisse werden auf die `.scores`-Map normalisiert statt auf `vars()` — Reporting
+  crashte mit `TypeError: float() … '_CallList'`.
+
+### 🧹 Release-Cleanup
+
+- Interne Dev-Artefakte (Debug-Skripte, Session-Reports, Diagnose-Dumps) entpubliziert
+  und in `.gitignore` aufgenommen; Test-Track-Referenzen anonymisiert.
+- Dokumentation und README auf **10.1.0** aktualisiert.
+- **Installationsprogramm** für Ubuntu 22.04 LTS / Zorin OS 17/18 (apt-Abhängigkeiten,
+  venv, Modell-Prüfung, Desktop-Launcher).
+
+> *SOTA-Roadmap offen: t6 Boundary-Maschinerie (ExcellenceOptimizer/PGHI-Struktur),
+> t7 Musical-Goals-Metriken, t8-Rest Chunk-Vergrößerung, P1-GPU-Ports,
+> F-Trainings (F3/F4/F7–F12).*
 
 ## 10.0.21 (2026-09-20)
 

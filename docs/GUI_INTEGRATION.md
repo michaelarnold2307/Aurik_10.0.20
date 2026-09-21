@@ -1,6 +1,6 @@
 # GUI-Integration — Verdrahtung in modern_window.py
 
-> Stand: 10.0.20 | 7 Module bereit, hier die exakten Integration-Patches
+> Stand: 10.1.0 | 7 Module bereit, hier die exakten Integration-Patches
 
 ## 1. KeyboardShortcuts (Leertaste, Pfeiltasten)
 

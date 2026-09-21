@@ -1,6 +1,6 @@
 # Aurik 10 — Architektur
 
-> Stand: 10.0.20 | Alle neuen Module aus Spec 18, 22, 15, 03, 11, 13, 14
+> Stand: 10.1.0 | Alle neuen Module aus Spec 18, 22, 15, 03, 11, 13, 14
 
 ## Übersicht
 
@@ -50,7 +50,7 @@
 | **DSP** | `backend/core/dsp/`, `dsp/` | Signalverarbeitung |
 | **ML** | `backend/ml/`, `plugins/` | ONNX-Modelle |
 
-## Neue Module (10.0.18–10.0.20)
+## Neue Module (10.0.18–10.1.0)
 
 | Modul | Spec | Funktion |
 |-------|------|----------|

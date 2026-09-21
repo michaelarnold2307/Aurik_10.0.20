@@ -33731,7 +33731,7 @@ class UnifiedRestorerV3:
                             _ra_first if isinstance(_ra_first, np.ndarray) else np.asarray(audio, dtype=np.float32)
                         )
             else:
-                # ── 10.0.20 Phase-Performance-Tracker ──
+                # ── 10.1.0 Phase-Performance-Tracker ──
                 _phase_id_perf = getattr(phase_metadata, "phase_id", "unknown") if phase_metadata else "unknown"
                 _perf_tracker = getattr(self, "_perf_tracker", None)
                 if _perf_tracker is not None:
@@ -36397,7 +36397,7 @@ class UnifiedRestorerV3:
         except Exception:
             logger.debug("unified_restorer_v3.py:33259: Silent exception absorbed", exc_info=True)
 
-        # ── 10.0.20 Modul-Verdrahtung: Performance, Validator, Preview ──
+        # ── 10.1.0 Modul-Verdrahtung: Performance, Validator, Preview ──
         try:
             from backend.core.phase_performance import PhasePerformanceTracker
 
@@ -44052,7 +44052,7 @@ class UnifiedRestorerV3:
             opt_result.elapsed_s,
         )
 
-        # ── 10.0.20 Pipeline-Finish: Performance, AB-Vergleich, Fingerprint ──
+        # ── 10.1.0 Pipeline-Finish: Performance, AB-Vergleich, Fingerprint ──
         _pipeline_perf = None
         if getattr(self, "_perf_tracker", None) is not None:
             try:

@@ -1,11 +1,11 @@
-> **⚠️ ARCHIVIERT — siehe `docs/architecture/ARCHITECTURE.md` und `.github/specs/` (Index: `00_SPEC_INDEX.md`) für die aktuelle Architektur (Version 10.0.20).**
+> **⚠️ ARCHIVIERT — siehe `docs/architecture/ARCHITECTURE.md` und `.github/specs/` (Index: `00_SPEC_INDEX.md`) für die aktuelle Architektur (Version 10.1.0).**
 >
 > Diese Datei beschreibt die historische Aurik-9.x-Architektur und ist nicht mehr aktuell.
 
 # Aurik-9-Ära — Implementierte Architektur (ARCHIVIERT)
 
 **Stand:** 2026-09-06 (archiviert)  
-**Version:** — (archiviert; aktuell: 10.0.20)  
+**Version:** — (archiviert; aktuell: 10.1.0)  
 **Status:** ⚠️ ARCHIVIERT (nicht mehr aktualisiert)
 
 > Hinweis: Diese Seite ist eine historische Architekturübersicht. Normative Details stehen in der

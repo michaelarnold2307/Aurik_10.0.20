@@ -105,7 +105,7 @@ und für die FeedbackChain-Boosts.
 senkt — unabhängig davon, ob der Einzel-Score des Boost-Ziels steigt
 (Teamwork- statt Dominanz-Prinzip, Spec 01 §1.2c).
 
-Seit v10.0.20 wird Ebene 3 zusätzlich maschinell auditiert: `WohlklangOrdnungGate`
+Seit v10.1.0 wird Ebene 3 zusätzlich maschinell auditiert: `WohlklangOrdnungGate`
 (`backend/core/wohlklang_ordnung_gate.py`) verifiziert die Dominanz-Konformität
 von Kandidaten-Entscheidungen auf Basis von `goal_priority_protocol.py` und meldet
 Verstöße an die GUI-Ampel (`hearing_gates_summary.py`). Kein neuer Schwellwert,
@@ -125,7 +125,7 @@ wird als Fenster-Gate gemessen, nicht als Einzelwert:
 - **Ermüdungs-Abbruch:** Fatigue (experience_runtime) > 0.40 beendet die
   Optimierung (gilt schon in OneTakeExport; hier generell für End-Gate/FC).
   Die audio-basierte Listening-Fatigue (Spektralbalance/Crest/Mikrodynamik,
-  `listening_fatigue_metric.py`) wird seit v10.0.20 komponenten-getrieben
+  `listening_fatigue_metric.py`) wird seit v10.1.0 komponenten-getrieben
   präventiert: `anti_fatigue_pass.py` korrigiert High-Shelf und
   Mikrodynamik-Expansion mit Do-No-Harm; OneTakeExport nutzt denselben Plan
   statt blindem High-Shelf. Kein neuer Schwellwert, keine Regeländerung.

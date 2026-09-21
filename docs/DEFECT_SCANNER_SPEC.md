@@ -1,6 +1,6 @@
 # DefectScanner Specification - Aurik 10
 
-**Version:** 10.0.20  
+**Version:** 10.1.0  
 **Stand:** 2026-09-06  
 **Status:** ✅ Production-Ready  
 **Location:** `backend/core/defect_scanner.py`
@@ -58,7 +58,7 @@ The **DefectScanner** is the entry point for Aurik 10.0.0’s **Defect-First** r
 
 ## 3. Defect Types
 
-### 3.1 Enum Definition (62 DefectTypes, Stand v10.0.20)
+### 3.1 Enum Definition (62 DefectTypes, Stand v10.1.0)
 
 ```python
 class DefectType(Enum):

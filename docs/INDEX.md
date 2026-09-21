@@ -1,6 +1,6 @@
 # Aurik 10 — Dokumentationsindex
 
-Offizielle Dokumentation für Aurik 10 (Version 10.0.20, Stand 2026-09-06).
+Offizielle Dokumentation für Aurik 10 (Version 10.1.0, Stand 2026-09-06).
 
 ## Normativer Vorrang
 

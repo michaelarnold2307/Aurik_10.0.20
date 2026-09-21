@@ -1,4 +1,4 @@
-"""Phase-Performance-Instrumentierung. 10.0.20 Upgrade #4.
+"""Phase-Performance-Instrumentierung. 10.1.0 Upgrade #4.
 
 Misst pro Phase:
 - Ausführungszeit (Wall-Clock)

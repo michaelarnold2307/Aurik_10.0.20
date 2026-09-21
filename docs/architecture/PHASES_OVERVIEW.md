@@ -1,6 +1,6 @@
 # Aurik 10 — Phasen-Überblick (69 Phasen-Dateien)
 
-**Version:** 10.0.20  
+**Version:** 10.1.0  
 **Stand:** 2026-09-06  
 **Status:** ✅ Produktionsbereit
 
@@ -168,4 +168,4 @@ Max. 5 Retries; P1/P2-Regression → volle Retry-Kaskade (4 Retries + Emergency)
 
 ---
 
-**Stand: 2026-09-06 — Aurik 10.0.20**
+**Stand: 2026-09-06 — Aurik 10.1.0**

@@ -481,7 +481,7 @@ def _enforce_budget(entry: dict[str, Any], audio_minutes: float) -> tuple[list[d
             _fallback = float(entry["wall_s"])
         _check_op("phase_pipeline_total", _fallback)
 
-    # 2) Übrige Operationen — aus pipeline_budget_timings (seit v10.0.20 real
+    # 2) Übrige Operationen — aus pipeline_budget_timings (seit v10.1.0 real
     #    gemessen); export_flac läuft außerhalb des Restorers und bleibt null.
     for _op in ("defect_scanner", "feedback_chain", "excellence_optimizer", "restorability_estimator"):
         _check_op(_op, _pt.get(f"{_op}_s"))

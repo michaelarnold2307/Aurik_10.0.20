@@ -1,6 +1,6 @@
 # Aurik 10 — Tonträgerketten (Media Transfer Chains)
 
-> Stand: 10.0.20 | Dokumentiert die Logik der Medien-Erkennung
+> Stand: 10.1.0 | Dokumentiert die Logik der Medien-Erkennung
 
 ## Konzept
 

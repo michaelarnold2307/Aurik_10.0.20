@@ -270,7 +270,7 @@ Die Diskrepanz stammt aus per-Chunk statt per-Song laufender Analytik/End-Gate �
 Ziel und Akzeptanzkriterium: `docs/TODOS_SOTA_ROADMAP.md` TODO-P0-1 (Song-Ebene-
 Analytik) und TODO-P0-3. Bis dahin gilt: 32×-Guard ist die verbindliche End-to-End-
 Norm; diese Tabelle regelt die Per-Operation-Budgets.
-v10.0.20 reale Per-Operation-Timings als `metadata["pipeline_budget_timings"]`
+v10.1.0 reale Per-Operation-Timings als `metadata["pipeline_budget_timings"]`
 nach außen; fehlende Timings werden als `null` dokumentiert (nicht geschätzt).
 Mit `--repeats N` (deterministische Seed-Folge `AURIK_MASTER_SEED = 42+i`,
 §G5) liefert der Harness echte Stichproben für `--bootstrap-ci`.
@@ -319,7 +319,7 @@ paritätsbewiesene Default.
   keine zweite hartkodierte Nummer im Frontend. Bei jedem Bump werden GUI-,
   CLI- und Doku-Referenzen im selben Merge synchronisiert.
 - **Version-Sync-Sweep:** Vor jedem Release einmalig alle Dokument-Referenzen
-  (`docs/`, `.github/`) auf die neue Version ziehen (Muster: v10.0.20-Sweep).
+  (`docs/`, `.github/`) auf die neue Version ziehen (Muster: v10.1.0-Sweep).
 - **Determinismus-Kopplung:** §G5 (copilot-instructions.md) verlangt
   „gleiche Version ⇒ gleicher Output“ — Mess-Baselines (perf_session,
   A/B-Läufe) referenzieren die version.py-Nummer; ohne Bump wird die

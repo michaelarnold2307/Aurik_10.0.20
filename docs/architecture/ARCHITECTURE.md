@@ -1,7 +1,7 @@
 # Aurik 10 — Architektur-Überblick
 
 **Stand:** 2026-09-06
-**Version:** 10.0.20
+**Version:** 10.1.0
 **Status:** RELEASE_MUST-konform | §v10 Pleasantness-First aktiv | Hör-Gates Ebenen 1/2/4 aktiv
 
 > Verbindlicher Wahrheitsstand (normative Kette, `AGENTS.md` §1): `.github/copilot-instructions.md` →

@@ -1,6 +1,6 @@
 # Aurik 10 — Installation Guide
 
-> Stand: 10.0.20 | Alle Betriebssysteme
+> Stand: 10.1.0 | Alle Betriebssysteme
 
 ---
 

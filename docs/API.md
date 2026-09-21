@@ -1,6 +1,6 @@
 # Aurik 10 — Bridge API Reference
 
-> Stand: 10.0.20 | Alle öffentlichen Bridge-API-Funktionen
+> Stand: 10.1.0 | Alle öffentlichen Bridge-API-Funktionen
 
 ## Import
 

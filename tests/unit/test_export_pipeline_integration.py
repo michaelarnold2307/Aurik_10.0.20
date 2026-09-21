@@ -1,4 +1,4 @@
-"""Export-Pipeline-Integrationstest. 10.0.20 Upgrade #5.
+"""Export-Pipeline-Integrationstest. 10.1.0 Upgrade #5.
 
 Verifiziert die vollständige Export-Pipeline:
 - CD-Rauschprofil-Injektion (§G4 (GEBOTE.md))

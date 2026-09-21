@@ -1,7 +1,7 @@
 # Aurik 10 — Pipeline Flow Analysis
 
 **Stand:** 2026-09-06  
-**Version:** 10.0.20  
+**Version:** 10.1.0  
 **Status:** Defect-First-Pipeline (69 Phasen-Dateien), vollständig implementiert
 
 > Hinweis: Verbindlicher Ist-Stand: normative Kette (`AGENTS.md` §1) — `.github/copilot-instructions.md`,
@@ -110,4 +110,4 @@ CausalReasoner), dann optimiert intervenieren (GP-Optimizer), dann verifizieren
 
 ---
 
-_Stand: 2026-09-06 — Aurik 10.0.20_
+_Stand: 2026-09-06 — Aurik 10.1.0_

@@ -415,7 +415,7 @@ Nach Überschreitung: KMV Stufe 2 (`MLRefinementThread`) übernimmt automatisch.
 
 - **Budget-Enforcement:** `--enforce-budget` (bzw. `--ci`, das es impliziert)
   prüft die gemessenen Zeiten je Zelle gegen die Tabelle in §9 dieser Spec.
-  Seit v10.0.20 liefert die Pipeline dazu reale Per-Operation-Timings unter
+  Seit v10.1.0 liefert die Pipeline dazu reale Per-Operation-Timings unter
   `metadata["pipeline_budget_timings"]` (`defect_scanner_s`, `phase_pipeline_s`,
   `feedback_chain_s`, `excellence_optimizer_s`, `restorability_estimator_s`;
   `export_flac_s` bleibt null, da der Export außerhalb des Restorers läuft).

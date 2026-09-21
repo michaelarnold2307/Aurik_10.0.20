@@ -1,8 +1,8 @@
 # 📊 Aurik 10 — Project Status Report
 
 **Datum:** 2026-09-11
-**Version:** 10.0.20 (version.py)
-**Status:** ✅ Produktionsbereit (v10.0.20 — Era-/Material-Kalibrierung PASS) | GPU-Detection failsafe | Dual-Progress live | Kontextbewusste Kommunikation | Hör-Gates Ebenen 1/2/3 (Audit)/4 + GUI-Hör-Gates-Summary (T1) | 10 GEBOTE (G71–G80) | Startup-Smoke-Test | 12 neue i18n-Keys
+**Version:** 10.1.0 (version.py)
+**Status:** ✅ Produktionsbereit (v10.1.0 — Era-/Material-Kalibrierung PASS) | GPU-Detection failsafe | Dual-Progress live | Kontextbewusste Kommunikation | Hör-Gates Ebenen 1/2/3 (Audit)/4 + GUI-Hör-Gates-Summary (T1) | 10 GEBOTE (G71–G80) | Startup-Smoke-Test | 12 neue i18n-Keys
 
 > Verbindlicher Ist-Stand (normative Kette, `AGENTS.md` §1): `.github/copilot-instructions.md` →
 > `.github/VERBOTEN.md` → `.github/instructions/` (hoerordnung + Domain-Regeln) →
@@ -102,7 +102,7 @@ Regression in einem anwendbaren Ziel macht das Feature ungültig.
 > und `.github/specs/01_musical_goals.md`. Böden sind material-adaptiv über
 > `calibration_matrix.get_material_floor(material_type, goal)` — **verboten: Böden hardcoden**.
 
-Kurzform (Stand v10.0.20): 15 musikalische Goals
+Kurzform (Stand v10.1.0): 15 musikalische Goals
 P1: Natürlichkeit, Authentizität · P2: Tonales Zentrum, Timbre-Authentizität, Artikulation ·
 P3: Emotionalität, Mikro-Dynamik, Transienten-Energie, Groove ·
 P4: Transparenz, Wärme, Bass-Kraft, Separation-Treue · P5: Brillanz, Raumtiefe —
@@ -114,7 +114,7 @@ Emotionalität, Transparenz, Timbre-Authentizität, Artikulation.
 
 ---
 
-## 📋 Phasen-Pipeline (kanonisch — 69 Phasen-Dateien, Stand v10.0.20)
+## 📋 Phasen-Pipeline (kanonisch — 69 Phasen-Dateien, Stand v10.1.0)
 
 ```text
 DCOffset-Removal
@@ -209,7 +209,7 @@ ConsonantEnhancement: Frikative-SNR >= +3 dB · HF-Anhebung <= +6 dB · Crossfad
 | v10.0.0–91 | Dual-SR-Vertrag, PMGG SNR-Proxy-Fixes (§9.7.11–14), Stab.-Invarianten | 8.500+ Tests |
 | v10.0.0–99 | PMGG SNR-Proxies brillanz/transparenz/waerme, Codec-Repair, AMRB-Kalibrierung | 9.500+ Tests |
 | v10.0.0–102 | Lyrics-Produktivpfad, Phasen 59–64, Genre-Phase-1 (Family+Top-k+Open-Set) | ~18.400 Tests |
-| v10.0.20 | Era-/Material-Kalibrierung, SOTA-Compliance & Determinismus-Hardening, Hör-Gates Ebenen 1/2/3 (Audit)/4, GUI-Reife T1, Matrix-Harness-CI-Gate | ~18.400+ Tests |
+| v10.1.0 | Era-/Material-Kalibrierung, SOTA-Compliance & Determinismus-Hardening, Hör-Gates Ebenen 1/2/3 (Audit)/4, GUI-Reife T1, Matrix-Harness-CI-Gate | ~18.400+ Tests |
 
 ### 🔜 Geplant
 
@@ -326,4 +326,4 @@ Dithering: POW-r Typ 3 bei 24->16-bit; Fallback: TPDF
 
 ---
 
-_Stand: 2026-09-06 — Aurik 10.0.20_
+_Stand: 2026-09-06 — Aurik 10.1.0_

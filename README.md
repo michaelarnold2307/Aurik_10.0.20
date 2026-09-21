@@ -1,6 +1,6 @@
 # 🎵 Aurik 10 — Intelligentes Musik-Restaurierungs- und Rekonstruktionssystem
 
-**Version:** 10.0.20 | **Status:** ✅ Weltspitze-Execution | **Stand:** v10.0.20 — Era-/Material-Kalibrierung + Hör-Gates Ebenen 1/2/4
+**Version:** 10.1.0 | **Status:** ✅ Weltspitze-Execution | **Stand:** v10.1.0 — Era-/Material-Kalibrierung + Hör-Gates Ebenen 1/2/4
 
 > Normativer Ist-Stand: `.github/specs/`, `.github/copilot-instructions.md`, `CHANGELOG.md`, `denker/README.md`.
 
@@ -778,4 +778,4 @@ Aurik 10.0.0 steht unter der **Apache-2.0-Lizenz** — siehe [LICENSE](LICENSE).
 
 ---
 
-Aurik 10.0.20 — September 2026
+Aurik 10.1.0 — September 2026

@@ -1,6 +1,6 @@
 # Aurik 10 — Developer Guide
 
-> Stand: 10.0.20 | Setup, Workflow, Testing, Contributing
+> Stand: 10.1.0 | Setup, Workflow, Testing, Contributing
 
 ## Quick Start
 
