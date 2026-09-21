@@ -71,7 +71,23 @@ def _bounded_patches(audio: np.ndarray, sr: int) -> list:
         _pipeline_len["n"] = int(a.shape[0])
         return a, [], [], []
 
-    _goals_ok = SimpleNamespace(passed=True, violations=[], passed_count=15, total_count=15)
+    _goals_ok = SimpleNamespace(
+        natuerlichkeit=0.8,
+        authentizitaet=0.8,
+        tonal_center=0.8,
+        timbre_authentizitaet=0.8,
+        artikulation=0.8,
+        emotionalitaet=0.8,
+        micro_dynamics=0.8,
+        groove=0.8,
+        transparenz=0.8,
+        waerme=0.8,
+        bass_kraft=0.8,
+        separation_fidelity=0.8,
+        brillanz=0.8,
+        spatial_depth=0.8,
+        transient_energie=0.8,
+    )
     _artifact_ok = SimpleNamespace(
         passed=True,
         artifact_types=[],
