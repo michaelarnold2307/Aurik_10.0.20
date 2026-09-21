@@ -6,7 +6,7 @@ Fine-tune DeepFilterNet v3.II on MUSDB18 music data (§v10.15).
 Eliminates the Speech-Domain-Mismatch: instead of DNS-Challenge (speech+noise),
 the model is trained on MUSDB18 stems with additive/musical degradation.
 
-Dependencies (all in venv_rocm): torch, torchaudio, numpy, scipy, librosa, soundfile, onnx
+Dependencies (all in venv_rocm72): torch, torchaudio, numpy, scipy, librosa, soundfile, onnx
 NO libdf/Rust needed — ERB filterbank is pure NumPy (identical to plugin).
 
 Architecture: DeepFilterNet3 (2.4M params), 48kHz, FFT=960, Hop=480.
@@ -16,7 +16,7 @@ Output: enh [B,2,96,T] (enhanced complex spectrogram)
 Training: ~2-4 hours on GPU (50 epochs x 200 steps, batch 32).
 
 Usage:
-    /home/michael/.local/share/aurik/venv_rocm/bin/python scripts/train_df_musik.py
+    /home/michael/.local/share/aurik/venv_rocm72/bin/python scripts/train_df_musik.py
 """
 
 from __future__ import annotations

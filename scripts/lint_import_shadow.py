@@ -34,7 +34,7 @@ SKIP_DIRS = {
     "sessions",
     "data",
     ".venv_aurik",
-    "venv_rocm",
+    "venv_rocm72",
     ".venv",
     "node_modules",
     ".git",

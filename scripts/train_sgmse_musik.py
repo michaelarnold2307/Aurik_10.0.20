@@ -414,7 +414,7 @@ def train(
         val_loss, vn = 0.0, 0
         with torch.no_grad():
             for vb in val_loader:
-                if vn >= 20:
+                if vn >= 100:
                     break
                 cv, nv = vb["clean"].to(device), vb["noisy"].to(device)
                 sc = torch.stft(cv, n_fft=510, hop_length=128, window=window, return_complex=True).unsqueeze(1)

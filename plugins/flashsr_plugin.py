@@ -178,6 +178,15 @@ def _run_flashsr_onnx(audio: np.ndarray, sr: int) -> np.ndarray | None:
             end_16 = min(start_16 + _FLASHSR_CHUNK_16K + _FLASHSR_OVERLAP_16K, len(mono_16k))
             chunk_16 = mono_16k[start_16:end_16]
 
+            # §v10.25-FlashSR-Deployment: der f4-ONNX ist statisch auf die volle
+            # Chunk-Größe (64000+4000) exportiert (Torch-2.11-Tracer kann die
+            # Zeitachse nicht dynamisch). End-Chunk auf volle Länge padden
+            # (edge), Überhang wird über end_48_actual geklemmt. Für dynamische
+            # Modelle ist das ein No-op (volle Chunks unverändert).
+            _expected = _FLASHSR_CHUNK_16K + _FLASHSR_OVERLAP_16K
+            if chunk_16.shape[0] < _expected:
+                chunk_16 = np.pad(chunk_16, (0, _expected - chunk_16.shape[0]), mode="edge")
+
             model_input = chunk_16[np.newaxis, np.newaxis, :].astype(np.float32)
             outputs = session.run([output_name], {input_name: model_input})
             chunk_48 = np.asarray(outputs[0], dtype=np.float32).reshape(-1)

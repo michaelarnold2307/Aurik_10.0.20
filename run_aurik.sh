@@ -83,13 +83,10 @@ PY
 }
 
 # GPU-Erkennung: ROCm-venv (ext4) + KFD-Device vorhanden und nicht explizit deaktiviert
-# Prüft .venv_gpu (neu), venv_rocm72 (ROCm 7.2.4) und venv_rocm (legacy 6.2)
+# Prüft .venv_gpu (neu) und venv_rocm72 (ROCm 7.2.4); venv_rocm (ROCm 6.2) gelöscht (2026-09-20)
 _GPU_PYTHON="$VENV_GPU"
 if [[ ! -x "$_GPU_PYTHON" ]]; then
     _GPU_PYTHON="$HOME/.local/share/aurik/venv_rocm72/bin/python"  # ROCm 7.2.4 (Rev. 2026-08-16)
-fi
-if [[ ! -x "$_GPU_PYTHON" ]]; then
-    _GPU_PYTHON="$HOME/.local/share/aurik/venv_rocm/bin/python"  # ROCm 6.2 (Legacy-Fallback)
 fi
 if [[ "${AURIK_FORCE_CPU:-0}" != "1" && -x "$_GPU_PYTHON" && -e "/dev/kfd" ]]; then
     VENV_PYTHON="$_GPU_PYTHON"

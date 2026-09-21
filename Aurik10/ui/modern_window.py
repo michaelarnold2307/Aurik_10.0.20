@@ -2051,9 +2051,7 @@ class BatchProcessingThread(QThread):
                     "dfn": "DeepFilterNet",
                     "melbandroformer": "MelBandRoformer",
                     "bs_roformer": "MelBandRoformer",
-                    "mdx23c": "MDX23C",
                     "sgmse": "SGMSE+",
-                    "resemble": "Resemble-Enhance",
                     "apollo": "Apollo",
                     "rmvpe": "RMVPE",
                     "crepe": "CREPE",
@@ -4498,7 +4496,6 @@ class WaveformWidget(QWidget):
         # Vocal stem separation (BSRoFormer)
         "vocal_enhancement": "stem_sep",
         "bs_roformer": "stem_sep",
-        "mdx23c": "stem_sep",
         # Vocal AI — formant + breath
         "vocal_ai": "vocal_ai",
         # Standard vocal (formant glow)
@@ -4674,9 +4671,7 @@ class WaveformWidget(QWidget):
         # ML Models — vibrant, saturated colors
         "DeepFilterNet": ((0, 180, 255), "🧠"),  # electric cyan
         "MelBandRoformer": ((180, 80, 255), "🎛"),  # vivid purple
-        "MDX23C": ((255, 120, 200), "🔬"),  # hot pink
         "SGMSE+": ((0, 230, 180), "🌊"),  # turquoise-green
-        "Resemble-Enhance": ((255, 180, 50), "✨"),  # warm gold
         "Apollo": ((255, 100, 60), "🚀"),  # bright orange
         "RMVPE": ((200, 255, 80), "🎵"),  # lime green
         "CREPE": ((80, 220, 120), "🎶"),  # fresh green
@@ -4745,9 +4740,7 @@ class WaveformWidget(QWidget):
         "dfn": "DeepFilterNet",
         "melbandroformer": "MelBandRoformer",
         "bs_roformer": "MelBandRoformer",
-        "mdx23c": "MDX23C",
         "sgmse": "SGMSE+",
-        "resemble": "Resemble-Enhance",
         "apollo": "Apollo",
         "rmvpe": "RMVPE",
         "crepe": "CREPE",
@@ -8009,9 +8002,7 @@ class WaveformWidget(QWidget):
                 "SGMSE+",
                 "FlashSR",
                 "Vocos",
-                "Resemble-Enhance",
                 "MelBandRoformer",
-                "MDX23C",
                 "Flow-Matching",
                 "CQTdiff+",
                 "VocalAI",

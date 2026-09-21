@@ -21,7 +21,7 @@ Frameless Design, Real-Time Visualisierung und ML-Hybrid Processing
 - **Echtzeit CPU-Anzeige** - Live-Monitoring der Prozessor-Auslastung
 - **Echtzeit Speicher-Anzeige** - Aktuelle RAM-Nutzung
 - **Verarbeitungs-Modus-Anzeige** - FAST/BALANCED/QUALITY Status
-- **ML-Plugin-Status** - Zeigt aktive ML-Plugins (Resemble, DCCRN, CREPE)
+- **ML-Plugin-Status** - Zeigt aktive ML-Plugins (DeepFilterNet, BANQUET, SGMSE+, MP-SENet, CREPE)
 - **DSP-Modus-Indikator** - Unterscheidung zwischen ML-Hybrid und reinem DSP
 
 ### 🎨 Aussehen
@@ -163,7 +163,7 @@ AURIK 9.x.x bietet **2 prominente Verarbeitungs-Modi** mit einem Klick:
 
 ### ML-Hybrid Plugins (Optional, via Docker)
 
-- **Resemble Enhance** - ML-based Vocal Enhancement
+- **KIM Vocal/Inst Enhancer** - ML-Gesangs-/Instrumental-Klarheit (MDX23C-kompatibel)
 - **DCCRN** - Deep Complex Convolution Recurrent Network für Dereverb
 - **CREPE** - Pitch Detection für Wow/Flutter Correction
 - **Fallback zu DSP** - Automatisch wenn ML-Plugins nicht verfügbar

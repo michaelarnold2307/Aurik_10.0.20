@@ -16,7 +16,7 @@ Usage:
     python scripts/train_clap_material_classifier.py [--epochs 100] [--samples 10000] [--batch-size 128]
 
 Dependencies:
-    - .venv_rocm (GPU) or .venv_aurik (CPU) with PyTorch
+    - venv_rocm72 (GPU, ROCm 7.2) or .venv_aurik (CPU) with PyTorch
     - LAION-CLAP plugin loaded (automatic via laion_clap_plugin)
 """
 

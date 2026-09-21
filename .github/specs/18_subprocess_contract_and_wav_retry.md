@@ -32,7 +32,7 @@ str(_WORKSPACE_ROOT / ".venv_aurik" / "bin" / "python")
 sys.executable
 ```
 
-**Warum**: `.venv_aurik` hat andere soundfile/scipy-Versionen als das aktuell ausgeführte venv_rocm. Das führt zu `too many values to unpack` in soundfile/scipy, weil die Versionen inkompatibel sind.
+**Warum**: `.venv_aurik` hat andere soundfile/scipy-Versionen als das aktuell ausgeführte venv_rocm72. Das führt zu `too many values to unpack` in soundfile/scipy, weil die Versionen inkompatibel sind.
 
 **Betroffene Dateien (vor Fix)**:
 

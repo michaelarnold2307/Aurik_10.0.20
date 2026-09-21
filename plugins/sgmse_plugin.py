@@ -56,7 +56,8 @@ _ONNX_PATH = _ROOT / "models" / "sgmse_plus" / "sgmse_plus_core.onnx"
 _TS_PATH = _ROOT / "models" / "sgmse_plus" / "sgmse_plus.ts"
 _CKPT_CANDIDATES = (
     _ROOT / "models" / "sgmse_plus" / "sgmse_plus_src_1.ckpt",
-    _ROOT / "models" / "sgmse_plus" / "sgmse_wsj0_reverb.ckpt",
+    # sgmse_wsj0_reverb.ckpt (Speech-Original, 2022) entfernt — archiviert 2026-09-20
+    # nach models/_archive_20260920/sgmse_plus/ (nur hochwertigste Versionen aktiv).
 )
 
 

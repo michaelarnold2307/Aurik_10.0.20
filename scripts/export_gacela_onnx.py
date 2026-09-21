@@ -30,8 +30,31 @@ _MDL_ROOT = _ROOT / "models" / "gacela"
 _CKPT = _MDL_ROOT / "model" / "01_400000.pt"
 _OUT = _MDL_ROOT / "model" / "gacela_core.onnx"
 
+# F2-Vocal-Finetune (§v10.25, train_gacela_vocal_inpaint.py, md=32):
+# anderer Generator-Input (1440) + Border-nfilter; Checkpoint speichert kein cfg.
+_FT_GEN_PARAMS = {
+    "stride": [2, 2, 2, 2, 2],
+    "nfilter": [256, 128, 64, 32, 1],
+    "shape": [[4, 4], [4, 4], [8, 8], [8, 8], [8, 8]],
+    "padding": [[1, 1], [1, 1], [3, 3], [3, 3], [3, 3]],
+    "residual_blocks": 2,
+    "full": 8192,
+    "summary": True,
+    "data_size": 2,
+    "in_conv_shape": [16, 2],
+}
+_FT_BORDER_PARAMS = {
+    "nfilter": [32, 64, 32, 16],
+    "shape": [[5, 5], [5, 5], [5, 5], [5, 5]],
+    "stride": [2, 2, 2, 2],
+    "data_size": 2,
+    "border_scale": 1,
+    "width_full": None,
+}
+_FT_GENERATOR_INPUT = 1440
 
-def _build_wrapper():
+
+def _build_wrapper(ckpt: Path):
     import torch  # pylint: disable=import-outside-toplevel
     from torch import nn
 
@@ -52,9 +75,9 @@ def _build_wrapper():
     encoders = [BorderEncoder(_BE_PARAMS) for _ in range(2)]
     generator = Generator(_GEN_PARAMS, _GEN_IN_SHAPE)
 
-    ckpt = torch.load(str(_CKPT), map_location="cpu", weights_only=True)
-    generator.load_state_dict(ckpt["generator"])
-    for enc, sd in zip(encoders, ckpt["encoders"]):
+    ckpt_raw = torch.load(str(ckpt), map_location="cpu", weights_only=True)
+    generator.load_state_dict(ckpt_raw["generator"])
+    for enc, sd in zip(encoders, ckpt_raw["encoders"]):
         enc.load_state_dict(sd)
     generator.eval()
     for enc in encoders:
@@ -77,37 +100,94 @@ def _build_wrapper():
     return wrapper
 
 
+def _build_ft_wrapper(ckpt: Path):
+    """F2-Vocal-Finetune-Kern (md=32): BorderEncoder ×2 + Generator(1440).
+
+    I/O (statisch, Batch=1, gemessen 2026-09-20):
+      ctx_l/ctx_r: [1, 1, 80, 120]  Mel der 480-Frame-Ränder nach time_average(4)
+      noise:       [1, 4, 5, 8]
+      output:      [1, 1, 512, 64]  Gap-Spektrogramm (GAP_BINS=64), Tanh ∈ [-1,1]
+    """
+    import torch  # pylint: disable=import-outside-toplevel
+    from torch import nn
+
+    if str(_ROOT) not in sys.path:
+        sys.path.insert(0, str(_ROOT))
+    if str(_MDL_ROOT) not in sys.path:
+        sys.path.insert(0, str(_MDL_ROOT))
+
+    from model.borderEncoder import BorderEncoder  # type: ignore
+    from model.generator import Generator  # type: ignore
+
+    encoders = [BorderEncoder(_FT_BORDER_PARAMS) for _ in range(2)]
+    generator = Generator(_FT_GEN_PARAMS, _FT_GENERATOR_INPUT)
+
+    ckpt_raw = torch.load(str(ckpt), map_location="cpu", weights_only=True)
+    generator.load_state_dict(ckpt_raw["generator"])
+    for enc, sd in zip(encoders, ckpt_raw["encoders"]):
+        enc.load_state_dict(sd)
+    generator.eval()
+    for enc in encoders:
+        enc.eval()
+
+    class GacelaFtCore(nn.Module):
+        def __init__(self, enc_l: nn.Module, enc_r: nn.Module, gen: nn.Module):
+            super().__init__()
+            self.enc_l = enc_l
+            self.enc_r = enc_r
+            self.gen = gen
+
+        def forward(self, ctx_l: torch.Tensor, ctx_r: torch.Tensor, noise: torch.Tensor) -> torch.Tensor:
+            x = torch.cat([self.enc_l(ctx_l), self.enc_r(ctx_r), noise], dim=1)
+            return self.gen(x)  # [1,1,512,64] ∈ [-1,1]
+
+    wrapper = GacelaFtCore(encoders[0], encoders[1], generator).eval()
+    return wrapper, generator
+
+
 def main() -> int:
     import numpy as np  # pylint: disable=import-outside-toplevel
     import torch  # pylint: disable=import-outside-toplevel
 
-    wrapper = _build_wrapper()
+    # argv-Übersteuerung für Fine-Tune-Checkpoints (§v10.25 Export-only):
+    #   python scripts/export_gacela_onnx.py <checkpoint.pt> [output.onnx] [ft]
+    ckpt = Path(sys.argv[1]) if len(sys.argv) > 1 else _CKPT
+    out_path = Path(sys.argv[2]) if len(sys.argv) > 2 else _OUT
+    ft_variant = len(sys.argv) > 3 and sys.argv[3] == "ft"
+
+    if ft_variant:
+        wrapper, gen = _build_ft_wrapper(ckpt)
+    else:
+        wrapper = _build_wrapper(ckpt)
     n_p = sum(p.numel() for p in wrapper.parameters()) / 1e6
-    print(f"[gacela-export] Modell geladen ({n_p:.2f}M Parameter)")
+    print(f"[gacela-export] Modell geladen ({n_p:.2f}M Parameter, Checkpoint: {ckpt})")
 
     rng = torch.Generator().manual_seed(0)
-    ctx_l = torch.rand(1, 1, 80, 240, generator=rng)
-    ctx_r = torch.rand(1, 1, 80, 240, generator=rng) * 0.9
-    noise = torch.rand(1, 4, 5, 15, generator=rng)
+    if ft_variant:
+        # F2-Geometrie: Mel 80 × 120 (480 Frames / avg 4), Noise [1,4,5,8]
+        ctx_l = torch.rand(1, 1, 80, 120, generator=rng)
+        ctx_r = torch.rand(1, 1, 80, 120, generator=rng) * 0.9
+        noise = torch.rand(1, 4, 5, 8, generator=rng)
+    else:
+        ctx_l = torch.rand(1, 1, 80, 240, generator=rng)
+        ctx_r = torch.rand(1, 1, 80, 240, generator=rng) * 0.9
+        noise = torch.rand(1, 4, 5, 15, generator=rng)
 
     with torch.no_grad():
         ref = wrapper(ctx_l, ctx_r, noise)
     print(f"[gacela-export] PyTorch-Referenz: {tuple(ref.shape)}")
 
-    torch.onnx.export(
-        wrapper,
-        (ctx_l, ctx_r, noise),
-        str(_OUT),
-        opset_version=17,
-        input_names=["ctx_l", "ctx_r", "noise"],
-        output_names=["gap"],
-        do_constant_folding=True,
-    )
-    print(f"[gacela-export] ONNX geschrieben: {_OUT} ({_OUT.stat().st_size / 1e6:.1f} MB)")
+    # Dynamo-Export (statisch): weight_norm wird via dynamo zerlegt (wie der
+    # Basis-Export vom 2026-09-10, vgl. FILE_REGISTRY); Legacy-Tracer scheitert
+    # an weight_norm in Torch 2.11.
+    exported = torch.export.export(wrapper, (ctx_l, ctx_r, noise))
+    onnx_program = torch.onnx.export(exported, dynamo=True)
+    onnx_program.save(str(out_path))
+    print(f"[gacela-export] ONNX geschrieben: {out_path} ({out_path.stat().st_size / 1e6:.1f} MB)")
 
     import onnxruntime as ort  # pylint: disable=import-outside-toplevel
 
-    sess = ort.InferenceSession(str(_OUT), providers=["CPUExecutionProvider"])
+    sess = ort.InferenceSession(str(out_path), providers=["CPUExecutionProvider"])
     out = sess.run(
         None,
         {

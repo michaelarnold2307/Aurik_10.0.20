@@ -5,7 +5,7 @@ Erzeugt kontrollierte Defekt-Fälle aus einer clean-Referenz, führt die
 SOTA-Kette aus (Consensus → Plan → CoordinatedRepair) und misst SNR-Delta.
 Ergebnis: EINE Tabelle, die zeigt, wo Aurik wirklich steht.
 
-Ausführung: venv_rocm python scripts/measure_all_defects.py
+Ausführung: venv_rocm72 python scripts/measure_all_defects.py
 """
 
 from __future__ import annotations

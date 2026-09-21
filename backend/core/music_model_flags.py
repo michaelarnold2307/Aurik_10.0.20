@@ -23,7 +23,8 @@ Usage:
 
 use_df_musik: bool = True  # DFN Musik (§v10.15) replaces DeepFilterNet v3 (finetuned enc/dec/erb_dec)
 use_sgmse_musik: bool = False  # SGMSE+ Musik (§v10.16) — kein Finetune-Checkpoint vorhanden
-use_mp_senet_musik: bool = False  # MP-SENet Musik (§v10.17) — kein Finetune-Checkpoint vorhanden
+use_mp_senet_musik: bool = True  # MP-SENet Musik (§v10.17) — A/B 2026-09-20 bestanden: seg-SNR +5,3…+11,3 dB,
+# VERSA 4,96–4,99 auf 3 Korpus-Paaren; ONNX: models/mp_senet/finetuned/mp_senet_musik.onnx (§v10.25)
 use_miipher_dit: bool = True  # MIIPHER-DiT (§v10.14) replaces proprietary MIIPHER (flow_matching_dit.onnx)
 use_bw_v5: bool = False  # BW-Reconstructor v5 — A1: HF-Gain-Gate nicht bestanden (0.73 < 1.02);
 # redundant zu FlashSR/NVSR/DSP-SBR in Phase_06. Gated-Forschungsmodell.

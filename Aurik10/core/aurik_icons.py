@@ -82,7 +82,7 @@ EMOJI_TO_SVG: dict[str, str] = {
     "declip": "declip",
     # ML model icons
     "🧠": "ml_brain",  # DeepFilterNet / neural AI
-    "🔬": "ml_microscope",  # MDX23C analysis
+    "🔬": "ml_microscope",  # KIM Vocal/Inst (MDX23C-kompatibel)
     "🌊": "ml_wave",  # SGMSE+ diffusion
     "🚀": "ml_rocket",  # Apollo
     "🎶": "ml_notes",  # CREPE pitch

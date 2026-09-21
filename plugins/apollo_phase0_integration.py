@@ -541,6 +541,10 @@ class ApolloPhase0Guard:
 
 
 class ResembleEnhanceGuard:
+    """DEPRECATED (§v10.19, entfernt aus Phase-0 2026-09-20) — toter Code,
+    wird von ChainedPhase0Preprocessor nicht mehr instanziiert.
+    """
+
     """Phase-0b: Resemble Enhance — Rauschunterdrückung + spektrale Reparatur.
 
     Läuft NACH Apollo (Phase-0a) für Codec-Material.
@@ -834,10 +838,8 @@ class ChainedPhase0Preprocessor:
         self._ear_vae = EARVAEPhase0Stage()
         self._apollo = ApolloPhase0Guard()
         self._deepfilter = DeepFilterNetGuard()
-        self._resemble = ResembleEnhanceGuard()
         self._apollo_failed_materials: set[str] = set()
         self._dfn_failed_materials: set[str] = set()
-        self._resemble_failed_materials: set[str] = set()
         self._ear_vae_failed: bool = False
         # ── §v10.303.18 Phase-0-Cache ──
         import os as _os
@@ -878,9 +880,9 @@ class ChainedPhase0Preprocessor:
                 _cached = np.load(_cache_file, allow_pickle=True)
                 _cached_audio = _cached["audio"]
                 _cached_stages_str = (
-                    str(_cached.get("stage_info", ["apollo,deepfilternet,resemble_enhance"])[0])
+                    str(_cached.get("stage_info", ["apollo,deepfilternet"])[0])
                     if "stage_info" in _cached
-                    else "apollo,deepfilternet,resemble_enhance"
+                    else "apollo,deepfilternet"
                 )
                 _cached_stages = [
                     {"stage": s.strip(), "applied": True} for s in _cached_stages_str.split(",") if s.strip()
@@ -893,7 +895,7 @@ class ChainedPhase0Preprocessor:
                         material=_mat,
                         metadata={
                             "stages": _cached_stages,
-                            "chain": "ear_vae→apollo→deepfilternet→resemble_enhance",
+                            "chain": "ear_vae→apollo→deepfilternet",
                             "cached": True,
                         },
                     )
@@ -956,12 +958,11 @@ class ChainedPhase0Preprocessor:
         self._apollo.unload()
 
         # ── Stufe 2: DeepFilterNet v3 (Noise-Floor, Atmungserhalt) ──
-        # §v10.700.8 Precondition: Nur bei sprachdominiertem Material (panns_singing >= 0.5).
-        # DeepFilterNet ist auf DNS-Challenge (Sprache+Rauschen) trainiert. Bei Musik
-        # mit instrumentalem Hintergrund (panns_singing < 0.5) halluziniert es spektrale
-        # Inhalte → Hallucination-Guard triggert Rollback. Besser: gar nicht erst anwenden.
-        _vocal_conf = 0.0  # §FIX_B30: _pre undefined — Phase-0 has no pre-analysis context; safe default
-        if _mat not in self._dfn_failed_materials and _vocal_conf >= 0.5:
+        # §v10.19: DFN-Musik (Finetune) läuft OHNE panns_singing-Gate auf allem
+        # Material. Der frühere Fix B30 hatte _vocal_conf hart auf 0.0 gesetzt
+        # und damit die Stufe permanent deaktiviert — Produktionsbefund
+        # 2026-09-20: „DeepFilterNet übersprungen“ auf jedem Material.
+        if _mat not in self._dfn_failed_materials:
             try:
                 from backend.core.plugin_lifecycle_manager import get_plugin_lifecycle_manager
 
@@ -985,47 +986,9 @@ class ChainedPhase0Preprocessor:
                 self._dfn_failed_materials.add(_mat)
                 _meta_stages.append({"stage": "deepfilternet", "applied": False})
         else:
-            _reason = "low_vocal" if _vocal_conf < 0.5 else "cached_failure"
-            _meta_stages.append({"stage": "deepfilternet", "applied": False, "reason": _reason})
-            if _vocal_conf < 0.5 and _vocal_conf > 0:
-                logger.debug(
-                    "DeepFilterNet uebersprungen: panns_singing=%.2f < 0.5 (Musik/Instrumental — außerhalb Trainingsbereich)",
-                    _vocal_conf,
-                )
+            _meta_stages.append({"stage": "deepfilternet", "applied": False, "reason": "cached_failure"})
         # §v10.306: DeepFilterNet sofort entladen — 34 MB RAM freigeben
         self._deepfilter.unload()
-
-        # ── Stufe 3: Resemble Enhance ──
-        # §v10.700.8 Precondition: Nur bei sprachdominiertem Material (panns_singing >= 0.5).
-        # Resemble Enhance ist auf Sprach-Denoising trainiert (DNS-Challenge).
-        # Bei Musik halluziniert es → Hallucination-Guard triggert Rollback.
-        if _mat not in self._resemble_failed_materials and _vocal_conf >= 0.5:
-            try:
-                from backend.core.plugin_lifecycle_manager import get_plugin_lifecycle_manager
-
-                _plm = get_plugin_lifecycle_manager()
-                _plm.set_active("ResembleEnhance", True)
-                _plm.touch("ResembleEnhance")  # §v10.370: LRU-Update
-            except Exception:
-                logger.debug("Stiller optionaler Ausnahmefall ignoriert", exc_info=True)
-            try:
-                _re_out, _re_applied = self._resemble.process(_current, sr)
-            finally:
-                try:
-                    get_plugin_lifecycle_manager().set_active("ResembleEnhance", False)
-                except Exception:
-                    logger.debug("Stiller optionaler Ausnahmefall ignoriert", exc_info=True)
-            if _re_applied:
-                _current = _re_out
-                _any_applied = True
-                _meta_stages.append({"stage": "resemble_enhance", "applied": True})
-            else:
-                self._resemble_failed_materials.add(_mat)
-                _meta_stages.append({"stage": "resemble_enhance", "applied": False})
-        else:
-            _meta_stages.append({"stage": "resemble_enhance", "applied": False, "reason": "cached_failure"})
-        # §v10.306: ResembleEnhance sofort entladen — 722 MB RAM freigeben
-        self._resemble.unload()
 
         # ── §v10.303.18 Cache speichern ──
         if _any_applied:
@@ -1053,20 +1016,18 @@ class ChainedPhase0Preprocessor:
         self._apollo.reset()
         self._apollo_failed_materials.clear()
         self._dfn_failed_materials.clear()
-        self._resemble_failed_materials.clear()
 
     # ── §v10.303.20 PLM-optimierte Lade-Reihenfolge ──────────────
 
     def preload(self) -> None:
         """Lädt Phase-0-Modelle in optimaler Reihenfolge.
 
-        DeepFilterNet (34 MB) → Apollo (67 MB) → Resemble (722 MB).
-        Klein zu groß: schnelle Modelle blockieren nicht auf große.
+        DeepFilterNet (34 MB) → Apollo (67 MB). Klein zu groß.
+        (Resemble-Stufe §v10.19 entfernt, 2026-09-20.)
         """
         _order = [
             ("DeepFilterNet", self._deepfilter._ensure_loaded),
             ("Apollo", self._apollo.load),
-            ("Resemble Enhance", self._resemble._ensure_loaded),
         ]
         for _name, _loader in _order:
             try:

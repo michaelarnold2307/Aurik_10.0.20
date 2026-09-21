@@ -43,6 +43,20 @@ logger = logging.getLogger(__name__)
 _ROOT = Path(__file__).parent.parent
 _ONNX_PATH = _ROOT / "models" / "mp_senet" / "mp_senet.onnx"
 
+# §v10.25: Musik-Finetune-Aktivierung über music_model_flags (Muster wie
+# DFN-Plugin): A/B 2026-09-20 auf 3 Korpus-Paaren — seg-SNR +5,3…+11,3 dB,
+# VERSA-MOS 4,96–4,99, HNR konsistent besser. use_mp_senet_musik=False ⇒
+# Legacy-VoiceBank-ONNX bleibt aktiv (Rollback ohne Code-Wechsel).
+try:
+    from backend.core.music_model_flags import MUSIC_MODEL_PATHS, use_mp_senet_musik
+except ImportError:  # pragma: no cover — Modul-Stub außerhalb des Backends
+    MUSIC_MODEL_PATHS = {}
+    use_mp_senet_musik = False
+if use_mp_senet_musik and MUSIC_MODEL_PATHS.get("mp_senet"):
+    _candidate = MUSIC_MODEL_PATHS["mp_senet"]
+    if _candidate.exists():
+        _ONNX_PATH = _candidate
+
 # Verarbeitungs-Konstanten (48 kHz)
 _SR: int = 48_000
 _N_FFT: int = 960  # 20 ms @ 48 kHz

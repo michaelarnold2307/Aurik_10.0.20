@@ -10,11 +10,13 @@ Usage:
 
 from __future__ import annotations
 
+import argparse
 import json
 import sys
 from pathlib import Path
 from typing import Any
 
+import numpy as np
 import torch
 import torch.nn as nn
 
@@ -91,20 +93,31 @@ def build_model(h: AttrDict) -> nn.Module:
     return MPNet(h)  # type: ignore[no-any-return]
 
 
-def export():
-    print(f"Config:     {CONFIG_FILE}")
-    print(f"Checkpoint: {CHECKPOINT}")
-    print(f"Output:     {OUTPUT_ONNX}")
+def export(args: argparse.Namespace) -> None:
+    checkpoint: Path = args.checkpoint
+    config_file: Path = args.config
+    output_onnx: Path = args.output
 
-    if not CHECKPOINT.exists():
-        print(f"ERROR: checkpoint not found: {CHECKPOINT}")
+    print(f"Config:     {config_file}")
+    print(f"Checkpoint: {checkpoint}")
+    print(f"Output:     {output_onnx}")
+
+    if not checkpoint.exists():
+        print(f"ERROR: checkpoint not found: {checkpoint}")
         sys.exit(1)
 
-    h = load_config(CONFIG_FILE)
+    h = load_config(config_file)
 
     model = build_model(h)
-    state_dict = torch.load(str(CHECKPOINT), map_location="cpu")
-    model.load_state_dict(state_dict["generator"])
+    state_dict = torch.load(str(checkpoint), map_location="cpu", weights_only=False)
+    # VoiceBank-Releases nutzen {"generator": …}; Aurik-Finetune (§v10.17) nutzt
+    # {"model_state_dict": …} (train_mp_senet_musik.py).
+    if "generator" in state_dict:
+        model.load_state_dict(state_dict["generator"])
+    elif "model_state_dict" in state_dict:
+        model.load_state_dict(state_dict["model_state_dict"])
+    else:
+        model.load_state_dict(state_dict)
     model.eval()
     print("✅ Checkpoint loaded")
 
@@ -122,7 +135,7 @@ def export():
     torch.onnx.export(
         model,
         (noisy_amp, noisy_pha),
-        str(OUTPUT_ONNX),
+        str(output_onnx),
         input_names=["noisy_amp", "noisy_pha"],
         output_names=["denoised_amp", "denoised_pha", "denoised_com"],
         dynamic_axes={
@@ -134,16 +147,17 @@ def export():
         },
         opset_version=17,
         do_constant_folding=True,
+        dynamo=False,  # Legacy-Exporter (Torch 2.11): MPNet-DenseBlock ist dynamo-inkompatibel
     )
 
-    size_mb = OUTPUT_ONNX.stat().st_size / 1024 / 1024
-    print(f"✅ Exported: {OUTPUT_ONNX}  ({size_mb:.1f} MB)")
+    size_mb = output_onnx.stat().st_size / 1024 / 1024
+    print(f"✅ Exported: {output_onnx}  ({size_mb:.1f} MB)")
 
-    # Quick validation
+    # Quick validation + Parität Torch vs. ONNX (§III.9/§v10.18)
     try:
         import onnxruntime as ort
 
-        sess = ort.InferenceSession(str(OUTPUT_ONNX), providers=["CPUExecutionProvider"])
+        sess = ort.InferenceSession(str(output_onnx), providers=["CPUExecutionProvider"])
         out = sess.run(
             None,
             {
@@ -151,6 +165,11 @@ def export():
                 "noisy_pha": noisy_pha.numpy(),
             },
         )
+        with torch.no_grad():
+            ref = [t.numpy() for t in model(noisy_amp, noisy_pha)]
+        for r, o, name in zip(ref, out, ("amp", "pha", "com")):
+            diff = float(np.abs(r - o).max())
+            print(f"  Parität {name}: max|Δ| = {diff:.3e}")
         print(f"✅ ONNX validation OK — output shapes: {[o.shape for o in out]}")
     except ImportError:
         print("onnxruntime nicht installiert — Validierung übersprungen")
@@ -158,5 +177,14 @@ def export():
         print(f"⚠️  ONNX validation error: {e}")
 
 
+def main() -> None:
+    parser = argparse.ArgumentParser(description="Export MP-SENet generator checkpoint to ONNX")
+    parser.add_argument("--checkpoint", type=Path, default=CHECKPOINT)
+    parser.add_argument("--config", type=Path, default=CONFIG_FILE)
+    parser.add_argument("--output", type=Path, default=OUTPUT_ONNX)
+    args = parser.parse_args()
+    export(args)
+
+
 if __name__ == "__main__":
-    export()
+    main()

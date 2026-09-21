@@ -626,9 +626,14 @@ class ReverbReduction(PhaseInterface):
                 )
 
                 # Configure ML dereverb strategy
-                # 'quality' und 'maximum' → HYBRID (SGMSE+ ML-Primär + WPE-DSP-Fallback, §4.4)
+                # §v10.25-Release (2026-09-20): SGMSE+ ist das letzte speech-trainierte
+                # Modell (WSJ0) — sein Musik-Finetune wurde wegen Instabilität
+                # (Loss-Spikes bis 5,7e7, Epoch 22+) gestoppt. Bis ein A/B-bestandener
+                # Musik-Checkpoint vorliegt: ADAPTIVE statt HYBRID — DSP-Spectral-
+                # Gating primär, SGMSE+ nur bei schwerem Hall (reverb > Schwelle).
+                # Vorher: HYBRID (SGMSE+ primär) in quality/maximum.
                 if quality_mode in ("maximum", "quality"):
-                    strategy = DereverbStrategy.HYBRID  # SGMSE+ primär → WPE DSP-Fallback (§4.4)
+                    strategy = DereverbStrategy.ADAPTIVE  # DSP-first, ML nur bei schwerem Hall
                 else:  # balanced
                     strategy = DereverbStrategy.ADAPTIVE  # Smart: DSP only if light reverb
 
