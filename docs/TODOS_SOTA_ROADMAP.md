@@ -1383,7 +1383,7 @@ Modell-Reloads je Chunk — plus P8/P10 (Fenster-Parallelität, Default 4,
 Laufzeit-Erwartung: BANQUET-Phase (dominant, 62 %) sinkt auf ~45–60 % der
 bisherigen Zeit, dazu entfallen die Per-Chunk-Reloads vollständig.
 Verifikation: 225,3-s-Referenzlauf mit PERF-R-Stand läuft
-(`output/supervised_run/elke_225s_perfr_v1021.{log,wav}`) — P12-
+(`output/supervised_run/testtrack_225s_perfr_v1021.{log,wav}`) — P12-
 Hot-Phase-Nachmessung folgt nach Laufende.
 
 ### §PERF-R2 (2026-09-18) — Laufzeit-Analyse des Referenzlaufs: phase_12 war der Flaschenhals
@@ -1414,7 +1414,7 @@ Analyse ergab DREI Ursachen, alle behoben:
 
 Messung: phase_12 95 s → 10,7 s je 10 s Musik (CPU) ⇒ ~5 min Ersparnis je
 Chunk, ~40 min je Song. Neustart des Referenzlaufs mit allen Fixes:
-`output/supervised_run/elke_225s_perfr_v1022.{log,wav}`.
+`output/supervised_run/testtrack_225s_perfr_v1022.{log,wav}`.
 
 ### §PERF-R3 (2026-09-18) — Repo-weiter pYIN-/DSP-Sweep: weitere Chunk-Kostentreiber beseitigt
 
@@ -1442,7 +1442,7 @@ Global-Cache wäre nicht exakt. CREPE: 0,21 s/5 s im Steady-State (die einmalige
 ROCm-Kernel-Kompilierung kostet ~125 s im Erst-Prozess, amortisiert sich).
 FC-Loop und GOAL-Block sind normative Qualitäts-Maschinerie (Hörordnungs-
 Gates arbeiten korrekt — FC bricht bei Ebene-1-Verstoß ab).
-Verifikation: `output/supervised_run/elke_225s_perfr_v1023.{log,wav}` +
+Verifikation: `output/supervised_run/testtrack_225s_perfr_v1023.{log,wav}` +
 automatische Analyse `…_v1023_analysis.txt` (Chunk-/Phasen-Zeiten, RT).
 
 ### §PERF-R4 (2026-09-19) — v1023-Wahrheit + BANQUET-Torch-Batch-Matrix (qualitätsneutral)
@@ -1716,7 +1716,7 @@ Denker-RT 54× → 32,0× bei unveränderter Ausgabe.
 Struktur-Prüfung P3-Rest: Die Chunk-Dauer-Heuristik (`_chunk_s = 60.0 if
 _total_s > 300.0 else 30.0`, seit eb93f7fb ohne dokumentierte Begründung)
 bedingt die Anzahl der Pipeline-Durchläufe je Song. Messung aus
-`output/supervised_run/elke_225s_perfr_r10.log` (225,3 s, 8×30-s-Chunks):
+`output/supervised_run/testtrack_225s_perfr_r10.log` (225,3 s, 8×30-s-Chunks):
 je Folge-Chunk ~2 min Pre-Analyse-Bypass + ~17-20 min Restore (36-43 Phasen);
 per-Chunk-fixe Schwergewichte: LGE-Saliency ~212 s, carrier_chain ~48 s,
 FCPE-Reload ~38 s, ExcellenceOptimizer ~90-106 s, Post-Chunk-Qualität ~168 s,
@@ -1801,7 +1801,7 @@ Activation-Contract-Tests sind bereits flag-bewusst (beide Zustände).
 
 ### Überwachter 225-s-Lauf 2026-09-19 (PERF-R10-Stand) — Befunde
 
-`output/supervised_run/elke_225s_perfr_r10.{log,wav}` (Testkünstlerin (Schlager), Vinyl,
+`output/supervised_run/testtrack_225s_perfr_r10.{log,wav}` (Testkünstlerin (Schlager), Vinyl,
 8 Chunks, 297 Phasen, Wall 12 137,5 s ≈ 3 h 22 min, RT-Bericht 32,0×,
 letzter Chunk 39× RT). **Qualität:** MUSHRA 92,1 (Excellent), UQM 87,2
 PASS, artifact_freedom 0,9869 ✓, Audibility-Gate 0 hörbare Restdefekte ✓,
@@ -1894,8 +1894,8 @@ Maskierung je Defekt-Kontext — ein Cache wäre nicht exakt).
 ## Überwachter 225-s-Lauf 2026-09-16 (Testkünstlerin (Schlager), voller Song) — Befunde & Abarbeitung
 
 > Ausführung: `cli/aurik_cli.py --mode Restoration --bit-depth 24`, voller Song
-> (225,3 s @ 44,1 kHz, mp3→vinyl-Kette). Lauf: `output/supervised_run/elke_225s_supervised_v1020.{log,wav}`,
-> Report: `docs/reports/supervised_runs/2026-09-16_elke_best_225s.md`.
+> (225,3 s @ 44,1 kHz, mp3→vinyl-Kette). Lauf: `output/supervised_run/testtrack_225s_supervised_v1020.{log,wav}`,
+> Report: `docs/reports/supervised_runs/2026-09-16_test_track_225s.md`.
 > Vollsuite vor Lauf: 16 948 passed / 0 failed (Commit 9e51c4b).
 > **Lauf-Ergebnis (RUN_RC=0):** Export ordnungsgemäß (PCM_24, 48 kHz, 225,33 s,
 > Quality-Gate passed=True/ok, OneTakeExport PASS TP=−1,7 dBTP/LUFS=−16,
@@ -1932,7 +1932,7 @@ Maskierung je Defekt-Kontext — ein Cache wäre nicht exakt).
 ### Export-Analyse 2026-09-16 (Restdefekte + Optimierungspotenzial)
 
 > Gemessen auf der exportierten Datei (Mono-Mix, 48 kHz) vs. Original:
-> Report: `docs/reports/supervised_runs/2026-09-16_elke_best_225s_export_analyse.md`.
+> Report: `docs/reports/supervised_runs/2026-09-16_test_track_225s_export_analyse.md`.
 
 | Befund | Wert | Bewertung |
 |---|---|---|

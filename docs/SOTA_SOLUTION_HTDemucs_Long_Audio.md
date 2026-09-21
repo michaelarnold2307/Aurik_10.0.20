@@ -388,7 +388,7 @@ def test_reconstruction_energy_loss():
 ```python
 def test_musical_goals_separation_fidelity_full_audio():
     """Separation Fidelity wird für ganzen Song gemessen."""
-    audio = load_test_audio("elke_best_30s.wav")  # 30s
+    audio = load_test_audio("test_track_30s.wav")  # 30s
     result = separate_chunked(audio, sr=48000)
 
     sep_fidelity = measure_separation_fidelity(audio, result)
@@ -401,7 +401,7 @@ def test_musical_goals_separation_fidelity_full_audio():
 
 def test_end_to_end_restoration_with_chunked_separation():
     """Vollständige Restaurierungs-Pipeline mit Chunked Separation."""
-    audio = load_test_audio("elke_best_60s.wav")
+    audio = load_test_audio("test_track_60s.wav")
 
     result = aurik_restore(audio, mode='restoration')
 

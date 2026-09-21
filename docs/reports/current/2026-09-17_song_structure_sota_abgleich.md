@@ -4,7 +4,7 @@
 > SOTA-Ausbaustufe? Deckt sich das Analyseergebnis mit einer unabhängigen
 > Analyse des Songaufbaus?
 > Referenzmaterial: Testkünstlerin (Schlager), voller Song (225,3 s @ 48 kHz, Export des
-> überwachten Laufs `output/supervised_run/elke_225s_supervised_v1020.wav`).
+> überwachten Laufs `output/supervised_run/testtrack_225s_supervised_v1020.wav`).
 
 ## Befund VOR dem Upgrade
 

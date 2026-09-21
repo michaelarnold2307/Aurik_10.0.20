@@ -1,4 +1,4 @@
-# Contributing to Aurik 10.0.8
+# Contributing to Aurik 10.1.0
 
 **Vielen Dank für dein Interesse an Aurik!**
 

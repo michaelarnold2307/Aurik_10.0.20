@@ -1,6 +1,6 @@
-# Contributing to Aurik 10.0.8
+# Contributing to Aurik 10.1.0
 
-Thank you for your interest in contributing to Aurik 10.0.8! This document provides guidelines and instructions for contributing to this project.
+Thank you for your interest in contributing to Aurik 10.1.0! This document provides guidelines and instructions for contributing to this project.
 
 ## Table of Contents
 
@@ -36,7 +36,7 @@ Aurik 10.0.0 is a professional-grade audio restoration and enhancement software 
 
 ```bash
 # Clone the repository
-git clone https://github.com/aurik-audio/Aurik_Standalone.git
+git clone https://github.com/michaelarnold2307/Aurik_10.0.20.git
 cd Aurik_Standalone
 
 # Create and activate virtual environment
@@ -343,7 +343,7 @@ def test_denoise_phase():
 ```bash
 # Fork the repository on GitHub
 # Clone your fork
-git clone https://github.com/aurik-audio/Aurik_Standalone.git
+git clone https://github.com/michaelarnold2307/Aurik_10.0.20.git
 cd Aurik_Standalone
 
 # Create a feature branch

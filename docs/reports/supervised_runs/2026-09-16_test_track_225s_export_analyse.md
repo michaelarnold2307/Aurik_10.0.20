@@ -1,6 +1,6 @@
 # Export-Analyse 2026-09-16 — Testkünstlerin (Schlager) 225 s: Restdefekte & Optimierungspotenzial
 
-> Gegenstand: `output/supervised_run/elke_225s_supervised_v1020.wav` (PCM_24, 48 kHz,
+> Gegenstand: `output/supervised_run/testtrack_225s_supervised_v1020.wav` (PCM_24, 48 kHz,
 > 225,33 s) vs. Original-MP3 (225,3 s @ 44,1 kHz, auf 48 kHz resampelt für
 > Vergleich). Methoden: DefectScanner, Maskierungs-/Bark-Delta, Rauigkeit,
 > Pre-Echo, HNR, Crest/Spektral-Zentroid, Oktavband-Energie, MuQ-MOS.
@@ -61,5 +61,5 @@ Eingriff würde den Wohlklang verschlechtern, nicht verbessern.
 
 ## 4. Mess-Nachweis
 
-- Skripte (scratch): `/tmp/analyze_elke.py`, `/tmp/analyze_elke2.py`
+- Skripte (scratch): `/tmp/analyze_test_track.py`, `/tmp/analyze_test_track2.py`
 - Roadmap: `docs/TODOS_SOTA_ROADMAP.md` → „Export-Analyse 2026-09-16“

@@ -17,7 +17,7 @@ Wähle Dein Betriebssystem:
 | **macOS** | `Aurik_10.14.0.dmg` | DMG öffnen → Aurik in „Applications" ziehen |
 | **Linux** | `Aurik-10.14.0-x86_64.AppImage` | `chmod +x` → Doppelklick |
 
-> 📥 **Download**: https://github.com/aurik-audio/Aurik_Standalone/releases/latest
+> 📥 **Download**: https://github.com/michaelarnold2307/Aurik_10.0.20/releases/latest
 
 ---
 
