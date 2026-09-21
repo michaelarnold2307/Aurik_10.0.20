@@ -362,7 +362,7 @@ class TestVocalQuality:
         fs = float(r.metadata.get("formant_stability", 0.0))
         assert fs > 0.80, f"§v10.117: EQ-Phase verschob Formanten (stability={fs:.3f}) — Gesang klingt unnatürlich"
 
-    @pytest.mark.timeout(10)
+    @pytest.mark.timeout(60)  # ONNX-Denoise inkl. Modell-Load braucht >10 s (Voll-Suite-Befund Chunk 49)
     def test_denoise_preserves_vocal_formants(self):
         """Denoising darf Gesangsformanten nicht zerstören."""
         from backend.core.phases.phase_03_denoise import DenoisePhase
