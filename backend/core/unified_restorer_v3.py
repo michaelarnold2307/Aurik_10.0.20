@@ -45700,7 +45700,16 @@ class UnifiedRestorerV3:
         if isinstance(_result, dict):
             return _result
         if _result is not None and hasattr(_result, "__dict__"):
-            return {k: v for k, v in vars(_result).items() if not k.startswith("_")}
+            # Voll-Suite-Befund 2026-09-21: vars() eines Ergebnis-Containers
+            # (bzw. Mocks in Unit-Tests) enthält auch method_calls/
+            # passed_goals/all_passed — float(v) über diese Struktur crasht
+            # im Reporting. Verbraucher erwarten NUR den Goal-Score-Dict
+            # (str→float); die .scores-Map ist die kanonische Quelle.
+            _vars = vars(_result)
+            _scores = _vars.get("scores")
+            if isinstance(_scores, dict):
+                return {k: v for k, v in _scores.items() if not k.startswith("_")}
+            return {k: v for k, v in _vars.items() if not k.startswith("_")}
         return {}
 
     def _run_end_of_song_cleanup(self) -> dict[str, Any]:
