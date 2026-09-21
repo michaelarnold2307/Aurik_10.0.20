@@ -88,7 +88,9 @@ def test_corrupt_file_returns_none_warns_and_removes(bc, tmp_path, caplog):
         got = bc.get_cached_restorability_result(path)
     assert got is None
     assert not f.exists()
-    assert any("Disk" in r.message for r in caplog.records)
+    assert any(("Platte" in r.message or "fehlgeschlagen" in r.message) for r in caplog.records), (
+        "Korrupter Eintrag muss sichtbar warnen (§V6 (copilot-instructions.md))"
+    )
 
 
 def test_disabled_switch_no_disk_io(bc, tmp_path):

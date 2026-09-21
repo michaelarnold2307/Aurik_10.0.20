@@ -76,6 +76,10 @@ class _AnalysisLruCache:
         self._data: OrderedDict[str, Any] = OrderedDict()
         self._path_to_key: dict[str, str] = {}  # path → content_key
         self._lock = threading.Lock()
+        # Optionaler Callback bei Eviction — damit disk-gestützte Caches den
+        # Disk-Eintrag mitlöschen können (sonst liest get() den verdrängten
+        # Eintrag vom Platten-Fallback zurück → LRU wirkungslos, Befund 2026-09-21).
+        self.evict_callback: Any | None = None
 
     # ------------------------------------------------------------------
     def put(self, key: str, value: Any, path_alias: str | None = None) -> None:
@@ -90,6 +94,11 @@ class _AnalysisLruCache:
                 evicted_key, _ = self._data.popitem(last=False)
                 # Clean up alias mapping for evicted key
                 self._path_to_key = {p: k for p, k in self._path_to_key.items() if k != evicted_key}
+                if self.evict_callback is not None:
+                    try:
+                        self.evict_callback(evicted_key)
+                    except Exception as _ev_exc:  # §V6 (copilot-instructions.md): nie blockierend
+                        logger.debug("LRU-Verdrängung: Platten-Aufräumung fehlgeschlagen: %s", _ev_exc)
 
     def get(self, key: str) -> Any | None:
         """Gibt cached value for *key* and promote to MRU, or ``None`` zurück."""
@@ -310,6 +319,13 @@ _defect_lru: _AnalysisLruCache = _AnalysisLruCache()
 _era_genre_lru: _AnalysisLruCache = _AnalysisLruCache()
 _medium_lru: _AnalysisLruCache = _AnalysisLruCache()
 _restorability_lru: _AnalysisLruCache = _AnalysisLruCache()
+
+# §LRU-Disk-Konsistenz (2026-09-21): Eviction muss den Platten-Eintrag
+# mitlöschen — sonst liest get_cached_*() den verdrängten Eintrag über den
+# Platten-Fallback zurück und die LRU-Semantik ist wirkungslos
+# (Voll-Suite-Befund: test_lru_keeps_recently_accessed_entry).
+_defect_lru.evict_callback = lambda key: _disk_clear("defect", key)
+_era_genre_lru.evict_callback = lambda key: _disk_clear("era_genre", key)
 
 
 # ---------------------------------------------------------------------------
