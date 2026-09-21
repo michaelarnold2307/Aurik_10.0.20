@@ -27,6 +27,13 @@
 
 set -euo pipefail
 
+# GUI-Tests (PyQt5) ohne Display: offscreen erzwingen — sonst bricht QApplication
+# im Headless-Cgroup mit nativem Abort ab (Voll-Suite-Befund 2026-09-21, Chunk 25:
+# test_modern_window_defect_summary_widget_content.py, "Fatal Python error: Aborted").
+if [[ -z "${DISPLAY:-}" && -z "${WAYLAND_DISPLAY:-}" ]]; then
+    export QT_QPA_PLATFORM=offscreen
+fi
+
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$SCRIPT_DIR"
 
