@@ -40673,6 +40673,7 @@ class UnifiedRestorerV3:
                                     )
                             _restoration_critical_best_effort = (
                                 (not self.is_studio_mode())
+                                and bool(self.config.enable_phase_skipping)
                                 and phase_id
                                 in {
                                     "phase_17_mastering_polish",
@@ -41446,7 +41447,10 @@ class UnifiedRestorerV3:
                                     _pdelta_245_direct = _spectral_quality_score(
                                         _ra, sample_rate
                                     ) - _spectral_quality_score(current_audio, sample_rate)
-                                    if _pdelta_245_direct > 0.0:
+                                    # §2.45-Vertrag: Skipping deaktiviert (enable_phase_skipping=False)
+                                    # ⇒ auch der Direkt-Pfad-Delta-Gate darf nicht überspringen
+                                    # (Unit-Tests mit Passthrough-Stubs, force-execute-Semantik).
+                                    if _pdelta_245_direct > 0.0 or not bool(self.config.enable_phase_skipping):
                                         current_audio = _active_quality_intervention(
                                             phase_id,
                                             current_audio,
@@ -44208,6 +44212,11 @@ class UnifiedRestorerV3:
         §v10.303 Phase-0-Aware: Prüft ob eine Phase durch Phase-0-Pre-Processing
         bereits obsolet ist (z.B. Apollo → phase_23 redundant).
         """
+        # §2.45-Vertrag: Skipping deaktiviert (enable_phase_skipping=False) ⇒
+        # keinerlei Skip — auch nicht über Phase-0-Redundanz/resolved-Defekte
+        # (Unit-Tests mit explizit selektierten Phasen).
+        if not bool(getattr(self.config, "enable_phase_skipping", True)):
+            return False
         # ── §v10.303 Phase-0 Redundanz-Check ──
         _rctx = getattr(self, "_restoration_context", None) or {}
         _p0_redundant = _rctx.get("phase0_redundant_phases", [])
