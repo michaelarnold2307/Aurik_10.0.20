@@ -1,10 +1,10 @@
 {
-  "generated_at": "2026-09-19T11:04:54.530917",
-  "duration_s": 5.142,
+  "generated_at": "2026-09-22T15:01:24.990487",
+  "duration_s": 6.149,
   "totals": {
     "error": 0,
     "warning": 0,
-    "info": 45
+    "info": 48
   },
   "findings": [
     {
@@ -129,6 +129,13 @@
     {
       "check": "spec_references",
       "severity": "info",
+      "item": "25_ambience_match_plugin.md",
+      "detail": "Spec ist nur im Index verankert, sonst nirgendwo referenziert",
+      "recommendation": "Spec in der normativen Kette oder im Code verlinken, sonst als obsolet markieren."
+    },
+    {
+      "check": "spec_references",
+      "severity": "info",
       "item": "CHANGELOG_2026-08-12.md",
       "detail": "Spec ist nur im Index verankert, sonst nirgendwo referenziert",
       "recommendation": "Spec in der normativen Kette oder im Code verlinken, sonst als obsolet markieren."
@@ -242,6 +249,20 @@
       "check": "spec_references",
       "severity": "info",
       "item": "v10.24_architecture_reference.md",
+      "detail": "Spec ist nur im Index verankert, sonst nirgendwo referenziert",
+      "recommendation": "Spec in der normativen Kette oder im Code verlinken, sonst als obsolet markieren."
+    },
+    {
+      "check": "spec_references",
+      "severity": "info",
+      "item": "v10.25_echtmusik_training.md",
+      "detail": "Spec ist nur im Index verankert, sonst nirgendwo referenziert",
+      "recommendation": "Spec in der normativen Kette oder im Code verlinken, sonst als obsolet markieren."
+    },
+    {
+      "check": "spec_references",
+      "severity": "info",
+      "item": "v10.26_autonomer_never_worsen_arbiter.md",
       "detail": "Spec ist nur im Index verankert, sonst nirgendwo referenziert",
       "recommendation": "Spec in der normativen Kette oder im Code verlinken, sonst als obsolet markieren."
     },

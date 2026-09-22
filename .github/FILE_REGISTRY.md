@@ -77,6 +77,8 @@
 | backend/core/residuum_masking.py | ACTIVE | backend/core | ja | — | Hörordnung Ebene 2: Residuum-basiertes Bark-Masking (Defekt-Anteil vs. maskierender Inhalt, ISO 11172-3 Spread); 3. Term im Salience-Blend (2026-08-23) |
 | scripts/horordnung_calibration.py | ACTIVE | tooling/agents | ja | — | Kalibrierungs-Harness: psychoakustische Invarianten der Hörordnungs-Module gegen synthetische Referenz-Signale (Vorstufe Panel-Tests, 2026-08-23) |
 | backend/core/librosa_bootstrap.py | ACTIVE | backend/core | nein | — | Vor-Gate-Bestand: bei Write-Gate-Einführung bereits gestaged (2026-08-22) |
+| plugins/ambience_match_plugin.py | ACTIVE | plugins/ambience | ja | — | §Spec-25 (2026-09-22): Ambience-Match-Plugin — additives, maskiertes Raumambiente (H1–H4), deterministisch, kein Modell/keine Gewichte; nutzt backend/core/dsp/masking_model.py (Bark, Johnston-1988) als kanonische Schwelle |
+| tests/unit/test_ambience_match_plugin.py | ACTIVE | testing/unit | ja | — | §Spec-25-Tests (2026-09-22): Passthrough bit-identisch, Determinismus, H1 unter Maskierungsschwelle − σ, H2 additiv, H3 ≥ 12 dB Defekt-Dämpfung, Stereo — auf echtem Audio (tests/real_world_validation) |
 | plugins/aero_plugin.py | ACTIVE | plugins/aero | nein | — | Vor-Gate-Bestand (2026-08-22) |
 | scripts/corpus_fetcher.py | ACTIVE | tooling/corpus | nein | — | Vor-Gate-Bestand (2026-08-22) |
 | scripts/dsp_benchmark.py | ACTIVE | tooling/benchmark | nein | — | Vor-Gate-Bestand (2026-08-22) |

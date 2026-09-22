@@ -1,7 +1,7 @@
 # Spec 25: Ambience-Match — Natürliche Raumhülle für restauriertes Material
 
 > **Version:** Aurik 10.1.0 · **Scope:** Wohlklang
-> **Status:** Entwurf
+> **Status:** In Umsetzung
 > **Erstellt:** 2026-09-22 · **Abgeschlossen:** —
 
 ## Prämisse
@@ -50,6 +50,15 @@ psychoakustische Maskierungsschwelle, nicht gegen einen Messwert.
 5. **Tests:** Unit-Suite (Passthrough, Determinismus, Invarianten H1–H4), dazu
    GO/NO-GO-Hörentscheidung nach `docs/guides/GO_NO_GO_DECISION_PROTOCOL.md`.
    Implementierungs-PR beachtet Write-Gate, FILE_REGISTRY-Eintrag und Task-Ledger.
+
+**Umsetzungsstand (2026-09-22):** Punkte 1–3 und 5 (Unit) umgesetzt —
+`plugins/ambience_match_plugin.py` + `tests/unit/test_ambience_match_plugin.py`
+(echtes Audio aus `tests/real_world_validation`; H1–H4 grün, Determinismus
+bit-identisch, mypy/ruff clean). Kalibrierung nutzt die kanonische
+Maskierungsschwelle aus `backend/core/dsp/masking_model.py` (§V7
+(copilot-instructions.md): keine Duplikate) mit σ als einzigem freiem Parameter.
+Offen: Punkt 4 (Bridge-Verdrahtung als Politur vor der Glue Stage,
+Materialprofil-Kopplung) und das GO/NO-GO-Hörprotokoll.
 
 ### Psychoakustische Invarianten (Hörordnung, Ebene 1 — nie verletzbar)
 

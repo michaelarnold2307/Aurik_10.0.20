@@ -1,9 +1,9 @@
 # Spec-Integrations-Fehlerprotokoll
 
-- Erzeugt: 2026-09-19T11:04:54.532303
+- Erzeugt: 2026-09-22T15:01:24.991303
 - Fehler: **0** · Warnungen: 0
 
-## INFO (45)
+## INFO (48)
 
 - **[spec_references]** `10_lag_integrity_architecture.md` — Spec ist nur im Index verankert, sonst nirgendwo referenziert
   - Behebung: Spec in der normativen Kette oder im Code verlinken, sonst als obsolet markieren.
@@ -39,6 +39,8 @@
   - Behebung: Spec in der normativen Kette oder im Code verlinken, sonst als obsolet markieren.
 - **[spec_references]** `24_ml_fallback_architektur.md` — Spec ist nur im Index verankert, sonst nirgendwo referenziert
   - Behebung: Spec in der normativen Kette oder im Code verlinken, sonst als obsolet markieren.
+- **[spec_references]** `25_ambience_match_plugin.md` — Spec ist nur im Index verankert, sonst nirgendwo referenziert
+  - Behebung: Spec in der normativen Kette oder im Code verlinken, sonst als obsolet markieren.
 - **[spec_references]** `CHANGELOG_2026-08-12.md` — Spec ist nur im Index verankert, sonst nirgendwo referenziert
   - Behebung: Spec in der normativen Kette oder im Code verlinken, sonst als obsolet markieren.
 - **[spec_references]** `aurik_gesamtoekosystem_v10_17.md` — Spec ist nur im Index verankert, sonst nirgendwo referenziert
@@ -72,6 +74,10 @@
 - **[spec_references]** `v10.23_album_prior.md` — Spec ist nur im Index verankert, sonst nirgendwo referenziert
   - Behebung: Spec in der normativen Kette oder im Code verlinken, sonst als obsolet markieren.
 - **[spec_references]** `v10.24_architecture_reference.md` — Spec ist nur im Index verankert, sonst nirgendwo referenziert
+  - Behebung: Spec in der normativen Kette oder im Code verlinken, sonst als obsolet markieren.
+- **[spec_references]** `v10.25_echtmusik_training.md` — Spec ist nur im Index verankert, sonst nirgendwo referenziert
+  - Behebung: Spec in der normativen Kette oder im Code verlinken, sonst als obsolet markieren.
+- **[spec_references]** `v10.26_autonomer_never_worsen_arbiter.md` — Spec ist nur im Index verankert, sonst nirgendwo referenziert
   - Behebung: Spec in der normativen Kette oder im Code verlinken, sonst als obsolet markieren.
 - **[spec_references]** `v10.303.23_fine_tuning_spec.md` — Spec ist nur im Index verankert, sonst nirgendwo referenziert
   - Behebung: Spec in der normativen Kette oder im Code verlinken, sonst als obsolet markieren.
