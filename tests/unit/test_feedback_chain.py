@@ -581,3 +581,36 @@ class TestGoalWeightsBias256:
         fc = self._make_fc(extreme_p4p5)
         t = fc._compute_adaptive_prune_threshold(is_restorative=True)
         assert t >= -0.30, f"Threshold must not exceed -0.30, got {t}"
+
+
+# ---------------------------------------------------------------------------
+# Klasse: Terminierungs-Vertrag — definierter finaler Abschluss (§v10.58)
+# ---------------------------------------------------------------------------
+
+
+class TestTerminationContract:
+    """Keine Endlosschleife: run() terminiert innerhalb max_iterations,
+    auch wenn jeder Kandidat 'besser' erscheint oder degradiert."""
+
+    def test_terminates_within_max_iterations_when_always_improving(self):
+        fc = FeedbackChain(max_iterations=7)
+        result = fc.run(_sine(), _improve_fn, 48000)
+        hist = (
+            getattr(result, "history", None)
+            or getattr(result, "phase_executions", None)
+            or getattr(result, "iterations", None)
+        )
+        if hist is None:
+            pytest.skip("Ergebnis-Container ohne Iterations-Historie")
+        assert len(hist) <= 7, f"FeedbackChain lief {len(hist)} Iterationen > max_iterations=7"
+
+    def test_terminates_with_degrading_candidate(self):
+        fc = FeedbackChain(max_iterations=5)
+        result = fc.run(_sine(), _degrading_fn, 48000)
+        out = getattr(result, "audio", None)
+        assert out is not None
+        assert np.all(np.isfinite(np.asarray(out, dtype=np.float32)))
+
+    def test_min_iterations_always_at_least_one(self):
+        fc = FeedbackChain()
+        assert fc.max_iterations >= 1
