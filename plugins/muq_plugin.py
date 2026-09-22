@@ -69,8 +69,10 @@ _REF_CACHE = _PROJECT_ROOT / "models" / "muq_mulan" / "muq_ref_embeddings.npz"
 _A1_HEAD_PATH = _PROJECT_ROOT / "models" / "muq_mulan" / "muq_eval_a1_head.pt"
 # Kanonische Projekt-lokale Modellpfade:
 # - models/muq_mulan/ = MuQ-large-msd-iter Backbone (config.json + model.safetensors,
-#                       ~1,3 GB, byte-identisch zum HF-Snapshot) — Primärpfad.
-# - models/muq/       = offline-lokale Kopie desselben Backbones (Fallback-Pfad).
+#                       ~1,3 GB, byte-identisch zum HF-Snapshot) — Primärpfad, auch
+#                       vom ROCm-Kern (muq_mulan_torch_rocm) geladen.
+# - models/muq/       = optionaler Offline-Fallback (aktuell nicht belegt — keine
+#                       redundante 1,3-GB-Kopie neben dem Primärpfad).
 # - models/muq_mulan/mulan/ = MuQ-MuLan-Checkpoint (anderer Trainingsstand, nur MuLan-Turm).
 _LOCAL_DIR = _PROJECT_ROOT / "models" / "muq_mulan"
 _LOCAL_DIR_FALLBACK = _PROJECT_ROOT / "models" / "muq"
