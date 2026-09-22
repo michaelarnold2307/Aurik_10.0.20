@@ -1353,6 +1353,19 @@
       "description": "Harmonic Inpainting DiT (§v10.300) — rekonstruiert gedämpfte Obertöne",
       "sha256": "f8765d14564e65c03a1fe8b39e97ddc8c8166238c14cb0dc1947abbcf0b13e0a",
       "_comment": "Datei lokal nicht vorhanden (Stand: 2026-09-22)"
+    },
+    {
+      "name": "muq",
+      "bundled": true,
+      "bundled_path": "models/muq/model.safetensors",
+      "sha256": "273febab2be02872c37d2c37e48a9d6c52c1c9392f3eeeabd498efa281ccb7a6",
+      "size_bytes": 1333825096,
+      "size_gb": 1.3338,
+      "required": false,
+      "fallback": "dsp_zeuge",
+      "license": "CC BY-NC 4.0 (OpenMuQ/MuQ-large-msd-iter)",
+      "format": "safetensors",
+      "description": "MuQ-large-msd-iter Checkpoint — offline-lokale Kopie für muq_plugin (Fallback-Pfad models/muq/, sonst HF-Cache)"
     }
   ]
 }
