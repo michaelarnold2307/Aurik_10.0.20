@@ -512,6 +512,9 @@ def process_audio(
     dry_run: bool = False,
 ) -> object:
     """Verarbeitet eine Audiodatei über denselben Denker-/Exportpfad wie das Frontend."""
+    # MIOpen-Workspace-Warnungen (ROCm-Solver-Auswahl) sind Bibliotheks-Rauschen —
+    # vor dem ersten GPU-Kernel stillstellen (root-fix für vermeidbare Warnungen).
+    os.environ.setdefault("MIOPEN_LOG_LEVEL", "3")
     logging.basicConfig(level=logging.INFO if verbose else logging.WARNING, format="%(levelname)s: %(message)s")
     logger = logging.getLogger("aurik_cli")
 

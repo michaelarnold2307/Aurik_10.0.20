@@ -218,7 +218,17 @@ def _analysis_cache_version() -> str:
     try:
         from backend.core.version import AURIK_VERSION  # lazy: leaf-Modul, kein Zyklus
 
-        return str(AURIK_VERSION)
+        # NumPy-Major mit in die Cache-Version aufnehmen: Pickle-Dateien älterer
+        # NumPy-Generationen (numpy._core-Umbau) sind nicht mehr ladbar — sie
+        # werden dann über den regulären Versionswechsel-Pfad (INFO) verworfen
+        # statt beim Laden zu crashen.
+        try:
+            import numpy as _np_ver
+
+            _np_major = int(str(_np_ver.__version__).split(".")[0])
+        except Exception:
+            _np_major = 0
+        return f"{AURIK_VERSION}-np{_np_major}"
     except Exception as _exc:
         logger.debug("bridge: AURIK_VERSION nicht lesbar (%s) — Zwischenspeicher-Version 'unbekannt'", _exc)
         return "unknown"
@@ -287,8 +297,11 @@ def _disk_read(subdir: str, key: str) -> object | None:
             return None
         return _envelope.get("payload")
     except Exception as exc:
-        logger.warning(
-            "bridge: Analyse-Zwischenspeicher (Platte) laden fehlgeschlagen (%s) — Analyse wird neu berechnet (§V6 (copilot-instructions.md))",
+        # Cache-Load-Fehler kosten keine Qualität (Analyse wird neu berechnet) —
+        # INFO statt WARNING; §V6 (copilot-instructions.md) bezieht sich auf
+        # Qualitäts-Fallbacks.
+        logger.info(
+            "bridge: Analyse-Zwischenspeicher (Platte) laden fehlgeschlagen (%s) — Analyse wird neu berechnet",
             exc,
         )
         try:

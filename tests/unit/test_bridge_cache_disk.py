@@ -77,19 +77,19 @@ def test_version_mismatch_invalidates_and_removes(bc, tmp_path):
 
 
 def test_corrupt_file_returns_none_warns_and_removes(bc, tmp_path, caplog):
-    """Korrupter Eintrag → None + sichtbare §V6-Warnung + Löschung."""
+    """Korrupter Eintrag → None + sichtbare INFO-Meldung + Löschung."""
     path = _audio_file(tmp_path)
     bc.cache_restorability_result(path, _FakeResult("x", np.zeros(2), {}))
     bc._restorability_lru.clear()
     key = bc.content_cache_key(path)
     f = bc._disk_path("restorability", key)
     f.write_bytes(b"\x00\x01garbage")
-    with caplog.at_level(logging.WARNING):
+    with caplog.at_level(logging.INFO):
         got = bc.get_cached_restorability_result(path)
     assert got is None
     assert not f.exists()
     assert any(("Platte" in r.message or "fehlgeschlagen" in r.message) for r in caplog.records), (
-        "Korrupter Eintrag muss sichtbar warnen (§V6 (copilot-instructions.md))"
+        "Korrupter Eintrag muss sichtbar gemeldet werden (Cache kostet keine Qualität — INFO)"
     )
 
 
