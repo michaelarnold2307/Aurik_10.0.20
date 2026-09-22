@@ -1,13 +1,13 @@
 # TASK_CHANGES — Live-Ledger der aktuellen Aufgabe
 
-> Generiert von `scripts/change_ledger.py snapshot` (Base: `HEAD`, Stand: 2026-09-22 14:29 CEST).
+> Generiert von `scripts/change_ledger.py snapshot` (Base: `HEAD`, Stand: 2026-09-22 14:36 CEST).
 > CI (`ci-lite.yml` pr-evidence-gate) erzwingt Abdeckung: jede geänderte Code-Datei muss hier stehen.
 
 ## Geänderte Dateien
 
 | Status | Pfad | Art |
 |---|---|---|
-| M | .github/workflows/ci-cross-platform.yml | modifiziert |
+| M | .gitignore | modifiziert |
 | M | audit/spec_integration_report.json | modifiziert |
 | M | audit/spec_integration_report.md | modifiziert |
 
