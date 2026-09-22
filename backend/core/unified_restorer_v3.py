@@ -17228,11 +17228,21 @@ class UnifiedRestorerV3:
                 _musical_excellence_score = _end_gate_out["excellence"]
 
             else:
-                logger.info(
-                    "🎵 Musical Goals: alle %d Ziele erfüllt (Ø %.3f)",
-                    len(_goal_vector_keys),
-                    _musical_excellence_score,
+                _all_unmeasured = bool(_musical_goal_scores) and all(
+                    float(v) < 0.0 for v in _musical_goal_scores.values()
                 )
+                if _all_unmeasured:
+                    logger.info(
+                        "🎵 Musical Goals: %d Ziele nicht messbar (Ø %.3f) — End-Gate-Kaskade übersprungen",
+                        len(_goal_vector_keys),
+                        _musical_excellence_score,
+                    )
+                else:
+                    logger.info(
+                        "🎵 Musical Goals: alle %d Ziele erfüllt (Ø %.3f)",
+                        len(_goal_vector_keys),
+                        _musical_excellence_score,
+                    )
         except Exception as _mg_exc:
             logger.warning("MusicalGoalsChecker nicht verfügbar (MUSICAL_GOALS_nicht verfuegbar): %s", _mg_exc)
             _fail_reasons.append(
@@ -18620,8 +18630,9 @@ class UnifiedRestorerV3:
             dt: defect_result.scores[dt].severity for dt in DefectType if dt in defect_result.scores
         }
         _post_defect_result = None
+        _post_scan_skipped = bool(_chunked_tail_skip and not _chunked_last)
         try:
-            if not (_chunked_tail_skip and not _chunked_last):
+            if not _post_scan_skipped:
                 # §P0-1 (d): Post-Scan (B2/m1b-Datenquelle, §v10.702) nur auf
                 # dem letzten Chunk — reine Analytik, kein Audio-Eingriff.
                 # Die song-globale m1b-Auswertung in _restore_chunked nutzt
@@ -18753,6 +18764,10 @@ class UnifiedRestorerV3:
                     "DefectScanner post-scan abgeschlossen: pre_top=%d, post_top=%d",
                     len(defect_result.get_top_defects(5)),
                     len(_post_defect_result.get_top_defects(5)),
+                )
+            elif _post_scan_skipped:
+                logger.info(
+                    "DefectScanner post-scan per §P0-1(d) übersprungen (Chunked-Tail) — Pre-Scores bleiben im Ergebnis"
                 )
             else:
                 logger.warning(
