@@ -54,6 +54,7 @@ PHASE_ICONS: dict[str, str] = {
     "phase_correction": "🔍",  # Phasen-Korrektur (generisch)
     "phase_interface": "🔌",  # Phasen-Schnittstelle
     "phase_glue_stage": "🔗",  # Glue-Kompression (Final)
+    "phase_ambience_polish": "🌌",  # Spec 25: additive Raumhülle vor der Glue Stage
     # ── Reinigung / Denoising ──
     "phase_03_denoise": "🧹🌊",  # Breitband-Entrauschung (ML+DSP)
     "phase_05_rumble_filter": "🧹📉",  # Tieffrequenz-Rumpelfilter

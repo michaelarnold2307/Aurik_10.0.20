@@ -51,14 +51,23 @@ psychoakustische Maskierungsschwelle, nicht gegen einen Messwert.
    GO/NO-GO-Hörentscheidung nach `docs/guides/GO_NO_GO_DECISION_PROTOCOL.md`.
    Implementierungs-PR beachtet Write-Gate, FILE_REGISTRY-Eintrag und Task-Ledger.
 
-**Umsetzungsstand (2026-09-22):** Punkte 1–3 und 5 (Unit) umgesetzt —
+**Umsetzungsstand (2026-09-22):** Punkte 1–5 (Unit) umgesetzt —
 `plugins/ambience_match_plugin.py` + `tests/unit/test_ambience_match_plugin.py`
 (echtes Audio aus `tests/real_world_validation`; H1–H4 grün, Determinismus
 bit-identisch, mypy/ruff clean). Kalibrierung nutzt die kanonische
 Maskierungsschwelle aus `backend/core/dsp/masking_model.py` (§V7
 (copilot-instructions.md): keine Duplikate) mit σ als einzigem freiem Parameter.
-Offen: Punkt 4 (Bridge-Verdrahtung als Politur vor der Glue Stage,
-Materialprofil-Kopplung) und das GO/NO-GO-Hörprotokoll.
+Punkt 4 (Verdrahtung) umgesetzt: `backend/core/phases/phase_ambience_polish.py`
+als eigenständige Phase unmittelbar vor der Glue Stage
+(DAG: `phase_47_truepeak_limiter` → `phase_ambience_polish` →
+`phase_glue_stage`; TIER-6-Liste aller Modi, Intervention-Registry
+`stereo_enhancement`, Display/Icons). Schalter über Materialprofil:
+Default AN für Vintage-Klassen (Schellack, Kassette, Tape/Reel, Draht,
+Walze, Lackfolie), AUS für lebendiges Material (Vinyl, CD, DAT, Streaming,
+Codecs); Override je Lauf über `ambience_polish_enabled`/`ambience_blend`/
+`ambience_safety_margin_db`/`ambience_defect_bands` (kwargs, für die
+Bridge-Verdrahtung vorbereitet). Stärke zentral über den
+Strength-Contract. Offen: GO/NO-GO-Hörprotokoll (Hörentscheidung).
 
 ### Psychoakustische Invarianten (Hörordnung, Ebene 1 — nie verletzbar)
 

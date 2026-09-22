@@ -78,6 +78,8 @@
 | scripts/horordnung_calibration.py | ACTIVE | tooling/agents | ja | — | Kalibrierungs-Harness: psychoakustische Invarianten der Hörordnungs-Module gegen synthetische Referenz-Signale (Vorstufe Panel-Tests, 2026-08-23) |
 | backend/core/librosa_bootstrap.py | ACTIVE | backend/core | nein | — | Vor-Gate-Bestand: bei Write-Gate-Einführung bereits gestaged (2026-08-22) |
 | plugins/ambience_match_plugin.py | ACTIVE | plugins/ambience | ja | — | §Spec-25 (2026-09-22): Ambience-Match-Plugin — additives, maskiertes Raumambiente (H1–H4), deterministisch, kein Modell/keine Gewichte; nutzt backend/core/dsp/masking_model.py (Bark, Johnston-1988) als kanonische Schwelle |
+| backend/core/phases/phase_ambience_polish.py | ACTIVE | backend/core/phases | ja | — | §Spec-25-Punkt-4 (2026-09-22): Pipeline-Phase der Ambience-Politur — unmittelbar vor der Glue Stage (DAG: truepeak → ambience → glue); Materialprofil-Schalter (Vintage AN, lebendiges Material AUS), Strength-Contract-zentral |
+| tests/unit/test_ambience_polish_phase.py | ACTIVE | testing/unit | ja | — | §Spec-25-Verdrahtungs-Tests (2026-09-22): Materialprofil-Schalter, Registry/Intervention-Familie, Passthrough bit-identisch, Strength=0-Disable, Determinismus, DAG-Ordnung — echtes Audio (real_world_validation) |
 | tests/unit/test_ambience_match_plugin.py | ACTIVE | testing/unit | ja | — | §Spec-25-Tests (2026-09-22): Passthrough bit-identisch, Determinismus, H1 unter Maskierungsschwelle − σ, H2 additiv, H3 ≥ 12 dB Defekt-Dämpfung, Stereo — auf echtem Audio (tests/real_world_validation) |
 | plugins/aero_plugin.py | ACTIVE | plugins/aero | nein | — | Vor-Gate-Bestand (2026-08-22) |
 | scripts/corpus_fetcher.py | ACTIVE | tooling/corpus | nein | — | Vor-Gate-Bestand (2026-08-22) |

@@ -125,6 +125,23 @@ HARD_BEFORE_CONSTRAINTS: list[PhaseConstraint] = [
         "phase_glue_stage",
         "Glue Stage nach TruePeak-Limiter (keine Bus-Kompression nach finalem Peak-Schutz)",
     ),
+    # Spec 25: Ambience-Politur unmittelbar vor der Glue Stage — nach TruePeak,
+    # vor der Bus-Kompression.
+    PhaseConstraint(
+        "phase_47_truepeak_limiter",
+        "phase_ambience_polish",
+        "Ambience-Politur nach TruePeak-Limiter (additive Hülle nach finalem Peak-Schutz)",
+    ),
+    PhaseConstraint(
+        "phase_ambience_polish",
+        "phase_glue_stage",
+        "Ambience-Politur vor der Glue Stage (Spec 25: Politur unmittelbar davor)",
+    ),
+    PhaseConstraint(
+        "phase_17_mastering_polish",
+        "phase_ambience_polish",
+        "Mastering-Polish vor der Ambience-Politur — Politur bleibt unmittelbar vor der Glue Stage (Studio-Modus)",
+    ),
     PhaseConstraint(
         "phase_40_loudness_normalization",
         "phase_glue_stage",

@@ -7118,6 +7118,7 @@ class UnifiedRestorerV3:
         "phase_65_vocal_naturalness_restoration": "vocal_enhancement",
         "phase_66_stem_targeted_nr": "noise_reduction",  # v10.0.0: Stem-Targeted NR
         "phase_glue_stage": "dynamics_control",  # finale Bus-Kompression (Glue)
+        "phase_ambience_polish": "stereo_enhancement",  # Spec 25: Raumhülle vor der Glue Stage
     }
 
     # §v10.303.11 DRY: Core-Familien die bei Low-Confidence nie gestrippt werden.
@@ -29225,6 +29226,9 @@ class UnifiedRestorerV3:
             "phase_16_final_eq",  # Finales EQ-Trimming
             "phase_40_loudness_normalization",  # −14 LUFS (Streaming) — VOR TruePeak (EBU R128)
             "phase_47_truepeak_limiter",  # True-Peak −1.0 dBTP (EBU R128) — NACH LUFS-Normierung
+            # Spec 25: Ambience-Politur unmittelbar vor der Glue Stage
+            # (Default AN für Vintage-Klassen, AUS für lebendiges Material).
+            "phase_ambience_polish",
             # §III (copilot-instructions.md): Glue Stage läuft in ALLEN Modi als
             # vorletzte Phase (nach TruePeak, vor Dithering/Output-Format).
             "phase_glue_stage",
@@ -29456,6 +29460,11 @@ class UnifiedRestorerV3:
             _move_before("phase_40_loudness_normalization", "phase_glue_stage")
             _move_before("phase_47_truepeak_limiter", "phase_glue_stage")
             _move_before("phase_17_mastering_polish", "phase_glue_stage")
+            # Spec 25: Ambience-Politur bleibt unmittelbar vor der Glue Stage —
+            # auch im Studio-Modus (phase_17 vor der Politur, nie dazwischen).
+            _move_before("phase_47_truepeak_limiter", "phase_ambience_polish")
+            _move_before("phase_17_mastering_polish", "phase_ambience_polish")
+            _move_before("phase_ambience_polish", "phase_glue_stage")
             _move_before("phase_glue_stage", "phase_41_output_format_optimization")
 
             # Signal-processing-chain ordering (wissenschaftlich korrekte Reihenfolge)

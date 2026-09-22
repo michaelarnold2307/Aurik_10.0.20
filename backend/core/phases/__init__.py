@@ -80,6 +80,7 @@ from .phase_51_drums_enhancement import DrumsEnhancementV1
 from .phase_52_piano_restoration import PianoRestorationV1
 from .phase_54_transparent_dynamics import TransparentDynamicsV1
 from .phase_55_diffusion_inpainting import DiffusionInpaintingPhase
+from .phase_ambience_polish import AmbiencePolishPhase
 from .phase_glue_stage import GlueStagePhase
 
 # Phase Interface & Base Classes
@@ -244,6 +245,7 @@ __all__ = [
     "HarmonicRestorationPhase",
     "HumRemovalPhase",
     "LimitingPhase",
+    "AmbiencePolishPhase",
     # Phase 40-48
     "LoudnessNormalizationPhase",
     "MLDeEsserPhase",

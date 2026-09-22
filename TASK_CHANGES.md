@@ -1,6 +1,6 @@
 # TASK_CHANGES — Live-Ledger der aktuellen Aufgabe
 
-> Generiert von `scripts/change_ledger.py snapshot` (Base: `HEAD`, Stand: 2026-09-22 15:32 CEST).
+> Generiert von `scripts/change_ledger.py snapshot` (Base: `HEAD`, Stand: 2026-09-22 16:13 CEST).
 > CI (`ci-lite.yml` pr-evidence-gate) erzwingt Abdeckung: jede geänderte Code-Datei muss hier stehen.
 
 ## Geänderte Dateien
@@ -8,10 +8,15 @@
 | Status | Pfad | Art |
 |---|---|---|
 | M | .github/FILE_REGISTRY.md | modifiziert |
-| M | audit/spec_integration_report.json | modifiziert |
-| M | audit/spec_integration_report.md | modifiziert |
-| ?? | plugins/ambience_match_plugin.py | ungetrackt |
-| ?? | tests/unit/test_ambience_match_plugin.py | ungetrackt |
+| M | .github/specs/25_ambience_match_plugin.md | modifiziert |
+| M | backend/core/phase_dag.py | modifiziert |
+| M | backend/core/phase_display_formatter.py | modifiziert |
+| M | backend/core/phase_icons.py | modifiziert |
+| M | backend/core/phases/**init**.py | modifiziert |
+| M | backend/core/unified_restorer_v3.py | modifiziert |
+| M | tests/unit/test_phase_intervention_registry_coverage.py | modifiziert |
+| ?? | backend/core/phases/phase_ambience_polish.py | ungetrackt |
+| ?? | tests/unit/test_ambience_polish_phase.py | ungetrackt |
 
 ## Entscheidungen
 

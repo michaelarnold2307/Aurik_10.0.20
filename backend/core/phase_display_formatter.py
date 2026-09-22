@@ -94,6 +94,7 @@ PHASE_DISPLAY: dict[str, str] = {
     "phase_58_lyrics_guided_enhancement": "🎤 Textgeführte Optimierung",
     "phase_63_intermodulation_reduction": "📉 Intermodulations-Reduktion",
     "phase_glue_stage": "🔗 Zusammenführung",
+    "phase_ambience_polish": "🌌 Ambiente-Politur",
     "phase_07_declipper": "🔧 De-Clipping",
 }
 
