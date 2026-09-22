@@ -96,11 +96,16 @@ repos:
   # 2. Ruff — Schneller Linter + Formatter (ersetzt Black, isort, autoflake)
   # ---------------------------------------------------------------------------
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.15.15
+    rev: v0.16.7
     hooks:
       - id: ruff
         args: [--fix]
+        # Vendor-Code bleibt unangetastet (AGENTS.md: SKIP_DIRS-Politik).
+        # Explizit übergebene Pfade umgehen das pyproject-exclude — deshalb
+        # hier Hook-lokal ausschließen.
+        exclude: ^plugins/_vendor
       - id: ruff-format
+        exclude: ^plugins/_vendor
 
   # ---------------------------------------------------------------------------
   # 3. PyUpgrade — Modernisierung auf Python 3.10+
@@ -278,6 +283,7 @@ repos:
         language: system
         pass_filenames: true
         files: ^(backend|plugins|denker|Aurik10|cli|scripts)/.*\.py$
+        exclude: ^plugins/_vendor
 
       # Aurik AST VERBOTEN-Linter (V01-V58+) — ERRORs blockieren, WARNINGs bleiben advisory.
       - id: aurik-verboten-linter

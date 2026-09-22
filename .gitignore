@@ -31,7 +31,10 @@ build/
 MANIFEST
 
 # ── ML-Modelle & Gewichte (lokal gebündelt, nicht ins Repo) ─────────────────
-models/
+# Nur das Top-Level-Verzeichnis ignorieren (anchored): vendorter Code in
+# plugins/_vendor_* nutzt eigene models/-Unterverzeichnisse und MUSS ins Repo
+# (sonst ImportError auf frischen Checkouts + I001-Drift im CI-Lint-Gate).
+/models/
 pretrained_models/
 *.pt
 *.pth
@@ -179,7 +182,6 @@ docs/reports/current/FEATURE_COMPLETION_REPORT_*.md
 docs/reports/phase_completion/
 error_guard_gaps.json
 gpu_capabilities.json
-_aurik_run_excellence.py
 log_parser_analysis.py
 full_run_warning_audit.py
 validate_real_audio_elke_best.py

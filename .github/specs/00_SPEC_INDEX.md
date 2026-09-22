@@ -6,7 +6,7 @@
 > Eintrag muss als Datei existieren. Verwaiste Specs (nirgendwo referenziert)
 > gelten über diesen Index als kanonisch verankert.
 
-Stand: 94 Specs.
+Stand: 95 Specs.
 
 | Spec | Titel |
 |---|---|
@@ -47,6 +47,7 @@ Stand: 94 Specs.
 | 22_wohlklang_strategie.md | Spec 22: Wohlklang-Strategie — Systematische Exzellenz für das menschliche Ohr |
 | 23_zero_touch_orchestration_contract.md | Spec 23: Zero-Touch-Orchestrierungsvertrag — Der eine Dirigent, additiv verdrahtet |
 | 24_ml_fallback_architektur.md | Spec 24: ML-Fallback-Architektur — Kein stiller Ausfall mehr |
+| 25_ambience_match_plugin.md | Spec 25: Ambience-Match — Natürliche Raumhülle für restauriertes Material · §v10 Pleasantness-First |
 | CHANGELOG_2026-08-12.md | Changelog — 2026-08-11/12 |
 | XX_measure_template.md | Spec XX: [TITEL] — [KURZBESCHREIBUNG] |
 | aurik_gesamtoekosystem_v10_17.md | §v10.17 Aurik Gesamtökosystem — Spezifikation |
