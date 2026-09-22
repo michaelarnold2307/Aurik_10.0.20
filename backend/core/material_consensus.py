@@ -241,8 +241,9 @@ def validate_material_era_consistency(material: str, decade: int, transfer_chain
         # Das Medium wurde NACH dem geschätzten Aufnahmejahr noch produziert?
         # Nein — wenn decade > _end, wurde es VOR der Aufnahme eingestellt.
         # Das ist physikalisch unmöglich.
-        logger.warning(
-            "validieren_material_era_consistency: %s production ended %d, but era=%d → IMPOSSIBLE",
+        logger.info(
+            "Material-Ära-Konsistenz: %s Produktion endete %d, Ära-Schätzung %d — "
+            "kein Confidence-Boost (§2.13 Disagreement-Pfad)",
             material,
             _end,
             decade,
@@ -303,8 +304,9 @@ def validate_material_era_consistency(material: str, decade: int, transfer_chain
             # physische Medium ein späteres Remaster sein.
             # Bei Einzel-Medium (keine Chain) → IMPOSSIBLE.
             if not transfer_chain or len(transfer_chain) <= 1:
-                logger.warning(
-                    "validieren_material_era_consistency: %s invented %d, but era=%d and no transfer chain → IMPOSSIBLE",
+                logger.info(
+                    "Material-Ära-Konsistenz: %s erfunden %d, Ära-Schätzung %d, keine Transfer-Kette — "
+                    "kein Confidence-Boost (§2.13 Disagreement-Pfad)",
                     material,
                     _invented,
                     decade,

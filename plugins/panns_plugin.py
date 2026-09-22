@@ -285,11 +285,11 @@ class PANNsPlugin(MLPluginBase):  # §A2
             if not _filtered_providers:
                 _filtered_providers = ["CPUExecutionProvider"]
             if _filtered_providers != _providers:
-                logger.warning(
-                    "PANNs: Provider %s nicht im ORT-Build registriert (verfügbar: %s) — auf %s gefiltert (§V6 (copilot-instructions.md))",
+                logger.info(
+                    "PANNs: Provider %s nicht im ORT-Build registriert (verfügbar: %s) — "
+                    "CPU-Pfad aktiv (§III.9 (copilot-instructions.md): ONNX = CPU-Fallback)",
                     _providers,
                     _avail_ort_providers,
-                    _filtered_providers,
                 )
 
             self._session = ort.InferenceSession(

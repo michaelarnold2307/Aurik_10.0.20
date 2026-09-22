@@ -274,7 +274,7 @@ def _ml_allowed_on_device(device: Any) -> bool:
         return True
     if os.environ.get("AURIK_MUQ_GPU", "").strip() == "0":
         return True
-    logger.warning("MuQ: CPU-Gerät ohne AURIK_MUQ_CPU=1 — ML-Schätzung übersprungen (5-s-Guard §2.26)")
+    logger.info("MuQ: CPU-Gerät ohne AURIK_MUQ_CPU=1 — ML-Schätzung übersprungen (5-s-Guard §2.26)")
     return False
 
 

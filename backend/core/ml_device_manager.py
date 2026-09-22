@@ -535,12 +535,11 @@ def _filter_to_available_ort_providers(providers: list[_Provider], plugin_name: 
         else:
             _dropped = True
     if _dropped:
-        logger.warning(
-            "ORT-Provider %s für %s nicht im ORT-Build registriert (verfügbar: %s) — auf %s gefiltert (§V6 (copilot-instructions.md))",
+        logger.info(
+            "ORT-Provider %s für %s nicht im ORT-Build registriert (verfügbar: %s) — CPU-Pfad aktiv (§III.9 (copilot-instructions.md): ONNX = CPU-Fallback)",
             providers,
             plugin_name,
             _available,
-            _filtered or ["CPUExecutionProvider"],
         )
     if not _filtered:
         return ["CPUExecutionProvider"]

@@ -3237,7 +3237,7 @@ class UnifiedRestorerV3:
                 if input_snr_db is not None
                 else f"bw_loss={_bw_loss_sev:.2f}"
             )
-            logger.warning(
+            logger.info(
                 "§2.16 PRESERVATION Betriebsart: bw_loss=%.2f SNR=%.1fdB — "
                 "nur essentielle Cleanup-Phasen. Enhancements werden übersprungen. "
                 "Das Material ist zu degradiert für aktive Restaurierung.",
