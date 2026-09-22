@@ -22,7 +22,7 @@ der Bit-Identitäts-Test (tests/unit/test_pyin_viterbi_fast.py) pinnt
 from __future__ import annotations
 
 import logging
-from typing import Any, Optional, Tuple, Union, cast
+from typing import Any, Optional, Tuple, Union
 
 import numpy as np
 
@@ -341,4 +341,5 @@ def pyin_compat(y: np.ndarray, **kwargs: Any) -> tuple[np.ndarray, np.ndarray, n
         logger.debug("§PERF-R8-pyin_compat Ersatzpfad librosa.pyin (%s)", _compat_exc)
         import librosa
 
-        return cast(tuple[np.ndarray, np.ndarray, np.ndarray], librosa.pyin(y, **kwargs))
+        _f0, _times, _vprob = librosa.pyin(y, **kwargs)
+        return (_f0, _times, _vprob)

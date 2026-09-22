@@ -26,6 +26,7 @@ from __future__ import annotations
 import logging
 import threading
 from pathlib import Path
+from typing import cast
 
 import numpy as np
 
@@ -141,18 +142,18 @@ def _build_core():
         core.norm.bias.copy_(torch.from_numpy(norm_b))
         for k in range(_N_CELLS):
             data = cell_data[k]
-            rnn = core.rnns[k]
-            rnn.weight_ih_l0.copy_(torch.from_numpy(_perm_gates(data["wih"], _GATE_W)))
-            rnn.weight_hh_l0.copy_(torch.from_numpy(_perm_gates(data["whh"], _GATE_W)))
-            rnn.weight_ih_l0_reverse.copy_(torch.from_numpy(_perm_gates(data["wih_r"], _GATE_W)))
-            rnn.weight_hh_l0_reverse.copy_(torch.from_numpy(_perm_gates(data["whh_r"], _GATE_W)))
+            rnn = cast(nn.LSTM, core.rnns[k])
+            rnn.weight_ih_l0.copy_(torch.from_numpy(_perm_gates(data["wih"], _GATE_W)))  # type: ignore[operator]
+            rnn.weight_hh_l0.copy_(torch.from_numpy(_perm_gates(data["whh"], _GATE_W)))  # type: ignore[operator]
+            rnn.weight_ih_l0_reverse.copy_(torch.from_numpy(_perm_gates(data["wih_r"], _GATE_W)))  # type: ignore[operator]
+            rnn.weight_hh_l0_reverse.copy_(torch.from_numpy(_perm_gates(data["whh_r"], _GATE_W)))  # type: ignore[operator]
             bias = data["lstm_b"]
-            rnn.bias_ih_l0.copy_(torch.from_numpy(_perm_gates(bias[0, :1024], _GATE_B)))
-            rnn.bias_hh_l0.copy_(torch.from_numpy(_perm_gates(bias[0, 1024:], _GATE_B)))
-            rnn.bias_ih_l0_reverse.copy_(torch.from_numpy(_perm_gates(bias[1, :1024], _GATE_B)))
-            rnn.bias_hh_l0_reverse.copy_(torch.from_numpy(_perm_gates(bias[1, 1024:], _GATE_B)))
-            core.fcs[k].weight.copy_(torch.from_numpy(data["fc_w"]))
-            core.fcs[k].bias.copy_(torch.from_numpy(data["fc_b"]))
+            rnn.bias_ih_l0.copy_(torch.from_numpy(_perm_gates(bias[0, :1024], _GATE_B)))  # type: ignore[operator]
+            rnn.bias_hh_l0.copy_(torch.from_numpy(_perm_gates(bias[0, 1024:], _GATE_B)))  # type: ignore[operator]
+            rnn.bias_ih_l0_reverse.copy_(torch.from_numpy(_perm_gates(bias[1, :1024], _GATE_B)))  # type: ignore[operator]
+            rnn.bias_hh_l0_reverse.copy_(torch.from_numpy(_perm_gates(bias[1, 1024:], _GATE_B)))  # type: ignore[operator]
+            core.fcs[k].weight.copy_(torch.from_numpy(data["fc_w"]))  # type: ignore[operator]
+            core.fcs[k].bias.copy_(torch.from_numpy(data["fc_b"]))  # type: ignore[operator]
     return core.eval()
 
 

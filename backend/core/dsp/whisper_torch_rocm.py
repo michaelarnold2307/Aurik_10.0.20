@@ -57,7 +57,7 @@ def _build_core(turbo: bool = False):
     snapshot = _find_snapshot(_TURBO_SNAPSHOT_PREFIX if turbo else _SNAPSHOT_PREFIX)
     if snapshot is None:
         raise RuntimeError("Whisper-Snapshot nicht lokal gecacht (HF-Hub) — ONNX-CPU-Pfad bleibt")
-    kwargs = {"local_files_only": True}
+    kwargs: dict[str, object] = {"local_files_only": True}
     if turbo:
         kwargs["torch_dtype"] = torch.float16
     model = WhisperForConditionalGeneration.from_pretrained(  # nosec B615 — commit-gepinnter Snapshot, kein Netz

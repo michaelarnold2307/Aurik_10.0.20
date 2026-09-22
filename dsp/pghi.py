@@ -558,7 +558,7 @@ class PghiReconstructor:
         delta_phi_omega: np.ndarray,
         max_frame: int,
         max_bin: int,
-    ) -> None:
+    ) -> np.ndarray:
         """Python-heapq-Pfad (Fallback; exakt die urspruengliche Implementierung).
 
         Der Numba-Kern in `_pghi` reproduziert diesen Pfad bit-identisch;
