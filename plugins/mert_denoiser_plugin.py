@@ -62,6 +62,7 @@ class MERTDenoiserPlugin:
         try:
             import onnxruntime as ort  # pylint: disable=import-outside-toplevel
         except Exception as _ort_exc:
+            log.error("MERT Denoiser: onnxruntime nicht verfügbar — Initialisierung abgebrochen.")
             raise RuntimeError(f"onnxruntime nicht verfügbar: {_ort_exc}") from _ort_exc
 
         providers = ["ROCMExecutionProvider", "CPUExecutionProvider"] if device == "cuda" else ["CPUExecutionProvider"]

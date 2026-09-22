@@ -16,6 +16,8 @@ from unittest.mock import MagicMock, patch
 import numpy as np
 import pytest
 
+pytest.importorskip("transformers")
+
 from backend.core.lyrics_guided_enhancement import LyricsGuidedEnhancement
 
 

@@ -51,6 +51,9 @@ jobs:
           python -m pip install --upgrade pip
           pip install numpy==1.26.4 scipy==1.15.3 soundfile==0.13.1 pytest==9.0.2 \
             pytest-timeout==2.4.0 pyyaml==6.0.3 librosa==0.11.0 numba==0.64.0
+          # Leichte Zusatz-Deps für den normativen Unit-Scope (GUI-Logik,
+          # Reports, ONNX-CPU-Fallback, Metadaten, LUFS-Normalisierung).
+          pip install psutil mutagen PyQt5==5.15.11 matplotlib onnxruntime==1.23.2 pyloudnorm==0.2.0
           # Editable-Install ist best-effort (PYTHONPATH=. ist der Primärpfad);
           # ein Fehlschlag wird laut protokolliert statt verschluckt.
           pip install -e . || echo "WARN: editable install fehlgeschlagen — Tests laufen über PYTHONPATH=."

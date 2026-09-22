@@ -636,6 +636,7 @@ class TestLaionClapPlugin:
     """LAION-CLAP: Zero-Shot-Tagging, finite Embeddings, Budget sauber."""
 
     def test_00_trusted_local_checkpoint_disables_weights_only(self, monkeypatch, tmp_path):
+        pytest.importorskip("transformers")
         from plugins import laion_clap_plugin
 
         calls = []

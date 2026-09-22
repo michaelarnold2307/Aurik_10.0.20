@@ -34,7 +34,10 @@ MANIFEST
 # Nur das Top-Level-Verzeichnis ignorieren (anchored): vendorter Code in
 # plugins/_vendor_* nutzt eigene models/-Unterverzeichnisse und MUSS ins Repo
 # (sonst ImportError auf frischen Checkouts + I001-Drift im CI-Lint-Gate).
-/models/
+/models/*
+# Ausnahme: Das Modell-Manifest ist Metadaten (keine Gewichte) und wird vom
+# model_downloader (§13.3) sowie von Tests auf frischen Checkouts benötigt.
+!/models/manifest.json
 pretrained_models/
 *.pt
 *.pth

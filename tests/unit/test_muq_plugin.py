@@ -99,6 +99,7 @@ def test_estimator_without_muq_keeps_dsp_mos(monkeypatch: pytest.MonkeyPatch) ->
 )
 def test_embedding_deterministic_and_shape(monkeypatch: pytest.MonkeyPatch) -> None:
     """Echtes Modell: deterministisch (§G5 (GEBOTE.md)) und 1024-dim Embedding."""
+    pytest.importorskip("torch")
     # Ambient-Hermetik (Muster: All-Phases-Smoke): nach vielen Modell-Ladungen
     # der Vollsuite kann das ML-Speicherbudget den MuQ-Load ablehnen und den
     # Singleton dauerhaft auf None setzen — Budget hier neutralisieren und
