@@ -56,14 +56,14 @@ def _make_plugin(monkeypatch, tmp_path, providers, captured):
 
 
 def test_gpu_request_forced_to_cpu_providers(monkeypatch, tmp_path, caplog):
-    """§SOTA-ML-V5: ROCm-Request wird verworfen (numerisch defekte LSTM-Kernels)
-    → Session bekommt nur CPU + DISABLE_ALL + sichtbare Warnung
-    (§V6 (copilot-instructions.md))."""
+    """§SOTA-ML-V5 (copilot-instructions.md): ROCm-Request wird verworfen
+    (numerisch defekte LSTM-Kernels) → Session bekommt nur CPU + DISABLE_ALL
+    + sichtbare INFO-Meldung (GPU läuft über den Torch-ROCm-Kern)."""
     import logging
 
     captured: dict = {}
     gpu_providers = [("ROCMExecutionProvider", {"device_id": 0}), "CPUExecutionProvider"]
-    with caplog.at_level(logging.WARNING):
+    with caplog.at_level(logging.INFO):
         plugin = _make_plugin(monkeypatch, tmp_path, gpu_providers, captured)
 
     assert plugin._model_ok is True
