@@ -44,6 +44,8 @@ class TestAMRBWorldclass:
         import glob
 
         baselines = glob.glob("benchmarks/amrb_baseline_*.json")
+        if not baselines:
+            pytest.skip("Keine AMRB-Baselines (benchmarks/, gitignored)")
         assert len(baselines) >= 5, f"Nur {len(baselines)} AMRB-Baselines — erwartet ≥5 (§8.1)"
 
     def test_amrb_03_eight_of_ten_scenarios(self):

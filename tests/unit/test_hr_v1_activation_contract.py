@@ -10,14 +10,21 @@ Autor: Aurik Testing Team
 """
 
 import numpy as np
+import pytest
 
 import plugins.bigvgan_v2_plugin as bvg
+
+# Checkpoint-Pfad (models/bigvgan) ist auf frischen Checkouts nicht vorhanden —
+# die vier HR-V1-Aktivierungstests prüfen genau diesen Pfad.
+_CKPT_PRESENT = bool(bvg.hr_v1_activation_status().get("checkpoint_present"))
+requires_hr_ckpt = pytest.mark.skipif(not _CKPT_PRESENT, reason="bigvgan_v2.pth fehlt (models/, gitignored)")
 
 
 class TestActivationContract:
     def test_ready_false_by_default(self):
         assert bvg.bigvgan_v2_ready() is False
 
+    @requires_hr_ckpt
     def test_status_reports_f3_pending(self):
         status = bvg.hr_v1_activation_status()
         assert status["activated"] is False
@@ -25,6 +32,7 @@ class TestActivationContract:
         # bigvgan_v2.pth ist lokal vorhanden — der Checkpoint allein reicht NICHT.
         assert status["checkpoint_present"] is True
 
+    @requires_hr_ckpt
     def test_flag_is_single_switch(self):
         old = bvg.BIGVGAN_V2_HR_ACTIVATED
         try:
@@ -62,6 +70,7 @@ class TestPhase07HrV1ActivatedFallback:
         x = (0.2 * np.sin(2 * np.pi * 440 * t)).astype(np.float32)
         return HarmonicRestorationPhase().process(x, sample_rate=48000, material_type=MaterialType.VINYL)
 
+    @requires_hr_ckpt
     def test_synthesis_failure_falls_back_dsp(self, monkeypatch):
         monkeypatch.setattr(bvg, "BIGVGAN_V2_HR_ACTIVATED", True)
 
@@ -75,6 +84,7 @@ class TestPhase07HrV1ActivatedFallback:
         assert hr.get("applied") is False  # §V6-fail-closed: DSP-Status quo
         assert np.isfinite(np.asarray(res.audio)).all()
 
+    @requires_hr_ckpt
     def test_model_used_none_keeps_dsp(self, monkeypatch):
         from types import SimpleNamespace
 

@@ -77,6 +77,10 @@ benchmarks/amrb_baseline_restoration_*.json
 # ── Daten & Trainingsdaten ───────────────────────────────────────────────────
 datasets/
 data/
+# Ausnahme: Mikrofon-Referenzprofile (EQ-Kurven) sind Referenzdaten und werden
+# von backend/core/microphone_response_library.py + Tests benötigt.
+!backend/data/
+!backend/data/microphone_profiles.json
 testdata/
 golden_snippet_library/
 golden_snippets/

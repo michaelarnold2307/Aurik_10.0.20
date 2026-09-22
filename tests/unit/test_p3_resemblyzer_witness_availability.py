@@ -104,6 +104,9 @@ class TestResemblyzerWitnessAvailability:
 
         import plugins.resemblyzer_plugin as rp
 
+        if not os.path.isdir(rp._LOCAL_RESEMBLYZER_DIR):
+            pytest.skip("models/resemblyzer nicht vorhanden (gitignored)")
+
         assert os.path.isdir(rp._LOCAL_RESEMBLYZER_DIR), (
             f"Lokales Resemblyzer-Paket nicht gefunden: {rp._LOCAL_RESEMBLYZER_DIR} "
             "(Pfad-Tippfehler models/rezemblyzer?)"

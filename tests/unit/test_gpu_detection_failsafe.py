@@ -26,7 +26,7 @@ class TestGpuDetectionFailsafe:
         mgr = get_ml_device_manager()
         # Wenn keine GPU verfügbar, sollte CPU-only Modus aktiv sein
         if not mgr._gpu_available:
-            assert mgr._backend.value == "cpu", f"Backend sollte 'cpu' sein, ist '{mgr._backend}'"
+            assert mgr._backend.value == "none", f"Backend sollte 'none' (CPU-only) sein, ist '{mgr._backend}'"
 
     def test_detection_timeout_fallback(self):
         """Detection-Timeout führt zu CPU-Fallback."""

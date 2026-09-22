@@ -1,18 +1,24 @@
 # TASK_CHANGES — Live-Ledger der aktuellen Aufgabe
 
-> Generiert von `scripts/change_ledger.py snapshot` (Base: `HEAD`, Stand: 2026-09-22 10:37 CEST).
+> Generiert von `scripts/change_ledger.py snapshot` (Base: `HEAD`, Stand: 2026-09-22 11:00 CEST).
 > CI (`ci-lite.yml` pr-evidence-gate) erzwingt Abdeckung: jede geänderte Code-Datei muss hier stehen.
 
 ## Geänderte Dateien
 
 | Status | Pfad | Art |
 |---|---|---|
-| M | .github/workflows/ci-cross-platform.yml | modifiziert |
-| M | .github/workflows/ci-lite.yml | modifiziert |
-| M | .github/workflows/nightly-quality.yml | modifiziert |
-| M | .github/workflows/solo-release-gate.yml | modifiziert |
+| M | .gitignore | modifiziert |
 | M | audit/spec_integration_report.json | modifiziert |
 | M | audit/spec_integration_report.md | modifiziert |
+| A | backend/data/microphone_profiles.json | neu |
+| M | tests/unit/test_gpu_detection_failsafe.py | modifiziert |
+| M | tests/unit/test_hr_v1_activation_contract.py | modifiziert |
+| M | tests/unit/test_mushra_corpus.py | modifiziert |
+| M | tests/unit/test_p3_resemblyzer_witness_availability.py | modifiziert |
+| M | tests/unit/test_phase09_crackle_in_vocal_passages.py | modifiziert |
+| M | tests/unit/test_real_audio_defect_golden_gate.py | modifiziert |
+| M | tests/unit/test_real_audio_strategy_golden_gate.py | modifiziert |
+| M | tests/unit/test_worldclass_proof.py | modifiziert |
 
 ## Entscheidungen
 

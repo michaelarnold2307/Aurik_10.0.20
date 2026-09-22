@@ -81,6 +81,8 @@ class TestCorpusIntegrity:
         assert expected.issubset(actual), f"Missing materials: {expected - actual}"
 
     def test_corpus_pairs_exist(self):
+        if not CORPUS_DIR.is_dir():
+            pytest.skip("corpus/ nicht vorhanden (gitignored)")
         pairs = _get_corpus_pairs()
         assert len(pairs) > 0, "Keine Korpus-Paare gefunden"
 
@@ -180,6 +182,8 @@ class TestCorpusReporting:
         return _get_corpus_pairs()
 
     def test_generate_mushra_report(self, corpus_pairs):
+        if not corpus_pairs:
+            pytest.skip("corpus/ nicht vorhanden (gitignored)")
         from backend.core.mert_mushra_proxy import MertMushraProxy
 
         proxy = MertMushraProxy()

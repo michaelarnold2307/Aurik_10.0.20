@@ -93,6 +93,10 @@ def test_crackle_regions_detected_in_vocal_passage(phase09):
 
 def test_crackle_removed_in_vocal_passage(phase09):
     """Restored signal must have lower HF impulsive energy than input in vocal+crackle region."""
+    from backend.core.ml_model_readiness import check_ml_model_ready
+
+    if not check_ml_model_ready("BANQUET", phase_name="09"):
+        pytest.skip("BANQUET nicht bereit (models/) — Crackle-ML-Pfad-Guard nur mit Modellen testbar")
     audio = _make_vocal_with_crackle()
 
     result = phase09.process(
