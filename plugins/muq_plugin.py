@@ -67,9 +67,11 @@ _EMBED_DIM = 1024
 _REF_DIR = _PROJECT_ROOT / "corpus" / "vinyl" / "clean"
 _REF_CACHE = _PROJECT_ROOT / "models" / "muq_mulan" / "muq_ref_embeddings.npz"
 _A1_HEAD_PATH = _PROJECT_ROOT / "models" / "muq_mulan" / "muq_eval_a1_head.pt"
-# Kanonischer Projekt-lokaler Modellpfad (Rev. 2026-09-11):
-# models/muq_mulan/ enthält den MuQ-Encoder-Checkpoint
-# (config.json + model.safetensors, OpenMuQ/MuQ-large-msd-iter).
+# Kanonische Projekt-lokale Modellpfade:
+# - models/muq_mulan/ = MuQ-large-msd-iter Backbone (config.json + model.safetensors,
+#                       ~1,3 GB, byte-identisch zum HF-Snapshot) — Primärpfad.
+# - models/muq/       = offline-lokale Kopie desselben Backbones (Fallback-Pfad).
+# - models/muq_mulan/mulan/ = MuQ-MuLan-Checkpoint (anderer Trainingsstand, nur MuLan-Turm).
 _LOCAL_DIR = _PROJECT_ROOT / "models" / "muq_mulan"
 _LOCAL_DIR_FALLBACK = _PROJECT_ROOT / "models" / "muq"
 _MEMORY_GB = 1.4
