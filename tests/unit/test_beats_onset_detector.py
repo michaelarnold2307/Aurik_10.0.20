@@ -24,6 +24,7 @@ def _clicks(sr: int, seconds: float, at_s: list[float]) -> np.ndarray:
 
 
 def test_fbank_shape_16k() -> None:
+    pytest.importorskip("torch")
     rng = np.random.RandomState(0)
     x = rng.randn(16000).astype(np.float32) * 0.05
     fb = bod.fbank_16k(x)
@@ -103,6 +104,7 @@ def test_curve_alignment_and_determinism(monkeypatch: pytest.MonkeyPatch) -> Non
 @pytest.mark.skipif(not bod.beats_available(), reason="models/beats/beats_iter3.onnx fehlt")
 def test_real_beats_encoder_smoke() -> None:
     """Echter BEATs-Encoder: 2-s-Clip liefert eine finite Onset-Kurve (CPU)."""
+    pytest.importorskip("torch")
     x = _clicks(16000, 2.0, [0.8, 1.2])
     curve, cs, ce = bod.beats_onset_curve(x, 16000)
     assert curve is not None

@@ -27,14 +27,19 @@ Usage:
     # Quantize model
     quantizer = ModelQuantizer()
     quantizer.quantize("model.onnx", "model_quantized.onnx")
+
+§Fix 2026-09-22 (Spec 24 — kein stiller Ausfall, kein Import-Crash):
+Die Submodule werden über PEP 562 (`__getattr__`) lazy importiert. Vorher
+scheiterte bereits `import backend.core.onnx.quantizer` ohne onnxruntime, weil
+der Paket-`__init__` alle Submodule eifrig importierte (runtime.py zieht
+onnxruntime auf Modulebene). Jetzt ist das Paket selbst importierbar; der
+onnxruntime-Bedarf entsteht erst beim tatsächlichen Nutzen der Runtime-Klassen.
 """
 
-from .converter import ConversionConfig, ModelSpecificConverter, ONNXConverter
-from .fallback import FallbackEvent, FallbackManager, FallbackReason, FallbackStats, ONNXModelWithFallback
-from .model_info import ModelInfo, ONNXModelStatus
-from .plugin_manager import ONNXPluginManager, load_model, process_audio
-from .quantizer import ModelQuantizer, QuantizationConfig, QuantizationType
-from .runtime import ONNXInferenceSession, ONNXProvider, OptimizedONNXModel
+from __future__ import annotations
+
+import importlib
+from typing import Any
 
 __all__ = [
     "ConversionConfig",
@@ -64,4 +69,37 @@ __all__ = [
     "process_audio",
 ]
 
-__version__ = "1.0.0"
+# Attributname -> (Submodul, Symbol) für den Lazy-Import.
+_LAZY_EXPORTS: dict[str, tuple[str, str]] = {
+    "ConversionConfig": (".converter", "ConversionConfig"),
+    "ModelSpecificConverter": (".converter", "ModelSpecificConverter"),
+    "ONNXConverter": (".converter", "ONNXConverter"),
+    "FallbackEvent": (".fallback", "FallbackEvent"),
+    "FallbackManager": (".fallback", "FallbackManager"),
+    "FallbackReason": (".fallback", "FallbackReason"),
+    "FallbackStats": (".fallback", "FallbackStats"),
+    "ONNXModelWithFallback": (".fallback", "ONNXModelWithFallback"),
+    "ModelInfo": (".model_info", "ModelInfo"),
+    "ONNXModelStatus": (".model_info", "ONNXModelStatus"),
+    "ONNXPluginManager": (".plugin_manager", "ONNXPluginManager"),
+    "load_model": (".plugin_manager", "load_model"),
+    "process_audio": (".plugin_manager", "process_audio"),
+    "ModelQuantizer": (".quantizer", "ModelQuantizer"),
+    "QuantizationConfig": (".quantizer", "QuantizationConfig"),
+    "QuantizationType": (".quantizer", "QuantizationType"),
+    "ONNXInferenceSession": (".runtime", "ONNXInferenceSession"),
+    "ONNXProvider": (".runtime", "ONNXProvider"),
+    "OptimizedONNXModel": (".runtime", "OptimizedONNXModel"),
+}
+
+
+def __getattr__(name: str) -> Any:
+    """PEP 562: Lazy-Import des zugehörigen Submoduls beim ersten Zugriff."""
+    try:
+        _submodule, _symbol = _LAZY_EXPORTS[name]
+    except KeyError as _missing:
+        raise AttributeError(f"module {__name__!r} has no attribute {name!r}") from _missing
+    _module = importlib.import_module(_submodule, __name__)
+    _value = getattr(_module, _symbol)
+    globals()[name] = _value
+    return _value

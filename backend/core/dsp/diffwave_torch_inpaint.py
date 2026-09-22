@@ -74,11 +74,20 @@ def _load_model() -> object | None:
     global _model, _model_ready  # pylint: disable=global-statement
     if _model is not None:
         return _model
-    # §G174 (GEBOTE.md): Imports VOR dem Lock auflösen.
-    import torch
+    # §G174 (GEBOTE.md): Imports VOR dem Lock auflösen; ohne torch → DSP-Ersatz
+    # (§V6 (copilot-instructions.md): laut warnen statt ImportError).
+    try:
+        import torch
 
-    from backend.core.dsp.diffwave_model import DiffWave
-    from backend.core.plugin_lifecycle_manager import register_plugin as _reg_plm
+        from backend.core.dsp.diffwave_model import DiffWave
+        from backend.core.plugin_lifecycle_manager import register_plugin as _reg_plm
+    except Exception as _imp_exc:
+        _model_ready = True
+        logger.warning(
+            "DiffWave-Torch: torch nicht ladbar (%s) — Kaskade nutzt den DSP-Ersatzpfad.",
+            _imp_exc,
+        )
+        return None
 
     with _lock:
         if _model is not None:

@@ -33,7 +33,6 @@ from pathlib import Path
 from typing import Optional, cast
 
 import numpy as np
-import onnxruntime as ort
 from scipy.signal import resample_poly
 
 from backend.file_import import load_audio_file
@@ -65,6 +64,11 @@ class MERTQualityGate:
         # §V6 (copilot-instructions.md)/§III.9: EP-Auswahl nur nach Verfügbarkeit; provider_options muss
         # dieselbe Länge wie providers haben (ort wirft sonst „EP Error“ beim
         # CPU-Fallback — Produktionsbefund 2026-09-20: Score-Ausfall im Gate).
+        try:
+            import onnxruntime as ort  # pylint: disable=import-outside-toplevel
+        except Exception as _ort_exc:
+            raise RuntimeError(f"onnxruntime nicht verfügbar: {_ort_exc}") from _ort_exc
+
         _available = ort.get_available_providers()
         if device == "cuda" and "ROCMExecutionProvider" in _available:
             providers = ["ROCMExecutionProvider", "CPUExecutionProvider"]

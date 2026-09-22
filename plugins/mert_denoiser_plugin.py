@@ -22,7 +22,6 @@ from pathlib import Path
 from typing import Optional, Tuple, Union, cast
 
 import numpy as np
-import onnxruntime as ort
 import soundfile as sf
 
 from backend.core.gpu_model_registry import get_onnx_providers
@@ -59,6 +58,11 @@ class MERTDenoiserPlugin:
         self.chunk_duration = chunk_duration
         if not enable:
             return
+
+        try:
+            import onnxruntime as ort  # pylint: disable=import-outside-toplevel
+        except Exception as _ort_exc:
+            raise RuntimeError(f"onnxruntime nicht verfügbar: {_ort_exc}") from _ort_exc
 
         providers = ["ROCMExecutionProvider", "CPUExecutionProvider"] if device == "cuda" else ["CPUExecutionProvider"]
         provider_options = [{"device_id": str(gpu_id)}, {}] if device == "cuda" else []

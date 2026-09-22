@@ -36,6 +36,7 @@ def _clear_optout(monkeypatch):
 
 
 def _construct_plugin(monkeypatch, tmp_path, *, env_disable: bool = False) -> DemucsV4Plugin:
+    pytest.importorskip("onnxruntime")
     from plugins.demucs_v4_plugin import DemucsV4Plugin
 
     dummy = tmp_path / "htdemucs_6s.onnx"

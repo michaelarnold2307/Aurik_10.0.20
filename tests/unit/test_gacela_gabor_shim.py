@@ -98,6 +98,7 @@ def test_preprocess_signal_length(monkeypatch) -> None:
 
 def test_install_shim_makes_upstream_import_work(tmp_path, monkeypatch) -> None:
     """Nach dem Shim importiert data.audioLoader ohne ltfatpy."""
+    pytest.importorskip("torch")
     import importlib
     from pathlib import Path
 
@@ -108,7 +109,8 @@ def test_install_shim_makes_upstream_import_work(tmp_path, monkeypatch) -> None:
     assert "tifresi.utils" in sys.modules
 
     data_dir = Path("models/gacela_upstream/data")
-    assert data_dir.is_dir()
+    if not data_dir.is_dir():
+        pytest.skip("GACELA-Upstream nicht vorhanden (models/gacela_upstream/data)")
     monkeypatch.setattr(sys, "path", [str(data_dir.parent), str(data_dir)] + sys.path)
     # Ordnungs-Robustheit: andere Suiten können audioLoader/baseDataset bereits
     # (teilweise) importiert haben — Cache-Einträge entfernen, damit der

@@ -66,11 +66,16 @@ def test_crepe_returns_empty_result_when_yin_also_fails(monkeypatch):
     assert np.all(result.f0_hz == 0.0)
 
 
-def test_crepe_self_heals_after_plm_eviction(monkeypatch):
+def test_crepe_self_heals_after_plm_eviction(monkeypatch, tmp_path):
     """§PERF-R14: Nach PLM-Eviction (Session=None) lädt analyze() das Modell
     selbst wieder — statt dauerhaft auf dem langsamen pYIN-Pfad zu bleiben.
     """
+    import plugins.crepe_plugin as crepe_mod
     from plugins.crepe_plugin import CrepePlugin
+
+    _dummy_onnx = tmp_path / "crepe.onnx"
+    _dummy_onnx.write_bytes(b"dummy")
+    monkeypatch.setattr(crepe_mod, "_CREPE_ONNX_PATH", _dummy_onnx)
 
     _loads = {"n": 0}
 

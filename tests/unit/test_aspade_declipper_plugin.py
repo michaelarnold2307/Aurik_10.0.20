@@ -25,6 +25,7 @@ def _save_identity_onnx(path) -> None:
 
     Entspricht dem APPLADE-Vertrag: Magnitude-Patch (Frequenz 512 × Zeit T).
     """
+    pytest.importorskip("onnx")
     import onnx
     from onnx import TensorProto, helper
 

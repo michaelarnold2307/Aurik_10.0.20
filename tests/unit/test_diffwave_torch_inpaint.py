@@ -57,6 +57,7 @@ class _FakeModel:
 
 
 def test_inpaint_gap_shape_finite_deterministic(no_ckpt, monkeypatch: pytest.MonkeyPatch) -> None:
+    pytest.importorskip("torch")
     fake = _FakeModel()
     monkeypatch.setattr(dti, "_load_model", lambda: fake)
     monkeypatch.setattr(dti, "_device", lambda: "cpu")
@@ -71,6 +72,7 @@ def test_inpaint_gap_shape_finite_deterministic(no_ckpt, monkeypatch: pytest.Mon
 
 
 def test_inpaint_gap_resamples_48k(no_ckpt, monkeypatch: pytest.MonkeyPatch) -> None:
+    pytest.importorskip("torch")
     fake = _FakeModel()
     monkeypatch.setattr(dti, "_load_model", lambda: fake)
     monkeypatch.setattr(dti, "_device", lambda: "cpu")
@@ -84,6 +86,7 @@ def test_inpaint_gap_resamples_48k(no_ckpt, monkeypatch: pytest.MonkeyPatch) -> 
 
 @pytest.mark.skipif(not dti._CKPT_BASE.is_file(), reason="models/diffwave/diffwave.ckpt fehlt")
 def test_real_checkpoint_strict_load() -> None:
+    pytest.importorskip("torch")
     import torch
 
     from backend.core.dsp.diffwave_model import DiffWave
