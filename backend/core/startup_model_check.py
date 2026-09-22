@@ -110,7 +110,7 @@ def check_models(app_root: Path | None = None) -> ModelCheckResult:
     # Manifest laden
     manifest_path = root / "models" / "manifest.json"
     if not manifest_path.exists():
-        logger.warning("Start_Pruefung: manifest.json nicht gefunden in %s", manifest_path)
+        logger.warning("Startprüfung: manifest.json nicht gefunden: %s", manifest_path)
         return ModelCheckResult(
             all_ok=False,
             mode="DSP_ONLY",
@@ -128,7 +128,7 @@ def check_models(app_root: Path | None = None) -> ModelCheckResult:
         with open(manifest_path, encoding="utf-8") as fh:
             manifest = json.load(fh)
     except Exception as exc:
-        logger.error("Start_Pruefung: manifest.json konnte nicht gelesen werden: %s", exc)
+        logger.error("Startprüfung: manifest.json konnte nicht gelesen werden: %s", exc)
         return ModelCheckResult(
             all_ok=False,
             mode="DSP_ONLY",
@@ -156,9 +156,9 @@ def check_models(app_root: Path | None = None) -> ModelCheckResult:
         file_path = root / bundled_path
         if file_path.exists():
             found_count += 1
-            logger.debug("Start_Pruefung: OK — %s (%s)", name, bundled_path)
+            logger.debug("Startprüfung: Modell vorhanden: %s (%s)", name, bundled_path)
         else:
-            logger.warning("Start_Pruefung: FEHLT — %s (%s)", name, bundled_path)
+            logger.warning("Startprüfung: Modell fehlt: %s (%s)", name, bundled_path)
             info = {
                 "name": name,
                 "path": bundled_path,
@@ -224,7 +224,7 @@ def check_models(app_root: Path | None = None) -> ModelCheckResult:
         elif missing_optional:
             # Nur optionale fehlen → kein Dialog nötig, nur Log
             logger.info(
-                "Start_Pruefung: %d optionale Modelle nicht gefunden — DSP-Fallbacks aktiv.",
+                "Startprüfung: %d optionale Modelle fehlen — DSP-Ersatzpfade aktiv.",
                 len(missing_optional),
             )
 
@@ -241,11 +241,11 @@ def check_models(app_root: Path | None = None) -> ModelCheckResult:
     )
 
     _log_summary(result)
-    # §v10.950: Model Zoo Registry — alle Modelle sichtbar machen
+    # §v10.950: Model Zoo Registry — alle Modelle sichtbar machen (Detailbericht nur im Debug-Log)
     try:
         from backend.core.model_zoo_registry import report as _zoo_report
 
-        logger.info("Start_Pruefung: %s", _zoo_report())
+        logger.debug("Startprüfung: %s", _zoo_report())
     except Exception:
         pass
 
@@ -253,16 +253,16 @@ def check_models(app_root: Path | None = None) -> ModelCheckResult:
 
 
 def _log_summary(result: ModelCheckResult) -> None:
-    """Loggt eine kompakte englische Zusammenfassung des Check-Ergebnisses."""
+    """Loggt eine kompakte deutschsprachige Zusammenfassung des Check-Ergebnisses."""
     if result.all_ok:
         logger.info(
-            "Start_Pruefung: ALL OK — %d/%d bundled models present (FULL_ML Betriebsart)",
+            "Startprüfung: OK — %d/%d Modelle vorhanden (Betriebsart FULL_ML)",
             result.found_count,
             result.total_bundled,
         )
     else:
         logger.warning(
-            "Start_Pruefung: Betriebsart=%s found=%d/%d missing_primary=%d missing_optional=%d",
+            "Startprüfung: Betriebsart=%s, vorhanden=%d/%d, fehlend_primär=%d, fehlend_optional=%d",
             result.mode,
             result.found_count,
             result.total_bundled,
@@ -272,7 +272,7 @@ def _log_summary(result: ModelCheckResult) -> None:
         if result.missing_primary:
             for m in result.missing_primary:
                 logger.warning(
-                    "  MISSING PRIMARY: %s → %s (Ersatzpfad: %s)",
+                    "Startprüfung: Primärmodell fehlt: %s → %s (Ersatzpfad: %s)",
                     m["name"],
                     m["path"],
                     m.get("fallback", "DSP"),  # §V6 (copilot-instructions.md): logger.warning handled at call site
