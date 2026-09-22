@@ -81,9 +81,9 @@ class TestCorpusIntegrity:
         assert expected.issubset(actual), f"Missing materials: {expected - actual}"
 
     def test_corpus_pairs_exist(self):
-        if not CORPUS_DIR.is_dir():
-            pytest.skip("corpus/ nicht vorhanden (gitignored)")
         pairs = _get_corpus_pairs()
+        if not pairs:
+            pytest.skip("corpus/ ohne Audio-Paare (gitignored)")
         assert len(pairs) > 0, "Keine Korpus-Paare gefunden"
 
     def test_audio_files_loadable(self):

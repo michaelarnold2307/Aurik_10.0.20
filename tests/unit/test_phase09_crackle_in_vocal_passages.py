@@ -11,6 +11,7 @@ is sufficient to identify impulsive broadband noise even in harmonic contexts.
 
 import sys
 import types
+from pathlib import Path
 
 import numpy as np
 import pytest
@@ -93,10 +94,12 @@ def test_crackle_regions_detected_in_vocal_passage(phase09):
 
 def test_crackle_removed_in_vocal_passage(phase09):
     """Restored signal must have lower HF impulsive energy than input in vocal+crackle region."""
-    from backend.core.ml_model_readiness import check_ml_model_ready
-
-    if not check_ml_model_ready("BANQUET", phase_name="09"):
-        pytest.skip("BANQUET nicht bereit (models/) — Crackle-ML-Pfad-Guard nur mit Modellen testbar")
+    # Empirisch verifiziert (2026-09-22): Ohne models/banquet detektiert der
+    # Crackle-Pfad in harmonisch dichten Gesangsstellen keine Regionen — der
+    # Guard-Test prüft den Modell-Pfad und wird auf frischen Checkouts geskippt.
+    _banquet_dir = Path(__file__).resolve().parents[2] / "models" / "banquet"
+    if not _banquet_dir.is_dir():
+        pytest.skip("models/banquet fehlt (gitignored) — Crackle-Vocal-Guard nur mit Modellpfad testbar")
     audio = _make_vocal_with_crackle()
 
     result = phase09.process(
