@@ -1,15 +1,16 @@
 # TASK_CHANGES — Live-Ledger der aktuellen Aufgabe
 
-> Generiert von `scripts/change_ledger.py snapshot` (Base: `HEAD`, Stand: 2026-09-22 09:04 CEST).
+> Generiert von `scripts/change_ledger.py snapshot` (Base: `HEAD`, Stand: 2026-09-22 09:17 CEST).
 > CI (`ci-lite.yml` pr-evidence-gate) erzwingt Abdeckung: jede geänderte Code-Datei muss hier stehen.
 
 ## Geänderte Dateien
 
 | Status | Pfad | Art |
 |---|---|---|
+| D | Dockerfile | gelöscht |
 | M | audit/spec_integration_report.json | modifiziert |
 | M | audit/spec_integration_report.md | modifiziert |
-| ?? | docs/reports/spec_evidence/2026-09-22_spec25_ambience_match_plugin.md | ungetrackt |
+| D | docker-compose.yml | gelöscht |
 
 ## Entscheidungen
 
