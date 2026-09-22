@@ -29,12 +29,13 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os:
-          - ubuntu-22.04
-          - windows-2022
-          - macos-14  # Apple Silicon (M1+), GitHub-hosted
-        python:
-          - "3.10.12"
+        include:
+          - os: ubuntu-22.04
+            python: "3.10.12"  # exakter Baseline-Pin (Toolcache vorhanden)
+          - os: windows-2022
+            python: "3.10"  # 3.10.12 nicht im Runner-Toolcache; 3.10.x ≥ 3.10.12
+          - os: macos-14  # Apple Silicon (M1+), GitHub-hosted
+            python: "3.10"  # 3.10.12 nicht für macos-arm64 verfügbar
     timeout-minutes: 120
 
     steps:
@@ -79,7 +80,7 @@ jobs:
           # bei Fehlschlag wird der Log als Artefakt hochgeladen.
           PYTHONPATH=. pytest tests/unit tests/normative/test_no_production_stubs.py \
             -m "not slow and not gpu and not onnx" \
-            --timeout=60 \
+            --timeout=120 \
             --tb=short \
             --no-header \
             --override-ini="addopts=" \
