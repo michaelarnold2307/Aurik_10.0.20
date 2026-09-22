@@ -1,28 +1,15 @@
 # TASK_CHANGES — Live-Ledger der aktuellen Aufgabe
 
-> Generiert von `scripts/change_ledger.py snapshot` (Base: `HEAD`, Stand: 2026-09-22 08:49 CEST).
+> Generiert von `scripts/change_ledger.py snapshot` (Base: `HEAD`, Stand: 2026-09-22 09:04 CEST).
 > CI (`ci-lite.yml` pr-evidence-gate) erzwingt Abdeckung: jede geänderte Code-Datei muss hier stehen.
 
 ## Geänderte Dateien
 
 | Status | Pfad | Art |
 |---|---|---|
-| M | .github/FILE_REGISTRY.md | modifiziert |
-| M | .github/workflows/ci-cross-platform.yml | modifiziert |
-| M | TASK_CHANGES.md | modifiziert |
 | M | audit/spec_integration_report.json | modifiziert |
 | M | audit/spec_integration_report.md | modifiziert |
-| M | backend/core/dsp/diffwave_torch_inpaint.py | modifiziert |
-| M | `backend/core/onnx/__init__.py` | modifiziert |
-| M | docs/CI_CD.md | modifiziert |
-| M | plugins/mert_denoiser_plugin.py | modifiziert |
-| M | plugins/mert_quality_gate.py | modifiziert |
-| M | tests/unit/test_aspade_declipper_plugin.py | modifiziert |
-| M | tests/unit/test_beats_onset_detector.py | modifiziert |
-| M | tests/unit/test_crepe_plugin.py | modifiziert |
-| M | tests/unit/test_demucs_stage_activation.py | modifiziert |
-| M | tests/unit/test_diffwave_torch_inpaint.py | modifiziert |
-| M | tests/unit/test_gacela_gabor_shim.py | modifiziert |
+| ?? | docs/reports/spec_evidence/2026-09-22_spec25_ambience_match_plugin.md | ungetrackt |
 
 ## Entscheidungen
 
