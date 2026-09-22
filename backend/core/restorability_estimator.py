@@ -22,6 +22,12 @@ import numpy as np
 
 logger = logging.getLogger(__name__)
 
+# Kalibrierungskonstante (Guard-Kalibrierung: kein Hard-Fail auf Normalwerte).
+# Gemessen im überwachten Lauf 2026-09-22: DSP-Anteil ≈ 5,9 s je 30-s-Song
+# (CPU-Anteile der Schätzung). Budget = Messwert + Headroom — die Warnung
+# feuert nur bei echter Überlast, nicht bei jedem normalen Lauf.
+_DSP_BUDGET_S: float = 8.0
+
 # ---------------------------------------------------------------------------
 # Ergebnis-Datenklasse
 # ---------------------------------------------------------------------------
@@ -326,13 +332,14 @@ class RestorabilityEstimator:
 
         _elapsed = time.perf_counter() - _t0
         _elapsed_dsp = _elapsed - _muq_elapsed
-        if _elapsed_dsp > 5.0:
+        if _elapsed_dsp > _DSP_BUDGET_S:
             logger.warning(
-                "RestorabilityEstimator: DSP-Budget exceeded (%.2fs > 5.0s) — Ergebnis may be partial. material=%s",
+                "RestorabilityEstimator: DSP-Budget überschritten (%.2fs > %.1fs) — Ergebnis ggf. partiell. material=%s",
                 _elapsed_dsp,
+                _DSP_BUDGET_S,
                 material,
             )
-        elif _muq_elapsed > 5.0:
+        elif _muq_elapsed > _DSP_BUDGET_S:
             logger.info(
                 "RestorabilityEstimator: MuQ-ML-Prior %.2fs (Erst-Load einmalig je Prozess) — DSP-Anteil %.2fs im Budget",
                 _muq_elapsed,
