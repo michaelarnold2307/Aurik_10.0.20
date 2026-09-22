@@ -90,6 +90,10 @@ jobs:
             > /tmp/aurik_cross_platform_tests.log 2>&1 || {
               echo "=== Letzte 120 Zeilen des Testlogs ==="
               tail -120 /tmp/aurik_cross_platform_tests.log
+              echo "=== Fehlgeschlagene Tests (Annotations, API-lesbar) ==="
+              grep -E "^(FAILED|ERROR)" /tmp/aurik_cross_platform_tests.log | head -40 | sed 's/^/::error file=ci-cross-platform::/'
+              echo "=== Zusammenfassung ==="
+              grep -E "[0-9]+ (passed|failed|error)" /tmp/aurik_cross_platform_tests.log | tail -3 | sed 's/^/::warning file=ci-cross-platform::/'
               exit 1
             }
           tail -15 /tmp/aurik_cross_platform_tests.log
