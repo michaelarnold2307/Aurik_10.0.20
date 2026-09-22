@@ -100,6 +100,10 @@ lokal, im Hook und in der CI gilt dieselbe Version.
    (`install_aurik.sh` / `install_aurik.bat`) beilegen.
 5. **Modell-Bereitstellung:** Der Installer muss die Gewichts-Bereitstellung
    für `models/` dokumentieren (ohne Modelle läuft Aurik auf DSP-Pfaden).
+   Wichtigster Seed für die Voranalyse-Qualität: **MuQ-large-msd-iter** nach
+   `models/muq/` (`config.json` + `model.safetensors`, CC BY-NC 4.0 — alternativ
+   HF-Download `OpenMuQ/MuQ-large-msd-iter` via model_downloader). Ohne ihn
+   fällt der Qualitäts-Witness auf den DSP-Zeugen zurück.
 
 ## 📊 Status-Badges
 
