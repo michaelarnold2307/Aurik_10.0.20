@@ -31,7 +31,6 @@ Version: 2.0.0 Professional ML-Hybrid
 
 import logging
 import os
-import tempfile
 import time
 from typing import cast
 
@@ -2448,10 +2447,6 @@ class TapeHissReductionPhase(PhaseInterface):
         Returns:
             True if successful, False otherwise
         """
-        if not SOUNDFILE_AVAILABLE:
-            logger.warning("soundfile not verfuegbar for ML HF refinement")
-            return False
-
         plugin = self._get_deepfilternet_plugin()
         if plugin is None:
             return False
@@ -2480,16 +2475,6 @@ class TapeHissReductionPhase(PhaseInterface):
             logger.warning("Verarbeitungsschritt_29_tape_hiss_reduction.py::_refine_hf_with_ml Ersatzpfad: %s", e)
 
         try:
-            # Create temporary files
-            with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as input_temp:
-                input_path = input_temp.name
-
-            with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as output_temp:
-                output_path = output_temp.name
-
-            # Write audio to temp file
-            sf.write(input_path, audio, sample_rate)
-
             # §0j [RELEASE_MUST] Energy-Bias PANNs-adaptiv:
             # Vokal (panns_singing >= 0.40) → leichtere HF-Unterdrückung (post_filter=False),
             # äquivalent zu energy_bias=-6 dB (Harmonik-Schutz §0j Spec 04).
@@ -2530,66 +2515,44 @@ class TapeHissReductionPhase(PhaseInterface):
                 _energy_bias_equiv_db = _ctx_energy_bias_29
                 logger.debug("§0j Verarbeitungsschritt_29 energy_bias from context=%.1f dB", _ctx_energy_bias_29)
 
-            # Process with DeepFilterNet
-            returncode, _stdout, _stderr = plugin.process(
-                input_path,
-                output_path,
-                post_filter=_post_filter_p29,
-            )
+            # In-Process-Aufruf (§SOTA-Fix): Die Plugin-API heißt enhance(audio, sr,
+            # energy_bias_db) — das alte Subprozess-Interface plugin.process(input,
+            # output, post_filter=...) existiert nicht mehr (Produktionsbefund:
+            # 'DeepFilterNetV3Plugin' object has no attribute 'process').
+            refined = plugin.enhance(audio, sample_rate, energy_bias_db=_energy_bias_equiv_db)
+            refined = np.asarray(refined, dtype=np.float32)
 
-            if returncode == 0 and os.path.exists(output_path):
-                # Read refined audio
-                from backend.file_import import load_audio_file
+            # Blend strategy: Keep <2kHz from original, use ML for >2kHz
+            if refined.shape == audio.shape:
+                # Extract HF bands
+                sos_lp = signal.butter(4, self.ML_FREQUENCY_THRESHOLD_HZ, btype="low", fs=sample_rate, output="sos")
+                sos_hp = signal.butter(4, self.ML_FREQUENCY_THRESHOLD_HZ, btype="high", fs=sample_rate, output="sos")
 
-                _res = load_audio_file(output_path, do_carrier_analysis=False)
-                if not _res or "audio" not in _res:
-                    return False
-                refined = np.asarray(_res["audio"], dtype=np.float32)
-
-                # Blend strategy: Keep <2kHz from original, use ML for >2kHz
-                if refined.shape == audio.shape:
-                    # Extract HF bands
-                    sos_lp = signal.butter(4, self.ML_FREQUENCY_THRESHOLD_HZ, btype="low", fs=sample_rate, output="sos")
-                    sos_hp = signal.butter(
-                        4, self.ML_FREQUENCY_THRESHOLD_HZ, btype="high", fs=sample_rate, output="sos"
-                    )
-
-                    # Apply filters
-                    is_stereo = audio.ndim == 2
-                    # §2.51 Anti-Zeitversatz: sosfiltfilt (Zero-Phase) — LP+HP werden
-                    # rekombiniert; sosfilt würde Zeitversatz + Filtereinschalttransiente erzeugen.
-                    if is_stereo:
-                        for ch in range(2):
-                            lf_original = signal.sosfiltfilt(sos_lp, audio[:, ch])
-                            hf_refined = signal.sosfiltfilt(sos_hp, refined[:, ch])
-                            audio[:, ch] = lf_original + hf_refined
-                    else:
-                        lf_original = signal.sosfiltfilt(sos_lp, audio)
-                        hf_refined = signal.sosfiltfilt(sos_hp, refined)
-                        audio[:] = lf_original + hf_refined
-
-                    logger.info("✅ ML HF refinement erfolgreich (>2kHz band)")
-                    return True
+                # Apply filters
+                is_stereo = audio.ndim == 2
+                # §2.51 Anti-Zeitversatz: sosfiltfilt (Zero-Phase) — LP+HP werden
+                # rekombiniert; sosfilt würde Zeitversatz + Filtereinschalttransiente erzeugen.
+                if is_stereo:
+                    for ch in range(2):
+                        lf_original = signal.sosfiltfilt(sos_lp, audio[:, ch])
+                        hf_refined = signal.sosfiltfilt(sos_hp, refined[:, ch])
+                        audio[:, ch] = lf_original + hf_refined
                 else:
-                    logger.warning("Shape mismatch: %s vs %s", refined.shape, audio.shape)
-                    return False
-            else:
-                logger.warning("DeepFilterNet fehlgeschlagen (returncode=%s)", returncode)
-                return False
+                    lf_original = signal.sosfiltfilt(sos_lp, audio)
+                    hf_refined = signal.sosfiltfilt(sos_hp, refined)
+                    audio[:] = lf_original + hf_refined
+
+                logger.info("✅ ML HF refinement erfolgreich (>2kHz band)")
+                return True
+
+            logger.warning("Shape mismatch: %s vs %s", refined.shape, audio.shape)
+            return False
 
         except Exception as e:
             logger.error("ML HF refinement error: %s", e)
             return False
 
         finally:
-            # Cleanup temp files
-            try:
-                if os.path.exists(input_path):
-                    os.unlink(input_path)
-                if os.path.exists(output_path):
-                    os.unlink(output_path)
-            except Exception as _exc:
-                logger.debug("Operation fehlgeschlagen (unkritisch): %s", _exc)
             if _dfn_release is not None:
                 _dfn_release("DeepFilterNet_phase29")
             # §4.6b: release PLM active-guard
