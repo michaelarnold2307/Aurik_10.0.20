@@ -226,6 +226,14 @@ MATERIAL_PROFILES["mp3"] = replace(MATERIAL_PROFILES["mp3_low"], name="mp3")
 MATERIAL_PROFILES["aac_low"] = replace(MATERIAL_PROFILES["aac"], name="aac_low")
 MATERIAL_PROFILES["digital"] = replace(MATERIAL_PROFILES["cd_digital"], name="digital")
 MATERIAL_PROFILES["cd"] = replace(MATERIAL_PROFILES["cd_digital"], name="cd")
+# §v10.20 Material-Konsens: JEDER MaterialType-Wert des Enum muss auflösbar sein
+# (Materialprofil je Song, kein stiller 'auto'-Default — Spec 01, §2.16).
+MATERIAL_PROFILES["dat"] = replace(MATERIAL_PROFILES["cd_digital"], name="dat")
+MATERIAL_PROFILES["minidisc"] = replace(MATERIAL_PROFILES["cd_digital"], name="minidisc")
+MATERIAL_PROFILES["streaming"] = replace(MATERIAL_PROFILES["cd_digital"], name="streaming")
+MATERIAL_PROFILES["wire_recording"] = replace(MATERIAL_PROFILES["shellac"], name="wire_recording")
+MATERIAL_PROFILES["lacquer_disc"] = replace(MATERIAL_PROFILES["shellac"], name="lacquer_disc")
+MATERIAL_PROFILES["unknown"] = replace(MATERIAL_PROFILES["auto"], name="unknown")
 
 
 def map_panns_to_profile(panns_tags: dict[str, float]) -> str:
