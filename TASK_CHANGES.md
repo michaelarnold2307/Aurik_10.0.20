@@ -1,37 +1,19 @@
 # TASK_CHANGES — Live-Ledger der aktuellen Aufgabe
 
-> Generiert von `scripts/change_ledger.py snapshot` (Base: `HEAD`, Stand: 2026-09-22 07:44 CEST).
+> Generiert von `scripts/change_ledger.py snapshot` (Base: `HEAD`, Stand: 2026-09-22 08:10 CEST).
 > CI (`ci-lite.yml` pr-evidence-gate) erzwingt Abdeckung: jede geänderte Code-Datei muss hier stehen.
 
 ## Geänderte Dateien
 
 | Status | Pfad | Art |
 |---|---|---|
-| M | .github/FILE_REGISTRY.md | modifiziert |
-| M | .github/specs/00_SPEC_INDEX.md | modifiziert |
-| M | .gitignore | modifiziert |
-| M | .pre-commit-config.yaml | modifiziert |
-| M | README.md | modifiziert |
-| M | TASK_CHANGES.md | modifiziert |
-| A | _aurik_run_excellence.py | neu |
+| M | .agents/skills/contributing/SKILL.md | modifiziert |
+| M | .agents/skills/readme/SKILL.md | modifiziert |
+| M | .github/ISSUE_TEMPLATE/config.yml | modifiziert |
 | M | audit/spec_integration_report.json | modifiziert |
 | M | audit/spec_integration_report.md | modifiziert |
-| A | plugins/_vendor_aero/src/models/**init**.py | neu |
-| A | plugins/_vendor_aero/src/models/aero.py | neu |
-| A | plugins/_vendor_aero/src/models/discriminators.py | neu |
-| A | plugins/_vendor_aero/src/models/modelFactory.py | neu |
-| A | plugins/_vendor_aero/src/models/modules.py | neu |
-| A | plugins/_vendor_aero/src/models/seanet.py | neu |
-| A | plugins/_vendor_aero/src/models/snake.py | neu |
-| A | plugins/_vendor_aero/src/models/spec.py | neu |
-| A | plugins/_vendor_aero/src/models/stft_loss.py | neu |
-| A | plugins/_vendor_aero/src/models/utils.py | neu |
-| A | plugins/_vendor_muq/models/**init**.py | neu |
-| A | plugins/_vendor_muq/models/muq_model.py | neu |
-| A | plugins/_vendor_muq/muq_mulan/models/**init**.py | neu |
-| A | plugins/_vendor_muq/muq_mulan/models/audio.py | neu |
-| M | pyproject.toml | modifiziert |
-| ?? | .github/specs/25_ambience_match_plugin.md | ungetrackt |
+| M | docs/CI_CD.md | modifiziert |
+| M | docs/development/CONTRIBUTING.md | modifiziert |
 
 ## Entscheidungen
 

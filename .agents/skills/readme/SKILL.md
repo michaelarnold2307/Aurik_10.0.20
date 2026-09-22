@@ -281,8 +281,8 @@ und produziert das vollständige `AurikErgebnis` (17 Felder, `@dataclass`).
 
 ```bash
 # Clone Repository
-git clone https://github.com/aurik-audio/Aurik_Standalone.git
-cd Aurik_Standalone
+git clone https://github.com/michaelarnold2307/Aurik_10.0.20.git
+cd Aurik_10.0.20
 
 # Setup Virtual Environment
 python3 -m venv .venv_aurik

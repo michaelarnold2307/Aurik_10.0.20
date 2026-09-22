@@ -1,11 +1,11 @@
 blank_issues_enabled: true
 contact_links:
   - name: 💬 GitHub Discussions
-    url: https://github.com/YOUR_USERNAME/Aurik_Standalone/discussions
+    url: https://github.com/michaelarnold2307/Aurik_10.0.20/discussions
     about: Ask questions, share ideas, or discuss Aurik with the community
   - name: 📖 Documentation
-    url: https://github.com/YOUR_USERNAME/Aurik_Standalone/tree/main/docs
+    url: https://github.com/michaelarnold2307/Aurik_10.0.20/tree/main/docs
     about: Read the documentation for guides, architecture, and API reference
   - name: 🚀 Roadmap
-    url: https://github.com/YOUR_USERNAME/Aurik_Standalone/blob/main/docs/aurik9_roadmap.md
+    url: https://github.com/michaelarnold2307/Aurik_10.0.20/blob/main/docs/AURIK_10_ROADMAP.md
     about: View the project roadmap and planned features

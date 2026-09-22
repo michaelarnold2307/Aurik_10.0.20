@@ -105,8 +105,8 @@ Warum ist die Funktion nützlich?
 
 ```bash
 # 1. Fork & Clone
-git clone https://github.com/YOURUSERNAME/Aurik_Standalone.git
-cd Aurik_Standalone
+git clone https://github.com/michaelarnold2307/Aurik_10.0.20.git
+cd Aurik_10.0.20
 
 # 2. Virtual Environment
 python3.11 -m venv .venv_aurik
@@ -482,6 +482,7 @@ import pytest
 import numpy as np
 from backend.api.bridge import get_aurik_denker_instance
 
+
 def test_restore_basic():
     """Test basic restoration."""
     # Arrange
@@ -497,6 +498,7 @@ def test_restore_basic():
     assert restored.shape[0] > 0
     assert restored.dtype == np.float32
     assert -1.0 <= restored.max() <= 1.0
+
 
 def test_restore_invalid_input():
     """Test error handling for invalid input."""
@@ -627,8 +629,8 @@ result = feature.process(data)
 
 **Unsicher bei etwas?**
 
-1. Check [Existing Issues](https://github.com/yourusername/Aurik_Standalone/issues)
-2. Check [Discussions](https://github.com/yourusername/Aurik_Standalone/discussions)
+1. Check [Existing Issues](https://github.com/michaelarnold2307/Aurik_10.0.20/issues)
+2. Check [Discussions](https://github.com/michaelarnold2307/Aurik_10.0.20/discussions)
 3. Open a new Issue mit Tag `question`
 
 ---

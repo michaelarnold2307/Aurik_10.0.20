@@ -17,10 +17,14 @@ Aurik 10.0.0 nutzt GitHub Actions für Continuous Integration, Testing, Security
 
 | Workflow | Trigger | Purpose | Status |
 | --- | --- | --- | --- |
-| `ci_enhanced.yml` | Push/PR | Umfassende CI/CD Pipeline | ✅ Active |
-| `ci.yml` | Push/PR | Basis CI mit Tests | ✅ Active |
-| `release.yml` | Git Tags | Multi-Platform Build & Release | ✅ Active |
-| `validate_musical_goals.yml` | Push/PR | Musical Quality Validation | ✅ Active |
+| `ci-lite.yml` | Push/PR | CI Lite: 11 Gates (Lint, Type, Determinismus, GUI-Smoke, Coverage u. a.) | ✅ Active |
+| `ci-cross-platform.yml` | Push (main) / manuell | Ubuntu/Windows/macOS-Matrix (§15.4) | ✅ Active |
+| `nightly-quality.yml` | Cron 02:00 / manuell | AMRB + Drift + normative Nacht-Gates | ✅ Active |
+| `solo-release-gate.yml` | Push (main) / manuell | Spec-Evidenz + Heavy-Tests (CLI/GUI-Parität) | ✅ Active |
+
+> **Hinweis:** Die folgenden Detail-Abschnitte beschreiben den historischen
+> Stand (`ci_enhanced.yml`/`release.yml`) und sind veraltet. Maßgeblich sind
+> die vier oben genannten Workflows — Details in `.github/workflows/`.
 
 ---
 
@@ -331,8 +335,8 @@ env:
 **In README.md:**
 
 ```markdown
-[![CI/CD Pipeline](https://github.com/YOUR_USERNAME/Aurik_Standalone/actions/workflows/ci_enhanced.yml/badge.svg)](...)
-[![Release Build](https://github.com/YOUR_USERNAME/Aurik_Standalone/actions/workflows/release.yml/badge.svg)](...)
+[![CI Lite](https://github.com/michaelarnold2307/Aurik_10.0.20/actions/workflows/ci-lite.yml/badge.svg)](https://github.com/michaelarnold2307/Aurik_10.0.20/actions/workflows/ci-lite.yml)
+[![Solo Release Gate](https://github.com/michaelarnold2307/Aurik_10.0.20/actions/workflows/solo-release-gate.yml/badge.svg)](https://github.com/michaelarnold2307/Aurik_10.0.20/actions/workflows/solo-release-gate.yml)
 ```
 
 **Badge Colors:**
