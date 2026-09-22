@@ -1,14 +1,14 @@
 # TASK_CHANGES — Live-Ledger der aktuellen Aufgabe
 
-> Generiert von `scripts/change_ledger.py snapshot` (Base: `HEAD`, Stand: 2026-09-23 01:16 CEST).
+> Generiert von `scripts/change_ledger.py snapshot` (Base: `HEAD`, Stand: 2026-09-23 01:30 CEST).
 > CI (`ci-lite.yml` pr-evidence-gate) erzwingt Abdeckung: jede geänderte Code-Datei muss hier stehen.
 
 ## Geänderte Dateien
 
 | Status | Pfad | Art |
 |---|---|---|
-| M | backend/api/bridge_cache.py | modifiziert |
-| M | cli/aurik_cli.py | modifiziert |
+| M | backend/core/unified_restorer_v3.py | modifiziert |
+| M | plugins/banquet_vinyl_plugin.py | modifiziert |
 
 ## Entscheidungen
 

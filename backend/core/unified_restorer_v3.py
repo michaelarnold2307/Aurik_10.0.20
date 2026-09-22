@@ -17228,7 +17228,7 @@ class UnifiedRestorerV3:
                 _musical_excellence_score = _end_gate_out["excellence"]
 
             else:
-                _all_unmeasured = bool(_musical_goal_scores) and all(
+                _all_unmeasured = (not _musical_goal_scores) or all(
                     float(v) < 0.0 for v in _musical_goal_scores.values()
                 )
                 if _all_unmeasured:

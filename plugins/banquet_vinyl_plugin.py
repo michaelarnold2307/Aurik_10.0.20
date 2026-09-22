@@ -222,8 +222,8 @@ class BanquetVinylPlugin:
             # läuft deshalb immer auf CPU (§V6 (copilot-instructions.md)).
             _providers_cpu_only = [p for p in _providers if not _is_gpu_p(p)]
             if len(_providers_cpu_only) != len(_providers):
-                logger.warning(
-                    "BANQUET: ORT-ROCm deaktiviert (numerisch defekte LSTM-Kernels, §SOTA-ML-V5) — ONNX-Fallback auf CPU"
+                logger.info(
+                    "BANQUET: ORT-ROCm deaktiviert (numerisch defekte LSTM-Kernels, §SOTA-ML-V5 (copilot-instructions.md)) — ONNX-Fallback auf CPU; GPU läuft über den Torch-ROCm-Kern"
                 )
                 _providers = _providers_cpu_only or ["CPUExecutionProvider"]
             # ORT_DISABLE_ALL avoids the graph-level Slice rewrite that causes
