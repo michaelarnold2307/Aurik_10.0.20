@@ -125,18 +125,6 @@
       "format": "onnx"
     },
     {
-      "name": "banquet",
-      "bundled": true,
-      "bundled_path": "models/banquet/banquet/banquet_vinyl_final.onnx",
-      "sha256": "8f8a176f4747143b6a35d80dc1a16eb525d7af19a0711607bb1ad5f5573bc650",
-      "size_bytes": 1456187,
-      "size_gb": 0.0015,
-      "required": false,
-      "fallback": "dsp_ersatzpfad",
-      "license": "siehe Quell-Ordner",
-      "format": "onnx"
-    },
-    {
       "name": "banquet_vinyl",
       "bundled": true,
       "bundled_path": "models/banquet/banquet_vinyl_final.onnx",
@@ -735,18 +723,6 @@
       }
     },
     {
-      "name": "hubert",
-      "bundled": true,
-      "bundled_path": "models/hubert/hubert_model.onnx",
-      "sha256": "22f0ff140cb1ef9badfdcdaf1feaf89a754395b959e6d9ba65659b0807b05d69",
-      "size_bytes": 1243855,
-      "size_gb": 0.0012,
-      "required": false,
-      "fallback": "dsp_ersatzpfad",
-      "license": "siehe Quell-Ordner",
-      "format": "onnx"
-    },
-    {
       "name": "kim_inst",
       "bundled": true,
       "bundled_path": "models/kim_inst/kim_inst.onnx",
@@ -1194,18 +1170,6 @@
       "format": "pytorch"
     },
     {
-      "name": "vocos_mel_24khz",
-      "bundled": true,
-      "bundled_path": "models/vocos/vocos_mel_spec_24khz.onnx",
-      "sha256": "a84c58728a769e8a98eeca75bb89102987db0028e5e3d44b45af2ae3ef0104e2",
-      "size_bytes": 54156978,
-      "size_gb": 0.0542,
-      "required": false,
-      "fallback": "hifi_gan",
-      "license": "siehe Quell-Ordner",
-      "format": "onnx"
-    },
-    {
       "name": "vocos_48khz",
       "bundled": true,
       "bundled_path": "models/vocos_48khz/pytorch_model.bin",
@@ -1225,7 +1189,7 @@
       "size_bytes": 163618964,
       "size_gb": 0.1636,
       "required": false,
-      "fallback": "vocos_mel_24khz",
+      "fallback": "vocos_48khz",
       "license": "siehe Quell-Ordner",
       "format": "onnx"
     },
