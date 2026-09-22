@@ -272,3 +272,35 @@ class TestMDEMEdgeCases:
         if rms_orig > 1e-8:
             ratio_db = 20.0 * math.log10(rms_out / rms_orig + 1e-12)
             assert ratio_db <= 12.0  # MAX_GAIN_LU×2 Sicherheitspuffer
+
+
+def test_pearson_time_tolerant_recovers_time_shift() -> None:
+    """§8.2: Zeitverschiebung (Wow/Flutter) darf keine Form-Abweichung melden."""
+    from backend.core.micro_dynamics_envelope_morphing import MicroDynamicsEnvelopeMorphing
+
+    rng = np.random.default_rng(11)
+    x = (0.4 * np.sin(2 * np.pi * 220 * np.arange(SR) / SR)).astype(np.float64)
+    x += 0.05 * rng.standard_normal(SR)
+    shift = int(0.003 * SR)  # 3 ms
+    y = np.roll(x, shift)
+
+    p_classic = MicroDynamicsEnvelopeMorphing._pearson(x, y)
+    p_tol = MicroDynamicsEnvelopeMorphing._pearson_time_tolerant(x, y, SR)
+
+    assert p_tol > p_classic
+    assert p_tol >= 0.92  # Form erhalten — Fehlalarm beseitigt
+
+
+def test_pearson_time_tolerant_does_not_mask_real_damage() -> None:
+    """§8.2: Echte Amplituden-Zerstörung bleibt unter der Schwelle sichtbar."""
+    from backend.core.micro_dynamics_envelope_morphing import MicroDynamicsEnvelopeMorphing
+
+    rng = np.random.default_rng(12)
+    x = (0.4 * np.sin(2 * np.pi * 220 * np.arange(SR) / SR)).astype(np.float64)
+    x += 0.05 * rng.standard_normal(SR)
+    # Amplituden-Hüllkurve zerstört (per-Sample-Noise dominiert)
+    y = x * (0.1 + 0.9 * rng.random(SR))
+
+    p_tol = MicroDynamicsEnvelopeMorphing._pearson_time_tolerant(x, y, SR)
+
+    assert p_tol < 0.92  # echter Schaden wird NICHT kaschiert

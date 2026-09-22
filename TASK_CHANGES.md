@@ -1,13 +1,14 @@
 # TASK_CHANGES — Live-Ledger der aktuellen Aufgabe
 
-> Generiert von `scripts/change_ledger.py snapshot` (Base: `HEAD`, Stand: 2026-09-22 20:44 CEST).
+> Generiert von `scripts/change_ledger.py snapshot` (Base: `HEAD`, Stand: 2026-09-23 01:04 CEST).
 > CI (`ci-lite.yml` pr-evidence-gate) erzwingt Abdeckung: jede geänderte Code-Datei muss hier stehen.
 
 ## Geänderte Dateien
 
 | Status | Pfad | Art |
 |---|---|---|
-| M | backend/core/phases/phase_29_tape_hiss_reduction.py | modifiziert |
+| M | backend/core/micro_dynamics_envelope_morphing.py | modifiziert |
+| M | tests/unit/test_micro_dynamics_envelope_morphing.py | modifiziert |
 
 ## Entscheidungen
 

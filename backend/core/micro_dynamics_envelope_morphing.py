@@ -508,7 +508,7 @@ class MicroDynamicsEnvelopeMorphing:
         out_mono = (
             out.mean(axis=1) if (out.ndim == 2 and out.shape[1] <= 2) else (out.mean(axis=0) if out.ndim == 2 else out)
         )
-        r = self._pearson(orig_mono[: len(out_mono)], out_mono[: len(orig_mono)])
+        r = self._pearson_time_tolerant(orig_mono[: len(out_mono)], out_mono[: len(orig_mono)], sr)
 
         if r < self.PEARSON_TARGET and max_gain < self.MAX_GAIN_LU:
             _retry_gain = min(max(max_gain * 1.5, 4.0), self.MAX_GAIN_LU)  # §2.54: mindestens 4.0, max MAX_GAIN_LU
@@ -560,7 +560,7 @@ class MicroDynamicsEnvelopeMorphing:
                 if (final.ndim == 2 and final.shape[1] <= 2)
                 else (final.mean(axis=0) if final.ndim == 2 else final)
             )
-            r_final = self._pearson(orig_mono[: len(_final_mono)], _final_mono[: len(orig_mono)])
+            r_final = self._pearson_time_tolerant(orig_mono[: len(_final_mono)], _final_mono[: len(orig_mono)], sr)
             if r_final < 0.92:
                 # Pearson still < 0.92 after retry — signal structure limits correlation
                 # (e.g. heavily compressed 1970s vinyl).  Only warn if retry made no progress.
@@ -710,6 +710,47 @@ class MicroDynamicsEnvelopeMorphing:
         den = max(1e-15, float(np.std(a) * np.std(b)))
         val = num / den
         return float(np.clip(val, -1.0, 1.0)) if math.isfinite(val) else 0.0
+
+    @staticmethod
+    def _pearson_time_tolerant(
+        a: np.ndarray,
+        b: np.ndarray,
+        sr: int,
+        max_lag_ms: float = 10.0,
+        window_s: float = 1.0,
+    ) -> float:
+        """Zeit-toleranter Pearson mit lokaler Lag-Suche (§8.2/§2.30).
+
+        Wow/Flutter-Korrektur (phase_12) verschiebt die Zeitachse nicht-uniform
+        gegen das degradierte Original — Pearson dekorreliert dadurch, obwohl
+        die Mikro-Dynamik-FORM erhalten ist (Befund überwachter Lauf:
+        pearson 0.7445/0.7454, Retry Δ=0.0000 — Amplitude war nie das Problem).
+        Lokale Lag-Suche (±max_lag_ms je 1-s-Fenster) misst die Form statt der
+        Phasenlage; die Toleranz ist auf 10 ms begrenzt und kann echte
+        Amplituden-Zerstörung nicht kaschieren (Guard bleibt scharf).
+        """
+        n = min(len(a), len(b))
+        if n < 2:
+            return 1.0
+        a_arr = np.asarray(a[:n], dtype=np.float64)
+        b_arr = np.asarray(b[:n], dtype=np.float64)
+        max_lag = max(1, int(sr * max_lag_ms / 1000.0))
+        win = max(int(sr * window_s), max_lag * 4)
+        vals: list[float] = []
+        for start in range(0, max(1, n - win + 1), win):
+            a_w = a_arr[start : start + win]
+            b_w = b_arr[start : start + win]
+            best = MicroDynamicsEnvelopeMorphing._pearson(a_w, b_w)
+            for lag in range(1, max_lag + 1):
+                best = max(
+                    best,
+                    MicroDynamicsEnvelopeMorphing._pearson(a_w[lag:], b_w[:-lag]),
+                    MicroDynamicsEnvelopeMorphing._pearson(a_w[:-lag], b_w[lag:]),
+                )
+            vals.append(best)
+        if not vals:
+            return MicroDynamicsEnvelopeMorphing._pearson(a_arr, b_arr)
+        return float(np.mean(vals))
 
 
 # ---------------------------------------------------------------------------
