@@ -111,7 +111,7 @@ def get_phase_id(filepath):
 def check_goal_exclusions(phase_id):
     """Prüft ob Phase in per_phase_musical_goals_gate.py definiert ist."""
     try:
-        gate_file = Path("/media/michael/Software 4TB/Aurik_Standalone/backend/core/per_phase_musical_goals_gate.py")
+        gate_file = Path(__file__).resolve().parents[1] / "backend/core/per_phase_musical_goals_gate.py"
         with open(gate_file, encoding="utf-8") as f:
             content = f.read()
             # Prüfe ob phase_id in PHASE_GOAL_EXCLUSIONS vorkommt
@@ -123,7 +123,7 @@ def check_goal_exclusions(phase_id):
 
 
 def main():
-    phases_dir = Path("/media/michael/Software 4TB/Aurik_Standalone/backend/core/phases")
+    phases_dir = Path(__file__).resolve().parents[1] / "backend/core/phases"
     phase_files = sorted(phases_dir.glob("phase_*.py"))
 
     results = []

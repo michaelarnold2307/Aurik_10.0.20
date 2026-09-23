@@ -131,26 +131,29 @@ und tatsächlicher subjektiver Validierung.
 ### Ist-Stand
 
 Drei GitHub-Actions-Workflows — alle ausschließlich `runs-on: ubuntu-22.04`.
-Kein Windows, kein macOS. Aurik beansprucht Cross-Plattform-Fähigkeit, testet sie aber
-nie automatisiert.
+Kein Windows. Aurik beansprucht Cross-Plattform-Fähigkeit, testet sie aber
+nie automatisiert. macOS wurde 2026-09-23 aus der Cross-Plattform-Matrix
+entfernt: Die arm64-Runner (macos-14/15) bieten kein Python 3.10.12
+(Baseline-Pin) — verbleibende Plattformen sind Windows 11 und Linux
+Ubuntu/ZorinOS.
 
 ### Wurzelursache
 
-Keine Windows/macOS-Runner konfiguriert. Möglicherweise Kostenbedenken (GitHub-hosted
-macOS-Runner sind teurer).
+Keine Windows-Runner konfiguriert. Möglicherweise Kostenbedenken (GitHub-hosted
+macOS-Runner sind teurer — entfallen ohnehin wegen Python-3.10.12-Arm64-Lücke).
 
 ### Implementierungsschritte
 
 | # | Schritt | Aufwand | Abhängigkeit |
 |---|---------|---------|-------------|
-| 4.1 | `.github/workflows/ci-cross-platform.yml` — Neuer Workflow: `ubuntu-22.04`, `windows-2022`, `macos-14` (Apple Silicon). Nur für `push` auf `main` + manuellen Trigger (`workflow_dispatch`), nicht pro PR (Kostenkontrolle). | 3 h | — |
+| 4.1 | `.github/workflows/ci-cross-platform.yml` — Neuer Workflow: `ubuntu-22.04`, `windows-2022`. Nur für `push` auf `main` + manuellen Trigger (`workflow_dispatch`), nicht pro PR (Kostenkontrolle). macOS entfernt (kein Python 3.10.12 auf arm64). | 3 h | — |
 | 4.2 | `scripts/platform_compat_check.py` — Prüft Dateisystem-Pfade (kein `\\`-vs-`/`-Hardcoding), Zeilenenden (LF erzwungen via `.gitattributes`), Case-Sensitivity (Python-Imports case-sensitiv auf macOS/Linux, nicht Windows). | 2 h | — |
-| 4.3 | Cross-Platform-Test-Suite: `pytest -m "not slow and not gpu and not onnx"` auf allen drei Plattformen. GPU/ONNX-Tests nur auf Ubuntu (ROCm). | 1 h | 4.1 |
-| 4.4 | `.github/workflows/ci-cross-platform.yml` um `macos-15` (Intel via Rosetta?) und `windows-2025` ergänzen, sobald verfügbar. | 1 h | 4.1 |
+| 4.3 | Cross-Platform-Test-Suite: `pytest -m "not slow and not gpu and not onnx"` auf beiden Plattformen (Ubuntu + Windows). GPU/ONNX-Tests nur auf Ubuntu (ROCm). | 1 h | 4.1 |
+| 4.4 | `.github/workflows/ci-cross-platform.yml` um `windows-2025` ergänzen, sobald verfügbar. | 1 h | 4.1 |
 
 ### Erfolgskriterien
 
-- `ci-cross-platform.yml` läuft auf Ubuntu, Windows, macOS und ist grün
+- `ci-cross-platform.yml` läuft auf Ubuntu und Windows und ist grün
 - `platform_compat_check.py` detektiert Plattform-Inkompatibilitäten vor Merge
 
 ---

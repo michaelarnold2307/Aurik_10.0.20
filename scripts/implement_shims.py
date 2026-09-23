@@ -134,7 +134,7 @@ def replace_shim(filepath: Path, implementation: str):
 
 
 def main():
-    core_dir = Path("/media/michael/Software 4TB/Aurik_Standalone/backend/core")
+    core_dir = Path(__file__).resolve().parents[1] / "backend/core"
 
     for filename, impl in IMPLEMENTATIONS.items():
         filepath = core_dir / filename

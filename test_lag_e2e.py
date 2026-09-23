@@ -8,7 +8,7 @@ import time
 
 import numpy as np
 
-sys.path.insert(0, "/media/michael/Software 4TB/Aurik_Standalone")
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 AUDIO_FILE = "/home/michael/Musik/Testkünstlerin (Schlager) - 30 Sekunden.mp3"
 

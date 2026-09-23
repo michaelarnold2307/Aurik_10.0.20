@@ -601,6 +601,7 @@ class NoiseGate(PhaseInterface):
                 sample_rate,
                 strength=_effective_strength,
                 mode="subtractive",
+                residual_floor_factor=float(kwargs.get("nr_residual_floor_factor", 0.0) or 0.0),
             )
         except Exception as _pm_exc:
             logger.debug("Verarbeitungsschritt18 masking clamp nicht blockierend: %s", _pm_exc)

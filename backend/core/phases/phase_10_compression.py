@@ -311,6 +311,24 @@ class CompressionPhase(PhaseInterface):
             for _b in comp_params:
                 _t, _r, _a, _rel, _k, _m = comp_params[_b]
                 comp_params[_b] = (_t, min(_r, 2.0), max(_a, 20.0), _rel, _k, _m)  # type: ignore[assignment]
+
+        # §2.69c Beat-Sync: Zeitkonstanten rasten auf dem Tempogrid ein.
+        # Restoration: Release nie kürzer als Material-Default (natürliche
+        # Makrodynamik); Studio 2026: straff/punchy (Attack ¼-Beat, Release ≤ 1 Beat).
+        _tempo_10 = kwargs.get("tempo_bpm")
+        if _tempo_10:
+            try:
+                from backend.core.audio_utils import resolve_beat_synced_time_ms
+
+                _is_studio_10 = "studio" in _mode_10
+                for _b10 in comp_params:
+                    _t10, _r10, _a10, _rel10, _k10, _m10 = comp_params[_b10]
+                    _rel10 = resolve_beat_synced_time_ms(_rel10, _tempo_10, is_studio=_is_studio_10)
+                    if _is_studio_10:
+                        _a10 = resolve_beat_synced_time_ms(_a10, _tempo_10, is_studio=True, beats=0.25)
+                    comp_params[_b10] = (_t10, _r10, _a10, _rel10, _k10, _m10)  # type: ignore[assignment]
+            except Exception as _bts_exc_10:
+                logger.debug("§2.69c Beat-Sync Verarbeitungsschritt_10 nicht blockierend: %s", _bts_exc_10)
         parallel_blend = float(self.PARALLEL_BLEND[phase_material] * _effective_strength)
         detection_mode = self.DETECTION_MODE[phase_material]
 

@@ -187,3 +187,64 @@ class TestApplyAdaptiveGain:
         r = self.m.compute_threshold(audio, SR)
         assert isinstance(r, MaskingResult)
         assert np.isfinite(r.masking_threshold).all()
+
+
+class TestNRResidualFloor:
+    """§2.62 NR-Stopp an der Maskierungsschwelle (residual_floor_factor)."""
+
+    def test_residual_floor_preserves_more_energy(self, monkeypatch) -> None:
+        from types import SimpleNamespace
+
+        import numpy as np
+
+        import backend.core.psychoacoustic_masking_model as _pmm
+        from backend.core.dsp.psychoacoustics import apply_psychoacoustic_masking_clamp
+
+        _sr = 48000
+        _n = 48000  # 1 s
+        _t = np.arange(_n, dtype=np.float32) / _sr
+        _orig = (0.5 * np.sin(2 * np.pi * 440.0 * _t)).astype(np.float32)
+        _proc = (_orig * 0.02).astype(np.float32)  # aggressive NR
+
+        # Halbmaskiert (gain=0.5) → floor_rel = factor × 0.5
+        _frames = 1 + (_n - 512) // 512
+        monkeypatch.setattr(
+            _pmm,
+            "compute_masking_threshold",
+            lambda *a, **k: SimpleNamespace(gain_modifier=np.full((24, _frames), 0.5, dtype=np.float32)),
+        )
+
+        _legacy = apply_psychoacoustic_masking_clamp(_orig, _proc, _sr, strength=1.0, mode="subtractive")
+        _floored = apply_psychoacoustic_masking_clamp(
+            _orig, _proc, _sr, strength=1.0, mode="subtractive", residual_floor_factor=1.0
+        )
+        _e_legacy = float(np.mean(_legacy**2))
+        _e_floored = float(np.mean(_floored**2))
+        assert _e_floored > _e_legacy
+
+    def test_floor_disabled_by_default(self, monkeypatch) -> None:
+        from types import SimpleNamespace
+
+        import numpy as np
+
+        import backend.core.psychoacoustic_masking_model as _pmm
+        from backend.core.dsp.psychoacoustics import apply_psychoacoustic_masking_clamp
+
+        _sr = 48000
+        _n = 48000
+        _t = np.arange(_n, dtype=np.float32) / _sr
+        _orig = (0.5 * np.sin(2 * np.pi * 440.0 * _t)).astype(np.float32)
+        _proc = (_orig * 0.02).astype(np.float32)
+
+        _frames = 1 + (_n - 512) // 512
+        monkeypatch.setattr(
+            _pmm,
+            "compute_masking_threshold",
+            lambda *a, **k: SimpleNamespace(gain_modifier=np.full((24, _frames), 0.5, dtype=np.float32)),
+        )
+
+        _default = apply_psychoacoustic_masking_clamp(_orig, _proc, _sr, strength=1.0, mode="subtractive")
+        _zero = apply_psychoacoustic_masking_clamp(
+            _orig, _proc, _sr, strength=1.0, mode="subtractive", residual_floor_factor=0.0
+        )
+        assert np.allclose(_default, _zero, atol=1e-6)

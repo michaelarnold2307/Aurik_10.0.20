@@ -1086,3 +1086,29 @@ class TestKappaSCurve:
             )
             for goal, val in targets.items():
                 assert 0.30 <= val <= 0.99, f"rest={rest} goal='{goal}' außerhalb [0.30, 0.99]: {val}"
+
+
+class TestEraAdaptiveFloors:
+    """§09.8 Era-adaptive Böden (Restoration) — historische Ästhetik ist kein Defekt."""
+
+    def test_era_lowers_restoration_floor_for_shellac(self) -> None:
+        from backend.core.calibration_matrix import get_material_floor
+
+        modern = get_material_floor("shellac", "brillanz", era_decade=2010)
+        vintage = get_material_floor("shellac", "brillanz", era_decade=1940)
+        assert vintage < modern
+        assert vintage >= 0.30
+
+    def test_studio_ignores_era(self) -> None:
+        from backend.core.calibration_matrix import get_material_floor
+
+        vintage = get_material_floor("shellac", "brillanz", is_studio_2026=True, era_decade=1940)
+        modern = get_material_floor("shellac", "brillanz", is_studio_2026=True, era_decade=2010)
+        assert vintage == modern
+
+    def test_era_none_or_modern_keeps_legacy_value(self) -> None:
+        from backend.core.calibration_matrix import get_material_floor
+
+        legacy = get_material_floor("shellac", "brillanz")
+        modern_era = get_material_floor("shellac", "brillanz", era_decade=2005)
+        assert legacy == modern_era

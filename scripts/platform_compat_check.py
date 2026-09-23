@@ -80,11 +80,56 @@ def check_case_conflicts() -> tuple[bool, list[str]]:
     return len(issues) == 0, issues
 
 
+def check_local_absolute_paths() -> tuple[bool, list[str]]:
+    """Prüft auf hartkodierte Entwickler-Pfade in .py-Dateien.
+
+    Produktionsbefund 2026-09-23: tests/unit/test_gap_fixes_g2_g3_g4.py
+    referenzierte /media/michael/Software 4TB/... → CI-Fehler auf fremden
+    Rechnern. Solche Pfade sind nie portabel.
+    """
+    # Suchmuster aus Teilen zusammengesetzt — die Literale dürfen in dieser
+    # Datei selbst nicht vorkommen (sonst Selbsttreffer im Scan).
+    _needle_quote_media = '"' + "/" + "media/"
+    _needle_path_media = 'Path("' + "/" + "media/"
+    issues: list[str] = []
+    for py_file in _PROJECT_ROOT.rglob("*.py"):
+        rel = str(py_file.relative_to(_PROJECT_ROOT))
+        if _should_skip(rel):
+            continue
+        try:
+            content = py_file.read_text(encoding="utf-8", errors="replace")
+        except Exception:
+            logger.debug("Stiller Ersatzpfad dokumentiert (Bug 9/V74)", exc_info=True)
+            continue
+        for i, line in enumerate(content.splitlines(), 1):
+            if _needle_quote_media in line or _needle_path_media in line:
+                issues.append(f"{rel}:{i}: Developer-local absolute path: {line.strip()[:80]}")
+    return len(issues) == 0, issues
+
+
+def check_python_version() -> tuple[bool, list[str]]:
+    """Exakter Baseline-Pin: Python 3.10.12 x64 (Windows 10/11 + Ubuntu CI).
+
+    32-Bit-Interpreter werden abgelehnt — Auriks Speicher-/Rechenbedarf
+    setzt x64 voraus.
+    """
+    _expected = (3, 10, 12)
+    _actual = sys.version_info[:3]
+    _issues: list[str] = []
+    if _actual != _expected:
+        _issues.append("Python {} statt exakt 3.10.12 (Baseline-Pin §15.4)".format(".".join(str(v) for v in _actual)))
+    if sys.maxsize <= 2**32:
+        _issues.append("32-Bit-Python nicht unterstützt — Aurik benötigt x64")
+    return len(_issues) == 0, _issues
+
+
 def main() -> int:
     all_ok = True
 
     for name, checker in [
+        ("Python Version (exact 3.10.12 x64)", check_python_version),
         ("Path Separators (no C:\\...)", check_path_separators),
+        ("Developer-local paths (no /media/...)", check_local_absolute_paths),
         ("Line Endings (LF only)", check_line_endings),
         ("Case Conflicts", check_case_conflicts),
     ]:

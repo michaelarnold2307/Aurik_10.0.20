@@ -82,7 +82,7 @@ _N_FFT = 4096
 
 def _erb_number(f_hz: np.ndarray) -> np.ndarray:
     """ERB-Nummer (Glasberg & Moore 1990): 21.4·log10(4.37e-3·f + 1)."""
-    return 21.4 * np.log10(4.37e-3 * f_hz + 1.0)
+    return 21.4 * np.log10(4.37e-3 * f_hz + 1.0)  # type: ignore[no-any-return]
 
 
 # ERB-Nummern der Bark-Band-Mitten (24-Band-Raster wie bisher — die ERB-Skala
@@ -164,7 +164,6 @@ def _spread_mask_threshold(masker_db: np.ndarray) -> np.ndarray:
     Schwelle = Maximum über alle Masker-Beiträge, Floor −80 dB,
     konservativer Offset +3 dB. Deterministisch (§G5 (copilot-instructions.md)).
     """
-    n = len(masker_db)
     dz = _ERB_NUMBERS[:, None] - _ERB_NUMBERS[None, :]  # [maskee, masker]
     f_khz = _BARK_CENTERS[None, :] / 1000.0  # [1, masker]
     l_eff = np.maximum(np.asarray(masker_db, dtype=np.float64)[None, :], _MASKER_LEVEL_FLOOR_DB)

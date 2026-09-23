@@ -24,6 +24,15 @@ from plugins.deepfilternet_v3_ii_plugin import DeepFilterNetV3Plugin
 _MODEL_DIR = Path(__file__).resolve().parents[2] / "models" / "deepfilternet_v3_ii"
 
 
+def _is_lfs_pointer(path: Path) -> bool:
+    """Erkennt Git-LFS-Pointer-Dateien (Checkout ohne `git lfs pull`)."""
+    try:
+        with path.open("rb") as _fh:
+            return _fh.read(128).startswith(b"version https://git-lfs.github.com/spec/v1")
+    except OSError:
+        return False
+
+
 class _FakeSession:
     """ONNX-Session-Stub mit festen Outputs (nur run())."""
 
@@ -120,6 +129,8 @@ def test_active_finetuned_dec_has_alpha_head() -> None:
     dec = _MODEL_DIR / "finetuned" / "dec.onnx"
     if not dec.is_file():
         pytest.skip("models/ nicht vorhanden (gitignored)")
+    if _is_lfs_pointer(dec):
+        pytest.skip("dec.onnx liegt nur als Git-LFS-Pointer vor — git lfs pull fehlt")
     import onnxruntime as ort
 
     sess = ort.InferenceSession(str(dec), providers=["CPUExecutionProvider"])
@@ -136,6 +147,8 @@ def test_plugin_loads_alpha_from_finetuned_model() -> None:
     erb = _MODEL_DIR / "finetuned" / "erb_dec.onnx"
     if not (dec.is_file() and enc.is_file() and erb.is_file()):
         pytest.skip("models/ nicht vorhanden (gitignored)")
+    if any(_is_lfs_pointer(_f) for _f in (dec, enc, erb)):
+        pytest.skip("finetuned-Modelle liegen nur als Git-LFS-Pointer vor — git lfs pull fehlt")
     p = DeepFilterNetV3Plugin()
     assert p._dec_has_alpha is True
     assert p._dec is not None and p._enc is not None and p._erb_dec is not None

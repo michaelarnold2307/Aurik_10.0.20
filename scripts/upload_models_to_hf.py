@@ -28,7 +28,7 @@ logging.basicConfig(
 log = logging.getLogger(__name__)
 
 HF_REPO = "michaelarnold2307/aurik-models"
-MODELS = Path("/media/michael/Software 4TB/Aurik_Standalone/models")
+MODELS = Path(__file__).resolve().parents[1] / "models"
 DRY_RUN = "--dry-run" in sys.argv
 
 # ---------------------------------------------------------------------------

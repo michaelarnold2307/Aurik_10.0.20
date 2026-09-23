@@ -8,10 +8,15 @@ G4: PMGG best_effort Phasen → FeedbackChain _fc_max_iter boost
 """
 
 
+from pathlib import Path
 from typing import Any
 
 import numpy as np
 import pytest
+
+# Repo-Wurzel relativ zur Testdatei auflösen — kein hartkodierter lokaler
+# Pfad (Portabilität: auf CI/anderen Rechnern existiert /media/michael nicht).
+_UV3_SRC = str(Path(__file__).resolve().parents[2] / "backend" / "core" / "unified_restorer_v3.py")
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -38,9 +43,7 @@ class TestG3ConservativeGoalWeights:
         """Import UV3 module and read the conservative defaults from source."""
         import pathlib
 
-        src = pathlib.Path(
-            "/media/michael/Software 4TB/Aurik_Standalone/backend/core/unified_restorer_v3.py"
-        ).read_text(encoding="utf-8")
+        src = pathlib.Path(_UV3_SRC).read_text(encoding="utf-8")
         # Find the block that assigns conservative weights after SGI failure
         # by searching for 'natuerlichkeit': 1.20 near 'Label-stage fallback also failed'
         assert '"natuerlichkeit": 1.20' in src, "G3-Fix fehlt: conservative weights-Block nicht in UV3 gefunden"
@@ -77,9 +80,7 @@ class TestG3ConservativeGoalWeights:
         """P1/P2-Goals haben höhere Weights als P3–P5 im konservativen Fallback."""
         import pathlib
 
-        src = pathlib.Path(
-            "/media/michael/Software 4TB/Aurik_Standalone/backend/core/unified_restorer_v3.py"
-        ).read_text(encoding="utf-8")
+        src = pathlib.Path(_UV3_SRC).read_text(encoding="utf-8")
         # natuerlichkeit: 1.20 > groove: 1.00
         idx_nat = src.find('"natuerlichkeit": 1.20')
         idx_groove = src.find('"groove": 1.00')
@@ -91,9 +92,7 @@ class TestG3ConservativeGoalWeights:
         """UV3 loggt eine Warnung wenn conservative weights aktiviert werden."""
         import pathlib
 
-        src = pathlib.Path(
-            "/media/michael/Software 4TB/Aurik_Standalone/backend/core/unified_restorer_v3.py"
-        ).read_text(encoding="utf-8")
+        src = pathlib.Path(_UV3_SRC).read_text(encoding="utf-8")
         assert "Label-Stufe Ersatzpfad also fehlgeschlagen" in src
         assert "conservative uniform weights" in src
 
@@ -111,9 +110,7 @@ class TestG2FallbackQualityFloorCascade:
         """UV3-Quelltext enthält _fqf_candidates Multi-Kandidaten-Logik."""
         import pathlib
 
-        src = pathlib.Path(
-            "/media/michael/Software 4TB/Aurik_Standalone/backend/core/unified_restorer_v3.py"
-        ).read_text(encoding="utf-8")
+        src = pathlib.Path(_UV3_SRC).read_text(encoding="utf-8")
         assert "_fqf_candidates" in src, "G2-Fix fehlt: _fqf_candidates nicht in UV3 gefunden"
         assert "hpi_best_checkpoint" in src
         assert "original_audio" in src
@@ -124,9 +121,7 @@ class TestG2FallbackQualityFloorCascade:
         """Cascade iteriert über alle Kandidaten bis shape-kompatiblen findet."""
         import pathlib
 
-        src = pathlib.Path(
-            "/media/michael/Software 4TB/Aurik_Standalone/backend/core/unified_restorer_v3.py"
-        ).read_text(encoding="utf-8")
+        src = pathlib.Path(_UV3_SRC).read_text(encoding="utf-8")
         # The loop should be a 'for' over _fqf_candidates
         assert "for _fqf_cand, _fqf_src in _fqf_candidates:" in src, "G2-Fix: for-Schleife über _fqf_candidates fehlt"
 
@@ -134,9 +129,7 @@ class TestG2FallbackQualityFloorCascade:
         """attempts-Feld zählt die Anzahl versuchter Kandidaten."""
         import pathlib
 
-        src = pathlib.Path(
-            "/media/michael/Software 4TB/Aurik_Standalone/backend/core/unified_restorer_v3.py"
-        ).read_text(encoding="utf-8")
+        src = pathlib.Path(_UV3_SRC).read_text(encoding="utf-8")
         assert '_fallback_quality_floor["attempts"] = len(_fqf_candidates)' in src, (
             "G2-Fix: attempts = len(_fqf_candidates) fehlt"
         )
@@ -154,9 +147,7 @@ class TestG4FeedbackChainConflictBoost:
         """UV3-Quelltext enthält §G4 (GEBOTE.md) conflict-boost Logik."""
         import pathlib
 
-        src = pathlib.Path(
-            "/media/michael/Software 4TB/Aurik_Standalone/backend/core/unified_restorer_v3.py"
-        ).read_text(encoding="utf-8")
+        src = pathlib.Path(_UV3_SRC).read_text(encoding="utf-8")
         assert "§G4 (GEBOTE.md) FeedbackChain conflict-boost" in src, (
             "G4-Fix fehlt: conflict-boost Kommentar nicht in UV3 gefunden"
         )
@@ -167,9 +158,7 @@ class TestG4FeedbackChainConflictBoost:
         """Boost-Schwellwerte: ≥3 Phasen → +1, ≥5 Phasen → +2."""
         import pathlib
 
-        src = pathlib.Path(
-            "/media/michael/Software 4TB/Aurik_Standalone/backend/core/unified_restorer_v3.py"
-        ).read_text(encoding="utf-8")
+        src = pathlib.Path(_UV3_SRC).read_text(encoding="utf-8")
         assert "_fc_conflict_phases >= 5" in src, "G4: Schwellwert 5 fehlt"
         assert "_fc_conflict_phases >= 3" in src, "G4: Schwellwert 3 fehlt"
         assert "min(_fc_max_iter + 2, 9)" in src, "G4: +2 boost mit cap 9 fehlt"
@@ -184,9 +173,7 @@ class TestG4FeedbackChainConflictBoost:
         """
         import pathlib
 
-        src = pathlib.Path(
-            "/media/michael/Software 4TB/Aurik_Standalone/backend/core/unified_restorer_v3.py"
-        ).read_text(encoding="utf-8")
+        src = pathlib.Path(_UV3_SRC).read_text(encoding="utf-8")
         # §G4 (GEBOTE.md) block should appear before _is_very_short cap
         idx_g4 = src.find("§G4 (GEBOTE.md) FeedbackChain conflict-boost")
         idx_short = src.find("§2.31d: Audio < 10s → FeedbackChain max_iter")
@@ -198,9 +185,7 @@ class TestG4FeedbackChainConflictBoost:
         """Conflict count liest aus self._pmgg_log_entries."""
         import pathlib
 
-        src = pathlib.Path(
-            "/media/michael/Software 4TB/Aurik_Standalone/backend/core/unified_restorer_v3.py"
-        ).read_text(encoding="utf-8")
+        src = pathlib.Path(_UV3_SRC).read_text(encoding="utf-8")
         # Find _fc_conflict_phases assignment — it must reference _pmgg_log_entries
         idx_conflict_phases = src.find("_fc_conflict_phases")
         assert idx_conflict_phases != -1, "_fc_conflict_phases nicht in UV3 gefunden"
@@ -223,7 +208,7 @@ class TestUV3ImportIntegrity:
         """py_compile auf UV3 liefert keine Fehler."""
         import py_compile
 
-        path = "/media/michael/Software 4TB/Aurik_Standalone/backend/core/unified_restorer_v3.py"
+        path = _UV3_SRC
         try:
             py_compile.compile(path, doraise=True)
         except py_compile.PyCompileError as e:

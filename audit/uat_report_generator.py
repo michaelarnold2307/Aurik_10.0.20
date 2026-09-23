@@ -100,7 +100,7 @@ class UATReportGenerator:
     def __init__(self, output_dir: Path | None = None, json_output: Path | None = None):
         self.output_dir = output_dir or Path("docs")
         self.json_output = json_output or Path("audit") / f"uat_results_{self._now_suffix()}.json"
-        self.workspace_root = Path("/media/michael/Software 4TB/Aurik_Standalone")
+        self.workspace_root = Path(__file__).resolve().parents[1]
         self.output_dir.mkdir(parents=True, exist_ok=True)
         self.json_output.parent.mkdir(parents=True, exist_ok=True)
 

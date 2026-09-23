@@ -26926,6 +26926,12 @@ class UnifiedRestorerV3:
             sample_rate=sample_rate,
         )
 
+        # §2.69c Beat-Sync: Tempo zentral für die Dynamik-Phasen bereitstellen
+        # (phase_10/36/54 lesen kwargs.get("tempo_bpm")).
+        if isinstance(_mpc_result, dict) and _mpc_result.get("tempo_bpm"):
+            if isinstance(getattr(self, "_restoration_context", None), dict):
+                self._restoration_context["tempo_bpm"] = float(_mpc_result["tempo_bpm"])
+
         # v10.0.0 — ConfidenceBasedProcessing (extracted helper to reduce method complexity)
         _cbp_result = self._compute_confidence_processing_result(
             _pipeline_confidence=_pipeline_confidence,
@@ -29191,6 +29197,13 @@ class UnifiedRestorerV3:
         if _needs_airband:
             selected.append("phase_39_air_band_enhancement")
 
+        # Exciter (nur Studio 2026, §0a): harmonische Oberton-Anreicherung für
+        # modernen, klaren, kraftvollen HiFi-Studio-Sound bei bandbreiten-
+        # limitiertem Material. Restoration bleibt exciter-frei (§0a): dort
+        # zählt Nähe zum ursprünglich Aufgenommenen, keine Klangverschönerung.
+        if self.is_studio_mode() and _needs_airband:
+            selected.append("phase_21_exciter")
+
         # Tape-Sättigungs-Emulation (Tape/REEL-Material — authentischer Charakter)
         # REEL_TAPE hat identischen Röhrensättigungs-Charakter wie TAPE
         if material in [MaterialType.TAPE, MaterialType.REEL_TAPE, MaterialType.SHELLAC]:
@@ -29560,6 +29573,8 @@ class UnifiedRestorerV3:
             _move_before("phase_19_de_esser", "phase_42_vocal_enhancement")
             # Vocal chain guard: classical de-esser before ML de-esser refinement
             _move_before("phase_19_de_esser", "phase_43_ml_deesser")
+            # Studio chain guard: exciter harmonics before multiband compression
+            _move_before("phase_21_exciter", "phase_35_multiband_compression")
             # §2.36 LGE after vocal enhancement chain (de-esser → vocal_enhancement → ML de-esser → LGE)
             _move_before("phase_42_vocal_enhancement", "phase_58_lyrics_guided_enhancement")
             _move_before("phase_43_ml_deesser", "phase_58_lyrics_guided_enhancement")
@@ -32694,9 +32709,7 @@ class UnifiedRestorerV3:
         # Offene Verstöße → dämpfender Folgephasen-Scalar (Decay 1/Phase).
         _tcg_bonus = min(
             4,
-            int(_tcg.energy_jumps)
-            + (2 if _tcg.stereo_collapse else 0)
-            + (2 if _tcg.noise_reintroduced else 0),
+            int(_tcg.energy_jumps) + (2 if _tcg.stereo_collapse else 0) + (2 if _tcg.noise_reintroduced else 0),
         )
         _pending_new = min(4, max(0, _pending - 1) + _tcg_bonus)
         if isinstance(_acc, dict):
@@ -32784,7 +32797,7 @@ class UnifiedRestorerV3:
                 _claims.update(_crd(_key, _sev0, reduction_ratio=reduction_ratio))
             return _claims
         except Exception as _exc:
-            logger.debug("§2.69f _compute_live_resolved_claims nicht blockierend: %s", _exc)
+            logger.debug("§2.69f _live_resolved_claims nicht blockierend: %s", _exc)
             return {}
 
     def _profiled_phase_call(self, phase, audio: np.ndarray, **kwargs):  # pyright: ignore[reportGeneralTypeIssues]
@@ -32830,6 +32843,14 @@ class UnifiedRestorerV3:
                     )
         # ── §DENKER: Guard-Modulation delegiert an PhaseInteractionDenker ──
         _ctx_pp = getattr(self, "_restoration_context", None) or {}
+        # §2.69c Beat-Sync-Erweiterung + §2.62 NR-Stopp: zentrale Modus-/Kontext-Injektion
+        # in ALLE Phase-kwargs (Phasen lesen kwargs.get("tempo_bpm") bzw.
+        # kwargs.get("nr_residual_floor_factor"); Restoration konservativ,
+        # Studio 2026 sauberer/punchiger).
+        if "tempo_bpm" not in kwargs and isinstance(_ctx_pp, dict) and _ctx_pp.get("tempo_bpm"):
+            kwargs["tempo_bpm"] = float(_ctx_pp["tempo_bpm"])
+        if "nr_residual_floor_factor" not in kwargs:
+            kwargs["nr_residual_floor_factor"] = 0.30 if not self.is_studio_mode() else 0.12
         # Modulation erfolgt nach _prepare_profiled_phase_context (phase_metadata nötig)
         # ── Ende Pre-Context ─────────────────────────────────────
         # §AO Minimum-Length-Guard: Phasen mit zu kurzem Audio überspringen
@@ -34972,6 +34993,7 @@ class UnifiedRestorerV3:
                             strength=_strength_pm,
                             mode=_mode_pm,
                             masking_result=kwargs.get("masking_result"),
+                            residual_floor_factor=float(kwargs.get("nr_residual_floor_factor") or 0.0),
                         )
                         if hasattr(result, "metadata") and isinstance(result.metadata, dict):
                             result.metadata["generic_masking_clamp_applied"] = True
@@ -37030,13 +37052,9 @@ class UnifiedRestorerV3:
                     )
                     from backend.core.phrase_structure_analyzer import PhraseStructureAnalyzer as _PSA
 
-                    _psa_structure = _PSA(sample_rate=sample_rate).analyze(
-                        _pipeline_original_reference, sr=sample_rate
-                    )
+                    _psa_structure = _PSA(sample_rate=sample_rate).analyze(_pipeline_original_reference, sr=sample_rate)
                     _phrase_boundaries_s = [float(s.start_s) for s in _psa_structure.sections[1:]]
-                    _snapped_targets, _n_snapped = _snap_section_boundaries(
-                        _section_targets, _phrase_boundaries_s
-                    )
+                    _snapped_targets, _n_snapped = _snap_section_boundaries(_section_targets, _phrase_boundaries_s)
                     if _n_snapped > 0:
                         _section_targets = _snapped_targets
                         self._restoration_context["section_targets"] = _section_targets
@@ -40179,6 +40197,25 @@ class UnifiedRestorerV3:
                                     _masking_scalar,
                                 )
 
+                            # §2.78 Injected-Recovery-Blend: Rescheduler-injizierte
+                            # Phasen laufen über bereits bearbeitetes Material —
+                            # volle Stärke würde Doppel-Bearbeitung hörbar machen.
+                            # Konservativer Start (×0.70); der PMGG-Regelkreis kann
+                            # bei klarem Goal-Gewinn wieder anheben. Timing-Phasen
+                            # sind ausgenommen (kein Wet/Dry-Blend anwendbar).
+                            _ctx_inj_phases = (
+                                (self._restoration_context or {}).get("rescheduler_injected_phases")
+                                if isinstance(self._restoration_context, dict)
+                                else None
+                            )
+                            if _ctx_inj_phases and phase_id in _ctx_inj_phases and phase_id not in _MASK_TIMING:
+                                _combined_strength = float(np.clip(_combined_strength * 0.70, 0.05, 1.0))
+                                logger.debug(
+                                    "§2.78 Injected-Recovery-Blend: %s strength ×0.70 → %.3f",
+                                    phase_id,
+                                    _combined_strength,
+                                )
+
                             # §2.31a SongCalibration: Family-Scalar in initial_strength einbeziehen.
                             # Dadurch profitiert auch die PMGG-Retry-Leiter (§2.29a) proportional
                             # vom Kalibrierungs-Skalar — weniger Retries bei gut kalibrierter Stärke.
@@ -40243,10 +40280,26 @@ class UnifiedRestorerV3:
                             # Phasen sind ausgenommen — ihre Stärke ist defekt-getrieben
                             # (§2.54), Dämpfung würde die Reparatur vereiteln.
                             _TCG_SCALAR_EXEMPT_PREFIXES: tuple[str, ...] = (
-                                "phase_01_", "phase_02_", "phase_03_", "phase_04_", "phase_05_",
-                                "phase_09_", "phase_12_", "phase_14_", "phase_15_", "phase_24_",
-                                "phase_25_", "phase_27_", "phase_28_", "phase_29_", "phase_30_",
-                                "phase_31_", "phase_49_", "phase_50_", "phase_55_", "phase_56_",
+                                "phase_01_",
+                                "phase_02_",
+                                "phase_03_",
+                                "phase_04_",
+                                "phase_05_",
+                                "phase_09_",
+                                "phase_12_",
+                                "phase_14_",
+                                "phase_15_",
+                                "phase_24_",
+                                "phase_25_",
+                                "phase_27_",
+                                "phase_28_",
+                                "phase_29_",
+                                "phase_30_",
+                                "phase_31_",
+                                "phase_49_",
+                                "phase_50_",
+                                "phase_55_",
+                                "phase_56_",
                                 "phase_64_",
                             )
                             if not phase_id.startswith(_TCG_SCALAR_EXEMPT_PREFIXES):
@@ -40257,9 +40310,9 @@ class UnifiedRestorerV3:
                                         compute_dampening_scalar as _tcg_scalar_fn_pmgg,
                                     )
 
-                                    _tcg_state_pmgg = (
-                                        getattr(self, "_phase_metadata_accumulator", None) or {}
-                                    ).get("_temporal_consistency_state", {})
+                                    _tcg_state_pmgg = (getattr(self, "_phase_metadata_accumulator", None) or {}).get(
+                                        "_temporal_consistency_state", {}
+                                    )
                                     _tcg_pending_pmgg = int((_tcg_state_pmgg or {}).get("pending", 0))
                                     _tcg_scalar_pmgg = float(_tcg_scalar_fn_pmgg(_tcg_pending_pmgg))
                                 except Exception:
@@ -43636,15 +43689,22 @@ class UnifiedRestorerV3:
                                     goal_confidence=_apr_goal_confidence,
                                     uncertainty_budget=_apr_uncertainty_budget,
                                 )
+                                _inj_recorded: set[str] = set()
                                 for _inj_pid in _apr_result.new_phases_to_append:
                                     if _inj_pid not in set(selected_phases):
                                         selected_phases.append(_inj_pid)
+                                        _inj_recorded.add(_inj_pid)
                                         logger.info(
                                             "§2.78 Rescheduler injiziert: %s (goal_gaps=%s uq_Grenze=%.3f)",
                                             _inj_pid,
                                             _apr_result.goal_gaps_found,
                                             _apr_uncertainty_budget,
                                         )
+                                if _inj_recorded and isinstance(self._restoration_context, dict):
+                                    _ctx_inj_set = self._restoration_context.setdefault(
+                                        "rescheduler_injected_phases", set()
+                                    )
+                                    _ctx_inj_set.update(_inj_recorded)
                                 # §Perf: APR-behandelte Goals merken — FC-SECONDARY und GEC überspringen sie.
                                 for _apr_goal in _apr_result.goal_gaps_found:
                                     self._session_recovered_goals.add(_apr_goal)

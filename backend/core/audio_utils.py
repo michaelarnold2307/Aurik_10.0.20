@@ -6,6 +6,42 @@ import numpy as np
 logger = logging.getLogger(__name__)
 
 
+def resolve_beat_synced_time_ms(
+    base_ms: float,
+    tempo_bpm: float | None,
+    *,
+    is_studio: bool = False,
+    beats: float = 1.0,
+) -> float:
+    """Zeitkonstante aufs Tempogrid einrasten (§2.69c Beat-Sync).
+
+    Restoration: Release/Hold rasten auf dem Beat-Grid ein, werden aber nie
+    kürzer als der Material-Default — natürliche Makrodynamik bleibt erhalten
+    (Nähe zum ursprünglich Aufgenommenen). Studio 2026: straffere, punchigere
+    Zeitkonstanten (≤ ein Beat, mindestens 10 ms) für modernen, kraftvollen Klang.
+
+    Args:
+        base_ms: Material-Default-Zeitkonstante in ms.
+        tempo_bpm: BPM (40–300 gültig); None/ungültig → base_ms unverändert.
+        is_studio: Modus-Flag.
+        beats: Grid-Anteil (1.0 = ein Beat).
+
+    Returns:
+        Zeitkonstante in ms (positiv, begrenzt).
+    """
+    _base = max(1.0, float(base_ms))
+    try:
+        _bpm = float(tempo_bpm)  # type: ignore[arg-type]
+    except (TypeError, ValueError):
+        return _base
+    if not 40.0 <= _bpm <= 300.0:
+        return _base
+    _grid_ms = 60000.0 / _bpm * max(0.05, float(beats))
+    if is_studio:
+        return float(max(10.0, min(_base * 0.75, _grid_ms)))
+    return float(max(_base, _grid_ms))
+
+
 def safe_to_mono(audio: np.ndarray) -> np.ndarray:
     """
     Convert audio to mono, handling both (N, 2) and (2, N) layouts safely.

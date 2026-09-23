@@ -60,6 +60,14 @@ if (-not (Test-Path $pythonCpu)) {
     exit 1
 }
 
+# Baseline-Pin (Windows 10/11 x64): exakt Python 3.10.12 — der GPU-Venv erbt
+# die Interpreter-Version der CPU-Basis. Abweichung → Setup neu aufsetzen.
+$cpuVer = & $pythonCpu -c "import sys; print('.'.join(map(str, sys.version_info[:3])))"
+if ($cpuVer.Trim() -ne "3.10.12") {
+    Write-Host "ERROR: .venv_aurik uses Python $cpuVer — exactly 3.10.12 required. Re-run install_windows.ps1." -ForegroundColor Red
+    exit 1
+}
+
 # ── NVIDIA: Create GPU venv ─────────────────────────────────────────────
 if ($GPUType -eq "cuda") {
     Write-Host "Creating GPU venv for NVIDIA CUDA ..." -ForegroundColor Green

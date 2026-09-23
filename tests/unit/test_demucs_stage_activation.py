@@ -30,6 +30,15 @@ _DEMUCS_ONNX = _REPO / "models" / "demucs" / "htdemucs_6s.onnx"
 _BS_ROFORMER_CKPT = _REPO / "models" / "bs_roformer" / "model_bs_roformer_ep_317_sdr_12.9755.ckpt"
 
 
+def _is_lfs_pointer(path: pathlib.Path) -> bool:
+    """Erkennt Git-LFS-Pointer-Dateien (Checkout ohne `git lfs pull`)."""
+    try:
+        with path.open("rb") as _fh:
+            return _fh.read(128).startswith(b"version https://git-lfs.github.com/spec/v1")
+    except OSError:
+        return False
+
+
 @pytest.fixture(autouse=True)
 def _clear_optout(monkeypatch):
     monkeypatch.delenv("AURIK_DISABLE_HTDEMUCS_6S", raising=False)
@@ -82,6 +91,8 @@ def test_demucs_model_file_present() -> None:
     """Das gebündelte Meta-htdemucs_6s-ONNX (inkl. externer Gewichte) ist vorhanden."""
     if not _DEMUCS_ONNX.exists():
         pytest.skip("models/-Paket nicht installiert (gitignored)")
+    if _is_lfs_pointer(_DEMUCS_ONNX) or _DEMUCS_ONNX.stat().st_size < 1024:
+        pytest.skip("htdemucs_6s.onnx liegt nur als Git-LFS-Pointer vor — git lfs pull fehlt")
     total = _DEMUCS_ONNX.stat().st_size
     for _suffix in (".dat", ".data"):
         _dat = pathlib.Path(str(_DEMUCS_ONNX) + _suffix)

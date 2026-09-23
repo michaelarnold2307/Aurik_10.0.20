@@ -7,18 +7,32 @@ Write-Host ""
 # Python check
 $python = Get-Command python -ErrorAction SilentlyContinue
 if (-not $python) {
-    Write-Host "Python nicht gefunden. Installiere von https://python.org (3.10+)" -ForegroundColor Red
+    Write-Host "Python nicht gefunden. Installiere exakt Python 3.10.12 von https://www.python.org/downloads/release/python-31012/" -ForegroundColor Red
     Write-Host "Wähle: Add Python to PATH"
     exit 1
 }
 
-$pyver = python -c "import sys; print(f'{sys.version_info.major}.{sys.version_info.minor}')"
+# Baseline-Pin (Windows 10/11 x64): exakt Python 3.10.12 — identisch mit dem
+# Linux-/CI-Pin (ci-cross-platform.yml). Andere Patch-Versionen können
+# numba/librosa/onnxruntime-Kombinationen brechen (§15.4 Produktions-Pins).
+$pyver = python -c "import sys; print('.'.join(map(str, sys.version_info[:3])))"
 Write-Host "Python $pyver"
 
-if ([version]$pyver -lt [version]"3.10") {
-    Write-Host "Python >= 3.10 benötigt" -ForegroundColor Red
+if ($pyver.Trim() -ne "3.10.12") {
+    Write-Host "Aurik benötigt exakt Python 3.10.12 (gefunden: $pyver)." -ForegroundColor Red
+    Write-Host "Lade https://www.python.org/downloads/release/python-31012/ und wähle 'Add Python to PATH'." -ForegroundColor Yellow
     exit 1
 }
+
+# x64-Pflicht: Auriks Speicher-/Rechenbedarf setzt 64-Bit-Python voraus.
+# 32-Bit (x86) wird nicht unterstützt.
+python -c "import sys; sys.exit(0 if sys.maxsize > 2**32 else 1)"
+if ($LASTEXITCODE -ne 0) {
+    Write-Host "Aurik benötigt 64-Bit-Python (x64). 32-Bit wird nicht unterstützt." -ForegroundColor Red
+    Write-Host "Lade den 'Windows installer (64-bit)' von python.org." -ForegroundColor Yellow
+    exit 1
+}
+Write-Host "64-Bit-Interpreter bestätigt"
 
 # Virtual environment
 if (-not (Test-Path ".venv_aurik")) {

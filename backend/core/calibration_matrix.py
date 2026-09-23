@@ -965,11 +965,30 @@ _MATERIAL_QUALITY_CEILING: dict[str, float] = {
 # ---------------------------------------------------------------------------
 
 
+def _resolve_era_floor_scalar(era_decade: int | None) -> float:
+    """Era-Faktor für Restoration-Böden (§09.8).
+
+    Historische Träger werden nicht an modernen Studio-Böden gemessen — die
+    Ästhetik ihrer Ära ist kein Defekt. Studio 2026 skaliert nie (moderner
+    Zielklang) und nutzt deshalb immer 1.0.
+    """
+    if era_decade is None:
+        return 1.0
+    if era_decade < 1960:
+        return 0.85
+    if era_decade < 1980:
+        return 0.90
+    if era_decade < 2000:
+        return 0.95
+    return 1.0
+
+
 def get_material_floor(
     material_type: str,
     goal: str,
     is_studio_2026: bool = False,
     transfer_chain: list[str] | None = None,
+    era_decade: int | None = None,
 ) -> float:
     """Gibt the minimum achievable goal floor for a given material type (§09.1) zurück.
 
@@ -994,13 +1013,20 @@ def get_material_floor(
     canonical = CANONICAL_THRESHOLDS_STUDIO2026 if is_studio_2026 else CANONICAL_THRESHOLDS_RESTORATION
     floor = float(canonical.get(goal, 0.70))
 
+    def _era_apply(floor_val: float) -> float:
+        """§09.8: Restoration-Böden era-skalieren; Studio bleibt unverändert."""
+        _f = float(np.clip(floor_val, 0.30, 0.99))
+        if not is_studio_2026 and era_decade is not None:
+            _f = float(np.clip(_f * _resolve_era_floor_scalar(era_decade), 0.30, 0.99))
+        return _f
+
     mat = str(material_type or "").strip().lower()
 
     # §R4: Physikalisch begrenzte Material-Goal-Overrides prüfen (VOR Bias-Berechnung).
     # Diese Overrides ersetzen den bias-basierten Floor für trägerphysikalisch unlösbare Goals.
     _mat_override = _MATERIAL_GOAL_FLOOR_OVERRIDES.get(mat)
     if _mat_override and goal in _mat_override:
-        return float(np.clip(_mat_override[goal], 0.30, 0.99))
+        return _era_apply(_mat_override[goal])
 
     # §R4/S4: Chain-End-Codec-Override — falls primäres Material kein Override hat,
     # aber die Transfer-Chain mit einem Codec endet, dessen Override greift.
@@ -1012,7 +1038,7 @@ def get_material_floor(
         if _chain_last_cm in _CODEC_CHAIN_ENDINGS_CM and _chain_last_cm != mat:
             _chain_override = _MATERIAL_GOAL_FLOOR_OVERRIDES.get(_chain_last_cm)
             if _chain_override and goal in _chain_override:
-                return float(np.clip(_chain_override[goal], 0.30, 0.99))
+                return _era_apply(_chain_override[goal])
 
     mat_class = _MATERIAL_CLASS.get(mat, "analog")
 
@@ -1038,7 +1064,7 @@ def get_material_floor(
         rest_floor = float(np.clip(rest_floor, 0.30, 0.99))
         material_floor = max(material_floor, rest_floor)
 
-    return float(np.clip(material_floor, 0.30, 0.99))
+    return _era_apply(material_floor)
 
 
 # ---------------------------------------------------------------------------
@@ -1065,7 +1091,7 @@ def get_effective_material_floor(
     - get_effective_material_floor() = adaptiver Floor für §GOAL_BASELINE_CHECK in UV3
 
     Formel (§09.12):
-        floor_base = get_material_floor(material_type, goal_name, is_studio_2026)
+        floor_base = get_material_floor(material_type, goal_name, is_studio_2026, era_decade=kwargs.get("era_decade"))
         scale = max(RESTORABILITY_SCALE_MIN, restorability_score / 100)
         floor_eff = floor_base × scale
 
@@ -1087,7 +1113,9 @@ def get_effective_material_floor(
     _goal_key = str(goal_name or goal or kwargs.get("goal") or "").strip()
     if not _goal_key:
         _goal_key = "natuerlichkeit"
-    floor_base = get_material_floor(material_type, _goal_key, is_studio_2026=is_studio_2026)
+    floor_base = get_material_floor(
+        material_type, _goal_key, is_studio_2026=is_studio_2026, era_decade=kwargs.get("era_decade")
+    )
     scale = max(RESTORABILITY_SCALE_MIN, float(np.clip(float(restorability_score) / 100.0, 0.0, 1.0)))
     return float(np.clip(floor_base * scale, 0.20, 0.99))
 
@@ -1301,7 +1329,7 @@ def resolve_effective_goal_targets(
         if not goal:
             continue
         floor_eff = get_effective_material_floor(
-            mat, goal, restorability_score=restorability_score, is_studio_2026=is_studio_2026
+            mat, goal, restorability_score=restorability_score, is_studio_2026=is_studio_2026, era_decade=era_decade
         )
         target = max(floor_eff, float(song_targets.get(goal, canonical.get(goal, 0.70))))
         target = min(target, float(physical.get(goal, 0.99)), float(chain_cap.get(goal, 0.99)))

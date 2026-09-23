@@ -1015,6 +1015,7 @@ def apply_psychoacoustic_masking_clamp(
     strength: float = 1.0,
     mode: str = "subtractive",
     _min_energy_ratio: float = 0.20,  # reserved — future per-band floor tuning
+    residual_floor_factor: float | None = None,  # §2.62 NR-Stopp an Maskierungsschwelle
     masking_result=None,
 ) -> np.ndarray:
     """Wendet an: psychoacoustic masking to protect inaudible modifications.
@@ -1105,6 +1106,28 @@ def apply_psychoacoustic_masking_clamp(
                         # §2.62 G_floor≥0.10
                         blend = np.clip(scaled, 0.10, 1.0)
                         result[:, ch] = blend * ch_proc + (1.0 - blend) * ch_orig
+                # §2.62 NR-Stopp an der Maskierungsschwelle: Residual-Energie darf
+                # den maskierungsbezogenen Floor nicht unterschreiten (Restoration:
+                # mehr Restflor → Authentizität; Studio 2026: sauber → Faktor nahe 0).
+                if residual_floor_factor is not None and residual_floor_factor > 0.0:
+                    _rff = float(np.clip(residual_floor_factor, 0.0, 1.0))
+                    _win_rf = np.full(512, 1.0 / 512.0, dtype=np.float32)
+                    if result.ndim == 2:
+                        _r_mono = result.mean(axis=0) if result.shape[0] <= 2 else result.mean(axis=1)
+                    else:
+                        _r_mono = result
+                    _n_rf = int(len(_r_mono))
+                    _x_rf = np.arange(_n_rf, dtype=np.float32)
+                    _gain_mono = np.interp(_x_rf, centers, gain_t).astype(np.float32)
+                    _e_orig = np.convolve(orig_mono.astype(np.float32) ** 2, _win_rf, mode="same")
+                    _e_res = np.convolve(_r_mono.astype(np.float32) ** 2, _win_rf, mode="same")
+                    _floor_rel = _rff * np.maximum(0.0, 1.0 - _gain_mono)
+                    _scale_rf = np.sqrt(np.maximum(_floor_rel * _e_orig, _e_res) / np.maximum(_e_res, 1e-12))
+                    _scale_rf = np.clip(_scale_rf, 0.0, 4.0)
+                    if result.ndim == 2:
+                        result = result * _scale_rf[None, :] if result.shape[0] <= 2 else result * _scale_rf[:, None]
+                    else:
+                        result = result * _scale_rf
                 result_arr = np.asarray(np.clip(result, -1.0, 1.0), dtype=processed_audio.dtype)
                 return result_arr  # type: ignore[no-any-return]
             else:
@@ -1114,6 +1137,19 @@ def apply_psychoacoustic_masking_clamp(
                 # §2.62 G_floor≥0.10: verhindert klinisches Stille-Artefakt
                 blend = np.clip(scaled, 0.10, 1.0)
                 result = blend * proc_mono + (1.0 - blend) * orig_mono
+                # §2.62 NR-Stopp an der Maskierungsschwelle (Mono-Pfad).
+                if residual_floor_factor is not None and residual_floor_factor > 0.0:
+                    _rff = float(np.clip(residual_floor_factor, 0.0, 1.0))
+                    _win_rf = np.full(512, 1.0 / 512.0, dtype=np.float32)
+                    _n_rf = int(len(result))
+                    _x_rf = np.arange(_n_rf, dtype=np.float32)
+                    _gain_mono = np.interp(_x_rf, centers, gain_t).astype(np.float32)
+                    _e_orig = np.convolve(orig_mono.astype(np.float32) ** 2, _win_rf, mode="same")
+                    _e_res = np.convolve(result.astype(np.float32) ** 2, _win_rf, mode="same")
+                    _floor_rel = _rff * np.maximum(0.0, 1.0 - _gain_mono)
+                    _scale_rf = np.sqrt(np.maximum(_floor_rel * _e_orig, _e_res) / np.maximum(_e_res, 1e-12))
+                    _scale_rf = np.clip(_scale_rf, 0.0, 4.0)
+                    result = result * _scale_rf
                 result_arr = np.asarray(np.clip(result, -1.0, 1.0), dtype=processed_audio.dtype)
                 return cast(np.ndarray, result_arr)
 

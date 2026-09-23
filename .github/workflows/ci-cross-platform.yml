@@ -1,6 +1,12 @@
 name: Aurik CI Cross-Platform
 
-# §15.4: Cross-Platform-Tests (Ubuntu, Windows, macOS)
+# §15.4: Cross-Platform-Tests (Ubuntu, Windows 10/11 x64 via windows-2022)
+# macOS entfernt (2026-09-23): arm64-Runner bieten kein Python 3.10.12.
+# Windows: Das Toolcache-Manifest (actions/python-versions) enthält 3.10.12
+# nur für darwin/linux — kein Windows-x64-Build (CI-Befund 2026-09-23).
+# Letzte verfügbare Windows-3.10.x ist 3.10.11 → exakter Pin auf dem Runner.
+# Die Windows-Installer (install_aurik.bat / install_windows.ps1) pinnten
+# weiterhin exakt 3.10.12 x64 für die Zielmaschinen (Win10/Win11).
 # Nur bei push auf main oder manuellem Trigger (Kostenkontrolle)
 
 on:
@@ -33,23 +39,30 @@ jobs:
           - os: ubuntu-22.04
             python: "3.10.12"  # exakter Baseline-Pin (Toolcache vorhanden)
           - os: windows-2022
-            python: "3.10.12"  # exakter Baseline-Pin; setup-python lädt notfalls nach
-          - os: macos-14  # Apple Silicon (M1+), GitHub-hosted
-            python: "3.10.12"  # exakter Baseline-Pin; setup-python lädt notfalls nach
+            python: "3.10.11"  # letzte Windows-x64-3.10 im Manifest (3.10.12 ohne Windows-Build)
     timeout-minutes: 120
 
     steps:
       - uses: actions/checkout@v5
+        with:
+          lfs: true  # ML-Modelle (*.onnx/*.ckpt) liegen via Git-LFS im Repo
 
       - uses: actions/setup-python@v6
         with:
           python-version: ${{ matrix.python }}
           cache: pip
 
-      - name: Verify exact Python patch version
+      - name: Verify Python version
         shell: bash
         run: |
-          python -c "import platform, sys; print(platform.python_version()); assert sys.version_info[:3] == (3, 10, 12), f'Expected Python 3.10.12, got {platform.python_version()}'"
+          if [[ "${{ matrix.os }}" == "windows-2022" ]]; then
+            # 3.10.12 hat keinen Windows-x64-Build im Manifest → exakter Pin
+            # 3.10.11 auf dem Runner; die Win10/Win11-Zielmaschinen sind via
+            # Installer exakt auf 3.10.12 x64 gepinnt.
+            python -c "import platform, sys; print(platform.python_version()); assert sys.version_info[:3] == (3, 10, 11) and sys.maxsize > 2**32, f'Expected Python 3.10.11 x64, got {platform.python_version()}'"
+          else
+            python -c "import platform, sys; print(platform.python_version()); assert sys.version_info[:3] == (3, 10, 12), f'Expected Python 3.10.12, got {platform.python_version()}'"
+          fi
 
       - name: Install dependencies (Produktions-Pins)
         shell: bash

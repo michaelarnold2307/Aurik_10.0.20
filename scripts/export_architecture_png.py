@@ -819,7 +819,7 @@ ax.text(
 
 
 # ==================== SPEICHERN ====================
-out_path = pathlib.Path("/media/michael/Software 4TB/Aurik_Standalone/docs/aurik_architecture.png")
+out_path = pathlib.Path(__file__).resolve().parents[1] / "docs/aurik_architecture.png"
 out_path.parent.mkdir(parents=True, exist_ok=True)
 
 fig.savefig(str(out_path), dpi=DPI, bbox_inches="tight", facecolor=C_BG, edgecolor="none", format="png")

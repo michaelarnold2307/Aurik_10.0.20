@@ -494,7 +494,7 @@ def run_existing_test(test_id: str) -> bool:
                 f"tests/normative/{test_id}.py",
                 "--tb=short",
             ],
-            cwd=Path("/media/michael/Software 4TB/Aurik_Standalone"),
+            cwd=_REPOSITORY_ROOT,
             capture_output=True,
             timeout=60,
         )
@@ -1459,7 +1459,7 @@ def test_no_docker_in_production_paths():
                 "-xvs",
                 "--tb=short",
             ],
-            cwd=Path("/media/michael/Software 4TB/Aurik_Standalone"),
+            cwd=_REPOSITORY_ROOT,
             capture_output=True,
             timeout=30,
         )
@@ -1472,7 +1472,7 @@ def test_kmv_batch_audio_correct():
     """Gate G2: KMV uses original audio for batch refinement."""
     # Check that KMV refinement path uses audio_original, not tube3_export
     try:
-        base = Path("/media/michael/Software 4TB/Aurik_Standalone")
+        base = _REPOSITORY_ROOT
         code_path = base / "Aurik10" / "ui" / "modern_window.py"
         with open(code_path, encoding="utf-8") as f:
             content = f.read()
@@ -1488,7 +1488,7 @@ def test_no_silent_refinement_cancellation():
     from pathlib import Path
 
     try:
-        code_path = Path("/media/michael/Software 4TB/Aurik_Standalone") / "Aurik10" / "ui" / "ml_refinement_thread.py"
+        code_path = _REPOSITORY_ROOT / "Aurik10" / "ui" / "ml_refinement_thread.py"
         with open(code_path, encoding="utf-8") as f:
             content = f.read()
         # Check for refinement_cancelled signal emission
@@ -1502,7 +1502,7 @@ def test_no_silent_refinement_cancellation():
 def test_progress_counter_consistency():
     """Gate G4: Progress counter increments/decrements correctly."""
     try:
-        code_path = Path("/media/michael/Software 4TB/Aurik_Standalone") / "Aurik10" / "ui" / "modern_window.py"
+        code_path = _REPOSITORY_ROOT / "Aurik10" / "ui" / "modern_window.py"
         with open(code_path, encoding="utf-8") as f:
             content = f.read()
         # Check for counter update logic
@@ -1514,12 +1514,7 @@ def test_progress_counter_consistency():
 def test_pmgg_no_rollback_skipping():
     """Gate G5: PMGG never returns 'rollback' action."""
     try:
-        code_path = (
-            Path("/media/michael/Software 4TB/Aurik_Standalone")
-            / "backend"
-            / "core"
-            / "per_phase_musical_goals_gate.py"
-        )
+        code_path = _REPOSITORY_ROOT / "backend" / "core" / "per_phase_musical_goals_gate.py"
         with open(code_path, encoding="utf-8") as f:
             content = f.read()
         # Check that 'rollback' is not a valid action in PMGG
@@ -1604,7 +1599,7 @@ def test_amrb_stratified_multi_scenario_gate():
 def test_hybrid_release_mode_determinism():
     """Gate G7: Hybrid Release Mode is deterministic."""
     try:
-        code_path = Path("/media/michael/Software 4TB/Aurik_Standalone") / "backend" / "core" / "fallback_guard.py"
+        code_path = _REPOSITORY_ROOT / "backend" / "core" / "fallback_guard.py"
         with open(code_path, encoding="utf-8") as f:
             content = f.read()
         # Check for release_mode states

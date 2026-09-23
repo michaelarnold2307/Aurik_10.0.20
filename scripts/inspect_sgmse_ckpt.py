@@ -16,7 +16,7 @@ if str(_SGMSE_PKG) not in sys.path:
 
 import torch
 
-CKPT = "/media/michael/Software 4TB/Aurik_Standalone/models/sgmse_plus/sgmse_plus_src_1.ckpt"
+CKPT = str(Path(__file__).resolve().parents[1] / "models/sgmse_plus/sgmse_plus_src_1.ckpt")
 
 
 def main() -> int:

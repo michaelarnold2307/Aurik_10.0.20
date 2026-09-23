@@ -10,7 +10,7 @@ applyTo: "backend/core/unified_restorer_v3.py"
 
 ```python
 # KANONISCH — UV3 restore(), §2.31:
-_mat_val = canonical_material_key(material_type)            # primäres Material
+_mat_val = canonical_material_key(material_type)  # primäres Material
 _chain_mat_vals = [canonical_material_key(s) for s in _cal_transfer_chain or []]
 _material_factor_keys = list(dict.fromkeys([_mat_val] + _chain_mat_vals))
 
@@ -22,8 +22,12 @@ for _pid in all_phase_ids:
 # → Cassette-Material erbt dann Vinyl-Defaults → HF-Halluzination
 
 # Logging:
-logger.info("§2.31 Material-Phase-Initialstärken: %d Phasen für material=%s chain=%s",
-            len(_material_phase_initial_strengths), _mat_val, _material_factor_keys)
+logger.info(
+    "§2.31 Material-Phase-Initialstärken: %d Phasen für material=%s chain=%s",
+    len(_material_phase_initial_strengths),
+    _mat_val,
+    _material_factor_keys,
+)
 ```
 
 **INVARIANTE**: `_MATERIAL_PHASE_FACTORS` in `defect_phase_mapper.py` MUSS für jeden möglichen Chain-Materialschlüssel einen Eintrag haben. Fehlt ein Key, fällt `_get_mat_strength()` auf Generic-Defaults zurück → zu hohe Stärke für restriktive Materialien.
@@ -130,7 +134,7 @@ detect_result = MediumDetector.detect(audio, sr)
 material_confidence = detect_result.confidence  # [0, 1]
 
 if material_confidence >= 0.75:
-    material = detect_result.material            # volles material-adaptives Processing
+    material = detect_result.material  # volles material-adaptives Processing
 elif material_confidence >= 0.50:
     # Konservative Böden: Vinyl als Fallback-Material
     material = "vinyl"  # weniger aggressiv als Shellac-spezifisch
@@ -205,23 +209,21 @@ metadata["material_used"] = material  # kann von detected abweichen
 tolerance = 0.15  # FALSCH
 
 # RICHTIG:
-tolerance = compute_adaptive_drift_tolerance(
-    restorability, material, severity, n_phases
-)
+tolerance = compute_adaptive_drift_tolerance(restorability, material, severity, n_phases)
 # Carrier-Repair-Phasen (_CARRIER_REPAIR_PHASE_PREFIXES) inkrementieren
 # consecutive_rollbacks NICHT
 
 # KANONISCHE DEFINITION _CARRIER_REPAIR_PHASE_PREFIXES (alle Stufen 1–4 aus §2.46):
 _CARRIER_REPAIR_PHASE_PREFIXES = {
-    "phase_30",   # Stufe 1: DC-Offset
-    "phase_31",   # Stufe 1: Quantisierungsrauschen
-    "phase_04",   # Stufe 2: RIAA-EQ
-    "phase_25",   # Stufe 2: Azimuth-Korrektur
-    "phase_12",   # Stufe 2: Wow/Flutter
-    "phase_09",   # Stufe 3: Crackle/Knistern
-    "phase_24",   # Stufe 3: Dropout-Repair
-    "phase_03",   # Stufe 4: Surface-Noise-NR
-    "phase_29",   # Stufe 4: Bandrauschen/Tape-NR
+    "phase_30",  # Stufe 1: DC-Offset
+    "phase_31",  # Stufe 1: Quantisierungsrauschen
+    "phase_04",  # Stufe 2: RIAA-EQ
+    "phase_25",  # Stufe 2: Azimuth-Korrektur
+    "phase_12",  # Stufe 2: Wow/Flutter
+    "phase_09",  # Stufe 3: Crackle/Knistern
+    "phase_24",  # Stufe 3: Dropout-Repair
+    "phase_03",  # Stufe 4: Surface-Noise-NR
+    "phase_29",  # Stufe 4: Bandrauschen/Tape-NR
 }
 # VERBOTEN: phase_05/06/07/23 (Stufe 5 — ADDITIV) in dieses Set — sie inkrementieren consecutive_rollbacks
 ```
@@ -433,6 +435,7 @@ VERBOTEN:
 # Ausgabe: composite_score [0,1] = gewichtetes Mittel aller Komponenten
 # VERSA > MERT für Restoration (MERT ist Music-Representation — kein Restaurierungsmaß)!
 from backend.core.dsp.quality_predictors import get_versa_predictor
+
 versa_result = get_versa_predictor().evaluate(audio_orig, audio_restored, sr)
 versa_score = versa_result["composite_score"]  # [0, 1]
 
@@ -525,12 +528,14 @@ Export-Selektion muss explizit das Ziel "klingt wie ohne Eingriff" optimieren.
 Dies ist ein zusammengesetztes Soft-Objektiv, **kein** neues Hard-Gate.
 
 ```python
-transparency_objective = weighted_mean({
-    "artifact_freedom": artifact_freedom,                # hoch
-    "timbral_fidelity": timbral_fidelity,                # hoch
-    "emotional_arc_preservation": emotional_arc,         # mittel-hoch
-    "micro_dynamics_preservation": micro_dyn_corr,       # mittel
-})
+transparency_objective = weighted_mean(
+    {
+        "artifact_freedom": artifact_freedom,  # hoch
+        "timbral_fidelity": timbral_fidelity,  # hoch
+        "emotional_arc_preservation": emotional_arc,  # mittel-hoch
+        "micro_dynamics_preservation": micro_dyn_corr,  # mittel
+    }
+)
 
 # Kandidatenauswahl (current/hpi_best/best_carrier/original):
 # Primär nach Hard-Gates filtern, dann höchsten transparency_objective wählen.
@@ -612,8 +617,8 @@ metadata["spec_upgrade"] = {
 #    prägen Emotionswahrnehmung stärker als ruhige Strophen)
 # 5. Pegelexplosion-Detektion: wenn max(restored) > max(original) * 1.5 → score = 0
 from backend.core.dsp.emotional_arc import compute_emotional_arc_preservation
-emo_arc = compute_emotional_arc_preservation(audio_orig, audio_restored, sr,
-                                              frisson_zones=frisson_zones)
+
+emo_arc = compute_emotional_arc_preservation(audio_orig, audio_restored, sr, frisson_zones=frisson_zones)
 # VERBOTEN: emotional_arc aus Spektral-Merkmalen approximieren (Envelope ist Ground Truth)
 
 # frisson_zones FORMAT (FrissonZone-Dataclass aus backend/core/frisson_candidate_detector.py):
@@ -656,8 +661,11 @@ if true_peak_dbtp > -1.0:
 
 ```python
 _NEVER_SKIP = {
-    "phase_01", "phase_09", "phase_12",
-    "phase_14", "phase_15",
+    "phase_01",
+    "phase_09",
+    "phase_12",
+    "phase_14",
+    "phase_15",
     "phase_30",  # DC-Offset — immer
     "phase_47",  # TruePeak-Limiter — immer
 }
@@ -702,10 +710,7 @@ Denker-Bypässe oder phasenlokale Zweitprofile sind verboten.
 if sev(DefectType.COMPRESSION_ARTIFACTS) > 0.25:
     selected.append("phase_23_spectral_repair")
 
-if (
-    sev(DefectType.DYNAMIC_COMPRESSION_EXCESS) > 0.30
-    or sev(DefectType.COMPRESSION_ARTIFACTS) > 0.25
-):
+if sev(DefectType.DYNAMIC_COMPRESSION_EXCESS) > 0.30 or sev(DefectType.COMPRESSION_ARTIFACTS) > 0.25:
     selected.append("phase_54_transparent_dynamics")
 
 # VERBOTEN: Nur einen der beiden Pfade zu aktivieren.
@@ -724,6 +729,7 @@ Quelle: `[SRC:S06,S07,S12,S13]`
 # Rückgabe: np.ndarray (bestes verfügbares Audio) — NIEMALS None
 # Max-Gesamtzeit: 30 s für den gesamten Kaskaden-Durchlauf (Watchdog)
 # Max-Retries pro Stufe: 2 (danach zur nächsten Stufe)
+
 
 def _recovery_cascade(reason: str, audio_current: np.ndarray) -> np.ndarray:
     # audio_current: Audio zum Aufrufzeitpunkt — NUR für Diagnose/Metadata gespeichert.
@@ -775,6 +781,7 @@ def _recovery_cascade(reason: str, audio_current: np.ndarray) -> np.ndarray:
     logger.warning("recovery_cascade: all levels exhausted → degraded export, reason=%s", reason)
     return _original_input  # nie leerer Export, nie None
 
+
 # VERBOTEN: leerer Export / Abbruch ohne Ausgabe / Export mit bekanntem Artefakt
 # VERBOTEN: _recovery_cascade() ohne Watchdog-Timeout (max 30 s)
 # VERBOTEN: Stufe überspringen (keine "Shortcut"-Implementierungen)
@@ -800,10 +807,15 @@ if abs(_n_out - _n_in) > 64:
 ```python
 # P1P2_GOALS — KANONISCHE DEFINITION (UV3-Klassenkonstante):
 # P1 + P2 Goals (universell, immer aktiv — unabhängig von panns_singing):
-P1P2_GOALS = frozenset({
-    "natuerlichkeit", "authentizitaet",           # P1
-    "tonal_center", "timbre", "artikulation",     # P2
-})
+P1P2_GOALS = frozenset(
+    {
+        "natuerlichkeit",
+        "authentizitaet",  # P1
+        "tonal_center",
+        "timbre",
+        "artikulation",  # P2
+    }
+)
 # P0-Goals (vocal_quality, formant_fidelity) werden separat via VQI-Gate überwacht (§0p)
 # P3–P5-Goals dürfen vorübergehend sinken (kein sofortiger Rollback-Trigger)
 
@@ -837,14 +849,14 @@ if all(mas_gap[g] <= 0.02 for g in P1P2_GOALS):
 
 ```python
 # VERBOTEN: Single-Segment-Bias auf Audio-Mitte
-spec = fft(mono[N//2: N//2 + frame_size])  # FALSCH
+spec = fft(mono[N // 2 : N // 2 + frame_size])  # FALSCH
 
 # RICHTIG: 3 Segmente mitteln (25%/50%/75%)
 specs = [fft(seg25), fft(seg50), fft(seg75)]
 spec = np.mean(specs, axis=0)
 
 # authentizitaet-Proxy: Zentral-Drittel statt Intro
-acf_segment = mono[N//3: N//3 + 8192]
+acf_segment = mono[N // 3 : N // 3 + 8192]
 
 # transparenz-Proxy: Vollsignal + SFM-Blend
 val = 0.70 * np.log10(p95_full / p05_full + 1e-9) / 4.0 + 0.30 * (1.0 - sfm_avg)
@@ -870,9 +882,8 @@ if self._mas_fully_achieved and phase_id not in _NEVER_SKIP:
 ```python
 # KANONISCH — UV3 restore(), nach SLR, vor _execute_pipeline():
 try:
-    from backend.core.calibration_matrix import (
-        get_goal_recovery_phases, get_material_floor
-    )
+    from backend.core.calibration_matrix import get_goal_recovery_phases, get_material_floor
+
     _gbc_mat_str = str(material_type.value if material_type else "unknown").lower()
     _gbc_is_studio = self.is_studio_mode()
     _gbc_snapshot = UnifiedRestorerV3._fast_goal_snapshot(audio, sample_rate, _gbc_mat_str)
@@ -940,7 +951,7 @@ Reihenfolge nach §2.46-Carrier-Chain: subtraktiv vor additiv, mechanisch vor di
 from backend.core.recording_chain_profiler import RecordingChainProfiler
 
 chain_profile = RecordingChainProfiler().profile_chain(
-    causes=restoration_plan.top_causes,   # Liste aktiver Causes (Posterior > 0.15)
+    causes=restoration_plan.top_causes,  # Liste aktiver Causes (Posterior > 0.15)
     material=material_type.value,
     era=era_decade,
 )
@@ -952,7 +963,7 @@ chain_profile = RecordingChainProfiler().profile_chain(
 gp_result = gp_optimizer.optimize(
     defect_scores=defect_scores_norm,
     material=material,
-    chain_hint=chain_profile,   # NEU: koordiniert Phasen-Stärken innerhalb Cluster
+    chain_hint=chain_profile,  # NEU: koordiniert Phasen-Stärken innerhalb Cluster
 )
 ```
 
@@ -967,9 +978,11 @@ lokale Interventionssteuerung innerhalb einer einzelnen Phase.
 `material_confidence` direkt an `resolve_phase_strength_oracle()` uebergeben.
 
 ```python
-_chain = kwargs.get("transfer_chain") \
-    or getattr(kwargs.get("cached_medium_result"), "transfer_chain", None) \
+_chain = (
+    kwargs.get("transfer_chain")
+    or getattr(kwargs.get("cached_medium_result"), "transfer_chain", None)
     or self._restoration_context.get("transfer_chain", [])
+)
 
 _chain_conf = kwargs.get("material_confidence")
 if not isinstance(_chain_conf, (int, float)):
@@ -1010,11 +1023,11 @@ oracle_profile = resolve_phase_strength_oracle(
 ```python
 # In UV3, Klassen-Konstante:
 _PHASE_COALITIONS: dict[str, list[str]] = {
-    "tape_repair":     ["phase_29_tape_hiss_reduction", "phase_12_wow_flutter_fix", "phase_24_dropout_repair"],
-    "vinyl_surface":   ["phase_01_click_removal", "phase_09_crackle_removal", "phase_05_rumble_filter"],
-    "carrier_invert":  ["phase_04_eq_correction", "phase_03_denoise", "phase_06_frequency_restoration"],
-    "shellac_repair":  ["phase_03_denoise", "phase_09_crackle_removal", "phase_01_click_removal"],
-    "mechanical_fix":  ["phase_12_wow_flutter_fix", "phase_31_speed_pitch_correction", "phase_25_azimuth_correction"],
+    "tape_repair": ["phase_29_tape_hiss_reduction", "phase_12_wow_flutter_fix", "phase_24_dropout_repair"],
+    "vinyl_surface": ["phase_01_click_removal", "phase_09_crackle_removal", "phase_05_rumble_filter"],
+    "carrier_invert": ["phase_04_eq_correction", "phase_03_denoise", "phase_06_frequency_restoration"],
+    "shellac_repair": ["phase_03_denoise", "phase_09_crackle_removal", "phase_01_click_removal"],
+    "mechanical_fix": ["phase_12_wow_flutter_fix", "phase_31_speed_pitch_correction", "phase_25_azimuth_correction"],
 }
 
 # Koalitions-Ausführung in _profiled_phase_call_with_delta():
@@ -1060,8 +1073,11 @@ if not tc_result.ok:
     logger.warning("temporal_continuity phase=%s variance_ratio=%.2f", phase_id, tc_result.variance_ratio)
 # Zusätzlich: gain_step_db > 1.5 — abrupter Gain-Sprung an Phase-Grenze → Mikro-Klick:
 if tc_result.gain_step_db > 1.5:
-    logger.warning("temporal_continuity_gain phase=%s gain_step_db=%.1f dB > 1.5 → potential click",
-                   phase_id, tc_result.gain_step_db)
+    logger.warning(
+        "temporal_continuity_gain phase=%s gain_step_db=%.1f dB > 1.5 → potential click",
+        phase_id,
+        tc_result.gain_step_db,
+    )
     metadata.setdefault("temporal_continuity_gain_warnings", []).append(phase_id)
 ```
 
@@ -1074,18 +1090,22 @@ if tc_result.gain_step_db > 1.5:
 ```python
 # backend/core/temporal_continuity_guard.py:
 def check_temporal_continuity(pre, post, phase_id, sr):
-    frame_rms_pre  = librosa.feature.rms(y=np.mean(pre, axis=0) if pre.ndim==2 else pre,
-                                          frame_length=2048, hop_length=512)[0]
-    frame_rms_post = librosa.feature.rms(y=np.mean(post, axis=0) if post.ndim==2 else post,
-                                          frame_length=2048, hop_length=512)[0]
+    frame_rms_pre = librosa.feature.rms(
+        y=np.mean(pre, axis=0) if pre.ndim == 2 else pre, frame_length=2048, hop_length=512
+    )[0]
+    frame_rms_post = librosa.feature.rms(
+        y=np.mean(post, axis=0) if post.ndim == 2 else post, frame_length=2048, hop_length=512
+    )[0]
     variance_ratio = float(np.var(frame_rms_post) / (np.var(frame_rms_pre) + 1e-8))
     # gain_step_db: abrupter Pegel-Sprung an Phase-Grenze (Fade-out letztes Frame → Fade-in erstes)
-    rms_pre_last  = float(frame_rms_pre[-1])  if len(frame_rms_pre) > 0  else 1e-8
+    rms_pre_last = float(frame_rms_pre[-1]) if len(frame_rms_pre) > 0 else 1e-8
     rms_post_first = float(frame_rms_post[0]) if len(frame_rms_post) > 0 else 1e-8
     gain_step_db = float(20 * np.log10((rms_post_first + 1e-10) / (rms_pre_last + 1e-10)))
     return TemporalContinuityResult(
-        ok=variance_ratio < 2.5, variance_ratio=variance_ratio,
-        phase_id=phase_id, gain_step_db=abs(gain_step_db),
+        ok=variance_ratio < 2.5,
+        variance_ratio=variance_ratio,
+        phase_id=phase_id,
+        gain_step_db=abs(gain_step_db),
     )
 ```
 
@@ -1117,8 +1137,11 @@ from backend.core.temporal_consistency_guard import (
 )
 
 tcg = TemporalConsistencyGuard().check(
-    pre_phase_audio, post_phase_audio, phase_id=phase_id,
-    sr=sr, relative_to_median=True,
+    pre_phase_audio,
+    post_phase_audio,
+    phase_id=phase_id,
+    sr=sr,
+    relative_to_median=True,
 )
 metadata.setdefault("temporal_consistency", {})[phase_id] = {
     "passed": tcg.passed,
@@ -1175,8 +1198,10 @@ structure = PhraseStructureAnalyzer(sample_rate=sr).analyze(original, sr=sr)
 boundaries_s = [s.start_s for s in structure.sections[1:]]
 section_targets, n_snapped = snap_section_boundaries(section_targets, boundaries_s)
 metadata["phrase_structure"] = {
-    "sections": [...], "bpm": structure.bpm,
-    "boundaries_s": boundaries_s, "snapped_boundaries": n_snapped,
+    "sections": [...],
+    "bpm": structure.bpm,
+    "boundaries_s": boundaries_s,
+    "snapped_boundaries": n_snapped,
 }
 ```
 
@@ -1294,13 +1319,13 @@ from backend.core.metric_reliability_graph import get_metric_reliability_graph
 
 _mrg = get_metric_reliability_graph()
 _mrg.update_from_phase_delta(
-        phase_id=phase_id,
-        goal_deltas=self._phase_deltas.get(phase_id, {}).get("delta", {}),
-        phase_metadata=self._phase_metadata_accumulator.get(phase_id, {}),
-        material_type=material_key,
-        transfer_chain=transfer_chain,
-        is_studio_2026=self.is_studio_mode(),
-        era_decade=decade,
+    phase_id=phase_id,
+    goal_deltas=self._phase_deltas.get(phase_id, {}).get("delta", {}),
+    phase_metadata=self._phase_metadata_accumulator.get(phase_id, {}),
+    material_type=material_key,
+    transfer_chain=transfer_chain,
+    is_studio_2026=self.is_studio_mode(),
+    era_decade=decade,
 )
 runtime_conf = _mrg.get_goal_reliability(...)
 base_w, runtime_w = _mrg.get_blend_weights(...)
@@ -1369,6 +1394,7 @@ if _vdp.depth_reduction_pct > 10.0:
 # Prüfung in _profiled_phase_call_with_delta() für ADDITIVE-Phasen:
 if phase_id in {"phase_06", "phase_07", "phase_23"}:
     from backend.core.dsp.transient_guard import detect_transient_shifts
+
     _ts = detect_transient_shifts(pre_phase_audio, audio, sr)
     if _ts.max_shift_ms > 2.0:
         audio = pre_phase_audio * (_ts.max_shift_ms / 2.0) + audio * (1.0 - _ts.max_shift_ms / 2.0)
@@ -1398,6 +1424,7 @@ if _scp.correlation < 0.97:
 
 ```python
 from backend.core.dsp.mikrodynamik_guard import frame_energy_correlation
+
 if panns_singing >= 0.25:
     _corr = frame_energy_correlation(pre_phase_audio, audio, sr, frame_ms=10)
     _target = 0.985 if panns_singing >= 0.35 else 0.97
@@ -1463,8 +1490,10 @@ if _ctx["warmth_band_loss_db"] > 2.5:
 ```python
 # In UV3 nach NR/EQ-Phasen:
 from backend.core.dsp.onset_guard import apply_onset_protection_mask
+
 audio = apply_onset_protection_mask(
-    audio_pre=pre_phase_audio, audio_post=audio,
+    audio_pre=pre_phase_audio,
+    audio_post=audio,
     onset_mask=_ctx["onset_mask"],
     max_delta_db=1.5,
 )
@@ -1489,6 +1518,13 @@ audio = apply_onset_protection_mask(
 anderer offener Goals auftaucht, bekommt dieses Goal einen kleinen Prioritätsbonus. Dadurch
 werden Phasen bevorzugt, die mehrere offene Defizite zusammen adressieren können, ohne dass
 §2.45 Minimal-Intervention oder die Ein-Phase-pro-Goal-Regel aufgeweicht werden.
+
+**Injected-Recovery-Blend**: Injizierte Phasen starten mit konservativer Stärke
+(×0.70 auf `initial_strength`), da sie über bereits bearbeitetes Material laufen —
+volle Stärke würde Doppel-Bearbeitung hörbar machen. Der PMGG-Regelkreis kann die
+Stärke bei klarem Goal-Gewinn wieder anheben. Timing-Phasen (phase_12/phase_31)
+sind ausgenommen. Markierung: `_restoration_context["rescheduler_injected_phases"]`
+(Song-lokal, §V8/§G1-Song-Isolation bleibt gewahrt).
 
 **Modul**: `backend/core/adaptive_phase_rescheduler.py` (Singleton `get_adaptive_phase_rescheduler()`)
 
@@ -1528,14 +1564,52 @@ if _cl_post_snap and isinstance(_cl_song_targets, dict) and not getattr(self, "_
 
 **Conductor-Integration**: `_conductor.recommend()` erhält jetzt `song_goal_targets` + `current_goal_scores` → Stopp-Signal (80 % Ziele erreicht) ist jetzt aktiv (war zuvor tot).
 
+## Studio-2026-Exciter-Verdrahtung (TIER 5)
+
+**Regel**: Im Studio-2026-Modus wird `phase_21_exciter` in TIER 5 ergänzt, wenn
+Air-Band-Bedarf besteht (`BANDWIDTH_LOSS > 0.10` oder analoge/lossy Trägerklassen —
+dieselbe Bedingung wie `phase_39_air_band_enhancement`). Reihenfolge-Guard:
+Exciter-Obertöne laufen VOR `phase_35_multiband_compression` (additiv vor Dynamik).
+Restoration bleibt exciter-frei (§0a): Nähe zum ursprünglich Aufgenommenen hat
+Vorrang vor Klangverschönerung; der Studio-Modus verfolgt den modernen,
+klaren, kraftvollen HiFi-Studio-Sound.
+
+## Wohlklang-Maßnahmen (v10.2.0) — modusabhängig
+
+Drei Wohlklang-Hebel, strikt an die Modus-Ziele gekoppelt:
+
+1. **NR-Stopp an der Maskierungsschwelle (§2.62)**: Subtractive NR-Phasen
+   (Denoise, Dereverb, Gate, Tape-Hiss) dürfen die Residual-Energie nicht unter
+   die psychoakustische Maskierungsschwelle drücken.
+   `apply_psychoacoustic_masking_clamp(residual_floor_factor=...)`; zentrale
+   Injektion in `_profiled_phase_call`: Restoration ×0.30 (mehr Restflor →
+   Nähe zum Original), Studio 2026 ×0.12 (sauber, nicht steril).
+2. **BPM-synchrone Zeitkonstanten (§2.69c Beat-Sync-Erweiterung)**: `resolve_beat_synced_time_ms()`
+   rastet Attack/Release der Dynamik-Phasen (z. B. phase_10) auf dem Tempogrid
+   ein; Tempo aus `_restoration_context["tempo_bpm"]` (MusicalPhraseContext).
+   Restoration: nie kürzer als der Material-Default (natürliche Makrodynamik);
+   Studio 2026: straff/punchy (Attack ¼-Beat, Release ≤ 1 Beat, ≥ 10 ms).
+3. **Era-adaptive Goal-Böden (§09.8)**: `get_material_floor(era_decade=...)`
+   skaliert Restoration-Böden historischer Träger herunter (prä-1960 ×0.85,
+   1960–1980 ×0.90, 1980–2000 ×0.95) — die Ästhetik der Ära ist kein Defekt.
+   Studio 2026 bleibt unskaliert. Fließt via `resolve_effective_goal_targets`
+   und `get_effective_material_floor` in den §GOAL_BASELINE_CHECK.
+
 ---
 
 ## §2.29c Restorative-Baseline-Capping
 
 ```python
 _RESTORATIVE_PHASES = {
-    "phase_02", "phase_03", "phase_09", "phase_18",
-    "phase_20", "phase_23", "phase_24", "phase_29", "phase_49"
+    "phase_02",
+    "phase_03",
+    "phase_09",
+    "phase_18",
+    "phase_20",
+    "phase_23",
+    "phase_24",
+    "phase_29",
+    "phase_49",
 }
 # Für diese Phasen:
 effective_before[g] = min(measured_before[g], canonical_threshold[g] + 0.05)
@@ -1596,6 +1670,7 @@ effective_before[g] = min(measured_before[g], canonical_threshold[g] + 0.05)
 # Jede Phase mit panns_singing >= 0.25: _vocal_phase_inputs.append((phase_id, pre_phase_audio))
 # Maximale Stack-Tiefe: 5 (ältere Einträge werden verworfen)
 
+
 def _rollback_last_vocal_phase(audio_current: np.ndarray) -> np.ndarray:
     if not _vocal_phase_inputs:
         logger.warning("singer_identity_rollback: no vocal phase inputs recorded — no-op")
@@ -1610,6 +1685,7 @@ def _rollback_last_vocal_phase(audio_current: np.ndarray) -> np.ndarray:
 # PFLICHT wenn panns_singing >= 0.35:  (≠ panns_singing_confidence — kanonischer Name: panns_singing)
 if panns_singing >= 0.35:
     from backend.core.musical_goals.vocal_quality_index import compute_vqi
+
     result = compute_vqi(
         audio_orig=original_audio,
         audio_restored=restored_audio,
@@ -1630,14 +1706,16 @@ if panns_singing >= 0.35:
             logger.warning("singer_identity_cosine=%.3f < 0.92 — rolling back last vocal phase", sic)
             audio_restored = _rollback_last_vocal_phase(audio_restored)
         elif sic < 0.92 and _sic_dsp_fb:
-            logger.info("singer_identity_cosine=%.3f < 0.92 but singer_id_dsp_fallback=True — advisory only, no rollback", sic)
+            logger.info(
+                "singer_identity_cosine=%.3f < 0.92 but singer_id_dsp_fallback=True — advisory only, no rollback", sic
+            )
             metadata["singer_id_advisory_cosine"] = sic
     # Dreistufige Recovery-Kaskade (kein harter Veto, §0p):
     # material_vqi_floor — KANONISCHE BERECHNUNG (VERBOTEN: Konstante 0.72 hardcoden!):
     material_vqi_floor = calibration_matrix.get_material_floor(material, "vqi")
     # Fallback-Werte (falls calibration_matrix nicht verfügbar):
     # {"shellac": 0.62, "vinyl": 0.72, "cd": 0.82, "digital": 0.82, "tape": 0.72, "unknown_analog": 0.72}
-    if vqi < material_vqi_floor:        # Shellac: 0.62 | Vinyl: 0.72 | CD: 0.82
+    if vqi < material_vqi_floor:  # Shellac: 0.62 | Vinyl: 0.72 | CD: 0.82
         return _recovery_cascade("vqi < material_floor", audio_restored)
     elif mode == "restoration" and vqi < 0.82:
         return _recovery_cascade("vqi < restoration_target", audio_restored)
@@ -1653,8 +1731,9 @@ if panns_singing >= 0.35:
 ```python
 # Kanonischer Watchdog-Rahmen in UV3 _profiled_phase_call_with_delta():
 if elapsed > _PHASE_WALL_TIME_BUDGET[phase_id]:
-    logger.error("phase_timeout phase=%s elapsed=%.1fs budget=%.1fs",
-                 phase_id, elapsed, _PHASE_WALL_TIME_BUDGET[phase_id])
+    logger.error(
+        "phase_timeout phase=%s elapsed=%.1fs budget=%.1fs", phase_id, elapsed, _PHASE_WALL_TIME_BUDGET[phase_id]
+    )
     audio = pre_phase_audio
     metadata["phase_timeouts"].append(phase_id)
     # _NEVER_SKIP-Phasen: KEIN Blacklisting, Budget 2× (nächster Aufruf gibt mehr Zeit)
