@@ -590,16 +590,26 @@ def surgery_first_prune(
     pruned: list[str] = []
     removed: list[str] = []
 
+    # §SR-CG7 (Root-Cause, Nutzerbefund „Vogel der Nacht"): phase_28
+    # (Oberflächenrausch/Floor-Subtraktion) darf weder durch Familien-Filter
+    # noch Budget-Kappung entfernt werden, wenn sie im Plan steht —
+    # phase_03/09 entfernen nur Impuls-Clicks, das kontinuierliche Knistern
+    # bliebe sonst hörbar. Ihre eigenen Gates (§SR-CG5, Strength-Kalibrierung)
+    # entscheiden no-op vs. aktiv.
+    _P28_ID = "phase_28_surface_noise_profiling"
+
     for pid in selected_phases:
         family = _family_from_phase_id(pid)
-        if family in allowed:
+        if family in allowed or pid == _P28_ID:
             pruned.append(pid)
         else:
             removed.append(pid)
 
     # Cap auf max_phases
     if len(pruned) > decision.max_phases:
-        # Priorität: Reparatur-Phasen zuerst
+        # Priorität: Reparatur-Phasen zuerst; phase_28 geschützt vor Kappung
+        _p28_protected = [p for p in pruned if p == _P28_ID]
+        pruned = [p for p in pruned if p != _P28_ID]
         repair = [p for p in pruned if _family_from_phase_id(p) in _REPAIR_FAMILIES]
         enhance = [p for p in pruned if _family_from_phase_id(p) in _ENHANCE_FAMILIES]
         risky = [
@@ -609,8 +619,8 @@ def surgery_first_prune(
         ]
 
         budget = decision.max_phases
-        pruned = repair[:budget]
-        budget -= len(pruned)
+        pruned = _p28_protected + repair[: max(0, budget - len(_p28_protected))]
+        budget = decision.max_phases - len(pruned)
         if budget > 0:
             pruned += enhance[:budget]
             budget = decision.max_phases - len(pruned)

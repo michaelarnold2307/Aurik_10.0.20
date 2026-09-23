@@ -44739,12 +44739,16 @@ class UnifiedRestorerV3:
 
                 _c28 = _p28_scores.get(_DT28.CRACKLE, _p28_scores.get("crackle"))
                 _sev28 = float(getattr(_c28, "severity", 0.0) or 0.0)
+                if _sev28 < 0.40:
+                    _rctx28 = getattr(self, "_restoration_context", {}) or {}
+                    _hint28 = _rctx28.get("defect_severities") or {}
+                    _sev28 = max(_sev28, float(_hint28.get("crackle", _hint28.get("CRACKLE", 0.0)) or 0.0))
             except Exception as _c28_exc:
                 logger.debug("§SR-CG6 Crackle-Severity nicht verfuegbar: %s", _c28_exc)
                 _sev28 = 0.0
-            if _sev28 >= 0.5:
+            if _sev28 >= 0.40:
                 logger.info(
-                    "§SR-CG6 Verarbeitungsschritt_28 nie skippen: Scanner-Knistern-Severity %.2f >= 0.5",
+                    "§SR-CG6 Verarbeitungsschritt_28 nie skippen: Scanner-Knistern-Severity %.2f >= 0.40",
                     _sev28,
                 )
                 return False
