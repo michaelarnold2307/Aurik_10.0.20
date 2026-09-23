@@ -143,14 +143,14 @@ macOS-Runner sind teurer).
 
 | # | Schritt | Aufwand | Abhängigkeit |
 |---|---------|---------|-------------|
-| 4.1 | `.github/workflows/ci-cross-platform.yml` — Neuer Workflow: `ubuntu-22.04`, `windows-2022`, `macos-14` (Apple Silicon). Nur für `push` auf `main` + manuellen Trigger (`workflow_dispatch`), nicht pro PR (Kostenkontrolle). | 3 h | — |
+| 4.1 | `.github/workflows/ci-cross-platform.yml` — Neuer Workflow: `ubuntu-22.04`, `windows-2022`. Nur für `push` auf `main` + manuellen Trigger (`workflow_dispatch`), nicht pro PR (Kostenkontrolle). | 3 h | — |
 | 4.2 | `scripts/platform_compat_check.py` — Prüft Dateisystem-Pfade (kein `\\`-vs-`/`-Hardcoding), Zeilenenden (LF erzwungen via `.gitattributes`), Case-Sensitivity (Python-Imports case-sensitiv auf macOS/Linux, nicht Windows). | 2 h | — |
-| 4.3 | Cross-Platform-Test-Suite: `pytest -m "not slow and not gpu and not onnx"` auf allen drei Plattformen. GPU/ONNX-Tests nur auf Ubuntu (ROCm). | 1 h | 4.1 |
-| 4.4 | `.github/workflows/ci-cross-platform.yml` um `macos-15` (Intel via Rosetta?) und `windows-2025` ergänzen, sobald verfügbar. | 1 h | 4.1 |
+| 4.3 | Cross-Platform-Test-Suite: `pytest -m "not slow and not gpu and not onnx"` auf Ubuntu und Windows. GPU/ONNX-Tests nur auf Ubuntu (ROCm). | 1 h | 4.1 |
+| 4.4 | `.github/workflows/ci-cross-platform.yml` um `windows-2025` ergänzen, sobald verfügbar. | 1 h | 4.1 |
 
 ### Erfolgskriterien
 
-- `ci-cross-platform.yml` läuft auf Ubuntu, Windows, macOS und ist grün
+- `ci-cross-platform.yml` läuft auf Ubuntu und Windows und ist grün
 - `platform_compat_check.py` detektiert Plattform-Inkompatibilitäten vor Merge
 
 ---
