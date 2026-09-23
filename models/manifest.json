@@ -12,7 +12,18 @@
       "required": false,
       "fallback": "dsp_ersatzpfad",
       "license": "siehe Quell-Ordner",
-      "format": "onnx"
+      "format": "onnx",
+      "delivery": "release",
+      "release_tag": "models-10.2.0",
+      "assets": [
+        "models__aero__aero_12_48.onnx"
+      ],
+      "part_sha256": {
+        "models__aero__aero_12_48.onnx": "3381f1dcd1299272f45d099514b50a25298b302e7fa2f702c0e79b4f37631dc7"
+      },
+      "part_size_bytes": {
+        "models__aero__aero_12_48.onnx": 81365547
+      }
     },
     {
       "name": "apollo",
@@ -24,7 +35,18 @@
       "required": false,
       "fallback": "dsp_ersatzpfad",
       "license": "siehe Quell-Ordner",
-      "format": "onnx"
+      "format": "onnx",
+      "delivery": "release",
+      "release_tag": "models-10.2.0",
+      "assets": [
+        "models__apollo__apollo_core.onnx"
+      ],
+      "part_sha256": {
+        "models__apollo__apollo_core.onnx": "75b4407ae58df555752a290e022b2853766809d1cd79c4465730392ff211bcb4"
+      },
+      "part_size_bytes": {
+        "models__apollo__apollo_core.onnx": 67550532
+      }
     },
     {
       "name": "apollo_apollo_model",
@@ -36,7 +58,18 @@
       "required": false,
       "fallback": "resemble_enhance",
       "license": "siehe Quell-Ordner",
-      "format": "pytorch"
+      "format": "pytorch",
+      "delivery": "release",
+      "release_tag": "models-10.2.0",
+      "assets": [
+        "models__apollo__apollo_model.pt"
+      ],
+      "part_sha256": {
+        "models__apollo__apollo_model.pt": "f7d460d3debc1e2b2563ad003fbd6dd386fb6c938bfb678bace9bf75ce4a032c"
+      },
+      "part_size_bytes": {
+        "models__apollo__apollo_model.pt": 67729272
+      }
     },
     {
       "name": "applade",
@@ -110,7 +143,18 @@
       "required": false,
       "fallback": "dsp_ersatzpfad",
       "license": "siehe Quell-Ordner",
-      "format": "onnx"
+      "format": "onnx",
+      "delivery": "release",
+      "release_tag": "models-10.2.0",
+      "assets": [
+        "models__audioldm2__audioldm2.onnx"
+      ],
+      "part_sha256": {
+        "models__audioldm2__audioldm2.onnx": "dcc59c53e0265bc10d195811567989d0bad12ad61e84c59e7b5065751cfd43ae"
+      },
+      "part_size_bytes": {
+        "models__audioldm2__audioldm2.onnx": 1390902746
+      }
     },
     {
       "name": "audioldm2_vae_decoder",
@@ -122,7 +166,18 @@
       "required": false,
       "fallback": "dsp_ersatzpfad",
       "license": "siehe Quell-Ordner",
-      "format": "onnx"
+      "format": "onnx",
+      "delivery": "release",
+      "release_tag": "models-10.2.0",
+      "assets": [
+        "models__audioldm2__vae_decoder.onnx"
+      ],
+      "part_sha256": {
+        "models__audioldm2__vae_decoder.onnx": "3a42aed4dfe144321bbcbe0d120359ebbc3f56169b65d0465b625567e8baaaa0"
+      },
+      "part_size_bytes": {
+        "models__audioldm2__vae_decoder.onnx": 132023917
+      }
     },
     {
       "name": "banquet_vinyl",
@@ -134,7 +189,18 @@
       "required": false,
       "fallback": "dsp_decrackle",
       "license": "siehe Quell-Ordner",
-      "format": "onnx"
+      "format": "onnx",
+      "delivery": "release",
+      "release_tag": "models-10.2.0",
+      "assets": [
+        "models__banquet__banquet_vinyl_final.onnx"
+      ],
+      "part_sha256": {
+        "models__banquet__banquet_vinyl_final.onnx": "cf76124d399ee4d4f8ae7d4fa43fc68adffe63471cfe9bc33f5fa4882f926f45"
+      },
+      "part_size_bytes": {
+        "models__banquet__banquet_vinyl_final.onnx": 96218370
+      }
     },
     {
       "name": "basicpitch",
@@ -170,7 +236,18 @@
       "required": false,
       "fallback": "dsp_ersatzpfad",
       "license": "siehe Quell-Ordner",
-      "format": "onnx"
+      "format": "onnx",
+      "delivery": "release",
+      "release_tag": "models-10.2.0",
+      "assets": [
+        "models__beats__beats_iter3.onnx"
+      ],
+      "part_sha256": {
+        "models__beats__beats_iter3.onnx": "82c1b7c0c97422a96125890fa3a27e69dc8bdc6f3e978115af87911b57dd582c"
+      },
+      "part_size_bytes": {
+        "models__beats__beats_iter3.onnx": 361588231
+      }
     },
     {
       "name": "bigvgan",
@@ -194,7 +271,18 @@
       "required": false,
       "fallback": "dsp_ersatzpfad",
       "license": "siehe Quell-Ordner",
-      "format": "pytorch"
+      "format": "pytorch",
+      "delivery": "release",
+      "release_tag": "models-10.2.0",
+      "assets": [
+        "models__bigvgan__bigvgan_v2.pth"
+      ],
+      "part_sha256": {
+        "models__bigvgan__bigvgan_v2.pth": "d9fe7ec6bd0b44ed9d66973d5012d8181c1570b01e5c72df51973e241dccd357"
+      },
+      "part_size_bytes": {
+        "models__bigvgan__bigvgan_v2.pth": 489041291
+      }
     },
     {
       "name": "bs_roformer",
@@ -206,7 +294,18 @@
       "required": false,
       "fallback": "dsp_ersatzpfad",
       "license": "siehe Quell-Ordner",
-      "format": "onnx"
+      "format": "onnx",
+      "delivery": "release",
+      "release_tag": "models-10.2.0",
+      "assets": [
+        "models__bs_roformer__bs_roformer_317_core.onnx"
+      ],
+      "part_sha256": {
+        "models__bs_roformer__bs_roformer_317_core.onnx": "430d1971687f6077c4b3eb2ba211c9e01159369af908b7ed1ef8ac7d63c4a461"
+      },
+      "part_size_bytes": {
+        "models__bs_roformer__bs_roformer_317_core.onnx": 645101467
+      }
     },
     {
       "name": "bs_roformer_model_bs_roformer_ep_317_sdr_12.9755",
@@ -218,7 +317,18 @@
       "required": false,
       "fallback": "dsp_ersatzpfad",
       "license": "siehe Quell-Ordner",
-      "format": "checkpoint"
+      "format": "checkpoint",
+      "delivery": "release",
+      "release_tag": "models-10.2.0",
+      "assets": [
+        "models__bs_roformer__model_bs_roformer_ep_317_sdr_12.9755.ckpt"
+      ],
+      "part_sha256": {
+        "models__bs_roformer__model_bs_roformer_ep_317_sdr_12.9755.ckpt": "5b84f37e8d444c8cb30c79d77f613a41c05868ff9c9ac6c7049c00aefae115aa"
+      },
+      "part_size_bytes": {
+        "models__bs_roformer__model_bs_roformer_ep_317_sdr_12.9755.ckpt": 639331213
+      }
     },
     {
       "name": "bw_reconstructor",
@@ -266,7 +376,18 @@
       "required": false,
       "fallback": "panns",
       "license": "siehe Quell-Ordner",
-      "format": "onnx"
+      "format": "onnx",
+      "delivery": "release",
+      "release_tag": "models-10.2.0",
+      "assets": [
+        "models__clap__audio_encoder.onnx"
+      ],
+      "part_sha256": {
+        "models__clap__audio_encoder.onnx": "68cd50a8d4aa5a13623ac1fce70d3cce791ada55d3430ebbc991e71ea33b02b9"
+      },
+      "part_size_bytes": {
+        "models__clap__audio_encoder.onnx": 285168774
+      }
     },
     {
       "name": "clap",
@@ -278,7 +399,21 @@
       "required": false,
       "fallback": "dsp_ersatzpfad",
       "license": "siehe Quell-Ordner",
-      "format": "pytorch"
+      "format": "pytorch",
+      "delivery": "release",
+      "release_tag": "models-10.2.0",
+      "assets": [
+        "models__clap__music_audioset_epoch_15_esc_90.14.pt.part00",
+        "models__clap__music_audioset_epoch_15_esc_90.14.pt.part01"
+      ],
+      "part_sha256": {
+        "models__clap__music_audioset_epoch_15_esc_90.14.pt.part00": "f9ce77ab01fca33621f9bab898a4581525baf6884f7b08dbfbba08d24b1681bf",
+        "models__clap__music_audioset_epoch_15_esc_90.14.pt.part01": "607471d48862248382fca7b97919b21167317c9e2fbafcd3e8882fbaf7fa246d"
+      },
+      "part_size_bytes": {
+        "models__clap__music_audioset_epoch_15_esc_90.14.pt.part00": 1992294400,
+        "models__clap__music_audioset_epoch_15_esc_90.14.pt.part01": 360176603
+      }
     },
     {
       "name": "cqtdiff",
@@ -302,7 +437,18 @@
       "required": false,
       "fallback": "dsp_nmf_beta_sinusoidal",
       "license": "siehe Quell-Ordner",
-      "format": "pytorch"
+      "format": "pytorch",
+      "delivery": "release",
+      "release_tag": "models-10.2.0",
+      "assets": [
+        "models__cqtdiff__score_network.pt"
+      ],
+      "part_sha256": {
+        "models__cqtdiff__score_network.pt": "7d5c327f85c3ef677cda2c2d7854fbb57f73c7bd97b8bf203f47c0a2e3819b42"
+      },
+      "part_size_bytes": {
+        "models__cqtdiff__score_network.pt": 65720656
+      }
     },
     {
       "name": "cqtdiff_cqt_weights",
@@ -314,7 +460,18 @@
       "required": false,
       "fallback": "dsp_ersatzpfad",
       "license": "siehe Quell-Ordner",
-      "format": "pytorch"
+      "format": "pytorch",
+      "delivery": "release",
+      "release_tag": "models-10.2.0",
+      "assets": [
+        "models__cqtdiff__src__models__cqt_weights.pt"
+      ],
+      "part_sha256": {
+        "models__cqtdiff__src__models__cqt_weights.pt": "8aaff0349e6a0c6eba83391674ceb3fb51a88c5e1a249003ccfe65c76515c0f7"
+      },
+      "part_size_bytes": {
+        "models__cqtdiff__src__models__cqt_weights.pt": 124003457
+      }
     },
     {
       "name": "crepe_full",
@@ -326,7 +483,18 @@
       "required": false,
       "fallback": "dsp_pyin",
       "license": "siehe Quell-Ordner",
-      "format": "onnx"
+      "format": "onnx",
+      "delivery": "release",
+      "release_tag": "models-10.2.0",
+      "assets": [
+        "models__crepe__crepe.onnx"
+      ],
+      "part_sha256": {
+        "models__crepe__crepe.onnx": "fe3013ca57e83dc81e8cf44efa14f0097bc82b20d55717b1c1ccf92e8425003b"
+      },
+      "part_size_bytes": {
+        "models__crepe__crepe.onnx": 88984916
+      }
     },
     {
       "name": "dac",
@@ -338,7 +506,18 @@
       "required": false,
       "fallback": "dsp_ersatzpfad",
       "license": "siehe Quell-Ordner",
-      "format": "onnx"
+      "format": "onnx",
+      "delivery": "release",
+      "release_tag": "models-10.2.0",
+      "assets": [
+        "models__dac__decoder_model.onnx"
+      ],
+      "part_sha256": {
+        "models__dac__decoder_model.onnx": "df9d3700d34b96223fe6b985ce3a0219409c4677e54300a697a1246a9504af44"
+      },
+      "part_size_bytes": {
+        "models__dac__decoder_model.onnx": 217114975
+      }
     },
     {
       "name": "dac_encoder_model",
@@ -350,7 +529,18 @@
       "required": false,
       "fallback": "dsp_ersatzpfad",
       "license": "siehe Quell-Ordner",
-      "format": "onnx"
+      "format": "onnx",
+      "delivery": "release",
+      "release_tag": "models-10.2.0",
+      "assets": [
+        "models__dac__encoder_model.onnx"
+      ],
+      "part_sha256": {
+        "models__dac__encoder_model.onnx": "d81082939351ed88323c4943fe51b221a72087e0da4eb03263e3f5d12a3d890d"
+      },
+      "part_size_bytes": {
+        "models__dac__encoder_model.onnx": 90550088
+      }
     },
     {
       "name": "ddsp_predictor",
@@ -520,7 +710,18 @@
       "required": false,
       "fallback": "dsp_ersatzpfad",
       "license": "siehe Quell-Ordner",
-      "format": "onnx"
+      "format": "onnx",
+      "delivery": "release",
+      "release_tag": "models-10.2.0",
+      "assets": [
+        "models__ear_vae__decoder.onnx"
+      ],
+      "part_sha256": {
+        "models__ear_vae__decoder.onnx": "ed64a1f12b685bb1e55eb27f69683430692c3570f6812c54a898109df5d911ab"
+      },
+      "part_size_bytes": {
+        "models__ear_vae__decoder.onnx": 297348525
+      }
     },
     {
       "name": "ear_vae_encoder",
@@ -532,7 +733,18 @@
       "required": false,
       "fallback": "dsp_ersatzpfad",
       "license": "siehe Quell-Ordner",
-      "format": "onnx"
+      "format": "onnx",
+      "delivery": "release",
+      "release_tag": "models-10.2.0",
+      "assets": [
+        "models__ear_vae__encoder.onnx"
+      ],
+      "part_sha256": {
+        "models__ear_vae__encoder.onnx": "8f97ef673d4120ed1d92e762f8687b072de45dc666a166f38209cf9cf629c387"
+      },
+      "part_size_bytes": {
+        "models__ear_vae__encoder.onnx": 296036947
+      }
     },
     {
       "name": "fcpe",
@@ -544,7 +756,18 @@
       "required": false,
       "fallback": "crepe_full",
       "license": "siehe Quell-Ordner",
-      "format": "onnx"
+      "format": "onnx",
+      "delivery": "release",
+      "release_tag": "models-10.2.0",
+      "assets": [
+        "models__fcpe__fcpe.onnx"
+      ],
+      "part_sha256": {
+        "models__fcpe__fcpe.onnx": "c1314254106a9c394b6d1697fc2bcb230646837b910f3e828caf0297aff15654"
+      },
+      "part_size_bytes": {
+        "models__fcpe__fcpe.onnx": 69223826
+      }
     },
     {
       "name": "fcpe_fcpe",
@@ -556,7 +779,18 @@
       "required": false,
       "fallback": "dsp_ersatzpfad",
       "license": "siehe Quell-Ordner",
-      "format": "pytorch"
+      "format": "pytorch",
+      "delivery": "release",
+      "release_tag": "models-10.2.0",
+      "assets": [
+        "models__fcpe__fcpe.pt"
+      ],
+      "part_sha256": {
+        "models__fcpe__fcpe.pt": "c3a8dd2dbd51baf19ed295006f2ac25dba6dd60adc7ec578ae5fbd94970951da"
+      },
+      "part_size_bytes": {
+        "models__fcpe__fcpe.pt": 69005189
+      }
     },
     {
       "name": "flashsr",
@@ -652,7 +886,18 @@
       "required": false,
       "fallback": "dsp_harmonic_exciter",
       "license": "siehe Quell-Ordner",
-      "format": "pytorch"
+      "format": "pytorch",
+      "delivery": "release",
+      "release_tag": "models-10.2.0",
+      "assets": [
+        "models__gacela__model__01_400000.pt"
+      ],
+      "part_sha256": {
+        "models__gacela__model__01_400000.pt": "edbd8b03b7ae9ef0fbe2a60f0ad275845f201d90f407822a8ee2ffeb575835f2"
+      },
+      "part_size_bytes": {
+        "models__gacela__model__01_400000.pt": 404753056
+      }
     },
     {
       "name": "gacela_gacela_core",
@@ -676,7 +921,18 @@
       "required": false,
       "fallback": "dsp_ersatzpfad",
       "license": "siehe Quell-Ordner",
-      "format": "onnx"
+      "format": "onnx",
+      "delivery": "release",
+      "release_tag": "models-10.2.0",
+      "assets": [
+        "models__gacela__model__gacela_core_ft39.onnx"
+      ],
+      "part_sha256": {
+        "models__gacela__model__gacela_core_ft39.onnx": "f33e1b807bba3dcd0d3b2efd8575804a5683cfe11ba5ac2756511c3b060d52f3"
+      },
+      "part_size_bytes": {
+        "models__gacela__model__gacela_core_ft39.onnx": 57440925
+      }
     },
     {
       "name": "harmonic_inpainting",
@@ -688,7 +944,18 @@
       "required": false,
       "fallback": "dsp_ersatzpfad",
       "license": "siehe Quell-Ordner",
-      "format": "onnx"
+      "format": "onnx",
+      "delivery": "release",
+      "release_tag": "models-10.2.0",
+      "assets": [
+        "models__harmonic_inpainting__inpainting_best.onnx"
+      ],
+      "part_sha256": {
+        "models__harmonic_inpainting__inpainting_best.onnx": "77f3e663fbdd56ffbc6f534475c46a50b7e560df94ba9430231432c03a8d205e"
+      },
+      "part_size_bytes": {
+        "models__harmonic_inpainting__inpainting_best.onnx": 806598567
+      }
     },
     {
       "name": "harmonic_inpainting_inpainting_mask_best",
@@ -700,7 +967,18 @@
       "required": false,
       "fallback": "dsp_ersatzpfad",
       "license": "siehe Quell-Ordner",
-      "format": "onnx"
+      "format": "onnx",
+      "delivery": "release",
+      "release_tag": "models-10.2.0",
+      "assets": [
+        "models__harmonic_inpainting__inpainting_mask_best.onnx"
+      ],
+      "part_sha256": {
+        "models__harmonic_inpainting__inpainting_mask_best.onnx": "17e8f7e524c802bc1cd3cb0e4bb2b2120fb0070ebee8a80e00c4e2046d9bc953"
+      },
+      "part_size_bytes": {
+        "models__harmonic_inpainting__inpainting_mask_best.onnx": 808171433
+      }
     },
     {
       "name": "hifi_gan",
@@ -732,7 +1010,18 @@
       "required": false,
       "fallback": "dsp_ersatzpfad",
       "license": "siehe Quell-Ordner",
-      "format": "onnx"
+      "format": "onnx",
+      "delivery": "release",
+      "release_tag": "models-10.2.0",
+      "assets": [
+        "models__kim_inst__kim_inst.onnx"
+      ],
+      "part_sha256": {
+        "models__kim_inst__kim_inst.onnx": "86b1940e7122fbdd2beadc65507cbff6c352d79012a8a7e60d56db98532af5f7"
+      },
+      "part_size_bytes": {
+        "models__kim_inst__kim_inst.onnx": 66759214
+      }
     },
     {
       "name": "mdx23c",
@@ -744,7 +1033,18 @@
       "required": false,
       "fallback": "dsp_hpss_nmf_beta",
       "license": "siehe Quell-Ordner",
-      "format": "onnx"
+      "format": "onnx",
+      "delivery": "release",
+      "release_tag": "models-10.2.0",
+      "assets": [
+        "models__kim_vocal_2__kim_vocal_2.onnx"
+      ],
+      "part_sha256": {
+        "models__kim_vocal_2__kim_vocal_2.onnx": "ce74ef3b6a6024ce44211a07be9cf8bc6d87728cc852a68ab34eb8e58cde9c8b"
+      },
+      "part_size_bytes": {
+        "models__kim_vocal_2__kim_vocal_2.onnx": 66759214
+      }
     },
     {
       "name": "melbandroformer",
@@ -756,7 +1056,18 @@
       "required": false,
       "fallback": "dsp_ersatzpfad",
       "license": "siehe Quell-Ordner",
-      "format": "onnx"
+      "format": "onnx",
+      "delivery": "release",
+      "release_tag": "models-10.2.0",
+      "assets": [
+        "models__melbandroformer__melbandroformer_optimized.onnx"
+      ],
+      "part_sha256": {
+        "models__melbandroformer__melbandroformer_optimized.onnx": "1a85b53bce2e90e4a479bd7489472e5d0c60aada038c0c01a7704aa9f46ab2ef"
+      },
+      "part_size_bytes": {
+        "models__melbandroformer__melbandroformer_optimized.onnx": 901204344
+      }
     },
     {
       "name": "mert",
@@ -768,7 +1079,18 @@
       "required": false,
       "fallback": "dsp_ersatzpfad",
       "license": "siehe Quell-Ordner",
-      "format": "onnx"
+      "format": "onnx",
+      "delivery": "release",
+      "release_tag": "models-10.2.0",
+      "assets": [
+        "models__mert__mert.onnx"
+      ],
+      "part_sha256": {
+        "models__mert__mert.onnx": "0985d2f9cda1f5efa97b5eb6f2fde3281990cbf5878bdc8fe2b28cc466caaf06"
+      },
+      "part_size_bytes": {
+        "models__mert__mert.onnx": 354993476
+      }
     },
     {
       "name": "mert_mert_330m",
@@ -780,7 +1102,18 @@
       "required": false,
       "fallback": "dsp_ersatzpfad",
       "license": "siehe Quell-Ordner",
-      "format": "onnx"
+      "format": "onnx",
+      "delivery": "release",
+      "release_tag": "models-10.2.0",
+      "assets": [
+        "models__mert__mert_330m.onnx"
+      ],
+      "part_sha256": {
+        "models__mert__mert_330m.onnx": "0985d2f9cda1f5efa97b5eb6f2fde3281990cbf5878bdc8fe2b28cc466caaf06"
+      },
+      "part_size_bytes": {
+        "models__mert__mert_330m.onnx": 354993476
+      }
     },
     {
       "name": "mert_denoiser",
@@ -805,7 +1138,18 @@
       "fallback": "dsp_omlsa_imcra",
       "license": "siehe Quell-Ordner",
       "format": "onnx",
-      "description": "MIIPHER DiT Vortraining (Epoch 120, Flow Matching)"
+      "description": "MIIPHER DiT Vortraining (Epoch 120, Flow Matching)",
+      "delivery": "release",
+      "release_tag": "models-10.2.0",
+      "assets": [
+        "models__miipher_dit__flow_matching_dit.onnx"
+      ],
+      "part_sha256": {
+        "models__miipher_dit__flow_matching_dit.onnx": "077f6d755c07d8075785863780dd59119ddc6ab6944f5e333f87805671f3d54a"
+      },
+      "part_size_bytes": {
+        "models__miipher_dit__flow_matching_dit.onnx": 806598567
+      }
     },
     {
       "name": "miipher_dit",
@@ -875,7 +1219,18 @@
       "required": false,
       "fallback": "dsp_ersatzpfad",
       "license": "siehe Quell-Ordner",
-      "format": "safetensors"
+      "format": "safetensors",
+      "delivery": "release",
+      "release_tag": "models-10.2.0",
+      "assets": [
+        "models__muq_mulan__model.safetensors"
+      ],
+      "part_sha256": {
+        "models__muq_mulan__model.safetensors": "273febab2be02872c37d2c37e48a9d6c52c1c9392f3eeeabd498efa281ccb7a6"
+      },
+      "part_size_bytes": {
+        "models__muq_mulan__model.safetensors": 1333825096
+      }
     },
     {
       "name": "muq_mulan_pytorch_model",
@@ -887,7 +1242,21 @@
       "required": false,
       "fallback": "dsp_ersatzpfad",
       "license": "siehe Quell-Ordner",
-      "format": "pytorch"
+      "format": "pytorch",
+      "delivery": "release",
+      "release_tag": "models-10.2.0",
+      "assets": [
+        "models__muq_mulan__mulan__pytorch_model.bin.part00",
+        "models__muq_mulan__mulan__pytorch_model.bin.part01"
+      ],
+      "part_sha256": {
+        "models__muq_mulan__mulan__pytorch_model.bin.part00": "92c47b5c7f05d8fdc63aae29ce0efef92d686bd19f1e12cfafead4b98448359e",
+        "models__muq_mulan__mulan__pytorch_model.bin.part01": "d46dcdcdf07ddc1a1294fecf8aa0a30b5057622216c0474d48fc4888bc70a1f9"
+      },
+      "part_size_bytes": {
+        "models__muq_mulan__mulan__pytorch_model.bin.part00": 1992294400,
+        "models__muq_mulan__mulan__pytorch_model.bin.part01": 661660001
+      }
     },
     {
       "name": "muq_mulan_muq_eval_a1_head",
@@ -1015,7 +1384,18 @@
       "required": false,
       "fallback": "crepe_full",
       "license": "siehe Quell-Ordner",
-      "format": "onnx"
+      "format": "onnx",
+      "delivery": "release",
+      "release_tag": "models-10.2.0",
+      "assets": [
+        "models__rmvpe__rmvpe.onnx"
+      ],
+      "part_sha256": {
+        "models__rmvpe__rmvpe.onnx": "5370e71ac80af8b4b7c793d27efd51fd8bf962de3a7ede0766dac0befa3660fd"
+      },
+      "part_size_bytes": {
+        "models__rmvpe__rmvpe.onnx": 361688443
+      }
     },
     {
       "name": "sgmse_plus",
@@ -1039,7 +1419,18 @@
       "required": false,
       "fallback": "dsp_ersatzpfad",
       "license": "siehe Quell-Ordner",
-      "format": "onnx"
+      "format": "onnx",
+      "delivery": "release",
+      "release_tag": "models-10.2.0",
+      "assets": [
+        "models__sgmse_plus__sgmse_plus_core.onnx"
+      ],
+      "part_sha256": {
+        "models__sgmse_plus__sgmse_plus_core.onnx": "6c7961e7d02e740063bf224335e99f13ea6be9d8ebc7ca92cf220ff96a3c4942"
+      },
+      "part_size_bytes": {
+        "models__sgmse_plus__sgmse_plus_core.onnx": 263594583
+      }
     },
     {
       "name": "sgmse_plus_sgmse_plus_src_1",
@@ -1051,7 +1442,18 @@
       "required": false,
       "fallback": "dsp_ersatzpfad",
       "license": "siehe Quell-Ordner",
-      "format": "checkpoint"
+      "format": "checkpoint",
+      "delivery": "release",
+      "release_tag": "models-10.2.0",
+      "assets": [
+        "models__sgmse_plus__sgmse_plus_src_1.ckpt"
+      ],
+      "part_sha256": {
+        "models__sgmse_plus__sgmse_plus_src_1.ckpt": "e3875747b5646092d5c556bae68e5af639e2c1f45f009c669f379cd4d415cbd8"
+      },
+      "part_size_bytes": {
+        "models__sgmse_plus__sgmse_plus_src_1.ckpt": 1312806643
+      }
     },
     {
       "name": "silero_vad",
@@ -1063,7 +1465,18 @@
       "required": false,
       "fallback": "energy_vad",
       "license": "siehe Quell-Ordner",
-      "format": "onnx"
+      "format": "onnx",
+      "delivery": "release",
+      "release_tag": "models-10.2.0",
+      "assets": [
+        "models__silero__silero_en_v5.onnx"
+      ],
+      "part_sha256": {
+        "models__silero__silero_en_v5.onnx": "352559c6e9b310d256fb771b106aad7e101a8846f76ea4fa22dd8bf975a47a1b"
+      },
+      "part_size_bytes": {
+        "models__silero__silero_en_v5.onnx": 117591080
+      }
     },
     {
       "name": "singmos",
@@ -1095,6 +1508,17 @@
         "size_bytes": 95000000,
         "license": "MIT",
         "reference": "https://github.com/sarulab-speech/UTMOS22"
+      },
+      "delivery": "release",
+      "release_tag": "models-10.2.0",
+      "assets": [
+        "models__utmosv2__fold0_s42_best_model.pth"
+      ],
+      "part_sha256": {
+        "models__utmosv2__fold0_s42_best_model.pth": "c8149d988e4bbf3f347e6966b5d769de347a5f8c59ffca1dc4bd4bf5b8585e57"
+      },
+      "part_size_bytes": {
+        "models__utmosv2__fold0_s42_best_model.pth": 818531314
       }
     },
     {
@@ -1107,7 +1531,18 @@
       "required": false,
       "fallback": "utmos",
       "license": "siehe Quell-Ordner",
-      "format": "onnx"
+      "format": "onnx",
+      "delivery": "release",
+      "release_tag": "models-10.2.0",
+      "assets": [
+        "models__utmosv2__utmosv2_ssl_encoder.onnx"
+      ],
+      "part_sha256": {
+        "models__utmosv2__utmosv2_ssl_encoder.onnx": "cfabccf4a06da9723bc1bef9c2b88bc575bca080628187953c4b78dca6dddd1e"
+      },
+      "part_size_bytes": {
+        "models__utmosv2__utmosv2_ssl_encoder.onnx": 377704195
+      }
     },
     {
       "name": "uvr_mdx_net_hq",
@@ -1119,7 +1554,18 @@
       "required": false,
       "fallback": "dsp_hpss_nmf_beta",
       "license": "siehe Quell-Ordner",
-      "format": "onnx"
+      "format": "onnx",
+      "delivery": "release",
+      "release_tag": "models-10.2.0",
+      "assets": [
+        "models__uvr_mdx_net__uvr_mdx_net_inst_hq_1.onnx"
+      ],
+      "part_sha256": {
+        "models__uvr_mdx_net__uvr_mdx_net_inst_hq_1.onnx": "38a045c4ded87e3bf97b609ec5be7910e8a7cecec455f507227ab12b5e29f7f9"
+      },
+      "part_size_bytes": {
+        "models__uvr_mdx_net__uvr_mdx_net_inst_hq_1.onnx": 66759214
+      }
     },
     {
       "name": "uvr_mdx_net",
@@ -1131,7 +1577,18 @@
       "required": false,
       "fallback": "dsp_ersatzpfad",
       "license": "siehe Quell-Ordner",
-      "format": "onnx"
+      "format": "onnx",
+      "delivery": "release",
+      "release_tag": "models-10.2.0",
+      "assets": [
+        "models__uvr_mdx_net__uvr_mdx_net_inst_hq_2.onnx"
+      ],
+      "part_sha256": {
+        "models__uvr_mdx_net__uvr_mdx_net_inst_hq_2.onnx": "197f8ab296df850f961e68c595f6649acb7d9e621b5600b460f3458967299112"
+      },
+      "part_size_bytes": {
+        "models__uvr_mdx_net__uvr_mdx_net_inst_hq_2.onnx": 66759214
+      }
     },
     {
       "name": "uvr_mdx_net_uvr_mdx_net_inst_hq_3",
@@ -1143,7 +1600,18 @@
       "required": false,
       "fallback": "dsp_ersatzpfad",
       "license": "siehe Quell-Ordner",
-      "format": "onnx"
+      "format": "onnx",
+      "delivery": "release",
+      "release_tag": "models-10.2.0",
+      "assets": [
+        "models__uvr_mdx_net__uvr_mdx_net_inst_hq_3.onnx"
+      ],
+      "part_sha256": {
+        "models__uvr_mdx_net__uvr_mdx_net_inst_hq_3.onnx": "317554b07fe1ea5279a77f2b1520a41ea4b93432560c4ffd08792c30fddf9adc"
+      },
+      "part_size_bytes": {
+        "models__uvr_mdx_net__uvr_mdx_net_inst_hq_3.onnx": 66759214
+      }
     },
     {
       "name": "uvr_mdx_net_uvr_mdx_net_inst_hq_4",
@@ -1155,7 +1623,18 @@
       "required": false,
       "fallback": "dsp_ersatzpfad",
       "license": "siehe Quell-Ordner",
-      "format": "onnx"
+      "format": "onnx",
+      "delivery": "release",
+      "release_tag": "models-10.2.0",
+      "assets": [
+        "models__uvr_mdx_net__uvr_mdx_net_inst_hq_4.onnx"
+      ],
+      "part_sha256": {
+        "models__uvr_mdx_net__uvr_mdx_net_inst_hq_4.onnx": "3c4b5b9b05090fdf238f38ba5046813982d50e2a652e9cb3324ea79720c3c9c8"
+      },
+      "part_size_bytes": {
+        "models__uvr_mdx_net__uvr_mdx_net_inst_hq_4.onnx": 59074342
+      }
     },
     {
       "name": "versa",
@@ -1167,7 +1646,18 @@
       "required": false,
       "fallback": "pqs_dsp_gammatone",
       "license": "siehe Quell-Ordner",
-      "format": "pytorch"
+      "format": "pytorch",
+      "delivery": "release",
+      "release_tag": "models-10.2.0",
+      "assets": [
+        "models__versa__hub_cache__checkpoints__ft_wav2vec2_large_ll60k_mdf_p1_200epochs_all_192epochs.pth"
+      ],
+      "part_sha256": {
+        "models__versa__hub_cache__checkpoints__ft_wav2vec2_large_ll60k_mdf_p1_200epochs_all_192epochs.pth": "85be234135b95d0264269d5f5ce00a361ae8fbd5ed4e6551f13cc6ce3b198f6a"
+      },
+      "part_size_bytes": {
+        "models__versa__hub_cache__checkpoints__ft_wav2vec2_large_ll60k_mdf_p1_200epochs_all_192epochs.pth": 1270054673
+      }
     },
     {
       "name": "vocos_48khz",
@@ -1179,7 +1669,18 @@
       "required": false,
       "fallback": "dsp_ersatzpfad",
       "license": "siehe Quell-Ordner",
-      "format": "pytorch"
+      "format": "pytorch",
+      "delivery": "release",
+      "release_tag": "models-10.2.0",
+      "assets": [
+        "models__vocos_48khz__pytorch_model.bin"
+      ],
+      "part_sha256": {
+        "models__vocos_48khz__pytorch_model.bin": "3315c87d130922dff1c4c0cfd153ac3ef037950ac0eba13f355bb38cbda46fc2"
+      },
+      "part_size_bytes": {
+        "models__vocos_48khz__pytorch_model.bin": 147342055
+      }
     },
     {
       "name": "vocos_48khz_vocos_48khz",
@@ -1191,7 +1692,18 @@
       "required": false,
       "fallback": "vocos_48khz",
       "license": "siehe Quell-Ordner",
-      "format": "onnx"
+      "format": "onnx",
+      "delivery": "release",
+      "release_tag": "models-10.2.0",
+      "assets": [
+        "models__vocos_48khz__vocos_48khz.onnx"
+      ],
+      "part_sha256": {
+        "models__vocos_48khz__vocos_48khz.onnx": "6b3ecba89e4f4ef8120a32ec641953b674ce5212f9b700efe2bd4385f5243200"
+      },
+      "part_size_bytes": {
+        "models__vocos_48khz__vocos_48khz.onnx": 163618964
+      }
     },
     {
       "name": "wav2vec2",
@@ -1203,7 +1715,18 @@
       "required": false,
       "fallback": "dsp_ersatzpfad",
       "license": "siehe Quell-Ordner",
-      "format": "onnx"
+      "format": "onnx",
+      "delivery": "release",
+      "release_tag": "models-10.2.0",
+      "assets": [
+        "models__wav2vec2__wav2vec2_forced_alignment.onnx"
+      ],
+      "part_sha256": {
+        "models__wav2vec2__wav2vec2_forced_alignment.onnx": "0569a28db36d2fd7ba3f98d0669ff5aa8b0ffd33306369a8d603131da93a1e72"
+      },
+      "part_size_bytes": {
+        "models__wav2vec2__wav2vec2_forced_alignment.onnx": 355728281
+      }
     },
     {
       "name": "wav2vec2-base",
@@ -1215,7 +1738,18 @@
       "required": false,
       "fallback": "dsp_ersatzpfad",
       "license": "siehe Quell-Ordner",
-      "format": "safetensors"
+      "format": "safetensors",
+      "delivery": "release",
+      "release_tag": "models-10.2.0",
+      "assets": [
+        "models__wav2vec2-base__model.safetensors"
+      ],
+      "part_sha256": {
+        "models__wav2vec2-base__model.safetensors": "bc12da95c473f8f3445c7490a54479babf6a02b483fcbc7fa0c463e592cbd3df"
+      },
+      "part_size_bytes": {
+        "models__wav2vec2-base__model.safetensors": 377510632
+      }
     },
     {
       "name": "whisper",
@@ -1227,7 +1761,18 @@
       "required": false,
       "fallback": "dsp_ersatzpfad",
       "license": "siehe Quell-Ordner",
-      "format": "onnx"
+      "format": "onnx",
+      "delivery": "release",
+      "release_tag": "models-10.2.0",
+      "assets": [
+        "models__whisper__decoder_model_merged.onnx"
+      ],
+      "part_sha256": {
+        "models__whisper__decoder_model_merged.onnx": "7f4f078c567a125f91f1fa907a340c82acb74bbb870f6c69068902dbd0984060"
+      },
+      "part_size_bytes": {
+        "models__whisper__decoder_model_merged.onnx": 688031263
+      }
     },
     {
       "name": "whisper_whisper_large_v3_turbo_encoder_fp16",
@@ -1239,7 +1784,18 @@
       "required": false,
       "fallback": "dsp_ersatzpfad",
       "license": "siehe Quell-Ordner",
-      "format": "onnx"
+      "format": "onnx",
+      "delivery": "release",
+      "release_tag": "models-10.2.0",
+      "assets": [
+        "models__whisper__whisper_large_v3_turbo_encoder_fp16.onnx"
+      ],
+      "part_sha256": {
+        "models__whisper__whisper_large_v3_turbo_encoder_fp16.onnx": "fdadc70836e6b028fd5e580417c312208dad073d2d01e509e2d127c1373399d8"
+      },
+      "part_size_bytes": {
+        "models__whisper__whisper_large_v3_turbo_encoder_fp16.onnx": 1274342603
+      }
     },
     {
       "name": "whisper_whisper_tiny",
@@ -1317,6 +1873,27 @@
       "description": "Harmonic Inpainting DiT (§v10.300) — rekonstruiert gedämpfte Obertöne",
       "sha256": "f8765d14564e65c03a1fe8b39e97ddc8c8166238c14cb0dc1947abbcf0b13e0a",
       "_comment": "Datei lokal nicht vorhanden (Stand: 2026-09-22)"
+    },
+    {
+      "name": "aero_checkpoint_12-48_hl256",
+      "bundled": true,
+      "bundled_path": "models/aero/checkpoint_12-48_hl256.th",
+      "sha256": "733aed10e49c1de1e2abb564de6773f3f4b7354c7a326595798aaa22b9c3a74b",
+      "size_bytes": 436646467,
+      "required": false,
+      "fallback": "dsp_ersatzpfad",
+      "size_gb": 0.407,
+      "delivery": "release",
+      "release_tag": "models-10.2.0",
+      "assets": [
+        "models__aero__checkpoint_12-48_hl256.th"
+      ],
+      "part_sha256": {
+        "models__aero__checkpoint_12-48_hl256.th": "733aed10e49c1de1e2abb564de6773f3f4b7354c7a326595798aaa22b9c3a74b"
+      },
+      "part_size_bytes": {
+        "models__aero__checkpoint_12-48_hl256.th": 436646467
+      }
     }
   ]
 }

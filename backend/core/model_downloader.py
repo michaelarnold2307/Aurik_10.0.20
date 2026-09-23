@@ -18,6 +18,8 @@ import contextlib
 import hashlib
 import json
 import logging
+import os
+import shutil
 import threading
 import time
 import urllib.error
@@ -39,6 +41,17 @@ _PROJECT_ROOT = Path(__file__).parent.parent.parent
 _MANIFEST_PATH = _PROJECT_ROOT / "models" / "manifest.json"
 _SOTA_CACHE_DIR = Path.home() / ".aurik" / "sota_models"
 _SOTA_MANIFEST = Path.home() / ".aurik" / "sota_manifest.json"
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Release-Auslieferung (§13.3, 2026-09-23): große Modelle (> 40 MB) kommen
+# aus GitHub Releases — kostenlos, kein LFS-Quota, Resume via Range-Requests.
+# URL-Basis per Env überschreibbar (Mirrors, Forks, Self-Hosting).
+# ──────────────────────────────────────────────────────────────────────────────
+_RELEASE_REPO = os.environ.get("AURIK_RELEASE_REPO", "michaelarnold2307/Aurik_10.0.20")
+_RELEASE_URL_BASE = os.environ.get(
+    "AURIK_RELEASE_URL_BASE",
+    f"https://github.com/{_RELEASE_REPO}/releases/download",
+)
 
 # ──────────────────────────────────────────────────────────────────────────────
 # Offline-Modus (aktuell aktiv — kein Netzwerk, nur lokale Dateien)
@@ -68,6 +81,12 @@ class ModelEntry:
     license: str = ""
     reference: str = ""
     format: str = "onnx"
+    # §13.3 Release-Auslieferung (2026-09-23): große Modelle (> 40 MB)
+    delivery: str = "bundled"  # "bundled" | "release"
+    release_tag: str = ""
+    assets: list[str] = field(default_factory=list)  # geordnete Assets (Parts)
+    part_sha256: dict[str, str] = field(default_factory=dict)  # asset → sha256
+    part_size_bytes: dict[str, int] = field(default_factory=dict)  # asset → bytes
 
 
 @dataclass
@@ -330,6 +349,11 @@ class ModelDownloader:
                         license=raw.get("license", ""),
                         reference=raw.get("reference", ""),
                         format=raw.get("format", "onnx"),
+                        delivery=str(raw.get("delivery", "bundled")),
+                        release_tag=str(raw.get("release_tag", "")),
+                        assets=list(raw.get("assets", []) or []),
+                        part_sha256=dict(raw.get("part_sha256", {}) or {}),
+                        part_size_bytes=dict(raw.get("part_size_bytes", {}) or {}),
                     )
                 )
             return entries
@@ -343,6 +367,89 @@ class ModelDownloader:
             if entry.name == model_name:
                 return entry
         return None
+
+    # ── Release-Auslieferung (§13.3, 2026-09-23) ──────────────────────────────
+
+    def download_release_assets(
+        self,
+        entry: ModelEntry,
+        target: Path,
+        progress_callback: Callable[[str, float], None] | None = None,
+    ) -> bool:
+        """Lädt die Release-Assets eines Eintrags und reassembliert Parts.
+
+        Resume über `_download_with_retry` (Range-Requests); Part-SHA256 wird
+        nach jedem Part verifiziert, die Gesamtdatei am Ende. Bereits gültige
+        Parts werden wiederverwendet (Abbruch-sicher).
+
+        Args:
+            entry: ModelEntry mit delivery="release" und assets=[...].
+            target: Zielpfad der fertigen (reassemblierten) Datei.
+            progress_callback: Optionaler Callback(model_name, fraction ∈ [0,1]).
+
+        Returns:
+            True wenn Datei vorhanden und SHA256 korrekt.
+        """
+        if not entry.assets or not entry.release_tag:
+            logger.warning(
+                "Release-Eintrag %s ohne assets/release_tag — Download übersprungen",
+                entry.name,
+            )
+            return False
+        tmp_dir = target.parent / f".aurik_parts_{entry.name}"
+        tmp_dir.mkdir(parents=True, exist_ok=True)
+        try:
+            for idx, asset in enumerate(entry.assets):
+                part_path = tmp_dir / asset
+                expected_hash = entry.part_sha256.get(asset, "")
+                if part_path.is_file() and (not expected_hash or verify_model(part_path, expected_hash)):
+                    pass  # Part bereits vollständig — wiederverwenden
+                else:
+                    url = f"{_RELEASE_URL_BASE}/{entry.release_tag}/{asset}"
+
+                    def _part_cb(
+                        _name: str,
+                        frac: float,
+                        _i: int = idx,
+                        _n: int = len(entry.assets),
+                    ) -> None:
+                        if progress_callback is not None:
+                            with contextlib.suppress(Exception):
+                                progress_callback(entry.name, min(0.99, (_i + frac) / _n))
+
+                    ok = _download_with_retry(
+                        url,
+                        part_path,
+                        expected_size_bytes=int(entry.part_size_bytes.get(asset, 0)),
+                        progress_callback=_part_cb,
+                        model_name=f"{entry.name}:{asset}",
+                    )
+                    if not ok:
+                        logger.warning(
+                            "§V6 (copilot-instructions.md): Release-Part %s fehlgeschlagen — %s nutzt DSP-Fallback",
+                            asset,
+                            entry.name,
+                        )
+                        return False
+                if expected_hash and not verify_model(part_path, expected_hash):
+                    logger.warning("Part-SHA256-Mismatch: %s (%s)", asset, entry.name)
+                    part_path.unlink(missing_ok=True)
+                    return False
+
+            # Reassemblieren (Parts in Manifest-Reihenfolge)
+            target.parent.mkdir(parents=True, exist_ok=True)
+            with target.open("wb") as out:
+                for asset in entry.assets:
+                    with (tmp_dir / asset).open("rb") as part:
+                        shutil.copyfileobj(part, out, length=1024 * 1024)
+            if not verify_model(target, entry.sha256):
+                logger.warning("Gesamt-SHA256-Mismatch nach Reassembly: %s", entry.name)
+                target.unlink(missing_ok=True)
+                return False
+            logger.info("Release-Modell geladen: %s (%d Bytes)", entry.name, target.stat().st_size)
+            return True
+        finally:
+            shutil.rmtree(tmp_dir, ignore_errors=True)
 
     # ── Haupt-API (Spec §13.3) ────────────────────────────────────────────────
 
@@ -437,6 +544,11 @@ class ModelDownloader:
             bundled_abs = Path(me.bundled_path)
 
         if not bundled_abs.is_file():
+            # §13.3 Release-Fallback: große Modelle kommen aus GitHub Releases
+            if me.delivery == "release" and not OFFLINE_MODE:
+                logger.info("Release-Modell wird geladen: %s", me.name)
+                if self.download_release_assets(me, bundled_abs):
+                    return bundled_abs
             logger.info(
                 "KI-Modell %s konnte nicht geladen werden — klassische Methode wird genutzt. "
                 "(Datei nicht vorhanden: %s)",
@@ -447,6 +559,11 @@ class ModelDownloader:
 
         # 3) SHA256-Verifikation (überspringen wenn kein Hash angegeben)
         if me.sha256 and not verify_model(bundled_abs, me.sha256):
+            # §13.3: korrupte Datei bei Release-Auslieferung → erneut laden
+            if me.delivery == "release" and not OFFLINE_MODE:
+                logger.warning("SHA256-Mismatch — Release-Download erneut: %s", me.name)
+                if self.download_release_assets(me, bundled_abs):
+                    return bundled_abs
             logger.warning(
                 "KI-Modell %s konnte nicht geladen werden — SHA256-Prüfung fehlgeschlagen. "
                 "Klassische Methode wird genutzt.",
