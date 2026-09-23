@@ -15181,6 +15181,14 @@ class UnifiedRestorerV3:
                         _fc_sec_mode_v = getattr(self.config.mode, "value", "restoration")
                         _FC_SEC_BLOCKED = frozenset({"phase_21", "phase_35", "phase_42"})  # §0a
                         _fc_sec_already: set[int] = {int(n) for n, _, _ in _fc_phases_list if isinstance(n, int)}
+                        # §Ein-Durchgang-Garantie: Phasen, die der Primärlauf bereits
+                        # ausgeführt hat, werden NIE erneut injiziert — die
+                        # Sekundärwelle degeneriert zur reinen Nachmessung.
+                        for _exec_pid in executed_phases or []:
+                            try:
+                                _fc_sec_already.add(int(str(_exec_pid).split("_")[1]))
+                            except (ValueError, IndexError):
+                                continue
                         _fc_sec_total = 0
                         _FC_SEC_MAX = 3  # §2.45 Minimal-Intervention
 
@@ -16623,6 +16631,17 @@ class UnifiedRestorerV3:
                         continue
 
                     _gec_primary_pid = _gec_phases[0]
+                    # §Ein-Durchgang-Garantie: Lief die Recovery-Phase bereits im
+                    # Hauptlauf, wird sie nicht erneut ausgeführt (nur Nachmessung).
+                    try:
+                        _gec_primary_num = int(str(_gec_primary_pid).split("_")[1])
+                    except (ValueError, IndexError):
+                        _gec_primary_num = None
+                    if _gec_primary_num is not None and any(
+                        str(_ep).startswith(f"phase_{_gec_primary_num}_") for _ep in (executed_phases or [])
+                    ):
+                        _gec_meta["goals_met"].append(_gec_goal)
+                        continue
                     try:
                         _gec_phase_obj = self._get_phase(_gec_primary_pid)
                         if _gec_phase_obj is None:
