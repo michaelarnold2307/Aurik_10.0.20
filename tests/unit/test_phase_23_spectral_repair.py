@@ -98,3 +98,43 @@ class TestPsyA1SubaudibleGate:
         )
         # fail-open: Reparatur freigegeben ⇒ Maske lokal (nicht blockiert)
         assert coverage >= 0.0
+
+
+class TestGateSpikeTemporalCompactness:
+    """§SR-TG: z-score-Spikes mit zu langem zeitlichem Run sind Musik, kein Crackle.
+
+    Produktionsbefund vinyl/1970: §v10.709 Quality-Degradation #1 nach
+    phase_23 (timbre_authentizitaet) — anhaltende Obertöne/Becken-Wash wurden
+    als Spikes detektiert und durch Interpolation ersetzt.
+    """
+
+    def test_sustained_run_removed_entirely(self, phase):
+        mask = np.zeros((8, 60), dtype=bool)
+        mask[3, 20:45] = True  # 25-Frame-Run (anhaltender Inhalt)
+        out = phase._gate_spike_temporal_compactness(mask, max_run_frames=4)
+        assert not out[3, 20:45].any()  # kompletter Run entfernt (auch Onset)
+
+    def test_compact_spike_survives(self, phase):
+        mask = np.zeros((8, 60), dtype=bool)
+        mask[2, 10:12] = True  # 2-Frame-Impuls
+        mask[5, 30:34] = True  # 4-Frame-Impuls (Grenze)
+        out = phase._gate_spike_temporal_compactness(mask, max_run_frames=4)
+        assert out[2, 10:12].all()
+        assert out[5, 30:34].all()
+
+    def test_gap_splits_runs(self, phase):
+        mask = np.zeros((8, 60), dtype=bool)
+        mask[4, 5:10] = True  # 5 Frames — Run zu lang
+        mask[4, 12:15] = True  # 3 Frames — ok
+        out = phase._gate_spike_temporal_compactness(mask, max_run_frames=4)
+        assert not out[4, 5:10].any()
+        assert out[4, 12:15].all()
+
+    def test_deterministic_and_ndim_guard(self, phase):
+        rng = np.random.RandomState(7)
+        mask = rng.rand(6, 50) > 0.7
+        out1 = phase._gate_spike_temporal_compactness(mask)
+        out2 = phase._gate_spike_temporal_compactness(mask)
+        assert np.array_equal(out1, out2)
+        one_d = np.ones(20, dtype=bool)
+        assert np.array_equal(phase._gate_spike_temporal_compactness(one_d), one_d)

@@ -2597,6 +2597,33 @@ class SpectralRepair(PhaseInterface):
         "minidisc": 11900.0,
     }
 
+    @staticmethod
+    def _gate_spike_temporal_compactness(spike_mask: np.ndarray, max_run_frames: int = 4) -> np.ndarray:
+        """§SR-TG: Entfernt z-score-Spikes, deren zeitlicher Run am Bin zu lang ist.
+
+        Root-Cause-Fix (§v10.709-Befund, vinyl/1970): Crackle/Click sind
+        Impulsdefekte (1–3 STFT-Frames). Ein Bin, das über viele
+        aufeinanderfolgende Frames als z-score-Ausreißer markiert ist, ist
+        anhaltender musikalischer Inhalt (Becken-Wash, Sibilanten, Obertöne) —
+        Inpainting dort ersetzt Harmonik durch Interpolation und zerstört
+        timbre_authentizitaet. Komplette Runs > max_run_frames werden entfernt
+        (nicht nur der Schwanz), sonst würden Onsets anhaltender Noten repariert.
+
+        Deterministisch (§G5 copilot-instructions.md), O(F×T).
+        """
+        _mask = np.asarray(spike_mask, dtype=bool).copy()
+        if _mask.ndim != 2 or _mask.shape[1] <= max_run_frames:
+            return _mask  # type: ignore[no-any-return]
+        for _f in range(_mask.shape[0]):
+            _row = _mask[_f, :].astype(np.int8)
+            _padded = np.pad(_row, (1, 1), mode="constant")
+            _starts = np.where((_padded[1:] == 1) & (_padded[:-1] == 0))[0]
+            _ends = np.where((_padded[1:] == 0) & (_padded[:-1] == 1))[0]
+            for _s, _e in zip(_starts, _ends):
+                if _e - _s > max_run_frames:
+                    _mask[_f, _s:_e] = False
+        return _mask  # type: ignore[no-any-return]
+
     def _detect_defects(self, magnitude: np.ndarray, phase: np.ndarray, thresholds: dict[str, float]) -> np.ndarray:
         """Defekt-Detektion via IMCRA-adaptivem Rauschboden + Phasenkonsistenz.
 
@@ -2647,6 +2674,10 @@ class SpectralRepair(PhaseInterface):
         # §2.57: HF-geschützte Bins (restaurierte Harmoniken) nicht als Spike markieren
         if _hf_protected_start < magnitude.shape[0]:
             spike_mask[_hf_protected_start:, :] = False
+        # §SR-TG (Root-Cause §v10.709, vinyl/1970): Nur zeitlich kompakte Spikes
+        # reparieren — anhaltende z-score-Ausreißer sind musikalischer Inhalt.
+        if np.any(spike_mask):
+            spike_mask = self._gate_spike_temporal_compactness(spike_mask, max_run_frames=4)
         defect_mask |= spike_mask
 
         # -- Strategie 3: Phasensprünge --

@@ -1264,6 +1264,13 @@ class WowFlutterFix(PhaseInterface):
                 "§WF-V2 übersprungen: Melodie-Guard hat F0-Stretch abgelehnt (musikalischer Inhalt, kein Wow-Verdacht)"
             )
 
+        # §WF-V3 (Root-Cause §v10.709, Produktionsbefund vinyl/1970):
+        # Stufen in den Stretch-Faktoren (F0-Blend 55/45, Konsens-Umschaltung der
+        # Spektral-Warp-Versorgung, Melodie-Guard-Grenzen) erzeugen Zeitwarp-
+        # Sprünge → Energie-Sprünge >6 dB/100 ms + Pre-Echo-Befunde + timbre_
+        # authentizitaet-Degradation. Glättung VOR der Anwendung.
+        stretch_factors = self._smooth_stretch_factors(stretch_factors)
+
         # Step 5: Apply time-stretching – PSOLA für Vokal-Segmente, WSOLA sonst
         # Moulines & Charpentier (1990): PSOLA ist formanterhaltend bei Gesangsmaterial;
         # Phase-Vocoder (hier: WSOLA/resample) für Instrumental-/Nicht-Vokal-Material.
@@ -3634,6 +3641,40 @@ class WowFlutterFix(PhaseInterface):
                 "Verarbeitungsschritt_12: HPSS-Isolation Ersatzpfad auf Verarbeitungsschritt-Vocoder: %s", _hpss_exc
             )
             return self._phase_vocoder_timestretch(audio, stretch_factors, sample_rate)
+
+    def _smooth_stretch_factors(self, factors: np.ndarray) -> np.ndarray:
+        """§WF-V3: Slope-Limit der Stretch-Faktor-Trajektorie vor der Zeitstreckung.
+
+        Root-Cause-Fix (§v10.709-Befund): Stufen in den Stretch-Faktoren erzeugen
+        Zeitwarp-Sprünge → Energie-Sprünge >6 dB/100 ms, Pre-Echo-Befunde und
+        timbre_authentizitaet-Degradation (Produktionsbefund vinyl/1970).
+        Mechanisches Wow ist physikalisch glatt (< 4 Hz, Capstan-Trägheit):
+        Lipschitz-Projektion (4 Durchläufe, O(n)): |Δ| ≤ 2,5 % pro Pitch-Fenster
+        (42,7 ms → max. ~0,59 %/s). Legitimes 4-Hz-Wow (±2 % Amplitude, §WF-V2-
+        Deckel) erreicht max. ~2,15 %/Fenster → die Projektion ist für alle
+        legitimen Wow-Trajektorien die Identität und entfernt ausschließlich
+        Sprung-Artefakte. Bewusst KEIN Moving-Average: ein 5-Fenster-MA
+        (~213 ms) liegt im Wow-Band selbst und dämpfte 4-Hz-Wow um >80 %.
+
+        Deterministisch (§G5 copilot-instructions.md), kausalfrei (Vorwärts+
+        Rückwärts), begrenzt auf [min, max] der Eingabe (kein Overshoot).
+        """
+        _f = np.asarray(factors, dtype=np.float64)
+        if _f.ndim != 1 or _f.size < 5:
+            return np.array(factors, dtype=np.float32, copy=True)  # type: ignore[no-any-return]
+        _max_step = 0.025
+        _out = _f.copy()
+        # Vorwärts: Anstiege begrenzen, dann Abfälle begrenzen
+        for _i in range(1, _out.size):
+            _out[_i] = min(_out[_i], _out[_i - 1] + _max_step)
+        for _i in range(1, _out.size):
+            _out[_i] = max(_out[_i], _out[_i - 1] - _max_step)
+        # Rückwärts: Abfälle begrenzen, dann Anstiege begrenzen (Symmetrie)
+        for _i in range(_out.size - 2, -1, -1):
+            _out[_i] = max(_out[_i], _out[_i + 1] - _max_step)
+        for _i in range(_out.size - 2, -1, -1):
+            _out[_i] = min(_out[_i], _out[_i + 1] + _max_step)
+        return np.asarray(_out, dtype=np.float32)  # type: ignore[no-any-return]
 
     def _phase_vocoder_timestretch(
         self, audio: np.ndarray, stretch_factors: np.ndarray, _sample_rate: int
