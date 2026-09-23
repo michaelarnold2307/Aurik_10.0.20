@@ -386,6 +386,7 @@ class ClickRemovalPhase(PhaseInterface):
     ) -> PhaseResult:
         check_ml_model_ready("DeepFilterNetV3", phase_name="01")
         check_ml_model_ready("PANNs", phase_name="01")
+        self._scan_dl01 = kwargs.get("defect_locations") or {}
         check_ml_model_ready("Whisper", phase_name="01")
         check_ml_model_ready("DeepFilterNetV3", phase_name="01")
         """
@@ -663,6 +664,33 @@ class ClickRemovalPhase(PhaseInterface):
                 len(_ml_regions),
                 len(click_candidates),
             )
+        # §SR-CG3 (Fauxpas-Audit, Nutzerbefund): Scanner-Click/Knistern-Events
+        # als zusätzliche Kandidaten — eigener MAD-Detektor + BANQUET können
+        # feines Knistern/Click-Textur übersehen (gleiche Blindheit wie
+        # phase_09 vor §SR-CG2). Fail-open ohne Events.
+        _dl01 = getattr(self, "_scan_dl01", None) or {}
+        if isinstance(_dl01, dict):
+            _scan01: list[tuple[int, int]] = []
+            for _k01 in ("clicks", "crackle"):
+                _ev01 = _dl01.get(_k01) or []
+                if isinstance(_ev01, list):
+                    for _e in _ev01:
+                        try:
+                            _s01 = max(0, int(float(_e[0]) * sample_rate))
+                            _e01 = max(_s01, int(float(_e[1]) * sample_rate))
+                            if _e01 > _s01:
+                                _scan01.append((_s01, _e01))
+                        except Exception as _e01_exc:
+                            logger.debug("§SR-CG3 defect_locations-Eintrag ungueltig: %s", _e01_exc)
+                            continue
+            if _scan01:
+                _n01_before = len(click_candidates)
+                click_candidates = self._merge_click_regions(click_candidates, _scan01)
+                logger.info(
+                    "§SR-CG3 Verarbeitungsschritt_01 Scanner-Click-Events: %d → %d Kandidaten",
+                    _n01_before,
+                    len(click_candidates),
+                )
         classified_clicks = self._classify_clicks(audio, click_candidates, preserve_transients, thresholds)
 
         severe_clicks: list[dict[str, Any]] = []

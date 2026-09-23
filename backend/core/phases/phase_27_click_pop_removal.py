@@ -343,18 +343,43 @@ class ClickPopRemoval(PhaseInterface):
                 warnings=["Click/pop removal skipped due to zero effective strength"],
             )
 
+        # §SR-CG4 (Fauxpas-Audit, Nutzerbefund): Scanner-Click/Knistern-Events
+        # als zusätzliche Kandidaten-Indizes — der AR-Z-Score-Detektor übersieht
+        # feine Knistern-Textur (gleiche Blindheit wie phase_09 vor §SR-CG2).
+        _dl27 = kwargs.get("defect_locations") or {}
+        _scan27_idx: list[int] = []
+        if isinstance(_dl27, dict):
+            for _k27 in ("clicks", "crackle"):
+                _ev27 = _dl27.get(_k27) or []
+                if isinstance(_ev27, list):
+                    for _e in _ev27:
+                        try:
+                            _s27 = max(0, int(float(_e[0]) * sample_rate))
+                            _e27 = max(_s27, int(float(_e[1]) * sample_rate))
+                            _m27 = (_s27 + _e27) // 2
+                            for _i27 in (_s27, _m27, _e27):
+                                if _i27 < audio.shape[-1]:
+                                    _scan27_idx.append(_i27)
+                        except Exception as _e27_exc:
+                            logger.debug("§SR-CG4 defect_locations-Eintrag ungueltig: %s", _e27_exc)
+                            continue
+
         # §2.51: Linked detection — detect on mono mix, repair synchronized
         if is_stereo:
             left, right = stereo_channel_view(audio)
             mono_mix = (left + right) * 0.5
             click_locations = self._detect_clicks_multiband(mono_mix, config)
+            if _scan27_idx:
+                click_locations = sorted(set(click_locations) | set(_scan27_idx))
             classified_clicks = self._classify_clicks(mono_mix, click_locations, config)
             cleaned_left = self._repair_clicks(left, classified_clicks, config, protected_zones=_p27_pz)
             cleaned_right = self._repair_clicks(right, classified_clicks, config, protected_zones=_p27_pz)
             cleaned_audio = stereo_like(cleaned_left, cleaned_right, audio)
             total_clicks = len(classified_clicks)
         else:
-            cleaned_audio, total_clicks = self._process_channel(audio, sample_rate, config, protected_zones=_p27_pz)
+            cleaned_audio, total_clicks = self._process_channel(
+                audio, sample_rate, config, protected_zones=_p27_pz, extra_click_locations=_scan27_idx
+            )
 
         execution_time = time.time() - start_time
         rt_factor = execution_time / (audio_sample_count(audio) / sample_rate)
@@ -465,11 +490,14 @@ class ClickPopRemoval(PhaseInterface):
         sample_rate: int,
         config: dict[str, Any],
         protected_zones: list[tuple[float, float, float]] | None = None,
+        extra_click_locations: list[int] | None = None,
     ) -> tuple[np.ndarray, int]:
         """Verarbeitet a single channel for click/pop removal."""
         del sample_rate
         # Step 1: Detect clicks via AR-Residual + Z-Score (Godsill & Rayner 1998)
         click_locations = self._detect_clicks_multiband(audio, config)
+        if extra_click_locations:
+            click_locations = sorted(set(click_locations) | set(extra_click_locations))
 
         # Step 2: Classify click severity
         classified_clicks = self._classify_clicks(audio, click_locations, config)

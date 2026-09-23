@@ -556,6 +556,57 @@ class CrackleRemovalPhase(PhaseInterface):
             logger.debug("Verarbeitungsschritt 09 §SOTA-PSY-A1 nicht verfügbar: %s", _aud09_exc)
             return crackle_regions
 
+    def _union_scanner_crackle_regions(
+        self,
+        audio: np.ndarray,
+        crackle_regions: list[tuple[int, int]],
+        kwargs: dict[str, Any],
+    ) -> list[tuple[int, int]]:
+        """§SR-CG2 (Root-Cause, Nutzerbefund „Vogel der Nacht"): Union der
+        Defekt-Scanner-Knistern/Click-Events mit den AR-detektierten Regionen.
+
+        Der AR-Sparse-Outlier-Detektor ist blind für konstantes feines
+        Knistern (Textur statt Ausreißer) → 0 Regionen → 0 Entfernung
+        (Messung: 4325→4325 Events). Der Scanner lokalisiert es (Severity
+        0.716). KEIN Phonem-/Audibility-Gate für Scanner-Events: beide
+        verwarfen 623 Events → 1 Region (Gesangs-lastiger Song); der Scanner
+        ist ML-informiert, §V19 (VERBOTEN.md)/§V24 (VERBOTEN.md) sichern
+        downstream das Timbre.
+        Deterministisch (§G5 copilot-instructions.md), fail-open.
+        """
+        _dl09 = kwargs.get("defect_locations") or {}
+        if not isinstance(_dl09, dict):
+            return crackle_regions
+        _scanner_events: list[tuple[float, float]] = []
+        for _k09 in ("crackle", "clicks"):
+            _ev09 = _dl09.get(_k09) or []
+            if isinstance(_ev09, list):
+                _scanner_events.extend(_ev09)
+        if not _scanner_events:
+            return crackle_regions
+        _sr09 = max(1, int(self.sample_rate))
+        _len09 = int(np.asarray(audio).shape[-1]) if np.asarray(audio).ndim > 1 else int(np.asarray(audio).size)
+        _extra: list[tuple[int, int]] = []
+        for _ev in _scanner_events:
+            try:
+                _s09 = max(0, min(_len09, int(float(_ev[0]) * _sr09)))
+                _e09 = max(_s09, min(_len09, int(float(_ev[1]) * _sr09)))
+                if _e09 > _s09:
+                    _extra.append((_s09, _e09))
+            except Exception as _ev09_exc:
+                logger.debug("§SR-CG2 defect_locations-Eintrag ungueltig: %s", _ev09_exc)
+                continue
+        if not _extra:
+            return crackle_regions
+        _before09 = len(crackle_regions)
+        _merged = self._merge_regions(list(crackle_regions) + _extra)
+        logger.info(
+            "§SR-CG2 Verarbeitungsschritt_09 Scanner-Knistern-Events: %d → %d Regionen",
+            _before09,
+            len(_merged),
+        )
+        return _merged
+
     def _compute_crackle_regions_with_protection(
         self,
         audio: np.ndarray,
@@ -931,6 +982,7 @@ class CrackleRemovalPhase(PhaseInterface):
                 restored = self._remove_crackle_onnx_direct(audio, _sample_rate, params)
                 if 0.0 < _effective_strength < 1.0:
                     _, _, _, _cr_ml = self._compute_crackle_regions_with_protection(audio, params)
+                    _cr_ml = self._union_scanner_crackle_regions(audio, _cr_ml, kwargs)
                     restored = self._apply_region_selective_strength_blend(
                         dry_audio=audio,
                         wet_audio=restored,
@@ -1052,6 +1104,7 @@ class CrackleRemovalPhase(PhaseInterface):
         transients_short, transients_medium, transients_long, crackle_regions = (
             self._compute_crackle_regions_with_protection(_p09_work, params)
         )
+        crackle_regions = self._union_scanner_crackle_regions(_p09_work, crackle_regions, kwargs)
 
         # Step 3: Model Background Texture (if enabled)
         background_model = None
