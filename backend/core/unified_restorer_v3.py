@@ -43506,17 +43506,21 @@ class UnifiedRestorerV3:
                 record_phase_deltas,
             )
 
-            _mat = str(getattr(self, "_restoration_context", {}).get("material_key", "unknown")).lower()
+            _mat = self._effectiveness_material_key()
             _deltas: dict[str, float] = {}
             for _e in _pmgg_log_entries:
                 _pid = str(getattr(_e, "phase_id", ""))
                 _goal_reg = getattr(_e, "goal_regressions", None)
                 if isinstance(_goal_reg, dict) and _pid:
-                    # Verwende waerme-Delta als primären Effektivitäts-Indikator
-                    _wd = float(_goal_reg.get("waerme", 0.0) or 0.0)
-                    _deltas[_pid] = _wd
+                    # SOTA: Multi-Goal-Aggregat (Mittel der Absolut-Deltas über
+                    # alle 15 Musical Goals) statt nur waerme — waerme ist
+                    # phasen-invariant und lieferte Ø|Δ|=0.0000 für ALLE Phasen
+                    # (Massen-Stripping, Produktionsbefund „Vogel der Nacht").
+                    _vals = [abs(float(v)) for v in _goal_reg.values() if isinstance(v, (int, float))]
+                    if _vals:
+                        _deltas[_pid] = float(np.mean(_vals))
             if _deltas and _mat:
-                record_phase_deltas(_mat, _deltas)
+                record_phase_deltas(_mat, _deltas, scope=self._effectiveness_scope)
         except Exception as _pem_exc:
             logger.debug("Verarbeitungsschritt-Effectiveness-Memory recording fehlgeschlagen: %s", _pem_exc)
 
@@ -44621,16 +44625,30 @@ class UnifiedRestorerV3:
                 logger.debug("unified_restorer_v3.py:40438: Silent exception absorbed", exc_info=True)
         return _stripped
 
+    @property
+    def _effectiveness_scope(self) -> str:
+        """Instanz-Scope für Phase-Effectiveness-Lernen (§V8/§G1 (copilot-instructions.md) Song-Isolation)."""
+        _s = getattr(self, "_eff_scope_token", None)
+        if not _s:
+            _s = f"uv3-{id(self)}"
+            self._eff_scope_token = _s
+        return _s
+
+    def _effectiveness_material_key(self) -> str:
+        """Material-Key fürs Effectiveness-Lernen (material_key → primary_material)."""
+        _rctx = getattr(self, "_restoration_context", {}) or {}
+        return str(_rctx.get("material_key") or _rctx.get("primary_material") or "unknown").lower()
+
     def _strip_historically_ineffective_phases(self, phases: list[str]) -> list[str]:
-        """§v10.303.19: Streicht Phasen die in früheren Runs PMGG Δ≈0.0000 hatten."""
+        """§v10.303.19: Streicht Phasen die im Song-Scope Δ≈0.0000 hatten."""
         try:
             from backend.core.phase_effectiveness_cache import should_skip_phase
 
-            _mat = str(getattr(self, "_restoration_context", {}).get("material_key", "unknown")).lower()
+            _mat = self._effectiveness_material_key()
             _stripped: list[str] = []
             _removed: list[str] = []
             for _p in phases:
-                if should_skip_phase(_mat, _p):
+                if should_skip_phase(_mat, _p, scope=self._effectiveness_scope):
                     _removed.append(_p)
                 else:
                     _stripped.append(_p)

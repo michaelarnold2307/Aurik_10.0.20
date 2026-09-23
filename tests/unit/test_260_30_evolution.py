@@ -314,6 +314,94 @@ class TestClosedLoopPID:
             assert v == round(v, 4)
 
 
+class TestSotaPhaseQualityDelta:
+    """§v10.600 SOTA-Metrik: MR-STFT + psychoakustische Richtung.
+
+    Regression: Die alte Crest/RMS/Korr-Metrik sättigte bei Δ=+0.0500
+    (Produktionsbefund „Vogel der Nacht": 347 ClosedLoop-Zeilen, nur zwei
+    Δ-Werte) — der Regelkreis war blind für subtile Schäden.
+    """
+
+    @staticmethod
+    def _tone(secs: float = 3.0, sr: int = 22050) -> np.ndarray:
+        t = np.arange(int(sr * secs)) / sr
+        return 0.5 * np.sin(2 * np.pi * 220 * t) + 0.2 * np.sin(2 * np.pi * 440 * t)
+
+    def test_identical_signals_delta_exact_zero(self):
+        from backend.core.closed_loop_calibrator import measure_phase_quality_delta
+
+        a = self._tone()
+        assert measure_phase_quality_delta(a, a.copy()) == 0.0
+
+    def test_crest_crush_is_negative_regression(self):
+        """Limiter-artige Crest-Vernichtung muss als Regression (<0) sichtbar sein."""
+        from backend.core.closed_loop_calibrator import measure_phase_quality_delta
+
+        a = self._tone()
+        crushed = np.tanh(4.0 * a) / np.tanh(4.0)
+        assert measure_phase_quality_delta(a, crushed) < -0.03
+
+    def test_repair_denoise_is_positive_and_never_negative(self):
+        from backend.core.closed_loop_calibrator import measure_phase_quality_delta
+
+        rng = np.random.default_rng(7)
+        a = self._tone()
+        t = np.arange(len(a)) / 22050.0
+        noisy = a + 0.03 * rng.standard_normal(len(a)) * (0.5 + 0.5 * np.sign(np.sin(2 * np.pi * 7 * t)))
+        assert measure_phase_quality_delta(noisy, a, is_repair=True) > 0.0
+        # §v10.650 W5: Reparatur wird nie als Regression gewertet
+        assert measure_phase_quality_delta(a, noisy, is_repair=True) >= 0.0
+
+    def test_layout_invariance_channels_first_vs_samples_first(self):
+        """Stereo-Layout-Invariante: (C,N) und (N,C) müssen identische Δ liefern."""
+        from backend.core.closed_loop_calibrator import measure_phase_quality_delta
+
+        a = self._tone()
+        crushed = np.tanh(4.0 * a) / np.tanh(4.0)
+        stereo_cn = np.stack([a, a * 0.9], axis=0)
+        crushed_cn = np.stack([crushed, crushed * 0.9], axis=0)
+        d_cn = measure_phase_quality_delta(stereo_cn, crushed_cn)
+        d_nc = measure_phase_quality_delta(stereo_cn.T, crushed_cn.T)
+        assert d_cn == pytest.approx(d_nc, abs=1e-9)
+
+    def test_short_signal_neutral(self):
+        from backend.core.closed_loop_calibrator import measure_phase_quality_delta
+
+        a = self._tone(0.01)
+        assert measure_phase_quality_delta(a, a.copy()) == 0.0
+
+
+class TestPhaseEffectivenessCacheScope:
+    """§v10.303.19: Multi-Goal-Aggregat + Song-Isolation (§V8/§G1 (copilot-instructions.md))."""
+
+    def test_effective_phase_is_not_skipped(self):
+        from backend.core.phase_effectiveness_cache import record_phase_deltas, reset_scope, should_skip_phase
+
+        reset_scope("t-s1")
+        for _ in range(3):
+            record_phase_deltas("vinyl", {"phase_12_wow_flutter_fix": 0.05, "phase_03_denoise": 0.02}, scope="t-s1")
+        assert not should_skip_phase("vinyl", "phase_12_wow_flutter_fix", scope="t-s1")
+
+    def test_inert_phase_is_skipped_after_three_runs(self):
+        from backend.core.phase_effectiveness_cache import record_phase_deltas, reset_scope, should_skip_phase
+
+        reset_scope("t-s2")
+        for _ in range(3):
+            record_phase_deltas("vinyl", {"phase_25_azimuth_correction": 0.0000}, scope="t-s2")
+        assert should_skip_phase("vinyl", "phase_25_azimuth_correction", scope="t-s2")
+
+    def test_scope_isolation_between_songs(self):
+        from backend.core.phase_effectiveness_cache import record_phase_deltas, reset_scope, should_skip_phase
+
+        reset_scope("t-s3a")
+        reset_scope("t-s3b")
+        for _ in range(3):
+            record_phase_deltas("vinyl", {"phase_03_denoise": 0.0}, scope="t-s3a")
+        # Anderer Song-Scope: kein Übergreifen des Lernzustands (§V8/§G1 (copilot-instructions.md))
+        assert not should_skip_phase("vinyl", "phase_03_denoise", scope="t-s3b")
+        assert should_skip_phase("vinyl", "phase_03_denoise", scope="t-s3a")
+
+
 # ═══════════════════════════════════════════════════════════════
 # §3.0a Source-Aware Fahrplan
 # ═══════════════════════════════════════════════════════════════

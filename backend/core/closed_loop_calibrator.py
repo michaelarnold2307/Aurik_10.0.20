@@ -13,6 +13,8 @@ Status: ✅ Produktion (§v10.600 UnifiedRestorerV3._execute_pipeline Integratio
 from __future__ import annotations
 
 import logging
+from functools import lru_cache
+from typing import Any, cast
 
 import numpy as np
 
@@ -20,68 +22,110 @@ from backend.core.calibration_context import get_calibration_context
 
 logger = logging.getLogger(__name__)
 
+# Deterministische Laufzeit-Bounds: zentrales Segment für Metrik-Berechnung
+# (~24 s @ 44,1 kHz — deckt Chunk-Mitte ab, hält 4×MR-STFT pro Phase billig).
+_METRIC_MAX_SAMPLES: int = 1 << 20
+
+
+def _metric_mono(audio: np.ndarray) -> np.ndarray:
+    """Stereo (C,N)/(N,C) → Mono (Kanalmittel); NaN/Inf → 0 (§III Schutz)."""
+    arr: np.ndarray = np.asarray(audio, dtype=np.float64)
+    if arr.ndim > 1:
+        # Stereo-Layout-Invariante: channels-first (C,N) ODER samples-first (N,C)
+        arr = cast(np.ndarray, arr.mean(axis=0) if arr.shape[0] <= 2 else arr.mean(axis=1))
+    arr = arr.ravel()
+    arr[~np.isfinite(arr)] = 0.0
+    return arr
+
+
+def _crest_db(mono: np.ndarray) -> float:
+    """Crest-Faktor in dB (Peak/RMS)."""
+    _rms = float(np.sqrt(np.mean(mono**2))) + 1e-12
+    _peak = float(np.max(np.abs(mono))) + 1e-12
+    return float(20.0 * np.log10(_peak / _rms))
+
+
+@lru_cache(maxsize=4)
+def _get_psycho_metrics(sr: int) -> Any:
+    """Lazy Singleton der projekt-eigenen Psychoakustik-Metriken (pro SR)."""
+    from backend.core.comprehensive_metrics import PsychoAcousticMetrics
+
+    return PsychoAcousticMetrics(sr)
+
 
 def measure_phase_quality_delta(
     audio_before: np.ndarray,
     audio_after: np.ndarray,
     is_repair: bool = False,
+    sr: int = 44100,
 ) -> float:
-    """Misst das Qualitäts-Delta einer Phase.
+    """Misst das Qualitäts-Delta einer Phase (SOTA-Metrik, §v10.600).
 
-    Kombiniert Crest-Änderung, RMS-Stabilität und spektrale Korrelation
-    zu einem einzigen Wert. Positiv = Verbesserung, negativ = Verschlechterung.
+    Ersetzt das alte Crest/RMS/Korrelations-Gemisch, dessen Referenz 0.95 bei
+    gesättigten Komponenten (corr≈1.0, crest≈1.0) ein konstantes Δ=+0.0500
+    erzeugte — Produktionsbefund „Vogel der Nacht": 347 ClosedLoop-Zeilen mit
+    nur zwei Δ-Werten (+0.0000/+0.0500), der Regelkreis war blind.
 
-    §v10.650 W5: Repair-Phasen erhalten einen Korrelations-Bonus von +0.08.
-    Reparatur ersetzt PLANGEMÄSS defekte durch neue Samples — die niedrige
-    Korrelation ist ERWARTET und kein Qualitätsverlust.
+    Neues Modell:
+    1. Änderungsmaß: Multi-Resolution-STFT-Distanz (Yamamoto 2019 — Spektral-
+       Konvergenz + Log-Magnitude über 4 FFT-Auflösungen, identische
+       Implementierung wie im MERT-MUSHRA-Proxy, numpy-only). 0 = identisch.
+    2. Richtung: psychoakustische Merkmale vorher/nachher — Rauhigkeits-Delta
+       (Zwicker-AM 15–300 Hz), Spektral-Flatness-Delta (Rauschschaden) und
+       Crest-Delta (Dynamikerhalt, 6 dB Soft-Skala).
+    3. Delta = clip(Richtung × Änderungsmaß, −1, 1): ohne Änderung exakt 0,
+       Verbesserung > 0, Schaden (Crest-Verlust, Rausch-Zunahme) < 0.
+
+    §v10.650 W5: Repair-Phasen ersetzen plangemäß defekte Samples — ihre
+    Änderung ist erwartet und wird nie negativ gewertet (max(delta, 0.0)).
 
     Returns:
-        float in [-1.0, 1.0]: >0.05 = klare Verbesserung, ~0 = neutral, <−0.05 = Regression
+        float in [-1.0, 1.0]: >0 = Verbesserung, ~0 = neutral, <0 = Regression.
     """
     try:
-        pre = np.asarray(audio_before, dtype=np.float32).ravel()
-        post = np.asarray(audio_after, dtype=np.float32).ravel()
+        pre = _metric_mono(audio_before)
+        post = _metric_mono(audio_after)
         n = min(len(pre), len(post))
-        if n < 256:
+        if n < 512:
             return 0.0
         pre = pre[:n]
         post = post[:n]
+        if n > _METRIC_MAX_SAMPLES:
+            _start = (n - _METRIC_MAX_SAMPLES) // 2
+            pre = pre[_start : _start + _METRIC_MAX_SAMPLES]
+            post = post[_start : _start + _METRIC_MAX_SAMPLES]
 
-        # 1. Crest-Stabilität (30% Gewicht)
-        pre_rms = float(np.sqrt(np.mean(pre**2))) + 1e-12
-        post_rms = float(np.sqrt(np.mean(post**2))) + 1e-12
-        pre_peak = float(np.max(np.abs(pre))) + 1e-12
-        post_peak = float(np.max(np.abs(post))) + 1e-12
-        pre_crest = float(20.0 * np.log10(pre_peak / pre_rms))
-        post_crest = float(20.0 * np.log10(post_peak / post_rms))
-        crest_delta = post_crest - pre_crest
-        crest_score = float(np.clip(1.0 + crest_delta / 6.0, 0.0, 1.0))
+        # 1. SOTA-Änderungsmaß (Multi-Resolution-STFT, Yamamoto 2019)
+        from backend.core.mert_mushra_proxy import MertMushraProxy
 
-        # 2. RMS-Stabilität (30% Gewicht)
-        rms_ratio = min(post_rms, pre_rms) / max(post_rms, pre_rms)
-        rms_score = float(rms_ratio)
+        _mr = float(MertMushraProxy._compute_mr_stft_loss(pre, post))
+        change = float(np.clip(_mr, 0.0, 1.0))
+        if change < 1e-4:
+            return 0.0  # buchstäblich kein Effekt — Δ exakt 0 statt Sättigung
 
-        # 3. Korrelation (40% Gewicht)
-        step = max(1, n // 8192)
-        pre_ds = pre[::step]
-        post_ds = post[::step]
-        corr = float(np.corrcoef(pre_ds, post_ds)[0, 1]) if len(pre_ds) > 2 else 1.0
-        corr = max(0.0, min(1.0, corr)) if not np.isnan(corr) else 1.0
-
-        quality = 0.30 * crest_score + 0.30 * rms_score + 0.40 * corr
-        delta = quality - 0.95  # 0.95 = Referenz „keine Änderung"
-
-        # §v10.650 W5: Repair-Bonus — Dropout-Füllung/Inpainting ersetzt
-        # defekte Samples → niedrige Korrelation ist ERWARTET, nicht Bestrafung.
-        # Bonus begrenzt auf max 0.0, so dass neutrale Reparatur als "kein Effekt"
-        # (Δ≈0.00) statt als "Regression" (Δ≈−0.08) gewertet wird.
+        # 2. Richtung: psychoakustische Merkmale
+        _pam = _get_psycho_metrics(int(sr or 44100))
+        _rough_pre = float(_pam.calculate_roughness(pre))
+        _rough_post = float(_pam.calculate_roughness(post))
+        _flat_pre = float(_pam.calculate_spectral_flatness(pre))
+        _flat_post = float(_pam.calculate_spectral_flatness(post))
+        _dr = _rough_pre - _rough_post  # >0: glatter/besser
+        _df = _flat_pre - _flat_post  # >0: weniger Rausch-Flatness
+        _dc = _crest_db(post) - _crest_db(pre)  # <0: Dynamikverlust
+        direction = float(
+            np.clip(
+                0.50 * np.tanh(_dr * 20.0) + 0.30 * np.tanh(_df * 20.0) + 0.20 * np.clip(_dc / 6.0, -1.0, 1.0),
+                -1.0,
+                1.0,
+            )
+        )
+        delta = float(np.clip(direction * change, -1.0, 1.0))
         if is_repair:
-            delta = min(delta + 0.08, 0.0)
-
-        return float(np.clip(delta, -1.0, 1.0))
+            delta = max(delta, 0.0)  # §v10.650 W5: Reparatur nie als Regression
+        return delta
     except Exception:
         logger.warning(
-            "§V6 (copilot-instructions.md) ML→DSP-Ersatzpfad: measure_Verarbeitungsschritt_quality_delta fehlgeschlagen → neutraler Return (0.0)"
+            "§V6 (copilot-instructions.md) ML→DSP-Ersatzpfad: measure_phase_quality_delta fehlgeschlagen → neutraler Return (0.0)"
         )
         return 0.0
 
@@ -192,19 +236,28 @@ def closed_loop_calibrate(
         state.consecutive_improvements = 0
         state.consecutive_no_effect = 0
     elif abs(_delta) < 0.01:
-        # Kein messbarer Effekt
-        state.consecutive_no_effect += 1
-        if state.consecutive_no_effect >= 3:
-            _new = 0.0
-            _decision = "skip"
-            _reason = f"3× kein Effekt: Phase {phase_id} wird übersprungen"
-            _confidence = 0.90
-            state.skip_count += 1
-        else:
+        # Kein messbarer Effekt — aber Repair-Phasen ersetzen plangemäß defekte
+        # Samples; ihre Änderung ist richtungsneutral und wird NICHT als
+        # „kein Effekt" gezählt (sonst würde aktive Reparatur nach 3 Chunks
+        # übersprungen, §v10.650 W5).
+        if _is_repair:
             _new = _current
             _decision = "hold"
-            _reason = f"Kein Effekt ({state.consecutive_no_effect}/3): halte {_current:.3f}"
-            _confidence = 0.60
+            _reason = f"Reparatur-Phase: Effekt richtungsneutral (Δ={_delta:+.3f}) — halte {_current:.3f}"
+            _confidence = 0.70
+        else:
+            state.consecutive_no_effect += 1
+            if state.consecutive_no_effect >= 3:
+                _new = 0.0
+                _decision = "skip"
+                _reason = f"3× kein Effekt: Phase {phase_id} wird übersprungen"
+                _confidence = 0.90
+                state.skip_count += 1
+            else:
+                _new = _current
+                _decision = "hold"
+                _reason = f"Kein Effekt ({state.consecutive_no_effect}/3): halte {_current:.3f}"
+                _confidence = 0.60
         state.consecutive_improvements = 0
         state.consecutive_regressions = 0
     else:

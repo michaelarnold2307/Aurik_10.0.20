@@ -14,6 +14,7 @@ Fix: ``_filter_time_axis`` wählt die Zeitachse explizit:
 """
 
 import numpy as np
+import pytest
 
 from backend.core.reflective_listening_pass import ReflectiveListeningPass, RLPIssue
 
@@ -36,6 +37,29 @@ def _active_stereo(secs: float = 1.0) -> np.ndarray:
     left = 0.4 * np.sin(2 * np.pi * 440.0 * t) + 0.1 * np.sin(2 * np.pi * 6000.0 * t)
     right = 0.4 * np.sin(2 * np.pi * 554.0 * t) + 0.1 * np.sin(2 * np.pi * 9000.0 * t)
     return np.stack([left, right], axis=1).astype(np.float64)
+
+
+class TestRLPSotaImprovementGate:
+    """SOTA-Vergleich in `_is_improvement`: MR-STFT + NSIM statt 0,19-s-Korrelation."""
+
+    def test_identical_signals_are_improvement_with_sim_one(self):
+        rlp = ReflectiveListeningPass()
+        a = _active_stereo(0.5)
+        better, score = rlp._is_improvement(a, a.copy(), SR)
+        assert better is True
+        assert score["spectral_corr"] == pytest.approx(1.0, abs=0.05)
+
+    def test_gain_explosion_rejected_by_tech_safety(self):
+        rlp = ReflectiveListeningPass()
+        a = 0.5 * _active_stereo(0.5)
+        loud = a * 4.0  # Peak > 1.0 → Clipping
+        better, _score = rlp._is_improvement(a, loud, SR)
+        assert not better  # np.bool_ / bool — kein Identitätsvergleich
+
+
+# ---------------------------------------------------------------------------
+# Layout-Sicherheit (original)
+# ---------------------------------------------------------------------------
 
 
 class TestRLPLayoutSafety:

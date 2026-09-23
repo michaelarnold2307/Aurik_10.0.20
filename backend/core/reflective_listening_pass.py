@@ -151,7 +151,7 @@ class ReflectiveListeningPass:
                 current = corrected
                 overall_improved = True
                 logger.info(
-                    "RLP Iteration %d: Verbesserung (Δspec=%.4f, Δrms=%.2fdB) — übernommen.",
+                    "RLP Iteration %d: Verbesserung (sim=%.4f, Δrms=%.2fdB) — übernommen.",
                     iteration + 1,
                     score_delta.get("spectral_corr", 0.0),
                     score_delta.get("rms_delta", 0.0),
@@ -423,14 +423,27 @@ class ReflectiveListeningPass:
         peak2 = float(np.max(np.abs(v2_mono)))
         peak_delta = 20.0 * np.log10((peak2 + 1e-12) / (peak1 + 1e-12))
 
-        # Spektrale Korrelation (Klangfarbe erhalten?)
-        n_fft = min(2048, min_len // 4)
-        if n_fft >= 64:
-            spec1 = np.abs(np.fft.rfft(v1_mono[: n_fft * 4] * np.hanning(n_fft * 4)))[: n_fft // 2]
-            spec2 = np.abs(np.fft.rfft(v2_mono[: n_fft * 4] * np.hanning(n_fft * 4)))[: n_fft // 2]
-            spectral_corr = float(np.corrcoef(spec1, spec2)[0, 1]) if len(spec1) > 1 else 1.0
+        # SOTA-Spektralähnlichkeit (Klangfarbe erhalten?):
+        # 1. Multi-Resolution-STFT-Distanz (Yamamoto 2019) über das GANZE Signal
+        #    — ersetzt die Korrelation über nur die ersten 0,19 s, die für
+        #    Mikro-Korrekturen immer ≈1.0 war („Δspec=1.0000"-Sättigung,
+        #    Produktionsbefund „Vogel der Nacht": 12 RLP-Zeilen mit Δspec=1.0000).
+        # 2. Mel-SSIM (NSIM, SOTA-Perceptual-Similarity) mit Fallback auf 1−MR-STFT.
+        try:
+            from backend.core.mert_mushra_proxy import MertMushraProxy
+
+            _mr_v = float(MertMushraProxy._compute_mr_stft_loss(v1_mono, v2_mono))
+        except Exception:
+            _mr_v = 0.0
+        _nsim: float | None = None
+        try:
+            _nsim = float(MertMushraProxy._compute_nsim(v1_mono, v2_mono, sr))
+        except Exception:
+            _nsim = None
+        if _nsim is not None and np.isfinite(_nsim):
+            spectral_corr = float(np.clip(_nsim, 0.0, 1.0))
         else:
-            spectral_corr = 1.0
+            spectral_corr = float(np.clip(1.0 - _mr_v, 0.0, 1.0))
 
         # ── §v10 HPE: Psychoakustische Angenehmheit ──
         try:
@@ -466,6 +479,8 @@ class ReflectiveListeningPass:
             "rms_delta": float(rms_delta),
             "peak_delta": float(peak_delta),
             "spectral_corr": float(spectral_corr),
+            "mr_stft_loss": float(_mr_v),
+            "nsim": float(_nsim) if _nsim is not None else 0.0,
             "pleasantness_delta": float(pleasantness_delta),
             "pleasantness_improved": bool(pleasantness_improved),
         }
