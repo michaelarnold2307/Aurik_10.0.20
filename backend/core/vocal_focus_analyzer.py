@@ -442,7 +442,11 @@ class VocalFocusAnalyzer:
             except (TypeError, ValueError):
                 logger.debug("Stiller optionaler Ausnahmefall ignoriert", exc_info=True)
 
-        if music_conf >= 0.40 and raw_vocals > 0.08 and speech_conf < 0.30:
+        # §0p Music+Vocal-Heuristik: erst ab Vocals ≥ 0.20 anheben. Unterhalb
+        # liegt der instrumentale Rauschboden (gemessen: 0.13 bei „Vogel der
+        # Nacht", Music=0.95, reines Instrumental) — die alte Schwelle (> 0.08)
+        # hob Instrumentals fälschlich auf 0.35 (vocal_present + VQI-Gate).
+        if music_conf >= 0.40 and raw_vocals >= 0.20 and speech_conf < 0.30:
             confidence = max(confidence, 0.35)
 
         genre_key = str(genre_label or "").strip().lower()

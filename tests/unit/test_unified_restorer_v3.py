@@ -1179,17 +1179,41 @@ class TestPreventFirstQuietEdges:
         )
 
     def test_40j4_vocal_presence_music_vocal_heuristic_reaches_vqi_threshold(self):
-        # §0p v10.0.0: PANNs Vocals=0.17, Music=0.60, no genre detected
-        # → Music+Vocal heuristic should directly reach VQI-gate threshold (0.35)
+        # §0p v10.0.0: PANNs Vocals=0.32, Music=0.60, no genre detected
+        # → Music+Vocal heuristic should directly reach VQI-gate threshold (0.35).
+        # (Schwelle Vocals ≥ 0.20 seit Instrumental-Fix: Vocals=0.13 bei reinem
+        # Instrumental „Vogel der Nacht" ist Rauschboden und muss unten bleiben.)
         confidence = UnifiedRestorerV3._compute_vocal_presence_confidence(
-            {"Vocals": 0.17, "Music": 0.60},
+            {"Vocals": 0.32, "Music": 0.60},
             panns_vocals_confidence=0.0,
             is_schlager=False,
             genre_label="",
         )
         assert confidence >= 0.35, (
-            f"§0p: Music+Vocal heuristic must reach VQI threshold (0.35) for Vocals=0.17: {confidence:.3f}"
+            f"§0p: Music+Vocal heuristic must reach VQI threshold (0.35) for Vocals=0.32: {confidence:.3f}"
         )
+
+    def test_40j4b_instrumental_noise_floor_tags_stay_below_vocal_threshold(self):
+        # Regression „Vogel der Nacht" (reines Instrumental): Music=0.95,
+        # Singing voice=0.13, Vocals=0.13, Speech=0.05 — PANNs-Rauschboden darf
+        # weder vocal_present (0.25) noch das VQI-Gate (0.35) auslösen.
+        confidence = UnifiedRestorerV3._compute_vocal_presence_confidence(
+            {"Music": 0.95, "Singing voice": 0.13, "Vocals": 0.13, "Speech": 0.05},
+            panns_vocals_confidence=0.0,
+            is_schlager=False,
+            genre_label="",
+        )
+        assert confidence < 0.25, f"§0p: Instrumental-Rauschboden muss < 0.25 bleiben: {confidence:.3f}"
+
+    def test_40j4c_vocals_exactly_at_threshold_triggers_boost(self):
+        # Grenzwert: Vocals == 0.20 → Boost aktiv (≥, nicht >).
+        confidence = UnifiedRestorerV3._compute_vocal_presence_confidence(
+            {"Vocals": 0.20, "Music": 0.55},
+            panns_vocals_confidence=0.0,
+            is_schlager=False,
+            genre_label="",
+        )
+        assert confidence >= 0.35, f"§0p: Vocals=0.20 (Grenzwert) muss den Boost aktivieren: {confidence:.3f}"
 
     def test_40k_autosetup_policy_caps_flattening_phases_for_frisson_sensitive_material(self):
         profile = {

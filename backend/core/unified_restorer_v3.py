@@ -2774,12 +2774,15 @@ class UnifiedRestorerV3:
                 logger.debug("UnifiedRestorerV3: PANNS confidence cast fehlgeschlagen (unkritisch): %s", _uvr_tv1_exc)
 
         # §0p v10.0.0 Music+Vocal heuristic: when PANNs detects music with a
-        # clear vocal signal (Vocals > 0.08) and Music ≥ 0.40, it's likely vocal
+        # clear vocal signal (Vocals ≥ 0.20) and Music ≥ 0.40, it's likely vocal
         # music even if the specific singing tag is low (common for non-English,
-        # vintage, and folk material). Strict threshold prevents noise-floor hits
-        # (Vocals == 0.08) from triggering the heuristic.
+        # vintage, and folk material). Threshold sits above the instrumental
+        # noise floor (gemessen: 0.13 bei „Vogel der Nacht", reines Instrumental,
+        # Music=0.95) — Instrumentals dürfen weder vocal_present noch das
+        # VQI-Gate (0.35) auslösen, sonst laufen De-Esser/Dereverb auf Material
+        # ohne Gesang und der MP3-Sibilanten-Schutz wird deaktiviert.
         _raw_vocals = _tag_value("Vocals")
-        if _music_conf >= 0.40 and _raw_vocals > 0.08 and _speech_conf < 0.30:
+        if _music_conf >= 0.40 and _raw_vocals >= 0.20 and _speech_conf < 0.30:
             # §0p v10.0.0: directly meet VQI-gate threshold (0.35) so that vocal
             # material without detected genre still activates the VQI gate.
             confidence = max(confidence, 0.35)

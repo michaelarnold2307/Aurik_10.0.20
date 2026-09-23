@@ -268,6 +268,41 @@ class TestVFAAnalyzeNoVocal:
         assert result.vocal_present is False
         assert result.vqi_gate_active is False
 
+    def test_instrumental_noise_floor_tags_do_not_trigger_vocal(self, vfa):
+        """Regression „Vogel der Nacht": Music=0.95 + Vocals/Singing=0.13
+        (instrumentaler PANNs-Rauschboden) darf NICHT auf 0.35 angehoben werden —
+        sonst laufen De-Esser/Dereverb/Vocal-Scratch-Repair auf Gesang-freiem
+        Material und der MP3-Sibilanten-Schutz wird deaktiviert (§0p)."""
+        audio = _make_sine(440.0)
+        result = vfa.analyze(
+            audio,
+            SR,
+            panns_singing=0.0,
+            panns_tags={
+                "Music": 0.95,
+                "Singing voice": 0.13,
+                "Vocals": 0.13,
+                "Speech": 0.05,
+            },
+        )
+        assert result.panns_singing < 0.25
+        assert result.vocal_present is False
+        assert result.vqi_gate_active is False
+
+    def test_music_vocals_boost_preserved_for_clear_vocals(self, vfa):
+        """Vocals ≥ 0.20 + Music ≥ 0.40 hält die §0p-Rettung degradierter
+        Vokalmusik aufrecht (VQI-Gate 0.35), ohne Instrumentals zu treffen."""
+        audio = _make_vocal_signal(3.0)
+        result = vfa.analyze(
+            audio,
+            SR,
+            panns_singing=0.05,
+            panns_tags={"Music": 0.60, "Vocals": 0.45, "Speech": 0.02},
+        )
+        assert result.panns_singing >= 0.35
+        assert result.vocal_present is True
+        assert result.vqi_gate_active is True
+
 
 # ---------------------------------------------------------------------------
 # Robustheit — Edge Cases
