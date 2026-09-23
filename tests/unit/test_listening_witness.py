@@ -452,6 +452,40 @@ class TestPerfR11BatchedPaths:
         np.maximum(new, _floor, out=new)
         assert np.array_equal(old, new)
 
+    def test_pre_echo_masked_level_no_false_positive(self):
+        """SUP-F7: Hinzugefügte Vor-Fenster-Energie bei −15 dB unter dem Onset
+        (kein Delta am Onset selbst) darf KEINEN Befund erzeugen. Die alte
+        Ratio pre-Δ ÷ post-Δ explodierte hier (post-Δ ≈ 0) — Produktionsbefund
+        „Vogel der Nacht": 12 Pre-Echo-Befunde bei loud=0.0dB/hf=0.000."""
+        from backend.core.dsp.pre_echo_model import pre_echo_ratio_db
+
+        rng = np.random.RandomState(11)
+        n = SR * 3
+        x = 0.05 * rng.standard_normal(n)
+        onset = SR * 3 // 2
+        x[onset : onset + int(0.05 * SR)] *= 8.0  # kräftiger Onset (Attack)
+        y = x.copy()
+        # Hinzugefügte Energie NUR im Vor-Fenster, −15 dB unter Onset-Pegel
+        _target_e = (0.05 * 8.0) ** 2 * 10.0 ** (-15.0 / 10.0)
+        y[onset - 6000 : onset - 3000] += np.sqrt(_target_e) * rng.standard_normal(3000)
+        db = pre_echo_ratio_db(x, y, SR)
+        assert db < -12.0, f"−15 dB unter Onset ist maskiert, kein Befund: {db} dB"
+
+    def test_pre_echo_strong_level_still_detected(self):
+        """SUP-F7: −6 dB unter dem Onset (nahe am Pegel) bleibt ein Befund."""
+        from backend.core.dsp.pre_echo_model import pre_echo_ratio_db
+
+        rng = np.random.RandomState(12)
+        n = SR * 3
+        x = 0.05 * rng.standard_normal(n)
+        onset = SR * 3 // 2
+        x[onset : onset + int(0.05 * SR)] *= 8.0
+        y = x.copy()
+        _target_e = (0.05 * 8.0) ** 2 * 10.0 ** (-6.0 / 10.0)
+        y[onset - 6000 : onset - 3000] += np.sqrt(_target_e) * rng.standard_normal(3000)
+        db = pre_echo_ratio_db(x, y, SR)
+        assert db >= -12.0, f"−6 dB unter Onset muss als Pre-Echo sichtbar bleiben: {db} dB"
+
 
 # ---------------------------------------------------------------------------
 # Audio-Bundle-Zwischenspeicher: exakte Werte, Ketten-Bit-Identität, Reset

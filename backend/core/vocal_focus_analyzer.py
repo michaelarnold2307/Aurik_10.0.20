@@ -474,7 +474,16 @@ class VocalFocusAnalyzer:
         schlager_like = bool(is_schlager) or any(
             key in genre_key_norm for key in ("schlager", "chanson", "vocal", "folk", "gospel", "lied")
         )
-        if schlager_like and (is_schlager or vocal_tag_conf >= 0.10):
+        # §Instrumental-Veto Marsch (2026-09-23): is_schlager=True allein darf
+        # keinen 0.35-Floor erzwingen, wenn der Klassifizierer einen MARSCH
+        # gemeldet hat (häufig instrumental) und ALLE Instrumental-Zeugen
+        # unisono dagegen sprechen (Music hoch, Vocal-Tags im Rauschboden < 0.20,
+        # Speech minimal). Produktionsbefund „Vogel der Nacht": Instrumental als
+        # „Marsch/Schlager" klassifiziert → Vocal-Verarbeitung ohne Gesang.
+        # Schlager ohne Marsch-Label und Marsch MIT Tag-Support bleiben geschützt.
+        _marsch_like = "marsch" in genre_key_norm
+        _instrumental_evidence = music_conf >= 0.40 and vocal_tag_conf < 0.20 and speech_conf < 0.30
+        if schlager_like and (is_schlager or vocal_tag_conf >= 0.10) and not (_marsch_like and _instrumental_evidence):
             confidence = max(confidence, 0.35)
 
         # Expliziter Vocal-Prior aus Pre-Analysis/Bridge muss VFA auch ohne PANNs-Tags

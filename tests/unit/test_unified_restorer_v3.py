@@ -1215,6 +1215,40 @@ class TestPreventFirstQuietEdges:
         )
         assert confidence >= 0.35, f"§0p: Vocals=0.20 (Grenzwert) muss den Boost aktivieren: {confidence:.3f}"
 
+    def test_40j4d_marsch_instrumental_schlager_floor_vetoed(self):
+        # §Instrumental-Veto Marsch: is_schlager=True + Genre „Marsch" + PANNs-
+        # Rauschboden (Vogel der Nacht v2: Music=0.95, Vocals=0.13) → KEIN
+        # unbedingter 0.35-Floor; Instrumental bleibt instrumental.
+        confidence = UnifiedRestorerV3._compute_vocal_presence_confidence(
+            {"Music": 0.95, "Singing voice": 0.13, "Vocals": 0.13, "Speech": 0.05},
+            panns_vocals_confidence=0.0,
+            is_schlager=True,
+            genre_label="Marsch",
+        )
+        assert confidence < 0.25, f"Instrumental-Marsch darf keinen 0.35-Floor erhalten: {confidence:.3f}"
+
+    def test_40j4e_marsch_with_vocal_support_keeps_floor(self):
+        # Marsch MIT echtem Tag-Support (Vocals ≥ 0.20) behält den Floor
+        # (vokale Märsche/Militärgesänge dürfen nicht verloren gehen).
+        confidence = UnifiedRestorerV3._compute_vocal_presence_confidence(
+            {"Music": 0.60, "Vocals": 0.45, "Speech": 0.02},
+            panns_vocals_confidence=0.0,
+            is_schlager=True,
+            genre_label="Marsch",
+        )
+        assert confidence >= 0.35, f"Vokaler Marsch braucht den 0.35-Floor: {confidence:.3f}"
+
+    def test_40j4f_schlager_without_marsch_keeps_unconditional_floor(self):
+        # Degradierter Schlager (kein Marsch-Label) behält den unbedingten
+        # is_schlager-Floor — die Schutzpfade für Vokalmaterial bleiben intakt.
+        confidence = UnifiedRestorerV3._compute_vocal_presence_confidence(
+            {"Music": 0.75, "Vocals": 0.12},
+            panns_vocals_confidence=0.0,
+            is_schlager=True,
+            genre_label="Deutscher Schlager",
+        )
+        assert confidence >= 0.35, f"Schlager-Floor fehlt: {confidence:.3f}"
+
     def test_40k_autosetup_policy_caps_flattening_phases_for_frisson_sensitive_material(self):
         profile = {
             "family_scalars": {"dynamics_eq": 1.0, "vocal": 1.0, "reconstruction": 1.0, "reverb": 1.0},

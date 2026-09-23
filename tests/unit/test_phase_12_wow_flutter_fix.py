@@ -36,3 +36,21 @@ def test_not_silent(phase, audio):
 def test_length_preserved(phase, audio):
     result = phase.process(audio, sample_rate=48000, material_type="vinyl")
     assert len(result.audio) == len(audio)
+
+
+def test_melody_guard_sets_refusal_flag(phase):
+    """§WF-V2-Kopplung: Musikalische Tonhöhen-Spanne (> Limit) muss
+    `_melody_guard_refused` setzen und flache Stretch-Faktoren liefern —
+    die Spektral-Warp-Versorgung darf diesen Guard nicht überschreiben
+    (Produktionsbefund „Vogel der Nacht": pitch_instability nach phase_12
+    trotz wow=0.00 und Melodie-Guard-Ablehnung)."""
+    sr = 48000
+    n = sr * 2
+    t = np.arange(n) / sr
+    f0 = 220.0 * 2.0 ** (np.sin(2 * np.pi * 0.5 * t) * 12.0 / 12.0)  # ±1 Oktave Melodie
+    conf = np.ones(n)
+    phase._wow_sev_for_stretch = 0.0
+    phase._melody_guard_refused = False
+    sf = phase._calculate_stretch_factors(f0, conf, 0.5, max_stretch_delta=0.05)
+    assert np.allclose(sf, 1.0)
+    assert phase._melody_guard_refused is True

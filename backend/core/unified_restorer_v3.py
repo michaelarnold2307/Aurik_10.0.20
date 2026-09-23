@@ -2830,7 +2830,18 @@ class UnifiedRestorerV3:
             or genre_key in UnifiedRestorerV3._VOCAL_GENRE_KEYS  # type: ignore[attr-defined]
             or any(vg in genre_key for vg in ("schlager", "chanson", "vocal", "folk", "gospel", "lied"))
         )
-        if schlager_like and (is_schlager or confidence >= 0.10):
+        # §Instrumental-Veto Marsch (2026-09-23): is_schlager=True allein darf
+        # keinen 0.35-Floor erzwingen, wenn der Klassifizierer einen MARSCH
+        # gemeldet hat (häufig instrumental) und ALLE Instrumental-Zeugen
+        # unisono dagegen sprechen (PANNs Music hoch, Vocal-Tags im Rauschboden
+        # < 0.20, Speech minimal). Produktionsbefund „Vogel der Nacht": reines
+        # Instrumental als „Marsch/Schlager" klassifiziert (conf=0.67) →
+        # unbedingter Floor → De-Esser/Dereverb auf Material ohne Gesang.
+        # Degradierter Schlager-Gesang (kein Marsch-Label) behält seinen Schutz;
+        # Marsch MIT Tag-Support (singing_conf ≥ 0.20) ebenfalls.
+        _marsch_like = "marsch" in genre_key_norm
+        _instrumental_evidence = _music_conf >= 0.40 and singing_conf < 0.20 and _speech_conf < 0.30
+        if schlager_like and (is_schlager or confidence >= 0.10) and not (_marsch_like and _instrumental_evidence):
             # §0p v10.0.0: Für is_schlager=True (Klassifizierer-Ergebnis) gilt der
             # 0.35-Floor OHNE Mindestschwelle. PANNs unter-detektiert Gesang auf
             # degradiertem Analogmaterial systematisch: Cassette-SNR < 15 dB, Intro-

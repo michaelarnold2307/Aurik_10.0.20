@@ -121,8 +121,17 @@ def pre_echo_ratio_db(x_before: np.ndarray, x_after: np.ndarray, sr: int) -> flo
         # (positive Delta-Hälfte) gebildet — die signierte Delta-Energie zählte
         # Klick-ENTFERNUNG im Vor-Fenster wie eine Pre-Echo-HINZUFÜGUNG
         # (False-Positive bei phase_01/23, Produktionsbefund 2026-09-16).
-        _pre_e = float(np.mean(env_d_pos[_pre_lo:_pre_hi] ** 2)) + 1e-18
-        _post_e = float(np.mean(env_d_pos[_of:_post_hi] ** 2)) + 1e-18
-        ratio_db = 10.0 * np.log10(_pre_e / _post_e)
+        # SUP-F7 (2026-09-23): Ratio-Referenz auf die ONSET-Energie des
+        # Nach-Signals umgestellt (Forward-Masking-Kontext, Zwicker & Fastl
+        # §7.2). Das alte Verhältnis zweier HINZUGEFÜGTER Energien
+        # (pre-Δ ÷ post-Δ) konnte bei ≈0-Delta-Phasen beliebig groß werden
+        # (post-Δ → 0) — Produktionsbefund „Vogel der Nacht": 12 Pre-Echo-
+        # Befunde bei loud=0.0dB/hf=0.000. Rückgabe ist jetzt der dB-Abstand
+        # der hinzugefügten Vor-Fenster-Energie zum Onset: > −12 dB ⇒
+        # potenziell hörbares Pre-Echo (Witness-Schwelle), < −18 dB ⇒ durch
+        # die Forward-Masking-Gates oben bereits ausgeschlossen.
+        _pre_e = float(np.mean(env_d_pos[_pre_lo:_pre_hi] ** 2))
+        _onset_e = float(env_a[_of] ** 2)
+        ratio_db = 10.0 * np.log10(_pre_e / max(_onset_e, 1e-18))
         worst_db = max(worst_db, ratio_db)
     return float(round(worst_db, 2))

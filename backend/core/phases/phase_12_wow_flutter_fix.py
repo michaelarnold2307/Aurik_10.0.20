@@ -1197,6 +1197,15 @@ class WowFlutterFix(PhaseInterface):
         if _wow_sev == 0.0 and str(material_type).lower() in ("cassette", "reel_tape", "tape", "vinyl"):
             _wow_sev = 0.30  # Conservative minimum for analog tape/disc
         self._wow_sev_for_stretch = float(_wow_sev)
+        # §WF-V2-Melodie-Guard-Kopplung (2026-09-23): Der Melodie-Guard in
+        # _calculate_stretch_factors lehnt F0-Stretch bei musikalischer
+        # Tonhöhen-Spanne ab (pitch span > Limit = Melodie/Bends, kein Wow).
+        # Die Spektral-Warp-Versorgung MUSS diese Ablehnung respektieren —
+        # sonst überschreibt sie den Guard mit ihrer eigenen langsamen Warp-
+        # Schätzung und „korrigiert" Synth-LFO/Vibrato (Produktionsbefund
+        # „Vogel der Nacht": pitch_instability 13,8–15,3 c nach phase_12
+        # trotz wow=0.00 und Melodie-Guard-Ablehnung).
+        self._melody_guard_refused = False
         stretch_factors = self._calculate_stretch_factors(
             pitch_trajectory,
             confidence,
@@ -1242,11 +1251,18 @@ class WowFlutterFix(PhaseInterface):
         # vorhandener F0-Trajektorie per Konsens-Gate. EINMAL auf der Mono-
         # Referenz geschätzt — Mid/Side erhalten identische Faktoren
         # (§2.51 L/R-Timing-Invariante; kein per-Kanal-Schätzer, sonst L/R-Zeitversatz).
-        stretch_factors = self._spectral_warp_supply_or_consensus(
-            safe_to_mono(np.asarray(audio, dtype=np.float32)),
-            np.asarray(stretch_factors, dtype=np.float32),
-            sample_rate,
-        )
+        # §WF-V2-Melodie-Guard-Kopplung: Hat der Melodie-Guard den F0-Stretch
+        # abgelehnt (musikalische Spanne), darf die Versorgung NICHT anspringen.
+        if not getattr(self, "_melody_guard_refused", False):
+            stretch_factors = self._spectral_warp_supply_or_consensus(
+                safe_to_mono(np.asarray(audio, dtype=np.float32)),
+                np.asarray(stretch_factors, dtype=np.float32),
+                sample_rate,
+            )
+        else:
+            logger.info(
+                "§WF-V2 übersprungen: Melodie-Guard hat F0-Stretch abgelehnt (musikalischer Inhalt, kein Wow-Verdacht)"
+            )
 
         # Step 5: Apply time-stretching – PSOLA für Vokal-Segmente, WSOLA sonst
         # Moulines & Charpentier (1990): PSOLA ist formanterhaltend bei Gesangsmaterial;
@@ -3380,6 +3396,7 @@ class WowFlutterFix(PhaseInterface):
                 _adaptive_limit = 100.0 + 300.0 * min(_wow_sev, 1.0)
                 _adaptive_limit = max(100.0, min(_adaptive_limit, 400.0))
                 if _span_cents > _adaptive_limit:
+                    self._melody_guard_refused = True
                     logger.info(
                         "Verarbeitungsschritt 12 pitch span %.0f cents > %.0f (mat=%s wow=%.2f)",
                         _span_cents,

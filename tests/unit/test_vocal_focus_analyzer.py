@@ -303,6 +303,23 @@ class TestVFAAnalyzeNoVocal:
         assert result.vocal_present is True
         assert result.vqi_gate_active is True
 
+    def test_marsch_instrumental_schlager_floor_vetoed(self, vfa):
+        """§Instrumental-Veto Marsch (Vogel der Nacht v2): is_schlager=True +
+        Genre „Marsch" + Instrumental-Tags → kein 0.35-Floor, instrumental
+        bleibt instrumental."""
+        audio = _make_sine(440.0)
+        result = vfa.analyze(
+            audio,
+            SR,
+            panns_singing=0.0,
+            panns_tags={"Music": 0.95, "Singing voice": 0.13, "Vocals": 0.13, "Speech": 0.05},
+            is_schlager=True,
+            genre_label="Marsch",
+        )
+        assert result.panns_singing < 0.25
+        assert result.vocal_present is False
+        assert result.vqi_gate_active is False
+
 
 # ---------------------------------------------------------------------------
 # Robustheit — Edge Cases
