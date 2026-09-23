@@ -1101,7 +1101,33 @@ class WaermeMetric:
                 analysis = mert.analyze(_audio_mert, sr)
                 # MERT harmonicity refines warmth: weight 10% (gentle blend)
                 mert_warmth = float(np.clip(analysis.harmonicity, 0.0, 1.0))
-                score = 0.90 * score + 0.10 * mert_warmth
+                # §False-Regression (Befund Vinyl-Lauf 2026-09-22): MERT-Harmonicity
+                # ist rausch-sensitiv — Knistern-Entfernung senkt die Schätzung,
+                # obwohl die physische Wärme (E(200-800)/E(800-3000)) erhalten ist
+                # (gemessen: 8.86 dB vor/nach, Δ 0.0 dB; WaermeMetric fiel 0.911→0.820).
+                # Referenz-Delta statt Absolut-Blend: nur eine Harmonicity-
+                # VERSCHLECHTERUNG GEGENÜBER dem Original darf den Score drücken
+                # (Toleranz 0.05 gegen Schätzrauschen).
+                if reference is not None:
+                    try:
+                        _ref_mert_audio = (
+                            reference[:_MAX_MERT_WAERME] if len(reference) > _MAX_MERT_WAERME else reference
+                        )
+                        _ref_mert = float(np.clip(mert.analyze(_ref_mert_audio, sr).harmonicity, 0.0, 1.0))
+                        if _ref_mert < 0.10:
+                            # Referenz ohne messbare Harmonicity → MERT-Term
+                            # informationslos; der Blend würde den physisch korrekten
+                            # Band-Ratio-Wert verfälschen (Befund Vinyl: 0.911→0.820
+                            # bei identischem 8.86-dB-Verhältnis).
+                            logger.debug(
+                                "WaermeMetric: MERT-Harmonicity der Referenz %.3f < 0.10 — Blend übersprungen",
+                                _ref_mert,
+                            )
+                        else:
+                            mert_warmth = max(mert_warmth, _ref_mert - 0.05)
+                            score = 0.90 * score + 0.10 * mert_warmth
+                    except Exception:
+                        logger.debug("WaermeMetric MERT-Referenz-Delta nicht verfügbar (unkritisch)")
                 logger.debug(
                     "WaermeMetric MERT-hybrid: harmonicity=%.3f, blended_Wert=%.3f",
                     analysis.harmonicity,

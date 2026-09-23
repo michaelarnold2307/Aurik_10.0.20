@@ -1,14 +1,15 @@
 # TASK_CHANGES — Live-Ledger der aktuellen Aufgabe
 
-> Generiert von `scripts/change_ledger.py snapshot` (Base: `HEAD`, Stand: 2026-09-23 02:12 CEST).
+> Generiert von `scripts/change_ledger.py snapshot` (Base: `HEAD`, Stand: 2026-09-23 02:40 CEST).
 > CI (`ci-lite.yml` pr-evidence-gate) erzwingt Abdeckung: jede geänderte Code-Datei muss hier stehen.
 
 ## Geänderte Dateien
 
 | Status | Pfad | Art |
 |---|---|---|
-| M | TASK_CHANGES.md | modifiziert |
-| M | backend/core/unified_restorer_v3.py | modifiziert |
+| M | backend/core/musical_goals/musical_goals_metrics.py | modifiziert |
+| M | tests/unit/test_mert_mushra_proxy.py | modifiziert |
+| ?? | scripts/benchmark_vs_external.py | ungetrackt |
 
 ## Entscheidungen
 

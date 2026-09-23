@@ -2179,3 +2179,49 @@ class TestFluctuationStrength:
         s_same = get_proxy_evaluator()._compute_fluctuation_strength(ref, ref, SR)
         s_pump = get_proxy_evaluator()._compute_fluctuation_strength(ref, test_pump, SR)
         assert s_same > s_pump
+
+
+class TestWaermeMetricMertReferenceGuard:
+    """§False-Regression (Befund Vinyl-Lauf): Der MERT-Blend darf den physisch
+    korrekten Band-Ratio-Wert nicht verfälschen, wenn die Referenz keine
+    messbare Harmonicity hat (Knistern-Entfernung senkt die MERT-Schätzung,
+    obwohl E(200-800)/E(800-3000) erhalten ist)."""
+
+    def _audio(self) -> np.ndarray:
+        rng = np.random.default_rng(7)
+        t = np.arange(SR, dtype=np.float64) / SR
+        return (0.3 * np.sin(2 * np.pi * 220 * t) + 0.05 * rng.standard_normal(SR)).astype(np.float32)
+
+    def test_reference_without_harmonicity_keeps_dsp_value(self, monkeypatch):
+        from unittest.mock import Mock
+
+        from backend.core.musical_goals import musical_goals_metrics as mgm
+        from backend.core.musical_goals.musical_goals_metrics import WaermeMetric
+
+        fake = Mock()
+        fake._model_type = "mert_330m"
+        fake.analyze = Mock(return_value=Mock(harmonicity=0.02))
+        monkeypatch.setattr(mgm, "_get_mert_plugin_loader", lambda: lambda: fake)
+
+        audio = self._audio()
+        m = WaermeMetric()
+        score = m.measure(audio, SR, reference=audio)
+        dsp = m._measure_absolute(audio, SR, material_type="unknown")
+        assert abs(score - dsp) < 0.01
+
+    def test_reference_with_harmonicity_applies_gentle_blend(self, monkeypatch):
+        from unittest.mock import Mock
+
+        from backend.core.musical_goals import musical_goals_metrics as mgm
+        from backend.core.musical_goals.musical_goals_metrics import WaermeMetric
+
+        fake = Mock()
+        fake._model_type = "mert_330m"
+        fake.analyze = Mock(return_value=Mock(harmonicity=0.7))
+        monkeypatch.setattr(mgm, "_get_mert_plugin_loader", lambda: lambda: fake)
+
+        audio = self._audio()
+        m = WaermeMetric()
+        score = m.measure(audio, SR, reference=audio)
+        dsp = m._measure_absolute(audio, SR, material_type="unknown")
+        assert abs(score - (0.90 * dsp + 0.10 * 0.70)) < 0.01
