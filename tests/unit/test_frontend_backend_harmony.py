@@ -540,7 +540,13 @@ def test_ci_gui_smoke_gate_exists():
 
 
 def test_cross_platform_ci_pins_python_3_10_12_everywhere():
-    """§CI: Cross-Platform-Runner dürfen nie unter das pyproject-Minimum driften."""
+    """§CI: Cross-Platform-Runner dürfen nie unter das pyproject-Minimum driften.
+
+    Ubuntu pinnt exakt 3.10.12. Windows-2022 nutzt 3.10.11 — das Toolcache-
+    Manifest (actions/python-versions) enthält 3.10.12 ohne Windows-x64-Build
+    (CI-Befund 2026-09-23); letzte Windows-3.10.x ist 3.10.11. Die Windows-10/11-
+    Zielmaschinen bleiben via Installer exakt auf 3.10.12 x64 gepinnt.
+    """
     src = _read(".github/workflows/ci-cross-platform.yml")
     workflow = yaml.safe_load(src)
     include = workflow["jobs"]["test-cross-platform"]["strategy"]["matrix"]["include"]
@@ -548,9 +554,15 @@ def test_cross_platform_ci_pins_python_3_10_12_everywhere():
     assert {"ubuntu-22.04", "windows-2022"}.issubset(pinned_versions)
     # macOS entfernt (2026-09-23): arm64-Runner bieten kein Python 3.10.12.
     assert "macos-14" not in pinned_versions
-    assert all(version == "3.10.12" for version in pinned_versions.values())
-    assert "Verify exact Python patch version" in src
+    assert pinned_versions["ubuntu-22.04"] == "3.10.12"
+    # Windows-Runner: dokumentierte Ausnahme 3.10.11 (Manifest ohne 3.10.12-Build).
+    assert pinned_versions["windows-2022"] == "3.10.11"
+    assert "Verify Python version" in src
     assert "sys.version_info[:3] == (3, 10, 12)" in src
+    assert "sys.version_info[:3] == (3, 10, 11)" in src
+    # Zielmaschinen (Windows 10/11 x64) bleiben exakt auf 3.10.12 gepinnt.
+    assert "3,10,12" in _read("install_aurik.bat")
+    assert "3.10.12" in _read("scripts/install_windows.ps1")
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
