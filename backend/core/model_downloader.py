@@ -368,6 +368,18 @@ class ModelDownloader:
                 return entry
         return None
 
+    def get_entry_by_path(self, bundled_path: str) -> ModelEntry | None:
+        """Gibt ModelEntry für einen manifest-Pfad zurück oder None (§13.3).
+
+        Verwendet vom zentralen model_path_resolver für On-Demand-Auflösung
+        direkter Ladepfade (z. B. ``models/apollo/apollo_core.onnx``).
+        """
+        norm = str(bundled_path).strip("/")
+        for entry in self._manifest_entries:
+            if entry.bundled_path.strip("/") == norm:
+                return entry
+        return None
+
     # ── Release-Auslieferung (§13.3, 2026-09-23) ──────────────────────────────
 
     def download_release_assets(

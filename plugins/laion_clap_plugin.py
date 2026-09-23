@@ -231,6 +231,16 @@ class LAIONCLAPPlugin:
             import onnxruntime as ort  # pylint: disable=import-outside-toplevel
 
             audio_enc_path = self.MODELS_DIR / "audio_encoder.onnx"
+            if not audio_enc_path.exists():
+                # §13.3 On-Demand: fehlendes Release-Modell über Manifest nachladen
+                try:
+                    from backend.core.model_path_resolver import resolve_model_path as _resolve_mp
+
+                    _resolved_clap = _resolve_mp("models/clap/audio_encoder.onnx")
+                    if _resolved_clap is not None:
+                        audio_enc_path = _resolved_clap
+                except Exception:
+                    logger.debug("CLAP: Resolver nicht verfügbar (unkritisch)", exc_info=True)
             text_emb_path = self.MODELS_DIR / "text_embeddings.npy"
 
             if audio_enc_path.exists() and text_emb_path.exists():

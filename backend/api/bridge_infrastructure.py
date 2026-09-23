@@ -380,6 +380,24 @@ def get_model_downloader():
     return _get()
 
 
+def ensure_models_available(progress_callback=None) -> dict[str, bool]:
+    """§13.3 Provisioning: prüft alle Manifest-Modelle und lädt fehlende nach.
+
+    Fehlende Release-Modelle (> 40 MB) werden aus GitHub Releases geladen
+    (resumierbar, SHA256-verifiziert); lokal vorhandene bleiben unberührt.
+    Idempotent — Installer/erster Start/A/B-Preview rufen dies gefahrlos.
+
+    Args:
+        progress_callback: Optionaler Callback(model_name, fraction ∈ [0,1]).
+
+    Returns:
+        Dict[model_name → True (verfügbar) / False (DSP-Fallback aktiv)].
+    """
+    from backend.core.model_downloader import get_model_downloader as _get  # type: ignore[import]
+
+    return _get().ensure_all(progress_callback=progress_callback)
+
+
 # ---------------------------------------------------------------------------
 # §G90 PresenceEmbedding + EraAuthenticPerceptualCompletion (Aurik 10.14)
 # ---------------------------------------------------------------------------

@@ -115,3 +115,60 @@ class TestReleaseDelivery:
         result = dl.load_bundled(entry)
         assert result == abs_bundled
         assert abs_bundled.read_bytes() == b"X" * 64
+
+
+@pytest.mark.unit
+class TestModelPathResolver:
+    def test_local_hit_no_download(self) -> None:
+        from backend.core.model_path_resolver import clear_resolver_cache, resolve_model_path
+
+        clear_resolver_cache()
+        p = resolve_model_path("models/manifest.json", download=False)
+        assert p is not None and p.is_file()
+
+    def test_missing_download_disabled_returns_none(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        import backend.core.model_path_resolver as mpr
+
+        mpr.clear_resolver_cache()
+        monkeypatch.setattr(mpr, "_DOWNLOAD_ENABLED", False)
+        assert mpr.resolve_model_path("models/gibt_es_nicht.onnx") is None
+
+    def test_missing_without_manifest_entry_returns_none(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        import backend.core.model_path_resolver as mpr
+
+        mpr.clear_resolver_cache()
+        monkeypatch.setattr(mpr, "_DOWNLOAD_ENABLED", True)
+        assert mpr.resolve_model_path("models/unbekannt/x.onnx") is None
+
+    def test_download_fallback_via_load_bundled(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        import backend.core.model_downloader as md
+        import backend.core.model_path_resolver as mpr
+
+        mpr.clear_resolver_cache()
+        monkeypatch.setattr(mpr, "_DOWNLOAD_ENABLED", True)
+        fake_path = tmp_path / "fake.onnx"
+        fake_path.write_bytes(b"x")
+        entry = ModelEntry(
+            name="fake",
+            bundled=False,
+            bundled_path="models/fake/fake.onnx",
+            sha256="",
+            size_bytes=1,
+            required=False,
+            fallback="dsp",
+            delivery="release",
+            release_tag="t",
+            assets=["fake.onnx"],
+        )
+
+        class _FakeDL:
+            def get_entry_by_path(self, bundled_path: str):
+                return entry if bundled_path == "models/fake/fake.onnx" else None
+
+            def load_bundled(self, entry: ModelEntry):
+                return fake_path
+
+        monkeypatch.setattr(md, "get_model_downloader", lambda: _FakeDL())
+        assert mpr.resolve_model_path("models/fake/fake.onnx") == fake_path

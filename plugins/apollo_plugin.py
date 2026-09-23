@@ -211,6 +211,16 @@ class ApolloPlugin:
                 "Optional import not verfuegbar (unkritisch): %s", _exc
             )  # Budget-Modul fehlt → load trotzdem versuchen
         _onnx_path = self.MODELS_DIR / "apollo_core.onnx"
+        if not _onnx_path.exists():
+            # §13.3 On-Demand: fehlendes Release-Modell über Manifest nachladen
+            try:
+                from backend.core.model_path_resolver import resolve_model_path as _resolve_mp
+
+                _resolved_apollo = _resolve_mp("models/apollo/apollo_core.onnx")
+                if _resolved_apollo is not None:
+                    _onnx_path = _resolved_apollo
+            except Exception:
+                logger.debug("Apollo: Resolver nicht verfügbar (unkritisch)", exc_info=True)
         if _onnx_path.exists():
             try:
                 import onnxruntime as ort
