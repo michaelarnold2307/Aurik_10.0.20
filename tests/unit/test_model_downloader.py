@@ -103,6 +103,63 @@ def downloader_with_empty_manifest(tmp_path: Path):
     return dl
 
 
+# ---------------------------------------------------------------------------
+# §13.3 Release-Namens-Vertrag: Asset-Name → Downloader → Plugin-Kette
+# ---------------------------------------------------------------------------
+
+
+def _repo_manifest() -> dict:
+    p = Path(__file__).parents[2] / "models" / "manifest.json"
+    if not p.exists():
+        pytest.skip("models/manifest.json nicht im Checkout")
+    return json.loads(p.read_text(encoding="utf-8"))
+
+
+def test_release_asset_names_derivable_from_bundled_path() -> None:
+    """Der Asset-Name jedes Release-Eintrags muss exakt aus bundled_path
+    ableitbar sein (models/ → models__) — sonst findet der Downloader das
+    Asset nicht und Plugins laden nie (§13.3)."""
+    man = _repo_manifest()
+    checked = 0
+    for entry in man.get("models", []):
+        if entry.get("delivery") != "release":
+            continue
+        bp = entry.get("bundled_path", "")
+        assert bp, f"bundled_path fehlt: {entry.get('name')}"
+        assets = entry.get("assets", [])
+        assert assets, f"assets fehlen: {entry.get('name')}"
+        if len(assets) == 1:
+            expected = [bp.replace("/", "__")]
+        else:
+            expected = [f"{bp.replace('/', '__')}.part{i:02d}" for i in range(len(assets))]
+            assert entry.get("part_size_bytes"), f"part_size_bytes fehlen: {entry.get('name')}"
+            assert entry.get("part_sha256"), f"part_sha256 fehlen: {entry.get('name')}"
+        assert assets == expected, f"Asset-Namen weichen von bundled_path ab: {entry.get('name')}"
+        checked += 1
+    assert checked >= 1, "keine Release-Einträge im Manifest"
+
+
+def test_key_plugin_load_paths_match_manifest_bundled_path() -> None:
+    """Kern-Plugins müssen exakt die bundled_path-Dateinamen laden."""
+    man = _repo_manifest()
+    by_name = {m["name"]: m for m in man.get("models", [])}
+    root = Path(__file__).parents[2]
+
+    checks = [
+        ("aero", "plugins/aero_plugin.py", "aero_12_48.onnx"),
+        ("beats", "plugins/beats_plugin.py", "beats_iter3.onnx"),
+        ("vocos_48khz_vocos_48khz", "plugins/vocos_plugin.py", "vocos_48khz.onnx"),
+        ("mert_mert_330m", "plugins/mert_plugin.py", "mert_330m.onnx"),
+    ]
+    for name, plugin_file, basename in checks:
+        entry = by_name.get(name)
+        if entry is None:
+            pytest.skip(f"{name} fehlt im Manifest")
+        src = (root / plugin_file).read_text(encoding="utf-8")
+        assert basename in src, f"{plugin_file} referenziert {basename} nicht"
+        assert entry["bundled_path"].endswith(basename), f"bundled_path passt nicht: {name}"
+
+
 # ──────────────────────────────────────────────────────────────────────────────
 # 01 – verify_model(): SHA256-Verifikation
 # ──────────────────────────────────────────────────────────────────────────────
