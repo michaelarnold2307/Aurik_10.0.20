@@ -496,6 +496,30 @@ class TransparentDynamicsV1(PhaseInterface):
             min_mix = float(np.clip(0.45 + 0.40 * hard_norm, 0.45, 0.90))
             mix = float(max(mix, min_mix))
 
+        # §2.69c Beat-Sync: Zeitkonstanten rasten auf dem Tempogrid ein (modusabhängig).
+        # Restoration: Release nie kürzer als Genre-Default (natürliche Makrodynamik);
+        # Studio 2026: straff/punchy (Attack ¼-Beat, Release ≤ 1 Beat), Genre-Clamps bleiben.
+        _tempo_54 = kwargs.get("tempo_bpm")
+        if _tempo_54:
+            try:
+                from backend.core.audio_utils import resolve_beat_synced_time_ms
+
+                _mode_54 = str(kwargs.get("mode", kwargs.get("processing_mode", "restoration"))).lower()
+                _is_studio_54 = "studio" in _mode_54
+                release_ms = float(
+                    np.clip(resolve_beat_synced_time_ms(release_ms, _tempo_54, is_studio=_is_studio_54), 40.0, 1400.0)
+                )
+                if _is_studio_54:
+                    attack_ms = float(
+                        np.clip(
+                            resolve_beat_synced_time_ms(attack_ms, _tempo_54, is_studio=True, beats=0.25),
+                            3.0,
+                            120.0,
+                        )
+                    )
+            except Exception as _bts_exc_54:
+                logger.debug("§2.69c Beat-Sync Verarbeitungsschritt_54 nicht blockierend: %s", _bts_exc_54)
+
         # §2.51 Linked-Stereo: Gain-Envelope aus Mono-Downmix, identisch auf L+R
         is_stereo = audio.ndim == 2
         audio_mono = np.mean(audio, axis=1) if is_stereo else audio.copy()

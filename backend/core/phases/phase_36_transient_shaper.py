@@ -262,6 +262,28 @@ class TransientShaper(PhaseInterface):
             "release_window_ms": config_raw["release_window_ms"],
         }
 
+        # §2.69c Beat-Sync: Fenster rasten auf dem Tempogrid ein (modusabhängig).
+        # Restoration: Release nie kürzer als Material-Default (natürlicher Ausklang);
+        # Studio 2026: straff/punchy (Attack ¼-Beat, Release ≤ 1 Beat, ≥ 10 ms).
+        _tempo_36 = kwargs.get("tempo_bpm")
+        if _tempo_36:
+            try:
+                from backend.core.audio_utils import resolve_beat_synced_time_ms
+
+                _mode_36 = str(kwargs.get("mode", kwargs.get("processing_mode", "restoration"))).lower()
+                _is_studio_36 = "studio" in _mode_36
+                config["release_window_ms"] = float(
+                    resolve_beat_synced_time_ms(float(config["release_window_ms"]), _tempo_36, is_studio=_is_studio_36)
+                )
+                if _is_studio_36:
+                    config["attack_window_ms"] = float(
+                        resolve_beat_synced_time_ms(
+                            float(config["attack_window_ms"]), _tempo_36, is_studio=True, beats=0.25
+                        )
+                    )
+            except Exception as _bts_exc_36:
+                logger.debug("§2.69c Beat-Sync Verarbeitungsschritt_36 nicht blockierend: %s", _bts_exc_36)
+
         # Measure initial transient energy
         transient_energy_before = self._measure_transient_energy(audio, sample_rate)
 

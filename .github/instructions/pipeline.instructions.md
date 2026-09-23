@@ -1585,8 +1585,8 @@ Drei Wohlklang-Hebel, strikt an die Modus-Ziele gekoppelt:
    Injektion in `_profiled_phase_call`: Restoration ×0.30 (mehr Restflor →
    Nähe zum Original), Studio 2026 ×0.12 (sauber, nicht steril).
 2. **BPM-synchrone Zeitkonstanten (§2.69c Beat-Sync-Erweiterung)**: `resolve_beat_synced_time_ms()`
-   rastet Attack/Release der Dynamik-Phasen (z. B. phase_10) auf dem Tempogrid
-   ein; Tempo aus `_restoration_context["tempo_bpm"]` (MusicalPhraseContext).
+   rastet Attack/Release der Dynamik-Phasen (phase_10, phase_36, phase_54) auf dem
+   Tempogrid ein; Tempo aus `_restoration_context["tempo_bpm"]` (MusicalPhraseContext).
    Restoration: nie kürzer als der Material-Default (natürliche Makrodynamik);
    Studio 2026: straff/punchy (Attack ¼-Beat, Release ≤ 1 Beat, ≥ 10 ms).
 3. **Era-adaptive Goal-Böden (§09.8)**: `get_material_floor(era_decade=...)`
