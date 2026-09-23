@@ -327,6 +327,48 @@ def main() -> int:
     except Exception as exc:  # pragma: no cover
         failures.append(f"DLM/binaural nicht verfügbar: {exc}")
 
+    # 13) MG-ERB-Spreizung (§2.69d, residuum_masking): Aufwärts-Masking > Abwärts.
+    #     Bei realistischem Masker-Pegel (L=20 rel. dB) ist der Abwärts-Hang
+    #     (24+0.23·fc+0.2·L) steiler als der Aufwärts-Hang (27 dB/ERB).
+    try:
+        from backend.core import residuum_masking as _cal_rm
+
+        _masker_db = np.full(len(_cal_rm._BARK_CENTERS), -120.0, dtype=np.float64)
+        _low_band = _cal_rm.bark_band_index_of_freq(700.0)
+        _high_band = _cal_rm.bark_band_index_of_freq(1000.0)
+        _low_masker = _masker_db.copy()
+        _low_masker[_low_band] = 20.0
+        _high_masker = _masker_db.copy()
+        _high_masker[_high_band] = 20.0
+        _up = float(_cal_rm._spread_mask_threshold(_low_masker)[_high_band])
+        _down = float(_cal_rm._spread_mask_threshold(_high_masker)[_low_band])
+        if not (_up > _down):
+            failures.append(f"MG-ERB-Asymmetrie verletzt: aufwärts {_up:.1f} !> abwärts {_down:.1f} dB")
+        print(f"13) MG-ERB-Asymmetrie: aufwärts={_up:.1f} dB > abwärts={_down:.1f} dB  {'OK' if _up > _down else 'FAIL'}")
+    except Exception as exc:  # pragma: no cover
+        failures.append(f"MG-ERB-Asymmetrie nicht verfügbar: {exc}")
+
+    # 14) MG-ERB-Spreizung: Monotonie — Schwelle fällt beidseitig vom Masker.
+    try:
+        from backend.core import residuum_masking as _cal_rm2
+
+        _masker_db2 = np.full(len(_cal_rm2._BARK_CENTERS), -120.0, dtype=np.float64)
+        _mid = _cal_rm2.bark_band_index_of_freq(1000.0)
+        _masker_db2[_mid] = 20.0
+        _thr2 = _cal_rm2._spread_mask_threshold(_masker_db2)
+        _mono_ok = True
+        for _b in range(_mid + 1, len(_thr2)):
+            if float(_thr2[_b]) > float(_thr2[_b - 1]) + 1e-9:
+                _mono_ok = False
+        for _b in range(_mid - 1, -1, -1):
+            if float(_thr2[_b]) > float(_thr2[_b + 1]) + 1e-9:
+                _mono_ok = False
+        if not _mono_ok:
+            failures.append("MG-ERB-Monotonie verletzt: Schwelle nicht monoton fallend")
+        print(f"14) MG-ERB-Monotonie: Schwelle fällt beidseitig vom Masker  {'OK' if _mono_ok else 'FAIL'}")
+    except Exception as exc:  # pragma: no cover
+        failures.append(f"MG-ERB-Monotonie nicht verfügbar: {exc}")
+
     print()
     if failures:
         print(f"KALIBRIERUNG: {len(failures)} INVARIANTE(N) VERLETZT")

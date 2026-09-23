@@ -2,7 +2,7 @@
 applyTo: "backend/core/musical_goals/*.py"
 ---
 
-# Musical Goals — Regeln (normativ, Aurik 10.0.0.x)
+# Musical Goals — Regeln (normativ, Aurik 10.2.0.x)
 
 ## 15 Goals — Prioritäten und kanonische Böden
 

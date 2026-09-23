@@ -140,19 +140,25 @@ Schicht-überblick:
 
 ### §10.6b P1: Echte Typ-Bugs in kritischen Dateien
 
+> **Befund-Stand (v10.2.0-Sync, 2026-09-23):** Die `[ROADMAP]`-Tags der
+> Forensics-Dateien sind auf ✅ Implementiert korrigiert (alle Dateien existieren).
+> Die Bug-Zahlen unten sind die historische Messung zum Erstellzeitpunkt dieser
+> Spec — eine frische Pyright-Neumessung steht aus (Tooling in der aktuellen
+> Umgebung nicht installierbar, PEP 668).
+
 Dateien mit echten Typ-Bugs (keine Boilerplate) nach Fehleranzahl:
 
 | Datei | Echte Bugs | Haupt-Fehlertyp | Priorität |
 | --- | --- | --- | --- |
-| `forensics/adaptive_chain_builder.py` [ROADMAP] | 21 | `dict-item` (str/float vs str/int) | P1 |
+| `forensics/adaptive_chain_builder.py` ✅ Implementiert | 21 | `dict-item` (str/float vs str/int) | P1 |
 | `authenticity_metrics_extended.py` | 21 | Dataclass vs dict-Verwechslung, `call-overload` | P1 |
 | `multi_pass_strategy.py` | 18 | Mixed | P2 |
 | `ai_framework.py` | 17 | `attr-defined` ("restoration_button"), assignment None vs Typ | P1 |
-| `forensics/unified_analyzer.py` [ROADMAP] | 14 | Mixed | P2 |
-| `forensics/feature_extractor.py` [ROADMAP] | 14 | `floating[Any]` statt `float` | P2 |
+| `forensics/unified_analyzer.py` ✅ Implementiert | 14 | Mixed | P2 |
+| `forensics/feature_extractor.py` ✅ Implementiert | 14 | `floating[Any]` statt `float` | P2 |
 | `real_audio_execution_golden_gate.py` | 13 | `union-attr` None.get() | P1 |
 | `backend/core/phases/phase_10_compression.py` (v10.0.0-Phantom) | 11 | Mixed | P2 |
-| `forensics/analysis_and_modules.py` [ROADMAP] | 11 | Mixed | P2 |
+| `forensics/analysis_and_modules.py` ✅ Implementiert | 11 | Mixed | P2 |
 | `artifact_detection.py` | 10 | `floating[Any]` statt `float`, `list[ndarray]` vs `list[int]` | P2 |
 | `backend/core/phases/phase_04_eq_correction.py` (v10.0.0-Phantom) | 8 | Mixed | P2 |
 | `real_audio_defect_golden_gate.py` | 6 | `union-attr` None.get() | P1 |
@@ -272,8 +278,8 @@ falschen Typen im Audio-Pfad führen können.
 **Ziel**: Restliche echte Bugs in DSP, Forensics, Phases die keine direkten Crashes aber
 falsche Berechnungen verursachen können.
 
-1. `forensics/adaptive_chain_builder.py` [ROADMAP] — 21× `dict-item` (str/float vs str/int)
-2. `forensics/feature_extractor.py` [ROADMAP] + `forensics/unified_analyzer.py` [ROADMAP] — `floating[Any]` statt `float`
+1. `forensics/adaptive_chain_builder.py` ✅ Implementiert — 21× `dict-item` (str/float vs str/int)
+2. `forensics/feature_extractor.py` ✅ Implementiert + `forensics/unified_analyzer.py` ✅ Implementiert — `floating[Any]` statt `float`
 3. `backend/core/phases/phase_10_compression.py` (v10.0.0-Phantom) + `backend/core/phases/phase_04_eq_correction.py` (v10.0.0-Phantom) — Mixed Typ-Bugs
 4. `multi_pass_strategy.py` — 18 Mixed
 5. `backend/core/dsp/` — ~25 echte Bugs (nach Boilerplate-Ausschluss)

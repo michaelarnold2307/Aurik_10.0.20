@@ -20,6 +20,7 @@ class SectionTarget:
 from backend.core.dsp.section_strength_envelope import (
     build_strength_envelope,
     get_section_strength_at,
+    snap_section_boundaries,
 )
 
 
@@ -166,3 +167,65 @@ class TestEdgeCases:
         targets = [SectionTarget(start_s=0.0, end_s=1.0, nr_strength_scale=1.0, vq_weight=0.0)]
         envelope = build_strength_envelope(targets, n_samples=48000, sample_rate=48000)
         assert np.min(envelope) >= 0.10
+
+
+class TestSnapSectionBoundaries:
+    """§2.69c: Sektionsgrenzen rasten auf nahe Phrasengrenzen ein (Do-No-Harm)."""
+
+    def test_nearby_boundaries_snap(self):
+        targets = [
+            SectionTarget(start_s=0.0, end_s=4.0),
+            SectionTarget(start_s=4.0, end_s=8.0),
+            SectionTarget(start_s=8.0, end_s=12.0),
+        ]
+        new, n = snap_section_boundaries(targets, [7.9, 4.3])
+        assert n == 2
+        assert abs(new[0].end_s - 4.3) < 1e-6 and abs(new[1].start_s - 4.3) < 1e-6
+        assert abs(new[1].end_s - 7.9) < 1e-6 and abs(new[2].start_s - 7.9) < 1e-6
+        assert [t.start_s for t in new] == sorted(t.start_s for t in new)
+        assert [t.end_s for t in new] == sorted(t.end_s for t in new)
+
+    def test_far_boundary_unchanged(self):
+        targets = [
+            SectionTarget(start_s=0.0, end_s=4.0),
+            SectionTarget(start_s=4.0, end_s=8.0),
+        ]
+        new, n = snap_section_boundaries(targets, [10.0])
+        assert n == 0
+        assert new == targets
+
+    def test_monotonicity_clamp_to_min_gap(self):
+        targets = [
+            SectionTarget(start_s=0.0, end_s=0.7),
+            SectionTarget(start_s=0.7, end_s=4.0),
+        ]
+        new, n = snap_section_boundaries(targets, [0.1])
+        assert n == 1
+        assert abs(new[0].end_s - 0.5) < 1e-6  # lo = 0.0 + 0.5 s Mindestabstand
+        assert abs(new[1].start_s - 0.5) < 1e-6
+
+    def test_empty_and_short_inputs_unchanged(self):
+        single = [SectionTarget(start_s=0.0, end_s=4.0)]
+        assert snap_section_boundaries([], [4.0]) == ([], 0)
+        new, n = snap_section_boundaries(single, [3.9])
+        assert n == 0 and new == single
+        two = [SectionTarget(start_s=0.0, end_s=4.0), SectionTarget(start_s=4.0, end_s=8.0)]
+        new2, n2 = snap_section_boundaries(two, [])
+        assert n2 == 0 and new2[0].end_s == 4.0
+
+    def test_non_contiguous_edge_skipped(self):
+        targets = [
+            SectionTarget(start_s=0.0, end_s=3.5),
+            SectionTarget(start_s=4.0, end_s=8.0),
+        ]
+        new, n = snap_section_boundaries(targets, [3.7])
+        assert n == 0
+        assert new[0].end_s == 3.5 and new[1].start_s == 4.0
+
+    def test_input_not_mutated(self):
+        targets = [
+            SectionTarget(start_s=0.0, end_s=4.0),
+            SectionTarget(start_s=4.0, end_s=8.0),
+        ]
+        snap_section_boundaries(targets, [4.2])
+        assert targets[0].end_s == 4.0  # Original unverändert

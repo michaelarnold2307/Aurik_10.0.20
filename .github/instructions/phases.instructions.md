@@ -2,7 +2,7 @@
 applyTo: "backend/core/phases/phase_*.py"
 ---
 
-# Phasen-Regeln (normativ, Aurik 10.0.0.x)
+# Phasen-Regeln (normativ, Aurik 10.2.0.x)
 
 ## Pflicht-Checkliste bei jeder neuen Phase
 

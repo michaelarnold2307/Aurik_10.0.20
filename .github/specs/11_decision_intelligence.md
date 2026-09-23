@@ -194,6 +194,11 @@ bänder. Der Denker topologisch sortiert für minimale kumulative Artefakte.
 
 ## §ROADMAP-5 [RELEASE_MUST]: Real-Time Preview (§6.0)
 
+**Status:** ✅ **Implementiert.** `backend/core/preview_mode.py` (30-s-Preview,
+FLAC-Export PCM_24, Pre-Analyse auf voller Länge, Pipeline nur auf Preview-Abschnitt);
+Bridge: `get_preview_mode()`, `is_preview_mode` (bridge_core), `get_live_preview()`
+(live-WAV während des Laufs). GUI: A/B-Vorher/Nachher-Vorschau (Changelog 10.0.2).
+
 **Problem:** Der Nutzer wartet 30 Minuten auf das Ergebnis und kann erst danach
 beurteilen, ob die Restaurierung gelungen ist. Zu spät für Korrekturen.
 
@@ -217,4 +222,5 @@ restore(audio, mode="preview", preview_duration_s=30)
 
 ---
 
-> **Letzte Änderung:** v10.1.0 — ROADMAP 1–4 implementiert, 5–7 spezifiziert
+> **Letzte Änderung:** v10.2.0 — ROADMAP 1–5 implementiert (6/7 existieren nicht als
+> Sektionen in dieser Spec; der frühere Verweis war phantomhaft)

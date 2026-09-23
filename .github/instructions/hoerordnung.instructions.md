@@ -74,8 +74,12 @@ wenn die Ursache eine identifizierbare Einzelphase ist (Ursache statt Symptom �
 Reparatur gilt als **abgeschlossen**, wenn ein Defekt **unter der psychoakustischen
 Maskierungsschwelle** liegt — nicht wenn sein Messwert Null ist.
 
-- Maßgeblich: Masking-Modell nach ISO 11172-3 (Bark), zeitlich **und** spektral
-  lokal (vgl. §2.62 (dsp.instructions.md)).
+- Maßgeblich: Masking-Modell nach ISO 11172-3 (Bark) für den NR-Masking-Guard
+  (§2.62 (dsp.instructions.md)); für Residuum-Salience und P1-3-Masking-JND gilt
+  seit v10.0.8 die Moore-&-Glasberg-Spreizung auf ERB-Distanz (§2.69d
+  (dsp.instructions.md)) — asymmetrisch (Aufwärts-Masking > Abwärts) und
+  level-abhängig (SOTA-Upgrade, Kalibrierung §8a: Checks 13/14). Beide zeitlich
+  **und** spektral lokal.
 - Jede Reparatur-Entscheidung (Phase an/aus, Stärke, Re-Scan) fragt zuerst:
   **„Ist dieser Defekt über der Maskierungsschwelle hörbar?"** Nur dann wird
   repariert.

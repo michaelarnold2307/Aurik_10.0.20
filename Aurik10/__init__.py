@@ -3,7 +3,7 @@ Aurik 10 — Weltklasse-Audio-Restaurierung
 Weltweit führendes kognitiv-perceptuelles Audio-Restaurierungssystem mit chirurgischer Präzision.
 """
 
-_FALLBACK_VERSION = "10.1.0"  # Letzter bekannter Stand; §v10.802: die Bridge ist die Quelle
+_FALLBACK_VERSION = "10.2.0"  # Letzter bekannter Stand; §v10.802: die Bridge ist die Quelle
 
 try:
     # §V4 (copilot-instructions.md) + §v10.802 GUI-Sync: Version ausschließlich über

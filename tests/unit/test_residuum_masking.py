@@ -143,3 +143,65 @@ def test_batch_deterministic_and_same_semantics() -> None:
     assert set(r1.keys()) == set(locs)
     assert all(0.0 <= r.salience <= 1.0 for r in r1.values())
     assert all(np.array_equal(r1[loc].residuum_db_per_band, r2[loc].residuum_db_per_band) for loc in locs)
+
+
+# ---------------------------------------------------------------------------
+# §2.69d (2026-09-23): Moore & Glasberg-Spreizung auf ERB-Distanz
+# ---------------------------------------------------------------------------
+
+
+def test_mg_erb_asymmetry_upward_stronger_than_downward() -> None:
+    """§2.69d-1: Tiefer Masker maskiert höheres Band stärker als umgekehrt
+    (Aufwärts-Masking > Abwärts — Wegel & Lane 1924)."""
+    from backend.core import residuum_masking as rm
+
+    masker_db = np.full(len(rm._BARK_CENTERS), -120.0, dtype=np.float64)
+    low_band = rm.bark_band_index_of_freq(700.0)
+    high_band = rm.bark_band_index_of_freq(1000.0)
+    low_masker = masker_db.copy()
+    low_masker[low_band] = 20.0
+    high_masker = masker_db.copy()
+    high_masker[high_band] = 20.0
+    up = float(rm._spread_mask_threshold(low_masker)[high_band])
+    down = float(rm._spread_mask_threshold(high_masker)[low_band])
+    assert up > down, f"aufwärts {up:.1f} !> abwärts {down:.1f}"
+
+
+def test_mg_erb_monotonicity_both_sides() -> None:
+    """§2.69d-2: Schwelle fällt monoton beidseitig vom Masker (keine Lobes)."""
+    from backend.core import residuum_masking as rm
+
+    masker_db = np.full(len(rm._BARK_CENTERS), -120.0, dtype=np.float64)
+    mid = rm.bark_band_index_of_freq(1000.0)
+    masker_db[mid] = 20.0
+    thr = rm._spread_mask_threshold(masker_db)
+    for b in range(mid + 1, len(thr)):
+        assert float(thr[b]) <= float(thr[b - 1]) + 1e-9
+    for b in range(mid - 1, -1, -1):
+        assert float(thr[b]) <= float(thr[b + 1]) + 1e-9
+
+
+def test_mg_erb_level_dependence_dampens_downward_growth() -> None:
+    """§2.69d-3: Lauterer Masker (+20 dB) hebt die Abwärts-Schwelle weniger
+    als +20 dB — der steilere Hang (0.2·L) dämpft die Zunahme."""
+    from backend.core import residuum_masking as rm
+
+    quiet_masker = np.full(len(rm._BARK_CENTERS), -120.0, dtype=np.float64)
+    loud_masker = quiet_masker.copy()
+    m = rm.bark_band_index_of_freq(2000.0)
+    below = rm.bark_band_index_of_freq(1400.0)
+    quiet_masker[m] = 20.0
+    loud_masker[m] = 40.0
+    thr_q = float(rm._spread_mask_threshold(quiet_masker)[below])
+    thr_l = float(rm._spread_mask_threshold(loud_masker)[below])
+    assert thr_l < thr_q + 20.0, f"{thr_q=:.1f} {thr_l=:.1f}"
+
+
+def test_mg_erb_silence_floor_stable() -> None:
+    """§2.69d-4: Reine Stille → Schwelle am Floor, keine negativen Slopes/NaN."""
+    from backend.core import residuum_masking as rm
+
+    thr = rm._spread_mask_threshold(np.full(len(rm._BARK_CENTERS), -120.0, dtype=np.float64))
+    assert np.all(np.isfinite(thr))
+    assert np.all(thr >= -80.0 + rm._MASK_OFFSET_DB - 1e-6)
+    assert np.max(thr) <= -80.0 + rm._MASK_OFFSET_DB + 1e-6

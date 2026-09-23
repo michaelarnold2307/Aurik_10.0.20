@@ -2,7 +2,7 @@
 applyTo: "backend/core/unified_restorer_v3.py"
 ---
 
-# UV3 — Pipeline-Regeln (normativ, Aurik 10.0.0.x)
+# UV3 — Pipeline-Regeln (normativ, Aurik 10.2.0.x)
 
 ## §2.31 Material-Phase-Initialstärken — Transfer-Chain-Aware [RELEASE_MUST v10.0.0]
 
@@ -1090,6 +1090,147 @@ def check_temporal_continuity(pre, post, phase_id, sr):
 ```
 
 > Langfristig: `variance_ratio`-Daten aus `metadata` aggregieren → Era/Material-adaptive Schwellwerte.
+
+## §2.69b TemporalConsistencyGuard — Energie/Rausch/Stereo-Konsistenz pro Phase [RELEASE_MUST v10.0.8]
+
+**Problem**: §2.69 misst nur die Gain-Hüllkurven-Konsistenz (Frame-RMS-Varianz).
+Nicht erfasst: lokale Energie-Sprünge einzelner Fenster (Pumpen),
+Rausch-Wiedereinführung nach NR-Phasen und Stereo-Bild-Kollaps. Diese wurden
+bisher nur am Export als passive Transparenz-Metrik gemessen
+(`bridge_export.py`, §v10.700 J3) — zu spät für eine Korrektur in der Pipeline.
+
+**Lösung**: Post-Phase-Hook in **beiden** Ausführungspfaden direkt nach der
+Phase — im PMGG-Primärpfad (`_execute_pipeline`, `_pdv_pre_phase` →
+`current_audio`) und im `_profiled_phase_call`-Fallback. Eine Quelle:
+`UnifiedRestorerV3._temporal_consistency_post_phase()` (Pfad-Divergenz
+verboten — Befund-Klasse §0f/§0p PMGG-Bypass).
+`TemporalConsistencyGuard.check(..., relative_to_median=True)` macht die
+Energie-Sprung-Messung robust gegen uniforme Pegeländerungen
+(z. B. Loudness-Normalisierung): gezählt wird nur die Abweichung vom
+Median-Delta der Phase.
+
+```python
+# Einhängepunkt: Ende von _profiled_phase_call(), nach §2.69-Block
+from backend.core.temporal_consistency_guard import (
+    TemporalConsistencyGuard,
+    compute_dampening_scalar,
+)
+
+tcg = TemporalConsistencyGuard().check(
+    pre_phase_audio, post_phase_audio, phase_id=phase_id,
+    sr=sr, relative_to_median=True,
+)
+metadata.setdefault("temporal_consistency", {})[phase_id] = {
+    "passed": tcg.passed,
+    "energy_jumps": tcg.energy_jumps,
+    "noise_reintroduced": tcg.noise_reintroduced,
+    "stereo_collapse": tcg.stereo_collapse,
+}
+```
+
+**Reaktionen (nur dämpfend — KEIN Veto, Hörordnung §1: Zeuge, nicht Richter):**
+
+1. **Energie-Sprünge** → dämpfender Folgephasen-Scalar
+   `compute_dampening_scalar(pending) = clip(1 − 0.15·pending, 0.4, 1.0)`,
+   multipliziert auf `strength` der nächsten Phasen (nur wenn keine explizite
+   User-Stärke; PMGG-Pfad: auf `initial_strength`). Carrier-Repair-Phasen
+   (Stufen 1–4, §2.46) sind ausgenommen — ihre Stärke ist defekt-getrieben
+   (§2.54). Decay 1 Verstoß pro sauberer Phase.
+2. **Stereo-Kollaps / Rausch-Wiedereinführung** → konservative
+   Dry/Wet-Rescue zur Pre-Phase-Referenz (wet=0.55), nur wenn eine
+   Wiederholungsmessung die Verstöße nachweislich reduziert.
+3. **Telemetrie**: `metadata["temporal_consistency"]`,
+   `metadata["temporal_consistency_rescue"]`, Phase-Meta
+   `temporal_consistency_scalar` / `temporal_consistency_pending_prev`.
+
+**Layout-Invariante §V7 (copilot-instructions.md)**: Alle Messungen
+normalisieren über `backend.core.audio_layout` — kein hartes
+(N, 2)/(2, N)-Annehmen (der Export-Pfad in `bridge_export.py` war davon
+betroffen).
+
+**Tests**: `tests/unit/test_temporal_consistency_guard.py`.
+
+## §2.69c PhraseStructureAnalyzer — Sektionsgrenzen auf Phrasengrenzen einrasten [RELEASE_MUST v10.0.8]
+
+**Problem**: `SectionStrengthEnvelope` setzt Strength-Änderungen an die
+Grenzen der (musikfunktional groben) SectionGoalAdapter-Sektionen — 200-ms-
+Cosine-Crossfades mitten in einer musikalischen Phrase. Spec 03: „Phrase-Ende
+ist der natürlichste Punkt für DSP-Übergänge — Eingriffe während einer Phrase
+klingen abrupt“ (RX-11-Niveau). Der `PhraseStructureAnalyzer` (§v10.700 I5)
+war implementiert, aber nirgends verdrahtet.
+
+**Lösung**: In `_execute_pipeline` (SectionGoalAdapter-Block) analysiert der
+PhraseStructureAnalyzer das ORIGINAL-Signal; jede gemeinsame Kante zweier
+SectionTargets wird auf die nächste Phrasengrenze innerhalb ±2 s eingerastet
+(`snap_section_boundaries`, Do-No-Harm: sonst unverändert). Monotonie
+bleibt garantiert (Mindestabstand 0,5 s zu Nachbargrenzen). Danach wird die
+Envelope aus den eingerasteten Targets gebaut — Phasen-Code unverändert.
+
+```python
+# Einhängepunkt: _execute_pipeline, vor build_strength_envelope()
+from backend.core.dsp.section_strength_envelope import snap_section_boundaries
+from backend.core.phrase_structure_analyzer import PhraseStructureAnalyzer
+
+structure = PhraseStructureAnalyzer(sample_rate=sr).analyze(original, sr=sr)
+boundaries_s = [s.start_s for s in structure.sections[1:]]
+section_targets, n_snapped = snap_section_boundaries(section_targets, boundaries_s)
+metadata["phrase_structure"] = {
+    "sections": [...], "bpm": structure.bpm,
+    "boundaries_s": boundaries_s, "snapped_boundaries": n_snapped,
+}
+```
+
+**Regeln:**
+
+1. Analyse läuft IMMER auf dem ORIGINAL-Signal (Pre-Pipeline-Referenz) —
+   nie auf restauriertem Audio (Referenz-Paradoxon §0d).
+2. Nicht-blockierend: Fehlschlag ⇒ Envelope unverändert (§V6-Warnung).
+3. Layout-Invariante §V7 (copilot-instructions.md): Mono-Mix über
+   `backend.core.audio_layout.mono_mix`.
+
+**Tests**: `tests/unit/test_phrase_structure_analyzer.py` +
+`tests/unit/test_section_strength_envelope.py` (Snap-Fälle).
+
+## §2.69e Print-Through-Verdrahtung — phase_57 als eigene Phase [RELEASE_MUST v10.0.8]
+
+**Problem**: `_PHASE_ALIASES` leitete `phase_57_print_through_reduction` auf
+`phase_29_tape_hiss_reduction` um — obwohl `phase_57_print_through_reduction.py`
+eine vollständige, dedizierte Implementierung enthält (bidirektionales LMS,
+Pre+Post-Echo getrennt, Kreuzkorrelations-Delay-Suche, Coherence-Rollback,
+NMF-Fallback, Guard-Kette §2.46f/§2.36/§V19/§V20/§V21). Selektion
+(causal_defect_reasoner §2.6, `_select_phases`) wählte phase_57 als Primärphase
+für `print_through` — die Auflösung ersetzte sie durch Breitband-Hiss-NR,
+wodurch die Print-Through-Kette zu totem Code wurde.
+
+**Lösung**: Alias entfernt. `_PHASE_ALIASES` bleibt leer — der Mechanismus
+bleibt für echte nicht-existente IDs erhalten, darf aber keine implementierten
+Phasen überschreiben.
+
+**Invariante (Test):** `_PHASE_ALIASES.keys()` ∩ Modul-Dateien der Phasen =
+∅ (`test_phase_intervention_registry_coverage.py`).
+
+## §2.69f Live-Defektzähler — konservative Behebungs-Meldungen pro Phase [RELEASE_MUST v10.2.0]
+
+**Problem**: Nur ~13 von 66 Phasen melden `resolved_defects` im PhaseResult,
+nur 2 melden `resolved_defect_counts` (§v10.802). Dadurch blieben die
+Akkumulatoren (`_resolved_defects_accumulator`, `_resolved_defect_counts_acc`)
+während des Laufs leer — die GUI-Defekt-Chips zählten erst am Ende der
+Restaurierung herunter (Sprung auf 0 statt Live-Countdown).
+
+**Lösung (Option B, konservativ)**: Im PMGG-Erfolgspfad trägt jede Phase, die
+kein eigenes `resolved_defects` meldet, ihre Ziel-Defekte (Reverse-Phase-Map,
+V12 — `defect_phase_mapper.get_reverse_phase_map()`) mit maximal 50 %
+Severity-Reduktion in den Akkumulator ein — nur wenn PMGG nicht
+zurückgerollt/übersprungen hat, kein Goal regrediert ist und sich das Audio
+tatsächlich geändert hat (`_compute_live_resolved_claims()`, deterministisch,
+nicht blockierend).
+
+**Ehrlichkeits-Klausel**: Das ist eine konservative Schätzung (Severity), keine
+Instanzen-Zählung. Der exakte Wert bleibt `resolved_defect_counts` vorbehalten
+(§v10.802) — Phasen sollen ihn sukzessive liefern (Roadmap: 50+ Phasen).
+
+**Tests**: `tests/unit/test_defect_phase_mapper_confidence.py`
+(`TestLiveResolvedClaims`).
 
 ## §2.70 RestorationMemory — Persistenter GPOptimizer-Prior [RELEASE_MUST v10.0.0]
 

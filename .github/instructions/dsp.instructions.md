@@ -2,7 +2,7 @@
 applyTo: "{backend/core/dsp/*.py,plugins/*.py}"
 ---
 
-# DSP / Plugin-Regeln (normativ, Aurik 10.0.0.x)
+# DSP / Plugin-Regeln (normativ, Aurik 10.2.0.x)
 
 ## ML-Device — IMMER über ml_device_manager
 
@@ -70,6 +70,33 @@ for band in range(n_bands):
 # Ergebnis: kein "totes Stille"-Artefakt zwischen Phrasen
 # VERBOTEN: einfacher Wiener-Filter ohne Masking-Floor — verursacht Musical-Noise
 ```
+
+## §2.69d Masking-Spreizung — Moore & Glasberg auf ERB-Distanz [RELEASE_MUST v10.0.8]
+
+Für Ebene-2-Entscheidungen (Residuum-Salience, P1-3-Masking-JND) ersetzt die
+Moore-&-Glasberg-Spreizung (1997) die symmetrische ISO-11172-3-Dreiecks-
+Spreizung (27 dB/Bark) aus §2.62 — der NR-Masking-Guard (§2.62) bleibt
+unverändert auf Bark.
+
+```python
+# backend/core/residuum_masking.py — _spread_mask_threshold()
+# 1. Aufwärts (Maskee ÜBER Masker): −27 dB/ERB — flacher Hang,
+#    Aufwärts-Masking reicht weiter (Wegel & Lane 1924).
+# 2. Abwärts (Maskee UNTER Masker): −(24 + 0.23·fc/kHz + 0.2·L) dB/ERB —
+#    steiler, level-abhängig (Kompression der Basilarmembran): lautere
+#    Masker spreizen abwärts noch weniger.
+#    L = Bandpegel in relativer dB-Skala (FFT-Magnituden-Skalierung ist
+#    band-uniform → 0.2·L-Effekt gültig); Clamp ≥ −40 dB verhindert
+#    negative Slopes.
+```
+
+**Invarianten (§8a, horordnung_calibration Checks 13/14):**
+- Asymmetrie: Aufwärts-Schwelle > Abwärts-Schwelle bei realistischem
+  Masker-Pegel (L=20 rel. dB).
+- Monotonie: Schwelle fällt beidseitig vom Masker (keine Lobes).
+
+**Fallback:** Bei Ausfall der Berechnung gilt konservativ „exponiert“
+(salience=1.0) — kein Skip-Risiko (§V6 (copilot-instructions.md)).
 
 ## Noise-Schätzung — IMCRA/OMLSA (stationär + nicht-stationär)
 

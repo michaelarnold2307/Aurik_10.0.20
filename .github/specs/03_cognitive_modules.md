@@ -25,8 +25,8 @@
 | `HarmonicPreservationGuard` | `backend/core/harmonic_preservation_guard.py` | G_floor=0.85 an Harmonik-Bins |
 | `MusikalischerGlobalplanDienst` | `backend/core/musikalischer_globalplan.py` | Cross-Phase-Globalplan: 13 Ära-Profile × Genre-Modifikatoren, 17 Phase-Adjustments |
 | `PerPhaseMusicalGoalsGate` | `backend/core/per_phase_musical_goals_gate.py` | Rollback pro Phase |
-| `SongCalibrationProfile` | `backend/core/song_calibration.py` [ROADMAP] | §2.31a: materialadaptives Kalibrierungsprofil (global_scalar + family_scalars) vor Phasenkette |
-| `EraAuthenticPerceptualCompletion` | `backend/core/era_authentic_completion.py` [ROADMAP] | Ära-authentische Wahrnehmungs-Ergänzung (Quell-BW < 10 kHz); Studio-2026-Kette Schritt 8 |
+| `SongCalibrationProfile` | `backend/core/song_calibration.py` ✅ Implementiert (v10.0.8) | §2.31a: materialadaptives Kalibrierungsprofil (global_scalar + family_scalars) vor Phasenkette |
+| `EraAuthenticPerceptualCompletion` | `backend/core/era_authentic_completion.py` ✅ Implementiert (v10.0.8) | Ära-authentische Wahrnehmungs-Ergänzung (Quell-BW < 10 kHz); Studio-2026-Kette Schritt 8 |
 | `LyricsGuidedEnhancement` | `backend/core/lyrics_guided_enhancement.py` | §2.36 RELEASE_MUST: Whisper-Tiny ONNX → Phonem-Alignment → ContentAwareProcessor |
 | `EraClassifier` | `plugins/era_classifier_plugin.py` | Ära 1890–2025 |
 | `GermanSchlagerClassifier` | `backend/core/genre_classifier.py` | 6-Schicht Zero-Shot |
@@ -1200,56 +1200,35 @@ _restoration_context["preserve_mask"] = _iac.get_preserve_mask(audio, sr, _artif
 > DSP-Übergänge — Eingriffe während einer Phrase klingen abrupt. Weltweit führende
 > Systeme (Izotope RX 11 Machine Learning) nutzen musikalische Struktur.
 
-**Datei**: `backend/core/phrase_structure_analyzer.py` [ROADMAP]  
-**Singleton**: `get_phrase_structure_analyzer()`
+**Datei**: `backend/core/phrase_structure_analyzer.py` ✅ Implementiert (v10.0.8, §2.69c (pipeline.instructions.md))  
+**API**: Direkte Instanziierung `PhraseStructureAnalyzer(sample_rate=48000).analyze(audio, sr)` — kein Singleton.
 
 ```python
 class PhraseStructureAnalyzer:
+    """Musikalische Struktur: Onset-Dichte-BPM (librosa, DSP-Fallback) +
+    Energie-Kontrast-Segmentierung (4-s-Raster).
+
+    analyze(audio, sr=None) → PhraseStructure:
+        sections: list[Section]  # label, start_s, end_s, confidence
+        bpm: float | key: str
+    get_section_at(time_s) → Section | None
+    Layout-Invariante §V7 (copilot-instructions.md): Mono-Mix über
+    backend.core.audio_layout.mono_mix — kein hartes (N, 2)/(2, N)-Annehmen.
     """
-    Erkennt musikalische Phrasengrenzen für strukturbewusste Verarbeitung.
-
-    Methoden:
-    - Chroma-Flux-Peaks (Harmoniewechsel) als Phrasenenden
-    - Energie-Minima als Phrasenenden (natürliche Atempausen)
-    - Beat-Synchronisierung via BEATS/madmom
-    - Lyrics-Phonem-Alignment wenn LGE verfügbar (§2.36)
-
-    Ausgabe injiziert in _restoration_context["phrase_boundaries"] für:
-    - phase_03 (NR): Crossfade nur an Phrasengrenzen
-    - phase_12 (Wow/Flutter): Pitch-Lock zwischen Phrasenenden
-    - phase_29 (Tape-NR): Hiss-Profil per Phrase schätzen
-    - phase_40 (Lautheit): LUFS-Messung pro Phrase (kein Song-Level-Mittelwert)
-    - phase_55 (Inpainting): Phrase-Kontext für AR-Prior nutzen
-    """
-
-    def analyze(
-        self,
-        audio: np.ndarray,
-        sr: int,
-        *,
-        method: str = "hybrid",  # "chroma_flux" | "energy_minima" | "hybrid"
-    ) -> List[Tuple[float, float]]:
-        """
-        Returns: Liste von (start_s, end_s) Phrasen-Segmenten.
-        Mindest-Phrasenlänge: 1.0 s. Maximum: 30 s.
-        """
-        ...
-
-    def get_phrase_at_time(self, t_s: float) -> Optional[Tuple[float, float]]:
-        """Welche Phrase enthält Zeitpunkt t_s?"""
-        ...
 ```
 
-**UV3-Integration**:
+**Verdrahtung (§2.69c, `_execute_pipeline` — SectionGoalAdapter-Block):**
+Analyse auf dem ORIGINAL-Signal (Referenz-Paradoxon §0d (copilot-instructions.md));
+jede gemeinsame Kante zweier SectionTargets rastet auf die nächste Phrasengrenze
+innerhalb ±2 s ein (`snap_section_boundaries`, Do-No-Harm, Monotonie-Garantie
+0,5 s Mindestabstand); danach wird die Strength-Envelope gebaut. Telemetrie:
+`restoration_context["phrase_structure"]` (Sektionen, Grenzen, BPM, Snap-Zahl).
+Non-blocking: Fehlschlag ⇒ Envelope unverändert (§V6 (copilot-instructions.md)).
 
-```python
-# Nach VocalFocusAnalyzer, vor GoalApplicabilityFilter:
-_psa = get_phrase_structure_analyzer()
-_phrases = _psa.analyze(audio, sr)
-_restoration_context["phrase_boundaries"] = _phrases
-_restoration_context["phrase_count"] = len(_phrases)
-# Laufzeit-Budget: ≤ 3 s/min Audio
-```
+> Roadmap offen (Spezifikation v10.0.0): Chroma-Flux/Beat-/Lyrics-Hybrid-Methode
+> und Per-Phase-Konsumenten (phase_03/12/29/40/55). Die Verdrahtung ist so
+> gebaut, dass ein besserer Phrasendetektor ohne Pipeline-Änderung nachrüstbar
+> ist — `snap_section_boundaries` konsumiert nur Grenz-Zeiten.
 
 ### VocalFocusAnalyzer als Steuerfläche [RELEASE_MUST]
 
@@ -1277,46 +1256,39 @@ UV3 MUSS vor `PMGG.wrap_phase()` eine `vocal_zone_strength_policy` erzeugen und 
 > gesamten Titel. Das führt zu hörbaren Qualitätssprüngen in langen Titeln (> 5 min),
 > die kein einzelner Gate erkennt. Weltklasse erfordert gleichmäßige Qualität von Intro bis Outro.
 
-**Datei**: `backend/core/temporal_consistency_guard.py` [ROADMAP]
+**Datei**: `backend/core/temporal_consistency_guard.py` ✅ Implementiert (v10.0.8, §2.69b (pipeline.instructions.md), §v10.700 J3)
 
 ```python
 class TemporalConsistencyGuard:
-    """
-    Prüft nach der Pipeline, ob die Qualität über den Titel temporal konsistent ist.
-    Segmentiert den Output in 30-s-Blöcke, misst OQS pro Block.
-    Wenn Max-Min-Differenz > 0.08 → Recovery-Warnung + Metadata-Flag.
+    """Prüft zeitliche Konsistenz vor/nach einer Phase:
+    - Energie-Sprünge >6 dB zwischen 100-ms-Fenstern (median-relativ im
+      UV3-Phasen-Pfad — robust gegen uniforme Pegeländerungen)
+    - Rausch-Wiedereinführung nach NR-Phasen (>3 dB)
+    - Stereo-Kollaps (M/S-Ratio-Änderung >30 %)
 
-    Ziel: Kein Qualitätssprung > 8 OQS-Punkte zwischen beliebigen 30-s-Blöcken.
+    check(audio_before, audio_after, phase_id, *, sr=48000,
+          relative_to_median=False) → TemporalConsistencyResult
+        (passed, energy_jumps, noise_reintroduced, stereo_collapse, warnings)
+    compute_dampening_scalar(pending) → [0.4, 1.0] (nur dämpfend)
+    Layout-Invariante §V7 (copilot-instructions.md): audio_layout-Normalisierung.
     """
-    MAX_ALLOWED_OQS_VARIANCE = 0.08  # 8 Punkte auf 0–1 Skala
-
-    def check(self, audio_out: np.ndarray, sr: int) -> Dict:
-        """
-        Returns:
-          {
-            "temporal_consistent": bool,
-            "oqs_per_segment": List[float],
-            "max_variance": float,
-            "inconsistent_segments": List[int],  # Segment-Indizes mit Ausreißern
-          }
-        """
-        ...
 ```
 
-**Pipeline-Position**: Nach `HolisticPerceptualGate`, vor Export.
+**Verdrahtung (§2.69b):** Post-Phase-Hook in BEIDEN Ausführungspfaden
+(PMGG-Primärpfad `_execute_pipeline` + `_profiled_phase_call`-Fallback) über
+EINE Quelle `UnifiedRestorerV3._temporal_consistency_post_phase()` —
+Pfad-Divergenz verboten (Befund-Klasse §0f/§0p PMGG-Bypass).
+Stereo-/Rausch-Verstöße → konservative Dry/Wet-Rescue zur Pre-Phase-Referenz
+(wet=0,55, nur bei nachweislicher Verbesserung); Energie-Sprünge → dämpfender
+Folgephasen-Scalar (Decay 1 Verstoß/Phase, Carrier-Repair-Phasen ausgenommen).
+Kein Veto — Hörordnung §1 (hoerordnung.instructions.md): Metriken sind Zeugen,
+nicht Richter. Am Export (`bridge_export.py`) läuft der Guard weiter als
+beobachtende Transparenz-Metrik.
 
-```python
-_tcg_result = get_temporal_consistency_guard().check(_best_sig, sr)
-metadata["temporal_consistency"] = _tcg_result
-if not _tcg_result["temporal_consistent"]:
-    logger.warning(
-        "temporal_consistency_guard: max_variance=%.3f > %.3f — inconsistent segments: %s",
-        _tcg_result["max_variance"],
-        TemporalConsistencyGuard.MAX_ALLOWED_OQS_VARIANCE,
-        _tcg_result["inconsistent_segments"],
-    )
-    # Non-blocking: Kein Export-Veto. Aber metadata["quality_variance_warning"] = True.
-```
+> Roadmap offen (Spezifikation v10.0.0): OQS-basierte 30-s-Block-Konsistenz
+> (Max-Min ≤ 0,08) über den Gesamttitel — nicht implementiert; die
+> per-Phase-Prüfung adressiert die Kernlücke (hörbare Qualitätssprünge)
+> prozessnah statt erst am Export.
 
 ### §2.14.1 Decade-Boundary-Softener (v10.0.0-Phantom)
 

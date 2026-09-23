@@ -49,7 +49,7 @@ Ressourcenentscheidung ist begründet. Jedes Exportformat ist material-adaptiv.
 
 ## ROADMAP
 
-### §14.9 🔨 A/B-Vergleich (in Implementierung)
+### §14.9 ✅ A/B-Vergleich (implementiert — GUI A/B-Vorher/Nachher-Vorschau, Changelog 10.0.2)
 
 ---
 

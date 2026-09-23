@@ -1,9 +1,9 @@
 # Spec-Integrations-Fehlerprotokoll
 
-- Erzeugt: 2026-09-22T15:01:24.991303
+- Erzeugt: 2026-09-23T08:39:13.322567
 - Fehler: **0** · Warnungen: 0
 
-## INFO (48)
+## INFO (47)
 
 - **[spec_references]** `10_lag_integrity_architecture.md` — Spec ist nur im Index verankert, sonst nirgendwo referenziert
   - Behebung: Spec in der normativen Kette oder im Code verlinken, sonst als obsolet markieren.
@@ -38,8 +38,6 @@
 - **[spec_references]** `22_dataflow_audit.md` — Spec ist nur im Index verankert, sonst nirgendwo referenziert
   - Behebung: Spec in der normativen Kette oder im Code verlinken, sonst als obsolet markieren.
 - **[spec_references]** `24_ml_fallback_architektur.md` — Spec ist nur im Index verankert, sonst nirgendwo referenziert
-  - Behebung: Spec in der normativen Kette oder im Code verlinken, sonst als obsolet markieren.
-- **[spec_references]** `25_ambience_match_plugin.md` — Spec ist nur im Index verankert, sonst nirgendwo referenziert
   - Behebung: Spec in der normativen Kette oder im Code verlinken, sonst als obsolet markieren.
 - **[spec_references]** `CHANGELOG_2026-08-12.md` — Spec ist nur im Index verankert, sonst nirgendwo referenziert
   - Behebung: Spec in der normativen Kette oder im Code verlinken, sonst als obsolet markieren.
@@ -101,3 +99,4 @@
   - Behebung: Spec in der normativen Kette oder im Code verlinken, sonst als obsolet markieren.
 - **[spec_references]** `v10.99x_stimmiges_gesamtsystem.md` — Spec ist nur im Index verankert, sonst nirgendwo referenziert
   - Behebung: Spec in der normativen Kette oder im Code verlinken, sonst als obsolet markieren.
+

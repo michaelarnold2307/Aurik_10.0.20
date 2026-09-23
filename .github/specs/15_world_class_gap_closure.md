@@ -1,7 +1,7 @@
 # Spec 15: Weltspitze-Gap-Closure — 10-Punkte-Plan
 
-> **Version:** Aurik 10.0.0-Draft · **Scope:** Wettbewerbsfähigkeit, Validierung, Ökosystem
-> **Status:** Entwurf — Roadmap, noch nicht implementiert
+> **Version:** Aurik 10.2.0-Sync · **Scope:** Wettbewerbsfähigkeit, Validierung, Ökosystem
+> **Status:** Teilimplementiert — Status pro Schritt angegeben (v10.0.8-Sync, 2026-09-23)
 > **Erstellt:** 10. Juli 2026 · **Audit-Datum:** 10. Juli 2026
 
 ## Inhaltsverzeichnis
@@ -43,7 +43,7 @@ automatisiert verfügbar ist. Open-Source-Alternativen werden nicht genutzt.
 |---|---------|---------|-------------|
 | 1.1 | `benchmarks/competitive/open_source_benchmark.py` — neues Modul, das DeepFilterNet3, AudioSR, Demucs, MDX-Net, Open-Unmix via pip/subprocess benchmarked. **Keine Lizenz nötig.** | 6–8 h | — |
 | 1.2 | Automatischer Download der Open-Source-Modelle via `huggingface_hub.snapshot_download()` mit SHA256-Pinning. | 2 h | 1.1 |
-| 1.3 | `benchmarks/competitive/gate_results.py` [ROADMAP] — Ergebnis-Dataclasses mit OQS-Delta, Timbre-Fidelity, artifact_freedom, Laufzeit. JSON-Export + CI-freundlicher Exit-Code. | 3 h | 1.1 |
+| 1.3 | `benchmarks/competitive/gate_results.py` ✅ Implementiert — Ergebnis-Dataclasses mit OQS-Delta, Timbre-Fidelity, artifact_freedom, Laufzeit. JSON-Export + CI-freundlicher Exit-Code. | 3 h | 1.1 |
 | 1.4 | CI-Integration: `tests/normative/test_competitive_ci_gate.py` um Open-Source-Vergleich erweitern. Neue `@pytest.mark.competitive_oss`-Markierung. | 2 h | 1.3 |
 | 1.5 | `benchmarks/competitive/results/` — Monatliches Scheduled-Run (GitHub Actions cron) mit automatischer Trend-Analyse (Regression-Flag wenn OQS-Delta < 0). | 3 h | 1.4 |
 | 1.6 | Legacy-Mock entfernen: `benchmark_izotope()` in `benchmarks/competitive/benchmark_suite.py` auf `NotImplementedError` umstellen, der klar dokumentiert, dass RX-Lizenz manuell bereitgestellt werden muss. | 0.5 h | — |
@@ -236,7 +236,7 @@ Dokumentation wuchs organisch als Entwickler-Notizen statt als Nutzer-Pfade.
 | 7.2 | `docs/tutorials/`-Verzeichnis mit drei Tutorials: `tutorial_restore_vinyl.md`, `tutorial_restore_tape.md`, `tutorial_batch_processing.md`. Schritt-für-Schritt mit Screenshots. | 6 h | 7.1 |
 | 7.3 | `docs/architecture.md` — C4-Diagramm (Context, Container, Component) der Aurik-Architektur. Mermaid.js für Renderbarkeit in GitHub. | 3 h | — |
 | 7.4 | `docs/api/openapi.yaml` — OpenAPI 3.0-Spezifikation der REST-API (`backend/api/rest/`). Generiert automatisch Swagger-UI. | 4 h | — |
-| 7.5 | `scripts/generate_api_docs.py` [ROADMAP] — Extrahiert Docstrings aus `backend/api/bridge.py` und generiert Markdown. Integration in `docs/api/`. | 3 h | — |
+| 7.5 | `scripts/generate_api_docs.py` ✅ Implementiert — Extrahiert Docstrings aus `backend/api/bridge.py` und generiert Markdown. Integration in `docs/api/`. | 3 h | — |
 
 ### Erfolgskriterien
 
@@ -293,8 +293,8 @@ Gewachsenes Design — jede Komponente managed ihre eigenen Ressourcen ohne Koor
 | 9.1 | `backend/core/ml/session_manager.py` — `InferenceSessionManager`: Singleton, verwaltet alle ONNX-Sessions. `acquire(model_name) → InferenceSession`, `release(model_name)`, `release_all()`. LRU-Cache mit konfigurierbarer Max-Größe. | 5 h | — |
 | 9.2 | `backend/core/ml/session_manager.py` — Memory-Monitoring: `get_total_memory_mb()`, `get_session_sizes()`, Warnung bei >2GB. | 2 h | 9.1 |
 | 9.3 | Migration: `lyrics_guided_enhancement.py`, `bridge.py` auf `InferenceSessionManager` umstellen. Direkte `onnxruntime.InferenceSession(...)`-Aufrufe ersetzen. | 4 h | 9.1 |
-| 9.4 | `backend/core/ml/batch_processor.py` [ROADMAP] — Batch-Verarbeitung mit Session-Recycling: Nach N Tracks Sessions freigeben und neu laden (Memory-Fragmentation vermeiden). | 3 h | 9.1 |
-| 9.5 | `tests/unit/test_session_manager.py` [ROADMAP] — Testet: Acquire/Release, LRU-Eviction, Memory-Limit, Concurrent-Access, Batch-Recycling. | 3 h | 9.1 |
+| 9.4 | `backend/core/ml/batch_processor.py` ✅ Implementiert — Batch-Verarbeitung mit Session-Recycling: Nach N Tracks Sessions freigeben und neu laden (Memory-Fragmentation vermeiden). | 3 h | 9.1 |
+| 9.5 | `tests/unit/test_session_manager.py` ✅ Implementiert — Testet: Acquire/Release, LRU-Eviction, Memory-Limit, Concurrent-Access, Batch-Recycling. | 3 h | 9.1 |
 
 ### Erfolgskriterien
 

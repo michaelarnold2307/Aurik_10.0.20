@@ -13,8 +13,10 @@ Dieses Modul schätzt dafür pro Defekt-Event:
   um das Event, Event selbst ausgenommen).
 - Event-Spektrum: Spektrum am Defekt-Ort (Signal + Defekt).
 - Residuum-Spektrum: max(0, Event − Kontext) pro Bark-Band.
-- Maskierungsschwelle: Spread-Funktion (ISO 11172-3, dreieckige Slopes 27 dB/Bark)
-  auf das Kontext-Spektrum.
+- Maskierungsschwelle: Moore-&-Glasberg-Spreizung (1997) auf ERB-Distanz
+  (§2.69d) — asymmetrisch (Aufwärts-Masking > Abwärts) und level-abhängig;
+  ersetzt die symmetrische ISO-11172-3-Dreiecks-Spreizung (27 dB/Bark,
+  §2.62) als SOTA-Modell für Ebene-2-Entscheidungen.
 - Salience: gewichteter Anteil der Residuum-Energie, der über der Schwelle liegt
   (0 = vollständig maskiert, 1 = vollständig exponiert).
 
@@ -65,10 +67,27 @@ _BARK_EDGES_HZ = np.array(
 )
 _BARK_CENTERS = (_BARK_EDGES_HZ[:-1] + _BARK_EDGES_HZ[1:]) / 2.0
 
-_SPREAD_SLOPE_DB_PER_BARK = 27.0  # ISO 11172-3, dreieckige Spread-Funktion
+# §2.69d Moore & Glasberg (1997)-Spreizung auf ERB-Distanz — ersetzt die
+# symmetrische ISO-11172-3-Dreiecks-Spreizung (27 dB/Bark) für Ebene-2-
+# Entscheidungen (Residuum-Salience + P1-3-Masking-JND).
+_UPWARD_SLOPE_DB_PER_ERB = 27.0  # Maskee ÜBER Masker: flacher → mehr Aufwärts-Masking
+_LOWER_SLOPE_BASE_DB_PER_ERB = 24.0  # Maskee UNTER Masker: steiler, level-abhängig
+_LOWER_SLOPE_FC_WEIGHT = 0.23  # pro kHz Mittenfrequenz des Maskers
+_LOWER_SLOPE_LEVEL_WEIGHT = 0.20  # pro dB Masker-Pegel (relative dB-Skala)
+_MASKER_LEVEL_FLOOR_DB = -40.0  # Level-Clamp: Slopes bleiben ≥ ~16 dB/ERB
 _MASK_OFFSET_DB = 3.0  # konservativer Offset: Residuum muss deutlich über Schwelle
 _CONTEXT_S = 0.4  # ±400 ms Kontext
 _N_FFT = 4096
+
+
+def _erb_number(f_hz: np.ndarray) -> np.ndarray:
+    """ERB-Nummer (Glasberg & Moore 1990): 21.4·log10(4.37e-3·f + 1)."""
+    return 21.4 * np.log10(4.37e-3 * f_hz + 1.0)
+
+
+# ERB-Nummern der Bark-Band-Mitten (24-Band-Raster wie bisher — die ERB-Skala
+# definiert die DISTANZ, das Raster bleibt für API-/Test-Kompatibilität erhalten).
+_ERB_NUMBERS = _erb_number(_BARK_CENTERS)
 
 
 @dataclass
@@ -130,16 +149,28 @@ def _to_bark_bands(spec_db: np.ndarray, freqs: np.ndarray) -> np.ndarray:
 
 
 def _spread_mask_threshold(masker_db: np.ndarray) -> np.ndarray:
-    """Maskierungsschwelle pro Bark-Band aus dem maskierenden Spektrum.
+    """Maskierungsschwelle pro Band aus dem maskierenden Spektrum.
 
-    ISO 11172-3 Spread-Funktion: dreieckig mit 27 dB/Bark (jede Masker-Komponente
-    verdeckt mit −27 dB pro Bark Abstand). Schwelle = Maximum über alle Beiträge.
+    §2.69d Moore & Glasberg (1997)-Spreizung auf ERB-Distanz (ersetzt die
+    symmetrische ISO-11172-3-Dreiecks-Spreizung aus §2.62):
+      - Aufwärts (Maskee über dem Masker): −27 dB/ERB — flacher Hang,
+        Aufwärts-Masking reicht weiter (Wegel & Lane 1924).
+      - Abwärts (Maskee unter dem Masker): −(24 + 0.23·fc/kHz + 0.2·L) dB/ERB —
+        steiler und level-abhängig: lautere Masker spreizen abwärts noch
+        weniger (Kompression der Basilarmembran, MG 1997). L ist der Bandpegel
+        in der relativen dB-Skala — die FFT-Magnituden-Skalierung ist
+        band-uniform, daher bleibt der 0.2·L-Effekt gültig (Clamp ≥ −40 dB
+        verhindert negative Slopes).
+    Schwelle = Maximum über alle Masker-Beiträge, Floor −80 dB,
+    konservativer Offset +3 dB. Deterministisch (§G5 (copilot-instructions.md)).
     """
     n = len(masker_db)
-    # Abstandsmatrix in Bark
-    idx = np.arange(n, dtype=np.float64)
-    dist = np.abs(idx[:, None] - idx[None, :])
-    contributions = masker_db[None, :] - _SPREAD_SLOPE_DB_PER_BARK * dist
+    dz = _ERB_NUMBERS[:, None] - _ERB_NUMBERS[None, :]  # [maskee, masker]
+    f_khz = _BARK_CENTERS[None, :] / 1000.0  # [1, masker]
+    l_eff = np.maximum(np.asarray(masker_db, dtype=np.float64)[None, :], _MASKER_LEVEL_FLOOR_DB)
+    lower_slope = _LOWER_SLOPE_BASE_DB_PER_ERB + _LOWER_SLOPE_FC_WEIGHT * f_khz + _LOWER_SLOPE_LEVEL_WEIGHT * l_eff
+    sf = np.where(dz < 0.0, lower_slope * dz, -_UPWARD_SLOPE_DB_PER_ERB * dz)
+    contributions = np.asarray(masker_db, dtype=np.float64)[None, :] + sf
     thr = np.max(contributions, axis=1)
     # Sehr leise Maskierer erzeugen keine nennenswerte Schwelle — Floor bei Ruhehörschwelle-Proxy
     thr = np.maximum(thr, -80.0)

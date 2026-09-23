@@ -1167,14 +1167,14 @@ def compute_mas_convergence(
     }
 ```
 
-### Neue Module (zu implementieren)
+### Neue Module (implementiert, v10.0.8)
 
 | Modul | Pfad | Zweck |
 | --- | --- | --- |
-| `FastGoalProxy` | `backend/core/dsp/fast_goal_proxy.py` [ROADMAP] | DSP-Proxy-Messung aller 15 Goals in ≤ 200 ms, kein ML |
-| `_fast_goal_snapshot()` | `backend/core/unified_restorer_v3.py` | Pro-Phase-Aufruf von `FastGoalProxy.measure_fast()` |
-| `_check_mas_convergence()` | `backend/core/unified_restorer_v3.py` | Pipeline-Stop-Signal wenn MAS erreicht |
-| `PHYSICAL_CEILING` | `backend/core/calibration_matrix.py` | Material-spezifische Goal-Obergrenzen |
+| `FastGoalProxy` | `backend/core/dsp/fast_goal_proxy.py` ✅ Implementiert | DSP-Proxy-Messung aller 15 Goals in ≤ 200 ms, kein ML |
+| `_fast_goal_snapshot()` | `backend/core/unified_restorer_v3.py` ✅ Implementiert | Pro-Phase-Aufruf von `FastGoalProxy.measure_fast()` |
+| `_check_mas_convergence()` | `backend/core/unified_restorer_v3.py` ✅ Implementiert | Pipeline-Stop-Signal wenn MAS erreicht |
+| `PHYSICAL_CEILING` | `backend/core/studio_goal_targets.py` ✅ Implementiert (Standort korrigiert — nicht calibration_matrix.py) | Material-spezifische Goal-Obergrenzen |
 
 ### CI-Test-Invarianten
 

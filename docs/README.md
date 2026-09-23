@@ -1,6 +1,6 @@
 # Aurik 10 — Dokumentations-Übersicht
 
-**Version:** 10.1.0 (version.py) | **Status:** ✅ Produktionsbereit | **Stand:** 2026-09-06
+**Version:** 10.2.0 (version.py) | **Status:** ✅ Produktionsbereit | **Stand:** 2026-09-23
 
 > Normativer Ist-Stand: `.github/copilot-instructions.md`, `.github/VERBOTEN.md`,
 > `.github/instructions/` (hoerordnung + Domain-Regeln), `.github/specs/`
@@ -39,7 +39,7 @@
 
 | Metrik | Wert |
 |---|---|
-| **Version** | 10.1.0 (version.py, single source of truth) |
+| **Version** | 10.2.0 (version.py, single source of truth) |
 | **Tests** | 285+ Denker + 18.400+ gesamt |
 | **Defekttypen** | 62/62 erkannt & gemappt |
 | **Phasen** | 69 Phasen-Dateien (Phase 01–66, Glue Stage, Interface) |

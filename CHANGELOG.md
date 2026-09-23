@@ -1,4 +1,38 @@
-# Changelog — Aurik 10.1.0
+# Changelog — Aurik 10.2.0
+
+## 10.2.0 (2026-09-23)
+
+### 🎧 Wohlklang fürs menschliche Ohr — Hörordnungs-Verdrahtungen (§2.69b–e)
+
+- **TemporalConsistencyGuard pro Phase** (§2.69b): Energie-Sprünge (median-relativ),
+  Rausch-Wiedereinführung nach NR-Phasen und Stereo-Kollaps werden jetzt nach JEDER
+  Phase geprüft — im PMGG-Primärpfad und im `_profiled_phase_call`-Fallback (eine
+  Quelle: `_temporal_consistency_post_phase`). Dämpfender Folgephasen-Scalar +
+  konservative Dry/Wet-Rescue; kein Veto (Hörordnung §1: Zeuge, nicht Richter).
+- **PhraseStructureAnalyzer verdrahtet** (§2.69c): Sektionsgrenzen der
+  Strength-Envelope rasten auf erkannte Phrasengrenzen ein (±2 s, Do-No-Harm) —
+  DSP-Übergänge nicht mehr mitten in der Phrase (Spec 03, RX-11-Niveau).
+- **Moore-&-Glasberg-Masking-Spreizung** (§2.69d): Residuum-Salience und alle
+  P1-3-Masking-JNDs nutzen die asymmetrische, level-abhängige ERB-Spreizung (1997)
+  statt der symmetrischen ISO-11172-3-Dreiecks-Spreizung; Kalibrierungs-Harness um
+  2 Invarianten erweitert (Checks 13/14, alle 14 grün).
+- **Print-Through-Verdrahtung** (§2.69e): Der veraltete `_PHASE_ALIASES`-Eintrag, der
+  `phase_57_print_through_reduction` zur Laufzeit auf Tape-Hiss-NR umleitete, ist
+  entfernt — die dedizierte bidirektionale LMS-Implementierung (Pre+Post-Echo,
+  Coherence-Rollback, Guard-Kette) läuft jetzt als eigene Phase.
+
+### 🔧 Robustheit
+
+- Layout-Invariante §V7 (copilot-instructions.md): Mono-Mix-Normalisierung in
+  TemporalConsistencyGuard und PhraseStructureAnalyzer (vorher hartes (N,2)-Annehmen
+  — der Export-Pfad in `bridge_export.py` war davon betroffen).
+
+### 🧪 Tests & Gates
+
+- 8 Temporal-Consistency-Tests, 5 Phrase-Analyzer-Tests, 6 Snap-Tests,
+  4 MG-ERB-Spreizungs-Tests, Alias-Shadowing-Regressionstest (neu).
+- Kalibrierungs-Harness 14/14; Ruff-Critical/VERBOTEN/ID-Registry/Ledger grün;
+  3× Voll-Pipeline-E2E (Stereo, NaN-/Clip-Invarianten gehalten).
 
 ## 10.1.0 (2026-09-21)
 

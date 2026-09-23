@@ -45,7 +45,7 @@ zentral in `_profiled_phase_call()` injiziert. Alle Phasen, die im Frequenzberei
 
 **§13.2.3 Invarianten:** Räumlichkeit, Rauschflor, Loudness bleiben song-global.
 
-## §13.3 Blind Reference-Free Quality (§13.8 ROADMAP)
+## §13.3 Blind Reference-Free Quality (§13.8 ✅ Implementiert — mert_mushra_proxy.py, v10.0.8)
 
 **Konzept:** „Wie gut KÖNNTE dieser Song klingen?" — absolute Qualitätsschätzung
 ohne Vergleich zum degradierten Original. MERT-Embedding-basiert. Ermöglicht:
@@ -76,7 +76,7 @@ bw_loss ≥ 0.90 ∧ SNR < 16 dB → global_scalar ≤ 0.70.
 
 ≥90% Onsets erhalten → Score ≥ 0.85 trotz DTW-Fehlschlag.
 
-### §13.5.4 Cross-Phase Naturalness Consensus (§13.10 ROADMAP)
+### §13.5.4 Cross-Phase Naturalness Consensus (§13.10 ✅ Implementiert — CrossPhaseCoordinator, Steering-Default seit 10.0.2)
 
 Phasen im gleichen Frequenzbereich addieren ihre Effekte unabhängig.
 → **Naturalness-Guard** prüft kumulative Wirkung und reduziert bei Bedarf.
@@ -92,7 +92,7 @@ Phase 40: ±8 dB Cap, uniformer Gain, keine Gate-Sprünge.
 - Contralto-Erkennung: F0 145–195 Hz + weibliche Formanten → FEMALE
 - Register-adaptives De-Essing: Chest/Head → spezifische Parameter
 
-## §13.8 Artist/Track-Fingerprint (§13.11 ROADMAP)
+## §13.8 Artist/Track-Fingerprint (§13.11 ✅ Implementiert — Spec 11 ROADMAP-3, BatchSessionLearner)
 
 **Konzept:** Test-Track-Stimmenmodell persistieren, beim nächsten Song wiederverwenden.
 BatchSessionLearner existiert bereits — Transfer-Learning für Künstler-Fingerprints:
@@ -116,6 +116,6 @@ BatchSessionLearner existiert bereits — Transfer-Learning für Künstler-Finge
 > Onset-Guard, Contralto-Erkennung, Uniformer Gain.
 > **v10.0.0-Phantom:** ComfortGuard (§16.2), BreathPreserver (§16.3),
 > VocalQualityGate 6-dim (§16.4), PhantomDetector Zero-Config (§16.1).
-> **ROADMAP:** Blind Reference-Free Quality
-> **v10.0.0-Phantom:** ABX/MUSHRA Listener-Endpoints bereit (§16.9), Human-Panel MUSHRA-Protokoll erstellt, Studie ausstehend.
+> **Implementiert:** Blind Reference-Free Quality (MERT-Proxy),
 > Cross-Phase Consensus, Artist/Track-Fingerprint.
+> **v10.0.0-Phantom:** ABX/MUSHRA Listener-Endpoints bereit (§16.9), Human-Panel MUSHRA-Protokoll erstellt, Studie ausstehend.

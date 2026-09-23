@@ -5,6 +5,11 @@ Onset-Dichte + Chroma-Wiederholung + Energie-Kontrast.
 Markiert Sektionsgrenzen für SectionStrengthEnvelope.
 
 §03 ROADMAP: spezifiziert, jetzt implementiert.
+§2.69c: verdrahtet in _execute_pipeline — Sektionsgrenzen der
+Strength-Envelope rasten auf nahe Phrasengrenzen ein (Snap ±2 s).
+
+Layout-Invariante §V7 (copilot-instructions.md): Mono-Mix über
+backend.core.audio_layout.mono_mix — kein hartes (N, 2)/(2, N)-Annehmen.
 """
 
 from __future__ import annotations
@@ -13,6 +18,8 @@ import logging
 from dataclasses import dataclass, field
 
 import numpy as np
+
+from backend.core.audio_layout import mono_mix
 
 logger = logging.getLogger(__name__)
 
@@ -63,18 +70,19 @@ class PhraseStructureAnalyzer:
         if sr is None:
             sr = self.sample_rate
 
-        mono = np.mean(audio, axis=-1) if audio.ndim > 1 else audio
+        mono = mono_mix(audio)
         mono = mono.astype(np.float64)
         duration_s = len(mono) / sr
 
-        # Grobe BPM-Schätzung via Onset-Dichte
+        # Grobe BPM-Schätzung via Onset-Dichte (librosa; DSP-Fallback bei Fehler)
         try:
             import librosa
 
             onset_env = librosa.onset.onset_strength(y=mono, sr=sr)  # type: ignore[attr-defined]  # librosa-Stubs exportieren onset nicht
             bpm = float(librosa.beat.tempo(onset_envelope=onset_env, sr=sr)[0])  # type: ignore[attr-defined]  # librosa-Stubs exportieren beat nicht
-        except ImportError:
-            # Fallback: Onset-basierte BPM-Schätzung
+        except Exception as _bpm_exc:
+            logger.debug("PhraseStructureAnalyzer: librosa-BPM fehlgeschlagen — DSP-Fallback: %s", _bpm_exc)
+            # Fallback: Onset-basierte BPM-Schätzung (deterministisch)
             energy = np.abs(mono)
             threshold = np.mean(energy) * 2
             onsets = np.diff((energy > threshold).astype(int))

@@ -1,15 +1,49 @@
 # TASK_CHANGES — Live-Ledger der aktuellen Aufgabe
 
-> Generiert von `scripts/change_ledger.py snapshot` (Base: `HEAD`, Stand: 2026-09-23 02:40 CEST).
+> Generiert von `scripts/change_ledger.py snapshot` (Base: `HEAD`, Stand: 2026-09-23 10:29 CEST).
 > CI (`ci-lite.yml` pr-evidence-gate) erzwingt Abdeckung: jede geänderte Code-Datei muss hier stehen.
 
 ## Geänderte Dateien
 
 | Status | Pfad | Art |
 |---|---|---|
-| M | backend/core/musical_goals/musical_goals_metrics.py | modifiziert |
-| M | tests/unit/test_mert_mushra_proxy.py | modifiziert |
-| ?? | scripts/benchmark_vs_external.py | ungetrackt |
+| M | .github/instructions/dsp.instructions.md | modifiziert |
+| M | .github/instructions/hoerordnung.instructions.md | modifiziert |
+| M | .github/instructions/musical_goals.instructions.md | modifiziert |
+| M | .github/instructions/phases.instructions.md | modifiziert |
+| M | .github/instructions/pipeline.instructions.md | modifiziert |
+| M | .github/instructions/tests.instructions.md | modifiziert |
+| M | .github/specs/02_pipeline_architecture.md | modifiziert |
+| M | .github/specs/03_cognitive_modules.md | modifiziert |
+| M | .github/specs/07_quality_and_tests.md | modifiziert |
+| M | .github/specs/08_architecture_and_distribution.md | modifiziert |
+| M | .github/specs/09_global_calibration_matrix.md | modifiziert |
+| M | .github/specs/10_bug_gap_strategy.md | modifiziert |
+| M | .github/specs/11_decision_intelligence.md | modifiziert |
+| M | .github/specs/13_human_ear_quality.md | modifiziert |
+| M | .github/specs/14_completeness_and_perfection.md | modifiziert |
+| M | .github/specs/15_world_class_gap_closure.md | modifiziert |
+| M | Aurik10/__init__.py | modifiziert |
+| M | CHANGELOG.md | modifiziert |
+| M | README.md | modifiziert |
+| M | TASK_CHANGES.md | modifiziert |
+| M | audit/spec_integration_report.json | modifiziert |
+| M | audit/spec_integration_report.md | modifiziert |
+| M | backend/core/dsp/section_strength_envelope.py | modifiziert |
+| M | backend/core/phrase_structure_analyzer.py | modifiziert |
+| M | backend/core/residuum_masking.py | modifiziert |
+| M | backend/core/temporal_consistency_guard.py | modifiziert |
+| M | backend/core/unified_restorer_v3.py | modifiziert |
+| M | backend/core/version.py | modifiziert |
+| M | docs/README.md | modifiziert |
+| M | pyproject.toml | modifiziert |
+| M | scripts/horordnung_calibration.py | modifiziert |
+| M | tests/unit/test_defect_phase_mapper_confidence.py | modifiziert |
+| M | tests/unit/test_phase_intervention_registry_coverage.py | modifiziert |
+| M | tests/unit/test_residuum_masking.py | modifiziert |
+| M | tests/unit/test_section_strength_envelope.py | modifiziert |
+| ?? | tests/unit/test_phrase_structure_analyzer.py | ungetrackt |
+| ?? | tests/unit/test_temporal_consistency_guard.py | ungetrackt |
 
 ## Entscheidungen
 

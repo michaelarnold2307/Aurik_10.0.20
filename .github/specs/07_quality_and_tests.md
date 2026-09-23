@@ -596,7 +596,7 @@ providers = get_ort_providers("PluginName")  # ONNX-Runtime
 # Feeds; scripts/onnx_gpu_compat_scan.py + gpu_model_registry). Numerisch
 # defekte ORT-ROCm-Kernels (bs_roformer, BANQUET, FCPE, basicpitch, Whisper,
 # MuQ-MuLan) sind durch paritätsverifizierte Torch-ROCm-Kerne ersetzt
-# (backend/core/dsp/*_torch_rocm.py); ONNX bleibt reiner CPU-Fallback (§V6).
+# (backend/core/dsp/*_torch_rocm.py); ONNX bleibt reiner CPU-Fallback (§V6 (copilot-instructions.md)).
 device = get_torch_device("PluginName")      # PyTorch
 # Leichtgewichtige Plugins (<200 MB), DSP, Analyse: immer CPU
 providers = ["CPUExecutionProvider"]          # ONNX-Runtime
@@ -726,7 +726,7 @@ fad = FrechetAudioDistance(model_name="vggish", sample_rate=16000)
 score = fad.score("benchmarks/fad_reference_set/", "output/test_batch/")
 ```
 
-**CI-Gate**: `tests/normative/test_fad_gate.py` [ROADMAP] — läuft nur mit `--run-heavy-tests`. Nicht im täglichen CI.
+**CI-Gate**: `tests/normative/test_fad_gate.py` ✅ Implementiert (v10.0.8) — läuft nur mit `--run-heavy-tests`. Nicht im täglichen CI.
 
 ---
 
@@ -812,7 +812,7 @@ mos_composite = versa_score * versa_confidence + mert_score * mert_weight
 
 **CI-Invariante**: Beim Release einer neuen Hauptversion (9.x.0) MUSS `benchmarks/amrb_history.json` aktualisiert werden. Wenn ein neuer Eintrag AMRB-Score verschlechtert (OQS-Delta < −2.0 vs. Vorgänger-Version), ist das ein Release-Blocker.
 
-**Automatisierung**: `benchmarks/update_amrb_history.py` [ROADMAP] — liest aktuellen Score aus AMRB-Testlauf und schreibt neuen Eintrag.
+**Automatisierung**: `benchmarks/update_amrb_history.py` ✅ Implementiert (v10.0.8) — liest aktuellen Score aus AMRB-Testlauf und schreibt neuen Eintrag.
 
 ---
 
@@ -1113,7 +1113,7 @@ Admissibility-Gate platzieren.
 | `tests/normative/` | CI-Gate-Tests (RELEASE_MUST) | — | variabel |
 | `tests/regression/` | Regressions-Absicherung | — | variabel |
 | `tests/e2e/` | End-to-End mit echtem Audio | `e2e` | variabel |
-| `tests/test_startup_smoke.py` | Startup-Smoke-Test (§v10.305 §G77): GPU+Warmup+PreAnalysis | `smoke` | ≤ 60 s |
+| `tests/test_startup_smoke.py` | Startup-Smoke-Test (§v10.305 §G77 (GEBOTE.md)): GPU+Warmup+PreAnalysis | `smoke` | ≤ 60 s |
 
 ### Marker-System
 

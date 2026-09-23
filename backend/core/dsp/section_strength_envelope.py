@@ -22,6 +22,7 @@ Author: Aurik v10.0.0
 from __future__ import annotations
 
 import logging
+from dataclasses import replace
 from typing import TYPE_CHECKING, cast
 
 import numpy as np
@@ -36,6 +37,60 @@ _CROSSFADE_S = 0.200  # 200 ms cosine crossfade
 _MAX_DB_PER_100MS = 1.0  # max audible change rate (Zwicker & Fastl 1999)
 _FRISSON_STRENGTH_CAP = 0.30  # preserve emotional peaks
 _DEFAULT_STRENGTH = 0.75  # fallback when no section data
+_MIN_BOUNDARY_GAP_S = 0.5  # §2.69c: Mindestabstand nach Snap zu Nachbargrenzen
+
+
+def snap_section_boundaries(
+    section_targets: list[SectionTarget],
+    phrase_boundaries_s: list[float],
+    *,
+    max_distance_s: float = 2.0,
+) -> tuple[list[SectionTarget], int]:
+    """Rastet innere Sektionsgrenzen auf nahe Phrasengrenzen ein (§2.69c).
+
+    Spec 03: DSP-Übergänge mitten in einer Phrase klingen abrupt — der
+    natürlichste Punkt für Strength-Änderungen ist das Phrasen-Ende. Jede
+    gemeinsame Kante zweier SectionTargets wird auf die nächste Phrasengrenze
+    innerhalb ±max_distance_s verschoben (Do-No-Harm: sonst unverändert).
+    Monotonie garantiert: die Grenze bleibt ≥ _MIN_BOUNDARY_GAP_S von den
+    Nachbargrenzen entfernt. Nicht-kontiguelle Kanten werden übersprungen.
+
+    Args:
+        section_targets: SectionTargets aus SectionGoalAdapter (chronologisch).
+        phrase_boundaries_s: Phrasengrenzen in Sekunden (beliebige Ordnung).
+        max_distance_s: Maximaler Snap-Abstand (Default 2.0 s).
+
+    Returns:
+        (neue_Targets, Anzahl_eingerasteter_Grenzen)
+    """
+    if not section_targets or len(section_targets) < 2 or not phrase_boundaries_s:
+        return list(section_targets), 0
+
+    boundaries = sorted(float(b) for b in phrase_boundaries_s)
+    targets = list(section_targets)
+    n_snapped = 0
+
+    for i in range(len(targets) - 1):
+        cur, nxt = targets[i], targets[i + 1]
+        # Nur gemeinsame Kanten einrasten (kontiguelle Sektionen).
+        if abs(float(cur.end_s) - float(nxt.start_s)) > 1e-6:
+            continue
+        edge = float(cur.end_s)
+        lo = float(cur.start_s) + _MIN_BOUNDARY_GAP_S
+        hi = float(nxt.end_s) - _MIN_BOUNDARY_GAP_S
+        if hi <= lo:
+            continue
+        nearest = min(boundaries, key=lambda b: (abs(b - edge), b))
+        if abs(nearest - edge) > max_distance_s:
+            continue
+        snapped = float(np.clip(nearest, lo, hi))
+        if abs(snapped - edge) < 1e-6:
+            continue
+        targets[i] = replace(cur, end_s=snapped)
+        targets[i + 1] = replace(nxt, start_s=snapped)
+        n_snapped += 1
+
+    return targets, n_snapped
 
 
 def build_strength_envelope(

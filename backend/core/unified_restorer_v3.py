@@ -6996,11 +6996,12 @@ class UnifiedRestorerV3:
         return metadata
 
     # Phase aliases: maps non-existent phase IDs to their canonical replacements.
-    # phase_57_print_through_reduction is not a separate implementation; it routes
-    # to phase_29_tape_hiss_reduction (LMS adaptive filter, bidirectional).
-    _PHASE_ALIASES: dict[str, str] = {
-        "phase_57_print_through_reduction": "phase_29_tape_hiss_reduction",
-    }
+    # v10.0.8: phase_57_print_through_reduction hat eine eigene, vollständige
+    # Implementierung (bidirektionales LMS, Pre+Post-Echo — Spec §7.x Primär,
+    # causal_defect_reasoner + _select_phases wählen es als Primärphase). Der
+    # frühere Alias auf phase_29_tape_hiss_reduction ist entfernt — er machte
+    # die dedizierte Print-Through-Kette zu totem Code.
+    _PHASE_ALIASES: dict[str, str] = {}
 
     # §2.67 Phase-Koalitionen: physikalisch gekoppelte Phasen werden zusätzlich
     # als Gruppe profiliert. Einzelphasen bleiben PMGG-geschützt; der
@@ -12106,6 +12107,13 @@ class UnifiedRestorerV3:
             )
             self._song_goal_importance = _sgi
             self._song_goal_weights = _sgi.weights
+            # §Crest-Aware (2026-09-23): Eingangs-Crest in den Context legen,
+            # damit Phasen (z. B. phase_54 Transparent Dynamics) dynamisches
+            # Material erkennen — Kompressions-Reparatur auf crest_dynamic-
+            # Material plättet Klimax/Mikrodynamik (Produktionsbefund
+            # „Vogel der Nacht": 14,1 dB Crest, trotzdem pressure 0,67).
+            if _sgi_crest_db is not None and isinstance(getattr(self, "_restoration_context", None), dict):
+                self._restoration_context["crest_factor_db"] = float(_sgi_crest_db)
             logger.info(
                 "§2.56 SongGoalImportance: genre=%s era=%s mat=%s vocal=%s | %s",
                 _sgi.genre_profile,
@@ -32632,6 +32640,153 @@ class UnifiedRestorerV3:
 
         return _sev_wet_dry
 
+    def _temporal_consistency_post_phase(
+        self,
+        pre_audio: np.ndarray,
+        post_audio: np.ndarray,
+        phase_id: str,
+        sr: int,
+        *,
+        skip_rescue: bool = False,
+    ) -> tuple[np.ndarray | None, int]:
+        """§2.69b TemporalConsistencyGuard — Post-Phase-Hook (PMGG- + Profiled-Pfad).
+
+        Prüft Energie-Sprünge (median-relativ), Rausch-Wiedereinführung und
+        Stereo-Kollaps direkt nach einer Phase. Wirkt nur dämpfend
+        (Hörordnung §1: Metriken sind Zeugen, nicht Richter):
+        - Stereo-/Rausch-Verstöße → konservative Dry/Wet-Rescue (wet=0.55),
+          nur wenn die Wiederholungsmessung die Verstöße nachweislich reduziert.
+        - Energie-Sprünge → dämpfender Folgephasen-Scalar (Pending-State im
+          `_phase_metadata_accumulator["_temporal_consistency_state"]`,
+          Decay 1 Verstoß pro sauberer Phase).
+        Telemetrie: `accumulator["temporal_consistency"][phase_id]` und
+        `["temporal_consistency_rescue"][phase_id]`.
+
+        Returns:
+            (rescued_audio | None, pending_violations_nach_Phase)
+        """
+        _acc = getattr(self, "_phase_metadata_accumulator", None)
+        _acc_dict = _acc if isinstance(_acc, dict) else {}
+        _pending = int((_acc_dict.get("_temporal_consistency_state") or {}).get("pending", 0))
+        try:
+            from backend.core.temporal_consistency_guard import TemporalConsistencyGuard as _TCG
+
+            _tcg = _TCG().check(pre_audio, post_audio, phase_id, sr=sr, relative_to_median=True)
+        except Exception as _tcg_exc:
+            logger.warning(
+                "§2.69b TemporalConsistencyGuard nicht blockierend: %s",
+                _tcg_exc,
+                exc_info=True,
+            )
+            return None, _pending
+        if isinstance(_acc, dict):
+            try:
+                _acc.setdefault("temporal_consistency", {})[phase_id] = {
+                    "passed": bool(_tcg.passed),
+                    "energy_jumps": int(_tcg.energy_jumps),
+                    "noise_reintroduced": bool(_tcg.noise_reintroduced),
+                    "stereo_collapse": bool(_tcg.stereo_collapse),
+                    "warnings": list(_tcg.warnings),
+                }
+            except Exception:
+                logger.debug("§2.69b Telemetrie-Schreiben fehlgeschlagen (nicht blockierend)", exc_info=True)
+
+        # Offene Verstöße → dämpfender Folgephasen-Scalar (Decay 1/Phase).
+        _tcg_bonus = min(
+            4,
+            int(_tcg.energy_jumps)
+            + (2 if _tcg.stereo_collapse else 0)
+            + (2 if _tcg.noise_reintroduced else 0),
+        )
+        _pending_new = min(4, max(0, _pending - 1) + _tcg_bonus)
+        if isinstance(_acc, dict):
+            _acc["_temporal_consistency_state"] = {"pending": _pending_new, "last_phase": phase_id}
+
+        # Stereo-Kollaps / Rausch-Wiedereinführung: konservative
+        # Dry/Wet-Rescue zur Pre-Phase-Referenz — nur wenn nachweislich besser.
+        _rescued: np.ndarray | None = None
+        _needs_rescue = bool(_tcg.stereo_collapse or _tcg.noise_reintroduced) and not skip_rescue
+        if _needs_rescue:
+            _wet = 0.55
+            _candidate = np.clip(
+                (_wet * np.asarray(post_audio) + (1.0 - _wet) * np.asarray(pre_audio)).astype(np.float32),
+                -1.0,
+                1.0,
+            )
+            try:
+                _tcg_res = _TCG().check(pre_audio, _candidate, phase_id, sr=sr, relative_to_median=True)
+            except Exception as _tcg_res_exc:
+                logger.warning(
+                    "§2.69b Rescue-Messung fehlgeschlagen (nicht blockierend): %s",
+                    _tcg_res_exc,
+                    exc_info=True,
+                )
+                _tcg_res = None
+            if (
+                _tcg_res is not None
+                and not _tcg_res.stereo_collapse
+                and not _tcg_res.noise_reintroduced
+                and _tcg_res.energy_jumps <= _tcg.energy_jumps
+            ):
+                _rescued = _candidate
+                logger.warning(
+                    "§2.69b TemporalConsistencyRescue %s: stereo_collapse=%s noise_reintroduced=%s "
+                    "energy_jumps %d→%d, wet=%.2f",
+                    phase_id,
+                    _tcg.stereo_collapse,
+                    _tcg.noise_reintroduced,
+                    _tcg.energy_jumps,
+                    _tcg_res.energy_jumps,
+                    _wet,
+                )
+                if isinstance(_acc, dict):
+                    try:
+                        _acc.setdefault("temporal_consistency_rescue", {})[phase_id] = {
+                            "applied": True,
+                            "wet": _wet,
+                            "stereo_collapse": bool(_tcg.stereo_collapse),
+                            "noise_reintroduced": bool(_tcg.noise_reintroduced),
+                            "energy_jumps_pre": int(_tcg.energy_jumps),
+                            "energy_jumps_post": int(_tcg_res.energy_jumps),
+                        }
+                    except Exception:
+                        logger.debug("§2.69b Rescue-Telemetrie fehlgeschlagen (nicht blockierend)", exc_info=True)
+        return _rescued, _pending_new
+
+    @staticmethod
+    def _compute_live_resolved_claims(
+        phase_id: str,
+        defect_severity_map: dict[str, float],
+        *,
+        reduction_ratio: float = 0.5,
+    ) -> dict[str, float]:
+        """§2.69f (Live-Defektzähler, Option B): Konservative Behebungs-Meldungen.
+
+        Nutzt die Reverse-Phase-Map (V12, defect_phase_mapper) — die normativen
+        Ziel-Defekte der Phase — und meldet maximal `reduction_ratio` Reduktion
+        der saliency-gewichteten Severity. Keine Instanzen-Zählung: exakte Werte
+        kommen aus PhaseResult.resolved_defect_counts (§v10.802), sobald Phasen
+        sie liefern. Deterministisch (§G5 (copilot-instructions.md)),
+        nicht blockierend.
+        """
+        try:
+            from backend.core.defect_phase_mapper import get_reverse_phase_map as _grpm
+
+            _target = _grpm().get(phase_id)
+            if not _target:
+                return {}
+            from backend.core.phases.resolved_defects_helper import compute_resolved_defects as _crd
+
+            _claims: dict[str, float] = {}
+            for _dt in _target:
+                _key = _dt.value if hasattr(_dt, "value") else str(_dt)
+                _sev0 = float((defect_severity_map or {}).get(_key, 0.0))
+                _claims.update(_crd(_key, _sev0, reduction_ratio=reduction_ratio))
+            return _claims
+        except Exception as _exc:
+            logger.debug("§2.69f _compute_live_resolved_claims nicht blockierend: %s", _exc)
+            return {}
+
     def _profiled_phase_call(self, phase, audio: np.ndarray, **kwargs):  # pyright: ignore[reportGeneralTypeIssues]
         """Führt eine Phase mit Zeit- und (optional) Speicherprofiling aus.
 
@@ -33276,6 +33431,49 @@ class UnifiedRestorerV3:
             self._phase_metadata_accumulator[phase_metadata.phase_id] = _phase_meta_existing
         except Exception:
             logger.debug("Psycho-Scalar metadata write fehlgeschlagen (nicht blockierend)", exc_info=True)
+
+        # ── §2.69b Temporal-Consistency-Scalar: dämpft Folgephasen nach
+        # Energie-Sprung-Verstößen der Vorphase (median-relativ, nur ≤ 1.0,
+        # Do-No-Harm nach §8.6g-II-Muster). Explizite User-Stärke bleibt
+        # autoritativ (wie §2.69-Re-Run).
+        _tcg_scalar = 1.0
+        _tcg_pending = 0
+        try:
+            from backend.core.temporal_consistency_guard import compute_dampening_scalar as _tcg_scalar_fn
+
+            _tcg_acc = getattr(self, "_phase_metadata_accumulator", None)
+            _tcg_state = _tcg_acc.get("_temporal_consistency_state", {}) if isinstance(_tcg_acc, dict) else {}
+            _tcg_pending = int((_tcg_state or {}).get("pending", 0))
+            _tcg_scalar = float(_tcg_scalar_fn(_tcg_pending))
+        except Exception:
+            logger.warning(
+                "§2.69b Temporal-Consistency-Scalar nicht verfügbar — ungedämpft (§V6 (copilot-instructions.md))",
+                exc_info=True,
+            )
+        if _tcg_scalar < 0.999 and isinstance(kwargs.get("strength"), (int, float)) and not _strength_explicit:
+            _old_s_tcg = float(kwargs.get("strength", 0.0) or 0.0)
+            kwargs["strength"] = float(np.clip(_old_s_tcg * _tcg_scalar, 0.0, 1.0))
+            logger.info(
+                "§2.69b Temporal-Consistency-Scalar %s: strength %.3f→%.3f (pending=%d, scalar=%.3f)",
+                phase_metadata.phase_id,
+                _old_s_tcg,
+                float(kwargs.get("strength", 0.0) or 0.0),
+                _tcg_pending,
+                _tcg_scalar,
+            )
+        try:
+            _phase_meta_existing = self._phase_metadata_accumulator.get(phase_metadata.phase_id, {})
+            if not isinstance(_phase_meta_existing, dict):
+                _phase_meta_existing = {}
+            _phase_meta_existing.update(
+                {
+                    "temporal_consistency_scalar": float(_tcg_scalar),
+                    "temporal_consistency_pending_prev": _tcg_pending,
+                }
+            )
+            self._phase_metadata_accumulator[phase_metadata.phase_id] = _phase_meta_existing
+        except Exception:
+            logger.debug("Temporal-Consistency-Scalar metadata write fehlgeschlagen (nicht blockierend)", exc_info=True)
 
         if _is_nr_budget_phase and _panns_for_hnr >= 0.25 and isinstance(audio, np.ndarray):
             try:
@@ -35930,6 +36128,24 @@ class UnifiedRestorerV3:
         except Exception as _tc_exc:
             logger.debug("§2.69 TemporalContinuityGuard nicht blockierend: %s", _tc_exc)
 
+        # ── §2.69b TemporalConsistencyGuard (§v10.700 J3) — post-phase hook ──
+        # Ergänzt den Gain-Hüllkurven-Guard (§2.69) um Energie-Sprung-,
+        # Rausch-Wiedereinführungs- und Stereo-Kollaps-Prüfung. Nur dämpfend —
+        # kein Veto (Hörordnung §1: Metriken sind Zeugen, nicht Richter).
+        # Rescue nur wenn §2.69 noch keine Rescue angewendet hat. Geteilte
+        # Logik mit dem PMGG-Primärpfad: _temporal_consistency_post_phase.
+        _tcg_post = getattr(result, "audio", None)
+        if isinstance(_tcg_post, np.ndarray) and _tcg_post.shape == audio.shape:
+            _tcg_rescued, _tcg_pending_new = self._temporal_consistency_post_phase(
+                audio,
+                _tcg_post,
+                phase_metadata.phase_id,
+                int(kwargs.get("sample_rate", 48000) or 48000),
+                skip_rescue=_tc_rescue_applied,
+            )
+            if _tcg_rescued is not None:
+                result.audio = _tcg_rescued
+
         # §SFT record_phase — post-phase Artefakt-Detektion (non-blocking)
         try:
             from backend.core.signal_flow_tracer import get_signal_flow_tracer as _get_sft_post
@@ -36804,6 +37020,52 @@ class UnifiedRestorerV3:
             )
             if isinstance(getattr(self, "_restoration_context", None), dict):
                 self._restoration_context["section_targets"] = _section_targets
+                # §2.69c PhraseStructureAnalyzer (§v10.700 I5): Sektionsgrenzen der
+                # Strength-Envelope auf erkannte Phrasengrenzen einrasten — DSP-
+                # Übergänge mitten in einer Phrase klingen abrupt (Spec 03).
+                # Do-No-Harm: Snap nur innerhalb ±2 s; sonst unverändert.
+                try:
+                    from backend.core.dsp.section_strength_envelope import (
+                        snap_section_boundaries as _snap_section_boundaries,
+                    )
+                    from backend.core.phrase_structure_analyzer import PhraseStructureAnalyzer as _PSA
+
+                    _psa_structure = _PSA(sample_rate=sample_rate).analyze(
+                        _pipeline_original_reference, sr=sample_rate
+                    )
+                    _phrase_boundaries_s = [float(s.start_s) for s in _psa_structure.sections[1:]]
+                    _snapped_targets, _n_snapped = _snap_section_boundaries(
+                        _section_targets, _phrase_boundaries_s
+                    )
+                    if _n_snapped > 0:
+                        _section_targets = _snapped_targets
+                        self._restoration_context["section_targets"] = _section_targets
+                    self._restoration_context["phrase_structure"] = {
+                        "sections": [
+                            {
+                                "label": str(s.label),
+                                "start_s": float(s.start_s),
+                                "end_s": float(s.end_s),
+                                "confidence": float(s.confidence),
+                            }
+                            for s in _psa_structure.sections
+                        ],
+                        "bpm": float(_psa_structure.bpm),
+                        "boundaries_s": _phrase_boundaries_s,
+                        "snapped_boundaries": _n_snapped,
+                    }
+                    logger.info(
+                        "PhraseStructureAnalyzer: %d Sektion(en), %d Phrasengrenze(n), %d eingerastet",
+                        len(_psa_structure.sections),
+                        len(_phrase_boundaries_s),
+                        _n_snapped,
+                    )
+                except Exception as _psa_exc:
+                    logger.warning(
+                        "PhraseStructureAnalyzer nicht verfügbar — Envelope unverändert "
+                        "(§V6 (copilot-instructions.md)): %s",
+                        _psa_exc,
+                    )
                 # §v10.0.0: Kontinuierliche Strength-Envelope aus SectionTargets bauen.
                 # Phasen multiplizieren ihre base_strength mit envelope[frame].
                 # Cosine-Crossfade 200ms → keine hörbaren Übergänge.
@@ -39975,6 +40237,52 @@ class UnifiedRestorerV3:
                                         _combined_strength,
                                     )
 
+                            # §2.69b Temporal-Consistency-Scalar (PMGG-Pfad): dämpft die
+                            # aktuelle Phase nach Energie-Sprung-Verstößen der Vorphase
+                            # (median-relativ, nur ≤ 1.0, Do-No-Harm). Carrier-Repair-
+                            # Phasen sind ausgenommen — ihre Stärke ist defekt-getrieben
+                            # (§2.54), Dämpfung würde die Reparatur vereiteln.
+                            _TCG_SCALAR_EXEMPT_PREFIXES: tuple[str, ...] = (
+                                "phase_01_", "phase_02_", "phase_03_", "phase_04_", "phase_05_",
+                                "phase_09_", "phase_12_", "phase_14_", "phase_15_", "phase_24_",
+                                "phase_25_", "phase_27_", "phase_28_", "phase_29_", "phase_30_",
+                                "phase_31_", "phase_49_", "phase_50_", "phase_55_", "phase_56_",
+                                "phase_64_",
+                            )
+                            if not phase_id.startswith(_TCG_SCALAR_EXEMPT_PREFIXES):
+                                _tcg_scalar_pmgg = 1.0
+                                _tcg_pending_pmgg = 0
+                                try:
+                                    from backend.core.temporal_consistency_guard import (
+                                        compute_dampening_scalar as _tcg_scalar_fn_pmgg,
+                                    )
+
+                                    _tcg_state_pmgg = (
+                                        getattr(self, "_phase_metadata_accumulator", None) or {}
+                                    ).get("_temporal_consistency_state", {})
+                                    _tcg_pending_pmgg = int((_tcg_state_pmgg or {}).get("pending", 0))
+                                    _tcg_scalar_pmgg = float(_tcg_scalar_fn_pmgg(_tcg_pending_pmgg))
+                                except Exception:
+                                    logger.warning(
+                                        "§2.69b Temporal-Consistency-Scalar (PMGG) nicht verfügbar — ungedämpft "
+                                        "(§V6 (copilot-instructions.md))",
+                                        exc_info=True,
+                                    )
+                                if _tcg_scalar_pmgg < 0.999:
+                                    _tcg_old_s_pmgg = float(_combined_strength)
+                                    _combined_strength = float(
+                                        np.clip(_combined_strength * _tcg_scalar_pmgg, 0.05, 1.0)
+                                    )
+                                    logger.info(
+                                        "§2.69b Temporal-Consistency-Scalar (PMGG) %s: strength %.3f→%.3f "
+                                        "(pending=%d, scalar=%.3f)",
+                                        phase_id,
+                                        _tcg_old_s_pmgg,
+                                        _combined_strength,
+                                        _tcg_pending_pmgg,
+                                        _tcg_scalar_pmgg,
+                                    )
+
                             # §9.11.1 Restorability-Ceiling (v10.0.0):
                             # High restorability = audio already in good condition = less aggressive
                             # processing needed. Cap proportional to material health, only for
@@ -40584,6 +40892,31 @@ class UnifiedRestorerV3:
                                         _defect_locations[_dk] = []
                             _collect_guard_payload(_phase_for_exec, phase_id)
 
+                            # §2.69f Live-Defektzähler (Option B): Phasen ohne eigene
+                            # resolved_defects-Meldung tragen ihre Ziel-Defekte
+                            # konservativ in den Akkumulator ein — nur wenn PMGG
+                            # nicht zurückgerollt/übersprungen hat, kein Goal
+                            # regrediert ist und sich das Audio tatsächlich
+                            # geändert hat. Quelle: Reverse-Phase-Map (V12).
+                            if not _pmgg_resolved:
+                                _action_ok_f = str(getattr(_pmgg_entry, "action", "") or "") not in {
+                                    "rollback",
+                                    "revert",
+                                    "skip",
+                                }
+                                _goal_ok_f = not _phase_goal_deltas or min(_phase_goal_deltas) >= 0.0
+                                _changed_f = not np.array_equal(current_audio, _pdv_pre_phase)
+                                if _action_ok_f and _goal_ok_f and _changed_f:
+                                    _claims_f = UnifiedRestorerV3._compute_live_resolved_claims(
+                                        phase_id, _defect_severity_map
+                                    )
+                                    if _claims_f:
+                                        _acc_f = getattr(self, "_resolved_defects_accumulator", None)
+                                        if _acc_f is None:
+                                            _acc_f = {}
+                                            self._resolved_defects_accumulator = _acc_f
+                                        _acc_f.update(_claims_f)
+
                             # §v10.709: Per-Phase Quality Degradation Guard
                             # Prüft nach JEDER Phase ob P1/P2-Ziele unter material-adaptive
                             # Schwellwerte gefallen sind. Bei 3 konsekutiven Degradationen
@@ -40727,6 +41060,30 @@ class UnifiedRestorerV3:
                                         phase_id,
                                         _hf_contrib_pmgg,
                                         self._restoration_context["hf_cumulative_gain_db"],
+                                    )
+                            # §2.69b TemporalConsistencyGuard (§v10.700 J3) — PMGG-Post-Phase-Hook.
+                            # Gleiche Prüfung wie im _profiled_phase_call-Pfad (eine Quelle:
+                            # _temporal_consistency_post_phase). Rescue ersetzt current_audio
+                            # nur bei nachweislicher Verbesserung (Do-No-Harm).
+                            if (
+                                isinstance(_pdv_pre_phase, np.ndarray)
+                                and isinstance(current_audio, np.ndarray)
+                                and _pdv_pre_phase.shape == current_audio.shape
+                            ):
+                                try:
+                                    _tcg_rescued_pmgg, _tcg_pending_pmgg = self._temporal_consistency_post_phase(
+                                        _pdv_pre_phase,
+                                        current_audio,
+                                        phase_id,
+                                        int(sample_rate),
+                                    )
+                                    if _tcg_rescued_pmgg is not None:
+                                        current_audio = np.clip(_tcg_rescued_pmgg, -1.0, 1.0)
+                                except Exception as _tcg_pmgg_exc:
+                                    logger.warning(
+                                        "§2.69b TemporalConsistencyGuard (PMGG) nicht blockierend: %s",
+                                        _tcg_pmgg_exc,
+                                        exc_info=True,
                                     )
                             _restoration_critical_best_effort = (
                                 (not self.is_studio_mode())
