@@ -39,6 +39,8 @@ N_SECONDS = 9  # 3 Chunks: Ring-In (Chunk 0) + stationäre Bereiche
 @pytest.fixture(scope="module")
 def signal() -> np.ndarray:
     """Echtes Audio: digital_test_01.wav (erste 9 s, 44,1 kHz, mono)."""
+    if not _REAL_AUDIO.exists():
+        pytest.skip("tests/real_world_validation/test_library fehlt (nicht im CI-Checkout)")
     x_raw, sr = sf.read(str(_REAL_AUDIO), dtype="float32")
     x = cast(np.ndarray, x_raw)
     assert sr == SR

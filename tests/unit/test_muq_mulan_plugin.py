@@ -63,9 +63,23 @@ def test_to_mono_24k_deterministic() -> None:
 # ─── Echter ONNX-Pfad (nur wenn exportierte Datei vorhanden) ─────────────────
 
 
+def _muq_is_lfs_pointer() -> bool:
+    """CI-Checkout ohne `git lfs pull` enthält nur Pointer-Dateien."""
+    _p = mm._PROJECT_ROOT / "models" / "muq_mulan" / "muq_mulan.onnx"
+    try:
+        if not _p.exists():
+            return False
+        if _p.stat().st_size < 1024:
+            return True
+        with _p.open("rb") as _fh:
+            return _fh.read(128).startswith(b"version https://git-lfs.github.com/spec/v1")
+    except OSError:
+        return False
+
+
 @pytest.mark.skipif(
-    not mm.is_available(),
-    reason="models/muq_mulan/muq_mulan.onnx fehlt — Export-Skript noch nicht gelaufen",
+    not mm.is_available() or _muq_is_lfs_pointer(),
+    reason="models/muq_mulan/muq_mulan.onnx fehlt oder liegt nur als Git-LFS-Pointer vor",
 )
 def test_onnx_embedding_deterministic_and_shape() -> None:
     """Echtes ONNX: deterministisch (§G5 (GEBOTE.md)) und 768-d Embedding."""

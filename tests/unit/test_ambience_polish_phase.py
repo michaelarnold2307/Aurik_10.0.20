@@ -37,6 +37,8 @@ N_SECONDS = 3  # ein Synthese-Chunk — hält die Tests schnell
 @pytest.fixture(scope="module")
 def signal() -> np.ndarray:
     """Echtes Audio: digital_test_01.wav (erste 3 s, 44,1 kHz, mono)."""
+    if not _REAL_AUDIO.exists():
+        pytest.skip("tests/real_world_validation/test_library fehlt (nicht im CI-Checkout)")
     x_raw, sr = sf.read(str(_REAL_AUDIO), dtype="float32")
     assert sr == SR
     x = np.asarray(x_raw, dtype=np.float32)

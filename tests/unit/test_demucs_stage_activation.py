@@ -93,6 +93,9 @@ def test_demucs_model_file_present() -> None:
         pytest.skip("models/-Paket nicht installiert (gitignored)")
     if _is_lfs_pointer(_DEMUCS_ONNX) or _DEMUCS_ONNX.stat().st_size < 1024:
         pytest.skip("htdemucs_6s.onnx liegt nur als Git-LFS-Pointer vor — git lfs pull fehlt")
+    _companion_files = [pathlib.Path(str(_DEMUCS_ONNX) + _suffix) for _suffix in (".dat", ".data")]
+    if not any(_c.exists() for _c in _companion_files):
+        pytest.skip("externe Demucs-Gewichte (.data) nicht installiert — Release-Delivery via model_downloader")
     total = _DEMUCS_ONNX.stat().st_size
     for _suffix in (".dat", ".data"):
         _dat = pathlib.Path(str(_DEMUCS_ONNX) + _suffix)
