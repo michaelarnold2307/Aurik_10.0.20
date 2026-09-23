@@ -299,7 +299,16 @@ class SurfaceNoiseProfiling(PhaseInterface):
         _mat_str = str(getattr(material, "value", material) or "").lower()
         _digital_mats = {"cd_digital", "cd", "dat", "streaming", "digital"}
         _snr_28 = float(kwargs.get("snr_db", kwargs.get("snr", 0.0)) or 0.0)
-        _skip_pre28 = _effective_strength <= 0.0 or _mat_str in _digital_mats or _snr_28 > 40.0
+        # §SR-CG5 (Fauxpas-Audit, Nutzerbefund „Vogel der Nacht"): Der
+        # SNR>40-dB-Skip übersprang die harmonisch-bewusste Floor-Subtraktion
+        # auch dann, wenn der Scanner hörbares Knistern lokalisiert hat
+        # (feines Knistern ist Impulstextur, kein Breitband-Floor — bei hohem
+        # SNR trotzdem hörbar; die Hör-Instanz bestätigt). Mit Scanner-
+        # Knistern-Events läuft die Floor-Subtraktion trotz hohem SNR.
+        _scanner_crackle28 = bool((kwargs.get("defect_locations") or {}).get("crackle"))
+        _skip_pre28 = (
+            _effective_strength <= 0.0 or _mat_str in _digital_mats or (_snr_28 > 40.0 and not _scanner_crackle28)
+        )
 
         # §v10.754 (2026-09-09): Harmonisch-bewusste Floor-Schätzung als
         # Pre-Stage — bei hoher Konsens-Konfidenz wird der systematische
