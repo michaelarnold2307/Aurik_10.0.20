@@ -538,6 +538,15 @@ def test_ci_gui_smoke_gate_exists():
     assert "QT_QPA_PLATFORM: offscreen" in src
 
 
+def test_cross_platform_ci_pins_python_3_10_12_everywhere():
+    """§CI: Cross-Platform-Runner dürfen nie unter das pyproject-Minimum driften."""
+    src = _read(".github/workflows/ci-cross-platform.yml")
+    assert 'python: "3.10.12"' in src
+    assert 'python: "3.10"' not in src
+    assert "Verify exact Python patch version" in src
+    assert 'sys.version_info[:3] == (3, 10, 12)' in src
+
+
 # ═══════════════════════════════════════════════════════════════════════════════
 # §v10.996: Konsolidierter Restaurierungs-Bericht — der Kreis schließt sich
 # ═══════════════════════════════════════════════════════════════════════════════
