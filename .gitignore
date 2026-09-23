@@ -194,3 +194,7 @@ post_sota_fix_validation.py
 scripts/_scan_elke_best.py
 scripts/_debug_restoration_run.py
 scripts/run30_elke_verify.py
+
+# Setupfile-Bauartefakte (29-GB-.deb niemals committen)
+Setupfile/aurik/
+Setupfile/*.deb

@@ -17284,6 +17284,25 @@ class UnifiedRestorerV3:
                         len(_goal_vector_keys),
                         _musical_excellence_score,
                     )
+
+            # §SR-CG8 (Nutzerbefund „Vogel der Nacht"): Scanner-Delta-Gate als
+            # Sensor + geschlossener Regelkreis als Maßnahme. Nach der Kette
+            # wird die Rest-Severity jedes vor der Kette erkannten Defekts
+            # gemessen; bleibt ein Defekt hörbar (Residual >= 0.40), läuft die
+            # zugeordnete Reparatur-Phase EINMAL mit zentral erhöhter Stärke
+            # (min(1.0, prev x 1.5)) nach. Stärke-Ermittlung bleibt beim
+            # ClosedLoop-Calibrator (§V7 (copilot-instructions.md)). Max. 1
+            # Runde, deterministisch, fail-open; im Chunked-Pfad nur letzter
+            # Chunk (sonst Scan-Kosten pro Chunk).
+            if not bool(getattr(self, "_in_chunked", False)) or _chunked_last:
+                try:
+                    restored_audio, _cg8_report = self._sr_cg8_defect_recovery(
+                        restored_audio, sample_rate, material_type
+                    )
+                    if _cg8_report.get("rounds"):
+                        logger.info("§SR-CG8: %s", _cg8_report.get("summary", ""))
+                except Exception as _cg8_exc:
+                    logger.debug("§SR-CG8 nicht blockierend: %s", _cg8_exc)
         except Exception as _mg_exc:
             logger.warning("MusicalGoalsChecker nicht verfügbar (MUSICAL_GOALS_nicht verfuegbar): %s", _mg_exc)
             _fail_reasons.append(
@@ -45323,6 +45342,109 @@ class UnifiedRestorerV3:
         except Exception:
             logger.debug("Stiller optionaler Ausnahmefall ignoriert", exc_info=True)
         return {"checks_performed": 0, "rollbacks_triggered": 0, "available": False}
+
+    def _sr_cg8_defect_recovery(
+        self,
+        audio: np.ndarray,
+        sample_rate: int,
+        material_type: Any,
+    ) -> tuple[np.ndarray, dict[str, Any]]:
+        """§SR-CG8: Scanner-Delta-Gate (Sensor) + eine Recovery-Runde (Maßnahme).
+
+        Root-Cause (Nutzerbefund „Vogel der Nacht"): Defekte wurden erkannt,
+        blieben nach der Kette aber hörbar, ohne dass eine Instanz dies
+        maschinell bemerkte. Hier misst der Defekt-Scanner die Rest-Severity
+        jedes vor der Kette erkannten Defekts; bleibt sie >= 0.40, wird die
+        zugeordnete Reparatur-Phase (defect_phase_mapper) EINMAL nachgefahren
+        mit zentral erhöhter Stärke (min(1.0, prev_strength x 1.5)) — die
+        Stärke-ERMITTLUNG bleibt beim ClosedLoop-Calibrator, hier wird nur
+        der globale Skalar angehoben (§V7 (copilot-instructions.md)).
+        Max. 1 Runde, max. 2 Phasen, deterministisch (§G5 (copilot-instructions.md)), fail-open.
+        """
+        _report: dict[str, Any] = {"rounds": 0, "summary": "", "residual": {}}
+        if self.is_studio_mode():
+            return audio, _report
+        _pre = getattr(self, "_defect_result_scores", {}) or {}
+        if not _pre:
+            return audio, _report
+        try:
+            from backend.core.defect_scanner import DefectScanner
+
+            _mono = np.asarray(audio, dtype=np.float32)
+            if _mono.ndim == 2:
+                _mono = _mono.mean(axis=0) if (_mono.shape[0] == 2 and _mono.shape[1] > 2) else _mono.mean(axis=1)
+            _post = DefectScanner(sample_rate=int(sample_rate), material_type=material_type).scan(
+                _mono, int(sample_rate)
+            )
+        except Exception as _sc_exc:
+            logger.debug("§SR-CG8 Scanner-Re-Scan nicht verfügbar: %s", _sc_exc)
+            return audio, _report
+        _threshold = 0.40
+        _targets: list[str] = []
+        for _dt, _s in (_post.scores or {}).items():
+            _key = _dt.value if hasattr(_dt, "value") else str(_dt)
+            _pre_s = _pre.get(_dt) or _pre.get(_key)
+            if _pre_s is None or float(getattr(_pre_s, "severity", 0.0) or 0.0) < _threshold:
+                continue
+            _res = float(getattr(_s, "severity", 0.0) or 0.0)
+            _report["residual"][_key] = round(_res, 3)
+            if _res >= _threshold:
+                _targets.append(_key)
+        if not _targets:
+            _report["summary"] = "keine Rest-Defekte über Schwelle"
+            return audio, _report
+        try:
+            from backend.core.defect_phase_mapper import get_reverse_phase_map as _grpm8
+
+            _phase_map: dict[str, list[str]] = {}
+            for _pid, _dts in (_grpm8() or {}).items():
+                for _dt in _dts:
+                    _key = _dt.value if hasattr(_dt, "value") else str(_dt)
+                    _phase_map.setdefault(_key, []).append(_pid)
+        except Exception as _m_exc:
+            logger.debug("§SR-CG8 Phasen-Zuordnung nicht verfügbar: %s", _m_exc)
+            return audio, _report
+        _recovery_phase_ids: list[str] = []
+        for _key in _targets:
+            _cands = _phase_map.get(_key, [])
+            if "phase_28_surface_noise_profiling" in _cands:
+                _recovery_phase_ids.append("phase_28_surface_noise_profiling")
+            elif "phase_09_crackle_removal" in _cands:
+                _recovery_phase_ids.append("phase_09_crackle_removal")
+            elif _cands:
+                _recovery_phase_ids.append(_cands[0])
+        _recovery_phase_ids = list(dict.fromkeys(_recovery_phase_ids))[:2]
+        _out = np.asarray(audio, dtype=np.float32)
+        _ran = 0
+        for _pid in _recovery_phase_ids:
+            try:
+                _phase = self._get_phase(_pid)
+                if _phase is None:
+                    continue
+                _prev_strength = float(getattr(self, "_last_phase_strengths", {}).get(_pid, 0.5) or 0.5)
+                _boosted = float(min(1.0, _prev_strength * 1.5))
+                _pres = _phase.process(
+                    _out.copy(),
+                    sample_rate=int(sample_rate),
+                    material_type=material_type,
+                    strength=_boosted,
+                )
+                _cand = getattr(_pres, "audio", None)
+                if _cand is None:
+                    continue
+                _cand = np.asarray(_cand, dtype=np.float32)
+                if _cand.shape != _out.shape:
+                    continue
+                _out = _cand
+                _ran += 1
+            except Exception as _p_exc:
+                logger.debug("§SR-CG8 Nachregelungs-Verarbeitungsschritt %s nicht blockierend: %s", _pid, _p_exc)
+                continue
+        _report["rounds"] = _ran
+        _report["summary"] = f"{_ran} Recovery-Runde(n), Residual: " + ", ".join(
+            f"{k}={v}" for k, v in sorted(_report["residual"].items())
+        )
+        return _out, _report
 
     def _run_song_level_end_gate(
         self,
