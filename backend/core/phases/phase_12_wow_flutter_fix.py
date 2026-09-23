@@ -1268,8 +1268,10 @@ class WowFlutterFix(PhaseInterface):
         # Stufen in den Stretch-Faktoren (F0-Blend 55/45, Konsens-Umschaltung der
         # Spektral-Warp-Versorgung, Melodie-Guard-Grenzen) erzeugen Zeitwarp-
         # Sprünge → Energie-Sprünge >6 dB/100 ms + Pre-Echo-Befunde + timbre_
-        # authentizitaet-Degradation. Glättung VOR der Anwendung.
-        stretch_factors = self._smooth_stretch_factors(stretch_factors)
+        # authentizitaet-Degradation. Slope-Limit VOR der Anwendung — gekoppelt
+        # an max_stretch_delta (Identität für alles, was der Algorithmus selbst
+        # ausgibt: Wow ≤5 %/Fenster, Flutter ≤3 %/Fenster).
+        stretch_factors = self._smooth_stretch_factors(stretch_factors, max_step=float(_max_stretch_delta))
 
         # Step 5: Apply time-stretching – PSOLA für Vokal-Segmente, WSOLA sonst
         # Moulines & Charpentier (1990): PSOLA ist formanterhaltend bei Gesangsmaterial;
@@ -3642,19 +3644,19 @@ class WowFlutterFix(PhaseInterface):
             )
             return self._phase_vocoder_timestretch(audio, stretch_factors, sample_rate)
 
-    def _smooth_stretch_factors(self, factors: np.ndarray) -> np.ndarray:
+    def _smooth_stretch_factors(self, factors: np.ndarray, max_step: float = 0.05) -> np.ndarray:
         """§WF-V3: Slope-Limit der Stretch-Faktor-Trajektorie vor der Zeitstreckung.
 
         Root-Cause-Fix (§v10.709-Befund): Stufen in den Stretch-Faktoren erzeugen
         Zeitwarp-Sprünge → Energie-Sprünge >6 dB/100 ms, Pre-Echo-Befunde und
         timbre_authentizitaet-Degradation (Produktionsbefund vinyl/1970).
-        Mechanisches Wow ist physikalisch glatt (< 4 Hz, Capstan-Trägheit):
-        Lipschitz-Projektion (4 Durchläufe, O(n)): |Δ| ≤ 2,5 % pro Pitch-Fenster
-        (42,7 ms → max. ~0,59 %/s). Legitimes 4-Hz-Wow (±2 % Amplitude, §WF-V2-
-        Deckel) erreicht max. ~2,15 %/Fenster → die Projektion ist für alle
-        legitimen Wow-Trajektorien die Identität und entfernt ausschließlich
-        Sprung-Artefakte. Bewusst KEIN Moving-Average: ein 5-Fenster-MA
-        (~213 ms) liegt im Wow-Band selbst und dämpfte 4-Hz-Wow um >80 %.
+        Lipschitz-Projektion (4 Durchläufe, O(n)) mit |Δ| ≤ max_step pro
+        Pitch-Fenster (42,7 ms). max_step wird an max_stretch_delta des
+        Algorithmus gekoppelt (Wow 5 %, Flutter 3 %): die Projektion ist damit
+        die IDENTITÄT für jede legitime _calculate_stretch_factors-Ausgabe und
+        entfernt ausschließlich Blend-/Konsens-Sprungartefakte oberhalb der
+        algorithmischen Kappe. Ein hartes 2,5-%-Limit war zu streng und
+        dämpfte die Wow/Flutter-Korrektur hörbar (Nutzerbefund).
 
         Deterministisch (§G5 copilot-instructions.md), kausalfrei (Vorwärts+
         Rückwärts), begrenzt auf [min, max] der Eingabe (kein Overshoot).
@@ -3662,7 +3664,7 @@ class WowFlutterFix(PhaseInterface):
         _f = np.asarray(factors, dtype=np.float64)
         if _f.ndim != 1 or _f.size < 5:
             return np.array(factors, dtype=np.float32, copy=True)  # type: ignore[no-any-return]
-        _max_step = 0.025
+        _max_step = float(max(1e-4, min(float(max_step), 1.0)))
         _out = _f.copy()
         # Vorwärts: Anstiege begrenzen, dann Abfälle begrenzen
         for _i in range(1, _out.size):

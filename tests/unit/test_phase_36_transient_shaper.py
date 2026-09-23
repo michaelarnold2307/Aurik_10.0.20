@@ -1,6 +1,7 @@
 """tests/unit/test_phase_36_transient_shaper.py — §SOTA-PSY-A1 (TransientShaper)."""
 
 import numpy as np
+import pytest
 
 from backend.core.defect_scanner import MaterialType
 from backend.core.phases.phase_36_transient_shaper import TransientShaper
@@ -83,3 +84,54 @@ def test_psy_a1_subaudible_delta_stereo_layout_preserved(monkeypatch):
     assert result.metadata.get("subaudible_defects_skipped") is True
     assert result.audio.shape == audio.shape, f"Layout-Kollaps: {result.audio.shape} statt {audio.shape}"
     np.testing.assert_array_almost_equal(result.audio, audio, decimal=5)
+
+
+# ---------------------------------------------------------------------------
+# §SR-CG Crackle-Guard: Knistern/Click/Pop-Events nicht mitboosten (vinyl)
+# ---------------------------------------------------------------------------
+
+
+def test_crackle_guard_zeroes_delta_inside_events():
+    """Innerhalb der Knistern-Events wird das Transienten-Delta ausgeblendet —
+    außerhalb bleibt das Shaping vollständig erhalten."""
+    sr = 48000
+    n = sr
+    original = np.zeros(n, dtype=np.float32)
+    shaped = np.ones(n, dtype=np.float32) * 0.5
+    kwargs = {"defect_locations": {"crackle": [(0.10, 0.20)], "click": [(0.50, 0.55)]}}
+    out = TransientShaper._apply_crackle_guard(shaped, original, sr, kwargs)
+    # Kern des Events: komplett zurück auf Original (0)
+    assert float(np.max(np.abs(out[int(0.13 * sr) : int(0.17 * sr)]))) < 1e-6
+    assert float(np.max(np.abs(out[int(0.52 * sr) : int(0.53 * sr)]))) < 1e-6
+    # Außerhalb: Shaping voll erhalten
+    assert float(out[0]) == pytest.approx(0.5, abs=1e-6)
+    assert float(out[int(0.90 * sr)]) == pytest.approx(0.5, abs=1e-6)
+
+
+def test_crackle_guard_fail_open_without_events():
+    """Ohne defect_locations (oder leer) ist der Guard die Identität —
+    kein Verhalten ohne Defekt-Scan geändert."""
+    sr = 48000
+    n = sr // 4
+    original = np.zeros(n, dtype=np.float32)
+    shaped = np.ones(n, dtype=np.float32) * 0.5
+    for kwargs in ({}, {"defect_locations": None}, {"defect_locations": {"crackle": []}}):
+        out = TransientShaper._apply_crackle_guard(shaped, original, sr, kwargs)
+        np.testing.assert_array_equal(out, shaped)
+
+
+def test_crackle_guard_stereo_channels_first_and_deterministic():
+    """Stereo-Layout-Invariante (C, N) bleibt erhalten; deterministisch (§G5 copilot-instructions.md)."""
+    sr = 48000
+    n = sr // 2
+    original = np.zeros((2, n), dtype=np.float32)
+    shaped = np.ones((2, n), dtype=np.float32) * 0.5
+    kwargs = {"defect_locations": {"crackle": [(0.10, 0.15)]}}
+    out1 = TransientShaper._apply_crackle_guard(shaped, original, sr, kwargs)
+    out2 = TransientShaper._apply_crackle_guard(shaped, original, sr, kwargs)
+    assert out1.shape == shaped.shape
+    np.testing.assert_array_equal(out1, out2)
+    # Beide Kanäle identisch ausgeblendet (kein L/R-Zeitversatz)
+    np.testing.assert_array_equal(out1[0], out1[1])
+    assert float(np.max(np.abs(out1[0][int(0.12 * sr) : int(0.13 * sr)]))) < 1e-6
+    assert float(out1[0][int(0.40 * sr)]) == pytest.approx(0.5, abs=1e-6)

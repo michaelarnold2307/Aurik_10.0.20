@@ -302,6 +302,15 @@ class TransientShaper(PhaseInterface):
         if 0.0 < _effective_strength < 1.0:
             shaped_audio = audio + _effective_strength * (shaped_audio - audio)
 
+        # §SR-CG Crackle-Guard (Root-Cause, Nutzerbefund vinyl/1970): Phase 36
+        # boostet Transienten (0–20 ms) global — Vinyl-Knistern IST ein
+        # Impulstransient. Ohne Guard wird das von phase_09/27 entfernte
+        # Knistern hier wieder angehoben und bleibt hörbar. Innerhalb der vom
+        # Defekt-Scanner lokalisierten Knistern/Click/Pop-Events wird das
+        # Transienten-Delta auf Null geblendet (8-ms-Crossfade); Musik-
+        # Transienten außerhalb bleiben voll erhalten. Fail-open ohne Events.
+        shaped_audio = self._apply_crackle_guard(shaped_audio, audio, sample_rate, kwargs)
+
         # Measure final transient energy
         transient_energy_after = self._measure_transient_energy(shaped_audio, sample_rate)
         transient_boost_db = 20 * np.log10((transient_energy_after + 1e-10) / (transient_energy_before + 1e-10))
@@ -722,6 +731,55 @@ class TransientShaper(PhaseInterface):
         """Kombiniert frequency bands."""
         combined = sum(bands)
         return combined  # type: ignore[no-any-return]
+
+    @staticmethod
+    def _apply_crackle_guard(
+        shaped: np.ndarray,
+        original: np.ndarray,
+        sample_rate: int,
+        kwargs: dict[str, Any],
+    ) -> np.ndarray:
+        """§SR-CG: Blendet das Transienten-Delta in Knistern/Click/Pop-Events aus.
+
+        Deterministisch (§G5 copilot-instructions.md), O(N + Events). Fail-open:
+        ohne defect_locations wird shaped unverändert zurückgegeben. Stereo-
+        Layout channels-first (C, N) wird über die letzte Achse bedient.
+        """
+        _dl = kwargs.get("defect_locations")
+        if not isinstance(_dl, dict):
+            return shaped
+        _events: list[tuple[float, float]] = []
+        for _key in ("crackle", "click", "pop"):
+            _ev = _dl.get(_key)
+            if isinstance(_ev, list):
+                for _loc in _ev:
+                    try:
+                        _events.append((float(_loc[0]), float(_loc[1])))
+                    except Exception as _sr_cg_exc:
+                        logger.debug("§SR-CG defect_locations-Eintrag ungültig, übersprungen: %s", _sr_cg_exc)
+                        continue
+        if not _events:
+            return shaped
+        _n = int(shaped.shape[-1]) if shaped.ndim > 1 else int(len(shaped))
+        if _n <= 0:
+            return shaped
+        _mask = np.ones(_n, dtype=np.float32)
+        _sr = max(1, int(sample_rate))
+        for _s0, _s1 in _events:
+            _a = max(0, min(_n, int(_s0 * _sr)))
+            _b = max(_a, min(_n, int(_s1 * _sr)))
+            if _b > _a:
+                _mask[_a:_b] = 0.0
+        _xf = max(8, int(0.008 * _sr))
+        _kernel = np.ones(_xf, dtype=np.float32) / float(_xf)
+        # Edge-Padding statt Zero-Padding: sonst wird der Signalbeginn durch die
+        # Null-Flanke des Kernels fälschlich auf 50 % geblendet (Testbefund).
+        _padded = np.pad(_mask, (_xf // 2, _xf - 1 - _xf // 2), mode="edge")
+        _mask = np.clip(np.convolve(_padded, _kernel, mode="valid")[:_n], 0.0, 1.0)
+        if shaped.ndim > 1 and _mask.shape[0] == shaped.shape[-1]:
+            _mask = _mask[None, :]
+        _out = np.asarray(shaped, dtype=np.float32) * _mask + np.asarray(original, dtype=np.float32) * (1.0 - _mask)
+        return np.asarray(_out, dtype=shaped.dtype)  # type: ignore[no-any-return]
 
     def _measure_transient_energy(self, audio: np.ndarray, sample_rate: int) -> float:
         """Misst transient energy (high-frequency content in first 20ms)."""

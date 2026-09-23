@@ -69,15 +69,32 @@ class TestSmoothStretchFactors:
         out = phase._smooth_stretch_factors(factors)
         assert out.shape == factors.shape
         assert out.dtype == np.float32
-        # Slope-Limit: kein Fenster-Delta über 2,5 %
-        assert float(np.max(np.abs(np.diff(out)))) <= 0.025 + 1e-6
+        # Slope-Limit: kein Fenster-Delta über dem Default (5 %, max_stretch_delta)
+        assert float(np.max(np.abs(np.diff(out)))) <= 0.05 + 1e-6
         # Sprung wird über mehrere Fenster verteilt statt hart übernommen
-        assert float(out[13]) < 1.06
+        assert float(out[13]) < 1.11
         # Endwert erreicht das Ziel (kein Overshoot, kein Dauerfehler)
         assert float(out[-1]) == pytest.approx(1.20, abs=1e-5)
         # Begrenzt auf [min, max] der Eingabe
         assert float(out.min()) >= 1.0 - 1e-6
         assert float(out.max()) <= 1.20 + 1e-6
+
+    def test_max_step_parameter_couples_to_max_stretch_delta(self, phase):
+        # Gekoppeltes Limit: mit max_step=0.025 (früheres hartes Limit) wird
+        # stärker begrenzt — der Parameter steuert die Schärfe.
+        factors = np.array([1.0] * 12 + [1.20] * 12, dtype=np.float32)
+        out = phase._smooth_stretch_factors(factors, max_step=0.025)
+        assert float(np.max(np.abs(np.diff(out)))) <= 0.025 + 1e-6
+        assert float(out[13]) < 1.06
+
+    def test_legit_algorithmic_output_is_identity(self, phase):
+        # Jede Trajektorie mit per-Fenster-Deltas ≤ max_stretch_delta (5 %)
+        # ist legitime _calculate_stretch_factors-Ausgabe → Identität.
+        n = 200
+        x = np.arange(n)
+        legit = 1.0 + 0.03 * np.sin(2 * np.pi * 0.5 * x / 24.0)
+        out = phase._smooth_stretch_factors(legit.astype(np.float32), max_step=0.05)
+        assert np.allclose(out, legit, atol=1e-6)
 
     def test_smooth_trajectory_nearly_identity_and_deterministic(self, phase):
         smooth = np.array([1.0, 1.001, 0.999, 1.002, 1.0, 0.998], dtype=np.float32)
@@ -98,7 +115,7 @@ class TestSmoothStretchFactors:
 
     def test_wow_band_survives(self, phase):
         # Legitimes 4-Hz-Wow (±2 %) ist die Identität der Projektion
-        # (max. Steigung ~2,15 %/Fenster < 2,5 %-Limit).
+        # (max. Steigung ~2,15 %/Fenster < 5 %-Limit = max_stretch_delta).
         n = 240
         x = np.arange(n)
         wow = 1.0 + 0.02 * np.sin(2 * np.pi * 4.0 * x * 42.7e-3)
