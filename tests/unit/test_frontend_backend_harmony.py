@@ -16,6 +16,7 @@ from dataclasses import fields
 from pathlib import Path
 
 import pytest
+import yaml
 
 ROOT = Path(__file__).resolve().parent.parent.parent
 
@@ -536,6 +537,18 @@ def test_ci_gui_smoke_gate_exists():
     assert "tests/ui/test_ui_quality.py" in src
     assert "--run-gui-tests" in src
     assert "QT_QPA_PLATFORM: offscreen" in src
+
+
+def test_cross_platform_ci_pins_python_3_10_12_everywhere():
+    """§CI: Cross-Platform-Runner dürfen nie unter das pyproject-Minimum driften."""
+    src = _read(".github/workflows/ci-cross-platform.yml")
+    workflow = yaml.safe_load(src)
+    include = workflow["jobs"]["test-cross-platform"]["strategy"]["matrix"]["include"]
+    pinned_versions = {entry["os"]: entry["python"] for entry in include}
+    assert {"ubuntu-22.04", "windows-2022", "macos-14"}.issubset(pinned_versions)
+    assert all(version == "3.10.12" for version in pinned_versions.values())
+    assert "Verify exact Python patch version" in src
+    assert 'sys.version_info[:3] == (3, 10, 12)' in src
 
 
 # ═══════════════════════════════════════════════════════════════════════════════

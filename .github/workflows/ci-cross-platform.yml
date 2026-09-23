@@ -33,9 +33,9 @@ jobs:
           - os: ubuntu-22.04
             python: "3.10.12"  # exakter Baseline-Pin (Toolcache vorhanden)
           - os: windows-2022
-            python: "3.10"  # 3.10.12 nicht im Runner-Toolcache; 3.10.x ≥ 3.10.12
+            python: "3.10.12"  # exakter Baseline-Pin; setup-python lädt notfalls nach
           - os: macos-14  # Apple Silicon (M1+), GitHub-hosted
-            python: "3.10"  # 3.10.12 nicht für macos-arm64 verfügbar
+            python: "3.10.12"  # exakter Baseline-Pin; setup-python lädt notfalls nach
     timeout-minutes: 120
 
     steps:
@@ -45,6 +45,11 @@ jobs:
         with:
           python-version: ${{ matrix.python }}
           cache: pip
+
+      - name: Verify exact Python patch version
+        shell: bash
+        run: |
+          python -c "import platform, sys; print(platform.python_version()); assert sys.version_info[:3] == (3, 10, 12), f'Expected Python 3.10.12, got {platform.python_version()}'"
 
       - name: Install dependencies (Produktions-Pins)
         shell: bash
