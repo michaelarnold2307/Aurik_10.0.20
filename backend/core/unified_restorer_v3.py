@@ -44725,6 +44725,29 @@ class UnifiedRestorerV3:
                     _mat,
                 )
                 return False
+        # ── §SR-CG6 (Root-Cause, Nutzerbefund „Vogel der Nacht"): phase_28 ──
+        # (Oberflächenrausch/Floor-Subtraktion) wird NIE über resolved_defects
+        # übersprungen, wenn der Defekt-Scanner VOR der Kette hörbares
+        # Knistern lokalisiert hat (Severity ≥ 0.5). phase_03/09 entfernen
+        # Impuls-Clicks, nicht die kontinuierliche Knistern-Textur — deren
+        # Resolved-Meldung darf phase_28 nicht abschalten (Hör-Instanz: das
+        # feine Knistern bleibt hörbar).
+        if phase_id == "phase_28_surface_noise_profiling":
+            _p28_scores = getattr(self, "_defect_result_scores", {}) or {}
+            try:
+                from backend.core.defect_scanner import DefectType as _DT28
+
+                _c28 = _p28_scores.get(_DT28.CRACKLE, _p28_scores.get("crackle"))
+                _sev28 = float(getattr(_c28, "severity", 0.0) or 0.0)
+            except Exception as _c28_exc:
+                logger.debug("§SR-CG6 Crackle-Severity nicht verfuegbar: %s", _c28_exc)
+                _sev28 = 0.0
+            if _sev28 >= 0.5:
+                logger.info(
+                    "§SR-CG6 Verarbeitungsschritt_28 nie skippen: Scanner-Knistern-Severity %.2f >= 0.5",
+                    _sev28,
+                )
+                return False
         acc = getattr(self, "_resolved_defects_accumulator", None)
         if not acc:
             return False
