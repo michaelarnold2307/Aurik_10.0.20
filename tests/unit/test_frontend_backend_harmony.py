@@ -545,7 +545,7 @@ def test_cross_platform_ci_pins_python_3_10_12_everywhere():
     workflow = yaml.safe_load(src)
     include = workflow["jobs"]["test-cross-platform"]["strategy"]["matrix"]["include"]
     pinned_versions = {entry["os"]: entry["python"] for entry in include}
-    assert {"ubuntu-22.04", "windows-2022", "macos-14"}.issubset(pinned_versions)
+    assert {"ubuntu-22.04", "windows-2022"} == set(pinned_versions)
     assert all(version == "3.10.12" for version in pinned_versions.values())
     assert "Verify exact Python patch version" in src
     assert 'sys.version_info[:3] == (3, 10, 12)' in src
