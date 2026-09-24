@@ -122,6 +122,14 @@ def _audio_scan_cache_key(audio: np.ndarray, sr: int, material: object | None) -
     return f"scan:{h.hexdigest()[:16]}"
 
 
+# §Hörordnung-Kanon (Nutzerbefund 2026-09-24): Zentraler Detektions-Floor für
+# Defekt-Reparatur-Gating. Jede Scanner-Detektion ≥ diesem Wert ist ein
+# präsenter Defekt und muss repariert werden — Severity darf NUR die zentrale
+# Stärke-Kalibrierung modulieren, nie einen harten Skip auslösen (Audibility
+# = Maskierungsschwelle, nicht Score; auch wenig Knistern ist unerwünscht).
+DEFECT_PRESENCE_FLOOR: float = 0.05
+
+
 class DefectType(Enum):
     """54 Defekttypen für weltklasse Audio-restoration.
 

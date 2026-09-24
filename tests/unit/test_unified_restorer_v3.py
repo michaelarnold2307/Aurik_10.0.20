@@ -4718,3 +4718,89 @@ class TestSingMosSourceCeiling:
 
     def test_unknown_source_keeps_gate(self):
         assert _uv3_mod._is_singmos_source_capped(None, 2.42) is False
+
+
+class TestSrCgChain:
+    """§SR-CG6/CG8 Logik-Validierung (ohne 30-Minuten-Lauf).
+
+    Nutzerbefund Lauf 5/6: phase_28 wurde trotz Guards übersprungen, weil die
+    Knistern-Severity nur im DefektDenker-Hint lag (primary=vinyl_crackle).
+    """
+
+    @staticmethod
+    def _bare_uv3():
+        from backend.core.unified_restorer_v3 import UnifiedRestorerV3
+
+        u = UnifiedRestorerV3.__new__(UnifiedRestorerV3)
+        u.config = type("C", (), {"enable_phase_skipping": True})()
+        u._restoration_context = {}
+        u._defect_result_scores = {}
+        u._active_defekt_hint = None
+        u._in_chunked = False
+        u.is_studio_mode = lambda: False
+        return u
+
+    def _resolve_all_targets(self, u):
+        from backend.core.defect_phase_mapper import get_reverse_phase_map
+
+        acc = {}
+        for dt in get_reverse_phase_map().get("phase_28_surface_noise_profiling", []):
+            k = dt.value if hasattr(dt, "value") else str(dt)
+            acc[k] = 0.0
+            acc[k.upper()] = 0.0
+        u._resolved_defects_accumulator = acc
+
+    def test_primary_hint_stored_and_blocks_skip(self):
+        u = self._bare_uv3()
+        self._resolve_all_targets(u)
+        u._store_denker_crackle_severity({"primary": "vinyl_crackle", "severity": 0.54, "confidence": 0.42})
+        assert u._crackle_severity_denker == 0.54
+        assert u._should_skip_resolved_phase("phase_28_surface_noise_profiling") is False
+
+    def test_bericht_object_form_stored(self):
+        # DefektBericht-Form: primary_cause/overall_severity/defect_scores
+        u = self._bare_uv3()
+        b = type(
+            "B",
+            (),
+            {
+                "primary_cause": "vinyl_crackle",
+                "overall_severity": 0.61,
+                "defect_scores": {"vinyl_crackle": 0.58},
+            },
+        )()
+        u._store_denker_crackle_severity(b)
+        assert u._crackle_severity_denker == 0.61
+
+    def test_below_threshold_not_stored_and_skip_unchanged(self):
+        u = self._bare_uv3()
+        self._resolve_all_targets(u)
+        u._store_denker_crackle_severity({"primary": "vinyl_crackle", "severity": 0.01})
+        assert not hasattr(u, "_crackle_severity_denker")
+        assert u._should_skip_resolved_phase("phase_28_surface_noise_profiling") is True
+
+    def test_low_but_detected_crackle_blocks_skip(self):
+        # Nutzerbefund: auch wenig Knistern ist unerwünscht — Detektions-Floor
+        # (0.05) statt willkürlicher Schwelle 0.40: 0.30 blockiert den Skip.
+        u = self._bare_uv3()
+        self._resolve_all_targets(u)
+        u._store_denker_crackle_severity({"primary": "vinyl_crackle", "severity": 0.30})
+        assert u._crackle_severity_denker == 0.30
+        assert u._should_skip_resolved_phase("phase_28_surface_noise_profiling") is False
+
+    def test_store_fail_open_on_non_dict(self):
+        u = self._bare_uv3()
+        u._store_denker_crackle_severity(None)
+        u._store_denker_crackle_severity("x")
+        assert not hasattr(u, "_crackle_severity_denker")
+
+    def test_sr_cg8_empty_pre_passthrough(self):
+        import numpy as np
+
+        from backend.core.defect_scanner import MaterialType
+
+        u = self._bare_uv3()
+        x = np.zeros(9600, dtype=np.float32)
+        out, rep = u._sr_cg8_defect_recovery(x, 48000, MaterialType.VINYL)
+        assert rep["rounds"] == 0
+        assert np.array_equal(out, x)

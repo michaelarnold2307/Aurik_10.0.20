@@ -111,8 +111,16 @@ class TestGateSpikeTemporalCompactness:
     def test_sustained_run_removed_entirely(self, phase):
         mask = np.zeros((8, 60), dtype=bool)
         mask[3, 20:45] = True  # 25-Frame-Run (anhaltender Inhalt)
-        out = phase._gate_spike_temporal_compactness(mask, max_run_frames=4)
+        out = phase._gate_spike_temporal_compactness(mask, max_run_frames=24)
         assert not out[3, 20:45].any()  # kompletter Run entfernt (auch Onset)
+
+    def test_dense_crackle_train_survives(self, phase):
+        # Nutzerbefund: dichtes Knistern (Trains) muss repariert werden —
+        # 12-Frame-Run bleibt bei max_run_frames=24 erhalten.
+        mask = np.zeros((8, 60), dtype=bool)
+        mask[6, 10:22] = True  # 12-Frame-Knistern-Train
+        out = phase._gate_spike_temporal_compactness(mask, max_run_frames=24)
+        assert out[6, 10:22].all()
 
     def test_compact_spike_survives(self, phase):
         mask = np.zeros((8, 60), dtype=bool)

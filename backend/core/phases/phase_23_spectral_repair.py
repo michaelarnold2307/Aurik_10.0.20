@@ -2676,8 +2676,11 @@ class SpectralRepair(PhaseInterface):
             spike_mask[_hf_protected_start:, :] = False
         # §SR-TG (Root-Cause §v10.709, vinyl/1970): Nur zeitlich kompakte Spikes
         # reparieren — anhaltende z-score-Ausreißer sind musikalischer Inhalt.
+        # Kalibriert auf 24 Frames (~250 ms): Musik-Bins laufen Sekunden,
+        # Knistern-Trains (dichtes Knistern) bleiben darunter und werden
+        # repariert (Nutzerbefund: Knistern vollständig entfernen).
         if np.any(spike_mask):
-            spike_mask = self._gate_spike_temporal_compactness(spike_mask, max_run_frames=4)
+            spike_mask = self._gate_spike_temporal_compactness(spike_mask, max_run_frames=24)
         defect_mask |= spike_mask
 
         # -- Strategie 3: Phasensprünge --

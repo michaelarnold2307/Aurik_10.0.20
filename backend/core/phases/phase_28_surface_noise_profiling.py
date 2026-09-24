@@ -304,8 +304,16 @@ class SurfaceNoiseProfiling(PhaseInterface):
         # auch dann, wenn der Scanner hörbares Knistern lokalisiert hat
         # (feines Knistern ist Impulstextur, kein Breitband-Floor — bei hohem
         # SNR trotzdem hörbar; die Hör-Instanz bestätigt). Mit Scanner-
-        # Knistern-Events läuft die Floor-Subtraktion trotz hohem SNR.
+        # Knistern-Events ODER der vom DefektDenker gespeicherten Severity
+        # läuft die Floor-Subtraktion trotz hohem SNR.
         _scanner_crackle28 = bool((kwargs.get("defect_locations") or {}).get("crackle"))
+        _denker_crackle28 = float(kwargs.get("crackle_severity_denker", 0.0) or 0.0)
+        # Detektions-Floor statt willkürlicher Schwelle: Auch wenig Knistern
+        # ist unerwünscht — jede Denker-Detektion ≥ DEFECT_PRESENCE_FLOOR
+        # aktiviert den Floor (kanonischer Wert aus defect_scanner).
+        from backend.core.defect_scanner import DEFECT_PRESENCE_FLOOR as _DPF_P28
+
+        _scanner_crackle28 = _scanner_crackle28 or _denker_crackle28 >= float(_DPF_P28)
         _skip_pre28 = (
             _effective_strength <= 0.0 or _mat_str in _digital_mats or (_snr_28 > 40.0 and not _scanner_crackle28)
         )
@@ -339,7 +347,12 @@ class SurfaceNoiseProfiling(PhaseInterface):
         # §v10.96 Defekt-basiertes Skip-Gate: Surface-Noise nur auf analogen Trägern.
         # Digitales Material (CD/DAT/Streaming) hat physikalisch kein Oberflächenrauschen.
         # SNR > 40 dB → Rauschboden bereits unterhalb psychoakustischer Wahrnehmbarkeit.
-        if _mat_str in _digital_mats or _snr_28 > 40.0:
+        # §v10.96 Defekt-basiertes Skip-Gate: Surface-Noise nur auf analogen Trägern.
+        # Digitales Material (CD/DAT/Streaming) hat physikalisch kein Oberflächenrauschen.
+        # SNR > 40 dB → Rauschboden bereits unterhalb psychoakustischer Wahrnehmbarkeit.
+        # §SR-CG5-Erweiterung: Bei Scanner-/Denker-bestätigtem hörbarem Knistern
+        # (Impulstextur, nicht Breitband-Floor) bleibt die Phase trotz SNR>40 aktiv.
+        if _mat_str in _digital_mats or (_snr_28 > 40.0 and not _scanner_crackle28):
             _reason = f"digital_material={_mat_str}" if _mat_str in _digital_mats else f"snr={_snr_28:.0f}dB"
             logger.info(
                 "§v10.96 Surface-Noise-ueberspringen: %s → surface noise Messung uebersprungen",

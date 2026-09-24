@@ -28945,6 +28945,12 @@ class UnifiedRestorerV3:
         # (niedriger als CausalReasoner 0.20 — Heuristiken sind präziser).
         # ════════════════════════════════════
         if defekt_hint is not None:
+            # §SR-CG6-Quelle: Knistern-Severity des DefektDenkers dauerhaft
+            # speichern — der Skip-Check läuft später, aber HIER liegt der
+            # Hint garantiert vollständig vor (primary=vinyl_crackle,
+            # severity, defect_scores). Nutzerbefund Lauf 6: Guards griffen
+            # ins Leere, weil keine der gespeicherten Quellen den Hint enthielt.
+            self._store_denker_crackle_severity(defekt_hint)
             _dh_conf = float(defekt_hint.get("confidence", 0.0)) if isinstance(defekt_hint, dict) else 0.0
             if _dh_conf >= 0.15:
                 _dh_phases = defekt_hint.get("recommended_phases", []) if isinstance(defekt_hint, dict) else []
@@ -30017,6 +30023,9 @@ class UnifiedRestorerV3:
             "transfer_chain_depth": int(_rctx.get("transfer_chain_depth", 1) or 1),
             "chain_depth": int(_rctx.get("transfer_chain_depth", 1) or 1),
             "defect_event_metadata": _rctx.get("defect_event_metadata", {}),
+            # §SR-CG5/6: Denker-Knistern-Severity an ALLE Phasen (phase_28
+            # braucht sie für die Floor-Subtraktion trotz SNR>40)
+            "crackle_severity_denker": float(getattr(self, "_crackle_severity_denker", 0.0) or 0.0),
             "mikrodynamik_global_need": float(_rctx.get("mikrodynamik_global_need", 0.0) or 0.0),
             # §v10.94 Cross-Phase-Koordination: P02→P37, P10→P26
             "hum_notch_freqs": _rctx.get("hum_notch_freqs", []),
@@ -40768,6 +40777,11 @@ class UnifiedRestorerV3:
                                         **self._canonical_phase_context_kwargs(),
                                         "defect_scores": defect_result.scores,
                                         "defect_locations": _defect_locations,
+                                        # §SR-CG5/6: Denker-Knistern-Severity direkt an
+                                        # phase_28 (Floor-Subtraktion trotz SNR>40)
+                                        "crackle_severity_denker": float(
+                                            getattr(self, "_crackle_severity_denker", 0.0) or 0.0
+                                        ),
                                         "defect_severity_map": {  # §v10.18: merge resolved defects
                                             k: min(v, self._resolved_defects_accumulator.get(k, 1.0))
                                             for k, v in _defect_severity_map.items()
@@ -44694,6 +44708,60 @@ class UnifiedRestorerV3:
             }
         return info
 
+    def _store_denker_crackle_severity(self, defekt_hint: Any) -> None:
+        """§SR-CG6: Extrahiert die Knistern-Severity aus dem DefektDenker-Hint.
+
+        Der Hint ist das Dict des DefektDenkers (§2.1): primary=vinyl_crackle,
+        severity/overall_severity, defect_scores/defect_severities. Alle
+        Quellen mit 'crackle'-Substring werden geprüft; das Maximum ≥ 0.40
+        wird als self._crackle_severity_denker für den späteren Skip-Check
+        gespeichert. Deterministisch (§G5 (copilot-instructions.md)),
+        nicht blockierend, fail-open.
+        """
+        try:
+            _dict = defekt_hint if isinstance(defekt_hint, dict) else None
+            _c6_sev = 0.0
+            # primary: Dict-Form (primary / primary_defect) ODER Objekt-Form
+            # (DefektBericht.primary_cause / DefektErgebnis.primary_defect)
+            _prim = ""
+            for _pk in ("primary", "primary_cause", "primary_defect"):
+                _pv = (_dict or {}).get(_pk) if _dict is not None else getattr(defekt_hint, _pk, None)
+                if _pv:
+                    _prim = str(_pv).lower()
+                    break
+            if "crackle" in _prim:
+                for _fk in ("severity", "overall_severity"):
+                    _fv = (_dict or {}).get(_fk) if _dict is not None else getattr(defekt_hint, _fk, None)
+                    if _fv is not None:
+                        try:
+                            _c6_sev = max(_c6_sev, float(_fv or 0.0))
+                        except Exception as _fk_exc:
+                            logger.debug("§SR-CG6 Severity-Wert ungueltig: %s", _fk_exc)
+            # defect_scores: Dict-Sub-Key ODER Objekt-Attribut
+            _ds6 = (
+                (_dict or {}).get("defect_scores") if _dict is not None else getattr(defekt_hint, "defect_scores", None)
+            )
+            if _ds6 is None and _dict is not None:
+                _ds6 = _dict.get("defect_severities")
+            if isinstance(_ds6, dict):
+                for _k6, _v6 in _ds6.items():
+                    _kn6 = _k6.value if hasattr(_k6, "value") else str(_k6)
+                    if "crackle" in _kn6.lower():
+                        try:
+                            _c6_sev = max(_c6_sev, float(getattr(_v6, "severity", _v6) or 0.0))
+                        except Exception as _k6_exc:
+                            logger.debug("§SR-CG6 defect_scores-Wert ungueltig: %s", _k6_exc)
+            # Detektions-Floor statt willkürlicher Schwelle: Auch wenig
+            # Knistern ist unerwünscht (Nutzerbefund) — gespeichert wird jede
+            # Scanner/Denker-Detektion ≥ DEFECT_PRESENCE_FLOOR; die Stärke
+            # regelt der zentrale Kalibrator.
+            from backend.core.defect_scanner import DEFECT_PRESENCE_FLOOR as _DPF
+
+            if _c6_sev >= _DPF:
+                self._crackle_severity_denker = _c6_sev
+        except Exception as _c6_store_exc:
+            logger.debug("§SR-CG6 Severity-Speicherung nicht blockierend: %s", _c6_store_exc)
+
     def _should_skip_resolved_phase(self, phase_id: str) -> bool:
         """§v10.24: Prüft ob eine Phase wegen resolved_defects übersprungen werden kann.
 
@@ -44759,11 +44827,13 @@ class UnifiedRestorerV3:
                 def _sev_from(x: Any) -> float:
                     try:
                         return float(getattr(x, "severity", 0.0) or 0.0)
-                    except Exception:
+                    except Exception as _svf_exc:
+                        logger.debug("§SR-CG6 Severity-Konvertierung fehlgeschlagen: %s", _svf_exc)
                         return 0.0
 
                 _c28 = _p28_scores.get(_DT28.CRACKLE) or _p28_scores.get("crackle")
-                _sev28 = _sev_from(_c28) if _c28 is not None else 0.0
+                _sev28 = float(getattr(self, "_crackle_severity_denker", 0.0) or 0.0)
+                _sev28 = max(_sev28, _sev_from(_c28) if _c28 is not None else 0.0)
                 if _sev28 < 0.40:
                     # Composite-Keys (z.B. "vinyl_crackle") und Kontext-Hints
                     # prüfen — der DefektDenker meldet die Severity unter dem
@@ -44781,10 +44851,13 @@ class UnifiedRestorerV3:
             except Exception as _c28_exc:
                 logger.debug("§SR-CG6 Crackle-Severity nicht verfuegbar: %s", _c28_exc)
                 _sev28 = 0.0
-            if _sev28 >= 0.40:
+            from backend.core.defect_scanner import DEFECT_PRESENCE_FLOOR as _DPF28
+
+            if _sev28 >= _DPF28:
                 logger.info(
-                    "§SR-CG6 Verarbeitungsschritt_28 nie skippen: Scanner-Knistern-Severity %.2f >= 0.40",
+                    "§SR-CG6 Verarbeitungsschritt_28 nie skippen: Scanner-Knistern-Severity %.2f >= %.2f",
                     _sev28,
+                    float(_DPF28),
                 )
                 return False
         acc = getattr(self, "_resolved_defects_accumulator", None)
@@ -45380,11 +45453,20 @@ class UnifiedRestorerV3:
         _report: dict[str, Any] = {"rounds": 0, "summary": "", "residual": {}}
         if self.is_studio_mode():
             return audio, _report
+        # Detektions-Floor (kein Audibility-Proxy): Rest-Knistern über der
+        # Scanner-Detektionsschwelle zählt — auch wenig Knistern ist
+        # unerwünscht (Nutzerbefund).
+        from backend.core.defect_scanner import DEFECT_PRESENCE_FLOOR as _DPF_CG8
+
+        _threshold = float(_DPF_CG8)
         _pre = dict(getattr(self, "_defect_result_scores", {}) or {})
         _rctx8 = getattr(self, "_restoration_context", {}) or {}
         _hint8 = _rctx8.get("defect_severities") or {}
         if isinstance(_hint8, dict):
             _pre.update(_hint8)
+        _denker8 = float(getattr(self, "_crackle_severity_denker", 0.0) or 0.0)
+        if _denker8 >= _threshold:
+            _pre.setdefault("crackle", _denker8)
         if not _pre:
             return audio, _report
         try:
@@ -45399,7 +45481,6 @@ class UnifiedRestorerV3:
         except Exception as _sc_exc:
             logger.debug("§SR-CG8 Scanner-Re-Scan nicht verfügbar: %s", _sc_exc)
             return audio, _report
-        _threshold = 0.40
         _targets: list[str] = []
         for _dt, _s in (_post.scores or {}).items():
             _key = _dt.value if hasattr(_dt, "value") else str(_dt)
@@ -45411,7 +45492,7 @@ class UnifiedRestorerV3:
                     if _key in _kn8:
                         _pre_s = _v8
                         break
-            if _pre_s is None or float(getattr(_pre_s, "severity", 0.0) or 0.0) < _threshold:
+            if _pre_s is None or float(getattr(_pre_s, "severity", _pre_s) or 0.0) < _threshold:
                 continue
             _res = float(getattr(_s, "severity", 0.0) or 0.0)
             _report["residual"][_key] = round(_res, 3)
