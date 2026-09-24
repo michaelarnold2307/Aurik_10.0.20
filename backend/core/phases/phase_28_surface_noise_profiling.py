@@ -326,7 +326,12 @@ class SurfaceNoiseProfiling(PhaseInterface):
                 float(_snr_28),
                 bool(_scanner_crackle28),
             )
-        else:
+
+        # §v10.754 (2026-09-09): Harmonisch-bewusste Floor-Schätzung als
+        # Pre-Stage — bei hoher Konsens-Konfidenz wird der systematische
+        # Rausch-Floor vor der OMLSA-Kette entfernt (Musikbins bleiben
+        # unangetastet). Sonst klassisch (Zwei-Pfad-Muster, §V7-Guard).
+        if not _skip_pre28:
             try:
                 from backend.core.dsp.harmonic_aware_noise_estimator import (
                     subtract_noise_floor as _ha_sub754,
@@ -335,25 +340,7 @@ class SurfaceNoiseProfiling(PhaseInterface):
                 audio = _ha_sub754(audio, sample_rate, over_subtraction_db=6.0)
                 logger.info("Verarbeitungsschritt 28: Harmonisch-bewusster Floor aktiv (§v10.754)")
             except Exception as _ha_exc:
-                logger.warning("§v10.754 Floor nicht verfügbar (unkritisch): %s", _ha_exc)
-        # §SR-CK3: Knistern-Fein-Declicker (Zeitbereich) — nach dem Ohr-Urteil
-        # vom 2026-09-24 standardmäßig DEAKTIVIERT: Die Interpolations-Reparatur
-        # ersetzt in den behandelten Regionen ~50 % der Musik-HF-Textur (gemessen:
-        # HP-RMS 0.0099 → 0.0049) — hörbare Lücken; das Original klang besser.
-        # Die Engine bleibt für A/B-Experimente über kwargs["srck3_enabled"]=True
-        # erreichbar; Reaktivierung erst nach bestandenem Hör-Nachweis.
-        if kwargs.get("srck3_enabled", False) and _scanner_crackle28 and _effective_strength > 0.0:
-            try:
-                from backend.core.dsp.crackle_declicker import declick_fine_crackle
-
-                audio = declick_fine_crackle(audio, sample_rate, strength=_effective_strength)
-                logger.info("Verarbeitungsschritt 28: §SR-CK3 Fein-Declicker aktiv (experimentell, Opt-in)")
-            except Exception as _ck_exc:
-                logger.warning("§SR-CK3 Fein-Declicker fehlgeschlagen (unkritisch): %s", _ck_exc)
-        elif _scanner_crackle28 and _effective_strength > 0.0:
-            logger.info(
-                "Verarbeitungsschritt 28: §SR-CK3 deaktiviert (Ohr-Urteil 2026-09-24: Gap-Artefakt, Original klang besser) — Opt-in: srck3_enabled"
-            )
+                logger.debug("Verarbeitungsschritt 28: Harmonisch-bewusster Floor nicht verfügbar: %s", _ha_exc)
 
         # §2.46f Natural-Performance-Artifacts-Guard — detect protected breath/vibrato zones before NR
         _npa_result_28 = None
