@@ -2300,6 +2300,7 @@ class DefectScanner:
             (DefectType.DIGITAL_ARTIFACTS, lambda: self._detect_digital_artifacts(audio_mono)),
             (DefectType.LOW_FREQ_RUMBLE, lambda: self._detect_low_freq_rumble(audio_mono)),
             (DefectType.HIGH_FREQ_NOISE, lambda: self._detect_high_freq_noise(audio_mono)),
+            (DefectType.HISS, lambda: self._detect_hiss(audio_mono)),
             (DefectType.COMPRESSION_ARTIFACTS, lambda: self._detect_compression_artifacts(audio_mono)),
             (
                 DefectType.PHASE_ISSUES,
@@ -5301,6 +5302,37 @@ class DefectScanner:
             metadata={"rumble_ratio": rumble_ratio},
         )
 
+    def _detect_hiss(self, audio: np.ndarray) -> DefectScore:
+        """Erkennt Tape-Hiss (breitbandig, stationaer, material-gebunden).
+
+        Abgrenzung (Spec 06 §7.2d): HISS ist der Band-spezifische Typ —
+        breitbandiges, stationaeres Rauschen mit HF-Charakter; HIGH_FREQ_NOISE
+        bleibt der generische Typ. phase_29 (Tape-Hiss-Reduktion) wird ueber
+        diese Messung erreichbar (vorher: Energie lief nur in high_freq_noise).
+        """
+        n = len(audio)
+        if n < self.sample_rate * 2:
+            return DefectScore(DefectType.HISS, 0.0, 0.3)
+        _mat = str(getattr(getattr(self, "material_type", None), "value", "") or "").lower()
+        if _mat not in {"tape", "reel_tape", "cassette"}:
+            return DefectScore(DefectType.HISS, 0.0, 0.3)
+        _d = np.diff(audio.astype(np.float64))
+        _noise_level = float(np.std(_d) / np.sqrt(2.0))
+        _rms = float(np.sqrt(np.mean(audio.astype(np.float64) ** 2)) + 1e-12)
+        _hf_ratio = float(_noise_level / _rms)
+        _frame_len = max(1, int(0.050 * self.sample_rate))
+        _hop = max(1, _frame_len // 2)
+        _n_frames = max(1, (n - _frame_len) // _hop)
+        _env = np.array(
+            [float(np.sqrt(np.mean(audio[i * _hop : i * _hop + _frame_len] ** 2) + 1e-12)) for i in range(_n_frames)]
+        )
+        _stat = float(1.0 - min(1.0, float(np.std(_env) / (np.mean(_env) + 1e-12))))
+        _severity = float(np.clip(_hf_ratio * 2.0 * (0.5 + 0.5 * _stat), 0.0, 1.0))
+        if _hf_ratio < 0.5 or _stat < 0.5:
+            _severity = 0.0
+        _confidence = float(np.clip(0.5 + 0.3 * _stat, 0.3, 0.9))
+        return DefectScore(DefectType.HISS, _severity, _confidence)
+
     def _detect_high_freq_noise(self, audio: np.ndarray) -> DefectScore:
         """Erkennt High-Frequency Noise (> 8 kHz, z.B. Tape-Hiss)."""
         # High-Pass Filter
@@ -6683,13 +6715,27 @@ class DefectScanner:
                 # Low ENOB → low dynamic SNR. 16-bit ≈ 96 dB, 8-bit ≈ 48 dB
                 snr_indicator = float(np.clip((80.0 - dynamic_snr_db) / 40.0, 0.0, 1.0))
 
+        # Tonalitaets-Guard (Anti-FP, Nacht-Befund): Ein stark tonaler Inhalt
+        # (Dominanz eines einzelnen Bins) ist kein Quantisierungsrauschen — die
+        # Fill-Ratio- und Step-Size-Signaturen entstehen dann aus der Signalform
+        # (Sinushistogramm ist U-foermig), nicht aus LSB-Stufen.
+        _tonal_discount = 1.0
+        if len(audio_norm) >= 4096:
+            _seg = audio_norm[:4096] * np.hanning(4096)
+            _spec = np.abs(np.fft.rfft(_seg)) ** 2
+            _dominance = float(np.max(_spec) / (np.sum(_spec) + 1e-20))
+            if _dominance > 0.6:
+                _tonal_discount = 0.0
+            elif _dominance > 0.3:
+                _tonal_discount = float((0.6 - _dominance) / 0.3)
+
         # --- Combined severity ---
         # ENOB < 12 → noticeable; < 10 → severe; < 8 → extreme
         sev_enob = float(np.clip((14.0 - enob) / 6.0, 0.0, 1.0))
         sev_fill = float(np.clip((0.5 - fill_ratio) * 2.0, 0.0, 1.0))
         sev_flat = spectral_flatness_quiet * granularity  # both high = characteristic
 
-        raw_severity = 0.35 * sev_enob + 0.25 * sev_fill + 0.20 * sev_flat + 0.20 * snr_indicator
+        raw_severity = _tonal_discount * (0.35 * sev_enob + 0.25 * sev_fill + 0.20 * sev_flat + 0.20 * snr_indicator)
 
         threshold = self.thresholds.get(DefectType.QUANTIZATION_NOISE, 0.6)
         if raw_severity < threshold * 0.4:
@@ -8838,8 +8884,11 @@ class DefectScanner:
         if n < sr * 2:
             return DefectScore(DefectType.MODULATION_NOISE, 0.0, 0.3)
         try:
-            # Short-time RMS envelope (10 ms frames, 5 ms hop)
-            frame_len = max(1, int(0.010 * sr))
+            # Short-time RMS envelope (2 ms frames, 1 ms hop) — kurzer als die
+            # halbe Periode tiefer Toene, damit die Huellkurven-Modulation
+            # ZWISCHEN Frames sichtbar wird (10 ms mittelte leise und laute
+            # Frames gleich — Nacht-Befund: ratio 1,05).
+            frame_len = max(1, int(0.002 * sr))
             hop = max(1, frame_len // 2)
             n_frames = max(1, (n - frame_len) // hop)
             if n_frames < 10:
@@ -8850,21 +8899,35 @@ class DefectScanner:
                 shape=(n_frames, frame_len),
                 strides=(audio.strides[0] * hop, audio.strides[0]),
             ).copy()
-            rms_env = np.sqrt(np.mean(frames**2, axis=1) + 1e-12)
+            peak_env = np.max(np.abs(frames), axis=1) + 1e-12
 
-            # Noise estimate: difference between adjacent frames (stationarity assumption)
-            noise_var = np.abs(np.diff(rms_env))
-            signal_env = rms_env[:-1]
+            # Rauschpegel je Frame: Kurzzeit-Differenz-Streuung (hochpass-artig).
+            # Modulation noise = Rauschpegel folgt dem Signalpegel (Esquef &
+            # Biscainho 2006); Huellkurven-Fluktuation |diff(rms_env)| war das
+            # falsche Mass — echtes Mod-Rauschen hat eine glatte Huellkurve
+            # (Nacht-Befund: 0,000 auf synthetischem Mod-Rauschen).
+            # Rauschpegel je Frame aus dem Hochpass-Band (>= 2 kHz): Dort lebt
+            # breitbandiges Rauschen, der tiefe Signalanteil (Ton) verschwindet.
+            # Residuum-Ansatz scheiterte am Kruemmungsfehler tiefer Toene
+            # (Nacht-Befund: corr -0,98 auf 220-Hz-Ton + Mod-Rauschen).
+            _hp_sos = signal.butter(4, 2000, btype="high", fs=sr, output="sos")
+            _audio_hp = signal.sosfilt(_hp_sos, audio)
+            _frames_hp = np.lib.stride_tricks.as_strided(
+                _audio_hp,
+                shape=(n_frames, frame_len),
+                strides=(_audio_hp.strides[0] * hop, _audio_hp.strides[0]),
+            ).copy()
+            noise_frame = np.std(_frames_hp, axis=1)
+            signal_env = peak_env
 
-            # Only consider frames where signal is above noise floor
-            signal_threshold = float(np.percentile(rms_env, 20))
+            signal_threshold = float(np.percentile(peak_env, 20))
             mask = signal_env > signal_threshold
             if np.sum(mask) < 20:
                 return DefectScore(DefectType.MODULATION_NOISE, 0.0, 0.4)
 
-            # Pearson correlation between signal level and noise variance (guarded dot-product)
+            # Pearson-Korrelation Rauschpegel <-> Signalpegel (guarded dot-product)
             _s = signal_env[mask].astype(float)
-            _n = noise_var[mask].astype(float)
+            _n = noise_frame[mask].astype(float)
             _s_c = _s - float(np.mean(_s))
             _n_c = _n - float(np.mean(_n))
             _ns = float(np.linalg.norm(_s_c))
@@ -8873,14 +8936,17 @@ class DefectScanner:
             if np.isnan(corr):
                 corr = 0.0
 
-            # Power ratio: noise variance relative to signal
-            mean_noise = float(np.mean(noise_var[mask]))
-            mean_signal = float(np.mean(signal_env[mask]))
-            ratio = mean_noise / (mean_signal + 1e-12)
+            # Flur-Verhaeltnis leise/laut: stationaeres Rauschen -> ~1,
+            # Mod-Rauschen -> deutlich >1 (Rauschflur waechst mit dem Signal).
+            _quiet_f = signal_env <= float(np.percentile(signal_env, 20))
+            _loud_f = signal_env >= float(np.percentile(signal_env, 80))
+            _fl_q = float(np.median(noise_frame[_quiet_f])) if _quiet_f.sum() > 4 else 0.0
+            _fl_l = float(np.median(noise_frame[_loud_f])) if _loud_f.sum() > 4 else 0.0
+            ratio = _fl_l / (_fl_q + 1e-12)
 
-            # Severity: high correlation AND significant ratio
-            raw_sev = float(np.clip(max(0.0, corr) * 1.5, 0.0, 1.0))
-            raw_sev *= float(np.clip(ratio * 10.0, 0.3, 1.5))
+            # Severity: hohe Korrelation UND deutliches Flur-Verhaeltnis
+            raw_sev = float(np.clip(max(0.0, corr) * 1.2, 0.0, 1.0))
+            raw_sev *= float(np.clip((ratio - 1.0) / 2.0, 0.0, 1.0))
             raw_sev = float(np.clip(raw_sev, 0.0, 1.0))
 
             threshold = self.thresholds.get(DefectType.MODULATION_NOISE, 0.5)
