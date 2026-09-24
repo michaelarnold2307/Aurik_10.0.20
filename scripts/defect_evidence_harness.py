@@ -60,6 +60,30 @@ def _broadband() -> np.ndarray:
     return _out
 
 
+def _fm_tone(mod_freq: float, depth_pct: float) -> np.ndarray:
+    """Ton mit Frequenzmodulation (Wow/Flutter-Synthese)."""
+    t = np.arange(SR * DUR) / SR
+    phase = 2 * np.pi * 220.0 * t + (depth_pct / 100.0) * (220.0 / mod_freq) * np.sin(2 * np.pi * mod_freq * t)
+    x = 0.2 * np.sin(phase)
+    _out: np.ndarray = np.stack([x, x], axis=1).astype(np.float32)
+    return _out
+
+
+def _wow() -> np.ndarray:
+    return _fm_tone(0.3, 0.5)  # 0,3 Hz, ±0,5 % (IEC 60386 Wow)
+
+
+def _flutter() -> np.ndarray:
+    return _fm_tone(6.0, 0.2)  # 6 Hz, ±0,2 % (IEC 60386 Flutter)
+
+
+def _speed_offset() -> np.ndarray:
+    t = np.arange(SR * DUR) / SR
+    x = 0.2 * np.sin(2 * np.pi * 220.0 * 1.004 * t)  # konstant +0,4 %
+    _out: np.ndarray = np.stack([x, x], axis=1).astype(np.float32)
+    return _out
+
+
 # ------------------------------------------------------------------ Familien
 # Jeder Fall: (Name, Generator, Material, {DefectType: (min, max)})
 CASES: dict[str, list[tuple[str, Callable[[], np.ndarray], MaterialType, dict[DefectType, tuple[float, float]]]]] = {
@@ -87,6 +111,32 @@ CASES: dict[str, list[tuple[str, Callable[[], np.ndarray], MaterialType, dict[De
             _broadband,
             MaterialType.TAPE,
             {DefectType.HIGH_FREQ_NOISE: (0.8, 1.0)},
+        ),
+    ],
+    "wow_flutter": [
+        (
+            "Wow (0,3 Hz FM ±0,5 %) wird erkannt",
+            _wow,
+            MaterialType.TAPE,
+            {DefectType.WOW: (0.3, 1.0)},
+        ),
+        (
+            "Flutter (6 Hz FM ±0,2 %) wird erkannt",
+            _flutter,
+            MaterialType.TAPE,
+            {DefectType.FLUTTER: (0.3, 1.0)},
+        ),
+        (
+            "Sauberer Ton loest kein wow/flutter aus",
+            _clean_tone,
+            MaterialType.TAPE,
+            {DefectType.WOW: (0.0, 0.2), DefectType.FLUTTER: (0.0, 0.2)},
+        ),
+        (
+            "Konstanter Speed-Offset wird als speed_calibration_error erkannt",
+            _speed_offset,
+            MaterialType.TAPE,
+            {DefectType.SPEED_CALIBRATION_ERROR: (0.3, 1.0)},
         ),
     ],
 }

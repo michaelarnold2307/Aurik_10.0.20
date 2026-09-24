@@ -4946,6 +4946,14 @@ class DefectScanner:
         flutter_power = float(np.sum(fft_c[flutter_mask])) if flutter_mask.any() else 0.0
         flutter_ratio = flutter_power / total_power
 
+        # Absolut-Gate (Nacht-Befund): Ein sauberer Ton hat ~null absolute
+        # Centroid-Modulation, aber der relative Ratio-Wert liefert ~1,0
+        # (das Modulationsspektrum von numerischem Rauschen liegt vollstaendig
+        # im Flutter-Band). Ohne Traeger-Modulationstiefe kein Flutter.
+        _mod_depth = float(np.std(centroid_norm))
+        if _mod_depth < 1e-4:
+            return DefectScore(DefectType.FLUTTER, 0.0, 0.9)
+
         # --- Sub-band analysis: identify dominant flutter source ---
         # Guide roller: 4-8 Hz; Capstan: 2-4 Hz; Tape resonance: 10-30 Hz
         sub_bands = {
