@@ -4928,6 +4928,32 @@ class DefectScanner:
             total_mag = float(np.sum(mag) + 1e-12)
             centroid_series[fi] = float(np.sum(freqs_stft * mag) / total_mag)
 
+        # Tonaler Zweig (Nacht-Befund): Die Centroid-Reihe eines reinen Tons
+        # jittert durch die Fenster-Phase (±20 %) und aliasiert ins Flutter-Band.
+        # Fuer stark tonale Signale wird die Pitch-Reihe (Zero-Crossing) verwendet
+        # — die ist fuer einen sauberen Ton konstant.
+        _tonal = False
+        if len(audio) >= 4096:
+            _seg = audio[:4096] * np.hanning(4096)
+            _spec = np.abs(np.fft.rfft(_seg)) ** 2
+            if float(np.max(_spec) / (np.sum(_spec) + 1e-20)) > 0.6:
+                _tonal = True
+        if _tonal:
+            # 100-ms-Kontext je Frame: ZC-Praezision ~1/sqrt(N) — 20 ms reichten
+            # nicht fuer ±0,2 % FM (Präzision ~0,5 %; Nacht-Befund).
+            _ctx = int(0.050 * self.sample_rate)
+            for fi in range(n_frames):
+                start = fi * hop
+                _lo = max(0, start - _ctx)
+                _hi = min(n, start + win_len + _ctx)
+                seg = audio[_lo:_hi]
+                _zc = np.where(np.diff(np.signbit(seg)))[0]
+                if len(_zc) >= 2:
+                    _periods = np.diff(_zc) / self.sample_rate
+                    centroid_series[fi] = 1.0 / (2.0 * np.mean(_periods) + 1e-12)
+                else:
+                    centroid_series[fi] = 0.0
+
         # Normalize centroid to fractional deviation
         mean_c = float(np.mean(centroid_series) + 1e-6)
         centroid_norm = (centroid_series - mean_c) / mean_c
@@ -4945,6 +4971,14 @@ class DefectScanner:
         total_power = float(np.sum(fft_c[1:]) + 1e-12)
         flutter_power = float(np.sum(fft_c[flutter_mask])) if flutter_mask.any() else 0.0
         flutter_ratio = flutter_power / total_power
+
+        # Kohaerenz-Gate (Nacht-Befund): Echtes Flutter konzentriert seine
+        # Modulation auf wenige Bins; Zero-Crossing-/Fenster-Jitter ist weiss
+        # (Peak-Bin/Totaleistung ~0,002) und darf nicht als Flutter zaehlen.
+        _peak_mod = float(np.max(fft_c[flutter_mask])) if flutter_mask.any() else 0.0
+        _coherence = _peak_mod / (flutter_power + 1e-12)
+        if _coherence < 0.25:
+            return DefectScore(DefectType.FLUTTER, 0.0, 0.9)
 
         # Absolut-Gate (Nacht-Befund): Ein sauberer Ton hat ~null absolute
         # Centroid-Modulation, aber der relative Ratio-Wert liefert ~1,0
