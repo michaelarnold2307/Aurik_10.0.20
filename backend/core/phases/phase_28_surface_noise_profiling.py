@@ -326,12 +326,7 @@ class SurfaceNoiseProfiling(PhaseInterface):
                 float(_snr_28),
                 bool(_scanner_crackle28),
             )
-
-        # §v10.754 (2026-09-09): Harmonisch-bewusste Floor-Schätzung als
-        # Pre-Stage — bei hoher Konsens-Konfidenz wird der systematische
-        # Rausch-Floor vor der OMLSA-Kette entfernt (Musikbins bleiben
-        # unangetastet). Sonst klassisch (Zwei-Pfad-Muster, §V7-Guard).
-        if not _skip_pre28:
+        else:
             try:
                 from backend.core.dsp.harmonic_aware_noise_estimator import (
                     subtract_noise_floor as _ha_sub754,
@@ -340,7 +335,18 @@ class SurfaceNoiseProfiling(PhaseInterface):
                 audio = _ha_sub754(audio, sample_rate, over_subtraction_db=6.0)
                 logger.info("Verarbeitungsschritt 28: Harmonisch-bewusster Floor aktiv (§v10.754)")
             except Exception as _ha_exc:
-                logger.debug("Verarbeitungsschritt 28: Harmonisch-bewusster Floor nicht verfügbar: %s", _ha_exc)
+                logger.warning("§v10.754 Floor nicht verfügbar (unkritisch): %s", _ha_exc)
+        # §SR-CK3: Knistern-Fein-Declicker (Zeitbereich, SOTA) — läuft
+        # unabhängig vom Floor, sobald Knistern bestätigt ist (Denker/Scanner)
+        # und Stärke > 0.
+        if _scanner_crackle28 and _effective_strength > 0.0:
+            try:
+                from backend.core.dsp.crackle_declicker import declick_fine_crackle
+
+                audio = declick_fine_crackle(audio, sample_rate, strength=_effective_strength)
+                logger.info("Verarbeitungsschritt 28: §SR-CK3 Fein-Declicker aktiv (SOTA, Zeitbereich)")
+            except Exception as _ck_exc:
+                logger.warning("§SR-CK3 Fein-Declicker fehlgeschlagen (unkritisch): %s", _ck_exc)
 
         # §2.46f Natural-Performance-Artifacts-Guard — detect protected breath/vibrato zones before NR
         _npa_result_28 = None
