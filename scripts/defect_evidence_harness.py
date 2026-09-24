@@ -41,7 +41,9 @@ def _modulation_noise() -> np.ndarray:
     rng = np.random.default_rng(2)
     t = np.arange(SR * DUR) / SR
     tone = 0.2 * np.sin(2 * np.pi * 220.0 * t)
-    x = tone + rng.normal(0, 1.0, SR * DUR) * (np.abs(tone) + 0.05) * 0.02
+    # Modulationsindex ~10 (Basis 0,02): Rauschflur folgt dem Signal deutlich —
+    # mit Basis 0,05 war das Verhaeltnis nach Frame-RMS-Mittelung nur ~1,1.
+    x = tone + rng.normal(0, 1.0, SR * DUR) * (np.abs(tone) + 0.02) * 0.03
     _out: np.ndarray = np.stack([x, x], axis=1).astype(np.float32)
     return _out
 

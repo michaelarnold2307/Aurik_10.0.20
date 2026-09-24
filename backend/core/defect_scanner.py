@@ -4522,6 +4522,12 @@ class DefectScanner:
             wow_ratio_if = 0.0
 
         # --- Combine: max of both tracks ---
+        # Nacht-Befund (2026-09-24): Reines FM-Wow (±0,5 %, 0,3 Hz) liefert
+        # severity 0,272 — der RMS-Track dominiert (Fensterungs-AM der Synthese),
+        # der IF-Boost (0,8->1,8 getestet) blieb wirkungslos. Kalibrierung der
+        # Aktivierungs-Schwelle gehoert in die Pipeline (Phase-Mapper), nicht
+        # in den Detektor (Spec 03: Material-Confidence beeinflusst die Stärke,
+        # nicht die Selektion).
         wow_ratio = max(wow_ratio_rms, wow_ratio_if * 0.8)
 
         # --- Periodicity check (anti-FP): real WOW is quasi-periodic ---
