@@ -74,7 +74,7 @@ Der Orchestrator (`AurikDenker`) MUSS mit beiden Exzellenz-Schnittstellen kompat
 # D (32 dim): AM/FM-Modulation (8 Träger × 4 Statistiken)
 # E (44 dim): HPSS tonisch/perkussiv + Spektralkontrast
 
-embedding = embedder.embed(audio, sr)   # → AudioEmbedding
+embedding = embedder.embed(audio, sr)  # → AudioEmbedding
 sim = embedding.cosine_similarity(other)  # ∈ [-1, 1]
 # Invariante: ‖embedding.vector‖₂ = 1.0 (immer L2-normalisiert)
 ```
@@ -138,15 +138,15 @@ plan = reasoner.reason(defect_scores, material="tape", audio=audio, sr=sr)
 ```python
 PARAMETER_SPACE: Dict[str, Tuple[float, float, str]] = {
     "noise_reduction_strength": (0.05, 0.95, "float"),
-    "harmonic_boost_db":        (0.0,  6.0,  "float"),
-    "ola_crossfade_ms":         (5.0,  60.0, "float"),
-    "compression_ratio":        (1.05, 5.0,  "log"),
-    "eq_high_shelf_db":         (-6.0, 6.0,  "float"),
-    "ar_order":                 (16.0, 128.0,"int"),
-    "click_threshold_sigma":    (3.0,  8.0,  "float"),
-    "hpf_cutoff_hz":            (10.0, 120.0,"log"),
-    "nr_smoothing_ms":          (20.0, 200.0,"log"),
-    "declip_threshold":         (0.90, 0.99, "float"),
+    "harmonic_boost_db": (0.0, 6.0, "float"),
+    "ola_crossfade_ms": (5.0, 60.0, "float"),
+    "compression_ratio": (1.05, 5.0, "log"),
+    "eq_high_shelf_db": (-6.0, 6.0, "float"),
+    "ar_order": (16.0, 128.0, "int"),
+    "click_threshold_sigma": (3.0, 8.0, "float"),
+    "hpf_cutoff_hz": (10.0, 120.0, "log"),
+    "nr_smoothing_ms": (20.0, 200.0, "log"),
+    "declip_threshold": (0.90, 0.99, "float"),
 }
 # Gedächtnis-Persistenz: ~/.aurik/gp_memory/<material>.json
 # Ab v9.x.x: propose_pareto() (MOO, 14 Objectives) ersetzt propose() als primären Aufruf
@@ -156,10 +156,20 @@ PARAMETER_SPACE: Dict[str, Tuple[float, float, str]] = {
 
 ```python
 PARETO_OBJECTIVES = [
-    "brillanz", "waerme", "natuerlichkeit", "authentizitaet",
-    "emotionalitaet", "transparenz", "bass_kraft", "groove",
-    "spatial_depth", "tonal_center", "micro_dynamics",
-    "timbre_authentizitaet", "separation_fidelity", "artikulation",
+    "brillanz",
+    "waerme",
+    "natuerlichkeit",
+    "authentizitaet",
+    "emotionalitaet",
+    "transparenz",
+    "bass_kraft",
+    "groove",
+    "spatial_depth",
+    "tonal_center",
+    "micro_dynamics",
+    "timbre_authentizitaet",
+    "separation_fidelity",
+    "artikulation",
 ]
 # propose_pareto() → List[ParameterProposal] (max 5 Pareto-Kandidaten)
 ```
@@ -171,11 +181,11 @@ PARETO_OBJECTIVES = [
 ```python
 # VoiceGender-Enum:
 class VoiceGender:
-    MALE       # F₀ 85–180 Hz, De-Essing 5–10 kHz
-    FEMALE     # F₀ 165–255 Hz, De-Essing 6–12 kHz
-    CHILD      # F₀ 200–500 Hz, De-Essing 7–14 kHz
+    MALE  # F₀ 85–180 Hz, De-Essing 5–10 kHz
+    FEMALE  # F₀ 165–255 Hz, De-Essing 6–12 kHz
+    CHILD  # F₀ 200–500 Hz, De-Essing 7–14 kHz
     ANDROGYNOUS  # auto-detect
-    UNKNOWN    # → FEMALE-Fallback
+    UNKNOWN  # → FEMALE-Fallback
 ```
 
 **Vocal-Restaurierungskette (Reihenfolge zwingend):**
@@ -222,11 +232,11 @@ es klanglich wichtigsten Einfluss hätte.
 # Implementierung in UV3 vor Phase-Aktivierung:
 vocal_prob = panns_result.get("Singing voice", 0.0)
 if vocal_prob >= 0.40:
-    vocal_strength_scale = 1.0        # Volle Aktivierung
+    vocal_strength_scale = 1.0  # Volle Aktivierung
 elif vocal_prob >= 0.35:
-    vocal_strength_scale = 0.5        # Soft-Aktivierung (50 % Strength)
+    vocal_strength_scale = 0.5  # Soft-Aktivierung (50 % Strength)
 else:
-    vocal_strength_scale = 0.0        # Keine Vocal-Phasen aktiviert
+    vocal_strength_scale = 0.0  # Keine Vocal-Phasen aktiviert
 # vocal_strength_scale wird als kwargs an phase_19/42/43/VocalAIEnhancement übergeben.
 ```
 
@@ -296,13 +306,13 @@ auch bei geladenem (aber für Schlager blindem) CLAP-Modell sicher.
 ```python
 SCHLAGER_RESTORATION_PROFILE: dict[str, object] = {
     "soft_saturation_preserve": True,
-    "tonal_center_threshold": 0.97,     # verschärft
+    "tonal_center_threshold": 0.97,  # verschärft
     "phase_21_exciter_enabled": False,
-    "groove_dtw_max_ms": 5.0,           # schärfer als Standard 8.0
+    "groove_dtw_max_ms": 5.0,  # schärfer als Standard 8.0
     "deessing_target_hz": 6500,
     "deessing_strength_cap": 0.45,
-    "brillanz_target": 0.82,            # warm, nicht crisp
-    "waerme_target": 0.88,              # erhöht
+    "brillanz_target": 0.82,  # warm, nicht crisp
+    "waerme_target": 0.88,  # erhöht
     "gp_memory_key": "schlager",
 }
 ```
@@ -389,10 +399,10 @@ würden ohne Kontextprüfung gleichwertig behandelt.
 ```python
 # Salsa (bpm > 150): heller Blechblas-Spectral-Content erwartet
 if bpm > 150 and centroid_hz > 2200:
-    score += 0.25   # Salsa / Merengue Blechbläser
+    score += 0.25  # Salsa / Merengue Blechbläser
 # Bossa nova / Cumbia (bpm <= 150): dunkleres Streifen-Spektrum
 elif bpm <= 150 and 1800 < centroid_hz < 2500:
-    score += 0.25   # Bossa nova / Cumbia
+    score += 0.25  # Bossa nova / Cumbia
 # centroid >= 2500 bei bpm <= 150 → marginal; Rock-Gebiet
 elif bpm <= 150 and centroid_hz >= 2500:
     score += 0.05
@@ -422,9 +432,20 @@ zum offenen-Set kollabieren lassen.
 
 ```python
 # Pflicht-Pattern für Isolation-Tests:
-for _method in ("_score_pop", "_score_blues", "_score_soul_rnb", "_score_country",
-                "_score_folk", "_score_funk", "_score_electronic", "_score_hiphop",
-                "_score_metal", "_score_latin", "_score_gospel", "_score_reggae"):
+for _method in (
+    "_score_pop",
+    "_score_blues",
+    "_score_soul_rnb",
+    "_score_country",
+    "_score_folk",
+    "_score_funk",
+    "_score_electronic",
+    "_score_hiphop",
+    "_score_metal",
+    "_score_latin",
+    "_score_gospel",
+    "_score_reggae",
+):
     monkeypatch.setattr(clf, _method, lambda *_a, **_k: 0.10)
 ```
 
@@ -452,13 +473,13 @@ Jedes Genre-Profil wird NUR aktiviert wenn die zugehörige PANNs-Kategorie den S
 ```python
 DEFAULT_RESTORATION_PROFILE = {
     # Neutrale Werte — keine genre-spezifischen Einschränkungen
-    "groove_dtw_max_ms": 8.0,          # Allgemein-tolerant (§8.2 Standard)
-    "tonal_center_threshold": 0.95,    # Standard-PMGG
+    "groove_dtw_max_ms": 8.0,  # Allgemein-tolerant (§8.2 Standard)
+    "tonal_center_threshold": 0.95,  # Standard-PMGG
     "harmonic_exciter_enabled": True,  # Kein Genre-Override
-    "dereverb_strength_cap": 0.70,     # Standard — nicht genre-eingeschränkt
-    "compression_ratio_cap": 3.0,      # Großzügig
-    "soft_saturation_preserve": False, # Kein pauschal geschütztes Sättigungs-Profil
-    "gp_memory_key": "default",        # Allgemeiner GP-Speicher
+    "dereverb_strength_cap": 0.70,  # Standard — nicht genre-eingeschränkt
+    "compression_ratio_cap": 3.0,  # Großzügig
+    "soft_saturation_preserve": False,  # Kein pauschal geschütztes Sättigungs-Profil
+    "gp_memory_key": "default",  # Allgemeiner GP-Speicher
     # Erkennt die 12 nicht-profilierten Genres (Pop, Blues, Soul/R&B, Country,
     # Folk, Funk, Electronic, Hip-Hop, Metal, Latin, Gospel, Reggae) und
     # nutzt deren gp_memory_key für genre-spezifische GP-Konvergenz —
@@ -484,12 +505,13 @@ Phasenplan anwenden. Genre-Profil hat Priorität über CausalDefectReasoner für
 if active_genre_profile:
     for key, val in active_genre_profile.items():
         if key.endswith("_enabled") and val is False:
-            phase_id = key.replace("_enabled", "")   # z. B. "phase_20_dereverb"
+            phase_id = key.replace("_enabled", "")  # z. B. "phase_20_dereverb"
             if phase_id in planned_phases:
                 planned_phases.remove(phase_id)
                 logger.info(
                     "genre_profile_override: phase=%s disabled by genre=%s",
-                    phase_id, active_genre_profile["gp_memory_key"]
+                    phase_id,
+                    active_genre_profile["gp_memory_key"],
                 )
 ```
 
@@ -501,17 +523,17 @@ Override aufheben (kein automatischer Bypass).
 
 ```python
 JAZZ_RESTORATION_PROFILE = {
-    "groove_dtw_max_ms": 4.0,      # Jazz-Timing heilig
-    "tonal_center_threshold": 0.92, # PMGG-intern (phase-level Regression Guard) — KEIN Export-Gate-Override!
-                                    # Musikalisch korrekt für Jazz: Blue Notes (♭3/♭5/♭7), Tritond-Substitution,
-                                    # modale Harmonik und chromatische Stimmführung lösen K-S-Detektions-
-                                    # änderungen aus, die KEINE echten Regressionen sind.
-                                    # INVARIANTE: MusicalGoalsChecker erzwingt immer Restoration ≥ 0.95 /
-                                    #   Studio 2026 ≥ 0.97 — dieser Wert (0.92) begrenzt NUR den
-                                    #   PMGG-Retry-Auslöser während der Phasenausführung.
+    "groove_dtw_max_ms": 4.0,  # Jazz-Timing heilig
+    "tonal_center_threshold": 0.92,  # PMGG-intern (phase-level Regression Guard) — KEIN Export-Gate-Override!
+    # Musikalisch korrekt für Jazz: Blue Notes (♭3/♭5/♭7), Tritond-Substitution,
+    # modale Harmonik und chromatische Stimmführung lösen K-S-Detektions-
+    # änderungen aus, die KEINE echten Regressionen sind.
+    # INVARIANTE: MusicalGoalsChecker erzwingt immer Restoration ≥ 0.95 /
+    #   Studio 2026 ≥ 0.97 — dieser Wert (0.92) begrenzt NUR den
+    #   PMGG-Retry-Auslöser während der Phasenausführung.
     "harmonic_exciter_enabled": False,
     "dereverb_strength_cap": 0.30,
-    "compression_ratio_cap": 1.8,   # Jazz lebt von Dynamik
+    "compression_ratio_cap": 1.8,  # Jazz lebt von Dynamik
     "gp_memory_key": "jazz",
 }
 
@@ -548,10 +570,11 @@ OPER_RESTORATION_PROFILE = {
 ## §2.27 TransientDecoupledProcessing (TDP)
 
 ```python
-HPSS_HARMONIC_KERNEL: int = 17    # Frames (Frequenzachse) — v10.0.0, Fitzgerald 2010
+HPSS_HARMONIC_KERNEL: int = 17  # Frames (Frequenzachse) — v10.0.0, Fitzgerald 2010
 HPSS_PERCUSSIVE_KERNEL: int = 13  # Frames (Zeitachse) — v10.0.0, perkussive Schärfe
 PERCUSSIVE_ONLY_PHASES: list[str] = [
-    "phase_01_click_removal", "phase_27_click_pop_removal",
+    "phase_01_click_removal",
+    "phase_27_click_pop_removal",
 ]
 # Rekombination: audio_out = audio_p_processed + audio_h_processed
 # via OLA-Crossfade (Hanning 480 Samples = 10 ms @ 48 kHz, Hop = 240 Samples)
@@ -566,8 +589,8 @@ PERCUSSIVE_ONLY_PHASES: list[str] = [
 ## §2.28 HarmonicPreservationGuard (HPG)
 
 ```python
-G_FLOOR_HARMONIC: float = 0.85   # Protected bins (an f₀-Partials)
-G_FLOOR_DEFAULT:  float = 0.10   # Alle anderen Bins
+G_FLOOR_HARMONIC: float = 0.85  # Protected bins (an f₀-Partials)
+G_FLOOR_DEFAULT: float = 0.10  # Alle anderen Bins
 MAX_GAIN_CORRECTION: float = 2.0  # Niemals mehr als ×2 anheben
 VOICING_CONFIDENCE_MIN: float = 0.60
 
@@ -583,15 +606,15 @@ VOICING_CONFIDENCE_MIN: float = 0.60
 ## §2.30 MicroDynamicsEnvelopeMorphing (MDEM)
 
 ```python
-MAX_GAIN_LU_RESTORATION: float = 4.0   # Restoration-Modus: ±4.0 LU (konservativ, Originalcharakter)
-MAX_GAIN_LU_STUDIO:      float = 6.0   # Studio-2026-Modus: ±6.0 LU (modern, stärker, frischer)
+MAX_GAIN_LU_RESTORATION: float = 4.0  # Restoration-Modus: ±4.0 LU (konservativ, Originalcharakter)
+MAX_GAIN_LU_STUDIO: float = 6.0  # Studio-2026-Modus: ±6.0 LU (modern, stärker, frischer)
 # Normative Quelle: copilot-instructions §8.3 + Spec 07 §8.3 Zwei-Skalen-Dynamik-Schutz.
 # VERBOTEN: einheitliches MAX_GAIN_LU = 3.0 / 2.0 LU — ignoriert die bewusste
 #   Modus-Differenzierung (Studio 2026 soll mehr Dynamik-Spielraum als Restoration haben).
-FRAME_SIZE_SAMPLES: int = 19200   # 400 ms @ 48000 Hz
-HOP_SIZE_SAMPLES: int = 9600      # 200 ms (50 % Überlappung)
+FRAME_SIZE_SAMPLES: int = 19200  # 400 ms @ 48000 Hz
+HOP_SIZE_SAMPLES: int = 9600  # 200 ms (50 % Überlappung)
 PEARSON_TARGET: float = 0.93
-MIN_LEVEL_LUFS: float = -60.0     # Stille-Segmente: G[k] = 0
+MIN_LEVEL_LUFS: float = -60.0  # Stille-Segmente: G[k] = 0
 
 # Position: NACH phase_47_truepeak_limiter, LETZTER Schritt vor Export
 # Glättung: Savitzky-Golay(G, window=7, polyorder=2)
@@ -621,14 +644,14 @@ Ende des LUFS-Morphings erfahren. `gain_envelope[…] = 1.0` ist ein impliziter 
 
 ```python
 DEFAULT_BANDS: tuple = (250.0, 4000.0)  # Low-Crossover, High-Crossover
-MAX_GAIN_DB: float = 6.0               # Maximale Gain-Anpassung pro Band
+MAX_GAIN_DB: float = 6.0  # Maximale Gain-Anpassung pro Band
 MIN_GAIN_DB: float = -6.0
-CROSSFADE_MS: float = 12.0             # Standard Cross-fade-Dauer
-LUFS_GATE_DB: float = -10.0            # ITU-R BS.1770-4 relativer Gate-Threshold
-ADAPTIVE_CONTEXT_MS: float = 50.0      # Kontext-Fenster für Envelope-Messung
-STEREO_DRIFT_THRESHOLD_DB: float = 0.3 # Max. L/R-Pegel-Drift
-MIN_PHASE_CORRELATION: float = 0.85    # Min. Inter-Channel-Korrelation
-TRANSIENT_RATIO_THRESHOLD: float = 4.0 # Onset-Detektion (Energie-Verhältnis)
+CROSSFADE_MS: float = 12.0  # Standard Cross-fade-Dauer
+LUFS_GATE_DB: float = -10.0  # ITU-R BS.1770-4 relativer Gate-Threshold
+ADAPTIVE_CONTEXT_MS: float = 50.0  # Kontext-Fenster für Envelope-Messung
+STEREO_DRIFT_THRESHOLD_DB: float = 0.3  # Max. L/R-Pegel-Drift
+MIN_PHASE_CORRELATION: float = 0.85  # Min. Inter-Channel-Korrelation
+TRANSIENT_RATIO_THRESHOLD: float = 4.0  # Onset-Detektion (Energie-Verhältnis)
 ```
 
 ### Architektur — Sechs Säulen
@@ -712,11 +735,11 @@ Verifiziert JEDE Defektreparatur: RMS/Peak vor/nach, Auto-Retry (max 3), Over-Re
 **Datei**: `backend/core/sibilance_max_repair.py`
 
 ```python
-FORMANT_PROTECT_BANDS: list = [(250,850),(850,2500),(2500,3500),(3500,4500)]  # F1-F4
-SIBILANCE_BANDS: list = [(5000,8000),(6000,10000),(7000,12000)]  # Gender-adaptiv
-MAX_ATTENUATION_DB: float = 12.0   # Maximale Sibilance-Reduktion
-MIN_STRENGTH: float = 0.3           # Minimal, nie komplett entfernen
-STEREO_SAFE: bool = True            # L/R unabhängig
+FORMANT_PROTECT_BANDS: list = [(250, 850), (850, 2500), (2500, 3500), (3500, 4500)]  # F1-F4
+SIBILANCE_BANDS: list = [(5000, 8000), (6000, 10000), (7000, 12000)]  # Gender-adaptiv
+MAX_ATTENUATION_DB: float = 12.0  # Maximale Sibilance-Reduktion
+MIN_STRENGTH: float = 0.3  # Minimal, nie komplett entfernen
+STEREO_SAFE: bool = True  # L/R unabhängig
 ```
 
 Koordiniert `phase_19_de_esser` (DSP v4.0) und `phase_43_ml_deesser` (Hybrid v2.2)
@@ -733,11 +756,11 @@ als präzises Team. Nach jeder De-Ess-Operation:
 **Datei**: `backend/core/vocal_clarity_max.py`
 
 ```python
-PRESENCE_BAND: tuple = (2000, 6000)   # Hz
-FORMANT_BOOST_MAX_DB: float = 1.5    # Max Formant-Anhebung
-BREATH_BAND: tuple = (8000, 12000)   # Atem-Bereich
-CONSONANT_BAND: tuple = (3000, 8000) # Konsonanten-Transienten
-VQI_TOLERANCE: float = 0.02          # Max VQI-Verlust
+PRESENCE_BAND: tuple = (2000, 6000)  # Hz
+FORMANT_BOOST_MAX_DB: float = 1.5  # Max Formant-Anhebung
+BREATH_BAND: tuple = (8000, 12000)  # Atem-Bereich
+CONSONANT_BAND: tuple = (3000, 8000)  # Konsonanten-Transienten
+VQI_TOLERANCE: float = 0.02  # Max VQI-Verlust
 ```
 
 5-stufige Pipeline nur auf Vocal-Material (PANNS > 0.25):
@@ -755,11 +778,11 @@ VQI_TOLERANCE: float = 0.02          # Max VQI-Verlust
 **Datei**: `backend/core/anti_muffling_pass.py`
 
 ```python
-MUFFLED_HF_RATIO: float = 0.08     # HF < 8% = dumpf
-MAX_HF_BOOST_DB: float = 3.0      # Nie mehr als +3 dB
-BRIGHTNESS_TARGET: float = 0.12   # Ziel-HF-Ratio
-OVER_BRIGHT_CEILING: float = 0.30 # HF > 30% = zu hell
-BLOCK_MS: int = 200               # Chirurgie-Blockgröße
+MUFFLED_HF_RATIO: float = 0.08  # HF < 8% = dumpf
+MAX_HF_BOOST_DB: float = 3.0  # Nie mehr als +3 dB
+BRIGHTNESS_TARGET: float = 0.12  # Ziel-HF-Ratio
+OVER_BRIGHT_CEILING: float = 0.30  # HF > 30% = zu hell
+BLOCK_MS: int = 200  # Chirurgie-Blockgröße
 ```
 
 Chirurgische Dumpfheit-Entfernung:
@@ -790,11 +813,11 @@ _finalize_klang_guards()
 **Datei**: `backend/core/aura_preserver.py`
 
 ```python
-AURA_DRIFT_THRESHOLD: float = 0.3    # Max 30% Drift = preserved
-WARMTH_DRIFT_MAX_DB: float = 3.0     # Max ±3 dB
-BRILLIANCE_DRIFT_MAX_DB: float = 3.0 # Max ±3 dB
-CREST_DRIFT_MAX_PCT: float = 20.0    # Max ±20%
-ERA_AUTHENTICITY_MIN: float = 0.70   # Min 70% Era-Match
+AURA_DRIFT_THRESHOLD: float = 0.3  # Max 30% Drift = preserved
+WARMTH_DRIFT_MAX_DB: float = 3.0  # Max ±3 dB
+BRILLIANCE_DRIFT_MAX_DB: float = 3.0  # Max ±3 dB
+CREST_DRIFT_MAX_PCT: float = 20.0  # Max ±20%
+ERA_AUTHENTICITY_MIN: float = 0.70  # Min 70% Era-Match
 ```
 
 Ein Aura-Fingerabdruck wird zu Beginn jeder Restauration genommen.
@@ -825,13 +848,13 @@ fließt in den finalen Qualitätsreport ein.
 
 ```python
 _VOCAL_GATE_MATERIAL_FLOOR = {
-    "cassette":      0.55,  # Defekte + Gesang untrennbar → höhere Toleranz
-    "tape":          0.55,
-    "reel_tape":     0.50,
-    "vinyl":         0.45,  # Oberflächengeräusche → mittlere Toleranz
-    "shellac":       0.45,
-    "wax_cylinder":  0.50,
-    "wire_recording":0.50,
+    "cassette": 0.55,  # Defekte + Gesang untrennbar → höhere Toleranz
+    "tape": 0.55,
+    "reel_tape": 0.50,
+    "vinyl": 0.45,  # Oberflächengeräusche → mittlere Toleranz
+    "shellac": 0.45,
+    "wax_cylinder": 0.50,
+    "wire_recording": 0.50,
 }
 ```
 
@@ -850,6 +873,29 @@ Für jeden erkannten Defekt:
 
 **Niemals einen erkannten Defekt unbehandelt lassen.** Wenn ein Defekt erkannt wird (Severity > 0), MUSS mindestens eine Reparatur-Phase laufen. Material-Confidence beeinflusst die Stärke, nicht die Selektion.
 
+### Knistern-Arten-Differenzierung (§SR-CK-Textur, v10.0.0, 2026-09-24)
+
+Der DefectScanner misst die Knistern-Signatur mit epistemischer Confidence
+(Fenster-Stabilitaet + sigma-Randabstand; Stereo-Gate: Event-L/R-Amplituden-
+korrelation, Rillenwand-Physik — Knistern dekorreliert, Musik-HF korreliert).
+Der DefectPhaseMapper routet Either-Or:
+
+- CLICKS (Impulsartige Einzelstoerungen) → phase_27_click_pop_removal
+  (phase_01_click_removal redundant, daher deaktiviert)
+- CRACKLE spaerlich → phase_09_crackle_removal
+- CRACKLE Textur (Hochdichte Impulsfolgen) → phase_67_crackle_texture_removal
+- Musik-dominierte HF (Stereo-Gate: Amp-Korr >= 0,4, stabil) → Severity 0 mit
+  hoher Confidence = KEIN erkannter Defekt. Kein Widerspruch zum Prinzip:
+  „erkannt" setzt messbares Wissen voraus — Do-no-harm statt ratendem Eingriff.
+
+Evidenzblock (Audio, 2026-09-24): Vogel der Nacht amp-corr −0,45 → CRACKLE
+severity 1,0 conf 0,90 (Ohr-Urteil ML-Route 9,0/10); Roxy Music amp-corr 0,91
+→ Severity 0 (Ohr-Urteil „kratzig" bei Eingriff → Scanner verhindert ihn jetzt);
+Waiting/Drowning 0,73 → Passthrough. 4/4 Ohr-Labels reproduziert.
+Seed: Synthese rng 7/31/42, Training torch.manual_seed(0). 95 %-CI: bei n=4
+Ohr-Labels nicht berechenbar — Kalibrierung an größerer gelabelter Stichprobe
+steht als Arbeitsauftrag (§Rausch-Audit, Spec 06 §7.2d).
+
 ---
 
 ## §2.26 RestorabilityEstimator
@@ -857,9 +903,9 @@ Für jeden erkannten Defekt:
 ```python
 SCORE_THRESHOLDS = {
     "excellent": 90.0,  # "Exzellent restaurierbar — fast wie Neuaufnahme erwartet."
-    "good": 70.0,       # "Gut restaurierbar — deutliche Verbesserung erwartet."
-    "fair": 50.0,       # "Mäßig restaurierbar — Restdefekte werden bleiben."
-    "poor": 30.0,       # "Schwierig restaurierbar — begrenzt."
+    "good": 70.0,  # "Gut restaurierbar — deutliche Verbesserung erwartet."
+    "fair": 50.0,  # "Mäßig restaurierbar — Restdefekte werden bleiben."
+    "poor": 30.0,  # "Schwierig restaurierbar — begrenzt."
 }
 # < 30: "Sehr schwer restaurierbar — das Material ist stark beschädigt."
 # Laufzeit ≤ 5 s (nur DSP-Schnellanalyse, kein ML)
@@ -876,20 +922,20 @@ SCORE_THRESHOLDS = {
 
 # ContentAwareProcessor — Salienz-Boosts (§8.3 Tiefen-Immersion, kanonisch):
 SALIENCY_BOOST = {
-    "fricative_stressed":   1.55,  # §8.3: fricative ×1.55
+    "fricative_stressed": 1.55,  # §8.3: fricative ×1.55
     "fricative_unstressed": 1.55,  # §8.3: fricative ×1.55
-    "vowel_stressed":       1.35,  # §8.3: vowel_stressed ×1.35
-    "vowel_unstressed":     1.0,
-    "plosive":              1.40,  # §8.3: plosive ×1.40
-    "silence":              0.70,  # §8.3: silence ×0.70
+    "vowel_stressed": 1.35,  # §8.3: vowel_stressed ×1.35
+    "vowel_unstressed": 1.0,
+    "plosive": 1.40,  # §8.3: plosive ×1.40
+    "silence": 0.70,  # §8.3: silence ×0.70
 }
 
 # LyricsGuidedTimeline — Shortcut L (Overlay an/aus)
 COLOR_MAP = {
-    "vowel_stressed":       "#4CAF50",
-    "fricative_stressed":   "#FF9800",
-    "plosive":              "#29B6F6",
-    "silence":              "#B0BEC5",
+    "vowel_stressed": "#4CAF50",
+    "fricative_stressed": "#FF9800",
+    "plosive": "#29B6F6",
+    "silence": "#B0BEC5",
 }
 # Datenschutz: Lyrics-Text NIEMALS geloggt, NIEMALS in RestorationResult.metadata
 ```
@@ -1023,6 +1069,7 @@ plugins/era_classifier_plugin.py     → EraClassifier (1890–2025)
 ```python
 try:
     import onnxruntime as ort
+
     session = ort.InferenceSession(model_path, providers=get_ort_providers("PluginName"))
 except (ImportError, FileNotFoundError):
     session = None  # DSP-Fallback aktiv
@@ -1036,7 +1083,7 @@ except (ImportError, FileNotFoundError):
 # 10 Sub-Denker koordinieren alle 29 Kernmodule:
 from denker import get_aurik_denker, restauriere
 
-denker = get_aurik_denker()                    # Singleton, Thread-sicher
+denker = get_aurik_denker()  # Singleton, Thread-sicher
 ergebnis = denker.restauriere_komplett(audio, sr=48_000)
 
 # Convenience-Wrapper:
@@ -1077,23 +1124,23 @@ RestaurierDenker (Stufe 8) — nutzt alle Caches + reconstruction_context
 ```python
 @dataclass
 class ReconstructionContext:
-    gaps_found: int               # Anzahl erkannter Lücken
-    gaps_repaired: int            # Anzahl erfolgreich gefüllter Lücken
-    total_repaired_ms: float      # Gesamte reparierte Zeitdauer
-    bandwidth_limited: bool       # True wenn BANDWIDTH_LOSS erkannt
+    gaps_found: int  # Anzahl erkannter Lücken
+    gaps_repaired: int  # Anzahl erfolgreich gefüllter Lücken
+    total_repaired_ms: float  # Gesamte reparierte Zeitdauer
+    bandwidth_limited: bool  # True wenn BANDWIDTH_LOSS erkannt
     estimated_original_bandwidth_hz: float  # Geschätzte Original-Bandbreite
-    reconstruction_quality: float # Qualität der Rekonstruktion [0, 1]
+    reconstruction_quality: float  # Qualität der Rekonstruktion [0, 1]
 ```
 
 ```python
 @dataclass
 class ReconstructionContext:
-    gaps_found: int               # Anzahl erkannter Lücken
-    gaps_repaired: int            # Anzahl erfolgreich gefüllter Lücken
-    total_repaired_ms: float      # Gesamte reparierte Zeitdauer
-    bandwidth_limited: bool       # True wenn BANDWIDTH_LOSS erkannt
+    gaps_found: int  # Anzahl erkannter Lücken
+    gaps_repaired: int  # Anzahl erfolgreich gefüllter Lücken
+    total_repaired_ms: float  # Gesamte reparierte Zeitdauer
+    bandwidth_limited: bool  # True wenn BANDWIDTH_LOSS erkannt
     estimated_original_bandwidth_hz: float  # Geschätzte Original-Bandbreite
-    reconstruction_quality: float # Qualität der Rekonstruktion [0, 1]
+    reconstruction_quality: float  # Qualität der Rekonstruktion [0, 1]
 ```
 
 **Invarianten**:

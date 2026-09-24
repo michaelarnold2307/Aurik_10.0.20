@@ -97,6 +97,11 @@ phase_64_tape_splice_repair.py       Tape-Splice-Reparatur
 phase_65_vocal_naturalness_restoration.py  DSP-Vocal-Naturalness-Restaurierung
                                     (HNR-Blend + Spektral-Tilt-Korrektur + Formant-Tilt-Korrektur;
                                      nur Restoration, §0a-konform; kein ML, kein Enhancement)
+phase_66_stem_targeted_nr.py        Stem-Targeted NR (stem-gezielte Rauschunterdrueckung)
+phase_67_crackle_texture_removal.py Knistern-Textur-Entfernung (ML, Route A, Bailey et al.
+                                    2019-Klasse; Kontext-Padding + Crossfade; Torch-ROCm primaer,
+                                    ONNX-CPU-Ersatzpfad §III.9) — nur fuer CRACKLE-Textur
+                                    (Either-Or-Routing Spec 03, Knistern-Arten-Differenzierung)
 ```
 
 **Phase-58-Datenvertrag (bindend ab v10.0.0):**
@@ -330,7 +335,7 @@ def _process_ms_domain(audio: np.ndarray, process_fn, side_strength: float = 0.0
 ```python
 def _compute_linked_gain(l_audio, r_audio, gain_fn) -> np.ndarray:
     """Gain-Kurve auf kombiniertem RMS berechnen; identisch auf L und R anwenden."""
-    combined_rms = np.sqrt((l_audio ** 2 + r_audio ** 2) / 2.0 + 1e-12)
+    combined_rms = np.sqrt((l_audio**2 + r_audio**2) / 2.0 + 1e-12)
     gain_curve = gain_fn(combined_rms)  # z.B. Gate-Öffnen, Kompressor-GR
     l_out = np.clip(l_audio * gain_curve, -1.0, 1.0)
     r_out = np.clip(r_audio * gain_curve, -1.0, 1.0)
@@ -400,6 +405,28 @@ for cause in detected_causes:
 - Cause-Phasen fügen kontextspezifische Reparatur hinzu (z. B. `vocal_harshness` → `phase_43`).
 - Duplikate werden durch die Vereinigung automatisch entfernt.
 - `GoalApplicabilityFilter` darf einzelne Phasen nachträglich deaktivieren (z. B. phase_48 bei Mono).
+
+### §7.2d Knistern-Arten-Routing + Rausch-Audit (v10.0.0, 2026-09-24)
+
+**Knistern (bindend):** Fuer CLICKS/CRACKLE gilt das Either-Or-Routing aus Spec 03
+(Knistern-Arten-Differenzierung) VOR der Union-Regel: CLICKS → phase_27;
+CRACKLE spaerlich → phase_09; CRACKLE Textur → phase_67; Musik-dominierte HF
+(Stereo-Gate, Amp-Korr >= 0,4 stabil) → Severity 0 = kein erkannter Defekt.
+Die Blanket-Eintraege (z. B. `vinyl_crackle: [09, 01, 28, 03]`) werden fuer den
+Knistern-Pfad durch dieses Routing ersetzt; die Union bleibt fuer alle anderen
+Causes unveraendert.
+
+**Rausch-Audit (Arbeitsauftrag, evidenz-basiert):** Audio-Evidenz 2026-09-24
+(Material=TAPE erzwungen): modulation_noise-Detektor meldet auf echtem
+Modulations-Rauschen severity 0,000 (blind); tape_hiss hat keinen Detektor
+(Energie wird als high_freq_noise=1,000 typisiert -> phase_29 ueber den Mess-Pfad
+unerreichbar); quantization_noise meldet auf reinem Ton 0,548 (False-Positive).
+Arbeitsauftrag: (1) tape_hiss-Detektor ergaenzen, (2) modulation_noise-Detektor
+mit Audio-Evidenz kalibrieren, (3) epistemische Confidence (Fenster-Stabilitaet +
+sigma-Randabstand) auf alle Rausch-Detektoren uebertragen, (4) phase_03's
+SNR-Skip-Pfade an Scanner-Konsultation binden (§SR-CG5-Muster). Seeds:
+Synthese rng 1/2/3; 95 %-CI: bei synthetischer Evidenz nicht sinnvoll —
+Kalibrierung an realer gelabelter Band-Stichprobe.
 
 ```python
 CAUSE_TO_PHASES = {
@@ -881,7 +908,7 @@ if abs(tilt_delta) > 1.5:
 ```python
 # Misst HNR Differenz pre_nr vs. post_nr:
 delta_hnr = compute_hnr(pre_nr_audio, sr) - compute_hnr(post_nr_audio, sr)
-if delta_hnr > 2.5:   # Mehr als 2.5 dB HNR-Verlust durch NR
+if delta_hnr > 2.5:  # Mehr als 2.5 dB HNR-Verlust durch NR
     blend = np.clip(delta_hnr / 10.0, 0.0, 0.35)  # Max 35 % Dry-Blend
     audio = (1.0 - blend) * audio + blend * pre_nr_audio
     # Kanonisch: apply_hnr_blend() aus §0p — NICHT neu implementieren
@@ -891,15 +918,14 @@ if delta_hnr > 2.5:   # Mehr als 2.5 dB HNR-Verlust durch NR
 
 ```python
 # LPC-Formant-Tracking vor/nach NR:
-formants_pre  = track_lpc_formants(pre_nr_audio, sr, order=16)
+formants_pre = track_lpc_formants(pre_nr_audio, sr, order=16)
 formants_post = track_lpc_formants(post_nr_audio, sr, order=16)
 for fn in range(4):
     delta_db = formants_post[fn].energy_db - formants_pre[fn].energy_db
     if abs(delta_db) > 1.5:
-        audio = apply_narrow_shelf(audio, sr,
-                                   center_hz=formants_post[fn].freq,
-                                   gain_db=np.clip(-delta_db, -2.5, +2.5),
-                                   q=6.0)
+        audio = apply_narrow_shelf(
+            audio, sr, center_hz=formants_post[fn].freq, gain_db=np.clip(-delta_db, -2.5, +2.5), q=6.0
+        )
 # Limit: max resolve_formant_tolerance_db(...) pro Formant — §0p Formant-Integrität-Guard bleibt aktiv
 ```
 
