@@ -336,17 +336,24 @@ class SurfaceNoiseProfiling(PhaseInterface):
                 logger.info("Verarbeitungsschritt 28: Harmonisch-bewusster Floor aktiv (§v10.754)")
             except Exception as _ha_exc:
                 logger.warning("§v10.754 Floor nicht verfügbar (unkritisch): %s", _ha_exc)
-        # §SR-CK3: Knistern-Fein-Declicker (Zeitbereich, SOTA) — läuft
-        # unabhängig vom Floor, sobald Knistern bestätigt ist (Denker/Scanner)
-        # und Stärke > 0.
-        if _scanner_crackle28 and _effective_strength > 0.0:
+        # §SR-CK3: Knistern-Fein-Declicker (Zeitbereich) — nach dem Ohr-Urteil
+        # vom 2026-09-24 standardmäßig DEAKTIVIERT: Die Interpolations-Reparatur
+        # ersetzt in den behandelten Regionen ~50 % der Musik-HF-Textur (gemessen:
+        # HP-RMS 0.0099 → 0.0049) — hörbare Lücken; das Original klang besser.
+        # Die Engine bleibt für A/B-Experimente über kwargs["srck3_enabled"]=True
+        # erreichbar; Reaktivierung erst nach bestandenem Hör-Nachweis.
+        if kwargs.get("srck3_enabled", False) and _scanner_crackle28 and _effective_strength > 0.0:
             try:
                 from backend.core.dsp.crackle_declicker import declick_fine_crackle
 
                 audio = declick_fine_crackle(audio, sample_rate, strength=_effective_strength)
-                logger.info("Verarbeitungsschritt 28: §SR-CK3 Fein-Declicker aktiv (SOTA, Zeitbereich)")
+                logger.info("Verarbeitungsschritt 28: §SR-CK3 Fein-Declicker aktiv (experimentell, Opt-in)")
             except Exception as _ck_exc:
                 logger.warning("§SR-CK3 Fein-Declicker fehlgeschlagen (unkritisch): %s", _ck_exc)
+        elif _scanner_crackle28 and _effective_strength > 0.0:
+            logger.info(
+                "Verarbeitungsschritt 28: §SR-CK3 deaktiviert (Ohr-Urteil 2026-09-24: Gap-Artefakt, Original klang besser) — Opt-in: srck3_enabled"
+            )
 
         # §2.46f Natural-Performance-Artifacts-Guard — detect protected breath/vibrato zones before NR
         _npa_result_28 = None
