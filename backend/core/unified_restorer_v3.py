@@ -44756,12 +44756,28 @@ class UnifiedRestorerV3:
             try:
                 from backend.core.defect_scanner import DefectType as _DT28
 
-                _c28 = _p28_scores.get(_DT28.CRACKLE, _p28_scores.get("crackle"))
-                _sev28 = float(getattr(_c28, "severity", 0.0) or 0.0)
+                def _sev_from(x: Any) -> float:
+                    try:
+                        return float(getattr(x, "severity", 0.0) or 0.0)
+                    except Exception:
+                        return 0.0
+
+                _c28 = _p28_scores.get(_DT28.CRACKLE) or _p28_scores.get("crackle")
+                _sev28 = _sev_from(_c28) if _c28 is not None else 0.0
                 if _sev28 < 0.40:
+                    # Composite-Keys (z.B. "vinyl_crackle") und Kontext-Hints
+                    # prüfen — der DefektDenker meldet die Severity unter dem
+                    # Material-Key, nicht unter "crackle" (Nutzerbefund Lauf 5).
                     _rctx28 = getattr(self, "_restoration_context", {}) or {}
-                    _hint28 = _rctx28.get("defect_severities") or {}
-                    _sev28 = max(_sev28, float(_hint28.get("crackle", _hint28.get("CRACKLE", 0.0)) or 0.0))
+                    _hint28a = _rctx28.get("defect_severities") or {}
+                    _hint28b = (getattr(self, "_active_defekt_hint", {}) or {}).get("defect_severities") or {}
+                    for _src28 in (_p28_scores, _hint28a, _hint28b):
+                        if not isinstance(_src28, dict):
+                            continue
+                        for _k28, _v28 in _src28.items():
+                            _kn28 = _k28.value if hasattr(_k28, "value") else str(_k28)
+                            if "crackle" in _kn28.lower():
+                                _sev28 = max(_sev28, _sev_from(_v28))
             except Exception as _c28_exc:
                 logger.debug("§SR-CG6 Crackle-Severity nicht verfuegbar: %s", _c28_exc)
                 _sev28 = 0.0
@@ -45364,7 +45380,11 @@ class UnifiedRestorerV3:
         _report: dict[str, Any] = {"rounds": 0, "summary": "", "residual": {}}
         if self.is_studio_mode():
             return audio, _report
-        _pre = getattr(self, "_defect_result_scores", {}) or {}
+        _pre = dict(getattr(self, "_defect_result_scores", {}) or {})
+        _rctx8 = getattr(self, "_restoration_context", {}) or {}
+        _hint8 = _rctx8.get("defect_severities") or {}
+        if isinstance(_hint8, dict):
+            _pre.update(_hint8)
         if not _pre:
             return audio, _report
         try:
@@ -45384,6 +45404,13 @@ class UnifiedRestorerV3:
         for _dt, _s in (_post.scores or {}).items():
             _key = _dt.value if hasattr(_dt, "value") else str(_dt)
             _pre_s = _pre.get(_dt) or _pre.get(_key)
+            if _pre_s is None:
+                # Composite-Keys (z.B. "vinyl_crackle") prüfen
+                for _k8, _v8 in _pre.items():
+                    _kn8 = _k8.value if hasattr(_k8, "value") else str(_k8)
+                    if _key in _kn8:
+                        _pre_s = _v8
+                        break
             if _pre_s is None or float(getattr(_pre_s, "severity", 0.0) or 0.0) < _threshold:
                 continue
             _res = float(getattr(_s, "severity", 0.0) or 0.0)
