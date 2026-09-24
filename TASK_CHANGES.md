@@ -1,6 +1,6 @@
 # TASK_CHANGES — Live-Ledger der aktuellen Aufgabe
 
-> Generiert von `scripts/change_ledger.py snapshot` (Base: `HEAD`, Stand: 2026-09-24 05:53 CEST).
+> Generiert von `scripts/change_ledger.py snapshot` (Base: `HEAD`, Stand: 2026-09-24 07:40 CEST).
 > CI (`ci-lite.yml` pr-evidence-gate) erzwingt Abdeckung: jede geänderte Code-Datei muss hier stehen.
 
 ## Geänderte Dateien
@@ -8,15 +8,14 @@
 | Status | Pfad | Art |
 |---|---|---|
 | M | .github/FILE_REGISTRY.md | modifiziert |
-| M | backend/core/phases/phase_28_surface_noise_profiling.py | modifiziert |
+| M | backend/core/dsp/crackle_declicker.py | modifiziert |
+| M | tests/unit/test_crackle_declicker.py | modifiziert |
 | ?? | Setupfile/DEBIAN_TEMPLATE/aurik | ungetrackt |
 | ?? | Setupfile/DEBIAN_TEMPLATE/aurik.desktop | ungetrackt |
 | ?? | Setupfile/DEBIAN_TEMPLATE/control | ungetrackt |
 | ?? | Setupfile/DEBIAN_TEMPLATE/postinst | ungetrackt |
 | ?? | Setupfile/DEBIAN_TEMPLATE/postrm | ungetrackt |
 | ?? | Setupfile/aurik_modelle_10.2.0.tar.zst | ungetrackt |
-| ?? | backend/core/dsp/crackle_declicker.py | ungetrackt |
-| ?? | tests/unit/test_crackle_declicker.py | ungetrackt |
 
 ## Entscheidungen
 

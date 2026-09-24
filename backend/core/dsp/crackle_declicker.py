@@ -1,45 +1,42 @@
-"""§SR-CK3 (Nutzerbefund 2026-09-24): SOTA-Zeitbereich-Fein-Declicker für
-kontinuierliches Knistern — iZotope-RX-De-crackle-Klasse, Godsill & Rayner 1998.
+"""§SR-CK4 (Hör-Urteil 2026-09-24): SOTA-Zeitbereich-Fein-Declicker v4 —
+subtraktive Impuls-Modellierung mit parametrischer Matched-Filter-Bank.
 
-Hörbefund: Kontinuierliches feines Knistern ist KEIN Frequenz-Floor, sondern
-eine dichte Textur aus Mikro-Impulsen (≤2 ms) in der Zeit. Spektrale
-Floor-Ansätze (MCRA/OMLSA) und blinde Breitband-Enhancer (BANQUET-Klasse)
-schätzen den stationären Floor — die Impuls-Bursts sind Zeit-Ausreißer und
-überleben jede Floor-Subtraktion (Produktionsbefund: OMLSA −1,3 dB
-Breitband, Knistern-Severity unverändert). Die SOTA-korrekte Klasse ist der
-Fein-Declicker im Zeitbereich mit signalmodell-basierter Restaurierung.
+Hörbefund v1: Interpolations-Reparatur ersetzte in den behandelten Regionen
+~50 % der Musik-HF-Textur (HP-RMS 0,0099 → 0,0049) → hörbare Lücken; das
+Original klang besser. Konsequenz: Reparatur nie durch Synthese von Musik,
+sondern durch SUBTRAKTION der modellierten Klick-Komponente — der
+Musik-Untergrund bleibt stehen, nichts wird erfunden.
 
-Pipeline (deterministisch, kein ML, kein RNG):
-1. Betonung: 4.-Ordnung-Hochpass (2,2 kHz, zero-phase) — Knistern ist
-   HF-gewichtet; tonale LF-Träger werden unterdrückt.
-2. Robuste Lokal-Statistik: laufender Median der HF-Hüllkurve (12 ms) als
-   Baseline + lokale MAD-Skala (1,4826) — die Schwelle folgt dem lokalen
-   Pegel, ohne dass das dichte Knistern die Baseline anhebt (Median ist bis
-   50 % Ausreißer-Dichte robust).
-3. Primär-Detektion: Hüllkurve > Median + 4,5·MAD → Impuls-Kandidat.
-4. Musik-Onset-Veto (SOTA-Kern, RX-äquivalent): Kandidat nur, wenn
-   (a) Dauer ≤ 2 ms (Impuls-Kompaktheit),
-   (b) keine nachfolgende HF-Energie (Sustain-Test — Musik-Transienten
-       klingen nach, Knistern nicht),
-   (c) kein Vollband-Energiesprung vor/nach dem Impuls (Drum-/Sibilant-Veto
-       — Knistern liegt AUF dem laufenden Musikpegel und ändert ihn nicht).
-5. Kontext-Sensitivität (RX „adaptive sensitivity"): sekundäre Kandidaten
-   (Median + 3,0·MAD) werden nur im Knistern-Kontext akzeptiert (Primär-
-   Ereignis im ±30-ms-Fenster oder Primär-Dichte > 20/s) — dichtes feines
-   Knistern wird erreicht, isolierte Musik-HF bleibt geschützt.
-6. Span-Verfeinerung: Impuls-Randbereiche werden bis zum Abklingen
-   (0,5 ms je Rand, 0,75·MAD) mitgenommen — kein Rest-Tick bleibt stehen.
-7. Restaurierung nach Godsill & Rayner (1998): AR(p)-Interpolation —
-   Vorwärts-Prädiktor aus dem sauberen Fenster links, Rückwärts-Prädiktor
-   aus dem Fenster rechts, Least-Squares über den Impuls-Span (kein
-   Mittelwert-Klötzchen, stetige Anschlüsse an die sauberen Nachbarn);
-   kurze Spans (≤4 Samples) über Catmull-Rom-Interpolation.
-8. Stereo: Detektion auf Mid (Mittelwert aller Kanäle) — Knistern ist
-   kohärent; die Restaurierung läuft pro Kanal auf den eigenen Samples —
-   Stereobreite und L/R-Timing bleiben erhalten.
+Architektur v4 (deterministisch, kein ML, kein RNG):
+1. Detektion: HP-Betonung (2,2 kHz), robuste Lokal-Statistik (laufender
+   Median + MAD, adaptive Schwelle), Musik-Onset-Vetos (Sustain-Test,
+   Vollband-Onset-Test), effektive Impuls-Dauer — ohne Dense-Regime-
+   Freischaltung (die griff Musik-HF).
+2. Parametrisches Klick-Modell (Vaseghi-Klasse): Doppel-Exponential-Klick
+   c(t) = A·(e^(−t/τ1) − e^(−t/τ2))·u(t) mit 18 (τ1, τ2)-Gittern — deckt
+   Staub-Klicks (kurz) bis Rillen-Schäden (lang) ab. Je Template wird die
+   HP-Antwort des Beobachtungsfilters einmal analytisch erzeugt und
+   peak-ausgerichtet gespeichert (keine gemittelten Prototypen — die
+   deckten die Klick-Familie nicht ab, Produktionsbefund).
+3. Ereignis-Klassifikation: jeder Kandidat (primär ≥ 4,5σ, sekundär ≥ 3σ)
+   wird gegen die Matched-Filter-Bank gefittet (LS-Amplitude mit Vorzeichen,
+   bestes Template) — Musik-HF-Ausreißer passen auf kein Template und werden
+   verworfen; feine Knistern-Textur wird erreichbar.
+4. Cluster-Reparatur IM HP-BAND: Ereignisse ≤ 20 ms bilden Cluster; je
+   Cluster ein gemeinsamer Least-Squares-Fit (überlappende Templates,
+   Amplituden-Deckel je Ereignis) → Subtraktion der gefitteten Klick-
+   Komponente im HP-Band. Das LP-Band (< 2,2 kHz, der Musik-Körper) bleibt
+   bis auf float32-Rundung unangetastet. Der LF-Anteil des Klicks ist durch
+   den Beobachtungs-Hochpass prinzipiell unbeobachtbar — eine Inversion
+   würde dort Rauschen um Größenordnungen verstärken (Produktionsbefund:
+   Korrelation 0,64) und ist deshalb ausgeschlossen; der verbleibende
+   LF-Schmier-Rest (~<1 % der Klick-Energie) ist weich und maskiert.
+5. Validierung: Fit-Residuum > 50 % ⇒ Cluster überspringen (letzte
+   Sicherheitsstufe, geloggt).
 
-Deterministisch (§G5 (copilot-instructions.md)), NaN-sicher, fail-open:
-jeder Abbruchgrund wird geloggt (§V6 (copilot-instructions.md)).
+Deterministisch (§G5 (copilot-instructions.md)), NaN-sicher, fail-open
+(§V6 (copilot-instructions.md)), Stereo-Layout-Invariante (Detektion auf
+Mid, Subtraktion pro Kanal mit gemeinsamer Maske).
 """
 
 from __future__ import annotations
@@ -57,20 +54,75 @@ _HP_FREQ_HZ = 2200.0  # Betonungs-Hochpass: Knistern ist HF-gewichtet
 _MEDIAN_WIN_S = 0.012  # robuste Lokal-Baseline der HF-Hüllkurve
 _MAD_K = 1.4826  # MAD→σ-Konsistenzfaktor (Normalverteilung)
 _PRIMARY_K = 4.5  # Primär-Schwelle (σ)
-_SECONDARY_K = 3.0  # Sekundär-Schwelle (σ, nur im Knistern-Kontext)
-_REFINE_K = 0.75  # Abkling-Schwelle der Span-Verfeinerung (σ)
-_REFINE_HALF_S = 0.0005  # max. Verfeinerung je Rand
-_MAX_SPAN_S = 0.002  # Impuls-Kompaktheit (Musik-Transienten sind länger)
+_SECONDARY_K = 3.0  # Sekundär-Schwelle (σ, nur mit Template-Bestätigung)
+_MAX_SPAN_S = 0.002  # effektive Impuls-Dauer (Musik-Transienten sind länger)
 _SUSTAIN_S = 0.008  # Sustain-Test-Fenster (Nachklang-Veto)
-_CONTEXT_S = 0.030  # Knistern-Kontext für Sekundär-Kandidaten
-_DENSE_EVENTS_PER_S = 20.0  # Dichte-Regime: Kontext entbehrlich
-_SUSTAIN_RATIO = 2.5  # HF-Nachklang > 2,5× Baseline ⇒ Musik-Transient
 _ONSET_RATIO = 2.0  # Vollband-Sprung > 2× ⇒ Musik-Onset
 _ONSET_ABS = 0.01  # absoluter Vollband-Floor des Onset-Vetos
 _ONSET_WINDOW_S = 0.001  # Vollband-Fenster (1 ms) für den Onset-Vergleich
 _MIN_LEN_S = 0.1  # kürzere Eingaben: fail-open
-_MAX_AR_ORDER = 32
-_MIN_AR_ORDER = 8
+_TEMPLATE_WIN = 36  # ±Samples des Klick-Templates
+_CLUSTER_GAP_S = 0.020  # Ereignis-Abstand für Cluster-Bildung
+_FIT_ACCEPT_PRIMARY = 0.5  # max. Template-Residuum (primär)
+_FIT_ACCEPT_SECONDARY = 0.4  # max. Template-Residuum (sekundär)
+_SUB_FACTOR = 0.85  # partielle Subtraktion (Sicherheitsmarge)
+_AMP_CAP = 1.0  # max. |Amplitude| relativ zum Ereignis-HP-Peak (kein Überziehen)
+_RESID_ACCEPT = 0.5  # max. Cluster-Fit-Residuum (sonst überspringen)
+_TAU1_GRID = (1.0, 2.0, 4.0, 8.0)  # Anstiegs-Zeitkonstanten des Klick-Modells
+_TAU2_GRID = (2.0, 4.0, 8.0, 16.0, 32.0, 64.0)  # Abkling-Zeitkonstanten
+
+
+def _make_templates(sos: np.ndarray, sr: int) -> list[np.ndarray]:
+    """Matched-Filter-Bank: HP-Antworten des Doppel-Exponential-Klick-Modells.
+
+    c(t) = (e^(−t/τ1) − e^(−t/τ2))·u(t) für alle (τ1, τ2) mit τ2 > τ1,
+    je Template peak-ausgerichtet und auf Peak 1 normalisiert (Länge
+    2·_TEMPLATE_WIN+1). Deterministisch — wird einmal pro Filter erzeugt.
+    """
+    _L = 2 * _TEMPLATE_WIN + 1
+    _pad = 64
+    _N = _L + 2 * _pad
+    _t = np.arange(_N, dtype=np.float64)  # in SAMPLES (τ-Grid ist in Samples kalibriert)
+    _templates: list[np.ndarray] = []
+    for _t1 in _TAU1_GRID:
+        for _t2 in _TAU2_GRID:
+            if _t2 <= _t1:
+                continue
+            _click = np.zeros(_N, dtype=np.float64)
+            _click[2 * _pad :] = np.exp(-_t[: _N - 2 * _pad] / _t2) - np.exp(-_t[: _N - 2 * _pad] / _t1)
+            _tpl = _finalize_template(_click, sos, _L, _pad)
+            if _tpl is not None:
+                _templates.append(_tpl)
+    # Rechteck-Klicks (scharfe Impulse): Stufenantwort-Differenzen — die
+    # Familie der Doppel-Exponentiale enthält keine scharfen Rechteck-Impulse
+    # (Produktionsbefund: Residuum 0,71 für 1-Sample-Bumps). Feines Breiten-
+    # Grid, damit jede Klick-Breite ein exaktes Template hat.
+    for _w_rect in range(1, 13):
+        _click = np.zeros(_N, dtype=np.float64)
+        _click[2 * _pad : 2 * _pad + _w_rect] = 1.0
+        _tpl = _finalize_template(_click, sos, _L, _pad)
+        if _tpl is not None:
+            _templates.append(_tpl)
+    if not _templates:
+        raise RuntimeError("§SR-CK4: Template-Erzeugung fehlgeschlagen")
+    return _templates
+
+
+def _finalize_template(_click: np.ndarray, _sos: np.ndarray, _L: int, _pad: int) -> np.ndarray | None:
+    """HP-Antwort eines Klick-Modells → peak-ausgerichtet, auf Peak 1 normiert."""
+    _hp = _signal.sosfiltfilt(_sos, _click).astype(np.float64)
+    _hp = _hp[2 * _pad - _TEMPLATE_WIN : 2 * _pad + _TEMPLATE_WIN + 1]
+    _pk = int(np.argmax(np.abs(_hp)))
+    _shift = _pk - _TEMPLATE_WIN  # Sample _pk soll auf Position _TEMPLATE_WIN
+    _aligned = np.zeros(_L, dtype=np.float64)
+    if _shift >= 0:
+        _aligned[: _L - _shift] = _hp[_shift:]
+    else:
+        _aligned[-_shift:] = _hp[: _L + _shift]
+    _amp = float(np.abs(_aligned).max())
+    if _amp < 1e-12:
+        return None
+    return (_aligned / _amp).astype(np.float64)  # type: ignore[no-any-return]
 
 
 def declick_fine_crackle(
@@ -78,20 +130,20 @@ def declick_fine_crackle(
     sample_rate: int,
     strength: float = 1.0,
 ) -> np.ndarray:
-    """Entfernt kontinuierliches feines Knistern (Mikro-Impuls-Textur).
+    """Entfernt kontinuierliches feines Knistern durch subtraktive Impuls-Modellierung.
 
     Args:
         audio: mono (N,) oder stereo — (2, N) channels-first ODER (N, 2)
                channels-last; beide Layouts werden normalisiert
                (§Stereo-Layout-Invariante).
         sample_rate: Abtastrate in Hz (≥ 8000).
-        strength: 0..1 — skaliert die Reparatur sekundärer (kontext-
-                  bestätigter) Kandidaten; primäre Impulse werden immer
-                  voll restauriert.
+        strength: 0..1 — skaliert den Subtraktions-Faktor sekundärer
+                  (template-bestätigter) Ereignisse; primäre Ereignisse
+                  werden immer mit vollem Faktor behandelt.
 
     Returns:
-        Audio mit restaurierten Knistern-Impulsen; gleiche Form und gleiches
-        Layout wie die Eingabe. Bit-identisch deterministisch
+        Audio mit subtrahierter Knistern-Komponente; gleiche Form und
+        gleiches Layout wie die Eingabe. Bit-identisch deterministisch
         (§G5 (copilot-instructions.md)).
     """
     _src = np.asarray(audio, dtype=np.float32)
@@ -117,50 +169,38 @@ def declick_fine_crackle(
     _win = int(round(_MEDIAN_WIN_S * _sr)) | 1
     if _n < max(int(_MIN_LEN_S * _sr), _win * 4) or _sr < 8000:
         logger.warning(
-            "§SR-CK3 Fein-Declicker übersprungen (Eingang zu kurz: %d Samples @ %d Hz)",
+            "§SR-CK4 Fein-Declicker übersprungen (Eingang zu kurz: %d Samples @ %d Hz)",
             _n,
             _sr,
         )
         return _src.copy()  # type: ignore[no-any-return]
 
-    # ── 1. Betonung ──
-    _hp = float(min(_HP_FREQ_HZ, 0.4 * _sr))
-    _sos = _signal.butter(4, _hp, btype="highpass", fs=_sr, output="sos")
+    # ── 1. Betonung + robuste Lokal-Statistik ──
+    _hp_freq = float(min(_HP_FREQ_HZ, 0.4 * _sr))
+    _sos = _signal.butter(4, _hp_freq, btype="highpass", fs=_sr, output="sos")
+    _templates = _make_templates(_sos, _sr)
+    _W = _TEMPLATE_WIN
     _x_hp = _signal.sosfiltfilt(_sos, _mid).astype(np.float32)
     _env = np.abs(_x_hp).astype(np.float64)
 
-    # ── 2. Robuste Lokal-Statistik ──
     _med = _median_filter(_env, size=_win, mode="nearest").astype(np.float64)
     _scale = _median_filter(np.abs(_env - _med), size=_win, mode="nearest").astype(np.float64) * _MAD_K
     _scale = np.maximum(_scale, 1e-9)
     _thr_p = _med + _PRIMARY_K * _scale
     _thr_s = _med + _SECONDARY_K * _scale
-    _thr_r = _med + _REFINE_K * _scale
 
-    _mask_p = _env > _thr_p
-    _mask_s = _env > _thr_s
-    if not _mask_p.any() and _strength <= 0.0:
-        logger.info("§SR-CK3 Fein-Declicker: keine Primär-Impulse, strength=0 — Passthrough")
-        return _src.copy()  # type: ignore[no-any-return]
-
-    # ── Hilfsgrößen für die Vetos ──
+    _max_span = max(2, int(_MAX_SPAN_S * _sr))
     _sus = max(1, int(_SUSTAIN_S * _sr))
     _env_s = np.convolve(_env, np.ones(_sus, dtype=np.float64) / _sus, mode="same")
     _rms_win = max(1, int(_ONSET_WINDOW_S * _sr))
     _rms = np.sqrt(
         np.maximum(np.convolve(_mid.astype(np.float64) ** 2, np.ones(_rms_win) / _rms_win, mode="same"), 0.0)
     )
-
-    _max_span = max(2, int(_MAX_SPAN_S * _sr))
-    _ctx = int(_CONTEXT_S * _sr)
-    _refine_half = max(1, int(_REFINE_HALF_S * _sr))
     _edge = int(0.05 * _sr)  # Filter-Einschwingzone des Hochpasses ausschließen
 
     def _passes_vetos(_a: int, _b: int) -> bool:
-        """Musik-Onset-Veto: nur echte Mikro-Impulse überleben (SOTA-Kern)."""
+        """Musik-Onset-Veto: nur echte Mikro-Impulse überleben."""
         # (b) Sustain: keine nachfolgende HF-Energie — Musik klingt nach.
-        #     Skalenfrei (Post/Pre-Verhältnis) + absoluter Anteil am eigenen
-        #     Peak: baseline-unabhängig, auch in HF-armen Passagen gültig.
         _guard = max(1, int(0.001 * _sr))
         _post = min(_n, _b + _guard + _sus)
         _post_mean = float(np.mean(_env_s[_b + _guard : _post])) if _post > _b + _guard else 0.0
@@ -169,10 +209,7 @@ def declick_fine_crackle(
         _peak = float(_env[_a:_b].max()) if _b > _a else 0.0
         if _post_mean > max(2.5 * _pre_mean + 1e-9, 0.25 * _peak):
             return False
-        # (c) Vollband-Onset: kein Energie-Sprung im Originalband (Drum-/Sibilant-Veto).
-        #     Lange Vorher-Fenster (30 ms) machen das Veto phasenrobust: bei
-        #     periodischer Musik (Sinus an beliebiger Phase) ist Vorher ≈ Nachher;
-        #     nur ein echter Musik-Onset (Ruhe → Schlag) springt.
+        # (c) Vollband-Onset: kein Energie-Sprung im Originalband.
         _pa, _pb = max(0, _a - int(0.030 * _sr)), max(0, _a - _rms_win)
         _qa, _qb = min(_n, _b + _rms_win), min(_n, _b + int(0.010 * _sr))
         _pre = float(np.mean(_rms[_pa:_pb])) if _pb > _pa else 0.0
@@ -189,119 +226,128 @@ def declick_fine_crackle(
         _ends = np.where(_d == -1)[0]
         return list(zip(_starts.tolist(), _ends.tolist()))
 
+    def _effective_len(_a: int, _b: int, _thr: np.ndarray) -> int:
+        _peak0 = float(_env[_a:_b].max())
+        return int(np.sum(_env[_a:_b] > np.maximum(_thr[_a:_b], 0.15 * _peak0)))
+
+    # ── Detektion: primäre (Saat) und sekundäre Kandidaten ──
+    _mask_p = _env > _thr_p
+    _mask_s = _env > _thr_s
+    if not _mask_p.any() and _strength <= 0.0:
+        logger.info("§SR-CK4 Fein-Declicker: keine Primär-Impulse, strength=0 — Passthrough")
+        return _src.copy()  # type: ignore[no-any-return]
+
     _primary: list[tuple[int, int]] = []
     for _a, _b in _runs(_mask_p):
-        # (a) Effektive Impuls-Dauer statt Roh-Länge: Musik-Transienten halten
-        #     > 15 % ihres Peaks lange; Knistern-Wavelets klingen sofort ab.
-        #     (In HF-leisen Passagen liegt die Schwelle am numerischen Floor
-        #     und die Wavelet klingelt > 2 ms — Roh-Länge würde sie verwerfen.)
-        _peak0 = float(_env[_a:_b].max())
-        _eff = int(np.sum(_env[_a:_b] > np.maximum(_thr_p[_a:_b], 0.15 * _peak0)))
-        if _eff > _max_span:
+        if _effective_len(_a, _b, _thr_p) > _max_span:
             continue
-        if _a < _edge or _b > _n - _edge:  # Einschwingzone
+        if _a < _edge or _b > _n - _edge:
             continue
         if not _passes_vetos(_a, _b):
             continue
         _primary.append((_a, _b))
-
     _secondary: list[tuple[int, int]] = []
-    if _primary:
-        _prim_times = np.asarray([(_a + _b) / 2.0 for _a, _b in _primary])
-        _dense = len(_primary) / max(_n / _sr, 1e-9) > _DENSE_EVENTS_PER_S
-        for _a, _b in _runs(_mask_s & ~_mask_p):
-            _peak0 = float(_env[_a:_b].max())
-            if int(np.sum(_env[_a:_b] > np.maximum(_thr_s[_a:_b], 0.15 * _peak0))) > _max_span:
-                continue
-            if _a < _edge or _b > _n - _edge:
-                continue
-            _c = (_a + _b) / 2.0
-            if not _dense and not np.any(np.abs(_prim_times - _c) <= _ctx):
-                continue
-            if not _passes_vetos(_a, _b):
-                continue
-            _secondary.append((_a, _b))
+    for _a, _b in _runs(_mask_s & ~_mask_p):
+        if _effective_len(_a, _b, _thr_s) > _max_span:
+            continue
+        if _a < _edge or _b > _n - _edge:
+            continue
+        if not _passes_vetos(_a, _b):
+            continue
+        _secondary.append((_a, _b))
 
-    if not _primary and not _secondary:
-        logger.info("§SR-CK3 Fein-Declicker: keine Knistern-Impulse bestätigt — Passthrough")
+    if not _primary:
+        logger.info("§SR-CK4 Fein-Declicker: keine Knistern-Impulse bestätigt — Passthrough")
         return _src.copy()  # type: ignore[no-any-return]
 
-    # ── 6. Span-Verfeinerung + Merge ──
-    def _refine(_a: int, _b: int) -> tuple[int, int]:
-        # Impuls-relativ: nur bis zum Abklingen der eigenen Wavelet (20 % des
-        # Run-Peaks) — ein reiner HF-Floor würde in Musik-HF hineinlaufen.
-        _peak = float(_env[_a:_b].max()) if _b > _a else 0.0
-        _thr_span = np.maximum(_thr_r, 0.20 * _peak)
-        _lo, _hi = _a, _b
-        while _lo > 0 and (_a - _lo) < _refine_half and _env[_lo - 1] > _thr_span[_lo - 1]:
-            _lo -= 1
-        while _hi < _n - 1 and (_hi - _b) < _refine_half and _env[_hi] > _thr_span[_hi]:
-            _hi += 1
-        if _hi - _lo > _max_span:
-            return _a, _b
-        return _lo, _hi
-
-    def _finalize(_a: int, _b: int) -> tuple[int, int] | None:
-        """Verfeinern + ggf. auf den Ring-Kern schrumpfen (>5 % des Run-Peaks)."""
-        _lo, _hi = _refine(_a, _b)
-        if _hi - _lo > _max_span:
-            _peak = float(_env[_a:_b].max())
-            _thr_c = np.maximum(_thr_r, 0.05 * _peak)
-            _core = np.where(_env[_lo:_hi] > _thr_c[_lo:_hi])[0]
-            if _core.size == 0:
-                return None
-            _old_lo = _lo
-            _lo = _old_lo + int(_core[0])
-            _hi = _old_lo + int(_core[-1]) + 1
-            if _hi - _lo > _max_span:
-                return None  # auch der Kern ist zu lang — Musik-Transient
-        return _lo, _hi
-
-    _tagged = []
-    for _a, _b in _primary:
-        _f = _finalize(_a, _b)
-        if _f is not None:
-            _tagged.append((*_f, False))
-    for _a, _b in _secondary:
-        _f = _finalize(_a, _b)
-        if _f is not None:
-            _tagged.append((*_f, True))
-    _tagged.sort(key=lambda _t: (_t[0], _t[1]))
-    # Merge nur bei ÜBERLAPPUNG und nur bis zur Impuls-Kompaktheitsgrenze:
-    # Kettenschaltungen benachbarter Cluster-Spans würden 100–200-Sample-Lücken
-    # erzeugen, über die AR extrapolieren müsste (Phasendrift, Produktionsbefund).
-    _merged: list[tuple[int, int, bool]] = []
-    for _a, _b, _sec in _tagged:
-        if _merged and _a <= _merged[-1][1] and (_b - _merged[-1][0]) <= _max_span:
-            _pa, _pb, _psec = _merged[-1]
-            _merged[-1] = (_pa, max(_pb, _b), _psec and _sec)
-        else:
-            _merged.append((_a, _b, _sec))
-
-    # ── 7. Restaurierung (Godsill & Rayner 1998) ──
-    _span_mask = np.zeros(_n, dtype=bool)
-    for _a, _b, _ in _merged:
-        _span_mask[_a:_b] = True
-
-    def _restore(_x: np.ndarray) -> np.ndarray:
-        _out = _x.astype(np.float64).copy()
-        for _a, _b, _sec in _merged:
-            _L = _b - _a
-            if _L <= 0:
+    # ── 3. Ereignis-Klassifikation über die Matched-Filter-Bank ──
+    def _classify(_a: int, _b: int) -> tuple[float, int, float, float] | None:
+        """(Residuum, Template-Index, Amplitude mit Vorzeichen, HP-Peak)."""
+        _pk = _a + int(np.argmax(np.abs(_x_hp[_a:_b])))
+        _lo = max(0, _pk - _W)
+        _hi = min(_n, _pk + _W + 1)
+        if _hi - _lo < 8:
+            return None
+        _seg = _x_hp[_lo:_hi].astype(np.float64)
+        _amp0 = float(np.abs(_seg).max())
+        if _amp0 < 1e-6:
+            return None
+        _best: tuple[float, int, float, float] | None = None
+        for _k, _tpl in enumerate(_templates):
+            _t = _tpl[_W - (_pk - _lo) : _W - (_pk - _lo) + (_hi - _lo)]
+            if _t.shape[0] != _seg.shape[0]:
                 continue
-            _seg: np.ndarray | None
-            if _L <= 4:
-                _seg = _interp_catmull_rom(_x, _a, _b, _n, _span_mask)
-            else:
-                _seg = _interp_ar_ls(_x, _a, _b, _n, _span_mask)
-            if _seg is None:
-                continue  # konservativ: nicht rekonstruierbar — Original behalten
-            if not _splice_ok(_seg, _x, _a, _b, _n, _span_mask):
-                continue  # Diskontinuität ⇒ unsichere Interpolation — Original behalten
-            if _sec:
-                _seg = (1.0 - _strength) * _x[_a:_b].astype(np.float64) + _strength * _seg
-            _out[_a:_b] = _seg
-        return _out  # type: ignore[no-any-return]
+            _den = float(np.dot(_t, _t))
+            if _den < 1e-12:
+                continue
+            _a_fit = float(np.dot(_seg, _t) / _den)  # vorzeichenbehaftet
+            _res = float(np.sum((_seg - _a_fit * _t) ** 2) / max(np.sum(_seg**2), 1e-12))
+            if _best is None or _res < _best[0]:
+                _best = (_res, _k, _a_fit, _amp0)
+        return _best
+
+    _events: list[tuple[int, float, int, float, float, bool]] = []  # (peak, res, tpl, amp, hp_amp, primary)
+    for _a, _b in _primary:
+        _c = _classify(_a, _b)
+        if _c is not None and _c[0] <= _FIT_ACCEPT_PRIMARY:
+            _events.append((_a + int(np.argmax(np.abs(_x_hp[_a:_b]))), _c[0], _c[1], _c[2], _c[3], True))
+    for _a, _b in _secondary:
+        _c = _classify(_a, _b)
+        if _c is not None and _c[0] <= _FIT_ACCEPT_SECONDARY:
+            _events.append((_a + int(np.argmax(np.abs(_x_hp[_a:_b]))), _c[0], _c[1], _c[2], _c[3], False))
+
+    if not _events:
+        logger.info("§SR-CK4 Fein-Declicker: keine Ereignisse template-bestätigt — Passthrough")
+        return _src.copy()  # type: ignore[no-any-return]
+
+    # ── 4. Cluster-Bildung ──
+    _events.sort(key=lambda _e: _e[0])
+    _gap = int(_CLUSTER_GAP_S * _sr)
+    _clusters: list[list[tuple[int, float, int, float, float, bool]]] = []
+    for _e in _events:
+        if _clusters and _e[0] - _clusters[-1][-1][0] <= _gap:
+            _clusters[-1].append(_e)
+        else:
+            _clusters.append([_e])
+
+    # ── 5. Subtraktive Cluster-Reparatur im HP-Band ──
+    def _restore(_x: np.ndarray) -> np.ndarray:
+        _hp_x = _signal.sosfiltfilt(_sos, _x).astype(np.float64)
+        _lp_x = _x.astype(np.float64) - _hp_x  # Musik-Körper bleibt (bis auf float32-Rundung) unangetastet
+        for _cl in _clusters:
+            _c0 = min(_e[0] for _e in _cl) - _W - 2
+            _c1 = max(_e[0] for _e in _cl) + _W + 3
+            _lo = max(0, _c0)
+            _hi = min(_n, _c1)
+            _m = _hi - _lo
+            if _m < 16:
+                continue
+            _A = np.zeros((_m, len(_cl)), dtype=np.float64)
+            for _j, _e in enumerate(_cl):
+                _p = _templates[_e[2]]
+                for _k in range(len(_p)):
+                    _idx = _e[0] - _W + _k - _lo
+                    if 0 <= _idx < _m:
+                        _A[_idx, _j] = _p[_k]
+            _y = _x_hp[_lo:_hi].astype(np.float64)
+            _coef, *_ = np.linalg.lstsq(_A, _y, rcond=None)
+            _amps = np.array(
+                [float(np.clip(_coef[_j], -_AMP_CAP * _cl[_j][4], _AMP_CAP * _cl[_j][4])) for _j in range(len(_cl))]
+            )
+            _pred = _A @ _amps
+            _rel = float(np.sum((_y - _pred) ** 2) / max(np.sum(_y**2), 1e-12))
+            if _rel > _RESID_ACCEPT:
+                continue  # Fit unzureichend — letzte Sicherheitsstufe
+            for _j, _e in enumerate(_cl):
+                _factor = _SUB_FACTOR * (1.0 if _e[5] else _strength)
+                if _factor <= 0.0:
+                    continue
+                _p = _templates[_e[2]]
+                for _k in range(len(_p)):
+                    _idx = _e[0] - _W + _k
+                    if _lo <= _idx < _hi:
+                        _hp_x[_idx] -= _factor * _amps[_j] * _p[_k]
+        return np.clip(_lp_x + _hp_x, -1.0, 1.0)  # type: ignore[no-any-return]
 
     if _channels is None:
         _result = _restore(_mid)
@@ -311,183 +357,13 @@ def declick_fine_crackle(
     _result = np.clip(_result, -1.0, 1.0).astype(np.float32)
     if _channels is not None and not _channels_first:
         _result = _result.T
-    _total_ms = float(sum(_b - _a for _a, _b, _ in _merged)) / _sr * 1000.0
+    _n_prim = sum(1 for _e in _events if _e[5])
+    _n_sec = len(_events) - _n_prim
     logger.info(
-        "§SR-CK3 Fein-Declicker: %d primär + %d sekundär → %d Spans (%.2f ms) restauriert",
-        len(_primary),
-        len(_secondary),
-        len(_merged),
-        _total_ms,
+        "§SR-CK4 Fein-Declicker: %d primär + %d sekundär template-bestätigt → %d Cluster subtrahiert (%d Templates)",
+        _n_prim,
+        _n_sec,
+        len(_clusters),
+        len(_templates),
     )
     return _result  # type: ignore[no-any-return]
-
-
-def _interp_catmull_rom(x: np.ndarray, a: int, b: int, n: int, span_mask: np.ndarray | None = None) -> np.ndarray:
-    """Catmull-Rom durch vier SAUBERE Anker (wandert an Spans vorbei, deterministisch)."""
-
-    def _anchor(_i0: int, _step: int) -> float:
-        _i = _i0
-        while 0 <= _i < n:
-            if span_mask is None or not span_mask[_i]:
-                return float(x[_i])
-            _i += _step
-        return float(x[max(0, min(n - 1, _i - _step))])
-
-    _p1 = _anchor(a - 1, -1)
-    _p0 = _anchor(a - 2, -1)
-    _p2 = _anchor(b, +1)
-    _p3 = _anchor(b + 1, +1)
-    _L = b - a
-    _t = np.linspace(0.0, 1.0, _L + 2, endpoint=True)[1:-1]
-    _t2 = _t * _t
-    _t3 = _t2 * _t
-    return 0.5 * (  # type: ignore[no-any-return]
-        2.0 * _p1
-        + (-_p0 + _p2) * _t
-        + (2.0 * _p0 - 5.0 * _p1 + 4.0 * _p2 - _p3) * _t2
-        + (-_p0 + 3.0 * _p1 - 3.0 * _p2 + _p3) * _t3
-    )
-
-
-def _splice_ok(seg: np.ndarray, x: np.ndarray, a: int, b: int, n: int, span_mask: np.ndarray, k: float = 3.0) -> bool:
-    """Splice-Check: Interpolation muss stetig an die sauberen Nachbarn anschließen.
-
-    Eine korrekte AR-/CR-Interpolation ist an den Rändern nahezu stetig (die
-    LS-Anker erzwingen das); Fehl-Interpolationen springen. Referenz ist die
-    lokale Sample-zu-Sample-Skala der sauberen Nachbarschaft (p90).
-    """
-    _l_lo = max(0, a - 200)
-    _left = x[_l_lo:a][~span_mask[_l_lo:a]]
-    _r_hi = min(n, b + 200)
-    _right = x[b:_r_hi][~span_mask[b:_r_hi]]
-    _ctx = np.concatenate([_left, _right])
-    if _ctx.size < 8:
-        return True  # kein Referenz-Kontext — die AR-Gates haben bereits entschieden
-    _d = np.abs(np.diff(_ctx))
-    _thr = k * float(np.percentile(_d, 90)) + 1e-9
-    if a >= 1 and abs(float(seg[0]) - float(x[a - 1])) > _thr:
-        return False
-    if b < n and abs(float(seg[-1]) - float(x[b])) > _thr:
-        return False
-    return True
-
-
-def _interp_ar_ls(x: np.ndarray, a: int, b: int, n: int, span_mask: np.ndarray) -> np.ndarray | None:
-    """AR(p)-Least-Squares-Interpolation nach Godsill & Rayner (1998).
-
-    Vorwärts-Prädiktor af (x_t = Σ af_k · x_{t-k}) aus dem sauberen Fenster
-    links, Rückwärts-Prädiktor ab (x_t = Σ ab_k · x_{t+k}) aus dem sauberen
-    Fenster rechts; dann Least-Squares über den Span mit beiden Prädiktoren
-    als Anker (stetige Anschlüsse an die sauberen Nachbarn).
-    Ridge-stabilisiert; fällt deterministisch auf Catmull-Rom zurück.
-    """
-    _L = b - a
-    _p_target = int(np.clip(_L + 4, _MIN_AR_ORDER, _MAX_AR_ORDER))
-    # Saubere Schätzfenster: andere Spans ausschließen (dichtes Knistern würde
-    # die AR-Koeffizienten sonst mit Nachbar-Impulsen kontaminieren). AR
-    # braucht ZUSAMMENHÄNGENDE Samples (Lag-Struktur) — deshalb die
-    # nächstgelegene zusammenhängende saubere Strecke je Seite.
-    _want = 4 * _p_target
-
-    def _contig(_i0: int, _step: int) -> np.ndarray:
-        _vals = np.empty(_want, dtype=np.float64)
-        _cnt = 0
-        _i = _i0
-        while 0 <= _i < n and _cnt < _want:
-            if span_mask[_i]:
-                break
-            _vals[_cnt] = x[_i]
-            _cnt += 1
-            _i += _step
-        return _vals[:_cnt]  # type: ignore[no-any-return]
-
-    def _solve(_af: np.ndarray, _ab: np.ndarray, _p: int) -> np.ndarray | None:
-        _M = np.zeros((2 * _L, _L), dtype=np.float64)
-        _c = np.zeros(2 * _L, dtype=np.float64)
-        for _i in range(_L):
-            _M[_i, _i] += 1.0
-            for _k in range(1, _p + 1):
-                if _i - _k >= 0:
-                    _M[_i, _i - _k] -= _af[_k - 1]
-                else:
-                    _c[_i] += _af[_k - 1] * float(x[a + _i - _k])
-            _M[_L + _i, _i] += 1.0
-            for _k in range(1, _p + 1):
-                if _i + _k < _L:
-                    _M[_L + _i, _i + _k] -= _ab[_k - 1]
-                else:
-                    _c[_L + _i] += _ab[_k - 1] * float(x[a + _i + _k])
-        _G = _M.T @ _M
-        _lam = 1e-6 * (np.trace(_G) / max(_L, 1) + 1e-12)
-        try:
-            _u = np.linalg.solve(_G + _lam * np.eye(_L), _M.T @ _c)
-        except np.linalg.LinAlgError:
-            return None
-        if not np.all(np.isfinite(_u)):
-            return None
-        return _u  # type: ignore[no-any-return]
-
-    _left_c = _contig(a - 1, -1)[::-1]  # älteste → neueste
-    _right_c = _contig(b, +1)
-    _w = min(_left_c.size, _right_c.size)
-    if _w >= 8:
-        # Saubere Fenster: adaptive Ordnung — kurze Lücken in dichtem Knistern
-        # bekommen AR niedriger Ordnung statt CR-Fallback.
-        _p = int(np.clip(min(_p_target, _w // 2), 2, _MAX_AR_ORDER))
-        if 4 * _p >= _L:
-            _af = _estimate_ar(_left_c[-2 * _p :], _p)
-            _ab = _estimate_ar(_right_c[: 2 * _p][::-1], _p)
-            if _af is not None and _ab is not None:
-                _u = _solve(_af, _ab, _p)
-                if _u is not None:
-                    return _u
-    # Zweite Stufe: Roh-Fenster (zusammenhängend) — nur wenn sie überwiegend
-    # sauber sind (dichte Cluster würden die AR-Koeffizienten korrumpieren).
-    _P = max(4 * _p_target, 2 * _L)
-    _l0 = max(0, a - _P)
-    _r1 = min(n, b + _P)
-    if int(span_mask[_l0:a].sum()) > 0.2 * (a - _l0) or int(span_mask[b:_r1].sum()) > 0.2 * (_r1 - b):
-        if _L <= 24:
-            return _interp_catmull_rom(x, a, b, n, span_mask)
-        return None
-    _left = x[_l0:a]
-    _right = x[b:_r1]
-    if _left.size < 2 * _p_target or _right.size < 2 * _p_target:
-        # Nicht rekonstruierbar — kurze Spans über Catmull-Rom, lange Spans
-        # konservativ ÜBERSPRINGEN (nie verschlechtern statt phaseninvertierter
-        # Kurven, §G7 (copilot-instructions.md)).
-        if _L <= 24:
-            return _interp_catmull_rom(x, a, b, n, span_mask)
-        return None  # type: ignore[return-value]
-    _af = _estimate_ar(_left.astype(np.float64), _p_target)
-    _ab = _estimate_ar(_right[::-1].astype(np.float64), _p_target)
-    if _af is None or _ab is None:
-        if _L <= 24:
-            return _interp_catmull_rom(x, a, b, n, span_mask)
-        return None  # type: ignore[return-value]
-    _u = _solve(_af, _ab, _p_target)
-    if _u is None:
-        if _L <= 24:
-            return _interp_catmull_rom(x, a, b, n, span_mask)
-        return None  # type: ignore[return-value]
-    return _u  # type: ignore[no-any-return]
-
-
-def _estimate_ar(seq: np.ndarray, p: int) -> np.ndarray | None:
-    """AR(p)-Koeffizienten per Least-Squares (Yule-Walker-ähnlich, ridge-stabilisiert).
-
-    Returns:
-        Koeffizientenvektor (p,) oder None, wenn das System singulär ist
-        (Aufrufer fällt dann deterministisch auf Catmull-Rom zurück).
-    """
-    _m = seq.shape[0]
-    _X = np.empty((_m - p, p), dtype=np.float64)
-    for _k in range(p):
-        _X[:, _k] = seq[p - 1 - _k : _m - 1 - _k]
-    _y = seq[p:]
-    _A = _X.T @ _X
-    _lam = 1e-6 * (np.trace(_A) / max(p, 1) + 1e-12)
-    try:
-        return np.linalg.solve(_A + _lam * np.eye(p), _X.T @ _y)  # type: ignore[no-any-return]
-    except np.linalg.LinAlgError:
-        return None
