@@ -317,6 +317,15 @@ class SurfaceNoiseProfiling(PhaseInterface):
         _skip_pre28 = (
             _effective_strength <= 0.0 or _mat_str in _digital_mats or (_snr_28 > 40.0 and not _scanner_crackle28)
         )
+        if _skip_pre28:
+            # §V6 (copilot-instructions.md): kein stiller Skip — Grund protokollieren.
+            logger.info(
+                "Verarbeitungsschritt 28: Floor-Subtraktion uebersprungen (strength=%.3f mat=%s snr=%.1f crackle=%s)",
+                float(_effective_strength),
+                _mat_str,
+                float(_snr_28),
+                bool(_scanner_crackle28),
+            )
 
         # §v10.754 (2026-09-09): Harmonisch-bewusste Floor-Schätzung als
         # Pre-Stage — bei hoher Konsens-Konfidenz wird der systematische
