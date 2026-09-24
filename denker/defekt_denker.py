@@ -392,12 +392,20 @@ class DefektDenker:
             # Fallback: most severe defect becomes primary cause
             primary = max(defect_scores, key=lambda k: defect_scores[k]) if defect_scores else "unknown"
             confidence = 0.3
-            phases = [
-                "phase_01_click_removal",
+            # Knistern-Arten-Routing (Spec 03, Denker-Entscheidungskette):
+            # CLICKS -> phase_27 (phase_01 redundant, daher deaktiviert);
+            # CRACKLE -> phase_09. Severity 0 -> keine Knistern-Phase.
+            _clicks = float(defect_scores.get("clicks", 0.0))
+            _crackle = float(defect_scores.get("crackle", 0.0))
+            phases = []
+            if _clicks >= _crackle and _clicks > 0.0:
+                phases.append("phase_27_click_pop_removal")
+            elif _crackle > 0.0:
+                phases.append("phase_09_crackle_removal")
+            phases += [
                 "phase_02_hum_removal",
                 "phase_03_denoise",
                 "phase_06_frequency_restoration",
-                "phase_09_crackle_removal",
                 "phase_23_spectral_repair",
             ]
             params = {}

@@ -2166,6 +2166,16 @@ class DefectScanner:
             is_stereo = False
             audio_mono = audio
 
+        # Stereo-Gate fuer CRACKLE (Spec 03, Confidence-Messung): Event-L/R-Amplitudenkorrelation.
+        # Konsultiert von _detect_crackle; 60-s-Cap analog §9.7.5.
+        self._crackle_stereo_gate = None
+        if is_stereo:
+            try:
+                self._crackle_stereo_gate = self._measure_crackle_stereo_gate(audio)
+            except Exception as _sg_exc:  # pragma: no cover - Guard
+                logger.debug("DefectScanner stereo-gate fehlgeschlagen: %s", _sg_exc)
+                self._crackle_stereo_gate = None
+
         # §9.7.5 Audio-Cap for 28 detectors.
         # Defects are stationary over a 60 s sample (spec: ≤ 2 s/min audio).
         # Reduces scan time from ~22 s (225 s track) to ~6 s.
@@ -4120,6 +4130,49 @@ class DefectScanner:
         analysis_duration = (n_blocks * seg_n) / self.sample_rate
         return total_clicks / max(analysis_duration, 1.0)
 
+    def _measure_crackle_stereo_gate(self, audio_stereo: np.ndarray) -> dict | None:
+        """Stereo-Gate fuer CRACKLE: Event-L/R-Amplitudenkorrelation (Rillenwand-Physik).
+
+        Knistern erregt die Kanaele anti-/dekorreliert; Musik-HF ist amplitudenkorreliert.
+        Spec 03 (Denker-Entscheidungskette): Der Scanner meldet Confidence -
+        dieses Gate ist Teil der Messung und wird von _detect_crackle konsultiert
+        (Muster wie _codec_disc). Deterministisch (§G5, copilot-instructions.md), 60-s-Cap analog §9.7.5.
+        """
+        if audio_stereo.ndim != 2 or audio_stereo.shape[1] < 2 or audio_stereo.shape[1] >= audio_stereo.shape[0]:
+            return None
+        n = min(len(audio_stereo), 60 * self.sample_rate)
+        sos = signal.butter(4, 3000, btype="high", fs=self.sample_rate, output="sos")
+        lh = signal.sosfilt(sos, audio_stereo[:n, 0])
+        rh = signal.sosfilt(sos, audio_stereo[:n, 1])
+        win_s = 15 * self.sample_rate
+        corrs: list[float] = []
+        for start in range(0, n - win_s + 1, win_s):
+            lseg = lh[start : start + win_s]
+            rseg = rh[start : start + win_s]
+            m = np.abs((lseg + rseg) / 2.0)
+            thr = np.percentile(m, 99.7)
+            peaks, _ = signal.find_peaks(m, height=thr, distance=96)
+            if len(peaks) < 50:
+                continue
+            w = 72
+            al = np.array([np.max(np.abs(lseg[max(0, t - w) : t + w + 1])) for t in peaks])
+            ar = np.array([np.max(np.abs(rseg[max(0, t - w) : t + w + 1])) for t in peaks])
+            fl = np.array([np.median(np.abs(lseg[max(0, t - 1440) : t + 1440])) for t in peaks])
+            fr = np.array([np.median(np.abs(rseg[max(0, t - 1440) : t + 1440])) for t in peaks])
+            both = (al > 2.5 * fl) & (ar > 2.5 * fr)
+            if both.sum() < 40:
+                continue
+            corrs.append(float(np.corrcoef(np.log(al[both] + 1e-9), np.log(ar[both] + 1e-9))[0, 1]))
+        if not corrs:
+            return None
+        _corrs_arr = np.asarray(corrs)
+        return {
+            "amp_corr_median": float(np.median(_corrs_arr)),
+            "amp_corr_std": float(np.std(_corrs_arr)),
+            "amp_corr_neg_frac": float(np.mean(_corrs_arr < 0.0)),
+            "n_windows": int(len(corrs)),
+        }
+
     def _detect_crackle(self, audio: np.ndarray) -> DefectScore:
         """Erkennt Crackle (kontinuierliches leises Knistern, z.B. Vinyl-Surface-Noise).
 
@@ -4195,9 +4248,30 @@ class DefectScanner:
                 end = indices[-1] / self.sample_rate
                 locations.append((start, end))
 
-        confidence = 0.8
-        if hp_kurtosis < 4.0 or tonal_or_dense_hf:
-            confidence = 0.3  # Very low confidence when HF is clearly tonal
+        # Epistemische Confidence (Spec 03: Confidence-Feld): Fenster-Stabilitaet
+        # der Impulsivitaet + Randabstand zur Tonal-Grenze statt starrer 0.8/0.3.
+        _win_n = 6
+        _win_len = len(audio_hp) // max(_win_n, 1)
+        _kurts: list[float] = []
+        if _win_len > 1000:
+            for _i in range(_win_n):
+                _seg = audio_hp[_i * _win_len : (_i + 1) * _win_len]
+                _s = float(np.std(_seg))
+                if _s > 1e-8:
+                    _m = float(np.mean(_seg))
+                    _kurts.append(float(np.mean(((_seg - _m) / _s) ** 4)))
+        confidence = 0.3
+        if _kurts:
+            _kmed = float(np.median(_kurts))
+            _kstd = float(np.std(_kurts)) + 1e-9
+            _stability = float(np.mean([1.0 if _k > 6.0 else 0.0 for _k in _kurts]))
+            _margin = (_kmed - 4.0) / _kstd
+            if tonal_or_dense_hf or _kmed < 4.0:
+                confidence = 0.3
+            else:
+                confidence = float(np.clip(0.5 + 0.4 * _stability + 0.1 * np.clip(_margin, -1.0, 1.0), 0.0, 0.9))
+        elif hp_kurtosis < 4.0 or tonal_or_dense_hf:
+            confidence = 0.3
 
         # §CODEC-DISKRIMINATOR: MP3 pre-echo maskiert sich als Crackle
         _cd = getattr(self, "_codec_disc", None)
@@ -4208,6 +4282,12 @@ class DefectScanner:
                 severity = float(np.clip(severity * _codec_discount, 0.0, 1.0))
                 confidence = float(np.clip(confidence * 0.6, 0.05, 0.99))
 
+        # Stereo-Gate: Musik-dominierte HF ist kein Knistern (Spec 03: Severity 0, hohe Confidence).
+        _sg = getattr(self, "_crackle_stereo_gate", None)
+        if _sg is not None and _sg.get("amp_corr_median", 0.0) >= 0.4 and _sg.get("n_windows", 0) >= 3:
+            severity = 0.0
+            confidence = 0.9
+
         return DefectScore(
             defect_type=DefectType.CRACKLE,
             severity=severity,
@@ -4215,6 +4295,8 @@ class DefectScanner:
             locations=self._sample_locations_evenly(locations, self._LOCATION_CAP_UNCAPPED),
             metadata={
                 "crackle_percentage": severity_raw * 100,
+                "stereo_amp_corr": float(_sg.get("amp_corr_median")) if _sg is not None else None,
+                "stereo_gate_windows": int(_sg.get("n_windows", 0)) if _sg is not None else 0,
                 "hp_kurtosis": hp_kurtosis,
                 "hp_peak_ratio": peak_ratio,
                 "sparse_impulse_rate": sparse_impulse_rate,
