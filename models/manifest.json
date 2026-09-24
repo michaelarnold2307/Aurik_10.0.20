@@ -1896,30 +1896,30 @@
       }
     },
     {
-      "name": "crackle_inpainting_base",
+      "name": "crackle_texture_removal",
       "bundled": true,
-      "bundled_path": "models/crackle_inpainting/crackle_inpainting_base.onnx",
+      "bundled_path": "models/crackle_texture_removal/crackle_texture_removal_base.onnx",
       "sha256": "1cd7501d933c74724b5360e5ed52d245236f7c6d106e954d701cde9e01b7f8ad",
       "size_bytes": 1215110,
       "size_gb": 0.0012,
       "required": false,
       "fallback": "dsp_ersatzpfad",
-      "license": "Aurik-intern (selbst trainiert, Route-A Knistern-Inpainting)",
+      "license": "Aurik-intern (selbst trainiert, Route-A Knistern-Textur-Entfernung)",
       "format": "onnx",
-      "description": "CPU-Fallback (Paritaet 1,67e-06 vs Torch-ROCm nachgewiesen, §III.9)"
+      "description": "Knistern-Textur-Entfernung fuer DefectType.CRACKLE (kontinuierliches Vinyl-Knistern)"
     },
     {
-      "name": "crackle_inpainting_base_pt",
+      "name": "crackle_texture_removal_base_pt",
       "bundled": true,
-      "bundled_path": "models/crackle_inpainting/crackle_inpainting_base.pt",
+      "bundled_path": "models/crackle_texture_removal/crackle_texture_removal_base.pt",
       "sha256": "a5ebc44f1f128707a6962878eeba023b2881c4647430167c78bccdfd66bb3b22",
       "size_bytes": 1216629,
       "size_gb": 0.0012,
       "required": false,
       "fallback": "dsp_ersatzpfad",
-      "license": "Aurik-intern (selbst trainiert, Route-A Knistern-Inpainting)",
+      "license": "Aurik-intern (selbst trainiert, Route-A Knistern-Textur-Entfernung)",
       "format": "pytorch",
-      "description": "Torch-ROCm-Primaerpfad fuer DefectType.CRACKLE (kontinuierliches Vinyl-Knistern)"
+      "description": "Knistern-Textur-Entfernung fuer DefectType.CRACKLE (kontinuierliches Vinyl-Knistern)"
     }
   ]
 }
