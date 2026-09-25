@@ -328,6 +328,241 @@ def _dyn_sibilance() -> np.ndarray:
     return _out
 
 
+def _tape_bias_error() -> np.ndarray:
+    t = np.arange(SR * DUR) / SR
+    rng = np.random.default_rng(23)
+    # Pathologischer Over-Bias: Empfindlichkeitsabbruch bereits ab ~5,5 kHz
+    # (Bias-Mismatch verschiebt die Eckfrequenz nach unten) -> Baender
+    # 5-8/8-14 kHz praktisch leer, 2-5 kHz normal. Ein Abbruch exakt an der
+    # 8-kHz-Bandgrenze bleibt wegen Welch-Fenster-Leckage unter der
+    # Detektorschwelle (-16 dB/Okt) - das ist die ehrliche Messgrenze.
+    x = 0.15 * rng.standard_normal(len(t))
+    spec = np.fft.rfft(x)
+    freqs = np.fft.rfftfreq(len(x), 1.0 / SR)
+    spec[freqs > 5500.0] *= 0.001  # -60 dB oberhalb des Abbruchs
+    x = np.fft.irfft(spec, len(x))
+    _out: np.ndarray = np.stack([x, x], axis=1).astype(np.float32)
+    return _out
+
+
+def _tape_print_through() -> np.ndarray:
+    t = np.arange(SR * DUR) / SR
+    # Ruhige Passage vor dem Einsatz: genau dann wird Print-Through hoerbar
+    x = 0.01 * np.sin(2 * np.pi * 440.0 * t)  # sehr leise Grundlage
+    burst = np.zeros(SR * DUR)
+    burst[SR * 10 : SR * 11] = 0.5 * np.sin(2 * np.pi * 880.0 * t[SR * 10 : SR * 11])
+    # Print-Through: Geist-Echo 200 ms VOR dem Onset bei -20 dB (IEC 60094-3)
+    ghost = np.zeros(SR * DUR)
+    ghost_start = SR * 10 - int(0.2 * SR)
+    ghost[ghost_start : ghost_start + SR] = 0.1 * burst[SR * 10 : SR * 11]
+    sig = x + burst + ghost
+    _out: np.ndarray = np.stack([sig, sig], axis=1).astype(np.float32)
+    return _out
+
+
+def _tape_azimuth() -> np.ndarray:
+    t = np.arange(SR * DUR) / SR
+    rng = np.random.default_rng(29)
+    # Azimuth-Fehler: Spalt-Verkantung = Zeitversatz zwischen L und R
+    # -> Phasendifferenz waechst LINEAR mit der Frequenz (PHD-Slope, IEC 60386)
+    left = 0.15 * rng.standard_normal(len(t))
+    left = left + 0.2 * np.sin(2 * np.pi * 440.0 * t)
+    left = left + 0.08 * np.sin(2 * np.pi * 8000.0 * t)
+    delay = 10  # 0,2 ms Zeitversatz -> ~72 Grad/kHz Phasenslope
+    right = np.concatenate((np.zeros(delay), left[:-delay]))
+    _out: np.ndarray = np.stack([left, right], axis=1).astype(np.float32)
+    return _out
+
+
+def _tape_hf_remanence() -> np.ndarray:
+    t = np.arange(SR * DUR) / SR
+    x = 0.15 * np.sin(2 * np.pi * 440.0 * t)
+    # HF-Remanenzverlust: HF-Anteil nimmt mit der Zeit ab (Bandalterung)
+    env = np.linspace(1.0, 0.05, SR * DUR)
+    x = x + env * 0.1 * np.sin(2 * np.pi * 10000.0 * t)
+    _out: np.ndarray = np.stack([x, x], axis=1).astype(np.float32)
+    return _out
+
+
+def _tape_modulation_noise() -> np.ndarray:
+    t = np.arange(SR * DUR) / SR
+    rng = np.random.default_rng(19)
+    x = 0.2 * np.sin(2 * np.pi * 220.0 * t)
+    # Modulationsrauschen: Rauschpegel folgt der Signalhuellkurve
+    noise = rng.standard_normal(len(t))
+    x = x + 0.04 * noise * (1.0 + 2.0 * np.abs(np.sin(2 * np.pi * 220.0 * t)))
+    _out: np.ndarray = np.stack([x, x], axis=1).astype(np.float32)
+    return _out
+
+
+def _tape_bandwidth_loss() -> np.ndarray:
+    t = np.arange(SR * DUR) / SR
+    x = 0.2 * np.sin(2 * np.pi * 440.0 * t) + 0.1 * np.sin(2 * np.pi * 8000.0 * t)
+    sos = signal.butter(4, 6000, btype="lowpass", fs=SR, output="sos")
+    x = signal.sosfiltfilt(sos, x)  # Bandbreitenverlust: alles ueber 6 kHz weg
+    _out: np.ndarray = np.stack([x, x], axis=1).astype(np.float32)
+    return _out
+
+
+def _tape_dolby_mismatch() -> np.ndarray:
+    t = np.arange(SR * DUR) / SR
+    rng = np.random.default_rng(31)
+    # Dolby-Encoder an, Decoder aus: HF-Shelf (+6 dB ueber ~1,5 kHz) auf
+    # breitbandigem Inhalt -> E(2-16k)/E(300-2k) steigt deutlich
+    x = 0.1 * rng.standard_normal(len(t))
+    x = x + 0.15 * np.sin(2 * np.pi * 500.0 * t)
+    x = x + 0.08 * np.sin(2 * np.pi * 4000.0 * t)
+    sos = signal.butter(1, 1500, btype="high", fs=SR, output="sos")
+    x = x + 1.0 * signal.sosfiltfilt(sos, x)  # +6 dB HF-Shelf
+    _out: np.ndarray = np.stack([x, x], axis=1).astype(np.float32)
+    return _out
+
+
+def _tape_head_clog() -> np.ndarray:
+    t = np.arange(SR * DUR) / SR
+    rng = np.random.default_rng(37)
+    # Kopfverschmutzung: periodisch wiederkehrende HF-Ausloeschungen
+    x = 0.12 * rng.standard_normal(len(t))
+    x = x + 0.15 * np.sin(2 * np.pi * 440.0 * t)
+    sos = signal.butter(4, 4500, btype="highpass", fs=SR, output="sos")
+    hf_part = signal.sosfiltfilt(sos, x)
+    dip = 1.0 - 0.9 * (((t % 2.0) < 0.3).astype(float))  # alle 2 s: 300 ms HF-Dip
+    x = x - hf_part * (1.0 - dip)
+    _out: np.ndarray = np.stack([x, x], axis=1).astype(np.float32)
+    return _out
+
+
+def _tape_head_wear() -> np.ndarray:
+    t = np.arange(SR * DUR) / SR
+    rng = np.random.default_rng(41)
+    # Kopfverschleiss: glatter progressiver HF-Rolloff ab ~4 kHz (monoton),
+    # Baender 8-16 kHz >30 dB unter Referenz (Pegel-Kriterium des Detektors)
+    x = 0.15 * rng.standard_normal(len(t))
+    x = x + 0.15 * np.sin(2 * np.pi * 500.0 * t)
+    sos = signal.butter(3, 4200, btype="lowpass", fs=SR, output="sos")
+    x = signal.sosfiltfilt(sos, x)
+    _out: np.ndarray = np.stack([x, x], axis=1).astype(np.float32)
+    return _out
+
+
+def _tape_sticky_shed() -> np.ndarray:
+    t = np.arange(SR * DUR) / SR
+    rng = np.random.default_rng(43)
+    # Sticky-Shed: kurze Pegel-Dips (10-100 ms) + Modulationsrauschen
+    x = 0.2 * np.sin(2 * np.pi * 440.0 * t)
+    noise = rng.standard_normal(len(t))
+    x = x + 0.03 * noise * (1.0 + 2.0 * np.abs(np.sin(2 * np.pi * 440.0 * t)))
+    dip = 1.0 - 0.8 * (((t % 1.0) < 0.05).astype(float))  # alle 1 s: 50-ms-Dip
+    x = x * dip
+    _out: np.ndarray = np.stack([x, x], axis=1).astype(np.float32)
+    return _out
+
+
+def _tape_head_level_dip() -> np.ndarray:
+    t = np.arange(SR * DUR) / SR
+    x = 0.2 * np.sin(2 * np.pi * 440.0 * t)
+    # Kopfkontakt-Variation: 60 ms Ramp auf -15 dB, 200 ms halten, Snap-back
+    phase = (t % 1.0) / 1.0  # 1 Ereignis pro Sekunde
+    dip = np.ones_like(t)
+    ramp_mask = (phase >= 0.0) & (phase < 0.06)
+    hold_mask = (phase >= 0.06) & (phase < 0.26)
+    dip[ramp_mask] = 1.0 - 0.82 * (phase[ramp_mask] / 0.06)
+    dip[hold_mask] = 0.18  # -15 dB
+    x = x * dip
+    _out: np.ndarray = np.stack([x, x], axis=1).astype(np.float32)
+    return _out
+
+
+def _tape_transport_bump() -> np.ndarray:
+    t = np.arange(SR * DUR) / SR
+    x = 0.2 * np.sin(2 * np.pi * 440.0 * t)
+    # Transport-Stoss: Kopf hebt kurz ab (Pflicht-Feature Pegel-Drop) +
+    # gleichzeitiger LF-Thump (60 Hz) + Fluss-/Zentroid-Disruption
+    phase = (t % 1.5) / 1.5
+    drop_mask = (phase >= 0.0) & (phase < 0.03)  # 45 ms Drop
+    dip = np.ones_like(t)
+    dip[drop_mask] = 0.25  # -12 dB
+    x = x * dip
+    thump = 0.05 * np.sin(2 * np.pi * 60.0 * t) * drop_mask.astype(float)  # leiser mechanischer Stoss
+    x = x + thump
+    _out: np.ndarray = np.stack([x, x], axis=1).astype(np.float32)
+    return _out
+
+
+def _tape_generation_loss() -> np.ndarray:
+    t = np.arange(SR * DUR) / SR
+    rng = np.random.default_rng(47)
+    # Mehrfach-Ueberspielung: Rauschen + starke Bandbreitenverengung +
+    # Phasen-Randomisierung in den HF-Baendern
+    x = 0.12 * rng.standard_normal(len(t))
+    x = x + 0.15 * np.sin(2 * np.pi * 440.0 * t)
+    sos = signal.butter(3, 7000, btype="lowpass", fs=SR, output="sos")
+    x = signal.sosfiltfilt(sos, x)
+    spec = np.fft.rfft(x)
+    freqs = np.fft.rfftfreq(len(x), 1.0 / SR)
+    phase = np.exp(2j * np.pi * rng.standard_normal(len(spec)))  # HF-Phase jittern
+    blend = np.clip((freqs - 4000.0) / 8000.0, 0.0, 0.8)
+    spec = spec * (1.0 - blend + blend * phase)
+    x = np.fft.irfft(spec, len(x))
+    _out: np.ndarray = np.stack([x, x], axis=1).astype(np.float32)
+    return _out
+
+
+def _tape_nr_breathing() -> np.ndarray:
+    t = np.arange(SR * DUR) / SR
+    rng = np.random.default_rng(53)
+    # NR-Atmung: HF-Rauschboden ist ANTI-korreliert zum Signalpegel
+    # (leise Passage -> Rauschen laut; laute Passage -> Rauschen leise)
+    signal_env = 0.5 * (1.0 + np.sign(np.sin(2 * np.pi * 0.5 * t)))  # 0/1 alle 2 s
+    x = 0.2 * np.sin(2 * np.pi * 440.0 * t) * signal_env
+    sos = signal.butter(4, 4000, btype="highpass", fs=SR, output="sos")
+    noise = signal.sosfiltfilt(sos, rng.standard_normal(len(t)))
+    noise = noise / (np.max(np.abs(noise)) + 1e-12)
+    x = x + 0.08 * noise * (1.0 - signal_env)  # Rauschen nur in der Stille
+    _out: np.ndarray = np.stack([x, x], axis=1).astype(np.float32)
+    return _out
+
+
+def _tape_pre_echo() -> np.ndarray:
+    t = np.arange(SR * DUR) / SR
+    # Pre-Echo: Geist 150 ms VOR dem Transienten, spektral identisch
+    x = 0.01 * np.sin(2 * np.pi * 440.0 * t)
+    burst = np.zeros(SR * DUR)
+    burst[SR * 10 : SR * 11] = 0.5 * np.sin(2 * np.pi * 880.0 * t[SR * 10 : SR * 11])
+    ghost = np.zeros(SR * DUR)
+    ghost_start = SR * 10 - int(0.15 * SR)
+    ghost[ghost_start : ghost_start + SR] = 0.08 * burst[SR * 10 : SR * 11]
+    sig = x + burst + ghost
+    _out: np.ndarray = np.stack([sig, sig], axis=1).astype(np.float32)
+    return _out
+
+
+def _tape_dropout_oxide() -> np.ndarray:
+    t = np.arange(SR * DUR) / SR
+    x = 0.2 * np.sin(2 * np.pi * 440.0 * t)
+    # Oxid-Abrieb: langsamer Pegel-Einbruch mit sanfter Erholung
+    drop = np.ones_like(t)
+    seg = int(0.5 * SR)
+    start = 7 * SR
+    drop[start : start + seg] = np.linspace(1.0, 0.1, seg)
+    drop[start + seg : start + 2 * seg] = 0.1
+    drop[start + 2 * seg : start + 3 * seg] = np.linspace(0.1, 1.0, seg)
+    x = x * drop
+    _out: np.ndarray = np.stack([x, x], axis=1).astype(np.float32)
+    return _out
+
+
+def _tape_dropout_head_contact() -> np.ndarray:
+    t = np.arange(SR * DUR) / SR
+    x = 0.2 * np.sin(2 * np.pi * 440.0 * t)
+    # Kopfkontakt-Verlust: Drops von ~40 ms auf -15 dB alle 300 ms
+    # (<=20 ms faellt in den Oxide-Fallback des Subtyp-Klassifizierers)
+    dip = 1.0 - 0.82 * (((t % 0.3) < 0.04).astype(float))
+    x = x * dip
+    _out: np.ndarray = np.stack([x, x], axis=1).astype(np.float32)
+    return _out
+
+
 # ------------------------------------------------------------------ Familien
 # Jeder Fall: (Name, Generator, Material, {DefectType: (min, max)})
 CASES: dict[str, list[tuple[str, Callable[[], np.ndarray], MaterialType, dict[DefectType, tuple[float, float]]]]] = {
@@ -545,6 +780,110 @@ CASES: dict[str, list[tuple[str, Callable[[], np.ndarray], MaterialType, dict[De
             _dyn_sibilance,
             MaterialType.TAPE,
             {DefectType.SIBILANCE: (0.3, 1.0)},
+        ),
+    ],
+    "tape_media": [
+        (
+            "Bias-Fehler (Empfindlichkeitsabbruch ab ~5,5 kHz) wird erkannt",
+            _tape_bias_error,
+            MaterialType.TAPE,
+            {DefectType.BIAS_ERROR: (0.3, 1.0)},
+        ),
+        (
+            "Print-Through (Geist-Echo 200 ms vor dem Onset) wird erkannt",
+            _tape_print_through,
+            MaterialType.TAPE,
+            {DefectType.PRINT_THROUGH: (0.3, 1.0)},
+        ),
+        (
+            "Azimuth-Fehler (L/R-Zeitversatz = Phasenslope) wird erkannt",
+            _tape_azimuth,
+            MaterialType.TAPE,
+            {DefectType.AZIMUTH_ERROR: (0.3, 1.0)},
+        ),
+        (
+            "HF-Remanenzverlust (HF nimmt mit der Zeit ab) wird erkannt",
+            _tape_hf_remanence,
+            MaterialType.TAPE,
+            {DefectType.HF_REMANENCE_LOSS: (0.3, 1.0)},
+        ),
+        (
+            "Modulationsrauschen (Rauschen folgt Signalhuellkurve) wird erkannt",
+            _tape_modulation_noise,
+            MaterialType.TAPE,
+            {DefectType.MODULATION_NOISE: (0.3, 1.0)},
+        ),
+        (
+            "Bandbreitenverlust (Tiefpass 6 kHz) wird erkannt",
+            _tape_bandwidth_loss,
+            MaterialType.TAPE,
+            {DefectType.BANDWIDTH_LOSS: (0.3, 1.0)},
+        ),
+        (
+            "Dolby-NR-Mismatch (+6-dB-HF-Shelf) wird erkannt",
+            _tape_dolby_mismatch,
+            MaterialType.TAPE,
+            {DefectType.DOLBY_NR_MISMATCH: (0.3, 1.0)},
+        ),
+        (
+            "Kopfverschmutzung (periodische HF-Dips) wird erkannt",
+            _tape_head_clog,
+            MaterialType.TAPE,
+            {DefectType.TAPE_HEAD_CLOG: (0.3, 1.0)},
+        ),
+        (
+            "Kopfverschleiss (progressiver Rolloff ab 4 kHz) wird erkannt",
+            _tape_head_wear,
+            MaterialType.TAPE,
+            {DefectType.HEAD_WEAR: (0.3, 1.0)},
+        ),
+        (
+            "Sticky-Shed (kurze Pegel-Dips + Modulationsrauschen) wird erkannt",
+            _tape_sticky_shed,
+            MaterialType.TAPE,
+            {DefectType.STICKY_SHED_RESIDUE: (0.3, 1.0)},
+        ),
+        (
+            "Kopfkontakt-Pegeldip (Ramp -15 dB + Snap-back) wird erkannt",
+            _tape_head_level_dip,
+            MaterialType.TAPE,
+            {DefectType.TAPE_HEAD_LEVEL_DIP: (0.3, 1.0)},
+        ),
+        (
+            "Transport-Stoss (LF-Thump + RMS-Spike) wird erkannt",
+            _tape_transport_bump,
+            MaterialType.TAPE,
+            {DefectType.TRANSPORT_BUMP: (0.3, 1.0)},
+        ),
+        (
+            "Generationenverlust (Rauschen + Verengung + Phasen-Jitter) wird erkannt",
+            _tape_generation_loss,
+            MaterialType.TAPE,
+            {DefectType.GENERATION_LOSS: (0.3, 1.0)},
+        ),
+        (
+            "NR-Atmung (anti-korrelierter Rauschboden) wird erkannt",
+            _tape_nr_breathing,
+            MaterialType.TAPE,
+            {DefectType.NR_BREATHING_ARTIFACT: (0.3, 1.0)},
+        ),
+        (
+            "Pre-Echo (Geist 150 ms vor dem Transienten) wird erkannt",
+            _tape_pre_echo,
+            MaterialType.TAPE,
+            {DefectType.PRE_ECHO: (0.3, 1.0)},
+        ),
+        (
+            "Oxid-Abrieb (langsamer Pegel-Einbruch) wird erkannt",
+            _tape_dropout_oxide,
+            MaterialType.TAPE,
+            {DefectType.DROPOUT_OXIDE: (0.3, 1.0)},
+        ),
+        (
+            "Kopfkontakt-Verlust (schnelle kurze Drops) wird erkannt",
+            _tape_dropout_head_contact,
+            MaterialType.TAPE,
+            {DefectType.DROPOUT_HEAD_CONTACT: (0.3, 1.0)},
         ),
     ],
 }
