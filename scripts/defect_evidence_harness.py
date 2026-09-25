@@ -86,6 +86,31 @@ def _speed_offset() -> np.ndarray:
     return _out
 
 
+def _dropout_oxide() -> np.ndarray:
+    t = np.arange(SR * DUR) / SR
+    x = 0.2 * np.sin(2 * np.pi * 220.0 * t)
+    x[SR * 7 : SR * 7 + int(0.006 * SR)] = 0.0  # 6-ms-Signalabriss (Oxid-Dropout)
+    _out: np.ndarray = np.stack([x, x], axis=1).astype(np.float32)
+    return _out
+
+
+def _dropout_head_contact() -> np.ndarray:
+    t = np.arange(SR * DUR) / SR
+    x = 0.2 * np.sin(2 * np.pi * 220.0 * t)
+    dip = np.ones(SR * DUR)
+    dip[SR * 7 : SR * 7 + int(0.2 * SR)] = 0.3  # 200-ms-Kontaktverlust (-10 dB)
+    _out: np.ndarray = np.stack([x * dip, x * dip], axis=1).astype(np.float32)
+    return _out
+
+
+def _dropout_splice() -> np.ndarray:
+    t = np.arange(SR * DUR) / SR
+    x = 0.2 * np.sin(2 * np.pi * 220.0 * t)
+    x[SR * 7 :] = x[SR * 7 :] * 0.7  # Pegelsprung an der Klebestelle
+    _out: np.ndarray = np.stack([x, x], axis=1).astype(np.float32)
+    return _out
+
+
 # ------------------------------------------------------------------ Familien
 # Jeder Fall: (Name, Generator, Material, {DefectType: (min, max)})
 CASES: dict[str, list[tuple[str, Callable[[], np.ndarray], MaterialType, dict[DefectType, tuple[float, float]]]]] = {
@@ -139,6 +164,32 @@ CASES: dict[str, list[tuple[str, Callable[[], np.ndarray], MaterialType, dict[De
             _speed_offset,
             MaterialType.TAPE,
             {DefectType.SPEED_CALIBRATION_ERROR: (0.3, 1.0)},
+        ),
+    ],
+    "dropout": [
+        (
+            "Oxid-Dropout (6-ms-Signalabriss) wird erkannt",
+            _dropout_oxide,
+            MaterialType.TAPE,
+            {DefectType.DROPOUTS: (0.3, 1.0)},
+        ),
+        (
+            "Head-Contact-Dip (200 ms, -10 dB) wird erkannt",
+            _dropout_head_contact,
+            MaterialType.TAPE,
+            {DefectType.DROPOUTS: (0.3, 1.0)},
+        ),
+        (
+            "Splice-Pegelsprung wird als tape_splice_artifact erkannt",
+            _dropout_splice,
+            MaterialType.TAPE,
+            {DefectType.TAPE_SPLICE_ARTIFACT: (0.3, 1.0)},
+        ),
+        (
+            "Sauberer Ton loest keine Dropouts aus",
+            _clean_tone,
+            MaterialType.TAPE,
+            {DefectType.DROPOUTS: (0.0, 0.2)},
         ),
     ],
 }
