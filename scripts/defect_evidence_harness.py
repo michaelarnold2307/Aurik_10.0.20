@@ -5,6 +5,14 @@ gemeldete Scores gegen Erwartungswerte. Der Harness dokumentiert Mess-Luecken
 als fehlschlagende Faelle, bis die Detektoren kalibriert/ergaenzt sind
 (Arbeitsauftrag Spec 06 §7.2d).
 
+Bekannte unverdrahtete Enum-Typen (Scan liefert None, gemessen 2026-09-24):
+DISTORTION und DROPOUT (Singular) werden im scan()-Pfad nicht befuellt - es gibt
+weder eigene Detektoren noch eine Aggregation; die konkreten Typen (CLIPPING,
+SOFT_SATURATION, OVERLOAD_DISTORTION, DROPOUTS + Subtypen) sind abgedeckt.
+DROPOUT_SPLICE wird nur von _detect_dropout_subtypes befuellt, dessen
+Event-Detektion Dropout-profiliert ist; Bandstoesse deckt der eigenstaendige
+TAPE_SPLICE_ARTIFACT-Detektor ab (gemessen: 0,589 auf dem Splice-Fall, Subtyp 0).
+
 Deterministisch (§G5, copilot-instructions.md): feste Seeds, keine Zufallsquellen
 ausser den dokumentierten Generatoren.
 
@@ -730,6 +738,79 @@ def _dig_overload() -> np.ndarray:
     return _out
 
 
+def _noise_clicks() -> np.ndarray:
+    t = np.arange(SR * DUR) / SR
+    rng = np.random.default_rng(73)
+    x = 0.15 * np.sin(2 * np.pi * 440.0 * t)
+    # Irregulaere Click-Abstaende (Periodicity-Guard) UND saliente Impulse:
+    # der Scan wendet eine Perceptual-Salience-Kalibrierung an - Clicks nur
+    # ~7 dB ueber dem Traeger wurden als maskiert eingestuft (26/26).
+    idx = 8000
+    while idx < SR * DUR - 200:
+        x[idx : idx + 3] += 0.8
+        idx += int(0.3 * SR + 0.7 * SR * rng.random())
+    _out: np.ndarray = np.stack([x, x], axis=1).astype(np.float32)
+    return _out
+
+
+def _noise_crackle() -> np.ndarray:
+    t = np.arange(SR * DUR) / SR
+    rng = np.random.default_rng(79)
+    x = 0.15 * np.sin(2 * np.pi * 440.0 * t)
+    # Knistern in CLUSTERN mit Luecken: zu dichte Impulse werden vom
+    # tonal_or_dense_hf_guard als kontinuierliches HF genullt (gemessen:
+    # crackle_percentage 99,8 %, Guard aktiv). Echte Knistern-Huelle pulsiert.
+    idx = 8000
+    while idx < SR * DUR - 2000:
+        n_pops = int(2 + 4 * rng.random())
+        for _ in range(n_pops):
+            x[idx : idx + 2] += (0.05 + 0.12 * rng.random()) * rng.choice((-1.0, 1.0))
+            idx += int(2 + 8 * rng.random())
+        idx += int(0.05 * SR + 0.15 * SR * rng.random())
+    _out: np.ndarray = np.stack([x, x], axis=1).astype(np.float32)
+    return _out
+
+
+def _noise_hum() -> np.ndarray:
+    t = np.arange(SR * DUR) / SR
+    # Netzfrequenz-Brumm: 50 Hz + Harmonische
+    x = 0.12 * np.sin(2 * np.pi * 50.0 * t)
+    x = x + 0.06 * np.sin(2 * np.pi * 100.0 * t)
+    x = x + 0.04 * np.sin(2 * np.pi * 150.0 * t)
+    x = x + 0.08 * np.sin(2 * np.pi * 440.0 * t)
+    _out: np.ndarray = np.stack([x, x], axis=1).astype(np.float32)
+    return _out
+
+
+def _noise_rumble() -> np.ndarray:
+    t = np.arange(SR * DUR) / SR
+    # Sub-Bass-Rumpeln < 80 Hz (Plattenspieler/Gebaeude)
+    x = 0.15 * np.sin(2 * np.pi * 30.0 * t) + 0.1 * np.sin(2 * np.pi * 55.0 * t)
+    x = x + 0.08 * np.sin(2 * np.pi * 440.0 * t)
+    _out: np.ndarray = np.stack([x, x], axis=1).astype(np.float32)
+    return _out
+
+
+def _vinyl_lacquer() -> np.ndarray:
+    t = np.arange(SR * DUR) / SR
+    rng = np.random.default_rng(83)
+    # Acetat-Zersetzung (Hess 1988): dichte Substrat-Riss-Clicks +
+    # deutlicher HF-Verlust (Rolloff ab ~6 kHz -> hf_loss > 15 dB) +
+    # stark nicht-stationaeres Substrat-Rauschen (170-ms-Welch-Skala).
+    x = 0.15 * np.sin(2 * np.pi * 400.0 * t)
+    base_noise = rng.standard_normal(len(t))
+    for seg in range(0, SR * DUR, int(0.3 * SR)):
+        level = 0.02 + 0.16 * rng.random()
+        x[seg : seg + int(0.3 * SR)] += level * base_noise[seg : seg + int(0.3 * SR)]
+    sos = signal.butter(4, 6000, btype="lowpass", fs=SR, output="sos")
+    x = signal.sosfiltfilt(sos, x)
+    for k in range(1, 56):
+        idx = int(k * 0.25 * SR)
+        x[idx : idx + 3] += 1.0
+    _out: np.ndarray = np.stack([x, x], axis=1).astype(np.float32)
+    return _out
+
+
 # ------------------------------------------------------------------ Familien
 # Jeder Fall: (Name, Generator, Material, {DefectType: (min, max)})
 CASES: dict[str, list[tuple[str, Callable[[], np.ndarray], MaterialType, dict[DefectType, tuple[float, float]]]]] = {
@@ -757,6 +838,39 @@ CASES: dict[str, list[tuple[str, Callable[[], np.ndarray], MaterialType, dict[De
             _broadband,
             MaterialType.TAPE,
             {DefectType.HIGH_FREQ_NOISE: (0.8, 1.0)},
+        ),
+        (
+            # Scan-Skalierung: severity = click_rate/45 (1,73 Clicks/s -> 0,038).
+            # Die Aktivierungs-Schwelle gehoert in die Pipeline (Praezedenzfall
+            # Wow); der Harness prueft hier die DETEKTION (Score > 0).
+            "Isolierte Impulse werden als Clicks erkannt",
+            _noise_clicks,
+            MaterialType.VINYL,
+            {DefectType.CLICKS: (0.02, 1.0)},
+        ),
+        (
+            "Sauberer Ton loest keine Clicks aus",
+            _clean_tone,
+            MaterialType.VINYL,
+            {DefectType.CLICKS: (0.0, 0.02)},
+        ),
+        (
+            "Dichtes Knistern (Mikro-Impulse) wird als Crackle erkannt",
+            _noise_crackle,
+            MaterialType.VINYL,
+            {DefectType.CRACKLE: (0.3, 1.0)},
+        ),
+        (
+            "Netzfrequenz-Brumm (50 Hz + Harmonische) wird erkannt",
+            _noise_hum,
+            MaterialType.TAPE,
+            {DefectType.HUM: (0.3, 1.0)},
+        ),
+        (
+            "Sub-Bass-Rumpeln (< 80 Hz) wird erkannt",
+            _noise_rumble,
+            MaterialType.TAPE,
+            {DefectType.LOW_FREQ_RUMBLE: (0.3, 1.0)},
         ),
     ],
     "wow_flutter": [
@@ -869,6 +983,12 @@ CASES: dict[str, list[tuple[str, Callable[[], np.ndarray], MaterialType, dict[De
             _vinyl_stylus,
             MaterialType.VINYL,
             {DefectType.STYLUS_DAMAGE: (0.3, 1.0)},
+        ),
+        (
+            "Acetat-Zersetzung (Clicks + HF-Verlust + Substrat-Rauschen) wird erkannt",
+            _vinyl_lacquer,
+            MaterialType.LACQUER_DISC,
+            {DefectType.LACQUER_DISC_DEGRADATION: (0.3, 1.0)},
         ),
     ],
     "spectral": [
