@@ -19,6 +19,7 @@ import sys
 from collections.abc import Callable
 
 import numpy as np
+from scipy import signal
 
 logging.disable(logging.CRITICAL)
 
@@ -114,6 +115,66 @@ def _dropout_splice() -> np.ndarray:
     return _out
 
 
+def _vinyl_igd() -> np.ndarray:
+    t = np.arange(SR * DUR) / SR
+    ramp = np.linspace(0.0, 1.0, SR * DUR)
+    x = 0.2 * np.sin(2 * np.pi * 440.0 * t)
+    x = x + ramp * 0.1 * np.sin(2 * np.pi * 880.0 * t)  # H2 waechst zur Innenseite
+    x = x + ramp * 0.05 * np.sin(2 * np.pi * 1320.0 * t)  # H3 waechst
+    _out: np.ndarray = np.stack([x, x], axis=1).astype(np.float32)
+    return _out
+
+
+def _vinyl_groove_echo() -> np.ndarray:
+    t = np.arange(SR * DUR) / SR
+    x = 0.05 * np.sin(2 * np.pi * 440.0 * t)  # leise Grundlage
+    burst = np.zeros(SR * DUR)
+    burst[SR * 10 : SR * 11] = 0.5 * np.sin(2 * np.pi * 880.0 * t[SR * 10 : SR * 11])
+    # Ghost 1,8 s VOR dem lauten Durchgang (Nachbarrillen-Eindruck, -10 dB)
+    ghost = np.zeros(SR * DUR)
+    ghost_start = SR * 10 - int(1.8 * SR)
+    ghost[ghost_start : ghost_start + SR] = 0.15 * burst[SR * 10 : SR * 11]
+    sig = x + burst + ghost
+    _out: np.ndarray = np.stack([sig, sig], axis=1).astype(np.float32)
+    return _out
+
+
+def _vinyl_riaa() -> np.ndarray:
+    t = np.arange(SR * DUR) / SR
+    x = 0.2 * np.sin(2 * np.pi * 440.0 * t)
+    sos = signal.butter(1, 1000, btype="high", fs=SR, output="sos")
+    x = x + 1.2 * signal.sosfiltfilt(sos, x)  # falsche RIAA: HF-Anhebung
+    _out: np.ndarray = np.stack([x, x], axis=1).astype(np.float32)
+    return _out
+
+
+def _vinyl_motor() -> np.ndarray:
+    t = np.arange(SR * DUR) / SR
+    x = 0.2 * np.sin(2 * np.pi * 440.0 * t)
+    x = x + 0.03 * np.sin(2 * np.pi * 100.0 * t)
+    x = x + 0.02 * np.sin(2 * np.pi * 200.0 * t)
+    x = x + 0.01 * np.sin(2 * np.pi * 300.0 * t)
+    _out: np.ndarray = np.stack([x, x], axis=1).astype(np.float32)
+    return _out
+
+
+def _vinyl_motor_dense() -> np.ndarray:
+    t = np.arange(SR * DUR) / SR
+    x = 0.2 * np.sin(2 * np.pi * 440.0 * t)
+    for f, a in ((80, 0.03), (160, 0.025), (240, 0.02), (300, 0.015)):
+        x = x + a * np.sin(2 * np.pi * f * t)
+    _out: np.ndarray = np.stack([x, x], axis=1).astype(np.float32)
+    return _out
+
+
+def _vinyl_stylus() -> np.ndarray:
+    t = np.arange(SR * DUR) / SR
+    x = 0.2 * np.sin(2 * np.pi * 440.0 * t)
+    x[x > 0] = x[x > 0] * 0.4  # asymmetrische Abtastverzerrung
+    _out: np.ndarray = np.stack([x, x], axis=1).astype(np.float32)
+    return _out
+
+
 # ------------------------------------------------------------------ Familien
 # Jeder Fall: (Name, Generator, Material, {DefectType: (min, max)})
 CASES: dict[str, list[tuple[str, Callable[[], np.ndarray], MaterialType, dict[DefectType, tuple[float, float]]]]] = {
@@ -193,6 +254,44 @@ CASES: dict[str, list[tuple[str, Callable[[], np.ndarray], MaterialType, dict[De
             _clean_tone,
             MaterialType.TAPE,
             {DefectType.DROPOUTS: (0.0, 0.2)},
+        ),
+    ],
+    "vinyl": [
+        (
+            "IGD (zur Innenseite wachsende H2/H3) wird erkannt",
+            _vinyl_igd,
+            MaterialType.VINYL,
+            {DefectType.INNER_GROOVE_DISTORTION: (0.3, 1.0)},
+        ),
+        (
+            "Groove-Echo (1,8-s-Pre-Echo) wird erkannt",
+            _vinyl_groove_echo,
+            MaterialType.VINYL,
+            {DefectType.GROOVE_ECHO: (0.3, 1.0)},
+        ),
+        (
+            "Falsche RIAA (HF-Anhebung) wird erkannt",
+            _vinyl_riaa,
+            MaterialType.VINYL,
+            {DefectType.RIAA_CURVE_ERROR: (0.3, 1.0)},
+        ),
+        (
+            "Motor-Interferenz (100/200/300 Hz) wird erkannt",
+            _vinyl_motor,
+            MaterialType.VINYL,
+            {DefectType.MOTOR_INTERFERENCE: (0.3, 1.0)},
+        ),
+        (
+            "Dichter Motor-Kamm (80/160/240/300 Hz) wird erkannt",
+            _vinyl_motor_dense,
+            MaterialType.VINYL,
+            {DefectType.MOTOR_INTERFERENCE: (0.3, 1.0)},
+        ),
+        (
+            "Asymmetrische Abtastverzerrung wird erkannt",
+            _vinyl_stylus,
+            MaterialType.VINYL,
+            {DefectType.STYLUS_DAMAGE: (0.3, 1.0)},
         ),
     ],
 }

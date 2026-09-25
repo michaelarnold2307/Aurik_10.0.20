@@ -9973,7 +9973,12 @@ class DefectScanner:
                     hi = min(len(spec), h_idx + 2)
                     harmonic_energy += float(np.max(spec[lo:hi]))
                 harmonic_series_energy_ratio = float(np.clip(harmonic_energy / low_total, 0.0, 1.0))
-                if harmonic_series_energy_ratio >= 0.60:
+                # Motor-Stoerspektren SIND per Definition ein harmonischer Kamm
+                # einer tieffrequenten Grundwelle - der Musik-Guard darf kanonische
+                # Motor-Grundfrequenzen (80-300 Hz) nicht als Bass deuten
+                # (Falschnegativ: 100/200/300-Hz-Motorbrumm wurde auf 0,18 gedrueckt).
+                f0_is_motor = any(abs(f0 - mf) <= 1.5 * freq_res for mf in motor_freqs)
+                if harmonic_series_energy_ratio >= 0.60 and not f0_is_motor:
                     raw_sev *= 0.25
 
             # Anti-false-positive guard: musical bass harmonics (e.g. 100/200/300 Hz)
@@ -9981,16 +9986,21 @@ class DefectScanner:
             # ladder, attenuate motor severity heavily.
             harmonic_fit_ratio = 0.0
             peak_freqs = [f for f, _ in motor_peaks]
+            fit_f0_is_motor = False
             for f0 in peak_freqs:
                 if not 70.0 <= f0 <= 180.0:
                     continue
+                if any(abs(f0 - mf) <= 1.5 * freq_res for mf in motor_freqs):
+                    fit_f0_is_motor = True
                 matched = 0
                 for fpeak in peak_freqs:
                     k = max(1, int(round(fpeak / f0)))
                     if abs(fpeak - k * f0) <= 6.0:
                         matched += 1
                 harmonic_fit_ratio = max(harmonic_fit_ratio, matched / max(1, len(peak_freqs)))
-            if harmonic_fit_ratio >= 0.75 and len(peak_freqs) >= 4:
+            # Gleicher Grundsatz wie oben: kanonische Motor-Grundfrequenzen sind
+            # Signatur, kein Musik-Kamm.
+            if harmonic_fit_ratio >= 0.75 and len(peak_freqs) >= 4 and not fit_f0_is_motor:
                 raw_sev *= 0.35
 
             threshold = self.thresholds.get(DefectType.MOTOR_INTERFERENCE, 0.5)
