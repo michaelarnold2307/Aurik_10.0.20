@@ -97,3 +97,31 @@ def test_defect_audibility_fail_open_on_error(monkeypatch: pytest.MonkeyPatch) -
     res = ag.defect_audibility(x, 48000, 100, 200)
     assert res["audible"] is True
     assert res["skippable"] is False
+
+
+class TestJndFloorHoerordnung:
+    """§4 Hörordnung (hoerordnung.instructions.md, „10-Log-Summen Masking JND").
+
+    Die Hörbarkeits-Schwelle ist die Energiesumme aus Maskierungsschwelle und
+    generischer Pegel-JND (level_broadband = 1 dB) — SOTA-Konsistenz
+    (2026-09-25): eine Hör-Instanz, eine Wahrheit; sub-audible Defekte werden
+    nie repariert (Never-worsen, Hörordnung §8a).
+    """
+
+    def test_floor_aggregates_jnd_in_energy_sum(self):
+        from backend.core.dsp.audibility_gate import _threshold_with_jnd_floor
+
+        # Stille (-100 dB): Schwelle steigt auf die Pegel-JND (~1 dB)
+        assert _threshold_with_jnd_floor(-100.0) == pytest.approx(1.0, abs=0.05)
+        # Laute Maskierung (20 dB): JND-Anteil vernachlaessigbar (~+0,05 dB)
+        assert _threshold_with_jnd_floor(20.0) == pytest.approx(20.0, abs=0.1)
+        # Monoton, nie unter der JND
+        assert _threshold_with_jnd_floor(0.0) > 0.0
+
+    def test_verdict_threshold_never_below_jnd_and_skips_subaudible(self):
+        x = np.zeros(48000, dtype=np.float32)
+        x[24000:24064] = 1e-6  # winziger Defekt: unter der Pegel-JND
+        res = ag.defect_audibility(x, 48000, 24000, 24064)
+        assert res["threshold_db"] >= 1.0
+        assert res["skippable"] is True
+        assert res["audible"] is False

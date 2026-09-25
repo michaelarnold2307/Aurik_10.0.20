@@ -28,6 +28,25 @@ _DEFAULT_HI_HZ = 10000.0
 _DEFAULT_CONTEXT_MS = 250.0
 
 
+def _threshold_with_jnd_floor(threshold_db: float) -> float:
+    """§4 Hörordnung (hoerordnung.instructions.md, „10-Log-Summen Masking JND"):
+    die Hörbarkeits-Schwelle ist die ENERGIESUMME aus Maskierungsschwelle und
+    generischer Pegel-JND (hearing_jnd `level_broadband` = 1 dB, Mills 1960).
+
+    SOTA-Konsistenz (2026-09-25): Auch ohne Maskierung (Stille) bleibt ein
+    Defekt unter der JND unhoerbar — eine Hör-Instanz, eine Wahrheit. Der Floor
+    ist konservativ (Schwelle steigt um ≤ 1 dB) und damit Never-worsen-sicher
+    (Hörordnung §8a).
+    """
+    from backend.core.dsp.hearing_jnd import jnd as _jnd
+
+    try:
+        _jnd_db = float(_jnd("level_broadband"))
+    except Exception:  # §V6 (copilot-instructions.md): Floor nie blockierend
+        return float(threshold_db)
+    return float(10.0 * np.log10(10.0 ** (float(threshold_db) / 10.0) + 10.0 ** (_jnd_db / 10.0)))
+
+
 class SanitizedSignal:
     """§PERF-R6 (2026-09-19): defekt-unabhängige Signal-Sanitisierung EINMAL je Signal.
 
@@ -126,6 +145,7 @@ def defect_audibility_from_signal(
         if len(band_idx) == 0:
             return {"audible": False, "delta_db": 0.0, "threshold_db": 0.0, "skippable": True}
         threshold_db = float(np.max(np.percentile(thr[:, band_idx], 75, axis=0)))
+        threshold_db = _threshold_with_jnd_floor(threshold_db)  # §4 Hörordnung: + Pegel-JND
 
         # Defekt-Energie: ZENTRIERT auf den Defekt (512-Punkt-Hann), damit das
         # Verdikt nicht von der globalen Frame-Ausrichtung abhängt
@@ -191,6 +211,7 @@ def _defect_audibility_zwicker(
     if not band.any():
         return {"audible": False, "delta_db": 0.0, "threshold_db": 0.0, "skippable": True}
     threshold_db = float(np.max(np.percentile(thr_spl[band], 75)))
+    threshold_db = _threshold_with_jnd_floor(threshold_db)  # §4 Hörordnung: + Pegel-JND
 
     # Defekt-Delta: dB SPL des lautesten 1/3-Oktav-Bands im zentrierten Signal
     # (analog zur defekt-zentrierten Messung des MPEG-1-Pfades).

@@ -1,25 +1,15 @@
 # TASK_CHANGES — Live-Ledger der aktuellen Aufgabe
 
-> Generiert von `scripts/change_ledger.py snapshot` (Base: `HEAD`, Stand: 2026-09-25 22:23 CEST).
+> Generiert von `scripts/change_ledger.py snapshot` (Base: `HEAD`, Stand: 2026-09-25 23:09 CEST).
 > CI (`ci-lite.yml` pr-evidence-gate) erzwingt Abdeckung: jede geänderte Code-Datei muss hier stehen.
 
 ## Geänderte Dateien
 
 | Status | Pfad | Art |
 |---|---|---|
-| M | .github/specs/02_pipeline_architecture.md | modifiziert |
-| M | .github/specs/06_phases_system.md | modifiziert |
-| M | audit/spec_integration_report.json | modifiziert |
-| M | audit/spec_integration_report.md | modifiziert |
-| M | backend/core/defect_scanner.py | modifiziert |
-| M | backend/core/phases/phase_24_dropout_repair.py | modifiziert |
-| M | backend/core/phases/phase_64_tape_splice_repair.py | modifiziert |
-| M | backend/core/phases/phase_interface.py | modifiziert |
-| M | backend/core/unified_restorer_v3.py | modifiziert |
+| M | backend/core/dsp/audibility_gate.py | modifiziert |
 | M | docs/PHASE_SOTA_GAP_ANALYSE.md | modifiziert |
-| M | scripts/repair_effectiveness_harness.py | modifiziert |
-| M | tests/unit/test_phase64_splice_profile.py | modifiziert |
-| A | tests/unit/test_phase_evidence_contract.py | neu |
+| M | tests/unit/test_hearing_jnd_audibility_gate.py | modifiziert |
 | ?? | Setupfile/DEBIAN_TEMPLATE/aurik | ungetrackt |
 | ?? | Setupfile/DEBIAN_TEMPLATE/aurik.desktop | ungetrackt |
 | ?? | Setupfile/DEBIAN_TEMPLATE/control | ungetrackt |

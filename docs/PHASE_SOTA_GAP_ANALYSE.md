@@ -367,3 +367,24 @@ Privatdetektoren statt Scanner-Evidenz, private Schwellen §V7-widrig).
   (`test_modern_window_gui_contract.py`), veraltetes Daily-Gate-Artefakt
   (`test_daily_gate_stored_recently`). Alle 4 ebenfalls auf HEAD rot,
   durch diese Welle unverändert.
+
+### Sub-audible SOTA-Konsistenz 2026-09-25 — eine Hör-Instanz, eine Wahrheit
+
+**Befund:** Drei Instanzen beantworteten „Defekt hörbar?" auf drei Skalen:
+`dsp/audibility_gate.defect_audibility` (Maskierungs-Delta, ~25 Phasen-
+Aufrufer), `defect_audibility_gate` (Severity-Skala 0.08 + Material-Offsets),
+`dsp/hearing_jnd.below_jnd` (physikalische JND-Klassen). Die Hörordnung §4
+verlangt aber „10-Log-Summen Masking JND" — die Schwelle ist die
+Energiesumme aus Maskierung UND Pegel-JND; der JND-Term fehlte komplett.
+
+**Umgesetzt (Slice 1):** `_threshold_with_jnd_floor()` in
+`dsp/audibility_gate.py` — beide Maskierungspfade (MPEG-1 + Zwicker ISO 532-1)
+aggregieren die Schwelle jetzt mit `hearing_jnd.level_broadband` (1 dB,
+Mills 1960). Sub-audible Defekte bleiben damit auch in der Stille unter der
+Schwelle (skippable) — Never-worsen/Wohlklang: nie anfassen, was nicht hörbar
+ist. Konservativ (≤ +1 dB), fail-safe (§V6: Floor nie blockierend).
+10/10 Hör-/JND-Tests + 236 Konsumenten-Tests grün.
+
+**Offen (Konsistenz-Slice 2):** `defect_audibility_gate` (Severity-Skala)
+und die `below_jnd`-Aufrufer an dieselbe Instanz angleichen;
+Perceptual-Salience/ERA (`n_masked_events`) als dritte Evidenz vereinheitlichen.
