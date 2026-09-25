@@ -1017,10 +1017,24 @@ class WowFlutterFix(PhaseInterface):
             # IF-Fallback erfolgreich → weiter mit normaler Korrekturpipeline
             # (_fit_sinusoidal_wow_curve → _separate_wow_flutter → _calculate_stretch_factors)
 
+        # §7.4c (06_phases_system.md) Scanner-Konsultation: die
+        # Wow-Modulationsfrequenz aus der DefectScanner-Evidenz
+        # (wow-Metadatum dominant_mod_freq_hz) als Saat für den Sinus-Fit.
+        _wow_hint_hz_12: float | None = None
+        for _k12, _v12 in (kwargs.get("defect_scores") or {}).items():
+            if str(getattr(_k12, "value", _k12)) == "wow":
+                try:
+                    _hz12 = float((getattr(_v12, "metadata", None) or {}).get("dominant_mod_freq_hz", 0.0) or 0.0)
+                except (TypeError, ValueError):
+                    _hz12 = 0.0
+                if _hz12 > 0.0:
+                    _wow_hint_hz_12 = _hz12
+                break
         pitch_trajectory, _sinusoidal_wow_profile = self._fit_sinusoidal_wow_curve(
             pitch_trajectory,
             confidence,
             sample_rate,
+            hint_freq_hz=_wow_hint_hz_12,
         )
         if _sinusoidal_wow_profile.get("applied", False):
             logger.info(
@@ -1029,6 +1043,36 @@ class WowFlutterFix(PhaseInterface):
                 float(_sinusoidal_wow_profile.get("amplitude_cents", 0.0)),
                 float(_sinusoidal_wow_profile.get("r2", 0.0)),
             )
+        elif _wow_hint_hz_12 is not None:
+            # §7.4c Scanner-Konsultation, Messkanal-Wechsel: die Konsens-
+            # Trajektorie ist auf Akkord-Musik reines Noten-Rauschen
+            # (Befund 2026-09-25: ±1000 cents Streuung vs. ±8,6 cents FM-Signal
+            # — Sinus-/Trend-/IRLS-Fit lehnen korrekt ab). Der Hilbert-IF-Kanal
+            # (_estimate_speed_curve_from_instantaneous_frequency, IEC 60386,
+            # SNR-robust) misst die GEMEINSAME Transport-Modulation direkt.
+            try:
+                _if_pitch_12, _if_conf_12 = self._estimate_speed_curve_from_instantaneous_frequency(mono, sample_rate)
+                if _if_pitch_12.size >= 32:
+                    _if_smoothed_12, _if_profile_12 = self._fit_sinusoidal_wow_curve(
+                        _if_pitch_12,
+                        _if_conf_12,
+                        sample_rate,
+                        hint_freq_hz=_wow_hint_hz_12,
+                    )
+                    if _if_profile_12.get("applied", False):
+                        pitch_trajectory = _if_smoothed_12
+                        confidence = _if_conf_12
+                        _sinusoidal_wow_profile = _if_profile_12
+                        _sinusoidal_wow_profile["freq_source"] = "scanner_hint+if_track"
+                        _sinusoidal_wow_profile["witness"] = "scanner+if"
+                        logger.info(
+                            "Verarbeitungsschritt 12 Wow-Fit auf IF-Kanal aktiv: freq=%.2f Hz amp=%.1f cents r2=%.2f",
+                            float(_if_profile_12.get("frequency_hz", 0.0)),
+                            float(_if_profile_12.get("amplitude_cents", 0.0)),
+                            float(_if_profile_12.get("r2", 0.0)),
+                        )
+            except Exception as _if_exc_12:
+                logger.debug("Verarbeitungsschritt 12 IF-Wow-Fit nicht blockierend: %s", _if_exc_12)
 
         # Step 1: Separate wow (<4 Hz) and flutter (4-100 Hz) components
         wow_component, flutter_component = self._separate_wow_flutter(pitch_trajectory, sample_rate)
@@ -1042,7 +1086,11 @@ class WowFlutterFix(PhaseInterface):
         if wow_flutter_detected:
             _wf_strong_conf = confidence[confidence > 0.5]
             _wf_mean_conf = float(np.mean(_wf_strong_conf)) if _wf_strong_conf.size else 0.0
-            if _wf_strong_conf.size < 4 or _wf_mean_conf < 0.5:
+            # §7.4c: Scanner+IF-Evidenzkette ist eine belastbare Evidenz
+            # alternativ zur Pitch-Konfidenz (der IF-Kanal liefert keine
+            # Voiced-Konfidenz; Scanner-Saaten-+r²-Chain trägt das Verdikt).
+            _wf_seeded = str(_sinusoidal_wow_profile.get("witness", "")) == "scanner+if"
+            if not _wf_seeded and (_wf_strong_conf.size < 4 or _wf_mean_conf < 0.5):
                 logger.info(
                     "Verarbeitungsschritt 12: Wow/Flutter-Korrektur übersprungen — "
                     "Pitch-Evidenz unzureichend (frames=%d mean_conf=%.2f)",
@@ -1695,11 +1743,20 @@ class WowFlutterFix(PhaseInterface):
         pitch_trajectory: np.ndarray,
         confidence: np.ndarray,
         sample_rate: int,
+        hint_freq_hz: float | None = None,
     ) -> tuple[np.ndarray, dict[str, Any]]:
         """Glättet dominante sinusförmige Wow-Modulationen in der Pitch-Kurve.
 
         Der Fit ist absichtlich konservativ: Er greift nur bei kleiner Pitch-Spanne
         (Transportfehler, keine Melodie) und einem klaren 0.1-3 Hz Peak.
+
+        §7.4c (06_phases_system.md) Scanner-Konsultation (2026-09-25): Liegt die
+        Modulationsfrequenz als Scanner-Evidenz vor (defect_scores wow-Metadatum
+        dominant_mod_freq_hz), wird die Spann-/Dominanz-Verweigerung überbrückt —
+        ein globaler Transport-Wow moduliert ALLE Stimmen gleich (FM ±0,5 % auf
+        Musikträgern) und ist kein Melodie-Phänomen. Amplitude (4..60 cents) und
+        r² ≥ 0.45 bleiben als Never-worsen-Guards (Hörordnung §8a
+        (hoerordnung.instructions.md)).
         """
         profile: dict[str, Any] = {
             "applied": False,
@@ -1722,7 +1779,7 @@ class WowFlutterFix(PhaseInterface):
         if p5 <= 0.0 or p95 <= p5:
             return pitch_trajectory, profile
         span_cents = float(1200.0 * np.log2(p95 / p5))
-        if span_cents > 100.0:
+        if span_cents > 100.0 and hint_freq_hz is None:
             return pitch_trajectory, profile
 
         median_pitch = float(np.median(confident_pitches))
@@ -1741,32 +1798,63 @@ class WowFlutterFix(PhaseInterface):
         window_samples = int(self.PITCH_WINDOW_MS * sample_rate / 1000)
         hop_samples = max(1, window_samples // self.PITCH_HOP_FACTOR)
         frame_rate = float(sample_rate) / float(hop_samples)
-        freqs = np.fft.rfftfreq(pitch.size, d=1.0 / frame_rate)
-        window = np.hanning(pitch.size)
-        spectrum = np.fft.rfft(residual_interp * window)
-        band_mask = (freqs >= 0.10) & (freqs <= 3.0)
-        if not np.any(band_mask):
-            return pitch_trajectory, profile
-        band_indices = np.flatnonzero(band_mask)
-        band_power = np.abs(spectrum[band_indices]) ** 2
-        if band_power.size == 0 or float(np.sum(band_power)) <= 1e-12:
-            return pitch_trajectory, profile
-        peak_local = int(np.argmax(band_power))
-        peak_index = int(band_indices[peak_local])
-        peak_freq = float(freqs[peak_index])
-        dominance = float(band_power[peak_local] / (np.sum(band_power) + 1e-12))
-        if dominance < 0.45:
-            return pitch_trajectory, profile
+        _use_hint = hint_freq_hz is not None and 0.10 <= float(hint_freq_hz) <= 3.0
+        if _use_hint:
+            # Scanner-Saat (§7.4c): Frequenz aus der Evidenz — kein Blind-Peak,
+            # keine Dominanz-Verweigerung (Amplitude/r²-Guards bleiben).
+            peak_freq = float(hint_freq_hz or 0.0)
+            dominance = 1.0
+        else:
+            freqs = np.fft.rfftfreq(pitch.size, d=1.0 / frame_rate)
+            window = np.hanning(pitch.size)
+            spectrum = np.fft.rfft(residual_interp * window)
+            band_mask = (freqs >= 0.10) & (freqs <= 3.0)
+            if not np.any(band_mask):
+                return pitch_trajectory, profile
+            band_indices = np.flatnonzero(band_mask)
+            band_power = np.abs(spectrum[band_indices]) ** 2
+            if band_power.size == 0 or float(np.sum(band_power)) <= 1e-12:
+                return pitch_trajectory, profile
+            peak_local = int(np.argmax(band_power))
+            peak_index = int(band_indices[peak_local])
+            peak_freq = float(freqs[peak_index])
+            dominance = float(band_power[peak_local] / (np.sum(band_power) + 1e-12))
+            if dominance < 0.45:
+                return pitch_trajectory, profile
 
         t = np.arange(pitch.size, dtype=np.float64) / frame_rate
         omega_t = 2.0 * np.pi * peak_freq * t[confident_mask]
-        design = np.column_stack([np.sin(omega_t), np.cos(omega_t), np.ones(int(np.sum(confident_mask)))])
+        # Trend-Auskopplung (L3-Befund 2026-09-25): Auf Musikträgern trug die
+        # Melodie-Drift (~2700 cents Spanne) die Sinus-Basis und verfälschte die
+        # Amplitude auf 386 cents (Amp-Guard ≤ 60 lehnte korrekt ab). Ein linearer
+        # Trend in der Design-Matrix scheidet die Melodie-Drift aus — der Sinus
+        # misst nur die PERIODISCHE Transport-Modulation (FM-Wow ±0,5 % ≈ 8,6
+        # cents). Der Trend ist reines Entzerrungs-Mittel und geht NICHT in die
+        # geglättete Trajektorie ein (der Warp darf nur den Wow-Sinus enthalten).
+        _trend_norm = (t - float(np.mean(t))) / max(float(np.ptp(t)), 1e-9)
+        design = np.column_stack(
+            [np.sin(omega_t), np.cos(omega_t), np.ones(int(np.sum(confident_mask))), _trend_norm[confident_mask]]
+        )
         y = residual_cents[confident_mask]
-        try:
-            coeffs, *_ = np.linalg.lstsq(design, y, rcond=None)
-        except Exception as e:
-            logger.warning("Verarbeitungsschritt_12_wow_flutter_fix.py::_fit_sinusoidal_wow_curve Ersatzpfad: %s", e)
-            return pitch_trajectory, profile
+        # Robuste IRLS-Schätzung (Huber-Gewichte, 4 Runden): Akkordwechsel sind
+        # SPRUENGE in der Trajektorie und verfaelschten die Kleinste-Quadrate-
+        # Schätzung auf ~430 cents (Befund 2026-09-25: 4-Akkord-Musikträger,
+        # Schritte alle ~3,75 s). Heruntergewichtete Ausreißer lassen den Sinus
+        # nur die PERIODISCHE FM messen (FM-Wow ±0,5 % ≈ 8,6 cents).
+        _w_12 = np.ones(y.size, dtype=np.float64)
+        coeffs = np.zeros(design.shape[1], dtype=np.float64)
+        for _irls_12 in range(4):
+            try:
+                _sw_12 = np.sqrt(_w_12)
+                coeffs, *_ = np.linalg.lstsq(design * _sw_12[:, None], y * _sw_12, rcond=None)
+            except Exception as e:
+                logger.warning(
+                    "Verarbeitungsschritt_12_wow_flutter_fix.py::_fit_sinusoidal_wow_curve Ersatzpfad: %s", e
+                )
+                return pitch_trajectory, profile
+            _resid_12 = y - design @ coeffs
+            _scale_12 = float(np.median(np.abs(_resid_12))) * 1.4826 + 1e-9
+            _w_12 = 1.0 / (1.0 + (np.abs(_resid_12) / (2.5 * _scale_12)) ** 2)
         amp_cents = float(np.hypot(coeffs[0], coeffs[1]))
         if amp_cents < 4.0 or amp_cents > 60.0:
             return pitch_trajectory, profile
@@ -1785,7 +1873,7 @@ class WowFlutterFix(PhaseInterface):
                 np.ones(pitch.size),
             ]
         )
-        fitted_cents = full_design @ coeffs
+        fitted_cents = full_design @ coeffs[:3]  # Sinus+Offset — Trend bleibt draußen
         fitted_pitch = median_pitch * np.power(2.0, fitted_cents / 1200.0)
         smoothed = pitch.copy()
         smoothed[pitch > 0.0] = fitted_pitch[pitch > 0.0]
@@ -1797,6 +1885,7 @@ class WowFlutterFix(PhaseInterface):
                 "r2": r2,
                 "dominance": dominance,
                 "span_cents": span_cents,
+                "freq_source": "scanner_hint" if _use_hint else "blind_peak",
             }
         )
         return smoothed.astype(pitch_trajectory.dtype, copy=False), profile

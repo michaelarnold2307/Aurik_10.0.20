@@ -388,3 +388,27 @@ ist. Konservativ (≤ +1 dB), fail-safe (§V6: Floor nie blockierend).
 **Offen (Konsistenz-Slice 2):** `defect_audibility_gate` (Severity-Skala)
 und die `below_jnd`-Aufrufer an dieselbe Instanz angleichen;
 Perceptual-Salience/ERA (`n_masked_events`) als dritte Evidenz vereinheitlichen.
+
+### Cluster A 2026-09-25 — phase_12 Wow: Root-Cause abgeschlossen, Messkanal-Grenze kartiert
+
+**Umgesetzt (Committed):** Scanner-Saat für den Sinus-Wow-Fit
+(`hint_freq_hz` aus wow-Metadatum `dominant_mod_freq_hz`, §7.4c),
+Trend-Auskopplung + robuste IRLS-Schätzung (Huber), IF-Kanal-Verdrahtung
+(`_estimate_speed_curve_from_instantaneous_frequency`) als zweiter Messkanal,
+Witness-Schutz akzeptiert die Scanner+IF-Evidenzkette. 92/92 phase_12-Tests grün
+(Mono-/Solo-Fall — der Designdomäne des Fits — profitiert direkt).
+
+**Gemessene Messkanal-Grenze (FM-Wow ±0,5 % ≈ 8,6 cents auf 4-Akkord-Musik):**
+
+- Konsens-Pitch-Trajektorie: Noten-Streuung ±1000 cents (Spanne 2704) —
+  Sinus-/Trend-/IRLS-Fit messen 386–430 cents „Wow" (Spektralleckage der
+  Akkordsprünge) → Amp-Guard ≤ 60 lehnt KORREKT ab (Never-worsen hält).
+- Hilbert-IF des Mixes: Beating zwischen den Tönen überstimmt die Gemeinschafts-
+  FM — gemessen nur 0,89 cents (Guard ≥ 3 lehnt korrekt ab).
+
+**Nächster Schritt (spezifiziert): Teilband-IF-Mittelwert-Estimator** — je
+1/3-Oktavband trägt ~1 Partial; die normierte IF-Abweichung je Band gemittelt
+über alle Bänder misst die Gemeinschafts-FM mit √N-Rauschgewinn (N ≈ 10–20
+Bänder ⇒ ~4× SNR). Alternativ: Scanner liefert `wow_depth_cents` als Metadatum
+(die Detektion misst die Modulation bereits robust). Danach greift die
+vorhandene Warp-Pipeline.

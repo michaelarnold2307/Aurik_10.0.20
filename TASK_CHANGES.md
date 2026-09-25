@@ -1,14 +1,14 @@
 # TASK_CHANGES — Live-Ledger der aktuellen Aufgabe
 
-> Generiert von `scripts/change_ledger.py snapshot` (Base: `HEAD`, Stand: 2026-09-26 00:12 CEST).
+> Generiert von `scripts/change_ledger.py snapshot` (Base: `HEAD`, Stand: 2026-09-26 00:47 CEST).
 > CI (`ci-lite.yml` pr-evidence-gate) erzwingt Abdeckung: jede geänderte Code-Datei muss hier stehen.
 
 ## Geänderte Dateien
 
 | Status | Pfad | Art |
 |---|---|---|
-| M | backend/core/phases/phase_14_phase_correction.py | modifiziert |
-| M | backend/core/phases/phase_49_advanced_dereverb.py | modifiziert |
+| M | backend/core/phases/phase_12_wow_flutter_fix.py | modifiziert |
+| M | docs/PHASE_SOTA_GAP_ANALYSE.md | modifiziert |
 | ?? | Setupfile/DEBIAN_TEMPLATE/aurik | ungetrackt |
 | ?? | Setupfile/DEBIAN_TEMPLATE/aurik.desktop | ungetrackt |
 | ?? | Setupfile/DEBIAN_TEMPLATE/control | ungetrackt |
