@@ -356,7 +356,12 @@ class PhaseCorrection(PhaseInterface):
         # Delay-correction on fully uncorrelated stereo is meaningless and the filter bank
         # reconstruction would cause the same ~0.29 regression floor. Return original unchanged.
         _WIDE_STEREO_CORR_CAP = 0.20
-        if all(c < _WIDE_STEREO_CORR_CAP for c in correlations_before):
+        # L3-Befund 2026-09-25: „near-zero" war als c < 0.20 implementiert und
+        # verschluckte auch STARK NEGATIVE Korrelation (Gegenpoligkeit, gemessen
+        # −0,84) — die wurde als "natural_wide_stereo" verworfen. Gegenpol ist
+        # kein unabhängiges Stereo, sondern der klassische Polaritätsfehler:
+        # nur |c| klein ist natürlich breit (§7.4c (06_phases_system.md)).
+        if all(abs(c) < _WIDE_STEREO_CORR_CAP for c in correlations_before):
             logger.debug(
                 "Verarbeitungsschritt_14: all bands near-zero corr (max=%.3f < %.2f) — natural wide stereo, "
                 "no azimuth error, returning Eingabe unchanged",

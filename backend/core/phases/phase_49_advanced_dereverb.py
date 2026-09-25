@@ -365,11 +365,17 @@ class AdvancedDereverbPhase(PhaseInterface):
         _dur_s_49 = float(len(audio)) / max(1, sample_rate)
         if _dur_s_49 >= 0.5:
             try:
-                _defect_locs_49 = kwargs.get("defect_locations") or {}
+                # §7.4c (06_phases_system.md) Scanner-Konsultation: die Severity
+                # kommt aus defect_scores, NICHT aus defect_locations (Fenster).
+                # L3-Befund 2026-09-25: der alte Zugriff auf defect_locations
+                # erzwang _reverb_sev_49 = 0.0 → das Gate uebersprang IMMER
+                # (auch in Produktion), obwohl der Scanner reverb_excess = 1,0
+                # meldete (rt60 1,3 s).
+                _defect_scores_49 = kwargs.get("defect_scores") or {}
                 _reverb_sev_49 = 0.0
-                if isinstance(_defect_locs_49, dict):
+                if isinstance(_defect_scores_49, dict):
                     _reverb_sev_49 = float(
-                        _defect_locs_49.get("reverb_excess", 0.0) or _defect_locs_49.get("room_reverb", 0.0)
+                        _defect_scores_49.get("reverb_excess", 0.0) or _defect_scores_49.get("room_reverb", 0.0)
                     )
                 if _reverb_sev_49 < 0.15:
                     logger.info(
