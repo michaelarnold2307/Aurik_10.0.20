@@ -240,6 +240,38 @@ def _spectral_phase_issues() -> np.ndarray:
     return _out
 
 
+def _stereo_crosstalk() -> np.ndarray:
+    t = np.arange(SR * DUR) / SR
+    left = 0.2 * np.sin(2 * np.pi * 440.0 * t)
+    # Uebersprechen L->R: 440-Hz-Geistbild bei nur ~10 dB Kanaltrennung
+    right = 0.2 * np.sin(2 * np.pi * 630.0 * t) + 0.06 * np.sin(2 * np.pi * 440.0 * t)
+    _out: np.ndarray = np.stack([left, right], axis=1).astype(np.float32)
+    return _out
+
+
+def _stereo_imbalance() -> np.ndarray:
+    t = np.arange(SR * DUR) / SR
+    left = 0.2 * np.sin(2 * np.pi * 440.0 * t)
+    right = 0.14 * np.sin(2 * np.pi * 440.0 * t)  # R = -3 dB
+    _out: np.ndarray = np.stack([left, right], axis=1).astype(np.float32)
+    return _out
+
+
+def _stereo_collapse() -> np.ndarray:
+    t = np.arange(SR * DUR) / SR
+    x = 0.2 * np.sin(2 * np.pi * 440.0 * t)
+    _out: np.ndarray = np.stack([x, x], axis=1).astype(np.float32)  # L == R: Feld kollabiert
+    return _out
+
+
+def _stereo_decorrelated() -> np.ndarray:
+    t = np.arange(SR * DUR) / SR
+    left = 0.2 * np.sin(2 * np.pi * 440.0 * t)
+    right = 0.2 * np.sin(2 * np.pi * 630.0 * t)  # voll dekorreliert
+    _out: np.ndarray = np.stack([left, right], axis=1).astype(np.float32)
+    return _out
+
+
 # ------------------------------------------------------------------ Familien
 # Jeder Fall: (Name, Generator, Material, {DefectType: (min, max)})
 CASES: dict[str, list[tuple[str, Callable[[], np.ndarray], MaterialType, dict[DefectType, tuple[float, float]]]]] = {
@@ -399,6 +431,32 @@ CASES: dict[str, list[tuple[str, Callable[[], np.ndarray], MaterialType, dict[De
             _spectral_phase_issues,
             MaterialType.TAPE,
             {DefectType.PHASE_ISSUES: (0.3, 1.0)},
+        ),
+    ],
+    "stereo": [
+        (
+            "Uebersprechen L->R (Geistbild bei ~10 dB Trennung) wird erkannt",
+            _stereo_crosstalk,
+            MaterialType.TAPE,
+            {DefectType.CROSSTALK: (0.3, 1.0)},
+        ),
+        (
+            "Stereo-Imbalance (-3 dB rechts) wird erkannt",
+            _stereo_imbalance,
+            MaterialType.TAPE,
+            {DefectType.STEREO_IMBALANCE: (0.3, 1.0)},
+        ),
+        (
+            "Stereo-Feld-Kollaps (L==R) wird erkannt",
+            _stereo_collapse,
+            MaterialType.TAPE,
+            {DefectType.STEREO_FIELD_COLLAPSE: (0.3, 1.0)},
+        ),
+        (
+            "Dekorrelierte Kanaele loesen keinen Kollaps aus",
+            _stereo_decorrelated,
+            MaterialType.TAPE,
+            {DefectType.STEREO_FIELD_COLLAPSE: (0.0, 0.2)},
         ),
     ],
 }
