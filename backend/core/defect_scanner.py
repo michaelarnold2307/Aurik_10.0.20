@@ -6779,6 +6779,13 @@ class DefectScanner:
             elif _dominance > 0.3:
                 _tonal_discount = float((0.6 - _dominance) / 0.3)
 
+        # Ausnahme vom Tonal-Guard: ENOB <= 10 aus der Step-Size-Statistik ist
+        # ein direkter LSB-Nachweis (kein U-Histogramm-Artefakt der Sinusform).
+        # Quantisierungsrauschen AUF tonalem Inhalt ist der Normalfall (leise
+        # Passagen auf 8-Bit-Digitalisaten) und darf nicht genullt werden.
+        if enob <= 10.0:
+            _tonal_discount = 1.0
+
         # --- Combined severity ---
         # ENOB < 12 → noticeable; < 10 → severe; < 8 → extreme
         sev_enob = float(np.clip((14.0 - enob) / 6.0, 0.0, 1.0))
@@ -9314,7 +9321,14 @@ class DefectScanner:
                     clusters.append(int(np.mean(current_cluster)))
                     current_cluster = [idx]
             clusters.append(int(np.mean(current_cluster)))
-            clusters = clusters[:8]  # Limit computation
+            # Limit computation: keep the STRONGEST components, not the
+            # lowest-frequency ones. Leakage sidebands of non-bin-centered
+            # tones can dominate the low bins (Falschnegativ: echte IMD-Toene
+            # bei 3/4 kHz gingen verloren, weil die ersten 8 Cluster reine
+            # DC-/Leckage-Bins waren).
+            if len(clusters) > 8:
+                _salience_order = np.argsort([spec_db[c] for c in clusters])[::-1]
+                clusters = [clusters[i] for i in _salience_order[:8]]
 
             # Check for IMD products at f1±f2
             imd_evidence = []

@@ -175,6 +175,64 @@ def _vinyl_stylus() -> np.ndarray:
     return _out
 
 
+def _spectral_aliasing() -> np.ndarray:
+    t = np.arange(SR * DUR) / SR
+    # Near-Nyquist-Energie (21 kHz) ohne musikalische Quelle: AA-Filter-Versagen
+    x = 0.12 * np.sin(2 * np.pi * 12000.0 * t)
+    x = x + 0.15 * np.sin(2 * np.pi * 21000.0 * t)
+    _out: np.ndarray = np.stack([x, x], axis=1).astype(np.float32)
+    return _out
+
+
+def _spectral_imd() -> np.ndarray:
+    t = np.arange(SR * DUR) / SR
+    # Zwei-Ton-IMD: 3 kHz + 4 kHz durch quadratische Nichtlinearitaet
+    # -> Differenz-/Summentoene (1/2/5/7 kHz)
+    x = np.sin(2 * np.pi * 3000.0 * t) + np.sin(2 * np.pi * 4000.0 * t)
+    x = x + 0.2 * x**2
+    _out: np.ndarray = np.stack([0.15 * x, 0.15 * x], axis=1).astype(np.float32)
+    return _out
+
+
+def _spectral_quantization() -> np.ndarray:
+    t = np.arange(SR * DUR) / SR
+    x = 0.2 * np.sin(2 * np.pi * 220.0 * t)
+    q = np.round(x * 127.0) / 127.0  # 8-Bit-Quantisierung
+    err = x - q
+    _out: np.ndarray = np.stack([q + 0.8 * err, q + 0.8 * err], axis=1).astype(np.float32)
+    return _out
+
+
+def _spectral_dc() -> np.ndarray:
+    t = np.arange(SR * DUR) / SR
+    x = 0.2 * np.sin(2 * np.pi * 220.0 * t) + 0.15  # konstanter DC-Anteil
+    _out: np.ndarray = np.stack([x, x], axis=1).astype(np.float32)
+    return _out
+
+
+def _spectral_phase_rotation() -> np.ndarray:
+    t = np.arange(SR * DUR) / SR
+    # Mehrtoene noetig: Dispersion ist frequenzabhaengig - ein Einzelton
+    # traegt keine Gruppenlaufzeit-Varianz-Signatur.
+    x = 0.2 * np.sin(2 * np.pi * 220.0 * t)
+    x = x + 0.15 * np.sin(2 * np.pi * 880.0 * t)
+    x = x + 0.1 * np.sin(2 * np.pi * 1760.0 * t)
+    a = 0.7  # Allpass 1. Ordnung: frequenzabhaengige Phasendrehung
+    y = np.zeros_like(x)
+    y[0] = x[0]
+    for n in range(1, len(x)):
+        y[n] = -a * x[n] + x[n - 1] + a * y[n - 1]
+    _out: np.ndarray = np.stack([y, y], axis=1).astype(np.float32)
+    return _out
+
+
+def _spectral_phase_issues() -> np.ndarray:
+    t = np.arange(SR * DUR) / SR
+    x = 0.2 * np.sin(2 * np.pi * 220.0 * t)
+    _out: np.ndarray = np.stack([x, -x], axis=1).astype(np.float32)  # Kanal gegenpolig
+    return _out
+
+
 # ------------------------------------------------------------------ Familien
 # Jeder Fall: (Name, Generator, Material, {DefectType: (min, max)})
 CASES: dict[str, list[tuple[str, Callable[[], np.ndarray], MaterialType, dict[DefectType, tuple[float, float]]]]] = {
@@ -292,6 +350,44 @@ CASES: dict[str, list[tuple[str, Callable[[], np.ndarray], MaterialType, dict[De
             _vinyl_stylus,
             MaterialType.VINYL,
             {DefectType.STYLUS_DAMAGE: (0.3, 1.0)},
+        ),
+    ],
+    "spectral": [
+        (
+            "Aliasing (Near-Nyquist-Energie) wird erkannt",
+            _spectral_aliasing,
+            MaterialType.TAPE,
+            {DefectType.ALIASING: (0.3, 1.0)},
+        ),
+        (
+            "Intermodulationsverzerrung (3+4 kHz) wird erkannt",
+            _spectral_imd,
+            MaterialType.VINYL,
+            {DefectType.INTERMODULATION_DISTORTION: (0.3, 1.0)},
+        ),
+        (
+            "8-Bit-Quantisierungsrauschen wird erkannt",
+            _spectral_quantization,
+            MaterialType.TAPE,
+            {DefectType.QUANTIZATION_NOISE: (0.3, 1.0)},
+        ),
+        (
+            "DC-Offset wird erkannt",
+            _spectral_dc,
+            MaterialType.TAPE,
+            {DefectType.DC_OFFSET: (0.3, 1.0)},
+        ),
+        (
+            "Phasendrehung (Allpass) wird erkannt",
+            _spectral_phase_rotation,
+            MaterialType.TAPE,
+            {DefectType.PHASE_ROTATION: (0.3, 1.0)},
+        ),
+        (
+            "Gegenpoliger Kanal wird erkannt",
+            _spectral_phase_issues,
+            MaterialType.TAPE,
+            {DefectType.PHASE_ISSUES: (0.3, 1.0)},
         ),
     ],
 }
