@@ -484,7 +484,12 @@ def test_crash_reporter_new_reports_lifecycle(tmp_path, monkeypatch):
     # Frischen Report schreiben (mtime explizit NACH der Basislinie) → sichtbar
     _new = tmp_path / "crash_new.json"
     _new.write_text(json.dumps({"exception": {"type": "KeyError", "message": "kaputt"}}), encoding="utf-8")
-    os.utime(_new, (_base + 1.0, _base + 1.0))
+    _new_ts = _base + 10.0
+    os.utime(_new, (_new_ts, _new_ts))
+    if _new.stat().st_mtime <= _base:
+        # Coarse CI-Dateisysteme können Sekundenwerte abrunden; dann klar absetzen.
+        _new_ts = _base + 120.0
+        os.utime(_new, (_new_ts, _new_ts))
     reports = crash_reporter.get_new_reports()
     assert len(reports) == 1
     assert reports[0]["type"] == "KeyError"
