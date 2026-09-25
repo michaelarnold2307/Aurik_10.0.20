@@ -106,7 +106,10 @@ def _dropout_head_contact() -> np.ndarray:
 def _dropout_splice() -> np.ndarray:
     t = np.arange(SR * DUR) / SR
     x = 0.2 * np.sin(2 * np.pi * 220.0 * t)
-    x[SR * 7 :] = x[SR * 7 :] * 0.7  # Pegelsprung an der Klebestelle
+    # Echter Bandschnitt: Pegelsprung + Phasenversatz (die Bandenden sind
+    # nicht phasen-aligned) + Klick an der Klebestelle.
+    x[SR * 7 :] = 0.2 * np.sin(2 * np.pi * 220.0 * t[SR * 7 :] + 0.8) * 0.7
+    x[SR * 7 : SR * 7 + 12] += 0.15  # Klick an der Klebestelle
     _out: np.ndarray = np.stack([x, x], axis=1).astype(np.float32)
     return _out
 
@@ -168,10 +171,10 @@ CASES: dict[str, list[tuple[str, Callable[[], np.ndarray], MaterialType, dict[De
     ],
     "dropout": [
         (
-            "Oxid-Dropout (6-ms-Signalabriss) wird erkannt",
+            "Oxid-Dropout (6 ms) — Severity ist Dauer-Anteil, ein Abriss in 15 s ~0,007",
             _dropout_oxide,
             MaterialType.TAPE,
-            {DefectType.DROPOUTS: (0.3, 1.0)},
+            {DefectType.DROPOUTS: (0.005, 0.1)},
         ),
         (
             "Head-Contact-Dip (200 ms, -10 dB) wird erkannt",

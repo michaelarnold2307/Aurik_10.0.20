@@ -5604,7 +5604,9 @@ class DefectScanner:
             MaterialType.DAT,
         }
         _mat = getattr(self, "material_type", None)
-        _threshold_ratio = 0.20 if _mat in _DROPOUT_ANALOG_MATERIALS else 0.10
+        # 0,30 statt 0,20 (Nacht-Befund): Ein -10-dB-Head-Contact-Dip (Faktor 0,3)
+        # lag UEBER der 0,20-Schwelle und wurde verfehlt (Harness: 0,000).
+        _threshold_ratio = 0.30 if _mat in _DROPOUT_ANALOG_MATERIALS else 0.10
         median_rms = float(np.median(rms_values))
         global_threshold = _threshold_ratio * median_rms
 
@@ -8934,9 +8936,10 @@ class DefectScanner:
         try:
             # Short-time RMS envelope (2 ms frames, 1 ms hop) — kurzer als die
             # halbe Periode tiefer Toene, damit die Huellkurven-Modulation
-            # ZWISCHEN Frames sichtbar wird (10 ms mittelte leise und laute
-            # Frames gleich — Nacht-Befund: ratio 1,05).
-            frame_len = max(1, int(0.002 * sr))
+            # 0,5-ms-Frames: Die Envelope (|sin|) variiert mit 440 Hz (Periode
+            # 2,3 ms) — 2 ms = 158° enthalten fast den ganzen Modulationszyklus
+            # (Nacht-Befund: jedes Frame misst den Globalmittelwert 0,0046).
+            frame_len = max(1, int(0.0005 * sr))
             hop = max(1, frame_len // 2)
             n_frames = max(1, (n - frame_len) // hop)
             if n_frames < 10:
@@ -8954,33 +8957,35 @@ class DefectScanner:
             # Biscainho 2006); Huellkurven-Fluktuation |diff(rms_env)| war das
             # falsche Mass — echtes Mod-Rauschen hat eine glatte Huellkurve
             # (Nacht-Befund: 0,000 auf synthetischem Mod-Rauschen).
-            # Rauschpegel je Frame aus dem Hochpass-Band (>= 2 kHz): Dort lebt
-            # breitbandiges Rauschen, der tiefe Signalanteil (Ton) verschwindet.
-            # Residuum-Ansatz scheiterte am Kruemmungsfehler tiefer Toene
-            # (Nacht-Befund: corr -0,98 auf 220-Hz-Ton + Mod-Rauschen).
+            # Sample-Ebene (Nacht-Befund): Frame-RMS mittelt die Envelope-
+            # Modulation strukturell weg (ratio 1,10 auf rohem Mod-Rauschen).
+            # Stattdessen: Korrelation der geglaetteten HP-Rausch-Leistung mit
+            # dem Quadrat der Signal-Huelle auf Sample-Ebene.
+            _env_full = np.abs(signal.hilbert(audio))
+            _kern_s = 12  # 0,25 ms — kurzer als die Envelope-Periode (2,3 ms)
+            _env_s = np.convolve(_env_full, np.ones(_kern_s) / _kern_s, mode="same")
             _hp_sos = signal.butter(4, 2000, btype="high", fs=sr, output="sos")
-            _audio_hp = signal.sosfilt(_hp_sos, audio)
-            _frames_hp = np.lib.stride_tricks.as_strided(
-                _audio_hp,
-                shape=(n_frames, frame_len),
-                strides=(_audio_hp.strides[0] * hop, _audio_hp.strides[0]),
-            ).copy()
-            noise_frame = np.std(_frames_hp, axis=1)
+            # sosfiltfilt (Nullphase): sosfilt verschiebt das Rauschen um die
+            # Gruppenlaufzeit (~0,5 ms) gegen die Huellkurve und zerstoert bei
+            # 0,5-ms-Frames die Korrelation (Nacht-Befund: corr_s 0,026).
+            _audio_hp = signal.sosfiltfilt(_hp_sos, audio)
+            _npow_s = np.convolve(_audio_hp**2, np.ones(_kern_s) / _kern_s, mode="same")
+            _raster = slice(0, n_frames * hop, hop)
+            _npow_r = _npow_s[_raster]
+            _env_r = _env_s[_raster] ** 2
+            noise_frame = np.sqrt(_npow_r + 1e-20)  # geglaetteter Rauschpegel
             signal_env = peak_env
+            _e_c = _env_r - float(np.mean(_env_r))
+            _n_c = _npow_r - float(np.mean(_npow_r))
+            _corr_s = float(np.dot(_e_c, _n_c) / (np.linalg.norm(_e_c) * np.linalg.norm(_n_c) + 1e-12))
 
             signal_threshold = float(np.percentile(peak_env, 20))
             mask = signal_env > signal_threshold
             if np.sum(mask) < 20:
                 return DefectScore(DefectType.MODULATION_NOISE, 0.0, 0.4)
 
-            # Pearson-Korrelation Rauschpegel <-> Signalpegel (guarded dot-product)
-            _s = signal_env[mask].astype(float)
-            _n = noise_frame[mask].astype(float)
-            _s_c = _s - float(np.mean(_s))
-            _n_c = _n - float(np.mean(_n))
-            _ns = float(np.linalg.norm(_s_c))
-            _nn = float(np.linalg.norm(_n_c))
-            corr = float(np.dot(_s_c, _n_c) / (_ns * _nn + 1e-12)) if _ns > 1e-12 and _nn > 1e-12 else 0.0
+            # Sample-Ebene-Korrelation Rauschleistung <-> Signalleistung
+            corr = _corr_s if not np.isnan(_corr_s) else 0.0
             if np.isnan(corr):
                 corr = 0.0
 
@@ -8992,9 +8997,11 @@ class DefectScanner:
             _fl_l = float(np.median(noise_frame[_loud_f])) if _loud_f.sum() > 4 else 0.0
             ratio = _fl_l / (_fl_q + 1e-12)
 
-            # Severity: hohe Korrelation UND deutliches Flur-Verhaeltnis
-            raw_sev = float(np.clip(max(0.0, corr) * 1.2, 0.0, 1.0))
-            raw_sev *= float(np.clip((ratio - 1.0) / 2.0, 0.0, 1.0))
+            # Severity: robuster Flur-Ratio primaer, Korrelation als Bonus.
+            # (Nacht-Befund: die chi²-verrauschte Leistungs-Korrelation lieferte
+            # trotz sauberem Ratio 2,2 nur corr ~0,03 und skalierte auf ~0,02.)
+            raw_sev = float(np.clip((ratio - 1.0) / 1.5, 0.0, 1.0))
+            raw_sev *= float(np.clip(0.6 + 0.4 * max(0.0, corr) * 2.0, 0.0, 1.0))
             raw_sev = float(np.clip(raw_sev, 0.0, 1.0))
 
             threshold = self.thresholds.get(DefectType.MODULATION_NOISE, 0.5)
