@@ -310,6 +310,7 @@
 | tests/unit/test_phase_65_singer_identity_witness.py | ACTIVE | testing/unit | ja | — | §SOTA-P65-Witness-Tests (2026-09-16): S4-Muster-Per-Phase-Gate — Passthrough ≥ 0,92, proportionaler Blend darunter, fail-open ohne Modell/Embedding/Exception, layout-sichere Mono-Konvertierung |
 | backend/core/phases/phase_67_crackle_texture_removal.py | ACTIVE | core/phases | ja | — | §SR-CK-Textur (2026-09-24): ML-Knistern-Textur-Entfernung fuer DefectType.CRACKLE (Route A, Bailey et al. 2019-Klasse); Kontext-Padding + Crossfade (Roxy-Fix); Torch-ROCm primaer, ONNX-CPU-Fallback (§III.9); Either-Or-Routing CLICKS->phase_27 / CRACKLE->phase_09 / Textur->diese Phase |
 | scripts/defect_evidence_harness.py | ACTIVE | scripts | ja | — | §SR-Audit (2026-09-24): Audio-Evidenz-Harness pro Defekt-Familie (Synthese -> Scanner -> Erwartungswerte, deterministisch, Seeds rng 1/2/3); dokumentiert Mess-Luecken als fehlschlagende Faelle bis Detektor-Kalibrierung (Arbeitsauftrag Spec 06 §7.2d) |
+| scripts/defect_coverage_check.py | ACTIVE | scripts | nein | — | §SR-Audit-Gate (2026-09-24): fail-closed Abgleich Enum-Typen vs. Evidenz-Harness vs. Phase-Mapper; Wurzel-Fix der Luecke, dass Typen ohne Mess-Fall existierten; Pre-Commit-Hook aurik-defect-coverage |
 
 ## Pflege-Regeln
 

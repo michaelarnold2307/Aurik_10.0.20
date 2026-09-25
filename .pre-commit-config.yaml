@@ -512,6 +512,14 @@ repos:
         pass_filenames: true
         files: \.py$
 
+      # Defekt-Abdeckung — Enum vs. Harness vs. Phase-Mapper (fail-closed)
+      # Wurzel-Fix 2026-09-24: Typen ohne Evidenz-Fall blieben unentdeckt
+      - id: aurik-defect-coverage
+        name: "Defekt-Abdeckung (Enum/Harness/Phase-Mapper fail-closed)"
+        entry: .venv_aurik/bin/python scripts/defect_coverage_check.py
+        language: system
+        pass_filenames: false
+
       # Ear-Critical-Parität — Ohr-Schutzregeln müssen Code+Test haben (fail-closed)
       - id: aurik-ear-parity
         name: "Ear-Critical-Parity (Regel→Code→Test; deferred nur mit Begründung)"
