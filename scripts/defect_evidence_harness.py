@@ -563,6 +563,173 @@ def _tape_dropout_head_contact() -> np.ndarray:
     return _out
 
 
+def _wow_scrape_flutter() -> np.ndarray:
+    t = np.arange(SR * DUR) / SR
+    # Tape-Scrape: FM-Seitenbaender im 40-120-Hz-Bereich um den Traeger.
+    # 85 Hz statt 80 Hz: das Detektor-Raster prueft [40, 55, 70, 85, 100, 120].
+    mod = np.sin(2 * np.pi * 85.0 * t)
+    x = 0.2 * np.sin(2 * np.pi * 2000.0 * t + 0.8 * mod)
+    _out: np.ndarray = np.stack([x, x], axis=1).astype(np.float32)
+    return _out
+
+
+def _wow_multiband() -> np.ndarray:
+    t = np.arange(SR * DUR) / SR
+    # Band-abhaengiges Flutter: nur der 1,5-kHz-Ton flattert (0,4 Hz, ±0,5 %).
+    # Der Detektor untersucht Oktavbaender um 250/500/1000/2000 Hz und braucht
+    # >= 3 aktive Baender - deshalb liegen alle Traeger unterhalb 2,8 kHz.
+    low = 0.2 * np.sin(2 * np.pi * 300.0 * t)
+    mid = 0.15 * np.sin(2 * np.pi * 750.0 * t)
+    mod = np.sin(2 * np.pi * 0.4 * t)
+    high = 0.12 * np.sin(2 * np.pi * 1500.0 * t + 0.5 * mod)
+    _out: np.ndarray = np.stack([low + mid + high, low + mid + high], axis=1).astype(np.float32)
+    return _out
+
+
+def _wow_sidebands() -> np.ndarray:
+    t = np.arange(SR * DUR) / SR
+    # Flutter-Seitenbaender: tonale ±1-8-Hz-Seitenbaender um einen Traeger
+    mod = np.sin(2 * np.pi * 3.0 * t)
+    x = 0.2 * np.sin(2 * np.pi * 1000.0 * t + 0.6 * mod)
+    _out: np.ndarray = np.stack([x, x], axis=1).astype(np.float32)
+    return _out
+
+
+def _env_reverb() -> np.ndarray:
+    t = np.arange(SR * DUR) / SR
+    rng = np.random.default_rng(59)
+    # Uebermaessiger Nachhall: JEDER Impuls bekommt seinen eigenen exponentiellen
+    # Nachhall-Schwanz (tau ~0,36 s -> RT60 ~2,5 s). Ein globaler Decay ist
+    # nicht an die Onsets gekoppelt und wird nicht als Nachhall gemessen.
+    tail = signal.sosfiltfilt(
+        signal.butter(2, 4000, btype="lowpass", fs=SR, output="sos"), rng.standard_normal(SR * DUR)
+    )
+    tail = tail / (np.max(np.abs(tail)) + 1e-12)
+    x = np.zeros(SR * DUR)
+    for k in range(1, 6):
+        idx = k * 2 * SR
+        seg = np.arange(SR * DUR - idx)
+        x[idx:] = x[idx:] + 0.3 * tail[idx:] * np.exp(-seg / (SR * 0.36))
+        x[idx : idx + 200] += 0.5 * np.sin(2 * np.pi * 800.0 * t[idx : idx + 200])
+    _out: np.ndarray = np.stack([x, x], axis=1).astype(np.float32)
+    return _out
+
+
+def _env_room_mode() -> np.ndarray:
+    t = np.arange(SR * DUR) / SR
+    rng = np.random.default_rng(61)
+    # Stehende Welle: schmalbandiger Resonanz-Peak bei 73 Hz (Q~15),
+    # bewusst KEINE 50/60-Hz-Harmonische (Brumm-Ausschluss des Detektors)
+    x = 0.08 * rng.standard_normal(len(t))
+    sos = signal.butter(2, (70, 76), btype="bandpass", fs=SR, output="sos")
+    x = x + 0.4 * signal.sosfiltfilt(sos, rng.standard_normal(len(t)))
+    _out: np.ndarray = np.stack([x, x], axis=1).astype(np.float32)
+    return _out
+
+
+def _env_proximity() -> np.ndarray:
+    t = np.arange(SR * DUR) / SR
+    # Nahbesprechung: LF-Band (80-250 Hz) stark angehoben, kein Sub-Bass
+    # (Anti-Rumble-Guard), Mitten normal
+    x = 0.25 * np.sin(2 * np.pi * 150.0 * t)
+    x = x + 0.12 * np.sin(2 * np.pi * 700.0 * t)
+    x = x + 0.08 * np.sin(2 * np.pi * 1500.0 * t)
+    _out: np.ndarray = np.stack([x, x], axis=1).astype(np.float32)
+    return _out
+
+
+def _dig_jitter() -> np.ndarray:
+    t = np.arange(SR * DUR) / SR
+    # Clock-Jitter: periodisches Sample-Timing-Jitter -> FM-Seitenbaender + ZC-Irregularitaet
+    jitter = 0.5 * np.sin(2 * np.pi * 50.0 * t)
+    x = 0.2 * np.sin(2 * np.pi * 1000.0 * (t + jitter / SR))
+    _out: np.ndarray = np.stack([x, x], axis=1).astype(np.float32)
+    return _out
+
+
+def _dig_digital_artifacts() -> np.ndarray:
+    t = np.arange(SR * DUR) / SR
+    rng = np.random.default_rng(67)
+    # Sammel-Signatur: Near-Nyquist-Energie + 8-Bit-Quantisierung
+    x = 0.1 * rng.standard_normal(len(t))
+    x = x + 0.12 * np.sin(2 * np.pi * 21000.0 * t)
+    x = np.round(x * 127.0) / 127.0
+    _out: np.ndarray = np.stack([x, x], axis=1).astype(np.float32)
+    return _out
+
+
+def _dig_mpeg_frame_loss() -> np.ndarray:
+    t = np.arange(SR * DUR) / SR
+    x = 0.2 * np.sin(2 * np.pi * 440.0 * t)
+    # MPEG-Frame-Verlust: 26-ms-Blöcke (1152 Samples) periodisch genullt
+    frame = 1152
+    for k in range(1, 12):
+        idx = k * SR
+        x[idx : idx + frame] = 0.0
+    _out: np.ndarray = np.stack([x, x], axis=1).astype(np.float32)
+    return _out
+
+
+def _dig_amplitude_drift() -> np.ndarray:
+    n = SR * 45  # Detektor verlangt >= 30 s fuer Trend-Erkennung
+    t = np.arange(n) / SR
+    # Traeger-Drift: Pegel steigt linear, Aktivitaet konstant (kein Crescendo)
+    env = np.linspace(0.5, 1.5, n)
+    x = 0.2 * np.sin(2 * np.pi * 440.0 * t) * env
+    _out: np.ndarray = np.stack([x, x], axis=1).astype(np.float32)
+    return _out
+
+
+def _dig_pitch_drift() -> np.ndarray:
+    t = np.arange(SR * DUR) / SR
+    # Pitch-Drift: lineare Frequenzdrift 440 -> 462 Hz ueber 15 s (W&F).
+    # 32 cents (440->450) fielen noch in den Glissando-Penalty (Segment-Jumps
+    # > 50 % des Drifts); 85 cents liegen klar ueber der Detektorskala.
+    phase = 2 * np.pi * (440.0 * t + 0.5 * (22.0 / DUR) * t**2)
+    x = 0.2 * np.sin(phase)
+    _out: np.ndarray = np.stack([x, x], axis=1).astype(np.float32)
+    return _out
+
+
+def _dig_transient_smearing() -> np.ndarray:
+    t = np.arange(SR * DUR) / SR
+    # Verschmierte Transienten: Huelle steigt linear ueber ~15 ms an
+    # (Detektor: mediane Anstiegszeit > 10 ms = verschmiert)
+    x = np.zeros(SR * DUR)
+    for k in range(1, 28):
+        idx = int(k * 0.5 * SR)
+        ramp_len = int(0.015 * SR)
+        ramp = np.linspace(0.0, 1.0, ramp_len)
+        x[idx : idx + ramp_len] = 0.5 * np.sin(2 * np.pi * 3000.0 * t[idx : idx + ramp_len]) * ramp
+        x[idx + ramp_len : idx + 240] = 0.5 * np.sin(2 * np.pi * 3000.0 * t[idx + ramp_len : idx + 240])
+    _out: np.ndarray = np.stack([x, x], axis=1).astype(np.float32)
+    return _out
+
+
+def _dig_vocal_harshness() -> np.ndarray:
+    t = np.arange(SR * DUR) / SR
+    rng = np.random.default_rng(71)
+    # Vokal-aehnlich mit harter 2-6-kHz-Presence: Multiton + HF-Band + Soft-Clip
+    x = 0.2 * np.sin(2 * np.pi * 300.0 * t)
+    x = x + 0.15 * np.sin(2 * np.pi * 900.0 * t)
+    x = x + 0.12 * np.sin(2 * np.pi * 2500.0 * t)
+    sos = signal.butter(2, (2000, 6000), btype="bandpass", fs=SR, output="sos")
+    hf = signal.sosfiltfilt(sos, rng.standard_normal(len(t)))
+    hf = hf / (np.max(np.abs(hf)) + 1e-12)
+    x = x + 0.15 * hf
+    x = 0.35 * np.tanh(2.0 * x)  # Odd-Harmonics-Dominanz + niedriger Crest
+    _out: np.ndarray = np.stack([x, x], axis=1).astype(np.float32)
+    return _out
+
+
+def _dig_overload() -> np.ndarray:
+    t = np.arange(SR * DUR) / SR
+    # Analoge Eingangs-Üebersteuerung: weiche Saettigung, THD im Prozentbereich
+    x = 0.4 * np.tanh(2.5 * np.sin(2 * np.pi * 440.0 * t))
+    _out: np.ndarray = np.stack([x, x], axis=1).astype(np.float32)
+    return _out
+
+
 # ------------------------------------------------------------------ Familien
 # Jeder Fall: (Name, Generator, Material, {DefectType: (min, max)})
 CASES: dict[str, list[tuple[str, Callable[[], np.ndarray], MaterialType, dict[DefectType, tuple[float, float]]]]] = {
@@ -620,6 +787,24 @@ CASES: dict[str, list[tuple[str, Callable[[], np.ndarray], MaterialType, dict[De
             _speed_offset,
             MaterialType.TAPE,
             {DefectType.SPEED_CALIBRATION_ERROR: (0.3, 1.0)},
+        ),
+        (
+            "Tape-Scrape-Flutter (FM-Seitenbaender ~80 Hz) wird erkannt",
+            _wow_scrape_flutter,
+            MaterialType.TAPE,
+            {DefectType.SCRAPE_FLUTTER: (0.3, 1.0)},
+        ),
+        (
+            "Band-abhaengiges Flutter (nur hohes Band) wird erkannt",
+            _wow_multiband,
+            MaterialType.TAPE,
+            {DefectType.MULTIBAND_WOW_FLUTTER: (0.3, 1.0)},
+        ),
+        (
+            "Flutter-Seitenbaender (±3-Hz-Seitenbaender um Traeger) werden erkannt",
+            _wow_sidebands,
+            MaterialType.TAPE,
+            {DefectType.FLUTTER_SPECTRAL_SIDEBANDS: (0.3, 1.0)},
         ),
     ],
     "dropout": [
@@ -884,6 +1069,76 @@ CASES: dict[str, list[tuple[str, Callable[[], np.ndarray], MaterialType, dict[De
             _tape_dropout_head_contact,
             MaterialType.TAPE,
             {DefectType.DROPOUT_HEAD_CONTACT: (0.3, 1.0)},
+        ),
+    ],
+    "environment": [
+        (
+            "Uebermaessiger Nachhall (RT60 ~2,5 s) wird erkannt",
+            _env_reverb,
+            MaterialType.TAPE,
+            {DefectType.REVERB_EXCESS: (0.3, 1.0)},
+        ),
+        (
+            "Stehende Welle (73-Hz-Resonanz, Q~15) wird erkannt",
+            _env_room_mode,
+            MaterialType.TAPE,
+            {DefectType.ROOM_MODE_RESONANCE: (0.3, 1.0)},
+        ),
+        (
+            "Nahbesprechungseffekt (LF-Ueberhoehung 80-250 Hz) wird erkannt",
+            _env_proximity,
+            MaterialType.TAPE,
+            {DefectType.PROXIMITY_EFFECT_EXCESS: (0.3, 1.0)},
+        ),
+    ],
+    "digital_other": [
+        (
+            "Clock-Jitter (Sample-Timing-Jitter) wird erkannt",
+            _dig_jitter,
+            MaterialType.CD_DIGITAL,
+            {DefectType.JITTER_ARTIFACTS: (0.3, 1.0)},
+        ),
+        (
+            "Digitale Sammel-Artefakte (Near-Nyquist + 8-Bit) werden erkannt",
+            _dig_digital_artifacts,
+            MaterialType.CD_DIGITAL,
+            {DefectType.DIGITAL_ARTIFACTS: (0.3, 1.0)},
+        ),
+        (
+            "MPEG-Frame-Verlust (26-ms-Blöcke) wird erkannt",
+            _dig_mpeg_frame_loss,
+            MaterialType.CD_DIGITAL,
+            {DefectType.MPEG_FRAME_LOSS: (0.3, 1.0)},
+        ),
+        (
+            "Amplituden-Drift (linearer Pegelanstieg) wird erkannt",
+            _dig_amplitude_drift,
+            MaterialType.TAPE,
+            {DefectType.AMPLITUDE_DRIFT: (0.3, 1.0)},
+        ),
+        (
+            "Pitch-Drift (440->450 Hz ueber 15 s) wird erkannt",
+            _dig_pitch_drift,
+            MaterialType.TAPE,
+            {DefectType.PITCH_DRIFT: (0.3, 1.0)},
+        ),
+        (
+            "Transienten-Verschmierung (Anstiegsflanken verrundet) wird erkannt",
+            _dig_transient_smearing,
+            MaterialType.TAPE,
+            {DefectType.TRANSIENT_SMEARING: (0.3, 1.0)},
+        ),
+        (
+            "Vokale Haerte (2-6-kHz-Presence + Odd-Harmonics) wird erkannt",
+            _dig_vocal_harshness,
+            MaterialType.TAPE,
+            {DefectType.VOCAL_HARSHNESS: (0.3, 1.0)},
+        ),
+        (
+            "Analoge Uebersteuerung (weiche Saettigung) wird erkannt",
+            _dig_overload,
+            MaterialType.TAPE,
+            {DefectType.OVERLOAD_DISTORTION: (0.3, 1.0)},
         ),
     ],
 }
