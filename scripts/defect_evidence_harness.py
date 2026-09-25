@@ -5,13 +5,15 @@ gemeldete Scores gegen Erwartungswerte. Der Harness dokumentiert Mess-Luecken
 als fehlschlagende Faelle, bis die Detektoren kalibriert/ergaenzt sind
 (Arbeitsauftrag Spec 06 §7.2d).
 
-Bekannte unverdrahtete Enum-Typen (Scan liefert None, gemessen 2026-09-24):
-DISTORTION und DROPOUT (Singular) werden im scan()-Pfad nicht befuellt - es gibt
-weder eigene Detektoren noch eine Aggregation; die konkreten Typen (CLIPPING,
-SOFT_SATURATION, OVERLOAD_DISTORTION, DROPOUTS + Subtypen) sind abgedeckt.
-DROPOUT_SPLICE wird nur von _detect_dropout_subtypes befuellt, dessen
-Event-Detektion Dropout-profiliert ist; Bandstoesse deckt der eigenstaendige
-TAPE_SPLICE_ARTIFACT-Detektor ab (gemessen: 0,589 auf dem Splice-Fall, Subtyp 0).
+Pfad-Aufteilung der Enum-Typen (gemessen 2026-09-24):
+- DISTORTION und DROPOUT (Singular) werden NICHT vom DefectScanner.scan()
+  befuellt, sondern vom UnifiedDefectDetector (backend/core/ai_framework.py,
+  _detect_distortion/_detect_dropout) - der Harness misst sie in der
+  "framework"-Familie.
+- DROPOUT_SPLICE ist der Scanner-Subtyp fuer abrupte Abrisse mit >95 %
+  Pegelverlust (_classify_dropout_subtype); Bandstoesse deckt der
+  eigenstaendige TAPE_SPLICE_ARTIFACT-Detektor ab (gemessen: 0,589 auf dem
+  Splice-Fall, Subtyp 0 - anderes Profil).
 
 Deterministisch (§G5, copilot-instructions.md): feste Seeds, keine Zufallsquellen
 ausser den dokumentierten Generatoren.
@@ -31,7 +33,7 @@ from scipy import signal
 
 logging.disable(logging.CRITICAL)
 
-from backend.core.defect_scanner import DefectScanner, DefectType, MaterialType
+from backend.core.defect_scanner import DefectScanner, DefectScore, DefectType, MaterialType
 
 SR = 48000
 DUR = 15
@@ -738,6 +740,39 @@ def _dig_overload() -> np.ndarray:
     return _out
 
 
+def _fw_distortion() -> np.ndarray:
+    t = np.arange(SR * DUR) / SR
+    # THD-Test fuer den UnifiedDefectDetector (ai_framework): tanh-Kennlinie
+    # erzeugt Harmonische 2-5 um den 440-Hz-Grundton
+    x = 0.4 * np.tanh(2.5 * np.sin(2 * np.pi * 440.0 * t))
+    _out: np.ndarray = np.stack([x, x], axis=1).astype(np.float32)
+    return _out
+
+
+def _fw_dropout() -> np.ndarray:
+    t = np.arange(SR * DUR) / SR
+    # Huellkurven-Drops fuer den UnifiedDefectDetector: drei 300-ms-Abrisse
+    x = 0.2 * np.sin(2 * np.pi * 440.0 * t)
+    for k in (3, 7, 11):
+        x[k * SR : k * SR + int(0.3 * SR)] = 0.02 * np.sin(2 * np.pi * 440.0 * t[k * SR : k * SR + int(0.3 * SR)])
+    _out: np.ndarray = np.stack([x, x], axis=1).astype(np.float32)
+    return _out
+
+
+def _dropout_splice_deep() -> np.ndarray:
+    t = np.arange(SR * DUR) / SR
+    # Scanner-Subtyp DROPOUT_SPLICE: abrupte Abrisse mit >95 % Pegelverlust
+    # (_classify_dropout_subtype: loss_ratio > 0,95)
+    x = 0.2 * np.sin(2 * np.pi * 440.0 * t)
+    dip = np.ones_like(t)
+    for k in range(1, 30):
+        idx = int(k * 0.5 * SR)
+        dip[idx : idx + int(0.010 * SR)] = 0.03  # -30 dB
+    x = x * dip
+    _out: np.ndarray = np.stack([x, x], axis=1).astype(np.float32)
+    return _out
+
+
 def _noise_clicks() -> np.ndarray:
     t = np.arange(SR * DUR) / SR
     rng = np.random.default_rng(73)
@@ -939,6 +974,12 @@ CASES: dict[str, list[tuple[str, Callable[[], np.ndarray], MaterialType, dict[De
             _dropout_splice,
             MaterialType.TAPE,
             {DefectType.TAPE_SPLICE_ARTIFACT: (0.3, 1.0)},
+        ),
+        (
+            "Tiefer kurzer Abriss (>95 %) wird als DROPOUT_SPLICE klassifiziert",
+            _dropout_splice_deep,
+            MaterialType.TAPE,
+            {DefectType.DROPOUT_SPLICE: (0.3, 1.0)},
         ),
         (
             "Sauberer Ton loest keine Dropouts aus",
@@ -1261,7 +1302,35 @@ CASES: dict[str, list[tuple[str, Callable[[], np.ndarray], MaterialType, dict[De
             {DefectType.OVERLOAD_DISTORTION: (0.3, 1.0)},
         ),
     ],
+    "framework": [
+        (
+            "Framework-DISTORTION (THD-basiert, UnifiedDefectDetector) wird erkannt",
+            _fw_distortion,
+            MaterialType.TAPE,
+            {DefectType.DISTORTION: (0.3, 1.0)},
+        ),
+        (
+            "Framework-DROPOUT (Envelope-Drops, UnifiedDefectDetector) wird erkannt",
+            _fw_dropout,
+            MaterialType.TAPE,
+            {DefectType.DROPOUT: (0.3, 1.0)},
+        ),
+    ],
 }
+
+
+def _report(name: str, expects: dict[DefectType, tuple[float, float]], scores: dict) -> int:
+    failed = 0
+    line = []
+    for dt, (lo, hi) in expects.items():
+        score = scores.get(dt)
+        v = float(score.severity) if score is not None else 0.0
+        ok = lo <= v <= hi
+        if not ok:
+            failed += 1
+        line.append(f"{dt.value}={v:.3f} (erwartet {lo:.2f}-{hi:.2f}) {'OK' if ok else 'FEHLT'}")
+    print(f"[{'OK' if not failed else 'LUECKE'}] {name}: {'; '.join(line)}")
+    return failed
 
 
 def main() -> int:
@@ -1270,18 +1339,29 @@ def main() -> int:
         return 2
     family = sys.argv[1]
     failed = 0
-    for name, gen, material, expects in CASES[family]:
-        sc = DefectScanner(sample_rate=SR, material_type=material)
-        res = sc.scan(gen())
-        line = []
-        for dt, (lo, hi) in expects.items():
-            score = res.scores.get(dt)
-            v = float(score.severity) if score is not None else 0.0
-            ok = lo <= v <= hi
-            if not ok:
-                failed += 1
-            line.append(f"{dt.value}={v:.3f} (erwartet {lo:.2f}-{hi:.2f}) {'OK' if ok else 'FEHLT'}")
-        print(f"[{'OK' if all('OK' in l for l in line) else 'LUECKE'}] {name}: {'; '.join(line)}")
+    if family == "framework":
+        # Der UnifiedDefectDetector (ai_framework) befuellt DISTORTION/DROPOUT
+        # (Singular) - eigener Detektionspfad neben dem DefectScanner.
+        from backend.core.ai_framework import UnifiedDefectDetector
+
+        _fwd = UnifiedDefectDetector(sample_rate=SR)
+        for name, gen, material, expects in CASES[family]:
+            audio = gen()
+            mono = audio.mean(axis=1) if audio.ndim == 2 else audio
+            scores: dict = {}
+            for dt in expects:
+                if dt == DefectType.DISTORTION:
+                    conf, sev, _ = _fwd._detect_distortion(mono, False)
+                    scores[dt] = DefectScore(dt, float(sev), float(conf))
+                elif dt == DefectType.DROPOUT:
+                    conf, sev, _ = _fwd._detect_dropout(mono, False)
+                    scores[dt] = DefectScore(dt, float(sev), float(conf))
+            failed += _report(name, expects, scores)
+    else:
+        for name, gen, material, expects in CASES[family]:
+            sc = DefectScanner(sample_rate=SR, material_type=material)
+            res = sc.scan(gen())
+            failed += _report(name, expects, res.scores)
     print(f"Familie {family}: {failed} Luecke(n)")
     return 1 if failed else 0
 
