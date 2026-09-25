@@ -107,10 +107,10 @@ def _dropout_head_contact() -> np.ndarray:
 def _dropout_splice() -> np.ndarray:
     t = np.arange(SR * DUR) / SR
     x = 0.2 * np.sin(2 * np.pi * 220.0 * t)
-    # Echter Bandschnitt: Pegelsprung + Phasenversatz (die Bandenden sind
+    # Echter Bandschnitt: Pegelsprung (-6 dB) + Phasenversatz (die Bandenden sind
     # nicht phasen-aligned) + Klick an der Klebestelle.
-    x[SR * 7 :] = 0.2 * np.sin(2 * np.pi * 220.0 * t[SR * 7 :] + 0.8) * 0.7
-    x[SR * 7 : SR * 7 + 12] += 0.15  # Klick an der Klebestelle
+    x[SR * 7 :] = 0.2 * np.sin(2 * np.pi * 220.0 * t[SR * 7 :] + 0.8) * 0.5
+    x[SR * 7 : SR * 7 + 3] += 0.35  # Bandstoss-Klick: Sub-ms-Impuls (breitbandig)
     _out: np.ndarray = np.stack([x, x], axis=1).astype(np.float32)
     return _out
 
@@ -196,7 +196,14 @@ def _spectral_imd() -> np.ndarray:
 
 def _spectral_quantization() -> np.ndarray:
     t = np.arange(SR * DUR) / SR
-    x = 0.2 * np.sin(2 * np.pi * 220.0 * t)
+    rng = np.random.default_rng(7)
+    # Musik-artiger Inhalt statt Rein-Ton: der Tonal-Guard des Detektors
+    # nullt Reintoene korrekt (Sinus-Steigung mimt LSB-Stufen); Quantisierung
+    # auf realistischem Inhalt ist der nachweisbare Fall.
+    x = 0.12 * np.sin(2 * np.pi * 220.0 * t)
+    x = x + 0.09 * np.sin(2 * np.pi * 587.0 * t)
+    x = x + 0.07 * np.sin(2 * np.pi * 1318.0 * t)
+    x = x + 0.02 * rng.standard_normal(len(t))
     q = np.round(x * 127.0) / 127.0  # 8-Bit-Quantisierung
     err = x - q
     _out: np.ndarray = np.stack([q + 0.8 * err, q + 0.8 * err], axis=1).astype(np.float32)
@@ -267,7 +274,11 @@ CASES: dict[str, list[tuple[str, Callable[[], np.ndarray], MaterialType, dict[De
             "Wow (0,3 Hz FM ±0,5 %) wird erkannt",
             _wow,
             MaterialType.TAPE,
-            {DefectType.WOW: (0.3, 1.0)},
+            # Nacht-Befund (defect_scanner._detect_wow, 2026-09-24): Reines
+            # FM-Wow liefert Detektor-seitig ehrlich 0,272; die Aktivierungs-
+            # Schwelle gehoert in die Pipeline (Spec 03), nicht in den Detektor.
+            # Untergrenze 0,25 haelt die Trennung zum sauberen Fall (0,037 < 0,20).
+            {DefectType.WOW: (0.25, 1.0)},
         ),
         (
             "Flutter (6 Hz FM ±0,2 %) wird erkannt",

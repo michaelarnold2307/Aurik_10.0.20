@@ -6779,13 +6779,6 @@ class DefectScanner:
             elif _dominance > 0.3:
                 _tonal_discount = float((0.6 - _dominance) / 0.3)
 
-        # Ausnahme vom Tonal-Guard: ENOB <= 10 aus der Step-Size-Statistik ist
-        # ein direkter LSB-Nachweis (kein U-Histogramm-Artefakt der Sinusform).
-        # Quantisierungsrauschen AUF tonalem Inhalt ist der Normalfall (leise
-        # Passagen auf 8-Bit-Digitalisaten) und darf nicht genullt werden.
-        if enob <= 10.0:
-            _tonal_discount = 1.0
-
         # --- Combined severity ---
         # ENOB < 12 → noticeable; < 10 → severe; < 8 → extreme
         sev_enob = float(np.clip((14.0 - enob) / 6.0, 0.0, 1.0))
@@ -9414,7 +9407,11 @@ class DefectScanner:
             # Leise Passagen: 3 dB Sprung schon auffällig → niedriger Threshold.
             # Hochdynamische Passagen (Orchester): 8 dB Sprung normal → höher.
             rms_db = 20.0 * np.log10(rms_env + 1e-12)
-            level_diffs = np.abs(np.diff(rms_db))
+            # Nicht-ueberlappende Frames vergleichen: hop = frame/2, benachbarte
+            # Frames ueberlappen 50 % und verschmieren einen Pegelsprung auf
+            # zwei Grenzen (je ~halbe Stufe). Frame i vs. i+2 misst die wahre
+            # Sprunghoehe (Falschnegativ: 3-dB-Bandstoss ergab 1,3 dB Frame-Diff).
+            level_diffs = np.abs(rms_db[2:] - rms_db[:-2])
             _local_dyn_range_db = float(np.percentile(rms_db, 95) - np.percentile(rms_db, 5) + 1.0)
             jump_threshold = float(np.clip(_local_dyn_range_db / 4.0, 3.0, 8.0))
             jump_indices = np.where(level_diffs > jump_threshold)[0]
@@ -9429,12 +9426,49 @@ class DefectScanner:
                 sample_idx = ji * hop
                 if sample_idx < 64 or sample_idx > n - 64:
                     continue
-                # High-frequency impulse at junction
-                junction = audio[sample_idx - 32 : sample_idx + 32]
+                # High-frequency impulse at junction. Der Bandstoss-Klick liegt
+                # am tatsaechlichen Sprungpunkt, nicht an der Frame-Grenze:
+                # Fenster um den Punkt maximaler Kruemmung zentrieren
+                # (Falschnegativ: Klick 5 ms neben der Frame-Grenze wurde vom
+                # festen ±32-Fenster verfehlt).
+                _search = audio[sample_idx : min(n, sample_idx + frame_len + 32)]
+                _curv = np.abs(np.diff(_search, n=2))
+                _lo = sample_idx - 32
+                _hi = sample_idx + 32
+                if len(_curv) > 8:
+                    _k = int(np.argmax(_curv))
+                    _center = sample_idx + _k + 1
+                    _clo = max(64, _center - 32)
+                    _chi = min(n - 64, _center + 32)
+                    if _chi - _clo >= 32:
+                        sample_idx = _center
+                        _lo, _hi = _clo, _chi
+                junction = audio[_lo:_hi]
                 hf_spec = np.abs(np.fft.rfft(junction))
                 hf_energy = float(np.sum(hf_spec[len(hf_spec) // 2 :] ** 2))
-                total_energy = float(np.sum(hf_spec**2)) + 1e-12
-                hf_ratio = hf_energy / total_energy
+                # HF-Burst relativ zur lokalen Basislinie: der Traeger (Ton/Musik)
+                # hat selbst HF-Anteile; ein Bandstoss-Klick ist ein HF-Burst
+                # UEBER der Nachbarschaft. Absolute hf_ratio ist Klick-Amplituden-
+                # abhaengig (Falschnegativ: deutlicher Klick blieb unter 0,2).
+                # Basislinie AUSSERHALB der Stoss-Nahzone (±1 ms) messen: der
+                # Phasenversatz am Bandstoss streut selbst Breitband-Energie in
+                # die unmittelbare Nachbarschaft (Falschnegativ: Burst 2,1 statt
+                # >3 wegen Phasen-Splatter im Basislinien-Fenster).
+                _n_lo = max(0, _lo - 256)
+                _n_hi = min(n, _hi + 256)
+                # Beide Basislinien-Segmente GETRENNT FFT-en: eine Konkatenation
+                # erzeugt an der Nahtstelle eine kuenstliche Diskontinuitaet
+                # (Breitband-Splatter im Basislinien-Fenster selbst, nhf=1,4
+                # statt ~1e-5 - Falschnegativ).
+                _nh1 = audio[_n_lo : _lo - 64]
+                _nh2 = audio[_hi + 64 : _n_hi]
+                if len(_nh1) >= 32 and len(_nh2) >= 32:
+                    _nhf1 = np.abs(np.fft.rfft(_nh1))
+                    _nhf2 = np.abs(np.fft.rfft(_nh2))
+                    _nhf_energy = float(np.sum(_nhf1[len(_nhf1) // 2 :] ** 2) + np.sum(_nhf2[len(_nhf2) // 2 :] ** 2))
+                    hf_burst_ratio = hf_energy / (_nhf_energy + 1e-12)
+                else:
+                    hf_burst_ratio = 0.0
 
                 # Check level persistence (must persist > 50 ms after jump)
                 persist_frames = min(5, n_frames - ji - 1)
@@ -9443,7 +9477,7 @@ class DefectScanner:
                     pre_jump_rms = rms_db[max(0, ji - persist_frames) : ji]
                     if len(post_jump_rms) > 0 and len(pre_jump_rms) > 0:
                         level_diff_persist = abs(float(np.mean(post_jump_rms)) - float(np.mean(pre_jump_rms)))
-                        if hf_ratio > 0.2 and level_diff_persist > 3.0:
+                        if hf_burst_ratio > 3.0 and level_diff_persist > 3.0:
                             splice_events.append(level_diffs[ji])
                             t = sample_idx / sr
                             locations.append((max(0.0, t - 0.02), t + 0.02))
