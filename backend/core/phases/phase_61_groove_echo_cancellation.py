@@ -407,6 +407,17 @@ class GrooveEchoCancellationPhase(PhaseInterface):
             min_groove_echo_score=_profile_61["min_groove_echo_score"],
             spectral_subtraction_floor_db=_profile_61["spectral_subtraction_floor_db"],
         )
+        # Stereo-Layout-Invariante (AGENTS §3): Reparatur-Ergebnis auf das
+        # Eingangs-Layout zurückführen — alle Folge-Blends rechnen
+        # audio/result_audio elementweise (L3-Phasen-Exception 2026-09-25:
+        # Broadcast (2,N) vs (N,2) im Lokalitäts-Blend, V19/V20 ebenso).
+        if (
+            result_audio.ndim == 2
+            and audio.ndim == 2
+            and result_audio.shape != audio.shape
+            and result_audio.T.shape == audio.shape
+        ):
+            result_audio = np.ascontiguousarray(result_audio.T)
         elapsed = _time.perf_counter() - t0
         _locality_coverage61 = 0.0
         _loc_n61 = int(

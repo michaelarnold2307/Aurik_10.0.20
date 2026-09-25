@@ -1,6 +1,6 @@
 # TASK_CHANGES — Live-Ledger der aktuellen Aufgabe
 
-> Generiert von `scripts/change_ledger.py snapshot` (Base: `HEAD`, Stand: 2026-09-25 23:09 CEST).
+> Generiert von `scripts/change_ledger.py snapshot` (Base: `HEAD`, Stand: 2026-09-25 23:47 CEST).
 > CI (`ci-lite.yml` pr-evidence-gate) erzwingt Abdeckung: jede geänderte Code-Datei muss hier stehen.
 
 ## Geänderte Dateien
@@ -8,7 +8,9 @@
 | Status | Pfad | Art |
 |---|---|---|
 | M | backend/core/dsp/audibility_gate.py | modifiziert |
-| M | docs/PHASE_SOTA_GAP_ANALYSE.md | modifiziert |
+| M | backend/core/phases/phase_06_frequency_restoration.py | modifiziert |
+| M | backend/core/phases/phase_19_de_esser.py | modifiziert |
+| M | backend/core/phases/phase_61_groove_echo_cancellation.py | modifiziert |
 | M | tests/unit/test_hearing_jnd_audibility_gate.py | modifiziert |
 | ?? | Setupfile/DEBIAN_TEMPLATE/aurik | ungetrackt |
 | ?? | Setupfile/DEBIAN_TEMPLATE/aurik.desktop | ungetrackt |

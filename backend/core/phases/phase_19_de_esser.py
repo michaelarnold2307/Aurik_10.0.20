@@ -1138,6 +1138,9 @@ class DeEsserPhase(PhaseInterface):
         #   bw_loss > 0.85:  Minimal-De-Essing (nur stärkste Sibilanten)
         # Sibilanten sind AUCH bei bw_loss=1.0 real (panns+Spectral bestätigt) —
         # komplettes Überspringen lässt sie unhörbar scharf durch.
+        # §v10.306 Init vor bedingter Belegung (L3-Phasen-Exception 2026-09-25:
+        # UnboundLocalError _td_p19_hf, wenn der HF-Skip-Block nicht lief).
+        _td_p19_hf = len(kwargs.get("transfer_chain", []) or [])
         _graduated_mode = "full"
         if _bw_loss > 0.85:
             _graduated_mode = "minimal"

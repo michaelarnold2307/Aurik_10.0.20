@@ -642,6 +642,24 @@ class FrequencyRestorationPhase(PhaseInterface):
                 enable_sbr,
                 flashsr_min_duration_s=float(kwargs.get("flashsr_min_duration_s", self._FLASHSR_MIN_DURATION_S)),
             )
+            # §V6 (copilot-instructions.md) ML→DSP-Fallback: Shape-Vertrag der
+            # ML-Kette prüfen. Produktionsbefund (L3-Phasen-Exception
+            # 2026-09-25): _restore_frequency_ml_hybrid lieferte (2,) statt
+            # Eingangs-Shape (FlashSR-Squeeze) — der Messpfad (sosfiltfilt)
+            # crashte danach in ValueError. Bei Shape-Verletzung faellt die
+            # Phase sichtbar auf den DSP-Pfad zurück.
+            if np.shape(restored) != np.shape(audio):
+                logger.warning(
+                    "§V6 (copilot-instructions.md) ML→DSP-Fallback (phase_06): ML-Hybrid lieferte Shape %s statt %s — DSP-Pfad (SBR+LPC) übernimmt",
+                    np.shape(restored),
+                    np.shape(audio),
+                )
+                restored = self._restore_highs_professional(audio, params, enable_sbr)
+                ml_metadata = {
+                    "ml_hybrid_available": ML_HYBRID_AVAILABLE,
+                    "quality_mode": quality_mode,
+                    "strategy_used": "dsp_fallback_shape_mismatch",
+                }
         else:
             # DSP-only path: Traditional SBR + LPC
             restored = self._restore_highs_professional(audio, params, enable_sbr)

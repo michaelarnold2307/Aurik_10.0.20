@@ -34,9 +34,14 @@ def _threshold_with_jnd_floor(threshold_db: float) -> float:
     generischer Pegel-JND (hearing_jnd `level_broadband` = 1 dB, Mills 1960).
 
     SOTA-Konsistenz (2026-09-25): Auch ohne Maskierung (Stille) bleibt ein
-    Defekt unter der JND unhoerbar — eine Hör-Instanz, eine Wahrheit. Der Floor
-    ist konservativ (Schwelle steigt um ≤ 1 dB) und damit Never-worsen-sicher
-    (Hörordnung §8a).
+    Defekt unter der JND unhoerbar — eine Hör-Instanz, eine Wahrheit.
+
+    Domänen-Vertrag (Befund 2026-09-25): Der Floor gilt nur im dB-SPL-Domäne
+    (Zwicker-Pfad, ISO 532-1) — dort ist die Pegel-JND physikalisch definiert.
+    Der MPEG-1-Pfad misst in relativen Energie-Einheiten; eine JND-Summe dort
+    verschiebt kalibrierte Aktivierungen um mehrere dB (Test-Befund:
+    `test_psy_a1_real_band_does_not_deactivate_phase`) und verstoesst gegen
+    §G5 (copilot-instructions.md) Bestandsverhalten (Default `mpeg1`).
     """
     from backend.core.dsp.hearing_jnd import jnd as _jnd
 
@@ -145,7 +150,8 @@ def defect_audibility_from_signal(
         if len(band_idx) == 0:
             return {"audible": False, "delta_db": 0.0, "threshold_db": 0.0, "skippable": True}
         threshold_db = float(np.max(np.percentile(thr[:, band_idx], 75, axis=0)))
-        threshold_db = _threshold_with_jnd_floor(threshold_db)  # §4 Hörordnung: + Pegel-JND
+        # KEIN JND-Floor im MPEG-1-Pfad (§G5 (copilot-instructions.md)
+        # Bestandsverhalten; rel. Energie-Einheiten) — s. _threshold_with_jnd_floor.
 
         # Defekt-Energie: ZENTRIERT auf den Defekt (512-Punkt-Hann), damit das
         # Verdikt nicht von der globalen Frame-Ausrichtung abhängt

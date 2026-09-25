@@ -119,9 +119,11 @@ class TestJndFloorHoerordnung:
         assert _threshold_with_jnd_floor(0.0) > 0.0
 
     def test_verdict_threshold_never_below_jnd_and_skips_subaudible(self):
+        # dB-SPL-Domäne (Zwicker-Pfad) — dort ist die Pegel-JND definiert
+        # (der MPEG-1-Pfad bleibt per §G5 (copilot-instructions.md) bestandsverhalten).
         x = np.zeros(48000, dtype=np.float32)
         x[24000:24064] = 1e-6  # winziger Defekt: unter der Pegel-JND
-        res = ag.defect_audibility(x, 48000, 24000, 24064)
+        res = ag.defect_audibility(x, 48000, 24000, 24064, model="zwicker")
         assert res["threshold_db"] >= 1.0
         assert res["skippable"] is True
         assert res["audible"] is False
