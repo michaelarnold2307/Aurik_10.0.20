@@ -957,13 +957,28 @@ class DropoutRepairPhase(PhaseInterface):
         # ist die teure Inpainting-Pipeline (159 s) unnötig.
         # Gaps aus dem RekonstruktionsDenker (629 Stück) sind bereits repariert.
         _dropout_density = float(kwargs.get("dropout_density", kwargs.get("dropout_severity", 0.0)) or 0.0)
-        # §v10.200 Fallback: DefectScanner-Daten aus _restoration_context abrufen
+        # §v10.200 Fallback: Defekt-Evidenz aus dem Produktions-Kontrakt.
+        # Produktionsbefund (2026-09-25, L3-Reparatur-Wirksamkeit): UV3 uebergibt
+        # defect_scores TOP-LEVEL (DefectScoreView, String-Keys) — der alte
+        # Zugriff auf "_restoration_context" (mit Unterstrich) war tot
+        # (UV3 liefert "restoration_context"/"defect_scores"), die Dichte wurde
+        # nie gefunden → phase_24 wurde IMMER uebersprungen (Lücken:
+        # dropout, dropout_oxide, sticky_shed_residue).
         if _dropout_density <= 0.0:
-            _rctx_fb24 = kwargs.get("_restoration_context", {}) or {}
-            _defect_scores_fb24 = _rctx_fb24.get("defect_scores", _rctx_fb24.get("defect_focus_scores", {})) or {}
-            _dropout_density = float(
-                _defect_scores_fb24.get("dropout_oxide", _defect_scores_fb24.get("dropout", 0.0)) or 0.0
+            _defect_scores_fb24 = (
+                kwargs.get("defect_scores")
+                or (kwargs.get("restoration_context") or {}).get("defect_scores")
+                or (kwargs.get("restoration_context") or {}).get("defect_focus_scores")
+                or (kwargs.get("_restoration_context") or {}).get("defect_scores")
+                or {}
             )
+            _fb_vals24 = []
+            for _k24 in ("dropout", "dropout_oxide", "dropout_splice", "sticky_shed_residue", "tape_dropout"):
+                try:
+                    _fb_vals24.append(float(_defect_scores_fb24.get(_k24, 0.0) or 0.0))
+                except (TypeError, ValueError):
+                    continue
+            _dropout_density = max(_fb_vals24, default=0.0)
         if _dropout_density < 0.001 and _effective_strength > 0.0:
             # §v10.303: Erste Meldung als INFO, Wiederholungen als DEBUG (Log-Spam-Prävention)
             _log_fn = logger.info if not getattr(self, "_dropout_skip_logged", False) else logger.debug

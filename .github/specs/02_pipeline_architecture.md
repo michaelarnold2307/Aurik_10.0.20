@@ -74,12 +74,12 @@ Kanonischer Vertragsrahmen (UV3):
 
 ```python
 naturalness_guard = _compute_naturalness_guard_scalar(
-     phase_family=...,
-     studio_mode=...,
-     panns_singing=...,
-     vocal_quality_check=...,            # inkl. breath_naturalness/spectral_color_preservation
-     phase_metadata_accumulator=...,     # inkl. n_musical_noise/n_metallic_ringing/
-                                                     # roughness_regression/_psycho_runtime_state
+    phase_family=...,
+    studio_mode=...,
+    panns_singing=...,
+    vocal_quality_check=...,  # inkl. breath_naturalness/spectral_color_preservation
+    phase_metadata_accumulator=...,  # inkl. n_musical_noise/n_metallic_ringing/
+    # roughness_regression/_psycho_runtime_state
 )
 uq_scalar *= naturalness_guard["scalar"]
 ```
@@ -246,6 +246,7 @@ class StemRemixBalancer:
         - TonalCenterMetric nach Re-Mix ≥ 98 % des Pre-Remix-Werts
         - Laufzeit: ≤ 0.5 s / Minute Audio
     """
+
     def balance_remix(self, vocals, instruments, original, sr, vocal_weight=0.5): ...
 ```
 
@@ -288,29 +289,29 @@ Enthält adjustierte GP-Priors und aktivierte Pflicht-Phasen für das Genre.
 SCHLAGER_RESTORATION_PROFILE = {
     # GP-Priors (überschreiben die Era-basierten Defaults aus §2.14)
     "gp_priors": {
-        "noise_reduction_strength":  {"mean": 0.60, "std": 0.08},   # moderater als 1940er (0.90)
-        "reverb_reduction_strength": {"mean": 0.55, "std": 0.10},   # typisch: Hallplatten-Echo
-        "eq_correction_strength":    {"mean": 0.50, "std": 0.08},   # Mid-Boost bewahren
-        "harmonic_preservation":     {"mean": 0.90, "std": 0.05},   # hohe Harmoniebewahrungs-Prio
-        "transient_strength":        {"mean": 0.45, "std": 0.08},   # Schlagzeug-Transienten sanft
+        "noise_reduction_strength": {"mean": 0.60, "std": 0.08},  # moderater als 1940er (0.90)
+        "reverb_reduction_strength": {"mean": 0.55, "std": 0.10},  # typisch: Hallplatten-Echo
+        "eq_correction_strength": {"mean": 0.50, "std": 0.08},  # Mid-Boost bewahren
+        "harmonic_preservation": {"mean": 0.90, "std": 0.05},  # hohe Harmoniebewahrungs-Prio
+        "transient_strength": {"mean": 0.45, "std": 0.08},  # Schlagzeug-Transienten sanft
     },
     # Pflicht-Aktivierte Phasen (unabhängig von DefectScanner-Ergebnis)
     # §0a INVARIANTE: phase_42_vocal_enhancement ist im Restoration-Modus VERBOTEN
     # (Stem-Enhancement). UV3 _restoration_forbidden_stem_enhancement filtert sie
     # universal heraus — kein forced_phases-Eintrag nötig oder zulässig.
     "forced_phases": [
-        "phase_19_de_esser",             # Vintage-Mikrofon → Sibilanten-Spitzen
-        "phase_07_harmonic_restoration", # Harmonie-Authentizität (H2/H4-Bewahren)
+        "phase_19_de_esser",  # Vintage-Mikrofon → Sibilanten-Spitzen
+        "phase_07_harmonic_restoration",  # Harmonie-Authentizität (H2/H4-Bewahren)
         "phase_08_transient_preservation",  # Orchester-Attacken
     ],
     # Family-Scalars für SongCalibrationProfile (überschreiben material-basierte Defaults)
     "family_scalars_override": {
-        "denoise":        0.65,   # sanfter als Shellac/pre-war (weniger aggressiv)
-        "reverb":         0.60,   # Hallplatten sind Stilmerkmal — nicht vollständig entfernen
+        "denoise": 0.65,  # sanfter als Shellac/pre-war (weniger aggressiv)
+        "reverb": 0.60,  # Hallplatten sind Stilmerkmal — nicht vollständig entfernen
         "reconstruction": 0.70,
-        "dynamics_eq":    0.55,
-        "transient":      0.45,
-        "general":        0.60,
+        "dynamics_eq": 0.55,
+        "transient": 0.45,
+        "general": 0.60,
     },
     # Vokal-Intimität besonders schützen (§2.36 / §8.3 Tiefen-Immersion)
     "vocal_intimacy_guard": True,
@@ -554,7 +555,7 @@ for i in range(len(gain_db)):
 gain_db_interp = np.interp(sample_idx, centres, gain_db)
 
 # 5. Per-Sample Guard (PFLICHT — interp erzeugt Übergangs-Boost Musik→Stille)
-quiet_mask = (frame_rms_rest_per_sample < QUIET_THRESH_LINEAR)
+quiet_mask = frame_rms_rest_per_sample < QUIET_THRESH_LINEAR
 gain_db_interp[quiet_mask & (gain_db_interp > 0.0)] = 0.0
 ```
 
@@ -639,24 +640,24 @@ goal_snapshot_pre = _fast_goal_snapshot(audio_pre, sr, context)
 goal_gaps = compute_goal_gaps(goal_snapshot_pre, effective_goal_targets, applicable_goals)
 
 oracle_profile = resolve_phase_strength_oracle(
-        phase_id=phase_id,
-        phase_family=phase_family,
-        audio=audio_pre,
-        sample_rate=sr,
-        goal_gaps=goal_gaps,
-        goal_weights=goal_weights,
-        defect_scores=defect_scores,
-        defect_locations=defect_locations,
-        locality_factor=phase_locality_factor,
-        restorability_score=restorability_score,
-        material_key=material_key,
-        transfer_chain=transfer_chain,
-        chain_confidence=material_confidence,
-        vfa_result=vfa_result,
-        song_calibration_profile=song_calibration_profile,
-        gp_proposal=gp_parameter_proposal,
-        phase_history=metadata.get("phase_deltas", {}),
-        wall_time_budget_s=wall_time_remaining_s,
+    phase_id=phase_id,
+    phase_family=phase_family,
+    audio=audio_pre,
+    sample_rate=sr,
+    goal_gaps=goal_gaps,
+    goal_weights=goal_weights,
+    defect_scores=defect_scores,
+    defect_locations=defect_locations,
+    locality_factor=phase_locality_factor,
+    restorability_score=restorability_score,
+    material_key=material_key,
+    transfer_chain=transfer_chain,
+    chain_confidence=material_confidence,
+    vfa_result=vfa_result,
+    song_calibration_profile=song_calibration_profile,
+    gp_proposal=gp_parameter_proposal,
+    phase_history=metadata.get("phase_deltas", {}),
+    wall_time_budget_s=wall_time_remaining_s,
 )
 
 phase_kwargs = merge_oracle_profile_into_phase_kwargs(base_kwargs, oracle_profile)
@@ -667,22 +668,22 @@ audio_post = phase.execute(audio_pre, sr, **phase_kwargs)
 
 ```python
 {
-        "control_strength": float,       # 0.0-1.0
-        "wet_mix": float,                # 0.0-1.0
-        "threshold_db": float | None,
-        "ratio": float | None,
-        "drive": float | None,
-        "eq_gain_db": float | None,
-        "band_profile": dict[str, float] | None,
-        "team_contribution": dict[str, float],      # erwarteter Beitrag je Goal
-        "dominant_goal_guard": bool,                # nie single-goal-dominant
-                "hard_caps": {
-                        "max_strength": float,
-                        "max_wet_mix": float,
-                        "chain_factor": float,                  # direkte Tontraegerketten-Konditionierung
-                        "chain_depth": float,
-                        "chain_confidence": float,
-                },
+    "control_strength": float,  # 0.0-1.0
+    "wet_mix": float,  # 0.0-1.0
+    "threshold_db": float | None,
+    "ratio": float | None,
+    "drive": float | None,
+    "eq_gain_db": float | None,
+    "band_profile": dict[str, float] | None,
+    "team_contribution": dict[str, float],  # erwarteter Beitrag je Goal
+    "dominant_goal_guard": bool,  # nie single-goal-dominant
+    "hard_caps": {
+        "max_strength": float,
+        "max_wet_mix": float,
+        "chain_factor": float,  # direkte Tontraegerketten-Konditionierung
+        "chain_depth": float,
+        "chain_confidence": float,
+    },
 }
 ```
 
@@ -722,38 +723,40 @@ audio_post = phase.execute(audio_pre, sr, **phase_kwargs)
 @dataclass
 class RestorationResult:
     # ── Pflichtfelder ────────────────────────────────────────
-    audio:                np.ndarray
-    config:               "RestorationConfig"
-    material_type:        "MaterialType"
-    defect_scores:        dict["DefectType", float]
-    phases_executed:      list[str]
-    phases_skipped:       list[str]
-    total_time_seconds:   float
-    rt_factor:            float
-    quality_estimate:     float   # = 0.40·(1−defect_severity) + 0.60·(pqs_mos−1)/4
-    warnings:             list[str]
-    metadata:             dict[str, Any]
+    audio: np.ndarray
+    config: "RestorationConfig"
+    material_type: "MaterialType"
+    defect_scores: dict[
+        "DefectType", float
+    ]  # Enum-Keys (Ergebnis-Ebene); Phasen-Evidenz-Kwarg s. §7.4c (06_phases_system.md)
+    phases_executed: list[str]
+    phases_skipped: list[str]
+    total_time_seconds: float
+    rt_factor: float
+    quality_estimate: float  # = 0.40·(1−defect_severity) + 0.60·(pqs_mos−1)/4
+    warnings: list[str]
+    metadata: dict[str, Any]
     # ── Optionale Felder ─────────────────────────────────────
-    pqs_result:           Optional[Any] = None    # .mos, .nsim, .mcd_db, .spectral_coherence
-    musical_goals:        Optional[dict[str, float]] = None   # 15 Ziele → Score
-    excellence:           Optional[Any] = None
-    temporal_coherence:   Optional[Any] = None    # MOS-Spanne ≤ 0.30
-    emotional_arc:        Optional[Any] = None    # Arousal/Valence Pearson
-    restorability:        Optional[Any] = None    # 0–100
-    confidence:           float = 1.0
-    genealogy:            Optional[Any] = None
-    harmonic_fingerprint: Optional[Any] = None    # 256-dim L2 Post-Fingerprint
-    phase_gate_log:       Optional[list[str]] = None
-    adaptive_thresholds:  dict[str, float] = field(default_factory=dict)
-    physical_ceiling:     dict[str, float] = field(default_factory=dict)
-    goal_applicability:   dict[str, bool] = field(default_factory=dict)
-    goal_priority_log:    list[str] = field(default_factory=list)
-    preview_mos:          Optional[float] = None
-    era_decade:           Optional[int] = None
+    pqs_result: Optional[Any] = None  # .mos, .nsim, .mcd_db, .spectral_coherence
+    musical_goals: Optional[dict[str, float]] = None  # 15 Ziele → Score
+    excellence: Optional[Any] = None
+    temporal_coherence: Optional[Any] = None  # MOS-Spanne ≤ 0.30
+    emotional_arc: Optional[Any] = None  # Arousal/Valence Pearson
+    restorability: Optional[Any] = None  # 0–100
+    confidence: float = 1.0
+    genealogy: Optional[Any] = None
+    harmonic_fingerprint: Optional[Any] = None  # 256-dim L2 Post-Fingerprint
+    phase_gate_log: Optional[list[str]] = None
+    adaptive_thresholds: dict[str, float] = field(default_factory=dict)
+    physical_ceiling: dict[str, float] = field(default_factory=dict)
+    goal_applicability: dict[str, bool] = field(default_factory=dict)
+    goal_priority_log: list[str] = field(default_factory=list)
+    preview_mos: Optional[float] = None
+    era_decade: Optional[int] = None
     # ── §2.38 KMV-Felder ─────────────────────────────────────
-    deferred_phases:      list[str] = field(default_factory=list)   # Phasen die Stufe 2 benötigen
-    refinement_complete:  bool = False                               # True nach ML-Veredelung
-    stufe2_quality_estimate: Optional[float] = None                  # quality nach vollständigem ML-Pass
+    deferred_phases: list[str] = field(default_factory=list)  # Phasen die Stufe 2 benötigen
+    refinement_complete: bool = False  # True nach ML-Veredelung
+    stufe2_quality_estimate: Optional[float] = None  # quality nach vollständigem ML-Pass
 ```
 
 ### §2.2.3 [RELEASE_MUST] Experience-Telemetrie-Vertrag (v10.0.0)
@@ -846,13 +849,15 @@ unverändertem Original-Audio gleichbedeutend mit Phasen-Skip.
 # die Phase iterativ mit reduzierter Stärke wiederholt. Sie sind NICHT die
 # Pipeline-Steuerung — PhaseConductor.recommend() und SongCalibration
 # steuern die initiale Stärke materialadaptiv BEVOR der Guard prüft.
-REGRESSION_THRESHOLD_GOOD: float = 0.020   # restorability ≥ 70
-REGRESSION_THRESHOLD_FAIR: float = 0.035   # restorability 40–69
-REGRESSION_THRESHOLD_POOR: float = 0.040   # restorability < 40 (reduced from 0.055 v10.0.0 — prevent best_effort cascades)
+REGRESSION_THRESHOLD_GOOD: float = 0.020  # restorability ≥ 70
+REGRESSION_THRESHOLD_FAIR: float = 0.035  # restorability 40–69
+REGRESSION_THRESHOLD_POOR: float = (
+    0.040  # restorability < 40 (reduced from 0.055 v10.0.0 — prevent best_effort cascades)
+)
 SAMPLE_DURATION_S: float = 5.0
 
 # Priority-Aware Retry-Budget (v10.0.0 + §2.31b v10.0.0):
-_RETRY_STRENGTHS: list[float] = [0.65, 0.50, 0.35, 0.25, 0.15]   # 5 Stufen, Floor 0.15 (Last-Resort)
+_RETRY_STRENGTHS: list[float] = [0.65, 0.50, 0.35, 0.25, 0.15]  # 5 Stufen, Floor 0.15 (Last-Resort)
 # §2.31b: initial_strength < 0.90 (SongCal vorreduziert) → Ankerpunkte [0.80, 0.65, 0.50, 0.35, 0.20]
 _PRIORITY_MAX_RETRIES: dict[int, int] = {1: 4, 2: 4, 3: 2, 4: 1, 5: 1}
 _PRIORITY_THRESHOLD_FACTOR: dict[int, float] = {1: 1.0, 2: 1.0, 3: 1.5, 4: 2.0, 5: 2.0}
@@ -868,15 +873,29 @@ _PRIORITY_THRESHOLD_FACTOR: dict[int, float] = {1: 1.0, 2: 1.0, 3: 1.5, 4: 2.0, 
 
 # Schnell-Ziele (≤ 200 ms Gesamtcheck):
 FAST_GOALS_SUBSET = [
-    "natuerlichkeit", "authentizitaet", "tonal_center",
-    "timbre_authentizitaet", "artikulation", "emotionalitaet",
-    "micro_dynamics", "groove", "transparenz", "waerme",
-    "bass_kraft", "separation_fidelity", "brillanz", "spatial_depth",
+    "natuerlichkeit",
+    "authentizitaet",
+    "tonal_center",
+    "timbre_authentizitaet",
+    "artikulation",
+    "emotionalitaet",
+    "micro_dynamics",
+    "groove",
+    "transparenz",
+    "waerme",
+    "bass_kraft",
+    "separation_fidelity",
+    "brillanz",
+    "spatial_depth",
 ]
 # Phasen-adaptive Sample-Dauer (§9.7.3):
 PHASE_SAMPLE_DURATIONS = {
-    "phase_30": 1.5,  "phase_05": 1.5,  "phase_02": 2.0,
-    "phase_15": 1.5,  "phase_11": 1.5,  "phase_18": 2.0,
+    "phase_30": 1.5,
+    "phase_05": 1.5,
+    "phase_02": 2.0,
+    "phase_15": 1.5,
+    "phase_11": 1.5,
+    "phase_18": 2.0,
 }
 
 # Datenfluss-Invariante: restorability_score MUSS aus RestorabilityEstimator stammen:
@@ -884,7 +903,10 @@ re_result = RestorabilityEstimator().estimate(audio, sr, defect_analysis)
 gate = PerPhaseMusicalGoalsGate()
 for phase in selected_phases:
     audio, scores, _ = gate.wrap_phase(
-        phase, audio, sr, scores_before,
+        phase,
+        audio,
+        sr,
+        scores_before,
         restorability_score=re_result.restorability_score,
         applicable_goals=goal_filter.applicable,
     )
@@ -927,32 +949,43 @@ Falsch-Regression → Retry-Kaskade → best-effort bei minimaler Wet-Strength �
 **Lösung**: `_RESTORATIVE_PHASES` + `_CANONICAL_THRESHOLDS` + `effective_scores_before`:
 
 ```python
-_RESTORATIVE_PHASES: frozenset[str] = frozenset({
-    "phase_01",  # Click removal
-    "phase_02",  # Hum removal (Kammfilter)
-    "phase_03",  # Broadband denoise (OMLSA + DeepFilterNet)
-    "phase_05",  # Rumble filter (subtractive LF cleanup)
-    "phase_09",  # Crackle removal (BANQUET ONNX — blind neural denoising; targetiert impulsive Vinyl-Crackle)
-    "phase_18",  # Noise gate (Silero VAD)
-    "phase_20",  # Reverb reduction (SGMSE+)
-    "phase_23",  # Spectral inpainting / gap-fill (AudioSR)
-    "phase_24",  # Dropout repair (AudioSR)
-    "phase_27",  # Click/pop removal
-    "phase_29",  # Tape hiss reduction (DeepFilterNet v3 II)
-    "phase_30",  # DC offset / near-DC drift removal
-    "phase_49",  # Advanced dereverb
-    "phase_50",  # STFT spectral inpainting (bin interpolation)
-    "phase_56",  # Spectral band gap repair (HEAD_WEAR)
-    "phase_57_print_through_reduction",  # Print-through reduction (bidirectional LMS)
-})
+_RESTORATIVE_PHASES: frozenset[str] = frozenset(
+    {
+        "phase_01",  # Click removal
+        "phase_02",  # Hum removal (Kammfilter)
+        "phase_03",  # Broadband denoise (OMLSA + DeepFilterNet)
+        "phase_05",  # Rumble filter (subtractive LF cleanup)
+        "phase_09",  # Crackle removal (BANQUET ONNX — blind neural denoising; targetiert impulsive Vinyl-Crackle)
+        "phase_18",  # Noise gate (Silero VAD)
+        "phase_20",  # Reverb reduction (SGMSE+)
+        "phase_23",  # Spectral inpainting / gap-fill (AudioSR)
+        "phase_24",  # Dropout repair (AudioSR)
+        "phase_27",  # Click/pop removal
+        "phase_29",  # Tape hiss reduction (DeepFilterNet v3 II)
+        "phase_30",  # DC offset / near-DC drift removal
+        "phase_49",  # Advanced dereverb
+        "phase_50",  # STFT spectral inpainting (bin interpolation)
+        "phase_56",  # Spectral band gap repair (HEAD_WEAR)
+        "phase_57_print_through_reduction",  # Print-through reduction (bidirectional LMS)
+    }
+)
 
 _CANONICAL_THRESHOLDS: dict[str, float] = {
-    "natuerlichkeit": 0.90, "authentizitaet": 0.88, "tonal_center": 0.95,
-    "timbre_authentizitaet": 0.87, "artikulation": 0.88, "transient_energie": 0.80,
+    "natuerlichkeit": 0.90,
+    "authentizitaet": 0.88,
+    "tonal_center": 0.95,
+    "timbre_authentizitaet": 0.87,
+    "artikulation": 0.88,
+    "transient_energie": 0.80,
     "emotionalitaet": 0.84,
-    "micro_dynamics": 0.88, "groove": 0.83, "transparenz": 0.82,
-    "waerme": 0.75, "bass_kraft": 0.78, "separation_fidelity": 0.80,
-    "brillanz": 0.78, "spatial_depth": 0.70,
+    "micro_dynamics": 0.88,
+    "groove": 0.83,
+    "transparenz": 0.82,
+    "waerme": 0.75,
+    "bass_kraft": 0.78,
+    "separation_fidelity": 0.80,
+    "brillanz": 0.78,
+    "spatial_depth": 0.70,
 }
 ```
 
@@ -988,13 +1021,13 @@ wenn Folgephasen die Vorphasen-Interventionen als Regression interpretieren.
 
 ```python
 def _resolve_team_context_policy(phase_id: str, phase_kwargs: dict[str, Any] | None) -> dict[str, Any]:
-        # advisory policy for PMGG only
-        return {
-                "goal_exclusions": set(),
-                "threshold_multiplier": 1.0,
-                "strength_cap": 1.0,
-                "reason": "",
-        }
+    # advisory policy for PMGG only
+    return {
+        "goal_exclusions": set(),
+        "threshold_multiplier": 1.0,
+        "strength_cap": 1.0,
+        "reason": "",
+    }
 ```
 
 **Normative Regel (alle Module/Phasen via Ontologie)**:
@@ -1048,14 +1081,14 @@ Explizite Paare in `backend/core/phase_ontology.py` — Phase B darf Arbeit von 
 
 ```python
 CONFLICT_REGISTRY: dict[str, frozenset[str]] = {
-    "phase_09": frozenset({"phase_50"}),             # Crackle → Spectral-Repair
+    "phase_09": frozenset({"phase_50"}),  # Crackle → Spectral-Repair
     "phase_07": frozenset({"phase_50", "phase_03", "phase_29"}),  # Harmonik
     "phase_06": frozenset({"phase_28", "phase_29", "phase_50"}),  # BW-Extension
-    "phase_23": frozenset({"phase_03", "phase_29"}), # Spektral-Inpainting
-    "phase_55": frozenset({"phase_03", "phase_29"}), # Diffusions-Inpainting
-    "phase_24": frozenset({"phase_50"}),             # Dropout-Repair
-    "phase_01": frozenset({"phase_50", "phase_27"}), # Click-Removal
-    "phase_56": frozenset({"phase_29", "phase_03"}), # Bandlücken-Repair
+    "phase_23": frozenset({"phase_03", "phase_29"}),  # Spektral-Inpainting
+    "phase_55": frozenset({"phase_03", "phase_29"}),  # Diffusions-Inpainting
+    "phase_24": frozenset({"phase_50"}),  # Dropout-Repair
+    "phase_01": frozenset({"phase_50", "phase_27"}),  # Click-Removal
+    "phase_56": frozenset({"phase_29", "phase_03"}),  # Bandlücken-Repair
 }
 ```
 
@@ -1078,8 +1111,7 @@ PHASE_GOAL_EXCLUSIONS: dict[str, set[str]] = {
     # Comb-filter hum removal: G1/G2/G3 notches cause false regressions:
     #   - groove: §9.7.10 rms_env variance-normalisation artefact (50 Hz modulation)
     #   - timbre_authentizitaet: MFCC-Pearson/centroid disturbed by LF notches → false P2
-    "phase_02": {"bass_kraft", "authentizitaet", "natuerlichkeit", "transparenz",
-                 "groove", "timbre_authentizitaet"},
+    "phase_02": {"bass_kraft", "authentizitaet", "natuerlichkeit", "transparenz", "groove", "timbre_authentizitaet"},
     # EQ / tonal shaping: broadband frequency shifts invalidate timbre comparisons.
     "phase_04": {"transparenz", "brillanz", "waerme", "authentizitaet", "natuerlichkeit", "timbre_authentizitaet"},
     # TDP/HPSS: Transient-Shaping.
@@ -1107,11 +1139,15 @@ PHASE_GOAL_EXCLUSIONS: dict[str, set[str]] = {
     # Diffusion inpainting: synthesised content; artikulation reference absent.
     "phase_55": {"artikulation", "micro_dynamics"},
     # Bandwidth extension (AudioSR): adds HF content → brillanz intentionally rises.
-    "phase_06": {"brillanz"}, "phase_07": {"brillanz"},
+    "phase_06": {"brillanz"},
+    "phase_07": {"brillanz"},
     # Transient / time-domain: micro-dynamics re-shaping alters onset metric.
-    "phase_26": {"micro_dynamics", "artikulation"}, "phase_36": {"micro_dynamics", "artikulation"},
+    "phase_26": {"micro_dynamics", "artikulation"},
+    "phase_36": {"micro_dynamics", "artikulation"},
     # Passthrough / analysis-only phases: no musical scoring required.
-    "phase_28": set(), "phase_05": set(), "phase_30": set(),
+    "phase_28": set(),
+    "phase_05": set(),
+    "phase_30": set(),
     # Click removal (phase_01, phase_27): impulse transients + spectral interpolation.
     #   - artikulation: clicks appear as transients → removal reduces onset-count correlation.
     #   - natuerlichkeit: spectral interpolation at click locations creates MFCC-smoothness
@@ -1183,10 +1219,8 @@ Falsch-Regressions-Ursachen treten nicht auf.
 ```python
 # §2.31b Material-adaptive exclusion relaxation (v10.0.0, akt. v10.0.0)
 if _excluded_goals:
-    _mat_str = ... # aus phase_kwargs["material_type"] oder ["material"]
-    if _mat_str in {"cd_digital", "dat"} and (
-        phase_id.startswith("phase_03") or phase_id.startswith("phase_29")
-    ):
+    _mat_str = ...  # aus phase_kwargs["material_type"] oder ["material"]
+    if _mat_str in {"cd_digital", "dat"} and (phase_id.startswith("phase_03") or phase_id.startswith("phase_29")):
         _excluded_goals &= {"natuerlichkeit", "artikulation"}
 ```
 
@@ -1215,7 +1249,7 @@ _sw = min(5, len(rms_env) // 4)
 if _sw >= 2:
     rms_env = np.convolve(rms_env, np.ones(_sw) / float(_sw), mode="valid")
 autocorr = np.correlate(rms_env, rms_env, mode="full")
-autocorr = autocorr[len(rms_env) - 1:]
+autocorr = autocorr[len(rms_env) - 1 :]
 autocorr /= autocorr[0] + 1e-12
 ```
 
@@ -1266,22 +1300,28 @@ _KS_MAJOR = np.array([6.35, 2.23, 3.48, 2.33, 4.38, 4.09, 2.52, 5.19, 2.39, 3.66
 _KS_MINOR = np.array([6.33, 2.68, 3.52, 5.38, 2.60, 3.53, 2.54, 4.75, 3.98, 2.69, 3.34, 3.17])
 # Both normalized to zero-mean unit-variance for Pearson equivalence via np.dot
 
+
 def _ks_key(signal_mono, n_fft=4096, sr=48000) -> int:
     spec = np.abs(np.fft.rfft(signal_mono * np.hanning(len(signal_mono)), n=n_fft))
-    freqs = np.fft.rfftfreq(n_fft, d=1.0/sr)
-    chroma = np.zeros(12); bins = np.where((freqs > 27.5) & (freqs < 4186))[0]
-    np.add.at(chroma, np.round(12*np.log2(freqs[bins]/440+1e-12)).astype(int)%12, spec[bins])
-    chroma -= chroma.mean(); chroma /= chroma.std() + 1e-12
+    freqs = np.fft.rfftfreq(n_fft, d=1.0 / sr)
+    chroma = np.zeros(12)
+    bins = np.where((freqs > 27.5) & (freqs < 4186))[0]
+    np.add.at(chroma, np.round(12 * np.log2(freqs[bins] / 440 + 1e-12)).astype(int) % 12, spec[bins])
+    chroma -= chroma.mean()
+    chroma /= chroma.std() + 1e-12
     best_r, best_k = -np.inf, 0
     for root in range(12):
-        r_maj = np.dot(chroma, np.roll(_ks_maj_n, root))   # _ks_maj_n = normalised
+        r_maj = np.dot(chroma, np.roll(_ks_maj_n, root))  # _ks_maj_n = normalised
         r_min = np.dot(chroma, np.roll(_ks_min_n, root))
-        if r_maj > best_r: best_r, best_k = r_maj, root
-        if r_min > best_r: best_r, best_k = r_min, root+12
+        if r_maj > best_r:
+            best_r, best_k = r_maj, root
+        if r_min > best_r:
+            best_r, best_k = r_min, root + 12
     return best_k
 
+
 # Delta score (reference available):
-d = min((k_proc % 12 - k_ref % 12) % 12, 12 - ...)   # circular
+d = min((k_proc % 12 - k_ref % 12) % 12, 12 - ...)  # circular
 mode_penalty = 0 if same_mode else 1
 tonal_center = 1.0 - min(6, d + mode_penalty) / 6.0
 ```
@@ -1444,6 +1484,7 @@ Stufe 2 (Hintergrund-ML-Veredelung, LIMIT_BACKGROUND = ∞)
 
 ```python
 import psutil
+
 avail_gb = psutil.virtual_memory().available / 1024**3
 if avail_gb < 4.0:
     logger.warning("KMV Stufe 2 übersprungen: nur %.1f GB RAM verfügbar (< 4 GB)", avail_gb)
@@ -1456,27 +1497,28 @@ if avail_gb < 4.0:
 @dataclass
 class DeferredRefinementJob:
     """Queued job for background ML refinement (§2.38)."""
-    output_path:          str                       # Pfad der Stufe-1-Exportdatei
-    audio_original:       np.ndarray                # Original-Audio (unkomprimiert, pre-pipeline)
-    sr:                   int                       # Sample-Rate (48000)
-    mode:                 str                       # "restoration" | "studio_2026"
-    deferred_phase_ids:   list[str]                 # Phasen die in Stufe 1 deferriert wurden
-    cached_defect_result: Any                       # DefectAnalysisResult aus Stufe 1
-    cached_era_result:    Any                       # EraResult aus Stufe 1
-    cached_medium_result: Any                       # ClassificationResult aus Stufe 1
-    stufe1_quality:       float                     # quality_estimate Stufe 1 (Mindest-Benchmark)
-    created_at:           float = field(default_factory=time.time)
+
+    output_path: str  # Pfad der Stufe-1-Exportdatei
+    audio_original: np.ndarray  # Original-Audio (unkomprimiert, pre-pipeline)
+    sr: int  # Sample-Rate (48000)
+    mode: str  # "restoration" | "studio_2026"
+    deferred_phase_ids: list[str]  # Phasen die in Stufe 1 deferriert wurden
+    cached_defect_result: Any  # DefectAnalysisResult aus Stufe 1
+    cached_era_result: Any  # EraResult aus Stufe 1
+    cached_medium_result: Any  # ClassificationResult aus Stufe 1
+    stufe1_quality: float  # quality_estimate Stufe 1 (Mindest-Benchmark)
+    created_at: float = field(default_factory=time.time)
 ```
 
 ### MLRefinementThread — Signal-Kontrakt
 
 ```python
 class MLRefinementThread(QThread):
-    refinement_started    = pyqtSignal(str, int)    # output_path, n_deferred_phases
+    refinement_started = pyqtSignal(str, int)  # output_path, n_deferred_phases
     refinement_phase_done = pyqtSignal(str, float)  # phase_id, quality_improvement_delta
-    refinement_progress   = pyqtSignal(int, str)    # pct 0–100, phase_name
-    refinement_complete   = pyqtSignal(str, object) # output_path, final_RestorationResult
-    refinement_cancelled  = pyqtSignal(str)         # output_path → Stufe-1-Export bleibt
+    refinement_progress = pyqtSignal(int, str)  # pct 0–100, phase_name
+    refinement_complete = pyqtSignal(str, object)  # output_path, final_RestorationResult
+    refinement_cancelled = pyqtSignal(str)  # output_path → Stufe-1-Export bleibt
 ```
 
 ### Invarianten
@@ -1538,16 +1580,18 @@ class RecoveryCheckpoint:
     output_path: str
     phases_executed: list[str]
     phases_remaining: list[str]
-    mode: str                              # "restoration" | "studio_2026"
-    material_type: str                     # MaterialType.value
+    mode: str  # "restoration" | "studio_2026"
+    material_type: str  # MaterialType.value
     era_decade: int | None
-    defect_scores: dict[str, float]        # {defect_type: severity}
-    defect_scores_full: dict[str, dict]    # Full DefectScore with locations
+    defect_scores: dict[
+        str, float
+    ]  # {defect_type: severity} — String-Keys = SERIALIZIERTE Form (Checkpoint); kanonische Aufloesung beider Key-Typen: DefectScoreView, §7.4c (06_phases_system.md)
+    defect_scores_full: dict[str, dict]  # Full DefectScore with locations
     restorability_score: float | None
     spectral_fingerprint: dict[str, float]
     quality_estimate_at_failure: float
     musical_goals_at_failure: dict[str, float]
-    audio_wav_path: str                    # FLOAT WAV (verlustfrei)
+    audio_wav_path: str  # FLOAT WAV (verlustfrei)
     sample_rate: int
     original_input_path: str
     timestamp: float
@@ -1732,10 +1776,18 @@ Quelle: `[SRC:S06,S07,S08,S09,S10,S11]`
 ```python
 # Material-adaptive timbral floors (nach §0a / Spec 09 / calibration_matrix.py):
 _TIMBRAL_FLOORS = {
-    "shellac": 0.40, "wax_cylinder": 0.35, "lacquer_disc": 0.38,
-    "vinyl": 0.55, "tape": 0.55, "reel_tape": 0.55, "cassette": 0.50,
-    "cd_digital": 0.75, "dat": 0.70, "mp3_low": 0.60, "unknown": 0.55,
-    "minidisc": 0.60,   # ATRAC-Kompression — gleiche Floor-Klasse wie mp3_low (v10.0.0)
+    "shellac": 0.40,
+    "wax_cylinder": 0.35,
+    "lacquer_disc": 0.38,
+    "vinyl": 0.55,
+    "tape": 0.55,
+    "reel_tape": 0.55,
+    "cassette": 0.50,
+    "cd_digital": 0.75,
+    "dat": 0.70,
+    "mp3_low": 0.60,
+    "unknown": 0.55,
+    "minidisc": 0.60,  # ATRAC-Kompression — gleiche Floor-Klasse wie mp3_low (v10.0.0)
 }
 _tf_floor = _TIMBRAL_FLOORS.get(material, 0.55)
 # Restorability-Skalierung: sehr beschädigtes Material (< 40) hat niedrigeren erreichbaren timbral
@@ -2109,11 +2161,13 @@ _phase_overrides["phase_XX_name"] = {
     "enable_transient": False,
 }
 # 3. UV3 _HPF_NOTCH_CUM_RESET_PHASES: Phase eintragen
-_HPF_NOTCH_CUM_RESET_PHASES: frozenset = frozenset({
-    "phase_02_hum_removal",
-    "phase_05_rumble_filter",
-    "phase_XX_name",  # NEU
-})
+_HPF_NOTCH_CUM_RESET_PHASES: frozenset = frozenset(
+    {
+        "phase_02_hum_removal",
+        "phase_05_rumble_filter",
+        "phase_XX_name",  # NEU
+    }
+)
 # Nach diesem Phase-Reset berechnet der Cumulative Guard den Drift
 # relativ zum Audio NACH der HPF — nicht relativ zum Audio davor.
 ```
@@ -2239,8 +2293,11 @@ if era_result is not None and hasattr(era_result, "spectral_tilt"):
         cap_factor = 1.0 - min(0.50, (tilt_deviation - mat_tol) / (mat_tol * 2.0))
         # hf_boost neu anwenden mit cap_factor auf Extension-Anteil
         metadata["spectral_tilt_capped"] = {
-            "post_tilt": tilt_post, "era_tilt": era_result.spectral_tilt,
-            "deviation": tilt_deviation, "tolerance": mat_tol, "cap_factor": cap_factor
+            "post_tilt": tilt_post,
+            "era_tilt": era_result.spectral_tilt,
+            "deviation": tilt_deviation,
+            "tolerance": mat_tol,
+            "cap_factor": cap_factor,
         }
 ```
 
@@ -2264,23 +2321,24 @@ if era_result is not None and hasattr(era_result, "spectral_tilt"):
 ```python
 # In UV3._execute_pipeline(), nach letztem ADDITIVE-Phase-Block:
 _MATERIAL_BW_CEILING_HZ = {
-    "wax_cylinder":   5000,
+    "wax_cylinder": 5000,
     "wire_recording": 6000,
-    "shellac":        8000,
-    "lacquer_disc":   8000,
-    "vinyl":         16000,
-    "tape":          15000,
-    "reel_tape":     18000,
-    "cassette":      14000,   # alias: tape
-    "dat":           22000,
-    "minidisc":      20000,
-    "cd_digital":    22050,
-    "mp3_low":       16000,   # 128 kbps → effektive BW
-    "mp3_high":      20000,
-    "aac":           20000,
-    "streaming":     20000,
-    "unknown":       20000,
+    "shellac": 8000,
+    "lacquer_disc": 8000,
+    "vinyl": 16000,
+    "tape": 15000,
+    "reel_tape": 18000,
+    "cassette": 14000,  # alias: tape
+    "dat": 22000,
+    "minidisc": 20000,
+    "cd_digital": 22050,
+    "mp3_low": 16000,  # 128 kbps → effektive BW
+    "mp3_high": 20000,
+    "aac": 20000,
+    "streaming": 20000,
+    "unknown": 20000,
 }
+
 
 def _post_additive_bw_guard(audio, sr, material_type, mode):
     """Zentraler BW-Guard nach allen additiven Phasen."""
@@ -2290,6 +2348,7 @@ def _post_additive_bw_guard(audio, sr, material_type, mode):
     # Butterworth 8th-order zero-phase LPF
     if ceiling_hz < sr / 2 - 100:
         from scipy.signal import butter, sosfiltfilt
+
         sos = butter(8, ceiling_hz, btype="low", fs=sr, output="sos")
         if audio.ndim == 1:
             audio = sosfiltfilt(sos, audio)
@@ -2328,7 +2387,7 @@ def _post_additive_bw_guard(audio, sr, material_type, mode):
 # da Air-Band-Energie < 0.1% der Gesamtenergie → spectral_novelty nie > 0.03%.
 # Neue Metrik: Band-relative Energie-Verhältnis IM CEILING-BAND:
 ceiling_band_energy_before = energy_above_ceiling(audio_before, material_bw_ceiling_hz, sr)
-ceiling_band_energy_after  = energy_above_ceiling(audio_after,  material_bw_ceiling_hz, sr)
+ceiling_band_energy_after = energy_above_ceiling(audio_after, material_bw_ceiling_hz, sr)
 ceiling_band_ratio = ceiling_band_energy_after / max(ceiling_band_energy_before, 1e-10)
 # Violation: ceiling_band_ratio > 8.0 ≈ +9 dB Anstieg im Ceiling-Band → Hard-Rollback
 
@@ -2336,11 +2395,14 @@ ceiling_band_ratio = ceiling_band_energy_after / max(ceiling_band_energy_before,
 spectral_novelty = energy_new_bins / energy_total
 
 if spectral_novelty > 0.08:
-    phase_score_penalty = 0.3   # PMGG-Penalty
+    phase_score_penalty = 0.3  # PMGG-Penalty
 if ceiling_band_ratio > 8.0:
     # BW-Ceiling-Verletzung durch Energie-Anstieg im Ceiling-Band → Hard-Rollback
-    return pre_phase_audio, {"hallucination_rollback": True, "bw_ceiling_ratio_rollback": True,
-                              "ceiling_band_ratio": ceiling_band_ratio}
+    return pre_phase_audio, {
+        "hallucination_rollback": True,
+        "bw_ceiling_ratio_rollback": True,
+        "ceiling_band_ratio": ceiling_band_ratio,
+    }
 if spectral_novelty > 0.15:
     if mode == "restoration":
         # Phase-Rollback — Restoration ist absolut
@@ -2351,7 +2413,7 @@ if spectral_novelty > 0.15:
             return pre_phase_audio, {"hallucination_rollback": True}
 
 # Hard-Rollback unabhängig von spectral_novelty:
-if harmonic_ceiling_violation:   # rekonstruierte Harmonics > material BW_CEILING
+if harmonic_ceiling_violation:  # rekonstruierte Harmonics > material BW_CEILING
     return pre_phase_audio, {"bw_ceiling_rollback": True}
 ```
 
@@ -2489,12 +2551,12 @@ def _salience_adjusted_severity(defect_type: str) -> float:
     ds = defect_result.scores.get(defect_type)
     if ds is None:
         return 0.0
-    sev = float(ds.severity)               # ERB-adjustiert durch PerceptualSalienceEstimator
+    sev = float(ds.severity)  # ERB-adjustiert durch PerceptualSalienceEstimator
     meta = getattr(ds, "metadata", {}) or {}
-    n_masked   = int(meta.get("n_masked_events", 0))
-    n_salient  = int(meta.get("n_salient_events", 0))
-    if n_masked >= 3 and n_salient == 0:   # vollständig ERB-maskiert
-        sev *= 0.5                          # zusätzlich -50 % → Phase meist inaktiv
+    n_masked = int(meta.get("n_masked_events", 0))
+    n_salient = int(meta.get("n_salient_events", 0))
+    if n_masked >= 3 and n_salient == 0:  # vollständig ERB-maskiert
+        sev *= 0.5  # zusätzlich -50 % → Phase meist inaktiv
     return sev
 ```
 
@@ -2601,24 +2663,24 @@ nicht für isolierte Töne. Primärquellen:
 # backend/core/per_phase_musical_goals_gate.py
 JND_MIN_DELTA: dict[str, float] = {
     # P1 — höchste Salienz; Vokalmusik macht diese besonders dominant
-    "natuerlichkeit":        0.012,  # Thoret et al. (2021) JASA 149:3429; Caclin et al. (2005) ≈1 %
-    "authentizitaet":        0.012,  # Kreiman & Sidtis (2011): Stimmqualität sehr präzise erkannt
+    "natuerlichkeit": 0.012,  # Thoret et al. (2021) JASA 149:3429; Caclin et al. (2005) ≈1 %
+    "authentizitaet": 0.012,  # Kreiman & Sidtis (2011): Stimmqualität sehr präzise erkannt
     # P2 — strukturelle Musikeigenschaften; tonaler Schwerpunkt am salientesten
-    "tonal_center":          0.008,  # Krumhansl & Cuddy (2010); Marjieh et al. (2023): höchste Salienz
+    "tonal_center": 0.008,  # Krumhansl & Cuddy (2010); Marjieh et al. (2023): höchste Salienz
     "timbre_authentizitaet": 0.012,  # Caclin et al. (2005); McAdams (2019) Curr Biol 29:R764
-    "artikulation":          0.010,  # London (2012) 2. Aufl. ~8 ms; Repp & Su (2013) Psychon
+    "artikulation": 0.010,  # London (2012) 2. Aufl. ~8 ms; Repp & Su (2013) Psychon
     # P3 — emotionale Hinweise in Stimme sehr präsent (100–300 ms Zeitskala)
-    "emotionalitaet":        0.014,  # Juslin (2019) OUP; Zentner et al. (2008) Emotion 8:494
-    "micro_dynamics":        0.012,  # Glasberg & Moore (2002) J AES 50:331 zeitvariantes JND
-    "groove":                0.010,  # Witek et al. (2017) PLOS ONE; Madison (2006) ≈6 ms
+    "emotionalitaet": 0.014,  # Juslin (2019) OUP; Zentner et al. (2008) Emotion 8:494
+    "micro_dynamics": 0.012,  # Glasberg & Moore (2002) J AES 50:331 zeitvariantes JND
+    "groove": 0.010,  # Witek et al. (2017) PLOS ONE; Madison (2006) ≈6 ms
     # P4 — tonale Balance/Raum; längere Integrationszeitfenster, aber sensitiver als vermutet
-    "transparenz":           0.012,  # Beranek (2016) JASA 139:1548 C80-JND ~1 dB; Toole (2018)
-    "waerme":                0.016,  # Alluri & Toiviainen (2012) Music Percept. 29:459; Howard & Angus (2017)
-    "bass_kraft":            0.012,  # Glasberg & Moore (2006) JASA 119:1705; ISO 226:2003
-    "separation_fidelity":   0.014,  # Bregman (1990) Auditory Scene Analysis; McDermott (2009) Curr Biol
+    "transparenz": 0.012,  # Beranek (2016) JASA 139:1548 C80-JND ~1 dB; Toole (2018)
+    "waerme": 0.016,  # Alluri & Toiviainen (2012) Music Percept. 29:459; Howard & Angus (2017)
+    "bass_kraft": 0.012,  # Glasberg & Moore (2006) JASA 119:1705; ISO 226:2003
+    "separation_fidelity": 0.014,  # Bregman (1990) Auditory Scene Analysis; McDermott (2009) Curr Biol
     # P5 — spektrale Brillanz/Raumtiefe; breiteste Integrationsfenster
-    "brillanz":              0.016,  # Siedenburg & McAdams (2017) J New Music Res 46:149
-    "spatial_depth":         0.018,  # Blauert (1997) 2. Aufl.; Choisel & Wickelmaier (2007) JASA 121:2718
+    "brillanz": 0.016,  # Siedenburg & McAdams (2017) J New Music Res 46:149
+    "spatial_depth": 0.018,  # Blauert (1997) 2. Aufl.; Choisel & Wickelmaier (2007) JASA 121:2718
 }
 ```
 
@@ -2630,7 +2692,7 @@ _applicable = [g for g in applicable_goals if g not in excluded_goals]
 _deltas = {g: scores_after.get(g, 0.0) - effective_scores_before.get(g, 0.0) for g in _applicable}
 _all_below_jnd = (
     len(_deltas) > 0
-    and all(d >= 0.0 for d in _deltas.values())          # nur Verbesserungen
+    and all(d >= 0.0 for d in _deltas.values())  # nur Verbesserungen
     and all(abs(d) < JND_MIN_DELTA.get(g, 0.015) for g, d in _deltas.items())
 )
 if _all_below_jnd:
@@ -2675,9 +2737,7 @@ cumulative_drift = {g: goals_now[g] - goals_pre_pipeline[g] for g in P1_P2_GOALS
 effective_drift = apply_phase_specific_exclusions(cumulative_drift, phase_id)
 
 # Drift-Toleranz materialadaptiv berechnen (§2.54):
-tolerance = compute_adaptive_drift_tolerance(
-    restorability_score, material_type, defect_severity_mean, n_active_phases
-)
+tolerance = compute_adaptive_drift_tolerance(restorability_score, material_type, defect_severity_mean, n_active_phases)
 # Ergebnis: z.B. -0.03 (CD, leicht) bis -0.25 (Shellac-4-Gen, schwer degradiert)
 
 if any(drift < tolerance for drift in effective_drift.values()):
@@ -2785,11 +2845,11 @@ from backend.core.phase_ontology import get_phase_type, GDD_VALID_TYPES, NOISE_T
 
 # Guard-Entscheidung (Inversion):
 phase_type = get_phase_type(phase_id)
-if phase_type in NOISE_TEXTURE_VALID_TYPES:      # nur SUBTRACTIVE
+if phase_type in NOISE_TEXTURE_VALID_TYPES:  # nur SUBTRACTIVE
     check_noise_texture(...)
-if phase_type in PRE_ECHO_VALID_TYPES:           # nur DYNAMICS + ENHANCEMENT
+if phase_type in PRE_ECHO_VALID_TYPES:  # nur DYNAMICS + ENHANCEMENT
     check_pre_echo(...)
-if phase_type in GDD_VALID_TYPES:                # nicht ML_GENERATIVE, nicht ADDITIVE
+if phase_type in GDD_VALID_TYPES:  # nicht ML_GENERATIVE, nicht ADDITIVE
     check_group_delay(...)
 ```
 
@@ -2942,9 +3002,9 @@ Per-Phase-δ-Guards fangen nur Single-Phase-Kollapsen (> 40 dB in einer Phase). 
 
 ```python
 if current_audio.ndim == 2 and current_audio.shape[0] == 2:
-    cu_imb = abs(L/R_dB(current_audio))      # Imbalance Pipeline-Ausgang
-    pp_imb = abs(L/R_dB(afg_pre_pipeline))   # Imbalance Pipeline-Eingang
-    if cu_imb > 20.0 and pp_imb < 6.0:       # kumulativer Kollaps
+    cu_imb = abs(L / R_dB(current_audio))  # Imbalance Pipeline-Ausgang
+    pp_imb = abs(L / R_dB(afg_pre_pipeline))  # Imbalance Pipeline-Eingang
+    if cu_imb > 20.0 and pp_imb < 6.0:  # kumulativer Kollaps
         # Rollback-Kaskade:
         # 1. best_clean_checkpoint — sofern selbst nicht kollabiert (> 20 dB prüfen)
         # 2. afg_pre_pipeline_audio (Primum non nocere)
@@ -2997,13 +3057,19 @@ erzeugen, sondern psychoakustische Lästigkeit steigern.
 
 ```python
 # backend/core/artifact_freedom_gate.py
-_ROUGHNESS_FLAG_ASPER: float = 0.15   # Δrauheit pro Phase in asper
-_SHARPNESS_FLAG_ACUM: float  = 0.30   # Δschärfe gesamt in acum
+_ROUGHNESS_FLAG_ASPER: float = 0.15  # Δrauheit pro Phase in asper
+_SHARPNESS_FLAG_ACUM: float = 0.30  # Δschärfe gesamt in acum
 _ROUGHNESS_MATERIAL_TOLERANCE: dict[str, float] = {
-    "digital": 1.0, "cd_digital": 1.0, "streaming": 1.0,
-    "tape": 1.25, "reel_tape": 1.25,
-    "vinyl": 1.5, "minidisc": 1.5,
-    "shellac": 2.0, "wax_cylinder": 2.0, "wire_recording": 2.0,
+    "digital": 1.0,
+    "cd_digital": 1.0,
+    "streaming": 1.0,
+    "tape": 1.25,
+    "reel_tape": 1.25,
+    "vinyl": 1.5,
+    "minidisc": 1.5,
+    "shellac": 2.0,
+    "wax_cylinder": 2.0,
+    "wire_recording": 2.0,
 }
 ```
 
@@ -3156,12 +3222,12 @@ Pro Material gibt es ein vorberechnetes Referenzgitter aus (state_4d → optimal
 ```python
 # Beispiel-Grid (werden zur Laufzeit nicht trainiert, sind hardcoded DSP-Messungen):
 _REFERENCE_GRIDS: dict[str, list[tuple[PhaseState, float]]] = {
-    "vinyl":    [...],   # 12 Referenzpunkte × (state_vec, optimal_strength)
-    "reel_tape":[...],
-    "tape":     [...],
-    "shellac":  [...],
+    "vinyl": [...],  # 12 Referenzpunkte × (state_vec, optimal_strength)
+    "reel_tape": [...],
+    "tape": [...],
+    "shellac": [...],
     "minidisc": [...],
-    "cd_digital":[...],
+    "cd_digital": [...],
 }
 ```
 
@@ -3254,10 +3320,11 @@ Hebel 1 entscheidet **ob** eine Phase läuft; Hebel 3 entscheidet **wie stark** 
 class SongSegment:
     start_s: float
     end_s: float
-    label: str          # "intro", "verse", "chorus", "bridge", "outro", "instrumental"
-    energy_level: float # [0, 1] — Ø RMS normiert
-    has_vocals: bool    # PANNs Singing confidence Ø im Segment
-    is_climax: bool     # Frisson-Zone (§2.56/§Frisson) oder Energy-Peak
+    label: str  # "intro", "verse", "chorus", "bridge", "outro", "instrumental"
+    energy_level: float  # [0, 1] — Ø RMS normiert
+    has_vocals: bool  # PANNs Singing confidence Ø im Segment
+    is_climax: bool  # Frisson-Zone (§2.56/§Frisson) oder Energy-Peak
+
 
 def analyze_structure(audio: np.ndarray, sr: int) -> list[SongSegment]:
     """
@@ -3494,10 +3561,10 @@ Die Drift-Toleranz des CIG wird **berechnet**, nicht fest vorgegeben:
 
 ```python
 adaptive_drift_tolerance = compute_adaptive_drift_tolerance(
-    restorability_score,     # 0–100: wie stark degradiert? → mehr Spielraum
-    material_type,           # vinyl/shellac brauchen mehr als cd_digital
-    defect_severity_mean,    # hohe mittlere Severity → mehr Toleranz nötig
-    n_active_phases,         # mehr Phasen → mehr kumulative Drift normal
+    restorability_score,  # 0–100: wie stark degradiert? → mehr Spielraum
+    material_type,  # vinyl/shellac brauchen mehr als cd_digital
+    defect_severity_mean,  # hohe mittlere Severity → mehr Toleranz nötig
+    n_active_phases,  # mehr Phasen → mehr kumulative Drift normal
 )
 # Ergebnis: z.B. -0.03 (CD, leicht) bis -0.25 (Shellac-4-Gen, schwer degradiert)
 ```
@@ -3547,20 +3614,18 @@ adaptive_drift_tolerance = compute_adaptive_drift_tolerance(
 
 ```python
 from backend.core.physical_ceiling_estimator import PhysicalCeilingEstimator
+
 _pce = PhysicalCeilingEstimator().estimate(input_audio, sample_rate, {}, material_key)
-_pmgg_ceiling_capped_targets = {
-    g: float(min(sgt[g], _pce.ceiling[g]))
-    for g in sgt
-}
+_pmgg_ceiling_capped_targets = {g: float(min(sgt[g], _pce.ceiling[g])) for g in sgt}
 # wird als adaptive_goal_thresholds an jede wrap_phase() übergeben
 ```
 
 **2. Delta-adaptiver Blend** (Pflicht, identisch in PMGG + Pipeline-Ende, §09.2):
 
 ```python
-delta = canonical[goal] - adaptive[goal]   # positiv = adaptiv ist niedriger
+delta = canonical[goal] - adaptive[goal]  # positiv = adaptiv ist niedriger
 if delta > 0.10:
-    blended = adaptive[goal]               # Ceiling-Fall → adaptiv direkt
+    blended = adaptive[goal]  # Ceiling-Fall → adaptiv direkt
 elif delta > 0.04:
     blended = 0.40 * canonical[goal] + 0.60 * adaptive[goal]
 else:
@@ -3575,16 +3640,16 @@ blended = float(np.clip(blended, 0.30, 0.99))
 Additive Phase-Familien (`harmonic_reconstruction`, `harmonic_enhancement`, `tonal_enhancement`, `source_enhancement`, `stereo_enhancement`, `stereo_generation`) erhalten vor `wrap_phase()` einen Strength-Scalar proportional zum **absoluten** Headroom bis zur physikalischen Decke:
 
 ```python
-HR_WINDOW = 0.25   # volle Stärke wenn Headroom >= 0.25; linear gedämpft darunter
-HR_GOALS  = ("brillanz", "waerme", "raumtiefe", "bass_kraft", "sep_fidelity")
+HR_WINDOW = 0.25  # volle Stärke wenn Headroom >= 0.25; linear gedämpft darunter
+HR_GOALS = ("brillanz", "waerme", "raumtiefe", "bass_kraft", "sep_fidelity")
 
 min_hr = 1.0
 for goal in HR_GOALS:
     headroom = max(0.0, _pmgg_ceiling_capped_targets[goal] - current_score[goal])
-    hr_ratio  = min(1.0, headroom / HR_WINDOW)
-    min_hr    = min(min_hr, hr_ratio)
+    hr_ratio = min(1.0, headroom / HR_WINDOW)
+    min_hr = min(min_hr, hr_ratio)
 
-hr_strength = float(np.clip(min_hr, 0.40, 1.0))   # Minimum 40 % auch nahe der Decke
+hr_strength = float(np.clip(min_hr, 0.40, 1.0))  # Minimum 40 % auch nahe der Decke
 if hr_strength < 0.95:
     combined_strength = float(np.clip(combined_strength * hr_strength, 0.05, 1.0))
 ```
@@ -3919,24 +3984,30 @@ def _recovery_cascade(self, gate_fail_reason: str) -> RestorationResult:
         audio = self._best_carrier_checkpoint
         hpi = self._compute_hpi(audio)
         if hpi > 0:
-            return RestorationResult(audio=audio, status="recovered",
-                                     metadata={**self.metadata, "recovery_stage": 3,
-                                               "recovery_reason": gate_fail_reason})
+            return RestorationResult(
+                audio=audio,
+                status="recovered",
+                metadata={**self.metadata, "recovery_stage": 3, "recovery_reason": gate_fail_reason},
+            )
 
     # Stufe 4: Pre-Pipeline-Checkpoint
     if self._pre_pipeline_audio is not None:
         audio = self._pre_pipeline_audio
         hpi = self._compute_hpi(audio)
         if hpi > 0:
-            return RestorationResult(audio=audio, status="recovered",
-                                     metadata={**self.metadata, "recovery_stage": 4,
-                                               "recovery_reason": gate_fail_reason})
+            return RestorationResult(
+                audio=audio,
+                status="recovered",
+                metadata={**self.metadata, "recovery_stage": 4, "recovery_reason": gate_fail_reason},
+            )
 
     # Stufe 5: Input-Export — IMMER besser als Artefakt
     logger.warning("All recovery stages failed — exporting degraded input. reason=%s", gate_fail_reason)
-    return RestorationResult(audio=self._original_input, status="degraded",
-                             metadata={**self.metadata, "recovery_stage": 5,
-                                       "recovery_reason": gate_fail_reason})
+    return RestorationResult(
+        audio=self._original_input,
+        status="degraded",
+        metadata={**self.metadata, "recovery_stage": 5, "recovery_reason": gate_fail_reason},
+    )
 ```
 
 **Invariante**: `RestorationResult.status ∈ {"success", "recovered", "degraded"}`. Status `degraded` ist kein Fehler — er ist die korrekte Antwort wenn alle Recovery-Versuche scheitern. Status `degraded` ist **immer besser** als ein über-prozessiertes Artefakt.
@@ -3952,13 +4023,12 @@ def _recovery_cascade(self, gate_fail_reason: str) -> RestorationResult:
 ```python
 # In UV3._execute_pipeline(), nach jeder Phase:
 if abs(len(output) - len(audio_in)) > 64:
-    logger.error("length_mismatch phase=%s delta=%d samples",
-                 phase_id, len(output) - len(audio_in))
+    logger.error("length_mismatch phase=%s delta=%d samples", phase_id, len(output) - len(audio_in))
     # Harter Crop — besser als stilles Padding oder AV-Desync
     if len(output) > len(audio_in):
-        output = output[:len(audio_in)]
+        output = output[: len(audio_in)]
     else:
-        output = np.pad(output, [(0, len(audio_in) - len(output))] + [(0,0)] * (output.ndim - 1))
+        output = np.pad(output, [(0, len(audio_in) - len(output))] + [(0, 0)] * (output.ndim - 1))
     metadata.setdefault("length_corrections", []).append(phase_id)
 ```
 
@@ -3993,7 +4063,7 @@ Referenzmuster:
 ctx = min(int(1.0 * sr), n_samples // 4)
 audio_pad = np.pad(audio, ((0, 0), (ctx, ctx)), mode="reflect")  # channel-first stereo
 processed = model(audio_pad)
-processed = processed[:, ctx:ctx + n_samples]  # deterministischer Strip
+processed = processed[:, ctx : ctx + n_samples]  # deterministischer Strip
 ```
 
 ### [RELEASE_MUST] Stereo-Lag-Invariante (Pflicht)
@@ -4087,8 +4157,10 @@ def _profiled_phase_call_with_delta(self, phase_fn, audio, phase_id, **kwargs):
 
     # 8. Delta-Log (Pflicht)
     self._metadata["phase_deltas"][phase_id] = {
-        "pre": pre_scores, "post": post_scores,
-        "delta": delta, "mas_gap": mas_gap,
+        "pre": pre_scores,
+        "post": post_scores,
+        "delta": delta,
+        "mas_gap": mas_gap,
     }
     return post_audio, phase_result
 ```
@@ -4121,9 +4193,10 @@ Drei bekannte Proxy-Calibration-Bugs, die zu systematisch zu niedrigen Delta-Wer
 ### MAS-Konvergenz-Check
 
 ```python
-MAS_TOLERANCE        = 0.02   # P1/P2: "erreicht" wenn mas_gap[g] ≤ 0.02
-MAS_FULL_TOLERANCE   = 0.05   # P3–P5: "erreicht" wenn mas_gap[g] ≤ 0.05
-MAS_OVERSHOOT_TOL    = 0.03   # Strength-Clamp wenn post_score > MAS + 0.03
+MAS_TOLERANCE = 0.02  # P1/P2: "erreicht" wenn mas_gap[g] ≤ 0.02
+MAS_FULL_TOLERANCE = 0.05  # P3–P5: "erreicht" wenn mas_gap[g] ≤ 0.05
+MAS_OVERSHOOT_TOL = 0.03  # Strength-Clamp wenn post_score > MAS + 0.03
+
 
 def _check_mas_convergence(self, post_scores: dict, mas_gap: dict) -> None:
     """Signal early pipeline stop when MAS achieved for all P1/P2."""
@@ -4134,7 +4207,7 @@ def _check_mas_convergence(self, post_scores: dict, mas_gap: dict) -> None:
         self._metadata["mas_achieved_at_phase"] = self._current_phase_id
         self._metadata["mas_p3p5_achieved"] = p3p5_achieved
         if p3p5_achieved:
-            self._mas_fully_achieved = True   # → Pipeline sofort stoppen
+            self._mas_fully_achieved = True  # → Pipeline sofort stoppen
         # sonst: P3–P5-Phasen können noch laufen (Groove, Raumtiefe)
 ```
 
@@ -4151,7 +4224,9 @@ def _check_mas_convergence(self, post_scores: dict, mas_gap: dict) -> None:
 ```python
 for phase_id in planned_phases:
     if self._mas_fully_achieved:
-        logger.info("MAS fully achieved at phase=%s — pipeline stopped early", self._metadata.get("mas_achieved_at_phase"))
+        logger.info(
+            "MAS fully achieved at phase=%s — pipeline stopped early", self._metadata.get("mas_achieved_at_phase")
+        )
         break
     audio, result = self._profiled_phase_call_with_delta(phase_fn, audio, phase_id)
 ```
@@ -4186,9 +4261,9 @@ _f0_tracker = get_crepe_pitch_tracker()
 _f0_result = _f0_tracker.estimate(
     audio=_pipeline_input_mono,  # Mono-Downmix für F0-Analyse
     sr=sr,
-    hop_length_ms=10,            # 10 ms Hop (= 480 Samples @ 48 kHz)
-    model_size="tiny",           # tiny: 4.2 MB, akzeptable Genauigkeit, schnell
-    viterbi=True,                # Viterbi-Decoder für glatte F0-Kontur
+    hop_length_ms=10,  # 10 ms Hop (= 480 Samples @ 48 kHz)
+    model_size="tiny",  # tiny: 4.2 MB, akzeptable Genauigkeit, schnell
+    viterbi=True,  # Viterbi-Decoder für glatte F0-Kontur
 )
 # {
 #   "f0_hz":      np.ndarray,    # f₀ pro Frame [Hz], 0.0 = unvoiced
@@ -4267,7 +4342,7 @@ _arc_metric = get_emotional_arc_metric()
 _arc_envelope_ref = _arc_metric.extract_loudness_envelope(
     audio=_pipeline_input,
     sr=sr,
-    window_ms=400,    # momentane LUFS, 400 ms Fenster (BS.1770-5)
+    window_ms=400,  # momentane LUFS, 400 ms Fenster (BS.1770-5)
 )
 _restoration_context["arc_envelope_ref"] = _arc_envelope_ref
 # {
@@ -4304,10 +4379,7 @@ if _arc_result["emotional_arc_score"] < 0.80:
 ```python
 # Nach jeder NR/Dynamik-Phase (phase_29, phase_03, phase_26, phase_35):
 _post_arc = _arc_metric.extract_loudness_envelope(_post_phase_audio, sr)
-_arc_correlation = np.corrcoef(
-    _restoration_context["arc_envelope_ref"]["lufs_curve"],
-    _post_arc["lufs_curve"]
-)[0, 1]
+_arc_correlation = np.corrcoef(_restoration_context["arc_envelope_ref"]["lufs_curve"], _post_arc["lufs_curve"])[0, 1]
 
 if _arc_correlation < 0.80:
     logger.warning("phase=%s: arc_correlation=%.3f < 0.80 — rollback phase", phase_id, _arc_correlation)
@@ -4400,6 +4472,7 @@ Isolation vor der Verarbeitung — kein Post-Processing.
 # backend/core/dsp/structural_silence_isolation.py
 # Singleton: get_structural_silence_isolator()
 
+
 class StructuralSilenceIsolator:
     """
     Architekturell trennt Stille von Audio-Inhalt vor jeder generativen Verarbeitung.
@@ -4411,12 +4484,12 @@ class StructuralSilenceIsolator:
 
     # Silence-Schwellen — material-adaptiv (Singleton-Cache)
     SILENCE_THRESHOLDS_DBFS = {
-        "shellac":    -22.0,
-        "vinyl":      -33.0,
-        "cassette":   -43.0,
-        "reel_tape":  -50.0,
+        "shellac": -22.0,
+        "vinyl": -33.0,
+        "cassette": -43.0,
+        "reel_tape": -50.0,
         "cd_digital": -57.0,
-        "unknown":    -45.0,
+        "unknown": -45.0,
     }
 
     # Sicherheitspuffer: Gap darf nicht näher als CONTEXT_GUARD_MS an Stille sein
@@ -4511,6 +4584,7 @@ class StructuralSilenceIsolator:
 ```python
 # Pflicht-Pattern für JEDE generative/inpainting Phase:
 
+
 def _run_inpainting_with_ssip(audio, sr, silence_zones, inpainting_fn, **kwargs):
     """
     Wraps jede Inpainting-Funktion mit SSIP.
@@ -4556,6 +4630,7 @@ def _run_inpainting_with_ssip(audio, sr, silence_zones, inpainting_fn, **kwargs)
 _silence_zones = _get_structural_silence_zones(kwargs, audio_original, sr, material_key)
 # _get_structural_silence_zones() ist nie None — berechnet eigenständig wenn nötig:
 
+
 def _get_structural_silence_zones(kwargs, audio_original, sr, material_key):
     """MUSS immer gültige Stille-Zonen zurückgeben — niemals None oder leere Liste
     ohne Berechnung."""
@@ -4595,8 +4670,7 @@ _structural_silence_zones = _ssip.detect_structural_silence_zones(
 )
 _restoration_context["structural_silence_zones"] = _structural_silence_zones
 logger.info(
-    "SSIP: %d strukturelle Stille-Zone(n) detektiert — "
-    "Inpainting-Isolation aktiv",
+    "SSIP: %d strukturelle Stille-Zone(n) detektiert — Inpainting-Isolation aktiv",
     len(_structural_silence_zones),
 )
 
@@ -4618,6 +4692,7 @@ logger.info(
 ```python
 # tests/unit/test_structural_silence_isolation.py
 
+
 def test_ssip_no_energy_in_silence_zone_after_inpainting():
     """Silence-Zone darf nach Inpainting nicht lauter als Original sein."""
     # Synthetisches Audio: 1 s Stille + 3 s Musik + 1 s Stille
@@ -4634,6 +4709,7 @@ def test_ssip_no_energy_in_silence_zone_after_inpainting():
         energy_orig = np.sqrt(np.mean(audio[start:end] ** 2) + 1e-12)
         assert energy_result <= energy_orig * 1.12  # max +1 dB Toleranz
 
+
 def test_ssip_null_propagation_guard():
     """Ohne injizierte silence_zones MUSS eigenständige Berechnung erfolgen."""
     audio = np.concatenate([np.zeros(48000), np.random.randn(144000) * 0.3, np.zeros(48000)])
@@ -4641,11 +4717,13 @@ def test_ssip_null_propagation_guard():
     assert zones is not None
     assert len(zones) >= 1  # mindestens eine Zone muss gefunden werden
 
+
 def test_ssip_context_guard_ms():
     """Gap näher als CONTEXT_GUARD_MS an Stille → kein generatives Inpainting."""
     # Wird implizit durch split_at_silence_boundaries sichergestellt:
     # Kein Audio-Segment enthält eine Gap-Region innerhalb CONTEXT_GUARD_MS von Stille.
     ...
+
 
 def test_ssip_reassembly_bit_exact_silence():
     """Stille-Zonen in Reassembly sind bit-identisch mit Original."""
@@ -4657,8 +4735,9 @@ def test_ssip_reassembly_bit_exact_silence():
 
     for start, end in zones:
         np.testing.assert_array_equal(
-            result[start:end], audio[start:end],
-            err_msg=f"Stille-Zone [{start}:{end}] ist nicht bit-identisch nach Reassembly"
+            result[start:end],
+            audio[start:end],
+            err_msg=f"Stille-Zone [{start}:{end}] ist nicht bit-identisch nach Reassembly",
         )
 ```
 
@@ -4729,12 +4808,12 @@ Der `DefectScanner` detektiert das Material **unabhängig vom externen Hint**:
 ```python
 # DefectScanner.scan() — auto-detection läuft IMMER:
 _auto_material = self._auto_detect_material(audio)  # §6.6.1
-material_type = hint or _auto_material              # Hint hat Vorrang für Thresholds
+material_type = hint or _auto_material  # Hint hat Vorrang für Thresholds
 
 # Ergebnis speichert BEIDE Werte:
 DefectAnalysisResult(
-    material_type=material_type,                    # Für Threshold-Setup verwendet
-    auto_detected_material=_auto_material,          # Was der Scanner WIRKLICH sieht
+    material_type=material_type,  # Für Threshold-Setup verwendet
+    auto_detected_material=_auto_material,  # Was der Scanner WIRKLICH sieht
 )
 ```
 
@@ -4908,9 +4987,11 @@ PMGG (waerme delta ≈ 0.0001) als nicht hörbar bestätigt.
 **Implementierung** (`backend/core/signal_flow_tracer.py`):
 
 ```python
-_pc_collapse = ("LEVEL_COLLAPSE" in " | ".join(flags)
-    and phase_id and any(p in str(phase_id)
-    for p in ("phase_14", "phase_25", "azimuth", "phase_correction")))
+_pc_collapse = (
+    "LEVEL_COLLAPSE" in " | ".join(flags)
+    and phase_id
+    and any(p in str(phase_id) for p in ("phase_14", "phase_25", "azimuth", "phase_correction"))
+)
 if _pc_collapse:
     logger.info("§SFT %s FLAGS: %s", phase_id, " | ".join(flags))
 else:

@@ -284,6 +284,47 @@ def create_phase_result(
     )
 
 
+def normalize_evidence_kwargs(kwargs: dict) -> dict:
+    """Kanonischer Phasen-Evidenz-Vertrag (§7.4c (06_phases_system.md)).
+
+    Zentrale Normalisierung der Evidenz-Kwarg — idempotent, in-place:
+
+    - ``defect_scores``   → ``DefectScoreView`` (Enum- UND String-Keys;
+      String-Key liefert Severity-Float, .items() bleibt Enum-only)
+    - ``defect_locations`` → ``DefectLocationsView`` (Enum- UND String-Keys;
+      Values = [(start_s, end_s)] in SEKUNDEN, FensterMITTE = Ereignis)
+    - ``restoration_context`` (ohne Unterstrich) ist der einzige Kontext-Key;
+      der deprecated Alias ``_restoration_context`` wird solange zusammen-
+      gefuehrt, bis alle Leser migriert sind (L3-Befund 2026-09-25: tote
+      ``_restoration_context``-Lese-Pfade liessen phase_24 nie laufen).
+
+    Die Pipeline ruft die Normalisierung ZENTRAL in
+    ``UnifiedRestorerV3._profiled_phase_call`` auf; Phasen normalisieren nicht
+    selbst (§7.4c).
+    """
+    from backend.core.defect_scanner import DefectLocationsView, DefectScoreView
+
+    _ds = kwargs.get("defect_scores")
+    if isinstance(_ds, dict) and not isinstance(_ds, DefectScoreView):
+        kwargs["defect_scores"] = DefectScoreView(_ds)
+    _dl = kwargs.get("defect_locations")
+    if isinstance(_dl, dict) and not isinstance(_dl, DefectLocationsView):
+        kwargs["defect_locations"] = DefectLocationsView(_dl)
+    _ctx = kwargs.get("restoration_context")
+    _legacy = kwargs.get("_restoration_context")
+    if isinstance(_ctx, dict) and _ctx is _legacy:
+        return kwargs  # bereits normalisiert (idempotent)
+    if isinstance(_ctx, dict) or isinstance(_legacy, dict):
+        _merged: dict = {}
+        if isinstance(_legacy, dict):
+            _merged.update(_legacy)
+        if isinstance(_ctx, dict):
+            _merged.update(_ctx)  # kanonischer Key gewinnt
+        kwargs["restoration_context"] = _merged
+        kwargs["_restoration_context"] = _merged
+    return kwargs
+
+
 # ---------------------------------------------------------------------------
 # PhaseInterface — Abstrakte Basisklasse für alle 64 Phasen (§7.1)
 # ---------------------------------------------------------------------------
@@ -463,6 +504,9 @@ class PhaseInterface(abc.ABC):
         Gesangsqualität geprüft. Kein manuelles Eingreifen nötig.
         """
         assert sample_rate == 48000, f"Interne SR muss 48000 Hz sein, erhalten: {sample_rate}"
+        # §7.4c (06_phases_system.md): Evidenz-Vertrag auch fuer Standalone-/
+        # Nicht-Pipeline-Aufrufe (idempotent, zentral normalisiert).
+        normalize_evidence_kwargs(kwargs)
 
         # ── BreathPreserver: Atem-Erhalt vor NR-Phasen ─────────────────
         _breath_mask = None

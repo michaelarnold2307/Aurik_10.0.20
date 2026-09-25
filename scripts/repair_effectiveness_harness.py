@@ -215,6 +215,23 @@ def _flat_top_count(x: np.ndarray) -> float:
     return float(np.sum(np.abs(x) >= 0.98))
 
 
+def _impulse_peak(x: np.ndarray) -> float:
+    """Impuls-Prominenz: groesste diskrete Kruemmung (Bandstoss-/Klick-Mass).
+
+    Ein Bandstoss-Klick ist ein sub-ms-Impuls (Kruemmungsspitze); die
+    PEGELSTUFE zwischen zwei Bandstuecken ist Inhalt (zwei Aufnahmen), kein
+    Artefakt — sie wird bewusst NICHT gemessen (L3-Instrument-Kalibrierung
+    2026-09-25: die alte _dip_depth-Metrik mass die Stufe und bestrafte damit
+    korrektes Verhalten der phase_64).
+    """
+    y = np.asarray(x, dtype=np.float64)
+    if y.ndim == 2:
+        y = _mono(y)
+    if y.size <= 3:
+        return 0.0
+    return float(np.max(np.abs(np.diff(y, n=2))))
+
+
 def _thd_tone(x: np.ndarray, f0: float = 220.0) -> float:
     """THD-Proxie: Oberschwingungs-Energie / Grundton-Energie."""
     freqs, spec = _rfft(x)
@@ -336,7 +353,7 @@ METRICS: dict[DefectType, tuple] = {
     DefectType.ROOM_MODE_RESONANCE: (_band_energy, "reduce"),
     DefectType.CLICKS: (_flat_top_count, "reduce"),
     DefectType.CRACKLE: (_flat_top_count, "reduce"),
-    DefectType.TAPE_SPLICE_ARTIFACT: (_dip_depth, "reduce"),
+    DefectType.TAPE_SPLICE_ARTIFACT: (_impulse_peak, "reduce"),
     DefectType.LACQUER_DISC_DEGRADATION: (_flat_top_count, "reduce"),
     DefectType.STYLUS_DAMAGE: (_asymmetry, "reduce"),
     DefectType.CLIPPING: (_flat_top_count, "reduce"),
@@ -455,6 +472,12 @@ def _metric_fn(dt: DefectType):
             return _flat_top_count(_mono(audio))
 
         return _ftc
+    if fn is _impulse_peak:
+
+        def _ip(audio: np.ndarray) -> float:
+            return _impulse_peak(audio)
+
+        return _ip
     if fn is _dip_depth:
         win = {
             DefectType.TAPE_SPLICE_ARTIFACT: 0.03,

@@ -320,8 +320,24 @@ class DefectScoreView(dict):
         except ValueError:
             return key
 
+    def _candidates(self, key: object):
+        """Exakter Key zuerst, dann Enum-/String-Gegenstueck (bidirektional,
+        §7.4c (06_phases_system.md) — Dicts kommen mit BEIDEN Key-Typen vor)."""
+        yield key
+        if isinstance(key, DefectType):
+            yield key.value
+        else:
+            try:
+                yield DefectType(str(key))
+            except ValueError:
+                return
+
     def get(self, key: object, default: object = None) -> object:
-        _r = super().get(self._resolve(key), _MISSING_SCORE)
+        _r = _MISSING_SCORE
+        for _c in self._candidates(key):
+            _r = dict.get(self, _c, _MISSING_SCORE)
+            if _r is not _MISSING_SCORE:
+                break
         if _r is _MISSING_SCORE:
             return default
         if isinstance(key, str) and not isinstance(_r, (int, float)):
@@ -329,13 +345,57 @@ class DefectScoreView(dict):
         return _r
 
     def __getitem__(self, key: object) -> object:
-        _r = super().__getitem__(self._resolve(key))
-        if isinstance(key, str) and not isinstance(_r, (int, float)):
-            return float(getattr(_r, "severity", 0.0))
-        return _r
+        for _c in self._candidates(key):
+            _r = dict.get(self, _c, _MISSING_SCORE)
+            if _r is _MISSING_SCORE:
+                continue
+            if isinstance(key, str) and not isinstance(_r, (int, float)):
+                return float(getattr(_r, "severity", 0.0))
+            return _r
+        raise KeyError(key)
 
     def __contains__(self, key: object) -> bool:
-        return super().__contains__(self._resolve(key))
+        return any(dict.__contains__(self, _c) for _c in self._candidates(key))
+
+
+class DefectLocationsView(dict):
+    """Enum-Key-Dict mit String-Key-Aufloesung fuer defect_locations (§7.4c).
+
+    Vertrag (§7.4c (06_phases_system.md)): Keys = DefectType.value-Strings,
+    Values = [(start_s, end_s), ...] als Fenster um das Ereignis; die
+    FensterMITTE ist die Ereignisposition (Reparatur-Saaten nutzen
+    (start+end)/2, nie start — L3-Befund 2026-09-25).
+
+    Wie DefectScoreView loest diese View String- UND Enum-Keys auf,
+    die ITERATION bleibt unveraendert (Key-Typ des zugrunde liegenden Dicts).
+    """
+
+    def _candidates(self, key: object):
+        yield key
+        if isinstance(key, DefectType):
+            yield key.value
+        else:
+            try:
+                yield DefectType(str(key))
+            except ValueError:
+                return
+
+    def get(self, key: object, default: object = None) -> object:
+        for _c in self._candidates(key):
+            _r = dict.get(self, _c, _MISSING_SCORE)
+            if _r is not _MISSING_SCORE:
+                return _r
+        return default
+
+    def __getitem__(self, key: object) -> object:
+        for _c in self._candidates(key):
+            _r = dict.get(self, _c, _MISSING_SCORE)
+            if _r is not _MISSING_SCORE:
+                return _r
+        raise KeyError(key)
+
+    def __contains__(self, key: object) -> bool:
+        return any(dict.__contains__(self, _c) for _c in self._candidates(key))
 
 
 @dataclass

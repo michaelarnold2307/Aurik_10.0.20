@@ -325,3 +325,45 @@ Abarbeitungs-Reihenfolge (Vorschlag): (a) Phasen-Exceptions (3),
 (b) phase_12-Familie auf Musik (4 — Gleichlauf ist das Kern-Versprechen der
 Analog-Restauration), (c) Scanner-Lücken der Tape-/Dropout-Familie,
 (d) Rest.
+
+### Architektur-Entscheidung 2026-09-25 — Kanonischer Phasen-Evidenz-Vertrag (§7.4c)
+
+**Befund:** Die 29 Phasen-Lücken sind keine 29 DSP-Einzelfehler, sondern fünf
+wiederkommende Kontrakt-Bruch-Klassen (String/Enum-Keys auf `defect_scores`,
+Namensvarianten `_restoration_context`, Locations-Fenstersemantik,
+Privatdetektoren statt Scanner-Evidenz, private Schwellen §V7-widrig).
+
+**Umgesetzt (Slice 1, kontrakt-first):**
+
+- **Spec:** §7.4c (06_phases_system.md) „Kanonischer Phasen-Evidenz-Vertrag"
+  + Klärung der Key-Typ-Widersprüche in Spec 02 (Zeilen 728/1544).
+- **Contract-Layer:** `normalize_evidence_kwargs()` (phase_interface.py) an
+  beiden Choke-Points (`UnifiedRestorerV3._profiled_phase_call`,
+  `PhaseInterface._safe_process`): `defect_scores` → `DefectScoreView`,
+  `defect_locations` → `DefectLocationsView` (beide BIDIREKTIONAL
+  Enum/String), `_restoration_context`-Alias-Merge. 11 Vertragstests
+  (`test_phase_evidence_contract.py`).
+- **Bereits geschlossen durch den Vertrag:**
+  - tape_splice_artifact: Scanner-Saaten über FensterMITTE + Frame-Smearing-
+    Fix im Privatdetektor + Klick-Interpolation nach bestandenem
+    Hörbarkeits-Gate volle Stärke → Impuls-Metrik 0,358→0,1245 (−65 %),
+    Gate grün; Musik-FPs bleiben vom Audibility-Gate abgelehnt (Never-worsen).
+  - dropout / sticky_shed_residue: Skip-Gate las tote Keys → phase_24 lief
+    NIE (auch in Produktion); läuft jetzt.
+  - 3 Phasen-Exceptions + die Cluster A/D/E folgen strukturell über §7.4c.
+- **Instrument-Kalibrierung:** L3-Metrik für tape_splice = Impuls-Prominenz
+  (`_impulse_peak`, Klick-Maß) statt `_dip_depth` — die PegelSTUFE zwischen
+  zwei Bandstücken ist Inhalt (zwei Aufnahmen), kein Artefakt; die alte Metrik
+  bestrafte korrektes Verhalten der phase_64.
+
+**Governance-Befunde (Vorbelastung auf HEAD, nicht aus dieser Welle):**
+
+- Scope-Guardrail `policy/scope_guardrails.yaml`: `max_phases` 69 vs. **71**
+  registrierte Phasen (`test_phase_count_within_limit` rot). Neue Phasen
+  brauchen laut Policy ≥5 Echt-Audio-Fälle + HPI-Verbesserung ≥ 0,02 +
+  Real-Audio-Quality-Gate-Review (Ausnahme: Bugfixes ohne neue Phasen-IDs).
+  Das Evidenzpaket für die Überzahl (u. a. phase_67) fehlt noch — offen.
+- 3 weitere normative Vorbelastungen: GUI-Vertrag ×2
+  (`test_modern_window_gui_contract.py`), veraltetes Daily-Gate-Artefakt
+  (`test_daily_gate_stored_recently`). Alle 4 ebenfalls auf HEAD rot,
+  durch diese Welle unverändert.

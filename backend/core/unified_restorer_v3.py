@@ -32857,6 +32857,18 @@ class UnifiedRestorerV3:
         Parameter aus dem Globalplan in kwargs eingeschleust — sofern die Phase
         sie nicht bereits explizit übergeben hat (explizit gewinnt).
         """
+        # ── §7.4c (06_phases_system.md): Kanonischer Phasen-Evidenz-Vertrag ──
+        # Zentrale Normalisierung der Evidenz-Kwarg (defect_scores →
+        # DefectScoreView, defect_locations → DefectLocationsView,
+        # restoration_context/_restoration_context-Alias-Merge). Produktions-
+        # befund (2026-09-25, L3-Reparatur-Wirksamkeit): Phasen lesen
+        # defect_scores historisch mit String-Keys ("dropout", "wow"), die
+        # Pipeline liefert aber Enum-Keys (defect_result.scores) — die
+        # String-Lese-Pfade lieferten still None/0.0 und schalteten Skip-Gates
+        # ab (phase_24 wurde dadurch IMMER uebersprungen).
+        from backend.core.phases.phase_interface import normalize_evidence_kwargs as _norm_evidence_74c
+
+        _norm_evidence_74c(kwargs)
         sample_rate = int(kwargs.get("sample_rate", kwargs.get("sr", 48000)) or 48000)
         # ── §v10.35 Early-Silence-Gate: Phasen auf kollabiertem Audio sofort skippen ──
         # Wenn eine Vor-Phase das Audio zerstört hat (-87 dBFS), würden alle

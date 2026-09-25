@@ -80,7 +80,12 @@ def _detect_splice_points(x: np.ndarray, sample_rate: int, crossfade_samples: in
     rms_env = np.sqrt(np.mean(frames**2, axis=1) + 1e-12)
     rms_db = 20.0 * np.log10(rms_env + 1e-12)
 
-    level_diffs = np.abs(np.diff(rms_db))
+    level_diffs = np.abs(rms_db[2:] - rms_db[:-2])
+    # Nicht-ueberlappende Frames vergleichen (Muster defect_scanner.
+    # _detect_tape_splice_artifact): hop = frame/2, benachbarte Frames
+    # ueberlappen 50 % und verschmieren einen Pegelsprung auf zwei Grenzen
+    # (je ~halbe Stufe) — Falschnegativ: 6-dB-Bandstoss ergab ~3 dB
+    # Frame-Diff und fiel unter die 6.0-Schwelle (L3-Befund 2026-09-25).
     jump_indices = np.where(level_diffs > 6.0)[0]
 
     splice_points: list[int] = []
@@ -221,13 +226,20 @@ def _apply_splice_repair(
         )
 
         # Sub-step 2a: Remove click impulse (short interpolation)
+        # Klick-Interpolation laeuft nach bestandenem Hörbarkeits-Gate volle
+        # Staerke (L3-Befund 2026-09-25): die Aktivitaets-Daempfung aus
+        # _compute_splice_local_strength ist fuer PEGEL-Spruenge sinnvoll,
+        # bremste aber die Klick-Entfernung genau dann, wenn der Klick am
+        # hörbarsten ist (leises Material). Die Impuls-Entfernung bleibt auf
+        # +-32 Samples um die gepruefte Klebestelle begrenzt (Never-worsen,
+        # Hörordnung §8a (hoerordnung.instructions.md)).
         click_half = min(32, crossfade_samples // 2)
         cl = max(0, sp - click_half)
         cr = min(n, sp + click_half)
         if cr - cl < 4:
             continue
         interp = np.linspace(out[cl], out[min(cr, n - 1)], cr - cl)
-        click_weight = float(np.clip(_local_str, 0.0, 1.0))
+        click_weight = 1.0
         out[cl:cr] = out[cl:cr] * (1.0 - click_weight) + interp * click_weight
 
         # Sub-step 2b: Level crossfade (measured against unmodified original)
@@ -247,6 +259,22 @@ def _apply_splice_repair(
     return out
 
 
+def _merge_splice_points(base: list[int], seeds: list[int], n: int, crossfade_samples: int) -> list[int]:
+    """Vereint Privatdetektor-Kandidaten mit Scanner-Saaten (dedupliziert,
+    Mindestabstand = crossfade_samples, deterministisch sortiert).
+
+    §SR-Audit L3 (2026-09-25): Die DefectScanner-Locations sind die
+    autoritative Evidenz fuer Klebestellen; der Privatdetektor bleibt
+    Zusaetzung/Fallback.
+    """
+    merged: list[int] = []
+    for _p in sorted({int(p) for p in list(base) + list(seeds) if 0 <= int(p) < n}):
+        if merged and _p - merged[-1] < crossfade_samples:
+            continue
+        merged.append(_p)
+    return merged
+
+
 def apply(
     audio: np.ndarray,
     sample_rate: int,
@@ -255,6 +283,7 @@ def apply(
     min_splice_score: float = _MIN_SPLICE_SCORE,
     crossfade_ms: float = _CROSSFADE_MS,
     protected_zones: list | None = None,
+    splice_zones_s: list[tuple[float, float]] | None = None,
 ) -> np.ndarray:
     """Haupt-entry point for Phase 64."""
     assert sample_rate == 48000, f"SR must be 48000 Hz, got: {sample_rate}"
@@ -269,6 +298,19 @@ def apply(
             return np.clip(audio, -1.0, 1.0)  # type: ignore[no-any-return]
 
     crossfade_samples = max(1, int(crossfade_ms * 0.001 * sample_rate))
+    # Scanner-Saaten (Sekunden -> Samples): autoritative Klebestellen-Evidenz.
+    # Locations sind Fenster (t-0,02, t+0,02) um das Ereignis — der Seed liegt
+    # in der FENSTERMITTE (L3-Befund 2026-09-25: der Fensteranfang liegt 20 ms
+    # vor dem Klick; dort ist der Klick subaudibel (§SOTA-PSY-A1: -3,2 dB) und
+    # die Reparatur-Interpolation verfehlt ihn — beides zusammen ließ die
+    # Reparatur still ausbleiben).
+    _seed_points: list[int] = []
+    for _z in splice_zones_s or []:
+        try:
+            _seed_points.append(int(round((float(_z[0]) + float(_z[1])) * 0.5 * sample_rate)))
+        except Exception:
+            logger.debug("Stiller optionaler Ausnahmefall ignoriert", exc_info=True)
+            continue
 
     stereo = audio.ndim == 2
     if stereo:
@@ -279,7 +321,9 @@ def apply(
         _cf64 = to_channels_first(audio)
         _was_cf64 = is_channels_first(audio)
         mono64 = mono_mix(_cf64).astype(np.float32)
-        splice_points = _detect_splice_points(mono64, sample_rate, crossfade_samples)
+        splice_points = _merge_splice_points(
+            _detect_splice_points(mono64, sample_rate, crossfade_samples), _seed_points, len(mono64), crossfade_samples
+        )
         if not splice_points:
             return np.nan_to_num(np.clip(audio, -1.0, 1.0).astype(np.float32), nan=0.0)  # type: ignore[no-any-return]
         left_out = _apply_splice_repair(
@@ -309,7 +353,9 @@ def apply(
         return _ret64
 
     x = audio.astype(np.float32)
-    splice_points = _detect_splice_points(x, sample_rate, crossfade_samples)
+    splice_points = _merge_splice_points(
+        _detect_splice_points(x, sample_rate, crossfade_samples), _seed_points, len(x), crossfade_samples
+    )
     if not splice_points:
         return np.nan_to_num(np.clip(audio, -1.0, 1.0).astype(np.float32), nan=0.0)  # type: ignore[no-any-return]
 
@@ -544,6 +590,7 @@ class TapeSpliceRepairPhase(PhaseInterface):
             min_splice_score=_profile_64["min_splice_score"],
             crossfade_ms=_profile_64["crossfade_ms"],
             protected_zones=_p64_zones or None,
+            splice_zones_s=_splice_zones_raw or None,
         )
         _n_samples_64 = int(result_audio.shape[0]) if result_audio.ndim >= 2 else int(result_audio.shape[0])
         _locality_profile, _locality_coverage = self._build_locality_profile(

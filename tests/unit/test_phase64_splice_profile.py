@@ -75,6 +75,8 @@ def test_process_applies_defect_locations_locality(monkeypatch):
     t = np.arange(sr, dtype=np.float32) / sr
     audio = (0.25 * np.sin(2.0 * np.pi * 330.0 * t)).astype(np.float32)
 
+    _seen_zones: list = []
+
     def _fake_apply(
         audio: np.ndarray,
         sample_rate: int,
@@ -83,7 +85,10 @@ def test_process_applies_defect_locations_locality(monkeypatch):
         min_splice_score: float = 0.1,
         crossfade_ms: float = 15.0,
         protected_zones: list | None = None,
+        splice_zones_s: list | None = None,
     ) -> np.ndarray:
+        nonlocal _seen_zones
+        _seen_zones = list(splice_zones_s or [])
         del sample_rate, strength, defect_scores, min_splice_score, crossfade_ms, protected_zones
         return (audio * 0.08).astype(np.float32)
 
@@ -103,3 +108,5 @@ def test_process_applies_defect_locations_locality(monkeypatch):
     out_region = float(np.mean(diff[int(0.70 * sr) : int(0.85 * sr)]))
     assert in_region > out_region * 2.0
     assert float(result.metadata.get("repair_locality_coverage", 0.0)) > 0.0
+    # §7.4c Scanner-Konsultation: die Locations werden als Saaten an apply() gereicht
+    assert _seen_zones == [(0.20, 0.30)]

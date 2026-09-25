@@ -686,6 +686,74 @@ Jede neue Phase **muss**:
 
 ---
 
+## §7.4c Kanonischer Phasen-Evidenz-Vertrag (2026-09-25)
+
+Der Grenz-Kontrakt zwischen Pipeline (`UnifiedRestorerV3._profiled_phase_call`)
+und Phase ist kanonisch. Jede Phase LIEST ihre Defekt-Evidenz ausschließlich
+über diese Schlüssel. Abweichungen sind Kontrakt-Brüche — die L3-Reparatur-
+Wirksamkeit (2026-09-25) führte 29 Phasen-Lücken auf fünf wiederkommende
+Bruch-Klassen zurück (String/Enum-Keys, Namensvarianten `_restoration_context`,
+Locations-Fenstersemantik, Privatdetektoren statt Scanner-Evidenz, private
+Schwellen), nicht auf 29 einzelne DSP-Fehler.
+
+**Evidenz-Kwarg `defect_scores`** — `DefectScoreView`
+(`backend/core/defect_scanner.py`):
+
+- Enum-Key (`DefectType.WOW`) → `DefectScore`-Objekt (inkl. `metadata`,
+  `locations`, `confidence`)
+- String-Key (`"wow"`) → Severity als `float` (`0.0`, wenn nicht vorhanden)
+- `"wow" in view` → True bei vorhandenem Enum-Mitglied
+- `.items()` bleibt Enum-only — bestehende Enum-Konsumenten unverändert
+- Die Pipeline normalisiert JEDEN `defect_scores`-Kwarg ZENTRAL in
+  `_profiled_phase_call`; Phasen normalisieren nicht selbst.
+
+**Locations-Kwarg `defect_locations`** —
+`dict[str, list[tuple[float, float]]]`:
+
+- Keys: `DefectType.value`-Strings (Enum-Keys werden zentral normalisiert)
+- Values: `(start_s, end_s)` in **Sekunden** als Fenster um das Ereignis;
+  die **Fenstermitte** `(start+end)/2` ist die Ereignisposition. Reparatur-
+  Saaten nutzen die Mitte, nie den Fensteranfang (L3-Befund 2026-09-25:
+  der Anfang liegt 20 ms neben dem Ereignis — Audibility-Gate und
+  Interpolation verfehlten den Klick).
+- Locations sind die autoritative Detektor-Evidenz. Phasen konsultieren sie
+  vor jedem privaten Zusatz-Detektor (Scanner-Konsultation); private Detektoren
+  sind Fallback für Standalone-Aufrufe ohne Evidenz und werden durch die
+  Hörbarkeits-Gates gegen Falsch-Positive geschützt.
+
+**Stärke-Kwarg `strength`** — `float` [0, 1]: PMGG-Skalar, zentral kalibriert.
+§V7 (copilot-instructions.md): keine phasen-individuellen Schwellwerte als
+Workaround, Stärke-Entscheidungen zentral. `phase_locality_factor` kapselt
+Eingriffe lokal (skaliert STÄRKE, nie Selektion).
+
+**Kontext-Kwarg `restoration_context`** — der EINZIGE Kontext-Schlüssel
+(ohne Unterstrich). `_restoration_context` ist deprecated; die Pipeline führt
+den Alias bis zur vollständigen Migration der Leser zusammen.
+
+**Selektion vs. Stärke (§Spec 03 (03_cognitive_modules.md)):** Ein erkannter
+Defekt (Severity ≥ kalibrierter Aktivierungs-Schwelle aus
+`defect_phase_mapper.ACTIVATION_THRESHOLDS`) wird nie übersprungen;
+Material-/Kontext-Confidence skaliert ausschließlich die Stärke. Die
+Aktivierungs-Schwellen werden im Phase-Mapper kalibriert (Messbasis je
+DefectType), nie im Detektor — der Detektor bleibt auf seiner physikalischen
+Skala ehrlich.
+
+**Phasen-Ausgang:** `PhaseResult` mit `warnings` für jede abweichende
+Entscheidung und `metadata["reason"]` bei No-Op (§V6 (copilot-instructions.md):
+kein stilles No-Op). Ausgang immer geclippt (§7.4).
+
+**Checkliste (ergänzt §7.4):**
+
+```text
+# □ Evidenz nur über Vertrags-Keys (defect_scores/defect_locations/strength/restoration_context)
+# □ Locations in Sekunden; Saaten über die Fenstermitte
+# □ Scanner-Konsultation vor privatem Detektor
+# □ Kein No-Op ohne dokumentierten reason/warning (§V6 (copilot-instructions.md))
+# □ Selektion an kalibrierter Schwelle aus defect_phase_mapper.ACTIVATION_THRESHOLDS
+```
+
+---
+
 ## §7.5 Parallelisierungs-Invariante (Pipeline-Tiers)
 
 ```text
