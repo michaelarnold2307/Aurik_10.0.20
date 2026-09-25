@@ -272,6 +272,62 @@ def _stereo_decorrelated() -> np.ndarray:
     return _out
 
 
+def _dyn_clipping() -> np.ndarray:
+    t = np.arange(SR * DUR) / SR
+    x = 1.4 * np.sin(2 * np.pi * 220.0 * t)
+    x = np.clip(x, -1.0, 1.0)  # Full-Scale-Hard-Clipping: Flat-Tops, ungerade Harmonische
+    _out: np.ndarray = np.stack([x, x], axis=1).astype(np.float32)
+    return _out
+
+
+def _dyn_saturation() -> np.ndarray:
+    t = np.arange(SR * DUR) / SR
+    x = 0.2 * np.sin(2 * np.pi * 220.0 * t)
+    x = x + 0.3 * x**2  # quadratische Kennlinie: gerade Harmonische (Tube/Tape)
+    _out: np.ndarray = np.stack([x, x], axis=1).astype(np.float32)
+    return _out
+
+
+def _dyn_compression_artifacts() -> np.ndarray:
+    t = np.arange(SR * DUR) / SR
+    rng = np.random.default_rng(17)
+    # Codec-Kompressions-Artefakte: HF-Kappung (~15 kHz) + Spektralloch +
+    # gleichfoermig niedrige spektrale Flachheit auf breitbandigem Inhalt
+    x = 0.2 * rng.standard_normal(len(t))  # rauschdominiert (breitbandig)
+    x = x + 0.1 * np.sin(2 * np.pi * 440.0 * t)
+    sos_lp = signal.butter(6, 14500, btype="lowpass", fs=SR, output="sos")
+    x = signal.sosfiltfilt(sos_lp, x)
+    sos_notch = signal.butter(4, (3000, 3800), btype="bandstop", fs=SR, output="sos")
+    x = signal.sosfiltfilt(sos_notch, x)  # Spektralloch (Codec-Signatur)
+    x = x / (np.max(np.abs(x)) + 1e-12) * 0.2
+    _out: np.ndarray = np.stack([x, x], axis=1).astype(np.float32)
+    return _out
+
+
+def _dyn_compression_excess() -> np.ndarray:
+    t = np.arange(SR * DUR) / SR
+    x = 0.2 * np.sin(2 * np.pi * 220.0 * t)
+    # Totkomprimiert: sanfte Huelle 0,9..1,0 statt musikalischer Dynamik
+    env = 0.95 + 0.05 * np.sin(2 * np.pi * 0.3 * t)
+    _out: np.ndarray = np.stack([x * env, x * env], axis=1).astype(np.float32)
+    return _out
+
+
+def _dyn_sibilance() -> np.ndarray:
+    t = np.arange(SR * DUR) / SR
+    rng = np.random.default_rng(11)
+    x = 0.15 * np.sin(2 * np.pi * 220.0 * t)
+    # „S“-Bursts: 100 ms gefiltertes HF-Rauschen (5-10 kHz) jede Sekunde
+    noise = rng.standard_normal(len(t))
+    sos = signal.butter(4, (5000, 10000), btype="bandpass", fs=SR, output="sos")
+    hf = signal.sosfiltfilt(sos, noise)
+    hf = hf / (np.max(np.abs(hf)) + 1e-12)
+    burst_mask = ((t % 1.0) < 0.1).astype(float)
+    x = x + 0.6 * hf * burst_mask  # harsche Sibilanz dominiert die Mischung
+    _out: np.ndarray = np.stack([x, x], axis=1).astype(np.float32)
+    return _out
+
+
 # ------------------------------------------------------------------ Familien
 # Jeder Fall: (Name, Generator, Material, {DefectType: (min, max)})
 CASES: dict[str, list[tuple[str, Callable[[], np.ndarray], MaterialType, dict[DefectType, tuple[float, float]]]]] = {
@@ -457,6 +513,38 @@ CASES: dict[str, list[tuple[str, Callable[[], np.ndarray], MaterialType, dict[De
             _stereo_decorrelated,
             MaterialType.TAPE,
             {DefectType.STEREO_FIELD_COLLAPSE: (0.0, 0.2)},
+        ),
+    ],
+    "dynamics": [
+        (
+            "Hard-Clipping (Flat-Tops) wird erkannt",
+            _dyn_clipping,
+            MaterialType.TAPE,
+            {DefectType.CLIPPING: (0.3, 1.0)},
+        ),
+        (
+            "Soft-Saturation (gerade Harmonische) wird erkannt",
+            _dyn_saturation,
+            MaterialType.TAPE,
+            {DefectType.SOFT_SATURATION: (0.3, 1.0)},
+        ),
+        (
+            "Codec-Kompressions-Artefakte (HF-Kappung + Spektralloch) werden erkannt",
+            _dyn_compression_artifacts,
+            MaterialType.TAPE,
+            {DefectType.COMPRESSION_ARTIFACTS: (0.3, 1.0)},
+        ),
+        (
+            "Ueberkompression (kaum Dynamik) wird erkannt",
+            _dyn_compression_excess,
+            MaterialType.TAPE,
+            {DefectType.DYNAMIC_COMPRESSION_EXCESS: (0.3, 1.0)},
+        ),
+        (
+            "Exzessive Sibilanz (HF-Bursts) wird erkannt",
+            _dyn_sibilance,
+            MaterialType.TAPE,
+            {DefectType.SIBILANCE: (0.3, 1.0)},
         ),
     ],
 }
