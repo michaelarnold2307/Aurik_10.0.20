@@ -228,3 +228,52 @@ verbleibenden 🟡 sind gezielt dort, wo ML-Messung DSP-Parameter schärfen kann
 5. TP-V1 + TP-V2 (D-Klasse Transienten)
 6. HR-V1 (BigVGAN-Harmonik), CR-V1 (BANQUET-Klick-Detektion), DR-V1 (neurales RT60)
 7. WF-V4 (neuraler Warp-Schätzer) + WF-Cassette (Scrape-Flutter) + D3/D4
+
+---
+
+## §SR-Audit: 62-Typen-Messungs-Programm (Stand 2026-09-24)
+
+**Methodik-Schablone (Spec 06 §7.2d, verbindlich je Familie):**
+Audio-Evidenz-Harness (`scripts/defect_evidence_harness.py`, deterministisch,
+Seeds rng 1/2/3) → Messung gegen Erwartungswerte → Wurzelursache → Detektor-Fix
+→ epistemische Confidence → Either-Or-Routing → Spec-Evidenzblock.
+
+**Abgeschlossen (evidenz-verifiziert, Harness grün):**
+- Knistern-Familie: Stereo-Gate + epistemische Confidence, Either-Or-Routing,
+  phase_67 (Commits a7834720/ad7b1b83/52eb7f45)
+- Rausch-Familie (0 Lücken): hiss-Typisierung (phase_29 erreichbar),
+  quantization-Tonalitäts-Guard, modulation (Flur-Ratio-primär, 0,5-ms-Frames,
+  Nullphase) — blind 0,000 → 0,575
+- Wow/Flutter: 3/4 grün (flutter-FP behoben via tonalem Pitch-Zweig +
+  Kohärenz-Gate; speed_calibration 0,382)
+
+**Offene TODOs (Restkorrekturen, priorisiert):**
+
+1. **Wow-Aktivierungs-Schwelle**: ±0,5 % FM liefert severity 0,272. Kalibrierung
+   gehört in den Phase-Mapper (Spec 03: Material-Confidence beeinflusst die
+   Stärke, nicht die Selektion), nicht in den Detektor.
+2. **Epistemische Confidence auf alle Detektoren übertragen** (bisher nur
+   crackle): Fenster-Stabilität + σ-Randabstand statt starrer 0.8/0.3-Werte.
+3. **Either-Or-Routing pro Familie** (bisher nur Knistern): Blanket-Einträge im
+   CausalDefectReasoner (z. B. vinyl_crackle→[09,01,28,03]) auf Entweder-Oder
+   umstellen; Redundanz-Auflösung phase_01/27 ist nur im Fallback-Pfad.
+4. **phase_03: 13-fache CG5-SNR-Skip-Signatur** an Scanner-Konsultation binden
+   (Fauxpas-Muster von phase_28, §SR-CG5).
+5. **Harness-Familien ergänzen und durchlaufen** (Detektor vorhanden, aber
+   keine Audio-Evidenz):
+   - Dropout (Subtyp-Präzedenz `_detect_dropout_subtypes`; ungeprüft)
+   - Wow/Flutter-Rest: multiband_wow_flutter, scrape_flutter,
+     flutter_spectral_sidebands, transport_bump
+   - Vinyl: inner_groove_distortion (Detektor FEHLT), groove_echo, crosstalk,
+     lacquer_disc_degradation, stylus_damage, riaa_curve_error,
+     motor_interference, stereo_field_collapse
+   - Band: sticky_shed_residue, bias_error, head_wear, hf_remanence_loss,
+     generation_loss, tape_head_clog, print_through, amplitude_drift,
+     tape_splice_artifact, dolby_nr_mismatch, tape_head_level_dip
+   - Digital: jitter_artifacts, pre_echo, mpeg_frame_loss, compression_artifacts,
+     digital_artifacts, aliasing, overload_distortion
+6. **Kalibrierung an realer gelabelter Stichprobe** (schließt die 95 %-CI-Lücke
+   der Spec-Evidenzblöcke; n=4 Ohr-Labels reichen nicht).
+
+Je Familie folgt die Spec-Festschreibung (Evidenzblock in Spec 03/06 §7.2d)
+nach erfolgreichem Harness-Durchlauf.
