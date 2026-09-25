@@ -94,7 +94,12 @@ class DefectManifest:
         pm = self._phase_map = {
             # --- Grundreinigung ---
             "clicks": ["phase_01_click_removal", "phase_27_click_pop_removal"],
-            "crackle": ["phase_03_denoise", "phase_09_crackle_removal", "phase_28_surface_noise_profiling"],
+            "crackle": [
+                "phase_03_denoise",
+                "phase_09_crackle_removal",
+                "phase_28_surface_noise_profiling",
+                "phase_67_crackle_texture_removal",
+            ],
             "hum": ["phase_02_hum_removal"],
             "motor_interference": ["phase_02_hum_removal"],
             "high_freq_noise": [

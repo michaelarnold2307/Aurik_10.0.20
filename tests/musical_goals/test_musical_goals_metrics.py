@@ -1404,11 +1404,22 @@ class TestEmotionalitaetMetricMERTBlend:
         Fixed guard: `mert._model_type != 'dsp_fallback'`.
         Note: WaermeMetric MERT blend runs only in the reference-aware path (not when
         reference=None), so a reference audio must be passed to exercise the guard.
+
+        Semantik seit §False-Regression (Vinyl-Befund 2026-09-22): Der MERT-Blend
+        ist ein REFERENZ-DELTA — nur eine Harmonicity-Verschlechterung gegenüber
+        dem Original drückt den Score; Referenz-Harmonicity < 0,10 ⇒ Blend
+        übersprungen (informationslos). Der frühere absolute 10 %-Blend ist
+        überholt. Für mert_warmth=1,0 gilt damit:
+            score_nat1 = 0.9 * base + 0.1 * 1.0
+            delta      = 0.10 * (1.0 - base)
+        Der 440-Hz-Rein-Ton aus _dynamic_audio() sättigt die Wärme-Band-Ratio
+        auf 1,0 (Blend-Delta dort 0) — deshalb 440+2000-Hz-Mischsignal.
         """
         from unittest.mock import patch
 
-        audio = self._dynamic_audio()
-        reference = self._dynamic_audio() * 0.95  # slightly different reference
+        _t = np.linspace(0, 4, self.SR * 4, endpoint=False)
+        audio = (0.6 * np.sin(2 * np.pi * 440 * _t) + 0.5 * np.sin(2 * np.pi * 2000 * _t)).astype(np.float32)
+        reference = audio * 0.95  # slightly different reference
 
         # nat=0.0 → harmonicity pulled down; nat=1.0 → harmonicity pulled up
         mock_nat0, _ = self._mock_mert("mert_hf", 0.0)
@@ -1424,10 +1435,12 @@ class TestEmotionalitaetMetricMERTBlend:
             WaermeMetric().measure(audio, self.SR, reference=reference)
         mock_nat1.analyze.assert_called()
 
-        # 10% blend → delta = 0.10 * (1.0 - 0.0) = 0.10
+        # Referenz-Delta-Blend: h=0 → Referenz-Harmonicity 0,0 < 0,10 ⇒ Blend
+        # skipped (score_nat0 = unblendetes base); h=1 → 0.9*base + 0.1.
         assert score_nat1 > score_nat0, "WaermeMetric MERT blend: nat1 should be higher than nat0"
-        assert abs((score_nat1 - score_nat0) - 0.10) < 0.001, (
-            f"WaermeMetric blend delta should be 0.10, got {score_nat1 - score_nat0:.4f}"
+        _expected_delta = 0.10 * (1.0 - score_nat0)
+        assert abs((score_nat1 - score_nat0) - _expected_delta) < 1e-4, (
+            f"WaermeMetric blend delta should be 0.10*(1-base)={_expected_delta:.4f}, got {score_nat1 - score_nat0:.4f}"
         )
 
 

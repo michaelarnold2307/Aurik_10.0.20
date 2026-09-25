@@ -252,6 +252,14 @@ Seeds rng 1/2/3) → Messung gegen Erwartungswerte → Wurzelursache → Detekto
 1. **Wow-Aktivierungs-Schwelle**: ±0,5 % FM liefert severity 0,272. Kalibrierung
    gehört in den Phase-Mapper (Spec 03: Material-Confidence beeinflusst die
    Stärke, nicht die Selektion), nicht in den Detektor.
+   **ERLEDIGT 2026-09-25**: `defect_phase_mapper.ACTIVATION_THRESHOLDS`
+   (WOW/FLUTTER 0,15, Messbasis FM-Wow 0,272 vs. sauber 0,037) +
+   `activation_threshold()`; UV3-Selektion nutzt die kalibrierte Schwelle
+   statt der Magic Numbers 0,10/0,35. Rubato (Beat-Reliability < 0,40) dämpft
+   jetzt die STÄRKE (Conductor-Hint 0,5) statt zu überspringen — die alte
+   Skip-/Override-Logik ließ ein hörbares FM-Wow bei Rubato unbehandelt
+   (§Spec 03-verletzend). Detektor bleibt ehrlich (Skalen-Boost bewusst weg).
+   Tests: `TestWowAktivierungsschwelle` (5 Fälle, test_decision_completeness.py).
 2. **Epistemische Confidence auf alle Detektoren übertragen** (bisher nur
    crackle): Fenster-Stabilität + σ-Randabstand statt starrer 0.8/0.3-Werte.
 3. **Either-Or-Routing pro Familie** (bisher nur Knistern): Blanket-Einträge im
@@ -272,8 +280,48 @@ Seeds rng 1/2/3) → Messung gegen Erwartungswerte → Wurzelursache → Detekto
      tape_splice_artifact, dolby_nr_mismatch, tape_head_level_dip
    - Digital: jitter_artifacts, pre_echo, mpeg_frame_loss, compression_artifacts,
      digital_artifacts, aliasing, overload_distortion
+   **Status 2026-09-25: DETEKTOR-EBENE VOLLSTÄNDIG** — `defect_evidence_harness`
+   über alle 11 Familien gelaufen: 0 Lücken (dropout, tape_media, wow_flutter,
+   digital_other, dynamics, environment, framework, noise, spectral, stereo,
+   vinyl). Offen bleibt die REPARATUR-Ebene (→ L3-Messung unten) und die
+   Real-Stichproben-Kalibrierung (TODO 6).
 6. **Kalibrierung an realer gelabelter Stichprobe** (schließt die 95 %-CI-Lücke
    der Spec-Evidenzblöcke; n=4 Ohr-Labels reichen nicht).
 
 Je Familie folgt die Spec-Festschreibung (Evidenzblock in Spec 03/06 §7.2d)
 nach erfolgreichem Harness-Durchlauf.
+
+### L3-Reparatur-Wirksamkeit auf Musikträger (2026-09-25, `repair_effectiveness_harness.py`)
+
+Vollständiger Durchlauf aller Familien (Musik-Traeger + Defekt-Transformation,
+Scanner VORHER → Phase → Scanner NACHHER + physikalische Defekt-Metrik):
+**10 OK, 29 Phasen-Lücken, 21 Scanner-Lücken, 5 Skips.**
+
+- **OK (messbar wirksam):** aliasing (23), crackle (09), crosstalk (62),
+  dc_offset (30), generation_loss (03), hum (02), lacquer_disc_degradation (01),
+  stereo_field_collapse (13), stereo_imbalance (15), transient_smearing (08).
+- **Scanner-Lücken (21, Detektor sieht den Defekt auf Musikträger nicht,
+  sev < 0,15):** u. a. dropout_splice, dropouts, hiss, flutter, scrape_flutter,
+  transport_bump, print_through, pre_echo, azimuth_error, dolby_nr_mismatch,
+  tape_head_clog, dropout_head_contact, nr_breathing, stylus_damage,
+  inner_groove_distortion, quantization_noise, amplitude_drift, clipping,
+  compression_artifacts, dynamic_compression_excess, proximity_effect.
+  → Grundlage für die Detektor-Kalibrierung (TODO 5, Musik-Stichprobe TODO 6).
+- **Phasen-Lücken (29, Reparatur ohne messbaren Effekt):** u. a. die gesamte
+  phase_12-Familie auf Musik (wow, flutter_spectral_sidebands,
+  multiband_wow_flutter, speed_calibration_error — phys-Metrik unverändert),
+  phase_24 (dropout, dropout_oxide, sticky_shed), phase_64 (tape_splice_artifact
+  0,730 unverändert), phase_03/05/49/14/56/59/63/65 sowie motor_interference,
+  bias_error, riaa_curve_error, head_wear, mpeg_frame_loss, jitter_artifacts,
+  overload_distortion, pitch_drift, reverb_excess, room_mode_resonance,
+  tape_head_level_dip, vocal_harshness, digital_artifacts, clicks (52→37 Kanten
+  reichen nicht fürs Gate).
+- **Phasen-Exceptions (3 SKIPs):** bandwidth_loss + hf_remanence_loss
+  (phase_06: ValueError), groove_echo (phase_61: ValueError), sibilance
+  (phase_19: UnboundLocalError) — Aufruf-Kontrakt der Phasen im Harness prüfen
+  (echte Bugs vs. fehlende Produktions-Kwargs).
+
+Abarbeitungs-Reihenfolge (Vorschlag): (a) Phasen-Exceptions (3),
+(b) phase_12-Familie auf Musik (4 — Gleichlauf ist das Kern-Versprechen der
+Analog-Restauration), (c) Scanner-Lücken der Tape-/Dropout-Familie,
+(d) Rest.

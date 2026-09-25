@@ -1098,7 +1098,14 @@ class ExcellenceOptimizer:
                 "transient_energie",
                 "spatial_depth",
             }
-            _core_drop_threshold = 0.015
+            # §v10.702 R4: Core-Guard-Hysterese — Rollback nur bei HOERBARER
+            # Kernziel-Regression, nicht im Mess-Rauschen.
+            # Produktionsbefund (2026-08-02): Rollback bei Δ=-0.017/-0.020 war
+            # False-Positive — die PMGG-Goal-Proxy-Metriken haben typ. ±0.03
+            # Messungenauigkeit; 0.015 lag innerhalb des Rauschens und verwarf
+            # die eigene Optimierungsarbeit. Schwelle daher auf 0.05 angehoben
+            # (Toleranzband > Mess-Rauschen, unter der Hörbarkeits-Grenze).
+            _core_drop_threshold = 0.05  # vorher 0.015 — §v10.702 R4
             # Prüfe alle Paare auf Pareto-Konflikte (Stufe-1-Ziele besonders schützen)
             _priority_log: list[str] = []
             for _ga, _gb in [

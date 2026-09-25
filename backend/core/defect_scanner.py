@@ -293,6 +293,51 @@ class DefectScore:
         )
 
 
+_MISSING_SCORE = object()
+
+
+class DefectScoreView(dict):
+    """Enum-Key-Dict mit String-Key-Fallback fuer defect_scores-Konsumenten.
+
+    Die Pipeline injiziert defect_result.scores (DefectType→DefectScore) als
+    Phase-Kwarg. Historisch gewachsene Phasen lesen aber mit String-Keys
+    (z.B. get(\"crosstalk\"), get(\"wow\")) — auf dem Enum-Key-Dict liefern
+    diese Lese-Pfade still None/0.0 und schalten Skip-Gates die Reparatur ab
+    (Produktions-Befund 2026-09-25: phase_62-Crosstalk-Cancellation lief nie).
+
+    Diese View loest String-Keys (und Enum-Keys) auf, waehrend die ITERATION
+    Enum-only bleibt — damit bleiben alle .items()-Konsumenten unveraendert:
+      - get(DefectType.X) / [DefectType.X] → DefectScore (wie bisher)
+      - get("x") / ["x"]               → Severity-Float (historischer Pfad)
+      - "x" in view                     → True, falls Enum-Mitglied vorhanden
+    """
+
+    def _resolve(self, key: object) -> object:
+        if isinstance(key, DefectType):
+            return key
+        try:
+            return DefectType(str(key))
+        except ValueError:
+            return key
+
+    def get(self, key: object, default: object = None) -> object:
+        _r = super().get(self._resolve(key), _MISSING_SCORE)
+        if _r is _MISSING_SCORE:
+            return default
+        if isinstance(key, str) and not isinstance(_r, (int, float)):
+            return float(getattr(_r, "severity", 0.0))
+        return _r
+
+    def __getitem__(self, key: object) -> object:
+        _r = super().__getitem__(self._resolve(key))
+        if isinstance(key, str) and not isinstance(_r, (int, float)):
+            return float(getattr(_r, "severity", 0.0))
+        return _r
+
+    def __contains__(self, key: object) -> bool:
+        return super().__contains__(self._resolve(key))
+
+
 @dataclass
 class DefectAnalysisResult:
     """Vollständiges Ergebnis der Defekt-Analyse."""
@@ -4527,7 +4572,10 @@ class DefectScanner:
         # der IF-Boost (0,8->1,8 getestet) blieb wirkungslos. Kalibrierung der
         # Aktivierungs-Schwelle gehoert in die Pipeline (Phase-Mapper), nicht
         # in den Detektor (Spec 03: Material-Confidence beeinflusst die Stärke,
-        # nicht die Selektion).
+        # nicht die Selektion). UMGESETZT 2026-09-25: kalibrierte Schwelle liegt
+        # in defect_phase_mapper.ACTIVATION_THRESHOLDS (WOW/FLUTTER 0,15) und
+        # aktiviert FM-Wow (0,272) zuverlässig — dieser Skalen-Boost bleibt
+        # bewusst weg.
         wow_ratio = max(wow_ratio_rms, wow_ratio_if * 0.8)
 
         # --- Periodicity check (anti-FP): real WOW is quasi-periodic ---
@@ -9437,12 +9485,20 @@ class DefectScanner:
                 _hi = sample_idx + 32
                 if len(_curv) > 8:
                     _k = int(np.argmax(_curv))
+                    # Rezentrierung NUR auf echten Impuls: argmax der Kruemmung
+                    # ist auf Rausch-/Musiktraegern ein zufaelliges Sample und
+                    # bewegt das Fenster vom Bandstoss-Klick weg (Falschnegativ,
+                    # Unit-Test 2026-09-25). Impuls-Prominence vs. Median-
+                    # Kruemmung des Suchfensters ist die Evidenz dafuer.
+                    _peak_curv = float(_curv[_k])
+                    _med_curv = float(np.median(_curv)) + 1e-12
                     _center = sample_idx + _k + 1
-                    _clo = max(64, _center - 32)
-                    _chi = min(n - 64, _center + 32)
-                    if _chi - _clo >= 32:
-                        sample_idx = _center
-                        _lo, _hi = _clo, _chi
+                    if _peak_curv > 6.0 * _med_curv:
+                        _clo = max(64, _center - 32)
+                        _chi = min(n - 64, _center + 32)
+                        if _chi - _clo >= 32:
+                            sample_idx = _center
+                            _lo, _hi = _clo, _chi
                 junction = audio[_lo:_hi]
                 hf_spec = np.abs(np.fft.rfft(junction))
                 hf_energy = float(np.sum(hf_spec[len(hf_spec) // 2 :] ** 2))
@@ -9466,7 +9522,17 @@ class DefectScanner:
                     _nhf1 = np.abs(np.fft.rfft(_nh1))
                     _nhf2 = np.abs(np.fft.rfft(_nh2))
                     _nhf_energy = float(np.sum(_nhf1[len(_nhf1) // 2 :] ** 2) + np.sum(_nhf2[len(_nhf2) // 2 :] ** 2))
-                    hf_burst_ratio = hf_energy / (_nhf_energy + 1e-12)
+                    # LEISTUNGSDICHTE vergleichen (Energie je Sample), nicht
+                    # Rohsummen: Junction (~64 Samples) und Basislinie (~384
+                    # Samples) sind ungleich lang — Rohsummen unterbewerten den
+                    # Burst um den Laengenfaktor ~6 (Falschnegativ: Burst 3,7x
+                    # Leistungsdichte ergab Roh-Ratio 0,6 < 3, Unit-Test
+                    # 2026-09-25). Schwelle 3.0 bleibt die Kalibrierung
+                    # "Burst >= 3x lokale HF-Basislinie".
+                    # §V7 (copilot-instructions.md): Ursache statt Symptom.
+                    hf_burst_ratio = (hf_energy / max(len(junction), 1)) / (
+                        _nhf_energy / max(len(_nh1) + len(_nh2), 1) + 1e-12
+                    )
                 else:
                     hf_burst_ratio = 0.0
 

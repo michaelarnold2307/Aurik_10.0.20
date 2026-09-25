@@ -684,3 +684,59 @@ class TestTapeHeadClog:
             phases = _select_phases_for(mat, DefectType.TAPE_HEAD_CLOG, QualityMode.QUALITY)
             targeted = set(phases) - STRUCTURAL_PHASES
             assert len(targeted) >= 1, f"TAPE_HEAD_CLOG × {mat.name} → keine Phasen"
+
+
+class TestWowAktivierungsschwelle:
+    """Wow-Aktivierungs-Schwelle — kalibriert im Phase-Mapper (§Spec 03, 2026-09-25).
+
+    Messbasis (defect_evidence_harness, Familie wow_flutter):
+      FM-Wow ±0,5 % (0,3 Hz) → ehrliche Detektor-severity 0,272 (MUSS aktivieren)
+      sauberer Ton            → severity 0,037 (darf NICHT aktivieren)
+    Spec 03: Selektion hängt an der ehrlichen Severity; Kontext-Confidence
+    (hier: Beat-Reliability/Rubato) dämpft die STÄRKE, nie die Selektion.
+    REEL_TAPE, weil phase_12 dort KEINE Material-Prioritäts-Phase ist
+    (MATERIAL_PRIORITY_PHASES: vinyl/tape/cassette/wire führen phase_12
+    unbedingt aus) — nur so misst der Test das Wow-Gate selbst.
+    """
+
+    @staticmethod
+    def _select_with(severity: float, *, audio=None):
+        from backend.core.unified_restorer_v3 import RestorationConfig, UnifiedRestorerV3
+
+        config = RestorationConfig(mode=QualityMode.QUALITY, studio_2026=False)
+        restorer = UnifiedRestorerV3.__new__(UnifiedRestorerV3)
+        restorer.config = config
+        restorer.logger = MagicMock()  # type: ignore[attr-defined]
+        restorer._conductor_strength_hints = {}  # type: ignore[attr-defined]
+        dr = _make_defect_result(MaterialType.REEL_TAPE, DefectType.WOW, severity=severity)
+        return restorer._select_phases(dr, audio=audio), restorer
+
+    def test_fm_wow_0272_activates_phase12(self):
+        phases, _ = self._select_with(0.272)
+        assert "phase_12_wow_flutter_fix" in phases
+
+    def test_clean_level_0037_does_not_activate_phase12(self):
+        phases, _ = self._select_with(0.037)
+        assert "phase_12_wow_flutter_fix" not in phases
+
+    def test_rubato_damps_strength_not_selection(self):
+        import numpy as np
+
+        # Steady-Sinus ohne Beat → Beat-Reliability < 0,40 (Rubato/Free-Form).
+        _t = np.arange(int(48000 * 4.0)) / 48000.0
+        _rubato = np.sin(2 * np.pi * 440.0 * _t).astype(np.float32)
+        phases, restorer = self._select_with(0.272, audio=_rubato)
+        assert "phase_12_wow_flutter_fix" in phases  # Spec 03: Selektion bleibt
+        assert restorer._conductor_strength_hints.get("phase_12_wow_flutter_fix") == 0.5
+
+    def test_steady_beet_keeps_full_strength(self):
+        phases, restorer = self._select_with(0.272)  # audio=None → Beat-Reliability 1.0
+        assert "phase_12_wow_flutter_fix" in phases
+        assert "phase_12_wow_flutter_fix" not in restorer._conductor_strength_hints
+
+    def test_threshold_lies_between_clean_and_fm_wow(self):
+        from backend.core.defect_phase_mapper import activation_threshold
+
+        thr = activation_threshold(DefectType.WOW)
+        assert 0.037 < thr <= 0.272
+        assert thr == activation_threshold(DefectType.FLUTTER)

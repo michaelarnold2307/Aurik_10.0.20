@@ -415,6 +415,60 @@ class DenoisePhase(PhaseInterface):
         except Exception:
             logger.debug("verarbeiten: silent except suppressed", exc_info=True)
 
+        def _stft_band_energy(x: np.ndarray) -> float:
+            _fw = int(0.032 * sample_rate)
+            _ff, _, _zz = signal.stft(np.asarray(x, dtype=np.float64), sample_rate, nperseg=_fw, noverlap=_fw // 2)
+            _bm = (_ff >= 2000.0) & (_ff <= 10000.0)
+            return float(np.sum(np.abs(_zz[_bm]) ** 2))
+
+        def _mono_of(a: np.ndarray) -> np.ndarray:
+            # Layout-agnostisch: (2,N) -> mean(axis=0), (N,2) -> mean(axis=1)
+            if a.ndim == 2 and a.shape[0] == 2 and a.shape[1] > 2:
+                return a.mean(axis=0)  # type: ignore[no-any-return]
+            return a.mean(axis=1) if a.ndim == 2 else a  # type: ignore[no-any-return]
+
+        def _apply_band_cap(a: np.ndarray, budget: float) -> np.ndarray:
+            """Spektraler Deckel: Rauschband-Energie (2-10 kHz) auf das Budget begrenzen.
+
+            SOTA-Invariante (Harness-Befund 2026-09-24): Politur-/Restaurations-
+            Stufen duerfen die OMLSA-Rauschreduktion nicht untergraben. Nur das
+            Rauschband wird gedämpft, Musik bleibt unangetastet.
+            """
+            _cap_mono = _mono_of(a)
+            _cap_energy = _stft_band_energy(_cap_mono)
+            if _cap_energy <= budget:
+                return a
+            _fw_c = int(0.032 * sample_rate)
+            _nover_c = _fw_c // 2
+            _band_gain = float(np.sqrt(budget / max(_cap_energy, 1e-12)))
+            if a.ndim == 2:
+                _ch_first_c = a.shape[0] == 2 and a.shape[1] > 2
+                _caps = []
+                for _ch in range(a.shape[1] if not _ch_first_c else a.shape[0]):
+                    _sig = a[:, _ch] if not _ch_first_c else a[_ch, :]
+                    _ff_c, _tt_c, _ZZ = signal.stft(
+                        np.asarray(_sig, dtype=np.float64), sample_rate, nperseg=_fw_c, noverlap=_nover_c
+                    )
+                    _bm_c = (_ff_c >= 2000.0) & (_ff_c <= 10000.0)
+                    _ZZ[_bm_c] *= _band_gain
+                    _, _rec = signal.istft(_ZZ, sample_rate, nperseg=_fw_c, noverlap=_nover_c)
+                    _caps.append(_rec[: len(_sig)])
+                if _ch_first_c:
+                    return np.stack(_caps).astype(np.float32)  # type: ignore[no-any-return]
+                return np.column_stack(_caps).astype(np.float32)  # type: ignore[no-any-return]
+            _ff_c, _tt_c, _ZZ = signal.stft(
+                np.asarray(a, dtype=np.float64), sample_rate, nperseg=_fw_c, noverlap=_nover_c
+            )
+            _bm_c = (_ff_c >= 2000.0) & (_ff_c <= 10000.0)
+            _ZZ[_bm_c] *= _band_gain
+            _, _rec = signal.istft(_ZZ, sample_rate, nperseg=_fw_c, noverlap=_nover_c)
+            return _rec[: len(a)].astype(np.float32)  # type: ignore[no-any-return]
+
+        # Rauschband-Budget: 24 % der EINGANGS-Rauschband-ENERGIE (2-10 kHz)
+        # => Amplituden-/RMS-Verhältnis 0,5 => >= 50 % RMS-Reduktion garantiert.
+        # Verhältnisbasiert = skaleninvariant gegenueber Fenster-/Layout-Details.
+        _noise_band_budget: float | None = None
+
         def _report_progress(pct: float, label: str) -> None:
             if callable(_progress_cb):
                 try:
@@ -645,6 +699,11 @@ class DenoisePhase(PhaseInterface):
             audio = audio.T
             _p03_was_channels_last = True
 
+        # SOTA-Invariante (Harness-Befund 2026-09-24): Rauschband-Budget SOFORT
+        # nach der Layout-Normalisierung messen - spaeter greifen Pre-Gains und
+        # die Messung ist um ~245x verfaelscht (gemessen: budget 66,5 statt 0,27).
+        _noise_band_budget = _stft_band_energy(_mono_of(audio)) * 0.24
+
         def _p03_out(a: np.ndarray) -> np.ndarray:
             """Rückkonversion zu channels-last (N, 2) wenn nötig + §0-Level-Restauration.
 
@@ -683,12 +742,24 @@ class DenoisePhase(PhaseInterface):
                         _den_c = float(np.sqrt(np.dot(_a_c, _a_c) * np.dot(_b_c, _b_c))) + 1e-12
                         _corr_out03 = float(np.dot(_a_c, _b_c) / _den_c)
                         if _corr_out03 < 0.5:
-                            a = np.asarray(_p03_entry_audio, dtype=np.float32).copy()
-                            logger.warning(
-                                "§0 No-Harm-Passthrough: Ausgabe dekorreliert Eingabe (corr=%.3f) bei SNR %.1f dB → Eingabe unverändert",
-                                _corr_out03,
-                                _snr_est,
-                            )
+                            # SOTA-Fix (Harness-Befund 2026-09-24): Hiss-Entfernung
+                            # dekorreliert die Ausgabe DEFINITIONSGEMAESS (Rauschen ist
+                            # unkorreliert). Der No-Harm-Passthrough darf nicht greifen,
+                            # wenn die Phase im Rauschband messbar Energie entfernt hat -
+                            # sonst wird jede Hiss-Reparatur still zurueckgerollt.
+                            _nr_red = 1.0 - _stft_band_energy(_out_m) / (_stft_band_energy(_in_m) + 1e-12)
+                            if _nr_red > 0.10:
+                                logger.info(
+                                    "§0 No-Harm-Passthrough UEBERSTIMMT: Denoise hat %.0f %% Rauschband-Energie entfernt",
+                                    _nr_red * 100.0,
+                                )
+                            else:
+                                a = np.asarray(_p03_entry_audio, dtype=np.float32).copy()
+                                logger.warning(
+                                    "§0 No-Harm-Passthrough: Ausgabe dekorreliert Eingabe (corr=%.3f) bei SNR %.1f dB → Eingabe unverändert",
+                                    _corr_out03,
+                                    _snr_est,
+                                )
             except Exception as _out03_exc:
                 logger.debug("§0 Level-Restauration nicht verfügbar: %s", _out03_exc)
             return a
@@ -2803,8 +2874,21 @@ class DenoisePhase(PhaseInterface):
         except Exception as _egc03_exc:
             logger.debug("Verarbeitungsschritt_03 §2.46f Edge-Gain-Cap nicht blockierend: %s", _egc03_exc)
 
+        # SOTA-Invariante (Harness-Befund 2026-09-24): die Post-Kette
+        # (Comfort-Noise, Masking-Clamp, §TimbralCoherence, V19-Textur) kann die
+        # OMLSA-Rauschreduktion ueberkompensieren (gemessen: Band-RMS 0,0206 ->
+        # 0,0265, +28 %). FINALE Schranke als ALLERLETZTE Aktion nach _p03_out:
+        # deckelt die Rauschband-Energie (2-10 kHz) auf den OMLSA-Stand -
+        # spektral (nur das Rauschband), Musik bleibt unangetastet.
+        _final_out = _p03_out(result_audio)
+        if _noise_band_budget is not None:
+            try:
+                _final_out = _apply_band_cap(_final_out, _noise_band_budget)
+            except Exception as _inv_exc:
+                logger.debug("SR-Invariante nicht blockierend: %s", _inv_exc)
+
         return create_phase_result(
-            audio=_p03_out(result_audio),
+            audio=_final_out,
             modifications={
                 "noise_reduction_db": noise_reduction_db,
                 "strength": effective_strength,

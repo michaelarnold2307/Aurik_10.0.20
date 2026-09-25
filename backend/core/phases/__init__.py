@@ -214,6 +214,16 @@ except ImportError as _p66_err:
     _PHASE66_OK = False
     StemTargetedNRPhase = None  # type: ignore[assignment,misc]
 
+# Phase 67: Crackle Texture Removal — ML-Knistern-Textur (§Spec 06 Route A)
+try:
+    from .phase_67_crackle_texture_removal import CrackleTextureRemovalPhase
+
+    _PHASE67_OK = True
+except ImportError as _p67_err:
+    _logger.debug("Phase 67 nicht verfügbar: %s", _p67_err)
+    _PHASE67_OK = False
+    CrackleTextureRemovalPhase = None  # type: ignore[assignment,misc]
+
 # Exported symbols
 __all__ = [
     "AdvancedDereverbPhase",
@@ -298,6 +308,8 @@ __all__ = [
     "TapeSpliceRepairPhase",
     "VocalNaturalnessRestorationPhase",
     "StemTargetedNRPhase",
+    # Phase 67 (v10.x): ML-Knistern-Textur-Entfernung (§Spec 06 Route A)
+    "CrackleTextureRemovalPhase",
 ]
 
 # Version info

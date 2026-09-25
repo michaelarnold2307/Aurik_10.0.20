@@ -851,15 +851,16 @@ class HumRemovalPhase(PhaseInterface):
         §v10.998: depth steuert die Notch-Tiefe (0.25 = sanft, 1.0 = voll).
         Uses filtfilt for zero-phase filtering (preserve transients).
         """
-        # Normalized frequency
-        w0 = freq / (self.sample_rate / 2)
-
-        # Clamp to valid range
-        if w0 <= 0 or w0 >= 1:
+        # Frequenz-Guard: 0 < f < Nyquist (in Hz, da fs an iirnotch uebergeben wird)
+        if freq <= 0 or freq >= self.sample_rate / 2:
             return np.nan_to_num(audio, nan=0.0, posinf=0.0, neginf=0.0)  # type: ignore[no-any-return]
 
-        # Design notch filter
-        b, a = signal.iirnotch(w0, q_factor, fs=self.sample_rate)
+        # Design notch filter.
+        # KRITISCH (Harness-Befund 2026-09-24): scipy.signal.iirnotch erwartet bei
+        # Angabe von fs die Frequenz IN HERTZ, nicht normalisiert. Der alte Code
+        # uebergab w0 = freq/(sr/2) zusammen mit fs -> Notch bei ~0 Hz ->
+        # b == a == [1, -2, 1] (Identitaetsfilter) -> Hum wurde NIE entfernt.
+        b, a = signal.iirnotch(freq, q_factor, fs=self.sample_rate)
         # §v10.998: Tiefen-Blend — depth=1.0 ist der klassische Notch
         depth = float(np.clip(depth, 0.0, 1.0))
 

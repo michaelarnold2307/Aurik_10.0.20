@@ -1425,6 +1425,7 @@ CAUSE_TO_PHASES: dict[str, list[str]] = {
     # ── Vinyl ────────────────────────────────────────────────────────────────
     "vinyl_crackle": [
         "phase_09_crackle_removal",
+        "phase_67_crackle_texture_removal",  # Route A: dichte Knistern-Textur (ML, §Spec 06)
         "phase_01_click_removal",
         "phase_28_surface_noise_profiling",
         "phase_03_denoise",

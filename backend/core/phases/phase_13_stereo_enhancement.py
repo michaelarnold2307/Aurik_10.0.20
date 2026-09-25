@@ -314,6 +314,18 @@ class StereoEnhancementPhaseV2(PhaseInterface):
         enhanced_bands = []
         band_metrics = []
 
+        # §SOTA-Kollaps-Reparatur (2026-09-25): Aktivierung nur bei gemeldetem
+        # STEREO_FIELD_COLLAPSE (Detektor-Schwelle 0.95 Korrelation; Pipeline
+        # selektiert die Phase ab Severity > 0.30).
+        _norm_scores_13 = kwargs.get("defect_scores") or {}
+        _cs_obj_13 = None
+        try:
+            _cs_obj_13 = _norm_scores_13.get("stereo_field_collapse")
+        except Exception:
+            _cs_obj_13 = None
+        _collapse_sev_13 = float(getattr(_cs_obj_13, "severity", _cs_obj_13) or 0.0)
+        _collapse_repair_13 = _collapse_sev_13 > 0.30
+
         for i, band_audio in enumerate(bands):
             enhanced_band, metrics = self._enhance_band(
                 band_audio,
@@ -323,6 +335,7 @@ class StereoEnhancementPhaseV2(PhaseInterface):
                 haas_delay_ms=haas_delays[i],
                 decorr_order=decorr_orders[i],
                 band_index=i,
+                collapse_repair=_collapse_repair_13,
             )
             enhanced_bands.append(enhanced_band)
             band_metrics.append(metrics)
@@ -444,6 +457,7 @@ class StereoEnhancementPhaseV2(PhaseInterface):
         haas_delay_ms: float,
         decorr_order: int,
         band_index: int,
+        collapse_repair: bool = False,
     ) -> tuple[np.ndarray, dict[str, Any]]:
         """
         Enhance stereo width for a single frequency band.
@@ -467,8 +481,30 @@ class StereoEnhancementPhaseV2(PhaseInterface):
         mid = (left + right) / 2.0
         side = (left - right) / 2.0
 
-        # Apply width factor
-        enhanced_side = side * width_factor
+        # §SOTA-Kollaps-Reparatur (2026-09-25): Ein kollabiertes Band (L==R,
+        # Side≈0) hat keine Seiten-Information mehr — M/S-Widening wäre ein
+        # No-Op (Produktionsbefund: IACC blieb exakt 1.0). Pseudo-Stereo aus
+        # dekorreliertem Mid synthetisieren, Ziel-Korrelation = band-spezifische
+        # Mono-Kompatibilitaets-Untergrenze (MIN_CORRELATION). Nur aktiv, wenn
+        # der Pipeline-Kontext STEREO_FIELD_COLLAPSE meldet — echte Mono-
+        # Aufnahmen bleiben unangetastet (Authentizitaet, Primum non nocere).
+        _side_rms = float(np.sqrt(np.mean(side**2)) + 1e-12)
+        _mid_rms = float(np.sqrt(np.mean(mid**2)) + 1e-12)
+        if collapse_repair and _side_rms < 1e-3 * _mid_rms and width_factor > 1.0:
+            # 90°-Hilbert-Drehung: frequenzunabhängige, magnitudentreue
+            # Dekorrelation. Ein Allpass dekorreliert bei tiefen Frequenzen
+            # kaum (φ→0 ⇒ IACC bleibt ≈1, gemessen 0.98 bei 440 Hz); die
+            # Hilbert-Drehung erreicht E[mid·decorr]=0 auf dem ganzen Band
+            # ⇒ corr = (1-k²)/(1+k²) exakt (Pseudo-Stereo, Gerzon 1986).
+            _analytic13 = signal.hilbert(mid)
+            _decorr13 = np.imag(_analytic13).astype(np.float32)
+            # corr = (1-k²)/(1+k²) ⇒ k = sqrt((1-c)/(1+c))
+            _c_target13 = float(np.clip(min_correlation, 0.35, 0.85))
+            _k13 = float(np.clip(np.sqrt((1.0 - _c_target13) / (1.0 + _c_target13)), 0.08, 0.70))
+            enhanced_side = _k13 * _decorr13
+        else:
+            # Apply width factor
+            enhanced_side = side * width_factor
 
         # Apply Haas delay (spaciousness enhancement)
         if haas_delay_ms > 0:

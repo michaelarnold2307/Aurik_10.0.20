@@ -85,6 +85,45 @@ _DIGITAL_CODEC_MATERIALS: frozenset[str] = frozenset(
 )
 
 # ---------------------------------------------------------------------------
+# Kalibrierte Aktivierungs-Schwellen (Selektion) — §Spec 03
+# „Niemals einen erkannten Defekt unbehandelt lassen … Material-Confidence
+# beeinflusst die Stärke, nicht die Selektion.“ (Spec 03, CAUSE_TO_PHASES)
+#
+# Der Detektor bleibt bewusst UNGEKALIBRIERT auf seiner ehrlichen physikalischen
+# Skala (Nacht-Befund 2026-09-24: reines FM-Wow ±0,5 % / 0,3 Hz liefert
+# severity 0,272 — der RMS-Track dominiert; IF-Boost wirkungslos). Die
+# Kalibrierung der Aktivierungs-Schwelle gehört HIERHER in den Phase-Mapper,
+# nicht in den Detektor.
+#
+# Messbasis (defect_evidence_harness, Familie wow_flutter, 2026-09-25):
+#   FM-Wow ±0,5 % (0,3 Hz)  → severity 0,272  (mechanischer Defekt, hörbar)
+#   sauberer Ton             → severity 0,037
+#   Flutter 6 Hz ±0,2 %     → severity 1,000 / sauber 0,000
+# Schwelle 0,15 trennt beide Fälle mit Faktor ~2 nach oben/unten UND aktiviert
+# FM-Wow zuverlässig (0,272 ≥ 0,15) — der Befund, dass ein hörbares
+# ±0,5 %-FM-Wow an der Aktivierung scheiterte (0,272 < alte Override-Schwelle
+# 0,35 bei Rubato), ist damit geschlossen.
+# ---------------------------------------------------------------------------
+ACTIVATION_THRESHOLDS: dict[DefectType, float] = {
+    DefectType.WOW: 0.15,
+    DefectType.FLUTTER: 0.15,
+}
+
+DEFAULT_ACTIVATION_THRESHOLD = 0.10
+
+
+def activation_threshold(defect_type: DefectType) -> float:
+    """Kalibrierte Aktivierungs-Schwelle (Selektion) für einen DefectType.
+
+    §Spec 03: Die Selektion hängt AUSSCHLIESSLICH an der ehrlichen
+    Detektor-Severity — Material-Confidence (z.B. „MP3/CD hat kein Wow“) skaliert
+    die Stärke in ``PhaseAssignment.apply_to_config``/``build_specialist_config``,
+    nie diese Schwelle.
+    """
+    return ACTIVATION_THRESHOLDS.get(defect_type, DEFAULT_ACTIVATION_THRESHOLD)
+
+
+# ---------------------------------------------------------------------------
 # §2.67 Koalitions-Priorisierung im DefectMapper
 # Zusammengehörige Phasen werden bereits in der Defektprofil-Selektion näher
 # zusammengezogen, damit sie nicht erst spät durch globale Sortierung getrennt

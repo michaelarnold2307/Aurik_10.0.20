@@ -113,6 +113,25 @@ def _estimate_alpha_f(
     return np.clip(alpha_f, 0.0, alpha_max)  # type: ignore[no-any-return]
 
 
+def _normalize_defect_scores(defect_scores: dict | None) -> dict[str, float]:
+    """Normalisiert defect_scores auf String-Keys mit Float-Werten.
+
+    Die Pipeline uebergibt defect_result.scores mit DefectType-Enum-Keys und
+    DefectScore-Werten (unified_restorer_v3._execute_pipeline); direkte
+    Aufrufer (Harness, Tests) koennen String-Keys oder nackte Floats liefern.
+    Ohne Normalisierung greift der min_crosstalk_score-Gate nie (Produktions-
+    Befund 2026-09-25: get(\"crosstalk\") auf Enum-Key-Dict → immer 0.0 → Skip)."""
+    _norm: dict[str, float] = {}
+    for _k, _v in (defect_scores or {}).items():
+        _key = str(getattr(_k, "value", _k))
+        _val = getattr(_v, "severity", _v)
+        try:
+            _norm[_key] = float(_val)
+        except (TypeError, ValueError):
+            continue
+    return _norm
+
+
 def apply(
     audio: np.ndarray,
     sample_rate: int,
@@ -126,7 +145,8 @@ def apply(
     audio = np.nan_to_num(audio, nan=0.0, posinf=0.0, neginf=0.0)
 
     if defect_scores is not None:
-        xt_score = float(defect_scores.get("crosstalk", 0.0))
+        _norm62 = _normalize_defect_scores(defect_scores)
+        xt_score = _norm62.get("crosstalk", 0.0)
         if xt_score < min_crosstalk_score:
             logger.debug(
                 "Verarbeitungsschritt 62: crosstalk Wert %.3f < %.3f — uebersprungen", xt_score, min_crosstalk_score
@@ -397,6 +417,7 @@ class CrosstalkCancellationPhase(PhaseInterface):
         assert sample_rate == 48000, f"SR must be 48000 Hz, got: {sample_rate}"
 
         _defect_scores = kwargs.get("defect_scores") or kwargs.get("defect_analysis", {})
+        _norm_scores62 = _normalize_defect_scores(_defect_scores)
         phase_locality_factor = float(np.clip(float(kwargs.get("phase_locality_factor", 1.0)), 0.35, 1.0))
         _pmgg_strength = float(kwargs.get("strength", 0.5))
         _effective_strength = float(np.clip(_pmgg_strength * phase_locality_factor, 0.0, 1.0))
@@ -413,7 +434,7 @@ class CrosstalkCancellationPhase(PhaseInterface):
                 success=True,
                 execution_time_seconds=_time.perf_counter() - t0,
                 metrics={
-                    "crosstalk_score": float((_defect_scores or {}).get("crosstalk", 0.0)),
+                    "crosstalk_score": float(_norm_scores62.get("crosstalk", 0.0)),
                     "strength": _pmgg_strength,
                     "effective_strength": 0.0,
                 },

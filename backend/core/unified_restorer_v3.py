@@ -58,7 +58,7 @@ _uv3_logging.getLogger(__name__).info(
     "(30 fixes: + rs-Display-Konsistenz 63.5, transport_bump-Normalisierung B3, "
     "VQI-Fenster, OLA-Edge-Guard, Groove-Onset-Verlust-Guard, ...)"
 )
-from backend.core.defect_scanner import DefectScanner, DefectType, MaterialType
+from backend.core.defect_scanner import DefectScanner, DefectScoreView, DefectType, MaterialType
 from backend.core.musical_goals.adaptive_goal_resolver import (
     resolve_adaptive_goal_thresholds as _resolve_adaptive_goal_thresholds_fn,
 )
@@ -7132,6 +7132,7 @@ class UnifiedRestorerV3:
         "phase_64_tape_splice_repair": "reconstruction_inpainting",
         "phase_65_vocal_naturalness_restoration": "vocal_enhancement",
         "phase_66_stem_targeted_nr": "noise_reduction",  # v10.0.0: Stem-Targeted NR
+        "phase_67_crackle_texture_removal": "subtractive_cleanup",  # Route A: Knistern-Textur (ML)
         "phase_glue_stage": "dynamics_control",  # finale Bus-Kompression (Glue)
         "phase_ambience_polish": "stereo_enhancement",  # Spec 25: Raumhülle vor der Glue Stage
     }
@@ -28197,6 +28198,19 @@ class UnifiedRestorerV3:
 
         if sev(DefectType.CRACKLE) > 0.15 and _is_disc:
             selected.append("phase_09_crackle_removal")
+            # §Spec 06 Route A: dichte Knistern-Textur (keine isolierten Impulse)
+            # → phase_67_crackle_texture_removal (ML, RESTORATION_ONLY).
+            # Spärliche Einzelimpulse bleiben bei phase_09 (Either-Or, Spec 06).
+            # Der Scanner liefert sparse_impulse_rate in den CRACKLE-Metadaten
+            # (Schwelle 0,0008 = Detektor-Klassifikation „kein spärliches Knistern“).
+            _crackle_score = scores.get(DefectType.CRACKLE)
+            _crackle_sparse = (
+                float((_crackle_score.metadata or {}).get("sparse_impulse_rate", 0.0) or 0.0)
+                if _crackle_score is not None
+                else 0.0
+            )
+            if not self.is_studio_mode() and _crackle_sparse < 0.0008:
+                selected.append("phase_67_crackle_texture_removal")
         elif sev(DefectType.CRACKLE) > 0.15:
             logger.debug(
                 "Verarbeitungsschritt_09_crackle_removal übersprungen: material=%s chain=%s — kein Disc-Träger"
@@ -28241,27 +28255,35 @@ class UnifiedRestorerV3:
             selected.append("phase_18_noise_gate")
 
         # Wow/Flutter (Magnetband-Gleichlaufschwankungen)
-        # §Beat-Reliability-Gate: Rubato/Free-Form → Wow/Flutter-Korrektur abschwächen
-        if max(sev(DefectType.WOW), sev(DefectType.FLUTTER)) > 0.10:
-            if _beat_reliability >= 0.40:
-                selected.append("phase_12_wow_flutter_fix")
-            elif max(sev(DefectType.WOW), sev(DefectType.FLUTTER)) > 0.35:
-                # Nur bei hoher Severity trotz Rubato — schwerer mechanischer Defekt
-                selected.append("phase_12_wow_flutter_fix")
+        # §Spec 03: Selektion folgt der KALIBRIERTEN Aktivierungs-Schwelle des
+        # Phase-Mapper (Wow-Aktivierungs-Schwelle, defect_phase_mapper.ACTIVATION_THRESHOLDS,
+        # 2026-09-25) — ein erkannter Defekt wird nie übersprungen.
+        # Rubato/Free-Form (Beat-Reliability < 0,40) dämpft die STÄRKE
+        # (Conductor-Hint), nicht die Selektion (Spec 03: „Material-Confidence
+        # beeinflusst die Stärke, nicht die Selektion“).
+        # Die alte Skip-/Override-Logik (0,10 / 0,35) ließ ein hörbares FM-Wow
+        # ±0,5 % (ehrliche Detektor-severity 0,272) bei Rubato unbehandelt —
+        # Nacht-Befund 2026-09-24, §Spec 03-verletzend. Kalibrierung liegt jetzt
+        # im Phase-Mapper, NICHT im Detektor (der bleibt auf seiner physikalischen
+        # Skala ehrlich).
+        _wf_wow_sev = sev(DefectType.WOW)
+        _wf_flutter_sev = sev(DefectType.FLUTTER)
+        from backend.core.defect_phase_mapper import activation_threshold as _wf_act_thr
+
+        if _wf_wow_sev >= _wf_act_thr(DefectType.WOW) or _wf_flutter_sev >= _wf_act_thr(DefectType.FLUTTER):
+            selected.append("phase_12_wow_flutter_fix")
+            if _beat_reliability < 0.40:
+                # Halbe Korrektur-Stärke bei unzuverlässigem Beat: schwächere
+                # Korrektur = näher am Input (Hörordnung Never-worsen, §8a),
+                # kein Qualitätsrisiko — aber nie mehr kompletter Skip.
+                if isinstance(getattr(self, "_conductor_strength_hints", None), dict):
+                    self._conductor_strength_hints["phase_12_wow_flutter_fix"] = 0.5
                 logger.info(
-                    "⏱️ Rubato-Override: Verarbeitungsschritt_12 trotz Beat-Reliability=%.2f aktiviert "
-                    "(WOW=%.2f, FLUTTER=%.2f — severity > 0.35 → mechanischer Defekt wahrscheinlich)",
+                    "⏱️ Rubato-Guard (Spec 03: Stärke statt Selektion): Verarbeitungsschritt_12 läuft "
+                    "mit halber Stärke — Beat-Reliability=%.2f < 0.40 (WOW=%.2f, FLUTTER=%.2f)",
                     _beat_reliability,
-                    sev(DefectType.WOW),
-                    sev(DefectType.FLUTTER),
-                )
-            else:
-                logger.info(
-                    "⏱️ Rubato-Guard: Verarbeitungsschritt_12 übersprungen — Beat-Reliability=%.2f < 0.40 "
-                    "(WOW=%.2f, FLUTTER=%.2f ≤ 0.35 → wahrscheinlich künstlerisches Rubato)",
-                    _beat_reliability,
-                    sev(DefectType.WOW),
-                    sev(DefectType.FLUTTER),
+                    _wf_wow_sev,
+                    _wf_flutter_sev,
                 )
 
         # Transport-Bump (impulsartige Bandholperer — Kassette/Tape)
@@ -40775,7 +40797,7 @@ class UnifiedRestorerV3:
                                         # **zuerst → niedrigste Priorität (≙ setdefault): nachfolgende
                                         # explizite Keys + _runtime_phase_parameter_kwargs gewinnen.
                                         **self._canonical_phase_context_kwargs(),
-                                        "defect_scores": defect_result.scores,
+                                        "defect_scores": DefectScoreView(defect_result.scores),
                                         "defect_locations": _defect_locations,
                                         # §SR-CG5/6: Denker-Knistern-Severity direkt an
                                         # phase_28 (Floor-Subtraktion trotz SNR>40)
