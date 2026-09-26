@@ -313,6 +313,7 @@
 | scripts/defect_coverage_check.py | ACTIVE | scripts | nein | — | §SR-Audit-Gate (2026-09-24): fail-closed Abgleich Enum-Typen vs. Evidenz-Harness vs. Phase-Mapper; Wurzel-Fix der Luecke, dass Typen ohne Mess-Fall existierten; Pre-Commit-Hook aurik-defect-coverage |
 | scripts/_aurik_run_excellence.py | ACTIVE | scripts | ja | — | Konsolidierung (2026-09-24): internes Studio-2026-Dev-Hilfsskript unveraendert von der Repo-Wurzel nach scripts/ verschoben; ruft AurikDenker.denke() (kanonischer Einstieg, kein UV3-Bypass) |
 | scripts/repair_effectiveness_harness.py | ACTIVE | scripts | nein | — | §SR-Audit L3 (2026-09-24): Reparatur-Wirksamkeits-Harness (Synthese -> Scanner VORHER -> Phase -> Scanner NACHHER + physikalische Defekt-Metrik); Musik-artiger Traeger (Phasen sind auf Musik trainiert); Befund: Clicks physikalisch wirksam (52->6 Kanten), Hiss/Hum messbar unwirksam - dokumentierte offene Luecken |
+| scripts/g188_wirkungskalibrierung_check.py | ACTIVE | scripts | nein | — | §G188–§G190 (GEBOTE.md, 2026-09-26): Pre-Commit-Melde-Gate — meldet blockierende feste Stärke-Kappen und nicht-selbstberechenbare Intensitäten (Auftrag: maximal optimierte Restaurierung ohne Fremdeinwirkung); physische Grenzen (max_stretch_delta, DETECTION_THRESHOLD) sind zugelassen; repo-weiter Altbestands-Report; Hook aurik-g188-wirkungskalibrierung |
 
 ## Pflege-Regeln
 

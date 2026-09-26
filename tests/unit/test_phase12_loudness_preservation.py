@@ -68,6 +68,71 @@ def test_phase12_stretch_factors_respect_safe_delta() -> None:
     assert float(np.max(stretch)) <= 1.03 + 1e-6
 
 
+def test_g188_strength_scale_follows_evidence_not_heuristics() -> None:
+    """§G188 (GEBOTE.md), §7.4d (06_phases_system.md): die wirksame Stärke
+    skaliert mit der Evidenzqualität (Posterior), nie mit festen Medium-/
+    Inhalts-Prozenten — volle Skala bei voller Konfidenz."""
+    phase = WowFlutterFix()
+
+    scale_full, _delta_full = phase._derive_safe_timing_profile(MaterialType.VINYL, 1.0, 0.0)
+    assert scale_full == pytest.approx(1.0)
+
+    scale_half, _delta_half = phase._derive_safe_timing_profile(MaterialType.VINYL, 0.5, 0.0)
+    assert scale_half == pytest.approx(0.5)
+
+    # Evidenz-Dämpfung bleibt: Estimator-Implausibilität senkt den Posterior
+    scale_poly, _delta_poly = phase._derive_safe_timing_profile(MaterialType.VINYL, 1.0, 0.0, polyphonic_fallback=True)
+    assert scale_poly == pytest.approx(0.75)
+
+
+def test_g188_full_compensation_and_closed_loop() -> None:
+    """§G188–§G189 (GEBOTE.md), §7.4d (06_phases_system.md): bei belastbarer
+    Messung wird der GEMESSENE Defekt vollständig kompensiert (keine
+    70-%-Kappe), und der geschlossene Regelkreis rechnet das Optimum selbst
+    nach (Restfehler-Messung → bounded Nachlauf, nie-schlechter)."""
+    from scipy.signal import hilbert
+
+    sr = 48_000
+    t = np.arange(3 * sr) / sr
+    cents = 18.0 * np.sin(2 * np.pi * 1.0 * t)
+    f_inst = 220.0 * np.power(2.0, cents / 1200.0)
+    sig = (0.25 * np.sin(2 * np.pi * np.cumsum(f_inst) / sr)).astype(np.float32)
+
+    def _fm_amplitude(x: np.ndarray) -> float:
+        xa = np.asarray(x, dtype=np.float64)
+        if xa.ndim == 2:
+            xa = xa.mean(axis=0 if xa.shape[0] <= xa.shape[1] else 1)
+        z = hilbert(xa)
+        f = np.diff(np.unwrap(np.angle(z))) * sr / (2 * np.pi)
+        f = np.concatenate([[f[0]], f])
+        m = len(f) // 10
+        f = f[m:-m]
+        tt = t[: len(f)]
+        c = 1200.0 * np.log2(np.maximum(f, 1e-6) / np.median(f))
+        a = np.column_stack([np.sin(2 * np.pi * tt), np.cos(2 * np.pi * tt), np.ones_like(tt)])
+        coef, *_ = np.linalg.lstsq(a, c, rcond=None)
+        return float(np.hypot(coef[0], coef[1]))
+
+    phase = WowFlutterFix()
+    result = phase.process(
+        sig,
+        sr,
+        MaterialType.VINYL,  # type: ignore[arg-type]
+        strength=1.0,
+        defect_locations={"wow": [(0.0, 3.0)]},
+    )
+    out = np.asarray(result.audio, dtype=np.float64)
+    md = result.metadata or {}
+
+    assert md.get("sinusoidal_wow_profile", {}).get("applied") is True
+    # Volle Kompensation bei belastbarer Messung (keine feste Dämpfungs-Kappe)
+    assert float(md.get("timing_safe_strength", 0.0)) >= 0.99
+    # Gemessene FM deutlich unter Eingang (18 cents) — Wirkung + Nachlauf
+    assert _fm_amplitude(out) < 0.30 * _fm_amplitude(sig)
+    # Regelkreis transparent dokumentiert
+    assert "closed_loop_refine" in md
+
+
 def test_phase12_polyphonic_fallback_tightens_timing_profile() -> None:
     phase = WowFlutterFix()
 
@@ -170,7 +235,7 @@ def test_phase12_process_applies_defect_locality_before_timestretch(monkeypatch)
 
     captured: dict[str, np.ndarray] = {}
 
-    def _fake_warp(x: np.ndarray, stretch_factors: np.ndarray) -> np.ndarray:
+    def _fake_warp(x: np.ndarray, stretch_factors: np.ndarray, _sr: int | None = None) -> np.ndarray:
         captured["stretch_factors"] = np.asarray(stretch_factors, dtype=np.float32).copy()
         return np.asarray(x, dtype=np.float32).copy()
 

@@ -8,7 +8,7 @@
 > Fehlerprotokoll. `katalog` = Referenzkatalog-Eintrag ohne externes Zitat;
 > `integriert` = extern zitiert; VERBOTEN-IDs zusätzlich mit Linter-Status.
 
-Stand: 227 IDs (166 integriert, 61 katalog).
+Stand: 235 IDs (180 integriert, 55 katalog).
 Regeneriert mit `python scripts/gen_integration_matrix.py`.
 
 | ID | Kategorie | Titel | Status |
@@ -22,7 +22,7 @@ Regeneriert mit `python scripts/gen_integration_matrix.py`.
 | §G7 | Kategorie I — Individuelle Song-Maximierung (§G1–§G9) | Interchannel-Lag | integriert |
 | §G8 | Kategorie I — Individuelle Song-Maximierung (§G1–§G9) | CD-Rauschprofil-Pflicht | integriert |
 | §G9 | Kategorie I — Individuelle Song-Maximierung (§G1–§G9) | Quellmaterial-Unabhängigkeit | integriert |
-| §G10 | Kategorie II — Psychoakustik & Natürlichkeit (§G10–§G19) | ERB-Masking-First | katalog |
+| §G10 | Kategorie II — Psychoakustik & Natürlichkeit (§G10–§G19) | ERB-Masking-First | integriert |
 | §G11 | Kategorie II — Psychoakustik & Natürlichkeit (§G10–§G19) | Natürlicher Wohlklang | integriert |
 | §G12 | Kategorie II — Psychoakustik & Natürlichkeit (§G10–§G19) | Lautheitskonsistenz | integriert |
 | §G13 | Kategorie II — Psychoakustik & Natürlichkeit (§G10–§G19) | Multi-Point-Lag | integriert |
@@ -184,18 +184,21 @@ Regeneriert mit `python scripts/gen_integration_matrix.py`.
 | §G168 | Neue GEBOTE — Denker-IQ & Material-Awareness (§G167–§G172, §v10.706) | SourceMediumProfile-Kalibrierungspflicht | katalog |
 | §G169 | Neue GEBOTE — Denker-IQ & Material-Awareness (§G167–§G172, §v10.706) | Per-Phase-SMP-Cap | katalog |
 | §G170 | Neue GEBOTE — Denker-IQ & Material-Awareness (§G167–§G172, §v10.706) | Chain-Depth-Budget-Adaption | katalog |
-| §G171 | Neue GEBOTE — Denker-IQ & Material-Awareness (§G167–§G172, §v10.706) | Material-Fremdlauf-Transparenz | katalog |
+| §G171 | Neue GEBOTE — Denker-IQ & Material-Awareness (§G167–§G172, §v10.706) | Material-Fremdlauf-Transparenz | integriert |
 | §G172 | Neue GEBOTE — Denker-IQ & Material-Awareness (§G167–§G172, §v10.706) | OneTakeExport-ISP-Margin | katalog |
 | §G173 | Kategorie XXIV — Startup-Integration & Kommunikation (§G173–§G182, früher §SC-G71–§SC-G80, §v10.305) | Event-Garantie | integriert |
 | §G174 | Kategorie XXIV — Startup-Integration & Kommunikation (§G173–§G182, früher §SC-G71–§SC-G80, §v10.305) | Lock-freie Importe | integriert |
-| §G175 | Kategorie XXIV — Startup-Integration & Kommunikation (§G173–§G182, früher §SC-G71–§SC-G80, §v10.305) | Plugin-Namen-Validierung | katalog |
+| §G175 | Kategorie XXIV — Startup-Integration & Kommunikation (§G173–§G182, früher §SC-G71–§SC-G80, §v10.305) | Plugin-Namen-Validierung | integriert |
 | §G176 | Kategorie XXIV — Startup-Integration & Kommunikation (§G173–§G182, früher §SC-G71–§SC-G80, §v10.305) | Watchdog-Selbsttest | katalog |
 | §G177 | Kategorie XXIV — Startup-Integration & Kommunikation (§G173–§G182, früher §SC-G71–§SC-G80, §v10.305) | Cache-Safety | katalog |
-| §G178 | Kategorie XXIV — Startup-Integration & Kommunikation (§G173–§G182, früher §SC-G71–§SC-G80, §v10.305) | Happy-Path-Gate | katalog |
+| §G178 | Kategorie XXIV — Startup-Integration & Kommunikation (§G173–§G182, früher §SC-G71–§SC-G80, §v10.305) | Happy-Path-Gate | integriert |
 | §G179 | Kategorie XXIV — Startup-Integration & Kommunikation (§G173–§G182, früher §SC-G71–§SC-G80, §v10.305) | Startup-Smoke-Test | katalog |
-| §G180 | Kategorie XXIV — Startup-Integration & Kommunikation (§G173–§G182, früher §SC-G71–§SC-G80, §v10.305) | Import-Check | katalog |
-| §G181 | Kategorie XXIV — Startup-Integration & Kommunikation (§G173–§G182, früher §SC-G71–§SC-G80, §v10.305) | GPU-Detection Safety | katalog |
+| §G180 | Kategorie XXIV — Startup-Integration & Kommunikation (§G173–§G182, früher §SC-G71–§SC-G80, §v10.305) | Import-Check | integriert |
+| §G181 | Kategorie XXIV — Startup-Integration & Kommunikation (§G173–§G182, früher §SC-G71–§SC-G80, §v10.305) | GPU-Detection Safety | integriert |
 | §G182 | Kategorie XXIV — Startup-Integration & Kommunikation (§G173–§G182, früher §SC-G71–§SC-G80, §v10.305) | Unified Progress | integriert |
+| §G188 | Kategorie XXV — Autonome Wirkungs-Kalibrierung (§G188–§G189) | Autonome Stärke-Einstellung | integriert |
+| §G189 | Kategorie XXV — Autonome Wirkungs-Kalibrierung (§G188–§G189) | Dokumentierte Ausnahmen & Rest-Autonomie | integriert |
+| §G190 | Kategorie XXV — Autonome Wirkungs-Kalibrierung (§G188–§G189) | Zielfunktion, physikalische Grenzen & Meldeauftrag | integriert |
 | V01 | VERBOTEN.md | `backend/`, `plugins/` | integriert (Linter) |
 | V02 | VERBOTEN.md | `backend/`, `plugins/` | integriert (Linter) |
 | V03 | VERBOTEN.md | `plugins/` | integriert (Linter) |
@@ -206,37 +209,42 @@ Regeneriert mit `python scripts/gen_integration_matrix.py`.
 | V11 | VERBOTEN.md | `backend/core/phases/` | integriert (Linter) |
 | V12 | VERBOTEN.md | `backend/core/causal_defect_reasoner.py` | integriert (Linter) |
 | V13 | VERBOTEN.md | `backend/core/unified_restorer_v3.py` | integriert (Linter) |
+| V14 | VERBOTEN.md | VERBOTEN V14 | integriert (Linter) |
+| V21 | VERBOTEN.md | VERBOTEN V21 | integriert (Linter) |
 | V27 | VERBOTEN.md | `backend/core/unified_restorer_v3.py`, `causal_defect_reasoner.py`, `defect_phase_mapper.py` | integriert (Linter) |
-| V28 | VERBOTEN.md | ⏳ V28 DFN-MUSIK: `NR_BREATHING_ARTIFACT` → `phase_03_denoise` / `phase_29` — NR-Atmen/Pumpen entsteht durch | integriert (Linter) |
+| V28 | VERBOTEN.md | ¦ ⏳ V28 DFN-MUSIK: `NR_BREATHING_ARTIFACT` → `phase_03_denoise` / `phase_29` ¦ NR-Atmen/Pumpen entsteht durch  | integriert (Linter) |
 | V29 | VERBOTEN.md | `backend/core/causal_defect_reasoner.py`, `defect_phase_mapper.py` | integriert (Linter) |
-| V30 | VERBOTEN.md | ⏳ V30 DFN-MUSIK: `ALIASING` → `phase_03_denoise` — Aliasing-Spiegelfrequenzen sind kohärente Signalspiegelun | integriert (Linter) |
+| V30 | VERBOTEN.md | ¦ ⏳ V30 DFN-MUSIK: `ALIASING` → `phase_03_denoise` ¦ Aliasing-Spiegelfrequenzen sind kohärente Signalspiegelun | integriert (Linter) |
 | V31 | VERBOTEN.md | `backend/core/defect_phase_mapper.py`, `causal_defect_reasoner.py` | integriert (Linter) |
 | V32 | VERBOTEN.md | `backend/core/cumulative_interaction_guard.py` | integriert (Linter) |
 | V33 | VERBOTEN.md | `backend/core/phases/phase_*.py` | integriert (Linter) |
-| V38 | VERBOTEN.md | `backend/core/phases/phase_*.py` | integriert (zitiert) |
+| V38 | VERBOTEN.md | `backend/core/phases/phase_*.py` | integriert (Linter) |
 | V39 | VERBOTEN.md | `backend/core/causal_defect_reasoner.py`, `defect_phase_mapper.py` | integriert (Linter) |
-| V40 | VERBOTEN.md | `backend/core/phases/phase_03*.py`, `phase_29*.py` (NR-Phasen) | integriert (zitiert) |
-| V41 | VERBOTEN.md | `backend/core/phases/phase_*.py` (additive Phasen, `panns_singing ≥ 0.25`) | integriert (zitiert) |
-| V42 | VERBOTEN.md | `backend/core/phases/phase_03*.py`, `phase_29*.py` | integriert (zitiert) |
-| V43 | VERBOTEN.md | `backend/core/phases/phase_*.py`, `backend/core/dsp/lpc_formant_tracker.py` | integriert (zitiert) |
+| V40 | VERBOTEN.md | `backend/core/phases/phase_03*.py`, `phase_29*.py` (NR-Phasen) | integriert (Linter) |
+| V41 | VERBOTEN.md | `backend/core/phases/phase_*.py` (additive Phasen, `panns_singing ≥ 0.25`) | integriert (Linter) |
+| V42 | VERBOTEN.md | `backend/core/phases/phase_03*.py`, `phase_29*.py` | integriert (Linter) |
+| V43 | VERBOTEN.md | `backend/core/phases/phase_*.py`, `backend/core/dsp/lpc_formant_tracker.py` | integriert (Linter) |
 | V44 | VERBOTEN.md | `backend/core/musical_goals/musical_goals_metrics.py` | integriert (Linter) |
-| V45 | VERBOTEN.md | `backend/core/musical_goals/musical_goals_metrics.py` | integriert (zitiert) |
+| V45 | VERBOTEN.md | `backend/core/musical_goals/musical_goals_metrics.py` | integriert (Linter) |
 | V46 | VERBOTEN.md | `backend/core/dsp/noise_texture_resynth.py`, sowie jede DSP-Datei die dBFS-Werte skaliert | integriert (Linter) |
 | V47 | VERBOTEN.md | `backend/core/clipping_detection.py` | integriert (Linter) |
 | V48 | VERBOTEN.md | `backend/core/goal_applicability_filter.py`, `backend/core/unified_restorer_v3.py` | integriert (Linter) |
 | V49 | VERBOTEN.md | `denker/exzellenz_denker.py`, `denker/aurik_denker.py` | integriert (Linter) |
-| V50 | VERBOTEN.md | `denker/exzellenz_denker.py` | integriert (zitiert) |
-| V51 | VERBOTEN.md | `denker/restaurier_denker.py`, `denker/aurik_denker.py` | integriert (zitiert) |
-| V52 | VERBOTEN.md | `backend/core/goal_applicability_filter.py` | integriert (zitiert) |
+| V50 | VERBOTEN.md | `denker/exzellenz_denker.py` | integriert (Linter) |
+| V51 | VERBOTEN.md | `denker/restaurier_denker.py`, `denker/aurik_denker.py` | integriert (Linter) |
+| V52 | VERBOTEN.md | `backend/core/goal_applicability_filter.py` | integriert (Linter) |
 | V53 | VERBOTEN.md | `backend/core/unified_restorer_v3.py` | integriert (Linter) |
-| V54 | VERBOTEN.md | `backend/core/unified_restorer_v3.py` | integriert (zitiert) |
-| V55 | VERBOTEN.md | `backend/core/dsp/lpc_formant_tracker.py`, `backend/core/phases/phase_42_vocal_enhancement.py`, `backend/core/ | integriert (zitiert) |
-| V56 | VERBOTEN.md | `Aurik10/ui/modern_window.py` | integriert (zitiert) |
-| V57 | VERBOTEN.md | `backend/core/phases/phase_*.py` (alle additiven Phasen mit `panns_singing ≥ 0.25`) | integriert (zitiert) |
+| V54 | VERBOTEN.md | `backend/core/unified_restorer_v3.py` | integriert (Linter) |
+| V55 | VERBOTEN.md | `backend/core/dsp/lpc_formant_tracker.py`, `backend/core/phases/phase_42_vocal_enhancement.py`, `backend/core/ | integriert (Linter) |
+| V56 | VERBOTEN.md | `Aurik10/ui/modern_window.py` | integriert (Linter) |
+| V57 | VERBOTEN.md | `backend/core/phases/phase_*.py` (alle additiven Phasen mit `panns_singing ≥ 0.25`) | integriert (Linter) |
 | V58 | VERBOTEN.md | `backend/core/unified_restorer_v3.py` (und alle ndarray-Return-Funktionen) | integriert (Linter) |
-| V70 | VERBOTEN.md | `denker/`, `backend/core/`, `Aurik10/ui/` | integriert (zitiert) |
-| V71 | VERBOTEN.md | `Aurik10/ui/`, `backend/core/pre_analysis.py` | integriert (zitiert) |
-| V72 | VERBOTEN.md | `backend/core/pre_analysis.py`, `Aurik10/ui/` | integriert (zitiert) |
+| V59 | VERBOTEN.md | VERBOTEN V59 | integriert (Linter) |
+| V63 | VERBOTEN.md | > den Stereo-Kollaps), V63 (MD5/B324), V64 (rtol-in-numpy), V73–V75. | integriert (Linter) |
+| V64 | VERBOTEN.md | > den Stereo-Kollaps), V63 (MD5/B324), V64 (rtol-in-numpy), V73–V75. | integriert (Linter) |
+| V70 | VERBOTEN.md | `denker/`, `backend/core/`, `Aurik10/ui/` | integriert (Linter) |
+| V71 | VERBOTEN.md | `Aurik10/ui/`, `backend/core/pre_analysis.py` | integriert (Linter) |
+| V72 | VERBOTEN.md | `backend/core/pre_analysis.py`, `Aurik10/ui/` | integriert (Linter) |
 | V73 | VERBOTEN.md | `Aurik10/ui/` | integriert (Linter) |
 | V74 | VERBOTEN.md | Alle `.py`-Dateien | integriert (Linter) |
 | V75 | VERBOTEN.md | `Aurik10/ui/` | integriert (Linter) |

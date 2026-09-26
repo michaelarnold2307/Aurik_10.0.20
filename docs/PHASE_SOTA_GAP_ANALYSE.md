@@ -461,3 +461,44 @@ sind präexistent (im Worktree bei HEAD identisch reproduziert).
 **Offen (Cluster E-Rest):** Fit-Amplituden-Kalibrierung, Stärke-Tuning
 (safe-timing 0,7), Teilband-IF-Estimator (s. Cluster A) für Mehrstimmen-
 Material, multiband_wow_flutter/scrape_flutter, Harness-Gesamtlauf.
+
+### Cluster E II 2026-09-26 — §G188–§G190: Autonome Wirkungs-Kalibrierung normativ verankert + umgesetzt
+
+**Normativ (Kategorie XXV (GEBOTE.md), §7.4d (06_phases_system.md)):**
+§G188 (autonome Stärke aus der gemessenen Defekttiefe, Kompensationsgrad 1,0
+bei belastbarer Messung, feste konservative Kappen verboten), §G189
+(dokumentierte Ausnahmen — Materialphysik, Chain-Injection, PMGG-Ziel — mit
+Rest-Autonomie: geschlossener Regelkreis rechnet das Optimum selbst),
+§G190 (Zielfunktion: maximaler Wohlklang + natürlicher Klang bei unhörbaren
+Defekten; physikalische Grenzen akzeptieren; Pre-Commit-Meldeauftrag).
+
+**Umsetzung phase_12 (erster Compliance-Fall):** Material-Kappe
+(CORRECTION_STRENGTH 0,1–0,8) und Heuristik-Dämpfungen (0,82/0,78/1,10/0,70)
+entfernt — Stärke = Evidenzqualität (Posterior), volle Kompensation bei
+Sinus-Fit r² ≥ 0,90 oder Scanner+IF-Witness. Geschlossener Regelkreis
+(`_closed_loop_warp_refine`): Restfehler auf dem eigenen Ausgang nachmessen
+(Teilband-IF, pYIN-Fallback), bounded nachführen, nur behalten wenn besser.
+
+**Root-Causes der Rest-Verluste (beide gemessen + behoben):**
+
+1. **Frame-Raster-Verzerrung**: die SF-Kurve wurde per linspace über die
+   Sample-Achse verteilt (1241 statt 1200 Samples/Frame) → die Korrektur
+   driftete phasenverschoben dagegen (−18,7° bei 1 Hz → nur ~70 %
+   Auslöschung). Jetzt k·hop-Abbildung (center=True) — Offset-Sweep
+   gemessen: Rest 1,7 statt 5,8 cents.
+2. **Mess-Raster-Mismatch im Regelkreis**: pYIN (512er-Hop, 94 fps) traf auf
+   das 1200er-Fitraster — die Fit-Basis verfehlte die Modulation (0,7 statt
+   6 cents). Raster-Normierung auf das kanonische Raster.
+
+**Ergebnis (Synthesekanal, FM 18,0 cents @ 1 Hz):** 18,0 → **1,66 cents
+(90,8 % Reduktion**; Start der Sitzung: 0,0 %). Rest 1,66 =
+Fit-Amplituden-Unterschätzung (16,4/18,0) — unter der Messauflösung des
+Amp-Guards (4 cents), physikalisch akzeptiert (§G190). Volle Stärke belegt
+(timing_safe_strength = 1,0).
+
+**Meldeauftrag (§G190):** Pre-Commit-Gate `aurik-g188-wirkungskalibrierung`
+(`scripts/g188_wirkungskalibrierung_check.py`) blockiert neue feste Kappen in
+geprüften Dateien und meldet bei JEJEM Commit den repo-weiten Altbestand
+(derzeit 15 Stellen in den Phasen 14/17/20/23/24/27/28/40/55 —
+Migrations-Roadmap). Physische Grenzen (max_stretch_delta,
+DETECTION_THRESHOLD) sind zugelassen.

@@ -394,6 +394,15 @@ repos:
         language: system
         pass_filenames: true
 
+      # §G188–§G190 (GEBOTE.md) Wirkungs-Kalibrierung: blockierende
+      # Begrenzungen bzw. nicht-selbstberechenbare Intensitäten MELDEN
+      - id: aurik-g188-wirkungskalibrierung
+        name: "§G188 Wirkungs-Kalibrierung (blockierende Begrenzungen melden)"
+        entry: .venv_aurik/bin/python scripts/g188_wirkungskalibrierung_check.py
+        language: system
+        pass_filenames: true
+        files: \.py$
+
       # §v10.50 Subprocess-Vertrag: sys.executable in Orchestratoren
       - id: aurik-sys-executable-guard
         name: "§v10.50 Subprocess-Vertrag: sys.executable in Orchestratoren"

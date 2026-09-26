@@ -752,6 +752,38 @@ kein stilles No-Op). Ausgang immer geclippt (§7.4).
 # □ Selektion an kalibrierter Schwelle aus defect_phase_mapper.ACTIVATION_THRESHOLDS
 ```
 
+## §7.4d Autonome Wirkungs-Kalibrierung (§G188–§G189 (GEBOTE.md), 2026-09-26)
+
+Operationalisierung von §G188–§G189 (GEBOTE.md) für den Phasen-Kern:
+
+- **Kompensationsgrad 1,0 bei belastbarer Messung.** Ist die Defekt-Messung
+  deterministisch belastbar (z. B. Sinus-Fit r² ≥ 0,90 oder Scanner+IF-
+  Evidenzkette §7.4c), kompensiert die Phase die GEMESSENE Defekttiefe
+  vollständig. Feste Stärke-Multiplikatoren je Medium/Inhalt (0,7-Pauschalen,
+  „10 % aggressiver"/„30 % konservativer") sind verboten.
+- **Evidenz skaliert, nicht heuristisch.** Bei unklarer Messung skaliert die
+  Evidenzqualität (mittlere Pitch-Konfidenz, Estimator-Implausibilität) den
+  Kompensationsgrad als Posterior. Selektions-Guards (Melodie-Guard,
+  §AUTH-P12, Audibilität, Lokalität) entscheiden weiterhin OB und WO.
+- **Geschlossener Regelkreis (§G189 (GEBOTE.md)).** Nach dem Eingriff misst
+  die Phase den Restfehler auf ihrem eigenen Ausgang (gleicher Messkanal,
+  Matched-Fit bei bekannter Modulationsfrequenz) und führt bounded nach
+  (max. ein Nachlauf, deterministisch §G5 (copilot-instructions.md)). Der
+  Nachlauf wird nur behalten, wenn die gemessene Restmodulation sinkt
+  (nie-schlechter, Hörordnung §8a).
+- **Dokumentierte Ausnahmen (§G189 (GEBOTE.md)):** Materialphysik
+  (`DETECTION_THRESHOLD`, Warp-Anstieg `max_stretch_delta`), Chain-Injection
+  (§G171 (GEBOTE.md)), PMGG-Ziel-Skalar `strength` (§7.4c). Sie bestimmen
+  Ziel, Schwelle und Warp-Grenze mit — nie den Kompensationsgrad eines
+  gemessenen Defekts.
+- **Zielfunktion & Meldeauftrag (§G190 (GEBOTE.md)).** Höchstes Ziel ist der
+  maximal mögliche Wohlklang bei natürlichem Klang und unhörbaren Defekten
+  (Hörordnung §8a). Physikalische Grenzen (Warp-Anstieg, Mess-Auflösung,
+  Material-Ermüdung) sind zu akzeptieren. Das Pre-Commit-Gate
+  `aurik-g188-wirkungskalibrierung` (`scripts/g188_wirkungskalibrierung_check.py`)
+  meldet blockierende feste Kappen und nicht-selbstberechenbare Intensitäten
+  bei jedem Commit.
+
 ---
 
 ## §7.5 Parallelisierungs-Invariante (Pipeline-Tiers)

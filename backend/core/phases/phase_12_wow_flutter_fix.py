@@ -54,11 +54,12 @@ ALGORITHM OVERVIEW:
    - Time-varying stretch factors from pitch deviation curve
    - Overlap-add synthesis with phase coherence
 
-5. Material-Adaptive Correction
-   - Tape: Aggressive correction (0.9), high sensitivity (capstan flutter)
-   - Vinyl: Moderate correction (0.7), turntable speed variations
-   - Shellac: Conservative (0.6), hand-crank artifacts
-   - CD_Digital: Minimal (0.2), rare digital artifacts
+5. Wirkungs-Kalibrierung (§G188–§G189 (GEBOTE.md), §7.4d (06_phases_system.md))
+   - Kompensationsgrad 1,0 der GEMESSENEN Defekttiefe bei belastbarer Messung;
+     bei unklarer Messung skaliert die Evidenzqualität (nie feste Prozente)
+   - Materialphysik (dokumentierte Ausnahme §G189) wirkt über
+     DETECTION_THRESHOLD und Warp-Anstieg max_stretch_delta
+   - Geschlossener Regelkreis: Restfehler nachmessen, bounded nachführen
 
 QUALITY TARGETS:
 - Pitch stability: <0.3% residual deviation (Professional standard)
@@ -146,20 +147,11 @@ def _reset_polyphonic_circuit_breaker() -> None:
 class WowFlutterFix(PhaseInterface):
     """Professional Wow & Flutter Correction with YIN pitch detection and Phase Vocoder time-stretching."""
 
-    # Material-adaptive correction strength (0.0-1.0)
-    CORRECTION_STRENGTH = {
-        MaterialType.TAPE: 0.80,  # v10.0.0: raised from 0.65 — tonal_center PMGG-excluded (§2.29b);
-        #   cassette head-settling wow/flutter requires stronger correction.
-        #   Was reduced in v10.0.0 due to tonal_center regression, but K-S proxy
-        #   (§9.7.11) now excludes tonal_center from PMGG delta-checks for phase_12.
-        MaterialType.CASSETTE: 0.80,  # v10.0.0: same as TAPE — compact cassette uses identical
-        #   capstan/pinch-roller transport (IEC 60094-1); head-settling wow/flutter same physics.
-        #   Previous fallback to 0.7 (default) was too conservative for cassette transport bumps.
-        MaterialType.VINYL: 0.70,  # Moderate (turntable speed variations, belt/motor issues)
-        MaterialType.SHELLAC: 0.60,  # Conservative (hand-crank artifacts, worn mechanisms)
-        MaterialType.CD_DIGITAL: 0.20,  # Minimal (rare digital artifacts)
-        MaterialType.STREAMING: 0.10,  # Very minimal (usually none)
-    }
+    # §G188 (GEBOTE.md): feste material-spezifische Stärke-Kappen (früher
+    # CORRECTION_STRENGTH 0,1–0,8) sind VERBOTEN — der Kompensationsgrad folgt
+    # der gemessenen Defekttiefe des Einzelfalls (§7.4d (06_phases_system.md)).
+    # Materialphysik bleibt als dokumentierte Ausnahme §G189 (GEBOTE.md) in
+    # DETECTION_THRESHOLD und max_stretch_delta wirksam.
 
     # Detection sensitivity (minimum pitch deviation to correct, in %)
     DETECTION_THRESHOLD = {
@@ -294,18 +286,23 @@ class WowFlutterFix(PhaseInterface):
         *,
         polyphonic_fallback: bool = False,
     ) -> tuple[float, float]:
-        """Reduce timing aggression for content that is easy to damage.
+        """§G188–§G189 (GEBOTE.md), §7.4d (06_phases_system.md): Evidenzbasierte
+        Stärke-Skalierung + Warp-Sicherheitsgrenze.
 
-        Vocal-heavy vintage transfers are especially sensitive to articulation and
-        authenticity loss from even correct-but-strong time warping. Keep the
-        internal timing remap narrower than the outer PMGG strength alone would
-        allow.
+        Die wirksame Stärke skaliert AUSSCHLIESSLICH mit der Evidenzqualität
+        der Messung (Posterior-Zuverlässigkeit), nie mit festen Medium-/
+        Inhalts-Dämpfungs-Prozenten (§G188 (GEBOTE.md): feste konservative
+        Kappen sind verboten). max_stretch_delta bleibt die dokumentierte
+        Ausnahme §G189 (GEBOTE.md): Materialphysik begrenzt den Warp-Anstieg
+        pro Fenster gegen Schätz-Ausreißer — nie den Kompensationsgrad eines
+        gemessenen Defekts.
         """
-        strength_scale = 1.0
         max_stretch_delta = 0.05
+        # Evidenzqualität: mittlere Pitch-Konfidenz als Posterior der Messung
+        strength_scale = float(np.clip(mean_confidence, 0.0, 1.0))
 
+        # Dokumentierte Ausnahmen §G189 (GEBOTE.md): Warp-Sicherheitsgrenzen
         if vocals_confidence >= 0.40:
-            strength_scale *= 0.82
             max_stretch_delta = min(max_stretch_delta, 0.035)
 
         if (
@@ -319,17 +316,14 @@ class WowFlutterFix(PhaseInterface):
             }
             and mean_confidence < 0.75
         ):
-            strength_scale *= float(np.clip(0.82 + 0.20 * mean_confidence, 0.82, 0.97))
             max_stretch_delta = min(max_stretch_delta, 0.03)
         elif mean_confidence < 0.60:
-            strength_scale *= 0.90
             max_stretch_delta = min(max_stretch_delta, 0.04)
 
         if polyphonic_fallback:
-            # If the polyphonic speed estimator rejected the signal as implausible,
-            # stay in a narrow DSP-safe correction band. Continuing with the broader
-            # quality-mode path can drift tonal center on difficult analog vocals.
-            strength_scale *= 0.78
+            # Estimator-Implausibilität = schwächste Evidenzklasse: der
+            # Kompensationsgrad folgt der gesunkenen Posterior-Zuverlässigkeit.
+            strength_scale = min(strength_scale, 0.75)
             max_stretch_delta = min(max_stretch_delta, 0.02)
 
         return float(strength_scale), float(max_stretch_delta)
@@ -631,7 +625,10 @@ class WowFlutterFix(PhaseInterface):
 
         # Get material-specific parameters
         _mk = material.value if isinstance(material, MaterialType) else material  # §v10.113
-        strength = float(self.CORRECTION_STRENGTH.get(_mk, 0.7) * _effective_strength)  # type: ignore[call-overload]
+        # §G188 (GEBOTE.md): Kompensationsgrad folgt PMGG-Ziel × Lokalität —
+        # keine feste Material-Dämpfung mehr (Ausnahme-Mechanik §G189 bleibt in
+        # DETECTION_THRESHOLD und max_stretch_delta).
+        strength = float(_effective_strength)
         threshold = self.DETECTION_THRESHOLD.get(_mk, 0.5)  # type: ignore[call-overload]
 
         is_stereo = audio.ndim == 2
@@ -1192,6 +1189,16 @@ class WowFlutterFix(PhaseInterface):
             vocals_conf,
             polyphonic_fallback=_poly_fallback,
         )
+        # §G188 (GEBOTE.md) — Kompensationsgrad 1,0 bei belastbarer Deterministik:
+        # ein sauberer Sinus-Fit (r² ≥ 0,90) oder die Scanner+IF-Evidenzkette ist
+        # eine exakte Messung der Modulation — dann wird der GEMESSENE Defekt
+        # vollständig kompensiert, nicht pauschal gedämpft.
+        _wf2_fit_r2 = float(_sinusoidal_wow_profile.get("r2", 0.0) or 0.0)
+        _wf2_conclusive = (bool(_sinusoidal_wow_profile.get("applied", False)) and _wf2_fit_r2 >= 0.90) or (
+            str(_sinusoidal_wow_profile.get("witness", "")) == "scanner+if"
+        )
+        if _wf2_conclusive:
+            _timing_safe_strength_scale = 1.0
         _timing_safe_strength = float(np.clip(strength * _timing_safe_strength_scale, 0.0, max(0.15, strength)))
 
         if self._should_bypass_unsafe_polyphonic_fallback(
@@ -1284,17 +1291,22 @@ class WowFlutterFix(PhaseInterface):
         ):
             _wf_med = float(np.median(pitch_trajectory[pitch_trajectory > 0])) if np.any(pitch_trajectory > 0) else 0.0
             if _wf_med > 0.0:
+                # §G188 (GEBOTE.md): beide Komponenten werden VOLL kompensiert —
+                # keine festen „10 % aggressiver"/„30 % konservativer"-Faktoren;
+                # die Selektivität steckt in der Band-Trennung selbst. Die engere
+                # Warp-Delta-Kappe für schnelle Variationen bleibt als
+                # dokumentierte Ausnahme §G189 (Schutz gegen Schätz-Ausreißer).
                 _wow_stretch = self._calculate_stretch_factors(
                     (_wf_med * (1.0 + wow_component / 100.0)).astype(pitch_trajectory.dtype, copy=False),
                     confidence,
-                    _timing_safe_strength * 1.10,  # wow: 10 % more aggressive
+                    _timing_safe_strength,
                     max_stretch_delta=_max_stretch_delta,
                 )
                 _flutter_stretch = self._calculate_stretch_factors(
                     (_wf_med * (1.0 + flutter_component / 100.0)).astype(pitch_trajectory.dtype, copy=False),
                     confidence,
-                    _timing_safe_strength * 0.70,  # flutter: 30 % more conservative
-                    max_stretch_delta=_max_stretch_delta * 0.60,  # narrower delta for fast variations
+                    _timing_safe_strength,
+                    max_stretch_delta=_max_stretch_delta * 0.60,
                 )
                 # §AUTH-P12 (§v10.709-Befund 2026-09-08): Vibrato/Intonations-Bends der
                 # Performance sind authentischer Ausdruck — Flutter-Korrektur nur
@@ -1339,7 +1351,7 @@ class WowFlutterFix(PhaseInterface):
         # §WF-V2-Melodie-Guard-Kopplung: Hat der Melodie-Guard den F0-Stretch
         # abgelehnt (musikalische Spanne), darf die Versorgung NICHT anspringen.
         _wf2_fit_r2 = float(_sinusoidal_wow_profile.get("r2", 0.0) or 0.0)
-        if bool(_sinusoidal_wow_profile.get("applied", False)) and _wf2_fit_r2 >= 0.90:
+        if _wf2_conclusive:
             logger.info(
                 "§WF-V2 Konsens übersprungen: Sinus-Fit r²=%.2f trägt die Warp-Schätzung",
                 _wf2_fit_r2,
@@ -1384,8 +1396,8 @@ class WowFlutterFix(PhaseInterface):
             _left_ch, _right_ch = stereo_channel_view(audio)
             _mid_ch = (_left_ch.astype(np.float32) + _right_ch.astype(np.float32)) * 0.5
             _side_ch = (_left_ch.astype(np.float32) - _right_ch.astype(np.float32)) * 0.5
-            _mid_stretched = self._speed_warp_resample(_mid_ch, stretch_factors)
-            _side_stretched = self._speed_warp_resample(_side_ch, stretch_factors)
+            _mid_stretched = self._speed_warp_resample(_mid_ch, stretch_factors, sample_rate)
+            _side_stretched = self._speed_warp_resample(_side_ch, stretch_factors, sample_rate)
             # §2.51 Amplituden-Sicherheitsnetz: selbst kleinere Pegelsprünge
             # durch Warp-/Resample-Artefakte triggern MDEM/correct_arc auf eine
             # globale Makeup-Kaskade (Pegelexplosion Intro/Outro). Mid-RMS auf
@@ -1413,7 +1425,21 @@ class WowFlutterFix(PhaseInterface):
                 )
             restored = stereo_like(restored_left[:_p12_n], restored_right[:_p12_n], audio)
         else:
-            restored = self._speed_warp_resample(audio, stretch_factors)
+            restored = self._speed_warp_resample(audio, stretch_factors, sample_rate)
+
+        # §G188–§G189 (GEBOTE.md), §7.4d (06_phases_system.md) — Autonome
+        # Wirkungs-Kalibrierung, geschlossener Regelkreis: Restfehler der
+        # Transport-Modulation auf dem EIGENEN Ausgang nachmessen und bounded
+        # nachführen (max. ein Nachlauf, nie-schlechter, deterministisch).
+        _refine_hint_hz = float(_sinusoidal_wow_profile.get("frequency_hz", 0.0) or 0.0)
+        if _refine_hint_hz <= 0.0 and _wow_hint_hz_12 is not None:
+            _refine_hint_hz = float(_wow_hint_hz_12)
+        restored, _refine = self._closed_loop_warp_refine(
+            restored,
+            sample_rate=sample_rate,
+            hint_freq_hz=_refine_hint_hz,
+            max_stretch_delta=_max_stretch_delta,
+        )
 
         # §C3 Neural Phase Vocoder — post-stretch phase coherence restoration.
         # PSOLA/Phase-Vocoder time-stretching can introduce phase incoherence in
@@ -1461,14 +1487,15 @@ class WowFlutterFix(PhaseInterface):
                 )
             )
             if len(bump_locations) > 120:
-                # Bei vielen Bumps: Kassette/Tape-Material eher stärker reparieren
-                # (viele echte Laufwerks-Events), nicht abschwächen.
-                _material_for_bump = kwargs.get("material_type")
-                _mat_val_bump = getattr(_material_for_bump, "value", str(_material_for_bump)).lower()
-                if "cassette" in _mat_val_bump or "tape" in _mat_val_bump:
-                    _bump_strength = min(_bump_strength * 1.20, max(0.15, _timing_safe_strength))
-                else:
-                    _bump_strength *= 0.85
+                # §G188 (GEBOTE.md): keine festen Multiplikatoren je Material/
+                # Ereigniszahl (1,20/0,85) mehr — die Stärke folgt bereits der
+                # Evidenz (_timing_safe_strength × Konfidenz). Materialphysik
+                # wirkt über DETECTION_THRESHOLD/max_stretch_delta (§G189).
+                logger.debug(
+                    "Verarbeitungsschritt 12: %d Transport-Bumps — Stärke evidenzbasiert (%.3f)",
+                    len(bump_locations),
+                    _bump_strength,
+                )
             # Schutzzonen für per-Bump individuelle Stärke zusammenstellen (§0p Vocal-Supremacy)
             _p12_protected_zones: list[tuple[float, float, float]] = []
             for _z in kwargs.get("vibrato_zones") or []:
@@ -1615,6 +1642,7 @@ class WowFlutterFix(PhaseInterface):
             "ml_hybrid": use_ml_hybrid,
             "panns_vocals_confidence": vocals_conf,
             "threshold": threshold,
+            "closed_loop_refine": _refine,
             "stft_window": self.STFT_WINDOW_SIZE,
             "stft_hop": self.STFT_HOP_SIZE,
             "polyphonic_fallback": _poly_fallback,
@@ -1804,6 +1832,20 @@ class WowFlutterFix(PhaseInterface):
             peak_local = int(np.argmax(band_power))
             peak_index = int(band_indices[peak_local])
             peak_freq = float(freqs[peak_index])
+            # §G188 (GEBOTE.md): Frequenz-Feininterpolation (log-parabolisch
+            # über die drei Peak-Bins). Das rohe FFT-Raster lief bei kurzen
+            # Fenstern 1,026 statt 1,000 Hz — das Korrektursinus driftete
+            # phasenverschoben dagegen und löschte die Modulation nur zu ~70 %.
+            if 0 < peak_local < band_power.size - 1:
+                _a_bin = float(np.log(band_power[peak_local - 1] + 1e-30))
+                _b_bin = float(np.log(band_power[peak_local] + 1e-30))
+                _c_bin = float(np.log(band_power[peak_local + 1] + 1e-30))
+                _denom_bin = _a_bin - 2.0 * _b_bin + _c_bin
+                if abs(_denom_bin) > 1e-12:
+                    _df_bin = float(freqs[1] - freqs[0]) if freqs.size > 1 else 0.0
+                    peak_freq = float(
+                        freqs[peak_index] + np.clip(0.5 * (_a_bin - _c_bin) / _denom_bin, -1.0, 1.0) * _df_bin
+                    )
             dominance = float(band_power[peak_local] / (np.sum(band_power) + 1e-12))
             if dominance < 0.45:
                 return pitch_trajectory, profile
@@ -3954,7 +3996,7 @@ class WowFlutterFix(PhaseInterface):
             logger.debug("§WF-V2 nicht anwendbar (%s) — Trajektorie unverändert", _wf2_exc)
             return sf_samples
 
-    def _speed_warp_resample(self, audio: np.ndarray, stretch_factors: np.ndarray) -> np.ndarray:
+    def _speed_warp_resample(self, audio: np.ndarray, stretch_factors: np.ndarray, sample_rate: int) -> np.ndarray:
         """§WF-R1 Inverse Geschwindigkeits-Warp — variabel ratiges Resampling.
 
         Wow/Flutter ist ein Laufgeschwindigkeits-Defekt x_d(t) = x(φ(t)) mit
@@ -3973,10 +4015,20 @@ class WowFlutterFix(PhaseInterface):
         sf = np.clip(sf, 0.90, 1.10)
         if len(sf) == 1:
             sf_samples = np.full(n_samples, sf[0], dtype=np.float32)
+        elif len(sf) == n_samples:
+            sf_samples = sf  # bereits Sample-Raster
         else:
-            src_idx = np.linspace(0, n_samples - 1, len(sf), dtype=np.float32)
-            dst_idx = np.arange(n_samples, dtype=np.float32)
-            sf_samples = np.interp(dst_idx, src_idx, sf).astype(np.float32)
+            # §G188 (GEBOTE.md) Frame-Ausrichtung: die Schätzer referenzieren
+            # Frame k auf Sample k·hop (center=True-Konvention des Fensters).
+            # Die frühere linspace-Abbildung über die volle Länge verzerrte das
+            # Raster (1241 statt 1200 Samples/Frame) und verschob die Korrektur
+            # phasenverschoben dagegen (gemessen −18,7° bei 1 Hz → nur ~70 %
+            # statt ~99 % Auslöschung; Offset-Sweep: k·hop → Rest 1,7 statt 5,8).
+            _win = int(self.PITCH_WINDOW_MS * sample_rate / 1000)
+            _hop = max(1, _win // self.PITCH_HOP_FACTOR)
+            _pos = np.arange(len(sf), dtype=np.float64) * _hop
+            dst_idx = np.arange(n_samples, dtype=np.float64)
+            sf_samples = np.interp(dst_idx, _pos, sf.astype(np.float64)).astype(np.float32)
 
         try:
             from scipy.signal import savgol_filter
@@ -4035,6 +4087,109 @@ class WowFlutterFix(PhaseInterface):
             corrected = np.interp(src_pos, np.arange(n_samples, dtype=np.float32), audio_f)
         corrected = np.nan_to_num(corrected, nan=0.0, posinf=0.0, neginf=0.0)
         return corrected.astype(audio.dtype, copy=False)  # type: ignore[no-any-return]
+
+    def _closed_loop_warp_refine(
+        self,
+        restored: np.ndarray,
+        *,
+        sample_rate: int,
+        hint_freq_hz: float,
+        max_stretch_delta: float,
+    ) -> tuple[np.ndarray, dict[str, Any]]:
+        """§G188–§G189 (GEBOTE.md) — Autonome Wirkungs-Kalibrierung, geschlossener Regelkreis.
+
+        Misst die RESTLICHE Transport-Modulation auf dem eigenen Ausgang
+        (Teilband-IF-Messkanal, Matched-Fit bei bekannter Modulationsfrequenz)
+        und führt bei relevantem Restfehler einmal nach, bis das Optimum
+        erreicht ist. Nie-schlechter: der Nachlauf wird nur behalten, wenn die
+        gemessene Restmodulation tatsächlich sinkt (Hörordnung §8a). Bounded
+        (max. ein Nachlauf) und deterministisch (§G5 (copilot-instructions.md))
+        — das Optimum rechnet Aurik selbst, ohne manuelle Nachjustierung
+        (§G189 (GEBOTE.md)).
+        """
+        _info: dict[str, Any] = {
+            "applied": False,
+            "residual_before_cents": 0.0,
+            "residual_after_cents": 0.0,
+            "skipped_reason": "",
+        }
+
+        def _measure_residual(sig: np.ndarray) -> tuple[float, np.ndarray, np.ndarray]:
+            _mono = (
+                safe_to_mono(sig).astype(np.float32) if np.asarray(sig).ndim == 2 else np.asarray(sig, dtype=np.float32)
+            )
+            _p, _c = self._estimate_wow_track_subband(_mono, sample_rate, hint_freq_hz=float(hint_freq_hz))
+            if _p is None or len(_p) < 32:
+                # §G189 (GEBOTE.md) Messkanal-Fallback: der Teilband-IF-Kanal ist
+                # bei dünn besetztem Spektrum blind (< 4 valide Bänder, z. B.
+                # Einzeltöne) — dann misst der pYIN-Kanal den Restfehler.
+                _p, _c = self._estimate_pitch_yin(_mono, sample_rate)
+            if _p is None or len(_p) < 32:
+                return -1.0, np.zeros(1, dtype=np.float64), np.zeros(1, dtype=np.float64)
+            # §G188 (GEBOTE.md) Raster-Normierung: die Messkanäle liefern
+            # unterschiedliche Frame-Raster (pYIN 512er-Hop vs. 1200er-Kanon);
+            # der Fit rechnet im kanonischen Raster. Ohne Normierung verfehlt
+            # die Fit-Basis die Modulation (gemessen 0,7 statt 6 cents).
+            _win_m = int(self.PITCH_WINDOW_MS * sample_rate / 1000)
+            _hop_m = max(1, _win_m // self.PITCH_HOP_FACTOR)
+            _k_m = max(4, (len(_mono) - _win_m) // _hop_m + 1)
+            if len(_p) != _k_m:
+                _xs = np.linspace(0.0, 1.0, len(_p))
+                _xd = np.linspace(0.0, 1.0, _k_m)
+                _p = np.interp(_xd, _xs, np.asarray(_p, dtype=np.float64))
+                _c = np.interp(_xd, _xs, np.asarray(_c, dtype=np.float64))
+            _smoothed, _profile = self._fit_sinusoidal_wow_curve(
+                _p,
+                _c,
+                sample_rate,
+                hint_freq_hz=float(hint_freq_hz),
+            )
+            if not _profile.get("applied", False):
+                return -1.0, np.zeros(1, dtype=np.float64), np.zeros(1, dtype=np.float64)
+            return float(_profile.get("amplitude_cents", 0.0) or 0.0), _smoothed, _c
+
+        if hint_freq_hz <= 0.0:
+            _info["skipped_reason"] = "keine Modulationsfrequenz bekannt"
+            return restored, _info
+
+        _resid_before, _traj, _conf = _measure_residual(restored)
+        _info["residual_before_cents"] = _resid_before if _resid_before >= 0.0 else 0.0
+        if _resid_before <= 0.0:
+            _info["skipped_reason"] = "kein belastbarer Restfehler-Messkanal"
+            return restored, _info
+        if _resid_before < 1.5:
+            _info["skipped_reason"] = "Restfehler unter Relevanz-Schwelle"
+            _info["residual_after_cents"] = _resid_before
+            return restored, _info
+
+        _sf = self._calculate_stretch_factors(_traj, _conf, 1.0, max_stretch_delta=max_stretch_delta)
+        if float(np.max(np.abs(np.asarray(_sf, dtype=np.float64) - 1.0))) < 1e-4:
+            _info["skipped_reason"] = "Rest-Stretch vernachlässigbar"
+            _info["residual_after_cents"] = _resid_before
+            return restored, _info
+
+        if np.asarray(restored).ndim == 2:
+            _l, _r = stereo_channel_view(restored)
+            _candidate = stereo_like(
+                self._speed_warp_resample(_l, _sf, sample_rate),
+                self._speed_warp_resample(_r, _sf, sample_rate),
+                restored,
+            )
+        else:
+            _candidate = self._speed_warp_resample(restored, _sf, sample_rate)
+
+        _resid_after, _t2, _c2 = _measure_residual(_candidate)
+        _info["residual_after_cents"] = _resid_after if _resid_after >= 0.0 else _resid_before
+        if 0.0 <= _resid_after < _resid_before:
+            _info["applied"] = True
+            logger.info(
+                "§G188 (GEBOTE.md) Nachlauf: Restmodulation %.2f → %.2f cents",
+                _resid_before,
+                _resid_after,
+            )
+            return _candidate, _info
+        _info["skipped_reason"] = "Nachlauf ohne Verbesserung verworfen (nie-schlechter)"
+        return restored, _info
 
     def _apply_neural_phase_coherence(
         self, audio: np.ndarray, sample_rate: int, reference: np.ndarray | None = None

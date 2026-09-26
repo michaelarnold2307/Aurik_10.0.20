@@ -146,8 +146,14 @@ def main() -> int:
         "| ID | Kategorie | Titel | Status |",
         "|---|---|---|---|",
     ]
+
+    def _cell(value: str) -> str:
+        # Zell-Sanitisierung: Pipes aus Quelltexten (z. B. V28/V30-Titel mit
+        # „a | b") sprengen sonst die Markdown-Tabelle (MD056).
+        return str(value).replace("|", "¦").replace("\n", " ")
+
     for gid, kat, titel, status in rows:
-        lines.append(f"| {gid} | {kat} | {titel} | {status} |")
+        lines.append(f"| {_cell(gid)} | {_cell(kat)} | {_cell(titel)} | {_cell(status)} |")
 
     OUT.write_text("\n".join(lines) + "\n", encoding="utf-8")
     print(f"Matrix geschrieben: {OUT} ({len(rows)} IDs, {n_katalog} katalog)")
