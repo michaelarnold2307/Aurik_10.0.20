@@ -1080,6 +1080,39 @@ class WowFlutterFix(PhaseInterface):
                             float(_if_profile_12.get("amplitude_cents", 0.0)),
                             float(_if_profile_12.get("r2", 0.0)),
                         )
+                    else:
+                        # §7.4c Irregulärer Gemeinschafts-Drift (2026-09-26):
+                        # reales Band-Material („13 Tage“: 15 cents irregulärer
+                        # Drift) ist KEIN Sinus — der kohärent gewichtete
+                        # Gemeinschafts-Verlauf wird OHNE Sinus-Modell als
+                        # Warp-Trajektorie übernommen, wenn er tragfähig ist
+                        # (Spanne ≥ 3 cents, Kohärenz ≥ 0,55).
+                        _med_c12 = (
+                            float(np.median(_if_pitch_12[_if_pitch_12 > 0]))
+                            if bool(np.any(_if_pitch_12 > 0))
+                            else 440.0
+                        )
+                        _dev_c12 = 1200.0 * np.log2(np.maximum(_if_pitch_12, 1e-6) / max(_med_c12, 1e-6))
+                        _pkpk_12 = float(np.percentile(_dev_c12, 95) - np.percentile(_dev_c12, 5))
+                        _conf_mean_12 = float(np.mean(_if_conf_12))
+                        if _pkpk_12 >= 3.0 and _conf_mean_12 >= 0.55:
+                            pitch_trajectory = np.asarray(_if_pitch_12, dtype=pitch_trajectory.dtype)
+                            confidence = np.asarray(_if_conf_12, dtype=confidence.dtype)
+                            _sinusoidal_wow_profile = {
+                                "applied": True,
+                                "frequency_hz": float(_wow_hint_hz_12 or 0.0),
+                                "amplitude_cents": _pkpk_12 / 2.0,
+                                "r2": _conf_mean_12,
+                                "dominance": _conf_mean_12,
+                                "span_cents": _pkpk_12,
+                                "freq_source": "subband_common_track",
+                                "witness": "subband+common",
+                            }
+                            logger.info(
+                                "Verarbeitungsschritt 12 Gemeinschafts-Drift übernommen: span=%.1f cents, Kohärenz=%.2f",
+                                _pkpk_12,
+                                _conf_mean_12,
+                            )
             except Exception as _if_exc_12:
                 logger.debug("Verarbeitungsschritt 12 IF-Wow-Fit nicht blockierend: %s", _if_exc_12)
 
@@ -1198,7 +1231,7 @@ class WowFlutterFix(PhaseInterface):
         # vollständig kompensiert, nicht pauschal gedämpft.
         _wf2_fit_r2 = float(_sinusoidal_wow_profile.get("r2", 0.0) or 0.0)
         _wf2_conclusive = (bool(_sinusoidal_wow_profile.get("applied", False)) and _wf2_fit_r2 >= 0.90) or (
-            str(_sinusoidal_wow_profile.get("witness", "")) == "scanner+if"
+            str(_sinusoidal_wow_profile.get("witness", "")) in {"scanner+if", "subband+common"}
         )
         if _wf2_conclusive:
             _timing_safe_strength_scale = 1.0
@@ -3077,6 +3110,16 @@ class WowFlutterFix(PhaseInterface):
         mono = (safe_to_mono(audio) if audio.ndim == 2 else audio).astype(np.float64)
         if len(mono) < sample_rate * 4:
             return np.zeros(1, dtype=np.float64), np.zeros(1, dtype=np.float64)
+        # §G190 (GEBOTE.md) Laufzeit: Filterbank + Hilbert laufen auf einer
+        # 16-kHz-Arbeitsspur (Bänder ≤ 4 kHz) — Vollsongs brauchten sonst
+        # > 20 min je Messkanal. Zeitraster (fps = 4000/PITCH_WINDOW_MS)
+        # bleibt identisch.
+        if sample_rate > 16000:
+            from scipy.signal import resample_poly as _resample_poly_sb
+
+            _gcd_sb = int(np.gcd(16000, int(sample_rate)))
+            mono = _resample_poly_sb(mono, 16000 // _gcd_sb, int(sample_rate) // _gcd_sb).astype(np.float64)
+            sample_rate = 16000
 
         IF_WIN_MS = 50.0
         _nyq = sample_rate / 2.0
@@ -3190,9 +3233,49 @@ class WowFlutterFix(PhaseInterface):
             )
             return virtual_pitch, conf_res
 
-        _dev_masked = np.where(_val_stack > 0.5, _dev_stack, np.nan)
-        dev_track = np.nan_to_num(np.nanmedian(_dev_masked, axis=0), nan=0.0)
-        conf_track = np.clip(np.sum(_val_stack > 0.5, axis=0) / max(1, len(band_devs)), 0.0, 1.0)
+        # §7.4c Irregulärer Gemeinschafts-Drift (2026-09-26, „13 Tage“): reales
+        # Band-Material trägt ~15 cents IRREGULÄREN Transport-Drift — der
+        # Sinus-Fit lehnt zu Recht ab (r² < 0,31 in allen 121 Bändern), der
+        # Median über alle Bänder unterschätzte um ~3× (tote Bänder ≈ 0).
+        # Extraktion über die ERSTE HAUPTKOMPONENTE der zeilen-normierten
+        # Band-Matrix (auf 20 Hz verdichtet): die gemeinsame Drift-Form ist
+        # der dominante Korrelations-Modus — tote/Wild-Bänder tragen
+        # unkorreliertes Rauschen (±400-cents-Beating) und verschieben die
+        # Hauptkomponente nicht. √N-Gewinn wie im Matched-Pfad, ohne
+        # Sinus-Modell.
+        _dec_c = max(1, int(round(sample_rate / 20.0)))
+        _n_c = int(_dev_stack.shape[1]) // _dec_c
+        if _n_c < 16:
+            return np.zeros(1, dtype=np.float64), np.zeros(1, dtype=np.float64)
+        _dm_c = (
+            (_dev_stack[:, : _n_c * _dec_c] / np.maximum(_val_stack[:, : _n_c * _dec_c], 1e-3))
+            .reshape(_dev_stack.shape[0], _n_c, _dec_c)
+            .mean(axis=2)
+        )
+        _dm_c = np.where(
+            _val_stack[:, : _n_c * _dec_c].reshape(_dev_stack.shape[0], _n_c, _dec_c).mean(axis=2) > 0.5, _dm_c, 0.0
+        )
+        _med_c = np.median(_dm_c, axis=1, keepdims=True)
+        _mad_c = 1.4826 * np.median(np.abs(_dm_c - _med_c), axis=1, keepdims=True) + 1e-3
+        _z_c = (_dm_c - _med_c) / _mad_c
+        _gram = _z_c @ _z_c.T
+        _eig_w, _eig_v = np.linalg.eigh(_gram)
+        _top_b = _eig_v[:, -1]
+        _u_c = _top_b @ _z_c
+        _u_c = _u_c - float(np.mean(_u_c))
+        _u_c = _u_c / (float(np.linalg.norm(_u_c)) + 1e-12)
+        _proj_z = _z_c @ _u_c
+        _w_c = np.clip(_proj_z, 0.0, None) ** 2
+        if float(np.sum(_w_c)) <= 1e-9:
+            return np.zeros(1, dtype=np.float64), np.zeros(1, dtype=np.float64)
+        _amp_c = (_dm_c - _med_c) @ _u_c
+        _dev_ds = _u_c * (float(np.sum(_w_c * _amp_c) / (float(np.sum(_w_c)) + 1e-12)))
+        _coh_mean = float(np.mean(_w_c[_w_c > 0.25])) if bool(np.any(_w_c > 0.25)) else 0.0
+        # Auf volle Zeitauflösung zurückinterpolieren (Glättung folgt unten)
+        _t_ds = np.linspace(0.0, 1.0, _n_c)
+        _t_full = np.linspace(0.0, 1.0, _dev_stack.shape[1])
+        dev_track = np.interp(_t_full, _t_ds, _dev_ds).astype(np.float64)
+        conf_track = np.clip(0.50 + 0.45 * _coh_mean, 0.0, 0.95) * np.ones(dev_track.shape, dtype=np.float64)
         dev_track = dev_track - float(np.median(dev_track))  # Rest-Offset entfernen
         # Slow-Wow-Glättung (500 ms, IEC 60386 0,2–4 Hz): Akkordwechsel-Spitzen
         # (~10–50 ms) sind kein Slow-Wow — die Glättung unterdrückt sie, lässt
