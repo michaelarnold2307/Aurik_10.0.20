@@ -3124,16 +3124,25 @@ class WowFlutterFix(PhaseInterface):
         # Mechanismus, der im periodischen Pfad trägt. Messbarer Vorlauf:
         # Z-Scoring kippte auf Beating (GT-Korr 0,04), Energie-Selektion auf
         # Wild-Bänder (Amp 137 statt 6,9 cents).
-        _k_iv = np.ones(9) / 9.0  # ≈450 ms Tiefpass auf 20-Hz-Raster
-        _mean_s = np.convolve(np.pad(np.mean(_dm_c, axis=0), (4, 4), mode="edge"), _k_iv, mode="valid")
+        _k_iv = np.ones(31) / 31.0  # ≈1,55 s Tiefpass (GT-Befund: 450 ms ließ
+        # korreliertes Beating zu 14 % durch — das Zeilenmittel zeigte 17,4
+        # cents Beating-Rest statt Drift, corr zur Wahrheit −0,15). Erste
+        # Nullstelle ≈ 0,65 Hz: 5–50 Hz Beating → < 2 %, Drift 0,05–1 Hz → > 95 %.
+        _mean_s = np.convolve(np.pad(np.mean(_dm_c, axis=0), (15, 15), mode="edge"), _k_iv, mode="valid")
         _mean_s = _mean_s - float(np.median(_mean_s))
+        # Zeilen gegen die GEGlÄTTETE Form fitten (GT-Befund: rohe Zeilen
+        # drückte das Beating-Rauschen unter r²=0,3 — das Gate verweigerte
+        # alle tragenden Bänder und die Extraktion fiel auf Null).
+        _dm_s = np.stack(
+            [np.convolve(np.pad(_dm_c[_b], (15, 15), mode="edge"), _k_iv, mode="valid") for _b in range(_dm_c.shape[0])]
+        )
         if float(np.ptp(_mean_s)) < 1.0:
             return np.zeros(1, dtype=np.float64), np.zeros(1, dtype=np.float64)
         _den_u = float(np.dot(_mean_s, _mean_s)) + 1e-12
         _g_fit = np.zeros(_dm_c.shape[0], dtype=np.float64)
         _r2_fit = np.zeros(_dm_c.shape[0], dtype=np.float64)
         for _b_iv in range(_dm_c.shape[0]):
-            _row_iv = _dm_c[_b_iv] - float(np.median(_dm_c[_b_iv]))
+            _row_iv = _dm_s[_b_iv] - float(np.median(_dm_s[_b_iv]))
             _g_fit[_b_iv] = float(np.dot(_row_iv, _mean_s) / _den_u)
             _res_r2 = _row_iv - _g_fit[_b_iv] * _mean_s
             _var_r2 = float(np.dot(_row_iv, _row_iv)) + 1e-12

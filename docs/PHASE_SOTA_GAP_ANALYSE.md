@@ -589,3 +589,30 @@ einen adaptiven Tiefpass, der Beating (5–50 Hz) vollständig unterdrückt, ohn
 Drift > 0,3 Hz anzutasten; danach greift die bestehende Warp-Pipeline inkl.
 Never-worsen. Periodische Wow-/Flutter-Fälle (Sinus) sind über den gesamten
 Weg messend belegt (Ton 90 %, Akkord-Sinus 77 %).
+
+### Abschluss 2026-09-26 (Runde 2) — irreguläre Drift-Extraktion GT-bewiesen, Song-Defekt eingeengt
+
+**Extraktion geschlossen (Ground-Truth-bewiesen):** Der 1,55-s-Tiefpass
+(Nullstelle ≈ 0,65 Hz: Beating 5–50 Hz → < 2 %, Drift 0,05–1 Hz → > 95 %)
+plus Zeilen-Fit gegen die geglättete Form (r²-Selektion) + Gain-Rückgewinnung
+trägt jetzt irregulären Drift: GT Akkord-Musik + ±15-cents-Wanderung misst
+**37,6 → 4,2 cents (89 % Reduktion)** auf konsistenter Estimator-Metrik — vorher
+verschlimmerte jeder Versuch. Gate-Diagnose am Song-Fenster (instrumentiert):
+langsamer Gemeinschafts-Drift nur **3,65 cents ptp**, r² max 0,04 (kein Band
+folgt der langsamen Form) — die frühere 28-cents-„Spanne" war Beating-
+Kontamination der 450-ms-Variante.
+
+**Song-Defekt damit eingeengt (gemessen):** Der dominante Gehör-Defekt von
+„13 Tage" ist KEIN Slow-Wow, sondern **schnelle Modulation**: 8 Seitenbänder
+(Scanner sev=1,0, 68 dB über sehr tiefem Boden; Träger-Scan ±400 Hz zeigt sie
+erst ab > 15 Hz Abstand) ⇒ Flutter-Band. Die Phase-12-Trajektorie läuft mit
+40 fps (Nyquist 20 Hz) und bildet > 15 Hz strukturell nicht ab — zusammen mit
+dem speed_calibration_error (×7,6) ist das die letzte Architektur-Grenze.
+
+**Nächster Schritt (spezifiziert):** Sample-Rate-Flutter-Pfad — die Band-IF
+existiert bereits auf Sample-Auflösung (`_estimate_wow_track_subband`, 50-ms-
+Glättung muss auf ~5 ms für 15–50 Hz), und `_speed_warp_resample` akzeptiert
+bereits per-sample-Faktoren (len(sf)==n) — die Warp-Infrastruktur ist bereit,
+es fehlt nur die Messung der schnellen Modulation + deren Übernahme als
+per-sample-SF. Never-worsen (Hauptwarp-Vergleich) schützt den Song bereits
+jetzt vor Verschlechterung.
