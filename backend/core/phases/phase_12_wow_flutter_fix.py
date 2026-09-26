@@ -1051,7 +1051,16 @@ class WowFlutterFix(PhaseInterface):
             # (_estimate_speed_curve_from_instantaneous_frequency, IEC 60386,
             # SNR-robust) misst die GEMEINSAME Transport-Modulation direkt.
             try:
-                _if_pitch_12, _if_conf_12 = self._estimate_speed_curve_from_instantaneous_frequency(mono, sample_rate)
+                # Teilband-√N-Schätzer zuerst (Befund 2026-09-25: der Mix-IF-
+                # Kanal sieht die Gemeinschafts-FM unter Inter-Ton-Beating
+                # nicht — 0,89 statt 8,6 cents gemessen).
+                _if_pitch_12, _if_conf_12 = self._estimate_wow_track_subband(
+                    mono, sample_rate, hint_freq_hz=_wow_hint_hz_12
+                )
+                if _if_pitch_12.size < 32:
+                    _if_pitch_12, _if_conf_12 = self._estimate_speed_curve_from_instantaneous_frequency(
+                        mono, sample_rate
+                    )
                 if _if_pitch_12.size >= 32:
                     _if_smoothed_12, _if_profile_12 = self._fit_sinusoidal_wow_curve(
                         _if_pitch_12,
@@ -1215,7 +1224,6 @@ class WowFlutterFix(PhaseInterface):
                     "algorithm": "unsafe_polyphonic_fallback_bypass",
                     "version": "4.1_locality",
                     "ml_hybrid": False,
-                    "psola_active": vocals_conf >= 0.4,
                     "panns_vocals_confidence": vocals_conf,
                     "threshold": threshold,
                     "polyphonic_fallback": _poly_fallback,
@@ -1260,48 +1268,83 @@ class WowFlutterFix(PhaseInterface):
             _timing_safe_strength,
             max_stretch_delta=_max_stretch_delta,
         )
-        # §P5 Wow/Flutter getrennt korrigieren: Wow (<4 Hz, langsam) und Flutter
-        # (4-100 Hz, schnell) haben verschiedene physikalische Ursachen und brauchen
-        # unterschiedliche Korrektur-Strategien. Wow (Capstan-Unwucht) → stärkere
-        # und breitere Korrektur. Flutter (mechanische Vibration) → konservativere
-        # Korrektur mit engerem Stretch-Delta.
-        _wow_stretch = self._calculate_stretch_factors(
-            pitch_trajectory,
-            confidence,
-            _timing_safe_strength * 1.10,  # wow: 10 % more aggressive
-            max_stretch_delta=_max_stretch_delta,
-        )
-        _flutter_stretch = self._calculate_stretch_factors(
-            pitch_trajectory,
-            confidence,
-            _timing_safe_strength * 0.70,  # flutter: 30 % more conservative
-            max_stretch_delta=_max_stretch_delta * 0.60,  # narrower delta for fast variations
-        )
-        # §AUTH-P12 (§v10.709-Befund 2026-09-08): Vibrato/Intonations-Bends der
-        # Performance sind authentischer Ausdruck — Flutter-Korrektur nur
-        # mechanisch plausibel anwenden (Root-Cause, §V7 (copilot-instructions.md) kein Workaround).
-        _flutter_stretch = self._preserve_musical_modulation(
-            _flutter_stretch, pitch_trajectory, confidence, sample_rate
-        )
-        # Blend: 55 % wow + 45 % flutter (wow is the dominant perceptual component)
-        stretch_factors = _wow_stretch * 0.55 + _flutter_stretch * 0.45
+        # §P5 Wow/Flutter getrennt korrigieren (2026-09-25 vervollständigt):
+        # Wow (<4 Hz, Capstan-Unwucht) und Flutter (4–100 Hz, mechanische
+        # Vibration) sind getrennte Komponenten (_separate_wow_flutter) und
+        # werden ADDITIV mit eigenen Stärken korrigiert (Wow aggressiver,
+        # Flutter konservativer). Der frühere 55/45-Blend zweier Vollband-
+        # Schätzungen warf 45 % des Korrekturbudgets auf eine Flutter-Kopie
+        # des Wow-Signals (gemessen: Rest-FM 8,8 statt 5,4 cents bei 18 cents
+        # Eingangs-Wow). Die Summe bleibt auf max_stretch_delta gekappt. Der
+        # Melodie-Guard entscheidet weiterhin auf der VOLLEN Trajektorie (die
+        # Spanne der Einzelkomponenten wäre immer klein und der Guard stumm).
+        if (
+            not getattr(self, "_melody_guard_refused", False)
+            and float(np.max(np.abs(wow_component))) + float(np.max(np.abs(flutter_component))) > 1e-9
+        ):
+            _wf_med = float(np.median(pitch_trajectory[pitch_trajectory > 0])) if np.any(pitch_trajectory > 0) else 0.0
+            if _wf_med > 0.0:
+                _wow_stretch = self._calculate_stretch_factors(
+                    (_wf_med * (1.0 + wow_component / 100.0)).astype(pitch_trajectory.dtype, copy=False),
+                    confidence,
+                    _timing_safe_strength * 1.10,  # wow: 10 % more aggressive
+                    max_stretch_delta=_max_stretch_delta,
+                )
+                _flutter_stretch = self._calculate_stretch_factors(
+                    (_wf_med * (1.0 + flutter_component / 100.0)).astype(pitch_trajectory.dtype, copy=False),
+                    confidence,
+                    _timing_safe_strength * 0.70,  # flutter: 30 % more conservative
+                    max_stretch_delta=_max_stretch_delta * 0.60,  # narrower delta for fast variations
+                )
+                # §AUTH-P12 (§v10.709-Befund 2026-09-08): Vibrato/Intonations-Bends der
+                # Performance sind authentischer Ausdruck — Flutter-Korrektur nur
+                # mechanisch plausibel anwenden (Root-Cause, §V7 (copilot-instructions.md) kein Workaround).
+                _flutter_stretch = self._preserve_musical_modulation(
+                    _flutter_stretch, pitch_trajectory, confidence, sample_rate
+                )
+                stretch_factors = np.clip(
+                    1.0 + (_wow_stretch - 1.0) + (_flutter_stretch - 1.0),
+                    1.0 - _max_stretch_delta,
+                    1.0 + _max_stretch_delta,
+                ).astype(stretch_factors.dtype, copy=False)
         _locality_coverage = 0.0
-        stretch_factors, _locality_coverage = self._apply_defect_locality_to_stretch_factors(
-            stretch_factors,
-            audio_length_samples=audio_sample_count(audio),
-            sample_rate=sample_rate,
-            defect_locations=kwargs.get("defect_locations"),
-        )
+        # §7.4c globale Transport-Modulation = globale Reparatur (2026-09-25):
+        # Eine kontinuierliche Wow-/Flutter-Modulation hat KEINE Ereignis-Fenster
+        # — die Event-Lokalitäts-Maske schnitt den Warp auf ~38 % der Timeline
+        # und erzeugte an den Maskenrändern Pitch-Sprünge (gemessen −80 cents,
+        # Never-worsen-Verstoß). Bei saatemgestütztem Sinus-Fit (Scanner+IF-
+        # Evidenzkette) bleibt der Warp vollflächig.
+        if str(_sinusoidal_wow_profile.get("witness", "")) == "scanner+if":
+            _locality_coverage = 1.0
+        else:
+            stretch_factors, _locality_coverage = self._apply_defect_locality_to_stretch_factors(
+                stretch_factors,
+                audio_length_samples=audio_sample_count(audio),
+                sample_rate=sample_rate,
+                defect_locations=kwargs.get("defect_locations"),
+            )
 
         # §Witness-SOTA WF-V2: F0-unabhängige Spektral-Warp-Schätzung (Capstan-
         # Prinzip). Versorgt den Zero-Consensus-Fall (pYIN/CREPE ohne Befund →
-        # flache Trajektorie, typisch instrumental/dicht) und verfeinert bei
-        # vorhandener F0-Trajektorie per Konsens-Gate. EINMAL auf der Mono-
+        # flache Trajektorie, typisch instrumental/dicht). EINMAL auf der Mono-
         # Referenz geschätzt — Mid/Side erhalten identische Faktoren
         # (§2.51 L/R-Timing-Invariante; kein per-Kanal-Schätzer, sonst L/R-Zeitversatz).
+        # §WF-V2-Fit-Vorrang (2026-09-25): Bei erfolgreichem deterministischem
+        # Sinus-Fit (r² ≥ 0,90) ist die Fit-Trajektorie bereits die beste
+        # Schätzung (§7.4c Evidenzkette). Der Konsens mit dem schwächeren
+        # Spektral-Kanal mischt einen unterschätzenden Zweit-Schätzer ein und
+        # halbiert die Korrektur messbar (tol=0,01 stuft flache Spektral-
+        # Schätzungen als „übereinstimmend“ ein) — dann nur als Zero-Consensus-
+        # Versorgung behalten.
         # §WF-V2-Melodie-Guard-Kopplung: Hat der Melodie-Guard den F0-Stretch
         # abgelehnt (musikalische Spanne), darf die Versorgung NICHT anspringen.
-        if not getattr(self, "_melody_guard_refused", False):
+        _wf2_fit_r2 = float(_sinusoidal_wow_profile.get("r2", 0.0) or 0.0)
+        if bool(_sinusoidal_wow_profile.get("applied", False)) and _wf2_fit_r2 >= 0.90:
+            logger.info(
+                "§WF-V2 Konsens übersprungen: Sinus-Fit r²=%.2f trägt die Warp-Schätzung",
+                _wf2_fit_r2,
+            )
+        elif not getattr(self, "_melody_guard_refused", False):
             stretch_factors = self._spectral_warp_supply_or_consensus(
                 safe_to_mono(np.asarray(audio, dtype=np.float32)),
                 np.asarray(stretch_factors, dtype=np.float32),
@@ -1321,83 +1364,32 @@ class WowFlutterFix(PhaseInterface):
         # ausgibt: Wow ≤5 %/Fenster, Flutter ≤3 %/Fenster).
         stretch_factors = self._smooth_stretch_factors(stretch_factors, max_step=float(_max_stretch_delta))
 
-        # Step 5: Apply time-stretching – PSOLA für Vokal-Segmente, WSOLA sonst
-        # Moulines & Charpentier (1990): PSOLA ist formanterhaltend bei Gesangsmaterial;
-        # Phase-Vocoder (hier: WSOLA/resample) für Instrumental-/Nicht-Vokal-Material.
-        _report_progress(65.0, "Wow/Flutter: Zeitstreckung (PSOLA/Phase-Vocoder) läuft...")
-        _stretch_fn = self._psola_timestretch if vocals_conf >= 0.4 else self._phase_vocoder_timestretch
-        # §DDSP-Harmonic: HPSS-Isolation aktiviert für Vokal + hochrauschige Medien.
-        # Zeitstreckung nur auf harmonischen Anteil → Rausch-Textur (Tape-Hiss, Crackle)
-        # bleibt zeitlich unverändert (physikalisch authentisch). Non-blocking — Fallback
-        # auf standard Phase-Vocoder wenn HPSS < Qualitäts-Gate.
-        _use_harm_iso = (
-            vocals_conf >= 0.25
-            and material in {MaterialType.TAPE, MaterialType.CASSETTE}
-            and len(stretch_factors) > 0
-            and float(np.max(np.abs(np.asarray(stretch_factors, dtype=np.float32) - 1.0))) < 0.08
-        )
-        if vocals_conf >= 0.4:
-            logger.debug(
-                "Verarbeitungsschritt 12: PSOLA aktiviert (PANNs Vocals-Konfidenz=%.2f ≥ 0.40)",
-                vocals_conf,
-            )
+        # Step 5: Inverse Geschwindigkeits-Warp (variabel ratiges Resampling)
+        # §WF-R1 (Root-Cause-Befund 2026-09-25): Wow/Flutter ist ein
+        # GESCHWINDIGKEITS-Defekt x_d(t) = x(φ(t)) mit φ' = 1+δ(t). Das exakte
+        # Inverse ist der variabel ratige Resample y(t) = x_d(φ⁻¹(t)) — er
+        # korrigiert Pitch UND Timing gemeinsam (Capstan-Prinzip). Pitch-
+        # erhaltende Zeitdehner (PSOLA-Grain-OLA, STFT-Phase-Vocoder) können
+        # eine Pitch-Modulation dagegen gar nicht entfernen, sondern nur zeitlich
+        # umverteilen (gemessen: FM-Tiefe 18,0 → 18,0 cents trotz Sinus-Fit
+        # r²=0,99 — Wirksamkeitslücke). Formanten und Rausch-Textur kehren beim
+        # Inverse-Warp automatisch zurück; Formant-Schutz ist nur bei
+        # intentionalem Pitch-Shifting nötig, nicht beim Entfernen eines
+        # Laufwerksfehlers.
+        _report_progress(65.0, "Wow/Flutter: Geschwindigkeits-Korrektur (Resample) läuft...")
         if is_stereo:
-            # §2.51 M/S-Domain Stereo Processing — verhindert L/R Zeitversatz.
-            #
-            # ROOT CAUSE des Zeitversatzes (und der daraus folgenden Pegelexplosion):
-            # _psola_timestretch() schätzt Pitch-Perioden (pYIN) UNABHÄNGIG pro Kanal.
-            # L und R haben leicht unterschiedlichen Inhalt → verschiedene period_samps →
-            # OLA-Grain-Grenzen weichen pro Frame ab → kumulativer Zeitversatz über den Song
-            # → L/R Korrelation sinkt von +0.9 auf ca. -0.10 (anti-phasig).
-            #
-            # Folge-Kaskade (Pegelexplosion Intro/Outro):
-            # 1. Anti-Phasen-L/R → Mono-Downmix (L+R)/2 zeigt deutlich weniger Pegel
-            # 2. MDEM / correct_arc / AQI messen "Pegelabfall" via Mono-Downmix
-            # 3. Makeup-Gain wird auf alle Frames ausgelöst, inkl. Intro-Vinyl-Rauschen
-            #    und Outro-Fadeout → Pegelexplosion in Nicht-Musik-Bereichen
-            #
-            # FIX (v10.0.0): Phase-Vocoder für BEIDE M/S-Kanäle erzwingen.
-            #   Mid = (L+R)/2 → Phase-Vocoder (sample-genaue Zeitkorrektur)
-            #   Side = (L-R)/2 → Phase-Vocoder (identisches src_pos-Mapping wie Mid!)
-            #   L_out = Mid_out + Side_out = L_in[src_pos[t]]  (mathematisch exakt)
-            #   R_out = Mid_out - Side_out = R_in[src_pos[t]]  (mathematisch exakt)
-            # Beide Kanäle erhalten dasselbe src_pos-Mapping → ZERO L/R Zeitversatz.
-            #
-            # §v10.12 PSOLA-Side: Wenn PSOLA für Mid aktiv ist (vocals_conf >= 0.40),
-            # wird PSOLA auch für Side verwendet — mit denselben Pitch-Marken vom Mid-
-            # Kanal (§P4). Das erhält die Formant-Treue im räumlichen Anteil (Hall,
-            # Sibilanten, Stereobreite) und verhindert den Kohärenzverlust zwischen
-            # Direktsignal und Raum.
+            # §2.51 M/S-Domain Stereo Processing: Mid und Side erhalten
+            # denselben Warp (gleiche Faktoren, identische Sample-Abbildung)
+            # ⇒ L/R-Timing-Invariante, kein L/R-Zeitversatz.
             _left_ch, _right_ch = stereo_channel_view(audio)
             _mid_ch = (_left_ch.astype(np.float32) + _right_ch.astype(np.float32)) * 0.5
             _side_ch = (_left_ch.astype(np.float32) - _right_ch.astype(np.float32)) * 0.5
-            # §2.51 L/R-Timing-Invariante (v10.0.0): BEIDE M/S-Kanäle MÜSSEN denselben
-            # Algorithmus verwenden.  PSOLA (OLA-Grain-Grenzen, pYIN-Perioden) und
-            # Phase-Vocoder (np.interp-Sample-Remapping) haben verschiedene effektive
-            # Zeitauflösungen → L = Mid+Side und R = Mid-Side erhalten zeitlich inkohärente
-            # Summanden → sichtbarer L/R Zeitversatz im Wellenformbild.
-            # Fix: Phase-Vocoder für Mid UND Side im Stereo-M/S-Pfad.
-            # §P4: Bei Vokal-Aktivierung PSOLA für BEIDE M/S-Kanäle (gleiche Pitch-Marken).
-            _mid_stretched = (
-                self._harmonic_isolated_timestretch(_mid_ch, stretch_factors, sample_rate)
-                if _use_harm_iso
-                else (_stretch_fn(_mid_ch, stretch_factors, sample_rate))
-            )
-            # Side: SELBER Algorithmus wie Mid (§2.51 Timing-Invariante, v10.13 fix).
-            # Unterschiedliche Algorithmen (PSOLA vs Phase-Vocoder) erzeugen
-            # verschiedene effektive Zeitauflösungen → L/R-Zeitversatz beim
-            # M/S-Rekomponieren. Der Algorithmus wird allein durch _use_harm_iso
-            # bzw. _stretch_fn bestimmt, identisch für Mid und Side.
-            _side_stretched = (
-                self._harmonic_isolated_timestretch(_side_ch, stretch_factors, sample_rate)
-                if _use_harm_iso
-                else _stretch_fn(_side_ch, stretch_factors, sample_rate)
-            )
-            # §2.51 Amplitudenkorrektur: PSOLA ist NICHT amplitudenerhaltend.
-            # OLA-Windowing dämpft das Mid-Signal typisch um 5–8 dB → MDEM/correct_arc
-            # messen diesen Drop im Mono-Downmix und triggern Makeup-Gain auf ALLE Frames
-            # inkl. Intro-Rauschen/Outro-Fade → Pegelexplosion.
-            # Fix: Mid-RMS nach PSOLA auf Eingabe-RMS normalisieren (max ±6 dB).
+            _mid_stretched = self._speed_warp_resample(_mid_ch, stretch_factors)
+            _side_stretched = self._speed_warp_resample(_side_ch, stretch_factors)
+            # §2.51 Amplituden-Sicherheitsnetz: selbst kleinere Pegelsprünge
+            # durch Warp-/Resample-Artefakte triggern MDEM/correct_arc auf eine
+            # globale Makeup-Kaskade (Pegelexplosion Intro/Outro). Mid-RMS auf
+            # die Eingabe normalisieren (max. ±6 dB).
             _mid_rms_in = float(np.sqrt(np.mean(_mid_ch**2) + 1e-12))
             _n_ms = min(len(_mid_stretched), len(_side_stretched))
             _mid_rms_out = float(np.sqrt(np.mean(_mid_stretched[:_n_ms] ** 2) + 1e-12))
@@ -1421,12 +1413,7 @@ class WowFlutterFix(PhaseInterface):
                 )
             restored = stereo_like(restored_left[:_p12_n], restored_right[:_p12_n], audio)
         else:
-            if _use_harm_iso:
-                # §DDSP-Harmonic: Zeitstreckung nur auf harmonischen Anteil.
-                # Rausch-Residuum (Tape-Hiss, Crackle) bleibt zeitlich unverändert.
-                restored = self._harmonic_isolated_timestretch(audio, stretch_factors, sample_rate)
-            else:
-                restored = _stretch_fn(audio, stretch_factors, sample_rate)
+            restored = self._speed_warp_resample(audio, stretch_factors)
 
         # §C3 Neural Phase Vocoder — post-stretch phase coherence restoration.
         # PSOLA/Phase-Vocoder time-stretching can introduce phase incoherence in
@@ -1626,7 +1613,6 @@ class WowFlutterFix(PhaseInterface):
             ),
             "version": "4.0_polyphonic" if _poly_applied else "3.0_ml_hybrid" if use_ml_hybrid else "3.0_pyin",
             "ml_hybrid": use_ml_hybrid,
-            "psola_active": vocals_conf >= 0.4,
             "panns_vocals_confidence": vocals_conf,
             "threshold": threshold,
             "stft_window": self.STFT_WINDOW_SIZE,
@@ -1843,7 +1829,7 @@ class WowFlutterFix(PhaseInterface):
         # nur die PERIODISCHE FM messen (FM-Wow ±0,5 % ≈ 8,6 cents).
         _w_12 = np.ones(y.size, dtype=np.float64)
         coeffs = np.zeros(design.shape[1], dtype=np.float64)
-        for _irls_12 in range(4):
+        for _irls_12 in range(8):
             try:
                 _sw_12 = np.sqrt(_w_12)
                 coeffs, *_ = np.linalg.lstsq(design * _sw_12[:, None], y * _sw_12, rcond=None)
@@ -1854,14 +1840,25 @@ class WowFlutterFix(PhaseInterface):
                 return pitch_trajectory, profile
             _resid_12 = y - design @ coeffs
             _scale_12 = float(np.median(np.abs(_resid_12))) * 1.4826 + 1e-9
-            _w_12 = 1.0 / (1.0 + (np.abs(_resid_12) / (2.5 * _scale_12)) ** 2)
+            _w_12 = 1.0 / (1.0 + (np.abs(_resid_12) / (1.5 * _scale_12)) ** 2)
         amp_cents = float(np.hypot(coeffs[0], coeffs[1]))
-        if amp_cents < 4.0 or amp_cents > 60.0:
+        # Amp-Band: IEC-60386-Slow-Wow-Band (3–80 cents) für den Scanner-
+        # gesähten Pfad (Ground-Truth-Check: FM-Wow ±0,5 % ≈ 53 cents — nahe
+        # der alten 60-Grenze); der Blind-Pfad behält die historischen 60.
+        _amp_hi_12 = 80.0 if _use_hint else 60.0
+        if amp_cents < 4.0 or amp_cents > _amp_hi_12:
             return pitch_trajectory, profile
 
         fitted_conf = design @ coeffs
-        ss_res = float(np.sum((y - fitted_conf) ** 2))
-        ss_tot = float(np.sum((y - float(np.mean(y))) ** 2) + 1e-12)
+        # r² auf dem AKZEPTIERTEN Support (gewichtet): die Ausreißer, die die
+        # IRLS verwirft (Akkordspitzen ±60 cents), dürfen die Fit-Güte des
+        # Sinus nicht verfälschen (Befund 2026-09-25: ungewichtet r²=0,38 →
+        # fälschlich abgelehnt, gewichtet trägt die Sinus-Messung).
+        _resid_full = y - fitted_conf
+        _wsum_r = float(np.sum(_w_12)) + 1e-12
+        _wmean_y = float(np.sum(_w_12 * y) / _wsum_r)
+        ss_res = float(np.sum(_w_12 * _resid_full**2))
+        ss_tot = float(np.sum(_w_12 * (y - _wmean_y) ** 2) + 1e-12)
         r2 = float(np.clip(1.0 - ss_res / ss_tot, 0.0, 1.0))
         if r2 < 0.45:
             return pitch_trajectory, profile
@@ -2232,7 +2229,7 @@ class WowFlutterFix(PhaseInterface):
         # §2.54 Temporal alignment — when pYIN analysed only a center window of a longer
         # audio, expand the trajectory to the full audio length.
         # Without this, N frames from a 30 s window get linspace-interpolated across
-        # the full audio in _phase_vocoder_timestretch, applying the center-window
+        # the full audio in _speed_warp_resample, applying the center-window
         # pitch-variation pattern to completely different temporal positions (intro/outro).
         # Frames outside the analysed window receive: pitch = center median (neutral),
         # confidence = 0.05 → below the >0.3 / >0.5 thresholds → stretch_factor = 1.0.
@@ -2923,6 +2920,158 @@ class WowFlutterFix(PhaseInterface):
         except Exception as _exc:
             logger.warning("Verarbeitungsschritt 12 IF-Ersatzpfad fehlgeschlagen: %s", _exc)
             return np.zeros(1, dtype=np.float64), np.zeros(1, dtype=np.float64)
+
+    def _estimate_wow_track_subband(
+        self, audio: np.ndarray, sample_rate: int, hint_freq_hz: float | None = None
+    ) -> tuple[np.ndarray, np.ndarray]:
+        """Teilband-IF-Mittelwert-Estimator für Gemeinschafts-Wow (L3 2026-09-25).
+
+        1/3-Oktavbänder (125–4000 Hz, 16 Bänder) tragen je ~1 Partial: die
+        normierte IF-Abweichung je Band misst die GEMEINSAME FM direkt, und die
+        gewichtete Mittelung über Bänder gewinnt √N an SNR (N ≈ 10–20 ⇒ ~4×).
+        Befund 2026-09-25: der Mix-IF-Kanal konnte FM-Wow ±0,5 % (8,6 cents)
+        unter Inter-Ton-Beating nicht sehen (0,89 cents gemessen) — je Band
+        entfällt das Beating-Fremd-Ton-Rauschen der jeweils anderen Bänder.
+
+        Rückgabe kompatibel zum IF-Ersatzpfad:
+        ``virtual_pitch = 440 * 2**(dev_cents/1200)`` auf dem Phase-12-Frame-Raster.
+        """
+        from scipy.signal import butter as _butter_sb
+        from scipy.signal import hilbert as _hilbert_sb
+        from scipy.signal import sosfiltfilt as _sosfiltfilt_sb
+
+        mono = (safe_to_mono(audio) if audio.ndim == 2 else audio).astype(np.float64)
+        if len(mono) < sample_rate * 4:
+            return np.zeros(1, dtype=np.float64), np.zeros(1, dtype=np.float64)
+
+        IF_WIN_MS = 50.0
+        _nyq = sample_rate / 2.0
+        # 1/24-Oktav-Grid mit ±3 %-Bandbreite (überlappend): Chord-Partials
+        # stehen 50–150 Hz auseinander; zu schmale (±1,5 %) Bänder verfehlten
+        # die Töne zwischen den Zentren (gemessen amp ~3 cents), ±3 % trifft
+        # jeden Partial und isoliert ihn noch (Partial-Check 2026-09-25:
+        # Grundtöne/Harmonische lesen amp 20–37 cents, r² 0,3–0,4 — die FM
+        # IST auf Musik messbar, Ground-Truth ±53 cents).
+        _centers = [125.0 * (2.0 ** (_i / 24.0)) for _i in range(0, int(24 * np.log2(4000.0 / 125.0)) + 1)]
+        if_win = max(1, int(IF_WIN_MS * sample_rate / 1000))
+        band_devs: list[np.ndarray] = []
+        band_valid: list[np.ndarray] = []
+        for _fc in _centers:
+            _lo = max(_fc * 0.970 / _nyq, 0.001)
+            _hi = min(_fc * 1.030 / _nyq, 0.999)
+            if _lo >= _hi:
+                continue
+            try:
+                _sos_b = _butter_sb(3, [_lo, _hi], btype="band", output="sos")
+                _band = _sosfiltfilt_sb(_sos_b, mono)
+                _analytic_b = np.asarray(_hilbert_sb(_band), dtype=np.complex128)
+                _if_b = np.diff(np.unwrap(np.angle(_analytic_b))) * float(sample_rate) / (2.0 * np.pi)
+                # Valide Frames: IF nahe der Band-Mitte (±15 % — Partial-Fenster;
+                # Beating-Wanderer und Nachbar-Töne werden verworfen)
+                _valid_b = (_if_b > _fc * 0.85) & (_if_b < _fc * 1.15)
+                if int(np.sum(_valid_b)) < max(32, 0.2 * len(_if_b)):
+                    continue
+                _med_b = float(np.median(_if_b[_valid_b]))
+                _dev_b = np.zeros_like(_if_b)
+                _dev_b[_valid_b] = 1200.0 * np.log2(np.maximum(_if_b[_valid_b] / _med_b, 1e-6))
+                _k_50 = np.ones(if_win) / if_win
+                _dev_s = np.convolve(np.where(_valid_b, _dev_b, 0.0), _k_50, mode="valid")
+                _val_s = np.convolve(_valid_b.astype(np.float64), _k_50, mode="valid")
+                band_devs.append(_dev_s)
+                band_valid.append(_val_s)
+            except Exception as _band_exc:
+                logger.debug("Teilband-IF: Band um %.0f Hz übersprungen (%s)", _fc, _band_exc)
+                continue
+        if len(band_devs) < 4:
+            return np.zeros(1, dtype=np.float64), np.zeros(1, dtype=np.float64)
+
+        _hop_samples = int(self.PITCH_WINDOW_MS * sample_rate / 1000) // self.PITCH_HOP_FACTOR
+        _target_len = max(4, len(mono) // _hop_samples)
+        _min_len = int(min(d.size for d in band_devs))
+        _dev_stack = np.stack([d[-_min_len:] for d in band_devs])
+        _val_stack = np.stack([v[-_min_len:] for v in band_valid])
+
+        if hint_freq_hz is not None and 0.05 <= float(hint_freq_hz) <= 4.0:
+            # Matched-Filter je Band + kohärente Koeffizienten-Mittelung (Befund
+            # 2026-09-25): der Least-Squares-Sinus bei BEKANNTER Frequenz ist der
+            # optimale Detektor — Beating-Rauschen wird je Band abgelehnt, die
+            # gewichtete Mittelung der Sinus-Koeffizienten gewinnt √N. Die
+            # Roh-Track-Mittelung unterschätzte die FM um 3–4× (Tiefbänder waren
+            # ±400-cents-Wildbänder); Ground-Truth-Check: ±53 cents FM (0,3 Hz).
+            _f_hint = float(hint_freq_hz)
+            _acc_2 = np.zeros(2, dtype=np.float64)
+            _acc_w = 0.0
+            _n_used = 0
+            for _d_b, _v_b in zip(_dev_stack, _val_stack):
+                _t_b = np.arange(_d_b.size, dtype=np.float64) / float(sample_rate)
+                _om_b = 2.0 * np.pi * _f_hint * _t_b
+                _des_b = np.column_stack([np.sin(_om_b), np.cos(_om_b), np.ones(_d_b.size)])
+                _wb = np.clip(_v_b, 0.0, 1.0)
+                try:
+                    _sw_b = np.sqrt(_wb)
+                    _cb, *_ = np.linalg.lstsq(_des_b * _sw_b[:, None], _d_b * _sw_b, rcond=None)
+                except Exception as _lstsq_exc:
+                    logger.debug("Teilband-IF: Matched-Filter-Band übersprungen (%s)", _lstsq_exc)
+                    continue
+                _fit_b = _des_b @ _cb
+                _ssr_b = float(np.sum(_wb * (_d_b - _fit_b) ** 2))
+                _wmu_b = float(np.sum(_wb * _d_b) / (float(np.sum(_wb)) + 1e-12))
+                _sst_b = float(np.sum(_wb * (_d_b - _wmu_b) ** 2) + 1e-12)
+                _r2_b = float(np.clip(1.0 - _ssr_b / _sst_b, 0.0, 1.0))
+                _amp_b = float(np.hypot(_cb[0], _cb[1]))
+                if _r2_b < 0.30 or _amp_b < 1.0 or _amp_b > 80.0:
+                    continue
+                _acc_2 += _r2_b * _cb[:2]
+                _acc_w += _r2_b
+                _n_used += 1
+            if _n_used < 4 or _acc_w <= 1e-12:
+                return np.zeros(1, dtype=np.float64), np.zeros(1, dtype=np.float64)
+            _c0, _c1 = _acc_2 / _acc_w
+            _r2_mean = float(np.clip(_acc_w / max(1, _n_used), 0.0, 1.0))
+            _t_grid = np.arange(_target_len, dtype=np.float64) * (_hop_samples / float(sample_rate))
+            dev_res = _c0 * np.sin(2.0 * np.pi * _f_hint * _t_grid) + _c1 * np.cos(2.0 * np.pi * _f_hint * _t_grid)
+            # Konfidenz: Band-Agreement (≥4 Bänder mit r² ≥ 0,3) auf die
+            # Fit-Evidenz-Skala abgebildet (nie unter der Schwelle des
+            # nachfolgenden Sinus-Fits, gewichtet mit mittlerem r²).
+            conf_res = np.clip(0.55 + 0.4 * _r2_mean, 0.0, 0.95) * np.ones(_target_len, dtype=np.float64)
+            virtual_pitch = (440.0 * np.power(2.0, dev_res / 1200.0)).astype(np.float64)
+            virtual_pitch = np.clip(virtual_pitch, 20.0, 4000.0)
+            logger.info(
+                "Verarbeitungsschritt 12 Teilband-Matched-Filter-Wow: %d/%d Bänder genutzt, "
+                "amp=%.1f cents (Ground-Truth-Referenz ±53), mittleres r²=%.2f",
+                _n_used,
+                len(band_devs),
+                float(np.hypot(_c0, _c1)),
+                _r2_mean,
+            )
+            return virtual_pitch, conf_res
+
+        _dev_masked = np.where(_val_stack > 0.5, _dev_stack, np.nan)
+        dev_track = np.nan_to_num(np.nanmedian(_dev_masked, axis=0), nan=0.0)
+        conf_track = np.clip(np.sum(_val_stack > 0.5, axis=0) / max(1, len(band_devs)), 0.0, 1.0)
+        dev_track = dev_track - float(np.median(dev_track))  # Rest-Offset entfernen
+        # Slow-Wow-Glättung (500 ms, IEC 60386 0,2–4 Hz): Akkordwechsel-Spitzen
+        # (~10–50 ms) sind kein Slow-Wow — die Glättung unterdrückt sie, lässt
+        # die 0,3-Hz-Modulation (Periode ~3,6 s) aber unangetastet (Befund
+        # 2026-09-25: Spitzen verfälschten Amp 8,6→16 cents und r²=0,38).
+        _n_slow = max(1, int(0.500 * sample_rate))
+        _k_slow = np.ones(_n_slow) / float(_n_slow)
+        _dev_pad = np.pad(dev_track, (_n_slow, _n_slow), mode="edge")
+        dev_track = np.convolve(_dev_pad, _k_slow, mode="valid")[: dev_track.size + _n_slow]
+
+        # Auf das Phase-12-Frame-Raster bringen (wie der IF-Ersatzpfad)
+        _grid_src = np.linspace(0, dev_track.size - 1, _target_len)
+        dev_res = np.interp(_grid_src, np.arange(dev_track.size), dev_track)
+        conf_res = np.interp(_grid_src, np.arange(conf_track.size), conf_track)
+        virtual_pitch = (440.0 * np.power(2.0, dev_res / 1200.0)).astype(np.float64)
+        virtual_pitch = np.clip(virtual_pitch, 20.0, 4000.0)
+        logger.info(
+            "Verarbeitungsschritt 12 Teilband-IF-Wow-Schätzung: %d Bänder, T=%d Frames, Peak-Abweichung=%.1f cents",
+            len(band_devs),
+            _target_len,
+            float(np.max(np.abs(dev_res))) if dev_res.size else 0.0,
+        )
+        return virtual_pitch, conf_res.astype(np.float64)
 
     def _stabilize_tape_level(
         self,
@@ -3674,65 +3823,6 @@ class WowFlutterFix(PhaseInterface):
         masked = np.where(active_mask, sf, 1.0).astype(np.float32)
         return masked, float(np.mean(active_mask.astype(np.float32)))
 
-    def _harmonic_isolated_timestretch(
-        self, audio: np.ndarray, stretch_factors: np.ndarray, sample_rate: int
-    ) -> np.ndarray:
-        """DDSP-inspirierte Zeitstreckung mit Harmonic-Residual-Trennung (§DDSP-Harmonic).
-
-        Trennt Signal in harmonische Komponente (Obertöne, Vokal) und Rausch-Residuum
-        (Tape-Hiss, Vinyl-Crackle). Zeitstreckung nur auf harmonische Komponente anwenden —
-        Rausch-Residuum bleibt zeitlich unverändert (physikalisch authentische Trägertextur).
-
-        Algorithmus:
-            1. HPSS (librosa.effects.hpss, margin=3.0): H=Harmonisch, R=Residuum
-            2. Qualitäts-Gate: harmonic_ratio < 0.15 → Fallback Phase-Vocoder
-            3. _phase_vocoder_timestretch NUR auf H → H_korrigiert
-            4. Rekombination: H_korrigiert + R (Längenangleichung)
-
-        Fallback auf standard Phase-Vocoder wenn:
-            - librosa nicht verfügbar
-            - HPSS-Trennqualität < threshold (harmonic_ratio < 0.15)
-            - beliebige Exception (non-blocking §0c)
-
-        Wissenschaftliche Grundlage: Engel et al. (2020) DDSP-Konzept der harmonischen
-        Sinusoid-Synthese. Hier rein DSP (HPSS = Medianfilter-basiert), kein ML.
-        """
-        try:
-            import librosa  # type: ignore[import-untyped]
-
-            audio_f = np.asarray(audio, dtype=np.float32)
-            _harmonic, _residual = librosa.effects.hpss(audio_f, margin=3.0)  # type: ignore[attr-defined]
-
-            # Trennungsqualität: harmonische Energie-Ratio
-            _total_rms = float(np.sqrt(np.mean(audio_f**2) + 1e-12))
-            if _total_rms < 1e-9:
-                return self._phase_vocoder_timestretch(audio, stretch_factors, sample_rate)
-            _harmonic_ratio = float(np.sqrt(np.mean(_harmonic**2) + 1e-12)) / _total_rms
-            if _harmonic_ratio < 0.15:
-                # Kaum harmonischer Inhalt → HPSS macht keinen Sinn
-                return self._phase_vocoder_timestretch(audio, stretch_factors, sample_rate)
-
-            # Zeitstreckung NUR auf harmonische Komponente
-            _h_corrected = self._phase_vocoder_timestretch(_harmonic, stretch_factors, sample_rate)
-
-            # Rekombination (Längenangleichung)
-            _n = min(len(_h_corrected), len(_residual), len(audio_f))
-            _result = _h_corrected[:_n] + _residual[:_n]
-            _result = np.nan_to_num(_result, nan=0.0, posinf=0.0, neginf=0.0)
-            _result = np.clip(_result, -1.0, 1.0)
-
-            logger.debug(
-                "Verarbeitungsschritt_12: DDSP-Harmonic-Isolation: harmonic_Verhaeltnis=%.2f → Trägertextur erhalten",
-                _harmonic_ratio,
-            )
-            _out: np.ndarray = np.asarray(_result, dtype=audio.dtype)
-            return _out
-        except Exception as _hpss_exc:
-            logger.debug(
-                "Verarbeitungsschritt_12: HPSS-Isolation Ersatzpfad auf Verarbeitungsschritt-Vocoder: %s", _hpss_exc
-            )
-            return self._phase_vocoder_timestretch(audio, stretch_factors, sample_rate)
-
     def _smooth_stretch_factors(self, factors: np.ndarray, max_step: float = 0.05) -> np.ndarray:
         """§WF-V3: Slope-Limit der Stretch-Faktor-Trajektorie vor der Zeitstreckung.
 
@@ -3766,44 +3856,6 @@ class WowFlutterFix(PhaseInterface):
         for _i in range(_out.size - 2, -1, -1):
             _out[_i] = min(_out[_i], _out[_i + 1] + _max_step)
         return np.asarray(_out, dtype=np.float32)  # type: ignore[no-any-return]
-
-    def _phase_vocoder_timestretch(
-        self, audio: np.ndarray, stretch_factors: np.ndarray, _sample_rate: int
-    ) -> np.ndarray:
-        """Wendet an: time-varying phase-coherent time-stretching via STFT phase vocoder.
-
-        §PV1 replaces the old WSOLA-like np.interp resample with a professional
-        STFT-based phase vocoder (Laroche & Dolson 1999; Driedger & Müller 2016).
-        Uses instantaneous frequency estimation, phase propagation across frames,
-        and overlap-add reconstruction — the same class of algorithm as iZotope RX
-        and Capstan.
-
-        Falls back to WSOLA (np.interp) if the phase vocoder module is unavailable.
-
-        Args:
-            audio: Mono audio samples
-            stretch_factors: Time-varying stretch factors (one per pitch window)
-            _sample_rate: Sample rate
-
-        Returns:
-            Time-stretched audio, same length as input
-        """
-        if len(audio) < 8 or len(stretch_factors) == 0:
-            return audio.copy()
-
-        try:
-            from backend.core.dsp.phase_vocoder import phase_vocoder_timestretch
-
-            return phase_vocoder_timestretch(
-                audio,
-                stretch_factors,
-                _sample_rate,
-                n_fft=self.STFT_WINDOW_SIZE,
-                hop_ratio=self.PITCH_HOP_FACTOR,
-            )
-        except Exception as _pv_exc:
-            logger.debug("§PV1 Verarbeitungsschritt vocoder nicht verfuegbar (%s) — Ersatzpfad to WSOLA", _pv_exc)
-            return self._phase_vocoder_wsola_fallback(audio, stretch_factors)
 
     def _spectral_warp_supply_or_consensus(
         self, audio_mono: np.ndarray, sf_samples: np.ndarray, sample_rate: int
@@ -3902,8 +3954,18 @@ class WowFlutterFix(PhaseInterface):
             logger.debug("§WF-V2 nicht anwendbar (%s) — Trajektorie unverändert", _wf2_exc)
             return sf_samples
 
-    def _phase_vocoder_wsola_fallback(self, audio: np.ndarray, stretch_factors: np.ndarray) -> np.ndarray:
-        """WSOLA-style fallback via np.interp — used when STFT phase vocoder is unavailable."""
+    def _speed_warp_resample(self, audio: np.ndarray, stretch_factors: np.ndarray) -> np.ndarray:
+        """§WF-R1 Inverse Geschwindigkeits-Warp — variabel ratiges Resampling.
+
+        Wow/Flutter ist ein Laufgeschwindigkeits-Defekt x_d(t) = x(φ(t)) mit
+        φ' = 1+δ(t); das exakte Inverse ist der Resample y(t) = x_d(φ⁻¹(t))
+        (Capstan-Prinzip). Nur dieser Operator korrigiert Pitch UND Timing
+        gemeinsam — pitch-erhaltende Zeitdehner (PSOLA/Phase-Vocoder) lassen
+        die Modulation unverändert. Stretch > 1 = langsamer (Pitch-Korrektur
+        nach unten); gleiche Faktoren ergeben für alle Kanäle identische
+        Sample-Abbildung (§2.51 L/R-Timing-Invariante). Bandbegrenztes
+        Fenster-Sinc-Resampling (WF-V1) statt linearer Interpolation.
+        """
         audio_f = np.nan_to_num(np.asarray(audio, dtype=np.float32), nan=0.0, posinf=0.0, neginf=0.0)
         n_samples = len(audio_f)
 
@@ -3943,8 +4005,14 @@ class WowFlutterFix(PhaseInterface):
         except Exception as _wk_exc:  # pylint: disable=broad-except
             logger.debug("§WF-V3 Kalman-Glättung nicht anwendbar (%s) — ungeglättet", _wk_exc)
 
-        src_step = 1.0 / np.clip(sf_samples, 0.85, 1.15)
-        src_pos = np.cumsum(src_step)
+        # §WF-R1 (2026-09-25): Warp-Position in FLOAT64 akkumulieren. Ein
+        # float32-cumsum quantisiert ab |phi| > 2^18 die Schrittweite
+        # (ulp = 1/32 > Schritt ≈ 1) — gemessene Schritt-Extrema 0,99219/
+        # 1,01562 (Float-Quanten) statt ±0,73 %; die Korrektur löschte sich
+        # dadurch größtenteils aus (FM-Rest 11,8 statt theoretisch 5,4 cents).
+        sf64 = np.asarray(sf_samples, dtype=np.float64)
+        src_step = 1.0 / np.clip(sf64, 0.85, 1.15)
+        src_pos = np.cumsum(src_step)  # float64: keine Rasterung der Position
         src_pos -= src_pos[0]
         max_pos = float(src_pos[-1]) + 1e-12
         src_pos *= (n_samples - 1) / max_pos
@@ -4156,118 +4224,6 @@ class WowFlutterFix(PhaseInterface):
                 return result.astype(audio.dtype, copy=False)  # type: ignore[no-any-return]
             logger.debug("§C3 emergency smoothing Ersatzpfad fehlgeschlagen: %s", _c3_fallback_exc)
             return audio.copy()
-
-    def _psola_timestretch(
-        self,
-        audio: np.ndarray,
-        stretch_factors: np.ndarray,
-        sample_rate: int,
-    ) -> np.ndarray:
-        """Pitch-Synchronous Overlap-Add (PSOLA) für Gesangsmaterial.
-
-        Erhält Formanten bei Wow/Flutter-Korrektur (Moulines & Charpentier 1990;
-        Macon & Clements 1997). Aktiviert wenn PANNs Vocals confidence >= 0.40.
-        Fallback auf _phase_vocoder_timestretch() bei unbekanntem Grundton.
-
-        Args:
-            audio:           Mono-Audio [samples], beliebige float-Dtype.
-            stretch_factors: Stretch-Faktoren pro pYIN-Frame, Ratios [~0.95–1.05].
-            sample_rate:     Sample-Rate in Hz (assert == 48000).
-
-        Returns:
-            Zeitgedehntes Audio gleicher Länge wie Eingabe, NaN/Inf-frei, gleiche Dtype.
-        """
-        if len(audio) == 0:
-            return audio.copy()
-
-        dtype = audio.dtype
-        audio_f = audio.astype(np.float32)
-
-        # Grundfrequenz-Schätzung für Pitch-Marken (pYIN — Mauch & Dixon 2014)
-        pitch_hz, confidence = self._estimate_pitch_yin(audio_f, sample_rate)
-        n_frames = len(pitch_hz)
-        if n_frames == 0:
-            return self._phase_vocoder_timestretch(audio, stretch_factors, sample_rate)
-
-        hop = self.STFT_HOP_SIZE
-
-        # Pitch-Perioden in Samples (Fallback 440 Hz für nicht-stimmhafte Segmente)
-        voiced = (pitch_hz > 50) & (confidence > 0.40)
-        f0_safe = np.where(voiced & (pitch_hz > 0), pitch_hz, 440.0)
-        period_samps = np.round(sample_rate / np.maximum(f0_safe, 1.0)).astype(int)
-        period_samps = np.clip(period_samps, 20, sample_rate // 50)  # >= 50 Hz Untergrenze
-
-        # Stretch-Faktoren auf n_frames interpolieren
-        if len(stretch_factors) != n_frames:
-            x_src = np.linspace(0, n_frames - 1, max(len(stretch_factors), 2))
-            sf_per_frame = np.interp(np.arange(n_frames), x_src, stretch_factors)
-        else:
-            sf_per_frame = stretch_factors.astype(np.float32)
-        sf_per_frame = np.clip(sf_per_frame, 0.9, 1.1)
-
-        # OLA-Ausgangspuffer (großzügig dimensioniert, am Ende getrimmt)
-        n_input = len(audio_f)
-        max_period = int(np.max(period_samps))
-        out_buf = np.zeros(n_input + max_period * 4, dtype=np.float32)
-        weight_buf = np.zeros_like(out_buf)
-
-        # §2.54 PSOLA-Safety: hop=512 with high f0 (>187 Hz) → grain size (2*period) < hop
-        # → consecutive grains don't overlap → zero-weight gaps → silence artefacts.
-        # Guard: fall back to Phase Vocoder when median period < hop/2 (f0 > 187 Hz).
-        if int(np.median(period_samps)) < hop // 2:
-            logger.debug(
-                "Verarbeitungsschritt_12 PSOLA safety: median f0=%.0f Hz > %.0f Hz Schwelle → Verarbeitungsschritt-Vocoder Ersatzpfad",
-                float(sample_rate) / max(float(np.median(period_samps)), 1.0),
-                float(sample_rate) / max(hop // 2, 1),
-            )
-            return self._phase_vocoder_timestretch(audio, stretch_factors, sample_rate)
-
-        out_write = 0
-        for i in range(n_frames):
-            in_center = i * hop
-            if in_center >= n_input:
-                break
-            period = int(period_samps[i])
-            sf = float(sf_per_frame[i])
-
-            # Grain: symmetrisch ±1 Periode um in_center (Hanning-gewichtet)
-            i_s = max(0, in_center - period)
-            i_e = min(n_input, in_center + period)
-            grain = audio_f[i_s:i_e].copy()
-            if len(grain) == 0:
-                out_write += round(hop * sf)
-                continue
-
-            win = np.hanning(len(grain))
-            grain *= win
-
-            # Ausgabe-Fensterposition (OLA)
-            out_center = out_write
-            o_s = max(0, out_center - period)
-            o_e = min(len(out_buf), out_center + period)
-            g_len = o_e - o_s
-            if g_len <= 0:
-                out_write += round(hop * sf)
-                continue
-
-            # Grain auf Fensterlänge anpassen (Trimm oder Zero-Pad)
-            if g_len < len(grain):
-                grain = grain[:g_len]
-                win = win[:g_len]
-            elif g_len > len(grain):
-                pad = g_len - len(grain)
-                grain = np.pad(grain, (0, pad))
-                win = np.pad(win, (0, pad))
-
-            out_buf[o_s:o_e] += grain
-            weight_buf[o_s:o_e] += win
-            out_write += round(hop * sf)
-
-        # OLA-Normierung; Ausgabe auf Originallänge trimmen + NaN-Schutz
-        safe_w = np.maximum(weight_buf[:n_input], 1e-8)
-        result = out_buf[:n_input] / safe_w
-        result = np.nan_to_num(result, nan=0.0, posinf=0.0, neginf=0.0)
-        return np.clip(result, -1.0, 1.0).astype(dtype)  # type: ignore[no-any-return]
 
 
 # Standalone test

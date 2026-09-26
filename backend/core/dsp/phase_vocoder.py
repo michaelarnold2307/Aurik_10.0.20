@@ -1,8 +1,12 @@
 """§PV1 Professional Phase Vocoder — STFT-based time-stretching with phase coherence.
 
-Replaces the WSOLA-like _phase_vocoder_timestretch in Phase 12 with a proper
-STFT phase vocoder (Flanagan & Golden 1966; Laroche & Dolson 1999; Driedger
-& Müller 2016 TSM Toolbox).
+Pitch-erhaltender Zeitdehner (Flanagan & Golden 1966; Laroche & Dolson 1999;
+Driedger & Müller 2016 TSM Toolbox). VERTRAGS-GRENZE: dieser Operator ändert
+Tonhöhe NICHT, er dehnt nur die Zeitachse. Die Wow/Flutter-Korrektur in
+Phase 12 braucht das exakte Gegenteil — den variabel ratigen Resample
+(_speed_warp_resample in phase_12_wow_flutter_fix) — und darf nicht hierher
+zurückverdrahtet werden (Produktionsbefund 2026-09-25: FM-Tiefe 18,0 →
+18,0 cents, Korrektur wirkungslos).
 
 Algorithm:
   - STFT with Hann window, n_fft=2048, 75 % overlap
@@ -36,10 +40,9 @@ _MAX_STRETCH: float = 1.10
 # und die Hüllkurve modulierte auf Musik bis p95 ≈ 6,7 dB — der
 # Reinhör-Witness flaggte im 225-s-Lauf genau das („pitch_instability“).
 # Ohne Lock (reiner Laroche/Dolson): exakt 440,00 Hz, flache Hüllkurve
-# (max/min 1,01), p95 ≈ 2,7 dB. Wow/Flutter-Korrektur nutzt winzige
-# Stretch-Verhältnisse (≤ ±10 %, typisch ≤ ±2 %) — dafür ist der
-# ungelockte Phasen-Vocoder das etablierte Werkzeug (Lock ist für große
-# musikalische TSM-Stretches gedacht).
+# (max/min 1,01), p95 ≈ 2,7 dB. Kleine Stretch-Verhältnisse (≤ ±10 %,
+# typisch ≤ ±2 %) brauchen keinen Lock — er ist für große musikalische
+# TSM-Stretches gedacht.
 _IDENTITY_PHASE_LOCK_MAX_HZ: float = 0.0  # 0 = deaktiviert (Evidenz s. o.)
 
 

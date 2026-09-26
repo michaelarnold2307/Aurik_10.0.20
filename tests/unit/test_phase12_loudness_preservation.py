@@ -170,11 +170,11 @@ def test_phase12_process_applies_defect_locality_before_timestretch(monkeypatch)
 
     captured: dict[str, np.ndarray] = {}
 
-    def _fake_stretch(x: np.ndarray, stretch_factors: np.ndarray, _sample_rate: int) -> np.ndarray:
+    def _fake_warp(x: np.ndarray, stretch_factors: np.ndarray) -> np.ndarray:
         captured["stretch_factors"] = np.asarray(stretch_factors, dtype=np.float32).copy()
         return np.asarray(x, dtype=np.float32).copy()
 
-    monkeypatch.setattr(phase, "_phase_vocoder_timestretch", _fake_stretch)
+    monkeypatch.setattr(phase, "_speed_warp_resample", _fake_warp)
 
     result = phase.process(
         audio,

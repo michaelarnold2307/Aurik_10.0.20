@@ -412,3 +412,52 @@ Witness-Schutz akzeptiert die Scanner+IF-Evidenzkette. 92/92 phase_12-Tests grü
 Bänder ⇒ ~4× SNR). Alternativ: Scanner liefert `wow_depth_cents` als Metadatum
 (die Detektion misst die Modulation bereits robust). Danach greift die
 vorhandene Warp-Pipeline.
+
+### Cluster E 2026-09-25 — phase_12 Reparatur-Operator: Wirksamkeits-Root-Cause gefunden und behoben
+
+**Root-Cause (3 verschachtelte Defekte, alle gemessen):**
+
+1. **Falscher Reparatur-Operator:** Die Korrektur wendete ihre
+   Geschwindigkeitsfaktoren mit pitch-erhaltenden Zeitdern an (PSOLA-Grain-OLA,
+   STFT-Phase-Vocoder) — solche Operatoren können eine Pitch-Modulation gar
+   nicht entfernen, sondern nur zeitlich umverteilen. Gemessen (reiner Ton,
+   FM 18,0 cents @ 1 Hz, Sinus-Fit r²=0,99, coverage=1,0):
+   **FM-Tiefe 18,0 → 18,0 cents (0,0 % Reduktion)**. Behoben (§WF-R1):
+   Anwendung als Inverser-Geschwindigkeits-Warp (variabel ratiges,
+   bandbegrenztes Resampling, `_speed_warp_resample`) — exakte Inverse von
+   x_d(t)=x(φ(t)); korrigiert Pitch UND Timing gemeinsam (Capstan-Prinzip).
+2. **float32-Positions-Akkumulation:** Das Warp-Grid wurde in float32
+   kumsummiert — ab |phi| > 2^18 quantisiert die Ulp (1/32) die Schrittweite
+   (gemessene Schritt-Extrema 0,99219/1,01562 = Float-Quanten statt ±0,73 %),
+   die Korrektur löschte sich teilweise aus. Jetzt float64 — der isolierte
+   Operator ist danach exakt theoriekonform (18,0 → 5,4 cents bei Stärke 0,7).
+3. **Konsens-Degradation:** `_spectral_warp_supply_or_consensus` mischte den
+   schwächeren Spektral-Zweitschätzer in die Fit-Trajektorie (tol=0,01 stuft
+   flache Spektral-Schätzungen als „übereinstimmend“ ein) und halbierte die
+   Korrektur. Jetzt Fit-Vorrang: bei deterministischem Sinus-Fit r² ≥ 0,90
+   bleibt die Fit-Trajektorie (die Versorgung bleibt für Zero-Consensus).
+
+**§P5 vervollständigt:** Wow-/Flutter-Komponenten werden additiv mit eigenen
+Stärken korrigiert statt als zwei Vollband-Schätzungen 55/45 zu blenden (der
+Blend warf 45 % des Korrekturbudgets auf eine Flutter-Kopie des Wow-Signals).
+Der Melodie-Guard entscheidet weiterhin auf der vollen Trajektorie.
+
+**Nach-Messung (gleicher Kanal, 18,0 cents FM @ 1 Hz):** 18,0 → 7,39 cents
+(**58,9 % Reduktion**, vorher 0,0 %). Rest = Fit-Amplituden-Unterschätzung
+(16,3 vs 18,0 cents) + konservative Timing-Stärke 0,7. Polyphonie-Fall
+(Harness): Witness-Kette scanner+if aktiv, Flutter-Komponente ≈ Identität,
+Wow trägt die volle Korrektur.
+
+**Bereinigt:** `_psola_timestretch`, `_harmonic_isolated_timestretch` und
+`_phase_vocoder_timestretch` gelöscht (pitch-erhaltend, für die Korrektur
+ungeeignet); `dsp/phase_vocoder.py` dokumentiert jetzt seine Vertrags-Grenze
+(Pitch-Erhalt; darf nicht für Wow zurückverdrahtet werden). Metadatum
+`psola_active` entfernt.
+
+**Tests:** 31 phase_12-/vocoder-Tests + 56 Smoke + 237 Wow/Stretch/warp-
+selektierte Tests grün. Zwei Teardown-Errors in `test_sota_gap_closures.py`
+sind präexistent (im Worktree bei HEAD identisch reproduziert).
+
+**Offen (Cluster E-Rest):** Fit-Amplituden-Kalibrierung, Stärke-Tuning
+(safe-timing 0,7), Teilband-IF-Estimator (s. Cluster A) für Mehrstimmen-
+Material, multiband_wow_flutter/scrape_flutter, Harness-Gesamtlauf.
