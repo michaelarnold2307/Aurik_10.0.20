@@ -524,3 +524,31 @@ Alle 15 gemeldeten Stellen migriert (Phasen 14/17/20/23/24/27/28/40/55):
 
 **Gate-Report nach Migration:** „keine blockierenden Stärke-Kappen im
 Phasen-Kern" — repo-weiter Altbestand null. Tests: 1223 betroffene Tests grün.
+
+### Cluster A-Finale 2026-09-26 — Teilband-IF √N-Frequenzscan: Gemeinschafts-FM auf Musik blind messbar
+
+**Problem (dokumentierte Messkanal-Grenze):** Auf 4-Akkord-Musik ohne
+Scanner-Saat maß die Blind-Rohspur nur 20,1 der 53 cents Ground-Truth — die
+Reparatur lief auf Musik ohne Scanner-Hinweis nie an (Konsens-Trajektorie
+Noten-Rauschen ±1000 cents, Mix-IF 0,89 cents).
+
+**Lösung:** kohärenter √N-Frequenzscan (`_scan_subband_modulation_frequency`)
+— die Transport-Modulation verschiebt ALLE Teilbänder in Phase, das
+Inter-Ton-Beating-Rauschen je Band nicht. Pro Kandidat-Frequenz läuft der
+Matched-Filter je Band mit r²-/Amp-Gate (tote Bänder ohne Partial tragen sonst
+nur Rauschen), die kohärente Summe der Sinus-Koeffizienten gewinnt √N
+(Grob-Grid 0,05–4 Hz + Fein-Scan 0,002 Hz + Parabel-Interpolation). Danach
+läuft der bewährte Matched-Pfad bei geschätzter Frequenz.
+
+**Verdrahtung:** der Teilband-Fallback greift jetzt auch OHNE Scanner-Saat
+(vorher `elif hint is not None`); der Restfehler-Messkanal des geschlossenen
+Regelkreises sucht bei Fehlschlag blind nach (Residuum trägt ggf. eine andere
+Frequenzlage) und fällt auf Blind-Fit/pYIN zurück.
+
+**Ergebnis (4-Akkord-Musik, GT 53 cents FM @ 0,3 Hz):** Blind-Messung
+20,1 → **49,1 cents (r²=1,00)**, Hint-Referenz 49,2. End-to-End greift die
+Reparatur: **49,2 → 11,4 cents (77 %)**; Fit angewandt (r²=0,9999). Der
+Nachlauf misst nun ebenfalls (15,97) und verwirft Verschlechterungen korrekt
+(Never-worsen, gemessen 34,4 → verworfen). Regression Ton-Kanal unverändert
+(90,8 %). Tests: 34 grün, neuer Blind-Scan-Regressionstest (Akkord-Synthese,
+Amp 42–66, f ≈ 0,3 ± 0,02, r² ≥ 0,9).

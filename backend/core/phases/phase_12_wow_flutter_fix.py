@@ -1040,8 +1040,11 @@ class WowFlutterFix(PhaseInterface):
                 float(_sinusoidal_wow_profile.get("amplitude_cents", 0.0)),
                 float(_sinusoidal_wow_profile.get("r2", 0.0)),
             )
-        elif _wow_hint_hz_12 is not None:
-            # §7.4c Scanner-Konsultation, Messkanal-Wechsel: die Konsens-
+        else:
+            # §7.4c Cluster-A-Finale (2026-09-26): der Teilband-Kanal läuft
+            # jetzt auch OHNE Scanner-Saat — sein kohärenter √N-Frequenzscan
+            # findet die Modulationsfrequenz selbst (Befund 4-Akkord-Musik:
+            # Blind 20,1 → 49,1 cents, Hint 49,2, GT 53). Die Konsens-
             # Trajektorie ist auf Akkord-Musik reines Noten-Rauschen
             # (Befund 2026-09-25: ±1000 cents Streuung vs. ±8,6 cents FM-Signal
             # — Sinus-/Trend-/IRLS-Fit lehnen korrekt ab). Der Hilbert-IF-Kanal
@@ -2963,6 +2966,95 @@ class WowFlutterFix(PhaseInterface):
             logger.warning("Verarbeitungsschritt 12 IF-Ersatzpfad fehlgeschlagen: %s", _exc)
             return np.zeros(1, dtype=np.float64), np.zeros(1, dtype=np.float64)
 
+    @staticmethod
+    def _scan_subband_modulation_frequency(
+        dev_stack: np.ndarray, val_stack: np.ndarray, sample_rate: int
+    ) -> float | None:
+        """§7.4c Cluster-A-Finale: kohärenter √N-Frequenzscan der Gemeinschafts-FM.
+
+        Die Transport-Modulation verschiebt ALLE Teilbänder IN PHASE; das
+        Beating-Fremd-Ton-Rauschen je Band ist unkorreliert. Pro Kandidat-
+        Frequenz läuft der Matched-Filter je Band mit r²-/Amp-Gate (wie im
+        Hint-Pfad — tote Bänder ohne Partial tragen sonst nur Rauschen) und
+        die kohärente Summe der Sinus-Koeffizienten gewinnt √N: FM wächst mit
+        N, Rauschen nur mit √N. Rückgabe: Frequenz des Kohärenz-Peaks
+        (parabolisch verfeinert) oder None (Score < 3 cents).
+        """
+        if dev_stack.ndim != 2 or dev_stack.shape[0] < 4:
+            return None
+        _dec = max(1, int(round(sample_rate / 20.0)))
+        _n_blk = int(dev_stack.shape[1]) // _dec
+        if _n_blk < 32:
+            return None
+        _d = (
+            np.asarray(dev_stack[:, : _n_blk * _dec], dtype=np.float64)
+            .reshape(dev_stack.shape[0], _n_blk, _dec)
+            .mean(axis=2)
+        )
+        _c = (
+            np.asarray(val_stack[:, : _n_blk * _dec], dtype=np.float64)
+            .reshape(val_stack.shape[0], _n_blk, _dec)
+            .mean(axis=2)
+        )
+        # Bedingte Mittel-Spur (dev ≈ coverage × mean) je Band
+        _y_all = np.where(_c > 0.5, _d / np.maximum(_c, 1e-3), 0.0)
+        _w_all = np.clip(_c, 0.0, 1.0)
+        _t = np.arange(_n_blk, dtype=np.float64) * (_dec / float(sample_rate))
+
+        def _score_at(_f: float) -> float:
+            _des = np.column_stack([np.sin(2.0 * np.pi * _f * _t), np.cos(2.0 * np.pi * _f * _t), np.ones(_n_blk)])
+            _acc = np.zeros(2, dtype=np.float64)
+            _wsum = 0.0
+            _n_used = 0
+            for _b in range(_y_all.shape[0]):
+                _wb = _w_all[_b]
+                if float(np.sum(_wb > 0.5)) < _n_blk // 3:
+                    continue
+                _y = _y_all[_b]
+                try:
+                    _sw = np.sqrt(_wb)
+                    _cb, *_ = np.linalg.lstsq(_des * _sw[:, None], _y * _sw, rcond=None)
+                except Exception as _scan_lsq_exc:
+                    logger.debug("Teilband-Scan: Band %d bei %.3f Hz übersprungen (%s)", _b, _f, _scan_lsq_exc)
+                    continue
+                _fit_b = _des @ _cb
+                _ssr_b = float(np.sum(_wb * (_y - _fit_b) ** 2))
+                _wmu_b = float(np.sum(_wb * _y) / (float(np.sum(_wb)) + 1e-12))
+                _sst_b = float(np.sum(_wb * (_y - _wmu_b) ** 2) + 1e-12)
+                _r2_b = float(np.clip(1.0 - _ssr_b / _sst_b, 0.0, 1.0))
+                _amp_b = float(np.hypot(_cb[0], _cb[1]))
+                if _r2_b < 0.30 or _amp_b < 1.0 or _amp_b > 80.0:
+                    continue
+                _acc += _r2_b * _cb[:2]
+                _wsum += _r2_b
+                _n_used += 1
+            if _n_used < 4 or _wsum <= 1e-12:
+                return 0.0
+            return float(np.hypot(_acc[0], _acc[1]) / _wsum)
+
+        _freqs = np.linspace(0.05, 4.0, 129)
+        _scores = np.array([_score_at(float(_f)) for _f in _freqs], dtype=np.float64)
+        _pk = int(np.argmax(_scores))
+        _best_s = float(_scores[_pk])
+        if _best_s < 3.0:
+            return None
+        _f_peak = float(_freqs[_pk])
+        # Fein-Scan um den Peak (±0,04 Hz, 0,002-Schritte): die Grob-Raster-
+        # Parabel liefert ±0,008 Hz — bei 15 s Laufzeit 0,12 Zyklen Drift und
+        # ~15 % Amplituden-Verlust im nachfolgenden Matched-Pfad.
+        _fine = np.linspace(max(0.05, _f_peak - 0.04), min(4.0, _f_peak + 0.04), 41)
+        _fscores = np.array([_score_at(float(_f)) for _f in _fine], dtype=np.float64)
+        _pk2 = int(np.argmax(_fscores))
+        _f_peak = float(_fine[_pk2])
+        if 0 < _pk2 < _fscores.size - 1:
+            _a = float(_fscores[_pk2 - 1])
+            _b2 = float(_fscores[_pk2])
+            _c2 = float(_fscores[_pk2 + 1])
+            _den = _a - 2.0 * _b2 + _c2
+            if abs(_den) > 1e-12:
+                _f_peak += float(np.clip(0.5 * (_a - _c2) / _den, -1.0, 1.0)) * float(_fine[1] - _fine[0])
+        return _f_peak
+
     def _estimate_wow_track_subband(
         self, audio: np.ndarray, sample_rate: int, hint_freq_hz: float | None = None
     ) -> tuple[np.ndarray, np.ndarray]:
@@ -3033,14 +3125,24 @@ class WowFlutterFix(PhaseInterface):
         _dev_stack = np.stack([d[-_min_len:] for d in band_devs])
         _val_stack = np.stack([v[-_min_len:] for v in band_valid])
 
-        if hint_freq_hz is not None and 0.05 <= float(hint_freq_hz) <= 4.0:
+        _use_hint_72 = hint_freq_hz is not None and 0.05 <= float(hint_freq_hz) <= 4.0
+        if not _use_hint_72:
+            # §7.4c Cluster-A-Finale (2026-09-26): Blind-Frequenz über den
+            # KOHÄRENTEN √N-Frequenzscan — danach läuft der bewährte
+            # Matched-Filter-Pfad bei geschätzter Frequenz (Befund auf
+            # 4-Akkord-Musik: Blind-Rohspur 20,1 statt 53 cents, Matched 49,2).
+            _f_scan_72 = self._scan_subband_modulation_frequency(_dev_stack, _val_stack, sample_rate)
+            if _f_scan_72 is not None:
+                hint_freq_hz = _f_scan_72
+                _use_hint_72 = True
+        if _use_hint_72:
             # Matched-Filter je Band + kohärente Koeffizienten-Mittelung (Befund
             # 2026-09-25): der Least-Squares-Sinus bei BEKANNTER Frequenz ist der
             # optimale Detektor — Beating-Rauschen wird je Band abgelehnt, die
             # gewichtete Mittelung der Sinus-Koeffizienten gewinnt √N. Die
             # Roh-Track-Mittelung unterschätzte die FM um 3–4× (Tiefbänder waren
             # ±400-cents-Wildbänder); Ground-Truth-Check: ±53 cents FM (0,3 Hz).
-            _f_hint = float(hint_freq_hz)
+            _f_hint = float(hint_freq_hz or 0.0)
             _acc_2 = np.zeros(2, dtype=np.float64)
             _acc_w = 0.0
             _n_used = 0
@@ -4120,6 +4222,11 @@ class WowFlutterFix(PhaseInterface):
             )
             _p, _c = self._estimate_wow_track_subband(_mono, sample_rate, hint_freq_hz=float(hint_freq_hz))
             if _p is None or len(_p) < 32:
+                # §G189 (GEBOTE.md): der Restfehler kann neben der Fit-Frequenz
+                # liegen (Residuum aus Fit-Frequenz vs. echter FM) — Blind-Suche
+                # (der √N-Scan findet die dominante Modulation selbst).
+                _p, _c = self._estimate_wow_track_subband(_mono, sample_rate, hint_freq_hz=None)
+            if _p is None or len(_p) < 32:
                 # §G189 (GEBOTE.md) Messkanal-Fallback: der Teilband-IF-Kanal ist
                 # bei dünn besetztem Spektrum blind (< 4 valide Bänder, z. B.
                 # Einzeltöne) — dann misst der pYIN-Kanal den Restfehler.
@@ -4127,12 +4234,11 @@ class WowFlutterFix(PhaseInterface):
             if _p is None or len(_p) < 32:
                 return -1.0, np.zeros(1, dtype=np.float64), np.zeros(1, dtype=np.float64)
             # §G188 (GEBOTE.md) Raster-Normierung: die Messkanäle liefern
-            # unterschiedliche Frame-Raster (pYIN 512er-Hop vs. 1200er-Kanon);
-            # der Fit rechnet im kanonischen Raster. Ohne Normierung verfehlt
-            # die Fit-Basis die Modulation (gemessen 0,7 statt 6 cents).
+            # unterschiedliche Frame-Raster (pYIN 512er-Hop vs. kanonisch
+            # win/4) — der Fit rechnet im Estimator-Raster (len // hop).
             _win_m = int(self.PITCH_WINDOW_MS * sample_rate / 1000)
             _hop_m = max(1, _win_m // self.PITCH_HOP_FACTOR)
-            _k_m = max(4, (len(_mono) - _win_m) // _hop_m + 1)
+            _k_m = max(4, len(_mono) // _hop_m)
             if len(_p) != _k_m:
                 _xs = np.linspace(0.0, 1.0, len(_p))
                 _xd = np.linspace(0.0, 1.0, _k_m)
@@ -4144,6 +4250,9 @@ class WowFlutterFix(PhaseInterface):
                 sample_rate,
                 hint_freq_hz=float(hint_freq_hz),
             )
+            if not _profile.get("applied", False):
+                # Blind-Fit: die Restmodulation trägt ihre eigene Frequenz.
+                _smoothed, _profile = self._fit_sinusoidal_wow_curve(_p, _c, sample_rate)
             if not _profile.get("applied", False):
                 return -1.0, np.zeros(1, dtype=np.float64), np.zeros(1, dtype=np.float64)
             return float(_profile.get("amplitude_cents", 0.0) or 0.0), _smoothed, _c

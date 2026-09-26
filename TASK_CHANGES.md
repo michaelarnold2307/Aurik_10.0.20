@@ -1,26 +1,14 @@
 # TASK_CHANGES — Live-Ledger der aktuellen Aufgabe
 
-> Generiert von `scripts/change_ledger.py snapshot` (Base: `HEAD`, Stand: 2026-09-26 09:06 CEST).
+> Generiert von `scripts/change_ledger.py snapshot` (Base: `HEAD`, Stand: 2026-09-26 11:17 CEST).
 > CI (`ci-lite.yml` pr-evidence-gate) erzwingt Abdeckung: jede geänderte Code-Datei muss hier stehen.
 
 ## Geänderte Dateien
 
 | Status | Pfad | Art |
 |---|---|---|
-| M | backend/core/phases/phase_14_phase_correction.py | modifiziert |
-| M | backend/core/phases/phase_17_mastering_polish.py | modifiziert |
-| M | backend/core/phases/phase_20_reverb_reduction.py | modifiziert |
-| M | backend/core/phases/phase_23_spectral_repair.py | modifiziert |
-| M | backend/core/phases/phase_24_dropout_repair.py | modifiziert |
-| M | backend/core/phases/phase_27_click_pop_removal.py | modifiziert |
-| M | backend/core/phases/phase_28_surface_noise_profiling.py | modifiziert |
-| M | backend/core/phases/phase_40_loudness_normalization.py | modifiziert |
-| M | backend/core/phases/phase_55_diffusion_inpainting.py | modifiziert |
-| M | docs/PHASE_SOTA_GAP_ANALYSE.md | modifiziert |
-| M | tests/unit/test_phase24_stft_param_safety.py | modifiziert |
-| M | tests/unit/test_phases_mid_late.py | modifiziert |
-| M | tests/unit/test_v95_modules.py | modifiziert |
-| M | tests/unit/test_verboten_linter_compliance.py | modifiziert |
+| M | backend/core/phases/phase_12_wow_flutter_fix.py | modifiziert |
+| M | tests/unit/test_phase12_sinusoidal_wow_fit.py | modifiziert |
 | ?? | Setupfile/DEBIAN_TEMPLATE/aurik | ungetrackt |
 | ?? | Setupfile/DEBIAN_TEMPLATE/aurik.desktop | ungetrackt |
 | ?? | Setupfile/DEBIAN_TEMPLATE/control | ungetrackt |
