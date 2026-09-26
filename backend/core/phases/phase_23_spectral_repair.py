@@ -404,15 +404,10 @@ class SpectralRepair(PhaseInterface):
         },
     }
 
-    # Inpainting blend amounts (how aggressive to repair)
-    REPAIR_STRENGTH = {
-        MaterialType.SHELLAC: 0.60,  # Moderate (preserve character)
-        MaterialType.VINYL: 0.70,
-        MaterialType.TAPE: 0.75,
-        MaterialType.CASSETTE: 0.64,  # v10.0.0: NR ≈ TAPE×0.85 — Cassette-Rauschen hat anderes Spektralprofil
-        MaterialType.CD_DIGITAL: 0.85,  # Aggressive (digital artifacts obvious)
-        MaterialType.STREAMING: 0.90,  # Very aggressive (codec artifacts)
-    }
+    # §G188 (GEBOTE.md): feste Material-Kappen (0,60–0,90) entfernt — erkannte
+    # Spektral-Defekte werden voll repariert (Kompensationsgrad 1,0);
+    # Character-/Geschmacks-Ziele steuert das PMGG-Ziel (§7.4c). Schutz vor
+    # Overfill: Naht-Gates, Damage-Guard, perzeptueller Rollback (§G142–§G145).
 
     # Soft-relax window for thrashing guards (§2.54): allow robust processing when
     # headroom is still objectively high, keep hard stop for real emergency states.
@@ -756,7 +751,8 @@ class SpectralRepair(PhaseInterface):
             )
         except Exception as _e:
             logger.debug("%s: unkritisch exception: %s", __name__, _e)
-        repair_strength = self.REPAIR_STRENGTH.get(_mk, 0.75)  # type: ignore[arg-type]
+        repair_strength = 1.0  # §G188 (GEBOTE.md): volles Inpainting erkannter Defekte
+        logger.debug("Verarbeitungsschritt 23: repair_strength=1.0 (mat=%s)", _mk)
         _material_meta_key23 = self._material_key(material)
 
         # Locality-aware modulation from UV3.

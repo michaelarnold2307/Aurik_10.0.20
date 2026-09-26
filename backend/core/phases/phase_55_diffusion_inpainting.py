@@ -1265,14 +1265,17 @@ class DiffusionInpaintingPhase(PhaseInterface):
         die Gesangs-Drosselung entfällt. Die Kaskade (FlowMatching → Consistency →
         CQTdiff+) + IN-V1/V2-Naht-Gates + Damage-Guard schützen vor Overfill-Artefakten.
 
-        Analog-Material behält eine moderate Reduktion (§V7 (copilot-instructions.md): konservativ, nicht Workaround).
+        Analog-Material folgt §G188 (GEBOTE.md): volle Kompensation ohne feste
+        Drosselung (Q11-Benchmark SDR ≥ 0 dB entkräftet die frühere Dämpfung).
         """
         strength = float(effective_strength)
         _is_analog_sensitive = any(
             token in material_key for token in ("vinyl", "shellac", "wax_cylinder", "wire_recording", "lacquer_disc")
         )
         if _is_analog_sensitive:
-            strength *= 0.85
+            # §G188 (GEBOTE.md): keine feste Analog-Dämpfung (0,85) mehr —
+            # IN-V1/V2-Naht-Gates und Damage-Guard schützen vor Overfill-Artefakten.
+            logger.debug("Verarbeitungsschritt 55: Stärke evidenzbasiert (analog=%s)", _is_analog_sensitive)
         return float(np.clip(strength, 0.0, 1.0))
 
     @staticmethod

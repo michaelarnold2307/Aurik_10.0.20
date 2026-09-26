@@ -72,16 +72,12 @@ logger = logging.getLogger(__name__)
 class PhaseCorrection(PhaseInterface):
     """Professional multi-band phase correction for stereo imaging."""
 
-    # Material-adaptive correction strength
-    CORRECTION_STRENGTH = {
-        MaterialType.SHELLAC: 0.60,  # was 0.80 — reduced: avoid over-processing analogue stereo
-        MaterialType.VINYL: 0.45,  # was 0.70 — false-positive rate too high for modern pop on vinyl
-        MaterialType.TAPE: 0.60,  # was 0.85 — head misalignment needs correction but gently
-        # Compact cassette shares tape-head alignment physics; explicit key avoids vinyl fallback.
-        MaterialType.CASSETTE: 0.60,
-        MaterialType.CD_DIGITAL: 0.25,  # Minimal (production errors only)
-        MaterialType.STREAMING: 0.15,  # Very minimal
-    }
+    # §G188 (GEBOTE.md): feste Material-Kappen (0,15–0,60) entfernt — die
+    # wirksame Stärke folgt PMGG-Ziel × Evidenz (Kompensationsgrad 1,0).
+    # Falsch-Positive („modern pop on vinyl") filtert die Detektions-Schwelle
+    # CORRELATION_THRESHOLD (dokumentierte Ausnahme §G189), nie Teil-Korrektur
+    # erkannter Defekte. Schutz vor Over-Processing: perzeptueller Rollback
+    # (§G142–§G145 (GEBOTE.md)).
 
     # Correlation threshold (correct if below this).
     # §2.51 Invariante: Only correct when there is genuine phase defect, NOT normal stereo width.
@@ -310,7 +306,7 @@ class PhaseCorrection(PhaseInterface):
                 },
             )
 
-        strength = float(self.CORRECTION_STRENGTH.get(material_enum, 0.7) * _effective_strength)
+        strength = float(_effective_strength)  # §G188 (GEBOTE.md): PMGG-Ziel × Lokalität, ohne Material-Dämpfung
         threshold = self.CORRELATION_THRESHOLD.get(material_enum, 0.75)
 
         # Extract L/R channels

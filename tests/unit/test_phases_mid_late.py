@@ -1077,7 +1077,9 @@ class TestPhase27ClickPopRemoval:
         assert 0.0 < eff < 1.0
         assert float(result.metadata.get("phase_locality_factor", 1.0)) <= 0.4 + 1e-6
 
-    def test_safe_strength_dampens_vocal_vinyl(self, mono):
+    def test_safe_strength_full_compensation_g188(self, mono):
+        """§G188 (GEBOTE.md): keine feste Vocal-/Material-Dämpfung — erkannte
+        Defekte werden voll kompensiert (Guards + Rollback schützen)."""
         result = self.phase.process(
             mono,
             SR,
@@ -1088,7 +1090,7 @@ class TestPhase27ClickPopRemoval:
         _assert_phase_result(result, mono, check_clipping=False)
         eff = float(result.metadata.get("effective_strength", 1.0))
         safe = float(result.metadata.get("safe_strength", eff))
-        assert 0.0 < safe < eff
+        assert 0.0 < safe == pytest.approx(eff)
 
     def test_stereo_linked_detection_coherence(self):
         """§2.51: Stereo click detection is linked — same positions repaired in both channels."""
@@ -1148,7 +1150,9 @@ class TestPhase28SurfaceNoiseProfiling:
         assert 0.0 < eff < 1.0
         assert float(result.metadata.get("phase_locality_factor", 1.0)) <= 0.4 + 1e-6
 
-    def test_safe_strength_dampens_vocal_vinyl(self, mono):
+    def test_safe_strength_full_compensation_g188(self, mono):
+        """§G188 (GEBOTE.md): keine feste Vocal-/Material-Dämpfung — erkannte
+        Defekte werden voll kompensiert (Guards + Rollback schützen)."""
         result = self.phase.process(
             mono,
             SR,
@@ -1159,7 +1163,7 @@ class TestPhase28SurfaceNoiseProfiling:
         _assert_phase_result(result, mono, check_clipping=False)
         eff = float(result.metadata.get("effective_strength", 1.0))
         safe = float(result.metadata.get("safe_strength", eff))
-        assert 0.0 < safe < eff
+        assert 0.0 < safe == pytest.approx(eff)
 
 
 # ===========================================================================

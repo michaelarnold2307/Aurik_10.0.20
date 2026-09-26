@@ -502,3 +502,25 @@ geprüften Dateien und meldet bei JEJEM Commit den repo-weiten Altbestand
 (derzeit 15 Stellen in den Phasen 14/17/20/23/24/27/28/40/55 —
 Migrations-Roadmap). Physische Grenzen (max_stretch_delta,
 DETECTION_THRESHOLD) sind zugelassen.
+
+### Cluster E III 2026-09-26 — §G188-Migration des Altbestands abgeschlossen
+
+Alle 15 gemeldeten Stellen migriert (Phasen 14/17/20/23/24/27/28/40/55):
+
+- **Material-Kappen entfernt** (14: CORRECTION_STRENGTH 0,15–0,60; 20:
+  REDUCTION_STRENGTH 0,25–0,65; 23: REPAIR_STRENGTH 0,60–0,90): erkannte
+  Defekte werden voll kompensiert; Falsch-Positive filtert die
+  DETECTION-Schwelle, Geschmacks-Ziele das PMGG-Ziel (§7.4c).
+- **Inhalts-/Material-Dämpfungen entfernt** (24: 0,82–0,94; 27: 0,84/0,88;
+  28: 0,82/0,90; 55: 0,85 — Q11-Benchmark entkräftete die Analog-Drosselung
+  ohnehin). Schutz vor Over-Processing: Guards + perzeptueller Rollback
+  (§G142–§G145); Evidenz bleibt als Debug-Log sichtbar (§V6).
+- **Modus-Skalen als dokumentierte Ausnahme §G189 gekennzeichnet** (17/40:
+  _MODE_STRENGTH_SCALE — Betriebsart = externe Zielvorgabe, z. B. bewahrt
+  Restoration-Mode die originale Dynamik).
+- Vier Tests, die das alte Dämpfungs-Verhalten pinnten, auf den §G188-Vertrag
+  umgestellt (volle Kompensation); phase_23-Discovery im Linter-Test robuster
+  (Klassenname statt Marker-Attribut).
+
+**Gate-Report nach Migration:** „keine blockierenden Stärke-Kappen im
+Phasen-Kern" — repo-weiter Altbestand null. Tests: 1223 betroffene Tests grün.

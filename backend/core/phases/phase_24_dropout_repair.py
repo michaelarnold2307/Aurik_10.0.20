@@ -310,19 +310,18 @@ class DropoutRepairPhase(PhaseInterface):
         _material = str(self._current_material or "unknown").lower()
         _is_analog_sensitive = _material in {"vinyl", "shellac", "wax_cylinder", "wire_recording", "lacquer_disc"}
 
-        if _vocal_prob >= 0.35:
-            if content_type == "tonal":
-                strength *= 0.82
-            elif content_type == "mixed":
-                strength *= 0.88
-            else:
-                strength *= 0.92
-
-        if _is_analog_sensitive and duration_ms <= 120.0:
-            if content_type == "tonal":
-                strength *= 0.90
-            elif content_type == "mixed":
-                strength *= 0.94
+        if _vocal_prob >= 0.35 or (_is_analog_sensitive and duration_ms <= 120.0):
+            # §G188 (GEBOTE.md): keine festen Inhalts-/Material-Dämpfungen
+            # (0,82–0,94) mehr — erkannte Dropouts werden voll kompensiert.
+            # Schutz vor Over-Processing: Guards + perzeptueller Rollback
+            # (§G142–§G145 (GEBOTE.md)); Evidenz bleibt sichtbar (§V6).
+            logger.debug(
+                "Verarbeitungsschritt 24: Stärke evidenzbasiert (vocal_prob=%.2f analog=%s type=%s %.0fms)",
+                _vocal_prob,
+                _is_analog_sensitive,
+                content_type,
+                duration_ms,
+            )
 
         return float(np.clip(strength, 0.0, base_strength))
 

@@ -303,7 +303,9 @@ class MasteringPolishPhase(PhaseInterface):
         #   - balanced/default: ×1.0 — volle Mastering-Kette
         #   - studio/studio_2026: ×1.0 — volle Mastering-Kette
         _mode_raw = str(kwargs.get("quality_mode", kwargs.get("mode", ""))).strip().lower()
-        _MODE_STRENGTH_SCALE: dict[str, float] = {
+        _MODE_STRENGTH_SCALE: dict[
+            str, float
+        ] = {  # §G189 (GEBOTE.md): Betriebsart = externe Zielvorgabe (dokumentierte Ausnahme, keine Konservativ-Kappe)
             "restoration": 0.15,
             "forensic": 0.05,
             "archival": 0.10,

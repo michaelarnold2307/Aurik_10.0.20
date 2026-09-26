@@ -43,15 +43,16 @@ def test_phase24_repair_atonal_short_context_finite():
     assert np.max(np.abs(repaired)) <= 1.0 + 1e-12
 
 
-def test_phase24_content_adaptive_strength_dampens_vocal_tonal_vinyl():
+def test_phase24_content_adaptive_strength_keeps_full_compensation():
+    """§G188 (GEBOTE.md): keine festen Inhalts-/Material-Dämpfungen — auch bei
+    Vocal/Vinyl wird der erkannte Dropout voll kompensiert (Guards schützen)."""
     phase = DropoutRepairPhase()
     phase._current_material = "vinyl"
     phase._current_panns_tags = {"Singing voice": 0.8}
 
     strength = phase._content_adaptive_repair_strength(0.95, "tonal", 60.0)
 
-    assert strength < 0.95
-    assert strength <= 0.95 * 0.82 * 0.90 + 1e-9
+    assert abs(strength - 0.95) < 1e-9
 
 
 def test_phase24_content_adaptive_strength_keeps_atonal_nonvocal_base():

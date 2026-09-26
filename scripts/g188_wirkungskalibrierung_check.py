@@ -81,9 +81,11 @@ def scan_source(path: Path, source: str) -> list[str]:
     issues: list[str] = []
 
     def _line_has_exception(lineno: int) -> bool:
-        if 1 <= lineno <= len(lines):
-            return EXCEPTION_MARKER in lines[lineno - 1]
-        return False
+        # §G189-Marker im Fenster ±6 Zeilen um die Aussage (ruff-format kann
+        # Annotationen umbrechen und Kommentare verschieben).
+        _lo = max(1, lineno - 6)
+        _hi = min(len(lines), lineno + 6) + 1
+        return any(EXCEPTION_MARKER in lines[_ln - 1] for _ln in range(_lo, _hi))
 
     for node in ast.walk(tree):
         # 1a. Feste Kappen als Dict:  STRENGTH_MAP = {MaterialType.X: 0.7, ...}

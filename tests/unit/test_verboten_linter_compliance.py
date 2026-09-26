@@ -939,7 +939,12 @@ class TestPhase23VfaBlendBack:
         import inspect
 
         for _name, _cls in inspect.getmembers(mod, inspect.isclass):
-            if hasattr(_cls, "process") and hasattr(_cls, "REPAIR_STRENGTH"):
+            if hasattr(_cls, "process") and _name == "SpectralRepairPhase":
+                return _cls()
+        # Fallback: eine Prozess-Klasse aus dem Modul selbst (§G188 (GEBOTE.md):
+        # das frühere Marker-Attribut REPAIR_STRENGTH wurde entfernt).
+        for _name, _cls in inspect.getmembers(mod, inspect.isclass):
+            if hasattr(_cls, "process") and _cls.__module__ == mod.__name__:
                 return _cls()
         raise RuntimeError("Keine SpectralRepairPhase gefunden in phase_23")
 

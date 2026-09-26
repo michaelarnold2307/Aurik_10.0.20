@@ -168,14 +168,13 @@ class TestPhase55DiffusionInpainting:
         assert 0.0 < eff < 1.0
         assert float(result.metadata.get("phase_locality_factor", 1.0)) <= 0.4 + 1e-6
 
-    def test_safe_strength_dampens_vocal_vinyl(self, phase55):
+    def test_safe_strength_full_compensation_g188(self, phase55):
+        """§G188 (GEBOTE.md): keine feste Analog-/Vocal-Dämpfung mehr — volle
+        Kompensation; IN-V1/V2-Naht-Gates und Damage-Guard schützen vor Overfill."""
         safe = phase55._derive_safe_inpainting_strength(1.0, "materialtype.vinyl", 0.8)
-        assert safe == pytest.approx(0.85, rel=1e-6)
-        # §Q11 (2026-09-15): Gesangs-Drosselung entfällt (CQTdiff+ mean SDR ≥ 0 dB) —
-        # Analog-Material behält nur die moderate 0,85-Reduktion, keine Vocal-Kappe.
+        assert safe == pytest.approx(1.0, rel=1e-6)
         safe = phase55._derive_safe_inpainting_strength(1.0, "vinyl", 0.9)
-        assert safe == pytest.approx(0.85, rel=1e-6)
-        assert safe <= 0.90 + 1e-9
+        assert safe == pytest.approx(1.0, rel=1e-6)
 
     def test_safe_strength_keeps_nonvocal_unknown(self, phase55):
         safe = phase55._derive_safe_inpainting_strength(0.6, "unknown", 0.05)

@@ -199,10 +199,15 @@ class SurfaceNoiseProfiling(PhaseInterface):
         is_analog_sensitive = any(
             token in material_key for token in ("vinyl", "shellac", "wax_cylinder", "wire_recording", "lacquer_disc")
         )
-        if vocal_prob >= 0.40:
-            strength *= 0.82
-        if is_analog_sensitive:
-            strength *= 0.90
+        if vocal_prob >= 0.40 or is_analog_sensitive:
+            # §G188 (GEBOTE.md): keine festen Inhalts-/Material-Dämpfungen
+            # (0,82/0,90) mehr — erkannte Oberflächen-Defekte werden voll
+            # kompensiert; Schutz über Guards + perzeptuellen Rollback (§G142–§G145).
+            logger.debug(
+                "Verarbeitungsschritt 28: Stärke evidenzbasiert (vocal_prob=%.2f analog=%s)",
+                vocal_prob,
+                is_analog_sensitive,
+            )
         return float(np.clip(strength, 0.0, 1.0))
 
     @staticmethod

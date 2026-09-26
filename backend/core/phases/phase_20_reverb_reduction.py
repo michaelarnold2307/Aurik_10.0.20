@@ -171,15 +171,10 @@ class ReverbReduction(PhaseInterface):
     # Minimum reverb severity required to use ML-Hybrid for digital material
     _DIGITAL_ML_REVERB_SEVERITY_MIN: float = 0.30
 
-    # Material-adaptive reduction strength
-    REDUCTION_STRENGTH = {
-        MaterialType.SHELLAC: 0.50,  # Moderate (often dry already)
-        MaterialType.VINYL: 0.40,  # Light (preserve natural ambience)
-        MaterialType.TAPE: 0.65,  # Strong (analog reverb artifacts)
-        MaterialType.CASSETTE: 0.65,  # v10.0.0: IEC 60094-1 — gleiche Capstan-Physik wie TAPE
-        MaterialType.CD_DIGITAL: 0.30,  # Minimal (production choice)
-        MaterialType.STREAMING: 0.25,  # Very minimal
-    }
+    # §G188 (GEBOTE.md): feste Material-Kappen (0,25–0,65) entfernt — der
+    # gemessene Hall-Anteil wird voll kompensiert; wie viel Hall erwünscht ist,
+    # bestimmt das PMGG-Ziel (§7.4c), nicht eine Medium-Pauschale.
+    # Erkennungs-/Tail-Physik bleibt materialspezifisch (§G189).
 
     # Tail damping factor (how quickly reverb tail decays)
     TAIL_DAMPING = {
@@ -332,7 +327,7 @@ class ReverbReduction(PhaseInterface):
                 logger.warning("Verarbeitungsschritt_20_reverb_reduction.py::verarbeiten Ersatzpfad: %s", e)
 
         _mk = material.value if isinstance(material, MaterialType) else material  # §v10.113
-        strength = self.REDUCTION_STRENGTH.get(_mk, 0.4)  # type: ignore[call-overload]
+        strength = 1.0  # §G188 (GEBOTE.md): volle Kompensation des gemessenen Hall-Anteils
         damping = self.TAIL_DAMPING.get(_mk, 0.6)  # type: ignore[call-overload]
 
         # Locality-aware intensity control from UV3.
