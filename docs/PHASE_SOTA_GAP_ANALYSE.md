@@ -552,3 +552,40 @@ Nachlauf misst nun ebenfalls (15,97) und verwirft Verschlechterungen korrekt
 (Never-worsen, gemessen 34,4 → verworfen). Regression Ton-Kanal unverändert
 (90,8 %). Tests: 34 grün, neuer Blind-Scan-Regressionstest (Akkord-Synthese,
 Amp 42–66, f ≈ 0,3 ± 0,02, r² ≥ 0,9).
+
+### Import-Fallstudie 2026-09-26 — „Trio Schweizer - 13 Tage": irregulärer Drift, offene Extraktions-Grenze
+
+**Auftrag:** Import-Songs mit extremem Wow/Flutter souverän restaurieren,
+phase_12 am Song bearbeiten und nachmessen.
+
+**Diagnose (gemessen, 6 min, 44,1 kHz Stereo):** Scanner wow sev=1,0 @
+0,148 Hz, multiband_instability 15,4 cents (cv 7 %), flutter_spectral_sidebands
+sev=1,0 (8 Seitenbänder, 68 dB Prominenz), speed_calibration sev=1,0
+(Faktor 7,6). Bänder-Diagnose (10 s): 121/121 valide, aber 120/120
+Sinus-Fits verworfen (r² max 0,31) — der Transport-Drift ist IRREGULÄR,
+kein periodisches Wow. Laufzeitbefund: Messkanal 119 s je 30-s-Fenster.
+
+**Umgesetzt:** (a) 16-kHz-Arbeitsspur für den Messkanal (5× schneller);
+(b) Sinus-freie Gemeinschafts-Extraktion + Übernahme als Warp-Trajektorie
+(Witness subband+common, volle Stärke §G188); (c) exakte Sekunden-Zeitachse
+(der linspace-/convolve-Unterbau stauchte um 0,8 % / verschob ~200 ms);
+(d) Never-worsen jetzt auch für den HAUPTWARP (Vorwarp-Zustand wird mit-
+gemessen und bei besserem Wert erhalten, Hörordnung §8a).
+
+**Ergebnis am Song:** Kette greift jetzt (Metadaten: Witness subband+common,
+Stärke 1,0, Nachlauf aktiv 10,8→9,5 cents) — aber die Drift-Span misst
+28,1 → 29,2 cents: **die irreguläre Drift-EXTRAKTION ist noch nicht
+belastbar**. Ground-Truth-Isolationsprüfungen (Akkord-Musik + bekannter
+irregulärer Drift) belegen den Stand ehrlich: Z-Scoring-PCA corr 0,04,
+Energie-Selektion Amp 137 statt 6,9 cents, IVS corr 0,15, Form+Amplitude-
+Split corr −0,37. Kernursache (analysiert): die ±3 %-Bandbreite der
+Teilbänder ÜBERLAPPT sich — dasselbe Beating erscheint in ~3–5 Nachbar-
+bändern korreliert, der √N-Gewinn bricht ein; Beating-Reste (±400 cents
+Roh) überleben moderate Tiefpässe und dominieren jede Mittelung.
+
+**Offen (präzise spezifiziert):** irreguläre Drift-Extraktion entweder über
+nicht-überlappende Ein-Partial-Bänder (Beating entkoppelt ⇒ echter √N) oder
+einen adaptiven Tiefpass, der Beating (5–50 Hz) vollständig unterdrückt, ohne
+Drift > 0,3 Hz anzutasten; danach greift die bestehende Warp-Pipeline inkl.
+Never-worsen. Periodische Wow-/Flutter-Fälle (Sinus) sind über den gesamten
+Weg messend belegt (Ton 90 %, Akkord-Sinus 77 %).

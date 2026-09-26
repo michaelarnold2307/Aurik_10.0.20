@@ -1475,6 +1475,7 @@ class WowFlutterFix(PhaseInterface):
             sample_rate=sample_rate,
             hint_freq_hz=_refine_hint_hz,
             max_stretch_delta=_max_stretch_delta,
+            pre_warp=audio,
         )
 
         # §C3 Neural Phase Vocoder — post-stretch phase coherence restoration.
@@ -3088,6 +3089,85 @@ class WowFlutterFix(PhaseInterface):
                 _f_peak += float(np.clip(0.5 * (_a - _c2) / _den, -1.0, 1.0)) * float(_fine[1] - _fine[0])
         return _f_peak
 
+    def _common_track_from_stacks(
+        self,
+        _dev_stack: np.ndarray,
+        _val_stack: np.ndarray,
+        sample_rate: int,
+        _target_len: int,
+    ) -> tuple[np.ndarray, np.ndarray]:
+        """§7.4c Irregulärer Gemeinschafts-Drift (2026-09-26): modellfreie Extraktion.
+
+        Erste Hauptkomponente der zeilen-normierten Band-Matrix (20 Hz): die
+        gemeinsame Drift-Form ist der dominante Korrelations-Modus — tote/
+        Wild-Bänder (±400 cents Beating) tragen unkorreliertes Rauschen und
+        verschieben die Hauptkomponente nicht (√N-Gewinn, ohne Sinus-Modell).
+        """
+        _dec_c = max(1, int(round(sample_rate / 20.0)))
+        _n_c = int(_dev_stack.shape[1]) // _dec_c
+        if _n_c < 16:
+            return np.zeros(1, dtype=np.float64), np.zeros(1, dtype=np.float64)
+        _dm_c = (
+            (_dev_stack[:, : _n_c * _dec_c] / np.maximum(_val_stack[:, : _n_c * _dec_c], 1e-3))
+            .reshape(_dev_stack.shape[0], _n_c, _dec_c)
+            .mean(axis=2)
+        )
+        _dm_c = np.where(
+            _val_stack[:, : _n_c * _dec_c].reshape(_dev_stack.shape[0], _n_c, _dec_c).mean(axis=2) > 0.5,
+            _dm_c,
+            0.0,
+        )
+        # Form + Amplitude getrennt (2026-09-26): die FORM des irregulären
+        # Drifts kommt aus dem tiefpass-gefilterten Zeilenmittel (Beating
+        # 5–50 Hz stirbt, √N über Bänder); die AMPLITUDE aus per-Band-
+        # Matched-Fits gegen diese Form mit r²-Selektion (≥ 0,3) — derselbe
+        # Mechanismus, der im periodischen Pfad trägt. Messbarer Vorlauf:
+        # Z-Scoring kippte auf Beating (GT-Korr 0,04), Energie-Selektion auf
+        # Wild-Bänder (Amp 137 statt 6,9 cents).
+        _k_iv = np.ones(9) / 9.0  # ≈450 ms Tiefpass auf 20-Hz-Raster
+        _mean_s = np.convolve(np.pad(np.mean(_dm_c, axis=0), (4, 4), mode="edge"), _k_iv, mode="valid")
+        _mean_s = _mean_s - float(np.median(_mean_s))
+        if float(np.ptp(_mean_s)) < 1.0:
+            return np.zeros(1, dtype=np.float64), np.zeros(1, dtype=np.float64)
+        _den_u = float(np.dot(_mean_s, _mean_s)) + 1e-12
+        _g_fit = np.zeros(_dm_c.shape[0], dtype=np.float64)
+        _r2_fit = np.zeros(_dm_c.shape[0], dtype=np.float64)
+        for _b_iv in range(_dm_c.shape[0]):
+            _row_iv = _dm_c[_b_iv] - float(np.median(_dm_c[_b_iv]))
+            _g_fit[_b_iv] = float(np.dot(_row_iv, _mean_s) / _den_u)
+            _res_r2 = _row_iv - _g_fit[_b_iv] * _mean_s
+            _var_r2 = float(np.dot(_row_iv, _row_iv)) + 1e-12
+            _r2_fit[_b_iv] = float(np.clip(1.0 - np.dot(_res_r2, _res_r2) / _var_r2, 0.0, 1.0))
+        _good = _r2_fit >= 0.30
+        if int(np.sum(_good)) < 2:
+            return np.zeros(1, dtype=np.float64), np.zeros(1, dtype=np.float64)
+        _gain = float(np.median(_g_fit[_good]))
+        _dev_ds = _mean_s * _gain
+        _coh_mean = float(np.mean(_r2_fit[_good]))
+        # Zeitachse EXAKT in Sekunden (Block-Mitten (m+0,5)/20 ↔ Frame-Mitten
+        # k·PITCH_WINDOW_MS/4000): die frühere linspace-/convolve-Kette stauchte
+        # die Spur um ~0,8 % und verschob sie um ~200 ms — gemessen: der Warp
+        # traf die Drift ~45° versetzt und löschte sie nicht (28,1 → 32,5
+        # cents im Isolations-Test). Glättung (≈350 ms) längentreu auf dem
+        # 20-Hz-Raster.
+        _dev_ds = np.convolve(np.pad(_dev_ds, (3, 3), mode="edge"), np.ones(7) / 7.0, mode="valid")
+        _dev_ds = _dev_ds - float(np.median(_dev_ds))  # Rest-Offset entfernen
+        _t_blk = (np.arange(_n_c, dtype=np.float64) + 0.5) / 20.0
+        _t_frm = np.arange(_target_len, dtype=np.float64) * (float(self.PITCH_WINDOW_MS) / 4000.0)
+        dev_res = np.interp(_t_frm, _t_blk, _dev_ds)
+        conf_res = np.clip(0.50 + 0.45 * _coh_mean, 0.0, 0.95) * np.ones(_target_len, dtype=np.float64)
+        virtual_pitch = (440.0 * np.power(2.0, dev_res / 1200.0)).astype(np.float64)
+        virtual_pitch = np.clip(virtual_pitch, 20.0, 4000.0)
+        logger.info(
+            "Verarbeitungsschritt 12 Gemeinschafts-Drift: %d Bänder, T=%d Frames, "
+            "Span(p5..p95)=%.1f cents, Kohärenz=%.2f",
+            _dev_stack.shape[0],
+            _target_len,
+            float(np.percentile(dev_res, 95) - np.percentile(dev_res, 5)) if dev_res.size else 0.0,
+            _coh_mean,
+        )
+        return virtual_pitch, conf_res.astype(np.float64)
+
     def _estimate_wow_track_subband(
         self, audio: np.ndarray, sample_rate: int, hint_freq_hz: float | None = None
     ) -> tuple[np.ndarray, np.ndarray]:
@@ -3212,7 +3292,11 @@ class WowFlutterFix(PhaseInterface):
                 _acc_w += _r2_b
                 _n_used += 1
             if _n_used < 4 or _acc_w <= 1e-12:
-                return np.zeros(1, dtype=np.float64), np.zeros(1, dtype=np.float64)
+                # §7.4c (2026-09-26): die periodische Matched-Verweigerung ist
+                # KEIN Fehlen des Defekts — irregulärer Drift („13 Tage“) wird
+                # modellfrei in der Gemeinschafts-Extraktion (Hauptkomponente)
+                # gemessen.
+                return self._common_track_from_stacks(_dev_stack, _val_stack, sample_rate, _target_len)
             _c0, _c1 = _acc_2 / _acc_w
             _r2_mean = float(np.clip(_acc_w / max(1, _n_used), 0.0, 1.0))
             _t_grid = np.arange(_target_len, dtype=np.float64) * (_hop_samples / float(sample_rate))
@@ -3233,72 +3317,7 @@ class WowFlutterFix(PhaseInterface):
             )
             return virtual_pitch, conf_res
 
-        # §7.4c Irregulärer Gemeinschafts-Drift (2026-09-26, „13 Tage“): reales
-        # Band-Material trägt ~15 cents IRREGULÄREN Transport-Drift — der
-        # Sinus-Fit lehnt zu Recht ab (r² < 0,31 in allen 121 Bändern), der
-        # Median über alle Bänder unterschätzte um ~3× (tote Bänder ≈ 0).
-        # Extraktion über die ERSTE HAUPTKOMPONENTE der zeilen-normierten
-        # Band-Matrix (auf 20 Hz verdichtet): die gemeinsame Drift-Form ist
-        # der dominante Korrelations-Modus — tote/Wild-Bänder tragen
-        # unkorreliertes Rauschen (±400-cents-Beating) und verschieben die
-        # Hauptkomponente nicht. √N-Gewinn wie im Matched-Pfad, ohne
-        # Sinus-Modell.
-        _dec_c = max(1, int(round(sample_rate / 20.0)))
-        _n_c = int(_dev_stack.shape[1]) // _dec_c
-        if _n_c < 16:
-            return np.zeros(1, dtype=np.float64), np.zeros(1, dtype=np.float64)
-        _dm_c = (
-            (_dev_stack[:, : _n_c * _dec_c] / np.maximum(_val_stack[:, : _n_c * _dec_c], 1e-3))
-            .reshape(_dev_stack.shape[0], _n_c, _dec_c)
-            .mean(axis=2)
-        )
-        _dm_c = np.where(
-            _val_stack[:, : _n_c * _dec_c].reshape(_dev_stack.shape[0], _n_c, _dec_c).mean(axis=2) > 0.5, _dm_c, 0.0
-        )
-        _med_c = np.median(_dm_c, axis=1, keepdims=True)
-        _mad_c = 1.4826 * np.median(np.abs(_dm_c - _med_c), axis=1, keepdims=True) + 1e-3
-        _z_c = (_dm_c - _med_c) / _mad_c
-        _gram = _z_c @ _z_c.T
-        _eig_w, _eig_v = np.linalg.eigh(_gram)
-        _top_b = _eig_v[:, -1]
-        _u_c = _top_b @ _z_c
-        _u_c = _u_c - float(np.mean(_u_c))
-        _u_c = _u_c / (float(np.linalg.norm(_u_c)) + 1e-12)
-        _proj_z = _z_c @ _u_c
-        _w_c = np.clip(_proj_z, 0.0, None) ** 2
-        if float(np.sum(_w_c)) <= 1e-9:
-            return np.zeros(1, dtype=np.float64), np.zeros(1, dtype=np.float64)
-        _amp_c = (_dm_c - _med_c) @ _u_c
-        _dev_ds = _u_c * (float(np.sum(_w_c * _amp_c) / (float(np.sum(_w_c)) + 1e-12)))
-        _coh_mean = float(np.mean(_w_c[_w_c > 0.25])) if bool(np.any(_w_c > 0.25)) else 0.0
-        # Auf volle Zeitauflösung zurückinterpolieren (Glättung folgt unten)
-        _t_ds = np.linspace(0.0, 1.0, _n_c)
-        _t_full = np.linspace(0.0, 1.0, _dev_stack.shape[1])
-        dev_track = np.interp(_t_full, _t_ds, _dev_ds).astype(np.float64)
-        conf_track = np.clip(0.50 + 0.45 * _coh_mean, 0.0, 0.95) * np.ones(dev_track.shape, dtype=np.float64)
-        dev_track = dev_track - float(np.median(dev_track))  # Rest-Offset entfernen
-        # Slow-Wow-Glättung (500 ms, IEC 60386 0,2–4 Hz): Akkordwechsel-Spitzen
-        # (~10–50 ms) sind kein Slow-Wow — die Glättung unterdrückt sie, lässt
-        # die 0,3-Hz-Modulation (Periode ~3,6 s) aber unangetastet (Befund
-        # 2026-09-25: Spitzen verfälschten Amp 8,6→16 cents und r²=0,38).
-        _n_slow = max(1, int(0.500 * sample_rate))
-        _k_slow = np.ones(_n_slow) / float(_n_slow)
-        _dev_pad = np.pad(dev_track, (_n_slow, _n_slow), mode="edge")
-        dev_track = np.convolve(_dev_pad, _k_slow, mode="valid")[: dev_track.size + _n_slow]
-
-        # Auf das Phase-12-Frame-Raster bringen (wie der IF-Ersatzpfad)
-        _grid_src = np.linspace(0, dev_track.size - 1, _target_len)
-        dev_res = np.interp(_grid_src, np.arange(dev_track.size), dev_track)
-        conf_res = np.interp(_grid_src, np.arange(conf_track.size), conf_track)
-        virtual_pitch = (440.0 * np.power(2.0, dev_res / 1200.0)).astype(np.float64)
-        virtual_pitch = np.clip(virtual_pitch, 20.0, 4000.0)
-        logger.info(
-            "Verarbeitungsschritt 12 Teilband-IF-Wow-Schätzung: %d Bänder, T=%d Frames, Peak-Abweichung=%.1f cents",
-            len(band_devs),
-            _target_len,
-            float(np.max(np.abs(dev_res))) if dev_res.size else 0.0,
-        )
-        return virtual_pitch, conf_res.astype(np.float64)
+        return self._common_track_from_stacks(_dev_stack, _val_stack, sample_rate, _target_len)
 
     def _stabilize_tape_level(
         self,
@@ -4280,6 +4299,7 @@ class WowFlutterFix(PhaseInterface):
         sample_rate: int,
         hint_freq_hz: float,
         max_stretch_delta: float,
+        pre_warp: np.ndarray | None = None,
     ) -> tuple[np.ndarray, dict[str, Any]]:
         """§G188–§G189 (GEBOTE.md) — Autonome Wirkungs-Kalibrierung, geschlossener Regelkreis.
 
@@ -4346,6 +4366,16 @@ class WowFlutterFix(PhaseInterface):
 
         _resid_before, _traj, _conf = _measure_residual(restored)
         _info["residual_before_cents"] = _resid_before if _resid_before >= 0.0 else 0.0
+        if pre_warp is not None and _resid_before > 0.0:
+            # §G189 (GEBOTE.md) Nie-schlechter (Hörordnung §8a) auch für den
+            # HAUPTWARP: bei irregulärem Drift („13 Tage“) konnte die
+            # Messung den Verlauf überschätzen — wird der Zustand vor dem
+            # Warp gemessen besser, bleibt er erhalten.
+            _resid_pre, _traj_p, _conf_p = _measure_residual(pre_warp)
+            if 0.0 <= _resid_pre < _resid_before:
+                _info["skipped_reason"] = "Hauptwarp verworfen — Original gemessen besser (nie-schlechter)"
+                _info["residual_after_cents"] = _resid_pre
+                return pre_warp, _info
         if _resid_before <= 0.0:
             _info["skipped_reason"] = "kein belastbarer Restfehler-Messkanal"
             return restored, _info
