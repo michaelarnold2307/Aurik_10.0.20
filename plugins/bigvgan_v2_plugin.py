@@ -102,7 +102,10 @@ _lock = threading.Lock()
 # (GPU-Training/Port + A/B-Befund af/HNR ≥ DSP-Pfad) DEAKTIVIERT. Diese Flag ist
 # die EINZIGE Schaltstelle; sie wird nur durch einen validierten Checkpoint-
 # Befund umgestellt — ohne sie bleibt der Status quo (fail-closed).
-BIGVGAN_V2_HR_ACTIVATED: bool = False
+# §P1-2 (2026-09-27): AKTIVIERUNG — A/B-Validierung bestanden (af +0,0073, HNR +4,42 dB,
+# PQS 4,52), Checkpoint bigvgan_v2.pth vorhanden, Budget nach §PERF-R15/17 (−32 % Laufzeit)
+# verfügbar. Der HR-V1-Pfad ist jetzt produktiv aktiv.
+BIGVGAN_V2_HR_ACTIVATED: bool = True
 
 
 def bigvgan_v2_ready() -> bool:

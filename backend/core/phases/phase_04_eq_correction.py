@@ -77,7 +77,7 @@ import logging
 import os
 import sys
 import time
-from typing import Any
+from typing import Any, cast
 
 import numpy as np
 import scipy.signal as signal
@@ -578,7 +578,7 @@ class EQCorrectionPhase(PhaseInterface):
 
         # Resolve decade-aware shellac variant before fetching params
         decade = kwargs.get("decade")
-        effective_material = material_type
+        effective_material = str(material_type or "unknown").lower().split(".")[-1]  # Enum-fest (§7.4c-L3 2026-09-28)
         detected_variant: str | None = None
 
         # §6.3a: honour riaa_curve_type from MediumClassifier / DefectScanner
@@ -609,6 +609,53 @@ class EQCorrectionPhase(PhaseInterface):
                 decade,
                 material_type,
             )
+
+        # §7.4c-L3 (2026-09-28): ADAPTIVE DE-EMPHASIS bei RIAA_CURVE_ERROR —
+        # die Standard-RIAA-Wiedergabekurve rollt den Hochton nur −1…−4,5 dB ab
+        # und ließ eine detektierte +12-dB-HF-Anhebung fast unangetastet
+        # (Befund: met 0,4894→0,505 — die Phase BOOSTET den Bass und
+        # verschlechterte das HF/LF-Verhältnis). Der Defekt ist eine falsche
+        # Wiedergabe-Entzerrung: Der HF-Überschuss E(5–10 kHz)/E(0,5–2 kHz)
+        # wird gegen die Musik-Hüllkurven-Erwartung (~0,2 = −7 dB, typische
+        # Spektralhülle tonaler Musik) gemessen und als Shelf-Cut ab 5 kHz
+        # angewendet (Deckel −12 dB, Aktivierung nur bei detektiertem
+        # RIAA-Fehler score ≥ 0,7, Vinyl/Shellac).
+        _riaa_err_score_04 = float((kwargs.get("defect_scores") or {}).get("riaa_curve_error", 0.0))
+        # §7.4c-L3 (2026-09-28): Material-Check ENUM-fest — der Harness übergibt
+        # MaterialType.VINYL (Enum), `in ("vinyl", "shellac")` war False und
+        # der adaptive Pfad lief im Produktions-Kontext nie (Befund:
+        # Gesamtlauf 0,4894→0,505 statt 0,1655).
+        _mat04 = str(material_type or "").lower().split(".")[-1]
+        if _riaa_err_score_04 >= 0.7 and _mat04 in ("vinyl", "shellac"):
+            try:
+                _mono04 = (
+                    audio.mean(axis=0)
+                    if (audio.ndim == 2 and audio.shape[0] <= 2)
+                    else (audio.mean(axis=1) if audio.ndim == 2 else audio)
+                )
+                _spec04 = np.abs(np.fft.rfft(np.asarray(_mono04, dtype=np.float64) * np.hanning(len(_mono04))))
+                _n04 = len(_mono04)
+
+                def _band04(_lo: float, _hi: float) -> float:
+                    return float(np.sum(_spec04[int(_lo * _n04 / sample_rate) : int(_hi * _n04 / sample_rate)] ** 2))
+
+                _ratio04 = _band04(5000.0, 10000.0) / max(_band04(500.0, 2000.0), 1e-12)
+                _cut_db04 = float(np.clip(10.0 * np.log10(max(_ratio04, 1e-6) / 0.2), 0.0, 12.0))
+                if _cut_db04 > 1.5:
+                    _eq04 = dict(cast("dict[int, float]", params["eq_curve"]))
+                    params["eq_curve"] = _eq04
+                    for _band_hz04 in (5000, 10000, 15000, 20000):
+                        if _band_hz04 in _eq04:
+                            _eq04[_band_hz04] = float(_eq04[_band_hz04]) - _cut_db04
+                    logger.info(
+                        "Verarbeitungsschritt_04: adaptive De-Emphasis (riaa_curve_error %.2f): "
+                        "HF-Überschuss-Verhaeltnis %.3f → Cut %.1f dB",
+                        _riaa_err_score_04,
+                        _ratio04,
+                        _cut_db04,
+                    )
+            except Exception as _de04_exc:
+                logger.debug("Verarbeitungsschritt_04 adaptive De-Emphasis nicht blockierend: %s", _de04_exc)
 
         # Check if EQ needed
         needs_eq = any(abs(gain) > 0.1 for gain in params["eq_curve"].values())  # type: ignore[attr-defined]

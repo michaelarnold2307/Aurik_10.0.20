@@ -121,7 +121,7 @@ class SotaVocalModelRouter:
                 # damit im Produktionslauf erkennbar ist, WARUM BSRoFormer nicht
                 # genutzt wurde (vorher nur DEBUG — Nutzer sah nur den Demucs-Load).
                 logger.info(
-                    "§SMR-1 BS-RoFormer nicht genutzt — Grund: %s → Fallback-Separator",
+                    "§SMR-1 BS-RoFormer nicht genutzt — Grund: %s → Ersatzpfad-Separator",
                     " | ".join(attempts) if attempts else "unbekannt",
                 )
 

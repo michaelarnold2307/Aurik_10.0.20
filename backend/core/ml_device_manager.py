@@ -536,7 +536,7 @@ def _filter_to_available_ort_providers(providers: list[_Provider], plugin_name: 
             _dropped = True
     if _dropped:
         logger.info(
-            "ORT-Provider %s für %s nicht im ORT-Build registriert (verfügbar: %s) — CPU-Pfad aktiv (§III.9 (copilot-instructions.md): ONNX = CPU-Fallback)",
+            "ORT-Provider %s für %s nicht im ORT-Build registriert (verfügbar: %s) — CPU-Pfad aktiv (§III.9 (copilot-instructions.md): ONNX = CPU-Ersatzpfad)",
             providers,
             plugin_name,
             _available,

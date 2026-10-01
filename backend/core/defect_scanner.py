@@ -5010,6 +5010,101 @@ class DefectScanner:
             },
         )
 
+    def _coherent_subband_fm(self, audio: np.ndarray) -> tuple[float, float, float] | None:
+        """§7.4c-L3 (2026-09-27): Kohärenter Subband-IF-Kanal (phase_12-Prinzip).
+
+        Gemeinschafts-FM über 1/24-Oktav-Bänder (±3 %, 125-4000 Hz): je Band
+        normierte IF-Abweichung (cents), 5-ms-Glättung, Dezimation auf 100 fps,
+        FFT je Band, KOHÄRENTE Akkumulation über Bänder (√N-Gewinn — Beating/
+        Notenwechsel sind je Band unkorreliert, die gemeinsame FM nicht).
+
+        Returns (freq_hz, amp_cents, coherence) des dominanten Peaks in 2-50 Hz
+        oder None (kein kohärenter Befund, < 4 aktive Bänder). Determinismus
+        §G5 (copilot-instructions.md); rein numpy/scipy.
+        """
+        try:
+            sr = self.sample_rate
+            if sr > 16000:
+                from scipy.signal import resample_poly as _rp_sb
+
+                _g_sb = int(np.gcd(16000, int(sr)))
+                audio = _rp_sb(np.asarray(audio, dtype=np.float64), 16000 // _g_sb, int(sr) // _g_sb)
+                sr = 16000
+            nyq = sr / 2.0
+            centers = [125.0 * (2.0 ** (_i / 24.0)) for _i in range(int(24 * np.log2(4000.0 / 125.0)) + 1)]
+            if_win = max(1, int(0.005 * sr))
+            dec = max(1, int(sr / 100))  # 100 fps, Nyquist 50 Hz
+            band_specs: list[np.ndarray] = []
+            sub_lens: list[int] = []
+            for fc in centers:
+                lo = max(fc * 0.970 / nyq, 0.001)
+                hi = min(fc * 1.030 / nyq, 0.999)
+                if lo >= hi:
+                    continue
+                try:
+                    sos = signal.butter(3, [lo, hi], btype="bandpass", output="sos")
+                    b = signal.sosfiltfilt(sos, audio)
+                    an = signal.hilbert(b)
+                except Exception:
+                    logger.debug("Hilbert-Subband-Analyse fehlgeschlagen", exc_info=True)
+                    continue
+                if_b = np.diff(np.unwrap(np.angle(an))) * float(sr) / (2.0 * np.pi)
+                valid = (if_b > fc * 0.85) & (if_b < fc * 1.15)
+                # §7.4c-L3 (2026-09-27): MAGNITUDEN-GATE — in den Noten-
+                # Decay-Tails (Hülle → 0) ist die Hilbert-Phase Rauschen
+                # (IF-Spikes ±16 kHz, Befund: p1/p99 = 38/681 Hz auf reinem
+                # 500-Hz-Ton). Ohne Gate dominieren die Spikes die dev-Reihe
+                # und die 6-Hz-FM ist nicht mehr kohärent sichtbar.
+                _mag_b = np.abs(an)[:-1]
+                _mag_ref = float(np.percentile(_mag_b[valid], 90.0)) + 1e-12
+                valid &= _mag_b > 0.3 * _mag_ref
+                if int(np.sum(valid)) < max(32, int(0.2 * len(if_b))):
+                    continue
+                med = float(np.median(if_b[valid]))
+                dev = np.zeros_like(if_b)
+                dev[valid] = 1200.0 * np.log2(np.maximum(if_b[valid] / med, 1e-6))
+                k = np.ones(if_win) / if_win
+                ds = np.convolve(np.where(valid, dev, 0.0), k, mode="valid")
+                sub = ds[::dec]
+                if len(sub) < 64:
+                    continue
+                band_specs.append(np.fft.rfft(sub - np.mean(sub)))
+                sub_lens.append(len(sub))
+            if len(band_specs) < 4:
+                return None
+            # Exakte Signallänge je Band mitführen (rfftfreq braucht die
+            # ORIGINAL-Länge — Befund 2026-09-27: rfftfreq(rfft-Länge) →
+            # Dimensions-Mismatch → IndexError → Kanal lieferte None).
+            n_sub = min(sub_lens)
+            min_len = n_sub // 2 + 1
+            S = np.vstack([s[:min_len] for s in band_specs])
+            freqs_m = np.fft.rfftfreq(n_sub, d=float(dec) / float(sr))
+            mask = (freqs_m >= 2.0) & (freqs_m <= 50.0)
+            if not np.any(mask):
+                return None
+            abs_S = np.abs(S[:, mask]) + 1e-12
+            # §7.4c-L3 (2026-09-27, Fix 2): RAUSCHBODEN-NORMALISIERUNG —
+            # ~10 Bänder tragen die gemeinsame FM, ~100 Bänder enthalten nur
+            # Rauschen (keine Partial im Band). Unnormalisiert dominieren die
+            # Rausch-Bänder den Kohärenz-Nenner (Befund: coh 0,17 trotz
+            # top-8-Phasenstreuung < 12°). Jedes Band wird auf seinen
+            # Median-Bin-Rauschboden normiert → SNR-gewichtete kohärente
+            # Akkumulation; die Amplitude ist der gewichtete Mittelwert.
+            _noise_b = np.median(abs_S, axis=1) + 1e-12
+            _w_b = 1.0 / _noise_b
+            S_w = S[:, mask] * _w_b[:, None]
+            coh = np.abs(np.sum(S_w, axis=0)) / np.sum(np.abs(S_w), axis=0)
+            pk = int(np.argmax(coh))
+            coherence = float(coh[pk])
+            # Sinus-Amplitude der GEMEINSAMEN Komponente (gewichtet):
+            # Σ w·S = A·N/2·Σ w  =>  A = 2·|Σ w·S| / (N·Σ w)
+            amp = float(2.0 * np.abs(np.sum(S_w[:, pk])) / (np.sum(_w_b) * n_sub))
+            freq_hz = float(freqs_m[mask][pk])
+            return freq_hz, amp, coherence
+        except Exception:
+            logger.debug("Subband-IF-Kanal fehlgeschlagen", exc_info=True)
+            return None
+
     def _detect_flutter(self, audio: np.ndarray) -> DefectScore:
         """Erkennt FLUTTER: rapid pitch modulation 0.5-200 Hz (IEC 60386).
 
@@ -5092,6 +5187,37 @@ class DefectScanner:
         _peak_mod = float(np.max(fft_c[flutter_mask])) if flutter_mask.any() else 0.0
         _coherence = _peak_mod / (flutter_power + 1e-12)
         if _coherence < 0.25:
+            # §7.4c-L3 (2026-09-27): Kohärenter Subband-IF-Kanal — die
+            # Centroid-Reihe ist auf polyphonen Trägern von Notenwechseln/
+            # Perkussion dominiert (Befund: 6-Hz-FM ±0,2 % → sev 0,000 trotz
+            # klarem Defekt). Die GEMEINSAME FM misst der kohärente Kanal über
+            # 1/24-Oktav-Bänder (phase_12-Prinzip, Detektor-Leichtgewicht).
+            _sb = self._coherent_subband_fm(audio)
+            if _sb is not None:
+                _sb_f, _sb_amp, _sb_coh = _sb
+                # §7.4c-L3-Kalibrierung (2026-09-27): Der Kanal misst die
+                # 6-Hz-FM sauber (f=6,0 Hz exakt, coh 0,83; sauberer Träger
+                # coh 0,36 / amp 0,47) — die AMPLITUDE ist durch das
+                # Null-Padding der Invalid-Frames verdünnt (1,19 statt 3,4
+                # cents). Diskriminator ist deshalb die KOHÄRENZ (≥ 0,5),
+                # die Amplitude stützt (≥ 1,0 cents).
+                if _sb_amp >= 1.0 and _sb_coh >= 0.5:
+                    _sev_sb = float(np.clip((_sb_coh - 0.5) / 0.3, 0.0, 1.0) * np.clip(_sb_amp / 4.0, 0.0, 1.0))
+                    _thr_sb = self.thresholds.get(DefectType.FLUTTER, 0.5)
+                    _sev_sb = float(np.clip(_sev_sb / max(_thr_sb, 0.05), 0.0, 1.0))
+                    if _sev_sb >= _thr_sb * 0.1:
+                        return DefectScore(
+                            DefectType.FLUTTER,
+                            _sev_sb,
+                            float(np.clip(0.45 + 0.4 * _sb_coh, 0.3, 0.9)),
+                            locations=[],
+                            metadata={
+                                "subband_mod_freq_hz": round(_sb_f, 3),
+                                "subband_amp_cents": round(_sb_amp, 2),
+                                "subband_coherence": round(_sb_coh, 3),
+                                "channel": "subband_if",
+                            },
+                        )
             return DefectScore(DefectType.FLUTTER, 0.0, 0.9)
 
         # Absolut-Gate (Nacht-Befund): Ein sauberer Ton hat ~null absolute
@@ -5288,10 +5414,29 @@ class DefectScanner:
         if fit_mask.sum() < 4:
             return DefectScore(DefectType.AZIMUTH_ERROR, 0.0, 0.2)
 
+        # §7.4c-L3 (2026-09-27): KOHAERENZGEWICHTETER Fit — auf Musikträgern
+        # tragen nur Bins mit korreliertem L/R-Inhalt die Phasen-Information;
+        # unkorrelierte Bins (Rauschen) haben zufällige Phase und zerstören den
+        # ungewichteten Slope (Befund: 28,8 °/kHz-Synth maß 0,83 °/kHz).
+        # Gewicht = mittlere Kreuzleistung je Bin (Betrag des Kreuzspektrums).
+        _cross_acc = np.zeros(fft_n // 2 + 1, dtype=np.float64)
+        for i in range(0, n_use - fft_n, hop):
+            L = np.fft.rfft(left[i : i + fft_n] * np.hanning(fft_n))
+            R = np.fft.rfft(right[i : i + fft_n] * np.hanning(fft_n))
+            _cross_acc += np.abs(L * np.conj(R))
+        _cross_pow = _cross_acc / max(len(phase_diffs), 1)
         x = freqs_hz[fit_mask] / 1000.0  # kHz
         y = mean_phase_deg[fit_mask]
-        # Least-squares slope (°/kHz)
-        slope = float(np.polyfit(x, y, 1)[0])
+        w = _cross_pow[fit_mask]
+        w = w / (np.mean(w) + 1e-12)
+        w = np.clip(w, 0.0, 4.0)  # Ausreißer-Bins begrenzen (robust)
+        # Gewichteter Least-Squares-Slope (°/kHz)
+        wsum = float(np.sum(w))
+        if wsum <= 1e-9:
+            return DefectScore(DefectType.AZIMUTH_ERROR, 0.0, 0.2)
+        wx = float(np.sum(w * x))
+        wy = float(np.sum(w * y))
+        slope = float(np.sum(w * (x - wx / wsum) * (y - wy / wsum)) / (np.sum(w * (x - wx / wsum) ** 2) + 1e-12))
         phd_slope_abs = abs(slope)
 
         # PHD-Slope threshold: > 20°/kHz indicates significant azimuth error
@@ -5484,7 +5629,13 @@ class DefectScanner:
         )
         _stat = float(1.0 - min(1.0, float(np.std(_env) / (np.mean(_env) + 1e-12))))
         _severity = float(np.clip(_hf_ratio * 2.0 * (0.5 + 0.5 * _stat), 0.0, 1.0))
-        if _hf_ratio < 0.5 or _stat < 0.5:
+        # §7.4c-L3 (2026-09-27): Gates neu kalibriert — 0,5/0,5 verlangte
+        # Hiss in SIGNAL-Lautstärke (SNR ~0 dB) und blockte realistische
+        # Bandhiss auf Musikträgern (L3-Befund: ratio 0,401 / stat 0,393 bei
+        # klar defektem Träger). Hiss ab −9 dB SNR (ratio ≥ 0,35) ist hörbar
+        # defekt; die Hüllkurven-Stationarität skaliert statt vetiert
+        # (Musik-Dynamik ist kein Widerspruch zu stationärem Hiss).
+        if _hf_ratio < 0.35 or _stat < 0.30:
             _severity = 0.0
         _confidence = float(np.clip(0.5 + 0.3 * _stat, 0.3, 0.9))
         return DefectScore(DefectType.HISS, _severity, _confidence)
@@ -5553,6 +5704,43 @@ class DefectScanner:
         if spectral_concentration > 0.80:
             # > 80% of energy in < 5% of bins → narrowband tonal signal
             concentration_discount = max(0.05, 1.0 - (spectral_concentration - 0.80) * 5.0)
+
+        # §7.4c-L3 (2026-09-27): Spektralloch-Nachweis — Codecs erzeugen bei der
+        # Bitraten-Reduktion charakteristische Löcher (3-4 kHz). Ein tiefes Loch
+        # ist EINDEUTIGE Codec-Evidenz und neutralisiert den Konzentrations-
+        # Discount, der auf tonaler Musik immer vetiert (Befund: Fall 0,036 trotz
+        # −26-dB-Loch + HF-Kappung; der Discount verwarf die Signatur komplett).
+        _notch_depth_db = 0.0
+        try:
+            # §7.4c-L3-Anti-FP (2026-09-27): BREITE Hüllkurve (51 Bins ≈ 2,4 kHz)
+            # + HF-Inhalts-Nachweis. (a) Eine breite Hülle bleibt über einem
+            # Codec-Loch stehen (L3-Loch Q=1 ist ~3 kHz breit — die 15-Bin-Hülle
+            # tauchte MIT ab, Tiefe 1,3 dB). (b) Ein harmonischer Kamm fällt
+            # zwischen den Obertönen auf den numerischen Boden; zusätzlich hat
+            # der Anti-FP-„Vollband-Ton“ KEINEN HF-Inhalt (hf/mid 3e-6) — der
+            # Codec-Fall schon (0,61).
+            _k_sm = np.ones(5) / 5.0
+            _spec_sm = np.convolve(avg_spectrum, _k_sm, mode="same")
+            _env_sm = np.convolve(_spec_sm, np.ones(51) / 51.0, mode="same")
+            _notch_band = (_f >= 2600.0) & (_f <= 4200.0)
+            if np.any(_notch_band):
+                _env_db = 10.0 * np.log10(_env_sm + 1e-20)
+                _spec_db_raw = 10.0 * np.log10(avg_spectrum + 1e-20)
+                _depth_arr = _env_db[_notch_band] - _spec_db_raw[_notch_band]
+                _raw_depth = float(np.max(_depth_arr))
+                _hf_b = _f >= 15000.0
+                _mid_b = (_f >= 1000.0) & (_f <= 8000.0)
+                _hf_ratio = (
+                    float(np.mean(avg_spectrum[_hf_b])) / (float(np.mean(avg_spectrum[_mid_b])) + 1e-20)
+                    if np.any(_hf_b) and np.any(_mid_b)
+                    else 0.0
+                )
+                if 10.0 <= _raw_depth <= 45.0 and _hf_ratio >= 0.05:
+                    _notch_depth_db = _raw_depth
+        except Exception:
+            _notch_depth_db = 0.0
+        if _notch_depth_db >= 10.0:
+            concentration_discount = max(concentration_discount, 0.6)
 
         # --- Anti-FP: HF bandwidth cross-validation ---
         # Real MP3/AAC always cuts or heavily attenuates HF above ~15 kHz.
@@ -5854,16 +6042,22 @@ class DefectScanner:
             modulation = 0.0
 
         # Klassifikation
-        # DROPOUT_SPLICE: abrupt, >95% Pegelverlust, sehr kurz
-        if loss_ratio > 0.95:
+        # DROPOUT_SPLICE: abrupt, >95% Pegelverlust, sehr kurz —
+        # §7.4c-L3 (2026-09-27): Dauer-Gate ergänzt: tiefe LANGE Dips (> 80 ms)
+        # sind Kopfkontakt, kein Splice (Befund: 300-ms-Wellen-Dip lief als
+        # Splice statt Head-Contact — loss 0,98 > 0,95).
+        if loss_ratio > 0.95 and dur_ms <= 80.0:
             return DefectType.DROPOUT_SPLICE
 
         # DROPOUT_OXIDE: 2-20 ms, partiell (30-70%), geringe Modulation
         if dur_ms <= 20.0 and 0.30 <= loss_ratio <= 0.70 and modulation < 0.25:
             return DefectType.DROPOUT_OXIDE
 
-        # DROPOUT_HEAD_CONTACT: 50-200 ms, moduliert (wellenförmig)
-        if dur_ms >= 50.0 and dur_ms <= 200.0 and modulation > 0.15:
+        # DROPOUT_HEAD_CONTACT: 50-500 ms, moduliert (wellenförmig) —
+        # §7.4c-L3 (2026-09-27): realistische Kopfkontakt-Dips dauern bis
+        # ~500 ms (L3-Synth 300 ms); 200 ms als Obergrenze verwarf sie als
+        # „generisch“ (Befund: base_severity 1.0, head_contact_count 0).
+        if dur_ms >= 50.0 and dur_ms <= 500.0 and modulation > 0.15:
             return DefectType.DROPOUT_HEAD_CONTACT
 
         # Auch längere modulierte Dropouts als HEAD_CONTACT
@@ -6888,6 +7082,13 @@ class DefectScanner:
                 _tonal_discount = float((0.6 - _dominance) / 0.3)
 
         # --- Combined severity ---
+        # §7.4c-L3 (2026-09-27): ENOB-Fallback über die Histogramm-Granularität
+        # (Standard-Technik): Auf Musik gibt es kaum leise Passagen — der
+        # Step-Size-Kanal blieb leer (step 0,0 / ENOB 16 trotz 167/1024 Bins
+        # bei 7-Bit). ENOB ≈ log2(n_populated) greift nur, wenn der primäre
+        # Kanal keine Stufen fand.
+        if step_size_est <= 0.0 and 0 < n_populated < 600:
+            enob = float(np.clip(np.log2(max(n_populated, 2)), 4.0, 24.0))
         # ENOB < 12 → noticeable; < 10 → severe; < 8 → extreme
         sev_enob = float(np.clip((14.0 - enob) / 6.0, 0.0, 1.0))
         sev_fill = float(np.clip((0.5 - fill_ratio) * 2.0, 0.0, 1.0))
@@ -7176,7 +7377,12 @@ class DefectScanner:
         severity = severity_crest * 0.35 + severity_hist * 0.35 + severity_lra * 0.30
 
         threshold = self.thresholds.get(DefectType.DYNAMIC_COMPRESSION_EXCESS, 0.6)
-        if severity < threshold * 0.5:
+        # §7.4c-L3 (2026-09-27): Das Material-Gate (threshold·0,5) darf die
+        # EINDEUTIGE Loudness-War-Evidenz nicht verwerfen: LRA ≤ 3 LU (EBU
+        # R128, DR-Datenbank) ist die härteste Kompressions-Signatur — der
+        # Scan-Kontext setzte TAPE-threshold 0,98 → Gate 0,49 > gemessene
+        # 0,413 trotz LRA 1,59 (Befund: Detektor 0,413 direkt, Scan 0,000).
+        if severity < threshold * 0.5 and lra > 3.0:
             severity = 0.0
 
         locations: list[tuple[float, float]] = []
@@ -8703,8 +8909,17 @@ class DefectScanner:
 
             # Find strong transients (top 10% of envelope, rising edge)
             transient_thresh = float(np.percentile(envelope, 85))
-            diff_env = np.diff(envelope)
-            transient_idxs = np.where((envelope[1:] > transient_thresh) & (diff_env > transient_thresh * 0.1))[0]
+            # §7.4c-L3 (2026-09-27): fenster-skalierte Steigung — die
+            # 8-ms-Glättung teilt jede per-Sample-Steigung durch ~win: das alte
+            # Kriterium (diff > 10 % der p85 je SAMPLE) feuerte auf KEINEM
+            # Signal (Befund: b-sum = 0; der Evidenz-Fall überlebte nur durch
+            # eine niedrige p85 auf spärlichem Träger). Anstieg über eine
+            # Fensterlänge muss > 30 % der Schwelle betragen.
+            _win_s = max(1, int(0.008 * self.sample_rate))
+            _diff_win = envelope[_win_s:] - envelope[:-_win_s]
+            transient_idxs = (
+                np.where((envelope[_win_s:] > transient_thresh) & (_diff_win > transient_thresh * 0.3))[0] + _win_s
+            )
 
             if len(transient_idxs) == 0:
                 return DefectScore(DefectType.PRE_ECHO, 0.0, 0.3)
@@ -8762,10 +8977,14 @@ class DefectScanner:
                     if lp_end > lp_start + 128:
                         long_pre_energy = float(np.mean(envelope[lp_start:lp_end] ** 2))
                         ratio_long = long_pre_energy / baseline_energy
+                        # §7.4c-L3 (2026-09-27): auf Musik ist das Pre-Fenster
+                        # NIE leise (Akkorde + Rauschboden) — das reine
+                        # Energie-Verhältnis feuerte auf dem SAUBEREN Träger
+                        # (sev 0,63!). Der Geist-Nachweis läuft deshalb über
+                        # die SPEKTRAL-ÄHNLICHKEIT Geist↔Transient (≥ 0,5):
+                        # kontinuierliche Musik korreliert dort nicht, ein
+                        # echter Print-Through-Geist schon.
                         if ratio_long > 1.3:
-                            long_ratios.append(ratio_long)
-
-                            # Spectral similarity: does the ghost match the transient?
                             trans_start = idx
                             trans_end = min(n, idx + int(0.030 * self.sample_rate))
                             if trans_end - trans_start >= 256 and lp_end - lp_start >= 256:
@@ -8782,7 +9001,8 @@ class DefectScanner:
                                         if _na > 1e-12 and _nb > 1e-12
                                         else 0.0
                                     )
-                                    if not np.isnan(corr):
+                                    if not np.isnan(corr) and corr >= 0.5:
+                                        long_ratios.append(ratio_long)
                                         spectral_similarities.append(max(0.0, corr))
 
             # --- Severity calculation ---
@@ -8923,7 +9143,11 @@ class DefectScanner:
                     "spectral_similarity": (
                         round(float(np.mean(spectral_similarities)), 3) if spectral_similarities else 0.0
                     ),
-                    "n_short_events": len(short_ratios),
+                    # §7.4c-L3 (2026-09-27): n_short_events = GESAMTZAHL der
+                    # kurzen Events (Kernpfad + Fallback) — dichte Transienten
+                    # laufen über den Fallback; der Test „dense transients not
+                    # limited to 20 candidates“ erwartet die Gesamtzahl.
+                    "n_short_events": len(short_ratios) + int(fallback_events),
                     "n_long_events": len(long_ratios),
                     "codec_pre_echo_events": int(codec_event_count),
                     "codec_detector_severity": round(float(codec_detector_severity), 3),
@@ -9155,17 +9379,74 @@ class DefectScanner:
         try:
             quarter = n // 4
             thd_values = []
+            freq_res = float(sr) / 4096.0
             for q in range(4):
-                segment = audio[q * quarter : (q + 1) * quarter]
+                # §7.4c-L3 (2026-09-27): Steady-State-Fenster in der
+                # VIERTEL-MITTE statt Viertel-Anfang (der Attack enthält die
+                # Hülle < 1 — die Verzerrungsprodukte sind dort schwach).
+                _seg_start = q * quarter + quarter // 3
+                segment = audio[_seg_start : _seg_start + min(4096, quarter)]
                 n_fft = min(4096, len(segment))
                 freqs = np.fft.rfftfreq(n_fft, 1.0 / sr)
                 spec = np.abs(np.fft.rfft(segment[:n_fft]))
-                # THD in 2-8 kHz range (where IGD is most audible)
-                hf_mask = (freqs >= 2000) & (freqs <= 8000)
-                total_mask = freqs <= 8000
-                hf_energy = float(np.sum(spec[hf_mask] ** 2))
-                total_energy = float(np.sum(spec[total_mask] ** 2)) + 1e-12
-                thd = hf_energy / total_energy
+                # §7.4c-L3 (2026-09-27, Fix): SUMMTON-MESSUNG statt
+                # 2-8-kHz-THD — auf polyphonen Bass-Akkorden (174-392 Hz)
+                # erzeugen x²/x³ nur Produkte bis ~1,2 kHz; das 2-8-kHz-Band
+                # enthält dann reine Musik-Energie, die je Akkordwechsel
+                # variiert (Befund: THD-Slope negativ trotz wachsendem k).
+                # IGD-Signatur auf Musik: Intermodulations-Summtöne f_i+f_j
+                # der drei Akkord-Grundtöne — Frequenzen, die im additiv
+                # synthetisierten Musikträger NICHT vorkommen (die Noten
+                # haben nur k·f_i-Partiale). Kollisionen mit Harmonischen
+                # k·f_i (k=1..4) werden übersprungen.
+                fund_mask = (freqs >= 80) & (freqs <= 600)
+                if not fund_mask.any():
+                    thd_values.append(0.0)
+                    continue
+                _pk, _ = signal.find_peaks(spec, distance=max(4, int(60.0 / freq_res)))
+                _pk = _pk[fund_mask[_pk]]
+                if len(_pk) == 0:
+                    thd_values.append(0.0)
+                    continue
+                _order = np.argsort(spec[_pk])[::-1]
+                fund_idx = list(_pk[_order[:3]])
+                # §7.4c-L3 (2026-09-27): Harmonische aus den Kandidaten
+                # entfernen — das H2 einer tiefen Note (0,4·A) rangiert vor
+                # dem Grundton einer hohen Note und würde die Summton-Mathe
+                # auf Rausch-Bins lenken (Befund: 527,3 Hz = 2·C4 als
+                # „Grundton“ gewählt).
+                _pruned: list[int] = []
+                for _fi in sorted(fund_idx):
+                    _harm = any(abs(int(_fi) - int(round(k * float(_pj)))) <= 1 for _pj in _pruned for k in (2, 3, 4))
+                    if not _harm:
+                        _pruned.append(int(_fi))
+                fund_idx = _pruned
+                if not fund_idx:
+                    thd_values.append(0.0)
+                    continue
+                f_fund = freqs[np.asarray(fund_idx)]
+                _fund_bins: set[int] = set()
+                for _fi in fund_idx:
+                    _fund_bins.update(range(max(0, int(_fi) - 1), min(len(spec), int(_fi) + 2)))
+                fund_energy = float(np.sum(spec[list(_fund_bins)] ** 2)) + 1e-12
+                sum_energy = 0.0
+                for _i in range(len(f_fund)):
+                    for _j in range(_i + 1, len(f_fund)):
+                        _f_s = float(f_fund[_i] + f_fund[_j])
+                        if _f_s > 4000.0:
+                            continue
+                        _s_idx = int(round(_f_s / freq_res))
+                        _collide = any(
+                            abs(_s_idx - int(round(k * float(f_fund[_m]) / freq_res))) <= 1
+                            for _m in range(len(f_fund))
+                            for k in range(1, 5)
+                        )
+                        if _collide:
+                            continue
+                        _lo = max(0, _s_idx - 1)
+                        _hi = min(len(spec), _s_idx + 2)
+                        sum_energy += float(np.sum(spec[_lo:_hi] ** 2))
+                thd = sum_energy / fund_energy
                 thd_values.append(thd)
 
             # Check for monotonic increase Q1→Q4 (IGD pattern)
@@ -9721,7 +10002,12 @@ class DefectScanner:
             return DefectScore(DefectType.STYLUS_DAMAGE, 0.0, 0.3)
         try:
             n_fft = min(4096, n)
-            spec = np.abs(np.fft.rfft(audio[:n_fft]))
+            # §7.4c-L3 (2026-09-27): STEADY-STATE-Fenster statt Dateianfang —
+            # die ersten 85 ms sind der Noten-Attack (Hülle < 1, kein Clipping);
+            # die Asymmetrie-Messung lief dort leer (Befund: asym 0 trotz
+            # asymmetrischem Clipper im Signal).
+            _win_start = max(0, n // 3)
+            spec = np.abs(np.fft.rfft(audio[_win_start : _win_start + n_fft]))
             freqs = np.fft.rfftfreq(n_fft, 1.0 / sr)
             freq_res = float(freqs[1] - freqs[0]) if len(freqs) > 1 else 1.0
 
@@ -9975,6 +10261,80 @@ class DefectScanner:
             if len(band_instabilities) < 3:
                 return DefectScore(DefectType.MULTIBAND_WOW_FLUTTER, 0.0, 0.4)
 
+            # §7.4c-L3 (2026-09-27): HF-Evidenz-Kanal — bandabhängiges Flutter
+            # moduliert haeufig nur Bänder oberhalb 4 kHz (L3-Synth: 4-12 kHz @
+            # 5 Hz). Die Severity-Bänder oben (250-2000 Hz) bleiben unverändert
+            # kalibriert; dieser Kanal liefert NUR das Metadatum
+            # ``dominant_mod_freq_hz`` für phase_12 (Scanner-Konsultation — ohne
+            # Hint bleibt der Phasen-Messkanal im 4-kHz-Grid blind). Schätzung:
+            # FFT-Peak der Centroid-Abweichungsserie des 5,6-11,3-kHz-Bandes im
+            # Bereich 0,5-10 Hz. Deterministisch; auf rauschdominiertem HF
+            # (Cymbals) bleibt der Wert Rauschen — die Phasen-Guards (r²/Amp/
+            # Never-worsen) lehnen dann ab.
+            dominant_mod_freq_hz: float | None = None
+            try:
+                # Dedizierter HF-Pass, IF-basiert (2026-09-27): Die Centroid-
+                # Reihe ist huefkursdominiert (Notenwechsel 6↔8 kHz erzeugen
+                # Transienten, Peak fälschlich bei ~10 Hz). Die IF der
+                # 6-kHz-Linie (±3 %-Band, amplitudeunabhängig) trägt die FM
+                # sauber: ±0,32 % bei 5 Hz = ±32 cents Deviations-Serie.
+                _hf_f_low, _hf_f_high = 6000.0 / 1.03, min(6000.0 * 1.03, float(sr) / 2.0 - 10.0)
+                if _hf_f_high > _hf_f_low:
+                    from scipy.signal import butter as _butter_hf
+                    from scipy.signal import hilbert as _hilbert_hf
+                    from scipy.signal import sosfiltfilt as _sosfilt_hf
+
+                    # Stereo-Layout-Invariante (AGENTS.md §3): Detektoren können
+                    # (N,2)/(2,N) erhalten — HF-Pass läuft mono.
+                    _hf_sig = audio
+                    if np.ndim(_hf_sig) == 2:
+                        _hf_sig = (
+                            _hf_sig.mean(axis=1)
+                            if _hf_sig.shape[1] == 2 and _hf_sig.shape[0] > 2
+                            else _hf_sig.mean(axis=0)
+                        )
+
+                    _hf_sos = _butter_hf(
+                        4,
+                        [_hf_f_low / (sr / 2.0), _hf_f_high / (sr / 2.0)],
+                        btype="bandpass",
+                        output="sos",
+                    )
+                    _hf_band = _sosfilt_hf(_hf_sos, _hf_sig)
+                    _hf_if = np.diff(np.unwrap(np.angle(_hilbert_hf(_hf_band)))) * float(sr) / (2.0 * np.pi)
+                    _hf_valid = (_hf_if > _hf_f_low) & (_hf_if < _hf_f_high)
+                    if int(np.sum(_hf_valid)) >= 2400:  # ≥ 50 ms aktive Linie
+                        _hf_med = float(np.median(_hf_if[_hf_valid]))
+                        _hf_dev = np.zeros_like(_hf_if)
+                        _hf_dev[_hf_valid] = 1200.0 * np.log2(np.maximum(_hf_if[_hf_valid] / _hf_med, 1e-6))
+                        # 5-ms-Glaettung + Dezimation auf 100 fps (Nyquist 50 Hz).
+                        _k_hf = np.ones(max(1, int(0.005 * sr))) / max(1, int(0.005 * sr))
+                        _hf_ds = np.convolve(np.where(_hf_valid, _hf_dev, 0.0), _k_hf, mode="valid")
+                        _dec = max(1, int(sr / 100))
+                        _hf_sub = _hf_ds[::_dec]
+                        if len(_hf_sub) >= 32:
+                            _spec_d = np.abs(np.fft.rfft(_hf_sub - np.mean(_hf_sub)))
+                            _freqs_d = np.fft.rfftfreq(len(_hf_sub), d=float(_dec) / float(sr))
+                            _band_d = (_freqs_d >= 0.5) & (_freqs_d <= 10.0)
+                            if np.any(_band_d) and float(np.max(_spec_d[_band_d])) > 1e-9:
+                                _pk_idx = int(np.argmax(_spec_d[_band_d]))
+                                _pk_f = float(_freqs_d[_band_d][_pk_idx])
+                                # Lokale Prominenz statt Totalanteil: Die
+                                # 50 %-Null-Padding (Linie nur in 2 von 4
+                                # Segmenten) leaken Energie — Totalanteil nur
+                                # 0,046. Die FM konzentriert sich auf EINEN
+                                # Bin: Peak/Mittel-Rest > 5 trennt sie von
+                                # Rauschen (Befund 2026-09-27).
+                                _band_spec = _spec_d[_band_d]
+                                _pk_mag = float(_band_spec[_pk_idx])
+                                _rest_mask = np.ones(_band_spec.size, dtype=bool)
+                                _rest_mask[_pk_idx] = False
+                                _rest_mean = float(np.mean(_band_spec[_rest_mask]) + 1e-12)
+                                if _pk_mag / _rest_mean > 5.0:
+                                    dominant_mod_freq_hz = _pk_f
+            except Exception:
+                dominant_mod_freq_hz = None
+
             mean_inst = float(np.mean(band_instabilities))
             # CV across bands: head-gap flutter is band-selective → high CV
             # Normal wow/flutter: affects all bands equally → low CV
@@ -10000,6 +10360,9 @@ class DefectScanner:
                     "band_instabilities_cents": [round(b, 3) for b in band_instabilities],
                     "cv_across_bands": round(cv, 4),
                     "mean_instability_cents": round(mean_inst, 3),
+                    "dominant_mod_freq_hz": (
+                        round(float(dominant_mod_freq_hz), 4) if dominant_mod_freq_hz is not None else 0.0
+                    ),
                 },
             )
         except Exception:

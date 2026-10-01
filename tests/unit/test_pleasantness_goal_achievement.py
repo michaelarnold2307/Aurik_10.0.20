@@ -17,6 +17,7 @@ Spec-Referenz: §v10 HPE-GATE, §0h Music-Death-Shield
 """
 
 
+import numpy as np
 import pytest
 
 
@@ -121,4 +122,124 @@ class TestGoalAchievementMatrix:
         markers = [m.split(":")[0].strip() for m in config.getini("markers")]
         assert "goal_achievement" in markers, (
             "goal_achievement-Marker fehlt — keine Test-Kategorie für positive Klangverbesserung"
+        )
+
+
+class TestWohlklangOptimumObjective:
+    """§Hörordnung §1–§3: Parameter-Suche muss den maximalen Wohlklang suchen.
+
+    Regressionstest gegen den Bug 2026-09-26 („Aurik berechnet nicht die
+    optimalen Parameter des maximalen Wohlklangs"): die Stärken-Suche
+    bewertete Signal-Ähnlichkeit (identisch = best), bestrafte damit jede
+    echte Reparatur und verharrte bei Default-Stärken.
+    """
+
+    @staticmethod
+    def _tone(secs: float = 2.0, sr: int = 48000) -> np.ndarray:
+        t = np.arange(int(sr * secs)) / sr
+        return 0.5 * np.sin(2 * np.pi * 220 * t) + 0.2 * np.sin(2 * np.pi * 440 * t)
+
+    def test_20_objective_identical_is_exact_zero(self):
+        from backend.core.human_pleasantness_estimator import wohlklang_objective_delta
+
+        a = self._tone()
+        assert wohlklang_objective_delta(a, a.copy(), 48000) == 0.0
+
+    def test_21_objective_prefers_wohlklang_improvement(self):
+        """Entrauschung muss als Wohlklang-Gewinn > 0 sichtbar sein."""
+        from backend.core.human_pleasantness_estimator import wohlklang_objective_delta
+
+        rng = np.random.default_rng(11)
+        clean = self._tone()
+        noisy = clean + 0.04 * rng.standard_normal(len(clean))
+        assert wohlklang_objective_delta(noisy, clean, 48000) > 0.0
+
+    def test_22_objective_rejects_structural_collapse(self):
+        """Crest-Vernichtung (Limiter-artig) ist Hör-Invarianten-Verletzung."""
+        from backend.core.human_pleasantness_estimator import wohlklang_objective_delta
+
+        a = self._tone()
+        crushed = np.tanh(4.0 * a) / np.tanh(4.0)
+        assert wohlklang_objective_delta(a, crushed, 48000) < -0.03
+
+    def test_23_strength_search_climbs_wohlklang_ladder(self):
+        """Die Suche muss anheben, wenn höhere Stärke mehr Wohlklang bringt."""
+        from backend.core.adaptive_strength_optimizer import optimize_phase_strength
+
+        rng = np.random.default_rng(3)
+        clean = self._tone()
+        noisy = clean + 0.04 * rng.standard_normal(len(clean))
+
+        def runner(audio: np.ndarray, strength: float) -> np.ndarray:
+            # Stärke skaliert die Entrauschung: 0 = rauschig, 1 = sauber
+            return (1.0 - strength) * noisy + strength * clean
+
+        result = optimize_phase_strength(
+            phase_id="test_wohlklang_ladder",
+            audio_input=noisy,
+            sample_rate=48000,
+            phase_runner=runner,
+            restorability_score=75.0,
+        )
+        assert result.optimal_strength > 0.2, (
+            f"Stärke-Suche verharrte bei {result.optimal_strength} — das alte "
+            f"Signal-Ähnlichkeits-Objektiv bestraft Reparaturen noch immer "
+            f"(history={result.history})"
+        )
+        assert not result.was_skipped, "Wohlklang-Verbessernde Phase wurde übersprungen"
+
+    def test_24_tape_dip_repair_energy_continuity(self):
+        """§2.35b: Dip-Reparatur darf keine neuen Energie-Sprünge erzeugen.
+
+        Produktionsbefund Import-Song: 18 Sprünge > 6 dB/100 ms nach phase_12 —
+        die lineare Rampen-Länge degenerierte bei kurzen Dips zu einem
+        Fade-Frame (Sprung 1,0→Gain in ~11 ms).
+        """
+        from backend.core.phases.phase_12_wow_flutter_fix import WowFlutterFix
+
+        sr = 48000
+        t = np.arange(sr * 4) / sr
+        sig = 0.3 * np.sin(2 * np.pi * 440 * t) + 0.15 * np.sin(2 * np.pi * 880 * t)
+        env = np.ones(len(sig))
+        dip_slices = []
+        for start_s in (1.0, 2.0, 3.0):
+            a0 = int(start_s * sr)
+            a1 = a0 + int(0.040 * sr)  # 40-ms-Dips = worst case der alten Fade-Degeneration
+            env[a0:a1] = 10 ** (-12.0 / 20.0)
+            dip_slices.append(slice(a0, a1))
+        dipped = sig * env
+
+        phase = WowFlutterFix()
+        out, n_repaired = phase._stabilize_tape_level(dipped, sr, 1.0, is_primary_tape=True, confirmed_tape_dip=False)
+        assert n_repaired >= 1, "Dips wurden nicht repariert — Test prüft Reparatur-Kontinuität"
+
+        def _max_jump_db(x: np.ndarray) -> float:
+            win = int(0.1 * sr)
+            rms = np.array([np.sqrt(np.mean(x[i : i + win] ** 2)) + 1e-12 for i in range(0, len(x) - win, win // 2)])
+            return float(np.max(np.abs(20.0 * np.log10(rms[1:] / rms[:-1]))))
+
+        out_m = np.asarray(out, dtype=np.float64)
+        in_m = np.asarray(dipped, dtype=np.float64)
+        assert _max_jump_db(out_m) <= _max_jump_db(in_m) + 0.5, (
+            f"Reparatur fügte Energie-Sprünge hinzu (out={_max_jump_db(out_m):.1f} dB "
+            f"> in={_max_jump_db(in_m):.1f} dB) — TemporalConsistencyGuard-Verletzung"
+        )
+        # Dip-Region angehoben (Reparatur wirkt)
+        for sl in dip_slices:
+            r_in = np.sqrt(np.mean(in_m[sl] ** 2)) + 1e-12
+            r_out = np.sqrt(np.mean(out_m[sl] ** 2)) + 1e-12
+            assert r_out > r_in * 1.2, "Dip-Pegel wurde nicht wiederhergestellt"
+
+    def test_25_pmgg_timing_ladder_searches_least_regression(self):
+        """§2.29 + §Wohlklang-Optimum: Timing-Phasen suchen die geringste
+        Regression per Re-Ausführung — die ungesuchte Vollstärke-Fassung wird
+        nie übernommen (Befund: regression=0,3351 ≫ 0,033 akzeptiert).
+        """
+        import backend.core.per_phase_musical_goals_gate as pmgg
+
+        src = open(pmgg.__file__, encoding="utf-8").read()
+        assert "using best-effort (regression=" not in src, "alter Vollstärke-Retour-Pfad lebt noch"
+        assert 'return best_audio, best_scores, "best_effort", initial_strength' not in src
+        assert "suche geringste Regression per Re-Ausfuehrung" in src, (
+            "Timing-Re-Ausführungs-Leiter fehlt — phase_12/31 nehmen wieder Vollstärke ungeprüft"
         )

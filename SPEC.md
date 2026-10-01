@@ -72,6 +72,31 @@ def process(self, audio: np.ndarray, sample_rate: int,
 | 38 | Presence Boost | Era-adaptiv, §5/5 Peak-Messung |
 | 39 | Air Band | §0a-Guard (Restoration → verboten), §5/5 Peak |
 | 40 | Loudness Normalization | ITU-R BS.1770-4, §5/5 LUFS-Messung |
+| 41 | — | — |
+| 42 | — | — |
+| 43 | — | — |
+| 44 | — | — |
+| 45 | — | — |
+| 46 | — | — |
+| 47 | — | — |
+| 48 | — | — |
+| 49 | — | — |
+| 50 | — | — |
+| 51 | — | — |
+| 52 | — | — |
+| 53 | — | — |
+| 54 | — | — |
+| 55 | — | — |
+| 56 | — | — |
+| 57 | — | — |
+| 58 | — | — |
+| 59 | — | — |
+| 60 | — | — |
+| 61 | — | — |
+| 62 | — | — |
+| 63 | — | — |
+| 64 | — | — |
+| 65 | — | — |
 
 ### 2.4 Qualitäts-Gates
 
@@ -99,7 +124,7 @@ def process(self, audio: np.ndarray, sample_rate: int,
 
 ### 3.1 Restoration-Modus
 
-- **Ziel**: Defekte entfernen, Charakter 100% bewahren
+- **Ziel**: Defekte unter Hörbarkeitsschwelle des menschlichen Gehörs absenken, Charakter 100% bewahren
 - **§0a**: Air-Band/Harmonic-Exciter VERBOTEN auf Analogmaterial
 - **LUFS**: Material-abhängig (Vinyl: −18, Tape: −16, CD: −14)
 - **PMGG**: Rollback bei JEDER Goal-Regression
@@ -122,8 +147,6 @@ def process(self, audio: np.ndarray, sample_rate: int,
 - 3-stufige Vocal-Detection (spectral → MFCC → energy)
 - PsychoAcousticMetrics ist vollwertiger Calculator
 
----
-
 ## 4. Spezifikationen-Referenz
 
 | Spec | Modul | Inhalt |
@@ -138,8 +161,6 @@ def process(self, audio: np.ndarray, sample_rate: int,
 | §2.47a | pre_analysis.py | Material-Defect-Consistency |
 | §ISO-226 | phase_40 | Fletcher-Munson-Lautstärke-Kompensation |
 
----
-
 ## 5. Abweichungsprotokoll (bidirektional behoben)
 
 | Datum | Abweichung | Richtung | Fix |
@@ -153,8 +174,6 @@ def process(self, audio: np.ndarray, sample_rate: int,
 | 2026-07-18 | `PsychoAcousticMetrics` @dataclass | Spec→Code | @dataclass entfernt, **init**+Calculator-Methoden |
 | 2026-07-18 | Phase 35-40 Dummy-Metriken | Spec→Code | Echte Messungen (LUFS, Peak) |
 
----
-
 ## 6. Qualitäts-Metriken (Mai-30-Referenzlauf)
 
 ```
@@ -166,13 +185,11 @@ VQI:             0.802 (acceptable)
 RT-Faktor:       22.53×
 ```
 
----
-
 ## 7. Reproduzierbarkeit
 
 ### 7.1 Environment
 
-- Python 3.10+
+- Python 3.10.12
 - `requirements.txt` im Projekt-Root
 - `.venv_aurik` Virtual Environment
 
@@ -194,8 +211,6 @@ python -m pytest tests/ -x -q
 ```
 
 ### 2.11 Spenden-Erinnerung
-
----
 
 ## 8. Metadaten-Konsistenz §v10.18 — Korrekter Metadatenfluss
 
@@ -236,7 +251,7 @@ Jede Phase, die einen Defekt **behebt**, MUSS im PhaseResult melden:
 return PhaseResult(
     audio=repaired_audio,
     resolved_defects={
-        "CLIPPING": 0.03,   # Residual-Severity nach Reparatur
+        "CLIPPING": 0.03,  # Residual-Severity nach Reparatur
     },
 )
 ```
@@ -725,19 +740,19 @@ Der `CalibrationContext` ist die zentrale Datenstruktur, die ALLE für die Kalib
 @dataclass
 class CalibrationContext:
     # Pre-Analysis (einmalig, aus pre_analysis.py)
-    restorability_score: float      # 0–100
-    transfer_chain_depth: int       # 1–n
-    material_type: str              # cassette, vinyl, reel_tape, ...
-    snr_db: float                   # Signal-Rausch-Abstand
-    bandwidth_hz: float             # Effektive Bandbreite
-    era_decade: int                 # 1950, 1960, 1970, ...
-    genre: str                      # Deutscher Schlager, Jazz, ...
-    vocal_confidence: float         # 0–1
+    restorability_score: float  # 0–100
+    transfer_chain_depth: int  # 1–n
+    material_type: str  # cassette, vinyl, reel_tape, ...
+    snr_db: float  # Signal-Rausch-Abstand
+    bandwidth_hz: float  # Effektive Bandbreite
+    era_decade: int  # 1950, 1960, 1970, ...
+    genre: str  # Deutscher Schlager, Jazz, ...
+    vocal_confidence: float  # 0–1
 
     # Runtime (aktualisiert nach jeder Phase via Rekalibrierung)
-    _novelty_crit: float            # Aktueller NOVELTY_CRIT-Wert
-    _echo_thresh: float             # Aktueller ECHO_THRESH-Wert
-    _snapshot_generation: int       # Monoton steigend
+    _novelty_crit: float  # Aktueller NOVELTY_CRIT-Wert
+    _echo_thresh: float  # Aktueller ECHO_THRESH-Wert
+    _snapshot_generation: int  # Monoton steigend
 ```
 
 ### 15.3 Drei-Klassen-Kalibrierung
@@ -755,9 +770,7 @@ Jede Ableitung folgt dem Muster:
 ```python
 def compute_X(context: CalibrationContext) -> float:
     """Leitet X kontinuierlich aus dem CalibrationContext ab."""
-    return continuous_function(context.restorability_score,
-                                context.transfer_chain_depth,
-                                context.snr_db, ...)
+    return continuous_function(context.restorability_score, context.transfer_chain_depth, context.snr_db, ...)
 ```
 
 Implementierte Ableitungen:

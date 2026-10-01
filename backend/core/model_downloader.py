@@ -438,7 +438,7 @@ class ModelDownloader:
                     )
                     if not ok:
                         logger.warning(
-                            "§V6 (copilot-instructions.md): Release-Part %s fehlgeschlagen — %s nutzt DSP-Fallback",
+                            "§V6 (copilot-instructions.md): Release-Part %s fehlgeschlagen — %s nutzt DSP-Ersatzpfad",
                             asset,
                             entry.name,
                         )

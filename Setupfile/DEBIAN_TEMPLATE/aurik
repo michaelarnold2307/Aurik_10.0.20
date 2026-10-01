@@ -1,0 +1,9 @@
+#!/bin/sh
+# Aurik 10 — Launcher (§VI copilot-instructions.md: python3 -B;
+# GPU-Detection läuft im Hauptthread vor ModernMainWindow, im App-Code).
+APP_DIR="/opt/aurik"
+PY="$APP_DIR/venv/bin/python3"
+if [ ! -x "$PY" ]; then
+    PY="python3"
+fi
+exec "$PY" -B "$APP_DIR/Aurik10/main.py" "$@"

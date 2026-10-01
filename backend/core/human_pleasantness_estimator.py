@@ -350,3 +350,87 @@ def compare_pleasantness(
         "restored": {"score": rest.score, "label": rest.label, "issues": rest.issues},
         "verdict": verdict,
     }
+
+
+# Hör-Invarianten-Wächter (Hörordnung Ebene 1) — zentrale Schwellen, nicht
+# phasenindividuell (§V7 (copilot-instructions.md)). Greifen nur bei strukturellem Signalkollaps;
+# kalibriert entlang der Produktions-Watchdog-Werte (RMS-KRIT-Abfall 12 dB,
+# Crest-Kollaps ≈ 12 dB). Alles darunter entscheidet der Wohlklang selbst.
+_INVARIANT_CORR_MIN = 0.50
+_INVARIANT_RMS_DB_MAX = 12.0
+_INVARIANT_CREST_DB_MAX = 12.0
+
+
+def wohlklang_objective_delta(
+    original: np.ndarray,
+    restored: np.ndarray,
+    sr: int,
+    *,
+    original_result: PleasantnessResult | None = None,
+) -> float:
+    """Optimumsziel der Parameter-Suche: maximaler Wohlklang (Hörordnung §1–§3).
+
+    Bugfix 2026-09-26 („Aurik berechnet nicht die optimalen Parameter des
+    maximalen Wohlklangs"): Sämtliche Stärken-Suchen bewerteten Kandidaten
+    über Signal-Ähnlichkeit (identisch = best) oder Proxy-Produkte
+    (MR-STFT × tanh-Richtung → Δ ≈ 1e-5, in der Praxis blind). Dadurch
+    SENKTE jede echte Reparatur den Zielfert, die Suche blieb bei
+    Default-Stärken („0 boosted, 0 damped") und Regressionen liefen als
+    „best_effort" durch. Maßgeblich ist jetzt ausschließlich das HPE-Delta:
+    psychoakustische Angenehmheit (Zwicker-Schärfe, Rauigkeit, Lautheit,
+    Tonalität, Fluktuation) — eine klarere Aufnahme DARF anders klingen.
+
+    Die Hör-Invarianten (Ebene 1) wirken als Wächter statt als Ziel: bei
+    strukturellem Kollaps (Korrelation, Pegel, Crest) wird der Kandidat
+    ungeachtet des HPE-Werts abgelehnt (Delta = −1).
+
+    Returns:
+        float in [−1, 1]: >0 = Wohlklang-Gewinn, 0.0 = identisch/neutral,
+        <0 = Wohlklang-Verlust bzw. Invarianten-Verletzung.
+    """
+    try:
+        # §Stereo-Layout-Invariante (C,N)/(N,C) → Mono (Kanalmittel) +
+        # §III NaN/Inf-Schutz — identische Normierung wie
+        # compute_pleasantness/_metric_mono, sonst layout-abhängige Δ.
+        pre = np.asarray(original, dtype=np.float64)
+        if pre.ndim == 2:
+            pre = pre.mean(axis=1) if pre.shape[1] <= 2 else pre.mean(axis=0)
+        post = np.asarray(restored, dtype=np.float64)
+        if post.ndim == 2:
+            post = post.mean(axis=1) if post.shape[1] <= 2 else post.mean(axis=0)
+        pre = np.nan_to_num(np.atleast_1d(pre).ravel(), nan=0.0, posinf=0.0, neginf=0.0)
+        post = np.nan_to_num(np.atleast_1d(post).ravel(), nan=0.0, posinf=0.0, neginf=0.0)
+        n = min(len(pre), len(post))
+        if n < 256:
+            return 0.0
+        pre = pre[:n]
+        post = post[:n]
+
+        # ── Hör-Invarianten (Ebene 1) als Wächter ──────────────────────────
+        step = max(1, n // 8192)
+        pre_ds = pre[::step]
+        post_ds = post[::step]
+        corr = float(np.corrcoef(pre_ds, post_ds)[0, 1]) if len(pre_ds) > 2 else 1.0
+        if not np.isfinite(corr):
+            corr = 1.0
+        pre_rms = float(np.sqrt(np.mean(pre**2))) + 1e-12
+        post_rms = float(np.sqrt(np.mean(post**2))) + 1e-12
+        rms_db = float(20.0 * np.log10(post_rms / pre_rms))
+        pre_crest = float(20.0 * np.log10((float(np.max(np.abs(pre))) + 1e-12) / pre_rms))
+        post_crest = float(20.0 * np.log10((float(np.max(np.abs(post))) + 1e-12) / post_rms))
+        if (
+            corr < _INVARIANT_CORR_MIN
+            or abs(rms_db) > _INVARIANT_RMS_DB_MAX
+            or abs(post_crest - pre_crest) > _INVARIANT_CREST_DB_MAX
+        ):
+            return -1.0
+
+        # ── Wohlklang-Optimum: HPE-Delta ─────────────────────────────────
+        orig_res = original_result if original_result is not None else compute_pleasantness(pre, sr)
+        rest_res = compute_pleasantness(post, sr)
+        return float(np.clip(rest_res.score - orig_res.score, -1.0, 1.0))
+    except Exception:
+        logger.warning(
+            "§V6 (copilot-instructions.md) Wohlklang-Objektiv messbar nicht verfügbar → neutraler Return (0.0)"
+        )
+        return 0.0

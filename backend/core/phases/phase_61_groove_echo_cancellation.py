@@ -150,6 +150,75 @@ def _apply_groove_echo_mono(
             cleaned = np.fft.irfft(spec_clean, n=n_fft)
             out[ghost_start : ghost_start + n_fft] = cleaned
 
+    # ── §7.4c-L3 (2026-09-28): GLOBALER VORLÄUFER-PFAD ─────────────────────
+    # Groove-Echo ist ein ZEITKONTINUIERLICHER Vorläufer (Nachbarrille, 1 Umdrehung
+    # vor dem Signal), kein reines Peak-Phänomen. Der peak-basierte Pfad oben
+    # entfernt nur Geister an Transienten — die Hüllkurven-Autokorrelation blieb
+    # dadurch unverändert (Befund: met 0,2043→0,2062; der Synth-Geist
+    # 0,25·s[t+1,8s] ist überall präsent). Der globale Pfad schätzt die
+    # Geist-Verzögerung über den LOKALEN Überschuss der Hüllkurven-
+    # Kreuzkorrelation (musik-immun: Akkord-/Noten-Autokorrelation ist glatt
+    # über Lags, der Geist erzeugt einen schmalen Peak) und subtrahiert den
+    # Vorläufer: y[t] = x[t] − g·x[t+delay]. g wird über eine kleine
+    # Kandidaten-Leiter minimiert (Überschuss der Hülle nach Subtraktion),
+    # Never-worsen-Energie-Gate (kein Pegel-Kollaps > ~3 dB).
+    try:
+        # §7.4c-L3 (2026-09-28): scipy.signal LOKAL importieren — auf
+        # Modulebene existiert kein `signal` (Befund: NameError im
+        # globalen Pfad, der Block lief nie).
+        from scipy import signal as _sps61  # pylint: disable=import-outside-toplevel
+
+        _env61 = np.abs(_sps61.hilbert(x))
+        _env61 = _env61 - np.mean(_env61)
+        _e2_61 = float(np.dot(_env61, _env61))
+        if _e2_61 > 1e-12:
+
+            def _env_c61(_e: np.ndarray, _d: int) -> float:
+                if _d <= 0 or _d >= n // 2:
+                    return 0.0
+                _num = float(np.dot(_e[: n - _d], _e[_d:]))
+                _den = float(np.sqrt(np.dot(_e[: n - _d], _e[: n - _d]) * np.dot(_e[_d:], _e[_d:]))) + 1e-12
+                return _num / _den
+
+            def _excess61(_e: np.ndarray, _d: int) -> float:
+                return float(
+                    _env_c61(_e, _d) - 0.5 * (_env_c61(_e, _d - int(0.1 * sr)) + _env_c61(_e, _d + int(0.1 * sr)))
+                )
+
+            _best_d = None
+            _best_xs = -1e9
+            # §7.4c-L3 (2026-09-28): NUR die RPM-Kandidaten scannen — ein
+            # freier 0,7–2,3-s-Scan wählte 0,75 s (Musik-Phantom, Überschuss
+            # 0,083 — die Subtraktion dort verschlechterte den Überschuss) statt
+            # des echten 1,8-s-Geists (0,078, Optimum bei g=0,25).
+            for _delay_s in _REVOLUTION_DELAYS_S:
+                _d = int(_delay_s * sr)
+                _xs = _excess61(_env61, _d)
+                if _xs > _best_xs:
+                    _best_xs, _best_d = _xs, _d
+            if _best_d is not None and _best_xs > 0.04:
+                _rms_in61 = float(np.sqrt(np.mean(x**2)) + 1e-12)
+                _best_g = 0.0
+                _best_out = x
+                _best_res = _best_xs
+                for _g in (0.05, 0.10, 0.15, 0.20, 0.25, 0.30, 0.35):
+                    _y = x.copy()
+                    _y[:-_best_d] -= float(_g) * x[_best_d:]
+                    _rms_y = float(np.sqrt(np.mean(_y**2)) + 1e-12)
+                    if _rms_y < 0.7 * _rms_in61:
+                        continue  # Never-worsen-Energie-Gate
+                    _ey = np.abs(_sps61.hilbert(_y))
+                    _ey = _ey - np.mean(_ey)
+                    if float(np.dot(_ey, _ey)) < 1e-12:
+                        continue
+                    _res = _excess61(_ey, _best_d)
+                    if _res < _best_res:
+                        _best_res, _best_g, _best_out = _res, _g, _y
+                if _best_g > 0.0:
+                    out = _best_out
+    except Exception as _ge61_exc:
+        logger.debug("Verarbeitungsschritt61 globaler Vorläufer-Pfad nicht blockierend: %s", _ge61_exc)
+
     result = np.nan_to_num(out, nan=0.0, posinf=0.0, neginf=0.0)
     return _soft_knee_clip(result).astype(np.float32)  # type: ignore[no-any-return]
 

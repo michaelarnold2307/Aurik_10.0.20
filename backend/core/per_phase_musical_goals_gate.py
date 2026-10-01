@@ -954,11 +954,17 @@ PHASE_GOAL_EXCLUSIONS: dict[str, set[str]] = {
     # → crest-factor drops significantly → false P3 emotionalitaet regression.
     # Loud transient beats attenuated → inter-beat amplitude contrast reduced →
     # autocorr[lag_05] misreads periodic beat pattern → false P3 groove regression.
+    # §P0-2: Peak-clipping also changes spectral fingerprint vs. pre-limiter checkpoint
+    # (§2.44 Reference-Paradoxon) → false P1/P2 regressions (natuerlichkeit, timbre_authentizitaet,
+    # artikulation). Mirrors phase_11 exclusions — same mechanism as brickwall limiter.
     "phase_47": {
         "micro_dynamics",
         "groove",
         "emotionalitaet",
-    },  # TruePeak limiter: peak-clamping reduces crest-factor + inter-beat peak contrast → false P3 regressions (same mechanism as phase_11)
+        "natuerlichkeit",
+        "timbre_authentizitaet",
+        "artikulation",
+    },  # TruePeak limiter: peak-clamping reduces crest-factor + inter-beat peak contrast → false P3 regressions (same mechanism as phase_11). §P0-2: Added P1/P2 exclusions — supervised run showed P1/P2-Drift −0.656 causing false rollback.
     # 4-band independent compression with upward/downward compander:
     # mechanistically identical to phase_10 (multi-band parallel compression) and
     # phase_17 (mastering compressor). Envelope modification per band.
@@ -5053,7 +5059,14 @@ class PerPhaseMusicalGoalsGate:
         # §2.29a Fix: ML-deterministische Timing-Phasen (phase_12, phase_31)
         # können NICHT per Wet/Dry retried werden, da Timing-Phasen kein Blending
         # erlauben (Phasen-Artefakte bei Crossfade zeitversetzter Signale).
-        # Alle Retries würden identisches Audio produzieren → sofort Best-Effort.
+        # §Wohlklang-Optimum 2026-09-26: „Sofort Best-Effort" verletzte den
+        # eigenen §2.29-Vertrag („Phase wird mit geringster Regression
+        # angewendet") — die Vollstärke-Fassung wurde ungeprüft übernommen
+        # (Produktionsbefund Import-Song: regression=0,3351 ≫ Schwelle 0,033
+        # akzeptiert, §v10.709 timbre/transient-Schaden, 18 Energie-Sprünge).
+        # Blending bleibt verboten, aber ein NEULAUF pro reduzierter Stärke ist
+        # kein Blending: die Leiter sucht die geringste Regression und gibt
+        # ausschließlich diese zurück.
         _TIMING_PHASES = frozenset(
             {
                 "phase_12_wow_flutter_fix",
@@ -5062,13 +5075,67 @@ class PerPhaseMusicalGoalsGate:
         )
         if _is_ml_deterministic and phase_id in _TIMING_PHASES:
             logger.info(
-                "PMGG: %s is ML-deterministic timing Verarbeitungsschritt — Wet/Dry retries not applicable, "
-                "using best-effort (regression=%.4f > Schwelle=%.3f)",
+                "PMGG: %s ML-deterministische Timing-Verarbeitungsschritt — kein Wet/Dry-Blending, "
+                "suche geringste Regression per Re-Ausfuehrung (regression=%.4f > Schwelle=%.3f)",
                 phase_id,
                 regression,
                 threshold,
             )
-            return best_audio, best_scores, "best_effort", initial_strength
+            for _t_attempt, _t_strength in enumerate(
+                [round(float(initial_strength) * s, 3) for s in (0.75, 0.50, 0.30, 0.15)]
+            ):
+                try:
+                    audio_t = self._run_phase(phase, audio, _t_strength, phase_kwargs)
+                except Exception as _t_exc:
+                    logger.debug(
+                        "PMGG Timing-Re-Ausfuehrung %s @ %.2f fehlgeschlagen: %s",
+                        phase_id,
+                        _t_strength,
+                        _t_exc,
+                    )
+                    continue
+                _t_sample = _extract_sample(
+                    audio_t,
+                    sr,
+                    duration_s=sample_duration_s,
+                    defect_locations=_defect_locs,
+                    phase_id=phase_id,
+                )
+                scores_t = _measure_quick(_t_sample, sr, reference=_ref_sample, precise_override=False)
+                regression_t = self._max_regression(
+                    effective_scores_before, scores_t, _goals_for_regression, goal_weights=goal_weights
+                )
+                _ci_pen_t, _ = _content_integrity_penalty(audio, audio_t)
+                if _ci_pen_t > 0.0:
+                    regression_t = max(regression_t, threshold + 0.001 + 0.05 * _ci_pen_t)
+                if regression_t <= threshold:
+                    scores_t = _apply_precise_metric_overrides(scores_t, _t_sample, sr, reference=_ref_sample)
+                    logger.info(
+                        "PMGG: %s Timing-Re-Ausfuehrung %d akzeptiert (strength=%.2f, regression=%.4f ≤ %.3f)",
+                        phase_id,
+                        _t_attempt + 1,
+                        _t_strength,
+                        regression_t,
+                        threshold,
+                    )
+                    return audio_t, scores_t, f"retry{_t_attempt + 1}", _t_strength
+                if regression_t < best_regression:
+                    best_audio = audio_t
+                    best_scores = scores_t
+                    best_regression = regression_t
+                    best_strength = _t_strength
+                    best_action = f"best_effort_r{_t_attempt + 1}"
+            # Kein Versuch unter der Schwelle → §2.29: die geringste Regression
+            # wird angewendet (nie die ungeprüfte Vollstärke); Content-Guard +
+            # HPE-Gate des Aufrufers prüfen die Hör-Akzeptabilität.
+            logger.info(
+                "PMGG: %s Timing-Leiter ohne Schwellen-Erfolg — geringste Regression "
+                "%.4f @ strength=%.2f wird angewendet (§2.29)",
+                phase_id,
+                best_regression,
+                best_strength,
+            )
+            return best_audio, best_scores, "best_effort", best_strength
 
         # Retry-Schleife
         # ML-deterministische Phasen: Wet/Dry-Reblend des gecachten audio_full

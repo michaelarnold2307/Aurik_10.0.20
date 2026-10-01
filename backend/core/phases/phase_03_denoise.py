@@ -3204,7 +3204,38 @@ class DenoisePhase(PhaseInterface):
                 else:
                     nm_z = estimate_noise_imcra(mag_z, t_z, sr=sr)
 
-                # --- OMLSA gain chain ---
+                # --- OMLSA gain chain (mit HF-Schutz gegen Hiss-Verschlechterung) ---
+                # §A6f-hiss Root-Cause (2026-09-29): Der MRSA-Pfad verwendet in den HF-Zonen
+                # ("presence" 8–16 kHz, "air" 16–24 kHz) sehr kleine Fenster (win=1024/128),
+                # wo IMCRA/OMLSA schlecht zwischen Signal und Rauschen unterscheidet. Ergebnis:
+                # Musikanteile werden aggressiv entfernt, Rauschen bleibt überproportional — der
+                # Hiss-Detektor misst nachher höhere HF-Konsistenz (sev 0.559→0.939 auf Musik).
+                # Fix: Per-zonale Strength-Reduktion + erhöhter G_FLOOR für >8 kHz.
+                _zone_params = dict(params)
+                # §A6f-hiss (2026-09-29): HF-Schutz für alle Zonen, die in den >5 kHz-Bereich reichen.
+                # IMCRA/OMLSA hat dort zuwenig Kontext — Musikanteile werden sonst aggressiv entfernt.
+                if float(f_high) > 5000.0:
+                    _orig_strength = float(_zone_params.get("strength", 0.7))
+                    # Aggressiver Schutz gegen Hiss-Verschlechterung:
+                    # G_FLOOR=1.0 macht den Gain immer 1.0 (vollständig transparent >8 kHz).
+                    # OMLSA-Formel: G = G_FLOOR + (G_raw - G_FLOOR) * STRENGTH → bei G_FLOOR=1.0 ist G≡1.0
+                    _hf_strength_cap = 0.20
+                    if _orig_strength > _hf_strength_cap:
+                        _zone_params["strength"] = _hf_strength_cap
+                    # G_FLOOR auf 1.0: Keine Dämpfung im HF-Band — Denoise komplett transparent.
+                    _orig_gfloor = float(_zone_params.get("g_floor", 0.10))
+                    if _orig_gfloor < 1.0:
+                        _zone_params["g_floor"] = 1.0
+                    logger.debug(
+                        "[HF-SCHUTZ] Zone %s-%s Hz: strength %.2f→%.2f, g_floor %.2f→%.2f",
+                        f_low,
+                        f_high,
+                        _orig_strength,
+                        float(_zone_params["strength"]),
+                        _orig_gfloor,
+                        float(_zone_params["g_floor"]),
+                    )
+
                 # Resample salience G_floor vector to this zone's frame count.
                 if n_z_t != n_t and n_z_t > 0:
                     _g_floor_zone = np.interp(
@@ -3214,7 +3245,7 @@ class DenoisePhase(PhaseInterface):
                     ).astype(np.float32)
                 else:
                     _g_floor_zone = _g_floor_ref_vec
-                G_z, _ = compute_omlsa_gain(mag_z, nm_z, params, g_floor_vec=_g_floor_zone)
+                G_z, _ = compute_omlsa_gain(mag_z, nm_z, _zone_params, g_floor_vec=_g_floor_zone)
                 # §2.62: Per-Frequenz-Masking-Floor anwenden (non-blocking).
                 # Hebt G_z in Bins an, wo Rauschen unterhalb der Maskierungsschwelle liegt —
                 # verhindert klinisches Klangbild durch Überunterdrückung unhörbaren Rauschens.
@@ -3226,6 +3257,14 @@ class DenoisePhase(PhaseInterface):
                         logger.warning("Verarbeitungsschritt_03_denoise.py::unbekannter Ersatzpfad: %s", e)
                         pass  # nie pipeline-blockierend
                 G_mb = apply_multiband_gate(G_z, f_z, params["bands"])
+
+                # §A6f-hiss HF-Schutz: Multiband-Gate überschreibt den OMLSA-HF-Schutz, indem es
+                # Gain im "high"-Band (>5kHz) durch "reduction" skaliert. Wir stellen Transparenz
+                # >8kHz wieder her — das ist die SOTA-Invariante (Hiss-Degradation vermeiden).
+                _hf_prot_mask = f_z > 8000.0
+                if np.any(_hf_prot_mask):
+                    G_mb[_hf_prot_mask, :] = 1.0
+
                 G_sm = suppress_musical_noise(
                     G_mb,
                     params["musical_noise_suppression"],
@@ -3234,6 +3273,12 @@ class DenoisePhase(PhaseInterface):
                 )
                 # §D masking gate: attenuate chirp artefacts below simultaneous masking threshold
                 G_ms = apply_masking_gate(G_sm, mag_z)
+
+                # §A6f-hiss HF-Schutz (2. Pass): Masking-Gate kann Gain auch bei 1.0 reduzieren,
+                # wenn Magnitude < Maskierungsschwelle. Wir stellen Transparenz >8kHz wieder her.
+                if np.any(_hf_prot_mask):
+                    G_ms[_hf_prot_mask, :] = 1.0
+
                 G_tr = preserve_transients(mag_z, G_ms, params["transient_preserve"])
 
                 all_gain_mb_means.append(float(np.mean(G_mb)))

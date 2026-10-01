@@ -24,6 +24,8 @@ from typing import cast
 
 import numpy as np
 
+from backend.core.audio_layout import mono_mix
+
 logger = logging.getLogger(__name__)
 
 
@@ -726,6 +728,14 @@ def compute_emotional_arc_score(
 
 
 def _to_mono(audio: np.ndarray) -> np.ndarray:
-    if audio.ndim == 1:
-        return audio
-    return audio.mean(axis=0) if audio.shape[1] < audio.shape[0] else audio.mean(axis=1)  # type: ignore[no-any-return]
+    """Layout-sichere Mono-Konvertierung (Kanal-Mittel, nie Zeit-Mittel).
+
+    §G-STEREO-LAYOUT (AGENTS.md): Die Pipeline ist intern channels-first (C, N),
+    der Batch-/GUI-Pfad liefert samples-first (N, C). Die frühere Heuristik
+    ``shape[1] < shape[0]`` war invertiert: für BEIDE Layouts kam die
+    Kanal-Reduktion auf Länge 2 heraus, wodurch alle Längen-Guards dieser
+    Metriken (n < 4096 …) still auf 1.0 zurückfielen — d. h. sechs
+    Preservation-Gates (inkl. eines als A_HARD_VETO deklarierten) waren für
+    Stereomaterial dauerhaft deaktiviert (Produktionsbefund).
+    """
+    return mono_mix(np.asarray(audio))

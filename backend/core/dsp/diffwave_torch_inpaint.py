@@ -106,7 +106,7 @@ def _load_model() -> object | None:
             if missing or unexpected:
                 _model_ready = True
                 logger.warning(
-                    "DiffWave-Torch: Checkpoint %s passt nicht (missing=%d, unexpected=%d) — DSP-Fallback.",
+                    "DiffWave-Torch: Checkpoint %s passt nicht (missing=%d, unexpected=%d) — DSP-Ersatzpfad.",
                     ckpt.name,
                     len(missing),
                     len(unexpected),

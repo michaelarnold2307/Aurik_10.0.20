@@ -17,8 +17,25 @@ ist."  Dieser Guard übersetzt das in ein Entscheidungs-Gate am Lauf-Ende:
     lassen das Gate kippen (gate_passed=False) und werden als
     "nachbehandlungswürdig" (improvable_types) ausgewiesen.
 
-Stateless, numpy-frei, rein deklarativ über die Post-Scan-Zahlen -
-kein zweiter Audio-Scan (der lief bereits im §B2-Block).
+Konsistenz-Slice 2 (2026-09-27, „eine Hör-Instanz, eine Wahrheit",
+PHASE_SOTA_GAP_ANALYSE.md §Sub-audible SOTA-Konsistenz): Drei Instanzen
+beantworteten „Defekt hörbar?" auf drei Skalen. Seit diesem Slice gilt ein
+kanonischer Entscheidungsfluss:
+
+  1. KANONISCHE MASKIERUNG (backend/core/dsp/audibility_gate.py -
+     dieselbe Instanz wie ~25 Phasen-Aufrufer): Liegt Audio + Defekt-Locations
+     vor (``audio``/``sample_rate``/``defect_locations``), entscheidet das
+     Maskierungsmodell (ISO 11172-3 Bark bzw. Zwicker ISO 532-1) + Pegel-JND-
+     Floor (hearing_jnd level_broadband, Mills 1960) über „maskiert"/"audible".
+  2. SEVERITY-SKALA als dokumentierte operative Näherung NUR im Fallback
+     (kein Audio, keine Locations, FM-Zeitachsen-Defekte ohne Energie-Domäne
+     oder Fehler im kanonischen Pfad -> fail-open §V6 (copilot-instructions.md)).
+  3. PERCEPTUAL-SALIENCE (n_masked_events, PerceptualSalienceEstimator) bleibt
+     Evidenz im Report, trägt aber keine Entscheidung mehr, wenn die kanonische
+     Instanz verfügbar ist.
+
+Der deklarative Pfad bleibt numpy-frei; der kanonische Pfad importiert numpy
+lazy (kein zweiter Voll-Scan - nur Defekt-Locations im finalen Audio).
 """
 
 from __future__ import annotations
@@ -141,6 +158,144 @@ class DefectAudibilityReport:
         }
 
 
+# --- Kanonische Maskierungs-Instanz (Konsistenz-Slice 2) ---------------------
+# Band-Konventionen je Defekt-Domäne, abgeleitet aus den Produktions-Bändern der
+# Phasen-Aufrufer von defect_audibility (z. B. phase_01: 1200-16000 Hz,
+# phase_19: 4000-12000 Hz). Typen OHNE Eintrag nutzen das Default-Band;
+# FM-/Zeitachsen-Defekte (wow/flutter/...) haben keine Energie-Delta-Domäne
+# und bleiben auf der Severity-Skala (ehrlich dokumentiert, kein Pseudo-Band).
+_CANONICAL_BANDS: dict[str, tuple[float, float]] = {
+    "hum": (45.0, 1000.0),
+    "hum_buzz": (45.0, 1000.0),
+    "motor_interference": (45.0, 1000.0),
+    "clicks": (1200.0, 16000.0),
+    "click": (1200.0, 16000.0),
+    "click_pop": (1200.0, 16000.0),
+    "crackle": (1200.0, 16000.0),
+    "hiss": (3000.0, 16000.0),
+    "high_frequency_hiss": (3000.0, 16000.0),
+    "tape_hiss": (3000.0, 16000.0),
+    "sibilance": (4000.0, 12000.0),
+    "echo": (100.0, 8000.0),
+    "groove_echo": (100.0, 8000.0),
+    "reverb_excess": (100.0, 8000.0),
+    "compression_artifacts": (1000.0, 12000.0),
+}
+_CANONICAL_DEFAULT_BAND: tuple[float, float] = (200.0, 16000.0)
+# Zeitachsen-/FM-Defekte: keine sinnvolle Energie-Delta-Domäne im kanonischen
+# Gate -> Severity-Skala (Fallback-Pfad) bleibt die Entscheidungs-Instanz.
+_CANONICAL_NO_BAND_TYPES: frozenset[str] = frozenset(
+    {
+        "wow",
+        "flutter",
+        "speed_variation",
+        "speed_calibration_error",
+        "jitter_artifacts",
+        "pitch_drift",
+        "scrape_flutter",
+        "multiband_wow_flutter",
+        "flutter_spectral_sidebands",
+        "transport_bump",
+    }
+)
+# Obergrenze der je Typ kanonisch geprüften Locations (Determinismus §G5 (GEBOTE.md)
+# (copilot-instructions.md), Laufzeit-Budget: Maskierungs-Modell je Location).
+_CANONICAL_MAX_LOCATIONS_PER_TYPE = 32
+
+
+def _canonical_band_for_type(dt_name: str) -> tuple[float, float] | None:
+    key = str(dt_name or "").strip().lower()
+    if key in _CANONICAL_NO_BAND_TYPES:
+        return None
+    return _CANONICAL_BANDS.get(key, _CANONICAL_DEFAULT_BAND)
+
+
+def canonical_audibility_verdicts(
+    audio: Any,
+    sample_rate: Any,
+    defect_locations: dict[str, list[tuple[float, float]]] | None,
+    types: list[str] | None = None,
+    *,
+    model: str = "mpeg1",
+) -> dict[str, dict[str, Any]]:
+    """Kanonische Hörbarkeits-Verdikte je Defekttyp (eine Hör-Instanz, Slice 2).
+
+    Verwendet DIESELBE Instanz wie die reparierenden Phasen
+    (``backend.core.dsp.audibility_gate.defect_audibility_from_signal`` -
+    Maskierungsmodell + Pegel-JND-Floor). Pro Typ wird die Sanitisierung des
+    Signals EINMAL durchgeführt (§PERF-R6) und höchstens
+    ``_CANONICAL_MAX_LOCATIONS_PER_TYPE`` Locations geprüft.
+
+    Returns:
+        {type: {"audible": bool, "checked": int, "locations": int}} -
+        ``audible=True`` sobald EINE Location über der Maskierungsschwelle
+        liegt. Typen ohne Locations, ohne kanonisches Band oder bei Fehlern
+        fehlen im Ergebnis (Aufrufer fällt auf die Severity-Skala zurück,
+        fail-open §V6 (copilot-instructions.md)). Deterministisch (§G5).
+    """
+    if defect_locations is None:
+        return {}
+    try:
+        sr = int(sample_rate or 0)
+    except (TypeError, ValueError):
+        return {}
+    if sr <= 0:
+        return {}
+    try:
+        import numpy as np
+
+        from backend.core.dsp.audibility_gate import (
+            SanitizedSignal,
+            defect_audibility_from_signal,
+        )
+    except Exception as _imp_exc:  # §V6 (copilot-instructions.md): nie blockieren
+        logger.warning("Kanonische Hör-Instanz nicht ladbar (%s) - Severity-Ersatzpfad", _imp_exc)
+        return {}
+    try:
+        a = np.asarray(audio, dtype=np.float32)
+        if a.ndim > 1:  # Stereo-Layout-Invariante (AGENTS.md §3)
+            if a.shape[0] == 2 and a.shape[1] > 2:
+                mono = a.mean(axis=0)
+            else:
+                mono = a.mean(axis=1)
+        else:
+            mono = a
+    except Exception as _np_exc:  # pragma: no cover - Defensivpfad
+        logger.warning("Kanonische Hör-Instanz: Layout-Fehler (%s) - Severity-Ersatzpfad", _np_exc)
+        return {}
+    out: dict[str, dict[str, Any]] = {}
+    wanted = {str(t).strip().lower() for t in (types or [])} | {str(k).strip().lower() for k in defect_locations}
+    for dt_name, locs in defect_locations.items():
+        key = str(dt_name).strip().lower()
+        if wanted and key not in wanted:
+            continue
+        band = _canonical_band_for_type(key)
+        if band is None or not locs:
+            continue
+        lo_hz, hi_hz = band
+        checked = 0
+        audible = False
+        try:
+            sig = SanitizedSignal(mono)
+            for loc in list(locs)[:_CANONICAL_MAX_LOCATIONS_PER_TYPE]:
+                start_s, end_s = float(loc[0]), float(loc[1])
+                d0 = int(round(start_s * sr))
+                d1 = int(round(end_s * sr))
+                if d1 <= d0:
+                    continue
+                verdict = defect_audibility_from_signal(sig, sr, d0, d1, lo_hz=lo_hz, hi_hz=hi_hz, model=model)
+                checked += 1
+                if bool(verdict.get("audible")):
+                    audible = True
+                    break
+            if checked:
+                out[key] = {"audible": audible, "checked": checked, "locations": len(locs)}
+        except Exception as _ver_exc:  # §V6 (copilot-instructions.md): fail-open
+            logger.warning("Kanonische Hör-Instanz für %s fehlgeschlagen (%s) - Severity-Ersatzpfad", key, _ver_exc)
+            continue
+    return out
+
+
 def _sev(value: Any) -> float:
     try:
         v = float(value or 0.0)
@@ -157,8 +312,23 @@ def evaluate_defect_audibility(
     material_key: str = "vinyl",
     chain_depth: int = 1,
     physical_cap_types: set[str] | None = None,
+    audio: Any = None,
+    sample_rate: Any = None,
+    defect_locations: dict[str, list[tuple[float, float]]] | None = None,
+    canonical_model: str = "mpeg1",
 ) -> DefectAudibilityReport:
     """Bewertet die Restdefekte gegen die Hörbarkeitsschwelle (reine Funktion).
+
+    Konsistenz-Slice 2 (2026-09-27): Liegt ``audio`` + ``sample_rate`` +
+    ``defect_locations`` (Final-Audio und Post-Scan-Locations in Sekunden) vor,
+    entscheidet die KANONISCHE Maskierungs-Instanz
+    (``dsp/audibility_gate.defect_audibility_from_signal`` - dieselbe wie in
+    ~25 Phasen-Aufrufern) über „maskiert"/"audible". Die Severity-Skala bleibt
+    der dokumentierte Fallback (kein Audio/Locations, FM-Zeitachsen-Defekte,
+    Fehler - fail-open §V6 (copilot-instructions.md)) und für alle Typen der
+    Pre-Filter (post >= Schwelle). ``n_masked_events`` (Perceptual-Salience)
+    bleibt Evidenz im Report (``evidence``-Feld je Typ dokumentiert die
+    entscheidende Instanz). Deterministisch (§G5 (copilot-instructions.md)).
 
     Args:
         defect_reduction_per_type: §B2-Post-Scan-Daten {type: {pre, post,
@@ -167,6 +337,10 @@ def evaluate_defect_audibility(
         material_key: Material (z. B. "vinyl", "mp3_low").
         chain_depth: Tiefe der Transfer-Kette (1 = keine Zwischenstufen).
         physical_cap_types: zusätzliche Typen ohne Nachbesserungsspielraum.
+        audio: finales (restauriertes) Audio für die kanonische Instanz (optional).
+        sample_rate: Abtastrate zu ``audio`` (optional).
+        defect_locations: {type: [(start_s, end_s), ...]} aus dem Post-Scan (optional).
+        canonical_model: Maskierungsmodell der kanonischen Instanz ("mpeg1" Default).
     """
     thr = audible_threshold(material_key, chain_depth)
     caps = set(PHYSICAL_CAP_DEFECT_TYPES) | set(physical_cap_types or set())
@@ -177,6 +351,19 @@ def evaluate_defect_audibility(
     )
     data = defect_reduction_per_type or {}
     report.n_total = len(data)
+    # Kanonische Maskierungs-Verdikte NUR für Severity-Kandidaten berechnen
+    # (post >= Schwelle) - Laufzeit-Budget, Pre-Filter bleibt die Severity-Skala.
+    canonical: dict[str, dict[str, Any]] = {}
+    if audio is not None and sample_rate is not None and defect_locations:
+        try:
+            cand_types = [str(k) for k, v in data.items() if isinstance(v, dict) and _sev(v.get("post")) >= thr]
+            if cand_types:
+                canonical = canonical_audibility_verdicts(
+                    audio, sample_rate, defect_locations, types=cand_types, model=canonical_model
+                )
+        except Exception as _canon_exc:  # §V6 (copilot-instructions.md): fail-open
+            logger.warning("Kanonische Hör-Instanz nicht verfügbar (%s) - Severity-Ersatzpfad", _canon_exc)
+            canonical = {}
     for dt_name, entry in data.items():
         if not isinstance(entry, dict):
             continue
@@ -189,20 +376,33 @@ def evaluate_defect_audibility(
             masked = 0
         aud_pre = pre >= thr
         aud_post = post >= thr
+        canon = canonical.get(str(dt_name).strip().lower())
         status: str
-        if not aud_pre and not aud_post:
-            status = "never_audible"
-        elif aud_pre and not aud_post:
-            status = "resolved"
-        elif aud_post and masked > 0 and post <= _MASKED_EVENTS_MAX_POST:
-            status = "masked"
-        elif aud_post and dt_name in caps:
-            status = "physical_cap"
-        elif aud_post:
-            status = "audible"
-        else:  # pre < thr <= post ist durch obige Zweige abgedeckt
-            status = "audible"
-        report.per_type[dt_name] = {
+        evidence: str
+        if canon is not None:
+            # Eine Hör-Instanz: kanonische Maskierung entscheidet.
+            evidence = "canonical_masking"
+            if not bool(canon.get("audible")):
+                status = "masked"
+            elif dt_name in caps:
+                status = "physical_cap"
+            else:
+                status = "audible"
+        else:
+            evidence = "severity_scale"
+            if not aud_pre and not aud_post:
+                status = "never_audible"
+            elif aud_pre and not aud_post:
+                status = "resolved"
+            elif aud_post and masked > 0 and post <= _MASKED_EVENTS_MAX_POST:
+                status = "masked"
+            elif aud_post and dt_name in caps:
+                status = "physical_cap"
+            elif aud_post:
+                status = "audible"
+            else:  # pre < thr <= post ist durch obige Zweige abgedeckt
+                status = "audible"
+        _pt_entry: dict[str, Any] = {
             "pre": round(pre, 4),
             "post": round(post, 4),
             "reduction": round(max(0.0, pre - post), 4),
@@ -210,7 +410,13 @@ def evaluate_defect_audibility(
             "audible_pre": bool(aud_pre),
             "audible_post": bool(aud_post),
             "status": status,
+            "evidence": evidence,
         }
+        if canon is not None:
+            _pt_entry["canon_audible"] = bool(canon.get("audible"))
+            _pt_entry["canon_checked"] = int(canon.get("checked", 0) or 0)
+            _pt_entry["canon_locations"] = int(canon.get("locations", 0) or 0)
+        report.per_type[dt_name] = _pt_entry
         if aud_pre:
             report.n_audible_pre += 1
         if aud_post:

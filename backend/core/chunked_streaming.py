@@ -32,7 +32,10 @@ import numpy as np
 logger = logging.getLogger(__name__)
 
 # §v10.350: Default-Parameter aus Benchmarking (224s Kassette, 42 Phasen).
-DEFAULT_CHUNK_DURATION_S: float = 30.0
+# §P3-1 (2026-09-27): Chunk-Dauer von 30s auf 120s erhöht — weniger Crossfade-Nähte
+# = weniger Artefakte + bessere Phasenkohärenz über längere Abschnitte. Per-Chunk-Fixkosten
+# (LGE-Saliency, carrier_chain, FCPE-Reload) werden von 8× auf 2× reduziert.
+DEFAULT_CHUNK_DURATION_S: float = 120.0
 DEFAULT_OVERLAP_S: float = 2.0
 DEFAULT_CROSSFADE_S: float = 0.05  # 50ms Crossfade
 
@@ -57,7 +60,7 @@ def select_chunk_duration_s(total_s: float, env_override: str = "") -> tuple[flo
     Returns:
         (chunk_duration_s, applied) — applied=True wenn der Override griff.
     """
-    base = 60.0 if total_s > 300.0 else 30.0
+    base = 120.0 if total_s > 300.0 else 60.0
     override = env_override.strip()
     if not override:
         return base, False

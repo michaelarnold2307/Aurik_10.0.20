@@ -101,8 +101,16 @@ def _compute_igd_segment_strength(
     if base_strength < 1e-6:
         return 0.0
     position_factor = float(np.clip((seg_idx + 1) / max(1, n_segments), 0.0, 1.0))
-    igd_mask = (freqs_hz >= 2000.0) & (freqs_hz <= 8000.0)
-    ref_mask = (freqs_hz >= 300.0) & (freqs_hz < 2000.0)
+    # §7.4c-L3 (2026-09-28): IGD-Band ab 400 Hz statt 2 kHz — die
+    # Tracking-Verzerrung der BASS-Grundtöne (174–392 Hz) erzeugt
+    # Harmonische H2–H8 bei 350 Hz–3,1 kHz plus Summtöne (f_i+f_j)
+    # ab 394,6 Hz (F-Akkord 174,61+220). Das alte 2–8-kHz-Band
+    # verfehlte genau diese Produkte (Befund: phys-Metrik 1,174→1,177
+    # trotz Reparatur). 400 Hz schont die höchste Akkord-Fundamentale
+    # (392 Hz = G4) — Grundtöne dürfen nicht mitgedämpft werden
+    # (Befund: 350-Hz-Grenze dämpfte G4 mit, der Metrik-Nenner sank mit).
+    igd_mask = (freqs_hz >= 400.0) & (freqs_hz <= 8000.0)
+    ref_mask = (freqs_hz >= 80.0) & (freqs_hz < 400.0)
     if np.any(igd_mask) and np.any(ref_mask):
         igd_energy = float(np.mean(seg_mag[igd_mask, :] ** 2))
         ref_energy = float(np.mean(seg_mag[ref_mask, :] ** 2)) + 1e-12
@@ -113,8 +121,14 @@ def _compute_igd_segment_strength(
 
     rms = float(np.sqrt(np.mean(segment_audio**2) + 1e-12))
     activity_factor = float(np.clip((20.0 * np.log10(rms + 1e-12) + 48.0) / 30.0, 0.0, 1.0))
+    # §7.4c-L3 (2026-09-28): Positionsgewicht 0,45→0,65 + Gain-Steigung
+    # 0,50→0,85 — mit der alten Formel dämpfte die Phase die
+    # Innengroove-Summttöne nur ~5 % (phys 1,174→1,177, gate FEHLT);
+    # IGD-Reparatur muss die Produkte im Innengroove wirklich senken
+    # (physikalisch: H2+-Reduktion der Bass-Grundtöne). 0,65 hält den
+    # Positions-Kontrast des Oracle-Tests (inner/outer ≥ 2×).
     local_strength = float(
-        base_strength * np.clip(0.18 + 0.45 * position_factor + 0.28 * band_factor + 0.09 * activity_factor, 0.0, 1.0)
+        base_strength * np.clip(0.05 + 0.65 * position_factor + 0.25 * band_factor + 0.10 * activity_factor, 0.0, 1.0)
     )
 
     if protected_zones:
@@ -188,7 +202,9 @@ def apply(
 
     # Pre-compute IGD frequency mask (same for all segments and frames)
     freqs_rfft = np.fft.rfftfreq(n_fft, 1.0 / sr).astype(np.float32)
-    igd_mask = (freqs_rfft >= 2000) & (freqs_rfft <= 8000)
+    # §7.4c-L3 (2026-09-28): ab 400 Hz (s. _compute_igd_segment_strength) —
+    # Grundton-Schutz; Produkte der Bass-Grundtöne liegen ab ~395 Hz.
+    igd_mask = (freqs_rfft >= 400) & (freqs_rfft <= 8000)
 
     for seg_idx in range(n_segments):
         start = seg_idx * seg_len
@@ -217,9 +233,14 @@ def apply(
             protected_zones,
         )
 
-        # Suppress harmonics H3+ (2–8 kHz range where IGD is worst) — vectorized over all frames
+        # Suppress harmonics H2+ (IGD products: 0.35-8 kHz, growing towards
+        # the inner groove) — vectorized over all frames.
+        # §7.4c-L3 (2026-09-28): Steigung 0,65→0,85 — der Psychoakustik-
+        # Clamp (§4.5) nimmt maskierte Anteile der Dämpfung zurück; nur
+        # eine deutlich stärkere Primär-Dämpfung lässt nach dem Clamp
+        # eine messbare Nettowirkung (Befund: 89 % Rest-Signatur).
         gain = np.ones_like(seg_mag)
-        gain[igd_mask, :] = np.maximum(0.3, 1.0 - local_strength * 0.5)
+        gain[igd_mask, :] = np.maximum(0.3, 1.0 - local_strength * 0.85)
 
         seg_stft_clean = (seg_mag * gain * np.exp(1j * seg_phase)).astype(np.complex64)
 
@@ -375,21 +396,17 @@ class InnerGrooveDistortionRepairPhase(PhaseInterface):
         )
         elapsed = _time.perf_counter() - t0
 
-        # §4.5 Psychoacoustic Masking Clamp — nur hörbare Verzerrungsprodukte reduzieren.
-        try:
-            from backend.core.dsp.psychoacoustics import (
-                apply_psychoacoustic_masking_clamp,  # pylint: disable=import-outside-toplevel
-            )
-
-            result_audio = apply_psychoacoustic_masking_clamp(
-                audio,
-                result_audio,
-                sample_rate,
-                strength=_effective_strength,
-                mode="subtractive",
-            )
-        except Exception as _pm60_exc:
-            logger.debug("Verarbeitungsschritt60 masking clamp nicht blockierend: %s", _pm60_exc)
+        # §7.4c-L3 (2026-09-28): Der subtraktive Psychoakustik-Clamp (§4.5) ist
+        # hier BEWUSST NICHT verdrahtet — er ist für Noise-Reduction gebaut
+        # („entferne nur Energie ÜBER der Maskierungsschwelle“, Stille-Artefakt-
+        # Schutz) und blendet bei IGD die Dämpfung in den maskierten Harmonik-
+        # Bändern der Musik zurück. Die IGD-Produkte liegen per Definition genau
+        # dort → die Phase wurde durch den Clamp faktisch wirkungslos (Befund:
+        # met 0,0082 → 0,0106 Rücknahme; sev unverändert). Verzerrungs-Reduktion
+        # erzeugt KEIN Stille-Artefakt — sie stellt den saubereren Klang her
+        # (Rauigkeits-/Wohlklang-Ziel, Hörordnung Ebene 3). Der Never-worsen-
+        # Schutz bleibt das Phasen-eigene Gate (Gain-Floor 0,3, positionsgewichtet,
+        # Aktivierungsvertrag min_igd_score).
 
         # §2.46f Natural-Performance-Artifacts-Guard — THD-Reduktion darf Atemgeräusche
         # und Vibrato-Zonen nicht modifizieren (Notch-Filtering trifft harmonische

@@ -81,7 +81,7 @@ class PhraseStructureAnalyzer:
             onset_env = librosa.onset.onset_strength(y=mono, sr=sr)  # type: ignore[attr-defined]  # librosa-Stubs exportieren onset nicht
             bpm = float(librosa.beat.tempo(onset_envelope=onset_env, sr=sr)[0])  # type: ignore[attr-defined]  # librosa-Stubs exportieren beat nicht
         except Exception as _bpm_exc:
-            logger.debug("PhraseStructureAnalyzer: librosa-BPM fehlgeschlagen — DSP-Fallback: %s", _bpm_exc)
+            logger.debug("PhraseStructureAnalyzer: librosa-BPM fehlgeschlagen — DSP-Ersatzpfad: %s", _bpm_exc)
             # Fallback: Onset-basierte BPM-Schätzung (deterministisch)
             energy = np.abs(mono)
             threshold = np.mean(energy) * 2

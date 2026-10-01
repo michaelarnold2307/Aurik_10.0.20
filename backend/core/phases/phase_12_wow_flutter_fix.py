@@ -1018,15 +1018,36 @@ class WowFlutterFix(PhaseInterface):
         # Wow-Modulationsfrequenz aus der DefectScanner-Evidenz
         # (wow-Metadatum dominant_mod_freq_hz) als Saat für den Sinus-Fit.
         _wow_hint_hz_12: float | None = None
+        # §7.4c-L3 (2026-09-27): auch der bandabhängige Flutter-Fall liefert
+        # die Modulationsfrequenz als Scanner-Evidenz (HF-Kanal) — ohne Hint
+        # bleibt der Phasen-Messkanal im 4-kHz-Grid blind. Auswahl nach
+        # SEVERITY (dominierender Defekt), nicht nach Registry-Reihenfolge:
+        # ein Rest-Wow-Score (sev ~0) mit Rausch-Hint darf den Multiband-Hint
+        # (5 Hz) nicht verdecken (Befund: Hint blieb 0,28 Hz statt 5 Hz).
+        _hint_candidates_12: list[tuple[float, float, str]] = []
         for _k12, _v12 in (kwargs.get("defect_scores") or {}).items():
-            if str(getattr(_k12, "value", _k12)) == "wow":
-                try:
-                    _hz12 = float((getattr(_v12, "metadata", None) or {}).get("dominant_mod_freq_hz", 0.0) or 0.0)
-                except (TypeError, ValueError):
-                    _hz12 = 0.0
-                if _hz12 > 0.0:
-                    _wow_hint_hz_12 = _hz12
-                break
+            _key12 = str(getattr(_k12, "value", _k12))
+            if _key12 not in ("wow", "multiband_wow_flutter"):
+                continue
+            try:
+                _hz12 = float((getattr(_v12, "metadata", None) or {}).get("dominant_mod_freq_hz", 0.0) or 0.0)
+                _sev12 = float(getattr(_v12, "severity", 0.0) or 0.0)
+            except (TypeError, ValueError):
+                continue
+            if _hz12 > 0.0:
+                _hint_candidates_12.append((_sev12, _hz12, _key12))
+        if _hint_candidates_12:
+            # Band-Flutter-Hint (Multiband, > 4 Hz) ist bei aktiver
+            # Multiband-Diagnose (sev ≥ 0,15) AUTORITATIV — der Defekt ist
+            # bandselektiv, der Wow-Hint (Rest-Score, breitbandig) wäre der
+            # falsche Warp. Sonst Severity absteigend.
+            _mb_hints = [
+                _c for _c in _hint_candidates_12 if _c[2] == "multiband_wow_flutter" and _c[1] > 4.0 and _c[0] >= 0.15
+            ]
+            if _mb_hints:
+                _wow_hint_hz_12 = max(_mb_hints, key=lambda _c: _c[0])[1]
+            else:
+                _wow_hint_hz_12 = max(_hint_candidates_12, key=lambda _c: _c[0])[1]
         pitch_trajectory, _sinusoidal_wow_profile = self._fit_sinusoidal_wow_curve(
             pitch_trajectory,
             confidence,
@@ -1424,6 +1445,12 @@ class WowFlutterFix(PhaseInterface):
         # Inverse-Warp automatisch zurück; Formant-Schutz ist nur bei
         # intentionalem Pitch-Shifting nötig, nicht beim Entfernen eines
         # Laufwerksfehlers.
+        # §7.4c-L3 (2026-09-27): Bandabhängiges Flutter (Hint > 4 Hz) wird
+        # bandbegrenzt gewarpt — ein globaler Warp würde das unmodulierte
+        # Tieffrequenz-Band neu modulieren (Regression, der Defekt ist
+        # bandselektiv). Hint ≤ 4 Hz = klassischer globaler Transport-Wow.
+        _band_limited_warp_12 = _wow_hint_hz_12 is not None and float(_wow_hint_hz_12) > 4.0
+
         _report_progress(65.0, "Wow/Flutter: Geschwindigkeits-Korrektur (Resample) läuft...")
         if is_stereo:
             # §2.51 M/S-Domain Stereo Processing: Mid und Side erhalten
@@ -1432,8 +1459,12 @@ class WowFlutterFix(PhaseInterface):
             _left_ch, _right_ch = stereo_channel_view(audio)
             _mid_ch = (_left_ch.astype(np.float32) + _right_ch.astype(np.float32)) * 0.5
             _side_ch = (_left_ch.astype(np.float32) - _right_ch.astype(np.float32)) * 0.5
-            _mid_stretched = self._speed_warp_resample(_mid_ch, stretch_factors, sample_rate)
-            _side_stretched = self._speed_warp_resample(_side_ch, stretch_factors, sample_rate)
+            if _band_limited_warp_12:
+                _mid_stretched = self._band_limited_warp(_mid_ch, stretch_factors, sample_rate)
+                _side_stretched = self._band_limited_warp(_side_ch, stretch_factors, sample_rate)
+            else:
+                _mid_stretched = self._speed_warp_resample(_mid_ch, stretch_factors, sample_rate)
+                _side_stretched = self._speed_warp_resample(_side_ch, stretch_factors, sample_rate)
             # §2.51 Amplituden-Sicherheitsnetz: selbst kleinere Pegelsprünge
             # durch Warp-/Resample-Artefakte triggern MDEM/correct_arc auf eine
             # globale Makeup-Kaskade (Pegelexplosion Intro/Outro). Mid-RMS auf
@@ -1461,7 +1492,10 @@ class WowFlutterFix(PhaseInterface):
                 )
             restored = stereo_like(restored_left[:_p12_n], restored_right[:_p12_n], audio)
         else:
-            restored = self._speed_warp_resample(audio, stretch_factors, sample_rate)
+            if _band_limited_warp_12:
+                restored = self._band_limited_warp(audio, stretch_factors, sample_rate)
+            else:
+                restored = self._speed_warp_resample(audio, stretch_factors, sample_rate)
 
         # §G188–§G189 (GEBOTE.md), §7.4d (06_phases_system.md) — Autonome
         # Wirkungs-Kalibrierung, geschlossener Regelkreis: Restfehler der
@@ -1477,6 +1511,12 @@ class WowFlutterFix(PhaseInterface):
             max_stretch_delta=_max_stretch_delta,
             pre_warp=audio,
         )
+
+        # §7.4c Flutter-Pfad (Sample-Rate, 2026-09-26): die schnelle gemeinsame
+        # Modulation (15–50 Hz, Seitenband-Struktur) wird per per-sample-Warp
+        # korrigiert — die 40-fps-Trajektorie (Nyquist 20 Hz) bildet sie
+        # strukturell nicht ab. Nie-schlechter (Hörordnung §8a).
+        restored, _flutter_info = self._flutter_correction_pass(restored, sample_rate=sample_rate)
 
         # §C3 Neural Phase Vocoder — post-stretch phase coherence restoration.
         # PSOLA/Phase-Vocoder time-stretching can introduce phase incoherence in
@@ -1680,6 +1720,7 @@ class WowFlutterFix(PhaseInterface):
             "panns_vocals_confidence": vocals_conf,
             "threshold": threshold,
             "closed_loop_refine": _refine,
+            "flutter_pass": _flutter_info,
             "stft_window": self.STFT_WINDOW_SIZE,
             "stft_hop": self.STFT_HOP_SIZE,
             "polyphonic_fallback": _poly_fallback,
@@ -1849,7 +1890,7 @@ class WowFlutterFix(PhaseInterface):
         window_samples = int(self.PITCH_WINDOW_MS * sample_rate / 1000)
         hop_samples = max(1, window_samples // self.PITCH_HOP_FACTOR)
         frame_rate = float(sample_rate) / float(hop_samples)
-        _use_hint = hint_freq_hz is not None and 0.10 <= float(hint_freq_hz) <= 3.0
+        _use_hint = hint_freq_hz is not None and 0.10 <= float(hint_freq_hz) <= 6.0
         if _use_hint:
             # Scanner-Saat (§7.4c): Frequenz aus der Evidenz — kein Blind-Peak,
             # keine Dominanz-Verweigerung (Amplitude/r²-Guards bleiben).
@@ -3177,8 +3218,201 @@ class WowFlutterFix(PhaseInterface):
         )
         return virtual_pitch, conf_res.astype(np.float64)
 
+    def _flutter_track_from_stacks(
+        self, _dev_stack: np.ndarray, _val_stack: np.ndarray, sample_rate: int
+    ) -> tuple[np.ndarray, np.ndarray]:
+        """§7.4c Flutter-Pfad: Matched-Scan 0,5–50 Hz auf 200-Hz-Raster.
+
+        Die schnelle gemeinsame Modulation ist PERIODISCH (Seitenbänder des
+        Songs = FM-Spektrum) — dieselbe bewährte Matched-Filter-Mechanik wie
+        im Slow-Pfad, nur auf dem 200-Hz-Raster (Nyquist 100 Hz): per-Band-
+        Sinus-Fits mit r²-/Amp-Gate + kohärente Koeffizienten-Mittelung (√N,
+        Zeilen im Abstand 3 teilen kein Partial). Die Common-Mean-Variante
+        war von Beating kontaminiert (GT: 98,5 statt 36 cents). Rückgabe:
+        (virtual_pitch auf 200-Hz-Raster, conf).
+        """
+        _dec_f = max(1, int(round(sample_rate / 200.0)))
+        _n_f = int(_dev_stack.shape[1]) // _dec_f
+        if _n_f < 32:
+            return np.zeros(1, dtype=np.float64), np.zeros(1, dtype=np.float64)
+        _dev_stack = _dev_stack[::3]
+        _val_stack = _val_stack[::3]
+        # Stride-Decimation (KEINE 50-ms-Blockmittelung: deren Sinc-Null liegt
+        # bei exakt 20 Hz und löschte die Flutter-Frequenz komplett — gemessen
+        # r² ≈ 0,00 über 0,5–50 Hz). Der 5-ms-Box-Laufmittel-Filter der
+        # Teilband-Spur ist bereits der Anti-Alias für 200 Hz (Null bei 200 Hz).
+        _dm_f = _dev_stack[:, : _n_f * _dec_f : _dec_f] / np.maximum(_val_stack[:, : _n_f * _dec_f : _dec_f], 1e-3)
+        _cov_f = _val_stack[:, : _n_f * _dec_f : _dec_f]
+        _dm_f = np.where(_cov_f > 0.5, _dm_f, 0.0)
+        _t_f = np.arange(_n_f, dtype=np.float64) / 200.0
+
+        def _score_fast(_f: float) -> tuple[float, np.ndarray, np.ndarray, float, float]:
+            _des = np.column_stack([np.sin(2.0 * np.pi * _f * _t_f), np.cos(2.0 * np.pi * _f * _t_f), np.ones(_n_f)])
+            _acc = np.zeros(2, dtype=np.float64)
+            _wsum = 0.0
+            _n_used = 0
+            _r2_sum = 0.0
+            _max_r2 = 0.0
+            for _b in range(_dm_f.shape[0]):
+                _wb = np.clip(_cov_f[_b], 0.0, 1.0)
+                if float(np.sum(_wb > 0.5)) < _n_f // 3:
+                    continue
+                _y = _dm_f[_b]
+                try:
+                    _sw = np.sqrt(_wb)
+                    _cb, *_ = np.linalg.lstsq(_des * _sw[:, None], _y * _sw, rcond=None)
+                except Exception as _fl_exc:
+                    logger.debug("Flutter-Scan: Band %d bei %.2f Hz übersprungen (%s)", _b, _f, _fl_exc)
+                    continue
+                _fit_b = _des @ _cb
+                _ssr_b = float(np.sum(_wb * (_y - _fit_b) ** 2))
+                _wmu_b = float(np.sum(_wb * _y) / (float(np.sum(_wb)) + 1e-12))
+                _sst_b = float(np.sum(_wb * (_y - _wmu_b) ** 2) + 1e-12)
+                _r2_b = float(np.clip(1.0 - _ssr_b / _sst_b, 0.0, 1.0))
+                _amp_b = float(np.hypot(_cb[0], _cb[1]))
+                # r²-Gewichtung mit Zeugen-Gate: die FM sitzt in 1–2 starken
+                # Bändern (GT-Befund 2026-09-26: 1 von 41 Zeilen trägt amp
+                # 22,9 cents, r² 0,36 — uniformer Mittel verwässerte auf 1,07
+                # cents). Bänder mit r² < 0,10 werden gar nicht akkumuliert:
+                # rauschende Großamplituden-Fits (amp bis 120 cents, r² ~0,04)
+                # trieben sonst den gewichteten Mittelwert auf 48,8 cents und
+                # gewannen die Peak-Suche gegen das echte 6-Hz-Signal
+                # (22,9 cents, r² 0,36). Gefordert wird am Ende mindestens EIN
+                # Zeuge mit r² ≥ 0,25. Beating-Artefakte (amp > 120 cents)
+                # werden verworfen.
+                if _amp_b > 120.0 or _r2_b < 0.10:
+                    continue
+                if _r2_b > _max_r2:
+                    _max_r2 = _r2_b
+                _acc += _r2_b * _cb[:2]
+                _wsum += _r2_b
+                _r2_sum += _r2_b
+                _n_used += 1
+            if _n_used < 1 or _wsum <= 1e-12:
+                return 0.0, np.zeros(2), np.zeros(2), 0.0, 0.0
+            return (
+                float(np.hypot(_acc[0], _acc[1]) / _wsum),
+                _acc,
+                np.array([_wsum, float(_n_used)]),
+                _r2_sum / _n_used,
+                _max_r2,
+            )
+
+        # Grob-Raster 0,1 Hz (r²-Selektivität verträgt keinen 0,5-Hz-Schritt),
+        # Fein-Raster 0,005 Hz; das Zeugen-Gate (max r² ≥ 0,25) gilt erst für
+        # die Finale-Frequenz — auf dem Grob-Raster bricht r² bei Raster-
+        # Versatz sonst schon vor der Fein-Suche ein.
+        _freqs_fl = np.linspace(0.5, 50.0, 496)
+        _scores = np.array([_score_fast(float(_f))[0] for _f in _freqs_fl])
+        _pk = int(np.argmax(_scores))
+        _f_peak = float(_freqs_fl[_pk])
+        _fine = np.linspace(max(0.5, _f_peak - 0.1), min(50.0, _f_peak + 0.1), 41)
+        _fscores = np.array([_score_fast(float(_f))[0] for _f in _fine])
+        _pk2 = int(np.argmax(_fscores))
+        _f_peak = float(_fine[_pk2])
+        _sc, _acc_f, _w_f, _r2m, _max_r2 = _score_fast(_f_peak)
+        if _sc < 3.0 or _max_r2 < 0.25:
+            logger.info(
+                "Verarbeitungsschritt 12 Flutter-Matched verworfen: "
+                "Peak %.2f Hz, Wert=%.2f (< 3.0), max r²=%.2f (< 0.25)",
+                _f_peak,
+                _sc,
+                _max_r2,
+            )
+            # FLACHE Spur statt zeros(1): „keine signifikante Modulation“ ist
+            # die Signatur SAUBEREN Materials (score 0 über alle Frequenzen)
+            # und darf vom Nie-schlechter-Pass als Spanne 0.0 gelesen werden.
+            # zeros(1) signalisiert allein Messkanal-Ausfall (_n_f < 32).
+            return (
+                np.full(_n_f, 440.0, dtype=np.float64),
+                np.zeros(_n_f, dtype=np.float64),
+            )
+        _c0, _c1 = _acc_f / _w_f[0]
+        _dev_f = _c0 * np.sin(2.0 * np.pi * _f_peak * _t_f) + _c1 * np.cos(2.0 * np.pi * _f_peak * _t_f)
+        virtual_pitch = (440.0 * np.power(2.0, _dev_f / 1200.0)).astype(np.float64)
+        virtual_pitch = np.clip(virtual_pitch, 20.0, 4000.0)
+        conf_res = np.clip(0.50 + 0.45 * _r2m, 0.0, 0.95) * np.ones(_n_f, dtype=np.float64)
+        logger.info(
+            "Verarbeitungsschritt 12 Flutter-Matched: %.2f Hz, amp=%.1f cents, Bänder=%d, mittleres r²=%.2f",
+            _f_peak,
+            float(np.hypot(_c0, _c1)),
+            int(_w_f[1]),
+            _r2m,
+        )
+        return virtual_pitch, conf_res
+
+    def _flutter_correction_pass(self, restored: np.ndarray, *, sample_rate: int) -> tuple[np.ndarray, dict[str, Any]]:
+        """§7.4c Flutter-Pfad: per-sample-Warp der schnellen gemeinsamen Modulation.
+
+        Misst die 15–50-Hz-Modulation (200-Hz-Raster), bildet per-sample-SF
+        (exaktes Pitch-Ratio 2^(dev/1200)) und warped pro Kanal. Nie-schlechter
+        (Hörordnung §8a): der Nachlauf wird nur behalten, wenn die gemessene
+        Flutter-Spanne sinkt.
+        """
+        _info: dict[str, Any] = {
+            "applied": False,
+            "flutter_before_cents": 0.0,
+            "flutter_after_cents": 0.0,
+            "skipped_reason": "",
+        }
+        mono = (
+            safe_to_mono(restored).astype(np.float32)
+            if np.asarray(restored).ndim == 2
+            else np.asarray(restored, dtype=np.float32)
+        )
+        _tr_f, _cf_f = self._estimate_wow_track_subband(mono, sample_rate, flutter_band=True)
+        if _tr_f is None or len(_tr_f) < 16:
+            _info["skipped_reason"] = "kein belastbarer Flutter-Messkanal"
+            return restored, _info
+        _med_f = float(np.median(_tr_f[_tr_f > 0])) if bool(np.any(_tr_f > 0)) else 440.0
+        _dev_f = 1200.0 * np.log2(np.maximum(_tr_f, 1e-6) / max(_med_f, 1e-6))
+        _before = float(np.percentile(_dev_f, 95) - np.percentile(_dev_f, 5))
+        _info["flutter_before_cents"] = _before
+        if _before < 3.0:
+            _info["skipped_reason"] = "Flutter-Spanne unter Relevanz-Schwelle"
+            _info["flutter_after_cents"] = _before
+            return restored, _info
+        n_s = audio_sample_count(restored)
+        _sf_samples = np.interp(
+            np.arange(n_s, dtype=np.float64),
+            np.arange(len(_dev_f), dtype=np.float64) * (float(sample_rate) / 200.0),
+            np.power(2.0, _dev_f / 1200.0),
+        ).astype(np.float32)
+        if np.asarray(restored).ndim == 2:
+            _l, _r = stereo_channel_view(restored)
+            _candidate = stereo_like(
+                self._speed_warp_resample(_l, _sf_samples, sample_rate),
+                self._speed_warp_resample(_r, _sf_samples, sample_rate),
+                restored,
+            )
+        else:
+            _candidate = self._speed_warp_resample(restored, _sf_samples, sample_rate)
+        _mono_c = (
+            safe_to_mono(_candidate).astype(np.float32)
+            if np.asarray(_candidate).ndim == 2
+            else np.asarray(_candidate, dtype=np.float32)
+        )
+        _tr_c, _cf_c = self._estimate_wow_track_subband(_mono_c, sample_rate, flutter_band=True)
+        if _tr_c is None or len(_tr_c) < 16:
+            _info["skipped_reason"] = "Nachlauf nicht messbar — verworfen (nie-schlechter)"
+            return restored, _info
+        _med_c = float(np.median(_tr_c[_tr_c > 0])) if bool(np.any(_tr_c > 0)) else 440.0
+        _dev_c = 1200.0 * np.log2(np.maximum(_tr_c, 1e-6) / max(_med_c, 1e-6))
+        _after = float(np.percentile(_dev_c, 95) - np.percentile(_dev_c, 5))
+        _info["flutter_after_cents"] = _after
+        if _after < _before:
+            _info["applied"] = True
+            logger.info(
+                "§G188 (GEBOTE.md) Flutter-Nachlauf: Spanne %.1f → %.1f cents",
+                _before,
+                _after,
+            )
+            return _candidate, _info
+        _info["skipped_reason"] = "Flutter-Nachlauf ohne Verbesserung verworfen (nie-schlechter)"
+        return restored, _info
+
     def _estimate_wow_track_subband(
-        self, audio: np.ndarray, sample_rate: int, hint_freq_hz: float | None = None
+        self, audio: np.ndarray, sample_rate: int, hint_freq_hz: float | None = None, *, flutter_band: bool = False
     ) -> tuple[np.ndarray, np.ndarray]:
         """Teilband-IF-Mittelwert-Estimator für Gemeinschafts-Wow (L3 2026-09-25).
 
@@ -3199,18 +3433,30 @@ class WowFlutterFix(PhaseInterface):
         mono = (safe_to_mono(audio) if audio.ndim == 2 else audio).astype(np.float64)
         if len(mono) < sample_rate * 4:
             return np.zeros(1, dtype=np.float64), np.zeros(1, dtype=np.float64)
+        # §7.4c-WF-HF (2026-09-27): bandabhängiges Flutter (multiband_wow_flutter)
+        # moduliert Bänder oberhalb 4 kHz (L3-Synth: 4–12 kHz @ 5 Hz) — dafür
+        # Grid bis 12 kHz und 32-kHz-Arbeitsspur (Nyquist ≥ 12,4 kHz). Der
+        # Standard-Wow-Pfad (Hint ≤ 4 Hz) bleibt beim 16-kHz-/4-kHz-Grid
+        # (§G5 (GEBOTE.md) Bestandsverhalten, §G190 Laufzeit).
+        _hint_pre_hz = hint_freq_hz
+        _grid_top_hz = 4000.0
+        if _hint_pre_hz is not None and float(_hint_pre_hz) > 4.0:
+            _grid_top_hz = 12000.0
         # §G190 (GEBOTE.md) Laufzeit: Filterbank + Hilbert laufen auf einer
         # 16-kHz-Arbeitsspur (Bänder ≤ 4 kHz) — Vollsongs brauchten sonst
         # > 20 min je Messkanal. Zeitraster (fps = 4000/PITCH_WINDOW_MS)
         # bleibt identisch.
-        if sample_rate > 16000:
+        _worktrack_hz = 32000 if _grid_top_hz > 4000.0 else 16000
+        if sample_rate > _worktrack_hz:
             from scipy.signal import resample_poly as _resample_poly_sb
 
-            _gcd_sb = int(np.gcd(16000, int(sample_rate)))
-            mono = _resample_poly_sb(mono, 16000 // _gcd_sb, int(sample_rate) // _gcd_sb).astype(np.float64)
-            sample_rate = 16000
+            _gcd_sb = int(np.gcd(_worktrack_hz, int(sample_rate)))
+            mono = _resample_poly_sb(mono, _worktrack_hz // _gcd_sb, int(sample_rate) // _gcd_sb).astype(np.float64)
+            sample_rate = _worktrack_hz
 
-        IF_WIN_MS = 50.0
+        IF_WIN_MS = 5.0  # §7.4c Flutter-Pfad: 5 ms (statt 50 ms) — nur so
+        # bleibt die schnelle gemeinsame Modulation (15–50 Hz) im Stack; der
+        # Slow-Pfad glättet ohnehin über Block-Mittel + 1,55-s-Tiefpass.
         _nyq = sample_rate / 2.0
         # 1/24-Oktav-Grid mit ±3 %-Bandbreite (überlappend): Chord-Partials
         # stehen 50–150 Hz auseinander; zu schmale (±1,5 %) Bänder verfehlten
@@ -3218,7 +3464,7 @@ class WowFlutterFix(PhaseInterface):
         # jeden Partial und isoliert ihn noch (Partial-Check 2026-09-25:
         # Grundtöne/Harmonische lesen amp 20–37 cents, r² 0,3–0,4 — die FM
         # IST auf Musik messbar, Ground-Truth ±53 cents).
-        _centers = [125.0 * (2.0 ** (_i / 24.0)) for _i in range(0, int(24 * np.log2(4000.0 / 125.0)) + 1)]
+        _centers = [125.0 * (2.0 ** (_i / 24.0)) for _i in range(0, int(24 * np.log2(_grid_top_hz / 125.0)) + 1)]
         if_win = max(1, int(IF_WIN_MS * sample_rate / 1000))
         band_devs: list[np.ndarray] = []
         band_valid: list[np.ndarray] = []
@@ -3257,7 +3503,11 @@ class WowFlutterFix(PhaseInterface):
         _dev_stack = np.stack([d[-_min_len:] for d in band_devs])
         _val_stack = np.stack([v[-_min_len:] for v in band_valid])
 
-        _use_hint_72 = hint_freq_hz is not None and 0.05 <= float(hint_freq_hz) <= 4.0
+        if flutter_band:
+            # §7.4c Flutter-Pfad: schnelle gemeinsame Modulation (15–50 Hz) auf
+            # 200-Hz-Raster — die 40-fps-Trajektorie bildet > 15 Hz nicht ab.
+            return self._flutter_track_from_stacks(_dev_stack, _val_stack, sample_rate)
+        _use_hint_72 = hint_freq_hz is not None and 0.05 <= float(hint_freq_hz) <= 6.0
         if not _use_hint_72:
             # §7.4c Cluster-A-Finale (2026-09-26): Blind-Frequenz über den
             # KOHÄRENTEN √N-Frequenzscan — danach läuft der bewährte
@@ -3295,12 +3545,28 @@ class WowFlutterFix(PhaseInterface):
                 _sst_b = float(np.sum(_wb * (_d_b - _wmu_b) ** 2) + 1e-12)
                 _r2_b = float(np.clip(1.0 - _ssr_b / _sst_b, 0.0, 1.0))
                 _amp_b = float(np.hypot(_cb[0], _cb[1]))
-                if _r2_b < 0.30 or _amp_b < 1.0 or _amp_b > 80.0:
+                # §7.4c-L3 (2026-09-27, Konsistenz-Fix): harte Schwellen
+                # r² ≥ 0.30 + n ≥ 4 verwarfen nicht-stationäre Musikträger
+                # (L3-Akkord-Träger mit Hüllkurven/Percussion: nur 3 Bänder
+                # erreichen r² ≈ 0,33–0,36) — der periodische Pfad fiel in die
+                # irregulär-Drift-Extraktion zurück, die auf periodischem Wow
+                # 27× unterschätzte (2,01 statt 53 cents). Neu: KOHÄRENTE
+                # EVIDENZ (Σ r² ≥ 1.0) statt Band-Anzahl — äquivalent zu
+                # 4 Bändern à 0,25; die Einzel-R²-Schwelle sinkt auf 0,25
+                # (Rauschzeugen), Amplitude 1–80 cents und der nachfolgende
+                # Sinus-Fit (r² ≥ 0,45) + Never-worsen bleiben unverändert.
+                if _r2_b < 0.25 or _amp_b < 1.0 or _amp_b > 80.0:
                     continue
                 _acc_2 += _r2_b * _cb[:2]
                 _acc_w += _r2_b
                 _n_used += 1
-            if _n_used < 4 or _acc_w <= 1e-12:
+            # §7.4c-L3 (2026-09-27): Band-Flutter (> 4 Hz) betrifft per
+            # Definition nur WENIGE Bänder (L3-Synth: 2 HF-Bänder, Σ r² ≈ 0,55) —
+            # die Evidenz-Anforderung skaliert mit der Band-Zahl: n ≥ 2 und
+            # Σ r² ≥ 0,5. Der nachfolgende Sinus-Fit (r² ≥ 0,45) + Never-worsen
+            # bleiben unverändert; der Breitband-Wow-Pfad behält Σ r² ≥ 1,0.
+            _evid_floor_72 = 0.5 if (_use_hint_72 and _f_hint > 4.0) else 1.0
+            if _n_used < 2 or _acc_w < _evid_floor_72:
                 # §7.4c (2026-09-26): die periodische Matched-Verweigerung ist
                 # KEIN Fehlen des Defekts — irregulärer Drift („13 Tage“) wird
                 # modellfrei in der Gemeinschafts-Extraktion (Hauptkomponente)
@@ -3310,7 +3576,7 @@ class WowFlutterFix(PhaseInterface):
             _r2_mean = float(np.clip(_acc_w / max(1, _n_used), 0.0, 1.0))
             _t_grid = np.arange(_target_len, dtype=np.float64) * (_hop_samples / float(sample_rate))
             dev_res = _c0 * np.sin(2.0 * np.pi * _f_hint * _t_grid) + _c1 * np.cos(2.0 * np.pi * _f_hint * _t_grid)
-            # Konfidenz: Band-Agreement (≥4 Bänder mit r² ≥ 0,3) auf die
+            # Konfidenz: kohärente Band-Evidenz (Σ r², Schwellen oben) auf die
             # Fit-Evidenz-Skala abgebildet (nie unter der Schwelle des
             # nachfolgenden Sinus-Fits, gewichtet mit mittlerem r²).
             conf_res = np.clip(0.55 + 0.4 * _r2_mean, 0.0, 0.95) * np.ones(_target_len, dtype=np.float64)
@@ -3568,13 +3834,24 @@ class WowFlutterFix(PhaseInterface):
                 hf_tilt_db = np.clip(tilt_raw, 0.0, 10.0) * event_strength
 
             # ── Asymmetric gain envelope (slow onset / fast recovery) ────
+            # §2.35b Energie-Kontinuität (2026-09-26): Die frühere lineare
+            # Rampen-Länge max(1, 30 %) degenerierte bei kurzen Dips (3–6
+            # Frames = 30–60 ms) zu EINEM Fade-Frame → Sprung 1,0→Gain in
+            # ~11 ms; der TemporalConsistencyGuard maß 18 Energie-Sprünge
+            # > 6 dB/100 ms (Import-Song-Befund). Cosinus-Zügelung mit
+            # Mindestrampen (≥ 2 Frames) + finale Masken-Glättung sorgen für
+            # stufenfreie Flanken; sehr kurze Dips bekommen eine durchgehende
+            # Zügelung 0 → 1 → 0.
             n_sf = len(stft_idx)
-            onset_n = max(1, int(n_sf * 0.30))  # ~30 % slow fade-in
-            recovery_n = max(1, int(n_sf * 0.10))  # ~10 % fast fade-out
-            fade_env = np.ones(n_sf, dtype=np.float64)
-            fade_env[:onset_n] = np.linspace(0.0, 1.0, onset_n)
-            if n_sf > onset_n + recovery_n:
-                fade_env[-recovery_n:] = np.linspace(1.0, 0.0, recovery_n)
+            if n_sf <= 4:
+                fade_env = np.sin(np.linspace(0.0, np.pi, n_sf)) ** 2
+            else:
+                onset_n = min(max(2, int(n_sf * 0.30)), n_sf - 2)
+                recovery_n = min(max(2, int(n_sf * 0.10)), n_sf - onset_n)
+                fade_env = np.ones(n_sf, dtype=np.float64)
+                fade_env[:onset_n] = 0.5 - 0.5 * np.cos(np.linspace(0.0, np.pi, onset_n))
+                if n_sf > onset_n + recovery_n:
+                    fade_env[-recovery_n:] = 0.5 + 0.5 * np.cos(np.linspace(0.0, np.pi, recovery_n))
 
             # ── Combine broadband + HF-tilt into spectral_gain mask — vectorised ──
             tilt_lin = 10.0 ** (hf_tilt_db / 20.0)  # [n_freqs] — per-bin extra boost
@@ -3595,6 +3872,13 @@ class WowFlutterFix(PhaseInterface):
 
         if n_repaired == 0:
             return audio, 0
+
+        # §2.35b Flankenglätte: 3-Frame-Mittel der Gain-Maske entlang der Zeit
+        # (OLA-freundlich) — stufenfreie Überblendung auch bei überlappenden
+        # Dips und harten Masken-Kanten; Identität-Regionen bleiben unverändert.
+        if spectral_gain.shape[1] >= 3:
+            _sg_pad = np.pad(spectral_gain, ((0, 0), (1, 1)), mode="edge")
+            spectral_gain = (_sg_pad[:, :-2] + _sg_pad[:, 1:-1] + _sg_pad[:, 2:]) / 3.0
 
         # ── Step 5: Apply spectral gain to each channel (§2.51 linked) ──
         def _apply_gain_to_channel(sig_ch: np.ndarray) -> np.ndarray:
@@ -4294,12 +4578,47 @@ class WowFlutterFix(PhaseInterface):
             corrected = bandlimited_warp(audio_f, src_pos)
         except Exception as _bw_exc:  # pylint: disable=broad-except
             logger.warning(
-                "§V6 (copilot-instructions.md) WF-V1 Resampler nicht anwendbar (%s) — np.interp-Fallback",
+                "§V6 (copilot-instructions.md) WF-V1 Resampler nicht anwendbar (%s) — np.interp-Ersatzpfad",
                 _bw_exc,
             )
             corrected = np.interp(src_pos, np.arange(n_samples, dtype=np.float32), audio_f)
         corrected = np.nan_to_num(corrected, nan=0.0, posinf=0.0, neginf=0.0)
         return corrected.astype(audio.dtype, copy=False)  # type: ignore[no-any-return]
+
+    def _band_limited_warp(
+        self,
+        audio: np.ndarray,
+        stretch_factors: np.ndarray,
+        sample_rate: int,
+        *,
+        lo_hz: float = 4000.0,
+        hi_hz: float = 12000.0,
+    ) -> np.ndarray:
+        """§7.4c-L3 (2026-09-27): Bandbegrenzter Inverse-Warp für bandabhängiges
+        Flutter (multiband_wow_flutter, Hint > 4 Hz).
+
+        Ein globaler Warp würde das NICHT modulierte Tieffrequenz-Band neu
+        modulieren (Regression auf unberührtem Material — der Defekt ist
+        bandselektiv). Deshalb: exakt komplementäre Aufspaltung — nur das Band
+        [lo, hi] wird gewarpt, der Rest (x − Band) bleibt bit-identisch
+        (Hörordnung §8a Never-worsen; deterministisch §G5 (copilot-instructions.md)).
+        """
+        from scipy.signal import butter as _butter_blw
+        from scipy.signal import sosfiltfilt as _sosfiltfilt_blw
+
+        x = np.nan_to_num(np.asarray(audio, dtype=np.float64), nan=0.0, posinf=0.0, neginf=0.0)
+        nyq = float(sample_rate) / 2.0
+        _sos_lp = _butter_blw(4, min(hi_hz / nyq, 0.995), btype="lowpass", output="sos")
+        _sos_hp = _butter_blw(4, max(lo_hz / nyq, 0.005), btype="highpass", output="sos")
+        _bp = _sosfiltfilt_blw(_sos_hp, _sosfiltfilt_blw(_sos_lp, x))
+        _bp_warped = self._speed_warp_resample(_bp.astype(np.float32), stretch_factors, sample_rate).astype(np.float64)
+        _n_blw = min(len(x), len(_bp_warped))
+        _out = x.copy()
+        _out[:_n_blw] += _bp_warped[:_n_blw] - _bp[:_n_blw]
+        out_blw: np.ndarray = np.clip(np.nan_to_num(_out, nan=0.0, posinf=0.0, neginf=0.0), -1.0, 1.0).astype(
+            audio.dtype
+        )
+        return out_blw
 
     def _closed_loop_warp_refine(
         self,
@@ -4401,13 +4720,23 @@ class WowFlutterFix(PhaseInterface):
 
         if np.asarray(restored).ndim == 2:
             _l, _r = stereo_channel_view(restored)
-            _candidate = stereo_like(
-                self._speed_warp_resample(_l, _sf, sample_rate),
-                self._speed_warp_resample(_r, _sf, sample_rate),
-                restored,
-            )
+            if hint_freq_hz > 4.0:
+                _candidate = stereo_like(
+                    self._band_limited_warp(_l, _sf, sample_rate),
+                    self._band_limited_warp(_r, _sf, sample_rate),
+                    restored,
+                )
+            else:
+                _candidate = stereo_like(
+                    self._speed_warp_resample(_l, _sf, sample_rate),
+                    self._speed_warp_resample(_r, _sf, sample_rate),
+                    restored,
+                )
         else:
-            _candidate = self._speed_warp_resample(restored, _sf, sample_rate)
+            if hint_freq_hz > 4.0:
+                _candidate = self._band_limited_warp(restored, _sf, sample_rate)
+            else:
+                _candidate = self._speed_warp_resample(restored, _sf, sample_rate)
 
         _resid_after, _t2, _c2 = _measure_residual(_candidate)
         _info["residual_after_cents"] = _resid_after if _resid_after >= 0.0 else _resid_before

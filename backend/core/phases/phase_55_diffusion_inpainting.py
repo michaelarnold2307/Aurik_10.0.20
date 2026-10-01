@@ -885,6 +885,55 @@ def _gap_candidate_is_damaging(candidate: np.ndarray, channel: np.ndarray, start
     return bool(seg_p99 > ctx_p99 * 2.5)
 
 
+def _ml_gap_improves_perceptually(
+    ml_candidate: np.ndarray,
+    conservative_candidate: np.ndarray,
+    channel: np.ndarray,
+    start: int,
+    end: int,
+    sample_rate: int,
+    gap_ms: float,
+) -> bool:
+    """Evaluate if ML inpainting actually improves perceptual quality vs simple alternative.
+
+    For short gaps (< 50ms), silence or interpolation is often more pleasant than
+    synthetic content that may introduce artifacts. Only accept ML output when it
+    demonstrably provides better psychoacoustic properties (less sharpness, roughness).
+    """
+    # Very short gaps: simple fill is usually preferred unless context has strong tonal content
+    if gap_ms < 30.0:
+        return False
+
+    gap_len = end - start
+    ml_seg = np.asarray(ml_candidate, dtype=np.float64)[:gap_len]
+    cons_seg = np.asarray(conservative_candidate, dtype=np.float64)[:gap_len]
+
+    try:
+        # Use Human Pleasantness Estimator to compare both candidates in context
+        from backend.core.human_pleasantness_estimator import compute_pleasantness
+
+        # Create full-channel test signals with each candidate inserted
+        ctx_window = min(5000, start)  # Up to ~1s of left context
+        ml_full = np.concatenate([channel[start - ctx_window : start], ml_seg])
+        cons_full = np.concatenate([channel[start - ctx_window : start], cons_seg])
+
+        if len(ml_full) < sample_rate * 0.05:  # Need at least 50ms for meaningful analysis
+            return True
+
+        ml_pleasantness = compute_pleasantness(ml_full, sample_rate)
+        cons_pleasantness = compute_pleasantness(cons_full, sample_rate)
+
+        # ML must provide measurable improvement (≥ 3% score difference to be significant)
+        delta = ml_pleasantness.score - cons_pleasantness.score
+        if delta < 0.02:  # Threshold for "meaningful perceptual difference"
+            return False
+    except Exception as exc:
+        logger.debug("Perceptual gate evaluation fehlgeschlagen (%s)", exc)
+        return True  # Fail-open to ML on error
+
+    return True
+
+
 def _apply_shared_stereo_ratio(
     audio_stereo: np.ndarray,
     mono_reference: np.ndarray,
@@ -1168,7 +1217,33 @@ def _process_channel(
                                 )
                                 candidate = _nmf_gap_fallback(channel, start, end, sample_rate)
 
-        if _gap_candidate_is_damaging(candidate, channel, start, end):
+        # §Wohlklang-Gap-Schließung 2026-09-29: ML-Kandidaten müssen nicht nur
+        # "nicht schädlich" sein (Damage Guard), sondern auch eine echte
+        # Hörbarkeits-Verbesserung gegenüber einfachen Alternativen liefern.
+        # Ohne dieses Gate rutschen marginale Ergebnisse (< -0.1 dB SDR) durch,
+        # die technisch glatt sind aber perceptuell schlechter als Stille oder
+        # Interpolation — das mindert den Wohlklang für menschliche Ohren.
+        if not _gap_candidate_is_damaging(candidate, channel, start, end):
+            conservative = _conservative_boundary_fill(channel, start, end)
+            if not _ml_gap_improves_perceptually(
+                candidate,
+                conservative,
+                channel,
+                start,
+                end,
+                sample_rate,
+                gap_ms,
+            ):
+                stats["perceptual_gate_activations"] = stats.get("perceptual_gate_activations", 0) + 1
+                logger.debug(
+                    "Verarbeitungsschritt_55: Perceptual-Gate für Gap [%d:%d] (%.1f ms) aktiviert — "
+                    "ML-Ergebnis nicht besser als einfache Alternative; verwende konservative Füllung",
+                    start,
+                    end,
+                    gap_ms,
+                )
+                candidate = conservative
+        else:
             stats["damage_guard_activations"] += 1
             logger.warning(
                 "Verarbeitungsschritt_55: Damage-Guard für Gap [%d:%d] (%.1f ms) aktiviert — ersetze riskante Rekonstruktion",

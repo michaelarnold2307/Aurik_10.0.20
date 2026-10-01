@@ -38,12 +38,12 @@ def test_collect_mono():
 
 
 def test_r16_select_default_heuristic():
-    """§PERF-R16: ohne Override bleibt die Heuristik (30s/60s) unverändert."""
-    assert select_chunk_duration_s(200.0) == (30.0, False)
-    assert select_chunk_duration_s(300.0) == (30.0, False)
-    assert select_chunk_duration_s(300.1) == (60.0, False)
-    assert select_chunk_duration_s(225.3, "") == (30.0, False)
-    assert select_chunk_duration_s(225.3, "   ") == (30.0, False)
+    """§PERF-R16 + §P3-1: ohne Override bleibt die Heuristik (60s/120s) unverändert."""
+    assert select_chunk_duration_s(200.0) == (60.0, False)
+    assert select_chunk_duration_s(300.0) == (60.0, False)
+    assert select_chunk_duration_s(300.1) == (120.0, False)
+    assert select_chunk_duration_s(225.3, "") == (60.0, False)
+    assert select_chunk_duration_s(225.3, "   ") == (60.0, False)
 
 
 def test_r16_select_override_applied():
@@ -59,8 +59,8 @@ def test_r16_select_override_applied():
 
 def test_r16_select_override_invalid_falls_back():
     """§PERF-R16: ungültige Werte fallen auf die Heuristik zurück."""
-    assert select_chunk_duration_s(225.3, "abc") == (30.0, False)
-    assert select_chunk_duration_s(225.3, "9.9") == (30.0, False)
-    assert select_chunk_duration_s(225.3, "600.1") == (30.0, False)
-    assert select_chunk_duration_s(400.0, "abc") == (60.0, False)
-    assert select_chunk_duration_s(400.0, "1200") == (60.0, False)
+    assert select_chunk_duration_s(225.3, "abc") == (60.0, False)
+    assert select_chunk_duration_s(225.3, "9.9") == (60.0, False)
+    assert select_chunk_duration_s(225.3, "600.1") == (60.0, False)
+    assert select_chunk_duration_s(400.0, "abc") == (120.0, False)
+    assert select_chunk_duration_s(400.0, "1200") == (120.0, False)

@@ -74,6 +74,20 @@ _ROUGHNESS_RISE_ASPER = 0.35
 # relativem Anstieg (2× Vassilakis-JND ≈ 17 %) wird auf 0 geklemmt — Finding
 # UND Veto-Schwelle (witness_correction_loop) erben EINE Wahrheitsquelle.
 _ROUGHNESS_RISE_REL = 0.35
+# §Witness-SOTA A7 (2026-09-28): Die drei im Inventar offenen Hör-Kanäle —
+# Sibilanz-Härte (band-weise Rauigkeit 5–8 kHz), Muddiness (250-Hz-LF-Verdeckung
+# über der Mitten-Band-Referenz), zeitvariante Maskierung (Energie-Überschuss in
+# der Forward-Masking-Zone 10–150 ms nach Onsets).
+_SIBILANCE_LO_HZ = 5000.0
+_SIBILANCE_HI_HZ = 8000.0
+_MUDDINESS_LO_HZ = 200.0
+_MUDDINESS_HI_HZ = 300.0
+_MUDDINESS_REF_LO_HZ = 1000.0
+_MUDDINESS_REF_HI_HZ = 3000.0
+_MUDDINESS_MASK_DB = 1.0  # Pegel-JND ±1 dB (hearing_jnd)
+_TEMPORAL_MASK_DB = 3.0
+_TEMPORAL_MASK_WIN_S = 0.010
+_TEMPORAL_MASK_TAIL_S = 0.150
 _PRE_ECHO_DB = -12.0
 # §Residual-Defekt-Zeugen (2026-09-13): Gedämpfter Gesang + Rest-Verzerrung.
 # Klarheitsband des Gesangs (2–6 kHz) — Dämpfung dort = gedämpfter Gesang.
@@ -112,6 +126,9 @@ class ListeningWitnessResult:
     ild_drift_db: float = 0.0
     iacc_drop: float = 0.0
     pre_echo_db: float = 0.0
+    sibilance_harshness_asper: float = 0.0
+    muddiness_mask_db: float = 0.0
+    temporal_mask_db: float = 0.0
     vocal_muffled_db: float = 0.0
     distortion_residual_flat_top: float = 0.0
     findings: list[str] = field(default_factory=list)
@@ -135,6 +152,9 @@ class ListeningWitnessResult:
             "ild_drift_db": round(self.ild_drift_db, 2),
             "iacc_drop": round(self.iacc_drop, 4),
             "pre_echo_db": round(self.pre_echo_db, 2),
+            "sibilance_harshness_asper": round(self.sibilance_harshness_asper, 4),
+            "muddiness_mask_db": round(self.muddiness_mask_db, 2),
+            "temporal_mask_db": round(self.temporal_mask_db, 2),
             "findings": list(self.findings),
         }
 
@@ -460,6 +480,268 @@ def _transient_sharpness(x: np.ndarray, sr: int) -> float:
     return float(np.percentile(_pos, 95.0))
 
 
+# ── §Witness-SOTA A7: Sibilanz-Härte + Muddiness + zeitvariante Maskierung ───
+
+
+def _sibilance_harshness_asper(x: np.ndarray, sr: int) -> float:
+    """Sibilanz-Härte als band-weise Rauigkeit im 5–8 kHz-Band (Asper).
+
+    SOTA (§Witness A7): Die Hörordnung stuft „harte S" als Rauigkeitsproblem in
+    der Sibilanz-Region ein. Wir berechnen die Modulationstiefe der Hüllkurve
+    NACH Bandpass-Filterung auf [_SIBILANCE_LO_HZ, _SIBILANCE_HI_HZ] — gleiche
+    Vassilakis-Methode wie roughness_model.py, aber band-lokalisiert:
+
+      1. FFT-basierter Bandpass (deterministisch, kein scipy-fir).
+      2. Hilbert-Hüllkurve → Modulationsspektrum 20–150 Hz.
+      3. Relative Tiefe = sqrt(sum(AM-Band)) / mean(|Δenv|).
+
+    Referenz: Vassilakis (2001) „Perceptual and Physical Properties of Amplitude
+    Fluctuation"; Moore (2012) Ch. 9 auf Sibilant-Roughness.
+    """
+    x = np.asarray(x, dtype=np.float32)
+    if len(x) < int(sr * 0.5):
+        return 0.0
+
+    # Schritt 1: FFT-basierter Bandpass-Filter (deterministisch).
+    n_fft = max(4096, int(len(x)))
+    spec = np.fft.rfft(x.astype(np.float64), n=n_fft)
+    freqs = np.fft.rfftfreq(n_fft, d=1.0 / sr)
+    mask = (freqs >= _SIBILANCE_LO_HZ) & (freqs <= _SIBILANCE_HI_HZ)
+    spec[~mask] = 0.0
+    x_bp = np.real(np.fft.irfft(spec))[: len(x)].astype(np.float32)
+
+    # Schritt 2: Hilbert-Hüllkurve → 400 Hz Raster (wie roughness_model.py).
+    env_full = np.abs(_hilbert_x(x_bp)).astype(np.float64)
+    win = max(1, int(sr / _ENV_SR))
+    n_win = len(env_full) // win
+    if n_win < 8:
+        return 0.0
+    env: np.ndarray = env_full[: n_win * win].reshape(n_win, win).mean(axis=1)
+
+    # Schritt 3: Modulations-Spektrum (20–150 Hz Band).
+    env = env - float(np.mean(env))
+    am = np.abs(np.fft.rfft(env)) ** 2
+    mod_freqs = np.fft.rfftfreq(len(env), d=1.0 / _ENV_SR)
+    am_mask = (mod_freqs >= _AM_LO_HZ) & (mod_freqs <= _AM_HI_HZ)
+    if not am_mask.any():
+        return 0.0
+
+    depth = float(np.sqrt(np.sum(am[am_mask]) + 1e-12))
+    mean_amp = float(np.mean(np.abs(env)) + 1e-12)
+    return depth / mean_amp
+
+
+def _hilbert_x(x: np.ndarray):
+    """Lokale Hilbert-Hüllkurve (scipy.signal.hilbert) — §V08-konform."""
+    from scipy.signal import hilbert as _h
+
+    return _h(np.asarray(x, dtype=np.float32))
+
+
+def _frame_band_energies_a7(x: np.ndarray, sr: int, n_fft: int = 4096) -> tuple[np.ndarray, np.ndarray]:
+    """Energie pro Bark-Band pro Frame (dB) + Bark-Zentren — inline-Variante.
+
+    Gleiche Methode wie masking_model._frame_band_energies(), aber lokal
+    eingebettet um import-zyklen zu vermeiden (§V4 (copilot-instructions.md)). Bit-identisch zum
+    kanonischen Pfad (gleiche FFT-Kernel, gleiche Bark-Kanten).
+    """
+    x = np.asarray(x, dtype=np.float32)
+    hop = n_fft
+    n_frames = max(1, (len(x) - n_fft) // hop + 1)
+    win = np.hanning(n_fft).astype(np.float32)
+    idx = np.arange(n_fft)[None, :] + hop * np.arange(n_frames)[:, None]
+    frames = x[idx] * win
+    spec = np.abs(np.fft.rfft(frames, n=n_fft, axis=1)) ** 2
+    freqs = np.fft.rfftfreq(n_fft, d=1.0 / sr)
+
+    edges = _bark_band_edges_a7(sr)
+    centers_hz = 0.5 * (edges[:-1] + edges[1:])
+    z: np.ndarray = 13.0 * np.arctan(0.00076 * centers_hz) + 3.5 * np.arctan((centers_hz / 7500.0) ** 2)
+
+    n_bands = len(edges) - 1
+    band_e = np.zeros((n_frames, n_bands), dtype=np.float64)
+    for b in range(n_bands):
+        msk = (freqs >= edges[b]) & (freqs < edges[b + 1])
+        if msk.any():
+            band_e[:, b] = np.sum(spec[:, msk], axis=1)
+    return 10.0 * np.log10(band_e + 1e-12), z
+
+
+def _bark_band_edges_a7(sr: int) -> np.ndarray:
+    """Bark-Bandkanten (Hz, bei Nyquist beschnitten). Inline-Variante."""
+    nyq = sr / 2.0
+    edges = np.asarray(
+        (
+            0.0,
+            100.0,
+            200.0,
+            300.0,
+            400.0,
+            510.0,
+            630.0,
+            770.0,
+            920.0,
+            1080.0,
+            1270.0,
+            1480.0,
+            1720.0,
+            2000.0,
+            2320.0,
+            2700.0,
+            3150.0,
+            3700.0,
+            4400.0,
+            5300.0,
+            6400.0,
+            7700.0,
+            9500.0,
+            12000.0,
+            15500.0,
+            20500.0,
+            27000.0,
+        ),
+        dtype=np.float64,
+    )
+    edges = np.clip(edges, 0.0, nyq)
+    uniq = [edges[0]]
+    for _e in edges[1:]:
+        if _e > uniq[-1]:
+            uniq.append(_e)
+    result: np.ndarray = np.asarray(uniq, dtype=np.float64)
+    return result
+
+
+def _muddiness_mask_db(x: np.ndarray, sr: int) -> float:
+    """Muddiness als LF-Verdeckung über der Mid-Band-Maskierungsschwelle (dB).
+
+    SOTA (§Witness A7): Mudde entsteht, wenn Low-Frequency-Energie (200–300 Hz)
+    so stark ist, dass sie die Mitten (1–3 kHz) verdeckt. Wir nutzen ein
+    Bark-basiertes Johnston-Modell:
+
+      1. Bark-Band-Energien berechnen.
+      2. LF-Band = Energie des Barkbands um 200–300 Hz.
+      3. Mid-Bands = Barkbänder um 1–3 kHz (Masker).
+      4. Spread-Funktion von Mid → LF-Position: wie stark maskieren die Mitten?
+      5. Überschuss = LF-Energie − (Mid-Maskierungsschwelle an LF) — wenn > _MUDDINESS_MASK_DB,
+         ist der LF-Anteil „muddy" (verdeckt hörbar).
+
+    Referenz: Zwicker & Fastl (2007), Psychoacoustics §13; Moore (2012) Ch. 4.
+    """
+    x = np.asarray(x, dtype=np.float32)
+    if len(x) < sr * 0.5:
+        return 0.0
+
+    band_e_db, z = _frame_band_energies_a7(x, sr)
+    n_frames, n_bands = band_e_db.shape
+    edges = _bark_band_edges_a7(sr)
+
+    # LF-Band finden (um 200–300 Hz).
+    lf_bands = np.where((edges[:-1] < 350.0) & (edges[1:] > 150.0))[0]
+    if len(lf_bands) == 0:
+        return 0.0
+
+    # Mid-Band-Referenz finden (um 1–3 kHz).
+    mid_bands = np.where((edges[:-1] < _MUDDINESS_REF_HI_HZ) & (edges[1:] > _MUDDINESS_REF_LO_HZ))[0]
+    if len(mid_bands) == 0:
+        return 0.0
+
+    # Spread von Mid-Bändern auf LF-Positionen berechnen (10 dB/Bark, beide Flanken).
+    spread_db = np.zeros((n_frames, n_bands), dtype=np.float64)
+    for b in range(n_bands):
+        for m in mid_bands:
+            dz = abs(z[b] - z[m])
+            spread_db[:, b] = np.maximum(spread_db[:, b], band_e_db[:, m] - _SPREAD_DB_PER_BARK_A7 * dz)
+
+    # Maskierungsschwelle an LF-Positionen: Spread − Offset.
+    offset_a7: np.ndarray = (14.5 + z[None, :]) + 6.0  # konservativer Johnston-Offset (+ Safety).
+    threshold_db = spread_db - offset_a7
+
+    # Überschuss = wie viel LF-Energie über der Mid-Maskierungsschwelle?
+    excess_db = np.zeros(n_frames, dtype=np.float64)
+    for b in lf_bands:
+        excess_db = np.maximum(excess_db, band_e_db[:, b] - threshold_db[:, b])
+
+    # Median des Überschusses über Frames (robust gegen Transienten).
+    return float(np.median(excess_db))
+
+
+def _temporal_forward_masking_db(x: np.ndarray, sr: int) -> float:
+    """Zeitvariante Maskierung als Forward-Masking-Überschuss nach Onsets (dB).
+
+    SOTA (§Witness A7): Nach einem lauten Onset kann das Ohr die nächsten
+    ~150 ms nur eingeschränkt wahrnehmen. Wenn dort unerwartete Energie auftritt,
+    die über dem abklingenden Forward-Maskierungs-Schwellen liegt, entsteht ein
+    „verschmierter" oder „verdeckter" Eindruck (z.B. hallende Attacken).
+
+    Algorithmus:
+      1. Onset-Detektion via Hüllkurve + Schwellen (dB über dem lokalen Median).
+      2. Für jeden Onset: Forward-Masking-Tail = Johnston-Gleichung (Gl. 6-7):
+         T(t) ≈ E_onset − Δt / τ − offset, mit τ ≈ 0.3 s und offset ≈ 15 dB.
+      3. Überschuss = Energie im Tail (>10 ms nach Onset bis ~150 ms),
+         die über dem abklingenden Schwelle liegt → medianer Überschuss in dB.
+
+    Referenz: Johnston (1988) IEEE JSAC §6; Moore (2012) Ch. 10.
+    """
+    x = np.asarray(x, dtype=np.float32)
+    if len(x) < int(sr):
+        return 0.0
+
+    # Schritt 1: Hüllkurve via RMS-Envelope für Onset-Detektion.
+    win_samples = max(64, int(_TEMPORAL_MASK_WIN_S * sr))
+    hop_samples = win_samples // 2
+    sw = np.lib.stride_tricks.sliding_window_view(x, win_samples)
+    rms = np.sqrt(np.mean(sw[::hop_samples] ** 2, axis=1) + 1e-12).astype(np.float64)
+    db_env = 20.0 * np.log10(rms + 1e-12)
+
+    # Onsets: Frames, die > _TEMPORAL_MASK_DB über dem lokalen Median liegen.
+    local_median = float(np.median(db_env))
+    onset_thresh_db = local_median + _TEMPORAL_MASK_DB
+    onsets_idx = np.where(db_env >= onset_thresh_db)[0]
+
+    if len(onsets_idx) == 0:
+        return 0.0
+
+    # Schritt 2/3: Für jeden Onset → Forward-Mask-Tail (10–150 ms nach Onset).
+    # Tail-Offsets in FRAMES berechnen (onsets_idx sind Frame-Indizes!).
+    tail_start_frames = max(1, int(_TEMPORAL_MASK_TAIL_S * 0.1 * sr / hop_samples))
+    tail_end_frames = max(2, int(_TEMPORAL_MASK_TAIL_S * sr / hop_samples))
+
+    excess_dbs: list[float] = []
+    for oi in onsets_idx:
+        e_onset_db = float(db_env[oi])
+        start_frame = oi + tail_start_frames
+        end_frame = oi + tail_end_frames
+
+        if end_frame <= start_frame or start_frame >= len(db_env):
+            continue
+
+        # Signalende respektieren (Tail kann am Ende kürzer sein).
+        end_frame = min(end_frame, len(db_env))
+        n_tail = end_frame - start_frame
+        if n_tail < 2:
+            continue
+
+        t_idx = np.arange(n_tail, dtype=np.float64)
+        # Decay pro Frame: 15 dB Abfall über 0.3 s → frames_in_300ms = (0.3 * sr) / hop_samples.
+        frames_in_decay = max(int(0.3 * sr / hop_samples), 1)
+        decay_db_per_frame = 15.0 / float(frames_in_decay)
+        mask_threshold_db = e_onset_db - (t_idx * decay_db_per_frame + 6.0)
+
+        tail_env = db_env[start_frame:end_frame]
+        tail_excess = tail_env - mask_threshold_db
+        if np.any(tail_excess > 0):
+            excess_dbs.append(float(np.max(tail_excess)))
+
+    return float(np.median(excess_dbs)) if excess_dbs else 0.0
+
+
+# ── A7-Konstanten (inline, aus masking_model synchronisiert) ─────────────────
+_SPREAD_DB_PER_BARK_A7 = 10.0
+_ENV_SR = 400.0
+_AM_LO_HZ = 20.0
+_AM_HI_HZ = 150.0
+
+
 # ── Audio-Bundle-Zwischenspeicher (bit-identisch, Qualität neutral) ──────────
 # Die per-Audio-Witness-Metriken (F0/HNR/Flatness, Loudness-Modulation,
 # Flat-Top, Bass, Luftband, Klarheit, Transienten-Schärfe) sind
@@ -497,6 +779,10 @@ def _witness_audio_bundle(x: np.ndarray, sr: int) -> dict[str, Any]:
         "air": _band_energy_ratio_db(x, sr, _AIR_LO_HZ, _AIR_HI_HZ),
         "clarity": _band_energy_ratio_db(x, sr, _CLARITY_LO_HZ, _CLARITY_HI_HZ),
         "tr": _transient_sharpness(x, sr),
+        # §Witness-SOTA A7 (2026-09-28): Sibilanz-Härte + Muddiness + zeitvariante Maskierung.
+        "sibilance": float(_sibilance_harshness_asper(x, sr)),
+        "mud_db": float(_muddiness_mask_db(x, sr)),
+        "tmp_db": float(_temporal_forward_masking_db(x, sr)),
     }
     with _WITNESS_BUNDLE_LOCK:
         _WITNESS_BUNDLE_CACHE[_key] = bundle
@@ -636,6 +922,22 @@ def evaluate_listening_witness(
     _muffled = clarity_drop > _VOCAL_MUFFLED_DB and not _distortion_removed
     _residual = _flat_b if phase_id in _DEFECT_OWNER_PHASES else 0.0
 
+    # §Witness-SOTA A7 (2026-09-28): Sibilanz-Härte + Muddiness + zeitvariante Maskierung.
+    # Delta-Werte: positiv = Verschlechterung.
+    _sib_a = float(_bun_a["sibilance"])
+    _sib_b = float(_bun_b["sibilance"])
+    _sib_rise = float(_sib_b - _sib_a)  # signed Delta; JND-kalibriert wie roughness_rise_asper.
+    if _sib_rise <= max(0.35, _ROUGHNESS_RISE_REL * _sib_a):
+        _sib_rise = 0.0
+
+    _mud_a = float(_bun_a["mud_db"])
+    _mud_b = float(_bun_b["mud_db"])
+    _mud_rise_db = float(max(_mud_b - _mud_a, 0.0))  # nur Verschlechterung zählt.
+
+    _tmp_a = float(_bun_a["tmp_db"])
+    _tmp_b = float(_bun_b["tmp_db"])
+    _tmp_rise_db = float(max(_tmp_b - _tmp_a, 0.0))
+
     result = ListeningWitnessResult(
         phase_id=phase_id,
         pitch_drift_cents=pitch_delta,
@@ -654,6 +956,9 @@ def evaluate_listening_witness(
         ild_drift_db=_ild_drift,
         iacc_drop=_iacc_drop,
         pre_echo_db=_pre_echo_db,
+        sibilance_harshness_asper=float(_sib_b),
+        muddiness_mask_db=float(max(_mud_b, 0.0)),
+        temporal_mask_db=float(max(_tmp_b, 0.0)),
         vocal_muffled_db=max(clarity_drop, 0.0),
         distortion_residual_flat_top=_residual,
     )
@@ -688,4 +993,16 @@ def evaluate_listening_witness(
         result.findings.append("vocal_muffled")
     if _residual > _FLAT_TOP_RESIDUAL:
         result.findings.append("vocal_distorted_residual")
+
+    # §Witness-SOTA A7 (2026-09-28): Findings nur bei VERRINGERUNG durch die Phase:
+    # - Sibilanz-Härte: Delta > JND-kalibrierter Schwellenwert (gleiche Logik wie roughness_rise).
+    # - Muddiness: Überschuss nach der Phase > Threshold UND Delta > Pegel-JND.
+    # - zeitvariante Maskierung: Delta > Schwellenwert.
+    if _sib_rise > 0.0 and result.sibilance_harshness_asper > 2.0:
+        result.findings.append("sibilance_harsh")
+    if (result.muddiness_mask_db > _MUDDINESS_MASK_DB * 2.0) and (_mud_b - _mud_a > _MUDDINESS_MASK_DB):
+        result.findings.append("mud")
+    if _tmp_rise_db > _TEMPORAL_MASK_DB + 3.0:
+        result.findings.append("temporal_masking_excess")
+
     return result

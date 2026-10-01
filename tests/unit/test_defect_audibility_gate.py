@@ -14,6 +14,7 @@ from backend.core.defect_audibility_gate import (
     MATERIAL_JND_OFFSET,
     DefectAudibilityReport,
     audible_threshold,
+    canonical_audibility_verdicts,
     evaluate_defect_audibility,
 )
 
@@ -110,3 +111,155 @@ class TestEvaluateAudibility:
         assert meta["gate_passed"] is False
         assert meta["improvable_types"] == ["clicks"]
         assert isinstance(meta["per_type"]["clicks"]["pre"], float)
+
+
+class TestCanonicalConsolidation:
+    """Konsistenz-Slice 2 (2026-09-27): eine Hör-Instanz, eine Wahrheit.
+
+    Der kanonische Pfad nutzt DIESELBE Maskierungs-Instanz wie die Phasen-Gates
+    (dsp/audibility_gate.defect_audibility_from_signal). Aufbau: 2-kHz-Masker
+    (Amplitude 0.3) im ganzen Signal; Defekt-Location = 2-kHz-Burst in der
+    Location. Gleiche kritische Bande ⇒ starke Maskierung: 0.01-Burst bleibt
+    unter der Schwelle (masked), 0.6-Burst liegt darüber (audible).
+    """
+
+    SR = 48000
+
+    @staticmethod
+    def _masked_burst_signal(amp: float) -> np.ndarray:
+        n = int(1.5 * TestCanonicalConsolidation.SR)
+        t = np.arange(n) / TestCanonicalConsolidation.SR
+        audio = 0.3 * np.sin(2.0 * np.pi * 2000.0 * t)
+        d0, d1 = int(1.0 * TestCanonicalConsolidation.SR), int(1.03 * TestCanonicalConsolidation.SR)
+        audio[d0:d1] = amp * np.sin(2.0 * np.pi * 2000.0 * t[d0:d1])
+        return audio.astype(np.float32)
+
+    @staticmethod
+    def _candidate_data() -> dict:
+        # post 0.2 >= thr 0.06 (vinyl) ⇒ Severity-Kandidat für den kanonischen Pfad.
+        return {"clicks": _entry(0.5, 0.20)}
+
+    def test_loud_burst_audible_canonical(self) -> None:
+        # Kalibriert (2026-09-27): Maskierungs-Schwelle des 0.3-Maskers liegt bei
+        # ~38 dB (Modell-Einheiten); Burst 1.0 (~42 dB) liegt ~4 dB darüber,
+        # Burst 0.01 (~2 dB) ~36 dB darunter - robuste Trennung.
+        audio = self._masked_burst_signal(1.0)
+        rep = evaluate_defect_audibility(
+            self._candidate_data(),
+            material_key="vinyl",
+            audio=audio,
+            sample_rate=self.SR,
+            defect_locations={"clicks": [(1.0, 1.03)]},
+        )
+        assert rep.gate_passed is False
+        assert rep.n_audible_unmasked == 1
+        pt = rep.per_type["clicks"]
+        assert pt["status"] == "audible"
+        assert pt["evidence"] == "canonical_masking"
+        assert pt["canon_audible"] is True
+        assert pt["canon_checked"] == 1
+
+    def test_quiet_burst_masked_canonical(self) -> None:
+        audio = self._masked_burst_signal(0.01)
+        rep = evaluate_defect_audibility(
+            self._candidate_data(),
+            material_key="vinyl",
+            audio=audio,
+            sample_rate=self.SR,
+            defect_locations={"clicks": [(1.0, 1.03)]},
+        )
+        assert rep.gate_passed is True
+        assert rep.n_masked == 1
+        assert rep.per_type["clicks"]["status"] == "masked"
+        assert rep.per_type["clicks"]["evidence"] == "canonical_masking"
+        assert rep.per_type["clicks"]["canon_audible"] is False
+
+    def test_physical_cap_wins_over_canonical(self) -> None:
+        # bandwidth_loss ist PHYSICAL_CAP: auch ein kanonisch hörbarer Rest
+        # wird als „erfüllt mit Dokumentation“ akzeptiert (Bestandsverhalten).
+        audio = self._masked_burst_signal(1.0)
+        data = {"bandwidth_loss": _entry(0.7, 0.35)}
+        rep = evaluate_defect_audibility(
+            data,
+            material_key="mp3_low",
+            audio=audio,
+            sample_rate=self.SR,
+            defect_locations={"bandwidth_loss": [(1.0, 1.03)]},
+        )
+        assert rep.gate_passed is True
+        assert rep.n_physical_cap == 1
+        assert rep.per_type["bandwidth_loss"]["status"] == "physical_cap"
+        assert rep.per_type["bandwidth_loss"]["evidence"] == "canonical_masking"
+
+    def test_stereo_layout_equals_mono_verdict(self) -> None:
+        mono = self._masked_burst_signal(0.01)
+        stereo = np.stack([mono, mono], axis=1)  # (N,2)-Layout
+        rep = evaluate_defect_audibility(
+            self._candidate_data(),
+            material_key="vinyl",
+            audio=stereo,
+            sample_rate=self.SR,
+            defect_locations={"clicks": [(1.0, 1.03)]},
+        )
+        assert rep.per_type["clicks"]["status"] == "masked"
+        # (2,N)-Layout ebenso (Stereo-Layout-Invariante, AGENTS.md §3).
+        rep_cn = evaluate_defect_audibility(
+            self._candidate_data(),
+            material_key="vinyl",
+            audio=np.stack([mono, mono], axis=0),
+            sample_rate=self.SR,
+            defect_locations={"clicks": [(1.0, 1.03)]},
+        )
+        assert rep_cn.per_type["clicks"]["status"] == "masked"
+
+    def test_no_locations_severity_fallback(self) -> None:
+        audio = self._masked_burst_signal(0.01)
+        rep = evaluate_defect_audibility(
+            self._candidate_data(),
+            material_key="vinyl",
+            audio=audio,
+            sample_rate=self.SR,
+            defect_locations={},
+        )
+        assert rep.per_type["clicks"]["status"] == "audible"  # Severity-Pfad
+        assert rep.per_type["clicks"]["evidence"] == "severity_scale"
+
+    def test_fm_types_stay_severity_scale(self) -> None:
+        # Wow/Flutter haben keine Energie-Delta-Domäne ⇒ kanonisches Band = None.
+        audio = self._masked_burst_signal(0.01)
+        data = {"wow": _entry(0.5, 0.20)}
+        rep = evaluate_defect_audibility(
+            data,
+            material_key="vinyl",
+            audio=audio,
+            sample_rate=self.SR,
+            defect_locations={"wow": [(1.0, 1.03)]},
+        )
+        assert rep.per_type["wow"]["evidence"] == "severity_scale"
+
+    def test_fail_open_on_bad_sample_rate(self) -> None:
+        audio = self._masked_burst_signal(0.01)
+        rep = evaluate_defect_audibility(
+            self._candidate_data(),
+            material_key="vinyl",
+            audio=audio,
+            sample_rate=0,
+            defect_locations={"clicks": [(1.0, 1.03)]},
+        )
+        assert rep.per_type["clicks"]["evidence"] == "severity_scale"
+
+    def test_determinism_bit_identical(self) -> None:
+        audio = self._masked_burst_signal(0.01)
+        kw = {
+            "audio": audio,
+            "sample_rate": self.SR,
+            "defect_locations": {"clicks": [(1.0, 1.03)]},
+        }
+        meta_a = evaluate_defect_audibility(self._candidate_data(), material_key="vinyl", **kw).to_metadata()
+        meta_b = evaluate_defect_audibility(self._candidate_data(), material_key="vinyl", **kw).to_metadata()
+        assert meta_a == meta_b
+
+    def test_canonical_verdicts_fm_returns_empty(self) -> None:
+        audio = self._masked_burst_signal(0.01)
+        out = canonical_audibility_verdicts(audio, self.SR, {"wow": [(1.0, 1.03)]}, types=["wow"])
+        assert out == {}

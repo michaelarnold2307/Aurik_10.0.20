@@ -123,7 +123,7 @@ def _apply_singer_identity_witness(
             _blend65 = float(np.clip(_cos65 / _SINGER_IDENTITY_MIN_COS_65, 0.1, 0.8))
             meta["singer_identity_blend"] = round(_blend65, 4)
             logger.warning(
-                "§SOTA-P65 Sänger-Identitäts-Witness: cos=%.3f < %.2f → Blend %.2f Richtung Input",
+                "§SOTA-P65 Sänger-Identitäts-Witness: cos=%.3f < %.2f → Blend %.2f Richtung Eingabe",
                 _cos65,
                 _SINGER_IDENTITY_MIN_COS_65,
                 _blend65,

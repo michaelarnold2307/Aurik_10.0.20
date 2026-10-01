@@ -84,6 +84,8 @@ _PHYSICAL_CONSTANTS: set[str] = {
     "_dr_threshold",  # kalibrierte DR-Priors fuer Era-Upvote
     "_FATIGUE_ABORT_THRESHOLD",  # Hörordnung §6: Ermüdungs-Index > 0.40 = Einladungs-Abbruch (perzeptuell fixiert)
     "_HNR_DROP_DB",  # de Krom HNR: >2 dB Stimm-HNR-Abfall = hörbare Stimmverschlechterung
+    "_INVARIANT_RMS_DB_MAX",  # Hörordnung Ebene 1: RMS-KRIT-Abfall > 12 dB = struktureller Signalkollaps (Produktions-Watchdog-Kalibrierung)
+    "_INVARIANT_CREST_DB_MAX",  # Hörordnung Ebene 1: Crest-Kollaps ≈ 12 dB = struktureller Signalkollaps (Produktions-Watchdog-Kalibrierung)
 }
 
 # Muster für hartcodierte Schwellwerte

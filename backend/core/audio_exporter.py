@@ -22,6 +22,7 @@ Features:
 
 from __future__ import annotations
 
+import hashlib
 import json
 import logging
 import threading
@@ -40,84 +41,29 @@ try:
 except ImportError:
     _pyln = None
 
-try:
-    from scipy.signal import lfilter as _scipy_lfilter
-except ImportError:
-    _scipy_lfilter = None
-
 logger = logging.getLogger(__name__)
 
 
-def _apply_dither_16bit(audio: np.ndarray) -> np.ndarray:
-    """POW-r Typ 3 Dithering für 24→16-Bit-Konvertierung (Wannamaker et al. 1992).
+_DITHER_SEED_HASH_SAMPLES: int = 65536
 
-    Spec §DSP-Spezialregeln: PRIMÄR POW-r Typ 3 (~+6 dB SNR), FALLBACK TPDF.
-    ABSOLUT VERBOTEN: Truncation ohne Dithering.
 
-    Implementation: FIR-spectral shaping of TPDF noise (vectorized via scipy.lfilter).
-    The 9-tap POW-r Type 3 coefficients (Wannamaker, Lipshitz, Vanderkooy 1992) are
-    applied as a FIR filter to white TPDF base noise, giving equivalent noise spectral
-    density to the feedback-based original — but fully vectorised (O(n) lfilter).
+def _deterministic_dither_seed(audio: np.ndarray) -> int:
+    """Inhaltsabhängiger, reproduzierbarer Dither-Seed (§G5 (GEBOTE.md)).
 
-    Args:
-        audio: Float32 audio in [-1.0, 1.0], mono (N,) or stereo (N, 2).
+    §G5 (copilot-instructions.md) verlangt: derselbe Input + dieselbe Version
+    ⇒ bit-identischer Output. Ein ungesäter ``np.random``-Aufruf bricht das und
+    koppelt überdies den globalen RNG-Zustand zwischen Songs (§V8-Geist).
 
-    Returns:
-        Dithered float32 array quantised to 16-bit resolution.
+    Der Seed wird aus einem gleichmäßig über das GANZE Signal verteilten
+    Strided-Sample gebildet (nicht nur aus dem Intro), damit verschiedene
+    Songs bzw. verschiedene Regionen nicht denselben Dither-Stream erhalten.
     """
-    LSB: float = 1.0 / 32768.0
-    n = audio.shape[0]
-
-    try:
-        if _scipy_lfilter is None:
-            raise ImportError("scipy.signal.lfilter unavailable")
-        scipy_lfilter = _scipy_lfilter
-        # POW-r Type 3 noise-shaping FIR coefficients.
-        # Dual-set: 48 kHz primary (Aurik processing SR), 44.1 kHz secondary.
-        # 48 kHz coefficients re-optimised following Wannamaker, Lipshitz &
-        # Vanderkooy (1992): minimise audible noise power weighted by
-        # ISO 226:2003 equal-loudness contour at the 16-bit quantisation floor.
-        # The optimisation shifts spectral energy above 16 kHz (inaudible at
-        # 48 kHz Nyquist=24 kHz) more aggressively than the 44.1 kHz set,
-        # yielding ~+1.5 dB perceptual SNR improvement.
-        _POWR3_FIR_48K = np.array(
-            [1.0, -2.338, 3.244, -3.828, 4.116, -3.382, 2.325, -1.416, 0.672, -0.1106],
-            dtype=np.float64,
-        )
-        _POWR3_FIR_44K = np.array(
-            [1.0, -2.412, 3.370, -3.937, 4.174, -3.353, 2.205, -1.281, 0.569, -0.0847],
-            dtype=np.float64,
-        )
-        # Select based on sample rate context (audio_exporter always receives 48 kHz
-        # from Aurik pipeline, but guard for edge cases)
-        _POWR3_FIR = _POWR3_FIR_48K
-
-        def _shape_channel(ch: np.ndarray) -> np.ndarray:
-            # TPDF base noise: two uniform distributions → triangular ±1 LSB RMS
-            tpdf = np.random.uniform(-LSB, LSB, n) + np.random.uniform(-LSB, LSB, n)
-            # Apply POW-r Type 3 spectral shaping to the dither noise
-            shaped = scipy_lfilter(_POWR3_FIR, [1.0], tpdf)
-            # Add shaped dither, quantise, re-normalise to float
-            dithered = ch.astype(np.float64) + shaped
-            out = np.asarray((np.round(np.clip(dithered, -1.0, 1.0) * 32767.0) / 32767.0), dtype=np.float32)
-            return cast(np.ndarray, out)
-
-        if audio.ndim == 1:
-            return _shape_channel(audio)
-        return np.stack(  # type: ignore[no-any-return]
-            [_shape_channel(audio[:, c]) for c in range(audio.shape[1])],
-            axis=1,
-        )
-
-    except Exception as _exc:  # scipy unavailable or unexpected shape
-        logger.debug("POW-r Typ 3 nicht verfügbar (%s) — TPDF-Ersatzpfad aktiv.", _exc)
-        # TPDF-Fallback: triangular ±1 LSB, no spectral shaping
-        tpdf = np.random.uniform(-LSB, LSB, n) + np.random.uniform(-LSB, LSB, n)
-        if audio.ndim == 2:
-            tpdf = tpdf[:, np.newaxis]
-        dithered = audio.astype(np.float64) + tpdf
-        out = np.asarray((np.round(np.clip(dithered, -1.0, 1.0) * 32767.0) / 32767.0), dtype=np.float32)
-        return cast(np.ndarray, out)
+    flat = np.ascontiguousarray(audio, dtype=np.float32).ravel()
+    if flat.size == 0:
+        return 0
+    stride = max(1, flat.size // _DITHER_SEED_HASH_SAMPLES)
+    sampled = flat[::stride]
+    return int(hashlib.sha256(sampled.tobytes()).hexdigest()[:16], 16) % (2**31)
 
 
 def _meta_bool(metadata: dict[str, str] | None, key: str, default: bool = False) -> bool:
@@ -454,14 +400,14 @@ class AudioExporter:
             except Exception as _pdv_exc:
                 logger.debug("§PDV-1 Translation-EQ nicht blockierend: %s", _pdv_exc)
 
-        # Ensure correct dtype for bit depth
+        # Ensure correct dtype for bit depth.
+        # §IV Export-Pipeline-Reihenfolge (copilot-instructions.md): Dithering ist
+        # Schritt 4 und liegt NACH der CD-Rauschprofil-Injektion (Schritt 3).
+        # Hier darf daher NICHT gedithert werden — die frühere 16-bit-Dither-
+        # Quantisierung an dieser Stelle führte zu einer Doppel-Dither-Kette
+        # (4 → 3 → 4) und senkte den Rauschboden zusätzlich ab.
         if not format_info["lossy"]:
-            if bit_depth == 16:
-                # §DSP-Spezialregeln: POW-r Typ 3 Dithering — VERBOTEN: Truncation ohne Dithering
-                audio_export = _apply_dither_16bit(audio_export.astype(np.float32))
-            elif bit_depth in (24, 32):
-                # Keep as float32 for soundfile
-                audio_export = audio_export.astype(np.float32)
+            audio_export = audio_export.astype(np.float32)
 
         # Determine subtype
         subtype = str(format_info["subtype"] if format_info["lossy"] else self.BIT_DEPTHS.get(bit_depth, "PCM_16"))
@@ -478,22 +424,33 @@ class AudioExporter:
         except Exception as _cd_exc:
             logger.debug("§G4 (GEBOTE.md) CD-Rauschprofil: Injektion übersprungen (%s)", _cd_exc)
 
-        # ── §V5 (copilot-instructions.md) POW-r Type 3 Dither: Psychoakustisches Dither vor Integer-Quantisierung ──
-        if bit_depth <= 16:
+        # ── §V5 (copilot-instructions.md) Truncation-ohne-Dither-Verbot ──
+        # "Bei bit_depth < 32 MUSS POW-r Type 3 Dither (primär) oder TPDF
+        # (Fallback) angewandt werden." Genau EIN Dither-Schritt, nach der
+        # CD-Rauschprofil-Injektion (§IV), mit deterministischem Seed (§G5 (GEBOTE.md)).
+        if bit_depth < 32 and not format_info["lossy"]:
+            _dither_seed = _deterministic_dither_seed(audio_export)
             try:
                 from backend.core.dsp.powr_dither import apply_powr_dither  # type: ignore[import]
 
-                audio_export = apply_powr_dither(audio_export, sr, bit_depth=bit_depth)
+                audio_export = apply_powr_dither(audio_export, sr, bit_depth=bit_depth, seed=_dither_seed)
             except ImportError:
-                # Fallback: TPDF-Dither via numpy
-                noise = np.random.default_rng().uniform(
-                    -0.5, 0.5, audio_export.shape
-                ) + np.random.default_rng().uniform(-0.5, 0.5, audio_export.shape)
+                # §V6 (copilot-instructions.md): Fallback mit Begründung protokollieren (kein stilles Degradieren).
+                logger.warning(
+                    "§V6 (copilot-instructions.md) POW-r Type 3 nicht verfügbar — TPDF-Ersatzpfad für bit_depth=%d (Seed=%d)",
+                    bit_depth,
+                    _dither_seed,
+                )
+                _rng = np.random.default_rng(_dither_seed)
+                noise = _rng.uniform(-0.5, 0.5, audio_export.shape) + _rng.uniform(-0.5, 0.5, audio_export.shape)
                 dither_amp = 1.0 / (2 ** (bit_depth - 1))
-                audio_export = audio_export + (noise * dither_amp).astype(np.float32)
-                logger.debug("§V5 (copilot-instructions.md) TPDF-Ersatzpfad-Dither angewendet (POW-r nicht verfügbar)")
+                audio_export = (audio_export + (noise * dither_amp)).astype(np.float32)
             except Exception as _dith_exc:
-                logger.debug("§V5 (copilot-instructions.md) Dither übersprungen (%s)", _dith_exc)
+                logger.warning(
+                    "§V6 (copilot-instructions.md) Dither übersprungen (bit_depth=%d, %s) — ungeditherte Quantisierung möglich",
+                    bit_depth,
+                    _dith_exc,
+                )
 
         def _atomic_write_audio(path: Path, data: np.ndarray, *, format_name: str, subtype_name: str) -> None:
             tmp_path = path.with_name(path.name + ".tmp")

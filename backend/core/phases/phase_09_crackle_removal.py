@@ -812,6 +812,44 @@ class CrackleRemovalPhase(PhaseInterface):
         # §v10.15 Shape-Invariante: garantierte (N,2)-Orientierung für Stereo
         _p09_stereo = audio.ndim == 2 and audio.shape[1] == 2
 
+        # §7.4c-L3 (2026-09-28): STYLUS-DAMAGE-ZWEIG — einseitige
+        # Tracking-Verzerrung (Nadel-Schaden) kappt die POSITIVE Flanke
+        # (Waveform-Asymmetrie, Skewness mean(x³)/rms³ < 0). Die
+        # Crackle-Kaskade entfernt Impulse, adressiert die Asymmetrie aber
+        # nicht und verschlechterte die Metrik sogar (Befund: 0,8591→0,8999).
+        # Dekompression der positiven Flanke: y = x + a·max(0, x − t) mit
+        # einer kleinen Kandidaten-Leiter, die |mean(y³)| minimiert;
+        # Never-worsen: Spitzenwachstum ≤ 10 %. Nur bei detektiertem
+        # stylus_damage (score ≥ 0,3).
+        _stylus_score09 = float((kwargs.get("defect_scores") or {}).get("stylus_damage", 0.0))
+        if _stylus_score09 >= 0.3:
+            try:
+                _mono09 = audio.mean(axis=1) if _p09_stereo else audio
+                _rms09 = float(np.sqrt(np.mean(_mono09**2)) + 1e-12)
+                _skew09 = float(np.mean(_mono09**3) / (_rms09**3))
+                if _skew09 < -0.15:
+                    _thr09 = float(np.percentile(_mono09, 50.0))
+                    _best_y09 = audio
+                    _best_sk09 = abs(_skew09)
+                    for _a09 in (0.5, 1.0, 1.5, 2.0, 2.5):
+                        _y09 = audio.copy()
+                        _pos09 = np.maximum(_mono09 - _thr09, 0.0)
+                        if _p09_stereo:
+                            _y09 += float(_a09) * _pos09[:, None]
+                        else:
+                            _y09 += float(_a09) * _pos09
+                        _peak_in09 = float(np.max(np.abs(audio))) + 1e-12
+                        _peak_y09 = float(np.max(np.abs(_y09)))
+                        if _peak_y09 > 1.1 * _peak_in09:
+                            continue  # Never-worsen: Spitzenwachstum gedeckelt
+                        _m09 = _y09.mean(axis=1) if _p09_stereo else _y09
+                        _sk09 = abs(float(np.mean(_m09**3) / (_rms09**3)))
+                        if _sk09 < _best_sk09:
+                            _best_sk09, _best_y09 = _sk09, _y09
+                    audio = _best_y09
+            except Exception as _st09_exc:
+                logger.debug("Verarbeitungsschritt09 stylus-Zweig nicht blockierend: %s", _st09_exc)
+
         # §4.6b: Pre-phase eviction — free previous phase models to prevent OOM
         try:
             from backend.core.plugin_lifecycle_manager import (

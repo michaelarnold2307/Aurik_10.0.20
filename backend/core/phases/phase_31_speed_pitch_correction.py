@@ -448,32 +448,48 @@ class SpeedPitchCorrectionPhase(PhaseInterface):
             )
             speed_error_percent = (speed_ratio - 1.0) * 100
         else:
-            # Detection failed or low confidence
-            audio = np.nan_to_num(audio, nan=0.0, posinf=0.0, neginf=0.0)
+            # §7.4c-L3 (2026-09-27): Polyphoner DSP-Fallback — pYIN/ML liefern
+            # auf Akkord-Trägern conf 0,0; der Spektralkanal schätzt dann den
+            # konstanten 12-TET-Versatz direkt (Befund: +0,4 % Speed-Fehler
+            # blieb sonst unkorrigiert).
+            _dsp31 = self._estimate_tuning_offset_dsp(audio, sample_rate, reference_pitch)
+            if _dsp31 is not None:
+                tuning_offset_cents, speed_ratio = _dsp31
+                speed_error_percent = (speed_ratio - 1.0) * 100
+                ml_metadata["tuning_estimator"] = "dsp_spectral_fallback"
+                # §7.4c-L3 (2026-09-27): Volle Korrektur-Stärke — ein per
+                # IQR-Gate VERIFIZIERTER konstanter Offset ist verlustfrei
+                # korrigierbar (reine Zeit-Achsen-Skalierung). Die 0,85er-
+                # Dämpfung existiert für unsichere f0-Schätzungen und ließ
+                # hier 4,0 cents Restfehler (Befund).
+                params["correction_strength"] = 1.0
+            else:
+                # Detection failed or low confidence
+                audio = np.nan_to_num(audio, nan=0.0, posinf=0.0, neginf=0.0)
 
-            audio = np.clip(audio, -1.0, 1.0)
+                audio = np.clip(audio, -1.0, 1.0)
 
-            return create_phase_result(
-                audio=audio,
-                modifications={
-                    "processing": "skipped",
-                    "reason": f"pitch detection confidence too low: {confidence:.2f}",
-                    "detected_pitch_hz": detected_pitch,
-                    "confidence": confidence,
-                },
-                warnings=[f"Pitch detection confidence: {confidence:.2f} < {params['pitch_detection_confidence']}"],
-                metadata={
-                    "algorithm": params["algorithm"],
-                    "material_type": material_key,
-                    "quality_mode": quality_mode,
-                    "phase_locality_factor": phase_locality_factor,
-                    "effective_strength": _effective_strength,
-                    **ml_metadata,
-                    "execution_time_seconds": time.monotonic() - start_time,
-                    "rms_drop_db": 0.0,
-                    "loudness_makeup_db": 0.0,
-                },
-            )
+                return create_phase_result(
+                    audio=audio,
+                    modifications={
+                        "processing": "skipped",
+                        "reason": f"pitch detection confidence too low: {confidence:.2f}",
+                        "detected_pitch_hz": detected_pitch,
+                        "confidence": confidence,
+                    },
+                    warnings=[f"Pitch detection confidence: {confidence:.2f} < {params['pitch_detection_confidence']}"],
+                    metadata={
+                        "algorithm": params["algorithm"],
+                        "material_type": material_key,
+                        "quality_mode": quality_mode,
+                        "phase_locality_factor": phase_locality_factor,
+                        "effective_strength": _effective_strength,
+                        **ml_metadata,
+                        "execution_time_seconds": time.monotonic() - start_time,
+                        "rms_drop_db": 0.0,
+                        "loudness_makeup_db": 0.0,
+                    },
+                )
 
         # Check if error within expected range
         # v10.0.0: max_speed_error for tape raised to 10% (cassette motor startup ramp).
@@ -581,7 +597,14 @@ class SpeedPitchCorrectionPhase(PhaseInterface):
             correction_ratio = 1.0 + (speed_ratio - 1.0) * _cs2_p31
 
             # Select algorithm
-            if params["algorithm"] == "wsola":
+            if ml_metadata.get("tuning_estimator") == "dsp_spectral_fallback":
+                # §7.4c-L3 (2026-09-27): Direktes Polyphasen-Resampling — ein
+                # per IQR-Gate VERIFIZIERTER konstanter Offset braucht keine
+                # Vocoder-Artefakte (Befund: Phase-Vocoder + Formant-
+                # Erhaltung verschmierte die Partiale, E4 spaltete sich in
+                # 330,3/329,6 Hz). Reine Zeit-Achsen-Skalierung, verlustfrei.
+                result_audio = self._correct_direct_resample(audio, correction_ratio, params)
+            elif params["algorithm"] == "wsola":
                 result_audio = self._correct_wsola(audio, correction_ratio, params)
             elif params["algorithm"] == "phase_vocoder":
                 vocals_conf = float(kwargs.get("panns_vocals_confidence", 0.0))
@@ -608,15 +631,27 @@ class SpeedPitchCorrectionPhase(PhaseInterface):
                 if result_audio.ndim == 2 and result_audio.shape[0] == 2 and result_audio.shape[1] > 2
                 else result_audio.shape[0]
             )
-            _local_profile31, _local_coverage31 = self._build_locality_profile(
-                int(_n_samples31),
-                sample_rate,
-                kwargs.get("defect_locations"),
-                kwargs.get("defect_event_metadata"),
-                self._collect_protected_zones(kwargs),
-            )
-            if _local_coverage31 > 0.0:
-                result_audio = self._blend_with_locality(audio, result_audio, _local_profile31)
+            # §Lücke-E Global-Offset-Regel (2026-09-30): Ein per IQR-Gate
+            # VERIFIZIERTER konstanter Speed-Offset (dsp_spectral_fallback) ist
+            # definitionsgemäß GLOBAL — er betrifft jedes Sample. Localität-
+            # Masking auf Punkt-Lokalisationen UNABHÄNGIGER Defekte (z.B.
+            # transport_bump-Fenster) blende die globale Zeitachsen-Korrektur
+            # dort aus und erzeugt zusätzlich Phasendiskontinuitäten an den
+            # Blend-Kanten (Kamm-Filterung). Befund: Musik-Träger mit +0,4 %
+            # konstantem Offset → repair_locality_coverage ≈ 0,9 %, phys. Rest
+            # 7,4 Cent statt <2 Cent. Globale Korrektur bleibt unverblendet.
+            _global_constant_offset31 = ml_metadata.get("tuning_estimator") == "dsp_spectral_fallback"
+            _local_coverage31 = 1.0 if _global_constant_offset31 else 0.0
+            if not _global_constant_offset31:
+                _local_profile31, _local_coverage31 = self._build_locality_profile(
+                    int(_n_samples31),
+                    sample_rate,
+                    kwargs.get("defect_locations"),
+                    kwargs.get("defect_event_metadata"),
+                    self._collect_protected_zones(kwargs),
+                )
+                if _local_coverage31 > 0.0:
+                    result_audio = self._blend_with_locality(audio, result_audio, _local_profile31)
 
             result_audio, shield_meta = self._apply_preventive_damage_shield(
                 original_audio=audio,
@@ -705,6 +740,7 @@ class SpeedPitchCorrectionPhase(PhaseInterface):
                     "material_type": material_key,
                     "phase_locality_factor": phase_locality_factor,
                     "effective_strength": _effective_strength,
+                    "global_constant_offset": bool(_global_constant_offset31),
                     "repair_locality_coverage": round(float(_local_coverage31), 6),
                     "execution_time_seconds": execution_time,
                     **shield_meta,
@@ -986,6 +1022,87 @@ class SpeedPitchCorrectionPhase(PhaseInterface):
                 )
                 return 0.0, 0.0
 
+    def _estimate_tuning_offset_dsp(
+        self,
+        audio: np.ndarray,
+        sample_rate: int,
+        a4_hz: float,
+    ) -> tuple[float, float] | None:
+        """§7.4c-L3 (2026-09-27): Polyphoner DSP-Fallback für den konstanten
+        Speed-Offset — pYIN/ML liefern auf Akkord-Trägern conf 0,0 (Befund:
+        Harness-Musik, +0,4 % → Phase ließ den Defekt unangetastet).
+
+        Wie _compute_tuning_offset, aber spektral statt f0-getrieben:
+        stärkste Peaks 80–1200 Hz, Abweichung zum nächsten 12-TET-Halbton
+        (parabolisch interpoliert, 100 cents = 1 Halbton), amplituden-
+        gewichteter Median. Konsistenz-Gate: IQR ≤ 12 cents (sonst kein
+        KONSTANTER Speed-Fehler). Determinismus §G5 (copilot-instructions.md).
+        """
+        try:
+            mono = audio.mean(axis=1) if np.asarray(audio).ndim == 2 else np.asarray(audio)
+            mono = np.asarray(mono, dtype=np.float64).ravel()
+            n = len(mono)
+            if n < sample_rate:
+                return None
+            seg = mono[n // 3 : n // 3 + min(16384, n)]
+            spec = np.abs(np.fft.rfft(seg * np.hanning(len(seg))))
+            freqs = np.fft.rfftfreq(len(seg), 1.0 / float(sample_rate))
+            _mask = (freqs >= 80) & (freqs <= 1200)
+            if not _mask.any():
+                return None
+            _peaks, _ = signal.find_peaks(spec, distance=8)
+            _peaks = _peaks[_mask[_peaks]]
+            if len(_peaks) < 3:
+                return None
+            _order = np.argsort(spec[_peaks])[::-1]
+            _peaks = _peaks[_order[:12]]
+            # §7.4c-L3 (2026-09-27): Amplituden-Gate — Rauschboden-Peaks (amp ~2)
+            # streuen die Halbton-Deviationen ±50 cents und zerstören das
+            # IQR-Konsistenz-Gate (Befund: IQR 27 statt 1,5). Nur Peaks
+            # ≥ 10 % des Maximums zählen.
+            _amp_gate = 0.1 * float(spec[_peaks].max())
+            _peaks = _peaks[spec[_peaks] >= _amp_gate]
+            if len(_peaks) < 3:
+                return None
+            _bin_w = float(sample_rate) / float(len(seg))
+            _devs: list[float] = []
+            _w: list[float] = []
+            for _pi in _peaks:
+                _m0 = float(spec[_pi])
+                _ml = float(spec[max(0, _pi - 1)])
+                _mh = float(spec[min(len(spec) - 1, _pi + 1)])
+                _denom = _ml - 2.0 * _m0 + _mh
+                _delta = 0.5 * (_ml - _mh) / _denom if abs(_denom) > 1e-12 else 0.0
+                _f = float(freqs[_pi]) + _delta * _bin_w
+                if _f <= 0.0:
+                    continue
+                _st = 12.0 * np.log2(_f / a4_hz)
+                _devs.append(100.0 * (_st - round(_st)))
+                _w.append(_m0)
+            if len(_devs) < 3:
+                return None
+            _devs_a = np.asarray(_devs)
+            _w_a = np.asarray(_w)
+            _ord = np.argsort(_devs_a)
+            _cdf = np.cumsum(_w_a[_ord]) / float(np.sum(_w_a))
+            _med = float(_devs_a[_ord][int(np.searchsorted(_cdf, 0.5))])
+            _iqr = abs(float(np.percentile(_devs_a, 75) - np.percentile(_devs_a, 25)))
+            # §7.4c-L3: Gate 20 cents (wie die Harness-Metrik) — 12 cents
+            # verwarfen den echten +0,4-%-Fall (IQR 12,6 wegen Rausch-Peaks
+            # im Peak-Set).
+            if _iqr > 20.0:
+                return None
+            # Konvention wie _compute_tuning_offset: speed_ratio = 2^(offset/1200) —
+            # der Korrekturpfad teilt die Frequenzen durch correction_ratio
+            # (ratio < 1 beschleunigt). Ein SCHARFES Signal (+med) braucht also
+            # ratio > 1. (Befund: mit −med lief die Korrektur in die falsche
+            # Richtung, 7,4 → 14,2 cents.)
+            _speed_ratio = float(2.0 ** (_med / 1200.0))
+            return float(_med), _speed_ratio
+        except Exception:
+            logger.debug("Verarbeitungsschritt_31 DSP-Tuning-Ersatzpfad fehlgeschlagen", exc_info=True)
+            return None
+
     def _compute_tuning_offset(
         self,
         audio: np.ndarray,
@@ -1115,6 +1232,39 @@ class SpeedPitchCorrectionPhase(PhaseInterface):
         except Exception as exc:
             logger.warning("_berechnen_tuning_offset fehlgeschlagen (%s) — no correction", exc)
             return 0.0, 1.0
+
+    def _correct_direct_resample(self, audio: np.ndarray, ratio: float, _params: dict[str, Any]) -> np.ndarray:
+        """§7.4c-L3 (2026-09-27): Reines Polyphasen-Resampling für VERIFIZIERTE
+        konstante Speed-Offsets (DSP-Fallback-Pfad).
+
+        f_neu = f_alt / ratio via resample_poly(up=1024, down=round(1024·ratio))
+        (Restfehler < 0,0002 % = 0,003 cents). Kein Vocoder → keine
+        Partial-Schmierung. Output-Länge wird auf die Eingabe zurückgeschnitten.
+        Deterministisch (§G5 (copilot-instructions.md)).
+        """
+        from scipy.signal import resample_poly as _rsp31
+
+        _a31 = np.asarray(audio, dtype=np.float64)
+        _n31 = len(_a31)
+        # Frequenz-Faktor von resample_poly = down/up — wir brauchen 1/ratio:
+        # up = round(1024·ratio), down = 1024. (Befund: up=1024/down=round(1024·ratio)
+        # beschleunigte statt bremste — 7,4 → 13,7 cents.)
+        _down31 = 1024
+        _up31 = max(1, int(round(_down31 * ratio)))
+        if _a31.ndim == 2:
+            _out31 = np.stack(
+                [_rsp31(_a31[:, _ch], _up31, _down31) for _ch in range(_a31.shape[1])],
+                axis=1,
+            )
+        else:
+            _out31 = _rsp31(_a31, _up31, _down31)
+        if len(_out31) < _n31:
+            _pad31 = ((0, _n31 - len(_out31)), (0, 0)) if _out31.ndim == 2 else (0, _n31 - len(_out31))
+            _out31 = np.pad(_out31, _pad31, mode="edge")
+        else:
+            _out31 = _out31[:_n31]
+        out31: np.ndarray = np.asarray(_out31).astype(np.float32)
+        return out31
 
     def _correct_wsola(self, audio: np.ndarray, ratio: float, params: dict[str, Any]) -> np.ndarray:
         """

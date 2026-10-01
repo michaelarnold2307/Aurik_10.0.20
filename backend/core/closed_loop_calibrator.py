@@ -83,49 +83,25 @@ def measure_phase_quality_delta(
         float in [-1.0, 1.0]: >0 = Verbesserung, ~0 = neutral, <0 = Regression.
     """
     try:
-        pre = _metric_mono(audio_before)
-        post = _metric_mono(audio_after)
-        n = min(len(pre), len(post))
-        if n < 512:
-            return 0.0
-        pre = pre[:n]
-        post = post[:n]
-        if n > _METRIC_MAX_SAMPLES:
-            _start = (n - _METRIC_MAX_SAMPLES) // 2
-            pre = pre[_start : _start + _METRIC_MAX_SAMPLES]
-            post = post[_start : _start + _METRIC_MAX_SAMPLES]
-
-        # 1. SOTA-Änderungsmaß (Multi-Resolution-STFT, Yamamoto 2019)
-        from backend.core.mert_mushra_proxy import MertMushraProxy
-
-        _mr = float(MertMushraProxy._compute_mr_stft_loss(pre, post))
-        change = float(np.clip(_mr, 0.0, 1.0))
-        if change < 1e-4:
-            return 0.0  # buchstäblich kein Effekt — Δ exakt 0 statt Sättigung
-
-        # 2. Richtung: psychoakustische Merkmale
-        _pam = _get_psycho_metrics(int(sr or 44100))
-        _rough_pre = float(_pam.calculate_roughness(pre))
-        _rough_post = float(_pam.calculate_roughness(post))
-        _flat_pre = float(_pam.calculate_spectral_flatness(pre))
-        _flat_post = float(_pam.calculate_spectral_flatness(post))
-        _dr = _rough_pre - _rough_post  # >0: glatter/besser
-        _df = _flat_pre - _flat_post  # >0: weniger Rausch-Flatness
-        _dc = _crest_db(post) - _crest_db(pre)  # <0: Dynamikverlust
-        direction = float(
-            np.clip(
-                0.50 * np.tanh(_dr * 20.0) + 0.30 * np.tanh(_df * 20.0) + 0.20 * np.clip(_dc / 6.0, -1.0, 1.0),
-                -1.0,
-                1.0,
-            )
+        # §Wohlklang-Optimum 2026-09-26: Das frühere Produkt aus MR-STFT-
+        # Änderungsmaß × tanh-Richtung blieb in der Praxis bei ~1e-5
+        # (Produktionsbefund: Δ=+0.0000 für jede Phase → „hold", der
+        # Regelkreis war blind und berechnete nie die Wohlklang-optimalen
+        # Parameter). Maßgeblich ist jetzt das HPE-Delta
+        # (human_pleasantness_estimator.wohlklang_objective_delta):
+        # psychoakustische Angenehmheit — die Zielfunktion des maximalen
+        # Wohlklangs; Hör-Invarianten wirken dort als Wächter (Ebene 1).
+        from backend.core.human_pleasantness_estimator import (
+            wohlklang_objective_delta as _wohlklang_delta,
         )
-        delta = float(np.clip(direction * change, -1.0, 1.0))
+
+        delta = float(_wohlklang_delta(audio_before, audio_after, int(sr or 44100)))
         if is_repair:
             delta = max(delta, 0.0)  # §v10.650 W5: Reparatur nie als Regression
         return delta
     except Exception:
         logger.warning(
-            "§V6 (copilot-instructions.md) ML→DSP-Ersatzpfad: measure_phase_quality_delta fehlgeschlagen → neutraler Return (0.0)"
+            "§V6 (copilot-instructions.md) ML→DSP-Ersatzpfad: measure_Verarbeitungsschritt_quality_delta fehlgeschlagen → neutraler Return (0.0)"
         )
         return 0.0
 

@@ -115,3 +115,99 @@ class TestPipelineConsumers:
         assert set(s_sf.keys()) == set(s_cf.keys())
         for _k in s_sf:
             assert abs(s_sf[_k] - s_cf[_k]) < 1e-4, f"goal {_k} divergiert: {s_sf[_k]} vs {s_cf[_k]}"
+
+
+# ---------------------------------------------------------------------------
+# Regression (Produktionsbefund): invertierte Achsen-Heuristik in Mono-Helfern
+# ---------------------------------------------------------------------------
+# Zwei Mess-Module wählten die Kanal-Achse invertiert, sodass für BEIDE
+# Layouts eine Länge von 2 herauskam. Die nachfolgenden Längen-Guards
+# (``n < 4096`` …) fielen dadurch still auf den Neutralwert zurück — sechs
+# Preservation-Gates (inkl. eines als A_HARD_VETO deklarierten) und der
+# TFS-Guard waren für Stereomaterial dauerhaft wirkungslos.
+# §G-STEREO-LAYOUT (AGENTS.md), §G46–§G49 (copilot-instructions.md).
+
+
+def test_10_preservation_metrics_to_mono_keeps_time_axis():
+    """_to_mono darf die ZEITACHSE nie reduzieren — für beide Layouts."""
+    from backend.core.preservation_metrics import _to_mono
+
+    st = _stereo(1.0)
+    assert _to_mono(st).shape == (SR,)
+    assert _to_mono(st.T).shape == (SR,)
+    np.testing.assert_allclose(_to_mono(st), _to_mono(st.T), rtol=0, atol=1e-12)
+
+
+def test_11_tfs_guard_to_mono_keeps_time_axis():
+    """_to_mono_f64 darf die ZEITACHSE nie reduzieren — für beide Layouts."""
+    from backend.core.tfs_preservation_guard import TFSPreservationGuard
+
+    st = _stereo(1.0)
+    assert TFSPreservationGuard._to_mono_f64(st).shape == (SR,)
+    assert TFSPreservationGuard._to_mono_f64(st.T).shape == (SR,)
+
+
+def test_12_preservation_metrics_measure_instead_of_neutral_fallback():
+    """Zerstörtes Signal MUSS niedrigere Scores liefern als der 1.0-Neutralwert.
+
+    Vor dem Fix lieferten alle fünf Metriken für Stereo konstant 1.0, weil die
+    Längen-Guards auf dem 2-Sample-Mono-Mix ansprangen.
+    """
+    from backend.core.preservation_metrics import (
+        compute_formant_preservation_score,
+        compute_harmonic_preservation_score,
+        compute_micro_dynamics_score,
+        compute_transient_preservation_score,
+    )
+
+    st = _stereo(1.0)
+    destroyed = np.ascontiguousarray(rng.standard_normal((SR, 2)).astype(np.float32) * 0.3)
+
+    for _fn in (
+        compute_harmonic_preservation_score,
+        compute_transient_preservation_score,
+        compute_formant_preservation_score,
+        compute_micro_dynamics_score,
+    ):
+        sf = float(_fn(st, destroyed, SR))
+        cf = float(_fn(st.T, destroyed.T, SR))
+        assert sf < 0.98, f"{_fn.__name__} misst nicht (sf={sf})"
+        assert abs(sf - cf) < 1e-9, f"{_fn.__name__} ist nicht layout-invariant"
+
+
+def test_13_tfs_guard_measures_stereo():
+    """Der TFS-Guard darf nicht im 'perfect coherence'-Stub hängen bleiben."""
+    from backend.core.tfs_preservation_guard import TFSPreservationGuard
+
+    st = _stereo(1.0)
+    destroyed = np.ascontiguousarray(rng.standard_normal((SR, 2)).astype(np.float32) * 0.3)
+    guard = TFSPreservationGuard()
+
+    degraded = guard.measure(original=st, restored=destroyed, sr=SR)
+    assert degraded.n_bands > 0, "TFS-Guard hat nicht gemessen (Stub)"
+    assert degraded.passes_threshold is False
+
+    identical = guard.measure(original=st, restored=st, sr=SR)
+    assert identical.mean_coherence > 0.99
+
+
+def test_14_spectral_quality_score_uses_layout_safe_mono():
+    """Der genestete §2.45-Helfer darf kein ``a[:, 0]`` auf 2-D-Arrays nutzen.
+
+    Quelltext-Gate (die Funktion ist eine Closure in einem 2.6-MB-Modul und
+    nicht importierbar): ``a[:, 0]`` kollabiert auf (C,) = 2 Samples, wodurch
+    das [RELEASE_MUST]-perceptual_delta-Gate konstant 0.0 sah und die
+    Plateau-Erkennung vergiftet wurde.
+    """
+    import inspect
+
+    from backend.core import unified_restorer_v3 as uv3
+
+    src = inspect.getsource(uv3)
+    start = src.index("def _spectral_quality_score(")
+    end = src.index("return float(np.clip(tonal_ratio / 6.0, 0.0, 1.0))", start)
+    body = src[start:end]
+    # Kommentarzeilen ausblenden — geprüft wird der ausführbare Code.
+    code = "\n".join(line.split("#", 1)[0] for line in body.splitlines() if not line.lstrip().startswith("#"))
+    assert "mono_mix" in code, "§2.45-Helfer nutzt keinen layout-sicheren Mono-Mix"
+    assert "a[:, 0]" not in code, "§2.45-Helfer kollabiert Stereo weiterhin auf (C,)"

@@ -18,8 +18,9 @@ from pathlib import Path
 def test_phase_file_count_is_64() -> None:
     root = Path(__file__).resolve().parents[2]
     phases = sorted((root / "backend/core/phases").glob("phase_[0-9][0-9]_*.py"))
-    # 66 nummerierte Phasen + phase_07_declipper (nummermuster-konform)
-    assert len(phases) == 67, f"Expected 67 phase files, found {len(phases)}"
+    # 67 nummerierte Phasen + phase_07_declipper (nummermuster-konform;
+    # inkl. phase_67_crackle_texture_removal)
+    assert len(phases) == 68, f"Expected 68 phase files, found {len(phases)}"
 
 
 def test_time_gates_are_quality_gated_for_high_end_modes() -> None:

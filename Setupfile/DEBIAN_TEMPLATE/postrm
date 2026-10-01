@@ -1,0 +1,9 @@
+#!/bin/sh
+set -e
+# Aurik 10 — Deinstallation
+case "$1" in
+    remove|purge)
+        rm -rf /opt/aurik/venv 2>/dev/null || true
+        ;;
+esac
+exit 0

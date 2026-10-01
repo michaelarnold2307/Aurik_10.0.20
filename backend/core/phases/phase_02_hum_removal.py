@@ -585,6 +585,37 @@ class HumRemovalPhase(PhaseInterface):
             if not self._detect_musical_content(audio_mono, 60.0):
                 detected_fundamentals.append(60)
 
+        # §7.2d Motor-/Gleichrichter-Comb (Harness-Befund 2026-09-26): Der
+        # Vollweg-Gleichrichter (Motornetzteil) liefert 2×50 = 100 Hz bzw.
+        # 2×60 = 120 Hz als Grundfrequenz mit harmonischem Comb (GT
+        # motor_interference: 100/200/300 Hz). Die reine 50/60-Prüfung ließ
+        # diese Comb unentdeckt (phys-Metrik 0,933 unverändert). Hierarchie:
+        # Wurde 50/60 bereits erkannt, deckt dessen Comb die Linien ab — kein
+        # zweites Fundamental. Comb-Evidenz: mindestens EINE weitere
+        # Harmonische (2×/3×) über Threshold, dazu der §v10.998-Musik-Schutz
+        # an der Grundfrequenz (100 Hz ist eine häufige Bass-Lage).
+        _threshold_ratio = 10 ** (params["threshold_db"] / 10)
+        for _base_hz, _lo_hz in ((100, 98), (120, 118)):
+            if _base_hz // 2 in detected_fundamentals:
+                continue
+            _energy_base = self._measure_band_energy(spectrum, freqs, _lo_hz, _lo_hz + 4)
+            if _energy_base / total_energy <= _threshold_ratio:
+                continue
+            if self._detect_musical_content(audio_mono, float(_base_hz)):
+                continue
+            _comb_hits = 0
+            for _n in (2, 3):
+                _energy_n = self._measure_band_energy(spectrum, freqs, _base_hz * _n - 2, _base_hz * _n + 2)
+                if _energy_n / total_energy > _threshold_ratio:
+                    _comb_hits += 1
+            if _comb_hits >= 1:
+                detected_fundamentals.append(_base_hz)
+                logger.info(
+                    "Verarbeitungsschritt 02 Motor-Comb erkannt: %d Hz (Grundlinie + %d Harmonische über Schwelle)",
+                    _base_hz,
+                    _comb_hits,
+                )
+
         return detected_fundamentals
 
     def _refine_with_ml(self, audio: np.ndarray, sample_rate: int) -> bool:
@@ -796,9 +827,23 @@ class HumRemovalPhase(PhaseInterface):
                 _wide = self._measure_band_energy_at(audio, harmonic_freq, 20.0)
                 _dominant = _narrow / (_wide + 1e-12) > float(getattr(_pcal, "hum_dominance_ratio", 0.7))
 
-                if is_musical or not _dominant:
-                    # §v10.998: Musik im Band ODER Hum dominiert nicht →
-                    # sanfte Tiefe aus der zentralen Kalibrierung.
+                # §v10.998: Maßgeblich für die Tiefe ist AUSSCHLIESSLICH die
+                # Band-Dominanz der Linie. Der Dynamik-Test (is_musical) liest
+                # Nachbar-Musik in ±5 Hz mit und stufte eine DOMINANTE Linie
+                # auf sanfte Tiefe herunter (Harness-Befund 2026-09-26: die
+                # 200-Hz-Motorlinie mit Narrow/Wide-Ratio 1,0 blieb bei
+                # Depth 0,22 stehen — Band-Energie-Gewinn −36 % statt ~−60 %).
+                # Die Dynamik-Prüfung bleibt als Evidenz im Log; der
+                # Musik-Schutz trägt am Fundamental (Comb-Evidenz +
+                # §v10.998-Hüllkurven-Prüfung) und über die Dominanz-Ratio.
+                if not _dominant:
+                    # §v10.998: Hum dominiert das Band nicht (Musik im
+                    # ±20-Hz-Fenster) → sanfte Tiefe aus der Kalibrierung.
+                    logger.debug(
+                        "Verarbeitungsschritt 02 Band-Dominanz: %.0f Hz nicht dominant (musical=%s) → sanfte Tiefe",
+                        harmonic_freq,
+                        is_musical,
+                    )
                     q_effective = params["q_factor"] * params["side_chain_ratio"]
                     depth = float(getattr(_pcal, "hum_musical_depth", 0.25))
                 else:

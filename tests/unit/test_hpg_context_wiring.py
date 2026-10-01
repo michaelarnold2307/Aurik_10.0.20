@@ -201,6 +201,6 @@ class TestUV3HPGWiring:
     def test_afg_shape_mismatch_path_is_fail_closed(self, uv3_source: str):
         """AFG-Veto darf bei inkompatiblem Checkpoint nicht in Export-trotzdem kippen."""
         assert "Export trotzdem" not in uv3_source, "AFG-Pfad enthält noch fail-open Export-trotzdem-Text"
-        assert "kein kompatibler Rollback-Checkpoint (fail-closed auf Original)" in uv3_source, (
+        assert "kein kompatibler Rollback-Checkpoint (fail-closed auf Originalsignal)" in uv3_source, (
             "AFG-Shape-Mismatch muss explizit fail-closed auf Original loggen"
         )

@@ -1508,8 +1508,13 @@ _PHASE_MAP: dict[DefectType, PhaseAssignment] = {
     DefectType.SPEED_CALIBRATION_ERROR: PhaseAssignment(
         defect_type=DefectType.SPEED_CALIBRATION_ERROR,
         primary_phases=[
-            "phase_12_wow_flutter_fix",
+            # §7.4c-L3 (2026-09-27): phase_31 ZUERST — ein KONSTANTER
+            # Geschwindigkeitsfehler ist die Domäne der globalen Pitch-
+            # Korrektur (12-TET-Tuning-Offset); phase_12 korrigiert nur
+            # ZEITVARIANTE FM und ließ den Offset unangetastet
+            # (Harness-Befund: phys 51,43 → 51,43 cents).
             "phase_31_speed_pitch_correction",
+            "phase_12_wow_flutter_fix",
         ],
         secondary_phases=[
             "phase_25_pitch_correction",

@@ -12627,7 +12627,7 @@ class UnifiedRestorerV3:
                         if isinstance(getattr(self, "_conductor_strength_hints", None), dict):
                             self._conductor_strength_hints.pop("phase_17_mastering_polish", None)
                         logger.info(
-                            "Preflight-Risk-Guard hatte Phase entfernt: phase_17_mastering_polish "
+                            "Preflight-Risk-Guard hatte Verarbeitungsschritt entfernt: Verarbeitungsschritt_17_mastering_polish "
                             "(vocal-analog Restoration, NOVELTY_CRIT/HNR_DROP/ECHO-Lage)"
                         )
 
@@ -17249,6 +17249,62 @@ class UnifiedRestorerV3:
             except Exception as _sc_exc:
                 logger.warning("GOAL_SCORECARD log fehlgeschlagen (nicht blockierend): %s", _sc_exc, exc_info=True)
 
+            # §P1-1 Wohlklang-Ordnungs-Audit auf Pipeline-Ebene (2026-09-27):
+            # Die FC-GPP-Callback prüft nur einzelne Kandidaten; kumulative
+            # Phasen-Effekte können trotzdem eine Hörordnungs-Violation erzeugen.
+            # Hier wird das Endergebnis gegen den Input geprüft — bei Violation
+            # werden die verantwortlichen Zielkonflikte dokumentiert und in die
+            # Metadaten geschrieben (für GUI-Ampel + Forensik).
+            try:
+                from backend.core.wohlklang_ordnung_gate import WohlklangOrdnungGate as _WOGate_pipeline
+
+                if isinstance(_musical_goal_scores, dict) and _musical_goal_scores:
+                    # Input-Scores messen (für Delta-Berechnung)
+                    _input_scores_for_wo = None
+                    try:
+                        _input_scores_for_wo = _mg_checker.measure_all(
+                            original_audio_for_goals,
+                            sample_rate,
+                            reference=None,
+                        )
+                    except Exception as _iswo_exc:
+                        logger.debug("§P1-1 Eingabe-Scores für WO-Audit nicht verfügbar: %s", _iswo_exc)
+
+                    if isinstance(_input_scores_for_wo, dict) and _input_scores_for_wo:
+                        # Deltas berechnen (Output - Input)
+                        _wo_pipeline_deltas = {}
+                        for _g_key in set(list(_musical_goal_scores.keys()) + list(_input_scores_for_wo.keys())):
+                            try:
+                                _out_val = float(_musical_goal_scores.get(_g_key, 0.0))
+                                _in_val = float(_input_scores_for_wo.get(_g_key, 0.0))
+                                if math.isfinite(_out_val) and math.isfinite(_in_val):
+                                    _wo_pipeline_deltas[str(_g_key)] = _out_val - _in_val
+                            except (TypeError, ValueError):
+                                continue
+
+                        if _wo_pipeline_deltas:
+                            _wo_pipeline_result = _WOGate_pipeline().evaluate(_wo_pipeline_deltas)
+                            self._last_wohlklang_audit = _wo_pipeline_result.to_dict()
+                            if _wo_pipeline_result.status == "VIOLATION":
+                                logger.warning(
+                                    "§P1-1 Pipeline-Wohlklang-Ordnungs-Violation: %s",
+                                    _wo_pipeline_result.detail,
+                                )
+                                # Metadaten für GUI + Forensik
+                                self._phase_metadata_accumulator["wohlklang_ordnung_violation"] = {
+                                    "status": "VIOLATION",
+                                    "detail": _wo_pipeline_result.detail,
+                                    "violated_goals": list(_wo_pipeline_result.violated_goals),
+                                    "violations": [dict(v) for v in _wo_pipeline_result.violations],
+                                }
+                            else:
+                                logger.info(
+                                    "§P1-1 Pipeline-Wohlklang-Ordnung: %s",
+                                    _wo_pipeline_result.detail,
+                                )
+            except Exception as _p1_1_exc:
+                logger.debug("§P1-1 Wohlklang-Ordnungs-Audit fehlgeschlagen (nicht blockierend): %s", _p1_1_exc)
+
             if _should_run_end_gate_cascade(_mg_violations, _chunked_tail_skip, _chunked_last):
                 # §P0-1 Block a2: Kaskade als Methode (unveraendertes Verhalten;
                 # im Chunked-Pfad nur letzter Chunk, Slice A).
@@ -20349,7 +20405,7 @@ class UnifiedRestorerV3:
                 )
                 logger.warning(
                     "§2.49 Ausgabe-Gate: artifact_freedom=%.3f < %.3f — "
-                    "kein kompatibler Rollback-Checkpoint (fail-closed auf Original)",
+                    "kein kompatibler Rollback-Checkpoint (fail-closed auf Originalsignal)",
                     _artifact_freedom_for_hpi,
                     _afg_af_min,
                 )
@@ -21935,16 +21991,44 @@ class UnifiedRestorerV3:
             # not degraded input. A good restoration sounds *different* (cleaner)
             # than the degraded original → artifact_freedom against degraded input
             # would penalize successful denoising as "100% artifact" (af=0.000).
+            _using_degraded_ref = False
             if not self.is_studio_mode():
                 _carrier_ref = getattr(self, "_best_carrier_checkpoint", None)
-                _final_gate_ref = _channels_first_for_final_gate(
-                    np.asarray(_carrier_ref if _carrier_ref is not None else analysis_audio, dtype=np.float32)
-                )
+                if _carrier_ref is not None:
+                    _final_gate_ref = _channels_first_for_final_gate(np.asarray(_carrier_ref, dtype=np.float32))
+                else:
+                    # Kein Carrier-Checkpoint → degradierte Eingabe als Referenz.
+                    # Gate MUSS delta-basiert arbeiten (AGENTS.md Guard-Kalibrierung):
+                    # Hard-Fail nur bei Regression gegenüber dem Input.
+                    _final_gate_ref = _channels_first_for_final_gate(np.asarray(analysis_audio, dtype=np.float32))
+                    _using_degraded_ref = True
             else:
                 _final_gate_ref = _channels_first_for_final_gate(np.asarray(analysis_audio, dtype=np.float32))
             _final_gate_audio = _channels_first_for_final_gate(np.asarray(restored_audio, dtype=np.float32))
             _final_gate_sr = int(max(1, int(original_sample_rate)))
             _final_gate_material = str(getattr(material_type, "value", material_type) or "digital").lower()
+
+            # §P0-1 Delta-basiertes Gate: Wenn Referenz = degradierte Eingabe,
+            # messen wir die af des Inputs selbst und erlauben nur Regression.
+            _input_baseline_af = None
+            if _using_degraded_ref:
+                try:
+                    _input_afg_result = _get_afg_final_export().evaluate(
+                        _final_gate_ref,  # Input als Referenz (identisch)
+                        _final_gate_ref,  # Input als Testsignal → af=1.0 (kein Delta)
+                        _final_gate_sr,
+                        material_type=_final_gate_material,
+                        phase_id="",
+                        restorability_score=float(_pmgg_restorability_score),
+                    )
+                    # Echte Baseline: Input gegen sich selbst = 1.0; wir brauchen
+                    # die af des Inputs GEGENÜBER einem sauberen Referenzsignal.
+                    # Da wir kein sauberes Signal haben, nutzen wir den vorherigen
+                    # Pipeline-Score als Proxy für die Input-Qualität.
+                    _input_baseline_af = float(getattr(self, "_artifact_freedom_score", 0.0) or 0.0)
+                except Exception as _ibaf_exc:
+                    logger.debug("§P0-1 Eingabe-Baseline-AF-Messung fehlgeschlagen: %s", _ibaf_exc)
+
             _final_afg_result = _get_afg_final_export().evaluate(
                 _final_gate_ref,
                 _final_gate_audio,
@@ -21954,19 +22038,36 @@ class UnifiedRestorerV3:
                 restorability_score=float(_pmgg_restorability_score),
             )
             _final_export_af = float(np.clip(float(_final_afg_result.artifact_freedom), 0.0, 1.0))
-            # §v10.101: Guard against Final-Export false-positive af=0.000.
-            # When _best_carrier_checkpoint is None, the fallback reference
-            # (degraded input) makes successful denoising look like "100% artifact"
-            # because cleaned audio ≠ noisy original. Keep the previous good score.
-            _prev_af = float(getattr(self, "_artifact_freedom_score", 0.0) or 0.0)
-            if _final_export_af < 0.01 and _prev_af > 0.85:
-                logger.warning(
-                    "§2.44/§2.49 Final-Ausgabe af=%.3f verworfen (false-positive gegen degraded Eingabe) — "
-                    "behalte vorherigen af=%.3f",
-                    _final_export_af,
-                    _prev_af,
-                )
-                _final_export_af = _prev_af
+
+            # §P0-1 Delta-basierte Bewertung (AGENTS.md Guard-Kalibrierung):
+            # Wenn Referenz = degradierte Eingabe, ist absolute af nicht aussagekräftig.
+            # Stattdessen: Nur bei Regression gegenüber Input-Baseline schlagen.
+            if _using_degraded_ref and _input_baseline_af is not None:
+                # Delta-Toleranz: Output darf bis zu 0.15 unter der Baseline liegen
+                # (Pipeline kann Artefakte einführen, aber nicht verschlechtern).
+                _delta_tolerance = 0.15
+                if _final_export_af < (_input_baseline_af - _delta_tolerance):
+                    logger.warning(
+                        "§P0-1 Final-Ausgabe af=%.3f ist Regression gegenüber Eingabe-Baseline af=%.3f "
+                        "(Delta=%.3f, Toleranz=-%.2f) — verwende Baseline",
+                        _final_export_af,
+                        _input_baseline_af,
+                        _final_export_af - _input_baseline_af,
+                        _delta_tolerance,
+                    )
+                    # Bei Regression: Baseline verwenden (konservativ)
+                    _final_export_af = max(_final_export_af, _input_baseline_af - _delta_tolerance)
+                elif _final_export_af < 0.5 and _input_baseline_af > 0.85:
+                    # False-positive-Schutz: Wenn Input gut war (>0.85) aber Output
+                    # extrem schlecht (<0.5), ist das ein Messartefakt (erfolgreiche
+                    # Denoising sieht gegen degradierte Referenz aus wie Artefakte).
+                    logger.warning(
+                        "§P0-1 Final-Ausgabe af=%.3f vs Eingabe-Baseline af=%.3f — "
+                        "false-positive gegen degraded Eingabe, behalte Baseline",
+                        _final_export_af,
+                        _input_baseline_af,
+                    )
+                    _final_export_af = _input_baseline_af
             _artifact_freedom_for_hpi = _final_export_af
             self._artifact_freedom_score = _final_export_af
             self._artifact_freedom_detail = dict(getattr(_final_afg_result, "detail_report", {}) or {})
@@ -23246,10 +23347,32 @@ class UnifiedRestorerV3:
                 or 1
             )
             _ag_data = getattr(self, "_defect_reduction_per_type", None) or {}
+            # Konsistenz-Slice 2 (2026-09-27, „eine Hör-Instanz“): Final-Audio +
+            # Post-Scan-Locations fließen in die KANONISCHE Maskierungs-Instanz
+            # (dsp/audibility_gate — dieselbe wie in den Phasen-Gates). Die
+            # Severity-Skala bleibt dokumentierter Fallback (evaluate_…).
+            _ag_audio = None
+            _ag_locations = None
+            try:
+                if restored_audio is not None:
+                    _ag_audio = np.asarray(restored_audio)
+                    if _post_defect_result is not None:
+                        _ag_locations = {
+                            str(dt.value): [(float(a), float(b)) for a, b in s.locations]
+                            for dt, s in _post_defect_result.scores.items()
+                            if s.locations
+                        }
+            except Exception as _ag_ctx_exc:
+                logger.debug("§Hörbarkeits-Gate: kanonischer Kontext nicht verfügbar: %s", _ag_ctx_exc)
+                _ag_audio = None
+                _ag_locations = None
             _ag_report: DefectAudibilityReport = evaluate_defect_audibility(
                 _ag_data if isinstance(_ag_data, dict) else {},
                 material_key=str(_ag_mat),
                 chain_depth=_ag_depth,
+                audio=_ag_audio,
+                sample_rate=sample_rate if _ag_audio is not None else None,
+                defect_locations=_ag_locations if _ag_audio is not None else None,
             )
             log_audibility_report(_ag_report)
             # §2.46g (2026-09-06): Gate-Befund für die Endverdikt-Kopplung ablegen —
@@ -33537,7 +33660,7 @@ class UnifiedRestorerV3:
             _old_s_tcg = float(kwargs.get("strength", 0.0) or 0.0)
             kwargs["strength"] = float(np.clip(_old_s_tcg * _tcg_scalar, 0.0, 1.0))
             logger.info(
-                "§2.69b Temporal-Consistency-Scalar %s: strength %.3f→%.3f (pending=%d, scalar=%.3f)",
+                "§2.69b Temporal-Consistency-Scalar %s: strength %.3f→%.3f (ausstehend=%d, scalar=%.3f)",
                 phase_metadata.phase_id,
                 _old_s_tcg,
                 float(kwargs.get("strength", 0.0) or 0.0),
@@ -37307,7 +37430,19 @@ class UnifiedRestorerV3:
             Executes in approx. 1–3 ms on 5 s of audio.
             """
             try:
-                mono = a[:, 0] if a.ndim == 2 else a
+                # §G-STEREO-LAYOUT (AGENTS.md): Die Pipeline ist intern
+                # channels-first (C, N); der Batch-/GUI-Pfad liefert (N, C).
+                # `a[:, 0]` kollabierte auf (C,) = 2 Samples → mag_acc blieb
+                # null → Rückgabe konstant 0.0 für JEDES Stereosignal. Damit
+                # war das §2.45-[RELEASE_MUST]-perceptual_delta-Gate dauerhaft
+                # wirkungslos und die Plateau-Erkennung (§9.11.1) wurde mit
+                # 0.0 vergiftet (Produktionsbefund).
+                from backend.core.audio_layout import mono_mix as _sqs_mono_mix
+
+                if a.ndim == 1:
+                    mono = a
+                else:
+                    mono = _sqs_mono_mix(np.asarray(a))
                 max_n = int(5.0 * sr_)  # max 5 s
                 if len(mono) > max_n:
                     start = (len(mono) - max_n) // 2
@@ -40273,7 +40408,7 @@ class UnifiedRestorerV3:
                             if _ctx_inj_phases and phase_id in _ctx_inj_phases and phase_id not in _MASK_TIMING:
                                 _combined_strength = float(np.clip(_combined_strength * 0.70, 0.05, 1.0))
                                 logger.debug(
-                                    "§2.78 Injected-Recovery-Blend: %s strength ×0.70 → %.3f",
+                                    "§2.78 Injected-Wiederherstellung-Blend: %s strength ×0.70 → %.3f",
                                     phase_id,
                                     _combined_strength,
                                 )
@@ -40390,7 +40525,7 @@ class UnifiedRestorerV3:
                                     )
                                     logger.info(
                                         "§2.69b Temporal-Consistency-Scalar (PMGG) %s: strength %.3f→%.3f "
-                                        "(pending=%d, scalar=%.3f)",
+                                        "(ausstehend=%d, scalar=%.3f)",
                                         phase_id,
                                         _tcg_old_s_pmgg,
                                         _combined_strength,

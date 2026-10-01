@@ -1,8 +1,7 @@
 # AGENTS.md — Universeller Einstiegspunkt für alle Agenten
 
-Projekt: **Aurik 10 — Weltklasse-Audio-Restaurierung** — psychoakustisch präzise
-Musikwiederherstellung mit deterministischer Reproduzierbarkeit und natürlichem
-Wohlklang für das menschliche Ohr.
+Projekt: **Aurik 10 — Audio-Restaurierung** — psychoakustisch präzise
+Musikwiederherstellung mit deterministischer Reproduzierbarkeit und natürlichem Wohlklang für das menschliche Ohr.
 
 > Diese Datei ist der verbindliche Einstieg für jeden Agenten (Kun, Claude Code,
 > Codex, GitHub Copilot, Cursor, …). Sie definiert keine eigenen Regeln, sondern
@@ -22,10 +21,10 @@ Wohlklang für das menschliche Ohr.
 3. **`.github/instructions/hoerordnung.instructions.md`** — Psychoakustische
    Wahrheits-Ordnung. Normative Spitze für **Hör-Entscheidungen**: Hör-Invarianten
    → Audibility (Maskierungsschwelle statt Mess-Null) → lexikografische
-   Wohlklang-Ordnung → Einladungs-Gate, plus Konfliktregel (Metriken sind Zeugen,
-   die Hör-Instanz entscheidet — aber nie gegen Ebene 1). Regelt nur den
-   Entscheidungsfluss; die Berechnung der Messgrößen bleibt bei den unten
-   genannten Domain-Regeln.
+   Wohlklang-Ordnung → Einladungs-Gate, plus Konfliktregel (Metriken  
+   sind Zeugen, die Hör-Instanz entscheidet — aber nie gegen Ebene 1).
+   Regelt nur den Entscheidungsfluss; die Berechnung der Messgrößen
+   bleibt bei den unten genannten Domain-Regeln.
 4. **`.github/instructions/`** — Domain-Regeln: `pipeline.instructions.md` (UV3,
    größte Datei), `phases.instructions.md`, `dsp.instructions.md`,
    `musical_goals.instructions.md`, `tests.instructions.md`.
@@ -197,5 +196,4 @@ Kollisions-Karte und Bereinigungsplan `docs/ID_COLLISION_MAP.md`.
   v10-Invarianten). Bei Widerspruch gilt die normative Kette aus §1.
 - **GitHub Copilot**: nutzt `.github/copilot-instructions.md` automatisch
   (GitHub-Konvention) — dieselbe normative Spitze wie §1.
-- **Codex, Cursor und andere**: diese Datei ist der Einstieg; dann wie §1
-  routen.
+- **Codex, Cursor und andere**: diese Datei ist der Einstieg; dann wie §1 routen.

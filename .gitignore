@@ -168,7 +168,9 @@ pip_check.txt
 grep_results.txt
 todo_results.txt
 ausnahmen_results.txt
-reports/
+reports/*
+# Commit-basierte Drift-Baseline (spec_drift_check.py) — muss für Prettier sichtbar bleiben
+!reports/spec_drift_baseline.json
 !docs/reports/
 !docs/reports/spec_evidence/
 !docs/reports/spec_evidence/*.md
@@ -186,6 +188,8 @@ docs/SESSION_INSIGHTS_*.md
 docs/reports/current/FEATURE_COMPLETION_REPORT_*.md
 docs/reports/phase_completion/
 gpu_capabilities.json
+# Audit-Laufzeit-Artefakt (entpubliziert in eeeae73f; bleibt lokal)
+error_guard_gaps.json
 log_parser_analysis.py
 full_run_warning_audit.py
 validate_real_audio_elke_best.py
@@ -198,3 +202,5 @@ scripts/run30_elke_verify.py
 # Setupfile-Bauartefakte (29-GB-.deb niemals committen)
 Setupfile/aurik/
 Setupfile/*.deb
+# 24-GB Modell-Archiv für DEB-Builds (lokal erzeugt, nicht versionieren)
+Setupfile/aurik_modelle_*.tar.zst

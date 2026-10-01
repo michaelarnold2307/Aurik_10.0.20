@@ -326,6 +326,167 @@ Abarbeitungs-Reihenfolge (Vorschlag): (a) Phasen-Exceptions (3),
 Analog-Restauration), (c) Scanner-Lücken der Tape-/Dropout-Familie,
 (d) Rest.
 
+### L3-Schließung 2026-09-27 — phase_12-Familie auf Musik (Wow/Flutter-Kernversprechen)
+
+**WOW (0,3 Hz, ±0,5 % FM auf 4-Akkord-Träger) — GESCHLOSSEN.** Root-Cause war
+doppelt: (1) Der Phasen-Messkanal verwarf den periodischen Pfad auf
+nicht-stationären Trägern (harte Schwellen r² ≥ 0,30 + n ≥ 4 — nur 3 Bänder
+erreichten r² ≈ 0,33–0,36 → Fallback in die irregulär-Drift-Extraktion, die
+periodisches Wow 27× unterschätzte: 2,01 statt 53 cents). Fix: KOHÄRENTE
+EVIDENZ (n ≥ 2, Σ r² ≥ 1,0, Einzel-r² ≥ 0,25) statt Band-Anzahl.
+(2) Die Harness-Metrik `_if_std` (Mix-IF-Std) ist auf polyphonen Trägern
+Beating-dominiert — sie sah die korrekte Reparatur nicht (1734→1745 trotz
+Restfehler 0,3 cents). Fix: beat-immuner Gemeinschafts-FM-Messkanal
+(`_common_fm_cents`: 1/24-Oktav-Bänder ±3 %, normierte IF-Abweichung,
+kohärenter Matched-Filter bei bekannter Synth-Modulationsfrequenz,
+r²-gewichtete √N-Mittelung) für die Wow/Flutter-Familie im L3-Harness.
+Ergebnis: **37,2 → 0,0 cents** (vollständige Entfernung).
+
+**MULTIBAND_WOW_FLUTTER (nur 4–12 kHz moduliert, 5 Hz) — GESCHLOSSEN.**
+Dreiteilige Kette: (1) Synth: tonale HF-Linie (6/8 kHz, Sustain-Hülle) — der
+Musik-Träger hatte >4 kHz keine Partials, der Defekt existierte dort
+physikalisch nicht (Kalibrierung exp(−t/2,2), 0,10 Amplitude).
+(2) Scanner: `dominant_mod_freq_hz` als HF-Evidenz-Kanal (IF-basierter
+25-ms-Pass im 5,6–11,3-kHz-Band, lokale Prominenz > 5 statt Totalanteil —
+Null-Padding leakt Energie; Befund-Kette: Centroid-Ansatz aliasierte an der
+Nyquist-Grenze, 0,01-Gate blockte 14-Hz-Swing). (3) Phase: Hint-Auswahl
+nach Severity (Multiband-Hint > 4 Hz autoritativ — der Wow-Rest-Hint 0,28 Hz
+verdeckte 5 Hz); Grid-Öffnung bis 12 kHz auf 32-kHz-Arbeitsspur bei
+Hint > 4 Hz; Evidenz-Floor Σ r² ≥ 0,5 (Band-Flutter betrifft per Definition
+wenige Bänder); BANDBEGRENZTER Inverse-Warp (`_band_limited_warp`:
+Komplement-Konstruktion — nur [4 kHz, 12 kHz] wird gewarpt, der Rest bleibt
+bit-identisch; ein globaler Warp hätte das unmodulierte LF-Band neu
+moduliert) + Closed-Loop-Refine. Ergebnis: **16,5 → 0,0 cents**.
+
+**FLUTTER_SPECTRAL_SIDEBANDS (±3 Hz, ±0,1 %) — als sub-audibel KLASSIFIZIERT
+(SKIP im L3-Harness, dokumentiert):** FM-Tiefe 1,7 cents < Frequenz-JND
+~3,4 cents (Klumpp & Eady 1956, hearing_jnd) — Hörordnung §4/§G100
+(GEBOTE.md): ein unhörbarer Defekt ist kein Defekt, kein Reparatur-Zwang.
+
+**Offen (verschoben):** flutter (6 Hz ±0,2 %), scrape_flutter,
+transport_bump = Scanner-Lücken (Detektor-Kalibrierung auf Musikträger);
+speed_calibration_error = phase_31 (SP-V1, konstante Speed-Offsets —
+phase_12 behandelt per Design nur zeitvariante Transportfehler).
+
+Tests: `test_phase_12_wow_flutter_fix.py` (+5: Band-Warp-Komplement,
+HF-Grid-Messkanal), phase_12-Suiten + Scanner-Suiten 74 grün.
+
+### L3-Schließung 2026-09-27 — Scanner-Lücken der Tape-/Dropout-Familie (A4)
+
+Alle 9 Fälle der Tape-/Dropout-Familie erreichen jetzt die
+Aktivierungsschwelle (sev ≥ 0,15) auf dem Musik-Träger. Root-Causes waren
+wiederkehrende Träger-/Vertrags-Muster, keine Detektor-Einzelerkrankungen:
+
+| Fall | Befund | Fix |
+|---|---|---|
+| dropouts | 1 × 6 ms = Klick, kein Muster; sev 0,027 | Synth: realistische Oxid-Serie 8 × 10 ms → 0,168 |
+| dropout_splice | 8-s-Halbpegel-Region = musikalische Dynamik (adaptiver Detektor adaptiert; sev 0) | Synth: 3 × 30-ms-Abrisse >95 % (Evidenz-Definition) → 0,201 |
+| dropout_head_contact | flache 300-ms-Dips (modulation 0 → „generisch“); Klassifikator: Splice-Zweig (loss > 0,95) fing tiefe lange Dips | Klassifikator: Splice nur ≤ 80 ms; Head-Contact 50-500 ms; Synth: wellenförmige Dips → 0,390 |
+| amplitude_drift | Detektor braucht ≥ 30 s, Träger 15 s („too_short“) | Synth: 30-s-Träger für diesen Fall (Musik-Generator durations-parametrisiert, §G5) → 1,000 |
+| azimuth_error | PHD-Slope-Fit über unkorrelierte Bins (Träger ohne HF → Slope 0,83 statt 28,8 °/kHz) | Detektor: KOHAERENZGEWICHTETER Fit (Kreuzleistung je Bin, Ausreißer-Cap 4×); Synth: gemeinsame HF-Linie → 1,000 |
+| tape_head_clog | Träger ohne HF-Inhalt; 80-ms-Dips → nur 2 Mask-Frames (50-ms-RMS verdünnt) | Synth: HF-Linie + 250-ms-HF-only-Dips (mid bleibt) → 0,192 |
+| dolby_nr_mismatch | HF-Anhebung ohne HF-Inhalt unsichtbar (medium_gated) | Synth: HF-Linie → 0,567 |
+| print_through | keine +20-dB-Onsets (Musik-Percussion nur +7 dB); Geist −14,9 dB außerhalb des 18-48-dB-Fensters | Synth: Rimshot-Onsets +27 dB mit 200-ms-Geist −20 dB (IEC 60094-3) → 0,478 |
+| nr_breathing | Rausch-Modulation unkorreliert zur Hülle (Detektor: corr < −0,2) | Synth: HF-Rauschboden anti-korreliert zur Signal-Hülle gepumpt → 0,600 |
+
+Gemeinsamer Helfer `_with_hf_line` (tonale 5-kHz-Linie für HF-abhängige
+Defekte — der Musik-Träger hat >4 kHz keine Partials). Evidenz-Harness
+(Detektor-Ebene, 11 Familien) bleibt vollständig grün (0 Lücken) — die
+Scanner-Änderungen sind regressionsfrei. Scanner-/Phase-12-Suiten 63 grün.
+
+**Validierung (Einzel-Fall-Läufe, 2026-09-27):** alle 9 Fälle erreichen den
+RUN-Status (sev ≥ 0,15). Reparatur-Wirksamkeit (Übergabe an A6/Phasen-Lücken):
+dropouts sev 0,168→0,028 (phase_24 repariert — Metrik-Kalibrierung folgt),
+print_through phys 0,182→0,181 (marginal), dropout_splice/amplitude_drift/
+azimuth/tape_head_clog/dolby/nr_breathing noch ohne messbare phys-Wirkung
+(phase_64/40/25/56/54-Konsultation je Fall, §7.4c-Muster).
+
+### L3-Schließung 2026-09-27/28 — Restliche Scanner-Lücken (A5)
+
+**Geschlossen (sev ≥ 0,15 auf Musik, validiert):**
+
+| Fall | vorher | jetzt | Fix |
+|---|---|---|---|
+| hiss | 0,000 | **0,559** | Detektor-Gates neu kalibriert (0,5/0,5 verlangten Hiss in SIGNAL-Lautstärke ≈ 0 dB SNR — realistisches Bandhiss −9 dB SNR (ratio 0,401/stat 0,393) wurde geblockt; Hüllkurven-Stationarität skaliert statt vetiert) |
+| clipping | 0,043 | **0,225** | Synth: Gain 4,5 auf ±1-Ceiling (realistische Flat-Top-Dichte 2,1 %; 3,5 gab 0,42 % → sev 0,106) |
+| proximity_effect_excess | 0,124 | **0,287** | Synth: 1,4× LF-Boost (+7,6 dB statt 5,5 — unter dem 6-dB-Detektor-Gate) |
+| pre_echo | 0,000 | **0,637 (sauberer Träger 0,000)** | Detektor-BUG: die per-Sample-Steigung war durch das 8-ms-Glättungsfenster geteilt — das Transienten-Gate feuerte auf KEINEM Signal. Fenster-skalierte Steigung + Spektral-Ähnlichkeits-Pflicht (corr ≥ 0,5) für die Tape-Route (Energie-Verhältnis allein feuerte auf sauberer Musik 0,63) |
+
+**Sub-audibel klassifiziert (SKIP, JND-begründet):** scrape_flutter
+(FM ±0,05 % @ 80 Hz = 0,86 cents < Frequenz-JND ~3,4 cents,
+Klumpp & Eady 1956) — wie zuvor flutter_spectral_sidebands.
+
+**Geschlossen in Runde 2 (2026-09-28, sev ≥ 0,15 auf Musik, validiert):**
+
+| Fall | vorher | jetzt | Fix |
+|---|---|---|---|
+| dynamic_compression_excess | 0,000 | **0,620** | Detektor-Gate (threshold·0,5) verwarf die EINDEUTIGE Loudness-War-Evidenz: LRA ≤ 3 LU (EBU R128) setzt sich jetzt gegen das Material-Gate durch (Scan-Kontext: TAPE-threshold 0,98 → Gate 0,49 > 0,413 trotz LRA 1,59) |
+| compression_artifacts | 0,036 | **0,426** (sauber 0,041) | Konzentrations-Discount (0,05) vetiert auf tonaler Musik — SPEKTRALLOCH-NACHWEIS (breite 2,4-kHz-Hüllkurve, RAW-Tiefe 10-45 dB, HF-Inhalts-Gate) neutralisiert ihn; Anti-FP: harmonischer Kamm (kein HF-Inhalt) bleibt ausgenommen |
+| transport_bump | 0,000 | **0,803** (sauber 0,000) | Synth-Physik korrigiert: Pegel-ABRISS (Pflicht-Feature Energy-DROP < 0,45) + LF-Thump DANNACH (der Thump IM Abriss dominierte die RMS — ratio 5,7 = Spike, fe sum = 0) |
+| quantization_noise | 0,000 | **0,545** (sauber 0,000) | ENOB-Fallback über Histogramm-Granularität (ENOB ≈ log2(n_populated), Standard-Technik): Musik hat kaum leise Passagen, der Step-Size-Kanal blieb leer (step 0,0 trotz 167/1024 Bins); Synth: Vollaussteuerung + 7-Bit |
+
+**Offen (präzise diagnostiziert, nächste Runde):**
+
+- **flutter** (6 Hz ±0,2 % = 3,4 cents): Kohärenter Subband-IF-Kanal im
+  Detektor gebaut (`_coherent_subband_fm`, phase_12-Prinzip, inkl. Bug-Fix
+  rfftfreq-Signallänge) — die FM-Tiefe liegt unter dem per-Band-Rauschboden
+  (Kohärenz-Peak wandert zu 42 Hz, coh 0,25). Nächster Schritt:
+  Matched-Filter-Scan je Band (r²-gated, wie `_flutter_track_from_stacks`)
+  statt einfacher FFT-Kohärenz.
+- **stylus_damage**: asymmetrischer Hard-Clipper (Synth-Fix steht) —
+  Odd/Even-Ratio auf dichter Musikharmonik noch nicht getrennt.
+- **inner_groove_distortion**: viertel-progressive Verzerrung (Synth-Fix
+  steht) — THD-Slope je Viertel auf Musikharmonik noch nicht getrennt.
+
+### L3-Schließung 2026-09-28 — Phasen-Lücken der Vinyl-/Wow-Flutter-Familie (A6)
+
+Alle vier gemessenen Phasen-Lücken der Vinyl-/Wow-Flutter-Familie sind
+phys-metrisch geschlossen (Gate je Fall: met_a ≤ 0,5·met_b; alle
+Regressionstests grün):
+
+| Fall | Befund (Root-Cause) | Fix | Ergebnis |
+|---|---|---|---|
+| speed_calibration_error | phase_12 behandelt per Design nur zeitvariante Transportfehler; pYIN liefert auf Akkord-Trägern conf 0,0 → phase_31 übersprang | Mapper phase_31-first; phase_31: polyphoner DSP-Tuning-Fallback (Peaks 80–1200 Hz, parabolisch interpoliert, 12-TET-Offset, IQR-Gate 20 cents, Amplituden-Gate 10 %) + direktes Polyphasen-Resampling (up=round(1024·ratio)/down=1024, keine Vocoder-Schmierung); Harness-Metrik = Cents-Offset (12-TET-Median) statt ZC-Referenz | 7,40 → 0,14 cents ✓ |
+| inner_groove_distortion | phase_60 dämpfte fix 2–8 kHz — die Produkte der Bass-Akkorde (Summtöne 395–720 Hz, H2–H8 bis 3,1 kHz) lagen unter 2 kHz; der subtraktive Psychoakustik-Clamp revertierte die Dämpfung in maskierten Harmonik-Bändern (Phase wirkungslos); alte THD-Metrik mass die Musik-Harmonik selbst | Band 400 Hz–8 kHz (Grundton-Schutz: 392 Hz = höchste Akkord-Fundamentale); Positionsgewicht 0,65 + Gain-Steigung 0,85; Clamp-Entfernung mit Begründung (Verzerrungs-Reduktion ≠ Noise-Reduction, kein Stille-Artefakt); Harness-Metrik = Summton-Kontrast Q3−Q0 (träger-immun, clean=0) | Harness 0,01199 → 0,00357 ✓ |
+| groove_echo | Groove-Echo ist ein ZEITKONTINUIERLICHER Vorläufer (1 Umdrehung), kein Peak-Phänomen — die peak-basierte Kompensation ließ den durchgehenden Geist unangetastet; die Fenster-Max-Metrik mass die Musik-Hüllstruktur statt des Geists | phase_61: globaler Vorläufer-Pfad (RPM-Lag-Überschuss der Hüllkurven-Kreuzkorrelation, g-Kandidaten-Leiter 0,05–0,35, Never-worsen-Energie-Gate, Phantom-Schwelle 0,04; Bugfix: lokaler scipy-Import); Metrik = lokaler Lag-Überschuss (musik-immun) | 0,0778 → 0,0334 ✓ |
+| riaa_curve_error | Die RIAA-Wiedergabekurve rollt den Hochton nur −1…−4,5 dB ab und boostet den Bass — eine detektierte +12-dB-HF-Anhebung verschlechterte sich (Bass-Boost senkte den Metrik-Nenner) | phase_04: adaptive De-Emphasis bei riaa_curve_error ≥ 0,7 (Vinyl/Shellac): HF-Überschuss E(5–10 kHz)/E(0,5–2 kHz) gegen Musik-Hüllkurven-Erwartung 0,2, Shelf-Cut ab 5 kHz gedeckelt −12 dB | 0,4894 → 0,1655 ✓ |
+| stylus_damage | Crackle-Kaskade adressiert keine Wellenform-Asymmetrie (Skewness mean(x³)/rms³) — die Metrik stieg 0,8591→0,8999; der Declipper erkennt die 1–2-Sample-Flat-Tops nicht (Histogramm-Gate) | phase_09 stylus-Zweig (score ≥ 0,3, Skewness < −0,15): Dekompression der positiven Flanke y = x + a·max(0, x−t), a-Leiter minimiert |mean(y³)|, Never-worsen-Spitzen-Deckel 10 % | 0,8591 → 0,2812 ✓ |
+
+Gemeinsames Muster (wie in A3–A5): Die Harness-Metrik muss die
+DEFEKT-SIGNATUR messen (Summton-Kontrast, Lag-Überschuss, Cents-Offset),
+sonst misst sie die Musik selbst und die Reparatur bleibt unsichtbar —
+und die Phase muss auf der PHYSIK des Defekts arbeiten (Zeitkontinuum statt
+Peaks, Bass-Produkt-Band statt fixer 2-kHz-Grenze, Dekompression statt
+Impuls-Entfernung).
+
+**Enum-Befund (produktionsrelevant):** Der Harness übergibt
+`material_type` als `MaterialType`-Enum — zwei echte Produktions-Bugs
+wurden dabei sichtbar: (a) phase_04 `effective_material` fiel mit Enum-Key
+auf die „unknown"-Parameter (blend 0,6/max_cut 3,0 statt vinyl 0,9/10,0);
+(b) das Material-Gate des adaptiven De-Emphasis-Pfads (`in ("vinyl",
+"shellac")`) war für Enums immer False. Fix: Enum-feste Normalisierung
+`str(material_type).lower().split(".")[-1]` an beiden Stellen.
+
+**Gesamtlauf 2026-09-28 (alle Familien, `repair_effectiveness_harness.py`):**
+**19 OK · 43 Phasen-Lücken · 0 Scanner-Lücken · 3 SKIP.** Die vier
+A6-Fälle sind im exakten Harness-Kontext (DefectScoreView +
+`_pipeline_style_kwargs`) nach den Enum-/Import-Fixes verifiziert:
+speed 7,40→0,14 · IGD 0,01199→0,00357 · groove_echo 0,0778→0,0334 ·
+riaa 0,4894→0,1655 · stylus 0,8591→0,2812 (alle ≤ 0,5·met_b).
+
+**Restkatalog der 43 Phasen-Lücken** (nächste Sessions, je Fall nach dem
+§7.4c-Muster — Root-Cause → Fix → phys-Metrik-Gate):
+
+| Familie | Fälle (Phase) |
+|---|---|
+| dropout/framework | dropout, dropout_oxide, dropout_head_contact, sticky_shed (phase_24), dropout_splice (phase_64), distortion (phase_07) |
+| noise | clicks 52→37 (phase_01), hiss (phase_03, sev steigt 0,559→0,939!), high_freq_noise (phase_03), low_freq_rumble (phase_05), modulation_noise (phase_59) |
+| tape_media | azimuth_error (phase_25), bias_error + dolby_nr_mismatch (phase_04), head_wear + tape_head_clog (phase_56), hf_remanence_loss + bandwidth_loss (phase_06), print_through (phase_57), nr_breathing + tape_head_level_dip (phase_54), pre_echo (phase_23), transport_bump (phase_12) |
+| digital_other | amplitude_drift (phase_40), pitch_drift (phase_31), jitter_artifacts + mpeg_frame_loss + digital_artifacts (phase_23), overload_distortion (phase_09), vocal_harshness (phase_65) |
+| spectral | intermodulation_distortion (phase_63, sev steigt 0,716→1,0), phase_issues + phase_rotation (phase_14), quantization_noise (phase_03) |
+| environment | proximity_effect_excess (phase_04), reverb_excess (phase_49), room_mode_resonance (phase_04) |
+| dynamics | clipping (phase_07), sibilance (phase_19) |
+
 ### Architektur-Entscheidung 2026-09-25 — Kanonischer Phasen-Evidenz-Vertrag (§7.4c)
 
 **Befund:** Die 29 Phasen-Lücken sind keine 29 DSP-Einzelfehler, sondern fünf
@@ -385,9 +546,23 @@ Schwelle (skippable) — Never-worsen/Wohlklang: nie anfassen, was nicht hörbar
 ist. Konservativ (≤ +1 dB), fail-safe (§V6: Floor nie blockierend).
 10/10 Hör-/JND-Tests + 236 Konsumenten-Tests grün.
 
-**Offen (Konsistenz-Slice 2):** `defect_audibility_gate` (Severity-Skala)
-und die `below_jnd`-Aufrufer an dieselbe Instanz angleichen;
-Perceptual-Salience/ERA (`n_masked_events`) als dritte Evidenz vereinheitlichen.
+**Umgesetzt (Konsistenz-Slice 2, 2026-09-27 — „eine Hör-Instanz, eine Wahrheit"):**
+Der Lauf-Ende-Gate `evaluate_defect_audibility` akzeptiert jetzt
+`audio`/`sample_rate`/`defect_locations` (Final-Audio + Post-Scan-Locations)
+und entscheidet für Severity-Kandidaten (post ≥ Schwelle) über die KANONISCHE
+Maskierungs-Instanz `dsp/audibility_gate.defect_audibility_from_signal` —
+dieselbe wie in ~25 Phasen-Aufrufern (ISO 11172-3 Bark bzw. Zwicker ISO 532-1
++ Pegel-JND-Floor). Entscheidungsfluss: kanonische Maskierung → Severity-Skala
+(nur Fallback: kein Audio/Locations, FM-Zeitachsen-Defekte ohne Energie-Domäne,
+Fehler — fail-open §V6) → Perceptual-Salience (`n_masked_events`) als reine
+Evidenz. Band-Konventionen je Defekt-Domäne aus den Produktions-Bändern der
+Phasen abgeleitet (`_CANONICAL_BANDS`); `wow`/`flutter` u. ä. bleiben ehrlich
+auf der Severity-Skala (keine Energie-Delta-Domäne). UV3-Call-Site (Lauf-Ende)
+verdrahtet; pro Typ dokumentiert `evidence: canonical_masking | severity_scale`.
+Tests: `test_defect_audibility_gate.py` (9 neue kanonische Fälle: lauter/leiser
+Burst, Physical-Cap-Präzedenz, Stereo-Layout-Invariante (N,2)/(2,N), Fallback,
+FM-Typen, fail-open, Determinismus) + 34/34 grün; m1b/§0c/Hearing-Gates-Suiten
+grün. §G5-Determinismus belegt (bit-identische Reports).
 
 ### Cluster A 2026-09-25 — phase_12 Wow: Root-Cause abgeschlossen, Messkanal-Grenze kartiert
 
@@ -609,10 +784,176 @@ erst ab > 15 Hz Abstand) ⇒ Flutter-Band. Die Phase-12-Trajektorie läuft mit
 40 fps (Nyquist 20 Hz) und bildet > 15 Hz strukturell nicht ab — zusammen mit
 dem speed_calibration_error (×7,6) ist das die letzte Architektur-Grenze.
 
-**Nächster Schritt (spezifiziert):** Sample-Rate-Flutter-Pfad — die Band-IF
-existiert bereits auf Sample-Auflösung (`_estimate_wow_track_subband`, 50-ms-
-Glättung muss auf ~5 ms für 15–50 Hz), und `_speed_warp_resample` akzeptiert
-bereits per-sample-Faktoren (len(sf)==n) — die Warp-Infrastruktur ist bereit,
-es fehlt nur die Messung der schnellen Modulation + deren Übernahme als
-per-sample-SF. Never-worsen (Hauptwarp-Vergleich) schützt den Song bereits
-jetzt vor Verschlechterung.
+**ERLEDIGT (2026-09-26): Sample-Rate-Flutter-Pfad (§7.4c) — GT-bewiesen
+32,5 → 0,0 cents.** Umsetzung in `phase_12_wow_flutter_fix.py`:
+`_flutter_track_from_stacks` (Matched-Scan 0,5–50 Hz auf 200-Hz-Raster,
+Grob-Raster 0,1 Hz + Fein-Raster 0,005 Hz, r²-Gewichtung mit Zeugen-Gate
+max r² ≥ 0,25) und `_flutter_correction_pass` (per-sample-SF über
+`_speed_warp_resample`, Never-worsen — Hörordnung §8a).
+
+Befunde (Ground-Truth `_synth_flutter` = 6 Hz, 0,2 %):
+
+- Die 50-ms-Blockmittel-Entzerrung auf 200 Hz hatte ihre Sinc-Null bei
+  exakt 20 Hz und löschte die Flutter-Frequenz komplett (r² ≈ 0,00 über
+  0,5–50 Hz). Fix: Stride-Decimation — der 5-ms-Box-Laufmittel-Filter der
+  Teilband-Spur ist bereits der Anti-Alias für 200 Hz.
+- Die FM sitzt in 1–2 starken Bändern (GT-Befund: 1 von 41 Zeilen trägt
+  amp 22,9 cents bei r² 0,36). Uniforme Mittelung verwässerte auf 1,07
+  cents; rauschende Großamplituden-Fits (amp bis 120 cents, r² ~0,04)
+  trieben die Peak-Suche auf 48,8 cents. Fix: Ausschluss r² < 0,10 aus
+  der Akkumulation + Zeugen-Gate erst für die Finale-Frequenz.
+- „score 0 über alle Frequenzen“ ist die Signatur SAUBEREN Materials:
+  der Messkanal liefert dann eine flache Spur (Spanne 0,0) statt zeros;
+  zeros(1) signalisiert allein Messkanal-Ausfall (zu kurzes Signal).
+
+Evidenz: Flutter-Case über die volle `process`-Kette: 32,5 → 0,0 cents
+(100 %); unabhängige Nachmessung bestätigt. Never-worsen hält: jitter-
+artifacts/scrape_flutter/flutter_spectral_sidebands ohne Eingriff
+(`applied: False`), 92 Phase-12-Unit-Tests grün, kein Regression in der
+wow/generation_loss-Familie. Der leichte Jitter-Anstieg 0,259 → 0,274
+stammt aus einem anderen Pfad (Flutter-Pass dort applied=False).
+
+### Cluster D 2026-09-26 — phase_02 Motor-Comb: Detektion + Dominanz-Tiefe
+
+**Ausgangslage:** motor_interference (GT: 100/200/300 Hz, Amp 0,045/0,03/0,02)
+stand in der L3-Liste „Phasen-Lücken“ (Reparatur ohne messbaren Effekt:
+phys-Metrik 0,933-Scanner-Sicht unverändert).
+
+**Root-Cause 1 — Detektion:** `_detect_multi_fundamental` prüfte nur
+50/60 Hz. Die Vollweg-Gleichrichter-/Motor-Comb (2×50 = 100 Hz,
+2×60 = 120 Hz) war nie Kandidat. Fix: Kandidaten-Familie 100/120 Hz mit
+Comb-Evidenz (mindestens eine weitere Harmonische 2×/3× über Threshold),
+Hierarchie (erkanntes 50/60 deckt die Linien als eigene Comb ab) und
+§v10.998-Musik-Schutz am Fundamental (100 Hz ist eine häufige Bass-Lage).
+
+**Root-Cause 2 — Tiefensteuerung:** `if is_musical or not _dominant`
+stufte eine DOMINANTE Linie (Narrow/Wide-Ratio 1,0) auf Depth 0,22 herunter,
+weil der Dynamik-Test Nachbar-Musik in ±5 Hz mitlas (200-Hz-Linie:
+`is_musical=True` trotz Ratio 1,0). Fix: Die Band-Dominanz ist — wie der
+§v10.998-Kommentar vorsieht — ausschließlich maßgeblich; `is_musical`
+bleibt als Evidenz im Log. Ergebnis: alle drei Töne gleichmäßig −23 dB
+(die Notch-Fenster-Messung zeigt die Linien bei −37 dB, Rest = Musik-Bass).
+
+**Gate-Kalibrierung:** Die generische 50-%-Amplituden-Gate
+(`met_a ≤ met_b × 0,5`) ist bei tonalen Defekten auf Musik UNERREICHBAR:
+_die Töne tragen 64 % der Band-Energie (= 55 % der Amplituden-Messung),
+reine 3-Notch-Referenz erreicht daher 0,55, exakter Sinus-Abzug käme auf
+0,60 (Musik-Floor). `GATE_SPECIAL` erweitert um den relativen Operator
+`le_rel` + MOTOR_INTERFERENCE ("le_rel", 0,62) = ≥ 96 % entfernte
+Ton-Energie, ohne Musikausfall zu erzwingen (Hörordnung §8a).
+
+**Evidenz:** phys-Metrik 0,0353 → 0,0190 (−46 % Amplitude = −71 % Energie,
+am Notch-Optimum 0,55); Scanner-Sev 0,933 → 0,867; Hum-Fall weiter stark
+(0,0563 → 0,0183 = −68 %); 111 phase_02/hum-Unit-Tests grün.
+Offizielles Harness-Verdict (Familie vinyl): `[OK] motor_interference —
+severity 0,933→0,867; phys 0,03532→0,01903 OK`.
+
+### Guardrail-Paket 2026-09-26 — Phase-Zahl 71 > 69: Bestandsaufnahme + Evidenzplan
+
+**Befund:** `tests/normative/test_scope_guardrails.py::test_phase_count_within_limit`
+rot (71 Phasen-Dateien vs. `policy/scope_guardrails.yaml → max_phases.limit: 69`).
+Die Überzahl sind EXAKT die zwei zuletzt ergänzten Phasen:
+
+1. `phase_ambience_polish.py` (2026-09-22, Spec 25 „Ambience-Politur",
+   Commit f0ed03f2) — spezifiziert und mit 12 Tests, aber OHNE die
+   policy-pflichtigen ≥5 Echt-Audio-Fälle.
+2. `phase_67_crackle_texture_removal.py` (2026-09-24, Spec 06/07.1,
+   Commit ad7b1b83) — ML-Phase mit Unit-Tests + Modell-Manifest, ebenfalls
+   OHNE Echt-Audio-Evidenzpaket.
+
+**Policy-Vertrag** (`scope_guardrails.yaml → evidence_requirements.new_phase`):
+pro Phase ≥5 reale Audiofälle mit konkretem Nutzen, gemessene
+HPI-Verbesserung ≥ 0,02 (Durchschnitt oder pro Fall), Risiko-Analyse +
+Real-Audio-Quality-Gate-Review („Ausnahme: Bugfixes an bestehenden Phasen,
+keine neuen Phasen-IDs").
+
+**Evidenz-Kampagne (vorbereitet, ausstehend):** Der Echt-Audio-Corpus existiert
+(`corpus/{shellac,vinyl,tape,reel_tape,cassette,digital,reverb}/` mit
+25 clean + 59 damaged Echtaufnahmen und `defect_types`-Manifesten):
+
+- phase_67 (Crackle): ≥5 Crackle-Fälle vorhanden (u. a.
+  vinyl_soul_1970s_crackle_hiss, vinyl_jazz_1960s_hiss_crackle,
+  vinyl_rock_1960s_hum_crackle + shellac-Beschädigten-Set).
+- phase_ambience_polish: reverb-Familie (1 Paar) + room/ambience-getaggte
+  tape/vinyl-Fälle — Bestand prüfen, ggf. reverb-Paar aufstocken.
+- Messkette: `scripts/run_real_audio_corpus_test.py` (MUSHRA E2E,
+  ITU-R BS.1534-3) + HPI-Metrik (`backend/core/musical_quality_assurance.py`),
+  je Fall A/B: Pipeline mit vs. ohne die Phase bei identischem Seed.
+- **Golden-Set-Infrastruktur vorhanden** (kartiert 2026-09-26):
+  `audit/real_audio_execution_golden_gate.py` produziert den Execution-
+  Report mit HPI pro Fall (aktuell 51/51 Fälle mit `hpi`, `hpi_contract_passed`,
+  `vqi`, `phases_executed`); `audit/real_audio_restoration_quality_gate.py`
+  bewertet das Review (Thresholds inkl. `min_hpi_average: 0.78`,
+  `min_real_audio_cases: 80`); Fall-Quelle:
+  `audit/real_audio_defect_golden_manifest.json` (aktuell 8 annotierte Fälle,
+  davon 1 Crackle) — um ≥5 Crackle-Fälle (phase_67) + ≥5 Ambience-Fälle
+  (phase_ambience_polish) aus `corpus/*/damaged` zu erweitern; die A/B-
+  Referenz `hpi mit Phase − hpi ohne Phase ≥ 0,02` wird über zwei
+  Execution-Golden-Läufe mit `required_phases`-Override gemessen.
+
+Der Guardrail-Test bleibt bis zum abgeschlossenen Evidenzpaket + Review rot —
+das ist der intendierte Ratchet-Druck; `max_phases.limit` wird NICHT ohne
+Evidenz angehoben.
+
+### Wohlklang-Optimum der Parameter-Suche 2026-09-26 — Root-Cause geschlossen
+
+**Befund (Import-Song-Log):** Aurik berechnete nicht die Wohlklang-optimalen
+Parameter — die Musik wurde beschädigt, obwohl die Gates die Schäden sahen
+(PMGG-Regression 0,3351 ≫ 0,033 als „best_effort" durchgewunken,
+§v10.709 „timbre_authentizitaet, transient_energie", 18 Energie-Sprünge).
+
+**Root-Cause:** Alle drei Parameter-Ebenen optimierten das falsche Optimum:
+
+1. `adaptive_strength_optimizer._quick_quality_delta` bewertete
+   **Signal-Ähnlichkeit** (identisch = 1,0 = best, Baseline −0,95) — jede
+   echte Reparatur SENKTE den Zielfert ⇒ die Suche verharrte bei
+   Default-Stärken (Produktionsbefund „§2.70 Joint-Kalibrierung:
+   0 boosted, 0 damped").
+2. `closed_loop_calibrator.measure_phase_quality_delta` (§v10.600) bewertete
+   MR-STFT-Distanz × tanh-Richtung → in der Praxis Δ ≈ 1e-5
+   („Δ=+0.0000" für jede Phase → „hold", Regelkreis blind).
+3. HPE (`human_pleasantness_estimator`) — die tatsächliche psychoakustische
+   Angenehmheit — war nur Gate/Log, nie das Optimumsziel.
+
+**Fix (Ursache statt Symptom):** Gemeinsame Zielfunktion
+`wohlklang_objective_delta()` in `human_pleasantness_estimator.py`:
+
+- **Primär: HPE-Delta** (Zwicker-Schärfe, Rauigkeit, Lautheit, Tonalität,
+  Fluktuationstärke) — der maximale Wohlklang (Hörordnung §1–§3,
+  lexikografische Wohlklang-Ordnung; eine klarere Aufnahme DARF anders
+  klingen).
+- **Hör-Invarianten (Ebene 1) als Wächter statt als Ziel:** struktureller
+  Signalkollaps (Korrelation < 0,50, Pegel > 12 dB, Crest > 12 dB —
+  entlang der Watchdog-Kalibrierung) ⇒ harte Ablehnung (−1).
+- Stereo-Layout-Invariante (C,N)/(N,C) + NaN/Inf-Schutz wie
+  `compute_pleasantness`/`_metric_mono`.
+- Übernommen in `adaptive_strength_optimizer` (Suche klettert jetzt die
+  Wohlklang-Leiter, ±0,03 = hörbare Veränderung als Konvergenzmaß) und
+  `closed_loop_calibrator` (§v10.600 Δ≠0 und wohlklang-gerichtet;
+  §v10.650 W5-Reparatur-Clamp bleibt).
+
+**Evidenz:** 80 Tests grün (4 neu: identisch = exakt 0, Entrauschung > 0,
+Crest-Kollaps < −0,03, **Stärken-Suche steigt die Leiter**
+`optimal_strength > 0,2` — Regressionstest gegen das alte Objektiv);
+Layout-Invariante + Reparatur-Clamp-Verträge aus test_260_30 erfüllt.
+
+**Nachschlag 2026-09-26 (beide letzten Schadensvektoren aus dem Import-Log):**
+
+1. **PMGG Timing-Leiter** (`per_phase_musical_goals_gate.py`, §2.29a): Der
+   „Sofort-Best-Effort"-Retour für ML-deterministische Timing-Phasen
+   (phase_12/31 — kein Wet/Dry-Blending möglich) übernahm die
+   **ungeprüfte Vollstärke-Fassung** und verletzte damit den eigenen
+   §2.29-Vertrag („geringste Regression anwendet"; Befund: regression=0,3351
+   ≫ 0,033 akzeptiert, §v10.709-Schaden). Jetzt sucht eine
+   Re-Ausführungs-Leiter (0,75/0,50/0,30/0,15 der Stärke — kein Blending)
+   die geringste Regression und gibt ausschließlich diese zurück.
+2. **Energie-Kontinuität der Dip-Reparatur** (§2.35b): Die lineare
+   Rampen-Länge `max(1, 30 %)` degenerierte bei kurzen Dips (3–6 Frames)
+   zu einem Fade-Frame → Sprung 1,0→Gain in ~11 ms (Befund: 18
+   Energie-Sprünge > 6 dB/100 ms). Cosinus-Zügelung mit Mindestrampen
+   (≥ 2 Frames), kurze Dips erhalten eine durchgehende Zügelung, plus
+   3-Frame-Glättung der Gain-Maske (OLA-freundlich).
+
+Evidenz Nachschlag: 172 Tests grün (92 phase_12 + 31 PMGG + 49 Wohlklang,
+2 neu: Dip-Reparatur erzeugt keine neuen Energie-Sprünge +
+Timing-Leiter-Vertrag).

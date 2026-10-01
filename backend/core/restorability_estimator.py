@@ -334,14 +334,14 @@ class RestorabilityEstimator:
         _elapsed_dsp = _elapsed - _muq_elapsed
         if _elapsed_dsp > _DSP_BUDGET_S:
             logger.warning(
-                "RestorabilityEstimator: DSP-Budget überschritten (%.2fs > %.1fs) — Ergebnis ggf. partiell. material=%s",
+                "RestorabilityEstimator: DSP-Grenze überschritten (%.2fs > %.1fs) — Ergebnis ggf. partiell. material=%s",
                 _elapsed_dsp,
                 _DSP_BUDGET_S,
                 material,
             )
         elif _muq_elapsed > _DSP_BUDGET_S:
             logger.info(
-                "RestorabilityEstimator: MuQ-ML-Prior %.2fs (Erst-Load einmalig je Prozess) — DSP-Anteil %.2fs im Budget",
+                "RestorabilityEstimator: MuQ-ML-Prior %.2fs (Erst-laden einmalig je Prozess) — DSP-Anteil %.2fs im Grenze",
                 _muq_elapsed,
                 _elapsed_dsp,
             )

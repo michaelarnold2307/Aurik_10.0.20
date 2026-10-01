@@ -1,19 +1,46 @@
 # TASK_CHANGES — Live-Ledger der aktuellen Aufgabe
 
-> Generiert von `scripts/change_ledger.py snapshot` (Base: `HEAD`, Stand: 2026-09-26 15:52 CEST).
+> Generiert von `scripts/change_ledger.py snapshot` (Base: `HEAD`, Stand: 2026-09-28 04:25 CEST).
 > CI (`ci-lite.yml` pr-evidence-gate) erzwingt Abdeckung: jede geänderte Code-Datei muss hier stehen.
 
 ## Geänderte Dateien
 
 | Status | Pfad | Art |
 |---|---|---|
+| M | .github/FILE_REGISTRY.md | modifiziert |
+| M | Aurik10/ui/modern_window.py | modifiziert |
+| M | TASK_CHANGES.md | modifiziert |
+| M | backend/core/adaptive_strength_optimizer.py | modifiziert |
+| M | backend/core/audio_exporter.py | modifiziert |
+| M | backend/core/chunked_streaming.py | modifiziert |
+| M | backend/core/closed_loop_calibrator.py | modifiziert |
+| M | backend/core/cumulative_interaction_guard.py | modifiziert |
+| M | backend/core/defect_audibility_gate.py | modifiziert |
+| M | backend/core/defect_scanner.py | modifiziert |
+| M | backend/core/human_pleasantness_estimator.py | modifiziert |
+| M | backend/core/per_phase_musical_goals_gate.py | modifiziert |
+| M | backend/core/phases/phase_02_hum_removal.py | modifiziert |
 | M | backend/core/phases/phase_12_wow_flutter_fix.py | modifiziert |
+| M | backend/core/preservation_metrics.py | modifiziert |
+| M | backend/core/tfs_preservation_guard.py | modifiziert |
+| M | backend/core/unified_restorer_v3.py | modifiziert |
+| M | docs/PHASE_SOTA_GAP_ANALYSE.md | modifiziert |
+| M | plugins/bigvgan_v2_plugin.py | modifiziert |
+| M | scripts/repair_effectiveness_harness.py | modifiziert |
+| M | tests/unit/test_audio_exporter_musiclover.py | modifiziert |
+| M | tests/unit/test_chunked_streaming_layouts.py | modifiziert |
+| M | tests/unit/test_defect_audibility_gate.py | modifiziert |
+| M | tests/unit/test_hr_v1_activation_contract.py | modifiziert |
+| M | tests/unit/test_layout_invariants.py | modifiziert |
+| M | tests/unit/test_phase_12_wow_flutter_fix.py | modifiziert |
+| M | tests/unit/test_pleasantness_goal_achievement.py | modifiziert |
 | ?? | Setupfile/DEBIAN_TEMPLATE/aurik | ungetrackt |
 | ?? | Setupfile/DEBIAN_TEMPLATE/aurik.desktop | ungetrackt |
 | ?? | Setupfile/DEBIAN_TEMPLATE/control | ungetrackt |
 | ?? | Setupfile/DEBIAN_TEMPLATE/postinst | ungetrackt |
 | ?? | Setupfile/DEBIAN_TEMPLATE/postrm | ungetrackt |
 | ?? | Setupfile/aurik_modelle_10.2.0.tar.zst | ungetrackt |
+| ?? | scripts/run_wohlklang_ab_validation.py | ungetrackt |
 
 ## Entscheidungen
 

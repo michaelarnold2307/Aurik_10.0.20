@@ -3866,17 +3866,31 @@ class BatchProcessingThread(QThread):
 
                 # Honor ExportConfigDialog format for first export whenever possible.
                 _fmt_key = str((getattr(item, "settings", {}) or {}).get("format_key", "") or "").strip().lower()
-                _fmt_cfg = {
+                # §G9 Canonical Contract Drift (copilot-instructions.md):
+                # ExportConfigDialog.get_config() liefert DOTLOSE Schlüssel
+                # ("flac24", "wav16", "aiff24", "ogg9" — siehe ExportConfigDialog.FORMATS),
+                # diese Tabelle war zuvor ausschließlich MIT führendem Punkt
+                # notiert (".flac", ".wav16", …). Die Schnittmenge war leer, daher
+                # fiel JEDER GUI-Export mit expliziter Formatwahl in den
+                # WAV-Ersatzpfad unten — mit falschem Container (.flac/.ogg/.aiff)
+                # und ohne die Format-/Bittiefen-Wahl des Nutzers. Beide
+                # Namespaces werden hier akzeptiert; der dialog-eigene (dotlose)
+                # ist kanonisch (_resolve_export_sample_rate dokumentiert ihn).
+                #
+                # Nur Formate, die AudioExporter tatsächlich unterstützt
+                # (AudioExporter.FORMATS: .wav/.flac/.aiff/.ogg/…). MP3 ist dort
+                # nicht implementiert — dafür greift der Ersatzpfad mit Warnung.
+                _fmt_cfg: dict[str, tuple[int, dict[str, Any]]] = {
+                    "flac24": (24, {}),
                     ".flac": (24, {}),
+                    "wav24": (24, {}),
                     ".wav24": (24, {}),
+                    "wav16": (16, {}),
                     ".wav16": (16, {}),
+                    "aiff24": (24, {}),
                     ".aiff24": (24, {}),
-                    ".mp3_320": (16, {"mp3_bitrate": 320}),
-                    ".mp3_256": (16, {"mp3_bitrate": 256}),
-                    ".mp3_192": (16, {"mp3_bitrate": 192}),
-                    ".mp3_v0": (16, {"mp3_vbr_quality": 0}),
-                    ".mp3_v2": (16, {"mp3_vbr_quality": 2}),
-                    ".ogg9": (16, {"ogg_quality": 9}),
+                    "ogg9": (16, {}),
+                    ".ogg9": (16, {}),
                 }
                 _AudioExporter = (
                     _bridge_get_audio_exporter_class() if callable(_bridge_get_audio_exporter_class) else None
@@ -4007,6 +4021,17 @@ class BatchProcessingThread(QThread):
                     )
                 else:
                     # Fallback: atomic WAV write. subtype="PCM_24" matches CLI parity.
+                    # §V6 (copilot-instructions.md) Silent-Failure-Verbot: Wenn ein Format gewählt wurde, das
+                    # AudioExporter nicht bedienen kann (z. B. die MP3-Optionen des
+                    # Dialogs), wird hier WAV geschrieben — das MUSS sichtbar sein,
+                    # statt still eine Datei mit fremder Endung zu erzeugen.
+                    if _fmt_key and _fmt_key not in _fmt_cfg:
+                        logger.warning(
+                            "§V6 (copilot-instructions.md) Ausgabe-Format '%s' wird von AudioExporter nicht unterstützt "
+                            "(AudioExporter.FORMATS ohne MP3) — schreibe 24-bit-WAV-Ersatz nach %s",
+                            _fmt_key,
+                            item.output_file,
+                        )
                     _tmp_path = item.output_file + ".wav.tmp"
                     _fallback_audio = write_audio
                     # §0h Music-Death-Shield: quiet-edge guard auch auf Fallback-Pfad (kein AudioExporter)

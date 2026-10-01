@@ -33,9 +33,10 @@ def test_phase_intervention_registry_covers_all_phase_modules() -> None:
 
 def test_phase_intervention_registry_targets_64_phases() -> None:
     registry = UnifiedRestorerV3.get_phase_intervention_registry()
-    # 66 nummerierte Phasen + phase_07_declipper + phase_glue_stage
+    # 68 nummerierte Phasen (inkl. phase_07_declipper und
+    # phase_67_crackle_texture_removal) + phase_glue_stage
     # + phase_ambience_polish (Spec 25, Politur vor der Glue Stage)
-    assert len(registry) == 69, f"Expected 69 registered phases, got {len(registry)}"
+    assert len(registry) == 70, f"Expected 70 registered phases, got {len(registry)}"
 
 
 def test_no_alias_shadows_implemented_phase_module() -> None:

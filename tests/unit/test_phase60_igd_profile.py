@@ -73,7 +73,11 @@ class TestIgdSegmentOracle:
     def test_distorted_inner_segment_is_processed_more_than_clean_outer_segment(self):
         sr = 48000
         t = np.arange(sr * 2, dtype=np.float32) / float(sr)
-        audio = (0.20 * np.sin(2.0 * np.pi * 440.0 * t)).astype(np.float32)
+        # §7.4c-L3 (2026-09-28): 220 Hz statt 440 Hz — das IGD-Band beginnt
+        # seit dem Bass-Summton-Fix bei 400 Hz; ein 440-Hz-Grundton würde
+        # im Außen-Segment als IGD-Energie zählen und den
+        # Positions-Kontrast des Oracle verfälschen.
+        audio = (0.20 * np.sin(2.0 * np.pi * 220.0 * t)).astype(np.float32)
         audio[sr:] += (0.08 * np.sin(2.0 * np.pi * 4200.0 * t[sr:])).astype(np.float32)
 
         out = apply(

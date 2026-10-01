@@ -37,6 +37,7 @@ from dataclasses import dataclass, field
 
 import numpy as np
 
+from backend.core.audio_layout import mono_mix
 from backend.core.audio_utils import safe_filtfilt  # §v10.101
 
 logger = logging.getLogger(__name__)
@@ -282,10 +283,18 @@ class TFSPreservationGuard:
 
     @staticmethod
     def _to_mono_f64(audio: np.ndarray) -> np.ndarray:
-        """Konvertiert to mono float64 with NaN/Inf guard."""
+        """Konvertiert to mono float64 with NaN/Inf guard.
+
+        Layout-sicher über ``audio_layout.mono_mix`` (Kanal-Mittel, nie
+        Zeit-Mittel). Die frühere Heuristik ``shape[0] > shape[1]`` war
+        invertiert und lieferte für beide Layouts Länge 2; dadurch fiel
+        ``analyse`` immer in den ``min_len < _FRAME_SAMPLES * 2``-Zweig und
+        meldete dauerhaft ``passes_threshold=True`` (Produktionsbefund:
+        TFS-Guard für Stereomaterial wirkungslos).
+        """
         arr = np.asarray(audio, dtype=np.float64)
         if arr.ndim == 2:
-            arr = arr.mean(axis=0) if arr.shape[0] > arr.shape[1] else arr.mean(axis=1)
+            arr = mono_mix(arr)
         return np.nan_to_num(arr, nan=0.0, posinf=0.0, neginf=0.0)  # type: ignore[no-any-return]
 
 

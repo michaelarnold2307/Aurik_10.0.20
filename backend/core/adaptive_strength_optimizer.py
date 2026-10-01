@@ -75,11 +75,14 @@ def _adaptive_config(restorability_score: float, transfer_chain_depth: int, band
     max_iterations = 5 + depth  # depth=1 → 6, depth=4 → 9
 
     # ── Bandwidth-Loss-Modifikator ──
-    # Hoher bw_loss → noch konservativer starten
+    # Hoher bw_loss → noch konservativer starten. §G188 (GEBOTE.md): Dämpfung folgt dem
+    # gemessenen Bandwidth-Verlust, nicht einem festen Literal (§7.4d (06_phases_system.md)).
+    # Bei vollem Verlust (bw ≥ 1) exakt die bisherigen Kappen: floor ×0.6, ceiling/step ×0.7.
     if bw > 0.6:
-        strength_floor *= 0.6
-        strength_ceiling *= 0.7
-        strength_step *= 0.7
+        excess = min((bw - 0.6) / 0.4, 1.0)  # 0 an der Schwelle → 1 bei vollem Verlust
+        strength_floor *= 1.0 - 0.4 * excess  # max. 0.6×
+        strength_ceiling *= 1.0 - 0.3 * excess  # max. 0.7×
+        strength_step *= 1.0 - 0.3 * excess  # max. 0.7×
 
     # Clipping
     strength_floor = float(np.clip(strength_floor, 0.02, 0.30))
@@ -103,58 +106,27 @@ def _adaptive_config(restorability_score: float, transfer_chain_depth: int, band
 def _quick_quality_delta(
     audio_before: np.ndarray,
     audio_after: np.ndarray,
+    sample_rate: int = 48000,
+    *,
+    before_result: Any = None,
 ) -> float:
-    """Schnelles Qualitäts-Delta für adaptive Iterationen.
+    """Wohlklang-Delta für adaptive Iterationen (Hörordnung §1–§3).
 
-    Kombiniert Crest-Änderung, RMS-Stabilität und spektrale Korrelation
-    zu einem einzigen Wert. Positiv = Verbesserung, negativ = Verschlechterung.
+    §Wohlklang-Optimum 2026-09-26: Diese Zielfunktion bewertete früher
+    Signal-Ähnlichkeit (identisch = 1,0 = best, Baseline −0.95) — jede
+    echte Reparatur SENKTE den Zielfert, die Suche blieb bei Default-Stärken
+    (Produktionsbefund „0 boosted, 0 damped", Musik wurde nicht optimiert).
+    Maßgeblich ist jetzt das HPE-Delta (maximaler Wohlklang, ±0.03 =
+    hörbare Veränderung); die Signaltreue wirkt nur noch als
+    Hör-Invarianten-Wächter (Ebene 1, Kollaps = harte Ablehnung).
 
-    Kosten: O(N) — schnell genug für mehrere Iterationen pro Phase.
+    Kosten: zwei HPE-Messungen je Kandidat (before_result wiederverwendbar).
     """
-    try:
-        pre = np.asarray(audio_before, dtype=np.float32).ravel()
-        post = np.asarray(audio_after, dtype=np.float32).ravel()
-        n = min(len(pre), len(post))
-        if n < 256:
-            return 0.0
-        pre = pre[:n]
-        post = post[:n]
+    from backend.core.human_pleasantness_estimator import (
+        wohlklang_objective_delta as _wohlklang_delta,
+    )
 
-        # 1. Crest-Stabilität (30% Gewicht)
-        pre_rms = float(np.sqrt(np.mean(pre**2))) + 1e-12
-        post_rms = float(np.sqrt(np.mean(post**2))) + 1e-12
-        pre_peak = float(np.max(np.abs(pre))) + 1e-12
-        post_peak = float(np.max(np.abs(post))) + 1e-12
-        pre_crest = float(20.0 * np.log10(pre_peak / pre_rms))
-        post_crest = float(20.0 * np.log10(post_peak / post_rms))
-        crest_delta = post_crest - pre_crest
-        # Crest-Verlust ist schlecht, aber leichter Gewinn ist okay
-        crest_score = float(np.clip(1.0 + crest_delta / 6.0, 0.0, 1.0))
-
-        # 2. RMS-Stabilität (30% Gewicht)
-        rms_ratio = min(post_rms, pre_rms) / max(post_rms, pre_rms)
-        rms_score = float(rms_ratio)
-
-        # 3. Korrelation (40% Gewicht)
-        # Downsample für Geschwindigkeit (max 8192 samples)
-        step = max(1, n // 8192)
-        pre_ds = pre[::step]
-        post_ds = post[::step]
-        corr = float(np.corrcoef(pre_ds, post_ds)[0, 1]) if len(pre_ds) > 2 else 1.0
-        corr = max(0.0, min(1.0, corr)) if not np.isnan(corr) else 1.0
-
-        # Kombiniert: 0.0 = totale Zerstörung, 1.0 = identisch
-        quality = 0.30 * crest_score + 0.30 * rms_score + 0.40 * corr
-
-        # Delta: >0 = Verbesserung, <0 = Verschlechterung
-        # Baseline ist ~0.95 (leichte Änderung immer)
-        return float(quality - 0.95)
-
-    except Exception:
-        logger.warning(
-            "§V6 (copilot-instructions.md) ML→DSP-Ersatzpfad: _berechnen_quality_delta fehlgeschlagen → neutraler Return (0.0)"
-        )
-        return 0.0
+    return _wohlklang_delta(audio_before, audio_after, sample_rate, original_result=before_result)
 
 
 # ═══════════════════════════════════════════════════════════════════════════
@@ -231,6 +203,17 @@ def optimize_phase_strength(
     improving = True
     tried_zero = False
 
+    # Wohlklang-Vorher-Bewertung EINMAL je Suche (Hörordnung): alle
+    # Kandidaten werden gegen dieselbe Referenz gemessen.
+    try:
+        from backend.core.human_pleasantness_estimator import (
+            compute_pleasantness as _compute_pleasantness,
+        )
+
+        _hpe_before: Any = _compute_pleasantness(audio_input, sample_rate)
+    except Exception:
+        _hpe_before = None
+
     while iteration < max_iter and current <= ceiling + 0.001:
         iteration += 1
 
@@ -242,8 +225,8 @@ def optimize_phase_strength(
             current += step
             continue
 
-        # Qualitäts-Delta messen
-        delta = _quick_quality_delta(audio_input, audio_after)
+        # Wohlklang-Delta messen (Optimumsziel, nicht Signal-Ähnlichkeit)
+        delta = _quick_quality_delta(audio_input, audio_after, sample_rate, before_result=_hpe_before)
         history.append((current, round(delta, 5)))
 
         if delta > best_delta:
@@ -274,7 +257,7 @@ def optimize_phase_strength(
                 iteration += 1
                 try:
                     audio_up = phase_runner(audio_input, next_up)
-                    delta_up = _quick_quality_delta(audio_input, audio_up)
+                    delta_up = _quick_quality_delta(audio_input, audio_up, sample_rate, before_result=_hpe_before)
                     history.append((next_up, round(delta_up, 5)))
                     if delta_up > best_delta + 0.005:
                         best_delta = delta_up

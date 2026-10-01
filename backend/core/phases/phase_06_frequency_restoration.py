@@ -97,6 +97,7 @@ else:
 
 import logging  # pylint: disable=wrong-import-position
 
+from backend.core.material_canonical import canonical_material_key
 from backend.core.ml_model_readiness import check_ml_model_ready
 
 logger = logging.getLogger(__name__)
@@ -284,7 +285,8 @@ class FrequencyRestorationPhase(PhaseInterface):
         minimum duration threshold for entering the ML-hybrid path.
         """
         _qm = str(quality_mode or "balanced").lower().replace("-", "_")
-        _mat = str(material_type or "unknown").lower().replace("-", "_").replace(" ", "_")
+        # §Material-Kanonical: Pipeline übergibt MaterialType-Enum → kanonischer Key.
+        _mat = canonical_material_key(material_type) if material_type else "unknown"
         _rest = float(np.clip(restorability_score, 0.0, 100.0))
         _dur = float(max(0.0, audio_duration_s))
         _base_min = float(default_min_duration_s)
@@ -464,14 +466,17 @@ class FrequencyRestorationPhase(PhaseInterface):
             )
 
         # Get material-specific parameters (mutable copy for source-fidelity overrides)
-        params: dict[str, Any] = self.MATERIAL_PARAMS.get(material_type, self.MATERIAL_PARAMS["unknown"]).copy()
+        # §Material-Kanonical: Pipeline übergibt MaterialType-Enum (§V6 copilot-instructions.md:
+        # Silent-Failure vermeiden) — canonical_material_key löst Enum und str auf denselben Key.
+        _mat_key = canonical_material_key(material_type)
+        params: dict[str, Any] = self.MATERIAL_PARAMS.get(_mat_key, self.MATERIAL_PARAMS["unknown"]).copy()
 
         # §v10.705 B7: Bandwidth-Cap aus SourceMediumProfile — physikalische
         # Grenze des Trägermediums darf nicht überschritten werden.
         try:
             from backend.core.source_medium_profile import get_medium_profile
 
-            _smp = get_medium_profile(str(material_type).lower().replace("_", "-"))
+            _smp = get_medium_profile(_mat_key)
             _bw_cap = float(_smp.max_bandwidth_hz)
             if _bw_cap > 0:
                 _old_rolloff = float(params.get("rolloff_hz", 20000.0))
@@ -520,7 +525,7 @@ class FrequencyRestorationPhase(PhaseInterface):
                 warnings=[],
                 metadata={
                     "algorithm": "none",
-                    "material_type": material_type,
+                    "material_type": _mat_key,
                     "execution_time_seconds": time.time() - start_time,
                     "rms_drop_db": 0.0,
                     "loudness_makeup_db": 0.0,
@@ -551,7 +556,7 @@ class FrequencyRestorationPhase(PhaseInterface):
                         "algorithm": "none",
                         "measured_rolloff_db": measured_rolloff_db,
                         "measured_rolloff_freq": measured_rolloff_freq,
-                        "material_type": material_type,
+                        "material_type": _mat_key,
                         "execution_time_seconds": time.time() - start_time,
                         "rms_drop_db": 0.0,
                         "loudness_makeup_db": 0.0,
@@ -611,7 +616,7 @@ class FrequencyRestorationPhase(PhaseInterface):
         _td_p06 = max(1, int(kwargs.get("transfer_chain_depth", 1)))
         if _td_p06 >= 4 and use_ml_hybrid:
             _chain = kwargs.get("effective_chain") or []
-            _term = str(_chain[-1]).lower() if _chain else str(material_type).lower()
+            _term = str(_chain[-1]).lower() if _chain else _mat_key
             _EXTREME_ANALOG = {"shellac", "wax_cylinder", "wire_recording"}
             if _term in _EXTREME_ANALOG:
                 use_ml_hybrid = False
@@ -650,7 +655,7 @@ class FrequencyRestorationPhase(PhaseInterface):
             # Phase sichtbar auf den DSP-Pfad zurück.
             if np.shape(restored) != np.shape(audio):
                 logger.warning(
-                    "§V6 (copilot-instructions.md) ML→DSP-Fallback (phase_06): ML-Hybrid lieferte Shape %s statt %s — DSP-Pfad (SBR+LPC) übernimmt",
+                    "§V6 (copilot-instructions.md) ML→DSP-Ersatzpfad (Verarbeitungsschritt_06): ML-Hybrid lieferte Shape %s statt %s — DSP-Pfad (SBR+LPC) übernimmt",
                     np.shape(restored),
                     np.shape(audio),
                 )
@@ -698,7 +703,6 @@ class FrequencyRestorationPhase(PhaseInterface):
                 _era_tilt_post = _get_ec()._estimate_spectral_tilt(  # type: ignore[attr-defined]  # pylint: disable=protected-access
                     restored[0] if restored.ndim == 2 else restored, sample_rate
                 )
-                _mat_key = str(material_type).lower().replace(" ", "_").replace("-", "_")
                 _mat_tol = _TILT_MATERIAL_TOLERANCE.get(_mat_key, 1.5)
                 _tilt_deviation = abs(_era_tilt_post - _era_tilt_target)
                 if _tilt_deviation > _mat_tol:
@@ -767,8 +771,9 @@ class FrequencyRestorationPhase(PhaseInterface):
             "vinyl": 16000.0,
             "reel_tape": 18000.0,
             "cassette": 14000.0,  # §6.2c delegated to central definition (carrier_transfer_characteristics)
+            "tape": 14000.0,  # §Material-Kanonical: TAPE-Enum → "tape" (alias zu cassette-Limit)
         }
-        _mat_key_06 = str(material_type).lower().replace(" ", "_").replace("-", "_")
+        _mat_key_06 = _mat_key
         _bw_cap_hz = _BW_CEILING_HZ.get(_mat_key_06)
         if _bw_cap_hz is not None:
             try:
@@ -927,7 +932,7 @@ class FrequencyRestorationPhase(PhaseInterface):
                     _mic6_result = get_microphone_response_library().get_eq_curve(
                         era_decade=int(_mic6_era),
                         genre_label=str(kwargs.get("genre_label", "")),
-                        material_type=material_type,
+                        material_type=_mat_key,
                         target_sr=sample_rate,
                     )
                     if _mic6_result is not None:
@@ -1132,7 +1137,7 @@ class FrequencyRestorationPhase(PhaseInterface):
                     metadata={
                         "algorithm": "psy_a1_dry_passthrough",
                         "subaudible_defects_skipped": True,
-                        "material_type": material_type,
+                        "material_type": _mat_key,
                         "execution_time_seconds": execution_time,
                         "phase_locality_factor": phase_locality_factor,
                         "effective_strength": _effective_strength,
@@ -1154,7 +1159,7 @@ class FrequencyRestorationPhase(PhaseInterface):
                 "sbr_enabled": enable_sbr,
                 "phase_locality_factor": phase_locality_factor,
                 "effective_strength": _effective_strength,
-                "material_type": material_type,
+                "material_type": _mat_key,
             },
             warnings=[f"Aggressive HF extension: {hf_boost_db:.1f} dB"] if hf_boost_db > 15 else [],
             metadata={
@@ -1208,7 +1213,8 @@ class FrequencyRestorationPhase(PhaseInterface):
         # NVSR is optimal for vinyl/mp3 (clean gap, deterministic); FlashSR for tape
         # (organic spectral envelope matches FlashSR's learned diffusion manifold).
         _TAPE_LIKE_MATERIALS_06 = frozenset({"tape", "reel_tape", "cassette", "wire_recording"})
-        _mat_normed_06ml = str(material_type).lower().replace("-", "_").replace(" ", "_")
+        # §Material-Kanonical: Pipeline übergibt MaterialType-Enum → kanonischer Key.
+        _mat_normed_06ml = canonical_material_key(material_type)
         _use_nvsr = _rolloff_hz_routing >= 7_000.0 and _mat_normed_06ml not in _TAPE_LIKE_MATERIALS_06
 
         # ── NVSR-Pfad (8–16 kHz Gap: Vinyl/MP3-128kbps) ─────────────────────
@@ -1228,7 +1234,7 @@ class FrequencyRestorationPhase(PhaseInterface):
                     self.sample_rate,
                     target_hz=_target_hz,
                     strength=_nvsr_strength,
-                    material_type=str(material_type),
+                    material_type=_mat_normed_06ml,
                     energy_bias_db=_energy_bias,
                     panns_singing=_panns,
                 )
@@ -1331,7 +1337,7 @@ class FrequencyRestorationPhase(PhaseInterface):
                                 _bw_audio_06,
                                 self.sample_rate,
                                 scalar_wet=0.85,
-                                material_type=str(material_type),
+                                material_type=_mat_normed_06ml,
                             )
                             _bw_meta_06 = _bw_res_06.get("metadata", {}) if isinstance(_bw_res_06, dict) else {}
                             logger.info(
@@ -1391,7 +1397,7 @@ class FrequencyRestorationPhase(PhaseInterface):
         audio_dur_s = audio.shape[-1] / float(self.sample_rate)
         _watchdog_profile = self._compute_flashsr_watchdog_profile(
             quality_mode=quality_mode,
-            material_type=material_type,
+            material_type=_mat_normed_06ml,
             restorability_score=float(np.clip(params.get("restoration_strength", 0.7) * 100.0, 0.0, 100.0)),
             audio_duration_s=audio_dur_s,
             default_min_duration_s=float(flashsr_min_duration_s),
@@ -1573,7 +1579,7 @@ class FrequencyRestorationPhase(PhaseInterface):
                     "ml_model": "FlashSR",
                     "ml_blend_alpha": alpha,
                     "ml_hf_highpass_hz": hp_hz,
-                    "material_type": material_type,
+                    "material_type": _mat_normed_06ml,
                     "ml_watchdog": f"success_{timeout_s}s",
                 }
             if not ml_error_queue.empty():

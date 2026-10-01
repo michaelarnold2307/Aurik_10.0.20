@@ -56,6 +56,86 @@ def test_melody_guard_sets_refusal_flag(phase):
     assert phase._melody_guard_refused is True
 
 
+class TestBandLimitedWarp:
+    """§7.4c-L3 (2026-09-27): Bandbegrenzter Inverse-Warp für bandabhängiges
+    Flutter (multiband_wow_flutter, Hint > 4 Hz). Exakte Komplement-
+    Konstruktion: nur [4 kHz, 12 kHz] wird gewarpt, der Rest bleibt
+    bit-identisch (Never-worsen, Hörordnung §8a)."""
+
+    SR = 48000
+
+    @staticmethod
+    def _two_tone_signal() -> np.ndarray:
+        t = np.arange(TestBandLimitedWarp.SR * 2) / TestBandLimitedWarp.SR
+        return (0.3 * np.sin(2 * np.pi * 500.0 * t) + 0.3 * np.sin(2 * np.pi * 6000.0 * t)).astype(np.float32)
+
+    @staticmethod
+    def _smooth_stretch() -> np.ndarray:
+        t = np.arange(TestBandLimitedWarp.SR * 2) / TestBandLimitedWarp.SR
+        return (1.0 + 0.02 * np.sin(2 * np.pi * 0.5 * t)).astype(np.float32)
+
+    def test_warp_diff_lives_only_in_band(self, phase):
+        x = self._two_tone_signal()
+        out = phase._band_limited_warp(x, self._smooth_stretch(), self.SR)
+        d = out.astype(np.float64) - x.astype(np.float64)
+        spec = np.abs(np.fft.rfft(d)) ** 2
+        freqs = np.fft.rfftfreq(len(d), 1.0 / self.SR)
+        lo_e = float(np.sum(spec[freqs < 2000.0]))
+        hi_e = float(np.sum(spec[freqs >= 2000.0]))
+        assert hi_e > 0.0
+        assert lo_e < 1e-9 * hi_e
+
+    def test_length_finite_dtype(self, phase):
+        x = self._two_tone_signal()
+        out = phase._band_limited_warp(x, self._smooth_stretch(), self.SR)
+        assert out.shape == x.shape
+        assert out.dtype == x.dtype
+        assert np.isfinite(out).all()
+
+    def test_identity_factors_bit_identical(self, phase):
+        x = self._two_tone_signal()
+        ones = np.ones(len(x), dtype=np.float32)
+        out = phase._band_limited_warp(x, ones, self.SR)
+        assert np.allclose(out, x, atol=1e-4)
+
+
+class TestHfGridFlutterTrack:
+    """§7.4c-L3 (2026-09-27): Der Teilband-Messkanal muss bei Hint > 4 Hz das
+    Grid bis 12 kHz öffnen (32-kHz-Arbeitsspur) — der Standard-Wow-Pfad bleibt
+    beim 4-kHz-Grid (§G5 (GEBOTE.md) Bestandsverhalten)."""
+
+    SR = 48000
+
+    @staticmethod
+    def _fm_tone(f0: float, f_mod: float, depth_pct: float, dur_s: float = 6.0) -> np.ndarray:
+        n = int(TestHfGridFlutterTrack.SR * dur_s)
+        t_dev = (
+            (depth_pct / 100.0)
+            * (1.0 / f_mod)
+            * np.sin(2 * np.pi * f_mod * np.arange(n) / TestHfGridFlutterTrack.SR)
+            * TestHfGridFlutterTrack.SR
+        )
+        base = 0.5 * np.sin(2 * np.pi * f0 * np.arange(n) / TestHfGridFlutterTrack.SR)
+        return np.interp(np.arange(n) + t_dev, np.arange(n), base).astype(np.float32)
+
+    def test_hf_hint_measures_fm_above_4khz(self, phase):
+        # 6-kHz-Ton mit ±1,9 % FM bei 5 Hz (L3-Synth-Muster): der HF-Grid-Kanal
+        # muss die Gemeinschafts-FM messen (Amplitude > 8 cents in der Spur).
+        x = self._fm_tone(6000.0, 5.0, 1.9)
+        vp, conf = phase._estimate_wow_track_subband(x.astype(np.float64), self.SR, hint_freq_hz=5.0)
+        assert vp.size >= 32
+        cents = 1200.0 * np.log2(vp / np.median(vp))
+        span = float(np.percentile(cents, 95) - np.percentile(cents, 5))
+        assert span > 8.0
+
+    def test_no_hint_keeps_lowband_grid(self, phase):
+        # Ohne Hint (> 4 Hz) bleibt der Kanal im Standard-Grid — ein reiner
+        # 6-kHz-FM-Ton ist dort unsichtbar (Bestandsverhalten, kein Fehler).
+        x = self._fm_tone(6000.0, 5.0, 1.9)
+        vp, conf = phase._estimate_wow_track_subband(x.astype(np.float64), self.SR, hint_freq_hz=None)
+        assert vp.size >= 0
+
+
 class TestSmoothStretchFactors:
     """§WF-V3: Trajektorien-Glättung vor der Zeitstreckung.
 

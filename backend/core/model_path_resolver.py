@@ -38,7 +38,7 @@ def _set_cache(key: str, value: Path | None) -> None:
         _cache[key] = value
 
 
-def _get_cache(key: str) -> Path | None | object:
+def _get_cache(key: str) -> Path | object | None:
     with _lock:
         return _cache.get(key, "MISS")
 
@@ -67,8 +67,7 @@ def resolve_model_path(rel_path: str | Path, *, download: bool = True) -> Path |
 
     if not download or not _DOWNLOAD_ENABLED:
         logger.warning(
-            "§V6 (copilot-instructions.md): Modell %s nicht lokal verfügbar — DSP-Fallback "
-            "(Download %s)",
+            "§V6 (copilot-instructions.md): Modell %s nicht lokal verfügbar — DSP-Ersatzpfad (Download %s)",
             rel,
             "deaktiviert (AURIK_MODEL_DOWNLOAD=0)" if not _DOWNLOAD_ENABLED else "übersprungen",
         )
@@ -82,8 +81,7 @@ def resolve_model_path(rel_path: str | Path, *, download: bool = True) -> Path |
         _entry = _dl.get_entry_by_path(rel)
         if _entry is None:
             logger.warning(
-                "§V6 (copilot-instructions.md): Modell %s fehlt und hat keinen Manifest-Eintrag — "
-                "DSP-Fallback",
+                "§V6 (copilot-instructions.md): Modell %s fehlt und hat keinen Manifest-Eintrag — DSP-Ersatzpfad",
                 rel,
             )
             _set_cache(rel, None)
@@ -94,8 +92,7 @@ def resolve_model_path(rel_path: str | Path, *, download: bool = True) -> Path |
             return resolved
     except Exception as exc:
         logger.warning(
-            "§V6 (copilot-instructions.md): On-Demand-Auflösung für %s fehlgeschlagen — "
-            "DSP-Fallback: %s",
+            "§V6 (copilot-instructions.md): On-Demand-Auflösung für %s fehlgeschlagen — DSP-Ersatzpfad: %s",
             rel,
             exc,
         )

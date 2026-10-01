@@ -165,7 +165,7 @@ def apply_onset_protection_mask(
                 )
         else:
             logger.debug(
-                "§ATI Onset-Guard: JND-Fast-Path — kein Onset-ratio im Entscheidungsband [%.2f, %.2f] dB, Toleranz %.2f dB",
+                "§ATI Onset-Guard: JND-Fast-Path — kein Onset-Verhaeltnis im Entscheidungsband [%.2f, %.2f] dB, Toleranz %.2f dB",
                 _eff_min_db,
                 _eff_max_db,
                 _eff_max_db,

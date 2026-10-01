@@ -492,9 +492,12 @@ _PHASE_SPECIFIC_DRIFT_EXCLUSIONS: dict[str, frozenset[str]] = {
     ),  # §2.55 sync (2026-04-27): + raumtiefe — Reflexionen erhöhen Raumtiefe-Score, CIG darf dies nicht als positiven Drift werten (Gesang-Distanz-Bug)
     # TruePeak limiter: 4× oversampling peak-clamping clips transient peaks (§2.55 §2.54).
     # micro_dynamics/groove/emotionalitaet all share the same false P3 mechanisms as phase_11 brickwall limiter.
+    # P1/P2 goals (natuerlichkeit, timbre_authentizitaet, artikulation) also shift due to peak-clipping
+    # changing spectral fingerprint vs. pre-limiter checkpoint (§2.44 Reference-Paradoxon).
+    # Mirrors phase_11 exclusions — same mechanism (peak reduction → crest-factor + transient profile change).
     "phase_47": frozenset(
-        {"micro_dynamics", "groove", "emotionalitaet"}
-    ),  # §2.55 sync (2026-04-26): PMGG excludes same 3 P3 goals; TruePeak peak-clamping → crest-factor drop + inter-beat peak contrast reduction (was entirely missing from CIG)
+        {"micro_dynamics", "groove", "emotionalitaet", "natuerlichkeit", "timbre_authentizitaet", "artikulation"}
+    ),  # §2.55 sync (2026-04-26): PMGG excludes same 3 P3 goals; TruePeak peak-clamping → crest-factor drop + inter-beat peak contrast reduction (was entirely missing from CIG). §P0-2: Added P1/P2 exclusions mirroring phase_11 — supervised run showed P1/P2-Drift −0.656 causing false rollback.
     # Mid/side EQ: deliberate spectral balance change in M/S domain.
     "phase_48": frozenset(
         {"timbre_authentizitaet", "raumtiefe"}
