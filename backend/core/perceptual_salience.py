@@ -773,6 +773,13 @@ class PerceptualSalienceEstimator:
         # (gleiche Elemente, gleiche Reihenfolge) → bit-identisch, kein GIL-Hotspot
         # mehr bei 44k Frames (224s-Song).
         _mono8 = np.ascontiguousarray(mono, dtype=np.float64)
+        # OOB-Schutz (§V7 (copilot-instructions.md), Ursache statt Symptom): Audio
+        # kürzer als Fenster liest as_strided über das Buffer-Ende ins Heap-Garbage —
+        # nicht-deterministischer "overflow in multiply" (z.B. test_23_very_short_audio).
+        # Rechts-Aufpolster auf win_samples; für len(mono) >= win_samples ein No-op →
+        # bit-identisch (§G5 (copilot-instructions.md)).
+        if _mono8.size < win_samples:
+            _mono8 = np.pad(_mono8, (0, win_samples - _mono8.size), mode="constant")
         _frames = np.lib.stride_tricks.as_strided(
             _mono8, shape=(n_frames, win_samples), strides=(hop_samples * _mono8.itemsize, _mono8.itemsize)
         )
