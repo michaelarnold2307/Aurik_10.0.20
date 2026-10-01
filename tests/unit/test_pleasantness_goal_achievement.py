@@ -243,3 +243,67 @@ class TestWohlklangOptimumObjective:
         assert "suche geringste Regression per Re-Ausfuehrung" in src, (
             "Timing-Re-Ausführungs-Leiter fehlt — phase_12/31 nehmen wieder Vollstärke ungeprüft"
         )
+
+    def test_26_skip_when_all_strengths_below_jnd(self, monkeypatch):
+        """Dead-Zone-Fix: best Δ < −HPE_JND (±0.03) ⇒ Phase überspringen.
+
+        Regressionstest gegen das alte Gate (`best_delta < -0.05`), das Phasen
+        mit best_delta ≈ −0.04 (≒ 1.3× HPE-JND) bei Floor-Stärke laufen ließ —
+        hörbare Verschlechterung, obwohl keine Stärke hilft
+        (GEBOTE.md §G124; PMGG-HPE-Gate-Semantik: < -0.03 ⇒ skip).
+        """
+        import backend.core.adaptive_strength_optimizer as aso
+
+        audio = self._tone(secs=0.5)
+
+        def _fake_delta(_orig: np.ndarray, _rest: np.ndarray, *args, **kwargs):
+            return -0.04  # schlechter als JND (±0.03), besser als altes Gate (-0.05)
+
+        monkeypatch.setattr(aso, "_quick_quality_delta", _fake_delta)
+
+        def runner(audio: np.ndarray, strength: float) -> np.ndarray:
+            return np.clip(audio * (1.0 + 0.01 * strength), -1.0, 1.0)
+
+        result = aso.optimize_phase_strength(
+            phase_id="test_dead_zone",
+            audio_input=audio,
+            sample_rate=48000,
+            phase_runner=runner,
+            restorability_score=75.0,
+        )
+        assert result.was_skipped is True, (
+            f"best_delta={result.best_delta} < -HPE_JND(-0.03): Phase MUSS "
+            f"übersprungen werden — lief stattdessen bei Stärke {result.optimal_strength}"
+        )
+        assert not result.was_executed
+
+    def test_27_no_skip_when_best_delta_above_jnd(self, monkeypatch):
+        """Gegenüber-Schutz: best Δ > −HPE_JND ⇒ Phase darf laufen (keine Überkorrektur).
+
+        Eine nur marginal negative Regression (besser als JND ±0.03) ist
+        tolerabel — dieselbe Semantik wie das PMGG-HPE-Gate
+        (-0.03 <= delta < 0 ⇒ akzeptieren, nicht skippen).
+        """
+        import backend.core.adaptive_strength_optimizer as aso
+
+        audio = self._tone(secs=0.5)
+
+        def _fake_delta(_orig: np.ndarray, _rest: np.ndarray, *args, **kwargs):
+            return -0.02  # besser als JND (±0.03) → tolerabel
+
+        monkeypatch.setattr(aso, "_quick_quality_delta", _fake_delta)
+
+        def runner(audio: np.ndarray, strength: float) -> np.ndarray:
+            return np.clip(audio * (1.0 + 0.01 * strength), -1.0, 1.0)
+
+        result = aso.optimize_phase_strength(
+            phase_id="test_above_jnd",
+            audio_input=audio,
+            sample_rate=48000,
+            phase_runner=runner,
+            restorability_score=75.0,
+        )
+        assert not result.was_skipped, (
+            f"best_delta={result.best_delta} > -HPE_JND(-0.03): Phase durfte Nicht übersprungen werden (Überkorrektur)"
+        )
+        assert result.optimal_strength > 0.01

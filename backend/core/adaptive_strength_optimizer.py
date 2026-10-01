@@ -133,6 +133,14 @@ def _quick_quality_delta(
 # Adaptiver Phasen-Optimierer
 # ═══════════════════════════════════════════════════════════════════════════
 
+# Hörordnung JND (GEBOTE.md §G124): PMGG-Messungenauigkeit ±0.03 ist die
+# kanonische Hörbarkeitsschwelle für HPE-Wohlklang-Deltas — dieselbe Semantik
+# wie das HPE-Gate in per_phase_musical_goals_gate.py (< -0.03 ⇒ skip,
+# [-0.03, 0) ⇒ tolerabel). Alle Skip-/Probe-Entscheidungen in diesem Modul
+# beziehen sich auf diesen einen Wert — keine privaten Schwellen
+# (§V7 Workaround-Verbot, §G9 Spec-Zitat).
+_HPE_JND = 0.03
+
 
 def optimize_phase_strength(
     *,
@@ -244,7 +252,7 @@ def optimize_phase_strength(
             improving = False
 
         # Wenn wir am Floor sind und schon Verschlechterung → noch niedriger testen
-        if not tried_zero and best_delta < -0.03 and current <= floor + 0.001:
+        if not tried_zero and best_delta < -_HPE_JND and current <= floor + 0.001:
             current = max(0.02, floor * 0.5)
             tried_zero = True
             improving = True
@@ -267,13 +275,19 @@ def optimize_phase_strength(
             break
 
     # ── Entscheidung ──
-    was_skipped = best_delta < -0.05 and best_strength <= floor + 0.001
+    # Hörordnung §2 (GEBOTE.md §G124): KEINE getestete Stärke bringt hörbare
+    # Verbesserung (best Δ < −JND ±0.03) ⇒ Phase überspringen — dieselbe
+    # Semantik wie das PMGG-HPE-Gate. Schließt die Dead Zone zwischen −0.05
+    # und −HPE_JND, in der eine Phase mit best_delta ≈ −0.04 (≒ 1.3× JND)
+    # trotzdem bei Floor-Stärke lief (hörbare Verschlechterung pro Song).
+    was_skipped = best_delta < -_HPE_JND
 
     if was_skipped:
         logger.info(
-            "§ADAPTIVE ueberspringen %s: best_delta=%.4f < -0.05 @ strength=%.3f → Verarbeitungsschritt übersprungen",
+            "§ADAPTIVE ueberspringen %s: best_delta=%.4f < -HPE_JND(-%.2f) @ strength=%.3f → Verarbeitungsschritt übersprungen",
             phase_id,
             best_delta,
+            _HPE_JND,
             best_strength,
         )
     else:
