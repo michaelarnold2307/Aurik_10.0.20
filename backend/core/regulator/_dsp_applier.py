@@ -438,9 +438,9 @@ def _apply_dsp_module(audio: np.ndarray, sr: int, module_name: str, params: dict
 
             return AiDehiss().dehiss(audio, sr)  # type: ignore[no-any-return]
         elif module_name == "SpectralGate":
-            from dsp.spectral_gate import SpectralGate  # type: ignore[import]
+            from backend.core.dsp.spectral_gate import gate_audio  # type: ignore[import]
 
-            return SpectralGate(threshold=params.get("threshold", -40)).process(audio, sr)  # type: ignore[no-any-return,call-arg]
+            return gate_audio(audio, sr, threshold_db=params.get("threshold", -40))  # type: ignore[no-any-return]
         elif module_name == "RIAAEqualizer":
             from dsp.riaa_equalizer import RIAAEqualizer  # type: ignore[import]
 

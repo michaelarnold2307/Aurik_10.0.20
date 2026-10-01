@@ -427,46 +427,56 @@ class TestPerceptualEQ:
 # ---------------------------------------------------------------------------
 class TestSpectralGate:
     def test_01_import(self):
-        from dsp.spectral_gate import SpectralGate
+        from backend.core.dsp.spectral_gate import SpectralGate, gate_audio
 
         assert SpectralGate is not None
+        assert gate_audio is not None
 
     def test_02_instantiate(self):
-        from dsp.spectral_gate import SpectralGate
+        from backend.core.dsp.spectral_gate import SpectralGate
 
         assert SpectralGate() is not None
 
     def test_03_process_shape(self):
-        from dsp.spectral_gate import SpectralGate
+        from backend.core.dsp.spectral_gate import gate_audio
 
-        result = SpectralGate().process(AUDIO_NOISE, SR)
+        result = gate_audio(AUDIO_NOISE, SR)
         assert isinstance(result, np.ndarray)
         assert result.shape == AUDIO_NOISE.shape
 
     def test_04_process_finite(self):
-        from dsp.spectral_gate import SpectralGate
+        from backend.core.dsp.spectral_gate import gate_audio
 
-        result = SpectralGate().process(AUDIO_NOISE, SR)
+        result = gate_audio(AUDIO_NOISE, SR)
         assert np.isfinite(result).all()
 
     def test_05_silence_no_crash(self):
-        from dsp.spectral_gate import SpectralGate
+        from backend.core.dsp.spectral_gate import gate_audio
 
-        result = SpectralGate().process(AUDIO_SILENCE, SR)
+        result = gate_audio(AUDIO_SILENCE, SR)
         assert np.isfinite(result).all()
 
     def test_06_sine_preserved(self):
-        from dsp.spectral_gate import SpectralGate
+        from backend.core.dsp.spectral_gate import gate_audio
 
-        result = SpectralGate().process(AUDIO_SINE, SR)
+        result = gate_audio(AUDIO_SINE, SR)
         # Sinus (starkes Signal) soll durch Gate durchkommen
         assert np.max(np.abs(result)) > 0.01
 
     def test_07_custom_threshold(self):
-        from dsp.spectral_gate import SpectralGate
+        from backend.core.dsp.spectral_gate import SpectralGate
 
         obj = SpectralGate(threshold_db=-60.0)
         result = obj.process(AUDIO_NOISE, SR)
+        assert np.isfinite(result).all()
+
+    def test_08_stereo_layout_preserved(self):
+        """Stereo channels-first (C, N) bleibt exakt erhalten (§Stereo-Layout-Invariante)."""
+        from backend.core.dsp.spectral_gate import gate_audio
+
+        result = gate_audio(AUDIO_STEREO, SR)
+        assert isinstance(result, np.ndarray)
+        assert result.shape == AUDIO_STEREO.shape  # (2, N)
         assert np.isfinite(result).all()
 
 
@@ -1287,7 +1297,7 @@ class TestDSPPriorityIntegration:
         ("dsp.multiresolution_stft", "AdaptiveMelSpectrogram"),
         ("dsp.perceptual_quality_evaluator", "AdaptivePerceptualQualityEvaluator"),
         ("dsp.perceptual_eq", "PerceptualEQ"),
-        ("dsp.spectral_gate", "SpectralGate"),
+        ("backend.core.dsp.spectral_gate", "SpectralGate"),
         ("dsp.spectral_subtractor", "SpectralSubtractor"),
         ("dsp.multiband_compressor", "MultibandCompressor"),
         ("dsp.true_peak_limiter", "TruePeakLimiter"),
@@ -1331,9 +1341,9 @@ class TestDSPPriorityIntegration:
 
     def test_chain_denoise_gate_compress(self):
         """Kette: AutomaticDenoiser → SpectralGate → MultibandCompressor"""
+        from backend.core.dsp.spectral_gate import SpectralGate
         from dsp.automatic_denoiser import AutomaticDenoiser
         from dsp.multiband_compressor import MultibandCompressor
-        from dsp.spectral_gate import SpectralGate
 
         audio = AUDIO_SINE + AUDIO_NOISE
         denoised = AutomaticDenoiser().denoise(audio, SR)

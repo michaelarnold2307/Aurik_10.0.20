@@ -1,46 +1,44 @@
 # TASK_CHANGES — Live-Ledger der aktuellen Aufgabe
 
-> Generiert von `scripts/change_ledger.py snapshot` (Base: `HEAD`, Stand: 2026-09-28 04:25 CEST).
+> Generiert von `scripts/change_ledger.py snapshot` (Base: `HEAD`, Stand: 2026-10-01 22:24 CEST).
 > CI (`ci-lite.yml` pr-evidence-gate) erzwingt Abdeckung: jede geänderte Code-Datei muss hier stehen.
 
 ## Geänderte Dateien
 
 | Status | Pfad | Art |
 |---|---|---|
+| M | .agents/skills/changelog/SKILL.md | modifiziert |
+| M | .agents/skills/code_of_conduct/SKILL.md | modifiziert |
+| M | .agents/skills/contributing/SKILL.md | modifiziert |
+| M | .agents/skills/notice/SKILL.md | modifiziert |
+| M | .agents/skills/security/SKILL.md | modifiziert |
+| M | .agents/skills/trademark/SKILL.md | modifiziert |
 | M | .github/FILE_REGISTRY.md | modifiziert |
-| M | Aurik10/ui/modern_window.py | modifiziert |
+| M | .github/GOVERNANCE.md | modifiziert |
+| M | .github/ISSUE_MANAGEMENT.md | modifiziert |
+| M | .github/LABELS.md | modifiziert |
+| M | CHANGELOG.md | modifiziert |
+| M | CLAUDE.md | modifiziert |
+| M | CODE_OF_CONDUCT.md | modifiziert |
+| M | CONTRIBUTING.md | modifiziert |
+| M | NOTICE.md | modifiziert |
+| M | README.md | modifiziert |
+| M | SECURITY.md | modifiziert |
+| M | SPEC.md | modifiziert |
 | M | TASK_CHANGES.md | modifiziert |
-| M | backend/core/adaptive_strength_optimizer.py | modifiziert |
-| M | backend/core/audio_exporter.py | modifiziert |
-| M | backend/core/chunked_streaming.py | modifiziert |
-| M | backend/core/closed_loop_calibrator.py | modifiziert |
-| M | backend/core/cumulative_interaction_guard.py | modifiziert |
-| M | backend/core/defect_audibility_gate.py | modifiziert |
-| M | backend/core/defect_scanner.py | modifiziert |
-| M | backend/core/human_pleasantness_estimator.py | modifiziert |
-| M | backend/core/per_phase_musical_goals_gate.py | modifiziert |
-| M | backend/core/phases/phase_02_hum_removal.py | modifiziert |
-| M | backend/core/phases/phase_12_wow_flutter_fix.py | modifiziert |
-| M | backend/core/preservation_metrics.py | modifiziert |
-| M | backend/core/tfs_preservation_guard.py | modifiziert |
-| M | backend/core/unified_restorer_v3.py | modifiziert |
+| M | TRADEMARK.md | modifiziert |
+| M | backend/core/dsp/spectral_gate.py | modifiziert |
+| M | backend/core/regulator/_dsp_applier.py | modifiziert |
+| M | benchmarks/README.md | modifiziert |
+| M | docs/ANALYSE_VOKAL_MUSIK_NACH_RESTAURATION.md | modifiziert |
+| M | docs/AURIK_V10_ERKENNTNISSE.md | modifiziert |
+| M | docs/GESAMTKONZEPT_PERFORMANCE_WOHLKLANG.md | modifiziert |
+| M | docs/LUECKENSCHLUSS_GESAMTPLAN.md | modifiziert |
 | M | docs/PHASE_SOTA_GAP_ANALYSE.md | modifiziert |
-| M | plugins/bigvgan_v2_plugin.py | modifiziert |
-| M | scripts/repair_effectiveness_harness.py | modifiziert |
-| M | tests/unit/test_audio_exporter_musiclover.py | modifiziert |
-| M | tests/unit/test_chunked_streaming_layouts.py | modifiziert |
-| M | tests/unit/test_defect_audibility_gate.py | modifiziert |
-| M | tests/unit/test_hr_v1_activation_contract.py | modifiziert |
-| M | tests/unit/test_layout_invariants.py | modifiziert |
-| M | tests/unit/test_phase_12_wow_flutter_fix.py | modifiziert |
-| M | tests/unit/test_pleasantness_goal_achievement.py | modifiziert |
-| ?? | Setupfile/DEBIAN_TEMPLATE/aurik | ungetrackt |
-| ?? | Setupfile/DEBIAN_TEMPLATE/aurik.desktop | ungetrackt |
-| ?? | Setupfile/DEBIAN_TEMPLATE/control | ungetrackt |
-| ?? | Setupfile/DEBIAN_TEMPLATE/postinst | ungetrackt |
-| ?? | Setupfile/DEBIAN_TEMPLATE/postrm | ungetrackt |
-| ?? | Setupfile/aurik_modelle_10.2.0.tar.zst | ungetrackt |
-| ?? | scripts/run_wohlklang_ab_validation.py | ungetrackt |
+| M | docs/REKOMBINATION_ZEITPUNKT_ANALYSE.md | modifiziert |
+| M | docs/TODOS_SOTA_ROADMAP.md | modifiziert |
+| M | docs/WITNESS_SOTA_GAP_ANALYSE.md | modifiziert |
+| M | tests/unit/test_v99_dsp_priority_modules.py | modifiziert |
 
 ## Entscheidungen
 
