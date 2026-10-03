@@ -150,7 +150,7 @@ def optimize_phase_strength(
     phase_runner: Callable[[np.ndarray, float], np.ndarray],
     # Funktion die (audio, strength) → processed_audio ausführt
     restorability_score: float = 50.0,
-    transfer_chain_depth: int = 1,
+    transfer_chain_depth: int | None = None,
     bandwidth_loss: float = 0.0,
     is_repair_phase: bool = False,
     is_enhancement_phase: bool = False,
@@ -179,6 +179,13 @@ def optimize_phase_strength(
     Returns:
         AdaptiveStrengthResult mit optimaler Stärke und History.
     """
+    # §G86: Default NUR in calibration_context.py — bei None aus dem Kontext
+    # beziehen (Muster absolute_quality_gate.py).
+    if transfer_chain_depth is None:
+        from backend.core.calibration_context import get_calibration_context
+
+        _ctx = get_calibration_context()
+        transfer_chain_depth = _ctx.transfer_chain_depth if _ctx is not None else 1
     cfg = _adaptive_config(restorability_score, transfer_chain_depth, bandwidth_loss)
 
     # Phasen-Typ-Modifikatoren
@@ -341,7 +348,7 @@ def optimize_pipeline(
     sample_rate: int,
     phase_runner_factory: Callable[[str], Callable[[np.ndarray, float], np.ndarray] | None],
     restorability_score: float = 50.0,
-    transfer_chain_depth: int = 1,
+    transfer_chain_depth: int | None = None,
     bandwidth_loss: float = 0.0,
     repair_families: frozenset[str] | None = None,
     enhancement_families: frozenset[str] | None = None,
@@ -352,6 +359,13 @@ def optimize_pipeline(
     Jede Phase bekommt ihre Chance bei minimaler Stärke.
     Nur wenn MESSUNG zeigt, dass keine Stärke hilft, wird sie übersprungen.
     """
+    # §G86: Default NUR in calibration_context.py — bei None aus dem Kontext
+    # beziehen (Muster absolute_quality_gate.py).
+    if transfer_chain_depth is None:
+        from backend.core.calibration_context import get_calibration_context
+
+        _ctx = get_calibration_context()
+        transfer_chain_depth = _ctx.transfer_chain_depth if _ctx is not None else 1
     from backend.core.aurik_orchestrator import _family_from_phase_id
 
     repair = repair_families or frozenset()

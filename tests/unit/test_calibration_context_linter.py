@@ -120,7 +120,7 @@ def test_calibration_context_linter_no_new_violations() -> None:
 
     for path, lines in baseline.items():
         curr_lines = set(current.get(path, []))
-        fixed = sorted(curr_lines - set(lines))  # fixed = in baseline but not current
+        fixed = sorted(set(lines) - curr_lines)  # fixed = in Baseline aber nicht mehr im Code
         if fixed:
             fixed_violations[path] = fixed
 
