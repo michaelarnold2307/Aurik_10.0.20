@@ -37,7 +37,7 @@
 | **resemblyzer VoiceEncoder** | Vokal-Identität/Witness | **Sprache (LibriSpeech)** | ⬜ **F9 NEU** — Musik-Vokal-Finetune |
 | **VersaSingMOS** | Gesangs-MOS-Gates | Gesang (nahe Musik) | ⬜ **F10 NEU** — Kalibrierung auf verarbeitete Musik-Vocals |
 | BW-Reconstructor v5 | Lacquer/Shellac HF-Band | Musik (selbst trainiert) | ⬜ **F11 NEU** — A1-Gate 0,73 < 1,02 nicht bestanden → Re-Training |
-| BANQUET | Vinyl-Denoise | Musik/Synth | ⬜ **F12 NEU** — Real-Vinyl-Paare (Trainingscode fehlt noch, SOTA4-6) |
+| BANQUET | Vinyl-Denoise | Musik/Synth | 🔧 **F12 UMGESETZT 2026-10-03** — Real-Vinyl-Paare: Trainingscode `scripts/train_banquet_vinyl_finetune.py` vorhanden (GPU-Lauf + ΔSDR-Gate offen) |
 | MP-SENet | Denoise (ex) | Sprache | ❌ de-wired nach Negativmessung (SOTA-ML-V3: −5,9…−8,5 dB) — KEIN Training |
 | Whisper-tiny | Semantische Konditionierung (DiT) | Sprache/Web | ⏭ bewusst nur Konditionierung, kein Wohlklang-Generator |
 
@@ -64,9 +64,12 @@
   liegt vor (`models/bw_reconstructor/bw_reconstructor_v5.onnx`), Qualität reicht nicht. Re-Training
   mit maskierungs-informiertem A1-Loss (Muster SOTA-A1, EAR-VAE) bis Gate ≥ 1,02 — sonst bleibt das
   DSP-SBR/FlashSR-Paar der HF-Weg (Flag bleibt aus).
-- **F12 · BANQUET Real-Vinyl-Finetune** — Basis: BanquetVinylPlugin (92 MB ONNX). Trainingscode fehlt
-  (SOTA4-6/P11: `banquet_infer.py` ohne Trainings-Teil). Ziel: Paare echter Vinyl-Mitschnitte ↔
+- **F12 · BANQUET Real-Vinyl-Finetune** — Basis: BanquetVinylPlugin (92 MB ONNX). Trainingscode
+  **UMGESETZT 2026-10-03** (`scripts/train_banquet_vinyl_finetune.py` + Tests 10×grün;
+  SOTA4-6/P11-Befund `banquet_infer.py` ohne Trainings-Teil — Architektur kommt aus der
+  SOTA-ML-V5-Rekonstruktion `banquet_torch_rocm.py`, Parität ≤ 2e-6). Ziel: Paare echter Vinyl-Mitschnitte ↔
   Referenz (Digital-Reissue) für realistischeres Knistern-/Rumpel-Bild ohne Musik-Verfärbung.
+  Offen: GPU-Finetune-Lauf + Gate ΔSDR ≥ +2 dB vs. Zero-Shot + Never-worsen (Report, kein Flag-Flip).
 
 **Vokal-Hebel (greifen über die F-Reihe bei allen Gesängen):** F1 DiffWave-Vokal + F2 GaCELA
 (Langlücken-Inpainting 375–1500 ms), F4 FlashSR (Vokal-Air/Presence >12,9 kHz), F8/F10 (MOS-Wahrheit),
@@ -109,6 +112,18 @@ Vorstufe (Separation-SOTA, Zeile 1602).
   Referenz-Vergleich über große Korpora; hoher Aufwand, kein Qualitätsrisiko.
 - **Empfehlung:** Erst (C) evaluieren (kein Wohlklang-Risiko), parallel (A) als
   Hörordnungs-Design-Session vorbereiten; (B) nur falls (A)/(C) scheitern.
+- **STATUS 2026-10-03 — UMGESETZT:** (C) seit §PERF-R15/R17 aktiv (bit-identisch,
+  121,6 s → ~3,9 s je Aufruf). **(A) UMGESETZT (Sign-off 2026-10-03):** schritt-
+  granulare Core-Guards in `excellence_optimizer.py` (`_t61_guarded_transition` +
+  `_core_regressions_between`, Hysterese 0,05 wie §v10.702 R4, Ketten-Messung
+  1 initiale + 1 Messung je Schritt): nur regressierende Schritte werden
+  verworfen, tragfähige bleiben erhalten (Roadmap-Beispiel realisiert: OLA bleibt,
+  spatial_depth-kollabierender Harmonic-Boost fällt einzeln raus); jede Verwerfung
+  in `ExcellenceResult.step_rejections` dokumentiert (§V6); der block-globale
+  Core-Guard bleibt Sicherheitsnetz. Tests 35 grün (4 neu).
+  **Rest (A/B-Abnahme):** Vorher/Nachher-Lauf über die 3 Referenz-Songs
+  (Ergebnis ≠ wie heute — Verhaltensänderung laut Optionsvertrag A) mit
+  Never-worsen-Gates + Hörordnungs-Abnahme, danach ist T6-1 final abgenommen.
 
 ---
 
@@ -1777,8 +1792,8 @@ inkl. Python-Overhead). Tests erweitert: `test_15_numba_heapq_bit_identical`
 
 | # | Maßnahme | Wirkung | Status / nächster Schritt |
 |---|---|---|---|
-| Q1 | **HR-V1-Flag-Flip** (BigVGAN-Repair, additive_synthesis_gate) — A/B validiert | HNR +4,42 dB, af +0,0073, PQS 4,52 auf harmonisch beschädigtem Material | **BUDGET-URTEIL 2026-09-19: NEGATIV — Flag bleibt OFF.** Überwachter 225-s-Lauf (PERF-R10-Stand): Wall 12 137,5 s ≈ 3 h 22 min (RT-Bericht 32,0×, letzter Chunk 39× RT) — Akzeptanz ≤ 40 min weit verfehlt, KEIN Headroom für die 2,5×-RT-Synthese. Nächste Prüfung nach P1/P2-Gewinnen (GPU-Ports + Gap-Rest); Flip-Mechanik bleibt kartiert (Flag + Ready-Gate-Ausrichtung) |
-| Q2 | **F4-FlashSR-HF-Rekonstruktion > 12,9 kHz** (16k→48k) | Air/Presence — schließt die größte Qualitätslücke (conf 0,99) | **UNBLOCKED (2026-09-19)**: Base-Checkpoint `models/flashsr/models/upsampler.pth` ✓, MUSDB18-HQ (150 Tracks) ✓, Rezept `train_flashsr_f4.py` ✓; Finetune-Lauf 2026-09-17 bei Epoche 6 abgebrochen (val_a1 0,45–0,52, noch nicht konvergiert, best 0,449@E4/0,516@E5) — **Resume** `--resume output/f4_flashsr/checkpoint_epoch6.pt --epochs 12+` nach Ende des Supervised-Laufs (GPU) |
+| Q1 | **HR-V1-Flag-Flip** (BigVGAN-Repair, additive_synthesis_gate) — A/B validiert | HNR +4,42 dB, af +0,0073, PQS 4,52 auf harmonisch beschädigtem Material | **BUDGET-URTEIL 2026-09-19: NEGATIV — Flag bleibt OFF.** Überwachter 225-s-Lauf (PERF-R10-Stand): Wall 12 137,5 s ≈ 3 h 22 min (RT-Bericht 32,0×, letzter Chunk 39× RT) — Akzeptanz ≤ 40 min weit verfehlt, KEIN Headroom für die 2,5×-RT-Synthese. Nächste Prüfung nach P1/P2-Gewinnen (GPU-Ports + Gap-Rest); Flip-Mechanik bleibt kartiert — **UPDATE 2026-09-27 (§P1-2): FLAG-FLIP DURCHGEFÜHRT** (`BIGVGAN_V2_HR_ACTIVATED = True`, `bigvgan_v2.pth` vorhanden, Budget nach §PERF-R15/17 −32 % Laufzeit) — HR-V1 produktiv aktiv |
+| Q2 | **F4-FlashSR-HF-Rekonstruktion > 12,9 kHz** (16k→48k) | Air/Presence — schließt die größte Qualitätslücke (conf 0,99) | **UNBLOCKED (2026-09-19)**: Base-Checkpoint `models/flashsr/models/upsampler.pth` ✓, MUSDB18-HQ (150 Tracks) ✓, Rezept `train_flashsr_f4.py` ✓; Finetune-Lauf 2026-09-17 bei Epoche 6 abgebrochen (val_a1 0,45–0,52, noch nicht konvergiert, best 0,449@E4/0,516@E5) — **Resume** `--resume output/f4_flashsr/checkpoint_epoch6.pt --epochs 12+` nach Ende des Supervised-Laufs (GPU) — **UPDATE 2026-10-03:** Workspace-Datenverlust entdeckt (`data/musdb18hq` + `output/f4_flashsr` weg, Muster wie SOTA4-5-Blob-Symlinks); beides aus `Aurik_Backup/Aurik_Standalone` reaktiviert (MUSDB 750 WAVs = 150×5 ✓). Archiv `_training_archive_20260920/f4_flashsr` enthält Epochen 0–29: **Val-Kliff nach E13** (best **0,3645@E10** = `best.pt`; E14–29 0,63–0,87 ⇒ `checkpoint_epoch29` NICHT fortsetzen). **Resume von `best.pt` gestartet 2026-10-03** (E11→22, Early-Stop Patience 5, `.venv_aurik`/ROCm) |
 | Q3 | **Separation-SOTA:** VS-1/GSEP + Demucs v5 | Separierungs-/Quelltreue-Sprung (P1-2) | EXTERN BLOCKIERT — offizielle Gewichte beschaffen (SongEval/Release-Kanäle) |
 | Q4 | **WF-V4 neuraler Warp-Schätzer** | Wow/Flutter-Korrektur ohne Authentizitätsverlust (einziger Hörordnungs-sicherer Weg) | EXTERN BLOCKIERT — Checkpoint-Quelle klären |
 | Q5 | **Blind-Hörstudie n≥30** (P1-4) | Kalibriert alle Hörordnungs-Schwellen auf echte Hörer | EXTERN — Hörer-Panel organisieren |
@@ -1837,7 +1852,7 @@ Neumessung mit R13-Tooling läuft separat (`output/perf_session_20260919_r13/`).
 | SOTA4-3 | F4-FlashSR-Musik-Finetune (HF-Rekonstruktion > 12,9 kHz): größte dokumentierte Qualitätslücke des Referenzmaterials (bandwidth_loss conf=0,99) | Air/Presence (MUSHRA-Proxy VocPres/ISO226) | GPU-GEBUNDEN — Rezept vorhanden (train_flashsr_f4.py), 16k→48k |
 | SOTA4-4 | FCPE-Torch-ROCm-Port nach BSR-Muster (ORT-ROCm-EP rel=0,93 defekt ⇒ derzeit CPU): VORAB echten FCPE-Zeitanteil je Chunk messen | unklar — im phase_12-Profil nicht unter den Top-20; Port lohnt nur bei gemessenem Anteil | ✅ ERLEDIGT-DURCH-BESTAND 2026-09-19: FCPE ist bereits als Torch-ROCm-Kern umgesetzt und verdrahtet (§SOTA-ML-V7, fcpe_torch_rocm.py — ORT-ROCm-Defekt rel 0,19 beseitigt); Messung im phase_12-Profil: kalt 5,56 s (Kern-Build 3,67 s einmalig), warm ~1,9 s je 30-s-Chunk |
 | SOTA4-5 | Whisper-GPU (HF-Decoder): auf diesem Host inert (Blob-Store-Symlinks gebrochen ⇒ ONNX/DSP-Fallback), auf anderen Hosts aktiv | ~10–20× auf dem Transkriptionsschritt je Song | DOKUMENTIERT — kein lokaler Aufwand |
-| SOTA4-6 | P11 BANQUET-Mini-Batch (dynamische Batch-Dim): Trainingscode fehlt im Repo (banquet_infer.py ohne Architektur, nur Checkpoint) — optional Architektur-Re-Engineering aus dem Checkpoint | GPU-Deckel 1,19× → potenziell 5–10× auf phase_09 | ✅ TEILWEISE-DURCH-§PERF-R4 2026-09-19: TORCH_BATCH-Default 4→32 (bit-identisch zu B=4, gemessen 7,85→6,49 s je 30 s; Clamp 40 wegen MIOpen-B≥48-Defekt) — das Re-Engineering des Trainingscodes bleibt gestrichen (kein Qualitäts-Nutzen, nur Batch-Dim) |
+| SOTA4-6 | P11 BANQUET-Mini-Batch (dynamische Batch-Dim): Trainingscode fehlt im Repo (banquet_infer.py ohne Architektur, nur Checkpoint) — optional Architektur-Re-Engineering aus dem Checkpoint | GPU-Deckel 1,19× → potenziell 5–10× auf phase_09 | ✅ TEILWEISE-DURCH-§PERF-R4 2026-09-19: TORCH_BATCH-Default 4→32 (bit-identisch zu B=4) — das Re-Engineering des Trainingscodes bleibt für den Mini-Batch-Zweck gestrichen. Nachtrag 2026-10-03: für F12 (Qualitäts-Finetune) ist der Trainingscode trotzdem umgesetzt (`scripts/train_banquet_vinyl_finetune.py`) |
 | SOTA4-7 | phase_28-Session-Hoist (ONNX-Session je phase_28-Aufruf statt je Prozess) — kleinteiliger Restposten | ~1–3 s/Chunk | ✅ ERLEDIGT-DURCH-BESTAND 2026-09-19 (Messung): LGE-Whisper ist bereits Singleton (lädt 1× je Prozess, v1023-Log zeigt je Chunk KEINE Whisper-Load-Zeilen); warmes phase_28 = 5,3 s/30 s, davon 1,7 s Chunk-Re-Transkription — bewusst inhärent (Maske muss das VERARBEITETE Chunk-Audio reflektieren, WoW/Flutter-Stretch ⇒ Song-Timeline wäre nicht exakt) |
 
 **Akzeptanz je Maßnahme:** (1) bit-identisch oder durch Never-worsen-Gates/
@@ -2062,6 +2077,25 @@ Chunk-Modus-Struktur (siehe AUF-4).
 | ANA-11 | **Phonem-GRENZ-Detektor tot** (Gegenstück-Muster): `detect_phoneme_boundaries_dsp` UND `detect_phoneme_protection_mask_dsp` (Plosiv/Frikativ-Schutzmaske, „soll NR reduzieren“) hatten **0 Produktions-Aufrufe** (Lauf-Befund: 0 Treffer) — nur die Feature-Extraktion lief als LGE-Fallback. Die Konsonanten-Schutzmaske gehört definitionsgemäß in die NR-Phasen | ✅ **UMGESETZT 2026-09-17**: phase_29 (Tape-Hiss-NR, vorher GANZ ohne Gate) blendet nach allen Guards das NR-Ergebnis in Konsonanten-Frames sanft Richtung Input zurück (max 0,35 × Stärke, 4-ms-Glättung, never-worsen durch Nichtstun; gemessen +6,9 % näher am Input in der Masken-Region). Test: `test_ana11_consonant_protection_keeps_region_closer_to_input` (140 Tests grün) |
 
 ---
+
+### GPU-Migration ML-Inferenz (2026-10-03) — Analyse + Umstellung
+
+- **Regel & Mechanik (§III.9, §v10.40c/§v10.762):** GPU nur mit Paritätsnachweis
+  rel ≤ 1e-3 — zentrale Schaltstelle `backend/core/gpu_model_registry`. „GPU primär,
+  CPU als Fallback" gilt ALLEIN über das Verdict „rocm"; „cpu"/„unknown" = fail-closed CPU.
+- **Umgesetzt 2026-10-03:** Registry-Hardening (unknown→CPU), Provider-Sweep über ~35
+  Stellen auf `get_onnx_providers()`, Miipher-EP-Override entfernt (gemessener
+  ROCm-Softmax-Defekt rel 3,5), MERT-Sites ohne Nachweis entschaerft, DiffWave-Pfad
+  tot→aktiv, CREPE GPU-Default (Sign-off, Kill-Switch AURIK_PITCH_GPU=0),
+  Scan: Paritäts-Gate über ALLE Feed-Typen + Input-Verträge rekonstruiert
+  (whisper 80×3000, mp_senet time=32, mert 24000, sgmse 256×256) + MIGraphX-Budget 240 s.
+- **Messbilanz 11/11 Verträge:** 9× EP-Numerik defekt (rel 0,10–1,20) ⇒ „cpu"
+  (Qualitätsschutz; GPU erst nach Torch-Port, Baselines bekannt), 1× CPU-schneller
+  (mert_decoder), 1× Datei fehlt (vocos_mel_spec_24khz — aus Backup wiederhergestellt).
+- **Automatisierte GPU-Kette (laufend):** persistierende Scans (22 Modelle, MIGraphX
+  aktiv) → --no-opt-Kernel-Experimente → F12-Volllauf — alles GPU-frei verkettet.
+- **P2 Phase-Gap-Rest (2026-10-03):** Negativbefund — Batching/Cache messbar langsamer
+  (103 vs. 92–97 ms/Call) ⇒ verworfen; 20 Bit-Identitätstests als Regressionsschutz.
 
 ## Hintergrund (damit die nächste Session sofort einsteigt)
 
