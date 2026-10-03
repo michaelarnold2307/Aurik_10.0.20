@@ -18,7 +18,7 @@ pytest.importorskip("librosa")  # CI-Minimal-Umgebung (cross-platform)
 # Add parent directory to path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from dsp.transparent_dynamics import (
+from backend.core.dsp.transparent_dynamics import (
     DynamicsProcessor,
     MicroDynamicsEnhancer,
     TransparentDynamicsProcessor,

@@ -124,7 +124,7 @@ except Exception:
     NVSR_AVAILABLE = False
 
 try:
-    from dsp.pghi import pghi_reconstruct_from_stft as _pghi_p06
+    from backend.core.dsp.pghi import pghi_reconstruct_from_stft as _pghi_p06
 
     _PGHI_AVAILABLE_P06 = True
 except ImportError:

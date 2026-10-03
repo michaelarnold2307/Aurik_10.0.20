@@ -18,16 +18,16 @@ import numpy as np
 import pytest
 
 try:
-    from backend.ml.safety_wrappers.context_aware_deesser_safety import (
-        ContextAwareDeEsserSafety,
-        validate_deessing_post,
-        validate_deessing_pre,
-    )
-    from dsp.context_aware_deesser import (
+    from backend.core.dsp.context_aware_deesser import (
         ContextAwareDeEsser,
         DeEsserConfig,
         ProcessingMode,
         apply_context_aware_deessing,
+    )
+    from backend.ml.safety_wrappers.context_aware_deesser_safety import (
+        ContextAwareDeEsserSafety,
+        validate_deessing_post,
+        validate_deessing_pre,
     )
 
     CONTEXT_AWARE_DEESSER_AVAILABLE = True

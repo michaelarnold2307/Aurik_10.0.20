@@ -30,6 +30,16 @@ from dataclasses import dataclass, field
 
 import numpy as np
 
+
+def _default_transfer_chain_depth() -> int:
+    # §G86: Default NUR in calibration_context.py — bei None aus dem Kontext
+    # beziehen (Muster absolute_quality_gate.py).
+    from backend.core.calibration_context import get_calibration_context
+
+    _ctx = get_calibration_context()
+    return _ctx.transfer_chain_depth if _ctx is not None else 1
+
+
 logger = logging.getLogger(__name__)
 
 
@@ -111,7 +121,9 @@ class PipelineCalibration:
 
     # ── Metadaten ──
     restorability_score: float = 50.0
-    transfer_chain_depth: int = 1
+    transfer_chain_depth: int = field(
+        default_factory=_default_transfer_chain_depth
+    )  # §G86: Default nur aus CalibrationContext
     material_type: str = "unknown"
     calibrated: bool = False
     warnings: list[str] = field(default_factory=list)
@@ -177,7 +189,7 @@ def _onset_tolerance(genre: str) -> float:
 def calibrate_pipeline_guards(
     *,
     restorability_score: float = 50.0,
-    transfer_chain_depth: int = 1,
+    transfer_chain_depth: int | None = None,
     material_type: str = "unknown",
     bandwidth_loss: float = 0.0,
     snr_db: float = 30.0,
@@ -200,6 +212,14 @@ def calibrate_pipeline_guards(
     pro Song verfügbar. Kein Wert wird erfunden.
     """
     warnings: list[str] = []
+
+    # §G86: Default NUR in calibration_context.py — bei None aus dem Kontext
+    # beziehen (Muster absolute_quality_gate.py).
+    if transfer_chain_depth is None:
+        from backend.core.calibration_context import get_calibration_context
+
+        _ctx = get_calibration_context()
+        transfer_chain_depth = _ctx.transfer_chain_depth if _ctx is not None else 1
 
     # Sanitize inputs
     rs = float(np.clip(restorability_score, 10.0, 100.0))

@@ -1077,7 +1077,7 @@ def calibrate_sft_thresholds(
     novelty_crit: float | None = None,
     material_type: str = "unknown",
     vocal_confidence: float = 0.0,
-    transfer_chain_depth: int = 1,
+    transfer_chain_depth: int | None = None,
     restorability_score: float = 65.0,
 ) -> None:
     """§v10.43 Zentrale SFT-Schwellwert-Kalibrierung aus CalibrationContext.
@@ -1085,6 +1085,14 @@ def calibrate_sft_thresholds(
     Alle SFT-Schwellwerte, die vom Song abhängen, werden hier ZENTRAL gesetzt.
     Kein Modul darf eigene Konstanten pflegen (§V27, §G81).
     """
+    # §G86: Default NUR in calibration_context.py — bei None aus dem Kontext
+    # beziehen (Muster absolute_quality_gate.py).
+    if transfer_chain_depth is None:
+        from backend.core.calibration_context import get_calibration_context
+
+        _ctx = get_calibration_context()
+        transfer_chain_depth = _ctx.transfer_chain_depth if _ctx is not None else 1
+
     global _ECHO_CORR_THRESH, _HNR_WARN_DB, _HNR_CRIT_DB
     global _WET_CEILING_NONREPAIR, _WET_CEILING_REPAIR
     global _HG_BASE_THRESHOLD

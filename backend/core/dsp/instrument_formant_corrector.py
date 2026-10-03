@@ -235,7 +235,7 @@ class InstrumentFormantDriftCorrector:
 
     def _get_tracker(self):
         if self._tracker is None:
-            from dsp.formant_system import FormantTracker
+            from backend.core.dsp.formant_system import FormantTracker
 
             self._tracker = FormantTracker(n_formants=5)  # type: ignore[assignment]
         return self._tracker
@@ -400,7 +400,7 @@ class InstrumentFormantDriftCorrector:
         )
 
         # Look up targets — graceful no-op for unknown instruments
-        from dsp.formant_system import InstrumentFormantTargets
+        from backend.core.dsp.formant_system import InstrumentFormantTargets
 
         row = InstrumentFormantTargets.get_targets(instrument)
 

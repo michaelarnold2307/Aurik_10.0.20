@@ -1,7 +1,7 @@
 import numpy as np
 import pytest
 
-from dsp.dynamic_range_expander import DynamicRangeExpander
+from backend.core.dsp.dynamic_range_expander import DynamicRangeExpander
 
 
 @pytest.mark.unit

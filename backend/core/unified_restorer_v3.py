@@ -12016,7 +12016,7 @@ class UnifiedRestorerV3:
                 # without min-distance -- ~4x too many onsets for noisy material.
                 # Use dsp/dtw_groove.detect_onsets: STFT spectral flux + adaptive
                 # threshold + 50ms min-gap -- robust for vinyl/tape.
-                from dsp.dtw_groove import detect_onsets as _detect_onsets_stft
+                from backend.core.dsp.dtw_groove import detect_onsets as _detect_onsets_stft
 
                 _onset_result = _detect_onsets_stft(
                     _pa_seg,
@@ -30238,7 +30238,7 @@ class UnifiedRestorerV3:
             return audio
 
         try:
-            from dsp.digital_restoration_specialist import JitterCorrector
+            from backend.core.dsp.digital_restoration_specialist import JitterCorrector
 
             _thr_ppm = float(np.clip(170.0 - 120.0 * _jitter_sev, 45.0, 170.0))
             _corr_strength = float(np.clip(0.25 + 0.65 * _jitter_sev, 0.25, 0.90))
@@ -30536,7 +30536,7 @@ class UnifiedRestorerV3:
             return audio
 
         try:
-            from dsp.bandwidth_artifact_remover import (
+            from backend.core.dsp.bandwidth_artifact_remover import (
                 BandwidthArtifactRemover,
             )
 
@@ -30661,7 +30661,7 @@ class UnifiedRestorerV3:
             return audio
 
         try:
-            from dsp.bandwidth_artifact_remover import (
+            from backend.core.dsp.bandwidth_artifact_remover import (
                 BandwidthArtifactRemover,
             )
 
@@ -30786,7 +30786,7 @@ class UnifiedRestorerV3:
             return audio
 
         try:
-            from dsp.dynamic_range_expander import DynamicRangeExpander
+            from backend.core.dsp.dynamic_range_expander import DynamicRangeExpander
 
             _thr_db = float(np.clip(-33.0 + 16.0 * _dyn_sev, -33.0, -17.0))
             _ratio = float(np.clip(0.92 - 0.24 * _dyn_sev, 0.62, 0.92))
@@ -43120,7 +43120,7 @@ class UnifiedRestorerV3:
                     and _zwicker_phase_prefix in _ZWICKER_SUBTRAKTIVE_PHASES
                 ):
                     try:
-                        from dsp.psychoacoustics import compute_loudness_delta_sone
+                        from backend.core.dsp.psychoacoustics import compute_loudness_delta_sone
 
                         _zw_delta, _zw_before, _zw_after = compute_loudness_delta_sone(
                             _afg_phase_input, current_audio, sample_rate

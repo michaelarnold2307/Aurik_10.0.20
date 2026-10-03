@@ -289,7 +289,7 @@ class TestOMLSASilenceGFloor:
     """§9.10.118 — Energy-adaptive G_floor: lower floor in silence regions."""
 
     def _make_omlsa(self):
-        from dsp.adaptive_omlsa import AdaptiveOMLSA
+        from backend.core.dsp.adaptive_omlsa import AdaptiveOMLSA
 
         return AdaptiveOMLSA()
 
@@ -495,7 +495,7 @@ class TestIntegrationEdgeCases:
 
     def test_35_omlsa_auto_optimize_still_works(self):
         """auto_optimize should still function after silence G_floor changes."""
-        from dsp.adaptive_omlsa import AdaptiveOMLSA
+        from backend.core.dsp.adaptive_omlsa import AdaptiveOMLSA
 
         omlsa = AdaptiveOMLSA()
         noisy = np.random.default_rng(35).uniform(0, 0.5, 1025).astype(np.float64)

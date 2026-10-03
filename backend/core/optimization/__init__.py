@@ -36,9 +36,9 @@ from .e2e_optimizer import DifferentiableCompressor, DifferentiableEQ, Different
 try:
     from .hyperparameter_optimizer import HyperparameterConfig, MaterialSpecificOptimizer, MultiMaterialOptimizer
 except ImportError:  # optuna not installed
-    HyperparameterConfig = None  # type: ignore[assignment,misc]
-    MaterialSpecificOptimizer = None  # type: ignore[assignment,misc]
-    MultiMaterialOptimizer = None  # type: ignore[assignment,misc]
+    HyperparameterConfig = None  # type: ignore[assignment, misc]
+    MaterialSpecificOptimizer = None  # type: ignore[assignment, misc]
+    MultiMaterialOptimizer = None  # type: ignore[assignment, misc]
 from .multi_objective import NSGAII, Individual, ObjectiveFunction, create_audio_restoration_moo
 from .neural_architecture_search import AudioNASNetwork, DARTSCell, MixedOp, NASTrainer
 from .perceptual_loss import (

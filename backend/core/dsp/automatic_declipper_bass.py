@@ -79,7 +79,7 @@ class AiAutomaticDeclipperBass:
     def declip_bass(self, audio: np.ndarray, sr: int) -> np.ndarray:
         """AR-Declipping mit Tiefpass-Vorfilterung für Basssignal-Restauration."""
         self.log_contract()
-        from dsp._declip_core import ar_declip
+        from backend.core.dsp._declip_core import ar_declip
 
         audio = np.asarray(audio, dtype=np.float64)
         # Tiefpass-Vorfilterung: Bass-Anteile betonen, um AR-Modell zu stabilisieren

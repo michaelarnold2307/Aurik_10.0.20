@@ -47,12 +47,35 @@ _INPUT_OVERRIDES: dict[str, dict[str, tuple[tuple[int, ...], str]]] = {
         "audio_length": ((1,), "int64"),
         "domain_id": ((1,), "int64"),
     },
-    # vae_decoder (2026-09-10): _DEFAULT_DIM=256 erzeugt ein
-    # (1,8,256,256)-Latent → 1024×1024-Mel, ~80 s/CPU-Lauf und VRAM-Spitzen
-    # auf ROCm (2× System-Crash im Scan). Plugin-Realform (1,8,8,128) wie in
-    # plugins/audioldm2_plugin.py (mel 64 Bins / 1024 Frames).
-    "models/audioldm2/vae_decoder.onnx": {
-        "latent": ((1, 8, 8, 128), "float32"),
+    # Input-Verträge der zuvor ungemessenen 11 Modelle (Signatur-Dump 2026-10-03):
+    # wav2vec2/utmosv2: Conv-Stack degeneriert unter ~320 Samples (s. o.) ⇒ 1600.
+    "models/wav2vec2/wav2vec2_forced_alignment.onnx": {
+        "input_values": ((1, 1600), "float32"),
+    },
+    "models/utmosv2/utmosv2_ssl_encoder.onnx": {
+        "input_values": ((1, 1600), "float32"),
+    },
+    # Probiert 2026-10-03 (Tracebacks der Load-Fails):
+    # mert: Conv-Stack stride-gesamt ~640 ⇒ 256 Samples degenerieren, 24000 läuft;
+    # sgmse: DNN-Concat erwartet freq=256 (80 mismatched auf Axis 2);
+    # whisper: Positions-Embedding fix auf 3000 Frames (volle 30 s Mel).
+    "models/mert/mert_330m.onnx": {
+        "input_values": ((1, 24000), "float32"),
+    },
+    "models/sgmse_plus/sgmse_plus_core.onnx": {
+        "x_t": ((1, 2, 256, 256), "float32"),
+        "y": ((1, 2, 256, 256), "float32"),
+    },
+    "models/whisper/whisper_tiny.onnx": {
+        "input_features": ((1, 80, 3000), "float32"),
+    },
+    # mp_senet (2026-10-03): TSTransformer-Attention (Reshape_4) fixiert time=32
+    # exakt (32×101×64 = 32×404×16; deklarierte Signatur irreführend —
+    # Produktions-Retry in plugins/mp_senet_plugin.py transponiert wegen derselben
+    # Reshape_4-Fehler). t=16/64/100/256/… scheitern nachweislich.
+    "models/mp_senet/mp_senet.onnx": {
+        "noisy_amp": ((1, 201, 32), "float32"),
+        "noisy_pha": ((1, 201, 32), "float32"),
     },
 }
 
@@ -72,6 +95,24 @@ def _collect_models(limit: int | None) -> list[Path]:
     return _out
 
 
+def _dim_for_param(dim_name: str) -> int:
+    """Dim-Größe aus dem ORT-dim_param-Namen (Graph-Signatur-Heuristik).
+
+    Mel-/Feature-Modelle deklarieren die Kanal-/Feature-Achse dynamisch
+    (z. B. „n_mels"): der blinde _DEFAULT_DIM=256 erzeugt Conv-Verwerfungen
+    (Befund whisper 2026-10-03: Conv erwartet 80 Mel-Bins, Feed lieferte
+    256 → Load-Fail, fail-closed „cpu"). Mel-/Feature-Achsen („mel"/„feat"/
+    „size") → 80; Spektral-/Breiten-Achsen („freq"/„bin"/„chan"/„band") →
+    _DEFAULT_DIM (STFT-Standard — Befund sgmse 2026-10-03: freq=80 mismatched,
+    256 läuft); Zeit-/Sequenz-artig bzw. unbekannt → _DEFAULT_DIM. Exakte
+    Verträge gehören zusätzlich nach _INPUT_OVERRIDES.
+    """
+    n = dim_name.lower()
+    if any(k in n for k in ("mel", "feat", "size")):
+        return 80
+    return _DEFAULT_DIM
+
+
 def _dummy_inputs(session, overrides: dict | None = None) -> dict:
     """Erzeugt realistische Dummy-Inputs aus den ORT-Eingabe-Signaturen."""
     _inputs: dict = {}
@@ -85,9 +126,11 @@ def _dummy_inputs(session, overrides: dict | None = None) -> dict:
         for _d in _inp.shape:
             if isinstance(_d, int):
                 _shape.append(_d)
-            elif isinstance(_d, str) and _d.lower() in ("batch", "n"):
+            elif isinstance(_d, str) and (_d.lower().startswith("batch") or _d.lower() == "n"):
                 _shape.append(1)
-            elif _d is None or isinstance(_d, str):
+            elif isinstance(_d, str):
+                _shape.append(_dim_for_param(_d))
+            elif _d is None:
                 _shape.append(_DEFAULT_DIM)
             else:
                 _shape.append(1)
@@ -161,8 +204,10 @@ def _parity_note(cpu_sess, gpu_sess, inputs: dict) -> str:
 
     Geschwindigkeit allein reicht für ein GPU-Verdict nicht: ROCm/MIGraphX kann
     numerisch falsche Ergebnisse liefern (SGMSE+-Core 2026-09-10: rel ~3–5 %).
-    Liefert "" bei Parität bzw. Begründung bei Abweichung/NaN. Ist die
-    CPU-Referenz für beide Feed-Varianten nicht endlich, kein Urteil ("").
+    Liefert "" nur, wenn ALLE auswertbaren Feed-Typen bestehen (weißes Rauschen
+    allein täuscht Parität vor — basicpitch-Befund 2026-09-18: Rauschen rel 3e-6
+    OK, Musik/const05 falsch). Begründung bei Abweichung/NaN, "" wenn keine
+    Feed-Variante auswertbar ist.
     """
     _rng = np.random.default_rng(0)
     if not any(v.dtype == np.float32 and v.size > 0 for v in inputs.values()):
@@ -189,8 +234,7 @@ def _parity_note(cpu_sess, gpu_sess, inputs: dict) -> str:
             _err = float(np.max(np.abs(_c_arr - _g_arr)))
             _scale = max(float(np.max(np.abs(_c_arr))), 1e-9)
             if _err / _scale > _PARITY_TOL:
-                return f"EP-Numerik weicht ab (rel={_err / _scale:.2e} vs CPU)"
-        return ""
+                return f"EP-Numerik weicht ab (rel={_err / _scale:.2e} vs CPU, Feed={_kind})"
     return ""
 
 
@@ -371,6 +415,11 @@ def main() -> int:
         action="store_true",
         help="MIGraphX-Phase überspringen (schnellerer Scan; kein Modell hat derzeit Verdict migraphx).",
     )
+    _ap.add_argument(
+        "--report-only",
+        action="store_true",
+        help="Nur berichten; Registry NICHT schreiben (Kernel-Selektions-Experimente).",
+    )
     _args = _ap.parse_args()
 
     _models = _collect_models(None if _args.model else _args.limit)
@@ -410,9 +459,13 @@ def main() -> int:
         )
         # §Crash-Resilienz: Ergebnis nach JEDEM Modell persistieren — stirbt der
         # Lauf mittendrin, bleiben alle bisherigen Verdicts erhalten.
-        _write_registry(_registry)
+        if not _args.report_only:
+            _write_registry(_registry)
 
     # Zählung aus der GEMERGTEN Registry (bei Teil-Scans sonst verfälscht).
+    if _args.report_only:
+        print("\nReport-only: Registry unverändert.")
+        return 0
     _counts = _write_registry(_registry)
     print(f"\nFertig: {_counts} → {_REGISTRY_OUT}")
     return 0

@@ -18,7 +18,7 @@ import pytest
 # Add parent directory to path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from dsp.rf_interference_remover import RFInterferenceRemover
+from backend.core.dsp.rf_interference_remover import RFInterferenceRemover
 
 
 @pytest.mark.unit

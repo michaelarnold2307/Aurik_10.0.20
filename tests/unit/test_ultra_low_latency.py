@@ -13,7 +13,7 @@ import numpy as np
 
 np.random.seed(42)  # §5.4 Reproduzierbarkeit
 
-from dsp.ultra_low_latency import (
+from backend.core.dsp.ultra_low_latency import (
     UltraLowLatencyDenoiser,
     UltraLowLatencyGate,
     UltraLowLatencyLimiter,

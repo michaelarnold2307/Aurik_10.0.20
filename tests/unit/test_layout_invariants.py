@@ -64,7 +64,7 @@ class TestPipelineConsumers:
     """Kern-Konsumenten: Layout-Invariante f(x.T) == f(x).T / mono-identisch."""
 
     def test_01_detect_onsets(self):
-        from dsp.dtw_groove import detect_onsets
+        from backend.core.dsp.dtw_groove import detect_onsets
 
         sf = _stereo()
         r_sf = detect_onsets(sf)

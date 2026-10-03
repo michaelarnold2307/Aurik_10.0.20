@@ -101,7 +101,7 @@ try:
 except ImportError as _p53_err:
     _logger.debug("Phase 53 nicht verfügbar: %s", _p53_err)
     _PHASE53_OK = False
-    SemanticAudioPhase = None  # type: ignore[assignment,misc]
+    SemanticAudioPhase = None  # type: ignore[assignment, misc]
 
 # Phase 57: Print-Through Reduction — Bidirektionale LMS (§7.x DSP-Pflicht)
 try:
@@ -111,7 +111,7 @@ try:
 except ImportError as _p57_err:
     _logger.debug("Phase 57 nicht verfügbar: %s", _p57_err)
     _PHASE57_OK = False
-    PrintThroughReductionPhase = None  # type: ignore[assignment,misc]
+    PrintThroughReductionPhase = None  # type: ignore[assignment, misc]
 
 # Phase 56: HEAD_WEAR Spectral Band Gap Repair (v10.0.0)
 try:
@@ -121,7 +121,7 @@ try:
 except ImportError as _p56_err:
     _logger.debug("Phase 56 nicht verfügbar: %s", _p56_err)
     _PHASE56_OK = False
-    SpectralBandGapRepairPhase = None  # type: ignore[assignment,misc]
+    SpectralBandGapRepairPhase = None  # type: ignore[assignment, misc]
 
 # Phase 58: Lyrics-Guided Enhancement (§2.36 PFLICHT, v10.0.0.x)
 try:
@@ -131,7 +131,7 @@ try:
 except ImportError as _p58_err:
     _logger.debug("Phase 58 nicht verfügbar: %s", _p58_err)
     _PHASE58_OK = False
-    Phase58LyricsGuidedEnhancement = None  # type: ignore[assignment,misc]
+    Phase58LyricsGuidedEnhancement = None  # type: ignore[assignment, misc]
 
 
 # Phase 59: Modulation Noise Reduction — Tape modulation artifact removal (§6.7)
@@ -142,7 +142,7 @@ try:
 except ImportError as _p59_err:
     _logger.debug("Phase 59 nicht verfügbar: %s", _p59_err)
     _PHASE59_OK = False
-    ModulationNoiseReductionPhase = None  # type: ignore[assignment,misc]
+    ModulationNoiseReductionPhase = None  # type: ignore[assignment, misc]
 
 # Phase 60: Inner Groove Distortion Repair — Vinyl-specific (§6.8)
 try:
@@ -152,7 +152,7 @@ try:
 except ImportError as _p60_err:
     _logger.debug("Phase 60 nicht verfügbar: %s", _p60_err)
     _PHASE60_OK = False
-    InnerGrooveDistortionRepairPhase = None  # type: ignore[assignment,misc]
+    InnerGrooveDistortionRepairPhase = None  # type: ignore[assignment, misc]
 
 # Phase 61: Groove Echo Cancellation — Pre/post-echo removal (§6.9)
 try:
@@ -162,7 +162,7 @@ try:
 except ImportError as _p61_err:
     _logger.debug("Phase 61 nicht verfügbar: %s", _p61_err)
     _PHASE61_OK = False
-    GrooveEchoCancellationPhase = None  # type: ignore[assignment,misc]
+    GrooveEchoCancellationPhase = None  # type: ignore[assignment, misc]
 
 # Phase 62: Crosstalk Cancellation — Stereo bleed removal (§6.10)
 try:
@@ -172,7 +172,7 @@ try:
 except ImportError as _p62_err:
     _logger.debug("Phase 62 nicht verfügbar: %s", _p62_err)
     _PHASE62_OK = False
-    CrosstalkCancellationPhase = None  # type: ignore[assignment,misc]
+    CrosstalkCancellationPhase = None  # type: ignore[assignment, misc]
 
 # Phase 63: Intermodulation Reduction — IMD artifact cleanup (§6.11)
 try:
@@ -182,7 +182,7 @@ try:
 except ImportError as _p63_err:
     _logger.debug("Phase 63 nicht verfügbar: %s", _p63_err)
     _PHASE63_OK = False
-    IntermodulationReductionPhase = None  # type: ignore[assignment,misc]
+    IntermodulationReductionPhase = None  # type: ignore[assignment, misc]
 
 # Phase 64: Tape Splice Repair — Physical tape splice artifact removal (§6.12)
 try:
@@ -192,7 +192,7 @@ try:
 except ImportError as _p64_err:
     _logger.debug("Phase 64 nicht verfügbar: %s", _p64_err)
     _PHASE64_OK = False
-    TapeSpliceRepairPhase = None  # type: ignore[assignment,misc]
+    TapeSpliceRepairPhase = None  # type: ignore[assignment, misc]
 
 # Phase 65: Vocal Naturalness Restoration — Formant/Vibrato preservation (§6.13)
 try:
@@ -202,7 +202,7 @@ try:
 except ImportError as _p65_err:
     _logger.debug("Phase 65 nicht verfügbar: %s", _p65_err)
     _PHASE65_OK = False
-    VocalNaturalnessRestorationPhase = None  # type: ignore[assignment,misc]
+    VocalNaturalnessRestorationPhase = None  # type: ignore[assignment, misc]
 
 # Phase 66: Stem-Targeted Noise Reduction — Source-separation NR (§6.14)
 try:
@@ -212,7 +212,7 @@ try:
 except ImportError as _p66_err:
     _logger.debug("Phase 66 nicht verfügbar: %s", _p66_err)
     _PHASE66_OK = False
-    StemTargetedNRPhase = None  # type: ignore[assignment,misc]
+    StemTargetedNRPhase = None  # type: ignore[assignment, misc]
 
 # Phase 67: Crackle Texture Removal — ML-Knistern-Textur (§Spec 06 Route A)
 try:
@@ -222,7 +222,7 @@ try:
 except ImportError as _p67_err:
     _logger.debug("Phase 67 nicht verfügbar: %s", _p67_err)
     _PHASE67_OK = False
-    CrackleTextureRemovalPhase = None  # type: ignore[assignment,misc]
+    CrackleTextureRemovalPhase = None  # type: ignore[assignment, misc]
 
 # Exported symbols
 __all__ = [

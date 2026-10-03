@@ -53,25 +53,25 @@ def make_power_spec(audio: np.ndarray, n_fft: int = N_FFT, hop: int = HOP) -> np
 # ---------------------------------------------------------------------------
 class TestAdaptiveIMCRA:
     def test_01_import(self):
-        from dsp.adaptive_imcra import AdaptiveIMCRA
+        from backend.core.dsp.adaptive_imcra import AdaptiveIMCRA
 
         assert AdaptiveIMCRA is not None
 
     def test_02_instantiate_default(self):
-        from dsp.adaptive_imcra import AdaptiveIMCRA
+        from backend.core.dsp.adaptive_imcra import AdaptiveIMCRA
 
         obj = AdaptiveIMCRA()
         assert obj is not None
 
     def test_03_estimate_noise_shape(self):
-        from dsp.adaptive_imcra import AdaptiveIMCRA
+        from backend.core.dsp.adaptive_imcra import AdaptiveIMCRA
 
         P = make_power_spec(AUDIO_NOISE)
         result = AdaptiveIMCRA().estimate_noise(P)
         assert result is not None
 
     def test_04_estimate_noise_finite(self):
-        from dsp.adaptive_imcra import AdaptiveIMCRA
+        from backend.core.dsp.adaptive_imcra import AdaptiveIMCRA
 
         P = make_power_spec(AUDIO_NOISE)
         result = AdaptiveIMCRA().estimate_noise(P)
@@ -79,7 +79,7 @@ class TestAdaptiveIMCRA:
         assert np.isfinite(arr).all()
 
     def test_05_estimate_noise_nonnegative(self):
-        from dsp.adaptive_imcra import AdaptiveIMCRA
+        from backend.core.dsp.adaptive_imcra import AdaptiveIMCRA
 
         P = make_power_spec(AUDIO_SINE + AUDIO_NOISE)
         result = AdaptiveIMCRA().estimate_noise(P)
@@ -87,13 +87,13 @@ class TestAdaptiveIMCRA:
         assert (arr >= 0).all()
 
     def test_06_auto_optimize_callable(self):
-        from dsp.adaptive_imcra import AdaptiveIMCRA
+        from backend.core.dsp.adaptive_imcra import AdaptiveIMCRA
 
         P = make_power_spec(AUDIO_NOISE)
         AdaptiveIMCRA().auto_optimize(P)  # soll nicht crashen
 
     def test_07_custom_alpha(self):
-        from dsp.adaptive_imcra import AdaptiveIMCRA
+        from backend.core.dsp.adaptive_imcra import AdaptiveIMCRA
 
         obj = AdaptiveIMCRA(alpha=0.9)
         P = make_power_spec(AUDIO_NOISE)
@@ -106,18 +106,18 @@ class TestAdaptiveIMCRA:
 # ---------------------------------------------------------------------------
 class TestAdaptiveMMSELSA:
     def test_01_import(self):
-        from dsp.adaptive_mmse_lsa import AdaptiveMMSELSA
+        from backend.core.dsp.adaptive_mmse_lsa import AdaptiveMMSELSA
 
         assert AdaptiveMMSELSA is not None
 
     def test_02_instantiate(self):
-        from dsp.adaptive_mmse_lsa import AdaptiveMMSELSA
+        from backend.core.dsp.adaptive_mmse_lsa import AdaptiveMMSELSA
 
         obj = AdaptiveMMSELSA()
         assert obj is not None
 
     def test_03_mmse_lsa_shape(self):
-        from dsp.adaptive_mmse_lsa import AdaptiveMMSELSA
+        from backend.core.dsp.adaptive_mmse_lsa import AdaptiveMMSELSA
 
         noisy = make_mag_spec(AUDIO_NOISE)
         noise = make_mag_spec(AUDIO_NOISE * 0.5)
@@ -126,7 +126,7 @@ class TestAdaptiveMMSELSA:
         assert arr.shape == noisy.shape
 
     def test_04_mmse_lsa_finite(self):
-        from dsp.adaptive_mmse_lsa import AdaptiveMMSELSA
+        from backend.core.dsp.adaptive_mmse_lsa import AdaptiveMMSELSA
 
         noisy = make_mag_spec(AUDIO_NOISE)
         noise = make_mag_spec(AUDIO_NOISE * 0.5)
@@ -134,7 +134,7 @@ class TestAdaptiveMMSELSA:
         assert np.isfinite(np.asarray(result)).all()
 
     def test_05_gain_in_range(self):
-        from dsp.adaptive_mmse_lsa import AdaptiveMMSELSA
+        from backend.core.dsp.adaptive_mmse_lsa import AdaptiveMMSELSA
 
         noisy = make_mag_spec(AUDIO_SINE)
         noise = make_mag_spec(AUDIO_NOISE * 0.1)
@@ -144,7 +144,7 @@ class TestAdaptiveMMSELSA:
         assert (arr >= 0).all()
 
     def test_06_auto_optimize_no_crash(self):
-        from dsp.adaptive_mmse_lsa import AdaptiveMMSELSA
+        from backend.core.dsp.adaptive_mmse_lsa import AdaptiveMMSELSA
 
         noisy = make_mag_spec(AUDIO_NOISE)
         noise = make_mag_spec(AUDIO_NOISE * 0.5)
@@ -156,17 +156,17 @@ class TestAdaptiveMMSELSA:
 # ---------------------------------------------------------------------------
 class TestAdaptiveMMSESTSA:
     def test_01_import(self):
-        from dsp.adaptive_mmse_stsa import AdaptiveMMSESTSA
+        from backend.core.dsp.adaptive_mmse_stsa import AdaptiveMMSESTSA
 
         assert AdaptiveMMSESTSA is not None
 
     def test_02_instantiate(self):
-        from dsp.adaptive_mmse_stsa import AdaptiveMMSESTSA
+        from backend.core.dsp.adaptive_mmse_stsa import AdaptiveMMSESTSA
 
         assert AdaptiveMMSESTSA() is not None
 
     def test_03_mmse_stsa_shape(self):
-        from dsp.adaptive_mmse_stsa import AdaptiveMMSESTSA
+        from backend.core.dsp.adaptive_mmse_stsa import AdaptiveMMSESTSA
 
         noisy = make_mag_spec(AUDIO_NOISE)
         noise = make_mag_spec(AUDIO_NOISE * 0.5)
@@ -175,7 +175,7 @@ class TestAdaptiveMMSESTSA:
         assert arr.shape == noisy.shape
 
     def test_04_finite(self):
-        from dsp.adaptive_mmse_stsa import AdaptiveMMSESTSA
+        from backend.core.dsp.adaptive_mmse_stsa import AdaptiveMMSESTSA
 
         noisy = make_mag_spec(AUDIO_NOISE)
         noise = make_mag_spec(AUDIO_NOISE * 0.5)
@@ -183,7 +183,7 @@ class TestAdaptiveMMSESTSA:
         assert np.isfinite(np.asarray(result)).all()
 
     def test_05_auto_optimize(self):
-        from dsp.adaptive_mmse_stsa import AdaptiveMMSESTSA
+        from backend.core.dsp.adaptive_mmse_stsa import AdaptiveMMSESTSA
 
         noisy = make_mag_spec(AUDIO_NOISE)
         noise = make_mag_spec(AUDIO_NOISE * 0.5)
@@ -195,17 +195,17 @@ class TestAdaptiveMMSESTSA:
 # ---------------------------------------------------------------------------
 class TestAdaptiveWienerFilter:
     def test_01_import(self):
-        from dsp.adaptive_wiener_filter import AdaptiveWienerFilter
+        from backend.core.dsp.adaptive_wiener_filter import AdaptiveWienerFilter
 
         assert AdaptiveWienerFilter is not None
 
     def test_02_instantiate(self):
-        from dsp.adaptive_wiener_filter import AdaptiveWienerFilter
+        from backend.core.dsp.adaptive_wiener_filter import AdaptiveWienerFilter
 
         assert AdaptiveWienerFilter() is not None
 
     def test_03_filter_shape(self):
-        from dsp.adaptive_wiener_filter import AdaptiveWienerFilter
+        from backend.core.dsp.adaptive_wiener_filter import AdaptiveWienerFilter
 
         noisy = make_mag_spec(AUDIO_NOISE)
         noise = make_mag_spec(AUDIO_NOISE * 0.5)
@@ -214,7 +214,7 @@ class TestAdaptiveWienerFilter:
         assert arr.shape == noisy.shape
 
     def test_04_filter_finite(self):
-        from dsp.adaptive_wiener_filter import AdaptiveWienerFilter
+        from backend.core.dsp.adaptive_wiener_filter import AdaptiveWienerFilter
 
         noisy = make_mag_spec(AUDIO_NOISE)
         noise = make_mag_spec(AUDIO_NOISE * 0.5)
@@ -222,7 +222,7 @@ class TestAdaptiveWienerFilter:
         assert np.isfinite(np.asarray(result)).all()
 
     def test_05_gain_bounded(self):
-        from dsp.adaptive_wiener_filter import AdaptiveWienerFilter
+        from backend.core.dsp.adaptive_wiener_filter import AdaptiveWienerFilter
 
         noisy = make_mag_spec(AUDIO_SINE)
         noise = make_mag_spec(AUDIO_NOISE * 0.05)
@@ -236,29 +236,29 @@ class TestAdaptiveWienerFilter:
 # ---------------------------------------------------------------------------
 class TestAdaptiveSpectralSubtraction:
     def test_01_import(self):
-        from dsp.adaptive_spectral_subtraction import AdaptiveSpectralSubtraction
+        from backend.core.dsp.adaptive_spectral_subtraction import AdaptiveSpectralSubtraction
 
         assert AdaptiveSpectralSubtraction is not None
 
     def test_02_instantiate(self):
-        from dsp.adaptive_spectral_subtraction import AdaptiveSpectralSubtraction
+        from backend.core.dsp.adaptive_spectral_subtraction import AdaptiveSpectralSubtraction
 
         assert AdaptiveSpectralSubtraction() is not None
 
     def test_03_auto_optimize_no_crash(self):
-        from dsp.adaptive_spectral_subtraction import AdaptiveSpectralSubtraction
+        from backend.core.dsp.adaptive_spectral_subtraction import AdaptiveSpectralSubtraction
 
         noisy = make_mag_spec(AUDIO_NOISE)
         noise = make_mag_spec(AUDIO_NOISE * 0.5)
         AdaptiveSpectralSubtraction().auto_optimize(noisy, noise)
 
     def test_04_log_contract_callable(self):
-        from dsp.adaptive_spectral_subtraction import AdaptiveSpectralSubtraction
+        from backend.core.dsp.adaptive_spectral_subtraction import AdaptiveSpectralSubtraction
 
         AdaptiveSpectralSubtraction().log_contract()
 
     def test_05_custom_params(self):
-        from dsp.adaptive_spectral_subtraction import AdaptiveSpectralSubtraction
+        from backend.core.dsp.adaptive_spectral_subtraction import AdaptiveSpectralSubtraction
 
         obj = AdaptiveSpectralSubtraction(oversubtract=1.5, floor=0.02)
         assert obj is not None
@@ -269,17 +269,17 @@ class TestAdaptiveSpectralSubtraction:
 # ---------------------------------------------------------------------------
 class TestAdaptiveSTFT:
     def test_01_import(self):
-        from dsp.multiresolution_stft import AdaptiveSTFT
+        from backend.core.dsp.multiresolution_stft import AdaptiveSTFT
 
         assert AdaptiveSTFT is not None
 
     def test_02_instantiate(self):
-        from dsp.multiresolution_stft import AdaptiveSTFT
+        from backend.core.dsp.multiresolution_stft import AdaptiveSTFT
 
         assert AdaptiveSTFT() is not None
 
     def test_03_stft_returns_array(self):
-        from dsp.multiresolution_stft import AdaptiveSTFT
+        from backend.core.dsp.multiresolution_stft import AdaptiveSTFT
 
         obj = AdaptiveSTFT()
         try:
@@ -292,7 +292,7 @@ class TestAdaptiveSTFT:
     def test_04_istft_roundtrip(self):
         pass
 
-        from dsp.multiresolution_stft import AdaptiveSTFT
+        from backend.core.dsp.multiresolution_stft import AdaptiveSTFT
 
         obj = AdaptiveSTFT(n_fft=2048, hop_length=512)
         try:
@@ -305,7 +305,7 @@ class TestAdaptiveSTFT:
             pass  # STFT-Methode heißt ggf. anders
 
     def test_05_auto_optimize_no_crash(self):
-        from dsp.multiresolution_stft import AdaptiveSTFT
+        from backend.core.dsp.multiresolution_stft import AdaptiveSTFT
 
         obj = AdaptiveSTFT()
         try:
@@ -316,25 +316,25 @@ class TestAdaptiveSTFT:
 
 class TestAdaptiveMelSpectrogram:
     def test_01_import(self):
-        from dsp.multiresolution_stft import AdaptiveMelSpectrogram
+        from backend.core.dsp.multiresolution_stft import AdaptiveMelSpectrogram
 
         assert AdaptiveMelSpectrogram is not None
 
     def test_02_instantiate(self):
-        from dsp.multiresolution_stft import AdaptiveMelSpectrogram
+        from backend.core.dsp.multiresolution_stft import AdaptiveMelSpectrogram
 
         obj = AdaptiveMelSpectrogram(sr=SR)
         assert obj is not None
 
     def test_03_callable_or_has_transform(self):
-        from dsp.multiresolution_stft import AdaptiveMelSpectrogram
+        from backend.core.dsp.multiresolution_stft import AdaptiveMelSpectrogram
 
         obj = AdaptiveMelSpectrogram(sr=SR)
         # Entweder __call__ oder transform-Methode
         assert callable(obj) or hasattr(obj, "transform") or hasattr(obj, "compute") or hasattr(obj, "process")
 
     def test_04_public_methods_exist(self):
-        from dsp.multiresolution_stft import AdaptiveMelSpectrogram
+        from backend.core.dsp.multiresolution_stft import AdaptiveMelSpectrogram
 
         obj = AdaptiveMelSpectrogram(sr=SR)
         methods = [m for m in dir(obj) if not m.startswith("_")]
@@ -346,23 +346,23 @@ class TestAdaptiveMelSpectrogram:
 # ---------------------------------------------------------------------------
 class TestAdaptivePerceptualQualityEvaluator:
     def test_01_import(self):
-        from dsp.perceptual_quality_evaluator import AdaptivePerceptualQualityEvaluator
+        from backend.core.dsp.perceptual_quality_evaluator import AdaptivePerceptualQualityEvaluator
 
         assert AdaptivePerceptualQualityEvaluator is not None
 
     def test_02_instantiate(self):
-        from dsp.perceptual_quality_evaluator import AdaptivePerceptualQualityEvaluator
+        from backend.core.dsp.perceptual_quality_evaluator import AdaptivePerceptualQualityEvaluator
 
         assert AdaptivePerceptualQualityEvaluator() is not None
 
     def test_03_evaluate_returns_dict(self):
-        from dsp.perceptual_quality_evaluator import AdaptivePerceptualQualityEvaluator
+        from backend.core.dsp.perceptual_quality_evaluator import AdaptivePerceptualQualityEvaluator
 
         result = AdaptivePerceptualQualityEvaluator().evaluate(AUDIO_SINE, SR)
         assert isinstance(result, dict)
 
     def test_04_evaluate_scores_finite(self):
-        from dsp.perceptual_quality_evaluator import AdaptivePerceptualQualityEvaluator
+        from backend.core.dsp.perceptual_quality_evaluator import AdaptivePerceptualQualityEvaluator
 
         result = AdaptivePerceptualQualityEvaluator().evaluate(AUDIO_SINE, SR)
         for v in result.values():
@@ -370,13 +370,13 @@ class TestAdaptivePerceptualQualityEvaluator:
                 assert math.isfinite(v), f"Score nicht finite: {v}"
 
     def test_05_evaluate_with_reference(self):
-        from dsp.perceptual_quality_evaluator import AdaptivePerceptualQualityEvaluator
+        from backend.core.dsp.perceptual_quality_evaluator import AdaptivePerceptualQualityEvaluator
 
         result = AdaptivePerceptualQualityEvaluator().evaluate(AUDIO_NOISE, SR, reference=AUDIO_SINE)
         assert isinstance(result, dict)
 
     def test_06_auto_optimize_no_crash(self):
-        from dsp.perceptual_quality_evaluator import AdaptivePerceptualQualityEvaluator
+        from backend.core.dsp.perceptual_quality_evaluator import AdaptivePerceptualQualityEvaluator
 
         result_dict = AdaptivePerceptualQualityEvaluator().evaluate(AUDIO_SINE, SR)
         AdaptivePerceptualQualityEvaluator().auto_optimize(result_dict)
@@ -387,36 +387,36 @@ class TestAdaptivePerceptualQualityEvaluator:
 # ---------------------------------------------------------------------------
 class TestPerceptualEQ:
     def test_01_import(self):
-        from dsp.perceptual_eq import PerceptualEQ
+        from backend.core.dsp.perceptual_eq import PerceptualEQ
 
         assert PerceptualEQ is not None
 
     def test_02_instantiate(self):
-        from dsp.perceptual_eq import PerceptualEQ
+        from backend.core.dsp.perceptual_eq import PerceptualEQ
 
         assert PerceptualEQ() is not None
 
     def test_03_process_shape(self):
-        from dsp.perceptual_eq import PerceptualEQ
+        from backend.core.dsp.perceptual_eq import PerceptualEQ
 
         result = PerceptualEQ().process(AUDIO_SINE, SR)
         assert isinstance(result, np.ndarray)
         assert result.shape == AUDIO_SINE.shape
 
     def test_04_process_finite(self):
-        from dsp.perceptual_eq import PerceptualEQ
+        from backend.core.dsp.perceptual_eq import PerceptualEQ
 
         result = PerceptualEQ().process(AUDIO_SINE, SR)
         assert np.isfinite(result).all()
 
     def test_05_silence_passthrough(self):
-        from dsp.perceptual_eq import PerceptualEQ
+        from backend.core.dsp.perceptual_eq import PerceptualEQ
 
         result = PerceptualEQ().process(AUDIO_SILENCE, SR)
         assert np.isfinite(result).all()
 
     def test_06_noise_no_crash(self):
-        from dsp.perceptual_eq import PerceptualEQ
+        from backend.core.dsp.perceptual_eq import PerceptualEQ
 
         result = PerceptualEQ().process(AUDIO_NOISE, SR)
         assert isinstance(result, np.ndarray)
@@ -485,30 +485,30 @@ class TestSpectralGate:
 # ---------------------------------------------------------------------------
 class TestSpectralSubtractor:
     def test_01_import(self):
-        from dsp.spectral_subtractor import SpectralSubtractor
+        from backend.core.dsp.spectral_subtractor import SpectralSubtractor
 
         assert SpectralSubtractor is not None
 
     def test_02_instantiate(self):
-        from dsp.spectral_subtractor import SpectralSubtractor
+        from backend.core.dsp.spectral_subtractor import SpectralSubtractor
 
         assert SpectralSubtractor() is not None
 
     def test_03_process_shape(self):
-        from dsp.spectral_subtractor import SpectralSubtractor
+        from backend.core.dsp.spectral_subtractor import SpectralSubtractor
 
         result = SpectralSubtractor().process(AUDIO_NOISE, SR)
         assert isinstance(result, np.ndarray)
         assert result.shape == AUDIO_NOISE.shape
 
     def test_04_finite(self):
-        from dsp.spectral_subtractor import SpectralSubtractor
+        from backend.core.dsp.spectral_subtractor import SpectralSubtractor
 
         result = SpectralSubtractor().process(AUDIO_NOISE, SR)
         assert np.isfinite(result).all()
 
     def test_05_silence(self):
-        from dsp.spectral_subtractor import SpectralSubtractor
+        from backend.core.dsp.spectral_subtractor import SpectralSubtractor
 
         result = SpectralSubtractor().process(AUDIO_SILENCE, SR)
         assert np.isfinite(result).all()
@@ -519,43 +519,43 @@ class TestSpectralSubtractor:
 # ---------------------------------------------------------------------------
 class TestMultibandCompressor:
     def test_01_import(self):
-        from dsp.multiband_compressor import MultibandCompressor
+        from backend.core.dsp.multiband_compressor import MultibandCompressor
 
         assert MultibandCompressor is not None
 
     def test_02_instantiate_default(self):
-        from dsp.multiband_compressor import MultibandCompressor
+        from backend.core.dsp.multiband_compressor import MultibandCompressor
 
         assert MultibandCompressor() is not None
 
     def test_03_process_shape(self):
-        from dsp.multiband_compressor import MultibandCompressor
+        from backend.core.dsp.multiband_compressor import MultibandCompressor
 
         result = MultibandCompressor().process(AUDIO_SINE, SR)
         assert isinstance(result, np.ndarray)
         assert result.shape == AUDIO_SINE.shape
 
     def test_04_finite(self):
-        from dsp.multiband_compressor import MultibandCompressor
+        from backend.core.dsp.multiband_compressor import MultibandCompressor
 
         result = MultibandCompressor().process(AUDIO_SINE, SR)
         assert np.isfinite(result).all()
 
     def test_05_silence(self):
-        from dsp.multiband_compressor import MultibandCompressor
+        from backend.core.dsp.multiband_compressor import MultibandCompressor
 
         result = MultibandCompressor().process(AUDIO_SILENCE, SR)
         assert np.isfinite(result).all()
 
     def test_06_no_amplification_above_1(self):
-        from dsp.multiband_compressor import MultibandCompressor
+        from backend.core.dsp.multiband_compressor import MultibandCompressor
 
         result = MultibandCompressor().process(AUDIO_SINE, SR)
         # Kompressor erhöht Pegel nicht über Input
         assert np.max(np.abs(result)) <= np.max(np.abs(AUDIO_SINE)) * 1.5
 
     def test_07_custom_bands(self):
-        from dsp.multiband_compressor import MultibandCompressor
+        from backend.core.dsp.multiband_compressor import MultibandCompressor
 
         obj = MultibandCompressor(bands=3, crossovers=(300, 3000), thresholds_db=(-18, -18, -18))
         result = obj.process(AUDIO_SINE, SR)
@@ -567,17 +567,17 @@ class TestMultibandCompressor:
 # ---------------------------------------------------------------------------
 class TestTruePeakLimiter:
     def test_01_import(self):
-        from dsp.true_peak_limiter import TruePeakLimiter
+        from backend.core.dsp.true_peak_limiter import TruePeakLimiter
 
         assert TruePeakLimiter is not None
 
     def test_02_instantiate(self):
-        from dsp.true_peak_limiter import TruePeakLimiter
+        from backend.core.dsp.true_peak_limiter import TruePeakLimiter
 
         assert TruePeakLimiter() is not None
 
     def test_03_process_shape(self):
-        from dsp.true_peak_limiter import TruePeakLimiter
+        from backend.core.dsp.true_peak_limiter import TruePeakLimiter
 
         result = TruePeakLimiter().process(AUDIO_SINE, SR)
         audio_out = result[0] if isinstance(result, tuple) else result
@@ -585,14 +585,14 @@ class TestTruePeakLimiter:
         assert audio_out.shape == AUDIO_SINE.shape
 
     def test_04_finite(self):
-        from dsp.true_peak_limiter import TruePeakLimiter
+        from backend.core.dsp.true_peak_limiter import TruePeakLimiter
 
         result = TruePeakLimiter().process(AUDIO_SINE, SR)
         audio_out = result[0] if isinstance(result, tuple) else result
         assert np.isfinite(audio_out).all()
 
     def test_05_true_peak_respected(self):
-        from dsp.true_peak_limiter import TruePeakLimiter
+        from backend.core.dsp.true_peak_limiter import TruePeakLimiter
 
         ceiling = -1.0  # dBTP
         obj = TruePeakLimiter(ceiling_dbtp=ceiling)
@@ -603,14 +603,14 @@ class TestTruePeakLimiter:
         assert np.max(np.abs(audio_out)) <= limit_linear * 1.05  # 5 % Toleranz
 
     def test_06_measure_true_peak(self):
-        from dsp.true_peak_limiter import TruePeakLimiter
+        from backend.core.dsp.true_peak_limiter import TruePeakLimiter
 
         tp = TruePeakLimiter().measure_true_peak(AUDIO_SINE, SR)
         assert isinstance(tp, float)
         assert math.isfinite(tp)
 
     def test_07_silence(self):
-        from dsp.true_peak_limiter import TruePeakLimiter
+        from backend.core.dsp.true_peak_limiter import TruePeakLimiter
 
         result = TruePeakLimiter().process(AUDIO_SILENCE, SR)
         audio_out = result[0] if isinstance(result, tuple) else result
@@ -622,30 +622,30 @@ class TestTruePeakLimiter:
 # ---------------------------------------------------------------------------
 class TestDither:
     def test_01_import(self):
-        from dsp.dither import Dither
+        from backend.core.dsp.dither import Dither
 
         assert Dither is not None
 
     def test_02_instantiate_tpdf(self):
-        from dsp.dither import Dither
+        from backend.core.dsp.dither import Dither
 
         assert Dither(bit_depth=16, dither_type="tpdf") is not None
 
     def test_03_process_shape(self):
-        from dsp.dither import Dither
+        from backend.core.dsp.dither import Dither
 
         result = Dither().process(AUDIO_SINE)
         assert isinstance(result, np.ndarray)
         assert result.shape == AUDIO_SINE.shape
 
     def test_04_finite(self):
-        from dsp.dither import Dither
+        from backend.core.dsp.dither import Dither
 
         result = Dither().process(AUDIO_SINE)
         assert np.isfinite(result).all()
 
     def test_05_dither_adds_small_noise(self):
-        from dsp.dither import Dither
+        from backend.core.dsp.dither import Dither
 
         result = Dither().process(AUDIO_SINE)
         diff = np.abs(result - AUDIO_SINE).max()
@@ -653,13 +653,13 @@ class TestDither:
         assert diff < 0.01  # deutlich unter 1 %
 
     def test_06_silence_with_dither(self):
-        from dsp.dither import Dither
+        from backend.core.dsp.dither import Dither
 
         result = Dither().process(AUDIO_SILENCE)
         assert np.isfinite(result).all()
 
     def test_07_24bit_mode(self):
-        from dsp.dither import Dither
+        from backend.core.dsp.dither import Dither
 
         result = Dither(bit_depth=24).process(AUDIO_SINE)
         assert isinstance(result, np.ndarray)
@@ -670,36 +670,36 @@ class TestDither:
 # ---------------------------------------------------------------------------
 class TestHarmonicExciter:
     def test_01_import(self):
-        from dsp.harmonic_exciter import HarmonicExciter
+        from backend.core.dsp.harmonic_exciter import HarmonicExciter
 
         assert HarmonicExciter is not None
 
     def test_02_instantiate(self):
-        from dsp.harmonic_exciter import HarmonicExciter
+        from backend.core.dsp.harmonic_exciter import HarmonicExciter
 
         assert HarmonicExciter() is not None
 
     def test_03_process_shape(self):
-        from dsp.harmonic_exciter import HarmonicExciter
+        from backend.core.dsp.harmonic_exciter import HarmonicExciter
 
         result = HarmonicExciter().process(AUDIO_SINE, SR)
         assert isinstance(result, np.ndarray)
         assert result.shape == AUDIO_SINE.shape
 
     def test_04_finite(self):
-        from dsp.harmonic_exciter import HarmonicExciter
+        from backend.core.dsp.harmonic_exciter import HarmonicExciter
 
         result = HarmonicExciter().process(AUDIO_SINE, SR)
         assert np.isfinite(result).all()
 
     def test_05_silence(self):
-        from dsp.harmonic_exciter import HarmonicExciter
+        from backend.core.dsp.harmonic_exciter import HarmonicExciter
 
         result = HarmonicExciter().process(AUDIO_SILENCE, SR)
         assert np.isfinite(result).all()
 
     def test_06_exciter_adds_harmonics(self):
-        from dsp.harmonic_exciter import HarmonicExciter
+        from backend.core.dsp.harmonic_exciter import HarmonicExciter
 
         result = HarmonicExciter(amount=0.5).process(AUDIO_SINE, SR)
         # Signal soll nicht negativ unendlich oder null werden
@@ -711,42 +711,42 @@ class TestHarmonicExciter:
 # ---------------------------------------------------------------------------
 class TestAutomaticDeclicker:
     def test_01_import(self):
-        from dsp.automatic_declicker import AutomaticDeclicker
+        from backend.core.dsp.automatic_declicker import AutomaticDeclicker
 
         assert AutomaticDeclicker is not None
 
     def test_02_instantiate(self):
-        from dsp.automatic_declicker import AutomaticDeclicker
+        from backend.core.dsp.automatic_declicker import AutomaticDeclicker
 
         assert AutomaticDeclicker() is not None
 
     def test_03_declick_shape(self):
-        from dsp.automatic_declicker import AutomaticDeclicker
+        from backend.core.dsp.automatic_declicker import AutomaticDeclicker
 
         result = AutomaticDeclicker().declick(AUDIO_NOISE, SR)
         assert isinstance(result, np.ndarray)
         assert result.shape == AUDIO_NOISE.shape
 
     def test_04_declick_finite(self):
-        from dsp.automatic_declicker import AutomaticDeclicker
+        from backend.core.dsp.automatic_declicker import AutomaticDeclicker
 
         result = AutomaticDeclicker().declick(AUDIO_NOISE, SR)
         assert np.isfinite(result).all()
 
     def test_05_process_method(self):
-        from dsp.automatic_declicker import AutomaticDeclicker
+        from backend.core.dsp.automatic_declicker import AutomaticDeclicker
 
         result = AutomaticDeclicker().process(AUDIO_NOISE, SR)
         assert isinstance(result, np.ndarray)
 
     def test_06_silence(self):
-        from dsp.automatic_declicker import AutomaticDeclicker
+        from backend.core.dsp.automatic_declicker import AutomaticDeclicker
 
         result = AutomaticDeclicker().declick(AUDIO_SILENCE, SR)
         assert np.isfinite(result).all()
 
     def test_07_sine_preserved(self):
-        from dsp.automatic_declicker import AutomaticDeclicker
+        from backend.core.dsp.automatic_declicker import AutomaticDeclicker
 
         result = AutomaticDeclicker().declick(AUDIO_SINE, SR)
         # Sinus (kein Click) bleibt erhalten
@@ -758,36 +758,36 @@ class TestAutomaticDeclicker:
 # ---------------------------------------------------------------------------
 class TestAutomaticDecrackler:
     def test_01_import(self):
-        from dsp.automatic_decrackler import AutomaticDecrackler
+        from backend.core.dsp.automatic_decrackler import AutomaticDecrackler
 
         assert AutomaticDecrackler is not None
 
     def test_02_instantiate(self):
-        from dsp.automatic_decrackler import AutomaticDecrackler
+        from backend.core.dsp.automatic_decrackler import AutomaticDecrackler
 
         assert AutomaticDecrackler() is not None
 
     def test_03_decrackle_shape(self):
-        from dsp.automatic_decrackler import AutomaticDecrackler
+        from backend.core.dsp.automatic_decrackler import AutomaticDecrackler
 
         result = AutomaticDecrackler().decrackle(AUDIO_NOISE, SR)
         assert isinstance(result, np.ndarray)
         assert result.shape == AUDIO_NOISE.shape
 
     def test_04_finite(self):
-        from dsp.automatic_decrackler import AutomaticDecrackler
+        from backend.core.dsp.automatic_decrackler import AutomaticDecrackler
 
         result = AutomaticDecrackler().decrackle(AUDIO_NOISE, SR)
         assert np.isfinite(result).all()
 
     def test_05_silence(self):
-        from dsp.automatic_decrackler import AutomaticDecrackler
+        from backend.core.dsp.automatic_decrackler import AutomaticDecrackler
 
         result = AutomaticDecrackler().decrackle(AUDIO_SILENCE, SR)
         assert np.isfinite(result).all()
 
     def test_06_log_contract_callable(self):
-        from dsp.automatic_decrackler import AutomaticDecrackler
+        from backend.core.dsp.automatic_decrackler import AutomaticDecrackler
 
         AutomaticDecrackler().log_contract()
 
@@ -797,41 +797,41 @@ class TestAutomaticDecrackler:
 # ---------------------------------------------------------------------------
 class TestAutomaticDenoiser:
     def test_01_import(self):
-        from dsp.automatic_denoiser import AutomaticDenoiser
+        from backend.core.dsp.automatic_denoiser import AutomaticDenoiser
 
         assert AutomaticDenoiser is not None
 
     def test_02_instantiate(self):
-        from dsp.automatic_denoiser import AutomaticDenoiser
+        from backend.core.dsp.automatic_denoiser import AutomaticDenoiser
 
         assert AutomaticDenoiser() is not None
 
     def test_03_denoise_shape(self):
-        from dsp.automatic_denoiser import AutomaticDenoiser
+        from backend.core.dsp.automatic_denoiser import AutomaticDenoiser
 
         result = AutomaticDenoiser().denoise(AUDIO_NOISE, SR)
         assert isinstance(result, np.ndarray)
         assert result.shape == AUDIO_NOISE.shape
 
     def test_04_finite(self):
-        from dsp.automatic_denoiser import AutomaticDenoiser
+        from backend.core.dsp.automatic_denoiser import AutomaticDenoiser
 
         result = AutomaticDenoiser().denoise(AUDIO_NOISE, SR)
         assert np.isfinite(result).all()
 
     def test_05_silence(self):
-        from dsp.automatic_denoiser import AutomaticDenoiser
+        from backend.core.dsp.automatic_denoiser import AutomaticDenoiser
 
         result = AutomaticDenoiser().denoise(AUDIO_SILENCE, SR)
         assert np.isfinite(result).all()
 
     def test_06_log_contract_callable(self):
-        from dsp.automatic_denoiser import AutomaticDenoiser
+        from backend.core.dsp.automatic_denoiser import AutomaticDenoiser
 
         AutomaticDenoiser().log_contract()
 
     def test_07_custom_floor(self):
-        from dsp.automatic_denoiser import AutomaticDenoiser
+        from backend.core.dsp.automatic_denoiser import AutomaticDenoiser
 
         obj = AutomaticDenoiser(noise_floor_db=-50.0)
         result = obj.denoise(AUDIO_NOISE, SR)
@@ -843,30 +843,30 @@ class TestAutomaticDenoiser:
 # ---------------------------------------------------------------------------
 class TestAiDecrackler:
     def test_01_import(self):
-        from dsp.decrackler import AiDecrackler
+        from backend.core.dsp.decrackler import AiDecrackler
 
         assert AiDecrackler is not None
 
     def test_02_instantiate_no_model(self):
-        from dsp.decrackler import AiDecrackler
+        from backend.core.dsp.decrackler import AiDecrackler
 
         assert AiDecrackler() is not None
 
     def test_03_process_shape(self):
-        from dsp.decrackler import AiDecrackler
+        from backend.core.dsp.decrackler import AiDecrackler
 
         result = AiDecrackler().process(AUDIO_NOISE, SR)
         assert isinstance(result, np.ndarray)
         assert result.shape == AUDIO_NOISE.shape
 
     def test_04_finite(self):
-        from dsp.decrackler import AiDecrackler
+        from backend.core.dsp.decrackler import AiDecrackler
 
         result = AiDecrackler().process(AUDIO_NOISE, SR)
         assert np.isfinite(result).all()
 
     def test_05_silence(self):
-        from dsp.decrackler import AiDecrackler
+        from backend.core.dsp.decrackler import AiDecrackler
 
         result = AiDecrackler().process(AUDIO_SILENCE, SR)
         assert np.isfinite(result).all()
@@ -874,17 +874,17 @@ class TestAiDecrackler:
 
 class TestAiDebuzz:
     def test_01_import(self):
-        from dsp.decrackler import AiDebuzz
+        from backend.core.dsp.decrackler import AiDebuzz
 
         assert AiDebuzz is not None
 
     def test_02_instantiate(self):
-        from dsp.decrackler import AiDebuzz
+        from backend.core.dsp.decrackler import AiDebuzz
 
         assert AiDebuzz() is not None
 
     def test_03_has_public_methods(self):
-        from dsp.decrackler import AiDebuzz
+        from backend.core.dsp.decrackler import AiDebuzz
 
         methods = [m for m in dir(AiDebuzz()) if not m.startswith("_")]
         assert len(methods) > 0
@@ -895,36 +895,36 @@ class TestAiDebuzz:
 # ---------------------------------------------------------------------------
 class TestAiDereverberation:
     def test_01_import(self):
-        from dsp.dereverberation import AiDereverberation
+        from backend.core.dsp.dereverberation import AiDereverberation
 
         assert AiDereverberation is not None
 
     def test_02_instantiate(self):
-        from dsp.dereverberation import AiDereverberation
+        from backend.core.dsp.dereverberation import AiDereverberation
 
         assert AiDereverberation() is not None
 
     def test_03_dereverberate_shape(self):
-        from dsp.dereverberation import AiDereverberation
+        from backend.core.dsp.dereverberation import AiDereverberation
 
         result = AiDereverberation().dereverberate(AUDIO_SINE, SR)
         assert isinstance(result, np.ndarray)
         assert result.shape == AUDIO_SINE.shape
 
     def test_04_finite(self):
-        from dsp.dereverberation import AiDereverberation
+        from backend.core.dsp.dereverberation import AiDereverberation
 
         result = AiDereverberation().dereverberate(AUDIO_SINE, SR)
         assert np.isfinite(result).all()
 
     def test_05_silence(self):
-        from dsp.dereverberation import AiDereverberation
+        from backend.core.dsp.dereverberation import AiDereverberation
 
         result = AiDereverberation().dereverberate(AUDIO_SILENCE, SR)
         assert np.isfinite(result).all()
 
     def test_06_noise_no_crash(self):
-        from dsp.dereverberation import AiDereverberation
+        from backend.core.dsp.dereverberation import AiDereverberation
 
         result = AiDereverberation().dereverberate(AUDIO_NOISE, SR)
         assert isinstance(result, np.ndarray)
@@ -935,30 +935,30 @@ class TestAiDereverberation:
 # ---------------------------------------------------------------------------
 class TestAiHumRemover:
     def test_01_import(self):
-        from dsp.hum_remover import AiHumRemover
+        from backend.core.dsp.hum_remover import AiHumRemover
 
         assert AiHumRemover is not None
 
     def test_02_instantiate_50hz(self):
-        from dsp.hum_remover import AiHumRemover
+        from backend.core.dsp.hum_remover import AiHumRemover
 
         assert AiHumRemover(hum_freq=50.0) is not None
 
     def test_03_remove_hum_shape(self):
-        from dsp.hum_remover import AiHumRemover
+        from backend.core.dsp.hum_remover import AiHumRemover
 
         result = AiHumRemover().remove_hum(AUDIO_SINE, SR)
         assert isinstance(result, np.ndarray)
         assert result.shape == AUDIO_SINE.shape
 
     def test_04_finite(self):
-        from dsp.hum_remover import AiHumRemover
+        from backend.core.dsp.hum_remover import AiHumRemover
 
         result = AiHumRemover().remove_hum(AUDIO_SINE, SR)
         assert np.isfinite(result).all()
 
     def test_05_hum_signal_reduced(self):
-        from dsp.hum_remover import AiHumRemover
+        from backend.core.dsp.hum_remover import AiHumRemover
 
         # Echtes 50-Hz-Brumm-Signal
         hum = (0.3 * np.sin(2 * np.pi * 50.0 * t)).astype(np.float64)
@@ -968,13 +968,13 @@ class TestAiHumRemover:
         assert np.isfinite(result).all()
 
     def test_06_silence(self):
-        from dsp.hum_remover import AiHumRemover
+        from backend.core.dsp.hum_remover import AiHumRemover
 
         result = AiHumRemover().remove_hum(AUDIO_SILENCE, SR)
         assert np.isfinite(result).all()
 
     def test_07_60hz_hum(self):
-        from dsp.hum_remover import AiHumRemover
+        from backend.core.dsp.hum_remover import AiHumRemover
 
         obj = AiHumRemover(hum_freq=60.0)
         result = obj.remove_hum(AUDIO_SINE, SR)
@@ -986,36 +986,36 @@ class TestAiHumRemover:
 # ---------------------------------------------------------------------------
 class TestWowFlutterRemover:
     def test_01_import(self):
-        from dsp.wow_flutter_remover import WowFlutterRemover
+        from backend.core.dsp.wow_flutter_remover import WowFlutterRemover
 
         assert WowFlutterRemover is not None
 
     def test_02_instantiate(self):
-        from dsp.wow_flutter_remover import WowFlutterRemover
+        from backend.core.dsp.wow_flutter_remover import WowFlutterRemover
 
         assert WowFlutterRemover(sr=SR) is not None
 
     def test_03_process_shape(self):
-        from dsp.wow_flutter_remover import WowFlutterRemover
+        from backend.core.dsp.wow_flutter_remover import WowFlutterRemover
 
         result = WowFlutterRemover(sr=SR).process(AUDIO_SINE)
         assert isinstance(result, np.ndarray)
         assert result.shape == AUDIO_SINE.shape
 
     def test_04_finite(self):
-        from dsp.wow_flutter_remover import WowFlutterRemover
+        from backend.core.dsp.wow_flutter_remover import WowFlutterRemover
 
         result = WowFlutterRemover(sr=SR).process(AUDIO_SINE)
         assert np.isfinite(result).all()
 
     def test_05_silence(self):
-        from dsp.wow_flutter_remover import WowFlutterRemover
+        from backend.core.dsp.wow_flutter_remover import WowFlutterRemover
 
         result = WowFlutterRemover(sr=SR).process(AUDIO_SILENCE)
         assert np.isfinite(result).all()
 
     def test_06_noise_no_crash(self):
-        from dsp.wow_flutter_remover import WowFlutterRemover
+        from backend.core.dsp.wow_flutter_remover import WowFlutterRemover
 
         result = WowFlutterRemover(sr=SR).process(AUDIO_NOISE)
         assert isinstance(result, np.ndarray)
@@ -1026,29 +1026,29 @@ class TestWowFlutterRemover:
 # ---------------------------------------------------------------------------
 class TestNoiseProfileMatcher:
     def test_01_import(self):
-        from dsp.noise_profile_matcher import NoiseProfileMatcher
+        from backend.core.dsp.noise_profile_matcher import NoiseProfileMatcher
 
         assert NoiseProfileMatcher is not None
 
     def test_02_instantiate(self):
-        from dsp.noise_profile_matcher import NoiseProfileMatcher
+        from backend.core.dsp.noise_profile_matcher import NoiseProfileMatcher
 
         assert NoiseProfileMatcher() is not None
 
     def test_03_match_profile_returns_optional_str(self):
-        from dsp.noise_profile_matcher import NoiseProfileMatcher
+        from backend.core.dsp.noise_profile_matcher import NoiseProfileMatcher
 
         result = NoiseProfileMatcher().match_profile(AUDIO_NOISE, SR)
         assert result is None or isinstance(result, str)
 
     def test_04_sine_match(self):
-        from dsp.noise_profile_matcher import NoiseProfileMatcher
+        from backend.core.dsp.noise_profile_matcher import NoiseProfileMatcher
 
         result = NoiseProfileMatcher().match_profile(AUDIO_SINE, SR)
         assert result is None or isinstance(result, str)
 
     def test_05_silence_no_crash(self):
-        from dsp.noise_profile_matcher import NoiseProfileMatcher
+        from backend.core.dsp.noise_profile_matcher import NoiseProfileMatcher
 
         result = NoiseProfileMatcher().match_profile(AUDIO_SILENCE, SR)
         assert result is None or isinstance(result, str)
@@ -1059,17 +1059,17 @@ class TestNoiseProfileMatcher:
 # ---------------------------------------------------------------------------
 class TestAiStereoEnhancer:
     def test_01_import(self):
-        from dsp.stereo_enhancer import AiStereoEnhancer
+        from backend.core.dsp.stereo_enhancer import AiStereoEnhancer
 
         assert AiStereoEnhancer is not None
 
     def test_02_instantiate(self):
-        from dsp.stereo_enhancer import AiStereoEnhancer
+        from backend.core.dsp.stereo_enhancer import AiStereoEnhancer
 
         assert AiStereoEnhancer() is not None
 
     def test_03_process_stereo_shape(self):
-        from dsp.stereo_enhancer import AiStereoEnhancer
+        from backend.core.dsp.stereo_enhancer import AiStereoEnhancer
 
         try:
             result = AiStereoEnhancer().process(AUDIO_STEREO, SR)
@@ -1079,7 +1079,7 @@ class TestAiStereoEnhancer:
             pass  # Mono-Eingabe möglicherweise nicht unterstützt
 
     def test_04_process_mono_no_crash(self):
-        from dsp.stereo_enhancer import AiStereoEnhancer
+        from backend.core.dsp.stereo_enhancer import AiStereoEnhancer
 
         try:
             result = AiStereoEnhancer().process(AUDIO_SINE, SR)
@@ -1089,7 +1089,7 @@ class TestAiStereoEnhancer:
             pass  # Mono ggf. nicht unterstützt
 
     def test_05_stereo_finite(self):
-        from dsp.stereo_enhancer import AiStereoEnhancer
+        from backend.core.dsp.stereo_enhancer import AiStereoEnhancer
 
         try:
             result = AiStereoEnhancer().process(AUDIO_STEREO, SR)
@@ -1103,36 +1103,36 @@ class TestAiStereoEnhancer:
 # ---------------------------------------------------------------------------
 class TestDynamicRangeExpander:
     def test_01_import(self):
-        from dsp.dynamic_range_expander import DynamicRangeExpander
+        from backend.core.dsp.dynamic_range_expander import DynamicRangeExpander
 
         assert DynamicRangeExpander is not None
 
     def test_02_instantiate(self):
-        from dsp.dynamic_range_expander import DynamicRangeExpander
+        from backend.core.dsp.dynamic_range_expander import DynamicRangeExpander
 
         assert DynamicRangeExpander() is not None
 
     def test_03_process_shape(self):
-        from dsp.dynamic_range_expander import DynamicRangeExpander
+        from backend.core.dsp.dynamic_range_expander import DynamicRangeExpander
 
         result = DynamicRangeExpander().process(AUDIO_SINE, SR)
         assert isinstance(result, np.ndarray)
         assert result.shape == AUDIO_SINE.shape
 
     def test_04_finite(self):
-        from dsp.dynamic_range_expander import DynamicRangeExpander
+        from backend.core.dsp.dynamic_range_expander import DynamicRangeExpander
 
         result = DynamicRangeExpander().process(AUDIO_SINE, SR)
         assert np.isfinite(result).all()
 
     def test_05_silence(self):
-        from dsp.dynamic_range_expander import DynamicRangeExpander
+        from backend.core.dsp.dynamic_range_expander import DynamicRangeExpander
 
         result = DynamicRangeExpander().process(AUDIO_SILENCE, SR)
         assert np.isfinite(result).all()
 
     def test_06_custom_threshold(self):
-        from dsp.dynamic_range_expander import DynamicRangeExpander
+        from backend.core.dsp.dynamic_range_expander import DynamicRangeExpander
 
         obj = DynamicRangeExpander(threshold_db=-30.0, ratio=2.0)
         result = obj.process(AUDIO_NOISE, SR)
@@ -1144,17 +1144,17 @@ class TestDynamicRangeExpander:
 # ---------------------------------------------------------------------------
 class TestAiVAD:
     def test_01_import(self):
-        from dsp.vad import AiVAD
+        from backend.core.dsp.vad import AiVAD
 
         assert AiVAD is not None
 
     def test_02_instantiate(self):
-        from dsp.vad import AiVAD
+        from backend.core.dsp.vad import AiVAD
 
         assert AiVAD() is not None
 
     def test_03_detect_shape(self):
-        from dsp.vad import AiVAD
+        from backend.core.dsp.vad import AiVAD
 
         result = AiVAD().detect(AUDIO_SINE, SR)
         assert isinstance(result, np.ndarray)
@@ -1162,7 +1162,7 @@ class TestAiVAD:
         assert result.ndim >= 1
 
     def test_04_detect_binary_or_prob(self):
-        from dsp.vad import AiVAD
+        from backend.core.dsp.vad import AiVAD
 
         result = AiVAD().detect(AUDIO_SINE, SR)
         arr = np.asarray(result)
@@ -1170,7 +1170,7 @@ class TestAiVAD:
         assert np.isfinite(arr).all()
 
     def test_05_silence_is_inactive(self):
-        from dsp.vad import AiVAD
+        from backend.core.dsp.vad import AiVAD
 
         result = AiVAD().detect(AUDIO_SILENCE, SR)
         arr = np.asarray(result, dtype=float)
@@ -1178,7 +1178,7 @@ class TestAiVAD:
         assert np.mean(arr) < 0.6
 
     def test_06_sine_detected_as_active(self):
-        from dsp.vad import AiVAD
+        from backend.core.dsp.vad import AiVAD
 
         result = AiVAD().detect(AUDIO_SINE, SR)
         arr = np.asarray(result, dtype=float)
@@ -1186,7 +1186,7 @@ class TestAiVAD:
         assert np.isfinite(arr).all()
 
     def test_07_log_contract_callable(self):
-        from dsp.vad import AiVAD
+        from backend.core.dsp.vad import AiVAD
 
         AiVAD().log_contract()
 
@@ -1196,37 +1196,37 @@ class TestAiVAD:
 # ---------------------------------------------------------------------------
 class TestFormantSystem:
     def test_01_import(self):
-        from dsp.formant_system import FormantSystem
+        from backend.core.dsp.formant_system import FormantSystem
 
         assert FormantSystem is not None
 
     def test_02_instantiate(self):
-        from dsp.formant_system import FormantSystem
+        from backend.core.dsp.formant_system import FormantSystem
 
         assert FormantSystem() is not None
 
     def test_03_process_returns_tuple(self):
-        from dsp.formant_system import FormantSystem
+        from backend.core.dsp.formant_system import FormantSystem
 
         result = FormantSystem().process(AUDIO_SINE, SR)
         assert isinstance(result, tuple)
         assert len(result) == 2
 
     def test_04_audio_output_shape(self):
-        from dsp.formant_system import FormantSystem
+        from backend.core.dsp.formant_system import FormantSystem
 
         audio_out, meta = FormantSystem().process(AUDIO_SINE, SR)
         assert isinstance(audio_out, np.ndarray)
         assert audio_out.shape == AUDIO_SINE.shape
 
     def test_05_audio_output_finite(self):
-        from dsp.formant_system import FormantSystem
+        from backend.core.dsp.formant_system import FormantSystem
 
         audio_out, meta = FormantSystem().process(AUDIO_SINE, SR)
         assert np.isfinite(audio_out).all()
 
     def test_06_meta_is_dict(self):
-        from dsp.formant_system import FormantSystem
+        from backend.core.dsp.formant_system import FormantSystem
 
         audio_out, meta = FormantSystem().process(AUDIO_SINE, SR)
         assert isinstance(meta, dict)
@@ -1234,7 +1234,7 @@ class TestFormantSystem:
     def test_07_silence(self):
         import numpy.linalg
 
-        from dsp.formant_system import FormantSystem
+        from backend.core.dsp.formant_system import FormantSystem
 
         try:
             audio_out, meta = FormantSystem().process(AUDIO_SILENCE, SR)
@@ -1245,7 +1245,7 @@ class TestFormantSystem:
             pass
 
     def test_08_noise_no_crash(self):
-        from dsp.formant_system import FormantSystem
+        from backend.core.dsp.formant_system import FormantSystem
 
         audio_out, meta = FormantSystem().process(AUDIO_NOISE, SR)
         assert isinstance(audio_out, np.ndarray)
@@ -1253,23 +1253,23 @@ class TestFormantSystem:
 
 class TestFormantCorrector:
     def test_01_import(self):
-        from dsp.formant_system import FormantCorrector
+        from backend.core.dsp.formant_system import FormantCorrector
 
         assert FormantCorrector is not None
 
     def test_02_instantiate(self):
-        from dsp.formant_system import FormantCorrector
+        from backend.core.dsp.formant_system import FormantCorrector
 
         assert FormantCorrector() is not None
 
     def test_03_has_public_methods(self):
-        from dsp.formant_system import FormantCorrector
+        from backend.core.dsp.formant_system import FormantCorrector
 
         methods = [m for m in dir(FormantCorrector()) if not m.startswith("_")]
         assert len(methods) > 0
 
     def test_04_process_if_available(self):
-        from dsp.formant_system import FormantCorrector
+        from backend.core.dsp.formant_system import FormantCorrector
 
         obj = FormantCorrector()
         if hasattr(obj, "process"):
@@ -1341,9 +1341,9 @@ class TestDSPPriorityIntegration:
 
     def test_chain_denoise_gate_compress(self):
         """Kette: AutomaticDenoiser → SpectralGate → MultibandCompressor"""
+        from backend.core.dsp.automatic_denoiser import AutomaticDenoiser
+        from backend.core.dsp.multiband_compressor import MultibandCompressor
         from backend.core.dsp.spectral_gate import SpectralGate
-        from dsp.automatic_denoiser import AutomaticDenoiser
-        from dsp.multiband_compressor import MultibandCompressor
 
         audio = AUDIO_SINE + AUDIO_NOISE
         denoised = AutomaticDenoiser().denoise(audio, SR)
@@ -1354,8 +1354,8 @@ class TestDSPPriorityIntegration:
 
     def test_chain_exciter_truepeak(self):
         """Kette: HarmonicExciter → TruePeakLimiter"""
-        from dsp.harmonic_exciter import HarmonicExciter
-        from dsp.true_peak_limiter import TruePeakLimiter
+        from backend.core.dsp.harmonic_exciter import HarmonicExciter
+        from backend.core.dsp.true_peak_limiter import TruePeakLimiter
 
         excited = HarmonicExciter().process(AUDIO_SINE, SR)
         result = TruePeakLimiter(ceiling_dbtp=-1.0).process(excited, SR)
@@ -1365,9 +1365,9 @@ class TestDSPPriorityIntegration:
 
     def test_chain_declicker_decrackler_dereverberate(self):
         """Kette: AutomaticDeclicker → AiDecrackler → AiDereverberation"""
-        from dsp.automatic_declicker import AutomaticDeclicker
-        from dsp.decrackler import AiDecrackler
-        from dsp.dereverberation import AiDereverberation
+        from backend.core.dsp.automatic_declicker import AutomaticDeclicker
+        from backend.core.dsp.decrackler import AiDecrackler
+        from backend.core.dsp.dereverberation import AiDereverberation
 
         clicked = AUDIO_SINE.copy()
         clicked[1000] = 1.0  # simulierter Click
@@ -1378,8 +1378,8 @@ class TestDSPPriorityIntegration:
 
     def test_vad_masked_denoiser(self):
         """VAD-Maske → selektive Nachbearbeitung"""
-        from dsp.automatic_denoiser import AutomaticDenoiser
-        from dsp.vad import AiVAD
+        from backend.core.dsp.automatic_denoiser import AutomaticDenoiser
+        from backend.core.dsp.vad import AiVAD
 
         AiVAD().detect(AUDIO_NOISE, SR)
         # Maske anwenden und dann denoisieren
@@ -1393,12 +1393,12 @@ class TestDSPPriorityIntegration:
 # ---------------------------------------------------------------------------
 class TestVowelPhonemeFormantTargets:
     def test_01_import(self):
-        from dsp.formant_system import VowelPhonemeFormantTargets
+        from backend.core.dsp.formant_system import VowelPhonemeFormantTargets
 
         assert VowelPhonemeFormantTargets is not None
 
     def test_02_get_targets_male_i(self):
-        from dsp.formant_system import VowelPhonemeFormantTargets
+        from backend.core.dsp.formant_system import VowelPhonemeFormantTargets
 
         t = VowelPhonemeFormantTargets.get_targets("i", "male")
         assert t is not None
@@ -1409,7 +1409,7 @@ class TestVowelPhonemeFormantTargets:
         assert f3 > 2000
 
     def test_03_get_targets_female_i(self):
-        from dsp.formant_system import VowelPhonemeFormantTargets
+        from backend.core.dsp.formant_system import VowelPhonemeFormantTargets
 
         t = VowelPhonemeFormantTargets.get_targets("i", "female")
         assert t is not None
@@ -1420,7 +1420,7 @@ class TestVowelPhonemeFormantTargets:
         assert f1_f >= t_m[0]
 
     def test_04_get_targets_child_scaling(self):
-        from dsp.formant_system import VowelPhonemeFormantTargets
+        from backend.core.dsp.formant_system import VowelPhonemeFormantTargets
 
         t_c = VowelPhonemeFormantTargets.get_targets("a", "child")
         t_f = VowelPhonemeFormantTargets.get_targets("a", "female")
@@ -1429,14 +1429,14 @@ class TestVowelPhonemeFormantTargets:
         assert t_c[0] > t_f[0] * 0.9
 
     def test_05_get_targets_nonvowel_returns_none(self):
-        from dsp.formant_system import VowelPhonemeFormantTargets
+        from backend.core.dsp.formant_system import VowelPhonemeFormantTargets
 
         assert VowelPhonemeFormantTargets.get_targets("s", "male") is None
         assert VowelPhonemeFormantTargets.get_targets("p", "male") is None
         assert VowelPhonemeFormantTargets.get_targets("xyz", "male") is None
 
     def test_06_get_targets_all_ipa_finite(self):
-        from dsp.formant_system import VowelPhonemeFormantTargets
+        from backend.core.dsp.formant_system import VowelPhonemeFormantTargets
 
         for sym in ("i", "e", "a", "o", "u", "ɪ", "ɛ", "æ", "ɑ", "ə", "ʊ"):
             for gender in ("male", "female", "child"):
@@ -1445,34 +1445,34 @@ class TestVowelPhonemeFormantTargets:
                     assert all(math.isfinite(v) and v > 0 for v in t)
 
     def test_07_classify_from_formants_i_region(self):
-        from dsp.formant_system import VowelPhonemeFormantTargets
+        from backend.core.dsp.formant_system import VowelPhonemeFormantTargets
 
         # /i/ region: F1 low, F2 high
         vowel = VowelPhonemeFormantTargets.classify_from_formants(270, 2290, "male")
         assert vowel in ("i", "iː", "ɪ")
 
     def test_08_classify_from_formants_a_region(self):
-        from dsp.formant_system import VowelPhonemeFormantTargets
+        from backend.core.dsp.formant_system import VowelPhonemeFormantTargets
 
         # /a/ region: F1 high, F2 mid
         vowel = VowelPhonemeFormantTargets.classify_from_formants(700, 1220, "male")
         assert vowel in ("a", "aː", "ɑ", "ɑː")
 
     def test_09_classify_from_formants_u_region(self):
-        from dsp.formant_system import VowelPhonemeFormantTargets
+        from backend.core.dsp.formant_system import VowelPhonemeFormantTargets
 
         # /u/ region: F1 low, F2 low
         vowel = VowelPhonemeFormantTargets.classify_from_formants(300, 870, "male")
         assert vowel in ("u", "uː", "ʊ")
 
     def test_10_classify_invalid_formants_returns_none(self):
-        from dsp.formant_system import VowelPhonemeFormantTargets
+        from backend.core.dsp.formant_system import VowelPhonemeFormantTargets
 
         assert VowelPhonemeFormantTargets.classify_from_formants(0, 0, "male") is None
         assert VowelPhonemeFormantTargets.classify_from_formants(-100, 1000, "male") is None
 
     def test_11_vowel_space_coverage(self):
-        from dsp.formant_system import VowelPhonemeFormantTargets
+        from backend.core.dsp.formant_system import VowelPhonemeFormantTargets
 
         # All 5 cardinal vowel regions should map to distinct best symbols
         results = set()
@@ -1483,7 +1483,7 @@ class TestVowelPhonemeFormantTargets:
         assert len(results) >= 3  # at least 3 distinct vowel classes
 
     def test_12_long_short_pairs_same_targets(self):
-        from dsp.formant_system import VowelPhonemeFormantTargets
+        from backend.core.dsp.formant_system import VowelPhonemeFormantTargets
 
         # "i" and "iː" should have identical targets
         t1 = VowelPhonemeFormantTargets.get_targets("i", "male")
@@ -1496,32 +1496,32 @@ class TestVowelPhonemeFormantTargets:
 # ---------------------------------------------------------------------------
 class TestFormantSystemPhonemeGuided:
     def test_01_method_exists(self):
-        from dsp.formant_system import FormantSystem
+        from backend.core.dsp.formant_system import FormantSystem
 
         fs = FormantSystem()
         assert hasattr(fs, "phoneme_guided_enhance")
 
     def test_02_returns_tuple(self):
-        from dsp.formant_system import FormantSystem
+        from backend.core.dsp.formant_system import FormantSystem
 
         fs = FormantSystem()
         result = fs.phoneme_guided_enhance(AUDIO_SINE, SR)
         assert isinstance(result, tuple) and len(result) == 2
 
     def test_03_output_shape_mono(self):
-        from dsp.formant_system import FormantSystem
+        from backend.core.dsp.formant_system import FormantSystem
 
         audio_out, _ = FormantSystem().phoneme_guided_enhance(AUDIO_SINE, SR)
         assert audio_out.shape == AUDIO_SINE.shape
 
     def test_04_output_finite_mono(self):
-        from dsp.formant_system import FormantSystem
+        from backend.core.dsp.formant_system import FormantSystem
 
         audio_out, _ = FormantSystem().phoneme_guided_enhance(AUDIO_SINE, SR)
         assert np.isfinite(audio_out).all()
 
     def test_05_output_clipped(self):
-        from dsp.formant_system import FormantSystem
+        from backend.core.dsp.formant_system import FormantSystem
 
         loud = AUDIO_SINE * 3.0
         audio_out, _ = FormantSystem().phoneme_guided_enhance(loud, SR)
@@ -1530,7 +1530,7 @@ class TestFormantSystemPhonemeGuided:
     def test_06_with_phoneme_segments(self):
         from dataclasses import dataclass
 
-        from dsp.formant_system import FormantSystem
+        from backend.core.dsp.formant_system import FormantSystem
 
         @dataclass
         class FakeSeg:
@@ -1544,21 +1544,21 @@ class TestFormantSystemPhonemeGuided:
         assert "vowel_segments_processed" in report
 
     def test_07_gender_female(self):
-        from dsp.formant_system import FormantSystem
+        from backend.core.dsp.formant_system import FormantSystem
 
         audio_out, report = FormantSystem().phoneme_guided_enhance(AUDIO_SINE, SR, gender="female")
         assert np.isfinite(audio_out).all()
         assert report.get("gender") == "female"
 
     def test_08_correction_strength_zero_is_passthrough(self):
-        from dsp.formant_system import FormantSystem
+        from backend.core.dsp.formant_system import FormantSystem
 
         audio_out, _ = FormantSystem().phoneme_guided_enhance(AUDIO_SINE, SR, correction_strength=0.0)
         # At strength=0 the output must equal the input (identity)
         assert np.allclose(audio_out, np.clip(AUDIO_SINE, -1.0, 1.0), atol=1e-5)
 
     def test_09_stereo_shape_preserved(self):
-        from dsp.formant_system import FormantSystem
+        from backend.core.dsp.formant_system import FormantSystem
 
         stereo = np.column_stack([AUDIO_SINE, AUDIO_SINE * 0.9])
         audio_out, _ = FormantSystem().phoneme_guided_enhance(stereo, SR)
@@ -1566,7 +1566,7 @@ class TestFormantSystemPhonemeGuided:
         assert np.isfinite(audio_out).all()
 
     def test_10_report_contains_stats(self):
-        from dsp.formant_system import FormantSystem
+        from backend.core.dsp.formant_system import FormantSystem
 
         _, report = FormantSystem().phoneme_guided_enhance(AUDIO_SINE, SR)
         assert "vowel_segments_processed" in report
@@ -1574,14 +1574,14 @@ class TestFormantSystemPhonemeGuided:
         assert isinstance(report["vowel_segments_processed"], int)
 
     def test_11_silence_no_crash(self):
-        from dsp.formant_system import FormantSystem
+        from backend.core.dsp.formant_system import FormantSystem
 
         audio_out, _ = FormantSystem().phoneme_guided_enhance(AUDIO_SILENCE, SR)
         assert isinstance(audio_out, np.ndarray)
         assert np.isfinite(audio_out).all()
 
     def test_12_noise_no_crash(self):
-        from dsp.formant_system import FormantSystem
+        from backend.core.dsp.formant_system import FormantSystem
 
         audio_out, _ = FormantSystem().phoneme_guided_enhance(AUDIO_NOISE, SR)
         assert np.isfinite(audio_out).all()
@@ -1709,7 +1709,7 @@ class TestInstrumentFormantTargets:
     """Unit-Tests für InstrumentFormantTargets (McIntyre/Woodhouse 1978, Benade 1976)."""
 
     def _cls(self):
-        from dsp.formant_system import InstrumentFormantTargets
+        from backend.core.dsp.formant_system import InstrumentFormantTargets
 
         return InstrumentFormantTargets
 
@@ -1829,7 +1829,7 @@ class TestFormantSystemInstrumentGuided:
     """Unit-Tests für FormantSystem.instrument_guided_enhance()."""
 
     def _fs(self):
-        from dsp.formant_system import FormantSystem
+        from backend.core.dsp.formant_system import FormantSystem
 
         return FormantSystem(enhance_singers_formant=False)
 
@@ -1909,7 +1909,7 @@ class TestFormantSystemInstrumentGuided:
 
     def test_14_all_supported_instruments_no_crash(self):
         """Alle bekannten Instrumente dürfen keinen Fehler werfen."""
-        from dsp.formant_system import InstrumentFormantTargets
+        from backend.core.dsp.formant_system import InstrumentFormantTargets
 
         fs = self._fs()
         for name in InstrumentFormantTargets.all_instruments():
@@ -2161,7 +2161,7 @@ class TestInstrumentFormantDriftCorrector:
 
     @staticmethod
     def _corrector(**kwargs):
-        from dsp.instrument_formant_corrector import InstrumentFormantDriftCorrector
+        from backend.core.dsp.instrument_formant_corrector import InstrumentFormantDriftCorrector
 
         return InstrumentFormantDriftCorrector(**kwargs)
 
@@ -2173,7 +2173,7 @@ class TestInstrumentFormantDriftCorrector:
     # ── 01: Import & instantiation ─────────────────────────────────────────
 
     def test_01_import(self):
-        from dsp.instrument_formant_corrector import InstrumentFormantDriftCorrector
+        from backend.core.dsp.instrument_formant_corrector import InstrumentFormantDriftCorrector
 
         assert InstrumentFormantDriftCorrector is not None
 
@@ -2184,7 +2184,7 @@ class TestInstrumentFormantDriftCorrector:
     def test_03_result_dataclass_fields(self):
         import dataclasses
 
-        from dsp.instrument_formant_corrector import InstrumentDriftResult
+        from backend.core.dsp.instrument_formant_corrector import InstrumentDriftResult
 
         fields = {f.name for f in dataclasses.fields(InstrumentDriftResult)}
         expected = {
@@ -2331,7 +2331,7 @@ class TestInstrumentFormantDriftCorrector:
     # ── 08: Singleton ─────────────────────────────────────────────────────
 
     def test_23_singleton_same_instance(self):
-        from dsp.instrument_formant_corrector import get_instrument_formant_drift_corrector
+        from backend.core.dsp.instrument_formant_corrector import get_instrument_formant_drift_corrector
 
         a = get_instrument_formant_drift_corrector()
         b = get_instrument_formant_drift_corrector()
@@ -2340,7 +2340,7 @@ class TestInstrumentFormantDriftCorrector:
     # ── 09: Convenience function ──────────────────────────────────────────
 
     def test_24_convenience_returns_result(self):
-        from dsp.instrument_formant_corrector import (
+        from backend.core.dsp.instrument_formant_corrector import (
             InstrumentDriftResult,
             correct_instrument_formant_drift,
         )
@@ -2349,7 +2349,7 @@ class TestInstrumentFormantDriftCorrector:
         assert isinstance(result, InstrumentDriftResult)
 
     def test_25_convenience_audio_finite(self):
-        from dsp.instrument_formant_corrector import correct_instrument_formant_drift
+        from backend.core.dsp.instrument_formant_corrector import correct_instrument_formant_drift
 
         result = correct_instrument_formant_drift(self._make_sine(330.0), SR, instrument="keys")
         assert np.all(np.isfinite(result.audio))
@@ -2357,14 +2357,14 @@ class TestInstrumentFormantDriftCorrector:
     # ── 10: DTW helpers ───────────────────────────────────────────────────
 
     def test_26_dtw_identical_zero_distance(self):
-        from dsp.instrument_formant_corrector import _dtw_distance_and_path
+        from backend.core.dsp.instrument_formant_corrector import _dtw_distance_and_path
 
         seq = np.array([200.0, 210.0, 205.0, 200.0])
         dist, path = _dtw_distance_and_path(seq, seq)
         assert dist < 1e-6
 
     def test_27_dtw_constant_offset_positive_distance(self):
-        from dsp.instrument_formant_corrector import _dtw_distance_and_path
+        from backend.core.dsp.instrument_formant_corrector import _dtw_distance_and_path
 
         seq_a = np.array([200.0, 200.0, 200.0, 200.0])
         seq_b = np.array([400.0, 400.0, 400.0, 400.0])
@@ -2372,7 +2372,7 @@ class TestInstrumentFormantDriftCorrector:
         assert dist > 0.0
 
     def test_28_dtw_path_nonempty_for_nonempty_input(self):
-        from dsp.instrument_formant_corrector import _dtw_distance_and_path
+        from backend.core.dsp.instrument_formant_corrector import _dtw_distance_and_path
 
         seq = np.linspace(100.0, 500.0, 20)
         dist, path = _dtw_distance_and_path(seq, seq[::-1])
@@ -2389,7 +2389,7 @@ class TestInstrumentFormantDriftCorrector:
     # ── 12: Strength ceiling ──────────────────────────────────────────────
 
     def test_30_strength_ceiling_clamped(self):
-        from dsp.instrument_formant_corrector import MAX_CORRECTION_STRENGTH
+        from backend.core.dsp.instrument_formant_corrector import MAX_CORRECTION_STRENGTH
 
         c = self._corrector(correction_strength=1.0)
         assert c.correction_strength <= MAX_CORRECTION_STRENGTH

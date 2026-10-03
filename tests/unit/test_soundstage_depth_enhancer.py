@@ -1,7 +1,7 @@
 import numpy as np
 import pytest
 
-from dsp.soundstage_depth_enhancer import SoundstageDepthEnhancer
+from backend.core.dsp.soundstage_depth_enhancer import SoundstageDepthEnhancer
 
 
 def _stereo_noise(sr: int = 48000, dur_s: float = 1.0) -> np.ndarray:

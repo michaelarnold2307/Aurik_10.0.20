@@ -3,7 +3,7 @@ import pytest
 
 pytest.importorskip("librosa")  # CI-Minimal-Umgebung (cross-platform)
 
-from dsp.adaptive_stft import AdaptiveSTFT
+from backend.core.dsp.adaptive_stft import AdaptiveSTFT
 
 
 @pytest.mark.unit

@@ -33,6 +33,7 @@ from backend.core.clap_reference_matcher import (
     cosine_similarity,
     spectral_transfer,
 )
+from backend.core.dsp.cpu_pipeline import CPUPipeline, PipelineStats
 from backend.core.feedback_chain import (
     FEEDBACK_CRITICAL_PHASES,
     FeedbackChain,
@@ -67,7 +68,6 @@ from benchmarks.restoration_benchmark import (
     BenchmarkReport,
     RestorationBenchmark,
 )
-from dsp.cpu_pipeline import CPUPipeline, PipelineStats
 
 SR = 48000
 
@@ -438,7 +438,7 @@ class TestGPUPipelineStub:
         self._reload()
         with warnings.catch_warnings():
             warnings.simplefilter("ignore", DeprecationWarning)
-            from dsp.gpu_pipeline import GPUPipeline, GPUPipelineStats
+            from backend.core.dsp.gpu_pipeline import GPUPipeline, GPUPipelineStats
         assert GPUPipeline is CPUPipeline
         assert GPUPipelineStats is PipelineStats
 

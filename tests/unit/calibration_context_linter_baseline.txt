@@ -1,10 +1,2 @@
-backend/api/bridge_calibration_data.py:32
-backend/core/era_authentic_perceptual_completion.py:113
-backend/core/joint_calibrator.py:60
-backend/core/perceptual_tuning.py:195,225
-backend/core/pipeline_calibration.py:114,180
-backend/core/signal_flow_tracer.py:1080
-backend/core/song_calibration.py:30
-backend/core/song_calibration_profile.py:35
-# Baseline Hash: 1f530f9c25787e37
-# 10 Verstöße in 8 Dateien
+# Baseline Hash: e3b0c44298fc1c14
+# 0 Verstöße in 0 Dateien

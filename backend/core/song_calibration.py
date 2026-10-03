@@ -20,6 +20,15 @@ from backend.core.calibration_context import get_calibration_context
 logger = logging.getLogger(__name__)
 
 
+def _default_transfer_chain_depth() -> int:
+    # §G86: Default NUR in calibration_context.py — bei None aus dem Kontext
+    # beziehen (Muster absolute_quality_gate.py).
+    from backend.core.calibration_context import get_calibration_context as _get_ctx
+
+    _ctx = _get_ctx()
+    return _ctx.transfer_chain_depth if _ctx is not None else 1
+
+
 @dataclass
 class SongCalibrationProfile:
     """Materialadaptives Kalibrierungsprofil für einen Song."""
@@ -27,7 +36,9 @@ class SongCalibrationProfile:
     restorability_score: float = 65.0
     genre: str = "unknown"
     material: str = "vinyl"
-    transfer_chain_depth: int = 1
+    transfer_chain_depth: int = field(
+        default_factory=_default_transfer_chain_depth
+    )  # §G86: Default nur aus CalibrationContext
 
     # Globale Skalierung
     global_scalar: float = 1.0

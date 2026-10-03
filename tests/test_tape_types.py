@@ -16,7 +16,7 @@ from backend.core.data_models import (
     StereoAnalysis,
     VocalAnalysis,
 )
-from dsp.dsp_decision_logic import DSPDecisionLogic
+from backend.core.dsp.dsp_decision_logic import DSPDecisionLogic
 
 
 def make_minimal_profile(medium, tape_type=None):

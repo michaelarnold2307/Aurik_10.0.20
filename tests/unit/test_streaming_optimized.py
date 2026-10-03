@@ -13,7 +13,7 @@ import numpy as np
 
 np.random.seed(42)  # §5.4 Reproduzierbarkeit
 
-from dsp.streaming_optimized import StreamingDenoiser, StreamingGate, StreamingLimiter
+from backend.core.dsp.streaming_optimized import StreamingDenoiser, StreamingGate, StreamingLimiter
 
 SR = 44100
 _N = SR // 4  # 11025 Samples (0.25s) — Default für alle Hilfsfunktionen

@@ -21,7 +21,7 @@ import pytest
 # Add parent directory to path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from dsp.tonal_balance_restorer import (
+from backend.core.dsp.tonal_balance_restorer import (
     AdaptiveTonalBalanceRestorer,
     FrequencyDeMasker,
     LowEndClarityEnhancer,

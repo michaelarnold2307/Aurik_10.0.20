@@ -1,7 +1,7 @@
 import numpy as np
 import pytest
 
-from dsp.multiband_compressor import MultibandCompressor
+from backend.core.dsp.multiband_compressor import MultibandCompressor
 
 
 @pytest.mark.unit

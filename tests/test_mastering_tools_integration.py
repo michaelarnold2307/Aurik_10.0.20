@@ -12,8 +12,8 @@ Date: 10. Februar 2026
 import numpy as np
 import pytest
 
-from dsp.stereo_width_enhancer import StereoWidthEnhancer
-from dsp.true_peak_limiter import TruePeakLimiter
+from backend.core.dsp.stereo_width_enhancer import StereoWidthEnhancer
+from backend.core.dsp.true_peak_limiter import TruePeakLimiter
 
 
 @pytest.mark.unit

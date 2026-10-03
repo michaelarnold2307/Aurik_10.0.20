@@ -25,11 +25,21 @@ Drei Stufen der Wahrnehmungs-Optimierung für maximalen Wohlklang:
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from enum import Enum
 from typing import ClassVar
 
 import numpy as np
+
+
+def _default_transfer_chain_depth() -> int:
+    # §G86: Default NUR in calibration_context.py — bei None aus dem Kontext
+    # beziehen (Muster absolute_quality_gate.py).
+    from backend.core.calibration_context import get_calibration_context
+
+    _ctx = get_calibration_context()
+    return _ctx.transfer_chain_depth if _ctx is not None else 1
+
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # Material-adaptive JND-Faktoren
@@ -192,7 +202,7 @@ def apply_perceptual_jnd(
     jnd_db: float,
     material: str = "unknown",
     genre: str = "unknown",
-    transfer_chain_depth: int = 1,
+    transfer_chain_depth: int | None = None,
 ) -> float:
     """§v10.116: Finale JND-Schwelle — material- + genre-adaptiv.
 
@@ -205,6 +215,14 @@ def apply_perceptual_jnd(
     Returns:
         Adaptierte JND-Schwelle in dB
     """
+    # §G86: Default NUR in calibration_context.py — bei None aus dem Kontext
+    # beziehen (Muster absolute_quality_gate.py).
+    if transfer_chain_depth is None:
+        from backend.core.calibration_context import get_calibration_context
+
+        _ctx = get_calibration_context()
+        transfer_chain_depth = _ctx.transfer_chain_depth if _ctx is not None else 1
+
     factor = get_combined_jnd_factor(material, genre)
 
     # Kassette mit extremer Chain (depth≥5): zusätzlicher Boost
@@ -222,7 +240,9 @@ class PerceptualTuningProfile:
 
     material: str = "unknown"
     genre: str = "unknown"
-    transfer_chain_depth: int = 1
+    transfer_chain_depth: int = field(
+        default_factory=_default_transfer_chain_depth
+    )  # §G86: Default nur aus CalibrationContext
 
     @property
     def jnd_factor(self) -> float:

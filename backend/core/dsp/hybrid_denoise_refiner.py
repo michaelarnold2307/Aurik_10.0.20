@@ -291,7 +291,7 @@ def apply_hybrid_refinement(
     audio_refined = refiner.refine(audio_ml_cleaned, audio_original, sr, genre=genre, strength=strength)
 
     # Authenticity Check (Safeguard #4)
-    from dsp.authenticity_metrics import AuthenticityMetrics
+    from backend.core.dsp.authenticity_metrics import AuthenticityMetrics
 
     is_authentic, warnings, metrics = AuthenticityMetrics.authenticity_check(audio_original, audio_refined, sr)
 

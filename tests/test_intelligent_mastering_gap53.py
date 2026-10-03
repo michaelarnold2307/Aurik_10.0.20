@@ -17,7 +17,7 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from dsp.intelligent_mastering import (
+from backend.core.dsp.intelligent_mastering import (
     FinalMaximizer,
     IntelligentEQ,
     IntelligentMasteringChain,

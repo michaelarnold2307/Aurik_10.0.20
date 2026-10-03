@@ -9,7 +9,7 @@ import os
 import numpy as np
 import onnxruntime as ort
 
-from dsp._memory_budget_guard import check_budget
+from backend.core.dsp._memory_budget_guard import check_budget
 
 logger = logging.getLogger(__name__)
 

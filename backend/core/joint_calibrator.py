@@ -57,7 +57,7 @@ def joint_calibrate(
     min_strength: float | None = None,
     restorability_score: float | None = None,
     default_strength: float = 0.85,
-    transfer_chain_depth: int = 1,
+    transfer_chain_depth: int | None = None,
 ) -> dict[str, float]:
     """Berechnet optimale Phasen-Stärken AUSSCHLIESSLICH aus Goal-Gaps.
 
@@ -79,6 +79,14 @@ def joint_calibrate(
     Returns:
         {phase_id: calibrated_strength}
     """
+    # §G86: Default NUR in calibration_context.py — bei None aus dem Kontext
+    # beziehen (Muster absolute_quality_gate.py).
+    if transfer_chain_depth is None:
+        from backend.core.calibration_context import get_calibration_context
+
+        _ctx = get_calibration_context()
+        transfer_chain_depth = _ctx.transfer_chain_depth if _ctx is not None else 1
+
     # §v10.x rs-Konsistenz: kanonische Quelle (explizit > CalibrationContext > 65.0).
     from backend.core.calibration_context import resolve_restorability_score
 

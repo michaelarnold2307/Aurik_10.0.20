@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import numpy as np
 
-from dsp.dtw_groove import measure_groove
+from backend.core.dsp.dtw_groove import measure_groove
 
 
 def _click_train(sr: int, dur_s: float, period_s: float = 0.25, shift_s: float = 0.0, amp: float = 0.5) -> np.ndarray:

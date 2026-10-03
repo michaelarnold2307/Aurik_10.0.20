@@ -25,7 +25,7 @@ VOCAL_PROFILES = {
 from dataclasses import asdict, dataclass
 from typing import Any
 
-from dsp.adaptive_quality_gates import adaptive_corr_gate, adaptive_hf_gate
+from backend.core.dsp.adaptive_quality_gates import adaptive_corr_gate, adaptive_hf_gate
 
 
 # DSPContract für Auditierbarkeit und SOTA-Konformität
@@ -86,7 +86,7 @@ import numpy.typing as npt
 import torch
 from scipy.signal import firwin, lfilter
 
-from dsp.artifact_bias_detection import detect_bias, detect_clipping, detect_dc_offset
+from backend.core.dsp.artifact_bias_detection import detect_bias, detect_clipping, detect_dc_offset
 
 logger = logging.getLogger(__name__)
 
@@ -551,7 +551,7 @@ def process_vocals(
     )
     # Ethik-Engine/Originality Gate automatisch ausführen und loggen
     try:
-        from dsp.ethics_engine import check_ethics_and_originality
+        from backend.core.dsp.ethics_engine import check_ethics_and_originality
 
         ethics_ok = check_ethics_and_originality()
         write_audit_log(

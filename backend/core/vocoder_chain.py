@@ -122,7 +122,7 @@ def activate_vocoder_chain(
     try:
         from scipy.signal import stft as scipy_stft
 
-        from dsp.pghi import pghi_reconstruct
+        from backend.core.dsp.pghi import pghi_reconstruct
 
         _, _, z_stft = scipy_stft(arr, fs=sample_rate, nperseg=2048, noverlap=2048 - 256)
         mag = np.abs(z_stft).astype(np.float32)

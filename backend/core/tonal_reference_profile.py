@@ -1041,7 +1041,7 @@ class TonalCurve:
                     out = out[:n_orig]
                 else:
                     out = np.pad(out, (0, n_orig - len(out)))
-                return out.astype(np.float32)  # type: ignore[no-any-return,return-value]
+                return out.astype(np.float32)  # type: ignore[no-any-return, return-value]
 
             if audio_post.ndim == 1:
                 result = _apply_mono(audio_post)
@@ -1249,7 +1249,7 @@ def _apply_bark_ceiling(
             out = out[:n_orig]
         else:
             out = np.pad(out, (0, n_orig - len(out)))
-        return out.astype(np.float32)  # type: ignore[no-any-return,return-value]
+        return out.astype(np.float32)  # type: ignore[no-any-return, return-value]
 
     if audio_post.ndim == 1:
         result = _apply_mono(audio_post)

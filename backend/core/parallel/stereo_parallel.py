@@ -263,7 +263,7 @@ class StereoParallelProcessor:
         speedups = self._processing_stats["parallel_speedup"]
         if not speedups:
             return 0.0
-        return sum(speedups) / len(speedups)  # type: ignore[no-any-return,call-overload,arg-type]
+        return sum(speedups) / len(speedups)  # type: ignore[no-any-return, call-overload, arg-type]
 
     def get_stats(self) -> dict[str, Any]:
         """

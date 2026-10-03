@@ -60,7 +60,7 @@ class TestTonalityGateReferenceValues:
 
 class TestTonalityGateIntegration:
     def test_spectral_denoiser_passthrough_on_tonal(self):
-        from dsp.spectral_denoiser import SpectralDenoiser
+        from backend.core.dsp.spectral_denoiser import SpectralDenoiser
 
         denoiser = SpectralDenoiser(reduction_db=18.0)
         tone = _clean_tone()
@@ -68,7 +68,7 @@ class TestTonalityGateIntegration:
         assert np.allclose(out, tone, atol=1e-7)
 
     def test_spectral_denoiser_processes_noisy(self):
-        from dsp.spectral_denoiser import SpectralDenoiser
+        from backend.core.dsp.spectral_denoiser import SpectralDenoiser
 
         denoiser = SpectralDenoiser(reduction_db=18.0)
         noisy = _noisy_tone()

@@ -221,7 +221,7 @@ class GacelaPlugin:
             # sr=48000 satisfies the assert; PGHI algorithm is SR-agnostic — only
             # win_size and hop matter for phase propagation.
             try:
-                from dsp.pghi import PghiReconstructor
+                from backend.core.dsp.pghi import PghiReconstructor
 
                 self._pghi_rec = PghiReconstructor(sr=48000)
                 logger.debug("GACELA: canonical PGHI reconstructor geladen.")

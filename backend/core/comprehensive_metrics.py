@@ -36,17 +36,17 @@ logger = logging.getLogger(__name__)
 
 def _rfft(x: np.ndarray, n: int | None = None) -> np.ndarray:
     """scipy.fft.rfft with explicit ndarray return type for Pylance."""
-    return np.asarray(fft.rfft(x, n=n))  # type: ignore[no-any-return,arg-type]
+    return np.asarray(fft.rfft(x, n=n))  # type: ignore[no-any-return, arg-type]
 
 
 def _irfft(x: np.ndarray, n: int | None = None) -> np.ndarray:
     """scipy.fft.irfft with explicit ndarray return type for Pylance."""
-    return np.asarray(fft.irfft(x, n))  # type: ignore[no-any-return,arg-type]
+    return np.asarray(fft.irfft(x, n))  # type: ignore[no-any-return, arg-type]
 
 
 def _hilbert(x: np.ndarray) -> np.ndarray:
     """scipy.signal.hilbert with explicit ndarray return type for Pylance."""
-    return np.asarray(signal.hilbert(x))  # type: ignore[no-any-return,arg-type]
+    return np.asarray(signal.hilbert(x))  # type: ignore[no-any-return, arg-type]
 
 
 # Import existing metrics modules
@@ -59,7 +59,7 @@ except ImportError:
     logger.warning("EnhancedMetrics not verfuegbar")
 
 try:
-    from dsp.professional_meters import LUFSMeter
+    from backend.core.dsp.professional_meters import LUFSMeter
 
     PROFESSIONAL_METERS_AVAILABLE = True
 except ImportError:

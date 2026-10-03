@@ -119,11 +119,11 @@ _project_root_19 = _os19.path.dirname(
 if _project_root_19 not in _sys19.path:
     _sys19.path.insert(0, _project_root_19)
 try:
-    from dsp.breath_intelligence import BreathIntelligence
-    from dsp.formant_system import FormantSystem, FormantTracker
-    from dsp.vocal_dynamics_intelligence import VocalDynamicsIntelligence
-    from dsp.vocal_presence_enhancer import VocalPresenceEnhancer
-    from dsp.vocal_spectral_inpainting import VocalSpectralInpainting
+    from backend.core.dsp.breath_intelligence import BreathIntelligence
+    from backend.core.dsp.formant_system import FormantSystem, FormantTracker
+    from backend.core.dsp.vocal_dynamics_intelligence import VocalDynamicsIntelligence
+    from backend.core.dsp.vocal_presence_enhancer import VocalPresenceEnhancer
+    from backend.core.dsp.vocal_spectral_inpainting import VocalSpectralInpainting
 
     AURIK_8_AVAILABLE = True
     logger.debug("Aurik 10.0.0 Enhancement-Module geladen (Formant, Breath, Presence, Inpainting, Dynamics)")

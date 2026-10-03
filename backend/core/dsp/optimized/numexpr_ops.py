@@ -16,7 +16,7 @@ Applications:
 - Array comparisons
 
 Usage:
-    from dsp.optimized.numexpr_ops import OptimizedDSP
+    from backend.core.dsp.optimized.numexpr_ops import OptimizedDSP
 
     dsp = OptimizedDSP()
     masked = dsp.spectral_gate(spectrum, threshold=-40.0)

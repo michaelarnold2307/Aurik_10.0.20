@@ -54,13 +54,13 @@ class TestMooreGlasbergDLM:
     """Moore/Glasberg Dynamic Loudness Model."""
 
     def test_01_moore_importable(self):
-        from dsp import psychoacoustics as pa
+        from backend.core.dsp import psychoacoustics as pa
 
         assert hasattr(pa, "compute_specific_loudness_moore")
 
     def test_02_moore_returns_correct_shape(self):
         """Should return 40 ERB bands worth of specific loudness."""
-        from dsp.psychoacoustics import compute_specific_loudness_moore
+        from backend.core.dsp.psychoacoustics import compute_specific_loudness_moore
 
         audio = np.sin(2 * np.pi * 440 * np.linspace(0, 2, 2 * SR)) * 0.1
         result = compute_specific_loudness_moore(audio.astype(np.float32), SR)
@@ -68,7 +68,7 @@ class TestMooreGlasbergDLM:
         assert np.all(np.isfinite(result)), "Result contains NaN/Inf"
 
     def test_03_louder_signal_produces_higher_loudness(self):
-        from dsp.psychoacoustics import compute_specific_loudness_moore
+        from backend.core.dsp.psychoacoustics import compute_specific_loudness_moore
 
         quiet = np.sin(2 * np.pi * 1000 * np.linspace(0, 1, SR)) * 0.01
         loud = np.sin(2 * np.pi * 1000 * np.linspace(0, 1, SR)) * 0.3
@@ -77,7 +77,7 @@ class TestMooreGlasbergDLM:
         assert n_loud > n_quiet, f"Loud ({n_loud:.2f}) should exceed quiet ({n_quiet:.2f})"
 
     def test_04_silence_returns_near_zero(self):
-        from dsp.psychoacoustics import compute_specific_loudness_moore
+        from backend.core.dsp.psychoacoustics import compute_specific_loudness_moore
 
         silence = np.zeros(SR, dtype=np.float32)
         n_silence = float(np.sum(compute_specific_loudness_moore(silence, SR)))

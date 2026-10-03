@@ -1,9 +1,9 @@
 import numpy as np
 import pytest
 
-from dsp.multiband_expander import MultibandExpander
-from dsp.multiband_gate import MultibandGate
-from dsp.multiband_limiter import MultibandLimiter
+from backend.core.dsp.multiband_expander import MultibandExpander
+from backend.core.dsp.multiband_gate import MultibandGate
+from backend.core.dsp.multiband_limiter import MultibandLimiter
 
 
 def _mixture(sr: int = 48000, dur_s: float = 1.0) -> np.ndarray:

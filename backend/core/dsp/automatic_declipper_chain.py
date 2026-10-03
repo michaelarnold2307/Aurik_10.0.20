@@ -50,7 +50,7 @@ class AiAutomaticDeclipperChain:
         chain kann die Schritte steuern: 'ar' (Janssen), 'interp' (lineare Interpolation)
         """
         self.log_contract()
-        from dsp._declip_core import ar_declip
+        from backend.core.dsp._declip_core import ar_declip
 
         audio = np.asarray(audio, dtype=np.float64)
         steps = chain if chain else ["ar"]

@@ -1,7 +1,7 @@
 import numpy as np
 import pytest
 
-from dsp.auto_eq import AutoEQ
+from backend.core.dsp.auto_eq import AutoEQ
 
 
 @pytest.mark.unit

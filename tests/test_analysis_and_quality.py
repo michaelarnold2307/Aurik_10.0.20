@@ -1,7 +1,7 @@
 import numpy as np
 import pytest
 
-from dsp.analysis_and_quality import RMSEnergy, SpectralCentroid, SpectralRolloff, ZeroCrossingRate
+from backend.core.dsp.analysis_and_quality import RMSEnergy, SpectralCentroid, SpectralRolloff, ZeroCrossingRate
 
 
 @pytest.mark.unit

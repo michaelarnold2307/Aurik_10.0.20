@@ -419,7 +419,7 @@ def export_stems(
         >>> # Creates: my_song_vocals.wav, my_song_drums.wav, my_song_bass.wav, my_song_other.wav
     """
     try:
-        from dsp.stem_separator import StemSeparator
+        from backend.core.dsp.stem_separator import StemSeparator
     except ImportError as e:
         logger.warning("ML→DSP-Ersatzpfad aktiviert", exc_info=True)  # §V6 (copilot-instructions.md)
         raise RuntimeError("Stem separator not available. Make sure dsp/ module is in your Python path.") from e

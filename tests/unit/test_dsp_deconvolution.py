@@ -5,7 +5,7 @@ Tests für dsp/adaptive_deconvolution.py — alle drei Methoden inkl. RLS.
 import numpy as np
 import pytest
 
-from dsp.adaptive_deconvolution import AdaptiveDeconvolution
+from backend.core.dsp.adaptive_deconvolution import AdaptiveDeconvolution
 
 
 def _make_signal(n: int = 1024, sr: int = 22050, freq: float = 440.0) -> np.ndarray:

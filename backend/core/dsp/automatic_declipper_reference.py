@@ -79,7 +79,7 @@ class AutomaticDeclipperReference:
     def declip_reference(self, audio: Any, sr: int, reference_audio: Any | None = None) -> Any:
         """AR-Declipping mit optionalem Referenz-gestütztem Threshold."""
         self.log_contract()
-        from dsp._declip_core import ar_declip
+        from backend.core.dsp._declip_core import ar_declip
 
         audio = np.asarray(audio, dtype=np.float64)
         # Threshold aus Referenz-Audio ableiten falls vorhanden

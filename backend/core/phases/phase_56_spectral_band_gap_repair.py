@@ -70,11 +70,11 @@ from .phase_interface import (
 # pylint: disable=import-outside-toplevel
 
 try:
-    from dsp.pghi import PghiReconstructor as _PGHIRec_P56  # type: ignore
+    from backend.core.dsp.pghi import PghiReconstructor as _PGHIRec_P56  # type: ignore
 
     _PGHI_AVAILABLE_P56 = True
 except ImportError:
-    _PGHIRec_P56 = None  # type: ignore[misc,assignment]
+    _PGHIRec_P56 = None  # type: ignore[misc, assignment]
     _PGHI_AVAILABLE_P56 = False
 
 

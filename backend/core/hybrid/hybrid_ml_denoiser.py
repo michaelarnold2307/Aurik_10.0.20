@@ -46,7 +46,7 @@ from typing import Any, cast
 import numpy as np
 
 from backend.core.audio_utils import safe_filtfilt  # §v10.101 padlen-guard
-from dsp.adaptive_omlsa import AdaptiveOMLSA
+from backend.core.dsp.adaptive_omlsa import AdaptiveOMLSA
 
 logger = logging.getLogger(__name__)
 

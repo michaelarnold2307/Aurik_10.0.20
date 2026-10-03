@@ -52,7 +52,7 @@ from .phase_interface import PhaseCategory, PhaseInterface, PhaseMetadata, Phase
 
 # Import Drums Enhancement DSP module
 try:
-    from dsp.drums_enhancement import DrumsEnhancementSystem
+    from backend.core.dsp.drums_enhancement import DrumsEnhancementSystem
 
     DRUMS_ENHANCEMENT_AVAILABLE = True
 except ImportError:
@@ -60,15 +60,15 @@ except ImportError:
     logging.warning("DrumsEnhancementSystem not available")
 
 try:
-    from dsp.formant_system import FormantSystem as _FormantSystemCls
+    from backend.core.dsp.formant_system import FormantSystem as _FormantSystemCls
 
     _FORMANT_SYSTEM_DRUMS_STATE: dict = {"instance": None}
 except Exception:
-    _FormantSystemCls = None  # type: ignore[assignment,misc]
+    _FormantSystemCls = None  # type: ignore[assignment, misc]
     _FORMANT_SYSTEM_DRUMS_STATE = {"instance": None}
 
 try:
-    from dsp.instrument_formant_corrector import (
+    from backend.core.dsp.instrument_formant_corrector import (
         correct_instrument_formant_drift as _correct_instrument_formant_drift_fn,
     )
 except Exception:
@@ -340,7 +340,7 @@ class DrumsEnhancementV1(PhaseInterface):
                 )
 
             # Process audio
-            processed_audio, report = self.enhancer.process(audio, self.sample_rate)  # type: ignore[union-attr,attr-defined]
+            processed_audio, report = self.enhancer.process(audio, self.sample_rate)  # type: ignore[union-attr, attr-defined]
 
             # Mix with original (parallel processing)
             mix = float(np.clip(config["mix"], 0.0, 1.0)) * effective_strength

@@ -198,7 +198,7 @@ def _measure_transient_integrity(original: np.ndarray, restored: np.ndarray, sr:
         energy_orig = np.mean(env_orig[onset_mask])
         energy_rest = np.mean(env_rest[onset_mask])
         energy_ratio = min(energy_rest / (energy_orig + 1e-10), energy_orig / (energy_rest + 1e-10))
-        energy_ratio = float(max(0.0, min(1.0, energy_ratio)))  # type: ignore[assignment,arg-type]
+        energy_ratio = float(max(0.0, min(1.0, energy_ratio)))  # type: ignore[assignment, arg-type]
     else:
         energy_ratio = 1.0  # type: ignore[assignment]
 
@@ -229,7 +229,7 @@ def _measure_transient_integrity(original: np.ndarray, restored: np.ndarray, sr:
         "timing_score": round(timing_score, 4),
         "mean_timing_deviation_ms": round(mean_deviation_ms, 2),
     }
-    return float(max(0.0, min(1.0, score))), details  # type: ignore[return-value,arg-type]
+    return float(max(0.0, min(1.0, score))), details  # type: ignore[return-value, arg-type]
 
 
 def _measure_micro_dynamics(original: np.ndarray, restored: np.ndarray, sr: int) -> tuple[float, dict[str, float]]:

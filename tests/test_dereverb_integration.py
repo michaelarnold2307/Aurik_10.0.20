@@ -10,7 +10,7 @@ Date: 10. Februar 2026
 import numpy as np
 import pytest
 
-from dsp.advanced_dereverb import AdvancedDereverb
+from backend.core.dsp.advanced_dereverb import AdvancedDereverb
 
 
 @pytest.mark.unit

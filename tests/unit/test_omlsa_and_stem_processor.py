@@ -9,7 +9,7 @@ import numpy as np
 np.random.seed(42)  # §5.4 Reproduzierbarkeit
 import pytest
 
-from dsp.adaptive_omlsa import AdaptiveOMLSA
+from backend.core.dsp.adaptive_omlsa import AdaptiveOMLSA
 
 SR = 44100
 

@@ -43,7 +43,7 @@ def _clipped_sine(clip_level=0.7, freq=440, dur=0.5, sr=SR):
 @pytest.mark.unit
 class TestAdaptiveJanssenIterative:
     def setup_method(self):
-        from dsp.adaptive_janssen_iterative import AdaptiveJanssenIterative
+        from backend.core.dsp.adaptive_janssen_iterative import AdaptiveJanssenIterative
 
         self.jans = AdaptiveJanssenIterative(n_iter=5)
 
@@ -111,7 +111,7 @@ class TestAdaptiveJanssenIterative:
 
 class TestARDeclipCore:
     def setup_method(self):
-        from dsp._declip_core import ar_declip
+        from backend.core.dsp._declip_core import ar_declip
 
         self.ar_declip = ar_declip
 
@@ -178,7 +178,7 @@ class TestDeclipperVariants:
         return _clipped_sine(0.7, sr=self.SR)
 
     def test_bass(self):
-        from dsp.automatic_declipper_bass import AiAutomaticDeclipperBass
+        from backend.core.dsp.automatic_declipper_bass import AiAutomaticDeclipperBass
 
         d = AiAutomaticDeclipperBass()
         out = d.declip_bass(self._audio(), self.SR)
@@ -186,42 +186,42 @@ class TestDeclipperVariants:
         assert np.all(np.isfinite(out))
 
     def test_instrument(self):
-        from dsp.automatic_declipper_instrument import AutomaticDeclipperInstrument
+        from backend.core.dsp.automatic_declipper_instrument import AutomaticDeclipperInstrument
 
         d = AutomaticDeclipperInstrument()
         out = d.declip_instrument(self._audio(), self.SR)
         assert len(out) == len(self._audio())
 
     def test_low_latency(self):
-        from dsp.automatic_declipper_low_latency import AutomaticDeclipperLowLatency
+        from backend.core.dsp.automatic_declipper_low_latency import AutomaticDeclipperLowLatency
 
         d = AutomaticDeclipperLowLatency()
         out = d.declip_low_latency(self._audio(), self.SR)
         assert len(out) == len(self._audio())
 
     def test_percussive(self):
-        from dsp.automatic_declipper_percussive import AutomaticDeclipperPercussive
+        from backend.core.dsp.automatic_declipper_percussive import AutomaticDeclipperPercussive
 
         d = AutomaticDeclipperPercussive()
         out = d.declip_percussive(self._audio(), self.SR)
         assert np.all(np.isfinite(out))
 
     def test_realtime(self):
-        from dsp.automatic_declipper_realtime import AutomaticDeclipperRealtime
+        from backend.core.dsp.automatic_declipper_realtime import AutomaticDeclipperRealtime
 
         d = AutomaticDeclipperRealtime()
         out = d.declip_realtime(self._audio(), self.SR)
         assert len(out) == len(self._audio())
 
     def test_reference_no_ref(self):
-        from dsp.automatic_declipper_reference import AutomaticDeclipperReference
+        from backend.core.dsp.automatic_declipper_reference import AutomaticDeclipperReference
 
         d = AutomaticDeclipperReference()
         out = d.declip_reference(self._audio(), self.SR, reference_audio=None)
         assert len(out) == len(self._audio())
 
     def test_reference_with_ref(self):
-        from dsp.automatic_declipper_reference import AutomaticDeclipperReference
+        from backend.core.dsp.automatic_declipper_reference import AutomaticDeclipperReference
 
         d = AutomaticDeclipperReference()
         ref = _sine(amp=0.95)
@@ -230,7 +230,7 @@ class TestDeclipperVariants:
         assert np.all(np.isfinite(out))
 
     def test_stereo(self):
-        from dsp.automatic_declipper_stereo import AutomaticDeclipperStereo
+        from backend.core.dsp.automatic_declipper_stereo import AutomaticDeclipperStereo
 
         d = AutomaticDeclipperStereo()
         mono = self._audio()
@@ -238,7 +238,7 @@ class TestDeclipperVariants:
         assert len(out) == len(mono)
 
     def test_streaming(self):
-        from dsp.automatic_declipper_streaming import AutomaticDeclipperStreaming
+        from backend.core.dsp.automatic_declipper_streaming import AutomaticDeclipperStreaming
 
         d = AutomaticDeclipperStreaming()
         out = d.declip_streaming(self._audio(), self.SR)
@@ -246,35 +246,35 @@ class TestDeclipperVariants:
         assert np.all(np.isfinite(out))
 
     def test_ultra_low_latency(self):
-        from dsp.automatic_declipper_ultra_low_latency import AutomaticDeclipperUltraLowLatency
+        from backend.core.dsp.automatic_declipper_ultra_low_latency import AutomaticDeclipperUltraLowLatency
 
         d = AutomaticDeclipperUltraLowLatency()
         out = d.declip_ultra_low_latency(self._audio(), self.SR)
         assert len(out) == len(self._audio())
 
     def test_voice(self):
-        from dsp.automatic_declipper_voice import AutomaticDeclipperVoice
+        from backend.core.dsp.automatic_declipper_voice import AutomaticDeclipperVoice
 
         d = AutomaticDeclipperVoice()
         out = d.declip_voice(self._audio(), self.SR)
         assert np.all(np.isfinite(out))
 
     def test_legacy(self):
-        from dsp.automatic_declipper_legacy import AutomaticDeclipperLegacy
+        from backend.core.dsp.automatic_declipper_legacy import AutomaticDeclipperLegacy
 
         d = AutomaticDeclipperLegacy()
         out = d.declip_legacy(self._audio(), self.SR)
         assert len(out) == len(self._audio())
 
     def test_chain_default(self):
-        from dsp.automatic_declipper_chain import AiAutomaticDeclipperChain
+        from backend.core.dsp.automatic_declipper_chain import AiAutomaticDeclipperChain
 
         d = AiAutomaticDeclipperChain()
         out = d.declip_chain(self._audio(), self.SR)
         assert np.all(np.isfinite(out))
 
     def test_chain_custom(self):
-        from dsp.automatic_declipper_chain import AiAutomaticDeclipperChain
+        from backend.core.dsp.automatic_declipper_chain import AiAutomaticDeclipperChain
 
         d = AiAutomaticDeclipperChain()
         out = d.declip_chain(self._audio(), self.SR, chain=["ar", "interp"])
@@ -282,7 +282,7 @@ class TestDeclipperVariants:
 
     def test_not_returns_original_clipped(self):
         """Declipping sollte geclippte Stellen verändern (nicht simple Passthrough)."""
-        from dsp._declip_core import ar_declip
+        from backend.core.dsp._declip_core import ar_declip
 
         x = _clipped_sine(clip_level=0.6)
         out = ar_declip(x, SR, threshold=0.95)
@@ -299,7 +299,7 @@ class TestDeclipperVariants:
 
 class TestMaskingAwareDynamicEQ:
     def setup_method(self):
-        from dsp.masking_aware_dynamic_eq import MaskingAwareDynamicEQ
+        from backend.core.dsp.masking_aware_dynamic_eq import MaskingAwareDynamicEQ
 
         self.eq = MaskingAwareDynamicEQ(bands=8, max_gain_db=6.0, min_gain_db=-6.0)
 

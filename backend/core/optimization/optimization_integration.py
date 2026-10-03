@@ -327,7 +327,7 @@ class OptimizationIntegration:
         if reference_audio is None:
             # No reference: use self-consistency metrics
             logger.warning("No Referenz audio provided, quality assessment limited")
-            return 0.5 if not return_details else (0.5, {"warning": "no_reference"})  # type: ignore[return-value,dict-item]
+            return 0.5 if not return_details else (0.5, {"warning": "no_reference"})  # type: ignore[return-value, dict-item]
 
         # Convert to torch tensors (robust against array subclasses/views).
         output_np = np.asarray(output_audio, dtype=np.float32)

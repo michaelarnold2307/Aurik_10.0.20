@@ -51,7 +51,7 @@ def benchmark_numexpr():
     print("NumExpr Optimizations Benchmark")
     print("=" * 80)
 
-    from dsp.optimized.numexpr_ops import OptimizedDSP
+    from backend.core.dsp.optimized.numexpr_ops import OptimizedDSP
 
     # Test data
     audio = np.random.randn(48000).astype(np.float32)  # 1 second
@@ -154,7 +154,7 @@ def benchmark_cython():
     print("=" * 80)
 
     try:
-        from dsp.optimized import HAS_CYTHON, cython_loops
+        from backend.core.dsp.optimized import HAS_CYTHON, cython_loops
 
         if not HAS_CYTHON:
             print("⚠️  Cython extensions not compiled. Run: python setup_cython.py build_ext --inplace")
@@ -301,8 +301,8 @@ def benchmark_fft():
     print("=" * 80)
 
     try:
-        from dsp.optimized import HAS_PYFFTW
-        from dsp.optimized.fft_cache import CachedFFT
+        from backend.core.dsp.optimized import HAS_PYFFTW
+        from backend.core.dsp.optimized.fft_cache import CachedFFT
 
         if not HAS_PYFFTW:
             print("⚠️  pyFFTW not installed. Install with: pip install pyfftw")

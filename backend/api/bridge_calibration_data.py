@@ -11,6 +11,16 @@ from __future__ import annotations
 from dataclasses import asdict, dataclass, field
 from typing import Any
 
+
+def _default_transfer_chain_depth() -> int:
+    # §G86: Default NUR in calibration_context.py — bei None aus dem Kontext
+    # beziehen (Muster absolute_quality_gate.py).
+    from backend.core.calibration_context import get_calibration_context
+
+    _ctx = get_calibration_context()
+    return _ctx.transfer_chain_depth if _ctx is not None else 1
+
+
 # ═══════════════════════════════════════════════════════════════════════════════
 # BridgeCalibrationData — die EINZIGE Datenstruktur für Backend→Frontend
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -29,7 +39,9 @@ class BridgeCalibrationData:
 
     # ── Kern-Messwerte (aus CalibrationContext) ──
     restorability_score: float = 50.0
-    transfer_chain_depth: int = 1
+    transfer_chain_depth: int = field(
+        default_factory=_default_transfer_chain_depth
+    )  # §G86: Default nur aus CalibrationContext
     material_type: str = "unknown"
     snr_db: float = 30.0
     bandwidth_hz: float = 20000.0

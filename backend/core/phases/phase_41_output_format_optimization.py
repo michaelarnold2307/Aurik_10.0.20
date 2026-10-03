@@ -77,7 +77,7 @@ from backend.core.audio_utils import (
 from backend.core.defect_scanner import MaterialType
 
 try:
-    from dsp.professional_meters import LUFSMeter
+    from backend.core.dsp.professional_meters import LUFSMeter
 
     PROFESSIONAL_METERS_AVAILABLE = True
 except ImportError:

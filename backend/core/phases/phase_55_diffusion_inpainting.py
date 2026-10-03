@@ -424,7 +424,7 @@ def _nmf_gap_fallback(
 
     # Phase-coherent reconstruction via PGHI (§2.47 VERBOTEN: direktes ISTFT)
     try:
-        from dsp.pghi import pghi_reconstruct as _pghi_rec  # pylint: disable=import-outside-toplevel
+        from backend.core.dsp.pghi import pghi_reconstruct as _pghi_rec  # pylint: disable=import-outside-toplevel
 
         _initial_phase_gap = gap_phase.astype(np.float32)
         _gap_audio = _pghi_rec(
@@ -1511,7 +1511,7 @@ class DiffusionInpaintingPhase(PhaseInterface):
 
         # Phase-coherent ISTFT via PGHI (§2.47)
         try:
-            from dsp.pghi import pghi_reconstruct as _pghi_fb  # pylint: disable=import-outside-toplevel
+            from backend.core.dsp.pghi import pghi_reconstruct as _pghi_fb  # pylint: disable=import-outside-toplevel
 
             _repaired_mono = _pghi_fb(
                 _mag_repaired.astype(np.float32),

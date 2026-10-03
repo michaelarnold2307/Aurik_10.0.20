@@ -1015,7 +1015,7 @@ class MultiPassEngine:
                 _restore_mode,
                 len(audio) / sample_rate,
             )
-            result = restorer.restore(  # type: ignore[union-attr,attr-defined]
+            result = restorer.restore(  # type: ignore[union-attr, attr-defined]
                 audio=audio,
                 sample_rate=sample_rate,
                 mode=_restore_mode,

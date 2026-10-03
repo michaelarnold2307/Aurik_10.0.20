@@ -3,7 +3,7 @@
 
 import numpy as np
 
-from dsp.classic_filters import HighpassFilter
+from backend.core.dsp.classic_filters import HighpassFilter
 
 # Create test stereo audio: (2, 1000) format
 audio_stereo = np.random.randn(2, 1000).astype(np.float64)

@@ -26,7 +26,7 @@ except ImportError:
 
 pghi_reconstruct: Callable[..., np.ndarray] | None
 try:
-    from dsp.pghi import pghi_reconstruct as _pghi_reconstruct
+    from backend.core.dsp.pghi import pghi_reconstruct as _pghi_reconstruct
 
     pghi_reconstruct = _pghi_reconstruct
 except ImportError:

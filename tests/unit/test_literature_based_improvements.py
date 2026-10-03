@@ -40,14 +40,14 @@ class TestZwickerMaskingSpread:
         return [0.0] * 24
 
     def test_no_spread_when_all_silent(self):
-        from dsp.psychoacoustics import _apply_excitation_spread
+        from backend.core.dsp.psychoacoustics import _apply_excitation_spread
 
         result = _apply_excitation_spread([0.0] * 24)
         assert result == [0.0] * 24
 
     def test_masker_spreads_upward_to_adjacent(self):
         """Lautes Band 0 soll Band 1 anheben (25 dB/Bark upward slope)."""
-        from dsp.psychoacoustics import _apply_excitation_spread
+        from backend.core.dsp.psychoacoustics import _apply_excitation_spread
 
         levels = [0.0] * 24
         levels[0] = 80.0  # Masker im niedrigsten Bark-Band
@@ -63,7 +63,7 @@ class TestZwickerMaskingSpread:
 
     def test_downward_spread_steeper_than_upward(self):
         """Abwärts-Spread (40 dB/Bark) ≥ Aufwärts-Spread (25 dB/Bark) bei gleicher Distanz."""
-        from dsp.psychoacoustics import _apply_excitation_spread
+        from backend.core.dsp.psychoacoustics import _apply_excitation_spread
 
         up_levels = [0.0] * 24
         dn_levels = [0.0] * 24
@@ -81,7 +81,7 @@ class TestZwickerMaskingSpread:
 
     def test_effective_level_never_below_direct(self):
         """Effektives Niveau ≥ direktes Niveau (Spreading addiert, subtrahiert nicht)."""
-        from dsp.psychoacoustics import _apply_excitation_spread
+        from backend.core.dsp.psychoacoustics import _apply_excitation_spread
 
         rng = np.random.default_rng(42)
         levels = (rng.uniform(0, 80, 24)).tolist()
@@ -92,7 +92,7 @@ class TestZwickerMaskingSpread:
     def test_broadband_noise_louder_than_narrowband_same_energy(self):
         """Breitband weißes Rauschen (Spreading) muss mehr N liefern als ein einzelner Ton
         gleicher Gesamt-Energie — weil Spreading die High-Bands miterhöht."""
-        from dsp.psychoacoustics import compute_specific_loudness_zwicker
+        from backend.core.dsp.psychoacoustics import compute_specific_loudness_zwicker
 
         rng = np.random.default_rng(99)
         n = SR * 3
@@ -116,7 +116,7 @@ class TestZwickerMaskingSpread:
         Aufbau: Band 0 bei 95 dB (weit über Threshold 55) → Spreading hebt Band 1 auf
         95-25=70 dB > Threshold 35 → neue Loudness-Contribution, die ohne Spreading fehlt.
         """
-        from dsp.psychoacoustics import _THRESHOLD_QUIET_DB, _apply_excitation_spread
+        from backend.core.dsp.psychoacoustics import _THRESHOLD_QUIET_DB, _apply_excitation_spread
 
         # Band 0 sehr laut, restliche Bänder bei 0 dB (unter Threshold)
         levels = [95.0] + [0.0] * 23

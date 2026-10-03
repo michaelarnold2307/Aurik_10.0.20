@@ -70,8 +70,8 @@ except ImportError:
 
 # FormantSystem: LPC-basiertes Formant-Tracking + Singer's Formant Enhancement (§2.8)
 try:
-    from dsp.formant_system import FormantSystem as _FormantSystemCls
-    from dsp.formant_system import VowelPhonemeFormantTargets as _VowelTargetsCls
+    from backend.core.dsp.formant_system import FormantSystem as _FormantSystemCls
+    from backend.core.dsp.formant_system import VowelPhonemeFormantTargets as _VowelTargetsCls
 
     _FORMANT_SYSTEM_AVAILABLE = True
 except ImportError:

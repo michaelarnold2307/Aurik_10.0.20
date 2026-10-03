@@ -16,7 +16,7 @@ import pytest
 # Add parent directory to path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from dsp.tape_specialist import (
+from backend.core.dsp.tape_specialist import (
     TapeAzimuthCorrector,
     TapePrintThroughRemover,
     TapeSpecialist,

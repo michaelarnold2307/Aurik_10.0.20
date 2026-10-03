@@ -2101,7 +2101,7 @@ def get_pre_analysis_result_status() -> dict[str, Any]:
         return dict(_pre_analysis_result_status)
 
 
-PreAnalysisResult = _resolve_pre_analysis_result_type()  # type: ignore[assignment,misc]
+PreAnalysisResult = _resolve_pre_analysis_result_type()  # type: ignore[assignment, misc]
 
 
 # ---------------------------------------------------------------------------

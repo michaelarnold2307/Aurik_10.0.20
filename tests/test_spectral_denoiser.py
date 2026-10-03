@@ -1,7 +1,7 @@
 import numpy as np
 import pytest
 
-from dsp.spectral_denoiser import SpectralDenoiser
+from backend.core.dsp.spectral_denoiser import SpectralDenoiser
 
 
 @pytest.mark.unit

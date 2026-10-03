@@ -30,7 +30,7 @@ import numpy.typing as npt
 import scipy.signal
 
 try:
-    from dsp.pghi import pghi_reconstruct_from_stft as _pghi_reconstruct_from_stft
+    from backend.core.dsp.pghi import pghi_reconstruct_from_stft as _pghi_reconstruct_from_stft
 
     _PGHI_AVAILABLE = True
 except ImportError:

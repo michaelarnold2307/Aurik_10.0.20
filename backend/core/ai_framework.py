@@ -76,7 +76,7 @@ try:
     DYNAMICS_PHASES_AVAILABLE = True
 except ImportError:
     DYNAMICS_PHASES_AVAILABLE = False
-    PhasesMaterialType = None  # type: ignore[assignment,misc]
+    PhasesMaterialType = None  # type: ignore[assignment, misc]
     logger.warning("Dynamics phases (Compression/Limiting) not verfuegbar")
 
 
@@ -1260,7 +1260,7 @@ class Studio2026Processor:
         phase_material = self._map_material_type(material)
 
         # Phase 10: Compression
-        compression_result = self.compression.process(audio, self.sr, phase_material)  # type: ignore[arg-type,union-attr]
+        compression_result = self.compression.process(audio, self.sr, phase_material)  # type: ignore[arg-type, union-attr]
 
         if compression_result.success:
             audio = compression_result.audio
@@ -1275,7 +1275,7 @@ class Studio2026Processor:
         # Phase 11: Limiting
         if self.limiting is None:
             return audio, report
-        limiting_result = self.limiting.process(audio, self.sr, phase_material)  # type: ignore[arg-type,union-attr]
+        limiting_result = self.limiting.process(audio, self.sr, phase_material)  # type: ignore[arg-type, union-attr]
 
         if limiting_result.success:
             audio = limiting_result.audio
@@ -1359,7 +1359,7 @@ class AurikAIFramework:
 
     def restoration_magic_button(self, audio: np.ndarray) -> tuple[np.ndarray, dict[str, Any]]:
         """Magic Button 1: Restoration Only (keine Enhancement)."""
-        return self.restoration_button.process(audio)  # type: ignore[no-any-return,attr-defined]
+        return self.restoration_button.process(audio)  # type: ignore[no-any-return, attr-defined]
 
     def studio2026_magic_button(self, audio: np.ndarray) -> tuple[np.ndarray, dict[str, Any]]:
         """Magic Button 2: Studio 2026 Complete Pipeline."""

@@ -73,11 +73,11 @@ from .output_guard import evaluate_output_guard
 from .phase_interface import PhaseCategory, PhaseInterface, PhaseMetadata, PhaseResult
 
 try:
-    from dsp.formant_system import FormantSystem as _FormantSystemCls
+    from backend.core.dsp.formant_system import FormantSystem as _FormantSystemCls
 
     _FORMANT_SYSTEM_PIANO: Any = None
 except Exception:
-    _FormantSystemCls = None  # type: ignore[assignment,misc]
+    _FormantSystemCls = None  # type: ignore[assignment, misc]
     _FORMANT_SYSTEM_PIANO = None
 
 logger = logging.getLogger(__name__)
@@ -428,7 +428,7 @@ class PianoRestorationV1(PhaseInterface):
 
         # Formant-Drift-Korrektur via DTW (Schritt 3)
         try:
-            from dsp.instrument_formant_corrector import (
+            from backend.core.dsp.instrument_formant_corrector import (
                 correct_instrument_formant_drift,  # pylint: disable=import-outside-toplevel
             )
 

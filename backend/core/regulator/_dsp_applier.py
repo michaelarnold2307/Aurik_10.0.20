@@ -390,51 +390,51 @@ def _apply_dsp_module(audio: np.ndarray, sr: int, module_name: str, params: dict
     """Plug-in-basierter DSP-Modul-Dispatcher (portiert aus backend._dsp_applier)."""
     try:
         if module_name == "DCBlocker":
-            from dsp.dc_blocker import DCBlocker  # type: ignore[import]
+            from backend.core.dsp.dc_blocker import DCBlocker  # type: ignore[import]
 
             return DCBlocker().process(audio, sr)  # type: ignore[no-any-return]
         elif module_name in ("HighpassFilter", "LinearPhaseHighpass"):
-            from dsp.highpass_filter import HighpassFilter  # type: ignore[import]
+            from backend.core.dsp.highpass_filter import HighpassFilter  # type: ignore[import]
 
             return HighpassFilter(cutoff_hz=params.get("cutoff_hz", 20.0)).process(audio, sr)  # type: ignore[no-any-return]
         elif module_name == "RumbleFilter":
-            from dsp.rumble_filter import RumbleFilter  # type: ignore[import]
+            from backend.core.dsp.rumble_filter import RumbleFilter  # type: ignore[import]
 
             return RumbleFilter().process(audio, sr)  # type: ignore[no-any-return]
         elif module_name == "WowFlutterRemover":
-            from dsp.wow_flutter_remover import WowFlutterRemover  # type: ignore[import]
+            from backend.core.dsp.wow_flutter_remover import WowFlutterRemover  # type: ignore[import]
 
             return WowFlutterRemover().process(audio, sr)  # type: ignore[no-any-return]
         elif module_name == "AutomaticDeclicker":
-            from dsp.automatic_declicker import AutomaticDeclicker  # type: ignore[import]
+            from backend.core.dsp.automatic_declicker import AutomaticDeclicker  # type: ignore[import]
 
-            return AutomaticDeclicker(aggressive=params.get("aggressive", False)).process(audio, sr)  # type: ignore[no-any-return,call-arg]
+            return AutomaticDeclicker(aggressive=params.get("aggressive", False)).process(audio, sr)  # type: ignore[no-any-return, call-arg]
         elif module_name == "ClickpopRemover":
-            from dsp.clickpop_remover import ClassicClickPopRemover
+            from backend.core.dsp.clickpop_remover import ClassicClickPopRemover
 
             return ClassicClickPopRemover().process(audio, sr)  # type: ignore[no-any-return]
         elif module_name in ("AutomaticDeclipperVoice", "AutomaticDeclipperMusic", "AutomaticDeclipper"):
-            from dsp.automatic_declipper import AutomaticDeclipper  # type: ignore[import]
+            from backend.core.dsp.automatic_declipper import AutomaticDeclipper  # type: ignore[import]
 
             return AutomaticDeclipper().declip(audio, sr)  # type: ignore[no-any-return]
         elif module_name == "AutomaticDehum":
-            from dsp.automatic_dehum import AutomaticDehum  # type: ignore[import]
+            from backend.core.dsp.automatic_dehum import AutomaticDehum  # type: ignore[import]
 
             return AutomaticDehum().dehum(audio, sr)  # type: ignore[no-any-return]
         elif module_name in ("AdaptiveOMLSA", "AdaptiveMCRA"):
-            from dsp.adaptive_noise_reduction import AdaptiveNoiseReduction  # type: ignore[import]
+            from backend.core.dsp.adaptive_noise_reduction import AdaptiveNoiseReduction  # type: ignore[import]
 
             return AdaptiveNoiseReduction(algorithm="omlsa" if "OMLSA" in module_name else "mcra").process(audio, sr)  # type: ignore[no-any-return]
         elif module_name == "AdaptiveMusicalNoiseReduction":
-            from dsp.musical_noise_reduction import MusicalNoiseReduction  # type: ignore[import]
+            from backend.core.dsp.musical_noise_reduction import MusicalNoiseReduction  # type: ignore[import]
 
             return MusicalNoiseReduction().process(audio, sr)  # type: ignore[no-any-return]
         elif module_name == "TapeNoiseReduction":
-            from dsp.tape_noise_reduction import TapeNoiseReduction  # type: ignore[import]
+            from backend.core.dsp.tape_noise_reduction import TapeNoiseReduction  # type: ignore[import]
 
             return TapeNoiseReduction().process(audio, sr)  # type: ignore[no-any-return]
         elif module_name == "Dehiss":
-            from dsp.dehiss import AiDehiss
+            from backend.core.dsp.dehiss import AiDehiss
 
             return AiDehiss().dehiss(audio, sr)  # type: ignore[no-any-return]
         elif module_name == "SpectralGate":
@@ -442,55 +442,55 @@ def _apply_dsp_module(audio: np.ndarray, sr: int, module_name: str, params: dict
 
             return gate_audio(audio, sr, threshold_db=params.get("threshold", -40))  # type: ignore[no-any-return]
         elif module_name == "RIAAEqualizer":
-            from dsp.riaa_equalizer import RIAAEqualizer  # type: ignore[import]
+            from backend.core.dsp.riaa_equalizer import RIAAEqualizer  # type: ignore[import]
 
             _curve = params.get("curve", "auto")
             return RIAAEqualizer(mode="invert", curve=_curve).process(audio, sr)  # type: ignore[no-any-return]
         elif module_name == "TapeEqualizer":
-            from dsp.tape_equalizer import TapeEqualizer  # type: ignore[import]
+            from backend.core.dsp.tape_equalizer import TapeEqualizer  # type: ignore[import]
 
             return TapeEqualizer().process(audio, sr)  # type: ignore[no-any-return]
         elif module_name == "CDDeemphasis":
-            from dsp.cd_deemphasis import CDDeemphasis  # type: ignore[import]
+            from backend.core.dsp.cd_deemphasis import CDDeemphasis  # type: ignore[import]
 
             return CDDeemphasis().process(audio, sr)  # type: ignore[no-any-return]
         elif module_name == "AutoEQ":
-            from dsp.auto_eq import AutoEQ  # type: ignore[import]
+            from backend.core.dsp.auto_eq import AutoEQ  # type: ignore[import]
 
             return AutoEQ().process(audio, sr)  # type: ignore[no-any-return]
         elif module_name == "CustomCompressor":
-            from dsp.custom_compressor import CustomCompressor  # type: ignore[import]
+            from backend.core.dsp.custom_compressor import CustomCompressor  # type: ignore[import]
 
-            return CustomCompressor(  # type: ignore[no-any-return,call-arg]
+            return CustomCompressor(  # type: ignore[no-any-return, call-arg]
                 ratio=params.get("ratio", 2.0),
                 threshold=params.get("threshold", -20.0),
             ).process(audio, sr)
         elif module_name == "TransientProtectionGuard":
-            from dsp.transient_protection_guard import TransientProtectionGuard  # type: ignore[import]
+            from backend.core.dsp.transient_protection_guard import TransientProtectionGuard  # type: ignore[import]
 
             return cast(np.ndarray, TransientProtectionGuard().process(audio, sr))
         elif module_name == "HarmonicExciterStudio":
-            from dsp.harmonic_exciter import HarmonicExciter  # type: ignore[import]
+            from backend.core.dsp.harmonic_exciter import HarmonicExciter  # type: ignore[import]
 
-            return HarmonicExciter(mode="studio").process(audio, sr)  # type: ignore[no-any-return,call-arg]
+            return HarmonicExciter(mode="studio").process(audio, sr)  # type: ignore[no-any-return, call-arg]
         elif module_name == "SpeakerEnhancement":
-            from dsp.speaker_enhancement import AiSpeakerEnhancement
+            from backend.core.dsp.speaker_enhancement import AiSpeakerEnhancement
 
             return AiSpeakerEnhancement().process(audio, sr)  # type: ignore[no-any-return]
         elif module_name == "StereoEnhancer":
-            from dsp.stereo_enhancer import AiStereoEnhancer
+            from backend.core.dsp.stereo_enhancer import AiStereoEnhancer
 
             return AiStereoEnhancer().process(audio, sr)  # type: ignore[no-any-return]
         elif module_name == "StereoImageCorrection":
-            from dsp.stereo_image_correction import StereoImageCorrection  # type: ignore[import]
+            from backend.core.dsp.stereo_image_correction import StereoImageCorrection  # type: ignore[import]
 
             return StereoImageCorrection().process(audio, sr)  # type: ignore[no-any-return]
         elif module_name == "MultibandLimiter":
-            from dsp.multiband_limiter import MultibandLimiter  # type: ignore[import]
+            from backend.core.dsp.multiband_limiter import MultibandLimiter  # type: ignore[import]
 
-            return MultibandLimiter(ceiling=params.get("ceiling", 0.95)).process(audio, sr)  # type: ignore[no-any-return,call-arg]
+            return MultibandLimiter(ceiling=params.get("ceiling", 0.95)).process(audio, sr)  # type: ignore[no-any-return, call-arg]
         elif module_name == "Dither":
-            from dsp.dither import Dither  # type: ignore[import]
+            from backend.core.dsp.dither import Dither  # type: ignore[import]
 
             return Dither().process(audio, sr)  # type: ignore[no-any-return]
         # §v10.1 Mode-check: Studio-only Modules in Restoration blockieren

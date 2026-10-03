@@ -13,12 +13,12 @@ import soundfile as sf
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from dsp.bass_enhancement import BassEnhancementSystem
-from dsp.brass_enhancement import BrassEnhancementSystem
-from dsp.drums_enhancement import DrumsEnhancementSystem
-from dsp.guitar_enhancement import GuitarEnhancementSystem
-from dsp.piano_restoration import PianoRestorationSystem
-from dsp.spatial_enhancement import SpatialEnhancementSystem
+from backend.core.dsp.bass_enhancement import BassEnhancementSystem
+from backend.core.dsp.brass_enhancement import BrassEnhancementSystem
+from backend.core.dsp.drums_enhancement import DrumsEnhancementSystem
+from backend.core.dsp.guitar_enhancement import GuitarEnhancementSystem
+from backend.core.dsp.piano_restoration import PianoRestorationSystem
+from backend.core.dsp.spatial_enhancement import SpatialEnhancementSystem
 
 print("🎵 Phase 2.3 Real-World Validation")
 print("=" * 60)

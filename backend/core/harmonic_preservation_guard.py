@@ -94,7 +94,7 @@ except ImportError:
     logger.debug("librosa nicht verfügbar — PESTO/Autokorrelations-Ersatzpfad für f₀")
 
 try:
-    from dsp.pesto_pitch import estimate_pitch as _pesto_estimate
+    from backend.core.dsp.pesto_pitch import estimate_pitch as _pesto_estimate
 
     _PESTO_OK = True
 except Exception:

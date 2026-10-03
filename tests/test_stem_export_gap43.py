@@ -23,8 +23,8 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
+from backend.core.dsp.stem_separator import SpectralStemSeparator, StemSeparator, separate_stems
 from backend.core.export_workflow import ExportMetadata, export_stems
-from dsp.stem_separator import SpectralStemSeparator, StemSeparator, separate_stems
 
 
 @pytest.fixture

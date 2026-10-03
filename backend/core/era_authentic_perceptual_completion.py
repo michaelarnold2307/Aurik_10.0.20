@@ -110,7 +110,7 @@ class EraAuthenticPerceptualCompletion:
         era: int | None = None,
         anchor: np.ndarray | None = None,
         material_ceiling: float = 1.0,
-        transfer_chain_depth: int = 1,
+        transfer_chain_depth: int | None = None,
     ) -> EraCompletionResult:
         """Spec §2.35: Erzeugt era-authentisch ergänztes Audio. NaN/Inf-sicher.
 
@@ -124,6 +124,14 @@ class EraAuthenticPerceptualCompletion:
         angehoben (bis 14.5 kHz bei depth=4), da tiefe Ketten mehr
         akkumulierten HF-Verlust kompensieren müssen.
         """
+        # §G86: Default NUR in calibration_context.py — bei None aus dem Kontext
+        # beziehen (Muster absolute_quality_gate.py).
+        if transfer_chain_depth is None:
+            from backend.core.calibration_context import get_calibration_context
+
+            _ctx = get_calibration_context()
+            transfer_chain_depth = _ctx.transfer_chain_depth if _ctx is not None else 1
+
         # inf-sicher: erst nan_to_num, dann clip — verhindert Overflow in FFT
         arr = np.clip(
             np.nan_to_num(np.asarray(audio, dtype=np.float32)),

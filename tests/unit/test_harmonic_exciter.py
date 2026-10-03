@@ -1,7 +1,7 @@
 import numpy as np
 import pytest
 
-from dsp.harmonic_exciter import HarmonicExciter, HarmonicExciterStudio
+from backend.core.dsp.harmonic_exciter import HarmonicExciter, HarmonicExciterStudio
 
 
 @pytest.mark.unit

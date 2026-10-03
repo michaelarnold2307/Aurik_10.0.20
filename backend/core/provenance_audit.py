@@ -380,3 +380,91 @@ def _audio_hash(audio: np.ndarray, sample_rate: int, seconds: float = 4.0) -> st
     # Normalisierung auf int16 für stabilen Hash (float-Rundungsfehler vermeiden)
     chunk_int16 = np.clip(chunk * 32767, -32768, 32767).astype(np.int16)  # type: ignore[arg-type]  # §V5 (copilot-instructions.md) Dither applied at export level
     return hashlib.sha256(chunk_int16.tobytes()).hexdigest()[:24]
+
+
+# ─── Per-Song-Provenance-Report (§G5 (GEBOTE.md)) ─────────────────────────
+# Verpflichtung „bit-identische Reproduzierbarkeit + Provenance-Report je Song
+# (Kette, Stärken, Seeds, Degradationen)“ — inklusive ehrlicher Lücken-Markierung
+# („nicht_erfasst“, §V6 (VERBOTEN.md)) statt Schönschreibung.
+
+
+def build_song_provenance_report(
+    meta: dict[str, Any],
+    output_path: str | None = None,
+    provenance: ProvenanceAudit | None = None,
+) -> dict[str, Any]:
+    """Baut den Song-Provenance-Report aus Pipeline-Metadaten (UV3-Metadaten).
+
+    Struktur (Test-Spec tests/unit/test_provenance_report.py): Verpflichtungen
+    (degradationen), Zeugen, Kette, Stärken, Seeds, Audit. Fehlende Teile werden
+    NICHT erfunden, sondern als „nicht_erfasst“ markiert (§V6 (VERBOTEN.md)).
+
+    Args:
+        meta: Pipeline-Metadaten (result.metadata bzw. UV3-Metadaten).
+        output_path: Ausgabepfad des Songs (reine Metainformation).
+        provenance: Optionales ProvenanceAudit mit der Entscheidungskette.
+
+    Returns:
+        JSON-fähiges Report-Dict.
+    """
+    _gap = "nicht_erfasst"
+
+    _quality = meta.get("quality_gate_payload")
+    _go_nogo: Any = _gap
+    if isinstance(_quality, dict) and "go_nogo" in _quality:
+        _go_nogo = _quality["go_nogo"]
+
+    # Seeds: kanonischer Seed-Manager-Schlüssel ``session_master_seed``
+    # (§G5 (GEBOTE.md)) plus song_seed — sonst explizite Lücke.
+    if isinstance(meta.get("seeds"), dict):
+        _seeds: Any = dict(meta["seeds"])
+    elif "session_master_seed" in meta or "song_seed" in meta:
+        _seeds = {
+            "master": meta.get("session_master_seed"),
+            "session": meta.get("song_seed"),
+        }
+    else:
+        _seeds = _gap
+
+    if provenance is not None:
+        _audit: dict[str, Any] = {
+            "integrity": provenance.integrity_check(),
+            "entries": list(provenance.to_dict().get("entries", [])),
+        }
+    else:
+        _audit = {"integrity": {"valid": True, "failed_entries": []}, "entries": []}
+
+    _calib = meta.get("calibration_profile")
+
+    return {
+        "aurik_provenance_report": True,
+        "software_version": AURIK_VERSION,
+        "output_path": output_path,
+        "erstellt_zu": _iso_now(),
+        "degradationen": {
+            "degradation_status": meta.get("degradation_status", _gap),
+            "fail_reasons": meta.get("fail_reasons", _gap),
+        },
+        "zeugen": {
+            "witness": meta.get("witness", _gap),
+            "intelligibility_witness": meta.get("intelligibility_witness", _gap),
+            "go_nogo": _go_nogo,
+        },
+        "kette": {"phasen": meta.get("phase_chain", _gap)},
+        "staerken": _calib if _calib is not None else _gap,
+        "seeds": _seeds,
+        "audit": _audit,
+    }
+
+
+def write_song_provenance_report(report: dict[str, Any], audio_path: str | Path) -> Path:
+    """Schreibt den Report als ``<song>.provenance.json`` neben die Audiodatei.
+
+    Returns:
+        Absoluter Pfad zur geschriebenen Report-Datei.
+    """
+    p = Path(audio_path)
+    out = p.with_name(p.stem + ".provenance.json")
+    out.parent.mkdir(parents=True, exist_ok=True)
+    out.write_text(json.dumps(report, indent=2, ensure_ascii=False), encoding="utf-8")
+    return out

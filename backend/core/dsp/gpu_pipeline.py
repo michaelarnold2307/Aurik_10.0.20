@@ -11,7 +11,7 @@ Version: 1.0.0 (CPU-only redirect)
 
 import warnings
 
-from dsp.cpu_pipeline import CPUPipeline, PipelineStats
+from backend.core.dsp.cpu_pipeline import CPUPipeline, PipelineStats
 
 warnings.warn(
     "dsp.gpu_pipeline ist deprecated — nutze dsp.cpu_pipeline.CPUPipeline",

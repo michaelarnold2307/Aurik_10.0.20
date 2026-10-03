@@ -40,7 +40,7 @@ class MaskingRemover:
             mag_enh = np.clip(mag_enh, 0.0, None)
             # PGHI phase reconstruction (§4.5 — modifiziertes Betragsspektrum erfordert PGHI)
             try:
-                from dsp.pghi import pghi_reconstruct
+                from backend.core.dsp.pghi import pghi_reconstruct
 
                 audio_out = pghi_reconstruct(mag_enh, sr=sr, win_size=1024, hop=512)
             except Exception as pghi_err:

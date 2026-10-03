@@ -48,7 +48,7 @@ class SibilantModel:
 
     def process(self, audio: np.ndarray, context: dict) -> np.ndarray:
         try:
-            from dsp.deesser_ml import MLDeEsser
+            from backend.core.dsp.deesser_ml import MLDeEsser
 
             reduction_db = float(context.get("reduction_db", 6.0))
             sr = int(context.get("sr", 44100))

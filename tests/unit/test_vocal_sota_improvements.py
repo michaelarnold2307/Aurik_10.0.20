@@ -84,7 +84,7 @@ class TestWorldFormantCorrection:
 
     @pytest.fixture
     def corrector(self):
-        from dsp.formant_system import FormantCorrector
+        from backend.core.dsp.formant_system import FormantCorrector
 
         return FormantCorrector(max_drift_hz=50.0, correction_strength=0.7)
 
@@ -180,7 +180,7 @@ class TestWorldFormantCorrection:
 
     def test_correct_strength_zero_passthrough(self, corrector):
         """correction_strength=0 → output == input."""
-        from dsp.formant_system import FormantCorrector
+        from backend.core.dsp.formant_system import FormantCorrector
 
         zero_corrector = FormantCorrector(max_drift_hz=50.0, correction_strength=0.0)
         n = SR // 4
@@ -287,7 +287,7 @@ class TestSingersFormantNarrowing:
 
     @pytest.fixture
     def enhancer(self):
-        from dsp.formant_system import SingersFormantEnhancer
+        from backend.core.dsp.formant_system import SingersFormantEnhancer
 
         return SingersFormantEnhancer()
 

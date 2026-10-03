@@ -176,7 +176,7 @@ class HighFrequencyExtender:
         # Resample original for comparison
         import librosa
 
-        from dsp.authenticity_metrics import AuthenticityMetrics
+        from backend.core.dsp.authenticity_metrics import AuthenticityMetrics
 
         audio_original_resampled = librosa.resample(audio, orig_sr=sr_in, target_sr=sr_target)
 

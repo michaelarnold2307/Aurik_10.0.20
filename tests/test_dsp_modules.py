@@ -5,9 +5,9 @@ import numpy as np
 import pytest
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
-from dsp.automatic_declicker import AutomaticDeclicker
-from dsp.multiband_compressor import MultibandCompressor
-from dsp.spectral_denoiser import SpectralDenoiser
+from backend.core.dsp.automatic_declicker import AutomaticDeclicker
+from backend.core.dsp.multiband_compressor import MultibandCompressor
+from backend.core.dsp.spectral_denoiser import SpectralDenoiser
 
 
 @pytest.mark.unit

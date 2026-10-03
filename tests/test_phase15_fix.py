@@ -11,7 +11,7 @@ sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)))
 import numpy as np
 import pytest
 
-from dsp.automatic_dehum import AutomaticDehum
+from backend.core.dsp.automatic_dehum import AutomaticDehum
 
 
 @pytest.mark.unit

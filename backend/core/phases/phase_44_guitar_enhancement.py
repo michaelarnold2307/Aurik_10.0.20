@@ -42,15 +42,15 @@ from backend.core.ml_model_readiness import check_ml_model_ready
 from .phase_interface import PhaseCategory, PhaseInterface, PhaseMetadata, PhaseResult
 
 try:
-    from dsp.formant_system import FormantSystem as _FormantSystemCls
+    from backend.core.dsp.formant_system import FormantSystem as _FormantSystemCls
 
     _FORMANT_SYSTEM_GUITAR = None
 except Exception:
-    _FormantSystemCls = None  # type: ignore[assignment,misc]
+    _FormantSystemCls = None  # type: ignore[assignment, misc]
     _FORMANT_SYSTEM_GUITAR = None
 
 try:
-    from dsp.instrument_formant_corrector import correct_instrument_formant_drift
+    from backend.core.dsp.instrument_formant_corrector import correct_instrument_formant_drift
 except Exception:
     correct_instrument_formant_drift = None  # type: ignore[assignment]
 

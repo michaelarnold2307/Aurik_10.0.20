@@ -221,3 +221,26 @@ def test_load_core_matches_production_shapes():
         y = core(x)
     assert y.shape == (1, tbv.N_BANDS, tbv.N_FRAMES, tbv.FEAT_DIM)
     assert torch.isfinite(y).all()
+
+
+def test_load_channels_first_wavfile_fallback_und_bug12_guard(monkeypatch, tmp_path):
+    """scipy-Fallback ohne soundfile lädt channels-first; Bug 12 (§V36 (VERBOTEN.md)):
+    kein blindes Tuple-Unpack von wavfile.read()."""
+    import sys
+
+    import scipy.io.wavfile as wavfile
+
+    rng = np.random.default_rng(3)
+    data = (rng.standard_normal((tbv.SEG_N, 2)) * 3000).astype(np.int16)
+    wav_path = tmp_path / "probe.wav"
+    wavfile.write(str(wav_path), tbv.TARGET_SR, data)
+
+    monkeypatch.setitem(sys.modules, "soundfile", None)  # ImportError → scipy-Pfad
+    audio = tbv.load_channels_first(wav_path)
+    assert audio.shape == (2, tbv.SEG_N)  # channels-first (C, N)
+    assert audio.dtype == np.float32
+
+    # Bug 12 (§V36 (VERBOTEN.md)): defektes wavfile.read-Ergebnis muss hart fehlschlagen
+    monkeypatch.setattr(wavfile, "read", lambda p: ("kaputt",))
+    with pytest.raises(ValueError):
+        tbv.load_channels_first(wav_path)

@@ -10,7 +10,7 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from dsp.professional_meters import (
+from backend.core.dsp.professional_meters import (
     LUFSMeter,
     MeterV9,
     PhaseCorrelationMeter,

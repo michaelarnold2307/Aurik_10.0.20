@@ -136,7 +136,7 @@ class TestVocalChainSpec10Steps:
     def test_step_04_formant_tracker_exists(self) -> None:
         """Step 4: FormantSystem vorhanden (dsp.formant_system)."""
         try:
-            from dsp.formant_system import FormantSystem
+            from backend.core.dsp.formant_system import FormantSystem
         except ImportError as exc:
             pytest.xfail(f"FormantSystem nicht verfügbar: {exc}")
 
@@ -213,7 +213,7 @@ class TestVocalChainSpec10Steps:
     def test_step_05_breath_detector_exists(self) -> None:
         """Step 5: BreathDetector vorhanden (dsp.breath_intelligence)."""
         try:
-            from dsp.breath_intelligence import BreathDetector
+            from backend.core.dsp.breath_intelligence import BreathDetector
         except ImportError as exc:
             pytest.xfail(f"BreathDetector nicht verfügbar: {exc}")
 
@@ -222,7 +222,7 @@ class TestVocalChainSpec10Steps:
     def test_step_05_breath_ratio_preserved(self, synthetic_vocal_2s: np.ndarray) -> None:
         """Step 5: BreathDetector → breathiness ratio wird um ±0.05 bewahrt."""
         try:
-            from dsp.breath_intelligence import BreathDetector, BreathIntelligence
+            from backend.core.dsp.breath_intelligence import BreathDetector, BreathIntelligence
         except ImportError as exc:
             pytest.xfail(f"Atem-Module nicht verfügbar: {exc}")
 
@@ -286,7 +286,7 @@ class TestVocalChainSpec10Steps:
     def test_step_08_singers_formant_enhancer_exists(self) -> None:
         """Step 8: SingersFormantEnhancer vorhanden (dsp.formant_system)."""
         try:
-            from dsp.formant_system import SingersFormantEnhancer
+            from backend.core.dsp.formant_system import SingersFormantEnhancer
         except ImportError as exc:
             pytest.xfail(f"SingersFormantEnhancer nicht verfügbar: {exc}")
 
@@ -295,7 +295,7 @@ class TestVocalChainSpec10Steps:
     def test_step_08_singers_formant_boosts_presence_band(self, synthetic_vocal_2s: np.ndarray) -> None:
         """Step 8: SingersFormantEnhancer hebt 2.5–3.5 kHz an."""
         try:
-            from dsp.formant_system import SingersFormantEnhancer
+            from backend.core.dsp.formant_system import SingersFormantEnhancer
         except ImportError as exc:
             pytest.xfail(f"SingersFormantEnhancer nicht verfügbar: {exc}")
 
@@ -332,7 +332,7 @@ class TestVocalChainSpec10Steps:
     def test_step_09_psola_required_for_vocal(self) -> None:
         """Step 9: PSOLA (PsolaPitchShifter) vorhanden (dsp.psola)."""
         try:
-            from dsp.psola import PsolaPitchShifter
+            from backend.core.dsp.psola import PsolaPitchShifter
         except ImportError as exc:
             pytest.xfail(f"PsolaPitchShifter nicht verfügbar: {exc}")
 
@@ -341,7 +341,7 @@ class TestVocalChainSpec10Steps:
     def test_step_09_psola_formant_preserving(self, synthetic_vocal_2s: np.ndarray) -> None:
         """Step 9: PSOLA (PsolaPitchShifter) bewahrt Spektral-Charakteristik (Pearson ≥ 0.85)."""
         try:
-            from dsp.psola import PsolaPitchShifter
+            from backend.core.dsp.psola import PsolaPitchShifter
         except ImportError as exc:
             pytest.xfail(f"PsolaPitchShifter nicht verfügbar: {exc}")
 
@@ -407,12 +407,12 @@ class TestVocalChainSpec10Steps:
     def test_all_10_steps_integration(self, synthetic_vocal_2s: np.ndarray) -> None:
         """Alle 10 Schritte der Vocal-Pipeline laufen ohne Fehler."""
         try:
+            from backend.core.dsp.breath_intelligence import BreathDetector
+            from backend.core.dsp.formant_system import FormantSystem
             from backend.core.vocal_ai_enhancement import (
                 GenderDetector,
                 VocalAIEnhancement,
             )
-            from dsp.breath_intelligence import BreathDetector
-            from dsp.formant_system import FormantSystem
         except ImportError as exc:
             pytest.xfail(f"Vocal-Pipeline-Module nicht verfügbar: {exc}")
 

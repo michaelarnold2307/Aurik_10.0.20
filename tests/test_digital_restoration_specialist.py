@@ -14,7 +14,7 @@ import importlib.util
 import numpy as np
 import pytest
 
-from dsp.digital_restoration_specialist import (
+from backend.core.dsp.digital_restoration_specialist import (
     CodecArtifactRemover,
     DigitalRestorationSpecialist,
     JitterCorrector,

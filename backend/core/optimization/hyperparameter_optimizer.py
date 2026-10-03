@@ -31,9 +31,9 @@ try:
     from optuna.pruners import MedianPruner  # type: ignore[reportMissingImports]
     from optuna.samplers import TPESampler  # type: ignore[reportMissingImports]
 except ImportError:
-    optuna = None  # type: ignore[assignment,misc]
-    MedianPruner = None  # type: ignore[assignment,misc]
-    TPESampler = None  # type: ignore[assignment,misc]
+    optuna = None  # type: ignore[assignment, misc]
+    MedianPruner = None  # type: ignore[assignment, misc]
+    TPESampler = None  # type: ignore[assignment, misc]
 
 logger = logging.getLogger(__name__)
 

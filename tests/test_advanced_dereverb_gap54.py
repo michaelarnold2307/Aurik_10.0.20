@@ -16,7 +16,7 @@ Version: 1.0.0
 import numpy as np
 import pytest
 
-from dsp.advanced_dereverb import (
+from backend.core.dsp.advanced_dereverb import (
     AdvancedDereverb,
     LateReflectionCanceller,
     MultibandDereverb,

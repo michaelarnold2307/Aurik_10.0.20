@@ -57,4 +57,4 @@ class DFNExpandedDenoiser:
         Returns:
             Denoisiertes Audio, gleiche Form wie Input, float32 ∈ [-1, 1].
         """
-        return self._plugin.enhance(audio, sample_rate)
+        return self._plugin.enhance(audio, sample_rate)  # type: ignore[no-any-return]

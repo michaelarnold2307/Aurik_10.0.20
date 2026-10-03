@@ -55,7 +55,7 @@ import scipy.signal as spsig
 
 # §9.10.119 PGHI for phase-consistent ISTFT after magnitude modification
 try:
-    from dsp.pghi import pghi_reconstruct_from_stft as _pghi_excellence
+    from backend.core.dsp.pghi import pghi_reconstruct_from_stft as _pghi_excellence
 
     _PGHI_AVAILABLE_EX = True
 except ImportError:

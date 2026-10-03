@@ -1,7 +1,7 @@
 import numpy as np
 import pytest
 
-from dsp.automatic_declipper import AutomaticDeclipper
+from backend.core.dsp.automatic_declipper import AutomaticDeclipper
 
 
 @pytest.mark.unit

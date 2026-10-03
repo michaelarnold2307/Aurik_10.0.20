@@ -79,7 +79,7 @@ class AutomaticDeclipperStreaming:
     def declip_streaming(self, audio: Any, sr: int) -> Any:
         """AR-Declipping in Chunks für Streaming-Anwendungen."""
         self.log_contract()
-        from dsp._declip_core import ar_declip
+        from backend.core.dsp._declip_core import ar_declip
 
         audio = np.asarray(audio, dtype=np.float64)
         chunk = max(int(sr * 0.1), 512)  # 100 ms Chunks

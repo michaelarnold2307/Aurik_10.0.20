@@ -1,7 +1,7 @@
 import json
 import os
 
-from dsp.ethics_engine import check_ethics_and_originality
+from backend.core.dsp.ethics_engine import check_ethics_and_originality
 
 
 def test_ethics_engine(tmp_path):

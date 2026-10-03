@@ -427,7 +427,7 @@ class RmvpePlugin:
         """
         # Tier-DSP-1: PESTO (chromagram CQT, Riou et al. ISMIR 2023)
         try:
-            from dsp.pesto_pitch import estimate_pitch as _pesto
+            from backend.core.dsp.pesto_pitch import estimate_pitch as _pesto
 
             pesto_r = _pesto(mono_48k, sr)
             if pesto_r.f0_mean > 0 and np.sum(pesto_r.voiced) > 3:

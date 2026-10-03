@@ -21,7 +21,7 @@ import pytest
 # Add parent directory to path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from dsp.stereo_imaging_analyzer import StereoImagingAnalyzer, StereoImagingFixer
+from backend.core.dsp.stereo_imaging_analyzer import StereoImagingAnalyzer, StereoImagingFixer
 
 
 @pytest.mark.unit

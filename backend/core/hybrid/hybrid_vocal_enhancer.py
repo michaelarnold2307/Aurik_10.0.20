@@ -215,7 +215,7 @@ class HybridVocalEnhancer:
     def _apply_deesser_ml(self, audio, sr) -> np.ndarray:
         """ML-gestützter De-Esser (MLDeEsser.process())."""
         try:
-            from dsp.deesser_ml import MLDeEsser
+            from backend.core.dsp.deesser_ml import MLDeEsser
 
             strength = float(getattr(self.config, "deesser_strength", 0.7))
             de_esser = MLDeEsser(reduction_db=strength * 12.0)

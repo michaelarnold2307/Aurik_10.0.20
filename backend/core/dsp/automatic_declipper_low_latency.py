@@ -78,7 +78,7 @@ class AutomaticDeclipperLowLatency:
     def declip_low_latency(self, audio: Any, sr: int) -> Any:
         """AR-Declipping mit reduzierten Parametern für niedrige Latenz."""
         self.log_contract()
-        from dsp._declip_core import ar_declip
+        from backend.core.dsp._declip_core import ar_declip
 
         audio = np.asarray(audio, dtype=np.float64)
         return ar_declip(audio, sr, threshold=0.95, order=32, n_iter=4)

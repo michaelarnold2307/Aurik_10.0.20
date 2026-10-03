@@ -14,6 +14,15 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 
 
+def _default_transfer_chain_depth() -> int:
+    # §G86: Default NUR in calibration_context.py — bei None aus dem Kontext
+    # beziehen (Muster absolute_quality_gate.py).
+    from backend.core.calibration_context import get_calibration_context
+
+    _ctx = get_calibration_context()
+    return _ctx.transfer_chain_depth if _ctx is not None else 1
+
+
 @dataclass
 class SongCalibrationProfile:
     """Pro-Song-Kalibrierungsdaten aus der Pre-Analysis.
@@ -32,7 +41,9 @@ class SongCalibrationProfile:
     material_type: str = ""  # vinyl, tape, shellac, digital, ...
     medium_type: str = ""  # LP, 78rpm, cassette, CD, DAW, ...
     era_decade: int = 0  # 1920, 1950, 1980, ...
-    transfer_chain_depth: int = 1  # Anzahl Tonträger-Generationen
+    transfer_chain_depth: int = field(
+        default_factory=_default_transfer_chain_depth
+    )  # §G86: Anzahl Tonträger-Generationen; Default nur aus CalibrationContext
 
     # ── Signal-Qualität ─────────────────────────────────────────
     input_snr_db: float = 0.0  # Geschätztes SNR in dB

@@ -8,7 +8,7 @@ import pytest
 
 pytest.importorskip("librosa")  # CI-Minimal-Umgebung (cross-platform)
 
-from dsp.adaptive_formant_shifter import AdaptiveFormantShifter
+from backend.core.dsp.adaptive_formant_shifter import AdaptiveFormantShifter
 
 # ---------------------------------------------------------------------------
 # Hilfsfunktionen

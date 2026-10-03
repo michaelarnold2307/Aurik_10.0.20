@@ -18,7 +18,7 @@ Applications:
 - Real-time audio processing
 
 Usage:
-    from dsp.optimized.fft_cache import CachedFFT
+    from backend.core.dsp.optimized.fft_cache import CachedFFT
 
     fft = CachedFFT()
     spectrum = fft.rfft(audio_frame)

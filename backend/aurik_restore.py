@@ -31,16 +31,16 @@ import numpy as np
 
 logger = logging.getLogger(__name__)
 
-from dsp.artifact_detector import SpectralArtifactDetector
-from dsp.auto_eq import AutoEQ
-from dsp.harmonic_exciter import HarmonicExciter
+from backend.core.dsp.artifact_detector import SpectralArtifactDetector
+from backend.core.dsp.auto_eq import AutoEQ
+from backend.core.dsp.harmonic_exciter import HarmonicExciter
 
 # SOTA-Remastering-Module produktiv importieren
-from dsp.intelligent_limiter import IntelligentLimiter
-from dsp.multiband_compressor import MultibandCompressor
-from dsp.resample_utils import ensure_sr
-from dsp.stereo_widener import StereoWidener
-from dsp.target_sound_matcher import TargetSoundMatcher
+from backend.core.dsp.intelligent_limiter import IntelligentLimiter
+from backend.core.dsp.multiband_compressor import MultibandCompressor
+from backend.core.dsp.resample_utils import ensure_sr
+from backend.core.dsp.stereo_widener import StereoWidener
+from backend.core.dsp.target_sound_matcher import TargetSoundMatcher
 
 
 def _record_fallback(component: str, gold: str, fallback: str, reason: str) -> None:

@@ -198,7 +198,7 @@ class StemTargetedNRPhase(PhaseInterface):
 
         # OMLSA-DSP-Fallback (AiDehiss OMLSA/MMSE-LSA — kanonische Implementierung in dsp/dehiss.py)
         try:
-            from dsp.dehiss import AiDehiss
+            from backend.core.dsp.dehiss import AiDehiss
 
             mono_f = stem_f[:, 0] if stem_f.ndim == 2 else stem_f
             cleaned: np.ndarray = np.asarray(AiDehiss().dehiss(mono_f, sr), dtype=np.float32)

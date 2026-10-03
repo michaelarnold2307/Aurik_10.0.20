@@ -25,19 +25,19 @@ class TestZwickerLoudness:
     """Tests for dsp/psychoacoustics.py — compute_specific_loudness_zwicker."""
 
     def test_import(self):
-        from dsp.psychoacoustics import compute_specific_loudness_zwicker
+        from backend.core.dsp.psychoacoustics import compute_specific_loudness_zwicker
 
         assert callable(compute_specific_loudness_zwicker)
 
     def test_silence_returns_zero(self):
-        from dsp.psychoacoustics import compute_specific_loudness_zwicker
+        from backend.core.dsp.psychoacoustics import compute_specific_loudness_zwicker
 
         audio = np.zeros(48000 * 3, dtype=np.float32)
         result = compute_specific_loudness_zwicker(audio, 48000)
         assert result == 0.0
 
     def test_mono_returns_positive(self):
-        from dsp.psychoacoustics import compute_specific_loudness_zwicker
+        from backend.core.dsp.psychoacoustics import compute_specific_loudness_zwicker
 
         rng = np.random.RandomState(42)
         audio = rng.randn(48000 * 3).astype(np.float32) * 0.3
@@ -45,7 +45,7 @@ class TestZwickerLoudness:
         assert result > 0.0
 
     def test_stereo_returns_positive(self):
-        from dsp.psychoacoustics import compute_specific_loudness_zwicker
+        from backend.core.dsp.psychoacoustics import compute_specific_loudness_zwicker
 
         rng = np.random.RandomState(42)
         audio = rng.randn(48000 * 3, 2).astype(np.float32) * 0.3
@@ -54,7 +54,7 @@ class TestZwickerLoudness:
 
     def test_louder_signal_higher_sone(self):
         """Louder signal must produce higher sone value."""
-        from dsp.psychoacoustics import compute_specific_loudness_zwicker
+        from backend.core.dsp.psychoacoustics import compute_specific_loudness_zwicker
 
         rng = np.random.RandomState(42)
         quiet = rng.randn(48000 * 3).astype(np.float32) * 0.05
@@ -65,14 +65,14 @@ class TestZwickerLoudness:
 
     def test_short_audio_returns_zero(self):
         """Audio shorter than 100 ms should return 0."""
-        from dsp.psychoacoustics import compute_specific_loudness_zwicker
+        from backend.core.dsp.psychoacoustics import compute_specific_loudness_zwicker
 
         audio = np.ones(100, dtype=np.float32) * 0.5
         result = compute_specific_loudness_zwicker(audio, 48000)
         assert result == 0.0
 
     def test_return_type_is_float(self):
-        from dsp.psychoacoustics import compute_specific_loudness_zwicker
+        from backend.core.dsp.psychoacoustics import compute_specific_loudness_zwicker
 
         rng = np.random.RandomState(42)
         audio = rng.randn(48000 * 2).astype(np.float32) * 0.2
@@ -80,7 +80,7 @@ class TestZwickerLoudness:
         assert isinstance(result, float)
 
     def test_non_negative(self):
-        from dsp.psychoacoustics import compute_specific_loudness_zwicker
+        from backend.core.dsp.psychoacoustics import compute_specific_loudness_zwicker
 
         rng = np.random.RandomState(99)
         audio = rng.randn(48000).astype(np.float32) * 0.01
@@ -89,7 +89,7 @@ class TestZwickerLoudness:
 
     def test_1khz_sine_positive(self):
         """A 1 kHz sine at -20 dBFS must produce measurable loudness."""
-        from dsp.psychoacoustics import compute_specific_loudness_zwicker
+        from backend.core.dsp.psychoacoustics import compute_specific_loudness_zwicker
 
         t = np.linspace(0, 3.0, 48000 * 3, endpoint=False)
         audio = (0.1 * np.sin(2.0 * np.pi * 1000.0 * t)).astype(np.float32)
@@ -98,7 +98,7 @@ class TestZwickerLoudness:
 
     def test_filter_cache_reuse(self):
         """Calling twice with same SR should use cached filters."""
-        from dsp.psychoacoustics import _get_filters
+        from backend.core.dsp.psychoacoustics import _get_filters
 
         f1 = _get_filters(48000)
         f2 = _get_filters(48000)
@@ -109,7 +109,7 @@ class TestLoudnessDelta:
     """Tests for compute_loudness_delta_sone."""
 
     def test_same_signal_zero_delta(self):
-        from dsp.psychoacoustics import compute_loudness_delta_sone
+        from backend.core.dsp.psychoacoustics import compute_loudness_delta_sone
 
         rng = np.random.RandomState(42)
         audio = rng.randn(48000 * 3).astype(np.float32) * 0.3
@@ -117,7 +117,7 @@ class TestLoudnessDelta:
         assert abs(delta) < 0.01
 
     def test_louder_positive_delta(self):
-        from dsp.psychoacoustics import compute_loudness_delta_sone
+        from backend.core.dsp.psychoacoustics import compute_loudness_delta_sone
 
         rng = np.random.RandomState(42)
         quiet = rng.randn(48000 * 3).astype(np.float32) * 0.05
@@ -126,7 +126,7 @@ class TestLoudnessDelta:
         assert delta > 0.0
 
     def test_quieter_negative_delta(self):
-        from dsp.psychoacoustics import compute_loudness_delta_sone
+        from backend.core.dsp.psychoacoustics import compute_loudness_delta_sone
 
         rng = np.random.RandomState(42)
         loud = rng.randn(48000 * 3).astype(np.float32) * 0.4
@@ -135,7 +135,7 @@ class TestLoudnessDelta:
         assert delta < 0.0
 
     def test_return_tuple_three_floats(self):
-        from dsp.psychoacoustics import compute_loudness_delta_sone
+        from backend.core.dsp.psychoacoustics import compute_loudness_delta_sone
 
         rng = np.random.RandomState(42)
         audio = rng.randn(48000 * 2).astype(np.float32) * 0.2
@@ -312,7 +312,7 @@ class TestUV3ZwickerGuard:
 
     def test_zwicker_import_path_in_uv3(self):
         """UV3 must be able to import compute_loudness_delta_sone."""
-        from dsp.psychoacoustics import compute_loudness_delta_sone
+        from backend.core.dsp.psychoacoustics import compute_loudness_delta_sone
 
         assert callable(compute_loudness_delta_sone)
 
@@ -378,7 +378,7 @@ class TestZwickerDecisionTable:
 
     def test_negative_delta_also_checked(self):
         """Both positive (louder) and negative (quieter) ΔN are checked."""
-        from dsp.psychoacoustics import compute_loudness_delta_sone
+        from backend.core.dsp.psychoacoustics import compute_loudness_delta_sone
 
         rng = np.random.RandomState(42)
         loud = rng.randn(48000 * 3).astype(np.float32) * 0.4

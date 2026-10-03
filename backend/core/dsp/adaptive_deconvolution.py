@@ -10,7 +10,7 @@ from typing import Any
 
 import numpy as np
 
-from dsp._memory_budget_guard import check_budget
+from backend.core.dsp._memory_budget_guard import check_budget
 
 try:
     _TORCH_AVAILABLE = True

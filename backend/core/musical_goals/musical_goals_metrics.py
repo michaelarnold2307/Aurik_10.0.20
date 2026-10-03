@@ -104,7 +104,7 @@ except Exception:
     _PYLOUDNORM = None
 
 try:
-    from dsp.dtw_groove import get_groove_measurer as _GET_GROOVE_MEASURER_IMPL
+    from backend.core.dsp.dtw_groove import get_groove_measurer as _GET_GROOVE_MEASURER_IMPL
 except Exception:
     _GET_GROOVE_MEASURER_IMPL = None
 _GET_GROOVE_MEASURER: Any = _GET_GROOVE_MEASURER_IMPL

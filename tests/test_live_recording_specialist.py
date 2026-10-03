@@ -20,7 +20,7 @@ import numpy as np
 import pytest
 from scipy.signal import butter, sosfilt
 
-from dsp.live_recording_specialist import (
+from backend.core.dsp.live_recording_specialist import (
     CrowdNoiseIsolator,
     DeWindTool,
     FeedbackCanceller,

@@ -19,11 +19,11 @@ try:
     from fastapi.responses import HTMLResponse
 except ImportError:
     # FastAPI optional - keep module importable in test/offline environments.
-    FastAPI = Any  # type: ignore[assignment,misc]
-    HTTPException = Exception  # type: ignore[assignment,misc]
-    WebSocket = Any  # type: ignore[assignment,misc]
-    WebSocketDisconnect = Exception  # type: ignore[assignment,misc]
-    HTMLResponse = Any  # type: ignore[assignment,misc]
+    FastAPI = Any  # type: ignore[assignment, misc]
+    HTTPException = Exception  # type: ignore[assignment, misc]
+    WebSocket = Any  # type: ignore[assignment, misc]
+    WebSocketDisconnect = Exception  # type: ignore[assignment, misc]
+    HTMLResponse = Any  # type: ignore[assignment, misc]
 
 logger = logging.getLogger(__name__)
 

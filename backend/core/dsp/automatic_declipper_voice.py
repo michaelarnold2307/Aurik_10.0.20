@@ -79,7 +79,7 @@ class AutomaticDeclipperVoice:
     def declip_voice(self, audio: Any, sr: int) -> Any:
         """AR-Declipping für Sprachsignale mit Bandpass-Filterung (200–4000 Hz)."""
         self.log_contract()
-        from dsp._declip_core import ar_declip
+        from backend.core.dsp._declip_core import ar_declip
 
         audio = np.asarray(audio, dtype=np.float64)
         return ar_declip(
