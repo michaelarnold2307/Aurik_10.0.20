@@ -1,42 +1,13 @@
 # TASK_CHANGES — Live-Ledger der aktuellen Aufgabe
 
-> Generiert von `scripts/change_ledger.py snapshot` (Base: `HEAD`, Stand: 2026-10-03 23:56 CEST).
+> Generiert von `scripts/change_ledger.py snapshot` (Base: `HEAD`, Stand: 2026-10-04 00:36 CEST).
 > CI (`ci-lite.yml` pr-evidence-gate) erzwingt Abdeckung: jede geänderte Code-Datei muss hier stehen.
 
 ## Geänderte Dateien
 
 | Status | Pfad | Art |
 |---|---|---|
-| M | .github/FILE_REGISTRY.md | modifiziert |
 | M | TASK_CHANGES.md | modifiziert |
-| M | backend/api/bridge.py | modifiziert |
-| M | backend/api/bridge_calibration_data.py | modifiziert |
-| M | backend/api/musical_goals_monitor_api.py | modifiziert |
-| M | backend/core/ai_framework.py | modifiziert |
-| M | backend/core/comprehensive_metrics.py | modifiziert |
-| M | backend/core/dfn_expanded_inference.py | modifiziert |
-| M | backend/core/era_authentic_perceptual_completion.py | modifiziert |
-| M | backend/core/goosebumps_quality_checker.py | modifiziert |
-| M | backend/core/joint_calibrator.py | modifiziert |
-| M | backend/core/multi_pass_strategy.py | modifiziert |
-| M | backend/core/optimization/**init**.py | modifiziert |
-| M | backend/core/optimization/hyperparameter_optimizer.py | modifiziert |
-| M | backend/core/optimization/optimization_integration.py | modifiziert |
-| M | backend/core/parallel/stereo_parallel.py | modifiziert |
-| M | backend/core/perceptual_tuning.py | modifiziert |
-| M | backend/core/phases/**init**.py | modifiziert |
-| M | backend/core/phases/phase_44_guitar_enhancement.py | modifiziert |
-| M | backend/core/phases/phase_45_brass_enhancement.py | modifiziert |
-| M | backend/core/phases/phase_51_drums_enhancement.py | modifiziert |
-| M | backend/core/phases/phase_52_piano_restoration.py | modifiziert |
-| M | backend/core/phases/phase_56_spectral_band_gap_repair.py | modifiziert |
-| M | backend/core/pipeline_calibration.py | modifiziert |
-| M | backend/core/provenance_audit.py | modifiziert |
-| M | backend/core/regulator/_dsp_applier.py | modifiziert |
-| M | backend/core/signal_flow_tracer.py | modifiziert |
-| M | backend/core/song_calibration.py | modifiziert |
-| M | backend/core/song_calibration_profile.py | modifiziert |
-| M | backend/core/tonal_reference_profile.py | modifiziert |
 | D | dsp/**init**.py | gelöscht |
 | D | dsp/adaptive_ar_prediction_burg.py | gelöscht |
 | D | dsp/adaptive_ar_prediction_levinson.py | gelöscht |
@@ -48,9 +19,6 @@
 | D | dsp/shellac_declicker.py | gelöscht |
 | D | dsp/spectral_gate.py | gelöscht |
 | D | dsp/ultra_low_latency.py | gelöscht |
-| M | scripts/onnx_gpu_compat_scan.py | modifiziert |
-| M | tests/unit/calibration_context_linter_baseline.txt | modifiziert |
-| M | tests/unit/test_train_banquet_vinyl_finetune.py | modifiziert |
 | ?? | audit/dsp_consolidation_audit_2026-10-02.md | ungetrackt |
 | ?? | backend/core/golden_ear_corpus.py | ungetrackt |
 | ?? | docs/reports/current/2026-10-03_evidenz_generator_defekt.md | ungetrackt |
@@ -59,7 +27,6 @@
 | ?? | scripts/hoerpanel_player.py | ungetrackt |
 | ?? | scripts/validate_whisper_turbo_ab.py | ungetrackt |
 | ?? | tests/unit/test_hoerpanel_player.py | ungetrackt |
-| ?? | tests/unit/test_provenance_report.py | ungetrackt |
 
 ## Entscheidungen
 
