@@ -329,6 +329,7 @@ if "ExcellenceResult" not in globals():
         ola_crossfades: int = 0
         core_guard_triggered: bool = False
         core_guard_regressions: list[str] = field(default_factory=list)
+        step_rejections: list[str] = field(default_factory=list)  # §T6-1(A)
         pareto_conflicts: list[str] = field(default_factory=list)
 
         def summary(self) -> str:
@@ -339,8 +340,82 @@ if "ExcellenceResult" not in globals():
                 f"microdyn={self.micro_dynamic_injected}, "
                 f"harm={self.harmonic_reinforcement_db:+.2f}dB, "
                 f"ola_xfades={self.ola_crossfades}, "
-                f"core_guard={self.core_guard_triggered}"
+                f"core_guard={self.core_guard_triggered}, "
+                f"step_rejects={len(self.step_rejections)}"
             )
+
+
+# ─── T6-1(A) Schritt-granulare Core-Guards (Sign-off 2026-10-03) ─────────────
+# Roadmap-Option A: nach JEDEM Optimizer-Schritt werden die Kernziele gemessen;
+# nur regressierende Schritte werden verworfen, tragfähige bleiben erhalten
+# (Roadmap-Beispiel: OLA-Crossfade behalten, Harmonic-Boost verwerfen). Der
+# block-globale Core-Guard bleibt als Sicherheitsnetz erhalten. Hysterese wie
+# §v10.702 R4: erst ab _CORE_DROP_THRESHOLD (über dem PMGG-Mess-Rauschen
+# ±0,03) wird ein Schritt verworfen.
+
+_CORE_GOALS: frozenset[str] = frozenset(
+    {
+        "artikulation",
+        "authentizitaet",
+        "natuerlichkeit",
+        "spatial_depth",
+        "timbre_authentizitaet",
+        "tonal_center",
+        "transient_energie",
+    }
+)
+_CORE_DROP_THRESHOLD = 0.05  # §v10.702 R4
+
+
+def _goal_val(container: Any, key: str, default: float) -> float:
+    """Container-agnostisch: measure_all liefert dict ODER SimpleNamespace
+    (Produktionsbefund 2026-09-21: AttributeError 'SimpleNamespace' has no 'get')."""
+    if isinstance(container, dict):
+        return float(container.get(key, default))
+    return float(getattr(container, key, default) or default)
+
+
+def _core_regressions_between(before: Any, after: Any) -> list[str]:
+    """Kernziel-Regressionen über der Hysterese — deterministisch sortiert
+    (§G5 (copilot-instructions.md): keine Set-Iterationsreihenfolge in Ergebnis-Strings)."""
+    regs: list[str] = []
+    for _g in sorted(_CORE_GOALS):
+        _b = _goal_val(before, _g, 1.0)
+        _a = _goal_val(after, _g, _b)
+        if np.isfinite(_b) and np.isfinite(_a) and (_a < _b - _CORE_DROP_THRESHOLD):
+            regs.append(f"{_g}:{_b:.3f}->{_a:.3f}")
+    return regs
+
+
+def _t61_guarded_transition(
+    result: ExcellenceResult,
+    step_name: str,
+    pre_out: np.ndarray,
+    out_new: np.ndarray,
+    goals_pre: Any,
+    checker: Any,
+    sample_rate: int,
+) -> tuple[np.ndarray, Any]:
+    """T6-1(A): Schritt behalten — oder bei Kernziel-Regression verwerfen.
+
+    Returns:
+        (out, goals): bei Verwerfung `pre_out` plus die alten Ziele (die
+        verbleibende Schrittkette bleibt messungskonsistent); ohne Checker
+        wird nie blind verworfen (§V7 (VERBOTEN.md): kein Rollback ohne Messung).
+    """
+    if checker is None or goals_pre is None:
+        return out_new, goals_pre
+    try:
+        goals_post = checker.measure_all(out_new.astype(pre_out.dtype), sample_rate)
+        _regs = _core_regressions_between(goals_pre, goals_post)
+        if _regs:
+            logger.warning("T6-1(A) Schritt-Guard: '%s' verworfen (%s)", step_name, ", ".join(_regs[:6]))
+            result.step_rejections.append(f"{step_name}[{';'.join(_regs[:3])}]")
+            return pre_out, goals_pre
+        return out_new, goals_post
+    except Exception as _sg_exc:  # §G23 ML→DSP-Ersatzpfad
+        logger.warning("T6-1(A) Schritt-Guard fehlgeschlagen (%s) — Schritt behalten", _sg_exc)
+        return out_new, goals_pre
 
 
 # ─── Hilfsfunktionen ─────────────────────────────────────────────────────────
@@ -985,8 +1060,27 @@ class ExcellenceOptimizer:
         out = audio.astype(np.float64) if audio.dtype != np.float64 else audio.copy()
         mono_ref = _to_mono(out)
 
+        # §T6-1(A) (Sign-off 2026-10-03): Schritt-granulare Core-Guards —
+        # Kernziel-Messung wird je Schritt weitergereicht (1 initiale + 1 Messung
+        # je Schritt); regressierende Schritte fallen einzeln raus.
+        _step_checker = None
+        try:
+            from backend.core.musical_goals.musical_goals_metrics import get_checker
+
+            _step_checker = get_checker()
+        except Exception as _sc_exc:  # §G23 ML→DSP-Ersatzpfad
+            logger.warning("T6-1(A): Goal-Checker nicht verfügbar — Schritt-Guard inert: %s", _sc_exc)
+        _goals_step = None
+        if _step_checker is not None:
+            try:
+                _goals_step = _step_checker.measure_all(out.astype(audio.dtype), self.sample_rate)
+            except Exception as _gm_exc:
+                logger.warning("T6-1(A): Initiale Kernziel-Messung fehlgeschlagen: %s", _gm_exc)
+
         # 1. Spectral Continuity Enhancement
         if self.apply_continuity and ctx.needs_continuity_fix:
+            _pre_step = out.copy()
+            _goals_pre_step = _goals_step
             try:
                 mono_smooth = _enhance_spectral_continuity(mono_ref, ctx)
                 if out.ndim == 1:
@@ -1006,9 +1100,14 @@ class ExcellenceOptimizer:
                 logger.debug("ExcellenceOptimizer: Spectral continuity angewendet")
             except Exception as exc:
                 logger.warning("ExcellenceOptimizer: continuity fehlgeschlagen: %s", exc)
+            out, _goals_step = _t61_guarded_transition(
+                result, "spectral_continuity", _pre_step, out, _goals_pre_step, _step_checker, self.sample_rate
+            )
 
         # 2. Micro-Dynamic Re-injection
         if self.apply_micro_dynamics and ctx.needs_micro_dynamics:
+            _pre_step = out.copy()
+            _goals_pre_step = _goals_step
             # §v10.14 Groove-Pre-Guard: Vor Modulation Onset-Count messen, damit
             # _inject_micro_dynamics keine Groove-Zerstörung verursacht (onset loss
             # 180→78 beobachtet → Δ−56%). Skip wenn Onset-Dichte zu gering.
@@ -1038,9 +1137,14 @@ class ExcellenceOptimizer:
                     )
             except Exception as exc:
                 logger.warning("ExcellenceOptimizer: micro_dynamics fehlgeschlagen: %s", exc)
+            out, _goals_step = _t61_guarded_transition(
+                result, "micro_dynamics", _pre_step, out, _goals_pre_step, _step_checker, self.sample_rate
+            )
 
         # 3. Harmonic Reinforcement
         if self.apply_harmonic_boost and ctx.needs_harmonic_boost:
+            _pre_step = out.copy()
+            _goals_pre_step = _goals_step
             try:
                 mono_boosted = _reinforce_harmonics(_to_mono(out), ctx)
                 if out.ndim == 1:
@@ -1059,9 +1163,14 @@ class ExcellenceOptimizer:
                 logger.debug("ExcellenceOptimizer: Harmonic boost %.2f dB", result.harmonic_reinforcement_db)
             except Exception as exc:
                 logger.warning("ExcellenceOptimizer: harmonic_boost fehlgeschlagen: %s", exc)
+            out, _goals_step = _t61_guarded_transition(
+                result, "harmonic_boost", _pre_step, out, _goals_pre_step, _step_checker, self.sample_rate
+            )
 
         # 4. OLA Edge Crossfade
         if self.apply_ola_edges:
+            _pre_step = out.copy()
+            _goals_pre_step = _goals_step
             try:
                 out, n_xfades = _ola_crossfade_edges(out, self.sample_rate)
                 result.ola_crossfades = n_xfades
@@ -1069,6 +1178,9 @@ class ExcellenceOptimizer:
                     result.applied_steps.append("ola_crossfade")
             except Exception as exc:
                 logger.warning("ExcellenceOptimizer: ola_crossfade fehlgeschlagen: %s", exc)
+            out, _goals_step = _t61_guarded_transition(
+                result, "ola_crossfade", _pre_step, out, _goals_pre_step, _step_checker, self.sample_rate
+            )
 
         # §2.34 GoalPriorityProtocol: Pareto-Konflikt-Logging (MOO, §2.5)
         # Natürlichkeit/Authentizität (Stufe 1) dürfen nicht für Brillanz/Raumtiefe (Stufe 5) geopfert werden.
@@ -1127,12 +1239,7 @@ class ExcellenceOptimizer:
 
             # Aktiver Core-Guard: Wenn Kernziele hörbar regressieren, dann
             # wird der Optimizer-Schritt verworfen (Primum non nocere, §0).
-            _core_regressions: list[str] = []
-            for _g in _core_goals:
-                _before = _goal_val(_goals_before, _g, 1.0)
-                _after = _goal_val(_goals_after, _g, _before)
-                if np.isfinite(_before) and np.isfinite(_after) and (_after < _before - _core_drop_threshold):
-                    _core_regressions.append(f"{_g}:{_before:.3f}->{_after:.3f}")
+            _core_regressions: list[str] = _core_regressions_between(_goals_before, _goals_after)
 
             if _core_regressions:
                 logger.warning(

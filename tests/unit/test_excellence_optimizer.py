@@ -300,3 +300,64 @@ class TestOlaEdgeCrossfadeGuard:
         out, n_xfades = _ola_crossfade_edges(audio, SR)
         assert n_xfades == 0
         assert np.array_equal(out, audio)
+
+
+# ---------------------------------------------------------------------------
+# Klasse 8: T6-1(A) Schritt-granulare Core-Guards (Sign-off 2026-10-03)
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.unit
+class TestStepGranularCoreGuards:
+    def test_31_core_regressions_threshold_and_determinism(self):
+        from backend.core.excellence_optimizer import _core_regressions_between
+
+        before = {"natuerlichkeit": 0.5, "spatial_depth": 0.7, "artikulation": 0.7}
+        after = {"natuerlichkeit": 0.5, "spatial_depth": 0.3, "artikulation": 0.66}
+        regs = _core_regressions_between(before, after)
+        # nur spatial_depth (Δ 0,40) übersteigt die Hysterese 0,05; Δ 0,04 nicht
+        assert regs == ["spatial_depth:0.700->0.300"]
+        # deterministische Reihenfolge über mehrere Aufrufe (§G5 (copilot-instructions.md))
+        for _ in range(3):
+            assert _core_regressions_between(before, after) == regs
+
+    def test_32_guarded_transition_rejects_regressing_keeps_good(self):
+        from backend.core.excellence_optimizer import ExcellenceResult, _t61_guarded_transition
+
+        class _StubChecker:
+            def __init__(self, spatial: float):
+                self.spatial = spatial
+
+            def measure_all(self, audio, sr):
+                return {"spatial_depth": self.spatial, "natuerlichkeit": 0.5}
+
+        pre = np.zeros(1000)
+        new = np.ones(1000)
+        _goals = {"spatial_depth": 0.7, "natuerlichkeit": 0.5}
+        # regressiver Schritt (z. B. Harmonic-Boost mit spatial_depth-Kollaps)
+        res = ExcellenceResult()
+        out, goals = _t61_guarded_transition(res, "harmonic_boost", pre, new, dict(_goals), _StubChecker(0.3), SR)
+        assert out is pre  # verworfen
+        assert goals == _goals  # Zielkette bleibt beim Pre-Zustand
+        assert res.step_rejections and res.step_rejections[0].startswith("harmonic_boost")
+        # nicht-regressiver Schritt (Δ 0,01 im Rauschen) bleibt erhalten
+        out2, goals2 = _t61_guarded_transition(
+            ExcellenceResult(), "ola_crossfade", pre, new, dict(_goals), _StubChecker(0.69), SR
+        )
+        assert out2 is new
+        assert goals2["spatial_depth"] == 0.69
+
+    def test_33_guard_never_blindly_rejects_without_checker(self):
+        from backend.core.excellence_optimizer import ExcellenceResult, _t61_guarded_transition
+
+        pre = np.zeros(10)
+        new = np.ones(10)
+        out, goals = _t61_guarded_transition(
+            ExcellenceResult(), "harmonic_boost", pre, new, {"spatial_depth": 0.7}, None, SR
+        )
+        assert out is new  # ohne Messung nie blind verwerfen (§V7 (VERBOTEN.md))
+
+    def test_34_optimize_exposes_step_rejections(self):
+        out, result = optimize_for_excellence(_noise(), SR, material="vinyl")
+        assert isinstance(result.step_rejections, list)
+        assert np.all(np.isfinite(out))
