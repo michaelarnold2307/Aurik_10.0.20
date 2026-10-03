@@ -859,7 +859,7 @@ class PerceptualValidator:
 
         return requests[:limit]
 
-    def submit_listening_test_result(  # type: ignore[return,return-value]
+    def submit_listening_test_result(  # type: ignore[return, return-value]
         self, session_id: str, human_scores: dict[str, float], comments: str | None = None
     ) -> dict[str, Any]:
         """
