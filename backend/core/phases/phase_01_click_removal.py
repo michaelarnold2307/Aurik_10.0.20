@@ -61,11 +61,11 @@ from typing import Any
 
 import numpy as np
 from scipy.interpolate import CubicSpline
-from scipy.ndimage import median_filter
 from scipy.signal import lfilter
 
 from backend.core.audio_utils import limit_quiet_edge_boost, restore_layout, safe_to_mono, to_channels_last
 from backend.core.defect_scanner import MaterialType  # §v10.113
+from backend.core.dsp.declick_core import local_median_scale
 from backend.core.dsp.silence_mask import apply_silence_preservation
 from backend.core.ml_model_readiness import check_ml_model_ready
 from backend.core.plugin_lifecycle_manager import get_plugin_lifecycle_manager
@@ -1304,7 +1304,8 @@ class ClickRemovalPhase(PhaseInterface):
 
         Algorithm:
             1. Compute |Δx| = |x[n] − x[n−1]| (first-order difference)
-            2. Sliding-window median of |Δx| over W = 4801 samples (~100 ms @ 48 kHz)
+            2. Gleitender Median von |Δx| über ≈ 4801 Samples (~100 ms @ 48 kHz),
+               O(n) als Block-Median + Interpolation (declick_core)
             3. MAD = 1.4826 × median(||Δx| − median(|Δx|)||)  per window
                (1.4826 = consistency factor for Gaussian equivalence; Hampel 1974)
             4. Adaptive threshold = local_median + k × MAD
@@ -1323,13 +1324,16 @@ class ClickRemovalPhase(PhaseInterface):
         """
         diff = np.abs(np.diff(audio))
 
-        # Sliding-window size: ~100 ms @ 48 kHz (must be odd for median_filter)
+        # O(n)-Gleitmedian (declick_core.local_median_scale, Block-Median +
+        # Interpolation, Fenster ≈ 100 ms) statt scipy-`median_filter(size=_W)`
+        # — der Rangfilter war der 22-s-Hotspot des KAS-90-s-Budgets
+        # (Profilevidenz 2026-10-02).
         _W = 4801
 
         # Robust local statistics via MAD (Median Absolute Deviation)
-        local_median = median_filter(diff, size=min(_W, len(diff) | 1), mode="reflect")
+        local_median = local_median_scale(diff, block=max(256, _W // 4))
         local_deviation = np.abs(diff - local_median)
-        local_mad = 1.4826 * median_filter(local_deviation, size=min(_W, len(diff) | 1), mode="reflect")
+        local_mad = 1.4826 * local_median_scale(local_deviation, block=max(256, _W // 4))
 
         # Material-adaptive multiplier k (base from threshold config)
         # Lower threshold → more sensitive → lower k
@@ -1417,8 +1421,8 @@ class ClickRemovalPhase(PhaseInterface):
             if _delta.size < 4801:
                 return []
             _w = min(4801, _delta.size) | 1
-            _local_med = median_filter(_delta, size=_w)
-            _local_mad = 1.4826 * median_filter(np.abs(_delta - _local_med), size=_w)
+            _local_med = local_median_scale(_delta, block=max(256, _w // 4))
+            _local_mad = 1.4826 * local_median_scale(np.abs(_delta - _local_med), block=max(256, _w // 4))
             _threshold = _local_med + 4.0 * np.maximum(_local_mad, 1e-8)
             _mask = _delta > _threshold
             _regions: list[tuple[int, int]] = []

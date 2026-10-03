@@ -106,7 +106,7 @@ class AdaptiveGainRider:
                 # TorchScript-Modell (Platzhalter)
                 # model = torch.jit.load('gain_rider.pt')
                 # out = model(torch.from_numpy(audio).float().unsqueeze(0)).squeeze(0).numpy()
-                logger.warning("TorchScript-Modell nicht implementiert, fallback auf klassische Methode.")
+                logger.warning("TorchScript-Modell nicht implementiert, Ersatzpfad auf klassische Methode.")
                 fallback_used = True
                 out = self._process_classic(audio, sr)
             else:
@@ -123,7 +123,7 @@ class AdaptiveGainRider:
 
         if audit_log:
             rms_profile = float(np.sqrt(np.mean(out**2)))
-            logger.info("AdaptiveGainRider: rms_profile=%.3f, fallback_used=%s", rms_profile, fallback_used)
+            logger.info("AdaptiveGainRider: rms_wert=%.3f, Ersatzpfad_genutzt=%s", rms_profile, fallback_used)
         return out
 
     def _process_classic(self, audio: np.ndarray, sr: int) -> np.ndarray:

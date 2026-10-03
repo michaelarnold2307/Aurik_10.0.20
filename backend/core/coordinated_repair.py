@@ -1180,25 +1180,61 @@ class CoordinatedRepair:
 
             mask_ckpt = base_dir / "inpainting_mask_best.pt"
             ckpt_path = base_dir / "inpainting_best.pt"
-            if not mask_ckpt.exists() and not ckpt_path.exists():
-                # §V6 (copilot-instructions.md): niemals mit uninitialisierten Gewichten rechnen.
-                log.warning("Harmonic Inpainting: keine .pt-Checkpoints in %s — Pass-Through", base_dir)
-                return audio
+            # §v10.300 S2-Primärpfad: ZWEI verschiedene Modellvarianten (Export
+            # via scripts/export_all_musik_models.py), jeweils gleichnamig zu den
+            # .pt-Checkpoints: „mask" = FlowMatchingDiT mit Maskenkanal (x[b,t,2]),
+            # „best" = Variante ohne Maskenkanal (x[b,t,1]). Priorität wie im
+            # Torch-Pfad: mask vor best; ONNX ist vollwertiger Primärpfad, kein Fallback.
+            mask_onnx = base_dir / "inpainting_mask_best.onnx"
+            onnx_path = base_dir / "inpainting_best.onnx"
+            use_mask_channel = False
+            model = None
+            ort_session = None
             if mask_ckpt.exists():
                 model = FlowMatchingDiT(in_channels=2)
                 ckpt = torch.load(str(mask_ckpt), map_location="cpu", weights_only=True)
                 model.load_state_dict(ckpt.get("model_state_dict", ckpt))
                 use_mask_channel = True
-            else:
+            elif ckpt_path.exists():
                 model = FlowMatchingDiT()
-                use_mask_channel = False
-                if ckpt_path.exists():
-                    ckpt = torch.load(str(ckpt_path), map_location="cpu", weights_only=True)
-                    model.load_state_dict(ckpt.get("model_state_dict", ckpt))
+                ckpt = torch.load(str(ckpt_path), map_location="cpu", weights_only=True)
+                model.load_state_dict(ckpt.get("model_state_dict", ckpt))
+            elif mask_onnx.exists() or onnx_path.exists():
+                import onnxruntime as ort  # pylint: disable=import-outside-toplevel
 
-            device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-            model.to(device)
-            model.eval()
+                _onnx_p = mask_onnx if mask_onnx.exists() else onnx_path
+                use_mask_channel = mask_onnx.exists()
+                ort_session = ort.InferenceSession(str(_onnx_p), providers=["CPUExecutionProvider"])
+                log.info(
+                    "Harmonic Inpainting S2: ONNX-Modell %s (kein .pt-Checkpoint — gleichwertiger Primärpfad)",
+                    _onnx_p.name,
+                )
+            else:
+                # §V6 (copilot-instructions.md): niemals mit uninitialisierten Gewichten rechnen.
+                log.warning("Harmonic Inpainting: weder .pt noch .onnx in %s — Pass-Through", base_dir)
+                return audio
+
+            device = torch.device("cuda" if model is not None and torch.cuda.is_available() else "cpu")
+            if model is not None:
+                model.to(device)
+                model.eval()
+
+            def _velocity(x_in: torch.Tensor, t_val: float) -> torch.Tensor:
+                """Velocity-Feld v(x, t) — Torch-Modell oder ONNX-Session (§III.9 (copilot-instructions.md): ONNX-CPU)."""
+                if model is not None:
+                    with torch.no_grad():
+                        return model(x_in, torch.full((1,), t_val, device=device))
+                x_np = x_in.detach().cpu().numpy().astype(np.float32)
+                if ort_session is None:
+                    raise RuntimeError("ort_session fehlt — weder Torch-Modell noch ONNX-Session verfügbar")
+                if ort_session is None:
+                    raise RuntimeError("ort_session fehlt — weder Torch-Modell noch ONNX-Session verfügbar")
+                if ort_session is None:
+                    raise RuntimeError("ort_session fehlt — weder Torch-Modell noch ONNX-Session verfügbar")
+                if ort_session is None:
+                    raise RuntimeError("ort_session fehlt — weder Torch-Modell noch ONNX-Session verfügbar")
+                v_np = ort_session.run(None, {"x": x_np, "t": np.array([t_val], dtype=np.float32)})[0]
+                return torch.from_numpy(np.asarray(v_np, dtype=np.float32)).to(x_in.device)
 
             n_steps = int(step.parameters.get("ode_steps", 20))
             strength = float(step.parameters.get("strength", 0.3))
@@ -1233,8 +1269,7 @@ class CoordinatedRepair:
 
                 with torch.no_grad():
                     for i in range(n_steps):
-                        t = torch.full((1,), i * dt, device=device)
-                        velocity = model(x, t)  # [B, T, 1]
+                        velocity = _velocity(x, i * dt)  # [B, T, 1]
                         if use_mask_channel:
                             x = x + torch.cat([velocity, torch.zeros_like(velocity)], dim=-1) * dt
                         else:

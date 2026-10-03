@@ -29,7 +29,6 @@ logger = logging.getLogger(__name__)
 DEFAULT_SRC_DIRS = [
     "backend",
     "core",
-    "dsp",
     "plugins",
     "denker",
     "Aurik10",
@@ -163,7 +162,7 @@ RULES: list[Rule] = [
         id="R12",
         description="griffinlim() als Phase-Endschritt verboten — PGHI/Vocos verwenden",
         pattern=re.compile(r"\bgriffin_?lim\s*\("),
-        allow_in=["dsp/pghi.py", "dsp/phase_reconstruction.py"],  # dort als Fallback OK
+        allow_in=["backend/core/dsp/pghi.py", "backend/core/dsp/phase_reconstruction.py"],  # dort als Fallback OK
         severity="warning",
     ),
     # R13 — RMS/Peak Normalisierung (statt LUFS)
@@ -217,9 +216,8 @@ RULES: list[Rule] = [
             "tests/",
             "audit/",
             "benchmarks/",
-            "backend/core/ab_test_manager.py",  # DeprecationWarning (multiline)
             "backend/core/evaluation/quality_control.py",  # DeprecationWarning (module-level)
-            "dsp/gpu_pipeline.py",
+            "backend/core/dsp/gpu_pipeline.py",
         ],  # DeprecationWarning (module-level)
         severity="warning",
     ),

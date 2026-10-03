@@ -583,7 +583,7 @@ def compute_specific_loudness_array(audio: np.ndarray, sr: int) -> np.ndarray:
     """
     result = compute_specific_loudness_zwicker(audio, sr)
     if not result.computation_valid:
-        return np.zeros(N_BARK, dtype=np.float64)  # type: ignore[no-any-return]
+        return np.asarray(np.zeros(N_BARK))  # type: ignore[no-any-return]
     return result.specific_loudness
 
 
@@ -608,7 +608,7 @@ def compute_bark_energy_profile(audio: np.ndarray, sr: int) -> np.ndarray:
         if arr.ndim == 2:
             arr = arr.mean(axis=0) if arr.shape[0] <= 2 else arr.mean(axis=1)
         if arr.size == 0:
-            return np.zeros(N_BARK, dtype=np.float64)  # type: ignore[no-any-return]
+            return np.asarray(np.zeros(N_BARK))  # type: ignore[no-any-return]
         # Cap at 5 s for performance
         arr = arr[: int(5 * sr)]
 
@@ -619,10 +619,10 @@ def compute_bark_energy_profile(audio: np.ndarray, sr: int) -> np.ndarray:
                 continue
             filtered = _sp_signal.sosfiltfilt(sos, arr)
             profile[b] = float(np.sqrt(np.mean(filtered**2)))
-        return np.nan_to_num(profile, nan=0.0, posinf=0.0, neginf=0.0)  # type: ignore[no-any-return]
+        return np.asarray(np.nan_to_num(profile, nan=0.0, posinf=0.0, neginf=0.0))  # type: ignore[no-any-return]
     except Exception as _e:
         logger.debug("berechnen_bark_energy_Profil Fehler: %s", _e)
-        return np.zeros(N_BARK, dtype=np.float64)  # type: ignore[no-any-return]
+        return np.asarray(np.zeros(N_BARK))  # type: ignore[no-any-return]
 
 
 # ──────────────────────────────────────────────────────────────────────
@@ -684,7 +684,7 @@ def compute_noise_texture_profile(
             arr = arr.mean(axis=0) if arr.shape[0] <= 2 else arr.mean(axis=1)
         arr = arr[: int(max_duration_s * sr)]
         if arr.size < int(0.1 * sr):
-            return np.zeros(8, dtype=np.float64)  # type: ignore[no-any-return]
+            return np.asarray(np.zeros(8))  # type: ignore[no-any-return]
 
         # Frame-based noise extraction: select quiet frames < -35 dBFS
         frame_len = int(0.05 * sr)  # 50 ms frames
@@ -710,7 +710,7 @@ def compute_noise_texture_profile(
                 quiet_spectra.append(spec)
 
         if len(quiet_spectra) < 3:
-            return np.zeros(8, dtype=np.float64)  # type: ignore[no-any-return]
+            return np.asarray(np.zeros(8))  # type: ignore[no-any-return]
 
         # Average PSD of quiet frames
         avg_psd = np.median(np.array(quiet_spectra), axis=0)
@@ -736,11 +736,11 @@ def compute_noise_texture_profile(
         if pmax > 1e-15:
             profile /= pmax
 
-        return np.nan_to_num(profile, nan=0.0, posinf=0.0, neginf=0.0)  # type: ignore[no-any-return]
+        return np.asarray(np.nan_to_num(profile, nan=0.0, posinf=0.0, neginf=0.0))  # type: ignore[no-any-return]
 
     except Exception as _e:
         logger.debug("berechnen_noise_texture_Profil error: %s", _e)
-        return np.zeros(8, dtype=np.float64)  # type: ignore[no-any-return]
+        return np.asarray(np.zeros(8))  # type: ignore[no-any-return]
 
 
 def get_material_noise_texture(material_type: str) -> np.ndarray:
@@ -865,7 +865,8 @@ def synthesize_comfort_noise(
                         s : s + fade_len
                     ]
 
-        return np.nan_to_num(result, nan=0.0, posinf=0.0, neginf=0.0).astype(audio.dtype)  # type: ignore[no-any-return]
+        out: np.ndarray = np.nan_to_num(result, nan=0.0, posinf=0.0, neginf=0.0).astype(audio.dtype)
+        return out
 
     except Exception as _e:
         logger.debug("synthesize_comfort_noise error: %s — returning unmodified audio", _e)
@@ -953,11 +954,11 @@ def compute_time_varying_loudness(
             else:
                 smoothed[fi] = smoothed[fi - 1] + alpha_release * (raw_loudness[fi] - smoothed[fi - 1])
 
-        return np.nan_to_num(smoothed, nan=0.0, posinf=0.0, neginf=0.0)  # type: ignore[no-any-return]
+        return np.asarray(np.nan_to_num(smoothed, nan=0.0, posinf=0.0, neginf=0.0))  # type: ignore[no-any-return]
 
     except Exception as _e:
         logger.debug("berechnen_time_varying_loudness error: %s", _e)
-        return np.zeros(1, dtype=np.float64)  # type: ignore[no-any-return]
+        return np.asarray(np.zeros(1))  # type: ignore[no-any-return]
 
 
 def compute_loudness_envelope_delta(
@@ -1128,8 +1129,8 @@ def apply_psychoacoustic_masking_clamp(
                         result = result * _scale_rf[None, :] if result.shape[0] <= 2 else result * _scale_rf[:, None]
                     else:
                         result = result * _scale_rf
-                result_arr = np.asarray(np.clip(result, -1.0, 1.0), dtype=processed_audio.dtype)
-                return result_arr  # type: ignore[no-any-return]
+                result_arr: np.ndarray = np.asarray(np.clip(result, -1.0, 1.0), dtype=processed_audio.dtype)
+                return result_arr
             else:
                 x = np.arange(len(proc_mono), dtype=np.float32)
                 gain_samples = np.interp(x, centers, gain_t).astype(np.float32)
@@ -1151,7 +1152,7 @@ def apply_psychoacoustic_masking_clamp(
                     _scale_rf = np.clip(_scale_rf, 0.0, 4.0)
                     result = result * _scale_rf
                 result_arr = np.asarray(np.clip(result, -1.0, 1.0), dtype=processed_audio.dtype)
-                return cast(np.ndarray, result_arr)
+                return result_arr
 
         elif mode == "additive":
             # For additive phases: limit how much energy is ADDED in masked
@@ -1174,7 +1175,8 @@ def apply_psychoacoustic_masking_clamp(
                 result = orig + delta * scaled_2d
             else:
                 result = orig + delta * scaled
-            return np.clip(result, -1.0, 1.0).astype(processed_audio.dtype)  # type: ignore[no-any-return]
+            out: np.ndarray = np.clip(result, -1.0, 1.0).astype(processed_audio.dtype)
+            return out
 
         return processed_audio
 
@@ -1214,7 +1216,7 @@ def compute_erb_masking_threshold(
 
         n = min(len(arr), n_fft)
         if n < 64:
-            return np.full(n_fft // 2 + 1, -120.0, dtype=np.float64)  # type: ignore[no-any-return]
+            return np.asarray(np.full(n_fft // 2 + 1, -120.0))  # type: ignore[no-any-return]
 
         win = np.hanning(n).astype(np.float64)
         spec = np.abs(np.fft.rfft(arr[:n] * win))
@@ -1236,11 +1238,12 @@ def compute_erb_masking_threshold(
             ml = mag_db[b] - masking_offset_db
             threshold[lo:hi] = np.maximum(threshold[lo:hi], ml)
 
-        return threshold  # type: ignore[no-any-return]
+        threshold_result: np.ndarray = threshold
+        return threshold_result
 
     except Exception as _e:
         logger.debug("berechnen_erb_masking_Schwelle error: %s", _e)
-        return np.full(n_fft // 2 + 1, -120.0, dtype=np.float64)  # type: ignore[no-any-return]
+        return np.asarray(np.full(n_fft // 2 + 1, -120.0))  # type: ignore[no-any-return]
 
 
 # ---------------------------------------------------------------------------
@@ -1389,6 +1392,458 @@ def compute_versa_confidence(snr_estimate_db: float, material_type: str) -> floa
     return float(np.clip(confidence, 0.10, 1.00))
 
 
+# ──────────────────────────────────────────────────────────────────────
+# §4.1b Vereinfachte stationäre Zwicker-Variante (mit Excitation Spreading)
+# Eingemergt aus Root-dsp/psychoacoustics.py (Konsolidierung 2026-10).
+# Rückgabe: float in sone — bewusst getrennt von der vollen
+# `compute_specific_loudness_zwicker()` (ZwickerLoudnessResult) oben.
+# ──────────────────────────────────────────────────────────────────────
+
+_BARK_BANDS: list[tuple[float, float]] = [
+    (20, 100),
+    (100, 200),
+    (200, 300),
+    (300, 400),
+    (400, 510),
+    (510, 630),
+    (630, 770),
+    (770, 920),
+    (920, 1080),
+    (1080, 1270),
+    (1270, 1480),
+    (1480, 1720),
+    (1720, 2000),
+    (2000, 2320),
+    (2320, 2700),
+    (2700, 3150),
+    (3150, 3700),
+    (3700, 4400),
+    (4400, 5300),
+    (5300, 6400),
+    (6400, 7700),
+    (7700, 9500),
+    (9500, 12000),
+    (12000, 15500),
+]
+
+# ── Equal-Loudness Correction (ISO 226:2003 approximation) ─────────────
+# dB offset to apply at each band center so that equal loudness contour
+# at 40 phon is approximately flat.  Positive = ear is MORE sensitive
+# (less energy needed), so we ADD to measured level.
+# Derived from ISO 226:2003 40-phon contour at band center frequencies.
+_EQUAL_LOUDNESS_OFFSET_DB: list[float] = [
+    -22.0,  # 60 Hz  — ear very insensitive
+    -14.0,  # 150 Hz
+    -9.0,  # 250 Hz
+    -5.5,  # 350 Hz
+    -3.5,  # 455 Hz
+    -2.0,  # 570 Hz
+    -1.0,  # 700 Hz
+    0.0,  # 845 Hz
+    0.5,  # 1000 Hz — reference
+    1.0,  # 1175 Hz
+    1.5,  # 1375 Hz
+    2.0,  # 1600 Hz
+    2.5,  # 1860 Hz
+    3.0,  # 2160 Hz
+    3.5,  # 2510 Hz — ear most sensitive region
+    3.0,  # 2925 Hz
+    2.0,  # 3425 Hz
+    0.5,  # 4050 Hz
+    -1.5,  # 4850 Hz
+    -3.5,  # 5850 Hz
+    -6.0,  # 7050 Hz
+    -9.0,  # 8600 Hz
+    -13.0,  # 10750 Hz
+    -18.0,  # 13750 Hz — ear insensitive again
+]
+
+# ── Hearing threshold in quiet (ISO 226:2003, dB SPL at band center) ───
+_THRESHOLD_QUIET_DB: list[float] = [
+    55.0,
+    35.0,
+    22.0,
+    15.0,
+    11.0,
+    8.5,
+    7.0,
+    6.0,
+    5.5,
+    5.5,
+    6.0,
+    7.0,
+    8.0,
+    9.5,
+    10.5,
+    11.0,
+    12.0,
+    14.0,
+    16.0,
+    19.0,
+    23.0,
+    28.0,
+    35.0,
+    45.0,
+]
+
+# ── Digital-to-SPL offset ──────────────────────────────────────────────
+# 0 dBFS ≈ 94 dB SPL (standard studio monitoring level assumption).
+# This is an approximation — the absolute value doesn't matter for
+# the ΔN comparison (input_sone vs output_sone), only relative accuracy.
+_DBFS_TO_SPL_OFFSET_ZWICKER: float = 94.0
+
+# ── ISO 532-1 Inter-Band Spreading Function slopes (Zwicker & Fastl 2007, Table 8.1) ──
+# Upward spread: masker at lower frequency raises threshold for higher frequencies
+#   Slope: 25 dB/Bark  (gentler — dominant masking effect for music)
+# Downward spread: masker at higher frequency raises threshold for lower frequencies
+#   Slope: 40 dB/Bark  (steeper — less prominent in practice)
+# These slopes are calibrated on binaural masking data at 80 phon (Zwicker & Fastl §8.1).
+_SPREAD_SLOPE_UP_DB_BARK: float = 25.0
+_SPREAD_SLOPE_DN_DB_BARK: float = 40.0
+
+
+def _apply_excitation_spread(corrected_spl: list[float]) -> list[float]:
+    """Wendet an: simplified ISO 532-1 excitation spreading across Bark bands.
+
+    Computes effective excitation level at each band by taking the maximum
+    of the direct band level and contributions propagated from louder bands
+    via the spreading function (Zwicker & Fastl 2007, Table 8.1).
+
+    Mathematically: E_eff(j) = max over all i of [L(i) − slope(i,j)·|i−j|]
+    where slope = 25 dB/Bark for upward (i<j) and 40 dB/Bark for downward (i>j).
+
+    This corrects two systematic errors in independent-band summation:
+    1. Over-estimation of quiet band specific loudness when dominated by spread
+       from a loud adjacent band (which raises the effective threshold).
+    2. Under-estimation of total loudness from broadband signals where spread
+       from loud low-frequency bands energizes upper bands (ISO 532-1 §8.2).
+
+    Args:
+        corrected_spl: List of 24 equal-loudness-corrected band levels in dB SPL.
+
+    Returns:
+        List of 24 effective excitation levels in dB SPL (after spreading).
+    """
+    n = 24
+    effective = list(corrected_spl)  # start with direct band levels
+
+    for masker in range(n):
+        l_masker = corrected_spl[masker]
+        if l_masker <= 0.0:
+            continue  # below reference, negligible spread contribution
+        for maskee in range(n):
+            if masker == maskee:
+                continue
+            bark_dist = maskee - masker  # positive = maskee above masker
+            if bark_dist > 0:
+                # Upward spread: masker → higher-frequency band
+                spread = l_masker - _SPREAD_SLOPE_UP_DB_BARK * bark_dist
+            else:
+                # Downward spread: masker → lower-frequency band
+                spread = l_masker - _SPREAD_SLOPE_DN_DB_BARK * abs(bark_dist)
+            if spread > effective[maskee]:
+                effective[maskee] = spread
+
+    return effective
+
+
+def _band_filters(sr: int) -> list[np.ndarray]:
+    """Pre-compute SOS Butterworth bandpass filters for 24 Bark bands.
+
+    Args:
+        sr: Sample rate in Hz.
+
+    Returns:
+        List of 24 SOS filter coefficient arrays.
+    """
+    nyquist = sr / 2.0
+    filters: list[np.ndarray] = []
+    for lo, hi in _BARK_BANDS:
+        # Clamp to valid Nyquist range
+        lo_n = max(lo / nyquist, 0.001)
+        hi_n = min(hi / nyquist, 0.999)
+        if lo_n >= hi_n:
+            # Band above Nyquist — use dummy passthrough
+            filters.append(np.zeros((1, 6), dtype=np.float64))
+            continue
+        try:
+            sos = _sp_signal.butter(4, [lo_n, hi_n], btype="bandpass", output="sos")
+        except Exception:
+            filters.append(np.zeros((1, 6), dtype=np.float64))
+            continue
+        filters.append(sos)
+    return filters
+
+
+# Cache filters per sample rate to avoid re-computation
+_FILTER_CACHE: dict[int, list[np.ndarray]] = {}
+
+
+def _get_filters(sr: int) -> list[np.ndarray]:
+    """Gibt zurück: cached Bark-band filters for the given sample rate."""
+    if sr not in _FILTER_CACHE:
+        _FILTER_CACHE[sr] = _band_filters(sr)
+    return _FILTER_CACHE[sr]
+
+
+def compute_total_loudness_sone(audio: np.ndarray, sr: int) -> float:
+    """Berechnet total loudness N in sone (vereinfachte ISO 532-1 Variante).
+
+    §4.1b [RELEASE_MUST]: Psychoacoustic loudness measurement after
+    broadband subtraktive phases (rumble, multiband, dereverb).
+
+    Algorithm:
+        1. Extract 5 s center segment (or full if shorter)
+        2. Filter through 24 Bark-band Butterworth bandpass filters
+        3. Compute band level in dB SPL (from RMS + digital-to-SPL offset)
+        4. Apply equal-loudness correction (ISO 226:2003)
+        5. Apply inter-band excitation spreading (ISO 532-1 spreading function,
+           Zwicker & Fastl 2007 Table 8.1: 25 dB/Bark upward, 40 dB/Bark downward)
+        6. Convert each band to specific loudness via Stevens' power law
+           (Zwicker & Fastl 2007 Eq.8.2 simplified)
+        7. Sum specific loudnesses → total loudness N (sone)
+
+    The spreading function (step 5) is the key addition over independent-band
+    summation: broadband noise spreads excitation upward, so N(noisy) correctly
+    exceeds N(clean) by more than the direct band removal alone; after denoising,
+    the spread vanishes and the ΔN guard in §2.45a fires correctly for real
+    perceptual changes.
+
+    Reference: 1 sone = 40 phon at 1 kHz.
+
+    Note: Vereinfachte Float-Variante (Renamed von der alten Root-API
+    `compute_specific_loudness_zwicker() -> float`). Die vollständige
+    ZwickerLoudnessResult-basierte Messung ist `compute_specific_loudness_zwicker()` oben.
+
+    Args:
+        audio: float32/float64 mono or stereo, values in [-1, 1].
+        sr: Sample rate in Hz.
+
+    Returns:
+        Total loudness N in sone (≥ 0.0).
+    """
+    # Mono downmix if stereo
+    if audio.ndim == 2:
+        audio = np.mean(audio, axis=1)
+    audio = audio.astype(np.float64)
+
+    # Extract center 5-second window (sufficient for stationary measurement)
+    n_samples = len(audio)
+    window_samples = min(n_samples, 5 * sr)
+    start = max(0, (n_samples - window_samples) // 2)
+    segment = audio[start : start + window_samples]
+
+    if len(segment) < sr // 10:  # < 100 ms — too short
+        return 0.0
+
+    filters = _get_filters(sr)
+
+    # Pass 1: compute corrected SPL per band (equal-loudness adjusted)
+    corrected_spl: list[float] = [0.0] * 24
+
+    for band_idx in range(24):
+        sos = filters[band_idx]
+        if sos.shape[0] == 1 and np.all(sos == 0):
+            corrected_spl[band_idx] = 0.0
+            continue
+        try:
+            band_signal = _sp_signal.sosfilt(sos, segment)
+        except Exception:
+            corrected_spl[band_idx] = 0.0
+            continue
+
+        rms = float(np.sqrt(np.mean(band_signal**2) + 1e-20))
+        level_dbfs = 20.0 * np.log10(max(rms, 1e-20))
+        level_spl = level_dbfs + _DBFS_TO_SPL_OFFSET
+        corrected_spl[band_idx] = level_spl + _EQUAL_LOUDNESS_OFFSET_DB[band_idx]
+
+    # Pass 2: apply inter-band excitation spreading (ISO 532-1 §8.1)
+    effective_spl = _apply_excitation_spread(corrected_spl)
+
+    # Pass 3: compute specific loudness per band and sum
+    # Zwicker & Fastl (2007) Eq.8.2 simplified:
+    #   N'(z) ∝ [(E/E_TQ + 1)^0.23 − 1]  (in linear intensity domain)
+    # Approximated in dB: excess_db = effective_spl - threshold_quiet
+    # N'(z) = k × 10^(0.3 × excess_dB / 10)   (Stevens' power law, α=0.3)
+    # k calibrated so that 40 dB excess at 1 kHz reference band → 1 sone contribution
+    # (1 kHz band idx 8: threshold = 5.5 dB SPL + 0.5 dB EL correction = 6.0 dB effective;
+    #  40 phon → 40 dB SPL → corrected = 40.5 dB; excess = 40.5-5.5 = 35 dB;
+    #  sum must yield ~1 sone for pure 1 kHz tone; with 1 active band: k ≈ 1/10^1.05 ≈ 0.089;
+    #  but multiple bands contribute at 1 kHz → empirical k=0.063 from Zwicker calibration)
+    k = 0.063
+    total_loudness = 0.0
+
+    for band_idx in range(24):
+        eff = effective_spl[band_idx]
+        thr = _THRESHOLD_QUIET_DB[band_idx]
+        if eff <= thr:
+            continue
+        excess_db = eff - thr
+        specific_loudness = k * (10.0 ** (0.3 * excess_db / 10.0))
+        total_loudness += specific_loudness
+
+    return max(0.0, float(total_loudness))
+
+
+def compute_loudness_delta_sone(
+    audio_before: np.ndarray, audio_after: np.ndarray, sr: int
+) -> tuple[float, float, float]:
+    """Berechnet loudness change ΔN in sone between two audio signals.
+
+    §4.1b ΔN decision table:
+        ≤ 0.5 sone:  OK (loudness-neutral)
+        0.5 – 1.0:   INFO
+        1.0 – 2.0:   WARNING
+        > 2.0:       FAIL → Dry/Wet rescue
+
+    Args:
+        audio_before: Audio before phase processing.
+        audio_after: Audio after phase processing.
+        sr: Sample rate in Hz.
+
+    Returns:
+        Tuple of (delta_sone, loudness_before, loudness_after).
+        delta_sone = loudness_after - loudness_before (positive = louder).
+    """
+    n_before = compute_total_loudness_sone(audio_before, sr)
+    n_after = compute_total_loudness_sone(audio_after, sr)
+    delta = n_after - n_before
+    return (float(delta), float(n_before), float(n_after))
+
+
+# ── Moore/Glasberg (2007) Dynamic Loudness Model ──────────────────────
+# ERB-Skala statt Bark, 40 ERB-Bänder von 1.8 bis 38.9 ERB
+# (~50 Hz bis ~15 kHz), spezifische Lautheit per ERB.
+# Referenz: Moore, B.C.J. & Glasberg, B.R. (2007).
+# "Modeling binaural loudness", JASA 121(3), 1604–1612.
+
+
+def _erb_number(freq_khz: float) -> float:
+    """ERB-Rate (Cam) nach Glasberg & Moore (1990) Eq. 4.
+
+    erb_number = 21.4 * log10(4.37 * freq_khz + 1)
+    """
+    return float(21.4 * np.log10(4.37 * freq_khz + 1.0))
+
+
+def _erb_bandwidth_hz(freq_khz: float) -> float:
+    """ERB-Bandbreite in Hz nach Glasberg & Moore (1990) Eq. 3.
+
+    erb_hz = 24.7 * (4.37 * freq_khz + 1)
+    """
+    return float(24.7 * (4.37 * freq_khz + 1.0))
+
+
+def _ath_at_freq_spl(freq_hz: float) -> float:
+    """ATH in dB SPL an Frequenz *freq_hz* nach ISO 226:2023 0-Phon-Kontur.
+
+    Verwendet die gleiche Näherungsformel wie
+    PsychoacousticMaskingModel._ath_threshold_db().
+    """
+    f_khz = freq_hz / 1000.0
+    ath_spl_db = 3.64 * (f_khz ** (-0.8)) - 6.5 * np.exp(-0.6 * (f_khz - 3.3) ** 2) + 1e-3 * (f_khz**4)
+    return float(ath_spl_db)
+
+
+def compute_specific_loudness_moore(audio: np.ndarray, sr: int) -> np.ndarray:
+    """Berechnet spezifische Lautheit nach Moore/Glasberg (2007).
+
+    Approximiert das binaurale Lautheitsmodell nach Moore & Glasberg (2007)
+    mittels ERB-Skala und einer vereinfachten nichtlinearen Kompression.
+
+    Algorithmus:
+        1. 40 ERB-Bänder von ERB-Nr. 1.8 bis 38.9 (~50 Hz – ~15 kHz)
+        2. ERB-Bandbreite: ERB(f) = 24.7 * (4.37 * f_khz + 1)
+        3. ERB-Rate:      N(f) = 21.4 * log10(4.37 * f_khz + 1)
+        4. Energie pro ERB-Band via STFT → Band-Integration
+        5. Spezifische Lautheit: N' = (E / E0) ** 0.2
+           wobei E0 die ATH-basierte Ruhehörschwelle ist
+        6. ATH-Integration: Bandenergie unter ATH = keine Lautheitswirkung
+
+    Args:
+        audio: float32/float64 mono oder stereo, Werte in [-1, 1].
+        sr: Sample-Rate in Hz.
+
+    Returns:
+        np.ndarray [40] mit spezifischer Lautheit pro ERB-Band (sone).
+    """
+    # Mono downmix if stereo
+    if audio.ndim == 2:
+        audio = np.mean(audio, axis=1)
+    audio = audio.astype(np.float64)
+
+    if len(audio) < sr // 10:
+        return np.asarray(np.zeros(40))  # type: ignore[no-any-return]
+
+    # ── 40 ERB-Bänder: ERB-Nr. 1.8 bis 38.9 (50 Hz – 15 kHz) ────────
+    n_erb = 40
+    erb_min = 1.8
+    erb_max = 38.9
+    erb_numbers = np.linspace(erb_min, erb_max, n_erb + 1)
+
+    # ERB-Raten → Frequenzen in Hz (obere Kante der Bänder)
+    erb_edges_hz = np.array(
+        [(10.0 ** (n / 21.4) - 1.0) / 0.00437 for n in erb_numbers],
+        dtype=np.float64,
+    )
+    erb_centers_hz = 0.5 * (erb_edges_hz[:-1] + erb_edges_hz[1:])
+
+    # ── STFT für Frequenzanalyse ─────────────────────────────────────
+    n_fft = max(256, 2 ** int(np.ceil(np.log2(sr / 10))))
+    hop = n_fft // 2
+    # Nutze kurzen Ausschnitt (max 5 s)
+    max_samples = 5 * sr
+    if len(audio) > max_samples:
+        start = (len(audio) - max_samples) // 2
+        audio = audio[start : start + max_samples]
+
+    # STFT
+    freqs = np.fft.rfftfreq(n_fft, d=1.0 / sr)
+
+    n_frames = max(1, (len(audio) - n_fft) // hop + 1)
+    specific_loudness = np.zeros(n_erb, dtype=np.float64)
+
+    # Frame-by-frame accumulation
+    for f in range(n_frames):
+        start_samp = f * hop
+        frame_audio = audio[start_samp : start_samp + n_fft]
+        if len(frame_audio) < n_fft:
+            frame_audio = np.pad(frame_audio, (0, n_fft - len(frame_audio)))
+        # Hann-Fenster
+        window = np.hanning(n_fft)
+        spec = np.abs(np.fft.rfft(frame_audio * window)) / (n_fft / 2)
+        power = spec**2
+
+        for b in range(n_erb):
+            # Frequenz-Bin-Maske für dieses ERB-Band
+            lo = erb_edges_hz[b]
+            hi = erb_edges_hz[b + 1]
+            in_band = (freqs >= lo) & (freqs < hi)
+            if not np.any(in_band):
+                continue
+            # Mittlere Energie in diesem ERB-Band
+            band_energy = float(np.mean(power[in_band])) + 1e-20
+
+            # ATH-Schwelle: Energie, die der Hörschwelle entspricht
+            fc = float(erb_centers_hz[b])
+            ath_spl = _ath_at_freq_spl(fc)
+            ath_dbfs = ath_spl - 100.0
+            ath_energy = 10.0 ** (ath_dbfs / 10.0)
+
+            # Spezifische Lautheit (vereinfacht): N' = (E / E0) ** 0.2
+            if band_energy > ath_energy:
+                # Normiert auf ATH-Energie → überschwellige Kompression
+                excess = band_energy / ath_energy
+                specific_loudness[b] += excess**0.2
+            # Energie unter ATH: Beitrag = 0
+
+    # Normierung über Frames
+    if n_frames > 0:
+        specific_loudness /= n_frames
+
+    return np.asarray(specific_loudness)  # type: ignore[no-any-return]
+
+
 __all__ = [
     "BARK_CENTERS_HZ",
     "BARK_EDGES_HZ",
@@ -1397,13 +1852,16 @@ __all__ = [
     "apply_psychoacoustic_masking_clamp",
     "compute_bark_energy_profile",
     "compute_erb_masking_threshold",
+    "compute_loudness_delta_sone",
     "compute_loudness_envelope_delta",
     "compute_masking_threshold_iso11172",
     "compute_noise_texture_profile",
     "compute_specific_loudness_array",
+    "compute_specific_loudness_moore",
     "compute_specific_loudness_zwicker",
     "compute_versa_confidence",
     "compute_time_varying_loudness",
+    "compute_total_loudness_sone",
     "evaluate_mid_pipeline_loudness_delta",
     "get_material_noise_texture",
     "synthesize_comfort_noise",
