@@ -51,17 +51,36 @@ def test_restore_short_audio_skipped():
 
 
 # ---------------------------------------------------------------------------
-# Guard: low singing probability skipped
+# Instrumental-only imports still reach Symphonia without vocal separation.
 # ---------------------------------------------------------------------------
 
 
-def test_restore_low_singing_skipped():
-    from backend.core.dsp.stem_level_restorer import get_stem_level_restorer
+def test_restore_instrumental_only_reaches_symphonia_without_vocal_split(monkeypatch):
+    from backend.core.dsp.stem_level_restorer import StemLevelRestorer
 
-    slr = get_stem_level_restorer()
+    slr = StemLevelRestorer()
     audio = _sine(duration=4.0)
+
+    def _unexpected_split(*_args, **_kwargs):
+        raise AssertionError("vocal separator must not run when no vocal stem is detected")
+
+    monkeypatch.setattr(slr, "_separate_stems", _unexpected_split)
+    monkeypatch.setattr(slr, "_apply_dfn", lambda stem, _sr: (stem, False, "none"))
+    monkeypatch.setattr(slr, "_hallucination_guard", lambda _ref, candidate, _sr, _label: candidate)
+    monkeypatch.setattr(
+        slr, "_apply_symphonia", lambda stem, _sr, _ctx: (stem * 0.8, True, {"model_used": "symphonia"})
+    )
+    monkeypatch.setattr(slr, "_apply_kim_inst_clarity", lambda _orig, processed, _sr: (processed, False, None))
+
     result = slr.restore(audio, 48000, panns_singing=0.2)
-    assert result is None
+
+    assert result is not None
+    assert result.success is True
+    assert "symphonia" in result.stem_context.applied_stages
+    assert result.separation_model == "instrumental_input_passthrough"
+    assert result.audio.shape == audio.shape
+    assert np.isfinite(result.audio).all()
+    assert not np.array_equal(result.audio, audio)
 
 
 # ---------------------------------------------------------------------------

@@ -44,6 +44,15 @@ def test_symphonia_dsp_fallback_without_weights():
     assert bool(np.isfinite(result.audio).all())
 
 
+def test_canonical_plugin_keeps_unqualified_checkpoint_in_dsp_fallback():
+    from plugins.symphonia_plugin import SymphoniaPlugin
+
+    plugin = SymphoniaPlugin()
+    assert plugin._inference_backend == "none"
+    assert plugin._fallback_active is True
+    assert "Status ist nicht active" in plugin._fallback_reason
+
+
 def test_symphonia_prefers_torch_rocm_before_onnx(monkeypatch, tmp_path):
     from plugins.symphonia_plugin import SymphoniaPlugin
 

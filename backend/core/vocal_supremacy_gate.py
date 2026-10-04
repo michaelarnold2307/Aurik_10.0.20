@@ -5,7 +5,7 @@ Zweck: Harte Gate-Instanz, die vor jeder vokal-relevanten Phase prüft, ob
 die 6-dimensionale Gesangsqualität (Formant-Integrität, HNR, Vibrato-Tiefe,
 Atem-Natürlichkeit, Sibilanz-Erhalt, Stimmwärme) erhalten bleibt.
 
-Rollt zurück oder reduziert Phasenstärke bei Δ < −10 oder Einzelkriterien-Verletzung.
+Rollt zurück bei Δ < −10 oder Verletzung eines Einzelkriteriums.
 
 Implementiert nach Spec 01 §1.10 VocalQualityGate (v10.0.0-Phantom).
 
@@ -14,8 +14,8 @@ Usage:
 
     gate = VocalSupremacyGate()
     decision = gate.evaluate(pre_audio, post_audio, sr=48000)
-    if decision.rollback:
-        # Phase skippen oder Stärke halbieren
+        if decision.rollback:
+            # Kandidat vollständig zurückrollen
         ...
 """
 
@@ -282,8 +282,8 @@ class VocalSupremacyGate:
     zu einer einzigen Entscheidung mit gewichtetem Composite-Score.
 
     Invarianten:
-        - Bei rollback=True MUSS die Phase übersprungen oder auf 50% Stärke reduziert werden.
-        - strength_scalar ∈ [0, 1] — nur Dämpfung, kein Boost (§1.4b).
+        - Bei rollback=True wird der Eingriff abgelehnt (strength_scalar=0).
+        - Bei bestandenem Gate bleibt die messbare Defektkorrektur unverändert (1).
         - composite_score < 0.6 → Rollback empfohlen.
     """
 
@@ -363,10 +363,9 @@ class VocalSupremacyGate:
             # ── Rollback-Entscheidung ───────────────────────────────────
             rollback = formant_rollback or not hnr_ok or not vibrato_ok or composite < 0.6
 
-            # Stärke-Scalar: proportional zum Composite-Score
-            strength_scalar = float(np.clip(composite, 0.0, 1.0))
-            if rollback:
-                strength_scalar *= 0.5  # §0p: Rollback → 50% Stärke
+            # §G188 (GEBOTE.md): Wohlklang-Gates dürfen Korrekturen annehmen oder
+            # zurückrollen, aber keine feste Teilkorrektur als Zwischenlösung wählen.
+            strength_scalar = 0.0 if rollback else 1.0
 
             decision = VocalSupremacyDecision(
                 rollback=rollback,

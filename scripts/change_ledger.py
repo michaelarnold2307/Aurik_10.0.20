@@ -93,7 +93,9 @@ def snapshot(base: str, paths: list[str]) -> int:
         if paths and path not in paths:
             continue
         seen.add(path)
-        rows.append(f"| {status} | {path} | {_STATUS_LABEL.get(status, status)} |")
+        # Inline code preserves literal underscores (for example
+        # ``Aurik10/i18n/__init__.py``) from Markdown emphasis rules.
+        rows.append(f"| {status} | `{path}` | {_STATUS_LABEL.get(status, status)} |")
 
     now = datetime.now(timezone.utc).astimezone().strftime("%Y-%m-%d %H:%M %Z")
     # §Ledger-Merge (2026-09-08): Manuell eingetragene Entscheidungen bleiben beim
@@ -165,7 +167,7 @@ def _ledger_paths() -> set[str] | None:
         if set("".join(cells[0])) <= set("-: "):
             continue
         if len(cells) >= 2 and cells[1]:
-            covered.add(cells[1])
+            covered.add(cells[1].strip("`"))
     return covered
 
 

@@ -903,11 +903,11 @@ def train(args: argparse.Namespace) -> int:
                     global_step,
                     val_loss,
                     "n/a" if mos_mean is None else f"{mos_mean:.2f}",
-                    float(components["flow_matching"]),
-                    float(components["mel_spectral"]),
-                    float(components["stft_phase"]),
-                    float(components["pitch_preservation"]),
-                    float(components["temporal"]),
+                    float(components["flow_matching"].detach()),
+                    float(components["mel_spectral"].detach()),
+                    float(components["stft_phase"].detach()),
+                    float(components["pitch_preservation"].detach()),
+                    float(components["temporal"].detach()),
                 )
                 payload = _checkpoint_payload(
                     model,

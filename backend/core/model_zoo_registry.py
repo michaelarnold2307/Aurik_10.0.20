@@ -24,7 +24,9 @@ from typing import Optional
 
 log = logging.getLogger(__name__)
 
-_PROJECT = Path(__file__).resolve().parent.parent
+# Dieses Modul liegt unter ``backend/core``. Der Model-Zoo ist repositoryweit
+# unter ``models/`` abgelegt; ``parent.parent`` wäre nur ``backend/``.
+_PROJECT = Path(__file__).resolve().parents[2]
 
 
 @dataclass
@@ -33,13 +35,43 @@ class ModelEntry:
     path: str
     purpose: str  # "repair" | "generation" | "separation" | "vocoder"
     input_shapes: str  # gemessene I/O-Beschreibung
-    status: str  # "active" | "available" | "needs_calibration" | "generation_only"
+    status: str  # "active" | "available" | "training" | "pending_training" | "needs_calibration" | "generation_only"
     integration: str | None = None  # wo/wie aktiviert
     notes: str = ""
 
 
 # Verifizierte I/O-Shapes (gemessen via onnxruntime, 2026-08-13)
 MODEL_ZOO: list[ModelEntry] = [
+    ModelEntry(
+        name="cantus",
+        path="models/cantus/cantus_dit.onnx",
+        purpose="repair",
+        input_shapes=(
+            "IN x [B,T,1], t [B], mert [B,F,1024], pitch [B,F,2], harm [B,768], use_cond [B] → OUT velocity [B,T,1]"
+        ),
+        status="training",
+        integration="StemLevelRestorer: Torch-ROCm primär, ONNX-CPU nur nach Paritäts-Gate, DSP-Ersatzpfad (§V6 (copilot-instructions.md)).",
+        notes=(
+            "Gesangsrestaurierung; Training läuft. Kanonische Gewichte bleiben bis zur Freigabe deaktiviert. "
+            "Produktiv erst nach abgeschlossenem Pretraining/Fine-Tuning "
+            "und dokumentierter Hör- und ONNX-CPU-Parität."
+        ),
+    ),
+    ModelEntry(
+        name="symphonia",
+        path="models/symphonia/symphonia.onnx",
+        purpose="repair",
+        input_shapes=(
+            "IN x [B,T,1], t [B], mert [B,F,1024], rhythm [B,F,2], harm [B,768], use_cond [B] → OUT velocity [B,T,1]"
+        ),
+        status="pending_training",
+        integration="StemLevelRestorer: Torch-ROCm primär, ONNX-CPU nur nach Paritäts-Gate, DSP-Ersatzpfad (§V6 (copilot-instructions.md)).",
+        notes=(
+            "Instrumentalrestaurierung; Training steht aus. Kanonische Gewichte bleiben bis zur Freigabe deaktiviert. "
+            "Produktiv erst nach abgeschlossenem "
+            "Pretraining/Fine-Tuning und dokumentierter Hör- und ONNX-CPU-Parität."
+        ),
+    ),
     ModelEntry(
         name="mp_senet",
         path="models/mp_senet/mp_senet.onnx",

@@ -149,11 +149,6 @@ class StemLevelRestorer:
             logger.debug("§SLR-1 uebersprungen: audio too short (%.1f s)", n_samples / sample_rate)
             return None
 
-        # Guard: only process if singing detected
-        if panns_singing < 0.35:
-            logger.debug("§SLR-1 uebersprungen: panns_singing=%.3f < 0.35", panns_singing)
-            return None
-
         try:
             return self._run(audio, sample_rate, panns_singing, ctx)
         except Exception as exc:  # pylint: disable=broad-except
@@ -194,8 +189,17 @@ class StemLevelRestorer:
             _vocal_energy_bias,
         )
 
-        # §SLR-1a: Stem separation via SOTA router (BS-RoFormer → Demucs v4 → DSP).
-        _vocal_stem, _instr_stem, _separation_model = self._separate_stems(_audio, sample_rate, panns_singing, _ctx)
+        _vocal_detected = panns_singing >= 0.35
+        if _vocal_detected:
+            # §SLR-1a: Stem separation via SOTA router (BS-RoFormer → Demucs v4 → DSP).
+            _vocal_stem, _instr_stem, _separation_model = self._separate_stems(_audio, sample_rate, panns_singing, _ctx)
+        else:
+            # Instrumental imports must still reach Symphonia when no vocal stem
+            # exists. Avoid a needless separator/DSP split and keep the source
+            # exact as the instrumental stem.
+            _vocal_stem = np.zeros_like(_audio, dtype=np.float32)
+            _instr_stem = _audio.copy()
+            _separation_model = "instrumental_input_passthrough"
 
         _vocal_out = _vocal_stem.copy()
         _instr_out = _instr_stem.copy()
@@ -215,14 +219,15 @@ class StemLevelRestorer:
         _instrumental_nr_model = "none"
 
         # §SLR-1b: MIIPHER on vocal stem (§0j register-adaptive energy_bias)
-        try:
-            _vocal_out, _miipher_used, _vocal_nr_model = self._apply_miipher(
-                _vocal_stem,
-                sample_rate,
-                _vocal_energy_bias,
-            )
-        except Exception as _me:  # pylint: disable=broad-except
-            logger.debug("§SLR-1 MIIPHER nicht blockierend: %s", _me)
+        if _vocal_detected:
+            try:
+                _vocal_out, _miipher_used, _vocal_nr_model = self._apply_miipher(
+                    _vocal_stem,
+                    sample_rate,
+                    _vocal_energy_bias,
+                )
+            except Exception as _me:  # pylint: disable=broad-except
+                logger.warning("§V6 (VERBOTEN.md) MIIPHER fehlgeschlagen — Vokalstem bleibt unverändert: %s", _me)
 
         # §SLR-1c: HNR-Blend after MIIPHER (§0p)
         if _miipher_used:
@@ -247,43 +252,46 @@ class StemLevelRestorer:
         # vor KIM-Inst. GPU→CPU→DSP ist im Plugin nach §V6 (VERBOTEN.md) abgesichert.
         try:
             _symphonia_pre = _instr_out.copy()
-            _instr_out, _symphonia_used, _symphonia_report = self._apply_symphonia(
-                _instr_out, sample_rate, _ctx
-            )
+            _instr_out, _symphonia_used, _symphonia_report = self._apply_symphonia(_instr_out, sample_rate, _ctx)
             _instr_out = self._hallucination_guard(_symphonia_pre, _instr_out, sample_rate, "instrumental_symphonia")
         except Exception as _symphonia_exc:  # pylint: disable=broad-except
             logger.debug("§SLR-1 Symphonia nicht blockierend: %s", _symphonia_exc)
 
         # §SLR-1e2: Cantus auf dem bereits entrauschten, HNR-gesicherten
         # Vokalstem. Der Hallucination-Guard sichert jede ML-Ausgabe (§2.46e).
-        try:
-            _cantus_pre = _vocal_out.copy()
-            _vocal_out, _cantus_used, _cantus_report = self._apply_cantus(
-                _vocal_out,
-                sample_rate,
-                _ctx,
-            )
-            _vocal_out = self._hallucination_guard(_cantus_pre, _vocal_out, sample_rate, "vocal_cantus")
-        except Exception as _cantus_exc:  # pylint: disable=broad-except
-            logger.debug("§SLR-1 Cantus nicht blockierend: %s", _cantus_exc)
+        if _vocal_detected:
+            try:
+                _cantus_pre = _vocal_out.copy()
+                _vocal_out, _cantus_used, _cantus_report = self._apply_cantus(
+                    _vocal_out,
+                    sample_rate,
+                    _ctx,
+                )
+                _vocal_out = self._hallucination_guard(_cantus_pre, _vocal_out, sample_rate, "vocal_cantus")
+            except Exception as _cantus_exc:  # pylint: disable=broad-except
+                logger.warning(
+                    "§V6 (VERBOTEN.md) Cantus fehlgeschlagen — Vokalstem bleibt unverändert: %s", _cantus_exc
+                )
 
         # §SLR-1e3: KIM2 (kim_vocal_2) Gesangs-Klarheit/Brillianz — musik-trainiert.
         # §v10.19 (.github/specs/v10.19_sprachmodell_ersatz_sota_roadmap.md):
         # KIM2 ist das Gesangsmodell — Klarheitsstufe NACH der NR, VOR dem Remix
         # (ein Rekombinationspunkt). Never-worsen via Listening-Witness-Gate.
-        try:
-            _vocal_out, _kim_used, _kim_witness = self._apply_kim_clarity(_vocal_stem, _vocal_out, sample_rate)
-        except Exception as _kim_exc:  # pylint: disable=broad-except
-            logger.debug("§SLR-1 KIM2 nicht blockierend: %s", _kim_exc)
+        if _vocal_detected:
+            try:
+                _vocal_out, _kim_used, _kim_witness = self._apply_kim_clarity(_vocal_stem, _vocal_out, sample_rate)
+            except Exception as _kim_exc:  # pylint: disable=broad-except
+                logger.debug("§SLR-1 KIM2 nicht blockierend: %s", _kim_exc)
 
         # §SLR-1e2b: Air-Presence-Brillianz (DSP, §v10.19) — modellfreie Stufe
         # NACH KIM2, VOR dem Remix: Luftband 8–20 kHz via Original-Phasen-STFT,
         # Raised-Cosine-Kanten, Noise-Floor-Gate. Never-worsen via
         # Listening-Witness-Gate (gleiche Schwellen wie KIM2) + Air-Gain-Check.
-        try:
-            _vocal_out, _air_used, _air_witness = self._apply_air_presence(_vocal_stem, _vocal_out, sample_rate)
-        except Exception as _air_exc:  # pylint: disable=broad-except
-            logger.debug("§SLR-1 Air-Presence nicht blockierend: %s", _air_exc)
+        if _vocal_detected:
+            try:
+                _vocal_out, _air_used, _air_witness = self._apply_air_presence(_vocal_stem, _vocal_out, sample_rate)
+            except Exception as _air_exc:  # pylint: disable=broad-except
+                logger.debug("§SLR-1 Air-Presence nicht blockierend: %s", _air_exc)
 
         # §SLR-1e3: KIM Inst (kim_inst) Musik-Klarheit — Spiegelstufe zu KIM2.
         # kim_inst.onnx (64 MB, vortrainiert) ist das Musik-Enhancement —
@@ -357,27 +365,28 @@ class StemLevelRestorer:
 
         _vqi_after = 1.0
         _rollback_reason = ""
-        try:
-            from backend.core.musical_goals.vocal_quality_index import compute_vqi
+        if _vocal_detected:
+            try:
+                from backend.core.musical_goals.vocal_quality_index import compute_vqi
 
-            _vqi_result = compute_vqi(
-                _audio,
-                _out,
-                sample_rate,
-                skip_singer_identity=_multi_singer,
-                genre=str(ctx.get("genre", "")) or None,
-                reference_audio=ctx.get("reference_audio"),
-                reference_singer_id=ctx.get("reference_singer_id"),
-                era_profile=ctx.get("era_vocal_profile"),  # §EraVocalProfile: historisches Material
-            )
-            _vqi_after = float(_vqi_result.get("vqi", 1.0))
-            _singer_cosine = float(_vqi_result.get("singer_identity_cosine", 1.0))
-            if _vqi_after < 0.72:
-                _rollback_reason = f"vqi_below_floor:{_vqi_after:.3f}"
-            elif not _multi_singer and _singer_cosine < 0.92:
-                _rollback_reason = f"singer_identity_below_floor:{_singer_cosine:.3f}"
-        except Exception as _vqi_exc:  # pylint: disable=broad-except
-            logger.debug("§SLR-1 VQI gate nicht blockierend: %s", _vqi_exc)
+                _vqi_result = compute_vqi(
+                    _audio,
+                    _out,
+                    sample_rate,
+                    skip_singer_identity=_multi_singer,
+                    genre=str(ctx.get("genre", "")) or None,
+                    reference_audio=ctx.get("reference_audio"),
+                    reference_singer_id=ctx.get("reference_singer_id"),
+                    era_profile=ctx.get("era_vocal_profile"),  # §EraVocalProfile: historisches Material
+                )
+                _vqi_after = float(_vqi_result.get("vqi", 1.0))
+                _singer_cosine = float(_vqi_result.get("singer_identity_cosine", 1.0))
+                if _vqi_after < 0.72:
+                    _rollback_reason = f"vqi_below_floor:{_vqi_after:.3f}"
+                elif not _multi_singer and _singer_cosine < 0.92:
+                    _rollback_reason = f"singer_identity_below_floor:{_singer_cosine:.3f}"
+            except Exception as _vqi_exc:  # pylint: disable=broad-except
+                logger.debug("§SLR-1 VQI gate nicht blockierend: %s", _vqi_exc)
 
         if _rollback_reason:
             logger.warning("§SLR-1 §0p vocal gate rollback: %s", _rollback_reason)

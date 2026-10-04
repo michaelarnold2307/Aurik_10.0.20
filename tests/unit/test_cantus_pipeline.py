@@ -247,6 +247,15 @@ def test_export_parity_gate(tmp_path):
 # ── Plugin: Guards + CPU-Ende-zu-Ende auf Sample-Vocal ───────────────────────
 
 
+def test_canonical_plugin_keeps_unqualified_checkpoint_in_dsp_fallback():
+    from plugins.cantus_plugin import CantusPlugin
+
+    plugin = CantusPlugin()
+    assert plugin._inference_backend == "none"
+    assert plugin._fallback_active is True
+    assert "Status ist nicht active" in plugin._fallback_reason
+
+
 def test_plugin_dsp_fallback_without_weights():
     from plugins.cantus_plugin import CantusPlugin
 

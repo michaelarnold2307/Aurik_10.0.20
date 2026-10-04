@@ -1,7 +1,8 @@
-"""§2.70 Joint-Calibration Optimizer — Goal-Gap-getrieben, ohne hartcodierte Regeln.
+"""§2.70 Joint-Calibration — defect-evidence first, goal-aware for enhancement.
 
-Alle Phasen-Stärken werden AUSSCHLIESSLICH aus den messbaren
-Musical-Goal-Gaps und dem PhaseEffectCatalog abgeleitet.
+Reparaturphasen folgen ihren gemessenen Defekt-Posteriors. Enhancement-Phasen
+werden nur bei passenden Musical-Goal-Gaps aktiviert; deren Beitrag wird auf
+die jeweilige Phase normalisiert.
 
 Keine phase-spezifischen Magic-Numbers. Kein `if pid == "phase_X"`.
 Der Denker entscheidet für JEDEN Song individuell.
@@ -9,11 +10,7 @@ Der Denker entscheidet für JEDEN Song individuell.
 
 from __future__ import annotations
 
-import logging
-
 import numpy as np
-
-logger = logging.getLogger(__name__)
 
 # Goal-Gewichte: Welche Goals sind perceptuell am wichtigsten?
 GOAL_WEIGHTS: dict[str, float] = {
@@ -34,16 +31,6 @@ GOAL_WEIGHTS: dict[str, float] = {
     "timbre_authentizitaet": 0.5,
 }
 
-# Phasen die NIE unter 0.20 gedrosselt werden (Primum non nocere)
-PROTECTED_PHASES: frozenset[str] = frozenset(
-    {
-        "phase_01_click_removal",
-        "phase_24_dropout_repair",
-        "phase_08_transient_preservation",
-        "phase_12_wow_flutter_fix",  # Tape-Level-Dips sind strukturelle Defekte
-    }
-)
-
 
 def joint_calibrate(
     phase_ids: list[str],
@@ -58,8 +45,9 @@ def joint_calibrate(
     restorability_score: float | None = None,
     default_strength: float = 0.85,
     transfer_chain_depth: int | None = None,
+    defect_scores: dict | None = None,
 ) -> dict[str, float]:
-    """Berechnet optimale Phasen-Stärken AUSSCHLIESSLICH aus Goal-Gaps.
+    """Berechnet Reparaturstärken aus Defekt-Posteriors und Enhancement aus Goal-Gaps.
 
     Keine hartcodierten Phasen-Regeln. Jede Entscheidung ist aus den
     Daten ableitbar und im Log nachvollziehbar.
@@ -68,51 +56,34 @@ def joint_calibrate(
         phase_ids: Ausgewählte Phasen
         goal_proxies: Aktuelle Goal-Proxies
         goal_targets: Zielwerte pro Goal
-        material: Trägermedium (für Material-Caps)
+        material: Trägermedium (nur zur Anwendbarkeit)
         panns_singing: PANNs Singing-Konfidenz
         codec_avg_discount: ∅ Diskont-Faktor aus Codec-Kette
         terminal_codec: Terminal-Codec-Typ oder None
-        min_strength: Minimale Phasen-Stärke (None = auto aus restorability_score)
-        restorability_score: Restorability 0-100 für adaptive min_strength (§G71 (GEBOTE.md))
-        default_strength: Standard wenn kein Profil
+        min_strength: Legacy-Parameter; fixed strength floors are ignored (§G188).
+        restorability_score: Legacy context; it does not scale measured defect depth.
+        default_strength: Legacy default; phases without evidence return zero.
+        defect_scores: DefectScanner scores, used as severity × detector confidence.
 
     Returns:
         {phase_id: calibrated_strength}
     """
-    # §G86: Default NUR in calibration_context.py — bei None aus dem Kontext
-    # beziehen (Muster absolute_quality_gate.py).
-    if transfer_chain_depth is None:
-        from backend.core.calibration_context import get_calibration_context
-
-        _ctx = get_calibration_context()
-        transfer_chain_depth = _ctx.transfer_chain_depth if _ctx is not None else 1
-
-    # §v10.x rs-Konsistenz: kanonische Quelle (explizit > CalibrationContext > 65.0).
-    from backend.core.calibration_context import resolve_restorability_score
-
-    restorability_score = resolve_restorability_score(restorability_score, default=65.0)
+    from backend.core.defect_phase_mapper import get_phase_defect_severity, get_reverse_phase_map
     from backend.core.phase_effect_catalog import PHASE_EFFECT_CATALOG
 
-    # §G71 (GEBOTE.md) Adaptive min_strength aus Restorability
-    if min_strength is None:
-        _rs = float(np.clip(restorability_score, 0.0, 100.0))
-        if _rs >= 90:
-            min_strength = 0.20
-        elif _rs >= 60:
-            min_strength = 0.35
-        elif _rs >= 30:
-            min_strength = 0.40
-        else:
-            min_strength = 0.45
-
-    # §v10.58 Depth-Boost: Bei transfer_chain_depth ≥ 5 (extreme Ketten ≥5 Stufen,
-    # z.B. Wachswalze→Schellack→Tonband→Kassette→MP3) werden Kern-Restaurationsphasen
-    # verstärkt, da extreme Degradations-Akkumulation stärkere Eingriffe benötigt.
-    # §v10.120 Calibration-Shift: depth 4 (0.55) ist "deep cassette", depth 5+ ist
-    # "extreme chain" mit Boost-Berechtigung.
-    _depth_boost = float(np.clip(1.0 + (transfer_chain_depth - 1) * 0.12, 1.0, 1.50))
-    if transfer_chain_depth >= 5:
-        min_strength = float(np.clip(min_strength * _depth_boost, 0.30, 0.70))
+    # Legacy priors remain accepted for API compatibility but cannot cap or
+    # lift measured correction strength (§G188–§G189 (GEBOTE.md)).
+    _ = (
+        min_strength,
+        restorability_score,
+        default_strength,
+        transfer_chain_depth,
+        panns_singing,
+        codec_avg_discount,
+        terminal_codec,
+    )
+    defect_scores = defect_scores if isinstance(defect_scores, dict) else {}
+    reverse_phase_map = get_reverse_phase_map()
 
     # ── 1. Goal-Gaps ───────────────────────────────────────────
     gaps: dict[str, float] = {}
@@ -122,61 +93,35 @@ def joint_calibrate(
         if gap > 0.001:
             gaps[goal] = gap
 
-    # §v10.59 Goal-Gap-Boost: Je größer die Lücke zwischen aktuellen Werten
-    # und Zielen, desto höher die minimale Phasen-Stärke. Selbstkalibrierend —
-    # basiert auf den tatsächlichen Messungen, nicht auf statischen Annahmen.
-    if gaps:
-        _avg_gap = float(np.mean(list(gaps.values())))
-        _gap_boost = float(np.clip(1.0 + _avg_gap * 0.6, 1.0, 1.40))
-        min_strength = float(np.clip(min_strength * _gap_boost, 0.20, 0.75))
-
-    if not gaps:
-        return dict.fromkeys(phase_ids, min_strength)
-
-    _is_codec = terminal_codec is not None and codec_avg_discount < 0.90
-
-    # ── 2. Per-Phase Utility aus Goal-Impacts ──────────────────
+    # ── 2. Per-Phase evidence + goal applicability ─────────────
     results: dict[str, float] = {}
     for pid in phase_ids:
         profile = PHASE_EFFECT_CATALOG.get(pid)
         if profile is None or not hasattr(profile, "goal_impact"):
-            results[pid] = default_strength
+            results[pid] = 0.0
             continue
 
         utility = 0.0
+        applicable_impact = 0.0
         for goal, impact in profile.goal_impact.items():
             gap = gaps.get(goal, 0.0)
             weight = GOAL_WEIGHTS.get(goal, 0.7)
-            contrib = float(impact) * gap * weight
+            weighted_impact = abs(float(impact)) * weight
+            if gap > 0.0 and weighted_impact > 0.0:
+                utility += weighted_impact * gap
+                applicable_impact += weighted_impact
 
-            utility += contrib
+        if material in getattr(profile, "unsupported_materials", frozenset()):
+            results[pid] = 0.0
+            continue
 
-        # Codec-Maskierung: MP3/AAC-Artefakte überlagern die Defekt-Signatur
-        # → der GESAMTE Nutzen analog-sensitiver Phasen wird diskontiert.
-        # Welche Phasen analog-sensitiv sind, steht im PhaseEffectCatalog.risks.
-        if _is_codec:
-            risks = getattr(profile, "risks", []) or []
-            # ML-Phasen: Codec + ML = doppeltes Artefakt-Risiko
-            if "ml_artifact" in risks:
-                utility *= codec_avg_discount
-            # Vocal-Phasen: Codec+Gesang → stark dämpfen (Denker-Entscheidung)
-            if panns_singing > 0.25 and "vocal_distortion" in risks:
-                utility *= max(0.25, codec_avg_discount * 0.6)  # ×0.27 bei mp3_low
-            # Transienten-Phasen: Codec-Artefakte ≠ echte Transienten
-            if "transient_smearing" in risks:
-                utility *= max(0.60, codec_avg_discount)
-
-        # ── 3. Strength aus Utility ─────────────────────────────
-        if utility > 0.001:
-            scaled = float(np.clip(0.40 + utility * 12.0, 0.15, 1.0))
-            mat_cap = float(getattr(profile, "max_strength_by_material", {}).get(material, 0.95))
-            strength = min(scaled, mat_cap)
+        if pid in reverse_phase_map:
+            # Defect phases use measured defect depth × detector confidence.
+            strength = get_phase_defect_severity(pid, defect_scores)
         else:
-            strength = min_strength
-
-        if pid in PROTECTED_PHASES:
-            strength = max(strength, 0.40)
-
-        results[pid] = float(np.clip(strength, min_strength, 1.0))
+            # Normalize by the applicable phase impacts so coefficients do not
+            # become arbitrary strength multipliers. No measured gap means 0.
+            strength = utility / applicable_impact if applicable_impact > 0.0 else 0.0
+        results[pid] = float(np.clip(strength, 0.0, 1.0))
 
     return results

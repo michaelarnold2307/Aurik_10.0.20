@@ -352,8 +352,8 @@ class PhonemeAwareDeEsser:
         strength = profile.deess_strength
         if pathology == "overloaded" or pathology == "distorted":
             strength = min(1.0, strength * 1.5)  # Aggressiver bei Überlastung/Verzerrung
-        elif pathology == "masked_hiss":
-            strength *= 0.6  # Konservativer bei Rauschen
+        # masked_hiss bleibt durch die segmentierte Sibilanz-Maske lokalisiert;
+        # §G188 (GEBOTE.md) verbietet einen pauschalen 0,6-Stärkefaktor.
 
         # Simple spectral de-essing: reduce high frequencies in sibilant frames
         window = np.hanning(self.n_fft)

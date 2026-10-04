@@ -128,13 +128,28 @@ class SymphoniaPlugin:
         self._last_use_cond: float = 0.0
 
         model_dir = Path(__file__).parent.parent / "models" / "symphonia"
-        self._onnx_path: Path = Path(model_path) if model_path else _resolve_or(model_dir / "symphonia_dit.onnx", "symphonia")
+        self._onnx_path: Path = (
+            Path(model_path) if model_path else _resolve_or(model_dir / "symphonia.onnx", "symphonia")
+        )
         # Ein expliziter model_path isoliert Tests und alternative Modelle. Der
         # produktive Torch-ROCm-Kern gehört nur zum kanonischen Symphonia-Modell.
         self._checkpoint_path: Path | None = model_dir / "checkpoint_best.pt" if model_path is None else None
         self._try_load_model()
 
     # ── Modell-Ladung + Budget ──────────────────────────────────────────
+
+    def _production_qualified(self) -> bool:
+        """Kanonische Gewichte erst nach expliziter Modell-Zoo-Freigabe laden."""
+        if self._checkpoint_path is None:
+            return True  # Expliziter Pfad: isolierte Tests/Alternative.
+        try:
+            from backend.core.model_zoo_registry import get_model
+
+            entry = get_model("symphonia")
+            return entry is not None and entry.status == "active"
+        except Exception as exc:
+            logger.warning("§V6 (copilot-instructions.md) Symphonia-Freigabestatus nicht lesbar: %s", exc)
+            return False
 
     def _activate_fallback(self, reason: str) -> None:
         """§V6 (copilot-instructions.md): Ersatzpfad NUR mit Warnung + Begründung."""
@@ -146,6 +161,9 @@ class SymphoniaPlugin:
         )
 
     def _try_load_model(self) -> None:
+        if not self._production_qualified():
+            self._activate_fallback("Training/Release-Evidenz fehlt; Model-Zoo-Status ist nicht active")
+            return
         if _ml_budget_try_allocate is not None:
             if not _ml_budget_try_allocate(self._BUDGET_NAME, size_gb=self._BUDGET_SIZE_GB):
                 self._activate_fallback("ML-Speicherbudget erschoepft")
@@ -490,7 +508,7 @@ class SymphoniaPlugin:
         restorability_score: float = 50.0,
         vocal_stem: np.ndarray | None = None,
     ) -> SymphoniaResult:
-        """Symphonia-Gesangsrestaurierung mit allen Guards.
+        """Symphonia-Instrumentalrestaurierung mit allen Guards.
 
         Args:
             audio: mono (N,) oder Stereo — beide Layouts (N, 2)/(2, N) bedient

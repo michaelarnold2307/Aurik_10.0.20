@@ -784,6 +784,31 @@ Operationalisierung von §G188–§G189 (GEBOTE.md) für den Phasen-Kern:
   meldet blockierende feste Kappen und nicht-selbstberechenbare Intensitäten
   bei jedem Commit.
 
+### §7.4e Modulvertrag für die globale Neukalibrierung (§G188–§G190 (GEBOTE.md))
+
+Die globale Prüfung kalibriert Wirkungsstärken pro Defektmessung; sie entfernt
+keine Klang- oder Sicherheits-Gates. Für Reparaturphasen gilt:
+
+1. Die wirksame Defektstärke basiert auf gemessener Defekttiefe ×
+   Detektor-Konfidenz. Keine Evidenz ergibt Stärke 0; ein bestätigter Defekt
+   wird nicht durch Material-, Genre-, Kettentiefe- oder Risiko-Prozente
+   pauschal reduziert.
+2. `PhaseEffectCatalog` darf Materialphysik nur zur Anwendbarkeit nutzen.
+   `RecordingChainProfiler` darf konkurrierende Ursachen unterdrücken, aber
+   keine Phasenstärke skalieren. `JointCalibrator` und `PhaseConductor` dürfen
+   weder Mindeststärken noch Kettenlängen-Booster erzwingen.
+3. `PerceptualIntensityMapper` bestimmt NR je Band aus dessen eigener SNR- und
+   Maskierungsmessung. `OrchestratorParams` nutzt Defektmessungen ohne
+   inhaltsbezogene Teilstärke-Faktoren.
+4. Wohlklang- und Erhaltungs-Gates (u. a. Dynamik, Formanten, Transienten,
+   Stereo-Balance) nehmen einen Kandidaten vollständig an oder rollen ihn
+   zurück. Ein Nachlauf wird nur übernommen, wenn Restdefekt sinkt und die
+   Schutzmessungen bestehen.
+5. Jedes neue oder migrierte Modul erhält einen gezielten Regressionstest für
+   volle Messstärke bei belastbarer Evidenz, Posterior-Skalierung bei
+   Unsicherheit und 0-Stärke ohne Zieldefekt. Abweichungen brauchen eine
+   physikalische Ausnahme nach §G189 (GEBOTE.md) samt Evidenz.
+
 ---
 
 ## §7.5 Parallelisierungs-Invariante (Pipeline-Tiers)

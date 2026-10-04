@@ -9,7 +9,7 @@ viele davon sind Symptome einer gemeinsamen Kette (z.B. Tape: tape_hiss + tape_d
 Ablauf (§2.66):
     1. RecordingChainProfiler().profile_chain(causes, material, era) aufrufen
     2. Rückgabe: ChainProfile mit dominant_cluster + chain_hint für GPOptimizer
-    3. chain_hint an GPOptimizer.propose_pareto() übergeben (Strength-Skalierung)
+    3. chain_hint an GPOptimizer.propose_pareto() übergeben (Kausalhypothesen)
 
 Aktivierungsschwelle: len(causes) >= 3 (sonst passthrough, chain_hint=None).
 
@@ -136,20 +136,6 @@ _CHAIN_CLUSTERS: dict[str, frozenset[str]] = {
     ),
 }
 
-#: Cluster-spezifische Strength-Skalierung (chain_hint) — verhindert Over-Processing
-#: bei dominanter Kette. Wert < 1.0 = Strength aller Cluster-Phasen skalieren.
-_CLUSTER_STRENGTH_SCALE: dict[str, float] = {
-    "tape_transport": 0.72,
-    "tape_degradation": 0.80,
-    "vinyl_disc": 0.75,
-    "digital_codec": 0.85,
-    "electrical_room": 0.90,
-    "speed_pitch": 0.78,
-    "stereo_phase": 0.88,
-    "vocal_production": 0.82,
-    "cassette_specific": 0.76,
-}
-
 # Mindestanzahl aktiver Causes für Aktivierung (§2.66)
 _MIN_CAUSES_THRESHOLD: int = 3
 
@@ -165,7 +151,7 @@ class ChainProfile:
         dominant_cluster:  Name des dominantesten physikalischen Clusters.
         cluster_weight:    Anteil der aktiven Causes, die zum Cluster gehören (0.0–1.0).
         suppress_causes:   Causes aus Nicht-Dominant-Clustern → nicht unabhängig aktivieren.
-        chain_hint:        Strength-Skalierungs-Faktor für GPOptimizer (None = kein Override).
+        chain_hint:        Kausale Cluster- und Unterdrückungs-Hinweise für GPOptimizer.
         active_clusters:   Alle gefundenen Cluster mit ihrem Cause-Anteil.
     """
 
@@ -262,21 +248,18 @@ class RecordingChainProfiler:
                         suppress_causes.append(c)
                         break
 
-        strength_scale = _CLUSTER_STRENGTH_SCALE.get(dominant, 1.0)
-
-        # chain_hint: Wird an GPOptimizer.propose_pareto() übergeben
+        # §G188 (GEBOTE.md): Cluster-Zugehörigkeit unterdrückt nur doppelte
+        # Kausalhypothesen. Sie skaliert keine pro Defekt gemessene Stärke.
         chain_hint: dict[str, Any] = {
             "dominant_cluster": dominant,
             "cluster_weight": round(dominant_weight, 3),
-            "strength_scale": strength_scale,
             "suppress_causes": suppress_causes,
         }
 
         logger.info(
-            "RecordingChainProfiler: cluster=%s weight=%.2f scale=%.2f suppressed=%d causes(%d)",
+            "RecordingChainProfiler: cluster=%s weight=%.2f suppressed=%d causes(%d)",
             dominant,
             dominant_weight,
-            strength_scale,
             len(suppress_causes),
             len(causes),
         )

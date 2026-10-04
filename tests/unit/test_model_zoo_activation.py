@@ -211,6 +211,19 @@ def test_zoo_registry_reflects_activation():
     assert "bs_roformer_plugin" in mel.notes  # präzise statt vage "Kalibrierung offen"
 
 
+def test_zoo_registry_lists_stem_models_with_truthful_training_status():
+    """Cantus/Symphonia sind sichtbar, aber vor Evidenz nicht produktiv markiert."""
+    from backend.core import model_zoo_registry
+
+    assert model_zoo_registry._PROJECT.name == "Aurik_Standalone"
+    cantus = model_zoo_registry.get_model("cantus")
+    symphonia = model_zoo_registry.get_model("symphonia")
+    assert cantus is not None and cantus.status == "training"
+    assert symphonia is not None and symphonia.status == "pending_training"
+    assert "Torch-ROCm" in (cantus.integration or "")
+    assert "Torch-ROCm" in (symphonia.integration or "")
+
+
 # ═══════════════════════════════════════════════════════════════════════════════
 # §v10.998: Die Kassetten-Katastrophe — Null-Schwere-Fehlalarme + Energy-Collapse
 # ═══════════════════════════════════════════════════════════════════════════════

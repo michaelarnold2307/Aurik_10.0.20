@@ -12305,6 +12305,7 @@ class UnifiedRestorerV3:
                     terminal_codec=_jcal_terminal,
                     restorability_score=_jcal_rest,
                     transfer_chain_depth=_jcal_depth,
+                    defect_scores=getattr(defect_result, "scores", {}),
                 )
                 if self._joint_calibration:
                     _n_boosted = sum(1 for v in self._joint_calibration.values() if v > 0.50)
@@ -13653,7 +13654,7 @@ class UnifiedRestorerV3:
                 )
         except Exception as _mcg_exc:
             logger.debug("§MCG-1 model capability gate nicht blockierend: %s", _mcg_exc)
-        if not self.is_studio_mode() and _slr_panns >= 0.35:
+        if not self.is_studio_mode():
             try:
                 try:
                     from backend.core.plugin_lifecycle_manager import (
@@ -13752,7 +13753,7 @@ class UnifiedRestorerV3:
             # §SLR-1 Transparenz (2026-09-13): Sichtbar machen, WENN keine
             # Stem-Separation läuft — vorher gab es dafür keinerlei INFO-Log
             # (Produktionsbefund: Nutzer konnte nicht erkennen, ob getrennt wurde).
-            _slr_skip_reason = "Studio-Modus" if self.is_studio_mode() else f"PANNs-Singing {_slr_panns:.2f} < 0.35"
+            _slr_skip_reason = "Studio-Modus"
             logger.info(
                 "§SLR-1 Stem-Level-Restoration ÜBERSPRUNGEN (%s) — keine Stem-Separation in diesem Lauf",
                 _slr_skip_reason,
@@ -31990,11 +31991,10 @@ class UnifiedRestorerV3:
             except Exception as _conf_exc:
                 logger.debug("CONFLICT_REGISTRY lookup uebersprungen (nicht blockierend): %s", _conf_exc)
 
+        # Conductor recommendations are advisory diagnostics. They are derived
+        # from broad state features, not the target defect posterior, and must
+        # not seed or replace a measured correction strength (§G188 (GEBOTE.md)).
         _conductor_hints = getattr(self, "_conductor_strength_hints", {})
-        if _conductor_hints and "strength" not in kwargs:
-            _hint = _conductor_hints.pop(phase_metadata.phase_id, None)
-            if _hint is not None:
-                kwargs["strength"] = float(_hint)
 
         # Invariante: die vorab berechnete Stärke ist die Obergrenze.
         # Runtime-Guards dürfen absenken, aber nie über diese Planstärke hinaus anheben.
@@ -32002,21 +32002,6 @@ class UnifiedRestorerV3:
         if isinstance(kwargs.get("strength"), (int, float)):
             _planned_strength_cap = float(np.clip(float(kwargs["strength"]), 0.0, 1.0))
             kwargs["planned_strength_cap"] = _planned_strength_cap
-
-        _vcaps = getattr(self, "_vintage_phase_strength_caps", {})
-        if _vcaps:
-            _pid = phase_metadata.phase_id
-            _cap = _vcaps.get(_pid)
-            if _cap is not None and "strength" in kwargs:
-                _orig_s = kwargs["strength"]
-                if isinstance(_orig_s, (int, float)) and float(_orig_s) > float(_cap):
-                    kwargs["strength"] = float(_cap)
-                    logger.debug(
-                        "🕰️ Vintage-Cap %s: strength %.2f → %.2f",
-                        _pid,
-                        _orig_s,
-                        _cap,
-                    )
 
         try:
             _vg_zones = kwargs.get("vibrato_zones") or []
@@ -32103,6 +32088,7 @@ class UnifiedRestorerV3:
                 )
 
         _sev_wet_dry: float = 1.0
+        _phase_defect_posterior: float | None = None
         _TIMING_PHASES_WD = frozenset(
             {
                 "phase_12_wow_flutter_fix",
@@ -32111,17 +32097,29 @@ class UnifiedRestorerV3:
         )
         _defect_scores_wd = kwargs.get("defect_scores")
         _defect_severity_wd = kwargs.get("defect_severity_map")
-        if _defect_scores_wd and phase_metadata.phase_id not in _TIMING_PHASES_WD:
-            try:
-                from backend.core.defect_phase_mapper import get_phase_defect_severity
+        try:
+            from backend.core.defect_phase_mapper import get_phase_defect_severity, get_reverse_phase_map
 
-                _sev_wet_dry = get_phase_defect_severity(
-                    phase_metadata.phase_id,
-                    _defect_scores_wd,
-                    defect_severity_map=_defect_severity_wd,
-                )
-            except Exception:
-                _sev_wet_dry = 1.0
+            _score_map = _defect_scores_wd if isinstance(_defect_scores_wd, dict) else {}
+            _is_repair_phase = phase_metadata.phase_id in get_reverse_phase_map()
+            _sev_wet_dry = get_phase_defect_severity(
+                phase_metadata.phase_id,
+                _score_map,
+                defect_severity_map=_defect_severity_wd,
+            )
+            if _is_repair_phase:
+                _phase_defect_posterior = _sev_wet_dry
+                if phase_metadata.phase_id in _TIMING_PHASES_WD:
+                    _sev_wet_dry = 1.0
+        except Exception as _severity_exc:
+            logger.warning(
+                "§G188 (GEBOTE.md) Defektposterior für %s nicht verfügbar; Phase wird verworfen: %s",
+                phase_metadata.phase_id,
+                _severity_exc,
+            )
+            if phase_metadata.phase_id not in _TIMING_PHASES_WD:
+                _sev_wet_dry = 0.0
+            _phase_defect_posterior = 0.0
 
         _coverage_map = kwargs.get("defect_location_coverage_map")
         if isinstance(_coverage_map, dict) and _defect_scores_wd and phase_metadata.phase_id not in _TIMING_PHASES_WD:
@@ -32134,7 +32132,8 @@ class UnifiedRestorerV3:
                     _coverage_map,
                 )
                 if _locality_factor < 1.0:
-                    _sev_wet_dry = float(np.clip(_sev_wet_dry * _locality_factor, 0.15, 1.0))
+                    # Locality selects where the repair is applied; it does not
+                    # reduce the correction depth inside the evidenced region.
                     kwargs["phase_locality_factor"] = _locality_factor
 
                     _rmap = get_reverse_phase_map()
@@ -32152,16 +32151,13 @@ class UnifiedRestorerV3:
         if phase_metadata.phase_id not in _TIMING_PHASES_WD:
             _cal_scalar = self._get_phase_calibration_scalar(phase_metadata.phase_id, song_calibration)
             if abs(_cal_scalar - 1.0) >= 0.03:
-                _sev_wet_dry = float(np.clip(_sev_wet_dry * _cal_scalar, 0.12, 1.0))
-                _in_strength = kwargs.get("strength")
-                if isinstance(_in_strength, (int, float)):
-                    kwargs["strength"] = float(np.clip(float(_in_strength) * _cal_scalar, 0.0, 1.0))
+                # Retain the legacy scalar for traceability only. Material and
+                # family priors cannot partially compensate a measured defect.
                 kwargs["song_calibration_scalar"] = _cal_scalar
                 logger.debug(
-                    "🎛️ SongCalibration %s: scalar=%.3f wet_dry=%.3f",
+                    "🎛️ SongCalibration diagnostic %s: scalar=%.3f; correction unchanged",
                     phase_metadata.phase_id,
                     _cal_scalar,
-                    _sev_wet_dry,
                 )
 
         if phase_metadata.phase_id not in _TIMING_PHASES_WD:
@@ -32281,31 +32277,8 @@ class UnifiedRestorerV3:
             if bool(_naturalness_guard.get("enabled", False)):
                 _uq_scalar = float(np.clip(_uq_scalar * float(_naturalness_guard.get("scalar", 1.0) or 1.0), 0.50, 1.0))
 
-            # Zusätzlicher Hard-Cap für phase_23 in Restoration bei analogen
-            # Trägerketten mit Tape/Cassette-Anteilen.
-            if phase_metadata.phase_id == "phase_23_spectral_repair" and not self.is_studio_mode():
-                _mat_tokens = {
-                    str(_mat_ctx_s).lower() if _mat_ctx_s is not None else "",
-                }
-                _transfer_chain = kwargs.get("transfer_chain")
-                if isinstance(_transfer_chain, (list, tuple)):
-                    for _mc in _transfer_chain:
-                        _mcs = getattr(_mc, "value", _mc)
-                        _mat_tokens.add(str(_mcs).lower())
-                _has_risky_analog = any(_tok in {"cassette", "tape"} for _tok in _mat_tokens)
-                if _has_risky_analog:
-                    _p23_cap = 0.66 if _uq_conf < 0.80 else 0.74
-                    if _planned_strength_cap is None:
-                        _planned_strength_cap = _p23_cap
-                    else:
-                        _planned_strength_cap = float(min(_planned_strength_cap, _p23_cap))
-                    kwargs["planned_strength_cap"] = _planned_strength_cap
-                    if isinstance(kwargs.get("strength"), (int, float)):
-                        _s_in = float(kwargs["strength"])
-                        if _s_in > _p23_cap:
-                            kwargs["strength"] = _p23_cap
-                    _sev_wet_dry = float(np.clip(min(_sev_wet_dry, _p23_cap), 0.12, 1.0))
-                    kwargs["phase23_pre_hallucination_cap"] = float(_p23_cap)
+            # Material/chain context remains available to the phase's physical
+            # applicability and post-candidate guards; it does not cap strength.
 
             kwargs["uq_confidence_scalar"] = _uq_scalar
             kwargs["uq_confidence_value"] = _uq_conf
@@ -32807,13 +32780,8 @@ class UnifiedRestorerV3:
                 _sev_wet_dry = 1.0  # Keine Wet/Dry-Reduktion für Messwert-Phasen
                 if _exec_cond is not None:
                     _exec_cond_str += " [PRECISION: conductor bypassed]"
-            elif _exec_cond is not None and isinstance(kwargs.get("strength"), (int, float)):
-                _cur = float(kwargs["strength"])
-                # Blend: 70% conductor, 30% original (ermöglicht Sanft-Übergänge)
-                _blended = float(np.clip(_cur * 0.30 + _exec_cond * 0.70, 0.0, 1.0))
-                if abs(_blended - _cur) > 0.01:
-                    kwargs["strength"] = _blended
-                    _exec_cond_str += f" → applied={_blended:.3f}"
+            elif _exec_cond is not None:
+                _exec_cond_str += " [advisory only]"
             logger.info(
                 "📊 Verarbeitungsschritt_EXEC Verarbeitungsschritt=%s strength=%s explicit=%s vcap=%s conductor=%s songcal=%.3f",
                 phase_metadata.phase_id,
@@ -32825,6 +32793,18 @@ class UnifiedRestorerV3:
             )
         except Exception as _pex_exc:
             logger.debug("Verarbeitungsschritt_EXEC log fehlgeschlagen (nicht blockierend): %s", _pex_exc)
+
+        if _phase_defect_posterior is not None:
+            # Legacy runtime scalars and conductor/oracle hints remain useful
+            # as diagnostics, but cannot partially attenuate repair of a
+            # measured target defect. Locality is carried separately in kwargs
+            # so phases can restrict *where* they work (§7.4e, Spec 06).
+            _phase_defect_posterior = float(np.clip(_phase_defect_posterior, 0.0, 1.0))
+            if phase_metadata.phase_id not in _TIMING_PHASES_WD:
+                _sev_wet_dry = _phase_defect_posterior
+            kwargs["phase_g188_posterior_strength"] = _phase_defect_posterior
+            if not strength_explicit:
+                kwargs["strength"] = _phase_defect_posterior
 
         return _sev_wet_dry
 

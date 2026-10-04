@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 """Exportiert Symphonia (Flow-Matching-DiT) nach ONNX mit Paritäts-Gate.
 
-Signatur des Inferenzgraphs (models/symphonia/symphonia_dit.onnx):
-  x        : [1, T, 1]  float32 — degradierter Vocal (48 kHz, mono)
+Signatur des Inferenzgraphs (models/symphonia/symphonia.onnx):
+  x        : [1, T, 1]  float32 — degradiertes Instrumental (48 kHz, mono)
   t        : [1]        float32 — Flow-Zeit (0..1, Inferenz: 0.5)
   mert     : [1, F, 768] float32 — MERT-v1-330M Features (frame-level)
-  rhythm    : [1, F, 2]  float32 — (log2-f0-normiert, voiced_prob)
+  rhythm   : [1, F, 2]  float32 — Beat-/Onset-Kontext (normiert, aktiv)
   harm     : [1, 768]   float32 — MuQ-MuLan Embedding (L2-normiert)
   use_cond : [1]        float32 — 1.0 = konditioniert, 0.0 = Null-Tokens
   → v       : [1, T, 1] float32 — Flow-Matching-Geschwindigkeitsfeld
@@ -17,7 +17,7 @@ Deterministische Feeds (§G5 (GEBOTE.md)) — gleicher Seed ⇒ identische Prüf
 
 Usage:
     python3 -B scripts/export_symphonia_onnx.py [--checkpoint models/symphonia/checkpoint_best.pt]
-        [--preset full|tiny] [--out models/symphonia/symphonia_dit.onnx]
+        [--preset full|tiny] [--out models/symphonia/symphonia.onnx]
         [--allow-random-init]   # NUR für CPU-Smoke/Tests ohne Gewichte
 """
 
@@ -43,7 +43,7 @@ logger = logging.getLogger(__name__)
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 CONFIG_PATH = PROJECT_ROOT / "models" / "symphonia" / "symphonia_config.json"
-DEFAULT_OUT = PROJECT_ROOT / "models" / "symphonia" / "symphonia_dit.onnx"
+DEFAULT_OUT = PROJECT_ROOT / "models" / "symphonia" / "symphonia.onnx"
 DEFAULT_CKPT = PROJECT_ROOT / "models" / "symphonia" / "checkpoint_best.pt"
 PARITY_REL_TOL = 1e-3  # §III.9 (copilot-instructions.md)
 
@@ -132,7 +132,7 @@ def export_model(preset: str, checkpoint: Path, out_path: Path, allow_random_ini
         "rhythm": {0: "batch", 1: "frames"},
         "harm": {0: "batch"},
         "use_cond": {0: "batch"},
-        "output": {0: "batch", 1: "time"},
+        "v": {0: "batch", 1: "time"},
     }
     out_path.parent.mkdir(parents=True, exist_ok=True)
     torch.onnx.export(

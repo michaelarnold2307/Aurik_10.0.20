@@ -2,6 +2,9 @@
 
 Symphonia ist das Gegenstück zu Cantus für Instrumentalstems. Es restauriert
 `drums + bass + other` nach der Separation und vor KIM-Inst.
+Bei rein instrumentalen Importen ohne erkannten Gesang wird der komplette Input
+als Instrumentalstem an Symphonia geführt; die Gesangserkennung darf diesen Pfad
+nicht sperren.
 
 ## Architektur
 
@@ -28,5 +31,6 @@ Bandlimitierung ab. Ein produktives Gewicht benötigt vor Aktivierung:
 4. Instrumental-Listening-Witness und Blindtest-Evidenz ohne Regression.
 
 Bis diese Evidenz vorliegt, bleibt Symphonia korrekt im dokumentierten
-DSP-Fallback. Es werden keine zufällig initialisierten oder Vocal-Checkpoint-
+DSP-Fallback; der kanonische Plugin-Pfad verlangt dafür den Modell-Zoo-Status
+`active`. Es werden keine zufällig initialisierten oder Vocal-Checkpoint-
 Gewichte als Instrumentalmodell ausgegeben.

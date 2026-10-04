@@ -57,9 +57,12 @@ Multi-Objective-Loss (scripts/train_cantus.py):
 | `cantus_singmos_proxy.pt` | Gewichte des SingMOS-Learned-Loss-Proxys | **Platzhalter** — via `scripts/train_cantus.py --phase=pretrain` |
 | `cantus_config.json` | Hyperparameter (Modell + Training + Loss-Gewichte) | aktiv |
 
-Die Modellartefakte sind lokal und werden nicht versioniert. Der produktive
-Pfad in `plugins/cantus_plugin.py` lädt den Checkpoint über Torch auf ROCm und
-verwendet ONNX ausschließlich über `CPUExecutionProvider` als Ersatzpfad.
+Die Modellartefakte sind lokal und werden nicht versioniert. Der vorgesehene
+Produktionspfad in `plugins/cantus_plugin.py` lädt einen freigegebenen
+Checkpoint über Torch auf ROCm und verwendet ONNX ausschließlich über
+`CPUExecutionProvider` als Ersatzpfad. Solange der Modell-Zoo-Status nicht
+`active` ist, bleibt der kanonische Checkpoint deaktiviert und Cantus nutzt den
+protokollierten DSP-Fallback (§V6 (copilot-instructions.md)).
 Die am 2026-10-04 auf der RX 7900 XTX gemessene Torch-ROCm↔ONNX-CPU-Parität
 beträgt maximal `7.89e-06` relativ (Gate: `≤ 1e-3`); zwei GPU-Wiederholungen
 waren bitidentisch. Scheitert Torch oder ONNX, läuft Cantus deterministisch auf

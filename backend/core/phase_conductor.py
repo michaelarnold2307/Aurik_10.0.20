@@ -2,10 +2,13 @@
 PhaseConductor — Inter-Phase Adaptive Controller (Aurik 10.0.0.x, §Hebel-3)
 =========================================================================
 
-Intelligente Wetness-Steuerung zwischen Phasen:
+Inter-Phase Zustandsmessung und Ziel-Gate:
 - Misst nach jeder Phase den Residual-Defekt-Zustand (Spektralvarianz, Rauschboden, Transienten)
-- Schätzt ob die nächste Phase noch Gewinn bringt (vorhersage_nutzen)
-- Passt `strength`/`wet` der nächsten Phase dynamisch an (kein Over-Processing)
+- Liefert Zustandskonfidenz als Telemetrie
+- Bestätigt einen Skip nur bei erreichten, expliziten Song-Zielen
+
+Reparaturstärken stammen ausschließlich aus der zieldefektspezifischen
+Messung; dieser allgemeine Zustandsvektor kann keine Phase dosieren (§G188).
 
 Architekturprinzip: Kein ML-Modell. Leichtgewichtiger Encoder auf Basis DSP-Merkmale:
   - Noise-Floor (5. Perzentil PSD)
@@ -130,16 +133,6 @@ _NEVER_SKIP = frozenset(
     }
 )
 
-# Mindeststärken je Phase-Typ (verhindert Bypass durch Over-Confidence)
-_MIN_STRENGTH: dict[str, float] = {
-    "phase_03_denoise": 0.35,
-    "phase_29_tape_hiss_reduction": 0.12,
-    "phase_01_click_removal": 0.30,
-    "phase_07_harmonic_restoration": 0.10,
-    "phase_06_frequency_restoration": 0.10,
-}
-_DEFAULT_MIN_STRENGTH = 0.25  # §v10.44: angehoben von 0.05 auf Joint-Calibration-Minimum (§G73 (GEBOTE.md))
-
 
 class PhaseConductor:
     """Inter-Phase Adaptive Controller.
@@ -254,44 +247,19 @@ class PhaseConductor:
                 state_snapshot=current_state,
             )
 
-        current_coalition = _coalition_name_for_phase(current_phase_id, active_phase_coalitions)
-        next_coalition = _coalition_name_for_phase(next_phase_id, active_phase_coalitions)
-        coalition_continuation = bool(current_coalition and current_coalition == next_coalition)
-
         grid_key = _canonical_material(material_type)
         grid = _REFERENCE_GRID.get(grid_key, _REFERENCE_GRID["unknown"])
         state_vec = current_state.as_vec()
 
-        # Psychoacoustic weighting: noise-floor and harmonic coherence dominate
-        # perceived restoration headroom more strongly than HF ratio alone.
-        # Scientific basis: Zwicker & Fastl (2007) masking/noise salience;
-        # Virtanen et al. (2007) harmonicity as a restoration quality prior.
+        # Keep the state-distance as telemetry only. The material grid's
+        # strength column is a prior, not evidence about the next phase's target.
         _distance_weights = np.array([1.35, 0.85, 1.00, 1.25], dtype=np.float64)
         dists = np.linalg.norm((grid[:, :4] - state_vec) * _distance_weights, axis=1)
         nn_idx = int(np.argmin(dists))
         nn_dist = float(dists[nn_idx])
-        ideal_strength = float(grid[nn_idx, 4])
 
-        # Interpolation: wenn Zustand sauber (Distanz zu "clean" < Rand)
-        # → lineare Absorption des Ideals
-        confidence = float(np.clip(1.0 - nn_dist / 1.5, 0.2, 0.9))
-        recommended_strength = float(
-            np.clip(ideal_strength * confidence + current_strength * (1.0 - confidence), 0.0, 1.0)
-        )
-
-        # §2.52a Goal-Weight-Modulation: ±10 % bounded adjustment.
-        # High-priority goals (weight > 1.0) push strength up; low-priority push down.
-        if goal_weights:
-            try:
-                _gw_vals = [v for v in goal_weights.values() if isinstance(v, (int, float)) and np.isfinite(v)]
-                if _gw_vals:
-                    _gw_mean = float(np.mean(_gw_vals))
-                    # map mean weight to [-0.10, +0.10] range (1.0 = neutral)
-                    _gw_mod = float(np.clip((_gw_mean - 1.0) * 0.10, -0.10, 0.10))
-                    recommended_strength = float(np.clip(recommended_strength + _gw_mod, 0.0, 1.0))
-            except Exception as e:
-                logger.warning("Verarbeitungsschritt_conductor.py::unbekannter Ersatzpfad: %s", e)
-                pass  # Non-blocking: goal_weights integration failure → neutral
+        confidence = float(np.clip(1.0 - nn_dist / 1.5, 0.0, 1.0))
+        recommended_strength = float(np.clip(current_strength, 0.0, 1.0))
 
         # §2.31 Per-Song Studio-Day-Target Stopp-Signal: Phasen über Ziel hinaus verhindern
         # (Over-Processing-Schutz ohne PMGG-Notbremse).
@@ -348,40 +316,14 @@ class PhaseConductor:
                 logger.warning("Verarbeitungsschritt_conductor.py::unbekannter Ersatzpfad: %s", e)
                 pass  # Non-blocking — Stopp-Signal-Fehler nie pipeline-blockierend
 
-        if coalition_continuation:
-            # Koalitions-Mitglieder dürfen nicht von einem einzelnen State-Snapshot
-            # auf Skip oder zu starke Dämpfung gedrückt werden; Gruppe wird erst
-            # nach Abschluss der Koalition beurteilt.
-            recommended_strength = float(np.clip(max(recommended_strength, 0.55), 0.0, 1.0))
-            confidence = float(np.clip(max(confidence, 0.75), 0.0, 1.0))
-
-        # Mindest-Stärke aus Invariante
-        min_str = _MIN_STRENGTH.get(next_phase_id, _DEFAULT_MIN_STRENGTH)
-        recommended_strength = max(recommended_strength, min_str)
-
-        # Skip-Empfehlung: nur wenn Noise-Floor bereits sehr gut UND HF voll
-        skip = False
-        skip_reason = ""
-        if (
-            current_state.noise_floor_db < -68.0
-            and current_state.hf_energy_ratio > 0.55
-            and current_state.harmonic_coherence > 0.88
-            and recommended_strength < 0.12
-            and not coalition_continuation
-        ):
-            # Signal bereits sehr sauber — Phase bringt kaum Gewinn
-            skip = True
-            skip_reason = (
-                f"Conductor: noise_floor={current_state.noise_floor_db:.1f} dBFS, "
-                f"hf={current_state.hf_energy_ratio:.2f} → kaum Restdefekt für {next_phase_id}"
-            )
-            logger.debug("PhaseConductor ueberspringen-Empfehlung: %s", skip_reason)
+        # §G188 (GEBOTE.md): Keine feste Mindeststärke hebt eine evidenzbasierte
+        # Conductor-Empfehlung an. Der nachfolgende Skip-Gate entscheidet separat.
 
         return ConductorRecommendation(
             next_phase_id=next_phase_id,
             recommended_strength=recommended_strength,
-            skip_recommended=skip and not coalition_continuation,
-            skip_reason=skip_reason,
+            skip_recommended=False,
+            skip_reason="",
             confidence=confidence,
             state_snapshot=current_state,
         )

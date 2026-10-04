@@ -132,7 +132,7 @@ def export_model(preset: str, checkpoint: Path, out_path: Path, allow_random_ini
         "pitch": {0: "batch", 1: "frames"},
         "harm": {0: "batch"},
         "use_cond": {0: "batch"},
-        "output": {0: "batch", 1: "time"},
+        "v": {0: "batch", 1: "time"},
     }
     out_path.parent.mkdir(parents=True, exist_ok=True)
     torch.onnx.export(

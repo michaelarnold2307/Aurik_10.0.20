@@ -70,7 +70,7 @@ class SibilanceMaxRepair:
         *,
         vocal_profile: str = "unknown",
         sibilance_intensity: float = 0.5,
-        preservation_mode: bool = True,  # True = konservativ, False = aggressiv
+        preservation_mode: bool = True,
     ) -> tuple[np.ndarray, SibilanceRepairReport]:
         """Führt die vollständige Sibilance-Reparatur durch.
 
@@ -79,7 +79,7 @@ class SibilanceMaxRepair:
             sr: Sample-Rate
             vocal_profile: "female" | "male" | "child" | "unknown"
             sibilance_intensity: 0.0–1.0 Intensität der Sibilance
-            preservation_mode: True = Gesang priorisieren, False = Sibilance priorisieren
+            preservation_mode: Legacy-Argument; die Klang-Gates entscheiden über Annahme/Rollback.
 
         Returns:
             (repaired_audio, report)
@@ -88,11 +88,11 @@ class SibilanceMaxRepair:
         result = np.asarray(audio, dtype=np.float32).copy()
 
         # Adaptive Stärke via GuardWisdom
-        base_strength = min(0.85, sibilance_intensity)
+        base_strength = float(np.clip(sibilance_intensity, 0.0, 1.0))
         if self._gw is not None:
             base_strength *= getattr(self._gw, "get_strength_mod", lambda: 1.0)()
-        if preservation_mode:
-            base_strength *= 0.85  # 15% konservativer
+        # §G188 (GEBOTE.md): preservation_mode wird durch die nachgelagerte
+        # Klangprüfung/den Rollback-Gate umgesetzt, nicht als feste Teilstärke.
         report.strength_used = base_strength
 
         s_range = self.FREQ_RANGES.get(vocal_profile, self.FREQ_RANGES["unknown"])
@@ -104,13 +104,15 @@ class SibilanceMaxRepair:
         # ── 2. Phase-19 DSP De-Esser (erster Pass) ──
         if base_strength > 0.05:
             try:
-                result = self._apply_dsp_deesser(result, sr, s_range, base_strength * 0.7)
-                report.phase19_applied = True
-
-                # §AF Dynamics-Check
-                result = self._dynamics.match_envelope(result, sr, 0, min(result.shape[-1], result.shape[-1]))
+                candidate = self._apply_dsp_deesser(result, sr, s_range, base_strength)
+                candidate = self._dynamics.match_envelope(candidate, sr, 0, candidate.shape[-1])
+                if self._accept_candidate(audio, result, candidate, sr, s_range):
+                    result = candidate
+                    report.phase19_applied = True
+                else:
+                    report.warnings.append("DSP-De-Esser nach Restfehler-/Klang-Gate zurückgerollt")
             except Exception as e:
-                logger.debug("Verarbeitungsschritt-19 De-Esser: %s", e)
+                logger.warning("§V6 (VERBOTEN.md): DSP-De-Esser-Kandidat verworfen: %s", e)
 
         # ── 3. Phase-43 ML De-Esser (Feinpass, nur bei Rest-Sibilance) ──
         sibilance_energy_mid = self._measure_sibilance_energy(result, sr, s_range[0], s_range[1])
@@ -118,13 +120,15 @@ class SibilanceMaxRepair:
 
         if remaining_ratio > 0.3 and base_strength > 0.15:
             try:
-                result = self._apply_ml_deesser(result, sr, s_range, base_strength * 0.5)
-                report.phase43_applied = True
-
-                # §AF Dynamics-Check
-                result = self._dynamics.match_envelope(result, sr, 0, min(result.shape[-1], result.shape[-1]))
+                candidate = self._apply_ml_deesser(result, sr, s_range, base_strength)
+                candidate = self._dynamics.match_envelope(candidate, sr, 0, candidate.shape[-1])
+                if self._accept_candidate(audio, result, candidate, sr, s_range):
+                    result = candidate
+                    report.phase43_applied = True
+                else:
+                    report.warnings.append("ML-De-Esser nach Restfehler-/Klang-Gate zurückgerollt")
             except Exception as e:
-                logger.debug("Verarbeitungsschritt-43 ML De-Esser: %s", e)
+                logger.warning("§V6 (VERBOTEN.md): ML-De-Esser-Kandidat verworfen: %s", e)
 
         # ── 4. Post-Verifikation ──
         sibilance_energy_after = self._measure_sibilance_energy(result, sr, s_range[0], s_range[1])
@@ -171,6 +175,31 @@ class SibilanceMaxRepair:
         if not np.any(mask):
             return 0.0
         return float(np.sqrt(np.mean(fft[mask] ** 2) + 1e-12))
+
+    def _accept_candidate(
+        self,
+        reference: np.ndarray,
+        current: np.ndarray,
+        candidate: np.ndarray,
+        sr: int,
+        freq_range: tuple[float, float],
+    ) -> bool:
+        """Akzeptiert nur einen messbar besseren, klanglich sicheren Nachlauf (§G188/G189)."""
+        candidate = np.asarray(candidate)
+        if candidate.shape != current.shape or not np.isfinite(candidate).all():
+            return False
+        lo, hi = freq_range
+        before = self._measure_sibilance_energy(current, sr, lo, hi)
+        after = self._measure_sibilance_energy(candidate, sr, lo, hi)
+        if not after < before:
+            return False
+        stereo = self._dynamics.verify_stereo_balance(reference, candidate)
+        transients = self._dynamics.verify_transients(reference, candidate, sr)
+        return bool(
+            stereo.stereo_balance_ok
+            and transients.transients_preserved
+            and self._check_vocal_formant_preservation(reference, candidate, sr)
+        )
 
     def _apply_dsp_deesser(
         self, audio: np.ndarray, sr: int, freq_range: tuple[float, float], strength: float
@@ -229,7 +258,7 @@ class SibilanceMaxRepair:
         ]
 
         for sb_lo, sb_hi in sub_bands:
-            result = self._apply_dsp_deesser(result, sr, (sb_lo, sb_hi), strength * 0.6)
+            result = self._apply_dsp_deesser(result, sr, (sb_lo, sb_hi), strength)
 
         return cast(np.ndarray, (np.clip(result, -1.0, 1.0).astype(np.float32)))
 

@@ -22,6 +22,31 @@ def _make_sibilant(freq: float = 7000.0, duration: float = 0.4, amp: float = 0.4
     return audio
 
 
+def test_sibilance_max_repair_uses_measured_strength_without_preservation_discount(monkeypatch):
+    from backend.core.sibilance_max_repair import SibilanceMaxRepair
+
+    repair = SibilanceMaxRepair()
+    strengths: list[float] = []
+
+    def _dsp(audio, _sr, _range, strength):
+        strengths.append(float(strength))
+        return np.asarray(audio, dtype=np.float32) * 0.9
+
+    def _ml(audio, _sr, _range, strength):
+        strengths.append(float(strength))
+        return np.asarray(audio, dtype=np.float32) * 0.9
+
+    monkeypatch.setattr(repair, "_apply_dsp_deesser", _dsp)
+    monkeypatch.setattr(repair, "_apply_ml_deesser", _ml)
+    monkeypatch.setattr(repair, "_accept_candidate", lambda *_args: True)
+    monkeypatch.setattr(repair._dynamics, "match_envelope", lambda audio, *_args: audio)
+
+    _output, report = repair.repair(_make_sibilant(), SR, sibilance_intensity=1.0, preservation_mode=True)
+
+    assert report.strength_used == 1.0
+    assert strengths == [1.0, 1.0]
+
+
 @dataclass
 class _DummyWord:
     phoneme_type: str

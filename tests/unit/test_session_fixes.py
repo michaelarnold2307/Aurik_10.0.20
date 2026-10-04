@@ -133,7 +133,7 @@ class TestPhaseEffectCatalog:
         result = catalog.calibrate_all(["phase_99_unknown"], {})
         assert result["phase_99_unknown"] == 1.0
 
-    def test_base_strength_used_in_calibrate(self):
+    def test_calibrated_strength_requires_defect_evidence(self):
         from backend.core.phase_effect_catalog import (
             calibrate_phase_intensity,
         )
@@ -144,8 +144,41 @@ class TestPhaseEffectCatalog:
             defect_severity=0.0,
             material="vinyl",
         )
-        # base_strength=0.8, keine Defekte → nahe 0.8
-        assert 0.05 <= result <= 1.0
+        assert result == 0.0
+
+    def test_full_evidence_preserves_measured_target_strength(self):
+        from backend.core.phase_effect_catalog import calibrate_phase_intensity
+
+        result = calibrate_phase_intensity(
+            "phase_03_denoise",
+            base_strength=0.8,
+            defect_severity=0.8,
+            material="vinyl",
+            pipeline_confidence=1.0,
+        )
+
+        assert result == 0.8
+
+    def test_uncertainty_scales_as_posterior_and_unsupported_material_skips(self):
+        from backend.core.phase_effect_catalog import calibrate_phase_intensity
+
+        uncertain = calibrate_phase_intensity(
+            "phase_03_denoise",
+            base_strength=0.8,
+            defect_severity=0.8,
+            material="vinyl",
+            pipeline_confidence=0.5,
+        )
+        unsupported = calibrate_phase_intensity(
+            "phase_57_print_through_reduction",
+            base_strength=0.8,
+            defect_severity=0.8,
+            material="vinyl",
+            pipeline_confidence=1.0,
+        )
+
+        assert uncertain == 0.4
+        assert unsupported == 0.0
 
 
 # ═══════════════════════════════════════════════════════════════════════════

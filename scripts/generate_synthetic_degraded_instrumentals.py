@@ -24,11 +24,30 @@ from scripts.generate_synthetic_degraded_vocals import DEFAULT_SEED, KINDS, _loa
 logger = logging.getLogger(__name__)
 
 
-def generate(musdb_root: Path, out_root: Path, variants_per_track: int = 8, max_tracks: int = 0) -> Path:
+def generate(
+    musdb_root: Path,
+    out_root: Path,
+    variants_per_track: int = 8,
+    max_tracks: int = 0,
+    track_offset: int = 0,
+) -> Path:
     """Erzeugt Paare ohne Vocal-Leakage; Rückgabe ist das Manifest."""
-    tracks = sorted(path for split in ("train", "test") for path in (musdb_root / split).glob("*") if path.is_dir())
+    tracks_by_split = {
+        split: sorted(path for path in (musdb_root / split).glob("*") if path.is_dir()) for split in ("train", "test")
+    }
     if max_tracks:
-        tracks = tracks[:max_tracks]
+        # Validation braucht zwingend unabhängige Songs.  Ein schlichtes
+        # ``tracks[:max_tracks]`` würde wegen der Split-Reihenfolge nur Train
+        # ausgeben und anschließend einen wertlosen Val-Checkpoint erzeugen.
+        n_train = max(1, round(max_tracks * len(tracks_by_split["train"]) / sum(map(len, tracks_by_split.values()))))
+        n_test = max(1, max_tracks - n_train)
+        batch_index = int(track_offset)
+        tracks = (
+            tracks_by_split["train"][batch_index * n_train : (batch_index + 1) * n_train]
+            + tracks_by_split["test"][batch_index * n_test : (batch_index + 1) * n_test]
+        )
+    else:
+        tracks = tracks_by_split["train"] + tracks_by_split["test"]
     if not tracks:
         raise FileNotFoundError(f"Keine MUSDB18-HQ-Tracks unter {musdb_root}")
     rows: list[dict] = []
@@ -49,7 +68,19 @@ def generate(musdb_root: Path, out_root: Path, variants_per_track: int = 8, max_
             degraded, params = degrade_one(clean, KINDS[variant % len(KINDS)], np.random.default_rng(seed))
             degraded_path = output / f"{track_dir.name}__instrumental_v{variant:02d}.wav"
             wavfile.write(degraded_path, 48000, degraded.T.astype(np.float32))
-            rows.append({"track": track_dir.name, "split": split, "variant": variant, "clean": str(clean_path.relative_to(out_root)), "degraded": str(degraded_path.relative_to(out_root)), "params": params, "seed": seed, "sr": 48000, "sources": ["drums", "bass", "other"]})
+            rows.append(
+                {
+                    "track": track_dir.name,
+                    "split": split,
+                    "variant": variant,
+                    "clean": str(clean_path.relative_to(out_root)),
+                    "degraded": str(degraded_path.relative_to(out_root)),
+                    "params": params,
+                    "seed": seed,
+                    "sr": 48000,
+                    "sources": ["drums", "bass", "other"],
+                }
+            )
     manifest = out_root / "manifest.jsonl"
     manifest.write_text("".join(json.dumps(row, ensure_ascii=False) + "\n" for row in rows), encoding="utf-8")
     logger.info("Symphonia: %d Instrumentalpaare → %s", len(rows), manifest)
@@ -63,8 +94,9 @@ def main() -> int:
     parser.add_argument("--out", type=Path, default=Path("data/symphonia_pairs"))
     parser.add_argument("--variants-per-track", type=int, default=8)
     parser.add_argument("--max-tracks", type=int, default=0)
+    parser.add_argument("--track-offset", type=int, default=0, help="Deterministischer Batch-Index bei --max-tracks")
     args = parser.parse_args()
-    generate(args.musdb_root, args.out, args.variants_per_track, args.max_tracks)
+    generate(args.musdb_root, args.out, args.variants_per_track, args.max_tracks, args.track_offset)
     return 0
 
 

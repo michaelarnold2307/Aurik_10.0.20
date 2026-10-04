@@ -229,7 +229,11 @@ def _apply_context_priors(
     chain_hint: dict[str, Any] | None = None,
     memory_prior: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
-    """Blend chain and RestorationMemory priors into bounded DSP parameters."""
+    """Blend RestorationMemory priors into bounded DSP parameters.
+
+    Chain hints select or suppress causal hypotheses; §G188 (GEBOTE.md) forbids
+    using them as fixed strength multipliers.
+    """
     adjusted = dict(params)
 
     if isinstance(memory_prior, dict):
@@ -264,22 +268,6 @@ def _apply_context_priors(
             if mode == "int":
                 blended = float(round(blended))
             adjusted[key] = float(np.clip(blended, lo, hi))
-
-    if isinstance(chain_hint, dict):
-        strength_scale = float(np.clip(chain_hint.get("strength_scale", 1.0), 0.25, 1.0))
-        if strength_scale < 0.999:
-            scalable_tokens = ("strength", "boost", "ratio")
-            for key, value in list(adjusted.items()):
-                if key not in space or not any(token in key for token in scalable_tokens):
-                    continue
-                lo, hi, mode = space[key]
-                try:
-                    scaled = float(value) * strength_scale
-                except (TypeError, ValueError):
-                    continue
-                if mode == "int":
-                    scaled = float(round(scaled))
-                adjusted[key] = float(np.clip(scaled, lo, hi))
 
     return adjusted
 

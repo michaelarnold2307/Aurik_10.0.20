@@ -14,7 +14,7 @@ Invarianten:
   - Repair-Phasen arbeiten proportional zur gemessenen Defekt-Schwere
   - Enhancement-Phasen werden nicht skaliert (Faktor 1.0)
   - Timing-Phasen sind von Wet/Dry ausgenommen
-  - 0.15 ≤ severity_factor ≤ 1.0 für Repair-Phasen
+  - 0.0 ≤ severity_factor ≤ 1.0 für Repair-Phasen; fehlende Evidenz ergibt 0
 """
 
 
@@ -95,27 +95,27 @@ class TestDefectSeverityFactor:
     def test_repair_phase_proportional(self, sample_scores):
         """Repair phase should scale to measured severity."""
         sev = get_phase_defect_severity("phase_01_click_removal", sample_scores)
-        assert 0.35 <= sev <= 0.45, f"Expected ~0.4 for clicks severity 0.4, got {sev}"
+        assert sev == pytest.approx(0.4 * 0.9)
 
     def test_denoise_high_severity(self, sample_scores):
         sev = get_phase_defect_severity("phase_03_denoise", sample_scores)
-        assert 0.65 <= sev <= 0.75, f"Expected ~0.7 for noise severity 0.7, got {sev}"
+        assert sev == pytest.approx(0.7 * 0.95)
 
-    def test_zero_severity_floor(self, sample_scores):
-        """Defect scanned but severity 0.0 -> floor at 0.15."""
+    def test_zero_severity_has_no_correction_strength(self, sample_scores):
+        """§G188: A zero-depth measurement must not be raised by a fixed floor."""
         sev = get_phase_defect_severity("phase_09_crackle_removal", sample_scores)
-        assert sev == pytest.approx(0.15, abs=0.01)
+        assert sev == 0.0
 
     def test_enhancement_phase_always_one(self, sample_scores):
         """Enhancement phases return 1.0 regardless of defect scores."""
         sev = get_phase_defect_severity("phase_21_exciter", sample_scores)
         assert sev == 1.0
 
-    def test_defect_not_scanned_returns_one(self, sample_scores):
-        """If targeted defects were NOT scanned -> 1.0 (no penalty)."""
+    def test_defect_not_scanned_returns_zero(self, sample_scores):
+        """§G188: Missing repair evidence does not authorize a correction."""
         # phase_02 targets HUM, which is not in sample_scores
         sev = get_phase_defect_severity("phase_02_hum_removal", sample_scores)
-        assert sev == 1.0
+        assert sev == 0.0
 
     def test_unknown_phase_returns_one(self, sample_scores):
         """Unknown phase_id returns 1.0."""
@@ -123,9 +123,9 @@ class TestDefectSeverityFactor:
         assert sev == 1.0
 
     def test_empty_defect_scores(self):
-        """Empty defect_scores -> all phases return 1.0."""
+        """Empty defect_scores cannot authorize a repair phase."""
         sev = get_phase_defect_severity("phase_01_click_removal", {})
-        assert sev == 1.0
+        assert sev == 0.0
 
     def test_severity_clamped_to_one(self):
         """Severity > 1.0 should be clamped to 1.0."""
@@ -133,7 +133,7 @@ class TestDefectSeverityFactor:
             DefectType.CLICKS: DefectScore(DefectType.CLICKS, severity=1.5, confidence=0.9),
         }
         sev = get_phase_defect_severity("phase_01_click_removal", scores)
-        assert sev == 1.0
+        assert sev == pytest.approx(0.9)
 
     def test_full_severity(self):
         """Severity 1.0 -> factor 1.0."""
@@ -141,7 +141,7 @@ class TestDefectSeverityFactor:
             DefectType.CLICKS: DefectScore(DefectType.CLICKS, severity=1.0, confidence=0.9),
         }
         sev = get_phase_defect_severity("phase_01_click_removal", scores)
-        assert sev == 1.0
+        assert sev == pytest.approx(0.9)
 
     def test_multiple_defects_max_wins(self):
         """Phase targeting multiple defects: max severity wins."""
@@ -151,15 +151,15 @@ class TestDefectSeverityFactor:
         }
         # phase_03 targets both HIGH_FREQ_NOISE and QUANTIZATION_NOISE
         sev = get_phase_defect_severity("phase_03_denoise", scores)
-        assert sev == pytest.approx(0.8, abs=0.01)
+        assert sev == pytest.approx(0.64, abs=0.01)
 
-    def test_severity_floor_never_below_015(self):
-        """Factor should never go below 0.15 for a scanned defect."""
+    def test_confidence_weights_severity_without_a_floor(self):
+        """§G188: Confidence scales measured severity directly, without a fixed floor."""
         scores = {
             DefectType.CLICKS: DefectScore(DefectType.CLICKS, severity=0.01, confidence=0.9),
         }
         sev = get_phase_defect_severity("phase_01_click_removal", scores)
-        assert sev >= 0.15
+        assert sev == pytest.approx(0.009)
 
 
 class TestPhaseLocalityFactor:
@@ -332,12 +332,12 @@ class TestMusicalHarmonization:
     """Integration-level tests: severity scaling ensures proportional processing."""
 
     def test_low_severity_gentle_processing(self):
-        """Low defect severity -> factor close to floor -> gentle processing."""
+        """Low defect severity follows measured depth and detector confidence."""
         scores = {
             DefectType.CLICKS: DefectScore(DefectType.CLICKS, severity=0.15, confidence=0.9),
         }
         sev = get_phase_defect_severity("phase_01_click_removal", scores)
-        assert sev == 0.15, "Very low severity should be at floor"
+        assert sev == pytest.approx(0.135)
 
     def test_high_severity_full_processing(self):
         """High defect severity -> factor near 1.0 -> full processing."""
@@ -345,7 +345,7 @@ class TestMusicalHarmonization:
             DefectType.HIGH_FREQ_NOISE: DefectScore(DefectType.HIGH_FREQ_NOISE, severity=0.95, confidence=0.99),
         }
         sev = get_phase_defect_severity("phase_03_denoise", scores)
-        assert sev == pytest.approx(0.95, abs=0.01)
+        assert sev == pytest.approx(0.95 * 0.99, abs=0.01)
 
     def test_severity_monotonic(self):
         """Severity factor must be monotonically increasing with defect severity."""
@@ -357,6 +357,87 @@ class TestMusicalHarmonization:
             assert factors[i] >= factors[i - 1], (
                 f"Factor must be monotonic: {factors[i - 1]:.3f} -> {factors[i]:.3f} at severity {i / 19:.2f}"
             )
+
+    def test_joint_calibration_uses_phase_defect_posterior_without_floor(self):
+        from backend.core.joint_calibrator import joint_calibrate
+
+        scores = {DefectType.CLICKS: DefectScore(DefectType.CLICKS, severity=0.8, confidence=0.75)}
+        result = joint_calibrate(
+            ["phase_01_click_removal"],
+            {},
+            {},
+            defect_scores=scores,
+            min_strength=0.9,
+            restorability_score=1.0,
+            transfer_chain_depth=8,
+        )
+
+        assert result["phase_01_click_removal"] == pytest.approx(0.6)
+
+    def test_joint_calibration_does_not_invent_strength_without_measurement(self):
+        from backend.core.joint_calibrator import joint_calibrate
+
+        result = joint_calibrate(
+            ["phase_01_click_removal"],
+            {"transparenz": 0.2},
+            {"transparenz": 0.9},
+            defect_scores={},
+            min_strength=0.8,
+        )
+
+        assert result["phase_01_click_removal"] == 0.0
+
+    def test_orchestrator_strengths_follow_measured_defects_and_confidence(self):
+        from backend.core.orchestrator_params import (
+            phase01_click,
+            phase03_denoise,
+            phase06_frequency,
+            phase07_harmonic,
+            phase09_crackle,
+            phase12_wow_flutter,
+            phase19_deesser,
+            phase29_tape_hiss,
+        )
+
+        assert phase03_denoise({"snr_db": 0.0})["strength"] == 0.0
+        assert phase03_denoise({"noise_severity": 0.8, "noise_confidence": 0.9})["strength"] == 0.72
+        assert phase07_harmonic({"harmonic_deficit": 0.8, "harmonic_confidence": 0.5})["strength"] == 0.4
+        assert phase19_deesser({"sibilance_severity": 0.9})["strength"] == 0.0
+        assert phase29_tape_hiss({"snr_db": 0.0})["strength"] == 0.0
+        assert phase29_tape_hiss({"hiss_severity": 0.9, "hiss_confidence": 0.8})["strength"] == 0.72
+        assert phase06_frequency({"bandwidth_loss": 0.9, "bandwidth_confidence": 0.7})["strength"] == 0.63
+        assert phase01_click({"click_density": 0.0})["skip"] is True
+        assert phase01_click({"click_density": 1000.0})["strength"] == 0.0
+        assert (
+            phase01_click({"click_density": 1000.0, "click_severity": 1.0, "click_confidence": 0.9})["strength"] == 0.9
+        )
+        assert phase12_wow_flutter({"wow_severity": 0.8, "wow_confidence": 0.75})["strength"] == 0.6
+        assert phase09_crackle({"crackle_density": 1000.0})["strength"] == 0.0
+        assert (
+            phase09_crackle({"crackle_density": 1000.0, "crackle_severity": 0.5, "crackle_confidence": 0.8})["strength"]
+            == 0.4
+        )
+
+    def test_generic_orchestrator_requires_measurement_and_probe_rolls_back(self, monkeypatch):
+        import backend.core.orchestrator_params as orchestrator_params
+
+        assert orchestrator_params._generic_params({})["strength"] == 0.0
+        assert (
+            orchestrator_params._generic_params({"defect_severity": 0.8, "defect_confidence": 0.5})["strength"] == 0.4
+        )
+
+        calls = []
+        monkeypatch.setattr(orchestrator_params, "_quick_probe_delta", lambda *_args: -0.2)
+        result = orchestrator_params.probe_phase_benefit(
+            "phase_01_click_removal",
+            np.zeros(128, dtype=np.float32),
+            lambda audio, strength: calls.append(strength) or audio,
+            {"strength": 0.8},
+        )
+
+        assert result["should_run"] is False
+        assert result["strength"] == 0.0
+        assert calls == [0.8]
 
     def test_reverse_map_covers_all_defect_types(self):
         """Every DefectType in _PHASE_MAP should have at least one primary phase."""

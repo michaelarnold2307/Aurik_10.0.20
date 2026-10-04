@@ -137,6 +137,19 @@ class CantusPlugin:
 
     # ── Modell-Ladung + Budget ──────────────────────────────────────────
 
+    def _production_qualified(self) -> bool:
+        """Kanonische Gewichte erst nach expliziter Modell-Zoo-Freigabe laden."""
+        if self._checkpoint_path is None:
+            return True  # Expliziter Pfad: isolierte Tests/Alternative.
+        try:
+            from backend.core.model_zoo_registry import get_model
+
+            entry = get_model("cantus")
+            return entry is not None and entry.status == "active"
+        except Exception as exc:
+            logger.warning("§V6 (copilot-instructions.md) Cantus-Freigabestatus nicht lesbar: %s", exc)
+            return False
+
     def _activate_fallback(self, reason: str) -> None:
         """§V6 (copilot-instructions.md): Ersatzpfad NUR mit Warnung + Begründung."""
         self._fallback_active = True
@@ -147,6 +160,9 @@ class CantusPlugin:
         )
 
     def _try_load_model(self) -> None:
+        if not self._production_qualified():
+            self._activate_fallback("Training/Release-Evidenz fehlt; Model-Zoo-Status ist nicht active")
+            return
         if _ml_budget_try_allocate is not None:
             if not _ml_budget_try_allocate(self._BUDGET_NAME, size_gb=self._BUDGET_SIZE_GB):
                 self._activate_fallback("ML-Speicherbudget erschoepft")

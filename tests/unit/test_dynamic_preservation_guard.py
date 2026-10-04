@@ -45,7 +45,7 @@ class TestDynamicPreservationGuard:
 
         decision = guard.evaluate(audio, post, sr=48000)
         assert not decision.rollback, "Kleine Änderung sollte kein Rollback auslösen"
-        assert decision.strength_scalar > 0.5
+        assert decision.strength_scalar == 1.0
         assert decision.delta_db < 3.0
 
     def test_rollback_for_heavy_compression(self):
@@ -61,7 +61,7 @@ class TestDynamicPreservationGuard:
 
         decision = guard.evaluate(audio, post, sr=48000)
         assert decision.rollback, f"Starke Kompression sollte Rollback auslösen (delta={decision.delta_db:.2f} dB)"
-        assert decision.strength_scalar <= 0.5
+        assert decision.strength_scalar == 0.0
         assert decision.delta_db > 3.0
 
     def test_strength_scalar_bounds(self):

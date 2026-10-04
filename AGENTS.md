@@ -1,9 +1,9 @@
 # AGENTS.md — Universeller Einstiegspunkt für alle Agenten
 
 Projekt: **Aurik 10 — Audio-Restaurierung** — psychoakustisch präzise
-Musikwiederherstellung mit deterministischer Reproduzierbarkeit und natürlichem Wohlklang für das menschliche Ohr.
+Musikwiederherstellung mit deterministischer Reproduzierbarkeit und natürlichem Wohlklang für das menschliche Gehör.
 
-> Diese Datei ist der verbindliche Einstieg für jeden Agenten (Kun, Claude Code,
+> Diese Datei ist der verbindliche Einstieg für jeden Agenten (Kun, Claude Code, GPT,
 > Codex, GitHub Copilot, Cursor, …). Sie definiert keine eigenen Regeln, sondern
 > routet auf die normativen Dokumente und legt die Konflikt-Auflösung fest.
 > Arbeitssprache: Deutsch.

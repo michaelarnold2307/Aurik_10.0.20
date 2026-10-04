@@ -27,45 +27,42 @@ logger = logging.getLogger(__name__)
 
 
 def _safe(m: dict, key: str, default: float = 0.0) -> float:
-    return float(m.get(key, default) or default)
+    try:
+        value = float(m.get(key, default))
+    except (TypeError, ValueError):
+        return float(default)
+    return value if np.isfinite(value) else float(default)
 
 
 def _clip(v: float, lo: float, hi: float) -> float:
     return float(np.clip(v, lo, hi))
 
 
+def _posterior_strength(m: dict, severity_key: str, confidence_key: str) -> float:
+    """Return normalized defect depth × its detector confidence (§G188)."""
+    severity = _clip(_safe(m, severity_key), 0.0, 1.0)
+    confidence = _clip(_safe(m, confidence_key), 0.0, 1.0)
+    return severity * confidence
+
+
 # ── Phase 03: Denoise ───────────────────────────────────────────────────
 
 
 def phase03_denoise(m: dict) -> dict:
-    """Kontinuierlich: Stärke sinkt mit bandwidth_loss und Crest-Verlust."""
-    bw = _safe(m, "bandwidth_loss")
-    crest_drop = max(0.0, _safe(m, "crest_original") - _safe(m, "crest_current"))
-    panns = _safe(m, "panns_singing")
+    """Rauschstärke aus normalisierter Defekttiefe und Detektorkonfidenz."""
+    snr_db = _safe(m, "snr_db", 30.0)
+    strength = _posterior_strength(m, "noise_severity", "noise_confidence")
 
-    strength = 0.55 - 0.35 * bw - 0.04 * crest_drop
-    if panns > 0.30:
-        strength *= 0.70  # Vocal-Blend-Schutz
-    strength = _clip(strength, 0.08, 0.70)
-
-    return {"strength": round(strength, 3)}
+    return {"strength": round(strength, 3), "snr_db": snr_db}
 
 
 # ── Phase 07: Harmonic Restoration ──────────────────────────────────────
 
 
 def phase07_harmonic(m: dict) -> dict:
-    """Kontinuierlich: Stärke sinkt mit bw_loss UND aktuellem Crest."""
+    """Harmonische Rekonstruktion folgt der gemessenen harmonischen Lücke."""
     bw = _safe(m, "bandwidth_loss")
-    crest_orig = _safe(m, "crest_original", 12.0)
-    crest_now = _safe(m, "crest_current", crest_orig)
-    crest_drop = max(0.0, crest_orig - crest_now)
-    rms = _safe(m, "rms_db", -20.0)
-
-    strength = 0.50 - 0.42 * bw - 0.05 * crest_drop
-    if rms < -30:
-        strength *= 0.50
-    strength = _clip(strength, 0.05, 0.65)
+    strength = _posterior_strength(m, "harmonic_deficit", "harmonic_confidence")
 
     return {
         "strength": round(strength, 3),
@@ -78,7 +75,7 @@ def phase07_harmonic(m: dict) -> dict:
 
 
 def phase19_deesser(m: dict) -> dict:
-    """Kontinuierlich: Sibilanz-Schwelle und Stärke-Cap aus bw_loss + Codec."""
+    """Sibilanzstärke folgt Defekttiefe × Detektor-Konfidenz."""
     bw = _safe(m, "bandwidth_loss")
     terminal = str(m.get("terminal_codec", "") or "").lower()
     is_mp3 = terminal in ("mp3_low", "mp3_high")
@@ -86,12 +83,17 @@ def phase19_deesser(m: dict) -> dict:
     sib_factor = 1.0 + 4.0 * bw if is_mp3 else 1.0 + 1.5 * bw
     sib_factor = _clip(sib_factor, 1.0, 6.0)
 
-    cap_factor = 0.55 + 0.45 * (1.0 - bw) if is_mp3 else 1.0
-    cap_factor = _clip(cap_factor, 0.40, 1.0)
+    # Codec und Bandbreite beeinflussen die Detektionsschwelle, nicht den
+    # Kompensationsgrad eines bestätigten Sibilanz-Defekts (§G188/G189).
+    cap_factor = 1.0
+    sibilance_depth = _safe(m, "sibilance_severity")
+    sibilance_confidence = _safe(m, "sibilance_confidence", 0.0)
+    strength = _clip(sibilance_depth * sibilance_confidence, 0.0, 1.0)
 
     return {
         "sibilance_threshold_mult": round(sib_factor, 1),
         "deessing_strength_cap_factor": round(cap_factor, 2),
+        "strength": round(strength, 3),
     }
 
 
@@ -116,14 +118,11 @@ def phase39_air_band(m: dict) -> dict:
     # Air-Band ist in Restoration für analoge Quellen NUR mit bw_loss>0.5 erlaubt
     allow = not (is_restoration and is_analog and bw <= 0.5)
 
-    if allow:
-        strength = 0.15 + 0.35 * bw  # bw=0.5→0.33, bw=1.0→0.50
-    else:
-        strength = 0.0
+    strength = _posterior_strength(m, "air_band_deficit", "air_band_confidence") if allow else 0.0
 
     return {
         "allow_air_band": allow,
-        "strength": round(_clip(strength, 0.0, 0.60), 3),
+        "strength": round(_clip(strength, 0.0, 1.0), 3),
         "shelf_gain_db": round(1.0 + 5.0 * bw, 1),
     }
 
@@ -132,36 +131,25 @@ def phase39_air_band(m: dict) -> dict:
 
 
 def phase29_tape_hiss(m: dict) -> dict:
-    """Kontinuierlich: Stärke aus Material-Typ + SNR."""
-    bw = _safe(m, "bandwidth_loss")
+    """Hiss-Reparatur folgt dem gemessenen Defektposterior."""
     snr = _safe(m, "snr_db", 30.0)
-    depth = max(1, int(m.get("transfer_chain_depth", 1)))
+    strength = _posterior_strength(m, "hiss_severity", "hiss_confidence")
 
-    strength = 0.60 - 0.15 * bw
-    if snr < 20:
-        strength *= 0.70
-    if depth >= 5:
-        strength *= 0.80
-    strength = _clip(strength, 0.10, 0.65)
-
-    return {"strength": round(strength, 3)}
+    return {"strength": round(strength, 3), "snr_db": snr}
 
 
 # ── Phase 06: Frequency Restoration (NVSR) ──────────────────────────────
 
 
 def phase06_frequency(m: dict) -> dict:
-    """Kontinuierlich: NVSR-Stärke aus Bandwidth-Loss + Restorability."""
+    """NVSR-Stärke folgt dem gemessenen Bandbreitenverlust."""
     bw = _safe(m, "bandwidth_loss")
-    rs = _safe(m, "restorability_score", 50.0) / 100.0
 
     # Nur sinnvoll wenn tatsächlich Frequenzen fehlen
     if bw < 0.3:
         return {"strength": 0.0, "skip": True}
 
-    strength = 0.25 + 0.55 * bw
-    strength *= 0.5 + 0.5 * rs  # Restorability-Modifikator
-    strength = _clip(strength, 0.10, 0.80)
+    strength = _posterior_strength(m, "bandwidth_loss", "bandwidth_confidence")
 
     rolloff_target = 10000 + int(5500 * bw)  # bw=0.5→12750, bw=1.0→15500
 
@@ -192,18 +180,12 @@ def phase40_loudness(m: dict) -> dict:
 
 
 def phase01_click(m: dict) -> dict:
-    """Kontinuierlich: Stärke aus Klick-Dichte + SNR."""
-    snr = _safe(m, "snr_db", 30.0)
-    click_density = _safe(m, "click_density", 500.0)
-    depth = max(1, int(m.get("transfer_chain_depth", 1)))
+    """Klickkorrektur folgt der gemessenen Ereignisdichte."""
+    click_density = _safe(m, "click_density", 0.0)
+    if click_density <= 0.0:
+        return {"strength": 0.0, "skip": True}
 
-    # Mehr Klicks → mehr Stärke, aber SNR limitiert
-    strength = 0.15 + 0.0003 * click_density
-    if snr < 15:
-        strength *= 0.60
-    if depth >= 4:
-        strength *= 0.85
-    strength = _clip(strength, 0.10, 0.80)
+    strength = _posterior_strength(m, "click_severity", "click_confidence")
 
     return {"strength": round(strength, 3)}
 
@@ -215,16 +197,12 @@ def phase12_wow_flutter(m: dict) -> dict:
     """Kontinuierlich: Stärke aus Wow/Flutter-Severity + Material."""
     wow = _safe(m, "wow_severity", 0.0)
     flutter = _safe(m, "flutter_severity", 0.0)
-    depth = max(1, int(m.get("transfer_chain_depth", 1)))
-
     sev = max(wow, flutter)
+    confidence = max(_safe(m, "wow_confidence"), _safe(m, "flutter_confidence"))
     if sev < 0.10:
         return {"strength": 0.0, "skip": True}
 
-    strength = 0.20 + 0.60 * sev
-    if depth >= 4:
-        strength *= 0.80
-    strength = _clip(strength, 0.10, 0.70)
+    strength = _clip(sev, 0.0, 1.0) * _clip(confidence, 0.0, 1.0)
 
     return {"strength": round(strength, 3), "skip": False}
 
@@ -237,8 +215,8 @@ def phase09_crackle(m: dict) -> dict:
     density = _safe(m, "crackle_density", 0.0)
     if density < 5:
         return {"strength": 0.0, "skip": True}
-    strength = 0.10 + 0.001 * min(density, 1000)
-    return {"strength": round(_clip(strength, 0.08, 0.60), 3), "skip": False}
+    strength = _posterior_strength(m, "crackle_severity", "crackle_confidence")
+    return {"strength": round(_clip(strength, 0.0, 1.0), 3), "skip": False}
 
 
 # ═══════════════════════════════════════════════════════════════════════════
@@ -261,10 +239,9 @@ _PARAM_FUNCTIONS: dict[str, Any] = {
 
 # Generische Default-Funktion für Phasen ohne spezifische Kalibrierung
 def _generic_params(m: dict) -> dict:
-    bw = _safe(m, "bandwidth_loss")
-    rs = _safe(m, "restorability_score", 50.0) / 100.0
-    strength = (0.30 + 0.40 * rs) * (1.0 - 0.30 * bw)
-    return {"strength": round(_clip(strength, 0.08, 0.75), 3)}
+    severity = _safe(m, "defect_severity")
+    confidence = _safe(m, "defect_confidence", 0.0)
+    return {"strength": round(_clip(severity * confidence, 0.0, 1.0), 3)}
 
 
 def compute_phase_params(
@@ -311,9 +288,8 @@ def probe_phase_benefit(
 ) -> dict:
     """Testet mit EINER schnellen Ausführung, ob die Phase nützt.
 
-    Führt die Phase mit den kalibrierten Parametern aus und misst
-    das Delta. Wenn es negativ ist, wird eine reduzierte Stärke
-    getestet. Nur wenn BEIDE schaden → Skip.
+    Führt die Phase mit der kalibrierten Zielstärke aus und misst das Delta.
+    Ein schädlicher Kandidat wird zurückgerollt; keine pauschale Teilstärke.
 
     Returns:
         {"should_run": bool, "strength": float, "delta": float, "reason": str}
@@ -332,25 +308,13 @@ def probe_phase_benefit(
                 "reason": f"Kalibrierte Stärke {strength:.3f} hilft (Δ={delta:+.4f})",
             }
 
-        # Test 2: Halbierte Stärke
-        strength_lo = max(0.03, strength * 0.5)
-        audio_lo = phase_runner(audio, strength_lo)
-        delta_lo = _quick_probe_delta(audio, audio_lo)
-
-        if delta_lo > -0.02:
-            return {
-                "should_run": True,
-                "strength": strength_lo,
-                "delta": round(delta_lo, 4),
-                "reason": f"Reduziert auf {strength_lo:.3f} (Δ={delta_lo:+.4f})",
-            }
-
-        # Beide schaden → Skip
+        # §G188 (GEBOTE.md): Ein schädlicher Kandidat wird verworfen; ein
+        # pauschal halbierter Rest-Eingriff darf einen gemessenen Defekt nicht stehenlassen.
         return {
             "should_run": False,
             "strength": 0.0,
-            "delta": round(min(delta, delta_lo), 4),
-            "reason": f"Keine Stärke hilft ({strength:.3f}→{delta:+.4f}, {strength_lo:.3f}→{delta_lo:+.4f})",
+            "delta": round(delta, 4),
+            "reason": f"Kandidat zurückgerollt ({strength:.3f}→{delta:+.4f})",
         }
 
     except Exception as e:

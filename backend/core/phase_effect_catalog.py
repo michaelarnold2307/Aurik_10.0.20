@@ -25,12 +25,13 @@ class PhaseEffectProfile:
     phase_id: str
     # Goal-Impact: goal_name → typical_delta (positiv = verbessert, negativ = verschlechtert)
     goal_impact: dict[str, float] = field(default_factory=dict)
-    # Risiko-Typen (wenn diese Bedingungen vorliegen, Intensität reduzieren)
+    # Risikotypen zur nachgelagerten Annahme-/Rollback-Prüfung, nie als Stärkefaktor.
     risks: list[str] = field(default_factory=list)
     # Vorbedingungen für optimale Wirkung
     preconditions: dict[str, Any] = field(default_factory=dict)
-    # Maximal sichere Stärke (0-1) für verschiedene Materialien
-    max_strength_by_material: dict[str, float] = field(default_factory=dict)
+    # Materialphysikalisch nicht anwendbare Fälle (§G189 (GEBOTE.md)).
+    # Andere Materialien dürfen eine gemessene Korrektur nicht pauschal deckeln.
+    unsupported_materials: frozenset[str] = frozenset()
     # Zeitaufwand-Kategorie: "fast" (<5s), "medium" (5-30s), "slow" (30-120s), "heavy" (>120s)
     time_profile: str = "medium"
     # Minimale Defekt-Schwere damit Phase sinnvoll ist (0-1)
@@ -54,7 +55,6 @@ PHASE_EFFECT_CATALOG: dict[str, PhaseEffectProfile] = {
         },
         risks=["transient_smearing"],  # Zu aggressiv → Ansätze verschmiert
         preconditions={"click_density": "> 100/s"},
-        max_strength_by_material={"shellac": 1.0, "vinyl": 0.9, "tape": 0.6, "cd_digital": 0.3},
         time_profile="fast",
         min_severity=0.2,
         note="Median-Filter; bei zu hoher Stärke werden Transienten verschmiert",
@@ -68,7 +68,6 @@ PHASE_EFFECT_CATALOG: dict[str, PhaseEffectProfile] = {
         },
         risks=["bass_loss"],
         preconditions={"hum_energy_db": "> -50"},
-        max_strength_by_material={"vinyl": 1.0, "tape": 0.8, "cd_digital": 0.3},
         time_profile="fast",
         min_severity=0.1,
         note="IIR-Notch 50/60Hz+Harmonische; sehr gezielt, kaum Kollateralschaden",
@@ -85,7 +84,6 @@ PHASE_EFFECT_CATALOG: dict[str, PhaseEffectProfile] = {
         },
         risks=["vocal_distortion", "ml_artifact", "energy_loss"],
         preconditions={"snr_db": "< 20", "bypass_if": "snr_unknown AND vocal_heavy"},
-        max_strength_by_material={"vinyl": 0.85, "tape": 0.90, "shellac": 0.95, "cd_digital": 0.40},
         time_profile="heavy",  # BS-RoFormer + MIIPHER + DeepFilterNet = 9+ Minuten!
         min_severity=0.3,
         note="Schwerste ML-Phase; Codec-Degradation (mp3_low/streaming/aac/minidisc) → MIIPHER-Sigma konservativ (0.25-0.40)",
@@ -100,7 +98,6 @@ PHASE_EFFECT_CATALOG: dict[str, PhaseEffectProfile] = {
         },
         risks=["over_brightening"],
         preconditions={"bandwidth_hz": "< 15000"},
-        max_strength_by_material={"vinyl": 0.8, "tape": 0.7, "shellac": 0.9},
         time_profile="fast",
         min_severity=0.2,
         note="Material-adaptive EQ; unkritisch, nur bei Bandbreitenverlust stark",
@@ -115,7 +112,6 @@ PHASE_EFFECT_CATALOG: dict[str, PhaseEffectProfile] = {
         },
         risks=["pitch_artifact", "phase_distortion"],
         preconditions={"wow_severity": "> 0.3"},
-        max_strength_by_material={"vinyl": 0.7, "tape": 0.9, "cassette": 1.0},
         time_profile="medium",
         min_severity=0.3,
         note="Polyphonic-Speed-Korrektur; bei vinyl konservativ (mechanisch, nicht elektrisch)",
@@ -130,7 +126,6 @@ PHASE_EFFECT_CATALOG: dict[str, PhaseEffectProfile] = {
         },
         risks=["vocal_dulling", "gender_mismatch"],
         preconditions={"panns_singing": "> 0.20", "gender_detected": "valid"},
-        max_strength_by_material={"vinyl": 0.85, "tape": 0.80, "cd_digital": 0.60},
         time_profile="medium",
         min_severity=0.1,
         note="Gender-abhängige Sibilanz-Bänder; female→6-10kHz, male→4-8kHz",
@@ -146,7 +141,6 @@ PHASE_EFFECT_CATALOG: dict[str, PhaseEffectProfile] = {
         },
         risks=["over_drying", "vocal_thinning"],
         preconditions={"rt60_s": "> 0.5"},
-        max_strength_by_material={"vinyl": 0.6, "tape": 0.7, "cd_digital": 0.5},
         time_profile="medium",
         min_severity=0.2,
         note="DSP+DNN-Hybrid; bei church/broadcast cap durch RoomAcoustics",
@@ -162,7 +156,6 @@ PHASE_EFFECT_CATALOG: dict[str, PhaseEffectProfile] = {
         },
         risks=["over_brightening", "vocal_harshness"],
         preconditions={"bandwidth_loss": "present"},
-        max_strength_by_material={"vinyl": 0.7, "tape": 0.6, "cd_digital": 0.3},
         time_profile="fast",
         min_severity=0.3,
         note="HF-Anhebung; nur bei echten Bandbreitenverlust, nicht als Default-Enhancement",
@@ -179,7 +172,7 @@ PHASE_EFFECT_CATALOG: dict[str, PhaseEffectProfile] = {
         },
         risks=["transient_smearing", "phase_artifact"],
         preconditions={"print_through": "> 0.3"},
-        max_strength_by_material={"reel_tape": 0.95, "cassette": 0.85, "tape": 0.80, "vinyl": 0.0},
+        unsupported_materials=frozenset({"vinyl"}),
         time_profile="medium",
         min_severity=0.3,
         note="Bidirektionale LMS-Adaptive Subtraction; Pre+Post-Echo getrennt (Magnetband-Durchdruck)",
@@ -194,7 +187,6 @@ PHASE_EFFECT_CATALOG: dict[str, PhaseEffectProfile] = {
         },
         risks=["phase_distortion", "energy_loss"],
         preconditions={"intermodulation_distortion": "> 0.2"},
-        max_strength_by_material={"vinyl": 0.8, "tape": 0.7, "cassette": 0.7, "cd_digital": 0.3},
         time_profile="heavy",
         min_severity=0.2,
         note="Volterra-basierte IMD-Tilgung; harmonische Verzerrungsprodukte entfernen",
@@ -209,7 +201,7 @@ PHASE_EFFECT_CATALOG: dict[str, PhaseEffectProfile] = {
         },
         risks=["transient_smearing", "energy_loss"],
         preconditions={"modulation_noise": "> 0.2"},
-        max_strength_by_material={"tape": 0.9, "reel_tape": 0.9, "cassette": 0.85, "vinyl": 0.0},
+        unsupported_materials=frozenset({"vinyl"}),
         time_profile="medium",
         min_severity=0.2,
         note="Rauschmodulations-Entfernung (signalabhängiges Rauschen auf Magnetband)",
@@ -242,7 +234,7 @@ def calibrate_phase_intensity(
     chain_has_cassette: bool = False,
     chain_has_mp3: bool = False,
     restorability: float = 0.5,
-    pipeline_confidence: float = 0.75,
+    pipeline_confidence: float = 1.0,
     defect_count_total: int = 0,
     terminal_codec: str | None = None,
     codec_avg_discount: float = 1.0,
@@ -260,99 +252,21 @@ def calibrate_phase_intensity(
 
     strength = float(base_strength)
 
-    # 1. Defekt-Schwere-Skalierung
+    # §G188 (GEBOTE.md): Die Phase wird nur bei nachgewiesenem, relevantem
+    # Defekt aktiviert; unterhalb der Detektionsschwelle gibt es keinen
+    # Teil-Eingriff. Oberhalb davon bleibt die gemessene Zielstärke erhalten.
     if profile.min_severity > 0 and defect_severity < profile.min_severity:
-        strength *= max(0.1, defect_severity / max(profile.min_severity, 0.01))
+        return 0.0
 
-    # 2. Material-Cap
-    mat_cap = profile.max_strength_by_material.get(material, 0.9)
-    strength = min(strength, mat_cap)
+    # §G189 (GEBOTE.md): Materialphysik darf die Anwendbarkeit ablehnen, nicht
+    # die Stärke eines unterstützten und gemessenen Defekts deckeln.
+    if material in profile.unsupported_materials:
+        return 0.0
 
-    # 3. Risiko-basierte Reduktion
-    for risk in profile.risks:
-        if risk == "vocal_distortion" and panns_singing > 0.25:
-            # Gesang im Signal → ML-Phasen konservativer
-            vocal_factor = 1.0 - (panns_singing - 0.25) * 0.8  # 0.25→1.0, 0.35→0.92, 0.50→0.80
-            strength *= max(0.4, vocal_factor)
-        if risk == "energy_loss" and snr_db is not None and snr_db < 8:
-            strength *= 0.6  # Sehr niedriger SNR → Energie-Verlust-Risiko
-        if risk == "over_brightening" and soft_saturation_preserve:
-            strength *= 0.5  # Sättigung erhalten → nicht zusätzlich aufhellen
-        if risk == "over_drying" and rt60_s > 2.0:
-            strength *= 0.7  # Sehr hallig → nicht zu viel Hall entfernen (war Aufnahme-Charakter)
-        if risk == "vocal_dulling" and panns_singing > 0.3:
-            strength *= 0.85  # De-Esser bei starkem Gesang etwas zurückhaltender
-        if risk == "ml_artifact" and era_decade < 1980:
-            strength *= 0.7  # Vintage-Material → ML-Artefakte wahrscheinlicher
-
-    # 4. Genre-spezifische Anpassung
-    if genre_is_schlager:
-        if "waerme" in profile.goal_impact and profile.goal_impact.get("waerme", 0) < 0:
-            strength *= 0.75  # Schlager braucht Wärme → Phasen die Wärme reduzieren drosseln
-        if phase_id == "phase_20_reverb_reduction":
-            strength *= 0.6  # Schlager-HALL ist erwünscht!
-
-    # 5. SNR-Abhängigkeit für ML-Phasen
-    if snr_db is not None and "ml_artifact" in profile.risks:
-        if snr_db < 5:
-            strength *= 0.5  # Sehr niedriger SNR → ML tut mehr Schaden als Nutzen
-        elif snr_db > 15:
-            strength = min(strength, 0.4)  # Hoher SNR → ML kaum nötig
-
-    # 6. Crest-Faktor: hoher Crest → Transienten-Phasen verstärken
-    if crest_db > 15.0 and "transient_smearing" in profile.risks:
-        strength *= 0.6  # Ohnehin schon spitzig → nicht weiter schärfen
-
-    # 7. HF-Anteil: viel HF → De-Esser/Brillanz-Phasen anpassen
-    if hf_ratio > 0.15 and phase_id == "phase_19_de_esser":
-        strength = min(strength, 1.0)  # Viel HF → De-Esser darf voll ran
-    if hf_ratio < 0.02 and "over_brightening" in profile.risks:
-        strength *= 0.3  # Kaum HF → Aufhell-Phasen kaum nötig, Risiko künstlich
-
-    # 8. Mikrodynamik: flache Dynamik → Expansions-Phasen verstärken
-    if micro_dynamic_db < 3.0 and phase_id == "phase_26_dynamic_range_expansion":
-        strength = min(strength * 1.3, 1.0)  # Flach → mehr Expansion wagen
-
-    # 9. Pegel: sehr leise Aufnahme → konservativer (Rauschen wird sonst hochgezogen)
-    if rms_dbfs < -30.0 and "ml_artifact" in profile.risks:
-        strength *= 0.5
-
-    # 10. Transfer-Kette: MP3 in der Kette → ML-Phasen vorsichtiger
-    if chain_has_mp3 and "ml_artifact" in profile.risks:
-        strength *= 0.7  # MP3-Artefakte + ML = Gefahr
-
-    # 13. §CODEC: Terminal-Codec-Kalibrierung — Denker entscheidet dynamisch
-    # Je nach Codec-Typ werden analog-spezifische Phasen gedämpft,
-    # weil ihre Defekt-Signatur durch Kompressionsartefakte maskiert ist.
-    # Aber: Tape-Level-Dips (phase_12) und Kassetten-Hiss (phase_29) sind ECHT!
-    if terminal_codec and codec_avg_discount < 0.90:
-        _codec_factor = max(0.35, codec_avg_discount)
-        # ML-Phasen: stärker dämpfen (MP3 + ML = doppeltes Risiko)
-        if "ml_artifact" in profile.risks:
-            strength *= _codec_factor
-        # Analog-spezifische Phasen ohne echte Defekte: deutlich dämpfen
-        if phase_id in (
-            "phase_28_surface_noise_profiling",
-            "phase_20_reverb_reduction",
-            "phase_49_advanced_dereverb",
-            "phase_60_inner_groove_distortion_repair",
-        ):
-            strength *= _codec_factor * 0.7
-        # Wow/Flutter-Detektor: Codec-Artefakte → false positives, aber Tape-Dips sind real
-        if phase_id == "phase_12_wow_flutter_fix":
-            strength *= max(0.55, _codec_factor)  # Nicht unter 0.55 — Tape-Dips müssen leben
-
-    # 11. Restorability: schlechte Ausgangslage → weniger invasive Eingriffe
-    if restorability < 0.4:
-        strength *= 0.7  # Ohnehin schwer → nicht zu viel riskieren
-
-    # 12. Pipeline-Unsicherheit: unklare Diagnose → defensiver
-    if pipeline_confidence < 0.7 and "ml_artifact" in profile.risks:
-        strength *= 0.6  # Wenn unsicher, dann ML lieber weglassen
-
-    # 13. Viele Defekte: zu viele Baustellen → nicht alle Phasen voll aufdrehen
-    if defect_count_total > 40:
-        strength *= 0.8  # Kaskadierende Phasen → jede etwas zurückhaltender
+    # Nur explizit übergebene Diagnose-Sicherheit skaliert als Posterior.
+    # Material, Genre, Kettentiefe und Restorability sind keine Ersatz-Konfidenz.
+    evidence_quality = min(1.0, max(0.0, float(pipeline_confidence)))
+    strength *= evidence_quality
 
     return max(0.0, min(1.0, strength))
 
@@ -429,7 +343,7 @@ class _CatalogHelper:
                 chain_has_cassette=bool(audio_ctx.get("chain_has_cassette", False)),
                 chain_has_mp3=bool(audio_ctx.get("chain_has_mp3", False)),
                 restorability=float(audio_ctx.get("restorability", 0.5)),
-                pipeline_confidence=float(audio_ctx.get("pipeline_confidence", 0.75)),
+                pipeline_confidence=float(audio_ctx.get("pipeline_confidence", 1.0)),
                 defect_count_total=int(audio_ctx.get("defect_count_total", 0)),
                 terminal_codec=audio_ctx.get("terminal_codec"),
                 codec_avg_discount=float(audio_ctx.get("codec_avg_discount", 1.0)),

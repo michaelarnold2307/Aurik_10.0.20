@@ -199,17 +199,22 @@ class RestorationStatusPanel(QFrame):
         self._sota_badges: list[QLabel] = []
         _sota_col = QVBoxLayout()
         _sota_col.setSpacing(1)
-        _sota_header = QLabel("SOTA-Kette")
+        _sota_header = QLabel(t("status_panel.sota_header"))
         _sota_header.setStyleSheet(f"font-size: 10px; color: {TEXT_MUTED};")
         _sota_col.addWidget(_sota_header)
         _sota_row = QHBoxLayout()
         _sota_row.setSpacing(6)
-        for _tooltip in ("Model Zoo", "Consensus", "Repair-Plan", "Guards"):
+        for _tooltip_key in (
+            "status_panel.sota_tooltip_model_zoo",
+            "status_panel.sota_tooltip_consensus",
+            "status_panel.sota_tooltip_plan",
+            "status_panel.sota_tooltip_guards",
+        ):
             _badge = QLabel("—")
             _badge.setStyleSheet(
                 f"font-size: 11px; padding: 2px 6px; border-radius: 3px; background: {SURFACE_BG}; color: {TEXT_MUTED};"
             )
-            _badge.setToolTip(_tooltip)
+            _badge.setToolTip(t(_tooltip_key))
             self._sota_badges.append(_badge)
             _sota_row.addWidget(_badge)
         _sota_col.addLayout(_sota_row)
@@ -369,13 +374,31 @@ class RestorationStatusPanel(QFrame):
         total = int(zoo.get("total", 0) or 0)
         by_status = zoo.get("by_status", {}) or {}
         active = int(by_status.get("available", 0) or 0) + int(by_status.get("active", 0) or 0)
-        self._set_sota_badge(0, f"🦁 Zoo {total}·{active}", ok=total > 0)
+        training = int(by_status.get("training", 0) or 0)
+        pending = int(by_status.get("pending_training", 0) or 0)
+        other = max(0, total - active - training - pending)
+        self._set_sota_badge(
+            0,
+            t("status_panel.sota_zoo_badge", total=total, active=active),
+            ok=total > 0,
+        )
+        self._sota_badges[0].setToolTip(
+            t(
+                "status_panel.model_zoo_tooltip",
+                active=active,
+                training=training,
+                pending=pending,
+                other=other,
+            )
+        )
 
         comps = status.get("components", {}) or {}
         all_ready = all(bool(v) for v in comps.values())
-        self._set_sota_badge(1, "🧠 Consensus", ok=bool(comps.get("defect_consensus")))
-        self._set_sota_badge(2, "🗺️ Plan", ok=bool(comps.get("repair_planner")))
-        self._set_sota_badge(3, "🛡️ Guards", ok=all_ready and bool(comps.get("artifact_guards")))
+        self._set_sota_badge(1, t("status_panel.sota_consensus_badge"), ok=bool(comps.get("defect_consensus")))
+        self._set_sota_badge(2, t("status_panel.sota_plan_badge"), ok=bool(comps.get("repair_planner")))
+        self._set_sota_badge(
+            3, t("status_panel.sota_guards_badge"), ok=all_ready and bool(comps.get("artifact_guards"))
+        )
 
     def set_consensus_summary(self, summary: dict) -> None:
         """§v10.990: Consensus-Ergebnis (bridge.get_defect_consensus_summary)."""
@@ -383,7 +406,7 @@ class RestorationStatusPanel(QFrame):
             return
         n = int(summary.get("defect_count", 0) or 0)
         mods = int(summary.get("module_count", 0) or 0)
-        self._set_sota_badge(1, f"🧠 {n} Defekte·{mods} Mod", ok=True)
+        self._set_sota_badge(1, t("status_panel.sota_consensus_summary", defects=n, modules=mods), ok=True)
 
     def set_repair_plan_summary(self, summary: dict) -> None:
         """§v10.990/§v10.997: Repair-Plan (bridge.get_repair_plan_summary).
@@ -394,7 +417,7 @@ class RestorationStatusPanel(QFrame):
         if not summary:
             return
         n = int(summary.get("step_count", 0) or 0)
-        self._set_sota_badge(2, f"🗺️ {n} Phasen", ok=n > 0)
+        self._set_sota_badge(2, t("status_panel.sota_plan_summary", phases=n), ok=n > 0)
         self._plan_order = list(summary.get("phase_order", []) or [])
         if not self._consent_actions and (summary.get("actions") or []):
             self._consent_actions = list(summary.get("actions") or [])

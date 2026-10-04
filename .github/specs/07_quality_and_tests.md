@@ -1,5 +1,30 @@
 # Aurik 10 — Spec 07: Qualitätsziele & Tests
 
+## Cantus/Symphonia-Integrationsvertrag
+
+Die Norm-Suiten für Cantus und Symphonia prüfen jeweils mindestens: feste Seeds,
+endliche Ausgaben, Mono- und beide Stereo-Layouts, Torch-ROCm-Primärpfad,
+ONNX-CPU-Fallback, DSP-Fallback mit Warning und eine Torch↔ONNX-CPU-Parität
+von `rel <= 1e-3` auf strukturierten konditionierten und unbedingten Feeds.
+Zusätzlich prüft die Frontend-Bridge den Modell-Zoo-Eintrag und dessen ehrlichen
+Trainingsstatus (`training` für laufendes Training, `pending_training` wenn das
+Training noch nicht begonnen hat). Ein Status `active` ist erst mit vollständiger
+Trainings-, Paritäts- und Hörevidenz zulässig.
+Symphonia wird außerdem bei `panns_singing < 0.35` auf einem Instrumental-Input
+ausgeführt, ohne die Vokal-Separation oder Vokal-Guards aufzurufen.
+
+## §G188-Wirkungskalibrierung
+
+Normtests für Reparaturstärken müssen nachweisen: keine Korrektur ohne
+gemessenen Zieldefekt, volle gemessene Stärke bei belastbarer Evidenz,
+Posterior-Skalierung ausschließlich mit Detector-/Pipeline-Konfidenz und keine
+Mindeststärke, Materialkappe, Kettenlängen-Dämpfung oder Genre-Prozentregel.
+Erhaltungs-Gates müssen einen unzulässigen Kandidaten zurückrollen, statt ihn
+mit einer fest gedämpften Restkorrektur auszugeben. Die Prüfung umfasst die
+gemeinsame Defektstärkeableitung, Joint-Calibrator, Conductor,
+PhaseEffectCatalog, RecordingChainProfiler, PerceptualIntensityMapper und die
+jeweils geänderten Aufrufpfade.
+
 > PQS-Metriken, AMRB-Benchmark, universelle Garantien, Test-Standards,
 > E2E-Assertions, Performance-Budget.
 >
@@ -1492,7 +1517,7 @@ Fuer psychoakustische Kern-Changes ist die konsolidierte Engineering-Basis in
 Der QualityAnalyzer gewichtet ab v10.101 perzeptuell:
 
 | Metrik | Gewicht (mit MUSHRA) | Gewicht (ohne MUSHRA) |
-|--------|---------------------|----------------------|
+| --- | --- | --- |
 | MUSHRA/OQS | 35% | — |
 | Naturalness | 20% | 20% |
 | Warmth | 15% | 15% |
@@ -1520,7 +1545,7 @@ Die folgenden 20 Fixes wurden in v10.101 implementiert und sind
 Teil der perzeptuellen Architektur:
 
 | Fix | Beschreibung | Spec-Referenz |
-|-----|-------------|--------------|
+| ----- | ------------- | -------------- |
 | F5 | _hpi_era UnboundLocalError | §G90 Blind-Referenz-Vektor |
 | F6 | measure_all STFT-Cache | §4.10.7 |
 | F7 | DTW Sakoe-Chiba-Radius-Fix | §G100 Hörbarkeit |

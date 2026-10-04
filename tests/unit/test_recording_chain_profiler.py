@@ -67,6 +67,8 @@ class TestRecordingChainProfilerChainHint:
         causes = ["TAPE_HUM", "TAPE_SPEED_DRIFT", "TAPE_SATURATION", "WOW_FLUTTER"]
         profile = rcp.profile_chain(causes, material="tape", era=1970)
         assert profile.chain_hint is None or isinstance(profile.chain_hint, dict)
+        if profile.chain_hint is not None:
+            assert "strength_scale" not in profile.chain_hint
 
     def test_active_clusters_non_empty_for_3_causes(self):
         rcp = RecordingChainProfiler()

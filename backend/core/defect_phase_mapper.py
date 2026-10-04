@@ -53,6 +53,7 @@ from __future__ import annotations
 
 import copy
 import logging
+import math
 import threading
 from dataclasses import dataclass
 
@@ -2426,14 +2427,11 @@ def get_phase_defect_severity(
     defect_scores: dict,
     defect_severity_map: dict[str, float] | None = None,
 ) -> float:
-    """Gibt a severity factor ∈ [_MIN_SEVERITY_FLOOR, 1.0] for a given phase zurück.
+    """Gibt die confidence-weighted Defektstärke für eine Phase zurück.
 
-    For defect-repair phases (present in reverse map): the factor scales
-    proportionally to the maximum measured severity among all DefectTypes
-    this phase primarily targets. This ensures:
-      - Phases process proportionally to actual defect intensity
-      - Low severity → gentle processing (psychoacoustic preservation)
-      - High severity → full processing
+    For repair phases, measured severity is weighted by the matching detector's
+    confidence. A conclusive severity=1.0/confidence=1.0 yields full strength;
+    absent or uncertain evidence cannot be lifted by a fixed floor (§G188).
 
     For enhancement phases (NOT in reverse map): returns 1.0 (no modulation).
 
@@ -2449,42 +2447,40 @@ def get_phase_defect_severity(
                              bereits saliency-gewichtet und resolved-defects-gecapped
 
     Returns:
-        Severity factor ∈ [0.15, 1.0].
-        0.15 = minimal (defect barely present, gentle processing).
-        1.0  = full severity or enhancement phase (no reduction).
+        Posterior severity ∈ [0.0, 1.0].
+        Enhancement phases without a defect mapping return 1.0.
     """
     rmap = get_reverse_phase_map()
     target_defects = rmap.get(phase_id)
     if not target_defects:
         return 1.0  # Enhancement phase — no modulation
 
-    max_severity = 0.0
-    found_any = False
+    max_posterior = 0.0
     # §v10.21: Prefer merged defect_severity_map (saliency-weighted + resolved-defects-capped)
     # over raw defect_scores. This ensures the wet/dry factor reflects the CURRENT
     # defect state, not the pre-analysis snapshot.
     _use_merged = defect_severity_map is not None and len(defect_severity_map) > 0
     for dt in target_defects:
+        score = defect_scores.get(dt)
+        sev = None
         if _use_merged:
             # Try string key first (defect_severity_map uses string keys like "CLICKS")
             sev = defect_severity_map.get(dt.value if hasattr(dt, "value") else str(dt))  # type: ignore[union-attr]
-            if sev is not None:
-                found_any = True
-                max_severity = max(max_severity, float(sev))
-                continue
-        # Fallback to raw defect_scores
-        score = defect_scores.get(dt)
-        if score is not None:
-            found_any = True
+        if sev is None and score is not None:
             sev = getattr(score, "severity", 0.0)
-            max_severity = max(max_severity, float(sev))
+        if sev is None or score is None:
+            # A merged severity without a matching detector score carries no
+            # confidence witness and therefore cannot authorize partial repair.
+            continue
+        confidence = float(getattr(score, "confidence", 0.0))
+        severity = float(sev)
+        if not math.isfinite(confidence) or not math.isfinite(severity):
+            continue
+        confidence = min(1.0, max(0.0, confidence))
+        severity = min(1.0, max(0.0, severity))
+        max_posterior = max(max_posterior, severity * confidence)
 
-    if not found_any:
-        return 1.0  # None of the targeted DefectTypes were scanned — don't penalize
-
-    # Floor at 0.15: even low-severity defects need minimum processing.
-    # The phase was selected for a reason — never fully bypass.
-    return max(0.15, min(1.0, max_severity))
+    return max_posterior
 
 
 def get_phase_locality_factor(

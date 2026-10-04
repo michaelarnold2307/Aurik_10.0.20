@@ -34,6 +34,42 @@
 
 ## §1.4 Restaurierungs-Modi
 
+### §1.4e Stem-spezifische lernbasierte Restaurierung: Cantus und Symphonia
+
+Cantus und Symphonia sind komplementäre, stem-spezifische Restaurierungskerne.
+Sie laufen nach der stem-spezifischen Entrauschung in `StemLevelRestorer` und
+vor dem finalen Re-Mix. Cantus verarbeitet ausschließlich den Vokalstem;
+Symphonia verarbeitet ausschließlich den Instrumentalstem. Beide dürfen den
+jeweils anderen Stem nicht verändern.
+
+| Kern | Zielsignal | Primärpfad | Ersatzpfade |
+| --- | --- | --- | --- |
+| Cantus | Vokalstem | deterministischer Torch-ROCm-Kern nach Freigabe | ONNX CPU nach Paritätsnachweis, bis zur Modellfreigabe konservativer DSP-Pfad |
+| Symphonia | Instrumentalstem | deterministischer Torch-ROCm-Kern nach Freigabe | ONNX CPU nach Paritätsnachweis, bis zur Modellfreigabe konservativer DSP-Pfad |
+
+**Vertrag:**
+
+1. Nach Modellfreigabe ist Torch-ROCm der Produktionspfad. Ein ONNX Execution Provider außer CPU
+   ist untersagt, solange keine strukturierte Parität gegen ONNX CPU mit
+   `rel <= 1e-3` belegt ist (§III.9 (copilot-instructions.md)).
+2. Jeder Übergang Torch-ROCm → ONNX CPU → DSP muss mit Begründung über
+   `logger.warning()` protokolliert werden (§V6 (copilot-instructions.md)).
+3. Der Kern darf nur auf seiner bestätigten Stem-Art laufen. Rückgabe-Layout,
+   Sample-Rate und Länge bleiben erhalten; anschließend entscheidet der
+   stem-spezifische Halluzinations- und Listening-Witness-Gate über Annahme
+   oder Rollback.
+4. PANNs-Gesangserkennung steuert ausschließlich vokalbezogene Trennung und
+   Cantus. Bei Instrumentaldateien ohne erkannten Gesang wird die Eingabe als
+   Instrumentalstem direkt an Symphonia gegeben; sie darf nicht wegen eines
+   niedrigen `panns_singing`-Werts aus der Stem-Verarbeitung fallen.
+5. Ein Checkpoint ist erst produktiv, wenn Pretraining und Fine-Tuning
+   abgeschlossen sind und Checkpoint, ONNX-CPU-Paritätsbericht,
+   deterministischer GPU-Nachweis sowie Hörvalidierung zusammen vorliegen.
+   Bis dahin zeigt der Modell-Zoo den tatsächlichen Status: `training` bei
+   laufendem Training (derzeit Cantus) und `pending_training`, solange es noch
+   nicht begonnen hat (derzeit Symphonia). Keiner der beiden Status suggeriert
+   Produktionsverfügbarkeit.
+
 | Modus | Ziel | Charakteristik |
 | --- | --- | --- |
 | **`restoration`** | Originalgetreue Restauration — Tonträgerkette invertieren (§2.46) | Erhalt des historischen Klangs, minimaler Eingriff, LUFS-Diff ≤ 1 LU, kein Harmonic-Exciter, GP `mode="restoration"` konservativ |
@@ -4748,7 +4784,7 @@ Der **Perceptual Intensity Mapper (PIM)** wird VOR dem Phasen-Loop ausgeführt u
 ## v10.0.0: Phasen 51–66 — Erweiterte Restaurierungsphasen
 
 | Phase | Modul | Klasse | Beschreibung |
-|-------|-------|--------|-------------|
+| ------- | ------- | -------- | ------------- |
 | 51 | `phase_51_drums_enhancement` | `DrumsEnhancementV1` | Schlagzeug-Transienten-Restaurierung |
 | 52 | `phase_52_piano_restoration` | `PianoRestorationV1` | Klavier-Harmonik-Rekonstruktion |
 | 53 | `phase_53_semantic_audio` | `SemanticAudioPhase` | BPM/Key/Genre-Analyse (Metadaten) |
@@ -4796,7 +4832,7 @@ Stufe (z. B. `mp3_low`) ist unzulässig.
 Drei unabhängige Signal-Pfade speisen die Ketten-Inferenz:
 
 | Quelle | Modul | Signal-Typ | Was sie liefert |
-|--------|-------|-----------|-----------------|
+| ------- | ----- | ---------- | --------------- |
 | 1. Digitaler Container | `MediumDetector` via `detect(audio, sr, file_ext=…)` | Dateiendung + Spektral-Fingerprint | Letzte Kettenstufe (z. B. `mp3_low`) |
 | 2. Physikalische Defekte | `DefectScanner` via `auto_detected_material` | Crackle, Wow, Flutter, Hiss | Analoges Zwischenmedium (z. B. `cassette`) |
 | 3. Aufnahme-Ära | `EraClassifier` via `material_prior` | Frequenzgang, Rauschtextur, Produktions-Marker | Ursprünglicher Primärträger (z. B. `reel_tape`) |
@@ -4930,7 +4966,7 @@ bidirektionale Validierung durch:
 **Pflicht**: AudioSR muss Recovery vor Zone Passthrough implementieren.
 
 | Stufe | Verfahren | Steps | Device | Qualität |
-|-------|-----------|-------|--------|----------|
+| ----- | --------- | ----- | ------ | -------- |
 | 1 | CPU-DDIM | 25–50 | CPU | ML-optimal |
 | 2 | SBR-DSP (`_sbr_extend`) | — | CPU | DSP-Spektralspiegelung |
 | 3 | Zone Passthrough | — | — | Unverändert |

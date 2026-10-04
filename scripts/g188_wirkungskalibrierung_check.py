@@ -54,13 +54,18 @@ def _is_strength_name(name: str) -> bool:
     return any(m in lowered for m in STRENGTH_MARKERS) and not any(m in lowered for m in PHYSICAL_LIMIT_MARKERS)
 
 
-def _const_below_one(node: ast.AST) -> float | None:
-    if isinstance(node, ast.Constant) and isinstance(node.value, (int, float)):
+def _numeric_constant(node: ast.AST) -> float | None:
+    if isinstance(node, ast.Constant) and isinstance(node.value, (int, float)) and not isinstance(node.value, bool):
         return float(node.value)
     if isinstance(node, ast.UnaryOp) and isinstance(node.op, ast.USub):
-        v = _const_below_one(node.operand)
+        v = _numeric_constant(node.operand)
         return -v if v is not None else None
     return None
+
+
+def _const_below_one(node: ast.AST) -> float | None:
+    value = _numeric_constant(node)
+    return value if value is not None and value < 1.0 else None
 
 
 def _assigned_name(node: ast.AST) -> str | None:
@@ -94,7 +99,7 @@ def scan_source(path: Path, source: str) -> list[str]:
         if (isinstance(node, ast.Assign) and name) or (isinstance(node, ast.AnnAssign) and name):
             value = node.value
         if name and value is not None and isinstance(value, ast.Dict) and _is_strength_name(name):
-            capped = [_const_below_one(v) for v in value.values if (_const_below_one(v) or 1.0) < 1.0]
+            capped = [factor for v in value.values if (factor := _const_below_one(v)) is not None]
             if capped and not _line_has_exception(getattr(node, "lineno", 0)):
                 issues.append(
                     f"{path}:{getattr(node, 'lineno', 0)}: feste Stärke-Kappe "
@@ -132,6 +137,13 @@ def scan_source(path: Path, source: str) -> list[str]:
 
 
 def scan_file(path: Path) -> list[str]:
+    # Tests may intentionally model legacy values as fixtures. They do not
+    # constrain production restoration and must not fail the production gate.
+    try:
+        if "tests" in path.resolve().relative_to(ROOT).parts:
+            return []
+    except (OSError, ValueError):
+        pass
     try:
         source = path.read_text(encoding="utf-8")
     except (OSError, UnicodeDecodeError):

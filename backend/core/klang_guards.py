@@ -668,12 +668,8 @@ class HumanizationPass:
         """
         if strength is None:
             strength = HumanizationPass.calibrate_strength(audio, sr)
-            # §v10.15: Restoration-Mode → konservativer (×0.7)
-            # Studio-Mode → mutiger (×1.15)
-            if not is_studio_2026:
-                strength *= 0.70
-            else:
-                strength *= 1.15
+            # §G188 (GEBOTE.md): Die gemessene Kalibrierung bestimmt die Stärke;
+            # der Modus darf keine pauschale Prozent-Kappe oder Verstärkung setzen.
             strength = float(np.clip(strength, 0.03, 0.30))
         try:
             audio_f = np.asarray(audio, dtype=np.float32)

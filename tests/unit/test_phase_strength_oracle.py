@@ -206,7 +206,9 @@ def test_oracle_voice_guard_not_applied_below_singing_threshold():
     assert with_guard.wet_mix == pytest.approx(without_guard.wet_mix)
 
 
-def test_uv3_runtime_context_uses_vocal_guard_metrics_for_no_harm_damping():
+def test_uv3_runtime_context_uses_vocal_guard_as_gate_not_partial_damping():
+    from backend.core.defect_scanner import DefectScore, DefectType
+
     uv3 = _make_dummy_uv3_for_runtime_hook()
     phase_meta = SimpleNamespace(phase_id="phase_19_de_esser", name="De-Esser")
     audio = np.zeros(48_000, dtype=np.float32)
@@ -216,7 +218,7 @@ def test_uv3_runtime_context_uses_vocal_guard_metrics_for_no_harm_damping():
         "sample_rate": 48_000,
         "material": "vinyl",
         "material_type": "vinyl",
-        "defect_scores": {"sibilance": 1.0},
+        "defect_scores": {DefectType.SIBILANCE: DefectScore(DefectType.SIBILANCE, severity=1.0, confidence=1.0)},
     }
     UnifiedRestorerV3._prepare_profiled_phase_runtime_context(
         uv3,
@@ -236,7 +238,7 @@ def test_uv3_runtime_context_uses_vocal_guard_metrics_for_no_harm_damping():
         "sample_rate": 48_000,
         "material": "vinyl",
         "material_type": "vinyl",
-        "defect_scores": {"sibilance": 1.0},
+        "defect_scores": {DefectType.SIBILANCE: DefectScore(DefectType.SIBILANCE, severity=1.0, confidence=1.0)},
         "vocal_guard_metrics": {
             "vqi": 0.58,
             "formant_integrity": 0.72,
@@ -259,7 +261,10 @@ def test_uv3_runtime_context_uses_vocal_guard_metrics_for_no_harm_damping():
 
     assert kwargs_with.get("phase_strength_oracle_class") == "O7_vocal_articulation"
     assert float(profile_with.get("hard_caps", {}).get("voice_guard_risk", 0.0)) > 0.0  # type: ignore[attr-defined]
-    assert float(kwargs_with.get("strength", 0.0)) < strength_without  # type: ignore[arg-type]
+    # §G188 (GEBOTE.md) guards may reject/rollback the candidate, but cannot weaken a
+    # fully measured repair into a partial correction at runtime.
+    assert float(kwargs_with.get("strength", 0.0)) == pytest.approx(1.0)  # type: ignore[arg-type]
+    assert strength_without == pytest.approx(1.0)
     assert float(kwargs_with.get("phase_voice_guard_risk", 0.0)) > 0.0  # type: ignore[arg-type]
     assert kwargs_with.get("phase_voice_guard_damped") is True
 
@@ -559,7 +564,8 @@ def test_uv3_runtime_context_injects_oracle_profile_for_pilot_phase():
     assert "phase_strength_oracle_profile" in kwargs
     assert kwargs.get("phase_strength_oracle_class") == "O7_vocal_articulation"
     assert 0.0 <= float(kwargs.get("strength", 0.0)) <= 1.0  # type: ignore[arg-type]
-    assert 0.0 < float(wet_dry) <= 1.0
+    assert float(wet_dry) == 0.0
+    assert float(kwargs.get("phase_g188_posterior_strength", 1.0)) == 0.0  # type: ignore[arg-type]
 
 
 def test_uv3_oracle_rollout_pilot_is_non_empty_subset_of_canonical_phases():
@@ -641,7 +647,7 @@ def _make_dummy_uv3_for_runtime_hook():
     return _DummyUV3()
 
 
-def test_uv3_runtime_context_applies_o8_cap_for_spectral_family():
+def test_uv3_runtime_context_keeps_oracle_cap_as_telemetry_without_reducing_repair():
     uv3 = _make_dummy_uv3_for_runtime_hook()
     phase_meta = SimpleNamespace(phase_id="phase_23_spectral_repair", name="Spectral Repair")
     audio = np.zeros(48_000, dtype=np.float32)
@@ -670,7 +676,7 @@ def test_uv3_runtime_context_applies_o8_cap_for_spectral_family():
     profile = kwargs.get("phase_strength_oracle_profile", {})
     chain_factor = float(profile.get("hard_caps", {}).get("chain_factor", 1.0))  # type: ignore[attr-defined]
     assert kwargs.get("phase_strength_oracle_class") == "O8_generative_repair"
-    assert float(kwargs.get("strength", 0.0)) <= 0.78 + 1e-9  # type: ignore[arg-type]
+    assert float(kwargs.get("strength", 1.0)) == 0.0  # type: ignore[arg-type]
     assert profile.get("hard_caps", {}).get("max_strength") == pytest.approx(0.78 * (0.75 + 0.25 * chain_factor))  # type: ignore[attr-defined]
     assert float(profile.get("hard_caps", {}).get("chain_factor", 1.0)) < 0.9  # type: ignore[attr-defined]
 
@@ -767,7 +773,9 @@ def test_uv3_runtime_context_keeps_explicit_strength_for_o10_output_phase():
     assert "phase_strength_oracle_profile" in kwargs
 
 
-def test_uv3_runtime_context_uq_scalar_damps_non_explicit_strength_for_low_confidence():
+def test_uv3_runtime_context_uses_defect_posterior_not_family_uncertainty_scalar():
+    from backend.core.defect_scanner import DefectScore, DefectType
+
     uv3 = _make_dummy_uv3_for_runtime_hook()
     phase_meta = SimpleNamespace(phase_id="phase_07_harmonic_restoration", name="Harmonic")
     audio = np.zeros(48_000, dtype=np.float32)
@@ -779,6 +787,9 @@ def test_uv3_runtime_context_uq_scalar_damps_non_explicit_strength_for_low_confi
         "material_type": "vinyl",
         "material_confidence": 0.95,
         "song_calibration_confidence": 0.95,
+        "defect_scores": {
+            DefectType.HF_REMANENCE_LOSS: DefectScore(DefectType.HF_REMANENCE_LOSS, severity=0.8, confidence=0.95)
+        },
     }
     wet_high = UnifiedRestorerV3._prepare_profiled_phase_runtime_context(
         uv3,
@@ -799,6 +810,9 @@ def test_uv3_runtime_context_uq_scalar_damps_non_explicit_strength_for_low_confi
         "material_type": "vinyl",
         "material_confidence": 0.35,
         "song_calibration_confidence": 0.35,
+        "defect_scores": {
+            DefectType.HF_REMANENCE_LOSS: DefectScore(DefectType.HF_REMANENCE_LOSS, severity=0.8, confidence=0.35)
+        },
     }
     wet_low = UnifiedRestorerV3._prepare_profiled_phase_runtime_context(
         uv3,
@@ -813,8 +827,10 @@ def test_uv3_runtime_context_uq_scalar_damps_non_explicit_strength_for_low_confi
     )
 
     assert float(kwargs_low.get("uq_confidence_scalar", 1.0)) < float(kwargs_high.get("uq_confidence_scalar", 1.0))  # type: ignore[arg-type]
-    assert float(kwargs_low.get("strength", 0.0)) < float(kwargs_high.get("strength", 0.0))  # type: ignore[arg-type]
-    assert float(wet_low) < float(wet_high)
+    assert float(kwargs_low.get("strength", 0.0)) == pytest.approx(0.8 * 0.35)  # type: ignore[arg-type]
+    assert float(kwargs_high.get("strength", 0.0)) == pytest.approx(0.8 * 0.95)  # type: ignore[arg-type]
+    assert float(wet_high) == pytest.approx(0.8 * 0.95)
+    assert float(wet_low) == pytest.approx(0.8 * 0.35)
 
 
 def test_uv3_runtime_context_uq_scalar_keeps_explicit_strength_but_reduces_wetdry():
@@ -847,7 +863,7 @@ def test_uv3_runtime_context_uq_scalar_keeps_explicit_strength_but_reduces_wetdr
     assert float(wet_dry) < 1.0
 
 
-def test_uv3_runtime_context_phase23_pre_hallucination_cap_for_tape_chain():
+def test_uv3_runtime_context_does_not_partially_cap_phase23_for_tape_chain():
     uv3 = _make_dummy_uv3_for_runtime_hook()
     phase_meta = SimpleNamespace(phase_id="phase_23_spectral_repair", name="Spectral Repair")
     audio = np.zeros(48_000, dtype=np.float32)
@@ -873,13 +889,13 @@ def test_uv3_runtime_context_phase23_pre_hallucination_cap_for_tape_chain():
         rest_ctx=40.0,
     )
 
-    assert kwargs.get("phase23_pre_hallucination_cap") == pytest.approx(0.74)
-    assert float(kwargs.get("strength", 1.0)) <= 0.74 + 1e-9  # type: ignore[arg-type]
+    assert "phase23_pre_hallucination_cap" not in kwargs
+    assert float(kwargs.get("strength", 1.0)) == 0.0  # type: ignore[arg-type]
     assert float(kwargs.get("uq_confidence_value", 0.0)) == pytest.approx(0.85)  # type: ignore[arg-type]
-    assert 0.0 < float(wet_dry) <= 1.0
+    assert float(wet_dry) == 0.0
 
 
-def test_uv3_runtime_context_phase23_pre_hallucination_cap_stricter_when_low_confidence():
+def test_uv3_runtime_context_phase23_missing_defect_evidence_has_zero_wet_mix():
     uv3 = _make_dummy_uv3_for_runtime_hook()
     phase_meta = SimpleNamespace(phase_id="phase_23_spectral_repair", name="Spectral Repair")
     audio = np.zeros(48_000, dtype=np.float32)
@@ -905,9 +921,10 @@ def test_uv3_runtime_context_phase23_pre_hallucination_cap_stricter_when_low_con
         rest_ctx=40.0,
     )
 
-    assert kwargs.get("phase23_pre_hallucination_cap") == pytest.approx(0.66)
-    assert float(kwargs.get("strength", 1.0)) <= 0.66 + 1e-9  # type: ignore[arg-type]
+    assert "phase23_pre_hallucination_cap" not in kwargs
+    assert float(kwargs.get("strength", 1.0)) == 0.0  # type: ignore[arg-type]
     assert float(kwargs.get("uq_confidence_value", 0.0)) == pytest.approx(0.55)  # type: ignore[arg-type]
+    assert float(kwargs.get("phase_g188_posterior_strength", 1.0)) == 0.0  # type: ignore[arg-type]
 
 
 @pytest.mark.parametrize(

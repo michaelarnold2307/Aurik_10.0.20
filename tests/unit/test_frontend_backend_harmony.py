@@ -85,6 +85,9 @@ def test_bridge_model_zoo_summary_shape():
     assert len(entries) >= 1
     for e in entries:
         assert {"name", "purpose", "status", "integration", "notes"} <= set(e.keys())
+    by_name = {entry["name"]: entry for entry in entries}
+    assert by_name["cantus"]["status"] == "training"
+    assert by_name["symphonia"]["status"] == "pending_training"
 
 
 def test_bridge_sota_chain_status_keys():
@@ -160,6 +163,8 @@ def test_status_panel_has_sota_methods():
     src = _read("Aurik10/ui/restoration_status_panel.py")
     for method in ("set_sota_chain", "set_consensus_summary", "set_repair_plan_summary", "set_guard_report"):
         assert f"def {method}(" in src, f"{method} fehlt im Status-Panel"
+    assert '"status_panel.model_zoo_tooltip"' in src
+    assert '"status_panel.model_zoo_tooltip"' in _read("Aurik10/i18n/__init__.py")
 
 
 def test_ui_constants_palette_defined():

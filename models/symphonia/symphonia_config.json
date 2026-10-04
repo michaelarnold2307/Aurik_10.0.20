@@ -57,8 +57,7 @@
       "flow_matching": 1.0,
       "mel_spectral": 2.0,
       "stft_phase": 0.5,
-      "pitch_preservation": 1.0,
-      "singmos_perceptual": 0.05,
+      "onset_preservation": 1.0,
       "temporal": 0.5
     },
     "singmos": {

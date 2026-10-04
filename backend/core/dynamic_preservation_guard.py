@@ -5,15 +5,15 @@ Zweck: Verhindert, dass Kompressions-/Limiting-Phasen die natürliche Dynamik
 übermäßig reduzieren. Das menschliche Ohr empfindet Dynamik als „Lebendigkeit".
 
 Misst RMS/Peak-Verhältnis pro Song. Wenn Kompression das Verhältnis um > 3 dB
-reduziert → Phase skippen oder Stärke halbieren.
+reduziert → Kandidat vollständig zurückrollen.
 
 Usage:
     from backend.core.dynamic_preservation_guard import DynamicPreservationGuard
 
     guard = DynamicPreservationGuard()
     decision = guard.evaluate(pre_audio, post_audio, sr=48000)
-    if decision.rollback:
-        # Phase skippen oder Stärke halbieren
+        if decision.rollback:
+            # Kandidat vollständig zurückrollen
         ...
 """
 
@@ -88,8 +88,8 @@ class DynamicPreservationGuard:
     Misst RMS/Peak-Verhältnis vor/nach Phase. Wenn Reduktion > 3 dB → Rollback.
 
     Invarianten:
-        - Bei rollback=True MUSS die Phase übersprungen oder auf 50% Stärke reduziert werden.
-        - strength_scalar ∈ [0, 1] — nur Dämpfung, kein Boost (§1.4b).
+        - Bei rollback=True wird der Eingriff abgelehnt (strength_scalar=0).
+        - Bei bestandenem Gate bleibt die gemessene Defektkorrektur unverändert (1).
     """
 
     def __init__(self) -> None:
@@ -133,10 +133,9 @@ class DynamicPreservationGuard:
 
             rollback = delta_db > _MAX_RMS_PEAK_REDUCTION_DB
 
-            # Stärke-Scalar: proportional zur Dynamik-Erhaltung
-            strength_scalar = float(np.clip(1.0 - delta_db / 6.0, 0.0, 1.0))
-            if rollback:
-                strength_scalar *= 0.5  # §0p: Rollback → 50% Stärke
+            # §G188 (GEBOTE.md): Der Guard entscheidet nur Annahme oder Rollback.
+            # Er darf eine messbare Defektkorrektur nicht pauschal halbieren.
+            strength_scalar = 0.0 if rollback else 1.0
 
             decision = DynamicPreservationDecision(
                 rollback=rollback,

@@ -1,21 +1,63 @@
 # TASK_CHANGES — Live-Ledger der aktuellen Aufgabe
 
-> Generiert von `scripts/change_ledger.py snapshot` (Base: `HEAD`, Stand: 2026-10-04 18:52 CEST).
+> Generiert von `scripts/change_ledger.py snapshot` (Base: `HEAD`, Stand: 2026-10-04 22:30 CEST).
 > CI (`ci-lite.yml` pr-evidence-gate) erzwingt Abdeckung: jede geänderte Code-Datei muss hier stehen.
 
 ## Geänderte Dateien
 
 | Status | Pfad | Art |
 |---|---|---|
-| M | .github/FILE_REGISTRY.md | modifiziert |
-| M | CHANGELOG.md | modifiziert |
-| M | backend/core/dsp/stem_level_restorer.py | modifiziert |
-| M | backend/core/version.py | modifiziert |
-| M | pyproject.toml | modifiziert |
-| ?? | plugins/symphonia_plugin.py | ungetrackt |
-| ?? | scripts/export_symphonia_onnx.py | ungetrackt |
-| ?? | scripts/generate_synthetic_degraded_instrumentals.py | ungetrackt |
-| ?? | tests/unit/test_symphonia_pipeline.py | ungetrackt |
+| M | `.github/FILE_REGISTRY.md` | modifiziert |
+| M | `.github/specs/02_pipeline_architecture.md` | modifiziert |
+| M | `.github/specs/06_phases_system.md` | modifiziert |
+| M | `.github/specs/07_quality_and_tests.md` | modifiziert |
+| M | `AGENTS.md` | modifiziert |
+| M | `Aurik10/i18n/__init__.py` | modifiziert |
+| M | `Aurik10/ui/restoration_status_panel.py` | modifiziert |
+| M | `TASK_CHANGES.md` | modifiziert |
+| M | `backend/core/defect_phase_mapper.py` | modifiziert |
+| M | `backend/core/dsp/stem_level_restorer.py` | modifiziert |
+| M | `backend/core/dynamic_preservation_guard.py` | modifiziert |
+| M | `backend/core/gp_parameter_optimizer.py` | modifiziert |
+| M | `backend/core/joint_calibrator.py` | modifiziert |
+| M | `backend/core/klang_guards.py` | modifiziert |
+| M | `backend/core/model_zoo_registry.py` | modifiziert |
+| M | `backend/core/orchestrator_params.py` | modifiziert |
+| M | `backend/core/perceptual_intensity_mapper.py` | modifiziert |
+| M | `backend/core/phase_conductor.py` | modifiziert |
+| M | `backend/core/phase_effect_catalog.py` | modifiziert |
+| M | `backend/core/recording_chain_profiler.py` | modifiziert |
+| M | `backend/core/sibilance_max_repair.py` | modifiziert |
+| M | `backend/core/sota_vocal_pipeline.py` | modifiziert |
+| M | `backend/core/unified_restorer_v3.py` | modifiziert |
+| M | `backend/core/vocal_supremacy_gate.py` | modifiziert |
+| M | `models/cantus/README.md` | modifiziert |
+| M | `models/symphonia/README.md` | modifiziert |
+| M | `models/symphonia/symphonia_config.json` | modifiziert |
+| M | `plugins/cantus_plugin.py` | modifiziert |
+| M | `plugins/symphonia_plugin.py` | modifiziert |
+| M | `reports/spec_drift_baseline.json` | modifiziert |
+| M | `scripts/change_ledger.py` | modifiziert |
+| M | `scripts/export_cantus_onnx.py` | modifiziert |
+| M | `scripts/export_symphonia_onnx.py` | modifiziert |
+| M | `scripts/g188_wirkungskalibrierung_check.py` | modifiziert |
+| M | `scripts/generate_synthetic_degraded_instrumentals.py` | modifiziert |
+| M | `scripts/train_cantus.py` | modifiziert |
+| A | `scripts/train_symphonia.py` | neu |
+| M | `tests/unit/test_cantus_pipeline.py` | modifiziert |
+| M | `tests/unit/test_deesser_intensity.py` | modifiziert |
+| M | `tests/unit/test_dynamic_preservation_guard.py` | modifiziert |
+| M | `tests/unit/test_frontend_backend_harmony.py` | modifiziert |
+| M | `tests/unit/test_hebel_intelligence_levers.py` | modifiziert |
+| M | `tests/unit/test_model_zoo_activation.py` | modifiziert |
+| M | `tests/unit/test_musical_harmonization.py` | modifiziert |
+| M | `tests/unit/test_phase_strength_oracle.py` | modifiziert |
+| M | `tests/unit/test_recording_chain_profiler.py` | modifiziert |
+| M | `tests/unit/test_restoration_status_panel_i18n.py` | modifiziert |
+| M | `tests/unit/test_session_fixes.py` | modifiziert |
+| M | `tests/unit/test_stem_level_restorer.py` | modifiziert |
+| M | `tests/unit/test_symphonia_pipeline.py` | modifiziert |
+| ?? | `tests/unit/test_g188_wirkungskalibrierung_check.py` | ungetrackt |
 
 ## Entscheidungen
 

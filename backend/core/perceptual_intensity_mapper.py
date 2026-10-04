@@ -183,13 +183,9 @@ class PerceptualIntensityMapper:
             # Basis-NR: invers zum SNR
             nr_strength = float(np.clip(1.0 - (snr + 20.0) / 60.0, 0.0, 1.0))
 
-            # Schütze musikalisch kritische Bänder
-            if band_name in ("low_mid", "mid", "presence"):
-                nr_strength *= 0.6  # Stimme schonen
-            if band_name in ("air",):
-                nr_strength *= 0.2  # Luft nie aggressiv entrauschen
-            if band_name in ("ultra",):
-                nr_strength = 0.8  # Ultra-HF: Rauschen ja, Signal nein → NR ok
+            # §G188 (GEBOTE.md): Bandstärke bleibt an der gemessenen SNR des
+            # jeweiligen Bandes; starre Vocal-/Air-Prozente ersetzen keine
+            # lokale Defekt- oder Maskierungsmessung.
 
             imap.per_band[band_name] = PerBandIntensity(
                 band_name=band_name,
@@ -277,8 +273,8 @@ class PerceptualIntensityMapper:
 
         # ── Finale Clamp- und Safety-Guards ──
         for band_intensity in imap.per_band.values():
-            band_intensity.noise_reduction_strength = float(np.clip(band_intensity.noise_reduction_strength, 0.0, 0.95))
-            band_intensity.de_ess_strength = float(np.clip(band_intensity.de_ess_strength, 0.0, 0.90))
+            band_intensity.noise_reduction_strength = float(np.clip(band_intensity.noise_reduction_strength, 0.0, 1.0))
+            band_intensity.de_ess_strength = float(np.clip(band_intensity.de_ess_strength, 0.0, 1.0))
             band_intensity.compression_ratio = float(np.clip(band_intensity.compression_ratio, 1.0, 4.0))
 
         imap.global_modifiers["nr_global"] = float(np.clip(imap.global_modifiers.get("nr_global", 1.0), 0.1, 2.0))
