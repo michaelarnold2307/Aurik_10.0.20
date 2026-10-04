@@ -1,18 +1,14 @@
 # TASK_CHANGES — Live-Ledger der aktuellen Aufgabe
 
-> Generiert von `scripts/change_ledger.py snapshot` (Base: `HEAD`, Stand: 2026-10-04 22:56 CEST).
+> Generiert von `scripts/change_ledger.py snapshot` (Base: `HEAD`, Stand: 2026-10-04 23:11 CEST).
 > CI (`ci-lite.yml` pr-evidence-gate) erzwingt Abdeckung: jede geänderte Code-Datei muss hier stehen.
 
 ## Geänderte Dateien
 
 | Status | Pfad | Art |
 |---|---|---|
-| M | `TASK_CHANGES.md` | modifiziert |
-| M | `backend/core/mert_feature_extractor.py` | modifiziert |
-| M | `models/symphonia/symphonia_config.json` | modifiziert |
-| M | `models/symphonia/symphonia_model.py` | modifiziert |
-| M | `plugins/mert_quality_gate.py` | modifiziert |
-| M | `scripts/export_symphonia_onnx.py` | modifiziert |
+| M | `plugins/cantus_plugin.py` | modifiziert |
+| M | `plugins/symphonia_plugin.py` | modifiziert |
 
 ## Entscheidungen
 

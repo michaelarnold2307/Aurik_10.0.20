@@ -25,6 +25,7 @@ from __future__ import annotations
 
 import json
 import logging
+import threading
 import time
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -127,6 +128,9 @@ class CantusPlugin:
         self._inference_backend = "none"
         self._warned: set[str] = set()
         self._last_use_cond: float = 0.0
+        self._mert_extractor: Any | None = None
+        self._mert_lock = threading.Lock()
+        self._mert_init_failed = False
 
         model_dir = Path(__file__).parent.parent / "models" / "cantus"
         self._onnx_path: Path = Path(model_path) if model_path else _resolve_or(model_dir / "cantus_dit.onnx", "cantus")
@@ -314,14 +318,22 @@ class CantusPlugin:
         """
         mono = np.asarray(mono, dtype=np.float32).reshape(-1)
         mert = None
-        try:
-            from backend.core.mert_feature_extractor import (
-                MERTFeatureExtractor,
-            )
+        if not self._mert_init_failed:
+            try:
+                if self._mert_extractor is None:
+                    with self._mert_lock:
+                        if self._mert_extractor is None and not self._mert_init_failed:
+                            from backend.core.mert_feature_extractor import MERTFeatureExtractor
 
-            mert = np.asarray(MERTFeatureExtractor().extract(mono, self._MODEL_SR), dtype=np.float32)
-        except Exception as exc:
-            self._warn_once("MERT", "MERT-Feature-Encoder fehlt (%s) — Null-Tokens (use_cond=0)", exc)
+                            try:
+                                self._mert_extractor = MERTFeatureExtractor()
+                            except Exception:
+                                self._mert_init_failed = True
+                                raise
+                if self._mert_extractor is not None:
+                    mert = np.asarray(self._mert_extractor.extract(mono, self._MODEL_SR), dtype=np.float32)
+            except Exception as exc:
+                self._warn_once("MERT", "MERT-Feature-Encoder fehlt (%s) — Null-Tokens (use_cond=0)", exc)
 
         harm = None
         try:
