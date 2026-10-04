@@ -1,21 +1,22 @@
 # TASK_CHANGES — Live-Ledger der aktuellen Aufgabe
 
-> Generiert von `scripts/change_ledger.py snapshot` (Base: `HEAD`, Stand: 2026-10-04 17:50 CEST).
+> Generiert von `scripts/change_ledger.py snapshot` (Base: `HEAD`, Stand: 2026-10-04 18:30 CEST).
 > CI (`ci-lite.yml` pr-evidence-gate) erzwingt Abdeckung: jede geänderte Code-Datei muss hier stehen.
 
 ## Geänderte Dateien
 
 | Status | Pfad | Art |
 |---|---|---|
-| M | Aurik10/**init**.py | modifiziert |
 | M | CHANGELOG.md | modifiziert |
 | M | TASK_CHANGES.md | modifiziert |
-| M | backend/core/dsp/stem_level_restorer.py | modifiziert |
 | M | backend/core/version.py | modifiziert |
+| A | models/cantus/README.md | neu |
+| A | models/cantus/**init**.py | neu |
+| A | models/cantus/cantus_config.json | neu |
+| A | models/cantus/cantus_model.py | neu |
 | M | plugins/cantus_plugin.py | modifiziert |
 | M | pyproject.toml | modifiziert |
 | M | tests/unit/test_cantus_pipeline.py | modifiziert |
-| M | tests/unit/test_stem_level_restorer.py | modifiziert |
 
 ## Entscheidungen
 

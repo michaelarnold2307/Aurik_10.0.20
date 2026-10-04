@@ -367,6 +367,61 @@ def test_plugin_retries_ort_inference_on_cpu_after_provider_failure(monkeypatch,
     assert "HIPBLAS_STATUS_ALLOC_FAILED" in caplog.text
 
 
+def test_plugin_prefers_torch_rocm_primary_path(monkeypatch, tmp_path):
+    """Der paritätsverifizierte Torch-ROCm-Kern ist vor ONNX-CPU primär (§III.9)."""
+    from plugins.cantus_plugin import CantusPlugin
+
+    plugin = CantusPlugin(model_path=tmp_path / "missing.onnx")
+    plugin._model_loaded = True
+    plugin._fallback_active = False
+    plugin._torch_model = object()
+    plugin._inference_backend = "torch_rocm"
+    plugin.__dict__["_extract_conditions"] = lambda _mono: {
+        "mert": np.zeros((1, 1024), dtype=np.float32),
+        "pitch": np.zeros((1, 2), dtype=np.float32),
+        "harm": np.zeros((768,), dtype=np.float32),
+        "use_cond": np.asarray(0.0, dtype=np.float32),
+    }
+    monkeypatch.setattr(plugin, "_run_torch_rocm", lambda feeds: np.zeros_like(feeds["x"]))
+    monkeypatch.setattr(plugin, "_run_ort_with_cpu_fallback", lambda _feeds: pytest.fail("ONNX darf nicht laufen"))
+
+    mono = _sample_vocal(4096)
+    restored = plugin._restore_single(mono)
+
+    assert np.array_equal(restored, mono)
+    assert plugin._inference_backend == "torch_rocm"
+
+
+def test_plugin_falls_back_from_torch_rocm_to_onnx_cpu(monkeypatch, caplog, tmp_path):
+    """Ein GPU-Laufzeitfehler wechselt mit §V6-Warnung auf ONNX-CPU, nie still auf DSP."""
+    import logging
+
+    from plugins.cantus_plugin import CantusPlugin
+
+    plugin = CantusPlugin(model_path=tmp_path / "missing.onnx")
+    plugin._model_loaded = True
+    plugin._fallback_active = False
+    plugin._torch_model = object()
+    plugin.__dict__["_extract_conditions"] = lambda _mono: {
+        "mert": np.zeros((1, 1024), dtype=np.float32),
+        "pitch": np.zeros((1, 2), dtype=np.float32),
+        "harm": np.zeros((768,), dtype=np.float32),
+        "use_cond": np.asarray(0.0, dtype=np.float32),
+    }
+    monkeypatch.setattr(plugin, "_run_torch_rocm", lambda _feeds: (_ for _ in ()).throw(RuntimeError("ROCm alloc")))
+    monkeypatch.setattr(plugin, "_run_ort_with_cpu_fallback", lambda feeds: [np.zeros_like(feeds["x"])])
+
+    mono = _sample_vocal(4096)
+    with caplog.at_level(logging.WARNING):
+        restored = plugin._restore_single(mono)
+
+    assert np.array_equal(restored, mono)
+    assert plugin._torch_model is None
+    assert plugin._inference_backend == "onnx_cpu"
+    assert "Cantus-Torch-ROCm-Inferenz fehlgeschlagen" in caplog.text
+    assert "§V6 (copilot-instructions.md)" in caplog.text
+
+
 def test_plugin_uses_dsp_fallback_when_cpu_retry_also_fails(monkeypatch, caplog, tmp_path):
     """Auch ein CPU-ORT-Fehler darf nie einen unbehandelten ML-Abbruch auslösen."""
     import logging

@@ -23,6 +23,7 @@ Aurik-Integration (nach MiipherDiTPlugin-Muster):
 
 from __future__ import annotations
 
+import json
 import logging
 import time
 from dataclasses import dataclass, field
@@ -31,11 +32,9 @@ from typing import Any, cast
 
 import numpy as np
 
-from backend.core.gpu_model_registry import get_onnx_providers  # §v10.40c Registry-GPU-Policy
-
 logger = logging.getLogger(__name__)
 
-# ── Lazy imports für optionale Abhängigkeiten (kein Torch im Produktionspfad) ──
+# ── Lazy imports für optionale Abhängigkeiten ────────────────────────────────
 try:
     import onnxruntime as ort
 
@@ -43,6 +42,14 @@ try:
 except ImportError:
     _ONNX_AVAILABLE = False
     ort = None  # type: ignore[assignment]
+
+try:
+    import torch
+
+    _TORCH_AVAILABLE = True
+except ImportError:
+    _TORCH_AVAILABLE = False
+    torch = None  # type: ignore[assignment]
 
 try:
     from backend.core.plugin_lifecycle_manager import (
@@ -116,11 +123,16 @@ class CantusPlugin:
         self._fallback_active = False
         self._fallback_reason = ""
         self._ort_session: Any | None = None
+        self._torch_model: Any | None = None
+        self._inference_backend = "none"
         self._warned: set[str] = set()
         self._last_use_cond: float = 0.0
 
         model_dir = Path(__file__).parent.parent / "models" / "cantus"
         self._onnx_path: Path = Path(model_path) if model_path else _resolve_or(model_dir / "cantus_dit.onnx", "cantus")
+        # Ein expliziter model_path isoliert Tests und alternative Modelle. Der
+        # produktive Torch-ROCm-Kern gehört nur zum kanonischen Cantus-Modell.
+        self._checkpoint_path: Path | None = model_dir / "checkpoint_best.pt" if model_path is None else None
         self._try_load_model()
 
     # ── Modell-Ladung + Budget ──────────────────────────────────────────
@@ -135,37 +147,87 @@ class CantusPlugin:
         )
 
     def _try_load_model(self) -> None:
-        if not _ONNX_AVAILABLE:
-            self._activate_fallback("onnxruntime nicht installiert")
-            return
         if _ml_budget_try_allocate is not None:
             if not _ml_budget_try_allocate(self._BUDGET_NAME, size_gb=self._BUDGET_SIZE_GB):
                 self._activate_fallback("ML-Speicherbudget erschoepft")
                 return
+        if self._try_load_torch_rocm():
+            self._model_loaded = True
+            self._inference_backend = "torch_rocm"
+            self._register_lifecycle()
+            return
+        if not _ONNX_AVAILABLE:
+            self._activate_fallback("weder Torch-ROCm noch onnxruntime verfügbar")
+            return
         if not self._onnx_path.exists():
             self._activate_fallback(f"ONNX-Gewichte fehlen: {self._onnx_path}")
             return
         try:
-            providers = get_onnx_providers(self._onnx_path)
-            self._ort_session = ort.InferenceSession(str(self._onnx_path), providers=providers)
+            # §III.9 (copilot-instructions.md): ONNX ist ausschließlich der
+            # paritätsverifizierte CPU-Fallback; GPU-Inferenz läuft über Torch.
+            self._ort_session = ort.InferenceSession(str(self._onnx_path), providers=["CPUExecutionProvider"])
             self._model_loaded = True
+            self._inference_backend = "onnx_cpu"
             logger.info(
                 "Cantus geladen: %s (%s, %.1f MB)",
                 self._onnx_path.name,
                 self._ort_session.get_providers()[0],
                 self._onnx_path.stat().st_size / 1e6,
             )
-            if _PLM_AVAILABLE and _plm_register is not None:
-                try:
-                    _plm_register(self._BUDGET_NAME, size_gb=self._BUDGET_SIZE_GB, unload_fn=self.unload)
-                except Exception:
-                    logger.debug("Cantus PLM-Registrierung fehlgeschlagen", exc_info=True)
+            self._register_lifecycle()
         except Exception as exc:
             self._activate_fallback(f"Ladefehler: {exc}")
+
+    def _register_lifecycle(self) -> None:
+        """Registriert den aktiven ML-Kern beim zentralen Speicher-Lifecycle."""
+        if _PLM_AVAILABLE and _plm_register is not None:
+            try:
+                _plm_register(self._BUDGET_NAME, size_gb=self._BUDGET_SIZE_GB, unload_fn=self.unload)
+            except Exception:
+                logger.debug("Cantus PLM-Registrierung fehlgeschlagen", exc_info=True)
+
+    def _try_load_torch_rocm(self) -> bool:
+        """Lädt den paritätsprüfbaren Cantus-Kern auf ROCm, sonst False.
+
+        ONNX-ROCm bleibt wegen der projektnormativen EP-Politik ausgeschlossen;
+        der identische Torch-Kern wird gegen ONNX-CPU geprüft und ist damit der
+        deterministische GPU-Primärpfad (§III.9, §G5 copilot-instructions.md).
+        """
+        if not _TORCH_AVAILABLE or self._checkpoint_path is None or not self._checkpoint_path.is_file():
+            return False
+        try:
+            if not torch.cuda.is_available():
+                return False
+            from models.cantus.cantus_model import create_cantus  # pylint: disable=import-outside-toplevel
+
+            config_path = self._checkpoint_path.parent / "cantus_config.json"
+            config = json.loads(config_path.read_text(encoding="utf-8"))["model"]["full"]
+            model = create_cantus(**{key: value for key, value in config.items() if not key.startswith("_")})
+            checkpoint = torch.load(self._checkpoint_path, map_location="cpu", weights_only=True)
+            model.load_state_dict(checkpoint["model_state_dict"])
+            self._torch_model = model.to("cuda").eval()
+            logger.info(
+                "Cantus Torch-ROCm geladen: %s (%s, %.1fM Parameter)",
+                self._checkpoint_path.name,
+                torch.cuda.get_device_name(0),
+                sum(parameter.numel() for parameter in self._torch_model.parameters()) / 1e6,
+            )
+            return True
+        except Exception as exc:  # pylint: disable=broad-except
+            self._torch_model = None
+            logger.warning(
+                "§V6 (copilot-instructions.md) Cantus-Torch-ROCm nicht verfügbar (%s) — ONNX-CPU-Fallback",
+                exc,
+            )
+            return False
 
     def unload(self) -> None:
         """PLM-Eviction-Callback: ONNX-Session aus dem RAM entfernen."""
         self._ort_session = None
+        self._torch_model = None
+        self._inference_backend = "none"
+        if _TORCH_AVAILABLE and torch.cuda.is_available():
+            torch.cuda.empty_cache()
         self._model_loaded = False
         if _ml_budget_release is not None:
             try:
@@ -297,13 +359,17 @@ class CantusPlugin:
     # ── Inferenz ────────────────────────────────────────────────────────
 
     def _run_ort_with_cpu_fallback(self, feeds: dict[str, np.ndarray]) -> list[np.ndarray[Any, Any]]:
-        """GPU-ORT zuerst versuchen, bei Laufzeitfehlern mit CPU fortsetzen (§V6 (copilot-instructions.md))."""
+        """Führt den ONNX-CPU-Fallback aus und initialisiert ihn bei Bedarf (§V6 (VERBOTEN.md))."""
         try:
+            if self._ort_session is None:
+                self._ort_session = ort.InferenceSession(  # type: ignore[union-attr]
+                    str(self._onnx_path), providers=["CPUExecutionProvider"]
+                )
             outputs = self._ort_session.run(None, feeds)  # type: ignore[union-attr]
             return cast(list[np.ndarray[Any, Any]], outputs)
         except Exception as exc:
             logger.warning(
-                "§V6 (VERBOTEN.md) Cantus-ORT-Inferenz fehlgeschlagen (%s) — CPU-Session wird neu aufgebaut",
+                "§V6 (VERBOTEN.md) Cantus-ONNX-CPU-Inferenz fehlgeschlagen (%s) — CPU-Session wird neu aufgebaut",
                 exc,
             )
             self._ort_session = ort.InferenceSession(  # type: ignore[union-attr]
@@ -311,6 +377,25 @@ class CantusPlugin:
             )
             outputs = self._ort_session.run(None, feeds)
             return cast(list[np.ndarray[Any, Any]], outputs)
+
+    def _run_torch_rocm(self, feeds: dict[str, np.ndarray]) -> np.ndarray:
+        """Führt den Cantus-Primärpfad deterministisch auf Torch-ROCm aus."""
+        if self._torch_model is None:
+            raise RuntimeError("Cantus-Torch-ROCm-Kern ist nicht geladen")
+        with torch.inference_mode():
+            tensors = {name: torch.from_numpy(value).to("cuda") for name, value in feeds.items()}
+            velocity = self._torch_model(
+                tensors["x"],
+                tensors["t"],
+                tensors["mert"],
+                tensors["pitch"],
+                tensors["harm"],
+                tensors["use_cond"],
+            )
+        return cast(
+            np.ndarray[Any, Any],
+            np.nan_to_num(velocity.detach().float().cpu().numpy(), nan=0.0, posinf=0.0, neginf=0.0),
+        )
 
     def _restore_single(self, mono: np.ndarray) -> np.ndarray:
         """Flow-Matching-Schritt (trainingskonform): ŷ = x + (1−t)·v̂, t = 0.5."""
@@ -325,8 +410,19 @@ class CantusPlugin:
             "harm": cond["harm"][np.newaxis, ...],
             "use_cond": cond["use_cond"][np.newaxis],
         }
-        ort_outputs = self._run_ort_with_cpu_fallback(feeds)
-        velocity = np.asarray(ort_outputs[0], dtype=np.float32)
+        if self._torch_model is not None:
+            try:
+                velocity = self._run_torch_rocm(feeds)
+            except Exception as exc:  # pylint: disable=broad-except
+                logger.warning(
+                    "§V6 (copilot-instructions.md) Cantus-Torch-ROCm-Inferenz fehlgeschlagen (%s) — ONNX-CPU-Fallback",
+                    exc,
+                )
+                self._torch_model = None
+                self._inference_backend = "onnx_cpu"
+                velocity = np.asarray(self._run_ort_with_cpu_fallback(feeds)[0], dtype=np.float32)
+        else:
+            velocity = np.asarray(self._run_ort_with_cpu_fallback(feeds)[0], dtype=np.float32)
         restored = x + (1.0 - self._FLOW_TIME) * velocity.reshape(1, -1, 1)
         result: np.ndarray[Any, Any] = np.asarray(restored.reshape(-1), dtype=np.float32)
         return result
@@ -494,6 +590,7 @@ class CantusPlugin:
                 "use_cond": float(self._last_use_cond),
                 "sr_in": sr,
                 "input_source": "vocal_stem" if vocal_stem is not None else "mix_mid",
+                "inference_backend": self._inference_backend,
             },
         )
 

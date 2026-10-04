@@ -1,4 +1,15 @@
-# Changelog — Aurik 10.2.1
+# Changelog — Aurik 10.2.2
+
+## 10.2.2 (2026-10-04)
+
+### ⚡ Cantus Torch-ROCm
+
+- Cantus führt das paritätsverifizierte Torch-Modell auf ROCm als Primärpfad
+  aus; ONNX bleibt strikt auf CPU als deterministischer Ersatzpfad.
+- Ein Torch-Laufzeitfehler wird mit §V6-Warnung auf ONNX-CPU zurückgeführt;
+  erst bei vollständigem ML-Ausfall greift der Wiener-Ersatzpfad.
+- Der GPU-Kern ist beim zentralen Plugin-Lifecycle registriert. Isolierte
+  Tests sichern die Torch-Priorität und GPU→CPU-Umschaltung.
 
 ## 10.2.1 (2026-10-04)
 
