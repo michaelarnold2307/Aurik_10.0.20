@@ -142,6 +142,7 @@ from typing import Optional
 _instance: Optional[MyModule] = None
 _lock = threading.Lock()
 
+
 def get_my_module() -> MyModule:
     """Thread-sicherer Singleton (Double-Checked Locking)."""
     global _instance
@@ -150,6 +151,7 @@ def get_my_module() -> MyModule:
             if _instance is None:
                 _instance = MyModule()
     return _instance
+
 
 def my_convenience_function(audio: np.ndarray, sr: int) -> MyResult:
     return get_my_module().process(audio, sr)
@@ -187,8 +189,10 @@ def score_audio(self, reference: np.ndarray, degraded: np.ndarray, sr: int) -> P
 def _load_optional_model(model_path: str, plugin_name: str = ""):
     try:
         import onnxruntime as ort
+
         try:
             from backend.core.ml_device_manager import get_ort_providers as _get_prov
+
             providers = _get_prov(plugin_name)
         except Exception:
             providers = ["CPUExecutionProvider"]
@@ -196,6 +200,8 @@ def _load_optional_model(model_path: str, plugin_name: str = ""):
     except (ImportError, FileNotFoundError):
         logger.debug("ONNX nicht verfügbar, nutze DSP-Fallback")
         return None
+
+
 # Pflicht: ml_device_manager für Device-Dispatch; CPU-Fallback immer gewährleistet
 ```
 
@@ -237,9 +243,11 @@ if not has_sufficient_ml_headroom(audio, sr, model_name):
 ```python
 from dataclasses import dataclass, field
 
+
 @dataclass
 class MyResult:
     """Immer als @dataclass — niemals als raw dict zurückgeben."""
+
     primary_metric: float
     metadata: dict[str, float] = field(default_factory=dict)
 ```
@@ -250,8 +258,10 @@ class MyResult:
 # PFLICHT für alle public APIs:
 def process(self, audio: np.ndarray, sr: int, *, mode: str = "restoration") -> ProcessResult: ...
 
+
 # VERBOTEN:
 def process(self, audio, sr, mode="restoration"): ...  # ❌ kein Type
+
 
 # mypy.ini: strict = true, disallow_untyped_defs = true
 ```
@@ -264,11 +274,13 @@ import hashlib, threading
 _result_cache: dict[str, object] = {}
 _cache_lock = threading.Lock()
 
+
 def audio_sha256(audio: np.ndarray, sr: int) -> str:
     h = hashlib.sha256()
     h.update(audio.tobytes())
     h.update(sr.to_bytes(4, "little"))
     return h.hexdigest()[:16]
+
 
 # Cache-Regeln:
 # - Max. 128 Einträge (FIFO-Trim)
@@ -295,6 +307,7 @@ Diese Regeln sind orthogonal zu §2.38–§2.41 und fokussieren auf Laufzeit-Sys
 PHASE_INFERENCE_TIMEOUT_S = 300.0  # 5 Minuten; überschreiten = hängendes Modell
 
 import concurrent.futures
+
 
 def _run_inference_with_timeout(fn, *args, timeout=PHASE_INFERENCE_TIMEOUT_S, **kwargs):
     """Run ML inference in a daemon thread with wall-clock timeout.
@@ -329,6 +342,7 @@ def _run_inference_with_timeout(fn, *args, timeout=PHASE_INFERENCE_TIMEOUT_S, **
 ```python
 import signal, threading
 
+
 def _sigterm_handler(signum, frame):
     """SIGTERM → emergency checkpoint + graceful Qt shutdown."""
     logger.warning("SIGTERM received — initiating emergency checkpoint")
@@ -337,9 +351,11 @@ def _sigterm_handler(signum, frame):
     # 2. Qt-Shutdown aus Main-Thread via QTimer (thread-safe)
     from PyQt5.QtWidgets import QApplication
     from PyQt5.QtCore import QTimer
+
     _app = QApplication.instance()
     if _app:
         QTimer.singleShot(0, _app.quit)
+
 
 signal.signal(signal.SIGTERM, _sigterm_handler)
 ```
@@ -388,6 +404,7 @@ def phase_output_guard(fn):
 with ThreadPoolExecutor(max_workers=3) as pool:
     results = list(pool.map(fn, items))
 # ↑ __exit__ ruft pool.shutdown(wait=True) automatisch
+
 
 # Falls kein Context Manager möglich: in __del__ oder atexit
 def _cleanup(self):
@@ -485,6 +502,7 @@ except Exception as exc:
 
 ```python
 MAX_AUDIO_BYTES_RAM: int = 4 * 1024**3  # 4 GB absolutes RAM-Limit für einen Audio-Buffer
+
 
 def _check_audio_buffer_size(audio: np.ndarray, file_path: str) -> None:
     """Raises AudioTooLargeError if audio array exceeds RAM guard."""
@@ -605,7 +623,7 @@ AR-Modell ohne spektrale Konsistenz    → Ersatz: NMF-β + Sinusoidal Modeling
 
 ```python
 class AudioFileValidator:
-    MAX_FILE_SIZE_BYTES: int = 10 * 1024 ** 3   # 10 GB
+    MAX_FILE_SIZE_BYTES: int = 10 * 1024**3  # 10 GB
     MAX_DURATION_HOURS: float = 8.0
 
     def validate(self, path: pathlib.Path) -> None:
@@ -736,8 +754,8 @@ Nach `item_finished_with_result` MUSS die Frontend-Oberfläche die neuen Runtime
 Drei neue Signale auf `BatchProcessingThread` (nach `ml_status_update`):
 
 ```python
-phase_progress = pyqtSignal(int)    # sub-phase progress 0–100 within current step
-scan_progress  = pyqtSignal(float)  # waveform scan-cursor fraction 0.0–1.0
+phase_progress = pyqtSignal(int)  # sub-phase progress 0–100 within current step
+scan_progress = pyqtSignal(float)  # waveform scan-cursor fraction 0.0–1.0
 quality_update = pyqtSignal(float)  # live MOS estimate 0.0–5.0
 ```
 
@@ -771,14 +789,18 @@ _PHASE_REDUCES = {
     "tape_hiss": ["crackle", "noise_level", "noise"],
     "denoise": ["noise_level", "noise", "hum"],
     "dropout": ["dropout"],
-    "click_repair": ["clicks", "pops"], "declick": ["clicks", "pops"],
+    "click_repair": ["clicks", "pops"],
+    "declick": ["clicks", "pops"],
     "wow_flutter": ["wow", "flutter"],
     "reverb_reduction": ["reverb_excess"],
     "frequency_restoration": ["bandwidth_loss"],
     "vocal": ["sibilance"],
     "diffusion_inpainting": ["dropout", "bandwidth_loss"],
-    "hum_removal": ["hum"], "rumble": ["rumble"], "declip": ["clipping"],
-    "dc_offset": ["dc_offset"], "quantization": ["quantization_noise"],
+    "hum_removal": ["hum"],
+    "rumble": ["rumble"],
+    "declip": ["clipping"],
+    "dc_offset": ["dc_offset"],
+    "quantization": ["quantization_noise"],
     "compression_artifact": ["compression_artifacts"],
     "transient": ["transient_smearing"],
 }
@@ -827,12 +849,13 @@ Das Tonträger-Display-System in `Aurik10/ui/modern_window.py` hat **drei unabh�
 ```python
 # Aurik10/ui/modern_window.py (Modul-Level — NUR HIER definiert)
 _CARRIER_MEDIUM_DISPLAY: dict[str, tuple[str, str]]  # (icon_stem, label) pro Medium-Key
-_CARRIER_EXT_DISPLAY: dict[str, tuple[str, str]]     # (icon_stem, label) pro Dateiendung
-_CARRIER_ANALOG_MEDIA: frozenset[str]                # analoge Materialtypen
-_CARRIER_ICONS_DIR: str                              # Icons-Verzeichnis-Pfad
+_CARRIER_EXT_DISPLAY: dict[str, tuple[str, str]]  # (icon_stem, label) pro Dateiendung
+_CARRIER_ANALOG_MEDIA: frozenset[str]  # analoge Materialtypen
+_CARRIER_ICONS_DIR: str  # Icons-Verzeichnis-Pfad
+
 
 def _render_carrier_html(icon_stem, label, icons_dir=...) -> str: ...  # Icon oder Plaintext
-def _build_carrier_chain_html(chain_keys: list[str]) -> str: ...       # Kette kombinieren
+def _build_carrier_chain_html(chain_keys: list[str]) -> str: ...  # Kette kombinieren
 ```
 
 **VERBOTEN**: Lokal in Methoden/Callbacks, Lambdas, Background-Threads eigene Varianten dieser Dicts oder `_html()`/`_ci_html()` Funktionen zu definieren (§UI-CARRIER-DISPLAY-INVARIANT).
@@ -869,10 +892,7 @@ _chain_keys = _chain_info.get("transfer_chain") or _chain_info.get("chain") or [
 Wenn `len(chain_keys) < 2` → Chain-Display wird nicht aktualisiert. Dieses stille Überspringen MUSS immer mit `logger.debug` protokolliert werden:
 
 ```python
-logger.debug(
-    "Kettenanzeige übersprungen – len=%d < 2 (chain=%s)",
-    len(chain_keys), chain_keys
-)
+logger.debug("Kettenanzeige übersprungen – len=%d < 2 (chain=%s)", len(chain_keys), chain_keys)
 ```
 
 ### [RELEASE_MUST] Icon-HTML ohne Plaintext-Fallback — Verboten
@@ -1104,14 +1124,18 @@ python -m pip install --dry-run -r requirements/requirements_aurik.txt
 # VERBOTEN: _run_medium_classifier (MediumClassifier.classify_medium() kennt kein file_ext
 #           → gibt bei codec-enkodiertem Analog-Material 'unknown' zurück)
 with concurrent.futures.ThreadPoolExecutor(max_workers=3) as pool:
-    fut_mc  = pool.submit(_run_medium_detector, audio, sr, file_ext)  # get_medium_detector().detect()
-    fut_era = pool.submit(_run_era_classifier,  audio, sr)
-    fut_sc  = pool.submit(_run_genre_classifier, audio, sr)
+    fut_mc = pool.submit(_run_medium_detector, audio, sr, file_ext)  # get_medium_detector().detect()
+    fut_era = pool.submit(_run_era_classifier, audio, sr)
+    fut_sc = pool.submit(_run_genre_classifier, audio, sr)
 
 # §9.7.3: Phasen-adaptive PMGG-Sample-Dauer
 PHASE_SAMPLE_DURATIONS = {
-    "phase_30": 1.5, "phase_05": 1.5, "phase_02": 2.0,
-    "phase_15": 1.5, "phase_11": 1.5, "phase_18": 2.0,
+    "phase_30": 1.5,
+    "phase_05": 1.5,
+    "phase_02": 2.0,
+    "phase_15": 1.5,
+    "phase_11": 1.5,
+    "phase_18": 2.0,
 }  # alle anderen: 5.0 s Standard
 
 # §9.7.4: Modell-Warmup im Hintergrund (2 s Verzögerung nach App-Start)

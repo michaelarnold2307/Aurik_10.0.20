@@ -344,7 +344,9 @@ def main() -> int:
         _down = float(_cal_rm._spread_mask_threshold(_high_masker)[_low_band])
         if not (_up > _down):
             failures.append(f"MG-ERB-Asymmetrie verletzt: aufwärts {_up:.1f} !> abwärts {_down:.1f} dB")
-        print(f"13) MG-ERB-Asymmetrie: aufwärts={_up:.1f} dB > abwärts={_down:.1f} dB  {'OK' if _up > _down else 'FAIL'}")
+        print(
+            f"13) MG-ERB-Asymmetrie: aufwärts={_up:.1f} dB > abwärts={_down:.1f} dB  {'OK' if _up > _down else 'FAIL'}"
+        )
     except Exception as exc:  # pragma: no cover
         failures.append(f"MG-ERB-Asymmetrie nicht verfügbar: {exc}")
 

@@ -7,7 +7,9 @@
 ```python
 # In ModernMainWindow.__init__():
 from Aurik10.ui.keyboard_shortcuts import KeyboardShortcuts
+
 self._shortcuts = KeyboardShortcuts(player=self._audio_player, window=self)
+
 
 # In ModernMainWindow:
 def keyPressEvent(self, event):
@@ -21,6 +23,7 @@ def keyPressEvent(self, event):
 ```python
 # In ModernMainWindow.__init__():
 from Aurik10.core.expert_mode import get_expert_mode
+
 self._expert_mode = get_expert_mode()
 
 # Menu-Button (View → Expert Mode):
@@ -28,9 +31,11 @@ expert_action = menu.addAction("Experten-Modus")
 expert_action.setCheckable(True)
 expert_action.triggered.connect(lambda checked: self._toggle_expert(checked))
 
+
 def _toggle_expert(self, enabled: bool):
     self._expert_mode.enabled = enabled
     self._update_expert_mode_visibility()
+
 
 def _update_expert_mode_visibility(self):
     visible = self._expert_mode.enabled
@@ -52,6 +57,7 @@ def _update_expert_mode_visibility(self):
 ```python
 # In ModernMainWindow.__init__():
 from Aurik10.core.session_memory import get_session_memory
+
 self._session = get_session_memory()
 
 # Fenster-Position wiederherstellen:
@@ -59,9 +65,11 @@ geo = self._session.get_window_geometry()
 if geo:
     self.restoreGeometry(geo)
 
+
 def closeEvent(self, event):
     self._session.save_window_geometry(self.saveGeometry())
     super().closeEvent(event)
+
 
 # Nach Restaurierung:
 def _on_restoration_finished(self, result):
@@ -91,9 +99,7 @@ self._rt_label.setText(f"RT: {perf['rt_factor']} | {perf['processing']}")
 
 # Phase-Report
 report = enriched["phase_report"]
-self._phase_summary.setText(
-    f"{report['executed']}/{report['total']} Phasen, {report['skipped']} übersprungen"
-)
+self._phase_summary.setText(f"{report['executed']}/{report['total']} Phasen, {report['skipped']} übersprungen")
 
 # Export-Chain (Experten-Modus)
 if self._expert_mode.is_visible("export_chain"):
@@ -133,12 +139,14 @@ from Aurik10.core.batch_overview import BatchOverview, BatchTrackInfo
 
 overview = BatchOverview()
 for track_result in batch_results:
-    overview.tracks.append(BatchTrackInfo(
-        file_path=track_result.path,
-        quality_after=track_result.quality,
-        duration_s=track_result.duration,
-        success=track_result.success,
-    ))
+    overview.tracks.append(
+        BatchTrackInfo(
+            file_path=track_result.path,
+            quality_after=track_result.quality,
+            duration_s=track_result.duration,
+            success=track_result.success,
+        )
+    )
 display = overview.to_display_dict()
 # display["summary"] → Statistik
 # display["tracks"] → Tabellen-Zeilen

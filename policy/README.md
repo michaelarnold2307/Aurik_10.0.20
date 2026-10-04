@@ -12,8 +12,8 @@ Die Policy-Engine steuert die Auswahl und Kombination der DSP-Module adaptiv anh
 
 ```python
 policy = {
-	"aggressiveness": 1.0,
-	"goal": "max_sprachverstaendlichkeit"  # Alternativen: "min_artefakte", "max_lautheit", ...
+    "aggressiveness": 1.0,
+    "goal": "max_sprachverstaendlichkeit",  # Alternativen: "min_artefakte", "max_lautheit", ...
 }
 ```
 
@@ -32,6 +32,7 @@ Neue Zielvorgaben und DSP-Kombinationen können ohne Codeänderung an der Policy
 
 ```python
 from aurik6.policy.policy_engine import PolicyEngine
+
 # Beispiel: CustomCompressor als DSP-Modul registrieren
 PolicyEngine.register_goal("kompression", ["CustomCompressor", "RMSEnergy"])
 # Beispiel: SotaDenoiser als DSP-Modul registrieren
@@ -69,7 +70,7 @@ audio = 0.3 * np.sin(2 * np.pi * 7000 * t)
 policy = {"goal": "de_essing_chain"}
 engine = PolicyEngine(policy)
 result = engine.process(audio, sr, policy)
-de_essed = result['dsp_results']['DeEsser']
+de_essed = result["dsp_results"]["DeEsser"]
 print("DeEsser max:", np.abs(de_essed).max())
 ```
 
@@ -86,7 +87,7 @@ audio = 1.2 * np.sin(2 * np.pi * 440 * t)
 policy = {"goal": "finalization_chain"}
 engine = PolicyEngine(policy)
 result = engine.process(audio, sr, policy)
-limited = result['dsp_results']['Limiter']
+limited = result["dsp_results"]["Limiter"]
 print("Limiter max:", np.abs(limited).max())
 ```
 
@@ -103,7 +104,7 @@ audio = 0.3 * np.sin(2 * np.pi * 330 * t)
 policy = {"goal": "stereo_enhancement_chain"}
 engine = PolicyEngine(policy)
 result = engine.process(audio, sr, policy)
-stereo = result['dsp_results']['StereoWidener']
+stereo = result["dsp_results"]["StereoWidener"]
 print("Stereo shape:", stereo.shape, "Max:", np.abs(stereo).max())
 ```
 

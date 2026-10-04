@@ -45,7 +45,7 @@ use_banquet = QUALITY_MODE_AVAILABLE and _is_vinyl and is_phase_ml_enabled(9)
 und in `quality_mode.py`:
 
 ```python
-_CRITICAL: frozenset[int] = frozenset({3, 23, 24, 29, 55, 66})   # 9 fehlte!
+_CRITICAL: frozenset[int] = frozenset({3, 23, 24, 29, 55, 66})  # 9 fehlte!
 ```
 
 `is_phase_ml_enabled(9)` war damit **permanent False** → das Anwendungs-Gate

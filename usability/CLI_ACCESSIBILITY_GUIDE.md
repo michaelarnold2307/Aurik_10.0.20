@@ -91,16 +91,13 @@ cli.error("Processing failed: invalid format")
 
 # Progress tracking
 for i in range(100):
-    cli.progress("Converting", i+1, 100)
+    cli.progress("Converting", i + 1, 100)
 
 # Tables
 cli.table(
-    headers=['File', 'Status', 'Time'],
-    rows=[
-        ['audio_01.wav', 'Success', '2.3s'],
-        ['audio_02.wav', 'Failed', '0.1s']
-    ],
-    alignments=['left', 'center', 'right']
+    headers=["File", "Status", "Time"],
+    rows=[["audio_01.wav", "Success", "2.3s"], ["audio_02.wav", "Failed", "0.1s"]],
+    alignments=["left", "center", "right"],
 )
 
 # Interactive prompts
@@ -108,7 +105,7 @@ name = cli.prompt("Enter your name", default="User")
 proceed = cli.confirm("Continue processing?", default=True)
 
 # Audio feedback
-cli.play_sound('success')  # Beep notification
+cli.play_sound("success")  # Beep notification
 ```
 
 ### Batch Processor CLI
@@ -134,14 +131,11 @@ AURIK_AUDIO_FEEDBACK=1 python batch_processor_ui.py --auto
 ```python
 cli = AccessibleCLI()
 
-cli.list_options({
-    '1': 'Process all files',
-    '2': 'Select specific files',
-    '3': 'Change settings',
-    'q': 'Quit'
-}, title="Main Menu")
+cli.list_options(
+    {"1": "Process all files", "2": "Select specific files", "3": "Change settings", "q": "Quit"}, title="Main Menu"
+)
 
-choice = cli.prompt("Select option", valid_choices=['1', '2', '3', 'q'])
+choice = cli.prompt("Select option", valid_choices=["1", "2", "3", "q"])
 ```
 
 ## Keyboard Shortcuts
@@ -234,17 +228,17 @@ for i in range(100):
 
 ```python
 for i in range(100):
-    cli.progress("Converting audio", i+1, 100)
+    cli.progress("Converting audio", i + 1, 100)
 ```
 
 ### 3. Use Semantic Message Types
 
 ```python
 cli.success("Operation completed")  # Positive outcome
-cli.error("Failed to load file")     # Fatal error
-cli.warning("File already exists")   # Non-fatal issue
-cli.info("Processing 10 files")      # Neutral information
-cli.dim("Metadata: created 2024")    # Secondary information
+cli.error("Failed to load file")  # Fatal error
+cli.warning("File already exists")  # Non-fatal issue
+cli.info("Processing 10 files")  # Neutral information
+cli.dim("Metadata: created 2024")  # Secondary information
 ```
 
 ### 4. Make Tables Accessible
@@ -252,9 +246,9 @@ cli.dim("Metadata: created 2024")    # Secondary information
 ```python
 # Always provide headers
 cli.table(
-    headers=['Metric', 'Value', 'Unit'],
+    headers=["Metric", "Value", "Unit"],
     rows=data,
-    alignments=['left', 'right', 'left']  # Align numbers right
+    alignments=["left", "right", "left"],  # Align numbers right
 )
 ```
 
@@ -262,11 +256,7 @@ cli.table(
 
 ```python
 # Use valid_choices for validation
-choice = cli.prompt(
-    "Select mode",
-    valid_choices=['1', '2', '3'],
-    default='1'
-)
+choice = cli.prompt("Select mode", valid_choices=["1", "2", "3"], default="1")
 
 # Use confirm for yes/no questions
 if cli.confirm("Delete file?", default=False):
@@ -299,9 +289,10 @@ AURIK_AUDIO_FEEDBACK=1 python your_script.py
 import pytest
 from usability.cli_accessibility import AccessibleCLI
 
+
 def test_accessible_output(capsys):
     """Test CLI output is screen reader friendly"""
-    cli = AccessibleCLI(theme='plain')
+    cli = AccessibleCLI(theme="plain")
 
     cli.success("Test message")
     captured = capsys.readouterr()
@@ -336,6 +327,7 @@ AURIK CLI accessibility features comply with:
 
 ```python
 import sys
+
 print(sys.stdout.isatty())  # Should be True
 ```
 
@@ -380,6 +372,7 @@ print(sys.stdout.isatty())  # Should be True
 from pathlib import Path
 from usability.cli_accessibility import AccessibleCLI
 
+
 def main():
     cli = AccessibleCLI()
 
@@ -388,13 +381,12 @@ def main():
 
     # Discover files
     cli.info("Discovering audio files...")
-    files = list(Path('input').glob('*.wav'))
+    files = list(Path("input").glob("*.wav"))
     cli.success(f"Found {len(files)} files")
 
     # Show files in table
-    rows = [[str(i+1), f.name, f"{f.stat().st_size/1e6:.1f} MB"]
-            for i, f in enumerate(files)]
-    cli.table(['#', 'Filename', 'Size'], rows, ['right', 'left', 'right'])
+    rows = [[str(i + 1), f.name, f"{f.stat().st_size / 1e6:.1f} MB"] for i, f in enumerate(files)]
+    cli.table(["#", "Filename", "Size"], rows, ["right", "left", "right"])
 
     # Confirm processing
     if not cli.confirm(f"Process {len(files)} files?", default=True):
@@ -420,9 +412,10 @@ def main():
         cli.error(f"Failed: {failed}")
     else:
         cli.success("All files processed successfully!")
-        cli.play_sound('success')
+        cli.play_sound("success")
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     main()
 ```
 

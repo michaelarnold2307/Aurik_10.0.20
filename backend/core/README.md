@@ -186,10 +186,7 @@ backend/core/
 
 ```python
 # Epistemic Gate
-from backend.core.epistemic_gate.ethics_engine import (
-    EthicsEngine,
-    EpistemicDecision
-)
+from backend.core.epistemic_gate.ethics_engine import EthicsEngine, EpistemicDecision
 
 # Zone Engine
 from backend.core.zone_engine.region_analysis import RegionAnalysisSystem
@@ -202,10 +199,7 @@ from backend.core.conduct_enforcer.adaptive_goal import AdaptiveGoalEngine
 from backend.core.regulator.adaptive_pipeline import AdaptiveProcessingPipeline
 
 # Evaluation
-from backend.core.evaluation.quality_control import (
-    CASScoreCalculator,
-    QualityGates
-)
+from backend.core.evaluation.quality_control import CASScoreCalculator, QualityGates
 from backend.core.evaluation.continuous_learning import ContinuousLearningSystem
 ```
 

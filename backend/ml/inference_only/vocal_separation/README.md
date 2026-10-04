@@ -53,15 +53,11 @@ audio = np.random.randn(2, 44100 * 30)  # 30s stereo
 sr = 44100
 
 # Separate vocals (HIPS-compliant)
-stems = pipeline.separate_vocals_v8(
-    audio,
-    sr,
-    use_safety_wrapper=True
-)
+stems = pipeline.separate_vocals_v8(audio, sr, use_safety_wrapper=True)
 
 # Access stems
-vocals = stems['vocals']
-instrumental = stems['instrumental']
+vocals = stems["vocals"]
+instrumental = stems["instrumental"]
 ```
 
 ### Advanced Usage (Direct API)
@@ -72,17 +68,17 @@ from backend.ml.safety_wrappers.vocal_separation_safety import VocalSeparationSa
 
 # Initialize hybrid separator
 separator = HybridVocalSeparator(
-    fusion_strategy='adaptive',  # or 'weighted', 'best'
-    mdx_weight=0.4,              # if 'weighted'
-    demucs_weight=0.6,           # if 'weighted'
+    fusion_strategy="adaptive",  # or 'weighted', 'best'
+    mdx_weight=0.4,  # if 'weighted'
+    demucs_weight=0.6,  # if 'weighted'
     sample_rate=44100,
-    device='cuda'                # or 'cpu', None (auto-detect)
+    device="cuda",  # or 'cpu', None (auto-detect)
 )
 
 # Wrap with HIPS safety checks
 wrapper = VocalSeparationSafetyWrapper(
     separator,
-    strict_mode=False  # True = raise on violation
+    strict_mode=False,  # True = raise on violation
 )
 
 # Separate

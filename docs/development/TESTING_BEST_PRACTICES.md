@@ -107,13 +107,13 @@ def test_restore_musical_goals():
 
 ```python
 class MaterialQuality(Enum):
-    PRISTINE = "pristine"        # Studio-Qualität, unbearbeitet
-    EXCELLENT = "excellent"      # Leichte Bearbeitung
-    GOOD = "good"                # Standard Digital/CD
-    FAIR = "fair"                # MP3 192kbps
-    POOR = "poor"                # MP3 128kbps, Cassette
-    VERY_POOR = "very_poor"      # Stark degradiert
-    EXTREME = "extreme"          # Telefon, Multi-Generation
+    PRISTINE = "pristine"  # Studio-Qualität, unbearbeitet
+    EXCELLENT = "excellent"  # Leichte Bearbeitung
+    GOOD = "good"  # Standard Digital/CD
+    FAIR = "fair"  # MP3 192kbps
+    POOR = "poor"  # MP3 128kbps, Cassette
+    VERY_POOR = "very_poor"  # Stark degradiert
+    EXTREME = "extreme"  # Telefon, Multi-Generation
 ```
 
 ### Generation-Count Weighted Scoring
@@ -123,12 +123,12 @@ class MaterialQuality(Enum):
 ```python
 # Degradation Score Calculation
 degradation = (
-    0.12 * noise_level +
-    0.12 * bandwidth_limitation +
-    0.06 * artifact_density +
-    0.08 * dr_penalty +
-    0.40 * gen_penalty +           # 40% GEWICHTUNG!
-    0.22 * defects_severity_score  # ML-basiert (98%+ Recall)
+    0.12 * noise_level
+    + 0.12 * bandwidth_limitation
+    + 0.06 * artifact_density
+    + 0.08 * dr_penalty
+    + 0.40 * gen_penalty  # 40% GEWICHTUNG!
+    + 0.22 * defects_severity_score  # ML-basiert (98%+ Recall)
 )
 ```
 
@@ -158,11 +158,9 @@ def test_adaptive_thresholds_degraded_material():
     material = analyze_material(audio, sr)
 
     # Material should be identified as degraded
-    assert material.quality_level in [
-        MaterialQuality.POOR,
-        MaterialQuality.VERY_POOR,
-        MaterialQuality.EXTREME
-    ], f"Degraded material not identified: {material.quality_level.value}"
+    assert material.quality_level in [MaterialQuality.POOR, MaterialQuality.VERY_POOR, MaterialQuality.EXTREME], (
+        f"Degraded material not identified: {material.quality_level.value}"
+    )
 
     # Thresholds should be relaxed
     adaptive_thresholds = restorer._adaptive_thresholds
@@ -174,8 +172,7 @@ def test_adaptive_thresholds_degraded_material():
         if adaptive_threshold < standard_threshold:
             relaxed_count += 1
 
-    assert relaxed_count > 0, \
-        "Adaptive Thresholds should be relaxed for degraded material"
+    assert relaxed_count > 0, "Adaptive Thresholds should be relaxed for degraded material"
 ```
 
 ---
@@ -265,20 +262,20 @@ Aurik 10.0.0 verfügt über ein **geschlechts- und alters-spezifisches Vocal Enh
 ```python
 VOCAL_PROFILES = {
     "female": {
-        "s_band": (7000.0, 11000.0),    # Höhere Sibilanten-Frequenzen
-        "max_depth_db": -3.5,           # Aggressive De-Essing
+        "s_band": (7000.0, 11000.0),  # Höhere Sibilanten-Frequenzen
+        "max_depth_db": -3.5,  # Aggressive De-Essing
         "avg_burst_ms": 35.0,
         "allow_ml": True,
     },
     "male": {
-        "s_band": (5000.0, 9000.0),     # Niedrigere Sibilanten-Frequenzen
-        "max_depth_db": -2.5,           # Moderate De-Essing
+        "s_band": (5000.0, 9000.0),  # Niedrigere Sibilanten-Frequenzen
+        "max_depth_db": -2.5,  # Moderate De-Essing
         "avg_burst_ms": 45.0,
         "allow_ml": True,
     },
     "child": {
-        "s_band": (9000.0, 13000.0),    # Höchste Frequenzen
-        "max_depth_db": -4.0,           # Sehr aggressive De-Essing
+        "s_band": (9000.0, 13000.0),  # Höchste Frequenzen
+        "max_depth_db": -4.0,  # Sehr aggressive De-Essing
         "avg_burst_ms": 30.0,
         "allow_ml": True,
     },
@@ -303,14 +300,14 @@ def pass1_fir_deess(audio, events, profile, sr=48000):
     - Erhält Formanten
     """
     # FIR Filter design
-    taps = firwin(257, [s_band[0]/nyq, s_band[1]/nyq], pass_zero=True)
+    taps = firwin(257, [s_band[0] / nyq, s_band[1] / nyq], pass_zero=True)
     filtered = lfilter(taps, 1.0, audio)
 
     # Gain reduction nur bei Sibilant-Events
     gain = 10 ** (profile.max_depth_db / 20)
     out = audio.copy()
     for ev in events:
-        out[ev.start:ev.end] -= filtered[ev.start:ev.end] * (1 - gain)
+        out[ev.start : ev.end] -= filtered[ev.start : ev.end] * (1 - gain)
 
     return out
 ```
@@ -332,7 +329,7 @@ def pass2_spectral_repair(audio, events, profile, sr=48000):
     for ev in events:
         t = ev.start // 512
         if 1 <= t < stft.shape[1] - 1:
-            stft[band, t] = 0.5 * (stft[band, t-1] + stft[band, t+1])
+            stft[band, t] = 0.5 * (stft[band, t - 1] + stft[band, t + 1])
 
     return librosa.istft(stft, hop_length=512)
 ```
@@ -414,11 +411,10 @@ def test_vocal_enhancement_preserves_brillanz(gender):
     goals_after = checker.measure_all(audio_enhanced, sr)
 
     # Brillanz should be preserved
-    brillanz = goals_after.get('brillanz', 0.0)
+    brillanz = goals_after.get("brillanz", 0.0)
 
     # CRITICAL: De-Essing should NOT destroy Brillanz
-    assert brillanz >= 0.70, \
-        f"{gender}: Brillanz too low after de-essing: {brillanz:.3f} < 0.70"
+    assert brillanz >= 0.70, f"{gender}: Brillanz too low after de-essing: {brillanz:.3f} < 0.70"
 ```
 
 ### Artifact & Bias Detection
@@ -431,14 +427,16 @@ clipping = detect_clipping(audio1)
 dc_offset = detect_dc_offset(audio1)
 bias, bias_band = detect_bias(audio1, sr)
 
-write_audit_log({
-    "step": "artifact_bias_detection",
-    "after": "fir_deess",
-    "clipping": clipping,
-    "dc_offset": dc_offset,
-    "bias": bias,
-    "bias_band": bias_band,
-})
+write_audit_log(
+    {
+        "step": "artifact_bias_detection",
+        "after": "fir_deess",
+        "clipping": clipping,
+        "dc_offset": dc_offset,
+        "bias": bias,
+        "bias_band": bias_band,
+    }
+)
 ```
 
 **WHY:** Bias-Detection sichert **Diskriminierungsfreiheit** und **Fairness**.
@@ -524,9 +522,9 @@ def test_e2e_vocal_enhancement_all_musical_goals():
 
     # Adaptive Thresholds für degradiertes Material
     relaxed_thresholds = {
-        'brillanz': 0.70,
-        'natuerlichkeit': 0.70,
-        'authentizitaet': 0.75,  # Höchster Threshold!
+        "brillanz": 0.70,
+        "natuerlichkeit": 0.70,
+        "authentizitaet": 0.75,  # Höchster Threshold!
         # ...
     }
 
@@ -676,9 +674,9 @@ class UnifiedForensicAnalyzer:
 ```python
 # Erkennt Multi-Generation Transfers
 chain = [
-    MediaType.VINYL_LP_STEREO,   # Original
-    MediaType.CASSETTE_TYPE_I,    # 1. Generation
-    MediaType.MP3_128             # 2. Generation
+    MediaType.VINYL_LP_STEREO,  # Original
+    MediaType.CASSETTE_TYPE_I,  # 1. Generation
+    MediaType.MP3_128,  # 2. Generation
 ]
 
 # Jeder Schritt = Quality Loss!
@@ -854,7 +852,7 @@ def test_restore():
     goals = checker.measure_all(restored, sr)
 
     # Fails für degradiertes Material!
-    assert goals['brillanz'] >= 0.85
+    assert goals["brillanz"] >= 0.85
 ```
 
 ✅ **Richtig: Adaptive Thresholds**
@@ -925,8 +923,9 @@ def test_restore():
     thresholds = checker.thresholds
 
     for goal_name, score in goals.items():
-        assert score >= thresholds.get(goal_name, 0.0), \
+        assert score >= thresholds.get(goal_name, 0.0), (
             f"Musical Goal '{goal_name}' violated: {score:.3f} < {thresholds.get(goal_name, 0.0):.2f}"
+        )
 ```
 
 ---

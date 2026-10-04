@@ -22,6 +22,7 @@ class CoreArtifact:
     target_rel: str
     search_globs: tuple[str, ...]
     next_action: str
+    fallback_targets: tuple[str, ...] = ()
 
 
 ARTIFACTS = [
@@ -47,7 +48,15 @@ ARTIFACTS = [
         name="flow_matching",
         target_rel="models/flow_matching/flow_matching.onnx",
         search_globs=("**/*flow*matching*.onnx", "**/*flow*matching*.pt", "**/*flow*matching*.pth"),
-        next_action="Flow-Matching ONNX nach models/flow_matching/flow_matching.onnx bereitstellen.",
+        next_action=(
+            "Ersetzt 2026-10-04 (Hybrid-Release-Mode): Rolle haelt cqtdiff_plus bzw. diffwave "
+            "als dokumentierter Fallback (validate_core_model_presence._runtime_ready_checks + "
+            "tests/normative/test_hybrid_release_mode.py). Kein Download offen."
+        ),
+        fallback_targets=(
+            "models/cqtdiff/score_network.onnx",
+            "models/diffwave/diffwave_model.onnx",
+        ),
     ),
     CoreArtifact(
         name="gacela",
@@ -78,6 +87,11 @@ def main() -> int:
         target = ROOT / a.target_rel
         if target.exists():
             print(f"OK      {a.target_rel}")
+            continue
+
+        active_fallbacks = [f for f in a.fallback_targets if (ROOT / f).exists()]
+        if active_fallbacks:
+            print(f"ERSETZT {a.target_rel} -> {active_fallbacks[0]}")
             continue
 
         missing += 1

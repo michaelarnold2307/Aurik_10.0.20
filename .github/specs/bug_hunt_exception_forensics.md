@@ -83,11 +83,14 @@ mit Enum-Keys. Wenn `material` ein String statt Enum war → KeyError.
 **Fix:** `safe_filtfilt()`-Wrapper in audio_utils.py:
 
 ```python
-def safe_filtfilt(b, a, x, axis=-1, padtype='odd', padlen=None):
+def safe_filtfilt(b, a, x, axis=-1, padtype="odd", padlen=None):
     n = x.shape[axis]
-    if padlen is None: padlen = 3 * max(len(b), len(a))
-    if n > padlen: return filtfilt(b, a, x, ...)
-    if n > max(len(b), len(a)): return lfilter(b, a, x, ...)
+    if padlen is None:
+        padlen = 3 * max(len(b), len(a))
+    if n > padlen:
+        return filtfilt(b, a, x, ...)
+    if n > max(len(b), len(a)):
+        return lfilter(b, a, x, ...)
     return np.asarray(x)
 ```
 
@@ -187,7 +190,9 @@ in `_profiled_phase_call` verhindert Inkonsistenzen.
 # In unified_restorer_v3.py, vor dem Exception-Handler:
 if not isinstance(current_audio, np.ndarray):
     logger.error("BUG: current_audio is %s at phase %s", type(current_audio), phase_id)
-    import traceback; traceback.print_stack()
+    import traceback
+
+    traceback.print_stack()
 ```
 
 ### Lücke 2: _SkipResult vs float (10×)
@@ -209,7 +214,7 @@ if "_SkipResult" in str(e):
     logger.error("_SkipResult traceback:", exc_info=True)
     # Untersuche alle lokalen Variablen auf den Typ
     for k, v in locals().items():
-        if type(v).__name__ == '_SkipResult':
+        if type(v).__name__ == "_SkipResult":
             logger.error("_SkipResult found in local var: %s = %s", k, repr(v))
 ```
 
@@ -226,7 +231,7 @@ dann via `* audio` broadcasted. Wenn das Gain stattdessen ein (2,2)-Array ist
 
 ```python
 # In phase_18, vor kritischen Multiplikationen:
-if hasattr(gain, 'shape') and gain.shape == (2, 2):
+if hasattr(gain, "shape") and gain.shape == (2, 2):
     logger.error("BUG: gain shape is (2,2) at phase_18 line %d", lineno)
 ```
 

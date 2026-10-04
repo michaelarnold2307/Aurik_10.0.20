@@ -97,29 +97,25 @@ Ziel: Klang in Richtung des rekonstruierten Studio-Zielankers zurückführen.
 ```python
 CANONICAL_THRESHOLDS_RESTORATION = {
     # P1: Primär (Hartregeln, Minimal-Intervention §2.45)
-    "natuerlichkeit":              0.90,    # keine unnaturalen Artefakte
-    "authentizitaet":              0.88,    # historischer/künstlerischer Charakter bewahrt
-
+    "natuerlichkeit": 0.90,  # keine unnaturalen Artefakte
+    "authentizitaet": 0.88,  # historischer/künstlerischer Charakter bewahrt
     # P2: Kern-Klangtreue
-    "tonal_center":                0.95,    # Tonalität präzise
-    "timbre_authentizitaet":       0.87,    # Klangfarbe treu zum rekonstruierten Zielanker
-    "artikulation":                0.88,    # Transient-Klarheit
-    "transient_energie":           0.80,    # Onset-Energie-Erhalt
-
+    "tonal_center": 0.95,  # Tonalität präzise
+    "timbre_authentizitaet": 0.87,  # Klangfarbe treu zum rekonstruierten Zielanker
+    "artikulation": 0.88,  # Transient-Klarheit
+    "transient_energie": 0.80,  # Onset-Energie-Erhalt
     # P3: Musikalische Kohärenz
-    "emotionalitaet":              0.84,    # Gefühlsausdruck erhalten
-    "micro_dynamics":              0.88,    # Feindynamik-Struktur
-    "groove":                      0.83,    # Rhythmische Intention
-
+    "emotionalitaet": 0.84,  # Gefühlsausdruck erhalten
+    "micro_dynamics": 0.88,  # Feindynamik-Struktur
+    "groove": 0.83,  # Rhythmische Intention
     # P4: Transparenz-Komponenten
-    "transparenz":                 0.82,    # Spektral-Klarheit
-    "waerme":                      0.75,    # HF-Wärme (Material-Charakter)
-    "bass_kraft":                  0.78,    # Subharmonische Kraft
-    "separation_fidelity":         0.80,    # L/R Koherenz
-
+    "transparenz": 0.82,  # Spektral-Klarheit
+    "waerme": 0.75,  # HF-Wärme (Material-Charakter)
+    "bass_kraft": 0.78,  # Subharmonische Kraft
+    "separation_fidelity": 0.80,  # L/R Koherenz
     # P5: Räumlichkeit (optional bei Mono-Quelle)
-    "brillanz":                    0.78,    # HF-Präsenz
-    "spatial_depth":               0.70,    # Spatial-Tiefe
+    "brillanz": 0.78,  # HF-Präsenz
+    "spatial_depth": 0.70,  # Spatial-Tiefe
 }
 ```
 
@@ -130,25 +126,21 @@ Ziel: Bestmöglicher modernstuido-Klang (Enhancement statt nur Restoration).
 ```python
 CANONICAL_THRESHOLDS_STUDIO2026 = {
     # Erhöhte Ansprüche wegen aktiver Enhancement
-    "natuerlichkeit":              0.92,    # Muss natürlich bleiben trotz Enhancement
-    "authentizitaet":              0.90,    # Künstler-Intention bewahrt
-
-    "tonal_center":                0.96,
-    "timbre_authentizitaet":       0.89,
-    "artikulation":                0.90,
-    "transient_energie":           0.83,
-
-    "emotionalitaet":              0.87,
-    "micro_dynamics":              0.90,    # Enhanced, aber nicht künstlich
-    "groove":                      0.85,
-
-    "transparenz":                 0.85,    # Moderne Klarheit
-    "waerme":                      0.78,
-    "bass_kraft":                  0.80,
-    "separation_fidelity":         0.83,
-
-    "brillanz":                    0.82,    # Modern glänzend, aber nicht hart
-    "spatial_depth":               0.74,    # Enhanced Spatial
+    "natuerlichkeit": 0.92,  # Muss natürlich bleiben trotz Enhancement
+    "authentizitaet": 0.90,  # Künstler-Intention bewahrt
+    "tonal_center": 0.96,
+    "timbre_authentizitaet": 0.89,
+    "artikulation": 0.90,
+    "transient_energie": 0.83,
+    "emotionalitaet": 0.87,
+    "micro_dynamics": 0.90,  # Enhanced, aber nicht künstlich
+    "groove": 0.85,
+    "transparenz": 0.85,  # Moderne Klarheit
+    "waerme": 0.78,
+    "bass_kraft": 0.80,
+    "separation_fidelity": 0.83,
+    "brillanz": 0.82,  # Modern glänzend, aber nicht hart
+    "spatial_depth": 0.74,  # Enhanced Spatial
 }
 ```
 
@@ -165,13 +157,13 @@ Nicht alle Songs sollten zu denselben Schwellwerten führen. Ein 1920er-Shellac-
 **Normative Regel — delta-adaptiver Blend (Pflicht in PMGG + Pipeline-Ende)**:
 
 ```python
-delta = canonical[goal] - sgt[goal]   # positiv = SGT ist niedriger (Material-Constraint)
+delta = canonical[goal] - sgt[goal]  # positiv = SGT ist niedriger (Material-Constraint)
 if delta > 0.10:
-    blended = sgt[goal]                # Direkt — Ceiling-Fall, kein Blend sinnvoll
+    blended = sgt[goal]  # Direkt — Ceiling-Fall, kein Blend sinnvoll
 elif delta > 0.04:
-    blended = 0.40 * canonical[goal] + 0.60 * sgt[goal]   # Moderate Constraint
+    blended = 0.40 * canonical[goal] + 0.60 * sgt[goal]  # Moderate Constraint
 else:
-    blended = 0.60 * canonical[goal] + 0.40 * sgt[goal]   # Kleine/aufwärts Differenz
+    blended = 0.60 * canonical[goal] + 0.40 * sgt[goal]  # Kleine/aufwärts Differenz
 blended = float(np.clip(blended, 0.30, 0.99))
 ```
 
@@ -180,10 +172,7 @@ blended = float(np.clip(blended, 0.30, 0.99))
 Vor dem Phase-Loop muss UV3 `PhysicalCeilingEstimator` auf dem Input-Audio ausführen und `_pmgg_ceiling_capped_targets` bilden:
 
 ```python
-_pmgg_ceiling_capped_targets = {
-    g: float(min(sgt[g], physical_ceiling[g], chain_end_ceiling.get(g, 0.99)))
-    for g in sgt
-}
+_pmgg_ceiling_capped_targets = {g: float(min(sgt[g], physical_ceiling[g], chain_end_ceiling.get(g, 0.99))) for g in sgt}
 ```
 
 Diese werden als `adaptive_goal_thresholds` an **jeden** `wrap_phase()`-Aufruf, an `§GOAL_BASELINE_CHECK`, an FeedbackChain und an die Pipeline-Ende-Schwellwertberechnung übergeben.
@@ -315,35 +304,35 @@ Wobei:
 ```python
 # 1920–1949 (Shellac, WaxCylinder, earlywire)
 ERA_BIAS_1920S = {
-    "brillanz":     -0.28,   # 8 kHz Rolloff ist Material-Realität
-    "transparenz":  -0.18,
-    "spatial_depth": -0.14,   # Mono oder Pseudo-Stereo
-    "waerme":       +0.14,   # Warm-ätzender Sound ist Charakter
+    "brillanz": -0.28,  # 8 kHz Rolloff ist Material-Realität
+    "transparenz": -0.18,
+    "spatial_depth": -0.14,  # Mono oder Pseudo-Stereo
+    "waerme": +0.14,  # Warm-ätzender Sound ist Charakter
     "authentizitaet": +0.10,
     "natuerlichkeit": +0.08,
 }
 
 # 1950–1969 (Vinyl, earlytape, Radiobroadcast)
 ERA_BIAS_1950S = {
-    "brillanz":     -0.14,   # Vinyl-Rolloff ~10 kHz
-    "transparenz":  -0.08,
-    "waerme":       +0.10,
+    "brillanz": -0.14,  # Vinyl-Rolloff ~10 kHz
+    "transparenz": -0.08,
+    "waerme": +0.10,
     "authentizitaet": +0.08,
 }
 
 # 1970–1989 (Reel-Tape, Cassette, Early-Digital)
 ERA_BIAS_1970S = {
-    "brillanz":     +0.04,
-    "transparenz":  +0.04,
-    "waerme":       +0.02,
+    "brillanz": +0.04,
+    "transparenz": +0.04,
+    "waerme": +0.02,
 }
 
 # 1990+ (CD, DAT, Digital)
 ERA_BIAS_1990S = {
-    "brillanz":     +0.10,   # Digital hat volle BW
-    "transparenz":  +0.10,
+    "brillanz": +0.10,  # Digital hat volle BW
+    "transparenz": +0.10,
     "artikulation": +0.06,
-    "waerme":       -0.04,   # Digitale Kälte
+    "waerme": -0.04,  # Digitale Kälte
 }
 ```
 
@@ -352,24 +341,24 @@ ERA_BIAS_1990S = {
 ```python
 # Shellac, Wax, Wire (ultra-degradiert)
 MATERIAL_BIAS_ULTRA_ANALOG = {
-    "brillanz":     -0.24,
-    "transparenz":  -0.12,
-    "waerme":       +0.10,
+    "brillanz": -0.24,
+    "transparenz": -0.12,
+    "waerme": +0.10,
     "authentizitaet": +0.10,
 }
 
 # Vinyl, Tape, Cassette (normal-analog)
 MATERIAL_BIAS_ANALOG = {
-    "waerme":       +0.10,
-    "brillanz":     -0.06,
+    "waerme": +0.10,
+    "brillanz": -0.06,
     "authentizitaet": +0.08,
 }
 
 # CD, Digital, Streaming (clean)
 MATERIAL_BIAS_DIGITAL = {
-    "transparenz":  +0.08,
+    "transparenz": +0.08,
     "artikulation": +0.06,
-    "brillanz":     +0.06,
+    "brillanz": +0.06,
 }
 ```
 
@@ -377,23 +366,23 @@ MATERIAL_BIAS_DIGITAL = {
 
 ```python
 GENRE_BIAS_KLASSIK = {
-    "spatial_depth": +0.18,   # Saalakustik zentral
+    "spatial_depth": +0.18,  # Saalakustik zentral
     "natuerlichkeit": +0.12,
     "micro_dynamics": +0.10,
-    "brillanz":     -0.08,   # Wärmere Interpretation
+    "brillanz": -0.08,  # Wärmere Interpretation
 }
 
 GENRE_BIAS_JAZZ = {
-    "waerme":       +0.12,
+    "waerme": +0.12,
     "natuerlichkeit": +0.10,
     "authentizitaet": +0.10,
-    "transparenz":  -0.04,
+    "transparenz": -0.04,
 }
 
 GENRE_BIAS_POP = {
-    "transparenz":  +0.08,
+    "transparenz": +0.08,
     "artikulation": +0.08,
-    "brillanz":     +0.08,    # Pop modern/glänzend
+    "brillanz": +0.08,  # Pop modern/glänzend
 }
 ```
 
@@ -415,18 +404,18 @@ Die Auswahl der Phase-Stärke hängt ab von:
 PHASE_03_STRENGTH_RANGES = {
     "vinyl": {
         "restorability": {
-            "high": (75, 100),      # Rest ≥ 75: strength ∈ [0.25, 0.45]
-            "fair": (50, 74),       # Rest 50–74: strength ∈ [0.35, 0.65]
-            "poor": (20, 49),       # Rest < 50: strength ∈ [0.50, 0.85]
+            "high": (75, 100),  # Rest ≥ 75: strength ∈ [0.25, 0.45]
+            "fair": (50, 74),  # Rest 50–74: strength ∈ [0.35, 0.65]
+            "poor": (20, 49),  # Rest < 50: strength ∈ [0.50, 0.85]
         }
     },
     "shellac": {
-        "high": (0.20, 0.40),       # Shellac-Restorability fast nie >50
+        "high": (0.20, 0.40),  # Shellac-Restorability fast nie >50
         "fair": (0.40, 0.70),
         "poor": (0.60, 0.90),
     },
     "cd_digital": {
-        "high": (0.0, 0.20),        # Nur bei Defekten
+        "high": (0.0, 0.20),  # Nur bei Defekten
         "fair": (0.10, 0.35),
         "poor": (0.30, 0.60),
     },
@@ -453,10 +442,7 @@ for s in linspace(strength_min, strength_max, n_steps=15):
     goal_scores_test = measure_goals(audio_test)
 
     # Weighted distance zur per-song Target
-    distance = sum(
-        goal_weight[g] * (goal_scores_test[g] - target[g])^2
-        for g in goals
-    )
+    distance = sum(goal_weight[g] * (goal_scores_test[g] - target[g]) ^ 2 for g in goals)
     if distance < best_score:
         best_score = distance
         best_strength = s
@@ -489,17 +475,17 @@ Strength-Oracle besitzen. Dazu zaehlen insbesondere `strength`, `wet_mix`, `thre
 
 ```python
 def score_candidate(candidate_audio, goal_snapshot_pre, effective_targets, goal_weights):
-        goal_snapshot_post = fast_goal_snapshot(candidate_audio)
-        weighted_gap_closure = 0.0
-        weighted_penalty = 0.0
-        for goal in applicable_goals:
-                gap_pre = max(0.0, effective_targets[goal] - goal_snapshot_pre[goal])
-                gap_post = max(0.0, effective_targets[goal] - goal_snapshot_post[goal])
-                closure = max(0.0, gap_pre - gap_post)
-                weighted_gap_closure += goal_weights[goal] * closure
-                regression = max(0.0, goal_snapshot_pre[goal] - goal_snapshot_post[goal])
-                weighted_penalty += goal_weights[goal] * regression
-        return weighted_gap_closure - 2.5 * weighted_penalty
+    goal_snapshot_post = fast_goal_snapshot(candidate_audio)
+    weighted_gap_closure = 0.0
+    weighted_penalty = 0.0
+    for goal in applicable_goals:
+        gap_pre = max(0.0, effective_targets[goal] - goal_snapshot_pre[goal])
+        gap_post = max(0.0, effective_targets[goal] - goal_snapshot_post[goal])
+        closure = max(0.0, gap_pre - gap_post)
+        weighted_gap_closure += goal_weights[goal] * closure
+        regression = max(0.0, goal_snapshot_pre[goal] - goal_snapshot_post[goal])
+        weighted_penalty += goal_weights[goal] * regression
+    return weighted_gap_closure - 2.5 * weighted_penalty
 ```
 
 **Oracle-Klassen (kanonisch):**
@@ -594,17 +580,17 @@ die Entscheidung als lokal gestützt markiert.
 
 ```python
 REGRESSION_THRESHOLDS = {
-    "restorability_high": {     # Rest ≥ 70: präzise Messung möglich
+    "restorability_high": {  # Rest ≥ 70: präzise Messung möglich
         "threshold": 0.020,
         "max_retries": 4,
         "retry_strengths": [0.65, 0.50, 0.35, 0.20],
     },
-    "restorability_fair": {     # Rest 40–69: moderate Toleranz
+    "restorability_fair": {  # Rest 40–69: moderate Toleranz
         "threshold": 0.035,
         "max_retries": 3,
         "retry_strengths": [0.60, 0.40, 0.20],
     },
-    "restorability_poor": {     # Rest < 40: maximal tolerant
+    "restorability_poor": {  # Rest < 40: maximal tolerant
         "threshold": 0.040,
         "max_retries": 2,
         "retry_strengths": [0.50, 0.25],
@@ -613,11 +599,11 @@ REGRESSION_THRESHOLDS = {
 
 # Material-spezifischer Bonus (Carrier-Chain-Inversion §2.44)
 MATERIAL_THRESHOLD_BONUS = {
-    "wax_cylinder": 0.022,    # extreme Trägerketten-Inversion
-    "shellac":      0.018,
-    "vinyl":        0.009,
-    "tape":         0.007,
-    "cd_digital":   0.000,    # clean → kein Bonus
+    "wax_cylinder": 0.022,  # extreme Trägerketten-Inversion
+    "shellac": 0.018,
+    "vinyl": 0.009,
+    "tape": 0.007,
+    "cd_digital": 0.000,  # clean → kein Bonus
 }
 
 # Angewendeter Threshold:
@@ -628,11 +614,11 @@ threshold = base_threshold + material_bonus
 
 ```python
 PRIORITY_MAX_RETRIES = {
-    1: 4,   # P1 (Natürlichkeit, Authentizität) — volle Retry-Kaskade
-    2: 4,   # P2 (TonalCenter, Timbre, Artikulation) — volle Kaskade
-    3: 2,   # P3 (Emotionalität, Groove, MicroDyn) — reduziert
-    4: 1,   # P4 (Transparenz, Wärme, Bass, Sep) — Recovery-Lite
-    5: 1,   # P5 (Brillanz, Raumtiefe) — Recovery-Lite
+    1: 4,  # P1 (Natürlichkeit, Authentizität) — volle Retry-Kaskade
+    2: 4,  # P2 (TonalCenter, Timbre, Artikulation) — volle Kaskade
+    3: 2,  # P3 (Emotionalität, Groove, MicroDyn) — reduziert
+    4: 1,  # P4 (Transparenz, Wärme, Bass, Sep) — Recovery-Lite
+    5: 1,  # P5 (Brillanz, Raumtiefe) — Recovery-Lite
 }
 
 # Nur ein Ziel mit Priority P ≥ X triggert Retry-Pfad für diese Priority.
@@ -706,16 +692,16 @@ AFG blockiert Phasen, die Artefakte einführen würden.
 ARTIFACT_FREEDOM_MATERIAL_THRESHOLDS = {
     # Menschliche Wahrnehmung (psychoakustische Salienz-Gewichtung)
     "musical_noise": {
-        "vinyl":        0.95,      # Vinyl-Artefakte sind hörbar
-        "shellac":      0.90,      # Ultra-niedrig (Verlust-Toleranz)
-        "cd_digital":   0.98,      # Digital-rein → strik mit Artefakten
+        "vinyl": 0.95,  # Vinyl-Artefakte sind hörbar
+        "shellac": 0.90,  # Ultra-niedrig (Verlust-Toleranz)
+        "cd_digital": 0.98,  # Digital-rein → strik mit Artefakten
     },
     "phase_cancellation": {
         "vinyl_stereo": 0.92,
-        "mono_source":  1.00,      # Mono → kein Stereo-Artefakt möglich
+        "mono_source": 1.00,  # Mono → kein Stereo-Artefakt möglich
     },
     "spectral_holes": {
-        "all_materials": 0.95,     # Höchst wahrnehmbares Artefakt
+        "all_materials": 0.95,  # Höchst wahrnehmbares Artefakt
     },
 }
 
@@ -761,13 +747,13 @@ def predict_quality_score(
 
     # Material-spezifisches Ober-Limit (physikalische Grenzen)
     material_ceiling = {
-        "wax_cylinder": 0.55,      # Ultra-degradiert
-        "shellac":      0.70,
+        "wax_cylinder": 0.55,  # Ultra-degradiert
+        "shellac": 0.70,
         "wire_recording": 0.65,
-        "vinyl":        0.88,      # Gut restaurierbar
-        "tape":         0.85,
-        "cassette":     0.80,
-        "cd_digital":   0.95,      # Saubere Quellen
+        "vinyl": 0.88,  # Gut restaurierbar
+        "tape": 0.85,
+        "cassette": 0.80,
+        "cd_digital": 0.95,  # Saubere Quellen
     }.get(material_type, 0.75)
 
     # Defekt-Abzug
@@ -788,15 +774,15 @@ def predict_quality_score(
 
 ```python
 ML_PLUGIN_BUDGETS_GB = {
-    "SGMSE+":           3.5,    # Diffusion Denoising (heaviest)
-    "DeepFilterNet":    2.2,
-    "FlashSR":          4.0,    # Spectral Upsampling
-    "MDX23C":           3.2,    # Stem Separation
-    "CREPE":            1.2,    # Pitch Tracking
-    "PANNs":            0.7,    # Genre/Tagging
-    "LAION-CLAP":       2.2,    # Semantic Analysis
-    "WPE":              0.8,    # Dereverberation DSP
-    "OMLSA":            0.5,    # Gate DSP
+    "SGMSE+": 3.5,  # Diffusion Denoising (heaviest)
+    "DeepFilterNet": 2.2,
+    "FlashSR": 4.0,  # Spectral Upsampling
+    "MDX23C": 3.2,  # Stem Separation
+    "CREPE": 1.2,  # Pitch Tracking
+    "PANNs": 0.7,  # Genre/Tagging
+    "LAION-CLAP": 2.2,  # Semantic Analysis
+    "WPE": 0.8,  # Dereverberation DSP
+    "OMLSA": 0.5,  # Gate DSP
     # ... weitere Plugins
 }
 
@@ -807,12 +793,12 @@ TOTAL_ML_BUDGET_GB = 10.4  # System default für Desktop (adjustable)
 
 ```python
 PLM_EVICTION_THRESHOLDS = {
-    "ram_percent": 75,          # Wenn RAM > 75%, starte Plugin-Eviction
-    "swap_percent": 80,         # Wenn Swap > 80%, blockiere neue ML-Phase (DSP-Fallback)
-    "priority_keep": [          # Diese Plugins werden NICHT evicted
+    "ram_percent": 75,  # Wenn RAM > 75%, starte Plugin-Eviction
+    "swap_percent": 80,  # Wenn Swap > 80%, blockiere neue ML-Phase (DSP-Fallback)
+    "priority_keep": [  # Diese Plugins werden NICHT evicted
         "current_running_plugin",
         "next_queued_plugin",
-        "WPE",                  # DSP-Fallback wird immer erhalten
+        "WPE",  # DSP-Fallback wird immer erhalten
     ],
 }
 ```
@@ -833,6 +819,7 @@ from backend.core.calibration_matrix import (
     MATERIAL_PRIORITY_PHASES,
 )
 
+
 def restauriere(self, audio, sr, mode="restoration", **kwargs):
     # Pre-Analysis gibt material, era, restorability
     material = medium_result.primary_material
@@ -840,11 +827,7 @@ def restauriere(self, audio, sr, mode="restoration", **kwargs):
     restorability = restorability_result.restorability_score
 
     # Lookup Canonical Thresholds
-    thresholds = (
-        CANONICAL_THRESHOLDS_STUDIO2026
-        if is_studio_2026
-        else CANONICAL_THRESHOLDS_RESTORATION
-    )
+    thresholds = CANONICAL_THRESHOLDS_STUDIO2026 if is_studio_2026 else CANONICAL_THRESHOLDS_RESTORATION
 
     # Estimate Per-Song Goal Targets
     song_targets = estimate_song_goal_targets(
@@ -885,7 +868,11 @@ Zweck: Quantifiziert Mehrgenerationen-Komplexität der Trägerkette als einheitl
 def compute_tcci(transfer_chain: list[str]) -> float:
     n = max(1, len(transfer_chain))
     lossy = sum(1 for m in transfer_chain if m in {"mp3_low", "aac", "streaming"})
-    analog = sum(1 for m in transfer_chain if m in {"wax_cylinder", "shellac", "vinyl", "tape", "cassette", "wire_recording", "reel_tape"})
+    analog = sum(
+        1
+        for m in transfer_chain
+        if m in {"wax_cylinder", "shellac", "vinyl", "tape", "cassette", "wire_recording", "reel_tape"}
+    )
     score = 0.18 * (n - 1) + 0.22 * lossy + 0.10 * max(0, analog - 1)
     return float(np.clip(score, 0.0, 1.0))
 ```
@@ -925,10 +912,7 @@ def blend_targets_with_confidence(
     genre_conf: float,
 ) -> dict[str, float]:
     conf = float(np.clip(0.45 * medium_conf + 0.30 * era_conf + 0.25 * genre_conf, 0.0, 1.0))
-    return {
-        g: (1.0 - conf) * canonical[g] + conf * song_targets[g]
-        for g in canonical.keys()
-    }
+    return {g: (1.0 - conf) * canonical[g] + conf * song_targets[g] for g in canonical.keys()}
 ```
 
 Integration:
@@ -957,14 +941,14 @@ Integration:
 Ergänzt §09.10d. Enhancement-Phasen der Familien `harmonic_reconstruction`, `harmonic_enhancement`, `tonal_enhancement`, `source_enhancement`, `stereo_enhancement`, `stereo_generation` erhalten einen Strength-Scalar proportional zum **absoluten Headroom** bis zur physikalischen Decke:
 
 ```python
-HR_WINDOW = 0.25   # Fenster: innerhalb 0.25 zur Decke → Dämpfung beginnt
-HR_GOALS  = ("brillanz", "waerme", "spatial_depth", "bass_kraft", "sep_fidelity")
+HR_WINDOW = 0.25  # Fenster: innerhalb 0.25 zur Decke → Dämpfung beginnt
+HR_GOALS = ("brillanz", "waerme", "spatial_depth", "bass_kraft", "sep_fidelity")
 
 min_hr = 1.0
 for goal in HR_GOALS:
     headroom = max(0.0, ceiling[goal] - current_score[goal])  # absolut
-    hr_ratio  = min(1.0, headroom / HR_WINDOW)
-    min_hr    = min(min_hr, hr_ratio)
+    hr_ratio = min(1.0, headroom / HR_WINDOW)
+    min_hr = min(min_hr, hr_ratio)
 
 hr_strength = float(np.clip(min_hr, 0.40, 1.0))
 # strength_used = combined_strength * hr_strength   (nur wenn hr_strength < 0.95)
@@ -1104,35 +1088,35 @@ for goal, value in mas_targets.items():
 ```python
 PHYSICAL_CEILING: dict[str, dict[str, float]] = {
     "shellac": {
-        "brillanz":           0.72,
-        "transparenz":        0.72,
-        "spatial_depth":      0.55,
-        "artikulation":       0.78,
-        "separation_fidelity":0.60,
+        "brillanz": 0.72,
+        "transparenz": 0.72,
+        "spatial_depth": 0.55,
+        "artikulation": 0.78,
+        "separation_fidelity": 0.60,
     },
     "wax_cylinder": {
-        "brillanz":           0.55,
-        "transparenz":        0.60,
-        "spatial_depth":      0.45,
-        "artikulation":       0.70,
+        "brillanz": 0.55,
+        "transparenz": 0.60,
+        "spatial_depth": 0.45,
+        "artikulation": 0.70,
     },
     "vinyl": {
-        "brillanz":           0.86,
-        "transparenz":        0.84,
-        "spatial_depth":      0.80,
+        "brillanz": 0.86,
+        "transparenz": 0.84,
+        "spatial_depth": 0.80,
     },
     "tape": {
-        "brillanz":           0.88,
-        "transparenz":        0.86,
+        "brillanz": 0.88,
+        "transparenz": 0.86,
     },
     "reel_tape": {
-        "brillanz":           0.90,
-        "transparenz":        0.88,
+        "brillanz": 0.90,
+        "transparenz": 0.88,
     },
     "mp3_low": {
-        "brillanz":           0.80,
-        "transparenz":        0.78,
-        "artikulation":       0.82,
+        "brillanz": 0.80,
+        "transparenz": 0.78,
+        "artikulation": 0.82,
     },
     # cd_digital, dat, mp3_high, flac: kein physikalisches Ceiling (leeres Dict)
 }
@@ -1141,9 +1125,10 @@ PHYSICAL_CEILING: dict[str, dict[str, float]] = {
 ### MAS-Konvergenz-Metrik
 
 ```python
-MAS_TOLERANCE       = 0.02   # P1/P2 "erreicht" wenn gap ≤ 0.02
-MAS_FULL_TOLERANCE  = 0.05   # P3–P5 "erreicht" wenn gap ≤ 0.05
-MAS_OVERSHOOT_TOL   = 0.03   # Strength-Clamp wenn post > MAS + 0.03
+MAS_TOLERANCE = 0.02  # P1/P2 "erreicht" wenn gap ≤ 0.02
+MAS_FULL_TOLERANCE = 0.05  # P3–P5 "erreicht" wenn gap ≤ 0.05
+MAS_OVERSHOOT_TOL = 0.03  # Strength-Clamp wenn post > MAS + 0.03
+
 
 def compute_mas_convergence(
     current_scores: dict[str, float],
@@ -1152,10 +1137,7 @@ def compute_mas_convergence(
     gaps = {g: mas_targets[g] - current_scores.get(g, 0.0) for g in mas_targets}
     p1p2_achieved = all(gaps[g] <= MAS_TOLERANCE for g in P1P2_GOALS)
     p3p5_achieved = all(gaps[g] <= MAS_FULL_TOLERANCE for g in P3P5_GOALS)
-    overshooting = [
-        g for g in mas_targets
-        if current_scores.get(g, 0.0) > mas_targets[g] + MAS_OVERSHOOT_TOL
-    ]
+    overshooting = [g for g in mas_targets if current_scores.get(g, 0.0) > mas_targets[g] + MAS_OVERSHOOT_TOL]
     return {
         "gaps": gaps,
         "p1p2_achieved": p1p2_achieved,
@@ -1186,11 +1168,13 @@ def test_mas_ceiling_clamped_to_physical_material():
     for goal, ceil in PHYSICAL_CEILING["shellac"].items():
         assert mas[goal] <= ceil
 
+
 def test_mas_target_at_or_above_canonical_floor():
     """MAS muss immer ≥ CANONICAL_THRESHOLDS sein."""
     mas = estimate_song_goal_targets("1970s", "schlager", "vinyl", 70).targets
     for goal in P1P2_GOALS:
         assert mas[goal] >= CANONICAL_THRESHOLDS_RESTORATION[goal]
+
 
 def test_compute_mas_convergence_early_stop():
     """Wenn alle P1/P2 ≤ MAS_TOLERANCE: fully_achieved muss True sein."""
@@ -1242,14 +1226,13 @@ for goal_name, goal_score in _goal_snapshot.items():
                 # §0a-Guard: Studio-Only-Phasen nicht in Restoration einfügen
                 if not is_studio_2026 and phase_id in _STUDIO_ONLY_PHASES:
                     continue
-                selected_phases.insert(
-                    _get_primary_insertion_index(selected_phases, phase_id),
-                    phase_id
-                )
+                selected_phases.insert(_get_primary_insertion_index(selected_phases, phase_id), phase_id)
                 logger.info(
-                    "goal_baseline_check: goal=%s score=%.3f < target=%.3f "
-                    "→ inserting recovery phase=%s",
-                    goal_name, goal_score, _threshold, phase_id
+                    "goal_baseline_check: goal=%s score=%.3f < target=%.3f → inserting recovery phase=%s",
+                    goal_name,
+                    goal_score,
+                    _threshold,
+                    phase_id,
                 )
 
         metadata["goal_baseline_gaps"][goal_name] = {
@@ -1283,38 +1266,33 @@ for goal_name, goal_score in _goal_snapshot.items():
 ```python
 _GOAL_TO_RECOVERY_PHASES_RESTORATION: Dict[str, List[str]] = {
     # P0 — Vokalqualität (nur wenn panns_singing ≥ 0.35)
-    "VocalQuality":         ["phase_65_vocal_naturalness_restoration", "phase_03_denoise"],
+    "VocalQuality": ["phase_65_vocal_naturalness_restoration", "phase_03_denoise"],
     # phase_65: DSP-Korrektiv (subtraktiv/korrektiv, §0a-konform für Restoration).
     # Adressiert HNR-Verlust nach NR, Spektral-Tilt-Shift, Formant-Drift.
     # phase_42_vocal_enhancement: VERBOTEN in Restoration (§0a) — nie hier eintragen.
-    "FormantFidelity":      ["phase_42_vocal_enhancement"],                        # §0a: VERBOTEN in Restoration; Guard blockt es
-
+    "FormantFidelity": ["phase_42_vocal_enhancement"],  # §0a: VERBOTEN in Restoration; Guard blockt es
     # P1 — Natürlichkeit, Authentizität
-    "Natürlichkeit":        ["phase_29_tape_hiss_reduction", "phase_03_denoise"],
-    "Authentizität":        ["phase_09_declicker", "phase_11_dehum"],
-
+    "Natürlichkeit": ["phase_29_tape_hiss_reduction", "phase_03_denoise"],
+    "Authentizität": ["phase_09_declicker", "phase_11_dehum"],
     # P2 — Tonales Zentrum, Timbre, Artikulation
-    "TonalCenter":          ["phase_12_wow_flutter_fix", "phase_04_riaa_eq"],
-    "Timbre":               ["phase_20_harmonic_analyzer", "phase_07_harmonic_enhancer"],
-    "Artikulation":         ["phase_03_denoise", "phase_09_declicker"],
-    "TransientEnergie":     ["phase_26_transient_shaper", "phase_08_transient_shaper_hpss"],
+    "TonalCenter": ["phase_12_wow_flutter_fix", "phase_04_riaa_eq"],
+    "Timbre": ["phase_20_harmonic_analyzer", "phase_07_harmonic_enhancer"],
+    "Artikulation": ["phase_03_denoise", "phase_09_declicker"],
+    "TransientEnergie": ["phase_26_transient_shaper", "phase_08_transient_shaper_hpss"],
     # phase_26: Dosierte Transient-Energie-Wiederherstellung (Restoration-konform)
     # phase_08: HPSS-gestütztes Transient-Enhancement (subtraktiv/korrektiv)
-
     # P3 — Emotionalität, Mikrodynamik, Groove
-    "Emotionalität":        ["phase_40_loudness_normalizer", "phase_26_transient_shaper"],
-    "MikroDynamik":         ["phase_26_transient_shaper", "phase_14_dc_offset"],
-    "Groove":               ["phase_12_wow_flutter_fix", "phase_15_phase_corrector"],
-
+    "Emotionalität": ["phase_40_loudness_normalizer", "phase_26_transient_shaper"],
+    "MikroDynamik": ["phase_26_transient_shaper", "phase_14_dc_offset"],
+    "Groove": ["phase_12_wow_flutter_fix", "phase_15_phase_corrector"],
     # P4 — Transparenz, Wärme, Basskraft, Trennschärfe
-    "Transparenz":          ["phase_29_tape_hiss_reduction", "phase_30_hum_remover"],
-    "Wärme":                ["phase_07_harmonic_enhancer", "phase_20_harmonic_analyzer"],
-    "BassKraft":            ["phase_05_rumble_filter", "phase_26_transient_shaper"],
-    "SepFidelity":          ["phase_20_harmonic_analyzer", "phase_03_denoise"],
-
+    "Transparenz": ["phase_29_tape_hiss_reduction", "phase_30_hum_remover"],
+    "Wärme": ["phase_07_harmonic_enhancer", "phase_20_harmonic_analyzer"],
+    "BassKraft": ["phase_05_rumble_filter", "phase_26_transient_shaper"],
+    "SepFidelity": ["phase_20_harmonic_analyzer", "phase_03_denoise"],
     # P5 — Brillanz, Raumtiefe
-    "Brillanz":             ["phase_06_bandwidth_extension", "phase_07_harmonic_enhancer"],
-    "Raumtiefe":            ["phase_46_spatial_enhancement", "phase_33_stereo_expander"],
+    "Brillanz": ["phase_06_bandwidth_extension", "phase_07_harmonic_enhancer"],
+    "Raumtiefe": ["phase_46_spatial_enhancement", "phase_33_stereo_expander"],
 }
 ```
 
@@ -1323,12 +1301,12 @@ _GOAL_TO_RECOVERY_PHASES_RESTORATION: Dict[str, List[str]] = {
 ```python
 # Studio 2026: Zusätzliche Phasen (ergänzend zu Restoration-Liste)
 _GOAL_TO_RECOVERY_PHASES_STUDIO_EXTRAS: Dict[str, List[str]] = {
-    "VocalQuality":         ["phase_42_vocal_enhancement"],   # Erlaubt in Studio 2026
-    "FormantFidelity":      ["phase_42_vocal_enhancement"],   # Erlaubt in Studio 2026
-    "Brillanz":             ["phase_23_flashsr_upsampling"],
-    "Wärme":                ["phase_21_exciter"],             # Erlaubt in Studio 2026
-    "Transparenz":          ["phase_35_multiband_compression"],  # Erlaubt in Studio 2026
-    "MikroDynamik":         ["phase_35_multiband_compression"],
+    "VocalQuality": ["phase_42_vocal_enhancement"],  # Erlaubt in Studio 2026
+    "FormantFidelity": ["phase_42_vocal_enhancement"],  # Erlaubt in Studio 2026
+    "Brillanz": ["phase_23_flashsr_upsampling"],
+    "Wärme": ["phase_21_exciter"],  # Erlaubt in Studio 2026
+    "Transparenz": ["phase_35_multiband_compression"],  # Erlaubt in Studio 2026
+    "MikroDynamik": ["phase_35_multiband_compression"],
 }
 ```
 
@@ -1353,18 +1331,12 @@ def test_get_goal_recovery_phases_all_phase_ids_exist_on_disk():
     _GOAL_TO_RECOVERY_PHASES_STUDIO_EXTRAS MÜSSEN auf Disk existieren.
     """
     import glob
-    phase_files = {
-        Path(p).stem
-        for p in glob.glob("backend/core/phases/phase_*.py")
-    }
-    for goal, phases in {
-        **_GOAL_TO_RECOVERY_PHASES_RESTORATION,
-        **_GOAL_TO_RECOVERY_PHASES_STUDIO_EXTRAS
-    }.items():
+
+    phase_files = {Path(p).stem for p in glob.glob("backend/core/phases/phase_*.py")}
+    for goal, phases in {**_GOAL_TO_RECOVERY_PHASES_RESTORATION, **_GOAL_TO_RECOVERY_PHASES_STUDIO_EXTRAS}.items():
         for phase_id in phases:
             assert phase_id in phase_files, (
-                f"Recovery phase '{phase_id}' for goal '{goal}' "
-                f"does not exist on disk — fix _GOAL_TO_RECOVERY_PHASES"
+                f"Recovery phase '{phase_id}' for goal '{goal}' does not exist on disk — fix _GOAL_TO_RECOVERY_PHASES"
             )
 ```
 
@@ -1384,8 +1356,9 @@ def test_get_goal_recovery_phases_all_phase_ids_exist_on_disk():
 # backend/core/calibration_matrix.py
 
 RESTORABILITY_SCALE_MIN = 0.72  # Minimum-Skalierungsfaktor
-                                # Böden kollabieren maximal auf 72 % des Material-Bodens
-                                # (verhindert unkontrollierten Qualitätsabfall bei schlecht restaurierbarem Material)
+# Böden kollabieren maximal auf 72 % des Material-Bodens
+# (verhindert unkontrollierten Qualitätsabfall bei schlecht restaurierbarem Material)
+
 
 def get_effective_material_floor(
     material_type: str,
@@ -1462,11 +1435,11 @@ if restorability_score < 30:
 
 ```python
 _CHAIN_END_GOAL_CEILINGS: dict[str, dict[str, float]] = {
-    "mp3_low":   {"spatial_depth": 0.38, "separation_fidelity": 0.68, "brillanz": 0.52, "transparenz": 0.75},
-    "mp3_high":  {"spatial_depth": 0.44, "separation_fidelity": 0.74, "brillanz": 0.62, "transparenz": 0.82},
-    "aac":       {"spatial_depth": 0.44, "separation_fidelity": 0.74, "brillanz": 0.60, "transparenz": 0.82},
+    "mp3_low": {"spatial_depth": 0.38, "separation_fidelity": 0.68, "brillanz": 0.52, "transparenz": 0.75},
+    "mp3_high": {"spatial_depth": 0.44, "separation_fidelity": 0.74, "brillanz": 0.62, "transparenz": 0.82},
+    "aac": {"spatial_depth": 0.44, "separation_fidelity": 0.74, "brillanz": 0.60, "transparenz": 0.82},
     "streaming": {"spatial_depth": 0.38, "separation_fidelity": 0.68, "brillanz": 0.50, "transparenz": 0.74},
-    "minidisc":  {"spatial_depth": 0.36, "separation_fidelity": 0.66, "brillanz": 0.48, "transparenz": 0.72},
+    "minidisc": {"spatial_depth": 0.36, "separation_fidelity": 0.66, "brillanz": 0.48, "transparenz": 0.72},
 }
 ```
 

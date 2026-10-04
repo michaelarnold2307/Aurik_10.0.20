@@ -98,9 +98,7 @@ class TemporalConsistencyGuard:
             win = max(int(self.window_ms * sr / 1000.0), 16)
 
             # 1. Energie-Sprünge zwischen 100ms-Fenstern
-            result.energy_jumps = self._count_energy_jumps(
-                mono_before, mono_after, win, relative_to_median
-            )
+            result.energy_jumps = self._count_energy_jumps(mono_before, mono_after, win, relative_to_median)
 
             # 2. Rausch-Wiedereinführung (nur nach Denoise-Phasen)
             if "denoise" in phase_id.lower() or "noise" in phase_id.lower():

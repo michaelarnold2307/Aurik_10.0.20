@@ -77,25 +77,25 @@ from backend.ml.safety_wrappers.pitch_correction_safety import PitchCorrectionSa
 corrector = ConservativePitchCorrector(
     sample_rate=44100,
     error_threshold_cents=25.0,  # Only correct errors > 25 cents
-    max_dcs=0.15,                # Maximum acceptable damage
-    min_epistemic_confidence=0.80 # Minimum confidence to proceed
+    max_dcs=0.15,  # Maximum acceptable damage
+    min_epistemic_confidence=0.80,  # Minimum confidence to proceed
 )
 
 # Wrap with HIPS compliance
 safe_corrector = PitchCorrectionSafetyWrapper(
     corrector,
-    strict_mode=False  # Warning mode (logs but doesn't block)
+    strict_mode=False,  # Warning mode (logs but doesn't block)
 )
 
 # Correct pitch
 audio_corrected, metadata = safe_corrector.safe_correct(
     audio,
     sr=44100,
-    dry_wet=1.0  # 100% corrected (0.0 = original)
+    dry_wet=1.0,  # 100% corrected (0.0 = original)
 )
 
 # Check result
-if metadata['corrected']:
+if metadata["corrected"]:
     print(f"Corrected {metadata['n_corrections']} errors")
     print(f"DCS: {metadata['dcs']:.3f}")
 else:
@@ -108,7 +108,7 @@ else:
 # Check if correction can be applied safely (without actually correcting)
 safety_check = corrector.can_correct_safely(audio)
 
-if safety_check['safe']:
+if safety_check["safe"]:
     print(f"Safe to correct: {safety_check['n_corrections']} errors found")
 else:
     print(f"Correction not recommended: {safety_check['reason']}")
@@ -119,17 +119,13 @@ else:
 ```python
 # In adaptive_pipeline.py
 def correct_pitch_v8(
-    self,
-    audio: np.ndarray,
-    sr: int,
-    use_safety_wrapper: bool = True,
-    **kwargs
+    self, audio: np.ndarray, sr: int, use_safety_wrapper: bool = True, **kwargs
 ) -> Tuple[np.ndarray, Dict]:
     """
     v8.2: Conservative pitch correction with HIPS compliance
     """
     if not PITCH_CORRECTION_V8_AVAILABLE:
-        return audio, {'corrected': False, 'reason': 'module_unavailable'}
+        return audio, {"corrected": False, "reason": "module_unavailable"}
 
     if use_safety_wrapper:
         return self.pitch_corrector_safety.safe_correct(audio, sr, **kwargs)

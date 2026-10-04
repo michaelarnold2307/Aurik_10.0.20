@@ -64,6 +64,7 @@ Neue Funktion in `backend/api/bridge.py`:
 def get_my_module():
     """Gibt MyModule-Singleton zurück."""
     from backend.core.my_module import get_my_module as _fn
+
     return _fn()
 ```
 

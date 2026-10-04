@@ -63,36 +63,36 @@ The **DefectScanner** is the entry point for Aurik 10.0.0’s **Defect-First** r
 ```python
 class DefectType(Enum):
     # Analoge Kerndefekte
-    CLICKS = "clicks"                          # Impuls-Artefakte
-    CRACKLE = "crackle"                        # Vinyl-Crackle
-    HUM = "hum"                                # 50/60 Hz Brumm
-    WOW = "wow"                                # Pitch-Instabilität < 0.5 Hz (IEC 60386)
-    FLUTTER = "flutter"                        # Pitch-Instabilität 0.5–200 Hz (IEC 60386)
-    STEREO_IMBALANCE = "stereo_imbalance"      # L/R-Differenz
-    DIGITAL_ARTIFACTS = "digital_artifacts"    # Aliasing, Quantisierung
-    LOW_FREQ_RUMBLE = "low_freq_rumble"        # Tieffrequenzrumpeln (<100 Hz)
-    HIGH_FREQ_NOISE = "high_freq_noise"        # Tape Hiss, Breitrauschen (>8 kHz)
+    CLICKS = "clicks"  # Impuls-Artefakte
+    CRACKLE = "crackle"  # Vinyl-Crackle
+    HUM = "hum"  # 50/60 Hz Brumm
+    WOW = "wow"  # Pitch-Instabilität < 0.5 Hz (IEC 60386)
+    FLUTTER = "flutter"  # Pitch-Instabilität 0.5–200 Hz (IEC 60386)
+    STEREO_IMBALANCE = "stereo_imbalance"  # L/R-Differenz
+    DIGITAL_ARTIFACTS = "digital_artifacts"  # Aliasing, Quantisierung
+    LOW_FREQ_RUMBLE = "low_freq_rumble"  # Tieffrequenzrumpeln (<100 Hz)
+    HIGH_FREQ_NOISE = "high_freq_noise"  # Tape Hiss, Breitrauschen (>8 kHz)
     COMPRESSION_ARTIFACTS = "compression_artifacts"  # MP3/AAC/ATRAC
-    PRE_ECHO = "pre_echo"                      # MP3/AAC Temporal-Masking-Artefakt
-    PHASE_ISSUES = "phase_issues"              # L/R-Phasenfehler
-    DROPOUTS = "dropouts"                      # Signalausfälle
-    CLIPPING = "clipping"                      # Hard-Clipping (reparieren)
-    DC_OFFSET = "dc_offset"                    # Gleichspannungsversatz
-    BANDWIDTH_LOSS = "bandwidth_loss"          # HF-Rolloff
-    PITCH_DRIFT = "pitch_drift"                # Konstanter Tonhöhenfehler
-    REVERB_EXCESS = "reverb_excess"            # Übermäßiger Raumhall
-    PRINT_THROUGH = "print_through"            # Magnetisches Tape-Übersprechen
+    PRE_ECHO = "pre_echo"  # MP3/AAC Temporal-Masking-Artefakt
+    PHASE_ISSUES = "phase_issues"  # L/R-Phasenfehler
+    DROPOUTS = "dropouts"  # Signalausfälle
+    CLIPPING = "clipping"  # Hard-Clipping (reparieren)
+    DC_OFFSET = "dc_offset"  # Gleichspannungsversatz
+    BANDWIDTH_LOSS = "bandwidth_loss"  # HF-Rolloff
+    PITCH_DRIFT = "pitch_drift"  # Konstanter Tonhöhenfehler
+    REVERB_EXCESS = "reverb_excess"  # Übermäßiger Raumhall
+    PRINT_THROUGH = "print_through"  # Magnetisches Tape-Übersprechen
     QUANTIZATION_NOISE = "quantization_noise"  # Quantisierungsrauschen
-    JITTER_ARTIFACTS = "jitter_artifacts"      # D/A-Wandlungsfehler
+    JITTER_ARTIFACTS = "jitter_artifacts"  # D/A-Wandlungsfehler
     DYNAMIC_COMPRESSION_EXCESS = "dynamic_compression_excess"  # Loudness War
-    SOFT_SATURATION = "soft_saturation"        # Tube-/Tape-Sättigung — BEWAHREN!
-    HEAD_WEAR = "head_wear"                    # Kopf-/Azimuth-Fehler → phase_56
+    SOFT_SATURATION = "soft_saturation"  # Tube-/Tape-Sättigung — BEWAHREN!
+    HEAD_WEAR = "head_wear"  # Kopf-/Azimuth-Fehler → phase_56
     TRANSIENT_SMEARING = "transient_smearing"  # Ansatz-Verschmierung (GrooveMetric!)
-    RIAA_CURVE_ERROR = "riaa_curve_error"      # Falsche Entzerrungskurve (Shellac/früher Vinyl)
-    ALIASING = "aliasing"                      # Anti-Aliasing-Fehler bei Digitalisierung
-    BIAS_ERROR = "bias_error"                  # Falscher Vormagnetisierungsstrom (Tape)
-    TRANSPORT_BUMP = "transport_bump"          # Nicht-stationäre Transportstörung
-    VOCAL_HARSHNESS = "vocal_harshness"        # Harshness im Vocal-Präsenzbereich
+    RIAA_CURVE_ERROR = "riaa_curve_error"  # Falsche Entzerrungskurve (Shellac/früher Vinyl)
+    ALIASING = "aliasing"  # Anti-Aliasing-Fehler bei Digitalisierung
+    BIAS_ERROR = "bias_error"  # Falscher Vormagnetisierungsstrom (Tape)
+    TRANSPORT_BUMP = "transport_bump"  # Nicht-stationäre Transportstörung
+    VOCAL_HARSHNESS = "vocal_harshness"  # Harshness im Vocal-Präsenzbereich
 ```
 
 **Kritische Unterscheidung CLIPPING vs. SOFT_SATURATION:**
@@ -251,10 +251,10 @@ class DefectScanner:
 ```python
 @dataclass
 class DefectAnalysisResult:
-    defect_scores: Dict[DefectType, float]      # Severity for each defect (0.0-1.0)
-    material_type: MaterialType                 # Auto-detected material
-    confidence: float                           # Material detection confidence
-    scan_duration_seconds: float                # Actual scan time
+    defect_scores: Dict[DefectType, float]  # Severity for each defect (0.0-1.0)
+    material_type: MaterialType  # Auto-detected material
+    confidence: float  # Material detection confidence
+    scan_duration_seconds: float  # Actual scan time
 
     def get_top_defects(self, n: int = 5) -> List[Tuple[DefectType, float]]:
         """Returns top N defects sorted by severity (descending)."""

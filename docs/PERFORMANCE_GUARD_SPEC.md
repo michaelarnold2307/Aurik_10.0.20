@@ -67,15 +67,16 @@ The **PerformanceGuard** enforces Aurik 10's RT-factor targets per QualityMode:
 
 ```python
 class QualityMode(Enum):
-    FAST = "fast"           # 1.5× RT limit (fastest, lower quality)
-    BALANCED = "balanced"   # 2.4× RT limit (default, best balance)
-    QUALITY = "quality"     # 9× RT limit (highest quality, slow)
+    FAST = "fast"  # 1.5× RT limit (fastest, lower quality)
+    BALANCED = "balanced"  # 2.4× RT limit (default, best balance)
+    QUALITY = "quality"  # 9× RT limit (highest quality, slow)
+
 
 # RT Limits
 RT_LIMITS = {
-    QualityMode.FAST: 1.5,        # 1.5× real-time
-    QualityMode.BALANCED: 2.4,    # 2.4× real-time
-    QualityMode.QUALITY: 9.0,     # 9× real-time (no strict enforcement)
+    QualityMode.FAST: 1.5,  # 1.5× real-time
+    QualityMode.BALANCED: 2.4,  # 2.4× real-time
+    QualityMode.QUALITY: 9.0,  # 9× real-time (no strict enforcement)
 }
 ```
 
@@ -142,10 +143,11 @@ class PerformanceGuard:
 
 ```python
 class PhasePriority:
-    CRITICAL = 9    # NEVER skip (e.g., click removal on shellac)
-    HIGH = 8        # Skip only in FAST mode if desperate
-    MEDIUM = 6      # Skip in FAST mode if approaching limit
-    LOW = 3         # Skip in FAST/BALANCED if approaching limit
+    CRITICAL = 9  # NEVER skip (e.g., click removal on shellac)
+    HIGH = 8  # Skip only in FAST mode if desperate
+    MEDIUM = 6  # Skip in FAST mode if approaching limit
+    LOW = 3  # Skip in FAST/BALANCED if approaching limit
+
 
 def should_skip_phase(current_rt: float, priority: int, mode: QualityMode) -> bool:
     """
@@ -176,7 +178,7 @@ def should_skip_phase(current_rt: float, priority: int, mode: QualityMode) -> bo
             return True
         if current_rt >= 0.9 * limit and priority <= 6:  # 90% limit, MEDIUM
             return True
-        if current_rt >= 0.95 * limit and priority <= 8: # 95% limit, HIGH
+        if current_rt >= 0.95 * limit and priority <= 8:  # 95% limit, HIGH
             return True
 
     elif mode == QualityMode.BALANCED:
@@ -238,6 +240,7 @@ Final: 600s total (2.0× RT) → Within 2.4× limit ✅
 ```python
 from contextlib import contextmanager
 
+
 @contextmanager
 def measure_phase(self, phase_id: str, priority: int):
     """
@@ -265,18 +268,12 @@ def measure_phase(self, phase_id: str, priority: int):
 
         # Record phase performance
         self.phase_performances[phase_id] = PhasePerformance(
-            phase_id=phase_id,
-            priority=priority,
-            time_seconds=phase_time,
-            skipped=False
+            phase_id=phase_id, priority=priority, time_seconds=phase_time, skipped=False
         )
     else:
         # Phase skipped
         self.phase_performances[phase_id] = PhasePerformance(
-            phase_id=phase_id,
-            priority=priority,
-            time_seconds=0.0,
-            skipped=True
+            phase_id=phase_id, priority=priority, time_seconds=0.0, skipped=True
         )
         yield status
 ```
@@ -287,26 +284,28 @@ def measure_phase(self, phase_id: str, priority: int):
 @dataclass
 class PerformanceReport:
     """Comprehensive performance report after restoration."""
-    total_time: float                      # Total processing time (seconds)
-    audio_duration: float                  # Audio duration (seconds)
-    rt_factor: float                       # RT factor (total_time / audio_duration)
-    status: PerformanceStatus              # OPTIMAL | APPROACHING | LIMIT_EXCEEDED
-    mode: QualityMode                      # Mode used (FAST/BALANCED/QUALITY)
-    rt_limit: float                        # RT limit for mode
 
-    phases_executed: int                   # Number of phases run
-    phases_skipped: int                    # Number of phases skipped
-    skipped_phase_ids: List[str]           # IDs of skipped phases
+    total_time: float  # Total processing time (seconds)
+    audio_duration: float  # Audio duration (seconds)
+    rt_factor: float  # RT factor (total_time / audio_duration)
+    status: PerformanceStatus  # OPTIMAL | APPROACHING | LIMIT_EXCEEDED
+    mode: QualityMode  # Mode used (FAST/BALANCED/QUALITY)
+    rt_limit: float  # RT limit for mode
 
-    phase_breakdown: List[PhasePerformance] # Per-phase performance details
+    phases_executed: int  # Number of phases run
+    phases_skipped: int  # Number of phases skipped
+    skipped_phase_ids: List[str]  # IDs of skipped phases
 
-    limit_exceeded: bool                   # True if RT > limit
+    phase_breakdown: List[PhasePerformance]  # Per-phase performance details
+
+    limit_exceeded: bool  # True if RT > limit
+
 
 class PerformanceStatus(Enum):
-    OPTIMAL = "optimal"                    # RT < 1.0× (faster than realtime)
-    ACCEPTABLE = "acceptable"              # 1.0× < RT < 2.0×
-    APPROACHING = "approaching"            # 2.0× < RT < limit
-    LIMIT_EXCEEDED = "limit_exceeded"      # RT > limit (unacceptable)
+    OPTIMAL = "optimal"  # RT < 1.0× (faster than realtime)
+    ACCEPTABLE = "acceptable"  # 1.0× < RT < 2.0×
+    APPROACHING = "approaching"  # 2.0× < RT < limit
+    LIMIT_EXCEEDED = "limit_exceeded"  # RT > limit (unacceptable)
 ```
 
 ### 6.3 Report Example
@@ -316,23 +315,20 @@ report = perf_guard.get_report()
 
 # Example output:
 PerformanceReport(
-    total_time=22.4,          # 22.4 seconds processing
-    audio_duration=225.0,     # 225 seconds audio (3:45)
-    rt_factor=0.10,           # 0.10× RT (10× faster than realtime!)
+    total_time=22.4,  # 22.4 seconds processing
+    audio_duration=225.0,  # 225 seconds audio (3:45)
+    rt_factor=0.10,  # 0.10× RT (10× faster than realtime!)
     status=PerformanceStatus.OPTIMAL,
     mode=QualityMode.BALANCED,
-    rt_limit=2.4,             # 2.4× RT limit
-
+    rt_limit=2.4,  # 2.4× RT limit
     phases_executed=3,
     phases_skipped=0,
     skipped_phase_ids=[],
-
     phase_breakdown=[
         PhasePerformance(phase_id="defect_scan", time_seconds=20.04, skipped=False),
         PhasePerformance(phase_id="phase_02_hum_removal", time_seconds=2.27, skipped=False),
     ],
-
-    limit_exceeded=False      # ✅ Within limit
+    limit_exceeded=False,  # ✅ Within limit
 )
 ```
 
@@ -566,9 +562,7 @@ predicted_rt = 202.5 / 225 = 0.90× ✅
 Instead of reactive skipping, **predict** which phases to skip **before** execution:
 
 ```python
-def predict_phases_to_skip(phases: List[PhaseInterface],
-                           audio_duration: float,
-                           mode: QualityMode) -> List[str]:
+def predict_phases_to_skip(phases: List[PhaseInterface], audio_duration: float, mode: QualityMode) -> List[str]:
     """
     Predict which phases to skip based on estimated times.
 

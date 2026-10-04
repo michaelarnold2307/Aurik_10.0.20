@@ -142,8 +142,8 @@ ProcessingConfig(
     enable_de_esser=True,
     enable_vocal_enhancement=True,
     enable_instrumental_enhancement=True,
-    enable_phase_10_soundstage=True,   # 3D Depth
-    enable_phase_11_binaural=True,      # Binaural Enhancement
+    enable_phase_10_soundstage=True,  # 3D Depth
+    enable_phase_11_binaural=True,  # Binaural Enhancement
 )
 ```
 
@@ -193,9 +193,10 @@ ProcessingConfig(
 
 ```python
 restored = restorer.restore(
-    audio, sr,
+    audio,
+    sr,
     mode=ProcessingMode.FORENSIC,
-    enable_logging=True  # Dokumentiere alle Schritte
+    enable_logging=True,  # Dokumentiere alle Schritte
 )
 ```
 
@@ -304,21 +305,18 @@ from core.processing_modes import ProcessingConfig, ProcessingMode
 config = ProcessingConfig(
     # Basis-Mode
     mode=ProcessingMode.RESTORATION,
-
     # Globale Parameter
-    aggressive=0.4,              # 0.0-1.0 (Restaurations-Aggressivität)
-    denoise_strength=0.25,       # 0.0-1.0 (Noise Reduction Stärke)
-    compression_ratio=2.5,       # 1.0-10.0 (Dynamik-Kompression)
-
+    aggressive=0.4,  # 0.0-1.0 (Restaurations-Aggressivität)
+    denoise_strength=0.25,  # 0.0-1.0 (Noise Reduction Stärke)
+    compression_ratio=2.5,  # 1.0-10.0 (Dynamik-Kompression)
     # Feature Toggles
-    enable_de_esser=True,                      # Sibilanz-Reduktion
-    enable_vocal_enhancement=True,             # Vocal Clarity (Phase 2.2)
-    enable_instrumental_enhancement=True,      # Instrument Enhancement (Phase 2.3)
-    enable_phase_10_soundstage=False,          # 3D Soundstage Depth
-    enable_phase_11_binaural=False,            # Binaural Processing
-
+    enable_de_esser=True,  # Sibilanz-Reduktion
+    enable_vocal_enhancement=True,  # Vocal Clarity (Phase 2.2)
+    enable_instrumental_enhancement=True,  # Instrument Enhancement (Phase 2.3)
+    enable_phase_10_soundstage=False,  # 3D Soundstage Depth
+    enable_phase_11_binaural=False,  # Binaural Processing
     # Advanced (optional)
-    target_lufs=-16.0,           # Mastering Loudness (EBU R128)
+    target_lufs=-16.0,  # Mastering Loudness (EBU R128)
     enable_true_peak_limiter=True,  # Broadcast-safe Limiting
     enable_multiband_compression=False,  # Studio Mode only
 )
@@ -359,13 +357,13 @@ restored = result.audio
 # Fragile 1920s Shellac Recording
 config = ProcessingConfig(
     mode=ProcessingMode.ARCHIVAL,
-    aggressive=0.15  # Extra vorsichtig
+    aggressive=0.15,  # Extra vorsichtig
 )
 
 # Stark beschädigte Kassette
 config = ProcessingConfig(
     mode=ProcessingMode.RESTORATION,
-    aggressive=0.85  # Aggressiv restaurieren
+    aggressive=0.85,  # Aggressiv restaurieren
 )
 ```
 
@@ -393,13 +391,13 @@ config = ProcessingConfig(
 # Noisy room recording (Podcast)
 config = ProcessingConfig(
     mode=ProcessingMode.STUDIO_2026,
-    denoise_strength=0.6  # Starkes Denoising für Podcast
+    denoise_strength=0.6,  # Starkes Denoising für Podcast
 )
 
 # Vinyl with "musical" crackle
 config = ProcessingConfig(
     mode=ProcessingMode.VINTAGE_WARMTH,
-    denoise_strength=0.15  # Preserve Vinyl-Charakter
+    denoise_strength=0.15,  # Preserve Vinyl-Charakter
 )
 ```
 
@@ -429,13 +427,13 @@ config = ProcessingConfig(
 # Classical Music (preserve dynamics)
 config = ProcessingConfig(
     mode=ProcessingMode.ARCHIVAL,
-    compression_ratio=1.2  # Minimal compression
+    compression_ratio=1.2,  # Minimal compression
 )
 
 # Modern Pop (loudness war)
 config = ProcessingConfig(
     mode=ProcessingMode.STUDIO_2026,
-    compression_ratio=4.5  # Broadcast loudness
+    compression_ratio=4.5,  # Broadcast loudness
 )
 ```
 
@@ -463,13 +461,13 @@ config = ProcessingConfig(
 # Podcast mit harschen Sibilanten
 config = ProcessingConfig(
     mode=ProcessingMode.STUDIO_2026,
-    enable_de_esser=True  # Aktiviert
+    enable_de_esser=True,  # Aktiviert
 )
 
 # Piano Solo (keine Vocals)
 config = ProcessingConfig(
     mode=ProcessingMode.RESTORATION,
-    enable_de_esser=False  # Nicht benötigt
+    enable_de_esser=False,  # Nicht benötigt
 )
 ```
 
@@ -493,13 +491,13 @@ config = ProcessingConfig(
 # Podcast / Voice-Over
 config = ProcessingConfig(
     mode=ProcessingMode.STUDIO_2026,
-    enable_vocal_enhancement=True  # Maximale Vocal Clarity
+    enable_vocal_enhancement=True,  # Maximale Vocal Clarity
 )
 
 # Instrumental Music (kein Gesang)
 config = ProcessingConfig(
     mode=ProcessingMode.RESTORATION,
-    enable_vocal_enhancement=False  # Nicht benötigt
+    enable_vocal_enhancement=False,  # Nicht benötigt
 )
 ```
 
@@ -509,7 +507,7 @@ config = ProcessingConfig(
 # Default: Auto (wird nur aktiviert wenn Vocals detected)
 config = ProcessingConfig(
     mode=ProcessingMode.RESTORATION,
-    enable_vocal_enhancement=None  # Auto (empfohlen)
+    enable_vocal_enhancement=None,  # Auto (empfohlen)
 )
 ```
 
@@ -534,13 +532,13 @@ config = ProcessingConfig(
 # Rock Band
 config = ProcessingConfig(
     mode=ProcessingMode.STUDIO_2026,
-    enable_instrumental_enhancement=True  # All Instruments
+    enable_instrumental_enhancement=True,  # All Instruments
 )
 
 # A Cappella / Voice-Only
 config = ProcessingConfig(
     mode=ProcessingMode.RESTORATION,
-    enable_instrumental_enhancement=False  # Nicht benötigt
+    enable_instrumental_enhancement=False,  # Nicht benötigt
 )
 ```
 
@@ -565,13 +563,13 @@ config = ProcessingConfig(
 # Remastering für Streaming (3D Audio)
 config = ProcessingConfig(
     mode=ProcessingMode.STUDIO_2026,
-    enable_phase_10_soundstage=True  # Immersive Audio
+    enable_phase_10_soundstage=True,  # Immersive Audio
 )
 
 # Archival (Original Soundstage)
 config = ProcessingConfig(
     mode=ProcessingMode.ARCHIVAL,
-    enable_phase_10_soundstage=False  # Preserve Original
+    enable_phase_10_soundstage=False,  # Preserve Original
 )
 ```
 
@@ -603,13 +601,13 @@ config = ProcessingConfig(
 # Headphone Mastering
 config = ProcessingConfig(
     mode=ProcessingMode.STUDIO_2026,
-    enable_phase_11_binaural=True  # Optimiert für Kopfhörer
+    enable_phase_11_binaural=True,  # Optimiert für Kopfhörer
 )
 
 # Speaker-only Playback
 config = ProcessingConfig(
     mode=ProcessingMode.RESTORATION,
-    enable_phase_11_binaural=False  # Nicht benötigt für Lautsprecher
+    enable_phase_11_binaural=False,  # Nicht benötigt für Lautsprecher
 )
 ```
 
@@ -655,14 +653,14 @@ from core.processing_modes import ProcessingConfig, ProcessingMode
 
 config = ProcessingConfig(
     mode=ProcessingMode.STUDIO_2026,
-    denoise_strength=0.6,              # Strong noise reduction
-    enable_vocal_enhancement=True,     # Voice clarity
-    enable_de_esser=True,              # Reduce sibilance
-    enable_phase_11_binaural=True,     # Immersive listening
+    denoise_strength=0.6,  # Strong noise reduction
+    enable_vocal_enhancement=True,  # Voice clarity
+    enable_de_esser=True,  # Reduce sibilance
+    enable_phase_11_binaural=True,  # Immersive listening
 )
 
 restored = restorer.restore(audio, sr, config=config)
-sf.write('podcast_enhanced.wav', restored, 48000)
+sf.write("podcast_enhanced.wav", restored, 48000)
 ```
 
 **Ergebnis:**
@@ -685,21 +683,22 @@ from core.processing_modes import ProcessingConfig, ProcessingMode
 
 config = ProcessingConfig(
     mode=ProcessingMode.ARCHIVAL,
-    aggressive=0.15,          # Extra vorsichtig
-    denoise_strength=0.1,     # Preserve historical noise
-    compression_ratio=1.2,    # Minimal compression
+    aggressive=0.15,  # Extra vorsichtig
+    denoise_strength=0.1,  # Preserve historical noise
+    compression_ratio=1.2,  # Minimal compression
     enable_de_esser=False,
     enable_vocal_enhancement=False,
     enable_instrumental_enhancement=False,
 )
 
 restored = restorer.restore(
-    audio, sr,
+    audio,
+    sr,
     config=config,
-    enable_logging=True  # Dokumentiere alle Schritte für Archiv
+    enable_logging=True,  # Dokumentiere alle Schritte für Archiv
 )
 
-sf.write('archive_master.wav', restored, 48000, subtype='PCM_24')
+sf.write("archive_master.wav", restored, 48000, subtype="PCM_24")
 ```
 
 **Ergebnis:**
@@ -720,21 +719,22 @@ sf.write('archive_master.wav', restored, 48000, subtype='PCM_24')
 ```python
 config = ProcessingConfig(
     mode=ProcessingMode.FORENSIC,
-    aggressive=0.1,           # Minimale Veränderung
-    denoise_strength=0.05,    # Nur extreme Noise
-    compression_ratio=1.0,    # Keine Kompression
+    aggressive=0.1,  # Minimale Veränderung
+    denoise_strength=0.05,  # Nur extreme Noise
+    compression_ratio=1.0,  # Keine Kompression
 )
 
 restored = restorer.restore(
-    audio, sr,
+    audio,
+    sr,
     config=config,
-    input_file='evidence_2026_123.wav',
-    enable_logging=True  # Chain of Custody
+    input_file="evidence_2026_123.wav",
+    enable_logging=True,  # Chain of Custody
 )
 
 # Save processing report für Gericht
-if hasattr(restorer, 'logger'):
-    restorer.logger.save_trace('evidence_processing_report.json')
+if hasattr(restorer, "logger"):
+    restorer.logger.save_trace("evidence_processing_report.json")
 ```
 
 **Ergebnis:**
@@ -754,7 +754,7 @@ if hasattr(restorer, 'logger'):
 config = ProcessingConfig(
     mode=ProcessingMode.RESTORATION,
     aggressive=0.3,  # Niedrig starten
-    denoise_strength=0.2
+    denoise_strength=0.2,
 )
 restored_v1 = restorer.restore(audio, sr, config=config)
 
@@ -782,16 +782,13 @@ configs = [
 
 results = []
 for i, config in enumerate(configs):
-    restored = restorer.restore(
-        audio, sr,
-        config=config,
-        output_file=f'test_{i}.wav',
-        enable_logging=True
+    restored = restorer.restore(audio, sr, config=config, output_file=f"test_{i}.wav", enable_logging=True)
+    results.append(
+        {
+            "config": config,
+            "snr": restorer.logger.trace.overall_snr_improvement if hasattr(restorer, "logger") else None,
+        }
     )
-    results.append({
-        'config': config,
-        'snr': restorer.logger.trace.overall_snr_improvement if hasattr(restorer, 'logger') else None
-    })
 
 # Compare SNR
 for i, r in enumerate(results):

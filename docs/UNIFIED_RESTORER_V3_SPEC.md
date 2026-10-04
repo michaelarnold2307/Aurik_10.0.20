@@ -108,9 +108,9 @@ Benefits:
 
 ```python
 class QualityMode(Enum):
-    FAST = "fast"           # 1.5× RT limit (30% faster than balanced)
-    BALANCED = "balanced"   # 2.4× RT limit (default, best quality/speed)
-    QUALITY = "quality"     # 9× RT limit (no strict enforcement)
+    FAST = "fast"  # 1.5× RT limit (30% faster than balanced)
+    BALANCED = "balanced"  # 2.4× RT limit (default, best quality/speed)
+    QUALITY = "quality"  # 9× RT limit (no strict enforcement)
 ```
 
 ### 3.2 Mode Comparison
@@ -125,10 +125,10 @@ class QualityMode(Enum):
 
 ```python
 class PhasePriority:
-    CRITICAL = 9    # Never skip (e.g., click removal on shellac)
-    HIGH = 8        # Skip only in FAST mode if desperate
-    MEDIUM = 6      # Skip in FAST mode if approaching limit
-    LOW = 3         # Skip in FAST/BALANCED if approaching limit
+    CRITICAL = 9  # Never skip (e.g., click removal on shellac)
+    HIGH = 8  # Skip only in FAST mode if desperate
+    MEDIUM = 6  # Skip in FAST mode if approaching limit
+    LOW = 3  # Skip in FAST/BALANCED if approaching limit
 ```
 
 **Example Phase Priorities:**
@@ -258,14 +258,14 @@ report = perf_guard.get_report()
 
 # Report contains:
 {
-    "total_time": 22.4,               # seconds
-    "audio_duration": 225.0,          # seconds
-    "rt_factor": 0.10,                # 0.10× RT (10× faster than realtime)
-    "status": "OPTIMAL",              # OPTIMAL | WARNING | CRITICAL
+    "total_time": 22.4,  # seconds
+    "audio_duration": 225.0,  # seconds
+    "rt_factor": 0.10,  # 0.10× RT (10× faster than realtime)
+    "status": "OPTIMAL",  # OPTIMAL | WARNING | CRITICAL
     "phases_executed": 1,
     "phases_skipped": 0,
     "skipped_phases": [],
-    "limit_exceeded": False
+    "limit_exceeded": False,
 }
 ```
 
@@ -276,8 +276,7 @@ report = perf_guard.get_report()
 ### 6.1 Technical Quality (TQ) Calculation
 
 ```python
-def _estimate_quality(self, defect_result: DefectAnalysisResult,
-                      phases_executed: List[str]) -> float:
+def _estimate_quality(self, defect_result: DefectAnalysisResult, phases_executed: List[str]) -> float:
     """
     Estimate restoration quality (0-100%).
 
@@ -312,8 +311,7 @@ def _estimate_quality(self, defect_result: DefectAnalysisResult,
 
 ```python
 degradation = sum(
-    defect_severity * DEFECT_WEIGHTS[defect_type]
-    for defect_type, defect_severity in defect_scores.items()
+    defect_severity * DEFECT_WEIGHTS[defect_type] for defect_type, defect_severity in defect_scores.items()
 )
 
 # Example:
@@ -350,10 +348,10 @@ improvement = sum(PHASE_EFFECTIVENESS[phase_id] for phase_id in phases_executed)
 
 ```python
 PSYCHOACOUSTIC_BOOST = {
-    MaterialType.SHELLAC: 15,   # Users expect defects, so cleaned shellac sounds "amazing"
-    MaterialType.VINYL: 10,     # Moderate expectations
-    MaterialType.TAPE: 8,       # Moderate expectations
-    MaterialType.CD: 2,         # High expectations (digital source)
+    MaterialType.SHELLAC: 15,  # Users expect defects, so cleaned shellac sounds "amazing"
+    MaterialType.VINYL: 10,  # Moderate expectations
+    MaterialType.TAPE: 8,  # Moderate expectations
+    MaterialType.CD: 2,  # High expectations (digital source)
     MaterialType.STREAMING: 1,  # Very high expectations
 }
 ```
@@ -361,9 +359,7 @@ PSYCHOACOUSTIC_BOOST = {
 ### 6.5 Final Quality Score
 
 ```python
-quality = min(100, max(0,
-    BASE_QUALITY - degradation + improvement + psychoacoustic_boost
-))
+quality = min(100, max(0, BASE_QUALITY - degradation + improvement + psychoacoustic_boost))
 
 # Example (Shellac with clicks + hum):
 # BASE = 50
@@ -432,8 +428,8 @@ class RestorationConfig:
 
     # Advanced options
     force_phases: Optional[List[str]] = None  # Force specific phases regardless of defects
-    skip_defect_scan: bool = False            # Skip scanner (use force_phases)
-    dry_run: bool = False                     # Only report what would be done
+    skip_defect_scan: bool = False  # Skip scanner (use force_phases)
+    dry_run: bool = False  # Only report what would be done
 ```
 
 ### 7.3 Result Structure
@@ -441,12 +437,12 @@ class RestorationConfig:
 ```python
 @dataclass
 class RestorationResult:
-    restored_audio: np.ndarray                  # Processed audio samples
-    quality_estimate: float                     # Predicted quality (0-100%)
-    defect_analysis: DefectAnalysisResult       # From DefectScanner
-    performance_report: Dict[str, Any]          # RT factor, skipped phases, status
-    phases_executed: List[str]                  # Phase IDs that were run
-    metadata: Dict[str, Any]                    # Additional info (timestamps, etc.)
+    restored_audio: np.ndarray  # Processed audio samples
+    quality_estimate: float  # Predicted quality (0-100%)
+    defect_analysis: DefectAnalysisResult  # From DefectScanner
+    performance_report: Dict[str, Any]  # RT factor, skipped phases, status
+    phases_executed: List[str]  # Phase IDs that were run
+    metadata: Dict[str, Any]  # Additional info (timestamps, etc.)
 ```
 
 ---
@@ -458,9 +454,9 @@ class RestorationResult:
 ```python
 # Generated 225s audio with synthetic defects:
 audio = generate_sine_wave(duration=225, frequency=440, sr=44100)
-audio = inject_clicks(audio, count=100, amplitude=0.3)     # Clicks
-audio = inject_hum(audio, frequency=60, amplitude=0.1)     # 60Hz hum
-audio = inject_noise(audio, level=0.05)                    # White noise
+audio = inject_clicks(audio, count=100, amplitude=0.3)  # Clicks
+audio = inject_hum(audio, frequency=60, amplitude=0.1)  # 60Hz hum
+audio = inject_noise(audio, level=0.05)  # White noise
 ```
 
 ### 8.2 FAST Mode Results
@@ -556,10 +552,7 @@ result = restorer.restore(audio, sr)
 
 ```python
 # Override defect detection, force specific phases
-config = RestorationConfig(
-    force_phases=["phase_01_click_removal", "phase_02_hum_removal"],
-    skip_defect_scan=True
-)
+config = RestorationConfig(force_phases=["phase_01_click_removal", "phase_02_hum_removal"], skip_defect_scan=True)
 restorer = UnifiedRestorerV3(config)
 result = restorer.restore(audio, sr)
 ```
@@ -585,11 +578,13 @@ print(f"Estimated time: {result.performance_report['estimated_time']}s")
 ```python
 # OLD (v8.0):
 from core.unified_restorer_v2 import UnifiedRestorer
+
 restorer = UnifiedRestorer(material="vinyl", preset="balanced")
 result = restorer.restore_audio(audio, sr)
 
 # NEW (v10.0.0):
 from core.unified_restorer_v3 import UnifiedRestorerV3, RestorationConfig, QualityMode
+
 config = RestorationConfig(mode=QualityMode.BALANCED)  # No material needed!
 restorer = UnifiedRestorerV3(config)
 result = restorer.restore(audio, sr)

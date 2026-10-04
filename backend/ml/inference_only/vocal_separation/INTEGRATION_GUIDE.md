@@ -17,15 +17,8 @@ Add to imports section (after line 31):
 
 ```python
 # v8.1: Advanced Vocal Separation (Feature #1)
-from backend.ml.inference_only.vocal_separation import (
-    HybridVocalSeparator,
-    MDXNetSeparator,
-    DemucsV5Separator
-)
-from backend.ml.safety_wrappers.vocal_separation_safety import (
-    VocalSeparationSafetyWrapper,
-    HIPSViolationError
-)
+from backend.ml.inference_only.vocal_separation import HybridVocalSeparator, MDXNetSeparator, DemucsV5Separator
+from backend.ml.safety_wrappers.vocal_separation_safety import VocalSeparationSafetyWrapper, HIPSViolationError
 ```
 
 ### Step 2: Initialize separators in `__init__`
@@ -33,18 +26,15 @@ from backend.ml.safety_wrappers.vocal_separation_safety import (
 Add to `__init__` method (after line 105):
 
 ```python
-        # v8.1: Advanced Vocal Separation
-        self.vocal_separator_v8 = HybridVocalSeparator(
-            fusion_strategy='adaptive',
-            sample_rate=44100,
-            device=None  # Auto-detect
-        )
-        self.vocal_safety_wrapper = VocalSeparationSafetyWrapper(
-            self.vocal_separator_v8,
-            strict_mode=False
-        )
+# v8.1: Advanced Vocal Separation
+self.vocal_separator_v8 = HybridVocalSeparator(
+    fusion_strategy="adaptive",
+    sample_rate=44100,
+    device=None,  # Auto-detect
+)
+self.vocal_safety_wrapper = VocalSeparationSafetyWrapper(self.vocal_separator_v8, strict_mode=False)
 
-        self.logger.info("v8.1 Vocal Separation initialized (Hybrid: MDX-Net + Demucs v5)")
+self.logger.info("v8.1 Vocal Separation initialized (Hybrid: MDX-Net + Demucs v5)")
 ```
 
 ### Step 3: Add separate_vocals_v8 method
@@ -117,13 +107,15 @@ Modify policy/ml_policy_engine.py to recommend v8.1 separators:
 
 ```python
 # Add to _recommend_vocal_separation():
-if context.content_type == 'music_vocal':
-    recommendations.append({
-        'model': 'hybrid_vocal_separator_v8',
-        'reason': 'SOTA hybrid ensemble (MDX-Net + Demucs v5)',
-        'priority': 'CRITICAL',
-        'quality_target': 0.95
-    })
+if context.content_type == "music_vocal":
+    recommendations.append(
+        {
+            "model": "hybrid_vocal_separator_v8",
+            "reason": "SOTA hybrid ensemble (MDX-Net + Demucs v5)",
+            "priority": "CRITICAL",
+            "quality_target": 0.95,
+        }
+    )
 ```
 
 ## TESTING

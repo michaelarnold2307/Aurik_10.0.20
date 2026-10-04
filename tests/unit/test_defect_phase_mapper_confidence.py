@@ -61,10 +61,7 @@ class TestLiveResolvedClaims:
     def test_enhancement_phase_claims_nothing(self) -> None:
         from backend.core.unified_restorer_v3 import UnifiedRestorerV3
 
-        assert (
-            UnifiedRestorerV3._compute_live_resolved_claims("phase_38_presence_boost", {"noise_level": 0.9})
-            == {}
-        )
+        assert UnifiedRestorerV3._compute_live_resolved_claims("phase_38_presence_boost", {"noise_level": 0.9}) == {}
 
     def test_empty_severity_map_no_claims(self) -> None:
         from backend.core.unified_restorer_v3 import UnifiedRestorerV3

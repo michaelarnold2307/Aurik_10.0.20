@@ -86,7 +86,7 @@ _analog_era_violation = NOT _is_digitized ∧ decade > 1989 ∧ analog_chain
 Der `resolve_material_consensus()` erhielt vom DefectScanner nur **eine** Material-Stimme:
 
 ```python
-defect_result={"material": "vinyl", "score": 5.39}
+defect_result = {"material": "vinyl", "score": 5.39}
 ```
 
 Mit nur 0.20 Gewicht und einem einzigen Material wurde der DefectScanner im Konsens marginalisiert — selbst wenn er eindeutige Defektsignaturen für Vinyl (Crackle, Groove-Echo, Rillenrauschen) UND Cassette (Tape-Hiss, Wow/Flutter) gleichzeitig fand.
@@ -100,14 +100,14 @@ Kein Mechanismus, um die **pro-Defekt pro-Material** Affinitäten in den Konsens
 `material_consensus.py` akzeptiert nun `defect_result["material_scores"]` — ein Dict mit **pro-Material aggregierter Severity**:
 
 ```python
-defect_result={
+defect_result = {
     "material": "vinyl",
     "score": 5.39,
-    "material_scores": {    # §v10.14 NEU
-        "vinyl": 1.25,      # crackle(0.45) + riaa_error(0.35) + rumble(0.45)
-        "cassette": 0.62,   # wow(0.18) + flutter(0.22) + tape_hiss(0.22)
+    "material_scores": {  # §v10.14 NEU
+        "vinyl": 1.25,  # crackle(0.45) + riaa_error(0.35) + rumble(0.45)
+        "cassette": 0.62,  # wow(0.18) + flutter(0.22) + tape_hiss(0.22)
         "reel_tape": 0.35,  # print_through(0.35)
-    }
+    },
 }
 ```
 

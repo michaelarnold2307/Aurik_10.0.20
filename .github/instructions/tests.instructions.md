@@ -12,6 +12,7 @@ applyTo: "tests/**/*.py"
 
 # RICHTIG: leichter inkrementeller GC
 import gc
+
 gc.collect(0)  # nur Generation 0
 
 # Vollständiges gc.collect() nur:
@@ -34,6 +35,7 @@ class MyManager:
         self._stop_event.set()
         self._thread.join(timeout=5.0)
 
+
 # Cleanup in pytest:
 # pytest_sessionfinish oder Finalizer — NICHT daemon=True als einziges Modell
 ```
@@ -44,12 +46,14 @@ class MyManager:
 # PFLICHT: Budget-Tests MÜSSEN is_system_thrashing mocken
 # Sonst: flaky auf Hosts mit hoher Swap-Auslastung
 
+
 @pytest.fixture(autouse=True)
 def mock_no_thrashing(monkeypatch):
     monkeypatch.setattr(
         "backend.core.plugin_lifecycle_manager.is_system_thrashing",
         lambda: False,
     )
+
 
 # Tests die try_allocate / release prüfen MÜSSEN diese Fixture verwenden
 ```
@@ -61,6 +65,7 @@ def mock_no_thrashing(monkeypatch):
 # IMMER aktuelle Version: resampy >= 0.4.3
 # conftest.py global:
 import warnings
+
 warnings.filterwarnings("ignore", category=DeprecationWarning, module="pkg_resources")
 ```
 
@@ -74,7 +79,7 @@ warnings.filterwarnings("ignore", category=DeprecationWarning, module="pkg_resou
 
 # VERBOTEN: Hilbert/STFT vor günstigem Gate
 # Beispiel TFS-Guard:
-frame_energy = np.sum(frame ** 2)
+frame_energy = np.sum(frame**2)
 if frame_energy < _MIN_ENERGY_THRESHOLD:
     continue  # kein Hilbert
 if not is_voiced(frame, sr):
@@ -102,13 +107,14 @@ def safe_cosine(a: np.ndarray, b: np.ndarray, eps: float = 1e-8) -> float:
 # RICHTIG: optional imports für ML-Tests
 try:
     import torch
+
     HAS_TORCH = True
 except ImportError:
     HAS_TORCH = False
 
+
 @pytest.mark.skipif(not HAS_TORCH, reason="PyTorch nicht installiert")
-def test_heavy_model():
-    ...
+def test_heavy_model(): ...
 ```
 
 ## AMRB-Update bei Major-Release (9.x.0)
@@ -125,6 +131,7 @@ def test_heavy_model():
 def test_phase_XX_no_regression(synthetic_audio, sr=48000):
     """Stellt sicher dass Phase XX keine Goal-Regression einführt."""
     from backend.core.phases.phase_XX import PhaseXX
+
     phase = PhaseXX()
     audio_out = phase.process(synthetic_audio, sr, material_type="vinyl", strength=0.8)
 
@@ -161,6 +168,7 @@ def test_get_goal_recovery_phases_all_phase_ids_exist_on_disk():
     """
     import pathlib
     import backend.core.calibration_matrix as _cm
+
     phases_dir = pathlib.Path(__file__).parent.parent.parent / "backend" / "core" / "phases"
     valid_ids = {p.stem for p in phases_dir.glob("phase_*.py")}
     # ... alle IDs aus beiden Dicts gegen valid_ids prüfen

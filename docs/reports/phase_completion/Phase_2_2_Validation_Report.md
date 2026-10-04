@@ -293,12 +293,7 @@ python dsp/vocal_dynamics_intelligence.py input.wav output.wav \
 @property
 def breath_intelligence(self):
     if self._breath_intelligence is None and PHASE_2_2_AVAILABLE:
-        self._breath_intelligence = BreathIntelligence(
-            sensitivity=0.7,
-            genre='acoustic',
-            era='modern',
-            aggressive=0.5
-        )
+        self._breath_intelligence = BreathIntelligence(sensitivity=0.7, genre="acoustic", era="modern", aggressive=0.5)
     return self._breath_intelligence
 ```
 

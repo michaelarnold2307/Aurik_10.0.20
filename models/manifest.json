@@ -1815,6 +1815,8 @@
       "bundled_path": "models/miipher/miipher.onnx",
       "sha256": "",
       "size_bytes": 0,
+      "replaced_by": "models/miipher_dit/flow_matching_dit.onnx (MIIPHER-DiT, §v10.14)",
+      "_ersetzung_2026_10_04": "Proprietaere MIIPHER-Gewichte nicht lizenzklar beschaffbar; Rolle ersetzt durch MIIPHER-DiT (use_miipher_dit=True) — kein Rest-Download offen.",
       "required": false,
       "fallback": "sgmse_plus",
       "size_gb": 0.0,

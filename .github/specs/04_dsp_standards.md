@@ -179,12 +179,38 @@ ViSQOL --speech  # Voice-Priors → Musik systematisch falsch bewertet
 
 ```python
 BARK_EDGES_HZ = [
-    20, 100, 200, 300, 400, 510, 630, 770, 920, 1080,
-    1270, 1480, 1720, 2000, 2320, 2700, 3150, 3700, 4400,
-    5300, 6400, 7700, 9500, 12000, 15500
+    20,
+    100,
+    200,
+    300,
+    400,
+    510,
+    630,
+    770,
+    920,
+    1080,
+    1270,
+    1480,
+    1720,
+    2000,
+    2320,
+    2700,
+    3150,
+    3700,
+    4400,
+    5300,
+    6400,
+    7700,
+    9500,
+    12000,
+    15500,
 ]
+
+
 def hz_to_erb(f_hz: float) -> float:
     return 21.4 * math.log10(1.0 + f_hz / 229.0)
+
+
 def hz_to_mel(f_hz: float) -> float:
     return 2595.0 * math.log10(1.0 + f_hz / 700.0)
 ```
@@ -275,10 +301,13 @@ def hz_to_mel(f_hz: float) -> float:
 ```python
 # benchmarks/sota_eval.py
 def evaluate_candidate(model_name, candidate_plugin, amrb_subset="all"):
-    results = run_benchmark(BenchmarkConfig(
-        n_items=10, min_duration_s=30,
-        override_primary={use_case: candidate_plugin},
-    ))
+    results = run_benchmark(
+        BenchmarkConfig(
+            n_items=10,
+            min_duration_s=30,
+            override_primary={use_case: candidate_plugin},
+        )
+    )
     return {
         "oqs_delta": results.overall_score - SOTA_BASELINE[use_case],
         "latency_ms": results.avg_latency_ms,
@@ -320,6 +349,7 @@ und kann die Stimme verfärben.
 # WLPC-Pfad: aktiv wenn era_decade < 1960 ODER effective_snr < 15 dB
 # Pre-Whitening NUR für LPC-Koeffizienten-Schätzung — nie auf Output-Audio anwenden!
 
+
 def _wlpc_prewhiten_frame(frame: np.ndarray, noise_psd: np.ndarray) -> np.ndarray:
     """Wiener-Gain Spektral-Pre-Whitening für rauschrobuste LPC-Schätzung."""
     fft_frame = np.fft.rfft(frame)
@@ -327,9 +357,10 @@ def _wlpc_prewhiten_frame(frame: np.ndarray, noise_psd: np.ndarray) -> np.ndarra
     gain = np.maximum(1.0 - noise_psd / (signal_psd + 1e-10), _WLPC_GAIN_FLOOR)
     return np.fft.irfft(fft_frame * gain, n=len(frame))
 
+
 # Noise-PSD aus den ruhigsten 20 % der Frames (Perzentil-Filter):
 quiet_frames = [f for f in frames if rms(f) < np.percentile(rms_list, 20)]
-noise_psd = np.mean([np.abs(np.fft.rfft(f))**2 for f in quiet_frames], axis=0)
+noise_psd = np.mean([np.abs(np.fft.rfft(f)) ** 2 for f in quiet_frames], axis=0)
 
 # SNR-Schätzung: 75th/10th-Perzentil-Verhältnis der Frame-RMS-Werte
 snr_db = 20 * np.log10(np.percentile(rms_list, 75) / (np.percentile(rms_list, 10) + 1e-10))
@@ -493,11 +524,11 @@ VERBOTEN: Comb-Filter, einseitiges α-Modell als Pflicht-Implementierung
 ```python
 # MRSA-Fenster @ SR=48000 Hz:
 ZONES = {
-    "sub_bass":   {"win": 65536, "hop": 16384, "hz": (20, 250)},
-    "mid_low":    {"win": 16384, "hop": 4096,  "hz": (250, 800)},
-    "mid":        {"win": 8192,  "hop": 2048,  "hz": (800, 2000)},
-    "presence":   {"win": 1024,  "hop": 256,   "hz": (2000, 8000)},
-    "air":        {"win": 128,   "hop": 32,    "hz": (8000, 24000)},
+    "sub_bass": {"win": 65536, "hop": 16384, "hz": (20, 250)},
+    "mid_low": {"win": 16384, "hop": 4096, "hz": (250, 800)},
+    "mid": {"win": 8192, "hop": 2048, "hz": (800, 2000)},
+    "presence": {"win": 1024, "hop": 256, "hz": (2000, 8000)},
+    "air": {"win": 128, "hop": 32, "hz": (8000, 24000)},
 }
 # PGHI per Zone; Kreuzfade Hanning 10 ms an Zonenübergängen
 ```
@@ -832,23 +863,24 @@ def compute_noise_texture_coherence(
 # Konsolidierte Carrier-Transfer-Charakteristik-Tabelle (normativ)
 CARRIER_TRANSFER_CHARACTERISTICS = {
     # material_key: (bw_ceiling_hz, snr_floor_db, generation_loss_db_per_gen, dr_ceiling_db)
-    "wax_cylinder":   ( 5000, -25, -6.0, 35),
-    "shellac":        ( 8000, -30, -5.0, 45),
-    "lacquer_disc":   ( 8000, -32, -4.5, 50),
-    "wire_recording": ( 6000, -28, -5.5, 40),
-    "vinyl":          (16000, -55, -2.0, 70),
-    "tape":           (15000, -50, -3.0, 62),  # Kompaktkassette (cassette→tape normiert); Typ I ~55, Typ II ~65, Mittel 62 dB
-    "reel_tape":      (18000, -60, -1.5, 72),
-    "cassette":       (14000, -48, -3.5, 60),
-    "dat":            (22000, -90, -0.2, 92),
-    "minidisc":       (20000, -85, -0.5, 88),
-    "cd_digital":     (22050, -96, -0.1, 96),
-    "mp3_low":        (16000, -70, -1.5, 90),
-    "mp3_high":       (20000, -80, -0.5, 93),
-    "aac":            (20000, -82, -0.4, 93),
-    "streaming":      (20000, -78, -0.8, 90),
-    "unknown":        (20000, -50, -2.0, 70),
+    "wax_cylinder": (5000, -25, -6.0, 35),
+    "shellac": (8000, -30, -5.0, 45),
+    "lacquer_disc": (8000, -32, -4.5, 50),
+    "wire_recording": (6000, -28, -5.5, 40),
+    "vinyl": (16000, -55, -2.0, 70),
+    "tape": (15000, -50, -3.0, 62),  # Kompaktkassette (cassette→tape normiert); Typ I ~55, Typ II ~65, Mittel 62 dB
+    "reel_tape": (18000, -60, -1.5, 72),
+    "cassette": (14000, -48, -3.5, 60),
+    "dat": (22000, -90, -0.2, 92),
+    "minidisc": (20000, -85, -0.5, 88),
+    "cd_digital": (22050, -96, -0.1, 96),
+    "mp3_low": (16000, -70, -1.5, 90),
+    "mp3_high": (20000, -80, -0.5, 93),
+    "aac": (20000, -82, -0.4, 93),
+    "streaming": (20000, -78, -0.8, 90),
+    "unknown": (20000, -50, -2.0, 70),
 }
+
 
 def compute_cumulative_generation_loss(transfer_chain: list[str]) -> dict:
     """
@@ -858,7 +890,7 @@ def compute_cumulative_generation_loss(transfer_chain: list[str]) -> dict:
         {
             "generation_count": int,         # Anzahl Transfer-Stufen
             "cumulative_bw_hz": float,       # = min(bw_ceiling für jede Stufe)
-            "cumulative_snr_db": float,      # ≈ 10·log10(Σ 10^(loss_i/10))  
+            "cumulative_snr_db": float,      # ≈ 10·log10(Σ 10^(loss_i/10))
             "cumulative_hf_loss_db": float,  # = Σ generation_loss_db_per_gen
             "cumulative_dr_ceiling_db": float,  # = min(dr_ceiling für jede Stufe)
             "source_fidelity_confidence": float,  # 1.0 / (1.0 + 0.15·gen_count)
@@ -934,10 +966,7 @@ if _preserve_mask is not None:
     # NR-Gain wird mit preserve_mask gewichtet:
     # effective_gain = preserve_mask * G_floor_preserve + (1 - preserve_mask) * G_computed
     G_PRESERVE_FLOOR = 0.90  # NR fast abgeschaltet in PRESERVE-Zonen
-    effective_gain = (
-        _preserve_mask * G_PRESERVE_FLOOR
-        + (1.0 - _preserve_mask) * G_computed
-    )
+    effective_gain = _preserve_mask * G_PRESERVE_FLOOR + (1.0 - _preserve_mask) * G_computed
     # Nicht weniger als G_floor (§4.5d):
     effective_gain = np.maximum(effective_gain, 0.10)
 ```
@@ -967,6 +996,7 @@ if _preserve_mask is not None:
 # backend/core/dsp/pre_echo_detector.py
 # Singleton: get_pre_echo_detector()
 
+
 class PreEchoDetector:
     """
     Erkennt Pre-Echo-Artefakte durch Rückwärts-Temporal-Masking-Analyse.
@@ -975,20 +1005,20 @@ class PreEchoDetector:
     Pre-Echo = Block-Energie vor Onset überschreitet Temporal-Masking-Schwelle.
     """
 
-    FRAME_SIZE_MS   = 23.2      # ISO 11172-3 Standard-Blockgröße (1024 Samples @ 44.1 kHz)
-    HOP_SIZE_MS     = 11.6      # 50 % Overlap
-    PRE_MASK_WINDOW = 3         # 3 Frames = ~34 ms vor Transient (Prä-Masking-Fenster)
+    FRAME_SIZE_MS = 23.2  # ISO 11172-3 Standard-Blockgröße (1024 Samples @ 44.1 kHz)
+    HOP_SIZE_MS = 11.6  # 50 % Overlap
+    PRE_MASK_WINDOW = 3  # 3 Frames = ~34 ms vor Transient (Prä-Masking-Fenster)
 
     # Pre-Echo-Schwellen (dB über geschätztem Pre-Masking-Boden)
     # Kalibriert: Menschliche Hörschwelle für Vorecho (Fastl & Zwicker 2007, §7.2)
     THRESHOLDS = {
-        "shellac":    +6.0,   # Shellac: hoher Rauschboden, tolerantere Schwelle
-        "vinyl":      +8.0,
+        "shellac": +6.0,  # Shellac: hoher Rauschboden, tolerantere Schwelle
+        "vinyl": +8.0,
         "cd_digital": +12.0,  # CD/Digital: kein natürlicher Rauschboden → enge Schwelle
-        "mp3_low":    +10.0,
-        "mp3_high":   +11.0,
-        "aac":        +11.0,
-        "unknown":    +9.0,
+        "mp3_low": +10.0,
+        "mp3_high": +11.0,
+        "aac": +11.0,
+        "unknown": +9.0,
     }
 
     def detect(
@@ -1180,7 +1210,8 @@ DSP-Pflichtregeln für alle Loudness-Drift-Guards in der Pipeline (§2.45a).
 
 ```python
 # VERBOTEN — globaler RMS misst Stille mit:
-rms_db = 20.0 * np.log10(np.sqrt(np.mean(audio ** 2)) + 1e-10)
+rms_db = 20.0 * np.log10(np.sqrt(np.mean(audio**2)) + 1e-10)
+
 
 # PFLICHT — Gated-RMS (nur musikalische Frames):
 def _rms_dbfs_gated(audio, frame_size=2048, gate_dbfs=-50.0, min_gate_ratio=0.05):
@@ -1191,8 +1222,8 @@ def _rms_dbfs_gated(audio, frame_size=2048, gate_dbfs=-50.0, min_gate_ratio=0.05
         mono = audio
     # Frame-basierte Messung
     n_frames = len(mono) // frame_size
-    frames = mono[:n_frames * frame_size].reshape(n_frames, frame_size)
-    frame_rms_db = 20.0 * np.log10(np.sqrt(np.mean(frames ** 2, axis=1)) + 1e-10)
+    frames = mono[: n_frames * frame_size].reshape(n_frames, frame_size)
+    frame_rms_db = 20.0 * np.log10(np.sqrt(np.mean(frames**2, axis=1)) + 1e-10)
     # Gate: nur Frames > gate_dbfs
     mask = frame_rms_db > gate_dbfs
     if mask.sum() < max(1, int(n_frames * min_gate_ratio)):
@@ -1305,7 +1336,7 @@ Bei Spectral-Repair (phase_23) Single-STFT-Fallback (`_repair_channel`): Interpo
 # POCS nur im Non-FAST-Modus und bei relevanter Defektabdeckung
 if quality_mode not in ("FAST",) and defect_severity >= 0.005:
     n_iter = int(np.clip(round(2 + defect_severity * 15), 2, 5))
-    if len(audio) / sr > 60.0:       # Wall-Time-Guard für lange Signale
+    if len(audio) / sr > 60.0:  # Wall-Time-Guard für lange Signale
         n_iter = min(n_iter, 2)
     for _ in range(n_iter):
         time_signal = librosa.istft(Zxx_blended, hop_length=..., win_length=...)
@@ -1372,9 +1403,9 @@ except Exception:
 
 ```python
 plm = get_plugin_lifecycle_manager()
-plm.set_active("my_model", True)   # VOR Inferenz-Start
+plm.set_active("my_model", True)  # VOR Inferenz-Start
 try:
-    result = model.run(input)       # oder session.run()
+    result = model.run(input)  # oder session.run()
 finally:
     plm.set_active("my_model", False)  # IMMER nach Inferenz-Ende
 ```

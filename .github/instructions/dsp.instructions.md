@@ -8,12 +8,13 @@ applyTo: "{backend/core/dsp/*.py,plugins/*.py}"
 
 ```python
 # VERBOTEN:
-model.to("cuda")                        # direkt, ignoriert AMD/ROCm
-providers = ["CUDAExecutionProvider"]   # ignoriert DirectML/ROCm
+model.to("cuda")  # direkt, ignoriert AMD/ROCm
+providers = ["CUDAExecutionProvider"]  # ignoriert DirectML/ROCm
 
 # RICHTIG (Heavy-Plugin):
 from backend.core.ml_device_manager import get_torch_device, get_ort_providers
-model.to(get_torch_device("PluginName"))   # fp16 + Tier automatisch
+
+model.to(get_torch_device("PluginName"))  # fp16 + Tier automatisch
 session = ort.InferenceSession(path, providers=get_ort_providers("PluginName"))
 
 # Light-Plugin / DSP:
@@ -59,11 +60,12 @@ masking_threshold = compute_masking_threshold_iso11172(audio, sr)
 # MMSE-LSA Gain (Ephraim-Malah 1985, Log-Spectral Amplitude Estimator):
 # BESSER als einfacher Wiener-Filter-Floor — erhält Spektralform, reduziert Musical Noise:
 from scipy.special import exp1 as expint1  # E1(v) = exponential integral; exp1(v) = ∫_v^∞ exp(-t)/t dt
+
 for band in range(n_bands):
     xi = max(noisy_power[band] / noise_estimate[band] - 1.0, 0.0)  # a-priori SNR
-    gamma = noisy_power[band] / noise_estimate[band]               # a-posteriori SNR
+    gamma = noisy_power[band] / noise_estimate[band]  # a-posteriori SNR
     v = xi / (1.0 + xi) * gamma
-    G_mmse_lsa = xi / (1.0 + xi) * np.exp(0.5 * expint1(v))       # MMSE-LSA gain
+    G_mmse_lsa = xi / (1.0 + xi) * np.exp(0.5 * expint1(v))  # MMSE-LSA gain
     G_floor[band] = max(G_mmse_lsa, 0.10, masking_threshold[band] / noise_estimate[band])
     # VERBOTEN: G_floor < 0.10 in Bändern mit Musik-Energie > -60 dBFS
 
@@ -91,6 +93,7 @@ unverändert auf Bark.
 ```
 
 **Invarianten (§8a, horordnung_calibration Checks 13/14):**
+
 - Asymmetrie: Aufwärts-Schwelle > Abwärts-Schwelle bei realistischem
   Masker-Pegel (L=20 rel. dB).
 - Monotonie: Schwelle fällt beidseitig vom Masker (keine Lobes).
@@ -109,6 +112,7 @@ unverändert auf Bark.
 #   - adaptive Zeitkonstanten: tau_min=0.04s, alpha_d=0.85, alpha_s=0.9
 # DeepFilterNet + OMLSA gemeinsam: DFN für Breitband-NR, OMLSA für Restgeräusch
 from backend.core.dsp.noise_estimator import compute_imcra_noise_estimate
+
 noise_psd = compute_imcra_noise_estimate(audio, sr, alpha_d=0.85, alpha_s=0.9)
 # Initialphase (2s) → konservative Schätzung (Faktor 1.3 × Minimum)
 ```
@@ -127,6 +131,7 @@ if panns_singing >= 0.35:
     # Vokal-Material: Register-adaptiv für präziseste Einstellung
     # (Register-Detektor NUR auf Vokal-Material aufrufen — für Instrumental sinnlos!)
     from backend.core.dsp.vocal_register_detector import detect_vocal_register_temporal
+
     register = detect_vocal_register_temporal(audio, sr)
     energy_bias = _REGISTER_BIAS.get(register.dominant, -6.0)
     # Fallback -6.0 dB wenn register.dominant kein Eintrag in _REGISTER_BIAS
@@ -167,6 +172,7 @@ import threading
 _instance = None
 _lock = threading.Lock()
 
+
 def get_my_plugin():
     global _instance  # oder list-Container: _holder = [None]
     if _instance is None:
@@ -183,12 +189,12 @@ def get_my_plugin():
 chunk_size = 65536  # ~1.4s bei 48kHz
 overlap = 4096
 for i in range(0, n_samples, chunk_size - overlap):
-    chunk = audio[..., i: i + chunk_size]
+    chunk = audio[..., i : i + chunk_size]
     out_chunk = session.run(None, {"input": chunk})[0]
     # shape[-1] statt len() — len(out_chunk) wäre 2 für 2D-Stereo-Output!
     out_len = out_chunk.shape[-1]
     # Overlap-Add mit Hann-Fenster (window: shape (out_len,) oder (1, out_len) für Broadcasting)
-    output[..., i: i + out_len] += out_chunk * window[:out_len]
+    output[..., i : i + out_len] += out_chunk * window[:out_len]
 
 # OOM-Fallback → DSP-Kette, nie Crash:
 try:
@@ -216,6 +222,7 @@ if material_type in {"mp3_low", "streaming", "aac", "minidisc"} and panns_singin
         # Intern: Stub → DeepFilterNet(-6dB) → Wiener-Fallback
         # PFLICHT: apply_hnr_blend() nach MIIPHER — ΔHNR > 3 dB → Dry-Blend (§0p HNR-Schutz)
         from backend.core.dsp.hnr_guard import apply_hnr_blend
+
         audio = apply_hnr_blend(audio_pre_miipher, audio, sr)
 ```
 
@@ -260,12 +267,12 @@ if np.any(vibrato_mask):
 
 # §2.72 (v10.0.0) Vibrato-Tiefe — F0-Modulationstiefe darf nicht > ±10 % reduziert werden:
 from backend.core.dsp.vibrato_guard import check_vibrato_depth_preservation
+
 _vdp = check_vibrato_depth_preservation(audio_pre, audio_post, sr)
 if _vdp.depth_reduction_pct > 10.0:
     # Strength in Vibrato-Zonen halbieren
     strength_in_vibrato = strength * 0.5
-    logger.warning("vibrato_depth_guard: reduction=%.1f%% → strength %.2f→0.5×",
-                   _vdp.depth_reduction_pct, strength)
+    logger.warning("vibrato_depth_guard: reduction=%.1f%% → strength %.2f→0.5×", _vdp.depth_reduction_pct, strength)
     # Blend: 50 % Dry in Vibrato-Frames, volle Strength außerhalb
 ```
 
@@ -280,9 +287,12 @@ register_map = detect_vocal_register_temporal(audio, sr)
 
 # Energy-Bias in Übergangszone = Mittelwert Brust+Kopf:
 _REGISTER_BIAS = {
-    "chest": -6.0, "head": -6.0, "falsetto": -9.0,
+    "chest": -6.0,
+    "head": -6.0,
+    "falsetto": -9.0,
     "passaggio": -3.0,  # Mittelwert Brust/Kopf
-    "fry": -12.0, "whisper": -15.0,
+    "fry": -12.0,
+    "whisper": -15.0,
 }
 energy_bias = _REGISTER_BIAS.get(register_map.dominant, -6.0)
 ```
@@ -335,9 +345,8 @@ gate_dbfs = -36.0  # feste Konstante
 
 # RICHTIG:
 from backend.core.dsp.gain_utils import compute_signal_relative_gate_dbfs
-gate_dbfs = compute_signal_relative_gate_dbfs(
-    pre_phase_audio, material_key=material_type
-)
+
+gate_dbfs = compute_signal_relative_gate_dbfs(pre_phase_audio, material_key=material_type)
 # reference_for_gate=pre_phase_audio — IMMER
 ```
 
@@ -347,6 +356,7 @@ gate_dbfs = compute_signal_relative_gate_dbfs(
 # VERBOTEN: sosfilt(sos, audio) addiert zu Original
 # RICHTIG:
 from scipy.signal import sosfiltfilt
+
 filtered = sosfiltfilt(sos, audio)  # zero-phase überall wo Band auf Signal addiert
 ```
 
@@ -354,8 +364,8 @@ filtered = sosfiltfilt(sos, audio)  # zero-phase überall wo Band auf Signal add
 
 ```python
 # KANONISCH für alle STFT-basierten Phasen (Rekonstruktionsqualität):
-_STFT_HOP_FRACTION = 0.25     # 75 % Overlap — Pflichtstandard
-_STFT_WINDOW = "hann"         # Hann-Fenster: perfekte Rekonstruktion bei 75 % Overlap
+_STFT_HOP_FRACTION = 0.25  # 75 % Overlap — Pflichtstandard
+_STFT_WINDOW = "hann"  # Hann-Fenster: perfekte Rekonstruktion bei 75 % Overlap
 # VERBOTEN: hop_fraction > 0.5 (< 50 % Overlap) bei Synthesis-STFT
 # VERBOTEN: Rechteck-Fenster (Rectangular) für Analyse und Synthese gleichzeitig
 
@@ -373,15 +383,16 @@ _STFT_WINDOW = "hann"         # Hann-Fenster: perfekte Rekonstruktion bei 75 % O
 # Deterministisch, ein Pass, minimal-phasenäquivalent
 # Parameter:
 _PGHI_GAMMA = 0.25 * frame_size**2 / sr  # Frequenz-Zeit-Kopplung
-_PGHI_TOLERANCE = 1e-6                    # Konvergenz-Schwelle
+_PGHI_TOLERANCE = 1e-6  # Konvergenz-Schwelle
 from backend.core.dsp.pghi import pghi_reconstruct
-audio_out = pghi_reconstruct(magnitude, sr, n_fft=n_fft, hop_length=hop_length,
-                              gamma=_PGHI_GAMMA, tol=_PGHI_TOLERANCE)
+
+audio_out = pghi_reconstruct(magnitude, sr, n_fft=n_fft, hop_length=hop_length, gamma=_PGHI_GAMMA, tol=_PGHI_TOLERANCE)
 
 # RICHTIG — Option 2: Vocos (Siuzdak 2023) — vollständig neural, kein STFT-invert:
 # Besser für hochqualitative Vokale; nutzt iSTFT-basierte Architektur ohne iterative Optimierung
 # Weniger anfällig auf spektrale Löcher als PGHI
 from plugins.vocos_plugin import get_vocos_plugin
+
 voc = get_vocos_plugin()
 audio_out = voc.decode(magnitude_features, sr=sr)  # CPU-only empfohlen (light)
 # Entscheid PGHI vs Vocos: PGHI wenn Magnitude aus linearem DSP stammt;
@@ -505,15 +516,14 @@ if _corr < 0.97:
 from backend.core.dsp.noise_floor_guard import apply_noise_floor_minimum
 
 _MATERIAL_NOISE_FLOOR_MIN_DBFS = {
-    "shellac": -42.0,   # ~15 dB SNR — Rauschen ist hörbar
-    "vinyl":   -55.0,   # ~60 dB SNR — subtiles Trägerrauschen
-    "tape":    -52.0,   # ~60-70 dB SNR — Brown-Hiss muss bleiben
+    "shellac": -42.0,  # ~15 dB SNR — Rauschen ist hörbar
+    "vinyl": -55.0,  # ~60 dB SNR — subtiles Trägerrauschen
+    "tape": -52.0,  # ~60-70 dB SNR — Brown-Hiss muss bleiben
     "cassette": -50.0,  # ~55 dB SNR — leises HF-Hiss
     "unknown_analog": -52.0,  # konservativer Fallback
 }
 audio_post = apply_noise_floor_minimum(
-    audio_post, sr, material=material_type,
-    floor_dbfs=_MATERIAL_NOISE_FLOOR_MIN_DBFS.get(material_type, -55.0)
+    audio_post, sr, material=material_type, floor_dbfs=_MATERIAL_NOISE_FLOOR_MIN_DBFS.get(material_type, -55.0)
 )
 # VERBOTEN: Pausenzonen auf unter -70 dBFS abfallen lassen bei analog-Material
 ```
@@ -530,8 +540,9 @@ _ts = detect_transient_shifts(audio_pre, audio_post, sr)
 if _ts.max_shift_ms > 2.0:
     _blend_reduction = min(_ts.max_shift_ms / 2.0, 1.0)
     audio_post = audio_pre * _blend_reduction + audio_post * (1.0 - _blend_reduction)
-    logger.warning("pre_echo_guard: onset_shift=%.1fms > 2ms → blend_reduction=%.2f (V22)",
-                   _ts.max_shift_ms, _blend_reduction)
+    logger.warning(
+        "pre_echo_guard: onset_shift=%.1fms > 2ms → blend_reduction=%.2f (V22)", _ts.max_shift_ms, _blend_reduction
+    )
     metadata["onset_shift_ms"] = _ts.max_shift_ms
 # Non-blocking: Shift bis 2ms tolerierbar; über 2ms → proportionaler Blend
 ```
@@ -553,8 +564,7 @@ if audio.ndim == 2 and panns_singing >= 0.25:
         audio = np.stack([_mid + _side_blended, _mid - _side_blended])
         metadata["mono_compatibility_warning"] = True
         metadata["phase_cancellation_db"] = _mc.phase_cancellation_db
-        logger.warning("mono_compat_guard: cancellation=%.1f dB > 3 dB (V23)",
-                       _mc.phase_cancellation_db)
+        logger.warning("mono_compat_guard: cancellation=%.1f dB > 3 dB (V23)", _mc.phase_cancellation_db)
 # Non-blocking; niemals Veto
 ```
 
@@ -575,7 +585,11 @@ if not _scp.ok:
     _strength_reduction = 0.30  # Strength 30 % reduzieren
     # Blend: audio_out = audio_pre * 0.3 + audio_post * 0.7
     audio_post = audio_pre * _strength_reduction + audio_post * (1.0 - _strength_reduction)
-    logger.warning("spectral_color_guard: corr=%.3f → strength-0.30 (V24, §P1-3 Schwelle=%.3f)", _scp.correlation, getattr(_scp, "effective_threshold", 0.97))
+    logger.warning(
+        "spectral_color_guard: corr=%.3f → strength-0.30 (V24, §P1-3 Schwelle=%.3f)",
+        _scp.correlation,
+        getattr(_scp, "effective_threshold", 0.97),
+    )
     metadata["spectral_color_corr"] = _scp.correlation
 # Messung: 1/3-Oktav-Energiekurve 200–8000 Hz, exkl. DefectScanner-Defektfrequenzen
 ```
@@ -601,8 +615,9 @@ if _ctx["warmth_band_loss_db"] > 2.5:
     _warmth_blend = float(1.0 - _ctx["warmth_band_loss_db"] / 5.0)
     _warmth_blend = max(0.0, min(1.0, _warmth_blend))
     audio_post = audio_pre * (1.0 - _warmth_blend) + audio_post * _warmth_blend
-    logger.warning("warmth_guard: cum_loss=%.1f dB > 2.5 → blend=%.2f (V25)",
-                   _ctx["warmth_band_loss_db"], _warmth_blend)
+    logger.warning(
+        "warmth_guard: cum_loss=%.1f dB > 2.5 → blend=%.2f (V25)", _ctx["warmth_band_loss_db"], _warmth_blend
+    )
     metadata["warmth_band_loss_db"] = _ctx["warmth_band_loss_db"]
 # Frequenzbereich: 200–800 Hz (Butter-Bandpass 4. Ordnung, zero-phase)
 # VERBOTEN: Wärme-Verlust > 4 dB akkumuliert → Aufnahme klingt unnatürlich „radiogefärbt“
@@ -620,8 +635,8 @@ from backend.core.dsp.onset_guard import apply_onset_protection_mask
 audio_post = apply_onset_protection_mask(
     audio_pre=audio_pre,
     audio_post=audio_post,
-    onset_mask=onset_mask,   # aus _restoration_context["onset_mask"]
-    max_delta_db=1.5,        # feste Basis-Toleranz
+    onset_mask=onset_mask,  # aus _restoration_context["onset_mask"]
+    max_delta_db=1.5,  # feste Basis-Toleranz
     # §P1-3 (2026-09-08, Hörordnung Ebene 2): effektive Toleranz =
     # max(1.5 dB, lokale Maskierungs-JND des Phasen-Deltas, max. 6 dB) —
     # laute Transients maskieren die Abweichung, dann wird erst bei
@@ -650,7 +665,8 @@ from backend.core.dsp.lpc_formant_tracker import get_lpc_formant_tracker
 _era = kwargs.get("era_decade") or (kwargs.get("_restoration_context") or {}).get("era_decade")
 
 audio_out = get_lpc_formant_tracker().enhance(
-    audio, sr,
+    audio,
+    sr,
     era_decade=int(_era) if _era is not None else None,
     # Optional: snr_hint_db für noch präzisere SNR-Schätzung
 )

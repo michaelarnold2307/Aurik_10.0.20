@@ -24,11 +24,12 @@ Lazy-Loader entdeckt.
 **API:**
 ```python
 from plugins.ast_plugin import get_ast_plugin, ast_classify
+
 plugin = get_ast_plugin()
-result = plugin.classify(audio, sr=48000, top_k=15)    # → AstResult
-tags   = plugin.get_tags(audio, sr=48000)               # → dict[label, conf]
-conf   = plugin.get_ast_musical_confidence(audio, sr)   # → float [0,1]
-disc   = plugin.discriminate_defect("crackle", audio)   # → float [0,1]
+result = plugin.classify(audio, sr=48000, top_k=15)  # → AstResult
+tags = plugin.get_tags(audio, sr=48000)  # → dict[label, conf]
+conf = plugin.get_ast_musical_confidence(audio, sr)  # → float [0,1]
+disc = plugin.discriminate_defect("crackle", audio)  # → float [0,1]
 ```
 
 **Betroffene Subsysteme:** PerceptualValidator, DefectScanner, EraClassifier, Phase_53, EmotionalArcPreserver
@@ -123,6 +124,7 @@ AudioLDM2-Regeneration + Equal-Power-Crossfade:
 
 ```python
 from plugins.audioldm2_plugin import get_audioldm2_plugin
+
 plugin = get_audioldm2_plugin()
 denoised = plugin.denoise(audio, sr=48000, denoise_strength=0.5, prompt=None)
 ```
@@ -153,6 +155,7 @@ Inpainting in Phase_55 genutzt (Priorität 3/4).
 
 ```python
 from plugins.diffwave_plugin import get_diffwave_plugin
+
 plugin = get_diffwave_plugin()
 denoised = plugin.denoise(audio, sr=48000, denoise_strength=0.5)
 ```

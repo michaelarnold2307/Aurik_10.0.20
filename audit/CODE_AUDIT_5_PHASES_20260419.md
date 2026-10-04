@@ -106,7 +106,7 @@
       fs=sr,
       window="hann",
       nperseg=nperseg,
-      boundary="even"  # ← CORRECT (nicht 'reflect')
+      boundary="even",  # ← CORRECT (nicht 'reflect')
   )
   ```
 
@@ -139,7 +139,7 @@
 - Dependencies klar: [Line 228](backend/core/phases/phase_23_spectral_repair.py#L228):
 
   ```python
-  dependencies=["phase_03_denoise", "phase_24_dropout_repair"]
+  dependencies = ["phase_03_denoise", "phase_24_dropout_repair"]
   ```
 
   → Subtraktiv (Denoise/Dropout) vor Additiv (Phase 23) — ✅ KORREKT
@@ -256,7 +256,7 @@
 - [Line 164](backend/core/phases/phase_12_wow_flutter_fix.py#L164):
 
   ```python
-  dependencies=["phase_01_click_removal", "phase_09_crackle_removal"]
+  dependencies = ["phase_01_click_removal", "phase_09_crackle_removal"]
   ```
 
   → Click/Crackle zuerst (Defekte entfernen) → dann Wow/Flutter (Time-Korrektur) — ✅ LOGISCH
@@ -399,7 +399,7 @@
 - [Line 1559-1640](backend/core/phases/phase_24_dropout_repair.py#L1559): `_repair_with_flashsr()` verarbeitet **ausschließlich kurze Kontextfenster** pro Dropout:
 
   ```python
-  _CTX_SECS = 0.5      # 500 ms Kontext beidseitig
+  _CTX_SECS = 0.5  # 500 ms Kontext beidseitig
   _MAX_WINDOW_S = 5.0  # Hard-Cap — größeres Fenster → DSP-Fallback
   ```
 
@@ -546,10 +546,10 @@
   ```python
   if stereo_mode:
       if audio.ndim == 2 and audio.shape[0] <= audio.shape[1]:
-          gain = ... # Gain-Ratio für (channels, samples)
+          gain = ...  # Gain-Ratio für (channels, samples)
           result = (audio * gain[np.newaxis, :]).astype(np.float32)
       else:
-          gain = ... # (samples, channels)
+          gain = ...  # (samples, channels)
           result = (audio * gain[:, np.newaxis]).astype(np.float32)
   ```
 
@@ -588,11 +588,7 @@
 - [Line 2078-2082](backend/core/phases/phase_09_crackle_removal.py#L2078-L2082):
 
   ```python
-  _MRSA_ZONES: tuple = (
-      ("sub_bass", 65536, 16384, 0, 250),
-      ("mid_low", 16384, 4096, 250, 2500),
-      ...
-  )
+  _MRSA_ZONES: tuple = (("sub_bass", 65536, 16384, 0, 250), ("mid_low", 16384, 4096, 250, 2500), ...)
   ```
 
   → MRSA-Zonen sind **explizit definiert**, boundaries sind **Hard-Coded als Zone-Frequenzbänder**

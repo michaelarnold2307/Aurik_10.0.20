@@ -112,6 +112,7 @@ if guard.score_penalty > 0:
 # 3. Early Reflections: 0-50ms nach Onset → Dereverb wet_mix cap = 0.35
 
 from backend.core.dsp.natural_performance_detector import detect_performance_artifacts
+
 protected_segments = detect_performance_artifacts(audio, sr)
 # Phasen müssen protected_segments respektieren
 ```
@@ -121,9 +122,9 @@ protected_segments = detect_performance_artifacts(audio, sr)
 ```python
 # VERBOTEN in Restoration — diese Phasen NIE aktivieren:
 _RESTORATION_FORBIDDEN = {
-    "phase_21_exciter",           # §0a: kein künstlicher Harmonik-Zusatz
+    "phase_21_exciter",  # §0a: kein künstlicher Harmonik-Zusatz
     "phase_35_multiband_compression",  # §0a: nur Studio 2026
-    "phase_42_vocal_enhancement", # §0a: nur Studio 2026
+    "phase_42_vocal_enhancement",  # §0a: nur Studio 2026
 }
 # Diese Phasen dürfen auch nicht in CAUSE_TO_PHASES für Restoration-Causes stehen
 ```
@@ -149,8 +150,7 @@ Generative/Inpainting-Phasen (phase_23) MÜSSEN `_apply_material_bw_ceiling()` *
 ```python
 # RICHTIG: Ceiling zuerst, dann Guard
 audio_out, ceiling_applied, ceiling_hz = cls._apply_material_bw_ceiling(audio_out, sr, material_type, mode)
-halluc_result = check_hallucination(pre_audio, audio_out, sr, mode,
-                                    material_bw_ceiling_hz=ceiling_hz)
+halluc_result = check_hallucination(pre_audio, audio_out, sr, mode, material_bw_ceiling_hz=ceiling_hz)
 # VERBOTEN: Ceiling nur innerhalb des Guards — Output wurde bereits über Ceiling synthetisiert
 ```
 
@@ -164,7 +164,7 @@ Kanonischer Wert ist konsistent in `tonal_reference_profile.py`, `goal_applicabi
 _pad_len = hop_length * 4
 audio_padded = np.pad(audio, _pad_len, mode="reflect")
 # ... STFT-Verarbeitung ...
-audio_out = audio_out[_pad_len: _pad_len + n_original]  # deterministischer Strip
+audio_out = audio_out[_pad_len : _pad_len + n_original]  # deterministischer Strip
 
 # VERBOTEN: np.pad(..., mode="constant") NACH STFT als primäre Längenkorrektur
 # Stereo-Lag-Invariante: L + R MÜSSEN identischen _pad_len und Strip-Offset haben
@@ -191,8 +191,13 @@ audio_out = audio_out[_pad_len: _pad_len + n_original]  # deterministischer Stri
 # RICHTIG: identische Kontextlänge, identischer Strip-Offset, identische Zielsamplezahl
 # VERBOTEN: assert (durch python -O deaktivierbar — see copilot-instructions.md V01)
 if not (len(audio_L_out) == len(audio_R_out) == n_original):
-    logger.error("stereo_lag_invariant phase=%s L=%d R=%d expected=%d — cropping",
-                 phase_id, len(audio_L_out), len(audio_R_out), n_original)
+    logger.error(
+        "stereo_lag_invariant phase=%s L=%d R=%d expected=%d — cropping",
+        phase_id,
+        len(audio_L_out),
+        len(audio_R_out),
+        n_original,
+    )
     audio_L_out = audio_L_out[:n_original]
     audio_R_out = audio_R_out[:n_original]  # UV3 §2.61 fängt verbliebene Abweichungen ab
 ```
@@ -247,6 +252,7 @@ try:
     else:
         # Stufe 2: DSP-Fallback bei Whisper-Confidence < 0.60
         from backend.core.dsp.phoneme_boundary_detector import detect_phoneme_boundaries_dsp
+
         phoneme_mask = detect_phoneme_boundaries_dsp(audio, sr)
         # Algorithmus: Energie-Differenz (25 ms Fenster) + ZCR-Schwelle
         # voiced: ZCR < 0.10 | unvoiced: ZCR > 0.15 | plosive: Energie-Spike
@@ -362,9 +368,7 @@ Die Spezifikation ist stattdessen anzupassen.
 ```python
 # KANONISCH pro Phase:
 local_upgrade = (
-    perceptual_delta > 0.0
-    and artifact_freedom_proxy_not_worse
-    and not violates_formant_vibrato_hallucination_guards
+    perceptual_delta > 0.0 and artifact_freedom_proxy_not_worse and not violates_formant_vibrato_hallucination_guards
 )
 
 if local_upgrade:

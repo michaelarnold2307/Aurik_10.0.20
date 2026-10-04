@@ -181,7 +181,7 @@ result = enhancer.enhance(
     audio,
     emotion_mode=EmotionPreservationMode.BALANCED,
     breath_preservation=0.7,  # 70% Erhalt
-    sibilance_reduction=True
+    sibilance_reduction=True,
 )
 
 # Results
@@ -204,7 +204,7 @@ framework = AurikAIFramework(sample_rate=48000)
 result = framework.enhance_vocals(
     audio,
     emotion_mode="balanced",  # "maximum", "balanced", "technical", "transparent"
-    breath_preservation=0.7
+    breath_preservation=0.7,
 )
 ```
 

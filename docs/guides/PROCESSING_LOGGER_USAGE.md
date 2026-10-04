@@ -64,17 +64,13 @@ logger = ProcessingLogger(
     session_id="my_test_session",
     output_dir="logs/processing",
     save_audio_snapshots=True,  # Save before/after audio
-    compress_audio=False,        # WAV (fast) vs FLAC (compressed)
-    save_json=True,               # Save JSON trace
-    save_markdown=True            # Save Markdown report
+    compress_audio=False,  # WAV (fast) vs FLAC (compressed)
+    save_json=True,  # Save JSON trace
+    save_markdown=True,  # Save Markdown report
 )
 
 # Start session
-logger.start_session(
-    input_file="input.wav",
-    processing_mode="restoration",
-    sample_rate=sr
-)
+logger.start_session(input_file="input.wav", processing_mode="restoration", sample_rate=sr)
 
 # Simulate processing steps
 audio_denoised = denoise(audio, sr)
@@ -86,7 +82,7 @@ logger.log_step(
     audio_after=audio_denoised,
     sr=sr,
     processing_time_ms=450.2,
-    parameters={'reduction_db': 12.0, 'method': 'spectral'}
+    parameters={"reduction_db": 12.0, "method": "spectral"},
 )
 
 audio_declipped = declip(audio_denoised, sr)
@@ -98,7 +94,7 @@ logger.log_step(
     audio_after=audio_declipped,
     sr=sr,
     processing_time_ms=120.5,
-    parameters={'threshold': -3.0, 'method': 'cubic'}
+    parameters={"threshold": -3.0, "method": "cubic"},
 )
 
 # End session and save
@@ -141,24 +137,18 @@ class HistoricalRestorerRuntime:
 
         # ... existing init code ...
 
-    def restore(self, audio, sr, mode='restoration', input_file=None):
+    def restore(self, audio, sr, mode="restoration", input_file=None):
         """Restore audio with optional logging."""
         # Optional: Initialize logger
         if self.enable_logging:
             from core.processing_logger import ProcessingLogger
-            self.logger = ProcessingLogger(
-                output_dir=self.log_dir,
-                save_audio_snapshots=True,
-                compress_audio=False
-            )
-            self.logger.start_session(
-                input_file=input_file or "unknown.wav",
-                processing_mode=mode,
-                sample_rate=sr
-            )
+
+            self.logger = ProcessingLogger(output_dir=self.log_dir, save_audio_snapshots=True, compress_audio=False)
+            self.logger.start_session(input_file=input_file or "unknown.wav", processing_mode=mode, sample_rate=sr)
 
         # Phase 1F: Declipping
         import time
+
         start = time.time()
         audio_declipped = self.declip(audio, sr)
         duration_ms = (time.time() - start) * 1000
@@ -172,7 +162,7 @@ class HistoricalRestorerRuntime:
                 audio_after=audio_declipped,
                 sr=sr,
                 processing_time_ms=duration_ms,
-                parameters={'threshold': -3.0}
+                parameters={"threshold": -3.0},
             )
 
         # Phase 2A: Click Removal
@@ -189,7 +179,7 @@ class HistoricalRestorerRuntime:
                 audio_after=audio_declick,
                 sr=sr,
                 processing_time_ms=duration_ms,
-                parameters={'sensitivity': 0.7}
+                parameters={"sensitivity": 0.7},
             )
 
         # ... more phases ...
@@ -211,15 +201,13 @@ class HistoricalRestorerRuntime:
 # orchestrator_and_cli.py
 from backend.api.bridge import get_aurik_denker_instance
 
-parser.add_argument('--enable-logging', action='store_true',
-                   help='Enable ProcessingLogger for transparency')
-parser.add_argument('--log-dir', default='logs/processing',
-                   help='Directory for processing logs')
+parser.add_argument("--enable-logging", action="store_true", help="Enable ProcessingLogger for transparency")
+parser.add_argument("--log-dir", default="logs/processing", help="Directory for processing logs")
 
 args = parser.parse_args()
 
 denker = get_aurik_denker_instance()
-audio_restored = denker.denke(audio, sr, mode='restoration').audio
+audio_restored = denker.denke(audio, sr, mode="restoration").audio
 ```
 
 **Usage:**
@@ -413,18 +401,20 @@ for threshold in thresholds:
         audio_after=audio_denoised,
         sr=sr,
         processing_time_ms=450.0,
-        parameters={'reduction_db': threshold}
+        parameters={"reduction_db": threshold},
     )
 
     trace = logger.end_session()
-    results.append({
-        'threshold': threshold,
-        'snr_improvement': trace.overall_snr_improvement(),
-        'thd_after': trace.steps[0].metrics_after.thd_percent
-    })
+    results.append(
+        {
+            "threshold": threshold,
+            "snr_improvement": trace.overall_snr_improvement(),
+            "thd_after": trace.steps[0].metrics_after.thd_percent,
+        }
+    )
 
 # Find best threshold
-best = max(results, key=lambda r: r['snr_improvement'])
+best = max(results, key=lambda r: r["snr_improvement"])
 print(f"Best threshold: {best['threshold']} dB (SNR improvement: {best['snr_improvement']:.1f} dB)")
 ```
 
@@ -435,7 +425,7 @@ print(f"Best threshold: {best['threshold']} dB (SNR improvement: {best['snr_impr
 with open("logs/baseline_session/trace.json") as f:
     baseline = json.load(f)
 
-baseline_snr = baseline['overall_metrics']['snr_improvement_db']
+baseline_snr = baseline["overall_metrics"]["snr_improvement_db"]
 
 # Run current version
 logger = ProcessingLogger(session_id="current_version")
@@ -462,7 +452,9 @@ for step in trace.steps:
     print(f"\n{step.step_id}:")
     print(f"  SNR: {step.metrics_before.snr_db:.1f} → {step.metrics_after.snr_db:.1f} dB")
     print(f"  THD: {step.metrics_before.thd_percent:.2f} → {step.metrics_after.thd_percent:.2f} %")
-    print(f"  Spectral Centroid: {step.metrics_before.spectral_centroid_hz:.0f} → {step.metrics_after.spectral_centroid_hz:.0f} Hz")
+    print(
+        f"  Spectral Centroid: {step.metrics_before.spectral_centroid_hz:.0f} → {step.metrics_after.spectral_centroid_hz:.0f} Hz"
+    )
 ```
 
 ---
@@ -615,8 +607,8 @@ pip install pyloudnorm
 
 ```python
 logger = ProcessingLogger(
-    compress_audio=True,        # Use FLAC instead of WAV
-    save_audio_snapshots=False  # Only save JSON/Markdown
+    compress_audio=True,  # Use FLAC instead of WAV
+    save_audio_snapshots=False,  # Only save JSON/Markdown
 )
 ```
 

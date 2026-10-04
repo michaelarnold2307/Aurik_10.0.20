@@ -44,7 +44,7 @@
 
 ```python
 depth_factor = 1.0 - max(0, depth - 1) * 0.05  # −5% pro Depth-Stufe
-for goal in ('brillanz', 'transparenz', 'separation_fidelity'):
+for goal in ("brillanz", "transparenz", "separation_fidelity"):
     targets[goal] *= depth_factor
 ```
 

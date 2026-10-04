@@ -70,9 +70,7 @@ Batch-Endpoint / CLI / GUI
 ### Digital-Extension-Prior (MediumDetector)
 
 ```python
-_DIGITAL_FILE_EXTS = frozenset({
-    ".mp3", ".mp2", ".aac", ".m4a", ".ogg", ".opus", ".mpc", ".wma"
-})
+_DIGITAL_FILE_EXTS = frozenset({".mp3", ".mp2", ".aac", ".m4a", ".ogg", ".opus", ".mpc", ".wma"})
 _ANALOG_PENALTY = 0.25  # ×0.25 auf analoge Bayesian-Posteriors
 ```
 
@@ -101,8 +99,7 @@ def test_file_ext_reaches_medium_detector():
         mock_detect.return_value = make_fake_result()
         denker.denke(audio, sr, mode="restoration", input_path="/tmp/test.mp3")
         call_kwargs = mock_detect.call_args.kwargs
-        assert call_kwargs.get("file_ext") == ".mp3", \
-            f"file_ext sollte '.mp3' sein, war: {call_kwargs.get('file_ext')}"
+        assert call_kwargs.get("file_ext") == ".mp3", f"file_ext sollte '.mp3' sein, war: {call_kwargs.get('file_ext')}"
 ```
 
 ### 2. Assertion-Guard in `_denke_impl`

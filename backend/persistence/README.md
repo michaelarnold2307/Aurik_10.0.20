@@ -234,8 +234,5 @@ Audio Processing
 **Customizable:**
 
 ```python
-monitor.export_audit_report(
-    output_dir="./custom_audits",
-    formats=["json", "yaml", "csv"]
-)
+monitor.export_audit_report(output_dir="./custom_audits", formats=["json", "yaml", "csv"])
 ```

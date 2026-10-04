@@ -258,6 +258,7 @@ import pytest
 import numpy as np
 from backend.denoiser import AdaptiveDenoiser
 
+
 class TestAdaptiveDenoiser:
     """Unit Tests für AdaptiveDenoiser"""
 
@@ -318,6 +319,7 @@ class TestAdaptiveDenoiser:
 import pytest
 import numpy as np
 from backend.api.bridge import get_aurik_denker_instance
+
 
 @pytest.mark.integration
 class TestPipelineFlow:
@@ -400,6 +402,7 @@ import numpy as np
 import soundfile as sf
 from pathlib import Path
 from backend.api.bridge import get_aurik_denker_instance
+
 
 @pytest.mark.e2e
 class TestMagicButtonE2E:
@@ -635,6 +638,7 @@ import time
 import numpy as np
 from backend.api.bridge import get_aurik_denker_instance
 
+
 @pytest.mark.benchmark
 class TestProcessingBenchmarks:
     """Performance Benchmarks"""
@@ -679,6 +683,7 @@ pytest tests/performance/ -v
 
 ```python
 import tracemalloc
+
 
 def test_memory_usage_within_limits():
     """Test: Memory Usage < 2 GB"""
@@ -783,18 +788,17 @@ pre-commit install
 
 ```python
 # ✅ GOOD
-def test_denoiser_reduces_noise_floor():
-    ...
+def test_denoiser_reduces_noise_floor(): ...
 
-def test_click_remover_preserves_transients():
-    ...
+
+def test_click_remover_preserves_transients(): ...
+
 
 # ❌ BAD
-def test1():
-    ...
+def test1(): ...
 
-def test_stuff():
-    ...
+
+def test_stuff(): ...
 ```
 
 **Regel:** `test_<component>_<behavior>_<condition>`
@@ -811,9 +815,11 @@ def test_stuff():
 def denoiser():
     return AdaptiveDenoiser()
 
+
 def test_denoise(denoiser):
     result = denoiser.process(audio, sr)
     assert ...
+
 
 # ❌ BAD (Setup/Teardown)
 class TestDenoiser:
@@ -832,10 +838,13 @@ class TestDenoiser:
 **Teste mehrere Werte gleichzeitig:**
 
 ```python
-@pytest.mark.parametrize("mode", [
-    "restoration",
-    "studio2026",
-])
+@pytest.mark.parametrize(
+    "mode",
+    [
+        "restoration",
+        "studio2026",
+    ],
+)
 def test_all_modes_produce_valid_output(mode):
     denker = get_aurik_denker_instance()
     restored = denker.denke(audio, sr, mode=mode).audio
@@ -855,17 +864,21 @@ def test_denoiser_strength_05():
     result = denoiser.process(audio, sr, strength=0.5)
     assert ...
 
+
 def test_denoiser_strength_10():
     denoiser = AdaptiveDenoiser()  # Fresh instance
     result = denoiser.process(audio, sr, strength=1.0)
     assert ...
 
+
 # ❌ BAD (Shared State)
 denoiser = AdaptiveDenoiser()  # Module-level
+
 
 def test_denoiser_strength_05():
     result = denoiser.process(audio, sr, strength=0.5)
     assert ...
+
 
 def test_denoiser_strength_10():
     # May fail if previous test modified state!
@@ -887,7 +900,7 @@ assert np.abs(restored).max() <= 1.0
 
 # ❌ BAD
 assert restored is not None  # Too vague
-assert len(restored) > 0      # Too general
+assert len(restored) > 0  # Too general
 ```
 
 ---

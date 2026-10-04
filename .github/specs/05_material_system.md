@@ -11,21 +11,21 @@
 # Aurik 10: ausschließlich MONO und STEREO — kein Mehrkanalformat.
 # > 2 Kanäle → PANNs-gewichteter Stereo-Downmix (automatisch, kein eigenständiger Materialtyp).
 SUPPORTED_MATERIALS = [
-    "tape",          # Kassette: Dropout, Hiss, Wow/Flutter
-    "reel_tape",     # Profi-Spulenband: Hiss, Print-Through, Dropout
-    "vinyl",         # Schallplatte: Crackle, Warp, Rillenverzerrung
-    "shellac",       # Schellack-78: Hochpegelrauschen, BW ≤ 8 kHz
+    "tape",  # Kassette: Dropout, Hiss, Wow/Flutter
+    "reel_tape",  # Profi-Spulenband: Hiss, Print-Through, Dropout
+    "vinyl",  # Schallplatte: Crackle, Warp, Rillenverzerrung
+    "shellac",  # Schellack-78: Hochpegelrauschen, BW ≤ 8 kHz
     "wax_cylinder",  # Wachswalze (1890–1930): extrem hoher Rauschen, BW ≤ 5 kHz
-    "wire_recording",# Drahtband (1940–1955): Jitter, Frequenz-Dropout
+    "wire_recording",  # Drahtband (1940–1955): Jitter, Frequenz-Dropout
     "lacquer_disc",  # Acetat-Lackfolien (1930–1950): Riss-Klicken, Substrat-Rauschen
-    "dat",           # Digital Audio Tape: Jitter, Dropout, ATRAC
-    "cd_digital",    # CD/WAV: Clipping, Quantisierungsrauschen
-    "mp3_low",       # MP3 < 128 kbps: starke Kompressionsartefakte
-    "mp3_high",      # MP3 ≥ 128 kbps: moderate Artefakte
-    "aac",           # AAC/M4A: moderne Kompression
-    "minidisc",      # MiniDisc (ATRAC): 90er-Artefakte
-    "streaming",     # Streaming-Kopie: variables Bitrate-Profil
-    "unknown",       # Unbekannt: konservative Prior
+    "dat",  # Digital Audio Tape: Jitter, Dropout, ATRAC
+    "cd_digital",  # CD/WAV: Clipping, Quantisierungsrauschen
+    "mp3_low",  # MP3 < 128 kbps: starke Kompressionsartefakte
+    "mp3_high",  # MP3 ≥ 128 kbps: moderate Artefakte
+    "aac",  # AAC/M4A: moderne Kompression
+    "minidisc",  # MiniDisc (ATRAC): 90er-Artefakte
+    "streaming",  # Streaming-Kopie: variables Bitrate-Profil
+    "unknown",  # Unbekannt: konservative Prior
 ]
 # Hinweis: lacquer_disc, wax_cylinder, wire_recording → historische Materialien (v10.0.0)
 # [RELEASE_MUST] Schlüssel-Mapping MediumDetector → SUPPORTED_MATERIALS (kanonisch):
@@ -103,29 +103,29 @@ Subtraktive Band-Reparaturphasen (Hiss/Dropout/…) bleiben unbedingt.
 
 ```python
 _MATERIAL_DR_CEILING_DB = {
-    "wax_cylinder":   35,   # Mechanische Aufnahme, Horn-Verstärkung
-    "shellac":        45,   # 78 rpm, breite Rillen, hoher Rauschboden
-    "lacquer_disc":   50,   # Acetat-Direktschnitt
-    "wire_recording": 40,   # Stahlband, mechanische Begrenzung
-    "vinyl":          70,   # LP, Best-Case-Pressung
-    "tape":           62,   # Kompaktkassette (Typ I ~55 dB, Typ II ~65 dB → konservativer Mittelwert)
-                            # HINWEIS: MediumDetector normiert intern "cassette" → "tape"
-                            # (SUPPORTED_MATERIALS-Key). Kassetten überschreiten 65 dB nur bei
-                            # Typ-IV-Metal-Band unter Best-Case-Bedingungen; 62 dB verhindert
-                            # übermäßige Dynamik-Expansion, die auf echten Kassetten als
-                            # Rauschartefakt hörbar wäre.
-    "reel_tape":      72,   # Profi-Spulenband 15 ips (physikalisch korrekt für 30 ips: ~80 dB)
+    "wax_cylinder": 35,  # Mechanische Aufnahme, Horn-Verstärkung
+    "shellac": 45,  # 78 rpm, breite Rillen, hoher Rauschboden
+    "lacquer_disc": 50,  # Acetat-Direktschnitt
+    "wire_recording": 40,  # Stahlband, mechanische Begrenzung
+    "vinyl": 70,  # LP, Best-Case-Pressung
+    "tape": 62,  # Kompaktkassette (Typ I ~55 dB, Typ II ~65 dB → konservativer Mittelwert)
+    # HINWEIS: MediumDetector normiert intern "cassette" → "tape"
+    # (SUPPORTED_MATERIALS-Key). Kassetten überschreiten 65 dB nur bei
+    # Typ-IV-Metal-Band unter Best-Case-Bedingungen; 62 dB verhindert
+    # übermäßige Dynamik-Expansion, die auf echten Kassetten als
+    # Rauschartefakt hörbar wäre.
+    "reel_tape": 72,  # Profi-Spulenband 15 ips (physikalisch korrekt für 30 ips: ~80 dB)
     # Interner MediumDetector-Key (vor Normalisierung cassette→tape); wird von phase_26 nicht
     # direkt verwendet, aber hier geführt für _estimate_tape_speed() und interne Ceiling-Checks.
-    "cassette":       60,   # Kompaktkassette (Typ I, schlechter Transport) — MediumDetector-intern
-    "dat":            92,   # Digital Audio Tape (16-bit linear)
-    "minidisc":       88,   # ATRAC-Kompression
-    "cd_digital":     96,   # 16-bit PCM
-    "mp3_low":        90,   # Codec-bedingte theoretische Grenze
-    "mp3_high":       93,
-    "aac":            93,
-    "streaming":      90,
-    "unknown":        70,   # Konservativ: Vinyl-Niveau
+    "cassette": 60,  # Kompaktkassette (Typ I, schlechter Transport) — MediumDetector-intern
+    "dat": 92,  # Digital Audio Tape (16-bit linear)
+    "minidisc": 88,  # ATRAC-Kompression
+    "cd_digital": 96,  # 16-bit PCM
+    "mp3_low": 90,  # Codec-bedingte theoretische Grenze
+    "mp3_high": 93,
+    "aac": 93,
+    "streaming": 90,
+    "unknown": 70,  # Konservativ: Vinyl-Niveau
 }
 ```
 
@@ -168,22 +168,22 @@ expansion_target = min(expansion_target, max_expansion)
 
 ```python
 _MATERIAL_BW_CEILING_HZ = {
-    "wax_cylinder":   5000,
-    "shellac":        8000,
-    "lacquer_disc":   8000,
+    "wax_cylinder": 5000,
+    "shellac": 8000,
+    "lacquer_disc": 8000,
     "wire_recording": 6000,
-    "vinyl":         16000,
-    "tape":          15000,
-    "reel_tape":     18000,
-    "cassette":      14000,
-    "dat":           22000,
-    "minidisc":      20000,
-    "cd_digital":    22050,
-    "mp3_low":       16000,
-    "mp3_high":      20000,
-    "aac":           20000,
-    "streaming":     20000,
-    "unknown":       20000,
+    "vinyl": 16000,
+    "tape": 15000,
+    "reel_tape": 18000,
+    "cassette": 14000,
+    "dat": 22000,
+    "minidisc": 20000,
+    "cd_digital": 22050,
+    "mp3_low": 16000,
+    "mp3_high": 20000,
+    "aac": 20000,
+    "streaming": 20000,
+    "unknown": 20000,
 }
 ```
 
@@ -220,13 +220,13 @@ Drei Dicts führen physikalische Materialgrenzen: `_MATERIAL_BW_CEILING_HZ` (§6
 
 # Analoge Kerndefekte:
 CLICKS, CRACKLE, HUM, LOW_FREQ_RUMBLE, DROPOUTS
-WOW          # Pitch-Instabilität < 0.5 Hz (Motorgeschwindigkeit / Capstan) — IEC 60386
-FLUTTER      # Pitch-Instabilität 0.5–200 Hz (Antriebsriemen / Bandführung) — IEC 60386
-             # Erkennung: WOW = pYIN-Varianz über 500 ms-Fenster; FLUTTER = über 50 ms-Fenster
-             # WOW → phase_12 (langsame Pitch-Korrektur); FLUTTER → phase_12 + phase_31
+WOW  # Pitch-Instabilität < 0.5 Hz (Motorgeschwindigkeit / Capstan) — IEC 60386
+FLUTTER  # Pitch-Instabilität 0.5–200 Hz (Antriebsriemen / Bandführung) — IEC 60386
+# Erkennung: WOW = pYIN-Varianz über 500 ms-Fenster; FLUTTER = über 50 ms-Fenster
+# WOW → phase_12 (langsame Pitch-Korrektur); FLUTTER → phase_12 + phase_31
 
 # Klipping, Sättigung & Gleichspannung:
-CLIPPING         # Harte Amplitudenbegrenzung → REPARIEREN
+CLIPPING  # Harte Amplitudenbegrenzung → REPARIEREN
 SOFT_SATURATION  # Tube-/Tape-Sättigung (gerade Obertöne) → BEWAHREN!
 DC_OFFSET
 
@@ -247,73 +247,73 @@ REVERB_EXCESS, PRINT_THROUGH
 
 # Digital/Codec:
 DIGITAL_ARTIFACTS, COMPRESSION_ARTIFACTS
-PRE_ECHO         # MP3/AAC Temporal-Masking-Artefakt vor Transienten
+PRE_ECHO  # MP3/AAC Temporal-Masking-Artefakt vor Transienten
 QUANTIZATION_NOISE, JITTER_ARTIFACTS, DYNAMIC_COMPRESSION_EXCESS
 
 # Kopf-/Azimuth-Fehler:
-HEAD_WEAR        # Komplette Frequenzband-Auslöschung → phase_56
-AZIMUTH_ERROR    # Kammfilterung L/R durch Kopf-Fehlausrichtung → phase_14 + phase_25
-                 # Signatur: frequenzabhängige L/R-Phasendifferenz, Kreuzkorrelation-Peak ≠ 0 lag
-                 # Detektion: PHD(freq) = angle(STFT_L / STFT_R) → monotone HF-Drift > 20°/kHz
+HEAD_WEAR  # Komplette Frequenzband-Auslöschung → phase_56
+AZIMUTH_ERROR  # Kammfilterung L/R durch Kopf-Fehlausrichtung → phase_14 + phase_25
+# Signatur: frequenzabhängige L/R-Phasendifferenz, Kreuzkorrelation-Peak ≠ 0 lag
+# Detektion: PHD(freq) = angle(STFT_L / STFT_R) → monotone HF-Drift > 20°/kHz
 
 # Entzerrungs- & Digitalisierungsfehler (neu v10.0.0):
 RIAA_CURVE_ERROR  # Falsche oder historische Disc-Entzerrungskurve → phase_04 + phase_06
-                  # Kurvenvarianten (pre-RIAA 1954): NAB, Columbia, AES, Capitol, London, CCIR
-                  # Erkennung: Referenzvergleich Spektral-Slope 250–8000 Hz vs. RIAA-Ideal
-                  #   Abweichung > ±3 dB → RIAA_CURVE_ERROR mit erkannter Kurve als Subtyp
-                  # Klassifikator liefert: curve_type ∈ {"riaa", "nab", "columbia", "aes",
-                  #   "capitol", "london", "ccir", "unknown_prestandard"}
-                  # phase_04 wendet Inverse-Kurve der erkannten Variante an
-                  #
-                  # §6.3a PRE-RIAA KURVENPARAMETER (kanonische Zeitkonstanten, bindend):
-                  # Alle Werte: (τ_bass_µs, τ_mid_µs, τ_treble_µs) → Pol/Nullstellen-Triple.
-                  # Inverse Korrektur: Shelving-EQ mit diesen Zeitkonstanten gespiegelt.
-                  #
-                  # PRE_RIAA_EQ_CURVES = {
-                  #   # RIAA 1954 (Referenz — Standard ab 1954):
-                  #   "riaa":           (3180, 318, 75),     # IEC 60268-4
-                  #
-                  #   # NAB (National Association of Broadcasters, bis 1953):
-                  #   "nab":            (3180, 318, 50),     # Basswendepunkt 500 Hz, HF-Shelf 3180 µs
-                  #
-                  #   # Columbia 78 rpm (bis 1948):
-                  #   "columbia":       (1590, 318, 0),      # Bass turnover 100 Hz, kein HF-Shelf
-                  #                                          # → +6 dB Bass vs. RIAA bei 50 Hz
-                  #
-                  #   # AES (Audio Engineering Society, 1951–1954):
-                  #   "aes":            (3180, 500, 0),      # Mittenbetonte Entzerrung
-                  #
-                  #   # Capitol (US, bis 1953):
-                  #   "capitol":        (1590, 400, 0),      # ähnlich Columbia, flacherer HF-Abfall
-                  #
-                  #   # London / Decca (UK, bis 1954):
-                  #   "london":         (3180, 318, 100),    # HF-Boost stärker als RIAA
-                  #
-                  #   # CCIR (europäischer Rundfunkstandard für Tape, sekundär für lacquers):
-                  #   "ccir":           (3180, 318, 120),    # Tape-Entzerrung, 50 µs kurzfristig
-                  #
-                  #   # Unbekannte Vorstandardkurve — konservative Näherung Columbia:
-                  #   "unknown_prestandard": (1590, 318, 0),
-                  # }
-                  #
-                  # Erkennung Algorithmus (MediumClassifier._detect_riaa_curve_error):
-                  #   1. Spectral-Slope 250–8000 Hz vs. RIAA-Ideal-LUT (±3 dB Toleranz pro Oktave)
-                  #   2. Vergleich Basswendepunkt: Short-time LUFS 50–200 Hz / 200–800 Hz Ratio
-                  #      → Ratio > +4 dB → columbia/nab verdächtig
-                  #   3. Log-Likelihood über alle Kurven → argmax = curve_type
-                  #   4. Konfidenz-Grenzwert ≥ 0.70 → RIAA_CURVE_ERROR setzen, sonst skip
-                  #
-                  # INVARIANTE: phase_04 MUSS bei curve_type ≠ "riaa" die exakten
-                  # Zeitkonstanten aus PRE_RIAA_EQ_CURVES laden und die inverse
-                  # Shelving-Kette anwenden. VERBOTEN: generische EQ-Schätzung ohne LUT.
-ALIASING          # Spiegelfrequenzen durch AA-Filter-Fehler → phase_03 + phase_23
-BIAS_ERROR        # Falscher Vormagnetisierungsstrom → phase_04 + phase_03 + phase_29
+# Kurvenvarianten (pre-RIAA 1954): NAB, Columbia, AES, Capitol, London, CCIR
+# Erkennung: Referenzvergleich Spektral-Slope 250–8000 Hz vs. RIAA-Ideal
+#   Abweichung > ±3 dB → RIAA_CURVE_ERROR mit erkannter Kurve als Subtyp
+# Klassifikator liefert: curve_type ∈ {"riaa", "nab", "columbia", "aes",
+#   "capitol", "london", "ccir", "unknown_prestandard"}
+# phase_04 wendet Inverse-Kurve der erkannten Variante an
+#
+# §6.3a PRE-RIAA KURVENPARAMETER (kanonische Zeitkonstanten, bindend):
+# Alle Werte: (τ_bass_µs, τ_mid_µs, τ_treble_µs) → Pol/Nullstellen-Triple.
+# Inverse Korrektur: Shelving-EQ mit diesen Zeitkonstanten gespiegelt.
+#
+# PRE_RIAA_EQ_CURVES = {
+#   # RIAA 1954 (Referenz — Standard ab 1954):
+#   "riaa":           (3180, 318, 75),     # IEC 60268-4
+#
+#   # NAB (National Association of Broadcasters, bis 1953):
+#   "nab":            (3180, 318, 50),     # Basswendepunkt 500 Hz, HF-Shelf 3180 µs
+#
+#   # Columbia 78 rpm (bis 1948):
+#   "columbia":       (1590, 318, 0),      # Bass turnover 100 Hz, kein HF-Shelf
+#                                          # → +6 dB Bass vs. RIAA bei 50 Hz
+#
+#   # AES (Audio Engineering Society, 1951–1954):
+#   "aes":            (3180, 500, 0),      # Mittenbetonte Entzerrung
+#
+#   # Capitol (US, bis 1953):
+#   "capitol":        (1590, 400, 0),      # ähnlich Columbia, flacherer HF-Abfall
+#
+#   # London / Decca (UK, bis 1954):
+#   "london":         (3180, 318, 100),    # HF-Boost stärker als RIAA
+#
+#   # CCIR (europäischer Rundfunkstandard für Tape, sekundär für lacquers):
+#   "ccir":           (3180, 318, 120),    # Tape-Entzerrung, 50 µs kurzfristig
+#
+#   # Unbekannte Vorstandardkurve — konservative Näherung Columbia:
+#   "unknown_prestandard": (1590, 318, 0),
+# }
+#
+# Erkennung Algorithmus (MediumClassifier._detect_riaa_curve_error):
+#   1. Spectral-Slope 250–8000 Hz vs. RIAA-Ideal-LUT (±3 dB Toleranz pro Oktave)
+#   2. Vergleich Basswendepunkt: Short-time LUFS 50–200 Hz / 200–800 Hz Ratio
+#      → Ratio > +4 dB → columbia/nab verdächtig
+#   3. Log-Likelihood über alle Kurven → argmax = curve_type
+#   4. Konfidenz-Grenzwert ≥ 0.70 → RIAA_CURVE_ERROR setzen, sonst skip
+#
+# INVARIANTE: phase_04 MUSS bei curve_type ≠ "riaa" die exakten
+# Zeitkonstanten aus PRE_RIAA_EQ_CURVES laden und die inverse
+# Shelving-Kette anwenden. VERBOTEN: generische EQ-Schätzung ohne LUT.
+ALIASING  # Spiegelfrequenzen durch AA-Filter-Fehler → phase_03 + phase_23
+BIAS_ERROR  # Falscher Vormagnetisierungsstrom → phase_04 + phase_03 + phase_29
 # --- Spec §6.3 v10.0.0: Sibilanten-Überbetonung ---
-SIBILANCE         # Zischlautüberbetonung (> 6 kHz) — De-Esser-Trigger (phase_19 + phase_43)
+SIBILANCE  # Zischlautüberbetonung (> 6 kHz) — De-Esser-Trigger (phase_19 + phase_43)
 # --- v10.0.0b: Transport-Bump ---
-TRANSPORT_BUMP    # Impulsartige Mikro-Geschwindigkeitssprünge 50–300 ms (Kassette/Tape-Holpern) → phase_12
+TRANSPORT_BUMP  # Impulsartige Mikro-Geschwindigkeitssprünge 50–300 ms (Kassette/Tape-Holpern) → phase_12
 # --- v10.0.0: Vocal-Harshness ---
-VOCAL_HARSHNESS   # Vokale Härte/Übersteuerung/Kratzigkeit im 2–6 kHz Band → phase_42 + phase_19
+VOCAL_HARSHNESS  # Vokale Härte/Übersteuerung/Kratzigkeit im 2–6 kHz Band → phase_42 + phase_19
 ```
 
 **CLIPPING vs. SOFT_SATURATION — kritische Unterscheidung:**
@@ -399,10 +399,10 @@ Sauberes Nicht-Tape-Material darf durch den Fallback nicht flaggen (`severity ==
 @dataclass
 class MicrophoneProfile:
     name: str
-    years_active: tuple[int, int]     # z.B. (1932, 1960)
-    type: str                         # "ribbon", "condenser", "dynamic", "crystal"
+    years_active: tuple[int, int]  # z.B. (1932, 1960)
+    type: str  # "ribbon", "condenser", "dynamic", "crystal"
     freq_response_db: dict[int, float]  # {Hz: dB} — Referenz 1 kHz = 0 dB
-    genres: list[str]                 # typische Einsatzgebiete
+    genres: list[str]  # typische Einsatzgebiete
     notes: str
 ```
 
@@ -431,7 +431,10 @@ def get_profile(era_decade: int, genre_label: str, material_type: str) -> Microp
     None wenn kein passendes Profil vorhanden (digital/moderne Ären).
     """
 
-def get_eq_curve(era_decade: int, genre_label: str, material_type: str, target_sr: int = 48000) -> tuple[np.ndarray, np.ndarray] | None:
+
+def get_eq_curve(
+    era_decade: int, genre_label: str, material_type: str, target_sr: int = 48000
+) -> tuple[np.ndarray, np.ndarray] | None:
     """
     Gibt Frequenz-Response als (freqs_hz: np.ndarray, gains_linear: np.ndarray) zurück.
     Frequenzen aufsteigend, gains_linear >= 0 (dB → linear konvertiert).
@@ -572,9 +575,8 @@ _feature_ok = (
 )
 # Primär: conf >= codec-adaptiver Schwellwert UND physikalisches Feature
 # Fallback: rotation_strength >= 0.30 UND conf >= 0.20 (Plattenspieler-Periodizität)
-_strong_physical_analog = (
-    (_cand_conf >= _pa_conf_thresh and _feature_ok)
-    or (_cand_conf >= 0.20 and fp.rotation_strength >= 0.30)
+_strong_physical_analog = (_cand_conf >= _pa_conf_thresh and _feature_ok) or (
+    _cand_conf >= 0.20 and fp.rotation_strength >= 0.30
 )
 ```
 
@@ -589,7 +591,8 @@ if has_disc and _codec_contamination > 0.5:
     _thresh = max(0.010, 0.025 * (1.0 - 0.55 * _codec_contamination))  # ≈ 0.016 bei cc=0.667
     # Rotation-Guard entfernt: Vinyl-Drehzahl ist ERWARTET wenn has_disc=True
     tape_conf = clip((wow - _thresh) / 0.10, 0.12, 0.50)
-    if tape_conf >= 0.12: sources.append(("reel_tape", tape_conf))
+    if tape_conf >= 0.12:
+        sources.append(("reel_tape", tape_conf))
 ```
 
 **Standard-Pfad**: `wow_flutter_index > 0.20 AND rotation_strength < 0.10` (kein Disc-Source, Rotation = Tape-Motor-Artefakt unwahrscheinlich).
@@ -603,7 +606,7 @@ Wenn beide erkannt: **wow/flutter-Schwelle trennt Studio von Consumer** (IEC 603
 ```python
 if _has_cassette and _has_reel_tape:
     if fp.wow_flutter_index < 0.06:
-        sources = [(m, c) for m, c in sources if m != "cassette"]   # → reel_tape
+        sources = [(m, c) for m, c in sources if m != "cassette"]  # → reel_tape
     else:
         sources = [(m, c) for m, c in sources if m != "reel_tape"]  # → cassette
 ```
@@ -688,15 +691,15 @@ if material_type not in ("tape", "reel_tape", "cassette"):
     return None
 # Bandbreite → Geschwindigkeit (physikalische Beziehung: BW ∝ speed)
 if bandwidth_hz < 8000:
-    return 1.875   # Kompaktkassette, langsam
+    return 1.875  # Kompaktkassette, langsam
 elif bandwidth_hz < 12000:
-    return 3.75    # Standard-Kassette
+    return 3.75  # Standard-Kassette
 elif bandwidth_hz < 16000:
-    return 7.5     # Standard-Reel
+    return 7.5  # Standard-Reel
 elif bandwidth_hz < 20000:
-    return 15.0    # Semi-Pro
+    return 15.0  # Semi-Pro
 else:
-    return 30.0    # Profi-Master
+    return 30.0  # Profi-Master
 # Zusätzliche Validierung via wow_flutter_index:
 # Hoher Flutter (> 1.0) + niedrige BW → 1.875 ips mit höherer Konfidenz
 ```
@@ -717,12 +720,13 @@ Ergebnis: `MediumDetectionResult.transfer_chain: list[str]` bildet reale 3+/4+/5
 ```python
 # Pflicht-Aufruf in allen Analyse-Kontexten:
 from forensics.medium_detector import MediumDetector, get_medium_detector
+
 result = get_medium_detector().detect(audio, sr, file_ext=Path(file_path).suffix)
 
 # Kettenerkennung → MaterialType-Ableitung:
 if result.transfer_chain:
-    primary_material = result.transfer_chain[0]    # z. B. "vinyl"
-    secondary_chain  = result.transfer_chain[1:]   # z. B. ["tape", "cd_digital", "mp3_low"]
+    primary_material = result.transfer_chain[0]  # z. B. "vinyl"
+    secondary_chain = result.transfer_chain[1:]  # z. B. ["tape", "cd_digital", "mp3_low"]
     # → aktiviert kombinierte Phasen beider Materialien
 
 # Kettenergebnis in RestorationResult.genealogy:
@@ -821,56 +825,56 @@ Jeder Eintrag definiert: Signal-Merkmal → Klassifikation → Verarbeitungsrege
 
 AUTHENTIC_CHARACTER = {
     "shellac": {
-        "surface_noise_texture":   "PRESERVE",  # charakteristisches 78-rpm Hintergrundrauschen;
-                                                  # NR nur bis zum shellac-Boden (-45 dBFS), nicht tiefer
-        "h2_h4_harmonic_saturation": "PRESERVE", # Röhren-/Kristallmikrofon-Sättigung; WärmeMetric
-        "bandwidth_ceiling_8khz":  "PRESERVE",   # physikalische Grenze — KEIN BW-Extension >8 kHz
-        "mono_center_image":       "PRESERVE",   # alle Shellac-Quellen sind Mono
-        "soft_transients":         "PRESERVE",   # AGC-bedingte weiche Transienten (kein Transient-Shaper!)
+        "surface_noise_texture": "PRESERVE",  # charakteristisches 78-rpm Hintergrundrauschen;
+        # NR nur bis zum shellac-Boden (-45 dBFS), nicht tiefer
+        "h2_h4_harmonic_saturation": "PRESERVE",  # Röhren-/Kristallmikrofon-Sättigung; WärmeMetric
+        "bandwidth_ceiling_8khz": "PRESERVE",  # physikalische Grenze — KEIN BW-Extension >8 kHz
+        "mono_center_image": "PRESERVE",  # alle Shellac-Quellen sind Mono
+        "soft_transients": "PRESERVE",  # AGC-bedingte weiche Transienten (kein Transient-Shaper!)
     },
     "vinyl": {
-        "groove_distortion_low":   "PRESERVE",   # leichte Rillenverzerrung < 1 % THD ist authentisch
-        "interlabel_noise_texture":"PRESERVE",   # Zwillingrauschen zwischen Grooves
-        "riaa_warmth_curve":       "PRESERVE",   # RIAA-Entzerrung erzeugt charakteristischen Bassanstieg
-        "inner_groove_compression":"PRESERVE",   # Innenspur-Kompression ist physikalisch bedingt
-        "low_level_wow_sub1hz":    "PRESERVE",   # Plattenteller-Gleichlaufschwankung < 1 Hz ist Charakter
+        "groove_distortion_low": "PRESERVE",  # leichte Rillenverzerrung < 1 % THD ist authentisch
+        "interlabel_noise_texture": "PRESERVE",  # Zwillingrauschen zwischen Grooves
+        "riaa_warmth_curve": "PRESERVE",  # RIAA-Entzerrung erzeugt charakteristischen Bassanstieg
+        "inner_groove_compression": "PRESERVE",  # Innenspur-Kompression ist physikalisch bedingt
+        "low_level_wow_sub1hz": "PRESERVE",  # Plattenteller-Gleichlaufschwankung < 1 Hz ist Charakter
     },
     "tape": {
-        "tape_saturation_knee":    "PRESERVE",   # charakteristisches Kompressionsknie bei Übersteuerung
-        "high_frequency_rolloff":  "PRESERVE",   # materialbedingt: Typ-I-Kassette rolliert ab ~12 kHz
-        "bias_noise_texture":      "PRESERVE",   # Bias-Rauschen (HF-Pfeifen > 18 kHz ist KEIN Defekt)
-        "dolby_breathing_slight":  "PRESERVE",   # leichtes Dolby-Atmen < -3 dB ist Epochencharakter
+        "tape_saturation_knee": "PRESERVE",  # charakteristisches Kompressionsknie bei Übersteuerung
+        "high_frequency_rolloff": "PRESERVE",  # materialbedingt: Typ-I-Kassette rolliert ab ~12 kHz
+        "bias_noise_texture": "PRESERVE",  # Bias-Rauschen (HF-Pfeifen > 18 kHz ist KEIN Defekt)
+        "dolby_breathing_slight": "PRESERVE",  # leichtes Dolby-Atmen < -3 dB ist Epochencharakter
         "tape_compression_even_harmonics": "PRESERVE",  # Bandsättigung fügt H2 hinzu: Wärme-Merkmal
     },
     "reel_tape": {
-        "studio_ambience_bleed":   "PRESERVE",   # Raumrauschboden des Aufnahmeraums ist Teil der Aufnahme
-        "tape_hiss_floor_texture": "PRESERVE",   # NR nur bis zum reel_tape-Boden (-60 dBFS)
-        "print_through_ghost":     "REPAIR",     # Print-Through (Vor-/Nachhall Spur auf Spur) = echter Defekt
-        "tape_head_clog":          "REPAIR",     # Kopfverstopfung = echter Defekt
+        "studio_ambience_bleed": "PRESERVE",  # Raumrauschboden des Aufnahmeraums ist Teil der Aufnahme
+        "tape_hiss_floor_texture": "PRESERVE",  # NR nur bis zum reel_tape-Boden (-60 dBFS)
+        "print_through_ghost": "REPAIR",  # Print-Through (Vor-/Nachhall Spur auf Spur) = echter Defekt
+        "tape_head_clog": "REPAIR",  # Kopfverstopfung = echter Defekt
     },
     "wax_cylinder": {
-        "trichter_bandlimit_3khz": "PRESERVE",   # akustische Aufnahme: BW ≤ 3 kHz ist die REALITÄT
-        "surface_crackle_fine":    "PRESERVE",   # feines Oberflächengeräusch ist Teil der Epoche
-        "mechanical_resonance":    "PRESERVE",   # Trichtereigenresonanz ≈ 300–600 Hz ist Charakteristik
-        "coarse_crackle_clicks":   "REPAIR",     # grobe Klicker > 10 ms sind Defekte
+        "trichter_bandlimit_3khz": "PRESERVE",  # akustische Aufnahme: BW ≤ 3 kHz ist die REALITÄT
+        "surface_crackle_fine": "PRESERVE",  # feines Oberflächengeräusch ist Teil der Epoche
+        "mechanical_resonance": "PRESERVE",  # Trichtereigenresonanz ≈ 300–600 Hz ist Charakteristik
+        "coarse_crackle_clicks": "REPAIR",  # grobe Klicker > 10 ms sind Defekte
     },
     "cd_digital": {
-        "dithering_noise_floor":   "PRESERVE",   # 16-bit-Dithering-Rauschen ist Teil des Formats
-        "pre_emphasis_curve":      "PRESERVE",   # wenn Pre-Emphasis aktiv war: originalgetreu
-        "linear_phase_character":  "PRESERVE",   # CD hat nah-perfekte Linearphase — kein Phasenediting
+        "dithering_noise_floor": "PRESERVE",  # 16-bit-Dithering-Rauschen ist Teil des Formats
+        "pre_emphasis_curve": "PRESERVE",  # wenn Pre-Emphasis aktiv war: originalgetreu
+        "linear_phase_character": "PRESERVE",  # CD hat nah-perfekte Linearphase — kein Phasenediting
         "quantization_artifacts_mild": "PRESERVE",  # leichte Quantisierungsartefakte < -90 dBFS: normal
     },
     "mp3_low": {
-        "pre_echo_character_mild": "PRESERVE",   # leichtes Pre-Echo bei stabiler Musik ist Format-Charakter
-                                                  # NICHT als Knacken klassifizieren!
-        "psychoacoustic_residue":  "PRESERVE",   # wahrnehmungspsychologisches Kodierresiduum: Epoche
-        "severe_pre_echo":         "REPAIR",     # starkes Pre-Echo > 40 ms ist echter Defekt (phase_50)
-        "metallic_ringing":        "REPAIR",     # metallisches Klingen ist echter Defekt
+        "pre_echo_character_mild": "PRESERVE",  # leichtes Pre-Echo bei stabiler Musik ist Format-Charakter
+        # NICHT als Knacken klassifizieren!
+        "psychoacoustic_residue": "PRESERVE",  # wahrnehmungspsychologisches Kodierresiduum: Epoche
+        "severe_pre_echo": "REPAIR",  # starkes Pre-Echo > 40 ms ist echter Defekt (phase_50)
+        "metallic_ringing": "REPAIR",  # metallisches Klingen ist echter Defekt
     },
     "lacquer_disc": {
-        "substrate_texture":       "PRESERVE",   # Acetat-Substrat-Textur ist Materialcharakter
-        "light_surface_clicks":    "PRESERVE",   # leichte Oberflächenklicker ≤ 3 ms: Epoche
-        "deep_crack_clicks":       "REPAIR",     # tiefe Rissklicker > 5 ms: echter Defekt
+        "substrate_texture": "PRESERVE",  # Acetat-Substrat-Textur ist Materialcharakter
+        "light_surface_clicks": "PRESERVE",  # leichte Oberflächenklicker ≤ 3 ms: Epoche
+        "deep_crack_clicks": "REPAIR",  # tiefe Rissklicker > 5 ms: echter Defekt
     },
 }
 
@@ -924,14 +928,14 @@ Messung: Spektraler Tilt in dB/Oktave über Bereich 250–8000 Hz (Fenster: Hann
 # Toleranzband: ±1.0 dB/oct (±1.5 bei SNR < 10 dB)
 RIAA_SLOPE_PROFILES = {
     # name:       (slope_dB_oct, bass_boost_db_at_100hz, hf_cut_freq_hz, bass_turnover_hz)
-    "riaa":       (-5.0,  +13.7,  2122, 3183),   # IEC 1994 Standard (τ: 75/318/3180 µs)
-    "nab":        (-4.5,  +13.7,  1590, 3183),   # NAB Broadcast (τ: 100/318/3180 µs)
-    "columbia":   (-3.5,  +16.0,  1590, 1590),   # Columbia Records 1948 (Bass-betont)
-    "aes":        (-4.5,  +12.0,  3183, 3183),   # AES 1951 (weniger Bass-Boost)
-    "capitol":    (-3.7,  +15.0,  1590, 2122),   # Capitol Records 1949
-    "london":     (-5.2,  +13.7,  2122, 3183),   # London/Decca (mehr HF-Boost als RIAA)
-    "ccir":       (-4.9,  +13.7,  3183, 3183),   # CCIR/EBU Rundfunk
-    "unknown":    None,                           # Bayes-Prior: uniform über alle Kurven
+    "riaa": (-5.0, +13.7, 2122, 3183),  # IEC 1994 Standard (τ: 75/318/3180 µs)
+    "nab": (-4.5, +13.7, 1590, 3183),  # NAB Broadcast (τ: 100/318/3180 µs)
+    "columbia": (-3.5, +16.0, 1590, 1590),  # Columbia Records 1948 (Bass-betont)
+    "aes": (-4.5, +12.0, 3183, 3183),  # AES 1951 (weniger Bass-Boost)
+    "capitol": (-3.7, +15.0, 1590, 2122),  # Capitol Records 1949
+    "london": (-5.2, +13.7, 2122, 3183),  # London/Decca (mehr HF-Boost als RIAA)
+    "ccir": (-4.9, +13.7, 3183, 3183),  # CCIR/EBU Rundfunk
+    "unknown": None,  # Bayes-Prior: uniform über alle Kurven
 }
 
 # Klassifikations-Algorithmus (Bayes):
@@ -940,6 +944,7 @@ RIAA_SLOPE_PROFILES = {
 # Konfidenz-Schwelle: ≥ 0.70 → Kurve bestätigt; < 0.70 → "unknown" (konservativ)
 # Bei era_decade ≤ 1950: Prior für columbia/capitol/aes erhöht (×2.5)
 # Bei era_decade ≥ 1960: Prior für riaa erhöht (×3.0), columbia/capitol/aes reduziert
+
 
 def classify_riaa_curve(audio, sr, era_decade):
     """Bayesianische RIAA-Kurvenklassifikation."""
@@ -952,9 +957,9 @@ def classify_riaa_curve(audio, sr, era_decade):
         if s is None:
             likelihoods[curve] = 0.1  # uniform Prior für unknown
             continue
-        d_slope = abs(slope - s) / 1.0        # Normiert auf Toleranz 1 dB/oct
-        d_bass  = abs(bass_boost - b) / 3.0   # Normiert auf Toleranz 3 dB
-        d_hf    = abs(hf_turnover - h) / 500  # Normiert auf Toleranz 500 Hz
+        d_slope = abs(slope - s) / 1.0  # Normiert auf Toleranz 1 dB/oct
+        d_bass = abs(bass_boost - b) / 3.0  # Normiert auf Toleranz 3 dB
+        d_hf = abs(hf_turnover - h) / 500  # Normiert auf Toleranz 500 Hz
         likelihoods[curve] = np.exp(-0.5 * (d_slope**2 + d_bass**2 + d_hf**2))
 
     era_priors = _get_era_riaa_priors(era_decade)

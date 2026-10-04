@@ -258,6 +258,7 @@ from typing import Optional
 _instance: Optional[MeinDenker] = None
 _lock = threading.Lock()
 
+
 def get_mein_denker() -> MeinDenker:
     """Thread-sicherer Singleton (Double-Checked Locking, §3.2)."""
     global _instance
@@ -302,16 +303,16 @@ print(f"Warnungen:    {ergebnis.warnings}")
 ```python
 hiddenimports = [
     # ... bestehende Einträge ...
-    'denker',
-    'denker.aurik_denker',
-    'denker.defekt_denker',
-    'denker.exzellenz_denker',
-    'denker.rekonstruktions_denker',
-    'denker.reparatur_denker',
-    'denker.restaurier_denker',
-    'denker.strategie_denker',
-    'denker.tontraeger_denker',
-    'denker.tontraegerkette_denker',
+    "denker",
+    "denker.aurik_denker",
+    "denker.defekt_denker",
+    "denker.exzellenz_denker",
+    "denker.rekonstruktions_denker",
+    "denker.reparatur_denker",
+    "denker.restaurier_denker",
+    "denker.strategie_denker",
+    "denker.tontraeger_denker",
+    "denker.tontraegerkette_denker",
 ]
 ```
 
@@ -323,6 +324,7 @@ aus dem Frontend:
 ```python
 # backend/api/rest/api.py — empfohlene Integration
 from denker import restauriere, AurikErgebnis
+
 
 @app.post("/restore")
 async def restore_audio(audio_bytes: bytes, sr: int = 48_000) -> dict:

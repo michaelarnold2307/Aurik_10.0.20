@@ -61,7 +61,8 @@ Jede Funktion die Audio oder Scores zurückgibt ist NaN/Inf-frei:
 ```python
 result = np.nan_to_num(result, nan=0.0, posinf=0.0, neginf=0.0)
 audio = np.clip(audio, -1.0, 1.0)
-if not math.isfinite(score): return  # Score-Update überspringen
+if not math.isfinite(score):
+    return  # Score-Update überspringen
 ```
 
 ### 4. Singleton + Thread-Safety (Pflicht)
@@ -69,6 +70,7 @@ if not math.isfinite(score): return  # Score-Update überspringen
 ```python
 _instance = None
 _lock = threading.Lock()
+
 
 def get_my_module():
     global _instance

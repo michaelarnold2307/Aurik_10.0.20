@@ -248,8 +248,8 @@ source .venv_aurik/bin/activate
 
 ```python
 import torch
-print(torch.cuda.is_available())  # False (ROCm nicht gefunden)
 
+print(torch.cuda.is_available())  # False (ROCm nicht gefunden)
 ```
 
 **Diagnose:**
@@ -386,7 +386,6 @@ RuntimeError: HIP out of memory. Tried to allocate 2.00 GiB (GPU 0; 23.70 GiB to
 # In backend/denoiser.py (DeepFilterNet)
 # Ändere chunk_size:
 chunk_size = 30.0  # statt 60.0 Sekunden
-
 ```
 
 **Lösung 2: CPU + optionale AMD-GPU Mode**
@@ -404,8 +403,8 @@ python orchestrator_and_cli.py input.wav output.wav
 
 ```python
 import torch
-torch.cuda.empty_cache()
 
+torch.cuda.empty_cache()
 ```
 
 **Lösung 4: Lazy-Loading prüfen**
@@ -414,7 +413,6 @@ torch.cuda.empty_cache()
 # Plugins sollten lazy-loaded sein (nur bei Bedarf)
 denker = get_aurik_denker_instance()  # Lädt nicht blind alle Modelle vorab
 # Modelle/Plugins werden bedarfsorientiert ueber die Laufzeitlogik aktiviert
-
 ```
 
 ---
@@ -427,9 +425,9 @@ denker = get_aurik_denker_instance()  # Lädt nicht blind alle Modelle vorab
 
 ```python
 import torch
+
 print(f"ROCm available: {torch.cuda.is_available()}")
 print(f"Device: {torch.cuda.get_device_name(0) if torch.cuda.is_available() else 'CPU'}")
-
 ```
 
 **Ursache 1:** CPU-only (ROCm/DirectML nicht installiert) (keine GPU erkannt)
@@ -488,7 +486,6 @@ import os
 
 process = psutil.Process(os.getpid())
 print(f"Memory: {process.memory_info().rss / (1024**2):.2f} MB")
-
 ```
 
 **Lösung:**
@@ -505,8 +502,7 @@ for audio_file in audio_files:
     # Free Memory
     del audio, restored
     torch.cuda.empty_cache()  # GPU
-    gc.collect()               # CPU
-
+    gc.collect()  # CPU
 ```
 
 ---
@@ -529,7 +525,6 @@ print(f"Max Amplitude: {max_amplitude}")  # Sollte <= 1.0 sein
 # Check RMS
 rms = np.sqrt(np.mean(audio**2))
 print(f"RMS: {20 * np.log10(rms):.2f} dB")
-
 ```
 
 **Ursache 1:** `aggressive` zu hoch
@@ -539,11 +534,11 @@ print(f"RMS: {20 * np.log10(rms):.2f} dB")
 ```python
 # Reduziere aggressive Parameter
 restored = restorer.restore(
-    audio, sr,
+    audio,
+    sr,
     mode=ProcessingMode.RESTORATION,
-    aggressive=0.3  # statt 0.5 (default)
+    aggressive=0.3,  # statt 0.5 (default)
 )
-
 ```
 
 ---
@@ -558,7 +553,6 @@ audio = audio / np.abs(audio).max()  # Peak-Normalize zu 1.0
 audio *= 0.9  # Headroom
 
 restored = restorer.restore(audio, sr)
-
 ```
 
 ---
@@ -575,7 +569,6 @@ config.compression_ratio = 2.0  # statt 4.0 (sanfter)
 config.compression_threshold = -20  # höher (weniger Kompression)
 
 restored = restorer.restore(audio, sr, custom_config=config)
-
 ```
 
 ---
@@ -593,7 +586,6 @@ config = ProcessingConfig()
 config.denoise_strength = 0.2  # statt 0.5 (sanfter)
 
 restored = restorer.restore(audio, sr, custom_config=config)
-
 ```
 
 **Alternative:** Aktiviere Air & Presence
@@ -603,7 +595,6 @@ config = ProcessingConfig()
 config.enable_air_presence = True  # Phase 8: +1.5 dB @ 12-20 kHz
 
 restored = restorer.restore(audio, sr, custom_config=config)
-
 ```
 
 ---
@@ -616,21 +607,21 @@ restored = restorer.restore(audio, sr, custom_config=config)
 
 ```python
 restored = restorer.restore(
-    audio, sr,
+    audio,
+    sr,
     mode=ProcessingMode.RESTORATION,
-    aggressive=0.7  # statt 0.5
+    aggressive=0.7,  # statt 0.5
 )
-
 ```
 
 **Lösung 2:** Verwende `STUDIO_2026` Mode (aggressiver)
 
 ```python
 restored = restorer.restore(
-    audio, sr,
-    mode=ProcessingMode.STUDIO_2026  # aggressive=0.8
+    audio,
+    sr,
+    mode=ProcessingMode.STUDIO_2026,  # aggressive=0.8
 )
-
 ```
 
 **Lösung 3:** Multi-Pass Processing
@@ -641,7 +632,6 @@ restored_pass1 = restorer.restore(audio, sr, mode=ProcessingMode.RESTORATION)
 
 # Pass 2 (auf Output von Pass 1)
 restored_pass2 = restorer.restore(restored_pass1, sr, mode=ProcessingMode.RESTORATION)
-
 ```
 
 ---
@@ -655,7 +645,6 @@ restored_pass2 = restorer.restore(restored_pass1, sr, mode=ProcessingMode.RESTOR
 ```python
 dc_offset = np.mean(audio)
 print(f"DC Offset: {dc_offset:.6f}")  # Sollte ~0.0 sein
-
 ```
 
 **Lösung:**
@@ -663,7 +652,6 @@ print(f"DC Offset: {dc_offset:.6f}")  # Sollte ~0.0 sein
 ```python
 # DC Blocker (sollte automatisch in Phase 1.4 sein)
 audio = audio - np.mean(audio)
-
 ```
 
 **Verify:** Phase 1.4 (DC-Blocker) ist aktiviert
@@ -694,7 +682,6 @@ if audio.ndim == 1:
     audio = np.stack([audio, audio], axis=1)
 
 restored = restorer.restore(audio, sr)
-
 ```
 
 ---
@@ -726,7 +713,6 @@ WARNING: Musical Goal 'Tonal Balance' failed: 0.58 < 0.70
 ```python
 restored = restorer.restore(audio, sr, mode=ProcessingMode.STUDIO_2026)
 # Sollte höhere Musical Goals Scores erreichen
-
 ```
 
 **Lösung 3:** Disable Musical Goals Validation
@@ -749,7 +735,6 @@ restored = restorer.restore(audio, sr, mode=ProcessingMode.STUDIO_2026)
 
 ```python
 restored = restorer.restore(audio, sr, mode=ProcessingMode.FORENSIC)
-
 ```
 
 **Lösung 2:** Aktiviere Transient Sharpening
@@ -760,7 +745,6 @@ config.enable_transient_sharpening = True
 config.transient_sharpness_factor = 1.5  # Enhance Attack
 
 restored = restorer.restore(audio, sr, custom_config=config)
-
 ```
 
 ---
@@ -779,14 +763,12 @@ config.denoise_strength = 0.3  # Sanfter
 config.enable_vocal_enhancement = False  # Disable Phase 2.2
 
 restored = restorer.restore(audio, sr, custom_config=config)
-
 ```
 
 **Alternative:** Verwende `VINTAGE_WARMTH` Mode (erhält Charakter)
 
 ```python
 restored = restorer.restore(audio, sr, mode=ProcessingMode.VINTAGE_WARMTH)
-
 ```
 
 ---
@@ -839,7 +821,6 @@ from backend.api.bridge import get_aurik_denker_instance, get_load_audio_fn
 denker = get_aurik_denker_instance()
 audio, sr = get_load_audio_fn()("input.wav")
 result = denker.denke(audio, sr, mode="restoration")
-
 ```
 
 ---
@@ -860,11 +841,11 @@ config.denoise_strength = 0.6
 
 # Apply Config (must use custom_config parameter!)
 restored = restorer.restore(
-    audio, sr,
+    audio,
+    sr,
     mode=ProcessingMode.RESTORATION,
-    custom_config=config  # ← Important!
+    custom_config=config,  # ← Important!
 )
-
 ```
 
 ---
@@ -965,22 +946,22 @@ pytest -m unit  # Nur schnelle Unit Tests
 ```python
 # Aktiviere Logging
 restored = restorer.restore(
-    audio, sr,
+    audio,
+    sr,
     mode=ProcessingMode.RESTORATION,
-    enable_logging=True  # ← Important!
+    enable_logging=True,  # ← Important!
 )
-
 ```
 
 **Alternative:** Set Logging Level
 
 ```python
 import logging
+
 logging.basicConfig(level=logging.INFO)
 
 # Oder für mehr Details:
 logging.basicConfig(level=logging.DEBUG)
-
 ```
 
 ---
@@ -1002,7 +983,6 @@ try:
 except Exception as e:
     logging.error(f"Error: {e}")
     traceback.print_exc()  # Vollständiger Stacktrace
-
 ```
 
 ---
@@ -1016,10 +996,10 @@ except Exception as e:
 ```python
 # Aktiviere Logging für Fortschrittsanzeige
 restored = restorer.restore(
-    audio, sr,
-    enable_logging=True  # Zeigt Phase-Progress
+    audio,
+    sr,
+    enable_logging=True,  # Zeigt Phase-Progress
 )
-
 ```
 
 **Output:**

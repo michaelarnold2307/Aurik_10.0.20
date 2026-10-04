@@ -264,7 +264,7 @@ Enhancement (Era-abhängig):
 #### Modul-Prioritäten (15 Module)
 
 ```python
-DCBlocker: 10             # Immer zuerst
+DCBlocker: 10  # Immer zuerst
 RumbleFilter: 20
 HumRemover: 25
 ClickRemover: 30
@@ -276,7 +276,7 @@ CodecArtifactRemover: 55
 DistortionReducer: 60
 NoiseReducer: 65
 ...
-Enhancement: 95           # Immer zuletzt
+Enhancement: 95  # Immer zuletzt
 ```
 
 #### Ketten-Optimierung
@@ -431,13 +431,11 @@ defect_detector, _ = train_ml_defect_detector_from_dataset(defect_dataset)
 
 # 2. Erstelle Analyzer
 analyzer = UnifiedForensicAnalyzer(
-    medium_detector=medium_detector,
-    era_detector=era_detector,
-    defect_detector=defect_detector
+    medium_detector=medium_detector, era_detector=era_detector, defect_detector=defect_detector
 )
 
 # 3. Lade Audio
-audio, sr = sf.read('old_vinyl_recording.wav')
+audio, sr = sf.read("old_vinyl_recording.wav")
 
 # 4. Analysiere Audio
 analysis = analyzer.analyze(audio, sr, verbose=True)
@@ -500,7 +498,7 @@ print(builder.visualize_chain(chain))
 #          - vintage_character: True
 
 # 7. Exportiere Kette
-builder.export_chain(chain, 'processing_chain.json')
+builder.export_chain(chain, "processing_chain.json")
 
 # 8. [Future] Execute Chain
 # processed_audio = execute_chain(audio, sr, chain)

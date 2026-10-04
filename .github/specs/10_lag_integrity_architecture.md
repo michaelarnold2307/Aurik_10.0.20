@@ -103,7 +103,9 @@ Diese Regeln werden durch Pre-Commit-Hooks und den `scripts/aurik_verboten_linte
 
 ```python
 # VERBOTEN:
-import scipy.signal; lag = signal.correlate(l, r, mode="full")
+import scipy.signal
+
+lag = signal.correlate(l, r, mode="full")
 # oder: from scipy.signal import correlate
 
 # GEBOTEN:
@@ -150,7 +152,7 @@ from backend.core.stereo_temporal_coherence_guard import get_stereo_temporal_coh
 def test_lag_varied_across_song():
     """Simuliert variablen Lag: 0%→-8900, 50%→0, 100%→-7297."""
     ...
-    assert abs(multi['median_lag']) < 50  # Median muss korrigiert sein
+    assert abs(multi["median_lag"]) < 50  # Median muss korrigiert sein
 ```
 
 ### T2: Orientierungs-Test

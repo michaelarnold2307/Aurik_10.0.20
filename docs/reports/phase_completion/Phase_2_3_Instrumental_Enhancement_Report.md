@@ -300,7 +300,7 @@ def bass_enhancement(self):
             mid_bass_clarity=0.8,
             harmonics_gain_db=2.0,
             dynamics_control=True,
-            compression_ratio=2.0
+            compression_ratio=2.0,
         )
     return self._bass_enhancement
 ```
@@ -315,6 +315,7 @@ try:
     from dsp.piano_restoration import PianoRestorationSystem
     from dsp.brass_enhancement import BrassEnhancementSystem
     from dsp.spatial_enhancement import SpatialEnhancementSystem
+
     PHASE_2_3_AVAILABLE = True
 except ImportError:
     PHASE_2_3_AVAILABLE = False
@@ -328,17 +329,17 @@ except ImportError:
 from backend.semantic.semantic_audio_analyzer import InstrumentType
 
 # Semantic routing based on InstrumentType
-if semantic_profile['instrument_type'] == InstrumentType.VOCALS:
+if semantic_profile["instrument_type"] == InstrumentType.VOCALS:
     return self._vocal_enhancement_pipeline(audio, sr, medium_type)
-elif semantic_profile['instrument_type'] == InstrumentType.BASS:
+elif semantic_profile["instrument_type"] == InstrumentType.BASS:
     return self._bass_enhancement_pipeline(audio, sr)
-elif semantic_profile['instrument_type'] in [InstrumentType.DRUMS, InstrumentType.PERCUSSION]:
+elif semantic_profile["instrument_type"] in [InstrumentType.DRUMS, InstrumentType.PERCUSSION]:
     return self._drums_enhancement_pipeline(audio, sr)
-elif semantic_profile['instrument_type'] in [InstrumentType.GUITAR, InstrumentType.STRINGS]:
+elif semantic_profile["instrument_type"] in [InstrumentType.GUITAR, InstrumentType.STRINGS]:
     return self._guitar_enhancement_pipeline(audio, sr)
-elif semantic_profile['instrument_type'] in [InstrumentType.KEYS, InstrumentType.SYNTH]:
+elif semantic_profile["instrument_type"] in [InstrumentType.KEYS, InstrumentType.SYNTH]:
     return self._piano_restoration_pipeline(audio, sr)
-elif semantic_profile['instrument_type'] == InstrumentType.BRASS:
+elif semantic_profile["instrument_type"] == InstrumentType.BRASS:
     return self._brass_enhancement_pipeline(audio, sr)
 else:  # MIXED, AMBIENT, OTHER
     return self._mixed_enhancement_pipeline(audio, sr, semantic_profile)
@@ -365,12 +366,14 @@ def _mixed_enhancement_pipeline(self, audio, sr, semantic_profile):
     result, spatial_report = self.spatial_enhancement.process(audio, sr)
 
     # Conditionally apply bass if BASS detected
-    if InstrumentType.BASS in semantic_profile.get('additional_instruments', []):
+    if InstrumentType.BASS in semantic_profile.get("additional_instruments", []):
         result, bass_report = self.bass_enhancement.process(result, sr)
 
     # Conditionally apply drums if DRUMS/PERCUSSION detected
-    if any(t in [InstrumentType.DRUMS, InstrumentType.PERCUSSION]
-           for t in semantic_profile.get('additional_instruments', [])):
+    if any(
+        t in [InstrumentType.DRUMS, InstrumentType.PERCUSSION]
+        for t in semantic_profile.get("additional_instruments", [])
+    ):
         result, drums_report = self.drums_enhancement.process(result, sr)
 
     return result
@@ -646,10 +649,9 @@ def _match_lengths(*arrays):
     min_len = min(len(arr) for arr in arrays)
     return tuple(arr[:min_len] for arr in arrays)
 
+
 # Anwendung vor Array-Operationen:
-low_content, mid_content, high_content = _match_lengths(
-    low_content, mid_content, high_content
-)
+low_content, mid_content, high_content = _match_lengths(low_content, mid_content, high_content)
 result = low_content + mid_content + high_content
 ```
 
@@ -692,7 +694,7 @@ self._bass_enhancement = BassEnhancementSystem(
     mid_bass_clarity=0.8,
     harmonics_gain_db=2.0,
     dynamics_control=True,
-    compression_ratio=2.0
+    compression_ratio=2.0,
 )
 ```
 

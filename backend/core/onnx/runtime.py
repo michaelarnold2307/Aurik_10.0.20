@@ -6,7 +6,9 @@ with 1.5-2× speedup over PyTorch.
 """
 
 import contextlib
+import hashlib
 import logging
+import os
 import time
 from dataclasses import dataclass
 from enum import Enum
@@ -33,6 +35,82 @@ except Exception as _e:
     logging.warning("onnx_runtime: non-critical exception: %s", _e)
 
 logger = logging.getLogger(__name__)
+
+
+# ─── TODO-P0-2 Per-Session-Kompilierung (2026-10-04) ───────────────────────
+# Die ORT-Graph-Optimierung lief bislang JEDE Session neu in-memory (~Sekunden
+# bei großen Modellen). Statt zu optimieren, wird das optimierte Graph jetzt
+# einmalig SERIALIZIERT (SessionOptions.optimized_model_filepath) und bei
+# Folgeläufen direkt geladen — dieselben Graph-Umbauten wie bisher (ORT_ENABLE_
+# ALL), damit numerisch identisch (Paritätstest tests/unit/test_ort_session_
+# cache.py), nur der Session-Load entlastet. Cache-Key = Größe+mtime des
+# Modells + ORT-Version + Provider + AURIK_VERSION ⇒ ungültig bei JEDEM
+# Modellwechsel/-update. Kill-Switch: AURIK_ORT_CACHE=0 (§V6-sicher: ohne
+# Cache unverändertes bisheriges Verhalten).
+
+_SESSION_CACHE_ENV = "AURIK_ORT_CACHE"
+
+
+def _session_cache_enabled() -> bool:
+    """Kill-Switch AURIK_ORT_CACHE=0/false/no schaltet den Compile-Cache ab."""
+    return os.getenv(_SESSION_CACHE_ENV, "1").lower() not in ("0", "false", "no")
+
+
+def _session_cache_key(model_path: Path, providers: list[_Provider] | Any) -> str:
+    """Deterministischer Cache-Key: Modell-Identität + Umgebung + Provider."""
+    st = model_path.stat()
+    _prov = tuple(str(p[0] if isinstance(p, tuple) else p) for p in providers)
+    try:
+        import onnxruntime as _ort
+
+        _ort_ver = _ort.__version__
+    except Exception:  # pragma: no cover
+        _ort_ver = "unbekannt"
+    try:
+        from backend.core.version import AURIK_VERSION as _AURIK_VERSION
+    except Exception:  # pragma: no cover
+        _AURIK_VERSION = "unbekannt"
+    _raw = f"{model_path.name}|{st.st_size}|{st.st_mtime_ns}|{_ort_ver}|{_prov}|{int(ort.GraphOptimizationLevel.ORT_ENABLE_ALL)}|{_AURIK_VERSION}"
+    return hashlib.sha256(_raw.encode("utf-8")).hexdigest()[:24]
+
+
+def apply_session_cache(
+    sess_options: "ort.SessionOptions",
+    model_path: Path,
+    providers: list[_Provider] | Any,
+) -> bool:
+    """Hängt den Per-Session-Compile-Cache an ein SessionOptions-Objekt (P0-2).
+
+    Returns:
+        True wenn der Cache aktiv ist, False bei Kill-Switch/Fehler (dann
+        bleibt das bisherige in-memory-Verhalten unverändert, §V6 (copilot-instructions.md)).
+    """
+    if not _session_cache_enabled():
+        return False
+    try:
+        _cache_dir = Path("output") / "onnx_session_cache"
+        _cache_dir.mkdir(parents=True, exist_ok=True)
+        _key = _session_cache_key(Path(model_path), providers)
+        sess_options.optimized_model_filepath = str(_cache_dir / f"{Path(model_path).stem}.{_key}.ort")
+        return True
+    except Exception as _cache_exc:  # §V6 (VERBOTEN.md): Warnung + altes Verhalten
+        logger.warning("P0-2 Sitzungs-Zwischenspeicher nicht aktiv — Speicherverhalten bleibt: %s", _cache_exc)
+        return False
+
+
+def create_inference_session(
+    model_path: str | Path,
+    providers: list[_Provider] | Any,
+    sess_options: "ort.SessionOptions | None" = None,
+):
+    """Zentraler Session-Builder mit Per-Session-Compile-Cache (P0-2).
+
+    Für Neu-/Umgestellte Aufrufer: provider stammen aus
+    ``gpu_model_registry.get_onnx_providers()`` (§III.9/§v10.762).
+    """
+    _opts = sess_options if sess_options is not None else ort.SessionOptions()
+    apply_session_cache(_opts, Path(model_path), providers)
+    return ort.InferenceSession(str(model_path), _opts, providers=providers)
 
 
 class ONNXProvider(Enum):
@@ -124,6 +202,10 @@ class ONNXInferenceSession:
 
         if enable_profiling:
             sess_options.enable_profiling = True
+
+        # P0-2 Per-Session-Kompilierung: serialisierte ORT-Graph-Optimierung
+        # (Kill-Switch AURIK_ORT_CACHE=0, Paritätstest test_ort_session_cache).
+        _cache_active = apply_session_cache(sess_options, self.model_path, self.providers)
 
         # §2.37 / Checkliste: try_allocate() vor jedem InferenceSession-Load (RELEASE_MUST)
         _session_name = f"ONNX_{self.model_path.stem}"

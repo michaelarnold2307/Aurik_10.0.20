@@ -37,7 +37,7 @@ Dieses Pattern ist Wiederverwendbar für jede ML-basierte Phase:
 
 ```python
 # Linie 1: Denker-Entscheidung respektieren
-if _denker_strength <= _dsp_threshold:   # Joint-Calibrator sagt "lohnt nicht"
+if _denker_strength <= _dsp_threshold:  # Joint-Calibrator sagt "lohnt nicht"
     use_lightweight = True
 
 # Linie 2: Fallback wenn Kalibration fehlt
@@ -45,7 +45,7 @@ elif _denker_strength >= 0.95 and panns >= 0.25:  # Unkalibriert + Gesang
     use_lightweight = True  # Safety-first
 
 # Linie 3: ML nur wenn Denker explizit befürwortet
-_bsrof_gate = (... and _denker_strength > 0.55)  # Nur bei klarer Freigabe
+_bsrof_gate = ... and _denker_strength > 0.55  # Nur bei klarer Freigabe
 ```
 
 ### 3. Strength-Envelope: Skalar → Vektor

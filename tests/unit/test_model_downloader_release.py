@@ -65,10 +65,10 @@ class TestReleaseDelivery:
     def test_download_and_reassembly(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
         entry, target = _entry(tmp_path, [b"A" * 1000, b"B" * 1000, b"C" * 500])
 
-        def fake_download(url: str, target: Path, **kwargs) -> bool:  # noqa: ANN003
+        def fake_download(url: str, target: Path, **kwargs) -> bool:
             part = next((a for a in entry.assets if url.endswith(a)), None)
             assert part is not None, url
-            target.write_bytes(entry.part_sha256 and b"" or b"")
+            target.write_bytes((entry.part_sha256 and b"") or b"")
             # Inhalt über die Part-Größe schreiben (wie der echte Download)
             idx = entry.assets.index(part)
             sizes = [entry.part_size_bytes[a] for a in entry.assets]
@@ -85,7 +85,7 @@ class TestReleaseDelivery:
     def test_part_hash_mismatch_removes_file(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
         entry, target = _entry(tmp_path, [b"A" * 100, b"B" * 100])
 
-        def fake_download(url: str, target: Path, **kwargs) -> bool:  # noqa: ANN003
+        def fake_download(url: str, target: Path, **kwargs) -> bool:
             target.write_bytes(b"X" * 100)  # falscher Inhalt
             return True
 
@@ -110,7 +110,7 @@ class TestReleaseDelivery:
         dl = ModelDownloader()
         # bundled-Datei existiert nicht → Release-Fallback muss greifen
         monkeypatch.setattr(md, "OFFLINE_MODE", False)
-        monkeypatch.setattr(dl, "download_release_assets", lambda e, t: t.write_bytes(b"X" * 64) or True)
+        monkeypatch.setattr(dl, "download_release_assets", lambda _entry, target: bool(target.write_bytes(b"X" * 64)))
         monkeypatch.setattr(ModelDownloader, "PROJECT_MODELS_DIR", tmp_path)
         result = dl.load_bundled(entry)
         assert result == abs_bundled
@@ -140,9 +140,7 @@ class TestModelPathResolver:
         monkeypatch.setattr(mpr, "_DOWNLOAD_ENABLED", True)
         assert mpr.resolve_model_path("models/unbekannt/x.onnx") is None
 
-    def test_download_fallback_via_load_bundled(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
+    def test_download_fallback_via_load_bundled(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
         import backend.core.model_downloader as md
         import backend.core.model_path_resolver as mpr
 

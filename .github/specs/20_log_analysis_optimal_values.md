@@ -71,8 +71,17 @@ real_vocal_choir_breaths_hiss:        REQUIRED BUT SKIPPED: phase_06_frequency_r
 ```python
 if phase_id == "phase_06_frequency_restoration":
     _mat = str(_rctx.get("material_key", "")).lower()
-    _analog = {"shellac", "vinyl", "tape", "cassette", "reel_tape",
-               "wax_cylinder", "wire_recording", "lacquer_disc", "lp"}
+    _analog = {
+        "shellac",
+        "vinyl",
+        "tape",
+        "cassette",
+        "reel_tape",
+        "wax_cylinder",
+        "wire_recording",
+        "lacquer_disc",
+        "lp",
+    }
     if _mat in _analog:
         return False  # Nie skippen für analoge Träger
 ```
@@ -167,7 +176,9 @@ if not np.isfinite(_post_audio).all():
     _n_inf = int(np.sum(np.isinf(_post_audio)))
     self._logger.warning(
         "§v10.300 NaN/Inf-Guard: %s Output enthält %d NaN + %d Inf → bereinigt",
-        phase_id, _n_nan, _n_inf,
+        phase_id,
+        _n_nan,
+        _n_inf,
     )
     result.audio = np.nan_to_num(_post_audio, nan=0.0, posinf=0.0, neginf=0.0)
     result.warnings.append(f"NaN/Inf-Guard: {_n_nan} NaN + {_n_inf} Inf bereinigt")

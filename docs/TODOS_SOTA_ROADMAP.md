@@ -124,6 +124,11 @@ Vorstufe (Separation-SOTA, Zeile 1602).
   **Rest (A/B-Abnahme):** Vorher/Nachher-Lauf über die 3 Referenz-Songs
   (Ergebnis ≠ wie heute — Verhaltensänderung laut Optionsvertrag A) mit
   Never-worsen-Gates + Hörordnungs-Abnahme, danach ist T6-1 final abgenommen.
+  **Entscheidungs-Instrument (2026-10-04):** `scripts/validate_t61_ab.py` —
+  prae-registrierte Regel (mittlerer Gewinn ≥ min_delta + Seed-fixiertes
+  Bootstrap-95%-CI ohne 0 + Hörordnung-Ebene-1-Veto als harte Schranke),
+  Norm-Suite `tests/unit/test_validate_t61_ab.py` (7 grün); der
+  Referenzmatrix-Lauf selbst bleibt offen.
 
 ---
 
@@ -234,6 +239,17 @@ Vorstufe (Separation-SOTA, Zeile 1602).
   Fallback-Kette. VS-1/GSEP als öffentliche lizenzklare Gewichte nicht
   verifizierbar (SongEval-Leaderboard nicht erreichbar, SCNet ohne offizielle
   Weights) → ckpt→ONNX-Konversion + A/B-Metrik als Folge-Slice.
+
+  **Status 2026-10-04 — BESCHAFFUNG/RECHERCHE ABGESCHLOSSEN:** „Demucs v5“ ist nie
+  erschienen — `facebookresearch/demucs` archiviert bei **v4.0.1** (htdemucs =
+  Hybrid-Transformer **v4**; `models/demucs/htdemucs_6s.onnx` ist exakt diese
+  v4-Stufe) → v5-Arm entfällt, Kette bleibt BS-RoFormer → Demucs v4 → MDX23C.
+  VS-1/GSEP weiterhin ohne offizielle lizenzklare Weights (HF-/GitHub-Recherche
+  2026-10-04); SCNet-Drittanbieter-Kandidat **Aname-Tommy/Huge-SCNet-4stems**
+  (Apache-2.0, `huge_scnet_4stems_v1.2.ckpt`, 395,6 MB, SHA-256 `807f470b…`)
+  unter `models/scnet_4stems/` beschafft — **Kandidat, nicht integriert**; A/B
+  `separation_fidelity` + `singer_identity_cosine` vs. MDX23C-Stand +
+  Hörstichprobe bleiben der Folge-Slice.
 
 ## TODO-P1-3 · Audibility (JND/Masking) auf alle Schwellwert-Guards
 
@@ -1880,10 +1896,11 @@ Maskierung je Defekt-Kontext — ein Cache wäre nicht exakt).
 | Punkt | Status | Begründung / nächster Schritt |
 |---|---|---|
 | TODO-P0-1 (53×→32×-Laufzeit) | **TEIL-ERLEDIGT (Messung) 2026-09-15; Rest GPU-GEBUNDEN** | Hot-Phase-Messung geliefert: `compute_hot_phases` im Diagnose-Skript (rt_factor je Phase, Hot-Liste ab 0,5× RT, test_p0_1_hot_phase_report.py). **Attributions-Korrektur 2026-09-16 (Profiling):** phase_01s 4,4×-RT-Attribution „DSP-Multiscale“ war falsch — Multiscale kostet nur 3 s/225 s; Treiber sind ML-Load/-Inferenz (BANQUET/Device-Detection). **Song-Level-Hoists 2026-09-17 (je Chunk-Wiederholung entfernt):** Struktur-Hoist ANA-6 ✅, **LGE-Transkription-Hoist ✅ (Whisper 8×→1×, Timeline je Chunk zeitverschoben, commit 3bfa5215)**, Export nur nach Assembly ✅ (04a52839); PANNs-Tags + Defect-Scores + Gender sind bereits Song-Ebene (Pre-Analyse-Cache, verifiziert). **R3-GPU-Ports 2026-09-17 abgeschlossen (Registry-Verdikte + Produktions-Vertragstest `test_production_registry_verdicts_restoration_models`):** BANQUET → ROCm ✅ (Partitioning-Fix 2026-09-13, Funktions-Validierung identisch; Deckel 1,19× — der Export ist batch-1-spezifisch, Mini-Batch scheitert in `node_view`-Reshapes, gemessen), CRePE-Pitch → ROCm ✅ (28×), DeepFilterNet → ehrlich CPU ✅ (GPU-Overhead dominiert bei Mini-Modellen). Ein Song-Level-Hoist der Inferenz ist NICHT äquivalent (phase_09 verarbeitet den phase_08-Ausgang je Chunk) — R3 war der korrekte Weg. **Analyse-Cache je Datei-Hash 2026-09-17 ✅ (Disk-Persistenz der Bridge-Analyse-Caches `output/analysis_cache/`, Read-/Write-Through unter dem In-Memory-LRU, AURIK_VERSION-Invalidierung, §V6-fail-closed, Kill-Switch AURIK_ANALYSIS_CACHE=0, 6 neue + 21 bestehende Tests grün):** Wiederholungsläufe am selben Song überspringen die komplette Voranalyse über Prozessgrenzen. **P6/P7 2026-09-17 ✅ (Architektur-Feststellung: Batch ist bereits Ein-Prozess + ThreadPool(4); §V8-Transient-State-Lücke des BANQUET-Singletons geschlossen — `reset_for_song()` + `_state_lock`, verdrahtet in `_restore_chunked`, 19 Tests grün).** OFFEN: nur noch GPU-gebundenes (F4/F5, SOTA-ML-V5) + Laufzeit-Verifikation im nächsten Lauf | hängt an den GPU-Buildouts F1–F5 + Residency-Gewinnen + den restlichen Hoists |
-| TODO-P0-2 (Per-Session-Kompilierung) | **EXTERN BLOCKIERT** | ONNX-Compile-Strategie; Folge von P0-1/C |
+| TODO-P0-2 (Per-Session-Kompilierung) | ✅ GESCHLOSSEN 2026-10-04 | Statt „jede Session neu in-memory optimieren“ serialisiert `backend/core/onnx/runtime.py` die ORT-Graph-Optimierung dauerhaft (`output/onnx_session_cache/<stem>.<key>.ort`, Key = Größe+mtime+ORT-Version+Provider+AURIK_VERSION, Kill-Switch `AURIK_ORT_CACHE=0`, §V6-sicher) — `apply_session_cache`/`create_inference_session`, verdrahtet in `ONNXInferenceSession`; Paritätstest `tests/unit/test_ort_session_cache.py` 4 grün (bit-identisch uncached/warm/reload + Persistenz + Key-Invalidierung, §G5) |
 | TODO-P0-3 (Budget-Wahrheit) | ✅ GESCHLOSSEN 2026-09-15 | s. o. A |
 | TODO-P1-1 (Residency) | ✅ GESCHLOSSEN 2026-09-15 (Policy) | s. o. C; Laufzeit-Gewinn misst P0-1 |
-| TODO-P1-2 (VS-1/GSEP + Demucs v5) | **EXTERN BLOCKIERT (Gewichte)** | VS-1/GSEP: keine offiziellen öffentlichen Weights verifizierbar (SongEval nicht erreichbar); Demucs v5-Beschaffung offen |
+| TODO-P1-2 (VS-1/GSEP + Demucs v5) | **TEIL-AUFGEKLÄRT 2026-10-04** | „Demucs v5“ existiert öffentlich NICHT (facebookresearch/demucs archiviert bei v4.0.1; htdemucs = Hybrid-Transformer **v4** — `models/demucs/htdemucs_6s.onnx` IST die v4-Stufe der Kette) → v5-Arm entfällt. VS-1/GSEP: weiterhin keine offiziellen lizenzklaren Weights (HF-/GitHub-Recherche 2026-10-04); SCNet-Drittanbieter-Kandidat (Aname-Tommy/Huge-SCNet-4stems, Apache-2.0) lokal beschafft, NICHT integriert — A/B vs. MDX23C + Hörstichprobe bleiben Folge-Slice |
+| Gewichte-Manifest 2026-10-04 | ✅ BESCHAFFT + SHA-VERIFIZIERT | `harmonic_inpainting/inpainting_best.pt` (806 MB) aus Backup restauriert, SHA-256 `f8765d14…` = Pin ✅; `mert-v1-330m/MERT-v1-330M_fairseq.pt` (3,99 GB, HF `m-a-p/MERT-v1-330M`, CC BY-NC 4.0) SHA-256 `13d9b884…` = Pin ✅ + `pytorch_model.bin`/Configs (Nicht-ONNX-Kette `mert_plugin.py`; Ladesmoke 2026-10-04: Default `_use_onnx=True` ⇒ `mert_onnx_330m` = vorhandene ONNX) — die vorhandenen `models/mert/mert_330m.onnx` (+ Symlink `mert.onnx`) und `models/mert_denoiser/mert_decoder.onnx` sind manifest-sauber (Priorität-5-ONNX bzw. Denoiser-Part). ERSETZUNGEN FORMAL + LÜKENLOS 2026-10-04: `flow_matching/flow_matching.onnx` → `cqtdiff_plus`/diffwave (Hybrid-Release-Mode; `check_core_model_sources` → „ERSETZT", Summary „all core artifacts present" Exit 0; `test_hybrid_release_mode` 14 grün; `validate_core_model_presence`: fallback|runtime_ready=yes) · `miipher/miipher.onnx` → MIIPHER-DiT (Manifest `replaced_by`, §v10.14) · `sgmse_plus/finetuned/sgmse_musik.ts` = F7-Trainingsziel (§v10.16-Rezept `train_sgmse_musik.py`) — Training gestartet |
 | TODO-P1-3 (Audibility-Guards) | ✅ GESCHLOSSEN 2026-09-08 | SCK/WBG/ATI/Formant/Gain-Step umgesetzt |
 | TODO-P1-4 (Blind-Hörstudie) | **EXTERN BLOCKIERT (menschliche Hörer)** | §0c-Export-Bug geschlossen (B); n≥30-Studie braucht Hörer |
 | TODO-P1-5 … P1-12 | ✅ GESCHLOSSEN 2026-09-08 | Status im jeweiligen Abschnitt |

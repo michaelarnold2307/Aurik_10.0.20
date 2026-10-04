@@ -69,7 +69,7 @@
   stft_result = librosa.stft(audio)
 
   # ✅ RICHTIG
-  stft_result = librosa.stft(audio, boundary='even')
+  stft_result = librosa.stft(audio, boundary="even")
   ```
 
 - **Estimated Effort:** 2-3 Stunden (automatisierte Replace in allen Dateien)
@@ -127,9 +127,9 @@
   rms = np.sqrt(np.mean(audio**2))
 
   # ✅ RICHTIG (Stille ignoriert)
-  frame_rms = np.sqrt(np.mean(audio.reshape(-1, 1024)**2, axis=1))
-  voiced_frames = frame_rms > 10**(-50/20)
-  rms = np.sqrt(np.mean(audio[np.repeat(voiced_frames, 1024)//2]**2))
+  frame_rms = np.sqrt(np.mean(audio.reshape(-1, 1024) ** 2, axis=1))
+  voiced_frames = frame_rms > 10 ** (-50 / 20)
+  rms = np.sqrt(np.mean(audio[np.repeat(voiced_frames, 1024) // 2] ** 2))
   ```
 
 - **Estimated Effort:** 2-3 Stunden

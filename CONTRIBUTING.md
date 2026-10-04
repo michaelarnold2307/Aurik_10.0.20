@@ -228,11 +228,7 @@ Ready to work on an issue?
 **Example:**
 
 ```python
-def process_audio(
-    audio: np.ndarray,
-    sample_rate: int,
-    material: MaterialType = MaterialType.VINYL
-) -> PhaseResult:
+def process_audio(audio: np.ndarray, sample_rate: int, material: MaterialType = MaterialType.VINYL) -> PhaseResult:
     """
     Process audio with material-adaptive restoration.
 
@@ -257,7 +253,9 @@ def process_audio(
 
 ```python
 import logging
+
 logger = logging.getLogger(__name__)
+
 
 def process():
     try:
@@ -312,6 +310,7 @@ pytest tests/unit -m "not slow"
 import pytest
 import numpy as np
 
+
 def test_denoise_phase():
     """Test Phase 03 Denoise with synthetic audio"""
     # Arrange
@@ -319,7 +318,7 @@ def test_denoise_phase():
     phase = DenoisePhase()
 
     # Act
-    result = phase.process(audio, sample_rate=48000, material_type='vinyl')
+    result = phase.process(audio, sample_rate=48000, material_type="vinyl")
 
     # Assert
     assert result.success

@@ -151,7 +151,8 @@ import numpy as np
 
 # Audio laden (z.B., mit soundfile)
 import soundfile as sf
-audio, sr = sf.read('input.wav')
+
+audio, sr = sf.read("input.wav")
 
 # Metriken berechnen
 calculator = ComprehensiveMetricsCalculator(sample_rate=sr)
@@ -165,9 +166,9 @@ print(f"Valence: {result.emotional.valence:+.2f}")
 
 # Check gegen internes Spitzenziel
 if result.passes_aurik_standards():
-  print("✅ INTERNES SPITZENZIEL ERREICHT - Meets Aurik 10.0.0 Standards!")
+    print("✅ INTERNES SPITZENZIEL ERREICHT - Meets Aurik 10.0.0 Standards!")
 else:
-  print("⚠️  Below internal top-tier target")
+    print("⚠️  Below internal top-tier target")
 
 # Human-readable Report
 report = generate_metrics_report(result)

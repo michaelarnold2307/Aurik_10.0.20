@@ -167,6 +167,7 @@ und korrigiert kürzere `--duration`-Angaben mit einem Warn-Log. `n_items ≥ 5`
 
 ```python
 from benchmarks.musical_restoration_benchmark import run_benchmark, BenchmarkConfig
+
 report = run_benchmark(config)
 assert report.passes_os_leadership_threshold(), f"Score: {report.overall_score}"
 ```
@@ -179,11 +180,13 @@ Python's eingebautes `hash()` ist pro-Prozess randomisiert (PYTHONHASHSEED) → 
 ```python
 import hashlib
 
+
 def _sid_offset(sid: str) -> int:
     """Deterministisches Item-Seeding für AMRB via MD5.
     RELEASE_MUST: Kein hash(sid) — Python hash() ist PYTHONHASHSEED-abhängig.
     """
     return int(hashlib.md5(sid.encode()).hexdigest(), 16) % (2**31)
+
 
 # Verwendung in MusicalRestorationBenchmark.run():
 item_seed = _sid_offset(scenario_id)  # RICHTIG
@@ -443,7 +446,7 @@ Nach Überschreitung: KMV Stufe 2 (`MLRefinementThread`) übernimmt automatisch.
 ```python
 MAX_ITERATIONS = 5
 CONVERGENCE_DELTA = 0.02
-REGRESSION_DELTA  = 0.05  # PQS-MOS-Schwelle für sofortigen Rollback
+REGRESSION_DELTA = 0.05  # PQS-MOS-Schwelle für sofortigen Rollback
 
 # 3-Bedingungen-Kaskade (normativ, Single Source of Truth in diesem §8.5):
 #
@@ -591,17 +594,18 @@ Jeder erkannte Defekt wird mit einem **psychoakustischen Salienz-Score** (0.0–
 ```python
 # Heavy ML Plugins (>200 MB): GPU wenn verfügbar, CPU-Fallback transparent
 from backend.core.ml_device_manager import get_ort_providers, get_torch_device
+
 providers = get_ort_providers("PluginName")  # ONNX-Runtime
 # GPU-ONNX NUR bei Paritäts-Nachweis (rel <= 1e-3 vs. ONNX-CPU, strukturierte
 # Feeds; scripts/onnx_gpu_compat_scan.py + gpu_model_registry). Numerisch
 # defekte ORT-ROCm-Kernels (bs_roformer, BANQUET, FCPE, basicpitch, Whisper,
 # MuQ-MuLan) sind durch paritätsverifizierte Torch-ROCm-Kerne ersetzt
 # (backend/core/dsp/*_torch_rocm.py); ONNX bleibt reiner CPU-Fallback (§V6 (copilot-instructions.md)).
-device = get_torch_device("PluginName")      # PyTorch
+device = get_torch_device("PluginName")  # PyTorch
 # Leichtgewichtige Plugins (<200 MB), DSP, Analyse: immer CPU
-providers = ["CPUExecutionProvider"]          # ONNX-Runtime
-model = model.to("cpu")                       # PyTorch
-torch.set_num_threads(os.cpu_count())         # alle CPU-Kerne nutzen
+providers = ["CPUExecutionProvider"]  # ONNX-Runtime
+model = model.to("cpu")  # PyTorch
+torch.set_num_threads(os.cpu_count())  # alle CPU-Kerne nutzen
 ```
 
 ---
@@ -643,10 +647,10 @@ Phase_03_denoise @ best-effort strength=0.056 (false P1-Regression, §9.7.7 FEHL
 **E2E-Pflicht-Assertions** (Tiefen-Immersions-Gate):
 
 ```python
-assert noise_floor_silence_dbfs(restored, sr)                 <= -72.0  # Air-Layer frei
-assert pearson_lufs_profile_400ms(original, restored, sr)     >= 0.92   # MDEM Mikro-Dynamik
-assert emotional_arc_arousal_pearson(original, restored, sr)  >= 0.85   # Makro-Bogen
-assert spatial_depth_iacc(restored, sr)                       >= 0.70   # Raumtiefe
+assert noise_floor_silence_dbfs(restored, sr) <= -72.0  # Air-Layer frei
+assert pearson_lufs_profile_400ms(original, restored, sr) >= 0.92  # MDEM Mikro-Dynamik
+assert emotional_arc_arousal_pearson(original, restored, sr) >= 0.85  # Makro-Bogen
+assert spatial_depth_iacc(restored, sr) >= 0.70  # Raumtiefe
 ```
 
 #### Vokal-Intimität — Physik der akustischen Nähe
@@ -722,6 +726,7 @@ Wenn alle Stellen gleich laut klingen, ist die Spannungs-Mechanik zerstört und 
 ```python
 # benchmarks/fad_evaluator.py
 from frechet_audio_distance import FrechetAudioDistance
+
 fad = FrechetAudioDistance(model_name="vggish", sample_rate=16000)
 score = fad.score("benchmarks/fad_reference_set/", "output/test_batch/")
 ```
@@ -744,10 +749,16 @@ def compute_versa_confidence(snr_estimate_db: float, material_type: str) -> floa
     Niedrige Konfidenz: VERSA+MERT blenden, MERT mehr Gewicht.
     """
     base_confidence = {
-        "cd_digital": 0.95, "dat": 0.90, "minidisc": 0.85,
-        "mp3_high": 0.87, "mp3_low": 0.80,
-        "vinyl": 0.72, "reel_tape": 0.70, "tape": 0.68,
-        "shellac": 0.45, "wax_cylinder": 0.30,
+        "cd_digital": 0.95,
+        "dat": 0.90,
+        "minidisc": 0.85,
+        "mp3_high": 0.87,
+        "mp3_low": 0.80,
+        "vinyl": 0.72,
+        "reel_tape": 0.70,
+        "tape": 0.68,
+        "shellac": 0.45,
+        "wax_cylinder": 0.30,
     }.get(material_type, 0.65)
     # SNR-Malus
     snr_malus = max(0.0, (15.0 - snr_estimate_db) / 50.0)
@@ -877,9 +888,9 @@ np.testing.assert_allclose(actual, np.tanh(x), atol=1e-6)
 np.testing.assert_allclose(actual, np.zeros(N))
 
 # VERBOTEN — TypeError zur Laufzeit:
-np.abs(x, rtol=1e-5, atol=1e-8)       # np.abs() kennt keine Toleranzen
-np.tanh(x, rtol=1e-5, atol=1e-8)       # np.tanh() kennt keine Toleranzen
-np.zeros(N, rtol=1e-5, atol=1e-8)      # np.zeros() kennt keine Toleranzen
+np.abs(x, rtol=1e-5, atol=1e-8)  # np.abs() kennt keine Toleranzen
+np.tanh(x, rtol=1e-5, atol=1e-8)  # np.tanh() kennt keine Toleranzen
+np.zeros(N, rtol=1e-5, atol=1e-8)  # np.zeros() kennt keine Toleranzen
 np.array([...], rtol=1e-5, atol=1e-8)  # np.array() kennt keine Toleranzen
 ```
 
@@ -994,6 +1005,7 @@ addopts = --timeout=30 --import-mode=importlib -p no:warnings
 _GC_FULL_INTERVAL = int(os.environ.get("AURIK_TEST_FULL_GC_INTERVAL", "0"))
 _gc_teardown_counter = 0
 
+
 @pytest.fixture(autouse=True)
 def _gc_after_test():
     yield
@@ -1003,8 +1015,9 @@ def _gc_after_test():
     if _GC_FULL_INTERVAL > 0 and (_gc_teardown_counter % _GC_FULL_INTERVAL) == 0:
         gc.collect()
 
+
 def pytest_sessionfinish(session, exitstatus):
-    manager.shutdown()   # best-effort, non-blocking
+    manager.shutdown()  # best-effort, non-blocking
     singleton_module._instance = None
 ```
 
@@ -1022,7 +1035,7 @@ def pytest_sessionfinish(session, exitstatus):
 
 ```python
 assert len(set(result.phases_executed) & TIER_1_PHASES) >= 2
-assert result.quality_estimate >= 0.55              # Formel: §8.1
+assert result.quality_estimate >= 0.55  # Formel: §8.1
 assert result.material_type is not None
 assert result.metadata.get("era") is not None
 assert result.metadata.get("panns_tags") is not None
@@ -1034,7 +1047,7 @@ assert len(set(result.phases_executed) & TIER_6_PHASES) >= 3
 ### §14.2 Musik-Qualitäts-Assertions
 
 ```python
-assert pqs_result.mos >= 4.0   # QUALITY; >= 4.5 für MAXIMUM
+assert pqs_result.mos >= 4.0  # QUALITY; >= 4.5 für MAXIMUM
 assert all(scores[g] >= checker.thresholds[g] for g in applicable_goals)
 # Schlager-spezifisch:
 assert scores["tonal_center"] >= 0.97
@@ -1167,6 +1180,7 @@ Tests dürfen den Host nicht destabilisieren. Für potenziell hostgefährdende M
 import numpy as np
 import pytest
 
+
 class TestPhaseXX:
     @pytest.fixture
     def mono_audio(self):
@@ -1205,6 +1219,7 @@ class TestPhaseXX:
 ```python
 def test_budget_logic(monkeypatch):
     import backend.core.ml_memory_budget as budget
+
     monkeypatch.setattr(budget, "is_system_thrashing", lambda: False)
 ```
 

@@ -6,10 +6,16 @@
 
 ```python
 from backend.api.bridge import (
-    get_restorer, get_presence_embedding, get_era_completion,
-    get_rollback_sanity_guard, get_preview_mode,
-    get_artist_fingerprint_store, get_model_downloader,
-    get_ml_device_manager, get_expert_mode, get_session_memory,
+    get_restorer,
+    get_presence_embedding,
+    get_era_completion,
+    get_rollback_sanity_guard,
+    get_preview_mode,
+    get_artist_fingerprint_store,
+    get_model_downloader,
+    get_ml_device_manager,
+    get_expert_mode,
+    get_session_memory,
 )
 ```
 

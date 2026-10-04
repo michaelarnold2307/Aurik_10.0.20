@@ -49,6 +49,7 @@ mein_plugin/
 ```python
 from plugins.sdk.aurik_plugin_base import AurikPlugin, PluginManifest
 
+
 class MeinPlugin(AurikPlugin):
     manifest = PluginManifest(
         name="mein-plugin",
@@ -85,6 +86,7 @@ from plugins.sdk.testing_fixtures import (
     make_test_audio,
     make_noisy_audio,
 )
+
 
 def test_mein_plugin():
     plugin = MeinPlugin()

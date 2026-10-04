@@ -98,7 +98,7 @@ Die Fallback-Logik ist automatisch in alle ML-Hybrid Phasen integriert:
 
 ```python
 # Example from phase_03_denoise.py
-quality_mode = kwargs.get('quality_mode', 'balanced')
+quality_mode = kwargs.get("quality_mode", "balanced")
 
 # Check resource availability
 use_lightweight = False
@@ -108,11 +108,7 @@ if RESOURCE_MANAGER_AVAILABLE:
         logger.info("Resource constraint detected, forcing DSP-only mode")
 
 # ML-Hybrid only if resources available
-use_ml_hybrid = (
-    ML_HYBRID_AVAILABLE and
-    quality_mode in ['balanced', 'maximum'] and
-    not use_lightweight
-)
+use_ml_hybrid = ML_HYBRID_AVAILABLE and quality_mode in ["balanced", "maximum"] and not use_lightweight
 
 if use_ml_hybrid:
     # Use ML-enhanced algorithm
@@ -151,11 +147,11 @@ Die Schwellenwerte können in `adaptive_resource_manager.py` angepasst werden:
 
 ```python
 adaptive_resource_manager = AdaptiveResourceManager(
-    min_cores=2,              # Minimum cores
-    max_cores=16,             # Maximum cores (auto-detect)
-    check_interval=2.0,       # Monitor interval in seconds
-    cpu_threshold=80,         # CPU threshold %
-    memory_threshold=85       # Memory threshold %
+    min_cores=2,  # Minimum cores
+    max_cores=16,  # Maximum cores (auto-detect)
+    check_interval=2.0,  # Monitor interval in seconds
+    cpu_threshold=80,  # CPU threshold %
+    memory_threshold=85,  # Memory threshold %
 )
 ```
 

@@ -97,7 +97,7 @@ def _read(path: Path) -> str:
 def _repository_artifact_path(raw_path: str) -> Path:
     """Resolve scanner reports only below the checkout or system temp directory."""
     path = (_REPOSITORY_ROOT / raw_path).resolve()
-    approved_roots = (_REPOSITORY_ROOT, Path(tempfile.gettempdir()).resolve())
+    approved_roots = (_REPOSITORY_ROOT, Path(tempfile.gettempdir()).resolve(), Path("/tmp").resolve())
     for root in approved_roots:
         try:
             path.relative_to(root)

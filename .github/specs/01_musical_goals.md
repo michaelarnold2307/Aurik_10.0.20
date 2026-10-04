@@ -203,9 +203,7 @@ song_target = estimate_song_goal_targets(
     transfer_chain=transfer_chain,
     production_profile=production_profile,
 )[goal]
-restorability_floor = get_effective_material_floor(
-    material_type, goal, restorability_score, is_studio_2026
-)
+restorability_floor = get_effective_material_floor(material_type, goal, restorability_score, is_studio_2026)
 physical_cap = physical_ceiling.ceiling.get(goal, 0.99)
 chain_cap = get_chain_end_goal_ceiling(transfer_chain, goal)
 
@@ -238,20 +236,20 @@ Falls diese Bedingung nicht erfüllt ist, ist ein normaler Export verboten. UV3 
 
 ```python
 PRIORITY_MAP: dict[str, int] = {
-    "natuerlichkeit":        1,   # Rollback bei Verschlechterung
-    "authentizitaet":        1,   # Rollback bei Verschlechterung
-    "tonal_center":          2,   # Rollback bei Verschlechterung
-    "timbre_authentizitaet": 2,   # Rollback bei Verschlechterung
-    "artikulation":          2,   # Rollback bei Verschlechterung
-    "emotionalitaet":        3,
-    "micro_dynamics":        3,
-    "groove":                3,
-    "transparenz":           4,
-    "waerme":                4,
-    "bass_kraft":            4,
-    "separation_fidelity":   4,
-    "brillanz":              5,   # Recovery-Lite: darf Endresultat nicht unkontrolliert regressieren
-    "spatial_depth":         5,   # Recovery-Lite: darf Endresultat nicht unkontrolliert regressieren
+    "natuerlichkeit": 1,  # Rollback bei Verschlechterung
+    "authentizitaet": 1,  # Rollback bei Verschlechterung
+    "tonal_center": 2,  # Rollback bei Verschlechterung
+    "timbre_authentizitaet": 2,  # Rollback bei Verschlechterung
+    "artikulation": 2,  # Rollback bei Verschlechterung
+    "emotionalitaet": 3,
+    "micro_dynamics": 3,
+    "groove": 3,
+    "transparenz": 4,
+    "waerme": 4,
+    "bass_kraft": 4,
+    "separation_fidelity": 4,
+    "brillanz": 5,  # Recovery-Lite: darf Endresultat nicht unkontrolliert regressieren
+    "spatial_depth": 5,  # Recovery-Lite: darf Endresultat nicht unkontrolliert regressieren
 }
 ABORT_PRIORITY_THRESHOLD: int = 2  # Stufe 1+2 verschlechtert → Iteration sofort abbrechen
 REGRESSION_EPSILON: float = 0.001
@@ -506,10 +504,16 @@ Bei mehreren Pareto-aequivalenten Kandidaten gilt folgende Tie-Break-Reihenfolge
 ## §2.32 GoalApplicabilityFilter — Physikalisch irrelevante Ziele deaktivieren
 
 ```python
-ALWAYS_APPLICABLE: frozenset[str] = frozenset({
-    "natuerlichkeit", "authentizitaet", "emotionalitaet",
-    "transparenz", "timbre_authentizitaet", "artikulation",
-})
+ALWAYS_APPLICABLE: frozenset[str] = frozenset(
+    {
+        "natuerlichkeit",
+        "authentizitaet",
+        "emotionalitaet",
+        "transparenz",
+        "timbre_authentizitaet",
+        "artikulation",
+    }
+)
 ```
 
 **Deaktivierungs-Regeln:**
@@ -563,16 +567,18 @@ Inapplicable Goals: im UI grau ausgeblendet, in `RestorationResult.goal_applicab
 ```python
 # MaterialQuality Enum (backend/core/musical_goals/adaptive_goals_system.py):
 class MaterialQuality(Enum):
-    PRISTINE   = "pristine"    # Studio-Qualität
-    EXCELLENT  = "excellent"
-    GOOD       = "good"
-    FAIR       = "fair"        # MP3 192 kbps
-    POOR       = "poor"        # MP3 128 kbps, Cassette
-    VERY_POOR  = "very_poor"   # Stark degradiert
-    EXTREME    = "extreme"     # Telefon, Walkie-Talkie
+    PRISTINE = "pristine"  # Studio-Qualität
+    EXCELLENT = "excellent"
+    GOOD = "good"
+    FAIR = "fair"  # MP3 192 kbps
+    POOR = "poor"  # MP3 128 kbps, Cassette
+    VERY_POOR = "very_poor"  # Stark degradiert
+    EXTREME = "extreme"  # Telefon, Walkie-Talkie
+
 
 # Einstiegspunkt:
 from backend.core.musical_goals.adaptive_goals_system import get_adaptive_goals_and_config
+
 thresholds, config, quality_assessment = get_adaptive_goals_and_config(audio, sr)
 ```
 
@@ -884,7 +890,7 @@ Diese Fehler wurden in Produktion bestätigt und haben die gesamte Musical-Goals
 
 ```python
 _KEY_SHIFT_PENALTY: dict[int, float] = {0: 1.0, 1: 0.75, 2: 0.50, 3: 0.30}
-_KEY_SHIFT_PENALTY_DEFAULT: float = 0.20   # War: 0.0 → tonal_center = 0.000
+_KEY_SHIFT_PENALTY_DEFAULT: float = 0.20  # War: 0.0 → tonal_center = 0.000
 # Bypass-Guard: if corr_score >= 0.60 (Korrektionspfad: 0.85 → 0.70 → 0.60)
 # Nach IMCRA/DeepFilter-Denoising fällt Pearson-Chroma auf ~0.655 ohne echten
 # Tonartwechsel — 0.70 war zu restriktiv (bestätigt Produktion 2026-04-26, vinyl 225s)
@@ -1045,8 +1051,8 @@ spectral_centroid der Authentizität, MERT-Original-Analyse von
 
 ```python
 def measure_transient_energy(
-    audio_input:    np.ndarray,   # Pre-Pipeline-Original (Reference)
-    audio_restored: np.ndarray,   # Post-Pipeline-Restauriert
+    audio_input: np.ndarray,  # Pre-Pipeline-Original (Reference)
+    audio_restored: np.ndarray,  # Post-Pipeline-Restauriert
     sr: int,
 ) -> Dict:
     """
@@ -1078,11 +1084,11 @@ def measure_transient_energy(
 
 ```python
 _TRANSIENT_ENERGY_FLOORS = {
-    "shellac":    0.72,   # Mechanische Aufnahme hat natürlichen Energie-Rolloff
-    "vinyl":      0.78,
+    "shellac": 0.72,  # Mechanische Aufnahme hat natürlichen Energie-Rolloff
+    "vinyl": 0.78,
     "cd_digital": 0.83,
-    "mp3_low":    0.80,   # Pre-Echo raubt Transient-Energie — toleranterer Boden
-    "unknown":    0.80,
+    "mp3_low": 0.80,  # Pre-Echo raubt Transient-Energie — toleranterer Boden
+    "unknown": 0.80,
 }
 ```
 
@@ -1094,9 +1100,9 @@ PHASE_GOAL_EXCLUSIONS["phase_18_noise_gate"].add("transient_energie")
 _PHASE_SPECIFIC_DRIFT_EXCLUSIONS["phase_18_noise_gate"].add("transient_energie")
 
 # phase_26_transient_shaper: Formt Transienten absichtlich um → Messung sinnlos
-PHASE_GOAL_EXCLUSIONS["phase_26_transient_shaper"] = (
-    PHASE_GOAL_EXCLUSIONS.get("phase_26_transient_shaper", set()) | {"transient_energie"}
-)
+PHASE_GOAL_EXCLUSIONS["phase_26_transient_shaper"] = PHASE_GOAL_EXCLUSIONS.get("phase_26_transient_shaper", set()) | {
+    "transient_energie"
+}
 ```
 
 **PMGG-Recovery-Trigger**:
@@ -1200,7 +1206,7 @@ RegisterTransition_floor:
 ### §2.35d-iv VQI Gesamtformel
 
 ```python
-vqi = (vibrato_precision ** 0.40) * (consonant_clarity ** 0.35) * (register_transition ** 0.25)
+vqi = (vibrato_precision**0.40) * (consonant_clarity**0.35) * (register_transition**0.25)
 # Gewichtung: Vibrato-Preservierung > Konsonant-Klarheit > Registerübergang
 # (empirisch aus Hörertests: Vibrato-Störungen werden als am störendsten empfunden)
 ```
@@ -1219,6 +1225,7 @@ vqi = (vibrato_precision ** 0.40) * (consonant_clarity ** 0.35) * (register_tran
 ```python
 # Implementiert in: backend/core/musical_goals/emotional_arc_metric.py
 # Singleton: get_emotional_arc_metric()
+
 
 def measure_emotional_arc_preservation(
     audio_orig: np.ndarray,
@@ -1271,9 +1278,7 @@ als anonymer Faktor, sondern als gemessener und loggbarer Score.
 
 ```python
 # Pflicht in UV3._holisticperceptualgate():
-_arc_result = get_emotional_arc_metric().measure_emotional_arc_preservation(
-    _pipeline_original_reference, _best_sig, sr
-)
+_arc_result = get_emotional_arc_metric().measure_emotional_arc_preservation(_pipeline_original_reference, _best_sig, sr)
 metadata["emotional_arc"] = _arc_result
 # Veto nur bei artifact_freedom (§0h). Arc-Score beeinflusst HPI-Wert.
 ```

@@ -54,6 +54,7 @@ def measure_all(audio: np.ndarray, sr: int, **kwargs) -> dict[str, float]:
 # Fallback: Spectral Flatness + THD + Cross-Correlation-Stationarität
 # Für Gesangsmaterial: SingMOS (Singer-Quality MOS, 2023) bevorzugt statt DNSMOS
 from backend.core.dsp.quality_predictors import get_dnsmos_predictor, get_singmos_predictor
+
 if panns_singing >= 0.35:
     score = get_singmos_predictor().predict(audio, sr)  # [1,5] → normiert auf [0,1]
 else:
@@ -68,6 +69,7 @@ natuerlichkeit = float(np.clip((score - 1.0) / 4.0, 0.0, 1.0))  # Clip: Predicto
 # Chroma-Vektor über komplettes Stück + Korrelation mit Dur/Moll-Profilen
 # Stabilität = Anteil der Frames mit Übereinstimmung zur dominanten Tonartstufe
 from backend.core.dsp.tonal_analysis import compute_tonal_stability
+
 tonal_center = compute_tonal_stability(audio, sr)  # [0, 1]
 # VERBOTEN: reiner Pitch-Korrelations-Proxy ohne Tonarterkennung
 ```
@@ -85,14 +87,15 @@ tonal_center = compute_tonal_stability(audio, sr)  # [0, 1]
 # → bei Überschreitung: `warmth_blend = 1 - loss_db / 5.0` als Phase-Blend-Faktor
 # VERBOTEN: Wärme-Score > 0.77 (Restoration) ohne aktiven Wärmeband-Guard in der Pipeline
 from scipy.signal import butter, sosfilt
+
 # audio_filtered_100_400: Bandpass 100–400 Hz (Butter 4. Ordnung, zero-phase via sosfiltfilt)
 sos_low = butter(4, [100, 400], btype="bandpass", fs=sr, output="sos")
 audio_filtered_100_400 = sosfiltfilt(sos_low, audio)  # VERBOTEN: sosfilt (nicht zero-phase)
 # audio_filtered_100_8000: Bandpass 100–8000 Hz (gesamter relevanter Energiebereich)
 sos_total = butter(4, [100, 8000], btype="bandpass", fs=sr, output="sos")
 audio_filtered_100_8000 = sosfiltfilt(sos_total, audio)
-low_energy = np.mean(audio_filtered_100_400 ** 2)
-total_energy = np.mean(audio_filtered_100_8000 ** 2) + 1e-9
+low_energy = np.mean(audio_filtered_100_400**2)
+total_energy = np.mean(audio_filtered_100_8000**2) + 1e-9
 waerme = float(np.clip(low_energy / total_energy * 3.5, 0.0, 1.0))
 # Faktor 3.5: empirisch für Normierung auf [0,1] bei typischer Musikproduktion
 ```
@@ -106,6 +109,7 @@ waerme = float(np.clip(low_energy / total_energy * 3.5, 0.0, 1.0))
 # 3. Rhythmische Komplexität: Anteil off-beat Onsets (Synkopen)
 # Groove-Score = beat_consistency × (1 + syncopation_weight) × tempo_stability
 from backend.core.dsp.rhythm_analysis import compute_groove_score
+
 groove = compute_groove_score(audio, sr)  # [0, 1]
 # VERBOTEN: einfache Tempo-Konstanz als Groove (ignoriert Synkopen/Off-Beats)
 # VERBOTEN: Groove mit Spektral-Merkmalen approximieren
@@ -119,22 +123,26 @@ groove = compute_groove_score(audio, sr)  # [0, 1]
 # HTDemucs 4-stem → vocal_stem SDR vs. pre-processing-vocal_stem SDR
 # VERBOTEN: sep_fidelity ohne tatsächliche Stem-Trennung schätzen
 from plugins.htdemucs_plugin import get_htdemucs_plugin  # lightweight separation
+
 stems = get_htdemucs_plugin().separate_quick(audio, sr)
 # _MATERIAL_MAX_SDR: theoretisch erreichbarer SDR-Deckel für Vocal-Stem pro Träger
 _MATERIAL_MAX_SDR = {
-    "shellac": 6.0,    # SNR ~15 dB — sehr begrenzte Trennbarkeit
-    "vinyl": 12.0,     # SNR ~60 dB — gute Trennbarkeit
-    "tape": 10.0,      # SNR ~60-70 dB — HF-Hiss reduziert SDR
-    "cd": 16.0,        # SNR ~96 dB — volle Trennbarkeit
-    "digital": 16.0,   # wie CD
+    "shellac": 6.0,  # SNR ~15 dB — sehr begrenzte Trennbarkeit
+    "vinyl": 12.0,  # SNR ~60 dB — gute Trennbarkeit
+    "tape": 10.0,  # SNR ~60-70 dB — HF-Hiss reduziert SDR
+    "cd": 16.0,  # SNR ~96 dB — volle Trennbarkeit
+    "digital": 16.0,  # wie CD
     "mp3_high": 14.0,  # kompressionsbedingte SDR-Reduktion
-    "mp3_low": 10.0,   # starke Codec-Artefakte begrenzen SDR
+    "mp3_low": 10.0,  # starke Codec-Artefakte begrenzen SDR
     "unknown_analog": 10.0,  # konservativer Universal-Fallback
 }
-sep_fidelity = float(np.clip(
-    stems["vocal_sdr"] / _MATERIAL_MAX_SDR.get(material, 10.0),
-    0.0, 1.0,  # SDR kann negativ sein (schlechte Trennung) → 0.0 statt negativer Score
-))
+sep_fidelity = float(
+    np.clip(
+        stems["vocal_sdr"] / _MATERIAL_MAX_SDR.get(material, 10.0),
+        0.0,
+        1.0,  # SDR kann negativ sein (schlechte Trennung) → 0.0 statt negativer Score
+    )
+)
 ```
 
 ## Material-adaptive Böden — Warum korrekt
@@ -161,10 +169,10 @@ VERBOTEN: Alle Böden auf CD-Wert anheben
 from backend.core.studio_goal_targets import estimate_song_goal_targets
 
 studio_targets = estimate_song_goal_targets(
-    era_decade=era_decade,          # z.B. 1970
-    genre_label=genre_label,        # z.B. "schlager"
+    era_decade=era_decade,  # z.B. 1970
+    genre_label=genre_label,  # z.B. "schlager"
     material_chain=material_chain,  # z.B. ["vinyl", "mp3_low"]
-    restorability=restorability,    # 0-100
+    restorability=restorability,  # 0-100
 )
 # Beispiele:
 # 1920er Shellac: brillanz≈0.52, raumtiefe≈0.30 (Mono)
@@ -226,43 +234,65 @@ vqi_score = result["vqi"]  # float [0, 1]
 from dataclasses import dataclass
 from typing import Tuple
 
+
 @dataclass(frozen=True)
 class EraVocalProfile:
     vibrato_hz_range: Tuple[float, float]  # typische Vibrato-Frequenz dieser Ära
-    f1_tolerance_db: float                  # F1-Abweichungstoleranz in dB
-    f2_f4_tolerance_db: float               # F2–F4-Abweichungstoleranz in dB (meist enger)
-    nasality_expected: bool                 # Nasalität als Stilmittel dieser Ära
-    dynamic_range_typical_lu: float         # typisches Dynamikfenster (für emotional_arc)
+    f1_tolerance_db: float  # F1-Abweichungstoleranz in dB
+    f2_f4_tolerance_db: float  # F2–F4-Abweichungstoleranz in dB (meist enger)
+    nasality_expected: bool  # Nasalität als Stilmittel dieser Ära
+    dynamic_range_typical_lu: float  # typisches Dynamikfenster (für emotional_arc)
+
 
 ERA_VOCAL_PROFILES: dict[str, EraVocalProfile] = {
     "1900_1925": EraVocalProfile(
-        vibrato_hz_range=(5.0, 10.0), f1_tolerance_db=4.0, f2_f4_tolerance_db=3.5,
-        nasality_expected=True,  dynamic_range_typical_lu=8.0,
+        vibrato_hz_range=(5.0, 10.0),
+        f1_tolerance_db=4.0,
+        f2_f4_tolerance_db=3.5,
+        nasality_expected=True,
+        dynamic_range_typical_lu=8.0,
     ),
     "1925_1945": EraVocalProfile(
-        vibrato_hz_range=(5.5, 9.0),  f1_tolerance_db=3.5, f2_f4_tolerance_db=2.5,
-        nasality_expected=True,  dynamic_range_typical_lu=10.0,
+        vibrato_hz_range=(5.5, 9.0),
+        f1_tolerance_db=3.5,
+        f2_f4_tolerance_db=2.5,
+        nasality_expected=True,
+        dynamic_range_typical_lu=10.0,
     ),
     "1945_1960": EraVocalProfile(
-        vibrato_hz_range=(5.0, 7.5),  f1_tolerance_db=3.0, f2_f4_tolerance_db=2.0,
-        nasality_expected=False, dynamic_range_typical_lu=12.0,
+        vibrato_hz_range=(5.0, 7.5),
+        f1_tolerance_db=3.0,
+        f2_f4_tolerance_db=2.0,
+        nasality_expected=False,
+        dynamic_range_typical_lu=12.0,
     ),
     "1960_1975": EraVocalProfile(
-        vibrato_hz_range=(4.5, 7.0),  f1_tolerance_db=2.5, f2_f4_tolerance_db=2.0,
-        nasality_expected=False, dynamic_range_typical_lu=14.0,
+        vibrato_hz_range=(4.5, 7.0),
+        f1_tolerance_db=2.5,
+        f2_f4_tolerance_db=2.0,
+        nasality_expected=False,
+        dynamic_range_typical_lu=14.0,
     ),
     "1975_plus": EraVocalProfile(
-        vibrato_hz_range=(4.0, 7.0),  f1_tolerance_db=2.0, f2_f4_tolerance_db=2.0,
-        nasality_expected=False, dynamic_range_typical_lu=16.0,
+        vibrato_hz_range=(4.0, 7.0),
+        f1_tolerance_db=2.0,
+        f2_f4_tolerance_db=2.0,
+        nasality_expected=False,
+        dynamic_range_typical_lu=16.0,
     ),
 }
 
+
 def get_era_vocal_profile(era_decade: int) -> EraVocalProfile:
     """Gibt das passende EraVocalProfile für ein Jahrzehnt zurück."""
-    if era_decade < 1925:   return ERA_VOCAL_PROFILES["1900_1925"]
-    if era_decade < 1945:   return ERA_VOCAL_PROFILES["1925_1945"]
-    if era_decade < 1960:   return ERA_VOCAL_PROFILES["1945_1960"]
-    if era_decade < 1975:   return ERA_VOCAL_PROFILES["1960_1975"]
+    if era_decade < 1925:
+        return ERA_VOCAL_PROFILES["1900_1925"]
+    if era_decade < 1945:
+        return ERA_VOCAL_PROFILES["1925_1945"]
+    if era_decade < 1960:
+        return ERA_VOCAL_PROFILES["1945_1960"]
+    if era_decade < 1975:
+        return ERA_VOCAL_PROFILES["1960_1975"]
     return ERA_VOCAL_PROFILES["1975_plus"]
 ```
 
@@ -311,6 +341,7 @@ result = compute_vqi(
 # VERBOTEN: MDEM ohne frisson_zones
 # RICHTIG:
 from backend.core.frisson_candidate_detector import get_frisson_detector
+
 frisson_zones = get_frisson_detector().detect(audio_original, sr)
 # frisson_zones: Liste von FrissonZone-Objekten (.start_s/.end_s) — Klimax-Passagen
 # MDEM respektiert frisson_zones: wet_mix = 0.0 in diesen Zonen
@@ -423,10 +454,7 @@ segment_scores = measure_goals_per_segment(audio, sr, segments)
 # Goal gilt nur als erfüllt, wenn:
 # - global >= threshold
 # - und kein kritisches Segment deutlich darunter liegt
-goal_pass = (
-    global_score >= threshold
-    and min(segment_scores[goal]) >= threshold - 0.05
-)
+goal_pass = global_score >= threshold and min(segment_scores[goal]) >= threshold - 0.05
 ```
 
 **VERBOTEN**: Goal als "passed" markieren, wenn globale Mittelung lokale Ausreißer verdeckt.

@@ -79,9 +79,9 @@ CalibrationContext und wählt den Filter-Typ automatisch:**
 ```python
 def safe_deess_bandpass(sos, audio, chain_depth):
     if chain_depth >= 4:
-        return sosfilt(sos, audio)       # minimum-phase: kein Pre-Echo
+        return sosfilt(sos, audio)  # minimum-phase: kein Pre-Echo
     else:
-        return sosfiltfilt(sos, audio)   # zero-phase: keine Zeitverschiebung
+        return sosfiltfilt(sos, audio)  # zero-phase: keine Zeitverschiebung
 ```
 
 Damit wäre der Defekt architektonisch unmöglich — die Entscheidung ist am
@@ -181,6 +181,7 @@ metallisches Echo — der De-Esser bleibt transparent.
 ```python
 # Nach jedem Pipeline-Lauf:
 from backend.core.quality_regression_detector import QualityRegressionDetector
+
 qrd = QualityRegressionDetector()
 qrd.record(q_score=blinded_mushra_score)  # von geschulten Hörern
 trend = qrd.compare()  # Q-Score-Trend

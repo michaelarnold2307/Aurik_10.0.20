@@ -153,14 +153,14 @@ Alle Phasen liegen in `core/phases/phase_NN_<beschreibung>.py` (backend/core/pha
 
 ```python
 CAUSE_TO_PHASES = {
-    "tape_dropout":      ["phase_24_dropout_repair", "phase_55_diffusion_inpainting"],
-    "tape_hiss":         ["phase_29_tape_hiss_reduction", "phase_03_denoise"],
-    "vinyl_crackle":     ["phase_09_crackle_removal", "phase_01_click_removal"],
-    "vinyl_warp":        ["phase_12_wow_flutter_fix", "phase_31_speed_pitch_correction"],
-    "electrical_hum":    ["phase_02_hum_removal"],
+    "tape_dropout": ["phase_24_dropout_repair", "phase_55_diffusion_inpainting"],
+    "tape_hiss": ["phase_29_tape_hiss_reduction", "phase_03_denoise"],
+    "vinyl_crackle": ["phase_09_crackle_removal", "phase_01_click_removal"],
+    "vinyl_warp": ["phase_12_wow_flutter_fix", "phase_31_speed_pitch_correction"],
+    "electrical_hum": ["phase_02_hum_removal"],
     "head_misalignment": ["phase_06_frequency_restoration", "phase_14_phase_correction"],
-    "dc_offset":         ["phase_30_dc_offset_removal"],
-    "digital_clip":      ["phase_23_spectral_repair", "phase_06_frequency_restoration"],
+    "dc_offset": ["phase_30_dc_offset_removal"],
+    "digital_clip": ["phase_23_spectral_repair", "phase_06_frequency_restoration"],
 }
 ```
 
@@ -236,19 +236,21 @@ import pytest
 
 np.random.seed(42)  # Reproduzierbarkeit Pflicht
 
+
 class TestMeinModul:
-    def test_01_output_shape(self): ...          # Shape/Dtype korrekt
-    def test_02_no_nan_output(self): ...         # np.isfinite(result).all()
-    def test_03_no_clipping(self): ...           # np.max(np.abs(result)) <= 1.0
-    def test_04_mono_input(self): ...            # 1D Audio
-    def test_05_stereo_input(self): ...          # 2D Audio
-    def test_06_silence_input(self): ...         # np.zeros(...)
-    def test_07_noise_input(self): ...           # np.random.randn(...)
-    def test_08_dirac_input(self): ...           # Impuls-Signal
-    def test_09_bounds(self): ...                # Metriken ∈ [0,1] oder [1,5]
-    def test_10_consistency(self): ...           # Selbe Eingabe → selbe Ausgabe
-    def test_11_singleton_thread_safe(self): ... # concurrent.futures, 20 Threads
-    def test_12_finite_all_scores(self): ...     # math.isfinite(score) für alle Felder
+    def test_01_output_shape(self): ...  # Shape/Dtype korrekt
+    def test_02_no_nan_output(self): ...  # np.isfinite(result).all()
+    def test_03_no_clipping(self): ...  # np.max(np.abs(result)) <= 1.0
+    def test_04_mono_input(self): ...  # 1D Audio
+    def test_05_stereo_input(self): ...  # 2D Audio
+    def test_06_silence_input(self): ...  # np.zeros(...)
+    def test_07_noise_input(self): ...  # np.random.randn(...)
+    def test_08_dirac_input(self): ...  # Impuls-Signal
+    def test_09_bounds(self): ...  # Metriken ∈ [0,1] oder [1,5]
+    def test_10_consistency(self): ...  # Selbe Eingabe → selbe Ausgabe
+    def test_11_singleton_thread_safe(self): ...  # concurrent.futures, 20 Threads
+    def test_12_finite_all_scores(self): ...  # math.isfinite(score) für alle Felder
+
     # ... ≥ 35 Tests (neue Kernmodule), ≥ 20 (neue Phasen / Plugins)
 ```
 
@@ -266,14 +268,16 @@ from typing import Optional
 _instance: Optional["MeinModul"] = None
 _lock = threading.Lock()
 
+
 def get_mein_modul() -> "MeinModul":
     """Thread-sicherer Singleton (Double-Checked Locking)."""
     global _instance
-    if _instance is None:          # Schnellpfad ohne Lock
+    if _instance is None:  # Schnellpfad ohne Lock
         with _lock:
             if _instance is None:  # Zweiter Check unter Lock
                 _instance = MeinModul()
     return _instance
+
 
 def meine_convenience_funktion(audio: np.ndarray, sr: int) -> "MeinResult":
     """Convenience-Wrapper. sr MUSS 48000 sein."""
@@ -367,6 +371,7 @@ Backend-Core (core/ · plugins/ · dsp/)
 
 ```python
 import logging
+
 logger = logging.getLogger(__name__)
 
 # Log-Meldungen in ENGLISCH (nicht für Nutzer sichtbar):

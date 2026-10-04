@@ -58,7 +58,7 @@ Create custom PyInstaller hook to exclude torch:
 ```python
 # exclude_torch.py hook
 hiddenimports = []
-excludes = ['torch', 'nvidia.*']
+excludes = ["torch", "nvidia.*"]
 ```
 
 #### Option 2: Lightweight Installation

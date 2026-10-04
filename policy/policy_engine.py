@@ -9,6 +9,8 @@ try:
     from dsp.custom_compressor import CustomCompressor
 except ImportError:
     CustomCompressor = None  # type: ignore[assignment, misc]
+from dsp.feedback import UserFeedback
+
 from backend.core.forensics.analysis_and_modules import FeatureExtractor, PolicyManager
 from backend.core.validate_musical_goals import (
     ArtifactChecker,
@@ -17,7 +19,6 @@ from backend.core.validate_musical_goals import (
     PitchContourChecker,
     VoiceMatchChecker,
 )
-from dsp.feedback import UserFeedback
 
 logger = logging.getLogger(__name__)
 

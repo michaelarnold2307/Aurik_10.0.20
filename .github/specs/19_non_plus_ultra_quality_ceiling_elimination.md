@@ -126,8 +126,11 @@ Phasen operierten isoliert auf denselben Frequenzbändern:
 
 ```python
 # phase_dag.py
-PhaseConstraint("phase_02_hum_removal", "phase_03_denoise",
-    "Hum-Notch-Filter vor ML-NR (§v10.94: verhindert Brumm-Lernen als Signal)")
+PhaseConstraint(
+    "phase_02_hum_removal",
+    "phase_03_denoise",
+    "Hum-Notch-Filter vor ML-NR (§v10.94: verhindert Brumm-Lernen als Signal)",
+)
 ```
 
 **C2 — P02→P37 Metadata-Handshake (§G94a)**:

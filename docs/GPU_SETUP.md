@@ -145,9 +145,10 @@ print(ort.get_available_providers())
 
 # GPU-Test mit einem kleinen Modell
 import numpy as np
+
 session = ort.InferenceSession(
     b"dummy",  # nur Provider-Prüfung — echtes Modell siehe unten
-    providers=['DmlExecutionProvider']
+    providers=["DmlExecutionProvider"],
 )
 print("DirectML-Provider verfügbar: OK")
 ```

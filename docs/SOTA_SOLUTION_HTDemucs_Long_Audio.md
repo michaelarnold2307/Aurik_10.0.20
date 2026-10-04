@@ -103,10 +103,10 @@ def separate_long_audio(audio: np.ndarray, sr: int = 48000) -> SeparationResult:
 
     # Initialisiere Output-Stems
     stems_out = {
-        'vocals': np.zeros((2, orig_length), dtype=np.float32),
-        'drums': np.zeros((2, orig_length), dtype=np.float32),
-        'bass': np.zeros((2, orig_length), dtype=np.float32),
-        'other': np.zeros((2, orig_length), dtype=np.float32),
+        "vocals": np.zeros((2, orig_length), dtype=np.float32),
+        "drums": np.zeros((2, orig_length), dtype=np.float32),
+        "bass": np.zeros((2, orig_length), dtype=np.float32),
+        "other": np.zeros((2, orig_length), dtype=np.float32),
     }
 
     # Tracking für Overlap-Blending
@@ -132,10 +132,10 @@ def separate_long_audio(audio: np.ndarray, sr: int = 48000) -> SeparationResult:
         try:
             separated = htdemucs.separate(chunk, sr)
             stems_chunk = {
-                'vocals': separated.vocals,
-                'drums': separated.drums,
-                'bass': separated.bass,
-                'other': separated.other,
+                "vocals": separated.vocals,
+                "drums": separated.drums,
+                "bass": separated.bass,
+                "other": separated.other,
             }
         except Exception as e:
             logger.error(f"Chunk {chunk_idx} Fehler: {e}")
@@ -160,14 +160,14 @@ def separate_long_audio(audio: np.ndarray, sr: int = 48000) -> SeparationResult:
             # Hanning Crossfade
             hann_fade = np.hanning(fade_len * 2)  # Full Hanning
             fade_out = hann_fade[:fade_len]  # Left half
-            fade_in = hann_fade[fade_len:]   # Right half
+            fade_in = hann_fade[fade_len:]  # Right half
 
             for stem, data in stems_chunk.items():
                 # Fade-in in Overlap-Region
                 data_overlap = data[:, :fade_len]
 
                 # Blende mit bestehendem Output
-                stems_out[stem][:, overlap_start:overlap_end] *= (1 - fade_in[np.newaxis, :])
+                stems_out[stem][:, overlap_start:overlap_end] *= 1 - fade_in[np.newaxis, :]
                 stems_out[stem][:, overlap_start:overlap_end] += data_overlap * fade_in[np.newaxis, :]
 
                 # Nicht-Overlap-Teil einfach addieren
@@ -222,12 +222,7 @@ class ChunkedProcessor:
         """Erzeugt Hanning Crossfade."""
         return np.hanning(length * 2)[:length]
 
-    def _blend_chunk(self,
-                     stems_out,
-                     stems_chunk,
-                     chunk_start,
-                     chunk_end,
-                     chunk_idx):
+    def _blend_chunk(self, stems_out, stems_chunk, chunk_start, chunk_end, chunk_idx):
         """Blended Chunk in Output."""
         # (Crossfade-Logik)
         pass
