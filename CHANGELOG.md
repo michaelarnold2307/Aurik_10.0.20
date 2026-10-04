@@ -1,4 +1,14 @@
-# Changelog — Aurik 10.2.2
+# Changelog — Aurik 10.3.0
+
+## 10.3.0 (2026-10-04)
+
+### 🎼 Symphonia
+
+- Symphonia ergänzt Cantus als Instrumentalgegenkern für drums, bass und other.
+- Der Stem-Level-Restorer führt Symphonia nach Instrumental-NR und vor KIM-Inst
+  aus; ML-Ausgaben durchlaufen den bestehenden Hallucination-Guard.
+- Der neue Modell-, ONNX- und Datensatzvertrag erzwingt Torch-ROCm-Parität,
+  CPU-ONNX-Fallback und nachvollziehbaren DSP-Fallback.
 
 ## 10.2.2 (2026-10-04)
 

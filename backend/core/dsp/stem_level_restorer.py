@@ -205,6 +205,8 @@ class StemLevelRestorer:
         _kim_witness: dict | None = None
         _cantus_used = False
         _cantus_report: dict | None = None
+        _symphonia_used = False
+        _symphonia_report: dict | None = None
         _air_used = False
         _air_witness: dict | None = None
         _kim_inst_used = False
@@ -240,6 +242,17 @@ class StemLevelRestorer:
         # §SLR-1e: Hallucination-Guard on each processed stem (§2.46e)
         _vocal_out = self._hallucination_guard(_vocal_stem, _vocal_out, sample_rate, "vocal")
         _instr_out = self._hallucination_guard(_instr_stem, _instr_out, sample_rate, "instr")
+
+        # §SLR-1e1: Symphonia restauriert den entrauschten Instrumentalstem
+        # vor KIM-Inst. GPU→CPU→DSP ist im Plugin nach §V6 (VERBOTEN.md) abgesichert.
+        try:
+            _symphonia_pre = _instr_out.copy()
+            _instr_out, _symphonia_used, _symphonia_report = self._apply_symphonia(
+                _instr_out, sample_rate, _ctx
+            )
+            _instr_out = self._hallucination_guard(_symphonia_pre, _instr_out, sample_rate, "instrumental_symphonia")
+        except Exception as _symphonia_exc:  # pylint: disable=broad-except
+            logger.debug("§SLR-1 Symphonia nicht blockierend: %s", _symphonia_exc)
 
         # §SLR-1e2: Cantus auf dem bereits entrauschten, HNR-gesicherten
         # Vokalstem. Der Hallucination-Guard sichert jede ML-Ausgabe (§2.46e).
@@ -293,6 +306,8 @@ class StemLevelRestorer:
             _stages.append(_instrumental_nr_model)
         if _cantus_used:
             _stages.append("cantus")
+        if _symphonia_used:
+            _stages.append("symphonia")
         if _kim_used:
             _stages.append("kim_vocal_2")
         if _air_used:
@@ -302,6 +317,8 @@ class StemLevelRestorer:
         _witness_reports: dict = {}
         if isinstance(_cantus_report, dict):
             _witness_reports["cantus"] = _cantus_report
+        if isinstance(_symphonia_report, dict):
+            _witness_reports["symphonia"] = _symphonia_report
         if isinstance(_kim_witness, dict) and isinstance(_kim_witness.get("witness"), dict):
             _witness_reports["kim_vocal_2"] = _kim_witness["witness"]
         if isinstance(_air_witness, dict) and isinstance(_air_witness.get("witness"), dict):
@@ -386,7 +403,7 @@ class StemLevelRestorer:
 
         # §SLR-1g: Estimate SNR gain
         _snr_gain = self._estimate_snr_gain(_audio, _out)
-        _success = bool(_miipher_used or _dfn_used or _cantus_used)
+        _success = bool(_miipher_used or _dfn_used or _cantus_used or _symphonia_used)
 
         return StemLevelRestorerResult(
             audio=_out,
@@ -609,6 +626,41 @@ class StemLevelRestorer:
             logger.debug("§SLR-1 Cantus-Plugin nicht verfuegbar: %s", exc)
             return (
                 np.asarray(vocal_processed, dtype=np.float32),
+                False,
+                {"applied": False, "model_used": "none", "reason": "unavailable"},
+            )
+
+    def _apply_symphonia(
+        self, instrumental_processed: np.ndarray, sample_rate: int, ctx: dict
+    ) -> tuple[np.ndarray, bool, dict]:
+        """Wendet Symphonia nach Instrumental-NR und vor KIM-Inst an.
+
+        Eine echte ML-Ausgabe wird als Stage markiert; CPU-ONNX und DSP bleiben
+        transparent im Witness-Report (§V6 (copilot-instructions.md)).
+        """
+        material = str(ctx.get("material") or ctx.get("material_type") or ctx.get("source_material") or "unknown")
+        try:
+            restorability = float(ctx.get("restorability_score", ctx.get("restorability", 50.0)))
+        except (TypeError, ValueError):
+            restorability = 50.0
+        try:
+            from plugins.symphonia_plugin import get_symphonia  # pylint: disable=import-outside-toplevel
+
+            source = np.asarray(instrumental_processed, dtype=np.float32)
+            result = get_symphonia().enhance(source, sample_rate, material=material, restorability_score=restorability)
+            report = {
+                "applied": bool(result.applied),
+                "model_used": str(result.model_used),
+                "novelty": float(result.novelty),
+                "metadata": dict(result.metadata or {}),
+            }
+            if result.model_used != "symphonia":
+                return source, False, report
+            return self._coerce_like(result.audio, source), True, report
+        except Exception as exc:  # pylint: disable=broad-except
+            logger.debug("§SLR-1 Symphonia-Plugin nicht verfuegbar: %s", exc)
+            return (
+                np.asarray(instrumental_processed, dtype=np.float32),
                 False,
                 {"applied": False, "model_used": "none", "reason": "unavailable"},
             )

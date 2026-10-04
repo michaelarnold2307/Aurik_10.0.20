@@ -1,0 +1,78 @@
+{
+  "_comment": "Symphonia Instrumental Restorer — Architektur- und Trainings-Konfiguration. Voll-Preset = Design-Architektur; tiny = CPU-Smoke-Tests. Modell-Felder = models/symphonia/symphonia_model.py:SymphoniaModel.",
+  "model": {
+    "full": {
+      "dim": 768,
+      "depth": 18,
+      "heads": 12,
+      "patch_size": 256,
+      "mlp_ratio": 4.0,
+      "dropout": 0.1,
+      "sample_rate": 48000,
+      "band_cutoff_hz": 2000.0,
+      "band_kernel_size": 513,
+      "high_hidden": 128,
+      "high_depth": 6,
+      "high_kernel": 7,
+      "mert_dim": 1024,
+      "pitch_dim": 2,
+      "harmonic_dim": 768,
+      "cond_dropout": 0.1,
+      "max_tokens": 4096
+    },
+    "tiny": {
+      "_comment": "Nur fuer Tests/Smoke-Inferenz — nicht produktiv.",
+      "dim": 64,
+      "depth": 2,
+      "heads": 4,
+      "patch_size": 256,
+      "mlp_ratio": 2.0,
+      "dropout": 0.0,
+      "sample_rate": 48000,
+      "band_cutoff_hz": 2000.0,
+      "band_kernel_size": 129,
+      "high_hidden": 16,
+      "high_depth": 2,
+      "high_kernel": 7,
+      "mert_dim": 1024,
+      "pitch_dim": 2,
+      "harmonic_dim": 768,
+      "cond_dropout": 0.1,
+      "max_tokens": 512
+    }
+  },
+  "training": {
+    "sr": 48000,
+    "chunk_sec": 4.0,
+    "batch_size": 8,
+    "grad_accum_steps": 4,
+    "lr_pretrain": 1.0e-4,
+    "lr_finetune": 2.0e-5,
+    "lr_domain_adapt": 1.0e-5,
+    "weight_decay": 1.0e-5,
+    "checkpoint_every_steps": 10000,
+    "snr_range_db": [-5.0, 20.0],
+    "seed": 20261004,
+    "loss_weights": {
+      "flow_matching": 1.0,
+      "mel_spectral": 2.0,
+      "stft_phase": 0.5,
+      "pitch_preservation": 1.0,
+      "singmos_perceptual": 0.05,
+      "temporal": 0.5
+    },
+    "singmos": {
+      "target_mos": 4.5,
+      "proxy_calibrate_every_steps": 100,
+      "teacher_onnx": "models/singmos/singmos_pro.onnx"
+    }
+  },
+  "inference": {
+    "flow_time": 0.5,
+    "chunk_duration_s": 4.0,
+    "chunk_overlap_s": 0.5,
+    "chunk_crossfade_s": 0.05,
+    "hallucination_novelty_threshold": 0.35,
+    "singmos_never_worse_margin": 0.1
+  }
+}

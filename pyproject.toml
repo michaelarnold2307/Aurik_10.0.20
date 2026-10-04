@@ -1,5 +1,5 @@
 # =============================================================================
-# pyproject.toml — Aurik 10.2.2 Code-Qualitäts-Konfiguration (SOTA, Oktober 2026)
+# pyproject.toml — Aurik 10.3.0 Code-Qualitäts-Konfiguration (SOTA, Oktober 2026)
 # =============================================================================
 
 [build-system]
@@ -8,8 +8,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "aurik10"
-version = "10.2.2"
-description = "Intelligentes Musik-Restaurierungssystem — Weltklasse, Version 10.2.2 „Cantus Torch-ROCm Primärpfad“"
+version = "10.3.0"
+description = "Intelligentes Musik-Restaurierungssystem — Weltklasse, Version 10.3.0 „Symphonia Instrumentalrestaurierung“"
 readme = "README.md"
 license = { file = "LICENSE" }
 requires-python = ">=3.10.12"
