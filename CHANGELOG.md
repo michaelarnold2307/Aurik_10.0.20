@@ -1,4 +1,19 @@
-# Changelog — Aurik 10.2.0
+# Changelog — Aurik 10.2.1
+
+## 10.2.1 (2026-10-04)
+
+### 🔧 Cantus-Robustheit
+
+- Cantus wiederholt fehlgeschlagene GPU-ORT-Inferenz deterministisch auf CPU und
+  wechselt bei einem weiteren Fehler mit §V6-Warnung auf den DSP-Ersatzpfad.
+- Der Stem-Level-Restorer verarbeitet den HNR-gesicherten Vocal-Stem nun mit
+  Cantus vor KIM2, sichert die Ausgabe erneut gegen Halluzinationen ab und
+  protokolliert Modellroute sowie Witness-Daten im `StemContext`.
+
+### 🧪 Tests & Gates
+
+- Regressionstests sichern GPU→CPU→DSP-Fallback und den Cantus-Stempfad bis zur
+  Rekombination ab.
 
 ## 10.2.0 (2026-09-23)
 

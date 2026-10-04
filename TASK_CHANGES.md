@@ -1,37 +1,21 @@
 # TASK_CHANGES — Live-Ledger der aktuellen Aufgabe
 
-> Generiert von `scripts/change_ledger.py snapshot` (Base: `HEAD`, Stand: 2026-10-04 11:38 CEST).
+> Generiert von `scripts/change_ledger.py snapshot` (Base: `HEAD`, Stand: 2026-10-04 17:50 CEST).
 > CI (`ci-lite.yml` pr-evidence-gate) erzwingt Abdeckung: jede geänderte Code-Datei muss hier stehen.
 
 ## Geänderte Dateien
 
 | Status | Pfad | Art |
 |---|---|---|
-| M | .github/FILE_REGISTRY.md | modifiziert |
+| M | Aurik10/**init**.py | modifiziert |
+| M | CHANGELOG.md | modifiziert |
 | M | TASK_CHANGES.md | modifiziert |
-| M | backend/core/onnx/runtime.py | modifiziert |
-| M | docs/TODOS_SOTA_ROADMAP.md | modifiziert |
-| M | models/manifest.json | modifiziert |
-| M | scripts/check_core_model_sources.py | modifiziert |
-| ?? | audit/dsp_consolidation_audit_2026-10-02.md | ungetrackt |
-| ?? | backend/core/golden_ear_corpus.py | ungetrackt |
-| ?? | docs/reports/current/2026-10-03_evidenz_generator_defekt.md | ungetrackt |
-| ?? | docs/reports/current/2026-10-03_hoerordnung_kanonisierung_offen.md | ungetrackt |
-| ?? | docs/reports/current/2026-10-03_whisper_turbo_ab_negative.md | ungetrackt |
-| ?? | docs/reports/current/2026-10-04_offene_massnahmen.md | ungetrackt |
-| ?? | plugins/cantus_plugin.py | ungetrackt |
-| ?? | scripts/_scnet_arch_probe.py | ungetrackt |
-| ?? | scripts/export_cantus_onnx.py | ungetrackt |
-| ?? | scripts/generate_synthetic_degraded_vocals.py | ungetrackt |
-| ?? | scripts/hoerpanel_player.py | ungetrackt |
-| ?? | scripts/run_t61_ab.py | ungetrackt |
-| ?? | scripts/train_cantus.py | ungetrackt |
-| ?? | scripts/validate_t61_ab.py | ungetrackt |
-| ?? | scripts/validate_whisper_turbo_ab.py | ungetrackt |
-| ?? | tests/unit/test_cantus_pipeline.py | ungetrackt |
-| ?? | tests/unit/test_hoerpanel_player.py | ungetrackt |
-| ?? | tests/unit/test_ort_session_cache.py | ungetrackt |
-| ?? | tests/unit/test_validate_t61_ab.py | ungetrackt |
+| M | backend/core/dsp/stem_level_restorer.py | modifiziert |
+| M | backend/core/version.py | modifiziert |
+| M | plugins/cantus_plugin.py | modifiziert |
+| M | pyproject.toml | modifiziert |
+| M | tests/unit/test_cantus_pipeline.py | modifiziert |
+| M | tests/unit/test_stem_level_restorer.py | modifiziert |
 
 ## Entscheidungen
 

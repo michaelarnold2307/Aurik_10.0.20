@@ -265,6 +265,105 @@ def test_restore_respects_active_ml_plugins_from_context(monkeypatch):
 
 
 # ---------------------------------------------------------------------------
+# Cantus vocal restoration
+# ---------------------------------------------------------------------------
+
+
+def test_restore_applies_cantus_after_hnr_and_records_stem_witness(monkeypatch):
+    """Cantus verarbeitet den HNR-gesicherten Vocal-Stem vor KIM2 und Remix."""
+    from backend.core.dsp.stem_level_restorer import StemLevelRestorer
+
+    slr = StemLevelRestorer()
+    audio = _sine(duration=3.0)
+    captured: dict[str, np.ndarray | dict] = {}
+    events: list[str] = []
+
+    monkeypatch.setattr(
+        slr, "_separate_stems", lambda _a, _sr, _p=0.0, _ctx=None: (_a * 0.5, _a * 0.5, "test_separator")
+    )
+    monkeypatch.setattr(slr, "_apply_miipher", lambda stem, _sr, _bias=-6.0: (stem, True, "miipher"))
+    monkeypatch.setattr(slr, "_apply_dfn", lambda stem, _sr, energy_bias_db=-9.0: (stem, False, "none"))
+    monkeypatch.setattr(
+        "backend.core.dsp.hnr_guard.apply_hnr_blend",
+        lambda _pre, post, _sr: (post * 0.5, {}),
+    )
+
+    def _cantus(stem, _sr, ctx):
+        events.append("cantus")
+        captured["cantus_input"] = stem.copy()
+        captured["cantus_context"] = dict(ctx)
+        return stem + 0.01, True, {"applied": True, "model_used": "cantus", "metadata": {"use_cond": 1.0}}
+
+    monkeypatch.setattr(slr, "_apply_cantus", _cantus)
+    monkeypatch.setattr(slr, "_apply_kim_clarity", lambda _pre, post, _sr: (post, False, None))
+    monkeypatch.setattr(slr, "_apply_air_presence", lambda _pre, post, _sr: (post, False, None))
+    monkeypatch.setattr(slr, "_apply_kim_inst_clarity", lambda _pre, post, _sr: (post, False, None))
+
+    def _guard(_pre, post, _sr, name):
+        events.append(f"guard:{name}")
+        return post
+
+    monkeypatch.setattr(slr, "_hallucination_guard", _guard)
+
+    def _recombine(_audio, _vocal, _instr, vocal_out, _instr_out, _sr):
+        captured["recombined_vocal"] = vocal_out.copy()
+        return vocal_out + _instr_out, types.SimpleNamespace(witness={"ok": True})
+
+    monkeypatch.setattr("backend.core.dsp.stem_recombination_gates.recombine_stems_with_gates", _recombine)
+    monkeypatch.setattr(
+        "backend.core.musical_goals.vocal_quality_index.compute_vqi",
+        lambda *_args, **_kwargs: {"vqi": 0.90, "singer_identity_cosine": 0.99},
+    )
+
+    result = slr.restore(
+        audio,
+        48000,
+        panns_singing=0.9,
+        restoration_context={"material_type": "mp3_low", "restorability_score": 20.0},
+    )
+
+    assert result is not None and result.success is True
+    assert result.stem_context is not None
+    assert "cantus" in result.stem_context.applied_stages
+    assert result.stem_context.witness_reports["cantus"]["model_used"] == "cantus"
+    np.testing.assert_allclose(captured["cantus_input"], audio * 0.25, atol=1e-6)
+    np.testing.assert_allclose(captured["recombined_vocal"], audio * 0.25 + 0.01, atol=1e-6)
+    assert events.index("cantus") < events.index("guard:vocal_cantus")
+
+
+def test_restore_records_cantus_dsp_fallback_without_marking_ml_stage(monkeypatch):
+    """Ein von Cantus protokollierter DSP-Fallback bleibt nicht blockierend."""
+    from backend.core.dsp.stem_level_restorer import StemLevelRestorer
+
+    slr = StemLevelRestorer()
+    audio = _sine(duration=3.0)
+    monkeypatch.setattr(
+        slr, "_separate_stems", lambda _a, _sr, _p=0.0, _ctx=None: (_a * 0.5, _a * 0.5, "test_separator")
+    )
+    monkeypatch.setattr(slr, "_apply_miipher", lambda stem, _sr, _bias=-6.0: (stem, False, "none"))
+    monkeypatch.setattr(slr, "_apply_dfn", lambda stem, _sr, energy_bias_db=-9.0: (stem, False, "none"))
+    monkeypatch.setattr(
+        slr,
+        "_apply_cantus",
+        lambda stem, _sr, _ctx: (stem, False, {"applied": True, "model_used": "dsp_fallback", "metadata": {}}),
+    )
+    monkeypatch.setattr(slr, "_apply_kim_clarity", lambda _pre, post, _sr: (post, False, None))
+    monkeypatch.setattr(slr, "_apply_air_presence", lambda _pre, post, _sr: (post, False, None))
+    monkeypatch.setattr(slr, "_apply_kim_inst_clarity", lambda _pre, post, _sr: (post, False, None))
+    monkeypatch.setattr(slr, "_hallucination_guard", lambda _pre, post, _sr, _name: post)
+    monkeypatch.setattr(
+        "backend.core.musical_goals.vocal_quality_index.compute_vqi",
+        lambda *_args, **_kwargs: {"vqi": 0.90, "singer_identity_cosine": 0.99},
+    )
+
+    result = slr.restore(audio, 48000, panns_singing=0.9)
+
+    assert result is not None and result.stem_context is not None
+    assert "cantus" not in result.stem_context.applied_stages
+    assert result.stem_context.witness_reports["cantus"]["model_used"] == "dsp_fallback"
+
+
+# ---------------------------------------------------------------------------
 # SNR estimation
 # ---------------------------------------------------------------------------
 

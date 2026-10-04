@@ -203,6 +203,8 @@ class StemLevelRestorer:
         _dfn_used = False
         _kim_used = False
         _kim_witness: dict | None = None
+        _cantus_used = False
+        _cantus_report: dict | None = None
         _air_used = False
         _air_witness: dict | None = None
         _kim_inst_used = False
@@ -239,7 +241,20 @@ class StemLevelRestorer:
         _vocal_out = self._hallucination_guard(_vocal_stem, _vocal_out, sample_rate, "vocal")
         _instr_out = self._hallucination_guard(_instr_stem, _instr_out, sample_rate, "instr")
 
-        # §SLR-1e2: KIM2 (kim_vocal_2) Gesangs-Klarheit/Brillianz — musik-trainiert.
+        # §SLR-1e2: Cantus auf dem bereits entrauschten, HNR-gesicherten
+        # Vokalstem. Der Hallucination-Guard sichert jede ML-Ausgabe (§2.46e).
+        try:
+            _cantus_pre = _vocal_out.copy()
+            _vocal_out, _cantus_used, _cantus_report = self._apply_cantus(
+                _vocal_out,
+                sample_rate,
+                _ctx,
+            )
+            _vocal_out = self._hallucination_guard(_cantus_pre, _vocal_out, sample_rate, "vocal_cantus")
+        except Exception as _cantus_exc:  # pylint: disable=broad-except
+            logger.debug("§SLR-1 Cantus nicht blockierend: %s", _cantus_exc)
+
+        # §SLR-1e3: KIM2 (kim_vocal_2) Gesangs-Klarheit/Brillianz — musik-trainiert.
         # §v10.19 (.github/specs/v10.19_sprachmodell_ersatz_sota_roadmap.md):
         # KIM2 ist das Gesangsmodell — Klarheitsstufe NACH der NR, VOR dem Remix
         # (ein Rekombinationspunkt). Never-worsen via Listening-Witness-Gate.
@@ -276,6 +291,8 @@ class StemLevelRestorer:
             _stages.append(_vocal_nr_model)
         if _dfn_used:
             _stages.append(_instrumental_nr_model)
+        if _cantus_used:
+            _stages.append("cantus")
         if _kim_used:
             _stages.append("kim_vocal_2")
         if _air_used:
@@ -283,6 +300,8 @@ class StemLevelRestorer:
         if _kim_inst_used:
             _stages.append("kim_inst")
         _witness_reports: dict = {}
+        if isinstance(_cantus_report, dict):
+            _witness_reports["cantus"] = _cantus_report
         if isinstance(_kim_witness, dict) and isinstance(_kim_witness.get("witness"), dict):
             _witness_reports["kim_vocal_2"] = _kim_witness["witness"]
         if isinstance(_air_witness, dict) and isinstance(_air_witness.get("witness"), dict):
@@ -367,7 +386,7 @@ class StemLevelRestorer:
 
         # §SLR-1g: Estimate SNR gain
         _snr_gain = self._estimate_snr_gain(_audio, _out)
-        _success = bool(_miipher_used or _dfn_used)
+        _success = bool(_miipher_used or _dfn_used or _cantus_used)
 
         return StemLevelRestorerResult(
             audio=_out,
@@ -540,6 +559,59 @@ class StemLevelRestorer:
         except Exception as _router_exc:  # pylint: disable=broad-except
             logger.debug("§SLR-1 vocal NR router nicht blockierend: %s", _router_exc)
             return vocal_stem, False, "none"
+
+    # -----------------------------------------------------------------------
+    # Cantus — degradierte Gesangsrestaurierung
+    # -----------------------------------------------------------------------
+
+    def _apply_cantus(
+        self,
+        vocal_processed: np.ndarray,
+        sample_rate: int,
+        ctx: dict,
+    ) -> tuple[np.ndarray, bool, dict]:
+        """Wendet Cantus nach HNR-Blend und vor KIM2 auf den Vokalstem an.
+
+        Cantus kapselt seinen GPU→CPU→DSP-Ersatzpfad und protokolliert diesen
+        mit §V6 (copilot-instructions.md). Nur eine echte Cantus-ML-Ausgabe
+        wird als Stage markiert; der Ersatzpfad bleibt trotzdem als Witness
+        nachvollziehbar.
+        """
+        _material = str(ctx.get("material") or ctx.get("material_type") or ctx.get("source_material") or "unknown")
+        try:
+            _restorability = float(ctx.get("restorability_score", ctx.get("restorability", 50.0)))
+        except (TypeError, ValueError):
+            _restorability = 50.0
+
+        try:
+            from plugins.cantus_plugin import get_cantus  # pylint: disable=import-outside-toplevel
+
+            _input = np.asarray(vocal_processed, dtype=np.float32)
+            _result = get_cantus().enhance(
+                _input,
+                sample_rate,
+                material=_material,
+                restorability_score=_restorability,
+            )
+            _report = {
+                "applied": bool(_result.applied),
+                "model_used": str(_result.model_used),
+                "novelty": float(_result.novelty),
+                "singmos_before": _result.singmos_before,
+                "singmos_after": _result.singmos_after,
+                "metadata": dict(_result.metadata or {}),
+            }
+            if _result.model_used != "cantus":
+                return _input, False, _report
+            _out = self._coerce_like(_result.audio, _input)
+            return _out, True, _report
+        except Exception as exc:  # pylint: disable=broad-except
+            logger.debug("§SLR-1 Cantus-Plugin nicht verfuegbar: %s", exc)
+            return (
+                np.asarray(vocal_processed, dtype=np.float32),
+                False,
+                {"applied": False, "model_used": "none", "reason": "unavailable"},
+            )
 
     # -----------------------------------------------------------------------
     # KIM2 (kim_vocal_2) — Gesangs-Klarheit/Brillianz

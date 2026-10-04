@@ -203,6 +203,22 @@ class CantusPlugin:
         peak = float(np.max(np.abs(channels))) + 1e-10
         return (channels / peak).astype(np.float32), {"layout": layout, "gain": peak, "sr_in": sr}
 
+    @staticmethod
+    def _recombine_vocal_delta(mix: np.ndarray, vocal_before: np.ndarray, vocal_after: np.ndarray) -> np.ndarray:
+        """Führt ausschließlich die geprüfte Vocal-Änderung in den Mix zurück.
+
+        Der Instrumentalanteil des Mixes bleibt bit-identisch. Der Stem darf
+        mono oder stereo vorliegen; seine mittlere Änderung wird phasengleich
+        auf beide Mix-Kanäle gelegt.
+        """
+        mix_channels, mix_layout = CantusPlugin._normalize_layout(mix)
+        before_channels, _ = CantusPlugin._normalize_layout(vocal_before)
+        after_channels, _ = CantusPlugin._normalize_layout(vocal_after)
+        if before_channels.shape[1] != mix_channels.shape[1] or after_channels.shape[1] != mix_channels.shape[1]:
+            raise ValueError("Vocal-Stem und Mix müssen dieselbe Sample-Länge haben")
+        delta = after_channels.mean(axis=0) - before_channels.mean(axis=0)
+        return CantusPlugin._restore_layout(mix_channels + delta[np.newaxis, :], mix_layout)
+
     # ── Conditions: MERT + Pitch (FCPE/CREPE) + MuQ-MuLan ───────────
 
     def _warn_once(self, key: str, message: str, *args: Any) -> None:
@@ -370,6 +386,13 @@ class CantusPlugin:
         """Material-Gate: nur stark degradierte Quellen (Miipher-Präzedenz)."""
         return str(material).lower() in self._TARGET_MATERIALS or restorability_score < 30
 
+    def _dsp_fallback_output(self, audio: np.ndarray, sr: int, vocal_stem: np.ndarray | None) -> np.ndarray:
+        """Wendet den Ersatzpfad stem-first an und erhält den Instrumentalanteil."""
+        restored = self._dsp_fallback(vocal_stem if vocal_stem is not None else audio, sr)
+        if vocal_stem is not None:
+            restored = self._recombine_vocal_delta(audio, vocal_stem, restored)
+        return restored
+
     def enhance(
         self,
         audio: np.ndarray,
@@ -394,7 +417,7 @@ class CantusPlugin:
                 audio=audio, applied=False, model_used="none", metadata={"reason": "material_not_target"}
             )
         if self._fallback_active or not self._model_loaded:
-            restored = self._dsp_fallback(audio, sr)
+            restored = self._dsp_fallback_output(audio, sr, vocal_stem)
             return CantusResult(
                 audio=restored,
                 applied=True,
@@ -403,12 +426,26 @@ class CantusPlugin:
                 metadata={"fallback_reason": self._fallback_reason},
             )
 
-        channels, ctx = self._preprocess(audio, sr)  # channels-first (C, N) @ 48 kHz, peak-norm.
+        model_source = vocal_stem if vocal_stem is not None else audio
+        channels, ctx = self._preprocess(model_source, sr)  # channels-first (C, N) @ 48 kHz, peak-norm.
         is_stereo = channels.shape[0] == 2
         mid = channels.mean(axis=0) if is_stereo else channels[0]
         side = (channels[0] - channels[1]) / 2.0 if is_stereo else None
 
-        restored = self._restore_chunked(mid) if mid.size / self._MODEL_SR > 10.0 else self._restore_single(mid)
+        try:
+            restored = self._restore_chunked(mid) if mid.size / self._MODEL_SR > 10.0 else self._restore_single(mid)
+        except Exception as exc:
+            self._activate_fallback(f"ORT-Inferenz auch auf CPU fehlgeschlagen: {exc}")
+            return CantusResult(
+                audio=self._dsp_fallback_output(audio, sr, vocal_stem),
+                applied=True,
+                model_used="dsp_fallback",
+                processing_time_s=__import__("time").perf_counter() - t0,
+                metadata={
+                    "fallback_reason": self._fallback_reason,
+                    "input_source": "vocal_stem" if vocal_stem is not None else "mix_mid",
+                },
+            )
         restored = restored[: mid.size]
         if restored.size < mid.size:  # §0a (copilot-instructions.md): Längen-Integrität
             restored = np.pad(restored, (0, mid.size - restored.size))
@@ -434,11 +471,17 @@ class CantusPlugin:
             restored, model_used = mid, "none"
 
         restored = (restored * ctx["gain"]).astype(np.float32)  # Gain der Vorverarbeitung rückgängig
-        if is_stereo and side is not None:
+        if vocal_stem is not None:
+            if model_used == "none":
+                out = np.asarray(audio, dtype=np.float32).copy()
+            else:
+                out = self._recombine_vocal_delta(audio, vocal_stem, restored)
+        elif is_stereo and side is not None:
             out = np.stack([restored + side[: restored.size], restored - side[: restored.size]], axis=0)
         else:
             out = restored[np.newaxis, :]
-        out = self._restore_layout(out, ctx["layout"])
+        if vocal_stem is None:
+            out = self._restore_layout(out, ctx["layout"])
         return CantusResult(
             audio=out,
             applied=model_used != "none",
@@ -447,7 +490,11 @@ class CantusPlugin:
             singmos_before=mos_before,
             singmos_after=mos_after,
             processing_time_s=__import__("time").perf_counter() - t0,
-            metadata={"use_cond": float(self._last_use_cond), "sr_in": sr},
+            metadata={
+                "use_cond": float(self._last_use_cond),
+                "sr_in": sr,
+                "input_source": "vocal_stem" if vocal_stem is not None else "mix_mid",
+            },
         )
 
     @staticmethod

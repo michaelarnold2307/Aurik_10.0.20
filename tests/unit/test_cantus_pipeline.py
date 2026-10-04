@@ -270,6 +270,27 @@ def test_plugin_material_gate():
     assert np.array_equal(result.audio, vocal), "Ungateiertes Material muss unverändert bleiben"
 
 
+def test_plugin_restores_vocal_stem_without_changing_instrumental_mix(monkeypatch: pytest.MonkeyPatch):
+    """Ein vorhandener Stem steuert Cantus; nur dessen Delta darf den Mix ändern."""
+    from plugins.cantus_plugin import CantusPlugin
+
+    plugin = CantusPlugin(model_path=Path("/nonexistent/cantus_dit.onnx"))
+    plugin._model_loaded = True
+    plugin._fallback_active = False
+    monkeypatch.setattr(plugin, "_restore_single", lambda stem: stem * 0.5)
+    monkeypatch.setattr(plugin, "_spectral_novelty", lambda _before, _after, _sr: 0.0)
+    monkeypatch.setattr(plugin, "_singmos_scores", lambda _before, _after: (None, None))
+
+    vocal = _sample_vocal(8192)
+    vocal = vocal - np.mean(vocal, dtype=np.float32)
+    instrumental = 0.1 * _sample_vocal(8192, seed=9)
+    mix = vocal + instrumental
+    result = plugin.enhance(mix, 48000, "mp3_low", vocal_stem=vocal)
+
+    assert result.metadata is not None and result.metadata["input_source"] == "vocal_stem"
+    assert np.allclose(result.audio, instrumental + 0.5 * vocal, atol=1e-5)
+
+
 def test_plugin_cpu_end_to_end_sample_vocal(tmp_path):
     """Ende-zu-Ende CPU-Inferenz: Export → ORT → Guards → Layout-Roundtrip."""
     tc = _load_script("export_cantus_onnx")
@@ -344,6 +365,37 @@ def test_plugin_retries_ort_inference_on_cpu_after_provider_failure(monkeypatch,
     assert np.array_equal(restored, mono)
     assert "§V6 (VERBOTEN.md)" in caplog.text
     assert "HIPBLAS_STATUS_ALLOC_FAILED" in caplog.text
+
+
+def test_plugin_uses_dsp_fallback_when_cpu_retry_also_fails(monkeypatch, caplog, tmp_path):
+    """Auch ein CPU-ORT-Fehler darf nie einen unbehandelten ML-Abbruch auslösen."""
+    import logging
+
+    import plugins.cantus_plugin as cantus_module
+
+    plugin = cantus_module.CantusPlugin(model_path=tmp_path / "missing.onnx")
+    plugin._model_loaded = True
+    plugin._fallback_active = False
+
+    class BrokenSession:
+        def run(self, _outputs, _feeds):
+            raise RuntimeError("ORT-Ausführung nicht verfügbar")
+
+    plugin._ort_session = BrokenSession()
+    plugin.__dict__["_extract_conditions"] = lambda _mono: {
+        "mert": np.zeros((1, 1024), dtype=np.float32),
+        "pitch": np.zeros((1, 2), dtype=np.float32),
+        "harm": np.zeros((768,), dtype=np.float32),
+        "use_cond": np.asarray(0.0, dtype=np.float32),
+    }
+    monkeypatch.setattr(cantus_module.ort, "InferenceSession", lambda _path, *, providers: BrokenSession())
+
+    with caplog.at_level(logging.WARNING):
+        result = plugin.enhance(_sample_vocal(4096), 48000, "mp3_low")
+
+    assert result.model_used == "dsp_fallback"
+    assert bool(np.isfinite(result.audio).all())
+    assert "ORT-Inferenz auch auf CPU fehlgeschlagen" in caplog.text
 
 
 def test_smoke_dataset_deterministic():
