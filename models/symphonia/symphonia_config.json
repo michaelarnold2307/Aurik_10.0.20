@@ -1,5 +1,5 @@
 {
-  "_comment": "Symphonia Instrumental Restorer — Architektur- und Trainings-Konfiguration. Voll-Preset = Design-Architektur; tiny = CPU-Smoke-Tests. Modell-Felder = models/symphonia/symphonia_model.py:SymphoniaModel.",
+  "_comment": "Symphonia Instrumental Restorer — Architektur- und Trainings-Konfiguration. MERT-Features: 1024; harm: 768; pitch_dim ist der interne Alias für Symphonia-Rhythmus-Features. Voll-Preset = Design-Architektur; tiny = CPU-Smoke-Tests.",
   "model": {
     "full": {
       "dim": 768,

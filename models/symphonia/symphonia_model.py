@@ -17,7 +17,11 @@ from models.cantus.cantus_model import CantusConfig, CantusModel
 
 
 class SymphoniaModel(CantusModel):
-    """Instrumental-DiT: ``rhythm`` enthält Onset- und Beat-Phasen-Features."""
+    """Instrumental-DiT: ``rhythm`` enthält normierte Energie- und Onset-Features.
+
+    ``pitch_dim`` bleibt als internes Cantus-Konfigurationsfeld erhalten; für
+    Symphonia bezeichnet es ausschließlich die Breite dieses Rhythmus-Streams.
+    """
 
     def forward(
         self,

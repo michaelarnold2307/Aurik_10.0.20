@@ -1,31 +1,36 @@
 """
-§v10.126: MERT Feature Extractor — Music Understanding Transformer (117M, ONNX GPU).
+§v10.126: MERT Feature Extractor — MERT-v1-330M (ONNX, provider policy).
 
 MERT (Music undERstanding Transformer) ist auf 160k+ Stunden Musik vortrainiert.
-Produziert 768-dim Features, die musikalische Struktur codieren:
+Produziert 1024-dim Features bei 24 kHz, die musikalische Struktur codieren:
   - Genre, Instrumentierung, Harmonik, Rhythmus
 
 Nutzung:
   extractor = MERTFeatureExtractor()
   features = extractor.extract(audio, sample_rate)
-  # features: [frames, 768] — eine Feature-Matrix pro ~10ms
+  # features: [frames, 1024] — eine Feature-Matrix pro ~10ms
 """
 
 from __future__ import annotations
 
 import logging
+import math
 from pathlib import Path
 from typing import cast
 
 import numpy as np
+from scipy.signal import resample_poly
+
+from backend.core.gpu_model_registry import get_onnx_providers
 
 logger = logging.getLogger(__name__)
 
 _MODEL_PATH = Path(__file__).resolve().parent.parent.parent / "models" / "mert" / "mert.onnx"
+MERT_SAMPLE_RATE = 24000
 
 
 class MERTFeatureExtractor:
-    """MERT ONNX GPU Feature-Extraktor für Musik-Kontext."""
+    """MERT-v1-330M-Extraktor mit zentraler ONNX-Provider-Policy."""
 
     def __init__(self):
         import onnxruntime as ort
@@ -35,25 +40,52 @@ class MERTFeatureExtractor:
 
         self._session = ort.InferenceSession(
             str(_MODEL_PATH),
-            providers=["ROCMExecutionProvider", "CPUExecutionProvider"],
+            providers=get_onnx_providers(_MODEL_PATH.resolve()),
         )
         self._provider = self._session.get_providers()[0]
-        logger.info("MERT geladen: %s (117M params, %s)", _MODEL_PATH.name, self._provider)
+        logger.info("MERT geladen: %s (330M params, %s)", _MODEL_PATH.name, self._provider)
 
     def extract(self, audio: np.ndarray, sample_rate: int = 48000) -> np.ndarray:
         """Extrahiert MERT-Features aus Audio.
 
         Args:
             audio: float32 [samples]
-            sample_rate: Sample-Rate (beliebig, MERT ist flexibel)
+            sample_rate: Eingangs-Sample-Rate; wird auf die MERT-Rate 24 kHz resampelt.
 
         Returns:
-            np.ndarray [frames, 768] — Musik-Features
+            np.ndarray [frames, 1024] — MERT-v1-330M-Musik-Features
         """
-        audio = audio.astype(np.float32)
+        if sample_rate <= 0:
+            raise ValueError("sample_rate muss positiv sein")
+
+        audio = np.asarray(audio, dtype=np.float32)
 
         if audio.ndim == 2:
-            audio = audio.mean(axis=0)  # Stereo → Mono
+            # Pipeline-Standard ist channels-first; samples-first wird ebenfalls
+            # akzeptiert, damit Modulgrenzen kein Stereo zu zwei Samples falten.
+            if audio.shape[0] <= 8 and audio.shape[0] <= audio.shape[1]:
+                audio = audio.mean(axis=0)
+            elif audio.shape[1] <= 8 and audio.shape[1] < audio.shape[0]:
+                audio = audio.mean(axis=1)
+            else:
+                raise ValueError(f"Mehrdeutiges Stereo-Layout für MERT: {audio.shape}")
+        elif audio.ndim != 1:
+            raise ValueError(f"MERT erwartet Mono- oder Stereo-Audio, erhalten: {audio.shape}")
+
+        if audio.size == 0:
+            raise ValueError("MERT erwartet nichtleeres Audio")
+
+        audio = np.nan_to_num(audio, copy=False, nan=0.0, posinf=0.0, neginf=0.0)
+        if sample_rate != MERT_SAMPLE_RATE:
+            divisor = math.gcd(sample_rate, MERT_SAMPLE_RATE)
+            audio = cast(
+                np.ndarray,
+                resample_poly(
+                    audio,
+                    MERT_SAMPLE_RATE // divisor,
+                    sample_rate // divisor,
+                ).astype(np.float32),
+            )
 
         # Normalize
         peak = np.abs(audio).max() + 1e-10
@@ -64,8 +96,8 @@ class MERTFeatureExtractor:
 
         # Inferenz
         outputs = self._session.run(None, {"input_values": audio_batch})
-        features = outputs[0]  # [1, frames, 768]
-        return cast(np.ndarray, features[0])  # [frames, 768]
+        features = outputs[0]  # [1, frames, 1024] für MERT-v1-330M
+        return cast(np.ndarray, features[0])  # [frames, 1024]
 
     def extract_mean(self, audio: np.ndarray, sample_rate: int = 48000) -> np.ndarray:
         """Extrahiert gemittelte MERT-Features (ein Vektor pro Audiodatei).
@@ -73,7 +105,7 @@ class MERTFeatureExtractor:
         Nützlich für Genre-Erkennung oder globale Audio-Klassifikation.
         """
         features = self.extract(audio, sample_rate)
-        return cast(np.ndarray, features.mean(axis=0).astype(np.float32))  # [768]
+        return cast(np.ndarray, features.mean(axis=0).astype(np.float32))  # [1024]
 
     def extract_segments(self, audio: np.ndarray, sample_rate: int = 48000, segment_s: float = 5.0) -> np.ndarray:
         """Extrahiert MERT-Features in Segmenten (für lange Audiodateien).
@@ -84,7 +116,7 @@ class MERTFeatureExtractor:
             segment_s: Segment-Länge in Sekunden
 
         Returns:
-            np.ndarray [n_segments, 768]
+            np.ndarray [n_segments, 1024]
         """
         segment_samples = int(segment_s * sample_rate)
         n_segments = (len(audio) + segment_samples - 1) // segment_samples

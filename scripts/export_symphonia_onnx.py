@@ -4,8 +4,8 @@
 Signatur des Inferenzgraphs (models/symphonia/symphonia.onnx):
   x        : [1, T, 1]  float32 — degradiertes Instrumental (48 kHz, mono)
   t        : [1]        float32 — Flow-Zeit (0..1, Inferenz: 0.5)
-  mert     : [1, F, 768] float32 — MERT-v1-330M Features (frame-level)
-  rhythm   : [1, F, 2]  float32 — Beat-/Onset-Kontext (normiert, aktiv)
+  mert     : [1, F, 1024] float32 — MERT-v1-330M Features (frame-level)
+  rhythm   : [1, F, 2]  float32 — normierte Frame-Energie und positive Onset-Hüllkurve
   harm     : [1, 768]   float32 — MuQ-MuLan Embedding (L2-normiert)
   use_cond : [1]        float32 — 1.0 = konditioniert, 0.0 = Null-Tokens
   → v       : [1, T, 1] float32 — Flow-Matching-Geschwindigkeitsfeld

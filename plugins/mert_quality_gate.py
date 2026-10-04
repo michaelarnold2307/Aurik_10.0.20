@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """
-§v10.130: MERT Quality Gate — leverages MERT for music-aware quality assessment.
+§v10.130: MERT-v1-330M Quality Gate — music-aware quality assessment.
 
-MERT (117M, 160k+ hours of music training) KNOWS what good music sounds like.
+MERT-v1-330M (trained on 160k+ hours of music) supplies music representations.
 Instead of forcing it to denoise (which requires a huge decoder), we use it as
 a QUALITY GATE that scores audio segments and guides the denoising pipeline.
 
@@ -35,13 +35,15 @@ from typing import Optional, cast
 import numpy as np
 from scipy.signal import resample_poly
 
+from backend.core.gpu_model_registry import get_onnx_providers
+from backend.core.mert_feature_extractor import MERT_SAMPLE_RATE
 from backend.file_import import load_audio_file
 
 log = logging.getLogger(__name__)
 
 _PROJECT = Path(__file__).resolve().parent.parent
 
-MERT_SR = 16000
+MERT_SR = MERT_SAMPLE_RATE
 TARGET_SR = 48000
 CHUNK_SEC = 2.0
 OVERLAP = 0.5
@@ -61,21 +63,12 @@ class MERTQualityGate:
         device: str = "cuda",
         gpu_id: int = 0,
     ):
-        # §V6 (copilot-instructions.md)/§III.9: EP-Auswahl nur nach Verfügbarkeit; provider_options muss
-        # dieselbe Länge wie providers haben (ort wirft sonst „EP Error“ beim
-        # CPU-Fallback — Produktionsbefund 2026-09-20: Score-Ausfall im Gate).
+        # §III.9 (copilot-instructions.md): ONNX-Provider über die zentrale,
+        # paritätskalibrierte Modell-Registry auswählen.
         try:
             import onnxruntime as ort  # pylint: disable=import-outside-toplevel
         except Exception as _ort_exc:
             raise RuntimeError(f"onnxruntime nicht verfügbar: {_ort_exc}") from _ort_exc
-
-        _available = ort.get_available_providers()
-        if device == "cuda" and "ROCMExecutionProvider" in _available:
-            providers = ["ROCMExecutionProvider", "CPUExecutionProvider"]
-            provider_options: list[dict] | None = [{"device_id": str(gpu_id)}, {}]
-        else:
-            providers = ["CPUExecutionProvider"]
-            provider_options = None
 
         mert_path = Path(mert_onnx)
         if not mert_path.is_absolute():
@@ -83,14 +76,13 @@ class MERTQualityGate:
         if not mert_path.exists():
             raise FileNotFoundError(f"MERT ONNX not found: {mert_path}")
 
-        self.session = ort.InferenceSession(
-            str(mert_path),
-            providers=providers,
-            provider_options=provider_options,
-        )
+        providers = get_onnx_providers(mert_path.resolve(), prefer_gpu=device == "cuda")
+        if gpu_id and providers and providers[0] == "ROCMExecutionProvider":
+            providers[0] = ("ROCMExecutionProvider", {"device_id": str(gpu_id)})
+        self.session = ort.InferenceSession(str(mert_path), providers=providers)
 
         # Reference "clean music" embedding centroid (pre-computed from clean corpus)
-        self._clean_centroid: np.ndarray | None = None  # [768]
+        self._clean_centroid: np.ndarray | None = None  # [1024] für MERT-v1-330M
         self._load_or_compute_centroid()
 
         self._warmed = False
@@ -167,14 +159,14 @@ class MERTQualityGate:
         down = orig_sr // g
         return cast(np.ndarray, (resample_poly(audio, up, down).astype(np.float32)))
 
-    def _extract_features(self, audio_16k: np.ndarray) -> np.ndarray:
-        """Extract MERT embeddings for audio chunk. Returns [T, 768]."""
-        audio_norm = audio_16k / (np.abs(audio_16k).max() + 1e-10)
+    def _extract_features(self, audio_mert: np.ndarray) -> np.ndarray:
+        """Extract MERT embeddings for audio chunk. Returns [T, D] (aktuell D=1024)."""
+        audio_norm = audio_mert / (np.abs(audio_mert).max() + 1e-10)
         outputs = self.session.run(
             None,
             {"input_values": audio_norm[np.newaxis, :].astype(np.float32)},
         )
-        return cast(np.ndarray, outputs[0][0].astype(np.float32))  # [T, 768]
+        return cast(np.ndarray, outputs[0][0].astype(np.float32))  # [T, 1024]
 
     def score_chunk(self, audio: np.ndarray, sample_rate: int) -> float:
         """
@@ -184,8 +176,8 @@ class MERTQualityGate:
         if sample_rate != MERT_SR:
             audio = self._resample(audio, sample_rate, MERT_SR)
 
-        feat = self._extract_features(audio)  # [T, 768]
-        feat_mean = feat.mean(axis=0)  # [768]
+        feat = self._extract_features(audio)  # [T, D]
+        feat_mean = feat.mean(axis=0)  # [D]
 
         if self._clean_centroid is not None and self._clean_centroid.sum() != 0:
             cosine_sim = np.dot(feat_mean, self._clean_centroid) / (
@@ -204,8 +196,8 @@ class MERTQualityGate:
         if sample_rate != MERT_SR:
             audio = self._resample(audio, sample_rate, MERT_SR)
 
-        feat = self._extract_features(audio)  # [T, 768]
-        feat_mean = feat.mean(axis=0)  # [768]
+        feat = self._extract_features(audio)  # [T, D]
+        feat_mean = feat.mean(axis=0)  # [D]
 
         # Overall naturalness: cosine similarity to clean music centroid
         if self._clean_centroid is not None and self._clean_centroid.sum() != 0:
