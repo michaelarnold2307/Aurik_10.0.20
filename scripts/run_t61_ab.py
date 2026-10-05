@@ -63,6 +63,8 @@ import json
 import logging
 import os
 import sys
+import threading
+import time
 from collections.abc import Callable
 from dataclasses import asdict
 from pathlib import Path
@@ -285,6 +287,24 @@ def main() -> int:
 
     logging.basicConfig(level=logging.INFO, format="%(levelname)-8s %(name)s — %(message)s")
 
+    # Heartbeat (Befund 2026-10-05): Ein Fall läuft zwei vollständige Restaurierungen
+    # (REF+VAR) und ist CPU-only (§V6-konform, GPU reserviert) — Stunden pro Fall, in
+    # denen die Runner-Logdatei bisher komplett still blieb (4-h-Lücke, von außen nicht
+    # von einem Hänger unterscheidbar). Der Heartbeat schreibt alle 5 min eine Zeile.
+    _hb_stop = threading.Event()
+    _hb_label: list[str] = ["Start"]
+    _hb_t0 = time.time()
+
+    def _heartbeat() -> None:
+        while not _hb_stop.wait(300.0):
+            logger.info(
+                "[t61] Heartbeat: laeuft seit %.0f min | letzter Schritt: %s",
+                (time.time() - _hb_t0) / 60,
+                _hb_label[0],
+            )
+
+    threading.Thread(target=_heartbeat, daemon=True, name="t61-heartbeat").start()
+
     out_dir = args.out or (_ROOT / "output" / "t61_ab_2026-10-04")
     out_dir.mkdir(parents=True, exist_ok=True)
 
@@ -302,8 +322,15 @@ def main() -> int:
             logger.warning("§V6 (VERBOTEN.md) Ersatzpfad: Song '%s' nicht ladbar (%s) — übersprungen", song, load_exc)
             continue
 
+        _hb_label[0] = f"{song} — REF"
+        logger.info(
+            "[t61] Fall '%s': REF-Restaurierung startet (%.0f min seit Start)", song, (time.time() - _hb_t0) / 60
+        )
         ref = _restore_variant(song, "REF", audio, sr)
+        _hb_label[0] = f"{song} — VAR"
+        logger.info("[t61] Fall '%s': REF fertig, VAR startet (%.0f min seit Start)", song, (time.time() - _hb_t0) / 60)
         var = _restore_variant(song, "VAR", audio, sr)
+        logger.info("[t61] Fall '%s': beide Varianten fertig (%.0f min seit Start)", song, (time.time() - _hb_t0) / 60)
 
         score_ref = ref["core_score"]
         score_var = var["core_score"]
@@ -388,6 +415,7 @@ def main() -> int:
     }
 
     report_path = out_dir / "t61_ab_report.json"
+    _hb_stop.set()
     report_path.write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8")
     logger.info("Report geschrieben: %s", report_path)
     logger.info("Matrix geschrieben: %s", matrix_csv)
