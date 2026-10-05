@@ -128,7 +128,10 @@ def main() -> int:
     verboten_txt = (
         _read(_PROJECT / ".github" / "VERBOTEN.md") if (_PROJECT / ".github" / "VERBOTEN.md").exists() else ""
     )
-    documented_v = set(_VERBOTEN_ID_RE.findall(verboten_txt))
+    # `findall` liefert bei einer Capture-Group nur den INHALT ("01", nicht "V01") — der
+    # Soll-/Ist-Vergleich gegen den Linter-Katalog ({V01, V02, …}) konnte so NIE passen und
+    # erzeugte 34 Fehlalarme („dokumentiert, aber nicht im Linter-Katalog", Befund 2026-10-05).
+    documented_v = {f"V{g}" for g in _VERBOTEN_ID_RE.findall(verboten_txt)}
     hardcoded_v = _hardcoded_verboten_rules()
     missing_in_linter = sorted(documented_v - hardcoded_v)
     for v in missing_in_linter:
