@@ -500,12 +500,16 @@ def train(
             rollbacks += 1
             # checkpoint_latest konsistent halten: ein Resume darf nie den divergierten
             # Stand ziehen, während das Modell im Speicher bereits zurückgerollt ist.
+            # val_loss trägt bewusst den Best-Referenzwert (nicht avg_val): der
+            # Resume-Pfad setzt best_val daraus — mit dem divergierten Wert wäre der
+            # Rollback-Guard nach einem Resume entwaffnet (Befund 2026-10-05:
+            # dort stand 13,7178 bei korrekten Best-Gewichten).
             torch.save(
                 {
                     "model_state_dict": rb["model_state_dict"],
                     "epoch": epoch + 1,
                     "optimizer_state_dict": optimizer.state_dict(),
-                    "val_loss": avg_val,
+                    "val_loss": best_val,
                 },
                 out_dir / "checkpoint_latest.ckpt",
             )

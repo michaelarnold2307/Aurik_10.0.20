@@ -1,4 +1,20 @@
-# Changelog — Aurik 10.3.7
+# Changelog — Aurik 10.3.8
+
+## 10.3.8 (2026-10-05)
+
+### Rollback-Guard nach Resume wieder scharf (Selbstprüfung des Divergenzschutzes)
+
+- **Befund:** Der in 10.3.6 eingeführte Divergenzschutz schreibt beim Rollback die
+  Gewichte des Best-Checkpoints nach `checkpoint_latest.ckpt` — dort stand aber der
+  **divergierte** Val-Wert (`epoch=84, val_loss=13,7178` bei korrekten Best-Gewichten).
+  Der Resume-Pfad setzt `best_val` aus genau diesem Feld, ein Resume hätte den
+  Rollback-Guard damit **entwaffnet** (Schwelle gegen 13,7 statt gegen 6,1525).
+- **Fix:** Das Feld trägt jetzt den Best-Referenzwert (`best_val`) statt `avg_val`,
+  mit Begründung im Code. Der **bestehende** `checkpoint_latest.ckpt` wurde
+  in-place nachgezogen (Gewichte unverändert, nur Metadaten; Tensoren verifiziert
+  identisch).
+- **Beweise:** `val_loss` 13,717787525672465 → 6,152494320198894 bei unveränderter
+  Tensor-Topologie; Ruff (F821/F601/B009/I001) clean; `py_compile` grün.
 
 ## 10.3.7 (2026-10-05)
 
