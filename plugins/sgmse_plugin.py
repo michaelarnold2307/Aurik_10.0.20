@@ -229,7 +229,24 @@ class SGMSEPlusPlugin:
                     _providers = get_ort_providers("SGMSE")
                 except Exception:
                     _providers = ["CPUExecutionProvider"]
-                _session = ort.InferenceSession(str(_ONNX_PATH), providers=_providers)
+                try:
+                    _session = ort.InferenceSession(str(_ONNX_PATH), providers=_providers)
+                except Exception as _prov_exc:
+                    # §III.9 (copilot-instructions.md): "ONNX bleibt reiner CPU-Fallback".
+                    # Scheitert ein GPU-EP, darf nicht direkt das TorchScript-Artefakt
+                    # einspringen: sgmse_plus.ts trägt ANDERE Gewichte (alle 647
+                    # Parameter weichen ab, rel ~3e-1 — s. scripts/export_sgmse_onnx.py),
+                    # es wäre also still ein anderes Modell. Erst der paritätsexakte
+                    # ONNX-CPU-Pfad, gemeldet nach §V6 (VERBOTEN.md).
+                    if _providers == ["CPUExecutionProvider"]:
+                        raise
+                    logger.warning(
+                        "SGMSE+ ONNX mit EP %s nicht ladbar (%s) — Rückfall auf ONNX-CPU nach §III.9",
+                        _providers,
+                        _prov_exc,
+                    )
+                    _providers = ["CPUExecutionProvider"]
+                    _session = ort.InferenceSession(str(_ONNX_PATH), providers=_providers)
                 _inputs = {item.name: item for item in _session.get_inputs()}
                 if {"x_t", "y", "t"} - set(_inputs):
                     raise RuntimeError(f"SGMSE+ ONNX-Eingänge unerwartet: {sorted(_inputs)}")
@@ -249,7 +266,13 @@ class SGMSEPlusPlugin:
                     logger.debug("Plugin operation fehlgeschlagen (unkritisch): %s", _exc)
                 return
             except Exception as _onnx_exc:
-                logger.warning("SGMSE+ ONNX nicht ladbar: %s — versuche TorchScript", _onnx_exc)
+                logger.warning(
+                    "SGMSE+ ONNX nicht ladbar: %s — Rückfall auf TorchScript; ACHTUNG: "
+                    "dieses Artefakt trägt andere Gewichte als der ONNX-Core (rel ~3e-1, "
+                    "s. scripts/export_sgmse_onnx.py), das Ergebnis weicht also vom "
+                    "Standardpfad ab (§V6 (VERBOTEN.md))",
+                    _onnx_exc,
+                )
 
         if _TS_PATH.exists():
             try:

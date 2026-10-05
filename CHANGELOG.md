@@ -1,4 +1,25 @@
-# Changelog — Aurik 10.3.8
+# Changelog — Aurik 10.3.9
+
+## 10.3.9 (2026-10-05)
+
+### §III.9: ONNX bleibt der CPU-Fallback — kein stiller Wechsel auf das TS-Artefakt
+
+- **Befund (Vollscan-Fund 8):** `SGMSEPlusPlugin._try_load` fiel bei einem
+  fehlgeschlagenen GPU-EP direkt auf `sgmse_plus.ts` zurück. Dieses Artefakt trägt
+  nach eigener Dokumentation des Export-Skripts **andere Gewichte** als der
+  ONNX-Core („alle 647 Parameter weichen ab, beobachtete Ausgabeabweichung
+  rel ~3e-1", `scripts/export_sgmse_onnx.py`). Der Rückfall hätte damit still ein
+  anderes Modell verwendet — in einem Plugin, dessen Standardpfad ONNX ist.
+- **Fix:** Scheitert der Session-Aufbau mit GPU-EPs, wird zuerst derselbe
+  ONNX-Core mit `CPUExecutionProvider` geladen (paritätsexakt; „ONNX bleibt reiner
+  CPU-Fallback", §III.9 (copilot-instructions.md)) und der Vorgang nach
+  §V6 (VERBOTEN.md) gemeldet. Erst wenn auch ONNX-CPU scheitert, greift der
+  dokumentiert abweichende TorchScript-Pfad — dessen Warnung benennt die
+  Gewichtsabweichung jetzt ausdrücklich.
+- **Beweise:** simulierte GPU-EP-Blockade → `EP-Aufrufe:
+  [['MIGraphXExecutionProvider'], ['CPUExecutionProvider']]`, Warnung mit
+  §III.9-Bezug, `Session-EPs: ['CPUExecutionProvider']`, **`TS genutzt: False`**;
+  Normalpfad lädt ONNX wie zuvor; ruff (F821/F601/B009/I001) clean.
 
 ## 10.3.8 (2026-10-05)
 
