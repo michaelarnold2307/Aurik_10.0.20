@@ -290,7 +290,7 @@ def quality_ok(before: npt.NDArray[np.float32], after: npt.NDArray[np.float32], 
     corr = float(np.dot(_bef_g, _aft_g) / _denom_g)
     # Musikstil könnte als Parameter übergeben werden, hier als Beispiel 'pop'
     style = "pop"
-    return np.asarray(adaptive_hf_gate(ratio, style=style) and adaptive_corr_gate(corr, min_corr=0.98))  # type: ignore[no-any-return]
+    return adaptive_hf_gate(ratio, style=style) and adaptive_corr_gate(corr, min_corr=0.98)
 
 
 def process_vocals(

@@ -53,6 +53,8 @@ class AiVoiceConversion:
         from backend.file_import import load_audio_file
 
         _res = load_audio_file(output_path, do_carrier_analysis=False)
+        if _res is None:
+            raise RuntimeError("load_audio_file lieferte kein Ergebnis für den Docker-Output")
         enhanced_audio: np.ndarray = np.asarray(_res["audio"], dtype=np.float32)
         result: np.ndarray = enhanced_audio.astype(audio.dtype)
         return result
@@ -222,5 +224,7 @@ class AiVoiceConversion:
         from backend.file_import import load_audio_file
 
         _res = load_audio_file(output_path, do_carrier_analysis=False)
+        if _res is None:
+            raise RuntimeError("load_audio_file lieferte kein Ergebnis für den Docker-Output")
         restored_audio: np.ndarray = np.asarray(_res["audio"], dtype=np.float32)
         return np.asarray(restored_audio.astype(audio.dtype))  # type: ignore[no-any-return]

@@ -214,7 +214,7 @@ class HFTextureDataset(Dataset[tuple[torch.Tensor, torch.Tensor]]):
         self.targets: torch.Tensor = torch.tensor(np.concatenate(targets_list)).unsqueeze(1)
 
     def __len__(self) -> int:
-        return np.asarray(self.inputs.shape[0])  # type: ignore[no-any-return]
+        return int(self.inputs.shape[0])
 
     def __getitem__(self, idx: int) -> tuple[torch.Tensor, torch.Tensor]:
         return self.inputs[idx], self.targets[idx]

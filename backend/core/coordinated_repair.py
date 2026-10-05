@@ -1223,14 +1223,11 @@ class CoordinatedRepair:
                 """Velocity-Feld v(x, t) — Torch-Modell oder ONNX-Session (§III.9 (copilot-instructions.md): ONNX-CPU)."""
                 if model is not None:
                     with torch.no_grad():
-                        return model(x_in, torch.full((1,), t_val, device=device))
+                        # Typisierter Zwischenschritt: der Loader liefert ``Any``, das Modell
+                        # gibt zur Laufzeit garantiert einen Tensor zurück (§G5-Numerik).
+                        _out: torch.Tensor = model(x_in, torch.full((1,), t_val, device=device))
+                        return _out
                 x_np = x_in.detach().cpu().numpy().astype(np.float32)
-                if ort_session is None:
-                    raise RuntimeError("ort_session fehlt — weder Torch-Modell noch ONNX-Session verfügbar")
-                if ort_session is None:
-                    raise RuntimeError("ort_session fehlt — weder Torch-Modell noch ONNX-Session verfügbar")
-                if ort_session is None:
-                    raise RuntimeError("ort_session fehlt — weder Torch-Modell noch ONNX-Session verfügbar")
                 if ort_session is None:
                     raise RuntimeError("ort_session fehlt — weder Torch-Modell noch ONNX-Session verfügbar")
                 v_np = ort_session.run(None, {"x": x_np, "t": np.array([t_val], dtype=np.float32)})[0]

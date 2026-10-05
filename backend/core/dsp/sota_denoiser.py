@@ -157,6 +157,8 @@ class SotaDenoiser:
                         from backend.file_import import load_audio_file
 
                         _res = load_audio_file(output_path, do_carrier_analysis=False)
+                        if _res is None:
+                            raise RuntimeError("load_audio_file lieferte kein Ergebnis (REST-Antwort)")
                         result_cli1: np.ndarray = np.asarray(_res["audio"], dtype=np.float32)
                         self._audit_log("success", "DeepFilterNet3II REST-API-Inferenz erfolgreich")
                         return np.asarray(result_cli1.astype(audio.dtype))  # type: ignore[no-any-return]
@@ -186,6 +188,8 @@ class SotaDenoiser:
                     from backend.file_import import load_audio_file
 
                     _res = load_audio_file(output_path, do_carrier_analysis=False)
+                    if _res is None:
+                        raise RuntimeError("load_audio_file lieferte kein Ergebnis (CLI-Ausgabe)")
                     result_cli2: np.ndarray = np.asarray(_res["audio"], dtype=np.float32)
                     self._audit_log("success", "DeepFilterNet3II CLI-Inferenz erfolgreich")
                     return np.asarray(result_cli2.astype(audio.dtype))  # type: ignore[no-any-return]
@@ -230,6 +234,8 @@ class SotaDenoiser:
                         from backend.file_import import load_audio_file
 
                         _res = load_audio_file(output_path, do_carrier_analysis=False)
+                        if _res is None:
+                            raise RuntimeError("load_audio_file lieferte kein Ergebnis (REST-Antwort)")
                         result_cli3: np.ndarray = np.asarray(_res["audio"], dtype=np.float32)
                         self._audit_log("success", "DCCRN REST-API-Inferenz erfolgreich")
                         return np.asarray(result_cli3.astype(audio.dtype))  # type: ignore[no-any-return]
@@ -259,6 +265,8 @@ class SotaDenoiser:
                     from backend.file_import import load_audio_file
 
                     _res = load_audio_file(output_path, do_carrier_analysis=False)
+                    if _res is None:
+                        raise RuntimeError("load_audio_file lieferte kein Ergebnis (CLI-Ausgabe)")
                     result_cli4: np.ndarray = np.asarray(_res["audio"], dtype=np.float32)
                     self._audit_log("success", "DCCRN CLI-Inferenz erfolgreich")
                     return np.asarray(result_cli4.astype(audio.dtype))  # type: ignore[no-any-return]
