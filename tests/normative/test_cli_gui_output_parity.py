@@ -31,8 +31,18 @@ Ausführung: pytest tests/normative/test_cli_gui_output_parity.py -v
 
 from __future__ import annotations
 
+import os
+
 import numpy as np
 import pytest
+
+# CPU-Pin (§G5 (GEBOTE.md), §III.9 (copilot-instructions.md)): Gemessen 2026-10-05 auf
+# der Zielhardware — mit aktivem ROCm-Pfad dauert dieser Paritätstest 113,7 s und der
+# Prozess endet nach „1 passed“ mit Exit 1 (HIP-OOM beim Teardown); CPU-deterministisch
+# sind es 10,4 s und Exit 0. Der Test vergleicht Ausgaben, nicht GPU-Geschwindigkeit —
+# und GPU-Inferenz ist laut §G5 (GEBOTE.md) nur toleranz-gleich, nicht bit-identisch, wäre hier
+# also sogar die falsche Referenz. `AURIK_FORCE_CPU=1` ist der dokumentierte Schalter.
+os.environ.setdefault("AURIK_FORCE_CPU", "1")
 
 # Toleranzen:
 #   Identische Aufruf-Formen erreichen §2.40 (max_abs ≤ 1e-6, rms ≤ 1e-7).

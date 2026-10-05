@@ -129,6 +129,19 @@ Vorstufe (Separation-SOTA, Zeile 1602).
   Bootstrap-95%-CI ohne 0 + Hörordnung-Ebene-1-Veto als harte Schranke),
   Norm-Suite `tests/unit/test_validate_t61_ab.py` (7 grün); der
   Referenzmatrix-Lauf selbst bleibt offen.
+- **STATUS 2026-10-05 — ABGENOMMEN (Variante verworfen):** Der Referenzmatrix-Lauf
+  ist durchgeführt (`scripts/run_t61_ab.py --seconds 20 --out output/t61_ab_2026-10-05`;
+  3 MUSDB18-HQ-Test-Songs, Master-Seed 42, CPU-only). Harness-Verdikt:
+  **`variant_wins: false`** — mittlerer Gewinn **−7,86e-05**, Seed-fixiertes
+  95 %-CI **[−1,07e-04, −2,50e-05]** (schließt 0 nicht ein, liegt auf der
+  Verliererseite), `never_worsen_ok: false`. Die Score-Deltas liegen je Song bei
+  2,5e-05…1,1e-04 — **weit unter der Hörbarkeitsschwelle** (Hörordnung: Maskierungs-
+  schwelle statt Mess-Null). Engineering-Folge: die schritt-granularen Guards
+  bleiben im Code (kein Rückbau), aber **kein Flag-Flip**; der block-globale
+  Core-Guard bleibt Sicherheitsnetz. Artefakte:
+  `output/t61_ab_2026-10-05/t61_ab_report.json` + `t61_ab_matrix.csv`.
+  Nebenfund (behoben): Der Runner war pro Fall stundenlang stumm (4-h-Lücke) →
+  Heartbeat + Schritt-Logs (Commit `54deb1b6`).
 
 ---
 

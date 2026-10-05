@@ -1,4 +1,39 @@
-# Changelog — Aurik 10.3.2
+# Changelog — Aurik 10.3.3
+
+## 10.3.3 (2026-10-05)
+
+### 🐛 Crash-Bug, GPU-Probe, CI-Gates und Mess-Telemetrie
+
+- **ROCm-ONNX-Probe crash-isoliert** (§III.9 (copilot-instructions.md)): native
+  MIOpen/HIP-Aborts (SIGSEGV rc=-11, `Hip error: 'out of memory'`) beendeten den
+  Host-Prozess (Unit-Smoke Exit 139 in `InferenceSession.__init__`). Die
+  Session-Erzeugung läuft jetzt in einem eigenen Interpreter; Nicht-CPU-EPs nur
+  mit Paritätsnachweis (rel ≤ 1e-3) gegen ONNX-CPU, MIGraphX nur mit eigener
+  Parität, jeder Ersatzpfad mit §V6 (copilot-instructions.md) Warnung + Begründung,
+  Ergebnis per Datei-IPC statt `print` (R01).
+- **CI `type-gate` grün**: 9 mypy-Fehler in 5 Dateien behoben — u. a. sechsmal
+  Optional-Indizierung von `load_audio_file()`, `__len__` gab ein 0-d-Array
+  statt `int` zurück, `quality_ok() -> bool` verpackte das Ergebnis in
+  `np.asarray`.
+- **CI `export-guard` grün**: der Guard rief eine nicht mehr existierende CLI
+  (`core/audio_exporter.py --sample-rate … --format …`) auf — er exportiert
+  jetzt über `backend.core.audio_exporter.AudioExporter`, konfigurationsgetrieben
+  aus `metadata.yaml`, Ziel `output/export_guard/`.
+- **CI-Kollektion ohne torch/onnxruntime**: vier Testmodule importierten schwere
+  Abhängigkeiten auf Modulebene → `pytest.importorskip` (kanonisches Muster);
+  der Job brach vorher mit „3 errors during collection" ab.
+- **ID-Kollision V74 aufgelöst**: `signal.lfilter` im Bell-EQ heißt jetzt V76
+  (Spec > Code); V74 bleibt Silent-Except und wird vom AST-Guard
+  `scripts/pre_commit_static_guard.py` erzwungen.
+- **Tote Spec-Verweise** `§v10.304.30`/`.31` (8 Stellen) auf §III.9 umgebogen.
+- **Testdeterminismus**: Commit-Pfad-Smoke mit `AURIK_FORCE_CPU=1` (lastunabhängig),
+  VRAM-Tests injizieren den Live-Query-Wert, neue Regel 6 in
+  `tests.instructions.md` („keine Live-Hardware-Werte als Erwartungswert").
+- **Mess-Telemetrie**: deterministisches Validierungsprotokoll im
+  SGMSE-Finetuning (fixer Seed, CPU-/CUDA-RNG restauriert → Val-Kurve lesbar,
+  Trainingsverlauf bit-identisch) und Heartbeat im T6-1-A/B-Runner
+  (5-min-Takt plus Start-/Ende-Zeile je Variante statt 4-h-Stille).
+- **DX**: Safe-Runner meldet bei Lock-Kollision den haltenden PID.
 
 ## 10.3.2 (2026-10-05)
 
