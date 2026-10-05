@@ -363,6 +363,10 @@ _HEAVY_TEST_PATH_HINTS: tuple[str, ...] = (
     # braucht 187 s für 5 Tests — mit dem schnellen Smoke-Budget starben fünf
     # Tests an pytest-timeout (onnxruntime_inference_collection.py:273).
     "test_edge_taper_no_intro_outro_artifacts.py",
+    # Befund 2026-10-05 (Vollscan Chunk 33): Phase-50-Inpainting baut echte
+    # ONNX-Sessions auf; vier Tests starben am 25-s-Budget des schnellen Smokes
+    # (Failed: Timeout in onnxruntime_inference_collection.py:273).
+    "test_literature_algorithms.py",
     "test_memory_leaks_v3.py",
     "test_full_chain_ml_hybrid.py",
     "test_e2e_v9_10_41.py",
