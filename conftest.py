@@ -349,6 +349,14 @@ collect_ignore.extend(
 _LEGACY_IGNORE_BASENAMES: set[str] = {p.replace("\\", "/").split("/")[-1].lower() for p in collect_ignore}
 
 
+# Budget für schwere Tests, wenn sie bewusst laufen (--run-heavy-tests). Der
+# Chunk-/Commit-Smoke läuft mit --timeout=20..25 (schnelle Rückmeldung); schwere
+# E2E-Pfade (ONNX-Export, lange Audios, ML-Läufe) brauchen aber Minuten. Der
+# Vollscan 2026-10-05 (Chunks 6, 8 und 13) zeigte genau daraus entstehende zeit-
+# und lastabhängige Fehlschläge, obwohl die Tests isoliert grün waren
+# (§G5 (GEBOTE.md): Tests dürfen nicht last-/zeitabhängig kippen).
+_HEAVY_TIMEOUT_S = 600.0
+
 _HEAVY_TEST_PATH_HINTS: tuple[str, ...] = (
     "test_defect_scanner_long_audio_crop_rescue.py",
     "test_memory_leaks_v3.py",
@@ -459,6 +467,11 @@ def pytest_collection_modifyitems(config, items) -> None:
         item.add_marker(pytest.mark.slow)
 
         if run_heavy:
+            # Heavy-Tests brauchen ein Heavy-Budget, sonst erbt der Lauf das
+            # scharfe CLI-Timeout des schnellen Smokes. Ein explizit gesetztes
+            # Marker-Timeout der Datei hat Vorrang.
+            if item.get_closest_marker("timeout") is None:
+                item.add_marker(pytest.mark.timeout(_HEAVY_TIMEOUT_S))
             kept.append(item)
         else:
             deselected.append(item)
