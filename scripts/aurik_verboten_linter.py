@@ -413,11 +413,11 @@ RULES: dict[str, dict] = {
         "skip": {"test_", "phase_23.py", "scripts/", "docs/"},
         "sev": "ERROR",
     },
-    # ── V74: signal.lfilter in Vocal Bell-EQ (Phase 42) ───────────────
-    "V74": {
+    # ── V76: signal.lfilter in Vocal Bell-EQ (Phase 42) ───────────────
+    "V76": {
         "p": r"signal\.lfilter\s*\([^)]*(_boost_presence|_enhance_chest)",
         "negate": r"signal\.filtfilt",
-        "d": "signal.lfilter in Vocal Bell-EQ — filtfilt verwenden (zero-phase, §V74)",
+        "d": "signal.lfilter in Vocal Bell-EQ — filtfilt verwenden (zero-phase, §V76)",
         "skip": {"test_", "phase_42_vocal_enhancement.py", "scripts/", "docs/"},
         "sev": "ERROR",
     },

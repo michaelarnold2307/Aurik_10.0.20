@@ -217,7 +217,7 @@ Das CD-Rauschprofil simuliert das thermische Rauschen eines 16-bit CD-Wandlers:
 
 Jede Session MUSS diese Codes kennen (vollständige Liste der Linter-Referenz-Tabelle):
 
-| V01 | V02 | V03 | V04 | V05 | V08 | V09 | V11 | V12 | V13 | V27 | V29 | V31 | V32 | V33 | V39 | V40 | V41 | V42 | V43 | V44 | V45 | V46 | V47 | V48 | V49 | V50 | V51 | V52 | V53 | V54 | V55 | V56 | V57 | V58 | V70 | V71 | V72 | V73 | V74 | V75 |
+| V01 | V02 | V03 | V04 | V05 | V08 | V09 | V11 | V12 | V13 | V27 | V29 | V31 | V32 | V33 | V39 | V40 | V41 | V42 | V43 | V44 | V45 | V46 | V47 | V48 | V49 | V50 | V51 | V52 | V53 | V54 | V55 | V56 | V57 | V58 | V70 | V71 | V72 | V73 | V74 | V75 | V76 |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 
 ## [RELEASE_MUST] Autonomer Magic-Button-Betrieb

@@ -80,7 +80,7 @@
 | Phase-09 Stub-Interpolation | `_interpolate_hybrid()` ruft `_interpolate_linear()` auf — kein AR-Verhalten | Vollständige LPC/AR-Vorhersage: Vorwärts+Rückwärts-AR, linear übergeblendet (Rabiner & Schafer 1978, §2.57) |
 | Phase-50 lineare Zeit-Interpolation | Dropout-Frames einmalig linear interpoliert | Iterative STFT-Konsistenz-Projektion (5 Iter., POCS-Schema, Siedenburg & Dörfler 2013, §2.57) |
 | Phase-23 Inpainting ohne POCS | Direkte PGHI aus inkonsistenten Spektren → Aliasing an Defektgrenzen | POCS-Schleife VOR PGHI in `_repair_channel` (material-adaptiv n_iter=2–5, §4.7c) |
-| `signal.lfilter` in Vocal Bell-EQ | `lfilter` in `_boost_presence`/`_enhance_chest` (phase_42) → Phasenverschiebung auf Transients | `signal.filtfilt` (zero-phase); Short-Signal-Fallback: `if len(audio) >= 9: filtfilt(...)` |
+| `signal.lfilter` in Vocal Bell-EQ [V76] | `lfilter` in `_boost_presence`/`_enhance_chest` (phase_42) → Phasenverschiebung auf Transients | `signal.filtfilt` (zero-phase); Short-Signal-Fallback: `if len(audio) >= 9: filtfilt(...)` |
 | ✅ BEHOBEN: Festes `breath_preservation=0.70` für alle Altersgruppen | Senior/Mature-Stimmen erhalten aggressive Atemreduktion → Stimmidentitätsverlust | `_AGE_ADAPTIVE_FACTORS`: Senior=0.90, Mature=0.82, Adult=0.72, YoungAdult=0.70; GenderDetector.detect() → age_group (§VoiceAge) |
 | CausalDefectReasoner einseitige Tabellen [V12] | Neue Ursache nur in `CAUSE_TO_PHASES`, nicht in `CAUSES`/`LIKELIHOOD_FNS` | `CAUSES` + `CAUSE_TO_PHASES` bidirektional konsistent — Bayes-Loop iteriert ausschließlich `CAUSES` (§2.59). Linter V12 prüft automatisch. |
 | `_MATERIAL_PRIORITY_PHASES` Duplikat-Schlüssel [V13] | Zwei Einträge für denselben Material-String (z.B. `"cassette"`) in `_MATERIAL_PRIORITY_PHASES` → zweiter Eintrag überschreibt ersten lautlos; falsches Phasenset aktiv (F601) | Jeder Material-Schlüssel darf in `_MATERIAL_PRIORITY_PHASES` genau einmal vorkommen — Linter V13 prüft `unified_restorer_v3.py` auf F601-Duplikate in dieser Dict-Literal. |
@@ -158,7 +158,10 @@
 > Implementiert sind 49 Regeln: V01, V-BRIDGE, V02–V05, V08, V09, V11–V14, V21,
 > V27–V33, V38–V45, V46–V58, **V59 (NEU: Stereo-Kanal-Slicing `audio[0]`/
 > `audio[:, 0]` ohne `backend.core.audio_layout`-Helfer — §V7-Wurzelregel gegen
-> den Stereo-Kollaps), V63 (MD5/B324), V64 (rtol-in-numpy), V73–V75.
+> den Stereo-Kollaps), V63 (MD5/B324), V64 (rtol-in-numpy), V73, V75–V76.
+> **V74 (Silent-Except) erzwingt der AST-Guard `scripts/pre_commit_static_guard.py`** —
+> die Regex-Linter-Map führt diese ID bewusst nicht (ID-Kollision 2026-10-05 aufgelöst:
+> die Bell-EQ-Regel heißt jetzt V76).
 > Nicht regex-fähig (Architektur/Runtime): V70, V71, V72. "only"-Feld: Regeln
 > gelten nur für Dateien, deren Pfad einen der Substrings enthält.
 
