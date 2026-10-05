@@ -342,7 +342,27 @@ def _sone_to_phon(sone: float) -> float:
     return float(40.0 * (sone ** (1.0 / _EXP_LOW)))
 
 
-def compute_specific_loudness_zwicker(
+def compute_specific_loudness_zwicker(audio: np.ndarray, sr: int) -> float:
+    """Kanonische ISO 532-1-Lautheitsmessung — Signatur nach §4.1b (04_dsp_standards).
+
+    §4.1b (04_dsp_standards) fordert exakt
+    ``compute_specific_loudness_zwicker(audio, sr) -> float``; die Regel
+    "Lautheitsmessung ohne ISO 532-1" (§74 (VERBOTEN.md)) referenziert denselben
+    Aufruf und wertet ΔN > 2,0 sone als FAIL. Bis 2026-10-05 gab diese Funktion
+    den strukturierten ``ZwickerLoudnessResult`` zurück und verletzte damit die
+    kanonische Signatur (Vollscan-Fund: acht Tests der Norm-Suite rot).
+
+    Returns:
+        Gesamt-Lautheit N in sone (float). Nicht berechenbares Material liefert
+        0.0 samt ``logger.warning`` — §V6 (VERBOTEN.md), keine stille Degradation.
+
+    Für Bandpegel, Phon und ΔN-Vergleiche:
+        ``compute_specific_loudness_zwicker_detailed()``.
+    """
+    return compute_specific_loudness_zwicker_detailed(audio, sr).total_loudness_sone
+
+
+def compute_specific_loudness_zwicker_detailed(
     audio: np.ndarray,
     sr: int,
     analysis_window_s: float = 5.0,
@@ -409,6 +429,25 @@ def _compute_zwicker_internal(
         arr = arr.flatten()
 
     if arr.size == 0:
+        return ZwickerLoudnessResult(
+            total_loudness_sone=0.0,
+            specific_loudness=np.zeros(N_BARK, dtype=np.float64),
+            loudness_phon=0.0,
+            computation_valid=False,
+        )
+
+    # ── 1b. Mindestlänge ────────────────────────────────────────────
+    # ISO 532-1 (stationär) ist für Signale unter 100 ms nicht definiert;
+    # dieselbe Schwelle nutzt der Modul-Vertrag weiter unten bei den
+    # zeitvarianten Pfaden. Kein stiller Wert: §V6 (VERBOTEN.md) verlangt die
+    # Begründung im Log — sonst wäre ein 0.0-Ergebnis nicht von „leise" zu
+    # unterscheiden.
+    if arr.size < sr // 10:
+        logger.warning(
+            "Zwicker-Lautheit: Audio zu kurz für ISO 532-1 (%d Samples < %d = 100 ms) — 0.0 sone",
+            arr.size,
+            sr // 10,
+        )
         return ZwickerLoudnessResult(
             total_loudness_sone=0.0,
             specific_loudness=np.zeros(N_BARK, dtype=np.float64),
@@ -520,8 +559,8 @@ def evaluate_mid_pipeline_loudness_delta(
         dict mit keys: delta_sone, delta_phon, action, sone_before, sone_after,
                        phon_before, phon_after, phase_name, valid
     """
-    result_before = compute_specific_loudness_zwicker(audio_before, sr)
-    result_after = compute_specific_loudness_zwicker(audio_after, sr)
+    result_before = compute_specific_loudness_zwicker_detailed(audio_before, sr)
+    result_after = compute_specific_loudness_zwicker_detailed(audio_after, sr)
 
     delta_sone = result_after.total_loudness_sone - result_before.total_loudness_sone
     delta_phon = result_after.loudness_phon - result_before.loudness_phon
@@ -581,7 +620,7 @@ def compute_specific_loudness_array(audio: np.ndarray, sr: int) -> np.ndarray:
         np.ndarray shape (24,) — N' in sone/Bark pro Bark-Band.
         Gibt np.zeros(24) bei Fehler zurück (nie raise).
     """
-    result = compute_specific_loudness_zwicker(audio, sr)
+    result = compute_specific_loudness_zwicker_detailed(audio, sr)
     if not result.computation_valid:
         return np.asarray(np.zeros(N_BARK))  # type: ignore[no-any-return]
     return result.specific_loudness
@@ -1859,6 +1898,7 @@ __all__ = [
     "compute_specific_loudness_array",
     "compute_specific_loudness_moore",
     "compute_specific_loudness_zwicker",
+    "compute_specific_loudness_zwicker_detailed",
     "compute_versa_confidence",
     "compute_time_varying_loudness",
     "compute_total_loudness_sone",

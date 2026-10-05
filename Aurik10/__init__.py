@@ -7,7 +7,7 @@ Weltweit führendes kognitiv-perceptuelles Audio-Restaurierungssystem mit chirur
 # §v10.802: keine zweite driftende Nummer — Gleichlauf mit backend/core/version.py
 # wird von scripts/version_guard.py (Warnung) und
 # tests/unit/test_version_checker_and_ux.py (fail-closed) erzwungen.
-_FALLBACK_VERSION = "10.3.6"
+_FALLBACK_VERSION = "10.3.7"
 
 try:
     # §V4 (copilot-instructions.md) + §v10.802 GUI-Sync: Version ausschließlich über

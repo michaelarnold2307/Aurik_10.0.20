@@ -1,4 +1,25 @@
-# Changelog — Aurik 10.3.6
+# Changelog — Aurik 10.3.7
+
+## 10.3.7 (2026-10-05)
+
+### Kanonische Zwicker-Loudness-Signatur wiederhergestellt (§4.1b)
+
+- **Befund (Vollscan Chunk 10/97, acht Tests rot):** `compute_specific_loudness_zwicker()`
+  lieferte den strukturierten `ZwickerLoudnessResult` zurück, während §4.1b
+  (04_dsp_standards) wortwörtlich die Signatur
+  `compute_specific_loudness_zwicker(audio, sr) -> float` fordert und die Regel
+  "Lautheitsmessung ohne ISO 532-1" (§74 (VERBOTEN.md)) dieselbe Referenz für das
+  ΔN > 2,0-sone-Gate nennt. Zusätzlich behandelte die Funktion Signale unter 100 ms
+  wie messbaren Stoff (10,97 sone für 2 ms Audio), obwohl dasselbe Modul an anderer
+  Stelle 100 ms als Mindestlänge führt.
+- **Fix:** Die kanonische Funktion liefert wieder `float`; die vollständige Messung
+  (Bandpegel, Phon, ΔN) liegt in der neuen, benannten
+  `compute_specific_loudness_zwicker_detailed()`. Interne Nutzer (ΔN-Gate,
+  Bandpegel-Extraktion) verwenden die Detail-API. Signale unter 100 ms liefern
+  0,0 sone mit `logger.warning` (§V6 (VERBOTEN.md)) statt eines stillen Werts.
+- **Beweise:** 76 Tests grün (Norm-Suite + Literatur + Zwicker/P5), Ruff clean;
+  Vertragsmessung: 100 Samples → 0.0 (mit Warnung), 100 ms → 10,9711 sone,
+  Monotonie 46,19 → 136,34 sone bei +14 dB.
 
 ## 10.3.6 (2026-10-05)
 
