@@ -114,14 +114,26 @@ class MemmapPool:
         self._files.pop(path, None)
 
     def close(self) -> None:
-        """Close pool: delete ALL temp files. Called at exit."""
-        with self._lock:
+        """Close pool: delete ALL temp files. Called at exit.
+
+        Shutdown-Härtung (Befund 2026-10-05): Am Interpreter-Ende werden Daemon-Threads
+        an beliebiger Stelle beendet — stirbt einer mitten im kritischen Abschnitt,
+        blockiert ein reguläres ``with self._lock`` im atexit-Pfad für immer (beobachtet:
+        Prozess-Hang in ``futex_do_wait`` nach „1 passed“ im GPU-Paritätstest). Deshalb
+        begrenztes Acquire (2 s) und Aufräumen ohne Lock, wenn es nicht greift —
+        ``_evict_file`` ist idempotent und der Exit-Pfad läuft single-threaded.
+        """
+        _acquired = self._lock.acquire(timeout=2.0)
+        try:
             if self._closed:
                 return
             self._closed = True
             for _path in list(self._files):
                 self._evict_file(_path)
             logger.debug("MemmapPool: closed — all temp files cleaned up")
+        finally:
+            if _acquired:
+                self._lock.release()
 
     @property
     def active_files(self) -> int:

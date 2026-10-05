@@ -1,4 +1,25 @@
-# Changelog — Aurik 10.3.3
+# Changelog — Aurik 10.3.4
+
+## 10.3.4 (2026-10-05)
+
+### 🐛 Shutdown-Hang behoben (memmap_pool-atexit)
+
+- **Befund:** Nach einem Lauf mit aktivem ROCm-Pfad konnte der Prozess nach der
+  Test-Summary („1 passed“) in `futex_do_wait` **hängen** bzw. mit Exit 1 enden
+  (CLI/GUI-Paritätstest, 2026-10-05). Ursache: Der atexit-Pfad
+  `backend/core/memmap_pool.py::MemmapPool.close()` nahm ein reguläres
+  `threading.Lock`; am Interpreter-Ende werden Daemon-Threads an beliebiger
+  Stelle beendet — stirbt einer im kritischen Abschnitt, blockiert
+  `with self._lock` für immer.
+- **Fix:** `close()` nutzt ein begrenztes `acquire(timeout=2.0)` und räumt ohne
+  Lock auf, wenn es nicht greift (`_evict_file` ist idempotent, der Exit-Pfad
+  läuft single-threaded).
+- **Beweis:** Verhaltenstest — gehaltenes Lock ⇒ `close()` kehrt nach **2,00 s**
+  zurück (vorher unbegrenzt); zweiter Aufruf idempotent 0,000 s; py_compile +
+  Ruff-kritisch clean.
+- **Offen (bewusst):** permanenter Regressionstest für `MemmapPool.close()` —
+  das Modul hatte noch keine Testdatei, Neuanlage erfordert den Write-Gate-
+  Eintrag.
 
 ## 10.3.3 (2026-10-05)
 
