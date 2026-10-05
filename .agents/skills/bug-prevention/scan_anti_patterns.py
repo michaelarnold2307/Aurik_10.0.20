@@ -113,25 +113,60 @@ def check_filtfilt_without_guard(filepath: str, source: str) -> list[str]:
 # ── P3: stft ohne noverlap-Clamp ──────────────────────────────────────────
 
 
+_P3_GUARD_MARKERS = (
+    "noverlap must be less than nperseg",  # bewusster Retry-Pfad (spectral_subtractor)
+    "if n_fft <= hop",  # expliziter Guard (hybrid_ml_denoiser)
+    "n_fft = hop + 1",
+    "if hop <= 0",
+    "max(1,",
+    "min(n_fft - hop,",
+    "min(nperseg - hop,",
+)
+
+
 def check_stft_without_clamp(filepath: str, source: str) -> list[str]:
-    """Findet `stft(` mit `noverlap=n_fft - hop` ohne min(n_fft-1)-Clamp."""
+    """Findet `stft(...)`-Aufrufe, bei denen `noverlap >= nperseg` eintreten kann.
+
+    Crash-Bedingung bei scipy ist ausschließlich `noverlap >= nperseg`.
+      - `noverlap=<expr>` OHNE Subtraktion (z. B. `noverlap=n_fft`) → Crash möglich.
+      - `noverlap=<a> - <b>`: sicher, sobald `<b> >= 1` feststeht — über ein Literal,
+        `max(1, …)`, einen Guard im Umfeld (`if n_fft <= hop:`, `n_fft = hop + 1`,
+        `if nperseg < …: return`) oder einen bewussten Retry-Pfad
+        („noverlap must be less than nperseg").
+      - `noverlap=<a> - 0` → Crash möglich.
+
+    Belegte Gegenproben (2026-10-05): bandwidth_extension (`nperseg = min(4096, n)`
+    + Early-Return für `nperseg < 256` → `hop = nperseg // 4 >= 64`),
+    hybrid_ml_denoiser (expliziter Guard) und spectral_subtractor (Retry-Pfad) —
+    alle drei waren Fehlalarme der reinen Textsuche nach `noverlap=n_fft - hop`.
+    """
     issues = []
     lines = source.split("\n")
     for i, line in enumerate(lines, 1):
         stripped = line.strip()
         if stripped.startswith("#"):
             continue
-        if "stft(" in stripped and "noverlap=" in stripped:
-            # Prüfe ob ein min(..., nperseg-1) Clamp existiert
-            if "max(0," not in source.split("\n")[max(0, i - 3) : i + 1].__str__():
-                if "min(" not in stripped:
-                    # Dynamic noverlap ohne Clamp
-                    if "noverlap=n_fft - hop" in stripped or "noverlap=nperseg - hop" in stripped:
-                        issues.append(
-                            f"{filepath}:{i}: P3 stft() noverlap ohne min(nperseg-1)-Clamp "
-                            f"(→ noverlap-Crash bei kurzem Audio). "
-                            f"FIX: `_noverlap = min(n_fft - hop, max(0, n_fft - 1))`"
-                        )
+        if "stft(" not in stripped or "noverlap=" not in stripped:
+            continue
+        if "min(" in stripped:  # Inline-Clamp
+            continue
+        match = re.search(r"noverlap\s*=\s*([^,\)]+)", stripped)
+        expr = (match.group(1) if match else "").replace(" ", "")
+        subtrahend = expr.rsplit("-", 1)[1] if "-" in expr else None
+        body = "\n".join(lines[max(0, i - 30) : i + 5])
+        guarded = any(marker in body for marker in _P3_GUARD_MARKERS)
+        if subtrahend is None:
+            crash_possible = True  # noverlap = nperseg/n_fft direkt
+        elif subtrahend.isdigit():
+            crash_possible = int(subtrahend) == 0
+        else:
+            crash_possible = not guarded  # ungeprüfte Variable als Subtrahend
+        if crash_possible:
+            issues.append(
+                f"{filepath}:{i}: P3 stft() noverlap kann nperseg erreichen "
+                f"(→ noverlap-Crash bei kurzem Audio). "
+                f"FIX: `_noverlap = min(n_fft - hop, max(0, n_fft - 1))`"
+            )
     return issues
 
 
@@ -246,10 +281,210 @@ def _inside_string(line: str, match: "re.Match[str]") -> bool:
     return _in_str is not None
 
 
+_H03_ANALYSIS_SKIPPED: list[str] = []
+
+
+def _sosfilt_assignment_target(stripped: str) -> str | None:
+    m = re.match(r"\s*([A-Za-z_]\w*)\s*=\s*(?!=)", stripped)
+    return m.group(1) if m else None
+
+
+def _filter_derived_names(source: str) -> set[str]:
+    """Namen, die (auch abgeleitet, 2 Stufen) aus sosfilt/sosfiltfilt stammen.
+
+    Dient der Unterscheidung der beiden normrelevanten Fälle:
+      a) Bandfilter-Ergebnis auf das ORIGINAL addieren → zero-phase-Pflicht
+         (Pre-Ringing/Pegelexplosion, .github/VERBOTEN.md),
+      b) Crossover-Split-Sum: komplementäre Bänder werden untereinander summiert;
+         dort bleibt `sosfilt` zulässig, sofern alle parallelen Bänder denselben
+         Filtertyp nutzen (§v10.1013 / audio_utils.safe_sosfiltfilt).
+    """
+    derived: set[str] = set(re.findall(r"^\s*([A-Za-z_]\w*)\s*=\s*[^\n=]*?sosfilt(?:filt)?\(", source, re.MULTILINE))
+    # Tupel-Unpacking mitnehmen: `audio_mid_proc, _ = wiener_mid.process(audio_mid, sr)`
+    # leitet den Bandnamen weiter — sonst meldet die Regel den Crossover-Split-Sum
+    # in advanced_dereverb als Verstoß (Befund 2026-10-05).
+    derived |= set(
+        re.findall(r"^\s*([A-Za-z_]\w*)\s*,\s*[A-Za-z_]\w*\s*=\s*[^\n=]*?sosfilt(?:filt)?\(", source, re.MULTILINE)
+    )
+    # Nullinitialisierte Akkumulatoren sind kein Dry-Pfad: `result = np.zeros_like(audio)`
+    # und danach `result += band` ist eine Crossover-Rekonstruktion (Befund
+    # 2026-10-05, _declip_core.multiband_ar_declip), keine Interferenz mit dem Original.
+    derived |= set(re.findall(r"^\s*([A-Za-z_]\w*)\s*=\s*np\.(?:zeros|empty)\w*\(", source, re.MULTILINE))
+    if not derived:
+        return derived
+    for _ in range(2):
+        added = False
+        for m in re.finditer(r"^\s*([A-Za-z_]\w*)\s*=\s*(.+)$", source, re.MULTILINE):
+            name, rhs = m.group(1), m.group(2)
+            if name in derived:
+                continue
+            if set(re.findall(r"[A-Za-z_]\w*", rhs)) & derived:
+                derived.add(name)
+                added = True
+        # Tupel-Ziele der zweiten Ableitungsstufe (z. B. `x, _ = f(band_var)`)
+        for m in re.finditer(r"^\s*([A-Za-z_]\w*)\s*,\s*[A-Za-z_]\w*\s*=\s*(.+)$", source, re.MULTILINE):
+            name, rhs = m.group(1), m.group(2)
+            if name in derived:
+                continue
+            if set(re.findall(r"[A-Za-z_]\w*", rhs)) & derived:
+                derived.add(name)
+                added = True
+        if not added:
+            break
+    return derived
+
+
+_MEASUREMENT_HELPERS = frozenset(
+    {"np", "numpy", "math", "min", "max", "abs", "stack", "mean", "sqrt", "log10", "log", "float", "int", "clip"}
+)
+
+
+def _addition_partner(rhs: str, target: str) -> str | None:
+    """Identifier direkt neben dem Ziel-Term in einer Summe (oder None).
+
+    Nur der unmittelbare Additionspartner entscheidet: `low + band` → Partner
+    `low`; `np.stack([a, b])` liefert keinen Partner (Mess-/Styling-Kontext);
+    `x + 1e-10` liefert keinen Partner (Epsilon-Schutz, kein Signal-Add).
+    """
+    terms = re.split(r"(?<![eE])[+\-]", rhs)
+    for idx, term in enumerate(terms):
+        if not re.search(rf"\b{re.escape(target)}\b", term):
+            continue
+        for other in (
+            terms[idx + 1] if idx + 1 < len(terms) else "",
+            terms[idx - 1] if idx > 0 else "",
+        ):
+            ids = [
+                i
+                for i in re.findall(r"[A-Za-z_]\w*", re.sub(r"\d+(?:\.\d+)?(?:[eE][+-]?\d+)?", " ", other))
+                if i not in _MEASUREMENT_HELPERS
+            ]
+            if ids:
+                return ids[0]
+    return None
+
+
+def _sosfilt_used_additively(stripped: str, lines: list[str], lineno: int, derived: set[str]) -> bool:
+    """True, wenn das sosfilt-Ergebnis auf das Original addiert/gemischt wird.
+
+    Norm (.github/VERBOTEN.md, Anti-Pattern-Tabelle): zero-phase ist Pflicht, wo
+    das Bandfilter-Ergebnis auf das Originalsignal addiert wird; `sosfilt` bleibt
+    für Analyse/Sidechain zulässig. Nicht gemeldet werden: Analyse-Envelopes
+    (abs/hilbert/Energie), serielle Filterketten und Crossover-Split-Sums, deren
+    Additionspartner selbst aus demselben Filtertyp stammen (`derived`).
+    """
+    if re.search(r"(\+\s*[\w.]*sosfilt\(|sosfilt\([^)]*\)\s*[+\-])", stripped):
+        return True
+    target = _sosfilt_assignment_target(stripped)
+    if not target:
+        return False
+    names = rf"{re.escape(target)}\w*"
+    add_rx = re.compile(rf"(\+\s*{names}\b|\b{names}\b\s*\+|\b{names}\b\s*\+=|\+=.*\b{names}\b)")
+    mix_rx = re.compile(r"\b(mix|blend|crossfade|wet)\w*\b", re.IGNORECASE)
+    for candidate in lines[lineno : lineno + 30]:
+        match = add_rx.search(candidate)
+        if match:
+            variant = re.search(rf"\b({re.escape(target)}\w*)", match.group(0))
+            name = variant.group(1) if variant else target
+            rhs = candidate.split("=", 1)[-1]
+            partner = _addition_partner(rhs, name)
+            if partner is None and "+=" in candidate:
+                lhs = candidate.split("+=", 1)[0]
+                lhs_ids = [i for i in re.findall(r"[A-Za-z_]\w*", lhs) if i not in _MEASUREMENT_HELPERS]
+                if lhs_ids:
+                    partner = lhs_ids[-1]
+            if partner is None:
+                continue  # Epsilon-/Messkontext (z. B. `x + 1e-10`, `np.stack([...])`)
+            if partner in derived:
+                continue  # Crossover-Split-Sum (normerlaubt)
+            return True
+        if mix_rx.search(candidate) and re.search(names, candidate) and re.search(r"[+\-*]", candidate):
+            return True
+    return False
+
+
+_H04_TTL_SKIPPED: list[str] = []
+
+_TTL_MARKERS = (
+    "os.remove",
+    "os.unlink",
+    "os.listdir",
+    "os.scandir",
+    "os.path.getmtime",
+    "os.path.getctime",
+    ".glob(",
+    "rmtree",
+    "_cleanup_checkpoint_files",
+    "MAX_CHECKPOINT_AGE",
+    "MAX_FINGERPRINT_AGE",
+)
+
+
+_RESAMPLE_LEN_RX = re.compile(r"(?:\bsignal\.resample|librosa\.resample)\(\s*[^,]+,\s*([^)]+)")
+
+
+def _resample_target_length(stripped: str) -> bool:
+    """True, wenn hier eine freie ZIEL-LÄNGE gesetzt wird — dann ist H05 relevant.
+
+    Zeitachsen-Stabilität (Hörordnung §Zeitachse; Produktionsbefund 2026-08-23
+    „224 s vs 30 s -> FATAL-Trim"):
+      - `resample_poly(x, up, down)` ist ratio-basiert und damit strukturell
+        zeitachsen-treu (Ausgabelänge ≈ len(x)·up/down) -> kein Befund.
+      - `librosa.resample(x, orig_sr=…, target_sr=…)` ist eine Sample-Rate-
+        Konvertierung; die Dauer bleibt erhalten -> kein Befund.
+      - `signal.resample(x, N)` ist nur ungefährlich, wenn `N` aus der
+        Originallänge abgeleitet ist (`len(...)`); ein freier Ziel-Längenwert
+        (z. B. feste 48000 oder ein Fremd-Ausdruck) braucht den Guard.
+    """
+    if "resample_poly(" in stripped:
+        return False
+    if "librosa.resample(" in stripped and ("target_sr" in stripped or "orig_sr" in stripped):
+        return False
+    match = _RESAMPLE_LEN_RX.search(stripped)
+    if not match:
+        return False
+    return "len(" not in match.group(1)
+
+
+def _has_exempt_marker(lines: list[str], lineno: int) -> bool:
+    """True, wenn die Zeile oder die beiden Folgezeilen den Exemptions-Marker tragen.
+
+    `ruff-format` bricht lange Zeilen um; der Marker `# H-SCAN-EXEMPT:` rutscht
+    dadurch auf die Folgezeile (Befund 2026-10-05, multi_track_specialist-Allpass)
+    und die Ausnahme würde unbemerkt wirkungslos.
+    """
+    return any("# H-SCAN-EXEMPT:" in candidate for candidate in lines[lineno - 1 : lineno + 3])
+
+
+def _ttl_lifecycle_context(lines: list[str], lineno: int) -> bool:
+    """True, wenn die Zeile in einem Datei-Lebenszyklus/TTL-Kontext liegt.
+
+    §G5 (copilot-instructions.md) verbietet Wall-Clock in der
+    ENTSCHEIDUNGSLOGIK des Restaurierungs-Audios. TTL-Politik (Prüfpunkt-/Cache-
+    Ablauf) braucht Wall-Clock, weil die verglichenen Zeitstempel persistiert
+    und damit über Prozess-/Boot-Grenzen vergleichbar sein müssen — dieselbe
+    Abgrenzung führt der Code-Weakness-Scanner als `wallclock_ttl_housekeeping`.
+    Ohne diese Abgrenzung widersprechen sich beide Gates (Befund 2026-10-05).
+    """
+    start = 0
+    for idx in range(lineno - 1, -1, -1):
+        if lines[idx].lstrip().startswith("def "):
+            start = idx
+            break
+    end = len(lines)
+    for idx in range(lineno, len(lines)):
+        if lines[idx].startswith("def "):
+            end = idx
+            break
+    block = "\n".join(lines[start:end])
+    return any(marker in block for marker in _TTL_MARKERS)
+
+
 def check_hoerordnung_export_patterns(filepath: str, source: str) -> list[str]:
     """H-Serie: Psychoakustik-/Exportqualitäts-Schwachstellen im Code."""
     issues = []
     lines = source.split("\n")
+    _derived = _filter_derived_names(source)
     _in_docstring = False
     for i, line in enumerate(lines, 1):
         stripped = line.strip()
@@ -290,31 +525,41 @@ def check_hoerordnung_export_patterns(filepath: str, source: str) -> list[str]:
         if (
             re.search(r"\bsosfilt\(", stripped)
             and ("/phases/" in filepath.replace("\\", "/") or "/dsp/" in filepath.replace("\\", "/"))
-            and "# H-SCAN-EXEMPT:" not in stripped
+            and not _has_exempt_marker(lines, i)
         ):
-            issues.append(
-                f"{filepath}:{i}: H03 sosfilt() statt sosfiltfilt() "
-                f"(→ Phase addiert zu Original, Zero-Phase-Verstoß). "
-                f"FIX: sosfiltfilt(sos, audio)"
-            )
+            if _sosfilt_used_additively(stripped, lines, i, _derived):
+                issues.append(
+                    f"{filepath}:{i}: H03 sosfilt() statt sosfiltfilt() "
+                    f"(→ Phase addiert zu Original, Zero-Phase-Verstoß). "
+                    f"FIX: sosfiltfilt(sos, audio)"
+                )
+            else:
+                _H03_ANALYSIS_SKIPPED.append(f"{filepath}:{i}")
 
         # H04: time.time() IN Entscheidungslogik (if/compare) — §G5 (copilot-instructions.md) Determinismus.
-        # Reines Profiling (Zuweisung/Subtraktion) ist zulässig und wird nicht gemeldet.
+        # Reines Profiling (Zuweisung/Subtraktion) ist zulässig, ebenso TTL-/
+        # Datei-Lebenszyklus-Entscheidungen (persistierte Zeitstempel brauchen
+        # Wall-Clock) — letztere werden transparent mitgezählt.
         if re.search(r"\btime\.time\(\)", stripped) and re.search(
             r"\bif\b.*time\.time\(\)|time\.time\(\).*(?:<|>|==|!=|<=|>=)", stripped
         ):
-            issues.append(
-                f"{filepath}:{i}: H04 time.time() in Entscheidungslogik "
-                f"(→ nicht-deterministisch, §G5 (copilot-instructions.md)). "
-                f"FIX: Session-Seed / monotonic statt wall-clock"
-            )
+            if _ttl_lifecycle_context(lines, i):
+                _H04_TTL_SKIPPED.append(f"{filepath}:{i}")
+            else:
+                issues.append(
+                    f"{filepath}:{i}: H04 time.time() in Entscheidungslogik "
+                    f"(→ nicht-deterministisch, §G5 (copilot-instructions.md)). "
+                    f"FIX: Session-Seed / monotonic statt wall-clock"
+                )
 
         # H05: resample() ohne Längen-Guard im Master-Audio-Pfad (Zeitachsen-
         # Zerstörung — Befund 2026-08-23: 224s vs 30s → FATAL-Trim; Hörordnung:
         # Sample-Exaktheit der Zeitachse). Nur Phasen/DSP — SR-Konvertierung an
         # zentralen, bewusst guardierten Stellen ist ausgenommen.
-        if re.search(r"\b(librosa\.resample|signal\.resample|resample_poly)\(", stripped) and (
-            "/phases/" in filepath.replace("\\", "/") or "/dsp/" in filepath.replace("\\", "/")
+        if (
+            re.search(r"\b(librosa\.resample|signal\.resample|resample_poly)\(", stripped)
+            and _resample_target_length(stripped)
+            and ("/phases/" in filepath.replace("\\", "/") or "/dsp/" in filepath.replace("\\", "/"))
         ):
             if not re.search(
                 r"_len_diff|shape\[[^]]*\].*==|Längen|laenge|len_mismatch|abs\(len\(",
@@ -341,7 +586,19 @@ def check_hoerordnung_export_patterns(filepath: str, source: str) -> list[str]:
         # H07: Silent-Except mit neutralem Return ohne logger — §V6 (copilot-instructions.md) Silent-Failure-Verbot
         if re.search(r"except\s+Exception", stripped) or stripped == "except Exception:":
             _window = "\n".join(_ln for _ln in lines[i : min(i + 3, len(lines))] if not _ln.strip().startswith("#"))
-            if re.search(r"return\s+[01]\.\d*", _window) and not re.search(r"logger\.|log\.warning", _window):
+            # Lokale Log-Wrapper erfüllen §V6 (copilot-instructions.md) semantisch:
+            # shellac_mono_strategy._audit_log routet 'error' → logger.error. Die reine
+            # Textsuche nach `logger.` sah das nicht (Produktionsbefund 2026-10-05, H07-Fehlalarm).
+            _wrapper_names = {
+                _m.group(1)
+                for _m in re.finditer(r"(?m)^def\s+([A-Za-z_]\w*)\s*\(", source)
+                if re.search(r"logger\.(?:warning|error|critical)", source[_m.end() : _m.end() + 600])
+            }
+            if (
+                re.search(r"return\s+[01]\.\d*", _window)
+                and not re.search(r"logger\.|log\.warning", _window)
+                and not any(f"{_name}(" in _window for _name in _wrapper_names)
+            ):
                 issues.append(
                     f"{filepath}:{i}: H07 Silent-Except → neutraler Return ohne logger.warning "
                     f"(→ ML→DSP-Fallback unsichtbar, §V6 (copilot-instructions.md))"
@@ -387,6 +644,7 @@ def _write_hoerordnung_todo(all_issues: list[str], todo_path: str) -> None:
             _old = f.read()
         _done = set(_re.findall(r"^- \[x\] (H0[1-7]-[0-9a-f]{6}) ", _old, _re.MULTILINE))
     except (OSError, UnicodeDecodeError):
+        # Expected: erste Ausführung oder Datei unlesbar → frische To-do-Liste.
         pass
 
     # Gruppieren nach ID-Präfix + Datei (stabile ID pro Fundstelle)
@@ -563,6 +821,20 @@ def main() -> int:
             len(all_issues),
             files_scanned,
         )
+        _by_class: dict[str, int] = {}
+        for issue in all_issues:
+            _m = re.search(r"\b(H\d{2})\b", issue)
+            if _m:
+                _by_class[_m.group(1)] = _by_class.get(_m.group(1), 0) + 1
+        _skip = f" | H03-Analyse-Skip={len(_H03_ANALYSIS_SKIPPED)}" if _H03_ANALYSIS_SKIPPED else ""
+        _skip += f" | H04-TTL-Skip={len(_H04_TTL_SKIPPED)}" if _H04_TTL_SKIPPED else ""
+        logger.warning(
+            "§V01 Klassen: %s%s",
+            ", ".join(f"{k}={v}" for k, v in sorted(_by_class.items())) or "—",
+            _skip,
+        )
+        _H03_ANALYSIS_SKIPPED.clear()
+        _H04_TTL_SKIPPED.clear()
         for issue in sorted(all_issues):
             logger.info("  %s", issue)
 

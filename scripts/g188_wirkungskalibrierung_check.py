@@ -143,6 +143,7 @@ def scan_file(path: Path) -> list[str]:
         if "tests" in path.resolve().relative_to(ROOT).parts:
             return []
     except (OSError, ValueError):
+        # Expected: Pfad außerhalb ROOT oder nicht auflösbar → nicht Teil der Gate-Menge.
         pass
     try:
         source = path.read_text(encoding="utf-8")

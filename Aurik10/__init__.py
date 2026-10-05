@@ -3,7 +3,11 @@ Aurik 10 — Weltklasse-Audio-Restaurierung
 Weltweit führendes kognitiv-perceptuelles Audio-Restaurierungssystem mit chirurgischer Präzision.
 """
 
-_FALLBACK_VERSION = "10.2.1"  # Letzter bekannter Stand; §v10.802: die Bridge ist die Quelle
+# Fallback nur für den Fall, dass die Bridge nicht importierbar ist (§V4 (copilot-instructions.md)).
+# §v10.802: keine zweite driftende Nummer — Gleichlauf mit backend/core/version.py
+# wird von scripts/version_guard.py (Warnung) und
+# tests/unit/test_version_checker_and_ux.py (fail-closed) erzwungen.
+_FALLBACK_VERSION = "10.3.2"
 
 try:
     # §V4 (copilot-instructions.md) + §v10.802 GUI-Sync: Version ausschließlich über

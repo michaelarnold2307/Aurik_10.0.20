@@ -640,12 +640,7 @@ class SpectralRepair(PhaseInterface):
         material_type: str = "unknown",
         **kwargs: Any,
     ) -> PhaseResult:
-        check_ml_model_ready("FlashSR", phase_name="23")
-        check_ml_model_ready("PANNs", phase_name="23")
-        check_ml_model_ready("Whisper", phase_name="23")
-        check_ml_model_ready("FlashSR", phase_name="23")
-        """
-        Wendet an: spectral repair to audio.
+        """Wendet an: spectral repair to audio.
 
         Args:
             audio: Input audio (mono or stereo)
@@ -655,6 +650,7 @@ class SpectralRepair(PhaseInterface):
         Returns:
             PhaseResult with repaired audio
         """
+        check_ml_model_ready("FlashSR", phase_name="23")
         material = kwargs.pop("material", material_type)
         # ── §v10 PIM: Per-Band-Intensität kalibrieren ──
         try:

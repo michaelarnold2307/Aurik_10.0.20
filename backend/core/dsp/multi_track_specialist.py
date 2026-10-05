@@ -369,7 +369,12 @@ class PhaseAligner:
                     a = -a
                 # SOS-Form: b = [a, -1, 0], a_coeff = [1, -a, 0]
                 sos = np.array([[a, -1.0, 0.0, 1.0, -a, 0.0]])
-                corrected = sosfilt(sos, audio.astype(np.float64)).astype(audio.dtype)
+                # Allpass (Phasenkorrektur): hier ist die Phase die Wirkung; zero-phase
+                # würde den Allpass doppelt anwenden und die Korrektur zerstören — kein
+                # Bandfilter-Add im Sinne von .github/VERBOTEN.md.
+                corrected = sosfilt(sos, audio.astype(np.float64)).astype(
+                    audio.dtype
+                )  # H-SCAN-EXEMPT: Allpass (Phasenkorrektur)
                 # Dry/Wet-Mix mit correction_strength
                 mix = float(getattr(self, "correction_strength", 1.0))
                 return (corrected * mix + audio * (1.0 - mix)).astype(audio.dtype)  # type: ignore[no-any-return]

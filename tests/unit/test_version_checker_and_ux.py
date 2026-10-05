@@ -63,6 +63,29 @@ def test_default_current_version_uses_package_version():
     assert __version__ == _CURRENT_VERSION
 
 
+def test_frontend_fallback_version_matches_single_source():
+    """§v10.802: Der GUI-Fallback darf nicht driften (Quelle = backend/core/version.py).
+
+    Regression 2026-10-05: `_FALLBACK_VERSION` stand auf 10.2.1, während die
+    Produktversion bereits 10.3.1 war — bei fehlgeschlagenem Bridge-Import hätte
+    die GUI eine falsche Version angezeigt (§v10.802 GUI-Sync-Pflicht).
+    """
+    from pathlib import Path
+
+    root = Path(__file__).resolve().parents[2]
+    version_text = (root / "backend" / "core" / "version.py").read_text(encoding="utf-8")
+    current = next(
+        line.split("=", 1)[1].strip().strip('"') for line in version_text.splitlines() if line.startswith("__version__")
+    )
+    init_text = (root / "Aurik10" / "__init__.py").read_text(encoding="utf-8")
+    fallback = next(
+        line.split("=", 1)[1].split("#", 1)[0].strip().strip('"')
+        for line in init_text.splitlines()
+        if line.startswith("_FALLBACK_VERSION")
+    )
+    assert fallback == current, f"GUI-Fallback {fallback} ≠ version.py {current} (Drift)"
+
+
 def test_result_available():
     r = VersionCheckResult(available=True, latest_version="9.11.0", download_url="https://example.com/dl")
     assert r.available is True

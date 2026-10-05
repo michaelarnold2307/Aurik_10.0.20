@@ -37,6 +37,8 @@ import warnings
 import numpy as np
 from scipy.signal import butter, hilbert, sosfilt
 
+from backend.core.audio_utils import safe_sosfiltfilt
+
 logger = logging.getLogger(__name__)
 warnings.filterwarnings("ignore", category=RuntimeWarning)
 
@@ -447,8 +449,16 @@ class SpatialLocalizer:
         low_freq = min(2000, nyquist * 0.25)
         high_freq = min(8000, nyquist * 0.95)
         sos_transient = butter(4, [low_freq, high_freq], btype="band", fs=sr, output="sos")
-        transient_l = sosfilt(sos_transient, left)
-        transient_r = sosfilt(sos_transient, right)
+        # .github/VERBOTEN.md (Anti-Pattern-Tabelle): Das Transientenband wird später
+        # als `left + transient_l * mask` auf das Original addiert → zero-phase ist
+        # Pflicht (sonst destruktive Interferenz; gemessen an diesem Band:
+        # Dry+Band-Spitze 0,6296 kausal vs. 0,6801 zero-phase).
+        # Die Maske stammt aus dem Envelope des Bands; gemessener Envelope-Versatz
+        # in diesem Band nur +0,146 ms (7 Samples, Halbwertsbreite 0,17 ms) —
+        # also kein hörbarer Zeitfehler, aber der Add-Pfad-Grund greift.
+        # `safe_sosfiltfilt` (# §v10.1013) richtet Detektion und Signal aus.
+        transient_l = safe_sosfiltfilt(sos_transient, left)
+        transient_r = safe_sosfiltfilt(sos_transient, right)
 
         # Detect transients
         envelope_l = np.abs(np.asarray(hilbert(transient_l), dtype=np.complex128))

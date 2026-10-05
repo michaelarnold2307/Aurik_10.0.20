@@ -22,6 +22,8 @@ from typing import Any
 import numpy as np
 from scipy.signal import butter, iirnotch, sosfilt
 
+from backend.core.audio_utils import safe_sosfiltfilt
+
 logger = logging.getLogger(__name__)
 
 
@@ -167,7 +169,12 @@ class DialogIntelligibilityEnhancer:
 
         # Bandpass filter (4th order Butterworth)
         sos = butter(4, [low, high], btype="band", output="sos")
-        band_signal = sosfilt(sos, signal)
+        # .github/VERBOTEN.md (Anti-Pattern-Tabelle): Das gefilterte Band wird direkt
+        # auf das Original addiert (`result = signal + band_signal_gained`) → zero-phase
+        # ist Pflicht; ein Gruppen-Zeitversatz zwischen Original und verstärktem Band
+        # kostet genau die Kohärenz, von der die Verständlichkeit lebt (Kammfilter im
+        # Sprachband). Kanonischer Helfer `safe_sosfiltfilt` (# §v10.1013).
+        band_signal = safe_sosfiltfilt(sos, signal)
 
         # Apply gain
         gain_linear = 10 ** (gain_db / 20.0)

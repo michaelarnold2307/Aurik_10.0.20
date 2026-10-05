@@ -37,6 +37,8 @@ import warnings
 import numpy as np
 from scipy.signal import butter, sosfilt
 
+from backend.core.audio_utils import safe_sosfiltfilt
+
 warnings.filterwarnings("ignore", category=RuntimeWarning)
 
 _logger = logging.getLogger(__name__)
@@ -116,7 +118,12 @@ class SubBassEnhancer:
         """Verarbeitet einen einzelnen Kanal."""
         # Extract sub-bass band (20-60 Hz)
         sos_sub = butter(4, [20, 60], btype="band", fs=sr, output="sos")
-        sub_bass = sosfilt(sos_sub, audio)
+        # .github/VERBOTEN.md (Anti-Pattern-Tabelle): Bandfilter-Ergebnis, das auf das
+        # Originalsignal addiert/gemischt wird, MUSS zero-phase laufen — sonst ergibt der
+        # Gruppen-Zeitversatz destruktive Interferenz im Übergangsbereich (Pegelexplosion).
+        # `safe_sosfiltfilt` (# §v10.1013) ist depth-adaptiv: zero-phase, außer bei stark
+        # degradiertem HF-Material, wo der Rückwärts-Durchlauf Pre-Ringing erzeugte.
+        sub_bass = safe_sosfiltfilt(sos_sub, audio)
 
         # Measure original energy
         original_energy = np.sqrt(np.mean(sub_bass**2))
@@ -408,7 +415,11 @@ class BassHarmonicsEnhancer:
         """Verarbeitet einen einzelnen Kanal."""
         # Extract harmonics band (250-500 Hz)
         sos_harm = butter(4, [250, 500], btype="band", fs=sr, output="sos")
-        harmonics = sosfilt(sos_harm, audio)
+        # .github/VERBOTEN.md (Anti-Pattern-Tabelle): Das Band wird später auf das
+        # Original addiert (harmonics_enhanced) → zero-phase Pflicht, sonst
+        # Gruppen-Zeitversatz/destruktive Interferenz. Kanonischer Helfer
+        # `safe_sosfiltfilt` (# §v10.1013) statt rohem sosfilt.
+        harmonics = safe_sosfiltfilt(sos_harm, audio)
 
         # Measure original energy
         original_energy = np.sqrt(np.mean(harmonics**2))

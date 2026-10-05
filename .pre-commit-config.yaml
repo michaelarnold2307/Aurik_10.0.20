@@ -494,9 +494,14 @@ repos:
         always_run: true
 
       # Unit-Smoke nach Spec §10.2: schnell, low-overhead, kein E2E/ML-Gate im Commit-Pfad.
+      # AURIK_FORCE_CPU=1: Der Commit-Pfad muss deterministisch und lastunabhängig sein —
+      # ein echter ROCm/MIOpen-Session-Aufbau hing an der GPU-Last (parallel laufendes
+      # Training bzw. Akzeptanz-Messung) und lief in den 20-s-pytest-Timeout
+      # (Produktionsbefund 2026-10-05). GPU-Pfad-Abdeckung bleibt in den dedizierten
+      # Gates (test_gpu_determinism_gate u. a.), nicht im Smoke (Spec 07, TEST-DESIGN).
       - id: aurik-unit-smoke
         name: "Aurik Unit-Smoke (tests/unit, maxfail=3)"
-        entry: bash -c 'AURIK_MEM_GB=12 AURIK_SWAP_MB=2048 AURIK_BATCH_FILES=12 AURIK_CHUNK_LIMIT=1 "${PWD}/run_tests_chunked_safe.sh" tests/unit --timeout=20 --tb=line -qq -o console_output_style=count --maxfail=3 -x'
+        entry: bash -c 'AURIK_FORCE_CPU=1 AURIK_MEM_GB=12 AURIK_SWAP_MB=2048 AURIK_BATCH_FILES=12 AURIK_CHUNK_LIMIT=1 "${PWD}/run_tests_chunked_safe.sh" tests/unit --timeout=20 --tb=line -qq -o console_output_style=count --maxfail=3 -x'
         language: system
         pass_filenames: false
         files: ^(backend|plugins|denker|Aurik10|cli|tests/unit)/.*\.py$

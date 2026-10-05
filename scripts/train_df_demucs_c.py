@@ -121,6 +121,7 @@ class DemucsEnhancedDataset(Dataset):
                         if self.files[orig_idx].stem == stem:
                             self.enhanced_map[self.files[orig_idx]] = f
                 except ValueError:
+                    # Expected: idx ist kein Integer (Fremd-Dateiname) → Datei bleibt ungemappt.
                     pass
 
     def __len__(self):

@@ -136,7 +136,13 @@ def _legacy_measure_phase_quality_delta(
         )
         delta = float(np.clip(direction * change, -1.0, 1.0))
         return max(delta, 0.0) if is_repair else delta
-    except Exception:
+    except Exception as exc:  # §V6 (copilot-instructions.md): Ersatzpfad mit Warnung + Begründung
+        logger.warning(
+            "%s: Legacy-Zielfunktion nicht messbar (%s: %s) → Δ=0.0 (A_alt bleibt konservativ)",
+            __name__,
+            type(exc).__name__,
+            exc,
+        )
         return 0.0
 
 

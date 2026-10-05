@@ -1,4 +1,52 @@
-# Changelog — Aurik 10.3.1
+# Changelog — Aurik 10.3.2
+
+## 10.3.2 (2026-10-05)
+
+### 🐛 GUI-Versions-Konsistenz (§v10.802)
+
+- `Aurik10/__init__.py` trug mit `_FALLBACK_VERSION = "10.2.1"` eine zweite,
+  still veraltete Versionsnummer (Produkt war bereits 10.3.1): Bei
+  fehlgeschlagenem Bridge-Import hätte die GUI eine falsche Version angezeigt.
+  Der Fallback steht jetzt auf dem Stand der Single Source of Truth.
+- `scripts/version_guard.py` prüft den Gleichlauf `_FALLBACK_VERSION` ↔
+  `backend/core/version.py` und warnt bei Drift (§v10.802 GUI-Sync-Pflicht).
+- `tests/unit/test_version_checker_and_ux.py` erzwingt den Gleichlauf
+  fail-closed, damit die Nummer nicht erneut unbemerkt driftet.
+
+### 🎚️ Zero-Phase im Sub-Bass-Add-Pfad + H03-Detektor spec-scharf
+
+- **H03-Detektor präzisiert** (`.agents/skills/bug-prevention/scan_anti_patterns.py`):
+  Die Regel meldete jedes `sosfilt(` in `phases/` und `dsp/`. Die Norm
+  (`.github/VERBOTEN.md`, Anti-Pattern-Tabelle) verlangt zero-phase aber nur, „wo
+  Bandfilter-Ergebnis auf Originalsignal addiert wird; `sosfilt` nur für
+  Analyse/Sidechain“. Der Detektor prüft jetzt genau diese Bedingung (Addition/Mix
+  im 30-Zeilen-Fenster); Analyse-Envelopes und serielle Filterketten werden
+  transparent als `H03-Analyse-Skip` gezählt statt als Bug gemeldet. Wirkung:
+  222 → 44 Findings (`H03=9, H04=2, H05=15, H07=3 | H03-Analyse-Skip=177`) —
+  erstmals actionierbar. Zusätzlich zeigt der Lauf eine Klassen-Zusammenfassung
+  auf WARNING-Ebene (die Detailzeilen waren vorher unsichtbar).
+- **Zweite Präzisierungsstufe** (Falsifikation an `piano_restoration.py`): Die Norm
+  unterscheidet Dry+Band-Add (zero-phase-Pflicht) von **Crossover-Split-Sum**
+  (komplementäre Bänder untereinander, erlaubt bei gleichem Filtertyp — so auch
+  §v10.1013). Der Detektor prüft das jetzt über die filter-abgeleiteten Namen
+  (`_filter_derived_names`, 2 Ableitungsstufen, O(Zeilen)). Ergebnis der
+  Stichprobe: `bass_enhancement:119` und `piano_restoration:147` korrekt
+  eingeordnet; die 16 `piano_restoration`-Meldungen waren maskenbasierte
+  Band-Reduktion plus Crossover — normkonform, keine Verstöße.
+- **Dritte Stufe (Partnerprüfung):** Nur der unmittelbare Additionspartner
+  entscheidet; Epsilon-/Messkontext (`+ 1e-10`) und `np.stack`-Container liefern
+  keinen Partner → 70→44. Diese Stufe hatte zwischenzeitlich **echte** Verstöße
+  verschluckt (`bass_enhancement:418`), weil sie gegen den exakten Zielnamen statt
+  gegen die gematchte Variable (`harmonics_enhanced`) verglich — behoben und per
+  Testgegenprobe abgesichert.
+- **Erste belegte H03-Behebung** (`backend/core/dsp/bass_enhancement.py`): Der
+  Sub-Bass-Bandpfad (20–60 Hz) läuft jetzt über den kanonischen, depth-adaptiven
+  `safe_sosfiltfilt` statt über rohes `sosfilt`. Messung (48 kHz, 4. Ordnung):
+  kausaler Filter verschiebt das Band um **+25,90 ms** (Envelope-Asymmetrie 1,000),
+  zero-phase **0,00 ms** (0,003) — beim Add-back genau die im Antipattern
+  dokumentierte destruktive Interferenz. Bandenergie praktisch unverändert
+  (RMS 0,20985 vs. 0,20967), Summensignal ohne Auslöschung (RMS 0,351 → 0,427),
+  4 Modultests grün.
 
 ## 10.3.1 (2026-10-05)
 

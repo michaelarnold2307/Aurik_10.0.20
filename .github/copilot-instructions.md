@@ -281,6 +281,16 @@ auf ONNX-CPU, §V6): BANQUET-Vinyl (~160 ms je 1-s-Fenster, 11,8×/19,5×),
 Whisper-Tiny-Encoder+Decoder (~6,9 ms je 30-s-Fenster), FCPE (~1,6 ms je
 10-s-Mel), MuQ-MuLan (~29 ms je 10-s-Embedding), BS-RoFormer-317 (~46×).
 Jeder Wechsel des GPU-Backends erfordert den Paritäts-Nachweis nach §III.9.
+**ONNX-EP-Probe (normativ, Stand 2026-10-05):** Die ROCm-/MIGraphX-Probe läuft
+**crash-isoliert in einem eigenen Interpreter** — native MIOpen-/HIP-Aborts
+(z. B. `Hip error: 'out of memory'`, SIGSEGV) killen sonst den Host-Prozess
+(Produktionsbefund: Unit-Smoke Exit 139 in `InferenceSession.__init__`).
+Ein Nicht-CPU-EP wird nur mit bestandenem Paritätsnachweis gegen ONNX-CPU
+(rel ≤ 1e-3 auf strukturiertem Feed) akzeptiert; MIGraphX zusätzlich nur mit
+eigener Parität. Jeder Ersatzpfad wird mit `logger.warning` + Begründung
+protokolliert (§V6), und das Probe-Ergebnis wird per Datei-IPC übergeben
+(kein `print`/stdout — R01; ORT-eigener stdout-Lärm darf das Ergebnis nicht
+verfälschen).
 **Whisper-Turbo (Opt-in, §SOTA-ML-V10):** AURIK_WHISPER_TURBO=1 aktiviert
 whisper-large-v3-turbo (fp16, 128 Mel-Bins) für bessere Wortgrenzen der
 gesangsgeführten Bearbeitung. Gemessener fp16-Präzisionsboden des Modells

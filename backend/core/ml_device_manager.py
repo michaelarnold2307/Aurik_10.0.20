@@ -833,6 +833,70 @@ class MLDeviceManager:
         except Exception as exc:
             logger.debug("MLDeviceManager: MIGraphX bridge detection error: %s", exc)
 
+    @staticmethod
+    def _onnx_rocm_probe_child(model_hex: str, out_path: str) -> int:
+        """Kindprozess der ROCm-ONNX-Probe: EP-Session + §III.9-Paritätsvergleich.
+
+        Läuft bewusst in einem eigenen Interpreter (``subprocess``): ein defekter
+        MIOpen/ROCm-Workspace oder ein Arch-Mismatch (gfx1103: hipErrorInvalidDeviceFunction)
+        beendet den Prozess **nativ** — SIGSEGV/abort lässt sich in-process nicht fangen
+        und würde GUI, CLI und Testläufe mit abräumen (Produktionsbefund 2026-10-05:
+        Unit-Smoke Exit 139 in ``InferenceSession.__init__``).
+
+        Ausgabe: JSON-Datei unter ``out_path`` — kein ``print`` (R01) und kein
+        stdout-Kanal, den der ORT-eigene Lärm verfälschen könnte.
+        """
+        import json as _json
+
+        import numpy as np
+        import onnxruntime as ort  # type: ignore[import]
+
+        _model_bytes = bytes.fromhex(model_hex)
+        # Strukturierter Feed deckt beide Relu-Zweige ab (negativ exakt 0, positiv linear).
+        # Das Probe-Graph deklariert float[1] → je Wert ein Lauf mit Rank 1.
+        _feed_values = (-2.5, -0.5, 0.0, 0.5, 2.5, 7.25)
+        _parity_limit = 1e-3  # §III.9 (copilot-instructions.md): rel ≤ 1e-3
+        _result: dict[str, Any] = {
+            "rocm_active": False,
+            "parity_max_rel": None,
+            "migraphx": False,
+            "migraphx_parity_max_rel": None,
+            "error": None,
+        }
+
+        def _session(providers: list[str]):
+            _opts = ort.SessionOptions()
+            _opts.log_severity_level = 4  # silent
+            return ort.InferenceSession(_model_bytes, sess_opts=_opts, providers=providers)
+
+        def _run_all(sess) -> np.ndarray:
+            """Ein Lauf je Feed-Wert (Rank 1) → strukturierte Ausgangsreihe."""
+            # no-any-return: die numpy-Stubs führen np.asarray auf Any zurück; der Wert
+            # ist zur Laufzeit garantiert ein float64-ndarray (dtype erzwungen).
+            return np.asarray(  # type: ignore[no-any-return]
+                [float(sess.run(None, {"x": np.array([_v], dtype=np.float32)})[0][0]) for _v in _feed_values],
+                dtype=np.float64,
+            )
+
+        try:
+            _ref = _run_all(_session(["CPUExecutionProvider"]))
+            _gpu = _session(["ROCMExecutionProvider", "CPUExecutionProvider"])
+            _out = _run_all(_gpu)
+            _result["rocm_active"] = "ROCMExecutionProvider" in _gpu.get_providers()
+            _denom = np.maximum(np.abs(_ref), 1e-6)
+            _result["parity_max_rel"] = float(np.max(np.abs(_out - _ref) / _denom))
+
+            if "MIGraphXExecutionProvider" in ort.get_available_providers():
+                _mig = _session(["MIGraphXExecutionProvider", "ROCMExecutionProvider", "CPUExecutionProvider"])
+                _m_rel = float(np.max(np.abs(_run_all(_mig) - _ref) / _denom))
+                _result["migraphx_parity_max_rel"] = _m_rel
+                _result["migraphx"] = "MIGraphXExecutionProvider" in _mig.get_providers() and _m_rel <= _parity_limit
+        except Exception as exc:
+            _result["error"] = f"{type(exc).__name__}: {exc}"
+        with open(out_path, "w", encoding="utf-8") as _fh:
+            _fh.write(_json.dumps(_result))
+        return 0
+
     def _probe_rocm_onnx_pad(self) -> None:
         """Probe ROCm ONNX Runtime with a minimal GPU-compute op.
 
@@ -845,10 +909,18 @@ class MLDeviceManager:
 
         The probe model is a minimal Relu(float[1]) graph serialised as raw protobuf
         bytes to avoid any dependency on the ``onnx`` package.
+
+        Seit 2026-10-05 läuft die Session-Erzeugung **crash-isoliert** in einem
+        eigenen Interpreter (``_onnx_rocm_probe_child``): native ROCm/MIOpen-Aborts
+        (SIGSEGV) beenden nur den Kindprozess, der Host fällt auf CPU zurück.
+        Akzeptiert wird ROCm nur mit bestandener §III.9-Parität gegen ONNX-CPU
+        (rel ≤ 1e-3); MIGraphX wird nur dann prependiert, wenn es dieselbe Parität
+        erreicht — sonst bleibt ROCM primär bzw. der CPU-Pfad aktiv.
         """
         try:
-            import numpy as np
-            import onnxruntime as ort  # type: ignore[import]
+            import json as _json
+            import subprocess as _subprocess
+            from pathlib import Path as _Path
 
             # Minimal ONNX model: x (float[1]) → Relu → y (float[1])
             # Opset 7, IR version 7 — hand-computed protobuf bytes (no onnx dep).
@@ -874,45 +946,89 @@ class MLDeviceManager:
                 b"\x12\x0a\x0a\x08\x08\x01\x12\x04\x0a\x02\x08\x01"  # dtype: float[1]
             )
 
-            sess_opts = ort.SessionOptions()
-            sess_opts.log_severity_level = 4  # silent
-            sess = ort.InferenceSession(
-                _MODEL_BYTES,
-                sess_opts=sess_opts,
-                providers=["ROCMExecutionProvider", "CPUExecutionProvider"],
-            )
-            inp = np.zeros((1,), dtype=np.float32)
-            sess.run(None, {"x": inp})
-            # Verify ROCMExecutionProvider was actually activated (not silent CPU fallback)
-            active = sess.get_providers()
-            if "ROCMExecutionProvider" not in active:
-                logger.info(
-                    "MLDeviceManager: ROCm ONNX Probe — Provider silently fell back to CPU "
-                    "(ROCm libs nicht verfuegbar or not in LD_LIBRARY_PATH) → ORT CPU-only"
+            # §III.9/§V6 (copilot-instructions.md): Session-Erzeugung NUR im Kindprozess —
+            # ein nativer EP-Crash darf den Host-Prozess nicht beenden.
+            _repo_root = str(_Path(__file__).resolve().parents[2])
+            _env = dict(os.environ)
+            _env["PYTHONPATH"] = _repo_root + os.pathsep + _env.get("PYTHONPATH", "")
+            import tempfile as _tempfile
+
+            _fd, _out_path = _tempfile.mkstemp(prefix="aurik_rocm_probe_", suffix=".json")
+            os.close(_fd)
+            try:
+                _proc = _subprocess.run(
+                    [
+                        sys.executable,
+                        "-c",
+                        "import sys; from backend.core.ml_device_manager import MLDeviceManager as M;"
+                        " raise SystemExit(M._onnx_rocm_probe_child(sys.argv[1], sys.argv[2]))",
+                        _MODEL_BYTES.hex(),
+                        _out_path,
+                    ],
+                    cwd=_repo_root,
+                    env=_env,
+                    capture_output=True,
+                    text=True,
+                    timeout=60.0,  # §0d (copilot-instructions.md) Wall-Time: Probe ist Startup-kritisch
+                    check=False,
                 )
+                try:
+                    _payload = _json.loads(_Path(_out_path).read_text(encoding="utf-8"))
+                except (OSError, ValueError):
+                    _payload = None
+            finally:
+                try:
+                    os.unlink(_out_path)
+                except OSError:
+                    # Expected: IPC-Tempdatei-Aufräumen ist best effort, kein Fehlerpfad.
+                    pass
+
+            def _cpu_fallback(reason: str) -> None:
+                """§V6 (copilot-instructions.md): CPU-Ersatzpfad immer mit Warnung + Begründung."""
+                logger.warning("MLDeviceManager: ROCm ONNX Probe → ORT CPU-only: %s", reason)
                 with self._lock:
                     self._ort_gpu_providers = ["CPUExecutionProvider"]
                     self._gpu_disabled_plugins.update(_HEAVY_ML_PLUGINS)
                     self._ort_gpu_compatible_plugins.clear()
-            else:
-                logger.info("MLDeviceManager: ROCm ONNX Probe OK — ROCMExecutionProvider aktiv")
-                # Opportunistic MIGraphX upgrade: if MIGraphXExecutionProvider is
-                # available, prepend it as highest-priority provider. ORT will use it
-                # for ops it supports and fall back to ROCMExecutionProvider otherwise.
-                # MIGraphX is AMD's graph-compiler backend — measurably faster than
-                # ROCMExecutionProvider on RDNA2/3 for many inference graphs.
-                _avail = ort.get_available_providers()
-                if "MIGraphXExecutionProvider" in _avail:
-                    with self._lock:
-                        self._ort_gpu_providers = [
-                            "MIGraphXExecutionProvider",
-                            "ROCMExecutionProvider",
-                            "CPUExecutionProvider",
-                        ]
-                    logger.info(
-                        "MLDeviceManager: MIGraphXExecutionProvider verfügbar — "
-                        "als primärer ORT-Provider eingetragen (ROCM als Ersatzpfad)"
-                    )
+
+            if _proc.returncode != 0 or _payload is None:
+                _cpu_fallback(
+                    f"isolerter Kindprozess beendet (rc={_proc.returncode}, kein JSON-Ergebnis) — "
+                    "nativer EP-Crash/Timeout abgefangen"
+                )
+                return
+            if _payload.get("error"):
+                _cpu_fallback(f"Kindprozess meldet Fehler: {_payload['error']}")
+                return
+            if not _payload.get("rocm_active"):
+                _cpu_fallback(
+                    "Provider ist still auf CPU zurückgefallen "
+                    "(ROCm-Libs nicht verfuegbar oder nicht in LD_LIBRARY_PATH)"
+                )
+                return
+
+            _rel = _payload.get("parity_max_rel")
+            if _rel is None or float(_rel) > 1e-3:
+                _cpu_fallback(f"§III.9-Parität gegen ONNX-CPU verletzt (max rel={_rel}, Grenze 1e-3)")
+                return
+
+            logger.info(
+                "MLDeviceManager: ROCm ONNX Probe OK — ROCMExecutionProvider aktiv, Parität max rel=%.2e (§III.9)",
+                float(_rel),
+            )
+            if _payload.get("migraphx"):
+                # MIGraphX-Graph-Compiler nur mit eigener Paritätsprüfung (§III.9).
+                with self._lock:
+                    self._ort_gpu_providers = [
+                        "MIGraphXExecutionProvider",
+                        "ROCMExecutionProvider",
+                        "CPUExecutionProvider",
+                    ]
+                logger.info(
+                    "MLDeviceManager: MIGraphXExecutionProvider paritätsgeprüft (max rel=%.2e) — "
+                    "als primärer ORT-Provider eingetragen (ROCM als Ersatzpfad)",
+                    float(_payload.get("migraphx_parity_max_rel") or 0.0),
+                )
 
         except Exception as exc:
             exc_str = str(exc).lower()

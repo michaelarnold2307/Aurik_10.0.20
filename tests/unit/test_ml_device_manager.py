@@ -196,6 +196,11 @@ def _make_manager_rocm(vram_gb: float = 8.0, gpu_name: str = "AMD Radeon RX 7900
     mgr._ort_gpu_providers = ["ROCMExecutionProvider", "CPUExecutionProvider"]
     mgr._vram_total_gb = vram_gb
     mgr._vram_free_gb = vram_gb
+    # Deterministisch: try_allocate_vram() refresht den freien VRAM per Live-Query
+    # (_query_vram_free). Auf einer real belegten GPU (Produktionsbefund 2026-10-05:
+    # parallel laufendes Training → 25,6/25,75 GB belegt, free=0.00) kippten die
+    # VRAM-Tests damit host-zustandsabhängig (Spec 07, TEST-DESIGN).
+    mgr._query_vram_free = lambda: float(vram_gb)  # type: ignore[method-assign]
     mgr._gpu_name = gpu_name
     mgr._gpu_architecture = _detect_amd_architecture(gpu_name)
     mgr._gpu_tier = _compute_gpu_tier(mgr._gpu_architecture, vram_gb)
@@ -532,3 +537,87 @@ def test_vocoder_plugins_use_ml_device_manager_provider_selection() -> None:
         assert 'InferenceSession(path, sess_options=opts, providers=["CPUExecutionProvider"])' not in src, (
             f"{path.name} must not hardcode CPUExecutionProvider for primary session"
         )
+
+
+def _patch_probe_child(monkeypatch, returncode: int, payload: str) -> None:
+    """Ersetzt den isolierten Probe-Kindprozess durch ein Skript-Ergebnis.
+
+    Der Kindprozess meldet sein Ergebnis per tempfile-IPC (letztes argv-Element;
+    R01: kein ``print``) — der Fake schreibt deshalb genau dorthin. Der Patch
+    greift auf das globale Modul ``subprocess.run``, weil der Elternprozess
+    ``subprocess`` lokal in der Methode importiert.
+    """
+
+    class _Proc:
+        pass
+
+    def _fake_run(cmd, **_kwargs):
+        proc = _Proc()
+        proc.returncode = returncode  # type: ignore[attr-defined]
+        proc.stdout = ""  # type: ignore[attr-defined]
+        proc.stderr = ""  # type: ignore[attr-defined]
+        if payload:
+            import pathlib
+
+            pathlib.Path(cmd[-1]).write_text(payload, encoding="utf-8")
+        return proc
+
+    monkeypatch.setattr("subprocess.run", _fake_run)
+
+
+def test_rocm_probe_isolates_native_child_crash(monkeypatch, caplog) -> None:
+    """Ein nativer ROCm/MIOpen-Abort im Kindprozess darf den Host nicht beenden.
+
+    Produktionsbefund 2026-10-05: der in-process-Probe starb mit Exit 139 in
+    ``InferenceSession.__init__`` (Unit-Smoke-SIGSEGV). Seither läuft die
+    Session-Erzeugung in einem eigenen Interpreter; ein toter Kindprozess ⇒
+    CPU-Ersatzpfad mit §V6-Warnung.
+    """
+    import logging
+
+    mgr = _make_manager_with_gpu()
+    _patch_probe_child(monkeypatch, returncode=139, payload="")
+    with caplog.at_level(logging.WARNING, logger="backend.core.ml_device_manager"):
+        mgr._probe_rocm_onnx_pad()
+    assert mgr._ort_gpu_providers == ["CPUExecutionProvider"]
+    assert mgr._gpu_disabled_plugins, "ONNX-lastige Plugins müssen deaktiviert werden"
+    assert any("CPU-only" in r.getMessage() for r in caplog.records), (
+        "§V6 (copilot-instructions.md): Warnung mit Begründung fehlt"
+    )
+
+
+def test_rocm_probe_rejects_parity_violation(monkeypatch, caplog) -> None:
+    """§III.9: ROCm ohne Parität gegen ONNX-CPU (rel ≤ 1e-3) wird nicht akzeptiert."""
+    import logging
+
+    mgr = _make_manager_with_gpu()
+    _patch_probe_child(
+        monkeypatch,
+        returncode=0,
+        payload='{"rocm_active": true, "parity_max_rel": 0.5, "migraphx": false, "error": null}',
+    )
+    with caplog.at_level(logging.WARNING, logger="backend.core.ml_device_manager"):
+        mgr._probe_rocm_onnx_pad()
+    assert mgr._ort_gpu_providers == ["CPUExecutionProvider"]
+    assert any("Parität" in r.getMessage() for r in caplog.records)
+
+
+def test_rocm_probe_accepts_parity_verified_rocm(monkeypatch) -> None:
+    """Paritätsgeprüftes ROCm bleibt aktiv; MIGraphX nur mit eigener Parität."""
+    mgr = _make_manager_with_gpu()
+    _patch_probe_child(
+        monkeypatch,
+        returncode=0,
+        payload='{"rocm_active": true, "parity_max_rel": 1e-06, "migraphx": false, "error": null}',
+    )
+    mgr._probe_rocm_onnx_pad()
+    assert mgr._ort_gpu_providers == ["ROCMExecutionProvider", "CPUExecutionProvider"]
+
+    mgr2 = _make_manager_with_gpu()
+    _patch_probe_child(
+        monkeypatch,
+        returncode=0,
+        payload='{"rocm_active": true, "parity_max_rel": 1e-06, "migraphx": true, "migraphx_parity_max_rel": 2e-07, "error": null}',
+    )
+    mgr2._probe_rocm_onnx_pad()
+    assert mgr2._ort_gpu_providers[0] == "MIGraphXExecutionProvider"
