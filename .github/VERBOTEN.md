@@ -48,6 +48,8 @@
 
 | Kategorie | Verboten | Richtig |
 | --- | --- | --- |
+| `stft()` mit `noverlap ≥ nperseg` [P3] | `noverlap=n_fft`/`nperseg` direkt oder `- 0` → scipy-Crash `noverlap must be less than nperseg` bei kurzem Audio | `noverlap=<n> - hop` mit nachgewiesenem `hop ≥ 1`: Literal, `max(1, …)`, Guard (`if n_fft <= hop: n_fft = hop + 1`) oder bewusster Retry-Pfad (`noverlap must be less than nperseg`). Gate: `aurik-bug-prevention` P3 — 8 Fehlalarme 2026-10-05 belegt in `bandwidth_extension` (`nperseg = min(4096, n)` + Early-Return `< 256`), `hybrid_ml_denoiser` (Guard) und `spectral_subtractor` (Retry) |
+| Silent-Except mit neutralem Return [H07] | `except Exception: return 0.0` ohne Log (auch `return 1.0`) → ML→DSP-Fallback unsichtbar (§V6 (copilot-instructions.md)) | `logger.warning(...)` **oder** ein lokaler Log-Wrapper, der nachweislich auf `logger.warning/error/critical` routet (z. B. `_audit_log("error", …)` in `shellac_mono_strategy`). Gate: `aurik-bug-prevention` H07 — 3 Fehlalarme 2026-10-05 aufgelöst |
 | Loudness-Guard RMS | `np.mean(audio**2)` (globaler RMS in Guards) | `_rms_dbfs_gated()` — Frame-basiert, nur Frames > −50 dBFS, Stille ignoriert (§2.45a-I) |
 | Loudness-Guard Gain | `audio *= gain_factor` (uniformer Gain) | `_musical_gain_envelope()` — Gain nur auf Musik-Frames, Stille unverändert (§2.45a-II) |
 | Positiver Gain ohne Quiet-Edge-Referenzclamp | Music-gated Loudness-/Export-/Mastering-Gain hebt Mittelteil korrekt an, kann aber intentional leise Intro/Outro-Zonen trotzdem nach oben ziehen | Nach positivem Gain Referenzvergleich gegen Eingangs-Audio und `limit_quiet_edge_boost(reference_audio, candidate_audio, sr)` als kanonische Fangschicht |

@@ -218,3 +218,16 @@ Jede hat EIN kanonisches Muster — keine Ad-hoc-Kopien:
    laufen sonst still auf korruptem Input (Befund: `assert sr == 48000` in
    embed_audio → unsichtbare Genre-Degradation). Kanonisch:
    `backend.core.resampling_utils.resample_audio()` (numba-Guard + SciPy-Pfad).
+
+6. **Live-Hardware-Werte niemals als Erwartungswert** (Produktionsbefunde
+   2026-10-05): Tests dürfen den freien VRAM, die GPU-Auslastung, Gerätenamen
+   oder Temperatur **nicht** live lesen — sie werden im Testhelfer
+   deterministisch injiziert (`mgr._query_vram_free = lambda: …`), sonst kippt
+   die Suite mit dem Host-Zustand. Belege: `try_allocate_vram()` refresht per
+   Live-Query → bei parallelem Training (25,6/25,75 GB VRAM belegt, `free=0.00`)
+   fielen drei VRAM-Tests; und ein echter ONNX-Session-Aufbau im Unit-Smoke
+   überschritt unter GPU-Last das 20-s-Zeitlimit (MIOpen-Init), seit die
+   ROCm-Paritätsprobe aktiv ist — der Commit-Pfad-Smoke läuft deshalb mit
+   `AURIK_FORCE_CPU=1` (Hook `aurik-unit-smoke`, dokumentierter Schalter aus
+   `ml_device_manager`) und bleibt lastunabhängig. GPU-Pfade werden in den
+   dedizierten Gates (`test_gpu_determinism_gate.py`) geprüft, nicht im Smoke.
