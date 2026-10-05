@@ -1,4 +1,26 @@
-# Changelog — Aurik 10.3.5
+# Changelog — Aurik 10.3.6
+
+## 10.3.6 (2026-10-05)
+
+### Divergenzschutz im SGMSE-Finetune (Trainings-Befund)
+
+- **Befund:** Der laufende Feintune `scripts/train_sgmse_musik.py` divergierte ab
+  Epoche 111 (Train-Loss 5,44 → 22,6 → 35,3; Val 6,1525 → 11,13). Ursache ist die
+  schwer ausläuferbehaftete SG-MSE-Verlustverteilung (dokumentierter Altbefund:
+  Ep 58 mit 266728 bei Median 260) in Kombination mit fehlendem Schutz gegen
+  nicht-finite Verluste. Das Skript hatte nur Gradient-Clipping (Norm 2,0) und
+  Best-Checkpoint — aber keinen Rollback und keine Meldung.
+- **Fix:** (1) Nicht-finiter Loss wird erkannt, der Batch verworfen und per
+  `logger.warning()` gemeldet (keine stille Degradation). (2) Divergenzschutz:
+  steigt der deterministische Val-Wert über Faktor 1,5 gegenüber dem Beststand,
+  wird auf das Best-Checkpoint zurückgerollt und `checkpoint_latest` konsistent
+  mitgeschrieben; nach drei Rollbacks endet der Lauf geordnet. Das beste Modell
+  bleibt in jedem Fall erhalten.
+- **Betrieb:** Das divergierte Training wurde gestoppt und vom Best-Checkpoint
+  (Epoche 80, Val 6,1525) mit lr 1e-5 neu gestartet (`--resume`).
+- **Beweise:** `ruff` (F821/F601/B009/I001) clean, `py_compile` grün,
+  Best-Checkpoint geladen (Epoche 80, 647 Tensoren); Neustart-Log
+  `output/train_sgmse_musik2.log`.
 
 ## 10.3.5 (2026-10-05)
 

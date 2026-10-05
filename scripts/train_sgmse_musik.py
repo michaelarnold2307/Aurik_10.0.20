@@ -34,6 +34,7 @@ Usage:
 """
 
 import argparse
+import logging
 import random
 import sys
 import time
@@ -47,6 +48,17 @@ import torch.nn as nn
 import torch.nn.functional as F
 from scipy.signal import fftconvolve
 from torch.utils.data import DataLoader, Dataset
+
+logger = logging.getLogger(__name__)
+
+# Divergenzschutz (Befund 2026-10-05, §V6/§V7 (VERBOTEN.md)):
+# Die Validierung läuft mit festem Seed (s. u.) und ist damit über Epochen
+# vergleichbar. Ein Val-Sprung über den Faktor _ROLLBACK_FACTOR hinaus ist echte
+# Verschlechterung, kein Rauschausreißer; dann wird auf das beste Checkpoint
+# zurückgerollt. Nach _MAX_ROLLBACKS endet der Lauf geordnet, statt weiter zu
+# divergieren — das beste Modell bleibt in jedem Fall erhalten.
+_ROLLBACK_FACTOR = 1.5
+_MAX_ROLLBACKS = 3
 
 _PROJECT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(_PROJECT))
@@ -361,6 +373,8 @@ def train(
     out_dir.mkdir(parents=True, exist_ok=True)
     best_val = float("inf")
     start_epoch = 0
+    rollbacks = 0
+    skipped_nonfinite = 0
 
     if resume:
         rc = torch.load(resume, map_location=device, weights_only=True)
@@ -392,6 +406,17 @@ def train(
             optimizer.zero_grad()
             t = torch.rand(batch_size, device=device)
             loss = sde.loss_fn(model, spec_c, spec_n, t)
+            if not torch.isfinite(loss):
+                # NaN/Inf propagiert über backward()/AdamW dauerhaft in die Gewichte.
+                # Batch verwerfen und sichtbar melden — §V6 (VERBOTEN.md): keine
+                # stille Degradation des Ergebnisses.
+                logger.warning(
+                    "Finetune: nicht-finiter Loss (Ep %d, St %d) — Batch verworfen",
+                    epoch + 1,
+                    step + 1,
+                )
+                skipped_nonfinite += 1
+                continue
             loss.backward()
             torch.nn.utils.clip_grad_norm_(model.parameters(), 2.0)
             optimizer.step()
@@ -458,8 +483,47 @@ def train(
                 out_dir / "sgmse_musik_best.ckpt",
             )
             print(f"  >> Best: {best_val:.4f}")
+        elif best_val < float("inf") and avg_val > _ROLLBACK_FACTOR * best_val:
+            # Divergenzschutz (s. _ROLLBACK_FACTOR): zurück auf das beste Checkpoint,
+            # damit der divergierte Ast nicht weiter trainiert wird.
+            if rollbacks >= _MAX_ROLLBACKS:
+                logger.warning(
+                    "Finetune: Rollback-Budget (%d) erschöpft (Val %.4f vs. Best %.4f) — "
+                    "Lauf wird beendet, Best-Checkpoint bleibt erhalten",
+                    _MAX_ROLLBACKS,
+                    avg_val,
+                    best_val,
+                )
+                break
+            rb = torch.load(out_dir / "sgmse_musik_best.ckpt", map_location=device, weights_only=True)
+            model.load_state_dict(rb["model_state_dict"])
+            rollbacks += 1
+            # checkpoint_latest konsistent halten: ein Resume darf nie den divergierten
+            # Stand ziehen, während das Modell im Speicher bereits zurückgerollt ist.
+            torch.save(
+                {
+                    "model_state_dict": rb["model_state_dict"],
+                    "epoch": epoch + 1,
+                    "optimizer_state_dict": optimizer.state_dict(),
+                    "val_loss": avg_val,
+                },
+                out_dir / "checkpoint_latest.ckpt",
+            )
+            logger.warning(
+                "Finetune: Val %.4f > %.1fx Best %.4f (Ep %d) — Rollback auf Best-Checkpoint (%d/%d)",
+                avg_val,
+                _ROLLBACK_FACTOR,
+                best_val,
+                epoch + 1,
+                rollbacks,
+                _MAX_ROLLBACKS,
+            )
+            print(f"  >> Rollback auf Best ({best_val:.4f}); Val war {avg_val:.4f}")
 
-    print(f"\nDone. Best val: {best_val:.4f} | {out_dir}")
+    print(
+        f"\nDone. Best val: {best_val:.4f} | Rollbacks: {rollbacks} | "
+        f"Nicht-finite Batches: {skipped_nonfinite} | {out_dir}"
+    )
 
 
 if __name__ == "__main__":
