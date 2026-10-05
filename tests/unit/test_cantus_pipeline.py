@@ -21,6 +21,14 @@ from pathlib import Path
 import numpy as np
 import pytest
 
+# E2E-Tests dieses Moduls exportieren ONNX und fahren echte ORT-Inferenz.
+# Befund 2026-10-05 (vollständiger Chunk-Scan):
+# `test_plugin_cpu_end_to_end_sample_vocal` braucht isoliert ~32 s — das
+# CLI-Timeout des Chunk-Smokes (25 s) ist damit zu klein und kippt unter Last.
+# Marker statt CLI-Default: deterministisch, §G5 (GEBOTE.md) /
+# tests.instructions.md.
+pytestmark = pytest.mark.timeout(300)
+
 torch = pytest.importorskip("torch")
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
