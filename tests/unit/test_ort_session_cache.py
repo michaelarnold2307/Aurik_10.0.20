@@ -20,9 +20,10 @@ import time
 from pathlib import Path
 
 import numpy as np
-import onnxruntime as ort
 import pytest
-import torch
+
+ort = pytest.importorskip("onnxruntime")
+torch = pytest.importorskip("torch")
 
 from backend.core.onnx.runtime import (
     _session_cache_key,

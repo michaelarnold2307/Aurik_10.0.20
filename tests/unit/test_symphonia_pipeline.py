@@ -5,7 +5,9 @@ from __future__ import annotations
 from pathlib import Path
 
 import numpy as np
-import torch
+import pytest
+
+torch = pytest.importorskip("torch")
 
 
 def _feeds(samples: int = 4096, frames: int = 8) -> dict[str, torch.Tensor]:

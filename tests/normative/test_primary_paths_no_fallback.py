@@ -29,8 +29,9 @@ Entscheidung sichtbar bleibt und nicht versehentlich als „Lücke" gilt.
 from __future__ import annotations
 
 import numpy as np
-import onnxruntime as ort
 import pytest
+
+ort = pytest.importorskip("onnxruntime")
 
 _TIMEOUT = 300
 
