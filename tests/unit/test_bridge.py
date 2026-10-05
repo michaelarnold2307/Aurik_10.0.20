@@ -588,6 +588,10 @@ class TestWarmupModelsBackground:
     def test_is_callable(self, bridge):
         assert callable(bridge.warmup_models_background)
 
+    @pytest.mark.timeout(600)  # Volles Plugin-Warmup ist lastabhängig: Befund 2026-10-05 —
+    # im Chunk-Verbund unter CPU-Last lief der Test in das CLI-Timeout von 20–25 s und wurde
+    # fälschlich rot (isoliert und im Chunk sofort grün, 339 passed). Der Marker übersteuert
+    # das CLI-Default deterministisch (§G5 (GEBOTE.md): Tests dürfen nicht lastabhängig kippen).
     def test_completes_without_exception(self, bridge):
         """Warmup läuft durch ohne Exception (alle Plugins optional)."""
         # Synchroner Aufruf — alle Imports schlagen fehl → kein Absturz

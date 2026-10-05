@@ -1,7 +1,11 @@
 #!/usr/bin/env python3
 """Version-Consistency-Check — Sprint D. Spec v10.700 F1.
 
-Prüft dass pyproject.toml ≡ README.md ≡ CHANGELOG.md die gleiche Version haben.
+Prüft, dass die Versionsangaben in pyproject.toml, README.md und CHANGELOG.md mit
+der Single Source of Truth `backend/core/version.py` übereinstimmen.
+(2026-10-05: vorher war pyproject.toml kanonisch — dadurch blieb eine Drift von
+zwei Patch-Ständen unbemerkt: version.py 10.3.4, pyproject 10.3.0, README 10.2.0.)
+
 CI-Gate: Exit 0 = konsistent, Exit 1 = Inkonsistenz.
 
 Usage:
@@ -22,8 +26,8 @@ def extract_version(filepath: Path) -> str | None:
     """Extrahiert die Version aus einer Datei."""
     with open(filepath) as f:
         content = f.read()
-    # pyproject.toml: version = "10.0.18"
-    m = re.search(r'version\s*=\s*"(\d+\.\d+\.\d+)"', content)
+    # version.py: __version__ = "10.0.18" | pyproject.toml: version = "10.0.18"
+    m = re.search(r'(?:__)?version(?:__)?\s*=\s*"(\d+\.\d+\.\d+)"', content)
     if m:
         return m.group(1)
     # README.md/CHANGELOG.md: **Version:** 10.0.18 or ## 10.0.18 (...)
@@ -34,39 +38,56 @@ def extract_version(filepath: Path) -> str | None:
 
 
 def main():
-    versions: dict[str, str | None] = {}
-    for fname in CORE_FILES:
-        fpath = PROJECT_ROOT / fname
-        if fpath.exists():
-            versions[fname] = extract_version(fpath)
-
-    # Kanonische Quelle: pyproject.toml
-    canonical = versions.get("pyproject.toml")
+    fix = "--fix" in sys.argv[1:]
+    # Kanonische Quelle (2026-10-05): backend/core/version.py — dokumentierte
+    # "Single source of truth". pyproject.toml war zuvor kanonisch und driftete
+    # unbemerkt zwei Patch-Stände hinterher.
+    canonical = extract_version(PROJECT_ROOT / "backend" / "core" / "version.py")
     if not canonical:
-        print("❌ Kanonische Version nicht in pyproject.toml gefunden")
+        print("❌ Kanonische Version nicht in backend/core/version.py gefunden")
         sys.exit(1)
 
     print(f"Kanonische Version: {canonical}\n")
 
     ok = True
     for fname in CORE_FILES:
-        v = versions.get(fname)
-        if v is None:
+        fpath = PROJECT_ROOT / fname
+        if not fpath.exists():
+            continue
+        old = extract_version(fpath)
+        if old is None:
             print(f"  ❌ {fname}: Keine Version gefunden")
             ok = False
-        elif v != canonical:
-            print(f"  ❌ {fname}: {v} (erwartet {canonical})")
+            continue
+        if old == canonical:
+            print(f"  ✅ {fname}: {old}")
+            continue
+        if not fix:
+            print(f"  ❌ {fname}: {old} (erwartet {canonical})")
             ok = False
+            continue
+        text = fpath.read_text(encoding="utf-8")
+        if fname == "CHANGELOG.md":
+            # Der Check liest die erste ##-Abschnittsüberschrift — genau die wird
+            # gesetzt; historische Abschnitte bleiben unverändert.
+            new_text, n = re.subn(rf"^## {re.escape(old)}", f"## {canonical}", text, count=1, flags=re.MULTILINE)
         else:
-            print(f"  ✅ {fname}: {v}")
+            # Nur das erste Vorkommen (z. B. das **Version:**-Feld), Historie bleibt.
+            new_text, n = re.subn(re.escape(old), canonical, text, count=1)
+        if n == 0:
+            print(f"  ❌ {fname}: {old} konnte nicht ersetzt werden")
+            ok = False
+            continue
+        fpath.write_text(new_text, encoding="utf-8")
+        print(f"  🔧 {fname}: {old} -> {canonical}")
 
     if ok:
         print(f"\n✅ Alle {len(CORE_FILES)} Dateien konsistent: {canonical}")
         sys.exit(0)
-    else:
-        print(f"\n❌ Inkonsistenz gefunden. pyproject.toml = {canonical}")
+    print(f"\n❌ Inkonsistenz gefunden. Kanonisch: backend/core/version.py = {canonical}")
+    if not fix:
         print("   Führe 'python scripts/check_version_consistency.py --fix' aus")
-        sys.exit(1)
+    sys.exit(1)
 
 
 if __name__ == "__main__":

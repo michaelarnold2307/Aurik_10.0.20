@@ -566,6 +566,16 @@ repos:
         pass_filenames: false
         always_run: true
 
+      # Versions-Konsistenz über ALLE Dateien (Befund 2026-10-05: pyproject.toml stand
+      # auf 10.3.0, README.md auf 10.2.0, waehrend version.py 10.3.4 war — der
+      # Version-Guard prueft nur version.py <-> Aurik10/__init__.py und sah das nicht).
+      - id: aurik-version-consistency
+        name: "Versions-Konsistenz (pyproject/README/CHANGELOG <-> version.py)"
+        entry: .venv_aurik/bin/python scripts/check_version_consistency.py
+        language: system
+        pass_filenames: false
+        always_run: true
+
       # UTF-8-Hygiene (P2-1) — BOM/NUL-Fenster/invalide UTF-8-Sequenzen fail-closed
       - id: aurik-utf8-hygiene
         name: "UTF-8-Hygiene (P2-1: kein UTF-16/BOM/invalides UTF-8 in Textdateien)"

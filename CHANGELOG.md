@@ -1,4 +1,23 @@
-# Changelog — Aurik 10.3.4
+# Changelog — Aurik 10.3.5
+
+## 10.3.5 (2026-10-05)
+
+### 🐛 Versions-Drift behoben und Versions-Gate geschlossen
+
+- **Befund:** `backend/core/version.py` (Single Source of Truth) stand auf 10.3.4,
+  aber `pyproject.toml` auf **10.3.0** und `README.md` auf **10.2.0** — zwei
+  Patch-Stände Drift, von keinem Gate bemerkt. Das vorhandene Prüfskript
+  `scripts/check_version_consistency.py` war **nicht verdrahtet**, hielt
+  `pyproject.toml` für kanonisch und hatte zudem **keine** `--fix`-Behandlung —
+  es verwies auf ein Flag, das es nicht gab (Sackgasse).
+- **Fix:** Das Skript liest die kanonische Version jetzt aus
+  `backend/core/version.py`, unterstützt `--fix` korrekt (pyproject/README: erstes
+  Vorkommen; CHANGELOG: die erste `##`-Abschnittsüberschrift — Historie bleibt
+  unverändert) und ist als Pre-Commit-Hook `aurik-version-consistency`
+  verdrahtet. Alle Stände auf 10.3.5 gezogen.
+- **Nebenfix:** `.github/FILE_REGISTRY.md` führte `models/symphonia/**init**.py`
+  (Fett-Marker im Dateinamen — die Datei „fehlte“) → echter Pfad
+  `models/symphonia/__init__.py`.
 
 ## 10.3.4 (2026-10-05)
 

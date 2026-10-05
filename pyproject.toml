@@ -8,8 +8,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "aurik10"
-version = "10.3.0"
-description = "Intelligentes Musik-Restaurierungssystem — Weltklasse, Version 10.3.0 „Symphonia Instrumentalrestaurierung“"
+version = "10.3.5"
+description = "Intelligentes Musik-Restaurierungssystem — Weltklasse, Version 10.3.5 „Symphonia Instrumentalrestaurierung“"
 readme = "README.md"
 license = { file = "LICENSE" }
 requires-python = ">=3.10.12"
