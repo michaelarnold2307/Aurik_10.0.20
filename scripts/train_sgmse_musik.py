@@ -409,9 +409,19 @@ def train(
         scheduler.step()
         avg_train = train_loss / min(steps_per_epoch, len(train_loader))
 
-        # Validation
+        # Validation — deterministisches Protokoll (§G5 (GEBOTE.md)):
+        # Für jede Epoche werden exakt dieselben Diffusions-Zeitschritte und dasselbe
+        # Rauschen gezogen, damit die Val-Werte über Epochen vergleichbar sind.
+        # Befund 2026-10-05: torch.rand (Zeitschritt) und torch.randn_like (Rauschen in
+        # loss_fn) wurden je Epoche neu gezogen → Streuung > Faktor 100 (Ep 58: 266728
+        # bei Median 260), eine Fortschrittskurve war nicht ablesbar. Beide RNG-Zustände
+        # (CPU + CUDA) werden gesichert und nach der Validierung exakt wiederhergestellt,
+        # damit der Trainingsverlauf unverändert bleibt.
         model.eval()
         val_loss, vn = 0.0, 0
+        _val_cpu_rng = torch.random.get_rng_state()
+        _val_cuda_rng = torch.cuda.get_rng_state_all() if torch.cuda.is_available() else None
+        torch.manual_seed(seed + 10_000)
         with torch.no_grad():
             for vb in val_loader:
                 if vn >= 100:
@@ -422,6 +432,9 @@ def train(
                 val_loss += sde.loss_fn(model, sc, sn, torch.rand(batch_size, device=device)).item()
                 vn += 1
         avg_val = val_loss / max(vn, 1)
+        torch.random.set_rng_state(_val_cpu_rng)
+        if _val_cuda_rng is not None:
+            torch.cuda.set_rng_state_all(_val_cuda_rng)
 
         print(
             f"Ep {epoch + 1:3d}/{epochs} | Tr {avg_train:.4f} | Val {avg_val:.4f} | "
