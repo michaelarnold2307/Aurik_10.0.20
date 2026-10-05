@@ -11,9 +11,26 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+import pytest
+
 from backend.core.gpu_model_registry import apply_gpu_policy, load_registry, verdict_for_model
 
 _TEST_REG = Path("/tmp/aurik_test_gpu_registry.json")
+
+
+@pytest.fixture(autouse=True)
+def _neutralize_force_cpu(monkeypatch) -> None:
+    """Macht die Verdikt-Tests unabhängig von der Umgebung.
+
+    `apply_gpu_policy` respektiert bewusst `AURIK_FORCE_CPU` („CPU-only-Aufrufer
+    werden nie auf GPU gehoben", s. Modul-Docstring). Diese Tests prüfen jedoch
+    die reine Abbildung Verdict -> EP-Liste und dürfen deshalb nicht vom
+    Determinismus-Schalter der Suite bzw. der Scans abhängen. Befund 2026-10-05
+    (Vollscan Chunk 26): mit gesetztem `AURIK_FORCE_CPU` lieferten die
+    GPU-Verdikte CPU-only — vier Fehlschläge; ohne die Variable sind alle zehn
+    Tests grün (§G5 (GEBOTE.md): Tests dürfen nicht umgebungsabhängig kippen).
+    """
+    monkeypatch.delenv("AURIK_FORCE_CPU", raising=False)
 
 
 def _setup_registry(monkeypatch, entries: dict) -> None:
