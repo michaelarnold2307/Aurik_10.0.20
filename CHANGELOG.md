@@ -1,4 +1,31 @@
-# Changelog — Aurik 10.3.9
+# Changelog — Aurik 10.3.10
+
+## 10.3.10 (2026-10-05)
+
+### Phasensignatur: De-Esser wieder vertragskonform
+
+- **Befund (Vollscan Chunk 37/97: 12 failed, 301 passed):** Acht Fehler des Typs
+  `TypeError: DeEsserPhase.process() missing 1 required positional argument` in
+  `test_ml_hybrid_regression.py` waren kein Testproblem. Der Phasen-Vertrag
+  `phase_interface.py:383` lautet
+  `process(self, audio, sample_rate=48000, material_type="unknown", **kwargs)`;
+  `DeEsserPhase.process` verlangte `material_type` dagegen **positional ohne
+  Default**. Damit war die Phase nicht mehr austauschbar — jeder generische
+  Aufrufer, der den Vertrag nutzt (Phasen-Registry, Vorschau, Test-Harness),
+  bricht. Der vorhandene `# type: ignore[override]` hat die Abweichung nur
+  markiert statt sie zu beheben.
+- **Fix:** Signatur an den Vertrag angeglichen (`sample_rate=48000`,
+  `material_type` mit Default) und `material_type` einmal an der Quelle auf
+  `MaterialType` normalisiert. Der Rumpf nutzt `material.name` an sechs Stellen
+  und der Vertrag erlaubt ausdrücklich `str` — die Normalisierung erhält die
+  Toleranz beider Seiten, statt an sechs Stellen einen Ersatzwert zu raten.
+  Die überflüssig gewordene Override-Ausnahme ist entfernt.
+- **Beweise:** `-k de_esser --run-heavy-tests` → 11 passed in 13,94 s (vorher
+  acht TypeError-Fehler); mypy auf der Datei: 0 union-attr-Fehler; ruff clean.
+- **Offen (Fund 12b):**
+  `TestPhase24DropoutRepairRegression::test_dropout_gap_filled` erwartet, dass
+  der DSP-Ersatzpfad eine 100-ms-Lücke zu ≥ 5 % füllt; die Lücke bleibt stumm.
+  Eigener Untersuchungspunkt (nächster Block).
 
 ## 10.3.9 (2026-10-05)
 

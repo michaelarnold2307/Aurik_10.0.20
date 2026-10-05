@@ -573,8 +573,13 @@ class DeEsserPhase(PhaseInterface):
             "brilliance_preservation": self.vocal_profile.get("brilliance_preserve", 0.90),
         }
 
-    def process(  # type: ignore[override]  # pylint: disable=signature-differs
-        self, audio: np.ndarray, sample_rate: int, material_type: MaterialType, gender: str | None = None, **kwargs
+    def process(  # pylint: disable=signature-differs
+        self,
+        audio: np.ndarray,
+        sample_rate: int = 48000,
+        material_type: MaterialType | str = "unknown",
+        gender: str | None = None,
+        **kwargs,
     ) -> PhaseResult:
         check_ml_model_ready("Whisper", phase_name="19")
         """
@@ -630,7 +635,13 @@ class DeEsserPhase(PhaseInterface):
                     kwargs["correction_strength"] = _pim["de_ess_strength"]
         except Exception as e:
             logger.warning("Verarbeitungsschritt_19_de_esser.py::verarbeiten Ersatzpfad: %s", e)
-        material = material_type  # alias: method body uses 'material' throughout
+        # Phasen-Vertrag (phase_interface.py:383) erlaubt material_type als str
+        # (dortiger Default: "unknown"). Der Rumpf nutzt durchgehend MaterialType
+        # (u. a. material.name), daher einmal an der Quelle normalisieren statt
+        # an jeder der sechs Nutzungsstellen einen Ersatzwert zu raten.
+        _mt_raw = str(material_type or "").strip().upper()
+        _mt_member = getattr(MaterialType, _mt_raw, None)
+        material: MaterialType = _mt_member if isinstance(_mt_member, MaterialType) else MaterialType.UNKNOWN
         start_time = time.monotonic()
         self.validate_input(audio)
         audio, _p19_transposed = to_channels_last(audio)
