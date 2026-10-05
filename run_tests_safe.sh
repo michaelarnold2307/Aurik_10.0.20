@@ -201,7 +201,16 @@ _lock_file="${SCRIPT_DIR}/logs/locks/pytest_${_run_fingerprint}.lock"
 if command -v flock &>/dev/null; then
     exec 9>"$_lock_file"
     if ! flock -n 9; then
+        # Diagnose (§V12-Transparenz): wer hält die Sperre? flock ist advisory und
+        # wird beim Prozessende freigegeben — ein verwaister Lauf (z. B. nach
+        # SIGTERM auf die Shell) hält sie sonst unsichtbar weiter.
+        _holder="$( (command -v fuser >/dev/null 2>&1 && fuser "$_lock_file" 2>/dev/null) || true )"
         echo "[safe-runner] Abbruch: identischer Testlauf ist bereits aktiv (${_lock_file})." >&2
+        if [ -n "${_holder// /}" ]; then
+            echo "[safe-runner] Haltende PID(s):${_holder} — verwaisten Lauf pruefen, sonst abwarten." >&2
+        else
+            echo "[safe-runner] Kein PID ermittelbar (fuser fehlt/leer) — Pruefung: lsof ${_lock_file}." >&2
+        fi
         _write_status_and_report 98 "$@"
         exit 98
     fi

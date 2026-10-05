@@ -22,7 +22,7 @@ ROCm-Versionskope (Rev. 2026-08-16):
   (ROCMExecutionProvider). Hinweis: torchaudio ist für ROCm 7.2 offiziell nur
   bis 2.11.0 verfügbar — neuere bräuchten Eigenbau.
   GPU-Gate tests/unit/test_gpu_determinism_gate.py: 6/6 grün auf der Hardware
-  (Backend-Erkennung, kein §v10.304.30-Hang, GPU=CPU innerhalb 1e-5).
+  (Backend-Erkennung, kein Hang, GPU=CPU innerhalb 1e-5 — §III.9 (copilot-instructions.md)).
   §G5 (GEBOTE.md): Bit-Determinismus ist nur für den CPU-Pfad garantiert; GPU-Inferenz
   ist Toleranz-equal, nicht bit-identisch (keine deterministischen Kernel konfiguriert).
 
@@ -686,7 +686,7 @@ class MLDeviceManager:
                 arch_str,
                 self._gpu_tier.name,
             )
-            # §v10.304.30: Klare, grep-bare Status-Zeile
+            # Klare, grep-bare Status-Zeile (frühere Referenz §v10.304.30 existiert in den Specs nicht mehr).
             _backend_label = (
                 "ROCm"
                 if self._backend == GPUBackend.ROCM
@@ -735,7 +735,8 @@ class MLDeviceManager:
                 self._ort_gpu_providers = ["ROCMExecutionProvider", "CPUExecutionProvider"]
                 self._gpu_architecture = _detect_amd_architecture(device_name)
                 logger.info("MLDeviceManager: AMD ROCm erkannt — HIP %s", torch.version.hip)
-                # §v10.304.30: ONNX ROCm-Sanity-Probe sofort nach Erkennung.
+                # §III.9 (copilot-instructions.md): ONNX-EP-Probe sofort nach Erkennung
+                # (crash-isoliert im Kindprozess + paritätsgeprüft gegen ONNX-CPU).
                 # Prüft ob ROCMExecutionProvider tatsächlich funktioniert.
                 # Defekte ONNX-ROCm-Installationen (hipErrorInvalidDeviceFunction)
                 # werden sofort erkannt → GPU global deaktiviert statt dass
@@ -1492,9 +1493,10 @@ class MLDeviceManager:
         inference latency caused by ROCm kernel compilation (HIP JIT). Returns True on
         success, False if warmup failed or ROCm is not active.
 
-        §v10.304.30: torch.zeros("cuda") kann auf defekten ROCm-Installationen
+        §III.9 (copilot-instructions.md): torch.zeros("cuda") kann auf defekten ROCm-Installationen
         hängen. Geschützt durch ThreadPoolExecutor mit 10 s Timeout.
-        §v10.304.31: self._lock wird NICHT während der GPU-Operation gehalten —
+        Deadlock-Invariante (vormals §v10.304.31 — Abschnitt existiert nicht mehr):
+        self._lock wird NICHT während der GPU-Operation gehalten —
         sonst Deadlock wenn force_cpu_fallback denselben Lock braucht.
         """
         if self._backend != GPUBackend.ROCM or not self._gpu_available:

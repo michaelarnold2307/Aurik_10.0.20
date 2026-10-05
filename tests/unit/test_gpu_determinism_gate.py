@@ -4,7 +4,7 @@ Beantwortet die §G5-Frage auf GPU-Hardware mit Messung statt Annahme:
 
   1. Basis (läuft überall): Der CPU-Pfad ist bit-deterministisch (§G5 (GEBOTE.md)).
   2. GPU-Capability (nur auf GPU-Hardware): Der MLDeviceManager meldet das
-     Backend korrekt, und warmup_rocm_gpu() hängt nicht (§v10.304.30).
+     Backend korrekt, und warmup_rocm_gpu() hängt nicht (§III.9 (copilot-instructions.md)).
   3. GPU-Inferenz (nur auf GPU-Hardware): Toleranz-equal zum CPU-Pfad,
      NICHT bit-identisch — dokumentiert die §G5-Grenze auf GPU.
 
@@ -96,7 +96,7 @@ def test_gpu_manager_reports_backend() -> None:
 @pytest.mark.unit
 @pytest.mark.skipif(not _gpu_available(), reason=_GPU_SKIP_REASON)
 def test_warmup_rocm_does_not_hang() -> None:
-    """§v10.304.30-Regression: Der ROCm-Warmup darf nicht hängen (torch.zeros-Hang-Klasse)."""
+    """Warmup-Hang-Regression (§III.9 (copilot-instructions.md)): Der ROCm-Warmup darf nicht hängen (torch.zeros-Hang-Klasse)."""
     from backend.core.ml_device_manager import warmup_rocm_gpu
 
     result = warmup_rocm_gpu()

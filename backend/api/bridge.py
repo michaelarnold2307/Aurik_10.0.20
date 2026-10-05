@@ -1591,7 +1591,7 @@ def warmup_models_background() -> None:
     _failed = 0
     _deferred = 0
 
-    # §v10.304.30: Keine GPU-Detection im Warmup. torch.zeros("cuda") hängt
+    # Keine GPU-Detection im Warmup (§III.9 (copilot-instructions.md)). torch.zeros("cuda") hängt
     # auf manchen ROCm-Systemen → Warmup-Thread tot. GPU-Plugins werden
     # trotzdem geladen — wenn GPU nicht verfügbar, crashen sie und werden
     # von try/except gefangen. Warmup läuft GARANTIERT durch.
