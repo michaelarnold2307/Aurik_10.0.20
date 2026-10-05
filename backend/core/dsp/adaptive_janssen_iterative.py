@@ -3,10 +3,13 @@ Adaptive Janssen Iterative Spectral Subtraction DSP-Modul für Aurik 6.0 (SOTA-M
 Klassische adaptive Janssen-Iterative-Spektral-Subtraktion mit automatischer Parameteroptimierung (SOTA-Maximum).
 """
 
+import logging
 from dataclasses import dataclass
 from typing import Any
 
 import numpy as np
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass(frozen=True)
@@ -108,7 +111,12 @@ class AdaptiveJanssenIterative:
                 ar_short = _burg_ar_local(y_safe, actual_order)
                 if not np.all(np.isfinite(ar_short)):
                     ar_short = np.zeros(actual_order)
-            except Exception:
+            except Exception as exc:
+                logger.warning(
+                    "adaptive_janssen_iterative: Burg-AR-Schätzung (order=%d) fehlgeschlagen (%s) -> Abbruch der Iterationen, bisheriges Ergebnis (§V6, copilot-instructions.md)",
+                    actual_order,
+                    exc,
+                )
                 break
 
             # --- FIR-Prädiktionsfilter über das gesamte Signal (kein Segment-Loop) ---

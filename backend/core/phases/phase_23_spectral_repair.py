@@ -2611,6 +2611,8 @@ class SpectralRepair(PhaseInterface):
         if _mask.ndim != 2 or _mask.shape[1] <= max_run_frames:
             return _mask  # type: ignore[no-any-return]
         for _f in range(_mask.shape[0]):
+            # §V5 (copilot-instructions.md): bool→int8 nur für die Run-Length-Segmentierung
+            # (Masken-Index, keine Audio-Samples) — Dither erfolgt ausschließlich im Export.
             _row = _mask[_f, :].astype(np.int8)
             _padded = np.pad(_row, (1, 1), mode="constant")
             _starts = np.where((_padded[1:] == 1) & (_padded[:-1] == 0))[0]

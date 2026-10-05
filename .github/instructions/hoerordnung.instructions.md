@@ -69,10 +69,40 @@ zurückgenommen oder geblendet** — nicht erst am Pipeline-Ende „wiederherges
 wenn die Ursache eine identifizierbare Einzelphase ist (Ursache statt Symptom —
 §V7 (copilot-instructions.md)).
 
+**Umsetzung (kanonisch):** `backend/core/dsp/level_1_invariants_guard.py`
+(`check_level_1_invariants`/`Level1Result`) misst alle fünf Invarianten nach
+jeder Phase; der zentrale Phasen-Hook (`unified_restorer_v3.py`) blendet die
+verursachende Phase bei Verletzung Richtung Phasen-Eingang zurück
+(`blend_factor < 1.0`). Für die definierenden Härte-Fälle greift dieselbe
+Stelle mit harter Phasen-Rücknahme: §SCK-R (Spektralfarben-Korrelation < 0.60)
+und §WBG-R (Einzelphasen-Wärmeband-Verlust > 3 dB, Restoration) — Metadatum
+`hearing_invariant_retreat`, kumulativer Wärme-Tracker wird zurückgedreht
+(Ursache statt Symptom — §V7 (copilot-instructions.md); keine
+End-Gate-Kompensation).
+
 ## 4. Ebene 2 — Audibility: Reparaturziel ist die Maskierungsschwelle
 
 Reparatur gilt als **abgeschlossen**, wenn ein Defekt **unter der psychoakustischen
 Maskierungsschwelle** liegt — nicht wenn sein Messwert Null ist.
+
+- **Erzwingbare Instanz (kanonisch):** `backend/core/dsp/audibility_targets.py`
+  — `residual_audibility` (Nutzung als `is_audible`) misst mit EINER Messung in
+  der `masking_model`-Domäne Hörbarkeit (`audible`), Zielabnahme
+  (`objective_met` = `delta_db <= threshold_db − margin_db`, Default-Marge 6 dB)
+  und liefert die Dosierung über `repair_strength_for` (Stärke ∝
+  Hörbarkeits-Überschuss, geclippt [0.25, 1.0], zentral
+  §V7 (copilot-instructions.md)-skaliert). Nachgangsprüfung jeder Reparatur:
+  `repair_objective_met`/`verify_declick_repair` — Frage A „kein hörbarer
+  Restdefekt?" (Rest unter Ziel), Frage B „kein hörbares Musikmaterial
+  entfernt?" (**NIE OK**); Golden-Ear-Referenzkette (`witness_chain`,
+  `golden_ear_corpus.reference_pair`); hartes Gate vor Export
+  (§0c (copilot-instructions.md): „degraded" statt stiller Verschlechterung).
+- **Ohren-Kalibrierung statt Modell-Autorität:** Hörbarkeitsgrenzen werden pro
+  Defektklasse am Hörpanel gemessen (Golden-Ear-Korpus
+  `backend/core/golden_ear_corpus.py` — `inject_at_margin`-Rückführung,
+  `calibration_report`; 2AFC-Hörpanel-Kette `scripts/mushra_harness.py` und
+  `scripts/hoerpanel_player.py`) und kalibrieren die Instanz —
+  Literatur-Vorbelegungen tragen Status `vorbelegung_hoerpanel_offen`.
 
 - Maßgeblich: Masking-Modell nach ISO 11172-3 (Bark) für den NR-Masking-Guard
   (§2.62 (dsp.instructions.md)); für Residuum-Salience und P1-3-Masking-JND gilt
@@ -160,8 +190,8 @@ jeweiligen Mess-Definitionen; hier zählt nur der Entscheidungsfluss):
 
 | Ebene | Träger |
 |---|---|
-| 1 | VQI-Gate + singer_identity-Rollback + EmotionalArc (UV3, Spec 01 §2.35c–e), ConsonantClarity; **§SCK-R/§WBG-R** Phasen-Rücknahme im zentralen Phasen-Call (`unified_restorer_v3.py`, Konkretisierung zu V24/V25 in dsp.instructions.md) |
-| 2 | `compute_masking_threshold_iso11172` (dsp §2.62), PerceptualSalience (Pass-Through-Guard), `residuum_masking.py` (3. Blend-Term), `_should_skip_masked_phase` (Stufe B), §v10.703-Countdown (Stufe A: ERB-maskierte Events) |
+| 1 | VQI-Gate + singer_identity-Rollback + EmotionalArc (UV3, Spec 01 §2.35c–e), ConsonantClarity; **§SCK-R/§WBG-R** Phasen-Rücknahme im zentralen Phasen-Call (`unified_restorer_v3.py`, Konkretisierung zu V24/V25 in dsp.instructions.md), **Level-1-Guard-Blend** (`level_1_invariants_guard.check_level_1_invariants` → `blend_factor < 1.0`), **Witness-Veto** (`witness_correction_loop.py`: `compute_witness_veto`/`apply_witness_veto` → `global_scalar`/`family_scalars`) |
+| 2 | `compute_masking_threshold_iso11172` (dsp §2.62), PerceptualSalience (Pass-Through-Guard), `residuum_masking.py` (3. Blend-Term), `_should_skip_masked_phase` (Stufe B), §v10.703-Countdown (Stufe A: ERB-maskierte Events), **`audibility_targets.residual_audibility`/`repair_objective_met`/`repair_strength_for`** (erzwingbare Hörbarkeits-Instanz, Ziel „Maske − Marge", Default 6 dB; Alias `is_audible`), **`golden_ear_corpus.py`** (Ohren-Kalibrierung: `inject_at_margin`/`calibration_report`; Hörpanel-Status `vorbelegung_hoerpanel_offen`) |
 | 3 | GoalPriorityProtocol (Spec 01 §2.34) + `HEARING_TIER_MAP`/`hearing_tier()` (Hörordnungs-Dominanzstufe), `goal_weights` (§2.56), PhaseConductor/PMGG; Guards in FeedbackChain (intern + UV3-Callback) und End-Gate-Ranking; `wohlklang_ordnung_gate.py` (`WohlklangOrdnungGate`, maschineller Audit der Dominanz-Konformität, meldet Verstöße an die GUI-Ampel) |
 | 4 | `inviting_sound_gate.py` (Fenster-Gate), experience_runtime (fatigue_index), GoosebumpsQualityChecker, OneTakeExport |
 | §7 Konfliktregel | Wohlklang-Garantie-Alignment-Guard, af-false-positive-Handling, MQA-Verdict-Kennzeichnung („Messartefakt-Verdacht“) |

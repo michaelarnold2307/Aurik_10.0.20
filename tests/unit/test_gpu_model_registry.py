@@ -59,6 +59,28 @@ def test_cpu_only_caller_never_gets_gpu(monkeypatch) -> None:
     assert out == ["CPUExecutionProvider"], "AURIK_FORCE_CPU-Aufrufer dürfen nicht auf GPU gehoben werden"
 
 
+def test_force_cpu_env_forces_cpu_on_gpu_request(monkeypatch) -> None:
+    """AURIK_FORCE_CPU=1 erzwingt CPU auch bei explizitem GPU-Request (Fix 2026-10-05).
+
+    Produktionsbefund: bigvgan/flashsr riefen get_onnx_providers direkt auf und
+    erhielten trotz AURIK_FORCE_CPU=1 eine ROCm-Session — unter GPU-Last führte
+    das zu einem ORT-Hart-Abort ("no ROCm-capable device is detected").
+    """
+    _setup_registry(monkeypatch, {"models/x/foo.onnx": {"verdict": "rocm"}})
+    monkeypatch.setenv("AURIK_FORCE_CPU", "1")
+    out = apply_gpu_policy(["ROCMExecutionProvider", "CPUExecutionProvider"], "models/x/foo.onnx")
+    assert out == ["CPUExecutionProvider"]
+
+
+def test_get_onnx_providers_honours_force_cpu(monkeypatch) -> None:
+    """get_onnx_providers ist selbst FORCE_CPU-konform (kein ROCm-Session-Versuch)."""
+    from backend.core.gpu_model_registry import get_onnx_providers
+
+    _setup_registry(monkeypatch, {"models/x/foo.onnx": {"verdict": "rocm"}})
+    monkeypatch.setenv("AURIK_FORCE_CPU", "1")
+    assert get_onnx_providers("models/x/foo.onnx") == ["CPUExecutionProvider"]
+
+
 def test_load_registry_missing_file_returns_empty(monkeypatch) -> None:
     import backend.core.gpu_model_registry as _mod
 

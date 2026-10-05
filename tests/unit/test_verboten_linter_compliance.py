@@ -1016,3 +1016,39 @@ class TestPhase23VfaBlendBack:
         audio = 0.3 * np.ones(sr, dtype=np.float32)
         res = p.process(audio.copy(), sr, material_type="vinyl")
         assert res.audio.shape == audio.shape
+
+
+class TestV14SeparationMetricBoundary:
+    """V14 verbietet Sprachmetriken (PESQ/STOI/DNSMOS/NISQA) — nicht Separationsmetriken.
+
+    SI-SDR (Le Roux et al. 2019) bewertet Stem-/Quellentrennung und ist das
+    korrekte Maß für das 4-Stem-A/B (SCNet vs. MDX23C). Die Regel hatte es im
+    Muster und meldete korrekte Evaluations-Harnesse fälschlich als ERROR;
+    VERBOTEN.md nennt SI-SDR nirgends.
+    """
+
+    def test_si_sdr_not_flagged(self, tmp_path: Path) -> None:
+        file_path = tmp_path / "eval_separation_ab.py"
+        file_path.write_text(
+            textwrap.dedent(
+                """
+                def si_sdr_db(estimate, reference):
+                    return 10.0
+                """
+            ),
+            encoding="utf-8",
+        )
+
+        import scripts.aurik_verboten_linter as _linter
+
+        violations = _linter.scan(file_path)  # type: ignore[attr-defined]
+        assert not any(v.rule == "V14" for v in violations)
+
+    def test_speech_metrics_still_flagged(self, tmp_path: Path) -> None:
+        import scripts.aurik_verboten_linter as _linter
+
+        for name, token in (("a.py", "pesq"), ("b.py", "stoi"), ("c.py", "dnsmos"), ("d.py", "nisqa")):
+            file_path = tmp_path / name
+            file_path.write_text(f"score = {token}(a, b)\n", encoding="utf-8")
+            violations = _linter.scan(file_path)  # type: ignore[attr-defined]
+            assert any(v.rule == "V14" for v in violations), f"{token} muss weiterhin V14 auslösen"

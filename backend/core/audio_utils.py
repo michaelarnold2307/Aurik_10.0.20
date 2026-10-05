@@ -33,6 +33,11 @@ def resolve_beat_synced_time_ms(
     try:
         _bpm = float(tempo_bpm)  # type: ignore[arg-type]
     except (TypeError, ValueError):
+        logger.warning(
+            "audio_utils: tempo_bpm=%r nicht numerisch -> Basis-Zeitkonstante %.1f ms (§V6, copilot-instructions.md)",
+            tempo_bpm,
+            _base,
+        )
         return _base
     if not 40.0 <= _bpm <= 300.0:
         return _base

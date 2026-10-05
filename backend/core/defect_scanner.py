@@ -318,6 +318,10 @@ class DefectScoreView(dict):
         try:
             return DefectType(str(key))
         except ValueError:
+            logger.warning(
+                "defect_scanner: Key %r ist kein DefectType -> Roh-Key beibehalten (§V6, copilot-instructions.md)",
+                key,
+            )
             return key
 
     def _candidates(self, key: object):

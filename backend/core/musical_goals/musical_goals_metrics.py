@@ -329,7 +329,11 @@ def _auth_reference_features(ref_audio: np.ndarray, sr: int, audio_len: int) -> 
             warnings.filterwarnings("error", message=".*n_fft=.*too large.*", category=UserWarning)
             chroma_reference = librosa.feature.chroma_cqt(y=_ref_f32, sr=sr, tuning=0.0)
         centroid_reference = librosa.feature.spectral_centroid(y=ref_audio, sr=sr)[0]
-    except Exception:
+    except Exception as exc:
+        logger.warning(
+            "musical_goals_metrics: Referenz-Chroma/Centroid nicht berechenbar (%s) -> Authentizitäts-Metriken ohne Referenz (§V6, copilot-instructions.md)",
+            exc,
+        )
         return None
     if len(_AUTH_REF_CACHE) >= _AUTH_REF_CACHE_MAX:
         del _AUTH_REF_CACHE[next(iter(_AUTH_REF_CACHE))]

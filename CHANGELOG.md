@@ -1,4 +1,37 @@
-# Changelog — Aurik 10.3.0
+# Changelog — Aurik 10.3.1
+
+## 10.3.1 (2026-10-05)
+
+### 🐛 Bug-Hunt & Konsistenz (1:1-Abgleich gegen Vorgaben und Specs)
+
+- **Zeitquellen-Konsistenz**: Der Pipeline-Health-Monitor startete den Wall-Time-Akkumulator
+  mit `time.time()`, verglich aber mit `time.monotonic()` — die Differenz (≈ −1,76e9 s) machte
+  das 2-Stunden-Limit dauerhaft inoperativ, und `summary()` meldete eine unsinnige
+  Pipeline-Dauer (dokumentierte Klasse `.github/VERBOTEN.md` „Wall-Time-Referenz-Mismatch").
+  Beide Seiten laufen jetzt auf `time.monotonic()`; Regressionstests in
+  `tests/unit/test_pipeline_health.py`.
+- **ArtistFingerprintStore**: `last_updated` wurde teils als `time.monotonic()` persistiert,
+  aber gegen `time.time()` geprüft (und umgekehrt) — die Ablauf-Prüfung (> 30 Tage) konnte nie
+  greifen. Persistierte Zeitstempel laufen jetzt durchgängig auf Wall-Clock (§G5).
+- **PMGG-Retry-Budget**: `_retry_t0`/`_retry_elapsed` auf `time.monotonic()` umgestellt
+  (`.github/specs/04_dsp_standards.md`: beide Seiten derselbe Uhrentyp); NTP-/DST-Sprünge
+  konnten den Wiederholungsabbruch vorher nichtdeterministisch auslösen.
+- **Batch-Timing**: Dauer-Messungen in `backend/core/parallel/batch_parallel.py` nutzen
+  `time.perf_counter()` (monotone Hochauflösungsuhr, kein Uhren-Mix im Modul).
+- **§V6 Silent-Failure-Verbot**: stille Fallbacks protokollieren `logger.warning(...)` mit
+  Begründung; drei Module ohne Logger erhielten `logging.getLogger(__name__)`
+  (`dsp/_declip_core.py`, `dsp/adaptive_janssen_iterative.py`, `dsp/noise_burst_remover.py`).
+- **§0a NaN/Inf-Schutz**: `phase_67_crackle_texture_removal` nullt nicht-finite Schätzwerte
+  und schützt das Ausgabe-Audio (`nan_to_num` + Clip).
+- **§V5 Dither-Abgrenzung**: Masken-Cast in `phase_23_spectral_repair` dokumentiert
+  (bool→int8 für die Run-Length-Segmentierung; Dither ausschließlich im Export).
+- **Gate-Korrektheit (`audit/code_weakness_scanner.py`)**: Regeln prüfen Code statt Prosa
+  (Kommentare/Strings werden positionsgetreu geblankt — 26 von 33 `print()`-Treffern waren
+  auskommentiert), erkennen jeden Logger-Namen (`_logger`, `LOGGER`, `self.logger`, modulweite
+  Audit-Fassaden), melden §G5 nur noch bei Wall-Clock in Entscheidungslogik (Messungen und
+  Zeitstempel transparent als unterdrückt ausgewiesen) und grenzen TTL-/Datei-Haushalt als
+  eigene informative Kategorie ab. Neue Regel `walltime_clock_mismatch` (high) findet
+  gemischte Uhr-Epochen — genau die Klasse, die den Health-Monitor-Bug verursacht hat.
 
 ## 10.3.0 (2026-10-04)
 

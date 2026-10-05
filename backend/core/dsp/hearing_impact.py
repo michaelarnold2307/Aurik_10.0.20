@@ -47,7 +47,12 @@ def _to_defect_type(key: Any) -> Any | None:
             return key
         if isinstance(key, str):
             return DefectType(key)  # Enum-Werte sind die Lowercase-Strings
-    except (ImportError, ValueError):
+    except (ImportError, ValueError) as exc:
+        logger.warning(
+            "hearing_impact: Schlüssel %r nicht als DefectType auflösbar (%s) -> kein Hör-Impact (§V6, copilot-instructions.md)",
+            key,
+            exc,
+        )
         return None
     return None
 

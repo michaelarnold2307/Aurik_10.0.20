@@ -58,3 +58,46 @@ class TestPipelineHealthCheck:
 
         assert os.path.exists("pytest.ini"), "pytest.ini fehlt"
         assert os.path.exists(".github/specs/01_musical_goals.md"), "Spec 01 fehlt"
+
+
+class TestPipelineHealthMonitorClock:
+    """Wall-Time-Akkumulator des Health-Monitors: beide Seiten dieselbe Uhr.
+
+    Regression zu .github/VERBOTEN.md „Wall-Time-Referenz-Mismatch": Mit
+    time.time() als Startwert und time.monotonic() im Vergleich ergibt die
+    Differenz ~-1,76e9 s — das 2-Stunden-Limit feuerte nie (Breaker inoperativ)
+    und summary() meldete eine unsinnige Pipeline-Dauer.
+    """
+
+    def test_01_pipeline_budget_breaker_fires(self):
+        import time
+
+        from backend.core.pipeline_health_monitor import (
+            _MAX_PIPELINE_DURATION_S,
+            PipelineHealthMonitor,
+        )
+
+        monitor = PipelineHealthMonitor()
+        assert monitor.check_circuit_breaker() is True
+        monitor._health.pipeline_start_time = time.monotonic() - (_MAX_PIPELINE_DURATION_S + 1.0)
+        assert monitor.check_circuit_breaker() is False, "Wall-Time-Limit muss greifen"
+        assert monitor._health.circuit_breaker_triggered is True
+
+    def test_02_summary_duration_is_plausible(self):
+        from backend.core.pipeline_health_monitor import PipelineHealthMonitor
+
+        monitor = PipelineHealthMonitor()
+        duration = monitor.summary()["pipeline_duration_s"]
+        assert 0.0 <= duration < 60.0, f"unsinnige Pipeline-Dauer: {duration}"
+
+    def test_03_phase_duration_uses_same_clock(self):
+        import time
+
+        from backend.core.pipeline_health_monitor import PipelineHealthMonitor
+
+        monitor = PipelineHealthMonitor()
+        started = monitor.record_phase_start("phase_01_demo")
+        time.sleep(0.01)
+        monitor.record_phase_end("phase_01_demo", started, retries=0, success=True)
+        duration = monitor._health.phase_durations["phase_01_demo"]
+        assert 0.0 < duration < 5.0, f"Phasendauer unplausibel: {duration}"

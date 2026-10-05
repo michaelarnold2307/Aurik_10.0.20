@@ -1,17 +1,130 @@
 # TASK_CHANGES — Live-Ledger der aktuellen Aufgabe
 
-> Generiert von `scripts/change_ledger.py snapshot` (Base: `HEAD`, Stand: 2026-10-04 23:11 CEST).
+> Generiert von `scripts/change_ledger.py snapshot` (Base: `HEAD`, Stand: 2026-10-05 05:09 CEST).
 > CI (`ci-lite.yml` pr-evidence-gate) erzwingt Abdeckung: jede geänderte Code-Datei muss hier stehen.
 
 ## Geänderte Dateien
 
 | Status | Pfad | Art |
 |---|---|---|
-| M | `plugins/cantus_plugin.py` | modifiziert |
-| M | `plugins/symphonia_plugin.py` | modifiziert |
+| M | `.github/FILE_REGISTRY.md` | modifiziert |
+| M | `.github/instructions/hoerordnung.instructions.md` | modifiziert |
+| M | `.gitignore` | modifiziert |
+| M | `TASK_CHANGES.md` | modifiziert |
+| M | `audit/code_weakness_scanner.py` | modifiziert |
+| M | `backend/core/artist_fingerprint.py` | modifiziert |
+| M | `backend/core/audio_utils.py` | modifiziert |
+| M | `backend/core/chunked_streaming.py` | modifiziert |
+| M | `backend/core/defect_audibility_gate.py` | modifiziert |
+| M | `backend/core/defect_scanner.py` | modifiziert |
+| M | `backend/core/dsp/_declip_core.py` | modifiziert |
+| M | `backend/core/dsp/adaptive_formant_shifter.py` | modifiziert |
+| M | `backend/core/dsp/adaptive_janssen_iterative.py` | modifiziert |
+| M | `backend/core/dsp/audibility_gate.py` | modifiziert |
+| M | `backend/core/dsp/binaural_masking.py` | modifiziert |
+| M | `backend/core/dsp/decrackler.py` | modifiziert |
+| M | `backend/core/dsp/diffwave_torch_inpaint.py` | modifiziert |
+| M | `backend/core/dsp/formant_system.py` | modifiziert |
+| M | `backend/core/dsp/hearing_impact.py` | modifiziert |
+| M | `backend/core/dsp/interaural_cues.py` | modifiziert |
+| M | `backend/core/dsp/noise_burst_remover.py` | modifiziert |
+| M | `backend/core/dsp/sota_denoiser.py` | modifiziert |
+| M | `backend/core/dsp/sota_dereverberator.py` | modifiziert |
+| M | `backend/core/dsp/stem_separator.py` | modifiziert |
+| M | `backend/core/dsp/style_intent_detector.py` | modifiziert |
+| M | `backend/core/gpu_model_registry.py` | modifiziert |
+| M | `backend/core/musical_goals/musical_goals_metrics.py` | modifiziert |
+| M | `backend/core/orchestrator_params.py` | modifiziert |
+| M | `backend/core/parallel/batch_parallel.py` | modifiziert |
+| M | `backend/core/per_phase_musical_goals_gate.py` | modifiziert |
+| M | `backend/core/phases/phase_23_spectral_repair.py` | modifiziert |
+| M | `backend/core/phases/phase_55_diffusion_inpainting.py` | modifiziert |
+| M | `backend/core/phases/phase_67_crackle_texture_removal.py` | modifiziert |
+| M | `backend/core/pipeline_health_monitor.py` | modifiziert |
+| M | `backend/core/presence_embedding.py` | modifiziert |
+| M | `backend/core/unified_restorer_v3.py` | modifiziert |
+| M | `docs/TODOS_SOTA_ROADMAP.md` | modifiziert |
+| M | `docs/reports/current/2026-10-03_evidenz_generator_defekt.md` | modifiziert |
+| M | `docs/reports/current/2026-10-03_hoerordnung_kanonisierung_offen.md` | modifiziert |
+| M | `docs/reports/current/2026-10-04_offene_massnahmen.md` | modifiziert |
+| M | `reports/spec_drift_baseline.json` | modifiziert |
+| M | `scripts/run_real_audio_corpus_test.py` | modifiziert |
+| M | `tests/unit/test_code_weakness_scanner.py` | modifiziert |
+| M | `tests/unit/test_gpu_model_registry.py` | modifiziert |
+| M | `tests/unit/test_pipeline_health.py` | modifiziert |
+| ?? | `docs/reports/current/2026-10-04_p1_2_scnet_vs_mdx23c_ab.md` | ungetrackt |
+| ?? | `models/scnet_4stems/README.md` | ungetrackt |
+| ?? | `models/scnet_4stems/config.yaml` | ungetrackt |
+| ?? | `models/scnet_4stems/zfturbo_scnet/LICENSE` | ungetrackt |
+| ?? | `models/scnet_4stems/zfturbo_scnet/README.md` | ungetrackt |
+| ?? | `models/scnet_4stems/zfturbo_scnet/__init__.py` | ungetrackt |
+| ?? | `models/scnet_4stems/zfturbo_scnet/scnet.py` | ungetrackt |
+| ?? | `models/scnet_4stems/zfturbo_scnet/separation.py` | ungetrackt |
+| ?? | `scripts/eval_scnet_vs_mdx23c.py` | ungetrackt |
 
 ## Entscheidungen
 
+- **Ausführungssitzung 2026-10-05 (M2/P1-2 vollzogen — Parent-Übernahme, Demucs-Baseline, MelBand-Befund)**:
+  - **Runner + Vendoring + Strict-Load:** `scripts/eval_scnet_vs_mdx23c.py` (neu, Registry)
+    - `models/scnet_4stems/zfturbo_scnet/` (ZFTurbo-MSST-Architektur, MIT, byte-genau;
+    Autoren-Hinweis der Modell-Karte HF `Aname-Tommy/Huge-SCNet-4stems`:
+    „try ZFTurbo's msst") → Strict-Load **0 missing / 0 unexpected**
+    (65.292.464 Params); §G5 bit-identisch (zwei Läufe, Stör-Seed dazwischen, max|Δ|=0).
+  - **Baseline-Klärung:** „MDX23C-Stand" entfällt (§v10.73, keine Gewichte; v5 nie
+    erschienen) → Baseline = **Demucs v4** (`htdemucs_6s.onnx`, ONNX-CPU, verifiziert).
+    **Zusatzbefund:** MelBandRoformer-ONNX-Pfad (`plugins/bs_roformer_plugin.py`)
+    DEFEKT — duplizierte Instrument-Stems (feste Residual-Faktoren
+    0,40/0,30/0,15/0,10/0,05) + unkorrelierte Vocals (corr ≈ 0 auf vocal-reichen
+    Fenstern); nicht als Baseline verwendet, Defekt dokumentiert.
+  - **Vollmatrix 3×30 s** (auto-Vocals-Fenster 165/169/107 s, Seed 42,
+    `AURIK_FORCE_CPU=1`, 0 Fehlerfälle): **SCNet dominiert** — SI-SDR
+    +13,6/+10,3/+16,4 dB; Singer-cos 0,978/0,992/0,988 (Gate ≥ 0,92 ✓);
+    Fidelity 0,960/0,946/0,967 (Gate ✓); Baseline −20,1…+1,5 dB / 0,45–0,63 /
+    0,0–0,271. Report: `docs/reports/current/2026-10-04_p1_2_scnet_vs_mdx23c_ab.md`;
+    Roadmap-Verdikt eingehängt; C4-Hör-Artefakte erzeugt; **Integration offen
+    (menschlich, C4/C5)**.
+- **Ausführungssitzung 2026-10-05 (Fortsetzung) — ORT-FORCE_CPU-Fix, F7-Start, T6-1-Matrix**:
+  - **Bugfix ORT-ROCm/FORCE_CPU** (`backend/core/gpu_model_registry.py`):
+    `get_onnx_providers`/`apply_gpu_policy` erzwangen trotz `AURIK_FORCE_CPU=1`
+    keine CPU → bigvgan/flashsr bauten ROCm-Sessions; unter GPU-Last endete das
+    in einem ORT-Hart-Abort („no ROCm-capable device is detected", zwei Läufe
+    gestorben: 11:46 + 00:2x). Fix: globaler GPU-Stopp direkt in der Registry
+    (Log `§v10.40c … CPU erzwungen`); 2 neue Regressionstests
+    (`tests/unit/test_gpu_model_registry.py`, 18/18 grün); Nachweis im T6-1-Log.
+  - **F7-SGMSE-Training gestartet & stabil** (01:35): Batch 4 UND Batch 2 →
+    OOM auf 24 GB (Belege `output/train_sgmse_musik_oom_batch4_20261005.log`,
+    `…_oom_batch2_20261005.log`); **Batch 1 läuft** (4-s-Datenvertrag bleibt;
+    gemessen ~11 min/Epoch, VRAM ≈ 22/24 GB). Watchdog-Kommando final auf
+    Batch 1 + `.venv_aurik`-Python nachgezogen (Task `8f60bc26…`).
+  - **T6-1-Akzeptanzmatrix gestartet** (`output/t61_ab_2026-10-05`,
+    20-s-Exzerpte, `AURIK_FORCE_CPU=1`); Verdikt/Report folgen nach Abschluss.
+  - **Corpus-Smoke gemessen**: MUSHRA 75,6/100 (Fair), NSIM 0,651,
+    `error_cases: 0` (Reverb-Paar); Evidenz-Report aktualisiert.
+- **Ausführungssitzung 2026-10-04 abends (Hörordnung + Evidenz-Generator + Registry + F7-Gate)**:
+  - **Hörordnungs-Kanonisierung angewandt** (`.github/instructions/hoerordnung.instructions.md`):
+    §3-Umsetzung (Level-1-Guard-Blend + §SCK-R/§WBG-R), §4-Instanzen
+    (`audibility_targets`/Golden-Ear/Hörpanel), §8-Tabelle (Zeilen 1/2).
+    **Belegte Abweichung vom Entwurf 2026-10-03:** Entwurfsnamen
+    (`phase_retreat_required`, `dose_for_margin`, `MARGIN_DB_DEFAULT`,
+    `witness_chain` als Funktion, `thresholds-build/-fit`) existieren nicht im
+    Code — ersetzt durch verifizierte Implementierungen; Default-Marge 6 dB
+    (kein unbelegtes „4 dB“). Belege: Kalibrierung 14/14, spec_drift „No spec
+    drift“, id_registry 0 Warnungen; Detail-Abschnitt im 2026-10-03-Report.
+  - **Evidenz-Generator-Fix angewandt** (`scripts/run_real_audio_corpus_test.py`):
+    echte UV3-Pipeline statt `backend.core.pipeline`-Identitäts-Fallback
+    (Entwurfscode `QualityMode("restoration")` war ungültig → `QualityMode.QUALITY`),
+    kein stiller Fallback (error-Fälle protokolliert, Exit ≠ 0, §V6),
+    Korpus-Paarung `<base>_clean` (längster Präfix), sys.path-Insert,
+    `samples`=Elementzahl. Beleg: Reverb-Smoke `output/corpus_smoke_20261004b.log`
+    (CPU-erzwungen; GPU durch Cantus-Pretrain belegt).
+  - **FILE_REGISTRY R6 auf 0/0**: Backtick- bzw. `**init**`-Mangling bei
+    `models/cantus/__init__.py` und `models/symphonia/__init__.py` bereinigt
+    (`scripts/file_registry_check.py`, 338 registrierte Dateien).
+  - **F7-Watchdog gehärtet** (Scheduled Task `8f60bc26…`): Start nur bei
+    freiem VRAM ≥ 8 GB; MUSAN vollständig (11.086.114.085 B, 930 Noise-WAVs).
+  - **Lanes**: M2-SCNet-A/B neu delegiert (`child_muucc2nd_s4p56d`);
+    M3-T6-1-Smoke `output/t61_smoke_20261004` läuft CPU-erzwungen (voriger
+    11:46-Abbruch = ONNX-ROCm unter GPU-Last).
 - **§PERF-R9 2026-09-19 (phase_49 WPE batched BLAS, qualitätsneutral)**:
   Fast-Cell-Nachmessung (`benchmark_effizienz_matrix.py --cells fast
   --seconds 10 --profile-top-phases 8`, vinyl_test_01.wav, ROCm-Venv,

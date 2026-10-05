@@ -65,3 +65,28 @@ Zeile 2 anfügen:
 6. **Keine Skript-Nachziehung nötig** (hoerordnung §9): Die Ergänzungen
    beschreiben bestehende Enforcement-Implementierung („keine Regeländerung"),
    keine neuen Schwellwerte.
+
+---
+
+## ANGEWANDT 2026-10-04 (Ausführungssitzung)
+
+Der Patch wurde angewandt — **mit einer belegten Abweichung**: Die im Entwurf
+genannten Symbolnamen (`phase_retreat_required`, `dose_for_margin`,
+`MARGIN_DB_DEFAULT`, `witness_chain` als Funktion) existieren im Code nicht.
+Kanonisch verifiziert und daher im normativen Text verwendet:
+
+- Ebene 1: `level_1_invariants_guard.check_level_1_invariants`/`Level1Result`
+  (`blend_factor < 1.0` → Rückblendung im zentralen Phasen-Hook) plus die
+  harten Rücknahmen §SCK-R/§WBG-R (Metadatum `hearing_invariant_retreat`).
+- Ebene 2: `audibility_targets.residual_audibility` (Alias `is_audible`),
+  `repair_strength_for`, `repair_objective_met`/`verify_declick_repair`,
+  `golden_ear_corpus.py` (`inject_at_margin`, `calibration_report`).
+- Witness-Veto: `witness_correction_loop.py` (`compute_witness_veto`/
+  `apply_witness_veto` → `global_scalar`/`family_scalars`).
+- Kein `MARGIN_DB_DEFAULT`: Default-Marge ist **6 dB** (Signaturen);
+  „Default 4 dB" aus dem Entwurf ist nicht belegt und wurde nicht übernommen.
+
+Prüfungen (alle grün):
+- `scripts/horordnung_calibration.py` → 14/14 OK
+- `scripts/spec_drift_check.py` → „No spec drift detected" (Baseline erneuert)
+- `scripts/id_registry_check.py` → 0 WARNUNG(en)

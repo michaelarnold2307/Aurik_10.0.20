@@ -29,7 +29,13 @@ logger = logging.getLogger(__name__)
 def _safe(m: dict, key: str, default: float = 0.0) -> float:
     try:
         value = float(m.get(key, default))
-    except (TypeError, ValueError):
+    except (TypeError, ValueError) as exc:
+        logger.warning(
+            "orchestrator_params: Parameter %r nicht numerisch (%s) -> Default %.4f (§V6, copilot-instructions.md)",
+            key,
+            exc,
+            default,
+        )
         return float(default)
     return value if np.isfinite(value) else float(default)
 

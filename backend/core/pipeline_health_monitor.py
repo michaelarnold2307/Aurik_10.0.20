@@ -37,17 +37,21 @@ class PipelineHealthMonitor:
     """Globales Health-Monitoring mit Circuit-Breaker."""
 
     def __init__(self):
-        self._health = PipelineHealth(pipeline_start_time=time.time())
+        # Wall-Time-Akkumulator: beide Seiten time.monotonic() (.github/VERBOTEN.md
+        # „Wall-Time-Referenz-Mismatch", .github/specs/04_dsp_standards.md).
+        # Vorher: time.time() hier — mono-vs-wall ergab ~-1,76e9 s, der
+        # 2-Stunden-Circuit-Breaker war damit dauerhaft inoperativ.
+        self._health = PipelineHealth(pipeline_start_time=time.monotonic())
         self._lock = threading.Lock()
 
     def record_phase_start(self, phase_id: str) -> float:
-        return time.time()
+        return time.monotonic()
 
     def record_phase_end(self, phase_id: str, start_time: float, retries: int, success: bool, error_type: str = ""):
         with self._lock:
             self._health.total_phases += 1
             self._health.total_retries += retries
-            dur = time.time() - start_time
+            dur = time.monotonic() - start_time
             self._health.phase_durations[phase_id] = dur
             if not success:
                 self._health.total_failures += 1

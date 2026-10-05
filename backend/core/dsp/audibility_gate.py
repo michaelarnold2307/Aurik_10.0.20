@@ -48,6 +48,10 @@ def _threshold_with_jnd_floor(threshold_db: float) -> float:
     try:
         _jnd_db = float(_jnd("level_broadband"))
     except Exception:  # §V6 (copilot-instructions.md): Floor nie blockierend
+        logger.warning(
+            "audibility_gate: JND(level_broadband) nicht verfügbar -> Floor unverändert (%.2f dB) (§V6, copilot-instructions.md)",
+            threshold_db,
+        )
         return float(threshold_db)
     return float(10.0 * np.log10(10.0 ** (float(threshold_db) / 10.0) + 10.0 ** (_jnd_db / 10.0)))
 

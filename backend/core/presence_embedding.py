@@ -167,7 +167,11 @@ def _vocal_formant_coherence(x: np.ndarray, sr: int) -> float:
         from scipy.signal import stft as _stft
 
         _, _, Zxx = _stft(x[: min(len(x), 96000)], nperseg=n_fft, noverlap=hop // 2)
-    except ImportError:
+    except ImportError as exc:
+        logger.warning(
+            "presence_embedding: scipy.signal.stft fehlt (%s) -> numpy-FFT-Fallback (§V6, copilot-instructions.md)",
+            exc,
+        )
         block_size = n_fft
         overlap = hop
         blocks = []

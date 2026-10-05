@@ -83,7 +83,12 @@ class StyleIntentDetector:
         def _spec_available(name: str) -> bool:
             try:
                 return importlib.util.find_spec(name) is not None
-            except (ValueError, ModuleNotFoundError, ImportError):
+            except (ValueError, ModuleNotFoundError, ImportError) as exc:
+                # §V6 (copilot-instructions.md): erwarteter Pfad (optionales Modul) —
+                # debug statt warning, der Detektor weist die Verfügbarkeit im Ergebnis aus.
+                logger.debug(
+                    "style_intent_detector: find_spec(%r) fehlgeschlagen (%s) -> Backend nicht verfügbar", name, exc
+                )
                 return False
 
         self._fcpe_available: bool = _spec_available("torchfcpe")

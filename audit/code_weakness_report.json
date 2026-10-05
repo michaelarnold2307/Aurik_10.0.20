@@ -1,115 +1,68 @@
 {
-  "generated_at": "2026-09-04T20:05:29.849971",
-  "files_scanned": 1548,
-  "duration_s": 13.116,
+  "generated_at": "2026-10-05T05:53:45.452804",
+  "files_scanned": 1691,
+  "duration_s": 103.352,
   "per_rule_counts": {
-    "determinism_time_usage": 10,
-    "print_in_production": 1
+    "wallclock_ttl_housekeeping": 6
   },
   "suppressed": {
-    "determinism_time_usage": 357,
-    "print_in_production": 12
+    "determinism_time_usage": 318
   },
-  "total_findings": 11,
+  "total_findings": 6,
   "findings": [
     {
-      "rule_id": "determinism_time_usage",
+      "rule_id": "wallclock_ttl_housekeeping",
       "severity": "low",
-      "file": "backend/core/forensics/training/train_models.py",
-      "line": 1,
-      "evidence": "9 Vorkommen von time.time()",
-      "spec_ref": "§G5 (AGENTS.md §3 / copilot-instructions.md)",
-      "recommendation": "Prüfen, ob Wall-Clock-Zeit in Entscheidungslogik einfließt; für Messungen time.monotonic()/perf_counter() verwenden. (§G5 Determinism)"
+      "file": "backend/core/artist_fingerprint.py",
+      "line": 199,
+      "evidence": "if time.time() - fp.last_updated > MAX_FINGERPRINT_AGE_DAYS * 86400:",
+      "spec_ref": "§G5 (copilot-instructions.md) — Abgrenzung TTL-Haushalt",
+      "recommendation": "Bewusst: Jede TTL-Politik (Prüfpunkt-/Cache-Ablauf) braucht Wall-Clock — der Wert wird persistiert und muss über Prozess-/Boot-Grenzen vergleichbar bleiben. Kein §G5-Verstoß, solange die Entscheidung das Restaurierungs-Audio nicht beeinflusst. Sichtbar ausgewiesen, damit die Prüfung vollständig bleibt."
     },
     {
-      "rule_id": "determinism_time_usage",
+      "rule_id": "wallclock_ttl_housekeeping",
       "severity": "low",
-      "file": "backend/core/parallel/module_parallel.py",
-      "line": 1,
-      "evidence": "7 Vorkommen von time.time()",
-      "spec_ref": "§G5 (AGENTS.md §3 / copilot-instructions.md)",
-      "recommendation": "Prüfen, ob Wall-Clock-Zeit in Entscheidungslogik einfließt; für Messungen time.monotonic()/perf_counter() verwenden. (§G5 Determinism)"
+      "file": "backend/core/artist_fingerprint.py",
+      "line": 233,
+      "evidence": "if time.time() - fp.last_updated > MAX_FINGERPRINT_AGE_DAYS * 86400:",
+      "spec_ref": "§G5 (copilot-instructions.md) — Abgrenzung TTL-Haushalt",
+      "recommendation": "Bewusst: Jede TTL-Politik (Prüfpunkt-/Cache-Ablauf) braucht Wall-Clock — der Wert wird persistiert und muss über Prozess-/Boot-Grenzen vergleichbar bleiben. Kein §G5-Verstoß, solange die Entscheidung das Restaurierungs-Audio nicht beeinflusst. Sichtbar ausgewiesen, damit die Prüfung vollständig bleibt."
     },
     {
-      "rule_id": "determinism_time_usage",
+      "rule_id": "wallclock_ttl_housekeeping",
       "severity": "low",
-      "file": "backend/core/phases/phase_01_click_removal.py",
-      "line": 1,
-      "evidence": "18 Vorkommen von time.time()",
-      "spec_ref": "§G5 (AGENTS.md §3 / copilot-instructions.md)",
-      "recommendation": "Prüfen, ob Wall-Clock-Zeit in Entscheidungslogik einfließt; für Messungen time.monotonic()/perf_counter() verwenden. (§G5 Determinism)"
+      "file": "backend/core/artist_fingerprint.py",
+      "line": 318,
+      "evidence": "cutoff = time.time() - max_age_days * 86400",
+      "spec_ref": "§G5 (copilot-instructions.md) — Abgrenzung TTL-Haushalt",
+      "recommendation": "Bewusst: Jede TTL-Politik (Prüfpunkt-/Cache-Ablauf) braucht Wall-Clock — der Wert wird persistiert und muss über Prozess-/Boot-Grenzen vergleichbar bleiben. Kein §G5-Verstoß, solange die Entscheidung das Restaurierungs-Audio nicht beeinflusst. Sichtbar ausgewiesen, damit die Prüfung vollständig bleibt."
     },
     {
-      "rule_id": "determinism_time_usage",
+      "rule_id": "wallclock_ttl_housekeeping",
       "severity": "low",
-      "file": "backend/core/phases/phase_12_wow_flutter_fix.py",
-      "line": 1,
-      "evidence": "7 Vorkommen von time.time()",
-      "spec_ref": "§G5 (AGENTS.md §3 / copilot-instructions.md)",
-      "recommendation": "Prüfen, ob Wall-Clock-Zeit in Entscheidungslogik einfließt; für Messungen time.monotonic()/perf_counter() verwenden. (§G5 Determinism)"
+      "file": "backend/core/crash_recovery_guard.py",
+      "line": 198,
+      "evidence": "now = time.time()",
+      "spec_ref": "§G5 (copilot-instructions.md) — Abgrenzung TTL-Haushalt",
+      "recommendation": "Bewusst: Jede TTL-Politik (Prüfpunkt-/Cache-Ablauf) braucht Wall-Clock — der Wert wird persistiert und muss über Prozess-/Boot-Grenzen vergleichbar bleiben. Kein §G5-Verstoß, solange die Entscheidung das Restaurierungs-Audio nicht beeinflusst. Sichtbar ausgewiesen, damit die Prüfung vollständig bleibt."
     },
     {
-      "rule_id": "determinism_time_usage",
+      "rule_id": "wallclock_ttl_housekeeping",
       "severity": "low",
-      "file": "backend/core/phases/phase_19_de_esser.py",
-      "line": 1,
-      "evidence": "9 Vorkommen von time.time()",
-      "spec_ref": "§G5 (AGENTS.md §3 / copilot-instructions.md)",
-      "recommendation": "Prüfen, ob Wall-Clock-Zeit in Entscheidungslogik einfließt; für Messungen time.monotonic()/perf_counter() verwenden. (§G5 Determinism)"
+      "file": "backend/core/recovery_checkpoint.py",
+      "line": 261,
+      "evidence": "now = time.time()",
+      "spec_ref": "§G5 (copilot-instructions.md) — Abgrenzung TTL-Haushalt",
+      "recommendation": "Bewusst: Jede TTL-Politik (Prüfpunkt-/Cache-Ablauf) braucht Wall-Clock — der Wert wird persistiert und muss über Prozess-/Boot-Grenzen vergleichbar bleiben. Kein §G5-Verstoß, solange die Entscheidung das Restaurierungs-Audio nicht beeinflusst. Sichtbar ausgewiesen, damit die Prüfung vollständig bleibt."
     },
     {
-      "rule_id": "determinism_time_usage",
+      "rule_id": "wallclock_ttl_housekeeping",
       "severity": "low",
-      "file": "backend/core/phases/phase_20_reverb_reduction.py",
-      "line": 1,
-      "evidence": "7 Vorkommen von time.time()",
-      "spec_ref": "§G5 (AGENTS.md §3 / copilot-instructions.md)",
-      "recommendation": "Prüfen, ob Wall-Clock-Zeit in Entscheidungslogik einfließt; für Messungen time.monotonic()/perf_counter() verwenden. (§G5 Determinism)"
-    },
-    {
-      "rule_id": "determinism_time_usage",
-      "severity": "low",
-      "file": "backend/core/phases/phase_29_tape_hiss_reduction.py",
-      "line": 1,
-      "evidence": "8 Vorkommen von time.time()",
-      "spec_ref": "§G5 (AGENTS.md §3 / copilot-instructions.md)",
-      "recommendation": "Prüfen, ob Wall-Clock-Zeit in Entscheidungslogik einfließt; für Messungen time.monotonic()/perf_counter() verwenden. (§G5 Determinism)"
-    },
-    {
-      "rule_id": "determinism_time_usage",
-      "severity": "low",
-      "file": "backend/core/phases/phase_31_speed_pitch_correction.py",
-      "line": 1,
-      "evidence": "7 Vorkommen von time.time()",
-      "spec_ref": "§G5 (AGENTS.md §3 / copilot-instructions.md)",
-      "recommendation": "Prüfen, ob Wall-Clock-Zeit in Entscheidungslogik einfließt; für Messungen time.monotonic()/perf_counter() verwenden. (§G5 Determinism)"
-    },
-    {
-      "rule_id": "determinism_time_usage",
-      "severity": "low",
-      "file": "backend/core/phases/phase_34_mid_side_processing.py",
-      "line": 1,
-      "evidence": "7 Vorkommen von time.time()",
-      "spec_ref": "§G5 (AGENTS.md §3 / copilot-instructions.md)",
-      "recommendation": "Prüfen, ob Wall-Clock-Zeit in Entscheidungslogik einfließt; für Messungen time.monotonic()/perf_counter() verwenden. (§G5 Determinism)"
-    },
-    {
-      "rule_id": "determinism_time_usage",
-      "severity": "low",
-      "file": "backend/core/unified_restorer_v3.py",
-      "line": 1,
-      "evidence": "13 Vorkommen von time.time()",
-      "spec_ref": "§G5 (AGENTS.md §3 / copilot-instructions.md)",
-      "recommendation": "Prüfen, ob Wall-Clock-Zeit in Entscheidungslogik einfließt; für Messungen time.monotonic()/perf_counter() verwenden. (§G5 Determinism)"
-    },
-    {
-      "rule_id": "print_in_production",
-      "severity": "low",
-      "file": "backend/core/scripts/lint_peak_guard_conformity.py",
-      "line": 1,
-      "evidence": "7 Vorkommen von print()",
-      "spec_ref": "Logger-Pflicht (§III DSP, AGENTS.md §3)",
-      "recommendation": "Ausgaben über logging umleiten (Logger-Pflicht)."
+      "file": "backend/core/recovery_checkpoint.py",
+      "line": 420,
+      "evidence": "now = time.time()",
+      "spec_ref": "§G5 (copilot-instructions.md) — Abgrenzung TTL-Haushalt",
+      "recommendation": "Bewusst: Jede TTL-Politik (Prüfpunkt-/Cache-Ablauf) braucht Wall-Clock — der Wert wird persistiert und muss über Prozess-/Boot-Grenzen vergleichbar bleiben. Kein §G5-Verstoß, solange die Entscheidung das Restaurierungs-Audio nicht beeinflusst. Sichtbar ausgewiesen, damit die Prüfung vollständig bleibt."
     }
   ]
 }

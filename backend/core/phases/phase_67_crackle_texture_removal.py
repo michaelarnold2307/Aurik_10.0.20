@@ -212,6 +212,14 @@ class CrackleTextureRemovalPhase(PhaseInterface):
                 x = np.stack([arr[:, 0], arr[:, 0]], axis=0)
                 out_orientation = "channels_first"
         est = self._estimate(x)
+        # §0a (copilot-instructions.md): NaN/Inf-Schutz — nicht-finite Schätzwerte
+        # werden genullt (Passthrough für dieses Sample) und protokolliert (§V6 (copilot-instructions.md)).
+        if not np.all(np.isfinite(est)):
+            logger.warning(
+                "CrackleTextureRemoval: %d nicht-finite Schätzwerte -> genullt (§0a/§V6, copilot-instructions.md)",
+                int((~np.isfinite(est)).sum()),
+            )
+            est = np.nan_to_num(est, nan=0.0, posinf=0.0, neginf=0.0)
         out = np.clip(x - self.strength * est, -1.0, 1.0)
         removed_rms = float(np.sqrt(np.mean((x - out) ** 2)))
         if mono or out_orientation == "mono":
@@ -221,7 +229,11 @@ class CrackleTextureRemovalPhase(PhaseInterface):
         else:
             out_arr = out
         return PhaseResult(
-            audio=np.asarray(out_arr, dtype=np.float32),
+            audio=np.clip(
+                np.nan_to_num(np.asarray(out_arr, dtype=np.float32), nan=0.0, posinf=0.0, neginf=0.0),
+                -1.0,
+                1.0,
+            ),
             ml_used=True,
             metadata={
                 "strength": self.strength,

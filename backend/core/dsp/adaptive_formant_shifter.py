@@ -170,7 +170,11 @@ class AdaptiveFormantShifter:
         # Extract poles (roots of A polynomial)
         try:
             poles = np.roots(a)
-        except (np.linalg.LinAlgError, ValueError):
+        except (np.linalg.LinAlgError, ValueError) as exc:
+            logger.warning(
+                "adaptive_formant_shifter: LPC-Polynom nicht lösbar (%s) -> Signal unverändert (§V6, copilot-instructions.md)",
+                exc,
+            )
             return audio.copy()
 
         # Warp pole angles by shift_ratio (formant frequency shift in z-domain)

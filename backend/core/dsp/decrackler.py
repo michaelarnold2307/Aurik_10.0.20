@@ -216,7 +216,11 @@ class AiDecrackler:
             cs = CubicSpline(t, context.astype(np.float64), bc_type="natural")
             t_pred = np.linspace(len(context) - 1, len(context) + n_predict - 1, n_predict)
             return cs(t_pred).astype(np.float64)  # type: ignore[no-any-return]
-        except Exception:
+        except Exception as exc:
+            logger.warning(
+                "decrackler: CubicSpline-Prädiktion fehlgeschlagen (%s) -> Haltewert-Fallback (§V6, copilot-instructions.md)",
+                exc,
+            )
             last_val = float(context[-1])
             return np.asarray(np.full(n_predict, last_val))  # type: ignore[no-any-return]
 

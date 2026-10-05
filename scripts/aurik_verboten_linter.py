@@ -258,8 +258,14 @@ RULES: dict[str, dict] = {
         "sev": "WARNING",
     },
     # ── V14: Speech-Metrik (PESQ/STOI/DNSMOS/NISQA) ───────────────────
+    # Abgrenzung (Bug-Hunt 2026-10-05): SI-SDR ist eine SEPARATIONS-Metrik
+    # (Le Roux et al. 2019, Stem-/Quellentrennung) und ausdrücklich keine
+    # Sprachqualitäts-Metrik. Sie war im Muster enthalten und meldete damit
+    # korrekte Evaluations-Harnesse (z. B. scripts/eval_scnet_vs_mdx23c.py,
+    # 4-Stem-A/B SCNet vs. MDX23C) fälschlich als ERROR. VERBOTEN.md nennt
+    # SI-SDR nirgends — die Regel folgt jetzt dem Wortlaut der Spec.
     "V14": {
-        "p": r"(?:^|\s)(?:PESQ|pesq|SI[.-]SDR|si_sdr|STOI|stoi|DNSMOS|NISQA|VISQOL.*Speech)\b",
+        "p": r"(?:^|\s)(?:PESQ|pesq|STOI|stoi|DNSMOS|NISQA|VISQOL.*Speech)\b",
         "d": "Speech-Metrik — PQS-MOS/VERSA verwenden",
         "skip": {
             "test_",

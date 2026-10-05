@@ -251,6 +251,24 @@ Vorstufe (Separation-SOTA, Zeile 1602).
   `separation_fidelity` + `singer_identity_cosine` vs. MDX23C-Stand +
   Hörstichprobe bleiben der Folge-Slice.
 
+  **Status 2026-10-05 — A/B GEFAHREN (Parent-Übernahme, Kind `child_muucc2nd_s4p56d`
+  ohne Lieferung):** MDX23C-Baseline entfällt endgültig (§v10.73, keine Gewichte;
+  v5-Arm existierte nie) → Baseline = Demucs-v4-Stufe (`htdemucs_6s.onnx`, ONNX-CPU).
+  Kandidat strikt geladen (ZFTurbo-MSST-Architektur vendored, MIT; 65.292.464
+  Params, 0 missing / 0 unexpected; bit-identisch wiederholbar, §G5).
+  Vollmatrix 3×30 s (MUSDB-Test-Trio, auto-Vocals-Fenster 165/169/107 s, Seed 42,
+  CPU-only): **SCNet dominiert** — SI-SDR +13,6/+10,3/+16,4 dB,
+  `singer_identity_cosine` 0,978/0,992/0,988 (Gate ≥ 0,92 ✓),
+  `separation_fidelity` 0,960/0,946/0,967 (Gate 0,80/0,83 ✓); Baseline
+  −20,1…+1,5 dB / 0,45–0,63 / 0,0–0,271 (ONNX-Output-Konvention auffällig leise;
+  Baseline evtl. unterrepräsentiert — Report-Limitation). **Zusatzbefund:**
+  MelBandRoformer-ONNX-Pfad (`plugins/bs_roformer_plugin.py`) liefert duplizierte
+  Instrument-Stems (feste Residual-Faktoren 0,40/0,30/0,15/0,10/0,05) und
+  unkorrelierte Vocals — nicht als Baseline verwendet; Defekt dokumentiert.
+  Report: `docs/reports/current/2026-10-04_p1_2_scnet_vs_mdx23c_ab.md`.
+  Offen: **menschliche Hörstichprobe (C4) + Sign-off**; Integration erst danach
+  (inkl. GPU-Beschleunigungsnachweis; CPU-Laufzeit ≈ 4,3× RT).
+
 ## TODO-P1-3 · Audibility (JND/Masking) auf alle Schwellwert-Guards
 
 - **Ziel:** Formant-, Wärme-, Onset-, Spektralfarben-, Gain-Step-Toleranzen von fixen dB/Korrelations-Werten

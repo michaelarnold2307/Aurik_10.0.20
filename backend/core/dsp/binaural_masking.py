@@ -115,6 +115,11 @@ def _band_sos(sr: int, center_hz: float) -> np.ndarray | None:
     try:
         return cast(np.ndarray, _spsig.butter(4, [lo / (sr / 2.0), hi / (sr / 2.0)], btype="band", output="sos"))
     except ValueError:
+        logger.warning(
+            "binaural_masking: Butterworth-Band %.0f–%.0f Hz nicht konstruierbar -> Band ohne Maskierung (§V6, copilot-instructions.md)",
+            lo,
+            hi,
+        )
         return None
 
 

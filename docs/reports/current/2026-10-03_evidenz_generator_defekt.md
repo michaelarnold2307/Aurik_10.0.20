@@ -57,3 +57,33 @@ zurückzuziehen.
 - Danach erst die Worldclass-Reports (corpus_gate/trusted_vocal) neu fahren.
 - Die Degradations-Baseline dieses Laufs bleibt als `…_2026-10-03.json` erhalten
   (umetikettiert: keine Qualitätsaussage).
+
+---
+
+## ANGEWANDT + GEMESSEN 2026-10-05 (Ausführungssitzung)
+
+1. **Patch angewandt** (`scripts/run_real_audio_corpus_test.py`): `_run_restoration`
+   jetzt über `UnifiedRestorerV3` (Muster `mushra_harness.prepare_pair`, inkl.
+   Layout-Normalisierung), kein stiller Fallback mehr (Laden/Restaurieren/
+   Bewerten eskalieren; der Fall wird als `status:"error"` protokolliert und der
+   Lauf endet mit Exit ≠ 0, §V6), Korpus-Paarung `<base>_clean` (längster
+   Präfix), `sys.path`-Insert am Kopf, `samples` = `int(np.asarray(x).size)`.
+2. **Entwurfs-Fehler gefunden:** `QualityMode("restoration")` ist ungültig
+   (Enum: fast/balanced/quality/maximum) → auf `QualityMode.QUALITY` korrigiert.
+   Der erste Smoke-Lauf bewies die neue Ehrlichkeit sofort: `FALL-FEHLER …
+   ValueError … als error protokolliert`, Exit 1 statt Schein-Score.
+3. **Zweiter Smoke-Lauf (verbindlich, Reverb-Paar, CPU-erzwungen):**
+   `reverb_jazz_1960s_hall.wav` → MUSHRA **75,6/100 (Fair)**, NSIM 0,651,
+   Anchor 62,7, `error_cases: 0`, Laufzeit 2699,7 s. JSON:
+   `reports/real_audio_corpus_reverb_smoke_20261004.json`; Log:
+   `output/corpus_smoke_20261004b.log`.
+4. **Zusatzbefund (Produktionsbug, behoben):** `AURIK_FORCE_CPU=1` wurde von
+   `get_onnx_providers()`/`apply_gpu_policy()` nicht respektiert — direkte
+   Aufrufer (bigvgan/flashsr) erhielten trotz CPU-Vertrag eine ROCm-Session;
+   unter GPU-Last endet das in einem ORT-Hart-Abort
+   (`no ROCm-capable device is detected`). Zentral in
+   `backend/core/gpu_model_registry.py` gefixt (CPU erzwungen bei
+   `AURIK_FORCE_CPU=1`, Log `§v10.40c … CPU erzwungen`) + 2 Regressionstests
+   (18/18 grün).
+5. **Folgemaßnahmen:** Voller Korpus (57 Paare) noch nicht neu gefahren —
+   45 min/Paar bei CPU-only (165× RT; GPU war durch Training belegt).

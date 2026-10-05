@@ -238,6 +238,10 @@ def canonical_audibility_verdicts(
     try:
         sr = int(sample_rate or 0)
     except (TypeError, ValueError):
+        logger.warning(
+            "defect_audibility_gate: sample_rate=%r unbrauchbar -> keine Maskierungsschwellen (§V6, copilot-instructions.md)",
+            sample_rate,
+        )
         return {}
     if sr <= 0:
         return {}

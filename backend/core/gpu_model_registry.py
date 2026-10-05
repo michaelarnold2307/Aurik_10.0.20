@@ -20,6 +20,7 @@ from __future__ import annotations
 
 import json
 import logging
+import os
 import threading
 from collections.abc import Sequence
 from pathlib import Path
@@ -90,6 +91,11 @@ def verdict_for_model(model_path: str | Path) -> str:
     return _verdict if _verdict in _VALID_VERDICTS else "unknown"
 
 
+def _force_cpu_requested() -> bool:
+    """Globaler GPU-Stopp: AURIK_FORCE_CPU=1/true/yes (ml_device_manager-Vertrag)."""
+    return os.environ.get("AURIK_FORCE_CPU", "").strip().lower() in ("1", "true", "yes")
+
+
 def apply_gpu_policy(providers: Sequence[_Provider], model_path: str | Path) -> list[_Provider]:
     """Wendet die Registry auf die Provider-Liste an (nie GPU-Hinzufügen bei CPU-only).
 
@@ -121,7 +127,15 @@ def apply_gpu_policy(providers: Sequence[_Provider], model_path: str | Path) -> 
         _pname(p) in _gpu_provider_names or "GPU" in _pname(p) or "MIGraphX" in _pname(p) for p in _providers
     )
     if not _gpu_requested:
-        return _providers  # CPU-only-Aufrufer (AURIK_FORCE_CPU etc.) respektieren
+        return _providers  # CPU-only-Aufrufer respektieren
+
+    if _force_cpu_requested():
+        logger.info(
+            "§v10.40c AURIK_FORCE_CPU=1 → %s CPU erzwungen (GPU-Forderung: %s)",
+            Path(model_path).name,
+            ", ".join(_pname(p) for p in _providers),
+        )
+        return ["CPUExecutionProvider"]
 
     if _verdict == "cpu":
         logger.info(
@@ -152,12 +166,21 @@ def get_onnx_providers(model_path: str | Path, prefer_gpu: bool = True) -> list[
         §v10.762: EP rechnet nachweislich falsch oder langsamer).
       - "unknown"                 → GPU-Kandidaten + CPU-Fallback (unverändert
         durchgereicht; ORT ignoriert nicht verfügbare Provider selbst).
+      - ``AURIK_FORCE_CPU=1``    → CPU erzwungen (globaler GPU-Stopp; Fix
+        2026-10-05: gilt auch für direkte Registry-Aufrufer wie bigvgan/flashsr).
     """
+    if _force_cpu_requested():
+        logger.info("§v10.40c AURIK_FORCE_CPU=1 → %s CPU erzwungen (globaler GPU-Stopp)", Path(model_path).name)
+        return ["CPUExecutionProvider"]
     try:
         import onnxruntime as ort
 
         _avail = set(ort.get_available_providers())
-    except Exception:
+    except Exception as exc:
+        logger.warning(
+            "gpu_model_registry: onnxruntime-Provider nicht abfragbar (%s) -> CPU-Provider (§V6, copilot-instructions.md)",
+            exc,
+        )
         return ["CPUExecutionProvider"]
     if not prefer_gpu:
         return ["CPUExecutionProvider"]

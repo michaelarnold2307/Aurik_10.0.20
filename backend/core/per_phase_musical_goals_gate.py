@@ -5143,7 +5143,10 @@ class PerPhaseMusicalGoalsGate:
         # DSP-Phasen: Erneuter process()-Aufruf mit geändertem strength
         #   (nichtlineare DSP-Operationen: wet/dry ≠ Neuberechnung)
         _prev_regression = regression
-        _retry_t0 = time.time()
+        # §G5 (copilot-instructions.md) / 04_dsp_standards.md: Wall-Time-Budget
+        # ausschließlich auf time.monotonic() (beide Seiten) — time.time() springt
+        # bei NTP/DST und würde den Retry-Pfad nichtdeterministisch beenden.
+        _retry_t0 = time.monotonic()
         # ── §v10.16 Binary Search Loop ────────────────────────────────
         # §F821-Fix: retry_strengths was referenced but never defined
         retry_strengths = [round(float(initial_strength) * s, 3) for s in (0.75, 0.50, 0.30, 0.15)]
@@ -5165,7 +5168,7 @@ class PerPhaseMusicalGoalsGate:
                 if attempt >= len(retry_strengths):
                     break
                 strength = retry_strengths[attempt]
-            _retry_elapsed = time.time() - _retry_t0
+            _retry_elapsed = time.monotonic() - _retry_t0
             if _retry_elapsed > _RETRY_BUDGET_S:
                 logger.info(
                     "PMGG: %s Wiederholung time Grenze exceeded (%.0fs > %.0fs) — "
@@ -5336,7 +5339,7 @@ class PerPhaseMusicalGoalsGate:
                 _worst_prio,
             )
             for _em_strength in _EMERGENCY_STRENGTHS:
-                _retry_elapsed = time.time() - _retry_t0
+                _retry_elapsed = time.monotonic() - _retry_t0
                 if _retry_elapsed > _RETRY_BUDGET_S:
                     break
                 if _is_ml_deterministic:

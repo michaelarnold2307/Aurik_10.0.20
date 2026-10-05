@@ -87,6 +87,10 @@ class SotaDereverberator:
             self._audit_log("warn", "Kein DL-Modell verfügbar, Fallback Identität")
             return np.asarray(audio.copy().astype(audio.dtype))  # type: ignore[no-any-return]
         except Exception as e:
+            _logger.warning(
+                "sota_dereverberator: DL-Entzerrung fehlgeschlagen (%s) -> Original-Audio unverändert (§V6, copilot-instructions.md)",
+                e,
+            )
             self._audit_log("error", str(e))
             return np.asarray(audio.copy().astype(audio.dtype))  # type: ignore[no-any-return]
 

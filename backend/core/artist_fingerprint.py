@@ -193,7 +193,10 @@ class ArtistFingerprintStore:
             with open(path) as f:
                 data = json.load(f)
             fp = SingerVoiceFingerprint.from_dict(data)
-            if time.monotonic() - fp.last_updated > MAX_FINGERPRINT_AGE_DAYS * 86400:
+            # §G5 (copilot-instructions.md): last_updated wird persistiert und muss
+            # daher Wall-Clock-Epoche tragen — time.monotonic() ist prozesslokal
+            # (Systemuptime) und über Prozess-/Boot-Grenzen bedeutungslos.
+            if time.time() - fp.last_updated > MAX_FINGERPRINT_AGE_DAYS * 86400:
                 os.remove(path)
                 return None
             self._voice_cache[artist_id] = fp
@@ -204,7 +207,9 @@ class ArtistFingerprintStore:
 
     def store_track(self, fingerprint: TrackFingerprint) -> None:
         """Persistiert ein Track-Modell."""
-        fingerprint.last_updated = time.monotonic()
+        # §G5 (copilot-instructions.md): Wall-Clock, weil der Wert auf Platte geht
+        # und in späteren Prozessen/Boots gegen time.time() geprüft wird.
+        fingerprint.last_updated = time.time()
         self._track_cache[fingerprint.track_id] = fingerprint
         path = self._track_path(fingerprint.track_id)
         try:
@@ -224,7 +229,8 @@ class ArtistFingerprintStore:
             with open(path) as f:
                 data = json.load(f)
             fp = TrackFingerprint.from_dict(data)
-            if time.monotonic() - fp.last_updated > MAX_FINGERPRINT_AGE_DAYS * 86400:
+            # §G5 (copilot-instructions.md): persistierter Zeitstempel → Wall-Clock-Epoche.
+            if time.time() - fp.last_updated > MAX_FINGERPRINT_AGE_DAYS * 86400:
                 os.remove(path)
                 return None
             self._track_cache[track_id] = fp

@@ -1,59 +1,39 @@
 # Code-Schwachstellen-Report (Watchdog)
 
-- Erzeugt: 2026-09-04T20:05:29.850541
-- Geprüfte Dateien: 1548 (Dauer: 13.116s)
-- Befunde gesamt: **11**
+- Erzeugt: 2026-10-05T05:53:45.459039
+- Geprüfte Dateien: 1691 (Dauer: 103.352s)
+- Befunde gesamt: **6**
   - critical: 0
   - high: 0
   - medium: 0
-  - low: 11
-- Pro Regel: determinism_time_usage=10, print_in_production=1
-- Unterdrückte Befunde (unter Schwelle/Kappung, bewusst sichtbar): determinism_time_usage=357, print_in_production=12
-  (Schwellen: AST-Cap 3/Datei, time.time ≥ 2, print ≥ 3, Top-N 10, max_findings — unterdrückt heißt nicht: nicht vorhanden.)
+  - low: 6
+- Pro Regel: wallclock_ttl_housekeeping=6
+- Unterdrückte Befunde (unter Schwelle/Kappung, bewusst sichtbar): determinism_time_usage=318
+  (Schwellen: AST-Cap 3/Datei, print ≥ 3 im echten Code, Top-N 10, max_findings. determinism_time_usage listet NUR Wall-Clock in Entscheidungslogik (§G5 (GEBOTE.md)); Messungen und Zeitstempel sind kein Verstoß — persistierte Zeitstempel MÜSSEN Wall-Clock bleiben, time.monotonic() ist prozesslokal und über Prozess-/Session-Grenzen bedeutungslos. Unterdrückt heißt nicht: nicht vorhanden.)
 
-## LOW (11)
+## LOW (6)
 
-- `backend/core/forensics/training/train_models.py:1` — **determinism_time_usage** (§G5 (AGENTS.md §3 / copilot-instructions.md))
-  - time.time() im Produktions-Code — Determinismus-Risiko
-  - Evidenz: `9 Vorkommen von time.time()`
-  - Empfehlung: Prüfen, ob Wall-Clock-Zeit in Entscheidungslogik einfließt; für Messungen time.monotonic()/perf_counter() verwenden. (§G5 Determinism)
-- `backend/core/parallel/module_parallel.py:1` — **determinism_time_usage** (§G5 (AGENTS.md §3 / copilot-instructions.md))
-  - time.time() im Produktions-Code — Determinismus-Risiko
-  - Evidenz: `7 Vorkommen von time.time()`
-  - Empfehlung: Prüfen, ob Wall-Clock-Zeit in Entscheidungslogik einfließt; für Messungen time.monotonic()/perf_counter() verwenden. (§G5 Determinism)
-- `backend/core/phases/phase_01_click_removal.py:1` — **determinism_time_usage** (§G5 (AGENTS.md §3 / copilot-instructions.md))
-  - time.time() im Produktions-Code — Determinismus-Risiko
-  - Evidenz: `18 Vorkommen von time.time()`
-  - Empfehlung: Prüfen, ob Wall-Clock-Zeit in Entscheidungslogik einfließt; für Messungen time.monotonic()/perf_counter() verwenden. (§G5 Determinism)
-- `backend/core/phases/phase_12_wow_flutter_fix.py:1` — **determinism_time_usage** (§G5 (AGENTS.md §3 / copilot-instructions.md))
-  - time.time() im Produktions-Code — Determinismus-Risiko
-  - Evidenz: `7 Vorkommen von time.time()`
-  - Empfehlung: Prüfen, ob Wall-Clock-Zeit in Entscheidungslogik einfließt; für Messungen time.monotonic()/perf_counter() verwenden. (§G5 Determinism)
-- `backend/core/phases/phase_19_de_esser.py:1` — **determinism_time_usage** (§G5 (AGENTS.md §3 / copilot-instructions.md))
-  - time.time() im Produktions-Code — Determinismus-Risiko
-  - Evidenz: `9 Vorkommen von time.time()`
-  - Empfehlung: Prüfen, ob Wall-Clock-Zeit in Entscheidungslogik einfließt; für Messungen time.monotonic()/perf_counter() verwenden. (§G5 Determinism)
-- `backend/core/phases/phase_20_reverb_reduction.py:1` — **determinism_time_usage** (§G5 (AGENTS.md §3 / copilot-instructions.md))
-  - time.time() im Produktions-Code — Determinismus-Risiko
-  - Evidenz: `7 Vorkommen von time.time()`
-  - Empfehlung: Prüfen, ob Wall-Clock-Zeit in Entscheidungslogik einfließt; für Messungen time.monotonic()/perf_counter() verwenden. (§G5 Determinism)
-- `backend/core/phases/phase_29_tape_hiss_reduction.py:1` — **determinism_time_usage** (§G5 (AGENTS.md §3 / copilot-instructions.md))
-  - time.time() im Produktions-Code — Determinismus-Risiko
-  - Evidenz: `8 Vorkommen von time.time()`
-  - Empfehlung: Prüfen, ob Wall-Clock-Zeit in Entscheidungslogik einfließt; für Messungen time.monotonic()/perf_counter() verwenden. (§G5 Determinism)
-- `backend/core/phases/phase_31_speed_pitch_correction.py:1` — **determinism_time_usage** (§G5 (AGENTS.md §3 / copilot-instructions.md))
-  - time.time() im Produktions-Code — Determinismus-Risiko
-  - Evidenz: `7 Vorkommen von time.time()`
-  - Empfehlung: Prüfen, ob Wall-Clock-Zeit in Entscheidungslogik einfließt; für Messungen time.monotonic()/perf_counter() verwenden. (§G5 Determinism)
-- `backend/core/phases/phase_34_mid_side_processing.py:1` — **determinism_time_usage** (§G5 (AGENTS.md §3 / copilot-instructions.md))
-  - time.time() im Produktions-Code — Determinismus-Risiko
-  - Evidenz: `7 Vorkommen von time.time()`
-  - Empfehlung: Prüfen, ob Wall-Clock-Zeit in Entscheidungslogik einfließt; für Messungen time.monotonic()/perf_counter() verwenden. (§G5 Determinism)
-- `backend/core/unified_restorer_v3.py:1` — **determinism_time_usage** (§G5 (AGENTS.md §3 / copilot-instructions.md))
-  - time.time() im Produktions-Code — Determinismus-Risiko
-  - Evidenz: `13 Vorkommen von time.time()`
-  - Empfehlung: Prüfen, ob Wall-Clock-Zeit in Entscheidungslogik einfließt; für Messungen time.monotonic()/perf_counter() verwenden. (§G5 Determinism)
-- `backend/core/scripts/lint_peak_guard_conformity.py:1` — **print_in_production** (Logger-Pflicht (§III DSP, AGENTS.md §3))
-  - print() in Produktions-Modul statt Logger
-  - Evidenz: `7 Vorkommen von print()`
-  - Empfehlung: Ausgaben über logging umleiten (Logger-Pflicht).
+- `backend/core/artist_fingerprint.py:199` — **wallclock_ttl_housekeeping** (§G5 (copilot-instructions.md) — Abgrenzung TTL-Haushalt)
+  - Wall-Clock in TTL-/Datei-Lebenszyklus-Entscheidung (kein Audio-Determinismus-Verstoß)
+  - Evidenz: `if time.time() - fp.last_updated > MAX_FINGERPRINT_AGE_DAYS * 86400:`
+  - Empfehlung: Bewusst: Jede TTL-Politik (Prüfpunkt-/Cache-Ablauf) braucht Wall-Clock — der Wert wird persistiert und muss über Prozess-/Boot-Grenzen vergleichbar bleiben. Kein §G5-Verstoß, solange die Entscheidung das Restaurierungs-Audio nicht beeinflusst. Sichtbar ausgewiesen, damit die Prüfung vollständig bleibt.
+- `backend/core/artist_fingerprint.py:233` — **wallclock_ttl_housekeeping** (§G5 (copilot-instructions.md) — Abgrenzung TTL-Haushalt)
+  - Wall-Clock in TTL-/Datei-Lebenszyklus-Entscheidung (kein Audio-Determinismus-Verstoß)
+  - Evidenz: `if time.time() - fp.last_updated > MAX_FINGERPRINT_AGE_DAYS * 86400:`
+  - Empfehlung: Bewusst: Jede TTL-Politik (Prüfpunkt-/Cache-Ablauf) braucht Wall-Clock — der Wert wird persistiert und muss über Prozess-/Boot-Grenzen vergleichbar bleiben. Kein §G5-Verstoß, solange die Entscheidung das Restaurierungs-Audio nicht beeinflusst. Sichtbar ausgewiesen, damit die Prüfung vollständig bleibt.
+- `backend/core/artist_fingerprint.py:318` — **wallclock_ttl_housekeeping** (§G5 (copilot-instructions.md) — Abgrenzung TTL-Haushalt)
+  - Wall-Clock in TTL-/Datei-Lebenszyklus-Entscheidung (kein Audio-Determinismus-Verstoß)
+  - Evidenz: `cutoff = time.time() - max_age_days * 86400`
+  - Empfehlung: Bewusst: Jede TTL-Politik (Prüfpunkt-/Cache-Ablauf) braucht Wall-Clock — der Wert wird persistiert und muss über Prozess-/Boot-Grenzen vergleichbar bleiben. Kein §G5-Verstoß, solange die Entscheidung das Restaurierungs-Audio nicht beeinflusst. Sichtbar ausgewiesen, damit die Prüfung vollständig bleibt.
+- `backend/core/crash_recovery_guard.py:198` — **wallclock_ttl_housekeeping** (§G5 (copilot-instructions.md) — Abgrenzung TTL-Haushalt)
+  - Wall-Clock in TTL-/Datei-Lebenszyklus-Entscheidung (kein Audio-Determinismus-Verstoß)
+  - Evidenz: `now = time.time()`
+  - Empfehlung: Bewusst: Jede TTL-Politik (Prüfpunkt-/Cache-Ablauf) braucht Wall-Clock — der Wert wird persistiert und muss über Prozess-/Boot-Grenzen vergleichbar bleiben. Kein §G5-Verstoß, solange die Entscheidung das Restaurierungs-Audio nicht beeinflusst. Sichtbar ausgewiesen, damit die Prüfung vollständig bleibt.
+- `backend/core/recovery_checkpoint.py:261` — **wallclock_ttl_housekeeping** (§G5 (copilot-instructions.md) — Abgrenzung TTL-Haushalt)
+  - Wall-Clock in TTL-/Datei-Lebenszyklus-Entscheidung (kein Audio-Determinismus-Verstoß)
+  - Evidenz: `now = time.time()`
+  - Empfehlung: Bewusst: Jede TTL-Politik (Prüfpunkt-/Cache-Ablauf) braucht Wall-Clock — der Wert wird persistiert und muss über Prozess-/Boot-Grenzen vergleichbar bleiben. Kein §G5-Verstoß, solange die Entscheidung das Restaurierungs-Audio nicht beeinflusst. Sichtbar ausgewiesen, damit die Prüfung vollständig bleibt.
+- `backend/core/recovery_checkpoint.py:420` — **wallclock_ttl_housekeeping** (§G5 (copilot-instructions.md) — Abgrenzung TTL-Haushalt)
+  - Wall-Clock in TTL-/Datei-Lebenszyklus-Entscheidung (kein Audio-Determinismus-Verstoß)
+  - Evidenz: `now = time.time()`
+  - Empfehlung: Bewusst: Jede TTL-Politik (Prüfpunkt-/Cache-Ablauf) braucht Wall-Clock — der Wert wird persistiert und muss über Prozess-/Boot-Grenzen vergleichbar bleiben. Kein §G5-Verstoß, solange die Entscheidung das Restaurierungs-Audio nicht beeinflusst. Sichtbar ausgewiesen, damit die Prüfung vollständig bleibt.

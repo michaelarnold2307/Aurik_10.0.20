@@ -168,7 +168,9 @@ class BatchParallelProcessor:
 
         logger.info("Processing %s files with %s workers", len(tasks), self.n_jobs)
 
-        start_time = time.time()
+        # Dauer-Messung: monotone Hochauflösungs-Uhr (perf_counter) statt Wall-Clock
+        # — §G5 (copilot-instructions.md), .github/VERBOTEN.md (kein Uhren-Mix im File).
+        start_time = time.perf_counter()
         results = []
         completed_count = 0
         failed_count = 0
@@ -238,7 +240,7 @@ class BatchParallelProcessor:
                         )
                         failed_count += 1
 
-        total_time = time.time() - start_time
+        total_time = time.perf_counter() - start_time
 
         # Calculate speedup
         avg_file_time = total_time / len(tasks) if tasks else 0
@@ -284,7 +286,7 @@ class BatchParallelProcessor:
         self, total: int, completed: int, failed: int, processing: int, start_time: float
     ) -> BatchProgress:
         """Erstellt batch progress object."""
-        elapsed = time.time() - start_time
+        elapsed = time.perf_counter() - start_time
         done = completed + failed
         pending = total - done - processing
 
@@ -360,7 +362,7 @@ def _process_file_worker(task: FileTask, process_func: Callable[[Path, Path], No
     Returns:
         File result
     """
-    start_time = time.time()
+    start_time = time.perf_counter()
 
     try:
         # Ensure output directory exists
@@ -369,7 +371,7 @@ def _process_file_worker(task: FileTask, process_func: Callable[[Path, Path], No
         # Process file
         process_func(task.input_path, task.output_path)
 
-        processing_time = time.time() - start_time
+        processing_time = time.perf_counter() - start_time
 
         # Get output file size
         file_size = 0
@@ -392,7 +394,7 @@ def _process_file_worker(task: FileTask, process_func: Callable[[Path, Path], No
             task.task_id,
             e,
         )
-        processing_time = time.time() - start_time
+        processing_time = time.perf_counter() - start_time
 
         return FileResult(
             task_id=task.task_id,

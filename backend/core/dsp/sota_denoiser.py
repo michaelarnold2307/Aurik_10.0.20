@@ -289,6 +289,10 @@ class SotaDenoiser:
             result: np.ndarray = np.clip(out, -1.0, 1.0).astype(audio.dtype)
             return result
         except Exception as e:
+            _logger.warning(
+                "sota_denoiser: spektrale Maskierung fehlgeschlagen (%s) -> Original-Audio unverändert (§V6, copilot-instructions.md)",
+                e,
+            )
             self._audit_log("error", str(e))
             return np.asarray(audio.copy().astype(audio.dtype))  # type: ignore[no-any-return]
 

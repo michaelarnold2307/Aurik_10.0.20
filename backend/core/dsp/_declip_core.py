@@ -12,7 +12,11 @@ Exportierte Funktion: ar_declip(audio, sr, **kwargs) -> np.ndarray
 
 from __future__ import annotations
 
+import logging
+
 import numpy as np
+
+logger = logging.getLogger(__name__)
 
 # toeplitz entfernt — Yule-Walker durch Burg-Methode ersetzt (§4.2: Yule-Walker verboten)
 
@@ -156,7 +160,12 @@ def ar_declip(
             ar = _burg_ar(y_safe, order)
             if not np.all(np.isfinite(ar)):
                 ar = np.zeros(order)
-        except Exception:
+        except Exception as exc:
+            logger.warning(
+                "_declip_core: Burg-AR-Schätzung (order=%d) fehlgeschlagen (%s) -> Abbruch der AR-Iterationen, bisheriges Ergebnis (§V6, copilot-instructions.md)",
+                order,
+                exc,
+            )
             break
 
         # AR-Vorwärtsvorhersage für geclippte Samples
@@ -214,7 +223,14 @@ def multiband_ar_declip(
             band = sosfilt(sos, audio)
             band_dec = ar_declip(band, sr, threshold=threshold, order=order, n_iter=n_iter)
             result += band_dec
-        except Exception:
+        except Exception as exc:
+            logger.warning(
+                "_declip_core: Band-Deklipping %d (%.0f–%.0f Hz) fehlgeschlagen (%s) -> Originalband addiert (§V6, copilot-instructions.md)",
+                i,
+                freqs[i],
+                freqs[i + 1],
+                exc,
+            )
             result += audio
 
     # Normalisieren: Energie-Verhältnis erhalten

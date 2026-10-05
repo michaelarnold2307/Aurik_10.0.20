@@ -296,6 +296,11 @@ def _band_limited_corr(left: np.ndarray, right: np.ndarray, sr: int, f_lo: float
         l_b = sosfiltfilt(sos, left)
         r_b = sosfiltfilt(sos, right)
     except ValueError:
+        logger.warning(
+            "interaural_cues: Band %.0f–%.0f Hz nicht konstruierbar -> IACC=0 (§V6, copilot-instructions.md)",
+            f_lo,
+            f_hi,
+        )
         return 0.0
     return _corr_coef(l_b, r_b)
 

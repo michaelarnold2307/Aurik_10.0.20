@@ -508,7 +508,11 @@ def _cqtdiff_plus_available() -> bool:
 
         _p = Path(__file__).resolve().parents[3] / "models" / "cqtdiff" / "score_network.pt"
         return _p.is_file()
-    except Exception:
+    except Exception as exc:
+        logger.warning(
+            "phase_55_diffusion_inpainting: CQTdiff+-Voraussetzungsprüfung fehlgeschlagen (%s) -> Plugin gilt als nicht verfügbar (§V6, copilot-instructions.md)",
+            exc,
+        )
         return False
 
 

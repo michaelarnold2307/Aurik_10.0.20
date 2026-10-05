@@ -38,6 +38,12 @@ MANIFEST
 # Ausnahme: Das Modell-Manifest ist Metadaten (keine Gewichte) und wird vom
 # model_downloader (§13.3) sowie von Tests auf frischen Checkouts benötigt.
 !/models/manifest.json
+# Ausnahme (2026-10-05): Kandidaten-Eval TODO-P1-2 — vendored MSST-SCNet-Architektur
+# (MIT, models/scnet_4stems/zfturbo_scnet/) + Konfiguration müssen ins Repo;
+# Gewichte (.ckpt/.onnx) bleiben über die Dateityp-Regeln ignoriert; das
+# Referenz-Klon-Repo scnet_pytorch/ bleibt ausgeschlossen.
+!/models/scnet_4stems/
+/models/scnet_4stems/scnet_pytorch/
 pretrained_models/
 *.pt
 *.pth

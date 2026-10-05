@@ -1560,11 +1560,21 @@ def _build_vocal_scorer_if_gpu():
                     return None
                 _tags = _plug_ssa.get_tags(np.asarray(mono[i0:i1], dtype=np.float32), sr)
                 return float(_tags.get("Singing voice", 0.0))
-            except Exception:
+            except Exception as exc:
+                logger.warning(
+                    "unified_restorer_v3: SSA-Tagging für %s–%ss fehlgeschlagen (%s) -> Segment ohne SVS-Score (§V6, copilot-instructions.md)",
+                    round(t0, 2),
+                    round(t1, 2),
+                    exc,
+                )
                 return None
 
         return _scorer
-    except Exception:
+    except Exception as exc:
+        logger.warning(
+            "unified_restorer_v3: SSA-Tagger nicht initialisierbar (%s) -> SVS-Scoring inaktiv (§V6, copilot-instructions.md)",
+            exc,
+        )
         return None
 
 
@@ -46424,7 +46434,11 @@ class UnifiedRestorerV3:
             return None
         try:
             from backend.core.defect_audibility_gate import retry_phases_for_types as _m1b_map
-        except Exception:
+        except Exception as exc:
+            logger.warning(
+                "unified_restorer_v3: retry_phases_for_types nicht importierbar (%s) -> M1b-Nachlauf ohne Phase-Retry (§V6, copilot-instructions.md)",
+                exc,
+            )
             return None
         _retry = list(dict.fromkeys(_m1b_map(list(improvable_types or []))))
         _FORBIDDEN = {"phase_21_exciter", "phase_35_multiband_compression", "phase_42_vocal_enhancement"}

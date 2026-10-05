@@ -444,7 +444,10 @@ class MLStemSeparator:
         try:
             from sklearn.decomposition import NMF as _NMF
         except ImportError:
-            return None  # sklearn missing → caller falls to HPSS
+            _logger.warning(
+                "stem_separator: sklearn fehlt -> Aufrufer fällt auf HPSS zurück (§V6, copilot-instructions.md)",
+            )
+            return None
 
         mono = (audio.mean(axis=1) if audio.ndim == 2 else audio).astype(np.float64)
         n = len(mono)

@@ -65,7 +65,11 @@ def _device() -> str:
         import torch
 
         return "cuda" if torch.cuda.is_available() else "cpu"
-    except Exception:
+    except Exception as exc:
+        logger.warning(
+            "diffwave_torch_inpaint: Torch/CUDA nicht verfügbar (%s) -> CPU-Ersatzpfad (§V6, copilot-instructions.md)",
+            exc,
+        )
         return "cpu"
 
 

@@ -11,6 +11,8 @@ from typing import Any
 
 import numpy as np
 
+logger = logging.getLogger(__name__)
+
 
 @dataclass(frozen=True)
 class DSPContract:
@@ -167,7 +169,12 @@ class NoiseBurstRemover:
                 total_reduction += reduction
                 self.bursts_removed += 1
             except Exception as e:
-                logging.warning(f"[NoiseBurstRemover] Failed to remove burst [{start}, {end}]: {e}")
+                logger.warning(
+                    "[NoiseBurstRemover] Burst [%d, %d] nicht entfernbar: %s (§V6, copilot-instructions.md)",
+                    start,
+                    end,
+                    e,
+                )
 
         self.avg_reduction_db = total_reduction / max(self.bursts_removed, 1)
 
@@ -281,8 +288,14 @@ class NoiseBurstRemover:
                     # Noise bursts sind oft high-frequency dominant
                     if high_energy > 3 * low_energy:
                         filtered_regions.append((start, end))
-                except Exception:
+                except Exception as exc:
                     # Analysis failure → keep candidate
+                    logger.warning(
+                        "[NoiseBurstRemover] Burst-Analyse [%s, %s] fehlgeschlagen (%s) -> Kandidat bleibt erhalten (§V6, copilot-instructions.md)",
+                        start,
+                        end,
+                        exc,
+                    )
                     filtered_regions.append((start, end))
             else:
                 # Too short to analyze reliably → keep
@@ -318,7 +331,13 @@ class NoiseBurstRemover:
                         audio[start:end] = np.interp(
                             np.arange(start, end), [start - 1, end], [audio[start - 1], audio[end]]
                         )
-                except Exception:
+                except Exception as exc:
+                    logger.warning(
+                        "[NoiseBurstRemover] CubicSpline-Interpolation [%s, %s] fehlgeschlagen (%s) -> lineare Interpolation (§V6, copilot-instructions.md)",
+                        start,
+                        end,
+                        exc,
+                    )
                     audio[start:end] = np.interp(
                         np.arange(start, end), [start - 1, end], [audio[start - 1], audio[end]]
                     )

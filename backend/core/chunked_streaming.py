@@ -67,6 +67,11 @@ def select_chunk_duration_s(total_s: float, env_override: str = "") -> tuple[flo
     try:
         override_f = float(override)
     except ValueError:
+        logger.warning(
+            "chunked_streaming: Override %r nicht numerisch -> Basis-Chunking %.2fs (§V6, copilot-instructions.md)",
+            override,
+            base,
+        )
         return base, False
     if CHUNK_OVERRIDE_MIN_S <= override_f <= CHUNK_OVERRIDE_MAX_S:
         return override_f, True

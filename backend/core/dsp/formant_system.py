@@ -143,7 +143,11 @@ class FormantTracker:
         # Find poles (roots of LPC polynomial)
         try:
             roots = np.roots(lpc_coeffs)
-        except (np.linalg.LinAlgError, ValueError):
+        except (np.linalg.LinAlgError, ValueError) as exc:
+            logger.warning(
+                "formant_system: LPC-Wurzeln nicht bestimmbar (%s) -> Default-Formanten (500 Hz) (§V6, copilot-instructions.md)",
+                exc,
+            )
             return np.zeros(self.n_formants), np.full(self.n_formants, 500.0)
 
         # Convert to frequencies and bandwidths
