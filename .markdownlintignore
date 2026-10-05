@@ -5,3 +5,9 @@ node_modules/**
 .markdownlintignore
 
 LICENSE
+
+# Maschinen-gelesene Lifecycle-Registry (scripts/file_registry_check.py parst die
+# Tabellenzellen VERBATIM). markdownlint --fix hat in Tabellen ``__init__`` zu
+# Fett-Text umgeschrieben und damit Pfade korrumpiert (models/symphonia/**init**.py,
+# Befund 2026-10-05) — und den Commit zweimal mit "files were modified" blockiert.
+.github/FILE_REGISTRY.md

@@ -142,6 +142,12 @@ Vorstufe (Separation-SOTA, Zeile 1602).
   `output/t61_ab_2026-10-05/t61_ab_report.json` + `t61_ab_matrix.csv`.
   Nebenfund (behoben): Der Runner war pro Fall stundenlang stumm (4-h-Lücke) →
   Heartbeat + Schritt-Logs (Commit `54deb1b6`).
+  **Systematik (2026-10-05, Detail aus dem Report):** In **allen drei** Songs
+  regressieren `tonal_center` und `timbre_authentizitaet`, bei zwei zusätzlich
+  `natuerlichkeit` bzw. `authentizitaet` — jeweils um 2,5e-05…1,1e-04, also zwei bis
+  drei Größenordnungen unter der Hörbarkeitsschwelle. Die Ablehnung ist damit
+  **systematisch** (nicht zufällig): die schritt-granularen Guards bleiben als
+  Werkzeug verfügbar, der block-globale Core-Guard bleibt das Sicherheitsnetz.
 
 ---
 
