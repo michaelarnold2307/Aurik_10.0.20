@@ -359,6 +359,10 @@ _HEAVY_TIMEOUT_S = 600.0
 
 _HEAVY_TEST_PATH_HINTS: tuple[str, ...] = (
     "test_defect_scanner_long_audio_crop_rescue.py",
+    # Befund 2026-10-05 (Vollscan Chunk 18): baut echte ONNX-Sessions auf und
+    # braucht 187 s für 5 Tests — mit dem schnellen Smoke-Budget starben fünf
+    # Tests an pytest-timeout (onnxruntime_inference_collection.py:273).
+    "test_edge_taper_no_intro_outro_artifacts.py",
     "test_memory_leaks_v3.py",
     "test_full_chain_ml_hybrid.py",
     "test_e2e_v9_10_41.py",
