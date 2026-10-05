@@ -17,6 +17,8 @@ Auf CPU-only-Systemen werden die GPU-Tests mit Begründung geskippt.
 
 from __future__ import annotations
 
+import os
+
 import numpy as np
 import pytest
 
@@ -24,7 +26,18 @@ _GPU_SKIP_REASON = "Keine GPU verfügbar — GPU-Tests laufen nur auf GPU-CI-Har
 
 
 def _gpu_available() -> bool:
-    """True wenn PyTorch eine CUDA/ROCm/DirectML-GPU sieht (defensiv, nie hängend)."""
+    """True wenn PyTorch eine CUDA/ROCm/DirectML-GPU sieht (defensiv, nie hängend).
+
+    `AURIK_FORCE_CPU=1` schaltet die GPU bewusst ab (Determinismus-Schalter von
+    Suite und Scans). Ein Test, der ein GPU-Backend erwartet, ist dann nicht
+    prüfbar und muss übersprungen, nicht rot werden — genau das sagt der
+    Modul-Docstring zu („Auf CPU-only-Systemen werden die GPU-Tests mit
+    Begründung geskippt"). Befund 2026-10-05 (Vollscan Chunk 26): ohne diese
+    Bedingung schlug `test_gpu_manager_reports_backend` fehl, sobald die Pinne
+    gesetzt war (§G5 (GEBOTE.md): Tests dürfen nicht umgebungsabhängig kippen).
+    """
+    if os.environ.get("AURIK_FORCE_CPU", "").strip().lower() in {"1", "true", "yes"}:
+        return False
     try:
         import torch
 

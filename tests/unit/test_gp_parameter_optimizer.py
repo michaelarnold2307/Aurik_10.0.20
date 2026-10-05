@@ -847,16 +847,33 @@ class TestProposeParetaMOO:
 
 
 class TestContextPriors:
-    def test_81_chain_hint_scales_strength_parameters(self, tmp_path, monkeypatch):
+    def test_81_chain_hint_does_not_scale_strength(self, tmp_path, monkeypatch):
+        """§G188 (GEBOTE.md): Stärke folgt der gemessenen Defekttiefe des Einzelfalls.
+
+        Ein Chain-Hinweis darf die Wirkungsstärke NICHT als fester Multiplikator
+        skalieren — `_apply_context_priors` sagt das ausdrücklich: „Chain hints
+        select or suppress causal hypotheses; G188 (GEBOTE.md) forbids using them
+        as fixed strength multipliers". Der frühere Test verlangte genau diesen
+        verbotenen Faktor (0,5 × 0,6 = 0,30) und war damit regelwidrig; gefunden
+        im Vollscan 2026-10-05 (Chunk 26). §G189 (GEBOTE.md) lässt
+        Chain-Injection (G171) als dokumentierte Ausnahme zu, einen freien
+        Stärke-Faktor nicht.
+        """
         import backend.core.gp_parameter_optimizer as gp_mod
 
         monkeypatch.setattr(gp_mod, "_MEMORY_DIR", tmp_path)
-        opt = GPParameterOptimizer(rng_seed=34)
-        proposal = opt.propose(
-            material="tape",
-            chain_hint={"strength_scale": 0.5, "dominant_cluster": "tape_transport"},
+        mit_hint = (
+            GPParameterOptimizer(rng_seed=34)
+            .propose(
+                material="tape",
+                chain_hint={"strength_scale": 0.5, "dominant_cluster": "tape_transport"},
+            )
+            .parameters["noise_reduction_strength"]
         )
-        assert proposal.parameters["noise_reduction_strength"] == pytest.approx(0.30, abs=1e-6)
+        ohne_hint = GPParameterOptimizer(rng_seed=34).propose(material="tape").parameters["noise_reduction_strength"]
+        assert mit_hint == pytest.approx(ohne_hint, abs=1e-9), (
+            f"Chain-Hinweis hat die Stärke skaliert ({mit_hint} vs. {ohne_hint}) — §G188 (GEBOTE.md) verbietet das"
+        )
 
     def test_82_memory_prior_blends_known_parameter(self, tmp_path, monkeypatch):
         import backend.core.gp_parameter_optimizer as gp_mod
