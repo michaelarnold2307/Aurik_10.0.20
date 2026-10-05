@@ -1,6 +1,18 @@
-"""CI-Gate Smoke Test — End-to-End Pipeline (§Schutzschicht-3)."""
+"""CI-Gate Smoke Test — End-to-End Pipeline (§Schutzschicht-3).
+
+Hinweis (Befund 2026-10-05): Diese drei Smoke-Tests fahren echte End-to-End-Pfade
+(Regression-Gate-Baseline, `aurik_pipeline(use_real=True)`, Competitive-Benchmark)
+und brauchen ~60 s je Test — das CLI-Timeout des Chunk-Smokes (20–25 s) ist damit
+IMMER zu klein. Sichtbar wurde das erst im vollständigen Scan (alle 65 Chunks); der
+Commit-Hook prüft nur Chunk 1 und erreicht diese Datei nie. Der Modul-Marker hebt
+das CLI-Default deterministisch an (Tests dürfen nicht last-/zeitabhängig kippen,
+§G5 (GEBOTE.md) / tests.instructions.md).
+"""
 
 import numpy as np
+import pytest
+
+pytestmark = pytest.mark.timeout(600)
 
 
 def test_ci_gate_regression_baseline_runs():
