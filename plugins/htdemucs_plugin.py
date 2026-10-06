@@ -37,6 +37,7 @@ import logging
 import os
 import threading
 from importlib import import_module
+from math import gcd
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, cast
 
@@ -55,6 +56,129 @@ _DEMUX_GPU_ENABLED = os.getenv("AURIK_DEMUX_GPU", "").lower() in ("1", "true", "
 # Singleton
 _INSTANCE_HOLDER: dict[str, object] = {"plugin": None}
 _singleton_lock = threading.Lock()
+
+# ── Kanonischer ONNX-Aufrufvertrag (htdemucs_6s) ────────────────────────────
+# Befund 2026-10-06: Der ONNX-Export ist ein HYBRIDER TEILGRAPH, kein
+# Wellenform-Modell mit einem Eingang. Der frühere Aufruf fütterte den zweiten
+# Eingang mit Nullen (als „State-Tensor“ bezeichnet) — damit war der
+# Transformer-/Spektralzweig vollständig tot. Gemessen („Motor Tapes – Shore“,
+# 107 s, 7,8-s-Fenster, Ground-Truth-Vocals aus MUSDB18-HQ):
+#
+#   x = Nullen  → Vocals SI-SDR −1,80 dB · Vocals-RMS 0,0002 (GT 0,0680)
+#                 · Stem-Summe 48 % der Mixture
+#   x = STFT    → Vocals SI-SDR +11,59 dB · Vocals-RMS 0,0639
+#                 · Stem-Summe 98 % der Mixture
+#
+# Vertrag:
+#   input  (1, 2, 343980)       Wellenform-Chunk @ 44,1 kHz (343980 = 7,8 s × 44100)
+#   x      (1, 4, 2048, 336)    STFT des Chunks — 4 = 2 Kanäle × (Real, Imag)
+#   output (1, 6, 4, 2048, 336) Spektralzweig (komplex, 6 Stems)
+#   add_67 (1, 6, 2, 343980)    Wellenformzweig (6 Stems)
+#   Stems  = add_67 + iSTFT(output)   ← Hybrid-Summe (Défossez 2021, §G9 copilot-instructions.md)
+#
+# Reihenfolge der 6 Stems: drums, bass, other, vocals, guitar, piano.
+_HTDEMUCS_SR = 44100
+_HTDEMUCS_SEGMENT = 343980
+_HTDEMUCS_N_FFT = 4096
+_HTDEMUCS_HOP = 1024
+_HTDEMUCS_BINS = 2048
+_HTDEMUCS_STEM_ORDER: tuple[str, ...] = ("drums", "bass", "other", "vocals", "guitar", "piano")
+
+
+def resample_audio(audio_2ch: np.ndarray, sr_in: int, sr_out: int) -> np.ndarray:
+    """Resampelt ``(C, T)``-Audio rational und deterministisch (§G5 copilot-instructions.md).
+
+    Bevorzugt ``scipy.signal.resample_poly``; fehlt SciPy, greift librosa als
+    Ersatzpfad — dieser wird nach §V6 (copilot-instructions.md) geloggt.
+    """
+    if int(sr_in) == int(sr_out):
+        return audio_2ch
+    _g = gcd(int(sr_in), int(sr_out))
+    up, down = int(sr_out) // _g, int(sr_in) // _g
+    try:
+        from scipy.signal import resample_poly  # lokaler Import: optional in Minimal-Envs
+
+        # SciPy hat keine Stubs → typisierte Lokale gegen no-any-return (P3).
+        out: np.ndarray = np.asarray(resample_poly(audio_2ch, up, down, axis=-1), dtype=np.float32)
+        return out
+    except Exception as exc:  # pragma: no cover - SciPy ist Regelabhängigkeit
+        logger.warning("resample_poly nicht verfügbar (%s) — librosa-Ersatzpfad (§V6 copilot-instructions.md)", exc)
+        import librosa  # lokaler Import: Ersatzpfad
+
+        # librosa ohne Stubs → typisierte Lokale gegen no-any-return (P3).
+        fallback: np.ndarray = np.stack(
+            [
+                librosa.resample(channel, orig_sr=int(sr_in), target_sr=int(sr_out))
+                for channel in np.atleast_2d(audio_2ch)
+            ]
+        ).astype(np.float32)
+        return fallback
+
+
+def htdemucs_onnx_stft_input(chunk_2ch: np.ndarray) -> np.ndarray:
+    """Baut den STFT-Eingang ``x`` der Form ``(1, 4, 2048, T)``.
+
+    Konvention des Exports: Hann-Fenster, ``win_length = n_fft = 4096``,
+    ``hop_length = 1024``, ``normalized=True`` (1/sqrt(n_fft)), ``center=True``,
+    Nyquist-Bin entfernt — Layout ``(Kanäle × (Real, Imag), Frequenz, Zeit)``.
+    """
+    import torch  # lokaler Import: Torch ist im ONNX-Pfad optional
+
+    z = torch.stft(
+        torch.as_tensor(np.ascontiguousarray(chunk_2ch, dtype=np.float32)),
+        n_fft=_HTDEMUCS_N_FFT,
+        hop_length=_HTDEMUCS_HOP,
+        window=torch.hann_window(_HTDEMUCS_N_FFT),
+        win_length=_HTDEMUCS_N_FFT,
+        normalized=True,
+        center=True,
+        return_complex=True,
+    )
+    # (C, F, T) komplex → (C, 2, F, T) → (C·2, F, T); Nyquist-Bin abschneiden
+    x = torch.view_as_real(z).permute(0, 3, 1, 2).reshape(-1, z.shape[1], z.shape[2])
+    # Torch hat keine Stubs → typisierte Lokale gegen no-any-return (P3 TYPE-SAFETY).
+    layout: np.ndarray = x[:, :_HTDEMUCS_BINS, :].numpy()[None].astype(np.float32)
+    return layout
+
+
+def htdemucs_onnx_stems(session: Any, chunk_2ch: np.ndarray) -> np.ndarray:
+    """Führt den hybriden Teilgraphen aus und liefert Stems der Form ``(6, 2, T)``.
+
+    Nur die **Summe beider Zweige** (``add_67`` + iSTFT(``output``)) ergibt die
+    gültige Schätzung — der Spektralzweig trägt einen erheblichen Teil bei.
+    """
+    import torch
+
+    spec, wave = session.run(
+        None,
+        {
+            "input": chunk_2ch[None].astype(np.float32),
+            "x": htdemucs_onnx_stft_input(chunk_2ch),
+        },
+    )
+    spec6 = np.asarray(spec)[0]  # (6, 4, 2048, T)
+    n_frames = spec6.shape[-1]
+    window = torch.hann_window(_HTDEMUCS_N_FFT)
+    restored: list[np.ndarray] = []
+    for i in range(spec6.shape[0]):
+        layout = spec6[i].reshape(2, 2, _HTDEMUCS_BINS, n_frames).transpose(0, 2, 3, 1)
+        zc = torch.view_as_complex(torch.from_numpy(np.ascontiguousarray(layout)))
+        zc = torch.cat([zc, torch.zeros(2, 1, n_frames, dtype=zc.dtype)], dim=1)  # Nyquist-Bin zurück
+        restored.append(
+            torch.istft(
+                zc,
+                n_fft=_HTDEMUCS_N_FFT,
+                hop_length=_HTDEMUCS_HOP,
+                window=window,
+                win_length=_HTDEMUCS_N_FFT,
+                normalized=True,
+                center=True,
+                length=chunk_2ch.shape[1],
+            ).numpy()
+        )
+    # Hybrid-Summe: nur beide Zweige zusammen ergeben die gültige Schätzung.
+    stems: np.ndarray = np.asarray(wave)[0] + np.stack(restored)
+    return stems
 
 
 class SeparationResult:
@@ -337,29 +461,33 @@ class HtdemucsPlugin:
         return [stems_np[i] for i in range(4)]
 
     def _separate_onnx(self, audio_2ch: np.ndarray) -> list[np.ndarray]:
-        """Separation mit ONNX Runtime.
+        """Separation mit ONNX Runtime (kanonischer Hybrid-Vertrag, §G9 copilot-instructions.md).
 
-        Das ONNX-Modell erfordert exakte Audio-Länge von 343980 Samples (~7.16s @ 48kHz).
+        Das Modell ist ein **44,1-kHz**-Modell: ``343980 = 7,8 s × 44100``. Der
+        Aufrufer übergibt hier 48-kHz-Audio (Plugin-Pfad resampelt auf 48 kHz);
+        die Rate-Abweichung ist bekannt und wird als §V6-Warnung (copilot-instructions.md) geloggt.
         - Kürzere Audio wird mit Nullen gepaddet
         - Längere Audio wird gekürzt (Zentrum beibehalten)
 
-        Returns: 4 stems (vocals, drums, bass, other) in der Original-Länge oder gekürzt
+        Returns: 4 stems [vocals, drums, bass, other] in der Original-Länge oder gekürzt
         """
-        # Modell erfordert exakte Länge
-        _FIXED_LENGTH = 343980
-        orig_length = audio_2ch.shape[1]
+        out_length = audio_2ch.shape[1]
+        # D3 (Befund 2026-10-06, gemessen): 48 kHz in ein 44,1-kHz-Modell kostet
+        # 2,56 dB Vocals-SI-SDR („Motor Tapes – Shore": +11,59 dB @44,1 kHz vs.
+        # +9,03 dB @48 kHz). Deshalb für die Inferenz auf die Modellrate bringen.
+        audio_44 = resample_audio(audio_2ch, 48000, _HTDEMUCS_SR)
+        _FIXED_LENGTH = _HTDEMUCS_SEGMENT
+        orig_length = audio_44.shape[1]
 
-        # Pad oder kürze auf die erforderliche Länge
+        # Pad oder kürze auf die Modelllänge (im 44,1-kHz-Raster)
         if orig_length < _FIXED_LENGTH:
-            # Pad mit Nullen am Ende
             pad_amount = _FIXED_LENGTH - orig_length
-            audio_padded = np.pad(audio_2ch, ((0, 0), (0, pad_amount)), mode="constant")
-            trim_to_length = orig_length  # Zurück zur Original-Länge nach Modell
+            audio_padded = np.pad(audio_44, ((0, 0), (0, pad_amount)), mode="constant")
+            trim_44 = orig_length  # Zurück zur 44,1-kHz-Originallänge
         else:
-            # Kürze auf die erforderliche Länge (Mitte behalten)
             start_idx = (orig_length - _FIXED_LENGTH) // 2
-            audio_padded = audio_2ch[:, start_idx : start_idx + _FIXED_LENGTH]
-            trim_to_length = _FIXED_LENGTH  # Modell gibt nur _FIXED_LENGTH zurück
+            audio_padded = audio_44[:, start_idx : start_idx + _FIXED_LENGTH]
+            trim_44 = _FIXED_LENGTH  # Modell gibt nur _FIXED_LENGTH zurück
             if orig_length > _FIXED_LENGTH:
                 logger.warning(
                     "Audio länger als Modellmaximal (%d samples), "
@@ -370,28 +498,18 @@ class HtdemucsPlugin:
                     _FIXED_LENGTH,
                 )
 
-        # Input: (2, T) → (1, 2, T)
-        input_data = audio_padded[np.newaxis, ...].astype(np.float32)
+        # Kanonischer Hybrid-Aufruf (§G9 copilot-instructions.md): der zweite
+        # Eingang `x` ist der STFT des Chunks (kein Zustand!), und die gültige
+        # Schätzung ist die Summe beider Graph-Ausgänge.
+        stems_6ch = htdemucs_onnx_stems(self._model, audio_padded)  # (6, 2, _FIXED_LENGTH)
 
-        # State-Tensor für ONNX: (1, 4, 2048, 336) mit Nullen initialisiert
-        state_tensor = np.zeros((1, 4, 2048, 336), dtype=np.float32)
-
-        # ONNX-Inferenz — erfordert BEIDE Inputs (input + state-Tensor x)
-        # Output: add_67 hat Shape (1, 6, 2, T) — 6 stems × 2 channels × time
-        input_feed = {
-            "input": input_data,
-            "x": state_tensor,
-        }
-        outputs = self._model.run(None, input_feed)
-
-        # add_67 = outputs[1] = (1, 6, 2, 343980) — 6 stems (drums, bass, other, vocals, guitar, piano)
-        # Wir nehmen die ersten 4 stems [drums, bass, other, vocals]
-        stems_6ch = outputs[1].squeeze(0)  # (6, 2, 343980)
-
-        # Rückgabe: [vocals, drums, bass, other] (4 stems) — gekürzt auf trim_to_length
-        stems_4ch = [stems_6ch[i, :, :trim_to_length] for i in range(4)]
-
-        return stems_4ch
+        # Modellreihenfolge → Erwartung des Aufrufers [vocals, drums, bass, other].
+        # Befund 2026-10-06: Vorher wurde stur Index 0..3 zurückgegeben, wodurch
+        # „vocals“ tatsächlich die Drums-Spur enthielt (Permutation).
+        _idx = {name: pos for pos, name in enumerate(_HTDEMUCS_STEM_ORDER)}
+        stems = [stems_6ch[_idx[name], :, :trim_44] for name in ("vocals", "drums", "bass", "other")]
+        # Zurück auf 48 kHz und auf die Eingangslänge begrenzen.
+        return [np.ascontiguousarray(resample_audio(stem, _HTDEMUCS_SR, 48000)[:, :out_length]) for stem in stems]
 
     def unload(self) -> None:
         """Entladen des Modells aus RAM."""

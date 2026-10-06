@@ -1,4 +1,44 @@
-# Changelog — Aurik 10.3.16
+# Changelog — Aurik 10.3.17
+
+## 10.3.17 (2026-10-06)
+
+### §G9: Demucs-v4-ONNX-Pfad repariert — +13,4 dB Vocals-Separation
+
+- **Befund (gemessen, nicht vermutet):** Der htdemucs-ONNX-Pfad war an **vier
+  Stellen** defekt — und weil das `demucs`-Paket nicht installiert ist, lief
+  genau dieser Pfad **produktiv**:
+  1. **`x` mit Nullen gefüttert** (`plugins/htdemucs_plugin.py`): Der zweite
+     Graph-Eingang ist **kein** „State-Tensor“, sondern der **STFT des Chunks**
+     (`4 = 2 Kanäle × (Real, Imag)`, `2048` Bins, `336` Frames bei
+     `343980 = 7,8 s × 44100`). Mit Nullen war der Transformer-Zweig
+     vollständig tot — der Spektral-Ausgang lieferte exakt `0.0`.
+  2. **Hybrid-Ausgabe unbenutzt:** Die gültige Schätzung ist die **Summe beider
+     Zweige** (`add_67` + iSTFT(`output`)). Der Aufruf nahm nur `add_67` →
+     Stem-Summe erreichte nur 48 % der Mixture.
+  3. **Stem-Permutation:** `_separate_onnx` gab die Indizes `0..3` zurück
+     (`drums, bass, other, vocals`), der Aufrufer entpackte als
+     `[vocals, drums, bass, other]` → **„vocals“ war tatsächlich Drums**.
+  4. **Ratenfehler:** Der Pfad resampelt auf 48 kHz, das Modell ist ein
+     **44,1-kHz**-Modell (`343980 = 7,8 s × 44100`).
+- **Messung** („Motor Tapes – Shore“, 107 s, 7,8-s-Fenster, MUSDB18-HQ-Ground-
+  Truth, Vocals-SI-SDR): **−1,80 dB → +11,59 dB**; Vocals-RMS 0,0002 → 0,0639
+  (GT 0,0680); Stem-Summe 48 % → 98 % der Mixture; der Ratenanteil allein
+  kostet **2,56 dB**.
+- **Fix:** Kanonischer Aufrufvertrag im Plugin (`htdemucs_onnx_stft_input`,
+  `htdemucs_onnx_stems`, `resample_audio`) — **eine** Implementierung für
+  Plugin und Eval-Skript (§G9 copilot-instructions.md). Stem-Mapping über
+  `_HTDEMUCS_STEM_ORDER`, Ratenkonvertierung 48 k → 44,1 k → 48 k,
+  §V6-Logging (copilot-instructions.md) der Ersatzpfade.
+- **Nachweis:** End-to-End über den Produktionspfad `_separate_onnx` mit
+  48-kHz-Eingang → **+11,59 dB** (identisch zur Modellrate), Länge exakt
+  erhalten; `mypy` Success; `ruff` All checks passed; ID-Registry-Check vorab
+  Passed; `test_sota_vocal_model_router.py` 16 passed + 2 **vorbestehende**
+  Fehler (identisch auf HEAD, Miipher/DFN-Pfad — nicht dieser Fix).
+- **Offen (benannt):** Der A/B-Report `2026-10-04_p1_2_scnet_vs_mdx23c_ab.md`
+  verglich gegen eine um ~13 dB handicapiert Baseline → **Neumessung nötig**,
+  bevor C4/SCNet entschieden wird. Ebenso: zwei rote Unit-Tests auf `main`
+  (Miipher/DFN-Router) bleiben unentdeckt, weil der Pre-Commit-Smoke nur
+  **einen** von 65 Chunks fährt.
 
 ## 10.3.16 (2026-10-06)
 
