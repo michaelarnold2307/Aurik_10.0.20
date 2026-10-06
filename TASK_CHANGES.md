@@ -1,21 +1,33 @@
 # TASK_CHANGES — Live-Ledger der aktuellen Aufgabe
 
-> Generiert von `scripts/change_ledger.py snapshot` (Base: `HEAD`, Stand: 2026-10-06 12:32 CEST).
+> Generiert von `scripts/change_ledger.py snapshot` (Base: `HEAD`, Stand: 2026-10-06 12:46 CEST).
 > CI (`ci-lite.yml` pr-evidence-gate) erzwingt Abdeckung: jede geänderte Code-Datei muss hier stehen.
 
 ## Geänderte Dateien
 
 | Status | Pfad | Art |
 |---|---|---|
+| M | `.github/GEBOTE.md` | modifiziert |
+| M | `.github/ID_REGISTRY.md` | modifiziert |
+| M | `.github/copilot-instructions.md` | modifiziert |
+| M | `.github/specs/03_cognitive_modules.md` | modifiziert |
+| M | `.github/specs/05_material_system.md` | modifiziert |
+| M | `.github/specs/25_ambience_match_plugin.md` | modifiziert |
+| M | `AGENTS.md` | modifiziert |
 | M | `CHANGELOG.md` | modifiziert |
+| M | `CLAUDE.md` | modifiziert |
+| M | `CONTRIBUTING.md` | modifiziert |
 | M | `README.md` | modifiziert |
-| M | `backend/core/coordinated_repair.py` | modifiziert |
-| M | `backend/core/dsp/sota_vocal_model_router.py` | modifiziert |
-| M | `backend/core/phases/phase_03_denoise.py` | modifiziert |
+| M | `SPEC.md` | modifiziert |
+| M | `backend/core/causal_defect_reasoner.py` | modifiziert |
+| M | `backend/core/surgical_defect_analyzer.py` | modifiziert |
+| M | `backend/core/unified_restorer_v3.py` | modifiziert |
 | M | `backend/core/version.py` | modifiziert |
+| M | `denker/defekt_denker.py` | modifiziert |
 | M | `pyproject.toml` | modifiziert |
-| M | `tests/unit/test_phase_03_denoise.py` | modifiziert |
-| M | `tests/unit/test_sota_vocal_model_router.py` | modifiziert |
+| M | `reports/spec_drift_baseline.json` | modifiziert |
+| M | `scripts/defect_coverage_check.py` | modifiziert |
+| M | `scripts/gebote_verifier.py` | modifiziert |
 
 ## Entscheidungen
 

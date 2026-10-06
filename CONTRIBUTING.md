@@ -60,7 +60,7 @@ Aurik_Standalone/
 ├── core/                    # Core processing engine
 │   ├── phases/             # 68 processing phases (Phase 01–66 + Vocal Repair + Glue Stage)
 │   ├── unified_restorer_v3.py  # Main pipeline orchestrator
-│   ├── defect_scanner.py   # Defect detection (62 DefectTypes)
+│   ├── defect_scanner.py   # Defect detection (65 DefectTypes)
 │   └── musical_goals/      # 14 perceptual quality goals
 ├── dsp/                     # DSP algorithms (OMLSA, NMF-β, PGHI, …)
 ├── plugins/                 # ML plugins (ONNX/local, all with DSP fallback)

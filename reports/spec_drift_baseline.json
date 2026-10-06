@@ -1,11 +1,11 @@
 {
-  ".github/copilot-instructions.md": "67a962a9153c6d100a7e174f4169e351da97de950841db1d5ad300431203d867",
+  ".github/copilot-instructions.md": "ffec31c93caccf68c869967bf881a850d9a5aec3811c0e3795d92c6461978238",
   ".github/instructions/hoerordnung.instructions.md": "d5109eb57b5c1395b256ec37cb4c77fe05215ca5562f1d5d77aa8f3d1bd3d837",
   ".github/specs/01_musical_goals.md": "110c3f4d08b74f647017ee1fc31c662f635defb5dc04c84fb79d614355ea39e3",
   ".github/specs/02_pipeline_architecture.md": "b9d71676bc1aed1592e1125f7b8a47bfcfba4e938dffb84e938b787f0be9c037",
-  ".github/specs/03_cognitive_modules.md": "36860336a80b573388e16bf25500de3ea5bc6ac5a9d88c3d3676d72924dddf18",
+  ".github/specs/03_cognitive_modules.md": "9f0b12f9f0d95f2e3fd21c59474a8765770a1847c6efc1720bd6149aa2d8457f",
   ".github/specs/04_dsp_standards.md": "eb2427a03166ea59fadab39b0acd608bb9f980ca913a31aea8c4419592203eaa",
-  ".github/specs/05_material_system.md": "d3ae05ba4940813844448d8144625a6946bca90e2ac020cca6e3c03308691857",
+  ".github/specs/05_material_system.md": "e2a260408318de5a71e6a1a4adb70a9b54f703f327be31a4b48e51d9b31c7807",
   ".github/specs/06_phases_system.md": "9a5276059b8417efbb48ea89067c70ad10e9fca5292415e7284707f9d298e936",
   ".github/specs/07_quality_and_tests.md": "09efdc111f75c39969d79357e21d4cb0167cf0427d133fe8ed2942765e378424",
   ".github/specs/08_architecture_and_distribution.md": "016bb109c9d9560c996dd01d5e810ef643a9589ddd569458ec07616bbc7771d4",
@@ -16,11 +16,11 @@
   "scripts/release_must_coverage_check.py": "62815ad39798c1a5c0c0aadbb7e61ad124cd99641657c65eb6f7115d0da407e4",
   "scripts/compliance_check.py": "646d1e5e090aea4c066aff64a451521b05d1e1349c976dece820c05c56dea64e",
   "scripts/check_musical_goals.py": "e2560513df75ddcfd6aa954d88d69497158e61fb5dde2fb534b8f769f25cc8b2",
-  ".github/ID_REGISTRY.md": "b1d94ea23c187a5909a3a12aba2b96d27b8b12b0afbde88fc4f065fe77ffabc2",
-  ".github/FILE_REGISTRY.md": "aec77eac505c99ebfecc3e41756141088a62d55c8090ce168b8eef8ed768cfe4",
+  ".github/ID_REGISTRY.md": "98a4bc64151137b67514b2a564465b4ee03a333f339928204cba24817bb9bfe8",
+  ".github/FILE_REGISTRY.md": "2ea81fea7884c09339d7ae6cbb85bcfcc6daeb777c6846e3bca6bccbaeb47026",
   ".github/GEBOTE_INTEGRATION_MATRIX.md": "3ae76fffd192b52093a5291ee315b3c1e5b48bac4e16e8a65aeaf061228eb4b5",
   ".github/specs/00_SPEC_INDEX.md": "34055acfa9f91842cc3ae7863bba8821d3af2a667279017ce6df50408986b6b2",
   "scripts/gen_integration_matrix.py": "629740944935b08e3079d70dde8c86ee193ca33ea8161ea5eef6809241bb5dd3",
   "docs/ID_COLLISION_MAP.md": "44b8be2c56e87cb768bc4d67b1fd76c39358f2d59752982f05839dd58390a136",
-  "AGENTS.md": "9e70175b39cf6ca6b339c6696b42723c0704734cf3e61b582c5b0ffa2dce6d96"
+  "AGENTS.md": "3c0c9f216b23536a9243fa4794b99cf872d3322a447309319a7a15ee0dacc2b5"
 }

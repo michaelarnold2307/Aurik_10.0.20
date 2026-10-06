@@ -181,7 +181,7 @@ def check_g1() -> tuple[bool, str]:
     return ok, "SongCalibration im Code referenziert" if ok else "SongCalibration nicht gefunden"
 
 
-@gebot("§G2 (GEBOTE.md)", "Defekt-Vollständigkeit", "Alle 62 DefectTypes werden gescannt.")
+@gebot("§G2 (GEBOTE.md)", "Defekt-Vollständigkeit", "Alle 65 DefectTypes werden gescannt.")
 def check_g2() -> tuple[bool, str]:
     ok = _function_exists("backend/core/defect_scanner.py", "scan_defect_presence")
     return ok, "scan_defect_presence() existiert" if ok else "scan_defect_presence() fehlt"

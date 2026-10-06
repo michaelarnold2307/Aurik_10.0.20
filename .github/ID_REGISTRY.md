@@ -40,7 +40,7 @@ VERBOTEN. Zitierform: **„§G4 (copilot-instructions.md)“** bzw.
 | ID | Bedeutung (copilot-instructions.md) | Bedeutung (GEBOTE.md / andere Quelle) |
 |---|---|---|
 | §G1 | Song-Maximierung: pro Song isoliert, State-Reset | Pro-Song-Kalibrierung (global_scalar, Guards) |
-| §G2 | Vollständige Defektbehebung (ganzer Song) | Defekt-Vollständigkeit: 62 DefectTypes pro Song |
+| §G2 | Vollständige Defektbehebung (ganzer Song) | Defekt-Vollständigkeit: 65 DefectTypes pro Song |
 | §G3 | Natürlicher Wohlklang | Gesangsintegrität (Vocal-Safety 80 Hz–8 kHz) |
 | §G4 | CD-Rauschprofil-Pflicht (Export) | Ghost-Echo-Freiheit (§2.60 STCG) |
 | §G5 | Deterministische Reproduzierbarkeit | Konsistenz-Mandat |

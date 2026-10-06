@@ -3,7 +3,7 @@ DefektDenker — Domäne: Defekt-Scan + Kausale Ursachenanalyse
 =============================================================
 
 Kapselt:
-  * `core.defect_scanner.DefectScanner`         (23 DefectTypes, §6.3)
+  * `core.defect_scanner.DefectScanner`         (65 DefectTypes, §6.3)
   * `core.causal_defect_reasoner.CausalDefectReasoner` (Bayesianische Inferenz)
 
 Liefert einen strukturierten `DefektBericht` mit erkannten Defekten,
@@ -145,7 +145,7 @@ class DefektDenker:
     """Analysiert Defekte und schlussfolgert auf deren Ursachen.
 
     Zwei-Schritt-Prozess:
-        1. DefectScanner.scan()           → DefectAnalysisResult (23 DefectTypes)
+        1. DefectScanner.scan()           → DefectAnalysisResult (65 DefectTypes)
         2. CausalDefectReasoner.reason()  → RestorationPlan (Bayesianisch)
 
     Verwendung::
@@ -221,7 +221,7 @@ class DefektDenker:
 
         Algorithmus:
             1. NaN/Inf-Bereinigung der Eingabe (§3.1)
-            2. DefectScanner.scan() → DefectAnalysisResult (23 DefectTypes)
+            2. DefectScanner.scan() → DefectAnalysisResult (65 DefectTypes)
             3. CausalDefectReasoner.reason() → RestorationPlan
             4. Strukturierung zu DefektBericht → Konvertierung in DefektErgebnis
 

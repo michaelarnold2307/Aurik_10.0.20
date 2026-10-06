@@ -107,7 +107,7 @@ Details immer in der normativen Kette (§1) nachlesen.
 - **Song-Isolation (§V8/§G1)**: alle Stateful-Module (Circuit-Breaker, Caches,
   Lernparameter) pro Song zurücksetzen.
 - **DSP (§III)**: Soft-Knee (6 dB, 200 ms Hanning) statt Hard-Clamp;
-  PIM-first, RLP-last; Glue Stage immer als vorletzte Phase; 62 DefectTypes
+  PIM-first, RLP-last; Glue Stage immer als vorletzte Phase; 65 DefectTypes
   (keine ad-hoc-Neuen); NaN/Inf-Schutz in jeder Phase (§0a); Logger-Pflicht
   (`logging.getLogger(__name__)`) in jedem Modul.
 - **ML-GPU-Numerik (§III.9)**: ONNX-EPs außer CPU nur mit Paritäts-Nachweis

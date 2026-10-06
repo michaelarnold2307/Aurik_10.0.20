@@ -212,7 +212,7 @@ Drei Dicts führen physikalische Materialgrenzen: `_MATERIAL_BW_CEILING_HZ` (§6
 
 ---
 
-## §6.3 DefectType-Vollkatalog (54 DefectTypes) + §6.3b CAUSES (62 Kausal-Ursachen)
+## §6.3 DefectType-Vollkatalog (65 DefectTypes) + §6.3b CAUSES (66 Kausal-Ursachen)
 
 ```python
 # core/defect_scanner.py — DefectType (Enum, 47 Werte, Stand v10.0.0.x)

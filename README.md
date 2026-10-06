@@ -1,6 +1,6 @@
 # 🎵 Aurik 10 — Intelligentes Musik-Restaurierungs- und Rekonstruktionssystem
 
-**Version:** 10.3.19 | **Status:** ✅ Weltspitze-Execution | **Stand:** v10.2.0 — Temporal-Consistency-Guard pro Phase, Phrase-Struktur-Snap, MG-ERB-Masking, Print-Through-Verdrahtung
+**Version:** 10.3.20 | **Status:** ✅ Weltspitze-Execution | **Stand:** v10.2.0 — Temporal-Consistency-Guard pro Phase, Phrase-Struktur-Snap, MG-ERB-Masking, Print-Through-Verdrahtung
 
 > Normativer Ist-Stand: `.github/specs/`, `.github/copilot-instructions.md`, `CHANGELOG.md`, `denker/README.md`.
 
@@ -183,12 +183,12 @@ DefectScanner (62 Typen)
 | Modul | Zweck |
 | --- | --- |
 | `PerceptualEmbedder` | 256-dim psychoakustischer Einbettungsraum (L2-normalisiert) |
-| `CausalDefectReasoner` | Bayesianische Kausalinferenz, **62 Kausal-Ursachen** |
+| `CausalDefectReasoner` | Bayesianische Kausalinferenz, **66 Kausal-Ursachen** |
 | `GPParameterOptimizer` | RBF-GP + UCB + **MOO Pareto-Front** (14 Objectives) |
 | `PerceptualQualityScorer` | Gammatone-NSIM + MCD + LUFS + MOS |
 | `MusicalGoalsChecker` | **15 musikalische Qualitätsziele** |
 | `MediumDetector` | File-ext-aware Tonträgerketten-Erkennung, autoritatives Materialsystem |
-| `DefectScanner` | 62 DefectTypes, material-adaptive Material-Priors |
+| `DefectScanner` | 65 DefectTypes, material-adaptive Material-Priors |
 | `TransientDecoupledProcessing` | HPSS-Trennung — Groove-Schutz vor jeder NR |
 | `HarmonicPreservationGuard` | CREPE/pYIN → G_floor 0.85 an Harmonik-Bins |
 | `PerPhaseMusicalGoalsGate` | Rollback bei kumulativer Degradation (66 Phasen) |

@@ -46,7 +46,7 @@ psychoakustische Maskierungsschwelle, nicht gegen einen Messwert.
    Glue Stage — die Glue Stage bleibt vorletzte Phase (§III (copilot-instructions.md));
    schaltbar über Materialprofil (Default: an für Vintage-Klassen wie Schellack,
    Kassette, Rumpel-/Hiss-lastige Bänder; aus für bereits „lebendiges“ Material).
-   Kein neuer DefectType (§III (copilot-instructions.md): 62 DefectTypes sind fix).
+   Kein neuer DefectType (§III (copilot-instructions.md): 65 DefectTypes sind fix).
 5. **Tests:** Unit-Suite (Passthrough, Determinismus, Invarianten H1–H4), dazu
    GO/NO-GO-Hörentscheidung nach `docs/guides/GO_NO_GO_DECISION_PROTOCOL.md`.
    Implementierungs-PR beachtet Write-Gate, FILE_REGISTRY-Eintrag und Task-Ledger.

@@ -4,7 +4,7 @@
 Identifiziert zeitlich lokalisierte Defekt-Zonen — ÜBERALL im Song,
 nicht nur am Anfang. Arbeitet mit dem SurgicalRepair zusammen.
 
-Prinzip: 24 von 66 DefectTypes sind zeitlich lokalisiert.
+Prinzip: 24 von 65 DefectTypes sind zeitlich lokalisiert.
 Diese werden per-Instance chirurgisch behandelt, nicht global.
 """
 

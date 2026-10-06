@@ -1,4 +1,44 @@
-# Changelog — Aurik 10.3.19
+# Changelog — Aurik 10.3.20
+
+## 10.3.20 (2026-10-06)
+
+### Zahlen-Wahrheit: Doku-Zählwerte gegen die Code-Wahrheit abgesichert (26 Stellen)
+
+- **Befund:** Die Regeln nannten **62 DefectTypes**, das Enum hat **65**; Spec 03/05
+  nannten gleichzeitig **54**, **46** und einen als „normativ“ markierten Wert **49**
+  für dieselbe Größe und widersprachen sich damit im selben Block. Gemessen:
+  `len(DefectType) == 65`, `len(CAUSES) == 66`.
+- **Wurzel der Drift:** „62“ bezeichnete an verschiedenen Stellen **Verschiedenes**
+  (DefectTypes _oder_ Kausal-Ursachen) — deshalb war weder ein Suchen-und-Ersetzen
+  noch eine reine Sichtprüfung belastbar.
+- **Gate (`scripts/defect_coverage_check.py`, 4. Bedingung):** neu prüft der
+  bestehende fail-closed-Abgleich zusätzlich **dokumentierte Zahl == Code-Zahl**.
+  Quelle ist eine **bewusst kuratierte Liste** von Dateien, in denen die Zahl eine
+  Aussage über den _aktuellen_ Ist-Stand ist; Chroniken, Meilenstein-Tabellen,
+  Audit-Momentaufnahmen und die in `AGENTS.md` §6 als Stubs deklarierten
+  `.agents/skills`-Kopien sind **ausgenommen**, weil ihre alten Zahlen Historie und
+  damit korrekt sind. Die Meldung nennt Datei **und Zeile**, damit die Korrektur
+  mechanisch erfolgt statt geraten.
+- **Korrigiert (26 Gate-Treffer):** `.github/copilot-instructions.md` (2×),
+  `.github/GEBOTE.md`, `.github/ID_REGISTRY.md`, `.github/specs/03` (4×: 54→65, 46→65,
+  2× Kausal-Ursachen 62→66), `.github/specs/05`, `.github/specs/25`, `AGENTS.md`,
+  `CLAUDE.md`, `README.md` (2×), `CONTRIBUTING.md`, `SPEC.md` (2×),
+  `scripts/gebote_verifier.py` (mitgezogene **hartkodierte** Regel, AGENTS.md §2),
+  `backend/core/causal_defect_reasoner.py` (2×: 62→66, 34→66),
+  `backend/core/surgical_defect_analyzer.py` (66→65),
+  `backend/core/unified_restorer_v3.py` (46→65), `denker/defekt_denker.py` (3×: 23→65).
+- **Spec 03 entschärft:** Der sich selbst widersprechende Block (62/35/49 für dieselbe
+  Größe, „49 ist normativ“) ist durch eine einzige autoritative Aussage ersetzt:
+  maßgeblich ist ausschließlich `CAUSES`; die Liste im Spec ist ein Auszug.
+- **Verifikation:** Gate **Exit 0** (vorher Exit 1 mit 26 Lücken), Gebote-Verifier
+  **30/30**, `reports/spec_drift_baseline.json` neu initialisiert (6 WATCHED-Files
+  waren gedriftet, u.a. `FILE_REGISTRY.md`).
+- **Bewusst nicht angefasst:** `docs/CHANGELOG_HISTORY.md`, die Meilenstein-Spalte in
+  `docs/PROJECT_STATUS.md`, `docs/dev/**` und die Wachstums-Notizen im Enum
+  („ergibt 28 DefectTypes“) — sie dokumentieren Historie; die Ausnahmen sind im
+  Gate-Docstring einzeln begründet.
+- **Rest-Befund (nicht normativ, gemeldet statt still korrigiert):**
+  `.agents/skills/{readme,spec,contributing}/SKILL.md` nennen 56/62 DefectTypes.
 
 ## 10.3.19 (2026-10-06)
 

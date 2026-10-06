@@ -49,7 +49,7 @@ logger = logging.getLogger(__name__)
 # Typ-Definitionen
 # ---------------------------------------------------------------------------
 
-# 62 Kausal-Ursachen (Spec §2.4): 10 Magnetband + 4 Vinyl + 2 Elektrik + 9 Digital/Codec + 9 v10.0.0
+# 66 Kausal-Ursachen (Spec §2.4): 10 Magnetband + 4 Vinyl + 2 Elektrik + 9 Digital/Codec + 9 v10.0.0
 # + 2 Spektral + 2 Stereo + 5 Pitch/Dynamik/Vokal + 1 Vintage + 2 Transport + 12 v10.0.0
 CAUSES = [
     # ── Analoge Magnetband-Ursachen ──────────────────────────────────────────
@@ -147,7 +147,7 @@ CAUSES = [
     "vocal_stem_noise",  # Vokal-Stem + Begleitung haben unterschiedliche Rauschprofile
 ]
 
-# Material-Typen — Priors für alle 34 Kausal-Ursachen (v10.0.0b)
+# Material-Typen — Priors für alle 66 Kausal-Ursachen (v10.0.0b)
 # Priors pro Material nicht zwingend exakt auf 1.0 normiert — _infer() normalisiert Posterioren.
 MATERIAL_PRIORS: dict[str, dict[str, float]] = {
     "tape": {

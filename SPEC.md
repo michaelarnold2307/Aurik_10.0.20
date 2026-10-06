@@ -217,7 +217,7 @@ python -m pytest tests/ -x -q
 ### 8.1 Problemstellung
 
 Die Pre-Analyse (DefectScanner) erstellt eine **statische Momentaufnahme** aller
-62 Defekt-Typen und ihrer Severities. Diese Momentaufnahme wird unverändert an
+65 Defekt-Typen und ihrer Severities. Diese Momentaufnahme wird unverändert an
 **JEDE** Phase der Pipeline weitergereicht — auch an Phasen, die NACH einer
 Reparatur-Phase laufen.
 
@@ -335,7 +335,7 @@ durch die gesamte Pipeline gereicht wird. Dies betrifft 10 Metadaten-Schichten:
 
 | # | Schicht | Typ | Status |
 |---|---|---|---|
-| A | `defect_severity_map` (62 Defect-Severities) | Defect | ✅ §v10.18 |
+| A | `defect_severity_map` (65 Defect-Severities) | Defect | ✅ §v10.18 |
 | B | `_defect_locations` (Zeit-Positionen) | Positional | ✅ §v10.19 |
 | C | `get_phase_defect_severity()` (Wet/Dry) | Modulation | ✅ §v10.21 |
 | D | Fallback/Direkt-Pfade (24× Bypass) | Transport | 📋 §v10.22 |

@@ -3,7 +3,7 @@ Unified Restorer V3 for Aurik 10.0.0 - Defect-First Architecture
 ===============================================================
 
 Hauptklasse für Audio-Restoration mit Defect-First Architektur und
-Vocal-Supremacy-Doktrin (§0p) — 64 Phasen, 46 DefectTypes, 15 Musical Goals.
+Vocal-Supremacy-Doktrin (§0p) — 64 Phasen, 65 DefectTypes, 15 Musical Goals.
 
 Key Features:
 - Defect-First + §GOAL_BASELINE_CHECK: Defekte + Goal-Defizite erkannt, bevor Phasen starten

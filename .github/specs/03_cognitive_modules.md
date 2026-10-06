@@ -10,13 +10,13 @@
 | Modul | Datei | Zweck |
 | --- | --- | --- |
 | `PerceptualEmbedder` | `backend/core/perceptual_embedder.py` | 256-dim L2-normalisierter Einbettungsraum |
-| `CausalDefectReasoner` | `backend/core/causal_defect_reasoner.py` | Bayesianisch: 54 DefectTypes → 62 Kausal-Ursachen |
+| `CausalDefectReasoner` | `backend/core/causal_defect_reasoner.py` | Bayesianisch: 65 DefectTypes → 66 Kausal-Ursachen |
 | `GPParameterOptimizer` | `backend/core/gp_parameter_optimizer.py` | RBF-GP + UCB + MOO Pareto-Front |
 | `PerceptualQualityScorer` | `backend/core/perceptual_quality_scorer.py` | Gammatone-NSIM+MCD+LUFS+MOS |
 | `MusicalGoalsChecker` | `backend/core/musical_goals/musical_goals_metrics.py` | 14 Qualitätsziele |
 | `MediumDetector` | `forensics/medium_detector.py` | Autoritative Tonträgerketten-Erkennung (file_ext-aware, §6.7) |
 | `MediumClassifier` (Legacy-Kompat) | `backend/core/medium_classifier.py` | Legacy-Analyse für Bestandsmodule; nicht autoritativ für Transfer-Chain |
-| `DefectScanner` | `backend/core/defect_scanner.py` | 46 DefectType-Werte |
+| `DefectScanner` | `backend/core/defect_scanner.py` | 65 DefectType-Werte |
 | `VocalAIEnhancement` | `backend/core/vocal_ai_enhancement.py` | VoiceGender (MALE/FEMALE/CHILD/ANDROGYNOUS) |
 | `FeedbackChain` | `backend/core/feedback_chain.py` | Iterative PQS-Qualitätsschleife |
 | `ExcellenceOptimizer` | `backend/core/excellence_optimizer.py` | GP-Params + MOO |
@@ -84,7 +84,7 @@ sim = embedding.cosine_similarity(other)  # ∈ [-1, 1]
 ## §2.4 CausalDefectReasoner
 
 ```python
-# 62 Kausal-Ursachen (≠ 54 DefectTypes des DefectScanners):
+# 66 Kausal-Ursachen (≠ 65 DefectTypes des DefectScanners):
 # Hinweis: transport_bump (v10.0.0b) und vocal_harshness (v10.0.0) als
 # eigenständige Ursachen ergänzt; Gruppe Pitch/Dynamik dadurch 4→5.
 #
@@ -105,11 +105,9 @@ sim = embedding.cosine_similarity(other)  # ∈ [-1, 1]
 #   dynamic_compression_excess
 #
 # Gesamtzahl: 10+4+2+9+2+2+5+1 = 35 dokumentierte Ursachen.
-# Die Spec-Header-Aussage "62 Kausal-Ursachen" schließt alle weiteren Ursachen ein,
-# die ausschließlich in der Code-Implementierung (causal_defect_reasoner.py)
-# und in CAUSES/CAUSE_TO_PHASES definiert sind und hier nicht einzeln aufgeführt werden
-# (u.a. erweiterte Codec-, Raumakustik- und Mehrstufenketten-Ursachen).
-# Die Gesamtzahl 49 ist normativ; diese Liste ist ein nicht-vollständiger Auszug.
+# Autoritativ ist ausschliesslich CAUSES in causal_defect_reasoner.py (66 Ursachen,
+# Stand 2026-10-06); die Liste oben ist ein nicht-vollstaendiger Auszug. Der Abgleich
+# "dokumentierte Zahl == Code" laeuft fail-closed in scripts/defect_coverage_check.py.
 #
 # ── Spektrale Ursachen (2) ───────────────────────────────────────────────
 #   bandwidth_loss, high_freq_noise

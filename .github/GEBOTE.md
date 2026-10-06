@@ -16,7 +16,7 @@ Jeder importierte Song wird individuell maximal für das menschliche Ohr verbess
 | ID | Regel | Beschreibung |
 | ---- | ------- | ------------- |
 | §G1 | **Pro-Song-Kalibrierung** | Jeder Song durchläuft eine vollständige, isolierte SongCalibration (global_scalar, family_scalars, ALLE Guards). Kein Parameter aus einem vorherigen Song darf ungeprüft übernommen werden. |
-| §G2 | **Defekt-Vollständigkeit** | Alle 62 DefectTypes werden pro Song gescannt. Defekte werden über die gesamte Songdauer präzise behoben – nicht nur an Stichproben/Checkpoints. |
+| §G2 | **Defekt-Vollständigkeit** | Alle 65 DefectTypes werden pro Song gescannt. Defekte werden über die gesamte Songdauer präzise behoben – nicht nur an Stichproben/Checkpoints. |
 | §G3 | **Gesangsintegrität** | Gesang darf NIE verzerrt, verschliffen oder mit Artefakten (Ghost-Echo, Phasing) versehen werden. Der Vocal-Safety-Wrapper muss in jeder Phase aktiv sein, die Frequenzen zwischen 80 Hz und 8 kHz bearbeitet. |
 | §G4 | **Ghost-Echo-Freiheit** | Kein hörbares Echo oder Pre-Echo durch Phasenverschiebungen, asymmetrische Fensterung oder STFT-Überlappungsartefakte. §2.60 STCG muss in allen Modi laufen. |
 | §G5 | **Konsistenz-Mandat** | Alle Maßnahmen müssen über das gesamte Projekt konsistent sein. Kein phasespezifischer Schwellwert ohne zentrale Definition. |

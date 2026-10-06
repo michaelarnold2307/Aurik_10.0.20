@@ -48,7 +48,7 @@ Jedes GEBOT ist eine nicht verhandelbare Vorschrift. Verstöße sind Build-Fehle
 
 ### §G7 — Kategorie III: Chirurgische Defektbehandlung
 **Jeder Defekt wird mit dem exakt richtigen Werkzeug in der exakt richtigen Intensität behandelt.**
-- 62 DefectTypes mit individuellem Phase-Mapping.
+- 65 DefectTypes mit individuellem Phase-Mapping.
 - Material-Sensitivity pro Defekttyp.
 - Kein "One-Size-Fits-All" — die Stärke wird pro Defektinstanz kalibriert.
 
@@ -134,7 +134,7 @@ Jedes VERBOT definiert eine unzulässige Handlung. Verstöße sind Build-Fehler.
 2. **PIM-first**: Vor jedem Phasen-Loop PIM-Intensitäts-Map berechnen und in `restoration_context` speichern.
 3. **RLP-last**: Nach jedem Phasen-Loop RLP ausführen. Korrekturen nur bei objektiver Verbesserung übernehmen.
 4. **Glue Stage**: Läuft in ALLEN Modi als vorletzte Phase.
-5. **62 DefectTypes**: Keine willkürlichen neuen DefectTypes ohne Phase-Mapping und Material-Sensitivity.
+5. **65 DefectTypes**: Keine willkürlichen neuen DefectTypes ohne Phase-Mapping und Material-Sensitivity.
 6. **NaN/Inf-Schutz**: Jede Phase MUSS `np.nan_to_num()` oder `np.isfinite()` auf Ausgabe-Audio anwenden (§0a).
 7. **Logger-Pflicht**: Jede Python-Datei mit `logger` MUSS `import logging` und `logger = logging.getLogger(__name__)` definieren.
 8. **POW-r Type 3 Dither**: Primäres Dithering-Verfahren. Psychoakustisch optimiert für 48 kHz / 16-bit. 24-bit: reduziert wahrgenommenen Noise Floor ≥ 14 dB unter TPDF.
