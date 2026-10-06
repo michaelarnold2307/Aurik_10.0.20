@@ -32,14 +32,15 @@ def main() -> int:
     parser.add_argument(
         "--checkpoint",
         type=Path,
-        default=_FLASHSR_DIR / "FastAudioSR" / "SR48k.pth",
-        help="FASR-Checkpoint (Default: upstream SR48k.pth)",
+        required=True,
+        help="FASR-Checkpoint. MUSIK = output/_training_archive_*/f4_flashsr/best.pt (F4); "
+        "SPRACHE = models/flashsr/FastAudioSR/SR48k.pth (Basis, NICHT für die Produktion).",
     )
     parser.add_argument(
         "--output",
         type=Path,
-        default=_FLASHSR_DIR / "flashsr.onnx",
-        help="Ziel-ONNX (Default: models/flashsr/flashsr.onnx)",
+        default=_FLASHSR_DIR / "flashsr_f4.onnx",
+        help="Ziel-ONNX (Default: models/flashsr/flashsr_f4.onnx — NICHT die Produktion).",
     )
     parser.add_argument("--seq", type=int, default=16000, help="Dummy-Sequenzlänge (16 kHz)")
     parser.add_argument(
@@ -52,6 +53,22 @@ def main() -> int:
 
     if not args.checkpoint.is_file():
         parser.error(f"Checkpoint nicht gefunden: {args.checkpoint}")
+
+    # §III.11 (copilot-instructions.md): F4 ist MUSIK (MUSDB18-HQ). Der Upstream-
+    # Basis-Checkpoint (FastAudioSR/SR48k.pth) ist SPRACH-trainiert und darf NIE
+    # die Produktions-ONNX (models/flashsr/flashsr.onnx) überschreiben.
+    # Produktionsbefund 2026-10-06: `flashsr.onnx` == `flashsr_f4.onnx` (identischer
+    # SHA) — das musikalische F4 ist korrekt live; dieser Guard verhindert, dass
+    # ein künftiger Default-Export das SPRACH-Modell still dorthin schreibt.
+    _production_onnx = (_FLASHSR_DIR / "flashsr.onnx").resolve()
+    _is_speech_base = args.checkpoint.name == "SR48k.pth" or "FastAudioSR" in str(args.checkpoint)
+    if _is_speech_base and args.output.resolve() == _production_onnx:
+        parser.error(
+            "SPRACH-Basis-Checkpoint (FastAudioSR/SR48k.pth) darf NICHT nach "
+            "models/flashsr/flashsr.onnx exportiert werden — F4 ist das MUSIK-Finetune "
+            "(§III.11 copilot-instructions.md). Musik-Checkpoint angeben "
+            "(output/_training_archive_*/f4_flashsr/best.pt) oder anderes --output wählen."
+        )
 
     sys.path.insert(0, str(_FLASHSR_DIR))
     from FastAudioSR import FASR  # pylint: disable=import-outside-toplevel

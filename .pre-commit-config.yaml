@@ -12,6 +12,12 @@ default_install_hook_types:
   - commit-msg
   - pre-push
 
+# Ohne diesen Schlüssel gilt der pre-commit-Default „alle Stages": Die Hooks ohne
+# eigenes `stages:` liefen dann zusätzlich im commit-msg-Stage (dort real die
+# `always_run: true`-Hooks — doppelte Ganz-Repo-Scans) und bei pre-push erneut.
+# Kanonischer Enforce-Punkt ist der Commit.
+default_stages: [pre-commit]
+
 exclude: |
   (?x)^(
     models/.*|

@@ -1,5 +1,5 @@
 {
-  ".github/copilot-instructions.md": "ffec31c93caccf68c869967bf881a850d9a5aec3811c0e3795d92c6461978238",
+  ".github/copilot-instructions.md": "9b87576dd35224ffc7f187ee766593fcf77782fa98f64d674ceeb80a97868513",
   ".github/instructions/hoerordnung.instructions.md": "d5109eb57b5c1395b256ec37cb4c77fe05215ca5562f1d5d77aa8f3d1bd3d837",
   ".github/specs/01_musical_goals.md": "cc054a99c2ead7d7a9938515c17c44e0c677f26f60ee7f60f127f354549dc1ee",
   ".github/specs/02_pipeline_architecture.md": "8e12d5c88e8866e38c09f62fc10312d48f73906294044474da7e8fe84171ef02",
@@ -22,5 +22,5 @@
   ".github/specs/00_SPEC_INDEX.md": "34055acfa9f91842cc3ae7863bba8821d3af2a667279017ce6df50408986b6b2",
   "scripts/gen_integration_matrix.py": "629740944935b08e3079d70dde8c86ee193ca33ea8161ea5eef6809241bb5dd3",
   "docs/ID_COLLISION_MAP.md": "44b8be2c56e87cb768bc4d67b1fd76c39358f2d59752982f05839dd58390a136",
-  "AGENTS.md": "3c0c9f216b23536a9243fa4794b99cf872d3322a447309319a7a15ee0dacc2b5"
+  "AGENTS.md": "d325f08dc59160efdd0bdd312c8016ddab703140bc66b21a2ee7f9aff62a0c7a"
 }

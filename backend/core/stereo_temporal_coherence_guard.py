@@ -77,6 +77,70 @@ _GLOBAL_MAX_MS: float = 20.0
 
 
 # ---------------------------------------------------------------------------
+# L/R-Polarität — EINE Messung für alle Polaritätsentscheidungen
+# (§G9 copilot-instructions.md Single-Source)
+# ---------------------------------------------------------------------------
+# Befund 2026-10-06: es existierten ZWEI verschiedene Messungen derselben Größe —
+# DefectScanner (PHASE_ISSUES: ganze Datei) und der §POL-Ersatzpfad in
+# unified_restorer_v3 (eigene np.corrcoef auf den ersten 100 000 Samples).
+# Ein kurzes Intro (Fade-in, Stille, Solo-Passage) macht die 100k-Fenster-Messung
+# instabil — die Polarität wird dann falsch beurteilt (Produktionsbefund:
+# L/R corr=−0.709 direkt nach einer STCG-Fehlkorrektur bei spread=365).
+# Ab jetzt EINE Messfunktion, zwei benannte Schwellen-Tiers:
+#   * STRONG   (−0.90): DefectScanner/PHASE_ISSUES — eindeutige Inversion.
+#   * MODERATE (−0.30): §POL-Pfad — der Scanner erkennt nur starke Inversion
+#     (≤ −0.9); moderate Anti-Phase (Bass-Auslöschung in Mono) blieb sonst
+#     unkorrigiert.
+POLARITY_INVERSION_STRONG: float = -0.90
+POLARITY_INVERSION_MODERATE: float = -0.30
+
+
+def measure_channel_polarity(left: np.ndarray, right: np.ndarray) -> float:
+    """Vorzeichenbehaftete L/R-Korrelation (Pearson) über die GANZE Datei.
+
+    §G9 (copilot-instructions.md): EINZIGE Messung für Polaritätsentscheidungen.
+    Aufrufer: ``defect_scanner._detect_phase_issues`` (Tier STRONG) und der
+    §POL-Pfad in ``unified_restorer_v3`` (Tier MODERATE).
+
+    Returns:
+        Korrelation ∈ [−1, 1]; ``1.0`` wenn nicht messbar (Stille, entartet,
+        NaN) — dann gilt „keine Inversion“ (fail-safe, kein Eingriff, §0 Minimal-
+        Intervention).
+    """
+    _l = np.asarray(left, dtype=np.float64)
+    _r = np.asarray(right, dtype=np.float64)
+    if _l.size < 2 or _l.size != _r.size:
+        return 1.0
+    _lc = _l - float(np.mean(_l))
+    _rc = _r - float(np.mean(_r))
+    _denom = float(np.linalg.norm(_lc) * np.linalg.norm(_rc))
+    if not np.isfinite(_denom) or _denom <= 1e-10:
+        return 1.0
+    _corr = float(np.dot(_lc, _rc) / (_denom + 1e-10))
+    return _corr if np.isfinite(_corr) else 1.0
+
+
+def measure_lr_polarity(audio: np.ndarray) -> float:
+    """Layout-robuste L/R-Polaritätsmessung für beliebige Audio-Arrays.
+
+    Bedient channels-first ``(C, N)`` UND channels-last ``(N, C)`` — die
+    Stereo-Layout-Invariante verlangt, dass jede Modulgrenze beide Layouts
+    bedient, sonst kollabiert die Vektorisierung auf C Elemente. Mono/Rest →
+    ``1.0`` (keine Inversion).
+    """
+    _a = np.asarray(audio)
+    if _a.ndim != 2 or _a.size == 0:
+        return 1.0
+    if _a.shape[0] == 2:
+        _left, _right = _a[0], _a[1]
+    elif _a.shape[1] == 2:
+        _left, _right = _a[:, 0], _a[:, 1]
+    else:
+        return 1.0
+    return measure_channel_polarity(_left, _right)
+
+
+# ---------------------------------------------------------------------------
 # Core DSP helpers
 # ---------------------------------------------------------------------------
 
@@ -449,11 +513,42 @@ class StereoTemporalCoherenceGuard:
             if len(ch_l) > 10
             else 1.0
         )
-        _mean_corr = abs(_mean_corr) if np.isfinite(_mean_corr) else 1.0
+        _signed_corr = _mean_corr if np.isfinite(_mean_corr) else 1.0
+        _mean_corr = abs(_signed_corr)
         # Multi-Point-Verifikation (≥2 Punkte, konsistenter Lag) schlägt die
         # Korrelations-Veto: Echtes Hardware-Lag auf Rauschsignalen hat corr≈0,
         # ist aber via GCC-PHAT-Peak konsistent verifiziert.
         _mp_num = int(_mp_verified.get("num_points", 0))
+        # §POL-VOR-LAG (2026-10-06): Anti-phase Kanäle sind KEIN Zeitfehler.
+        # abs() ließ sie bisher als „korreliert“ durchgehen (|−0.709| = 0.709
+        # ≥ 0.40), der Lag-Schätzer sah dann einen unechten Peak
+        # (Produktionsbefund: delay=−36 Samples bei spread=365) und der
+        # §POL-Ersatzpfad korrigierte die Polarität erst DANACH — der
+        # Zeitversatz war ein Artefakt (Kombfilter-Risiko,
+        # §V2 copilot-instructions.md). Anti-phase wird daher hier verworfen; die
+        # Polaritätskorrektur bleibt allein bei §POL.
+        if np.isfinite(_signed_corr) and _signed_corr < -0.30:
+            logger.info(
+                "STCG [%s]: signed inter-channel correlation=%.3f < -0.30 — "
+                "anti-phase channels (polarity inversion), NOT a timing error — "
+                "skipping shift (§POL korrigiert die Polarität)",
+                phase_id,
+                _signed_corr,
+            )
+            return audio
+        # §G9 copilot-instructions.md Single-Source: Es gilt das dokumentierte
+        # Verifikationskriterium von _verify_lag_multi_point (spread ≤ 20 Samples),
+        # nicht ein zweiter, eigener Schwellwert. Ein unverifizierter Median-Lag
+        # (Befund: spread=365) darf keinen Zeitversatz anwenden — Kombfilter-
+        # Schutz (§V2 copilot-instructions.md).
+        if _mp_num >= 2 and not bool(_mp_verified.get("verified", False)):
+            logger.info(
+                "STCG [%s]: multi-point lag not verified (spread=%d Samples) — "
+                "estimate unreliable, skipping shift (§V2 copilot-instructions.md)",
+                phase_id,
+                int(_mp_spread),
+            )
+            return audio
         if _mean_corr < 0.40 and _mp_num < 2:
             logger.info(
                 "STCG [%s]: inter-channel correlation=%.3f < 0.40 — "

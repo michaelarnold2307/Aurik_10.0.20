@@ -4,7 +4,7 @@ Phase 53: Semantic Audio Analysis v3.0 — ML Tier-1 + DSP Baseline
 
 Drei-stufige Semantik-Kaskade (beste Qualität → robuster Fallback):
   Tier-1: LAION-CLAP  (text-audio aligned, 512-dim, genre/instrument)
-  Tier-0: BEATs iter3  (AudioSet-527, sound-event tagging)
+  Tier-0: BEATs iter3  (768-dim Encoder-Embeddings; AudioSet-527-Tags via PANNs-Fallback)
   DSP:    Chromagramm + Spektralzentroid (kein Modell erforderlich)
 
 KATEGORIE: METADATA — Audio wird NICHT verändert, nur analysiert.
@@ -15,7 +15,7 @@ EXTRAHIERTE FEATURES:
   - Genre-Hint:     CLAP > BEATs > DSP-Heuristik (Prioritätskaskade)
   - Loudness-Klasse: LUFS-Näherung + Crest Factor
   - CLAP:           top_genres, top_instruments, 32-dim embedding
-  - BEATs:          top_tags (AudioSet-527), 32-dim embedding
+  - BEATs:          32-dim Alias der 768-dim Encoder-Embeddings; top_tags via PANNs-Fallback
 
 WICHTIG:
   - process() gibt audio UNVERÄNDERT zurück
@@ -176,7 +176,8 @@ class SemanticAudioPhase(PhaseInterface):
     PHASE_DESCRIPTION = (
         "Analysiert Audio semantisch auf drei Ebenen: "
         "Tier-1 LAION-CLAP (text-audio-aligned 512-dim Embeddings, Genre/Instrument-Tagging), "
-        "Tier-0 BEATs iter3 (AudioSet-527), DSP-Fallback (Chromagramm/Spektralzentroid). "
+        "Tier-0 BEATs iter3 (768-dim Encoder-Embeddings; 527-Tags via PANNs-Fallback), "
+        "DSP-Fallback (Chromagramm/Spektralzentroid). "
         "Extrahiert BPM, Tonart, Genre-Hint, Loudness-Klasse — OHNE Audio zu verändern."
     )
 
@@ -325,9 +326,10 @@ class SemanticAudioPhase(PhaseInterface):
             _clap_model_used = "disabled_runtime_context"
             logger.info("Verarbeitungsschritt 53: CLAP deaktiviert (pytest/safe-Validierung) — BEATs/DSP aktiv")
 
-        # ── Tier-0: BEATs iter3 Audio Tagging (SOTA §4.4) ───────────────────────────
-        # AudioSet-527-Klassifikation für semantisch reichere Pipeline-Metadaten.
-        # Runs after CLAP; only overrides genre_hint when CLAP did not succeed.
+        # ── Tier-0: BEATs iter3 Encoder-Embeddings (SOTA §4.4) ──────────────────────
+        # Der lokale Export ist Encoder-only (ONNX-I/O-Prüfung 2026-10-06) — die
+        # AudioSet-527-Tags kommen ehrlich aus dem PANNs-Fallback, die Embeddings
+        # aus dem BEATs-Encoder. Runs after CLAP; overrides genre_hint only if CLAP failed.
         _beats_tags: dict[str, float] = {}
         _beats_model_used = "dsp_only"
         _beats_embedding: list[float] = []
@@ -386,7 +388,7 @@ class SemanticAudioPhase(PhaseInterface):
             "clap_top_instruments": _clap_instruments[:5],
             "clap_embedding_32": _clap_embedding_32,
             "clap_enabled": bool(_clap_enabled),
-            # BEATs semantic tags — Tier-0 (AudioSet-527)
+            # BEATs Encoder-Embeddings — Tier-0 (Tags via PANNs-Fallback, s. o.)
             "beats_model_used": _beats_model_used,
             "beats_top_tags": [{"tag": t, "confidence": round(c, 3)} for t, c in _beats_top_k[:10]],
             "beats_embedding_32": _beats_embedding,

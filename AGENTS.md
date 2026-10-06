@@ -27,7 +27,11 @@ Musikwiederherstellung mit deterministischer Reproduzierbarkeit und natürlichem
    bleibt bei den unten genannten Domain-Regeln.
 4. **`.github/instructions/`** — Domain-Regeln: `pipeline.instructions.md` (UV3,
    größte Datei), `phases.instructions.md`, `dsp.instructions.md`,
-   `musical_goals.instructions.md`, `tests.instructions.md`.
+   `musical_goals.instructions.md`, `tests.instructions.md`,
+   `ml_domain.instructions.md`.
+   Zusätzlich **normativ**: `.github/ML_MODEL_DOMAIN_REGISTRY.md` — kanonische
+   **Trainings-Domäne** jedes Modells in `models/` (Gegenmittel gegen den
+   KI-Fehlschluss „die meisten Modelle sind Sprache", siehe §3).
 5. **`.github/specs/`** — Nummerierte Specs 01–22 plus versionierte v10.xx
    (92 Dateien). Änderungen hier lösen den CI-Evidenzblock-Zwang aus (§4).
 6. **`.github/GEBOTE.md`** — Katalog §G1–§G187 (Kategorien I–XXIV und XI-b). Hat
@@ -53,7 +57,10 @@ Die Markdown-Dokumente beschreiben die Regeln; die Gates sind:
   `--fail-on critical`), `aurik-spec-integration` (vollständige Integration
   aller Vorgaben und Specs: GEBOTE/VERBOTEN-Matrix, Spec-Index,
   normative Doku-Kette, Enforce-Gates — Fehlerprotokoll, `--fail-on error`)
-  und rund 25 weitere `aurik-*`-Guards.
+  und rund 25 weitere `aurik-*`-Guards. `default_stages: [pre-commit]` begrenzt
+  die Hooks auf den Commit-Pfad — ohne diese Zeile liefen sie zusätzlich im
+  `commit-msg`-Stage (dort real die `always_run: true`-Hooks, also doppelte
+  Ganz-Repo-Scans) und bei `pre-push` erneut.
 - **CI** (`.github/workflows/ci-lite.yml`, `nightly-quality.yml`,
   `solo-release-gate.yml`): `scripts/compliance_check.py` (R01–R18),
   `scripts/release_must_coverage_check.py` (jeder `[RELEASE_MUST]`-Header in
@@ -70,6 +77,17 @@ Die Markdown-Dokumente beschreiben die Regeln; die Gates sind:
 
 Details immer in der normativen Kette (§1) nachlesen.
 
+- **⛔ ML-Domänen-Registry — häufigster KI-Fehlschluss**: Die Behauptung
+  „die meisten lokal verfügbaren Modelle sind Sprachmodelle" ist **FALSCH**.
+  Belegt: von **61** Verzeichnissen in `models/` sind **37 musik-trainiert**
+  (≈ 61 %), nur **11 sprach-trainiert** (≈ 18 %). Aurik ist ein
+  **Musik**-Restaurierungssystem — der Signalpfad-Kern (Separation, Pitch,
+  Gesang, Inpainting, Deklipper) ist Musik. Kein Domänen-Urteil aus
+  Ordnernamen; `whisper`/`silero`/`utmos`/`bigvgan`/`deepfilternet`/`miipher`/
+  `versa` sind teils Musik (Musik-Finetunes). Kanonisch:
+  `.github/ML_MODEL_DOMAIN_REGISTRY.md` + `.github/instructions/ml_domain.instructions.md`;
+  Prüfen mit `python scripts/model_inventory.py --domains`. Signalpfad-Regel
+  §III.11 (copilot-instructions.md).
 - **Bridge-Verbot (§V4)**: UI/Frontend (Aurik10, CLI) importiert `backend/core/`
   nie direkt — nur über `backend/api/bridge.py`. Denker-Schicht (`denker/`)
   ausgenommen.
@@ -174,6 +192,8 @@ Kollisions-Karte und Bereinigungsplan `docs/ID_COLLISION_MAP.md`.
   `.github/specs/02_pipeline_architecture.md`
 - Phasen: `phases.instructions.md` + `06_phases_system.md`
 - DSP: `dsp.instructions.md` + `04_dsp_standards.md`
+- ML-Modell-Domänen (Musik vs. Sprache): `.github/ML_MODEL_DOMAIN_REGISTRY.md` +
+  `.github/instructions/ml_domain.instructions.md` (`scripts/model_inventory.py --domains`)
 - Musical Goals: `musical_goals.instructions.md` + `01_musical_goals.md`
 - Tests: `tests.instructions.md` + `07_quality_and_tests.md`
 - Startup/GUI/Threading: `.github/specs/v10.305_startup_integration_contract.md`

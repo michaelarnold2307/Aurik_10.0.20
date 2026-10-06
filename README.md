@@ -1,6 +1,6 @@
 # 🎵 Aurik 10 — Intelligentes Musik-Restaurierungs- und Rekonstruktionssystem
 
-**Version:** 10.3.21 | **Status:** ✅ Weltspitze-Execution | **Stand:** v10.2.0 — Temporal-Consistency-Guard pro Phase, Phrase-Struktur-Snap, MG-ERB-Masking, Print-Through-Verdrahtung
+**Version:** 10.3.22 | **Status:** ✅ Weltspitze-Execution | **Stand:** v10.2.0 — Temporal-Consistency-Guard pro Phase, Phrase-Struktur-Snap, MG-ERB-Masking, Print-Through-Verdrahtung
 
 > Normativer Ist-Stand: `.github/specs/`, `.github/copilot-instructions.md`, `CHANGELOG.md`, `denker/README.md`.
 
@@ -115,7 +115,7 @@ DefectScanner (62 Typen)
 ### Neue psychoakustische Modelle
 
 | Modell | Standard | Zweck |
-|--------|----------|-------|
+| -------- | ---------- | ------- |
 | **ATH** | ISO 226:2023 | Absolute Hörschwelle — Defekte unterhalb der Hörbarkeit werden ignoriert |
 | **Moore/Glasberg DLM** | Moore & Glasberg 2007 | Dynamisches Lautheitsmodell mit 40 ERB-Bändern |
 | **BMLD** | Binaural Masking | Interaurale Kreuzkorrelation für räumliches Hören |
@@ -125,7 +125,7 @@ DefectScanner (62 Typen)
 ### Neue Entscheidungsintelligenz
 
 | Komponente | Funktion |
-|------------|----------|
+| ------------ | ---------- |
 | **PIM** (Perceptual Intensity Mapper) | 10 Frequenzbänder × N Song-Sektionen → kalibrierte Intensitäts-Map |
 | **RLP** (Reflective Listening Pass) | „Nochmal hinhören" — diagnostiziert Restprobleme und bessert nach |
 | **Artistic Intent Modulator** | 12 Genres × 10 Epochen → konservativ/aggressiv-Strategie |

@@ -1562,24 +1562,50 @@ class DropoutRepairPhase(PhaseInterface):
         if window_samples % 2 == 0:
             window_samples += 1
 
-        # Ensure window is shorter than audio
-        if window_samples > len(audio):
-            window_samples = max(3, len(audio) // 4)
+        # §Layout-Achsen-Fix (2026-10-06): `audio` ist an dieser Stelle
+        # CHANNELS-LAST (N, C) — process() ruft to_channels_last() auf.
+        # savgol_filter glättet per Default auf der LETZTEN Achse; bei (N, 2)
+        # also über die beiden Kanäle statt über die Zeit. window_length=97 > 2
+        # löste dadurch reproduzierbar aus: "If mode is 'interp',
+        # window_length must be less than or equal to the size of x"
+        # (scipy.signal.savgol_filter, _savitzky_golay.py:345). Folge: die
+        # autonome Dichtemessung fiel IMMER aus, das Gate blieb bei 0 und die
+        # Phase war ein No-op (§G188 (GEBOTE.md) unterlaufen) — mit 18
+        # identischen Warnungen pro Lauf. Maßgeblich ist die Länge der ZEIT-
+        # Achse, nicht len(audio).
+        _n_time_24 = int(audio.shape[0]) if audio.ndim > 1 else int(len(audio))
+
+        # Ensure window is shorter than the time axis
+        if window_samples > _n_time_24:
+            window_samples = max(3, _n_time_24 // 4)
             if window_samples % 2 == 0:
                 window_samples -= 1
 
-        squared = audio**2
-        envelope = signal.savgol_filter(squared, window_samples, 2)
-        envelope = np.sqrt(np.maximum(envelope, 0))
+        # Glättung PRO KANAL auf der Zeitachse; danach das Maximum der Kanäle —
+        # ein Dropout in einem einzelnen Kanal darf nicht übersehen werden.
+        _sq_24 = audio * audio
+        if _sq_24.ndim > 1:
+            _env_24 = np.sqrt(
+                np.maximum(
+                    np.stack(
+                        [signal.savgol_filter(_sq_24[:, _c], window_samples, 2) for _c in range(_sq_24.shape[1])],
+                        axis=1,
+                    ),
+                    0.0,
+                )
+            )
+            envelope = np.max(_env_24, axis=1)
+        else:
+            envelope = np.sqrt(np.maximum(signal.savgol_filter(_sq_24, window_samples, 2), 0))
 
         # Local reference (100ms window)
         ref_window = int(self.sample_rate * 0.1)
         if ref_window % 2 == 0:
             ref_window += 1
 
-        # Ensure ref_window is also shorter than audio
-        if ref_window > len(audio):
-            ref_window = max(3, len(audio) // 2)
+        # Ensure ref_window is also shorter than the time axis
+        if ref_window > _n_time_24:
+            ref_window = max(3, _n_time_24 // 2)
             if ref_window % 2 == 0:
                 ref_window -= 1
 

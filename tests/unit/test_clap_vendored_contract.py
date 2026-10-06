@@ -190,3 +190,181 @@ class TestRoBERTaDimensionsPatch:
             "Die checkpoint-kompatiblen RoBERTa-Dimensionen (514 Positions- "
             "Embeddings) müssen im roberta-Zweig erzwungen werden."
         )
+
+
+class _ShapeOnly:
+    """Minimaler Tensor-Ersatz — ``classify_checkpoint_params`` liest nur ``.shape``."""
+
+    def __init__(self, shape: tuple[int, ...]) -> None:
+        self.shape = shape
+
+
+class TestCheckpointParamClassification:
+    """Produktionsbefund 2026-10-06: ``position_ids``-Falsch-Alarm (§V6 copilot-instructions.md).
+
+    ``text_branch.embeddings.position_ids`` ist ein nicht-parametrischer
+    Index-Buffer (arange), den der Checkpoint versionsbedingt mitführt, den das
+    aktuelle Modell aber als non-persistenten Buffer nicht in ``state_dict()``
+    führt. Er darf NICHT als „nicht übernommen → Zufallsinitialisierung“ gemeldet
+    werden — der Falsch-Alarm verdeckt echte Parameter-Verluste.
+    """
+
+    def test_benign_position_ids_is_not_a_drop(self) -> None:
+        from plugins.laion_clap_plugin import classify_checkpoint_params
+
+        state = {
+            "text_branch.embeddings.position_ids": _ShapeOnly((1, 5)),
+            "text_branch.embeddings.word_embeddings.weight": _ShapeOnly((4, 3)),
+        }
+        model_state = {"text_branch.embeddings.word_embeddings.weight": _ShapeOnly((4, 3))}
+        kept, dropped, benign = classify_checkpoint_params(state, model_state)
+        assert benign == ["text_branch.embeddings.position_ids"]
+        assert dropped == [], f"position_ids darf keine Degradierung erzeugen: {dropped}"
+        assert set(kept) == {"text_branch.embeddings.word_embeddings.weight"}
+
+    def test_real_loss_is_still_reported(self) -> None:
+        from plugins.laion_clap_plugin import classify_checkpoint_params
+
+        state = {"text_branch.encoder.layer.0.attention.weight": _ShapeOnly((2, 2))}
+        kept, dropped, benign = classify_checkpoint_params(state, {})
+        assert benign == []
+        assert kept == {}
+        assert dropped and "nicht im Modell" in dropped[0]
+
+    def test_shape_conflict_is_reported(self) -> None:
+        from plugins.laion_clap_plugin import classify_checkpoint_params
+
+        state = {"a.weight": _ShapeOnly((3, 3))}
+        model_state = {"a.weight": _ShapeOnly((2, 2))}
+        kept, dropped, benign = classify_checkpoint_params(state, model_state)
+        assert kept == {} and benign == []
+        assert dropped and "Checkpoint" in dropped[0]
+
+
+class TestZeroShotAbsoluteScores:
+    """Regressions-Guard: Zero-Shot-Scores sind ABSOLUTE Kosinus-Ähnlichkeiten.
+
+    Befund 2026-10-06: Der Score war der Rest eines gemeinsamen 46-Tag-Softmax
+    (Temperatur ×100). Der sättigte, sodass jede Query, die NICHT der Argmax war,
+    auf ~0.0 kollabierte — und er ist über Aufrufe nicht vergleichbar (wechselnder
+    Nenner), obwohl `genre_classifier` positive und negative Prompt-Sätze saldiert.
+    """
+
+    @staticmethod
+    def _plugin_with_fake_model(query_cos: float):
+        import numpy as np
+
+        from plugins import laion_clap_plugin as L
+
+        dim = L.LAIONCLAPPlugin.EMBEDDING_DIM
+        e0 = np.zeros(dim, dtype=np.float32)
+        e0[0] = 1.0
+        e1 = np.zeros(dim, dtype=np.float32)
+        e1[1] = 1.0
+        custom = "mein schlager"
+
+        class _FakeClap:
+            def get_audio_embedding_from_data(self, x, use_tensor=False):
+                return e0[np.newaxis, :].copy()
+
+            def get_text_embedding(self, texts, use_tensor=False):
+                rows = []
+                for i, t in enumerate(texts):
+                    if t == custom:
+                        # Kosinus = query_cos gegen e0
+                        rows.append(query_cos * e0 + float(np.sqrt(max(0.0, 1.0 - query_cos**2))) * e1)
+                    elif i == 0:
+                        rows.append(e0.copy())  # Argmax-Standard-Tag (Kosinus 1.0)
+                    else:
+                        rows.append(e1.copy())  # orthogonal (Kosinus 0.0)
+                return np.stack(rows)
+
+        plugin = L.LAIONCLAPPlugin.__new__(L.LAIONCLAPPlugin)
+        plugin._clap_model = _FakeClap()
+        return plugin, custom
+
+    def test_query_score_is_absolute_cosine_not_softmax_residual(self) -> None:
+        import numpy as np
+
+        plugin, custom = self._plugin_with_fake_model(0.5)
+        res = plugin._tag_clap_pt(np.zeros(48_000, dtype=np.float32), 48_000, [custom])
+        # Nicht der Argmax (ein Standard-Tag hat Kosinus 1.0) — trotzdem 0.5, NICHT 0.0.
+        assert res.custom_scores[custom] == pytest.approx(0.5, abs=1e-3)
+
+    def test_query_score_is_monotone_and_clipped(self) -> None:
+        import numpy as np
+
+        plugin_lo, custom = self._plugin_with_fake_model(0.2)
+        plugin_hi, _ = self._plugin_with_fake_model(0.7)
+        lo = plugin_lo._tag_clap_pt(np.zeros(48_000, dtype=np.float32), 48_000, [custom]).custom_scores[custom]
+        hi = plugin_hi._tag_clap_pt(np.zeros(48_000, dtype=np.float32), 48_000, [custom]).custom_scores[custom]
+        assert 0.0 <= lo < hi <= 1.0
+
+
+class TestPerCategoryTagScoring:
+    """Befund 2026-10-06: gemeinsamer 43-Tag-Softmax verwässerte die Massen.
+
+    Folge: ``top_instruments`` (Schwelle 0.4) war immer leer und das CLAP-Genre-
+    Gate (≥ 0.35) feuerte nie — der Genre-Argmax wurde Rauschen (rnb↔opera).
+    Korrektur: getrennter Softmax je Kategorie.
+    """
+
+    def test_instruments_and_genres_normalized_per_category(self) -> None:
+        import numpy as np
+
+        from plugins.laion_clap_plugin import GENRE_TAGS, INSTRUMENT_TAGS, MATERIAL_TAGS, score_tags_by_category
+
+        n = len(INSTRUMENT_TAGS) + len(GENRE_TAGS) + len(MATERIAL_TAGS)
+        raw = np.full(n, 0.05, dtype=np.float32)
+        raw[0] = 0.6  # Instrument 0 klar dominant
+        raw[len(INSTRUMENT_TAGS)] = 0.55  # Genre 0 klar dominant
+        instr, genre, _material = score_tags_by_category(raw)
+        # Instrumente und Genre sind (je eigene) Entscheidungen → je Summe 1.
+        assert abs(sum(instr.values()) - 1.0) < 1e-6
+        assert abs(sum(genre.values()) - 1.0) < 1e-6
+
+    def test_material_is_multi_label_not_exclusive(self) -> None:
+        """Träger sind NICHT disjunkt — Material muss eine Kette abbilden können.
+
+        Befund 2026-10-06: „Material = tape“ war ein Einzel-Argmax und
+        unterschlug die Tonträgerkette (99 % der Restaurierungsfälle).
+        """
+        import numpy as np
+
+        from plugins.laion_clap_plugin import GENRE_TAGS, INSTRUMENT_TAGS, MATERIAL_TAGS, score_tags_by_category
+
+        n_i, n_g = len(INSTRUMENT_TAGS), len(GENRE_TAGS)
+        n = n_i + n_g + len(MATERIAL_TAGS)
+        raw = np.zeros(n, dtype=np.float32)
+        raw[n_i + n_g + MATERIAL_TAGS.index("vinyl")] = 0.30
+        raw[n_i + n_g + MATERIAL_TAGS.index("mp3")] = 0.20
+        _i, _g, material = score_tags_by_category(raw)
+        # Mehrere Träger gleichzeitig nicht-null (Kette), absolut (NICHT auf 1 normiert).
+        assert material["vinyl"] == pytest.approx(0.30, abs=1e-6)
+        assert material["mp3"] == pytest.approx(0.20, abs=1e-6)
+        assert sum(material.values()) < 1.0
+
+    def test_dominant_tags_clear_operational_gates(self) -> None:
+        import numpy as np
+
+        from plugins.laion_clap_plugin import GENRE_TAGS, INSTRUMENT_TAGS, MATERIAL_TAGS, score_tags_by_category
+
+        n = len(INSTRUMENT_TAGS) + len(GENRE_TAGS) + len(MATERIAL_TAGS)
+        raw = np.full(n, 0.05, dtype=np.float32)
+        raw[0] = 0.6
+        raw[len(INSTRUMENT_TAGS)] = 0.55
+        instr, genre, _ = score_tags_by_category(raw)
+        assert instr[INSTRUMENT_TAGS[0]] >= 0.4  # Instrument-Gate jetzt wirksam
+        assert max(genre.values()) >= 0.35  # Genre-Gate jetzt wirksam
+        assert genre[GENRE_TAGS[0]] == max(genre.values())
+
+    def test_uniform_category_stays_below_gate(self) -> None:
+        import numpy as np
+
+        from plugins.laion_clap_plugin import GENRE_TAGS, INSTRUMENT_TAGS, MATERIAL_TAGS, score_tags_by_category
+
+        n = len(INSTRUMENT_TAGS) + len(GENRE_TAGS) + len(MATERIAL_TAGS)
+        raw = np.full(n, 0.2, dtype=np.float32)  # keine Kategorie dominiert
+        _, genre, _ = score_tags_by_category(raw)
+        # Gleichverteilt ⇒ kein Pseudo-Sieger über dem Gate (kein Fakten-Genre).
+        assert max(genre.values()) < 0.35

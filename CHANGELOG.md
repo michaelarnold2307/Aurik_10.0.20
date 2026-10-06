@@ -1,4 +1,70 @@
-# Changelog — Aurik 10.3.21
+# Changelog — Aurik 10.3.22
+
+## 10.3.22 (2026-10-06)
+
+### ML-Transparenz + CLAP-Scoring an der Wurzel (§6.8, §G9, §V6)
+
+**Medium-Klassifikation: physikalisch zuerst (§6.8 copilot-instructions.md)**
+
+- `medium_classifier.classify()` war **CLAP-first**: das flache CLAP-Materiallabel
+  konnte die physikalische Trägerbestimmung übersteuern (Produktionsbefund:
+  digital erzeugte CD-Datei → „tape"). Jetzt **physikalisch zuerst**; CLAP füllt
+  ausschließlich ein UNKNOWN-Ergebnis (Zeuge, kein Richter).
+- `laion_clap_plugin`: Material ist **MULTI-LABEL** (unabhängige Kosinus-Evidenz,
+  NICHT auf Summe 1) — Träger sind nicht disjunkt (Tonträger-KETTEN, 99 % der
+  Restaurierungsfälle).
+- `pre_analysis`: CLAP-Konsens vergleicht **ketten-joint** (on-chain vs. off-chain
+  Evidenz-Masse) statt Einzel-Argmax.
+
+**CLAP-Tag-/Zero-Shot-Normalisierung**
+
+- Zero-Shot-Queries lieferten **0.0** (gesättigter gemeinsamer Tag-Softmax).
+  Jetzt: **absolute** Kosinus-Ähnlichkeit je Query — vergleichbar über Aufrufe
+  (für die pos/neg-Saldierung des `GermanSchlagerClassifier`).
+- Instrumente/Genre: **Per-Kategorie-Softmax** statt eines gemeinsamen
+  43-Tag-Softmax (der verwässert → `top_instruments` immer leer, Genre-Gate
+  feuerte nie, Genre-Argmax = Rauschen).
+
+**CLAP-Checkpoint-Laden**
+
+- `text_branch.embeddings.position_ids` (nicht-parametrischer Index-Buffer)
+  löste eine **Falsch-Warnung** aus; jetzt als benigne klassifiziert
+  (`classify_checkpoint_params`).
+
+**BEATs-Transparenz (§G8)**
+
+- `beats_plugin`/`phase_53`: lokaler Export ist **Encoder-only** (768-dim), kein
+  527-Tagger — Doku korrigiert, Regressions-Guard ergänzt.
+
+### ML-Domänen-Registry — „die meisten Modelle sind Sprache" ist widerlegt (§III.13)
+
+**Kanonische Registry:** `.github/ML_MODEL_DOMAIN_REGISTRY.md` belegt die
+**Trainings-Domäne** jedes der **61** Modellverzeichnisse in `models/` aus
+Trainings-Skripten, vendored Modell-Karten, Export-Skripten und SHA-Vergleichen.
+Ergebnis: **37 musik-trainiert (≈ 61 %)**, nur **11 sprach-trainiert (≈ 18 %)**
+— der häufigste KI-Fehlschluss („die meisten lokalen ML-Modelle sind
+Sprachmodelle") ist damit widerlegt.
+
+- **Normative Verankerung:** neue Regel **§III.13** in
+  `copilot-instructions.md`; Eintrag in der normativen Kette (`AGENTS.md` §1
+  Punkt 4 + §3 Schnell-Referenz + §7 Lektüre); Invariante in `CLAUDE.md`.
+- **Auto-geladene Instruktion:** `.github/instructions/ml_domain.instructions.md`
+  (`applyTo` deckt `plugins/`, `backend/`, `denker/`, `models/`, `scripts/`,
+  `Aurik10/`, `cli/` ab).
+- **Maschinenlesbar:** `python scripts/model_inventory.py --domains` liefert
+  Domänen + Evidenz als JSON (kuratiertes Manifest: 20 musik / 3 sprache /
+  7 audio-allgemein).
+
+**Aufgedeckte Domänen-Korrekturen (Evidenz):**
+
+- `models/ear_vae` = offizielles **Musik**-Rekonstruktionsmodell (εar-VAE) —
+  interner MUSDB-Finetune existiert, ist aber nicht deployt.
+- `models/miipher_dit` = auf **MUSDB18-HQ-Vocals** trainiert („Singing Voice
+  Enhancement"), **aktiv** (`use_miipher_dit=True`) — kein Sprachmodell.
+- `models/bigvgan` = **Sprach-Basis**; Musik-Finetune F3 existiert und ist
+  A/B-validiert (HNR +4,42 dB), aber Flag `BIGVGAN_V2_HR_ACTIVATED` ist OFF.
+- Sprach-Signalpfad-Risiken dokumentiert: HiFi-GAN, Vocos, NVSR, AERO
+  (§V6-Fallback mit Warnung); `nara_wpe` ist unüberwacht/domain-neutral.
 
 ## 10.3.21 (2026-10-06)
 
@@ -758,7 +824,7 @@ grün; neu: 26 Guard-Regressionen in `tests/unit/test_genre_single_source_guard.
 
 ### §III.12-Pflicht-Witnesses implementiert (C4/C5/W4/W5/W6)
 
-- **Befund:** §III.12 verlangt fünf Witnesses als *Nachweis* der Rekombination
+- **Befund:** §III.12 verlangt fünf Witnesses als **Nachweis** der Rekombination
   („nachzuweisen, nicht anzunehmen"); bis v10.3.11 waren C4/C5/W4/W5/W6 offen.
   Der Rekombinationspunkt selbst (`recombine_stems_with_gates`, C2→C1→C3) war
   bereits implementiert und verdrahtet.
@@ -778,7 +844,7 @@ grün; neu: 26 Guard-Regressionen in `tests/unit/test_genre_single_source_guard.
   `stem_level_restorer`) und nutzen vorhandene Primitive
   (`_band_energy_db`, `bark_band_edges`, `_envelope`, `_xcorr_offset`) — kein
   Parallelcode (§G9 copilot-instructions.md).
-- **Ehrlichkeit:** **W6/C5** sind als *Zeit-Kontinuität* gemessen, weil die
+- **Ehrlichkeit:** **W6/C5** sind als **Zeit-Kontinuität** gemessen, weil die
   Rekombination eine sample-genaue Summe ohne Segment-Naht ist (kein
   Concat/Crossfade); eine „Naht"-Größe wird nicht vorgetäuscht
   (`continuity_note`). Die Witnesses haben **keine automatische Konsequenz** —
@@ -1167,7 +1233,7 @@ grün; neu: 26 Guard-Regressionen in `tests/unit/test_genre_single_source_guard.
 - **Installationsprogramm** für Ubuntu 22.04 LTS / Zorin OS 17/18 (apt-Abhängigkeiten,
   venv, Modell-Prüfung, Desktop-Launcher).
 
-> *SOTA-Roadmap offen: t6 Boundary-Maschinerie (ExcellenceOptimizer/PGHI-Struktur),
+> SOTA-Roadmap offen: t6 Boundary-Maschinerie (ExcellenceOptimizer/PGHI-Struktur),
 > t7 Musical-Goals-Metriken, t8-Rest Chunk-Vergrößerung, P1-GPU-Ports,
 > F-Trainings (F3/F4/F7–F12).*
 
@@ -1492,7 +1558,7 @@ Referenzvergleich bit-identisch belegt; Messungen auf identischer 10-s-Zelle
   Dazu: FILE_REGISTRY-Duplikate entfernt (4), Sprache-Guard-Log eingedeutscht,
   Calibration-Linter-Baseline nachgezogen (13 bekannte Defaults), 2 Test-Mocks
   an Produktions-Signaturen angepasst (librosa center-Kwarg, Medium-Ketten-Tiefe
-  ≤ _MAX_ANALOG_CHAIN_DEPTH+2).
+  ≤_MAX_ANALOG_CHAIN_DEPTH+2).
 - **Anti-Fatigue (Hörordnung §6):** „BEST-EFFORT (no corrections possible)“
   behoben — OneTakeExport korrigierte Fatigue nur per blindem High-Shelf,
   während die eigene Korrekturkette (Gain → Limiter → Kompression) die

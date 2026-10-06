@@ -375,6 +375,15 @@ def load_audio_file(
 
         _ext = os.path.splitext(filepath)[1].lower()
         _sf_unsupported = _ext in _SF_UNSUPPORTED_EXT
+        # §Log-Hygiene/§G8 (copilot-instructions.md) — Befund 2026-10-06: Ergebnis
+        # der einmaligen Probe merken.
+        # Vorher liefen bis zu DREI sf.info()/sf.read()-Parses über dieselbe Datei;
+        # libsndfile leitet MP3 an libmpg123 weiter, das bei unvollständigen
+        # ID3-Frames "No comment text / valid description?" auf STDERR meldet →
+        # drei identische Fremd-Meldungen im Produktionslog (Befund 2026-10-06).
+        # Die Probe wird jetzt EINMAL ausgeführt und für Capability UND Metadaten
+        # wiederverwendet — weniger I/O, kein doppeltes Parsen, gleiche Pfadwahl.
+        _sf_info: Any = None
 
         # Opportunistic capability probe: some deployments support MP3/AAC via
         # libsndfile plugins even when extension-only heuristics mark them unsupported.
@@ -382,7 +391,7 @@ def load_audio_file(
         # because it preserves inter-channel alignment more reliably than FFmpeg fallbacks.
         if _sf_unsupported:
             try:
-                sf.info(filepath)
+                _sf_info = sf.info(filepath)
                 _sf_unsupported = False
                 logger.debug("laden_audio_file: soundfile capability probe passed for %s", _ext)
             except Exception:
@@ -393,7 +402,7 @@ def load_audio_file(
         # For MP3/AAC/WMA etc. it always fails — skip it and use extension only.
         if not _sf_unsupported:
             try:
-                _info = sf.info(filepath)
+                _info = _sf_info if _sf_info is not None else sf.info(filepath)
                 result["format"] = _info.format
                 result["channels"] = _info.channels
                 result["sr"] = _info.samplerate

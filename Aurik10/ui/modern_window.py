@@ -17925,6 +17925,10 @@ class ModernMainWindow(QMainWindow):
                             lambda _p=pct, _m=msg: (
                                 setattr(self, "_preanalysis_step_msg", _m),
                                 setattr(self, "_preanalysis_step_pct", _p),
+                                # §W-PREANALYSIS-LIVENESS: JEDER Backend-Callback zählt
+                                # als Lebenszeichen (auch mit unverändertem Prozentwert —
+                                # der Backend-Heartbeat meldet „Schritt läuft“).
+                                setattr(self, "_preanalysis_activity", time.monotonic()),
                                 self.emit_load_progress(float(_p)),
                             )
                         )
@@ -18389,9 +18393,13 @@ class ModernMainWindow(QMainWindow):
 
             # ── §W-PREANALYSIS-LIVENESS Watchdog ──────────────────────────
             self._preanalysis_pending = True  # §v10.306: Watchdog aktivieren
-            # Falls die Pre-Analysis hängt (kein _cb()-Update > 60s), loggen
+            # §W-PREANALYSIS-LIVENESS: Basiswert zurücksetzen, damit ein
+            # Lebenszeichen der VORIGEN Datei nicht als Aktivität zählt.
+            self._preanalysis_activity = 0.0
+            # Falls die Pre-Analysis hängt (kein _cb()-Update > 120s), loggen
             # und ggf. Timeout-Force-Finalize triggern.
             _last_step_pct_val = [0.0]
+            _last_activity_val = [0.0]
 
             _last_step_check_time = time.monotonic()
 
@@ -18402,16 +18410,28 @@ class ModernMainWindow(QMainWindow):
                     if not getattr(self, "_preanalysis_pending", False):
                         break
                     _elapsed = time.monotonic() - _last_step_check_time
-                    # Check if progress has advanced since last check
+                    # Liveness = Prozent-Fortschritt ODER ein Backend-Callback.
+                    # Der 5-Schritt-Balken (75→90 %, 3 %-Stufen) allein kann einen
+                    # legitim laufenden Langschritt (DefectScan ~124 s) nicht von
+                    # einem Hänger unterscheiden; der Backend-Heartbeat schließt
+                    # diese Lücke (§G8 copilot-instructions.md), ohne echte Hänger
+                    # zu maskieren (§V7 copilot-instructions.md).
                     _cur_pct = getattr(self, "_preanalysis_step_pct", 0)
-                    if _cur_pct > _last_step_pct_val[0]:
+                    _cur_activity = float(getattr(self, "_preanalysis_activity", 0.0) or 0.0)
+                    _pct_advanced = _cur_pct > _last_step_pct_val[0]
+                    _activity_advanced = _cur_activity > _last_activity_val[0]
+                    if _pct_advanced:
                         _last_step_pct_val[0] = _cur_pct
+                    if _activity_advanced:
+                        _last_activity_val[0] = _cur_activity
+                    if _pct_advanced or _activity_advanced:
                         _last_step_check_time = time.monotonic()
                         _elapsed = 0.0
                     if _elapsed > 120.0:
                         _cur_step = getattr(self, "_preanalysis_step_msg", "")
                         logger.warning(
-                            "§W-PREANALYSIS-LIVENESS: Kein Fortschritt seit %.0fs. "
+                            "§W-PREANALYSIS-LIVENESS: Kein Lebenszeichen seit %.0fs "
+                            "(kein Fortschritt und kein Heartbeat). "
                             "Letzter Schritt: '%s'. Erzwinge Gate-Time-out.",
                             _elapsed,
                             _cur_step or "(keiner)",

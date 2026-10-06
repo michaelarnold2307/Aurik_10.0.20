@@ -60,6 +60,17 @@ logger = logging.getLogger(__name__)
 # 150s = 1.87x buffer. concurrent.futures.TimeoutError != builtins.TimeoutError in Python 3.10.
 _SUBSTEP_TIMEOUT_S = 240.0
 
+# §W-PREANALYSIS-LIVENESS (2026-10-06): Liveness-Heartbeat während laufender
+# Schritte. Der Fortschritt war rein Schritt-ENDE-getrieben (max. 5 Werte im
+# Band 75→90 %); ein einzelner langer Schritt (DefectScan ~124 s) erzeugte damit
+# >120 s ohne Callback — der UI-Watchdog feuerte fälschlich (Produktionsbefund:
+# Warnung 6 s VOR dem tatsächlichen Scan-Ende; der Scan war lebendig, nicht
+# hängend). Der Heartbeat meldet „Schritt läuft“ in festem Takt, ohne den
+# Fortschritt zu fälschen: der Watchdog kann damit „beschäftigt, aber lebendig“
+# von „hängt“ unterscheiden (§G8 copilot-instructions.md Transparenz, §V7
+# copilot-instructions.md: Ursache statt Symptom).
+_HEARTBEAT_S = float(os.environ.get("AURIK_PREANALYSIS_HEARTBEAT_S", "20"))
+
 # ---------------------------------------------------------------------------
 # Progress state (single source of truth, §G19/V71)
 # ---------------------------------------------------------------------------
@@ -438,6 +449,67 @@ def run_pre_analysis(
     if _step_fns:
         _total_steps = len(_step_fns)
         _done_steps = 0
+        # §G5 (copilot-instructions.md): CLAP-Thread und Pool-Thread zählten
+        # _done_steps bisher OHNE Lock — nicht-deterministische Fortschrittswerte.
+        # Ab jetzt zentral, gesperrt und global monoton
+        # (§G5 copilot-instructions.md).
+        _done_lock = threading.Lock()
+        _running_lock = threading.Lock()
+        _emit_lock = threading.Lock()
+        _running_steps: set[str] = set()
+        _heartbeat_stop = threading.Event()
+        _pct_floor = 75
+
+        def _band_pct() -> int:
+            with _done_lock:
+                _d = min(_done_steps, _total_steps)
+            return int(75 + (_d / max(_total_steps, 1)) * 15)
+
+        def _emit(_pct: int, _msg: str) -> None:
+            """Fortschritt global monoton emittieren (Thread-übergreifend, §G5 copilot-instructions.md)."""
+            nonlocal _pct_floor
+            with _emit_lock:
+                if _pct < _pct_floor:
+                    _pct = _pct_floor
+                else:
+                    _pct_floor = _pct
+                _cb(_pct, _msg)
+
+        def _mark_running(_name: str) -> None:
+            with _running_lock:
+                _running_steps.add(_name)
+            _emit(_band_pct(), f"Analyse: {_name} läuft…")
+
+        def _mark_done(_name: str) -> None:
+            nonlocal _done_steps
+            with _done_lock:
+                _done_steps += 1
+                _d = min(_done_steps, _total_steps)
+            with _running_lock:
+                _running_steps.discard(_name)
+            _emit(int(75 + (_d / max(_total_steps, 1)) * 15), f"Analyse: {_name} abgeschlossen ({_d}/{_total_steps})…")
+
+        def _mark_abandoned(_name: str) -> None:
+            """Schritt endete ohne Ergebnis (Timeout) — kein „abgeschlossen“ melden."""
+            with _running_lock:
+                _running_steps.discard(_name)
+
+        def _heartbeat_loop() -> None:
+            """§W-PREANALYSIS-LIVENESS: Lebenszeichen, solange ein Schritt läuft."""
+            while not _heartbeat_stop.wait(_HEARTBEAT_S):
+                with _running_lock:
+                    _running = sorted(_running_steps)
+                if not _running:
+                    continue
+                with _done_lock:
+                    _d = min(_done_steps, _total_steps)
+                _emit(
+                    _band_pct(),
+                    f"Analyse läuft: {', '.join(_running)} ({_d}/{_total_steps} Schritte fertig)…",
+                )
+
+        _heartbeat_thread = threading.Thread(target=_heartbeat_loop, daemon=True, name="aurik-preanalysis-heartbeat")
+        _heartbeat_thread.start()
 
         # Era + Genre + MuQ-MuLan laufen ASYNCHRON als Daemon-Thread (wie alte
         # _detect_era_genre_bg). CLAP-Kaltstart dauert 200+s auf ROCm — synchrones
@@ -458,6 +530,7 @@ def run_pre_analysis(
                 for _name in ("muq_mulan", "era", "genre"):
                     if _name not in _clap_steps:
                         continue
+                    _mark_running(_name)
                     try:
                         _val = _clap_steps[_name]()
                         if _name == "muq_mulan" and isinstance(_val, dict):
@@ -469,12 +542,7 @@ def run_pre_analysis(
                     except Exception as _exc:
                         result.errors[_name] = str(_exc)
                         logger.warning("pre_Analyse: step=%s fehlgeschlagen (%s)", _name, _exc)
-                    # Update progress via callback
-                    nonlocal _done_steps
-                    _done_steps += 1
-                    if _done_steps <= _total_steps:
-                        _pct = 75 + int((_done_steps / max(_total_steps, 1)) * 15)
-                        _cb(_pct, f"Analyse: {_name} abgeschlossen ({_done_steps}/{_total_steps})…")
+                    _mark_done(_name)
 
             _era_thread = threading.Thread(target=_run_era_genre_async, daemon=True, name="aurik-era-genre")
             _era_thread.start()
@@ -490,6 +558,7 @@ def run_pre_analysis(
             _pool = _cf.ThreadPoolExecutor(max_workers=len(_other_steps))
             for name, fn in _other_steps.items():
                 _other_futs[_pool.submit(fn)] = name
+                _mark_running(name)
 
             # Phase 2: Collect pool results via as_completed
             try:
@@ -501,18 +570,18 @@ def run_pre_analysis(
                     except Exception as exc:
                         result.errors[name] = str(exc)
                         logger.warning("pre_Analyse: step=%s fehlgeschlagen (%s)", name, exc)
-                    _done_steps += 1
-                    _step_pct = 75 + int((_done_steps / max(_total_steps, 1)) * 15)
-                    _cb(_step_pct, f"Analyse: {name} abgeschlossen ({_done_steps}/{_total_steps})…")
-                    logger.info("pre_Analyse: step=%s done (%d/%d)", name, _done_steps, _total_steps)
+                    _mark_done(name)
+                    logger.info("pre_Analyse: step=%s done (%d/%d)", name, min(_done_steps, _total_steps), _total_steps)
             except (_cf.TimeoutError, TimeoutError):
                 for fut, name in _other_futs.items():
                     if not fut.done():
                         result.errors[name] = f"timeout_after={_SUBSTEP_TIMEOUT_S:.1f}s"
                         fut.cancel()
+                        _mark_abandoned(name)
                         logger.warning("pre_Analyse: step=%s timed out", name)
             finally:
                 _pool.shutdown(wait=False, cancel_futures=True)
+        _heartbeat_stop.set()
     else:
         logger.debug("pre_Analyse: steps 2-5 vollständig aus Zwischenspeicher geladen")
 
@@ -857,23 +926,36 @@ def run_pre_analysis(
                     _clap_probs = map_clap_tags_to_canonical(_clap_material_tags)
 
                 if _clap_probs:
+                    # KETTEN-bewusster Konsens statt Einzel-Argmax: 99 % der
+                    # Restaurierungsfälle sind Tonträger-KETTEN (mehrere Träger).
+                    # CLAP ist ein ZEUGE (§6.8) — bewertet wird die EVIDENZ-MASSE
+                    # auf den Kettenträgern vs. außerhalb, NICHT ein einzelnes
+                    # Label. Kalibrierungsfrei (kein absoluter Schwellwert nötig),
+                    # daher auch für die unabhängigen Multi-Label-Material-Scores
+                    # UND die 16-Klassen-Softmax des Heads gültig.
+                    _chain_clap = [str(v).strip().lower() for v in (getattr(result.medium, "transfer_chain", []) or [])]
+                    _chain_set = set(_chain_clap)
+                    _on_chain = sum(v for k, v in _clap_probs.items() if k in _chain_set)
+                    _off_chain = sum(v for k, v in _clap_probs.items() if k not in _chain_set)
                     _clap_top = max(_clap_probs.items(), key=lambda x: x[1])
-                    _clap_mat, _clap_conf = _clap_top[0], float(_clap_top[1])
-                    _chain_clap = list(getattr(result.medium, "transfer_chain", []) or [])
-                    if _clap_mat in _chain_clap and _clap_conf > 0.30:
+                    if _chain_clap and _on_chain > _off_chain:
                         logger.info(
-                            "CLAP-Consensus: %s (%.3f) bestätigt Tonträgerkette %s",
-                            _clap_mat,
-                            _clap_conf,
+                            "CLAP-Consensus: Kette %s bestätigt (Evidenz on=%.3f > off=%.3f; stärkster Träger %s %.3f)",
                             " → ".join(_chain_clap),
+                            _on_chain,
+                            _off_chain,
+                            _clap_top[0],
+                            float(_clap_top[1]),
                         )
-                    elif _clap_conf > 0.50 and _clap_mat not in _chain_clap:
+                    elif _chain_clap and _off_chain > _on_chain:
                         logger.info(
-                            "CLAP-Consensus: %s (%.3f) NICHT in Kette %s — "
-                            "semantische vs. physikalische Diskrepanz (Physical hat Vorrang §6.8)",
-                            _clap_mat,
-                            _clap_conf,
+                            "CLAP-Consensus: Kette %s NICHT bestätigt (Evidenz on=%.3f < off=%.3f; "
+                            "stärkster Träger %s) — semantische vs. physikalische Diskrepanz "
+                            "(Physical hat Vorrang §6.8)",
                             " → ".join(_chain_clap),
+                            _on_chain,
+                            _off_chain,
+                            _clap_top[0],
                         )
         except Exception as _clap_exc:
             logger.debug("CLAP-Material-Consensus uebersprungen: %s", _clap_exc)

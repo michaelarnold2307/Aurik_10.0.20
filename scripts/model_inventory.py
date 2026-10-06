@@ -279,12 +279,62 @@ _CONSUMER_ROOTS = ("backend", "plugins", "denker", "cli", "Aurik10")
 # Bewusst ohne Konsumenten — JEDER Eintrag ist ein Entscheid mit Begründung
 # und Aufgabenziel, kein vergessener Rest (§G8 copilot-instructions.md, Transparenz).
 _WIRING_ALLOWLIST: dict[str, str] = {
-    "applade": "SOTA-D3/D4-Kandidat (Modulationsrauschen, niedrige Prio) — Bewertung offen",
-    "ddsp_predictor": "trainiert (c4_head.pth), Verdrahtung offen — F5/C4 (EQ/Dynamik-Praediktor)",
+    "applade": (
+        "port/ ist ein Zwilling von models/aspade/aspade_declipper.onnx (identischer SHA 8161ed93…) — "
+        "das Musik-Finetune ist bereits über A-SPADE in phase_07 PRODUKTIV; nur applade_dnn.onnx (Basis) ist verwaist"
+    ),
+    "ddsp_predictor": "trainiert (c4_head.pth), aber val_MAE 0.2447 ≈ Baseline 0.2455 (kein Skill) — NICHT aktivierbar (F5/C4, §V7-Blindaktivierungs-Verbot)",
     "gacela_upstream": "Upstream-Architekturkopie als Vergleichsquelle — kein Laufzeitpfad",
     "matchering2.0": "Referenz-Matching-Werkzeug (Mastering-Vergleich) — Rolle ungeklaert",
     "scnet_4stems": "A/B gewonnen 2026-10-05 (SI-SDR +10,3…+16,4 dB) — Verdrahtung offen (TODO-P1-2)",
 }
+
+
+# ── Domänen-Registry (kanonisch: .github/ML_MODEL_DOMAIN_REGISTRY.md) ──────
+# Evidenz je kuratiertem Modellpfad — NUR aus Trainings-Skript-Korpus, vendored
+# Modell-Karte oder SHA-/Export-Beleg, NIE aus Ordner-/Dateinamen
+# (§III.13 + §III.11 copilot-instructions.md; §V7 kein Workaround, §G8 Transparenz).
+_DOMAIN_EVIDENCE: dict[str, str] = {
+    "models/demucs/htdemucs_6s.onnx": "MUSDB-HQ Stem-Separation (Musik)",
+    "models/deepfilternet_v3_ii/finetuned/enc.onnx": "train_df_musik.py → dfn_musik_best.pt (Musik-Finetune)",
+    "models/deepfilternet_v3_ii/finetuned/dec.onnx": "train_df_musik.py → dfn_musik_best.pt (Musik-Finetune)",
+    "models/deepfilternet_v3_ii/finetuned/erb_dec.onnx": "train_df_musik.py → dfn_musik_best.pt (Musik-Finetune)",
+    "models/muq_mulan/muq_mulan.onnx": "TencentARC/MuQ-MuLan (Musik-Embedding)",
+    "models/whisper/whisper_tiny.onnx": "openai/whisper-tiny (Sprache; nur Wortgrenzen-Zeuge)",
+    "models/fcpe/fcpe.onnx": "CNChTu/Diffusion-SVC fcpe.pt (Musik-Pitch)",
+    "models/rmvpe/rmvpe.onnx": "yxlllc/RMVPE (Musik-Vokal-Pitch)",
+    "models/crepe/crepe.onnx": "marl/crepe full (MedleyDB, Musik-Pitch)",
+    "models/kim_vocal_2/kim_vocal_2.onnx": "KimberleyJSN/Kim-Vocal-2 (Musik)",
+    "models/kim_inst/kim_inst.onnx": "KimberleyJSN/KIM-INST (Musik)",
+    "models/panns/panns_wavegram_logmel_cnn14.onnx": "AudioSet PANNs CNN14 (Audio-allgemein)",
+    "models/ast/ast_model.onnx": "AudioSet AST (Audio-allgemein)",
+    "models/basicpitch/basicpitch.onnx": "spotify/basic-pitch (Musik)",
+    "models/bw_reconstructor/bw_reconstructor.onnx": "train_bw_reconstructor.py → MUSDB18-HQ (Musik)",
+    "models/singmos/singmos_pro.onnx": "SingMOS Pro (Gesang/Musik)",
+    "models/hifi_gan/hifi_gan.onnx": "HiFi-GAN UNIVERSAL_V1 (sprach-trainiert; auf Musik nur §V6-Fallback)",
+    "models/gacela/model/gacela_core.onnx": "TencentARC/GACELA (MAESTRO, Musik)",
+    "models/mert/mert.onnx": "m-a-p/MERT-v1 (160k h Musik)",
+    "models/mert-v1-330m/pytorch_model.bin": "m-a-p/MERT-v1-330M (Musik)",
+    "models/mert-95m/MERT-v1-95M_fairseq.pt": "m-a-p/MERT-v1-95M (Musik)",
+    "models/utmos/utmos.onnx": "sarulab-speech/UTMOSv2 (VoiceMOS/Sprache; nur MOS-Zeuge)",
+    "models/model_bs_roformer_ep_317_sdr_12.9755.ckpt": "BS-RoFormer 317 (MUSDB, Musik)",
+    "models/cqtdiff_plus/score_network.onnx": "sjc0423/CQTdiff (MAESTRO, Musik)",
+    "models/dac/encoder_model.onnx": "descript-audio-codec dac_44khz (Musik-inklusiv)",
+    "models/dac/decoder_model.onnx": "descript-audio-codec dac_44khz (Musik-inklusiv)",
+    "models/artifact_detector.pt": "intern (audio-allgemein) — kein Trainingskorpus belegt",
+    "models/muq/muq_eval_a1_head.pt": "MuQ-Eval-A1 (Musik-MOS-Head)",
+    "models/resemble_enhance/resample_enhance.pt": "Resemble-Enhance (Sprach-Enhancer; für Gesang NICHT empfohlen)",
+}
+
+# Kopfzahlen des GESAMTbestands (61 Verzeichnisse) — kanonisch in der Registry.
+_DOMAIN_TOTALS: dict[str, int] = {
+    "musik": 37,
+    "gemischt": 4,
+    "sprache": 11,
+    "audio-allgemein": 8,
+    "unueberwacht": 1,
+}
+_DOMAIN_TOTAL_DIRS = 61
 
 
 def audit_wiring() -> dict[str, str]:
@@ -343,11 +393,39 @@ def scan() -> dict[str, dict]:
             "size_mb": size_mb,
             "purpose": m.purpose,
             "domain": m.domain,
+            "evidence": _DOMAIN_EVIDENCE.get(
+                m.path, "Trainings-Domäne nicht einzeln belegt — siehe .github/ML_MODEL_DOMAIN_REGISTRY.md"
+            ),
             "license": m.license_note,
             "source": m.source,
             "required": m.required,
         }
     return out
+
+
+def domain_report() -> dict:
+    """Maschinenlesbare Domänen-Sicht (Musik vs. Sprache) aus der kanonischen Registry.
+
+    Kernaussage (§III.13 copilot-instructions.md): Aurik ist ein
+    Musik-Restaurierungssystem — 37 von 61 Modellverzeichnissen sind
+    musik-trainiert, nur 11 sprach-trainiert. Der KI-Fehlschluss
+    „die meisten Modelle sind Sprache" ist VERBOTEN.
+    """
+    s = scan()
+    curated_counts: dict[str, int] = {}
+    for v in s.values():
+        curated_counts[v["domain"]] = curated_counts.get(v["domain"], 0) + 1
+    return {
+        "registry": ".github/ML_MODEL_DOMAIN_REGISTRY.md",
+        "instruction": ".github/instructions/ml_domain.instructions.md",
+        "normalized_chain": "AGENTS.md §1 (Punkt 4) · copilot-instructions.md §III.13",
+        "misconception_forbidden": "Ein Großteil der lokal verfügbaren ML-Modelle seien Sprachmodelle",
+        "fact": "37/61 musik-trainiert (≈ 61 %), 11/61 sprach-trainiert (≈ 18 %)",
+        "totals_all_dirs": _DOMAIN_TOTAL_DIRS,
+        "totals_by_domain": _DOMAIN_TOTALS,
+        "curated_counts": curated_counts,
+        "models": {k: {"domain": v["domain"], "evidence": v["evidence"]} for k, v in s.items()},
+    }
 
 
 def summary_line() -> str:
@@ -380,7 +458,16 @@ def main() -> int:
         action="store_true",
         help="Exit 1, wenn ein Modellverzeichnis ohne Konsumenten und ohne Begründung existiert (Gate)",
     )
+    parser.add_argument(
+        "--domains",
+        action="store_true",
+        help="Trainings-Domänen (Musik vs. Sprache) — kanonische Registry-Sicht (§III.13 copilot-instructions.md)",
+    )
     args = parser.parse_args()
+
+    if args.domains:
+        print(json.dumps(domain_report(), ensure_ascii=False, indent=2))
+        return 0
 
     if args.wiring or args.fail_on_orphans:
         wiring = audit_wiring()

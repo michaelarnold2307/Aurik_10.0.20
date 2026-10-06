@@ -201,6 +201,28 @@ Jedes VERBOT definiert eine unzulässige Handlung. Verstöße sind Build-Fehler.
    - Die Witnesses sind **report-only**: Sie belegen Eigenschaften, sie
      verändern kein Signal. Harte Konsequenzen aus ihnen erfordern eine eigene
      Kalibrierung (Muster F14) — bis dahin ohne automatische Wirkung.
+13. **ML-Domänen-Registry (2026-10-06)**: Die Trainings-Domäne jedes Modells in
+   `models/` ist in **`.github/ML_MODEL_DOMAIN_REGISTRY.md`** kanonisch belegt
+   (aus Trainings-Skripten, Modell-Karten, Export-Skripten, SHA-Vergleichen).
+   **Der häufigste KI-Fehlschluss ist VERBOTEN:** „ein Großteil der lokal
+   verfügbaren ML-Modelle sind Sprachmodelle" — belegt sind **37 von 61**
+   Verzeichnissen **musik-trainiert** gegen **11 sprach-trainiert**. Aurik ist
+   ein Musik-Restaurierungssystem; der Signalpfad-Kern (Separation, Pitch,
+   Gesang, Inpainting, Deklipper) ist Musik.
+   - **Kein Domänen-Urteil aus Namen** (Upstream-Namen sind irreführend:
+     `miipher_dit` = auf MUSDB18-HQ-Vocals trainiert, `ear_vae` = offizielles
+     Musik-Rekonstruktionsmodell, `deepfilternet_v3_ii/finetuned/` und
+     `sgmse_plus/finetuned/` = Musik-Finetunes, `bigvgan` = Musik-Finetune F3).
+   - **Evidenzpflicht:** Domäne nur mit Trainings-Skript-Korpus, Modell-Karte,
+     SHA-Identität oder widerspruchsfreiem Plugin-Header; sonst gilt sie als
+     **unbekannt**, nie als „Sprache".
+   - **Zeugen ≠ Signalpfad:** Whisper/UTMOS/Silero/Resemblyzer sind Metriken,
+     VAD und Embeddings und dürfen das Ausgangssignal nicht verändern.
+   - **Sprach-Vocoder/SR als Musik-Pfad** (HiFi-GAN, Vocos, NVSR, AERO) ist ein
+     Risiko und nur nach §V6 (Warnung + Grund) als Fallback zulässig.
+   - `nara_wpe` ist **unüberwacht** (kein Trainingskorpus) → domain-neutral.
+   - Pflege: `python scripts/model_inventory.py --domains`;
+     Registry im selben Commit aktualisieren (§G9).
 
 ---
 

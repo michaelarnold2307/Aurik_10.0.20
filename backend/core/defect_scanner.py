@@ -5841,10 +5841,17 @@ class DefectScanner:
 
         side_ratio = side_energy / total_energy
 
-        # Auch: Cross-Correlation zwischen L und R (sollte hoch sein, NaN-safe guarded)
-        _l_c = left - np.mean(left)
-        _r_c = right - np.mean(right)
-        correlation = float(np.dot(_l_c, _r_c) / (np.linalg.norm(_l_c) * np.linalg.norm(_r_c) + 1e-10))
+        # §G9 (copilot-instructions.md) Single-Source (2026-10-06): Die L/R-
+        # Korrelation kommt aus EINER Messfunktion — dieselbe, die der §POL-Pfad
+        # in unified_restorer_v3 nutzt. Vorher gab es zwei Messungen (Scanner:
+        # ganze Datei / §POL-Ersatzpfad: erste 100 000 Samples), die bei kurzem
+        # Intro zu unterschiedlichen Urteilen führten.
+        from backend.core.stereo_temporal_coherence_guard import (
+            POLARITY_INVERSION_STRONG,
+            measure_channel_polarity,
+        )
+
+        correlation = measure_channel_polarity(left, right)
 
         # Severity
         phase_score = max(0, side_ratio - 0.3)  # > 30% Side = problematic
@@ -5852,7 +5859,7 @@ class DefectScanner:
 
         severity = min(1.0, (phase_score + corr_score) * 2)
 
-        polarity_inverted = bool(correlation <= -0.9)
+        polarity_inverted = bool(correlation <= POLARITY_INVERSION_STRONG)
 
         return DefectScore(
             defect_type=DefectType.PHASE_ISSUES,

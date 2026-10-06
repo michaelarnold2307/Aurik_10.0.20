@@ -18,6 +18,31 @@ def audio():
     return (np.sin(2 * np.pi * 440 * t) * 0.5 + rng.randn(48000) * 0.01).astype(np.float32)
 
 
+def test_beats_role_documented_honestly():
+    """§G8/§V6 (copilot-instructions.md): BEATs = Encoder-only, nicht 527-Tagger.
+
+    Befund 2026-10-06: ``models/beats/beats_iter3.onnx`` ist Encoder-only
+    (fbank [B,T,128] → [B,T,768]); die AudioSet-527-Tags liefert der
+    PANNs-Fallback. Plugin- und Phasen-Doku behaupteten zuvor unqualifiziert
+    527-Scores.
+    """
+    from pathlib import Path
+
+    repo = Path(__file__).resolve().parents[2]
+    phase_text = (repo / "backend/core/phases/phase_53_semantic_audio.py").read_text(encoding="utf-8")
+    beats_text = (repo / "plugins/beats_plugin.py").read_text(encoding="utf-8")
+
+    # Phasen-Doku: BEATs nicht unqualifiziert als 527-Tagger, Encoder-Realität sichtbar.
+    assert "768" in phase_text
+    assert "BEATs iter3 (AudioSet-527" not in phase_text
+    assert "BEATs iter3  (AudioSet-527" not in phase_text
+
+    # Plugin-Doku: kein 527-Output-Vertrag; Encoder + PANNs-Fallback benannt.
+    assert "[batch, 527]" not in beats_text, "BEATs-Doku darf keinen 527-Output behaupten"
+    assert "Encoder" in beats_text
+    assert "panns_fallback" in beats_text
+
+
 def test_returns_ndarray(phase, audio):
     result = phase.process(audio, sample_rate=48000, material_type="vinyl")
     assert isinstance(result.audio, np.ndarray)

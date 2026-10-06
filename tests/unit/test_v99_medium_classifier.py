@@ -429,6 +429,65 @@ class TestCLAPFallback:
         assert r.material in list(MaterialType)
         assert 0.0 <= r.confidence <= 1.0
 
+    def test_38_clap_does_not_override_physical(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """§6.8 (copilot-instructions.md): physikalisches Ergebnis hat Vorrang vor CLAP.
+
+        Befund 2026-10-06: das flache CLAP-Einzel-Label übersteuerte die
+        physikalische Trägerbestimmung (digital erzeugte CD-Datei → „tape").
+        """
+        clf = get_medium_classifier()
+
+        def _dsp(audio, sr):  # type: ignore[no-untyped-def]
+            return ClassificationResult(
+                material=MaterialType.VINYL,
+                confidence=0.8,
+                evidence=[MaterialEvidence(MaterialType.VINYL, 0.8)],
+                classifier_source="dsp",
+            )
+
+        def _clap(audio, sr):  # type: ignore[no-untyped-def]
+            return ClassificationResult(
+                material=MaterialType.TAPE,  # falsches flaches CLAP-Label
+                confidence=0.9,
+                evidence=[MaterialEvidence(MaterialType.TAPE, 0.9)],
+                classifier_source="clap_ml",
+            )
+
+        monkeypatch.setattr(clf, "_dsp_classify", _dsp)
+        monkeypatch.setattr(clf, "_try_clap_classification", _clap)
+        monkeypatch.setattr(clf, "_cache_key", lambda audio, sr: "unit-38-key")
+
+        r = clf.classify(_noise(1.0), SR, use_ml=True)
+        assert r.material == MaterialType.VINYL
+        assert r.classifier_source == "dsp"
+
+    def test_39_clap_fills_only_unknown(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """Physik UNKNOWN → CLAP-Zeuge darf einspringen (Zeuge, kein Richter)."""
+        clf = get_medium_classifier()
+
+        def _dsp(audio, sr):  # type: ignore[no-untyped-def]
+            return ClassificationResult(
+                material=MaterialType.UNKNOWN,
+                confidence=0.0,
+                evidence=[MaterialEvidence(MaterialType.UNKNOWN, 0.0)],
+                classifier_source="dsp",
+            )
+
+        def _clap(audio, sr):  # type: ignore[no-untyped-def]
+            return ClassificationResult(
+                material=MaterialType.CASSETTE,
+                confidence=0.6,
+                evidence=[MaterialEvidence(MaterialType.CASSETTE, 0.6)],
+                classifier_source="clap_ml",
+            )
+
+        monkeypatch.setattr(clf, "_dsp_classify", _dsp)
+        monkeypatch.setattr(clf, "_try_clap_classification", _clap)
+        monkeypatch.setattr(clf, "_cache_key", lambda audio, sr: "unit-39-key")
+
+        r = clf.classify(_noise(1.0), SR, use_ml=True)
+        assert r.material == MaterialType.CASSETTE
+
 
 # ============================================================================
 # TestGroup 7: NaN/Inf-Safety (Pflicht §3.1)

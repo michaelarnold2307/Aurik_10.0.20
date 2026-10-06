@@ -41,6 +41,64 @@ from backend.core.gpu_model_registry import get_onnx_providers  # §v10.40c Regi
 logger = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
+# §V6 copilot-instructions.md: Klassifikation der Checkpoint-Parameter
+# ---------------------------------------------------------------------------
+#: Nicht-parametrische, deterministische Index-Buffer, die ein Checkpoint
+#: versionsbedingt mitführen kann, die das aktuelle Modell aber als
+#: non-persistenten Buffer NICHT in ``state_dict()`` führt (HF-Konvention:
+#: ``position_ids = arange(...)``). Sie sind KEINE gelernten Gewichte — ein
+#: „Nicht-Übernehmen“ ist daher KEINE Degradierung und darf die
+#: Verworfen-Warnung nicht auslösen (Produktionsbefund 2026-10-06:
+#: ``text_branch.embeddings.position_ids`` — der Falsch-Alarm verdeckte echte
+#: Parameter-Verluste).
+_BENIGN_NONPARAM_SUFFIXES: tuple[str, ...] = (".position_ids",)
+
+
+def _is_benign_nonparam_key(key: str) -> bool:
+    """True für nicht-parametrische Index-Buffer (z. B. ``*.position_ids``)."""
+    return key.endswith(_BENIGN_NONPARAM_SUFFIXES)
+
+
+def classify_checkpoint_params(
+    state: dict[str, Any], model_state: dict[str, Any]
+) -> tuple[dict[str, Any], list[str], list[str]]:
+    """Teilt Checkpoint-Parameter gegen den Modell-``state_dict`` auf.
+
+    ``load_state_dict(strict=False)`` toleriert KEINE Shape-Konflikte (wirft),
+    daher muss der Aufrufer inkompatible Keys vorher herausfiltern — und dabei
+    ehrlich zwischen ECHTEN Verlusten und harmlosen Buffer-Differenzen trennen.
+
+    Returns:
+        ``(kept, dropped, benign)``
+
+        * ``kept``    — Namen→Tensoren, die das Modell 1:1 übernimmt.
+        * ``dropped`` — menschenlesbare Beschreibungen ECHTER Verluste
+                        (fehlend im Modell ODER Shape-Konflikt) — §V6-relevant.
+        * ``benign``  — nicht-parametrische Buffer (``*.position_ids``), die
+                        bewusst übersprungen werden und KEINE Degradierung sind.
+    """
+    kept: dict[str, Any] = {}
+    dropped: list[str] = []
+    benign: list[str] = []
+    for key, value in state.items():
+        if key not in model_state:
+            if _is_benign_nonparam_key(key):
+                benign.append(key)
+                continue
+            dropped.append(f"{key} (nicht im Modell)")
+            continue
+        want_shape = getattr(model_state[key], "shape", None)
+        have_shape = getattr(value, "shape", None)
+        if want_shape != have_shape:
+            _h = tuple(have_shape) if have_shape is not None else None
+            _w = tuple(want_shape) if want_shape is not None else None
+            dropped.append(f"{key} (Checkpoint {_h} vs. Modell {_w})")
+            continue
+        kept[key] = value
+    return kept, dropped, benign
+
+
+# ---------------------------------------------------------------------------
 # Vordefinierte Tag-Kategorien (für PANNs-kompatible Ausgabe)
 # ---------------------------------------------------------------------------
 
@@ -97,6 +155,53 @@ MATERIAL_TAGS: list[str] = [
 ]
 
 
+#: Temperatur der CLAP-Logit-Skalierung (LAION-CLAP `logit_scale ≈ exp(4.6)`).
+_LOGIT_TEMPERATURE: float = 100.0
+
+
+def _softmax_vec(x: np.ndarray) -> np.ndarray:
+    """Numerisch stabiles Softmax über einen Vektor (eine Quelle: §G9 copilot-instructions.md)."""
+    x_shifted = np.asarray(x, dtype=np.float64)
+    x_shifted = x_shifted - np.max(x_shifted)
+    e = np.exp(np.clip(x_shifted, -100.0, 100.0))
+    return e / (np.sum(e) + 1e-12)
+
+
+def score_tags_by_category(
+    raw_sims: np.ndarray,
+) -> tuple[dict[str, float], dict[str, float], dict[str, float]]:
+    """Tag-Scores: Instrumente/Genre per Kategorie-Softmax, Material MULTI-LABEL.
+
+    Ein gemeinsamer Softmax über ALLE 43 heterogenen Tags verwässert die Massen
+    (ein Instrument konkurriert mit einem Genre): die Scores liegen dann bei
+    ~1/43, ``top_instruments(threshold=0.4)`` ist IMMER leer und das
+    Genre-Gate (≥ 0.35) feuert NIE — der Argmax wird reines Rauschen
+    (Produktionsbefund 2026-10-06: ``Top-Instrumente=[]``, Genre springt
+    rnb↔opera). Instrumente und Genre sind je eine eigene Entscheidung →
+    ein eigener Softmax je Kategorie (§G9 copilot-instructions.md, eine
+    Normalisierung für beide CLAP-Pfade).
+
+    MATERIAL hingegen ist **MULTI-LABEL** (siehe unten) — kein Softmax.
+    """
+    raw = np.asarray(raw_sims, dtype=np.float64)
+    n_i, n_g, n_m = len(INSTRUMENT_TAGS), len(GENRE_TAGS), len(MATERIAL_TAGS)
+    p_i = _softmax_vec(raw[:n_i] * _LOGIT_TEMPERATURE)
+    p_g = _softmax_vec(raw[n_i : n_i + n_g] * _LOGIT_TEMPERATURE)
+    instrument = {k: float(v) for k, v in zip(INSTRUMENT_TAGS, p_i)}
+    genre = {k: float(v) for k, v in zip(GENRE_TAGS, p_g)}
+    # MATERIAL ist MULTI-LABEL (KEINE Disjunktion): Träger sind NICHT wechsel-
+    # schließlich — 99 % der Restaurierungsfälle sind Tonträger-KETTEN
+    # (z. B. mp3→Vinyl), in denen mehrere Träger gleichzeitig vorliegen. Ein
+    # Softmax würde genau EINEN Träger erzwingen (Produktionsbefund 2026-10-06:
+    # „Material = tape“) und die Kette unterschlagen, die Aurik bereits
+    # modelliert (``transfer_chain``, ``chain_templates/``). Daher unabhängige,
+    # absolute Kosinus-Evidenz je Träger ([0,1]-geklippt, NICHT auf Summe 1) —
+    # ein ZEUGE (§6.8 copilot-instructions.md), keine Einzelklassifikation; die
+    # physikalische Ketten-Inferenz behält Vorrang.
+    material = {k: float(np.clip(v, 0.0, 1.0)) for k, v in zip(MATERIAL_TAGS, raw[n_i + n_g : n_i + n_g + n_m])}
+    return instrument, genre, material
+
+
 # ---------------------------------------------------------------------------
 # Ergebnis-Datenklasse
 # ---------------------------------------------------------------------------
@@ -107,9 +212,11 @@ class AudioTaggingResult:
     """Ergebnis des LAION-CLAP Audio-Taggings.
 
     Attribute:
-        instrument_tags:  Dict tag_name → Konfidenz ∈ [0, 1]
-        genre_tags:       Dict tag_name → Konfidenz ∈ [0, 1]
-        material_tags:    Dict tag_name → Konfidenz ∈ [0, 1]
+        instrument_tags:  Dict tag_name → Konfidenz ∈ [0, 1] (Kategorie-Softmax)
+        genre_tags:       Dict tag_name → Konfidenz ∈ [0, 1] (Kategorie-Softmax)
+        material_tags:    Dict Träger → absolute Kosinus-Evidenz ∈ [0, 1]
+                          (MULTI-LABEL, NICHT auf Summe 1 normiert — Träger sind
+                          nicht disjunkt; eine Kette hat mehrere Träger)
         embedding:        512-dim Audio-Embedding (für Ähnlichkeitssuche)
         model_used:       "laion_clap" | "panns_fallback"
         confidence:       Gesamtkonfidenz ∈ [0, 1]
@@ -123,8 +230,11 @@ class AudioTaggingResult:
     confidence: float
     metadata: dict[str, float] = field(default_factory=dict)
     # Zero-Shot-Scores für benutzerdefinierte Text-Queries (z. B. "a male singer").
-    # Der gemeinsame Softmax-Pool (Standard-Tags + Queries) erhält die relative
-    # Ordnung der Queries zueinander — genau das braucht die Geschlechts-Evidenz.
+    # ABSOLUTE CLAP-Kosinus-Ähnlichkeit je Query ∈ [0, 1] (NICHT der Rest eines
+    # gemeinsamen Tag-Softmax): monoton und über Aufrufe vergleichbar — genau das
+    # braucht die Evidenz (Geschlecht, Genre), die positive und negative
+    # Prompt-Sätze saldiert (Produktionsbefund 2026-10-06: der gemeinsame
+    # 46-Tag-Softmax ließ alle Nicht-Argmax-Queries auf 0.0 kollabieren).
     custom_scores: dict[str, float] = field(default_factory=dict)
 
     def top_instruments(self, n: int = 3, threshold: float = 0.4) -> list[str]:
@@ -591,23 +701,21 @@ class LAIONCLAPPlugin:
                             _shape_exc,
                         )
                     _model_state = model.model.state_dict()
-                    # §V6 copilot-instructions.md: Verworfene Checkpoint-Parameter
-                    # sichtbar machen. `torch.nn.Module.load_state_dict(strict=False)`
-                    # toleriert KEINE Shape-Konflikte (wirft), daher filtert dieser
-                    # Loader sie vorher weg — ohne Log bliebe eine Degradierung
-                    # unsichtbar (Produktionsbefund 2026-10-06: die trainierten
-                    # Positions-Embeddings des Text-Turms fehlten still).
-                    _kept_state: dict[str, Any] = {}
-                    _dropped_state: list[str] = []
-                    for _k, _v in _state.items():
-                        if _k not in _model_state:
-                            _dropped_state.append(f"{_k} (nicht im Modell)")
-                            continue
-                        _want = getattr(_model_state[_k], "shape", None)
-                        if _want != getattr(_v, "shape", None):
-                            _dropped_state.append(f"{_k} (Checkpoint {tuple(_v.shape)} vs. Modell {tuple(_want)})")
-                            continue
-                        _kept_state[_k] = _v
+                    # §V6 copilot-instructions.md: ECHTE Verwürfe sichtbar machen,
+                    # harmlose Buffer-Differenzen aber NICHT als Degradierung melden.
+                    # `load_state_dict(strict=False)` toleriert keine Shape-Konflikte
+                    # (wirft), daher filtert dieser Loader sie vorher weg — ohne Log
+                    # bliebe ein echter Verlust unsichtbar (Produktionsbefund
+                    # 2026-10-06: die trainierten Positions-Embeddings des Text-Turms
+                    # fehlten still). Nicht-parametrische Index-Buffer (``position_ids``)
+                    # werden getrennt behandelt — sie sind keine gelernten Gewichte.
+                    _kept_state, _dropped_state, _benign_state = classify_checkpoint_params(_state, _model_state)
+                    if _benign_state:
+                        logger.debug(
+                            "LAION-CLAP: %d nicht-parametrische Index-Buffer übersprungen (keine Degradierung): %s",
+                            len(_benign_state),
+                            ", ".join(_benign_state[:6]),
+                        )
                     if _dropped_state:
                         logger.warning(
                             "LAION-CLAP: %d Checkpoint-Parameter NICHT übernommen — sie behalten ihre "
@@ -922,15 +1030,12 @@ class LAIONCLAPPlugin:
                 self._warned_text_embeddings_mismatch = True
             if self._text_embeddings is not None and len(self._text_embeddings) == n_all:
                 te = self._text_embeddings
-                sims = (te @ audio_emb) / (np.linalg.norm(te, axis=1) + 1e-12)
-                sims = self._softmax(sims * 100.0)
-
-                offset = 0
-                instrument_scores = {k: float(sims[offset + i]) for i, k in enumerate(INSTRUMENT_TAGS)}
-                offset += len(INSTRUMENT_TAGS)
-                genre_scores = {k: float(sims[offset + i]) for i, k in enumerate(GENRE_TAGS)}
-                offset += len(GENRE_TAGS)
-                material_scores = {k: float(sims[offset + i]) for i, k in enumerate(MATERIAL_TAGS)}
+                raw_sims = (te @ audio_emb) / (np.linalg.norm(te, axis=1) + 1e-12)
+                # Per-Kategorie-Softmax statt eines gemeinsamen 43-Tag-Softmax
+                # (Befund 2026-10-06: cross-category verwässert → Instrumente leer,
+                # Genre-Gate feuert nie). Ein Normalisierer für beide CLAP-Pfade
+                # (§G9 copilot-instructions.md).
+                instrument_scores, genre_scores, material_scores = score_tags_by_category(raw_sims)
             else:
                 # Keine Text-Embeddings → DSP-Fallback für Scores
                 dsp_result = self._tag_dsp_fallback(audio, sr)
@@ -995,25 +1100,30 @@ class LAIONCLAPPlugin:
                 norm = np.linalg.norm(audio_emb)
                 audio_emb = audio_emb / (norm + 1e-12)
 
-                # Text-Embeddings für Tag-Scores
+                # Text-Embeddings → rohe Kosinus-Ähnlichkeiten (Normalisierung
+                # erfolgt per Kategorie in ``score_tags_by_category``, §G9 copilot-instructions.md).
                 text_emb = model.get_text_embedding(query_tags, use_tensor=False)
                 if isinstance(text_emb, np.ndarray) and text_emb.ndim == 2:
                     text_norms = np.linalg.norm(text_emb, axis=1, keepdims=True)
                     text_emb = text_emb / (text_norms + 1e-12)
-                    sims = text_emb @ audio_emb
-                    sims = self._softmax(sims * 100.0)
+                    raw_sims = text_emb @ audio_emb
                 else:
-                    sims = np.full(len(query_tags), 1.0 / len(query_tags), dtype=np.float32)
+                    raw_sims = np.zeros(len(query_tags), dtype=np.float32)
 
-            offset = 0
-            instrument_scores = {k: float(sims[offset + i]) for i, k in enumerate(INSTRUMENT_TAGS)}
-            offset += len(INSTRUMENT_TAGS)
-            genre_scores = {k: float(sims[offset + i]) for i, k in enumerate(GENRE_TAGS)}
-            offset += len(GENRE_TAGS)
-            material_scores = {k: float(sims[offset + i]) for i, k in enumerate(MATERIAL_TAGS)}
-            offset += len(MATERIAL_TAGS)
-            # Zero-Shot-Scores der benutzerdefinierten Queries (aus demselben Softmax)
-            custom_scores = {q: float(sims[offset + i]) for i, q in enumerate(extra_queries)}
+            # Per-Kategorie-Softmax (ein Normalisierer für BEIDE CLAP-Pfade,
+            # §G9 copilot-instructions.md): getrennte Kategorien statt eines 43-Tag-Softmax.
+            instrument_scores, genre_scores, material_scores = score_tags_by_category(raw_sims)
+            # Zero-Shot-Scores der benutzerdefinierten Queries: ABSOLUTE CLAP-Kosinus-
+            # Ähnlichkeit je Query — NICHT der Rest des gemeinsamen Tag-Softmax
+            # (dieser sättigt bei Temperatur ×100: jeder Nicht-Argmax-Wert kollabiert
+            # auf ~0.0 — Produktionsbefund 2026-10-06, alle Schlager-Prompts 0.0) und
+            # ist über Aufrufe NICHT vergleichbar (wechselnder Nenner je Prompt-Satz).
+            # Der Konsument (`genre_classifier`) saldiert positive und negative
+            # Prompt-Sätze — dafür ist die rohe, monotone Kosinus-Ähnlichkeit die
+            # korrekte, absolut vergleichbare Messung (§G9 copilot-instructions.md;
+            # [0,1]-geklippt, negative Ausrichtung = 0).
+            _qs_offset = len(INSTRUMENT_TAGS) + len(GENRE_TAGS) + len(MATERIAL_TAGS)
+            custom_scores = {q: float(np.clip(raw_sims[_qs_offset + i], 0.0, 1.0)) for i, q in enumerate(extra_queries)}
 
             return AudioTaggingResult(
                 instrument_tags=instrument_scores,
@@ -1147,10 +1257,8 @@ class LAIONCLAPPlugin:
 
     @staticmethod
     def _softmax(x: np.ndarray) -> np.ndarray:
-        """Numerisch stabiles Softmax."""
-        x_shifted = x - np.max(x)
-        e = np.exp(np.clip(x_shifted, -100.0, 100.0))
-        return e / (np.sum(e) + 1e-12)
+        """Numerisch stabiles Softmax (kanonisch: ``_softmax_vec``, §G9 copilot-instructions.md)."""
+        return _softmax_vec(x)
 
 
 # ---------------------------------------------------------------------------

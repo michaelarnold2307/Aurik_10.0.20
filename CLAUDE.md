@@ -31,6 +31,7 @@ Diese Invarianten entstanden aus realen Lauf-Befunden — Verstöße zerstören 
 
 ## 🚀 v10 Invarianten
 
+- **⛔ ML-Domänen-Registry (Musik ≠ Sprache)**: „Die meisten Modelle sind Sprachmodelle" ist **FALSCH** — von 61 Verzeichnissen in `models/` sind **37 musik-trainiert**, nur 11 sprach-trainiert. Kein Domänen-Urteil aus Ordnernamen (`whisper`/`silero`/`utmos`/`bigvgan`/`deepfilternet`/`miipher`/`versa` tragen Musik-Varianten). Kanonisch: `.github/ML_MODEL_DOMAIN_REGISTRY.md`; Signalpfad-Regel §III.11 der copilot-instructions.
 - **Bridge-Bypass-Verbot**: Kein UI-/Frontend-Code (Aurik10, CLI) importiert `backend/core/` direkt. Nur über `backend/api/bridge.py`. Die Denker-Schicht (`denker/`) ist Teil der Backend-Orchestrierung und von diesem Verbot ausgenommen.
 - **Soft-Knee-Gate**: `apply_musical_gain_envelope()` arbeitet mit Sigmoid-Soft-Knee (6dB), 200ms Hanning-Crossfade. KEIN Hard-Clamp.
 - **PIM-first**: Vor jedem Phasen-Loop wird die PIM-Intensitäts-Map berechnet und in `restoration_context` gespeichert.

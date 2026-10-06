@@ -2234,3 +2234,298 @@ Chunk-Modus-Struktur (siehe AUF-4).
   measure_all-Verwerf-Fix, FC-Hörordnungs-Pre-Filter, Einladungs-Gate-Exemption,
   MDX23C-API-Drift, BasicPitch-Fixed-Length, Chunked-Prior (§m2), Envelope-Regressionstest,
   RELEASE_MUST Strength-Envelope-Nichtdegeneration, Ledger-Merge, GUI-Smoke-Flag-Fix.
+
+---
+
+## ML-Wurzel-Fixes 2026-10-06 — CLAP-Scoring, Material-Kette, §6.8 Physical-first (10.3.22)
+
+> Auslöser: Lauf-Logs (CLAP-Zero-Shot = 0.0; Genre rnb↔opera; Material = „tape";
+> Instrumente leer) und der Befund, dass 99 % der Restaurierungsfälle
+> **Tonträger-KETTEN** sind (mehrere Träger gleichzeitig).
+
+- **§6.8 (copilot-instructions.md) — Medium physikalisch zuerst:**
+  `medium_classifier.classify()` ließ CLAP die physikalische Trägerbestimmung
+  übersteuern (digital erzeugte CD-Datei → „tape"). Jetzt entscheidet IMMER die
+  physikalische Klassifikation; CLAP füllt ausschließlich UNKNOWN (Zeuge, kein
+  Richter). Beleg: `tests/unit/test_v99_medium_classifier.py::test_38`/`test_39`.
+- **Material MULTI-LABEL:** Träger sind nicht disjunkt (Kette) → unabhängige,
+  absolute Kosinus-Evidenz statt Softmax-Argmax (`score_tags_by_category`).
+  Laufzeit-Evidenz (CD-Datei): 9 Träger (mp3 .31 … broadcast .20, Summe 2.08)
+  statt „tape 0.76".
+- **Zero-Shot absolut:** Der gesättigte gemeinsame Tag-Softmax ließ alle Queries
+  auf **0.0** kollabieren; jetzt absolute Kosinus-Ähnlichkeit
+  (pos .129/.228/.066 vs. neg .054/.000/.082) — vergleichbar über Aufrufe
+  (positiv/negativ-Saldierung des `GermanSchlagerClassifier`).
+- **Instrument/Genre Per-Kategorie-Softmax:** Der gemeinsame 43-Tag-Softmax
+  verwässerte → `top_instruments` (Schwelle 0.4) IMMER leer, Genre-Gate (≥ 0.35)
+  feuerte nie, Genre-Argmax = Rauschen. Nach Fix: `acoustic_guitar 0.895`,
+  `folk 0.989`.
+- **CLAP-Konsens ketten-joint:** `pre_analysis` bewertet on-chain vs. off-chain
+  Evidenz-Masse gegen die `transfer_chain` statt eines Einzel-Argmax.
+- **Falsch-Warnung entfernt:** `text_branch.embeddings.position_ids`
+  (nicht-parametrischer Index-Buffer) ist keine Degradierung →
+  `classify_checkpoint_params` (benign).
+- **Offener Nebenbefund (ehrlich):** Die absoluten CLAP-Material-Werte sind flach
+  (alle ~0.2–0.31) — CLAP diskriminiert Träger NICHT; die physikalische Kette ist
+  zu Recht autoritativ. **Verhaltensänderung** (zuvor tote ML-Pfade werden aktiv):
+  A/B + Hörordnungs-Abnahme nach §v10.802 noch offen.
+
+---
+
+## Modell-Bestand §B/§C 2026-10-06 — Trainingsdomäne, APPLADE, SCNet, F4-Beleg
+
+### APPLADE — bereits produktiv (Duplikat)
+
+`models/applade/port/applade_music_finetuned.onnx` und `models/aspade/aspade_declipper.onnx`
+sind **byte-identisch** (SHA-256 `8161ed93…`). Der A-SPADE-Declipper (`phase_07`)
+läuft also **bereits mit dem APPLADE-Musik-Finetune**; verwaist ist nur die
+**Basis** `applade_dnn.onnx`. Inventar korrigiert (`_WIRING_ALLOWLIST`).
+
+### SCNet — Empfehlung: als Qualitäts-Tier, NICHT als Default
+
+Fair-A/B (`2026-10-06_p1_2_scnet_vs_demucs_fair_ab.md`): SCNet +1,96…+3,59 dB
+SI-SDR, beide Gates erfüllt; **Demucs v4 ~7× schneller (CPU)**. Empfehlung:
+**Opt-in-Tier im Separations-Router** (Default = Demucs, SCNet = Qualität) —
+Vorbedingung: **C4 menschliche Hörstichprobe** + GPU-Beschleunigungsnachweis.
+
+### F4 — nachträglich belegt (Gate erfüllt, Never-worsen weiter offen)
+
+Produktion `models/flashsr/flashsr.onnx` == `flashsr_f4.onnx` (identischer SHA
+`41396e3d…`) war ein **stiller F4-Swap**. Der fehlende Gate-Nachweis wurde mit
+identischem Harness (`benchmark_bwe_candidates.py`, Seed 42, 3×30 s) erbracht:
+
+| Track | Baseline (2026-09-13) | F4 (2026-10-06) | Δ |
+| --- | --- | --- | --- |
+| BKS – Bulldozer | −24,31 dB | −4,82 dB | **+19,5 dB** |
+| Secretariat – Borderline | −24,41 dB | −5,27 dB | **+19,1 dB** |
+| Speak Softly – Broken Man | −21,16 dB | −2,83 dB | **+18,3 dB** |
+
+- **F4-Gate (ΔSDR ≥ +2 dB vs. Zero-Shot) ERFÜLLT** (+18…+19,5 dB).
+- **`never_worsen=false`** (min −9,9 dB) → F4 bleibt hinter den
+  Synthese-Gates (SOTA-B4/B5); kein ungegateter Einsatz.
+- **Korrektur 2026-10-06 (bestätigt):** F4 ist **MUSIK**-trainiert
+  (`train_flashsr_f4.py` → `data/musdb18hq/**/mixture.wav`, MUSDB18-HQ), NICHT
+  Sprache. Der Produktionspfad `models/flashsr/flashsr.onnx` == `flashsr_f4.onnx`
+  ist damit korrekt das **Musik-F4** (der −2,8…−5,3 dB-Befund IST das
+  musik-trainierte Modell, nicht die −21…−24 dB-Sprach-Basis). Der frühere
+  Vorschlag „auf den ungetunten Stand zurücknehmen“ ist **zurückgezogen** — das
+  wäre das SPRACH-Modell (`FastAudioSR/SR48k.pth`) gewesen. **Gehärtet:**
+  `export_flashsr_onnx.py` verlangt `--checkpoint` explizit und **verweigert** den
+  Export des Sprach-Basis-Checkpoints nach `flashsr.onnx` (Default-Ziel jetzt
+  `flashsr_f4.onnx`, §III.11 copilot-instructions.md).
+- Trainings-Nebenbefund: `val_a1` instabil 0,36–0,52 und `l1_loss(y, hi_g)`-Shape-
+  Broadcast-Warnung (`train_flashsr_f4.py:134`) — Kosmetik/Training-Signal prüfen.
+- Report: `docs/reports/current/2026-10-06_bwe_candidates.json`.
+
+### §C Gap-Schluss — konkrete Empfehlung (nach §B)
+
+**Ohne Neubau (musik-native Substitution):**
+
+- **F8 MOS-Orakel** ← `muq_mulan` + `muq_eval_a1_head.pt` und `singmos_pro`
+  (Musik/Gesang) statt UTMOS (Sprache).
+- **F9 Sänger-Identität** ← Musik-native Embeddings (`mert`/`muq_mulan`) statt
+  Resemblyzer (LibriSpeech).
+- **VAD** ← `panns` (Singing-voice-Klassen) / `ast` statt Silero (English-Speech).
+- **BEATs-Head** ← bereits durch `ast` (527) + `panns` (527) gedeckt.
+- **Separation** ← `scnet_4stems` (Opt-in-Tier).
+- **F5 DDSP** ← `dac/encoder_model.onnx` als Mel-Encoder (statt CLAP, das trug
+  die Effektparameter nicht).
+
+**Mit Training (GPU):** WF-V4-Warp-Head (auf FCPE/CREPE-F0), TP-V2 (Vocoder als
+Phasen-Synthesizer), Vokal-Inpainting-DiT (Harmonic/MIIPHER-Familie),
+neuronaler RT60-Regressor, Cantus-Volltraining (nur tiny-Pretrain vorhanden).
+
+---
+
+## Arbeitspakete WP-0…WP-7 — Neufassung 2026-10-06 (nach der ML-Domänen-Registry)
+
+> **Anlass:** Die neue kanonische Registry **`.github/ML_MODEL_DOMAIN_REGISTRY.md`**
+> (§III.13 copilot-instructions.md) belegt die **Trainings-Domäne aller 61
+> Modellverzeichnisse** aus Trainings-Skripten, Modell-Karten, Export-Skripten und
+> SHA-Vergleichen: **37 musik-trainiert (≈ 61 %)**, 4 gemischt, 11 sprach-trainiert,
+> 8 audio-allgemein, 1 unüberwacht. Das verschiebt **drei** Arbeitspakete materiell
+> und erzeugt **vier neue Defizit-Klassen**, die im ursprünglichen WP-Plan fehlten.
+>
+> Maschinenlesbar: `python scripts/model_inventory.py --domains`;
+> Gate: `tests/normative/test_ml_model_domain_registry_gate.py`.
+
+### Delta-Übersicht (ursprünglicher Auftrag → Neufassung)
+
+| WP | Ursprünglicher Auftrag | Was sich durch die Domänen-Registry ändert |
+| --- | --- | --- |
+| WP-0 | Defizit-Register + Gate | **+2 neue Klassen** (K0 stilles Kapital, K1 synthetisch-trainiert) + Klasse K3 (Phantom-Referenz); Register muss Domänen-Evidenz mitführen |
+| WP-1 | §III.11-Lücken-Audit (Richter) | **Scope wächst**: nicht nur _Richter_, auch **Signalpfad** (Vocoder/SR): `hifi_gan`, `vocos`, `vocos_48khz`, `nvsr`, `aero`; **neu:** `vocos_48khz` hat _undokumentierte_ Domäne |
+| WP-2 | Phantom-ML (17 TS-Zweige + 1 No-Op) | **+ konkrete Funde**: tote Referenz `bigvgan_v2_f3e29.onnx` in `ab_test_exports.py`; inkonsistentes `models/wav2vec2/quality_predict.py` (CTC-Config vs. Classification-Code) |
+| WP-3 | Wohlklang-Ordnung-Forensik | **+ Hypothese**: der Sprachtrainierte **Vocoder** ist ein Kandidat für Ordnungsverstöße → mitprüfen |
+| WP-4 | GPU-Finetunes F3/F4/F8…F12 | **F4 abgeschlossen** (Musik verifiziert + Export-Guard); **F3 rückt auf P1** (Musik-Finetune existiert, A/B bestanden — nur Rollout fehlt) |
+| WP-5 | SGMSE+ A/B + HR-V1-Budget | **HR-V1-A/B liegt vor** (HNR +4,42 dB) → nur noch Budget + Test-Suite-Umstellung offen |
+| WP-6 | WF-V4, TP-V2, BEATs-Head | **BEATs-Head gelöst** (Encoder-only dokumentiert; 527-Tags kommen von `panns`/`ast`) → WP-6 schrumpft auf WF-V4 + TP-V2 |
+| WP-7 | F13/F14 Label-Korpora | Bedarf konkretisiert: `train_gender_head.py` verlangt `data/gender_labels.csv` + `data/music`; `train_clap_material_classifier.py` trainiert **synthetisch** |
+| WP-8 | MUSHRA-Studie | unverändert (extern blockiert) |
+
+### Neue Defizit-Klassen (belegt, für das Register in WP-0)
+
+**K0 — „Trainiert, aber nicht deployt" (stilles Kapital).** Modelle/Fi­netunes
+mit belegtem Musik-Training, die **kein** Produktionskonsument lädt:
+
+| Artefakt | Domäne | Evidenz | Warum nicht deployt |
+| --- | --- | --- | --- |
+| `output/_training_archive_20260920/f3_bigvgan/best.pt` | Musik | `train_bigvgan_f3.py` → **MUSDB18-HQ** | Flag `BIGVGAN_V2_HR_ACTIVATED` OFF; A/B **bestanden** (HNR **+4,42 dB**); Blocker: Test-Suite + Budget |
+| `models/bigvgan/bigvgan_v2.onnx` (aktiv) | **Sprache** | BigVGAN v2 (LibriTTS) | Produktionspfad ist die Sprach-Basis → **Domänen-Schere** |
+| EAR-VAE MUSDB-Finetune (`ear_vae_ft_*.onnx`, Backup) | Musik | `finetune_music.py` → MUSDB18-HQ | nicht deployt (Basis ist bereits Musik — Potenzial, kein Defekt) |
+| `models/sgmse_plus/finetuned/` + `sgmse_musik_core.onnx` | Musik | `train_sgmse_musik.py` | `use_sgmse_musik=False` (A/B + Hörabnahme offen) |
+| `models/miipher_dit/whisper_denoiser_best.pt` | Musik | `train_whisper_v2.py` → MUSDB18-HQ | `use_whisper_denoiser=False` (deprecated) |
+| `models/scnet_4stems/` | Musik | SCNet (A/B gewonnen +10,3…+16,4 dB) | nicht verdrahtet (TODO-P1-2) |
+| `models/ddsp_predictor/c4_head.pth` | Musik | `train_ddsp_predictor_c4.py` → MUSDB | val_MAE ≈ Baseline (kein Skill) |
+
+**K1 — „Synthetisch trainiert statt Musik".** Bandbreiten-/Klassifikator-Modelle,
+die **kein echtes Musikmaterial** gesehen haben (nur Sinus-Harmonische +
+farbiges Rauschen): `train_bw_v2.py`, `train_bw_v3.py`, `train_bw_v5.py`,
+`train_bw_compact.py`, `train_clap_material_classifier.py`. Produktiv ist
+`models/bw_reconstructor/bw_reconstructor.onnx` ← `train_bw_reconstructor.py`
+(**MUSDB** = Musik) — die synthetischen Varianten sind gated
+(`use_bw_v5=False`) und **dürfen nicht** als „musik-trainiert" deklariert werden.
+
+**K2 — „Sprach-Signalpfad" (neu im WP-1-Scope).** Sprach-trainierte
+Vocoder/SR-Modelle, die Musik **verändern** können: `hifi_gan` (UNIVERSAL_V1,
+`backend/core/dsp/sota_speech_superres.py` + Vocoder-Fallback), `vocos`,
+`vocos_48khz` (_Domäne undokumentiert_ — Karte: „Training details: TODO"),
+`nvsr` (FlashSR-Fallback), `aero` (BWE-Challenger). Nur als §V6-Fallback
+(Warnung + Grund) zulässig.
+
+**K3 — „Phantom-Referenz".** Code, der ein Artefakt/Domain-Verhalten benennt, das
+es nicht (mehr) gibt: `scripts/ab_test_exports.py` referenziert
+`models/bigvgan/bigvgan_v2_f3e29.onnx` (**existiert nicht** — `find` leer);
+`models/wav2vec2/quality_predict.py` lädt `Wav2Vec2ForSequenceClassification`,
+obwohl die Config `Wav2Vec2ForCTC` ist.
+
+---
+
+### WP-0 · SOTA-Defizit-Register + Gate (maschinell)
+
+**Status:** offen — **jetzt der Eingangspunkt**, weil die neuen Klassen K0–K3
+ohne Register wieder verstreut wären.
+
+- **Deliverable:** `.github/SOTA_DEFICIT_REGISTER.md` (ID-getrackte Matrix:
+  `D-<Klasse>-<n>`, Status, Blocker, Evidenz-Referenz) +
+  `scripts/sota_deficit_gate.py` + `tests/normative/test_sota_deficit_gate.py`.
+  **Neu:** jede Zeile führt die **Domänen-Evidenz** mit (Verweis auf
+  `.github/ML_MODEL_DOMAIN_REGISTRY.md`); Status `geschlossen` ist nur mit
+  Evidenz-Pfad zulässig.
+- **Blocker:** CPU ✅
+- **Akzeptanz:** Gate schlägt fehl bei (a) unbelegtem Statuswechsel,
+  (b) Domäne „musik" ohne Evidenz, (c) Defizit-Klasse ohne Registereintrag.
+- **Write-Gate beachten:** `scripts/repo_search.py --before-create` +
+  `.github/FILE_REGISTRY.md`-Eintrag.
+
+### WP-1 · §III.11-Lücken-Audit (Richter **und Signalpfad**)
+
+**Status:** überwiegend erfüllt; **Scope erweitert**.
+
+- **Bereits erfüllt (verifiziert):** alle sprach-trainierten **Richter** sind
+  flag-gegated (`use_utmos_music`, `use_silero_vad_music`,
+  `use_resemblyzer_music`, `use_sgmse_musik` — alle `False`).
+- **Neu zu prüfen:** jeder Pfad, der `hifi_gan`, `vocos`, `vocos_48khz`, `nvsr`
+  oder `aero` als **Musik-Signalpfad** einsetzen könnte (K2) — inklusive des
+  Vocoders, der beim Export/Glue als Letztfall greift.
+- **Deliverable:** Vollständigkeits-Test („keine unflagged Consult eines
+  Sprach-Kerns **und** keine unflagged Sprach-Vocoder-Synthese auf Musik") +
+  Domänen-Badges an den K2-Fundstellen.
+- **Blocker:** CPU ✅ · **Akzeptanz:** Test grün; `vocos_48khz` als _unbekannt_
+  markiert (nicht als „Sprache" und nicht als „Musik", §III.13 Evidenzpflicht).
+
+### WP-2 · Phantom-ML + Phantom-Referenzen auflösen
+
+**Status:** offen, **konkretisiert**.
+
+- **Bestand (verifiziert):** 17 Module mit `logger.warning("TorchScript-Modell
+  nicht implementiert")` (`backend/core/dsp/adaptive_*.py` 14×,
+  `automatic_declipper.py`, `masking_aware_dynamic_eq.py`,
+  `psychoacoustic_enhancement.py`) + 1 echtes No-Op:
+  `backend/core/dsp/bandwidth_artifact_remover.py:94`
+  (`audio_out = audio  # Noch nicht implementiert`).
+- **Neu (K3):** tote Referenz in `scripts/ab_test_exports.py`
+  (`bigvgan_v2_f3e29.onnx` fehlt) und `models/wav2vec2/quality_predict.py`
+  (Architektur-Mismatch).
+- **Deliverable:** ehrliche Deklaration **oder** echte Implementierung; je Fund
+  ein Regressions-Guard (§G8 Transparenz).
+- **Blocker:** CPU ✅ · **Akzeptanz:** kein Modul wirbt mit einem ML-Pfad, der
+  nie läuft; Doku/Code konsistent; Test.
+
+### WP-3 · Wohlklang-Ordnung-Forensik
+
+**Status:** offen; **neue Hypothese**.
+
+- **Auftrag:** die 8 Ordnungsverstöße (2026-09-19) auf die **treibenden Phasen**
+  zurückführen und Never-worsen absichern.
+- **Neu:** prüfen, ob die **Sprach-Vocoder-Stufe** (K2, `hifi_gan`/`vocos`)
+  beteiligt ist — ein sprach-trainierter Vocoder kann Brillanz/Glue auf Musik
+  _verschlechtern_.
+- **Deliverable:** Report + Never-worsen-Fix (δ-basiert gegen Input).
+- **Blocker:** CPU ✅ · **Akzeptanz:** Report mit Phasen-Zuordnung; Regressionstest.
+
+### WP-4 · GPU-Finetunes F3/F4/F8…F12
+
+**Status:** **F4 abgeschlossen**, **F3 rückt auf P1**.
+
+- **F4 (erledigt):** `models/flashsr/flashsr.onnx` == `flashsr_f4.onnx`
+  (SHA `41396e3d…`, **MUSDB18-HQ**) — Produktion läuft auf dem Musik-F4;
+  `export_flashsr_onnx.py` verweigert jetzt den Sprach-Basis-Swap
+  (§III.11 copilot-instructions.md).
+- **F3 (neu P1):** Musik-Finetune existiert (`f3_bigvgan/best.pt`), A/B
+  bestanden (HNR +4,42 dB); Blocker sind **nur** (a) Test-Suite-Umstellung
+  (>10 phase_07-Tests) und (b) Performance-Budget-Nachweis (BigVGAN ≫ 10× RT).
+- **Offen (GPU):** F8 (MuQ/SingMOS statt UTMOS), F9 (MERT/MuQ statt Resemblyzer),
+  VAD (PANNs statt Silero), F5 (DAC-Encoder statt CLAP).
+- **Blocker:** GPU ❌ (F3-Rollout ist CPU-vorbereitbar: ONNX-Export + Flag-Pfad).
+- **Akzeptanz:** ΔSDR-Gate/Parität (rel ≤ 1e-3) + Hörordnungs-Abnahme (§v10.802).
+
+### WP-5 · SGMSE+ 3-Wege-A/B + HR-V1-Budget
+
+**Status:** teilweise belegt.
+
+- **Belegt:** HR-V1/BigVGAN-A/B liegt vor (2026-09-16: af +0,0073, HNR
+  **+4,42 dB**, PQS 4,52) — `docs/reports/current/2026-09-16_hr_v1_bigvgan_ab_validation.md`.
+- **Offen:** SGMSE+-3-Wege-A/B (Musik-Core vs. ONNX-CPU vs. DSP) und der
+  **Performance-Budget-Nachweis** mit aktivem Pfad.
+- **Blocker:** GPU ❌ · **Akzeptanz:** rel ≤ 1e-3 + Hör-Abnahme; `use_sgmse_musik`
+  erst dann `True`.
+
+### WP-6 · Externe Modellrollen (WF-V4, TP-V2, BEATs-Head)
+
+**Status:** **um eine Position geschrumpft**.
+
+- **BEATs-Head: geschlossen** — die Registry klärt, dass der lokale Export
+  **Encoder-only** ist (768-d, kein 527-Tagger); die 527-Tags liefert
+  `panns`/`ast`. Doku korrigiert + Regressions-Guard.
+- **Offen (extern):** WF-V4 (Warp-Checkpoint-Quelle), TP-V2 (Modell + Quelle
+  fehlen).
+- **Akzeptanz:** beschaffte Checkpoints mit Domänen-Beleg (Registry-Eintrag).
+
+### WP-7 · F13/F14 Label-Korpora
+
+**Status:** blockiert (Daten); Bedarf konkretisiert.
+
+- **F13/F14:** `train_gender_head.py` verlangt `data/gender_labels.csv` +
+  `data/music` (Musik-Korpus, bricht ohne Labels bewusst ab);
+  `train_clap_material_classifier.py` erzeugt Trainingsdaten **synthetisch**
+  (K1) — für eine belastbare Material-Kalibrierung fehlen **echte** gelabelte
+  Träger.
+- **Blocker:** Daten ❌ · **Akzeptanz:** Label-Korpus + Kalibrierreport.
+
+### WP-8 · Menschliche MUSHRA-Studie
+
+**Status:** extern blockiert (n≥30 Hörer). Unverändert. Der Domänen-Befund
+stützt die Notwendigkeit: Sprach-Orakel (UTMOS) können Musik nicht bewerten
+(`use_utmos_music=False`) → ohne Hörstudie bleibt F8 unentscheidbar.
+
+### Empfohlene Reihenfolge (autonom zuerst)
+
+1. **WP-0** (Register + Gate) — macht K0–K3 auditierbar und verhindert stilles
+   Schließen; Eingangspunkt für alles Weitere.
+2. **WP-2** (Phantom-ML + Phantom-Referenzen) — risikoarm, sofort sichtbar.
+3. **WP-1** (Lücken-Audit Richter **+** Signalpfad, K2) — schließt die neue
+   Domänen-Schere.
+4. **WP-4/F3** (BigVGAN-F3-Rollout vorbereiten: ONNX-Export + Flag-Pfad + Tests).
+5. **WP-3** (Ordnungs-Forensik, inkl. Vocoder-Hypothese).
+6. WP-4/F8·F9·F5, WP-5 (GPU) → WP-6, WP-7, WP-8 (extern/Daten).

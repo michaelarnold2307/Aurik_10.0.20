@@ -860,17 +860,48 @@ class MediumClassifier:
         return self.classify(audio, sr, use_ml=False)
 
     def classify(self, audio: np.ndarray, sr: int, use_ml: bool = True) -> ClassificationResult:
-        """Klassifiziert ein Signal via ML-Versuch mit DSP-Fallback."""
+        """Klassifiziert ein Signal — PHYSIKALISCH zuerst, CLAP nur als Zeuge.
+
+        §6.8 (copilot-instructions.md): Die physikalische Trägerinferenz hat
+        Vorrang; CLAP ist NIE der alleinige Entscheider. Der frühere Pfad ließ
+        CLAP (ein flaches Einzel-Label) die physikalische Bestimmung ÜBERSTEUERN
+        — Produktionsbefund 2026-10-06: eine digital erzeugte CD-Datei wurde als
+        „tape" klassifiziert, weil die CLAP-Material-Kosinus-Werte die Träger
+        nicht diskriminieren (alle ~0.2–0.31) und eine Trägerkette (99 % der
+        Restaurierungsfälle) ohnehin mehrere Träger hat. Jetzt entscheidet IMMER
+        die physikalische Klassifikation; CLAP füllt ausschließlich ein
+        UNKNOWN-Ergebnis (Zeuge, kein Richter).
+        """
         key = self._cache_key(audio, sr)
         with _sha_cache_lock:
             if key in _sha_cache:
                 return _sha_cache[key]
-        if use_ml:
-            r = self._try_clap_classification(audio, sr)
-            if r is not None:
-                self._cache_put(key, r)
-                return r
+
         r = self._dsp_classify(audio, sr)
+
+        if use_ml:
+            try:
+                r_clap = self._try_clap_classification(audio, sr)
+            except Exception as _exc:  # §V6 copilot-instructions.md
+                logger.debug("MediumClassifier: CLAP-Zeuge fehlgeschlagen (%s) — physikalisches Ergebnis bleibt", _exc)
+                r_clap = None
+            if r_clap is not None:
+                MT = _get_material_type()
+                _mt_unknown = MT.UNKNOWN if MT is not None else "unknown"
+                _unknown_str = str(getattr(_mt_unknown, "value", _mt_unknown)).lower()
+                if r._material_type().lower() == _unknown_str:
+                    logger.info(
+                        "MediumClassifier: physikalisch UNKNOWN → CLAP-Zeuge übernimmt (%s)",
+                        getattr(r_clap, "material", "?"),
+                    )
+                    r = r_clap
+                else:
+                    logger.debug(
+                        "MediumClassifier: physikalisches Ergebnis %s hat Vorrang; CLAP-Zeuge %s (kein Override §6.8)",
+                        r._material_type(),
+                        getattr(r_clap, "material", "?"),
+                    )
+
         self._cache_put(key, r)
         return r
 

@@ -1,21 +1,28 @@
-"""beats_plugin — BEATs Audio Tokenizer (Microsoft ICML 2023, Best Paper).
+"""beats_plugin — BEATs-Encoder (Microsoft ICML 2023, Best Paper).
 
-BEATs (BERT as Audio Tokenizer for Speech) ersetzt PANNs CNN14 als primären
-Audio-Tagger in Aurik 10.0.0 (Stand März 2026).
+BEATs (BERT as Audio Tokenizer for Speech) liefert in Aurik 10.0.0 (§4.4,
+Stand März 2026) **768-dim Audio-Embeddings** über den BEATs-iter3-Encoder.
 
-Verbesserung gegenüber PANNs CNN14:
-    - AudioSet mAP: PANNs 0.439 → BEATs 0.486 (+10,7 %)
-    - Zero-Shot-Klassifikation via Tokenizer-Embeddings
-    - Robuster bei Hintergrundüberlagerungen (Self-Supervised Pre-Training)
+Verifizierter Ist-Stand des lokalen Artefakts (ONNX-I/O-Prüfung 2026-10-06,
+§SOTA-TP-V1-Befund 2026-09-14):
+    models/beats/beats_iter3.onnx (~90 MB) ist ein **Encoder-Export OHNE
+    Tagger-Head**:
+        Input:  fbank [batch, frames, 128] float32
+        Output: [batch, T, 768] float32  (Tokenizer-Embeddings, KEINE 527-Logits)
 
-Modell:
-    models/beats/beats_iter3.onnx (~90 MB)
-    Input:  [batch, time] float32 @ 16 kHz (max 10 s = 160.000 Samples)
-    Output: [batch, 527] float32 (Sigmoid AudioSet Scores)
+    Der lokale Export kann daher KEINE AudioSet-527-Scores erzeugen. Das Plugin
+erkennt das (``BeatsPlugin._encoder_only`` / ``beats_encoder_only``) und liefert
+die Tags EHRLICH über den PANNs-CNN14-Ersatzpfad
+(``BeatsResult.model_used == "panns_fallback"``), während die 768-dim Embeddings
+aus dem Encoder stammen. Das AudioSet-527-Tagging deckt zusätzlich
+``models/ast/ast_model.onnx`` (AST, verdrahtet in ``perceptual_validator``) ab.
 
-Fallback: PANNs CNN14 via panns_plugin (wenn BEATs ONNX fehlt)
+    Die Paper-Kennzahlen des VOLLSTÄNDIGEN 527er-Modells (AudioSet mAP:
+PANNs 0.439 → BEATs 0.486, +10,7 %) gelten NICHT für den Encoder-only-Export.
 
-Spec §4.4: BEATs (ICML 2023) → PANNs CNN14 → Spectral DSP Features
+Fallback: PANNs CNN14 via panns_plugin (wenn BEATs ONNX fehlt ODER Encoder-only)
+
+Spec §4.4: BEATs-Encoder (ICML 2023) → PANNs CNN14 (Tagging) → Spectral DSP Features
 
 Referenz:
     Chen et al. "BEATs: Audio Pre-Training with Acoustic Tokenizers"

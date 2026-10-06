@@ -12941,16 +12941,27 @@ class UnifiedRestorerV3:
             # falsche M/S-Trennung in §2.51-Phasen.
             if not self._restoration_context.get("polarity_inversion_corrected"):
                 try:
-                    _left_mono = np.asarray(audio[0, :100_000], dtype=np.float64)
-                    _right_mono = np.asarray(audio[1, :100_000], dtype=np.float64)
-                    _corr_fallback = float(np.corrcoef(_left_mono, _right_mono)[0, 1])
-                    if _corr_fallback < -0.30:
+                    # §G9 (copilot-instructions.md) Single-Source (2026-10-06):
+                    # EINE L/R-Polaritätsmessung für DefectScanner UND §POL. Der
+                    # frühere eigene np.corrcoef lief nur auf den ersten 100 000
+                    # Samples — bei kurzem Intro (Fade-in/Stille/Solo) instabil.
+                    # Gemessen wird jetzt layout-robust über die ganze Datei.
+                    from backend.core.stereo_temporal_coherence_guard import (
+                        POLARITY_INVERSION_MODERATE,
+                        measure_lr_polarity,
+                    )
+
+                    _corr_fallback = measure_lr_polarity(audio)
+                    if _corr_fallback <= POLARITY_INVERSION_MODERATE:
                         audio = audio.copy()
                         audio[1] = -audio[1]
                         self._restoration_context["polarity_inversion_corrected"] = True
                         logger.warning(
-                            "§POL-Ersatzpfad: Moderate Anti-Verarbeitungsschritt (L/R corr=%.3f) korrigiert → R-Kanal invertiert",
+                            "§POL-Ersatzpfad: moderate Anti-Phase (L/R corr=%.3f ≤ %.2f) "
+                            "korrigiert → R-Kanal invertiert (kanonische Messung, "
+                            "§G9 copilot-instructions.md)",
                             _corr_fallback,
+                            POLARITY_INVERSION_MODERATE,
                         )
                 except Exception as _pol2_exc:
                     logger.debug("§POL-Ersatzpfad nicht blockierend: %s", _pol2_exc)
