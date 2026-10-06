@@ -1550,15 +1550,50 @@ class CoordinatedRepair:
             # macht die Inferenz pegelfest (Scale-Invarianz).
             amp_norm, _amp_scale = _normalize_amp_peak99(amp)
 
-            session = ort.InferenceSession(
-                str(_PROJECT_P / "models" / "mp_senet" / "mp_senet.onnx"),
-                providers=["CPUExecutionProvider"],
+            # §G9 (copilot-instructions.md): EIN kanonischer Modellpfad. Die
+            # musik-finetunte Stufe ist normativ verlangt
+            # (tests/normative/test_primary_paths_no_fallback.py ::
+            # test_musik_finetuned_stufe_aktiv). Der früher hartkodierte
+            # Sprach-Stand (models/mp_senet/mp_senet.onnx) wurde auf Musik als
+            # schädlich gemessen (SOTA-ML-V3: ΔSDR −5,9 dB) und darf hier nicht
+            # mehr geladen werden.
+            from backend.core.music_model_flags import (  # pylint: disable=import-outside-toplevel
+                resolve_model_path as _resolve_mp_senet,
             )
+
+            _senet_path = _resolve_mp_senet("mp_senet")
+            if _senet_path is None or not _senet_path.is_file():
+                # §V6 (copilot-instructions.md): kein stiller Degradationspfad.
+                log.warning(
+                    "MP-SENet: kein Primärartefakt auflösbar (resolve_model_path('mp_senet') → %s) "
+                    "— Vokal-Denoising übersprungen, Original unverändert",
+                    _senet_path,
+                )
+                return audio
+
+            try:
+                from backend.core.ml_device_manager import (  # pylint: disable=import-outside-toplevel
+                    get_ort_providers as _get_ort_providers,
+                )
+
+                # Kanonische EP-Policy inkl. Numerik-Paritäts-Verdikt (§III.9 copilot-instructions.md, §v10.762).
+                _senet_providers = _get_ort_providers("mp_senet")
+            except Exception as exc:  # pylint: disable=broad-except
+                log.warning("MP-SENet: EP-Policy nicht verfügbar (%s) — CPU-Fallback", exc)
+                _senet_providers = ["CPUExecutionProvider"]
+
+            session = ort.InferenceSession(str(_senet_path), providers=_senet_providers)
+            # I/O-Namen dynamisch lesen — Sprach- und Musik-Export unterscheiden
+            # sich hier (Muster: plugins/mp_senet_plugin.py).
+            _senet_inputs = [i.name for i in session.get_inputs()]
+            if len(_senet_inputs) < 2:
+                log.warning("MP-SENet: unerwartete Signatur %s — Vokal-Denoising übersprungen", _senet_inputs)
+                return audio
             denoised_amp = session.run(
                 None,
                 {
-                    "noisy_amp": amp_norm.T[np.newaxis],  # [1, 201, T]
-                    "noisy_pha": pha.T[np.newaxis],
+                    _senet_inputs[0]: amp_norm.T[np.newaxis],  # [1, 201, T]
+                    _senet_inputs[1]: pha.T[np.newaxis],
                 },
             )[0][0].T  # [T, 201]
             denoised_amp = _denormalize_amp(denoised_amp, _amp_scale)

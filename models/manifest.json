@@ -1848,21 +1848,21 @@
       "name": "sgmse_musik",
       "bundled": false,
       "release_mode": "sota_upgrade",
-      "bundled_path": "models/sgmse_plus/finetuned/sgmse_musik.ts",
-      "sha256": "",
-      "size_bytes": 264000000,
+      "bundled_path": "models/sgmse_plus/sgmse_musik_core.onnx",
+      "sha256": "4e1015f519f7eacc009c2e3721cbce3b45ed285de1a6ede23c5a10192cd27c17",
+      "size_bytes": 263593607,
       "required": false,
       "fallback": "sgmse_plus",
-      "size_gb": 0.246,
+      "size_gb": 0.2636,
       "sota_upgrade": {
         "name": "SGMSE+-Musik",
         "url": "",
-        "sha256": "",
-        "size_bytes": 264000000,
+        "sha256": "4e1015f519f7eacc009c2e3721cbce3b45ed285de1a6ede23c5a10192cd27c17",
+        "size_bytes": 263593607,
         "license": "Apache-2.0",
         "reference": "§v10.16"
       },
-      "_comment": "Datei lokal nicht vorhanden (Stand: 2026-09-22)"
+      "_comment": "Korrektur 2026-10-06 (§G9 copilot-instructions.md): deklariert war die TorchScript-Variante models/sgmse_plus/finetuned/sgmse_musik.ts — die plant scripts/export_all_musik_models.py, erzeugt sie aber nicht. Deploytes und verifiziertes Artefakt ist der ONNX-Export (sha256/size gemessen); die Runtime lädt über music_model_flags.MUSIC_MODEL_PATHS['sgmse'] ausschließlich diese ONNX."
     },
     {
       "name": "harmonic_inpainting_2",

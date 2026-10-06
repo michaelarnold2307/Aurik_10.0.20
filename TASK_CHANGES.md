@@ -1,6 +1,6 @@
 # TASK_CHANGES — Live-Ledger der aktuellen Aufgabe
 
-> Generiert von `scripts/change_ledger.py snapshot` (Base: `HEAD`, Stand: 2026-10-06 10:36 CEST).
+> Generiert von `scripts/change_ledger.py snapshot` (Base: `HEAD`, Stand: 2026-10-06 10:51 CEST).
 > CI (`ci-lite.yml` pr-evidence-gate) erzwingt Abdeckung: jede geänderte Code-Datei muss hier stehen.
 
 ## Geänderte Dateien
@@ -9,9 +9,10 @@
 |---|---|---|
 | M | `CHANGELOG.md` | modifiziert |
 | M | `README.md` | modifiziert |
+| M | `backend/core/coordinated_repair.py` | modifiziert |
 | M | `backend/core/version.py` | modifiziert |
+| M | `models/manifest.json` | modifiziert |
 | M | `pyproject.toml` | modifiziert |
-| M | `scripts/train_cantus.py` | modifiziert |
 | M | `tests/unit/test_model_zoo_activation.py` | modifiziert |
 
 ## Entscheidungen

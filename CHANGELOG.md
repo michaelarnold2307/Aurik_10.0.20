@@ -1,4 +1,47 @@
-# Changelog — Aurik 10.3.14
+# Changelog — Aurik 10.3.15
+
+## 10.3.15 (2026-10-06)
+
+### §G9: MP-SENet-Drift behoben — der Musik-Kern läuft jetzt im Vokal-Denoising
+
+- **Befund:** Der Vokal-Denoising-Pfad `CoordinatedRepair._run_mp_senet_vocal`
+  erzeugte eine **eigene** ONNX-Sitzung mit hartkodiertem Pfad
+  `models/mp_senet/mp_senet.onnx` (VoiceBank-Sprach-Stand) und fest
+  `providers=["CPUExecutionProvider"]`. Damit umging er den kanonischen Schalter
+  `resolve_model_path("mp_senet")` **und** die EP-Policy (§III.9
+  (copilot-instructions.md)). Wirkung: Genau das Artefakt, das auf Musik als
+  schädlich gemessen wurde (SOTA-ML-V3, 3 MUSDB-Tracks × 30 s: ΔSDR −5,9 dB —
+  „der Sprach-Enhancer klassifiziert Musikanteile als Noise“), lief weiter,
+  obwohl der musik-finetunte Kern vorliegt und per Flag aktiviert ist
+  (`use_mp_senet_musik=True`; A/B 2026-09-20: seg-SNR +5,3…+11,3 dB, VERSA
+  4,96–4,99). Der Widerspruch zwischen `docs/TODOS_SOTA_ROADMAP.md` („de-wired“)
+  und §v10.25 („aktiviert“) löst sich damit auf: Gemessen war der **Sprach**-Stand;
+  aktiviert ist der **Musik**-Kern.
+- **Normative Grundlage:** `tests/normative/test_primary_paths_no_fallback.py` ::
+  `test_musik_finetuned_stufe_aktiv` verlangt für `mp_senet` ausdrücklich
+  `"finetuned" in resolved.parts`. Der hartkodierte Pfad umging diesen Vertrag.
+- **Fix:** `resolve_model_path("mp_senet")` als einzige Auflösung; fail-closed mit
+  `log.warning` (§V6 (copilot-instructions.md)), wenn kein Primärartefakt
+  auflösbar ist. EP-Provider über den kanonischen Helfer
+  `get_ort_providers("mp_senet")` — er wendet zusätzlich das Numerik-Paritäts-
+  Verdikt an (§v10.762: GPU nur wo „rocm“ validiert, CPU erzwungen wo „cpu“).
+  I/O-Namen werden dynamisch aus `session.get_inputs()` gelesen (Muster aus
+  `plugins/mp_senet_plugin.py`), weil Sprach- und Musik-Export unterschiedliche
+  Namen tragen.
+- **Befund B2 (Metadaten-Drift):** `models/manifest.json` deklarierte für
+  `sgmse_musik` die TorchScript-Variante
+  `models/sgmse_plus/finetuned/sgmse_musik.ts` — die plant
+  `scripts/export_all_musik_models.py`, erzeugt sie aber nie. Korrigiert auf das
+  deployte, verifizierte ONNX-Artefakt samt gemessenem `sha256` und
+  `size_bytes` (263 593 607 B).
+- **Nachweis:** `ruff` → `All checks passed!`; `mypy` → `Success: no issues found`;
+  neue Regressionstests grün. Ihre Wirksamkeit ist gegen den Vorstand belegt:
+  `git show HEAD:backend/core/coordinated_repair.py` enthält **0×**
+  `resolve_model_path` und **1×** den hartkodierten Sprach-Pfad — nach dem Fix
+  **2×** bzw. **0×**. Zusätzlich: normative Verträge
+  `test_musik_finetuned_stufe_aktiv`, `test_resolve_model_path_active_flags`,
+  `test_bewusst_gesperrte_flags_dokumentiert` → 3 passed;
+  `tests/unit/test_model_zoo_activation.py` → 19 passed.
 
 ## 10.3.14 (2026-10-06)
 

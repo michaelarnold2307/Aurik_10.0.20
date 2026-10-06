@@ -195,6 +195,97 @@ def test_denoise_skips_sgmse_without_flag(monkeypatch):
     assert np.allclose(out, audio * 0.8)
 
 
+def test_mp_senet_vocal_uses_canonical_music_path(monkeypatch, tmp_path):
+    """§G9 (copilot-instructions.md): `_run_mp_senet_vocal` folgt dem kanonischen
+    Modellpfad statt den Sprach-Stand hartzukodieren.
+
+    Regression zum Befund 2026-10-06: Der Pfad lud fest
+    `models/mp_senet/mp_senet.onnx` (VoiceBank-Sprach-Stand, auf Musik gemessen
+    SOTA-ML-V3: ΔSDR −5,9 dB) statt `resolve_model_path("mp_senet")` →
+    `finetuned/mp_senet_musik.onnx` (+5,3…+11,3 dB seg-SNR).
+    """
+    import onnxruntime as ort
+
+    import backend.core.ml_device_manager as _mdm
+    import backend.core.music_model_flags as _mmf
+    from backend.core.coordinated_repair import CoordinatedRepair
+
+    sentinel = tmp_path / "mp_senet_musik.onnx"
+    sentinel.write_bytes(b"")  # nur Existenzprüfung — die Session ist gefälscht
+    resolved_keys: list[str] = []
+    ep_calls: list[str] = []
+    captured: dict = {}
+
+    def _fake_resolve(key: str):
+        resolved_keys.append(key)
+        return sentinel
+
+    def _fake_ep(plugin_name: str = "") -> list:
+        ep_calls.append(plugin_name)
+        return ["CPUExecutionProvider"]
+
+    class _FakeInput:
+        def __init__(self, name: str) -> None:
+            self.name = name
+
+    class _FakeSession:
+        def get_inputs(self) -> list:
+            # Bewusst ANDERE Namen als „noisy_amp“/„noisy_pha“: die I/O-Namen
+            # müssen dynamisch gelesen werden (Sprach- vs. Musik-Export).
+            return [_FakeInput("in_amp"), _FakeInput("in_pha")]
+
+        def run(self, _outputs: object, feed: dict) -> list:
+            captured["feed_keys"] = sorted(feed)
+            return [np.asarray(feed["in_amp"], dtype=np.float32)]
+
+    def _fake_session_factory(path: str, providers: object = None) -> _FakeSession:
+        captured["path"] = path
+        captured["providers"] = providers
+        return _FakeSession()
+
+    monkeypatch.setattr(_mmf, "resolve_model_path", _fake_resolve)
+    monkeypatch.setattr(_mdm, "get_ort_providers", _fake_ep)
+    monkeypatch.setattr(ort, "InferenceSession", _fake_session_factory)
+
+    audio = np.ones(8000, dtype=np.float32) * 0.5
+    out = CoordinatedRepair()._run_mp_senet_vocal(audio, _make_step(use_mp_senet=True), None, 48000)
+
+    assert resolved_keys == ["mp_senet"], "kanonische Pfadauflösung nicht verwendet (§G9 copilot-instructions.md)"
+    assert captured["path"] == str(sentinel), "Sprach-Stand statt Musik-Kern geladen"
+    assert ep_calls == ["mp_senet"], (
+        "EP-Policy nicht über den kanonischen Helfer bezogen (§III.9 copilot-instructions.md)"
+    )
+    assert captured["feed_keys"] == ["in_amp", "in_pha"], "I/O-Namen nicht dynamisch gelesen"
+    assert out.shape == audio.shape
+
+
+def test_manifest_declares_same_sgmse_musik_artifact_as_runtime():
+    """§G9 (copilot-instructions.md): Manifest-Deklaration und Runtime-Pfad müssen DASSELBE Artefakt meinen.
+
+    Regression zum Befund 2026-10-06: Das Manifest deklarierte
+    `models/sgmse_plus/finetuned/sgmse_musik.ts` (TorchScript, nie erzeugt),
+    während die Runtime `sgmse_musik_core.onnx` lädt. Nur das versionierte
+    Manifest wird gelesen — der Test ist damit unabhängig vom Modell-Bundle.
+    """
+    import json
+    from pathlib import Path
+
+    from backend.core.music_model_flags import MUSIC_MODEL_PATHS, resolve_model_path
+
+    root = Path(__file__).resolve().parents[2]
+    manifest = json.loads((root / "models" / "manifest.json").read_text(encoding="utf-8"))
+    entry = next(m for m in manifest["models"] if m["name"] == "sgmse_musik")
+    declared = root / entry["bundled_path"]
+
+    assert declared == MUSIC_MODEL_PATHS["sgmse"], (
+        f"Manifest und Runtime-Pfad divergieren: {declared} != {MUSIC_MODEL_PATHS['sgmse']}"
+    )
+    assert resolve_model_path("sgmse") in (declared, root / "models" / "sgmse_plus" / "sgmse_plus_core.onnx"), (
+        "resolve_model_path('sgmse') liefert weder Musik- noch Legacy-Kern"
+    )
+    assert entry["sha256"], "deklarierter sha256 fehlt (Meswert verlangt)"
+
+
 # ═══════════════════════════════════════════════════════════════════════════════
 # 3. MP-SENet Norm-Kalibrierung — Skalenfestigkeit
 # ═══════════════════════════════════════════════════════════════════════════════
