@@ -25,6 +25,32 @@ import plugins.resemblyzer_plugin as rp
 from backend.core.dsp.level_1_invariants_guard import Level1InvariantsGuard, check_level_1_invariants
 
 
+@pytest.fixture(autouse=True)
+def _allow_resemblyzer_for_wiring_tests(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Diese Suite prüft die Embedder-VERDRAHTUNG → Musik-Freigabe aktiv.
+
+    Ohne Freigabe greift §III.11 (copilot-instructions.md): Der sprachtrainierte
+    Embedder wird nicht befragt, der DSP-Proxy trägt die Messung. Genau diese
+    Sperre deckt `test_singer_identity_ersatzpfad_ohne_freigabe` ab.
+    """
+    import backend.core.music_model_flags as _mmf
+
+    monkeypatch.setattr(_mmf, "use_resemblyzer_music", True)
+
+
+def test_singer_identity_ersatzpfad_ohne_freigabe(monkeypatch: pytest.MonkeyPatch) -> None:
+    """§III.11 (copilot-instructions.md): Ohne Musik-Freigabe wird der
+    sprachtrainierte Embedder NICHT befragt — der domänenneutrale DSP-Proxy trägt."""
+    import backend.core.music_model_flags as _mmf
+
+    monkeypatch.setattr(_mmf, "use_resemblyzer_music", False)
+    fake = _FakeResemblyzerPlugin()
+    g = _guard_with(fake)
+    score = g._measure_singer_identity(_noise_1s(21), _noise_1s(22), 48000, None)
+    assert 0.0 <= score <= 1.0
+    assert fake._calls == 0, "Embedder darf ohne Musik-Freigabe nicht laufen (§III.11)"
+
+
 class _FakeResemblyzerPlugin:
     """Feste Embeddings. mode="diff": pre→ones, post→orthogonal (cos≈0.0625);
     mode="same": beide Aufrufe → ones (cos=1.0)."""

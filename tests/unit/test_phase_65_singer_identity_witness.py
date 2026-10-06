@@ -56,6 +56,36 @@ class _FakePlugin:
         return self._cos
 
 
+@pytest.fixture(autouse=True)
+def _allow_resemblyzer_for_witness_tests(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Diese Suite prüft den Embedder-Gate-Pfad → Musik-Freigabe aktiv.
+
+    Ohne Freigabe greift §III.11 (copilot-instructions.md): Der Embedder wird nicht
+    befragt, der DSP-Proxy trägt — siehe `test_without_release_no_embedder_call`.
+    """
+    import backend.core.music_model_flags as _mmf
+
+    monkeypatch.setattr(_mmf, "use_resemblyzer_music", True)
+
+
+def test_without_release_no_embedder_call(monkeypatch: pytest.MonkeyPatch) -> None:
+    """§III.11 (copilot-instructions.md): Ohne Freigabe kein Embedder-Aufruf.
+
+    Der DSP-Proxy übernimmt; ein konstantes Signal liefert „nicht messbar" und
+    führt damit zu unverändertem Signal (kein Eingriff ohne Messwert).
+    """
+    import backend.core.music_model_flags as _mmf
+
+    monkeypatch.setattr(_mmf, "use_resemblyzer_music", False)
+    plugin = _FakePlugin(available=True, cos=0.10)
+    pre = np.zeros((4800,), dtype=np.float32)
+    post = np.ones((4800,), dtype=np.float32)
+    out, meta = _apply_singer_identity_witness(pre, post, 48000, _plugin_getter=lambda: plugin)
+    assert plugin.embedded == [], "Embedder darf ohne Musik-Freigabe nicht laufen (§III.11)"
+    assert np.array_equal(out, post)
+    assert meta == {}
+
+
 @pytest.mark.unit
 class TestSingerIdentityWitness:
     def test_passthrough_above_threshold(self) -> None:

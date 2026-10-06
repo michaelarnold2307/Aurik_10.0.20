@@ -39,6 +39,11 @@ use_silero_vad_music: bool = False  # Silero-VAD Musik-Freigabe — Silero ist a
 # in phase_18_noise_gate den Gate-Schwellen-Offset (bis −15 dB). Nach §III.11 (copilot-instructions.md)
 # darf ein sprachtrainiertes Modell Musik/Gesang nicht steuern: bis zur Musik-Kalibrierung läuft das Gate
 # ohne VAD-Offset (neutral, §V7 copilot-instructions.md). True ⇒ VAD-gesteuerter Offset ist freigeschaltet.
+use_resemblyzer_music: bool = False  # Resemblyzer-Embedder Musik-Freigabe — Resemblyzer ist auf SPRACHE
+# (LibriSpeech) trainiert und wirkte in Ebene-1-Guard und phase_65 als RICHTER (Blend bis −80 % Richtung
+# Eingang). Nach §III.11 (copilot-instructions.md) darf er Musik/Gesang erst nach Musik-Fine-Tune (F9)
+# beurteilen; bis dahin trägt der domänenneutrale DSP-Proxy (MFCC + spektraler Centroid) die Messung.
+# True ⇒ Embedder-Messung ist freigeschaltet.
 
 
 # ── Model Paths (relative to project root) ──────────────────────────────────

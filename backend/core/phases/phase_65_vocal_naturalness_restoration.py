@@ -87,15 +87,24 @@ def _apply_singer_identity_witness(
 ) -> tuple[np.ndarray, dict[str, Any]]:
     """§SOTA-P65 (S4-Muster, 2026-09-16): Sänger-Identitäts-Witness als Per-Phase-Gate.
 
-    Resemblyzer cos(pre, post) ≥ 0,92 (Hörordnung Ebene 1); darunter wird
-    proportional Richtung Input geblendet (Never-worsen für die Stimm-Identität).
-    Zeuge, kein Richter (Hörordnung §8a): ohne Modell/Embedding wird ``post``
+    cos(pre, post) ≥ 0,92 (Hörordnung Ebene 1); darunter wird proportional
+    Richtung Input geblendet (Never-worsen für die Stimm-Identität).
+    Zeuge, kein Richter (Hörordnung §8a): ohne Messwert wird ``post``
     unverändert zurückgegeben (§V6 (copilot-instructions.md)-non-blocking).
+
+    §Rev. 2026-10-06: Die Messung kommt aus der **kanonischen** Quelle
+    `level_1_invariants_guard.measure_singer_identity_cosine` — §G9 copilot-instructions.md.
+    Dort gilt §III.11 copilot-instructions.md: Das
+    sprachtrainierte Resemblyzer-Embedding wird nur mit Musik-Freigabe
+    (`music_model_flags.use_resemblyzer_music`) befragt, sonst trägt der
+    domänenneutrale DSP-Proxy (MFCC + spektraler Centroid) die Messung — der
+    §0p-Schutz bleibt dabei vollständig in Kraft.
 
     Args:
         pre_audio/post_audio: Audio vor/nach dem DSP-Eingriff (beliebiges Layout).
         sr: Abtastrate (48000).
-        _plugin_getter: Nur für Tests — Callable, das das Resemblyzer-Plugin liefert.
+        _plugin_getter: Nur für Tests — Callable, das das Resemblyzer-Plugin liefert
+            (wirkt ausschließlich bei gesetzter Musik-Freigabe).
 
     Returns:
         (blended_post, meta) — meta enthält "singer_identity_cosine" und
@@ -103,21 +112,19 @@ def _apply_singer_identity_witness(
     """
     meta: dict[str, Any] = {}
     try:
-        _getter65 = _plugin_getter
-        if _getter65 is None:
-            from plugins.resemblyzer_plugin import get_resemblyzer_plugin
+        from backend.core.dsp.level_1_invariants_guard import measure_singer_identity_cosine
 
-            _getter65 = get_resemblyzer_plugin
-        _rz65 = _getter65()
-        if not _rz65.available():
+        _measured65 = measure_singer_identity_cosine(
+            np.asarray(pre_audio),
+            np.asarray(post_audio),
+            sr,
+            plugin_getter=_plugin_getter,
+        )
+        if _measured65 is None:
+            # Kein Messwert (konstantes/stummes Signal oder kein Embedder) →
+            # kein Eingriff: Ohne Messwert darf nichts bestraft werden.
             return post_audio, meta
-        _pre_mono_w = _to_mono_float64(np.asarray(pre_audio)).astype(np.float32)
-        _post_mono_w = _to_mono_float64(np.asarray(post_audio)).astype(np.float32)
-        _emb_pre65 = _rz65.embed(_pre_mono_w, sr)
-        _emb_post65 = _rz65.embed(_post_mono_w, sr)
-        if _emb_pre65 is None or _emb_post65 is None:
-            return post_audio, meta
-        _cos65 = float(_rz65.cosine_similarity(_emb_pre65, _emb_post65))
+        _cos65 = float(_measured65)
         meta["singer_identity_cosine"] = round(_cos65, 4)
         if _cos65 < _SINGER_IDENTITY_MIN_COS_65:
             _blend65 = float(np.clip(_cos65 / _SINGER_IDENTITY_MIN_COS_65, 0.1, 0.8))

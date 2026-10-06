@@ -384,3 +384,32 @@ def test_scan_f0_never_blind_to_late_voice() -> None:
     _sig = np.concatenate([_lead_in, _voice])
     _f0 = _scan_f0(_sig, SR)
     assert 150.0 < _f0 < 210.0, f"Scan-F0={_f0:.1f} Hz — Intro blockierte die Schätzung"
+
+
+def test_panns_continuous_evidence_acts_below_hard_margin() -> None:
+    """Weiche PANNs-Evidenz wirkt auch ohne klaren Klassenabstand (> 0,10).
+
+    Male 0,30 / Female 0,24 → kein Shortcut (Abstand 0,06), aber die
+    Differenz geht proportional in den Score ein (Fusion statt Schweigen).
+    """
+    det = GenderDetector(sample_rate=SR)
+    _f0, _form = 300.0, [800.0, 2200.0, 2900.0]  # Anatomie spricht für FEMALE
+    _, _conf_plain = det._classify_gender(_f0, _form)
+    gender_soft, _conf_soft = det._classify_gender(
+        _f0, _form, panns_tags={"Male singing": 0.30, "Female singing": 0.24}
+    )
+    # Ohne Shortcut bleibt die Anatomie führend, die weiche Evidenz hebt MALE an.
+    assert gender_soft == VoiceGender.FEMALE
+    assert _conf_soft >= _conf_plain
+
+
+def test_aperiodicity_lowers_confidence() -> None:
+    """Stark aperiodische Stimme (hohe breathiness) senkt die Konfidenz auf ≤ 60 %."""
+    det = GenderDetector(sample_rate=SR)
+    assert det._modulate_confidence_by_aperiodicity(1.0, 1.0) == pytest.approx(0.6)
+    assert det._modulate_confidence_by_aperiodicity(0.8, 0.5) == pytest.approx(0.8 * 0.8)
+    # Harmonische Stimme bleibt unverändert (kein Eingriff ohne Evidenz).
+    assert det._modulate_confidence_by_aperiodicity(0.9, 0.0) == pytest.approx(0.9)
+    # Grenzwerte werden geklemmt.
+    assert det._modulate_confidence_by_aperiodicity(1.0, 5.0) == pytest.approx(0.6)
+    assert det._modulate_confidence_by_aperiodicity(1.0, -3.0) == pytest.approx(1.0)

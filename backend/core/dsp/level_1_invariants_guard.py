@@ -23,6 +23,7 @@ from __future__ import annotations
 import logging
 import threading
 from dataclasses import dataclass, field
+from typing import Any
 
 import numpy as np
 
@@ -37,6 +38,119 @@ _VIBRATO_RATE_ERROR_HZ = 0.3
 _VIBRATO_DEPTH_PRESERVATION = 0.85
 _EMOTIONAL_ARC_CORRELATION_THRESHOLD = 0.70  # aus Spec 01 §2.35e-ii
 _BREATH_CHANGE_PERCENT = 0.10  # max 10 % Änderung
+
+
+# ── Domänen-Regel §III.11 (copilot-instructions.md) ─────────────
+
+
+def _resemblyzer_music_unlocked() -> bool:
+    """Ist der Sprach-Embedder (Resemblyzer/LibriSpeech) als Richter freigegeben?
+
+    Das Flag wird zur Laufzeit am Modul gelesen, damit Tests und Konfiguration
+    es wirksam umschalten können.
+    """
+    try:
+        import backend.core.music_model_flags as _mmf
+
+        return bool(getattr(_mmf, "use_resemblyzer_music", False))
+    except Exception as _exc:  # pylint: disable=broad-except
+        logger.warning("Resemblyzer-Domänen-Flag nicht lesbar (%s) — DSP-Proxy (§V6 copilot-instructions.md)", _exc)
+        return False
+
+
+def _to_mono_float(audio: np.ndarray) -> np.ndarray:
+    """Mono-Normalisierung (channels-first (C, N) bevorzugt, (N, C) bedient) → float64."""
+    _arr = np.asarray(audio)
+    if _arr.ndim == 2:
+        if _arr.shape[0] <= 8 and _arr.shape[0] < _arr.shape[1]:
+            _arr = np.mean(_arr, axis=0)
+        else:
+            _arr = np.mean(_arr, axis=1)
+    _clean: np.ndarray = np.nan_to_num(_arr.astype(np.float64), nan=0.0, posinf=0.0, neginf=0.0)
+    return _clean
+
+
+def _plugin_available(plugin: object) -> bool:
+    """Prüft die Plugin-Verfügbarkeit — Attribut ODER Methode (beide Formen existieren)."""
+    _av = getattr(plugin, "available", None)
+    if callable(_av):
+        try:
+            return bool(_av())
+        except Exception:  # pylint: disable=broad-except
+            return False
+    return bool(_av)
+
+
+def measure_singer_identity_cosine(
+    pre: np.ndarray,
+    post: np.ndarray,
+    sr: int,
+    *,
+    plugin: object | None = None,
+    plugin_getter: Any = None,
+) -> float | None:
+    """Kanonische Stimm-Identitäts-Messung (§0p / Hörordnung Ebene 1) — domänenrein.
+
+    Ein auf SPRACHE trainiertes Embedding (Resemblyzer/LibriSpeech) darf Musik
+    und Gesang nicht beurteilen, solange kein Musik-Fine-Tune vorliegt (§III.11
+    copilot-instructions.md). Daher:
+
+    1. Resemblyzer-Embedding **nur** mit Freigabe (`use_resemblyzer_music`);
+    2. sonst der domänenneutrale DSP-Proxy (MFCC- + spektraler
+       Centroid-Korrelation) — genau der Pfad, der zuvor schon der Ersatz war.
+
+    Rückgabe: Kosinus in [0, 1] oder ``None``, wenn keine Messung möglich ist
+    (konstantes/stummes Signal). ``None`` bedeutet ausdrücklich NICHT „schlecht":
+    Ohne Messwert darf kein Eingriff bestraft werden
+    (§V6 copilot-instructions.md / Zeuge-Prinzip). Deterministisch (§G5 GEBOTE.md).
+    """
+    _mono_pre = _to_mono_float(pre)
+    _mono_post = _to_mono_float(post)
+    if _resemblyzer_music_unlocked():
+        _pl = plugin
+        if _pl is None:
+            try:
+                if plugin_getter is not None:
+                    _pl = plugin_getter()
+                else:
+                    from plugins.resemblyzer_plugin import get_resemblyzer_plugin
+
+                    _pl = get_resemblyzer_plugin()
+            except Exception as _exc:  # pylint: disable=broad-except
+                logger.warning("Resemblyzer-Embedder nicht ladbar (%s) — DSP-Proxy (§V6 copilot-instructions.md)", _exc)
+                _pl = None
+        if _pl is not None and _plugin_available(_pl):
+            # Plugin-API ist duck-typed (Package-Kaskade oder ONNX-Fassade) →
+            # bewusst dynamisch, geprüft über _plugin_available oben.
+            _pl_dyn: Any = _pl
+            try:
+                _e_pre = _pl_dyn.embed(_mono_pre, sr)
+                _e_post = _pl_dyn.embed(_mono_post, sr)
+                if _e_pre is not None and _e_post is not None:
+                    _cos = float(_pl_dyn.cosine_similarity(_e_pre, _e_post))
+                    return float(np.clip(_cos, 0.0, 1.0))
+            except Exception as _exc:  # pylint: disable=broad-except
+                logger.warning(
+                    "Resemblyzer-Messung fehlgeschlagen (%s) — DSP-Proxy (§V6 copilot-instructions.md)", _exc
+                )
+    else:
+        logger.debug("Singer-Identität: Sprach-Embedder gesperrt (§III.11 copilot-instructions.md) — DSP-Proxy aktiv")
+    # Der DSP-Proxy braucht messbares Signal: konstant/stumm ⇒ kein Messwert.
+    if _mono_pre.size < 256 or _mono_post.size < 256:
+        logger.debug("Singer-Identität nicht messbar (Signal zu kurz) — kein Messwert")
+        return None
+    if float(np.std(_mono_pre)) < 1e-6 or float(np.std(_mono_post)) < 1e-6:
+        logger.debug("Singer-Identität nicht messbar (konstantes Signal) — kein Messwert")
+        return None
+    # Domänenneutraler Proxy: dieselbe Rechnung wie im bisherigen Ersatzpfad.
+    _guard = get_level_1_guard()
+    _mfcc = _guard._mfcc_correlation(_mono_pre, _mono_post, sr)  # pylint: disable=protected-access
+    _cent = _guard._spectral_centroid_correlation(_mono_pre, _mono_post, sr)  # pylint: disable=protected-access
+    _proxy = float(np.clip((_mfcc + _cent) / 2.0, 0.0, 1.0))
+    if not np.isfinite(_proxy):
+        logger.warning("Singer-Identitäts-Proxy nicht endlich — kein Messwert (§V6 copilot-instructions.md)")
+        return None
+    return _proxy
 
 
 @dataclass
@@ -95,13 +209,22 @@ class Level1InvariantsGuard:
         # Paketname, Großbuchstabe) schlug immer fehl und deaktivierte den
         # echten ML-Pfad still — Produktionsbefund §Ebene-1.
         self._resemblyzer_plugin: object | None = None
+        if not _resemblyzer_music_unlocked():
+            # §III.11 copilot-instructions.md: Ein sprachtrainiertes Embedding ist
+            # ohne Musik-Fine-Tune kein zulässiger Richter über Musik/Gesang — der
+            # DSP-Proxy trägt die Stimm-Identität, das Modell wird nicht geladen.
+            logger.debug(
+                "§Ebene-1: Resemblyzer gesperrt (Sprach-Modell, §III.11 copilot-instructions.md) — "
+                "DSP-Proxy (MFCC + Centroid) trägt die Stimm-Identität"
+            )
+            return
         try:
             from plugins.resemblyzer_plugin import get_resemblyzer_plugin
 
             self._resemblyzer_plugin = get_resemblyzer_plugin()
         except Exception:
             # §V74 (VERBOTEN.md): kein stilles except:pass — Resemblyzer ist optional,
-            # der fehlende Import wird bewusst toleriert (DSP-Ersatzpfad greift).
+            # der fehlende Import wird bewusst akzeptiert (DSP-Ersatzpfad greift).
             logger.debug("Resemblyzer-Witness nicht verfügbar — DSP-Ersatzpfad aktiv")
 
     def check(
@@ -206,7 +329,12 @@ class Level1InvariantsGuard:
         sr: int,
         context: dict[str, object] | None,
     ) -> float:
-        """Misst Stimm-Identität via Resemblyzer oder DSP-Fallback."""
+        """Misst Stimm-Identität über die kanonische, domänenreine Quelle.
+
+        §III.11 copilot-instructions.md: Der Sprach-Embedder (Resemblyzer) wird nur
+        mit Musik-Freigabe befragt, sonst trägt der DSP-Proxy (MFCC + Centroid).
+        Ein bereits vorliegender VQI-Wert hat Vorrang (keine Doppelmessung).
+        """
         try:
             # Zuerst VQI-basierte Messung versuchen (bereits im Kontext vorhanden)
             _raw_vqi = context.get("vqi_result") if context else None
@@ -214,22 +342,10 @@ class Level1InvariantsGuard:
                 singer_cosine = float(_raw_vqi.get("singer_identity_cosine", 0.85))
                 return max(singer_cosine, 0.5)
 
-            # Resemblyzer-Witness (Plugin-Kaskade Package→ONNX) als primäre Methode
-            if self._resemblyzer_plugin is not None and getattr(self._resemblyzer_plugin, "available", False):
-                emb_pre = self._resemblyzer_plugin.embed(pre, sr)  # type: ignore[attr-defined]
-                emb_post = self._resemblyzer_plugin.embed(post, sr)  # type: ignore[attr-defined]
-                if emb_pre is not None and emb_post is not None:
-                    cosine = float(self._resemblyzer_plugin.cosine_similarity(emb_pre, emb_post))  # type: ignore[attr-defined]
-                    return max(cosine, 0.0)
-
-            # DSP-Fallback: MFCC-Korrelation + spektraler Centroid-Korrelation
-            mono_pre = pre.mean(axis=0) if pre.ndim == 2 else pre
-            mono_post = post.mean(axis=0) if post.ndim == 2 else post
-
-            mfcc_corr = self._mfcc_correlation(mono_pre, mono_post, sr)
-            centroid_corr = self._spectral_centroid_correlation(mono_pre, mono_post, sr)
-
-            return float(np.clip((mfcc_corr + centroid_corr) / 2.0, 0.0, 1.0))
+            _measured = measure_singer_identity_cosine(pre, post, sr, plugin=self._resemblyzer_plugin)
+            if _measured is None:
+                return 0.85  # kein Messwert → konservativer Default (kein Eingriff aus Unwissen)
+            return float(_measured)
 
         except Exception as e:
             logger.warning("§Ebene-1 singer_identity Messung fehlgeschlagen: %s", e)
@@ -378,6 +494,10 @@ class Level1InvariantsGuard:
 
             min_len = min(mfcc_pre.shape[1], mfcc_post.shape[1])
             corr = float(np.corrcoef(mfcc_pre[:, :min_len].flatten(), mfcc_post[:, :min_len].flatten())[0, 1])
+            if not np.isfinite(corr):
+                # Konstante/leere Merkmalsfolgen (z. B. Stille) → neutraler Wert,
+                # statt NaN in die Invarianten-Kette zu tragen (§G5 GEBOTE.md).
+                return 0.5
             return max(corr, 0.0)
 
         except Exception as _mfcc_exc:
@@ -397,6 +517,10 @@ class Level1InvariantsGuard:
 
             min_len = min(centroid_pre.shape[1], centroid_post.shape[1])
             corr = float(np.corrcoef(centroid_pre[:, :min_len].flatten(), centroid_post[:, :min_len].flatten())[0, 1])
+            if not np.isfinite(corr):
+                # Konstante/leere Merkmalsfolgen (z. B. Stille) → neutraler Wert
+                # statt NaN (§G5 GEBOTE.md).
+                return 0.5
             return max(corr, 0.0)
 
         except Exception as _sc_exc:

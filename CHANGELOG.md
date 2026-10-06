@@ -182,6 +182,43 @@
   ohne Anatomie, unverändert ohne Tags, ein Pfad ohne Sprach-Embedder,
   Fassaden-Delegation, Scan-F0 trotz instrumentellem Intro). Ruff clean.
 
+### §III.11-Durchsetzung: Sprach-Embedder als Richter entfernt (Ebene 1 + phase_65)
+
+- **Befund:** Resemblyzer (LibriSpeech/Sprache) wirkte an zwei Stellen als
+  **Richter** über Musik/Gesang, obwohl die Docstrings „Zeuge, kein Richter"
+  behaupteten: `level_1_invariants_guard` (Ebene-1-Invariante „Stimm-Identität":
+  `singer_identity < 0.92` → Blend-Reduktion) und
+  `phase_65._apply_singer_identity_witness` (Blend bis 80 % Richtung Eingang).
+  Derselbe Embedder war in `forensics/gender_detection` wirkungslos, blockierte
+  aber als `emb is None → "unknown"` die domänenneutrale Pitch-Auswertung.
+- **Fix:** Flag `music_model_flags.use_resemblyzer_music` (Default `False`) plus
+  kanonische Messfunktion `level_1_invariants_guard.measure_singer_identity_cosine()`
+  — EINE Quelle für beide Aufrufer (§G9 copilot-instructions.md):
+  - Mit Freigabe: Embedder-Kaskade (Package→ONNX) wie bisher.
+  - Ohne Freigabe: domänenneutraler DSP-Proxy (MFCC- + spektraler
+    Centroid-Korrelation), der zuvor schon der Ersatz war. **§0p bleibt
+    vollständig in Kraft** — der Identitätsschutz greift weiter, nur die Domäne
+    der Messung ist korrekt. Der Embedder wird ohne Freigabe nicht geladen.
+  - Rückgabe `float | None`: `None` = nicht messbar (konstant/stumm) ⇒ kein
+    Messwert, kein Eingriff (Zeuge-Prinzip: keine Messung darf bestrafen).
+  - **NaN-Fix:** Der DSP-Proxy lieferte bei Stille `NaN` (np.corrcoef auf
+    konstanten Merkmalen) und trug eine nicht-endliche Größe in die
+    Invarianten-Kette — jetzt explizit „nicht messbar" (§G5 GEBOTE.md).
+- **SOTA-Ausbau der Fusion (`vocal_ai_enhancement`):**
+  - Kontinuierliche PANNs-Singing-Evidenz: neben dem harten Shortcut (Abstand
+    > 0,10, Score ≥ 0,25) fließt die Klassendifferenz proportional ein
+    (`_PANNS_CONT_WEIGHT = 0.25`); beide Formen kommen aus EINER Quelle
+    (`_panns_singing_scores`).
+  - Aperiodizität als Konfidenz-Modulator: die bereits berechnete
+    WORLD-Aperiodizität (`_detect_breathiness`, Yumoto-Proxy) wird VOR der
+    Klassifikation gemessen und senkt die Konfidenz bei stark verhauchter oder
+    verrauschter Stimme auf bis zu 60 % (`_modulate_confidence_by_aperiodicity`)
+    — keine scheinbare Sicherheit, kein zusätzlicher Inferenzaufwand.
+- **Beweise:** 70 passed (Ebene-1-, phase_65- und Gender-Suiten) mit 4 neuen
+  Sperr-/Modulationstests (Embedder-Aufrufe == 0 ohne Freigabe, kontinuierliche
+  PANNs-Evidenz, Konfidenz-Klemmung); 33 passed `test_gender_detector.py`;
+  Ruff clean.
+
 ## 10.3.10 (2026-10-05)
 
 ### Phasensignatur: De-Esser wieder vertragskonform

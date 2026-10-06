@@ -117,13 +117,17 @@ class VocalEnhancementResult:
 _PANNS_GENDER_MIN_SCORE: float = 0.25
 _PANNS_GENDER_MIN_MARGIN: float = 0.10
 _PANNS_GENDER_WEIGHT: float = 0.35
+# Weiche Evidenz: die Klassendifferenz fließt zusätzlich proportional ein, damit
+# auch uneindeutige (aber gleichgerichtete) PANNs-Ausgaben wirken — die harte
+# Schwelle oben bleibt der Shortcut für klare Fälle.
+_PANNS_CONT_WEIGHT: float = 0.25
 
 
-def _panns_singing_prior(panns_tags: Any) -> VoiceGender | None:
-    """Liefert den PANNs-Singing-Gender-Prior oder ``None`` (keine/unklare Evidenz).
+def _panns_singing_scores(panns_tags: Any) -> tuple[float, float] | None:
+    """Roh-Konfidenzen der PANNs-Singing-Klassen als ``(male, female)`` oder ``None``.
 
-    Es gilt ein Mindest-Score (0,25) UND ein Mindestabstand zwischen beiden
-    Klassen (0,10): Bei Gleichstand schweigt die Evidenz, statt zu raten.
+    EINE Quelle für beide Ausprägungen der Evidenz (harter Shortcut und weiche
+    Fusion), damit die Klasse nicht zweimal unterschiedlich gelesen wird.
     """
     if not isinstance(panns_tags, dict):
         return None
@@ -132,6 +136,21 @@ def _panns_singing_prior(panns_tags: Any) -> VoiceGender | None:
         _female = float(panns_tags.get("Female singing", 0.0) or 0.0)
     except (TypeError, ValueError):
         return None
+    if _male <= 0.0 and _female <= 0.0:
+        return None
+    return _male, _female
+
+
+def _panns_singing_prior(panns_tags: Any) -> VoiceGender | None:
+    """Liefert den PANNs-Singing-Gender-Prior oder ``None`` (keine/unklare Evidenz).
+
+    Es gilt ein Mindest-Score (0,25) UND ein Mindestabstand zwischen beiden
+    Klassen (0,10): Bei Gleichstand schweigt die Evidenz, statt zu raten.
+    """
+    _pair = _panns_singing_scores(panns_tags)
+    if _pair is None:
+        return None
+    _male, _female = _pair
     if _male >= _PANNS_GENDER_MIN_SCORE and _male > _female + _PANNS_GENDER_MIN_MARGIN:
         return VoiceGender.MALE
     if _female >= _PANNS_GENDER_MIN_SCORE and _female > _male + _PANNS_GENDER_MIN_MARGIN:
@@ -229,16 +248,18 @@ class GenderDetector:
         # Detect formants — §19.2: nur aus voiced Frames (vokaltrakt-treu)
         formants = self._detect_formants(audio, voiced_times)
 
+        # §SOTA-Gender (2026-10-06): Aperiodizität (WORLD d4c, Yumoto-Proxy) VOR
+        # der Klassifikation messen — sie moduliert die Evidenz-Güte (Konfidenz).
+        breathiness = self._detect_breathiness(audio)
+
         # Classify gender based on F0, formants and PANNs-Singing-Evidenz
         gender, confidence = self._classify_gender(fundamental_freq, formants, panns_tags=panns_tags)
+        confidence = self._modulate_confidence_by_aperiodicity(confidence, breathiness)
 
         # §19 Contralto-Override: tiefe Frauenstimmen mit weiblichen Formanten
         gender, confidence = self._apply_contralto_override(
             gender, confidence, fundamental_freq, formants, bandwidth_loss=bandwidth_loss
         )
-
-        # Detect breathiness
-        breathiness = self._detect_breathiness(audio)
 
         # Detect vocal effort
         vocal_effort = self._detect_vocal_effort(audio)
@@ -623,6 +644,24 @@ class GenderDetector:
             best_gender = sorted_scores[1]  # prefer FEMALE
 
         return best_gender[0], best_gender[1]
+
+    def _modulate_confidence_by_aperiodicity(self, confidence: float, breathiness: float) -> float:
+        """Senkt die Konfidenz, wenn die Stimme stark aperiodisch ist (§SOTA-Gender 2026-10-06).
+
+        Grundlage: Yumoto et al. (1982) — HNR als Maß der Stimmqualität; Ferrand
+        (2002) — HNR-Charakteristik bei Sängerinnen/Sängern. Ein niedriges HNR
+        (hohe Aperiodizität) macht sowohl F0- als auch Formant-Schätzungen
+        unsicher. Statt scheinbare Sicherheit zu melden, wird die Konfidenz
+        linear auf bis zu 60 % reduziert — der Aufrufer (z. B. De-Esser-Bandwahl)
+        kann dann konservativ entscheiden.
+
+        ``breathiness`` kommt aus ``_detect_breathiness`` (WORLD-``d4c``-Aperiodizität
+        im 1–4-kHz-Band, sonst HF-Energie-Verhältnis) und wird hier NICHT neu
+        berechnet — kein zusätzlicher Inferenzaufwand.
+        """
+        _b = float(np.clip(breathiness, 0.0, 1.0))
+        _factor = float(np.clip(1.0 - 0.4 * _b, 0.6, 1.0))
+        return float(np.clip(float(confidence) * _factor, 0.0, 1.0))
 
     def _detect_breathiness(self, audio: np.ndarray) -> float:
         """Erkennt breathiness via WORLD per-frame aperiodicity (primary) or HF energy ratio.

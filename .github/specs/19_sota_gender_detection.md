@@ -115,6 +115,16 @@ Phase 19 DeEsserPhase.process()
        │   sprachtrainiertes Embedding-Modell (Resemblyzer/LibriSpeech)
        │   entscheidet NICHT mit (§III.11 copilot-instructions.md); die
        │   Vokaltrakt-Anatomie trägt die Entscheidung tonhöhenunabhängig.
+       │   Konfidenz wird zusätzlich durch die Aperiodizität gedämpft
+       │   (`_modulate_confidence_by_aperiodicity`: bis 60 % bei stark
+       │   verhauchter/verrauschter Stimme, Yumoto-Proxy).
+       │
+       │   §Rev. 2026-10-06 (Fortsetzung): Die Stimm-Identität (Ebene 1/§0p)
+       │   wird ebenfalls domänenrein gemessen —
+       │   `level_1_invariants_guard.measure_singer_identity_cosine()` befragt
+       │   den Embedder nur mit `music_model_flags.use_resemblyzer_music`,
+       │   sonst trägt der DSP-Proxy (MFCC + Centroid). Rückgabe `None` =
+       │   nicht messbar ⇒ kein Eingriff.
        │
        ├─ 2. LPC Formant Tracker (lpc_formant_tracker) ← Bug 1 + 5 fix
        │      ├─ _scan_f0_voiced() → scanning 60×100ms
