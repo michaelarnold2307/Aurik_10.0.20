@@ -126,7 +126,7 @@ F14.
 | Rang | Artefakt | Gemessene Qualität | Warum es brachliegt |
 | --- | --- | --- | --- |
 | 1 | `models/scnet_4stems/` | A/B **gewonnen**: SI-SDR **+10,3…+16,4 dB**, `singer_identity_cosine` 0,978–0,992 | nicht verdrahtet (TODO-P1-2); CPU ~7× langsamer als Demucs v4 |
-| 2 | `models/medium_shallow_v1.joblib` | CV **64,3 %** Material / **85,7 %** Depth (n=56) gegen Manifest-Baseline 10,7 %/51,8 % — Baseline **nicht applikationsgleich** | **kein Konsument**: `medium_classifier` nutzt im `use_ml`-Zweig CLAP; faires Re-Measurement + A/B + Sign-off fehlen (D-K0-8) |
+| 2 | `models/medium_shallow_v1.joblib` | CV **64,3 %** Material (n=56) — Material-Baseline unzulässig (andere Messgröße / nicht applikationsgleich); Depth-Accuracy **zurückgezogen** (nicht bewertbar: `len(transfer_chain)` und kein Depth-Konsument) | **kein Konsument**: `medium_classifier` nutzt im `use_ml`-Zweig CLAP; Rollout blockiert auf **DATEN** (Label-Korpus ≥ ~50 je Klasse) + Wiring-Entscheidung + Sign-off (D-K0-8) |
 | 3 | `models/sgmse_plus/sgmse_musik_core.onnx` | Musik-Finetune (Epoch 24) + ONNX 263 MB vorhanden | `use_sgmse_musik=False` — 3-Wege-A/B + Hörabnahme offen (D-K0-3) |
 | 4 | `output/_training_archive_20260920/f3_bigvgan/best.pt` | A/B bestanden (HNR **+4,42 dB**, af +0,0073) | **nicht deployt**: die aktive HR-V1-Stufe lädt bytescharf die **Basis** (469/783 Tensoren ≠ F3) (D-K0-1/D-K0-2) |
 | 5 | `models/ear_vae2_upstream/` | EAR-VAE **v2**-Upstream beschafft (298 M) | keine Rollout-/Ersatz-Entscheidung vs. v1-Finetune (D-K0-9) |
@@ -163,11 +163,11 @@ F14.
 
 ### D. Priorisierte Reihenfolge (Wirkung × Machbarkeit)
 
-1. **Sofort, CPU, ohne Training:** (a) faire Neumessung des flachen
-   Material-/Depth-Schätzers gegen den _heutigen_ Detektor auf denselben 56
-   kuratierten Items (beseitigt den Baseline-Vorbehalt, D-K0-8); (b) SCNet-
-   Verdrahtung hinter Never-worsen (P1-2); (c) F3-BigVGAN-Rollout-Entscheid
-   (A/B liegt vor, D-K0-1); (d) EAR-VAE v1↔v2-Vergleich.
+1. **Sofort, CPU, ohne Training:** (a) SCNet-Verdrahtung hinter Never-worsen
+   (P1-2); (b) F3-BigVGAN-Rollout-Entscheid (A/B liegt vor, D-K0-1);
+   (c) EAR-VAE v1↔v2-Vergleich. _(Der flache Material-Schätzer D-K0-8 ist
+   konsolidiert — Depth zurückgezogen, Material blockiert auf Label-Korpus;
+   es ist kein Messschritt mehr offen.)_
 2. **Beschaffung:** WF-V4-Quelle klären, TP-V2-Modell klären, AudioLDM2-Plugin.
 3. **GPU (7900 XTX):** DiffWave-Vokal → GaCELA-Vokal → BigVGAN-v2 Musik+Vokal
    → FlashSR-Musik → DDSP (BEATs-Encoder) → BEATs-Tagger-Head → Gender-Head.

@@ -31,11 +31,33 @@ Fremd-Inhalten ist der Generator die Wurzel, nicht die Datei; bei §-IDs immer
 
 ---
 
-## Schritt 1a — Faires Re-Measurement des flachen Material-/Depth-Schätzers (D-K0-8)
+## Schritt 1a — **konsolidiert** (2026-10-06): flacher Material-/Depth-Schätzer (D-K0-8)
 
-**Ziel:** Die in D-K0-8 beanstandete Baseline-Verknüpfung auflösen und
-entscheiden, ob `models/medium_shallow_v1.joblib` (CV 64,3 % Material /
-85,7 % Depth) gegenüber dem **echten** Erzeuger einen Gewinn hat.
+**Status: konsolidiert — kein Arbeitspaket und kein offener Messschritt mehr.**
+
+**Beschluss (2026-10-06):**
+
+- **Depth: zurückgezogen.** Die Zahl 85,7 % ist **nicht bewertbar** — die
+  Vergleichsgröße `detected_depth` ist `len(result.transfer_chain)`
+  (Kettenlänge), nicht die kuratierte Depth-Label-Größe; und der heutige
+  Konsument `backend/core/medium_classifier.py` gibt **gar keine** Depth aus
+  (`ClassificationResult` ohne `depth`-Feld). Für Depth existiert damit **kein**
+  applikationsgleicher Partner. Das Artefakt bleibt unverändert auf der Platte
+  (kein Löschen); nur die Doku-Aussage wird richtiggestellt.
+- **Material: bleibt `offen`, aber mit dem _richtigen_ Blocker.** Blockerklasse
+  **`DATEN`** (Label-Korpus ≥ ~50 je Klasse; heute 6 Klassen, klein und
+  unbalanciert — `reel_tape` durchgehend als `tape` fehlklassifiziert); danach
+  **Wiring-Entscheidung** (CLAP-Zeuge vs. trainierter Kopf) + **Hörordnungs-
+  Sign-off** (§v10.802 (copilot-instructions.md)). Material steuert
+  Bandbreiten-Ceilings, Defekt-Schwellen und Era-Priors der ganzen Kette — der
+  Hebel ist real, er hängt an **Daten**, nicht an einer Messung.
+
+**Warum kein Re-Measurement mehr:** Für Depth verlangte ein fairer Vergleich
+  einen Detektor, der Depth **gar nicht liefert**; für Material wäre der
+  Erzeuger derselbe (`forensics.medium_detector`), die Stichprobe aber zu
+  klein/unbalanciert für eine belastbare Aussage. Die Konsolidierung ist damit
+  ehrlicher als eine Zahl, die eine andere Messgröße beschreibt (§V7
+  (copilot-instructions.md) — Ursache statt Symptom).
 
 **Verifizierte Messbefunde (2026-10-06, am Code gelesen — nicht angenommen):**
 
@@ -52,31 +74,22 @@ entscheiden, ob `models/medium_shallow_v1.joblib` (CV 64,3 % Material /
    Pendant in den kuratierten 6 (`lacquer_disc`, `wax_cylinder`, …) — die alte
    Baseline hat sie als Fehler gezählt.
 
-**Vorbereiteter Bestand:**
+**Vorbereiteter Bestand (bleibt gültig, falls Daten kommen):**
 
 - Ground Truth + Items: `audit/golden_listening_set.json` (56 Items mit
   `path`, `material`, `depth`, `era_year`).
-- Trainings-/Feature-Rezept (kanonisch, deterministisch §G5): `scripts/train_medium_classifier.py::extract_features`.
+- Trainings-/Feature-Rezept (kanonisch, deterministisch §G5 (copilot-instructions.md)):
+  `scripts/train_medium_classifier.py::extract_features`.
 - Artefakt + Report: `models/medium_shallow_v1.joblib`, `models/medium_shallow_v1_report.json`.
 - Erzeuger-Code der Baseline: `scripts/golden_set_tool.py`.
 
-**Durchzuführende Aktion:**
+**Akzeptanz (erreicht):** Register **D-K0-8** führt die zurückgezogene
+Depth-Angabe nicht mehr als Vorbehalt, sondern als **erledigten**
+Konsolidierungspunkt; der Blocker nennt die **echte** Klasse (`DATEN`). Keine
+Klang-/Flag-Änderung, kein Artefakt gelöscht.
 
-1. `golden_set_tool`-Pfad **neu** auf denselben 56 Items ausführen
-   (`get_medium_detector().detect(...)`, dieselben `era_decade`/`era_confidence`
-   wie im Tool) — statt die gecachten Felder zu lesen.
-2. Material-Taxonomie **explizit** abbilden (Mapping-Tabelle im Report, keine
-   stille Verkürzung); beide Auswertungen ausweisen: _strikt_ und _taxonomie-fair_.
-3. Depth: getrennt ausweisen als „Kettenlänge vs. kuratiertes Label“ und die
-   Größendifferenz benennen — **nicht** als Accuracy verkaufen.
-
-**Akzeptanz:** Report mit Konfusionsmatrix je Auswertung, identischer
-Item-Menge (n=56), dokumentiertem Mapping und explizitem Hinweis, welche Zahl
-welche Messgröße beschreibt. Ergebnis ist _entweder_ „kein Gewinn →
-`bewusst-akzeptiert`“ _oder_ „Gewinn → A/B + Sign-off“.
-
-**Blocker:** `CPU` (Detektor ist CPU-deterministisch) · **offen:** das ist der
-nächste konkrete Arbeitsschritt.
+**Blocker:** `DATEN` (Label-Korpus) für einen späteren Rollout; `MENSCH` für den
+Sign-off. **Die Konsolidierung selbst ist abgeschlossen.**
 
 ---
 
@@ -242,16 +255,17 @@ Reihenfolge) → Ridge-Regression auf den Hör-Ergebnissen → kalibrierter Prox
 ## Abhängigkeitsreihenfolge (empfohlen)
 
 ```text
-0  Commit+Push                      ✔ erledigt
-1a Faires Re-Measurement  ──┐       CPU, sofort, ohne Sign-off
-1b SCNet hinter Never-worsen├──────→ CPU-Verdrahtung sofort; Aktivierung nach Sign-off
-1c F3-BigVGAN  ─────────────┤       Export+Parität CPU; Rollout am Budget-Gate
-1d EAR-VAE v1↔v2 ───────────┘       Benchmark CPU; Austausch nur mit Gewinn
-4  Hygiene/P0-1/P0-3/P1-3            CPU, jederzeit parallel
-2  Beschaffung                       AudioLDM2-Plugin CPU; WF-V4/TP-V2 extern
-3  GPU-Finetunes                     erst nach Beschaffung + Daten
-5  Hörpanel                          unabhängig, aber entscheidend für 1b/1c/3
+0  Commit+Push                        ✔ erledigt
+1a Konsolidiert (D-K0-8)              ✔ erledigt (Depth zurückgezogen; Material auf DATEN)
+1b SCNet hinter Never-worsen ──┐      CPU-Verdrahtung sofort; Aktivierung nach Sign-off
+1c F3-BigVGAN  ────────────────┼────→ Export+Parität CPU; Rollout am Budget-Gate
+1d EAR-VAE v1↔v2 ──────────────┘      Benchmark CPU; Austausch nur mit Gewinn
+4  Hygiene/P0-1/P0-3/P1-3             CPU, jederzeit parallel
+2  Beschaffung                        AudioLDM2-Plugin CPU; WF-V4/TP-V2 extern
+3  GPU-Finetunes                      erst nach Beschaffung + Daten
+5  Hörpanel                           unabhängig, aber entscheidend für 1b/1c/3
 ```
 
-**Kritischer Pfad:** 1a → 1b/1c (CPU-Verdrahtung) → 5 (Sign-off) → Aktivierung.
-Schritt 3 und 5 sind die einzigen **echten** externen Blocker.
+**Kritischer Pfad:** 1b/1c (CPU-Verdrahtung) → 5 (Sign-off) → Aktivierung.
+Schritt 3 und 5 sind die einzigen **echten** externen Blocker; **1a ist
+abgeschlossen** (konsolidiert, D-K0-8).
