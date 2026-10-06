@@ -43,11 +43,12 @@ _BREATH_CHANGE_PERCENT = 0.10  # max 10 % Änderung
 # ── Domänen-Regel §III.11 (copilot-instructions.md) ─────────────
 
 
-def _resemblyzer_music_unlocked() -> bool:
+def resemblyzer_music_unlocked() -> bool:
     """Ist der Sprach-Embedder (Resemblyzer/LibriSpeech) als Richter freigegeben?
 
-    Das Flag wird zur Laufzeit am Modul gelesen, damit Tests und Konfiguration
-    es wirksam umschalten können.
+    EINE Quelle für alle Aufrufer (§G9 copilot-instructions.md): Ebene-1-Guard,
+    phase_65 und die VQI-Messung. Das Flag wird zur Laufzeit am Modul gelesen,
+    damit Tests und Konfiguration es wirksam umschalten können.
     """
     try:
         import backend.core.music_model_flags as _mmf
@@ -106,7 +107,7 @@ def measure_singer_identity_cosine(
     """
     _mono_pre = _to_mono_float(pre)
     _mono_post = _to_mono_float(post)
-    if _resemblyzer_music_unlocked():
+    if resemblyzer_music_unlocked():
         _pl = plugin
         if _pl is None:
             try:
@@ -209,7 +210,7 @@ class Level1InvariantsGuard:
         # Paketname, Großbuchstabe) schlug immer fehl und deaktivierte den
         # echten ML-Pfad still — Produktionsbefund §Ebene-1.
         self._resemblyzer_plugin: object | None = None
-        if not _resemblyzer_music_unlocked():
+        if not resemblyzer_music_unlocked():
             # §III.11 copilot-instructions.md: Ein sprachtrainiertes Embedding ist
             # ohne Musik-Fine-Tune kein zulässiger Richter über Musik/Gesang — der
             # DSP-Proxy trägt die Stimm-Identität, das Modell wird nicht geladen.

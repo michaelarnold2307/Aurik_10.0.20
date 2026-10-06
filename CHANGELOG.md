@@ -250,6 +250,25 @@
 - **Write-Gate:** Einträge in `.github/FILE_REGISTRY.md` (2 Skripte, 1 Test)
   nach `scripts/repo_search.py --before-create` (keine kanonische Alternative).
 
+### §III.11-Durchsetzung (Fortsetzung): VQI-Singer-Identity domänenrein
+
+- **Befund:** `vocal_quality_index._compute_singer_identity` befragte den
+  sprachtrainierten Resemblyzer-Embedder **ohne Domänen-Prüfung** als Primärpfad.
+  Die VQI speist die Musical Goals (`vocal_quality`) und damit
+  Hörordnungs-Entscheidungen — der Sprach-Embedder richtete also mittelbar über
+  Musik/Gesang. Zusätzlich existierte dort eine zweite Messquelle mit eigener
+  Kalibrierung (§G9 copilot-instructions.md).
+- **Fix:** `resemblyzer_music_unlocked()` ist jetzt die öffentliche EINE Quelle
+  der Freigabe (Ebene-1-Guard, phase_65, VQI). Ohne Freigabe nutzt die VQI den
+  vorhandenen DSP-Proxy, der laut Code-Dokumentation auf die 0.92-Rollback-Schwelle
+  kalibriert ist (§R3-Formel `(8c−1)/7`) — der Rollback-Schutz bleibt erhalten,
+  nur die Domäne der Messung ist korrekt. Mit Freigabe läuft die
+  Embedder-Kaskade unverändert.
+- **Beweise:** 14 passed `test_vocal_quality_index.py` (3 neue
+  Domänen-Regel-Tests: Proxy ohne Freigabe, identisches Audio hält ≥ 0,92,
+  Embedder bei Freigabe); 112 passed `test_musical_goals_metrics.py`
+  (Goal-Entscheidungen unverändert); 50 passed Ebene-1/phase_65/VQI; Ruff clean.
+
 ## 10.3.10 (2026-10-05)
 
 ### Phasensignatur: De-Esser wieder vertragskonform

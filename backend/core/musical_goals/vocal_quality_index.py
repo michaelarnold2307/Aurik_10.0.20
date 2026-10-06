@@ -230,7 +230,23 @@ def _compute_singer_identity(
     vocal_post: np.ndarray,
     sr: int,
 ) -> tuple[float, bool]:
-    """ResemblyzerPlugin (primary) or DSP proxy (fallback). Returns (cosine, dsp_used)."""
+    """Singer-Identity-Kosinus — domänenrein (§III.11 copilot-instructions.md).
+
+    Der auf SPRACHE trainierte Resemblyzer-Embedder (LibriSpeech) wird NUR mit
+    Musik-Freigabe befragt (`music_model_flags.use_resemblyzer_music`, EINE Quelle:
+    `level_1_invariants_guard.resemblyzer_music_unlocked`). Ohne Freigabe trägt der
+    DSP-Proxy, der auf die 0.92-Rollback-Schwelle kalibriert ist (§R3-Formel).
+
+    Returns:
+        (cosine, dsp_used) — ``dsp_used=True``, wenn ohne Embedder gemessen wurde.
+    """
+    from backend.core.dsp.level_1_invariants_guard import (  # pylint: disable=import-outside-toplevel
+        resemblyzer_music_unlocked,
+    )
+
+    if not resemblyzer_music_unlocked():
+        logger.debug("VQI-Singer-Identity: Sprach-Embedder gesperrt (§III.11 copilot-instructions.md) — DSP-Proxy")
+        return _compute_singer_identity_dsp(vocal_pre, vocal_post, sr), True
     try:
         from plugins.resemblyzer_plugin import get_resemblyzer_plugin  # pylint: disable=import-outside-toplevel
 
@@ -241,13 +257,13 @@ def _compute_singer_identity(
         emb_pre = plugin.embed(vocal_pre, sr)
         emb_post = plugin.embed(vocal_post, sr)
         if emb_pre is None or emb_post is None:
-            raise RuntimeError("embed() returned None")
+            raise RuntimeError("embed() lieferte None")
 
         cosine = plugin.cosine_similarity(emb_pre, emb_post)
-        return cosine, False  # ML-Pfad aktiv (kein DSP-Fallback)
+        return cosine, False  # ML-Pfad aktiv (kein DSP-Ersatzpfad)
     except Exception as exc:
         logger.warning("ML→DSP-Ersatzpfad aktiviert", exc_info=True)  # §V6 (copilot-instructions.md)
-        logger.debug("Resemblyzer not verfuegbar (%s) — DSP Ersatzpfad", exc)
+        logger.debug("Resemblyzer nicht verfügbar (%s) — DSP-Ersatzpfad", exc)
         return _compute_singer_identity_dsp(vocal_pre, vocal_post, sr), True
 
 

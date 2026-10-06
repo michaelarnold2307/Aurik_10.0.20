@@ -26,6 +26,57 @@ def noisy_audio(sine_audio):
 
 
 @pytest.mark.unit
+class TestSingerIdentityDomainRule:
+    """§III.11 copilot-instructions.md: Der sprachtrainierte Embedder richtet hier nicht.
+
+    Die VQI-Messung speist die Musical Goals (vocal_quality) und damit
+    Hörordnungs-Entscheidungen — die Domänen-Regel muss deshalb auch hier greifen.
+    """
+
+    def test_proxy_used_without_release(self, monkeypatch, sine_audio):
+        import backend.core.music_model_flags as _mmf
+        from backend.core.musical_goals.vocal_quality_index import _compute_singer_identity
+
+        monkeypatch.setattr(_mmf, "use_resemblyzer_music", False)
+        audio, sr = sine_audio
+        _cos, _dsp_used = _compute_singer_identity(audio, audio, sr)
+        assert _dsp_used is True, "ohne Musik-Freigabe muss der DSP-Proxy messen"
+        assert 0.0 <= _cos <= 1.0
+
+    def test_identical_audio_keeps_rollback_threshold(self, monkeypatch, sine_audio):
+        """Unveränderte Stimme darf die 0.92-Rollback-Schwelle nicht reißen (§R3-Kalibrierung)."""
+        import backend.core.music_model_flags as _mmf
+        from backend.core.musical_goals.vocal_quality_index import _compute_singer_identity
+
+        monkeypatch.setattr(_mmf, "use_resemblyzer_music", False)
+        audio, sr = sine_audio
+        _cos, _ = _compute_singer_identity(audio, audio, sr)
+        assert _cos >= 0.92
+
+    def test_embedder_used_with_release(self, monkeypatch, sine_audio):
+        """Mit Freigabe läuft die Embedder-Kaskade (hier über ein Fake-Plugin)."""
+        import backend.core.music_model_flags as _mmf
+        from backend.core.musical_goals import vocal_quality_index as _vqi
+
+        monkeypatch.setattr(_mmf, "use_resemblyzer_music", True)
+
+        class _FakePlugin:
+            available = True
+
+            def embed(self, _audio, _sr):
+                return np.ones(8, dtype=np.float32)
+
+            def cosine_similarity(self, _a, _b):
+                return 0.97
+
+        monkeypatch.setattr("plugins.resemblyzer_plugin.get_resemblyzer_plugin", lambda: _FakePlugin())
+        audio, sr = sine_audio
+        _cos, _dsp_used = _vqi._compute_singer_identity(audio, audio, sr)
+        assert _dsp_used is False
+        assert _cos == pytest.approx(0.97)
+
+
+@pytest.mark.unit
 class TestVocalQualityIndexImport:
     def test_import_ok(self):
         from backend.core.musical_goals.vocal_quality_index import compute_vqi
