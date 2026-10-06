@@ -1,4 +1,45 @@
-# Changelog — Aurik 10.3.13
+# Changelog — Aurik 10.3.14
+
+## 10.3.14 (2026-10-06)
+
+### Typ-Sicherheit (P3 TYPE-SAFETY): 18 mypy-Befunde behoben — verhaltensneutral belegt
+
+- **Befund:** `mypy 2.1.0` (Projekt-Config) meldete 12 Fehler in
+  `scripts/train_cantus.py` und 6 in `tests/unit/test_model_zoo_activation.py`
+  (`no-any-return`, `arg-type`, `assignment`, `attr-defined`, `union-attr`,
+  `func-returns-value`). Beide Dateien lagen außerhalb des Pre-Commit-Scopes —
+  der mypy-Hook prüft nur **gestagte** Dateien, deshalb blieben die Befunde
+  unentdeckt.
+- **`scripts/train_cantus.py`:**
+  - `register_buffer`-Attribute (`self.mel_fb`) sind jetzt explizit als
+    `torch.Tensor` deklariert — mypy las sie über `nn.Module.__getattr__`
+    als `Tensor | Module`.
+  - `_mel_fb()` greift nicht mehr ungetypt per `getattr` durch: fail-fast
+    statt Any-Durchgriff (§V6 (VERBOTEN.md)).
+  - `nn.Module.__call__` ist im Stub `Any`; der MSE-Kalibrier-Loss wird mit
+    einem wahren `cast` typisiert (kein Workaround, §V7 (VERBOTEN.md)).
+  - `_extract_pitch()` liefert dtype und Layout explizit (`np.ascontiguousarray`,
+    Werte unverändert float32); `extract()` deklariert `pitch` vor den Zweigen,
+    damit kein `None` in ein Array fließt.
+  - `train()` annotiert `train_ds`/`val_ds` als `Dataset`; die Split-Zuweisung
+    ist umgestellt, aber **definitionsgemäß identisch** (`train_ds is full`).
+  - **§G9 (copilot-instructions.md):** `_load_config()` war ein toter,
+    duplizierter Ladepfad — `train()` lud dieselbe JSON-Datei erneut. Jetzt
+    existiert genau **ein** Config-Ladepfad.
+- **`tests/unit/test_model_zoo_activation.py`:** `_make_step()` gibt
+  `RepairStep` statt `object` zurück; `resolve_model_path()`-Ergebnisse werden
+  explizit auf `None` geprüft (Vorbedingung benannt statt Union-Attribut-Zugriff);
+  der Lambda-Seiteneffekt-Hack (`calls.append(...) is None`) ist durch eine
+  benannte Fake-Funktion ersetzt.
+- **Nachweis:** `mypy` → `Success: no issues found in 2 source files`;
+  `ruff check` → `All checks passed!`; `tests/unit/test_model_zoo_activation.py`
+  → 17 passed; `scripts/train_cantus.py --smoke --cpu` → Exit 0 (50 Epochen,
+  Report in `/tmp/cantus_smoke_*`); Split-Äquivalenz über 5 Dataset-Größen
+  (2/3/5/10/25) maschinell geprüft, inklusive `or full.pairs[-1:]`-Randfall.
+- **Keine Verhaltensänderung:** kein Export-, Pipeline- oder Signalpfad
+  berührt. Die Änderungen sind ausschließlich Annotationen, ein
+  Dtype-/Layout-Explizitmachen (float32 unverändert) und eine
+  Zuweisungs-Umsortierung mit identischem Ergebnis.
 
 ## 10.3.13 (2026-10-06)
 

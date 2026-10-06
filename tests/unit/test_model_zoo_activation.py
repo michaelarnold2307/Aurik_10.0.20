@@ -12,6 +12,7 @@ import numpy as np
 import pytest
 
 from backend.core.coordinated_repair import (
+    RepairStep,
     _denormalize_amp,
     _guard_amp_loudness,
     _normalize_amp_peak99,
@@ -100,11 +101,15 @@ def test_sgmse_music_flag_selects_musik_core(monkeypatch):
     from plugins.sgmse_plugin import _resolve_onnx_path as _plugin_path
 
     monkeypatch.setattr("backend.core.music_model_flags.use_sgmse_musik", False)
-    assert resolve_model_path("sgmse").name == "sgmse_plus_core.onnx"
+    legacy = resolve_model_path("sgmse")
+    assert legacy is not None, "resolve_model_path('sgmse') muss ohne Flag aufloesen"
+    assert legacy.name == "sgmse_plus_core.onnx"
     assert _plugin_path().name == "sgmse_plus_core.onnx"
 
     monkeypatch.setattr("backend.core.music_model_flags.use_sgmse_musik", True)
-    assert resolve_model_path("sgmse").name == "sgmse_musik_core.onnx"
+    musik = resolve_model_path("sgmse")
+    assert musik is not None, "resolve_model_path('sgmse') muss mit Flag aufloesen"
+    assert musik.name == "sgmse_musik_core.onnx"
     assert _plugin_path().name == "sgmse_musik_core.onnx"
 
 
@@ -113,8 +118,8 @@ def test_sgmse_music_flag_selects_musik_core(monkeypatch):
 # ═══════════════════════════════════════════════════════════════════════════════
 
 
-def _make_step(**params: object) -> object:
-    from backend.core.coordinated_repair import RepairPriority, RepairStep
+def _make_step(**params: object) -> RepairStep:
+    from backend.core.coordinated_repair import RepairPriority
 
     return RepairStep(
         phase_id="phase_03_denoise",
@@ -132,13 +137,14 @@ def _fake_dsp(audio: np.ndarray, *, factor: float = 0.5) -> np.ndarray:
 def test_denoise_uses_sgmse_when_opted_in(monkeypatch):
     from backend.core.coordinated_repair import CoordinatedRepair
 
-    calls: list = []
-    monkeypatch.setattr(
-        "plugins.sgmse_plugin.enhance_sgmse",
-        lambda audio, sr, sigma: (
-            type("R", (), {"audio": _fake_dsp(audio, factor=0.3)})() if calls.append(sigma) is None else None
-        ),
-    )
+    calls: list[float] = []
+
+    def _fake_enhance(audio: np.ndarray, sr: int, sigma: float) -> object:
+        """Zeichnet das Sigma auf und liefert die Ergebnis-Fassade (kein ML-Lauf)."""
+        calls.append(sigma)
+        return type("R", (), {"audio": _fake_dsp(audio, factor=0.3)})()
+
+    monkeypatch.setattr("plugins.sgmse_plugin.enhance_sgmse", _fake_enhance)
     audio = np.ones(4096, dtype=np.float32) * 0.5
     step = _make_step(use_sgmse=True, sgmse_sigma=0.5)
     out = CoordinatedRepair()._run_denoise(audio, step, None, 48000)

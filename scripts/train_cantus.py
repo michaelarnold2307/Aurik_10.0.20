@@ -47,7 +47,7 @@ import sys
 import tempfile
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 import numpy as np
 import torch
@@ -69,8 +69,10 @@ DEFAULT_SEED = 20261004
 SR = 48000  # Modell-Sample-Rate (48 kHz, siehe models/cantus/README.md)
 
 
-def _load_config() -> dict:
-    return json.loads(CONFIG_PATH.read_text(encoding="utf-8"))
+def _load_config() -> dict[str, Any]:
+    """Cantus-Konfiguration (JSON) — Typ explizit, kein Any-Rueckfluss (P3 TYPE-SAFETY)."""
+    cfg: dict[str, Any] = json.loads(CONFIG_PATH.read_text(encoding="utf-8"))
+    return cfg
 
 
 # ═══════════════════════════════════════════════════════════════════════════
@@ -91,7 +93,10 @@ class MelSpectralLoss(nn.Module):
             self.register_buffer(f"mel_fb_{n_fft}", torch.from_numpy(fb).float())
 
     def _mel_fb(self, n_fft: int) -> torch.Tensor:
-        return getattr(self, f"mel_fb_{n_fft}")
+        fb = getattr(self, f"mel_fb_{n_fft}")
+        # Fail-fast statt Any-Durchgriff (P3 TYPE-SAFETY, §V6 (VERBOTEN.md))
+        assert isinstance(fb, torch.Tensor), f"Mel-Filterbank {n_fft} nicht registriert (register_buffer)"
+        return fb
 
     def forward(self, pred: torch.Tensor, target: torch.Tensor) -> torch.Tensor:
         pred = pred.squeeze(1) if pred.dim() == 3 else pred
@@ -198,6 +203,9 @@ class TemporalConsistencyLoss(nn.Module):
         import librosa
 
         fb = librosa.filters.mel(sr=sr, n_fft=n_fft, n_mels=n_mels)
+        # Buffer-Typ deklarieren: mypy liest register_buffer-Attribute sonst
+        # als `Tensor | Module` (P3 TYPE-SAFETY).
+        self.mel_fb: torch.Tensor
         self.register_buffer("mel_fb", torch.from_numpy(fb).float())
         self.n_fft = n_fft
 
@@ -230,6 +238,8 @@ class SingMOSProxy(nn.Module):
         import librosa
 
         fb = librosa.filters.mel(sr=sr, n_fft=n_fft, n_mels=n_mels)
+        # Buffer-Typ deklarieren (P3 TYPE-SAFETY) — siehe TemporalConsistencyLoss.
+        self.mel_fb: torch.Tensor
         self.register_buffer("mel_fb", torch.from_numpy(fb).float())
         self.n_fft = n_fft
         self.hop = n_fft // 4
@@ -333,7 +343,9 @@ class SingMOSLearnedLoss(nn.Module):
         if targets is None:
             return None
         mos = self.proxy(wave_pred.detach())
-        return self._calib_loss(mos, targets)
+        # nn.Module.__call__ ist im Stub `Any`; cast ist hier eine wahre Aussage
+        # (MSELoss.forward -> Tensor) und kein Workaround (P3 TYPE-SAFETY).
+        return cast(torch.Tensor, self._calib_loss(mos, targets))
 
 
 # ── Multi-Objective-Loss (λ1…λ6) ───────────────────────────────────────
@@ -491,7 +503,9 @@ class ConditionExtractor:
             log2f0 = np.log2(np.maximum(f0_i, 1e-3))
             f0_norm = np.clip((log2f0 - np.log2(50.0)) / (np.log2(1200.0) - np.log2(50.0)), 0.0, 1.0)
             f0_norm = np.where(v_i > 0.45, f0_norm, 0.0).astype(np.float32)
-            return np.stack([f0_norm, v_i], axis=-1)
+            # dtype/Layout explizit: np.stack ist im Stub Any und der Rueckgabetyp
+            # der Funktion ist konkret (P3 TYPE-SAFETY). Werte unveraendert (float32).
+            return np.ascontiguousarray(np.stack([f0_norm, v_i], axis=-1), dtype=np.float32)
         except Exception as exc:
             self._warn_once("Pitch", exc)
             return None
@@ -515,6 +529,9 @@ class ConditionExtractor:
         mono = np.asarray(mono, dtype=np.float32).reshape(-1)
         mert = self._extract_mert(mono)
         harm = self._extract_harmonic(mono)
+        # `pitch` explizit deklarieren, damit beide Zweige denselben Typ haben
+        # (P3 TYPE-SAFETY); der None-Fall wird sofort auf Null-Frames abgebildet.
+        pitch: np.ndarray
         if mert is None:
             n_frames = 1
             pitch = np.zeros((1, 2), dtype=np.float32)
@@ -523,9 +540,8 @@ class ConditionExtractor:
             use_cond = 0.0
         else:
             n_frames = int(mert.shape[0])
-            pitch = self._extract_pitch(mono, n_frames)
-            if pitch is None:
-                pitch = np.zeros((n_frames, 2), dtype=np.float32)
+            pitch_raw = self._extract_pitch(mono, n_frames)
+            pitch = pitch_raw if pitch_raw is not None else np.zeros((n_frames, 2), dtype=np.float32)
             if harm is None:
                 harm = np.zeros((768,), dtype=np.float32)
             use_cond = 1.0
@@ -770,7 +786,8 @@ def _evaluate(model, loss_fn, loader, device, max_batches: int = 8) -> float:
 
 
 def train(args: argparse.Namespace) -> int:
-    cfg = json.loads(CONFIG_PATH.read_text(encoding="utf-8"))
+    # §G9 (copilot-instructions.md): genau EIN Config-Ladepfad (_load_config).
+    cfg = _load_config()
     tcfg = cfg["training"]
     model_cfg = cfg["model"][args.preset]
     seed = int(args.seed) if args.seed is not None else int(tcfg["seed"])
@@ -780,6 +797,10 @@ def train(args: argparse.Namespace) -> int:
     cond_dropout = float(model_cfg.get("cond_dropout", 0.0))
 
     extractor = ConditionExtractor()
+    # Basistyp explizit: beide Zweige liefern unterschiedliche Dataset-Klassen
+    # (SmokeDataset/PairDataset), die nur den Dataset-Vertrag gemeinsam haben (P3).
+    train_ds: Dataset
+    val_ds: Dataset
     if args.smoke:
         train_ds = SmokeDataset(16, chunk_samples=chunk_samples, seed=seed)
         val_ds = SmokeDataset(4, chunk_samples=chunk_samples, seed=seed + 1)
@@ -790,10 +811,11 @@ def train(args: argparse.Namespace) -> int:
             return 2
         full = PairDataset(sources, chunk_samples=chunk_samples, extractor=extractor, seed=seed)
         n_train = max(1, int(0.8 * len(full)))
-        train_ds = full
         val_ds = PairDataset(sources, chunk_samples=chunk_samples, extractor=extractor, seed=seed)
+        # Reihenfolge unveraendert: Val-Split VOR dem Kuerzen der Train-Paare.
         val_ds.pairs = full.pairs[n_train:] or full.pairs[-1:]
-        train_ds.pairs = full.pairs[:n_train]
+        full.pairs = full.pairs[:n_train]
+        train_ds = full
 
     batch_size = 2 if args.smoke else int(args.batch_size)
     train_loader = DataLoader(train_ds, batch_size=batch_size, shuffle=True, num_workers=0, drop_last=True)
