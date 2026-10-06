@@ -1,4 +1,40 @@
-# Changelog — Aurik 10.3.15
+# Changelog — Aurik 10.3.16
+
+## 10.3.16 (2026-10-06)
+
+### §G9: Verdrahtungs-Audit — verwaistes Modellkapital wird fail-closed sichtbar (WP0)
+
+- **Befund:** `models/` enthält **61 Verzeichnisse**, das Inventar
+  (`scripts/model_inventory.py`) pflegte aber nur **30 kuratierte Einträge**.
+  Lokal vorhandenes Kapital ohne Konsumenten war damit unsichtbar. Gemessen:
+  **5 verwaiste Verzeichnisse**, darunter zwei mit hohem Wert —
+  `ddsp_predictor/c4_head.pth` (**trainiert**, nirgends verdrahtet; die Roadmap
+  meldete irrig „Prädiktor-Training fehlt“) und
+  `scnet_4stems/huge_scnet_4stems_v1.2.ckpt` (**beschafft**, SHA-256
+  `807f470b…` verifiziert, **A/B gewonnen** mit SI-SDR +10,3…+16,4 dB,
+  `singer_identity_cosine` 0,978–0,992 — aber nirgends verdrahtet).
+- **Fix:** Neue Achse in `scripts/model_inventory.py` — **`--wiring`** ordnet jedem
+  `models/`-Verzeichnis einen Status zu (verdrahtet · begründet ausgenommen ·
+  verwaist), **`--fail-on-orphans`** macht daraus ein Gate. Jede Ausnahme steht
+  mit Begründung und Aufgabenziel in `_WIRING_ALLOWLIST` (§G8) — kein vergessener
+  Rest.
+- **Erweiterung statt Neuanlage:** `unwired_feature_audit.py` prüft
+  _Phasen-Features_, `model_inventory.py` das _Vorhandensein_ — keiner den
+  _Verdrahtungsstatus pro Artefakt_. Deshalb Erweiterung des kanonischen Skripts
+  (Write-Gate-Regel, `repo_search.py --before-create`).
+- **Gate:** Neuer Pre-Commit-Hook `aurik-model-wiring` (fail-closed) — ein
+  künftig verwaistes Artefakt blockiert den Commit, solange es nicht verdrahtet
+  oder begründet in der Ausnahmeliste steht.
+- **Ehrlichkeit zur Methode:** Geprüft wird die _Namensreferenz_ im
+  Produktionscode (untere Schranke — ein Kommentar-Treffer zählt). Das Gate
+  findet vollständig unbekannte Artefakte, **nicht** falsch verdrahtete.
+- **Nachweis:** `--wiring` → 61 Verzeichnisse, **0 undokumentierte Verwaiste**,
+  5 begründete Ausnahmen; `--fail-on-orphans` → Exit 0; neue Tests
+  `tests/unit/test_model_inventory_wiring.py` → 3 passed; `ruff` → All checks
+  passed; Pre-Commit-Hook `aurik-model-wiring` → Passed.
+- **Offen (benannt, nicht still):** Die 5 Ausnahmen sind Aufgaben, keine
+  Endzustände — SCNet-Verdrahtung (TODO-P1-2 Folge-Slice), DDSP-Prädiktor
+  (F5/C4), APPLADE-Bewertung, Matchering-Rolle, `gacela_upstream`-Kopie.
 
 ## 10.3.15 (2026-10-06)
 

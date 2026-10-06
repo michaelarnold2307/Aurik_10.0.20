@@ -10,10 +10,19 @@ Aufruf:
     python scripts/model_inventory.py          # Konsolen-Bericht
     python scripts/model_inventory.py --json   # Maschinenlesbar (GUI)
     python scripts/model_inventory.py --one-line  # 1-Zeilen-Zusammenfassung (Pipeline-Start)
+    python scripts/model_inventory.py --wiring          # Verdrahtungs-Audit (§G9 copilot-instructions.md)
+    python scripts/model_inventory.py --fail-on-orphans # Gate: Exit 1 bei verwaistem Artefakt
 
 Design-Prinzip: Die Pipeline läuft NIE mit einem Modell, dessen Datei fehlt —
 die Plugins haben Availability-Guards (§V6-DSP-Fallback). Dieses Inventar
 macht die dadurch verbleibende Qualitäts-Lücke SICHTBAR (Anzeigen-Wahrheit).
+
+Zwei Achsen (Befund 2026-10-06):
+  * ``_MODELS`` — **Vorhandensein** je Pfad (30 kuratierte Produktions-Modelle).
+  * ``--wiring`` — **Nutzung** je ``models/``-Verzeichnis: lokal vorhandenes
+    Kapital, das von keiner Produktionsstelle geladen wird, ist ein stiller
+    Verlust (Produktionsbefund: ``ddsp_predictor/c4_head.pth`` trainiert, aber
+    nirgends verdrahtet; ``scnet_4stems`` A/B-gewonnen, aber nirgends verdrahtet).
 """
 
 from __future__ import annotations
@@ -21,6 +30,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import re
 import sys
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -261,6 +271,62 @@ _MODELS: list[ModelEntry] = [
 # das Manifest ist die autoritative Liste (Pflege hier).
 
 
+# ── Verdrahtungs-Audit (§G9 copilot-instructions.md): jedes Modellverzeichnis braucht einen Konsumenten ──
+# Befund 2026-10-06: `models/` enthielt 61 Verzeichnisse, `_MODELS` pflegte 30
+# Einträge — verwaiste Artefakte blieben damit unsichtbar.
+_CONSUMER_ROOTS = ("backend", "plugins", "denker", "cli", "Aurik10")
+
+# Bewusst ohne Konsumenten — JEDER Eintrag ist ein Entscheid mit Begründung
+# und Aufgabenziel, kein vergessener Rest (§G8 copilot-instructions.md, Transparenz).
+_WIRING_ALLOWLIST: dict[str, str] = {
+    "applade": "SOTA-D3/D4-Kandidat (Modulationsrauschen, niedrige Prio) — Bewertung offen",
+    "ddsp_predictor": "trainiert (c4_head.pth), Verdrahtung offen — F5/C4 (EQ/Dynamik-Praediktor)",
+    "gacela_upstream": "Upstream-Architekturkopie als Vergleichsquelle — kein Laufzeitpfad",
+    "matchering2.0": "Referenz-Matching-Werkzeug (Mastering-Vergleich) — Rolle ungeklaert",
+    "scnet_4stems": "A/B gewonnen 2026-10-05 (SI-SDR +10,3…+16,4 dB) — Verdrahtung offen (TODO-P1-2)",
+}
+
+
+def audit_wiring() -> dict[str, str]:
+    """Ordnet jedes Verzeichnis unter ``models/`` einem Verdrahtungs-Status zu.
+
+    Status: ``verdrahtet`` | ``bewusst-verwaist: <Begründung>`` | ``verwaist``.
+
+    Ehrlichkeit zur Methode: geprüft wird die **Namensreferenz** im
+    Produktionscode (untere Schranke — ein Kommentar-Treffer zählt). Das Gate
+    findet damit vollständig unbekannte Artefakte, NICHT falsch verdrahtete.
+    """
+    models_dir = _ROOT / "models"
+    if not models_dir.is_dir():
+        return {}
+
+    consumers: list[str] = []
+    for sub in _CONSUMER_ROOTS:
+        base = _ROOT / sub
+        if not base.is_dir():
+            continue
+        for src in base.rglob("*.py"):
+            if "_vendor" in src.parts:
+                continue
+            consumers.append(src.read_text(encoding="utf-8", errors="ignore"))
+    blob = "\n".join(consumers)
+
+    out: dict[str, str] = {}
+    for entry in sorted(p for p in models_dir.iterdir() if p.is_dir() and not p.name.startswith(".")):
+        if re.search(rf"\b{re.escape(entry.name)}\b", blob):
+            out[entry.name] = "verdrahtet"
+        elif entry.name in _WIRING_ALLOWLIST:
+            out[entry.name] = f"bewusst-verwaist: {_WIRING_ALLOWLIST[entry.name]}"
+        else:
+            out[entry.name] = "verwaist"
+    return out
+
+
+def wiring_allowlist() -> dict[str, str]:
+    """Kopie der begründeten Ausnahmen (öffentliche API für Tests/GUI, §G9 copilot-instructions.md)."""
+    return dict(_WIRING_ALLOWLIST)
+
+
 def scan() -> dict[str, dict]:
     """Prüft Existenz + Größe aller Manifest-Einträge."""
     out: dict[str, dict] = {}
@@ -304,7 +370,34 @@ def main() -> int:
     parser.add_argument("--json", action="store_true", help="Maschinenlesbare Ausgabe (GUI)")
     parser.add_argument("--one-line", action="store_true", help="Nur die 1-Zeilen-Zusammenfassung")
     parser.add_argument("--list", action="store_true", help="Nur die fehlenden Modelle auflisten")
+    parser.add_argument(
+        "--wiring",
+        action="store_true",
+        help="Verdrahtungs-Audit aller models/-Verzeichnisse (§G9 copilot-instructions.md)",
+    )
+    parser.add_argument(
+        "--fail-on-orphans",
+        action="store_true",
+        help="Exit 1, wenn ein Modellverzeichnis ohne Konsumenten und ohne Begründung existiert (Gate)",
+    )
     args = parser.parse_args()
+
+    if args.wiring or args.fail_on_orphans:
+        wiring = audit_wiring()
+        orphans = sorted(k for k, v in wiring.items() if v == "verwaist")
+        print("═" * 100)
+        print("🔌 MODELL-VERDRAHTUNGS-AUDIT (§G9 (copilot-instructions.md)) — jedes Artefakt braucht einen Konsumenten")
+        print("═" * 100)
+        print(f"\nVerzeichnisse: {len(wiring)}  verwaist (undokumentiert): {len(orphans)}\n")
+        for name, status in sorted(wiring.items()):
+            mark = "✅" if status == "verdrahtet" else ("ℹ️" if status.startswith("bewusst") else "❌")
+            print(f"  {mark} {name:24s} {status}")
+        if orphans:
+            print(
+                "\nEntscheid nötig (§G8 copilot-instructions.md): verdrahten, entfernen "
+                "oder mit Begründung in _WIRING_ALLOWLIST aufnehmen."
+            )
+        return 1 if (orphans and args.fail_on_orphans) else 0
 
     s = scan()
     if args.one_line:
