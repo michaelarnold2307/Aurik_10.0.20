@@ -1,4 +1,37 @@
-# Changelog — Aurik 10.3.17
+# Changelog — Aurik 10.3.18
+
+## 10.3.18 (2026-10-06)
+
+### §G9: A/B-Neumessung mit kanonischem Demucs-Helfer — Verdikt revidiert
+
+- **Befund:** Der Vorgänger-A/B (`2026-10-04_p1_2_scnet_vs_mdx23c_ab.md`) verglich
+  SCNet gegen eine Baseline, deren ONNX-Aufruf defekt war: Der STFT-Eingang `x`
+  wurde mit Nullen gefüttert und nur der Wellenform-Zweig genutzt → die Baseline
+  verlor rund **13 dB**.
+- **Fix:** `scripts/eval_scnet_vs_mdx23c.py::_demucs4_baseline` nutzt jetzt den
+  kanonischen Helfer aus `plugins/htdemucs_plugin.py` (Commit `056f1ec1`) —
+  **eine** Implementierung für Plugin und Eval
+  (§G9 copilot-instructions.md).
+- **Neumessung** (identische Songs und Fenster 165/169/107 s, Seed 42, CPU,
+  0 Fehlerfälle):
+
+  | Song | SCNet | Demucs v4 fair | Δ | Demucs v4 alt (handicapiert) |
+  | --- | --- | --- | --- | --- |
+  | AM Contra | 13,57 dB | 11,61 dB | +1,96 dB | 1,54 dB |
+  | Al James | 10,32 dB | 7,01 dB | +3,31 dB | −7,00 dB |
+  | Motor Tapes | 16,43 dB | 12,84 dB | +3,59 dB | −20,07 dB |
+
+- **Revidierte Aussagen:** Der SCNet-Vorsprung beträgt **+1,96…+3,59 dB**
+  (Mittel ≈ +2,96 dB) statt „+10…+16 dB". Demucs v4 **erfüllt beide Gates**
+  (`separation_fidelity` 0,9051–0,9420; `singer_identity_cosine` 0,9478–0,9735)
+  — die frühere Gate-Verletzung war ein Aufrufartefakt, keine Modelleigenschaft.
+  **Neuer Trade-off:** Demucs v4 ist auf CPU **~7× schneller** (9,8 s vs. 68,9 s
+  je 30 s).
+- **Report:** `docs/reports/current/2026-10-06_p1_2_scnet_vs_demucs_fair_ab.md`;
+  der Vorgänger ist als ÜBERHOLT markiert, Roadmap TODO-P1-2 aktualisiert.
+- **C4/C5 bleiben offen** (menschlicher Sign-off); die Hör-Artefakte je Song
+  (`mix`, `gt_vocals`, `scnet_vocals`, `baseline_vocals`) liegen in
+  `output/scnet_ab_2026-10-06_fair/` bereit.
 
 ## 10.3.17 (2026-10-06)
 

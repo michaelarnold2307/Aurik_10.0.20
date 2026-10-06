@@ -285,30 +285,38 @@ def _scnet_separate(model: object, sources: list[str], mix: np.ndarray) -> dict[
 def _demucs4_baseline(mix44: np.ndarray, sr: int = SAMPLE_RATE) -> tuple[dict[str, np.ndarray], str]:
     """Produktions-Stand: Demucs v4 (htdemucs_6s, ONNX-CPU).
 
-    Dokumentierte Ketten-Stufe (v5 existiert nie; htdemucs = v4). Das ONNX-Graph
-    hat ein festes 7,8-s-Fenster (343 980 Samples) plus einen unbenutzten
-    Zusatz-Input ``x`` (Nullen, im Eval verifiziert); längere Segmente werden
-    deterministisch in Fenstern (ohne Overlap) verarbeitet und verkettet.
-    Stem-Reihenfolge des 6s-Modells: drums, bass, other, vocals, guitar, piano.
+    Nutzt den **kanonischen** Aufrufvertrag aus ``plugins.htdemucs_plugin``
+    (STFT-Eingang ``x``, Hybrid-Summe beider Zweige, Stem-Reihenfolge,
+    Modellrate 44,1 kHz) — §G9 (copilot-instructions.md): **eine**
+    Implementierung für Plugin und Eval.
+
+    Befund 2026-10-06: Der frühere eigene Aufruf fütterte ``x`` mit Nullen und
+    nutzte nur den Wellenform-Zweig (``add_67``); die Baseline verlor dadurch
+    rund **13 dB** (Vocals-SI-SDR −1,80 dB statt +11,59 dB, „Motor Tapes“).
+    Der Report ``2026-10-04_p1_2_scnet_vs_mdx23c_ab.md`` ist damit überholt,
+    sofern er gegen diese handicapierte Baseline argumentiert.
     """
     import onnxruntime as ort
 
+    from plugins.htdemucs_plugin import (
+        _HTDEMUCS_SEGMENT,
+        _HTDEMUCS_STEM_ORDER,
+        htdemucs_onnx_stems,
+    )
+
     onnx_path = ROOT / "models" / "demucs" / "htdemucs_6s.onnx"
     sess = ort.InferenceSession(str(onnx_path), providers=["CPUExecutionProvider"])
-    names = ("drums", "bass", "other", "vocals", "guitar", "piano")
-    win = 343980
-    x_aux = np.zeros((1, 4, 2048, 336), dtype=np.float32)
+    win = _HTDEMUCS_SEGMENT
     n_total = mix44.shape[0]
-    acc: dict[str, np.ndarray] = {name: np.zeros_like(mix44) for name in names}
+    acc: dict[str, np.ndarray] = {name: np.zeros_like(mix44) for name in _HTDEMUCS_STEM_ORDER}
     for start in range(0, n_total, win):
         chunk = mix44[start : start + win]
         pad = np.zeros((win, mix44.shape[1]), dtype=np.float32)
         pad[: chunk.shape[0]] = chunk
-        outs = sess.run(None, {"input": pad.T[None].astype(np.float32), "x": x_aux})
-        stems_t = outs[1][0]  # (6, C, win)
+        stems_6 = htdemucs_onnx_stems(sess, pad.T)  # (6, C, win)
         seg_len = chunk.shape[0]
-        for i, name in enumerate(names):
-            acc[name][start : start + seg_len] = stems_t[i].T[:seg_len].astype(np.float32)
+        for pos, name in enumerate(_HTDEMUCS_STEM_ORDER):
+            acc[name][start : start + seg_len] = stems_6[pos].T[:seg_len].astype(np.float32)
     return acc, "demucs_v4_htdemucs_6s_onnx"
 
 

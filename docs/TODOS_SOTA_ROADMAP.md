@@ -316,6 +316,37 @@ F14.
   Offen: **menschliche Hörstichprobe (C4) + Sign-off**; Integration erst danach
   (inkl. GPU-Beschleunigungsnachweis; CPU-Laufzeit ≈ 4,3× RT).
 
+  **Status 2026-10-06 — BASELINE WAR HANDICAPIERT, A/B NEU GEFAHREN:** Bei der
+  Analyse des Artefakts zeigte sich, dass `models/demucs/htdemucs_6s.onnx` ein
+  **hybrider Teilgraph** mit zwei Eingängen (`input` + STFT `x`) und zwei
+  Ausgängen (`output` Spektralzweig, `add_67` Wellenformzweig) ist. Der frühere
+  Aufruf fütterte `x` mit **Nullen** (Spektralzweig tot, Ausgang exakt `0.0`) und
+  nutzte nur `add_67` statt der Hybrid-Summe — gemessen **−1,80 dB** statt
+  **+11,59 dB** Vocals-SI-SDR. Zusätzlich war im **Plugin** die Stem-Reihenfolge
+  permutiert („vocals“ = Drums) und der Pfad speiste **48 kHz** in ein
+  **44,1-kHz**-Modell (weitere 2,56 dB).
+
+  **Korrigierter Lauf** (`output/scnet_ab_2026-10-06_fair/`, identische Songs und
+  Fenster 165/169/107 s, Seed 42, CPU):
+
+  | Song | SCNet SI-SDR | Demucs v4 fair | Δ SCNet | Demucs v4 alt (handicapiert) |
+  | --- | --- | --- | --- | --- |
+  | AM Contra | 13,57 dB | 11,61 dB | +1,96 dB | 1,54 dB |
+  | Al James | 10,32 dB | 7,01 dB | +3,31 dB | −7,00 dB |
+  | Motor Tapes | 16,43 dB | 12,84 dB | +3,59 dB | −20,07 dB |
+
+  **Beide Systeme erfüllen jetzt beide Gates** (Demucs v4: `separation_fidelity`
+  0,9051–0,9420; `singer_identity_cosine` 0,9478–0,9735) — die frühere
+  Gate-Verletzung war ein Aufrufartefakt. **Trade-off neu sichtbar:** Demucs v4
+  ist auf CPU **~7× schneller** (9,8 s vs. 68,9 s je 30 s).
+
+  **Konsequenz:** SCNet bleibt der bessere Kandidat, aber mit ~+3 dB (nicht
+  +10…+16 dB) und dem Siebenfachen an Rechenzeit. Der Aufruf-Fix (10.3.17) hebt
+  die Produktions-Baseline **unabhängig von SCNet** um +10…+33 dB. Report:
+  `docs/reports/current/2026-10-06_p1_2_scnet_vs_demucs_fair_ab.md`; der
+  Vorgänger-Report ist als ÜBERHOLT markiert. **C4/C5 bleiben offen**
+  (menschlicher Sign-off; Hör-Artefakte je Song liegen bereit).
+
 ## TODO-P1-3 · Audibility (JND/Masking) auf alle Schwellwert-Guards
 
 - **Ziel:** Formant-, Wärme-, Onset-, Spektralfarben-, Gain-Step-Toleranzen von fixen dB/Korrelations-Werten

@@ -1,5 +1,19 @@
 # P1-2 A/B — SCNet-4-Stems-Kandidat vs. Produktionsketten-Stand (Demucs v4)
 
+> ⚠️ **ÜBERHOLT (2026-10-06) — nicht mehr als Entscheidungsgrundlage verwenden.**
+> Die hier gemessene Baseline war um **rund 13 dB handicapiert**: Der
+> Demucs-ONNX-Aufruf fütterte den STFT-Eingang `x` mit Nullen (als
+> „State-Tensor“ gedeutet) und nutzte nur den Wellenform-Zweig `add_67` statt der
+> Hybrid-Summe `add_67 + iSTFT(output)`. Der Spektralzweig war damit vollständig
+> tot (Ausgang exakt `0.0`).
+>
+> **Korrigierter Lauf:** `docs/reports/current/2026-10-06_p1_2_scnet_vs_demucs_fair_ab.md`.
+> Kernkorrektur: Der SCNet-Vorsprung beträgt **+1,96…+3,59 dB** (Mittel ≈ +2,96 dB),
+> nicht „+10…+16 dB“ — und Demucs v4 **erfüllt beide Gates**
+> (`separation_fidelity` 0,9051–0,9420; `singer_identity_cosine` 0,9478–0,9735).
+> Die Aussage „Baseline verfehlt beide Gates“ beschrieb einen Aufrufdefekt, keine
+> Modelleigenschaft.
+
 **Datum:** 2026-10-05 (Ausführungssitzung; Nachtrag zum Auftrag M2 „Lane C")
 **Status:** A/B gefahren · Verdikt liegt vor · **Integration offen** (menschliche
 Hörstichprobe C4 + Sign-off)

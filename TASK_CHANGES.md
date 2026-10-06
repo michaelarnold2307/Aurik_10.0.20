@@ -1,6 +1,6 @@
 # TASK_CHANGES — Live-Ledger der aktuellen Aufgabe
 
-> Generiert von `scripts/change_ledger.py snapshot` (Base: `HEAD`, Stand: 2026-10-06 11:42 CEST).
+> Generiert von `scripts/change_ledger.py snapshot` (Base: `HEAD`, Stand: 2026-10-06 12:03 CEST).
 > CI (`ci-lite.yml` pr-evidence-gate) erzwingt Abdeckung: jede geänderte Code-Datei muss hier stehen.
 
 ## Geänderte Dateien
@@ -10,8 +10,11 @@
 | M | `CHANGELOG.md` | modifiziert |
 | M | `README.md` | modifiziert |
 | M | `backend/core/version.py` | modifiziert |
-| M | `plugins/htdemucs_plugin.py` | modifiziert |
+| M | `docs/TODOS_SOTA_ROADMAP.md` | modifiziert |
+| M | `docs/reports/current/2026-10-04_p1_2_scnet_vs_mdx23c_ab.md` | modifiziert |
 | M | `pyproject.toml` | modifiziert |
+| M | `scripts/eval_scnet_vs_mdx23c.py` | modifiziert |
+| ?? | `docs/reports/current/2026-10-06_p1_2_scnet_vs_demucs_fair_ab.md` | ungetrackt |
 
 ## Entscheidungen
 
