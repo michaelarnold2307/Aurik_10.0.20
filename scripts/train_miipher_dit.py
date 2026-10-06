@@ -46,6 +46,7 @@ from torch.utils.data import DataLoader, Dataset, random_split
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
+from backend.core.training_artifacts import save_guarded
 from models.miipher_dit.dit_model import FlowMatchingDiTExportWrapper, create_miipher_dit
 
 # ═══════════════════════════════════════════════════════════════════════════
@@ -505,7 +506,8 @@ def train(
         )
 
         # Save latest checkpoint
-        torch.save(
+        save_guarded(
+            LATEST_PT,
             {
                 "model_state_dict": model.state_dict(),
                 "epoch": epoch + 1,
@@ -514,19 +516,18 @@ def train(
                 "train_loss": avg_train_loss,
                 "val_loss": avg_val_loss,
             },
-            LATEST_PT,
         )
 
         # Save best checkpoint
         if avg_val_loss < best_val_loss:
             best_val_loss = avg_val_loss
-            torch.save(
+            save_guarded(
+                BEST_PT,
                 {
                     "model_state_dict": model.state_dict(),
                     "epoch": epoch + 1,
                     "val_loss": avg_val_loss,
                 },
-                BEST_PT,
             )
             print(f"  ✅ Best checkpoint saved (val_loss={best_val_loss:.4f})")
 

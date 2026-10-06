@@ -2,6 +2,7 @@
 """BW Reconstructor V4 — GAN + MUSDB18 (echte Musik)."""
 
 import random
+import sys
 import time
 from pathlib import Path
 
@@ -11,6 +12,10 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torchaudio
 from scipy.signal import butter, sosfiltfilt
+
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+
+from backend.core.training_artifacts import save_guarded
 
 SR = 22050
 N_FFT = 1024
@@ -267,9 +272,9 @@ def train(data_dir="models/musdb18hq", epochs=100, batch_size=6, lr=1e-4, base_c
         )
         if avg_g < best_loss:
             best_loss = avg_g
-            torch.save(
-                {"model_state_dict": generator.state_dict(), "epoch": epoch, "loss": avg_g},
+            save_guarded(
                 out_dir / "best_model_v4.pt",
+                {"model_state_dict": generator.state_dict(), "epoch": epoch, "loss": avg_g},
             )
 
     # Export ONNX

@@ -31,11 +31,16 @@ import argparse
 import json
 import logging
 import random
+import sys
 import time
 from pathlib import Path
 
 import numpy as np
 import torch
+
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+
+from backend.core.training_artifacts import save_guarded
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 logger = logging.getLogger("train_bigvgan_f3")
@@ -325,11 +330,11 @@ def main() -> int:
             "val_a1": v_a1,
             "cfg": CFG,
         }
-        torch.save(ckpt, out_dir / f"checkpoint_epoch{epoch}.pt")
+        save_guarded(out_dir / f"checkpoint_epoch{epoch}.pt", ckpt)
         if v_a1 < best_val:
             best_val = v_a1
             patience_left = 5
-            torch.save(ckpt, out_dir / "best.pt")
+            save_guarded(out_dir / "best.pt", ckpt)
             logger.info("Neues bestes Modell (Val=%.4f) gespeichert", v_a1)
         else:
             patience_left -= 1

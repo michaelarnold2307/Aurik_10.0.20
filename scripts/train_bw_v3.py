@@ -13,6 +13,7 @@ Generator = CompactUNetV2 (FiLM + U-Net), trainiert durch kombinierten Loss:
   L_total = lambda_L1 * L1 + lambda_STFT * MR-STFT + lambda_GAN * Hinge_G
 """
 
+import sys
 import time
 from pathlib import Path
 
@@ -22,6 +23,10 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torchaudio
 from scipy.signal import butter, sosfiltfilt
+
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+
+from backend.core.training_artifacts import save_guarded
 
 # ═══════════════════════════════════════════════════════════════════════════
 # Config
@@ -358,9 +363,9 @@ def train(epochs=300, batch_size=6, lr=1e-4, base_ch=24, steps_per_epoch=200):
 
         if avg_g < best_loss:
             best_loss = avg_g
-            torch.save(
-                {"model_state_dict": generator.state_dict(), "epoch": epoch, "loss": avg_g},
+            save_guarded(
                 out_dir / "best_model_v3.pt",
+                {"model_state_dict": generator.state_dict(), "epoch": epoch, "loss": avg_g},
             )
 
     # Export ONNX (generator only)

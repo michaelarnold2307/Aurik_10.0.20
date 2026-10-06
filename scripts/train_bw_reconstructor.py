@@ -29,6 +29,10 @@ from pathlib import Path
 
 import numpy as np
 
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+
+from backend.core.training_artifacts import save_guarded
+
 # ── PyTorch-Imports (lazy, damit das Skript ohne GPU zumindest parsed) ──
 try:
     import torch
@@ -274,7 +278,7 @@ def train(
 
         if avg_loss < best_loss:
             best_loss = avg_loss
-            torch.save(model.state_dict(), output_path / "best_model.pt")
+            save_guarded(output_path / "best_model.pt", model.state_dict())
             print(f"  ✓ Best model saved (loss={best_loss:.4f})")
 
     # Export ONNX

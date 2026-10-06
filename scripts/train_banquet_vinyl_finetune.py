@@ -59,6 +59,8 @@ _ROOT = Path(__file__).resolve().parents[1]
 if str(_ROOT) not in sys.path:
     sys.path.insert(0, str(_ROOT))
 
+from backend.core.training_artifacts import save_guarded
+
 logger = logging.getLogger(__name__)
 
 # --- Signalvertrag (plugins/banquet_vinyl_plugin.py::_prepare_input) --------
@@ -746,7 +748,7 @@ def main() -> int:
     out_dir = Path(args.out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
     ckpt_path = out_dir / "banquet_core_f12.pt"
-    torch.save(core.state_dict(), str(ckpt_path))
+    save_guarded(str(ckpt_path), core.state_dict())
     onnx_path, rel = export_core_onnx(core, out_dir / "banquet_core_f12.onnx", device)
     gates["gate_parity"] = bool(rel <= GATE_PARITY_REL)
     gates["parity_rel"] = rel

@@ -8,6 +8,7 @@ Run:  python scripts/train_bw_compact.py
 
 import argparse
 import math
+import sys
 import time
 from pathlib import Path
 from typing import cast
@@ -17,6 +18,10 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torchaudio
+
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+
+from backend.core.training_artifacts import save_guarded
 
 # ═══════════════════════════════════════════════════════════════════════════
 # Config
@@ -277,9 +282,9 @@ def train(
 
         if avg_loss < best_loss:
             best_loss = avg_loss
-            torch.save(
-                {"model_state_dict": model.state_dict(), "epoch": epoch, "loss": avg_loss},
+            save_guarded(
                 output_path / "best_model.pt",
+                {"model_state_dict": model.state_dict(), "epoch": epoch, "loss": avg_loss},
             )
 
     # ── Export ONNX ───────────────────────────────────────────────────────

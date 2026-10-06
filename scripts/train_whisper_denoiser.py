@@ -31,6 +31,8 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch.utils.data import DataLoader, Dataset
 
+from backend.core.training_artifacts import save_guarded
+
 _PROJECT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(_PROJECT))
 
@@ -537,7 +539,8 @@ def train(epochs=50, batch_size=32, lr=1e-4, steps_per_epoch=200, resume=None):
             flush=True,
         )
 
-        torch.save(
+        save_guarded(
+            LATEST_PT,
             {
                 "unet_state_dict": model.unet.state_dict(),
                 "decoder_state_dict": model.decoder.state_dict(),
@@ -545,18 +548,17 @@ def train(epochs=50, batch_size=32, lr=1e-4, steps_per_epoch=200, resume=None):
                 "val_loss": avg_val,
                 "train_loss": avg_train,
             },
-            LATEST_PT,
         )
         if avg_val < best_val:
             best_val = avg_val
-            torch.save(
+            save_guarded(
+                BEST_PT,
                 {
                     "unet_state_dict": model.unet.state_dict(),
                     "decoder_state_dict": model.decoder.state_dict(),
                     "epoch": epoch + 1,
                     "val_loss": avg_val,
                 },
-                BEST_PT,
             )
             print(f"  >> Best: {best_val:.4f}")
 

@@ -10,6 +10,7 @@ Key improvements over V1:
   - Cosine-Warmup für besseres Fine-Tuning
 """
 
+import sys
 import time
 from pathlib import Path
 
@@ -19,6 +20,10 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torchaudio
 from scipy.signal import butter, sosfiltfilt
+
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+
+from backend.core.training_artifacts import save_guarded
 
 # ═══════════════════════════════════════════════════════════════════════════
 # Config
@@ -290,8 +295,8 @@ def train(epochs=300, batch_size=6, lr=1e-4, base_ch=24, steps_per_epoch=200):
 
         if avg_loss < best_loss:
             best_loss = avg_loss
-            torch.save(
-                {"model_state_dict": model.state_dict(), "epoch": epoch, "loss": avg_loss}, out_dir / "best_model.pt"
+            save_guarded(
+                out_dir / "best_model.pt", {"model_state_dict": model.state_dict(), "epoch": epoch, "loss": avg_loss}
             )
 
     # Export ONNX

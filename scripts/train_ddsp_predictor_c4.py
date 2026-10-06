@@ -43,6 +43,9 @@ from scipy.signal import resample_poly, sosfilt
 _ROOT = Path(__file__).resolve().parent.parent
 if str(_ROOT) not in sys.path:
     sys.path.insert(0, str(_ROOT))
+
+from backend.core.training_artifacts import save_guarded
+
 _MUSDB_TRAIN = _ROOT / "data" / "musdb18hq" / "train"
 _MUSDB_TEST = _ROOT / "data" / "musdb18hq" / "test"
 _CACHE_DIR = _ROOT / "output" / "ddsp_c4" / "cache"
@@ -281,7 +284,7 @@ def _train(epochs: int, lr: float, seed: int) -> None:
             per = torch.abs(va_pred - y_va).mean(dim=0).tolist()
         if mae < best_mae:
             best_mae = mae
-            torch.save(head.state_dict(), _OUT_DIR / "c4_head.pth")
+            save_guarded(_OUT_DIR / "c4_head.pth", head.state_dict())
         print(
             f"Epoch {ep + 1}/{epochs}: loss={loss.item():.5f} val_MAE={mae:.5f} per_param={[round(p, 4) for p in per]}"
         )

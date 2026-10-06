@@ -23,6 +23,7 @@ from torch.utils.data import DataLoader
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
+from backend.core.training_artifacts import save_guarded
 from models.symphonia.symphonia_model import create_symphonia
 from scripts.train_cantus import (
     ConditionExtractor,
@@ -303,10 +304,10 @@ def train(args: argparse.Namespace) -> int:
             seed=seed,
             config=config,
         )
-        torch.save(payload, checkpoint_dir / "checkpoint_latest.pt")
+        save_guarded(checkpoint_dir / "checkpoint_latest.pt", payload)
         if validation < best:
             best = validation
-            torch.save(payload, checkpoint_dir / "checkpoint_best.pt")
+            save_guarded(checkpoint_dir / "checkpoint_best.pt", payload)
         report["checkpoints"].append({"epoch": epoch + 1, "step": step, "val_loss": validation})
         logger.info("epoche=%d validierung=%.6f bestwert=%.6f", epoch + 1, validation, best)
     report["best_val_loss"] = best

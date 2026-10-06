@@ -36,6 +36,8 @@ sys.path.insert(0, str(_PROJECT / "models" / "miipher_dit"))
 
 from dit_model import FlowMatchingDiT
 
+from backend.core.training_artifacts import save_guarded
+
 SR = 48_000
 CHUNK_SEC = 2.0
 CHUNK_SAMPLES = int(CHUNK_SEC * SR)
@@ -342,26 +344,26 @@ def train(
             flush=True,
         )
 
-        torch.save(
+        save_guarded(
+            LATEST_PT,
             {
                 "model_state_dict": model.state_dict(),
                 "epoch": epoch + 1,
                 "val_loss": avg_val,
             },
-            LATEST_PT,
         )
 
         if avg_val < best_val - MIN_VAL_LOSS_IMPROVEMENT:
             best_val = avg_val
             patience_counter = 0
-            torch.save(
+            save_guarded(
+                BEST_PT,
                 {
                     "model_state_dict": model.state_dict(),
                     "epoch": epoch + 1,
                     "val_loss": avg_val,
                     "production_ready": False,  # Not yet — still training
                 },
-                BEST_PT,
             )
             print(f"  >> Best: {best_val:.6f}")
         else:
@@ -370,14 +372,14 @@ def train(
         # §v10.600: Production-Readiness Gate (Ep 30 + convergence)
         if epoch >= 29 and best_val < 1e-4:
             production_ready = True
-            torch.save(
+            save_guarded(
+                BEST_PT,
                 {
                     "model_state_dict": model.state_dict(),
                     "epoch": epoch + 1,
                     "val_loss": avg_val,
                     "production_ready": True,
                 },
-                BEST_PT,
             )
             print(f"  >> PRODUCTION READY: Ep {epoch + 1}, val={best_val:.6f}")
 

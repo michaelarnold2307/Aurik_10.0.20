@@ -41,6 +41,8 @@ import torch.nn.functional as F
 from scipy.io import wavfile
 from scipy.signal import resample_poly
 
+from backend.core.training_artifacts import save_guarded
+
 _ROOT = Path(__file__).resolve().parent.parent
 _MUSDB = _ROOT / "data" / "musdb18hq"
 _CKPT = _ROOT / "models" / "diffwave" / "diffwave.ckpt"
@@ -480,7 +482,7 @@ def main() -> int:
             best_val = val_mean
             best_epoch = epoch
             no_improve = 0
-            torch.save(model.state_dict(), str(_OUT_CKPT))
+            save_guarded(str(_OUT_CKPT), model.state_dict())
             tag = " *best*"
         else:
             no_improve += 1

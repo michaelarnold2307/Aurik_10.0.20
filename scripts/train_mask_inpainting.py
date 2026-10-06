@@ -34,6 +34,8 @@ sys.path.insert(0, str(_PROJECT / "models" / "miipher_dit"))
 
 from dit_model import FlowMatchingDiT
 
+from backend.core.training_artifacts import save_guarded
+
 SR = 48_000
 CHUNK_SEC = 2.0
 CHUNK_SAMPLES = int(CHUNK_SEC * SR)
@@ -200,7 +202,7 @@ def train(epochs: int = 20, lr: float = 5e-5):
         avg = train_loss / max(n_steps, 1)
         print(f"Ep {epoch + 1:3d}/{epochs} | Loss {avg:.6f} | {time.time() - t0:.0f}s", flush=True)
 
-        torch.save({"model_state_dict": model.state_dict(), "epoch": epoch + 1, "val_loss": avg}, MASK_BEST)
+        save_guarded(MASK_BEST, {"model_state_dict": model.state_dict(), "epoch": epoch + 1, "val_loss": avg})
         if avg < best_val:
             best_val = avg
             print(f"  >> Best: {best_val:.6f}")

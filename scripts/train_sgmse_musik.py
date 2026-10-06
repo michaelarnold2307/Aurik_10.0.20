@@ -49,6 +49,8 @@ import torch.nn.functional as F
 from scipy.signal import fftconvolve
 from torch.utils.data import DataLoader, Dataset
 
+from backend.core.training_artifacts import save_guarded
+
 logger = logging.getLogger(__name__)
 
 # Divergenzschutz (Befund 2026-10-05, §V6/§V7 (VERBOTEN.md)):
@@ -467,20 +469,20 @@ def train(
             flush=True,
         )
 
-        torch.save(
+        save_guarded(
+            out_dir / "checkpoint_latest.ckpt",
             {
                 "model_state_dict": model.state_dict(),
                 "epoch": epoch + 1,
                 "optimizer_state_dict": optimizer.state_dict(),
                 "val_loss": avg_val,
             },
-            out_dir / "checkpoint_latest.ckpt",
         )
         if avg_val < best_val:
             best_val = avg_val
-            torch.save(
-                {"model_state_dict": model.state_dict(), "epoch": epoch + 1, "val_loss": avg_val},
+            save_guarded(
                 out_dir / "sgmse_musik_best.ckpt",
+                {"model_state_dict": model.state_dict(), "epoch": epoch + 1, "val_loss": avg_val},
             )
             print(f"  >> Best: {best_val:.4f}")
         elif best_val < float("inf") and avg_val > _ROLLBACK_FACTOR * best_val:
@@ -504,14 +506,14 @@ def train(
             # Resume-Pfad setzt best_val daraus — mit dem divergierten Wert wäre der
             # Rollback-Guard nach einem Resume entwaffnet (Befund 2026-10-05:
             # dort stand 13,7178 bei korrekten Best-Gewichten).
-            torch.save(
+            save_guarded(
+                out_dir / "checkpoint_latest.ckpt",
                 {
                     "model_state_dict": rb["model_state_dict"],
                     "epoch": epoch + 1,
                     "optimizer_state_dict": optimizer.state_dict(),
                     "val_loss": best_val,
                 },
-                out_dir / "checkpoint_latest.ckpt",
             )
             logger.warning(
                 "Finetune: Val %.4f > %.1fx Best %.4f (Ep %d) — Rollback auf Best-Checkpoint (%d/%d)",
