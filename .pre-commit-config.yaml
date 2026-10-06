@@ -625,6 +625,18 @@ repos:
         pass_filenames: false
         files: \.py$
 
+      # SOTA-Defizit-Register (WP-0) — Beleg/Evidenz/Klasse fail-closed.
+      # Wurzel-Gate (2026-10-06): eine Domänen-Behauptung ohne Existenz-Beleg
+      # (K0 „still ess Kapital", K2 Sprach-Signalpfad) blieb bisher unsichtbar;
+      # der Domänen-Abgleich zieht Register und kuratiertes Manifest auf eine
+      # Quelle (§G9 (copilot-instructions.md)).
+      - id: aurik-sota-deficit-gate
+        name: "SOTA-Defizit-Register (WP-0: Beleg/Evidenz/Klasse fail-closed)"
+        entry: .venv_aurik/bin/python scripts/sota_deficit_gate.py
+        language: system
+        pass_filenames: false
+        always_run: true
+
       # Conventional Commits Message Validation
       - id: conventional-commit-msg
         name: "Conventional Commits (feat/fix/docs/style/refactor/perf/test/chore/spec/build/ci)"

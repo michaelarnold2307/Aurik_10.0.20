@@ -1,13 +1,20 @@
 #!/usr/bin/env python3
 """scripts/train_bigvgan_f3.py — F3: BigVGAN-v2 Musik-Finetune (HR-V1/03/23/50/07).
 
-§SOTA-F3 (Roadmap TODOS_SOTA_ROADMAP.md): BigVGAN-v2 ist sprach-trainiert
-(LibriTTS/LJSpeech). Der Musik-Finetune adaptiert den Generator an
-MUSDB18-HQ als Rekonstruktions-Vocoder — Ziel: der additive HR-V1-
-Synthesepfad (phase_07 + 23/50/03) rekonstruiert Musik-Harmonik korrekt
-statt Sprach-Artefakte. A/B-Teilvalidierung liegt vor (af +0,0073,
-HNR +4,42 dB); dieses Skript liefert den MUSDB-Finetune für das
-Roadmap-Gate (ΔSDR ≥ +2 dB, gemessen NACH dem Lauf via
+§SOTA-F3 (Roadmap TODOS_SOTA_ROADMAP.md): Der Basischeckpoint
+`models/bigvgan/bigvgan_v2.pth` ist BigVGAN v2 in der **44,1-kHz-Konfiguration**
+(`bigvgan_v2_44khz_128band_512x`: 128 Mel-Bänder, 512×, 1536 Kanäle, SnakeBeta).
+**KORREKTUR 2026-10-06 (§III.13 (copilot-instructions.md)):** Die frühere Angabe
+„BigVGAN-v2 ist sprach-trainiert (LibriTTS/LJSpeech)" war eine unbelegte
+Doku-Übernahme und ist architektur-**widerlegt** — die LibriTTS-Konfiguration
+derselben Familie ist 24 kHz/100 Bänder/256×/512 Kanäle. Der Trainingskorpus der
+Basis ist lokal **nicht belegbar** (Checkpoint enthält nur `{"generator": …}`
+ohne Hparams, keine Modell-Karte, kein Upstream-SHA) und gilt daher nach §III.13
+als `unbekannt` — nicht als „Sprache". Der Musik-Finetune adaptiert den Generator
+an MUSDB18-HQ als Rekonstruktions-Vocoder — Ziel: der additive HR-V1-Synthesepfad
+(phase_07 + 23/50/03) rekonstruiert Musik-Harmonik korrekt statt Basis-Artefakte.
+A/B-Teilvalidierung liegt vor (af +0,0073, HNR +4,42 dB); dieses Skript liefert
+den MUSDB-Finetune für das Roadmap-Gate (ΔSDR ≥ +2 dB, gemessen NACH dem Lauf via
 scripts/validate_hr_v1.py auf dem Finetune-Checkpoint).
 
 Rezept (EAR-VAE-Muster, deterministisch §G5 (GEBOTE.md)):

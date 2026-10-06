@@ -1,4 +1,165 @@
-# Changelog — Aurik 10.3.22
+# Changelog — Aurik 10.4.0
+
+## 10.4.0 (2026-10-06)
+
+### SOTA-Defizit-Register + Gate (WP-0) — stilles Kapital wird auditierbar
+
+**Wurzel-Fix (§V7 copilot-instructions.md):** Der Modell-/Wohlklang-Defizit-Stand
+war über Roadmap-Prosa, Changelog und Lauf-Reports verstreut; drei Defizit-Klassen
+(belegt trainiert-aber-nicht-deployt, synthetisch-statt-Musik, Sprach-Signalpfad)
+waren **nirgends** als solche geführt.
+
+- **Neu: `.github/SOTA_DEFICIT_REGISTER.md`** — ID-getrackte Matrix
+  `D-<Klasse>-<n>` mit **20 Einträgen** (K0 = 9, K1 = 2, K2 = 5, K3 = 4),
+  Status-Enum (`offen`/`in-arbeit`/`geschlossen`/`bewusst-akzeptiert`) und
+  **Evidenzpflicht pro Zeile** (§III.13 copilot-instructions.md): `geschlossen`
+  ist nur mit **existierendem** Beleg-Pfad zulässig; Domänen-Behauptungen
+  (`musik`/`sprache`/`gemischt`) brauchen konkrete, prüfbare Evidenz —
+  `unbekannt` ist die ehrliche Angabe statt einer Sprach-Vermutung.
+- **Neu: `scripts/sota_deficit_gate.py`** — fail-closed Gate für genau diese
+  drei Akzeptanzkriterien des Roadmap-Arbeitspakets WP-0, plus
+  **Domänen-Abgleich Register ↔ kuratiertes Manifest** (§G9
+  copilot-instructions.md — eine Quelle). Verdrahtet als Pre-Commit-Hook
+  `aurik-sota-deficit-gate` (`always_run`).
+- **Neu: `tests/normative/test_sota_deficit_gate.py`** — 26 Tests: Bestands-
+  Nachweis am echten Register und Regel-Nachweis über synthetische Register-
+  Texte (Status/Evidenz/Klasse/ID/Enum/Format/Domänen-Abgleich) sowie
+  Hook-Verdrahtung.
+
+### Artefakt-Probe: **alle** Modelle am Artefakt ausgelesen (§III.13)
+
+**Wurzel-Fix (§V7 copilot-instructions.md):** Die Domänen- und Identitätsaussagen
+zu den ML-Modellen stammten aus Doku — bis hin zu einer nachweislich falschen
+LibriTTS-Zuordnung. Jetzt wird jedes Modell-Artefakt **gemessen**:
+
+- **Neu: `scripts/model_artifact_probe.py`** — liest ONNX-Köpfe (ohne External
+  Data), Torch-Zip **und** Legacy-Pickles über einen _restricted Unpickler_, der
+  Gewichte **nie materialisiert** (Storage-/Tensor-Stubs), dazu safetensors-,
+  npy- und joblib-Header. Gemessen werden Mel-Bänder, Upsample-Faktor,
+  Kanalbreiten, Parameterzahl, Hparams (`config`/`hparams`/`args`), Dtype-Mix,
+  Operator-Mix und die lokale Doku-Evidenz (`config.json`, Modell-Karten, Lizenz).
+- **Neu: `.github/ML_ARTIFACT_FINGERPRINTS.md`** (generiert, 66 Verzeichnisse ·
+  **153 Artefakte** · 44,1 GB · **0 Auslesefehler**) — je Verzeichnis eine
+  Messtabelle mit SHA-256, Parameterzahl und Architektur-Fingerabdruck.
+  Formate: 89× ONNX, 49× Torch-Zip, 3× Legacy-Pickle, 5× npy, 2× safetensors,
+  2× TorchScript, 2× joblib, 1× pip-`.pth` (korrekt als _kein_ Modellartefakt
+  klassifiziert statt als Fehler).
+- **Herkunftsbelege maschinell (Muster EAR-VAE, jetzt für alle):**
+  Archiv `models/_archive_20260920` ↔ deployt → **8× byte-identisch**,
+  **6× architektur-gleich mit abweichenden Gewichten** (Finetune-/Generations-
+  belege), **14× ohne Gegenstück** (offen dokumentiert).
+- **Neue harte Befunde:** `models/nvsr/nvsr.onnx` ist **byte-identisch** mit
+  `_archive_20260920/flashsr/flashsr_onnx_prod_20260810.onnx` ⇒ das deployte
+  Artefakt ist der **FlashSR**-Export, nicht ein NVSR-Modell (Namens-Drift, jetzt
+  als D-K2-4 geführt). Die **Upstream-Basis** der EAR-VAE
+  (`…/pretrained_weight/ear_vae_44k.pyt`, 147,86 M) und der **Sprach-Basis-Core**
+  von SGMSE+ (`sgmse_wsj0_reverb.ckpt`, 327,95 M) liegen jetzt lokal als
+  Vergleichsartefakte vor — die §III.11-Sperre ist damit gegen die echte Basis
+  prüfbar.
+- **Ehrlichkeit:** Aus Bytes ist die **Architektur-Identität** belegbar, **nicht**
+  der **Trainingskorpus** (ein ONNX trägt kein Trainingsmaterial). Die neuen
+  Vokoder-Einstufungen bleiben deshalb `unbekannt` statt „Sprache" (s. u.).
+
+### Lücken-Matrix (gemessen) — was Aurik zum weltbesten Wohlklang fehlt
+
+- **Neu in `docs/TODOS_SOTA_ROADMAP.md`:** konsolidierte **Lücken-Matrix**
+  (A) vorhandenes, aber nicht wirkendes Kapital, (B) fehlende Modelle/
+  Fähigkeiten, (C) Pfad-/Hygiene-Lücken, (D) priorisierte Reihenfolge — jede
+  Zeile auf lokale Messungen gestützt (Artefakt-Probe, Verdrahtungs-Audit,
+  Flags, Defizit-Register).
+- **Neu im Register:** **D-K0-8** — der trainierte flache Material-/Depth-
+  Klassifikator (`models/medium_shallow_v1.joblib`, CV 64,3 %/85,7 % bei n=56)
+  hat **keinen Konsumenten** (`medium_classifier` nutzt im `use_ml`-Zweig CLAP);
+  die Vergleichs-Baseline stammt aus Manifest-Feldern und ist **nicht
+  applikationsgleich** — Rollout erst nach fairem Re-Measurement + A/B +
+  Hörordnungs-Sign-off. **D-K0-9** — `models/ear_vae2_upstream/` (EAR-VAE v2)
+  braucht eine Rollout-/Ersatz-Entscheidung gegen den v1-Finetune.
+- **Verifizierter Ist-Stand der Pfade:** 22 Pfad-/Aktivierungstests grün
+  (`test_model_zoo_activation`, `test_primary_paths_no_fallback`,
+  `test_model_inventory_wiring`), Verdrahtung **0 undokumentierte Verwaiste**,
+  Register-Gate ohne Verstoß.
+
+### Fehlende Modelle aus der Sicherung beschafft
+
+- **Bestandsabgleich** Repo ↔ drei Sicherungen (16.09./21.09./06.10.2026):
+  die 06.10.-Sicherung ist deckungsgleich, die älteren enthielten **7 fehlende
+  Bestände** — sie sind jetzt in-repo:
+  `_archive_20260920/` (9,7 G, 26 Artefakte, Herkunftsbelegstelle),
+  `ear_vae2_upstream/` (EAR-VAE-**v2**-Upstream, 298 M),
+  `hubert/` (HuBERT-ONNX + External Data, 362 M),
+  `mpsenet/` (MP-SENet-Trainingsquelle + `best_ckpt`, 8,8 M),
+  `rvc/` (`rmvpe.pt` 181 M, `hubert_base.pt` 190 M — Originale zu den
+  deployten ONNX-Exporten), `medium_shallow_v1.joblib` (**trainierter**
+  Material-Klassifikator, 1,7 M) sowie die fehlenden Teile
+  `ear_vae/{docs,eval,config/ear_vae_v2.json}`.
+- **Verfahren:** `rsync --ignore-existing` (vorhandene Produktionsartefakte
+  werden **nie** überschrieben), `.venv`/`.cache` ausgeschlossen. `models/`:
+  62 → 69 Einträge.
+- **Register:** neue Position **D-K0-7** — das Archiv ist „stilles Kapital":
+  für 14 Artefakte ohne Gegenstück ist weder Deploy noch Verwerfen dokumentiert;
+  die `ear_vae/*_orig_20260730_backup.onnx` (84,1/84,3 M) werden ausdrücklich
+  **nicht** mit dem deployten Finetune (73,8 M) gleichgesetzt.
+
+### Vocoder-Domäne am Artefakt gemessen — Doku-Zuordnung widerlegt (§III.13)
+
+**Wurzel-Fix (§V7 copilot-instructions.md):** Der Gate-Fund (Manifest
+`audio-allgemein` vs. Registry `sprache`) wurde **nicht** durch Übernahme der
+Registry-Worte gelöst, sondern durch Messung **am Artefakt** — die Registry-Angabe war selbst
+  nur Doku-Übernahme (Ursprung: Kopfkommentar `scripts/train_bigvgan_f3.py`).
+  Gemessen: `models/bigvgan/bigvgan_v2.onnx`/`.pth` hat **128 Mel-Bänder**
+  (`conv_pre.weight_v` = `[1536, 128, 7]`), 6 Up-Stufen = **512×**,
+  `upsample_initial_channel` 1536, **SnakeBeta** (109×`alpha` **und** 109×`beta`)
+  mit Anti-Alias und 122,19 M Parameter ⇒ **BigVGAN v2 in der
+  44,1-kHz-Konfiguration** (`bigvgan_v2_44khz_128band_512x`) — die Behauptung
+  „LibriTTS/Sprache" ist damit **architektur-widerlegt** (LibriTTS-Konfiguration
+  = 24 kHz/100 Bänder/256×/512 Kanäle/≈14 M). `models/hifi_gan/hifi_gan.onnx`
+  hat **80 Mel-Bänder**, `[8,8,2,2]`/`[16,16,4,4]` = **256×**, Kanäle **128/64**
+  ⇒ 0,93 M Parameter, 22 050 Hz ⇒ HiFi-GAN-Topologie, aber **kein offizieller
+  Checkpoint** (V1: 512 Kanäle/13,9 M; V2: `[4,4,2,2]`/`[8,8,4,4]`) ⇒ die
+  Zuordnung „UNIVERSAL_V1" ist widerlegt. Ohne Modell-Karte, Hparams oder
+  Upstream-SHA ist der Trainingskorpus nicht belegbar ⇒ beide Vocoder sind
+  **`unbekannt`** (nicht „Sprache"); das Signalpfad-Risiko bleibt als Defizit
+  (D-K0-2/D-K2-1) erhalten.
+
+- **Deployt = Basis, nicht F3-Finetune (bytescharf bewiesen):** 469 von 783
+  Tensoren unterscheiden sich zwischen `models/bigvgan/bigvgan_v2.pth` und
+  `output/_training_archive_20260920/f3_bigvgan/best.pt`; der produktiv geladene
+  ONNX stimmt exakt mit der **Basis** (`ups.1.0.weight_v`: max|Δ| = 0 gegen
+  Basis, 1,0e-1 gegen F3) und datiert auf 2026-09-10 (Finetune: 2026-10-03) —
+  der Export kann ihn nicht enthalten. Der F3-Musik-Finetune bleibt damit
+  weiterhin nicht im Rollout.
+- **Doku-Wahrheit hergestellt:** `.github/ML_MODEL_DOMAIN_REGISTRY.md` erhält
+  den Mess-Block §4a und korrigierte Tabellenzeilen;
+  `.github/SOTA_DEFICIT_REGISTER.md` (D-K0-2, D-K2-1, Drift-Abgleich samt Lehre),
+  `scripts/model_inventory.py` (`_DOMAIN_EVIDENCE` mit Messwerten, neu für
+  bigvgan), `scripts/train_bigvgan_f3.py` (Ursprungs-Fehlannahme) und
+  `.github/instructions/ml_domain.instructions.md` (Regeln 2 und 5) sind
+  synchronisiert; der Drift-Sperrtest
+  (`test_curated_manifest_marks_unproven_vocoders_as_unknown`) sichert die
+  Artefakt-Evidenz ab. Kuratierte Verteilung: 32 Einträge
+  (22 musik / 3 sprache / 5 audio-allgemein / 2 unbekannt).
+- **EAR-VAE-Herkunft geklärt — eigene Fehlannahme widerlegt (§III.13
+  copilot-instructions.md):** Die erste Fassung dieses Releases führte die
+  Roadmap-Angabe „EAR-VAE MUSDB-Finetune" als **nicht belegbar** (nur im
+  Arbeitsbaum gesucht). Die Prüfung des Backups
+  (`/media/michael/Aurik_Backup/…/models/ear_vae_upstream/`) zeigt das
+  Gegenteil: `models/ear_vae/{encoder,decoder}.onnx` (`8f97ef67…`/`ed64a1f1…`)
+  sind **byte-identisch** mit `ear_vae_ft_{encoder,decoder}_inline.onnx` — der
+  Produktionsstand **ist** der MUSDB-Finetune; die früher genannten SHAs
+  `4168db14…`/`48dad212…` sind derselbe Finetune in der External-Data-Variante.
+  Der Checkpoint `ear_vae_music_finetuned.pyt` (SHA `993e69be…`) und das
+  Trainings-/Exportrezept (`finetune_music.py`, `masking_loss.py`,
+  `export_finetuned_onnx.py`, `benchmark_finetuned.py`, `model/`, `config/`)
+  liegen jetzt **in-repo** unter `models/ear_vae/` — mitsamt der External-Data-
+  Paarung `ear_vae_ft_{encoder,decoder}.onnx` (+ `.data`; SHAs
+  `4168db14…`/`48dad212…`, nicht der Produktionspfad). Ein Re-Export reproduziert
+  die deployten ONNX-Artefakte mit **max|Δ| = 0,0** (Encoder, Decoder,
+  Ende-zu-Ende); die kopierte External-Data-Paarung liefert ebenfalls
+  max|Δ| = 0,0 gegen die Produktion. Registry-Absatz, Register, Roadmap und das
+  kuratierte Manifest (`_DOMAIN_EVIDENCE`: 2 neue kuratierte Pfade →
+  32 Einträge) sind korrigiert.
+- **Verankerung:** `AGENTS.md` §7 (Lektüre-Einstieg), Roadmap WP-0 auf
+  „erledigt" gesetzt; Drift-Baseline fortgeschrieben.
 
 ## 10.3.22 (2026-10-06)
 
@@ -58,7 +219,8 @@ Sprachmodelle") ist damit widerlegt.
 **Aufgedeckte Domänen-Korrekturen (Evidenz):**
 
 - `models/ear_vae` = offizielles **Musik**-Rekonstruktionsmodell (εar-VAE) —
-  interner MUSDB-Finetune existiert, ist aber nicht deployt.
+  **Korrektur 2026-10-06:** der deployte Stand ist der **MUSDB-Musik-Finetune**
+  (SHA-belegt, siehe 10.4.0); die damalige Angabe „nicht deployt" war falsch.
 - `models/miipher_dit` = auf **MUSDB18-HQ-Vocals** trainiert („Singing Voice
   Enhancement"), **aktiv** (`use_miipher_dit=True`) — kein Sprachmodell.
 - `models/bigvgan` = **Sprach-Basis**; Musik-Finetune F3 existiert und ist

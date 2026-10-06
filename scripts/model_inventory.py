@@ -167,15 +167,54 @@ _MODELS: list[ModelEntry] = [
         "MIT",
         "HF: South-TP-AI-Lab/SingMOS-Pro → scripts/export_singmos_onnx.py",
     ),
+    # §III.13 (copilot-instructions.md) + §G9 (copilot-instructions.md):
+    # KORREKTUR 2026-10-06 — lokal AM ARTEFAKT gemessen, nicht aus der Doku
+    # übernommen. Die frühere Einstufung "sprache" war eine reine Doku-Übernahme
+    # (Registry + Skript-Kopf) und ist durch die Architektur widerlegt:
+    #   * bigvgan_v2.onnx/.pth: `conv_pre.weight_v` = [1536, 128, 7] ⇒ 128
+    #     Mel-Bänder, 6 Up-Stufen ⇒ 512×, 109×alpha UND 109×beta ⇒ SnakeBeta +
+    #     Anti-Alias (`activation_post.downsample.lowpass.filter`), 122,19 M
+    #     Parameter ⇒ die 44,1-kHz-Konfiguration (bigvgan_v2_44khz_128band_512x).
+    #     Die LibriTTS-Konfiguration derselben Familie ist 24 kHz/100 Bänder/
+    #     256×/512 Kanäle/≈14 M ⇒ "LibriTTS/Sprache" ist damit WIDERLEGT.
+    #   * hifi_gan.onnx: 80 Mel-Bänder, [8,8,2,2]/[16,16,4,4] = 256×, aber nur
+    #     128/64 Kanäle ⇒ 0,93 M Parameter (offizieller V1: 512 Kanäle/13,9 M;
+    #     offizieller V2: [4,4,2,2]/[8,8,4,4]) ⇒ kein offizieller Checkpoint;
+    #     die Zuordnung "UNIVERSAL_V1" ist WIDERLEGT.
+    # Ohne Trainings-Skript-Korpus, Modell-Karte oder SHA-Identität gegen
+    # Upstream gilt nach §III.13 "unbekannt" — niemals "Sprache"
+    # (Evidenzpflicht; Signalpfad-Risiko bleibt als Defizit bestehen).
     ModelEntry(
         "models/hifi_gan/hifi_gan.onnx",
-        "HiFi-GAN Vocoder",
-        "audio-allgemein",
+        "HiFi-GAN Vocoder (Topologie belegt, Domäne unbelegt)",
+        "unbekannt",
         "MIT",
-        "github: jik876/hifi-gan (UNIVERSAL_V1)",
+        "lokal: models/hifi_gan/hifigan_infer.py (22 050 Hz) — kein Upstream-SHA-Nachweis",
     ),
     ModelEntry(
-        "models/bigvgan/bigvgan_v2.onnx", "BigVGAN Vocoder", "audio-allgemein", "MIT", "github: NVIDIA/BigVGAN (v2)"
+        "models/bigvgan/bigvgan_v2.onnx",
+        "BigVGAN v2 Vocoder (44,1-kHz-Konfiguration, Domäne unbelegt)",
+        "unbekannt",
+        "MIT",
+        "lokal: plugins/bigvgan_v2_plugin.py (bigvgan_v2_44khz_128band_512x) — kein Upstream-SHA-Nachweis",
+    ),
+    # EAR-VAE (Phase-0 Clean-Pass): deployter Stand = MUSDB-Musik-Finetune
+    # (SHA-belegt 2026-10-06): `encoder.onnx`/`decoder.onnx` sind byte-identisch
+    # mit `ear_vae_ft_encoder_inline.onnx`/`ear_vae_ft_decoder_inline.onnx` aus
+    # `models/ear_vae/export_finetuned_onnx.py`.
+    ModelEntry(
+        "models/ear_vae/encoder.onnx",
+        "EAR-VAE Encoder (musik-finetunt)",
+        "musik",
+        "intern (Upstream MIT) + MUSDB-Finetune",
+        "intern: models/ear_vae/export_finetuned_onnx.py (aus ear_vae_music_finetuned.pyt)",
+    ),
+    ModelEntry(
+        "models/ear_vae/decoder.onnx",
+        "EAR-VAE Decoder (musik-finetunt)",
+        "musik",
+        "intern (Upstream MIT) + MUSDB-Finetune",
+        "intern: models/ear_vae/export_finetuned_onnx.py (aus ear_vae_music_finetuned.pyt)",
     ),
     ModelEntry(
         "models/gacela/model/gacela_core.onnx",
@@ -287,6 +326,22 @@ _WIRING_ALLOWLIST: dict[str, str] = {
     "gacela_upstream": "Upstream-Architekturkopie als Vergleichsquelle — kein Laufzeitpfad",
     "matchering2.0": "Referenz-Matching-Werkzeug (Mastering-Vergleich) — Rolle ungeklaert",
     "scnet_4stems": "A/B gewonnen 2026-10-05 (SI-SDR +10,3…+16,4 dB) — Verdrahtung offen (TODO-P1-2)",
+    # Beschaffung 2026-10-06 (Bestandsabgleich Repo ↔ Sicherung): drei
+    # Herkunfts-/Belegbestände ohne Laufzeitpfad — bewusst vorgehalten, damit
+    # Basis ↔ Finetune am Artefakt prüfbar ist (§III.13 Evidenzpflicht).
+    "ear_vae2_upstream": (
+        "EAR-VAE-v2-Upstream-Klon (Phase-0-Clean-Pass) als Herkunfts-/Vergleichsquelle "
+        "in-repo; kein Laufzeitpfad — Rollout-Entscheidung offen (Register D-K0-7)"
+    ),
+    "hubert": (
+        "HuBERT-ONNX (+ External Data) als Herkunftsbeleg zum RVC-Backbone "
+        "`models/rvc/hubert_base.pt`; kein Produktionskonsument über `resolve_model_path`"
+    ),
+    "mpsenet": (
+        "MP-SENet-Trainingsquelle (Upstream-Repo-Kopie mit `best_ckpt/`) als "
+        "Herkunftsbeleg für `models/mp_senet/`; Laufzeit läuft ausschließlich über "
+        "`models/mp_senet/` (§G9 (copilot-instructions.md) — eine Quelle)"
+    ),
 }
 
 
@@ -311,7 +366,28 @@ _DOMAIN_EVIDENCE: dict[str, str] = {
     "models/basicpitch/basicpitch.onnx": "spotify/basic-pitch (Musik)",
     "models/bw_reconstructor/bw_reconstructor.onnx": "train_bw_reconstructor.py → MUSDB18-HQ (Musik)",
     "models/singmos/singmos_pro.onnx": "SingMOS Pro (Gesang/Musik)",
-    "models/hifi_gan/hifi_gan.onnx": "HiFi-GAN UNIVERSAL_V1 (sprach-trainiert; auf Musik nur §V6-Fallback)",
+    # GEMESSEN 2026-10-06 (ONNX-Introspection; §III.13-Evidenzpflicht).
+    "models/hifi_gan/hifi_gan.onnx": (
+        "lokal gemessen: 80 Mel-Bänder, Upsample [8,8,2,2]/Kernel [16,16,4,4] = 256×, "
+        "Kanäle 128/64 ⇒ 0,93 M Parameter, 22 050 Hz (hifigan_infer.py) ⇒ HiFi-GAN-"
+        "Topologie, aber KEIN offizieller V1-Checkpoint (512 Kanäle/13,9 M) und kein V2 "
+        "([4,4,2,2]/[8,8,4,4]); Korpus ohne Karte/Hparams/SHA nicht belegbar ⇒ "
+        "§III.13: Domäne unbekannt (nicht 'Sprache')"
+    ),
+    "models/bigvgan/bigvgan_v2.onnx": (
+        "lokal gemessen: 128 Mel-Bänder (conv_pre.weight_v [1536,128,7]), 6 Up-Stufen "
+        "⇒ 512×, upsample_initial_channel 1536, SnakeBeta (109×alpha + 109×beta) + "
+        "Anti-Alias, 122,19 M Parameter ⇒ BigVGAN v2 in der 44,1-kHz-Konfiguration "
+        "(bigvgan_v2_44khz_128band_512x); die LibriTTS-Zuordnung (24 kHz/100 Bänder/"
+        "256×/512 Kanäle/≈14 M) ist architektur-widerlegt; Korpus ohne Karte/Hparams/"
+        "SHA nicht belegbar ⇒ §III.13: Domäne unbekannt (nicht 'Sprache')"
+    ),
+    "models/ear_vae/encoder.onnx": (
+        "MUSDB18-Musik-Finetune (finetune_music.py) — SHA == ear_vae_ft_encoder_inline.onnx (Musik)"
+    ),
+    "models/ear_vae/decoder.onnx": (
+        "MUSDB18-Musik-Finetune (finetune_music.py) — SHA == ear_vae_ft_decoder_inline.onnx (Musik)"
+    ),
     "models/gacela/model/gacela_core.onnx": "TencentARC/GACELA (MAESTRO, Musik)",
     "models/mert/mert.onnx": "m-a-p/MERT-v1 (160k h Musik)",
     "models/mert-v1-330m/pytorch_model.bin": "m-a-p/MERT-v1-330M (Musik)",

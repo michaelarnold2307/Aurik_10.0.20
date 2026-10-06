@@ -38,15 +38,21 @@ tatsächlich im Signalpfad liegenden Kerne (Separation, Pitch, Gesang, Inpaintin
 Deklipper) **Musik-Modelle** sind.
 
 **Zusatz-Beleg — kuratiertes Produktions-Manifest** (`scripts/model_inventory.py
---domains`): Von den **30** kuratierten Produktionsmodellen sind **20 musik**
-(≈ 67 %), **3 sprach** und **7 audio-allgemein**. Auch im aktiven Pfad dominiert
-Musik — nicht Sprache.
+--domains`, Stand 2026-10-06): Von den **32** kuratierten Produktionsmodellen
+sind **22 musik** (≈ 69 %), **3 sprach**, **5 audio-allgemein** und
+**2 unbekannt** (`models/bigvgan/bigvgan_v2.onnx`,
+`models/hifi_gan/hifi_gan.onnx` — Sprach-Zuordnung am Artefakt widerlegt,
+Mess-Block §4a). Auch im aktiven Pfad dominiert Musik — nicht Sprache.
 
 ### Warum die Verwechslung entsteht
 
 1. **Sprach-Basis + lokaler Musik-Finetune**: Ein Upstream-Modell heißt nach
-   seiner Sprach-Herkunft (z. B. DeepFilterNet, SGMSE+, BigVGAN), das
+   seiner Sprach-Herkunft (z. B. DeepFilterNet, SGMSE+), das
    **produktiv geladene Artefakt** ist aber der lokale Musik-Finetune.
+   **Achtung Gegenrichtung (2026-10-06):** Ein Name wie „BigVGAN-v2" oder
+   „UNIVERSAL_V1" belegt **keine** Sprach-Herkunft — bei `bigvgan` und
+   `hifi_gan` ist die Doku-Zuordnung „Sprache" am Artefakt **widerlegt**
+   (s. Mess-Block §4a), die Domäne gilt dort als **unbekannt**.
 2. **Generische Namen**: `models/versa/` enthält ein Evaluations-Toolkit, der
    Aurik-Plugin `versa_plugin.py` nutzt aber **SingMOS Pro** (Gesang).
 3. **Rollen-Verwechslung**: Whisper/UTMOS/Silero/Resemblyzer sind **Zeugen**
@@ -110,15 +116,36 @@ Musik — nicht Sprache.
 
 | Modell | Sprach-Basis (Upstream) | Musik-Variante | Deployt? |
 | --- | --- | --- | --- |
-| `bigvgan` | BigVGAN v2 (LibriTTS, Sprache) | `train_bigvgan_f3.py` → **MUSDB18-HQ** (`output/_training_archive_20260920/f3_bigvgan/best.pt`), A/B bestanden (HNR **+4,42 dB**) | ❌ Flag `BIGVGAN_V2_HR_ACTIVATED` OFF, kein `bigvgan_v2_f3e29.onnx` |
+| `bigvgan` | BigVGAN v2 in der **44,1-kHz-Konfiguration** — **lokal am Artefakt gemessen** (128 Mel-Bänder, 512×, 1536 Kanäle, SnakeBeta + Anti-Alias, 122,19 M Parameter; s. Mess-Block §4a). Der **Upstream-Korpus ist nicht belegbar** ⇒ §III.13 (copilot-instructions.md): `unbekannt`. Die frühere Angabe „LibriTTS (Sprache)" ist architektur-**widerlegt** (LibriTTS-Konfiguration = 24 kHz/100 Bänder/256×/512 Kanäle/≈14 M) | `train_bigvgan_f3.py` → **MUSDB18-HQ** (`output/_training_archive_20260920/f3_bigvgan/best.pt`), A/B bestanden (HNR **+4,42 dB**) | ⚠️ Flag `BIGVGAN_V2_HR_ACTIVATED = True` (§P1-2, `plugins/bigvgan_v2_plugin.py`) — der aktive Pfad nutzt aber den **Basis**-ONNX; der **F3-Finetune ist nicht deployt** (469 von 783 Tensoren Basis≠F3, deployter ONNX == Basis mit max\|Δ\|=0), kein `bigvgan_v2_f3e29.onnx` |
 | `deepfilternet_v3_ii` | DFN-3 (Sprach-Denoise) | `finetuned/` (`train_df_musik.py` → `dfn_musik_best.pt`) | ✅ `finetuned/` geladen |
 | `sgmse_plus` | SGMSE+ (WSJ0/CHiME3, Sprache) | `finetuned/` + `sgmse_musik_core.onnx` (`train_sgmse_musik.py`) | ⚠️ Default AUS (`use_sgmse_musik=False`) |
 | `diffwave` | DiffWave (Sprach-Vocoder) | `train_diffwave_vocal_inpaint.py` → Gesangs-Inpaint-Finetune (`diffwave_vocal_ft.ckpt`) | nur Vocal-Inpaint-Pfad |
 
-**EAR-VAE-Zusatzbefund:** `models/ear_vae/` ist die **offizielle Musik-Basis**
-(SHA `8f97ef67…`/`ed64a1f1…`). Ein interner **MUSDB-Finetune** existiert im Backup
-(`ear_vae_ft_*.onnx`, SHA `4168db14…`/`48dad212…`), ist aber **nicht** deployt —
-kein Defekt (die Basis ist bereits Musik), aber ungenutztes Potenzial.
+**EAR-VAE-KORREKTUR (2026-10-06, SHA-belegt):** Die frühere Fassung dieses
+Absatzes war **falsch** — sie hielt die deployten Dateien für die Upstream-Basis
+und den Finetune für „nicht deployt". Gemessen (SHA-256, byte-identisch):
+
+| deployt in `models/ear_vae/` | SHA-256 | identisch mit (Backup `ear_vae_upstream/`) |
+| --- | --- | --- |
+| `encoder.onnx` | `8f97ef67…c387` | `ear_vae_ft_encoder_inline.onnx` |
+| `decoder.onnx` | `ed64a1f1…11ab` | `ear_vae_ft_decoder_inline.onnx` |
+
+Der Produktionsstand ist also der **MUSDB-Musik-Finetune** („inline"-Export mit
+eingebetteten Gewichten). Die zuvor genannten SHAs `4168db14…`/`48dad212…` sind
+derselbe Finetune in der **External-Data-Variante** (`ear_vae_ft_encoder.onnx` +
+`ear_vae_ft_encoder.onnx.data`, `ear_vae_ft_decoder.onnx` + `.onnx.data`) — sie
+liegt seit 2026-10-06 **ebenfalls in `models/ear_vae/`**, ist aber **nicht** der
+Produktionspfad (die Begleit-`.data`-Dateien müssen mitgeliefert werden; der
+Inline-Export benötigt nur je eine Datei). Numerische Parität beider Varianten
+gegen die deployte Paarung: **max|Δ| = 0,0**. Belege:
+`finetune_music.py` (Rezept v2, validierungsgesteuert), `masking_loss.py`
+(A1-Loss), `export_finetuned_onnx.py` (Export-Paar), `benchmark_finetuned.py`
+sowie der Checkpoint `ear_vae_music_finetuned.pyt` (SHA `993e69be…`), seit
+2026-10-06 **in-repo** unter `models/ear_vae/`. Reproduzierbarkeit geprüft:
+Re-Export aus diesem Checkpoint ergibt **max|Δ| = 0,0** gegen die deployten
+ONNX-Artefakte (Encoder, Decoder, Ende-zu-Ende) — deckungsgleich mit
+`docs/PHASE_SOTA_GAP_ANALYSE.md` §1.2 (ΔSDR +4,83 dB) und
+`plugins/ear_vae_denoiser.py`.
 
 ---
 
@@ -155,8 +182,96 @@ kein Defekt (die Basis ist bereits Musik), aber ungenutztes Potenzial.
 | `beats` | AudioSet | **Encoder-only** (`[B,T,768]`), kein 527-Tagger |
 | `clap` | LAION-Audio-630k (Musik+Sprache+Allgemein) | Tagging; **nie alleiniger Entscheider** (§6.8) |
 | `dac` | `dac_44khz` (44,1 kHz = CD-/Musik-Rate) | Musik-inklusive; Inpainting-Conditioning |
-| `hifi_gan` | HiFi-GAN **UNIVERSAL_V1** (sprach-trainierter Multi-Speaker-Vocoder) | Vocoder-Fallback, `sota_speech_superres.py` — **Signalpfad-Risiko** auf Musik (§V6) |
+| `hifi_gan` | HiFi-GAN-**Topologie** lokal gemessen (80 Mel-Bänder, [8,8,2,2]/[16,16,4,4] = 256×, Kanäle 128/64 ⇒ 0,93 M Parameter, 22 050 Hz; s. Mess-Block §4a); **kein offizieller Checkpoint** (V1: 512 Kanäle/13,9 M; V2: [4,4,2,2]/[8,8,4,4]) ⇒ §III.13 (copilot-instructions.md): `unbekannt`; die Zuordnung „UNIVERSAL_V1" ist architektur-**widerlegt** | Vocoder-Fallback, `sota_speech_superres.py` — Signalpfad mit **unbelegter** Domäne (Risiko bleibt; §V6 (copilot-instructions.md)-Fallback + §III.13-Beleg offen) |
 | `panns` | AudioSet (PANNs CNN14) | Liefert die 527 Tags für BEATs-Ersatz |
+
+---
+
+## 4a. Artefakt-Messung 2026-10-06 — Vocoder `bigvgan` / `hifi_gan`
+
+> **Warum dieser Block:** Die Sprach-Zuordnung dieser beiden Vocoder stammte
+> ausschließlich aus Doku-Übernahme (Registry-Selbstbezug + Skript-Kopf),
+> nicht aus einem Artefakt-Beleg. Nachgemessen **am Artefakt** (§III.13
+> (copilot-instructions.md) — kein Domänen-Urteil aus Namen oder Doku):
+
+| Messgröße | `models/bigvgan/bigvgan_v2.onnx` (+ `.pth`) | `models/hifi_gan/hifi_gan.onnx` |
+| --- | --- | --- |
+| Mel-Bänder | **128** (`conv_pre.weight_v` = `[1536, 128, 7]`; ONNX-Input `mel [1, 128, 64]`) | **80** (`conv_pre.weight` = `[128, 80, 7]`) |
+| Upsample | 6 Stufen `ups.0…5` ⇒ **512×** (ONNX: 32 768 Samples aus 64 Frames) | `[8, 8, 2, 2]` ⇒ **256×** |
+| Kanäle | `upsample_initial_channel` **1536** | **128** (ResBlocks 64) |
+| Aktivierung | **SnakeBeta** (109×`alpha` **und** 109×`beta`) + Anti-Alias (`activation_post.downsample.lowpass.filter`) | ReLU/LeakyReLU |
+| Parameter | **122,19 M** (Checkpoint) / 122,81 M (ONNX) | **0,93 M** |
+| Sample-Rate | 44 100 Hz (Konfigurationsfamilie; `plugins/bigvgan_v2_plugin.py`) | 22 050 Hz (`models/hifi_gan/hifigan_infer.py`) |
+| Identität (**belegt**) | **BigVGAN v2, 44,1-kHz-Konfiguration** (`bigvgan_v2_44khz_128band_512x`) | **HiFi-GAN-Topologie** (V1-Zeitplan in ~¼ Kanalbreite) |
+| **widerlegt** | „LibriTTS/Sprache" — LibriTTS-Konfiguration = 24 kHz/100 Bänder/256×/512 Kanäle/≈14 M | „UNIVERSAL_V1" — offizieller V1 = 512 Kanäle/13,9 M; offizieller V2 = `[4,4,2,2]`/`[8,8,4,4]` |
+| **nicht belegbar** | Trainingskorpus (keine Modell-Karte; Checkpoint = nur `{"generator": …}` ohne Hparams; kein Upstream-SHA) | Trainingskorpus (keine Karte, keine Hparams, kein Upstream-SHA) |
+| **Domänen-Urteil (§III.13)** | **`unbekannt`** | **`unbekannt`** |
+
+**Deployter Gewichtssatz (bewiesen):** Das produktiv geladene
+`models/bigvgan/bigvgan_v2.onnx` enthält die **Basis**-Gewichte, nicht den
+F3-Musik-Finetune: 469 von 783 Tensoren unterscheiden sich zwischen
+`models/bigvgan/bigvgan_v2.pth` und
+`output/_training_archive_20260920/f3_bigvgan/best.pt`, und das ONNX stimmt
+exakt mit der Basis (`ups.1.0.weight_v`: max|Δ| = 0 gegen Basis, 1,0e-1 gegen
+F3). Das ONNX datiert auf **2026-09-10**, der Finetune auf **2026-10-03** — der
+Export kann ihn nicht enthalten. Damit bleibt Defizit D-K0-2 (Basis statt
+Musik-Finetune) bestehen, aber mit korrigierter Begründung: die Basis-Domäne ist
+**unbelegt**, nicht „sprach-trainiert".
+
+**Grenze der Aussage (§G8 (copilot-instructions.md)):** Aus Bytes ist die
+**Architektur-Identität** beweisbar, **nicht** der **Trainingskorpus** — eine
+ONNX-Datei trägt kein Trainingsmaterial. Ein Korpus-Beleg entsteht erst mit
+SHA-Identität gegen das offizielle Upstream-Artefakt (offen, s.
+`.github/SOTA_DEFICIT_REGISTER.md`).
+
+---
+
+## 4b. Provenienz-Belege (Archiv `models/_archive_20260920` ↔ deployt)
+
+> **Quelle:** `scripts/model_artifact_probe.py` →
+> `.github/ML_ARTIFACT_FINGERPRINTS.md` (+ generierter JSON-Report). Gemessen
+> werden **SHA-256-Gleichheit** („byte-identisch“) und **Parameterzahl-Gleichheit
+> bei abweichendem SHA** („architektur-gleich ⇒ Finetune/Generation“). Das ist
+> die maschinelle Form des EAR-VAE-Nachweises — für **alle** 26 Artefakte des
+> Archivs, nicht mehr nur für ein Einzelmodell.
+
+**Byte-identisch (8) — gleiche Gewichte, nur anderer Pfad:**
+
+| Archiv | deployt |
+| --- | --- |
+| `bs_roformer/bsr317_core_reexport.onnx` | `bs_roformer/bs_roformer_317_core.onnx` |
+| `ear_vae_upstream/…/ear_vae_ft_{encoder,decoder}_inline.onnx` | `ear_vae/{encoder,decoder}.onnx` |
+| `ear_vae_upstream/…/ear_vae_ft_{encoder,decoder}.onnx` | `ear_vae/ear_vae_ft_{encoder,decoder}.onnx` |
+| `ear_vae_upstream/…/ear_vae_music_finetuned.pyt` | `ear_vae/ear_vae_music_finetuned.pyt` |
+| **`flashsr/flashsr_onnx_prod_20260810.onnx`** | **`nvsr/nvsr.onnx`** |
+| `harmonic_inpainting/inpainting_best.pt` | `harmonic_inpainting/inpainting_best.pt` |
+
+**Architektur-gleich, Gewichte verschieden (6) — Finetune-/Generationsbelege:**
+
+| Archiv-Artefakt | deploytes Gegenstück | Bedeutung |
+| --- | --- | --- |
+| **`ear_vae_upstream/…/pretrained_weight/ear_vae_44k.pyt`** (147,86 M) | `ear_vae/ear_vae_music_finetuned.pyt` | **Upstream-Basis liegt jetzt in-repo** ⇒ „offizielles Musik-Modell + lokaler MUSDB-Finetune“ ist lokal belegt (bis v10.3.23 nur über Skripte) |
+| **`sgmse_plus/sgmse_wsj0_reverb.ckpt`** (327,95 M) | `sgmse_plus/sgmse_plus_src_1.ckpt` | **Sprach-Basis-Core in-repo** ⇒ §III.11-Sperre (`use_sgmse_musik=False`) ist gegen die echte Basis prüfbar |
+| `bs_roformer/bsr317_core_fp16.onnx` (159,76 M) | `bs_roformer/bs_roformer_317_core.onnx` | fp16-Variante desselben Kerns |
+| `diffwave/diffwave_vocal_ft_rejected_epoch{2,7}*.ckpt` (2,62 M) | `diffwave/diffwave.ckpt` | **verworfene** Finetunes (gatefail/aborted) — Prüf-Historie |
+| `miipher_dit/whisper_denoiser_latest.pt` (3,38 M) | `miipher_dit/whisper_denoiser_best.pt` | Zwischenstand vs. Best-Checkpoint |
+
+**Ohne Gegenstück im deployten Bestand (14) — Herkunft noch zuzuordnen:**
+`banquet/banquet_vinyl_batch.onnx` (23,69 M) ·
+`bw_reconstructor/best_model{,_v3,_v4,_v5_pre_retrain}.pt` (je ≈1,0 M) ·
+`clean_music_centroid.npy` · `ear_vae/{encoder,decoder}_orig_20260730_backup.onnx`
+(84,1/84,3 M — **andere Parameterzahl** als der deployte Finetune mit 73,8 M:
+Zuordnung offen, keine Gleichsetzung behauptet) ·
+`harmonic_inpainting/inpainting_mask_best.pt` (201,89 M) ·
+`medium_classifier/medium_shallow_v1.joblib` ·
+`melbandroformer/melbandroformer_optimized.onnx.rocm_safe*.onnx` (225,13 M) ·
+`singmos/singmos_pro.pt` · `gacela_venv/…/distutils-precedence.pth`
+(vom Prober korrekt als _kein_ Modellartefakt klassifiziert).
+
+**Wirkung:** Die beim Aufbau dieser Registry oft fehlende Evidenzklasse
+„SHA-Identität/Nachbarartefakt“ liegt jetzt **lokal** vor — für 14 von 26
+Archivartefakten ist die Basis↔Finetune-Relation bewiesen, die Restmenge ist
+ehrlich als offen dokumentiert (keine Vermutung, §V7 (copilot-instructions.md)).
 
 ---
 
@@ -178,9 +293,14 @@ kein Defekt (die Basis ist bereits Musik), aber ungenutztes Potenzial.
 3. **„Der Sprach-Kern ist der Signalpfad."** → VERBOTEN, wenn eine Musik-Variante
    existiert (§III.11 (copilot-instructions.md)).
 4. **„Ein Sprach-Modell als Vocoder/SR auf Musik ist harmlos."** → FALSCH.
-   Sprach-trainierte Vocoder/SR (HiFi-GAN, Vocos, NVSR, AERO) sind ein
+   Sprach-trainierte Vocoder/SR (Vocos, NVSR, AERO) sind ein
    Signalpfad-Risiko für Musik; sie sind nur als Fallback mit
-   `logger.warning` (§V6 (copilot-instructions.md)) zulässig.
+   `logger.warning` (§V6 (copilot-instructions.md)) zulässig. Bei
+   `bigvgan`/`hifi_gan` ist die Sprach-Herkunft sogar **widerlegt bzw.
+   unbelegt** (Mess-Block §4a) — die Kandidaten bleiben deshalb als
+   **unbelegte** Signalpfade im Defizit-Register
+   (`.github/SOTA_DEFICIT_REGISTER.md`, D-K0-2, D-K2-1), nicht als
+   „sprach-trainiert".
 5. **„Ein Witness verändert das Signal."** → FALSCH. Whisper/UTMOS/Silero/
    Resemblyzer sind Zeugen und dürfen das Ausgangssignal nicht verändern.
 6. **„`models/versa` = VERSA = Sprache, also Musik ungeeignet."** → FALSCH für

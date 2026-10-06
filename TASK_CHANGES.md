@@ -1,38 +1,33 @@
 # TASK_CHANGES — Live-Ledger der aktuellen Aufgabe
 
-> Generiert von `scripts/change_ledger.py snapshot` (Base: `HEAD`, Stand: 2026-10-06 16:31 CEST).
+> Generiert von `scripts/change_ledger.py snapshot` (Base: `HEAD`, Stand: 2026-10-06 18:44 CEST).
 > CI (`ci-lite.yml` pr-evidence-gate) erzwingt Abdeckung: jede geänderte Code-Datei muss hier stehen.
 
 ## Geänderte Dateien
 
 | Status | Pfad | Art |
 |---|---|---|
-| A | `.github/ML_MODEL_DOMAIN_REGISTRY.md` | neu |
-| M | `.github/copilot-instructions.md` | modifiziert |
-| A | `.github/instructions/ml_domain.instructions.md` | neu |
+| M | `.github/FILE_REGISTRY.md` | modifiziert |
+| M | `.github/ML_MODEL_DOMAIN_REGISTRY.md` | modifiziert |
+| A | `.github/SOTA_DEFICIT_REGISTER.md` | neu |
+| M | `.github/instructions/ml_domain.instructions.md` | modifiziert |
+| M | `.pre-commit-config.yaml` | modifiziert |
 | M | `AGENTS.md` | modifiziert |
 | M | `CHANGELOG.md` | modifiziert |
-| M | `CLAUDE.md` | modifiziert |
 | M | `README.md` | modifiziert |
 | M | `TASK_CHANGES.md` | modifiziert |
 | M | `audit/spec_integration_report.json` | modifiziert |
 | M | `audit/spec_integration_report.md` | modifiziert |
-| M | `backend/core/medium_classifier.py` | modifiziert |
-| M | `backend/core/phases/phase_53_semantic_audio.py` | modifiziert |
-| M | `backend/core/pre_analysis.py` | modifiziert |
 | M | `backend/core/version.py` | modifiziert |
 | M | `docs/TODOS_SOTA_ROADMAP.md` | modifiziert |
-| A | `docs/reports/current/2026-10-06_bwe_candidates.json` | neu |
-| M | `plugins/beats_plugin.py` | modifiziert |
-| M | `plugins/laion_clap_plugin.py` | modifiziert |
 | M | `pyproject.toml` | modifiziert |
 | M | `reports/spec_drift_baseline.json` | modifiziert |
-| M | `scripts/export_flashsr_onnx.py` | modifiziert |
 | M | `scripts/model_inventory.py` | modifiziert |
-| A | `tests/normative/test_ml_model_domain_registry_gate.py` | neu |
-| M | `tests/unit/test_clap_vendored_contract.py` | modifiziert |
-| M | `tests/unit/test_phase_53_semantic_audio.py` | modifiziert |
-| M | `tests/unit/test_v99_medium_classifier.py` | modifiziert |
+| A | `scripts/sota_deficit_gate.py` | neu |
+| M | `scripts/train_bigvgan_f3.py` | modifiziert |
+| A | `tests/normative/test_sota_deficit_gate.py` | neu |
+| ?? | `.github/ML_ARTIFACT_FINGERPRINTS.md` | ungetrackt |
+| ?? | `scripts/model_artifact_probe.py` | ungetrackt |
 
 ## Entscheidungen
 

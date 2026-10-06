@@ -111,6 +111,71 @@ F14.
 
 ---
 
+## LÜCKEN-MATRIX 2026-10-06 (gemessen) — Weg zum weltbesten Wohlklang
+
+> **Quellen (alles lokal gemessen, keine Annahme):**
+> `.github/ML_ARTIFACT_FINGERPRINTS.md` + `reports/model_artifact_fingerprints.json`
+> (`scripts/model_artifact_probe.py`: 66 Verzeichnisse, 153 Artefakte, 44,1 GB,
+> 0 Auslesefehler), `scripts/model_inventory.py --wiring` (66 Verzeichnisse,
+> **0 undokumentierte Verwaiste**, 8 begründete Nicht-Nutzungen),
+> `backend/core/music_model_flags.py` (10 Flags: 4 an, 6 gesperrt),
+> `.github/SOTA_DEFICIT_REGISTER.md` (20 Positionen K0–K3).
+
+### A. Vorhanden, trainiert — aber **nicht im Wirkpfad** (größter sofortiger Hebel)
+
+| Rang | Artefakt | Gemessene Qualität | Warum es brachliegt |
+| --- | --- | --- | --- |
+| 1 | `models/scnet_4stems/` | A/B **gewonnen**: SI-SDR **+10,3…+16,4 dB**, `singer_identity_cosine` 0,978–0,992 | nicht verdrahtet (TODO-P1-2); CPU ~7× langsamer als Demucs v4 |
+| 2 | `models/medium_shallow_v1.joblib` | CV **64,3 %** Material / **85,7 %** Depth (n=56) gegen Manifest-Baseline 10,7 %/51,8 % — Baseline **nicht applikationsgleich** | **kein Konsument**: `medium_classifier` nutzt im `use_ml`-Zweig CLAP; faires Re-Measurement + A/B + Sign-off fehlen (D-K0-8) |
+| 3 | `models/sgmse_plus/sgmse_musik_core.onnx` | Musik-Finetune (Epoch 24) + ONNX 263 MB vorhanden | `use_sgmse_musik=False` — 3-Wege-A/B + Hörabnahme offen (D-K0-3) |
+| 4 | `output/_training_archive_20260920/f3_bigvgan/best.pt` | A/B bestanden (HNR **+4,42 dB**, af +0,0073) | **nicht deployt**: die aktive HR-V1-Stufe lädt bytescharf die **Basis** (469/783 Tensoren ≠ F3) (D-K0-1/D-K0-2) |
+| 5 | `models/ear_vae2_upstream/` | EAR-VAE **v2**-Upstream beschafft (298 M) | keine Rollout-/Ersatz-Entscheidung vs. v1-Finetune (D-K0-9) |
+| 6 | `models/_archive_20260920/` (14 ohne Gegenstück) | melbandroformer-ROCm-Safe-Exporte (225,13 M), BANQUET-Vinyl-Batch (23,69 M), `inpainting_mask_best.pt` (201,89 M), BW-Reconstructor-Generationen | weder Deploy noch Verwerfen dokumentiert (D-K0-7) |
+| 7 | `models/ddsp_predictor/c4_head.pth` | val_MAE 0,2447 ≈ Baseline 0,2455 ⇒ **kein Skill** | korrekt deaktiviert — Neu-Training (BEATs-Encoder statt CLAP) offen (SOTA-C4/F5) |
+
+### B. Fehlende Modelle / Fähigkeiten (mit Rolle im Wohlklang-Ziel)
+
+| Was fehlt | Rolle für maximalen Wohlklang | Blocker |
+| --- | --- | --- |
+| **AudioLDM2-Plugin** (ONNX liegt lokal) | generative Baseline für destruktive Fälle | Plugin-Neuanlage fehlt |
+| **Neuraler Warp-Schätzer (WF-V4)** | Rest-Wow/Flutter unter der Hörschwelle | **Quelle/Download unklar** |
+| **Neurale Phasen-Schätzung (TP-V2)** | Transienten-Phasenkohärenz (Kammfilter-Freiheit) | **Modell + Quelle fehlen** |
+| **BEATs-Tagger-Head (527 Klassen)** | Instrument-/Genre-Evidenz unabhängig von CLAP | Head-Training oder Tagger-ONNX fehlt (GPU) |
+| **Genre-Modell (MERT-Head)** | Genre-adaptive Goals statt Hand-DSP | GTZAN/MagnaTagATune-Trainingslauf fehlt |
+| **Gender-Head (F13) + Label-Korpus** | Register/Formant-Entscheidungen | ≥ ~50 Labels je Klasse fehlen |
+| **GPU-Finetunes:** DiffWave-Vokal (S1 −1,7 dB), GaCELA-Vokal, FlashSR-Musik (−21…−24 dB out-of-domain), BigVGAN-v2 Musik+Vokal | Langlücken/Inpainting/Hochband/Repair auf **Musik** statt Sprach-Domäne | GPU-Läufe (7900 XTX); Gates: ΔSDR ≥ +2 dB + Never-worsen |
+| **RT60-Regressor (präzise)** | Dereverb-Steuerung statt Witness-Cap | konservativer T60-Witness läuft (V1) |
+| **Referenzfreie Musik-Qualitätsmetrik** | Wohlklang-Entscheid ohne Referenz | UTMOS richtungs-**blind/invertiert** (NEGATIVBEFUND); MuQ ist der einzige richtungsvalidierte Zeuge (3/3) |
+| **Human-Panel (MUSHRA, §3.6)** | Kalibrierung des MUSHRA-Proxys | Hörtest-Daten fehlen |
+| **Song-Ebene-Analytik (P0-1)** | Per-Chunk→Per-Song: 53× RT → 32×-Guard | größter Performance-Hebel, offen |
+| **Audibility (JND) auf allen Schwellwert-Guards (P1-3)** | Defekte unter die Hörschwelle drücken statt Null-Messung | teilweise offen |
+
+### C. Pfad-/Hygiene-Lücken (Fehlerfreiheit der Pfade)
+
+- **17 TorchScript-Stubs** (K3-3) — deklarierte ML-Pfade, die nie laufen (DSP-Fallback).
+- **2 Phantome:** `vsvpt(ab_test_exports.py)`-Ziel `bigvgan_v2_f3e29.onnx` (K3-1), `quality_predict.py` mit CTC/Classification-Mismatch (K3-2).
+- **3 Domänen unbelegt:** `bigvgan_v2.onnx` (44,1-kHz-Konfiguration, LibriTTS-Zuordnung widerlegt), `hifi_gan.onnx` (kein offizieller Checkpoint), `vocos_48khz.onnx` → alle `unbekannt`, nur §V6-Fallback.
+- **Namens-Drift:** `models/nvsr/nvsr.onnx` ist **byte-identisch** mit dem FlashSR-Produktionsexport (D-K2-4).
+- **Verifizierter Ist-Stand:** 22 Pfad-/Aktivierungstests grün
+  (`test_model_zoo_activation`, `test_primary_paths_no_fallback`,
+  `test_model_inventory_wiring`), Verdrahtung **0 undokumentierte Verwaiste**,
+  Register-Gate ohne Verstoß.
+
+### D. Priorisierte Reihenfolge (Wirkung × Machbarkeit)
+
+1. **Sofort, CPU, ohne Training:** (a) faire Neumessung des flachen
+   Material-/Depth-Schätzers gegen den _heutigen_ Detektor auf denselben 56
+   kuratierten Items (beseitigt den Baseline-Vorbehalt, D-K0-8); (b) SCNet-
+   Verdrahtung hinter Never-worsen (P1-2); (c) F3-BigVGAN-Rollout-Entscheid
+   (A/B liegt vor, D-K0-1); (d) EAR-VAE v1↔v2-Vergleich.
+2. **Beschaffung:** WF-V4-Quelle klären, TP-V2-Modell klären, AudioLDM2-Plugin.
+3. **GPU (7900 XTX):** DiffWave-Vokal → GaCELA-Vokal → BigVGAN-v2 Musik+Vokal
+   → FlashSR-Musik → DDSP (BEATs-Encoder) → BEATs-Tagger-Head → Gender-Head.
+4. **Mensch:** externes Blind-Panel (P1-4) → MUSHRA-Proxy-Kalibrierung (§3.6).
+5. **Hygiene:** K3-Phantome/Stubs abarbeiten (WP-2), P0-1/P0-2/P0-3.
+
+---
+
 ## TODO-T6-1 · ExcellenceOptimizer: Core-Guard-Rollback-Verschwendung (validiert 2026-09-20)
 
 - **Ziel:** Die ~106 s ExcellenceOptimizer-Arbeit je Zellen-Pass (~28 min pro Voll-Song) dürfen
@@ -2372,7 +2437,7 @@ mit belegtem Musik-Training, die **kein** Produktionskonsument lädt:
 | --- | --- | --- | --- |
 | `output/_training_archive_20260920/f3_bigvgan/best.pt` | Musik | `train_bigvgan_f3.py` → **MUSDB18-HQ** | Flag `BIGVGAN_V2_HR_ACTIVATED` OFF; A/B **bestanden** (HNR **+4,42 dB**); Blocker: Test-Suite + Budget |
 | `models/bigvgan/bigvgan_v2.onnx` (aktiv) | **Sprache** | BigVGAN v2 (LibriTTS) | Produktionspfad ist die Sprach-Basis → **Domänen-Schere** |
-| EAR-VAE MUSDB-Finetune (`ear_vae_ft_*.onnx`, Backup) | Musik | `finetune_music.py` → MUSDB18-HQ | nicht deployt (Basis ist bereits Musik — Potenzial, kein Defekt) |
+| EAR-VAE MUSDB-Finetune | Musik | `finetune_music.py` → MUSDB18-HQ | **deployt** (SHA-belegt 2026-10-06: `models/ear_vae/*.onnx` == `ear_vae_ft_*_inline.onnx`; Checkpoint + Rezept in-repo) — **kein** Defizit |
 | `models/sgmse_plus/finetuned/` + `sgmse_musik_core.onnx` | Musik | `train_sgmse_musik.py` | `use_sgmse_musik=False` (A/B + Hörabnahme offen) |
 | `models/miipher_dit/whisper_denoiser_best.pt` | Musik | `train_whisper_v2.py` → MUSDB18-HQ | `use_whisper_denoiser=False` (deprecated) |
 | `models/scnet_4stems/` | Musik | SCNet (A/B gewonnen +10,3…+16,4 dB) | nicht verdrahtet (TODO-P1-2) |
@@ -2403,8 +2468,8 @@ obwohl die Config `Wav2Vec2ForCTC` ist.
 
 ### WP-0 · SOTA-Defizit-Register + Gate (maschinell)
 
-**Status:** offen — **jetzt der Eingangspunkt**, weil die neuen Klassen K0–K3
-ohne Register wieder verstreut wären.
+**Status:** **erledigt 2026-10-06** — Register + Gate + Normativ-Test stehen,
+fail-closed im Pre-Commit verdrahtet.
 
 - **Deliverable:** `.github/SOTA_DEFICIT_REGISTER.md` (ID-getrackte Matrix:
   `D-<Klasse>-<n>`, Status, Blocker, Evidenz-Referenz) +
@@ -2415,8 +2480,22 @@ ohne Register wieder verstreut wären.
 - **Blocker:** CPU ✅
 - **Akzeptanz:** Gate schlägt fehl bei (a) unbelegtem Statuswechsel,
   (b) Domäne „musik" ohne Evidenz, (c) Defizit-Klasse ohne Registereintrag.
-- **Write-Gate beachten:** `scripts/repo_search.py --before-create` +
-  `.github/FILE_REGISTRY.md`-Eintrag.
+- **Write-Gate beachtet:** `scripts/repo_search.py --before-create` +
+  `.github/FILE_REGISTRY.md`-Eintrag (beide neuen Dateien registriert).
+- **Umsetzung (2026-10-06):** Register mit **20 Einträgen** (K0=9, K1=2, K2=5,
+  K3=4); Gate prüft zusätzlich den **Domänen-Abgleich Register ↔ kuratiertes
+  Manifest** und fand dabei eine echte Drift (`models/bigvgan/bigvgan_v2.onnx`
+  und `models/hifi_gan/hifi_gan.onnx` standen als `audio-allgemein`, obwohl die
+  kanonische Registry beide als **sprach-trainiert** führt) → Manifest an der
+  Wurzel auf `sprache` gezogen (§V7 (copilot-instructions.md)).
+  **Aufgelöst (2026-10-06, SHA-belegt):** Die Roadmap-Angabe „EAR-VAE
+  MUSDB-Finetune" war **korrekt** — `models/ear_vae/{encoder,decoder}.onnx` sind
+  byte-identisch mit `ear_vae_ft_{encoder,decoder}_inline.onnx`; der Checkpoint
+  `ear_vae_music_finetuned.pyt` (SHA `993e69be…`) liegt jetzt in-repo, und der
+  Re-Export reproduziert die Produktion mit **max|Δt| = 0,0** (§G8
+  copilot-instructions.md).
+- **Verankerung:** `AGENTS.md` §7 (Lektüre) + Pre-Commit-Hook
+  `aurik-sota-deficit-gate`.
 
 ### WP-1 · §III.11-Lücken-Audit (Richter **und Signalpfad**)
 
@@ -2521,9 +2600,10 @@ stützt die Notwendigkeit: Sprach-Orakel (UTMOS) können Musik nicht bewerten
 
 ### Empfohlene Reihenfolge (autonom zuerst)
 
-1. **WP-0** (Register + Gate) — macht K0–K3 auditierbar und verhindert stilles
-   Schließen; Eingangspunkt für alles Weitere.
-2. **WP-2** (Phantom-ML + Phantom-Referenzen) — risikoarm, sofort sichtbar.
+1. ~~**WP-0** (Register + Gate)~~ — **erledigt 2026-10-06**; macht K0–K3
+   auditierbar und verhindert stilles Schließen.
+2. **WP-2** (Phantom-ML + Phantom-Referenzen) — risikoarm, sofort sichtbar;
+   **nächster Schritt** (D-K3-1…D-K3-4 sind im Register vorbereitet).
 3. **WP-1** (Lücken-Audit Richter **+** Signalpfad, K2) — schließt die neue
    Domänen-Schere.
 4. **WP-4/F3** (BigVGAN-F3-Rollout vorbereiten: ONNX-Export + Flag-Pfad + Tests).
