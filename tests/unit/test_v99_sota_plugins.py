@@ -27,6 +27,7 @@ Total: 55 Tests
 
 
 import math
+from pathlib import Path
 
 import numpy as np
 
@@ -577,3 +578,179 @@ class TestV99PluginIntegration:
         assert 1.0 <= mos_result.mos <= 5.0
         # Nach Inpainting sollte MOS akzeptabel sein (mindestens "Poor")
         assert mos_result.mos >= 1.0
+
+
+class TestCLAPZeroShotContract:
+    """Zero-Shot-Text-Pfad, Artefakt-Vertrag und musiktaugliche Gender-Evidenz.
+
+    Absicherung der Befunde vom 2026-10-06: ``text_embeddings.npy`` muss exakt die
+    Aurik-Tags in Reihenfolge enthalten; Zero-Shot-Scores dürfen nicht verloren
+    gehen; CLAP und PANNs speisen dieselbe Gender-Fusion (§G9 copilot-instructions.md, §III.11).
+    """
+
+    def test_custom_scores_roundtrip(self) -> None:
+        """Zero-Shot-Scores überleben die Ergebnis-API (vorher wurden sie verworfen)."""
+        from plugins.laion_clap_plugin import AudioTaggingResult
+
+        res = AudioTaggingResult(
+            instrument_tags={"vocals": 0.5},
+            genre_tags={"rock": 0.4},
+            material_tags={"vinyl": 0.1},
+            embedding=np.zeros(512, dtype=np.float32),
+            model_used="laion_clap_pt",
+            confidence=0.85,
+            custom_scores={"a male singer": 0.31, "a female singer": 0.02},
+        )
+        assert res.query_scores(["a male singer", "a female singer"]) == {
+            "a male singer": 0.31,
+            "a female singer": 0.02,
+        }
+        # Unbekannte Queries → Teilmenge; keine Treffer → None (keine Erfindung)
+        assert res.query_scores(["a male singer"]) == {"a male singer": 0.31}
+        assert res.query_scores(["unbekannt"]) is None
+        assert res.query_scores([]) is None
+        assert res.as_dict()["custom_scores"] == {"a male singer": 0.31, "a female singer": 0.02}
+
+    def test_tag_routes_text_queries_to_pt_path(self, monkeypatch) -> None:
+        """Text-Queries gehen an den PyTorch-Pfad — der ONNX-Graph hat keinen Text-Turm."""
+        from plugins import laion_clap_plugin as mod
+
+        plugin = mod.LAIONCLAPPlugin()
+        plugin._model_loaded = True
+        plugin._audio_session = object()  # ONNX vorhanden …
+        plugin._clap_model = object()  # … Text-Turm ebenfalls
+        calls: list[str] = []
+
+        def _fake_pt(audio, sr, text_queries):
+            calls.append("pt")
+            return mod.AudioTaggingResult(
+                instrument_tags={},
+                genre_tags={},
+                material_tags={},
+                embedding=np.zeros(512, dtype=np.float32),
+                model_used="laion_clap_pt",
+                confidence=0.85,
+                custom_scores={"a male singer": 0.3},
+            )
+
+        def _fake_unerwartet(audio, sr, text_queries):
+            calls.append("unerwartet")
+            raise AssertionError("Bei Text-Queries darf nicht der ONNX-/DSP-Pfad gewählt werden")
+
+        monkeypatch.setattr(plugin, "_tag_clap_pt", _fake_pt)
+        monkeypatch.setattr(plugin, "_tag_clap", _fake_unerwartet)
+        monkeypatch.setattr(plugin, "_tag_dsp_fallback", _fake_unerwartet)
+
+        result = plugin.tag(_sine(440.0, 1.0), SR, text_queries=["a male singer"])
+        assert calls == ["pt"]
+        assert result.query_scores(["a male singer"]) == {"a male singer": 0.3}
+
+    def test_tag_reports_missing_text_tower(self, monkeypatch, caplog) -> None:
+        """Ohne Text-Turm wird die fehlende Zero-Shot-Evidenz sichtbar gemeldet (§V6 copilot-instructions.md)."""
+        from plugins import laion_clap_plugin as mod
+
+        plugin = mod.LAIONCLAPPlugin()
+        plugin._model_loaded = True
+        plugin._audio_session = object()
+        plugin._clap_model = None
+        monkeypatch.setattr(plugin, "_ensure_pt_loaded", lambda: False)
+
+        def _fake_onnx(audio, sr, text_queries):
+            assert text_queries, "Der ONNX-Pfad erhält die Queries unverändert"
+            return mod.AudioTaggingResult(
+                instrument_tags={"vocals": 0.5},
+                genre_tags={},
+                material_tags={},
+                embedding=np.zeros(512, dtype=np.float32),
+                model_used="laion_clap",
+                confidence=0.88,
+            )
+
+        monkeypatch.setattr(plugin, "_tag_clap", _fake_onnx)
+        with caplog.at_level("WARNING"):
+            result = plugin.tag(_sine(440.0, 1.0), SR, text_queries=["a male singer"])
+
+        # Keine erfundenen Scores, aber ein sichtbarer Hinweis
+        assert result.custom_scores == {}
+        assert any("Zero-Shot" in rec.getMessage() for rec in caplog.records)
+
+    def test_artifact_rowcount_must_match_tag_contract(self) -> None:
+        """Ein Artefakt mit fremdem Label-Raum wird abgelehnt statt falsch beschriftet.
+
+        Regressionsschutz gegen den Befund 2026-10-06: 527 AudioSet-Zeilen wurden
+        per Slice als 43 Aurik-Tags ausgegeben.
+        """
+        from plugins.laion_clap_plugin import GENRE_TAGS, INSTRUMENT_TAGS, MATERIAL_TAGS
+
+        n_all = len(INSTRUMENT_TAGS) + len(GENRE_TAGS) + len(MATERIAL_TAGS)
+        assert n_all == 43
+
+        artifact = Path(__file__).resolve().parents[2] / "models" / "clap" / "text_embeddings.npy"
+        if not artifact.exists():
+            pytest.skip("models/clap/text_embeddings.npy nicht vorhanden (gitignoredes Artefakt)")
+        arr = np.load(artifact)
+        assert arr.shape == (n_all, 512), f"Artefakt hat {arr.shape}, erwartet ({n_all}, 512)"
+        assert np.allclose(np.linalg.norm(arr, axis=1), 1.0, atol=1e-5), "Embeddings nicht L2-normalisiert"
+
+    def test_generator_uses_plugin_tag_order(self) -> None:
+        """Generator und Plugin müssen dieselbe Tag-Reihenfolge nutzen (§G9 copilot-instructions.md)."""
+        import importlib.util
+
+        from plugins.laion_clap_plugin import GENRE_TAGS, INSTRUMENT_TAGS, MATERIAL_TAGS
+
+        script = Path(__file__).resolve().parents[2] / "scripts" / "derive_clap_text_embeddings.py"
+        spec = importlib.util.spec_from_file_location("_derive_clap_text_embeddings", script)
+        assert spec is not None and spec.loader is not None
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+
+        assert module._aurik_tags() == list(INSTRUMENT_TAGS) + list(GENRE_TAGS) + list(MATERIAL_TAGS)
+
+    def test_clap_singing_evidence_is_graded_and_abstains(self) -> None:
+        """CLAP-Zero-Shot-Evidenz: skaleninvariant, schweigt bei Gleichstand/Unterboden."""
+        from backend.core.vocal_ai_enhancement import (
+            VoiceGender,
+            _clap_singing_prior,
+            _clap_singing_scores,
+            _pair_dominance,
+        )
+
+        male = {"a male singer": 0.30, "a female singer": 0.02}
+        female = {"a male singer": 0.02, "a female singer": 0.30}
+        assert _clap_singing_scores(male) == (0.30, 0.02)
+        assert _clap_singing_scores({}) is None
+        assert _clap_singing_scores(None) is None
+        assert _clap_singing_scores({"a male singer": float("nan"), "a female singer": 0.1}) is None
+
+        assert _pair_dominance((0.30, 0.02)) > 0.0
+        assert _pair_dominance((0.02, 0.30)) < 0.0
+        assert _pair_dominance((0.0, 0.0)) == 0.0
+
+        assert _clap_singing_prior(male) is VoiceGender.MALE
+        assert _clap_singing_prior(female) is VoiceGender.FEMALE
+        # Gleichstand → Zeugen-Prinzip: keine Entscheidung
+        assert _clap_singing_prior({"a male singer": 0.2, "a female singer": 0.2}) is None
+        # Unter dem Absolut-Boden → keine Evidenz
+        assert _clap_singing_prior({"a male singer": 0.01, "a female singer": 0.0}) is None
+
+    def test_gender_classify_uses_clap_evidence_and_silences_on_conflict(self) -> None:
+        """Ohne Anatomie trägt die musiktaugliche Evidenz; Widerspruch hebt sie auf."""
+        from backend.core.vocal_ai_enhancement import GenderDetector, VoiceGender
+
+        detector = GenderDetector(sample_rate=48000)
+        clap_male = {"a male singer": 0.30, "a female singer": 0.02}
+
+        gender, confidence = detector._classify_gender(0.0, [], clap_scores=clap_male)
+        assert gender is VoiceGender.MALE
+        assert confidence > 0.0
+
+        # PANNs widerspricht CLAP → kein Prior, keine Anatomie → UNKNOWN (kein Raten)
+        gender_conflict, _ = detector._classify_gender(
+            0.0, [], panns_tags={"Female singing": 0.9}, clap_scores=clap_male
+        )
+        assert gender_conflict is VoiceGender.UNKNOWN
+
+        # Ohne jede Evidenz ebenfalls UNKNOWN
+        gender_none, confidence_none = detector._classify_gender(0.0, [])
+        assert gender_none is VoiceGender.UNKNOWN
+        assert confidence_none == 0.0

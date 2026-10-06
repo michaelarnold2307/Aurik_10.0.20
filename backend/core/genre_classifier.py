@@ -2001,16 +2001,22 @@ class GermanSchlagerClassifier:
                     logger.debug("GenreClassifier CLAP: Plugin nicht verfügbar — neutraler Prior 0.35")
                     return 0.35
 
-                # Schlager-Ähnlichkeit via Genre-Tags schätzen
+                # Schlager-Ähnlichkeit via Zero-Shot-Prompts schätzen
                 schlager_prompts = [p for p, _ in self.SCHLAGER_CLAP_PROMPTS[:3]]
                 try:
                     tag_result = clap.tag(audio, sr, text_queries=schlager_prompts)
-                    genre_scores_dict = tag_result.genre_tags
-                    proxy_keys = ["schlager", "volksmusik", "folk", "german", "pop"]
-                    proxy_score = 0.0
-                    for key in proxy_keys:
-                        if key in genre_scores_dict:
-                            proxy_score = max(proxy_score, genre_scores_dict[key])
+                    # §G9 (copilot-instructions.md): Die Prompts sind Zero-Shot-
+                    # ANFRAGEN — ihre Scores stehen in ``custom_scores``/``query_scores()``,
+                    # NICHT in ``genre_tags`` (dort liegen die Standard-Genre-Tags).
+                    # Der frühere Code las ``genre_tags`` nach Schlüssel wie
+                    # „schlager"/„volksmusik"/„german", die in GENRE_TAGS nicht
+                    # existieren → immer 0.0, trotzdem als echte Messung markiert.
+                    query_scores = tag_result.query_scores(schlager_prompts)
+                    if not query_scores:
+                        raise ValueError(
+                            "CLAP lieferte keine Zero-Shot-Scores (kein Text-Turm verfügbar) — Evidenz fehlt"
+                        )
+                    proxy_score = float(np.mean(list(query_scores.values())))
                     clap_score = float(np.clip(proxy_score, 0.0, 1.0))
                     # Genuine positive CLAP-Messung erhalten → kein Fallback.
                     self._clap_score_is_fallback = False
@@ -2029,10 +2035,13 @@ class GermanSchlagerClassifier:
 
                 neg_scores: list[float] = []
                 try:
-                    neg_tag = clap.tag(audio, sr, text_queries=self.NON_SCHLAGER_NEGATIVE_PROMPTS[:3])
-                    _neg_dict = neg_tag.genre_tags if hasattr(neg_tag, "genre_tags") else {}
-                    for v in _neg_dict.values():
-                        neg_scores.append(float(v))
+                    neg_prompts = self.NON_SCHLAGER_NEGATIVE_PROMPTS[:3]
+                    neg_tag = clap.tag(audio, sr, text_queries=neg_prompts)
+                    # §G9 (copilot-instructions.md): ebenfalls Zero-Shot-Scores, nicht
+                    # die Standard-Genre-Tags (siehe Begründung oben).
+                    _neg_scores = neg_tag.query_scores(neg_prompts)
+                    if _neg_scores:
+                        neg_scores = [float(v) for v in _neg_scores.values()]
                 except Exception as _neg_exc:
                     # §V6 (copilot-instructions.md): Negativ-Tag-Fehler sichtbar machen (sonst neg_mean=0.0
                     # ohne Spur — optimistischer Margin ohne Evidenz).

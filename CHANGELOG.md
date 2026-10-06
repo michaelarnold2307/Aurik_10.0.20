@@ -1,4 +1,67 @@
-# Changelog — Aurik 10.3.11
+# Changelog — Aurik 10.3.12
+
+## 10.3.12 (2026-10-06)
+
+### §G9/SOTA: LAION-CLAP-Tag-Pfad korrigiert (Falsch-Beschriftung + falscher Text-Encoder)
+
+- **Befund 1 — Falsch-Beschriftung im Default-Pfad (AUDIO-QUALITY):** Der
+  ONNX-Tag-Pfad schnitt aus `models/clap/text_embeddings.npy` die ersten 43
+  Zeilen und beschriftete sie mit `INSTRUMENT_TAGS` + `GENRE_TAGS` +
+  `MATERIAL_TAGS`. Das Artefakt enthielt jedoch **527 AudioSet-Klassen**
+  (erzeugt von `scripts/derive_clap_text_embeddings.py`, belegt über den
+  Generator selbst und durch bit-genaue Reproduktion, cos = 1,0000). Damit war
+  z. B. `genre_tags["opera"]` in Wahrheit „Male singing“, `["ambient"]`
+  „Female singing“, `["metal"]` „Choir“ und `["vocals"]` „Speech“ — jedes
+  Instrument-/Genre-/Material-Tag des Standardpfads war falsch benannt.
+- **Befund 2 — Falscher Text-Encoder, drei divergierende Pipelines (§G9):**
+  Das Artefakt wurde mit einer **falschen Projektionskette** berechnet
+  (CLS statt `pooler_output`, zusätzliches LayerNorm, Verkettung von
+  `text_projection` _und_ `text_transform`), der PyTorch-Pfad nutzt dagegen
+  `encode_text()`. Messung: Cosinus der Text-Encoder **0,02** → gleicher Song,
+  andere Tags je nach Ladepfad. Kanonisch ist `encode_text()`;
+  `text_transform` erzeugt in `forward()` eine zweite, getrennte Einbettung.
+- **Befund 3 — Stiller Verlust trainierter Gewichte (§V6, R-BLOCKER-Klasse):**
+  Der Checkpoint stammt von einem fairseq-RoBERTa (514 Positions- / 1
+  Token-Type-Embedding), die HF-Konfiguration erwartet 512/2. Der
+  Shape-Filter des Loaders verwarf dadurch **3 Tensoren stillschweigend**, u. a.
+  die **trainierten Positions-Embeddings** — der Text-Turm rechnete mit
+  Zufalls-Positionen (gemessen: std = 0,0200 = exakter Init-Wert).
+- **Fix 1:** Text-Turm-Dimensionen auf Checkpoint-Format erzwungen (514/1)
+  in `laion_clap/clap_module/model.py`; Verifikation 199/199 Gewichte
+  übernommen (vorher 197/200).
+- **Fix 2:** Shape-Drop im Loader wird jetzt namentlich mit
+  `logger.warning()` gemeldet („nicht übernommen — behalten
+  Zufallsinitialisierung“) statt still zu degradieren.
+- **Fix 3:** `scripts/derive_clap_text_embeddings.py` neu gefasst — erzeugt
+  exakt die 43 Aurik-Tags in Plugin-Reihenfolge mit der **kanonischen**
+  Pipeline, vollständig lokal/offline (kein HuggingFace-Download), fail-closed
+  bei fehlenden Gewichten. Parität gegen den PyTorch-Pfad: **cos = 1,000000**
+  (min = max) → beide Pfade nutzen nun dieselbe Text-Funktion.
+- **Fix 4:** Der Plugin-ONNX-Pfad prüft die Zeilenzahl **exakt** und lehnt ein
+  Artefakt mit fremdem Label-Raum sichtbar ab, statt es falsch zu beschriften
+  (Regressionsschutz gegen Befund 1).
+- **Fix 5:** `genre_classifier` wertete Zero-Shot-Prompts über `genre_tags` aus
+  und suchte Schlüssel wie „schlager“/„volksmusik“/„german“, die in
+  `GENRE_TAGS` nicht existieren → immer 0,0, im PyTorch-Pfad sogar als echte
+  Messung markiert. Jetzt über `query_scores()`; fehlende Evidenz wirft.
+- **Fix 6:** §G9-Abschlusstest beider Pfade: identische Top-3-Tags und
+  Score-Cosinus **0,99** (vorher 0,02); neuer Zero-Shot-Text-Turm des
+  PyTorch-Checkpoints wird bei Bedarf nachgeladen (der ONNX-Graph enthält
+  keinen Text-Turm), Zero-Shot-Scores überleben via `custom_scores`.
+- **Hinweis zur Reproduzierbarkeit:** Der LAION-CLAP-Quelltext liegt unter
+  `models/clap/src/` und damit in einem **gitignorierten** Verzeichnis
+  (`.gitignore` → `/models/*`). Der dort gesetzte Config-Fix ist daher nicht
+  versioniert; der versionierte Plugin-Loader leitet die Text-Turm-Dimensionen
+  zusätzlich **aus dem Checkpoint** ab und meldet jede Angleichung mit
+  `logger.warning()`. Auf einem frischen Checkout ohne `models/clap/` ist der
+  PyTorch-Text-Turm generell nicht verfügbar — der ONNX-Pfad bleibt voll
+  funktionsfähig.
+- **Offen (ehrlich):** Die Kalibrierung der CLAP-Evidenz-Schwellen steht aus.
+  `corpus/` enthält **keinen Gesang** (PANNs `Singing voice` = 0,0001–0,0004;
+  CLAP-Cosinus für „singing“ negativ), und zwei Korpusdateien sind byte-identisch
+  (gleiche MD5). Die neuen CLAP-Gender-Konstanten sind daher **nicht**
+  kalibriert; die Fusion ist strukturell korrekt, aber ohne gesangs­haltiges,
+  gelabeltes Korpus nicht belegbar.
 
 ## 10.3.11 (2026-10-05/06)
 

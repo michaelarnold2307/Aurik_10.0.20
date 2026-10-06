@@ -158,6 +158,81 @@ def _panns_singing_prior(panns_tags: Any) -> VoiceGender | None:
     return None
 
 
+def _pair_dominance(pair: tuple[float, float]) -> float:
+    """Relative Dominanz des ersten über den zweiten Wert ∈ [−1, 1].
+
+    Skaleninvariant: bewertet das VERHÄLTNIS der beiden Evidenzwerte, nicht ihre
+    absolute Höhe. Notwendig, weil PANNs-Konfidenzen und CLAP-Softmax-Scores
+    auf völlig verschiedenen Skalen liegen (Softmax über 45 Tags).
+    """
+    _hi, _lo = pair
+    _total = abs(_hi) + abs(_lo)
+    if _total <= 1e-12:
+        return 0.0
+    return (_hi - _lo) / _total
+
+
+# ── SOTA-Gender-Fusion: CLAP-Zero-Shot-Singing-Evidenz ──────────────────────
+# LAION-CLAP ist text-audio-kontrastiv auf AudioSet/Musik trainiert — die
+# Zero-Shot-Abfrage „a male singer"/„a female singer" ist damit eine ZWEITE
+# musiktaugliche Evidenzquelle neben PANNs (Klassen 32/33). Bewusst OHNE
+# music_model_flags-Gate: CLAP ist kein sprachtrainiertes Modell, sondern auf
+# Audio (inkl. Musik/Gesang) trainiert (§III.11 copilot-instructions.md).
+#
+# Skalen-Hinweis: Die CLAP-Scores entstehen aus einem Softmax über 45 Tag-
+# Embeddings (100× Temperatur). Ihre ABSOLUTE Höhe ist daher nicht mit
+# PANNs-Konfidenzen vergleichbar — belastbar ist allein die RELATION der beiden
+# Sänger-Queries zueinander. Deshalb gilt hier ein niedriger Absolut-Boden und
+# ein relativer Dominanz-Schwellwert statt eines absoluten Abstands.
+_CLAP_MALE_QUERY: str = "a male singer"
+_CLAP_FEMALE_QUERY: str = "a female singer"
+_CLAP_GENDER_MIN_SCORE: float = 0.05
+_CLAP_GENDER_MIN_DOMINANCE: float = 0.30
+_CLAP_GENDER_WEIGHT: float = 0.30
+_CLAP_CONT_WEIGHT: float = 0.20
+
+
+def _clap_singing_scores(clap_scores: Any) -> tuple[float, float] | None:
+    """Roh-Scores der CLAP-Sänger-Queries als ``(male, female)`` oder ``None``.
+
+    EINE Quelle für beide Ausprägungen der Evidenz (harter Shortcut und weiche
+    Fusion). Fehlen die Queries im Ergebnis, schweigt die Evidenz — es wird kein
+    Ersatzwert angenommen.
+    """
+    if not isinstance(clap_scores, dict):
+        return None
+    try:
+        _male = float(clap_scores.get(_CLAP_MALE_QUERY, 0.0) or 0.0)
+        _female = float(clap_scores.get(_CLAP_FEMALE_QUERY, 0.0) or 0.0)
+    except (TypeError, ValueError):
+        return None
+    if not (np.isfinite(_male) and np.isfinite(_female)):
+        return None
+    if _male <= 0.0 and _female <= 0.0:
+        return None
+    return _male, _female
+
+
+def _clap_singing_prior(clap_scores: Any) -> VoiceGender | None:
+    """Liefert den CLAP-Zero-Shot-Gender-Prior oder ``None`` (keine/unklare Evidenz).
+
+    Es gilt ein niedriger Absolut-Boden (0,05) UND eine relative Dominanz von
+    mindestens 0,30: Bei annäherndem Gleichstand der Queries schweigt die
+    Evidenz, statt zu raten.
+    """
+    _pair = _clap_singing_scores(clap_scores)
+    if _pair is None:
+        return None
+    if max(_pair) < _CLAP_GENDER_MIN_SCORE:
+        return None
+    _dominance = _pair_dominance(_pair)
+    if _dominance >= _CLAP_GENDER_MIN_DOMINANCE:
+        return VoiceGender.MALE
+    if _dominance <= -_CLAP_GENDER_MIN_DOMINANCE:
+        return VoiceGender.FEMALE
+    return None
+
+
 class GenderDetector:
     """
     Formant-basierte Gender Detection.
@@ -199,7 +274,11 @@ class GenderDetector:
         }
 
     def detect(
-        self, audio: np.ndarray, bandwidth_loss: float | None = None, panns_tags: Any = None
+        self,
+        audio: np.ndarray,
+        bandwidth_loss: float | None = None,
+        panns_tags: Any = None,
+        clap_scores: Any = None,
     ) -> VoiceCharacteristics:
         """
         Erkennt voice characteristics including gender.
@@ -217,6 +296,11 @@ class GenderDetector:
                 „Male singing"/„Female singing" (Klassen 32/33) mit klarem
                 Abstand, geht diese musiktaugliche Evidenz additiv in die
                 Fusion ein (§III.11 copilot-instructions.md).
+            clap_scores: Optionale Zero-Shot-Scores des CLAP-Text-Turms (dict),
+                z. B. ``{"a male singer": 0.31, "a female singer": 0.02}``.
+                Zweite musiktaugliche Evidenzquelle neben PANNs; bewertet wird
+                die Relation der Sänger-Queries
+                (§III.11 copilot-instructions.md).
 
         Returns:
             VoiceCharacteristics with detected attributes
@@ -252,8 +336,10 @@ class GenderDetector:
         # der Klassifikation messen — sie moduliert die Evidenz-Güte (Konfidenz).
         breathiness = self._detect_breathiness(audio)
 
-        # Classify gender based on F0, formants and PANNs-Singing-Evidenz
-        gender, confidence = self._classify_gender(fundamental_freq, formants, panns_tags=panns_tags)
+        # Classify gender based on F0, formants and musiktauglicher Evidenz
+        gender, confidence = self._classify_gender(
+            fundamental_freq, formants, panns_tags=panns_tags, clap_scores=clap_scores
+        )
         confidence = self._modulate_confidence_by_aperiodicity(confidence, breathiness)
 
         # §19 Contralto-Override: tiefe Frauenstimmen mit weiblichen Formanten
@@ -568,16 +654,35 @@ class GenderDetector:
         return lpc_formants
 
     def _classify_gender(
-        self, fundamental_freq: float, formants: list[float], panns_tags: Any = None
+        self,
+        fundamental_freq: float,
+        formants: list[float],
+        panns_tags: Any = None,
+        clap_scores: Any = None,
     ) -> tuple[VoiceGender, float]:
-        """Classify gender based on F0 and formants (+ PANNs-Singing-Evidenz)."""
+        """Classify gender based on F0 and formants (+ musiktaugliche Evidenz)."""
         _panns_prior = _panns_singing_prior(panns_tags)
+        _clap_prior = _clap_singing_prior(clap_scores)
+
+        # §G9 (copilot-instructions.md): Widersprechen sich zwei unabhängige musiktaugliche Quellen, darf
+        # keine von beiden die Anatomie übersteuern — die Evidenz schweigt
+        # (Zeugen-Prinzip: Metriken sind Zeugen, sie entscheiden nicht gegen die
+        # Hör-Invariante). Gleichgerichtete Quellen verstärken sich dagegen.
+        _source_conflict = _panns_prior is not None and _clap_prior is not None and _panns_prior != _clap_prior
+        if _source_conflict:
+            logger.debug(
+                "🎤 Musiktaugliche Evidenz widersprüchlich (PANNs=%s, CLAP=%s) — Prior schweigt",
+                _panns_prior.value if _panns_prior is not None else "—",
+                _clap_prior.value if _clap_prior is not None else "—",
+            )
+        _singing_prior = None if _source_conflict else (_panns_prior or _clap_prior)
+
         if fundamental_freq == 0 or len(formants) == 0:
             # §19: Ein instrumentales Intro blockiert die F0-Kette — ohne
-            # Anatomie bleibt die musiktaugliche PANNs-Evidenz die einzige
+            # Anatomie bleibt die musiktaugliche Evidenz die einzige
             # belastbare Quelle, statt blind UNKNOWN zu melden.
-            if _panns_prior is not None:
-                return _panns_prior, 0.60
+            if _singing_prior is not None:
+                return _singing_prior, 0.60
             return VoiceGender.UNKNOWN, 0.0
 
         # Score each gender
@@ -616,14 +721,34 @@ class GenderDetector:
 
             scores[gender] = score / count if count > 0 else 0.0
 
-        # §SOTA-Gender-Fusion (2026-10-06): Die PANNs-Singing-Evidenz geht
-        # additiv in die Fusion ein. Sie ist das einzige Signal, das auf
-        # GESUNGENEM Material trainiert wurde — bei klarem Klassenabstand
-        # übersteuert sie die reine F0/Formant-Heuristik
-        # (§III.11 copilot-instructions.md).
-        if _panns_prior is not None:
-            scores[_panns_prior] = scores.get(_panns_prior, 0.0) + _PANNS_GENDER_WEIGHT
-            logger.debug("🎤 PANNs-Singing-Prior: %s (+%.2f)", _panns_prior.value, _PANNS_GENDER_WEIGHT)
+        # §SOTA-Gender-Fusion (2026-10-06): Musiktaugliche Evidenz geht additiv
+        # in die Fusion ein — hart (Prior) plus weich (proportionale Dominanz).
+        # Sie ist das einzige Signal, das auf GESUNGENEM Material trainiert
+        # wurde, und übersteuert bei klarem Klassenabstand die reine
+        # F0/Formant-Heuristik (§III.11 copilot-instructions.md).
+        for _pair, _gender, _weight, _cont_weight, _source in (
+            (_panns_singing_scores(panns_tags), _panns_prior, _PANNS_GENDER_WEIGHT, _PANNS_CONT_WEIGHT, "PANNs"),
+            (_clap_singing_scores(clap_scores), _clap_prior, _CLAP_GENDER_WEIGHT, _CLAP_CONT_WEIGHT, "CLAP"),
+        ):
+            if _pair is None:
+                continue
+            _dominance = _pair_dominance(_pair)
+            # Weiche Evidenz: proportional zur relativen Dominanz beider Seiten.
+            _soft_male = _cont_weight * max(_dominance, 0.0)
+            _soft_female = _cont_weight * max(-_dominance, 0.0)
+            scores[VoiceGender.MALE] = scores.get(VoiceGender.MALE, 0.0) + _soft_male
+            scores[VoiceGender.FEMALE] = scores.get(VoiceGender.FEMALE, 0.0) + _soft_female
+            logger.debug(
+                "🎤 %s-Singing-Evidenz: Dominanz=%+.3f → MALE +%.3f / FEMALE +%.3f",
+                _source,
+                _dominance,
+                _soft_male,
+                _soft_female,
+            )
+            # Harter Shortcut: klarer Klassenabstand verstärkt die Richtung.
+            if _gender is not None and not _source_conflict:
+                scores[_gender] = scores.get(_gender, 0.0) + _weight
+                logger.debug("🎤 %s-Singing-Prior: %s (+%.2f)", _source, _gender.value, _weight)
 
         # Best match
         best_gender = max(scores.items(), key=lambda x: x[1])

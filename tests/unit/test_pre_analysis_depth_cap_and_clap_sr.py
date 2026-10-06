@@ -56,13 +56,26 @@ def test_clap_score_resamples_to_48k() -> None:
         def __init__(self):
             self.calls = 0
 
+        @staticmethod
+        def _result(values: dict[str, float]):
+            """Zero-Shot-Ergebnis: Scores liegen in custom_scores, NICHT in genre_tags.
+
+            Vorher las der Classifier ``genre_tags`` nach Schlüsseln wie
+            „schlager"/„volksmusik"/„german" — die es in GENRE_TAGS nicht gibt,
+            wodurch die Bewertung immer 0.0 ergab (§G9 copilot-instructions.md, Befund 2026-10-06).
+            """
+            return SimpleNamespace(
+                genre_tags={},
+                custom_scores=values,
+                query_scores=lambda prompts, _v=values: {p: _v[p] for p in prompts if p in _v},
+            )
+
         def tag(self, audio, sr, text_queries=None):
             self.calls += 1
             received_sr["sr"] = sr
             # Aufruf-Reihenfolge ist deterministisch: positiv zuerst, dann negativ.
-            if self.calls == 1:
-                return SimpleNamespace(genre_tags={"schlager": 0.7})
-            return SimpleNamespace(genre_tags={"rock": 0.1})
+            _value = 0.7 if self.calls == 1 else 0.1
+            return self._result(dict.fromkeys(text_queries or [], _value))
 
     audio = (0.5 * np.sin(2 * np.pi * 440 * np.linspace(0, 1.0, 22050, endpoint=False))).astype(np.float32)
     with (
@@ -73,6 +86,7 @@ def test_clap_score_resamples_to_48k() -> None:
         score = clf._compute_clap_score(audio, 22050)
 
     assert received_sr.get("sr") == 48000
-    # result_score = clip(0.7 - 0.5 * 0.1) = 0.65 — kein Prior-Fallback mehr.
+    # result_score = clip(0.7 - 0.5 * 0.1) = 0.65 — aus den Zero-Shot-Scores
+    # (custom_scores), nicht aus genre_tags. Kein Prior-Fallback mehr.
     assert score == pytest.approx(0.65)
     assert clf._clap_score_is_fallback is False

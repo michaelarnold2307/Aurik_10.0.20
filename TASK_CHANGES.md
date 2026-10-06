@@ -1,66 +1,20 @@
 # TASK_CHANGES — Live-Ledger der aktuellen Aufgabe
 
-> Generiert von `scripts/change_ledger.py snapshot` (Base: `HEAD`, Stand: 2026-10-05 05:09 CEST).
+> Generiert von `scripts/change_ledger.py snapshot` (Base: `HEAD`, Stand: 2026-10-06 08:59 CEST).
 > CI (`ci-lite.yml` pr-evidence-gate) erzwingt Abdeckung: jede geänderte Code-Datei muss hier stehen.
 
 ## Geänderte Dateien
 
 | Status | Pfad | Art |
 |---|---|---|
-| M | `.github/FILE_REGISTRY.md` | modifiziert |
-| M | `.github/instructions/hoerordnung.instructions.md` | modifiziert |
-| M | `.gitignore` | modifiziert |
-| M | `TASK_CHANGES.md` | modifiziert |
-| M | `audit/code_weakness_scanner.py` | modifiziert |
-| M | `backend/core/artist_fingerprint.py` | modifiziert |
-| M | `backend/core/audio_utils.py` | modifiziert |
-| M | `backend/core/chunked_streaming.py` | modifiziert |
-| M | `backend/core/defect_audibility_gate.py` | modifiziert |
-| M | `backend/core/defect_scanner.py` | modifiziert |
-| M | `backend/core/dsp/_declip_core.py` | modifiziert |
-| M | `backend/core/dsp/adaptive_formant_shifter.py` | modifiziert |
-| M | `backend/core/dsp/adaptive_janssen_iterative.py` | modifiziert |
-| M | `backend/core/dsp/audibility_gate.py` | modifiziert |
-| M | `backend/core/dsp/binaural_masking.py` | modifiziert |
-| M | `backend/core/dsp/decrackler.py` | modifiziert |
-| M | `backend/core/dsp/diffwave_torch_inpaint.py` | modifiziert |
-| M | `backend/core/dsp/formant_system.py` | modifiziert |
-| M | `backend/core/dsp/hearing_impact.py` | modifiziert |
-| M | `backend/core/dsp/interaural_cues.py` | modifiziert |
-| M | `backend/core/dsp/noise_burst_remover.py` | modifiziert |
-| M | `backend/core/dsp/sota_denoiser.py` | modifiziert |
-| M | `backend/core/dsp/sota_dereverberator.py` | modifiziert |
-| M | `backend/core/dsp/stem_separator.py` | modifiziert |
-| M | `backend/core/dsp/style_intent_detector.py` | modifiziert |
-| M | `backend/core/gpu_model_registry.py` | modifiziert |
-| M | `backend/core/musical_goals/musical_goals_metrics.py` | modifiziert |
-| M | `backend/core/orchestrator_params.py` | modifiziert |
-| M | `backend/core/parallel/batch_parallel.py` | modifiziert |
-| M | `backend/core/per_phase_musical_goals_gate.py` | modifiziert |
-| M | `backend/core/phases/phase_23_spectral_repair.py` | modifiziert |
-| M | `backend/core/phases/phase_55_diffusion_inpainting.py` | modifiziert |
-| M | `backend/core/phases/phase_67_crackle_texture_removal.py` | modifiziert |
-| M | `backend/core/pipeline_health_monitor.py` | modifiziert |
-| M | `backend/core/presence_embedding.py` | modifiziert |
-| M | `backend/core/unified_restorer_v3.py` | modifiziert |
-| M | `docs/TODOS_SOTA_ROADMAP.md` | modifiziert |
-| M | `docs/reports/current/2026-10-03_evidenz_generator_defekt.md` | modifiziert |
-| M | `docs/reports/current/2026-10-03_hoerordnung_kanonisierung_offen.md` | modifiziert |
-| M | `docs/reports/current/2026-10-04_offene_massnahmen.md` | modifiziert |
-| M | `reports/spec_drift_baseline.json` | modifiziert |
-| M | `scripts/run_real_audio_corpus_test.py` | modifiziert |
-| M | `tests/unit/test_code_weakness_scanner.py` | modifiziert |
-| M | `tests/unit/test_gpu_model_registry.py` | modifiziert |
-| M | `tests/unit/test_pipeline_health.py` | modifiziert |
-| ?? | `docs/reports/current/2026-10-04_p1_2_scnet_vs_mdx23c_ab.md` | ungetrackt |
-| ?? | `models/scnet_4stems/README.md` | ungetrackt |
-| ?? | `models/scnet_4stems/config.yaml` | ungetrackt |
-| ?? | `models/scnet_4stems/zfturbo_scnet/LICENSE` | ungetrackt |
-| ?? | `models/scnet_4stems/zfturbo_scnet/README.md` | ungetrackt |
-| ?? | `models/scnet_4stems/zfturbo_scnet/__init__.py` | ungetrackt |
-| ?? | `models/scnet_4stems/zfturbo_scnet/scnet.py` | ungetrackt |
-| ?? | `models/scnet_4stems/zfturbo_scnet/separation.py` | ungetrackt |
-| ?? | `scripts/eval_scnet_vs_mdx23c.py` | ungetrackt |
+| M | `CHANGELOG.md` | modifiziert |
+| M | `backend/core/genre_classifier.py` | modifiziert |
+| M | `backend/core/version.py` | modifiziert |
+| M | `backend/core/vocal_ai_enhancement.py` | modifiziert |
+| M | `plugins/laion_clap_plugin.py` | modifiziert |
+| M | `scripts/derive_clap_text_embeddings.py` | modifiziert |
+| M | `tests/unit/test_pre_analysis_depth_cap_and_clap_sr.py` | modifiziert |
+| M | `tests/unit/test_v99_sota_plugins.py` | modifiziert |
 
 ## Entscheidungen
 

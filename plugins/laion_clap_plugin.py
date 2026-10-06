@@ -122,6 +122,10 @@ class AudioTaggingResult:
     model_used: str
     confidence: float
     metadata: dict[str, float] = field(default_factory=dict)
+    # Zero-Shot-Scores für benutzerdefinierte Text-Queries (z. B. "a male singer").
+    # Der gemeinsame Softmax-Pool (Standard-Tags + Queries) erhält die relative
+    # Ordnung der Queries zueinander — genau das braucht die Geschlechts-Evidenz.
+    custom_scores: dict[str, float] = field(default_factory=dict)
 
     def top_instruments(self, n: int = 3, threshold: float = 0.4) -> list[str]:
         """Gibt die Top-n-Instrumente über Schwellwert zurück."""
@@ -140,8 +144,16 @@ class AudioTaggingResult:
             "top_genres": self.top_genres(),
             "confidence": self.confidence,
             "model_used": self.model_used,
+            "custom_scores": dict(self.custom_scores),
             **self.metadata,
         }
+
+    def query_scores(self, queries: list[str]) -> dict[str, float] | None:
+        """Gibt Zero-Shot-Scores für die angegebenen Queries zurück (None, falls nicht gescort)."""
+        if not queries:
+            return None
+        got = {q: self.custom_scores[q] for q in queries if q in self.custom_scores}
+        return got or None
 
 
 # ---------------------------------------------------------------------------
@@ -213,6 +225,14 @@ class LAIONCLAPPlugin:
         self._fallback_active: bool = False
         self._load_attempted: bool = False
         self._load_lock = threading.Lock()
+        # Eigener Lade-Zustand für den PyTorch-Checkpoint (Text-Turm).
+        # Der ONNX-Audio-Encoder wird im Normalbetrieb ZUERST geladen und
+        # beendet _try_load_model() → ohne diesen zweiten Pfad wäre der
+        # Zero-Shot-Text-Turm nie erreichbar (Befund 2026-10-06).
+        self._pt_load_attempted: bool = False
+        self._pt_load_lock = threading.Lock()
+        # Einmal-Warnung, falls text_embeddings.npy eine fremde Label-Ordnung hat
+        self._warned_text_embeddings_mismatch: bool = False
 
     def _ensure_loaded(self) -> None:
         """Lazy-Load: Modell erst beim ersten Aufruf laden (2.2 GB PyTorch-Checkpoint)."""
@@ -223,6 +243,44 @@ class LAIONCLAPPlugin:
                 return
             self._load_attempted = True
             self._try_load_model()
+
+    def _ensure_pt_loaded(self) -> bool:
+        """Lädt den PyTorch-Checkpoint bei Bedarf nach (nur für Zero-Shot-Text-Queries).
+
+        Der reguläre Ladepfad versucht ONNX ZUERST und kehrt bei Erfolg zurück —
+        der 2,2-GB-Checkpoint (der als Einziger den Text-Turm enthält) wird dann
+        nie gebaut. Zero-Shot-Text-Queries brauchen ihn aber zwingend, da der
+        ONNX-Export nur den Audio-Encoder enthält. Daher hier ein eigener,
+        einmaliger Ladeversuch mit eigenem Zustand (§G9 copilot-instructions.md).
+
+        Returns:
+            True, wenn ``self._clap_model`` einsatzbereit ist.
+        """
+        if self._clap_model is not None:
+            return True
+        if self._pt_load_attempted:
+            return False
+        with self._pt_load_lock:
+            if self._clap_model is not None:
+                return True
+            if self._pt_load_attempted:
+                return False
+            self._pt_load_attempted = True
+            logger.info(
+                "LAION-CLAP: Zero-Shot-Text-Turm angefordert — lade PyTorch-Checkpoint "
+                "nach (der ONNX-Pfad enthält keinen Text-Encoder)."
+            )
+            try:
+                _loaded = self._try_load_clap_pt()
+            except Exception as _exc:
+                logger.warning("LAION-CLAP: Nachladen des Text-Turms fehlgeschlagen: %s", _exc)
+                _loaded = False
+            if not _loaded:
+                logger.warning(
+                    "LAION-CLAP: Text-Turm nicht verfügbar — Zero-Shot-Scores entfallen "
+                    "(nur Audio-Tags bleiben) (§V6 copilot-instructions.md)."
+                )
+            return bool(self._clap_model is not None)
 
     def _try_load_model(self) -> None:
         """Lädt CLAP: erst ONNX-SOTA, dann lokales PyTorch-Checkpoint, dann DSP."""
@@ -479,12 +537,87 @@ class LAIONCLAPPlugin:
                 if isinstance(_state, dict) and _state:
                     if next(iter(_state.items()))[0].startswith("module"):
                         _state = {_k[7:]: _v for _k, _v in _state.items()}
+                    # §III/§V6 copilot-instructions.md — Befund 2026-10-06:
+                    # Die Text-Turm-Dimensionen werden AUS DEM CHECKPOINT
+                    # abgeleitet. Der offizielle LAION-CLAP-Checkpoint stammt von
+                    # einem fairseq-RoBERTa (514 Positions- und 1 Token-Type-
+                    # Embedding), die HF-Konfiguration erwartet 512/2. Ohne diese
+                    # Angleichung verwirft der Shape-Filter unten die TRAINIERTEN
+                    # Positions-Embeddings — der Text-Turm rechnet dann mit
+                    # Zufallspositionen (gemessen: std = 0,0200 = exakter
+                    # Init-Wert) und liefert unbrauchbare Ähnlichkeiten.
+                    # Bewusst hier (versionierter Code) statt nur im vendorten
+                    # `models/clap/src/...` — jenes Verzeichnis ist gitignored.
+                    try:
+                        import torch as _torch  # pylint: disable=import-outside-toplevel
+
+                        _tb = getattr(model.model, "text_branch", None)
+                        _emb = getattr(_tb, "embeddings", None)
+                        if _emb is not None:
+                            _hidden = int(_emb.word_embeddings.embedding_dim)
+                            for _key, _attr, _cfg_key in (
+                                (
+                                    "text_branch.embeddings.position_embeddings.weight",
+                                    "position_embeddings",
+                                    "max_position_embeddings",
+                                ),
+                                (
+                                    "text_branch.embeddings.token_type_embeddings.weight",
+                                    "token_type_embeddings",
+                                    "type_vocab_size",
+                                ),
+                            ):
+                                _want = _state.get(_key)
+                                if _want is None:
+                                    continue
+                                _table = getattr(_emb, _attr, None)
+                                _have = int(getattr(_table, "num_embeddings", -1))
+                                if _have == int(_want.shape[0]):
+                                    continue
+                                setattr(_emb, _attr, _torch.nn.Embedding(int(_want.shape[0]), _hidden))
+                                setattr(_tb.config, _cfg_key, int(_want.shape[0]))
+                                logger.warning(
+                                    "LAION-CLAP: Text-Turm '%s' an Checkpoint-Größe angeglichen "
+                                    "(%d→%d) — sonst gingen trainierte Gewichte verloren "
+                                    "(§V6 copilot-instructions.md).",
+                                    _attr,
+                                    _have,
+                                    int(_want.shape[0]),
+                                )
+                    except Exception as _shape_exc:
+                        logger.warning(
+                            "LAION-CLAP: Text-Turm-Dimensionsabgleich fehlgeschlagen (%s) — "
+                            "die Shape-Prüfung unten meldet betroffene Gewichte (§V6 copilot-instructions.md).",
+                            _shape_exc,
+                        )
                     _model_state = model.model.state_dict()
-                    _state = {
-                        _k: _v
-                        for _k, _v in _state.items()
-                        if _k in _model_state and getattr(_model_state[_k], "shape", None) == getattr(_v, "shape", None)
-                    }
+                    # §V6 copilot-instructions.md: Verworfene Checkpoint-Parameter
+                    # sichtbar machen. `torch.nn.Module.load_state_dict(strict=False)`
+                    # toleriert KEINE Shape-Konflikte (wirft), daher filtert dieser
+                    # Loader sie vorher weg — ohne Log bliebe eine Degradierung
+                    # unsichtbar (Produktionsbefund 2026-10-06: die trainierten
+                    # Positions-Embeddings des Text-Turms fehlten still).
+                    _kept_state: dict[str, Any] = {}
+                    _dropped_state: list[str] = []
+                    for _k, _v in _state.items():
+                        if _k not in _model_state:
+                            _dropped_state.append(f"{_k} (nicht im Modell)")
+                            continue
+                        _want = getattr(_model_state[_k], "shape", None)
+                        if _want != getattr(_v, "shape", None):
+                            _dropped_state.append(f"{_k} (Checkpoint {tuple(_v.shape)} vs. Modell {tuple(_want)})")
+                            continue
+                        _kept_state[_k] = _v
+                    if _dropped_state:
+                        logger.warning(
+                            "LAION-CLAP: %d Checkpoint-Parameter NICHT übernommen — sie behalten ihre "
+                            "Zufallsinitialisierung (§V6 copilot-instructions.md). Betroffen: %s",
+                            len(_dropped_state),
+                            "; ".join(_dropped_state[:6]),
+                        )
+                    else:
+                        logger.debug("LAION-CLAP: alle %d Checkpoint-Parameter übernommen", len(_kept_state))
+                    _state = _kept_state
                 model.model.load_state_dict(_state, strict=False)
                 logger.debug("LAION-CLAP: Checkpoint geladen (shape-inkompatible Keys übersprungen)")
             except Exception:
@@ -669,7 +802,28 @@ class LAIONCLAPPlugin:
         audio_f32 = np.asarray(audio, dtype=np.float32)
         audio_f32 = np.nan_to_num(audio_f32, nan=0.0, posinf=0.0, neginf=0.0)
 
-        if self._model_loaded and self._audio_session is not None:
+        # Zero-Shot-Text-Queries kann NUR der PyTorch-Pfad (der ONNX-Export enthält
+        # keinen Text-Turm). Ist der Checkpoint noch nicht geladen, wird er JETZT
+        # einmalig nachgeladen (§V6 copilot-instructions.md: jede Umleitung wird protokolliert).
+        if text_queries and self._clap_model is None:
+            self._ensure_pt_loaded()
+        _has_pt = self._clap_model is not None
+        _use_pt_for_queries = bool(text_queries) and _has_pt
+        if _use_pt_for_queries and self._audio_session is not None:
+            logger.info(
+                "🔵 LAION-CLAP: Zero-Shot-Text-Queries erkannt (%d) — PyTorch-Pfad gewählt, "
+                "da der ONNX-Audio-Encoder keinen Text-Turm enthält.",
+                len(text_queries or []),
+            )
+        elif text_queries and not _has_pt:
+            logger.warning(
+                "🔵 LAION-CLAP: Text-Queries übergeben, aber kein PyTorch-Checkpoint verfügbar — "
+                "Zero-Shot-Scores entfallen (Queries werden nicht bewertet, §V6 copilot-instructions.md).",
+            )
+
+        if _use_pt_for_queries:
+            result = self._tag_clap_pt(audio_f32, sr, text_queries)
+        elif self._model_loaded and self._audio_session is not None:
             result = self._tag_clap(audio_f32, sr, text_queries)
         elif self._model_loaded and self._clap_model is not None:
             result = self._tag_clap_pt(audio_f32, sr, text_queries)
@@ -691,6 +845,11 @@ class LAIONCLAPPlugin:
                 result.top_instruments()[:2],
                 result.top_genres()[:1],
                 result.model_used,
+            )
+        if result.custom_scores:
+            logger.info(
+                "🔵 LAION-CLAP Zero-Shot: %s",
+                {k: round(v, 4) for k, v in result.custom_scores.items()},
             )
         return result
 
@@ -739,11 +898,30 @@ class LAIONCLAPPlugin:
             norm = np.linalg.norm(audio_emb)
             audio_emb = audio_emb / (norm + 1e-12)
 
-            # Cosinus-Ähnlichkeit mit Tag-Embeddings (falls vorhanden)
-            # Format text_embeddings: [n_tags, 512]
+            # Cosinus-Ähnlichkeit mit Tag-Embeddings.
+            # Format text_embeddings MUSS exakt [n_tags, 512] in der Reihenfolge
+            # INSTRUMENT_TAGS + GENRE_TAGS + MATERIAL_TAGS sein.
+            # §V6 copilot-instructions.md: Ein Größer-als-Vergleich würde bei
+            # einem Artefakt mit fremdem Label-Raum (z. B. 527 AudioSet-Klassen)
+            # die ersten n_all Zeilen als Aurik-Tags ausgeben — Falsch-Beschriftung
+            # ohne jede Spur (Befund 2026-10-06). Daher wird die Zeilenzahl EXAKT
+            # geprüft und ein abweichendes Artefakt sichtbar abgelehnt.
             n_all = len(INSTRUMENT_TAGS) + len(GENRE_TAGS) + len(MATERIAL_TAGS)
-            if self._text_embeddings is not None and len(self._text_embeddings) >= n_all:
-                te = self._text_embeddings[:n_all]
+            if (
+                self._text_embeddings is not None
+                and len(self._text_embeddings) != n_all
+                and not self._warned_text_embeddings_mismatch
+            ):
+                logger.warning(
+                    "LAION-CLAP: text_embeddings.npy hat %d Zeilen, erwartet werden exakt %d "
+                    "(Aurik-Tag-Reihenfolge). Artefakt wird ABGELEHNT statt falsch beschriftet — "
+                    "neu erzeugen: python scripts/derive_clap_text_embeddings.py",
+                    len(self._text_embeddings),
+                    n_all,
+                )
+                self._warned_text_embeddings_mismatch = True
+            if self._text_embeddings is not None and len(self._text_embeddings) == n_all:
+                te = self._text_embeddings
                 sims = (te @ audio_emb) / (np.linalg.norm(te, axis=1) + 1e-12)
                 sims = self._softmax(sims * 100.0)
 
@@ -800,10 +978,13 @@ class LAIONCLAPPlugin:
 
             model = self._clap_model
 
-            # Tags für Text-Embeddings aufbauen
+            # Tags für Text-Embeddings aufbauen: Standard-Tags IMMER mitnehmen,
+            # benutzerdefinierte Queries zusätzlich in denselben Softmax-Pool legen.
+            # Ein Query wie "a male singer" liegt in keiner Tag-Liste — ohne diesen
+            # Zusatz wäre sein Score nicht transportierbar (Befund vor dieser Änderung).
             all_tags = list(INSTRUMENT_TAGS) + list(GENRE_TAGS) + list(MATERIAL_TAGS)
-            # text_queries ergänzen
-            query_tags = text_queries or all_tags
+            extra_queries = [q for q in (text_queries or []) if q not in all_tags]
+            query_tags = all_tags + extra_queries
 
             with torch.no_grad():
                 # Audio-Embedding (laion_clap erwartet Liste von 1D-Arrays @ 48kHz)
@@ -824,19 +1005,15 @@ class LAIONCLAPPlugin:
                 else:
                     sims = np.full(len(query_tags), 1.0 / len(query_tags), dtype=np.float32)
 
-            if text_queries:
-                # Nur Query-Scores zurückgeben
-                custom_scores = {q: float(sims[i]) for i, q in enumerate(query_tags)}
-                instrument_scores = {k: custom_scores.get(k, 0.0) for k in INSTRUMENT_TAGS}
-                genre_scores = {k: custom_scores.get(k, 0.0) for k in GENRE_TAGS}
-                material_scores = {k: custom_scores.get(k, 0.0) for k in MATERIAL_TAGS}
-            else:
-                offset = 0
-                instrument_scores = {k: float(sims[offset + i]) for i, k in enumerate(INSTRUMENT_TAGS)}
-                offset += len(INSTRUMENT_TAGS)
-                genre_scores = {k: float(sims[offset + i]) for i, k in enumerate(GENRE_TAGS)}
-                offset += len(GENRE_TAGS)
-                material_scores = {k: float(sims[offset + i]) for i, k in enumerate(MATERIAL_TAGS)}
+            offset = 0
+            instrument_scores = {k: float(sims[offset + i]) for i, k in enumerate(INSTRUMENT_TAGS)}
+            offset += len(INSTRUMENT_TAGS)
+            genre_scores = {k: float(sims[offset + i]) for i, k in enumerate(GENRE_TAGS)}
+            offset += len(GENRE_TAGS)
+            material_scores = {k: float(sims[offset + i]) for i, k in enumerate(MATERIAL_TAGS)}
+            offset += len(MATERIAL_TAGS)
+            # Zero-Shot-Scores der benutzerdefinierten Queries (aus demselben Softmax)
+            custom_scores = {q: float(sims[offset + i]) for i, q in enumerate(extra_queries)}
 
             return AudioTaggingResult(
                 instrument_tags=instrument_scores,
@@ -845,6 +1022,7 @@ class LAIONCLAPPlugin:
                 embedding=audio_emb.astype(np.float32),
                 model_used="laion_clap_pt",
                 confidence=0.85,
+                custom_scores=custom_scores,
             )
 
         except Exception as exc:
@@ -957,6 +1135,7 @@ class LAIONCLAPPlugin:
         # REST DES PROZESSES in den DSP-Ersatzpfad, obwohl das Modell nachladbar
         # wäre. Reset erlaubt Lazy-Reload beim nächsten Bedarf (Budget-geprüft).
         self._load_attempted = False
+        self._pt_load_attempted = False
         gc.collect()
         try:
             from backend.core.ml_memory_budget import release as _rel  # pylint: disable=import-outside-toplevel  # noqa: I001
