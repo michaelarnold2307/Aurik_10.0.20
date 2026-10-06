@@ -107,6 +107,82 @@ _lock = threading.Lock()
 # verfügbar. Der HR-V1-Pfad ist jetzt produktiv aktiv.
 BIGVGAN_V2_HR_ACTIVATED: bool = True
 
+# §P1-3 (2026-10-06): HR-V1-BUDGET-VERTRAG (Längen-Deckel) — dokumentierte
+# Budget-Ausnahme nach §v10.802 (copilot-instructions.md).
+# Messbefund 2026-10-06 am Produktionspfad (CPU/ONNX): EINE HR-V1-Passage kostet
+# 13,2× RT warm (16,3× kalt) ⇒ 792 s je Audio-Minute gegen ≤ 240 s für die
+# GESAMTE Phase-Pipeline (§Performance-Budget copilot-instructions.md). Der
+# frühere Pfad synthetisierte das ganze Signal und wurde aus bis zu fünf
+# Phasen gerufen. Jetzt: HR-V1 läuft NUR in
+# ``phase_07_harmonic_restoration`` (eine Aufrufstelle, §G9 copilot-instructions.md)
+# und synthetisiert höchstens ``BIGVGAN_V2_HR_MAX_DUTY`` der Signallänge in
+# gleichmäßig verteilten Ausschnitten mit 200-ms-Cosinus-Rampe (§G3, §V2 copilot-instructions.md).
+# Alles außerhalb der Ausschnitte bleibt BIT-IDENTISCH zum Eingang.
+# Restkosten (2026-10-06 am Produktionshelfer gemessen, 30-s-Signal, warm):
+# 27,3 s Wand = 1,04× RT = 62 s je Audio-Minute = 26 % des Phasen-Budgets
+# (vorher 792 s je Audio-Minute = 330 %).
+BIGVGAN_V2_HR_MAX_DUTY: float = 0.05
+BIGVGAN_V2_HR_MIN_SECONDS: float = 0.5
+BIGVGAN_V2_HR_MAX_SECONDS: float = 10.0
+_HR_WINDOW_SECONDS: float = 1.0
+_HR_GUARD_SECONDS: float = 0.1
+_HR_RAMP_SECONDS: float = 0.2
+
+
+def hr_v1_budget_seconds(duration_s: float) -> float:
+    """Längen-Deckel für EINE HR-V1-Passage (proportional, §P1-3)."""
+    if duration_s <= 0.0:
+        return 0.0
+    return float(min(BIGVGAN_V2_HR_MAX_SECONDS, max(BIGVGAN_V2_HR_MIN_SECONDS, duration_s * BIGVGAN_V2_HR_MAX_DUTY)))
+
+
+def select_hr_v1_windows(n_samples: int, sr: int, budget_s: float) -> list[tuple[int, int]]:
+    """Gleichmäßig verteilte Ausschnitte (Sample-Bereiche) für den Längen-Deckel.
+
+    Gleichmäßige Verteilung statt „lauteste Stelle“: keine Sektion darf
+    systematisch anders behandelt werden als eine andere (Timbre-Konsistenz,
+    Natürlichkeit). Kein RNG, kein ``time.time`` ⇒ deterministisch (§G5 copilot-instructions.md).
+    """
+    if n_samples <= 0 or sr <= 0 or budget_s <= 0.0:
+        return []
+    # Budget gleichmäßig auf ganze Fenster aufteilen (vollständige Nutzung):
+    # Fensterlänge = min(1 s, Budget), Anzahl = ceil(Budget / 1 s).
+    n_win = 1 if budget_s <= _HR_WINDOW_SECONDS else int(np.ceil(budget_s / _HR_WINDOW_SECONDS - 1e-9))
+    win_s = budget_s / float(n_win)
+    w = max(1, min(n_samples, int(round(win_s * sr))))
+    n_win = max(1, min(n_win, n_samples // w))
+    if n_win <= 1:
+        starts = [(n_samples - w) // 2]
+    else:
+        span = n_samples - w
+        starts = [int(round(span * i / (n_win - 1))) for i in range(n_win)]
+    merged: list[tuple[int, int]] = []
+    for s in sorted(starts):
+        s = max(0, s)
+        e = min(n_samples, s + w)
+        if merged and s <= merged[-1][1]:
+            merged[-1] = (merged[-1][0], max(merged[-1][1], e))
+        else:
+            merged.append((s, e))
+    return merged
+
+
+def _hr_v1_ramp_mask(n: int, spans: list[tuple[int, int]], sr: int) -> np.ndarray:
+    """Durchgehende Cosinus-Rampe je Ausschnitt — keine Nahtkante (§G3, §V2 copilot-instructions.md)."""
+    mask = np.zeros(n, dtype=np.float32)
+    for s, e in spans:
+        length = e - s
+        if length <= 0:
+            continue
+        r = int(min(round(_HR_RAMP_SECONDS * sr), max(1, length // 2)))
+        seg = np.ones(length, dtype=np.float32)
+        if r > 0:
+            ramp = (0.5 - 0.5 * np.cos(np.pi * np.arange(r, dtype=np.float32) / max(1, r))).astype(np.float32)
+            seg[:r] = np.minimum(seg[:r], ramp)
+            seg[-r:] = np.minimum(seg[-r:], ramp[::-1])
+        mask[s:e] = np.maximum(mask[s:e], seg)
+    return mask
+
 
 def bigvgan_v2_ready() -> bool:
     """HR-V1-Bereitschaft (fail-closed): Checkpoint vorhanden UND F3-validiert."""
@@ -730,48 +806,112 @@ def synthesize_audio(
 
 
 def apply_hr_v1_additive(audio: np.ndarray, sample_rate: int) -> tuple[np.ndarray, dict[str, object]]:
-    """§SOTA-HR-V1 (F3, 2026-09-16): BigVGAN-Repair hinter dem Aktivierungsvertrag.
+    """§SOTA-HR-V1 (F3, 2026-09-16) + §P1-3-Längen-Deckel (2026-10-06).
 
     Fail-closed: ohne ``bigvgan_v2_ready()`` bleibt der Eingang unverändert
-    (attempted=False). Sonst Synthese → ``additive_synthesis_gate``
-    (maskierungs-bewusst, Never-worsen, §B5) → Übernahme nur bei
-    bands_released > 0. Liefert (audio, meta); ML→DSP-Fallback warnt +
-    begründet (§V6 (copilot-instructions.md)). Layout-agnostisch (wie das Gate).
+    (attempted=False). Sonst werden **nur** die gleichmäßig verteilten
+    Budget-Ausschnitte (``hr_v1_budget_seconds``) synthetisiert und durch
+    ``additive_synthesis_gate`` geführt; die additive Differenz wird mit einer
+    200-ms-Cosinus-Rampe eingeblendet — keine Nahtkante, keine Kammfilter-Kante
+    (§G3/§V2 copilot-instructions.md). Alles außerhalb der Ausschnitte bleibt
+    **bit-identisch** zum Eingang (`capped`-Witness im Meta).
+
+    Kosten je Passage: 13,2× RT × ``BIGVGAN_V2_HR_MAX_DUTY`` — am
+    Produktionshelfer gemessen **1,04× RT** (Deckel 5 %).
+    Liefert ``(audio, meta)``; ML→DSP-Fallback warnt + begründet (§V6 copilot-instructions.md).
+    Layout-agnostisch (wie das Gate).
     """
     meta: dict[str, object] = dict(hr_v1_activation_status())
     if not bigvgan_v2_ready():
         return audio, {"attempted": False, **meta}
-    meta = {"attempted": True, "applied": False, **meta}
+    base = np.asarray(audio, dtype=np.float32)
+    _is_stereo = base.ndim == 2
+    mono = (
+        base.mean(axis=0)
+        if (_is_stereo and base.shape[0] == 2 and base.shape[1] > 2)
+        else (base.mean(axis=1) if _is_stereo else base)
+    ).astype(np.float32)
+    n = int(mono.size)
+    duration_s = n / float(sample_rate) if sample_rate else 0.0
+    budget_s = hr_v1_budget_seconds(duration_s)
+    spans = select_hr_v1_windows(n, sample_rate, budget_s)
+    meta = {
+        "attempted": True,
+        "applied": False,
+        "signal_seconds": round(duration_s, 3),
+        "budget_seconds": round(budget_s, 3),
+        "windows": len(spans),
+        "capped": bool(budget_s < duration_s - 1e-9),
+        "ramp_ms": int(round(_HR_RAMP_SECONDS * 1000)),
+        **meta,
+    }
+    if not spans:
+        meta["skip_reason"] = "no_window"
+        return audio, meta
     try:
         from backend.core.dsp.additive_synthesis_gate import additive_synthesis_gate
 
-        mono = (
-            audio.mean(axis=0)
-            if (audio.ndim == 2 and audio.shape[0] == 2 and audio.shape[1] > 2)
-            else (audio.mean(axis=1) if audio.ndim == 2 else audio)
-        ).astype(np.float32)
-        voc = synthesize_audio(mono, sample_rate)
-        if str(getattr(voc, "model_used", "none")) != "none":
-            gated, rep = additive_synthesis_gate(
-                np.asarray(voc.audio, dtype=np.float32),
-                audio,
-                sample_rate,
-                model="bigvgan_v2",
+        pad = int(round(_HR_GUARD_SECONDS * sample_rate))
+        delta = np.zeros_like(base)
+        released_total = 0
+        processed_samples = 0
+        pqs_values: list[float] = []
+        skipped_length = 0
+        for s, e in spans:
+            ps, pe = max(0, s - pad), min(n, e + pad)
+            voc = synthesize_audio(mono[ps:pe], sample_rate)
+            if str(getattr(voc, "model_used", "none")) == "none":
+                continue  # kein Modell-Ergebnis ⇒ kein Eingriff (fail-closed)
+            cand = np.asarray(voc.audio, dtype=np.float32)
+            if cand.size != pe - ps:
+                # §V6 (copilot-instructions.md): Längen-Mismatch ist ein Modell-/
+                # Export-Fehler — melden statt still falsch zu mischen.
+                skipped_length += 1
+                continue
+            baseline_span = base[..., ps:pe] if _is_stereo else base[ps:pe]
+            gated, rep = additive_synthesis_gate(cand, baseline_span, sample_rate, model="bigvgan_v2")
+            released = int(rep.get("bands_released", 0))
+            released_total += released
+            processed_samples += e - s
+            pqs_values.append(float(getattr(voc, "pqs_mos", 0.0)))
+            if released <= 0:
+                continue
+            diff = np.asarray(gated, dtype=np.float32) - np.asarray(baseline_span, dtype=np.float32)
+            inner = diff[..., s - ps : e - ps] if _is_stereo else diff[s - ps : e - ps]
+            if _is_stereo:
+                delta[..., s:e] += inner
+            else:
+                delta[s:e] += inner
+
+        meta["bands_released"] = released_total
+        meta["processed_seconds"] = round(processed_samples / float(sample_rate), 3)
+        if skipped_length:
+            meta["skipped_length_mismatch"] = skipped_length
+            logger.warning(
+                "§SOTA-HR-V1: %d Ausschnitt(e) mit Längen-Mismatch verworfen (Synthese-Länge ≠ Eingabe) — "
+                "fail-closed, kein Eingriff (§V6 copilot-instructions.md)",
+                skipped_length,
             )
-            meta["pqs_mos"] = round(float(getattr(voc, "pqs_mos", 0.0)), 3)
-            meta["bands_released"] = int(rep.get("bands_released", 0))
-            if int(rep.get("bands_released", 0)) > 0:
-                audio = np.clip(
-                    np.nan_to_num(gated, nan=0.0, posinf=0.0, neginf=0.0),
-                    -1.0,
-                    1.0,
-                ).astype(np.float32)
-                meta["applied"] = True
-                logger.info(
-                    "§SOTA-HR-V1: BigVGAN-additiv freigegeben — bands_released=%d, PQS=%.2f",
-                    int(rep.get("bands_released", 0)),
-                    float(getattr(voc, "pqs_mos", 0.0)),
-                )
+        if pqs_values:
+            meta["pqs_mos"] = round(float(np.mean(pqs_values)), 3)
+        if released_total > 0:
+            mask = _hr_v1_ramp_mask(n, spans, sample_rate)
+            weighted = mask[None, :] * delta if _is_stereo else mask * delta
+            mixed = base + weighted
+            audio = np.clip(
+                np.nan_to_num(mixed, nan=0.0, posinf=0.0, neginf=0.0),
+                -1.0,
+                1.0,
+            ).astype(np.float32)
+            meta["applied"] = True
+            logger.info(
+                "§SOTA-HR-V1: BigVGAN-additiv freigegeben — bands_released=%d, Fenster=%d, %.1f von %.1f s, PQS=%.2f",
+                released_total,
+                len(spans),
+                float(meta["processed_seconds"]),
+                duration_s,
+                float(meta.get("pqs_mos", 0.0)),
+            )
     except Exception as _hr_syn_exc:
         # §V6 (copilot-instructions.md): ML→DSP-Fallback MUSS warnen + begründen.
         logger.warning(

@@ -1326,12 +1326,14 @@ class HarmonicRestorationPhase(PhaseInterface):
         except Exception:
             _rms_drop_db = 0.0
 
-        # §SOTA-HR-V1 (Q6/F3, 2026-09-15): BigVGAN-Repair-Pfad — AKTIVIERUNGSVERTRAG.
-        # Die Verdrahtung ist CPU-fertig, bleibt aber fail-closed: ohne
-        # F3-Validierung (GPU-Training/Port + A/B af/HNR ≥ DSP-Pfad) liefert
-        # bigvgan_v2_ready() False ⇒ Status quo (ZEUGE, Hörordnung §8a).
-        # Gemeinsamer Helfer: plugins.bigvgan_v2_plugin.apply_hr_v1_additive
-        # (eine Schaltstelle für 07/23/50/03).
+        # §SOTA-HR-V1 (Q6/F3, 2026-09-16) + §P1-3 (2026-10-06): BigVGAN-Repair-Pfad —
+        # KANONISCHE, EINZIGE Aufrufstelle (§G9 copilot-instructions.md). Die früheren
+        # Aufrufe in 03/23/50 sind entfernt: eine Passage kostet 13,2× RT (CPU/ONNX,
+        # gemessen 2026-10-06), das überstieg das Phasen-Budget in Summe um ein
+        # Mehrfaches (§V7 copilot-instructions.md). Der Helfer synthetisiert nur noch
+        # gleichmäßig verteilte Budget-Ausschnitte
+        # (§P1-3-Längen-Deckel, plugins.bigvgan_v2_plugin.BIGVGAN_V2_HR_MAX_DUTY) und
+        # blendet die additive Differenz mit 200-ms-Cosinus-Rampe ein.
         try:
             from plugins.bigvgan_v2_plugin import apply_hr_v1_additive as _hrv1_apply_07
 

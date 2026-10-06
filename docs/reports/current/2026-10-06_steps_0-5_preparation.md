@@ -201,6 +201,19 @@ Rollout **gesperrt** (kein „A/B bestanden“ ⇒ deployt).
 Aktivierungs-Entscheid; **Budget** ist der eigentliche Gate-Keeper — und er
 sagt derzeit Nein.
 
+**Weg 2 umgesetzt (§P1-3, 2026-10-06 — Entscheid des Maintainers):** Statt
+Flag-Aus wurde die Budget-Ausnahme mit Längen-Deckel gebaut. HR-V1 läuft nur
+noch aus **einer** Aufrufstelle (`phase_07`); die Aufrufe in `phase_03` (×2),
+`23`, `50` sind entfernt (Audit-Spur `reason=centralized_g9` bleibt, §G8).
+Der Helfer synthetisiert höchstens `BIGVGAN_V2_HR_MAX_DUTY = 5 %` der
+Signallänge (0,5…10 s) in gleichmäßig verteilten Ausschnitten mit
+200-ms-Cosinus-Rampe; außerhalb bleibt das Signal **bit-identisch**.
+Gemessen: **13,2× → 1,04× RT** je Passage, **792 → 62 s** je Audio-Minute,
+**330 % → 26 %** des Phasen-Budgets. 21 neue Tests
+(`tests/unit/test_hr_v1_budget_deckel.py`, inkl. 2 Rückkehr-Guards). Offen
+bleibt allein die Hörstichprobe **C4** (Timbre-Konsistenz, Hörordnung
+Ebene 4).
+
 ---
 
 ## Schritt 1d — EAR-VAE v1↔v2 (D-K0-9)

@@ -876,15 +876,15 @@ class SpectralRepairPhase(PhaseInterface):
         _rms_drop_50 = 20.0 * np.log10(max(_rms_out_50 / _rms_in_50, 1e-30)) if _rms_in_50 > 1e-8 else 0.0
         # §v10.101: Garantiere ndarray — verhindert tuple-ndim im PMGG/Steering-Pfad
         _safe_audio = np.asarray(repaired_audio, dtype=np.float32)
-        # §SOTA-HR-V1 (Q6/F3, 2026-09-16): BigVGAN-Repair-Kandidat hinter dem
-        # F3-Aktivierungsvertrag (fail-closed; Witness hr_v1 wie phase_07).
-        try:
-            from plugins.bigvgan_v2_plugin import apply_hr_v1_additive as _hrv1_apply_50
-
-            _safe_audio, _hr_v1_meta_50 = _hrv1_apply_50(_safe_audio, sample_rate)
-        except Exception as _hrv1_exc_50:
-            logger.debug("Verarbeitungsschritt_50 §SOTA-HR-V1 nicht verfügbar: %s", _hrv1_exc_50)
-            _hr_v1_meta_50 = {"attempted": False, "reason": "unavailable"}
+        # §P1-3 (2026-10-06): HR-V1 wurde HIER ENTFERNT — kanonische Aufrufstelle ist
+        # allein phase_07_harmonic_restoration (§G9 copilot-instructions.md); eine
+        # Passage kostet 13,2× RT (CPU/ONNX), fünf Aufrufstellen sprengten das
+        # Phasen-Budget (§V7 copilot-instructions.md). Audit-Spur bleibt erhalten.
+        _hr_v1_meta_50: dict[str, object] = {
+            "attempted": False,
+            "reason": "centralized_g9",
+            "canonical_site": "phase_07_harmonic_restoration",
+        }
         return PhaseResult(
             success=True,
             audio=_safe_audio,

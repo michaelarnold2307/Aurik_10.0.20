@@ -1,4 +1,59 @@
-# Changelog — Aurik 10.5.1
+# Changelog — Aurik 10.6.0
+
+## 10.6.0 (2026-10-06)
+
+### §P1-3 — HR-V1: Budget-Ausnahme + **eine** Aufrufstelle mit Längen-Deckel
+
+**Minor-Bump (§v10.802 copilot-instructions.md):** neue Fähigkeit
+(Budget-Vertrag) mit geändertem Verarbeitungsumfang — kein Hörordnungs-Bruch.
+Der Entscheid wurde vom Maintainer getroffen (Weg 2, nicht „Flag aus“).
+
+**Wurzel-Fix (§V7/§G9 copilot-instructions.md):** Das BigVGAN-HR-V1-Repair
+synthetisierte das **ganze** Signal und wurde aus **bis zu fünf** Phasen
+gerufen (`phase_03` ×2, `07`, `23`, `50`). Gemessen am Produktionspfad
+(CPU/ONNX): **13,2× RT warm** je Passage = 792 s je Audio-Minute — das
+**Dreifache** des Budgets für die gesamte Phase-Pipeline (240 s/min,
+§Performance-Budget copilot-instructions.md). Fünf Aufrufe desselben
+Schritts sind Symptom- statt Ursachenbehebung.
+
+**1. Aufrufstelle (§G9):** HR-V1 läuft nur noch in
+`phase_07_harmonic_restoration`. Die Aufrufe in `phase_03_denoise` (×2),
+`phase_23_spectral_repair` und `phase_50_spectral_repair` sind entfernt —
+aber **nicht still** (§G8): sie melden weiter ein `hr_v1`-Metadatum mit
+`{"attempted": false, "reason": "centralized_g9", "canonical_site":
+"phase_07_harmonic_restoration"}` als Audit-Spur für Narrativ und Lauf-Analyse.
+
+**2. Längen-Deckel (§P1-3):** `BIGVGAN_V2_HR_MAX_DUTY = 0,05` (5 % der
+Signallänge), Untergrenze 0,5 s, Obergrenze 10 s. Die Ausschnitte liegen
+**gleichmäßig verteilt** (keine Inhalts-Auswahl — eine solche wäre eine
+Hör-Entscheidung und wurde bewusst nicht erfunden, §V7); die additive
+Differenz wird mit **200-ms-Cosinus-Rampe** eingeblendet, also **keine
+Nahtkante** (§G3/§V2 copilot-instructions.md). Der Rest bleibt
+**bit-identisch** zum Eingang.
+
+| Größe | vorher | nachher |
+| --- | --- | --- |
+| Wandzeit je Passage | 13,2× RT | **1,04× RT** |
+| je Audio-Minute | 792 s | **62 s** |
+| Anteil am Phasen-Budget | 330 % | **26 %** |
+| Aufrufstellen | 5 | **1** |
+
+**Belege:** `tests/unit/test_hr_v1_budget_deckel.py` (21 Tests: Deckel-Arithmetik
+0,2…3600 s, Determinismus §G5, außerhalb-Fenster-Bit-Identität, Stub-Gate-
+Blend, `model_used=none`, Längen-Mismatch fail-closed, Synthese-Fehler
+fail-closed, plus 2 Guards gegen die Rückkehr der Aufrufe); Bestandstests
+`test_hr_v1_activation_contract.py` und `test_primary_paths_no_fallback.py`
+grün; Messung am Produktionshelfer 30-s-Signal warm.
+
+**Offen (benannt):** Hörstichprobe **C4** zur Timbre-Konsistenz der
+Ausschnitt-Behandlung (Hörordnung Ebene 4).
+
+**F3-Artefakt (Arbeitspaket 1c):** `models/bigvgan/bigvgan_v2_f3.onnx` bleibt
+exportiert + paritätsbewiesen (rel ≤ 6,5e-05) und **nicht verdrahtet** — bei
++0,9 % Laufzeit gegenüber der Basis gibt es keinen Rollout-Grund.
+
+**Beleg:** `docs/reports/current/2026-10-06_p1_3_bigvgan_f3_rollout_entscheid.md`
+(§10).
 
 ## 10.5.1 (2026-10-06)
 

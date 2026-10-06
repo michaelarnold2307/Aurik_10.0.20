@@ -170,11 +170,10 @@ Aktenlage. Kein stilles Akzeptieren (§V6/§V7 (copilot-instructions.md)).
    für HR-V1 selbst**. Sie verändert das Ausgangssignal und braucht daher
    Maintainer-Sign-off (§v10.802 (copilot-instructions.md)) — sie wird hier
    **nicht** einseitig vollzogen.
-4. **Empfehlung:** `BIGVGAN_V2_HR_ACTIVATED = False` (fail-closed, wie im
-   A/B-Beleg und im Register gefordert), bis **ein** Aufruf budgetgedeckt ist
-   — oder alternativ eine explizite Budget-Ausnahme plus Reduktion auf eine
-   einzige Aufrufstelle mit Längen-Deckel. Beide Wege sind Code-Änderungen am
-   Signalpfad und damit sign-off-pflichtig.
+4. **Entscheid des Maintainers (2026-10-06): Weg 2.** Nicht Flag-aus, sondern
+   **dokumentierte Budget-Ausnahme + Reduktion auf genau eine Aufrufstelle mit
+   Längen-Deckel** — umgesetzt und gemessen in §10. Der HNR-Gewinn bleibt
+   erhalten, der Kostenbeitrag sinkt von 330 % auf 26 % des Phasen-Budgets.
 
 ## 7. Aktenkorrekturen (in diesem Commit)
 
@@ -188,9 +187,12 @@ Aktenlage. Kein stilles Akzeptieren (§V6/§V7 (copilot-instructions.md)).
 
 ## 8. Offene Punkte
 
-- **`MENSCH`:** Aktivierungs-Entscheid HR-V1 (Flag OFF vs. Budget-Ausnahme mit
-  einer Aufrufstelle). Ohne diesen Entschid bleibt ein 3,3-facher
-  Budgetbruch im Produktionspfad.
+- **`MENSCH` (entschieden 2026-10-06):** Weg 2 — Budget-Ausnahme + eine
+  Aufrufstelle mit Längen-Deckel umgesetzt (§10). Offen bleibt allein die
+  **Hörstichprobe (C4)**: gleichmäßig verteilte Ausschnitte könnten in
+  Extremfällen als Timbre-Sprung hörbar sein — die Wahl ist bewusst
+  _gleichmäßig_ (keine Sektion systematisch anders), aber belegen muss das ein
+  Mensch (`.github/instructions/hoerordnung.instructions.md` Ebene 4).
 - **`CPU`:** Test-Suite-Umstellung (>10 `phase_07`-Tests) — unverändert offen
   und **erst nach** dem Aktivierungs-Entscheid sinnvoll.
 - **`CPU`:** `.github/ML_ARTIFACT_FINGERPRINTS.md` nimmt `bigvgan_v2_f3.onnx`
@@ -204,7 +206,7 @@ Aktenlage. Kein stilles Akzeptieren (§V6/§V7 (copilot-instructions.md)).
 ## 9. Reproduktion
 
 ```bash
-# Export + Parität (§III.9, strukturierte Feeds)
+# Export + Parität (§III.9 (copilot-instructions.md), strukturierte Feeds)
 AURIK_FORCE_CPU=1 .venv_aurik/bin/python scripts/export_bigvgan_v2_onnx.py \
     --checkpoint output/_training_archive_20260920/f3_bigvgan/best.pt \
     --output models/bigvgan/bigvgan_v2_f3.onnx
@@ -219,3 +221,85 @@ ts = [(lambda t0: (apply_hr_v1_additive(x, sr), time.perf_counter()-t0)[1])(time
 print('Median RT:', statistics.median(ts)/2.0)
 "
 ```
+
+---
+
+## 10. Umsetzung Weg 2 — Budget-Ausnahme + **eine** Aufrufstelle mit Längen-Deckel
+
+**Entscheid des Maintainers (2026-10-06):** Weg 2 (nicht Flag-aus, nicht
+Status quo).
+
+### 10.1 Die beiden Maßnahmen
+
+| # | Maßnahme | Wurzel |
+| --- | --- | --- |
+| 1 | **Eine Aufrufstelle** — HR-V1 läuft nur noch in `phase_07_harmonic_restoration`; die Aufrufe in `phase_03_denoise` (×2), `phase_23_spectral_repair` und `phase_50_spectral_repair` sind **entfernt** | §G9/§V7 (copilot-instructions.md): fünf Aufrufe desselben 13,2×-RT-Schritts waren Symptom­behandlung (Workaround), nicht Ursachenbehebung |
+| 2 | **Längen-Deckel** — `BIGVGAN_V2_HR_MAX_DUTY = 0,05` (5 % der Signallänge), Untergrenze 0,5 s, Obergrenze 10 s; gleichmäßig verteilte Ausschnitte, additive Differenz mit **200-ms-Cosinus-Rampe** eingeblendet | §Performance-Budget (copilot-instructions.md) + §G3/§V2 (keine Nahtkante) |
+
+Die vier entfernten Stellen **verschwinden nicht still** (§G8/§V6
+copilot-instructions.md): sie melden weiter ein `hr_v1`-Metadatum mit
+`{"attempted": false, "reason": "centralized_g9", "canonical_site":
+"phase_07_harmonic_restoration"}` — als Audit-Spur für Pipeline-Narrativ und
+Lauf-Analyse.
+
+### 10.2 Gemessenes Ergebnis (Produktionshelfer, CPU/ONNX, 30-s-Signal, warm)
+
+| Größe | vorher | nachher | Faktor |
+| --- | --- | --- | --- |
+| Wandzeit je Passage | 13,2× RT | **1,04× RT** | **12,7× günstiger** |
+| je Audio-Minute | 792 s | **62 s** | 12,8× |
+| Anteil am Phasen-Budget (240 s/min) | **330 %** | **26 %** | ✅ budgetkonform |
+| Aufrufstellen | 5 | **1** | 5× |
+| Deckel eingehalten | — | 1,50 s von 1,50 s (**100 %**) | ✅ |
+
+**Bit-Identität außerhalb der Ausschnitte ist gemessen:** für ein 30-s-Signal
+ist `y[~window] == x[~window]` exakt wahr — außerhalb der Ausschnitte findet
+keine Operation statt; innerhalb wirken 34 freigegebene Bark-Bänder
+(`bands_released: 34`, PQS 3,647).
+
+### 10.3 Warum gleichmäßig verteilt (und was offen bleibt)
+
+Gewählt wurde **keine** inhaltliche Auswahl (nicht „lauteste Stelle“, nicht
+„harmonischste Stelle“), sondern **gleichmäßige Verteilung** über das Signal:
+Eine inhaltsabhängige Auswahl würde einzelne Sektionen systematisch anders
+behandeln als andere — genau das Risiko, das die Hörordnung als
+Natürlichkeits-Bruch führt. Eine inhaltliche Gewichtung wäre eine
+Hör-Entscheidung und ist bewusst **nicht** erfunden worden (§V7
+copilot-instructions.md).
+
+**Offen (benannt, nicht still):** Die Hörstichprobe **C4** steht aus. Zu
+prüfen ist, ob die Ausschnitt-Behandlung bei realem Material als
+Timbre-Konsistenz-Bruch hörbar ist. Die erste Ausbaustufe danach (falls
+nötig) wäre eine Hör-ordnungs-konforme Gewichtung auf die Regionen, in denen
+`additive_synthesis_gate` tatsächlich Bänder freigeben kann.
+
+### 10.4 Verifikation
+
+| Prüfung | Ergebnis |
+| --- | --- |
+| `tests/unit/test_hr_v1_budget_deckel.py` (neu, 21 Tests) | 21 passed |
+| `tests/unit/test_hr_v1_activation_contract.py` (Bestand) | grün |
+| `tests/normative/test_primary_paths_no_fallback.py` | grün |
+| Deckel-Arithmetik über 0,2 … 3600 s | 100 % Budgetnutzung, deterministisch (§G5) |
+| Guard gegen Rückkehr der Aufrufe | Tests über `reason == "centralized_g9"` + Verzeichnis-Scan |
+| Ruff/Format | clean |
+
+### 10.5 Nebenbefund (nicht von §P1-3 verursacht, nicht still übergegangen)
+
+`tests/unit/test_phase_03_denoise.py::TestDenoisePhase::test_genuinely_clean_material_is_not_degraded`
+schlägt fehl: `corr = 0,96606` gegen die Schwelle `> 0,999` (sauberer
+MUSDB18-HQ-Vocalstem, `material_type="vinyl"`).
+
+**Vorbestehend — belegt, nicht vermutet:** Mit auf HEAD zurückgesetzter
+`phase_03_denoise.py` (gezielter Stash-Lauf) tritt der Fehlschlag **identisch**
+auf (`corr = 0,96606`). Er ist damit **nicht** durch die Entfernung des
+HR-V1-Aufrufs entstanden.
+
+Auffällig ist der Abstand zur eigenen Dokumentation im Testdocstring: dort ist
+für dieselbe Messung `corr = 1,00000` festgehalten (Messung 2026-10-06). Der
+Verdacht liegt daher auf geändertem Referenzmaterial (in 10.4.0 wurden
+MUSDB-Daten aus dem Backup reaktiviert) oder auf einer zwischenzeitlichen
+Änderung im DSP-Pfad — beides außerhalb des §P1-3-Scopes. **Nicht angefasst:**
+eine Schwellen-Anpassung ohne Ursachenklärung wäre ein Workaround (§V7
+copilot-instructions.md). Der Befund gehört in die WP-2-Hygiene als eigener
+Untersuchungspunkt.

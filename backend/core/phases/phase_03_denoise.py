@@ -2052,17 +2052,18 @@ class DenoisePhase(PhaseInterface):
 
                 _report_progress(93.0, "Entrauschung: Lautheitskorrektur (ML-Pfad)")
 
-                # §SOTA-HR-V1 (Q6/F3, 2026-09-16): BigVGAN-Repair-Kandidat hinter dem
-                # F3-Aktivierungsvertrag (fail-closed; Witness hr_v1 wie phase_07).
-                try:
-                    from plugins.bigvgan_v2_plugin import apply_hr_v1_additive as _hrv1_apply_03ml
-
-                    ml_result.audio, _hr_v1_meta_03ml = _hrv1_apply_03ml(
-                        np.asarray(ml_result.audio, dtype=np.float32), sample_rate
-                    )
-                except Exception as _hrv1_exc_03ml:
-                    logger.debug("Verarbeitungsschritt_03 §SOTA-HR-V1 nicht verfügbar: %s", _hrv1_exc_03ml)
-                    _hr_v1_meta_03ml = {"attempted": False, "reason": "unavailable"}
+                # §P1-3 (2026-10-06): HR-V1 wurde HIER ENTFERNT. Eine Passage kostet
+                # 13,2× RT (CPU/ONNX, gemessen); fünf Aufrufstellen überschritten das
+                # Phasen-Budget (§Performance-Budget copilot-instructions.md) um ein
+                # Mehrfaches — Symptom-Behandlung statt Ursache (§V7 copilot-instructions.md).
+                # Kanonische Aufrufstelle ist jetzt allein
+                # phase_07_harmonic_restoration (§G9 copilot-instructions.md). Die
+                # Audit-Spur bleibt erhalten (kein stilles Verschwinden, §G8 copilot-instructions.md).
+                _hr_v1_meta_03ml: dict[str, object] = {
+                    "attempted": False,
+                    "reason": "centralized_g9",
+                    "canonical_site": "phase_07_harmonic_restoration",
+                }
 
                 # §2.46f Edge-Gain-Cap (Defizit-Fix 2026-09-16): NACH der
                 # §0-Level-Restauration anwenden — _p03_out skaliert den
@@ -2868,15 +2869,14 @@ class DenoisePhase(PhaseInterface):
         except Exception as _e:
             logger.debug("backend.core.phases.Verarbeitungsschritt_03_denoise: unkritisch exception: %s", _e)
 
-        # §SOTA-HR-V1 (Q6/F3, 2026-09-16): BigVGAN-Repair-Kandidat hinter dem
-        # F3-Aktivierungsvertrag (fail-closed; Witness hr_v1 wie phase_07).
-        try:
-            from plugins.bigvgan_v2_plugin import apply_hr_v1_additive as _hrv1_apply_03
-
-            result_audio, _hr_v1_meta_03 = _hrv1_apply_03(np.asarray(result_audio, dtype=np.float32), sample_rate)
-        except Exception as _hrv1_exc_03:
-            logger.debug("Verarbeitungsschritt_03 §SOTA-HR-V1 nicht verfügbar: %s", _hrv1_exc_03)
-            _hr_v1_meta_03 = {"attempted": False, "reason": "unavailable"}
+        # §P1-3 (2026-10-06): HR-V1 wurde HIER ENTFERNT — kanonische Aufrufstelle ist
+        # allein phase_07_harmonic_restoration (§G9 copilot-instructions.md);
+        # Begründung und Messung siehe upstream im selben Modul. Audit-Spur bleibt.
+        _hr_v1_meta_03: dict[str, object] = {
+            "attempted": False,
+            "reason": "centralized_g9",
+            "canonical_site": "phase_07_harmonic_restoration",
+        }
 
         # §2.46f Edge-Gain-Cap (Defizit-Fix 2026-09-16): additive Nach-Schritte
         # (V21 Noise-Floor, Timbral-Resynth, HR-V1) laufen NACH dem Konvex-
