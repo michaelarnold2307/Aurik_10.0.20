@@ -1637,9 +1637,8 @@ class DenoisePhase(PhaseInterface):
             from backend.core.music_model_flags import use_sgmse_musik as _use_sgmse_musik_p03
         except Exception:  # pragma: no cover - Import-Resilienz
             _use_sgmse_musik_p03 = False
-        _sgmse_eligible = (
-            _use_sgmse_musik_p03
-            and quality_mode in ("quality", "maximum")
+        _sgmse_material_ok = (
+            quality_mode in ("quality", "maximum")
             and _is_non_digital
             and not use_lightweight
             and not _tonal_clean
@@ -1647,6 +1646,12 @@ class DenoisePhase(PhaseInterface):
             and not _miipher_applied  # §4.4: MIIPHER already applied
             and _era_nr_routing != "omlsa_only"  # §4.4: no ML NR for acoustic/digital era
         )
+        if _sgmse_material_ok and not _use_sgmse_musik_p03:
+            logger.info(
+                "Phase 03: SGMSE+ (Sprach-Core) ohne Musik-Finetune gesperrt → DFN/DSP-Pfad "
+                "(§v10.16/F7; §III.11 copilot-instructions.md)"
+            )
+        _sgmse_eligible = _use_sgmse_musik_p03 and _sgmse_material_ok
         if _sgmse_eligible:
             _plm03_sgmse = None
             try:

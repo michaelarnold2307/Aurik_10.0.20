@@ -514,7 +514,13 @@ class RepairPlanner:
                 _sgmse_domain_ok = bool(_use_sgmse_musik_cr)
             except Exception:
                 _sgmse_domain_ok = False
-            if _sgmse_domain_ok and step.defect_category in ("hiss", "reverb_tail") and _vocal_conf > 0.5:
+            _sgmse_would_apply = step.defect_category in ("hiss", "reverb_tail") and _vocal_conf > 0.5
+            if _sgmse_would_apply and not _sgmse_domain_ok:
+                logger.info(
+                    "RepairPlan: SGMSE+ (Sprach-Core) ohne Musik-Finetune gesperrt → musik-trainierter "
+                    "Ersatzpfad (§v10.16/F7; §III.11 copilot-instructions.md)"
+                )
+            if _sgmse_domain_ok and _sgmse_would_apply:
                 step.parameters["use_sgmse"] = True
                 step.parameters["sgmse_sigma"] = 0.4 if step.defect_category == "reverb_tail" else 0.5
             if step.defect_category == "hiss" and _vocal_conf > 0.65:

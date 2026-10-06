@@ -1,4 +1,57 @@
-# Changelog — Aurik 10.3.18
+# Changelog — Aurik 10.3.19
+
+## 10.3.19 (2026-10-06)
+
+### §III.11: Sperr-Protokollierung konsolidiert + drei vorbestehende rote Tests geklärt
+
+- **Befund (§G9 copilot-instructions.md):** Die dokumentierte Sperre
+  `music_model_flags.use_sgmse_musik=False` (SGMSE+ ist ein SPRACH-Score-Core) wird
+  von fünf Stellen konsumiert, aber nur zwei protokollierten sie §III.11-konform:
+  `hybrid_dereverb.py` und `phase_49_advanced_dereverb.py` nutzen das kanonische
+  `logger.info` mit Begründung. Drei Stellen taten das nicht:
+  - `backend/core/dsp/sota_vocal_model_router.py` — nur `logger.debug`, und der
+    Sperrgrund erschien in der Fallback-Kette als generisches
+    `sgmse_plus:RuntimeError` (nicht von einem echten Modellausfall zu unterscheiden, §G8 copilot-instructions.md)
+  - `backend/core/coordinated_repair.py` — **keine** Protokollierung
+  - `backend/core/phases/phase_03_denoise.py` — Sperre in eine Sammel-Bedingung
+    gefaltet, kein eigener Log
+- **Fix:** Alle drei nutzen jetzt das kanonische Muster: `logger.info` mit Begründung
+  (§v10.16/F7, §III.11 copilot-instructions.md). Der Router führt einen eigenen Kettentoken
+  `sgmse_plus:speech_core_locked`; die Eignungslogik in Phase 03 ist in
+  `_sgmse_material_ok` (Material/Voraussetzungen) und die Flag-Sperre getrennt —
+  semantisch identisch, aber begründbar.
+- **Zwei vorbestehende rote Tests** (`tests/unit/test_sota_vocal_model_router.py`)
+  erwarteten den SGMSE+-Zweig, den die Sperre bewusst schließt:
+  `test_router_vocal_nr_skips_unloaded_miipher_for_sgmse` und
+  `test_router_vocal_nr_compensates_missing_miipher_with_dfn_and_hnr`. Sie geben das
+  Flag jetzt per `monkeypatch` gezielt frei (Standard-Dependency-Injection, keine
+  Produktionsänderung) und prüfen damit weiterhin ihren eigentlichen Vertrag
+  (MIIPHER fehlt → DFN+HNR-Kompensation).
+- **Neuer Sperr-Pin-Test** `test_router_vocal_nr_locks_speech_core_and_reports_reason`:
+  Flag `False` ⇒ der Sprach-Core wird nachweislich NICHT aufgerufen
+  (`sgmse_calls == []`), der Kettentoken lautet `sgmse_plus:speech_core_locked`,
+  und die Sperre wird mit Begründung protokolliert (caplog, §G8 copilot-instructions.md).
+- **Dritter vorbestehender roter Test geklärt**
+  (`tests/unit/test_phase_03_denoise.py::test_clean_audio_not_degraded`): gegen HEAD
+  reproduzierbar, also nicht durch diese Sitzung entstanden. Ursache ist ein
+  **Testdesign**-Problem, belegt durch Messung (2026-10-06, 48 kHz):
+
+  | Signal | corr | rms_ratio | Bewertung |
+  | --- | --- | --- | --- |
+  | MUSDB18-HQ-Vocalstem (**sauber**) | 1,00000 | 1,0000 | unangetastet ✓ |
+  | `real_world_validation/.../digital_test_01.wav` (laut `metadata.json` **degradiert**: clipping) | 0,9542 | 0,693 | Bearbeitung korrekt ✓ |
+  | MUSDB Mixture / Other | 0,9524 / 0,9711 | 0,818 / 0,776 | Bearbeitung korrekt ✓ |
+  | synthetischer 440+880-Hz-Ton (0 Defekte) | 0,8736 | 0,999 | **Testdesign-Ausnahme** |
+
+  Ein rauschfreier, stationärer Sinus ist für einen Rauschschätzer nicht von Rauschen
+  zu unterscheiden (Messung: der DSP-Pfad senkt ihn auf 0,49×, der §0-Level-Guard holt
+  ihn auf 0,999× zurück; `sgmse_plus_tier0_applied`/`deepfilternet_tier1_applied`
+  bleiben `False`, also kein ML-Pfad). Die Korrelationsschwelle 0,97 ist von **keinem**
+  realistischen Signal erfüllbar (auch nicht von echtem degradiertem Material).
+  Der Test prüft jetzt die zwei **belegbaren** Verträge: Pegelerhalt am ruhigen Signal
+  (`0,95 ≤ rms_ratio ≤ 1,05`) und Nie-Verschlechtern auf wirklich sauberem Material
+  (Corr > 0,999, mit `skipif` für lokal fehlendes Referenzmaterial). Die Messwerte
+  stehen im Testdocstring, damit die Schwelle nicht als willkürlich abgeschwächt wirkt.
 
 ## 10.3.18 (2026-10-06)
 

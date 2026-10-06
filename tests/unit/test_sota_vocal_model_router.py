@@ -2,6 +2,7 @@ import pytest
 
 """Unit tests for §SMR-1 SotaVocalModelRouter."""
 
+import logging
 import types
 
 import numpy as np
@@ -457,6 +458,12 @@ def test_demucs_native_call_contract_router_phase42(monkeypatch):
 
 
 def test_router_vocal_nr_skips_unloaded_miipher_for_sgmse(monkeypatch):
+    # §III.11 (copilot-instructions.md): Die Sperre use_sgmse_musik=False ist die
+    # dokumentierte Politik (Musik-Abnahme offen). Für diesen Test wird die
+    # SGMSE+-Stufe gezielt freigegeben, damit der Kompensations-Vertrag
+    # (MIIPHER fehlt → DFN/HNR) prüfbar bleibt.
+    monkeypatch.setattr("backend.core.music_model_flags.use_sgmse_musik", True)
+
     from backend.core.dsp.sota_vocal_model_router import SotaVocalModelRouter
 
     class _FakeMiipher:
@@ -517,6 +524,11 @@ def test_router_vocal_nr_skips_unloaded_miipher_for_sgmse(monkeypatch):
 
 
 def test_router_vocal_nr_compensates_missing_miipher_with_dfn_and_hnr(monkeypatch):
+    # §III.11 (copilot-instructions.md): Musik-Finetune-Stufe für diesen Test
+    # gezielt freigegeben — geprüft wird die DFN+HNR-Kompensation auf dem
+    # SGMSE+-Pfad, nicht die Sperre selbst (dafür der Sperr-Pin-Test).
+    monkeypatch.setattr("backend.core.music_model_flags.use_sgmse_musik", True)
+
     from backend.core.dsp.sota_vocal_model_router import SotaVocalModelRouter
 
     class _FakeMiipher:
@@ -578,6 +590,56 @@ def test_router_vocal_nr_compensates_missing_miipher_with_dfn_and_hnr(monkeypatc
     assert result.metadata["miipher_compensation_dfn_applied"] is True
     assert result.metadata["miipher_compensation_hnr_applied"] is True
     np.testing.assert_allclose(result.audio, audio * 0.36, atol=1e-7)
+
+
+def test_router_vocal_nr_locks_speech_core_and_reports_reason(monkeypatch, caplog):
+    """§III.11 (copilot-instructions.md): Ohne Musik-Finetune darf der Sprach-Core
+    kein Signalpfad sein — und die Sperre muss mit Begründung protokolliert werden
+    (§V6 (copilot-instructions.md)), statt als generischer Fehler zu verschwinden
+    (§G8 (copilot-instructions.md))."""
+    from backend.core.dsp.sota_vocal_model_router import SotaVocalModelRouter
+
+    sgmse_calls: list[bool] = []
+
+    class _FakeMiipher:
+        _model_loaded = False
+
+    class _FakeSgmse:
+        _model_loaded = True
+
+        @staticmethod
+        def enhance(audio: np.ndarray, sr: int):  # pylint: disable=unused-argument
+            sgmse_calls.append(True)
+            raise AssertionError("SGMSE+-Sprach-Core darf bei gesperrtem Flag nicht laufen")
+
+    monkeypatch.setattr("backend.core.music_model_flags.use_sgmse_musik", False)
+    monkeypatch.setitem(
+        __import__("sys").modules,
+        "plugins.miipher_dit_plugin",
+        types.SimpleNamespace(get_miipher_dit=lambda: (_ for _ in ()).throw(ImportError("miipher_dit not available"))),
+    )
+    monkeypatch.setitem(
+        __import__("sys").modules,
+        "plugins.miipher_plugin",
+        types.SimpleNamespace(get_miipher_plugin=lambda: _FakeMiipher()),
+    )
+    monkeypatch.setitem(
+        __import__("sys").modules,
+        "plugins.sgmse_plugin",
+        types.SimpleNamespace(get_sgmse_plugin=lambda: _FakeSgmse()),
+    )
+    monkeypatch.setitem(
+        __import__("sys").modules,
+        "plugins.deepfilternet_v3_ii_plugin",
+        types.SimpleNamespace(get_deepfilternet_plugin=lambda: (_ for _ in ()).throw(RuntimeError("no dfn"))),
+    )
+
+    caplog.set_level(logging.INFO, logger="backend.core.dsp.sota_vocal_model_router")
+    result = SotaVocalModelRouter().enhance_vocal(_audio(), 48000, energy_bias_db=-6.0)
+
+    assert sgmse_calls == []
+    assert "sgmse_plus:speech_core_locked" in result.fallback_chain
+    assert any("gesperrt" in rec.getMessage() and "§v10.16/F7" in rec.getMessage() for rec in caplog.records)
 
 
 def test_router_accepts_productive_miipher_adapter_without_native_onnx(monkeypatch):

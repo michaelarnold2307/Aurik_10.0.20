@@ -507,6 +507,10 @@ class SotaVocalModelRouter:
             except Exception:
                 _sgmse_musik_ok_smr = False
             if not _sgmse_musik_ok_smr:
+                logger.info(
+                    "§SMR-1: SGMSE+ (Sprach-Core) ohne Musik-Finetune gesperrt → DFN/MP-SENet-Pfad "
+                    "(§v10.16/F7; §III.11 copilot-instructions.md)"
+                )
                 raise RuntimeError("sgmse_speech_core_locked")
             from plugins.sgmse_plugin import get_sgmse_plugin  # pylint: disable=import-outside-toplevel
 
@@ -539,7 +543,11 @@ class SotaVocalModelRouter:
                 metadata=metadata,
             )
         except Exception as exc:  # pylint: disable=broad-except
-            attempts.append(f"sgmse_plus:{type(exc).__name__}")
+            attempts.append(
+                "sgmse_plus:speech_core_locked"
+                if str(exc) == "sgmse_speech_core_locked"
+                else f"sgmse_plus:{type(exc).__name__}"
+            )
             logger.debug("§SMR-1 SGMSE+ nicht verfuegbar: %s", exc)
 
         dfn_result = self.enhance_instrumental(reference, sr, energy_bias_db=energy_bias_db)
