@@ -99,7 +99,7 @@ Mess-Block §4a). Auch im aktiven Pfad dominiert Musik — nicht Sprache.
 | `muq_eval` | Modell-Karte: Musik; MuQ-Eval-A1 MOS-Head | MOS-Witness |
 | `muq_mulan` | TencentARC/MuQ-MuLan (Musik-Embedding) | Harmonie-Kontext |
 | `rmvpe` | RMVPE Vokal-Pitch (Musik/MIR) | Pitch Stufe 2 |
-| `scnet_4stems` | SCNet Stem-Separation (Musik); A/B-gewonnen 2026-10-05 | Verdrahtung offen |
+| `scnet_4stems` | SCNet Stem-Separation (Musik); A/B-gewonnen 2026-10-05, fair neugemessen 2026-10-06 (+1,96…+3,59 dB SI-SDR) | **verdrahtet** (§P1-2 in `plugins/scnet_plugin.py`, Kandidat hinter Never-worsen) — Aktivierung gesperrt: `use_scnet_music=False` bis Hörordnungs-Sign-off |
 | `singmos` | South-TP-AI-Lab/SingMOS-Pro — **Gesangs**-MOS | MOS-Witness Gesang |
 | `symphonia` | Instrumentalrestaurierung aus MERT + MuQ-MuLan + Flow-DiT (Musik) | Instrumental-Restaurierung |
 | `uvr_mdx_net` | UVR MDX-Net (Musik-Separation) | Separation |

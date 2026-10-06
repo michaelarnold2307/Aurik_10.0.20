@@ -21,9 +21,10 @@ lückenlos garantiert funktionieren — „out of the box" darf KEIN
      (Whisper large-v3-turbo/Decoder) bleiben dokumentiert und auffindbar.
 
 Bewusst gesperrte Flags (§v10.16/F7 SGMSE-Musik-Abnahme offen, §v10.20
-Whisper-Denoiser deprecated, BW-Reconstructor v5 HF-Gate nicht bestanden)
-sind KEINE Primärpfade — sie werden unten explizit gelistet, damit die
-Entscheidung sichtbar bleibt und nicht versehentlich als „Lücke" gilt.
+Whisper-Denoiser deprecated, BW-Reconstructor v5 HF-Gate nicht bestanden,
+§P1-2 SCNet ohne Hörordnungs-Sign-off) sind KEINE Primärpfade — sie werden
+unten explizit gelistet, damit die Entscheidung sichtbar bleibt und nicht
+versehentlich als „Lücke" gilt.
 """
 
 from __future__ import annotations
@@ -52,6 +53,11 @@ _CONSCIOUSLY_GATED = {
     "sgmse_musik": "§v10.16/F7 — Musik-Core + ONNX-Export vorhanden, A/B-Abnahme offen (Flag gesperrt)",
     "whisper_denoiser": "§v10.20 — deprecated, nur A/B-Gate",
     "bw_v5": "A1: HF-Gain-Gate nicht bestanden (0.73 < 1.02)",
+    "scnet_musik": (
+        "§P1-2 — A/B liegt vor (+1,96…+3,59 dB SI-SDR gegen die faire Demucs-v4-Stufe, "
+        "docs/reports/current/2026-10-06_p1_2_scnet_vs_demucs_fair_ab.md), aber "
+        "Hörordnungs-Sign-off (§v10.802) fehlt und CPU ~7× langsamer (Flag gesperrt)"
+    ),
 }
 
 
@@ -184,3 +190,4 @@ def test_bewusst_gesperrte_flags_dokumentiert():
     assert flags.use_sgmse_musik is False, _CONSCIOUSLY_GATED["sgmse_musik"]
     assert flags.use_whisper_denoiser is False, _CONSCIOUSLY_GATED["whisper_denoiser"]
     assert flags.use_bw_v5 is False, _CONSCIOUSLY_GATED["bw_v5"]
+    assert flags.use_scnet_music is False, _CONSCIOUSLY_GATED["scnet_musik"]

@@ -44,6 +44,12 @@ use_resemblyzer_music: bool = False  # Resemblyzer-Embedder Musik-Freigabe — R
 # Eingang). Nach §III.11 (copilot-instructions.md) darf er Musik/Gesang erst nach Musik-Fine-Tune (F9)
 # beurteilen; bis dahin trägt der domänenneutrale DSP-Proxy (MFCC + spektraler Centroid) die Messung.
 # True ⇒ Embedder-Messung ist freigeschaltet.
+use_scnet_music: bool = False  # SCNet-4-Stems-Tier (§P1-2/TODO-P1-2) — A/B gegen die FAIR gemessene
+# Demucs-v4-Stufe gewonnen (+1,96…+3,59 dB SI-SDR; docs/reports/current/2026-10-06_p1_2_scnet_vs_demucs_fair_ab.md),
+# danach aber OHNE Hörordnungs-Sign-off (§v10.802 copilot-instructions.md) und auf CPU ~7× langsamer
+# (68,9 s vs. 9,8 s je 30 s) ⇒ Flag gesperrt; test_primary_paths_no_fallback pinnt False.
+# True ⇒ MLStemSeparator wertet SCNet als Kandidaten aus und übernimmt ihn NUR, wenn der
+# Never-worsen-Vergleich (Rekonstruktions-Rückfall + Vokal-Erhalt, §v10.26) ihn trägt.
 
 
 # ── Model Paths (relative to project root) ──────────────────────────────────
@@ -75,6 +81,11 @@ MUSIC_MODEL_PATHS: dict[str, Path] = {
     "whisper_encoder": _PROJECT_ROOT / "models" / "whisper" / "whisper_tiny.onnx",
     # BigVGAN-v2 Produktionsvocoder — ONNX, export source bleibt .pth
     "bigvgan": _PROJECT_ROOT / "models" / "bigvgan" / "bigvgan_v2.onnx",
+    # SCNet-4-Stems (§P1-2) — Musik-Separationstier (Checkpoint, kein ONNX);
+    # aktiv NUR bei use_scnet_music=True. Bewusst OHNE Legacy-Gegenstück: ohne
+    # Freigabe liefert resolve_model_path("scnet") None (§V7 copilot-instructions.md
+    # — kein Blind-Aktivieren) und der bestehende Tier-Verbund bleibt unverändert.
+    "scnet": _PROJECT_ROOT / "models" / "scnet_4stems" / "huge_scnet_4stems_v1.2.ckpt",
 }
 
 # ── Legacy paths (fallback) ─────────────────────────────────────────────────
@@ -119,6 +130,7 @@ def resolve_model_path(model_key: str) -> Path | None:
         # Ersatzpfade folgen dem DiT-Flag: nur aktiv wenn DiT selbst aktiv ist
         "whisper_encoder": use_miipher_dit,
         "bigvgan": use_miipher_dit,
+        "scnet": use_scnet_music,
     }
     use_music = flag_map.get(model_key, False)
     music_path = MUSIC_MODEL_PATHS.get(model_key)

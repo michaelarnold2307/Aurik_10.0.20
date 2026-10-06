@@ -93,7 +93,7 @@ Sign-off. **Die Konsolidierung selbst ist abgeschlossen.**
 
 ---
 
-## Schritt 1b — SCNet-Verdrahtung hinter Never-worsen (D-K0-5 / TODO-P1-2)
+## Schritt 1b — **verdrahtet** (2026-10-06): SCNet hinter Never-worsen (D-K0-5 / TODO-P1-2)
 
 **Ziel:** `models/scnet_4stems/huge_scnet_4stems_v1.2.ckpt` als **Qualitäts-Tier**
 verfügbar machen, ohne Demucs v4 als Default zu verdrängen.
@@ -120,11 +120,32 @@ CPU **~7× langsamer** (68,9 s vs. 9,8 s je 30 s).
    ⇒ nachweislich **kein** SCNet-Aufruf.
 4. RT-Nachweis gegen die Budget-Tabelle (32×-Guard ist die End-to-End-Norm).
 
-**Akzeptanz:** Verdrahtung mit Flag `False` ist **verhaltensneutral** (bit-identische
-Referenzmessung), Sperr-Pin-Test grün, A/B-Report verlinkt, C4-Hörstichprobe
-durchgeführt. Aktivierung erst mit Hörordnungs-Sign-off (§v10.802, §III.11).
+**Ergebnis (2026-10-06) — umgesetzt:**
 
-**Blocker:** `CPU` für Verdrahtung + Tests; `MENSCH` für die Aktivierung.
+- **Kanonische Implementierung:** `plugins/scnet_plugin.py` (§G9 copilot-instructions.md:
+  _eine_ Quelle) — Laden, Inferenz und Rate-Konvertierung kommen von dort; der
+  A/B-Harness `scripts/eval_scnet_vs_mdx23c.py` enthält keine Kopie mehr und die
+  Treue-Formel stammt aus `backend/core/dsp/stem_separator.reconstruction_fidelity`.
+- **Sperr-Flag** `use_scnet_music=False` in `backend/core/music_model_flags.py`
+  (+ `MUSIC_MODEL_PATHS["scnet"]`, bewusst **ohne** Legacy-Gegenstück ⇒ ohne
+  Freigabe liefert `resolve_model_path("scnet")` `None`).
+- **Verdrahtung hinter Never-worsen:** `MLStemSeparator.separate` wertet SCNet nur
+  bei Freigabe als Kandidaten aus; zwei referenzfreie Zeugen entscheiden
+  (Rekonstruktions-Treue + Vokal-Erhalt, §v10.26). Ohne Freigabe **kein Import,
+  kein Modell-Load** ⇒ verhaltensneutral.
+- **Sperr-Pin-Test:** `tests/unit/test_scnet_wiring.py` (10 Fälle).
+- **Normativ gepinnt:** `tests/normative/test_primary_paths_no_fallback.py` führt
+  `use_scnet_music` als **bewusst gesperrten** Flag.
+- **Audit:** Modell-Verdrahtungs-Audit → `scnet_4stems` **verdrahtet**, weiterhin
+  **0 undokumentierte Verwaiste**.
+
+**Akzeptanz:** Verdrahtung mit Flag `False` ist **verhaltensneutral** (kein
+Plugin-Zugriff — der Test pinnt das), Sperr-Pin-Test grün, A/B-Report verlinkt.
+**Offen:** C4-Hörstichprobe (Mensch) und der RT-Nachweis gegen die Budget-Tabelle
+(§9.5) — beides **vor** einer Aktivierung.
+
+**Blocker:** `MENSCH` (Hörstichprobe + Sign-off) und die RT-Messung; die
+Verdrahtung selbst ist abgeschlossen.
 
 ---
 

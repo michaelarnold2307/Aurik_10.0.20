@@ -1,4 +1,40 @@
-# Changelog — Aurik 10.4.0
+# Changelog — Aurik 10.5.0
+
+## 10.5.0 (2026-10-06)
+
+### §P1-2 — SCNet-Separation verdrahtet (Aktivierung gesperrt)
+
+**Wurzel-Fix (§G9 copilot-instructions.md):** Der A/B-Harness
+`scripts/eval_scnet_vs_mdx23c.py` trug eine **eigene Kopie** von Checkpoint-Laden
+und Inferenz und durfte deshalb nie produktiv werden. Jetzt gibt es **eine**
+Implementierung für Harness und Produktion.
+
+- **Neu: `plugins/scnet_plugin.py`** — kanonische SCNet-4-Stems-Implementierung
+  (Strict-Load des 65.292.464-Parameter-Checkpoints `huge_scnet_4stems_v1.2.ckpt`,
+  Apache-2.0; vendored ZFTurbo-Architektur MIT; bitsandbytes-Stub für den
+  Trainings-Pickle; Quellen-Reihenfolge aus `config.yaml`; Rate 44,1 kHz ⇄ 48 kHz
+  über den kanonischen `plugins.htdemucs_plugin.resample_audio`; 15-s-Chunking mit
+  0,5-s-Kreuzblende; Layout- und Längen-Normalisierung; §V6-Begründung bei Sperre
+  oder Ausfall).
+- **Neu in `music_model_flags`:** `use_scnet_music` (**Default `False`**) +
+  `MUSIC_MODEL_PATHS["scnet"]` — **bewusst ohne** Legacy-Gegenstück: ohne Freigabe
+  liefert `resolve_model_path("scnet")` `None` (§V7 copilot-instructions.md).
+- **Verdrahtung hinter dem Never-worsen-Vergleich** (`MLStemSeparator.separate`):
+  SCNet wird nur bei Freigabe als Kandidat ausgewertet; zwei referenzfreie Zeugen
+  entscheiden — Rekonstruktions-Treue (`reconstruction_fidelity`, kanonisch in
+  `backend/core/dsp/stem_separator.py`) und **Vokal-Erhalt** (Stem-Kollaps-Schutz,
+  §V1-Geist: Gesang wird nie wegoptimiert). Ohne Freigabe **kein Import, kein
+  Modell-Load** ⇒ bit-identischer Bestand (§G5 copilot-instructions.md).
+- **Normativ gepinnt:** `tests/normative/test_primary_paths_no_fallback.py` führt
+  `use_scnet_music` als **bewusst gesperrten** Flag.
+- **Tests:** `tests/unit/test_scnet_wiring.py` (10 Fälle: Sperre/Auflösung,
+  Übernahme, Verwerfung, Vokal-Kollaps, werfender Kandidat, kanonische Formel).
+- **Audit:** Modell-Verdrahtungs-Audit → `scnet_4stems` **verdrahtet**;
+  weiterhin **0 undokumentierte Verwaiste**.
+- **Offen (ehrlich):** Die **Aktivierung** bleibt gesperrt — C4-Hörstichprobe +
+  Hörordnungs-Sign-off (§v10.802 copilot-instructions.md) und der RT-Beitrag gegen
+  die Budget-Tabelle (§9.5; A/B: CPU ~7× langsamer als Demucs v4, Vorsprung nur
+  +1,96…+3,59 dB SI-SDR gegen die **fair** gemessene Baseline).
 
 ## 10.4.0 (2026-10-06)
 

@@ -17,7 +17,7 @@
   "scripts/compliance_check.py": "646d1e5e090aea4c066aff64a451521b05d1e1349c976dece820c05c56dea64e",
   "scripts/check_musical_goals.py": "e2560513df75ddcfd6aa954d88d69497158e61fb5dde2fb534b8f769f25cc8b2",
   ".github/ID_REGISTRY.md": "63937de49e057fd6724433c63eaf26be1fa41e0683e027d79f67e0e50f672084",
-  ".github/FILE_REGISTRY.md": "0ff71de3d496cc098cda246c243e2ef43fd128e18272236f1aaf9d0016d4c0ae",
+  ".github/FILE_REGISTRY.md": "d8b1e97d4bf72719f0cdd6bbbcf895e2853b7b1627aa0d80515a1d0370eef048",
   ".github/GEBOTE_INTEGRATION_MATRIX.md": "3ae76fffd192b52093a5291ee315b3c1e5b48bac4e16e8a65aeaf061228eb4b5",
   ".github/specs/00_SPEC_INDEX.md": "34055acfa9f91842cc3ae7863bba8821d3af2a667279017ce6df50408986b6b2",
   "scripts/gen_integration_matrix.py": "629740944935b08e3079d70dde8c86ee193ca33ea8161ea5eef6809241bb5dd3",

@@ -325,7 +325,9 @@ _WIRING_ALLOWLIST: dict[str, str] = {
     "ddsp_predictor": "trainiert (c4_head.pth), aber val_MAE 0.2447 ≈ Baseline 0.2455 (kein Skill) — NICHT aktivierbar (F5/C4, §V7-Blindaktivierungs-Verbot)",
     "gacela_upstream": "Upstream-Architekturkopie als Vergleichsquelle — kein Laufzeitpfad",
     "matchering2.0": "Referenz-Matching-Werkzeug (Mastering-Vergleich) — Rolle ungeklaert",
-    "scnet_4stems": "A/B gewonnen 2026-10-05 (SI-SDR +10,3…+16,4 dB) — Verdrahtung offen (TODO-P1-2)",
+    # scnet_4stems ist seit §P1-2 verdrahtet (plugins/scnet_plugin.py +
+    # MLStemSeparator hinter Never-worsen, Flag use_scnet_music=False): kein
+    # Ausnahme-Eintrag mehr nötig — das Gate findet die Namensreferenz.
     # Beschaffung 2026-10-06 (Bestandsabgleich Repo ↔ Sicherung): drei
     # Herkunfts-/Belegbestände ohne Laufzeitpfad — bewusst vorgehalten, damit
     # Basis ↔ Finetune am Artefakt prüfbar ist (§III.13 Evidenzpflicht).

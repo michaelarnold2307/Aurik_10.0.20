@@ -27,6 +27,65 @@ _logger = logging.getLogger(__name__)
 
 warnings.filterwarnings("ignore", category=RuntimeWarning)
 
+# ── Kanonische Rekonstruktions-Treue der Stem-Summe (§G9 copilot-instructions.md) ──
+# EINE Quelle für den Never-worsen-Vergleich (hier) und den A/B-Harness
+# (``scripts/eval_scnet_vs_mdx23c.py``). Formel identisch zu ``plugins/htdemucs_plugin``
+# (Docstring) und ``musical_goals_metrics``:
+#   fidelity = 1 − RMS(Mix − Σ Stems) / RMS(Σ Stems), auf [0, 1] geklemmt.
+
+# Konservative Startwerte für die SCNet-Übernahme (§P1-2). Sie entscheiden
+# AUSSCHLIESSLICH, wenn ``music_model_flags.use_scnet_music`` gesetzt ist;
+# eine Kalibrierung an Hörproben steht aus (§v10.802 copilot-instructions.md).
+_SEPARATION_TOLERANCE = 0.01  # erlaubter Treue-Rückfall des Kandidaten
+_VOCAL_PRESERVE_MIN = 0.85  # Mindest-Vokal-Energie relativ zum Bestand (Stem-Kollaps-Schutz)
+
+
+def reconstruction_fidelity(mixture: np.ndarray, stems_sum: np.ndarray) -> float:
+    """Referenzfreier Zeuge: wie gut rekonstruiert die Stem-Summe die Mixtur?
+
+    Ohne Ground-Truth ist das der ehrliche Vergleichsmaßstab zwischen zwei
+    Separations-Kandidaten (§v10.26 Never-worsen, §G8 copilot-instructions.md
+    Transparenz): der Kandidat mit höherer Treue beschreibt die Mischung besser.
+    """
+    mix = np.asarray(mixture, dtype=np.float64).ravel()
+    total = np.asarray(stems_sum, dtype=np.float64).ravel()
+    n = min(mix.size, total.size)
+    if n == 0:
+        return 0.0
+    diff = mix[:n] - total[:n]
+    rms_diff = float(np.sqrt(np.mean(diff**2)) + 1e-12)
+    rms_sum = float(np.sqrt(np.mean(total[:n] ** 2)) + 1e-12)
+    return float(np.clip(1.0 - rms_diff / rms_sum, 0.0, 1.0))
+
+
+def _mono(x: np.ndarray) -> np.ndarray:
+    """(N, C)/(C, N)/mono → mono float64 (Layout-tolerant, AGENTS.md §3)."""
+    arr = np.asarray(x, dtype=np.float64)
+    if arr.ndim != 2:
+        flat: np.ndarray = arr.ravel()
+        return flat
+    reduced: np.ndarray = arr.mean(axis=1) if arr.shape[0] >= arr.shape[1] else arr.mean(axis=0)
+    return reduced
+
+
+def stem_set_fidelity(mixture: np.ndarray, stems: dict[str, np.ndarray]) -> float:
+    """``reconstruction_fidelity`` für ein ganzes Stem-Dict (Summe der Stems, mono)."""
+    total: np.ndarray | None = None
+    for value in stems.values():
+        arr = np.asarray(value, dtype=np.float64)
+        total = arr if total is None else total + arr
+    if total is None:
+        return 0.0
+    return reconstruction_fidelity(_mono(mixture), _mono(total))
+
+
+def _stem_rms(value: np.ndarray | None) -> float:
+    """RMS eines Stems (0.0 bei fehlendem Stem) — Zeuge für den Vokal-Erhalt."""
+    if value is None:
+        return 0.0
+    arr = np.asarray(value, dtype=np.float64)
+    return float(np.sqrt(np.mean(arr**2)) + 1e-12)
+
 
 # Check for optional ML backends
 DEMUCS_AVAILABLE = False
@@ -311,7 +370,107 @@ class MLStemSeparator:
         Returns
         -------
         dict mit keys 'vocals', 'drums', 'bass', 'other' (alle float32)
+
+        §P1-2 (TODO-P1-2): Ist ``music_model_flags.use_scnet_music`` gesetzt, wird
+        SCNet als **Kandidat** ausgewertet und nur übernommen, wenn der
+        Never-worsen-Vergleich ihn trägt (§v10.26 + §v10.802
+        copilot-instructions.md). Ohne Freigabe ist der Pfad **bit-identisch**
+        zum Bestand — kein Import, kein Modell-Load (§V7 (copilot-instructions.md) kein Blind-Aktivieren).
         """
+        incumbent = self._separate_incumbent(audio, sample_rate)
+        candidate = self._scnet_candidate(audio, sample_rate)
+        if candidate is None:
+            return incumbent
+        return self._choose_never_worsen(audio, incumbent, candidate)
+
+    def _scnet_candidate(self, audio: np.ndarray, sample_rate: int) -> dict[str, np.ndarray] | None:
+        """SCNet-Stems als Kandidat — ausschließlich bei Freigabe (sonst ``None``)."""
+        from backend.core import music_model_flags as _flags
+
+        if not getattr(_flags, "use_scnet_music", False):
+            return None  # Default: kein Import, kein Load → verhaltensneutral (§G5 (copilot-instructions.md))
+        try:
+            from plugins.scnet_plugin import get_scnet_plugin
+
+            stems = get_scnet_plugin().separate(audio, sample_rate)
+        except Exception as _err:  # pylint: disable=broad-except — §V6 copilot-instructions.md
+            _logger.warning("MLStemSeparator: SCNet-Kandidat fehlgeschlagen (%s) → Bestand bleibt", _err)
+            return None
+        if not stems:
+            _logger.warning(
+                "§V6 (copilot-instructions.md) MLStemSeparator: SCNet lieferte keine Stems — Bestand bleibt."
+            )
+            return None
+        out: dict[str, np.ndarray] = {}
+        for key in ("vocals", "drums", "bass", "other"):
+            value = stems.get(key)
+            if value is None:
+                _logger.warning(
+                    "§V6 (copilot-instructions.md) MLStemSeparator: SCNet-Stem '%s' fehlt — Bestand bleibt.", key
+                )
+                return None
+            out[key] = np.asarray(value, dtype=np.float32)
+        return out
+
+    def _choose_never_worsen(
+        self,
+        mixture: np.ndarray,
+        incumbent: dict[str, np.ndarray],
+        candidate: dict[str, np.ndarray],
+    ) -> dict[str, np.ndarray]:
+        """§P1-2: SCNet ersetzt den Bestand nur, wenn er nicht schlechter ist.
+
+        Zwei referenzfreie Zeugen entscheiden (keine erfundene Metrik, §v10.26):
+
+        1. **Rekonstruktions-Treue** (``stem_set_fidelity``): die Stem-Summe des
+           Kandidaten muss die Mixtur mindestens so gut beschreiben wie der
+           Bestand (Toleranz ``_SEPARATION_TOLERANCE``).
+        2. **Vokal-Erhalt**: die Vokal-Energie darf nicht unter
+           ``_VOCAL_PRESERVE_MIN`` der Bestandsenergie fallen — Schutz gegen einen
+           kollabierten Gesangs-Stem (§V1 copilot-instructions.md: Gesang wird nie
+           wegoptimiert).
+
+        Wird ein Zeuge verletzt, bleibt der Bestand; der Kandidat wird nie
+        „auf Verdacht“ aktiviert (§V7 copilot-instructions.md). Die Entscheidung
+        wird vollständig in ``self.metrics['never_worsen']`` berichtet (§G8 (copilot-instructions.md)).
+        """
+        previous = dict(self.metrics)
+        fidelity_in = stem_set_fidelity(mixture, incumbent)
+        fidelity_cand = stem_set_fidelity(mixture, candidate)
+        vocal_ratio = _stem_rms(candidate.get("vocals")) / max(_stem_rms(incumbent.get("vocals")), 1e-9)
+
+        reasons: list[str] = []
+        if fidelity_cand < fidelity_in - _SEPARATION_TOLERANCE:
+            reasons.append(f"Rekonstruktions-Treue {fidelity_cand:.4f} < {fidelity_in:.4f}-{_SEPARATION_TOLERANCE}")
+        if vocal_ratio < _VOCAL_PRESERVE_MIN:
+            reasons.append(f"Vokal-Energie {vocal_ratio:.3f} < {_VOCAL_PRESERVE_MIN}")
+
+        witness = {
+            "fidelity_incumbent": round(fidelity_in, 5),
+            "fidelity_candidate": round(fidelity_cand, 5),
+            "vocal_energy_ratio": round(float(vocal_ratio), 5),
+            "accepted": not reasons,
+            "reasons": reasons,
+        }
+        if reasons:
+            self.metrics = {**previous, "never_worsen": witness}
+            _logger.warning(
+                "§P1-2 Never-worsen: SCNet-Kandidat VERWORFEN (%s) — Bestand bleibt (§v10.26).",
+                "; ".join(reasons),
+            )
+            return incumbent
+
+        self.metrics = {**previous, "backend": "SCNet", "quality": "SOTA", "never_worsen": witness}
+        _logger.info(
+            "§P1-2 Never-worsen: SCNet übernommen (Treue %.4f ≥ %.4f, Vokal-Energie %.3f) — §v10.26.",
+            fidelity_cand,
+            fidelity_in,
+            vocal_ratio,
+        )
+        return candidate
+
+    def _separate_incumbent(self, audio: np.ndarray, sample_rate: int) -> dict[str, np.ndarray]:
+        """Bestehende Tier-Kaskade (unverändert) — der Bestand ohne SCNet-Freigabe."""
         audio = np.nan_to_num(audio, nan=0.0, posinf=0.0, neginf=0.0)
         orig_dtype = audio.dtype
 

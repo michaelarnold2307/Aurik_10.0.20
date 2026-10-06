@@ -69,14 +69,9 @@ ROOT = Path(__file__).resolve().parent.parent
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-SCNET_VENDOR_PARENT = ROOT / "models" / "scnet_4stems"
-if str(SCNET_VENDOR_PARENT) not in sys.path:
-    sys.path.insert(0, str(SCNET_VENDOR_PARENT))
-
 SEED = 42
 SAMPLE_RATE = 44100
 SCNET_CKPT = ROOT / "models" / "scnet_4stems" / "huge_scnet_4stems_v1.2.ckpt"
-SCNET_CONFIG = ROOT / "models" / "scnet_4stems" / "config.yaml"
 MUSDB_TEST = ROOT / "data" / "musdb18hq" / "test"
 DEFAULT_SONGS = (
     "AM Contra - Heart Peripheral",
@@ -93,31 +88,6 @@ def _sha256(path: Path) -> str:
         for chunk in iter(lambda: fh.read(1 << 20), b""):
             h.update(chunk)
     return h.hexdigest()
-
-
-def _stub_bitsandbytes() -> None:
-    """Checkpoint-Pickle referenziert bitsandbytes (Training) — Dummy-Module
-    genügen für reines Inferenz-Laden (Muster: scripts/_scnet_arch_probe.py)."""
-    import types
-
-    class _Mod(types.ModuleType):
-        def __getattr__(self, n: str):
-            if n.startswith("__"):
-                raise AttributeError(n)
-            val = type(n, (), {"__init__": lambda self, *a, **k: None})
-            setattr(self, n, val)
-            return val
-
-    for name in (
-        "bitsandbytes",
-        "bitsandbytes.optim",
-        "bitsandbytes.optim.adamw",
-        "bitsandbytes.nn",
-        "bitsandbytes.functional",
-        "bitsandbytes.cextension",
-        "bitsandbytes.triton",
-    ):
-        sys.modules[name] = _Mod(name)
 
 
 def _si_sdr_db(estimate: np.ndarray, reference: np.ndarray) -> float:
@@ -153,14 +123,15 @@ def _stem_matrix(stems: dict[str, np.ndarray], gt_monos: dict[str, np.ndarray]) 
 
 
 def _separation_fidelity(mixture: np.ndarray, stems_sum: np.ndarray) -> float:
-    """Kanonische Formel (musical_goals_metrics): 1 − RMS(Diff)/RMS(Summe)."""
-    mix = np.asarray(mixture, dtype=np.float64)
-    ssum = np.asarray(stems_sum, dtype=np.float64)
-    n = min(mix.size, ssum.size)
-    diff = mix.ravel()[:n] - ssum.ravel()[:n]
-    rms_diff = float(np.sqrt(np.mean(diff**2)) + 1e-12)
-    rms_sum = float(np.sqrt(np.mean(ssum.ravel()[:n] ** 2)) + 1e-12)
-    return float(np.clip(1.0 - rms_diff / rms_sum, 0.0, 1.0))
+    """§G9 (copilot-instructions.md): delegiert an die EINE kanonische Formel.
+
+    ``backend.core.dsp.stem_separator.reconstruction_fidelity`` ist die gemeinsame
+    Quelle für A/B-Harness UND den produktiven Never-worsen-Vergleich (§v10.26) —
+    vorher trug dieses Skript eine eigene Kopie.
+    """
+    from backend.core.dsp.stem_separator import reconstruction_fidelity
+
+    return reconstruction_fidelity(mixture, stems_sum)
 
 
 def _to_mono(x: np.ndarray) -> np.ndarray:
@@ -235,51 +206,20 @@ def _load_song(song: str, seconds: float, offset: float = -1.0) -> tuple[np.ndar
     )
 
 
-def _load_scnet() -> tuple[object, list[str]]:
-    """Baut den SCNet-Kandidaten (vendored ZFTurbo-Code, MIT) und lädt den
-    Checkpoint strikt. Gibt (Modell, source-reihenfolge) zurück."""
-    _stub_bitsandbytes()
-    import torch
-    import yaml
-    from zfturbo_scnet import SCNet  # type: ignore[import-not-found]
+def _load_candidate() -> object:
+    """Kanonischer SCNet-Kandidat aus ``plugins.scnet_plugin`` (§G9 copilot-instructions.md).
 
-    with open(SCNET_CONFIG, encoding="utf-8") as fh:
-        cfg_model = yaml.safe_load(fh)["model"]
+    Der A/B-Harness IST das Freigabe-Gate: er setzt ``use_scnet_music`` bewusst
+    **prozesslokal**, damit ``resolve_model_path("scnet")`` das Artefakt liefert.
+    Die Produktion bleibt unberührt (dort ist das Flag weiterhin ``False``).
+    """
+    from backend.core import music_model_flags as _flags
+    from plugins.scnet_plugin import get_scnet_plugin
 
-    torch.manual_seed(SEED)
-    model = SCNet(**cfg_model)
-    ck = torch.load(str(SCNET_CKPT), map_location="cpu", weights_only=False)
-    sd = ck["model_state_dict"]
-    sd = {k.replace("module.", "", 1): v for k, v in sd.items()}
-    missing, unexpected = model.load_state_dict(sd, strict=False)
-    if missing or unexpected:
-        raise RuntimeError(
-            f"SCNet-Checkpoint passt nicht strikt zur Architektur: "
-            f"missing={len(missing)} unexpected={len(unexpected)} "
-            f"(Beispiele: {list(missing)[:3]} | {list(unexpected)[:3]})"
-        )
-    model.eval()
-    torch.set_num_threads(max(1, (os.cpu_count() or 4) // 2))
-    logger.info(
-        "SCNet geladen: %s Parameter | SHA256=%s",
-        f"{sum(p.numel() for p in model.parameters()):,}",
-        _sha256(SCNET_CKPT)[:16],
-    )
-    return model, list(cfg_model["sources"])
-
-
-def _scnet_separate(model: object, sources: list[str], mix: np.ndarray) -> dict[str, np.ndarray]:
-    """SCNet-Inferenz (whole-segment, CPU) — Ausgabe (B, S, C, L) → Stem-Dict (N, C)."""
-    import torch
-
-    t = torch.from_numpy(np.ascontiguousarray(mix.T)).unsqueeze(0)  # (1, C, N)
-    with torch.no_grad():
-        out = model(t)  # (1, S, C, N)
-    out = out[0].cpu().numpy()  # (S, C, N)
-    stems: dict[str, np.ndarray] = {}
-    for idx, name in enumerate(sources):
-        stems[name] = out[idx].T.astype(np.float32)  # (N, C)
-    return stems
+    _flags.use_scnet_music = True  # nur dieser Prozess — Flag der Produktion bleibt gesperrt
+    plugin = get_scnet_plugin()
+    logger.info("SCNet-Kandidat: %s | SHA256=%s", SCNET_CKPT, _sha256(SCNET_CKPT)[:16])
+    return plugin
 
 
 def _demucs4_baseline(mix44: np.ndarray, sr: int = SAMPLE_RATE) -> tuple[dict[str, np.ndarray], str]:
@@ -349,7 +289,7 @@ def main() -> int:
 
     # Setup (fail-fast, Exit 2)
     try:
-        scnet_model, scnet_sources = _load_scnet()
+        scnet_plugin = _load_candidate()
     except Exception as exc:  # §V6 (copilot-instructions.md): Setup-Fehler laut
         logger.error("Setup-Fehler SCNet: %s", exc)
         return 2
@@ -382,10 +322,14 @@ def main() -> int:
                     raise ValueError(f"GT-Stem-SR-Mismatch {_name}: {_gsr} vs {sr}")
                 gt_stems_mono[_name] = _to_mono(_g[_off_n:_end_n])
 
-            # --- SCNet-Kandidat ---
+            # --- SCNet-Kandidat (kanonisches Plugin, §G9 (copilot-instructions.md)) ---
+            # chunked=False = ganzes Segment: genau die Bedingung der Referenzmessung
+            # (docs/reports/current/2026-10-06_p1_2_scnet_vs_demucs_fair_ab.md).
             t_scnet = time.perf_counter()
-            scnet_stems = _scnet_separate(scnet_model, scnet_sources, mix)
+            scnet_stems = scnet_plugin.separate(mix, sr, chunked=False)
             scnet_secs = time.perf_counter() - t_scnet
+            if not scnet_stems:
+                raise RuntimeError("SCNet lieferte keine Stems (§V6 copilot-instructions.md)")
             scnet_sum = np.sum(np.stack(list(scnet_stems.values()), axis=0), axis=0)
             scnet_voc_mono = _to_mono(scnet_stems.get("vocals", np.zeros_like(mix)))
 
