@@ -1,7 +1,9 @@
 # Spec 19: SOTA Vocal Gender Detection — §2.8 Perfection
 
 > **Version:** Aurik 10.0.0 · **Scope:** Gender-Erkennung für De-Esser, Vocal-Enhancement, Formant-Preservation
-> **Status:** Implementiert · **Audit-Datum:** 2026-08-04
+> **Status:** Implementiert · **Audit-Datum:** 2026-08-04 · **Rev. 2026-10-06:**
+> Konsolidierung auf **EINEN** Detektor-Pfad (Fassaden delegieren) + musiktaugliche
+> PANNs-Singing-Evidenz im kanonischen Kern (§G9/§III.11 copilot-instructions.md)
 > **Behebt:** 5 strukturelle Bugs in der Gender-Detection-Chain
 
 ## Inhaltsverzeichnis
@@ -96,12 +98,23 @@ LPC-Formant-Tracker als zweite Meinung zu konsultieren.
 ```
 Phase 19 DeEsserPhase.process()
   └─ _detect_gender_robust(audio, sr)           ← SOTA-Hauptdetektor
-       ├─ 1. GenderDetector (vocal_ai_enhancement)
+       ├─ 0. PANNs-„Male/Female singing" (Klassen 32/33, musiktauglich)
+       │      └─ _panns_singing_prior(): ≥ 0,25 Score UND > 0,10 Klassenabstand
+       │         → Shortcut; sonst additive Fusion im Kern (+0,35). Gleichstand
+       │           schweigt (keine geratene Evidenz).
+       ├─ 1. GenderDetector (vocal_ai_enhancement)  ← EINZIGER kanonischer Pfad
        │      ├─ _detect_f0() → scanning 60×100ms ← Bug 2 fix
        │      ├─ _detect_formants() → spectral peaks + WORLD
        │      ├─ _classify_gender(F0, formants)
        │      └─ pYIN F0 (librosa) → voiced-frame median
        │      └─ Contralto-Erkennung (F0=male, Formanten=female)
+       │
+       │   §Rev. 2026-10-06: Die Fassaden `forensics/gender_detection` und
+       │   `forensics/gender_rule_based` delegieren hierher und enthalten keine
+       │   eigenen Schwellen mehr (§G9 copilot-instructions.md). Ein
+       │   sprachtrainiertes Embedding-Modell (Resemblyzer/LibriSpeech)
+       │   entscheidet NICHT mit (§III.11 copilot-instructions.md); die
+       │   Vokaltrakt-Anatomie trägt die Entscheidung tonhöhenunabhängig.
        │
        ├─ 2. LPC Formant Tracker (lpc_formant_tracker) ← Bug 1 + 5 fix
        │      ├─ _scan_f0_voiced() → scanning 60×100ms

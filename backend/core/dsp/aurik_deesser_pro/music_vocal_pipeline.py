@@ -306,16 +306,12 @@ def process_vocals(
     if gender is None or gender == "auto":
         if GENDER_DETECTION_AVAILABLE and GenderDetector is not None:
             detector = GenderDetector()
-            # Falls audio ein Array ist, temporär als WAV speichern
-            import tempfile
-
-            import soundfile as sf
-
             try:
+                # §SOTA-Gender (2026-10-06): Array-Pfad direkt über den
+                # kanonischen Multi-Evidenz-Kern — kein Temp-WAV-Umweg mehr,
+                # keine F0-Einzelheuristik (Spec 19, §G9 copilot-instructions.md).
                 if isinstance(audio, np.ndarray):
-                    with tempfile.NamedTemporaryFile(suffix=".wav", delete=True) as tmp:
-                        sf.write(tmp.name, audio, sr)
-                        gender = detector.detect_gender(tmp.name)
+                    gender = detector.detect_gender_array(audio, sr)
                 else:
                     gender = detector.detect_gender(audio)
                 write_audit_log(

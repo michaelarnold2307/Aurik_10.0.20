@@ -285,3 +285,102 @@ def _fake_pyin():
     voiced = _np.full(_n, True)
     prob = _np.full(_n, 0.95, dtype=_np.float64)
     return f0, voiced, prob
+
+
+# ============================================================
+# §SOTA-Gender-Fusion (2026-10-06): PANNs-Singing-Evidenz + EIN Pfad
+# ============================================================
+
+
+def test_panns_singing_prior_clear_male() -> None:
+    """Klare Male-Singing-Evidenz (Score ≥ 0,25, Abstand > 0,10) → MALE."""
+    from backend.core.vocal_ai_enhancement import _panns_singing_prior
+
+    assert _panns_singing_prior({"Male singing": 0.80, "Female singing": 0.05}) == VoiceGender.MALE
+
+
+def test_panns_singing_prior_clear_female() -> None:
+    from backend.core.vocal_ai_enhancement import _panns_singing_prior
+
+    assert _panns_singing_prior({"Male singing": 0.10, "Female singing": 0.70}) == VoiceGender.FEMALE
+
+
+def test_panns_singing_prior_ambiguous_is_silent() -> None:
+    """Gleichstand/Untergrenze schweigt — keine Evidenz ist besser als geratene."""
+    from backend.core.vocal_ai_enhancement import _panns_singing_prior
+
+    assert _panns_singing_prior({"Male singing": 0.60, "Female singing": 0.58}) is None
+    assert _panns_singing_prior({"Male singing": 0.20, "Female singing": 0.05}) is None
+    assert _panns_singing_prior(None) is None
+    assert _panns_singing_prior({}) is None
+
+
+def test_panns_prior_carries_without_anatomy() -> None:
+    """Ohne F0/Formanten (instrumentales Intro) trägt der PANNs-Prior die
+    Entscheidung — statt blind UNKNOWN (Spec 19 Bug 2/4)."""
+    det = GenderDetector(sample_rate=SR)
+    gender, conf = det._classify_gender(0.0, [], panns_tags={"Female singing": 0.66})
+    assert gender == VoiceGender.FEMALE
+    assert conf == pytest.approx(0.60)
+
+
+def test_without_panns_tags_classification_is_unchanged() -> None:
+    """Rückwärtskompatibilität: ohne PANNs-Evidenz entscheidet die Anatomie wie bisher."""
+    det = GenderDetector(sample_rate=SR)
+    assert det._classify_gender(120.0, [500.0, 1500.0, 2500.0])[0] == VoiceGender.MALE
+    assert det._classify_gender(300.0, [800.0, 2200.0, 2900.0])[0] == VoiceGender.FEMALE
+
+
+def test_canonical_facade_uses_no_speech_embedder() -> None:
+    """§III.11 copilot-instructions.md/§G9: Der Gender-Pfad lädt kein
+    sprachtrainiertes Embedding-Modell mehr als Entscheider."""
+    import inspect
+
+    from backend.core.forensics import gender_detection as _gd
+
+    _src = inspect.getsource(_gd)
+    assert "get_resemblyzer_plugin" not in _src, "Resemblyzer darf hier nicht mehr geladen werden (§III.11)"
+    assert "from plugins.resemblyzer_plugin import" not in _src
+    assert "vocal_ai_enhancement" in _src, "Fassade muss an den kanonischen Kern delegieren"
+
+
+def test_rule_based_detector_delegates_to_canonical_path() -> None:
+    """§G9 copilot-instructions.md: Die regelbasierte Klasse ist nur noch eine
+    Fassade — kein zweiter Gender-Begriff mit eigenen Schwellen im Projekt."""
+    import inspect
+
+    from backend.core.forensics import gender_rule_based as _grb
+    from backend.core.forensics.gender_rule_based import RuleBasedGenderDetector
+
+    _src = inspect.getsource(_grb)
+    assert "def _estimate_formants" not in _src
+    assert "def _lpc" not in _src
+    assert "def classify_from_features" not in _src
+    _det = RuleBasedGenderDetector(sr=SR)
+    assert _det.detect_gender(np.zeros(0, dtype=np.float32)) == "unknown"
+
+
+def test_gender_facade_array_path_returns_valid_label() -> None:
+    """Fassade: Signal → zulässiges Label; zu kurzes Signal → ehrliches 'unknown'."""
+    from backend.core.forensics.gender_detection import GenderDetector as _Fassade
+
+    _det = _Fassade(sample_rate=SR)
+    assert _det.detect_gender_array(_harmonic(220.0, dur=0.5), SR) in {
+        "male",
+        "female",
+        "child",
+        "unknown",
+    }
+    assert _det.detect_gender_array(np.zeros(10, dtype=np.float32), SR) == "unknown"
+
+
+def test_scan_f0_never_blind_to_late_voice() -> None:
+    """Spec 19 Bug 2/4: Ein instrumentales Intro (Stille) darf die F0-Schätzung
+    nicht blockieren — gescannt wird über den ganzen Clip."""
+    from backend.core.forensics.gender_detection import _scan_f0
+
+    _lead_in = np.zeros(int(1.0 * SR), dtype=np.float32)
+    _voice = _harmonic(180.0, dur=2.0)
+    _sig = np.concatenate([_lead_in, _voice])
+    _f0 = _scan_f0(_sig, SR)
+    assert 150.0 < _f0 < 210.0, f"Scan-F0={_f0:.1f} Hz — Intro blockierte die Schätzung"

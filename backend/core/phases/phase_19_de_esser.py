@@ -138,12 +138,17 @@ except ImportError as _aurik8_err:
     logger.debug("Aurik 10.0.0 Enhancement-Module nicht verfügbar: %s", _aurik8_err)
 
 # ── Robuster GenderDetector aus Vocal-Chain (§2.8) ──────────────
+# §SOTA-Gender 2026-10-06: EINE kanonische Quelle für die musiktaugliche
+# PANNs-Singing-Evidenz (`_panns_singing_prior`) — Phase 19 nutzt sie als
+# Shortcut, die volle Fusion liegt im Kern (§G9 (copilot-instructions.md)).
 try:
     from backend.core.vocal_ai_enhancement import GenderDetector as _RobustGenderDetector
+    from backend.core.vocal_ai_enhancement import _panns_singing_prior as _panns_singing_prior_kanonisch
 
     _HAS_ROBUST_GENDER = True
 except ImportError:
     _RobustGenderDetector = None  # type: ignore
+    _panns_singing_prior_kanonisch = None  # type: ignore
     _HAS_ROBUST_GENDER = False
 
 try:
@@ -3245,20 +3250,21 @@ class DeEsserPhase(PhaseInterface):
         """
         mono = np.mean(audio, axis=1) if audio.ndim == 2 else audio
 
-        # ── §SOTA-Analogie-Korrektur 2026-09-17 (ANA-3): PANNs-Gender-Prior ──
+        # ── §SOTA-Gender (Rev. 2026-10-06): PANNs-Gender-Prior ──────────────
         # Die definierende Evidenz (Male/Female-Singing-Klassen 32/33) ist in
-        # den EINMALIG berechneten PANNs-Tags bereits enthalten; bei klarem
-        # Abstand (> 0,10, Mindest-Score 0,25) ersetzt der ML-Prior die
-        # DSP-Heuristik — sonst bleibt der robuste DSP-Pfad unverändert.
-        _tags19 = kwargs.get("panns_tags") or {}
-        _male19 = float(_tags19.get("Male singing", 0.0) or 0.0)
-        _female19 = float(_tags19.get("Female singing", 0.0) or 0.0)
-        if _male19 >= 0.25 and _male19 > _female19 + 0.10:
-            logger.debug("🎤 PANNs-Gender-Prior: male (%.2f vs %.2f)", _male19, _female19)
-            return "male"
-        if _female19 >= 0.25 and _female19 > _male19 + 0.10:
-            logger.debug("🎤 PANNs-Gender-Prior: female (%.2f vs %.2f)", _female19, _male19)
-            return "female"
+        # den EINMALIG berechneten PANNs-Tags enthalten. Schwellen und Gewicht
+        # liegen seit 2026-10-06 an EINER Stelle im kanonischen Kern
+        # (`_panns_singing_prior`, §G9 (copilot-instructions.md)) — hier dient
+        # die Evidenz als Shortcut: klare Evidenz spart die teure pYIN-/
+        # Formant-Kette, sonst entscheidet die volle Fusion im Kern.
+        _panns_hit19 = (
+            _panns_singing_prior_kanonisch(kwargs.get("panns_tags"))
+            if _panns_singing_prior_kanonisch is not None
+            else None
+        )
+        if _panns_hit19 is not None:
+            logger.debug("🎤 PANNs-Singing-Prior (kanonisch): %s", _panns_hit19.value)
+            return _panns_hit19.value
 
         # ── §2.11 Librosa pYIN F0 (wenn verfügbar) ─────────────────
         _pyin_f0: float | None = None
@@ -3313,10 +3319,13 @@ class DeEsserPhase(PhaseInterface):
                 _bw_hint = kwargs.get("bandwidth_loss")
                 _bw_hint = float(_bw_hint) if _bw_hint is not None else None
                 try:
-                    chars = detector.detect(mono, bandwidth_loss=_bw_hint)
+                    chars = detector.detect(mono, bandwidth_loss=_bw_hint, panns_tags=kwargs.get("panns_tags"))
                 except TypeError:
-                    # Ältere/fake Detektor-Signaturen ohne bandwidth_loss-Parameter
-                    chars = detector.detect(mono)
+                    # Ältere/fake Detektor-Signaturen (ohne bandwidth_loss/panns_tags)
+                    try:
+                        chars = detector.detect(mono, bandwidth_loss=_bw_hint)
+                    except TypeError:
+                        chars = detector.detect(mono)
 
                 # §2.11: Wenn pYIN-F0 verfügbar und signifikant anders als
                 # autocorrelation-F0 → pYIN bevorzugen (robuster gegen Vibrato,

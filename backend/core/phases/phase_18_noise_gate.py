@@ -291,6 +291,23 @@ class NoiseGate(PhaseInterface):
 
         return self._silero_vad if self._silero_vad is not False else None
 
+    def _vad_domain_allowed(self) -> bool:
+        """VAD-Schwellen-Offset nur mit musik-/gesangsvalidiertem VAD (§III.11 copilot-instructions.md).
+
+        Silero VAD ist auf SPRACHE trainiert. Der davon gesteuerte Schwellen-Offset
+        (bis −15 dB) ist zugleich eine phasen-individuelle Schwellwertänderung
+        (§V7 copilot-instructions.md) und darf bei Musik/Gesang erst greifen, wenn
+        ein musik-kalibriertes VAD per A/B freigeschaltet ist
+        (`music_model_flags.use_silero_vad_music`).
+        """
+        try:
+            import backend.core.music_model_flags as _mmf  # pylint: disable=import-outside-toplevel
+
+            return bool(getattr(_mmf, "use_silero_vad_music", False))
+        except Exception as _exc:  # pylint: disable=broad-except
+            logger.warning("VAD-Domänen-Flag nicht lesbar (%s) — kein VAD-Offset (§V6 copilot-instructions.md)", _exc)
+            return False
+
     def _detect_voice_activity(
         self,
         audio: np.ndarray,
@@ -936,8 +953,9 @@ class NoiseGate(PhaseInterface):
 
     def _gate_channel(self, audio: np.ndarray, sample_rate: int, config: dict[str, Any]) -> np.ndarray:
         """Wendet an: multi-band gating to a single channel with optional ML VAD."""
-        # Check if ML VAD should be used
-        use_vad = is_phase_ml_enabled(18)
+        # Check if ML VAD should be used — Silero ist SPRACHTRAINIERT und darf
+        # Musik/Gesang erst nach Musik-Kalibrierung steuern (§III.11 copilot-instructions.md).
+        use_vad = is_phase_ml_enabled(18) and self._vad_domain_allowed()
         vad_probabilities = None
 
         if use_vad:
@@ -1089,7 +1107,6 @@ class NoiseGate(PhaseInterface):
             threshold_db_adapted = threshold_db - 15 * vad_probabilities
         else:
             threshold_db_adapted = np.full_like(rms_db, threshold_db)
-
         # ---- Vectorised gain computation (soft knee) ----
         knee_half = knee_db / 2.0
         thresh_lo = threshold_db_adapted - knee_half

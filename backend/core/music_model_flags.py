@@ -31,6 +31,14 @@ use_bw_v5: bool = False  # BW-Reconstructor v5 — A1: HF-Gain-Gate nicht bestan
 # redundant zu FlashSR/NVSR/DSP-SBR in Phase_06. Gated-Forschungsmodell.
 use_harmonic_inpainting: bool = True  # Harmonic-Inpainting-DiT (§v10.300) — DiT-Finetune für gedämpfte Obertöne
 use_whisper_denoiser: bool = False  # Whisper-Denoiser — DEPRECATED (Rev. 2026-08-16), nur A/B-Gate; NR trägt die Spec-04-Kette (DFN/SGMSE+/OMLSA)
+use_utmos_music: bool = False  # UTMOSv2 Musik-MOS (F8) — das Orakel ist auf SPRACHE (BVCC) trainiert und
+# darf bei Musik/Gesang deshalb kein VETO-Recht ausüben (§III.11 copilot-instructions.md): bis zur
+# Musik-Kalibrierung/MUSHRA-Abnahme bleibt es reiner Zeuge (report-only) in utmos_delta_gate.
+# True ⇒ Veto-Recht (Phase-Familien-Reduktion) ist freigeschaltet.
+use_silero_vad_music: bool = False  # Silero-VAD Musik-Freigabe — Silero ist auf SPRACHE trainiert und steuert
+# in phase_18_noise_gate den Gate-Schwellen-Offset (bis −15 dB). Nach §III.11 (copilot-instructions.md)
+# darf ein sprachtrainiertes Modell Musik/Gesang nicht steuern: bis zur Musik-Kalibrierung läuft das Gate
+# ohne VAD-Offset (neutral, §V7 copilot-instructions.md). True ⇒ VAD-gesteuerter Offset ist freigeschaltet.
 
 
 # ── Model Paths (relative to project root) ──────────────────────────────────

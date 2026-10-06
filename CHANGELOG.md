@@ -149,6 +149,39 @@
   `scripts/compliance_check.py` → 0 Errors, 1 Warning (vorbestehend
   `ab_test_manager.py:41`, non-blocking).
 
+### §SOTA-Gender: EIN Detektor-Pfad + musiktaugliche Evidenz (Spec 19)
+
+- **Befund:** Vier parallele Gender-Detektoren mit abweichenden Schwellen
+  (§G9 (copilot-instructions.md)-Verstoß). Der Pfad der Musik-Vocal-Pipeline
+  (`forensics/gender_detection`) entschied mit einer **F0-Einzelregel**
+  (`f0 < 170 → male`) auf 16-kHz-Autokorrelation über nur 100 ms Signal. Ein
+  sprachtrainiertes Embedding-Modell (Resemblyzer/LibriSpeech) wurde dabei
+  berechnet und **verworfen**; fehlte es, blockierte es sogar die domänenneutrale
+  Pitch-Auswertung (`emb is None → "unknown"`).
+- **Fix (Konsolidierung auf EINEN Pfad):** Kanonisch ist allein die
+  Multi-Evidenz-Fusion in `vocal_ai_enhancement.GenderDetector`:
+  PANNs-„Male/Female singing" (musiktauglich) → F0 (Scan-Autokorrelation + pYIN
+  mit Voicing-Confidence) → Burg-LPC-Formanten mit WORLD-Kreuzvalidierung →
+  Contralto-Anatomie-Override.
+  - **Neu im Kern:** `_panns_singing_prior()` als EINE Quelle (Mindest-Score
+    0,25 UND Klassenabstand > 0,10 — bei Gleichstand schweigt die Evidenz) plus
+    additive Fusion (`_PANNS_GENDER_WEIGHT = 0.35`); ohne Anatomie trägt sie die
+    Entscheidung (instrumentales Intro) statt „unknown".
+  - `forensics/gender_detection.GenderDetector` ist nur noch Fassade (Array- und
+    Dateipfad) ohne eigene Klassifikationslogik; Resemblyzer entfällt
+    (§III.11 copilot-instructions.md).
+  - `forensics/gender_rule_based.RuleBasedGenderDetector` delegiert — eigene
+    Pitch-/LPC-Heuristik und `classify_from_features` entfallen.
+  - `phase_19_de_esser._detect_gender_robust` bezieht den Prior aus dem Kern
+    (keine zweite Schwellenkopie) und reicht `panns_tags` in die Fusion.
+  - `aurik_deesser_pro/music_vocal_pipeline` nutzt den Array-Pfad direkt — der
+    Temp-WAV-Umweg entfällt.
+- **Beweise:** 88 passed (`tests/unit -k "gender or utmos or noise_gate"`);
+  normatives Gate `test_gender_detection_sota_gate.py` + `test_gender_detector.py`
+  → 54 passed; 9 neue Regressionstests (PANNs-Prior klar/unklar/Schwelle, Fusion
+  ohne Anatomie, unverändert ohne Tags, ein Pfad ohne Sprach-Embedder,
+  Fassaden-Delegation, Scan-F0 trotz instrumentellem Intro). Ruff clean.
+
 ## 10.3.10 (2026-10-05)
 
 ### Phasensignatur: De-Esser wieder vertragskonform

@@ -109,6 +109,36 @@ class VocalEnhancementResult:
 # ============================================================
 
 
+# ── SOTA-Gender-Fusion: PANNs-AudioSet-Singing-Evidenz ──────────────────────
+# Klassen 32/33 („Male/Female singing") sind die einzige Geschlechts-Evidenz,
+# die auf GESUNGENEM Material trainiert wurde. Sie geht additiv in die
+# Score-Fusion ein — ein sprachtrainiertes Modell darf Musik/Gesang nicht
+# steuern (§III.11 copilot-instructions.md).
+_PANNS_GENDER_MIN_SCORE: float = 0.25
+_PANNS_GENDER_MIN_MARGIN: float = 0.10
+_PANNS_GENDER_WEIGHT: float = 0.35
+
+
+def _panns_singing_prior(panns_tags: Any) -> VoiceGender | None:
+    """Liefert den PANNs-Singing-Gender-Prior oder ``None`` (keine/unklare Evidenz).
+
+    Es gilt ein Mindest-Score (0,25) UND ein Mindestabstand zwischen beiden
+    Klassen (0,10): Bei Gleichstand schweigt die Evidenz, statt zu raten.
+    """
+    if not isinstance(panns_tags, dict):
+        return None
+    try:
+        _male = float(panns_tags.get("Male singing", 0.0) or 0.0)
+        _female = float(panns_tags.get("Female singing", 0.0) or 0.0)
+    except (TypeError, ValueError):
+        return None
+    if _male >= _PANNS_GENDER_MIN_SCORE and _male > _female + _PANNS_GENDER_MIN_MARGIN:
+        return VoiceGender.MALE
+    if _female >= _PANNS_GENDER_MIN_SCORE and _female > _male + _PANNS_GENDER_MIN_MARGIN:
+        return VoiceGender.FEMALE
+    return None
+
+
 class GenderDetector:
     """
     Formant-basierte Gender Detection.
@@ -149,7 +179,9 @@ class GenderDetector:
             },
         }
 
-    def detect(self, audio: np.ndarray, bandwidth_loss: float | None = None) -> VoiceCharacteristics:
+    def detect(
+        self, audio: np.ndarray, bandwidth_loss: float | None = None, panns_tags: Any = None
+    ) -> VoiceCharacteristics:
         """
         Erkennt voice characteristics including gender.
 
@@ -162,6 +194,10 @@ class GenderDetector:
                 Signal-Proxy wurde bewusst VERWORFEN: er konnte „bandbegrenzte
                 Aufnahme" nicht von „harmonikarmer Stimme" unterscheiden
                 (False-Positive bei Bariton-Synthese, Befund 2026-09-21).
+            panns_tags: Optionale PANNs-AudioSet-Tags (dict). Enthält es
+                „Male singing"/„Female singing" (Klassen 32/33) mit klarem
+                Abstand, geht diese musiktaugliche Evidenz additiv in die
+                Fusion ein (§III.11 copilot-instructions.md).
 
         Returns:
             VoiceCharacteristics with detected attributes
@@ -193,8 +229,8 @@ class GenderDetector:
         # Detect formants — §19.2: nur aus voiced Frames (vokaltrakt-treu)
         formants = self._detect_formants(audio, voiced_times)
 
-        # Classify gender based on F0 and formants
-        gender, confidence = self._classify_gender(fundamental_freq, formants)
+        # Classify gender based on F0, formants and PANNs-Singing-Evidenz
+        gender, confidence = self._classify_gender(fundamental_freq, formants, panns_tags=panns_tags)
 
         # §19 Contralto-Override: tiefe Frauenstimmen mit weiblichen Formanten
         gender, confidence = self._apply_contralto_override(
@@ -510,9 +546,17 @@ class GenderDetector:
 
         return lpc_formants
 
-    def _classify_gender(self, fundamental_freq: float, formants: list[float]) -> tuple[VoiceGender, float]:
-        """Classify gender based on F0 and formants."""
+    def _classify_gender(
+        self, fundamental_freq: float, formants: list[float], panns_tags: Any = None
+    ) -> tuple[VoiceGender, float]:
+        """Classify gender based on F0 and formants (+ PANNs-Singing-Evidenz)."""
+        _panns_prior = _panns_singing_prior(panns_tags)
         if fundamental_freq == 0 or len(formants) == 0:
+            # §19: Ein instrumentales Intro blockiert die F0-Kette — ohne
+            # Anatomie bleibt die musiktaugliche PANNs-Evidenz die einzige
+            # belastbare Quelle, statt blind UNKNOWN zu melden.
+            if _panns_prior is not None:
+                return _panns_prior, 0.60
             return VoiceGender.UNKNOWN, 0.0
 
         # Score each gender
@@ -550,6 +594,15 @@ class GenderDetector:
                     count += 1
 
             scores[gender] = score / count if count > 0 else 0.0
+
+        # §SOTA-Gender-Fusion (2026-10-06): Die PANNs-Singing-Evidenz geht
+        # additiv in die Fusion ein. Sie ist das einzige Signal, das auf
+        # GESUNGENEM Material trainiert wurde — bei klarem Klassenabstand
+        # übersteuert sie die reine F0/Formant-Heuristik
+        # (§III.11 copilot-instructions.md).
+        if _panns_prior is not None:
+            scores[_panns_prior] = scores.get(_panns_prior, 0.0) + _PANNS_GENDER_WEIGHT
+            logger.debug("🎤 PANNs-Singing-Prior: %s (+%.2f)", _panns_prior.value, _PANNS_GENDER_WEIGHT)
 
         # Best match
         best_gender = max(scores.items(), key=lambda x: x[1])
