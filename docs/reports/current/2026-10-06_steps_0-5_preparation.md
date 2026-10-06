@@ -164,20 +164,42 @@ F3; ONNX 2026-09-10 < Finetune 2026-10-03) ⇒ der Export kann ihn nicht enthalt
 - Artefakt-Fingerabdruck: `.github/ML_ARTIFACT_FINGERPRINTS.md`.
 - Paritäts-Regel: §III.9 (rel ≤ 1e-3 auf strukturiertem Feed).
 
-**Durchzuführende Aktion:**
+**Ergebnis 2026-10-06 (durchgeführt — Beleg:
+`docs/reports/current/2026-10-06_p1_3_bigvgan_f3_rollout_entscheid.md`):**
 
-1. F3 → ONNX exportieren (neues Artefakt, **ersetzt nichts**).
-2. Paritätsnachweis gegen Torch (rel ≤ 1e-3, strukturierter Feed, nicht
-   weißes Rauschen — §III.9-Lehre aus basicpitch).
-3. RT-Messung auf der 10-s-Zelle → Budget-Entscheid (BigVGAN ≫ 10× RT ist der
-   harte Blocker).
-4. Erst danach: Test-Suite-Umstellung (>10 `phase_07`-Tests) und Flag-Flip.
+1. ✅ **Export-Rezept an der Wurzel gehärtet** — `scripts/export_bigvgan_v2_onnx.py`
+   baut die Architektur jetzt aus der **Checkpoint-Config** (statt Handkopie),
+   nutzt Modul-Level-`numpy` und prüft die Parität auf **drei strukturierten
+   Feeds** (§III.9 (copilot-instructions.md)-Lehre aus basicpitch).
+2. ✅ **F3 → ONNX exportiert, ersetzt nichts** — `models/bigvgan/bigvgan_v2_f3.onnx`
+   (2,86 MB + 491 MB `.onnx.data`), Quelle `Checkpoint-cfg (epoch=7,
+   val_a1=0.5756958723068237)`, Eingang `[1,128,64]` wie der Basis-Vertrag.
+3. ✅ **Paritätsnachweis** — rel `6,521e-05` / `9,705e-06` / `1,693e-05`
+   (sane/harmonic/const05) ⇒ 1,5–2 Größenordnungen unter der Grenze 1e-3.
+4. ✅ **RT-Messung + Budget-Entscheid — ERGEBNIS NEGATIV.** 12,67× RT (Basis) /
+   12,78× RT (F3) im ONNX-Kern; **13,2× RT warm / 16,3× RT kalt** am
+   Produktionshelfer ⇒ **792 s je Audio-Minute** gegen ≤ 240 s für die
+   **gesamte** Phase-Pipeline (3,3× Überzug). F3 ist +0,9 % ⇒ **kein**
+   Laufzeitgewinn. Der Rollout F3 bleibt damit **gesperrt** — nicht wegen des
+   Artefakts, sondern wegen der Kostenarchitektur (122 M Parameter auf CPU,
+   unbedingter Aufruf aus 5 Phasen).
+5. ⛔ **Nebenbefund mit Vorrang:** Die Annahme „Flag OFF“ war **falsch** — der
+   Pfad ist am Produktionspfad **aktiv** (`applied: True`, 18 Bänder, Signal
+   verändert) und lädt die **Basis** statt F3. Der Flip vom 2026-09-27 stützt
+   sich auf eine GPU-Kostenzahl (2,5× RT) und trägt den Budgetbruch nicht.
+   ⇒ **Der Aktivierungs-Entscheid für HR-V1 selbst ist jetzt der offene
+   Schritt** (Sign-off nach §v10.802 (copilot-instructions.md)), nicht der
+   F3-Rollout. Empfehlung im Report: Flag auf `False` bis ein Aufruf
+   budgetgedeckt ist — oder Budget-Ausnahme + Reduktion auf eine Aufrufstelle
+   mit Längen-Deckel.
 
-**Akzeptanz:** Parität belegt, Budget belegt, Hörordnungs-Sign-off. Ohne
-Budget-Nachweis bleibt der Rollout **gesperrt** (kein „A/B bestanden“ ⇒ deployt).
+**Akzeptanz:** Parität ✅ belegt · Budget ✅ **belegt (negativ)** ·
+Hörordnungs-Sign-off ⏳ offen (`MENSCH`). Ohne Budget-Nachweis bleibt der
+Rollout **gesperrt** (kein „A/B bestanden“ ⇒ deployt).
 
-**Blocker:** `CPU` für Export + Parität; `MENSCH` für Sign-off; **Budget** ist
-der eigentliche Gate-Keeper.
+**Blocker:** `CPU` für Export + Parität **erledigt**; `MENSCH` für den
+Aktivierungs-Entscheid; **Budget** ist der eigentliche Gate-Keeper — und er
+sagt derzeit Nein.
 
 ---
 

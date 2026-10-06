@@ -3,7 +3,7 @@
 > **Erzeugt von** `scripts/model_artifact_probe.py` (§III.13 (copilot-instructions.md) — Evidenzpflicht).
 > Die Tabelle nennt **gemessene** Architektur-Fingerabdrücke (Mel-Bänder, Upsample-Faktor, Kanalbreiten, Parameterzahl, Hparams, Dtype-Mix) — **keine** Domänen-Behauptung. Ob ein Artefakt Musik- oder sprach-trainiert ist, entscheidet sich an Trainings-Skript, Modell-Karte, SHA-Identität oder einem widerspruchsfreien Plugin-Header; fehlt das, gilt die Domäne als `unbekannt`.
 
-**Bestand:** 66 Verzeichnisse · 153 Artefakte · 41.1 GB.
+**Bestand:** 66 Verzeichnisse · 154 Artefakte · 41.1 GB.
 
 ## Verzeichnis-Übersicht
 
@@ -20,7 +20,7 @@
 | `banquet` | 1 | 91.8 MB | — |
 | `basicpitch` | 2 | 450.1 KB | — |
 | `beats` | 1 | 344.8 MB | — |
-| `bigvgan` | 2 | 469.1 MB | — |
+| `bigvgan` | 3 | 471.8 MB | — |
 | `bs_roformer` | 2 | 1.2 GB | — |
 | `bw_reconstructor` | 3 | 33.2 MB | — |
 | `cantus` | 3 | 788.8 MB | README.md; cantus_config.json |
@@ -199,6 +199,7 @@
 | Artefakt | Größe | SHA-256 | Gemessener Fingerabdruck |
 | --- | --- | --- | --- |
 | `bigvgan_v2.onnx` | 2.7 MB | `43a6bb965dee2151…` | 122.81 M Params; IN [1, 128, 64]; OUT [1, 1, 32768]; ops: Mul×413, Conv×219, Pad×206, Add×175 |
+| `bigvgan_v2_f3.onnx` | 2.7 MB | `0e37c21083c5d4c7…` | 122.81 M Params; IN [1, 128, 64]; OUT [1, 1, 32768]; ops: Mul×413, Conv×219, Pad×206, Add×175 |
 | `bigvgan_v2.pth` | 466.4 MB | `d9fe7ec6bd0b44ed…` | 122.19 M Params |
 
 ### `bs_roformer`

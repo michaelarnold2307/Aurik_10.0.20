@@ -1,4 +1,46 @@
-# Changelog — Aurik 10.5.0
+# Changelog — Aurik 10.5.1
+
+## 10.5.1 (2026-10-06)
+
+### Arbeitspaket 1c — F3-BigVGAN: Export erfüllt, Rollout gesperrt, Aktenlage korrigiert
+
+**Patch-Bump (§v10.802 copilot-instructions.md):** reiner `fix`/`docs`-Batch —
+kein Signalpfad-Eingriff, kein Hörordnungs-Bruch, kein Feature.
+
+**Export-Rezept an der Wurzel gehärtet** (`scripts/export_bigvgan_v2_onnx.py`):
+
+- Architektur kommt jetzt aus der **Checkpoint-Config** (`cfg`) statt aus einer
+  handkopierten Replik — ein Finetune mit abweichender Config wäre zuvor still
+  falsch gebaut worden (§V6 copilot-instructions.md).
+- Paritätsprüfung auf **drei strukturierten Feeds** (`sane` seed 42,
+  `harmonic`, `const05`) statt eines einzelnen; Abbruch bei rel ≥ 1e-3
+  (§III.9 copilot-instructions.md, Lehre aus basicpitch).
+- Modul-Level-`numpy`-Import; Prüfung der exportierten Eingangsform `[1,128,64]`.
+
+**Beleg:** `models/bigvgan/bigvgan_v2_f3.onnx` (lokal, `models/*` ist per
+`.gitignore` ausgenommen) — Quelle `Checkpoint-cfg (epoch=7,
+val_a1=0.5756958723068237)`, Parität rel **6,521e-05 / 9,705e-06 / 1,693e-05**.
+
+**Negativer Budget-Entscheid (gemessen am Produktionspfad, CPU/ONNX):**
+12,67× RT (Basis) / 12,78× RT (F3) im ONNX-Kern; **13,2× RT warm** (16,3× kalt)
+am Produktionshelfer `apply_hr_v1_additive` ⇒ **792 s je Audio-Minute** gegen
+≤ 240 s für die **gesamte** Phase-Pipeline (3,3× Überzug), bei bis zu 5
+verdrahteten Aufrufstellen. F3 = **+0,9 %** ⇒ kein Laufzeitgewinn. Der
+F3-Rollout bleibt **gesperrt**; der F3-ONNX ist exportiert und
+paritätsbewiesen, aber **nicht verdrahtet** (ersetzt nichts).
+
+**Befund + Aktenkorrektur (§V7 copilot-instructions.md):** Die Annahme
+„`BIGVGAN_V2_HR_ACTIVATED` ist OFF“ war falsch — der Pfad ist am
+Produktionspfad **aktiv** (`applied: True`, 18 Bänder, Signal verändert) und
+lädt die **Basis** statt F3. Der Flip vom 2026-09-27 stützt sich auf eine
+GPU-Kostenzahl (2,5× RT), die für den CPU-Produktionspfad nicht gilt.
+Defizit-Register (D-K0-1/D-K0-2/D-K3-1), Roadmap (Matrix A, Q1, SOTA4-2,
+Phasenzeilen 03/07/23/50) und Prep-Report sind auf den gemessenen Stand
+gezogen. Der **Aktivierungs-Entscheid für HR-V1 selbst ist offen** und
+sign-off-pflichtig (§v10.802 copilot-instructions.md) — im Report steht die
+Empfehlung Flag `False` bis ein Aufruf budgetgedeckt ist.
+
+**Beleg:** `docs/reports/current/2026-10-06_p1_3_bigvgan_f3_rollout_entscheid.md`.
 
 ## 10.5.0 (2026-10-06)
 
