@@ -496,6 +496,18 @@ class SotaVocalModelRouter:
             logger.debug("§SMR-1 MIIPHER nicht verfuegbar: %s", exc)
 
         try:
+            # §Gesangs-Fokus (2026-10-06): SGMSE+ ist ein SPRACH-Score-Core
+            # (§V1 (copilot-instructions.md)); auf Musik/Gesang nur mit Musik-
+            # Finetune (music_model_flags.use_sgmse_musik, §v10.16/F7) — sonst
+            # direkt DFN+MP-SENet (beide musik-trainiert).
+            try:
+                from backend.core.music_model_flags import (  # pylint: disable=import-outside-toplevel
+                    use_sgmse_musik as _sgmse_musik_ok_smr,
+                )
+            except Exception:
+                _sgmse_musik_ok_smr = False
+            if not _sgmse_musik_ok_smr:
+                raise RuntimeError("sgmse_speech_core_locked")
             from plugins.sgmse_plugin import get_sgmse_plugin  # pylint: disable=import-outside-toplevel
 
             sgmse = get_sgmse_plugin()

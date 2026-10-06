@@ -1027,7 +1027,7 @@ plugins/bs_roformer_plugin.py        → ✅ BS-RoFormer + Mel-RoFormer (SOTA)
 
 # Rauschunterdrückung & Dereverb
 plugins/deepfilternet_v3_ii_plugin.py → ✅ PRIMÄR NR (37 MB: enc+dec+erb_dec)
-plugins/sgmse_plugin.py              → ✅ Dereverb/Enhancement PRIMÄR (sgmse_plus.ts, 251 MB) — SGMSE+ 2022
+plugins/sgmse_plugin.py              → ✅ Dereverb/Enhancement — Musik-Core `sgmse_musik_core.onnx` nur bei `use_sgmse_musik` (§III.11 copilot-instructions.md); Legacy `sgmse_plus_core.onnx`/`sgmse_plus.ts` = sprachtrainiert (WSJ0), nie Default — Fallback WPE-DSP
 plugins/mp_senet_plugin.py           → ✅ Music/Vocal Enhancement (mp_senet.onnx, 35 MB) — MP-SENet 2023
 plugins/wpe_plugin.py                → ✅ WPE Dereverb (rein DSP, kein Checkpoint)
 # VERBOTEN: dccrn_plugin (deprecated — ersetzt durch mp_senet_plugin §4.4)

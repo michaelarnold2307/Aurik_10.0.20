@@ -32,7 +32,7 @@
 | EAR-VAE | Restaurations-VAE | Musik | ✅ v2-Finetune (ΔSDR +4,83 dB) |
 | FlashSR | HF-Rekonstruktion >12,9 kHz | Musik (Bandlimit-Synth) | 🔄 **F4 läuft** (Epoche 6→14, GPU) |
 | BigVGAN-v2 | Vocoder/Repair (HR-V1) | Musik | ⬜ **F3 geplant** (Script `train_bigvgan_f3.py` vorhanden) |
-| **SGMSE+** | Tape-Chain Diffusion-Inpainting | **Sprache** | ⬜ **F7 NEU** — kein Checkpoint (`use_sgmse_musik=False`) |
+| **SGMSE+** | Tape-Chain Diffusion-Inpainting | **Sprache** | 🔄 **F7 TEILWEISE** — Checkpoint/ONNX vorhanden (`finetuned/sgmse_musik_best.ckpt` Epoch 24, Val 88,3; `sgmse_musik_core.onnx`, Rev. v10.3.11); `use_sgmse_musik=False` = bewusste Sperre bis Drei-Wege-A/B (WSJ0 vs. Musik-Core vs. WPE) — §III.11 copilot-instructions.md |
 | **UTMOSv2** | MOS-Orakel in FeedbackChain/ExcellenceOptimizer | **Sprache (BVCC)** | ⬜ **F8 NEU** — Musik-MOS, MUSHRA-kalibriert |
 | **resemblyzer VoiceEncoder** | Vokal-Identität/Witness | **Sprache (LibriSpeech)** | ⬜ **F9 NEU** — Musik-Vokal-Finetune |
 | **VersaSingMOS** | Gesangs-MOS-Gates | Gesang (nahe Musik) | ⬜ **F10 NEU** — Kalibrierung auf verarbeitete Musik-Vocals |
@@ -46,7 +46,11 @@
 - **F7 · SGMSE+ Musik-Finetune** — Basis `models/sgmse_plus/sgmse_plus_core.onnx` (Sprach-Enhancement-
   Score-Core). Ziel: Tape-Diffusion-Inpainting ohne Sprach-Klangfarbe (Vokalfärbung, Telefonband-
   Charakter). Daten: MUSDB18HQ + Tape-Rausch-Paare. Gate: ΔSDR ≥ +2 dB + Witness HNR/Brillianz neutral.
-  Status: **offen — kein Checkpoint**.
+  Status: **Checkpoint vorhanden** — `models/sgmse_plus/finetuned/sgmse_musik_best.ckpt`
+  (Epoch 24, Val 88,3) und Export `models/sgmse_plus/sgmse_musik_core.onnx`; das Training
+  wurde am 2026-09-20 wegen Loss-Spikes gestoppt (§v10.25). Offen ist allein der
+  Drei-Wege-A/B (WSJ0- vs. Musik-Core vs. WPE-DSP); bis dahin bleibt
+  `use_sgmse_musik=False` (§III.11 copilot-instructions.md).
 - **F8 · UTMOSv2 → Musik-MOS (höchster Oracle-Hebel)** — Basis: UTMOSv2 (Sprach-MOS). Das Modell bewertet
   heute in FeedbackChain/ExcellenceOptimizer/MUSHRA-Proxy **Musik mit einem Sprach-Qualitätsmaß** —
   Wohlklang-Entscheidungen (Pareto-Rollbacks, End-Gate) erben damit eine falsche Domänen-Wahrnehmung.

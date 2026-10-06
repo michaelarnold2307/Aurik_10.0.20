@@ -156,6 +156,40 @@ Jedes VERBOT definiert eine unzulässige Handlung. Verstöße sind Build-Fehler.
    **§v10.303.52:** Die Phonem-Detektions-Schwellen sind sprachadaptiv
    (Sibilanten-/Plosiv-Inventar; de permissiver, es/it/pt konservativer,
    unbekannte Sprachen = Defaults).
+11. **Domänen-Konsistenz Musik/Gesang (Rev. v10.3.11)**: Auf **Sprache**
+   trainierte Modelle (SGMSE+ aus WSJ0/CHiME3, Whisper, UTMOSv2/BVCC,
+   resemblyzer/LibriSpeech) dürfen auf Musik/Gesang nur dann als **Signalpfad**
+   laufen, wenn derselbe Core ein Musik-Fine-Tune besitzt und die Verbesserung
+   per A/B belegt ist. Ohne Musik-Fine-Tune ist der Sprach-Core als Signalpfad
+   VERBOTEN (§V7) — es greifen musik-trainierte Kerne oder DSP.
+   - SGMSE+: `use_sgmse_musik` (`backend/core/music_model_flags.py`) schaltet
+     ALLE Signalpfade — `phase_03_denoise._sgmse_eligible`, `HybridDereverb`
+     (`_init_dccrn`), `phase_49_advanced_dereverb`, `sota_vocal_model_router`,
+     RepairPlanner (`coordinated_repair.py`). Pfadwahl über
+     `resolve_model_path("sgmse")` → `sgmse_musik_core.onnx`; der
+     sprachtrainierte `sgmse_plus_core.onnx` bleibt ausschließlich in
+     `LEGACY_MODEL_PATHS` (nie Default).
+   - Jeder gesperrte/umgeleitete Pfad MUSS mit `logger.warning()` oder
+     `logger.info()` samt Begründung protokolliert werden (§V6).
+   - Metrische oder transkriptive Nebenrollen (UTMOS als Zeuge, Whisper für
+     Wortgrenzen, resemblyzer für Sprecher-Ähnlichkeit) sind zulässig, solange
+     sie das Ausgangssignal selbst nicht verändern.
+12. **Stem-Rekombinations-Vertrag (Rev. v10.3.11)**: Musik und Gesang werden
+   getrennt restauriert und an **genau einem** Punkt wieder vereint
+   (`StemLevelRestorer` → `recombine_stems_with_gates()`,
+   `backend/core/dsp/stem_recombination_gates.py`, §SLR-1f). Ein zweiter
+   Zusammenführungspunkt ist VERBOTEN (§V2 Geister-Echos).
+   - Pflicht-Gates vor der Summe, in der Reihenfolge **C2 → C1 → C3**:
+     **C2** sample-exaktes Zeit-Alignment (W2, Kammfilter-Präkursor),
+     **C1** perzeptuelles Residuum unter der Bark-Maskierungsschwelle (W1),
+     **C3** Stereo-Kohärenz am Nahtpunkt gegen die Hör-JNDs (W3; ITD/ILD/IACC).
+   - Gate-Ergebnisse MÜSSEN als Zeugen in
+     `StemContext.witness_reports["recombination"]` erscheinen (Berichtspflicht,
+     §G8).
+   - Offene Pflicht-Witnesses (nicht implementiert = nachzuweisen, nicht
+     anzunehmen): **C4** keine Doppelverarbeitung überlappender Spektralanteile,
+     **C5** Pegel-Kontinuität am Nahtpunkt, **W4** Kammfilter-Ripple-Tiefe,
+     **W5** Stem-Leakage (Geister-Anteile), **W6** Seam-Gruppenlaufzeit-Sprung.
 
 ---
 

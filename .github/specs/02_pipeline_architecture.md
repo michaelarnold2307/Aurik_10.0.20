@@ -2606,6 +2606,7 @@ Score-based Diffusion-Denoising als **erster** Processing-Pfad vor dem bisherige
 
 ```text
 Tier 0  SGMSE+ (diffusion)    — Bedingungen: quality_mode ∈ {quality, maximum}
+                                              + use_sgmse_musik (Musik-Core; §III.11 copilot-instructions.md)
                                               + (vocal_genre OR panns_singing_confidence ≥ 0.30)
                                               + NOT digital (cd_digital, dat, minidisc)
                                               + NOT use_lightweight

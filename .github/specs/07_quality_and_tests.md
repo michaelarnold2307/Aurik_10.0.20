@@ -581,7 +581,7 @@ Jeder erkannte Defekt wird mit einem **psychoakustischen Salienz-Score** (0.0–
 | --- | --- | --- |
 | **Transient-Punch** | TDP (Transient Decoupled Processing) | ~40 % |
 | **Mikro-Dynamik-Erhalt** | MDEM (400 ms LUFS-Morphing) + EmotionalArcCorrection (5 s Makro-Bogen) | ~25 % |
-| **Rauschbefreiung/Klarheit** | SGMSE+ / OMLSA/IMCRA | ~20 % |
+| **Rauschbefreiung/Klarheit** | SGMSE+ (Musik-Core) / DeepFilterNet v3.II / OMLSA/IMCRA | ~20 % |
 | **Vokal-Präsenz** | Phase 42 + Phase 43 + VocalAIEnhancement | ~10 % |
 | **Neurale Synthese** | Vocos 48 kHz (nur Studio 2026, MOS < 4.3) | ~5 % |
 

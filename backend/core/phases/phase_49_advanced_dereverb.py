@@ -532,8 +532,23 @@ class AdvancedDereverbPhase(PhaseInterface):
                 _audio_dur_mono_s,
                 _sgmse_min_dur_s,
             )
+        # §Gesangs-Fokus (2026-10-06): SGMSE+ ist ein SPRACH-Score-Core
+        # (§V1 (copilot-instructions.md)); auf Musik/Gesang nur mit Musik-Finetune
+        # (music_model_flags.use_sgmse_musik, §v10.16/F7) — sonst WPE-DSP.
         try:
-            if _sgmse_skipped_short:
+            from backend.core.music_model_flags import (  # pylint: disable=import-outside-toplevel
+                use_sgmse_musik as _sgmse_musik_ok_49,
+            )
+        except Exception:
+            _sgmse_musik_ok_49 = False
+        _sgmse_flag_locked = not _sgmse_musik_ok_49
+        if _sgmse_flag_locked:
+            logger.info(
+                "Verarbeitungsschritt 49: SGMSE+ (Sprach-Core) ohne Musik-Finetune gesperrt → WPE-DSP "
+                "(§v10.16/F7; §V1 (copilot-instructions.md))"
+            )
+        try:
+            if _sgmse_skipped_short or _sgmse_flag_locked:
                 raise ImportError("short-signal-skip")  # → WPE-DSP direkt
             from backend.core.ml_memory_budget import (  # pylint: disable=import-outside-toplevel
                 release as _release_49,

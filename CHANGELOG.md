@@ -22,6 +22,18 @@
   (Phase-03-Kaltstart-/SGMSE-Anteil entfällt); `test_model_zoo_activation.py`
   → 16 passed (neuer Test pinnt die Sperre auf Gesang); Ruff clean.
 
+### §Gesangs-Fokus: SGMSE+-Sprach-Core auch in Dereverb/Router entkoppelt
+
+- **Befund (2026-10-06):** Nach Phase 03/`coordinated_repair` lief der Sprach-Core
+  weiterhin an drei Stellen: `hybrid_dereverb._init_dccrn` (SGMSE+ als
+  Dereverb-**Primärpfad**), `phase_49_advanced_dereverb` (Tier-0) und
+  `sota_vocal_model_router` (Fallback im Gesangs-Router).
+- **Fix:** Alle drei an `music_model_flags.use_sgmse_musik` gekoppelt. Ohne
+  Musik-Finetune (§v10.16/F7) übernehmen die musik-tauglichen Pfade: WPE-DSP
+  (Dereverb) bzw. DFN+MP-SENet (Router) — kein gesperrtes Sprach-Modell auf
+  Musik/Gesang (§V1 (copilot-instructions.md)).
+- **Beweise:** Dereverb-/Router-Suite 47 passed; Ruff clean; R2-Check 0 Warnungen.
+
 ### §v10.16/F7-Verdrahtung: SGMSE+ Musik-Core erreichbar gemacht
 
 - **Befund (2026-10-06):** Der F7-Musik-Finetune liegt vor (`finetuned/sgmse_musik_best.ckpt`,
@@ -104,6 +116,38 @@
   `test_R09_rt_budget`-Fehlschläge (phase_03_denoise, phase_23_spectral_repair)
   sind laufzeitabhängig und traten vor wie nach der Änderung **identisch** auf.
   Ruff clean. Version 10.3.11 nach §v10.802 konsistent.
+
+### §Norm-Konsistenz: §III.11/§III.12 verankert, Spec-Fakten korrigiert
+
+- **Norm-Ergänzung:** `.github/copilot-instructions.md` §III erhält zwei
+  Spezialregeln. **§III.11 Domänen-Konsistenz Musik/Gesang:** sprachtrainierte
+  Modelle (SGMSE+/WSJ0, Whisper, UTMOSv2/BVCC, resemblyzer) dürfen nur mit
+  Musik-Fine-Tune als Signalpfad laufen; `use_sgmse_musik` schaltet ALLE fünf
+  SGMSE+-Signalpfade, der Legacy-Sprach-Core bleibt in `LEGACY_MODEL_PATHS`.
+  **§III.12 Stem-Rekombinations-Vertrag:** genau EIN Vereinigungspunkt
+  (`recombine_stems_with_gates()`, §SLR-1f), Pflicht-Gates in der Reihenfolge
+  **C2 → C1 → C3** (W2/W1/W3), Zeugenpflicht in
+  `StemContext.witness_reports["recombination"]`; offene Pflicht-Witnesses
+  C4 (Doppelverarbeitung), C5 (Pegel-Kontinuität), W4 (Kammfilter-Ripple),
+  W5 (Stem-Leakage), W6 (Seam-Laufzeitsprung) sind ausdrücklich als
+  „nachzuweisen, nicht anzunehmen" markiert.
+- **Spec-Fakten korrigiert (Regel Spec > Code > Kommentar):** `04_dsp_standards.md`
+  (Dereverb-/Music-Vocal-Enhancement-/SNR<10-dB-Zeile sowie die
+  `_PHASE_REQUIRED_MODELS`-Tabelle), `06_phases_system.md` (phase_03, phase_20),
+  `02_pipeline_architecture.md` (Hebel-2-Tier-0-Bedingung), `07_quality_and_tests.md`,
+  `03_cognitive_modules.md` und `08_architecture_and_distribution.md`
+  (Plugin-Zeile nannte den TorchScript-Sprach-Core als PRIMÄR), `v10.19`
+  („0 Speech-Modelle" wird als Ziel mit Mess-Wahrheits-Hinweis belegt statt
+  behauptet), `v10.25` (Produktion lädt `sgmse_musik_core.onnx` nur bei Flag),
+  `v10.99x`, `TODOS_SOTA_ROADMAP.md` (F7: Checkpoint + ONNX vorhanden — die
+  Sperre ist eine offene A/B-Entscheidung, kein fehlendes Artefakt).
+- **Code-Kommentar:** `plugin_lifecycle_manager._PHASE_REQUIRED_MODELS`
+  (phase_20) dokumentiert die Flag-Abhängigkeit Phase ↔ `use_sgmse_musik`.
+- **Beweise:** `scripts/spec_drift_check.py` → „No spec drift detected"
+  (Baseline über 24 beobachtete Dateien neu gesetzt);
+  `scripts/release_must_coverage_check.py` → 2/2 (100 %);
+  `scripts/compliance_check.py` → 0 Errors, 1 Warning (vorbestehend
+  `ab_test_manager.py:41`, non-blocking).
 
 ## 10.3.10 (2026-10-05)
 

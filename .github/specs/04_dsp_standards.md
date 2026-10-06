@@ -224,7 +224,7 @@ def hz_to_mel(f_hz: float) -> float:
 | Breitrauschen (Gesang/Vokal) | ML: **DeepFilterNet v3.II** (Formant-/F0-Struktur nutzt Gesangs-Harmonik; energy_bias=−6 dB Pflicht) | OMLSA/IMCRA | ~~Wiener 1984~~ |
 | Breitrauschen (rein instrumental, PANNs Vocals < 0.4) | DSP: **OMLSA/IMCRA** (kein Vocal-Prior, musik-neutral) | DeepFilterNet v3.II + energy_bias=−9 dB | ~~Wiener 1984~~ |
 | Nicht-stationäres Rauschen | ML: **DeepFilterNet v3.II** | MMSE-LSA + IMCRA | ~~Spectral Subtraction~~ |
-| Diffuses Raumrauschen / Dereverb | ML: **SGMSE+** (ONNX) | WPE (nara_wpe) → NumPy-WPE → OMLSA | ~~einfacher Bandpass~~ |
+| Diffuses Raumrauschen / Dereverb | ML: **SGMSE+** — nur **Musik-Core** `sgmse_musik_core.onnx` bei `use_sgmse_musik` (§III.11 copilot-instructions.md) | WPE (nara_wpe) → NumPy-WPE → OMLSA (Default; sprachtrainierter Core gesperrt) | ~~einfacher Bandpass~~ |
 | Stem-Separation Vocals | ML: **MelBandRoformer** (`bs_roformer_plugin`, 860 MB ONNX) | NMF-β | — |
 | Stem-Separation Instrumental | ML: **MDX23C** (`mdx23c_plugin`, Kim_Vocal_2/Kim_Inst) | NMF-β | — |
 | Bandbreiten-Erweiterung | ML: **FlashSR** | Sinusoidal + Stoch. Modeling | ~~Harmonics-EQ~~ |
@@ -240,7 +240,7 @@ def hz_to_mel(f_hz: float) -> float:
 | Audio-Tagging | ML: **BEATs** (iter3) → PANNs CNN14 | DSP Spectral Fingerprint | — |
 | MOS (ohne Referenz) | ML: **VERSA** (Huang et al. 2024) → SingMOS (Gesang, PANNs Vocals ≥ 0.3–0.7, Blend-Zone) | PQS-Gammatone-DSP | ~~PESQ/DNSMOS/CDPAM~~ |
 | MOS-Verifikation Gesang | ML: **UTMOS** (`utmos_plugin`, ≥18 MB PyTorch) → SingMOS | VERSA → PQS-Gammatone | ~~PESQ/NISQA~~ |
-| Music/Vocal Enhancement | ML: **MP-SENet 2023** ONNX | SGMSE+ ONNX → OMLSA DSP | ~~DCCRN/FullSubNet+~~ |
+| Music/Vocal Enhancement | ML: **MP-SENet 2023** ONNX | DeepFilterNet v3.II (Musik) → OMLSA DSP | ~~DCCRN/FullSubNet+~~, ~~SGMSE+ (sprachtrainiert)~~ |
 | MOS (mit Referenz) | ML: **ViSQOL v3** (**`--audio` PFLICHT**) | PQS-DSP | ~~--speech Mode~~ |
 | Phasen-Rekonstruktion | DSP: **PGHI** | Griffin-Lim ≥ 32 Iter. | ~~Direkte ISTFT~~ |
 | Decrackle | ML: **Banquet-Vinyl** (Band-Split/SeqBand ONNX, gemessen 5,7 dB ref_snr — Rev. 2026-08-16) | DSP RBME-artig + iterative Konsistenz + Sparse Bayes | ~~Medianfilter~~ |
@@ -251,7 +251,7 @@ def hz_to_mel(f_hz: float) -> float:
 | Musik-NR (spezialisiert) | ML: **AERO** (Richter et al., ICASSP 2024) → **MP-SENet 2023** | OMLSA/IMCRA | ~~DeepFilterNet ohne energy_bias~~ |
 | Langes Inpainting / Generativ | ML: **Consistency Models** (Song et al. 2023, < 3 s Latenz) → CQTdiff+ | DiffWave → NMF-β | ~~DDPM 1000 Schritte~~ |
 | Codec-Artefakte (Streaming) | ML: **Apollo v2** (Band-Splitting Mamba v2) → Apollo v1 | Spectral Repair + PGHI | ~~EQ-Anhebung~~ |
-| Stark degradierter Gesang (SNR < 10 dB) | ML: **SGMSE+ v2** (Score-Based Diffusion, Richter 2022) | DeepFilterNet v3.II + energy_bias=−6 dB | ~~VoiceFixer~~ |
+| Stark degradierter Gesang (SNR < 10 dB) | ML: **SGMSE+ v2** (Score-Based Diffusion, Richter 2022; nur **Musik-Core** bei `use_sgmse_musik` — §III.11 copilot-instructions.md) | DeepFilterNet v3.II + energy_bias=−6 dB | ~~VoiceFixer~~ |
 | Latent-Space-Restaurierung / Codec | ML: **DAC** (Descript Audio Codec, Kumar et al. 2023) → EnCodec | CQTdiff+ → NMF-β | — |
 | Singer-Identity-Erhalt | ML: **Resemblyzer** (dvector, GE2E-Loss) → X-Vector | DSP Formant-Korrelation | — |
 | Vibrato-vs-Flutter-Diskriminierung | DSP: **F0-Autokorrelation** (Vibrato 4–7 Hz; Wow < 2 Hz) + FCPE | pYIN | — |
@@ -1425,11 +1425,11 @@ finally:
 
 | Phase | Primär | Fallback(s) | _PHASE_REQUIRED_MODELS |
 | --- | --- | --- | --- |
-| `phase_03_denoise` | SGMSE+, DeepFilterNet | DeepFilterNetV3, OMLSA (DSP) | `{"SGMSE+", "DeepFilterNet", "DeepFilterNetV3"}` |
+| `phase_03_denoise` | SGMSE+ (Musik-Core, nur `use_sgmse_musik`; §III.11), DeepFilterNetV3, MIIPHER-DiT | OMLSA (DSP) | `{"SGMSE+", "DeepFilterNetV3", "MIIPHER_DiT"}` |
 | `phase_09_crackle_removal` | BANQUET | DSP (Median-Filter) | `{"BANQUET"}` |
 | `phase_12_wow_flutter_fix` | FCPE | RMVPE, CREPE, pYIN (DSP) | `{"FCPE", "RMVPE", "CREPE"}` |
 | `phase_18_noise_gate` | SileroVAD | Energy-Gate (DSP) | `{"SileroVAD"}` |
-| `phase_20_reverb_reduction` | SGMSE+ | WPE (DSP) | `{"SGMSE+"}` |
+| `phase_20_reverb_reduction` | SGMSE+ (Musik-Core, nur `use_sgmse_musik`; sonst WPE-DSP primär — §III.11) | WPE (DSP) | `{"SGMSE+"}` |
 | `phase_23_spectral_repair` | Apollo | FlashSR, PGHI (DSP) | `{"Apollo", "FlashSR"}` |
 | `phase_24_dropout_repair` | FlashSR | AR-Interpolation (DSP) | `{"FlashSR"}` |
 | `phase_29_tape_hiss_reduction` | DeepFilterNetV3 | OMLSA (DSP) | `{"DeepFilterNetV3"}` |

@@ -658,7 +658,7 @@ plugins/bs_roformer_plugin.py         ✅ BS-RoFormer / Mel-RoFormer (+0.4–0.8
 # Rauschunterdrückung & Dereverb
 plugins/deepfilternet_v3_ii_plugin.py ✅ DeepFilterNet3 (Schröter et al. 2023, 37 MB, 3 ONNX) — PRIMÄR NR
                                           # "v3.II" = Aurik-interne Iterations-Bezeichnung (keine offizielle DeepFilterNet-Versionsnummer)
-plugins/sgmse_plugin.py               ✅ SGMSE+ (251 MB TorchScript) — PRIMÄR Dereverb/Enhancement
+plugins/sgmse_plugin.py               ✅ SGMSE+ — Dereverb/Enhancement; Musik-Core `sgmse_musik_core.onnx` nur mit `use_sgmse_musik`, sonst WPE-DSP (§III.11 copilot-instructions.md; Legacy `sgmse_plus.ts`/`sgmse_plus_core.onnx` = sprachtrainiert, nie Default)
 plugins/mp_senet_plugin.py            ✅ MP-SENet 2023 (ONNX) — Music/Vocal Enhancement
                                       Laufzeitvertrag: segmentierte Inferenz in 32-Frame-Chunks
 plugins/wpe_plugin.py                 ✅ WPE Dereverb (3-Tier: nara_wpe→NumPy→OMLSA)

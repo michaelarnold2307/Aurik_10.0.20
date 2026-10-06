@@ -184,7 +184,7 @@ Normative Anforderungen:
 | `phase_17_mastering_polish` | source-fidelity contour polish + micro-tilt trim | gentle mastering EQ chain | `O3_spectral_balance` | Authentizität, Brillanz, Wärme |
 | `phase_18_noise_gate` | vocal-/phoneme-aware soft expander with linked stereo | adaptive noise gate | `O2_subtractive` | Natürlichkeit, Artikulation, MikroDynamik |
 | `phase_19_de_esser` | multiband phoneme-aware de-esser; freq-agnostic band [4500–8000 Hz] on gender=unknown (§v10.60, §G88-3) | dynamic EQ de-esser | `O7_vocal_articulation` | Artikulation, VocalQuality, Natürlichkeit |
-| `phase_20_reverb_reduction` | SGMSE+ + WPE hybrid dereverb | WPE + OMLSA tail trim | `O2_subtractive` | Transparenz, Raumtiefe, Natürlichkeit |
+| `phase_20_reverb_reduction` | HybridDereverb: SGMSE+ **Musik-Core** nur bei `use_sgmse_musik`, sonst WPE-DSP primär (§III.11 copilot-instructions.md) | WPE + OMLSA tail trim | `O2_subtractive` | Transparenz, Raumtiefe, Natürlichkeit |
 | `phase_21_exciter` | hallucination-guarded harmonic exciter with material ceiling | harmonic shelf + soft saturation | `O3_spectral_balance` | Brillanz, Präsenz, Separation |
 | `phase_22_tape_saturation` | hysteresis/Volterra tape curve with era profile | soft saturation model | `O6_dynamics` | Wärme, Authentizität, MikroDynamik |
 | `phase_23_spectral_repair` | Apollo v2 + AudioSR + PGHI; DSP-only (FlashSR ML deaktiviert) at depth≥5 (§v10.60, §G88-2, §v10.120) | consistent Wiener + NMF repair | `O8_generative_repair` | Transparenz, Brillanz, Authentizität |
@@ -944,12 +944,12 @@ result = process_in_adaptive_chunks(
 
 | Phase | ML-Modell | Begründung |
 | --- | --- | --- |
-| `phase_03_denoise` | SGMSE+ (Tier-0, Vokal) / DeepFilterNet / DeepFilterNetV3 / OMLSA (DSP) | ML-Hybrid: Inferenz-Output identisch bei gleichem Input |
+| `phase_03_denoise` | SGMSE+ (Tier-0 nur mit `use_sgmse_musik`) / DeepFilterNet / DeepFilterNetV3 / MIIPHER-DiT / OMLSA (DSP) — §III.11 copilot-instructions.md | ML-Hybrid: Inferenz-Output identisch bei gleichem Input |
 | `phase_06_frequency_restoration` | AudioSR | Neurale Bandwidth-Extension deterministisch |
 | `phase_09_crackle_removal` | BANQUET ONNX | Blind-Denoising deterministisch |
 | `phase_12_wow_flutter_fix` | FCPE/CREPE/pYIN | f₀-Schätzung deterministisch (Timing-Phase: kein Wet/Dry) |
 | `phase_18_noise_gate` | Silero VAD | Binary-Mask deterministisch |
-| `phase_20_reverb_reduction` | SGMSE+ (Primärpfad) | Reverb-Speech-Separation deterministisch (WPE-DSP-Fallback: muss re-run) |
+| `phase_20_reverb_reduction` | HybridDereverb — SGMSE+ Musik-Core nur bei `use_sgmse_musik`, sonst WPE-DSP primär (§III.11 copilot-instructions.md) | Reverb-Separation deterministisch (WPE-DSP: muss re-run) |
 | `phase_23_spectral_repair` | Apollo (primär) + AudioSR (Fallback) | Spektral-Lückenfüllung deterministisch |
 | `phase_24_dropout_repair` | AudioSR | Audio-Generierung deterministisch |
 | `phase_29_tape_hiss_reduction` | DeepFilterNet v3 II | HF-Denoising deterministisch (OMLSA-DSP <2 kHz: muss re-run) |

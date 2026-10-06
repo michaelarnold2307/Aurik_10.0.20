@@ -60,7 +60,9 @@ _PHASE_REQUIRED_MODELS: dict[str, frozenset[str]] = {
     "phase_09_crackle_removal": frozenset({"BanquetVinyl"}),
     "phase_12_wow_flutter_fix": frozenset({"FCPE", "RMVPE", "CREPE"}),
     "phase_18_noise_gate": frozenset({"SileroVAD"}),
-    "phase_20_reverb_reduction": frozenset({"SGMSE+"}),  # §4.6c: HybridDereverb uses SGMSE+ primary + WPE-DSP fallback
+    "phase_20_reverb_reduction": frozenset(
+        {"SGMSE+"}
+    ),  # §4.6c: HybridDereverb — SGMSE+ nur bei use_sgmse_musik (Musik-Core), sonst WPE-DSP primär (§III.11 copilot-instructions.md)
     "phase_23_spectral_repair": frozenset({"Apollo", "FlashSR", "AudioSR"}),
     "phase_24_dropout_repair": frozenset(
         {"FlashSR", "GACELA", "AudioLDM2"}

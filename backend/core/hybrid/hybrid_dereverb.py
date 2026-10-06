@@ -128,6 +128,25 @@ class HybridDereverb:
             1. SGMSE+ ONNX (sgmse_plugin)          — Primär
             2. WPE DSP (self.dccrn = None)         — Fallback
         """
+        # §Gesangs-Fokus (2026-10-06): SGMSE+ ist ein SPRACH-Score-Core
+        # (§V1 (copilot-instructions.md)). Auf Musik/Gesang läuft er nur mit
+        # freigegebenem Musik-Finetune (music_model_flags.use_sgmse_musik,
+        # §v10.16/F7); sonst WPE-DSP — nie ein gesperrtes Sprach-Modell als Primär.
+        try:
+            from backend.core.music_model_flags import (  # pylint: disable=import-outside-toplevel
+                use_sgmse_musik as _sgmse_musik_ok_hd,
+            )
+        except Exception:
+            _sgmse_musik_ok_hd = False
+        if not _sgmse_musik_ok_hd:
+            logger.info(
+                "SGMSE+ (Sprach-Core) ohne Musik-Finetune gesperrt → WPE-DSP-Pfad "
+                "(§v10.16/F7; §V1 (copilot-instructions.md))"
+            )
+            self.dccrn = None
+            self._sgmse_active = False
+            return
+
         # Stufe 1: SGMSE+ ONNX (§4.4 Primär — Score-Based Generative Model for Speech Enhancement)
         try:
             from plugins.sgmse_plugin import get_sgmse_plus_plugin
