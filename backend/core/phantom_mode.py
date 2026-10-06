@@ -218,10 +218,23 @@ class PhantomDetector:
         return defects, severity
 
     def _detect_genre(self, mono: np.ndarray, sr: int) -> str:
-        """Vereinfachte Genre-Erkennung."""
-        float(np.sqrt(np.mean(mono**2)))
-        # Platzhalter — echte Genre-Erkennung bräuchte ML
-        return "unknown"
+        """Genre über den kanonischen Klassifikator (§G9 copilot-instructions.md).
+
+        Ersetzt die frühere Attrappe, die konstant ``"unknown"`` lieferte: Der
+        Aufrufer (``analyze``) meldete damit dauerhaft „kein Genre erkannt",
+        obwohl der kanonische Klassifikator verfügbar ist. Ein zweiter, eigener
+        Genre-Detektor wäre ein §G9-Verstoß (parallele Pfade mit eigener Taxonomie).
+        """
+        try:
+            from backend.core.genre_classifier import get_genre_classifier
+
+            result = get_genre_classifier().classify(mono, sr)
+            label = str(getattr(result, "genre_label", "") or "").strip()
+            return label or "unknown"
+        except Exception as exc:
+            # §V6 copilot-instructions.md: Ersatzpfad sichtbar machen
+            logger.warning("PhantomMode: Genre-Erkennung fehlgeschlagen (%s) — 'unknown'", exc)
+            return "unknown"
 
     def _detect_vocals(self, mono: np.ndarray, sr: int) -> tuple[bool, float]:
         """Erkennt Gesangspräsenz."""

@@ -162,15 +162,29 @@ def get_genre_jnd_factor(genre: str) -> float:
 
     Kritische Hörer (Klassik, Solo-Klavier) → niedrigere JND → mehr Phasen laufen.
     Tolerante Hörer (EDM, Punk) → höhere JND → Phasen mit marginalem Gewinn überspringen.
+
+    §G9 (copilot-instructions.md): Die Auflösung läuft über die kanonische
+    Registry. Vorher fielen die deutschen Labels des Klassifikators (``Klassik``,
+    ``Oper``) auf den generischen Faktor 1,00 zurück, während die englische
+    Schreibweise (``classical`` = 0,80) den kritischen Wert erhielt — bei Klassik
+    liefen dadurch WENIGER Phasen (§G6 copilot-instructions.md).
     """
-    key = str(genre).strip().lower().replace("-", "_").replace(" ", "_")
-    return GENRE_JND_FACTOR.get(key, GENRE_JND_FACTOR.get("unknown", 1.0))
+    from backend.core.genre_registry import jnd_key as _jnd_key
+
+    key = _jnd_key(genre)
+    if key is not None and key in GENRE_JND_FACTOR:
+        return GENRE_JND_FACTOR[key]
+    return GENRE_JND_FACTOR.get("unknown", 1.0)
 
 
 def get_genre_dynamics_preference(genre: str) -> float:
-    """§v10.116: Dynamik-Präferenz pro Genre."""
-    key = str(genre).strip().lower().replace("-", "_").replace(" ", "_")
-    return GENRE_DYNAMICS_PREFERENCE.get(key, 1.0)
+    """§v10.116: Dynamik-Präferenz pro Genre (§G9 copilot-instructions.md: kanonische Auflösung)."""
+    from backend.core.genre_registry import jnd_key as _jnd_key
+
+    key = _jnd_key(genre)
+    if key is not None and key in GENRE_DYNAMICS_PREFERENCE:
+        return GENRE_DYNAMICS_PREFERENCE[key]
+    return GENRE_DYNAMICS_PREFERENCE.get("unknown", 1.0)
 
 
 def get_combined_jnd_factor(material: str = "unknown", genre: str = "unknown") -> float:

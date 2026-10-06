@@ -3145,6 +3145,15 @@ class UnifiedRestorerV3:
         _genre_vocal_factor = 1.0
         _genre_denoise_factor = 1.0
         _genre_label_l = genre_label.strip().lower() if genre_label else ""
+        # §G9 (copilot-instructions.md): kanonische Auflösung VOR der Zuordnung.
+        # Die Zweige unten prüfen dadurch kanonische IDs statt Schreibvarianten —
+        # "Soul/R&B"/"soul"/"r&b" und "Hip-Hop"/"hiphop" sind nicht mehr je ein
+        # eigener Zweig, sondern ein kanonischer Schlüssel.
+        from backend.core.genre_registry import normalize_genre as _normalize_genre
+
+        _genre_canonical = _normalize_genre(genre_label)
+        if _genre_canonical:
+            _genre_label_l = _genre_canonical
         if _genre_label_l in ("klassik", "oper"):
             # Klassik/Oper: Raumklang ist Teil der Authentizität → Dereverb-Druck dämpfen.
             _genre_reverb_factor = 0.80
@@ -3174,7 +3183,7 @@ class UnifiedRestorerV3:
             # Gewollte Gainstruktur → kein aggressives Dereverb.
             _genre_reverb_factor = 0.90
             _genre_denoise_factor = 0.95
-        elif _genre_label_l in ("electronic", "hip-hop"):
+        elif _genre_label_l in ("electronic", "hip-hop", "hiphop"):
             # Electronic / Hip-Hop: absichtlich komprimiert und begrenzt produziert.
             # Dynamik-Prozesse interpretieren legitime Limitierung als Defekt → dämpfen.
             _genre_dynamics_factor = 0.80
@@ -3192,7 +3201,7 @@ class UnifiedRestorerV3:
             _genre_reverb_factor = 0.90
             # Denoise nur wo nötig (Pop oft digitaler Ursprung).
             _genre_denoise_factor = 0.93
-        elif _genre_label_l in ("soul/r&b", "soul", "r&b"):
+        elif _genre_label_l in ("soul/r&b", "soul", "r&b", "soul_rnb"):
             # Soul/R&B: Warmer, intimer Raumklang durch Studiomischregel — bewahren.
             _genre_reverb_factor = 0.85
             # Dynamische Ausdruckskraft schützen (Vocal-Swells, Fade-Ins).

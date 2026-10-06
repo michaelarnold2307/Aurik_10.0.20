@@ -1,20 +1,33 @@
 # TASK_CHANGES — Live-Ledger der aktuellen Aufgabe
 
-> Generiert von `scripts/change_ledger.py snapshot` (Base: `HEAD`, Stand: 2026-10-06 08:59 CEST).
+> Generiert von `scripts/change_ledger.py snapshot` (Base: `HEAD`, Stand: 2026-10-06 09:52 CEST).
 > CI (`ci-lite.yml` pr-evidence-gate) erzwingt Abdeckung: jede geänderte Code-Datei muss hier stehen.
 
 ## Geänderte Dateien
 
 | Status | Pfad | Art |
 |---|---|---|
+| M | `.github/FILE_REGISTRY.md` | modifiziert |
+| M | `.github/specs/03_cognitive_modules.md` | modifiziert |
+| M | `.github/specs/04_dsp_standards.md` | modifiziert |
+| M | `.github/specs/19_sota_gender_detection.md` | modifiziert |
+| M | `.github/specs/v10.19_sprachmodell_ersatz_sota_roadmap.md` | modifiziert |
+| M | `.github/specs/v10.25_echtmusik_training.md` | modifiziert |
+| M | `.github/specs/v10.99x_stimmiges_gesamtsystem.md` | modifiziert |
 | M | `CHANGELOG.md` | modifiziert |
+| M | `README.md` | modifiziert |
 | M | `backend/core/genre_classifier.py` | modifiziert |
+| M | `backend/core/genre_goal_profile.py` | modifiziert |
+| M | `backend/core/perceptual_tuning.py` | modifiziert |
+| M | `backend/core/phantom_mode.py` | modifiziert |
+| M | `backend/core/studio_goal_targets.py` | modifiziert |
+| M | `backend/core/tonal_reference_profile.py` | modifiziert |
+| M | `backend/core/unified_restorer_v3.py` | modifiziert |
 | M | `backend/core/version.py` | modifiziert |
-| M | `backend/core/vocal_ai_enhancement.py` | modifiziert |
-| M | `plugins/laion_clap_plugin.py` | modifiziert |
-| M | `scripts/derive_clap_text_embeddings.py` | modifiziert |
-| M | `tests/unit/test_pre_analysis_depth_cap_and_clap_sr.py` | modifiziert |
-| M | `tests/unit/test_v99_sota_plugins.py` | modifiziert |
+| D | `plugins/genre_denoise_router.py` | gelöscht |
+| M | `pyproject.toml` | modifiziert |
+| M | `tests/unit/test_genre_classifier.py` | modifiziert |
+| ?? | `backend/core/genre_registry.py` | ungetrackt |
 
 ## Entscheidungen
 

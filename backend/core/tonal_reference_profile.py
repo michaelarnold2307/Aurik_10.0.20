@@ -1276,17 +1276,22 @@ def _era_bw_hz_for_decade(decade: int | None) -> float:
 
 
 def _genre_delta_for_band(genre_label: str, band_idx: int) -> float:
-    """Sum genre spectral deltas for a given Bark band index."""
-    _ALIASES = {
-        "german pop": "schlager",
-        "volkstümlich": "schlager",
-        "r&b": "soul/r&b",
-        "soul": "soul/r&b",
-        "rnb": "soul/r&b",
-    }
-    g = _ALIASES.get(str(genre_label or "").strip().lower(), str(genre_label or "").strip().lower())
+    """Sum genre spectral deltas for a given Bark band index.
+
+    §G9 (copilot-instructions.md): Die Label-Auflösung läuft über die kanonische
+    Registry. Die frühere lokale ``_ALIASES``-Tabelle (5 Einträge) ließ genau die
+    Hauptlabels des Klassifikators durchfallen — ``Deutscher Schlager`` und
+    ``Internationaler Schlager`` ergaben 0,000 statt +0,800/+1,000 dB, während
+    das *unschärfere* Label ``Schlager`` die Vorgabe erhielt (invertiert zur
+    Sprachkonfidenz).
+    """
+    from backend.core.genre_registry import delta_key as _canonical_delta_key
+
+    key = _canonical_delta_key(genre_label)
+    if key is None:
+        return 0.0
     center = _BARK_CENTERS_HZ[band_idx]
-    return sum(d for f_lo, f_hi, d in _GENRE_DELTAS.get(g, []) if f_lo <= center < f_hi)
+    return sum(d for f_lo, f_hi, d in _GENRE_DELTAS.get(key, []) if f_lo <= center < f_hi)
 
 
 def _nearest_era_key(decade: int | None, table: dict) -> int:
@@ -1344,7 +1349,13 @@ def compute_tonal_reference_curve(
     rest = float(np.clip(restorability, 0.0, 100.0))
     era_conf = 0.82 if era_decade is not None else 0.55
     mat_conf = 0.85 if mat_key in _MATERIAL_BW_CEILING_HZ else 0.60
-    genre_conf = 0.80 if str(genre_label or "").strip().lower() in _GENRE_DELTAS else 0.55
+    # §G9 (copilot-instructions.md): Bekanntes Genre ⇒ höhere Tonhöhen-Konfidenz.
+    # Auflösung über die kanonische Registry — vorher scheiterte die Prüfung an den
+    # Klassifikator-Hauptlabels (``Deutscher Schlager``), sodass genau für das
+    # sicherste Genre-Ergebnis die niedrigere Konfidenz angesetzt wurde.
+    from backend.core.genre_registry import normalize_genre as _normalize_genre
+
+    genre_conf = 0.80 if _normalize_genre(genre_label) is not None else 0.55
     confidence = float(np.clip(0.40 * era_conf + 0.35 * mat_conf + 0.25 * genre_conf, 0.30, 0.92))
     confidence = float(np.clip(confidence + 0.05 * (rest / 100.0 - 0.5), 0.30, 0.92))
 

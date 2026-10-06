@@ -262,16 +262,24 @@ class GenreGoalProfile:
 
 
 def get_genre_profile(genre_label: str) -> GenreGoalProfile:
-    """Lädt das Goal-Profil für ein erkanntes Genre."""
-    genre_lower = genre_label.lower().replace(" ", "_").replace("-", "_")
+    """Lädt das Goal-Profil für ein erkanntes Genre.
 
-    # Fuzzy-Matching: prüfe Teilstrings
-    for profile_key, weights in _GENRE_PROFILES.items():
-        if profile_key in genre_lower or genre_lower in profile_key:
-            return GenreGoalProfile(genre=profile_key, weights=dict(weights))
+    §G9 (copilot-instructions.md): Die Auflösung läuft über die kanonische
+    Registry (explizite Alias-Tabelle) statt über Fuzzy-Teilstring-Matching. Das
+    frühere Matching lieferte für ``Klassik``, ``Oper``, ``Soul/R&B``, ``Hip-Hop``
+    und ``Country`` stillschweigend ``unknown``, obwohl Profile existierten.
+    """
+    from backend.core.genre_registry import goal_profile_key
 
-    # Kein Match → Fallback (gleichmäßig)
-    logger.info("§H: Kein Genre-Profil für '%s', verwende Ersatzpfad", genre_label)
+    key = goal_profile_key(genre_label)
+    if key is not None and key in _GENRE_PROFILES:
+        return GenreGoalProfile(genre=key, weights=dict(_GENRE_PROFILES[key]))
+
+    logger.info(
+        "§H: Kein Genre-Profil für '%s' (kanonisch: %s), verwende Ersatzpfad",
+        genre_label,
+        key,
+    )
     return GenreGoalProfile(genre="unknown", weights=dict(_FALLBACK_PROFILE))
 
 

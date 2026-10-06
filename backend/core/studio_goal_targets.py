@@ -161,7 +161,11 @@ def _goal_bias_from_era(era_decade: int | None) -> dict[str, float]:
 
 
 def _goal_bias_from_genre(genre_label: str) -> dict[str, float]:
-    g = str(genre_label or "").strip().lower()
+    # §G9 (copilot-instructions.md): kanonische Genre-IDs statt Roh-Schreibweise —
+    # „Hip-Hop"/„hiphop" und „Soul/R&B"/„soul"/„r&b" sind damit ein Schlüssel.
+    from backend.core.genre_registry import normalize_genre
+
+    g = normalize_genre(genre_label) or ""
     if g in {"klassik", "oper"}:
         return {
             "raumtiefe": 0.18,
@@ -182,7 +186,7 @@ def _goal_bias_from_genre(genre_label: str) -> dict[str, float]:
             "waerme": 0.08,
             "brillanz": -0.06,
         }
-    if g in {"pop", "electronic", "hip-hop", "rock"}:
+    if g in {"pop", "electronic", "hiphop", "rock"}:
         return {
             "transparenz": 0.08,
             "artikulation": 0.08,

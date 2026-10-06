@@ -1220,3 +1220,162 @@ class TestGenreProfileUniversality:
                     missing.append(f"{name}: MISSING {param}")
 
         assert not missing, "Fehlende Pflichtparameter in Genre-Profilen:\n" + "\n".join(missing)
+
+
+class TestGenreRegistryContract:
+    """§G9 (copilot-instructions.md) — kanonische Genre-Auflösung.
+
+    Absicherung des Befunds vom 2026-10-06: Vier Konsumenten lösten dasselbe
+    Genre-Label mit vier verschiedenen Verfahren auf. Die Hauptlabels des
+    kanonischen Klassifikators (``Deutscher Schlager``/``Internationaler
+    Schlager``) fielen dabei bei ALLEN durch — während das unschärfere Label
+    ``Schlager`` korrekt bedient wurde (Wirkung invertiert zur Konfidenz).
+    """
+
+    def test_language_prefix_labels_reach_all_consumers(self) -> None:
+        """Sprach-Präfixe des Klassifikators müssen überall aufgelöst werden."""
+        from backend.core.genre_goal_profile import get_genre_profile
+        from backend.core.genre_registry import resolve_genre
+        from backend.core.perceptual_tuning import get_genre_jnd_factor
+        from backend.core.tonal_reference_profile import _genre_delta_for_band
+
+        for label in ("Deutscher Schlager", "Internationaler Schlager", "Schlager"):
+            resolution = resolve_genre(label)
+            assert resolution.canonical == "schlager", label
+            # Restaurierungsprofil vorhanden (vorher: leeres Dict)
+            assert get_restoration_profile(label), f"kein Restaurierungsprofil für {label}"
+            # Goal-Profil aufgelöst
+            assert get_genre_profile(label).genre == "schlager", label
+            # Genre-Spektralvorgabe aktiv (vorher: 0.000)
+            assert abs(_genre_delta_for_band(label, 5) - 0.800) < 1e-9, label
+            # Kritisches Hören / JND erreicht (vorher: generisch 1.00)
+            assert get_genre_jnd_factor(label) == pytest.approx(1.1), label
+
+    def test_german_labels_reach_english_keyed_tables(self) -> None:
+        """Deutsche Kanonik muss die englischen Tabellen-Vokabeln treffen."""
+        from backend.core.genre_goal_profile import get_genre_profile
+        from backend.core.perceptual_tuning import get_genre_jnd_factor
+        from backend.core.tonal_reference_profile import _genre_delta_for_band
+
+        # Klassik: vorher Goal-Profil `unknown` und JND 1.00 statt 0.80
+        assert get_genre_profile("Klassik").genre == "classical"
+        assert get_genre_jnd_factor("Klassik") == pytest.approx(0.8)
+        # Oper
+        assert get_genre_jnd_factor("Oper") == pytest.approx(0.85)
+        # Soul/R&B (vorher Goal-Profil `unknown`)
+        assert get_genre_profile("Soul/R&B").genre == "rnb"
+        # Hip-Hop (vorher Goal-Profil `unknown`)
+        assert get_genre_profile("Hip-Hop").genre == "hiphop"
+        # Metal: Delta-Tabellenschlüssel heißt `heavy_metal` (vorher: 0.000)
+        assert _genre_delta_for_band("Metal", 5) != 0.0
+
+    @pytest.mark.parametrize(
+        ("label", "expected"),
+        [
+            ("Schlager", "schlager"),
+            ("Deutscher Schlager", "schlager"),
+            ("Internationaler Schlager", "schlager"),
+            ("Disco-Schlager", "schlager"),
+            ("Volksmusik", "schlager"),
+            ("german pop", "schlager"),
+            ("Walzer", "walzer"),
+            ("Deutscher Walzer", "walzer"),
+            ("Marsch", "marsch"),
+            ("Jazz", "jazz"),
+            ("bebop", "jazz"),
+            ("Klassik", "klassik"),
+            ("classical", "klassik"),
+            ("Oper", "oper"),
+            ("opera", "oper"),
+            ("Rock", "rock"),
+            ("rock_metal", "rock"),
+            ("Pop", "pop"),
+            ("Blues", "blues"),
+            ("Soul/R&B", "soul_rnb"),
+            ("soul", "soul_rnb"),
+            ("rnb", "soul_rnb"),
+            ("Hip-Hop", "hiphop"),
+            ("hip hop", "hiphop"),
+            ("rap", "hiphop"),
+            ("Metal", "metal"),
+            ("heavy_metal", "metal"),
+            ("Country", "country"),
+            ("Folk", "folk"),
+            ("Funk", "funk"),
+            ("Electronic", "electronic"),
+            ("dance", "electronic"),
+            ("Latin", "latin"),
+            ("Gospel", "gospel"),
+            ("Reggae", "reggae"),
+            ("Ambient", "ambient"),
+            ("World", "world"),
+        ],
+    )
+    def test_alias_resolution_table(self, label: str, expected: str) -> None:
+        """Alle im Projekt beobachteten Schreibweisen lösen kanonisch auf."""
+        from backend.core.genre_registry import normalize_genre
+
+        assert normalize_genre(label) == expected
+        # Schreibvarianten desselben Genres sind identisch
+        assert normalize_genre(expected) == expected
+
+    def test_unknown_genre_is_none_and_not_fuzzy_matched(self) -> None:
+        """Unbekannte Labels werden ehrlich als None gemeldet (§V6 copilot-instructions.md)."""
+        from backend.core.genre_goal_profile import get_genre_profile
+        from backend.core.genre_registry import normalize_genre
+        from backend.core.tonal_reference_profile import _genre_delta_for_band
+
+        for label in ("", "unbekannt", "Polka", "vintage_analog", None):
+            assert normalize_genre(label) is None, label
+            assert _genre_delta_for_band(str(label or ""), 5) == 0.0
+        # Kritisches Regressionskriterium: KEIN Teilstring-Treffer auf ein falsches Genre
+        assert get_genre_profile("Polka").genre == "unknown"
+        assert get_genre_profile("Orchestersuite ohne Genre").genre == "unknown"
+
+    def test_delta_subgenre_specificity_preserved(self) -> None:
+        """Untergenres mit eigenem Delta-Eintrag bleiben spezifisch (nicht auf Basisgenre)."""
+        from backend.core.genre_registry import delta_key
+
+        assert delta_key("bebop") == "bebop"
+        assert delta_key("trap") == "trap"
+        assert delta_key("chanson") == "chanson"
+        assert delta_key("klassik") == "klassik"
+        assert delta_key("Metal") == "heavy_metal"
+        assert delta_key("Hip-Hop") == "hip-hop"
+
+    def test_schlager_family_extension_is_transported(self) -> None:
+        """Walzer/Marsch/Disco-Schlager: Basisprofil + Erweiterung getrennt transportiert."""
+        from backend.core.genre_registry import resolve_genre
+
+        walzer = resolve_genre("Walzer")
+        assert walzer.canonical == "walzer"
+        assert walzer.restoration_key == "schlager"
+        assert walzer.restoration_extension_key == "walzer"
+        assert walzer.is_schlager_family is True
+
+        disco = resolve_genre("Disco-Schlager")
+        assert disco.canonical == "schlager"
+        assert disco.restoration_extension_key == "discoschlager"
+
+        # Erweiterung greift im Profil
+        assert get_restoration_profile("Walzer") != get_restoration_profile("Schlager")
+
+    def test_no_parallel_genre_taxonomy_module(self) -> None:
+        """Der tote Parallel-Router mit eigener Taxonomie ist entfernt (§G9 copilot-instructions.md).
+
+        `plugins/genre_denoise_router.py` definierte ein eigenes Genre-Vokabular
+        (``AUDIOSET_GENRE_MAP``) und bildete die AudioSet-Indizes 0–29 — also
+        ``Speech``/``Giggle``/``Cough``/``Sigh`` — auf das Genre ``classical`` ab.
+        """
+        import importlib.util
+
+        assert importlib.util.find_spec("plugins.genre_denoise_router") is None
+
+    def test_registry_covers_all_profile_genres(self) -> None:
+        """Jedes kanonische Genre hat einen Eintrag in der Profil-Tabelle."""
+        from backend.core.genre_registry import CANONICAL_GENRES, restoration_profile_key
+
+        for genre in CANONICAL_GENRES:
+            key = restoration_profile_key(genre)
+            assert key is not None, f"kein Restaurierungsprofil-Schlüssel für {genre}"
+            assert get_restoration_profile(genre), f"leeres Profil für {genre}"

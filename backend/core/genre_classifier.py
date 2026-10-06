@@ -2508,49 +2508,22 @@ def get_restoration_profile(subgenre: str = "unknown") -> dict:
     Returns:
         Profil-Dict; leeres Dict wenn unbekannt.
     """
-    key = subgenre.strip().lower()
-    # Genre-Label → kanonisches Profil
-    label_map: dict[str, dict] = {
-        # Schlager-Varianten
-        "schlager": SCHLAGER_RESTORATION_PROFILE,
-        "walzer": {**SCHLAGER_RESTORATION_PROFILE, **_SUBGENRE_EXTENSIONS.get("walzer", {})},
-        "marsch": {**SCHLAGER_RESTORATION_PROFILE, **_SUBGENRE_EXTENSIONS.get("marsch", {})},
-        "disco-schlager": {**SCHLAGER_RESTORATION_PROFILE, **_SUBGENRE_EXTENSIONS.get("discoschlager", {})},
-        "discoschlager": {**SCHLAGER_RESTORATION_PROFILE, **_SUBGENRE_EXTENSIONS.get("discoschlager", {})},
-        "volksmusik": {**SCHLAGER_RESTORATION_PROFILE, **_SUBGENRE_EXTENSIONS.get("volksmusik", {})},
-        "schlager_1950s": {**SCHLAGER_RESTORATION_PROFILE, **_SUBGENRE_EXTENSIONS.get("schlager_1950s", {})},
-        "schlager_modern": {**SCHLAGER_RESTORATION_PROFILE, **_SUBGENRE_EXTENSIONS.get("schlager_modern", {})},
-        # Klassische Genres
-        "jazz": JAZZ_RESTORATION_PROFILE,
-        "klassik": KLASSIK_RESTORATION_PROFILE,
-        "oper": OPER_RESTORATION_PROFILE,
-        "rock": ROCK_RESTORATION_PROFILE,
-        # Neue Genres
-        "pop": POP_RESTORATION_PROFILE,
-        "blues": BLUES_RESTORATION_PROFILE,
-        "soul/r&b": SOUL_RNB_RESTORATION_PROFILE,
-        "soul_rnb": SOUL_RNB_RESTORATION_PROFILE,
-        "soul": SOUL_RNB_RESTORATION_PROFILE,
-        "r&b": SOUL_RNB_RESTORATION_PROFILE,
-        "rnb": SOUL_RNB_RESTORATION_PROFILE,
-        "country": COUNTRY_RESTORATION_PROFILE,
-        "folk": FOLK_RESTORATION_PROFILE,
-        "funk": FUNK_RESTORATION_PROFILE,
-        "electronic": ELECTRONIC_RESTORATION_PROFILE,
-        "dance": ELECTRONIC_RESTORATION_PROFILE,
-        "hip-hop": HIPHOP_RESTORATION_PROFILE,
-        "hiphop": HIPHOP_RESTORATION_PROFILE,
-        "hip hop": HIPHOP_RESTORATION_PROFILE,
-        "rap": HIPHOP_RESTORATION_PROFILE,
-        "metal": METAL_RESTORATION_PROFILE,
-        "latin": LATIN_RESTORATION_PROFILE,
-        "gospel": GOSPEL_RESTORATION_PROFILE,
-        "reggae": REGGAE_RESTORATION_PROFILE,
-        "ambient": AMBIENT_RESTORATION_PROFILE,
-        "world": WORLD_RESTORATION_PROFILE,
-        "world music": WORLD_RESTORATION_PROFILE,
-    }
-    return dict(label_map.get(key, {}))  # leere Kopie wenn unbekannt
+    # §G9 (copilot-instructions.md): Auflösung über die kanonische Registry.
+    # Die frühere lokale ``label_map`` war eine VIERTE Kopie der Profiltabelle und
+    # ließ die Hauptlabels des Klassifikators leer (gemessen: ``Deutscher
+    # Schlager`` und ``Internationaler Schlager`` → ``{}``), während das
+    # unschärfere ``Schlager`` korrekt bedient wurde.
+    from backend.core.genre_registry import resolve_genre
+
+    resolution = resolve_genre(subgenre)
+    if resolution.restoration_key is None:
+        return {}
+    profile = dict(GENRE_RESTORATION_PROFILES.get(resolution.restoration_key, {}))
+    if resolution.restoration_extension_key:
+        extension = _SUBGENRE_EXTENSIONS.get(resolution.restoration_extension_key)
+        if extension:
+            profile.update(extension)
+    return profile
 
 
 # ---- Thread-sicherer Singleton (Double-Checked Locking, §3.2) ----

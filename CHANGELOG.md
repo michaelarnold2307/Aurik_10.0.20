@@ -1,4 +1,57 @@
-# Changelog — Aurik 10.3.12
+# Changelog — Aurik 10.3.13
+
+## 10.3.13 (2026-10-06)
+
+### §G9: Genre-Erkennung konsolidiert (eine Registry statt vier Auflösungen)
+
+- **Befund:** Dasselbe Genre-Label wurde von **vier Konsumenten mit vier
+  verschiedenen, jeweils unvollständigen Verfahren** aufgelöst — `genre_classifier`
+  hatte eine _vierte_ Kopie der Profiltabelle (`label_map`), `genre_goal_profile`
+  ein Fuzzy-Teilstring-Matching, `tonal_reference_profile` eine 5-Einträge-`_ALIASES`,
+  `unified_restorer_v3` eine 16-Zweige-if/elif-Kette. Gemessen pro Label:
+
+  | Label | Restaurierungsprofil | Goal-Profil | Delta | JND |
+  | --- | --- | --- | --- | --- |
+  | `Deutscher Schlager` | **leer** | schlager | **0,000** | **1,00** |
+  | `Internationaler Schlager` | **leer** | schlager | **0,000** | 1,00 |
+  | `Klassik` | OK | **unknown** | +0,300 | **1,00** |
+  | `Oper` | OK | **unknown** | +0,800 | **1,00** |
+  | `Soul/R&B` | OK | **unknown** | +0,800 | 1,00 |
+  | `Hip-Hop` | OK | **unknown** | −0,300 | 1,10 |
+  | `Country` | OK | **unknown** | +0,500 | 1,00 |
+  | `Metal` | OK | metal | **0,000** | 1,10 |
+
+  Die Wirkung war **invertiert zur Konfidenz**: Das _unschärfere_ Label `Schlager`
+  (Sprache unsicher, `lang_de_score` 0,30–0,55) erhielt die Genre-Spektralvorgabe
+  (+0,800 dB), während `Deutscher Schlager` (≥ 0,55, Hauptanwendungsfall) sie
+  vollständig verlor. `Klassik` bekam den generischen JND 1,00 statt 0,80 — bei
+  Klassik liefen dadurch **weniger** Phasen, das Gegenteil der Absicht (§G6).
+- **Fix:** Neue kanonische Registry `backend/core/genre_registry.py` als **eine**
+  Quelle: 21 kanonische Genre-IDs, explizite Alias-Tabelle (Sprach-Präfixe
+  „Deutscher/Internationaler …“, Schreibvarianten, Untergenre-Spezifität) und
+  Ziel-Schlüssel je Konsument (Restaurierungsprofil, Goal-Profil, JND/Dynamik,
+  Delta-Tabelle). Kein Fuzzy-Matching mehr — unbekannte Labels werden ehrlich als
+  `None` gemeldet (§V6 (copilot-instructions.md)) statt per Teilstring auf ein
+  falsches Genre zu fallen.
+- **Verdrahtet:** `genre_classifier.get_restoration_profile` (vierte Tabellenkopie
+  entfernt), `genre_goal_profile.get_genre_profile`, `tonal_reference_profile`
+  (Delta **und** Konfidenz), `perceptual_tuning` (JND + Dynamik),
+  `studio_goal_targets`, `unified_restorer_v3` (kanonische Zweig-IDs).
+- **Totpfade beseitigt:** `plugins/genre_denoise_router.py` gelöscht — nie
+  importiert, mit eigener Taxonomie und einer Fehlabbildung der AudioSet-Indizes
+  0–29 (`Speech`/`Giggle`/`Cough`/`Sigh`) auf das Genre `classical`.
+  `phantom_mode._detect_genre` lieferte konstant `"unknown"` („Platzhalter") und
+  ist jetzt an den kanonischen Klassifikator angebunden.
+- **Nachweis:** 44 neue Vertragstests (Alias-Tabelle, Konsumenten-
+  Übereinstimmung, Untergenre-Spezifität, kein Fuzzy-Fehltreffer) + 406
+  Regressionstests grün; `Klassik` → JND 0,80, `Deutscher Schlager` → Profil OK,
+  Delta +0,800, JND 1,10.
+- **Offen (ehrlich):** Genre-Erkennung ist **nicht** auf SOTA-Stufe: Tier-1 (CLAP)
+  ist nur ein weicher Prior, die Erkennung selbst ist Hand-DSP. Es gibt **kein
+  trainiertes Genre-Modell** — MERT (laut Spec §5 „14 Tasks SOTA inkl. Genre") ist
+  als Backbone vorhanden, aber ohne Genre-Head (`models/mert_genre_classifier/`
+  existiert nicht); die GTZAN-Labels liegen vor, werden aber nicht zum Training
+  genutzt. Der Ausbau braucht einen Trainingslauf auf GTZAN/MagnaTagATune.
 
 ## 10.3.12 (2026-10-06)
 
