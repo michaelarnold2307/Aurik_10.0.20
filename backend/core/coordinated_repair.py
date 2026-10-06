@@ -497,7 +497,24 @@ class RepairPlanner:
             )
             # §v10.994: Kontextabhängige Model-Zoo-Aktivierung (Opt-In via Plan)
             _vocal_conf = float((metadata or {}).get("vocal_confidence", 0.0) or 0.0)
-            if step.defect_category in ("hiss", "reverb_tail") and _vocal_conf > 0.5:
+            # §Gesangs-Fokus (2026-10-06): SGMSE+ ist ein SPRACH-Score-Core
+            # (WSJ0-CHiME3, Richter et al. 2022). Aurik restauriert Gesang/Musik —
+            # ein Sprach-Klangfarben-Modell auf dem Vokalstem riskiert
+            # Telefonband-Charakter und Vokalfärbung
+            # (§V1 (copilot-instructions.md), Hörordnung Ebene 1). Die dokumentierte
+            # Schaltstelle ist music_model_flags.use_sgmse_musik (§v10.16/F7, dort
+            # bewusst False). Fehlt das Musik-/Gesangs-Finetune, wird SGMSE+ NICHT
+            # aktiviert — sonst liefe ein gesperrtes Sprach-Modell still auf Gesang.
+            # Übergang: DFN-Musik (use_df_musik=True) + Cantus nach Freigabe.
+            try:
+                from backend.core.music_model_flags import (  # pylint: disable=import-outside-toplevel
+                    use_sgmse_musik as _use_sgmse_musik_cr,
+                )
+
+                _sgmse_domain_ok = bool(_use_sgmse_musik_cr)
+            except Exception:
+                _sgmse_domain_ok = False
+            if _sgmse_domain_ok and step.defect_category in ("hiss", "reverb_tail") and _vocal_conf > 0.5:
                 step.parameters["use_sgmse"] = True
                 step.parameters["sgmse_sigma"] = 0.4 if step.defect_category == "reverb_tail" else 0.5
             if step.defect_category == "hiss" and _vocal_conf > 0.65:

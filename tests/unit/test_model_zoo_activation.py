@@ -50,16 +50,30 @@ def _plan_params(category: DefectCategory, vocal_confidence: float | None) -> di
     return {}
 
 
-def test_planner_activates_sgmse_and_mp_senet_for_strong_vocals():
+def test_planner_activates_sgmse_and_mp_senet_for_strong_vocals(monkeypatch):
+    # §Gesangs-Fokus (2026-10-06): SGMSE+ (Sprach-Score-Core) wird nur bei
+    # freigegebenem Musik-Finetune aktiviert (music_model_flags.use_sgmse_musik).
+    monkeypatch.setattr("backend.core.music_model_flags.use_sgmse_musik", True)
     params = _plan_params(DefectCategory.HISS, 0.75)
     assert params.get("use_sgmse") is True
     assert params.get("use_mp_senet") is True
 
 
-def test_planner_activates_only_sgmse_for_moderate_vocals():
+def test_planner_activates_only_sgmse_for_moderate_vocals(monkeypatch):
+    monkeypatch.setattr("backend.core.music_model_flags.use_sgmse_musik", True)
     params = _plan_params(DefectCategory.HISS, 0.55)
     assert params.get("use_sgmse") is True
     assert params.get("use_mp_senet") is not True  # konservativ: erst ab 0.65
+
+
+def test_planner_blocks_speech_sgmse_on_vocals_while_musik_flag_locked(monkeypatch):
+    """Sprach-Modell SGMSE+ darf Gesang NICHT bearbeiten, solange kein
+    Musik-Finetune freigegeben ist (use_sgmse_musik=False, §v10.16/F7)."""
+    monkeypatch.setattr("backend.core.music_model_flags.use_sgmse_musik", False)
+    params = _plan_params(DefectCategory.HISS, 0.75)
+    assert params.get("use_sgmse") is not True
+    # MP-SENet ist ein Musik-Finetune (`use_mp_senet_musik=True`) und bleibt aktiv.
+    assert params.get("use_mp_senet") is True
 
 
 def test_planner_stays_conservative_without_metadata():
@@ -68,7 +82,8 @@ def test_planner_stays_conservative_without_metadata():
     assert params.get("use_mp_senet") is not True
 
 
-def test_planner_uses_lower_sigma_for_reverb():
+def test_planner_uses_lower_sigma_for_reverb(monkeypatch):
+    monkeypatch.setattr("backend.core.music_model_flags.use_sgmse_musik", True)
     params = _plan_params(DefectCategory.REVERB_TAIL, 0.6)
     assert params.get("use_sgmse") is True
     assert params.get("sgmse_sigma") == 0.4

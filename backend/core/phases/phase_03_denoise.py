@@ -1623,8 +1623,23 @@ class DenoisePhase(PhaseInterface):
             except Exception as e:
                 logger.debug("SOTA 4-Layer nicht verfügbar, Rückfall auf DFN: %s", e)
 
+        # §Gesangs-Fokus (2026-10-06): Der produktive SGMSE+-Core
+        # (models/sgmse_plus/sgmse_plus_core.onnx) ist ein SPRACH-Enhancement-
+        # Score-Core (WSJ0-CHiME3, Richter et al. 2022), kein Musik-Modell.
+        # Aurik restauriert Gesang/Musik; ein Sprach-Klangfarben-Modell darauf
+        # riskiert Telefonband-Charakter und Vokalfärbung
+        # (§V1 (copilot-instructions.md), Hörordnung Ebene 1). Das Musik-Finetune
+        # fehlt (§v10.16/F7) und ist über music_model_flags.use_sgmse_musik
+        # bewusst gesperrt — die Schaltstelle war bisher NICHT verdrahtet, d.h.
+        # das gesperrte Sprach-Modell lief still auf Musik (Befund: 6,2 s
+        # Inferenz je 1 s Audio, Ergebnis vom Decorrelation-Guard verworfen).
+        try:
+            from backend.core.music_model_flags import use_sgmse_musik as _use_sgmse_musik_p03
+        except Exception:  # pragma: no cover - Import-Resilienz
+            _use_sgmse_musik_p03 = False
         _sgmse_eligible = (
-            quality_mode in ("quality", "maximum")
+            _use_sgmse_musik_p03
+            and quality_mode in ("quality", "maximum")
             and _is_non_digital
             and not use_lightweight
             and not _tonal_clean
