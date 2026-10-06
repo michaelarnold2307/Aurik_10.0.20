@@ -22,6 +22,24 @@
   (Phase-03-Kaltstart-/SGMSE-Anteil entfällt); `test_model_zoo_activation.py`
   → 16 passed (neuer Test pinnt die Sperre auf Gesang); Ruff clean.
 
+### §v10.16/F7-Verdrahtung: SGMSE+ Musik-Core erreichbar gemacht
+
+- **Befund (2026-10-06):** Der F7-Musik-Finetune liegt vor (`finetuned/sgmse_musik_best.ckpt`,
+  Epoch 24) und wurde am 05.10. als `models/sgmse_plus/sgmse_musik_core.onnx`
+  (263 MB) exportiert. Die Verdrahtung fehlte aber: `MUSIC_MODEL_PATHS["sgmse"]`
+  zeigte auf den SPRACH-Core (`sgmse_plus_core.onnx`), und
+  `plugins/sgmse_plugin.py` konsultierte `music_model_flags` gar nicht
+  (hartcodierter Sprach-Core) → ein Flag-Flip hätte den falschen Core aktiviert,
+  der Musik-Core war unerreichbar.
+- **Fix:** `MUSIC_MODEL_PATHS["sgmse"]` → `sgmse_musik_core.onnx`;
+  `plugins/sgmse_plugin._resolve_onnx_path()` löst den aktiven Core über
+  `resolve_model_path("sgmse")` auf (Flag an → Musik-Core, aus → Sprach-Legacy).
+  Der Flag bleibt `False` (A/B-/Hörordnungs-Abnahme offen,
+  `test_primary_paths_no_fallback` pinnt das).
+- **Beweise:** Neuer Test `test_sgmse_music_flag_selects_musik_core` (beide
+  Zustände); `test_model_zoo_activation` 17 passed; normative Primärpfad-Tests
+  7 passed; Ruff clean.
+
 ### train_cantus: Smoke-Läufe überschreiben keine Produktionsartefakte mehr
 
 - **Befund (2026-10-06, selbst verursacht):** `scripts/train_cantus.py --smoke`

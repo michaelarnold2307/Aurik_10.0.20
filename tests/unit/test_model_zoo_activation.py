@@ -89,6 +89,25 @@ def test_planner_uses_lower_sigma_for_reverb(monkeypatch):
     assert params.get("sgmse_sigma") == 0.4
 
 
+def test_sgmse_music_flag_selects_musik_core(monkeypatch):
+    """§v10.16/F7-Verdrahtung: Flag aus → Sprach-Legacy, Flag an → Musik-Core.
+
+    Verhindert den stillen Sprach-Core auf Musik (Befund 2026-10-06): beide
+    Pfade (`music_model_flags` + `plugins.sgmse_plugin._resolve_onnx_path`)
+    müssen dem Flag folgen.
+    """
+    from backend.core.music_model_flags import resolve_model_path
+    from plugins.sgmse_plugin import _resolve_onnx_path as _plugin_path
+
+    monkeypatch.setattr("backend.core.music_model_flags.use_sgmse_musik", False)
+    assert resolve_model_path("sgmse").name == "sgmse_plus_core.onnx"
+    assert _plugin_path().name == "sgmse_plus_core.onnx"
+
+    monkeypatch.setattr("backend.core.music_model_flags.use_sgmse_musik", True)
+    assert resolve_model_path("sgmse").name == "sgmse_musik_core.onnx"
+    assert _plugin_path().name == "sgmse_musik_core.onnx"
+
+
 # ═══════════════════════════════════════════════════════════════════════════════
 # 2. Opt-In-Kette in _run_denoise — nie stiller Ausfall
 # ═══════════════════════════════════════════════════════════════════════════════

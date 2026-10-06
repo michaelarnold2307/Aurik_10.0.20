@@ -52,8 +52,29 @@ import numpy as np
 logger = logging.getLogger(__name__)
 
 _ROOT = Path(__file__).parent.parent
-_ONNX_PATH = _ROOT / "models" / "sgmse_plus" / "sgmse_plus_core.onnx"
+# Sprach-Core (WSJ0-CHiME3) als Legacy-Fallback. Der aktive Pfad wird über
+# music_model_flags.resolve_model_path("sgmse") bestimmt: bei
+# use_sgmse_musik=True der Musik-Core (sgmse_musik_core.onnx, §v10.16/F7),
+# sonst dieser Sprach-Core.
+_SPEECH_ONNX_PATH = _ROOT / "models" / "sgmse_plus" / "sgmse_plus_core.onnx"
 _TS_PATH = _ROOT / "models" / "sgmse_plus" / "sgmse_plus.ts"
+
+
+def _resolve_onnx_path() -> Path:
+    """Aktiver SGMSE+-ONNX-Core (Musik-Finetune bei Flag, sonst Sprach-Legacy, §v10.16/F7)."""
+    try:
+        from backend.core.music_model_flags import (  # pylint: disable=import-outside-toplevel
+            resolve_model_path as _resolve,
+        )
+
+        resolved = _resolve("sgmse")
+        if resolved is not None:
+            return Path(resolved)
+    except Exception:
+        logger.debug("music_model_flags nicht verfügbar — Sprach-Core-Fallback", exc_info=True)
+    return _SPEECH_ONNX_PATH
+
+
 _CKPT_CANDIDATES = (
     _ROOT / "models" / "sgmse_plus" / "sgmse_plus_src_1.ckpt",
     # sgmse_wsj0_reverb.ckpt (Speech-Original, 2022) entfernt — archiviert 2026-09-20
@@ -217,7 +238,8 @@ class SGMSEPlusPlugin:
         except Exception:
             _try_alloc = None  # type: ignore[assignment]
 
-        if _ONNX_PATH.exists():
+        _onnx_path = _resolve_onnx_path()
+        if _onnx_path.exists():
             try:
                 import onnxruntime as ort  # pylint: disable=import-outside-toplevel
 
@@ -230,7 +252,7 @@ class SGMSEPlusPlugin:
                 except Exception:
                     _providers = ["CPUExecutionProvider"]
                 try:
-                    _session = ort.InferenceSession(str(_ONNX_PATH), providers=_providers)
+                    _session = ort.InferenceSession(str(_onnx_path), providers=_providers)
                 except Exception as _prov_exc:
                     # §III.9 (copilot-instructions.md): "ONNX bleibt reiner CPU-Fallback".
                     # Scheitert ein GPU-EP, darf nicht direkt das TorchScript-Artefakt
@@ -246,14 +268,14 @@ class SGMSEPlusPlugin:
                         _prov_exc,
                     )
                     _providers = ["CPUExecutionProvider"]
-                    _session = ort.InferenceSession(str(_ONNX_PATH), providers=_providers)
+                    _session = ort.InferenceSession(str(_onnx_path), providers=_providers)
                 _inputs = {item.name: item for item in _session.get_inputs()}
                 if {"x_t", "y", "t"} - set(_inputs):
                     raise RuntimeError(f"SGMSE+ ONNX-Eingänge unerwartet: {sorted(_inputs)}")
                 self._onnx_session = _session
                 self._model_loaded = True
                 self._device = "cpu"
-                logger.info("✅ SGMSE+ ONNX geladen (%s, providers=%s)", _ONNX_PATH.name, _session.get_providers())
+                logger.info("✅ SGMSE+ ONNX geladen (%s, providers=%s)", _onnx_path.name, _session.get_providers())
                 try:
                     from backend.core.plugin_lifecycle_manager import register_plugin as _reg_plm
 
@@ -355,7 +377,7 @@ class SGMSEPlusPlugin:
 
         logger.info(
             "SGMSE+ Modell nicht verfügbar (ONNX: %s, TorchScript: %s) — WPE-DSP-Ersatzpfad aktiv.",
-            _ONNX_PATH,
+            _onnx_path,
             _TS_PATH,
         )
 

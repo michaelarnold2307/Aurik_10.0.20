@@ -20,7 +20,7 @@ lückenlos garantiert funktionieren — „out of the box" darf KEIN
   6. Inventar-Gate: vorhandene, bewusst ungenutzte Großmodelle
      (Whisper large-v3-turbo/Decoder) bleiben dokumentiert und auffindbar.
 
-Bewusst gesperrte Flags (§v10.16 SGMSE-Musik-Finetune fehlt, §v10.20
+Bewusst gesperrte Flags (§v10.16/F7 SGMSE-Musik-Abnahme offen, §v10.20
 Whisper-Denoiser deprecated, BW-Reconstructor v5 HF-Gate nicht bestanden)
 sind KEINE Primärpfade — sie werden unten explizit gelistet, damit die
 Entscheidung sichtbar bleibt und nicht versehentlich als „Lücke" gilt.
@@ -49,7 +49,7 @@ _CORE_ONNX: dict[str, tuple[str, int]] = {
 
 # Bewusst gesperrte Flags (keine Primärpfade — dokumentierte Entscheidungen)
 _CONSCIOUSLY_GATED = {
-    "sgmse_musik": "§v10.16 — kein Finetune-Checkpoint vorhanden",
+    "sgmse_musik": "§v10.16/F7 — Musik-Core + ONNX-Export vorhanden, A/B-Abnahme offen (Flag gesperrt)",
     "whisper_denoiser": "§v10.20 — deprecated, nur A/B-Gate",
     "bw_v5": "A1: HF-Gain-Gate nicht bestanden (0.73 < 1.02)",
 }

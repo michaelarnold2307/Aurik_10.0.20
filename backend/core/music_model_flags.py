@@ -22,7 +22,8 @@ Usage:
 # Set to True after training + ONNX export + A/B test passed.
 
 use_df_musik: bool = True  # DFN Musik (§v10.15) replaces DeepFilterNet v3 (finetuned enc/dec/erb_dec)
-use_sgmse_musik: bool = False  # SGMSE+ Musik (§v10.16) — kein Finetune-Checkpoint vorhanden
+use_sgmse_musik: bool = False  # SGMSE+ Musik (§v10.16/F7): Musik-Core + ONNX-Export liegen vor,
+# A/B- + Hörordnungs-Abnahme stehen aber aus → Flag bleibt gesperrt (test_primary_paths_no_fallback pinnt False)
 use_mp_senet_musik: bool = True  # MP-SENet Musik (§v10.17) — A/B 2026-09-20 bestanden: seg-SNR +5,3…+11,3 dB,
 # VERSA 4,96–4,99 auf 3 Korpus-Paaren; ONNX: models/mp_senet/finetuned/mp_senet_musik.onnx (§v10.25)
 use_miipher_dit: bool = True  # MIIPHER-DiT (§v10.14) replaces proprietary MIIPHER (flow_matching_dit.onnx)
@@ -43,8 +44,10 @@ MUSIC_MODEL_PATHS: dict[str, Path] = {
     "dfn_enc": _PROJECT_ROOT / "models" / "deepfilternet_v3_ii" / "finetuned" / "enc.onnx",
     "dfn_dec": _PROJECT_ROOT / "models" / "deepfilternet_v3_ii" / "finetuned" / "dec.onnx",
     "dfn_erb_dec": _PROJECT_ROOT / "models" / "deepfilternet_v3_ii" / "finetuned" / "erb_dec.onnx",
-    # SGMSE+ Score-Core — produktiver ONNX-Export
-    "sgmse": _PROJECT_ROOT / "models" / "sgmse_plus" / "sgmse_plus_core.onnx",
+    # SGMSE+ Musik-Score-Core (§v10.16/F7) — auf MUSDB18/48 kHz finetuned,
+    # aktiv NUR bei use_sgmse_musik=True (nach A/B + Hörordnungs-Abnahme).
+    # Der Sprach-Core (WSJ0-CHiME3) liegt als LEGACY_MODEL_PATHS["sgmse"].
+    "sgmse": _PROJECT_ROOT / "models" / "sgmse_plus" / "sgmse_musik_core.onnx",
     # MP-SENet Musik — ONNX
     "mp_senet": _PROJECT_ROOT / "models" / "mp_senet" / "finetuned" / "mp_senet_musik.onnx",
     # MIIPHER-DiT — ONNX
