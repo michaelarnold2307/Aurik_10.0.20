@@ -132,3 +132,33 @@ class TestMacroF1:
         _y = np.array([0, 0, 1, 1], dtype=np.int64)
         _pred = np.array([1, 1, 0, 0], dtype=np.int64)
         assert tgh._macro_f1(_y, _pred, 3) == pytest.approx(0.0)
+
+
+class TestPannsEvidence:
+    """F14: Die musiktaugliche PANNs-Evidenz wird selbst erzeugt (Array-API)."""
+
+    def _install_fake_panns(self, monkeypatch, func) -> None:  # type: ignore[no-untyped-def]
+        import sys
+        import types
+
+        _fake = types.ModuleType("plugins.panns_plugin")
+        _fake.classify_audio = func  # type: ignore[attr-defined]
+        monkeypatch.setitem(sys.modules, "plugins.panns_plugin", _fake)
+
+    def test_missing_model_is_non_blocking(self, monkeypatch) -> None:  # type: ignore[no-untyped-def]
+        """§V6 copilot-instructions.md: fehlendes Modell ⇒ None statt Abbruch."""
+
+        def _boom(_audio, _sr):
+            raise RuntimeError("Modell fehlt")
+
+        self._install_fake_panns(monkeypatch, _boom)
+        assert cge._panns_tags_for(np.zeros(4800, dtype=np.float32), 48000) is None
+
+    def test_without_singing_classes_is_none(self, monkeypatch) -> None:  # type: ignore[no-untyped-def]
+        self._install_fake_panns(monkeypatch, lambda _a, _s: {"Speech": 0.9})
+        assert cge._panns_tags_for(np.zeros(4800, dtype=np.float32), 48000) is None
+
+    def test_singing_classes_are_passed_through(self, monkeypatch) -> None:  # type: ignore[no-untyped-def]
+        _tags = {"Male singing": 0.7, "Female singing": 0.1}
+        self._install_fake_panns(monkeypatch, lambda _a, _s: _tags)
+        assert cge._panns_tags_for(np.zeros(4800, dtype=np.float32), 48000) == _tags

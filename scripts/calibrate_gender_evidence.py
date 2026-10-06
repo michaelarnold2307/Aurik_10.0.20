@@ -117,6 +117,27 @@ def _load_panns_tags(path: Path | None) -> dict[str, dict] | None:
         return None
 
 
+def _panns_tags_for(mono: np.ndarray, sr: int) -> dict | None:
+    """Erzeugt die PANNs-Singing-Tags über das Plugin (Array-API, kein Temp-WAV).
+
+    Gibt ``None`` zurück, wenn das Modell nicht verfügbar ist — der Aufrufer misst
+    dann ausschließlich die Anatomie. Das ist ausdrücklich KEIN stilles Degradieren:
+    Der Report weist „ohne ML-Evidenz" aus, und die Schwellenempfehlung bleibt
+    gesperrt (§V6 copilot-instructions.md, Konsens-Gate).
+    """
+    try:
+        from plugins.panns_plugin import classify_audio  # pylint: disable=import-outside-toplevel
+
+        _tags = classify_audio(mono, sr)
+        if isinstance(_tags, dict) and ("Male singing" in _tags or "Female singing" in _tags):
+            return _tags
+        logger.debug("PANNs lieferte keine Singing-Klassen — Messung ohne ML-Evidenz")
+        return None
+    except Exception as _exc:  # pylint: disable=broad-except
+        logger.warning("PANNs-Tags nicht erzeugbar (%s) — Messung ohne ML-Evidenz (§V6 copilot-instructions.md)", _exc)
+        return None
+
+
 def _build_report(records: list[dict], min_samples: int) -> dict:
     """Erzeugt Kennzahlen und eine ehrliche Kalibrier- Empfehlung."""
     _n = len(records)
@@ -199,7 +220,17 @@ def main(argv: list[str] | None = None) -> int:
     _ap.add_argument("--corpus", type=Path, default=Path("corpus"), help="Korpus-Wurzel")
     _ap.add_argument("--out", type=Path, default=Path("reports/gender_calibration"), help="Ausgabe-Verzeichnis")
     _ap.add_argument("--limit", type=int, default=0, help="Maximale Dateianzahl (0 = alle)")
-    _ap.add_argument("--panns-tags", type=Path, default=None, help="Optionales JSON mit PANNs-Tags")
+    _ap.add_argument(
+        "--panns",
+        default="auto",
+        help="PANNs-Singing-Evidenz: 'auto' (selbst erzeugen), 'off' oder Pfad zu einer Tags-JSON",
+    )
+    _ap.add_argument(
+        "--panns-out",
+        type=Path,
+        default=None,
+        help="Erzeugte PANNs-Tags als JSON sichern (Cache für Wiederholungsläufe)",
+    )
     _ap.add_argument("--min-samples", type=int, default=_CONSENSUS_MIN_SAMPLES, help="Mindest-Stichprobe mit PANNs")
     _args = _ap.parse_args(argv)
 
@@ -212,7 +243,14 @@ def main(argv: list[str] | None = None) -> int:
         logger.warning("Keine Audiodateien unter %s gefunden — nichts zu messen", _args.corpus)
         return 2
 
-    _tags_map = _load_panns_tags(_args.panns_tags)
+    _tags_map: dict[str, dict] | None = None
+    _panns_mode = str(_args.panns).strip().lower()
+    _panns_external = _panns_mode not in {"auto", "off"}
+    if _panns_external:
+        _tags_map = _load_panns_tags(Path(_args.panns))
+    elif _panns_mode == "off":
+        logger.info("PANNs-Evidenz abgeschaltet (--panns off) — nur Anatomie-Verteilung")
+    _generated_tags: dict[str, dict] = {}
     _records: list[dict] = []
     for _path in _files:
         _loaded = _load_mono(_path)
@@ -222,7 +260,14 @@ def main(argv: list[str] | None = None) -> int:
         if _mono.size < _sr // 2:
             logger.debug("Datei zu kurz (%s) — übersprungen", _path.name)
             continue
-        _tags = _tags_map.get(_path.name) if _tags_map else None
+        if _panns_external:
+            _tags = _tags_map.get(_path.name) if _tags_map else None
+        elif _panns_mode == "off":
+            _tags = None
+        else:
+            _tags = _panns_tags_for(_mono, _sr)
+            if _tags is not None:
+                _generated_tags[_path.name] = _tags
         try:
             _rec = _measure_one(_mono, _sr, _tags)
         except Exception as _exc:  # pylint: disable=broad-except
@@ -238,7 +283,13 @@ def main(argv: list[str] | None = None) -> int:
         logger.warning("Keine auswertbaren Messungen erzeugt")
         return 2
 
+    if _args.panns_out is not None and _generated_tags:
+        _args.panns_out.parent.mkdir(parents=True, exist_ok=True)
+        _args.panns_out.write_text(json.dumps(_generated_tags, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+        logger.info("PANNs-Tags gesichert: %s (%d Dateien)", _args.panns_out, len(_generated_tags))
+
     _payload = _build_report(_records, int(_args.min_samples))
+    _payload["panns_source"] = "external" if _panns_external else ("off" if _panns_mode == "off" else "auto")
     _write_reports(_args.out, _payload, _records)
     logger.info(
         "F14 fertig: %d Dateien, Konsens=%s, Empfehlung erlaubt=%s → %s",

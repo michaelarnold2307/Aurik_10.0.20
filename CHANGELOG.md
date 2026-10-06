@@ -301,6 +301,25 @@
   Doppelveränderung und == 0 bei Ein-Stem-Änderung, W5 steigt bei geteilter
   Quelle) sowie 23 passed `test_stem_level_restorer.py`; Ruff clean.
 
+### F14-Ergänzung: PANNs-Evidenz wird selbst erzeugt
+
+- **Warum:** Die Kalibrierung konnte den Konsens Anatomie ↔ PANNs nur messen, wenn
+  eine Tags-JSON extern vorlag — im Default-Lauf blieb `consensus_rate = None` und
+  die Schwellenempfehlung gesperrt.
+- **Neu in `scripts/calibrate_gender_evidence.py`:**
+  - `--panns auto` (Default): erzeugt die Tags selbst über
+    `plugins.panns_plugin.classify_audio(mono, sr)` (Array-API, kein Temp-WAV).
+    Fehlt das Modell, gibt es `None` und einen §V6 copilot-instructions.md-Hinweis
+    — kein Abbruch, aber auch keine erfundene ML-Evidenz; die Empfehlung bleibt gesperrt.
+  - `--panns off`: reine Anatomie-Verteilung.
+  - `--panns <json>`: externe Tags (bisheriges Verhalten).
+  - `--panns-out <json>`: sichert die erzeugten Tags (Cache für Wiederholungsläufe).
+  - Der Report weist die Quelle aus (`panns_source`).
+- **Belege:** 19 passed `test_gender_calibration_infra.py` (3 neue Tests: fehlendes
+  Modell blockiert nicht, Tags ohne Singing-Klassen ⇒ None, Singing-Klassen werden
+  durchgereicht); CLI-Probe `--panns off` auf `corpus/` läuft; die Klassen
+  `Male singing`/`Female singing` sind im PANNs-Plugin verifiziert.
+
 ## 10.3.10 (2026-10-05)
 
 ### Phasensignatur: De-Esser wieder vertragskonform
