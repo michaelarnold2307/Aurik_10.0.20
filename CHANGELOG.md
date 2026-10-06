@@ -68,11 +68,17 @@ LibriTTS-Zuordnung. Jetzt wird jedes Modell-Artefakt **gemessen**:
   Zeile auf lokale Messungen gestützt (Artefakt-Probe, Verdrahtungs-Audit,
   Flags, Defizit-Register).
 - **Neu im Register:** **D-K0-8** — der trainierte flache Material-/Depth-
-  Klassifikator (`models/medium_shallow_v1.joblib`, CV 64,3 %/85,7 % bei n=56)
+  Klassifikator (`models/medium_shallow_v1.joblib`, CV 64,3 % Material bei n=56)
   hat **keinen Konsumenten** (`medium_classifier` nutzt im `use_ml`-Zweig CLAP);
   die Vergleichs-Baseline stammt aus Manifest-Feldern und ist **nicht
-  applikationsgleich** — Rollout erst nach fairem Re-Measurement + A/B +
-  Hörordnungs-Sign-off. **D-K0-9** — `models/ear_vae2_upstream/` (EAR-VAE v2)
+  applikationsgleich**. **Konsolidiert (2026-10-06):** die **Depth-Accuracy
+  85,7 % ist zurückgezogen** — die Vergleichsgröße ist
+  `len(result.transfer_chain)` (Kettenlänge), nicht die kuratierte
+  Depth-Label-Größe, und der heutige Konsument liefert **keine** Depth-Ausgabe
+  (`ClassificationResult` ohne `depth`-Feld) ⇒ für Depth existiert **kein**
+  applikationsgleicher Partner. Der Blocker ist damit **`DATEN`** (Label-Korpus
+  ≥ ~50 je Klasse) → Wiring-Entscheidung + A/B + Hörordnungs-Sign-off, **nicht**
+  eine fehlende Messung. **D-K0-9** — `models/ear_vae2_upstream/` (EAR-VAE v2)
   braucht eine Rollout-/Ersatz-Entscheidung gegen den v1-Finetune.
 - **Verifizierter Ist-Stand der Pfade:** 22 Pfad-/Aktivierungstests grün
   (`test_model_zoo_activation`, `test_primary_paths_no_fallback`,
