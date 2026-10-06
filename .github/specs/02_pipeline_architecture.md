@@ -435,15 +435,15 @@ Audio-Eingang (mono/stereo, beliebige SR)
     │ estimate_goal_importance(genre, era, material, vocal, restorability,
     │     snr, bandwidth, dynamic_range, stereo, bpm, defects, tilt,
     │     carrier_chain, psychoacoustic, vocal/harmonic/transient)
-    │ → SongGoalImportance (14 Gewichte ∈ [0.3, 2.0])
+    │ → SongGoalImportance (15 Gewichte ∈ [0.3, 2.0])
     │ 5 Stufen: Label → Audio → Psychoakustik → Vokal/Harmonik → Interactions
     │ Soft-Cap: w > 1.5 → rational compression k=3.0 (Asymptote 1.83)
     │ P1/P2-Floor ≥ 0.70; Durchreichung als goal_weights an PMGG/CIG/GPP/FC
     │ + UV3 all-phase Kopplung (§2.56a): `harmonic_adaptation_scalar` in `_profiled_phase_call`
     ↓
-[DefectScanner]  → DefectAnalysisResult (46 DefectTypes)
+[DefectScanner]  → DefectAnalysisResult (65 DefectTypes)
     ↓
-[CausalDefectReasoner]  → RestorationPlan (62 Kausal-Ursachen)
+[CausalDefectReasoner]  → RestorationPlan (66 Kausal-Ursachen)
     ↓
 [UncertaintyQuantifier]  → confidence → GP-Bounds adj.
     ↓
@@ -2517,8 +2517,8 @@ Aurik verarbeitet **kein generisches Audio** — jede Eingabe ist ein einzigarti
 2. EraClassifier.classify()     → decade, era_profile, vintage_aesthetics
 3. GenreClassifier              → genre_label, RESTORATION_PROFILE (5 definierte + DEFAULT)
 4. RestorabilityEstimator       → 0–100, tier (GOOD/FAIR/POOR/EXTREME), scale_factor
-5. DefectScanner.scan()         → 46 defect_types × severity × locations
-6. CausalDefectReasoner         → 49 Ursachen → Phase-Selektion (CAUSE_TO_PHASES)
+5. DefectScanner.scan()         → 65 defect_types × severity × locations
+6. CausalDefectReasoner         → 66 Ursachen → Phase-Selektion (CAUSE_TO_PHASES)
 7. SongCalibrationProfile       → family_scalars [0.30–1.80] + global_scalar [0.50–1.50]
 8. SongGoalImportance (§2.56)   → 14 Per-Song-Gewichte [0.3–2.0] aus 5 Stufen
                                    (Label/Audio/Psychoakustik/Vokal-Harmonik/Interactions)
@@ -3939,7 +3939,7 @@ Tier 0+1 sequenziell; Era+Schlager+Medium parallel (ThreadPoolExecutor max_worke
 
 1. Era-GP-Warmstart: ≤1940 → ×1.10; ≤1960 → ×1.00; ≥1970 → ×0.88
 2. Material-Multiplikatoren (6 Materialien)
-3. Per-Defekt-Family-Boost: 28 DefectTypes → 6 Familien, max +12 %
+3. Per-Defekt-Family-Boost: 26 von 65 DefectTypes → 6 Familien, max +12 % (`unified_restorer_v3.py`, `_dsev(...)` 2992–3022)
 4. Spektral-Fingerprint: rolloff→reconstruction, noise_floor→denoise, wow_flutter→dynamics
 5. SOFT_SATURATION-Guard: severity ≥ 0.25 → denoise −12 %, transient −7 %
 6. Schlager-Profil: vocal +10 %, transient +5 %, dynamics +5 %, reconstruction ×0.95

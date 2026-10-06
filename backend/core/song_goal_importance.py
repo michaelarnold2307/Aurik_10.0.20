@@ -39,6 +39,8 @@ from typing import Any
 
 import numpy as np
 
+from backend.core.genre_registry import goal_weight_key  # §G9 (copilot-instructions.md)
+
 logger = logging.getLogger(__name__)
 
 MATERIAL_EXPECTED_BW = 20000.0
@@ -62,6 +64,83 @@ ALL_GOAL_NAMES: tuple[str, ...] = (
     "brillanz",
     "spatial_depth",
 )
+
+# ---------------------------------------------------------------------------
+# Ziel-Dialekte (T3.4-Befund 2026-10-06) — §G9 copilot-instructions.md
+# ---------------------------------------------------------------------------
+# Das Projekt führt historisch VIER Ziel-Vokabulare; kanonisch ist allein
+# ``ALL_GOAL_NAMES`` oben (bestätigt durch
+# ``musical_goals/adaptive_goal_resolver.GOAL_ALIASES``):
+#
+#   A) kanonisch (15)             → ALL_GOAL_NAMES (dieses Modul)
+#   B) genre_goal_profile (15)    → 7 Fremdschlüssel
+#   C) goal_budget (15)           → 7 Fremdschlüssel
+#   D) Klang-Guards/Council       → konsumiert die Fremdschlüssel aus B/C
+#
+# Gemessene Folge (§V6 copilot-instructions.md — stilles Verwerfen):
+# ``goal_budget.create_goal_budget()`` übernimmt Genre-Ziele nur, wenn der Name
+# ein Schlüssel von ``_DEFAULT_GOAL_BUDGET`` ist. Dadurch fallen pro Genre
+# **5 von 15 Zellen still weg** — bei ``metal`` ausgerechnet die stärksten
+# Signale (``punch`` 2.0, ``bass_praesenz`` 1.9).
+#
+# Diese Tabelle DEKLARIERT jeden Fremdschlüssel. ``None`` heißt bewusst: noch
+# nicht auf ein kanonisches Ziel abgebildet — die Zuordnung ist eine
+# KLANG-Entscheidung und braucht A/B + Hörordnungs-Sign-off
+# (§v10.802 copilot-instructions.md Versionierungs-Vertrag). Es wird hier
+# nichts geraten (§V7 copilot-instructions.md).
+GOAL_DIALECT_MAP: dict[str, str | None] = {
+    # — eindeutig: wörtliche Entsprechung, in beiden Fremd-Dialekten vorhanden —
+    "mikrodynamik": "micro_dynamics",
+    "raeumlichkeit": "spatial_depth",
+    # — offen: Zuordnung ist eine Hör-/Design-Entscheidung (Sign-off nötig) —
+    "bass_praesenz": None,  # Kandidat: bass_kraft
+    "bassdefinition": None,  # Kandidat: bass_kraft
+    "hoehen_luft": None,  # Kandidat: brillanz
+    "punch": None,  # Kandidat: transient_energie
+    "durchschlagskraft": None,  # Kandidat: transient_energie
+    "makrodynamik": None,  # Kandidat: transient_energie
+    "dynamik": None,  # Überlappt mit makrodynamik — erst entscheiden
+    "textverstaendlichkeit": None,  # Kandidat: artikulation
+    "klangbalance": None,  # Kandidat: tonal_center
+    "stimmklarheit": None,  # Kandidat: timbre_authentizitaet
+}
+
+#: Begründung je deklariertem Fremdschlüssel (§G8 copilot-instructions.md: Transparenz).
+GOAL_DIALECT_NOTES: dict[str, str] = {
+    "mikrodynamik": "wörtliche Entsprechung von micro_dynamics",
+    "raeumlichkeit": "wörtliche Entsprechung von spatial_depth",
+    "bass_praesenz": "Bass-Präsenz vs. Bass-Kraft — Abgrenzung klangrelevant",
+    "bassdefinition": "Bass-Definition vs. Bass-Kraft — Abgrenzung klangrelevant",
+    "hoehen_luft": "Höhenluft vs. Brillanz — überlappend, aber nicht identisch",
+    "punch": "Anschlags-Impact vs. Transienten-Energie — Abgrenzung offen",
+    "durchschlagskraft": "Durchsetzung vs. Transienten-Energie — Abgrenzung offen",
+    "makrodynamik": "Makro-Dynamik (DR) vs. Transienten-Energie — Abgrenzung offen",
+    "dynamik": "überlappt mit makrodynamik — Ziel muss zuerst entschieden werden",
+    "textverstaendlichkeit": "Textverständlichkeit vs. Artikulation — Abgrenzung offen",
+    "klangbalance": "Klangbalance vs. tonal_center — Abgrenzung offen",
+    "stimmklarheit": "Stimmklarheit vs. timbre_authentizitaet — Abgrenzung offen",
+}
+
+
+def canonical_goal_name(key: str) -> str | None:
+    """Ziel-Name aus einem beliebigen Dialekt → kanonischer Zielname.
+
+    Rückgabe:
+
+    * der Name selbst, wenn er bereits kanonisch ist (∈ ``ALL_GOAL_NAMES``);
+    * der deklarierte kanonische Name, wenn ``GOAL_DIALECT_MAP`` ihn eineindeutig
+      abbildet;
+    * ``None``, wenn der Name **deklariert offen** (``GOAL_DIALECT_MAP[key] is None``)
+      oder gänzlich unbekannt ist.
+
+    ``None`` ist kein Fehler, sondern die ehrliche Aussage „hier ist nichts
+    entschieden" — Aufrufer protokollieren den Ersatzpfad
+    (§V6 copilot-instructions.md) statt zu raten (§V7 copilot-instructions.md).
+    """
+    if key in ALL_GOAL_NAMES:
+        return key
+    return GOAL_DIALECT_MAP.get(key)
+
 
 # P1/P2 goals — minimum weight floor (§0 safety)
 _P1P2_GOALS: frozenset[str] = frozenset(
@@ -693,35 +772,23 @@ def estimate_goal_importance(
     reasons: list[str] = []
 
     # --- Step 1: Genre profile (primary driver) ---
-    # Robust alias resolution: GenreClassifier may return full names
-    # (e.g. "Deutscher Schlager") while profiles use short keys ("schlager").
-    _GENRE_ALIASES: dict[str, str] = {
-        "soul": "soul/r&b",
-        "r&b": "soul/r&b",
-        "rnb": "soul/r&b",
-        "deutscher schlager": "schlager",
-        "dt. schlager": "schlager",
-        "classic rock": "rock",
-        "hard rock": "rock",
-        "indie rock": "rock",
-        "heavy metal": "metal",
-        "death metal": "metal",
-        "thrash metal": "metal",
-        "hiphop": "hip-hop",
-        "rap": "hip-hop",
-        "edm": "electronic",
-        "techno": "electronic",
-        "electronica": "electronic",
-        "elektronik": "electronic",
-        "classical": "klassik",
-        "orchestra": "klassik",
-        "opera": "oper",
-        "country & western": "country",
-        "latin pop": "pop",
-    }
-    _genre_key = _GENRE_ALIASES.get(_genre, _genre)
+    # Alias-Auflösung AUSSCHLIESSLICH über die kanonische Registry
+    # (§G9 copilot-instructions.md). Die frühere lokale ``_GENRE_ALIASES``-Tabelle
+    # war die fünfte parallele Auflösung im Projekt — ausgerechnet in dem Modul mit
+    # den meisten Importeuren (10, u. a. bridge.py und unified_restorer_v3.py).
+    # Die Registry deckt dieselben Aliase ab und zusätzlich die Sprach-Präfixe
+    # ("Deutscher Schlager" → "schlager"), die vorher nur hier bekannt waren.
+    _genre_key = goal_weight_key(_genre)
+    if _genre_key is None and _genre:
+        logger.info(
+            "song_goal_importance: Genre %r ohne Goal-Gewichtsprofil — Gewichte bleiben neutral "
+            "(§V6 copilot-instructions.md: kein stilles Degradieren, kein Fuzzy-Match)",
+            _genre,
+        )
 
-    genre_profile = _GENRE_WEIGHT_PROFILES.get(_genre_key, {})
+    # Explizite None-Prüfung statt ``dict.get(None)``: der Schlüsselraum ist ``str``,
+    # und ``None`` bedeutet fachlich "kein Profil" (neutrale Gewichte 1.0).
+    genre_profile = _GENRE_WEIGHT_PROFILES[_genre_key] if _genre_key is not None else {}
     if genre_profile:
         for goal, w in genre_profile.items():
             weights[goal] = w
@@ -1351,7 +1418,7 @@ def estimate_goal_importance(
     importance = SongGoalImportance(
         weights=weights,
         reason=reason_str,
-        genre_profile=_genre_key,
+        genre_profile=_genre_key or "",
         era_profile=_era,
         material_profile=_mat,
         vocal_detected=vocal_detected,

@@ -7,6 +7,10 @@
 
 > Hinweis: Verbindlicher Ist-Stand: normative Kette (`AGENTS.md` §1) — `.github/copilot-instructions.md`,
 > `.github/instructions/`, `.github/specs/` (Index: `00_SPEC_INDEX.md`).
+> **Dieses Dokument ist ein Auszug (Stand v10.1.0) und KEINE Quelle der Wahrheit.**
+> Kanonisch ist das Enum `DefectType` in `backend/core/defect_scanner.py` — aktuell
+> **65 DefectTypes**; der Enum-Auszug in §3.1 ist bewusst unvollständig (30 Einträge).
+> Der normative Vollkatalog steht in `.github/specs/05_material_system.md` §6.3.
 
 ---
 
@@ -14,7 +18,7 @@
 
 The **DefectScanner** is the entry point for Aurik 10.0.0’s **Defect-First** restoration workflow. It analyzes audio to:
 
-- Detect **62 defect types** with severity scores (0.0–1.0) and temporal locations
+- Detect **65 defect types** with severity scores (0.0–1.0) and temporal locations
 - Automatically identify material context (material-adaptive detection/thresholding)
 - Provide **material-adaptive** thresholds for each defect
 - Execute in **<10% of audio duration** (performance guarantee)
@@ -58,7 +62,7 @@ The **DefectScanner** is the entry point for Aurik 10.0.0’s **Defect-First** r
 
 ## 3. Defect Types
 
-### 3.1 Enum Definition (62 DefectTypes, Stand v10.1.0)
+### 3.1 Enum-Auszug (Stand v10.1.0 — kanonisch: **65 DefectTypes**)
 
 ```python
 class DefectType(Enum):

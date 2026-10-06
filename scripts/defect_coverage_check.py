@@ -42,15 +42,26 @@ def _load_harness_cases() -> dict:
 #: Dateien, in denen eine Zahl eine Aussage ueber den AKTUELLEN Ist-Stand ist.
 #: Bewusst NICHT enthalten (deren alte Zahlen sind Historie, nicht falsch):
 #:   - docs/CHANGELOG_HISTORY.md, CHANGELOG.md (Chronik)
-#:   - docs/PROJECT_STATUS.md (Meilenstein-Tabelle nennt je Release den damaligen Stand)
+#:   - docs/PROJECT_STATUS.md (mischt AKTUELLE Komponenten-Tabelle mit einer
+#:     historischen Meilenstein-Spalte — letztere nennt je Release den damaligen
+#:     Stand; eine datei-weite Prüfung erzeugte dort Falsch-Positive)
 #:   - docs/dev/** (Audit-Momentaufnahmen)
-#:   - .agents/skills/** (in AGENTS.md §6 als Stubs/veraltete Kopien deklariert)
+#:   - .agents/skills/** (in AGENTS.md §6 als Stubs/veraltete Kopien deklariert;
+#:     readme/SKILL.md nennt sich zusätzlich selbst "v9.x.x" = Historie)
+#:   - docs/AURIK_9.x.x_ARCHITEKTUR.md (9.x-Archiv: beschreibt den damaligen Stand)
 #:   - die Wachstums-Notizen im Enum selbst ("ergibt 28 DefectTypes") — die
 #:     dokumentieren die Entstehungsreihenfolge des Enum, nicht den Endstand.
+#:
+#: Erfasst werden bewusst AUCH die Schreibvarianten "46 defect_types" und
+#: "62 defect types" (Befund 2026-10-06: insgesamt neun veraltete Zählwerte,
+#: u. a. in der normativen Spec 02). NICHT erfasst: "N Defekte" (denker/README.md)
+#: und "N defect-type ticks" (Singular mit Bindestrich = Menge der ZEITLICH
+#: lokalisierten Typen, kein Gesamtzählwert) — beide manuell gepflegt.
 _DOC_COUNT_SOURCES: tuple[str, ...] = (
     ".github/copilot-instructions.md",
     ".github/GEBOTE.md",
     ".github/ID_REGISTRY.md",
+    ".github/specs/02_pipeline_architecture.md",
     ".github/specs/03_cognitive_modules.md",
     ".github/specs/05_material_system.md",
     ".github/specs/25_ambience_match_plugin.md",
@@ -59,6 +70,12 @@ _DOC_COUNT_SOURCES: tuple[str, ...] = (
     "README.md",
     "CONTRIBUTING.md",
     "SPEC.md",
+    "docs/architecture/ARCHITECTURE.md",
+    "docs/architecture/PIPELINE_FLOW_ANALYSIS.md",
+    "docs/KI-AGENT-INTEGRATION-GUIDE.md",
+    "docs/DEFECT_SCANNER_SPEC.md",
+    "backend/core/defect_phase_mapper.py",
+    "backend/core/pre_analysis.py",
     "scripts/gebote_verifier.py",
     "backend/core/causal_defect_reasoner.py",
     "backend/core/surgical_defect_analyzer.py",
@@ -67,8 +84,16 @@ _DOC_COUNT_SOURCES: tuple[str, ...] = (
 )
 
 #: Negatives Lookbehind: "§6.3 DefectType" darf NICHT als "3 DefectTypes" gelesen werden.
-_DOC_TYPE_RE = re.compile(r"(?<![\w.])(\d+)\s*DefectTypes?\b")
-_DOC_CAUSE_RE = re.compile(r"(?<![\w.])(\d+)\s*Kausal-Ursachen\b")
+#: Der optionale Trenner deckt "DefectTypes"/"defect types"/"defect_types" ab —
+#: NICHT aber "defect-type" (Singular mit Bindestrich, s. o.).
+_DOC_TYPE_RE = re.compile(r"(?<![\w.])(\d+)\s*[Dd]efect[_\s]?[Tt]ypes?\b")
+#: Mit und ohne Bindestrich-Präfix: "66 Kausal-Ursachen" UND "49 Ursachen".
+_DOC_CAUSE_RE = re.compile(r"(?<![\w.])(\d+)\s*(?:Kausal-)?[Uu]rsachen\b")
+
+#: Inline-Ausnahme für legitime TEILMENGEN-Aussagen (z. B. "Top-3 Ursachen"
+#: oder "24 von 65 DefectTypes"): trägt die Zeile diesen Marker, wird sie NICHT
+#: als Gesamtzählwert geprüft. Bewusst sichtbar im Text statt versteckt.
+_DOC_COUNT_OK_MARKER = "defect-count-ok"
 
 
 def _check_documented_counts(n_types: int, n_causes: int) -> list[str]:
@@ -85,6 +110,8 @@ def _check_documented_counts(n_types: int, n_causes: int) -> list[str]:
             problems.append(f"Doku-Zahl: {rel} fehlt")
             continue
         for lineno, line in enumerate(path.read_text(encoding="utf-8").splitlines(), start=1):
+            if _DOC_COUNT_OK_MARKER in line:
+                continue
             for match in _DOC_TYPE_RE.finditer(line):
                 if int(match.group(1)) != n_types:
                     problems.append(f"Doku-Zahl: {rel}:{lineno} nennt {match.group(1)} DefectTypes, Enum hat {n_types}")

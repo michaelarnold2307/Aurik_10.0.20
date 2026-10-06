@@ -18,8 +18,8 @@ Parameter — nicht der erkannte Materialtyp allein.
 ## Kernzahlen (aktuell)
 
 - 69 Phasen-Dateien (Phase 01–66 + Glue Stage + Interface)
-- 62 DetectionTypes (DefectScanner) — ALLE SNR-adaptiv
-- 62 Kausal-Ursachen (CausalDefectReasoner) — CAUSE_PARAMS SNR-skaliert
+- 65 DefectTypes (DefectScanner) — ALLE SNR-adaptiv
+- 66 Kausal-Ursachen (CausalDefectReasoner) — CAUSE_PARAMS SNR-skaliert
 - 15 Musical Goals (Spec 01) + 2 vokal-exklusive P0-Gates
 - Hör-Gates Ebenen 1/2/4 (level_1_invariants_guard, defect_audibility_gate, vocal_overdrive_guard, einladungs_gate)
 - ~18.400 Tests (511 mit Markern)
@@ -41,8 +41,8 @@ Export        -> export_guard() + validate_export_quality() + AudioExporter
 | --- | --- |
 | `AurikDenker` | Kognitive Orchestrierung der Gesamtpipeline |
 | `UnifiedRestorerV3` | Phase-Orchestrierung und Kontextsteuerung |
-| `DefectScanner` | Defekt-Detektion (62 Typen) |
-| `CausalDefectReasoner` | Kausalkette und Mapping auf Phasen (62 Ursachen) |
+| `DefectScanner` | Defekt-Detektion (65 Typen) |
+| `CausalDefectReasoner` | Kausalkette und Mapping auf Phasen (66 Ursachen) |
 | `GPOptimizer` | Adaptive Staerke-/Parameteroptimierung |
 | `MusicalGoalsChecker` | 15-Goal-Bewertung |
 | `HolisticPerceptualGate` | HPI/AFG/VQI-basierte Freigabelogik |

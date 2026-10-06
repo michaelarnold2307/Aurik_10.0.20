@@ -93,3 +93,64 @@ jeder Fallback ist additiv und loggt Warnung + Begründung.
 > **Regel:** Eine Maßnahme adressiert GENAU EIN Ziel als primäres Ziel.
 > Die anderen beiden dürfen als sekundäre Ziele profitieren, aber nicht
 > im Fokus stehen. Keine Maßnahme adressiert alle drei gleichzeitig.
+
+---
+
+## Lokale Dritt-Clones: Patch-Vertrag (2026-10-06)
+
+> **Anlass:** Der lokale LAION-CLAP-Clone unter `models/clap/src/` ist aus
+> **allen** Gates ausgenommen — `.gitignore` (`/models/*`), `pyrightconfig.json`
+> (`exclude: models`), `pyproject.toml` (mypy `ignore_errors` für `models.*`,
+> ruff `exclude: models`) und `SKIP_DIRS` des VERBOTEN-Linters. Dadurch blieben
+> **drei echte Laufzeitdefekte** unbemerkt (§V6 (copilot-instructions.md):
+> stiller Ausfall; §V7 (copilot-instructions.md): Symptom statt Ursache).
+
+### Behobene Defekte (1:1 zum dokumentierten Upstream-Vertrag)
+
+| # | Defekt | Wirkung | Behebung |
+| :-: | ------ | ------- | -------- |
+| 1 | `CLAP.audio_infer` nutzt `output_dict[key]`, ohne `key` als Parameter zu führen | `NameError` — die dokumentierte Aufrufkonvention (`evaluate/eval_dcase.py`: `audio_infer(audio, hopsize=…, key="embedding", …)`) verlangt `key` | `key="embedding"` als Parameter ergänzt (identisch zum Schlüssel, den `encode_audio`/`get_audio_embedding`/`forward` verwenden) |
+| 2 | `hopsize = min(hopsize, audio_len)` mit `hopsize is None` | `TypeError: '<' not supported between instances of 'NoneType' and 'int'` | Default ist die Modell-Clip-Fensterweite: `min(self.audio_cfg.clip_samples, audio_len)` |
+| 3 | `convert_weights_to_fp16` schreibt `attr.data` auf `text_projection` | `AttributeError: 'Sequential' object has no attribute 'data'` — in den Zweigen bert/roberta/bart ist `text_projection` ein `nn.Sequential` | `isinstance(attr, torch.Tensor)`-Guard; die fp16-Konvertierung der sub-Module leistet weiterhin `model.apply` |
+
+**Vorher-Nachher-Belege (gemessen 2026-10-06):**
+
+- Defekt 3, alte Codezeile isoliert: `hasattr(nn.Sequential(…), 'data') = False` →
+  `AttributeError: 'Sequential' object has no attribute 'data'`.
+- Defekt 3, nach dem Patch: `convert_weights_to_fp16(Dummy mit Sequential)`
+  läuft fehlerfrei; `text_projection[0].weight.dtype = torch.float16`,
+  `proj.dtype = torch.float16` (Parameter-Pfad unverändert).
+- Defekt 1, nach dem Patch:
+  `inspect.signature(CLAP.audio_infer) = (self, audio, hopsize=None, key='embedding', device=None)`.
+
+### Vertrag
+
+1. **Der Clone bleibt ungetrackt.** `models/clap/` ist ein vollständiger
+   LAION-CLAP-Upstream-Clone (README, LICENSE, Gewichte, `roberta-base/`) und
+   **kein** projekt-eigener Vendored-Baustein wie `plugins/_vendor_*`. Die
+   Anchoring-Ausnahme in `.gitignore` ist hier deshalb **nicht** anzuwenden —
+   das Haus-Muster gilt für schlanke, unverzichtbare Architektur-Kopien
+   (`models/scnet_4stems/`), nicht für komplette Fremd-Repos.
+2. **Lokale Korrekturen brauchen einen committbaren Wächter.** Da der Clone
+   selbst nicht committbar ist, ist der **Test** das dauerhafte Artefakt:
+   `tests/unit/test_clap_vendored_contract.py` prüft als Quelltext-Invariante
+   (stdlib `symtable`, ohne Gewichte lauffähig), dass im Modul **kein**
+   referenzierter Name undefiniert ist, dass `audio_infer` den `key`-Parameter
+   führt, dass kein `min(hopsize, …)`-Selbstbezug steht und dass der
+   fp16-Guard intakt ist. Ohne Clone **überspringt** er sich
+   (`skipif`-Idiom wie `test_laion_clap_onnx_guard.py`, §v10.761).
+3. **Der Wächter testet sich selbst** (§G176 (copilot-instructions.md):
+   Auslösebedingung muss erreichbar sein): die historische Defektform wird
+   synthetisch injiziert und muss erkannt werden.
+4. **Fremd-Code wird nur defektbezogen gepatcht** — keine Typ-Kosmetik, damit
+   die Divergenz zum Upstream messbar klein bleibt (das Modul ist als
+   Vendored-Code deklariert, nicht als Projekt-Code).
+
+**Rolle im Fallback:** Der ONNX-Pfad (`models/clap/audio_encoder.onnx`) ist
+primär; der PyTorch-Pfad über `models/clap/src/` ist der Fallback
+(`plugins/laion_clap_plugin.py`, `sys.path`-Erweiterung). Genau der
+Fallback-Pfad war ungetestet — dieser Vertrag schließt ihn.
+
+**Erfolgskriterium:** `pytest tests/unit/test_clap_vendored_contract.py` grün
+(7 Tests, 2 davon Selbsttest); auf Checkouts ohne Clone sauber übersprungen
+(kein False-Green, kein Fehlschlag).

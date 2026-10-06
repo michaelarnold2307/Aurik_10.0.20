@@ -114,7 +114,7 @@ keinen signifikanten Rauschzuwachs (p ≥ 0,05).
 ### Risiken & Gegenmaßnahmen
 
 | Risiko | Eintrittswkt. | Gegenmaßnahme |
-|--------|---------------|---------------|
+| -------- | --------------- | --------------- |
 | Hülle wird hörbar (Rauschzuwachs) | Mittel | Maskierungskalibrierung H1 + σ-Marge + GO/NO-GO-Gate |
 | Klingt synthetisch („Digitalrauschen“ statt Raum) | Mittel | Raumprofil-treue Synthese + IR-Faltung; kein weißes Rauschen |
 | Verdeckt Defekte statt sie zu reparieren | Niedrig | H3 (Defect-Map-Kopplung) + Hörordnung-Konfliktregel |
@@ -126,7 +126,7 @@ keinen signifikanten Rauschzuwachs (p ≥ 0,05).
 ## Ziel-Matrix
 
 | Ziel | Betroffen? | Wie? |
-|------|-----------|------|
+| ------ | ----------- | ------ |
 | Hörbarer Wohlklang | Ja (primär) | Stellt die natürliche Raumhülle wieder her; beseitigt den „toten“ Klang nach der Restaurierung |
 | Systemische Stabilität | Nein | Additives DSP-Plugin ohne Modell/ONNX/GPU; kein Einfluss auf bestehende Phasen |
 | Nachhaltige Wartbarkeit | Indirekt | Reiner DSP ohne Gewichte — keine Vendor-, keine Update-Last; Kalibrierung über benannte Konstanten |

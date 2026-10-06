@@ -3487,7 +3487,9 @@ class CausalDefectReasoner:
         if _top1 < 0.08 and _evidence_conf < 0.35:
             confidence = min(confidence, 0.45)
 
-        # Fusions-Plan: Phasen der Top-3 Ursachen zusammenführen
+        # Fusions-Plan: Phasen der Top-3 Ursachen zusammenführen  # defect-count-ok
+        # (Marker in DERSELBEN Zeile: "Top-3" ist eine Rang-Teilmenge, kein
+        #  Katalogwert von CAUSES — s. _DOC_COUNT_OK_MARKER im Zähl-Gate)
         seen_phases: set = set()
         ordered_phases: list[str] = []
         merged_params: dict[str, Any] = {}

@@ -1526,7 +1526,7 @@ def run_pre_analysis(
             logger.debug("pre_Analyse.py:879: Silent exception absorbed", exc_info=True)
     logger.info("pre_Analyse: vollstaendig in %.1fs (errors=%s)", result.elapsed_seconds, list(result.errors))
 
-    # Free DefectScanner STFT/spectral intermediate arrays (30 defect types × full audio).
+    # Free DefectScanner STFT/spectral intermediate arrays (65 defect types × full audio).
     # Vollstaendiges GC ist hier sicher; malloc_trim(0) bleibt bewusst deaktiviert,
     # weil der Aufruf im Projekt bereits mehrfach als SIGABRT-Risiko unter
     # konkurrierenden Audio-/NumPy-Threads aufgefallen ist.

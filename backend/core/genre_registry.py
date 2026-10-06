@@ -42,10 +42,12 @@ __all__ = [
     "GenreResolution",
     "delta_key",
     "goal_profile_key",
+    "goal_weight_key",
     "jnd_key",
     "normalize_genre",
     "restoration_profile_key",
     "resolve_genre",
+    "semantic_hint_label",
 ]
 
 # ---------------------------------------------------------------------------
@@ -94,6 +96,7 @@ _GENRE_ALIASES: dict[str, str] = {
     "schunkelmusik": "schlager",
     "discoschlager": "schlager",
     "disco_schlager": "schlager",
+    "dt_schlager": "schlager",
     "schlager_1950s": "schlager",
     "schlager_modern": "schlager",
     # ── Weitere Genres ──────────────────────────────────────────────────────
@@ -109,6 +112,7 @@ _GENRE_ALIASES: dict[str, str] = {
     "klassische_musik": "klassik",
     "orchestral": "klassik",
     "kammermusik": "klassik",
+    "orchestra": "klassik",
     "oper": "oper",
     "opera": "oper",
     "chor": "oper",
@@ -116,8 +120,11 @@ _GENRE_ALIASES: dict[str, str] = {
     "hard_rock": "rock",
     "punk": "rock",
     "rock_metal": "rock",
+    "classic_rock": "rock",
+    "indie_rock": "rock",
     "pop": "pop",
     "vocal_pop": "pop",
+    "latin_pop": "pop",
     "blues": "blues",
     "soul_rnb": "soul_rnb",
     "soul": "soul_rnb",
@@ -127,6 +134,7 @@ _GENRE_ALIASES: dict[str, str] = {
     "rnb": "soul_rnb",
     "rhythm_and_blues": "soul_rnb",
     "country": "country",
+    "country_&_western": "country",
     "bluegrass": "country",
     "folk": "folk",
     "singer_songwriter": "folk",
@@ -134,12 +142,17 @@ _GENRE_ALIASES: dict[str, str] = {
     "electronic": "electronic",
     "dance": "electronic",
     "edm": "electronic",
+    "techno": "electronic",
+    "electronica": "electronic",
+    "elektronik": "electronic",
     "hiphop": "hiphop",
     "hip_hop": "hiphop",
     "rap": "hiphop",
     "trap": "hiphop",
     "metal": "metal",
     "heavy_metal": "metal",
+    "death_metal": "metal",
+    "thrash_metal": "metal",
     "latin": "latin",
     "samba": "latin",
     "bossa_nova": "latin",
@@ -228,6 +241,21 @@ _JND_KEYS: dict[str, str] = {
 #: Genres ohne Eintrag im JND-Vokabular (bleiben beim dokumentierten Default 1,0).
 _JND_KEY_ABSENT: frozenset[str] = frozenset({"walzer", "marsch", "country", "gospel", "ambient"})
 
+#: Kanonische ID → Schlüssel in ``song_goal_importance._GENRE_WEIGHT_PROFILES``.
+#: Fünfter Schlüsselraum im Projekt (Bindestrich ``hip-hop``, Slash ``soul/r&b``).
+#: Bis 10.3.21 hielt ``song_goal_importance`` dafür eine **eigene** Alias-Tabelle
+#: und war damit der meistgenutzte Konsument (10 Importeure) mit paralleler
+#: Auflösung — genau der §G9-Verstoß, den die Registry beheben soll.
+_GOAL_WEIGHT_KEYS: dict[str, str] = {
+    "hiphop": "hip-hop",
+    "soul_rnb": "soul/r&b",
+}
+
+#: Kanonische Genres OHNE Eintrag in ``_GENRE_WEIGHT_PROFILES``.
+#: Bewusst explizit: dort bleibt das Goal-Gewicht neutral (1,0) und der
+#: Ersatzpfad wird protokolliert (§V6 copilot-instructions.md).
+_GOAL_WEIGHT_KEY_ABSENT: frozenset[str] = frozenset({"walzer", "marsch", "ambient", "world"})
+
 
 #: Sprach-Präfixe des kanonischen Klassifikators (``_determine_genre_label``).
 #: ``Deutscher Schlager`` / ``Internationaler Walzer`` → Basislabels.
@@ -242,8 +270,10 @@ def _normalize_raw(label: Any) -> str:
             text = text[len(prefix) :]
             break
     # Umlaute/ß nicht transliterieren (deutsche Labels sind deutsche Labels),
-    # aber Trennzeichen vereinheitlichen: "Hip Hop" / "Hip-Hop" / "hip_hop" → "hip_hop"
-    text = text.replace("-", "_").replace(" ", "_")
+    # aber Trennzeichen vereinheitlichen: "Hip Hop" / "Hip-Hop" / "hip_hop" → "hip_hop".
+    # Punkte mit: Der Klassifikator liefert Abkürzungen wie "dt. Schlager" — ohne
+    # Punkt-Regel wäre das ein zweiter Alias-Eintrag "dt._schlager" (§G9 copilot-instructions.md).
+    text = text.replace("-", "_").replace(" ", "_").replace(".", "_")
     while "__" in text:
         text = text.replace("__", "_")
     return text.strip("_")
@@ -335,3 +365,118 @@ def jnd_key(label: Any) -> str | None:
 def delta_key(label: Any) -> str | None:
     """Schlüssel in ``tonal_reference_profile._GENRE_DELTAS`` oder ``None``."""
     return resolve_genre(label).delta_key
+
+
+def goal_weight_key(label: Any) -> str | None:
+    """Schlüssel in ``song_goal_importance._GENRE_WEIGHT_PROFILES`` oder ``None``.
+
+    ``None`` bedeutet: kein Goal-Gewichtsprofil vorhanden — der Aufrufer behält
+    die neutralen Gewichte (1,0) und protokolliert den Ersatzpfad. Ein unbekanntes
+    Label wird **nicht** per Ähnlichkeit auf ein falsches Genre gezogen
+    (§V6/§G9 copilot-instructions.md).
+    """
+    canonical = resolve_genre(label).canonical
+    if canonical is None or canonical in _GOAL_WEIGHT_KEY_ABSENT:
+        return None
+    return _GOAL_WEIGHT_KEYS.get(canonical, canonical)
+
+
+# ---------------------------------------------------------------------------
+# Semantischer Genre-Hint (Anzeige-Etikett) — §G9 (copilot-instructions.md)
+# ---------------------------------------------------------------------------
+# KONSOLIDIERUNG 2026-10-06 (Tranche 3.3): Diese Tabelle lag bis dahin als
+# ``phase_53_semantic_audio._GENRE_ALIAS_MAP`` vor — die FÜNFTE parallele
+# Genre-Auflösung im Repo (Befund des neuen Guards
+# ``scripts/genre_single_source_check.py``). Sie ist hierher verschoben und
+# VERHALTENSGLEICH portiert (47 Referenz-Proben, Tests in
+# tests/unit/test_genre_single_source_guard.py).
+#
+# WICHTIG — das ist eine ANZEIGE-Taxonomie, NICHT der kanonische Schlüsselraum:
+# sie liefert deutsche Etiketten ("Klassik", "Soul/R&B") für Metadaten/Hints und
+# ist bewusst größer/grobkörniger als ``CANONICAL_GENRES``. Bekannte, dokumentierte
+# Verluste gegenüber der Registry (NICHT stillschweigend geändert — eine Korrektur
+# wäre eine hörrelevante Verhaltensänderung und braucht A/B + Sign-off):
+#   * ``metal``  -> "Rock"        (Registry kennt ``metal`` als eigenes Genre)
+#   * ``country``-> "Folk"        (Registry kennt ``country`` als eigenes Genre)
+#   * ``ambient``-> "Electronic"  (Registry kennt ``ambient`` als eigenes Genre)
+#   * ``latin``  -> "Unbekannt"   (Registry kennt ``latin`` als eigenes Genre)
+#   * Substring-Reihenfolge: ein Tag mit "class" (z. B. ``classic_rock``) trifft
+#     den Klassik-Zweig, weil dieser vor dem Rock-Zweig geprüft wird. Bewusst
+#     konserviert, weil die Reihenfolge das Ergebnis bestimmt.
+
+_SEMANTIC_HINT_FALLBACK = "Unbekannt"
+
+_SEMANTIC_HINT_ALIASES: dict[str, str] = {
+    "classical": "Klassik",
+    "classical_orchestral": "Klassik",
+    "orchestra": "Klassik",
+    "orchestral": "Klassik",
+    "opera": "Oper",
+    "jazz": "Jazz",
+    "jazz_acoustic": "Jazz",
+    "rock": "Rock",
+    "rock_metal": "Rock",
+    "metal": "Rock",
+    "pop": "Pop",
+    "pop_ballad": "Pop",
+    "blues": "Blues",
+    "folk": "Folk",
+    "country": "Folk",
+    "electronic": "Electronic",
+    "electronic_edm": "Electronic",
+    "ambient": "Electronic",
+    "hip_hop": "Hip-Hop",
+    "hip-hop": "Hip-Hop",
+    "rap": "Hip-Hop",
+    "reggae": "Reggae",
+    "gospel": "Gospel",
+    "rnb": "Soul/R&B",
+    "soul": "Soul/R&B",
+    "soul/r&b": "Soul/R&B",
+    "r&b": "Soul/R&B",
+    "rhythm_and_blues": "Soul/R&B",
+    "schlager": "Schlager",
+    "general": _SEMANTIC_HINT_FALLBACK,
+    "unknown": _SEMANTIC_HINT_FALLBACK,
+    "unbekannt": _SEMANTIC_HINT_FALLBACK,
+}
+
+
+def semantic_hint_label(label: Any) -> str:
+    """Rohen DSP-/CLAP-/BEATs-Genre-Tag → deutsches Anzeige-Etikett.
+
+    Verhaltensgleicher Port der früheren
+    ``phase_53_semantic_audio._canonicalize_genre_hint`` (§G9 copilot-instructions.md:
+    EINE Genre-Auflösung). Reihenfolge ist Teil des
+    Vertrags: erst exakter Tabellentreffer, dann Substring-Kette, dann Fallback.
+    """
+    if not label:
+        return _SEMANTIC_HINT_FALLBACK
+    key = str(label).strip().lower().replace(" ", "_")
+    if key in _SEMANTIC_HINT_ALIASES:
+        return _SEMANTIC_HINT_ALIASES[key]
+    if "opera" in key:
+        return "Oper"
+    if "class" in key or "orch" in key:
+        return "Klassik"
+    if "jazz" in key:
+        return "Jazz"
+    if "gospel" in key:
+        return "Gospel"
+    if "blues" in key:
+        return "Blues"
+    if "folk" in key or "country" in key:
+        return "Folk"
+    if "reggae" in key or "dub" in key:
+        return "Reggae"
+    if "hip" in key or "rap" in key:
+        return "Hip-Hop"
+    if "rnb" in key or "r&b" in key or "soul" in key:
+        return "Soul/R&B"
+    if "electro" in key or "edm" in key or "ambient" in key or "techno" in key:
+        return "Electronic"
+    if "metal" in key or "rock" in key or "punk" in key:
+        return "Rock"
+    if "pop" in key:
+        return "Pop"
+    return _SEMANTIC_HINT_FALLBACK

@@ -825,7 +825,7 @@ fließt in den finalen Qualitätsreport ein.
 ### Aura-Komponenten
 
 | Komponente | Messung | Gewicht |
-|---|---|---|
+| --- | --- | --- |
 | Wärme-Drift | 100-500 Hz RMS vor/nach | 1/6 |
 | Brillanz-Drift | 8-16 kHz RMS vor/nach | 1/6 |
 | Crest-Drift | Peak/RMS vor/nach | 1/6 |

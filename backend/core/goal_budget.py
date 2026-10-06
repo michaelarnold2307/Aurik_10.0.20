@@ -21,6 +21,11 @@ from typing import Any
 
 logger = logging.getLogger(__name__)
 
+#: Merkt bereits gemeldete (Genre, Ziel)-Verwerfungen (§V6 copilot-instructions.md):
+#: erste Nennung als Warnung, Folgenennungen als Debug — verhindert Log-Flut im Batch,
+#: ohne das Verwerfen zu verschweigen.
+_WARNED_DIALECT_KEYS: set[tuple[str, str]] = set()
+
 # Material-adaptive Start-Budgets: wie viel Verbesserung pro Goal maximal nötig.
 # Werte sind Deltas in [0, 1] — 0.3 = das Goal kann um max 0.3 Score-Punkte steigen.
 _DEFAULT_GOAL_BUDGET: dict[str, float] = {
@@ -124,12 +129,39 @@ def create_goal_budget(
     if genre_key:
         try:
             from backend.core.genre_goal_profile import get_genre_profile
+            from backend.core.song_goal_importance import GOAL_DIALECT_NOTES, canonical_goal_name
 
             profile = get_genre_profile(genre_key)
             # Genre-Ziele überschreiben Defaults
             for goal, weight in profile.weights.items():
                 if goal in targets:
                     targets[goal] = round(0.30 * weight / 2.0, 3)  # weight 2.0 → 0.30 Budget
+                else:
+                    # §V6 (copilot-instructions.md): kein stilles Verwerfen.
+                    # T3.4-Befund 2026-10-06: Das Genre-Ziel liegt in einem fremden
+                    # Ziel-Dialekt (vier Vokabulare im Projekt) und wirkt deshalb NICHT
+                    # auf das Budget — bei `metal` betrifft das 5 von 15 Zellen.
+                    # Die Zuordnung ist eine KLANG-Entscheidung und braucht A/B +
+                    # Hörordnungs-Sign-off (§v10.802 copilot-instructions.md); bis dahin
+                    # wird der Verlust sichtbar gemacht, nicht behoben
+                    # (§V7 copilot-instructions.md). Erste Nennung je (Genre, Ziel) als
+                    # Warnung, danach Debug — verhindert Log-Flut im Batch.
+                    _key = (genre_key, goal)
+                    if _key not in _WARNED_DIALECT_KEYS:
+                        _WARNED_DIALECT_KEYS.add(_key)
+                        logger.warning(
+                            "Ziel-Dialekt: Genre-Ziel %r (%s=%.2f) liegt außerhalb des Budget-"
+                            "Schlüsselraums (%d Ziele) und wird nicht angewendet; kanonisches Ziel: %s "
+                            "(%s) — §V6 copilot-instructions.md: kein stilles Verwerfen",
+                            goal,
+                            genre_key,
+                            weight,
+                            len(targets),
+                            canonical_goal_name(goal) or "nicht zugeordnet",
+                            GOAL_DIALECT_NOTES.get(goal, "unbekannter Dialekt"),
+                        )
+                    else:
+                        logger.debug("Ziel-Dialekt: Genre-Ziel %r (%s) erneut verworfen", goal, genre_key)
         except Exception as e:
             logger.warning("goal_Grenze.py::erstellen_goal_Grenze Ersatzpfad: %s", e)
     return GoalBudget(targets, material_key=material_key)

@@ -1,33 +1,46 @@
 # TASK_CHANGES — Live-Ledger der aktuellen Aufgabe
 
-> Generiert von `scripts/change_ledger.py snapshot` (Base: `HEAD`, Stand: 2026-10-06 12:46 CEST).
+> Generiert von `scripts/change_ledger.py snapshot` (Base: `HEAD`, Stand: 2026-10-06 13:58 CEST).
 > CI (`ci-lite.yml` pr-evidence-gate) erzwingt Abdeckung: jede geänderte Code-Datei muss hier stehen.
 
 ## Geänderte Dateien
 
 | Status | Pfad | Art |
 |---|---|---|
-| M | `.github/GEBOTE.md` | modifiziert |
-| M | `.github/ID_REGISTRY.md` | modifiziert |
-| M | `.github/copilot-instructions.md` | modifiziert |
+| M | `.github/FILE_REGISTRY.md` | modifiziert |
+| M | `.github/VERBOTEN.md` | modifiziert |
+| M | `.github/specs/01_musical_goals.md` | modifiziert |
+| M | `.github/specs/02_pipeline_architecture.md` | modifiziert |
 | M | `.github/specs/03_cognitive_modules.md` | modifiziert |
+| M | `.github/specs/04_dsp_standards.md` | modifiziert |
 | M | `.github/specs/05_material_system.md` | modifiziert |
+| M | `.github/specs/19_sota_gender_detection.md` | modifiziert |
 | M | `.github/specs/25_ambience_match_plugin.md` | modifiziert |
-| M | `AGENTS.md` | modifiziert |
+| M | `.pre-commit-config.yaml` | modifiziert |
 | M | `CHANGELOG.md` | modifiziert |
-| M | `CLAUDE.md` | modifiziert |
-| M | `CONTRIBUTING.md` | modifiziert |
 | M | `README.md` | modifiziert |
 | M | `SPEC.md` | modifiziert |
+| M | `TASK_CHANGES.md` | modifiziert |
 | M | `backend/core/causal_defect_reasoner.py` | modifiziert |
-| M | `backend/core/surgical_defect_analyzer.py` | modifiziert |
-| M | `backend/core/unified_restorer_v3.py` | modifiziert |
+| M | `backend/core/defect_phase_mapper.py` | modifiziert |
+| M | `backend/core/genre_registry.py` | modifiziert |
+| M | `backend/core/goal_budget.py` | modifiziert |
+| M | `backend/core/phases/phase_53_semantic_audio.py` | modifiziert |
+| M | `backend/core/pre_analysis.py` | modifiziert |
+| M | `backend/core/song_goal_importance.py` | modifiziert |
 | M | `backend/core/version.py` | modifiziert |
-| M | `denker/defekt_denker.py` | modifiziert |
+| M | `denker/README.md` | modifiziert |
+| M | `docs/DEFECT_SCANNER_SPEC.md` | modifiziert |
+| M | `docs/KI-AGENT-INTEGRATION-GUIDE.md` | modifiziert |
+| M | `docs/PROJECT_STATUS.md` | modifiziert |
+| M | `docs/architecture/ARCHITECTURE.md` | modifiziert |
+| M | `docs/architecture/PIPELINE_FLOW_ANALYSIS.md` | modifiziert |
 | M | `pyproject.toml` | modifiziert |
 | M | `reports/spec_drift_baseline.json` | modifiziert |
 | M | `scripts/defect_coverage_check.py` | modifiziert |
-| M | `scripts/gebote_verifier.py` | modifiziert |
+| A | `scripts/genre_single_source_check.py` | neu |
+| A | `tests/unit/test_genre_single_source_guard.py` | neu |
+| ?? | `tests/unit/test_goal_dialects_t34.py` | ungetrackt |
 
 ## Entscheidungen
 

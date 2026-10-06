@@ -38,6 +38,7 @@ import numpy as np
 import scipy.signal as sig
 
 from backend.core.audio_utils import safe_to_mono
+from backend.core.genre_registry import semantic_hint_label
 from backend.core.ml_memory_budget import release as _release_ml_budget
 from backend.core.ml_memory_budget import try_allocate as _try_allocate_ml_budget
 from backend.core.ml_model_readiness import check_ml_model_ready
@@ -65,41 +66,14 @@ _beats_factory: Any = _beats_factory_impl
 
 _NOTE_NAMES = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"]
 
-_CANONICAL_GENRE_FALLBACK = "Unbekannt"
-_GENRE_ALIAS_MAP = {
-    "classical": "Klassik",
-    "classical_orchestral": "Klassik",
-    "orchestra": "Klassik",
-    "orchestral": "Klassik",
-    "opera": "Oper",
-    "jazz": "Jazz",
-    "jazz_acoustic": "Jazz",
-    "rock": "Rock",
-    "rock_metal": "Rock",
-    "metal": "Rock",
-    "pop": "Pop",
-    "pop_ballad": "Pop",
-    "blues": "Blues",
-    "folk": "Folk",
-    "country": "Folk",
-    "electronic": "Electronic",
-    "electronic_edm": "Electronic",
-    "ambient": "Electronic",
-    "hip_hop": "Hip-Hop",
-    "hip-hop": "Hip-Hop",
-    "rap": "Hip-Hop",
-    "reggae": "Reggae",
-    "gospel": "Gospel",
-    "rnb": "Soul/R&B",
-    "soul": "Soul/R&B",
-    "soul/r&b": "Soul/R&B",
-    "r&b": "Soul/R&B",
-    "rhythm_and_blues": "Soul/R&B",
-    "schlager": "Schlager",
-    "general": _CANONICAL_GENRE_FALLBACK,
-    "unknown": _CANONICAL_GENRE_FALLBACK,
-    "unbekannt": _CANONICAL_GENRE_FALLBACK,
-}
+# §G9 (copilot-instructions.md)-Konsolidierung 2026-10-06: Die frühere lokale
+# ``_GENRE_ALIAS_MAP`` (fünfte parallele Genre-Auflösung, Befund des Guards
+# scripts/genre_single_source_check.py) liegt jetzt in der Registry
+# (``genre_registry.semantic_hint_label``). Verhalten bit-identisch.
+#
+#: Fallback-Etikett — AUS DER REGISTRY abgeleitet, nicht erneut hartkodiert
+#: (§G9 copilot-instructions.md: eine Quelle der Wahrheit).
+_CANONICAL_GENRE_FALLBACK = semantic_hint_label(None)
 
 
 def _clap_allowed_in_current_context() -> bool:
@@ -186,37 +160,12 @@ def _estimate_genre_hint(mono: np.ndarray, sr: int) -> str:
 
 
 def _canonicalize_genre_hint(label: str | None) -> str:
-    """Map raw DSP/CLAP/BEATs genre tags to Aurik canonical labels."""
-    if not label:
-        return _CANONICAL_GENRE_FALLBACK
-    key = str(label).strip().lower().replace(" ", "_")
-    if key in _GENRE_ALIAS_MAP:
-        return _GENRE_ALIAS_MAP[key]
-    if "opera" in key:
-        return "Oper"
-    if "class" in key or "orch" in key:
-        return "Klassik"
-    if "jazz" in key:
-        return "Jazz"
-    if "gospel" in key:
-        return "Gospel"
-    if "blues" in key:
-        return "Blues"
-    if "folk" in key or "country" in key:
-        return "Folk"
-    if "reggae" in key or "dub" in key:
-        return "Reggae"
-    if "hip" in key or "rap" in key:
-        return "Hip-Hop"
-    if "rnb" in key or "r&b" in key or "soul" in key:
-        return "Soul/R&B"
-    if "electro" in key or "edm" in key or "ambient" in key or "techno" in key:
-        return "Electronic"
-    if "metal" in key or "rock" in key or "punk" in key:
-        return "Rock"
-    if "pop" in key:
-        return "Pop"
-    return _CANONICAL_GENRE_FALLBACK
+    """Rohen Genre-Tag → deutsches Anzeige-Etikett (§G9 copilot-instructions.md: eine Quelle).
+
+    Dünner Delegat auf ``genre_registry.semantic_hint_label`` — die Tabelle und
+    die Substring-Reihenfolge liegen dort (verhaltensgleicher Port, 47 Proben).
+    """
+    return semantic_hint_label(label)
 
 
 class SemanticAudioPhase(PhaseInterface):

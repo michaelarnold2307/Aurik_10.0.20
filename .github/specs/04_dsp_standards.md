@@ -1599,7 +1599,7 @@ Crossfade: Hanning 10 ms. Modul: `backend/core/adaptive_chunk_processor.py`
 Pipeline verdrahtet. Die Migration der Einzelphasen erfolgt schrittweise:
 
 | Phase | Status | Nächster Schritt |
-|-------|--------|-----------------|
+| ------- | -------- | --------- |
 | Wet/Dry-Blend (alle Phasen) | ✅ `perceptual_blend()` aktiv | — |
 | JND-Gate (alle Phasen) | ✅ `should_skip_phase()` aktiv | — |
 | Phase_35 (Multiband Compression) | ✅ Bark-Gruppen 24→4 | — |

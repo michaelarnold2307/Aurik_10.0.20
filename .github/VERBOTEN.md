@@ -73,7 +73,7 @@
 | Pitch-Kaskade ohne RMVPE | FCPE → CREPE → PESTO → pYIN (RMVPE übersprungen) | FCPE → RMVPE → PESTO → pYIN: `get_rmvpe_plugin()` als Tier-2 (§4.4) |
 | Lautheitsmessung ohne ISO 532-1 | `np.mean(audio**2)` oder LUFS-only nach Rumble/Multiband-Phasen | `compute_specific_loudness_zwicker(audio, sr)` → ΔN > 2.0 sone = FAIL (§4.1b) |
 | JND-blinde PMGG-Phase-Akzeptanz | Alle Deltas > 0 und < JND → identisch zu signifikant positiver Phase | `JND_MIN_DELTA` Dict: wenn alle Deltas ≥ 0 UND alle < JND → `sub_threshold` (§2.47b) |
-| Uniforme Goal-Gewichtung | Alle 14 Goals gleich gewichtet | `estimate_goal_importance()` → Per-Song-Profil → `goal_weights` in PMGG/CIG/GPP/FC (§2.56) |
+| Uniforme Goal-Gewichtung | Alle 15 Goals gleich gewichtet | `estimate_goal_importance()` → Per-Song-Profil → `goal_weights` in PMGG/CIG/GPP/FC (§2.56) |
 | §2.56 nur in Gates nutzen | `goal_weights` ausschließlich für PMGG/CIG | UV3 `_profiled_phase_call`: `_compute_harmonic_adaptation_scalar(...)` advisory-only auf implizite `strength` + wet/dry (§2.56a) |
 | Phase-50 Spike-Detection ohne HF-Guard | `_repair_channel()` flaggt restaurierte analoge Harmoniken als Codec-Spikes | `_hf_protected_bin_start = material_rolloff × 0.85 / bin_hz` für analoge Materialtypen (§2.57) |
 | PMGG Goal-Scoring bei Passthrough-Audio | Unverändert zurückgegebenes Audio trotzdem 3× CREPE/pYIN-Retries | `np.array_equal(input, output)` → kein Scoring, kein Retry (§2.58) |

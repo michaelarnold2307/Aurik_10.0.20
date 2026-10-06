@@ -61,7 +61,7 @@ Die 15 Musical Goals werden ab v10.101 nach **perzeptueller Relevanz** gewichtet
 Technische Messwerte (SNR, THD) sind nur im Bereich oberhalb der Hörschwelle aussagekräftig.
 
 | Goal | Typ | Basis | Perzeptuelle Rechtfertigung |
-|------|-----|-------|---------------------------|
+| ---- | --- | ----- | --------------------------- |
 | groove | Timing-Präzision | DTW-Onset-Alignment (Bark-Band-constrained) | Rhythmus-Verlust sofort hörbar |
 | natuerlichkeit | Klangtreue | MERT-Embedding + Wiener-Entropie | Unnatürlichkeit wird als Erstes wahrgenommen |
 | waerme | Musikalische Fülle | Bark-Band-Energie (100-500 Hz) | „Kraftvoll, musikalisch" |
@@ -690,7 +690,8 @@ da sie sich physikalisch teilweise ausschließen (z.B. Brillanz vs. Wärme, Tran
 Für jedes Stück muss die richtige Gewichtung aus dem musikalischen Kontext berechnet werden.
 
 **Grundprinzip**: Jeder Song erhält vor der Phase-Pipeline ein individuelles Gewichtungsprofil
-`SongGoalImportance` mit 14 Gewichten ∈ [0.3, 2.0]. Diese Gewichte bestimmen, welche Goals
+`SongGoalImportance` mit 15 Gewichten ∈ [0.3, 2.0] — eines je Eintrag in `ALL_GOAL_NAMES`
+(`backend/core/song_goal_importance.py`). Diese Gewichte bestimmen, welche Goals
 bei diesem konkreten Song Vorrang genießen und welche toleranter behandelt werden.
 
 ### §2.56a 5-Stufen-Gewichtungsarchitektur (v10.0.0)
@@ -701,7 +702,7 @@ Die Berechnung erfolgt in **5 multiplikativen Stufen** + Soft-Cap + Bounds:
 
 | Schritt | Beschreibung | Parameter |
 | --- | --- | --- |
-| 1a | **Genre-Profil** (16 Profile: Klassik, Oper, Jazz, Rock, Metal, Electronic, Hip-Hop, Pop, Schlager, Soul/R&B, Blues, Country, Folk, Reggae, Latin, Funk, Gospel) | `genre_label` → Alias-Resolution (`_GENRE_ALIASES`) → Basis-Gewichte. Unbekannt → neutral (1.0) |
+| 1a | **Genre-Profil** (17 Profile: Klassik, Oper, Jazz, Rock, Metal, Electronic, Hip-Hop, Pop, Schlager, Soul/R&B, Blues, Country, Folk, Reggae, Latin, Funk, Gospel) | `genre_label` → kanonische Alias-Auflösung `genre_registry.goal_weight_key()` → Basis-Gewichte aus `song_goal_importance._GENRE_WEIGHT_PROFILES`. Unbekannt/ohne Profil (`walzer`, `marsch`, `ambient`, `world`) → neutral (1.0) + `logger.info`-Ersatzpfad (§V6 copilot-instructions.md) |
 | 1b | **Ära-Modifikator** (1900er–1980er) multiplikativ auf Genre | `era_decade` → z.B. 1920er: Brillanz ×0.5 (7 kHz Bandbreite) |
 | 1c | **Material-Modifikator** (trägertypisch) | `material_type` → z.B. Vinyl: Bass ×1.3, Shellac: Transparenz ×0.7 |
 | 1d | **Vokal-Boost** (konfidenzgewichtet) | `vocal_detected`, `vocal_confidence` → Artikulation ×1.3, Emotionalität ×1.2, Authentizität ×1.2, TransparenzVokal ×1.15, TonalCenter ×1.12, TimbreAuth ×1.1, SeparationFidelity ×1.1 (Quellen: Kreiman & Sidtis 2011; Marjieh et al. 2023; Bregman 1990; McDermott 2009 Curr Biol; London 2012; Repp & Su 2013) |
@@ -1285,8 +1286,8 @@ metadata["emotional_arc"] = _arc_result
 
 ### §v10.101.3 Implementierte Goal-Verbesserungen
 
-| Goal | v10.101-Änderung | Wirkung |
-|------|-----------------|---------|
+| Goal   | v10.101-Änderung | Wirkung |
+| ------ | ---------------- | ------- |
 | groove | DTW-Radius von 7680→5 (Sakoe-Chiba) | Score 0.000→1.000 |
 | waerme | STFT-Cache shared mit Bass/Brillianz | −1.5s Latenz |
 | natuerlichkeit | QualityAnalyzer-Gewicht 10%→20% | Score steigt |

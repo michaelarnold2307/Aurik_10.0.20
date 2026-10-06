@@ -153,7 +153,7 @@ ergebnis = denker.analysiere(audio, sr=48_000, material="tape")
 ```
 
 Wraps: `core.defect_scanner.DefectScanner` + `core.causal_defect_reasoner.CausalDefectReasoner`
-Spec: §2.4 CausalDefectReasoner · §6.3 DefectType-Katalog (24 Defekte)
+Spec: §2.4 CausalDefectReasoner · §6.3 DefectType-Katalog (65 DefectTypes)
 
 ---
 

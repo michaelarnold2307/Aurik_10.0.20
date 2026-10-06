@@ -25,7 +25,7 @@
 **Status-Übersicht der Modell-Domänen (Quelle: `backend/core/music_model_flags.py`):**
 
 | Modell | Rolle | Trainingsdomäne | Musik-Finetune |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | DeepFilterNet v3 | Denoise (Spec-04-Kette) | Sprache | ✅ DFN Musik aktiv (`use_df_musik=True`) |
 | MIIPHER | Codec-Artefakte | Sprache (proprietär) | ✅ ersetzt durch MIIPHER-DiT (`use_miipher_dit=True`) |
 | Harmonic-Inpainting-DiT | gedämpfte Obertöne (Phase 07) | Musik | ✅ aktiv (`use_harmonic_inpainting=True`) |
@@ -520,6 +520,7 @@ F14.
   Daten-/Entscheidungslogik (Radar-Farben, Fehlertexte, Tasten, Presets, Startup-Reihenfolge)
   war nur manuell verifiziert — genau dort lagen die P1-9/P1-10-Bugs.
 - **Lösung (§GUI-T1…T4, pure Logik extrahiert + Tests):**
+
   T1 `musical_goals_radar`: `goal_bar_state()` + `build_radar_update_payload()` (5 Fälle).
   T2 `main.py`-Startup-Vertrag: GPU vor ModernMainWindow, __main__-Guard, -B-Launcher (4 Fälle).
   T3 `help_system.ErrorSimplifier`: Exception-Klassenname wird einbezogen — Befund dabei:
@@ -547,6 +548,7 @@ F14.
   kein replace-Duplikat außerhalb `_de_num` existiert); GUI-Suiten 148 passed, 11 skipped.
 - **Akzeptanz:** Kein nutzersichtbarer Live-Text nutzt mehr Punkt-Dezimaltrenner; künftige
   Punkt-Formatierung im Fortschritts-/Chip-Pfad bricht sofort einen Test.
+
 ## TODO-P2-1 · Hygiene: UTF-16-Bereinigung + Monolith-Hinweis — ERLEDIGT 2026-09-08 (Guard-Teil)
 
 - **Befund (gemessen 2026-09-08):** Alle 3175 getrackten Textdateien sind valides UTF-8;
@@ -575,7 +577,7 @@ F14.
 ### ABGESCHLOSSEN (diese Welle, mit Commits)
 
 | ID | Maßnahme | Commit | Beleg |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | SOTA-WIT-P1…P4 | Witness: Johnston-Maskierung, Rauigkeit, ITD/ILD, Pre-Echo | 56492ce8 | tests 27 grün |
 | SOTA-C1…C3 | Rekombinations-Gates (Alignment, Bark-Residuum, Stereo-Check) | 19506b3e | tests 6 grün |
 | SOTA-DECLIP | APPLADE + PnP-ADMM + GPU-Finetune (ΔSDR +1,2…+1,7 dB) | 07fcc8df | ONNX in Produktion |
@@ -858,7 +860,7 @@ F14.
     tragen konstante Ziel-Shapes; ein dynamischer Batch bricht im ersten
     `node_view`-Reshape (gemessener ORT-Fehler „input_shape_size == size
     was false“). **Umsetzung (2026-09-18):**
-    (a) *Re-Export* (`scripts/export_banquet_batch_onnx.py` →
+    (a) **Re-Export** (`scripts/export_banquet_batch_onnx.py` →
     `models/banquet/banquet_vinyl_batch.onnx`): die 3 geteilten
     Shape-Konstanten (je 24× verwendet) durch berechnete Shape-Graphen
     ersetzt (Merge/Dir-Merge/Unmerge mit B×128), h0/c0 als ConstantOfShape;
@@ -866,7 +868,7 @@ F14.
     Batch-Unabhängigkeit bit-exakt. Empirie: Mini-Batch über die LSTM-
     Batch-Achse gewinnt auf ROCm/CPU kaum (~1,1×) — die Kette aus 24
     LSTM-Zellen ist latenzgebunden, nicht durchsatzgebunden.
-    (b) *Torch-ROCm-Kern* (`backend/core/dsp/banquet_torch_rocm.py`): der
+    (b) **Torch-ROCm-Kern** (`backend/core/dsp/banquet_torch_rocm.py`): der
     ONNX-Kern ist ein 24-Zellen-BSRNN (geteilte LayerNorm, bidir-LSTM
     128→256, Linear+Residuum, alternierender Achsen-Tausch) — 1:1 aus den
     ONNX-Gewichten rekonstruiert (W-Gates nativ PyTorch-Ordnung, Bias-Gates
@@ -874,7 +876,7 @@ F14.
     (CPU, Optimizer aus), GPU deterministisch. **~160 ms/Fenster statt ~1,9 s
     ORT-ROCm (11,8×; B=4 ≈ 97 ms ≈ 19,5×); End-to-End 3-s-Probe 0,88 s statt
     16,8 s (~19×).**
-    (c) *Qualitäts-Nebenfund:* ORT-ROCm-LSTM-Kernels rechnen das Modell
+    (c) **Qualitäts-Nebenfund:** ORT-ROCm-LSTM-Kernels rechnen das Modell
     nachweislich falsch (roh max|Δ| ≈ 0,35 vs. ONNX-CPU auf echten
     Plugin-Feats; bs_roformer-Befund analog) — der ONNX-Fallback läuft
     deshalb jetzt immer auf CPU (Provider-Filter + §V6-Warnung); der
@@ -1021,7 +1023,7 @@ F14.
 ### Portfolio-Status (Rolle → Modell → Stand)
 
 | Rolle | Modell | Stand |
-|---|---|---|
+| --- | --- | --- |
 | Vokal-Langlücken | DiffWave-Vokal-Finetune (HAUPTWEG) | Checkpoint lokal, **GPU-Finetune fehlt** (S1: −1,7 dB → Ziel ΔSDR ≥ 0) |
 | Vokal-Langlücken 375–1500 ms | GaCELA-Vokal-Finetune (Pfad B) | Trainingscode lokal, **GPU-Finetune fehlt** |
 | Vokal-Extremfälle/Identität | RVC (MIT) | rmvpe.pt/.onnx ✓, hubert_base.pt ✓, hubert_model.onnx ✓ |
@@ -1055,7 +1057,7 @@ jeweiliger Zero-Shot-Baseline auf den destruktiven Fällen + Never-worsen auf
 sauberen Referenzen (Muster ML-V3-Negativbefund).
 
 | # | Finetune | Basis | Ziel | Daten | Gate |
-|---|---|---|---|---|---|
+| --- | --- | --- | --- | --- | --- |
 | F1 | DiffWave-Vokal (HAUPTWEG) | DiffWave-Checkpoint lokal | Langlücken-Reparatur ΔSDR ≥ 0 (S1: −1,7 dB) | MUSDB-Vocals | P1-Metrik |
 
 **F1-Ergebnis 2026-09-14: ABGEBROCHEN — Ansatz ausgereizt** — zwei Läufe plafonierten
@@ -1066,6 +1068,7 @@ Sprach-Domäne ist für 300-ms-Gesangs-Inpainting am Limit (Retest oszillierte
 Report: docs/reports/current/2026-09-14_diffwave_vocal_finetune.json.
 
 **Erfolgreichere Alternativen (Entscheidung 2026-09-14, nach Evidenz):**
+
 1. **F2-Verlängerung = HAUPTWEG** — GaCELA-GAN arbeitet spektral und musik-nativ;
    nach nur 10 Epochs from-scratch bereits mean −0,37 dB. 30–50 weitere Epochs
    kreuzen das Gate sehr wahrscheinlich (GPU frei).
@@ -1149,7 +1152,7 @@ Sänger-Identität, MuQ-MOS nicht schlechter als Baseline).
 ### A. Psychoakustische Querschnitts-Maßnahmen („Gehör nachbilden“)
 
 | ID | Maßnahme | Ist (2026-09-14) | Ziel/Wirkung |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | PSY-A1 | **Audibility-Gate-Rollout**: Maskierungsschwelle (masking_model, ISO 11172-3 Bark) als Reparatur-Entscheidung in ALLEN reparierenden Phasen (01, 03, 06, 07, 08, 19, 23, 27, 36, 50, 55, 56, 59, 64, 65, 66) | **TEIL-ROLLOUT 2026-09-14**: `audibility_gate.py` (defekt-zentrierte Messung, §V6 (copilot-instructions.md)-fail-open) + Verdrahtung **phase_01, 03, 06, 07, 08, 19, 23, 27, 36, 50, 55, 56, 59, 64, 65, 66** (subaudible Klicks/Pops/Splices/Lücken/Band-Lücken/Sibilanten/Spektral-Defekte/Modulations-Rauschen überspringen, Noise-Floor dämpfen, Vokal-/Stem-Delta gate-n); 7 Gate- + 45 phase_56- + 17 phase_64-Tests grün. **Gate-Fix dabei:** lange Defekt-Regionen werden ZENTRAL (Mitte) statt am Anfang gemessen. **06/07/08/36 erledigt 2026-09-14** — Rollout vollständig | §4-Vertrag: „Ist der Defekt über der Maskierungsschwelle hörbar?“ als Pflicht-Frage; Berichte weisen „hörbar“ als über-Schwelle aus |
 | PSY-A2 | **Zwicker-Modell (ISO 532-1)** als Nachfolger des MPEG-1-Modells: stationäre + zeitvariante Loudness und Maskierung | stationäres Zwicker ISO 532-1 vorhanden + optional im Audibility-Gate; **zeitvariante Loudness ✅ 2026-09-15** (`compute_time_varying_loudness`, exakte DIN-45631-a0/L_TQ-Tabellen, 10 Tests — P5) | präzisere Schwelle bei tonalem/breitbandigem Material; Basis für PSY-A7 |
 | PSY-A3 | **BMLD-Verdrahtung** (binaurale Maskierungs-Freisetzung) in die Stereo-Phasen-Gates (13, 15, 33, 34, 46, 48) | binaural_masking auf Guard-Ebene + phase_03; **2026-09-14: phase_33- UND phase_34-BMLD-Witness**; **2026-09-15: Rollout 13/15/46/48 abgeschlossen** (`binaural_masking_advantage`-Metadatum, ZEUGE-Modus, Hörordnung §8a; test_p2a_bmld_witness_rollout.py, 5 Fälle); **2026-09-15: dynamische Freisetzungs-Toleranz in 13/15/33/46/48** (`bmld_tolerance_factor`: release_db linear 1,0→1,10, Cap 8 dB, Nie < 1,0 — phase_33/48 Breiten-Cap, phase_13 Breiten-Faktoren, phase_15 Korrektur-Stärke, phase_46 Enhancement-Stärke; test_psy_a3_bmld_tolerance.py + _rollout.py) — PSY-A3 damit VOLLSTÄNDIG | Stereo-Änderungen werden nach Hör-Freisetzung bewertet statt nach Mess-dB |
@@ -1162,7 +1165,7 @@ Sänger-Identität, MuQ-MOS nicht schlechter als Baseline).
 ### B. Hybrid-Phasen: offene SOTA-Maßnahmen
 
 | Phase | Ist | Offene SOTA-Maßnahme |
-|---|---|---|
+| --- | --- | --- |
 | 03 denoise | BSR-Stem-NR (66) + DSP-Kaskade; MP-SENet de-wired (Negativbefund) | **HR-V1-Witness verdrahtet (Q6, fail-closed)**; musik-nativer Denoiser-Finetune (F3 BigVGAN-Spektrallinie; DeepFilterNet-Musik-Finetune als Alternative prüfen) |
 | 04/16/17 EQ/Dynamik | DSP + Zielkurven | **SOTA-C4**: DDSP-Prädiktor (Embeddings → EQ/Dynamik-Parameter, DSP führt aus) — GPU (F5); Harness + Erstlauf 2026-09-16 (CLAP-eingefroren ⇒ Negativbefund, s. F5-Zeile); nächster Schritt DDSP-Mel-Encoder |
 | 07 harmonisch | DSP-Harmonic-Restoration | **SOTA-HR-V1**: BigVGAN-Repair-Pfad + additive_synthesis_gate in phase_07 verdrahtet (Aktivierungsvertrag fail-closed, attempted/applied-Witness); A/B-Validierung via `scripts/validate_hr_v1.py` — Flag-Entscheid GPU (F3) |
@@ -1177,7 +1180,7 @@ Sänger-Identität, MuQ-MOS nicht schlechter als Baseline).
 ### C. Pure-DSP-Phasen: offene SOTA-Maßnahmen
 
 | Phase | Ist | Offene SOTA-Maßnahme |
-|---|---|---|
+| --- | --- | --- |
 | 01 Klicks | ✓ CR-V1 (BANQUET-Konsens) | ✓ PSY-A1-Gate (subaudible Klicks werden nicht gezählt, `subaudible_skipped`) |
 | 02 Hum | ✓ HU-V1 (Kalman + LSQ) | ✓ PSY-A1-Gate (Maskierungs-Early-Termination, §Muster 2) |
 | 05 Rumpel / 25 Azimut / 31 Speed-Pitch / 62 Crosstalk / 63 Intermodulation / 64 Splice | DSP-Stand (funktional) | ✓ 05/62/63 Maskierungs-Gates vorhanden; ✓ 25/31 JND-formalisiert 2026-09-16 (PSY-A8, `hearing_jnd`); 64: GaCELA verworfen (fail-closed 2026-09-15) → Fill-Reuse nicht anwendbar, DiffWave-S3 bleibt inaktiv vorbereitet |
@@ -1192,7 +1195,7 @@ Sänger-Identität, MuQ-MOS nicht schlechter als Baseline).
 ### D. Witness-/Modell-Lücken (Qualitäts-Urteile)
 
 | ID | Lücke | Status |
-|---|---|---|
+| --- | --- | --- |
 | WIT-M1 | **MuQ-MOS-Richtung invertiert** (A1-Head auf falschem Backbone — muq_eval_a1_head.pt läuft auf MuQ-large-msd-iter statt MuQ-Eval-Backbone) | **ERLEDIGT 2026-09-14** — Ursache war der RESAMPLE-FILTER: das Plugin nutzte librosa, MuQ-Eval torchaudio.functional.resample (Kaiser-Sinc); nach dem Fix (Eval-exakt zuerst) ist die Richtung **3/3 korrekt** (noise0 Δ+3,66 ref / Δ+3,20 Plugin; Report 2026-09-14_muq_plugin_direction.json). MuQ ist damit als MOS-Richtungs-Witness für die F-Gates nutzbar (10-s-Clips, Vollmix) |
 | WIT-M2 | BEATs-Tagger-Head fehlt (Encoder-Export ohne Head) | Head auf Tokens trainieren (GPU) oder Tagger-ONNX beschaffen |
 | WIT-M3 | UTMOS für Musik unbrauchbar (Negativbefund) | dokumentiert — kein Einsatz |
@@ -1208,7 +1211,7 @@ Sänger-Identität, MuQ-MOS nicht schlechter als Baseline).
 ### E2. Umsetzungs-Warteschlange 2026-09-14 (alle Empfehlungs-Punkte)
 
 | ID | Punkt | Status | Rezept/Aktion |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | Q1 | PSY-A5-Rollout phase_27/64 (Forward-Masking ×0,6) | **ERLEDIGT 2026-09-14** (phase_01/27/64; 26+17+12 Tests grün) | Muster: Zonen einmal pro Kanal via get_forward_masking_guard, Dämpfung im Reparatur-Loop |
 | Q2 | PSY-A1 in phase_55 (subaudible Lücken nicht füllen) | **ERLEDIGT 2026-09-14** (defect_audibility-Gate vor der Kaskade, Zähler `subaudible_gaps_skipped`) | defect_audibility auf die Gap-Region, skip → Kaskade überspringen |
 | Q3 | PSY-A7: Kurzzeit-Loudness-Steuerung für 40/47 | **CAP UMGESETZT 2026-09-15 (phase_47)** — `_perceptual_loudness_cap`: peak-STL-Überschreitung > Marge ⇒ proportionaler Blend Richtung Input (Never-worsen §4/§8a, §V6-fail-closed); STL/LTL-Witness (2026-09-14) + 6 Tests. 10/11/40 = Folge-Slice ✅ (perceptual_loudness_cap, 8 Tests) | temporal_loudness() nutzt ERB-Kurzzeit-Modell (vorhanden) |
@@ -1228,7 +1231,7 @@ Sänger-Identität, MuQ-MOS nicht schlechter als Baseline).
 > Kein Rechtsgutachten; bei Kommerzialisierung durch Fachanwalt prüfen lassen.
 
 | Modell | Lizenz | Kommerziell ok? | Anmerkung |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | DiffWave (philovivero) | MIT | ✅ | Port dokumentiert (diffwave_model.py); Finetune-Checkpoints dürfen unter eigener Lizenz stehen (MIT erlaubt Sublizenzierung, Hinweis beibehalten) |
 | GaCELA (Upstream-Code) | MIT | ✅ | F2-Checkpoint wurde FROM SCRATCH (Random-Init) trainiert ⇒ eigene Gewichte; Architektur folgt MIT-Code |
 | BEATs (Microsoft) | MIT (Code+Checkpoints) | ✅ | iter3-ONNX lokal |
@@ -1246,6 +1249,7 @@ Sänger-Identität, MuQ-MOS nicht schlechter als Baseline).
 | RVC/hubert | MIT-Code / hubert NC | ❌ | daher „später“ |
 
 **Leitlinien (rechtlich tragfähige Wege zu einem EIGENEN Modell):**
+
 1. **From-Scratch + eigene Daten** = bulletproof: eigenes Training auf selbst
    lizenziertem Material, Architektur aus MIT-Code ⇒ Checkpoint trägt deine Lizenz.
 2. **MIT-Basis + Finetune** = erlaubt: MIT gestattet Modifikation UND
@@ -1268,7 +1272,7 @@ Sänger-Identität, MuQ-MOS nicht schlechter als Baseline).
 > (Hörordnungs-Gates, Witnesses, Determinismus, ROCm).
 
 | ID | Hebel | Wirkung | Umsetzung |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | R1 | **Wahrnehmungs-Budget-Bilanz** (PSY-B): jede Phase verbraucht ein JND-Budget; die Kette bilanziert die Gesamt-Hörbarkeit (wie ein Wahrnehmungs-Wasserzeichen) | „Klangtreu“ wird messbar statt Absichtserklärung — kein anderes Werkzeug bilanziert Reparaturen in JND-Einheiten | `hearing_jnd.py` liegt vor; **ERLEDIGT 2026-09-15**: `perceptual_budget.py` (level/loudness/IACC/Centroid in JND-Einheiten via hearing_jnd, layout-sicher, §V6-fail-closed) + `summarize_budget`-Summenbericht + `perceptual_budget_summary` im RestorationResult (pipeline_total); test_r1_perceptual_budget.py, 9 Fälle |
 | R2 | **MuQ-MOS-Export-Gate** (WIT-M4-Umsetzung): MOS-Delta (out vs. in) als Release-Gate — jetzt möglich, da WIT-M1 die Richtung repariert hat | Hör-Qualität entscheidet über den Export, nicht nur True-Peak/LUFS | MuQ-Plugin (10-s-Clips) als dritte Gate-Stimme im Export-Qualitäts-Gate verdrahten |
 | R3 | **ROCm-Beschleunigung aller ML-Modelle** (PERF-A): CQTdiff+, MuQ, BEATs, DeepFilterNet auf Torch-ROCm (Muster bsr317_torch_rocm: 42×) | Echte GPU-Performance-Story auf AMD-Hardware; ORT-ROCm-Kernel-Bug bleibt umgangen | Ports nach dem BSR-Muster, Paritäts-Tests je Modell |
@@ -1320,14 +1324,14 @@ Sänger-Identität, MuQ-MOS nicht schlechter als Baseline).
 ### Gemessene Baseline (2026-09-15)
 
 | Messung | Aurik Quality Score | Technical | Musical | Emotional |
-|---|---|---|---|---|
+| --- | --- | --- | --- | --- |
 | Original („Testkünstlerin (Schlager) – 30 Sekunden.mp3“, 44,1 kHz) | **38,1 / 100** | 0,30 | 0,40 | 0,49 |
 | Restauriert (Pipeline, mode=restoration) | wird nachgetragen | — | — | — |
 
 ### Priorisierter Weg zu 98/100 (Hebel × Machbarkeit)
 
 | Prio | Schritt | Wirkt auf Säule | Erwartete Wirkung |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | P1 | **Residual-Artefakt-Diagnose**: artifact_freedom pro Phase auf realem Material messen (welche Phase senkt af unter 0,95?); gezielte Never-worsen-Fixes statt Raten | Technical (40 %) | größter Einzelhebel — af-Veto (≥0,95) ist Hör-Invariante |
 | P2 | **PSY-A3-Rest**: BMLD-Witness in Stereo-Phasen 13/15/46/48 + **PSY-A4-Rest**: Equal-Loudness in 04/16/17/38/39 | Musical (40 %) | Stereo-/EQ-Entscheidungen nach Hör-Freisetzung statt Mess-dB |
 | P3 | **Resemblyzer-Witness verfügbar machen** (Paket oder ONNX installieren/laden) — Stimm-Identität ≥ 0,92 (Hör-Invariante) wird messbar | Musical (40 %) | Identitäts-Gate schließt die größte blinde Lücke |
@@ -1439,7 +1443,7 @@ Alle CPU-schließbaren Punkte der Offene-Punkte-Matrix sind umgesetzt und getest
 > verfolgten Wege (mit Begründung). Reihenfolge = erwarteter Gewinn je Aufwand.
 
 | # | Maßnahme | Status | Erwarteter Gewinn | Qualitätsrisiko | Beleg |
-|---|---|---|---|---|---|
+| --- | --- | --- | --- | --- | --- |
 | P1 | Song-Level-Hoists (je-Chunk-Wiederholung entfernt): Struktur ANA-6, LGE-Transkription Whisper 8×→1×, Export nur nach Assembly | ✅ 2026-09-17 | LGE: 7× Whisper-Zeit; Export: 1× je Song statt 8× | keines (identische Rechnung, Timeline je Chunk zeitverschoben) | 615f373d, 3bfa5215, 04a52839 |
 | P2 | R3-GPU-Ports: BANQUET ROCm, CRePE-Pitch ROCm (28×), DeepFilterNet ehrlich CPU | ✅ 2026-09-13/17 | BANQUET 1,19× (Deckel: Export batch-1-spezifisch), CRePE 28× | keines (Parität validiert: BANQUET rel 7,8e-3 hörirrelevant, Klick-Reduktion identisch) | `gpu_model_registry.json` + `test_production_registry_verdicts_restoration_models` (18d365bd) |
 | P3 | Analyse-Cache je Datei-Hash (Disk-Persistenz der Bridge-Caches, Read-/Write-Through, AURIK_VERSION-Invalidierung, §V6 (copilot-instructions.md)-fail-closed) | ✅ 2026-09-17 | Wiederholungsläufe am selben Song überspringen die KOMPLETTE Voranalyse (Medium/Era/Genre/Defects/Restorability) über Prozessgrenzen | keines (bit-exakter Roundtrip; Version im Key, §G5 (copilot-instructions.md)) | dd1b91dd, 27 Tests grün |
@@ -1451,7 +1455,7 @@ Alle CPU-schließbaren Punkte der Offene-Punkte-Matrix sind umgesetzt und getest
 ### Bewusst NICHT verfolgt (Qualitätskompromiss — mit Begründung)
 
 | Maßnahme | Warum verworfen |
-|---|---|
+| --- | --- |
 | Restore-Chunks parallelisieren | Verstoß §V7 (copilot-instructions.md): geschlossener Regelkreis — `global_scalar`/Stärke-Entscheidungen lernen sequenziell pro Song; parallele Chunks umgehen die zentrale Stärke-Steuerung |
 | Song-Level-Hoist der BANQUET-/DFN-/Pitch-Inferenz | NICHT äquivalent: phase_09 verarbeitet den phase_08-Ausgang je Chunk (Declick/Hum ändern das Signal vor der Knistern-Entfernung) — Vorlauf auf dem Roh-Song ≠ je-Chunk-Ergebnis |
 | Quantisierung (int8/bf16) ohne Parity-Scan | BSR-Präzedenz: ORT-ROCm-Softmax rel=3,5 (Knoten 454) — Quantisierung nur mit gemessenem rel ≤ 1e-3 je Modell freigeben |
@@ -1461,7 +1465,7 @@ Alle CPU-schließbaren Punkte der Offene-Punkte-Matrix sind umgesetzt und getest
 ### Rest-Potenzial nach dem Verifikationslauf (qualitätsneutral, Reihenfolge = Hebel)
 
 | # | Hebel | Erwartung | Status |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | P8 | BANQUET parallele Fenster-Inferenz (`AURIK_BANQUET_INFER_PARALLEL`): 0,5-s-Fenster unabhängig, ORT-`run` thread-sicher → ThreadPool über Fenster; OLA bleibt sequenziell → bit-identisch (Test beweist es) | gemessen (2026-09-18, 16 Kerne, 9 Fenster): CPU 18,2→11,5 s (1,58×), GPU-ROCm 14,2→8,9 s (1,61×); sha über alle Konfigs identisch | ✅ UMGESETZT 2026-09-18: Default 4 (Datenlage entscheidet, `scripts/benchmark_banquet_parallel.py`); Env-Override bleibt |
 | P9 | Whisper (LGE) auf Torch-ROCm statt CPU (einmal je Song) | ~10–20× auf dem Transkriptionsschritt | ✅ UMGESETZT 2026-09-18 (HF-Decoder-Pfad): Gerätewahl cuda:0 bei torch.cuda, Kill-Switch `AURIK_WHISPER_GPU=0`, GPU-Fehler ⇒ sichtbarer CPU-Rückfall (§V6 (copilot-instructions.md)); auf diesem Host inaktiv — HF-Modell-Dateien fehlen (Blob-Store-Symlinks gebrochen) ⇒ ONNX/DSP-Ersatzpfad |
 | P10 | ORT-Session-Tuning (BANQUET intra-op 4→N im Zusammenspiel mit P8) | Mikro; intra_op=4 bleibt Optimum in der gemessenen Matrix | ✅ UMGESETZT 2026-09-18: `AURIK_BANQUET_INTRA_OP_THREADS`-Knopf (Default 4 = bisher); Matrix gemessen (intra_op 1/2/4 × P 0/2/4/6/8) |
@@ -1728,6 +1732,7 @@ pre_echo-Rolling-Perzentil 2000+ np.percentile-Aufrufe, 6 Band-FFTs auf
 2 Signalen), dazu PMGG/CALIB/Coalition-Bookkeeping.
 
 UMGESETZT (Report-only-Pfad, numerisch äquivalent):
+
 - `_frame_f0_hnr`: batched FFT über alle Frames (sliding-window +
   axis=1-rfft/irfft, fftfreq gehoistet) statt Python-Frame-Loop —
   f0/voiced bit-identisch, hnr/flatness ≤ 1e-4; Kurzsignale behalten den
@@ -1903,7 +1908,7 @@ inkl. Python-Overhead). Tests erweitert: `test_15_numba_heapq_bit_identical`
 **Stärkste Maßnahmen (Reihenfolge = Wohlklang-Gewinn × Machbarkeit):**
 
 | # | Maßnahme | Wirkung | Status / nächster Schritt |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | Q1 | **HR-V1-Flag-Flip** (BigVGAN-Repair, additive_synthesis_gate) — A/B validiert | HNR +4,42 dB, af +0,0073, PQS 4,52 auf harmonisch beschädigtem Material | **BUDGET-URTEIL 2026-09-19: NEGATIV — Flag bleibt OFF.** Überwachter 225-s-Lauf (PERF-R10-Stand): Wall 12 137,5 s ≈ 3 h 22 min (RT-Bericht 32,0×, letzter Chunk 39× RT) — Akzeptanz ≤ 40 min weit verfehlt, KEIN Headroom für die 2,5×-RT-Synthese. Nächste Prüfung nach P1/P2-Gewinnen (GPU-Ports + Gap-Rest); Flip-Mechanik bleibt kartiert — **UPDATE 2026-09-27 (§P1-2): FLAG-FLIP DURCHGEFÜHRT** (`BIGVGAN_V2_HR_ACTIVATED = True`, `bigvgan_v2.pth` vorhanden, Budget nach §PERF-R15/17 −32 % Laufzeit) — HR-V1 produktiv aktiv |
 | Q2 | **F4-FlashSR-HF-Rekonstruktion > 12,9 kHz** (16k→48k) | Air/Presence — schließt die größte Qualitätslücke (conf 0,99) | **UNBLOCKED (2026-09-19)**: Base-Checkpoint `models/flashsr/models/upsampler.pth` ✓, MUSDB18-HQ (150 Tracks) ✓, Rezept `train_flashsr_f4.py` ✓; Finetune-Lauf 2026-09-17 bei Epoche 6 abgebrochen (val_a1 0,45–0,52, noch nicht konvergiert, best 0,449@E4/0,516@E5) — **Resume** `--resume output/f4_flashsr/checkpoint_epoch6.pt --epochs 12+` nach Ende des Supervised-Laufs (GPU) — **UPDATE 2026-10-03:** Workspace-Datenverlust entdeckt (`data/musdb18hq` + `output/f4_flashsr` weg, Muster wie SOTA4-5-Blob-Symlinks); beides aus `Aurik_Backup/Aurik_Standalone` reaktiviert (MUSDB 750 WAVs = 150×5 ✓). Archiv `_training_archive_20260920/f4_flashsr` enthält Epochen 0–29: **Val-Kliff nach E13** (best **0,3645@E10** = `best.pt`; E14–29 0,63–0,87 ⇒ `checkpoint_epoch29` NICHT fortsetzen). **Resume von `best.pt` gestartet 2026-10-03** (E11→22, Early-Stop Patience 5, `.venv_aurik`/ROCm) |
 | Q3 | **Separation-SOTA:** VS-1/GSEP + Demucs v5 | Separierungs-/Quelltreue-Sprung (P1-2) | EXTERN BLOCKIERT — offizielle Gewichte beschaffen (SongEval/Release-Kanäle) |
@@ -1958,7 +1963,7 @@ Neumessung mit R13-Tooling läuft separat (`output/perf_session_20260919_r13/`).
 > verbessert die Hör-Qualität — Qualitätskompromisse sind ausgeschlossen.
 
 | ID | Maßnahme | Wirkung | Status |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | SOTA4-1 | PANNs-Multi-Window-Parallelisierung (VFA-Kette): Fenster sind unabhängig, ORT-`run` thread-sicher ⇒ ThreadPool nach BANQUET-P8-Muster, bit-identisch | ~10–20 s/Chunk; VFA (≈70 s) entlastet | ✅ UMGESETZT 2026-09-19 (26df39af): Opt-in-Parallelpfad (`INFER_PARALLEL`, Default 4), Maximum in fester Reihenfolge ⇒ bit-identisch; Resample-Wiederverwendung; Pre-Commit grün |
 | SOTA4-2 | HR-V1-Flag-Rollout (BigVGAN-Repair, `additive_synthesis_gate`): A/B-Validierung bestanden (af +0,0073, HNR +4,42 dB, PQS 4,52) — Budget-Nachweis mit dem neuen Headroom führen | messbar höhere Reparaturqualität (Harmonik/HNR); Kost nur die Synthese-Teile (~2,5× RT/10 s GPU) | OFFEN — Budget-Urteil nach Neumessung mit §PERF-R4-Torch-Pfad (phase_01 ~8× schneller als im v1023-Lauf; Headroom-Urteil nach dem nächsten Lauf) |
 | SOTA4-3 | F4-FlashSR-Musik-Finetune (HF-Rekonstruktion > 12,9 kHz): größte dokumentierte Qualitätslücke des Referenzmaterials (bandwidth_loss conf=0,99) | Air/Presence (MUSHRA-Proxy VocPres/ISO226) | GPU-GEBUNDEN — Rezept vorhanden (train_flashsr_f4.py), 16k→48k |
@@ -1970,6 +1975,7 @@ Neumessung mit R13-Tooling läuft separat (`output/perf_session_20260919_r13/`).
 **Akzeptanz je Maßnahme:** (1) bit-identisch oder durch Never-worsen-Gates/
 PMGG/Reinhör-Witness bestätigt (§0/Gesamtkonzept §6); (2) deterministisch
 (§G5 (GEBOTE.md)); (3) Messwerte im Lauf-Protokoll dokumentiert (RT-Faktor
+
 + Goal-SCORECARD/af-Delta); (4) §V6 (copilot-instructions.md)-Fail-closed unverändert.
 
 **Bewusst NICHT Teil der Welle (Qualitätskopplung, §V7/Hörordnung):**
@@ -1990,7 +1996,7 @@ Maskierung je Defekt-Kontext — ein Cache wäre nicht exakt).
 ### ROADMAP-ABSCHLUSS-MATRIX (alle noch offenen Punkte, Stand 2026-09-15)
 
 | Punkt | Status | Begründung / nächster Schritt |
-|---|---|---|
+| --- | --- | --- |
 | TODO-P0-1 (53×→32×-Laufzeit) | **TEIL-ERLEDIGT (Messung) 2026-09-15; Rest GPU-GEBUNDEN** | Hot-Phase-Messung geliefert: `compute_hot_phases` im Diagnose-Skript (rt_factor je Phase, Hot-Liste ab 0,5× RT, test_p0_1_hot_phase_report.py). **Attributions-Korrektur 2026-09-16 (Profiling):** phase_01s 4,4×-RT-Attribution „DSP-Multiscale“ war falsch — Multiscale kostet nur 3 s/225 s; Treiber sind ML-Load/-Inferenz (BANQUET/Device-Detection). **Song-Level-Hoists 2026-09-17 (je Chunk-Wiederholung entfernt):** Struktur-Hoist ANA-6 ✅, **LGE-Transkription-Hoist ✅ (Whisper 8×→1×, Timeline je Chunk zeitverschoben, commit 3bfa5215)**, Export nur nach Assembly ✅ (04a52839); PANNs-Tags + Defect-Scores + Gender sind bereits Song-Ebene (Pre-Analyse-Cache, verifiziert). **R3-GPU-Ports 2026-09-17 abgeschlossen (Registry-Verdikte + Produktions-Vertragstest `test_production_registry_verdicts_restoration_models`):** BANQUET → ROCm ✅ (Partitioning-Fix 2026-09-13, Funktions-Validierung identisch; Deckel 1,19× — der Export ist batch-1-spezifisch, Mini-Batch scheitert in `node_view`-Reshapes, gemessen), CRePE-Pitch → ROCm ✅ (28×), DeepFilterNet → ehrlich CPU ✅ (GPU-Overhead dominiert bei Mini-Modellen). Ein Song-Level-Hoist der Inferenz ist NICHT äquivalent (phase_09 verarbeitet den phase_08-Ausgang je Chunk) — R3 war der korrekte Weg. **Analyse-Cache je Datei-Hash 2026-09-17 ✅ (Disk-Persistenz der Bridge-Analyse-Caches `output/analysis_cache/`, Read-/Write-Through unter dem In-Memory-LRU, AURIK_VERSION-Invalidierung, §V6-fail-closed, Kill-Switch AURIK_ANALYSIS_CACHE=0, 6 neue + 21 bestehende Tests grün):** Wiederholungsläufe am selben Song überspringen die komplette Voranalyse über Prozessgrenzen. **P6/P7 2026-09-17 ✅ (Architektur-Feststellung: Batch ist bereits Ein-Prozess + ThreadPool(4); §V8-Transient-State-Lücke des BANQUET-Singletons geschlossen — `reset_for_song()` + `_state_lock`, verdrahtet in `_restore_chunked`, 19 Tests grün).** OFFEN: nur noch GPU-gebundenes (F4/F5, SOTA-ML-V5) + Laufzeit-Verifikation im nächsten Lauf | hängt an den GPU-Buildouts F1–F5 + Residency-Gewinnen + den restlichen Hoists |
 | TODO-P0-2 (Per-Session-Kompilierung) | ✅ GESCHLOSSEN 2026-10-04 | Statt „jede Session neu in-memory optimieren“ serialisiert `backend/core/onnx/runtime.py` die ORT-Graph-Optimierung dauerhaft (`output/onnx_session_cache/<stem>.<key>.ort`, Key = Größe+mtime+ORT-Version+Provider+AURIK_VERSION, Kill-Switch `AURIK_ORT_CACHE=0`, §V6-sicher) — `apply_session_cache`/`create_inference_session`, verdrahtet in `ONNXInferenceSession`; Paritätstest `tests/unit/test_ort_session_cache.py` 4 grün (bit-identisch uncached/warm/reload + Persistenz + Key-Invalidierung, §G5) |
 | TODO-P0-3 (Budget-Wahrheit) | ✅ GESCHLOSSEN 2026-09-15 | s. o. A |
@@ -2036,7 +2042,7 @@ Maskierung je Defekt-Kontext — ein Cache wäre nicht exakt).
 ### Befunde (Reihenfolge = empfohlene Abarbeitung)
 
 | ID | Befund | Status |
-|---|---|---|
+| --- | --- | --- |
 | SUP-F1 (PERF, alle Songs) | **PANNs lief auf ROCm immer CPU**: der lokale Provider-Filter verglich (Name, Options)-TUPEL gegen String-Namen → GPU-Provider wurde immer verworfen (`PANNs: GPU-Inferenz angefordert …, aber Sitzung nutzt nur CPU`). | ✅ GEFIXT 2026-09-16: Tupel-Name wird ausgepackt; Regressionstest `test_panns_rocm_provider_filter.py` (2 Fälle) |
 | SUP-F2 (QUALITÄT, alle Songs) | **BANQUET-Temp-WAV hart auf 44,1 kHz kodiert** (Pipeline fährt 48 kHz → Speed-/Pitch-Korruption des ML-Pfades) **+ Float-WAV**, das externe Reader (Docker/scipy) als „Format not recognised“ ablehnen → ML-Knistern-Pfad tot, DSP-Ersatz lief. | ✅ GEFIXT 2026-09-16: echte `sample_rate` + `subtype="PCM_16"` in `phase_09_crackle_removal._remove_crackle_ml` |
 | SUP-F3 (DIAGNOSTIK, alle Songs) | **§V44-Meldung invertiert**: `ok=False` (IACC ≥ 0,70 = schmales Stereobild) wurde als „Mono-Kompatibilitätswarnung“ geloggt — Near-Mono-Vintage (IACC=0,89) ist perfekt mono-kompatibel; irreführende Warnung auf allen schmal-stereofonen Songs. | ✅ GEFIXT 2026-09-16: Meldung korrigiert („schmales Stereobild, kein Defekt“) |
@@ -2063,13 +2069,14 @@ Maskierung je Defekt-Kontext — ein Cache wäre nicht exakt).
 > Report: `docs/reports/supervised_runs/2026-09-16_test_track_225s_export_analyse.md`.
 
 | Befund | Wert | Bewertung |
-|---|---|---|
+| --- | --- | --- |
 | Eingeführte Restdefekte (Restaurierungs-Schäden) | **0** — Oktavband-Δ exakt ±0,00 dB (alle 7 Bänder), Rauigkeit +0,000 asper, Pre-Echo −200 dB (Floor), af=0,998, §Hörbarkeits-Gate total=0 | ✅ Never-worsen perfekt eingehalten |
 | MuQ-MOS (10-s-Clips) | orig 4,84 → rest 4,85 (Δ +0,01) | ✅ keine Qualitäts-Verschlechterung |
 | Crest / Spektral-Zentroid | 4,1 → 4,1 · 621 → 625 Hz | ✅ Dynamik-/Klangcharakter erhalten |
 | Verbliebene Quell-Charakteristika (Scanner-Flags) | bandwidth_loss 0,99, hf_remanence_loss 0,98, inner_groove_distortion 0,97, wow/flutter, reverb_excess, soft_saturation | Ära-authentisch (1960er-Vinyl-Kette, BW 12,9 kHz) — Hörordnung Stufe 1 (authentizitaet) verbietet aggressive „Korrektur“ |
 
 **Optimierungspotenzial (maximaler Wohlklang, geordnet):**
+
 1. **HF-Rekonstruktion > 12,9 kHz** (bandwidth_loss/hf_remanence_loss conf≈0,99) →
    SOTA-ML-V1 FlashSR-Finetune / HR-V1 BigVGAN (GPU F4/F3, additive_synthesis_gate)
    — Hebel: Air/Presence (MUSHRA-Proxy VocPres=0,500, ISO226=0,254).
@@ -2120,6 +2127,7 @@ loudness/delta) haben ALLE Phasen Guard-Ketten):
   bewusst ohne Gate — korrekt.
 
 **Nachgerüstet 2026-09-17:**
+
 - **phase_09 crackle_removal** — `_apply_audibility_gate_to_regions`
   (subaudible Knistern-Regionen übersprungen, §4; Zähler
   `subaudible_crackle_skipped` in allen 3 Return-Pfaden). Wichtig: Der
@@ -2176,7 +2184,7 @@ Chunk-Modus-Struktur (siehe AUF-4).
 > (copilot-instructions.md)).
 
 | # | Befund (Fehlerklasse) | Status 2026-09-17 |
-|---|---|---|
+| --- | --- | --- |
 | ANA-1 | **Grenz-Erkennung dupliziert**: §2.52b nutzte agglomerative k-Heuristik (1/30 s), §2.17 hatte bereits die definierende SSM/Checkerboard-Novelty (Foote 2000) — zwei Analysatoren, zwei Methoden, potenziell widersprüchliche Sektions-Karten | ✅ **UMGESETZT**: kanonisches Modul `backend/core/dsp/ssm_segmentation.py`; §2.17 delegiert (37 Tests grün), §2.52b nutzt SSM primär (agglomerativer Fallback); Intro/Outro nur noch erstes/letztes Segment (Positionsregel verschluckte den 156-s-Refrain). Test-Track: 12 evidenz-basierte Segmente, alle 4 Refrains + Klimax, 1,28 s/min ≤ Budget; neuer Test test_ssm_boundaries_detect_aba_transitions |
 | ANA-2 | **Vokal-Aktivität**: `_estimate_vocal_activity` (spectral flatness + GLOBALE PANNs-Konfidenz) — die definierende Evidenz (per-Segment-PANNs-Singing) ist im Plugin vorhanden (`get_tags`, Positions-Fenster), wird aber nicht je Segment genutzt | ✅ **UMGESETZT 2026-09-17**: `analyze_structure(vocal_scorer=…)` — optionaler per-Segment-Scorer ersetzt den Flatness-Proxy; UV3 baut den PANNs-Scorer GPU-gated (`_build_vocal_scorer_if_gpu`, CPU ⇒ Proxy unverändert, Budget §2.52b); Tests: test_ana2_vocal_scorer_overrides_flatness |
 | ANA-3 | **Gender-Detektion** (phase_19 `_detect_gender_robust`): F0-/Formant-Heuristik ohne ML-Klassifikator; konsumiert von 19/43 (Sibilanten-Bänder) | ✅ **UMGESETZT 2026-09-17 (OHNE neue Inferenz)**: die Male/Female-Singing-Klassen (32/33) waren in den einmalig berechneten PANNs-Tags enthalten, aber nicht exponiert — jetzt als eigene Keys im Plugin-Resultat + ML-Prior in `_detect_gender_robust` (Abstand > 0,10, Score ≥ 0,25 ⇒ male/female; sonst unveränderte DSP-Heuristik) |

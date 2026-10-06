@@ -49,7 +49,7 @@ def process(self, audio: np.ndarray, sample_rate: int,
 ```
 
 | # | Phase | Spezifikation |
-|---|---|---|
+| --- | --- | --- |
 | 01 | Click Removal | Adaptive Threshold, Material-Profile |
 | 02 | Hum Removal | Notch-Filter, Harmonische-Erkennung |
 | 03 | Denoise | Spektrale Subtraktion, OMLSA-Fallback |
@@ -72,31 +72,48 @@ def process(self, audio: np.ndarray, sample_rate: int,
 | 38 | Presence Boost | Era-adaptiv, §5/5 Peak-Messung |
 | 39 | Air Band | §0a-Guard (Restoration → verboten), §5/5 Peak |
 | 40 | Loudness Normalization | ITU-R BS.1770-4, §5/5 LUFS-Messung |
-| 41 | — | — |
-| 42 | — | — |
-| 43 | — | — |
-| 44 | — | — |
-| 45 | — | — |
-| 46 | — | — |
-| 47 | — | — |
-| 48 | — | — |
-| 49 | — | — |
-| 50 | — | — |
-| 51 | — | — |
-| 52 | — | — |
-| 53 | — | — |
-| 54 | — | — |
-| 55 | — | — |
-| 56 | — | — |
-| 57 | — | — |
-| 58 | — | — |
-| 59 | — | — |
-| 60 | — | — |
-| 61 | — | — |
-| 62 | — | — |
-| 63 | — | — |
-| 64 | — | — |
-| 65 | — | — |
+| 41 | Output Format Optimization | High-order Noise-Shaped Dither + Sinc-Resampling + codec-sichere Export-Vorbereitung (Fallback: TPDF-Dither + Standard-Resample); Zielgruppe `O10_output` |
+| 42 | Vocal Enhancement | Stem-bewusstes Vocal-Enhancement mit Formant-/Vibrato-Guards (MIIPHER-lite DSP-gestützt). **Im Restoration-Modus VERBOTEN (§0a copilot-instructions.md)** — nicht in `CAUSE_TO_PHASES` |
+| 43 | ML De-Esser | Phonem-bewusster zweiter De-Esser-Durchgang (DSP+ML-Hybrid), stimmtyp-adaptiv (`GENDER_FREQ_MAP`; Fallback unknown 5–9 kHz); Sibilanten-Maskierungs-Gate — subaudible Sibilanten bleiben Original |
+| 44 | Guitar Enhancement | DDSP-Saitenresonanz-Verfeinerung + Anschlags-Artikulationskontur (nur bei PANNs conf ≥ 0.50); Fallback: quellenspezifische EQ-/Transienten-Kontur |
+| 45 | Brass Enhancement | Formant- und resonanzerhaltende Blechbläser-Konturierung (nur bei PANNs conf ≥ 0.50); Fallback: Dynamic-EQ + Harmonic-Tilt |
+| 46 | Spatial Enhancement | Binaural-konsistentes Spatial-Enhancement (psychoakustische Raum-Diffusion); Fallback: M/S-Ambience-Weitung |
+| 47 | True-Peak Limiter | Oversampled EBU-R128-True-Peak-Limiter (ISP-sicher, Ziel −1.0 dBTP, AES17-konform) |
+| 48 | Stereo Width Enhancer | Mono-geschützter Blumlein-/M/S-Breiten-Enhancer mit IACC-Guard und Korrelations-Limit |
+| 49 | Advanced Dereverb | Blind-RIR-Schätzung + WPE + Spät-Nachhall-Unterdrückung (RT60-Witness steuert die Stärke, konservativ gedeckelt) |
+| 50 | Spectral Repair | Konsistenz-Wiener + Anomalie-Detektor + PGHI-Rekonstruktion; Fallback: NMF + Spektral-Interpolation; `hf_protected_bin_start` schützt analoge Harmonische |
+| 51 | Drums Enhancement | Drum-Transienten-Modell + Punch-erhaltende Kontur (nur bei PANNs conf ≥ 0.50); Fallback: Transient-Shaper + EQ |
+| 52 | Piano Restoration | Inharmonischer Partial-Tracker + pedal-resonanz-bewusste Rekonstruktion; Fallback: Harmonik-EQ + Transienten-Rettung |
+| 53 | Semantic Audio Analysis | BEATs iter3 + CLAP + semantische Szenen-Fusion → Kontextautorität für alle 15 Ziele, **reine Analyse** (verändert kein Audio, kein Einzelziel-Vorrang); Fallback: PANNs + Spektral-Fingerprint |
+| 54 | Transparent Dynamics | Programmabhängige transparente Dynamik-Reparatur mit Hüllkurven-Glättung; DR-Änderung je Material auf `_MATERIAL_DR_CEILING_DB` begrenzt |
+| 55 | Diffusion Inpainting | Maskiertes Spektral-Inpainting: Flow Matching primär + CQTdiff+ sekundär mit SSIP (Fallback DiffWave + NMF-beta); Naht-Gates IN-V1/V2 am Splice-Punkt |
+| 56 | Spectral Band Gap Repair | Harmonische Fortsetzung + FCPE-geführte Band-Lücken-Synthese (HEAD_WEAR, nur bei conf ≥ 0.55) |
+| 57 | Print-Through Reduction | Bidirektionale prädiktive Echo-Unterdrückung (Pre- und Post-Echo getrennt) + periodischer Template-Cancel |
+| 58 | Lyrics-Guided Enhancement | Whisper-Tiny ONNX → wav2vec2-Phonem-Alignment → ContentAwareProcessor (§2.36 PFLICHT, Latenz ≤ 8 s/min); ausschließlich phonemgrenzen-DSP |
+| 59 | Modulation Noise Reduction | Modulations-Spektrogramm-Unterdrückung + zyklostationäres Tracking (bandtypisches Modulationsrauschen) |
+| 60 | Inner Groove Distortion Repair | Positionsadaptive Volterra-THD-Inversion (IGD nimmt zur Rillenmitte zu); Fallback: asymmetrisches Harmonic-De-Warping |
+| 61 | Groove Echo Cancellation | Template-Subtraktion einer Umdrehung + OT-Alignment (Vinyl-Vorecho durch Rillendeformation) |
+| 62 | Crosstalk Cancellation | Beschränkte BSS/De-Mixing mit Mono-Guard; Fallback: Least-Squares-Crosstalk-Inversion |
+| 63 | Intermodulation Reduction | Volterra-Kern-Inversion + Seitenband-Unterdrückung (f1±f2-Produkte) |
+| 64 | Tape Splice Repair | Diskontinuitäts-Klassifikator + phase- und pegel-gematchter Spline-Patch (Klick-, Pegel- und Phasensprung an Klebestellen) |
+| 65 | Vocal Naturalness Restoration | HNR-Blend + Spektral-Tilt- und Formant-Tilt-Korrektur — nur Restoration, §0a-konform, kein ML/kein Enhancement; Sänger-Identitäts-Witness (cos ≥ 0.92) |
+| 66 | Stem-Targeted NR | Stem-gezielte Rauschunterdrückung (Vokal und Begleitung getrennt restauriert); Rekombination ausschließlich über den einen Nahtpunkt des §III.12-Vertrags |
+| 67 | Crackle Texture Removal | Knistern-Textur-Entfernung (ML Route A, Bailey-2019-Klasse) mit Kontext-Padding + Crossfade; Torch-ROCm primär, ONNX-CPU als Paritäts-Ersatzpfad (§III.9 copilot-instructions.md); nur für CRACKLE-Textur (Either-Or-Routing, Spec 03) |
+
+> **Quelle dieser Zeilen:** `.github/specs/06_phases_system.md` (normativ — Phasenliste,
+> Mechanismus je Phase, Fallback, Output-Gruppe `O1…O10` und Ziel-Zuordnung), abgeglichen
+> mit den Modul-Docstrings in `backend/core/phases/`.
+>
+> **§0a-Verbot im Restoration-Modus** (copilot-instructions.md): `phase_21_exciter`,
+> `phase_35_multiband_compression`, `phase_42_vocal_enhancement` — sie dürfen nicht in
+> `CAUSE_TO_PHASES` erscheinen (Pre-Commit-Hook `Crossfire-Guard`).
+>
+> **Ist-Stand-Diskrepanz (gemessen 2026-10-06, offen):** Die Überschrift nennt 66 Phasen,
+> die Tabelle endet bei 65 — im Verzeichnis liegen **68 numerierte Phasendateien
+> (01–67, `phase_07` doppelt: `declipper` + `harmonic_restoration`)** plus
+> `phase_interface`, `phase_glue_stage` und `phase_ambience_polish` (71 Dateien).
+> Ebenso fehlen in dieser Tabelle weiterhin die Zeilen für 10, 11, 13, 14, 15, 20, 21,
+> 22, 24–27 und 29–34.
 
 ### 2.4 Qualitäts-Gates
 
@@ -150,7 +167,7 @@ def process(self, audio: np.ndarray, sample_rate: int,
 ## 4. Spezifikationen-Referenz
 
 | Spec | Modul | Inhalt |
-|---|---|---|
+| --- | --- | --- |
 | §G-5/5 | do_no_harm_guardian.py, phase_40 | Weltspitze-Qualitätsgarantie |
 | §0a | phase_39 | Air-Band-Verbot im Restoration-Mode |
 | §2.46e | phase_39, unified_restorer_v3 | Novelty-Rollback, Harmonic-Exciter-Verbot |
@@ -164,7 +181,7 @@ def process(self, audio: np.ndarray, sample_rate: int,
 ## 5. Abweichungsprotokoll (bidirektional behoben)
 
 | Datum | Abweichung | Richtung | Fix |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | 2026-07-18 | §G-5/5 fehlte in Phase 40 | Spec→Code | Tag ergänzt |
 | 2026-07-18 | `.scores` vs `.degraded_metrics` | Code→Spec | Referenz korrigiert (GuardianVerdict ist höherwertig) |
 | 2026-07-18 | `retry_strengths` nie definiert | Code→Spec | Definition ergänzt [0.75,0.50,0.30,0.15] |
@@ -228,20 +245,20 @@ bereits behoben ist.
 
 ### 8.2 Betroffene Defekt-Typen (Doppel-Behandler)
 
-| Defekt | Phase A (frueh) | Phase B (spaet) | Delta Phasen |
-|---|---|---|---|
-| CLIPPING | phase_07 (~Pos 4) | phase_23 (~Pos 23) | 19 |
-| CLICKS | phase_01 (Pos 1) | phase_27 (~Pos 27) | 26 |
-| CRACKLE | phase_09 (Pos 2) | phase_28 (Pos 10) | 8 |
-| HIGH_FREQ_NOISE | phase_03 (Pos 8) | phase_29 (Pos 9) | 1 |
-| QUANTIZATION_NOISE | phase_03 (Pos 8) | phase_23 (~Pos 23) | 15 |
-| DROPOUTS | phase_24 (~Pos 22) | phase_50 (~Pos 24) | 2 |
-| DIGITAL_ARTIFACTS | phase_23 (~Pos 23) | phase_50 (~Pos 24) | 1 |
-| REVERB_EXCESS | phase_49 (~Pos 15) | phase_20 (~Pos 14) | 1 |
-| STEREO_IMBALANCE | phase_15 (~Pos 26) | phase_33 (~Pos 28) | 2 |
-| PITCH_DRIFT | phase_12 (~Pos 20) | phase_31 (~Pos 21) | 1 |
-| BANDWIDTH_LOSS | phase_06 (~Pos 18) | phase_07 (~Pos 19) | 1 |
-| SIBILANCE | phase_19 (~Pos 16) | phase_43 (~Pos 30) | 14 |
+| Defekt                | Phase A (frueh)    | Phase B (spaet)    | Delta Phasen |
+|-----------------------|--------------------|--------------------|--------------|
+| CLIPPING              | phase_07 (~Pos 4)  | phase_23 (~Pos 23) | 19           |
+| CLICKS                | phase_01 (Pos 1)   | phase_27 (~Pos 27) | 26           |
+| CRACKLE               | phase_09 (Pos 2)   | phase_28 (Pos 10)  | 8            |
+| HIGH_FREQ_NOISE       | phase_03 (Pos 8)   | phase_29 (Pos 9)   | 1            |
+| QUANTIZATION_NOISE    | phase_03 (Pos 8)   | phase_23 (~Pos 23) | 15           |
+| DROPOUTS              | phase_24 (~Pos 22) | phase_50 (~Pos 24) | 2            |
+| DIGITAL_ARTIFACTS     | phase_23 (~Pos 23) | phase_50 (~Pos 24) | 1            |
+| REVERB_EXCESS         | phase_49 (~Pos 15) | phase_20 (~Pos 14) | 1            |
+| STEREO_IMBALANCE      | phase_15 (~Pos 26) | phase_33 (~Pos 28) | 2            |
+| PITCH_DRIFT           | phase_12 (~Pos 20) | phase_31 (~Pos 21) | 1            |
+| BANDWIDTH_LOSS        | phase_06 (~Pos 18) | phase_07 (~Pos 19) | 1            |
+| SIBILANCE             | phase_19 (~Pos 16) | phase_43 (~Pos 30) | 14           |
 
 ### 8.3 Loesung: PhaseResult.resolved_defects
 
@@ -274,20 +291,20 @@ Naechste Phase sieht REDUZIERTE Severity
 
 ### 8.4 Phasen mit resolved_defects-Pflicht
 
-| Phase | Meldet | Status |
-|---|---|---|
-| phase_01_click_removal | CLICKS → residual | ✅ v10.18 |
-| phase_02_hum_removal | HUM → residual | ✅ v10.18 |
-| phase_03_denoise | HIGH_FREQ_NOISE → residual | ✅ v10.18 |
-| phase_05_rumble_filter | LOW_FREQ_RUMBLE → 0.0 | ✅ v10.18 |
-| phase_07_declipper | CLIPPING → residual | ✅ v10.18 |
-| phase_09_crackle_removal | CRACKLE → residual | ✅ v10.18 |
-| phase_12_wow_flutter_fix | WOW, FLUTTER → residual | ✅ v10.18 |
-| phase_14_phase_correction | PHASE_ISSUES → 0.0 | ✅ v10.18 |
-| phase_15_stereo_balance | STEREO_IMBALANCE → 0.0 | ✅ v10.18 |
-| phase_24_dropout_repair | DROPOUTS → residual | ✅ v10.18 |
-| phase_30_dc_offset_removal | DC_OFFSET → 0.0 | ✅ v10.18 |
-| phase_49_advanced_dereverb | REVERB_EXCESS → residual | ✅ v10.18 |
+| Phase                      | Meldet                     | Status    |
+|----------------------------|----------------------------|-----------|
+| phase_01_click_removal     | CLICKS → residual          | ✅ v10.18 |
+| phase_02_hum_removal       | HUM → residual             | ✅ v10.18 |
+| phase_03_denoise           | HIGH_FREQ_NOISE → residual | ✅ v10.18 |
+| phase_05_rumble_filter     | LOW_FREQ_RUMBLE → 0.0      | ✅ v10.18 |
+| phase_07_declipper         | CLIPPING → residual        | ✅ v10.18 |
+| phase_09_crackle_removal   | CRACKLE → residual         | ✅ v10.18 |
+| phase_12_wow_flutter_fix   | WOW, FLUTTER → residual    | ✅ v10.18 |
+| phase_14_phase_correction  | PHASE_ISSUES → 0.0         | ✅ v10.18 |
+| phase_15_stereo_balance    | STEREO_IMBALANCE → 0.0     | ✅ v10.18 |
+| phase_24_dropout_repair    | DROPOUTS → residual        | ✅ v10.18 |
+| phase_30_dc_offset_removal | DC_OFFSET → 0.0            | ✅ v10.18 |
+| phase_49_advanced_dereverb | REVERB_EXCESS → residual   | ✅ v10.18 |
 
 ### 8.5 Defect-Locations-Invalidierung (§v10.19)
 
@@ -313,7 +330,7 @@ Schlüsselphasen — die Messwerte aus der Pre-Analyse sind nach
 Reparatur-Phasen nicht mehr aktuell:
 
 | Metadatum | Verändert durch | Neu-Messung nach Phase |
-|---|---|---|
+| --- | --- | --- |
 | Noise-Floor | phase_03, phase_29 | Nach Phase 03: `estimate_noise_floor(current_audio)` |
 | Bandwidth | phase_06 | Nach Phase 06: `measure_effective_bandwidth(current_audio)` |
 | Crest-Faktor | phase_07, phase_08 | Nach Phase 07: `measure_crest_factor(current_audio)` |
@@ -333,17 +350,17 @@ signifikant zu beeinträchtigen.
 Die Pre-Analyse (DefectScanner) erstellt einen statischen Snapshot, der unverändert
 durch die gesamte Pipeline gereicht wird. Dies betrifft 10 Metadaten-Schichten:
 
-| # | Schicht | Typ | Status |
-|---|---|---|---|
-| A | `defect_severity_map` (65 Defect-Severities) | Defect | ✅ §v10.18 |
-| B | `_defect_locations` (Zeit-Positionen) | Positional | ✅ §v10.19 |
-| C | `get_phase_defect_severity()` (Wet/Dry) | Modulation | ✅ §v10.21 |
-| D | Fallback/Direkt-Pfade (24× Bypass) | Transport | 📋 §v10.22 |
-| E | Akustische Profile (noise/bandwidth/crest) | Messung | 📋 §v10.23 |
-| F | Denker `plan()` (Phase-Selektion) | Planung | 🔴 §v10.24 |
-| G | PMGG Guard-Schwellen (restorability) | Qualität | 🔴 §v10.25 |
-| H | `quality_mode` (immutable) | Routing | 🟡 §v10.26 |
-| I | UQ Drive (Uncertainty Quant.) | Kalibrierung | 🟡 §v10.27 |
+| # | Schicht                                      | Typ          | Status     |
+|---|----------------------------------------------|--------------|------------|
+| A | `defect_severity_map` (65 Defect-Severities) | Defect       | ✅ §v10.18 |
+| B | `_defect_locations` (Zeit-Positionen)        | Positional   | ✅ §v10.19 |
+| C | `get_phase_defect_severity()` (Wet/Dry)      | Modulation   | ✅ §v10.21 |
+| D | Fallback/Direkt-Pfade (24× Bypass)           | Transport    | 📋 §v10.22 |
+| E | Akustische Profile (noise/bandwidth/crest)   | Messung      | 📋 §v10.23 |
+| F | Denker `plan()` (Phase-Selektion)            | Planung      | 🔴 §v10.24 |
+| G | PMGG Guard-Schwellen (restorability)         | Qualität     | 🔴 §v10.25 |
+| H | `quality_mode` (immutable)                   | Routing      | 🟡 §v10.26 |
+| I | UQ Drive (Uncertainty Quant.)                | Kalibrierung | 🟡 §v10.27 |
 
 ### 9.2 Beho bene Schichten (A–C)
 
@@ -483,27 +500,27 @@ PMGG-Phase, die in `{phase_01, phase_03, phase_07}` ist.
 
 ### 10.5 Dateien
 
-| Datei | Änderung |
-|---|---|
-| `backend/core/defect_re_scanner.py` | NEU: FFT-basierter Re-Scanner |
-| `unified_restorer_v3.py:34862` | Integration nach subtractiven Phasen |
-| `tests/normative/test_re_scanner.py` | NEU: 7 Tests |
+| Datei                                | Änderung                             |
+|--------------------------------------|--------------------------------------|
+| `backend/core/defect_re_scanner.py`  | NEU: FFT-basierter Re-Scanner        |
+| `unified_restorer_v3.py:34862`       | Integration nach subtractiven Phasen |
+| `tests/normative/test_re_scanner.py` | NEU: 7 Tests                         |
 
 ### 10.6 Endstand Gesamtpaket
 
-| Schicht | Status |
-|---|---|
-| A: defect_severity_map | ✅ 12 Phasen |
-| B: defect_locations | ✅ Invalidierung |
-| C: get_phase_defect_severity | ✅ merged map |
-| D: Fallback resolved_defects | ✅ _normalize_phase_result |
-| E: Dedicated-Repair | ✅ merged map |
-| F: Denker Phase-Skip | ✅ beide Loops |
-| G: Akustische Profile | 📋 §v10.23 |
-| H: PMGG-Guards | 📋 §v10.25 |
-| I: quality_mode | 📋 §v10.26 |
-| J: UQ Drive | 📋 §v10.27 |
-| **K: Bidirektionaler Re-Scan** | **✅ §v10.28** |
+| Schicht                        | Status                     |
+|--------------------------------|----------------------------|
+| A: defect_severity_map         | ✅ 12 Phasen               |
+| B: defect_locations            | ✅ Invalidierung           |
+| C: get_phase_defect_severity   | ✅ merged map              |
+| D: Fallback resolved_defects   | ✅ _normalize_phase_result |
+| E: Dedicated-Repair            | ✅ merged map              |
+| F: Denker Phase-Skip           | ✅ beide Loops             |
+| G: Akustische Profile          | 📋 §v10.23                 |
+| H: PMGG-Guards                 | 📋 §v10.25                 |
+| I: quality_mode                | 📋 §v10.26                 |
+| J: UQ Drive                    | 📋 §v10.27                 |
+| **K: Bidirektionaler Re-Scan** | **✅ §v10.28**             |
 
 ---
 
@@ -513,11 +530,11 @@ PMGG-Phase, die in `{phase_01, phase_03, phase_07}` ist.
 
 Nach jeder Schlüsselphase werden relevante akustische Metriken neu gemessen:
 
-| Phase | Messung | Methode |
-|---|---|---|
-| 03 (Denoise) | Noise-Floor (dB) | P5-Perzentil FFT |
-| 06 (Freq-Restoration) | Effektive Bandbreite (Hz) | -20 dB Rolloff |
-| 07 (Declipper) | Crest-Faktor (dB) | Peak/RMS |
+| Phase                 | Messung                   | Methode          |
+|-----------------------|---------------------------|------------------|
+| 03 (Denoise)          | Noise-Floor (dB)          | P5-Perzentil FFT |
+| 06 (Freq-Restoration) | Effektive Bandbreite (Hz) | -20 dB Rolloff   |
+| 07 (Declipper)        | Crest-Faktor (dB)         | Peak/RMS         |
 
 ### 11.2 Adaptive PMGG-Guards §v10.25 ✅
 
@@ -544,19 +561,19 @@ je mehr behoben, desto weniger Dämpfung.
 
 ### 11.5 Endstand alle 11 Schichten
 
-| # | Schicht | Status |
-|---|---|---|
-| A | defect_severity_map | ✅ |
-| B | defect_locations | ✅ |
-| C | get_phase_defect_severity | ✅ |
-| D | Fallback resolved_defects | ✅ |
-| E | Dedicated-Repair merged | ✅ |
-| F | Denker Phase-Skip | ✅ |
-| **G** | **Akustische Re-Messung** | **✅** |
-| **H** | **Adaptive PMGG-Guards** | **✅** |
-| **I** | **Adaptive quality_mode** | **✅** |
+| #     | Schicht                       | Status |
+|-------|-------------------------------|--------|
+| A     | defect_severity_map           | ✅     |
+| B     | defect_locations              | ✅     |
+| C     | get_phase_defect_severity     | ✅     |
+| D     | Fallback resolved_defects     | ✅     |
+| E     | Dedicated-Repair merged       | ✅     |
+| F     | Denker Phase-Skip             | ✅     |
+| **G** | **Akustische Re-Messung**     | **✅** |
+| **H** | **Adaptive PMGG-Guards**      | **✅** |
+| **I** | **Adaptive quality_mode**     | **✅** |
 | **J** | **UQ Drive resolved_defects** | **✅** |
-| K | Bidirektionaler Re-Scan | ✅ |
+| K     | Bidirektionaler Re-Scan       | ✅     |
 
 **Alle 11 Schichten implementiert.**
 
@@ -622,13 +639,13 @@ Der interne FFT-Puffer (576 bins) kann nicht mit 2 Kanälen gebroadcastet werden
 
 ### 12.6 Dateien
 
-| Datei | Fix |
-|---|---|
-| `unified_restorer_v3.py` | `_SegResult.success = True`, `_SegResult.resolved_defects = {}` |
-| `phases/phase_07_declipper.py` | `get_metadata()` → `PhaseMetadata` |
-| `core/defect_re_scanner.py` | TRANSIENT_SMEARING entfernt |
-| `hybrid/hybrid_wow_flutter.py` | CREPE-Skip-Logik entfernt |
-| `phases/phase_02_hum_removal.py` | Stereo-Kanal-Filterung |
+| Datei                            | Fix                                                             |
+|----------------------------------|-----------------------------------------------------------------|
+| `unified_restorer_v3.py`         | `_SegResult.success = True`, `_SegResult.resolved_defects = {}` |
+| `phases/phase_07_declipper.py`   | `get_metadata()` → `PhaseMetadata`                              |
+| `core/defect_re_scanner.py`      | TRANSIENT_SMEARING entfernt                                     |
+| `hybrid/hybrid_wow_flutter.py`   | CREPE-Skip-Logik entfernt                                       |
+| `phases/phase_02_hum_removal.py` | Stereo-Kanal-Filterung                                          |
 
 ---
 
@@ -636,34 +653,34 @@ Der interne FFT-Puffer (576 bins) kann nicht mit 2 Kanälen gebroadcastet werden
 
 ### 13.1 Metadaten-Schichten (11)
 
-| # | Schicht | Status |
-|---|---|---|
-| A | `defect_severity_map` (62 Defekte) | ✅ 12 Phasen |
-| B | `_defect_locations`-Invalidierung | ✅ UV3 |
+| # | Schicht                              | Status                 |
+|---|--------------------------------------|------------------------|
+| A | `defect_severity_map` (62 Defekte)   | ✅ 12 Phasen           |
+| B | `_defect_locations`-Invalidierung    | ✅ UV3                 |
 | C | `get_phase_defect_severity()` merged | ✅ defect_phase_mapper |
-| D | Fallback-Pfad resolved_defects | ✅ UV3 |
-| E | Dedicated-Repair merged map | ✅ UV3 |
-| F | Denker Phase-Skip | ✅ UV3 |
-| G | Akustische Re-Messung | ✅ UV3 |
-| H | Adaptive PMGG-Guards | ✅ UV3 |
-| I | Adaptive quality_mode | ✅ UV3 |
-| J | UQ Drive resolved_defects | ✅ UV3 |
-| K | Bidirektionaler Re-Scan | ✅ defect_re_scanner |
+| D | Fallback-Pfad resolved_defects       | ✅ UV3                 |
+| E | Dedicated-Repair merged map          | ✅ UV3                 |
+| F | Denker Phase-Skip                    | ✅ UV3                 |
+| G | Akustische Re-Messung                | ✅ UV3                 |
+| H | Adaptive PMGG-Guards                 | ✅ UV3                 |
+| I | Adaptive quality_mode                | ✅ UV3                 |
+| J | UQ Drive resolved_defects            | ✅ UV3                 |
+| K | Bidirektionaler Re-Scan              | ✅ defect_re_scanner   |
 
 ### 13.2 Bug-Fixes (5)
 
-| # | Fix |
-|---|---|
+| # | Fix                         |
+|---|-----------------------------|
 | 1 | `_SegResult.success = True` |
-| 2 | Phase 07 `PhaseMetadata` |
+| 2 | Phase 07 `PhaseMetadata`    |
 | 3 | TRANSIENT_SMEARING entfernt |
-| 4 | CREPE-Skip entfernt |
-| 5 | Phase 02 Stereo-Filter |
+| 4 | CREPE-Skip entfernt         |
+| 5 | Phase 02 Stereo-Filter      |
 
 ### 13.3 Dateiübersicht
 
 | Datei | Änderung |
-|---|---|
+| --- | --- |
 | `SPEC.md` | §§v10.18–v10.29 |
 | `phase_interface.py` | `create_phase_result(resolved_defects=...)` |
 | `defect_phase_mapper.py` | `get_phase_defect_severity(defect_severity_map=...)` |
@@ -718,7 +735,7 @@ Phase 54 (Transparent Dynamics) / Phase 24 (Dropout Repair)
 ### 14.3 Änderungen
 
 | Datei | Änderung |
-|---|---|
+| --- | --- |
 | `defect_scanner.py:3715` | `_suppressed_head_dip_locations` Liste für Zeitbereiche |
 | `defect_scanner.py:3750` | Statt `continue`: Zeitbereich sammeln + `continue` |
 | `defect_scanner.py:3767` | `self._forwarded_head_dip_locations` speichern |
@@ -758,7 +775,7 @@ class CalibrationContext:
 ### 15.3 Drei-Klassen-Kalibrierung
 
 | Klasse | Beispiele | Ableitung |
-|--------|----------|-----------|
+| ------ | --------- | --------- |
 | **Physikalische Konstanten** | −60 dBFS (digital black), −0.3 dBTP (ITU-R BS.1770) | Keine Kalibrierung nötig — Naturgesetze |
 | **Material-Konstanten** | max_bandwidth_by_material, noise_floor_by_medium | Aus material_type + era_decade in calibration_matrix.py |
 | **Song-Adaptive Parameter** | NOVELTY_CRIT, min_strength, ECHO_THRESH, gain_budget | **Kontinuierlich aus CalibrationContext** — NIE hartcodiert |
@@ -797,7 +814,7 @@ Die Monotonie-Garantie (§G86) ist in `set_novelty_crit_threshold()` implementie
 ### 15.6 Cross-Referenzen
 
 | Dokument | Inhalt |
-|----------|--------|
+| -------- | ------ |
 | `.github/GEBOTE.md` Kategorie X | §G76–§G81: Kalibrierungs-Dispatch |
 | `.github/GEBOTE.md` Kategorie XI | §G82–§G86: Laufzeit-Rekalibrierung |
 | `.github/VERBOTE.md` Kategorie E | §V25–§V28: Hartcodierte Schwellwerte VERBOTEN |
@@ -811,7 +828,7 @@ Die Monotonie-Garantie (§G86) ist in `set_novelty_crit_threshold()` implementie
 Der Kreis des Gesamtsystems schließt sich: **Vorher → Während → Nachher → Beleg**.
 
 | §Ref | Bedeutung | Kern-Dateien |
-|------|-----------|--------------|
+| ---- | --------- | ------------ |
 | `§v10.990` | Zentrale UI-Palette, SOTA-Status-Panel im Hauptfenster, Bridge-SOTA-Zugänge (Model-Zoo, Consensus, Plan, Guards) | `Aurik10/ui/ui_constants.py`, `restoration_status_panel.py`, `backend/api/bridge.py`, `coordinated_repair.py` |
 | `§v10.991` | closeEvent: kein modaler Dialog bei headless/unsichtbar (Layout-Gate-Hang behoben) | `modern_window.py` |
 | `§v10.992` | Laienverständliche Einwilligungs-Ansicht („Gefunden … · Aurik wird …") | `bridge.get_repair_plan_consent`, `restoration_status_panel.py` |
@@ -840,7 +857,7 @@ Der Kreis des Gesamtsystems schließt sich: **Vorher → Während → Nachher �
 ### 16.3 Cross-Referenzen
 
 | Dokument | Inhalt |
-|----------|--------|
+| -------- | ------ |
 | `.github/specs/v10.99x_stimmiges_gesamtsystem.md` | Detaillierte Spezifikation + Evidenzblock |
 | `.github/workflows/ci-lite.yml` | gui-smoke-gate + evaluation-gate |
 | `tests/unit/test_frontend_backend_harmony.py` | Drift-Gates Frontend↔Backend |

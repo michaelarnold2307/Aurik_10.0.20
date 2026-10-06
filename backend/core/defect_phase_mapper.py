@@ -3,7 +3,7 @@ core/defect_phase_mapper.py
 Defect-to-Phase Mapper (DPM)
 ==============================
 
-Ordnet jeden der 20 DefectType-Werte den jeweils relevanten Phasen zu
+Ordnet jeden der 65 DefectTypes den jeweils relevanten Phasen zu
 und konfiguriert den ProcessingConfig-Parameter-Satz präzise für den
 Primary-Defekt.
 

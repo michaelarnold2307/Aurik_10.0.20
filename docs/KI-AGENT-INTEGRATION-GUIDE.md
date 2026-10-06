@@ -31,11 +31,11 @@ Dieses Dokument liefert **praktische Ergänzungen** zu den Richtlinien.
 | Modul | Datei | Funktion |
 | --- | --- | --- |
 | `PerceptualEmbedder` | `core/perceptual_embedder.py` | 256-dim L2-normalisierter Einbettungsraum |
-| `CausalDefectReasoner` | `core/causal_defect_reasoner.py` | Bayesianische Kausalinferenz, 62 Kausal-Ursachen |
+| `CausalDefectReasoner` | `core/causal_defect_reasoner.py` | Bayesianische Kausalinferenz, 66 Kausal-Ursachen |
 | `GPParameterOptimizer` | `core/gp_parameter_optimizer.py` | RBF-GP + UCB, lernt dauerhaft pro Material |
 | `PerceptualQualityScorer` | `core/perceptual_quality_scorer.py` | Gammatone-NSIM + MCD + LUFS + MOS |
 | `MusicalGoalsChecker` | `backend/core/musical_goals/musical_goals_metrics.py` | 15 Ziele, `measure_all(audio, sr)` |
-| `DefectScanner` | `core/defect_scanner.py` | 62 DefectTypes, material-adaptive Klassifikation |
+| `DefectScanner` | `core/defect_scanner.py` | 65 DefectTypes, material-adaptive Klassifikation |
 | `UnifiedRestorerV3` | `core/unified_restorer_v3.py` | Phasen-Pipeline-Orchestrator (69 Phasen-Dateien) |
 | `VocalAIEnhancement` | `core/vocal_ai_enhancement.py` | `VoiceGender` (MALE/FEMALE/CHILD/ANDROGYNOUS) |
 | `ExcellenceOptimizer` | `core/excellence_optimizer.py` | `optimize_for_excellence()` |
@@ -49,7 +49,7 @@ Eingang (beliebige SR, mono/stereo)
     │
     ▼ auf 48 kHz resampeln (Lanczos-4)
     │
-    ▼ [DefectScanner.scan()] → DefectAnalysisResult (62 DefectTypes, material-adaptiv)
+    ▼ [DefectScanner.scan()] → DefectAnalysisResult (65 DefectTypes, material-adaptiv)
     │
     ▼ [CausalDefectReasoner.reason_about_defects()] → RestorationPlan
     │   .primary_cause, .recommended_phases, .phase_parameters, .reasoning
@@ -175,7 +175,9 @@ tape · reel_tape · vinyl · shellac · wax_cylinder · wire_recording · lacqu
 dat · cd_digital · mp3_low · mp3_high · aac · minidisc · streaming · unknown
 ```
 
-**62 DefectTypes (vollständig, Stand v10.0.8):**
+**DefectType-Auszug** (kanonisch sind **65 DefectTypes**; alleinige Quelle ist das
+Enum `DefectType` in `backend/core/defect_scanner.py` — die folgende Liste ist eine
+**Auswahl**, KEINE vollständige Aufzählung; Stand der Auflistung: v10.0.8):
 
 ```
 CLICKS · CRACKLE · HUM · WOW · FLUTTER · LOW_FREQ_RUMBLE · DROPOUTS
@@ -406,7 +408,7 @@ Jede neue DSP-Funktion MUSS auf mindestens einem dieser Prinzipien basieren:
 | NSIM / SSIM | Strukturelle Ähnlichkeit, Qualitätsbewertung |
 | PGHI (Perraudin 2013) | Phasenkonsistenz nach Spektralmodifikation |
 | GP/UCB + MOO Pareto | Parameteroptimierung (14 Objectives) |
-| Bayesianische Kausalinferenz | Defektursachen-Erkennung (62 Ursachen) |
+| Bayesianische Kausalinferenz | Defektursachen-Erkennung (66 Ursachen) |
 | ISO 226:2003 Equal-Loudness | BrillanzMetric + WaermeMetric-Gewichtung |
 | Virtual Pitch / Missing Fundamental | BassKraftMetric (Moore et al. 2006) |
 

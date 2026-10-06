@@ -88,7 +88,7 @@ Diese Invarianten entstanden aus realen Lauf-Befunden — Verstöße zerstören 
 > Stärke-Skalierung aktiv“). Die übrigen Einträge bleiben Roadmap.
 
 | § | Konzept | Beschreibung |
-|---|---|---|
+| --- | --- | --- |
 | §3.0 | **Cross-Phase Naturalness Consensus** | Phasen im gleichen Frequenzbereich stimmen sich ab. Naturalness-Guard prüft kumulative Wirkung |
 | ~~§3.1~~ | ~~SectionStrengthEnvelope aktiv~~ | **Implementiert** — SectionGoalAdapter skaliert Stärke sektionsweise |
 | §3.2 | **Artist/Track-Fingerprint** | BatchSessionLearner persistiert Stimm-Modell + Track-Modell für Transfer |

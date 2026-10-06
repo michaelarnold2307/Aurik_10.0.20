@@ -52,7 +52,7 @@
 | `PerceptualQualityScorer` | `core/perceptual_quality_scorer.py` | ✅ |
 | `MusicalGoalsChecker` (15 Ziele) | `backend/core/musical_goals/musical_goals_metrics.py` | ✅ |
 | `MediumDetector` | `forensics/medium_detector.py` | ✅ |
-| `DefectScanner` (62 DefectTypes) | `core/defect_scanner.py` | ✅ |
+| `DefectScanner` (65 DefectTypes) | `core/defect_scanner.py` | ✅ |
 | `VocalAIEnhancement` | `core/vocal_ai_enhancement.py` | ✅ |
 | `ExcellenceOptimizer` | `core/excellence_optimizer.py` | ✅ |
 | `FeedbackChain` | `core/feedback_chain.py` | ✅ |

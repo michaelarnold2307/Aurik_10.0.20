@@ -1001,7 +1001,7 @@ PRO Trägermedium. Seit v10.17.0 werden diese Limiten in der Kalibrierung und in
 mehreren Phasen durchgesetzt:
 
 | SMP-Feld | Genutzt von | Mechanismus |
-|----------|------------|-------------|
+| ---------- | ------------ | ------------- |
 | `max_bandwidth_hz` | Phase_06, Phase_23 | Bandwidth-Cap für Frequenz-Erweiterung |
 | `hiss_reduction_max_strength` | Phase_29 | Hard-Cap: `min(depth_cap, smp_cap)` |
 | `harmonic_max_order` | Phase_07 | DDSP synthetisiert nur bis phys. Limit |

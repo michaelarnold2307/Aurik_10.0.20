@@ -1,4 +1,89 @@
-# Changelog — Aurik 10.3.20
+# Changelog — Aurik 10.3.21
+
+## 10.3.21 (2026-10-06)
+
+### §G9 Genre-Single-Source (Tranche 3.1–3.3) + Zahlen-Wahrheit Runde 2
+
+**Genre-Auflösung: eine Quelle statt fünf**
+
+- `backend/core/genre_registry.py` ist die **einzige** Genre-Alias-Quelle. Neu:
+  `goal_weight_key()` (Schlüsselraum von `song_goal_importance`) und
+  `semantic_hint_label()` (Anzeige-Taxonomie); zusätzliche Alias-Abdeckungen
+  (`techno`, `electronica`, `classic_rock`, `indie_rock`, `orchestra`,
+  `dt_schlager`, `latin_pop`, `country_&_western`, …).
+- **Fund des neuen Guards:** Die **fünfte** parallele Genre-Auflösung lag in
+  `backend/core/phases/phase_53_semantic_audio.py` (`_GENRE_ALIAS_MAP`, 33 Einträge,
+  eigene deutsche Etiketten). Sie ist **verhaltensgleich** in die Registry portiert
+  (`semantic_hint_label`) — Nachweis: **47/47 identische Ausgaben** über 47
+  Referenz-Proben; die Phase ist jetzt ein dünner Delegat.
+- **Bewusst konserviert und dokumentiert** (keine stille „Verbesserung“):
+  `metal→"Rock"`, `country→"Folk"`, `ambient→"Electronic"`,
+  `latin→"Unbekannt"`, sowie die Substring-Reihenfolge (`classic_rock→"Klassik"`,
+  weil `class` vor `rock` geprüft wird). Eine Korrektur wäre eine hörrelevante
+  Verhaltensänderung und braucht A/B + Hörordnungs-Sign-off (§v10.802).
+
+**Neuer fail-closed Guard** `scripts/genre_single_source_check.py` (Hook
+`aurik-genre-single-source`, `always_run`):
+
+- **R1** Genre-Alias-Tabelle nur in `genre_registry.py` — fand sofort die fünfte Tabelle.
+- **R2** Jeder Schlüssel beider Ziel-Gewichtstabellen muss über `normalize_genre()`
+  auf ein kanonisches Genre auflösen (17 + 10 Schlüssel geprüft).
+- **R3** XOR-Invariante `goal_profile_key(g) is None` ⟺ `g in _GOAL_KEY_ABSENT`
+  (11 deklarierte Ausnahmen, 21 kanonische Genres) — kein stilles Fehlen.
+- **R4** **Bericht** (kein Fail): Wert-Divergenz der beiden Tabellen —
+  **115 Zellen in 7 gemeinsam geführten Genres**. Die Divergenz ist _klangrelevant_
+  (die Tabellen haben echte Rollen), daher wird sie sichtbar gemacht, aber
+  **nicht** automatisch vereinheitlicht (§G8-Transparenz, §v10.802).
+
+**Zahlen-Wahrheit Runde 2 (Doku vs. Code)**
+
+- **11 weitere veraltete Zählwerte** korrigiert (65 DefectTypes / 66 Kausal-Ursachen),
+  u. a. in der **normativen** Spec 02 (`46 defect_types`, `49 Ursachen`,
+  `62 Kausal-Ursachen`), `docs/DEFECT_SCANNER_SPEC.md` (behauptete
+  „Production-Ready“ mit 62 und listete nur 30),
+  `backend/core/defect_phase_mapper.py` („20 DefectType-Werte“, real 65),
+  `docs/architecture/*`, `docs/KI-AGENT-INTEGRATION-GUIDE.md`, `denker/README.md`,
+  `docs/PROJECT_STATUS.md`.
+- **Gate erweitert** (`scripts/defect_coverage_check.py`): Quellenliste 16 → 21 Dateien
+  (Spec 02, `docs/architecture`, `DEFECT_SCANNER_SPEC`, KI-GUIDE,
+  `defect_phase_mapper`, `pre_analysis`); die Regex erfasst jetzt auch
+  `defect types`/`defect_types` und `Ursachen` ohne „Kausal-“; neue dokumentierte
+  Inline-Ausnahme `defect-count-ok` für **legitime Teilmengen** (z. B.
+  „Top-3 Ursachen“) — bewusst sichtbar im Text statt versteckt. Grenzen dokumentiert
+  („N Defekte“, „N Typen“, „defect-type ticks“ bleiben manuell gepflegt).
+
+**Tranche 3.4 — Ziel-Dialekte deklariert, stilles Verwerfen beendet (§V6)**
+
+- **Befund (gemessen):** Das Projekt führt **vier Ziel-Vokabulare**; kanonisch ist
+  allein `song_goal_importance.ALL_GOAL_NAMES` (15 Ziele). `genre_goal_profile` und
+  `goal_budget._DEFAULT_GOAL_BUDGET` führen je 15 **eigene** Namen, Überlappung mit
+  dem Kanon nur **8** → **12 Fremdschlüssel**.
+- **§V6-Verstoß belegt:** `goal_budget.create_goal_budget()` übernahm Genre-Ziele nur
+  bei `if goal in targets` und **verwarf pro Genre 5 von 15 Zellen still** — bei
+  `metal` ausgerechnet die stärksten Signale (`punch` 2.0, `bass_praesenz` 1.9,
+  `makrodynamik` 1.4).
+- **Neu:** `GOAL_DIALECT_MAP` + `GOAL_DIALECT_NOTES` + `canonical_goal_name()`
+  (`backend/core/song_goal_importance.py`). Alle 12 Fremdschlüssel sind **deklariert**
+  — 2 wörtlich abgebildet (`mikrodynamik` → `micro_dynamics`,
+  `raeumlichkeit` → `spatial_depth`), 10 ausdrücklich **offen** mit Begründung.
+  Es wird nichts geraten (§V7 copilot-instructions.md): jede Zuordnung ist eine
+  Klang-Entscheidung und braucht A/B + Hörordnungs-Sign-off (§v10.802
+  copilot-instructions.md).
+- **§V6 behoben, Klang unverändert:** Der Budget-Konsument meldet jede Verwerfung jetzt
+  mit Gewicht, Begründung und kanonischem Ziel (erste Nennung als Warnung je
+  Genre/Ziel, danach Debug — keine Log-Flut). **Verhaltensgleichheit gepinnt:** die
+  wirksamen `metal`-Zellen sind bit-identisch zu vorher (Regressionstest).
+- **Guard R5** (`scripts/genre_single_source_check.py`): jeder Ziel-Schlüssel der drei
+  Ziel-Tabellen muss kanonisch **oder** in `GOAL_DIALECT_MAP` deklariert sein — ein
+  fünftes, undeklariertes Vokabular ist fail-closed.
+- **`SPEC.md` §2.3:** Phasentabelle ab 41 befüllt (Quelle: normative Spec 06 inkl.
+  Mechanismus/Fallback), §0a-Verbote markiert; die Ist-Stand-Diskrepanz (Überschrift
+  „66 Phasen" vs. 67 numerierte Phasen / 71 Dateien) ist **dokumentiert**, nicht
+  stillschweigend geändert.
+
+**Tests:** 294 (Genre-/Goal-Suiten) und 65 (Phase 53 / Registry / Guard / Ziel-Dialekte)
+grün; neu: 26 Guard-Regressionen in `tests/unit/test_genre_single_source_guard.py`
+(inkl. 3× R5) und 36 Ziel-Dialekt-Tests in `tests/unit/test_goal_dialects_t34.py`.
 
 ## 10.3.20 (2026-10-06)
 

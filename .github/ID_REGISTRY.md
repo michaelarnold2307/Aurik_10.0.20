@@ -14,7 +14,7 @@ Reihenfolge ist relevant: das erste passende Muster gewinnt. Backticks um
 Muster sind optional — der Parser entfernt sie.
 
 | Muster | Quelle | Status | Hinweis |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | `§G[1-9]` | `.github/copilot-instructions.md` | ambig | enforced (CI-geparst, hash-gewacht); Quelle immer angeben |
 | `§V[1-9]` | `.github/copilot-instructions.md` | ambig | enforced; Quelle immer angeben |
 | `§G[0-9]+` | `.github/GEBOTE.md` | enforced | Pre-Commit-Verifier (Teilmenge); §G1–§G9 ambig |
@@ -38,7 +38,7 @@ VERBOTEN. Zitierform: **„§G4 (copilot-instructions.md)“** bzw.
 **„§G4 (GEBOTE.md)“**.
 
 | ID | Bedeutung (copilot-instructions.md) | Bedeutung (GEBOTE.md / andere Quelle) |
-|---|---|---|
+| --- | --- | --- |
 | §G1 | Song-Maximierung: pro Song isoliert, State-Reset | Pro-Song-Kalibrierung (global_scalar, Guards) |
 | §G2 | Vollständige Defektbehebung (ganzer Song) | Defekt-Vollständigkeit: 65 DefectTypes pro Song |
 | §G3 | Natürlicher Wohlklang | Gesangsintegrität (Vocal-Safety 80 Hz–8 kHz) |
@@ -71,7 +71,7 @@ NICHT auto-fixiert — sie müssen von Hand korrekt qualifiziert werden
 (Pre-Commit fail-closed).
 
 | Muster | Qualifikator |
-|---|---|
+| --- | --- |
 | `§G1`–`§G9` | (GEBOTE.md) |
 | `§V1`–`§V9` | (copilot-instructions.md) |
 | `§G71`–`§G80` | (GEBOTE.md) |
@@ -81,7 +81,7 @@ NICHT auto-fixiert — sie müssen von Hand korrekt qualifiziert werden
 ## Aliasse
 
 | Alias-ID | Ziel (geplant) | Phase | Hinweis |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | §SC-G71–§SC-G80 | §G173–§G182 | 1 (umgesetzt) | Startup-Block GEBOTE.md, jetzt Kategorie XXIV; Alias-Vermerk je Zeile |
 | §V1–§V35+ (VERBOTE.md) | — | — | kein Alias; veraltet — die normativen Codes sind V01–V52 (VERBOTEN.md) |
 | G01–G36 (GEBOTEN.md) | — | — | eigener Referenz-Namensraum; nicht enforced |

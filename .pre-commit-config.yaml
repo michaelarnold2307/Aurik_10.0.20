@@ -534,6 +534,16 @@ repos:
         language: system
         pass_filenames: false
 
+      # Genre-Single-Source — Alias-Tabelle nur in genre_registry (§G9, fail-closed)
+      # Tranche 3.3 (2026-10-06): verhindert eine fünfte parallele Genre-Auflösung;
+      # R4 meldet die klangrelevante Divergenz der beiden Ziel-Gewichtstabellen.
+      - id: aurik-genre-single-source
+        name: "Genre-Single-Source (Alias nur in Registry, Profil-Keys auflösbar)"
+        entry: .venv_aurik/bin/python scripts/genre_single_source_check.py
+        language: system
+        pass_filenames: false
+        always_run: true
+
       # Ear-Critical-Parität — Ohr-Schutzregeln müssen Code+Test haben (fail-closed)
       - id: aurik-ear-parity
         name: "Ear-Critical-Parity (Regel→Code→Test; deferred nur mit Begründung)"

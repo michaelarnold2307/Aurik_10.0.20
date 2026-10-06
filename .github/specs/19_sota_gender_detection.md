@@ -149,7 +149,7 @@ Pipeline (unified_restorer_v3):
 ### Gender-Bereiche (zentral, identisch in allen Detektoren)
 
 | Merkmal | Male | Female | Child |
-|---------|------|--------|-------|
+| --------- | ------ | -------- | ------- |
 | **F0** | 85–180 Hz | 165–700 Hz | 250–600 Hz |
 | **F1** | 270–730 Hz | 310–860 Hz | 370–1030 Hz |
 | **F2** | 840–2290 Hz | 920–2790 Hz | 1170–3330 Hz |
@@ -244,13 +244,13 @@ Detektionsergebnis gesetzt (auch für Union-Profil/Timeline-Logik).
 ### Datei 1: `backend/core/vocal_ai_enhancement.py`
 
 | Zeilen | Änderung |
-|--------|----------|
+| --------- | ---------- |
 | 202–250 | `_detect_f0()`: Von `audio[:100ms]` auf Scanning (60×100ms Fenster, 50ms Hop). RMS-Gate, F0-Plausibilität 70–800 Hz, stärkster Peak gewinnt. |
 
 ### Datei 2: `backend/core/dsp/lpc_formant_tracker.py`
 
 | Zeilen | Änderung |
-|--------|----------|
+| -------- | ---------- |
 | 568–594 | `_GENDER_RANGES`: Klassenkonstante mit F0/F1/F2/F3-Bereichen (identisch mit `GenderDetector`) |
 | 596–643 | `_scan_f0_voiced()`: Static method. Scannt 60×100ms Fenster, FFT-Autokorrelation, bester Peak gewinnt |
 | 645–692 | `_estimate_formants_from_voiced()`: Static method. 40 Frames via Burg-LPC @ 16kHz, Downsampling+AA-Filter, Median-Mittelung |
@@ -259,7 +259,7 @@ Detektionsergebnis gesetzt (auch für Union-Profil/Timeline-Logik).
 ### Datei 3: `backend/core/phases/phase_19_de_esser.py`
 
 | Zeilen | Änderung |
-|--------|----------|
+| -------- | ---------- |
 | 2469 (gelöscht) | Dead `_detect_gender_robust` v1 (überschrieben) |
 | 2483–2493 (gelöscht) | 3 Stub-Methoden (`_detect_gender_timeline`, `_process_per_gender_segments`, `_apply_formant_preservation`) |
 | ~2500–2700 (verschoben) | 560 Zeilen Methoden aus `_build_union_vocal_profile`-Gefängnis befreit → jetzt korrekt in `DeEsserPhase` |
@@ -315,7 +315,7 @@ konsultieren, bevor es auf `_detect_gender_simple` zurückfällt.
 ### Normative Tests (`tests/normative/test_gender_detection_sota_gate.py`)
 
 | Test | Invariante | Was geprüft wird |
-|------|-----------|-----------------|
+| ------ | ----------- | ----------------- |
 | `test_lpc_classify_gender_exists` | I-19.1 | `classify_gender_via_formants` aufrufbar, gibt validen String zurück |
 | `test_lpc_classify_gender_synthetic` | I-19.1 | Synthetische Töne (120Hz+500Hz+1500Hz → male, 220Hz+700Hz+2000Hz → female) |
 | `test_lpc_classify_gender_with_intro` | I-19.2 | 1.5s Stille + Ton → erkennt Gender trotz Intro |
