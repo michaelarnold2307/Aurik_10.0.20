@@ -44,6 +44,7 @@ import json
 import logging
 import random
 import sys
+import tempfile
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
@@ -56,6 +57,7 @@ from torch.utils.data import DataLoader, Dataset
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
+from backend.core.training_artifacts import save_guarded, write_text_guarded
 from models.cantus.cantus_model import CantusModel, create_cantus
 
 logger = logging.getLogger(__name__)
@@ -727,6 +729,19 @@ def _checkpoint_payload(
     }
 
 
+def _resolve_checkpoint_dir(smoke: bool) -> Path:
+    """Checkpoint-/Report-Verzeichnis — Smoke isoliert, Produktion wird nie überschrieben.
+
+    Befund 2026-10-06: `--smoke` schrieb nach `models/cantus/` und überschrieb
+    `checkpoint_latest.pt`/`checkpoint_best.pt` (2,45 GB → 4,7 MB) sowie
+    `train_report_pretrain.json`. Smoke-Läufe sind Validierung, keine Evidenz,
+    und dürfen Produktionsartefakte nicht anfassen.
+    """
+    if smoke:
+        return Path(tempfile.mkdtemp(prefix="cantus_smoke_"))
+    return CHECKPOINT_DIR
+
+
 @torch.no_grad()
 def _evaluate(model, loss_fn, loader, device, max_batches: int = 8) -> float:
     model.eval()
@@ -829,7 +844,10 @@ def train(args: argparse.Namespace) -> int:
             "Resume: epoch=%d step=%d best_val=%.4f (seed=%s)", start_epoch, global_step, best_val, ckpt.get("seed")
         )
 
-    ckpt_dir = CHECKPOINT_DIR
+    # Smoke-/Validierungsläufe dürfen NIE die Produktionsartefakte überschreiben
+    # (Befund 2026-10-06: 2,45-GB-Pretrain-Checkpoints wurden durch den tiny-
+    # Smoke überschrieben). Siehe `_resolve_checkpoint_dir`.
+    ckpt_dir = _resolve_checkpoint_dir(args.smoke)
     ckpt_dir.mkdir(parents=True, exist_ok=True)
     cal_every = int(tcfg["singmos"]["proxy_calibrate_every_steps"])
     report: dict[str, Any] = {
@@ -920,10 +938,10 @@ def train(args: argparse.Namespace) -> int:
                     seed=seed,
                     cfg=cfg,
                 )
-                torch.save(payload, ckpt_dir / "checkpoint_latest.pt")
+                save_guarded(ckpt_dir / "checkpoint_latest.pt", payload)
                 if val_loss < best_val:
                     best_val = val_loss
-                    torch.save(payload, ckpt_dir / "checkpoint_best.pt")
+                    save_guarded(ckpt_dir / "checkpoint_best.pt", payload)
                 report["checkpoints"].append({"step": global_step, "val_loss": val_loss, "singmos": mos_mean})
 
         val_loss = _evaluate(model, loss_fn, val_loader, device)
@@ -939,14 +957,14 @@ def train(args: argparse.Namespace) -> int:
             seed=seed,
             cfg=cfg,
         )
-        torch.save(payload, ckpt_dir / "checkpoint_latest.pt")
+        save_guarded(ckpt_dir / "checkpoint_latest.pt", payload)
         if val_loss < best_val:
             best_val = val_loss
-            torch.save(payload, ckpt_dir / "checkpoint_best.pt")
+            save_guarded(ckpt_dir / "checkpoint_best.pt", payload)
 
     report["final_val_loss"] = best_val
     report_path = ckpt_dir / f"train_report_{args.phase}.json"
-    report_path.write_text(json.dumps(report, indent=2, ensure_ascii=False), encoding="utf-8")
+    write_text_guarded(report_path, json.dumps(report, indent=2, ensure_ascii=False))
     logger.info("Fertig: best_val=%.4f — Report: %s", best_val, report_path)
     return 0
 

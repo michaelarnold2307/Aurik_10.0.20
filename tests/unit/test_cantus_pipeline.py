@@ -483,3 +483,31 @@ def test_smoke_dataset_deterministic():
     c = ds[1]
     assert torch.equal(a["clean"], c["clean"]), "clean muss epoch-stabil sein (Ground Truth)"
     assert not torch.equal(a["degraded"], c["degraded"]), "Epoch-Seed der Degradation wirkt nicht"
+
+
+def test_smoke_checkpoint_dir_never_touches_production(tmp_path, monkeypatch):
+    """`--smoke` darf NIE Produktions-Checkpoints/-Reports überschreiben.
+
+    Befund 2026-10-06: Ein Smoke-Lauf schrieb checkpoint_latest.pt /
+    checkpoint_best.pt (2,45 GB, Pretrain Ep. 10) und train_report_pretrain.json
+    nach models/cantus/ — die Pretrain-Evidenz wurde zerstört. Smoke ist
+    Validierung, keine Evidenz, und läuft deshalb isoliert.
+    """
+    tc = _load_script("train_cantus")
+    prod = tmp_path / "models_cantus"
+    prod.mkdir()
+    sentinel = prod / "checkpoint_latest.pt"
+    sentinel.write_bytes(b"PRETRAIN")
+    report_sentinel = prod / "train_report_pretrain.json"
+    report_sentinel.write_text('{"phase": "pretrain", "final_val_loss": 3.6655}', encoding="utf-8")
+    monkeypatch.setattr(tc, "CHECKPOINT_DIR", prod)
+
+    smoke_dir = tc._resolve_checkpoint_dir(True)
+    assert smoke_dir != prod
+    assert prod not in smoke_dir.parents
+    assert smoke_dir.is_dir(), "Smoke-Verzeichnis muss isoliert existieren"
+
+    # Produktionspfad bleibt für echte Läufe unverändert
+    assert tc._resolve_checkpoint_dir(False) == prod
+    assert sentinel.read_bytes() == b"PRETRAIN"
+    assert "3.6655" in report_sentinel.read_text(encoding="utf-8")

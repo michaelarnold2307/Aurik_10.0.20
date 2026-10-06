@@ -1,6 +1,59 @@
 # Changelog — Aurik 10.3.11
 
-## 10.3.11 (2026-10-05)
+## 10.3.11 (2026-10-05/06)
+
+### §Gesangs-Fokus: SGMSE+-Sprach-Core von Gesang entkoppelt
+
+- **Befund (2026-10-06):** Zwei Stellen aktivierten das SPRACH-trainierte SGMSE+
+  (Score-Core, WSJ0-CHiME3, Richter et al. 2022) auf Musik/Gesang, obwohl das
+  Musik-Finetune gesperrt ist (`music_model_flags.use_sgmse_musik=False`,
+  §v10.16/F7): `coordinated_repair` schaltete es gezielt bei
+  `vocal_confidence > 0.5` frei (also auf Gesang), `phase_03_denoise` prüfte das
+  Flag gar nicht. Folge: ein gesperrtes Sprach-Modell bearbeitete still Gesang
+  (§V1-Risiko: Telefonband-Klangfarbe/Vokalfärbung) und kostete 6,2 s je 1 s
+  Audio (R-09: 26× isoliert kalt, 6,8× warm — RT-Budget §9.5 verletzt), während
+  der Decorrelation-Guard das Ergebnis verwarf.
+- **Fix:** Beide Aktivierungspfade an `use_sgmse_musik` gekoppelt
+  (`phase_03_denoise._sgmse_eligible` und der RepairPlanner in
+  `coordinated_repair`). Ohne Musik-/Gesangs-Finetune läuft SGMSE+ nicht; die NR
+  trägt DFN-Musik (`use_df_musik=True`), für Gesang ist Cantus der designierte
+  Kern nach Freigabe.
+- **Beweise:** `test_ml_hybrid_regression.py -k R09_rt_budget` → 11 passed
+  (Phase-03-Kaltstart-/SGMSE-Anteil entfällt); `test_model_zoo_activation.py`
+  → 16 passed (neuer Test pinnt die Sperre auf Gesang); Ruff clean.
+
+### train_cantus: Smoke-Läufe überschreiben keine Produktionsartefakte mehr
+
+- **Befund (2026-10-06, selbst verursacht):** `scripts/train_cantus.py --smoke`
+  schrieb `checkpoint_latest.pt`/`checkpoint_best.pt` und
+  `train_report_<phase>.json` nach `models/cantus/` — der Validierungslauf
+  überschrieb die 204-Mio-Parameter-Pretrain-Checkpoints (2,45 GB) und die
+  Pretrain-Evidenz. Die Gewichte bleiben nur als ONNX-Inferenzgraph
+  (`cantus_dit.onnx`) erhalten; eine Rückübertragung ist wegen ONNX-
+  Konstantenfaltung unvollständig (92/~377 Keys fehlen) → Pretrain muss neu
+  laufen.
+- **Fix:** `_resolve_checkpoint_dir(smoke)` isoliert Smoke-Läufe in ein
+  `tempfile.mkdtemp`-Verzeichnis; Produktionsläufe bleiben unverändert. Der Pfad
+  ist durch einen Regressionstest abgesichert
+  (`test_smoke_checkpoint_dir_never_touches_production`).
+- **Beweise:** Regressionstest grün; Smoke-Nachweis: Report landet in
+  `/tmp/cantus_smoke_*/`, `models/cantus/` bleibt unverändert; Ruff clean.
+
+### Backup-/Guard-Konzept für Trainingsartefakte
+
+- **Neu:** `backend/core/training_artifacts.py` — zentraler Schutz, den alle
+  Trainingsskripte adoptieren können (`torch.save` → `save_guarded`,
+  `path.write_text` → `write_text_guarded`):
+  1. **Rotierendes Backup** vor jedem Überschreiben (Retention, Standard 3) —
+     der Vorfall vom 2026-10-06 wäre damit folgenlos geblieben.
+  2. **Atomares Schreiben** (tmp + `os.replace`) — keine partiellen Dateien.
+  3. **Schrumpf-Warnung** (§V6 (copilot-instructions.md)) — Preset-/Modellwechsel
+     oder ein Smoke-Lauf auf dem Vollmodell werden sichtbar.
+- **Adoptiert:** `scripts/train_cantus.py` (Checkpoints + Report). Die übrigen
+  ~23 Trainingsskripte nutzen weiterhin direktes `torch.save`; die Migration ist
+  mechanisch (Ein-Zeilen-Ersatz) und als Folgeschritt vorgesehen.
+- **Beweise:** `tests/unit/test_training_artifacts.py` → 7 passed; guarded Smoke
+  schreibt in `/tmp/cantus_smoke_*/`, `models/cantus/` unverändert; Ruff clean.
 
 ### Phase 24: Dropout-Erkennung repariert und Autonomie nach §G188 hergestellt
 
