@@ -1817,6 +1817,56 @@ dem nächsten überwachten Lauf (HEAD c8100879/616282a9-Stand). UTMOSv2-
 Erst-Load (timm-Hub, 4 Folds) + FeedbackChain 23,5 s laufen einmal je
 Song-Tail — dokumentiert.
 
+### §PERF-R14 (2026-10-06) — Wahrheits-Korrektur der Per-Phasen-Attribution + Kollektions-Fix
+
+**Anlass:** Die Attribution (b) „Per-Phasen-Loop-Overhead ≈ 1,6 s je Phase"
+war die Grundlage des nächsten Hebel-Pakets. Sie wurde am 2026-10-06
+**nachgemessen statt übernommen** — mit dem Ergebnis, dass sie in dieser
+Form nicht trägt (vierter Attributions-Fall nach dem Muster §PERF-R4:
+v1023-phase_41, „phase_01 = DSP-Multiscale", phase_49-WPE).
+
+| Behauptung | Messung 2026-10-06 | Befund |
+| --- | --- | --- |
+| „OOM-Probes" kosten im Per-Phasen-Loop | `_record_oom_probe` = **497,7 µs je Aufruf** (psutil-Process 38 µs, virtual_memory 41 µs, swap_memory 100 µs, mkdir 76 µs, Datei-Append 123 µs, logger.info 12 µs); ~5 Aufrufe/Phase × 41 × 8 = 1760 Probes ⇒ **0,88 s je Song** | vernachlässigbar — **kein Hebel** |
+| „PLM-Window-Eviction/Deep-Flush" kosten je Phase | `logs/oom_phase_forensics.ndjson` (9 992 RAM-Proben aus echten Läufen): **ram_percent median 33,0 %, mean 33,4 %, max 88,5 %** — nur **145 Proben (1,5 %)** über der 72-%-Schwelle ⇒ der Deep-Flush-Zweig feuert **selten**, nicht je Phase | Attribution **widerlegt** |
+| „Stereo-Guard (STCG) ≈ 4,9 s je Phase" | `correct_interchannel_delay` auf realem 48-kHz-Stereo: **50–60 ms** (kein Eingriff, §0 Minimal-Intervention) bzw. **240 ms** auf 30-s-Chunk; Profil: `zoom_shift` 149 ms (48 %), Messung ~105 ms, FFT 67 ms. Hochrechnung 41 × 8 Aufrufe ⇒ **≈1,3 min je Song** | Größenordnung **~2 Zehnerpotenzen unter** der Doku |
+
+**Konsequenz:** Der Rest der „~5 s je Phase" (P2) ist **nicht** über OOM-Probe,
+Deep-Flush oder STCG erklärbar. Die am 2026-09-19 gemessenen Gaps
+(mean 12,1 s/Phase) müssen aus der **phasenabhängigen Komponente** stammen
+(P2-Notiz: größte Gaps nach 01/02/05/09/24/27/28/50) — dafür bleibt
+**cProfile auf einem echten Lauf** der nächste Schritt. **Keine** der drei
+vermuteten Ursachen wird weiter verfolgt (kein Suchen in Sackgassen).
+
+**UMGESETZT (qualitätsneutral, gemessen):** Der **unbedingte zweite
+`gc.collect(2)`** an zwei Stellen (§OOM-DeepFlush vor jeder Phase,
+§OOM-PostFlashSR-Flush nach phase_23) war **beweisbar wirkungslos**:
+
+- Nach einer vollständigen Kollektion ist Generation 0 leer; zwischen zwei
+  unmittelbar aufeinanderfolgenden vollständigen Kollektionen entsteht kein
+  neuer unerreichbarer Zyklus.
+- **Messung** (4,8 Mio. verfolgte Objekte, realistischer Heap, 22 Durchläufe):
+  der zweite Pass gab **0 von 22 Mal** ein Objekt frei; Paar 685,0 ms vs.
+  Einzelpass 337,8 ms ⇒ der zweite Pass kostete **~50 %** des Deep-Flush
+  ohne jede Wirkung.
+- **Fix (§G9 (copilot-instructions.md) — EINE kanonische Stelle):**
+  `_full_gc_collect()` in `backend/core/unified_restorer_v3.py` führt den
+  zweiten Pass **nur bei tatsächlicher Freigabe** aus (dann können
+  `__del__`-/Weakref-Callbacks neuen Müll erzeugt haben). Beide Aufrufstellen
+  nutzen die Hilfsfunktion; Schutzabsicht des §OOM-Guards unverändert.
+- Tests: `tests/unit/test_oom_guards.py` (6 neue Fälle — Vertrag, zweiter
+  Pass nur nach Freigabe, Generation 2, echte Zyklus-Freigabe, empirische
+  Grundlage, **Regressionsguard gegen unbedingten Doppel-Collect**; Datei
+  28 grün).
+
+**Verworfen (messend begründet, kein toter Code):** Ein 118×-schnellerer
+Integer-Pfad für `_apply_correction_shift` (185,6 → 1,6 ms je Kanal) war
+**nicht durchgängig bit-identisch** (reiner Ton: max|Δ| 1,19e-17 auf
+800/480 000 Samples = Float64-Rundung des Spline-Prefilters) **und hätte
+produktiv nie gefeuert**: an 12 echten Dateien (48 kHz, ≥2 ch, >5 s) war
+die gemessene Verschiebung **0 von 12 Mal ganzzahlig** (|frac| 0,057–0,457).
+Der Pfad wäre also reiner Totcode gewesen (§V7 copilot-instructions.md).
+
 ### §PERF-R11 (2026-09-19) — Reinhör-Witness batched (je Phase ~1,5 s gespart)
 
 Evidenz aus dem überwachten Lauf (Timestamps phase_ok→geplant je Phase):

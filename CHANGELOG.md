@@ -1,4 +1,51 @@
-# Changelog — Aurik 10.7.0
+# Changelog — Aurik 10.7.1
+
+## 10.7.1 (2026-10-06)
+
+### §PERF-R14 — Wahrheits-Korrektur der Per-Phasen-Attribution + Kollektions-Fix
+
+**Patch-Bump (§v10.802 copilot-instructions.md):** perf + Befundkorrektur,
+qualitätsneutral, kein Signalpfad-Eingriff.
+
+**Wurzel-Fix (§V7 copilot-instructions.md):** Die Roadmap-Attribution
+„Per-Phasen-Loop-Overhead ≈ 1,6 s je Phase" war die Grundlage des nächsten
+Hebel-Pakets. Sie wurde **nachgemessen statt übernommen** — drei vermutete
+Ursachen widerlegt:
+
+| Behauptung | Messung | Befund |
+| --- | --- | --- |
+| OOM-Probes kosten im Loop | `_record_oom_probe` = 497,7 µs/Aufruf ⇒ **0,88 s je Song** | vernachlässigbar |
+| Deep-Flush (PLM/GC) je Phase | 9 992 RAM-Proben echter Läufe: **median 33,0 %**, nur **1,5 %** über der 72-%-Schwelle | feuert selten, **nicht** je Phase |
+| „Stereo-Guard ≈ 4,9 s je Phase" | STCG real: **50–60 ms** (kein Eingriff) bzw. **240 ms**/30-s-Chunk ⇒ **≈1,3 min je Song** | ~2 Zehnerpotenzen unter der Doku |
+
+**UMGESETZT (gemessen, qualitätsneutral):** Der **unbedingte zweite
+`gc.collect(2)`** an zwei Stellen (§OOM-DeepFlush vor jeder Phase,
+§OOM-PostFlashSR-Flush nach phase_23) war **beweisbar wirkungslos** — nach
+einer vollständigen Kollektion ist Generation 0 leer; gemessen über 22
+Durchläufe auf einem Heap mit 4,8 Mio. verfolgten Objekten: **0 von 22 Mal**
+ein freigegebenes Objekt, bei **685,0 ms** Paar-Laufzeit gegen **337,8 ms**
+Einzelpass.
+
+- **Neu: `_full_gc_collect()`** in `backend/core/unified_restorer_v3.py` —
+  EINE kanonische Stelle (§G9 copilot-instructions.md); der zweite Pass läuft
+  **nur bei tatsächlicher Freigabe** (dann können `__del__`-/Weakref-Callbacks
+  neuen unerreichbaren Müll erzeugt haben). Beide Aufrufstellen nutzen sie;
+  die Schutzabsicht des §OOM-Guards bleibt unverändert.
+- **Tests:** `tests/unit/test_oom_guards.py` um **6 Fälle** erweitert
+  (Vertrag, zweiter Pass nur nach Freigabe, Generation 2, echte
+  Zyklus-Freigabe, empirische Grundlage, **Regressionsguard gegen
+  unbedingten Doppel-Collect**); Datei 28 grün.
+
+**Verworfen (messend begründet — kein toter Code):** Ein 118×-schnellerer
+Integer-Pfad für `_apply_correction_shift` (185,6 → 1,6 ms je Kanal) war
+**nicht durchgängig bit-identisch** (reiner Ton: max|Δ| 1,19e-17 auf
+800/480 000 Samples) **und hätte produktiv nie gefeuert** — an 12 echten
+Dateien war die gemessene Verschiebung **0 von 12 Mal ganzzahlig**
+(|frac| 0,057–0,457). Er wäre reiner Totcode gewesen (§V7 copilot-instructions.md).
+
+**Dokumentation:** §PERF-R14 in `docs/TODOS_SOTA_ROADMAP.md`; der nächste
+Schritt für P2 ist die cProfile-Isolation der **phasenabhängigen** Komponente
+auf einem echten Lauf (größte Gaps nach 01/02/05/09/24/27/28/50).
 
 ## 10.7.0 (2026-10-06)
 

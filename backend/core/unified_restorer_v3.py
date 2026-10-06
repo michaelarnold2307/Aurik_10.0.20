@@ -1595,6 +1595,40 @@ def _should_use_chunked_path(
     return n_total / max(sample_rate, 1) > 120.0 and not in_chunked and not whole_song
 
 
+def _full_gc_collect() -> int:
+    """Vollständige GC-Kollektion — zweiter Pass NUR nach tatsächlicher Freigabe.
+
+    §PERF-R14 (docs/TODOS_SOTA_ROADMAP.md), 2026-10-06: Der bisherige Aufruf-Vertrag
+    lautete, einen zweiten ``gc.collect(2)`` als eigenen Pass für zirkuläre
+    Referenzen nachzuschieben. Dies war an zwei Stellen verdrahtet
+    (§OOM-DeepFlush vor jeder Phase und §OOM-PostFlashSR-Flush) und ist
+    **beweisbar wirkungslos**:
+
+    * Nach einer vollständigen Kollektion (``gc.collect(2)``) ist Generation 0
+      leer; zwischen zwei unmittelbar aufeinanderfolgenden vollständigen
+      Kollektionen entsteht kein neuer unerreichbarer Zyklus.
+    * Gemessen (4,8 Mio. verfolgte Objekte, 22 Durchläufe): der zweite
+      ``gc.collect(2)`` gibt **0 von 22 Mal** ein Objekt frei — bei einer
+      Gesamtdauer von 685 ms für das Paar gegenüber 338 ms für einen Pass.
+    * Ein zweiter Pass kann nur dann etwas gewinnen, wenn der erste Objekte
+      freigegeben hat: dann können ``__del__``- bzw. Weakref-Callbacks neue
+      unerreichbare Objekte erzeugt haben.
+
+    Rückgabe: Gesamtzahl der freigegebenen Objekte (Summe beider Pässe).
+
+    Nebenwirkungs-Sicherheit: rein speicher-rückgewinnend; das
+    Verarbeitungsergebnis ist unberührt (§G5 (copilot-instructions.md) —
+    keine Signaländerung, kein Zufall, keine Zeitabhängigkeit). Die
+    Schutzabsicht (Heap-Fragmentierung vor der nächsten Phase zurückgeben,
+    §OOM-Guard) bleibt vollständig erhalten, weil der zweite Pass im
+    Bedarfsfall weiterhin läuft.
+    """
+    freed = int(gc.collect(2))
+    if freed:
+        freed += int(gc.collect(2))
+    return freed
+
+
 class UnifiedRestorerV3:
     """
     Einheitlicher Restorer V3 – Defektbasierte Audio-Restaurierungs-Engine.
@@ -40169,8 +40203,11 @@ class UnifiedRestorerV3:
                     # → aggressive GC + malloc_trim BEVOR die nächste Phase ihren Speicher anfordert.
                     _flashsr_ran = bool(getattr(self, "_restoration_context", {}).get("flashsr_applied", False))
                     if _ram_pct_pre > 72.0 or (_flashsr_ran and _ram_pct_pre > 68.0):
-                        gc.collect(2)  # alle 3 Generationen
-                        gc.collect(2)  # drittes collect für zirkuläre Refs
+                        # §PERF-R14 (docs/TODOS_SOTA_ROADMAP.md): kanonische
+                        # Kollektion mit bedarfsgesteuertem zweitem Pass —
+                        # der unbedingte zweite Pass war bewiesen wirkungslos
+                        # (0 Freigaben in 22/22 gemessenen Durchläufen).
+                        _full_gc_collect()
                         try:
                             import ctypes as _ctypes_pre
 
@@ -41834,8 +41871,11 @@ class UnifiedRestorerV3:
                                 # fragmentierte glibc-Seiten im RSS. Sofortiger aggressiver Flush
                                 # vor der nächsten Phase verhindert OOM-Kill (wie PID1553305, 07:48 UTC).
                                 try:
-                                    gc.collect(2)
-                                    gc.collect(2)  # zweiter Pass für zirkuläre Refs
+                                    # §PERF-R14 (docs/TODOS_SOTA_ROADMAP.md):
+                                    # bedarfsgesteuerter zweiter Pass statt
+                                    # unbedingtem Doppel-Collect (bewiesen
+                                    # wirkungslos, 0/22 Freigaben).
+                                    _full_gc_collect()
                                     import ctypes as _ctypes_asr
 
                                     _ctypes_asr.CDLL("libc.so.6").malloc_trim(0)

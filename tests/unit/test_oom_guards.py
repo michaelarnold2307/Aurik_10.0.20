@@ -490,3 +490,136 @@ def test_ensemble_processor_skipped_for_long_audio():
     # 30 seconds at 48kHz → 1_440_000 samples
     short_len = 30 * sr
     assert short_len <= ensemble_max_samples, "Short audio must be within limit"
+
+
+# ── §PERF-R14: GC-Kollektion mit bedarfsgesteuertem zweitem Pass ────────
+#
+# Befund 2026-10-06 (docs/TODOS_SOTA_ROADMAP.md, §PERF-R14): Der an zwei
+# Stellen verdrahtete UNBEDINGTE zweite ``gc.collect(2)`` („Pass für
+# zirkuläre Refs") war beweisbar wirkungslos. Gemessen auf einem
+# realistischen Heap (4,8 Mio. verfolgte Objekte, 22 Durchläufe): der
+# zweite Pass gab 0 von 22 Mal ein Objekt frei, kostete aber die Hälfte
+# der Paar-Laufzeit (685 ms Paar vs. 338 ms Einzelpass). Diese Tests
+# pinnen den Vertrag von ``_full_gc_collect()`` und verhindern eine
+# Rückkehr zum unbedingten Doppelaufruf.
+
+
+def _uv3_module():
+    """Importiert das UV3-Modul (schwer) nur bei Bedarf."""
+    from backend.core import unified_restorer_v3 as uv3
+
+    return uv3
+
+
+def test_full_gc_collect_single_pass_when_nothing_freed(monkeypatch):
+    """Ohne Freigabe im ersten Pass darf KEIN zweiter Lauf stattfinden.
+
+    Das ist der eigentliche §PERF-R14-Gewinn: der zweite Pass ist nur dann
+    sinnvoll, wenn der erste Objekte freigegeben hat (dann können
+    ``__del__``-/Weakref-Callbacks neuen unerreichbaren Müll erzeugt haben).
+    """
+    uv3 = _uv3_module()
+    calls: list[int] = []
+
+    def _fake_collect(generation: int = 2) -> int:
+        calls.append(generation)
+        return 0
+
+    monkeypatch.setattr(uv3.gc, "collect", _fake_collect)
+    freed = uv3._full_gc_collect()
+
+    assert freed == 0
+    assert calls == [2], f"erwartet genau EIN voller Collect, tatsächlich {calls}"
+
+
+def test_full_gc_collect_second_pass_only_after_freed(monkeypatch):
+    """Nach einer Freigabe im ersten Pass MUSS der zweite Pass laufen."""
+    uv3 = _uv3_module()
+    calls: list[int] = []
+    returns = iter([3, 5])
+
+    def _fake_collect(generation: int = 2) -> int:
+        calls.append(generation)
+        return next(returns)
+
+    monkeypatch.setattr(uv3.gc, "collect", _fake_collect)
+    freed = uv3._full_gc_collect()
+
+    assert freed == 8, "Rückgabe ist die Summe beider Pässe"
+    assert calls == [2, 2], f"erwartet zwei volle Collects, tatsächlich {calls}"
+
+
+def test_full_gc_collect_uses_generation_2():
+    """Beide Pässe sammeln alle Generationen (vollständiger Collect)."""
+    uv3 = _uv3_module()
+    import gc as _gc
+
+    seen: list[int] = []
+    original = _gc.collect
+
+    def _spy(generation: int = 2) -> int:
+        seen.append(generation)
+        return original(generation)
+
+    uv3.gc.collect = _spy
+    try:
+        uv3._full_gc_collect()
+    finally:
+        uv3.gc.collect = original
+
+    assert seen, "collect wurde nicht aufgerufen"
+    assert all(g == 2 for g in seen), f"nur vollständige Collects erlaubt, gesehen: {seen}"
+
+
+def test_full_gc_collect_returns_int_and_reclaims_cycles():
+    """Echte, unerreichbare Referenzzyklen werden freigegeben (Rückgabe int)."""
+    uv3 = _uv3_module()
+
+    def _make_garbage() -> None:
+        for _ in range(2000):
+            d: dict = {}
+            d["self"] = d  # echter Zyklus, nach Rückkehr unerreichbar
+
+    _make_garbage()
+    freed = uv3._full_gc_collect()
+
+    assert isinstance(freed, int)
+    assert freed > 0, "unerreichbare Zyklen müssen freigegeben werden"
+
+
+def test_second_consecutive_full_collect_frees_nothing():
+    """Empirische Grundlage des §PERF-R14-Vertrags (Messung 22/22).
+
+    Eine vollständige Kollektion leert Generation 0; ein unmittelbar
+    folgender vollständiger Collect hat daher nichts mehr zu holen.
+    """
+    uv3 = _uv3_module()
+    uv3._full_gc_collect()
+    second = uv3.gc.collect(2)
+    assert second == 0, (
+        "Annahme des §PERF-R14-Vertrags verletzt: ein unmittelbar folgender "
+        f"voller Collect gab {second} Objekte frei — der zweite Pass wäre dann "
+        "nicht redundant."
+    )
+
+
+def test_uv3_has_no_unconditional_double_full_collect():
+    """Regressionsguard: kein unbedingter Doppel-Collect in UV3.
+
+    §PERF-R14 (docs/TODOS_SOTA_ROADMAP.md): ein Paar direkt aufeinander
+    folgender ``gc.collect(2)`` ohne Bedarfsprüfung ist verboten — es kostet
+    nachweislich Laufzeit ohne Wirkung.
+    """
+    import pathlib
+    import re
+
+    path = pathlib.Path(__file__).resolve().parents[2] / "backend" / "core" / "unified_restorer_v3.py"
+    src = path.read_text(encoding="utf-8")
+
+    pattern = re.compile(r"gc\.collect\(2\)\s*(?:#[^\n]*)?\n\s*gc\.collect\(2\)")
+    match = pattern.search(src)
+    assert match is None, (
+        "unbedingter Doppel-Collect gefunden (Zeichenoffset "
+        f"{match.start() if match else -1}) — stattdessen _full_gc_collect() verwenden"
+    )
+    assert "_full_gc_collect()" in src, "kanonische Hilfsfunktion wird nicht verwendet"
