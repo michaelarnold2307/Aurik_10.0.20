@@ -1,4 +1,79 @@
-# Changelog — Aurik 10.6.0
+# Changelog — Aurik 10.7.0
+
+## 10.7.0 (2026-10-06)
+
+### Wohlklang-Vertrag + Gate — Aktivierung nur mit Beleg (Hebel 1)
+
+**Minor-Bump (§v10.802 copilot-instructions.md):** neue Infrastruktur, kein
+Signalpfad-Eingriff, kein Hörordnungs-Bruch.
+
+**Wurzel-Fix (§V7/§G8/§G9 copilot-instructions.md):** Der Produktionsbefund
+dieser Sitzung war **nicht** ein Modellfehler, sondern eine **Beweislücke** —
+BigVGAN HR-V1 war produktiv aktiv (`applied: True`, 18 Bänder, Signal
+verändert), obwohl der Beleg auf **20 s GPU-Material** beruhte, der
+Produktionspfad aber **CPU/ONNX** ist (13,2× RT je Passage = 330 % des
+Phasen-Budgets), und die Aktenlage weiter „Flag OFF“ sagte.
+
+- **Neu: `.github/WOHLKLANG_CLAIMS.md`** — Vertrag über **alle 12
+  klangverändernden Schalter** (11 in `music_model_flags`, 1 im BigVGAN-Plugin).
+  Jede Stufe braucht **fünf Belege**: (1) ≥3 echte Voll-Songs, (2)
+  Produktionspfad, (3) eingefrorene Baseline, (4) blindes A/B für einen
+  Menschen, (5) Budget-Zahl in RT. Status: `aktiviert` / `ausnahme` /
+  `gesperrt`.
+- **Neu: `scripts/wohlklang_gate.py`** — fail-closed Gate mit den Regeln
+  **E1** Struktur/IDs, **E2** zitierte Pfade müssen existieren,
+  **E3** `aktiviert` ohne `OFFEN`, **E4** `ausnahme` braucht `Grund:` und
+  `Review:`, **E5 Schalter-Abgleich Code ↔ Vertrag**, **E6** `gesperrt` ⇒ Soll
+  AUS, **P1** Evidenz-Harneske dürfen keine Phantom-Pfade referenzieren,
+  **P2** Bericht über Phantom-Referenzen im Produktionscode. Verdrahtet als
+  Pre-Commit-Hook `aurik-wohlklang-gate` (`always_run`, fail-closed).
+- **E5 ist der Kern:** Der Abgleich des deklarierten Solls gegen den
+  **Literalwert im Code** hätte den Drift vom 2026-09-27 („Aktenlage OFF, Code
+  AN“) verhindert — Vertrag und Code können nicht mehr auseinanderlaufen.
+- **Modellpfade sind portabilitätsbewusst:** `models/*` ist per `.gitignore`
+  ausgenommen; Beleg- und Phantom-Prüfungen für Modellpfade greifen nur bei
+  vorhandenem `models/`-Baum (auf einem nackten Checkout würde das Gate sonst
+  maschinenabhängig blocken).
+
+**Befund des neuen Gates (ehrlich, nicht geschönt):**
+
+| Status | Anzahl | Bedeutung |
+| --- | --- | --- |
+| `aktiviert` | **0** | Für **keine** eingeschaltete Stufe liegen alle fünf Belege vor |
+| `ausnahme` | 5 | begründet und befristet, als Warnung sichtbar |
+| `gesperrt` | 7 | Soll AUS, code-seitig bestätigt |
+
+Die fünf Ausnahmen sind die reale Beweislücke: **W-1** HR-V1 (C4-Hörstichprobe
+offen — Maintainer-Entscheid Weg 2 vom 2026-10-06), **W-4** MP-SENet
+(Aktivierung auf 3 × 30-s-Teilstücken statt Voll-Songs), **W-5/W-6/W-7** DFN
+Musik, MIIPHER-DiT, Harmonic-Inpainting (Bestandsaktivierungen vor Einführung
+dieses Vertrags).
+
+### Phantom-Pfade: D-K3-1 geschlossen, D-K3-5 neu
+
+- **D-K3-1 geschlossen (WP-2):** `scripts/ab_test_exports.py` zielte auf
+  `bigvgan_v2_f3e29.onnx` — ein Artefakt, das **nie existierte**; das
+  A/B-Ergebnis war damit unerreichbar. Der Harness vergleicht jetzt **Basis**
+  vs. **F3-Finetune** (reale Artefakte) und **bricht laut ab**, wenn ein
+  Kandidat fehlt, statt still nur A zu messen (§V6 copilot-instructions.md).
+- **D-K3-2 ehrlich eingeordnet:** `quality_predict.py` in `models/wav2vec2/`
+  ist **untracked** (`models/*` ist per `.gitignore` ausgenommen) — also
+  Upstream-Stray ohne Konsument, zusätzlich falsch beschriftet
+  (`Wav2Vec2ForSequenceClassification` bei `config.json` = `Wav2Vec2ForCTC`).
+  Status `bewusst-akzeptiert`: eine Änderung an untracked Fremdinhalt wäre ein
+  Daten-Eingriff **ohne Repo-Wirkung**; entscheidend ist, dass die Datei nicht
+  als Aurik-Pfad gilt.
+- **D-K3-5 neu:** der `P2`-Lauf meldet **53 nicht existente `models/…`-Referenzen**
+  in 1660 Produktionsdateien (u. a. `flow_matching` 8×, `muq_eval_a1_head` 3×,
+  `mp_senet_musik` ohne `finetuned`-Präfix). Bewusst **Bericht, kein Fail**:
+  legitime optionale/konditionale Pfade müssen von echten Fehlverdrahtungen
+  getrennt werden. `P1` bleibt fail-closed, aber auf die **Evidenz-Harneske**
+  begrenzt — ein harter Fail auf allen 53 würde den Commit-Pfad blockieren.
+
+**Tests:** `tests/unit/test_wohlklang_gate.py` (22 Fälle: Parser,
+E1–E6-Regeln über synthetische Verträge, Phantom-Erkennung, Portabilität ohne
+`models/`-Baum, Bestands-Nachweis am echten Vertrag); SOTA-Defizit-Register
+jetzt **21 Einträge**, keine Verstöße.
 
 ## 10.6.0 (2026-10-06)
 

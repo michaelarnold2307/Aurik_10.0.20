@@ -153,7 +153,20 @@ F14.
 ### C. Pfad-/Hygiene-Lücken (Fehlerfreiheit der Pfade)
 
 - **17 TorchScript-Stubs** (K3-3) — deklarierte ML-Pfade, die nie laufen (DSP-Fallback).
-- **2 Phantome:** `vsvpt(ab_test_exports.py)`-Ziel `bigvgan_v2_f3e29.onnx` (K3-1), `quality_predict.py` mit CTC/Classification-Mismatch (K3-2).
+- **Phantome — Stand 2026-10-06:** **D-K3-1 geschlossen** (`ab_test_exports.py` zielt jetzt auf
+  Basis vs. F3-Finetune und bricht bei fehlendem Kandidaten **laut** ab statt still nur A zu
+  messen; der Phantomname `bigvgan_v2_f3e29.onnx` lebt nur noch als Prosa ohne Präfix);
+  **D-K3-2 eingeordnet** (`quality_predict.py` in `models/wav2vec2/` ist **untracked** —
+  `models/*` ist per `.gitignore` ausgenommen — also Upstream-Stray ohne Konsument, bewusst
+  nicht angefasst: Daten-Eingriff ohne Repo-Wirkung).
+- **Neu D-K3-5:** `P2` des Wohlklang-Gates meldet **53 nicht existente `models/…`-Referenzen**
+  in 1660 Produktionsdateien (u. a. `flow_matching` 8×, `muq_eval_a1_head` 3×, `mp_senet_musik`
+  ohne `finetuned`-Präfix) — bewusst **Bericht, kein Fail**; Kandidaten einzeln prüfen.
+- **Neu: Wohlklang-Vertrag + Gate** (`.github/WOHLKLANG_CLAIMS.md`, `scripts/wohlklang_gate.py`,
+  Hook `aurik-wohlklang-gate`): jede klangverändernde Stufe braucht fünf Belege (≥3 echte
+  Voll-Songs, Produktionspfad, eingefrorene Baseline, blindes A/B, Budget-RT); **E5 gleicht den
+  Code-Schalter gegen den Vertrag ab** und verhindert damit den Drift „Aktenlage OFF, Code AN"
+  (Produktionsbefund 2026-10-06). Ist-Stand: **0 aktiviert, 5 Ausnahmen, 7 gesperrt**.
 - **3 Domänen unbelegt:** `bigvgan_v2.onnx` (44,1-kHz-Konfiguration, LibriTTS-Zuordnung widerlegt), `hifi_gan.onnx` (kein offizieller Checkpoint), `vocos_48khz.onnx` → alle `unbekannt`, nur §V6-Fallback.
 - **Namens-Drift:** `models/nvsr/nvsr.onnx` ist **byte-identisch** mit dem FlashSR-Produktionsexport (D-K2-4).
 - **Verifizierter Ist-Stand:** 22 Pfad-/Aktivierungstests grün

@@ -637,6 +637,16 @@ repos:
         pass_filenames: false
         always_run: true
 
+      # Wohlklang-Vertrag: jede klangverändernde Stufe braucht fünf Belege UND
+      # einen zum Vertrag passenden Code-Schalter (§v10.802/§G9 — verhindert den
+      # Drift „Aktenlage OFF, Code AN", Produktionsbefund 2026-10-06).
+      - id: aurik-wohlklang-gate
+        name: "Wohlklang-Vertrag (5 Belege + Schalter-Abgleich, fail-closed)"
+        entry: .venv_aurik/bin/python scripts/wohlklang_gate.py
+        language: system
+        pass_filenames: false
+        always_run: true
+
       # Conventional Commits Message Validation
       - id: conventional-commit-msg
         name: "Conventional Commits (feat/fix/docs/style/refactor/perf/test/chore/spec/build/ci)"

@@ -107,19 +107,35 @@ def run_mp_senet() -> dict[str, object]:
 
 
 def run_bigvgan() -> dict[str, object]:
-    """A=bigvgan_v2.onnx (aktiv), B=bigvgan_v2_f3e29.onnx — direkte ONNX-Läufe.
+    """A=bigvgan_v2.onnx (Basis, aktiv), B=bigvgan_v2_f3.onnx (MUSDB-Finetune).
 
     Beide Kandidaten erhalten identische Mel-Blöcke (64 Frames, librosa-Mel mit
     den Plugin-Parametern 128 Bänder/Hann-50-ms/Hop-12,5-ms) — der Vergleich
     bleibt fair, unabhängig von den Fallback-Heuristiken des Plugins.
+
+    §D-K3-1 (2026-10-06): Das frühere Kandidatenziel
+    ``bigvgan_v2_f3e29.onnx`` hat **nie existiert** (Phantomziel — das
+    A/B-Ergebnis war damit unerreichbar; der Name wird hier bewusst **ohne**
+    Verzeichnispräfix zitiert, damit der Phantom-Schutz des Wohlklang-Gates nicht
+    auf eine Prosa-Erwähnung anspringt). Der reale Finetune-Export ist
+    `models/bigvgan/bigvgan_v2_f3.onnx` (Checkpoint-cfg epoch 7, paritätsbewiesen;
+    §P1-3, `docs/reports/current/2026-10-06_p1_3_bigvgan_f3_rollout_entscheid.md`).
+    Ein fehlender Kandidat bricht **laut** ab, statt still nur A zu messen
+    (§V6 copilot-instructions.md).
     """
     import librosa  # deferred
     import onnxruntime as ort  # deferred
 
     variants = {
         "A_prod": _ROOT / "models" / "bigvgan" / "bigvgan_v2.onnx",
-        "B_f3e29": _ROOT / "models" / "bigvgan" / "bigvgan_v2_f3e29.onnx",
+        "B_f3": _ROOT / "models" / "bigvgan" / "bigvgan_v2_f3.onnx",
     }
+    missing = [f"{tag}: {path}" for tag, path in variants.items() if not path.exists()]
+    if missing:
+        raise FileNotFoundError(
+            "BigVGAN-A/B braucht beide Kandidaten (kein stilles Degradieren, §V6 copilot-instructions.md): "
+            + "; ".join(missing)
+        )
     mel_frames = 64
     summary: dict[str, object] = {}
     for clean_file in _CORPUS_CLEAN:
