@@ -85,6 +85,27 @@ F7 SGMSE+ (Tape-Inpainting), F12 BANQUET (Vinyl), Harmonic-Inpainting v2 mit MER
 Konditionierung (Bass-Körper, Streicher-Luft, Percussion-Transienten), Demucs-v5-Separation als
 Vorstufe (Separation-SOTA, Zeile 1602).
 
+### F13/F14 · Gender-Evidenz: musik-trainiertes Head + empirische Kalibrierung (2026-10-06)
+
+Am 2026-10-06 wurde die Gender-Detektion auf **einen** Pfad konsolidiert (Spec 19) und die
+musiktaugliche PANNs-Singing-Evidenz in die kanonische Fusion gehoben. Zwei Hebel bleiben und
+sind jetzt als Infrastruktur hinterlegt:
+
+- **F13 · Gender-Head auf MERT-Features** — `scripts/train_gender_head.py`: MERT-v1-330M
+  (mean+std, 2×1024) → kleines MLP, deterministischer stratifizierter Split (§G5 (GEBOTE.md)),
+  guarded Checkpoints. **Erfordert ein Label-CSV** (`file,gender`); ohne Labels bricht das
+  Skript ab (§V7 (copilot-instructions.md)) — es wird nicht geraten. Nutzen: kontinuierliche
+  Musik-Evidenz als Ergänzung/Ersatz der PANNs-Klassen-Abfrage.
+- **F14 · Empirische Kalibrierung** — `scripts/calibrate_gender_evidence.py`: misst auf
+  `corpus/` die Evidenzen (Anatomie-Lesart, Fusions-Entscheid, Konfidenz, Aperiodizität) und
+  die Konsens-Rate Anatomie ↔ PANNs-Singing. Das Korpus-Manifest kennt **kein** Gender-Feld →
+  keine Ground Truth; eine Schwellenempfehlung wird nur bei Mindest-Stichprobe UND
+  Mindest-Konsens (0,80) erlaubt und im Report als „empirisch, kein Ground Truth" markiert.
+
+**Offen (datenabhängig, nicht durch Code lösbar):** Label-Korpus für F13 (Richtwert ≥ 50
+Aufnahmen pro Klasse, lizenzkonform nach `corpus/README.md`) und ausreichende PANNs-Tags für
+F14.
+
 ---
 
 ## TODO-T6-1 · ExcellenceOptimizer: Core-Guard-Rollback-Verschwendung (validiert 2026-09-20)

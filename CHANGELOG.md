@@ -219,6 +219,37 @@
   PANNs-Evidenz, Konfidenz-Klemmung); 33 passed `test_gender_detector.py`;
   Ruff clean.
 
+### §F13/F14-Infrastruktur: Gender-Head-Training + empirische Kalibrierung
+
+- **Anschluss an §SOTA-Gender:** Nach der Konsolidierung auf EINEN Pfad fehlten
+  die zwei datenabhängigen Hebel. Beide liegen jetzt als geprüfte Infrastruktur
+  vor — ohne erfundene Labels oder Schwellen.
+- **Neu:**
+  - `scripts/train_gender_head.py` (F13) — Head auf MERT-v1-330M-Features
+    (mean+std, 2×1024), deterministischer stratifizierter Split
+    (§G5 GEBOTE.md), MLP-Klassifikation mit Macro-F1, Feature-Cache,
+    **Label-Pflicht** (ohne `file,gender`-CSV Abbruch mit Exit 2 statt Raten,
+    §V7 copilot-instructions.md), guarded Checkpoint-Speicherung über
+    `training_artifacts.save_guarded`.
+  - `scripts/calibrate_gender_evidence.py` (F14) — misst auf `corpus/` je Datei
+    Anatomie-Lesart, Fusions-Entscheid, Konfidenz und Aperiodizität über den
+    kanonischen Kern (kein Parallelpfad) und weist die Konsens-Rate
+    Anatomie ↔ PANNs-Singing aus. Schwellenempfehlung nur bei Mindest-Stichprobe
+    (12) UND Mindest-Konsens (0,80); der Report markiert ausdrücklich „kein
+    Ground Truth" (das Korpus-Manifest kennt kein Gender-Feld).
+- **Ehrlichkeit:** Beide Skripte treffen ohne Datenbasis keine
+  Kalibrierungs-Aussage. F13/F14 sind in `docs/TODOS_SOTA_ROADMAP.md` mit den
+  offenen Datenanforderungen dokumentiert (Label-Korpus ≥ ~50 je Klasse,
+  PANNs-Tags).
+- **Beweise:** 16 passed (`tests/unit/test_gender_calibration_infra.py`):
+  Split-Determinismus, Abdeckung ohne Overlap, Ein-Exemplar-Klasse bleibt im
+  Training, MERT-Pooling (Shape/NaN-Sanitisierung), Label-Pflicht
+  (fehlend/ungültig/gültig), Kalibrierungs-Gate (ohne PANNs, hoher/niedriger
+  Konsens, kleine Stichprobe), Macro-F1. Beide Skripte Ruff clean, als CLI
+  lauffähig (`--help`), Pflicht-Abbruch ohne Labels verifiziert.
+- **Write-Gate:** Einträge in `.github/FILE_REGISTRY.md` (2 Skripte, 1 Test)
+  nach `scripts/repo_search.py --before-create` (keine kanonische Alternative).
+
 ## 10.3.10 (2026-10-05)
 
 ### Phasensignatur: De-Esser wieder vertragskonform
