@@ -1,4 +1,38 @@
-# Changelog — Aurik 10.3.10
+# Changelog — Aurik 10.3.11
+
+## 10.3.11 (2026-10-05)
+
+### Phase 24: Dropout-Erkennung repariert und Autonomie nach §G188 hergestellt
+
+- **Befund (Vollscan Chunk 37/97 — dieser eine Test blockierte das Restprogramm
+  37–97):** `TestPhase24DropoutRepairRegression::test_dropout_gap_filled` blieb rot:
+  ein 100-ms-Nullblock in einem 440-Hz-Ton wurde nicht gefüllt. Zwei getrennte
+  Ursachen, beide gemessen:
+  1. **Detektor numerisch blind.** `_detect_amplitude_dropouts` bildete die lokale
+     Referenz mit `savgol_filter` über ein 100-ms-Fenster — genau die Lückenlänge.
+     In der Lückenmitte gemessen: Referenz **−1,142e-03** (negativ!), daraus
+     Schwelle −2,283e-04 → die Bedingung `envelope(0) < Schwelle` ist **nie** wahr.
+     Die Empfindlichkeit sank mit der Defektlänge — genau umgekehrt zur Aufgabe
+     der Phase.
+  2. **Gate verweigerte die Arbeit.** Ohne externen `dropout_density`/
+     `dropout_severity` und ohne Defekt-Evidenz blieb die Dichte 0,0 → Skip → die
+     Phase war ein No-op, obwohl sie einen vollständigen eigenen Detektor besitzt.
+- **Fix:**
+  1. Referenz auf **Peak-Hold** (`maximum_filter1d`) über dasselbe Fenster
+     umgestellt — Wert in der Lückenmitte **+2,039e-01**, Schwelle 4,078e-02 →
+     Lücke wird erkannt. Die relative Schwelle blieb unverändert.
+  2. §G188 (GEBOTE.md) „Autonome Stärke-Einstellung": Fehlt externe Evidenz, misst
+     die Phase ihre Dichte **selbst** (`_detect_amplitude_dropouts`) statt die
+     Arbeit zu verweigern. Das hängende Zitat „§v10.96" (in `.github/` und `docs/`
+     nicht auffindbar) ist durch die tragende Regel ersetzt.
+- **Beweise:** Detektor direkt gemessen — `detektor_regionen=1`, Region
+  `(12013, 16788)` bei echter Lücke `(12000, 16800)` (Abweichung ≤ 13 Samples);
+  Gegenprobe leise Passage (×0,15) → **0** Regionen (keine Überreparatur).
+  Der Regressionstest ist grün; `test_ml_hybrid_regression.py --run-heavy-tests`
+  → **128 passed** (vorher 127, Dropout-Test rot). Die zwei verbleibenden
+  `test_R09_rt_budget`-Fehlschläge (phase_03_denoise, phase_23_spectral_repair)
+  sind laufzeitabhängig und traten vor wie nach der Änderung **identisch** auf.
+  Ruff clean. Version 10.3.11 nach §v10.802 konsistent.
 
 ## 10.3.10 (2026-10-05)
 

@@ -78,6 +78,7 @@ from typing import Any
 import numpy as np
 import scipy.signal as signal
 from scipy.interpolate import CubicSpline
+from scipy.ndimage import maximum_filter1d
 
 from backend.core.audio_utils import (
     apply_musical_gain_envelope,
@@ -951,9 +952,12 @@ class DropoutRepairPhase(PhaseInterface):
             except Exception as _fmg_exc_24:
                 logger.debug("Verarbeitungsschritt24 §V41 ForwardMaskingGuard nicht blockierend: %s", _fmg_exc_24)
 
-        # §v10.96 Defekt-basiertes Skip-Gate: Dropout-Dichte vor Ausführung.
-        # Wenn der DefectScanner keine Dropouts gefunden hat (density < 0.001),
-        # ist die teure Inpainting-Pipeline (159 s) unnötig.
+        # Defekt-basiertes Skip-Gate: Dropout-Dichte vor Ausführung.
+        # Wenn keine Dropouts vorliegen (density < 0.001), ist die teure
+        # Inpainting-Pipeline (159 s) unnötig. Das frühere Zitat "§v10.96" ist in
+        # der normativen Kette nicht auffindbar (Befund 2026-10-05); die Wirkung des
+        # Gates bleibt, die Begründung steht jetzt bei den Regeln, die sie tragen:
+        # §G188 (GEBOTE.md) für die Autonomie der Messung.
         # Gaps aus dem RekonstruktionsDenker (629 Stück) sind bereits repariert.
         _dropout_density = float(kwargs.get("dropout_density", kwargs.get("dropout_severity", 0.0)) or 0.0)
         # §v10.200 Fallback: Defekt-Evidenz aus dem Produktions-Kontrakt.
@@ -978,12 +982,38 @@ class DropoutRepairPhase(PhaseInterface):
                 except (TypeError, ValueError):
                     continue
             _dropout_density = max(_fb_vals24, default=0.0)
+        if _dropout_density <= 0.0:
+            # §G188 (GEBOTE.md) — Autonome Stärke-Einstellung: Liegt weder ein
+            # externer Schwere-Wert noch Defekt-Evidenz aus dem Produktions-Kontrakt
+            # vor, bestimmt diese Phase ihre Dichte SELBST aus dem eigenen Detektor,
+            # statt die Arbeit zu verweigern. Befund 2026-10-05 (Vollscan Chunk 37):
+            # ohne diesen Zweig blieb ein 100-ms-Nullblock mitten in einem 440-Hz-Ton
+            # unrepariert — die Phase war ein No-op, obwohl sie einen vollständigen
+            # Detektor besitzt (dieselbe Fehlerklasse wie der oben dokumentierte
+            # Zugriffsfehler vom 2026-09-25, nur eine Stufe später).
+            try:
+                _own_regions_24 = self._detect_amplitude_dropouts(audio, params)
+                _own_samples_24 = int(sum(_e - _s for _s, _e in _own_regions_24))
+                _n_total_24 = int(audio.shape[0])
+                _dropout_density = float(_own_samples_24) / float(max(1, _n_total_24))
+                if _dropout_density > 0.0:
+                    logger.info(
+                        "§G188 Verarbeitungsschritt_24: Defektdichte autonom gemessen — %.5f aus %d Region(en)",
+                        _dropout_density,
+                        len(_own_regions_24),
+                    )
+            except Exception as _own_exc_24:
+                logger.warning(
+                    "Verarbeitungsschritt_24 autonome Dichtemessung fehlgeschlagen (Ersatzpfad: Gate bleibt bei 0): %s",
+                    _own_exc_24,
+                )
         if _dropout_density < 0.001 and _effective_strength > 0.0:
             # §v10.303: Erste Meldung als INFO, Wiederholungen als DEBUG (Log-Spam-Prävention)
             _log_fn = logger.info if not getattr(self, "_dropout_skip_logged", False) else logger.debug
             self._dropout_skip_logged = True
             _log_fn(
-                "§v10.96 Dropout-Skip: dropout_density=%.4f < 0.001 → dropout repair skipped",
+                "Dropout-Skip: dropout_density=%.4f < 0.001 → dropout repair skipped "
+                "(§G188 (GEBOTE.md) — Dichte autonom gemessen)",
                 _dropout_density,
             )
             _effective_strength = 0.0
@@ -1553,7 +1583,16 @@ class DropoutRepairPhase(PhaseInterface):
             if ref_window % 2 == 0:
                 ref_window -= 1
 
-        local_ref = signal.savgol_filter(envelope, ref_window, 3)
+        # Lücken-feste Referenz (Befund 2026-10-05, Fund 12b): Eine Glättung über
+        # genau die Lückenlänge zieht die Referenz IN der Lücke auf ~0 — die
+        # Bedingung "envelope < local_ref * threshold" wird dann nie wahr und der
+        # Detektor ist blind für lange Ausfälle (gemessen: dropout_density=0,000 %
+        # für einen 100-ms-Nullblock in einem 440-Hz-Ton; die Empfindlichkeit sank
+        # mit der Defektlänge, also genau umgekehrt zur Aufgabe der Phase).
+        # Peak-Hold über dasselbe Fenster trägt den umgebenden Pegel in die Lücke
+        # hinein; die relative Schwelle bleibt unverändert, kurze Knackser werden
+        # weiterhin erkannt.
+        local_ref = maximum_filter1d(envelope, size=ref_window, mode="nearest")
 
         # Dropout mask
         dropout_mask = envelope < (local_ref * params["detection_threshold"])
