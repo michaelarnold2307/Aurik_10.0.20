@@ -44,10 +44,23 @@ _RESIDUE_FLOOR_DB = (
     80.0  # numerischer Guard: Residuum < 80 dB unter Signal-RMS = Float32-Rauschen, kein Separations-Verlust
 )
 
+# ── §III.12 Pflicht-Witnesses (Rev. v10.3.11), report-only ──────────
+_DOUBLE_PROC_DB = 0.5  # ab dieser Band-Δ-Energie gilt ein Stem als verändert (C4)
+_LEVEL_FRAME_S = 0.020  # 20-ms-Raster für die Pegel-Kontinuität (C5)
+_LAG_WIN_S = 0.250  # nicht-überlappendes Fenster für die Laufzeit-Kontinuität (W6)
+_LAG_HOP_S = 0.250
+_LAG_SEARCH_S = 0.005  # ±5 ms Suchbereich des Korrelations-Lags
+
 
 @dataclass
 class RecombinationGateResult:
-    """Ergebnis der C1–C3-Gates (Zeuge für StemContext.witness_reports)."""
+    """Ergebnis der C1–C3-Gates und der §III.12-Pflicht-Witnesses (C4/C5/W4/W5/W6).
+
+    Die Witnesses sind **report-only**: Sie belegen Eigenschaften der Rekombination,
+    sie verändern kein Signal. W6 und C5 sind hier als Zeit-Kontinuität gemessen — die
+    Rekombination ist eine sample-genaue Summe ohne Segment-Naht (kein Concat/Crossfade),
+    eine „Naht"-Größe im engeren Sinn existiert daher nicht und wird nicht vorgetäuscht.
+    """
 
     offset_samples: int = 0
     alignment_corr: float = 1.0
@@ -57,6 +70,12 @@ class RecombinationGateResult:
     ild_drift_db: float = 0.0
     iacc_drop: float = 0.0
     stereo_ok: bool = True
+    # §III.12 Pflicht-Witnesses (Rev. v10.3.11) — report-only
+    ripple_depth_db: float = 0.0  # W4: Kammfilter-Ripple-Tiefe
+    leakage_corr: float = 0.0  # W5: Stem-Leakage (Geister-Anteile)
+    double_processed_bands: int = 0  # C4: Bänder mit Veränderung in BEIDEN Stems
+    level_step_db: float = 0.0  # C5: max. Pegel-Sprung Mix→Remix (Zeit-Kontinuität)
+    lag_step_us: float = 0.0  # W6: max. Laufzeit-Sprung zwischen Nachbarfenstern
     witness: dict = field(default_factory=dict)
 
     def build_witness(self) -> dict:
@@ -70,6 +89,15 @@ class RecombinationGateResult:
             "ild_drift_db": round(float(self.ild_drift_db), 2),
             "iacc_drop": round(float(self.iacc_drop), 4),
             "stereo_ok": bool(self.stereo_ok),
+            "ripple_depth_db": round(float(self.ripple_depth_db), 3),
+            "leakage_corr": round(float(self.leakage_corr), 4),
+            "double_processed_bands": int(self.double_processed_bands),
+            "level_step_db": round(float(self.level_step_db), 3),
+            "lag_step_us": round(float(self.lag_step_us), 2),
+            "continuity_note": (
+                "W6/C5 als Zeit-Kontinuität gemessen — die Rekombination ist eine sample-genaue "
+                "Summe ohne Segment-Naht (kein Concat/Crossfade)."
+            ),
         }
         return self.witness
 
@@ -231,6 +259,123 @@ def _bandpass_residue(residue_cn: np.ndarray, reuse_mask: np.ndarray, sr: int) -
     return out_norm  # type: ignore[no-any-return]
 
 
+def _bark_edges(sr: int) -> np.ndarray:
+    """Bark-Band-Kanten aus dem zentralen Maskierungsmodell (keine eigene Tabelle, §G9 copilot-instructions.md)."""
+    from backend.core.dsp.masking_model import bark_band_edges  # pylint: disable=import-outside-toplevel
+
+    return bark_band_edges(sr)
+
+
+def _ripple_depth_db(mix_cn: np.ndarray, remix_cn: np.ndarray, sr: int) -> float:
+    """W4 — Kammfilter-Ripple-Tiefe: Streuung des Band-Energie-Verhältnisses Remix/Mix (dB).
+
+    Eine Rest-Gruppenlaufzeit-Differenz erzeugt periodische Einbrüche; im Verhältnis
+    über Bark-Bänder zeigt sich das als größere Streuung. Report-only.
+    """
+    try:
+        _edges = _bark_edges(sr)
+        _delta = _band_energy_db(_mono(remix_cn), sr, _edges) - _band_energy_db(_mono(mix_cn), sr, _edges)
+        _finite = _delta[np.isfinite(_delta)]
+        return float(np.std(_finite)) if _finite.size else 0.0
+    except Exception as _exc:  # pylint: disable=broad-except
+        logger.debug("§W4 Ripple-Witness nicht verfügbar: %s", _exc)
+        return 0.0
+
+
+def _stem_leakage_corr(v_raw_cn: np.ndarray, i_raw_cn: np.ndarray, sr: int) -> float:
+    """W5 — Stem-Leakage: |Korrelation| der Hüllkurven beider RAW-Stems.
+
+    Sauber getrennte Quellen ⇒ unkorrelierte Hüllkurven (≈ 0). Geister-Anteile —
+    dieselbe Quelle in beiden Stems — heben die Korrelation. Report-only.
+    """
+    try:
+        _ev = _envelope(_mono(v_raw_cn), sr)
+        _ei = _envelope(_mono(i_raw_cn), sr)
+        _n = min(_ev.size, _ei.size)
+        if _n < 8:
+            return 0.0
+        _c = float(np.corrcoef(_ev[:_n], _ei[:_n])[0, 1])
+        return 0.0 if not np.isfinite(_c) else float(abs(_c))
+    except Exception as _exc:  # pylint: disable=broad-except
+        logger.debug("§W5 Leakage-Witness nicht verfügbar: %s", _exc)
+        return 0.0
+
+
+def _double_processed_bands(
+    v_raw_cn: np.ndarray,
+    vocal_cn: np.ndarray,
+    i_raw_cn: np.ndarray,
+    instr_cn: np.ndarray,
+    sr: int,
+) -> int:
+    """C4 — Bark-Bänder, in denen BEIDE Stems verändert wurden (Kamm-/Phantom-Risiko).
+
+    Überlappende Spektralanteile, die in beiden Stems bearbeitet wurden, können sich
+    bei der Summe als Kamm- oder Phantom-Artefakt niederschlagen. Report-only.
+    """
+    try:
+        _edges = _bark_edges(sr)
+        _dv = _band_energy_db(_mono(vocal_cn), sr, _edges) - _band_energy_db(_mono(v_raw_cn), sr, _edges)
+        _di = _band_energy_db(_mono(instr_cn), sr, _edges) - _band_energy_db(_mono(i_raw_cn), sr, _edges)
+        return int(np.sum((np.abs(_dv) > _DOUBLE_PROC_DB) & (np.abs(_di) > _DOUBLE_PROC_DB)))
+    except Exception as _exc:  # pylint: disable=broad-except
+        logger.debug("§C4 Doppelverarbeitungs-Witness nicht verfügbar: %s", _exc)
+        return 0
+
+
+def _level_step_db(mix_cn: np.ndarray, remix_cn: np.ndarray, sr: int) -> float:
+    """C5 — max. Pegel-Sprung (dB) zwischen Mix und Remix über 20-ms-Frames.
+
+    Ersetzt „Pegel-Kontinuität am Nahtpunkt": Die Summe hat keine Naht, geprüft wird
+    deshalb die Kontinuität über die Zeit. Report-only.
+    """
+    try:
+        _hop = max(int(_LEVEL_FRAME_S * sr), 1)
+        _m, _r = _mono(mix_cn), _mono(remix_cn)
+        _n = min(_m.size, _r.size)
+        if _n < 2 * _hop:
+            return 0.0
+        _frames = _n // _hop
+        _lvl_m = 10.0 * np.log10(np.mean(_m[: _frames * _hop].reshape(_frames, _hop) ** 2, axis=1) + 1e-20)
+        _lvl_r = 10.0 * np.log10(np.mean(_r[: _frames * _hop].reshape(_frames, _hop) ** 2, axis=1) + 1e-20)
+        _diff = np.abs(_lvl_r - _lvl_m)
+        _finite = _diff[np.isfinite(_diff)]
+        return float(np.max(_finite)) if _finite.size else 0.0
+    except Exception as _exc:  # pylint: disable=broad-except
+        logger.debug("§C5 Pegel-Kontinuitäts-Witness nicht verfügbar: %s", _exc)
+        return 0.0
+
+
+def _lag_step_us(mix_cn: np.ndarray, remix_cn: np.ndarray, sr: int) -> float:
+    """W6 — max. Sprung (µs) des Korrelations-Lags zwischen Nachbarfenstern.
+
+    Ersetzt „Seam-Gruppenlaufzeit-Sprung": Ohne Naht wird die Kontinuität der
+    Gruppenlaufzeit über die Zeit geprüft. Report-only.
+    """
+    try:
+        _win = int(_LAG_WIN_S * sr)
+        _hop = max(int(_LAG_HOP_S * sr), 1)
+        _m, _r = _mono(mix_cn), _mono(remix_cn)
+        _n = min(_m.size, _r.size)
+        if _win < 64 or _n < 3 * _win:
+            return 0.0
+        _max_lag = max(1, int(_LAG_SEARCH_S * sr))
+        _lags: list[float] = []
+        _frames = (_n - _win) // _hop + 1
+        for _i in range(int(_frames)):
+            _s = _i * _hop
+            _lag, _corr = _xcorr_offset(_m[_s : _s + _win], _r[_s : _s + _win], _max_lag)
+            if _corr >= _MIN_ALIGN_CORR:
+                _lags.append(float(_lag))
+        if len(_lags) < 2:
+            return 0.0
+        _steps = np.abs(np.diff(np.asarray(_lags, dtype=np.float64)))
+        return float(np.max(_steps) / max(int(sr), 1) * 1e6)
+    except Exception as _exc:  # pylint: disable=broad-except
+        logger.debug("§W6 Laufzeit-Kontinuitäts-Witness nicht verfügbar: %s", _exc)
+        return 0.0
+
+
 def recombine_stems_with_gates(
     mix_original: np.ndarray,
     vocal_stem_raw: np.ndarray,
@@ -300,6 +445,12 @@ def recombine_stems_with_gates(
     if not stereo_ok:
         logger.warning("§C3 Stereo-Drift am Nahtpunkt: ITD=%.1f µs ILD=%.1f dB IACC=%.3f", itd, ild, iacc)
 
+    # §III.12 Pflicht-Witnesses (Rev. v10.3.11) — report-only, kein Eingriff ins Signal.
+    _w4_ripple = _ripple_depth_db(mix, remix, sr)
+    _w5_leak = _stem_leakage_corr(v_raw, i_raw, sr)
+    _c4_double = _double_processed_bands(v_raw, vocal, i_raw, instr, sr)
+    _c5_level = _level_step_db(mix, remix, sr)
+    _w6_lag = _lag_step_us(mix, remix, sr)
     result = RecombinationGateResult(
         offset_samples=offset,
         alignment_corr=corr,
@@ -309,6 +460,11 @@ def recombine_stems_with_gates(
         ild_drift_db=ild,
         iacc_drop=iacc,
         stereo_ok=stereo_ok,
+        ripple_depth_db=_w4_ripple,
+        leakage_corr=_w5_leak,
+        double_processed_bands=_c4_double,
+        level_step_db=_c5_level,
+        lag_step_us=_w6_lag,
     )
     result.build_witness()
     remix_cn: np.ndarray = remix.astype(np.float32)

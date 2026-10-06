@@ -187,9 +187,20 @@ Jedes VERBOT definiert eine unzulässige Handlung. Verstöße sind Build-Fehler.
      `StemContext.witness_reports["recombination"]` erscheinen (Berichtspflicht,
      §G8).
    - Offene Pflicht-Witnesses (nicht implementiert = nachzuweisen, nicht
-     anzunehmen): **C4** keine Doppelverarbeitung überlappender Spektralanteile,
-     **C5** Pegel-Kontinuität am Nahtpunkt, **W4** Kammfilter-Ripple-Tiefe,
-     **W5** Stem-Leakage (Geister-Anteile), **W6** Seam-Gruppenlaufzeit-Sprung.
+     anzunehmen): — seit Rev. v10.3.11 **implementiert** (report-only in
+     `RecombinationGateResult.build_witness()`): **C4**
+     `double_processed_bands` (Bark-Bänder mit Veränderung in BEIDEN Stems),
+     **C5** `level_step_db` (max. Pegel-Sprung Mix→Remix über 20-ms-Frames),
+     **W4** `ripple_depth_db` (Kammfilter-Ripple-Tiefe), **W5** `leakage_corr`
+     (Stem-Leakage/Geister-Anteile), **W6** `lag_step_us` (max. Laufzeit-Sprung
+     zwischen Nachbarfenstern).
+   - **W6 und C5** sind ehrlich als *Zeit-Kontinuität* gemessen: Die
+     Rekombination ist eine sample-genaue Summe ohne Segment-Naht (kein
+     Concat/Crossfade) — eine „Naht"-Größe im engeren Sinn existiert nicht und
+     wird nicht vorgetäuscht (`continuity_note` im Zeugenbericht).
+   - Die Witnesses sind **report-only**: Sie belegen Eigenschaften, sie
+     verändern kein Signal. Harte Konsequenzen aus ihnen erfordern eine eigene
+     Kalibrierung (Muster F14) — bis dahin ohne automatische Wirkung.
 
 ---
 

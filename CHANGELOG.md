@@ -269,6 +269,38 @@
   Embedder bei Freigabe); 112 passed `test_musical_goals_metrics.py`
   (Goal-Entscheidungen unverändert); 50 passed Ebene-1/phase_65/VQI; Ruff clean.
 
+### §III.12-Pflicht-Witnesses implementiert (C4/C5/W4/W5/W6)
+
+- **Befund:** §III.12 verlangt fünf Witnesses als *Nachweis* der Rekombination
+  („nachzuweisen, nicht anzunehmen"); bis v10.3.11 waren C4/C5/W4/W5/W6 offen.
+  Der Rekombinationspunkt selbst (`recombine_stems_with_gates`, C2→C1→C3) war
+  bereits implementiert und verdrahtet.
+- **Neu (report-only, kein Signal-Eingriff):**
+  - **C4** `double_processed_bands` — Bark-Bänder, in denen BEIDE Stems um
+    > 0,5 dB verändert wurden (Kamm-/Phantom-Risiko bei der Summe).
+  - **C5** `level_step_db` — max. Pegel-Sprung Mix→Remix über 20-ms-Frames.
+  - **W4** `ripple_depth_db` — Streuung des Band-Energie-Verhältnisses
+    Remix/Mix (Kammfilter-Ripple-Tiefe).
+  - **W5** `leakage_corr` — |Hüllkurven-Korrelation| der RAW-Stems
+    (Geister-Anteile).
+  - **W6** `lag_step_us` — max. Korrelations-Lag-Sprung zwischen
+    Nachbarfenstern.
+
+  Alle Werte erscheinen über `build_witness()` in
+  `StemContext.witness_reports["recombination"]` (bestehende Verdrahtung in
+  `stem_level_restorer`) und nutzen vorhandene Primitive
+  (`_band_energy_db`, `bark_band_edges`, `_envelope`, `_xcorr_offset`) — kein
+  Parallelcode (§G9 copilot-instructions.md).
+- **Ehrlichkeit:** **W6/C5** sind als *Zeit-Kontinuität* gemessen, weil die
+  Rekombination eine sample-genaue Summe ohne Segment-Naht ist (kein
+  Concat/Crossfade); eine „Naht"-Größe wird nicht vorgetäuscht
+  (`continuity_note`). Die Witnesses haben **keine automatische Konsequenz** —
+  harte Schwellen erfordern eine eigene Kalibrierung (Muster F14).
+- **Beweise:** 11 passed `test_stem_recombination_gates.py` (5 neue Tests:
+  Berichtsvollständigkeit, Null-Werte bei perfekter Separation, C4 > 0 bei
+  Doppelveränderung und == 0 bei Ein-Stem-Änderung, W5 steigt bei geteilter
+  Quelle) sowie 23 passed `test_stem_level_restorer.py`; Ruff clean.
+
 ## 10.3.10 (2026-10-05)
 
 ### Phasensignatur: De-Esser wieder vertragskonform
