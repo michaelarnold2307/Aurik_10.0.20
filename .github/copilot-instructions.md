@@ -328,27 +328,52 @@ Die Budget-Tabelle wird maschinell je Zelle von
 `scripts/benchmark_effizienz_matrix.py --ci --enforce-budget` geprüft;
 Verletzungen werden im Ergebnis-JSON unter dem Schlüssel `budget_violations`
 gemeldet und führen im CI-Modus zu Exit 1. Die Pipeline reicht dazu seit
-
-**Budget-Wahrheit (P0-3, 2026-09-08):** Drei Budget-Größen koexistieren und müssen
-in EINE Norm konvergieren: (1) diese Tabelle (Per-Operation-Budgets, maschinell
-enforced), (2) der End-to-End-Guard `performance_guard.py` (32× RT für
-BALANCED/QUALITY/MAXIMUM, **8× für FAST**; §2.38 KMV normativ), (3) die real
-gemessenen **53× RT** (Matrix-Endlauf 2026-09-07/08).
-Die Diskrepanz stammt aus per-Chunk statt per-Song laufender Analytik/End-Gate —
-Ziel und Akzeptanzkriterium: `docs/TODOS_SOTA_ROADMAP.md` TODO-P0-1 (Song-Ebene-
-Analytik) und TODO-P0-3. Bis dahin gilt: 32×-Guard ist die verbindliche End-to-End-
-Norm; diese Tabelle regelt die Per-Operation-Budgets.
-**Plan-Budget-Realismus (2026-10-07):** Das Budget des `StrategieDenker` ist auf die
-harte Guard-Grenze **gedeckelt** — es konnte zuvor bis **73,6×** RT zusagen
-(32 × Kettentiefe 2,0 × Restaurierbarkeit 1,5) und meldete damit Zeit, die der
-Ausstieg nie gewährt; zusätzlich liest es die Modus-Grenzen jetzt **aus** dem Guard,
-statt sie zu kopieren (§G9 (copilot-instructions.md)). Die 53×-Ist-Lage bleibt als
-Performance-Schuld benannt und ist durch TODO-P0-1 zu schließen, nicht durch eine
-höhere Zusage.
 v10.1.0 reale Per-Operation-Timings als `metadata["pipeline_budget_timings"]`
 nach außen; fehlende Timings werden als `null` dokumentiert (nicht geschätzt).
 Mit `--repeats N` (deterministische Seed-Folge `AURIK_MASTER_SEED = 42+i`,
 §G5) liefert der Harness echte Stichproben für `--bootstrap-ci`.
+
+**Budget-Wahrheit (P0-3, 2026-09-08; Ist-Kalibrierung 2026-10-07):** Drei
+Budget-Größen koexistieren und müssen in EINE Norm konvergieren: (1) diese Tabelle
+(Per-Operation-Budgets, maschinell enforced), (2) der End-to-End-Guard
+`performance_guard.py` (32× RT für BALANCED/QUALITY/MAXIMUM, **8× für FAST**;
+§2.38 KMV normativ), (3) der **gemessene Ist-Stand** der Kalibrierung vom
+2026-10-07 (13:33, 30-s-Ausschnitt der realen Quelle, Zelle balanced,
+`scripts/benchmark_effizienz_matrix.py`; Beleg-Dokument versioniert unter
+`docs/reports/current/2026-10-07_leistungskalibrierung.md`, Ergebnis-JSON als
+Arbeitskopie unter `output_audio/benchmark_effizienz/`):
+**73,3× RT Wand-Zeit** / **65,9× RT Engine-Zeit** — und **vier
+Verletzungen** der Per-Operation-Tabelle: `phase_pipeline_total` 1752,8 s/min (Limit 240 s/min, 7,3× über); `defect_scanner` 157,2 s/min (Limit 4 s/min, 39,3× über); `feedback_chain` 167,4 s/min (Limit 120 s/min, 1,4× über); `restorability_estimator` 13,7 s/min (Limit 5 s/min, 2,7× über).
+Schwerste Einzelphase: `phase_12_wow_flutter_fix` 440 s (20 % der Wand-Zeit). Der
+Harness hat **keinen Warmup**; Wand- und Engine-Zahl werden deshalb getrennt geführt
+(die frühere Angabe „53× RT (Matrix-Endlauf 2026-09-07/08)" hatte im Workspace
+keinen Beleg und ist durch diese Messung ersetzt).
+**Der 32×-Guard ist in den Standardpfaden nicht wirksam:**
+`RestorationConfig.enforce_3x_rt` steht per Default auf `False` („opt-in only"), die
+Kalibrierung lief mit `Enforce=False, Adaptive=False` und wurde nicht abgebrochen —
+die 32×-Norm ist damit eine Anzeige, kein Ausstieg (offen, Register D-K3-37).
+Die frühere Zuordnung „die Diskrepanz stammt aus per-Chunk statt per-Song laufender
+Analytik/End-Gate" ist **überholt**: TODO-P0-1 ist umgesetzt — die song-globalen
+Blöcke (GOAL_SCORECARD, End-Gate-Recovery-Kaskade, Einladungs-Gate, Reporting-
+Analytik, B2-Post-Scan) laufen nach der Chunk-Assembly genau einmal. Dass der
+Chunked-Pfad die Deferral-Flags wirklich setzt und den Tail im
+`_restore_chunked`-Rumpf aufruft, pinnen ab 2026-10-07
+`tests/unit/test_p0_1_end_gate_chunking.py::test_restore_chunked_wires_the_deferral_flags`
+und `::test_song_level_tail_runs_in_the_chunked_assembly_path` — die Kalibrierung
+zeigt, dass die Analytik nicht der Treiber war: die Zeit liegt in Defekt-Scanner,
+Phase-Pipeline und Einzelphasen.
+Bis zur Entscheidung über die Durchsetzung gilt: 32×-Guard bleibt die verbindliche
+Zielnorm; diese Tabelle regelt die Per-Operation-Budgets, ihre Verletzung wird
+gemeldet (Abschnitt oben) und ist als Performance-Schuld offen.
+**Plan-Budget-Realismus (2026-10-07):** Das Budget des `StrategieDenker` ist auf die
+harte Guard-Grenze **gedeckelt** — es konnte zuvor bis **73,6×** RT zusagen
+(32 × Kettentiefe 2,0 × Restaurierbarkeit 1,5) und meldete damit Zeit, die der
+Ausstieg nie gewährt; zusätzlich liest es die Modus-Grenzen jetzt **aus** dem Guard,
+statt sie zu kopieren (§G9 (copilot-instructions.md)). Die Ist-Lage (73,3× RT Wand, 2026-10-07 gemessen)
+bleibt als Performance-Schuld benannt und ist OFFEN — die Treiber sind gemessen
+(Defekt-Scanner 157 s/min bei Limit 4, Phase-Pipeline 1753 s/min bei Limit 240,
+`phase_12_wow_flutter_fix` 440 s); adressiert wird über das Phasen-Profil,
+nicht durch eine höhere Zusage (Register D-K3-38).
 
 **GPU-Pfade (Stand 2026-09-18, §SOTA-ML-V5–V9):** GPU-Inferenz läuft über
 paritätsverifizierte Torch-ROCm-Kerne (alle deterministisch, §G5, fail-closed

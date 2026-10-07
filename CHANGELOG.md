@@ -1,4 +1,57 @@
-# Changelog — Aurik 10.12.2
+# Changelog — Aurik 10.12.3
+
+## 10.12.3 (2026-10-07)
+
+### P0-1-Verdrahtung gepinnt, Ist-Kalibrierung gemessen: 73× RT und vier Budget-Verletzungen
+
+**Befund 1 — die P0-1-Verdrahtung war ungeprüft.** `_restore_chunked` setzt die
+Deferral-Flags korrekt (`_chunk_kwargs["_chunked_tail_skip"] = True`, `_chunked_last`
+pro Chunk) und ruft den song-globalen End-Gate-Tail im eigenen Rumpf auf — die
+Roadmap-Angabe „P0-1 umgesetzt“ ist wahr. Geprüft waren aber nur die _Entscheidung_
+(`_should_run_end_gate_cascade`) und die Mess-Helfer: wäre das Setzen der Flags oder
+der Tail-Aufruf je entfallen, wären **alle** Tests grün geblieben. Zwei
+Wiring-Guard-Tests pinnen jetzt Konsum- und Setz-Seite sowie den Aufruf
+`_run_song_level_end_gate(` samt Marke `p0_1_song_end_gate_applied` im Methodenrumpf.
+
+**Befund 2 — die normative „53× RT“ hatte keinen Beleg.** Frische Kalibrierung
+(2026-10-07 13:33, 30-s-Ausschnitt der realen Quelle, Zelle balanced):
+
+| Größe | Wert |
+| --- | --- |
+| Wand-Zeit | 2200 s = **73,3× RT** |
+| Engine-Zeit | **65,9× RT** |
+| Phasen | 39 ausgeführt, 6 übersprungen |
+| Quality / PQS-MOS | 0.705 / 2.42 |
+
+Vier Verletzungen der Per-Operation-Tabelle:
+
+| Operation | Limit | gemessen | Faktor |
+| --- | --- | --- | --- |
+| `phase_pipeline_total` | 240 s/min | 1752,8 s/min | **7,3×** |
+| `defect_scanner` | 4 s/min | 157,2 s/min | **39,3×** |
+| `feedback_chain` | 120 s/min | 167,4 s/min | **1,4×** |
+| `restorability_estimator` | 5 s/min | 13,7 s/min | **2,7×** |
+
+Schwerste Einzelphase: `phase_12_wow_flutter_fix` 440 s (20 % der
+Wand-Zeit) — auf Vinyl-Material, dessen Wow-Anteil die Phase selbst als 0,00
+ausweist. Der Harness hat keinen Warmup; Wand- und Engine-Zahl werden getrennt
+geführt. Damit ist die frühere Zuordnung „Diskrepanz aus per-Chunk-Analytik“
+widerlegt: P0-1 ist umgesetzt, der Lauf wurde nicht schneller.
+
+**Befund 3 — die 32×-Norm ist eine Anzeige, kein Ausstieg.** `RestorationConfig.enforce_3x_rt`
+steht per Default auf `False` („opt-in only“, UV3 Z. 113); die Kalibrierung lief mit
+`Enforce=False, Adaptive=False` und wurde mit 73,3× RT ohne Abbruch als Erfolg
+gewertet. Die einzige `True`-Fundstelle liegt im `__main__`-Demo. Entscheidung offen:
+durchsetzen oder die Norm ehrlich als Monitoring-Ziel deklarieren (D-K3-37).
+
+**Befund 4 — ein abgerissener Satz.** „Die Pipeline reicht dazu seit“ endete im
+Nichts; der fortsetzende Absatz stand verrutscht unter dem StrategieDenker-Absatz.
+Beides ist zusammengeführt.
+
+Register: D-K3-35 (Verdrahtung) und D-K3-36 (Budget-Norm) geschlossen; D-K3-37
+(Guard ohne Durchsetzung) und D-K3-38 (Scanner/Pipeline-Kosten) offen benannt.
+
+## 10.12.2 (2026-10-07)
 
 ## 10.12.2 (2026-10-07)
 

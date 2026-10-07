@@ -125,3 +125,51 @@ def test_inviting_gate_measure_stubbed(monkeypatch: pytest.MonkeyPatch) -> None:
     assert ctx["passed"] is True
     assert ctx["n_windows"] == 4
     assert ctx["exempted_jumps"] == 3
+
+
+# ============================================================
+# WIRING-GUARD (2026-10-07) — Mechanik getestet, Verdrahtung nicht
+# ============================================================
+# Befund: Die Tests oben pruefen die ENTSCHEIDUNG
+# (_should_run_end_gate_cascade) und die Mess-Helfer. Die VERDRAHTUNG — also
+# dass der Chunked-Pfad die Flags ueberhaupt setzt und der song-globale Tail
+# ihn wirklich aufruft — war ungeprueft: faellt
+# `_chunk_kwargs["_chunked_tail_skip"]` weg, bleiben ALLE Tests gruen und die
+# song-globale Analytik laeuft wieder je Chunk (genau der Zustand, den P0-1
+# beheben soll). Diese beiden Tests pinnen die Verdrahtung.
+
+
+def _uv3_source() -> str:
+    from pathlib import Path as _P
+
+    root = _P(__file__).resolve().parents[2]
+    return (root / "backend" / "core" / "unified_restorer_v3.py").read_text(encoding="utf-8")
+
+
+def test_restore_chunked_wires_the_deferral_flags() -> None:
+    """Der Chunked-Pfad MUSS beide Deferral-Flags setzen (Konsum- und Setz-Seite)."""
+    src = _uv3_source()
+    # Konsum-Seite (restore()): beide Flags werden aus kwargs gelesen.
+    assert 'kwargs.pop("_chunked_tail_skip", False)' in src
+    assert 'kwargs.pop("_chunked_last", False)' in src
+    # Setz-Seite (Chunked-Pfad): Skip fuer alle Chunks, „last" pro Chunk.
+    assert '_chunk_kwargs["_chunked_tail_skip"] = True' in src
+    assert '_chunk_kwargs["_chunked_last"] = False' in src
+    assert '_chunk_kwargs["_chunked_last"] = i == len(chunks) - 1' in src
+
+
+def test_song_level_tail_runs_in_the_chunked_assembly_path() -> None:
+    """Der song-globale Tail MUSS im Rumpf von _restore_chunked aufgerufen werden."""
+    src = _uv3_source()
+    assert "def _restore_chunked" in src
+    start = src.index("def _restore_chunked")
+    rest = src[start + 1 :]
+    end = rest.find("\n    def ")
+    body = rest[: end if end > 0 else len(rest)]
+    assert len(body) > 1000, "Rumpf nicht gefunden — Anker 'def _restore_chunked' pruefen"
+    # Der End-Gate-Tail fuer den assemblierten Song MUSS dort stehen (sonst
+    # waere P0-1 wieder inert, ohne dass ein Test fehlschlaegt).
+    assert "_run_song_level_end_gate(" in body, (
+        "Kein song-globaler End-Gate-Aufruf im Chunked-Pfad — P0-1 waere wieder inert"
+    )
+    assert "p0_1_song_end_gate_applied" in body
