@@ -1,4 +1,25 @@
-# Changelog — Aurik 10.12.15
+# Changelog — Aurik 10.12.16
+
+## 10.12.16 (2026-10-07)
+
+### Wurzel-Fix: Log-Health-Guard — FileHandler-Verlust heilt sich (D-K3-58)
+
+- **Befund (Walzer-Lauf):** `logs/aurik_backend.log` verstummte um 22:42 mitten
+  im Lauf — der Prozess hielt danach KEINEN offenen Handle mehr auf die Datei
+  (fd-Prüfung am laufenden Prozess), während stdout durchgehend weiterlief
+  (34/47 Phasen). Monitoring war blind (§G8). Ausschlüsse: kein
+  `removeHandler`/`shutdown` im Song-Pfad, unter dem 5-MB-Rollover-Limit,
+  `log.1` unverändert — Ursache nicht abschließend lokalisiert.
+- **Fix:** `ensure_file_handler_attached()` in `backend/logging_config`
+  (prüft einen AKTIVEN Handler inkl. geschlossenem Stream, ersetzt defekte,
+  re-attached mit §V6-WARNING; Handler-Parameter als eine Quelle §G9); Aufruf
+  pro Phase in `_profiled_phase_call` → maximale Blindheit: eine Phase.
+- **Nachweis:** `tests/unit/test_dk358_log_health_guard.py` (2 Kontrakte:
+  Verlust→Heilung→idempotent; geschlossener Stream zählt nicht als aktiv);
+  283 UV3-Regressionstests grün.
+- **Registriert (offen):** D-K3-57 — Witness-`pre_echo`-Finding auf phase_01
+  im Walzer-Lauf; Nachstellung ohne Trigger (pre_echo_db −200), Repro via
+  `AURIK_WITNESS_DEBUG=1` im nächsten Lauf.
 
 ## 10.12.15 (2026-10-07)
 

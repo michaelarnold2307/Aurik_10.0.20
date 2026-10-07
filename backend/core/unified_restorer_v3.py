@@ -33734,6 +33734,16 @@ class UnifiedRestorerV3:
             str(getattr(phase_metadata, "phase_id", "?")),
             progress_cb=kwargs.get("progress_sub_callback"),
         )
+        # §D-K3-58 (2026-10-07): Log-Health-Guard — fehlt der Backend-FileHandler
+        # (Produktionsbefund: Log verstummte um 22:42 mitten im Lauf, Monitoring
+        # war blind, §G8 (copilot-instructions.md)), wird er hier pro Phase selbstheilend neu registriert
+        # (§V6-WARNING im Guard). Billig: ein Loop über die Root-Handler.
+        try:
+            from backend.logging_config import ensure_file_handler_attached as _ensure_fh_dk358
+
+            _ensure_fh_dk358()
+        except Exception:
+            logger.debug("§D-K3-58 Log-Health-Check nicht verfügbar", exc_info=True)
 
         _audio_before_phase = audio if _sev_wet_dry < 1.0 else None
         # §4.1b Zwicker-Guard: capture pre-phase audio for broadband-subtractive phases
