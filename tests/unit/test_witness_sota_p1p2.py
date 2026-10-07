@@ -92,7 +92,23 @@ def test_stereo_collapse_detected_by_witness() -> None:
 
 
 def test_pre_echo_detected_by_witness() -> None:
-    """P4: Energie vor einem Transienten → pre_echo-Finding."""
+    """P4: Energie vor einem Transienten → pre_echo-Finding.
+
+    Vertrag (2026-10-07 nachgezogen): `pre_echo_ratio_db` bildet seit **SUP-F7**
+    (2026-09-23) den dB-Abstand der *hinzugefügten* Vor-Fenster-Energie zur
+    **Onset-Energie** des Nach-Signals (`backend/core/dsp/pre_echo_model.py`,
+    Zwicker & Fastl §7.2). Die Dokumentation nennt die Kriterien selbst:
+    `> −12 dB` ⇒ Pre-Echo-Verdacht (Witness-Schwelle), `< −18 dB` ⇒ durch die
+    Forward-Masking-Gates ausgeschlossen.
+
+    Dieser Test stand noch auf der **alten** Referenz (pre-Δ ÷ post-Δ): mit
+    Amplitude 0,15 ergab er unter SUP-F7 nur **−12,8 dB** und fiel damit
+    **unter** die eigene Schwelle — er war seit dem 2026-09-23 rot und wurde
+    nicht mitgezogen. Gemessen (48 kHz, Onset 0,8 + Sustain 0,4):
+    0,15 → −12,8 dB · **0,30 → −6,8 dB** · 0,45 → −3,3 dB; 0,02–0,10 → −200
+    (Maskierungs-Gate greift). Deshalb 0,30: ≈5 dB Abstand zur Schwelle, wie
+    ein realistisches Codec-Pre-Echo.
+    """
     from backend.core.listening_witness import evaluate_listening_witness
 
     rng = np.random.default_rng(5)
@@ -103,7 +119,31 @@ def test_pre_echo_detected_by_witness() -> None:
     base[onset + 200 : onset + 800] += 0.4
     with_echo = base.copy()
     pre = int(SR * 0.010)
-    with_echo[onset - pre : onset] += 0.15 * np.hanning(pre).astype(np.float32)  # 10 ms Vor-Energie
+    with_echo[onset - pre : onset] += 0.30 * np.hanning(pre).astype(np.float32)  # 10 ms Vor-Energie
     res = evaluate_listening_witness(base, with_echo, SR, "phase_p4")
     assert res.pre_echo_db > -12.0
     assert "pre_echo" in res.findings
+
+
+def test_pre_echo_below_masking_is_not_a_finding() -> None:
+    """Hörordnung Ebene 2: ein Defekt **unter** der Maske ist kein Defekt.
+
+    Gegenstück zum Test darüber — die Schwelle ist zweiseitig: hinzugefügte
+    Vor-Energie, die die Forward-Masking-Gates nicht passiert (gemessen:
+    Amplitude 0,02 → Rückgabe −200), darf **keinen** pre_echo-Befund erzeugen.
+    Ohne diesen Fall bliebe nur „findet laut“ geprüft, nicht „schweigt leise“.
+    """
+    from backend.core.listening_witness import evaluate_listening_witness
+
+    rng = np.random.default_rng(5)
+    n = int(SR * 2.0)
+    base = (rng.standard_normal(n) * 0.01).astype(np.float32)
+    onset = int(SR * 1.0)
+    base[onset : onset + 200] += 0.8 * np.hanning(200).astype(np.float32)
+    base[onset + 200 : onset + 800] += 0.4
+    masked = base.copy()
+    pre = int(SR * 0.010)
+    masked[onset - pre : onset] += 0.02 * np.hanning(pre).astype(np.float32)
+    res = evaluate_listening_witness(base, masked, SR, "phase_p4")
+    assert res.pre_echo_db <= -12.0
+    assert "pre_echo" not in res.findings
