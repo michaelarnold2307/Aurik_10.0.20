@@ -33124,6 +33124,67 @@ class UnifiedRestorerV3:
             logger.debug("§2.69f _live_resolved_claims nicht blockierend: %s", _exc)
             return {}
 
+    def _start_phase_heartbeat(
+        self,
+        phase_name: str,
+        progress_cb: Any = None,
+        log_every_s: float | None = None,
+    ) -> tuple[threading.Event, threading.Thread]:
+        """§D-K3-55 (2026-10-07): Phasen-Heartbeat — Sub-Progress (8 Hz, log.
+        Kurve, T=40 s) UND Log-Zeile je Intervall (§G8-Transparenz).
+
+        Produktionsbefund „Trio Schweizer – 13 Tage" (10.12.12): 123 min
+        Log-Stillstand in einer Langphase bei 100–660 % CPU (OOM_PROBE loggt nur
+        an Phasen-Grenzen); der frühere Heartbeat lief NUR mit UI-Callback und
+        loggte nie. Jetzt: Thread läuft immer (ohne Callback nur Log), stoppt
+        garantiert via Event (§G173) + join im Aufrufer, kein Audio-Zugriff
+        (§THREAD-SAFETY: Progress/RSS-only). Determinismus §G5 (copilot-instructions.md) — Log ist
+        beobachtend, keine Entscheidungslogik.
+        """
+        if log_every_s is None:
+            try:
+                log_every_s = float(os.environ.get("AURIK_PHASE_HB_LOG_S", "60") or 60.0)
+            except (TypeError, ValueError):
+                log_every_s = 60.0
+        stop_ev = threading.Event()
+        t0 = time.perf_counter()
+        interval = 0.12  # ~8 Hz — feiner als üblicher UI-Redraw
+        tau = 40.0  # Zeitkonstante [s]: 40 s → 63 % des Budgets
+        budget = 0.88  # belegt max. 88 % der Sub-Progress; Rest für echte Callbacks
+
+        def _run(_cb=progress_cb, _stop=stop_ev, _t0=t0, _name=phase_name) -> None:
+            last_log_t = 0.0
+            while not _stop.wait(interval):
+                t = time.perf_counter() - _t0
+                if _cb is not None:
+                    frac = (1.0 - float(np.exp(-t / tau))) * budget
+                    try:
+                        _cb(float(frac * 100.0), "", t)
+                    except Exception:
+                        logger.debug("Phasen-Heartbeat-Callback fehlgeschlagen", exc_info=True)
+                if t - last_log_t >= log_every_s:
+                    last_log_t = t
+                    self._phase_heartbeat_log_step(_name, t)
+
+        thread = threading.Thread(target=_run, daemon=True, name=f"aurik_phase_hb_{phase_name}")
+        thread.start()
+        return stop_ev, thread
+
+    @staticmethod
+    def _phase_heartbeat_log_step(phase_name: str, elapsed_s: float) -> None:
+        """§D-K3-55: eine Heartbeat-Logzeile (§G8 (copilot-instructions.md)) mit RSS — defensiv, nie fatal."""
+        try:
+            rss_txt = ""
+            try:
+                import psutil as _ps_hb
+
+                rss_txt = f", RSS {_ps_hb.Process().memory_info().rss / 1e9:.1f} GB"
+            except Exception:
+                logger.debug("Heartbeat-RSS nicht verfügbar (kein psutil?) — Log ohne RSS", exc_info=True)
+            logger.info("⏳ Phasen-Heartbeat %s: %.0f min aktiv%s", phase_name, elapsed_s / 60.0, rss_txt)
+        except Exception:
+            logger.debug("Phasen-Heartbeat-Log fehlgeschlagen", exc_info=True)
+
     def _profiled_phase_call(self, phase, audio: np.ndarray, **kwargs):  # pyright: ignore[reportGeneralTypeIssues]
         """Führt eine Phase mit Zeit- und (optional) Speicherprofiling aus.
 
@@ -33662,47 +33723,17 @@ class UnifiedRestorerV3:
 
             kwargs["progress_sub_callback"] = _make_sub_progress(_sub_root_cb, _sp_s, _sp_e)
 
-        # §Heartbeat — kontinuierlicher Micro-Step-Emitter (8 Hz, log. Kurve).
-        # Hält die Sub-Progress-Bar auch ohne interne Callbacks der Phase in Bewegung.
-        # Kurve: f(t) = (1 − e^(−t/T)) × budget, T=40 s → nach 20 s ca. 39 % erreicht.
-        # Echte Phase-Callbacks übersteuern jederzeit via Monotonie-Guard.
-        #
-        # §THREAD-SAFETY: Heartbeat emittiert NUR Progress-Callbacks (kein Audio-Zugriff).
-        # phase.process() läuft im selben Thread — kein Race-Condition-Risiko.
-        # Falls eine Phase In-Place-Modifikation macht, wird das Audio VOR
-        # Heartbeat-Start vollständig via _prepare_profiled_phase_runtime_context
-        # kopiert/stabilisiert. Heartbeat stoppt garantiert vor result-Rückgabe.
-        _hb_cb = kwargs.get("progress_sub_callback")
-        _hb_stop_ev = threading.Event()
-        _hb_thread: threading.Thread | None = None
-        if _hb_cb is not None:
-            _hb_t0 = time.perf_counter()
-            _HB_INTERVAL = 0.12  # ~8 Hz — feiner als üblicher UI-Redraw
-            _HB_T = 40.0  # Zeitkonstante [s]: 40 s → 63 % des Budgets
-            _HB_BUDGET = 0.88  # Heartbeat belegt max. 88 % Sub; Rest für echte Callbacks
-
-            def _heartbeat_run(
-                _cb=_hb_cb,
-                _stop=_hb_stop_ev,
-                _t0=_hb_t0,
-                _T=_HB_T,
-                _B=_HB_BUDGET,
-                _iv=_HB_INTERVAL,
-            ) -> None:
-                while not _stop.wait(_iv):
-                    _t = time.perf_counter() - _t0
-                    _frac = (1.0 - float(np.exp(-_t / _T))) * _B
-                    try:
-                        _cb(float(_frac * 100.0), "", _t)
-                    except Exception:
-                        logger.debug("_profiled_Verarbeitungsschritt_call: silent except suppressed", exc_info=True)
-
-            _hb_thread = threading.Thread(
-                target=_heartbeat_run,
-                daemon=True,
-                name=f"aurik_phase_hb_{phase_metadata.phase_id}",
-            )
-            _hb_thread.start()
+        # §Heartbeat — kontinuierlicher Micro-Step-Emitter (8 Hz, log. Kurve) +
+        # §D-K3-55-Logzeile (alle 60 s, §G8-Transparenz). Läuft ÜBER die
+        # gekapselte Methode IMMER (auch ohne UI-Callback — Produktionsbefund:
+        # 123 min Log-Stillstand in einer Langphase); stoppt garantiert vor
+        # result-Rückgabe (_hb_stop_ev.set() + join). §THREAD-SAFETY: kein
+        # Audio-Zugriff, Progress/RSS-only; phase.process() läuft im selben
+        # Thread — kein Race-Condition-Risiko.
+        _hb_stop_ev, _hb_thread = self._start_phase_heartbeat(
+            str(getattr(phase_metadata, "phase_id", "?")),
+            progress_cb=kwargs.get("progress_sub_callback"),
+        )
 
         _audio_before_phase = audio if _sev_wet_dry < 1.0 else None
         # §4.1b Zwicker-Guard: capture pre-phase audio for broadband-subtractive phases

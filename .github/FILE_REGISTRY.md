@@ -416,6 +416,7 @@
 | tests/unit/test_dk352_singing_gate.py | ACTIVE | tests/unit | ja | — | Vertragstest D-K3-52 (2026-10-07, Nutzer-Vorgabe): Gesangs-Gate — <0,15 bit-identisch, lineare Skalierung 0,15→0,40, volles Gate; Default ohne Zeugen bleibt geschlossen (Sprache untergeordnet) |
 | tests/unit/test_dk328_scrape_iec.py | ACTIVE | tests/unit | ja | — | Vertragstest D-K3-28/D-K3-53 (2026-10-07): IEC-60386-AM 20/60/150 Hz ≥ 0,5; FM-Seitenband ≥ 0,3; IGD-H2/H3-Wachstum ≥ 0,3 (flacher Sinus < 0,1); sauberer Träger < 0,05 (Anti-FP) |
 | tests/unit/test_dk356_witness_mod_fp.py | ACTIVE | tests/unit | ja | — | Vertragstest D-K3-56 (2026-10-07): Witness pitch_modulation — identisch/Klick→Patch/SAUBER→Patch clean, echte +6-Hz-Modulation warnt (Positiv-Kontrolle), Verbesserungsrichtung 0,0 |
+| tests/unit/test_dk355_phase_heartbeat.py | ACTIVE | tests/unit | ja | — | Vertragstest D-K3-55 (2026-10-07): Phasen-Heartbeat — Log-Zeile ohne UI-Callback (§G8), Callback-Erhalt (0–100), Log-Format mit Phasenname/Minuten; Stop hinterlässt keinen Thread |
 
 ## Pflege-Regeln
 

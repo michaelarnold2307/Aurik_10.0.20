@@ -1,4 +1,21 @@
-# Changelog — Aurik 10.12.14
+# Changelog — Aurik 10.12.15
+
+## 10.12.15 (2026-10-07)
+
+### Wurzel-Fix: Phasen-Heartbeat in Langphasen (D-K3-55)
+
+- **Befund (Walzer-Lauf):** 123 min Log-Stillstand in einer Langphase bei
+  100–660 % CPU (OOM_PROBE loggt nur an Phasen-Grenzen). Der bestehende
+  Heartbeat lief NUR mit UI-Callback und loggte NIE — ein CLI-Lauf hatte gar
+  keinen. §G8 verlangt beobachtbaren Fortschritt.
+- **Fix:** Phasen-Heartbeat gekapselt als `_start_phase_heartbeat` +
+  `_phase_heartbeat_log_step` — der Thread läuft IMMER (ohne UI-Callback nur
+  Log), loggt je 60 s („⏳ Phasen-Heartbeat NAME: X min aktiv, RSS Y GB",
+  `AURIK_PHASE_HB_LOG_S` überschreibbar), behält die Sub-Progress-Callbacks
+  (8 Hz, log. Kurve) und stoppt garantiert via Event + join (§G173).
+- **Nachweis:** `tests/unit/test_dk355_phase_heartbeat.py` (3 Kontrakte:
+  Log ohne UI-Callback, Callback-Erhalt, Log-Format); 283
+  UV3-Regressionstests grün.
 
 ## 10.12.14 (2026-10-07)
 
