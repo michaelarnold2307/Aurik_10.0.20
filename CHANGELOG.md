@@ -1,4 +1,40 @@
-# Changelog — Aurik 10.12.3
+# Changelog — Aurik 10.12.4
+
+## 10.12.4 (2026-10-07)
+
+### Phase-12-Glättung: 71 s pro Trajektorie → 10,7 s (Teilbehebung der Performance-Schuld)
+
+**Befund (D-K3-39).** Ein cProfile einer Phase-12-Ausführung zeigt: `kalman_smooth_warp`
+verbrauchte **71,2 s je 1,44-Mio-Sample-Trajektorie** (zwei Aufrufe je Ausführung =
+169,8 s von 245 s Phasenzeit) — die Rekursion lief als Per-Sample-Python-Schleife,
+die pro Sample mehrere 2×2-Arrays allokierte und `np.linalg.inv` aufrief: gemessen
+**2.879.998 Inversionen** und **14,4 Mio. `np.array`-Aufrufe**.
+
+**Fix.** Skalare Rekursion derselben Mathematik (CV-Modell + RTS, `C = P Fᵀ Pp⁻¹` in
+geschlossener 2×2-Form) — keine Allokationen pro Schritt.
+
+| Nachweis | Wert |
+| --- | --- |
+| Funktionsebene (N = 1,44 Mio., q = 1e-8, r = 1e-5) | 71,2 s → **10,7 s = 6,7×** |
+| Abweichung zur Original-Fassung | max 7,8e-6 auf dem Warp-Ratio ≈ 0,014 Cent |
+| Phasenebene (Original zuletzt/warm) | 193,1 s → **76,1 s = 2,54×** |
+| Audio-Differenz | max 1,9e-6 / rms 8,5e-8 = **−111,6 dBFS** |
+| End-to-End (30 s reale Quelle, balanced) | 2200 s → **1802 s** (73.3× → **60.1× RT**) |
+
+Die Änderung ist **nicht bit-identisch** (Reihenfolge der 2×2-Inversion: LAPACK-LU vs.
+Determinanten-Formel), liegt aber 15 dB unter dem CD-Rauschboden von −96 dBFS; die
+Phasen-Metriken sind unverändert. Patch-Bump, weil weder eine neue Fähigkeit noch
+eine hörbare Änderung entsteht — die Abweichung ist gemessen und dokumentiert.
+
+Regressionstests: `tests/unit/test_warp_toolkit.py::test_kalman_scalar_impl_matches_reference_production_parameters`
+(Toleranz 1e-5 gegen die Original-Implementierung) und `::test_kalman_is_deterministic_and_finite`.
+
+**Offen bleibt** (D-K3-38): 4 Per-Operation-Budgets sind weiterhin verletzt —
+schwerste Einzelphase: `phase_12_wow_flutter_fix` 250 s.
+Die verbleibenden Treiber (Defekt-Scanner mit zwei Läufen, restliche Phase-12-Anteile,
+`phase_03_denoise`) sind im Beleg-Dokument aufgelistet.
+
+## 10.12.3 (2026-10-07)
 
 ## 10.12.3 (2026-10-07)
 

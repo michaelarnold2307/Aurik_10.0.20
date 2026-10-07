@@ -106,3 +106,81 @@ def test_consensus_warp_averages_agreement() -> None:
     cons, agree = consensus_warp(a, t, b, t, quality_b=None, tol=0.005, min_quality=0.0)
     assert agree.mean() > 0.8
     assert np.allclose(cons[agree], 0.5 * (a[agree] + b[agree]))
+
+
+def _kalman_reference(trajectory: np.ndarray, q: float, r: float) -> np.ndarray:
+    """Original-Fassung des RTS-Smoothers (Small-Array-NumPy, np.linalg.inv je Schritt).
+
+    Unveraendert als Referenz fuer die skalare Neufassung in
+    ``backend/core/dsp/warp_kalman.py`` (Laufzeit-Umbau 2026-10-07, Register
+    D-K3-38/§G190 (GEBOTE.md)).
+    """
+    traj = np.asarray(trajectory, dtype=np.float64).ravel()
+    n = len(traj)
+    if n < 3:
+        return np.asarray(trajectory).copy()
+    dt = np.ones(n, dtype=np.float64)
+    x = np.zeros((n, 2), dtype=np.float64)
+    P = np.zeros((n, 2, 2), dtype=np.float64)
+    x[0] = [traj[0], 0.0]
+    P[0] = np.eye(2) * max(r, 1e-6)
+    H = np.array([[1.0, 0.0]])
+    R = max(r, 1e-12)
+    for k in range(1, n):
+        d = dt[k]
+        F = np.array([[1.0, d], [0.0, 1.0]])
+        G = np.array([[0.5 * d * d], [d]])
+        xp = F @ x[k - 1]
+        Pp = F @ P[k - 1] @ F.T + G @ G.T * q
+        y = traj[k] - (H @ xp)
+        S = H @ Pp @ H.T + R
+        K = (Pp @ H.T) / S
+        x[k] = xp + K.ravel() * y
+        P[k] = Pp - K @ (H @ Pp)
+    xs = x.copy()
+    for k in range(n - 2, -1, -1):
+        d = dt[k + 1]
+        F = np.array([[1.0, d], [0.0, 1.0]])
+        Pp = F @ P[k] @ F.T + np.outer(np.array([0.5 * d * d, d]), np.array([0.5 * d * d, d])) * q
+        C = P[k] @ F.T @ np.linalg.inv(Pp)
+        xs[k] = x[k] + C @ (xs[k + 1] - F @ x[k])
+    return xs[:, 0]
+
+
+def test_kalman_scalar_impl_matches_reference_production_parameters() -> None:
+    """Skalare Neufassung == Original-Fassung (gleiche Mathematik, 2×2 geschlossen).
+
+    Gemessen am Kalibrierungsmaterial (2026-10-07, N = 1,44 Mio., q = 1e-8,
+    r = 1e-5 wie die Aufrufstelle): max|Δ| = 7,8e-6 auf dem Warp-Ratio — das
+    sind ≈ 0,014 Cent Pitch (Hörschwelle ~1 Cent, Phasen-Toleranz 100 Cent).
+    Die Abweichung entsteht aus der Reihenfolge der 2×2-Inversion (LAPACK-LU
+    vs. Determinanten-Formel) und ist über N beschränkt (N = 20 000: 6,5e-6).
+    Der Test pinnt sie bei N = 6000 gegen die Toleranz 1e-5.
+    """
+    rng = np.random.default_rng(11)
+    n = 6000
+    t = np.arange(n) / 48000.0
+    trj = 1.0 + 3e-4 * np.sin(2 * np.pi * 3.0 * t) + 2e-5 * rng.standard_normal(n)
+    ref = _kalman_reference(trj, 1e-8, 1e-5)
+    got = np.asarray(kalman_smooth_warp(trj, q=1e-8, r=1e-5))
+    assert got.shape == ref.shape
+    d = float(np.abs(ref - got).max())
+    assert d < 1e-5, f"skalare Neufassung weicht ab: max|Δ|={d:.3e} (> 1e-5)"
+
+
+def test_kalman_short_input_untouched() -> None:
+    """Bei n < 3 gibt der Smoother die Eingabe unveraendert zurueck (Kantenvertrag)."""
+    for n in (1, 2):
+        arr = np.linspace(1.0, 1.001, n)
+        out = np.asarray(kalman_smooth_warp(arr, q=1e-8, r=1e-5))
+        assert np.array_equal(out, arr), f"n={n}: Eingabe muss unveraendert bleiben"
+
+
+def test_kalman_is_deterministic_and_finite() -> None:
+    """Gleicher Input ⇒ gleicher Output (§G5 (copilot-instructions.md))."""
+    rng = np.random.default_rng(13)
+    trj = 1.0 + 1e-3 * rng.standard_normal(5000).cumsum()
+    a = np.asarray(kalman_smooth_warp(trj, q=1e-8, r=1e-5))
+    b = np.asarray(kalman_smooth_warp(trj, q=1e-8, r=1e-5))
+    assert np.array_equal(a, b)
+    assert np.all(np.isfinite(a))

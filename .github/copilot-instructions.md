@@ -337,14 +337,16 @@ Mit `--repeats N` (deterministische Seed-Folge `AURIK_MASTER_SEED = 42+i`,
 Budget-Größen koexistieren und müssen in EINE Norm konvergieren: (1) diese Tabelle
 (Per-Operation-Budgets, maschinell enforced), (2) der End-to-End-Guard
 `performance_guard.py` (32× RT für BALANCED/QUALITY/MAXIMUM, **8× für FAST**;
-§2.38 KMV normativ), (3) der **gemessene Ist-Stand** der Kalibrierung vom
-2026-10-07 (13:33, 30-s-Ausschnitt der realen Quelle, Zelle balanced,
+§2.38 KMV normativ), (3) der **gemessene Ist-Stand** der Kalibrierungen vom
+2026-10-07 (13:33 vorher, 15:11 nach der Teilbehebung D-K3-39), jeweils
+30-s-Ausschnitt der realen Quelle, Zelle balanced,
 `scripts/benchmark_effizienz_matrix.py`; Beleg-Dokument versioniert unter
 `docs/reports/current/2026-10-07_leistungskalibrierung.md`, Ergebnis-JSON als
 Arbeitskopie unter `output_audio/benchmark_effizienz/`):
-**73,3× RT Wand-Zeit** / **65,9× RT Engine-Zeit** — und **vier
-Verletzungen** der Per-Operation-Tabelle: `phase_pipeline_total` 1752,8 s/min (Limit 240 s/min, 7,3× über); `defect_scanner` 157,2 s/min (Limit 4 s/min, 39,3× über); `feedback_chain` 167,4 s/min (Limit 120 s/min, 1,4× über); `restorability_estimator` 13,7 s/min (Limit 5 s/min, 2,7× über).
-Schwerste Einzelphase: `phase_12_wow_flutter_fix` 440 s (20 % der Wand-Zeit). Der
+**60,1× RT Wand-Zeit** / **52,5× RT Engine-Zeit** (vor der
+Teilbehebung: 73,3× / 65,9×; Δ 399 s = 18,1 % schneller) —
+und **4 Verletzungen** der Per-Operation-Tabelle: `phase_pipeline_total` 1334,9 s/min (Limit 240 s/min, 5,6× über); `defect_scanner` 140,4 s/min (Limit 4 s/min, 35,1× über); `feedback_chain` 165,0 s/min (Limit 120 s/min, 1,4× über); `restorability_estimator` 13,1 s/min (Limit 5 s/min, 2,6× über).
+Schwerste Einzelphase: `phase_12_wow_flutter_fix` 250 s (14 % der Wand-Zeit). Der
 Harness hat **keinen Warmup**; Wand- und Engine-Zahl werden deshalb getrennt geführt
 (die frühere Angabe „53× RT (Matrix-Endlauf 2026-09-07/08)" hatte im Workspace
 keinen Beleg und ist durch diese Messung ersetzt).

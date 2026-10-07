@@ -94,3 +94,30 @@ gewertet; verletzte Per-Operation-Budgets erscheinen ausschließlich als
 4. Der Lauf ist langsam **und** die Qualitätsanzeige niedrig (Quality 0,705 /
    PQS-MOS 2,42) — als Beobachtung notiert, nicht bewertet; sie gehört zur
    Qualitätsspur, nicht zur Budget-Frage.
+
+
+## Nachher-Messung (2026-10-07, nach Teilbehebung D-K3-39)
+
+Gleiches Kommando, gleiche Quelle, gleiche Zelle — nur mit der skalaren RTS-Rekursion
+(`backend/core/dsp/warp_kalman.py`):
+
+| Größe | vorher (13:33) | nachher (15:11) | Δ |
+| --- | --- | --- | --- |
+| Wand-Zeit | 2200 s (73.3× RT) | **1802 s (60.1× RT)** | +399 s (+18.1 %) |
+| Engine-Zeit | 65.9× RT | **52.5× RT** | — |
+| Verletzungen | 4 | 4 | — |
+| Schwerste Einzelphase | `phase_12_wow_flutter_fix` 440 s | `phase_12_wow_flutter_fix` 250 s | — |
+
+Verletzte Per-Operation-Budgets nachher: `phase_pipeline_total` 1334,9 s/min (Limit 240 s/min, 5,6× über); `defect_scanner` 140,4 s/min (Limit 4 s/min, 35,1× über); `feedback_chain` 165,0 s/min (Limit 120 s/min, 1,4× über); `restorability_estimator` 13,1 s/min (Limit 5 s/min, 2,6× über).
+
+### Phasenebene (isolierter Nachweis)
+
+| Größe | alt (Original-Fassung) | neu (skalar) |
+| --- | --- | --- |
+| Phase-12-Laufzeit | 193,1 s (zuletzt, warm) | **76,1 s** = 2,54× |
+| Audio-Differenz | — | max 1,9e-6 / rms 8,5e-8 = **−111,6 dBFS** |
+| Metadaten | — | 19 Schlüssel, nur `rms_drop_db` auf 1e-9-Ebene verschieden |
+
+Die Audio-Differenz liegt 15 dB unter dem CD-Rauschboden (−96 dBFS) und damit
+weit unter jeder Hörschwelle; die Phasen-Metriken (Cents-Spannen, Kohärenz) sind
+unverändert.
