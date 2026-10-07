@@ -118,8 +118,16 @@ def to_channels_last(audio: np.ndarray) -> tuple["np.ndarray", bool]:
 
     Returns (normalized_audio, was_transposed) so the caller can restore the
     original orientation with ``restore_layout``.
+
+    §G9 (copilot-instructions.md): Die **Entscheidung** „ist Achse 0 die
+    Kanalachse?" kommt aus `backend.core.audio_layout`; das `== 2` ist der
+    *Stereo-Vertrag* dieses Helfers, keine geratene Achse (Muster D-K3-6).
+    Divergenz nur bei entarteten Shapes mit 3–8 Samples: dort wird nicht mehr
+    transponiert (kein reales Audiosignal).
     """
-    if audio.ndim == 2 and audio.shape[0] == 2 and audio.shape[1] > 2:
+    from backend.core.audio_layout import is_channels_first
+
+    if audio.ndim == 2 and audio.shape[0] == 2 and is_channels_first(audio):
         return audio.T, True
     return audio, False
 

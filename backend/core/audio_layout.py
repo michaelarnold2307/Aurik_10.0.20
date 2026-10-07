@@ -86,12 +86,40 @@ def to_samples_first(arr: np.ndarray) -> np.ndarray:
     return arr
 
 
+def normalize_channels_first(arr: np.ndarray) -> tuple[np.ndarray, bool]:
+    """Modul-Grenzen-Vertrag: ``(audio_cn, war_transponiert)``.
+
+    DIE eine Quelle für die Layout-**Entscheidung** (Muster der Befund-Klasse
+    D-K3-6): Modul-lokale Zahlenheuristiken (``shape[0] <= 2``) divergierten
+    von dieser Regel und transponierten Mehrachser-Signale ``(3…8, N)`` falsch
+    — HR-V1 war dadurch auf Stereo wirkungslos.
+
+    Regeln: 1-D → ``(1, N)``, ``was=False``; ``(C, N)`` → unverändert;
+    ``(N, C)`` → ``(C, N)``; **unklar** (beide Achsen ≤ ``MAX_CHANNELS``, z.
+    B. ``(2, 2)``) → konservativ die kleinere Achse als Kanalachse (identisch
+    zur ``mono_mix``-Regel); andere ``ndim`` → unverändert.
+    """
+    arr = np.asarray(arr)
+    if arr.ndim == 1:
+        return arr[None, :], False
+    if arr.ndim != 2:
+        return arr, False
+    if is_channels_first(arr):
+        return arr, False
+    if is_samples_first(arr):
+        return cast(np.ndarray, np.ascontiguousarray(arr.T)), True
+    if arr.shape[0] <= arr.shape[1]:
+        return arr, False
+    return cast(np.ndarray, np.ascontiguousarray(arr.T)), True
+
+
 __all__ = [
     "MAX_CHANNELS",
     "is_channels_first",
     "is_samples_first",
     "sample_axis",
     "mono_mix",
+    "normalize_channels_first",
     "to_channels_first",
     "to_samples_first",
 ]

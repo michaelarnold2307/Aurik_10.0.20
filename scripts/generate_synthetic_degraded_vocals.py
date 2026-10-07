@@ -63,13 +63,16 @@ def _seed_for(seed: int, track: str, variant: int) -> int:
 
 
 def _to_channels_first(audio: np.ndarray) -> np.ndarray:
-    """Normalisiert auf Layout channels-first (C, N) — §Stereo-Layout-Invariante."""
-    arr = np.asarray(audio, dtype=np.float32)
-    if arr.ndim == 1:
-        return arr[np.newaxis, :]
-    if arr.ndim == 2 and arr.shape[0] <= 8 and arr.shape[1] > arr.shape[0]:
-        return arr  # bereits (C, N)
-    return arr.T  # (N, C) → (C, N)
+    """Normalisiert auf Layout channels-first (C, N) — §Stereo-Layout-Invariante.
+
+    §G9 (copilot-instructions.md): Die Entscheidung kommt aus der einen
+    kanonischen Quelle `backend.core.audio_layout` (diese Kopie war eine von
+    vier divergenten Heuristiken, Muster D-K3-6).
+    """
+    from backend.core.audio_layout import normalize_channels_first
+
+    arr_cn, _ = normalize_channels_first(np.asarray(audio, dtype=np.float32))
+    return arr_cn
 
 
 def _finite_guard(audio: np.ndarray, where: str) -> np.ndarray:

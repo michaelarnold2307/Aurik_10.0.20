@@ -173,17 +173,28 @@ def _mono(audio: np.ndarray) -> np.ndarray:
 
 
 def _channels_first_or_none(audio: np.ndarray) -> np.ndarray | None:
-    """Stereo als channels-first (2, N) — None für Mono/unklare Layouts."""
+    """Stereo als channels-first (2, N) — None für Mono/unklare Layouts.
+
+    §G9 (copilot-instructions.md): Die Layout-Entscheidung kommt aus
+    `backend.core.audio_layout`; die `<= 2`-Prüfungen sind der **Stereo-Vertrag
+    des Zeugen** (nur Stereo wird bewertet), keine geratene Kanalachse
+    (Muster D-K3-6). Bei Unklarheit bleibt es bei `None` — der Zeuge rät nicht.
+
+    Divergenz zur vorherigen Fassung nur bei entarteten Shapes (≤ 8 Samples):
+    dort wird `None` zurückgegeben statt eine Achse anzunehmen (2026-10-07).
+    """
+    from backend.core.audio_layout import is_channels_first, is_samples_first
+
     arr = np.asarray(audio, dtype=np.float32)
     arr = np.nan_to_num(arr, nan=0.0, posinf=0.0, neginf=0.0)
     if arr.ndim != 2:
         return None
-    if arr.shape[0] <= 2 and arr.shape[0] < arr.shape[1]:
-        _witness_cf: np.ndarray = arr
-        return _witness_cf
-    if arr.shape[1] <= 2 and arr.shape[1] < arr.shape[0]:
-        _witness_cf_t: np.ndarray = arr.T
+    if is_samples_first(arr):
+        _witness_cf_t: np.ndarray | None = arr.T if arr.shape[1] <= 2 else None
         return _witness_cf_t
+    if is_channels_first(arr):
+        _witness_cf: np.ndarray | None = arr if arr.shape[0] <= 2 else None
+        return _witness_cf
     return None
 
 

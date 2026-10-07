@@ -300,7 +300,12 @@ def apply_silence_preservation(
         # wird _n = min(orig.shape[-1], proc.shape[-1]) = min(2, 10815948) = 2,
         # was zu broadcasting-Fehlern und Datenkorruption führt.
         def _to_channels_first(arr: np.ndarray) -> np.ndarray:
-            if arr.ndim == 2 and arr.shape[-1] == 2 and arr.shape[0] > 2:
+            # §G9 (copilot-instructions.md): Layout-Erkennung aus der kanonischen
+            # Quelle; die lokale Zahlenheuristik war eine von vier divergenten
+            # Kopien (Drift-Klasse D-K3-6).
+            from backend.core.audio_layout import is_samples_first
+
+            if arr.ndim == 2 and arr.shape[-1] == 2 and is_samples_first(arr):
                 return arr.T.copy()  # (N, 2) → (2, N)
             return arr
 

@@ -43,12 +43,17 @@ _SMOOTH_FRAMES = 3
 
 
 def _to_channels_first(x: np.ndarray) -> tuple[np.ndarray, bool]:
-    x = np.asarray(x, dtype=np.float32)
-    if x.ndim == 1:
-        return x[None, :], False
-    if x.shape[0] <= 2 and x.shape[1] > x.shape[0]:
-        return x, False
-    return x.T, True
+    """§G9 (copilot-instructions.md): Entscheidung aus der EINEN kanonischen Quelle.
+
+    Befund D-K3-6: Die frühere lokale Heuristik (``x.shape[0] <= 2``) wich von
+    ``backend.core.audio_layout`` ab und transponierte Mehrachser-Signale
+    ``(3…8, N)`` falsch; im Zusammenspiel mit der Kanalführung war HR-V1 auf
+    Stereo wirkungslos. Eine lokale Kopie ist hier unzulässig — der Pre-Commit
+    erzwingt das (``scripts/layout_invariant_check.py``).
+    """
+    from backend.core.audio_layout import normalize_channels_first
+
+    return normalize_channels_first(np.asarray(x, dtype=np.float32))
 
 
 def _stft(x: np.ndarray) -> tuple[np.ndarray, int]:

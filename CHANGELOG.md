@@ -1,4 +1,57 @@
-# Changelog — Aurik 10.8.3
+# Changelog — Aurik 10.9.0
+
+## 10.9.0 (2026-10-07)
+
+### Layout-Entscheidung: EINE Quelle statt sechs Modul-Kopien (Befund D-K3-7)
+
+**Ausgangsfrage:** „Ist sichergestellt, dass in allen Pfaden Mono- und
+Stereosignale zu 100 % korrekt behandelt werden?“ — **Nein, belegt war das nicht.**
+Jetzt ist es gemessen.
+
+**Befund (AST-Messung über 1660 Dateien in `PRODUCTION_ROOTS`):** Die
+Layout-Entscheidung existierte in **14** Modul-Helfern, davon **6** mit eigener
+geratener Kanalachse. Kanonisch ist `is_channels_first = shape[0] <= MAX_CHANNELS(8)
+and shape[1] > 8`; die Kopien prüften `shape[0] <= 2` und transponierten
+Mehrachser-Signale `(3…8, N)` **falsch**. Dieselbe Ursache wie D-K3-6: nicht die
+Berechnung war defekt, sondern die **stille Annahme über das Layout**.
+
+**Fix (Ursache, §V7 copilot-instructions.md):** neue kanonische Funktion
+`normalize_channels_first(arr) -> (audio_cn, war_transponiert)` in
+`backend/core/audio_layout.py`; **alle sechs** Kopien delegieren dorthin —
+keine Ausnahme, keine Allow-List:
+`backend/core/audio_utils.py::to_channels_last` (36 Aufrufer),
+`backend/core/listening_witness.py::_channels_first_or_none` (Zeuge: rät
+weiterhin nicht, gibt bei Unklarheit `None`),
+`backend/core/dsp/additive_synthesis_gate.py`,
+`backend/core/dsp/hybrid_denoise_fusion.py`,
+`backend/core/dsp/scrape_flutter_rest.py`,
+`backend/core/dsp/silence_mask.py`,
+`scripts/generate_synthetic_degraded_vocals.py`.
+Dokumentierte Divergenz nur bei **entarteten Shapes ≤ 8 Samples** (kein reales
+Audiosignal) — im Docstring je Modul benannt, nicht verschwiegen.
+
+**Neues fail-closes Gate `aurik-layout-invariant`**
+(`scripts/layout_invariant_check.py`, Pre-Commit `always_run`):
+`L1` = ERROR für jede Funktion mit Normalisierer-Namen, die das Layout ohne
+`audio_layout` entscheidet (geratene Kanalachse wird als Muster D-K3-6 benannt);
+`L2` = **Bericht** über 1269 layout-empfindliche Reduktionen ohne
+Layout-Entscheidung (Batch-Achse vs. Kanal-Achse ist statisch nicht
+entscheidbar — eine Fail-Regel wäre D-K3-5-Lärm). Prosa wird über das
+bestehende `_blank_prose` aus `scripts/wohlklang_gate.py` geblankt (§G9: eine
+Technik, keine zweite Umsetzung).
+
+**Nachweis:** L1 = **0 Verstöße / 0 Ausnahmen** (vorher 6); 25 Tests grün,
+darunter 10 neue in `tests/unit/test_layout_invariant_check.py`.
+Regressionen: **keine** — der einzige rote Test der Reihe
+(`test_witness_sota_p1p2.py::test_pre_echo_detected_by_witness`, −12,8 dB gegen
+Schwelle −12,0 dB) ist **gegen HEAD reproduziert** und damit vorbestehend, nicht
+Folge dieser Änderung.
+
+**Mono/Stereo-Antwort an den Nutzer:** Die ursprüngliche Frage nach 100 %
+Korrektheit über **alle** Pfade bleibt **offen** — 1269 Reduktionen sind
+triagiert, aber nicht einzeln geprüft (Register **D-K3-8**). Belegt sind:
+Layout-Vertrag `soundfile.read(always_2d=True)` → `(N, 2)`, SCNet-Stems →
+`(N, 2)`, Export-`(2,)`-Kollaps behoben, D-K3-6 und D-K3-7 geschlossen.
 
 ## 10.8.3 (2026-10-07)
 

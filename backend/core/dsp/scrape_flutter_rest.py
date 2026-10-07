@@ -45,12 +45,17 @@ class ScrapeFlutterResult:
 
 
 def _to_channels(x: np.ndarray) -> tuple[np.ndarray, bool]:
-    """Normalisiert auf (C, N); returns (data, was_channels_first)."""
-    if x.ndim == 1:
-        return x[None, :], True
-    if x.shape[0] <= 2 and x.shape[0] < x.shape[1]:
-        return x, True  # bereits (C, N)
-    return x.T, False  # (N, C) → (C, N)
+    """Normalisiert auf (C, N); returns (data, was_channels_first).
+
+    §G9 (copilot-instructions.md): Entscheidung aus der kanonischen Quelle
+    (frühere lokale Kopie ``x.shape[0] <= 2`` = Drift-Klasse D-K3-6).
+    """
+    from backend.core.audio_layout import normalize_channels_first
+
+    data_cn, was_transposed = normalize_channels_first(np.asarray(x))
+    # Vertrag dieser Funktion: `was_channels_first` ist True, wenn NICHT
+    # transponiert wurde (Mono gilt als (1, N) = channels-first).
+    return data_cn, not was_transposed
 
 
 def _bandpass_env(channel: np.ndarray, sr: int) -> np.ndarray:

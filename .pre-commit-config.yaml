@@ -647,6 +647,13 @@ repos:
         pass_filenames: false
         always_run: true
 
+      - id: aurik-layout-invariant
+        name: "Layout-EINE-Quelle (§G9, fail-closed — Muster D-K3-6)"
+        entry: .venv_aurik/bin/python scripts/layout_invariant_check.py
+        language: system
+        pass_filenames: false
+        always_run: true
+
       # Conventional Commits Message Validation
       - id: conventional-commit-msg
         name: "Conventional Commits (feat/fix/docs/style/refactor/perf/test/chore/spec/build/ci)"

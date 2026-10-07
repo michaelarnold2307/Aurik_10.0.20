@@ -31,13 +31,16 @@ _SMOOTH_FRAMES = 3  # Box-Glättung der Band-Gewichte (deterministisch)
 
 
 def _to_channels_first(x: np.ndarray) -> tuple[np.ndarray, bool]:
-    """Normalisiert auf (C, N); Rückgabe (audio_cn, war_transponiert)."""
-    x = np.asarray(x, dtype=np.float32)
-    if x.ndim == 1:
-        return x[None, :], False
-    if x.shape[0] <= 2 and x.shape[1] > x.shape[0]:
-        return x, False
-    return x.T, True
+    """Normalisiert auf (C, N); Rückgabe (audio_cn, war_transponiert).
+
+    §G9 (copilot-instructions.md): Die Layout-Entscheidung kommt aus der einen
+    kanonischen Quelle ``backend.core.audio_layout`` — die frühere lokale
+    Kopie (``x.shape[0] <= 2``) war eine von vier divergenten Heuristiken
+    (Befund-Klasse D-K3-6).
+    """
+    from backend.core.audio_layout import normalize_channels_first
+
+    return normalize_channels_first(np.asarray(x, dtype=np.float32))
 
 
 def _stft_bands(x: np.ndarray, sr: int) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
