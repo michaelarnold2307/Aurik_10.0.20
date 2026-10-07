@@ -1,4 +1,34 @@
-# Changelog — Aurik 10.12.6
+# Changelog — Aurik 10.12.7
+
+## 10.12.7 (2026-10-07)
+
+### D-K3-43: Era-HF-Rolloff auf realem Material kalibriert (1890/wax → 1960/vinyl)
+
+**Befund.** `_dsp_hf_rolloff` — laut Docstring der „primäre Physik-Anker“ der
+Era-Erkennung — kollabierte auf realer Musik: die echte Elke-Best-1977-Aufnahme
+maß 2004–2191 Hz statt ~16 kHz, weil die Perzentil-Anker **E90/E85 die
+Spektral-Balance messen, nicht die Bandbreite** (bei Musik liegt die Energie im
+Bass); sobald die Guards der übrigen Schätzer griffen, fiel die Fusion auf die
+E90-Replik zurück (Zahlen-Identität). Folge: 1890/wax_cylinder mit bis zu 0,90
+Konfidenz. Betroffen waren ALLE Real-Fixtures (jazz 1312, classical 891, reel
+891 Hz) und alle Elke-Fenster.
+
+**Fix (kalibriert am echten Material).** Zwei Guards in `_dsp_hf_rolloff` nach
+dem Bass-Override, vor dem Weighted Median — vollständige VOR/NACH-Matrix in der
+Register-Zelle D-K3-43 (`.github/SOTA_DEFICIT_REGISTER.md`):
+
+- **Konvergenz-Cluster:** ≥2 Schätzer >5 kHz, max/min ≤2,6, ≥3 Kandidaten ⇒
+  Cluster-Median, wenn E90 <2500 Hz oder Cluster ≥2,5×E90.
+- **Band-Decay-Beweis:** E(10–20 kHz) ≥ E(1–3 kHz) −6 dB ⇒ HF physikalisch
+  vorhanden (kein E90-Gate); Ergebnis min(Nyquist, max(Hoch-Cluster, 18 kHz)).
+
+**Nachweis.** `tests/unit/test_era_hf_rolloff_calibration.py` (7 Tests):
+Fullband ≥20 kHz; LP3k ∈[2,2;3,6] kHz und LP4k ∈[3,0;4,6] kHz (Skirt-Schutz —
+die Kalibrier-Signale bleiben unverändert); pink ≥15 kHz; Musik-Mock ≥9 kHz;
+Determinismus (§G5 (copilot-instructions.md)); skip-guarded Real-Fixture-Checks. A/B-Evidenz: Elke
+1890/wax/0,90 → **1960/vinyl/0,72**; Fixtures 891–1312 → 21475–22002 Hz.
+Kein DSP-Eingriff — reines Klassifikations-Feature; die Entscheidungsänderung
+(wax→vinyl/tape) ist die gewollte Wirkung und in D-K3-43 mit A/B belegt.
 
 ## 10.12.6 (2026-10-07)
 

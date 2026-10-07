@@ -514,26 +514,53 @@ def _dsp_hf_rolloff(audio_mono: np.ndarray, sr: int) -> float:
         if _gap / _tail > 0.40:
             return float(np.clip(edge_30db, 200.0, nyquist))
 
-    # ── §v10.14.1 Multi-Estimator Convergence Guard ─────────────────────
-    # Wenn E90 extrem niedrig ist (< 2 kHz) aber mindestens 2 unabhängige
-    # Schätzer (edge_30dB, slope_break, flat_onset) auf > 5 kHz zeigen,
-    # ist E90 durch Bass-Dominanz korrumpiert.  Vertraue dem Median der
-    # nicht-korrumpierten Schätzer.
-    # Dieser Guard feuert auch bei gap/tail < 0.40 (z.B. bei Codec-
-    # komprimierten Aufnahmen wo der Codec das Rauschen oberhalb des LPFs
-    # unterdrückt und der Gap-Energie-Anteil künstlich niedrig ist).
-    if e90 < 2000.0 and len(candidates) >= 3:
-        _high_estimators = [v for v, _ in candidates if v > 5000.0]
-        if len(_high_estimators) >= 2:
-            _converged_bw = float(np.median(_high_estimators))
-            logger.debug(
-                "BW Multi-Estimator Convergence: E90=%.0fHz corrupted, %d/%d estimators converge at %.0f Hz → override",
-                e90,
-                len(_high_estimators),
-                len(candidates),
-                _converged_bw,
-            )
-            return float(np.clip(_converged_bw, 200.0, nyquist))
+    # ── §v10.14.1 / D-K3-43 Multi-Estimator Convergence + Band-Decay Guard ──
+    # Real-Musik-Kalibrierung (Befund 2026-10-07, Register D-K3-43): E90/E85
+    # messen die Spektral-BALANCE, nicht die Bandbreite — bei Musik (und pinkem
+    # Rauschen) liegen ~90 % der Energie unter ~2,2 kHz, die Fusion kollabierte
+    # deshalb auf E90 (echter 1977er Song: 2004 Hz statt ~16 kHz).  Die alte
+    # 2-kHz-Schwelle verfehlte reale Musik um 16 Hz (0–10-s-Fenster: E90=2016).
+    # Weiß-Rauschen-Kalibrierung bleibt unberührt: dort liegt E90 selbst am
+    # Bandende (Cluster/E90 ≈ 1,1 — kein Auslösen); 3k/4k-LP-Weißrauschen hat
+    # Streuung 3,0–3,9 im Cluster → Konsistenz-Bedingung schützt den Skirt.
+    _high_estimators = [v for v, _ in candidates if v > 5000.0]
+    _converged_bw = float(np.median(_high_estimators)) if _high_estimators else 0.0
+    _agreement = max(_high_estimators) / max(min(_high_estimators), 1.0) if len(_high_estimators) >= 2 else float("inf")
+    _cluster_ok = len(_high_estimators) >= 2 and _agreement <= 2.6
+    _el_family_corrupted = e90 < 2500.0 or (_converged_bw >= 2.5 * max(e90, 1.0))
+    if _cluster_ok and _el_family_corrupted and len(candidates) >= 3:
+        logger.debug(
+            "BW Multi-Estimator Convergence (D-K3-43): E90=%.0fHz corrupted (agreement=%.2f),"
+            " %d/%d estimators converge at %.0f Hz → override",
+            e90,
+            _agreement,
+            len(_high_estimators),
+            len(candidates),
+            _converged_bw,
+        )
+        return float(np.clip(_converged_bw, 200.0, nyquist))
+
+    # Band-Decay-Guard (D-K3-43, Real-Musik-Fall): Wenn im 10–20-kHz-Band
+    # physikalisch Energie liegt (≥ Mid-Band 1–3 kHz − 6 dB), ist das Signal
+    # breitbandig — der Beweis trägt sich selbst, unabhängig von E90 und von
+    # der Anzahl verfügbarer Physik-Schätzer.  Befunde: 1950s-Jazz-Fixture —
+    # ein dominanter Ton zieht Edge-30dB auf 1,3 kHz herab (Peak-Referenz),
+    # E(10–20 kHz) liegt aber nur −3 dB unter E(1–3 kHz); pinkes Rauschen —
+    # nur Edge-Schätzer vorhanden, E-Familie bei 6,3 kHz.  Genuine
+    # LP-Signale (Weiß-3k/4k-LP: ≤ −40 dB; Kassette −16 dB; MP3-64k −12 dB)
+    # bleiben unter der −6-dB-Schwelle und behalten ihr E90-/Cluster-Ergebnis.
+    _band_mid = float(np.sum(avg_spec[(freqs >= 1000.0) & (freqs < 3000.0)])) + 1e-30
+    _band_hf = float(np.sum(avg_spec[(freqs >= 10000.0) & (freqs < 20000.0)]))
+    if _band_hf >= _band_mid * 10.0 ** (-6.0 / 10.0):
+        _band_bw = min(nyquist, max([*_high_estimators, 18000.0]))
+        logger.debug(
+            "BW Band-Decay Guard (D-K3-43): E(10–20k)=%.1f dB rel. E(1–3k) ⇒ HF physikalisch"
+            " vorhanden, E90=%.0fHz korrumpiert → %.0f Hz",
+            10.0 * np.log10((_band_hf + 1e-30) / _band_mid),
+            e90,
+            _band_bw,
+        )
+        return float(np.clip(_band_bw, 200.0, nyquist))
 
     # Weighted median: sort by value, find where cumulative weight crosses 0.5
     candidates.sort(key=lambda x: x[0])
