@@ -1,4 +1,37 @@
-# Changelog — Aurik 10.12.4
+# Changelog — Aurik 10.12.5
+
+## 10.12.5 (2026-10-07)
+
+### Messinstrument ehrlich gemacht: kanonischer Pfad + pegel-ehrliche SNR
+
+**Befund.** Der Corpus-Benchmark (`scripts/benchmark_corpus.py`) meldete auf
+`vinyl_blues_1950s_crackle` ein „degraded“ von −3,8 dB. Die Zerlegung zeigt: Das
+Instrument maß am Produktionspfad vorbei und verschmolz drei unabhängige Effekte
+in eine Zahl.
+
+1. **Pfad:** Der Harness rief nur die Engine (`UnifiedRestorerV3.restore`) ohne
+   Pre-Analysis/GlobalPlan — Verstoß gegen die §G9-Kette. Ohne GlobalPlan griff
+   der §9.7.7-Era-Fallback (`decade=1890`, `material_prior=wax_cylinder`,
+   confidence 0,42) → §2.46c BW-Hard-Cap LPF@5 kHz auf Vinyl-Material. Neuer
+   Default `--pipeline canonical` = exakt die CLI-Sequenz
+   (`run_pre_analysis` → `AurikDenker.denke()`); `uv3`/`coordinated` bleiben
+   dokumentierte Diagnose-Pfade.
+2. **Metrik:** Die SNR war pegel-sensitiv — die Lautheits-Normalisierung
+   (OneTakeExport → −16 LUFS) erzeugte scheinbare −22 dB (Engine-direkt-Lauf).
+   Gain-angepasst bleibt −1,3 dB echter Inhaltsverlust. Neu trägt nur die
+   gain-angepasste SNR das Verdikt; rohe SNR + Pegel werden getrennt
+   ausgewiesen.
+3. **Kanäle/Paarung:** Stereo wurde auf Mono kollabiert (Stereo-Layout-
+   Invariante) und auf 4 s beschnitten; die Paarung fand 4 von 56 Paaren.
+   Behoben: 56 Paare, volle Datei (`--seconds` optional), Stereo bleibt Stereo.
+
+**MOS-Warnung.** Auf dem synthetischen Korpus ist MOS invertiert (clean 1,61 vs.
+zerstörter Output 4,73 [PQS-DSP-Fallback]) — läuft nur optional (`--mos`), keine
+Urteilskraft (Hörordnung §1: Metriken sind Zeugen).
+
+**Neu:** `--save-wav` (Spektral-Diagnose + Hörprobe), ML-Device-Init vor
+Inferenz (§VI). Kein Audiosignal-Verhalten geändert (bit-identisch) — reine
+Messinstrument-Korrektur. Befunde: Register D-K3-41/-42.
 
 ## 10.12.4 (2026-10-07)
 

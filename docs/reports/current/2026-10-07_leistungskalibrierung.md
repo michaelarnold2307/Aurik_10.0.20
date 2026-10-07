@@ -95,7 +95,6 @@ gewertet; verletzte Per-Operation-Budgets erscheinen ausschließlich als
    PQS-MOS 2,42) — als Beobachtung notiert, nicht bewertet; sie gehört zur
    Qualitätsspur, nicht zur Budget-Frage.
 
-
 ## Nachher-Messung (2026-10-07, nach Teilbehebung D-K3-39)
 
 Gleiches Kommando, gleiche Quelle, gleiche Zelle — nur mit der skalaren RTS-Rekursion
@@ -121,7 +120,6 @@ Verletzte Per-Operation-Budgets nachher: `phase_pipeline_total` 1334,9 s/min (Li
 Die Audio-Differenz liegt 15 dB unter dem CD-Rauschboden (−96 dBFS) und damit
 weit unter jeder Hörschwelle; die Phasen-Metriken (Cents-Spannen, Kohärenz) sind
 unverändert.
-
 
 ## Scanner-Kostenanalyse (2026-10-07, D-K3-40)
 
@@ -166,7 +164,6 @@ Ursache: vier große Arrays je Aufruf (spec, hil, imag, out ≈ 27 MB × 424 Auf
 zwei, plus `scipy.fft` statt `numpy.fft`. Die In-situ-Messung ist speichergebunden; der
 Mikro-Benchmark misst die falsche Größe. **Lehre für alle weiteren Optimierungen:**
 A/B im selben Prozess mit geleertem Cache, niemals nur isolierte Mikro-Benchmarks.
-
 
 ### Zweiter Negativ-Befund: Detektor-Memo (widerlegt)
 

@@ -1,0 +1,20 @@
+{
+  "version": "v10.800",
+  "timestamp": "2026-10-07T17:14:47",
+  "summary": {
+    "improved": 0,
+    "degraded": 1,
+    "avg_snr_improvement_db": -22.07,
+    "total_files": 1
+  },
+  "results": [
+    {
+      "medium": "vinyl",
+      "file": "vinyl_blues_1950s_crackle.wav",
+      "snr_before_db": 20.14,
+      "snr_after_db": -1.93,
+      "snr_improvement_db": -22.07,
+      "verdict": "degraded"
+    }
+  ]
+}
