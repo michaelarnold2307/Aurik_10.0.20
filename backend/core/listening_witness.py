@@ -378,6 +378,27 @@ def _f0_metrics(f0s: np.ndarray, voiced: np.ndarray, hop_rate_hz: float) -> tupl
                 if len(_seg) >= 8:
                     _c = 1200.0 * np.log2(np.maximum(_seg, 1e-6) / np.median(_seg))
                     _c = _c - np.median(_c)
+                    # §D-K3-56 (2026-10-07): AUSREISSER der F0-Schätzung dominieren
+                    # sonst das 3–8-Hz-Band und verfälschen das Vorher/Nachher-Delta
+                    # um hunderte Cent. Repro: (a) saubes Vibrato-Signal hatte
+                    # +814 Cent „mehr Modulation" als seine klickige Fassung (reine
+                    # Tracker-Sprünge); (b) eine SAUBERE Klick-Patch-Entfernung
+                    # (Signal wird besser!) meldete +146,8 Cent „pitch_modulation".
+                    # Physiologisch ist |ΔF0| ≤ ~150 Cent/Frame (Vibrato 7 Hz ±100 Cent,
+                    # gemessen ≤ 48 Cent/Frame; Oktav-Sprünge ≥ 600 Cent) — Kanten
+                    # darüber sind Schätzer-Artefakte (Klick-/Patch-Kanten,
+                    # Autokorrelator-Triggers) und werden linearisiert; danach
+                    # entfernt ein Median-Filter (5) verbleibende 1-Frame-Spikes.
+                    if len(_c) >= 5:
+                        _d_c = np.abs(np.diff(_c))
+                        for _j_c in np.where(_d_c > 150.0)[0]:
+                            _lo_c = max(0, _j_c - 1)
+                            _hi_c = min(len(_c) - 1, _j_c + 2)
+                            if _hi_c - _lo_c >= 2:
+                                _c[_lo_c + 1 : _hi_c] = np.linspace(_c[_lo_c], _c[_hi_c], _hi_c - _lo_c + 1)[1:-1]
+                        from scipy.signal import medfilt as _mf_dk356
+
+                        _c = _mf_dk356(_c, kernel_size=5)
                     runs.append(_c * np.hanning(len(_c)))
                 run_start = None
     mod_depths: list[float] = []
@@ -827,8 +848,18 @@ def evaluate_listening_witness(
     flat_b = np.asarray(_bun_b["flat"], dtype=np.float64)
 
     _hop_rate = float(sr) / float(_HOP)
-    _spread_a, mod_a = _f0_metrics(f0_a, vo_a, _hop_rate)
-    _spread_b, mod_b = _f0_metrics(f0_b, vo_b, _hop_rate)
+    _spread_a, _ = _f0_metrics(f0_a, vo_a, _hop_rate)
+    _spread_b, _ = _f0_metrics(f0_b, vo_b, _hop_rate)
+    # §D-K3-56 (2026-10-07): Die mod-Tiefe wird für BEIDE Seiten über die
+    # GEMEINSAME Voicing-Maske gemessen (identische Run-Grenzen). Sonst
+    # verglich das Vorher/Nachher-Delta Trajektorien mit unterschiedlicher
+    # Run-Struktur: Klick-Frames machen den Schätzer einseitig unvoiced, die
+    # Runs zerfallen in kürzere Segmente und die 3–8-Hz-Band-Auflösung ändert
+    # sich (Repro: eine SAUBERE Klick-Patch-Entfernung — Signal wird besser! —
+    # meldete +86,1 Cent „pitch_modulation"; identisch-Fall 0,0).
+    voiced_both = vo_a & vo_b
+    _, mod_a = _f0_metrics(f0_a, voiced_both, _hop_rate)
+    _, mod_b = _f0_metrics(f0_b, voiced_both, _hop_rate)
 
     voiced_both = vo_a & vo_b
     hnr_drop = 0.0

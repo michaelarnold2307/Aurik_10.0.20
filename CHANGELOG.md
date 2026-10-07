@@ -1,4 +1,26 @@
-# Changelog — Aurik 10.12.13
+# Changelog — Aurik 10.12.14
+
+## 10.12.14 (2026-10-07)
+
+### Wurzel-Fix: Reinhör-Witness pitch_modulation (D-K3-56)
+
+- **Befund (Walzer-Lauf):** Die Witness meldete nach `phase_01_click_removal`
+  „pitch_modulation +220,7 Cent" — reproduzierbar sogar für eine SAUBERE
+  Klick-Patch-Entfernung (das Signal wird besser!). Zwei Wurzeln: (a) die
+  mod-Tiefe wurde je Seite über die EIGENE Voicing-Maske berechnet —
+  Klick-Frames machen den F0-Schätzer einseitig unvoiced, die Runs zerfallen
+  und das Delta verglich unterschiedliche Run-Strukturen; (b) F0-Schätzer-
+  Ausreißer (Oktav-/Kanten-Sprünge) speisten das 3–8-Hz-Band mit hunderten
+  Cent (sauberes Vibrato: +814 Cent „mehr Modulation" als seine klickige
+  Fassung).
+- **Fix:** mod-Tiefe beidseitig über die GEMEINSAME Voicing-Maske (identische
+  Run-Grenzen, Muster `voiced_both` der HNR-Messung); Despike der
+  Cent-Trajektorie (ΔF0 > 150 Cent/Frame ist physiologisch unmöglich —
+  Vibrato ≤ 48 Cent/Frame gemessen) + Median-Filter (5) für 1-Frame-Spikes.
+- **Nachweis:** `tests/unit/test_dk356_witness_mod_fp.py` (5 Kontrakte:
+  identisch 0,0; Klick→Patch 0,0 — vorher 86,1; SAUBER→Patch 0,0; echte
+  +6-Hz-Modulation warnt weiter mit 660 Cent; Verbesserungsrichtung 0,0);
+  47 Witness-/Korrektur-Loop-Regressionstests grün.
 
 ## 10.12.13 (2026-10-07)
 
