@@ -414,6 +414,7 @@
 | tests/unit/test_dk350_consonant_effect.py | ACTIVE | tests/unit | ja | — | Vertragstest D-K3-50 (2026-10-07): Wirkungs-Invariante — Band-RMS auf Frikativ-Segmenten ≈ Ziel-Boost (±0,75 dB); Unerreichbarkeit der alten Pseudo-SNR-Forderung bei realem Frikativanteil gepinnt; enhance() liefert invariant_met + ehrliche Werte |
 | tests/unit/test_dk351_phase_exclusion_sync.py | ACTIVE | tests/unit | ja | — | Vertragstest D-K3-51 (2026-10-07): `check_iteration_abort_excluding`-Filtersemantik (Exclude verdeckt nichts anderes; Deltas als Zeugen §G8) + Klassen-Sync-Kontrakte (HPF phase_05/30, Synthese phase_23/24/55 → tonal_center in PMGG UND CIG) |
 | tests/unit/test_dk352_singing_gate.py | ACTIVE | tests/unit | ja | — | Vertragstest D-K3-52 (2026-10-07, Nutzer-Vorgabe): Gesangs-Gate — <0,15 bit-identisch, lineare Skalierung 0,15→0,40, volles Gate; Default ohne Zeugen bleibt geschlossen (Sprache untergeordnet) |
+| tests/unit/test_dk328_scrape_iec.py | ACTIVE | tests/unit | ja | — | Vertragstest D-K3-28/D-K3-53 (2026-10-07): IEC-60386-AM 20/60/150 Hz ≥ 0,5; FM-Seitenband ≥ 0,3; IGD-H2/H3-Wachstum ≥ 0,3 (flacher Sinus < 0,1); sauberer Träger < 0,05 (Anti-FP) |
 
 ## Pflege-Regeln
 

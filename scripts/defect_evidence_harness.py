@@ -583,6 +583,25 @@ def _wow_scrape_flutter() -> np.ndarray:
     return _out
 
 
+def _scrape_am_iec() -> np.ndarray:
+    """§D-K3-28 (2026-10-07): IEC-60386-Scrape — 0,7 % AM @ 60 Hz auf einem
+    breitbandigen Träger (Grundton + Harmonische + dezentes Rauschen). Die vier
+    Bestands-Kanäle waren dafür blind (Messung: AM 20–150 Hz @ 0,7 % → 0.000 in
+    allen); der kohärente Mehrband-AM-Kanal erkennt Rate/Tiefe kohärenz-gekoppelt
+    (0,69–0,75 @ 0,7 %), saubere Signale liefern 0,0 (Anti-FP)."""
+    t = np.arange(SR * DUR) / SR
+    rng = np.random.default_rng(42)
+    carrier = (
+        0.20 * np.sin(2 * np.pi * 440.0 * t)
+        + 0.10 * np.sin(2 * np.pi * 880.0 * t)
+        + 0.05 * np.sin(2 * np.pi * 1760.0 * t)
+        + 0.02 * rng.standard_normal(SR * DUR)
+    )
+    x = carrier * (1.0 + 0.007 * np.sin(2 * np.pi * 60.0 * t))
+    _out: np.ndarray = np.stack([x, x], axis=1).astype(np.float32)
+    return _out
+
+
 def _wow_multiband() -> np.ndarray:
     t = np.arange(SR * DUR) / SR
     # Band-abhaengiges Flutter: nur der 1,5-kHz-Ton flattert (0,4 Hz, ±0,5 %).
@@ -942,6 +961,12 @@ CASES: dict[str, list[tuple[str, Callable[[], np.ndarray], MaterialType, dict[De
             _wow_scrape_flutter,
             MaterialType.TAPE,
             {DefectType.SCRAPE_FLUTTER: (0.3, 1.0)},
+        ),
+        (
+            "IEC-60386-Scrape (0,7 % AM @ 60 Hz) wird erkannt",
+            _scrape_am_iec,
+            MaterialType.TAPE,
+            {DefectType.FLUTTER: (0.3, 1.0)},
         ),
         (
             "Band-abhaengiges Flutter (nur hohes Band) wird erkannt",

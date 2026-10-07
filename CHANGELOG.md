@@ -1,4 +1,31 @@
-# Changelog — Aurik 10.12.12
+# Changelog — Aurik 10.12.13
+
+## 10.12.13 (2026-10-07)
+
+### SOTA-Erkennung: IEC-60386-Scrape & Inner-Groove-Distortion (D-K3-28/53)
+
+- **D-K3-28 (Flutter/Scrape, IEC 60386):** Die vier Bestands-Kanäle des Flutter-/
+  Scrape-Detektors waren für die Standard-Scrape-Signatur (Amplitudenmodulation
+  20–200 Hz, 0,2–1 %) blind — gemessen: AM 20–150 Hz @ 0,7 % → Severity 0,000 auf
+  allen Kanälen (die FM-Kanäle messen Centroid/Momentanfrequenz statt AM; die
+  Seitenband-Fenster prüften nur 40–120 Hz). Fix: kohärenter Mehrband-Hüllkurven-
+  AM-Kanal (`_coherent_scrape_am`: 1/3-Oktav 200 Hz–6 kHz, 400 fps,
+  signal-tragende-Bänder-Tiefe, Peak-Wahl über die kohärente Amplitude) +
+  Raten-Raster 20–180 Hz (vorher 40–120) + Seitenband-Fenster 3–52 dB (vorher 30).
+  Nachher: AM 20/40/60/100/120/150 Hz @ 0,7 % → Flutter 0,61–0,75; saubere Träger
+  0,000; Harness-Case „IEC-60386-Scrape (0,7 % AM @ 60 Hz)" = 0,640.
+- **D-K3-53 (Inner-Groove-Distortion, Kates 1981):** Der Detektor fand nur Summtöne
+  polyphoner Akkorde — ein EINZELTON mit wachsendem Klirr blieb blind; zusätzlich
+  schloss die Träger-Maske (80–400 Hz) 440-Hz-Träger aus (Argmax landete auf dem
+  Leakage-Randbin 398,4). Fix: H2/H3-Wachstumspfad (r₄ > 1,5·r₁ über ≥ 2 steigende
+  Viertel, r₄ ≥ 0,02) + Trägerfenster 80–600 Hz. Nachher: Harness „IGD-Verlauf"
+  = 1,000; flacher Sinus < 0,1.
+
+**Nachweis:** `tests/unit/test_dk328_scrape_iec.py` (4 Kontrakte: Anti-FP,
+IEC-AM 20/60/150 Hz, FM-Seitenband, IGD-Wachstum), neuer Harness-Case in
+`scripts/defect_evidence_harness.py`; alle 11 Harness-Familien lückenlos,
+Anti-FP-Suite (28) + Kontrakt-Tests grün. Offen (nachrangig): D-K3-54
+(Peak-Signifikanz-Kalibrierung), D-K3-55 (Phasen-Heartbeat).
 
 ## 10.12.12 (2026-10-07)
 

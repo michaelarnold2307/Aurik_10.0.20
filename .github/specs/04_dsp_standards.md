@@ -557,6 +557,20 @@ Bei Gesang (PANNs Vocals ≥ 0.4):
 DSP-Fallback: PESTO (Riou et al. ISMIR 2023) → pYIN (Mauch & Dixon 2014)
 ```
 
+**W&F-Erkennung (DefectScanner, 2026-10-07, D-K3-28/D-K3-53):**
+
+- Scrape-Flutter (IEC 60386, 20–200 Hz, 0,2–1 %) ist primär AMPLITUDEN-Modulation —
+  eigener kohärenter Mehrband-Hüllkurven-Kanal `_coherent_scrape_am` (1/3-Oktav
+  200 Hz–6 kHz, 400 fps, signal-tragende-Bänder-Tiefe, Peak über die kohärente
+  Amplitude |ΣS_w|). Die FM-Kanäle (Spectral-Centroid / kohärentes Subband-IF)
+  bleiben für FM-Seitenbänder zuständig; deren Raten-Raster deckt jetzt 20–180 Hz
+  ab (vorher 40–120), das Seitenband-Fenster 3–52 dB (vorher 30 dB).
+- Inner-Groove-Distortion (Kates 1981, Phase-relevant für Vinyl-Innenseite):
+  H2/H3-Wachstum pro Viertel — r₄ > 1,5·r₁, ≥ 2 steigende Viertel, r₄ ≥ 0,02,
+  Trägerfenster 80–600 Hz; flacher Sinus bleibt < 0,1.
+- Nachweis: `scripts/defect_evidence_harness.py` (Familien wow_flutter/vinyl),
+  `tests/unit/test_dk328_scrape_iec.py`; Anti-FP-Grenze: saubere Träger < 0,05.
+
 ### Klavier-Inharmonizität §4.5b (Phase 52) [RELEASE_MUST]
 
 ```text

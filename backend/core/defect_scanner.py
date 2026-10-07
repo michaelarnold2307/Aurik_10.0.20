@@ -5110,6 +5110,101 @@ class DefectScanner:
             logger.debug("Subband-IF-Kanal fehlgeschlagen", exc_info=True)
             return None
 
+    def _coherent_scrape_am(self, audio: np.ndarray) -> tuple[float, float, float] | None:
+        """§D-K3-28 (2026-10-07): Kohärenter Mehrband-AM-Kanal für Scrape-Flutter.
+
+        Scrape-Flutter (IEC 60386, 20–200 Hz, 0,2–1 %) ist primär AMPLITUDEN-
+        Modulation (Bandkante/Kopf-Reibung moduliert den Kontakt). Die drei
+        bestehenden W&F-Kanäle messen FM (Centroid / Subband-IF) bzw. nur
+        [2..8]-Hz-Raten und waren für AM bei IEC-Pegeln blind (Messung
+        2026-10-07: AM 20–150 Hz @ 0,7 % → 0.000 in ALLEN vier Kanälen).
+
+        Prinzip (analog `_coherent_subband_fm`): je 1/3-Oktav-Band die Hilbert-
+        Hüllkurve, Median-Normalisierung, 1,5-ms-Glättung, Dezimation auf
+        400 fps (Nyquist 200 Hz), FFT je Band und KOHÄRENTE Akkumulation über
+        die Bänder — die gemeinsame mechanische Modulation ist phasenstabil
+        über Bänder, musikalische Dynamik/Notenwechsel sind es nicht.
+
+        Returns (freq_hz, depth, coherence) des dominanten Peaks in 20–200 Hz
+        oder None (< 4 aktive Bänder). Determinismus §G5 (copilot-instructions.md).
+        """
+        try:
+            sr = self.sample_rate
+            if sr > 16000:
+                from scipy.signal import resample_poly as _rp_am
+
+                _g_am = int(np.gcd(16000, int(sr)))
+                audio = _rp_am(np.asarray(audio, dtype=np.float64), 16000 // _g_am, int(sr) // _g_am)
+                sr = 16000
+            nyq = sr / 2.0
+            # 1/3-Oktav-Bänder 200 Hz – 6 kHz (Scrape moduliert Band-Energie;
+            # unter 200 Hz dominieren Bass-Transienten, über 6 kHz die Reste).
+            centers = [200.0 * (2.0 ** (_i / 3.0)) for _i in range(int(3 * np.log2(6000.0 / 200.0)) + 1)]
+            dec = max(1, int(sr / 400))  # 400 fps → Nyquist 200 Hz
+            win = max(3, int(0.0015 * sr) | 1)  # ~1,5 ms Hüllkurven-Glättung
+            band_specs: list[np.ndarray] = []
+            sub_lens: list[int] = []
+            for fc in centers:
+                lo = max(fc * 0.891 / nyq, 0.001)
+                hi = min(fc * 1.122 / nyq, 0.999)
+                if lo >= hi:
+                    continue
+                try:
+                    sos = signal.butter(3, [lo, hi], btype="bandpass", output="sos")
+                    b = signal.sosfiltfilt(sos, audio)
+                    env = np.abs(signal.hilbert(b))
+                except Exception:
+                    logger.debug("Scrape-AM-Band fehlgeschlagen", exc_info=True)
+                    continue
+                med = float(np.median(env)) + 1e-12
+                if med < 1e-9:
+                    continue
+                rel = env / med - 1.0
+                rel_s = np.convolve(rel, np.ones(win) / win, mode="same")
+                sub = rel_s[::dec]
+                if len(sub) < 128:
+                    continue
+                band_specs.append(np.fft.rfft(sub - np.mean(sub)))
+                sub_lens.append(len(sub))
+            if len(band_specs) < 4:
+                return None
+            n_sub = min(sub_lens)
+            min_len = n_sub // 2 + 1
+            S = np.vstack([s[:min_len] for s in band_specs])
+            freqs_m = np.fft.rfftfreq(n_sub, d=float(dec) / float(sr))
+            mask = (freqs_m >= 20.0) & (freqs_m <= 200.0)
+            if not np.any(mask):
+                return None
+            abs_S = np.abs(S[:, mask]) + 1e-12
+            _noise_b = np.median(abs_S, axis=1) + 1e-12
+            _w_b = 1.0 / _noise_b
+            S_w = S[:, mask] * _w_b[:, None]
+            coh = np.abs(np.sum(S_w, axis=0)) / np.sum(np.abs(S_w), axis=0)
+            # §D-K3-28b (2026-10-07): Peak-Wahl über die KOHÄRENTE AMPLITUDE
+            # |Σ S_w| statt über die Kohärenz allein. Langsame gemeinsame
+            # Hüllkurven-Reste (Lautstärke-Drift ≪ 20 Hz, Grenzbins) erreichen
+            # hohe Kohärenz bei ~0 Amplitude und klauten sporadisch den Peak
+            # (Messung: 150-Hz-AM → Peak 117,25 Hz mit Tiefe 0,0; 100/120 Hz
+            # ok, 150/180 sporadisch blind).
+            pk = int(np.argmax(np.abs(np.sum(S_w, axis=0))))
+            coherence = float(coh[pk])
+            # §D-K3-28-Kalibrierung (2026-10-07): Die Tiefe wird nur über SIGNAL-
+            # tragende Bänder gebildet (|S_w| > 3 = 3× Eigen-Rauschboden am Peak-
+            # Bin). Die Formel über ALLE Bänder verdünnte die Tiefe durch die
+            # ~10 Rausch-Bänder (150-Hz-AM: 0,0025 → unter Gate; Kalibrier-Matrix
+            # 2026-10-07); saubere Signale liefern n_tr < 2 → Tiefe 0,0 (Anti-FP).
+            _tr = np.abs(S_w[:, pk]) > 3.0
+            _n_tr = int(np.sum(_tr))
+            if _n_tr >= 2:
+                amp = float(2.0 * np.abs(np.sum(S_w[_tr, pk])) / (np.sum(_w_b[_tr]) * n_sub))
+            else:
+                amp = 0.0
+            freq_hz = float(freqs_m[mask][pk])
+            return freq_hz, amp, coherence
+        except Exception:
+            logger.debug("Scrape-AM-Kanal fehlgeschlagen", exc_info=True)
+            return None
+
     def _detect_flutter(self, audio: np.ndarray) -> DefectScore:
         """Erkennt FLUTTER: rapid pitch modulation 0.5-200 Hz (IEC 60386).
 
@@ -5191,6 +5286,42 @@ class DefectScanner:
         # (Peak-Bin/Totaleistung ~0,002) und darf nicht als Flutter zaehlen.
         _peak_mod = float(np.max(fft_c[flutter_mask])) if flutter_mask.any() else 0.0
         _coherence = _peak_mod / (flutter_power + 1e-12)
+
+        # §D-K3-28 (2026-10-07): Kohärenter Mehrband-AM-Kanal — Scrape-Flutter
+        # (IEC 60386, 20–200 Hz) ist primär Amplitudenmodulation; Centroid≈FM
+        # und Subband-IF≈FM waren für AM bei IEC-Pegeln blind (Messung: AM
+        # 20–150 Hz @ 0,7 % → 0.000 in allen Kanälen). Kohärenz über 1/3-Oktav-
+        # Bänder trennt mechanische Gemeinsamkeit von musikalischer Dynamik.
+        _am = self._coherent_scrape_am(audio)
+        if _am is not None:
+            _am_f, _am_depth, _am_coh = _am
+            # IEC-60386-Untergrenze ~0,2 %; konservativ: Tiefe ≥ 0,35 % (Kalibrier-
+            # Matrix 2026-10-07: AM 20–150 Hz @ 0,7 % → 0,0084–0,0136; sauber → 0,0)
+            # und Kohärenz ≥ 0,5 (Muster §7.4c-L3-Kalibrierung des FM-Kanals).
+            if _am_depth >= 0.0035 and _am_coh >= 0.5:
+                _sev_am = float(
+                    np.clip(
+                        (min(1.0, _am_depth / 0.01) * 0.5 + min(1.0, (_am_coh - 0.5) / 0.3) * 0.5),
+                        0.0,
+                        1.0,
+                    )
+                    * 0.75
+                )
+                _thr_am = self.thresholds.get(DefectType.FLUTTER, 0.5)
+                if _sev_am >= _thr_am * 0.1:
+                    return DefectScore(
+                        DefectType.FLUTTER,
+                        _sev_am,
+                        float(np.clip(0.45 + 0.4 * _am_coh, 0.3, 0.9)),
+                        locations=[],
+                        metadata={
+                            "subband_am_freq_hz": round(_am_f, 2),
+                            "subband_am_depth_rel": round(_am_depth, 5),
+                            "subband_am_coherence": round(_am_coh, 3),
+                            "channel": "scrape_am_iec60386",
+                        },
+                    )
+
         if _coherence < 0.25:
             logger.debug(
                 "FLUTTER-Gate: Modulations-Kohaerenz %.3f < 0,25 (tonal=%s, mod_depth=%.2e, "
@@ -9416,6 +9547,14 @@ class DefectScanner:
         try:
             quarter = n // 4
             thd_values = []
+            # §D-K3-53 (2026-10-07): Klassische IGD-Signatur — H2/H3-Verhältnis
+            # des stärksten Trägers je Viertel (Kates 1981: Rillenkrümmung/
+            # Spurgeometrie erzeugt zur Innenseite wachsende harmonische
+            # Verzerrung). Der Summtron-Pfad (§7.4c-L3) ist auf polyphone
+            # Akkorde ausgelegt und für EINZELTONTRÄGER blind (440+440=880
+            # kollidiert mit der H-Regel; Harness-Befund 2026-10-07: 0.000
+            # trotz wachsendem H2/H3 — die einzige Harness-Lücke).
+            h_ratios: list[float] = []
             freq_res = float(sr) / 4096.0
             for q in range(4):
                 # §7.4c-L3 (2026-09-27): Steady-State-Fenster in der
@@ -9426,6 +9565,22 @@ class DefectScanner:
                 n_fft = min(4096, len(segment))
                 freqs = np.fft.rfftfreq(n_fft, 1.0 / sr)
                 spec = np.abs(np.fft.rfft(segment[:n_fft]))
+                # §D-K3-53: H2/H3-Wachstum des stärksten Trägers (80–600 Hz —
+                # die frühere 80–400-Maske schloss einen 440-Hz-Träger AUS, das
+                # Argmax landete auf einem Leakage-Randbin und die H-Bins
+                # maßen Leakage statt Harmonische; Debug 2026-10-07).
+                _tm = (freqs >= 80) & (freqs <= 600)
+                if _tm.any():
+                    _t_idx = int(np.argmax(np.where(_tm, spec, 0.0)))
+                    _f0 = float(freqs[_t_idx])
+                    _lvl = float(spec[_t_idx]) + 1e-12
+                    _h2_idx = int(round(2.0 * _f0 / freq_res))
+                    _h3_idx = int(round(3.0 * _f0 / freq_res))
+                    _h2 = float(spec[max(0, _h2_idx - 1) : _h2_idx + 2].max()) if 2.0 * _f0 < sr / 2.0 else 0.0
+                    _h3 = float(spec[max(0, _h3_idx - 1) : _h3_idx + 2].max()) if 3.0 * _f0 < sr / 2.0 else 0.0
+                    h_ratios.append(float((_h2 + _h3) / _lvl))
+                else:
+                    h_ratios.append(0.0)
                 # §7.4c-L3 (2026-09-27, Fix): SUMMTON-MESSUNG statt
                 # 2-8-kHz-THD — auf polyphonen Bass-Akkorden (174-392 Hz)
                 # erzeugen x²/x³ nur Produkte bis ~1,2 kHz; das 2-8-kHz-Band
@@ -9485,6 +9640,31 @@ class DefectScanner:
                         sum_energy += float(np.sum(spec[_lo:_hi] ** 2))
                 thd = sum_energy / fund_energy
                 thd_values.append(thd)
+
+            # §D-K3-53 (2026-10-07): H2/H3-Wachstumspfad — wachsende harmonische
+            # Verzerrung eines Trägers ist DIE klassische IGD-Signatur (Kates
+            # 1981). Kriterium: ≥ 2 positive Diffs UND r4 ≥ 1,5×r1 UND r4 ≥ 2 %
+            # (konservativ; Crescendo kürzt sich als Verhältnis heraus).
+            if len(h_ratios) == 4:
+                _hd = [h_ratios[i + 1] - h_ratios[i] for i in range(3)]
+                _h_inc = sum(1 for d in _hd if d > 0)
+                _h_growth = h_ratios[3] > max(h_ratios[0], 1e-9) * 1.5
+                if _h_inc >= 2 and _h_growth and h_ratios[3] >= 0.02:
+                    _raw_h = float(
+                        np.clip((h_ratios[3] - h_ratios[0]) / max(h_ratios[0], 1e-9) * 0.2, 0.0, 0.6)
+                        + np.clip(h_ratios[3] * 6.0, 0.0, 0.4)
+                    )
+                    _thr_h = self.thresholds.get(DefectType.INNER_GROOVE_DISTORTION, 0.5)
+                    if _raw_h >= _thr_h * 0.1:
+                        return DefectScore(
+                            DefectType.INNER_GROOVE_DISTORTION,
+                            _raw_h,
+                            float(np.clip(0.45 + 0.15 * _h_inc, 0.3, 0.9)),
+                            metadata={
+                                "h2h3_ratio_per_quarter": [round(v, 5) for v in h_ratios],
+                                "channel": "h_growth_kates1981",
+                            },
+                        )
 
             # Check for monotonic increase Q1→Q4 (IGD pattern)
             diffs = [thd_values[i + 1] - thd_values[i] for i in range(3)]
@@ -11006,7 +11186,12 @@ class DefectScanner:
                 return DefectScore(DefectType.SCRAPE_FLUTTER, 0.0, 0.4)
 
             rate_hits: list[tuple[float, float]] = []
-            for rate in [40.0, 55.0, 70.0, 85.0, 100.0, 120.0]:
+            # §D-K3-28 (2026-10-07): Raten über den gesamten IEC-60386-Bereich
+            # (20–200 Hz) statt nur 40–120 Hz; das Attenuations-Fenster reicht bis
+            # −52 dBc, weil IEC-typisches Scrape (0,2–1 %) Seitenbänder bei
+            # −40…−50 dBc erzeugt (vorher ≤ −30 dBc → systematisch blind; Messung
+            # 2026-10-07: FM 60/100/150 Hz @ 4 Cent → 0.000 in allen Kanälen).
+            for rate in [20.0, 25.0, 30.0, 40.0, 50.0, 60.0, 70.0, 85.0, 100.0, 120.0, 150.0, 180.0]:
                 signed_levels: dict[float, float] = {}
                 for sign in (-1.0, 1.0):
                     sb_freq = peak_freq + sign * rate
@@ -11018,7 +11203,7 @@ class DefectScanner:
                         prominence = sb_level - noise_floor
                         attenuation_vs_peak = peak_db - sb_level
                         # Echte FM-Seitenbänder sind deutlich über Noisefloor, aber klar unter dem Carrier.
-                        if prominence > 5.0 and 3.0 <= attenuation_vs_peak <= 30.0:
+                        if prominence > 5.0 and 3.0 <= attenuation_vs_peak <= 52.0:
                             signed_levels[sign] = sb_level
                 if -1.0 in signed_levels and 1.0 in signed_levels:
                     # FM-Paare sind in der Regel annähernd symmetrisch; starke Asymmetrie deutet auf Musikpeaks.
