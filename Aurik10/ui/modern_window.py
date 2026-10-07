@@ -10447,15 +10447,18 @@ class RecordSleeveWidget(QtWidgets.QFrame):
         row = QtWidgets.QHBoxLayout()
         # §v10.203: Player-Buttons mit echten Audio-Player-Funktionen verdrahtet
         self._panel_btn_play = QtWidgets.QPushButton("▶")
-        self._panel_btn_play.setToolTip("Wiedergabe starten")
+        self._panel_btn_play.setToolTip(t("a11y.play"))
+        self._panel_btn_play.setAccessibleName(t("a11y.play"))
         self._panel_btn_play.setFixedSize(42, 36)
         self._panel_btn_play.clicked.connect(self._panel_play)
         self._panel_btn_pause = QtWidgets.QPushButton("⏸")
-        self._panel_btn_pause.setToolTip("Pause")
+        self._panel_btn_pause.setToolTip(t("a11y.pause"))
+        self._panel_btn_pause.setAccessibleName(t("a11y.pause"))
         self._panel_btn_pause.setFixedSize(42, 36)
         self._panel_btn_pause.clicked.connect(self._panel_pause)
         self._panel_btn_stop = QtWidgets.QPushButton("⏹")
-        self._panel_btn_stop.setToolTip("Stopp")
+        self._panel_btn_stop.setToolTip(t("a11y.stop"))
+        self._panel_btn_stop.setAccessibleName(t("a11y.stop"))
         self._panel_btn_stop.setFixedSize(42, 36)
         self._panel_btn_stop.clicked.connect(self._panel_stop)
         for _b in [self._panel_btn_play, self._panel_btn_pause, self._panel_btn_stop]:
@@ -10701,7 +10704,7 @@ class ModernTitleBar(QWidget):
         # ── Recent Files button ──────────────────────────────────────────
         self.btn_recent = QPushButton("📋")
         self.btn_recent.setFixedSize(40, 30)
-        self.btn_recent.setAccessibleName("Zuletzt geöffnete Dateien")
+        self.btn_recent.setAccessibleName(t("a11y.recent_files"))
         self.btn_recent.setFont(QFont(self.font().family(), 12))
         self.btn_recent.setCursor(Qt.CursorShape.PointingHandCursor)
         self.btn_recent.setObjectName("controlButton")
@@ -11715,6 +11718,7 @@ class ExportConfigDialog(QDialog):
         dir_btn = QPushButton("📂")
         dir_btn.setFixedWidth(38)
         dir_btn.setToolTip(t("ui.export_cfg_choose_folder"))
+        dir_btn.setAccessibleName(t("a11y.browse_folder"))
         dir_btn.clicked.connect(self._browse_dir)
         dir_row.addWidget(self._dir_edit)
         dir_row.addWidget(dir_btn)
@@ -12322,6 +12326,7 @@ class _AurikFileDialog(QDialog):
 
         _btn_x = QPushButton("×")
         _btn_x.setFixedSize(36, 28)
+        _btn_x.setAccessibleName(t("action.close"))
         _btn_x.setFont(QFont(self.font().family(), 14))
         _btn_x.setCursor(Qt.CursorShape.PointingHandCursor)
         _btn_x.setStyleSheet("""
@@ -15653,6 +15658,7 @@ class ModernMainWindow(QMainWindow):
                 " QPushButton:disabled { background: rgba(40,60,40,0.25); color: #555; }"
             )
             self._btn_thumbs_up.setToolTip(t("ui.feedback_good_tip"))
+            self._btn_thumbs_up.setAccessibleName(t("a11y.feedback_good"))
             self._btn_thumbs_up.clicked.connect(lambda: self._on_goal_feedback(True))
             _rb_layout.addWidget(self._btn_thumbs_up)
 
@@ -15665,6 +15671,7 @@ class ModernMainWindow(QMainWindow):
                 " QPushButton:disabled { background: rgba(60,40,40,0.25); color: #555; }"
             )
             self._btn_thumbs_down.setToolTip(t("ui.feedback_bad_tip"))
+            self._btn_thumbs_down.setAccessibleName(t("a11y.feedback_bad"))
             self._btn_thumbs_down.clicked.connect(lambda: self._on_goal_feedback(False))
             _rb_layout.addWidget(self._btn_thumbs_down)
 
@@ -16648,6 +16655,7 @@ class ModernMainWindow(QMainWindow):
 
         _dismiss = QPushButton("×")
         _dismiss.setFixedSize(24, 24)
+        _dismiss.setAccessibleName(t("action.close"))
         _dismiss.setStyleSheet(
             "QPushButton { background: transparent; color: #8899bb; border: none; font-size: 12pt; }"
             " QPushButton:hover { color: #fff; }"

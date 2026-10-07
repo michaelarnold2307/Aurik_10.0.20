@@ -522,6 +522,17 @@ _TRANSLATIONS: dict[str, dict[str, str]] = {
         "ui.snapshot_listen": "🎧  Zwischenstand hören",
         "ui.snapshot_listen_tip": "Zwischenstand der Restaurierung anhören (Schnappschuss der letzten Phase).",
         "ui.running": "🔄 Läuft…",
+        # Barrierefreiheit: 9 Symbolknöpfe tragen nur ein Zeichen (▶ ⏸ ⏹ 📋 📂 × 👍 👎)
+        # — gemessen 2026-10-07, reine Symbole ohne Buchstabe/Ziffer.
+        # Ein Screenreader liest dort nichts Sprechendes — jeder erhält einen
+        # zugänglichen Namen (§Laien-Bedienung, 2026-10-07 gemessen).
+        "a11y.play": "Wiedergabe starten",
+        "a11y.pause": "Wiedergabe pausieren",
+        "a11y.stop": "Wiedergabe stoppen",
+        "a11y.recent_files": "Zuletzt geöffnete Dateien",
+        "a11y.browse_folder": "Ordner durchsuchen",
+        "a11y.feedback_good": "Klang war gut",
+        "a11y.feedback_bad": "Klang war unbefriedigend",
         "dialog.notice_title": "Aurik — Hinweis",
         "dialog.systemcheck_title": "Aurik Systemcheck",
         "dialog.shortcuts_title": "Aurik — Tastenkürzel",
@@ -1266,6 +1277,15 @@ _TRANSLATIONS: dict[str, dict[str, str]] = {
         "ui.snapshot_listen": "🎧  Listen to snapshot",
         "ui.snapshot_listen_tip": "Listen to the current restoration snapshot (last completed phase).",
         "ui.running": "🔄 Running…",
+        # Accessibility: 9 icon-only buttons carry a single character
+        # (▶ ⏸ ⏹ 📋 📂 × 👍 👎) — screen readers get nothing meaningful.
+        "a11y.play": "Start playback",
+        "a11y.pause": "Pause playback",
+        "a11y.stop": "Stop playback",
+        "a11y.recent_files": "Recently opened files",
+        "a11y.browse_folder": "Browse for folder",
+        "a11y.feedback_good": "Sound was good",
+        "a11y.feedback_bad": "Sound was unsatisfactory",
         "dialog.notice_title": "Aurik — Notice",
         "dialog.systemcheck_title": "Aurik system check",
         "dialog.shortcuts_title": "Aurik — Keyboard shortcuts",

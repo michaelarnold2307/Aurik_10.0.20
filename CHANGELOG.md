@@ -1,4 +1,38 @@
-# Changelog — Aurik 10.9.1
+# Changelog — Aurik 10.9.2
+
+## 10.9.2 (2026-10-07)
+
+### Barrierefreiheit + Korrektur einer eigenen Fehlmessung
+
+**Barrierefreiheit:** 9 Knöpfe trugen nur ein Symbol (`▶ ⏸ ⏹ 📋 📂 × × 👍 👎`) —
+ein Screenreader liest dort nichts Sprechendes. Alle haben jetzt einen
+zugänglichen Namen über den Katalog (de/en): `a11y.play`, `a11y.pause`,
+`a11y.stop`, `a11y.recent_files`, `a11y.browse_folder`, `a11y.feedback_good`,
+`a11y.feedback_bad`; die drei Panel-Knöpfe bekamen zusätzlich sprechende
+Tooltips (vorher „Pause“/„Stopp“ — jetzt „Wiedergabe pausieren“/„Wiedergabe
+stoppen“). `setAccessibleName`-Abdeckung in `modern_window.py`: **11 → 19**.
+
+**Korrektur eigener Zahlen (§V7 copilot-instructions.md):** Das in 10.9.1
+neue Gate war **selbst blind**. Die eigene Prosa-Blankung im Test setzte nach
+dem abschließenden `"""` einer _präfixierten_ Docstring (`r"""…`) den Zustand
+dauerhaft auf „in Docstring“ und blankte den **Rest der Datei**
+(`modern_window.py` ab Zeile 10444) — das Gate sah **19 statt 47** Fundstellen.
+Die Meldung „66 → 22“ war damit um 28 Stellen zu niedrig. Behoben durch
+Delegation an die kanonische `scripts.wohlklang_gate._blank_prose`
+(§G9 copilot-instructions.md: eine Umsetzung statt zweier; in D-K3-5 gegen 1660
+Dateien validiert). **Korrigierte Zahlen: wahre Ausgangslage 94, umgestellt 47,
+verbleibend 47** (Register D-K3-10).
+
+Dieselbe Lehre wie bei den Layout-Kopien (D-K3-7): **eine Kopie divergiert und
+wird still** — beide Male hat sie einen Befund verdeckt statt erzeugt.
+
+**Ererbter Spec-Drift geschlossen:** Der 10.9.0-Commit hat zwei Zeilen in
+`.github/FILE_REGISTRY.md` ergänzt, aber die Drift-Baseline
+(`reports/spec_drift_baseline.json`) nicht mitgezogen — `scripts/spec_drift_check.py`
+meldete seitdem Drift und hätte jeden weiteren Commit blockiert. Nach den vom
+Check verlangten Prüfungen (`release_must_coverage_check.py` → 2/2 = 100 %;
+66 normative Tests grün) ist die Baseline für die **eine** betroffene Datei
+nachgezogen (`No spec drift detected.`).
 
 ## 10.9.1 (2026-10-07)
 

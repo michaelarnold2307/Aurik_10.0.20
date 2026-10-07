@@ -38,6 +38,15 @@ from pathlib import Path
 
 import pytest
 
+# §G9 (copilot-instructions.md): Kommentar-/Docstring-Blankung NICHT nachbauen.
+# Befund 2026-10-07: eine eigene Kopie war **blind** geworden — ein abschliessendes
+# `"""` einer praefixierten Docstring (`r"""...`) setzte den Zustand auf
+# "in Docstring", danach wurde der REST DER DATEI geblankt (in
+# `modern_window.py` ab Zeile 10444) und das Gate uebersah 28 Fundstellen
+# (19 statt 47). Die kanonische `_blank_prose` (in D-K3-5 gegen 1660 Dateien
+# validiert) macht das richtig — sie wird importiert, nicht kopiert.
+import scripts.wohlklang_gate as _wohlklang_gate
+
 CANONICAL_FILES: set[str] = {
     "Aurik10/ui/ui_constants.py",  # UIConstants (nach Erstellung)
 }
@@ -132,37 +141,34 @@ def _hardcoded_visible_texts(text: str) -> list[dict]:
 
 
 def _blank_prose_local(text: str) -> str:
-    """Kommentare und Docstrings positionsgetreu blanken (Zeilennummern bleiben)."""
-    out: list[str] = []
-    in_doc = False
-    for line in text.splitlines():
-        s = line.strip()
-        if not in_doc and (s.startswith('"""') or s.startswith("'''")):
-            q = '"""' if s.startswith('"""') else "'''"
-            if s.count(q) == 1:
-                in_doc = True
-            out.append("")
-        elif in_doc:
-            if '"""' in s or "'''" in s:
-                in_doc = False
-            out.append("")
-        else:
-            out.append(re.sub(r"(?<![\"'])#(?!\{).*$", "", line))
-    return "\n".join(out)
+    """Kommentare und Docstrings positionsgetreu blanken (kanonische Quelle).
+
+    §G9 (copilot-instructions.md): Delegiert an `scripts.wohlklang_gate._blank_prose`
+    — eine Umsetzung statt zweier.
+    """
+    return _wohlklang_gate._blank_prose(text)
 
 
-# Sollzustand (2026-10-07). Nur `hardcoded_texts` ist fail-closed.
+# Sollzustand (2026-10-07, korrigiert). Nur `hardcoded_texts` ist fail-closed.
 #
-# `hardcoded_texts` = 22: Ausgangsbefund war **66** (4 Dateien). 44 sind auf
-# `t()` umgestellt (Ergebnisleiste, Dialoge, Fenstertitel, Schadensbehebung,
-# Abtastrate, Blindtest-Vorbereitung, Herz-/Fatigue-Labels des Berichts).
-# Die verbleibenden 22 (19 in `modern_window.py`, 3 in
-# `song_prognose_widget.py`) sind im SOTA-Defizit-Register als **D-K5-1**
-# geführt — Fortschritts-/Score-Zeilen mit Platzhaltern; sie werden bei der
-# nächsten Berührung der jeweiligen Stelle umgestellt. Der Wert darf nur
-# **sinken**; ein Anstieg läßt diesen Test fallen.
+# `hardcoded_texts` = 47: Die **erste** Zahl (22) war zu niedrig, weil die
+# eigene Prosa-Blankung dieses Tests **blind** war — ein abschliessendes `"""`
+# einer praefixierten Docstring (`r"""...`) setzte den Zustand dauerhaft auf "in
+# Docstring", danach wurde der REST der Datei geblankt (in
+# `modern_window.py` ab Zeile 10444) und 28 Fundstellen blieben unsichtbar
+# (19 statt 47). Seit 2026-10-07 delegiert `_blank_prose_local` an die
+# kanonische `scripts.wohlklang_gate._blank_prose` (§G9 copilot-instructions.md:
+# eine Umsetzung; D-K3-5-validiert).
+#
+# Wahre Ausgangslage: **94** (4 Dateien). 47 sind auf `t()` umgestellt
+# (Ergebnisleiste, Dialoge, Fenstertitel, Schadensbehebung, Abtastrate,
+# Panel-Buttons, Herz-/Fatigue-Labels des Berichts, Panel-Tooltip).
+# Die verbleibenden 47 (44 in `modern_window.py`, 3 in
+# `song_prognose_widget.py`) sind im SOTA-Defizit-Register als **D-K3-10**
+# gefuehrt. Der Wert darf nur **sinken**; ein Anstieg laesst diesen Test
+# fallen.
 _BASELINE: dict[str, int] = {
-    "hardcoded_texts": 22,
+    "hardcoded_texts": 47,
     # Informativ (heuristisch, nicht erzwungen) — Stand 2026-10-07:
     "long_strings": 69,
     "magic_numbers": 196,
