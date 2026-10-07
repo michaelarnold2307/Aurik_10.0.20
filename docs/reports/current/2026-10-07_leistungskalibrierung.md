@@ -132,12 +132,21 @@ unverändert.
 | `_auto_detect_material` → `_detect_stereo_material` | 22,2 s (38 %) | Feature-Extraktion über die vollen Detektoren |
 | ↳ `_detect_flutter` → `_coherent_subband_fm` | 20,4 s | **424 Hilbert-Aufrufe = 15,1 s** |
 | `perceptual_salience.annotate_defect_scores` | 10,0 s | 2077 Residuum-Maskierungen, 98 089 `np.median`-Aufrufe |
-| Per-Kanal-Block (7 Detektoren × 2 Kanäle) | ~50 % (Differenz-Messung) | nur für `channel_locations` |
+| Per-Kanal-Block (7 Detektoren × 2 Kanäle) | **3,06 s = 5,2 %** (direkt gemessen) | für `channel_locations` (GUI-sichtbar) |
+| Stereo↔Mono-Differenz (offen) | 58,7 s vs. 28,0 s = **30,7 s unerklärt** | NICHT der Per-Kanal-Block — eigenes Kanal-Profil nötig |
 
-**Differenz-Messung Stereo/Mono:** dasselbe Material stereo **58,7 s** vs. mono **28,0 s**
-— der Per-Kanal-Block ist die Hälfte des Scans. Mono und Stereo unterscheiden sich
-gleichzeitig in **16 Defekttypen um mehr als 0,05** (bis 1,0) — ein Umleiten des
-§SR-CG8-Scans auf das Stereo-Post-Scan-Ergebnis wäre also eine Verhaltensänderung.
+**Differenz-Messung Stereo/Mono:** dasselbe Material stereo **58,7 s** vs. mono **28,0 s**.
+Die frühere Zuordnung dieser Differenz zum Per-Kanal-Block ist **widerlegt** (direkte
+Messung: der Block kostet 3,06 s = L 1,54 s + R 1,52 s). Wohin die **30,7 s** gehen, ist
+offen und erfordert ein eigenes Kanal-Profil (Kandidaten: stereo-spezifische Detektoren
+wie Crosstalk/Stereo-Imbalance, Detektoren, die Stereo intern mitteln, sowie Welch auf
+beiden Kanälen). Unabhängig davon unterscheiden sich Mono und Stereo in **16 Defekttypen
+um mehr als 0,05** (bis 1,0) — ein Umleiten des §SR-CG8-Scans auf das
+Stereo-Post-Scan-Ergebnis wäre also eine Verhaltensänderung.
+
+**Nutzer-sichtbar:** `channel_locations` wird von `Aurik10/ui/modern_window.py`
+(Z. 892/1060/5187) gelesen und in der GUI angezeigt — ein Gate auf diesem Block würde
+eine sichtbare Anzeige verschlechtern, nicht nur internes Metadata.
 
 **Modulweiter Ergebnis-Cache:** `_scan_cache` (Zeile 80, inhaltsgehasht, größenbegrenzt)
 liefert denselben Scan in **0,01 s** zurück, wenn dieselbe Instanz dasselbe Audio erneut
