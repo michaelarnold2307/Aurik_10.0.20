@@ -133,7 +133,7 @@ unverändert.
 | ↳ `_detect_flutter` → `_coherent_subband_fm` | 20,4 s | **424 Hilbert-Aufrufe = 15,1 s** |
 | `perceptual_salience.annotate_defect_scores` | 10,0 s | 2077 Residuum-Maskierungen, 98 089 `np.median`-Aufrufe |
 | Per-Kanal-Block (7 Detektoren × 2 Kanäle) | **3,06 s = 5,2 %** (direkt gemessen) | für `channel_locations` (GUI-sichtbar) |
-| Stereo↔Mono-Differenz (offen) | 58,7 s vs. 28,0 s = **30,7 s unerklärt** | NICHT der Per-Kanal-Block — eigenes Kanal-Profil nötig |
+| Stereo↔Mono (nachgemessen) | **54,5 s vs. 50,0 s = 4,5 s** | die früheren 28,0 s waren ein Artefakt eines Einzellaufs; zurückgezogen |
 
 **Differenz-Messung Stereo/Mono:** dasselbe Material stereo **58,7 s** vs. mono **28,0 s**.
 Die frühere Zuordnung dieser Differenz zum Per-Kanal-Block ist **widerlegt** (direkte
@@ -166,3 +166,26 @@ Ursache: vier große Arrays je Aufruf (spec, hil, imag, out ≈ 27 MB × 424 Auf
 zwei, plus `scipy.fft` statt `numpy.fft`. Die In-situ-Messung ist speichergebunden; der
 Mikro-Benchmark misst die falsche Größe. **Lehre für alle weiteren Optimierungen:**
 A/B im selben Prozess mit geleertem Cache, niemals nur isolierte Mikro-Benchmarks.
+
+
+### Zweiter Negativ-Befund: Detektor-Memo (widerlegt)
+
+`_detect_flutter` läuft **2×** auf identischem Mono-Signal — Material-Erkennung und
+Haupt-Scan — und kostet zusammen **44,9 s von 58,4 s** Scan-Zeit. Ebenso doppelt:
+`_detect_wow`, `_detect_crackle`, `_detect_compression_artifacts`,
+`_detect_digital_artifacts`, `_detect_high_freq_noise`.
+
+Die Doppelberechnung ist jedoch **legitim**: die Detektoren lesen `material_type`
+und `thresholds`, und der Haupt-Scan läuft NACH der Material-Erkennung mit
+kettenadaptiven Schwellen. Messbeweis (A/B im Prozess, Cache geleert):
+
+| Variante | Zeit | Ergebnis |
+| --- | --- | --- |
+| Memo **ohne** Zustand im Schlüssel | 34,60 s (1,44×) | **verworfen** — 3 Typen weichen ab: `crackle` 0,54494/70 vs. 0,54336/57 Locations, `digital_artifacts` 0,0688 vs. 0,0421, `high_freq_noise` 0,1913 vs. 0,1171 |
+| Memo **mit** Zustand (Material + Schwellen + SR) | 50,90 s (0,98×) | **verworfen** — 0 Treffer (14 Einträge = 14 Fehlschläge), keine Wirkung |
+| ohne Memo (Referenz) | 49,88 s | aktuelle Produktion, Scores 63/63 identisch |
+
+Beide Änderungen wurden vollständig zurückgenommen. **Schlussfolgerung:** Der
+Scanner-Aufwand ist strukturell (Material-Features über die vollen Detektoren +
+eigener Detektor-Pass + Salienz + Per-Kanal); ein verhaltensneutraler Gewinn ist
+nicht auffindbar. Die verbleibenden Optionen sind verhaltensändernd.
