@@ -1,4 +1,45 @@
-# Changelog — Aurik 10.11.1
+# Changelog — Aurik 10.12.0
+
+## 10.12.0 (2026-10-07)
+
+## 10.12.0 (2026-10-07)
+
+### Hörbarkeits-Gate: „bestanden" und „belegt" sind jetzt zwei Aussagen
+
+**Ausgangspunkt.** Das Hörbarkeits-Gate (`defect_audibility_gate.py`) prüft die
+Restdefekte eines Laufs gegen die material-/ketten-adaptive Maskierungsschwelle
+(Hörordnung Ebene 2: „Reparatur gilt als abgeschlossen, wenn ein Defekt unter der
+Schwelle liegt"). Es war verdrahtet — aber es konnte **ohne jede Messung bestehen**.
+
+**Behoben (Ursache statt Symptom).**
+
+- **„Passed" ohne Evidenz.** Fehlte der §B2-Post-Scan, galt das Gate als „nicht
+  bewertbar → passed=True", und genau dieses `gate_passed` las die Endverdikt-
+  Kopplung (`_flow_meta["hoerbarkeits_gate_passed"] is False` degradiert
+  QUALITY-GUARANTEED). Ein Lauf ohne Messung konnte damit eine Qualitäts-Zusage
+  tragen. Jetzt trägt der Report `evidence_state` (`evaluated` /
+  `no_residual_defects` / `scan_missing`), `n_verified`, `n_unevaluable` und
+  `gate_verified` (bestanden UND gemessen); gekoppelt wird `gate_verified`, und
+  `scan_missing` wird mit §V6-Warnung gemeldet. Fail-open bleibt für den **Block**
+  (kein Abbruch ohne Daten), fail-closed für die **Zusage**.
+- **Zeilen ohne Zahl.** Ein Eintrag mit `NaN`/`None` wurde über die
+  Severity-Skala zu 0,0 → „never_audible" und zählte damit als Evidenz. Jetzt
+  gilt er als `unevaluable` (dokumentiert, aber ohne Evidenzwert).
+- **§V8 Song-Isolation.** `self._defect_reduction_per_type` wurde nur im
+  Erfolgsfall des Post-Scans gesetzt. Schlug der Scan für einen Song fehl,
+  bewertete das Hörbarkeits-Gate die Messwerte des **vorigen** Songs (inklusive
+  m1b-Nachbehandlungs-Queue). Jetzt wird das Dict im Per-Song-Block geleert.
+
+**Nachweise.** 5 neue Vertragstests (scan_missing, no_residual_defects,
+evaluated, failed malformed) — `tests/unit/test_defect_audibility_gate.py`
+36 grün; 387 Tests der Gate-/UV3-nahen Suiten grün.
+
+**Offen und benannt** (Register D-K3-30): Die kanonische Maskierungsmessung deckt
+Typen mit Energie-Delta-Domäne ab (`_CANONICAL_BANDS` + Default); Zeitachsen-/
+FM-Defekte (wow, flutter, jitter, pitch_drift …) laufen weiter über die
+Severity-Skala — für sie existiert noch keine „unter der Hörschwelle"-Aussage.
+
+## 10.11.1 (2026-10-07)
 
 ## 10.11.1 (2026-10-07)
 

@@ -8070,6 +8070,13 @@ class UnifiedRestorerV3:
         self._live_goal_scores: dict[str, float] = {}
         self._mqa_mushra = 0.0
         self._mqa_hpi = 0.0
+        # §V8 (copilot-instructions.md) Song-Isolation (2026-10-07): Die
+        # Per-Defekt-Reduktions-Summary des §B2-Post-Scans wurde bisher NUR im
+        # Erfolgsfall gesetzt — schlug der Post-Scan fehl (``_post_defect_result
+        # is None``), standen die Messwerte des VORIGEN Songs da, und das
+        # Hörbarkeits-Gate am Lauf-Ende bewertete fremde Zahlen (falsche
+        # m1b-Nachbehandlungs-Queue inklusive).
+        self._defect_reduction_per_type: dict[str, dict[str, float]] = {}
         # §v10.x Additive Schritt-Zählung pro Song zurücksetzen.
         self._step_no = 0
         self._step_total = 0
@@ -23438,14 +23445,28 @@ class UnifiedRestorerV3:
                 audio=_ag_audio,
                 sample_rate=sample_rate if _ag_audio is not None else None,
                 defect_locations=_ag_locations if _ag_audio is not None else None,
+                post_scan_ran=_post_defect_result is not None,
             )
             log_audibility_report(_ag_report)
             # §2.46g (2026-09-06): Gate-Befund für die Endverdikt-Kopplung ablegen —
             # ein nicht bestandenes Hörbarkeits-Gate mit n_audible_unmasked > 0
             # degradiert QUALITY-GUARANTEED-Verdikte (siehe MQA-Kopplung).
+            # §G8 (copilot-instructions.md) 2026-10-07: gekoppelt wird
+            # ``gate_verified`` (bestanden UND gemessen) — ein fehlender
+            # Post-Scan ist "ungeprüft" und darf keine Qualitäts-Zusage tragen,
+            # ohne den Lauf zu blockieren (fail-open bleibt für den Block).
             if isinstance(_flow_meta, dict):
-                _flow_meta["hoerbarkeits_gate_passed"] = bool(_ag_report.gate_passed)
+                _flow_meta["hoerbarkeits_gate_passed"] = bool(_ag_report.gate_verified)
+                _flow_meta["hoerbarkeits_gate_evidence_state"] = str(_ag_report.evidence_state)
                 _flow_meta["hoerbarkeits_gate_unmasked_types"] = int(_ag_report.n_audible_unmasked)
+            if _ag_report.evidence_state == "scan_missing":
+                logger.warning(
+                    "§Hörbarkeits-Gate §G8/§V6 (copilot-instructions.md): §B2-Post-Scan fehlt → Evidenzstand 'ungeprüft' "
+                    "(%d Typ-Einträge, gate_passed=%s): das Residuum ist NICHT gegen die "
+                    "Maskierungsschwelle belegt — Verdikt wird nicht als QUALITY GUARANTEED geführt",
+                    int(_ag_report.n_verified),
+                    bool(_ag_report.gate_passed),
+                )
             # m1b: hörbar gebliebene, nachbehandlungswürdige Typen gezielt in die
             # Stufe-2-Refinement-Queue (KMV) stellen — nur Typen mit sicherer
             # Phasen-Zuordnung, kein blindes Wiederholen der Gesamtkette.

@@ -99,10 +99,41 @@ class TestEvaluateAudibility:
         assert rep.n_never_audible == 1
 
     def test_empty_and_malformed(self) -> None:
+        # §G8 (copilot-instructions.md): fail-open fuer den BLOCK, aber KEIN
+        # Nachweis — ohne Post-Scan ist der Evidenzstand "scan_missing".
         rep = evaluate_defect_audibility(None, material_key="vinyl")
         assert rep.gate_passed is True
+        assert rep.evidence_state == "scan_missing"
+        assert rep.gate_verified is False
         rep2 = evaluate_defect_audibility({"x": "kaputt", "y": {"pre": np.nan, "post": None}}, material_key="vinyl")
         assert rep2.gate_passed is True
+        assert rep2.gate_verified is False
+
+    def test_scan_missing_is_unverified(self) -> None:
+        """Ein bestandener Block ohne Messung ist kein Nachweis — §G8 und §V6 (copilot-instructions.md)."""
+        rep = evaluate_defect_audibility({"clicks": _entry(0.5, 0.02)}, material_key="vinyl", post_scan_ran=False)
+        assert rep.gate_passed is True  # kein hörbarer Restdefekt behauptet
+        assert rep.gate_verified is False  # ...aber auch nicht belegt
+        assert rep.evidence_state == "scan_missing"
+        assert rep.to_metadata()["gate_verified"] is False
+        assert rep.to_metadata()["evidence_state"] == "scan_missing"
+
+    def test_no_residual_defects_after_real_scan_is_verified(self) -> None:
+        # Post-Scan lief, fand nichts Ueber-der-Schwelle-Liegendes -> bestanden.
+        rep = evaluate_defect_audibility({}, material_key="vinyl", post_scan_ran=True)
+        assert rep.evidence_state == "no_residual_defects"
+        assert rep.gate_verified is True
+
+    def test_evaluated_scan_is_verified(self) -> None:
+        rep = evaluate_defect_audibility({"clicks": _entry(0.5, 0.02)}, material_key="vinyl", post_scan_ran=True)
+        assert rep.evidence_state == "evaluated"
+        assert rep.n_verified == 1
+        assert rep.gate_verified is True
+
+    def test_failed_gate_is_never_verified(self) -> None:
+        rep = evaluate_defect_audibility({"clicks": _entry(0.5, 0.20)}, material_key="vinyl", post_scan_ran=True)
+        assert rep.gate_passed is False
+        assert rep.gate_verified is False
 
     def test_report_metadata_jsonable(self) -> None:
         data = {"clicks": _entry(0.5, 0.20)}

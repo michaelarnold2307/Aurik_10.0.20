@@ -41,6 +41,7 @@ lazy (kein zweiter Voll-Scan - nur Defekt-Locations im finalen Audio).
 from __future__ import annotations
 
 import logging
+import math
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -139,10 +140,21 @@ class DefectAudibilityReport:
     n_physical_cap: int = 0
     improvable_types: list[str] = field(default_factory=list)
     gate_passed: bool = True
+    # §G8 (copilot-instructions.md) Evidenz-Zustand (2026-10-07): "passed" ohne
+    # Post-Scan ist KEIN Nachweis. Fail-open gilt nur fuer den BLOCK (keine
+    # Blockade ohne Daten), nicht fuer die Qualitaets-Zusage.
+    n_verified: int = 0
+    n_unevaluable: int = 0  # Zeilen ohne Zahl (nicht gemessen, keine Evidenz)
+    evidence_state: str = "evaluated"  # evaluated | no_residual_defects | scan_missing
+    gate_verified: bool = True  # gate_passed UND Evidenz vorhanden
 
     def to_metadata(self) -> dict[str, Any]:
         return {
             "gate_passed": bool(self.gate_passed),
+            "gate_verified": bool(self.gate_verified),
+            "evidence_state": str(self.evidence_state),
+            "n_verified": int(self.n_verified),
+            "n_unevaluable": int(self.n_unevaluable),
             "threshold": round(float(self.threshold), 4),
             "material": str(self.material_key),
             "chain_depth": int(self.chain_depth),
@@ -310,6 +322,23 @@ def _sev(value: Any) -> float:
     return max(0.0, min(1.0, v))
 
 
+def _sev_or_none(value: Any) -> float | None:
+    """Severity oder ``None``, wenn der Wert KEINE Zahl ist (§G8 copilot-instructions.md).
+
+    ``_sev`` mappt fehlende/kaputte Werte bewusst auf 0,0 (Severity-Skala-
+    Fallback). Für den Evidenz-Zustand ist diese Gleichsetzung falsch: eine
+    Zeile ohne Zahl ist NICHT gemessen und darf weder als „never_audible"
+    durchgehen noch als Beleg zählen.
+    """
+    if value is None or isinstance(value, bool):
+        return None
+    try:
+        v = float(value)
+    except (TypeError, ValueError):
+        return None
+    return v if math.isfinite(v) else None
+
+
 def evaluate_defect_audibility(
     defect_reduction_per_type: dict[str, dict[str, Any]] | None,
     *,
@@ -320,6 +349,7 @@ def evaluate_defect_audibility(
     sample_rate: Any = None,
     defect_locations: dict[str, list[tuple[float, float]]] | None = None,
     canonical_model: str = "mpeg1",
+    post_scan_ran: bool | None = None,
 ) -> DefectAudibilityReport:
     """Bewertet die Restdefekte gegen die Hörbarkeitsschwelle (reine Funktion).
 
@@ -345,6 +375,10 @@ def evaluate_defect_audibility(
         sample_rate: Abtastrate zu ``audio`` (optional).
         defect_locations: {type: [(start_s, end_s), ...]} aus dem Post-Scan (optional).
         canonical_model: Maskierungsmodell der kanonischen Instanz ("mpeg1" Default).
+        post_scan_ran: Hat der §B2-Post-Scan fuer DIESEN Song gelaufen? ``False``
+            ⇒ ``evidence_state="scan_missing"`` und ``gate_verified=False``
+            (§G8 (copilot-instructions.md): ohne Messung keine Zusage). ``None``
+            leitet ab: Eintraege vorhanden ⇒ "evaluated", sonst "scan_missing".
     """
     thr = audible_threshold(material_key, chain_depth)
     caps = set(PHYSICAL_CAP_DEFECT_TYPES) | set(physical_cap_types or set())
@@ -373,6 +407,20 @@ def evaluate_defect_audibility(
             continue
         pre = _sev(entry.get("pre"))
         post = _sev(entry.get("post"))
+        if _sev_or_none(entry.get("pre")) is None or _sev_or_none(entry.get("post")) is None:
+            # §G8 (copilot-instructions.md): Zeile ohne Zahl ist NICHT gemessen.
+            report.per_type[dt_name] = {
+                "pre": pre,
+                "post": post,
+                "reduction": 0.0,
+                "masked_events": 0,
+                "audible_pre": False,
+                "audible_post": False,
+                "status": "unevaluable",
+                "evidence": "malformed_entry",
+            }
+            report.n_unevaluable += 1
+            continue
         masked = 0
         try:
             masked = int(entry.get("masked_events", 0) or 0)
@@ -438,6 +486,27 @@ def evaluate_defect_audibility(
         elif status == "never_audible":
             report.n_never_audible += 1
     report.gate_passed = report.n_audible_unmasked == 0
+    # §G8 (copilot-instructions.md) Evidenz-Zustand: "bestanden" (kein hörbarer
+    # Restdefekt) und "belegt" (es wurde überhaupt gemessen) sind ZWEI Aussagen.
+    report.n_verified = sum(1 for v in report.per_type.values() if str(v.get("status")) != "unevaluable")
+    if post_scan_ran is False:
+        report.evidence_state = "scan_missing"
+    elif report.n_verified > 0:
+        report.evidence_state = "evaluated"
+    elif post_scan_ran is True:
+        report.evidence_state = "no_residual_defects"
+    else:
+        report.evidence_state = "scan_missing"
+    report.gate_verified = bool(report.gate_passed and report.evidence_state != "scan_missing")
+    if report.evidence_state == "scan_missing":
+        logger.warning(
+            "§Hörbarkeits-Gate UNGEPRÜFT (§G8 (copilot-instructions.md)): kein §B2-Post-Scan-Ergebnis "
+            "(%d Typ-Einträge) — gate_passed=%s ist damit KEIN Nachweis "
+            "„Residuum unter der Maskierungsschwelle“ (fail-open nur für den Block, "
+            "fail-closed für die Qualitäts-Zusage, §V6 (copilot-instructions.md))",
+            report.n_verified,
+            report.gate_passed,
+        )
     return report
 
 
