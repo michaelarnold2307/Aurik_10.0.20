@@ -1,4 +1,26 @@
-# Changelog — Aurik 10.12.8
+# Changelog — Aurik 10.12.9
+
+## 10.12.9 (2026-10-07)
+
+### D-K3-21: SNR-Gate explizit — Phantom-Attribut wird Entscheidung (+ K2-Verdrahtungs-Verifikation)
+
+**Befund.** Die SNR-adaptive Parameter-Skalierung in `CausalDefectReasoner._infer`
+war ein toter Zweig: `_last_snr_estimate` wurde nirgends gesetzt — der Schalter
+existierte als Unfall, nicht als Entscheidung.
+
+**Fix.** Explizites Klassen-Gate `_SNR_ADAPTIVE_ENABLED` (Default AUS ⇒
+bit-identisches Verhalten) + deterministische Datenquelle `set_snr_estimate()`
+(§G5 (copilot-instructions.md)); Aktivierung erfordert die fünf Belege des
+Wohlklang-Vertrags (blindes A/B auf eingefrorener Baseline). 3 neue Tests.
+
+**K2-Inventur (Verifikation am Code, 2026-10-07).** Real verdrahtet:
+`vocos_48khz` **aktiv als primäre Stufe des §1.4-Studio-Finishers**
+(Maximum/Studio/Aggressive, PQS-MOS<4,3 — Domäne undokumentiert!), 24k/44.1k als
+Fallback-Stufen, HiFi-GAN als Plugin-Fallback. **Nicht verdrahtet:**
+`vocoder_chain.py` und `sota_speech_superres.py` (keine Aufrufer), NVSR (nur
+Status-Payload), AERO. `nvsr.onnx` ist byte-identisch mit dem Musik-FlashSR-
+Export. Der Musik-Vokoder **BigVGAN-F3** (MUSDB18-HQ, A/B +4,42 dB HNR, ONNX
+paritätsgeprüft, rel ≤ 6,5e-05) bleibt die Deployment-Lücke (D-K0-1/2).
 
 ## 10.12.8 (2026-10-07)
 

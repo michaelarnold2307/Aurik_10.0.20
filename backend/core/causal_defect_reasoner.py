@@ -3584,6 +3584,18 @@ class CausalDefectReasoner:
         logger.debug(plan.recommended_phases)
     """
 
+    # §D-K3-21: Die SNR-adaptive Parameter-Skalierung ist bewusst AUS.
+    # Vorher (bis 10.12.9) war sie ein Unfall: ``_last_snr_estimate`` wurde
+    # nirgends gesetzt, der Zweig lief in jedem Lauf ins Leere. Jetzt ist sie
+    # eine explizite Entscheidung hinter diesem Schalter + der expliziten
+    # Datenquelle ``set_snr_estimate()``. Eine Aktivierung hebt
+    # ``strength``/``boost``-Parameter um bis zu ×1,5 an (SNR 10 dB → 25/10 →
+    # geclippt 1,5) und ist eine klangverändernde Stufe: sie erfordert die fünf
+    # Belege des Wohlklang-Vertrags (.github/WOHLKLANG_CLAIMS.md) — eingefrorene
+    # Baseline, blindes A/B, ≥3 echte Songs auf dem Produktionspfad
+    # (§G6 (copilot-instructions.md); Hörordnung Ebene 3).
+    _SNR_ADAPTIVE_ENABLED: bool = False
+
     def __init__(self, detect_hum_hz: float | None = None):
         """
         Args:
@@ -3591,6 +3603,29 @@ class CausalDefectReasoner:
                            wird automatisch erkannt.
         """
         self._known_hum_hz = detect_hum_hz
+        # §D-K3-21: SNR-Datenquelle explizit — None = unbekannt ⇒ Gate bleibt
+        # zu, unabhängig vom Schalter. Gesetzt via set_snr_estimate().
+        self._last_snr_estimate: float | None = None
+
+    def set_snr_estimate(self, snr_db: float | None) -> float | None:
+        """§D-K3-21: Setzt die SNR-Schätzung als explizite Datenquelle.
+
+        Deterministisch (§G5 (copilot-instructions.md)): gleiche Eingabe ⇒ gleicher
+        Zustand. Die SNR-adaptive Skalierung wirkt nur bei aktivem
+        ``_SNR_ADAPTIVE_ENABLED`` (Default AUS, siehe Klassenkommentar).
+
+        Args:
+            snr_db: SNR in dB (kanonischer Schätzer:
+                    ``defect_scanner._estimate_local_snr``) oder None für unbekannt.
+
+        Returns:
+            Der normalisierte Wert (None bei ungültiger Eingabe, ≤ 0 oder NaN).
+        """
+        if snr_db is None or not np.isfinite(snr_db) or snr_db <= 0:
+            self._last_snr_estimate = None
+        else:
+            self._last_snr_estimate = float(min(float(snr_db), 80.0))
+        return self._last_snr_estimate
 
     # ------------------------------------------------------------------
     # Öffentliche API
@@ -3736,18 +3771,19 @@ class CausalDefectReasoner:
                 if param not in merged_params:
                     merged_params[param] = val
 
-        # §v10 SNR-adaptive param scaling — NICHT AKTIV (Befund 2026-10-07).
-        # Dieses Attribut wird nirgends gesetzt; der Zweig lief in jedem Lauf ins
-        # Leere. Eine Aktivierung würde ``strength``/``boost``-Parameter um bis zu
+        # §v10 SNR-adaptive param scaling — Gate §D-K3-21 (Default AUS).
+        # Bis 10.12.9 wurde das Attribut nirgends gesetzt; der Zweig lief in
+        # jedem Lauf ins Leere. Jetzt: explizites Gate ``_SNR_ADAPTIVE_ENABLED``
+        # + Datenquelle ``set_snr_estimate()``. Eine Aktivierung würde ``strength``/``boost``-Parameter um bis zu
         # ×1,5 anheben (SNR 10 dB → 25/10 = 2,5 → geclippt 1,5) und damit die
         # Eingriffsstärke global erhöhen. Das ist eine klangverndernde Stufe und
         # benötigt die fünf Belege des Wohlklang-Vertrags (≥3 echte Songs,
         # Produktionspfad, eingefrorene Baseline, blindes A/B, Budget) — sonst
         # droht ein Natürlichkeits-Verlust (Hörordnung Ebene 3, §G6 (copilot-instructions.md)). Zielbild: docs/AURIK_10_ROADMAP.md:1286
-        # ("CAUSE_PARAMS vollständig SNR-adaptiv"). Als offenes Defizit
-        # registriert; Datenquelle wäre der kanonische Schätzer
-        # ``defect_scanner._estimate_local_snr`` (Spec 12 §"SNR-Adaption").
-        if hasattr(self, "_last_snr_estimate") and self._last_snr_estimate > 0:
+        # ("CAUSE_PARAMS vollständig SNR-adaptiv"). Datenquelle ist der kanonische
+        # Schätzer ``defect_scanner._estimate_local_snr`` (Spec 12 §"SNR-Adaption"),
+        # explizit via ``set_snr_estimate()`` gesetzt — kein Phantom-Attribut mehr.
+        if self._SNR_ADAPTIVE_ENABLED and self._last_snr_estimate is not None and self._last_snr_estimate > 0:
             _snr = self._last_snr_estimate
             _snr_scale = float(np.clip(25.0 / max(5.0, _snr), 0.5, 1.5))
             for _key in list(merged_params.keys()):
