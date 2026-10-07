@@ -44,10 +44,13 @@ Nutzung:
 from __future__ import annotations
 
 import argparse
+import ast
+import io
 import json
 import logging
 import re
 import sys
+import tokenize
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -78,6 +81,10 @@ BOOL_LITERAL_TMPL = r"^\s*{name}\s*:\s*bool\s*=\s*(?P<value>True|False)\b"
 VERSION_RE = re.compile(r'__version__\s*=\s*"([^"]+)"')
 BUDGET_RT_RE = re.compile(r"\d+[.,]?\d*\s*[x×]\s*RT", re.IGNORECASE)
 MODEL_PATH_RE = re.compile(r"models/[\w./-]+\.(?:onnx|pth|pyt|pt|ckpt|ts|joblib|npy|safetensors)")
+# Codepfade: Die Negativ-Lookbehind verhindert Treffer am Ende eines längeren
+# Namens (Befund 2026-10-07: `.../all_public_uvr_models/model_bs_roformer_…ckpt`
+# ist ein URL-Suffix, kein lokaler Pfad — der Treffer begann mitten im Wort).
+CODE_MODEL_PATH_RE = re.compile(r"(?<![\w/])models/[\w./-]+\.(?:onnx|pth|pyt|pt|ckpt|ts|joblib|npy|safetensors)")
 SEPARATOR_RE = re.compile(r":?-{3,}:?")
 _MIN_GRUND = 20
 
@@ -316,6 +323,92 @@ def check_contract(claims: list[Claim], version: str) -> list[Finding]:
     return findings
 
 
+def _prose_string_spans(tree: ast.AST) -> list[tuple[int, int, int, int]]:
+    """Positionen aller **Statement-Strings** (nackte String-Ausdrücke).
+
+    Kriterium: ``Expr`` mit ``Constant``-String-Wert. Ein solcher Ausdruck hat in
+    Python **keine Laufzeitwirkung** — er kann ausschließlich Dokumentation sein
+    (Docstring, verwaister Docstring nach einem Methoden-Rückbau, Kommentarblock).
+    Damit ist das Kriterium präziser als „``body[0]`` einer Funktion": Befund
+    2026-10-07 in ``plugins/apollo_phase0_integration.py`` — die Klasse
+    ``ResembleEnhanceGuard`` trägt ihren echten Docstring **und** darunter den
+    zurückgelassenen Docstring der in §v10.19 entfernten Methode; nur ``body[0]``
+    zu prüfen ließ den zweiten String als Code durchgehen.
+    """
+    spans: list[tuple[int, int, int, int]] = []
+    for node in ast.walk(tree):
+        if not isinstance(node, ast.Expr):
+            continue
+        value = node.value
+        if not isinstance(value, ast.Constant) or not isinstance(value.value, str):
+            continue
+        if value.end_lineno is None or value.end_col_offset is None:
+            continue
+        spans.append((value.lineno, value.col_offset, value.end_lineno, value.end_col_offset))
+    return spans
+
+
+def _blank_prose(text: str) -> str:
+    """Ersetzt **Kommentare und Statement-Strings** positionsgetreu durch Leerzeichen.
+
+    Bewusst **enger** als ``audit.code_weakness_scanner.blank_noncode``: Jene
+    Funktion blankt zusätzlich ALLE String-Literale (sie prüft Log-Aufrufe, nicht
+    Pfade). Hier wäre das falsch — ein Modellpfad steht **naturgemäß** in einem
+    funktionalen String-Literal; wer alle Strings blankt, löscht genau die
+    Verdrahtung, die geprüft werden soll (eigener Fehlversuch 2026-10-07: 53 → 0,
+    obwohl nur Prosa entfernt werden sollte). Deshalb: Kommentar und
+    Statement-String = Prosa, funktionaler String = Code.
+
+    Zeilen-/Spaltenpositionen bleiben erhalten. Fallback bei Parse-/Tokenizer-
+    Fehler: Rohtext (konservativ — mehr Befunde, nie weniger).
+    """
+    try:
+        tree = ast.parse(text)
+    except (SyntaxError, ValueError):
+        return text
+    spans = _prose_string_spans(tree)
+
+    lines = text.splitlines(keepends=True)
+    starts = [0]
+    for line in lines:
+        starts.append(starts[-1] + len(line))
+
+    def _offset(row: int, col: int) -> int:
+        return starts[row - 1] + col
+
+    def _is_prose_string(tok: tokenize.TokenInfo) -> bool:
+        return any(
+            tok.start >= (start_row, start_col) and tok.end <= (end_row, end_col)
+            for start_row, start_col, end_row, end_col in spans
+        )
+
+    chars = list(text)
+    try:
+        for tok in tokenize.generate_tokens(io.StringIO(text).readline):
+            if tok.type == tokenize.COMMENT or (tok.type == tokenize.STRING and _is_prose_string(tok)):
+                for idx in range(_offset(*tok.start), _offset(*tok.end)):
+                    if chars[idx] != "\n":
+                        chars[idx] = " "
+    except (tokenize.TokenError, IndentationError, SyntaxError):
+        return text
+    return "".join(chars)
+
+
+def _scan_code_paths(text: str) -> list[str]:
+    """Modell-Pfad-Literale im **ausführbaren Code** (Kommentare/Docstrings geblankt).
+
+    Grund (Befund D-K3-5, 2026-10-07): Der P2-Lauf meldete 53 „nicht existente
+    ``models/…``-Referenzen in Produktionscode". Die Stichprobe zeigte, dass der
+    Großteil **Prosa** war („Modell: ``models/…``" in Docstrings, Fallback-Listen
+    in Kommentaren). Ein Pfad in einer Beschreibung ist keine Verdrahtung. Ohne
+    diese Trennung ist der Bericht nicht actionierbar — und P1 (fail-closed) hätte
+    bei einer bloßen Docstring-Erwähnung den Commit blockiert (§G9 (copilot-instructions.md):
+    eine Technik, keine parallele Umsetzung; `_blank_prose` ist die engere Variante
+    der kanonischen `blank_noncode`).
+    """
+    return sorted(set(CODE_MODEL_PATH_RE.findall(_blank_prose(text))))
+
+
 def check_harnesses() -> tuple[list[Finding], int]:
     """P1 (fail-closed) und P2 (Bericht): Phantom-Pfade in Harness/Produktion."""
     findings: list[Finding] = []
@@ -324,7 +417,7 @@ def check_harnesses() -> tuple[list[Finding], int]:
         if not path.exists():
             findings.append(Finding("ERROR", "P1", f"Evidenz-Harness fehlt: {rel}"))
             continue
-        missing = _missing_paths(sorted(set(MODEL_PATH_RE.findall(_read(path)))))
+        missing = _missing_paths(_scan_code_paths(_read(path)))
         for rel_missing in missing:
             findings.append(
                 Finding("ERROR", "P1", f"{rel}: referenziert nicht existierendes Modell-Artefakt '{rel_missing}'")
@@ -338,14 +431,15 @@ def check_harnesses() -> tuple[list[Finding], int]:
             continue
         for path in root.rglob("*.py"):
             checked += 1
-            for ref in sorted(set(MODEL_PATH_RE.findall(_read(path)))):
+            for ref in _scan_code_paths(_read(path)):
                 if _path_missing(ref):
                     phantom_paths.append(f"{path.relative_to(ROOT)} → {ref}")
     findings.append(
         Finding(
             "INFO",
             "P2",
-            f"{len(phantom_paths)} nicht existente models/-Referenz(en) in {checked} Produktionsdateien (Bericht, kein Fail)",
+            f"{len(phantom_paths)} nicht existente models/-Referenz(en) im AUSFÜHRBAREN Code von "
+            f"{checked} Produktionsdateien (Bericht, kein Fail; Kommentare/Docstrings ausgenommen)",
         )
     )
     for entry in sorted(set(phantom_paths)):

@@ -68,9 +68,21 @@ def main():
             continue
         text = fpath.read_text(encoding="utf-8")
         if fname == "CHANGELOG.md":
-            # Der Check liest die erste ##-Abschnittsüberschrift — genau die wird
-            # gesetzt; historische Abschnitte bleiben unverändert.
-            new_text, n = re.subn(rf"^## {re.escape(old)}", f"## {canonical}", text, count=1, flags=re.MULTILINE)
+            # §v10.802 (copilot-instructions.md): Pro Bump ein eigener ## x.y.z-Block.
+            # Der Sweep benennt KEINEN bestehenden Release-Block um — sonst wird die
+            # Historie überschrieben (Befund 2026-10-07: "## 10.8.1" wurde zu
+            # "## 10.8.2", während "alle Dateien konsistent" gemeldet wurde).
+            # Die erste ##-Überschrift ist die jüngste Version; fehlt die kanonische,
+            # ist der Abschnitt anzulegen — nicht umzubenennen.
+            if not re.search(rf"^##\s+{re.escape(canonical)}\b", text, flags=re.MULTILINE):
+                print(
+                    f"  ❌ {fname}: kein '## {canonical}'-Abschnitt — bitte zuerst anlegen "
+                    f"(der Sweep benennt keine bestehenden Release-Blöcke um)"
+                )
+                ok = False
+                continue
+            print(f"  ✅ {fname}: '## {canonical}' vorhanden (Historie unverändert)")
+            continue
         else:
             # Nur das erste Vorkommen (z. B. das **Version:**-Feld), Historie bleibt.
             new_text, n = re.subn(re.escape(old), canonical, text, count=1)

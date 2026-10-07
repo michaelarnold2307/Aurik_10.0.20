@@ -157,6 +157,123 @@ class TestPhantom:
 
 
 # ---------------------------------------------------------------------------
+# P1/P2 — Prosa ist kein Code (Befund D-K3-5, 2026-10-07)
+# ---------------------------------------------------------------------------
+
+
+class TestProseIsNotCode:
+    """Das Gate prüft Verdrahtung, nicht Beschreibung.
+
+    Auslöser: P2 meldete 53 „nicht existente ``models/…``-Referenzen in
+    Produktionscode"; die Stichprobe zeigte, dass 27 davon **Prosa** waren. Ein
+    Pfad in einem Docstring ist keine Verdrahtung — er darf weder den Bericht
+    aufblähen noch P1 (fail-closed) blockieren.
+    """
+
+    def test_comment_reference_is_not_code(self):
+        src = "x = 1  # lädt models/phantom/kommentar.onnx\n"
+        assert gate._scan_code_paths(src) == []
+
+    def test_docstring_reference_is_not_code(self):
+        src = 'def f():\n    """Modell: models/phantom/docstring.onnx (722 MB)."""\n    return 1\n'
+        assert gate._scan_code_paths(src) == []
+
+    def test_orphaned_statement_string_is_not_code(self):
+        """Rückbau-Rest: der zweite Statement-String einer Klasse ist Prosa.
+
+        Produktionsbefund ``plugins/apollo_phase0_integration.py``: Die Klasse
+        ``ResembleEnhanceGuard`` trägt ihren echten Docstring **und** darunter den
+        zurückgelassenen Docstring der in §v10.19 entfernten Methode. Nur
+        ``body[0]`` zu prüfen ließ diesen String als Code durchgehen.
+        """
+        src = (
+            "class Guard:\n"
+            '    """Echter Docstring."""\n'
+            "\n"
+            '    """Verwaister Docstring: models/phantom/verwaist.onnx"""\n'
+            "\n"
+            "    def __init__(self):\n"
+            "        self.x = 1\n"
+        )
+        assert gate._scan_code_paths(src) == []
+
+    def test_functional_string_reference_is_code(self):
+        """Ein Pfad in einem Aufruf ist die Verdrahtung — er MUSS bleiben."""
+        src = 'model = load(Path("models/real/wiring.onnx"))\n'
+        assert gate._scan_code_paths(src) == ["models/real/wiring.onnx"]
+
+    def test_assignment_string_reference_is_code(self):
+        src = 'CHECKPOINT = "models/train/best_model_v3.pt"\n'
+        assert gate._scan_code_paths(src) == ["models/train/best_model_v3.pt"]
+
+    def test_url_suffix_is_not_a_local_path(self):
+        """``.../all_public_uvr_models/model_x.ckpt`` beginnt mitten im Wort."""
+        src = 'URL = "https://h/…/all_public_uvr_models/model_bs_roformer_ep_317.ckpt"\n'
+        assert gate._scan_code_paths(src) == []
+
+    def test_blank_prose_preserves_positions(self):
+        """Zeilen/Spalten bleiben erhalten — sonst sind Befunde nicht auffindbar."""
+        src = 'x = 1  # models/phantom/a.onnx\n\ndef f():\n    """models/phantom/b.onnx"""\n'
+        blanked = gate._blank_prose(src)
+        assert len(blanked.splitlines()) == len(src.splitlines())
+        assert blanked.splitlines()[0].startswith("x = 1 ")
+        # Die Prosa wird zu Leerzeichen gleicher Länge (Position bleibt, Inhalt weg).
+        assert blanked.splitlines()[3] == " " * len(src.splitlines()[3])
+        assert "models/" not in blanked
+
+    def test_blank_prose_falls_back_conservatively_on_syntax_error(self):
+        """Konservativ: nicht parsebarer Text bleibt unverändert (mehr Befunde, nie weniger)."""
+        broken = "def f(:\n    models/phantom/broken.onnx\n"
+        assert gate._blank_prose(broken) == broken
+
+    def test_p1_ignores_prose_reference_in_harness(self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path):
+        """Ein Harness darf ein Phantom-Artefakt in Prosa erwähnen (Doku) — kein Fail."""
+        harness = tmp_path / "harness.py"
+        harness.write_text(
+            'def run():\n    """Vergleich gegen models/bigvgan/nur_erwaehnt.onnx."""\n    return 1\n',
+            encoding="utf-8",
+        )
+        monkeypatch.setattr(gate, "EVIDENCE_HARNESSES", (str(harness),))
+        findings, _ = gate.check_harnesses()
+        assert [f.message for f in findings if f.rule == "P1" and f.severity == "ERROR"] == []
+
+    def test_p1_still_detects_functional_phantom_in_harness(self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path):
+        """Der Fail-closed-Kern bleibt scharf: Code-Verdrahtung auf ein Phantom."""
+        harness = tmp_path / "harness.py"
+        harness.write_text('P = "models/bigvgan/gibt_es_nicht.onnx"\n', encoding="utf-8")
+        monkeypatch.setattr(gate, "EVIDENCE_HARNESSES", (str(harness),))
+        monkeypatch.setattr(gate, "_path_missing", lambda _r: True)
+        findings, _ = gate.check_harnesses()
+        assert any(f.rule == "P1" and f.severity == "ERROR" for f in findings)
+
+    def test_p2_reports_functional_but_not_prose_end_to_end(self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path):
+        """End-to-End: P2 über einen künstlichen Produktionsbaum.
+
+        Pinnt den **Mechanismus** (Prosa raus, Verdrahtung rein) statt einer
+        Momentaufnahme der heutigen Trefferzahlen — eine Liste wäre brüchig: sie
+        würde fehlschlagen, sobald ein deklariertes Artefakt tatsächlich
+        trainiert wird.
+        """
+        root = tmp_path / "backend"
+        root.mkdir()
+        (root / "mod.py").write_text(
+            '"""Doku: models/phantom/nur_prosa.onnx."""\n'
+            "# Kommentar: models/phantom/auch_prosa.onnx\n"
+            'ECHT = "models/phantom/verdrahtet.onnx"\n',
+            encoding="utf-8",
+        )
+        monkeypatch.setattr(gate, "ROOT", tmp_path)
+        monkeypatch.setattr(gate, "PRODUCTION_ROOTS", ("backend",))
+        monkeypatch.setattr(gate, "EVIDENCE_HARNESSES", ())
+        monkeypatch.setattr(gate, "_path_missing", lambda ref: "phantom" in ref)
+
+        findings, count = gate.check_harnesses()
+        hits = [f.message for f in findings if f.rule == "P2" and " → " in f.message]
+        assert hits == ["backend/mod.py → models/phantom/verdrahtet.onnx"], hits
+        assert count == 1
+
+
+# ---------------------------------------------------------------------------
 # Bestands-Nachweis: der echte Vertrag ist konsistent
 # ---------------------------------------------------------------------------
 

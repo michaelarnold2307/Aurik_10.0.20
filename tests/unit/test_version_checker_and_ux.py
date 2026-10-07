@@ -3,9 +3,12 @@ import pytest
 """Tests for Aurik10/core/version_checker.py — update check logic."""
 
 import json
+import sys
 import threading
+from pathlib import Path
 from unittest.mock import MagicMock, patch
 
+import scripts.check_version_consistency as vc
 from Aurik10.core.version_checker import (
     _CURRENT_VERSION,
     VersionCheckResult,
@@ -259,3 +262,82 @@ def test_i18n_keys_exist():
             val = t(key, count=1, version="9.99.0")
             assert val, f"i18n key '{key}' empty for lang={lang}"
             assert key not in val, f"i18n key '{key}' not translated for lang={lang}"
+
+
+# ── Version-Sweep: Historie ist unantastbar (Befund 2026-10-07) ─────────────
+
+
+class TestVersionSweepHistoryGuard:
+    """`scripts/check_version_consistency.py --fix` darf keine Historie umschreiben.
+
+    Produktionsbefund 2026-10-07: Der Sweep benannte die **erste**
+    ``##``-Überschrift um. Wurde er vor dem Anlegen des neuen Changelog-
+    Abschnitts ausgeführt, wurde der **alte Release-Block** auf die neue Version
+    umgeschrieben (``## 10.8.1`` → ``## 10.8.2``) — und meldete dabei „alle
+    Dateien konsistent". Die Historie war falsch. §v10.802
+    (copilot-instructions.md) verlangt pro Bump einen eigenen ``## x.y.z``-Block;
+    der Sweep verweigert daher jetzt die Umschreibung, statt sie stillschweigend
+    vorzunehmen.
+    """
+
+    @staticmethod
+    def _make_root(tmp_path: Path, changelog: str, version: str = "10.8.2") -> Path:
+        (tmp_path / "backend" / "core").mkdir(parents=True)
+        (tmp_path / "backend" / "core" / "version.py").write_text(f'__version__ = "{version}"\n', encoding="utf-8")
+        (tmp_path / "pyproject.toml").write_text(f'version = "{version}"\n', encoding="utf-8")
+        (tmp_path / "README.md").write_text(f"**Version:** {version}\n", encoding="utf-8")
+        (tmp_path / "CHANGELOG.md").write_text(changelog, encoding="utf-8")
+        return tmp_path
+
+    def test_sweep_does_not_rename_existing_release_block(
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+        capsys: pytest.CaptureFixture[str],
+    ):
+        root = self._make_root(tmp_path, "# Changelog — Aurik 10.8.1\n\n## 10.8.1 (2026-10-07)\n\n- alt\n")
+        before = (root / "CHANGELOG.md").read_text(encoding="utf-8")
+        monkeypatch.setattr(vc, "PROJECT_ROOT", root)
+        monkeypatch.setattr(sys, "argv", ["check_version_consistency.py", "--fix"])
+
+        with pytest.raises(SystemExit) as exc:
+            vc.main()
+
+        assert exc.value.code == 1
+        assert (root / "CHANGELOG.md").read_text(encoding="utf-8") == before, "Historie wurde umgeschrieben"
+        assert "kein '## 10.8.2'-Abschnitt" in capsys.readouterr().out
+
+    def test_sweep_accepts_new_block_and_leaves_history_intact(
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+    ):
+        changelog = "# Changelog — Aurik 10.8.2\n\n## 10.8.2 (2026-10-07)\n\n- neu\n\n## 10.8.1 (2026-10-07)\n\n- alt\n"
+        root = self._make_root(tmp_path, changelog)
+        monkeypatch.setattr(vc, "PROJECT_ROOT", root)
+        monkeypatch.setattr(sys, "argv", ["check_version_consistency.py", "--fix"])
+
+        with pytest.raises(SystemExit) as exc:
+            vc.main()
+
+        assert exc.value.code == 0
+        assert (root / "CHANGELOG.md").read_text(encoding="utf-8") == changelog
+
+    def test_sweep_still_fixes_pyproject_and_readme(
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+    ):
+        """Der Wächter darf den normalen Sweep nicht lahmlegen."""
+        root = self._make_root(tmp_path, "## 10.8.2 (2026-10-07)\n\n- neu\n")
+        (root / "pyproject.toml").write_text('version = "10.8.1"\n', encoding="utf-8")
+        (root / "README.md").write_text("**Version:** 10.8.1\n", encoding="utf-8")
+        monkeypatch.setattr(vc, "PROJECT_ROOT", root)
+        monkeypatch.setattr(sys, "argv", ["check_version_consistency.py", "--fix"])
+
+        with pytest.raises(SystemExit) as exc:
+            vc.main()
+
+        assert exc.value.code == 0
+        assert 'version = "10.8.2"' in (root / "pyproject.toml").read_text(encoding="utf-8")
+        assert "**Version:** 10.8.2" in (root / "README.md").read_text(encoding="utf-8")

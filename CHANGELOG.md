@@ -1,8 +1,78 @@
-# Changelog — Aurik 10.8.1
+# Changelog — Aurik 10.8.2
+
+## 10.8.2 (2026-10-07)
+
+### §D-K3-5 — „53 Phantom-Referenzen" war ein Messartefakt: das Gate zählte Prosa als Code
+
+**Patch-Bump (§v10.802 copilot-instructions.md):** `fix` — Korrektur einer
+**Messregel**. **Keine Klangänderung:** das Ausgangssignal ist bit-identisch (es
+wurde ausschließlich die Analyse-Logik des Gates geändert); kein Schalter in
+`.github/WOHLKLANG_CLAIMS.md` wurde umgestellt (unverändert 0 aktiviert / 5
+ausnahme / 7 gesperrt).
+
+**Befund.** Der `P2`-Lauf von `scripts/wohlklang_gate.py` meldete „53 nicht
+existente `models/…`-Referenzen im Produktionscode". Beim Nachmessen waren
+**27 davon Prosa**: Der Lauf prüfte **Rohtext** und zählte damit Kommentare und
+Docstrings als Verdrahtung — u. a. „Modell:
+`models/resemble_enhance/model.onnx`" im Docstring von
+`plugins/apollo_phase0_integration.py` sowie Fallback-Listen in
+`mert_plugin`, `cqtdiff_plugin`, `crepe_plugin`, `muq_plugin`. Zusätzlich begann
+**ein** Treffer mitten in einem Wort (URL-Suffix
+`…/all_public_uvr_models/model_bs_roformer_ep_317.ckpt`).
+
+**Wurzel-Fix (§V7 copilot-instructions.md).** `check_harnesses()` prüft den Code
+jetzt **prosa-frei** — dieselbe Fehlerklasse, die das Repo in
+`audit/code_weakness_scanner.py` bereits einmal behoben hat („26 von 33
+print()-Treffern waren auskommentiert"):
+
+- `_blank_prose()` blankt **positionsgetreu** Kommentare und Statement-Strings
+  (Zeilen/Spalten bleiben erhalten, damit Befunde auffindbar bleiben).
+- Bewusst **enger** als die kanonische `blank_noncode`: Diese blankt **alle**
+  String-Literale — ein Modellpfad steht aber naturgemäß in einem funktionalen
+  String. Der erste Versuch damit ergab „53 → 0" und hätte genau die
+  Verdrahtung gelöscht, die geprüft werden soll; der Fehlversuch ist im Code
+  dokumentiert, damit er nicht wiederholt wird.
+- `_prose_string_spans()` erfasst **alle** Statement-Strings statt nur `body[0]`
+  — Produktionsbefund: die Klasse `ResembleEnhanceGuard` trägt ihren echten
+  Docstring **und** darunter den verwaisten Docstring der in §v10.19 entfernten
+  Methode; nur `body[0]` zu prüfen ließ diesen String als Code durchgehen.
+- `CODE_MODEL_PATH_RE` mit Negativ-Lookbehind gegen Wort-Suffix-Treffer.
+
+**Ergebnis (gemessen).** 53 → **25** Treffer in 1660 Produktionsdateien, davon
+**0 echte Fehlverdrahtungen**: 23 in Provisioning-/Inventar-/Trainings-/
+Export-Skripten, die Soll-Pfade **benennen, die sie selbst erzeugen**
+(`fetch_*`, `auto_ingest_*`, `prepare_core_model_layout`,
+`validate_core_model_presence`, `export_*_onnx`, `train_bw_v*`,
+`model_inventory.py`), 1 `pending_training`-Deklaration
+(`model_zoo_registry.py`, symphonia — der Konsument verlangt `status == "active"`
+und aktiviert sonst den §V6-Ersatzpfad mit Warnung) und 1 fail-sicheres
+`__main__`-Beispiel. `P1` (fail-closed) bleibt für Code scharf, blockiert aber
+nicht mehr auf bloßer Prosa.
+
+**Tests.** `tests/unit/test_wohlklang_gate.py`: **33 grün** (10 neu) — Prosa aus
+Kommentar, Docstring und verwaistem Statement-String wird nicht gemeldet, ein
+funktionaler String schon, URL-Suffix nicht, positionsgetreues Blanken,
+konservativer Rohtext-Fallback bei Syntaxfehler, `P1` Ende-zu-Ende Prosa-frei und
+weiter scharf, `P2` Ende-zu-Ende am künstlichen Produktionsbaum.
+
+### §v10.802 — Der Version-Sweep überschrieb Changelog-Historie
+
+**Befund (beim Bump selbst erzeugt und behoben).**
+`scripts/check_version_consistency.py --fix` benennt die **erste**
+`##`-Abschnittsüberschrift um. Wird der Bump vor dem Anlegen des neuen
+Changelog-Abschnitts ausgeführt, wird dadurch der **alte Release-Block** auf die
+neue Version umgeschrieben — hier real passiert (`## 10.8.1` wurde zu
+`## 10.8.2`). Die Historie war damit falsch, obwohl „alle Dateien konsistent"
+gemeldet wurde.
+
+**Fix (§V7 copilot-instructions.md).** `--fix` **verweigert** jetzt die
+Umschreibung, wenn der kanonische Versionsstand im CHANGELOG noch **gar nicht**
+vorkommt — statt still einen bestehenden Release-Block umzubenennen. Das erzwingt
+zugleich die Changelog-Pflicht aus §v10.802 („Pro Bump ein `## x.y.z`-Block")
+und macht den Fehlbedienungsfall sichtbar. Der hier beschädigte Block wurde
+manuell auf `## 10.8.1 (2026-10-07)` zurückgesetzt.
 
 ## 10.8.1 (2026-10-07)
-
-### §D-K3-6 — Additive-Synthesis-Gate: Stereo war ungeschützt (Kanalanzahl-Fix)
 
 **Patch-Bump (§v10.802 copilot-instructions.md):** `fix` — Ursachenbehebung eines
 declared-active, faktisch wirkungslosen Schutzpfads. **Hinweis: der Fix ändert das
