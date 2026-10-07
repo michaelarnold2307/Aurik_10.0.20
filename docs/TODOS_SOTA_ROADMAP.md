@@ -451,8 +451,8 @@ F14.
   `backend/core/residuum_masking.py` (bereits maskierungsbasiert — als Muster).
 - **Akzeptanz:** Guard-Entscheidungen mit Maskierungskontext nachweisbar (Logs); Regressionstests für
   maskierte vs. unmaskierte Fälle.
-- **Status 2026-09-08: SCK/WBG/ATI/Formant UMGESETZT** — `estimate_delta_masking_jnd_db()`
-  + `delta_masking_margin_db_per_band()` in `backend/core/residuum_masking.py`
+- **Status 2026-09-08: SCK/WBG/ATI/Formant UMGESETZT** — `estimate_delta_masking_jnd_db()` +
+  `delta_masking_margin_db_per_band()` in `backend/core/residuum_masking.py`
   (ISO-11172-3-Spread auf den Phasen-Delta, freq_range-Fenster, 6-dB-Cap,
   konservativ 0 bei Müll-Daten). §ATI: Toleranz = max(1,5 dB, JND) mit Log-Kontext.
   §WBG: maskierter Verlust-Anteil zählt nicht zum kumulativen Verlust.
@@ -617,7 +617,7 @@ F14.
 - **Lösung (§GUI-T1…T4, pure Logik extrahiert + Tests):**
 
   T1 `musical_goals_radar`: `goal_bar_state()` + `build_radar_update_payload()` (5 Fälle).
-  T2 `main.py`-Startup-Vertrag: GPU vor ModernMainWindow, __main__-Guard, -B-Launcher (4 Fälle).
+  T2 `main.py`-Startup-Vertrag: GPU vor ModernMainWindow, `__main__`-Guard, -B-Launcher (4 Fälle).
   T3 `help_system.ErrorSimplifier`: Exception-Klassenname wird einbezogen — Befund dabei:
   `MemoryError("x")` wurde als Roh-Text „x“ angezeigt statt der freundlichen Meldung (7 Fälle).
   T4 `keyboard_shortcuts` (`key_action`/`seek_frac`) + `export_presets`-Presets-Vertrag (3 Fälle).
@@ -833,8 +833,8 @@ F14.
     Verifiziert: 4 Phase-12-Tests grün, 6 WF-CASS-Tests grün, End-to-End
     (Cassette + 30-Hz-AM → conf 0,97/sev 0,28/f=[30,0]; CD → kein SFR).
 15. **SOTA-HU-V1** · ✅ ERLEDIGT (a4428e50, 2026-09-13) — `backend/core/dsp/hum_drift_tracker.py`:
-    Kalman-getrackter Netzfrequenz-Pfad [f, df] (Bandpass+Analytiksignal → Phasen-Differenz)
-    + Fenster-LSQ-Subtraktion von Grundton+Harmonischen (Hann-Crossfade,
+    Kalman-getrackter Netzfrequenz-Pfad [f, df] (Bandpass+Analytiksignal → Phasen-Differenz) +
+    Fenster-LSQ-Subtraktion von Grundton+Harmonischen (Hann-Crossfade,
     Never-worsen-Energie-Gate je Fenster), verdrahtet hinter dem adaptiven Comb in
     phase_02 (Gate: Drift > 0,08 Hz + Reduktion > 3 dB, non-blocking §V6).
     Beleg: 6 Tests grün (Drift 49,8→50,2 Hz → >25 dB Hum-Reduktion, statisch >25 dB,
@@ -1022,8 +1022,8 @@ F14.
   Priorität. Reaktivierung, sobald ein Anwendungsfall mit CLAP-Audio-
   Conditioning steht. Voraussetzungen präzisiert:
   (1) Vocoder ✓ **vorhanden**: `models/hifi_gan/hifi_gan.onnx` (37,3 MB,
-  validiert: IN [1,80,seq] → OUT [1,1,2560] = 116-ms-Chunks, gleitend zu fahren)
-  + `plugins/hifigan_plugin.py` (PLM „HiFiGAN“, 22.05 kHz) — **Achtung
+  validiert: IN [1,80,seq] → OUT [1,1,2560] = 116-ms-Chunks, gleitend zu fahren) +
+  `plugins/hifigan_plugin.py` (PLM „HiFiGAN“, 22.05 kHz) — **Achtung
   Mel-Bin-Adapter:** HiFiGAN erwartet 80 Bins, AudioLDM2-VAE liefert 64 Bins
   → Bin-Mapping/Re-Projektion im Plugin nötig; (2) Conditioning-Embeddings
   (CLAP-Audio/FlanT5) müssen extern erzeugt werden — CLAP-Encoder lokal ✓ (C4),
@@ -1043,8 +1043,8 @@ F14.
   test_level_1_guard_resemblyzer_wiring.py (inkl. echtem ONNX-Witness:
   identisch ⇒ cos=1.0); bestehende Guard-Suite (24 Tests) läuft weiter grün.
 - **MuQ (Musik-MOS)** — bereits eingebunden: `plugins/muq_plugin.py` (lädt
-  `OpenMuQ/MuQ-large-msd-iter` aus HF-Cache) + `models/muq_mulan/muq_mulan.onnx`
-  + A1-Head. Musik-nativer MOS-Witness — Ersatz für UTMOS (Negativbefund:
+  `OpenMuQ/MuQ-large-msd-iter` aus HF-Cache) + `models/muq_mulan/muq_mulan.onnx` +
+  A1-Head. Musik-nativer MOS-Witness — Ersatz für UTMOS (Negativbefund:
   richtungs-invertiert auf Musik). **NEGATIVBEFUND 2026-09-13 (MUSDB-
   Richtungs-Validierung, Muster ML-V4):** Head-Extraktion repariert
   (`models/muq_mulan/muq_eval_a1_head.pt` aus HF-Cache `zhudi2825/MuQ-Eval-A1`
@@ -1142,8 +1142,8 @@ F14.
    WF-V4-Checkpoint (Quelle klären), TP-V2-Modell (Quelle klären).
 3. **GPU-Finetunes (7900 XTX, MUSDB18HQ lokal):** DiffWave-Vokal → GaCELA-Vokal
    → BigVGAN-v2 (Musik+Vokal) → FlashSR-Musik → DDSP-Prädiktor.
-4. **Governance:** Alle Einbindungen über Never-worsen-Gate + IN-V1/V2-Naht-Gates
-   + Witness-Absicherung; Benchmarks nach dem Muster ML-V1-VORAB/VOCAL-INPAINT-S1.
+4. **Governance:** Alle Einbindungen über Never-worsen-Gate + IN-V1/V2-Naht-Gates +
+   Witness-Absicherung; Benchmarks nach dem Muster ML-V1-VORAB/VOCAL-INPAINT-S1.
 
 ### GPU-Finetune-Plan (7900 XTX, ROCm)
 
@@ -1250,7 +1250,7 @@ Sänger-Identität, MuQ-MOS nicht schlechter als Baseline).
 | --- | --- | --- | --- |
 | PSY-A1 | **Audibility-Gate-Rollout**: Maskierungsschwelle (masking_model, ISO 11172-3 Bark) als Reparatur-Entscheidung in ALLEN reparierenden Phasen (01, 03, 06, 07, 08, 19, 23, 27, 36, 50, 55, 56, 59, 64, 65, 66) | **TEIL-ROLLOUT 2026-09-14**: `audibility_gate.py` (defekt-zentrierte Messung, §V6 (copilot-instructions.md)-fail-open) + Verdrahtung **phase_01, 03, 06, 07, 08, 19, 23, 27, 36, 50, 55, 56, 59, 64, 65, 66** (subaudible Klicks/Pops/Splices/Lücken/Band-Lücken/Sibilanten/Spektral-Defekte/Modulations-Rauschen überspringen, Noise-Floor dämpfen, Vokal-/Stem-Delta gate-n); 7 Gate- + 45 phase_56- + 17 phase_64-Tests grün. **Gate-Fix dabei:** lange Defekt-Regionen werden ZENTRAL (Mitte) statt am Anfang gemessen. **06/07/08/36 erledigt 2026-09-14** — Rollout vollständig | §4-Vertrag: „Ist der Defekt über der Maskierungsschwelle hörbar?“ als Pflicht-Frage; Berichte weisen „hörbar“ als über-Schwelle aus |
 | PSY-A2 | **Zwicker-Modell (ISO 532-1)** als Nachfolger des MPEG-1-Modells: stationäre + zeitvariante Loudness und Maskierung | stationäres Zwicker ISO 532-1 vorhanden + optional im Audibility-Gate; **zeitvariante Loudness ✅ 2026-09-15** (`compute_time_varying_loudness`, exakte DIN-45631-a0/L_TQ-Tabellen, 10 Tests — P5) | präzisere Schwelle bei tonalem/breitbandigem Material; Basis für PSY-A7 |
-| PSY-A3 | **BMLD-Verdrahtung** (binaurale Maskierungs-Freisetzung) in die Stereo-Phasen-Gates (13, 15, 33, 34, 46, 48) | binaural_masking auf Guard-Ebene + phase_03; **2026-09-14: phase_33- UND phase_34-BMLD-Witness**; **2026-09-15: Rollout 13/15/46/48 abgeschlossen** (`binaural_masking_advantage`-Metadatum, ZEUGE-Modus, Hörordnung §8a; test_p2a_bmld_witness_rollout.py, 5 Fälle); **2026-09-15: dynamische Freisetzungs-Toleranz in 13/15/33/46/48** (`bmld_tolerance_factor`: release_db linear 1,0→1,10, Cap 8 dB, Nie < 1,0 — phase_33/48 Breiten-Cap, phase_13 Breiten-Faktoren, phase_15 Korrektur-Stärke, phase_46 Enhancement-Stärke; test_psy_a3_bmld_tolerance.py + _rollout.py) — PSY-A3 damit VOLLSTÄNDIG | Stereo-Änderungen werden nach Hör-Freisetzung bewertet statt nach Mess-dB |
+| PSY-A3 | **BMLD-Verdrahtung** (binaurale Maskierungs-Freisetzung) in die Stereo-Phasen-Gates (13, 15, 33, 34, 46, 48) | binaural_masking auf Guard-Ebene + phase_03; **2026-09-14: phase_33- UND phase_34-BMLD-Witness**; **2026-09-15: Rollout 13/15/46/48 abgeschlossen** (`binaural_masking_advantage`-Metadatum, ZEUGE-Modus, Hörordnung §8a; test_p2a_bmld_witness_rollout.py, 5 Fälle); **2026-09-15: dynamische Freisetzungs-Toleranz in 13/15/33/46/48** (`bmld_tolerance_factor`: release_db linear 1,0→1,10, Cap 8 dB, Nie < 1,0 — phase_33/48 Breiten-Cap, phase_13 Breiten-Faktoren, phase_15 Korrektur-Stärke, phase_46 Enhancement-Stärke; `test_psy_a3_bmld_tolerance.py` + `_rollout.py`) — PSY-A3 damit VOLLSTÄNDIG | Stereo-Änderungen werden nach Hör-Freisetzung bewertet statt nach Mess-dB |
 | PSY-A4 | **Equal-Loudness-Band-Gewichte (ISO 226) + JND-Gates** für EQ-/Enhancement-Phasen (04, 16, 17, 37, 38, 39) | fletcher_munson nur 1× verdrahtet; **2026-09-14: phase_37-Bass-Mix mit Equal-Loudness-Faktor temperiert (ISO 226, 60 phon, Deckel [0,5–1,0])**; **2026-09-15: Rollout 04/16/17/38/39 abgeschlossen** (`equal_loudness_strength_factor()` + phase_37-Bugfix: degenerierte Korrekturkurve fror den Faktor auf dem 0,5-Floor ein; test_p2b_equal_loudness_rollout.py, 17 Fälle) | Stärke-Entscheidungen in Phon-Hörbarkeit statt Roh-dB |
 | PSY-A5 | **Temporal-Masking-Kompensation**: Forward/Backward-Masking-Zonen als Reparatur-Dämpfung nach Transienten (Rollout des §V41-Musters aus phase_55) | nur phase_55 + 22 Phasen nutzen temporal_masking (Guard); **2026-09-14: phase_01/27/64 dämpfen Klick-/Pop-/Splice-Reparatur in Forward-Masking-Zonen (×0,6)** — kein Nachschlag-Artefakt | Nachmaskierungs-Zonen werden weicher repariert — kein Nachschlag-Artefakt |
 | PSY-A6 | **Personalisierte HRIR (CIPIC)** als Ausbaustufe der First-Order-HRTF (Ehrlichkeits-Klausel §8b.3 erfüllt) | First-Order-Modell in interaural_cues | bessere Bühnen-Bewertung bei Kopfhörer-Studien (P1-4) |
@@ -1463,8 +1463,8 @@ Alle Punkte mit Tests (IDs in Klammern = Testdatei unter tests/unit/):
   subaudible vs. audible; phase_01 exportiert `subaudible_skipped`;
   test_r4_audibility_benchmark.py, 7 Fälle). Per-Phase-Rollout des R8-Musters = Folge-Slice.
 - **P5 ✅ UMGESETZT** — EXAKTE a0-/L_TQ-Tabellen nach DIN 45631 (Zwicker-Verfahren)/
-  ISO 532-1:2017 (a0[1 kHz]=0 dB, L_TQ[1 kHz]=0 dB, Tiefstwert −4,1 dB @ 3,15 kHz)
-  + zeitvariante Lautheit `compute_time_varying_loudness` (DIN-45631/A1-Struktur,
+  ISO 532-1:2017 (a0[1 kHz]=0 dB, L_TQ[1 kHz]=0 dB, Tiefstwert −4,1 dB @ 3,15 kHz) +
+  zeitvariante Lautheit `compute_time_varying_loudness` (DIN-45631/A1-Struktur,
   Hann-energiekorrekt, N5/N10; test_p5_time_varying_zwicker.py, 10 Fälle;
   Bestands-Test auf exakten L_TQ-Floor angepasst).
 - **P7 ✅ UMGESETZT** — R5-Determinismus-Zertifikat: feste pure-DSP-Kette
@@ -1574,8 +1574,8 @@ Laufzeit je Chunk vernichteten:
 
 1. **Per-Chunk-Cleanup-Churn (R-A, behoben):** Der aggressive
    End-of-Run-Cleanup lief am Ende JEDES `restore()` — im Chunked-Pfad also
-   nach jedem 30-s-Chunk: Unload von FlashSR/UTMOS/CLAP/MERT/FCPE/BasicPitch
-   + `cleanup_after_file()` ⇒ `force_evict_all()` aller inaktiven Plugins
+   nach jedem 30-s-Chunk: Unload von FlashSR/UTMOS/CLAP/MERT/FCPE/BasicPitch +
+   `cleanup_after_file()` ⇒ `force_evict_all()` aller inaktiven Plugins
    (BANQUET, BS-RoFormer, …) + Budget-Release + GC je Chunk.
    Fix: Cleanup in `_run_end_of_song_cleanup()` extrahiert, läuft im
    Chunked-Pfad nur noch EINMAL nach der Song-Assembly; Ganz-Song-Pfad
@@ -1872,7 +1872,7 @@ Der Pfad wäre also reiner Totcode gewesen (§V7 copilot-instructions.md).
 Evidenz aus dem überwachten Lauf (Timestamps phase_ok→geplant je Phase):
 **~10,5 s Phasen-Gap je 30-s-Chunk** — 41 Phasen × 8 Chunks ≈ 55+ min je
 Song. Aufschlüsselung (cProfile): Reinhör-Witness ~1,5-1,7 s je Phase
-(davon _frame_f0_hnr Frame-Loop, _loudness/_transient-RMS-Comprehensions,
+(davon `_frame_f0_hnr` Frame-Loop, `_loudness`/`_transient`-RMS-Comprehensions,
 pre_echo-Rolling-Perzentil 2000+ np.percentile-Aufrufe, 6 Band-FFTs auf
 2 Signalen), dazu PMGG/CALIB/Coalition-Bookkeeping.
 
@@ -2125,9 +2125,8 @@ Neumessung mit R13-Tooling läuft separat (`output/perf_session_20260919_r13/`).
 
 **Akzeptanz je Maßnahme:** (1) bit-identisch oder durch Never-worsen-Gates/
 PMGG/Reinhör-Witness bestätigt (§0/Gesamtkonzept §6); (2) deterministisch
-(§G5 (GEBOTE.md)); (3) Messwerte im Lauf-Protokoll dokumentiert (RT-Faktor
-
-+ Goal-SCORECARD/af-Delta); (4) §V6 (copilot-instructions.md)-Fail-closed unverändert.
+(§G5 (GEBOTE.md)); (3) Messwerte im Lauf-Protokoll dokumentiert (RT-Faktor +
+Goal-SCORECARD/af-Delta); (4) §V6 (copilot-instructions.md)-Fail-closed unverändert.
 
 **Bewusst NICHT Teil der Welle (Qualitätskopplung, §V7/Hörordnung):**
 Phase-Umordnung (R7-Reihenfolge ändert den Output), FC-Loop-/Gate-Reduktion
@@ -2148,12 +2147,12 @@ Maskierung je Defekt-Kontext — ein Cache wäre nicht exakt).
 
 | Punkt | Status | Begründung / nächster Schritt |
 | --- | --- | --- |
-| TODO-P0-1 (53×→32×-Laufzeit) | **TEIL-ERLEDIGT (Messung) 2026-09-15; Rest GPU-GEBUNDEN** | Hot-Phase-Messung geliefert: `compute_hot_phases` im Diagnose-Skript (rt_factor je Phase, Hot-Liste ab 0,5× RT, test_p0_1_hot_phase_report.py). **Attributions-Korrektur 2026-09-16 (Profiling):** phase_01s 4,4×-RT-Attribution „DSP-Multiscale“ war falsch — Multiscale kostet nur 3 s/225 s; Treiber sind ML-Load/-Inferenz (BANQUET/Device-Detection). **Song-Level-Hoists 2026-09-17 (je Chunk-Wiederholung entfernt):** Struktur-Hoist ANA-6 ✅, **LGE-Transkription-Hoist ✅ (Whisper 8×→1×, Timeline je Chunk zeitverschoben, commit 3bfa5215)**, Export nur nach Assembly ✅ (04a52839); PANNs-Tags + Defect-Scores + Gender sind bereits Song-Ebene (Pre-Analyse-Cache, verifiziert). **R3-GPU-Ports 2026-09-17 abgeschlossen (Registry-Verdikte + Produktions-Vertragstest `test_production_registry_verdicts_restoration_models`):** BANQUET → ROCm ✅ (Partitioning-Fix 2026-09-13, Funktions-Validierung identisch; Deckel 1,19× — der Export ist batch-1-spezifisch, Mini-Batch scheitert in `node_view`-Reshapes, gemessen), CRePE-Pitch → ROCm ✅ (28×), DeepFilterNet → ehrlich CPU ✅ (GPU-Overhead dominiert bei Mini-Modellen). Ein Song-Level-Hoist der Inferenz ist NICHT äquivalent (phase_09 verarbeitet den phase_08-Ausgang je Chunk) — R3 war der korrekte Weg. **Analyse-Cache je Datei-Hash 2026-09-17 ✅ (Disk-Persistenz der Bridge-Analyse-Caches `output/analysis_cache/`, Read-/Write-Through unter dem In-Memory-LRU, AURIK_VERSION-Invalidierung, §V6-fail-closed, Kill-Switch AURIK_ANALYSIS_CACHE=0, 6 neue + 21 bestehende Tests grün):** Wiederholungsläufe am selben Song überspringen die komplette Voranalyse über Prozessgrenzen. **P6/P7 2026-09-17 ✅ (Architektur-Feststellung: Batch ist bereits Ein-Prozess + ThreadPool(4); §V8-Transient-State-Lücke des BANQUET-Singletons geschlossen — `reset_for_song()` + `_state_lock`, verdrahtet in `_restore_chunked`, 19 Tests grün).** OFFEN: nur noch GPU-gebundenes (F4/F5, SOTA-ML-V5) + Laufzeit-Verifikation im nächsten Lauf | hängt an den GPU-Buildouts F1–F5 + Residency-Gewinnen + den restlichen Hoists |
+| TODO-P0-1 (53×→32×-Laufzeit) | **TEIL-ERLEDIGT (Messung) 2026-09-15; Rest GPU-GEBUNDEN** | Hot-Phase-Messung geliefert: `compute_hot_phases` im Diagnose-Skript (rt_factor je Phase, Hot-Liste ab 0,5× RT, test_p0_1_hot_phase_report.py). **Attributions-Korrektur 2026-09-16 (Profiling):** phase_01s 4,4×-RT-Attribution „DSP-Multiscale“ war falsch — Multiscale kostet nur 3 s/225 s; Treiber sind ML-Load/-Inferenz (BANQUET/Device-Detection). **Song-Level-Hoists 2026-09-17 (je Chunk-Wiederholung entfernt):** Struktur-Hoist ANA-6 ✅, **LGE-Transkription-Hoist ✅ (Whisper 8×→1×, Timeline je Chunk zeitverschoben, commit 3bfa5215)**, Export nur nach Assembly ✅ (04a52839); PANNs-Tags + Defect-Scores + Gender sind bereits Song-Ebene (Pre-Analyse-Cache, verifiziert). **R3-GPU-Ports 2026-09-17 abgeschlossen (Registry-Verdikte + Produktions-Vertragstest `test_production_registry_verdicts_restoration_models`):** BANQUET → ROCm ✅ (Partitioning-Fix 2026-09-13, Funktions-Validierung identisch; Deckel 1,19× — der Export ist batch-1-spezifisch, Mini-Batch scheitert in `node_view`-Reshapes, gemessen), CRePE-Pitch → ROCm ✅ (28×), DeepFilterNet → ehrlich CPU ✅ (GPU-Overhead dominiert bei Mini-Modellen). Ein Song-Level-Hoist der Inferenz ist NICHT äquivalent (phase_09 verarbeitet den phase_08-Ausgang je Chunk) — R3 war der korrekte Weg. **Analyse-Cache je Datei-Hash 2026-09-17 ✅ (Disk-Persistenz der Bridge-Analyse-Caches `output/analysis_cache/`, Read-/Write-Through unter dem In-Memory-LRU, AURIK_VERSION-Invalidierung, §V6-fail-closed, Kill-Switch AURIK_ANALYSIS_CACHE=0, 6 neue + 21 bestehende Tests grün):** Wiederholungsläufe am selben Song überspringen die komplette Voranalyse über Prozessgrenzen. **P6/P7 2026-09-17 ✅ (Architektur-Feststellung: Batch ist bereits Ein-Prozess + ThreadPool(4); §V8-Transient-State-Lücke des BANQUET-Singletons geschlossen — `reset_for_song()` + `_state_lock`, verdrahtet in `_restore_chunked`, 19 Tests grün).** OFFEN: nur noch GPU-gebundenes (F4/F5, SOTA-ML-V5) + Laufzeit-Verifikation im nächsten Lauf \| hängt an den GPU-Buildouts F1–F5 + Residency-Gewinnen + den restlichen Hoists |
 | TODO-P0-2 (Per-Session-Kompilierung) | ✅ GESCHLOSSEN 2026-10-04 | Statt „jede Session neu in-memory optimieren“ serialisiert `backend/core/onnx/runtime.py` die ORT-Graph-Optimierung dauerhaft (`output/onnx_session_cache/<stem>.<key>.ort`, Key = Größe+mtime+ORT-Version+Provider+AURIK_VERSION, Kill-Switch `AURIK_ORT_CACHE=0`, §V6-sicher) — `apply_session_cache`/`create_inference_session`, verdrahtet in `ONNXInferenceSession`; Paritätstest `tests/unit/test_ort_session_cache.py` 4 grün (bit-identisch uncached/warm/reload + Persistenz + Key-Invalidierung, §G5) |
 | TODO-P0-3 (Budget-Wahrheit) | ✅ GESCHLOSSEN 2026-09-15 | s. o. A |
 | TODO-P1-1 (Residency) | ✅ GESCHLOSSEN 2026-09-15 (Policy) | s. o. C; Laufzeit-Gewinn misst P0-1 |
 | TODO-P1-2 (VS-1/GSEP + Demucs v5) | **TEIL-AUFGEKLÄRT 2026-10-04** | „Demucs v5“ existiert öffentlich NICHT (facebookresearch/demucs archiviert bei v4.0.1; htdemucs = Hybrid-Transformer **v4** — `models/demucs/htdemucs_6s.onnx` IST die v4-Stufe der Kette) → v5-Arm entfällt. VS-1/GSEP: weiterhin keine offiziellen lizenzklaren Weights (HF-/GitHub-Recherche 2026-10-04); SCNet-Drittanbieter-Kandidat (Aname-Tommy/Huge-SCNet-4stems, Apache-2.0) lokal beschafft, NICHT integriert — A/B vs. MDX23C + Hörstichprobe bleiben Folge-Slice |
-| Gewichte-Manifest 2026-10-04 | ✅ BESCHAFFT + SHA-VERIFIZIERT | `harmonic_inpainting/inpainting_best.pt` (806 MB) aus Backup restauriert, SHA-256 `f8765d14…` = Pin ✅; `mert-v1-330m/MERT-v1-330M_fairseq.pt` (3,99 GB, HF `m-a-p/MERT-v1-330M`, CC BY-NC 4.0) SHA-256 `13d9b884…` = Pin ✅ + `pytorch_model.bin`/Configs (Nicht-ONNX-Kette `mert_plugin.py`; Ladesmoke 2026-10-04: Default `_use_onnx=True` ⇒ `mert_onnx_330m` = vorhandene ONNX) — die vorhandenen `models/mert/mert_330m.onnx` (+ Symlink `mert.onnx`) und `models/mert_denoiser/mert_decoder.onnx` sind manifest-sauber (Priorität-5-ONNX bzw. Denoiser-Part). ERSETZUNGEN FORMAL + LÜKENLOS 2026-10-04: `flow_matching/flow_matching.onnx` → `cqtdiff_plus`/diffwave (Hybrid-Release-Mode; `check_core_model_sources` → „ERSETZT", Summary „all core artifacts present" Exit 0; `test_hybrid_release_mode` 14 grün; `validate_core_model_presence`: fallback|runtime_ready=yes) · `miipher/miipher.onnx` → MIIPHER-DiT (Manifest `replaced_by`, §v10.14) · `sgmse_plus/finetuned/sgmse_musik.ts` = F7-Trainingsziel (§v10.16-Rezept `train_sgmse_musik.py`) — Training gestartet |
+| Gewichte-Manifest 2026-10-04 | ✅ BESCHAFFT + SHA-VERIFIZIERT | `harmonic_inpainting/inpainting_best.pt` (806 MB) aus Backup restauriert, SHA-256 `f8765d14…` = Pin ✅; `mert-v1-330m/MERT-v1-330M_fairseq.pt` (3,99 GB, HF `m-a-p/MERT-v1-330M`, CC BY-NC 4.0) SHA-256 `13d9b884…` = Pin ✅ + `pytorch_model.bin`/Configs (Nicht-ONNX-Kette `mert_plugin.py`; Ladesmoke 2026-10-04: Default `_use_onnx=True` ⇒ `mert_onnx_330m` = vorhandene ONNX) — die vorhandenen `models/mert/mert_330m.onnx` (+ Symlink `mert.onnx`) und `models/mert_denoiser/mert_decoder.onnx` sind manifest-sauber (Priorität-5-ONNX bzw. Denoiser-Part). ERSETZUNGEN FORMAL + LÜKENLOS 2026-10-04: `flow_matching/flow_matching.onnx` → `cqtdiff_plus`/diffwave (Hybrid-Release-Mode; `check_core_model_sources` → „ERSETZT", Summary „all core artifacts present" Exit 0; `test_hybrid_release_mode` 14 grün; `validate_core_model_presence`: fallback\|runtime_ready=yes) · `miipher/miipher.onnx` → MIIPHER-DiT (Manifest `replaced_by`, §v10.14) · `sgmse_plus/finetuned/sgmse_musik.ts` = F7-Trainingsziel (§v10.16-Rezept `train_sgmse_musik.py`) — Training gestartet |
 | TODO-P1-3 (Audibility-Guards) | ✅ GESCHLOSSEN 2026-09-08 | SCK/WBG/ATI/Formant/Gain-Step umgesetzt |
 | TODO-P1-4 (Blind-Hörstudie) | **EXTERN BLOCKIERT (menschliche Hörer)** | §0c-Export-Bug geschlossen (B); n≥30-Studie braucht Hörer |
 | TODO-P1-5 … P1-12 | ✅ GESCHLOSSEN 2026-09-08 | Status im jeweiligen Abschnitt |

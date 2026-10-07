@@ -171,7 +171,7 @@ DefectScanner (62 Typen)
 ### Behobene Bugs
 
 | Bug | Fix |
-|-----|-----|
+| --- | --- |
 | Binäres Gate (Lautstärkesprünge 3-18dB) | Soft-Knee-Sigmoid + 200ms Hanning-Crossfade |
 | Hard-Clamp erzeugte Klicks | Entfernt, Soft-Knee schützt inhärent |
 | `_multi_pass()` Dead Code | Reaktiviert mit IAQS-Varianten-Evaluation |
@@ -573,7 +573,7 @@ Aurik verwendet ein **Wall-Time-Budget** pro Song, um zu verhindern dass die
 Pipeline auf schwacher Hardware unbegrenzt läuft. Das Kernprinzip:
 
 | Budget-Typ | Beschreibung |
-|------------|-------------|
+| --- | --- |
 | **Mandatory Phases** | Denoise, Click, Crackle, Wow/Flutter, DC-Offset — laufen **immer** |
 | **Enhancement Phases** | Frequency Restore, DeEsser, Dereverb, Transparent Dynamics — können **übersprungen** werden |
 | **Budget Guard** | `performance_guard.py` + `_budget_pressure_skip_reason()` — überspringt Enhancement-Phasen als Passthrough wenn Wall-Time erschöpft |
@@ -599,7 +599,7 @@ Seit v10.0.5 wurde das Wall-Time-Budget **verdoppelt**:
 ### §v10.0.5 Änderungen (14 Dateien, ~1100 Zeilen)
 
 | Kategorie | Highlights |
-|-----------|-----------|
+| --- | --- |
 | **Bugfixes** | Genre-Key-Mismatch, PostGate Lambda-TypeError, Tuple-`ndim`-Crash, UVR-Div0 |
 | **Genre** | ambient+world Profile (8+12 Par.), oper+schlager vervollständigt, PQC 12 Modifier |
 | **Psychoakustik** | LUFS-adaptives Fletcher-Munson Phon-Level, `compute_adaptive_phon()` |
@@ -685,7 +685,7 @@ Recall ≥ 90 % (mit CLAP) · False-Positive < 5 % · ≤ 20 s/Minute Audio
 ## 🆕 Neu in v10.10 — Preset-Learning × Selbstkalibrierung
 
 | Modul | Feature |
-|-------|---------|
+| --- | --- |
 | `magic_restore_preset.py` | Ein-Klick-Preset: Material/Ära/Genre → optimales Preset (6 built-in + User-Learning) |
 | `mid_pipeline_quality_gate.py` | HPE-Wächter alle 8 Phasen: Selbstkalibrierung bei Verschlechterung |
 | `reference_track_calibrator.py` | Referenz-Track → Song-Goals automatisch (Preset ∩ Material-Floor) |
@@ -698,7 +698,7 @@ Recall ≥ 90 % (mit CLAP) · False-Positive < 5 % · ≤ 20 s/Minute Audio
 ## 🆕 Neu in v10.9 — SOTA-Kalibrierung & ML-Orchestrierung
 
 | Modul | Feature |
-|-------|---------|
+| --- | --- |
 | `model_chain_orchestrator.py` | Shared ML-Modelle (RAM 250MB gespart), RAM-Budget 6GB |
 | `adaptive_phase_order.py` | Material-adaptive Phasen-Reihenfolge (Kassette: Hiss vor Harmonics) |
 | `live_ab_preview.py` | A/B-Vorher/Nachher-Ring für GUI-Playback |
@@ -711,7 +711,7 @@ Recall ≥ 90 % (mit CLAP) · False-Positive < 5 % · ≤ 20 s/Minute Audio
 ## 🔧 v10.35 — Logging & Dead-Feature-Aktivierung
 
 | Kategorie | Änderung |
-|-----------|----------|
+| --- | --- |
 | SOTA Logging | 15 Features debug→warning (PGHI, MRN, EAPC, HHC, MaskingClamp, etc.) |
 | GUI-Kommunikation | Denker→GUI Toasts, ErrorSimplifier, Experience Insights |
 | SFT Rescue | Min-Wet 0.05, WARNING bei aggressivem Rollback |
