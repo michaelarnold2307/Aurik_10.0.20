@@ -131,35 +131,43 @@ Zusätzlich steht in `fit.json` je Hörer `catch.valid` (Fangfragen bestanden?) 
 
 ---
 
-## 6. Warum HR-V1 über einen Harness-Weg gehört wird (wichtig, ehrlich)
+## 6. Stand von HR-V1 (Ursache behoben — Hörprobe entscheidet über den Verbleib)
 
-**Befund 2026-10-07 (gemessen, nicht vermutet):** Der HR-V1-Produktionspfad
-(`plugins/bigvgan_v2_plugin.apply_hr_v1_additive`) **wirkt auf Stereo nicht**:
+**Befund 2026-10-07 (gemessen):** Der HR-V1-Produktionspfad
+(`plugins/bigvgan_v2_plugin.apply_hr_v1_additive`) **wirkte auf Stereo nicht**:
+Stereo → `applied=False`, beide Ausgabedateien bit-identisch; Mono →
+`applied=True`, 66 Bänder. Ursache exakt lokalisiert: die Kanal-Schleife in
+`backend/core/dsp/additive_synthesis_gate.py` lief über die **Baseline**-Kanäle
+und indexierte darin den **Kandidaten** (`cand_cn[ch]` mit `ch = 1` auf einer
+Achse der Größe 1) → `IndexError`, den **alle drei** Aufrufer (HR-V1, §B5
+Vocoder-Gate, §B4-FlashSR-Gate) still in ihren Ersatzpfad schluckten. Die
+maskierungsbewusste Schutzschicht war damit auf Stereo **wirkungslos** —
+ungeprüfte Synthese-Energie wurde durchgelassen.
 
-- Stereo (48 kHz, 2ch) → `applied=False`, beide Ausgabedateien **bit-identisch**
-  (max&#124;Δ&#124; = 0,000000)
-- Mono → `applied=True`, 66 Bänder freigegeben
+**Behoben am 2026-10-07 (Ursache, nicht Symptom):** Das Gate gleicht die
+Kanalzahl jetzt **vor** den Schleifen an — ein 1-Kanal-Kandidat wird auf die
+Baseline-Kanalzahl gespiegelt (additive Synthese entsteht häufig im Mono-Bereich),
+jede andere Abweichung ist fail-closed (Baseline unverändert). Damit ist der
+Fix an **einer** kanonischen Stelle für alle drei Aufrufer wirksam
+(§G9 copilot-instructions.md). Gemessen am Produktionspfad:
 
-Ursache, exakt lokalisiert: `backend/core/dsp/additive_synthesis_gate.py:181`
-(`cand_cn[ch]` mit `ch = 1` auf einer Achse der Größe 1) — das Plugin synthetisiert
-**mono** und reicht den Kandidaten gegen die **Stereo**-Baseline.
+| Ausschnitt | `applied` | Bänder | außerhalb Deckel-Fenster |
+| --- | --- | --- | --- |
+| 20 s / 60 s / 100 s / 140 s | **True** (vorher False) | 47 / 32 / 33 / 22 | **bit-identisch** |
 
-**Konsequenz:** HR-V1 ist seit dem Deckel-Commit (2026-10-06) für reale Stereomusik
-**wirkungslos** — der Budget-Nachweis (1,04× RT) gilt, der **Wirkungsnachweis fehlte**.
-Registriert als **D-K3-6** in `.github/SOTA_DEFICIT_REGISTER.md`.
+**Was das für Ihre Hörprobe B bedeutet:** Sie hört jetzt den **echten
+Produktionszustand** — die Paare wurden über `apply_hr_v1_additive` erzeugt
+(`"weg": "PRODUKTIONSPFAD"` im Manifest), nicht mehr über einen Harness-Weg.
+Die Wirkung ist real (max&#124;Δ&#124; 0,14–0,43 in den Deckel-Fenstern); außerhalb bleibt das
+Signal unangetastet.
 
-Die Hörprobe B wurde deshalb **kanalkorrekt im Harness** gerendert (Mono-Synthese auf
-beide Kanäle gespiegelt). Sie hört damit **das, was HR-V1 nach einer Ursachenbehebung
-tun würde** — nicht den heutigen Produktionszustand. Das ist in
-`output_audio/hr_v1_hoerprobe/generation.json` (`"weg": "HARNESS …"`) festgehalten.
+**Ihre Entscheidung:**
 
-**Konsequenz der Hörprobe B:**
-
-- Ergebnis **`NICHT_BELEGT`** (nicht hörbar) → Ursache beheben und aktivieren ist
-  qualitätsneutral; der Weg ist frei.
-- Ergebnis **`HOERBAR_BELEGT`** (hörbar) → vor der Aktivierung entscheiden, ob die
-  Änderung **wohklangfördernd** oder **aufgesetzt** klingt. Bei „aufgesetzt": W-1 auf
-  `gesperrt` setzen (Deckel greift zu kurz/zu randnah) statt zu aktivieren.
+- **`NICHT_BELEGT`** (nicht hörbar) → der Deckel wirkt transparent; HR-V1 kann
+  bleiben (W-1 → `aktiviert`).
+- **`HOERBAR_BELEGT`** (hörbar) → Sie beurteilen, ob die Höhen-Behandlung
+  **wohltut** oder **aufgesetzt** klingt. Bei „aufgesetzt": W-1 auf `gesperrt`
+  (Deckel greift zu randnah) statt aktiviert lassen.
 
 ---
 

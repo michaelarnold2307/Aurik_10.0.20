@@ -17,7 +17,12 @@ Regel pro Bark-Band und Frame:
     (keine synthetisierte Energie in Anschlägen).
 
 Deterministisch (kein RNG, kein time.time), rein numpy.
-Stereo-Layout-agnostisch: (N,) und (C, N) werden normalisiert bedient.
+Layout: Mono (N,) und Stereo (2, N)/(N, 2) werden unterstützt (Vertrag des
+Gates; ≥ 3 Kanäle sind NICHT vorgesehen). Der Kandidat darf WENIGER Kanäle
+haben als die Baseline (additive Synthese entsteht häufig im Mono-Bereich) —
+er wird dann auf die Baseline-Kanalzahl gespiegelt; jede andere
+Kanal-Abweichung ist fail-closed (Baseline unverändert, §V6 copilot-instructions.md).
+Rückgabe hat IMMER Baseline-Form.
 """
 
 from __future__ import annotations
@@ -143,6 +148,55 @@ def additive_synthesis_gate(
     n = min(cand_cn.shape[1], base_cn.shape[1])
     cand_cn = cand_cn[:, :n]
     base_cn = base_cn[:, :n]
+
+    # ── §V7/§G9 (copilot-instructions.md): Kanalanzahl ZUERST angleichen ──
+    # Befund 2026-10-07 (D-K3-6): Die zweite Schleife lief über die
+    # BASELINE-Kanäle (`base_cn.shape[0]`), indexierte darin aber den
+    # KANDIDATEN (`cand_cn[ch]`). Bei einem Mono-Kandidaten gegen eine
+    # Stereo-Baseline — dem Regelfall aller drei Aufrufer
+    # (`plugins/bigvgan_v2_plugin` HR-V1, `backend/core/vocoder_chain` §B5,
+    # `backend/core/hybrid/hybrid_nvsr` §B4) — ergab das
+    # `IndexError: index 1 is out of bounds for axis 0 with size 1`. Alle drei
+    # Aufrufer fangen Fehler ab und fallen auf ihren §V6-Ersatzpfad zurück,
+    # wobei der UNGEPRÜFTE Kandidat bestehen bleibt ⇒ die
+    # maskierungsbewusste Schutzschicht (Hörordnung Ebene 2) war auf Stereo
+    # wirkungslos.
+    #
+    # Der Kandidat darf WENIGER Kanäle haben: die additive Synthese entsteht
+    # häufig im Mono-Bereich und wird als gleichartige Energie auf jeden
+    # Baseline-Kanal angewandt. Ein 1-Kanal-Kandidat wird deshalb auf die
+    # Baseline-Kanalzahl gespiegelt (keine Signal-Erfindung: derselbe
+    # synthetisierte Inhalt gilt je Kanal, die Begrenzung wird pro Kanal gegen
+    # dessen eigene Maskierungsschwelle gerechnet). Jede andere Abweichung ist
+    # ein Aufruf-Fehler und wird fail-closed bedient.
+    _cand_ch, _base_ch = int(cand_cn.shape[0]), int(base_cn.shape[0])
+    if _cand_ch == _base_ch:
+        pass
+    elif _cand_ch == 1 and _base_ch > 1:
+        logger.info(
+            "Synthesis-Gate %s: Kandidat ist mono (%d Kanal) gegen %d Baseline-Kanäle — "
+            "wird kanalweise gespiegelt (Regelfall der additiven Synthese, §G9 copilot-instructions.md)",
+            model,
+            _cand_ch,
+            _base_ch,
+        )
+        cand_cn = np.repeat(cand_cn, _base_ch, axis=0)
+    else:
+        logger.warning(
+            "Synthesis-Gate %s: Kanalanzahl nicht vereinbar (Kandidat %d, Baseline %d) — "
+            "fail-closed, Baseline bleibt unverändert (§V6 copilot-instructions.md)",
+            model,
+            _cand_ch,
+            _base_ch,
+        )
+        return np.asarray(baseline, dtype=np.float32), {
+            "model": model,
+            "mean_synthesis_gain": 0.0,
+            "bands_released": 0,
+            "onset_frames_protected": 0,
+            "never_worsen": True,
+            "skip_reason": f"channel_mismatch_{_cand_ch}_{_base_ch}",
+        }
 
     base_mix = base_cn.mean(axis=0)
     spec_b_mix, _ = _stft(base_mix)

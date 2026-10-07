@@ -1,4 +1,64 @@
-# Changelog — Aurik 10.8.0
+# Changelog — Aurik 10.8.1
+
+## 10.8.1 (2026-10-07)
+
+### §D-K3-6 — Additive-Synthesis-Gate: Stereo war ungeschützt (Kanalanzahl-Fix)
+
+**Patch-Bump (§v10.802 copilot-instructions.md):** `fix` — Ursachenbehebung eines
+declared-active, faktisch wirkungslosen Schutzpfads. **Hinweis: der Fix ändert das
+Ausgangssignal** (vorher durchgelassene, ungeprüfte Synthese-Energie wird jetzt
+gemaske-begrenzt; HR-V1 wirkt erstmals auf Stereo). Die HÖR-Beurteilung steht
+noch aus (W-1, siehe unten).
+
+**Wurzel-Fix (§V7 copilot-instructions.md):** In
+`backend/core/dsp/additive_synthesis_gate.py` lief die zweite Schleife über die
+**Baseline**-Kanäle (`base_cn.shape[0]`) und indexierte darin den **Kandidaten**
+(`cand_cn[ch]`) — bei Mono-Kandidat gegen Stereo-Baseline ergab das
+`IndexError: index 1 is out of bounds for axis 0 with size 1`.
+
+**Reichweite (das ist der Kern):** Alle **drei** Aufrufer falten Fehler in ihre
+§V6-Ersatzpfade:
+
+| Aufrufer | Wirkung auf Stereo vorher |
+| --- | --- |
+| `plugins/bigvgan_v2_plugin` (HR-V1, W-1) | `applied=False`, Ausgabe **bit-identisch** |
+| `backend/core/vocoder_chain` (§B5 Vocoder-Gate) | Gate übersprungen → **ungeprüfte** Vocoder-Energie blieb stehen |
+| `backend/core/hybrid/hybrid_nvsr` (§B4 FlashSR-Gate) | Gate übersprungen → **ungeprüfte** Synthese-Energie blieb stehen |
+
+Damit war die **maskierungsbewusste Schutzschicht (Hörordnung Ebene 2) auf Stereo
+wirkungslos** — und zwar genau auf dem Regelfall (Stereo), nicht auf einer
+Nische. Die beiden Gates §B4/§B5 sind Schutzmaßnahmen: ihr Ausfall bedeutete
+**durchgelassene** statt begrenzte Energie.
+
+**Fix (Ursache, EINE kanonische Stelle — §G9 copilot-instructions.md):** Das Gate
+gleicht die Kanalanzahl **vor** den Schleifen an:
+
+- Kandidat mit **1** Kanal gegen N Baseline-Kanäle → wird auf N gespiegelt
+  (`np.repeat`, deterministisch). Keine Signal-Erfindung: dieselbe
+  synthetisierte Energie gilt je Kanal, die Begrenzung wird **pro Kanal** gegen
+  dessen eigene Maskierungsschwelle gerechnet.
+- **Jede andere** Abweichung → fail-closed: Baseline unverändert,
+  `skip_reason=channel_mismatch_<a>_<b>`, `bands_released=0`, `never_worsen=True`.
+
+**Nachweis (Produktionspfad `apply_hr_v1_additive`, 48 kHz 2ch, Testkünstlerin):**
+
+| Ausschnitt | `applied` vorher → nachher | Bänder | außerhalb Deckel-Fenster |
+| --- | --- | --- | --- |
+| 20 s / 60 s / 100 s / 140 s | **False → True** | 0 → **47 / 32 / 33 / 22** | **bit-identisch** (max&#124;Δ&#124; 0,14–0,43 in den Fenstern) |
+
+**Tests:** `tests/unit/test_additive_synthesis_gate.py` **9 grün** (4 neu: der
+historische Aufruf-Fall wirft nicht mehr, Determinismus der Spiegelung,
+Äquivalenz zur expliziten Kanal-Verdopplung, fail-closed bei 2↔1). Keine
+Regression: 67 Tests über alle drei Aufrufer-Pfade grün.
+
+**Dokumentation:** D-K3-6 → `geschlossen`; die W-1-Zeile des Wohlklang-Vertrags
+beschreibt jetzt den wirkenden Pfad; die Hörprobe B wird **über den
+Produktionspfad** gerendert (kein Harness-Ersatz mehr).
+
+**Offen (benannt):** Die HÖR-Beurteilung, ob der Deckel (5 % der Signallänge,
+randnah verteilt) wohltut — sie entscheidet über den Verbleib von W-1
+(`aktiviert` vs. `gesperrt`). Anleitung:
+`docs/reports/current/2026-10-07_hoerprobe_anleitung.md`.
 
 ## 10.8.0 (2026-10-07)
 

@@ -2,7 +2,8 @@
   "build": "wohlklang_w1_hrv1",
   "task": "defect",
   "seed": 20261007,
-  "question": "In genau einem Intervall wurde eine zusaetzliche Hoehen-Behandlung eingeblendet. Hoeren Sie sie heraus? Wenn Sie nichts Auffaelliges vernehmen, waehlen Sie die Seite, die Ihnen kuenstlicher/aufgesetzter erscheint — auch wenn Sie unsicher sind.",
+  "question": "In genau einem Intervall wurde eine zusaetzliche Hoehen-Behandlung eingeblendet. Hoeren Sie sie heraus? Wenn Sie nichts Auffaelliges vernehmen, waehlen Sie die Seite, die Ihnen kuenstlicher/aufgesetzt erscheint — auch wenn Sie unsicher sind.",
+  "weg": "PRODUKTIONSPFAD (apply_hr_v1_additive, Kanal-Fix D-K3-6)",
   "trials": [
     {
       "trial_id": "w1_ex1_w1",

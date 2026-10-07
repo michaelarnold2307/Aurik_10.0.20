@@ -107,3 +107,80 @@ def test_stereo_layout_and_determinism() -> None:
     # (N, C)-Layout wird bedient.
     g_t, _ = additive_synthesis_gate(cand.T, stereo.T, SR)
     assert g_t.shape == stereo.T.shape
+
+
+# ── §V7/§G9 (copilot-instructions.md): Kanalanzahl-Vertrag ─────────────
+# Befund 2026-10-07 (D-K3-6): Die zweite Schleife lief über die BASELINE-Kanäle
+# und indexierte darin den KANDIDATEN. Bei Mono-Kandidat gegen Stereo-Baseline —
+# dem Regelfall aller drei Aufrufer (BigVGAN-HR-V1, §B5-Vocoder-Gate,
+# §B4-FlashSR-Gate) — ergab das `IndexError: index 1 is out of bounds for axis 0
+# with size 1`. Alle drei Aufrufer schluckten den Fehler in ihren §V6-Ersatzpfad
+# und ließen den UNGEPRÜFTEN Kandidaten durch ⇒ die maskierungsbewusste
+# Schutzschicht war auf Stereo wirkungslos.
+
+
+def test_mono_candidate_against_stereo_baseline_does_not_raise() -> None:
+    """Der historische Aufruf-Muster-Fall darf NICHT mehr werfen.
+
+    Vor dem Fix: IndexError. Nach dem Fix: der Kandidat wird kanalweise
+    gespiegelt, das Ergebnis hat Baseline-Form.
+    """
+    rng = np.random.default_rng(17)
+    base = (rng.standard_normal(SR) * 0.05).astype(np.float32)
+    stereo = np.stack([base, base * 0.9]).astype(np.float32)
+    cand_mono = (base + 0.05 * rng.standard_normal(SR)).astype(np.float32)
+
+    gated, report = additive_synthesis_gate(cand_mono, stereo, SR)
+
+    assert gated.shape == stereo.shape, "Rückgabe muss Baseline-Form haben"
+    assert np.all(np.isfinite(gated))
+    assert report["never_worsen"] is True
+    assert "skip_reason" not in report, "Mono-Kandidat ist ein legitimer Aufruf, kein Fehler"
+    assert report["bands_released"] >= 0
+
+
+def test_mono_candidate_stereo_is_deterministic() -> None:
+    """Die Spiegelung ist deterministisch (§G5 copilot-instructions.md)."""
+    rng = np.random.default_rng(19)
+    base = (rng.standard_normal(SR) * 0.05).astype(np.float32)
+    stereo = np.stack([base, base * 0.9]).astype(np.float32)
+    cand_mono = (base + 0.05 * rng.standard_normal(SR)).astype(np.float32)
+
+    g1, r1 = additive_synthesis_gate(cand_mono, stereo, SR)
+    g2, r2 = additive_synthesis_gate(cand_mono, stereo, SR)
+    assert np.array_equal(g1, g2) and r1 == r2
+
+
+def test_mono_candidate_equals_explicitly_replicated_candidate() -> None:
+    """Spiegelung ist semantisch gleichwertig zur expliziten Kanal-Verdopplung.
+
+    Belegt, dass der Fix KEINE neue Semantik einführt: er stellt genau das
+    Ergebnis her, das ein Aufrufer mit bereits verdoppeltem Kandidaten erhalten
+    hätte (das ist der Pfad, der vor dem Fix funktionierte).
+    """
+    rng = np.random.default_rng(23)
+    base = (rng.standard_normal(SR) * 0.05).astype(np.float32)
+    stereo = np.stack([base, base * 0.9]).astype(np.float32)
+    cand_mono = (base + 0.05 * rng.standard_normal(SR)).astype(np.float32)
+
+    g_mono, _ = additive_synthesis_gate(cand_mono, stereo, SR)
+    g_rep, _ = additive_synthesis_gate(np.stack([cand_mono, cand_mono]), stereo, SR)
+    np.testing.assert_allclose(g_mono, g_rep, rtol=0, atol=1e-6)
+
+
+def test_incompatible_channel_counts_fail_closed() -> None:
+    """Stereo-Kandidat gegen Mono-Baseline ist ein Aufruf-Fehler → unverändert.
+
+    (Der Gate-Vertrag deckt Mono und Stereo ab; ≥3 Kanäle sind nicht
+    unterstützt und werden von ``_to_channels_first`` als zeit-major gelesen.)
+    """
+    rng = np.random.default_rng(29)
+    base = (rng.standard_normal(SR) * 0.05).astype(np.float32)
+    cand2 = np.stack([base + 0.05 * rng.standard_normal(SR)] * 2).astype(np.float32)
+
+    gated, report = additive_synthesis_gate(cand2, base, SR)
+
+    assert np.array_equal(gated, base), "fail-closed: Baseline unverändert"
+    assert report["skip_reason"] == "channel_mismatch_2_1"
+    assert report["bands_released"] == 0
+    assert report["never_worsen"] is True
