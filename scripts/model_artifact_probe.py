@@ -139,26 +139,6 @@ TORCH_LEGACY_MAGIC = 0x1950A86A20F9469CFC6C
 # ── Hilfsfunktionen ─────────────────────────────────────────────────────────
 
 
-# Fremd-READMEs enthalten rohes HTML (Logos, Badges, `<img>` ohne Alt-Text).
-# Die Fingerabdruck-Doku wird von markdownlint geprüft (MD033/MD045 sind NICHT
-# auto-fixbar) — beides wird deshalb an der Quelle entfernt
-# (§V7 (copilot-instructions.md) — Ursache statt Symptom).
-_HTML_TAG_RE = re.compile(r"<[^>]*>")
-_MD_IMAGE_RE = re.compile(r"!\[[^\]]*\]\([^)]*\)")
-_MD_LINK_RE = re.compile(r"\[([^\]]*)\]\([^)]*\)")
-
-
-def _sanitize_inline(text: str) -> str:
-    """HTML-/Bild-Syntax aus fremden Karten entfernen (markdownlint-fest)."""
-    if not text:
-        return ""
-    cleaned = _HTML_TAG_RE.sub(" ", text)
-    cleaned = _MD_IMAGE_RE.sub(" ", cleaned)
-    cleaned = _MD_LINK_RE.sub(r"\1", cleaned)
-    cleaned = cleaned.replace("`", "'")
-    return " ".join(cleaned.split())
-
-
 # Fremde Modell-Karten enthalten rohes HTML (Logos, Badges, `img` ohne Alt-Text).
 # Die Fingerabdruck-Doku wird von markdownlint geprüft; MD033/MD045 sind NICHT
 # auto-fixbar und blockierten den Commit — deshalb Entfernung an der Quelle

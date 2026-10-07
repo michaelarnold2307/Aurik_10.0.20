@@ -1,3 +1,12 @@
+<!-- markdownlint-disable-file MD037 MD050 -->
+<!-- Grund: Die Tabellenzellen sind MASCHINEN-GELESEN — `scripts/file_registry_check.py`
+     parst sie VERBATIM. Pfade wie `models/cantus/__init__.py` werden von den
+     Emphase-Regeln als `__`-Fettung gelesen (MD050/MD037) — das ist ein Fehlalarm
+     auf DATEN, nicht auf Prosa. Ein Backtick-"Fix" würde die Zelle verändern und
+     den Pfadvergleich brechen (dokumentierter Befund 2026-10-05, `.markdownlintignore`).
+     Der Pre-Commit-Hook überspringt diese Datei ohnehin; die In-File-Angabe macht
+     das IDE-Werkzeug (liest `.markdownlintignore` NICHT) damit konsistent (§G9). -->
+
 # FILE_REGISTRY — Kanonische Datei-Identität, Lifecycle und Replacements
 
 > **Status: Aktiv — CI-enforced.** Kanonische Quelle dafür, welche Datei

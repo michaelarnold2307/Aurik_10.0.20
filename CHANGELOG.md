@@ -2,6 +2,42 @@
 
 ## 10.8.3 (2026-10-07)
 
+### Werkzeug-Divergenz IDE ↔ CI + drei gemeldete Befunde (Typen, Duplikat, Fehlalarm)
+
+**Befund A — `scripts/model_artifact_probe.py` (mypy `no-redef`, Pylance
+`reportRedeclaration`):** Das Modul trug ein **doppeltes** Modul-Level-Konstrukt —
+`_HTML_TAG_RE`/`_MD_IMAGE_RE`/`_MD_LINK_RE` und `_sanitize_inline` standen zweimal
+(Zeilen 142–159 und 162–179); die zweite Definition war in Kraft, die erste toter
+Code. **Fix:** erste Kopie entfernt (verhaltensneutral, die wirksame bleibt).
+
+**Befund B — `scripts/train_bigvgan_f3.py` (4 mypy-Fehler):** `CFG` war
+unparametrisiert, dadurch galten alle Werte als `object` ⇒ `CROP_S * SR`
+(`operator`) und `target_sr=SR` (`arg-type`); zusätzlich zwei `Returning Any`
+(`build_model`, `load_track`). **Fix:** `CFG: dict[str, Any]`,
+`SR = int(CFG["sampling_rate"])` und zwei explizite lokale Annotationen.
+**Keine Verhaltensänderung** (nur Typangaben).
+
+**Befund C — `.github/FILE_REGISTRY.md:29` MD050 (Fehlalarm):** Die Zeile
+`| models/cantus/__init__.py | ACTIVE | … |` wird von der Emphase-Regel als
+`__`-Fettung gelesen. Ein Backtick-„Fix“ würde die **maschinengelesene** Zelle
+verändern und den Pfadvergleich brechen (dokumentierter Befund 2026-10-05).
+**Fix:** `<!-- markdownlint-disable-file MD037 MD050 -->` + Begründung im Kopf
+der Datei; die Drift-Baseline (`reports/spec_drift_baseline.json`) ist
+nachgezogen (`spec_drift_check.py` → „No spec drift detected“,
+`file_registry_check.py` → 0 Fehler / 360 Dateien).
+
+**Ursache der IDE/CI-Divergenz (gemessen, nicht angenommen):** Die
+Pre-Commit-Kette nutzt markdownlint-**CLI**, die In-File-Angaben **und**
+`.markdownlintignore` liest; die VS-Code-Extension (`davidanson.vscode-markdownlint`
+0.62.1) liest `.markdownlintignore` **nicht** (0 Treffer im Bundle) und kennt
+**keine** `markdownlint.ignore`-Einstellung (ihre Settings sind `config`,
+`configFile`, `configPointer`, `customRules`, `run`, `severity*`,
+`lintWorkspaceGlobs`, `appliesTo`, `focusMode`). Die lokale Einstellung
+`"markdownlint.ignore": ["**/.markdownlintignore"]` war damit **wirkungslos** und
+irreführend (sie hätte die Ignorier-Datei selbst ignoriert) — sie ist entfernt.
+`.vscode/settings.json` ist per `.gitignore` nicht versioniert; die
+In-File-Angabe ist die einzige Quelle, die **beide** Werkzeuge verstehen.
+
 ### A/B-Harness `eval_scnet_vs_mdx23c.py`: Typ-Fehler behoben, Totcode entfernt, Layout-Vertrag gemessen
 
 **Patch-Bump (§v10.802 copilot-instructions.md):** `fix` — Typ-Hygiene und

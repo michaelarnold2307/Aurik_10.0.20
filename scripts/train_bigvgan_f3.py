@@ -41,6 +41,7 @@ import random
 import sys
 import time
 from pathlib import Path
+from typing import Any
 
 import numpy as np
 import torch
@@ -53,7 +54,10 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(mess
 logger = logging.getLogger("train_bigvgan_f3")
 
 # Checkpoint-Konfiguration (bigvgan_v2_44khz_128band_512x, aus config.json)
-CFG = {
+# `dict[str, Any]`: Die Werte sind heterogen (int, str, list, None) — ohne
+# Parameterisierung sind die Zugriffe `object` und jede Arithmetik darauf ist
+# ein Typfehler (mypy `operator` bei `CROP_S * SR`).
+CFG: dict[str, Any] = {
     "resblock": "1",
     "upsample_rates": [8, 4, 2, 2, 2, 2],
     "upsample_initial_channel": 512,
@@ -72,7 +76,7 @@ CFG = {
     "fmin": 0,
     "fmax": None,
 }
-SR = CFG["sampling_rate"]
+SR = int(CFG["sampling_rate"])
 CROP_S = 0.5  # 1536-Kanal-Modell: 2-s-Crops × Batch 4 sprengten 24 GB VRAM (OOM-Befund);
 # 0,5 s halbiert die Schritt-Zeit (~3 s → ~1,5 s bei Batch 4) und bleibt lokal genug
 CROP_N = int(CROP_S * SR)
@@ -95,7 +99,7 @@ def build_model(device: torch.device, checkpoint: Path) -> torch.nn.Module:
     if _up0 is not None:
         CFG["upsample_initial_channel"] = int(_up0.shape[0])
     h = AttrDict(dict(CFG))
-    model = BigVGAN(h, use_cuda_kernel=False)
+    model: torch.nn.Module = BigVGAN(h, use_cuda_kernel=False)
     model.load_state_dict(gen_sd)
     model = model.to(device)
     return model
@@ -159,7 +163,10 @@ def load_track(path: Path) -> np.ndarray:
         import librosa
 
         data = librosa.resample(data, orig_sr=sr, target_sr=SR)
-    return data
+    # `np.asarray` ohne dtype ist ein No-Op für ein ndarray — es fixiert nur den
+    # Typ (data kommt aus scipy/librosa und ist für mypy `Any`).
+    out: np.ndarray = np.asarray(data)
+    return out
 
 
 def random_crops(track: np.ndarray, batch: int, rng: np.random.Generator) -> torch.Tensor:
