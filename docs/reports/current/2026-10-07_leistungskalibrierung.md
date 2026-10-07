@@ -121,3 +121,39 @@ Verletzte Per-Operation-Budgets nachher: `phase_pipeline_total` 1334,9 s/min (Li
 Die Audio-Differenz liegt 15 dB unter dem CD-Rauschboden (−96 dBFS) und damit
 weit unter jeder Hörschwelle; die Phasen-Metriken (Cents-Spannen, Kohärenz) sind
 unverändert.
+
+
+## Scanner-Kostenanalyse (2026-10-07, D-K3-40)
+
+`cProfile` eines `DefectScanner.scan` auf demselben 30-s-Material (58,7 s):
+
+| Kostenstelle | Zeit | Kern |
+| --- | --- | --- |
+| `_auto_detect_material` → `_detect_stereo_material` | 22,2 s (38 %) | Feature-Extraktion über die vollen Detektoren |
+| ↳ `_detect_flutter` → `_coherent_subband_fm` | 20,4 s | **424 Hilbert-Aufrufe = 15,1 s** |
+| `perceptual_salience.annotate_defect_scores` | 10,0 s | 2077 Residuum-Maskierungen, 98 089 `np.median`-Aufrufe |
+| Per-Kanal-Block (7 Detektoren × 2 Kanäle) | ~50 % (Differenz-Messung) | nur für `channel_locations` |
+
+**Differenz-Messung Stereo/Mono:** dasselbe Material stereo **58,7 s** vs. mono **28,0 s**
+— der Per-Kanal-Block ist die Hälfte des Scans. Mono und Stereo unterscheiden sich
+gleichzeitig in **16 Defekttypen um mehr als 0,05** (bis 1,0) — ein Umleiten des
+§SR-CG8-Scans auf das Stereo-Post-Scan-Ergebnis wäre also eine Verhaltensänderung.
+
+**Modulweiter Ergebnis-Cache:** `_scan_cache` (Zeile 80, inhaltsgehasht, größenbegrenzt)
+liefert denselben Scan in **0,01 s** zurück, wenn dieselbe Instanz dasselbe Audio erneut
+sieht. Der §SR-CG8-Pfad (frische Instanz, **Mono-Downmix**) trifft ihn daher nie — daher
+die 78,7 s im Lauf vom 13:33 gegenüber 37,2 s für den Stereo-Post-Scan.
+
+### Widerlegte Optimierung (Negativ-Befund, Änderung zurückgenommen)
+
+`scipy.signal.hilbert` → numpy-`rfft`-basiertes analytisches Signal:
+
+| Messung | Ergebnis |
+| --- | --- |
+| Mikro-Benchmark (isolierte Arrays, N = 4 096…480 000) | rfft **1,63–2,72× schneller** |
+| In-situ-A/B im Scanner (verschränkt, Cache geleert) | rfft **1,7× langsamer**: scipy 58,63 / 59,53 s vs. rfft 99,62 / 99,13 s |
+
+Ursache: vier große Arrays je Aufruf (spec, hil, imag, out ≈ 27 MB × 424 Aufrufe) statt
+zwei, plus `scipy.fft` statt `numpy.fft`. Die In-situ-Messung ist speichergebunden; der
+Mikro-Benchmark misst die falsche Größe. **Lehre für alle weiteren Optimierungen:**
+A/B im selben Prozess mit geleertem Cache, niemals nur isolierte Mikro-Benchmarks.
