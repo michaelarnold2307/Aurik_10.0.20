@@ -43,6 +43,7 @@ Date: 2026-02-15
 
 import contextlib
 import hashlib
+import itertools
 
 # v10.101 SOTA: Gammatone-geschützte Defektanalyse. Pipeline-Gates validieren.
 import logging
@@ -10864,7 +10865,16 @@ class DefectScanner:
         try:
             n_fft = min(65536, n)
             freqs = np.fft.rfftfreq(n_fft, 1.0 / sr)
-            spec = np.abs(np.fft.rfft(audio[:n_fft])) ** 2
+            # §V7 (copilot-instructions.md) Fensterung + LOKALE Fuß-Referenz: Der
+            # Detektor lief ohne Fenster und verglich die Bins ±2…8 Hz gegen den
+            # GLOBALEN Rauschboden (20-%-Perzentil des gesamten Spektrums). Der
+            # Spektralfuß eines starken Tons liegt dort aber weit darüber ⇒ auf
+            # JEDEM sauberen Signal galten alle acht Kandidaten als „prominent"
+            # (Messung 2026-10-07: severity 1,00 auf sauberem 440-Hz-Sinus, 1,00
+            # auf sauberem 100-Hz-Kamm, 0,60 auf Rauschen — eine Prüfung, die
+            # nicht fehlschlagen kann; Register D-K3-27). Ein echtes AM/FM-
+            # Seitenband ist zusätzlich durch eine KERBE vom Träger getrennt.
+            spec = np.abs(np.fft.rfft(audio[:n_fft] * np.hanning(n_fft))) ** 2
             spec_db = 10.0 * np.log10(spec + 1e-20)
             freq_res = float(freqs[1] - freqs[0]) if len(freqs) > 1 else 1.0
 
@@ -10873,35 +10883,68 @@ class DefectScanner:
                 return DefectScore(DefectType.FLUTTER_SPECTRAL_SIDEBANDS, 0.0, 0.3)
 
             tonal_db = spec_db[tonal_mask]
-            peak_idx_local = int(np.argmax(tonal_db))
-            tonal_freqs_arr = freqs[tonal_mask]
-            peak_freq = float(tonal_freqs_arr[peak_idx_local])
-            peak_db = float(tonal_db[peak_idx_local])
+            peak_idx = int(np.argmax(tonal_mask)) + int(np.argmax(tonal_db))
+            peak_freq = float(freqs[peak_idx])
+            peak_db = float(spec_db[peak_idx])
             noise_floor = float(np.percentile(spec_db, 20))
 
             if peak_db - noise_floor < 15.0:  # Kein dominanter Ton → Seitenbänder nicht messbar
                 return DefectScore(DefectType.FLUTTER_SPECTRAL_SIDEBANDS, 0.0, 0.4)
 
+            # Lokale Fuß-Referenz: Median im Abstand 20…400 Hz um den Träger (ohne
+            # die Seitenband-Zone selbst). Ein Seitenband muss über dem EIGENEN
+            # Spektralfuß liegen, nicht über dem globalen Boden.
+            _span = max(1, int(400.0 / freq_res))
+            _guard = max(1, int(20.0 / freq_res))
+            _lo = max(0, peak_idx - _span)
+            _hi = min(len(spec_db), peak_idx + _span)
+            _ref_parts = [
+                spec_db[_lo : max(_lo + 1, peak_idx - _guard)],
+                spec_db[min(len(spec_db) - 1, peak_idx + _guard) : _hi],
+            ]
+            _ref_vals = np.concatenate([p for p in _ref_parts if p.size])
+            local_ref = float(np.median(_ref_vals)) if _ref_vals.size else noise_floor
+            _ref = max(local_ref, noise_floor)
+
+            _SIDEBAND_MIN_PROMINENCE_DB = 6.0
+            _NOTCH_MIN_DB = 3.0
             sideband_prominences: list[float] = []
+            sideband_rates: list[float] = []
             for rate in [2.0, 4.0, 6.0, 8.0]:
+                _rate_hit: float | None = None
                 for sign in [-1.0, 1.0]:
                     sb_freq = peak_freq + sign * rate
                     if sb_freq <= 0.0 or sb_freq >= sr / 2.0:
                         continue
                     sb_idx = int(round(sb_freq / freq_res))
-                    if 0 < sb_idx < len(spec_db) - 1:
-                        sb_level = float(np.max(spec_db[max(0, sb_idx - 1) : sb_idx + 2]))
-                        prominence = sb_level - noise_floor
-                        if prominence > 3.0:
-                            sideband_prominences.append(prominence)
+                    if not 0 < sb_idx < len(spec_db) - 1:
+                        continue
+                    sb_level = float(np.max(spec_db[max(0, sb_idx - 1) : sb_idx + 2]))
+                    prominence = sb_level - _ref
+                    if prominence <= _SIDEBAND_MIN_PROMINENCE_DB:
+                        continue
+                    # Kerben-Nachweis: zwischen Träger und Seitenband MUSS ein
+                    # Einbruch liegen (Leckage fällt monoton, ein Seitenband nicht).
+                    _a, _b = (peak_idx + 2, sb_idx - 1) if sign > 0 else (sb_idx + 1, peak_idx - 1)
+                    if _b - _a < 1 or float(np.min(spec_db[_a:_b])) > sb_level - _NOTCH_MIN_DB:
+                        continue
+                    _rate_hit = prominence if _rate_hit is None else max(_rate_hit, prominence)
+                if _rate_hit is not None:
+                    sideband_prominences.append(_rate_hit)
+                    sideband_rates.append(rate)
 
             if len(sideband_prominences) < 3:
+                return DefectScore(DefectType.FLUTTER_SPECTRAL_SIDEBANDS, 0.0, 0.5)
+
+            # Kamm-Bedingung: echte Flutter-Seitenbänder liegen äquidistant
+            # (N × Flutter-Rate). Verstreute Treffer im 2-Hz-Raster sind kein Kamm.
+            if len({round(b - a, 3) for a, b in itertools.pairwise(sideband_rates)}) > 1:
                 return DefectScore(DefectType.FLUTTER_SPECTRAL_SIDEBANDS, 0.0, 0.5)
 
             mean_sb_prom = float(np.mean(sideband_prominences))
             raw_sev = float(
                 np.clip(
-                    (len(sideband_prominences) / 6.0) * (mean_sb_prom / 20.0),
+                    (len(sideband_prominences) / 6.0) * ((mean_sb_prom - _SIDEBAND_MIN_PROMINENCE_DB) / 14.0),
                     0.0,
                     1.0,
                 )
@@ -10920,6 +10963,10 @@ class DefectScanner:
                     "peak_freq_hz": round(peak_freq, 1),
                     "n_sidebands_detected": len(sideband_prominences),
                     "mean_sideband_prominence_db": round(mean_sb_prom, 2),
+                    "sideband_rates_hz": sideband_rates,
+                    "local_skirt_ref_db": round(local_ref, 2),
+                    "global_noise_floor_db": round(noise_floor, 2),
+                    "min_prominence_db": _SIDEBAND_MIN_PROMINENCE_DB,
                 },
             )
         except Exception:

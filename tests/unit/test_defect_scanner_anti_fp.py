@@ -308,3 +308,67 @@ class TestRiaaMediumGate:
             "medium_gated flag must be set when RIAA is suppressed on tape"
         )
         assert riaa.metadata.get("original_severity", 0.0) > 0.0, "original_severity must be preserved in metadata"
+
+
+# ============================================================
+# FLUTTER_SPECTRAL_SIDEBANDS — Kalibrierung (D-K3-27/D-K3-28)
+# ============================================================
+
+
+class TestFlutterSpectralSidebandsCalibration:
+    """Der Detektor muss sauberes Material in Ruhe lassen UND echtes Flutter finden.
+
+    Befund 2026-10-07 (D-K3-27): Der Detektor lief ohne Fenster und verglich die
+    Bins ±2…8 Hz gegen den GLOBALEN Rauschboden (20-%-Perzentil des gesamten
+    Spektrums). Da der Spektralfuß eines starken Tons dort weit darüber liegt,
+    galten auf JEDEM sauberen Signal alle acht Kandidaten als prominent:
+    gemessen severity 1,00 (440-Hz-Sinus), 1,00 (100-Hz-Kamm), 0,60 (Rauschen).
+    Eine Prüfung, die nicht fehlschlagen kann.
+
+    Fix: Hann-Fenster, LOKALE Fuß-Referenz (Median im Abstand 20…400 Hz um den
+    Träger), Kerben-Nachweis zwischen Träger und Seitenband, Mindestprominenz
+    6 dB und Kamm-Bedingung (äquidistante Seitenband-Raten). Die Positiv-Seite
+    ist gleichzeitig die Evidenzbasis für D-K3-28 (Fixture mit DEFINIERTEM
+    Flutter: Rate und Tiefe sind bekannt).
+    """
+
+    @staticmethod
+    def _fm_carrier(freq: float = 1000.0, rate: float = 6.0, depth: float = 0.004, dur: float = 4.0) -> np.ndarray:
+        """Träger mit SINUSFÖRMIGER FM einer definierten Flutter-Rate/-Tiefe."""
+        t = np.linspace(0, dur, int(SR * dur), endpoint=False)
+        rng = np.random.RandomState(7)
+        phase = 2 * np.pi * freq * (t + depth * np.sin(2 * np.pi * rate * t) / (2 * np.pi * rate))
+        return (0.2 * np.sin(phase) + 0.002 * rng.randn(len(t))).astype(np.float32)
+
+    def test_clean_tone_is_not_a_flutter_sideband(self):
+        sc = _scanner()
+        score = sc._detect_flutter_spectral_sidebands(_sine(440.0, 0.2, duration=4.0))
+        assert float(score.severity) < 0.10, f"Sauberer Sinus: severity {float(score.severity):.3f}"
+
+    def test_clean_harmonic_stack_is_not_a_flutter_sideband(self):
+        sc = _scanner()
+        score = sc._detect_flutter_spectral_sidebands(_complex_tone(duration=4.0))
+        assert float(score.severity) < 0.10, f"Sauberer Kamm: severity {float(score.severity):.3f}"
+
+    def test_noise_is_not_a_flutter_sideband(self):
+        sc = _scanner()
+        rng = np.random.RandomState(3)
+        score = sc._detect_flutter_spectral_sidebands((0.05 * rng.randn(int(4.0 * SR))).astype(np.float32))
+        assert float(score.severity) < 0.10, f"Rauschen: severity {float(score.severity):.3f}"
+
+    def test_synthetic_fm_flutter_is_detected(self):
+        """Positiv-Kalibrierung: definiertes 6-Hz-Flutter (0,4 %) MUSS gefunden werden."""
+        sc = _scanner()
+        score = sc._detect_flutter_spectral_sidebands(self._fm_carrier(rate=6.0, depth=0.004))
+        assert float(score.severity) > 0.30, f"6-Hz-FM nicht erkannt: severity {float(score.severity):.3f}"
+        assert int(score.metadata.get("n_sidebands_detected", 0)) >= 3
+        rates = score.metadata.get("sideband_rates_hz") or []
+        assert len(rates) >= 3, "Seitenband-Raten müssen berichtet werden — §G8 (copilot-instructions.md)"
+
+    def test_detector_reports_its_reference_levels(self):
+        """§G8 (copilot-instructions.md) Transparenz: Referenz + Schwelle im Report."""
+        sc = _scanner()
+        score = sc._detect_flutter_spectral_sidebands(self._fm_carrier(rate=4.0, depth=0.004))
+        assert "local_skirt_ref_db" in score.metadata
+        assert "global_noise_floor_db" in score.metadata
+        assert score.metadata.get("min_prominence_db") == 6.0

@@ -1,4 +1,41 @@
-# Changelog — Aurik 10.12.0
+# Changelog — Aurik 10.12.1
+
+## 10.12.1 (2026-10-07)
+
+### Flutter-Seitenband-Detektor: eine Prüfung, die nicht fehlschlagen konnte
+
+**Befund.** `DefectScanner._detect_flutter_spectral_sidebands` berechnete das
+Spektrum **ohne Fenster** (Rechteck) und verglich die Bins ±2/4/6/8 Hz um den
+stärksten Ton gegen den **globalen** Rauschboden (20-%-Perzentil des gesamten
+Spektrums). Der Spektralfuß eines starken Tons liegt dort weit darüber — auf
+**jedem** sauberen Signal galten damit alle acht Kandidaten als „prominent“.
+Gemessen: severity **1,000** auf sauberem 440-Hz-Sinus, **1,000** auf sauberem
+100-Hz-Harmonischenkamm, **0,603** auf reinem Rauschen. Da
+`FLUTTER_SPECTRAL_SIDEBANDS` im `scan()`-Katalog steht, konnte der Allesmelder
+Reparaturphasen ohne Defekt auslösen (§V7).
+
+**Fix (Ursache statt Symptom).**
+
+- **Hann-Fenster** statt Rechteck — Voraussetzung, um Seitenbänder von der
+  Leckage der Hauptkeule zu trennen.
+- **Lokale Fuß-Referenz**: Median im Abstand 20…400 Hz um den Träger (ohne die
+  Seitenband-Zone selbst), kombiniert mit dem globalen Boden.
+- **Kerben-Nachweis**: zwischen Träger und Seitenband MUSS ein Einbruch liegen
+  (echte AM/FM-Seitenbänder sind vom Träger getrennt; Leckage fällt monoton).
+- **Mindestprominenz 6 dB** und **Kamm-Bedingung**: die Treffer müssen
+  äquidistant sein (N × Flutter-Rate) — verstreute Prominenzen sind kein Kamm.
+- **Severity** skaliert jetzt mit dem Überschuss über der 6-dB-Schwelle.
+
+**Nachweis (vorher → nachher).** Sauberer Sinus 1,000 → **0,000**; sauberer
+Kamm 1,000 → **0,000**; Rauschen 0,603 → **0,000**; synthetisches 6-Hz-FM
+(0,4 %) → **1,000** mit drei Seitenbändern bei 4/6/8 Hz; 4-Hz-FM → 1,000 mit
+vier. Neue Kalibrierungstests in beiden Richtungen
+(`tests/unit/test_defect_scanner_anti_fp.py::TestFlutterSpectralSidebandsCalibration`,
+5 Fälle; Datei 28 grün). Der Report nennt nun Referenz, Boden und Schwelle
+(§G8) — und die synthetischen Quellen mit **definierter** Rate/Tiefe sind
+gleichzeitig die Evidenzbasis für D-K3-28.
+
+## 10.12.0 (2026-10-07)
 
 ## 10.12.0 (2026-10-07)
 
