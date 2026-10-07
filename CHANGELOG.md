@@ -1,4 +1,38 @@
-# Changelog — Aurik 10.12.5
+# Changelog — Aurik 10.12.6
+
+## 10.12.6 (2026-10-07)
+
+### D-K3-42-Guard: Era-Material-Flips brauchen physikalische Plausibilität
+
+**Befund (Real-Audio-Nachweis).** Auf der echten Elke-Best-1977-Aufnahme liefert
+der EraClassifier auf ≤10-s-Fenstern `1890/wax_cylinder/conf 0,90`, während der
+MediumDetector `mp3_high`/`unknown` (0,60–0,66) misst. Die Material-Konfliktregel
+ließ den Prior dominieren (Delta 0,28–0,30 > 0,10) → §2.46c-Cap-Kette (5 kHz)
+auf realem Material. Bei ≥20-s-Analysen tritt der Fall nicht auf (1960/vinyl
+stabil); die Ursache der Fehlklassifikation selbst ist D-K3-43 (Rolloff-Kollaps,
+separat).
+
+**Fix.** Neue Modul-Funktion `_era_material_flip_admissible` in
+`unified_restorer_v3.py`, verdrahtet in BEIDEN Konflikt-Branches (Dominanz +
+Gleichstand-Konservativwahl):
+
+- **Veto A — Träger-Unmöglichkeit:** Era-Jahrzehnt < Erfindungs-Floor des
+  physikalischen Primärträgers (`MEDIUM_DECADE_FLOOR`, z. B. mp3 1990 × 1890).
+- **Veto B — UNKNOWN-Physik + restriktives Altmaterial** (Conservativeness-
+  Rang ≥ 10: Shellac/Wire/Wax/Edison): kein destruktiver Cap aus reiner
+  Statistik — never-worsen-Asymmetrie: für echtes Altmaterial ist der Cap ein
+  No-Op (oberhalb der Grenze liegt nichts), für falsch Klassifizierte zerstört
+  er die Höhen.
+
+Der §9.7.7-Fallback ohne MediumDetector-Evidenz bleibt bewusst unangetastet —
+seine Korrektur ist D-K3-43 (EraClassifier-Kern).
+
+**Nachweis.** 7 Unit-Tests (`tests/unit/test_era_material_guard.py`) pinnen die
+gemessenen Real-Konstellationen + einen textuellen Verdrahtungs-Anker;
+Material-/Era-Regression `test_unified_restorer_v3.py -k material/era`: 24 grün.
+Auf dem 15-s-Real-Slice zeigten beide Pfade kein Cap (uv3: Material=vinyl,
+10–20 kHz +4,2 dB; kanonisch: Konsens lacquer_disc, 10–20 kHz +6,4 dB erhalten).
+End-to-End-A/B auf ≤10-s-Real-Input steht aus (Register D-K3-42, Status offen).
 
 ## 10.12.5 (2026-10-07)
 

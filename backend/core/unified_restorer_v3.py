@@ -1120,6 +1120,64 @@ def _pick_more_conservative_material(a: "MaterialType", b: "MaterialType") -> "M
     return a if rank_a >= rank_b else b
 
 
+def _era_material_flip_admissible(
+    physical_material: "MaterialType",
+    era_material: "MaterialType",
+    mc_result: object | None,
+    era_result: object | None,
+) -> tuple[bool, str]:
+    """§D-K3-42-Guard: Darf ein Era-Material das physikalische Material ersetzen?
+
+    Zwei Vetos — beide greifen nur, wenn physikalische Evidenz vorliegt
+    (der §9.7.7-Fallback ohne MediumDetector-Ergebnis bleibt unangetastet):
+
+    Veto A — Träger-Unmöglichkeit: Das Era-Jahrzehnt liegt VOR dem
+    Erfindungs-Jahrzehnt des physikalisch gemessenen Primärträgers
+    (`MEDIUM_DECADE_FLOOR`, kanonische Tabelle in `era_classifier`; ein
+    1890er-Befund auf mp3_high [Floor 1990] ist physikalisch unmöglich).
+
+    Veto B — UNKNOWN-Physik + stark restriktives Altmaterial: physikalisch
+    'unknown' (kein Material-Anspruch) und der Era-Prior will ein Medium mit
+    Conservativeness-Rang ≥ 10 (Shellac/Wire/Wax/Edison). Ein statistischer
+    Prior ohne physikalischen Anker darf keine destruktive Material-
+    Beschränkung (z. B. §2.46c-BW-Hard-Cap 5 kHz) erzeugen: für echtes
+    Altmaterial ist der Cap ein No-Op (oberhalb der Grenze liegt nichts),
+    für falsch klassifizierte Musik zerstört er die Höhen — never-worsen-
+    Asymmetrie; ein fälschlich unterdrückter Flip behält das physikalische
+    Material. Real-Audio-Befund 2026-10-07 (Elke Best 1977): 10-s-Fenster
+    lieferten MD=unknown/mp3_high mit Era=1890/wax 0,90 — genau diese
+    Konstellation (Register D-K3-42).
+
+    Returns:
+        (admissible, reason) — ``reason`` benennt das auslösende Veto (für Logs).
+    """
+    # Veto A: physikalisch gemessener Primärträger vs. Era-Jahrzehnt
+    _decade = int(getattr(era_result, "decade", 0) or 0)
+    _phys_keys: list[str] = []
+    if mc_result is not None:
+        _pm = getattr(mc_result, "primary_material", None) or getattr(mc_result, "material", None)
+        if _pm:
+            _phys_keys.append(str(_pm).lower().replace(" ", "_").replace("-", "_"))
+        for _chain_mat in list(getattr(mc_result, "transfer_chain", None) or [])[:1]:
+            _phys_keys.append(str(_chain_mat).lower().replace(" ", "_").replace("-", "_"))
+    if _decade and _phys_keys:
+        try:
+            from backend.core.era_classifier import MEDIUM_DECADE_FLOOR as _FLOOR
+        except Exception as _imp_exc:  # §V6 (copilot-instructions.md): Guard-Ausfall laut melden
+            logger.warning("§D-K3-42-Guard: MEDIUM_DECADE_FLOOR nicht ladbar (%s) — Veto A inaktiv", _imp_exc)
+            _FLOOR = {}
+        for _key in _phys_keys:
+            _floor = _FLOOR.get(_key)
+            if _floor and _decade < _floor:
+                return False, f"Träger-Unmöglichkeit: Era {_decade} < {_key}-Floor {_floor}"
+    # Veto B: kein physikalischer Material-Anspruch + stark restriktives Altmaterial
+    _phys_val = str(getattr(physical_material, "value", physical_material)).lower()
+    _era_val = str(getattr(era_material, "value", era_material)).lower()
+    if _phys_val == "unknown" and _MATERIAL_CONSERVATIVENESS_RANK.get(_era_val, 0) >= 10:
+        return False, f"UNKNOWN-Physik + restriktives Era-Material ({_era_val})"
+    return True, ""
+
+
 def _fc_compute_target_score(
     mode_value: str,
     cal_profile: "dict | None",
@@ -9105,35 +9163,63 @@ class UnifiedRestorerV3:
                 )
                 _era_domination_threshold = (0.30 if _mc_is_multi_gen else 0.10) + 1e-9
                 if _conf_delta > _era_domination_threshold:
-                    # EraClassifier deutlich konfidenter → Era-Material-Prior gewinnt
-                    logger.info(
-                        "Material-Konfliktregel (§Spec): EraClassifier dominiert MC"
-                        " (era_conf=%.2f > mc_conf=%.2f + %.2f, multi_gen=%s)"
-                        " → Material %s → %s",
-                        _era_conf_val,
-                        _mc_conf_val,
-                        _era_domination_threshold - 1e-9,
-                        _mc_is_multi_gen,
-                        _classified_material.value,
-                        _era_conflict_mat.value,
+                    _flip_ok, _flip_reason = _era_material_flip_admissible(
+                        _classified_material, _era_conflict_mat, _mc_result, _era_result
                     )
-                    _classified_material = _era_conflict_mat
+                    if not _flip_ok:
+                        # §D-K3-42-Guard: kein Era-Dominanz-Flip ohne physikalische Plausibilität.
+                        logger.info(
+                            "Material-Konfliktregel (§Spec): Era-Dominanz VETO"
+                            " (D-K3-42: %s) — %s bleibt (era_conf=%.2f > mc_conf=%.2f)",
+                            _flip_reason,
+                            _classified_material.value,
+                            _era_conf_val,
+                            _mc_conf_val,
+                        )
+                    else:
+                        # EraClassifier deutlich konfidenter → Era-Material-Prior gewinnt
+                        logger.info(
+                            "Material-Konfliktregel (§Spec): EraClassifier dominiert MC"
+                            " (era_conf=%.2f > mc_conf=%.2f + %.2f, multi_gen=%s)"
+                            " → Material %s → %s",
+                            _era_conf_val,
+                            _mc_conf_val,
+                            _era_domination_threshold - 1e-9,
+                            _mc_is_multi_gen,
+                            _classified_material.value,
+                            _era_conflict_mat.value,
+                        )
+                        _classified_material = _era_conflict_mat
                 elif abs(_conf_delta) <= 0.10 and not _mc_is_multi_gen:
                     # Gleichstand ohne gesicherte Mehrgenerationen-Kette:
                     # konservativerer (restaurierungsschonenderer) Typ gewinnt.
                     # Bei Multi-Gen-Kette behält der physisch gemessene Typ Vorrang.
                     _conservative_mat = _pick_more_conservative_material(_classified_material, _era_conflict_mat)
-                    logger.info(
-                        "Material-Konfliktregel (§Spec): Gleichstand"
-                        " (era_conf=%.2f ≈ mc_conf=%.2f)"
-                        " → konservativer Typ=%s (MC=%s Era=%s)",
-                        _era_conf_val,
-                        _mc_conf_val,
-                        _conservative_mat.value,
-                        _classified_material.value,
-                        _era_conflict_mat.value,
-                    )
-                    _classified_material = _conservative_mat
+                    _tie_vetoed = False
+                    if _conservative_mat == _era_conflict_mat and _conservative_mat != _classified_material:
+                        _flip_ok, _flip_reason = _era_material_flip_admissible(
+                            _classified_material, _era_conflict_mat, _mc_result, _era_result
+                        )
+                        _tie_vetoed = not _flip_ok
+                        if _tie_vetoed:
+                            logger.info(
+                                "Material-Konfliktregel (§Spec): Konservativwahl VETO"
+                                " (D-K3-42: %s) — %s bleibt (Gleichstand)",
+                                _flip_reason,
+                                _classified_material.value,
+                            )
+                    if not _tie_vetoed:
+                        logger.info(
+                            "Material-Konfliktregel (§Spec): Gleichstand"
+                            " (era_conf=%.2f ≈ mc_conf=%.2f)"
+                            " → konservativer Typ=%s (MC=%s Era=%s)",
+                            _era_conf_val,
+                            _mc_conf_val,
+                            _conservative_mat.value,
+                            _classified_material.value,
+                            _era_conflict_mat.value,
+                        )
+                        _classified_material = _conservative_mat
                 else:
                     # MC hat ausreichend höhere Konfidenz ODER Multi-Gen-Kette schützt
                     # den physisch gemessenen Typ → bleibt wie bisher
