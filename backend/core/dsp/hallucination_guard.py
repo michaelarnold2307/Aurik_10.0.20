@@ -297,6 +297,10 @@ def _compute_spectral_novelty_dsp(
         E_pre = np.mean(Pxx_pre, axis=1)
         E_post = np.mean(Pxx_post, axis=1)
 
+        # §D-K3-44: pegel-normiert (Parität zur primären Metrik — sonst triggert
+        # jeder Pegel-Restore auf dem DSP-Ersatzpfad einen falschen Rollback).
+        E_post = E_post * (float(np.sum(E_pre)) + 1e-12) / (float(np.sum(E_post)) + 1e-12)
+
         novel_mask = E_post > E_pre * 1.05
         E_novel = float(np.sum(E_post[novel_mask]))
         E_total = float(np.sum(E_post)) + 1e-12

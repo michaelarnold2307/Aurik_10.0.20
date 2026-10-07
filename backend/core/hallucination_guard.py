@@ -55,6 +55,15 @@ def compute_spectral_novelty(
         E_before = np.mean(Pxx_before, axis=1)  # (n_freq,)
         E_after = np.mean(Pxx_after, axis=1)
 
+        # §D-K3-44 (2026-10-07): Pegel-Normalisierung — §2.46e meint NEUE
+        # SPEKTRALANTEILE, nicht mehr Energie. Ohne Normalisierung erzeugt ein
+        # reiner Pegel-Restore novelty 0.206 (+1 dB) / 0.369 (+2 dB) und damit
+        # einen FALSCHEN Rollback (Phase 24 macht explizit einen Pegel-Restore
+        # §2.45a, bis 2.2–4.5 dB je Material; Produktionsbefund novelty=0.385).
+        _sum_before = float(np.sum(E_before)) + 1e-12
+        _sum_after = float(np.sum(E_after)) + 1e-12
+        E_after = E_after * (_sum_before / _sum_after)
+
         # Bins mit erhöhter Energie nach Phase (neue/halluzinierte Bins)
         E_delta = np.maximum(E_after - E_before, 0.0)
         E_total_after = np.sum(E_after) + 1e-12

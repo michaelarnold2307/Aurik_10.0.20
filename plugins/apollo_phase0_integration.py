@@ -20,6 +20,9 @@ from typing import Any
 
 import numpy as np
 
+# §D-K3-45 (2026-10-07): kanonischer Pegel-Angleich — eine Quelle (§G9 (copilot-instructions.md)).
+from backend.core.audio_utils import level_match as _level_match
+
 logger = logging.getLogger(__name__)
 
 # ── §v10.750: ONNX-Core-Inferenz (STFT/Band-Split/ISTFT in NumPy) ─────────
@@ -147,6 +150,11 @@ def _quality_delta(original: np.ndarray, processed: np.ndarray, sr: int = 48000)
         "hf_delta_db": round(_hf_delta_db, 2),
         "spec_var_delta": round(_spec_var_delta, 4),
     }
+
+
+# §D-K3-45 (2026-10-07): Die frühere lokale Pegel-Angleich-Kopie wurde ENTFERNT —
+# eine Quelle (§G9 (copilot-instructions.md)): backend.core.audio_utils.level_match
+# (als _level_match importiert). Doppelimplementierungen driften (Lektion D-K3-51).
 
 
 # ── Apollo Phase-0 Guard ────────────────────────────────────────────────
@@ -1167,6 +1175,12 @@ class DeepFilterNetGuard:
             _processed = _plugin.enhance(_mono, sr)
             _processed = np.nan_to_num(_processed, nan=0.0, posinf=1.0, neginf=-1.0)
             _processed = np.clip(_processed, -1.0, 1.0)
+
+            # §D-K3-45 (2026-10-07): Pegel-Angleich VOR den Form-Guards — das
+            # DFN-Modell liefert systematisch leiser (Produktionsbefund −5,5 dB);
+            # der Quality-Guard (rms_delta < −3 dB) verwarf damit die legitime
+            # Entrauschung als „Degradation → Rollback".
+            _processed = _level_match(_mono, _processed)
 
             # ── Atmungserhalt: Original an Atempositionen ──
             if np.any(_breath_mask):

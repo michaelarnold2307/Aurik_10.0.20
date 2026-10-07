@@ -63,7 +63,7 @@ import numpy as np
 from scipy.interpolate import CubicSpline
 from scipy.signal import lfilter
 
-from backend.core.audio_utils import limit_quiet_edge_boost, restore_layout, safe_to_mono, to_channels_last
+from backend.core.audio_utils import level_match, limit_quiet_edge_boost, restore_layout, safe_to_mono, to_channels_last
 from backend.core.defect_scanner import MaterialType  # §v10.113
 from backend.core.dsp.declick_core import local_median_scale
 from backend.core.dsp.silence_mask import apply_silence_preservation
@@ -810,10 +810,21 @@ class ClickRemovalPhase(PhaseInterface):
             local_start = replace_start - patch_start
             local_end = replace_end - patch_start
             replacement = repaired_patch[local_start:local_end].copy()
-            fade = min(8, len(replacement) // 4)
-            if fade >= 2:
-                ramp = np.linspace(0.0, 1.0, fade, dtype=np.float32)
-                original = audio[replace_start:replace_end].copy()
+            original = audio[replace_start:replace_end].copy()
+            # §D-K3-46a (2026-10-07): Pegel-Angleich des ML-Ersatzes an das
+            # Original — das DFN-Modell liefert systematisch leiser (D-K3-45:
+            # −5,5 dB); lange BANQUET-ML-Regionen kippten damit 100-ms-Fenster
+            # um >6 dB und erzeugten TemporalConsistencyGuard-Sprünge (4 Sprünge
+            # >6 dB/100 ms, Produktionsbefund 2026-10-07 21:55). Gleiche Wurzel
+            # wie D-K3-45: Pegel ≠ Form. §G9 (copilot-instructions.md): eine Quelle (audio_utils.level_match).
+            replacement = level_match(original, replacement)
+            # §D-K3-46b (2026-10-07): stufenfreie Flanken — die frühere Rampe war
+            # auf max. 8 Samples (0,17 ms @48k) begrenzt, linear und entfiel bei
+            # len < 8 ganz (`if fade >= 2`); Muster §2.35b (phase_12): Cosinus-
+            # Zügelung mit Mindestflanke 2 und Cap 64 Samples (~1,3 ms).
+            fade = int(np.clip(len(replacement) // 4, 2, 64))
+            if len(replacement) >= 4:
+                ramp = (0.5 - 0.5 * np.cos(np.linspace(0.0, np.pi, fade, dtype=np.float32))).astype(np.float32)
                 replacement[:fade] = (1.0 - ramp) * original[:fade] + ramp * replacement[:fade]
                 replacement[-fade:] = ramp[::-1] * original[-fade:] + (1.0 - ramp[::-1]) * replacement[-fade:]
             audio[replace_start:replace_end] = np.clip(replacement, -1.0, 1.0)

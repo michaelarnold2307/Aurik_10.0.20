@@ -1,4 +1,32 @@
-# Changelog — Aurik 10.12.10
+# Changelog — Aurik 10.12.11
+
+## 10.12.11 (2026-10-07)
+
+### Wurzel-Fixes: Pegel-≠-Form-Klasse in drei Guards (D-K3-44/45/46)
+
+Drei Produktionswarnungen, eine gemeinsame Wurzel — **Pegel wurde als Form gemessen**:
+
+- **D-K3-44 (Hallucination-Guard-Novelty):** `compute_spectral_novelty` (§2.46e)
+  verglich Absolut-Energie — ein reiner Pegel-Restore erzeugte novelty 0.206
+  (+1 dB) bis 0.369 (+2 dB); Produktionsbefund 0.385 ≈ +2,1 dB Gain. Phase 24
+  macht explizite Pegel-Restores (§2.45a, 2,2–4,5 dB je Material) → systematische
+  FALSE-Rollbacks. Fix: E_after auf die Gesamt-Energie von E_before normiert
+  (primär + DSP-Fallback paritätisch); Pegel-Invarianz gepinnt (0,5×/1,12×/2,0×
+  → novelty < 0,01; grobe Halluzination weiter erkannt).
+- **D-K3-45 (DFN-Quality-Guard):** „RMS=-5.5dB → Rollback" — das DeepFilterNet-
+  Modell liefert systematisch leiser (−5,5 dB); der Form-Guard (rms_delta < −3 dB)
+  verwarf die **legitime Entrauschung**. Fix: kanonischer `level_match` in
+  `audio_utils` (§G9: eine Quelle) + Wiring im DFN-Wrapper VOR den Form-Guards
+  (±10 dB begrenzt, 0,995-Headroom, <0,1 dB No-Op bit-identisch).
+- **D-K3-46 (Phase-01-ML-Click-Patch):** BANQUET-ML-Regionen wurden mit
+  DFN-Rohpegel (Bias-Pfad bis −9 dB) und nur 8-Sample-**linearer** Flanke
+  ersetzt (Fade entfiel bei len<8 ganz) → TemporalConsistencyGuard meldete
+  4 Energie-Sprünge >6 dB/100 ms. Kontroll-Experiment: 150-ms-Region at −9 dB →
+  ALT 1 Sprung, NEU 0. Fix: `level_match` + Cosinus-Zügelung (2…64 Samples,
+  Muster §2.35b).
+
+Tests: 15/15 grün (`tests/unit/test_dk344_hallucination_pegel.py`,
+`test_dk345_dfn_pegel_guard.py`, `test_dk346_phase01_patch_level.py`), ruff clean.
 
 ## 10.12.10 (2026-10-07)
 

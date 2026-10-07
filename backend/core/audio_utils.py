@@ -337,6 +337,49 @@ def compute_gated_rms_dbfs(sig: np.ndarray, gate_dbfs: float = -50.0) -> float:
     return float(20.0 * np.log10(rms + 1e-12))
 
 
+def level_match(
+    reference: np.ndarray,
+    processed: np.ndarray,
+    *,
+    max_gain_db: float = 10.0,
+    headroom: float = 0.995,
+) -> np.ndarray:
+    """§D-K3-45 (2026-10-07): Kanonischer Pegel-Angleich — „Pegel ≠ Form".
+
+    Gleicht ``processed`` im RMS an ``reference`` an, begrenzt auf ±``max_gain_db``.
+    Formkurven-Modelle (DeepFilterNet v3 u. a.) liefern systematisch leiser
+    (Produktionsbefund: −5,5 dB RMS); Form-Guards (rms_delta < −3 dB) und
+    Phasen-Ersatz-Pfade verwerfen bzw. verschlechtern die LEGITIME Bearbeitung
+    dann fälschlich. Gleicht der Aufrufer VOR den Form-Guards/dem Einbau an,
+    messen die Guards die Form (ihre Aufgabe), nicht den Modellpegel.
+
+    Verträge:
+      - Differenz < 0,1 dB → unverändert zurück (bit-identisch, §G5 (copilot-instructions.md)).
+      - Gain auf ±``max_gain_db`` begrenzt (keine Pegel-Rettung defekter Pfade).
+      - Peak-Deckel ``headroom`` verhindert Clipping am Fragment (§V5-Zone).
+
+    Returns:
+        float32-Array, gleiche Form/Länge wie ``processed``.
+    """
+    y = np.asarray(processed, dtype=np.float32)
+    r = np.asarray(reference, dtype=np.float32)
+    if y.size == 0 or r.size == 0:
+        return cast(np.ndarray, y)
+    rms_ref = float(np.sqrt(np.mean(np.asarray(r, dtype=np.float64) ** 2)) + 1e-12)
+    rms_proc = float(np.sqrt(np.mean(np.asarray(y, dtype=np.float64) ** 2)) + 1e-12)
+    if rms_proc <= 1e-12:
+        return cast(np.ndarray, y)
+    gain_db = 20.0 * np.log10(rms_ref / rms_proc)
+    if abs(gain_db) < 0.1:
+        return cast(np.ndarray, y)
+    gain_db = float(np.clip(gain_db, -max_gain_db, max_gain_db))
+    y = (y * (10.0 ** (gain_db / 20.0))).astype(np.float32)
+    peak = float(np.max(np.abs(y)))
+    if peak > headroom:
+        y = (y * (headroom / peak)).astype(np.float32)
+    return cast(np.ndarray, y)
+
+
 # §2.45a: Per-material noise floor gate used as hard minimum in compute_signal_relative_gate_dbfs.
 # Values = typical noise floor + 6 dB margin (AES/iZotope RX practice).
 # Vinyl ≈ -33 dBFS noise → gate -27 dBFS; shellac ≈ -20 dBFS → gate -14 dBFS.
