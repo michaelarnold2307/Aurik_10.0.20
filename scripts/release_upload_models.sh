@@ -4,6 +4,17 @@
 # Release-Strategie 2026-09-23: Modelle > 40 MB werden als GitHub-Release-
 # Assets ausgeliefert (LFS im Repo nur für den Offline-Kern <= 40 MB).
 #
+# §D-K2-Release-Fix (2026-10-07): Der Scan erfasst jetzt zusaetzlich
+#   - `*.data` (ONNX-External-Data, z. B. bigvgan_v2_f3.onnx.data, 469 MB),
+#   - kleine `*.onnx` MIT grosser `.data` (sonst ist das Modell nicht ladbar),
+#   - und schliesst `_archive_*` aus (Backups sind keine Auslieferung).
+#   Ohne den Fix fehlten 16 .data-Dateien (~7 GB) im Release, darunter das
+#   aktive Basis-BigVGAN — der Downloader konnte das Modell nie vollstaendig
+#   ausliefern (Befund 2026-10-07).
+#   ROOT-CAUSE der 45 fehlenden Assets: `tr '/' '__'` ersetzt ZEICHENWEISE
+#   (→ einfache Unterstriche), waehrend Manifest/Downloader `__` erwarten —
+#   korrigiert auf bash-String-Ersetzung `${rel//\//__}`.
+#
 # Eigenschaften:
 #   - Retry pro Asset (MAX_RETRIES, 30 s Backoff)
 #   - Bereits hochgeladene Assets werden übersprungen (Resume nach Abbruch:
@@ -66,7 +77,9 @@ failed=0
 # Alle Modelle > 40 MB durchlaufen
 while IFS= read -r file; do
     rel="${file#"$ROOT_DIR"/}"
-    asset_base="$(echo "$rel" | tr '/' '__')"
+    # §D-K2-Release-Fix: bash-String-Ersetzung statt `tr` (tr ersetzt zeichenweise
+    # und erzeugte EINFACHE Unterstriche — Namens-Divergenz zum Manifest).
+    asset_base="${rel//\//__}"
     size=$(stat -c %s "$file")
     if [ "$size" -gt "$CHUNK_BYTES" ]; then
         prefix="$WORKDIR/$asset_base.part"
@@ -90,9 +103,17 @@ while IFS= read -r file; do
             failed=1
         fi
     fi
-done < <(cd "$ROOT_DIR" && find models -type f -size +40M \
-    \( -name "*.onnx" -o -name "*.pt" -o -name "*.pth" -o -name "*.bin" \
-       -o -name "*.safetensors" -o -name "*.ckpt" -o -name "*.th" \) -print | sort)
+done < <( { \
+    (cd "$ROOT_DIR" && find models -type f -size +40M \
+        \( -name "*.onnx" -o -name "*.pt" -o -name "*.pth" -o -name "*.bin" \
+           -o -name "*.safetensors" -o -name "*.ckpt" -o -name "*.th" \
+           -o -name "*.data" \) -not -path "*_archive_*" -print) ; \
+    (cd "$ROOT_DIR" && find models -type f -name "*.onnx" -size -40M -not -path "*_archive_*" -print | while IFS= read -r f; do
+        if [ -f "$f.data" ] && [ "$(stat -c %s "$f.data")" -gt $((40 * 1024 * 1024)) ]; then
+            printf '%s\n' "$f"
+        fi
+    done) ; \
+} | sort -u)
 
 log "FERTIG (failed=$failed)"
 exit "$failed"

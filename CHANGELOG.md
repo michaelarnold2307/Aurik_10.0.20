@@ -1,4 +1,19 @@
-# Changelog — Aurik 10.12.9
+# Changelog — Aurik 10.12.10
+
+## 10.12.10 (2026-10-07)
+
+### Release-Fix: Asset-Namenskonvention + .data-Auslieferung
+
+Der Release-Abgleich fand zwei Wurzel-Defekte: (a) `tr '/' '__'` im
+Upload-Skript ersetzt **zeichenweise** → einfache Unterstriche, während
+Manifest und `model_downloader` doppelte erwarten (`models__…`) — nur 8 von 53
+Manifest-Assets existierten im Release; (b) `*.data` (ONNX-External-Data,
+16 Dateien ≈ 7 GB, inkl. aktivem Basis-BigVGAN 469 MB und MUSDB18-F3 469 MB)
+fehlten in Upload-Scan **und** Manifest-Sync komplett — diese Modelle waren
+über den Release-Weg nie vollständig auslieferbar. Fixes in beiden Skripten
+(`${rel//\//__}`, `.data`-Erfassung inkl. kleiner ONNX-Partner,
+Archiv-Ausschluss) + regeneriertes Manifest (128 Einträge, 76 release,
+14 `.data`); Upload von 64 Assets (~35,5 GB) läuft resumierbar.
 
 ## 10.12.9 (2026-10-07)
 

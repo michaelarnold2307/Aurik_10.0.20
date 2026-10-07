@@ -1842,7 +1842,24 @@
         "license": "CC-BY-NC-4.0",
         "reference": "https://huggingface.co/m-a-p/MERT-v1-95M"
       },
-      "_comment": "Datei lokal nicht vorhanden (Stand: 2026-09-22)"
+      "_comment": "Datei lokal nicht vorhanden (Stand: 2026-09-22)",
+      "delivery": "release",
+      "release_tag": "models-10.2.0",
+      "assets": [
+        "models__mert-v1-330m__MERT-v1-330M_fairseq.pt.part00",
+        "models__mert-v1-330m__MERT-v1-330M_fairseq.pt.part01",
+        "models__mert-v1-330m__MERT-v1-330M_fairseq.pt.part02"
+      ],
+      "part_sha256": {
+        "models__mert-v1-330m__MERT-v1-330M_fairseq.pt.part00": "1a42023c452d4d72d9f1ad65d9124560e6c3c0054c7292df35af7a30915cb5e4",
+        "models__mert-v1-330m__MERT-v1-330M_fairseq.pt.part01": "61cd4cae9b90ff6c560ed1ead3d98f9806f624600b5a3c1ac71f924be7b12e31",
+        "models__mert-v1-330m__MERT-v1-330M_fairseq.pt.part02": "4398f887edc87c457f2c8cdf4cc3dab6809b7b6152fa8182c59c00e37ade85ba"
+      },
+      "part_size_bytes": {
+        "models__mert-v1-330m__MERT-v1-330M_fairseq.pt.part00": 1992294400,
+        "models__mert-v1-330m__MERT-v1-330M_fairseq.pt.part01": 1992294400,
+        "models__mert-v1-330m__MERT-v1-330M_fairseq.pt.part02": 6450173
+      }
     },
     {
       "name": "sgmse_musik",
@@ -1862,7 +1879,18 @@
         "license": "Apache-2.0",
         "reference": "§v10.16"
       },
-      "_comment": "Korrektur 2026-10-06 (§G9 copilot-instructions.md): deklariert war die TorchScript-Variante models/sgmse_plus/finetuned/sgmse_musik.ts — die plant scripts/export_all_musik_models.py, erzeugt sie aber nicht. Deploytes und verifiziertes Artefakt ist der ONNX-Export (sha256/size gemessen); die Runtime lädt über music_model_flags.MUSIC_MODEL_PATHS['sgmse'] ausschließlich diese ONNX."
+      "_comment": "Korrektur 2026-10-06 (§G9 copilot-instructions.md): deklariert war die TorchScript-Variante models/sgmse_plus/finetuned/sgmse_musik.ts — die plant scripts/export_all_musik_models.py, erzeugt sie aber nicht. Deploytes und verifiziertes Artefakt ist der ONNX-Export (sha256/size gemessen); die Runtime lädt über music_model_flags.MUSIC_MODEL_PATHS['sgmse'] ausschließlich diese ONNX.",
+      "delivery": "release",
+      "release_tag": "models-10.2.0",
+      "assets": [
+        "models__sgmse_plus__sgmse_musik_core.onnx"
+      ],
+      "part_sha256": {
+        "models__sgmse_plus__sgmse_musik_core.onnx": "4e1015f519f7eacc009c2e3721cbce3b45ed285de1a6ede23c5a10192cd27c17"
+      },
+      "part_size_bytes": {
+        "models__sgmse_plus__sgmse_musik_core.onnx": 263593607
+      }
     },
     {
       "name": "harmonic_inpainting_2",
@@ -1874,7 +1902,18 @@
       "size_gb": 0.75,
       "description": "Harmonic Inpainting DiT (§v10.300) — rekonstruiert gedämpfte Obertöne",
       "sha256": "f8765d14564e65c03a1fe8b39e97ddc8c8166238c14cb0dc1947abbcf0b13e0a",
-      "_comment": "Datei lokal nicht vorhanden (Stand: 2026-09-22)"
+      "_comment": "Datei lokal nicht vorhanden (Stand: 2026-09-22)",
+      "delivery": "release",
+      "release_tag": "models-10.2.0",
+      "assets": [
+        "models__harmonic_inpainting__inpainting_best.pt"
+      ],
+      "part_sha256": {
+        "models__harmonic_inpainting__inpainting_best.pt": "f8765d14564e65c03a1fe8b39e97ddc8c8166238c14cb0dc1947abbcf0b13e0a"
+      },
+      "part_size_bytes": {
+        "models__harmonic_inpainting__inpainting_best.pt": 806078322
+      }
     },
     {
       "name": "aero_checkpoint_12-48_hl256",
@@ -1922,6 +1961,468 @@
       "license": "Aurik-intern (selbst trainiert, Route-A Knistern-Textur-Entfernung)",
       "format": "pytorch",
       "description": "Knistern-Textur-Entfernung fuer DefectType.CRACKLE (kontinuierliches Vinyl-Knistern)"
+    },
+    {
+      "name": "ast_ast_model.onnx",
+      "bundled": true,
+      "bundled_path": "models/ast/ast_model.onnx.data",
+      "sha256": "d42d412a5f71432651c50d4bc469888fe8815b524e78db21ed311a115afc0e6a",
+      "size_bytes": 346423296,
+      "required": false,
+      "fallback": "dsp_ersatzpfad",
+      "size_gb": 0.323,
+      "delivery": "release",
+      "release_tag": "models-10.2.0",
+      "assets": [
+        "models__ast__ast_model.onnx.data"
+      ],
+      "part_sha256": {
+        "models__ast__ast_model.onnx.data": "d42d412a5f71432651c50d4bc469888fe8815b524e78db21ed311a115afc0e6a"
+      },
+      "part_size_bytes": {
+        "models__ast__ast_model.onnx.data": 346423296
+      }
+    },
+    {
+      "name": "bigvgan_bigvgan_v2.onnx",
+      "bundled": true,
+      "bundled_path": "models/bigvgan/bigvgan_v2.onnx.data",
+      "sha256": "7e545f55e6b52271f4261328583ca2d08ffdea6cc29bcee715946463d331c0a1",
+      "size_bytes": 491323392,
+      "required": false,
+      "fallback": "dsp_ersatzpfad",
+      "size_gb": 0.458,
+      "delivery": "release",
+      "release_tag": "models-10.2.0",
+      "assets": [
+        "models__bigvgan__bigvgan_v2.onnx.data"
+      ],
+      "part_sha256": {
+        "models__bigvgan__bigvgan_v2.onnx.data": "7e545f55e6b52271f4261328583ca2d08ffdea6cc29bcee715946463d331c0a1"
+      },
+      "part_size_bytes": {
+        "models__bigvgan__bigvgan_v2.onnx.data": 491323392
+      }
+    },
+    {
+      "name": "bigvgan_bigvgan_v2_f3.onnx",
+      "bundled": true,
+      "bundled_path": "models/bigvgan/bigvgan_v2_f3.onnx.data",
+      "sha256": "30c829cf175fb28641497347dc67fed04fc6af8b9b8f8882b1015ea111b23b77",
+      "size_bytes": 491323392,
+      "required": false,
+      "fallback": "dsp_ersatzpfad",
+      "size_gb": 0.458,
+      "delivery": "release",
+      "release_tag": "models-10.2.0",
+      "assets": [
+        "models__bigvgan__bigvgan_v2_f3.onnx.data"
+      ],
+      "part_sha256": {
+        "models__bigvgan__bigvgan_v2_f3.onnx.data": "30c829cf175fb28641497347dc67fed04fc6af8b9b8f8882b1015ea111b23b77"
+      },
+      "part_size_bytes": {
+        "models__bigvgan__bigvgan_v2_f3.onnx.data": 491323392
+      }
+    },
+    {
+      "name": "cantus_cantus_dit",
+      "bundled": true,
+      "bundled_path": "models/cantus/cantus_dit.onnx",
+      "sha256": "ea2556b23dd511bb8e73eb231efd06bfdfd3128f4bf941f3550bdf5b6d7820cc",
+      "size_bytes": 817572868,
+      "required": false,
+      "fallback": "dsp_ersatzpfad",
+      "size_gb": 0.761,
+      "delivery": "release",
+      "release_tag": "models-10.2.0",
+      "assets": [
+        "models__cantus__cantus_dit.onnx"
+      ],
+      "part_sha256": {
+        "models__cantus__cantus_dit.onnx": "ea2556b23dd511bb8e73eb231efd06bfdfd3128f4bf941f3550bdf5b6d7820cc"
+      },
+      "part_size_bytes": {
+        "models__cantus__cantus_dit.onnx": 817572868
+      }
+    },
+    {
+      "name": "clap_clap_text_encoder.onnx",
+      "bundled": true,
+      "bundled_path": "models/clap/clap_text_encoder.onnx.data",
+      "sha256": "2beba0bd498dd5349e6053d3e2c7dd9515faafaf9ffce0b7058b3e8804cf30b4",
+      "size_bytes": 501230592,
+      "required": false,
+      "fallback": "dsp_ersatzpfad",
+      "size_gb": 0.467,
+      "delivery": "release",
+      "release_tag": "models-10.2.0",
+      "assets": [
+        "models__clap__clap_text_encoder.onnx.data"
+      ],
+      "part_sha256": {
+        "models__clap__clap_text_encoder.onnx.data": "2beba0bd498dd5349e6053d3e2c7dd9515faafaf9ffce0b7058b3e8804cf30b4"
+      },
+      "part_size_bytes": {
+        "models__clap__clap_text_encoder.onnx.data": 501230592
+      }
+    },
+    {
+      "name": "cqtdiff_score_network.onnx",
+      "bundled": true,
+      "bundled_path": "models/cqtdiff/score_network.onnx.data",
+      "sha256": "be3512ee88d514ed65f3d4fca4b994b834257ec0d23e6f7822f8ce30ccc648b7",
+      "size_bytes": 61947136,
+      "required": false,
+      "fallback": "dsp_ersatzpfad",
+      "size_gb": 0.058,
+      "delivery": "release",
+      "release_tag": "models-10.2.0",
+      "assets": [
+        "models__cqtdiff__score_network.onnx.data"
+      ],
+      "part_sha256": {
+        "models__cqtdiff__score_network.onnx.data": "be3512ee88d514ed65f3d4fca4b994b834257ec0d23e6f7822f8ce30ccc648b7"
+      },
+      "part_size_bytes": {
+        "models__cqtdiff__score_network.onnx.data": 61947136
+      }
+    },
+    {
+      "name": "demucs_htdemucs_6s.onnx",
+      "bundled": true,
+      "bundled_path": "models/demucs/htdemucs_6s.onnx.data",
+      "sha256": "3eae380175adb9112c8ea8d1057307702dca09a82c2ede230897a0976c9a5461",
+      "size_bytes": 117178368,
+      "required": false,
+      "fallback": "dsp_ersatzpfad",
+      "size_gb": 0.109,
+      "delivery": "release",
+      "release_tag": "models-10.2.0",
+      "assets": [
+        "models__demucs__htdemucs_6s.onnx.data"
+      ],
+      "part_sha256": {
+        "models__demucs__htdemucs_6s.onnx.data": "3eae380175adb9112c8ea8d1057307702dca09a82c2ede230897a0976c9a5461"
+      },
+      "part_size_bytes": {
+        "models__demucs__htdemucs_6s.onnx.data": 117178368
+      }
+    },
+    {
+      "name": "ear_vae_ear_vae_ft_decoder.onnx",
+      "bundled": true,
+      "bundled_path": "models/ear_vae/ear_vae_ft_decoder.onnx.data",
+      "sha256": "821c5b0b284ec6617041a66b35ddce04f081230ea5de8a0552a18a58e7b86c77",
+      "size_bytes": 296222720,
+      "required": false,
+      "fallback": "dsp_ersatzpfad",
+      "size_gb": 0.276,
+      "delivery": "release",
+      "release_tag": "models-10.2.0",
+      "assets": [
+        "models__ear_vae__ear_vae_ft_decoder.onnx.data"
+      ],
+      "part_sha256": {
+        "models__ear_vae__ear_vae_ft_decoder.onnx.data": "821c5b0b284ec6617041a66b35ddce04f081230ea5de8a0552a18a58e7b86c77"
+      },
+      "part_size_bytes": {
+        "models__ear_vae__ear_vae_ft_decoder.onnx.data": 296222720
+      }
+    },
+    {
+      "name": "ear_vae_ear_vae_ft_encoder.onnx",
+      "bundled": true,
+      "bundled_path": "models/ear_vae/ear_vae_ft_encoder.onnx.data",
+      "sha256": "732560706b1aed68a3ec450eeae70dda6bffc13042c74363d995fd2ecbabb43e",
+      "size_bytes": 295174144,
+      "required": false,
+      "fallback": "dsp_ersatzpfad",
+      "size_gb": 0.275,
+      "delivery": "release",
+      "release_tag": "models-10.2.0",
+      "assets": [
+        "models__ear_vae__ear_vae_ft_encoder.onnx.data"
+      ],
+      "part_sha256": {
+        "models__ear_vae__ear_vae_ft_encoder.onnx.data": "732560706b1aed68a3ec450eeae70dda6bffc13042c74363d995fd2ecbabb43e"
+      },
+      "part_size_bytes": {
+        "models__ear_vae__ear_vae_ft_encoder.onnx.data": 295174144
+      }
+    },
+    {
+      "name": "gacela_gacela_core.onnx",
+      "bundled": true,
+      "bundled_path": "models/gacela/model/gacela_core.onnx.data",
+      "sha256": "199268701157d11229fbbf959482ebb4c901476076dc23027506fe6b5ecbc4c6",
+      "size_bytes": 96534528,
+      "required": false,
+      "fallback": "dsp_ersatzpfad",
+      "size_gb": 0.09,
+      "delivery": "release",
+      "release_tag": "models-10.2.0",
+      "assets": [
+        "models__gacela__model__gacela_core.onnx.data"
+      ],
+      "part_sha256": {
+        "models__gacela__model__gacela_core.onnx.data": "199268701157d11229fbbf959482ebb4c901476076dc23027506fe6b5ecbc4c6"
+      },
+      "part_size_bytes": {
+        "models__gacela__model__gacela_core.onnx.data": 96534528
+      }
+    },
+    {
+      "name": "hubert_hubert_model.onnx",
+      "bundled": true,
+      "bundled_path": "models/hubert/hubert_model.onnx.data",
+      "sha256": "3d2efb7d9802362469b022c8e0a785ee3f1786b6b36d4a30d18d14a52925946b",
+      "size_bytes": 377552896,
+      "required": false,
+      "fallback": "dsp_ersatzpfad",
+      "size_gb": 0.352,
+      "delivery": "release",
+      "release_tag": "models-10.2.0",
+      "assets": [
+        "models__hubert__hubert_model.onnx.data"
+      ],
+      "part_sha256": {
+        "models__hubert__hubert_model.onnx.data": "3d2efb7d9802362469b022c8e0a785ee3f1786b6b36d4a30d18d14a52925946b"
+      },
+      "part_size_bytes": {
+        "models__hubert__hubert_model.onnx.data": 377552896
+      }
+    },
+    {
+      "name": "mert-v1-330m_pytorch_model",
+      "bundled": true,
+      "bundled_path": "models/mert-v1-330m/pytorch_model.bin",
+      "sha256": "0c03774d821a6ad972cb48220b128a10ebea2c790116bd0fd35e5a013f8017f6",
+      "size_bytes": 1261846489,
+      "required": false,
+      "fallback": "dsp_ersatzpfad",
+      "size_gb": 1.175,
+      "delivery": "release",
+      "release_tag": "models-10.2.0",
+      "assets": [
+        "models__mert-v1-330m__pytorch_model.bin"
+      ],
+      "part_sha256": {
+        "models__mert-v1-330m__pytorch_model.bin": "0c03774d821a6ad972cb48220b128a10ebea2c790116bd0fd35e5a013f8017f6"
+      },
+      "part_size_bytes": {
+        "models__mert-v1-330m__pytorch_model.bin": 1261846489
+      }
+    },
+    {
+      "name": "muq_mulan_muq_mulan.onnx",
+      "bundled": true,
+      "bundled_path": "models/muq_mulan/muq_mulan.onnx.data",
+      "sha256": "3ea056f65b9306a1b5001c0f26a34687f4083f5ef8b13a394a91a32b21c4c418",
+      "size_bytes": 1269170176,
+      "required": false,
+      "fallback": "dsp_ersatzpfad",
+      "size_gb": 1.182,
+      "delivery": "release",
+      "release_tag": "models-10.2.0",
+      "assets": [
+        "models__muq_mulan__muq_mulan.onnx.data"
+      ],
+      "part_sha256": {
+        "models__muq_mulan__muq_mulan.onnx.data": "3ea056f65b9306a1b5001c0f26a34687f4083f5ef8b13a394a91a32b21c4c418"
+      },
+      "part_size_bytes": {
+        "models__muq_mulan__muq_mulan.onnx.data": 1269170176
+      }
+    },
+    {
+      "name": "panns_panns_wavegram_logmel_cnn14.onnx",
+      "bundled": true,
+      "bundled_path": "models/panns/panns_wavegram_logmel_cnn14.onnx.data",
+      "sha256": "f3e7910240155dc520de7002104ae26dff88284d7cd025d0097aa26bb35cf70c",
+      "size_bytes": 328728576,
+      "required": false,
+      "fallback": "dsp_ersatzpfad",
+      "size_gb": 0.306,
+      "delivery": "release",
+      "release_tag": "models-10.2.0",
+      "assets": [
+        "models__panns__panns_wavegram_logmel_cnn14.onnx.data"
+      ],
+      "part_sha256": {
+        "models__panns__panns_wavegram_logmel_cnn14.onnx.data": "f3e7910240155dc520de7002104ae26dff88284d7cd025d0097aa26bb35cf70c"
+      },
+      "part_size_bytes": {
+        "models__panns__panns_wavegram_logmel_cnn14.onnx.data": 328728576
+      }
+    },
+    {
+      "name": "panns_wavegram_logmel_cnn14.onnx",
+      "bundled": true,
+      "bundled_path": "models/panns/wavegram_logmel_cnn14.onnx.data",
+      "sha256": "f3e7910240155dc520de7002104ae26dff88284d7cd025d0097aa26bb35cf70c",
+      "size_bytes": 328728576,
+      "required": false,
+      "fallback": "dsp_ersatzpfad",
+      "size_gb": 0.306,
+      "delivery": "release",
+      "release_tag": "models-10.2.0",
+      "assets": [
+        "models__panns__wavegram_logmel_cnn14.onnx.data"
+      ],
+      "part_sha256": {
+        "models__panns__wavegram_logmel_cnn14.onnx.data": "f3e7910240155dc520de7002104ae26dff88284d7cd025d0097aa26bb35cf70c"
+      },
+      "part_size_bytes": {
+        "models__panns__wavegram_logmel_cnn14.onnx.data": 328728576
+      }
+    },
+    {
+      "name": "rvc_hubert_base",
+      "bundled": true,
+      "bundled_path": "models/rvc/hubert_base.pt",
+      "sha256": "f54b40fd2802423a5643779c4861af1e9ee9c1564dc9d32f54f20b5ffba7db96",
+      "size_bytes": 189507909,
+      "required": false,
+      "fallback": "dsp_ersatzpfad",
+      "size_gb": 0.176,
+      "delivery": "release",
+      "release_tag": "models-10.2.0",
+      "assets": [
+        "models__rvc__hubert_base.pt"
+      ],
+      "part_sha256": {
+        "models__rvc__hubert_base.pt": "f54b40fd2802423a5643779c4861af1e9ee9c1564dc9d32f54f20b5ffba7db96"
+      },
+      "part_size_bytes": {
+        "models__rvc__hubert_base.pt": 189507909
+      }
+    },
+    {
+      "name": "rvc_rmvpe",
+      "bundled": true,
+      "bundled_path": "models/rvc/rmvpe.pt",
+      "sha256": "6d62215f4306e3ca278246188607209f09af3dc77ed4232efdd069798c4ec193",
+      "size_bytes": 181184272,
+      "required": false,
+      "fallback": "dsp_ersatzpfad",
+      "size_gb": 0.169,
+      "delivery": "release",
+      "release_tag": "models-10.2.0",
+      "assets": [
+        "models__rvc__rmvpe.pt"
+      ],
+      "part_sha256": {
+        "models__rvc__rmvpe.pt": "6d62215f4306e3ca278246188607209f09af3dc77ed4232efdd069798c4ec193"
+      },
+      "part_size_bytes": {
+        "models__rvc__rmvpe.pt": 181184272
+      }
+    },
+    {
+      "name": "scnet_4stems_huge_scnet_4stems_v1.2",
+      "bundled": true,
+      "bundled_path": "models/scnet_4stems/huge_scnet_4stems_v1.2.ckpt",
+      "sha256": "807f470b13fe073414832f47184a4a59c944ced0713aec7d5f078bf3193e5e1d",
+      "size_bytes": 395599229,
+      "required": false,
+      "fallback": "dsp_ersatzpfad",
+      "size_gb": 0.368,
+      "delivery": "release",
+      "release_tag": "models-10.2.0",
+      "assets": [
+        "models__scnet_4stems__huge_scnet_4stems_v1.2.ckpt"
+      ],
+      "part_sha256": {
+        "models__scnet_4stems__huge_scnet_4stems_v1.2.ckpt": "807f470b13fe073414832f47184a4a59c944ced0713aec7d5f078bf3193e5e1d"
+      },
+      "part_size_bytes": {
+        "models__scnet_4stems__huge_scnet_4stems_v1.2.ckpt": 395599229
+      }
+    },
+    {
+      "name": "sgmse_plus_checkpoint_latest",
+      "bundled": true,
+      "bundled_path": "models/sgmse_plus/finetuned/checkpoint_latest.ckpt",
+      "sha256": "6dd93b2c9158cabcf5b887ef65c1b3bb0424ad72dfb3cb8e42a3ed14e8d66250",
+      "size_bytes": 787863540,
+      "required": false,
+      "fallback": "dsp_ersatzpfad",
+      "size_gb": 0.734,
+      "delivery": "release",
+      "release_tag": "models-10.2.0",
+      "assets": [
+        "models__sgmse_plus__finetuned__checkpoint_latest.ckpt"
+      ],
+      "part_sha256": {
+        "models__sgmse_plus__finetuned__checkpoint_latest.ckpt": "6dd93b2c9158cabcf5b887ef65c1b3bb0424ad72dfb3cb8e42a3ed14e8d66250"
+      },
+      "part_size_bytes": {
+        "models__sgmse_plus__finetuned__checkpoint_latest.ckpt": 787863540
+      }
+    },
+    {
+      "name": "sgmse_plus_sgmse_musik_best",
+      "bundled": true,
+      "bundled_path": "models/sgmse_plus/finetuned/sgmse_musik_best.ckpt",
+      "sha256": "1044979b4b0437513b12f1f89de2426c88746533a393da74d27ceff5d605f4c5",
+      "size_bytes": 262598502,
+      "required": false,
+      "fallback": "dsp_ersatzpfad",
+      "size_gb": 0.245,
+      "delivery": "release",
+      "release_tag": "models-10.2.0",
+      "assets": [
+        "models__sgmse_plus__finetuned__sgmse_musik_best.ckpt"
+      ],
+      "part_sha256": {
+        "models__sgmse_plus__finetuned__sgmse_musik_best.ckpt": "1044979b4b0437513b12f1f89de2426c88746533a393da74d27ceff5d605f4c5"
+      },
+      "part_size_bytes": {
+        "models__sgmse_plus__finetuned__sgmse_musik_best.ckpt": 262598502
+      }
+    },
+    {
+      "name": "singmos_singmos_pro.onnx",
+      "bundled": true,
+      "bundled_path": "models/singmos/singmos_pro.onnx.data",
+      "sha256": "cf248c0afb40bacadd43ec95c07057388c067bbb10dd997f9816e68168a64eac",
+      "size_bytes": 1262092288,
+      "required": false,
+      "fallback": "dsp_ersatzpfad",
+      "size_gb": 1.175,
+      "delivery": "release",
+      "release_tag": "models-10.2.0",
+      "assets": [
+        "models__singmos__singmos_pro.onnx.data"
+      ],
+      "part_sha256": {
+        "models__singmos__singmos_pro.onnx.data": "cf248c0afb40bacadd43ec95c07057388c067bbb10dd997f9816e68168a64eac"
+      },
+      "part_size_bytes": {
+        "models__singmos__singmos_pro.onnx.data": 1262092288
+      }
+    },
+    {
+      "name": "vocos_vocos_mel_spec_24khz",
+      "bundled": true,
+      "bundled_path": "models/vocos/vocos_mel_spec_24khz.onnx",
+      "sha256": "a84c58728a769e8a98eeca75bb89102987db0028e5e3d44b45af2ae3ef0104e2",
+      "size_bytes": 54156978,
+      "required": false,
+      "fallback": "dsp_ersatzpfad",
+      "size_gb": 0.05,
+      "delivery": "release",
+      "release_tag": "models-10.2.0",
+      "assets": [
+        "models__vocos__vocos_mel_spec_24khz.onnx"
+      ],
+      "part_sha256": {
+        "models__vocos__vocos_mel_spec_24khz.onnx": "a84c58728a769e8a98eeca75bb89102987db0028e5e3d44b45af2ae3ef0104e2"
+      },
+      "part_size_bytes": {
+        "models__vocos__vocos_mel_spec_24khz.onnx": 54156978
+      }
     }
   ]
 }

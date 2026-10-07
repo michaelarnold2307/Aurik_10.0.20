@@ -8,6 +8,9 @@ Release-Strategie 2026-09-23 (§13.3):
   - Dateien > 1.9 GB: Parts .part00/.part01/… mit je eigenem sha256 + Größe
     (GitHub-Limit 2 GB/Asset).
   - Dateien <= 40 MB: unverändert (LFS/bundled im Repo).
+  - §D-K2-Release-Fix (2026-10-07): `*.data` (ONNX-External-Data) werden als
+    eigene Manifest-Einträge erfasst (der Downloader reassembliert `assets`
+    sonst als Parts EINER Datei); `_archive_*`/`_tmp*` bleiben ausgeschlossen.
 
 Deterministisch; berührt nur Manifest-Einträge existierender Dateien.
 """
@@ -26,7 +29,13 @@ RELEASE_TAG = os.environ.get("AURIK_RELEASE_TAG", "models-10.2.0")
 SIZE_THRESHOLD_BYTES = 40 * 1024 * 1024
 CHUNK_BYTES = int(1900 * 1024 * 1024)
 
-_MODEL_SUFFIXES = (".onnx", ".pt", ".pth", ".bin", ".safetensors", ".ckpt", ".th")
+# §D-K2-Release-Fix (2026-10-07): `.data` (ONNX-External-Data) ergaenzt —
+# vorher waren 16 .data-Dateien (~7 GB, u. a. das aktive Basis-BigVGAN und der
+# MUSDB-F3-Finetune) weder im Manifest noch im Upload-Scan: Das Release konnte
+# diese Modelle nie vollstaendig ausliefern. Jede .data wird als eigener
+# Manifest-Eintrag gefuehrt (der Downloader reassembliert `assets` sonst als
+# Parts EINER Datei).
+_MODEL_SUFFIXES = (".onnx", ".pt", ".pth", ".bin", ".safetensors", ".ckpt", ".th", ".data")
 
 
 def _sha256_bytes(buf: bytes) -> str:
@@ -77,6 +86,8 @@ def main() -> int:
         if not abs_path.is_file() or abs_path.suffix not in _MODEL_SUFFIXES:
             continue
         rel = str(abs_path.relative_to(ROOT)).replace("\\", "/")
+        if "_archive_" in rel or "/_tmp" in rel:
+            continue  # §D-K2-Release-Fix: Backups/Temp sind keine Auslieferung
         size = abs_path.stat().st_size
         if size <= SIZE_THRESHOLD_BYTES:
             continue
