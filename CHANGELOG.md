@@ -1,4 +1,49 @@
-# Changelog — Aurik 10.8.2
+# Changelog — Aurik 10.8.3
+
+## 10.8.3 (2026-10-07)
+
+### A/B-Harness `eval_scnet_vs_mdx23c.py`: Typ-Fehler behoben, Totcode entfernt, Layout-Vertrag gemessen
+
+**Patch-Bump (§v10.802 copilot-instructions.md):** `fix` — Typ-Hygiene und
+Totcode-Entfernung im Diagnose-Harness. **Keine Signal-/Ergebnisänderung:** kein
+Produktionspfad, kein Flag und kein Metrik-Algorithmus geändert.
+
+**Befund (mypy: 4 Fehler in 1 Datei — jeder hätte den Pre-Commit blockiert):**
+
+| Zeile | Fehler | Ursache |
+| --- | --- | --- |
+| 140 | `no-any-return` | `arr.mean(axis=1)` liefert auf unparametrisiertem `np.ndarray` `Any` |
+| 155, 159 | `no-any-return` | das `torchaudio…resample()`-Ergebnis ist untypisiert → `.numpy().astype(...)` ist `Any` |
+| 329 | `attr-defined` | `_load_candidate() -> object` ⇒ `object` hat kein `separate()` |
+
+**Wurzel-Fix (§V7 copilot-instructions.md):**
+
+1. `_to_mono()` gibt über eine explizit typisierte lokale Variable zurück
+   (`mono: np.ndarray = …`) — der Wert bleibt identisch.
+2. `_resample_np()` **entfernt**: Die Funktion hatte **0 Aufrufe** (nur die
+   Definition) und suggerierte eine SR-Toleranz, die es nicht gibt —
+   `_load_song()` bricht bei SR-Mismatch bewusst ab
+   (`ValueError: Sample-Rate-Mismatch Mixtur/Stem`). Zwei der vier
+   mypy-Fehler verschwinden damit an der Wurzel statt durch Annotation von Totcode.
+3. `_load_candidate() -> SCNetPlugin`, Typ-Import unter `TYPE_CHECKING`
+   (kein Runtime-Import — der §CPU-Vertrag `AURIK_FORCE_CPU=1` vor den
+   Torch/ONNX-Importen bleibt unberührt).
+
+**Belege:** `mypy scripts/eval_scnet_vs_mdx23c.py` → _Success: no issues found in
+1 source file_; `ruff check` und `flake8` clean; `--help` läuft.
+
+**Layout-Vertrag am laufenden Code gemessen** (nicht angenommen):
+`soundfile.read(always_2d=True)` → `(9265664, 2)`; `SCNetPlugin.separate(chunked=False)`
+→ je Stem **`(220500, 2)`** (5-s-Segment, MUSDB „AM Contra“, 13,6 s CPU). Damit ist
+`mean(axis=1)` in `_to_mono()` belegt korrekt — und im Code dokumentiert, weil die
+Pipeline intern channels-first `(C, N)` führt: dort würde `mean(axis=1)` auf C
+Samples kollabieren (Produktionsbefund „Export `(2,)`“).
+
+**Beobachtung (kein Defekt, offen):** Der vendored SCNet-Code
+(`models/scnet_4stems/zfturbo_scnet/scnet.py`, unverändert, MIT) löst beim Lauf
+zwei torch-Warnungen aus („A window was not provided … spectral leakage“). Ob das
+die Qualität des Kandidaten berührt, ist **nicht gemessen** — SCNet ist ohnehin
+gesperrt (`use_scnet_music=False`, C4-Sign-off offen).
 
 ## 10.8.2 (2026-10-07)
 

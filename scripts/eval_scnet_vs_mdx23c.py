@@ -59,6 +59,7 @@ import os
 import sys
 import time
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 import numpy as np
 
@@ -68,6 +69,9 @@ os.environ.setdefault("AURIK_FORCE_CPU", "1")
 ROOT = Path(__file__).resolve().parent.parent
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
+
+if TYPE_CHECKING:  # nur für Typen — kein Runtime-Import, §CPU-Vertrag bleibt gewahrt
+    from plugins.scnet_plugin import SCNetPlugin
 
 SEED = 42
 SAMPLE_RATE = 44100
@@ -135,28 +139,20 @@ def _separation_fidelity(mixture: np.ndarray, stems_sum: np.ndarray) -> float:
 
 
 def _to_mono(x: np.ndarray) -> np.ndarray:
+    """``(N,)`` unverändert; ``(N, C)`` → Mittel über die Kanäle (Zeit-major).
+
+    Layout-Vertrag (**gemessen, nicht angenommen**): ``soundfile.read(always_2d=True)``
+    und ``SCNetPlugin.separate()`` liefern beide ``(N, C)`` — deshalb ist
+    ``axis=1`` hier korrekt. Intern channels-first ``(C, N)`` geführte Stems
+    MÜSSEN vorher transponiert werden: ``mean(axis=1)`` würde dort auf C Samples
+    kollabieren (Produktionsbefund „Export ``(2,)``", AGENTS.md Stereo-Layout-
+    Invariante) und alle Metriken dieses Harness still verfälschen.
+    """
     arr = np.asarray(x, dtype=np.float32)
     if arr.ndim == 2:
-        return arr.mean(axis=1).astype(np.float32)
+        mono: np.ndarray = arr.mean(axis=1).astype(np.float32)
+        return mono
     return arr.astype(np.float32)
-
-
-def _resample_np(x: np.ndarray, sr_from: int, sr_to: int) -> np.ndarray:
-    """Deterministisches sinc-Resampling via torchaudio (Float32, layout-tolerant)."""
-    if sr_from == sr_to:
-        return np.asarray(x, dtype=np.float32)
-    import torch
-    import torchaudio
-
-    arr = np.asarray(x, dtype=np.float32)
-    if arr.ndim == 1:
-        t = torch.from_numpy(arr)
-        out = torchaudio.functional.resample(t, sr_from, sr_to)
-        return out.numpy().astype(np.float32)
-    # (N, C) → (C, N) fürs Resampling
-    t = torch.from_numpy(arr.T.copy())
-    out = torchaudio.functional.resample(t, sr_from, sr_to)
-    return out.numpy().T.astype(np.float32)
 
 
 def _choose_offset(voc: np.ndarray, sr: int, seconds: float) -> int:
@@ -206,7 +202,7 @@ def _load_song(song: str, seconds: float, offset: float = -1.0) -> tuple[np.ndar
     )
 
 
-def _load_candidate() -> object:
+def _load_candidate() -> SCNetPlugin:
     """Kanonischer SCNet-Kandidat aus ``plugins.scnet_plugin`` (§G9 copilot-instructions.md).
 
     Der A/B-Harness IST das Freigabe-Gate: er setzt ``use_scnet_music`` bewusst
