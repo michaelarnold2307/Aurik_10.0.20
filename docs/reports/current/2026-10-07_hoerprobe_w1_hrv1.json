@@ -1,0 +1,96 @@
+{
+  "build": "wohlklang_w1_hrv1",
+  "task": "defect",
+  "seed": 20261007,
+  "question": "In genau einem Intervall wurde eine zusaetzliche Hoehen-Behandlung eingeblendet. Hoeren Sie sie heraus? Wenn Sie nichts Auffaelliges vernehmen, waehlen Sie die Seite, die Ihnen kuenstlicher/aufgesetzter erscheint — auch wenn Sie unsicher sind.",
+  "trials": [
+    {
+      "trial_id": "w1_ex1_w1",
+      "class": "hr_v1_fenster",
+      "reference": "output_audio/hr_v1_hoerprobe/ex1_ohne.wav",
+      "candidate": "output_audio/hr_v1_hoerprobe/ex1_mit.wav",
+      "start_s": 0.0,
+      "seconds": 4.0,
+      "expected_in_candidate": true
+    },
+    {
+      "trial_id": "w1_ex1_w2",
+      "class": "hr_v1_fenster",
+      "reference": "output_audio/hr_v1_hoerprobe/ex1_ohne.wav",
+      "candidate": "output_audio/hr_v1_hoerprobe/ex1_mit.wav",
+      "start_s": 36.0,
+      "seconds": 4.0,
+      "expected_in_candidate": true
+    },
+    {
+      "trial_id": "w1_ex2_w1",
+      "class": "hr_v1_fenster",
+      "reference": "output_audio/hr_v1_hoerprobe/ex2_ohne.wav",
+      "candidate": "output_audio/hr_v1_hoerprobe/ex2_mit.wav",
+      "start_s": 0.0,
+      "seconds": 4.0,
+      "expected_in_candidate": true
+    },
+    {
+      "trial_id": "w1_ex2_w2",
+      "class": "hr_v1_fenster",
+      "reference": "output_audio/hr_v1_hoerprobe/ex2_ohne.wav",
+      "candidate": "output_audio/hr_v1_hoerprobe/ex2_mit.wav",
+      "start_s": 36.0,
+      "seconds": 4.0,
+      "expected_in_candidate": true
+    },
+    {
+      "trial_id": "w1_ex3_w1",
+      "class": "hr_v1_fenster",
+      "reference": "output_audio/hr_v1_hoerprobe/ex3_ohne.wav",
+      "candidate": "output_audio/hr_v1_hoerprobe/ex3_mit.wav",
+      "start_s": 0.0,
+      "seconds": 4.0,
+      "expected_in_candidate": true
+    },
+    {
+      "trial_id": "w1_ex3_w2",
+      "class": "hr_v1_fenster",
+      "reference": "output_audio/hr_v1_hoerprobe/ex3_ohne.wav",
+      "candidate": "output_audio/hr_v1_hoerprobe/ex3_mit.wav",
+      "start_s": 36.0,
+      "seconds": 4.0,
+      "expected_in_candidate": true
+    },
+    {
+      "trial_id": "w1_ex4_w1",
+      "class": "hr_v1_fenster",
+      "reference": "output_audio/hr_v1_hoerprobe/ex4_ohne.wav",
+      "candidate": "output_audio/hr_v1_hoerprobe/ex4_mit.wav",
+      "start_s": 0.0,
+      "seconds": 3.91,
+      "expected_in_candidate": true
+    },
+    {
+      "trial_id": "w1_ex4_w2",
+      "class": "hr_v1_fenster",
+      "reference": "output_audio/hr_v1_hoerprobe/ex4_ohne.wav",
+      "candidate": "output_audio/hr_v1_hoerprobe/ex4_mit.wav",
+      "start_s": 32.49,
+      "seconds": 3.91,
+      "expected_in_candidate": true
+    },
+    {
+      "trial_id": "fangfrage_ex1",
+      "class": "catch",
+      "catch": true,
+      "reference": "output_audio/hr_v1_hoerprobe/ex1_ohne.wav",
+      "start_s": 8.0,
+      "seconds": 8.0
+    },
+    {
+      "trial_id": "fangfrage_ex3",
+      "class": "catch",
+      "catch": true,
+      "reference": "output_audio/hr_v1_hoerprobe/ex3_ohne.wav",
+      "start_s": 8.0,
+      "seconds": 8.0
+    }
+  ]
+}

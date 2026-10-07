@@ -1,6 +1,82 @@
-# Changelog — Aurik 10.7.1
+# Changelog — Aurik 10.8.0
 
-## 10.7.1 (2026-10-06)
+## 10.8.0 (2026-10-07)
+
+### Hörproben-Werkzeugkette — die menschliche Hör-Instanz wird führbar (Beleg 4)
+
+**Minor-Bump (§v10.802 copilot-instructions.md):** neue Prüf-/Abnahme-Infrastruktur,
+kein Signalpfad-Eingriff.
+
+**Wurzel-Fix (§V7 copilot-instructions.md):** Der Wohlklang-Vertrag verlangt als
+Beleg 4 ein „blindes A/B für einen Menschen“. Der Abspieler dafür existierte seit
+2026-10-03 (`scripts/hoerpanel_player.py`), sein **Erzeuger fehlte** — die
+Dokumentation verwies auf `mushra_harness.py thresholds-build/-fit`, die es
+**nicht gab** (bereits in `TASK_CHANGES.md` als offen vermerkt). Damit war Beleg 4
+für **keine** Stufe führbar.
+
+- **Neu: `mushra_harness.py thresholds-build`** — baut eine doppelblinde 2AFC-Studie
+  aus einem Manifest mit **semantischen Rollen** (`reference`/`candidate`). Welche
+  Rolle in A und welche in B landet, entscheidet **allein** der Seed
+  (`sha256("seed:trial_id")`, §G5 copilot-instructions.md) — unabhängig von
+  Prozesszustand und Dict-Reihenfolge. Optionales `--level-match` (entfernt die
+  Lautheit als Hinweisreiz; für Präferenz-Tests nötig, für Defekt-Schwellen
+  verfälschend — deshalb **nicht** Default). Fail-closed (§V6 copilot-instructions.md)
+  bei fehlender Datei, Raten-/Kanal-Mismatch und Ausschnitt-Längenunterschied.
+- **Neu: `mushra_harness.py thresholds-fit`** — wertet `answers.csv` gegen
+  `trial_key.json` aus: Trefferquote, **Wilson-95 %-CI**, Fangfragen-Gate,
+  `fit.json`-Report. Das Verdikt ist **aufgabenabhängig und statistisch ehrlich**:
+  eine reine Trefferquote genügt **nicht** (3/3 wäre p = 0,125) — ein Unterschied
+  gilt nur als belegt, wenn die **untere 95 %-Grenze über der Raterate 0,5** liegt;
+  unterhalb von `--min-trials` lautet das Verdikt `ZU_WENIGE_TRIALS` und es entsteht
+  bewusst **kein** Beleg. Ergebnis-Enum: `PRAEFERENZ_BELEGT`/`KEINE_PRAEFERENZ`
+  (Präferenz) bzw. `HOERBAR_BELEGT`/`NICHT_BELEGT` (Defekt) sowie
+  `ZU_WENIGE_TRIALS`/`UNENTSCHEIDEN`.
+- **Neu: `hoerpanel_player.py` Aufgabenarten** — `meta["task"]` = `defect`
+  (Default, unverändert) oder `preference` („A/B klingt besser“). Rückwärtskompatibel
+  über `/api/session`, die Lösung verlässt den Server weiterhin nie.
+
+### Hörproben erzeugt (SCNet C4 + W-1 HR-V1)
+
+- **SCNet (P1-2, C4):** Studie `output_audio/mushra/thresholds_scnet_c4_fair` —
+  3 Trials + 1 Fangfrage aus den vorhandenen A/B-Artefakten
+  (`output/scnet_ab_2026-10-06_fair/`). Manifest
+  `docs/reports/current/2026-10-07_hoerprobe_scnet_c4.json`.
+- **HR-V1 (W-1):** Studie `output_audio/mushra/thresholds_wohlklang_w1_hrv1` —
+  8 Fenster-Trials + 2 Fangfragen auf 4 Ausschnitten der Testkünstlerin
+  (48 kHz, außerhalb der Deckel-Fenster **bit-identisch** verifiziert).
+- **Neu: `docs/reports/current/2026-10-07_hoerprobe_anleitung.md`** — die
+  Schritt-für-Schritt-Anleitung (Vorbereitung, Startbefehle, Hörregeln,
+  Auswertung, Verdikt-Tabelle, Grenzen).
+
+### Befund D-K3-6: HR-V1 wirkt auf Stereo **nicht** (nominal aktiv, faktisch wirkungslos)
+
+**Gemessen, nicht vermutet** (Produktionshelfer `apply_hr_v1_additive`, 48 kHz
+2ch, 60-s-Ausschnitt):
+
+| Eingang | Ergebnis |
+| --- | --- |
+| Stereo (Regelfall) | `applied=False` — die zwei Ausgabedateien sind **bit-identisch** (max&#124;Δ&#124; = 0,000000) |
+| Mono | `applied=True`, 66 Bänder freigegeben |
+
+Ursache exakt lokalisiert: `backend/core/dsp/additive_synthesis_gate.py:181`
+(`cand_cn[ch]` mit `ch = 1` auf einer Achse der Größe 1) — das Plugin
+synthetisiert **mono** und reicht den Kandidaten gegen die **Stereo**-Baseline.
+Der Docstring behauptet „Layout-agnostisch (wie das Gate)“ — **beides ist unwahr**.
+Eine kanalkorrekte Anrufung funktioniert (55/47/33/22 Bänder je Ausschnitt).
+
+**Folge:** HR-V1 ist seit dem Deckel-Commit (2026-10-06) für reale Stereomusik
+wirkungslos; der Budget-Nachweis (1,04× RT) bleibt gültig, der **Wirkungsnachweis
+fehlte**. Registriert als **D-K3-6**; die W-1-Zeile des Wohlklang-Vertrags ist auf
+den Befund gezogen. Die Ursachenbehebung **aktiviert** eine hörbare Änderung und
+wartet daher auf die C4-Hörprobe (Entscheidung des Maintainers).
+
+**Tests:** `tests/unit/test_mushra_harness.py` um **11 Fälle** erweitert
+(Player-Vertragstreue der gebauten Studie, Seed-Determinismus, Präferenz ohne
+Defektseite, Fangfrage je Aufgabe, fail-closed bei Länge/Fehlen, Level-Match,
+Mindestzahl-Gate, Fangfragen-Ausschluss, Präferenz-Verdikt über/unter Zufall,
+klarer Abbruch) — Datei 21 grün, mit `test_hoerpanel_player.py` 18 grün.
+Vier **vorbestehende** MyPy-Befunde der berührten Datei mitbehoben (annotationen,
+kein Verhalten geändert).
 
 ### §PERF-R14 — Wahrheits-Korrektur der Per-Phasen-Attribution + Kollektions-Fix
 

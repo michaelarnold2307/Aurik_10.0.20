@@ -96,6 +96,11 @@ def session_payload(study: Study, listener: str, store: AnswerStore) -> dict:
         "total": len(order),
         "answered": len(answered),
         "build": str(study.meta.get("build", "")),
+        # Aufgabenart (Wohlklang-Vertrag, Beleg 4): "defect" = Defekt-Schwelle,
+        # "preference" = blindes A/B „welches klingt besser?“. Die Lösung
+        # (defective_interval) bleibt in trial_key.json und geht NIE zum Client.
+        "task": str(study.meta.get("task", "defect")),
+        "question": str(study.meta.get("question", "")),
     }
 
 
@@ -296,7 +301,8 @@ PAGE = """<!doctype html>
       <label><input type="checkbox" id="phones"> Ich trage Kopfhörer und bin in ruhiger Umgebung</label>
     </div>
     <button class="choose" id="btnStart" disabled>Start</button>
-    <div class="hint">Sie hören je Runde zwei Ausschnitte (A und B). In genau einem ist ein Defekt versteckt — klicken Sie, in welchem Sie ihn hören. Es gibt kein Richtig oder Falsch im Tonfall, nur Ihr Gehör.</div>
+    <div class="hint" id="startHint">Sie hören je Runde zwei Ausschnitte (A und B). In genau einem ist ein Defekt versteckt — klicken Sie, in welchem Sie ihn hören. Es gibt kein Richtig oder Falsch im Tonfall, nur Ihr Gehör.</div>
+    <div class="hint" id="startQuestion" style="display:none"></div>
   </div>
 
   <div class="card" id="trial" style="display:none">
@@ -310,7 +316,7 @@ PAGE = """<!doctype html>
       <div class="iv"><button class="choose" id="pickA">Defekt ist in A</button></div>
       <div class="iv"><button class="choose" id="pickB">Defekt ist in B</button></div>
     </div>
-    <div class="hint">Tastatur: <b>A</b>/<b>B</b> = abspielen, <b>1</b>/<b>2</b> = wählen. Beide Ausschnitte dürfen beliebig oft wiederholt werden.</div>
+    <div class="hint" id="trialHint">Tastatur: <b>A</b>/<b>B</b> = abspielen, <b>1</b>/<b>2</b> = wählen. Beide Ausschnitte dürfen beliebig oft wiederholt werden.</div>
     <div class="warn" id="listenHint" style="display:none">Bitte hören Sie sich beide Ausschnitte an, bevor Sie wählen.</div>
   </div>
 
@@ -366,6 +372,19 @@ PAGE = """<!doctype html>
       .then(function (r) { return r.json(); })
       .then(function (s) {
         order = s.order; total = s.answered || 0;
+        if (s.task === "preference") {
+          $("pickA").textContent = "A klingt besser";
+          $("pickB").textContent = "B klingt besser";
+          $("startHint").textContent = "Sie hören je Runde zwei Ausschnitte (A und B) desselben Musikabschnitts. " +
+            "Klicken Sie den, der Ihnen natürlicher bzw. angenehmer erscheint. Verlassen Sie sich nur auf Ihr Gehör.";
+          if (s.question) {
+            $("startQuestion").textContent = "Ihre Aufgabe: " + s.question;
+            $("startQuestion").style.display = "block";
+          }
+        } else if (s.question) {
+          $("startQuestion").textContent = "Ihre Aufgabe: " + s.question;
+          $("startQuestion").style.display = "block";
+        }
         if (!order.length) {
           $("start").style.display = "none";
           $("done").style.display = "block";
