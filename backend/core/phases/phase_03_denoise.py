@@ -149,7 +149,11 @@ class DenoisePhase(PhaseInterface):
     """
 
     # Material-adaptive Parameters (Professional-tuned)
-    MATERIAL_PARAMS = {
+    # Typ-Angabe seit 2026-10-07: ohne sie leitete mypy für die verschachtelten
+    # Werte `object` ab, und der Zugriff `params.get("bands", {}).items()` war
+    # nur mit einem `type: ignore` übersetzbar (der bei der §V8-Korrektur
+    # entfiel und den Fehler sichtbar machte).
+    MATERIAL_PARAMS: dict[str, dict[str, Any]] = {
         "tape": {
             "strength": 0.85,  # Aggressive (tape hiss)
             "bands": {
@@ -491,7 +495,16 @@ class DenoisePhase(PhaseInterface):
             from backend.core.adaptive_parameter_infrastructure import derive_noise_floor
 
             _nf = derive_noise_floor(audio, sample_rate)
-            _bands_adaptive = dict(params.get("bands", {}))  # type: ignore[call-overload]
+            # §V8/§G1 (copilot-instructions.md) Song-Isolation: TIEFE Kopie der
+            # Band-Dicts. Eine flache Kopie (dict(params["bands"])) teilt die
+            # inneren Dicts mit der KLASSENKONSTANTE MATERIAL_PARAMS; die
+            # adaptiven Skalierungen unten schrieben dann dauerhaft in die
+            # Konstante (Produktionsbefund 2026-10-07: vinyl 0,40/0,60/0,70 →
+            # 0,15/0,19/0,27 nach einem Song, tape 0,30/0,70/0,90 →
+            # 0,11/0,22/0,35) — jeder Folgesong im selben Prozess wurde mit
+            # gedrosselter Reduktion entrauscht, und die Werte kompoundierten
+            # über die Songs hinweg.
+            _bands_adaptive = {_bn: dict(_bv) for _bn, _bv in (params.get("bands", {}) or {}).items()}
             for _bname, _bfactors in _nf.get("band_reduction_factors", {}).items():
                 if _bname in _bands_adaptive:
                     # Adaptive Skalierung: mehr Reduktion wo Noise-Floor nah am Signal

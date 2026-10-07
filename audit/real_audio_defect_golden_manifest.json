@@ -113,17 +113,12 @@
     },
     {
       "case_id": "real_tape_cassette_1980s_wow",
-      "description": "Cassette fixture with wow/flutter and tape noise.",
+      "description": "Cassette fixture with wow and tape noise. KEINE flutter-Erwartung: unabhaengige FM-Messung 2026-10-07 am Fixture (44,1 kHz, dominanter Teilton 301 Hz) ergab die Modulation bei 1,0/0,75/1,5 Hz mit 24/23,7/21,4 Cent — also WOW — und keinen 4-8-Hz-Anteil; der kohaerente Subband-Kanal des Flutter-Detektors misst coh 0,25/amp 0,0675 Cent, also WENIGER als ein sauberer Traeger (coh 0,36/amp 0,47, Kalibrierung 2026-09-27). Der Generator des Repos (scripts/generate_corpus.py::_add_wow_flutter) erzeugt ebenfalls nur 0,35-0,7 Hz. Die fruehere Erwartung \"flutter min_severity 0,5\" war damit eine unbelegte Aussage ueber das Material (D-K3-26 im SOTA-Defizit-Register).",
       "expected_defects": [
         {
           "defect": "wow",
           "min_confidence": 0.75,
           "min_severity": 0.8
-        },
-        {
-          "defect": "flutter",
-          "min_confidence": 0.45,
-          "min_severity": 0.5
         },
         {
           "defect": "high_freq_noise",

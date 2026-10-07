@@ -1,4 +1,58 @@
-# Changelog — Aurik 10.11.0
+# Changelog — Aurik 10.11.1
+
+## 10.11.1 (2026-10-07)
+
+### Drei rote Tests geklärt: zwei echte Ursachen, eine unbelegte Erwartung
+
+**Ausgangspunkt.** Ein Lauf über die 197 phase-/defekt-nahen Unit-Testdateien
+meldete nach dem vorigen Commit noch **3 rote Tests**. Alle drei sind am Code
+gemessen worden; keine Schwelle wurde „passend gemacht".
+
+- **Motor-Detektor meldete eine reine Bassdrohne mit severity 1,0.** Commit
+  `2d1e28a7` hatte die Anti-Falschpositiv-Guards für „kanonische
+  Motor-Grundfrequenzen" (f0 ∈ {80, 100, 120, …}) deaktiviert, um einen
+  Motorbrumm-Fall im Evidenz-Harness zu retten. Damit lief jeder
+  100-Hz-Harmonischenkamm auf 1,0 — eine musikalische Bassdrohne hätte danach in
+  phase_02/phase_05 Kerbfilter gegen ihren eigenen Grundton bekommen (§V1/§G3).
+  Die namensbasierte Ausnahme ist durch ein physikalisches Kriterium ersetzt:
+  `low_band_share = E(80–400 Hz) / E(gesamt)`. Der Musik-Guard greift nur, wenn
+  der Kamm das Signal selbst trägt (Drohne, gemessen 0,987), nicht wenn er ein
+  Zusatz auf Musik ist (gemessen 0,035 / 0,046). Musik-Kamm 1,000 → 0,250
+  (Test grün), `vinyl_motor` 0,725 und `vinyl_motor_dense` 0,852 bleiben
+  detektiert (Harness grün).
+- **§V8: Phase 03 mutierte ihre eigene Klassenkonstante.**
+  `_bands_adaptive = dict(params["bands"])` war nur eine flache Kopie — die
+  inneren Band-Dicts blieben die Objekte von `MATERIAL_PARAMS`, und die
+  signal-adaptive Reduktion schrieb dauerhaft hinein (vinyl 0,40/0,60/0,70 →
+  0,15/0,19/0,27; tape 0,30/0,70/0,90 → 0,11/0,22/0,35; shellac 0,15/0,35/0,45 →
+  0,06/0,11/0,18) und kompoundierte über die Songs. Der erste Song einer Sitzung
+  wurde damit anders entrauscht als jeder Folgesong — Verstoß gegen
+  §V8/§G1 (copilot-instructions.md) und §G5 (copilot-instructions.md). Fix:
+  tiefe Kopie je Band; neuer Regressionstest über alle Materialien.
+- **Unbelegte Flutter-Erwartung im Real-Audio-Golden-Manifest.** Das
+  Cassetten-Fixture (`cassette_1980s_wow`) wird seit jeher auf `flutter
+  min_severity 0,5` geprüft. Unabhängige FM-Messung am Fixture: die Modulation
+  liegt bei 1,0/0,75/1,5 Hz mit 23,9/23,8/21,4 Cent (Wow), der kohärente
+  Subband-Kanal misst coh 0,25 / amp 0,0675 Cent — weniger als ein sauberer
+  Träger derselben Kalibrierung (coh 0,36 / amp 0,47). Das Material enthält
+  keinen 4–8-Hz-Flutter; der Repo-Generator erzeugt ebenfalls nur 0,35–0,7 Hz.
+  Die Erwartung ist entfernt, die Messung in der Case-Beschreibung dokumentiert;
+  der Gate-Test läuft wieder (18/18 Erwartungen).
+
+**Offen und benannt** (Register D-K3-25…D-K3-29): die Ausgabe von Phase 03 hängt
+davon ab, welche ML-Plugins im Prozess geladen sind (drei gemessene Werte,
+§G5-Frage, D-K3-26); `_detect_flutter_spectral_sidebands` meldet 1,0 auf
+sauberem Material (Allesmelder, D-K3-27); es gibt kein Fixture mit belegtem
+Flutter zur Detektor-Kalibrierung (D-K3-28). Die frühere Behauptung der
+Testdatei („bit-identisch, corr = 1,00000") war unbelegt — Commit `ff5dbf21`
+hatte den Fehlschlag schon am 2026-10-06 mit zurückgesetzter `phase_03`
+identisch gemessen (0,96606).
+
+**Nachweise.** `tests/unit/test_new_defect_types_12.py` 89 grün,
+`tests/unit/test_phase_03_denoise.py` 7 grün (1 neuer §V8-Regressionstest),
+`tests/unit/test_real_audio_defect_golden_gate.py` grün,
+`scripts/defect_coverage_check.py` OK, SOTA-Defizit-Register 45 Einträge ohne
+Verstoß.
 
 ## 10.11.0 (2026-10-07)
 

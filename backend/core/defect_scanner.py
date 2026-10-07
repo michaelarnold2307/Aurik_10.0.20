@@ -5191,6 +5191,14 @@ class DefectScanner:
         _peak_mod = float(np.max(fft_c[flutter_mask])) if flutter_mask.any() else 0.0
         _coherence = _peak_mod / (flutter_power + 1e-12)
         if _coherence < 0.25:
+            logger.debug(
+                "FLUTTER-Gate: Modulations-Kohaerenz %.3f < 0,25 (tonal=%s, mod_depth=%.2e, "
+                "ratio=%.5f) → Subband-Kanal",
+                _coherence,
+                _tonal,
+                float(np.std(centroid_norm)),
+                flutter_ratio,
+            )
             # §7.4c-L3 (2026-09-27): Kohärenter Subband-IF-Kanal — die
             # Centroid-Reihe ist auf polyphonen Trägern von Notenwechseln/
             # Perkussion dominiert (Befund: 6-Hz-FM ±0,2 % → sev 0,000 trotz
@@ -5230,6 +5238,12 @@ class DefectScanner:
         # im Flutter-Band). Ohne Traeger-Modulationstiefe kein Flutter.
         _mod_depth = float(np.std(centroid_norm))
         if _mod_depth < 1e-4:
+            logger.debug(
+                "FLUTTER-Gate: Traeger-Modulationstiefe %.2e < 1e-4 (tonal=%s, coh=%.3f) → severity 0,0",
+                _mod_depth,
+                _tonal,
+                _coherence,
+            )
             return DefectScore(DefectType.FLUTTER, 0.0, 0.9)
 
         # --- Sub-band analysis: identify dominant flutter source ---
@@ -5292,6 +5306,17 @@ class DefectScanner:
                     if t1 > t0:
                         locations.append((t0, t1))
 
+        logger.debug(
+            "FLUTTER-Ergebnis: ratio=%.5f periodicity=%.3f selectivity=%.3f mod_depth=%.2e "
+            "coh=%.3f tonal=%s → severity=%.3f",
+            flutter_ratio,
+            periodicity,
+            selectivity,
+            _mod_depth,
+            _coherence,
+            _tonal,
+            severity,
+        )
         return DefectScore(
             defect_type=DefectType.FLUTTER,
             severity=severity,
@@ -10470,7 +10495,6 @@ class DefectScanner:
             freqs = np.fft.rfftfreq(n_fft, 1.0 / sr)
             spec = np.abs(np.fft.rfft(audio[:n_fft])) ** 2
             spec_db = 10.0 * np.log10(spec + 1e-20)
-            float(np.percentile(spec_db, 20))
             freq_res = float(freqs[1] - freqs[0]) if len(freqs) > 1 else 1.0
 
             # Canonical motor-related harmonics in 80-300 Hz.
@@ -10506,6 +10530,21 @@ class DefectScanner:
             harmonic_series_energy_ratio = 0.0
             low_mask = (freqs >= 80.0) & (freqs <= 400.0)
             low_total = float(np.sum(spec[low_mask]) + 1e-20)
+            # Der Kamm-Guard darf nur greifen, wenn der Kamm das SIGNAL selbst
+            # traegt (Drohne/synthetischer Ton). Ein Motorbrumm AUF Musik ist ein
+            # tieffrequenter Zusatz - dort ist der Kamm nur ein Bruchteil der
+            # Gesamtenergie und die Detektion bleibt unangetastet.
+            # Messbasis 2026-10-07 (48 kHz, 8192-FFT, VINYL):
+            #   reiner Musik-Kamm 100/200/300/400 Hz .... 0,987 Anteil
+            #   Brumm auf Musik (-16 dB), 100/200/300 Hz .. 0,035
+            #   80/160/240/300-Hz-Variante ................. 0,046
+            # Die frueheren Ausnahmen fuer „kanonische Motor-Grundfrequenzen"
+            # (f0 in motor_freqs, Commit 2d1e28a7) hoben den Guard fuer JEDEN
+            # 100-Hz-Kamm aus - eine reine Bassdrohne lief damit auf severity 1,0
+            # (Falschpositiv; §V7 (copilot-instructions.md): Ursache statt Symptom).
+            _total_spec_energy = float(np.sum(spec) + 1e-20)
+            low_band_share = float(np.clip(low_total / _total_spec_energy, 0.0, 1.0))
+            ladder_is_signal = low_band_share >= 0.5
             f0_search_mask = (freqs >= 80.0) & (freqs <= 180.0)
             if np.any(f0_search_mask) and low_total > 0.0:
                 f0_idx_local = int(np.argmax(spec[f0_search_mask]))
@@ -10521,12 +10560,7 @@ class DefectScanner:
                     hi = min(len(spec), h_idx + 2)
                     harmonic_energy += float(np.max(spec[lo:hi]))
                 harmonic_series_energy_ratio = float(np.clip(harmonic_energy / low_total, 0.0, 1.0))
-                # Motor-Stoerspektren SIND per Definition ein harmonischer Kamm
-                # einer tieffrequenten Grundwelle - der Musik-Guard darf kanonische
-                # Motor-Grundfrequenzen (80-300 Hz) nicht als Bass deuten
-                # (Falschnegativ: 100/200/300-Hz-Motorbrumm wurde auf 0,18 gedrueckt).
-                f0_is_motor = any(abs(f0 - mf) <= 1.5 * freq_res for mf in motor_freqs)
-                if harmonic_series_energy_ratio >= 0.60 and not f0_is_motor:
+                if harmonic_series_energy_ratio >= 0.60 and ladder_is_signal:
                     raw_sev *= 0.25
 
             # Anti-false-positive guard: musical bass harmonics (e.g. 100/200/300 Hz)
@@ -10534,21 +10568,18 @@ class DefectScanner:
             # ladder, attenuate motor severity heavily.
             harmonic_fit_ratio = 0.0
             peak_freqs = [f for f, _ in motor_peaks]
-            fit_f0_is_motor = False
             for f0 in peak_freqs:
                 if not 70.0 <= f0 <= 180.0:
                     continue
-                if any(abs(f0 - mf) <= 1.5 * freq_res for mf in motor_freqs):
-                    fit_f0_is_motor = True
                 matched = 0
                 for fpeak in peak_freqs:
                     k = max(1, int(round(fpeak / f0)))
                     if abs(fpeak - k * f0) <= 6.0:
                         matched += 1
                 harmonic_fit_ratio = max(harmonic_fit_ratio, matched / max(1, len(peak_freqs)))
-            # Gleicher Grundsatz wie oben: kanonische Motor-Grundfrequenzen sind
-            # Signatur, kein Musik-Kamm.
-            if harmonic_fit_ratio >= 0.75 and len(peak_freqs) >= 4 and not fit_f0_is_motor:
+            # Gleicher Grundsatz wie oben: ein Kamm auf Musik erklaert das Signal
+            # nicht - der Musik-Guard gilt nur, wenn der Kamm das Signal traegt.
+            if harmonic_fit_ratio >= 0.75 and len(peak_freqs) >= 4 and ladder_is_signal:
                 raw_sev *= 0.35
 
             threshold = self.thresholds.get(DefectType.MOTOR_INTERFERENCE, 0.5)
@@ -10566,6 +10597,8 @@ class DefectScanner:
                     "mean_prominence_db": round(mean_prominence, 2),
                     "harmonic_fit_ratio": round(harmonic_fit_ratio, 3),
                     "harmonic_series_energy_ratio": round(harmonic_series_energy_ratio, 3),
+                    "low_band_share": round(low_band_share, 4),
+                    "ladder_is_signal": ladder_is_signal,
                 },
             )
         except Exception:
