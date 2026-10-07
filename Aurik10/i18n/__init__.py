@@ -180,14 +180,14 @@ _TRANSLATIONS: dict[str, dict[str, str]] = {
         "status.completed_failed_summary": "⚠ {failed} Dateien konnten nicht vollständig restauriert werden. Aurik hat getan, was physikalisch möglich war.",
         "status.loading_file": "📂  Wird geladen: {file} …",
         "status.invalid_file": "⚠️ Ungültige Datei: {file}",
-        "status.load_failed_with_reason": "⚠️ Datei konnte nicht geladen werden: {file}\nUrsache: {error}\n→ Prüfen Sie, ob die Datei beschädigt ist oder ein unterstütztes Format hat (WAV, FLAC, MP3, OGG, AIFF, M4A).",
+        "status.load_failed_with_reason": "⚠️ Datei konnte nicht geladen werden: {file}\nUrsache: {error}\n→ Prüfe, ob die Datei beschädigt ist oder ein unterstütztes Format hat (WAV, FLAC, MP3, OGG, AIFF, M4A).",
         "status.import_done": "✅  Import abgeschlossen",
         "status.defect_scan_done": "✅  Schadensanalyse abgeschlossen",
         "status.load_error_short": "⚠️ Ladefehler: {error}",
         "status.loaded_and_analyzing": "✅ Geladen: {file}  –  🔍 Schäden werden analysiert … Buttons erscheinen gleich.",
         "status.unknown_file": "Datei unbekannt",
         "status.unknown_error": "Unbekannter Fehler",
-        "status.processing_error_detail": "❌  Fehler bei {file}:\nUrsache: {cause}\n→ Prüfen Sie das Protokoll oder versuchen Sie eine andere Datei.",
+        "status.processing_error_detail": "❌  Fehler bei {file}:\nUrsache: {cause}\n→ Prüfe das Protokoll oder versuche es mit einer anderen Datei.",
         "status.processing_error_short": "❌  Verarbeitungsfehler – {file}",
         "status.analysis_done_prompt": "✅ Die Analyse ist abgeschlossen. Aurik kennt jetzt jeden Defekt beim Namen und hat einen maßgeschneiderten Plan für {file} erstellt.",
         "status.analysis_done_with_recommendation": "{file} — Analyse abgeschlossen. Empfehlung: {mode} · Modus wählen und starten.",
@@ -243,7 +243,7 @@ _TRANSLATIONS: dict[str, dict[str, str]] = {
         "ui.settings_mode_studio": "🎯  Studio 2026 — modern & kraftvoll",
         "ui.defects_detected_title": "erkannte Schäden:",
         "ui.export_dialog_title": "💾 Speicher-Einstellungen",
-        "ui.export_dialog_intro": "<b>{count} Datei(en) werden gespeichert.</b><br><small>Wählen Sie Format und Qualität:</small>",
+        "ui.export_dialog_intro": "<b>{count} Datei(en) werden gespeichert.</b><br><small>Wähle Format und Qualität:</small>",
         "ui.export_normalize": "Lautstärke optimieren (verhindert Verzerrungen beim Abspielen)",
         "ui.export_choose_dir": "Zielordner für Export wählen",
         "ui.open_audio_file": "Audio-Datei öffnen",
@@ -267,7 +267,7 @@ _TRANSLATIONS: dict[str, dict[str, str]] = {
         "ui.export_cfg_cancel": "Abbrechen",
         "ui.export_cfg_continue": "✅  Los geht's!",
         "dialog.export_done_body": "✅ {exported} Datei(en) als {fmt} nach\n{output_dir}\nexportiert.",
-        "dialog.export_done_errors": "⚠️ {count} Datei(en) konnten nicht exportiert werden:\nUrsache: Siehe Details unten. Prüfen Sie den Ausgabeordner und den verfügbaren Speicherplatz.",
+        "dialog.export_done_errors": "⚠️ {count} Datei(en) konnten nicht exportiert werden:\nUrsache: Siehe Details unten. Prüfe den Ausgabeordner und den verfügbaren Speicherplatz.",
         "ui.export_cfg_choose_storage": "Speicherort wählen",
         "ui.export_cfg_output": "➡️  Ausgabedatei: {path}",
         "ui.waveform_loading_title": "📂  Datei wird geladen …",
@@ -309,7 +309,7 @@ _TRANSLATIONS: dict[str, dict[str, str]] = {
         "legacy.main.waveform_load_error": "Fehler beim Laden der Wellenform:\n{error}",
         "legacy.main.already_processing": "Es wird bereits eine Datei verarbeitet!",
         "legacy.main.no_selection_title": "Keine Auswahl",
-        "legacy.main.no_selection_body": "Bitte wählen Sie eine Datei zur Verarbeitung aus",
+        "legacy.main.no_selection_body": "Bitte wähle zuerst eine Datei aus",
         "legacy.main.save_processed_audio": "Verarbeitetes Audio speichern",
         "legacy.main.wav_filter": "WAV-Dateien (*.wav);;Alle Dateien (*)",
         "legacy.main.no_files_for_queue": "Keine Dateien zum Hinzufügen ausgewählt.",
@@ -350,7 +350,7 @@ _TRANSLATIONS: dict[str, dict[str, str]] = {
         "legacy.mode.archive": "Archiv (Maximale Bewahrung)",
         "legacy.mode.mastering": "Mastering (Subtile Verbesserung)",
         "legacy.audio.title": "Audio-Vorschau",
-        "legacy.audio.load_to_preview": "Laden Sie eine Audiodatei für die Vorschau",
+        "legacy.audio.load_to_preview": "Lade eine Audiodatei für die Vorschau",
         "legacy.audio.mode_label": "Modus:",
         "legacy.audio.mode_before": "Vorher (Original)",
         "legacy.audio.mode_after": "Nachher (Verarbeitet)",
@@ -425,22 +425,22 @@ _TRANSLATIONS: dict[str, dict[str, str]] = {
         "legacy.waveform.waveform_file": "Wellenform: {file}",
         # Dialoge
         "dialog.no_file_title": "❌ Keine Datei",
-        "dialog.no_file_body": "Bitte laden Sie zuerst eine Audio-Datei mit dem Button oben!",
+        "dialog.no_file_body": "Bitte lade zuerst eine Audio-Datei über den Button oben!",
         "dialog.processing_error_title": "Verarbeitungsfehler",
-        "dialog.processing_error_body": "Die Verarbeitung konnte nicht gestartet werden:\n\n{error}\n\nBitte versuchen Sie es erneut oder laden Sie eine andere Datei.",
+        "dialog.processing_error_body": "Die Verarbeitung konnte nicht gestartet werden:\n\n{error}\n\nBitte versuche es erneut oder lade eine andere Datei.",
         "dialog.invalid_file_title": "Datei ungültig",
         "dialog.invalid_file_body": "Diese Datei kann nicht geladen werden:\n\n{error}",
         "dialog.import_failed_title": "Import fehlgeschlagen",
         "dialog.import_failed_body": "Die Datei »{file}« konnte nicht geladen werden.\n\nUnterstützte Formate: WAV, FLAC, OGG, AIFF, MP3, M4A, WMA, AAC\n\nDetails: {error}",
         "dialog.player_title": "Player",
         "dialog.about_title": "Über Aurik 10",
-        "dialog.player_body": "Die Audiowiedergabe ist auf diesem System nicht verfügbar.\n\nBitte starten Sie Aurik neu oder wenden Sie sich an den Support.",
+        "dialog.player_body": "Die Audiowiedergabe ist auf diesem System nicht verfügbar.\n\nBitte starte Aurik neu oder wende dich an den Support.",
         "dialog.album_import_title": "Album-Import",
         "dialog.album_import_no_files": "Im Ordner '{folder}' wurden keine Audiodateien gefunden.\nUnterstützt: wav, mp3, flac, ogg, aiff, m4a, wma",
         "dialog.no_files_title": "Keine Dateien",
-        "dialog.no_files_body": "Bitte fügen Sie zuerst Dateien zur Warteschlange hinzu.",
+        "dialog.no_files_body": "Bitte füge zuerst Dateien zur Warteschlange hinzu.",
         "dialog.processing_running_title": "Verarbeitung läuft",
-        "dialog.processing_running_body": "Aurik restauriert gerade eine Audiodatei.\nBitte warten Sie, bis der aktuelle Vorgang abgeschlossen ist, bevor Sie einen neuen starten.",
+        "dialog.processing_running_body": "Aurik restauriert gerade eine Audiodatei.\nBitte warte, bis der aktuelle Vorgang abgeschlossen ist, bevor du einen neuen startest.",
         "status_panel.initializing": "Initialisiere …",
         "status_panel.complete": "Restauration abgeschlossen",
         "status_panel.model_zoo_tooltip": "Model-Zoo: {active} verfügbar, {training} im Training, {pending} ausstehend, {other} sonstige Status.",
@@ -476,13 +476,13 @@ _TRANSLATIONS: dict[str, dict[str, str]] = {
         "onboarding.ready.body": "Alles klar! Du kannst jederzeit auf ❓ Hilfe klicken,\nwenn du Fragen hast.\n\nViel Spaß mit deiner Musik! 🎵",
         "onboarding.show_again": "Beim nächsten Start nicht mehr anzeigen",
         "dialog.no_pending_title": "Keine ausstehenden Dateien",
-        "dialog.no_pending_body": "Alle Dateien in der Warteschlange wurden bereits verarbeitet.\n→ Fügen Sie neue Dateien hinzu, um weitere Restaurierungen zu starten.",
+        "dialog.no_pending_body": "Alle Dateien in der Warteschlange wurden bereits verarbeitet.\n→ Füge neue Dateien hinzu, um weitere Restaurierungen zu starten.",
         "dialog.low_ram_title": "Zu wenig Arbeitsspeicher",
-        "dialog.low_ram_body": "Es steht nur wenig freier Arbeitsspeicher ({avail} GB) zur Verfügung.\n\nAurik benötigt mindestens 6 GB für die Restaurierung.\n\nBitte schließen Sie andere Programme (Browser, Bildbearbeitung …) und versuchen Sie es erneut.",
+        "dialog.low_ram_body": "Es steht nur wenig freier Arbeitsspeicher ({avail} GB) zur Verfügung.\n\nAurik benötigt mindestens 6 GB für die Restaurierung.\n\nBitte schließe andere Programme (Browser, Bildbearbeitung …) und versuche es erneut.",
         "dialog.timeout_title": "Zeitüberschreitung",
-        "dialog.timeout_body": "Die Verarbeitung hat das Zeitlimit überschritten und wurde abgebrochen.\n\nBitte starten Sie Aurik neu und versuchen Sie es erneut.",
+        "dialog.timeout_body": "Die Verarbeitung hat das Zeitlimit überschritten und wurde abgebrochen.\n\nBitte starte Aurik neu und versuche es erneut.",
         "dialog.queue_busy_title": "Verarbeitung läuft",
-        "dialog.queue_busy_body": "Die Warteschlange wird gerade verarbeitet und kann jetzt nicht geleert werden.\n→ Warten Sie bis zur Fertigstellung oder brechen Sie die Verarbeitung zuerst ab (Stopp-Button).",
+        "dialog.queue_busy_body": "Die Warteschlange wird gerade verarbeitet und kann jetzt nicht geleert werden.\n→ Warte bis zur Fertigstellung oder brich die Verarbeitung zuerst ab (Stopp-Button).",
         "dialog.no_processed_title": "Keine verarbeiteten Dateien",
         "dialog.no_processed_body": "Es wurden noch keine Dateien verarbeitet.\nBitte zuerst eine Datei restaurieren, dann exportieren.",
         # Zeitbudget-Dialog (§v10.15) — laiengerecht statt "Phasen überspringen"
@@ -561,10 +561,10 @@ _TRANSLATIONS: dict[str, dict[str, str]] = {
         "dialog.start_error_info": (
             "Die Restaurierungs-Funktion ist nicht verf\u00fcgbar.\n\n"
             "Ursache: Ein internes Modul konnte nicht geladen werden.\n\n"
-            "Was Sie jetzt tun k\u00f6nnen:\n"
-            "  \u2022 Starten Sie Aurik neu.\n"
-            "  \u2022 Falls das Problem bleibt: Installieren Sie Aurik erneut.\n"
-            "  \u2022 Wenden Sie sich an den Support, falls das Problem weiterhin auftritt.\n\n"
+            "Was du jetzt tun kannst:\n"
+            "  \u2022 Starte Aurik neu.\n"
+            "  \u2022 Falls das Problem bleibt: Installiere Aurik erneut.\n"
+            "  \u2022 Wende dich an den Support, falls das Problem weiterhin auftritt.\n\n"
             "Die Klang-Analyse und Restaurierung sind bis zum Neustart deaktiviert."
         ),
         # OOM-Recovery-Dialog
@@ -575,7 +575,7 @@ _TRANSLATIONS: dict[str, dict[str, str]] = {
             "Fortschritt: {n_done} von {n_total} Arbeitsschritten abgeschlossen\n"
             "Unterbrochen bei: {fail_phase}\n"
             "Ursache: Nicht gen\u00fcgend Arbeitsspeicher\n\n"
-            "M\u00f6chten Sie die Restaurierung fortsetzen?\n"
+            "M\u00f6chtest du die Restaurierung fortsetzen?\n"
             "Die bisherige Arbeit bleibt erhalten."
         ),
         "dialog.oom_recovery_btn_resume": "Fortsetzen",
@@ -610,11 +610,11 @@ _TRANSLATIONS: dict[str, dict[str, str]] = {
         "material.unknown": "Unbekanntes Material",
         # Fehler
         "error.file_unreadable": "Diese Datei kann nicht geöffnet werden. Möglicherweise ist sie beschädigt oder das Format wird nicht unterstützt.",
-        "error.export_failed": "Die Datei konnte nicht gespeichert werden. Bitte prüfen Sie, ob genügend Speicherplatz vorhanden ist.",
+        "error.export_failed": "Die Datei konnte nicht gespeichert werden. Bitte prüfe, ob genügend Speicherplatz vorhanden ist.",
         "error.cause_audio_loader_none": "Audio-Lader hat keine Daten zurückgegeben.",
         "error.cause_audio_loader_error": "Audio-Lader lieferte einen internen Fehler.",
-        "error.cause_bridge_symbol_unavailable": "Ein internes Modul konnte nicht geladen werden. Bitte starten Sie Aurik neu.",
-        "error.cause_audio_loader_missing": "Die Audio-Wiedergabe ist nicht verfügbar. Bitte starten Sie Aurik neu.",
+        "error.cause_bridge_symbol_unavailable": "Ein internes Modul konnte nicht geladen werden. Bitte starte Aurik neu.",
+        "error.cause_audio_loader_missing": "Die Audio-Wiedergabe ist nicht verfügbar. Bitte starte Aurik neu.",
         "error.model_unavailable": "Die KI-Unterstützung ist gerade nicht verfügbar. Die klassische Methode wird genutzt — das Ergebnis ist trotzdem sehr gut.",
         "error.ml_model_unavailable": "Die KI-Unterstützung ist gerade nicht verfügbar. Die klassische Methode wird genutzt — das Ergebnis ist trotzdem sehr gut.",
         "error.ram_low": "Die Datei ist sehr groß. Verarbeitung wird in Abschnitten durchgeführt — das dauert etwas länger.",

@@ -1,4 +1,37 @@
-# Changelog — Aurik 10.9.2
+# Changelog — Aurik 10.9.3
+
+## 10.9.3 (2026-10-07)
+
+### Anrede vereinheitlicht: Aurik duzt durchgängig
+
+**Entscheidung (Nutzer, 2026-10-07):** Es bleibt beim „Du".
+
+**Befund:** Der deutsche Katalog sprach den Nutzer je nach Dialogform
+unterschiedlich an — **22 Schlüssel duzten** (`status.*`, `onboarding.*`:
+„Zieh deine nächste Aufnahme hierher“, „Deine Musik ist bereit für die
+Ewigkeit“), **20 siezten** (`dialog.*`, `error.*`, `legacy.*`: „Bitte laden Sie
+zuerst eine Audio-Datei mit dem Button oben!“, „Prüfen Sie den Ausgabeordner und
+den verfügbaren Speicherplatz.“). Ursache war kein Fehler, sondern eine nie
+explizit getroffene Entscheidung: Fehlertexte entstanden als sachliche
+Amtsprosa, Erzähltexte als persönliche Ansprache.
+
+**Fix:** Alle 20 Schlüssel (**23 Textzeilen**, inklusive der mehrzeiligen
+`dialog.start_error_info` und `dialog.oom_recovery_info`) auf die Du-Form
+gebracht — inhaltlich unverändert, nur die Anrede; Platzhalter, HTML-Auszeichnung
+und Zeilenumbrüche bleiben erhalten. Englisch ist nicht betroffen (dort gibt es
+keine T/V-Unterscheidung). **Nachweis: 0 formale Anrede** im deutschen Katalog
+(685 Schlüssel, gemessen).
+
+**Guard statt Absichtserklärung:** Neuer Test
+`test_german_uses_informal_address_consistently` in `tests/unit/test_i18n.py`
+lässt den Build fallen, sobald ein neuer deutscher Text siezt — dieselbe Klasse
+wie `aurik-layout-invariant` (D-K3-7) und Prüfung 4 des Frontend-Linters
+(D-K3-9): die Regel prüft sich selbst, statt auf Sorgfalt zu hoffen.
+
+**Nachweis:** 134 Tests grün (`test_i18n`,
+`test_help_system_errorsimplifier`, `test_frontend_ux_spec_compliance`,
+`test_gui_rest_panels`, `tests/ui/`, `test_restoration_status_panel_i18n`,
+`test_frontend_backend_harmony`).
 
 ## 10.9.2 (2026-10-07)
 

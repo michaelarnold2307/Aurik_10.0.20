@@ -9,6 +9,7 @@ Prüft set_language(), get_language(), t() und Thread-Sicherheit.
 """
 
 
+import re
 import threading
 from typing import Any
 
@@ -211,3 +212,25 @@ class TestTranslationCompleteness:
             for key, value in d.items():
                 assert isinstance(value, str), f"[{lang}][{key}] ist kein String"
                 assert len(value.strip()) > 0, f"[{lang}][{key}] ist leer"
+
+    def test_german_uses_informal_address_consistently(self) -> None:
+        """Anrede-Entscheidung (2026-10-07): Aurik duzt durchgängig.
+
+        Befund davor: 22 Schlüssel duzten (`status.*`, `onboarding.*`), 20 siezten
+        (`dialog.*`, `error.*`, `legacy.*`) — dasselbe Produkt sprach den Nutzer je
+        nach Dialogform unterschiedlich an. Nach der Umstellung ist die formale
+        Anrede im deutschen Katalog **null**; dieser Test hält das fest, damit das
+        Gemisch nicht über neue Texte zurückkehrt (§V7 copilot-instructions.md:
+        Ursache statt Symptom).
+
+        Englisch ist nicht betroffen — dort gibt es keine T/V-Unterscheidung.
+        """
+        import Aurik10.i18n as i18n_module
+
+        translations = getattr(i18n_module, "_TRANSLATIONS", {})
+        de = translations.get("de", {})
+        assert de, "_TRANSLATIONS['de'] muss gefüllt sein"
+
+        formal = re.compile(r"\b(Sie|Ihnen|Ihre|Ihren|Ihrem|Ihrer|Ihr)\b")
+        offenders = [(key, value[:80]) for key, value in de.items() if formal.search(value)]
+        assert not offenders, f"Formale Anrede im deutschen Katalog — Aurik duzt: {offenders}"
