@@ -559,7 +559,14 @@ PHASE_GOAL_EXCLUSIONS: dict[str, set[str]] = {
     "phase_30": {
         "authentizitaet",
         "natuerlichkeit",
-    },  # DC-offset removal: near-DC energy removal shifts spectral fingerprint vs. DC-distorted reference → false P1 regression; §2.55 sync: CIG also has {authentizitaet, natuerlichkeit}
+        # §D-K3-51 (2026-10-07): DC-Offset-Removal ist ein HPF (~24 Hz) — identische
+        # Physik wie phase_05 (Rumble): C1 (~32,7 Hz) wird ~5 dB gedämpft → K-S-Chroma
+        # der tiefsten Oktave verschiebt sich → Key-Label wechselt → false P2
+        # catastrophic regression (Δ=0.8925 Produktionsbefund 2026-10-07; Schwester
+        # des belegten Δ=0.6583 auf phase_05, 2026-05-06). Musikalische Tonart
+        # unverändert; nur die Sub-Bass-Chroma-Verteilung verschiebt sich.
+        "tonal_center",
+    },  # DC-offset removal: near-DC energy removal shifts spectral fingerprint vs. DC-distorted reference → false P1 regression; §2.55 sync: CIG also has {authentizitaet, natuerlichkeit, tonal_center} (§D-K3-51, 2026-10-07)
     "phase_29": {
         "artikulation",
         "authentizitaet",
@@ -4198,6 +4205,11 @@ class PerPhaseMusicalGoalsGate:
         # §DEBUG: Goal-Snapshots für PipelineTrace / aurik-debug — kein Overhead wenn nicht genutzt.
         log_entry.scores_before = dict(scores_before) if scores_before else {}
         log_entry.scores_after = dict(scores_after) if scores_after else {}
+        # §D-K3-51 (2026-10-07): finale Exclude-Menge als Zeuge für Konsumenten —
+        # der §v10.709-Guard im UV3 prüft sonst UNGEFILTERTE Scores (alle 15)
+        # und erzeugt FALSE-Degradationen (§G9 (copilot-instructions.md): eine
+        # Quelle der Exclude-Auflösung).
+        log_entry.metadata["goal_exclusions"] = sorted(_excluded_goals)
 
         _vocal_meta = _measure_vocal_guard_features(
             _extract_sample(

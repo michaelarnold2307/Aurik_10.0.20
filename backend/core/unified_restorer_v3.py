@@ -41354,12 +41354,20 @@ class UnifiedRestorerV3:
                                 }
                                 try:
                                     from backend.core.goal_priority_protocol import (
-                                        check_iteration_abort as _check_abort,
+                                        check_iteration_abort_excluding as _check_abort,
                                     )
 
+                                    # §D-K3-51 (2026-10-07): Exclude-konsistent — die
+                                    # PMGG-Scores sind ungefiltert (alle 15); bewusste
+                                    # Phasen-Ausschlüsse (z. B. tonal_center für Bass-
+                                    # Enhancement/HPF/Synthese) erzeugten sonst FALSE-
+                                    # Degradationen (2026-10-07: phase_23/30/37) und
+                                    # bauten den Zähler zum EMERGENCY-STOP.
+                                    _excl_dq = set((_pmgg_entry.metadata or {}).get("goal_exclusions") or [])
                                     _abort = _check_abort(
                                         _pmgg_scores_before_phase or {},
                                         _pmgg_scores_curr,
+                                        _excl_dq,
                                         goal_weights=get_effective_song_goal_weights(locals().get("kwargs", {})),
                                     )
                                     if _abort.should_abort:
@@ -41368,18 +41376,20 @@ class UnifiedRestorerV3:
                                         )
                                         self._consecutive_quality_degradations = _consecutive_degradations
                                         logger.warning(
-                                            "§v10.709 Quality-Degradation #%d nach %s: %s",
+                                            "§v10.709 Quality-Degradation #%d nach %s: %s (Deltas: %s)",
                                             _consecutive_degradations,
                                             phase_id,
                                             _abort.degraded_goals,
+                                            _abort.degraded_deltas,
                                         )
                                         if _consecutive_degradations >= 3:
                                             logger.error(
                                                 "§v10.709 EMERGENCY-STOP: %d konsekutive "
                                                 "Qualitäts-Degradationen — Pipeline abgebrochen, "
-                                                "Revert auf besten Checkpoint. Betroffene Goals: %s",
+                                                "Revert auf besten Checkpoint. Betroffene Goals: %s — Deltas: %s",
                                                 _consecutive_degradations,
                                                 _abort.degraded_goals,
+                                                _abort.degraded_deltas,
                                             )
                                             # Revert auf letzten guten Checkpoint
                                             _best_cp = getattr(self, "_afg_best_clean_checkpoint", None)

@@ -24,6 +24,7 @@ class IterationAbortResult:
     should_abort: bool
     reason: str
     degraded_goals: list[str] = field(default_factory=list)
+    degraded_deltas: dict[str, float] = field(default_factory=dict)
 
 
 class GoalPriorityProtocol:
@@ -198,6 +199,7 @@ class GoalPriorityProtocol:
     ) -> IterationAbortResult:
         """Prüft ob eine FeedbackChain-Iteration abgebrochen werden soll (kritische Goal-Regression)."""
         degraded: list[str] = []
+        degraded_deltas: dict[str, float] = {}
         for goal, before in scores_before.items():
             after = scores_after.get(goal, before)
             # §2.56: Weight modulates the effective epsilon — important goals abort sooner
@@ -205,9 +207,12 @@ class GoalPriorityProtocol:
             effective_epsilon = self.REGRESSION_EPSILON / max(w, 0.3)
             if before - after > effective_epsilon and self.priority_of(goal) <= self.ABORT_PRIORITY_THRESHOLD:
                 degraded.append(goal)
+                # §D-K3-51 (2026-10-07): Delta als Zeuge — die §v10.709-Logzeile
+                # nennt sonst nur den Goal-Namen, nicht die Größe (§G8 (copilot-instructions.md)).
+                degraded_deltas[goal] = round(float(before - after), 4)
 
         if degraded:
-            return IterationAbortResult(True, "critical goal regression", degraded)
+            return IterationAbortResult(True, "critical goal regression", degraded, degraded_deltas)
         return IterationAbortResult(False, "ok", [])
 
     def priority_of(self, goal: str) -> int:
@@ -277,11 +282,35 @@ def check_iteration_abort(
     return get_goal_priority_protocol().should_abort_iteration(scores_before, scores_after, goal_weights=goal_weights)
 
 
+def check_iteration_abort_excluding(
+    scores_before: dict[str, float],
+    scores_after: dict[str, float],
+    excluded_goals: set[str] | None = None,
+    goal_weights: dict[str, float] | None = None,
+) -> IterationAbortResult:
+    """§D-K3-51 (2026-10-07): Abort-Check auf dem PMGG-Ziel-Raum (Exclude-konsistent).
+
+    Die PMGG liefert die Scores UNGEFILTERT (alle 15 Goals); ihre bewussten
+    Phasen-Ausschlüsse (PHASE_GOAL_EXCLUSIONS — z. B. tonal_center für HPF-,
+    Bass-Enhancement- und Synthese-Phasen nach §2.44/§9.7.11) wirkten daher nie
+    im §v10.709-Degradations-Guard: FALSE-Degradationen (Produktionsbefund
+    2026-10-07: phase_23/30/37) bauten den 3er-Zähler zum EMERGENCY-STOP.
+    Konsumenten übergeben die FINALE Exclude-Menge aus
+    ``PhaseGateLogEntry.metadata["goal_exclusions"]`` (§G9 (copilot-instructions.md):
+    eine Quelle der Exclude-Auflösung).
+    """
+    excl = set(excluded_goals or ())
+    _before = {g: v for g, v in (scores_before or {}).items() if g not in excl}
+    _after = {g: v for g, v in (scores_after or {}).items() if g not in excl}
+    return get_goal_priority_protocol().should_abort_iteration(_before, _after, goal_weights=goal_weights)
+
+
 __all__ = [
     "ConflictResolutionResult",
     "GoalPriorityProtocol",
     "IterationAbortResult",
     "check_iteration_abort",
+    "check_iteration_abort_excluding",
     "get_goal_priority_protocol",
     "resolve_goal_conflict",
 ]

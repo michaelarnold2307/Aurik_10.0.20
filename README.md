@@ -1,6 +1,6 @@
 # 🎵 Aurik 10 — Intelligentes Musik-Restaurierungs- und Rekonstruktionssystem
 
-**Version:** 10.12.11 | **Status:** ✅ Weltspitze-Execution | **Stand:** v10.2.0 — Temporal-Consistency-Guard pro Phase, Phrase-Struktur-Snap, MG-ERB-Masking, Print-Through-Verdrahtung
+**Version:** 10.12.12 | **Status:** ✅ Weltspitze-Execution | **Stand:** v10.2.0 — Temporal-Consistency-Guard pro Phase, Phrase-Struktur-Snap, MG-ERB-Masking, Print-Through-Verdrahtung
 
 > Normativer Ist-Stand: `.github/specs/`, `.github/copilot-instructions.md`, `CHANGELOG.md`, `denker/README.md`.
 

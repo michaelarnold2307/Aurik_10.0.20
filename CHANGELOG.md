@@ -1,4 +1,31 @@
-# Changelog — Aurik 10.12.11
+# Changelog — Aurik 10.12.12
+
+## 10.12.12 (2026-10-07)
+
+### Wurzel-Fixes: Timing-Blindheit, Wirkungs-Invarianten, Exclude-Konsistenz (D-K3-47/50/51/52)
+
+- **D-K3-47 (Reinhör-Witness `pre_echo`):** Die Metrik war TIMING-blind — ein
+  reiner Zeit-Shift +1 ms ergab −11,5 dB („Befund"), ein echtes Pre-Echo keinen
+  (Kontroll-Experiment 2026-10-07). Fix: lokales Kreuzkorrelations-Alignment
+  (±5 ms, nur bei klarer Korrelation) vor der Vor-Fenster-Prüfung; echte
+  Precursor bleiben sichtbar.
+- **D-K3-50 (ConsonantEnhancement):** Die 3-dB-SNR-Invariante war auf der
+  Band-vs-Ausserband-Metrik mathematisch unerreichbar (f=0,10 → 0,22 dB; selbst
+  Vollboost f=1,0 → 2,76 dB bei MAX_BOOST_DB=6). Fix: Wirkungs-Invariante auf
+  den Frikativ-Segmenten (Δ ≈ Ziel ± 0,75 dB); die §2.8-Chain-Zahl bleibt in
+  `phase_43_ml_deesser`.
+- **D-K3-51 (§v10.709-Guard):** Er prüfte UNGEFILTERTE PMGG-Scores — bewusste
+  Phasen-Excludes (`tonal_center` für HPF/Synthese) wirkten nie und bauten den
+  EMERGENCY-Stop-Zähler (Production 2026-10-07: phase_23/24/30/37). Fix:
+  `check_iteration_abort_excluding` + `metadata["goal_exclusions"]`-Zeuge,
+  Deltas im Log (§G8), Map-Lücke phase_30 geschlossen (PMGG+CIG),
+  Sync-Kontrakt-Tests (HPF-/Synthese-Klassen).
+- **D-K3-52 (Gesangs-Gate, Nutzer-Vorgabe):** Der Frikativ-Boost wirkt nur auf
+  bestätigtem GESANG — PANNs-Singing als Zeuge (Phase 19 reicht durch);
+  < 0,15 → Signal bit-identisch, 0,15–0,40 linear skaliert (§III.10-Muster).
+  Aurik ist ein Musik-Restaurierungssystem; Sprache hat untergeordnete Position.
+
+Tests: 81/81 grün (dk344–dk352 + pre_echo/consonant-Bestand), ruff clean.
 
 ## 10.12.11 (2026-10-07)
 

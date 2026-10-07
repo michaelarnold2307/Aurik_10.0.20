@@ -1773,11 +1773,15 @@ class DeEsserPhase(PhaseInterface):
                 )
                 # Kausal-Konditionierung: Defekt-Scores aus kwargs (von UnifiedRestorerV3)
                 _defect_scores: dict = kwargs.get("defect_scores_raw", {})  # type: ignore[no-redef]
+                # §D-K3-52 (2026-10-07): Gesangs-Gate — PANNs-Singing als Zeuge
+                # durchreichen; ohne Gesangs-Bestätigung bleibt der Frikativ-Boost aus.
+                _panns_singing = float(kwargs.get("panns_singing", kwargs.get("panns_singing_confidence", 0.0)) or 0.0)
                 consonant_result = enhance_consonants(
                     deessed_audio,
                     sample_rate,
                     voice_gender=_gender_str,  # type: ignore[arg-type]
                     defect_scores=_defect_scores,
+                    panns_singing=_panns_singing,
                 )
                 if consonant_result.fricative_segments > 0:
                     deessed_audio = consonant_result.audio

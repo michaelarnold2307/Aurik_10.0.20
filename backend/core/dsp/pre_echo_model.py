@@ -25,6 +25,80 @@ _LOCAL_PERC = 10.0  # Baseline = 10. Perzentil des lokalen Fensters (robust ggü
 _FWD_MASK_DB = 18.0  # Forward-Masking (Zwicker & Fastl §7.2): Pre-Energie unter
 # Onset-Pegel − 18 dB ist nicht hörbar → kein Befund
 
+# §D-K3-47 (2026-10-07): Timing-Alignment gegen FALSE-Positive durch reine
+# Ereignis-Verschiebungen (Wow-Korrektur phase_12, Klick-Ersatz-Kanten phase_01).
+_ALIGN_SEARCH_MS = 5.0  # Suchfenster des lokalen Versatzes
+_ALIGN_CTX_MS = 25.0  # Kontextfenster der Kreuzkorrelation
+_ALIGN_MIN_CORR = 0.30  # Peak-Energie ≥ 30 % der Fenster-Energie → klarer Versatz
+
+
+def _local_shift_samples(
+    x_before: np.ndarray,
+    x_after: np.ndarray,
+    sr: int,
+    center_sample: int,
+) -> int:
+    """§D-K3-47 (2026-10-07): Lokaler Zeitversatz (Samples) per Kreuzkorrelation.
+
+    Positiv = das Nach-Signal ist an dieser Stelle um ``shift`` Samples SPÄTER
+    als das Vor-Signal (z. B. nach Zeitkorrektur/Wow-Bearbeitung). Rückgabe 0,
+    wenn kein klarer Versatz messbar ist (konservativ: dann gilt die
+    unalignierte Prüfung). Rein deterministisch (FFT-Korrelation).
+    """
+    half_ctx = max(64, int(_ALIGN_CTX_MS * 1e-3 * sr))
+    lo = max(0, center_sample - half_ctx)
+    hi = min(len(x_before), len(x_after), center_sample + half_ctx)
+    n = hi - lo
+    max_lag = max(1, int(_ALIGN_SEARCH_MS * 1e-3 * sr))
+    if n < 4 * max_lag:
+        return 0
+    a = np.asarray(x_before[lo:hi], dtype=np.float64)
+    b = np.asarray(x_after[lo:hi], dtype=np.float64)
+    fft_len = 1
+    while fft_len < n + max_lag:
+        fft_len <<= 1
+    cc = np.fft.irfft(np.fft.rfft(b, fft_len) * np.conj(np.fft.rfft(a, fft_len)), fft_len)
+    pos = cc[: max_lag + 1]  # lags 0..+max_lag
+    neg = cc[fft_len - max_lag :]  # lags -max_lag..-1
+    p_idx = int(np.argmax(pos))
+    n_idx = int(np.argmax(neg)) - max_lag  # ∈ [-max_lag, -1]
+    peak_pos = float(pos[p_idx])
+    peak_neg = float(neg[n_idx + max_lag])
+    if peak_pos >= peak_neg:
+        lag, peak = p_idx, peak_pos
+    else:
+        lag, peak = n_idx, peak_neg
+    energy = float(np.sum(b * b) + 1e-18)
+    if peak <= _ALIGN_MIN_CORR * energy:
+        return 0  # kein klarer Versatz — keine Alignment-Korrektur
+    return int(lag)
+
+
+def _aligned_delta_pre_energy(
+    x_before: np.ndarray,
+    x_after: np.ndarray,
+    lo: int,
+    hi: int,
+    shift: int,
+) -> float:
+    """§D-K3-47: Mittlere positive Delta-Energie im Vor-Fenster [lo, hi).
+
+    Vergleichsbasis ist das um ``shift`` verschobene VOR-Signal — bei einer
+    reinen Ereignis-Verschiebung geht das Delta gegen 0 (kein Pre-Echo);
+    ein echter Precursor bleibt sichtbar.
+    """
+    if hi <= lo:
+        return 0.0
+    lo2 = lo - shift
+    hi2 = hi - shift
+    a_aligned = np.zeros(hi - lo, dtype=np.float64)
+    s = max(0, lo2)
+    e = min(len(x_before), hi2)
+    if e > s:
+        a_aligned[s - lo2 : e - lo2] = np.asarray(x_before[s:e], dtype=np.float64)
+    b = np.asarray(x_after[lo:hi], dtype=np.float64)
+    return float(np.mean(np.maximum(b - a_aligned, 0.0) ** 2))
+
 
 def pre_echo_ratio_db(x_before: np.ndarray, x_after: np.ndarray, sr: int) -> float:
     """Maximales Pre-Echo-Verhältnis (dB) des Deltas (after − before).
@@ -103,7 +177,17 @@ def pre_echo_ratio_db(x_before: np.ndarray, x_after: np.ndarray, sr: int) -> flo
             continue
         # Forward-Masking-Gate: Nur HINZUGEFÜGTE Vor-Fenster-Energie, die über
         # Onset-Pegel − 18 dB liegt, kann als Pre-Echo hörbar sein.
-        _added_pre_e = float(np.mean(env_d_pos[_pre_lo:_pre_hi] ** 2))
+        # §D-K3-47 (2026-10-07): Timing-Alignment — reine Ereignis-Verschiebungen
+        # (Wow-Korrektur phase_12, Klick-Ersatz-Kanten) verlagern die Attack-
+        # Energie ins Vor-Fenster und wirkten wie ein Precursor. Kontroll-
+        # Experiment: Shift +1 ms → −11,5 dB („Befund"), echtes Echo → kein
+        # Befund — die Metrik war timing-blind. Die Vergleichsbasis wird um den
+        # LOKALEN Versatz korrigiert (nur bei klarer Korrelation, sonst 0).
+        _shift_s = _local_shift_samples(before, after, sr, _of * hop + hop // 2)
+        if _shift_s:
+            _added_pre_e = _aligned_delta_pre_energy(before, after, _pre_lo * hop, _pre_hi * hop, _shift_s)
+        else:
+            _added_pre_e = float(np.mean(env_d_pos[_pre_lo:_pre_hi] ** 2))
         if _added_pre_e < float(env_a[_of] ** 2) * _mask_floor_db:
             continue
         if _added_pre_e < _abs_floor_e:
@@ -130,7 +214,8 @@ def pre_echo_ratio_db(x_before: np.ndarray, x_after: np.ndarray, sr: int) -> flo
         # der hinzugefügten Vor-Fenster-Energie zum Onset: > −12 dB ⇒
         # potenziell hörbares Pre-Echo (Witness-Schwelle), < −18 dB ⇒ durch
         # die Forward-Masking-Gates oben bereits ausgeschlossen.
-        _pre_e = float(np.mean(env_d_pos[_pre_lo:_pre_hi] ** 2))
+        # §D-K3-47: gleiche (ggf. alignierte) Vor-Fenster-Energie wie in den Gates.
+        _pre_e = _added_pre_e
         _onset_e = float(env_a[_of] ** 2)
         ratio_db = 10.0 * np.log10(_pre_e / max(_onset_e, 1e-18))
         worst_db = max(worst_db, ratio_db)

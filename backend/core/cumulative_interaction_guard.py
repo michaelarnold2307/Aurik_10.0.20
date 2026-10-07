@@ -101,7 +101,9 @@ _DEFECT_INFLATED_GOALS: frozenset[str] = frozenset(
 # hard P1/P2 goals (natuerlichkeit, artikulation) as real signals.
 _PHASE_SPECIFIC_DRIFT_EXCLUSIONS: dict[str, frozenset[str]] = {
     # Prefix-based keys (startswith), robust for "phase_30" and "phase_30_dc_offset_removal".
-    "phase_30": frozenset({"authentizitaet", "natuerlichkeit"}),
+    "phase_30": frozenset(
+        {"authentizitaet", "natuerlichkeit", "tonal_center"}
+    ),  # §2.55 sync (D-K3-51, 2026-10-07): DC-Offset-Removal = HPF ~24 Hz — identische Physik wie phase_05 (C1-Absenkung → K-S-Key-Shift → false P2; Δ=0.8925 Produktionsbefund 2026-10-07)
     "phase_05": frozenset(
         {"authentizitaet", "natuerlichkeit", "bass_kraft", "waerme", "tonal_center"}
     ),  # §2.55 sync with PMGG (2026-04-26): HPF intentionally removes sub-bass + low-mid energy → bass_kraft/waerme DSP proxies drop as intended; not a musical regression. tonal_center: §2.55 sync (2026-05-06): HPF at 24 Hz attenuates C1 (~32.7 Hz) → K-S chroma bin for lowest octave shifts → key-label changes up to 4 semitones → false P2 catastrophic regression. Musical key unchanged; only sub-bass chroma distribution shifts (see PMGG phase_05 comment).

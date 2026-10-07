@@ -101,6 +101,9 @@ class ConsonantEnhancementResult:
     causal_factor: float = 0.5
     """Kausal-Konditionierungsfaktor aus Defekt-Scores 0..1."""
 
+    singing_confidence: float = 0.0
+    """PANNs-Singing-Konfidenz (Gesangs-Gate §D-K3-52; < 0,15 → kein Boost)."""
+
 
 # ── ConsonantEnhancement Singleton ──────────────────────────────────────────
 
@@ -123,6 +126,7 @@ def enhance_consonants(
     sr: int,
     voice_gender: str = "unknown",
     defect_scores: dict[str, float] | None = None,
+    panns_singing: float = 0.0,
 ) -> ConsonantEnhancementResult:
     """Convenience-Wrapper: Konsonanten-Enhancement ohne Klassen-Instantiierung.
 
@@ -134,11 +138,15 @@ def enhance_consonants(
         defect_scores: Dict mit Defekt-Schwere-Werten aus DefectScanner
                       (z. B. {"bandwidth_loss": 0.7, "high_freq_noise": 0.4}).
                       Wenn None → kausal neutraler Boost.
+        panns_singing: PANNs-Singing-Konfidenz (0..1) — Gesangs-Gate (§D-K3-52):
+                      Aurik restauriert MUSIK; der Frikativ-Boost wirkt auf
+                      Gesangs-Konsonanten. < 0,15 → unverändert (Sprache hat
+                      untergeordnete Position).
 
     Returns:
         ConsonantEnhancementResult mit verarbeitetem Audio + Metriken.
     """
-    return get_consonant_enhancer().enhance(audio, sr, voice_gender, defect_scores)
+    return get_consonant_enhancer().enhance(audio, sr, voice_gender, defect_scores, panns_singing=panns_singing)
 
 
 class ConsonantEnhancement:
@@ -177,6 +185,7 @@ class ConsonantEnhancement:
         sr: int,
         voice_gender: str = "unknown",
         defect_scores: dict[str, float] | None = None,
+        panns_singing: float = 0.0,
     ) -> ConsonantEnhancementResult:
         """Frikativ-Konsonanten stimmtyp-adaptiv wiederherstellen.
 
@@ -220,17 +229,47 @@ class ConsonantEnhancement:
                 invariant_met=True,
                 voice_gender=voice_gender,
                 causal_factor=causal_factor,
+                singing_confidence=float(np.clip(panns_singing, 0.0, 1.0)),
             )
+
+        # ── Gesangs-Gate (§D-K3-52, 2026-10-07, Nutzer-Vorgabe) ────────── #
+        # Aurik ist ein MUSIK-Restaurierungssystem: Der Frikativ-Boost wirkt auf
+        # GESANGS-Konsonanten; Sprache hat eine untergeordnete Position. PANNs-
+        # Singing ist Zeuge (kein Signalpfad, §III.11 (copilot-instructions.md));
+        # unsichere Präsenz skaliert linear (§III.10-Muster), < 0,15 → bit-identisch.
+        _singing = float(np.clip(panns_singing, 0.0, 1.0))
+        if _singing < 0.15:
+            logger.info(
+                "ConsonantEnhancement: Gesangs-Gate geschlossen (panns_singing=%.2f < 0,15) — "
+                "kein Frikativ-Boost (Sprache hat untergeordnete Position).",
+                _singing,
+            )
+            return ConsonantEnhancementResult(
+                audio=np.clip(audio, -1.0, 1.0),
+                fricative_segments=n_fricative_frames,
+                snr_improvement_db=0.0,
+                boost_applied_db=0.0,
+                invariant_met=True,
+                voice_gender=voice_gender,
+                causal_factor=causal_factor,
+                singing_confidence=_singing,
+            )
+        _singing_scale = float(np.clip((_singing - 0.15) / 0.25, 0.0, 1.0))
 
         # ── Boost-Stärke berechnen ──────────────────────────────────────── #
         target_boost_db = causal_factor * MAX_BOOST_DB  # 0 .. +6 dB
         target_boost_db = float(np.clip(target_boost_db, 0.0, MAX_BOOST_DB))
+        # §D-K3-52: Gesangs-Skalierung (unsichere Präsenz → linear gedämpft).
+        target_boost_db = float(np.clip(target_boost_db * _singing_scale, 0.0, MAX_BOOST_DB))
 
         # Frikativband bestimmen
         f_lo, f_hi = _fricative_band(voice_gender, sr)
 
-        # SNR vor Boost
+        # SNR vor Boost (Transparenz-Wert; die Invariante nutzt die Wirkungsgröße)
         snr_before = _snr_in_band(mono, sr, f_lo, f_hi)
+        # §D-K3-50 (2026-10-07): Band-RMS auf den Frikativ-Segmenten vor dem
+        # Boost — dort wirkt der Boost 1:1 (Wirkungs-Invariante unten).
+        _seg_band_before = _band_rms_on_mask(mono, sr, f_lo, f_hi, sib_mask)
 
         # ── High-Shelf EQ auf Frikativ-Segmenten ───────────────────────── #
         if stereo:
@@ -242,15 +281,26 @@ class ConsonantEnhancement:
         else:
             processed = self._boost_segment(mono, sr, sib_mask, f_lo, f_hi, target_boost_db)
 
-        # ── SNR-Invariante prüfen ───────────────────────────────────────── #
+        # ── Wirkungs-Invariante prüfen (§D-K3-50, 2026-10-07) ──────────── #
+        # Die Boost-Wirkung auf den Segmenten muss den Ziel-Boost erreichen
+        # (±0,75 dB). Die frühere Pseudo-SNR-Forderung (Δ ≥ 3 dB, Band vs.
+        # Ausserband) war physikalisch unerreichbar: bei realem Frikativanteil
+        # f≈0,10 maximal 0,22 dB, selbst bei Vollboost (f=1) nur 2,76 dB
+        # (MAX_BOOST_DB=6, Messung 2026-10-07) — jede Warnung war damit
+        # garantiert (Produktionsbefund 22:12:27). Die echte §2.8-Chain-
+        # Invariante lebt in phase_43_ml_deesser (Chain-SNR, dort korrekt).
+        _invariante_relevant = _seg_band_before > 1e-6 and int(np.sum(sib_mask)) >= int(0.02 * sr)
+        _applied_target_db = target_boost_db
         proc_mono = processed.mean(axis=0) if processed.ndim == 2 else processed
         snr_after = _snr_in_band(proc_mono, sr, f_lo, f_hi)
-        snr_improvement = snr_after - snr_before
-        invariant_met = snr_improvement >= SNR_MIN_IMPROVEMENT_DB
+        boost_effect_db = self._measure_boost_effect_db(proc_mono, sr, f_lo, f_hi, sib_mask, _seg_band_before)
+        snr_improvement = boost_effect_db
+        invariant_met = (not _invariante_relevant) or boost_effect_db >= (_applied_target_db - 0.75)
 
         if not invariant_met:
-            # Fallback: Boost leicht erhöhen bis Invariante erfüllt
-            extra_db = min(SNR_MIN_IMPROVEMENT_DB - snr_improvement + 0.5, 3.0)
+            # Fallback: Boost erhöhen, wenn die Wirkung das Ziel verfehlt
+            extra_db = min(max(_applied_target_db - boost_effect_db, 0.0) + 0.5, 3.0)
+            _applied_target_db = min(target_boost_db + extra_db, MAX_BOOST_DB)
             if stereo:
                 channels_out2 = []
                 for ch in range(audio.shape[0]):
@@ -260,7 +310,7 @@ class ConsonantEnhancement:
                         sib_mask,
                         f_lo,
                         f_hi,
-                        min(target_boost_db + extra_db, MAX_BOOST_DB),
+                        _applied_target_db,
                     )
                     channels_out2.append(ch_proc2)
                 processed = np.stack(channels_out2, axis=0)
@@ -271,18 +321,19 @@ class ConsonantEnhancement:
                     sib_mask,
                     f_lo,
                     f_hi,
-                    min(target_boost_db + extra_db, MAX_BOOST_DB),
+                    _applied_target_db,
                 )
             proc_mono = processed.mean(axis=0) if processed.ndim == 2 else processed
             snr_after = _snr_in_band(proc_mono, sr, f_lo, f_hi)
-            snr_improvement = snr_after - snr_before
-            invariant_met = snr_improvement >= SNR_MIN_IMPROVEMENT_DB
+            boost_effect_db = self._measure_boost_effect_db(proc_mono, sr, f_lo, f_hi, sib_mask, _seg_band_before)
+            snr_improvement = boost_effect_db
+            invariant_met = boost_effect_db >= (_applied_target_db - 0.75)
             if not invariant_met:
                 logger.warning(
-                    "ConsonantEnhancement: SNR-Invariante nicht erfüllt "
-                    "(Δ%.1f dB < %.1f dB). Möglicherweise kaum Frikativinhalt.",
-                    snr_improvement,
-                    SNR_MIN_IMPROVEMENT_DB,
+                    "ConsonantEnhancement: Boost-Wirkung auf den Frikativ-Segmenten zu gering "
+                    "(Δ%.2f dB < Ziel %.2f dB − 0,75 dB).",
+                    boost_effect_db,
+                    _applied_target_db,
                 )
 
         # ── NaN/Inf-Guard & Clipping ────────────────────────────────────── #
@@ -294,10 +345,10 @@ class ConsonantEnhancement:
 
         logger.debug(
             "ConsonantEnhancement: gender=%s, causal=%.2f, boost=%.1f dB, "
-            "SNR_before=%.1f dB, SNR_after=%.1f dB, Δ=%.1f dB, sib_frames=%d",
+            "SNR_before=%.1f dB, SNR_after=%.1f dB, Wirkung=%.1f dB, sib_frames=%d",
             voice_gender,
             causal_factor,
-            target_boost_db,
+            _applied_target_db,
             snr_before,
             snr_after,
             snr_improvement,
@@ -308,10 +359,11 @@ class ConsonantEnhancement:
             audio=processed,
             fricative_segments=n_fricative_frames,
             snr_improvement_db=float(snr_improvement),
-            boost_applied_db=float(target_boost_db),
+            boost_applied_db=float(_applied_target_db),
             invariant_met=invariant_met,
             voice_gender=voice_gender,
             causal_factor=causal_factor,
+            singing_confidence=_singing,
         )
 
     # ── Private Hilfsmethoden ────────────────────────────────────────────── #
@@ -461,6 +513,25 @@ class ConsonantEnhancement:
         out = channel + fric_band * (boost_lin * gain_mask)
         return out.astype(np.float32)  # type: ignore[no-any-return]
 
+    @staticmethod
+    def _measure_boost_effect_db(
+        proc_mono: np.ndarray,
+        sr: int,
+        f_lo: float,
+        f_hi: float,
+        sib_mask: np.ndarray,
+        seg_band_before: float,
+    ) -> float:
+        """§D-K3-50 (2026-10-07): Boost-Wirkung auf den Frikativ-Segmenten in dB.
+
+        Verhältnis der Band-RMS auf den Masken-Samples vor/nach dem Boost;
+        0,0 wenn keine messbare Segment-Energie existiert (Frikativmangel).
+        """
+        if seg_band_before <= 1e-6:
+            return 0.0
+        _after = _band_rms_on_mask(proc_mono, sr, f_lo, f_hi, sib_mask)
+        return float(20.0 * np.log10((_after + 1e-12) / (seg_band_before + 1e-12)))
+
 
 # ── Modul-Hilfsfunktionen ────────────────────────────────────────────────── #
 
@@ -494,6 +565,39 @@ def _snr_in_band(mono: np.ndarray, sr: int, f_lo: float, f_hi: float) -> float:
     noise_rms = max(total_rms - band_rms, 1e-12)
     snr = 20.0 * np.log10(band_rms / noise_rms)
     return float(snr) if np.isfinite(snr) else 0.0
+
+
+def _band_rms_on_mask(
+    mono: np.ndarray,
+    sr: int,
+    f_lo: float,
+    f_hi: float,
+    mask: np.ndarray,
+) -> float:
+    """§D-K3-50 (2026-10-07): Band-RMS auf den Frikativ-Segmenten (Wirkungsmaß).
+
+    Der segmentweise Boost wirkt 1:1 auf diesen Samples (out = x + band·(g−1));
+    das Vor/Nach-Verhältnis dieser Größe misst die Boost-WIRKUNG ohne die
+    Zeitanteil-Verdünnung der alten Band-vs-Ausserband-Metrik (die physikalisch
+    nie die 3-dB-Forderung erreichen konnte — Messung 2026-10-07: f=0,10 →
+    0,22 dB; f=1,0 → 2,76 dB bei MAX_BOOST_DB=6).
+    """
+    nyq = sr / 2.0
+    f_lo_n = max(f_lo, 20.0) / nyq
+    f_hi_n = min(f_hi, nyq * 0.99) / nyq
+    if f_lo_n >= f_hi_n:
+        return 0.0
+    try:
+        sos = sig.butter(4, [f_lo_n, f_hi_n], btype="band", output="sos")
+        band = sig.sosfilt(sos, mono)
+    except Exception as exc:
+        logger.warning("consonant_enhancement.py::_band_rms_on_mask Ersatzpfad: %s", exc)
+        return 0.0
+    n = min(len(band), len(mask))
+    seg = band[:n][mask[:n]]
+    if seg.size < 16:
+        return 0.0
+    return float(np.sqrt(np.mean(seg**2)) + 1e-12)
 
 
 def _passthrough(audio: np.ndarray, voice_gender: str) -> ConsonantEnhancementResult:
