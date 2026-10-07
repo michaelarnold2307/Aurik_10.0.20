@@ -678,6 +678,10 @@ class LyricsGuidedEnhancement:
     # wav2vec2 forced-alignment ONNX (125 MB, CPUExecutionProvider) — §2.36 Pflicht
     _WAV2VEC2_SR: int = 16_000  # wav2vec2 operates at 16 kHz
 
+    # §D-K3-26: serialisiert den deterministischen Re-Load. Klassen-Level-Lock:
+    # existiert auch für __new__-Fixtures ohne __init__ (Robustheit).
+    _MODEL_LOAD_LOCK: threading.Lock = threading.Lock()
+
     def __init__(self) -> None:
         self._cap = ContentAwareProcessor()
         self._tl = LyricsGuidedTimeline()
@@ -696,6 +700,32 @@ class LyricsGuidedEnhancement:
     def is_loaded(self) -> bool:
         """Return True if at least one model backend is ready."""
         return self._whisper_hf_model is not None or self._ort_session is not None or self._aligner_session is not None
+
+    def _ensure_models_loaded(self) -> bool:
+        """§D-K3-26: deterministischer Re-Load nach PLM-Eviction (idempotent, §G5 (copilot-instructions.md)).
+
+        Der §2.36-Phonem-Masken-Pfad (RELEASE_MUST) darf nicht davon abhängen,
+        ob der PluginLifecycleManager die kleinen Lyrics-Modelle zwischen zwei
+        Songs entladen hat — sonst variiert das Phase-03-Ergebnis mit dem
+        Prozesszustand (gemessen: corr 0,96606 vs. 0,99949, D-K3-26).
+
+        Returns:
+            True, wenn mindestens ein Backend einsatzbereit ist.
+        """
+        if self.is_loaded():
+            return True
+        with self._MODEL_LOAD_LOCK:
+            if self.is_loaded():  # double-checked locking
+                return True
+            logger.info(
+                "LyricsGuidedEnhancement: Modelle nach PLM-Eviction/Budgetfall nicht geladen — "
+                "deterministischer Re-Load (§D-K3-26).",
+            )
+            self._try_load_hf_whisper()
+            if self._whisper_hf_model is None:
+                self._try_load_onnx()
+            self._try_load_aligner()
+            return self.is_loaded()
 
     # ── ONNX bootstrap ─────────────────────────────────────────────────────
 
@@ -748,6 +778,7 @@ class LyricsGuidedEnhancement:
                         "lyrics_transcriber_whisper",
                         size_gb=0.04,
                         unload_fn=lambda: setattr(self, "_ort_session", None),
+                        keep_warm=True,  # §D-K3-26: §2.36-Pflichtpfad — nicht vor Phasen entladen
                     )
                 except Exception as _exc:
                     logger.debug("Operation fehlgeschlagen (unkritisch): %s", _exc)
@@ -814,6 +845,7 @@ class LyricsGuidedEnhancement:
                         "lyrics_aligner_wav2vec2",
                         size_gb=0.13,
                         unload_fn=lambda: setattr(self, "_aligner_session", None),
+                        keep_warm=True,  # §D-K3-26: §2.36-Pflichtpfad — nicht vor Phasen entladen
                     )
                 except Exception as _exc:
                     logger.debug("Operation fehlgeschlagen (unkritisch): %s", _exc)
@@ -926,6 +958,7 @@ class LyricsGuidedEnhancement:
                     "lyrics_whisper_hf",
                     size_gb=0.25,
                     unload_fn=_unload_hf,
+                    keep_warm=True,  # §D-K3-26: §2.36-Pflichtpfad — nicht vor Phasen entladen
                 )
             except Exception as _exc:
                 logger.debug("Operation fehlgeschlagen (unkritisch): %s", _exc)
@@ -1532,6 +1565,9 @@ class LyricsGuidedEnhancement:
 
     def _transcribe_internal(self, mono: np.ndarray, sr: int, dur: float) -> LyricsTranscriptionResult:
         """§v10.303.50: HF Whisper decoder → ONNX encoder → DSP energy."""
+        # §D-K3-26: Zustand vor jeder Transkription deterministisch herstellen —
+        # Eviction/Budget-Zustand darf die Pfadwahl nicht verändern (§G5 (copilot-instructions.md)).
+        self._ensure_models_loaded()
         # Preferred: HF Whisper with decoder (real word transcription)
         if self._whisper_hf_model is not None:
             try:

@@ -1,4 +1,28 @@
-# Changelog — Aurik 10.12.7
+# Changelog — Aurik 10.12.8
+
+## 10.12.8 (2026-10-07)
+
+### D-K3-26: Lyrics-Modelle laden deterministisch — §2.36-Pflichtpfad stabil (10.12.8)
+
+**Befund (gemessen).** Derselbe Phase-03-Eingang ergab je nach Prozesszustand
+verschiedene Ausgaben (corr 0,96606 / 0,99249 / 0,99949; ML-Roh-NR 5,27 vs.
+6,74 dB), weil die Phonem-Masken-Kette (`get_phoneme_mask` → Whisper/wav2vec2)
+vom geladenen Plugin-Bestand abhing: Der PluginLifecycleManager entlud die
+kleinen Lyrics-Modelle vor Phase 03 (nicht im Phasen-Bedarfs-Vertrag), und
+`ml_memory_budget.try_allocate` machte das 170–250-MB-Laden vom Budget-Stand
+abhängig — beides Prozesszustand, nicht Input.
+
+**Fix (10.12.8).**
+
+- `_ensure_models_loaded()` (`lyrics_guided_enhancement.py`): deterministischer,
+  idempotenter, Lock-geschützter Re-Load vor jeder Transkription.
+- Drei Lyrics-Modelle als `keep_warm=True` registriert — keine
+  Phasen-Eviction mitten im Song.
+- `ml_memory_budget`: `_DETERMINISTIC_TINY_MODELS` (0,04–0,25 GB) überleben
+  die ML-Kappung; nur Thrashing/Preflight behalten den OOM-Schutz.
+
+**Nachweis.** `tests/unit/test_dk326_lyrics_determinism.py` (4 Tests) +
+85/165 Nachbar-Tests grün. Register D-K3-26 auf geschlossen.
 
 ## 10.12.7 (2026-10-07)
 

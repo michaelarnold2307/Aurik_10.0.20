@@ -98,6 +98,27 @@ _PRESSURE_LIGHT_MODEL_ALLOWLIST: frozenset[str] = frozenset(
     }
 )
 
+# §D-K3-26 (copilot-instructions.md §G5): Deterministische Mini-Pflichtmodelle.
+# Die §2.36-Phonem-Maske (RELEASE_MUST) darf NICHT davon abhängen, welche anderen
+# ML-Modelle gerade Budget halten — sonst entscheidet der Prozesszustand
+# (geladene Plugins) über den Verarbeitungspfad (D-K3-26: Phase-03-Ergebnis
+# variierte je nach Plugin-Bestand, corr 0,96606–0,99949). Diese Modelle
+# (0,04–0,25 GB) werden bei freiem System deterministisch geladen; nur harte
+# Systemnot (Thrashing/Preflight) behält den OOM-Schutz.
+_DETERMINISTIC_TINY_MODEL_MAX_GB: float = 0.30
+_DETERMINISTIC_TINY_MODELS: frozenset[str] = frozenset(
+    {
+        "lyrics_transcriber_whisper",
+        "lyrics_aligner_wav2vec2",
+        "lyrics_whisper_hf",
+    }
+)
+
+
+def _is_deterministic_tiny_model(model_name: str, size_gb: float) -> bool:
+    """True für winzige §2.36-Pflichtmodelle, die deterministisch laden müssen (D-K3-26)."""
+    return model_name in _DETERMINISTIC_TINY_MODELS and float(size_gb) <= _DETERMINISTIC_TINY_MODEL_MAX_GB
+
 
 def _calibrate_guard_thresholds() -> dict[str, float]:
     """Calibrate all preemptive-guard thresholds to system RAM at import time.
@@ -723,14 +744,25 @@ def try_allocate(model_name: str, size_gb: float) -> bool:
             return True
         remaining = ML_MAX_GB - _total_gb
         if size_gb > remaining:
+            # §D-K3-26: Deterministische Mini-Pflichtmodelle dürfen nicht an der
+            # Kappung scheitern — sonst hängt der §2.36-Phonem-Masken-Pfad vom
+            # Plugin-Bestand ab (§G5 (copilot-instructions.md)).
+            if not _is_deterministic_tiny_model(model_name, size_gb):
+                logger.warning(
+                    "ml_memory_Grenze: '%s' needs %.1f GB, only %.1f GB of %.1f GB free — DSP Ersatzpfad active.",
+                    model_name,
+                    size_gb,
+                    remaining,
+                    ML_MAX_GB,
+                )
+                return False
             logger.warning(
-                "ml_memory_Grenze: '%s' needs %.1f GB, only %.1f GB of %.1f GB free — DSP Ersatzpfad active.",
+                "ml_memory_Grenze: '%s' (%.2f GB) über Kappung (%.2f GB frei) — "
+                "deterministisches §2.36-Pflichtmodell, Laden erlaubt (§D-K3-26).",
                 model_name,
                 size_gb,
                 remaining,
-                ML_MAX_GB,
             )
-            return False
         _allocated[model_name] = size_gb
         _total_gb += size_gb
         logger.info(
