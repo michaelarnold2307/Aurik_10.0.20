@@ -1,4 +1,41 @@
-# Changelog — Aurik 10.12.1
+# Changelog — Aurik 10.12.2
+
+## 10.12.2 (2026-10-07)
+
+### Sieben rote normative Verträge abgearbeitet — zwei echte Funde, fünf Drift-Fälle
+
+**Ausgangspunkt.** Der normative Kernvertragssatz war rot (Register D-K3-13). Alle
+sieben sind am Code gemessen geklärt; zwei davon waren echte Defekte.
+
+- **`docker run` im Produktionsmodul.** `backend/core/dsp/sota_denoiser.py` startete
+  DeepFilterNet3II/DCCRN als Container (Zeilen 171/248). Ein Produktionspfad darf
+  keinen Container starten; beide Blöcke sind entfernt, die Meldungen von
+  „Container-Integration“ auf „REST-Integration“ umbenannt, der Modul-Docstring
+  dokumentiert die Entfernung samt Wächter-Test. Übrig bleiben In-Process-Pfade
+  (ONNX/REST) und die spektrale Maskierung als §V6-Ersatzpfad.
+- **Phasen-Obergrenze war Buchhaltung.** Das Limit stand seit 2026-09-06 auf 69;
+  danach kamen zwei Phasen mit eigenem Feature-Beleg hinzu (`phase_ambience_polish`,
+  f0ed03f2; `phase_67_crackle_texture_removal`, ad7b1b83) → 69 + 2 = 71. Eine
+  Referenzprüfung ergab **0** Phasenmodule ohne Konsument; die Grenze ist jetzt im
+  YAML auf 71 fortgeschrieben, mit den Beleg-Commits benannt und als Einfrierung
+  dokumentiert.
+- **Toter Parameter `snr_db`.** `calibrate_phase_intensity` nimmt `snr_db` entgegen,
+  nutzt es in der Stärke-Kette aber nicht (gemessen SNR 3 → 1,0 == SNR 15 → 1,0).
+  Der implementierte Schutz ist das Risiko-Modell (`get_phase_risk_level`), und
+  phase_03 fährt bei niedrigem SNR bewusst das stärkste ML-Primary — eine
+  Stärke-Senkung bräuchte die fünf Wohlklang-Belege. Der Vertrag prüft jetzt die
+  belegte Lage und pinnt die Lücke (D-K3-31).
+- **Fünf Verträge prüften Formulierungen statt Wirkung.** Vocal-Preflight
+  („Phase“ vs. „Verarbeitungsschritt“), GUI-Hard-Timeout (englisch vs. „Pre-Analyse
+  hard-Zeitlimit“) und der mehrzeilige `_sanitize_qss_colors`-Aufruf (zuvor durch
+  zwei triviale Asserts entschärft) prüfen nun die Wirkungs-Kette bzw.
+  whitespace-tolerant. Die Daily-Gate-Evidenz (377,9 h alt) wurde über
+  `audit/daily_real_audio_gate.py` neu gefahren.
+
+**Nachweis.** Die sechs zuvor roten Dateien sind grün (102 passed, 1 skipped);
+Register 50 Einträge ohne Verstoß.
+
+## 10.12.1 (2026-10-07)
 
 ## 10.12.1 (2026-10-07)
 

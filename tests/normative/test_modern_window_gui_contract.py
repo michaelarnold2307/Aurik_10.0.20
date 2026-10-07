@@ -8,6 +8,7 @@ copilot-instructions/specs for the modern frontend path.
 
 
 import json
+import re
 from pathlib import Path
 
 import pytest
@@ -74,7 +75,12 @@ def test_preanalysis_hard_timeout_does_not_bypass_defect_scan_gate() -> None:
     assert "def _preanalysis_hard_timeout() -> None:" in src
     assert "QTimer.singleShot(180_000, _preanalysis_hard_timeout)" in src
     assert 'if "defect_scan" in self._preanalysis_flags:' in src
-    assert "Pre-analysis hard-timeout reached, waiting for defect_scan before finalization" in src
+    # §G8 (copilot-instructions.md): Der Wartezustand MUSS berichtet werden. Der
+    # Wortlaut wurde 2026 übersetzt/vereinheitlicht („Pre-Analyse hard-Zeitlimit“
+    # statt „Pre-analysis hard-timeout“) — geprüft wird deshalb die Wirkung
+    # (Wartemeldung mit dem Gate-Namen defect_scan), nicht ein historisches
+    # englisches Wort (sonst prüft der Vertrag eine Formulierung, Muster D-K3-11).
+    assert "waiting for defect_scan before finalization" in src
 
 
 @pytest.mark.normative
@@ -488,10 +494,17 @@ def test_status_and_quality_styles_sanitize_qss_colors() -> None:
     src = _read_gui_source()
     assert "def _sanitize_qss_colors" in src
     assert "_QSS_COLOR_TOKEN_RE" in src
-    assert "self.status_label.setStyleSheet(_sanitize_qss_colors(" in src
-    assert "self.quality_score_label.setStyleSheet(_sanitize_qss_colors(" in src
-    assert "_sanitize_qss_colors(" in src
-    assert "_sanitize_qss_colors(" in src
+    # Der Aufruf ist seit der Formatierung mehrzeilig (`setStyleSheet(\n  _sanitize_qss_colors(`)
+    # — ein einzelnes Zeilen-Literal meldete den ERFÜLLTEN Vertrag als rot und war
+    # zuvor durch zwei triviale `_sanitize_qss_colors(`-Asserts entschärft worden
+    # (Muster D-K3-13: Prüfung existiert, sieht aber nichts). Deshalb:
+    # Whitespace-tolerante Prüfung beider Labels.
+    assert re.search(r"self\.status_label\.setStyleSheet\(\s*_sanitize_qss_colors\(", src), (
+        "status_label-Styling läuft nicht über _sanitize_qss_colors"
+    )
+    assert re.search(r"self\.quality_score_label\.setStyleSheet\(\s*_sanitize_qss_colors\(", src), (
+        "quality_score_label-Styling läuft nicht über _sanitize_qss_colors"
+    )
 
 
 @pytest.mark.normative

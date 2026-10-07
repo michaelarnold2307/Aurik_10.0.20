@@ -1,6 +1,16 @@
 """
 sota_denoiser.py - SOTA-konformer Denoiser für Aurik 6.0
 Dieses Modul implementiert SOTA-orientiertes adaptives Denoising (DeepFilterNet2, DCCRN-ONNX, spektrale Maskierung als Fallback).
+REST-/Container-Pfade: Der Docker-Fallback wurde am 2026-10-07 entfernt — ein
+Produktionsmodul darf keinen Container starten (§V7 (copilot-instructions.md),
+Wächter: tests/normative/test_no_docker_in_production_paths.py). Übrig bleiben
+In-Process-Pfade (ONNX-DeepFilterNet2/DCCRN) und die spektrale Maskierung als
+dokumentierter §V6-Ersatzpfad.
+REST-/Container-Pfade: Der Docker-Fallback wurde am 2026-10-07 entfernt — ein
+Produktionsmodul darf keinen Container starten (§V7 (copilot-instructions.md),
+Wächter: tests/normative/test_no_docker_in_production_paths.py). Übrig bleiben
+In-Process-Pfade (ONNX-DeepFilterNet2/DCCRN) und die spektrale Maskierung als
+dokumentierter §V6-Ersatzpfad.
 Es ist mit DSPContract, Auditierbarkeit und Rollback-Fähigkeit gemäß Dokumentation ausgestattet.
 """
 
@@ -164,39 +174,14 @@ class SotaDenoiser:
                         return np.asarray(result_cli1.astype(audio.dtype))  # type: ignore[no-any-return]
                 except Exception as e:
                     self._audit_log("warn", f"DeepFilterNet3II REST-API nicht erreichbar: {e}")
-                # CLI-Fallback
-                try:
-                    import subprocess
-
-                    subprocess.run(
-                        [
-                            "docker",
-                            "run",
-                            "--rm",
-                            "-v",
-                            f"{input_path}:/workspace/input.wav",
-                            "-v",
-                            f"{output_path}:/workspace/output.wav",
-                            "deepfilternet3ii-rest",
-                            "python",
-                            "/workspace/deepfilternet_v3_ii_infer.py",
-                            "/workspace/input.wav",
-                            "/workspace/output.wav",
-                        ],
-                        check=True,
-                    )
-                    from backend.file_import import load_audio_file
-
-                    _res = load_audio_file(output_path, do_carrier_analysis=False)
-                    if _res is None:
-                        raise RuntimeError("load_audio_file lieferte kein Ergebnis (CLI-Ausgabe)")
-                    result_cli2: np.ndarray = np.asarray(_res["audio"], dtype=np.float32)
-                    self._audit_log("success", "DeepFilterNet3II CLI-Inferenz erfolgreich")
-                    return np.asarray(result_cli2.astype(audio.dtype))  # type: ignore[no-any-return]
-                except Exception as e:
-                    self._audit_log("warn", f"DeepFilterNet3II CLI nicht verfügbar: {e}")
+                # §V7 (copilot-instructions.md): Der frueher hier stehende
+                # Docker-Fallback wurde 2026-10-07 entfernt — Produktionspfade
+                # duerfen keine Container starten
+                # (tests/normative/test_no_docker_in_production_paths.py).
+                # Es bleibt der In-Process-Pfad (ONNX/REST/DFN) + spektrale
+                # Maskierung als dokumentierter §V6-Fallback.
             except Exception as e:
-                self._audit_log("warn", f"DeepFilterNet3II Container-Integration fehlgeschlagen: {e}")
+                self._audit_log("warn", f"DeepFilterNet3II REST-Integration fehlgeschlagen: {e}")
             # DCCRN-ONNX
             if self.dccrn_session is not None:
                 x = audio.astype(np.float32)
@@ -241,39 +226,14 @@ class SotaDenoiser:
                         return np.asarray(result_cli3.astype(audio.dtype))  # type: ignore[no-any-return]
                 except Exception as e:
                     self._audit_log("warn", f"DCCRN REST-API nicht erreichbar: {e}")
-                # CLI-Fallback
-                try:
-                    import subprocess
-
-                    subprocess.run(
-                        [
-                            "docker",
-                            "run",
-                            "--rm",
-                            "-v",
-                            f"{input_path}:/workspace/input.wav",
-                            "-v",
-                            f"{output_path}:/workspace/output.wav",
-                            "dccrn-rest",
-                            "python",
-                            "/workspace/dccrn_infer.py",
-                            "/workspace/input.wav",
-                            "/workspace/output.wav",
-                        ],
-                        check=True,
-                    )
-                    from backend.file_import import load_audio_file
-
-                    _res = load_audio_file(output_path, do_carrier_analysis=False)
-                    if _res is None:
-                        raise RuntimeError("load_audio_file lieferte kein Ergebnis (CLI-Ausgabe)")
-                    result_cli4: np.ndarray = np.asarray(_res["audio"], dtype=np.float32)
-                    self._audit_log("success", "DCCRN CLI-Inferenz erfolgreich")
-                    return np.asarray(result_cli4.astype(audio.dtype))  # type: ignore[no-any-return]
-                except Exception as e:
-                    self._audit_log("warn", f"DCCRN CLI nicht verfügbar: {e}")
+                # §V7 (copilot-instructions.md): Der frueher hier stehende
+                # Docker-Fallback wurde 2026-10-07 entfernt — Produktionspfade
+                # duerfen keine Container starten
+                # (tests/normative/test_no_docker_in_production_paths.py).
+                # Es bleibt der In-Process-Pfad (ONNX/REST/DFN) + spektrale
+                # Maskierung als dokumentierter §V6-Fallback.
             except Exception as e:
-                self._audit_log("warn", f"DCCRN Container-Integration fehlgeschlagen: {e}")
+                self._audit_log("warn", f"DCCRN REST-Integration fehlgeschlagen: {e}")
             # DeepFilterNet2
             if DEEPFILTERNET_AVAILABLE and dfn is not None:
                 model = dfn.DeepFilterNet2()

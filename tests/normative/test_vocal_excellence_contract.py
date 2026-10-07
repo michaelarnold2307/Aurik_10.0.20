@@ -163,7 +163,14 @@ class TestVocalExcellencePipelineWiring:
         assert '_sel_set_prerisk.remove("phase_17_mastering_polish")' in content
         assert "NOVELTY_CRIT/HNR_DROP/ECHO" in content
         assert "preflight_risk_removed_phases" in content
-        assert "Preflight-Risk-Guard hatte Phase entfernt" in content
+        # §G8 (copilot-instructions.md) Berichtspflicht: die Entfernung MUSS
+        # geloggt werden. Der Wortlaut ist 2026 mit dem Nomenklatur-Sweep von
+        # „Phase“ auf „Verarbeitungsschritt“ vereinheitlicht worden — geprüft
+        # wird deshalb die Berichts-Kette (Guard-Log + genannter Schritt),
+        # nicht ein einzelnes historisches Wort (sonst prüft der Vertrag eine
+        # Formulierung statt der Wirkung, Muster D-K3-11).
+        assert "Preflight-Risk-Guard hatte" in content
+        assert "Verarbeitungsschritt_17_mastering_polish" in content
 
     def test_phase03_skips_deepfilternet_second_pass_after_vocal_primary_on_cassette(self) -> None:
         content = (_ROOT / "backend/core/phases/phase_03_denoise.py").read_text(encoding="utf-8")

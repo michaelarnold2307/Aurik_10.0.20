@@ -18,7 +18,7 @@ def _lowpass(x: np.ndarray, sr: int, cutoff: float) -> np.ndarray:
     from scipy.signal import butter, sosfiltfilt
 
     sos = butter(4, cutoff / (sr / 2.0), btype="low", output="sos")
-    return sosfiltfilt(sos, x).astype(np.float32)
+    return np.asarray(sosfiltfilt(sos, x), dtype=np.float32)
 
 
 def _band_rms(x: np.ndarray, sr: int, lo: float, hi: float) -> float:

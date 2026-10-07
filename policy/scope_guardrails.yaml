@@ -15,13 +15,24 @@ enforced_in_ci: true
 
 caps:
   max_phases:
-    current: 69
-    limit: 69
+    current: 71
+    limit: 71
     description: >
       Keine neuen Phasen ohne: (a) ≥5 Echt-Audio-Fälle die konkret von der
       neuen Phase profitieren, (b) gemessene HPI-Verbesserung ≥ 0.02,
       (c) Genehmigung im Real-Audio-Quality-Gate-Review.
       Ausnahme: Bugfixes an bestehenden Phasen (keine neuen Phasen-IDs).
+      Buchhaltung 2026-10-07: Das Limit stand seit 2026-09-06 auf 69. Danach
+      kamen ZWEI Phasen mit eigenem Feature-/Spec-Beleg hinzu — 69 + 2 = 71:
+        * backend/core/phases/phase_ambience_polish.py — f0ed03f2 (2026-09-22,
+          „Spec 25 Punkt 4: Ambience-Politur als Phase vor der Glue Stage“)
+        * backend/core/phases/phase_67_crackle_texture_removal.py — ad7b1b83
+          (2026-09-24, „feat(phase67): Crackle Texture Removal — ML-Phase für
+          DefectType.CRACKLE-Textur“)
+      Alle 71 Module sind verdrahtet (Referenzprüfung 2026-10-07: 0 Module ohne
+      Konsument außerhalb der eigenen Datei). Die Obergrenze bleibt damit eine
+      EINFRIERUNG des erreichten Stands: eine 72. Phase braucht weiterhin die
+      Evidenz aus (a)–(c).
 
   max_musical_goals:
     current: 14

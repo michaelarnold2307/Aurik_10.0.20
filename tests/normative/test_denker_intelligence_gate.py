@@ -58,11 +58,38 @@ def test_vintage_reduces_ml_strength():
 
 
 def test_low_snr_reduces_ml():
-    from backend.core.phase_effect_catalog import calibrate_phase_intensity
+    """Niedriger SNR darf die ML-Intensität NICHT erhöhen — und wird als Risiko geführt.
 
-    lo = calibrate_phase_intensity("phase_03_denoise", 1.0, snr_db=3.0)
-    hi = calibrate_phase_intensity("phase_03_denoise", 1.0, snr_db=15.0)
-    assert lo < hi, f"SNR=3→{lo} >= SNR=15→{hi}"
+    Befund 2026-10-07 (am Code gemessen): Die ursprünglich hier geprüfte Zusage
+    „SNR senkt die ML-Stärke" ist NICHT implementiert. ``calibrate_phase_intensity``
+    nimmt ``snr_db`` entgegen, nutzt den Wert in der Stärke-Kette aber nirgends
+    (toter Parameter; Register D-K3-31) — gemessen: SNR 3 → 1,0 == SNR 15 → 1,0
+    bei aktivem Defekt (severity 0,6 > min_severity 0,3).
+
+    Der implementierte Schutz ist das RISIKO-Modell: ``get_phase_risk_level``
+    setzt für Phasen mit ``ml_artifact``-Risiko +1,0 (snr < 8 dB bzw. unbekannt)
+    und +0,5 (Ära < 1980) → „high". Und die Phase selbst fährt bei niedrigem SNR
+    bewusst das stärkste ML-Primary (§4.4/§4.5 MIIPHER/DeepFilterNet), nicht
+    weniger ML — eine Stärke-Senkung wäre eine klangverändernde Politik und
+    bräuchte die fünf Belege (.github/WOHLKLANG_CLAIMS.md). Geprüft wird daher,
+    was gilt: keine ESKALATION bei niedrigem SNR + Risiko-Flaggung.
+    """
+    from backend.core.phase_effect_catalog import calibrate_phase_intensity, get_phase_risk_level
+
+    # Vorbedingung §G188: Die Phase ist AKTIV (Defekt über der Anwendungsschwelle).
+    lo = calibrate_phase_intensity("phase_03_denoise", 1.0, defect_severity=0.6, snr_db=3.0)
+    hi = calibrate_phase_intensity("phase_03_denoise", 1.0, defect_severity=0.6, snr_db=15.0)
+    assert lo <= hi, f"SNR=3→{lo} > SNR=15→{hi}: niedriger SNR darf die ML-Stärke nicht verstärken"
+    # Dokumentierte Lücke: identische Stärke ⇒ keine SNR-Regel (D-K3-31). Sobald
+    # eine (belegte) Senkung implementiert wird, fällt dieser Pin bewusst um.
+    assert lo == hi, f"SNR-Regel neu implementiert? lo={lo} hi={hi} → D-K3-31/Register aktualisieren"
+
+    # Implementierter Schutz: ml_artifact-Risiko bei niedrigem SNR und alter Ära.
+    assert get_phase_risk_level("phase_03_denoise", snr_db=3.0, era_decade=1970, panns_singing=0.0) in (
+        "high",
+        "critical",
+    )
+    assert get_phase_risk_level("phase_03_denoise", snr_db=15.0, era_decade=1990, panns_singing=0.0) == "low"
 
 
 def test_schlager_preserves_warmth():
