@@ -12682,7 +12682,7 @@ class ModernMainWindow(QMainWindow):
         self._in_update_phase: bool = False  # W0201 §11 — Reentrancy-Guard _update_phase()
         self._phase_heartbeat_refresh_pending: bool = False  # W0201 §11 — Heartbeat-Refresh-Pending
 
-        self.setWindowTitle(f"AURIK Professional v{_AURIK_VERSION}")
+        self.setWindowTitle(t("app.window_title", version=_AURIK_VERSION))
 
         # Window flags for frameless
         self.setWindowFlags(Qt.WindowType.FramelessWindowHint | Qt.WindowType.WindowSystemMenuHint)
@@ -13361,7 +13361,7 @@ class ModernMainWindow(QMainWindow):
                 return
             latest = reports[-1]
             _msg = QtWidgets.QMessageBox(self)
-            _msg.setWindowTitle("Aurik — Hinweis")
+            _msg.setWindowTitle(t("dialog.notice_title"))
             _msg.setIcon(QtWidgets.QMessageBox.Icon.Warning)
             _n = len(reports)
             _msg.setText(
@@ -15582,7 +15582,7 @@ class ModernMainWindow(QMainWindow):
             self._result_path_label.setWordWrap(True)
             _rb_layout.addWidget(self._result_path_label, 1)
 
-            self._btn_preview_restored = QPushButton("▶  Vorschau")
+            self._btn_preview_restored = QPushButton(t("ui.result_preview"))
             self._btn_preview_restored.setFixedHeight(self._sp(26))
             self._btn_preview_restored.setEnabled(False)
             self._btn_preview_restored.setStyleSheet(
@@ -15595,7 +15595,7 @@ class ModernMainWindow(QMainWindow):
             self._btn_preview_restored.clicked.connect(self._auto_preview_restored)
             _rb_layout.addWidget(self._btn_preview_restored)
 
-            self._btn_ab_compare = QPushButton("↔  A/B-Vergleich")
+            self._btn_ab_compare = QPushButton(t("ui.result_ab_compare"))
             self._btn_ab_compare.setFixedHeight(self._sp(26))
             self._btn_ab_compare.setStyleSheet(
                 "QPushButton { background: rgba(60,90,200,0.55); border: none; border-radius: 6px;"
@@ -15606,7 +15606,7 @@ class ModernMainWindow(QMainWindow):
             self._btn_ab_compare.clicked.connect(lambda: hasattr(self, "viz_tabs") and self.viz_tabs.setCurrentIndex(2))
             _rb_layout.addWidget(self._btn_ab_compare)
 
-            self._btn_open_folder = QPushButton("📁  Ordner öffnen")
+            self._btn_open_folder = QPushButton(t("ui.result_open_folder"))
             self._btn_open_folder.setFixedHeight(self._sp(26))
             self._btn_open_folder.setStyleSheet(
                 "QPushButton { background: rgba(50,120,70,0.55); border: none; border-radius: 6px;"
@@ -15617,7 +15617,7 @@ class ModernMainWindow(QMainWindow):
             self._btn_open_folder.clicked.connect(self._open_output_folder)
             _rb_layout.addWidget(self._btn_open_folder)
 
-            self._btn_open_in_player = QPushButton("🎵  Im Player öffnen")
+            self._btn_open_in_player = QPushButton(t("ui.result_open_in_player"))
             self._btn_open_in_player.setFixedHeight(self._sp(26))
             self._btn_open_in_player.setStyleSheet(
                 "QPushButton { background: rgba(20,90,130,0.55); border: none; border-radius: 6px;"
@@ -15629,7 +15629,7 @@ class ModernMainWindow(QMainWindow):
             _rb_layout.addWidget(self._btn_open_in_player)
 
             # ── Retry-Button für fehlgeschlagene Items ───────────────────────
-            self._btn_retry_failed = QPushButton("🔁  Fehlgeschlagene wiederholen")
+            self._btn_retry_failed = QPushButton(t("ui.result_retry_failed"))
             self._btn_retry_failed.setFixedHeight(self._sp(26))
             self._btn_retry_failed.setVisible(False)
             self._btn_retry_failed.setStyleSheet(
@@ -15652,7 +15652,7 @@ class ModernMainWindow(QMainWindow):
                 " QPushButton:hover { background: rgba(60,190,100,0.80); }"
                 " QPushButton:disabled { background: rgba(40,60,40,0.25); color: #555; }"
             )
-            self._btn_thumbs_up.setToolTip("Klang gut — Feedback speichern (§C10)")
+            self._btn_thumbs_up.setToolTip(t("ui.feedback_good_tip"))
             self._btn_thumbs_up.clicked.connect(lambda: self._on_goal_feedback(True))
             _rb_layout.addWidget(self._btn_thumbs_up)
 
@@ -15664,7 +15664,7 @@ class ModernMainWindow(QMainWindow):
                 " QPushButton:hover { background: rgba(200,80,55,0.80); }"
                 " QPushButton:disabled { background: rgba(60,40,40,0.25); color: #555; }"
             )
-            self._btn_thumbs_down.setToolTip("Klang unbefriedigend — Feedback speichern (§C10)")
+            self._btn_thumbs_down.setToolTip(t("ui.feedback_bad_tip"))
             self._btn_thumbs_down.clicked.connect(lambda: self._on_goal_feedback(False))
             _rb_layout.addWidget(self._btn_thumbs_down)
 
@@ -15795,7 +15795,7 @@ class ModernMainWindow(QMainWindow):
                 break
 
         self._tray_icon = QSystemTrayIcon(_icon, self)
-        self._tray_icon.setToolTip("AURIK Professional")
+        self._tray_icon.setToolTip(t("app.brand"))
 
         tray_menu = QMenu()
         tray_menu.setStyleSheet(
@@ -16403,7 +16403,7 @@ class ModernMainWindow(QMainWindow):
         inner.addSpacing(4)
 
         # ── Schließen-Button ────────────────────────────────────────
-        btn_close = QPushButton("Schließen")
+        btn_close = QPushButton(t("action.close"))
         btn_close.clicked.connect(dlg.accept)
         inner.addWidget(btn_close, alignment=QtCore.Qt.AlignmentFlag.AlignCenter)
 
@@ -16517,7 +16517,7 @@ class ModernMainWindow(QMainWindow):
                 super().paintEvent(event)
 
         dlg = _SystemCheckDialog(self)
-        dlg.setWindowTitle("Aurik Systemcheck")
+        dlg.setWindowTitle(t("dialog.systemcheck_title"))
         dlg.setMinimumWidth(500)
         dlg.setMaximumWidth(600)
         dlg.setMinimumHeight(400)
@@ -16582,7 +16582,7 @@ class ModernMainWindow(QMainWindow):
         inner.addStretch()
 
         # Close button
-        btn_close = QtWidgets.QPushButton("Schließen")
+        btn_close = QtWidgets.QPushButton(t("action.close"))
         btn_close.clicked.connect(dlg.accept)
         inner.addWidget(btn_close, alignment=QtCore.Qt.AlignmentFlag.AlignCenter)
 
@@ -16710,7 +16710,7 @@ class ModernMainWindow(QMainWindow):
                 super().paintEvent(event)
 
         dlg = _ShortcutHelpDialog(self)
-        dlg.setWindowTitle("Aurik — Tastenkürzel")
+        dlg.setWindowTitle(t("dialog.shortcuts_title"))
         dlg.setFixedWidth(420)
         dlg.setStyleSheet(
             "QDialog { background: transparent; }"
@@ -16724,7 +16724,7 @@ class ModernMainWindow(QMainWindow):
         layout.setSpacing(6)
         layout.setContentsMargins(20, 18, 20, 14)
 
-        title_lbl = QLabel("<b style='font-size:13pt;'>⌨  Tastenkürzel</b>")
+        title_lbl = QLabel(t("dialog.shortcuts_header"))
         title_lbl.setTextFormat(Qt.TextFormat.RichText)
         layout.addWidget(title_lbl)
 
@@ -16752,7 +16752,7 @@ class ModernMainWindow(QMainWindow):
             layout.addWidget(row)
 
         layout.addSpacing(6)
-        btn_close = QPushButton("Schließen")
+        btn_close = QPushButton(t("action.close"))
         btn_close.clicked.connect(dlg.accept)
         layout.addWidget(btn_close, alignment=Qt.AlignmentFlag.AlignCenter)
         dlg.exec_()
@@ -18950,7 +18950,7 @@ class ModernMainWindow(QMainWindow):
             _has_rest = self._rest_audio is not None
             # Live-Label während Restaurierung
             if _processing and _has_preview and not _has_rest:
-                self.btn_play_restored.setText("🎧  Zwischenstand hören")
+                self.btn_play_restored.setText(t("ui.snapshot_listen"))
                 _tip = (
                     "Zwischenstand der Restaurierung anhören (Snapshot der letzten Phase).\n"
                     "Die Restaurierung läuft im Hintergrund weiter."
@@ -19022,7 +19022,7 @@ class ModernMainWindow(QMainWindow):
                 hasattr(self, "btn_ab_sync") and getattr(self.btn_ab_sync, "isChecked", lambda: False)()
             )
             if _has_any_audio and not _output_ready and not _loop_checked:
-                self._ab_source_label.setText(f"Audio-Ausgabe nicht verfügbar · {_output_reason}")
+                self._ab_source_label.setText(t("status.audio_output_unavailable", reason=_output_reason))
                 self._ab_source_label.setStyleSheet(
                     f"color: rgba(208,139,139,0.92); font-size: {self._pt(8.5):.1f}pt; "
                     "font-weight: bold; padding: 0 4px;"
@@ -19828,10 +19828,10 @@ class ModernMainWindow(QMainWindow):
         # §v10.204 #4: Visuelles Feedback — Button-Text zeigt Verarbeitungsstatus
         if hasattr(self, "btn_magic_restoration"):
             self.btn_magic_restoration.setEnabled(False)
-            self.btn_magic_restoration.setText("🔄 Läuft…")
+            self.btn_magic_restoration.setText(t("ui.running"))
         if hasattr(self, "btn_magic_studio"):
             self.btn_magic_studio.setEnabled(False)
-            self.btn_magic_studio.setText("🔄 Läuft…")
+            self.btn_magic_studio.setText(t("ui.running"))
 
         # Update status
         self.title_bar.set_status(t("status.processing_running"), "#B8A068")
@@ -20070,21 +20070,24 @@ class ModernMainWindow(QMainWindow):
             _elapsed,
         )
         _msg = QMessageBox(self)
-        _msg.setWindowTitle("Aurik – Zeitbudget")
+        _msg.setWindowTitle(t("dialog.time_budget_title"))
         _msg.setIcon(QMessageBox.Question)
-        _msg.setText(
-            "Die Restauration laeuft seit " + str(_elapsed) + " Minuten. Die Pipeline arbeitet unveraendert weiter."
-        )
-        _msg.setInformativeText(
-            "Wie moechtest Du fortfahren?\n\n"
-            "  [Maximal weitermachen]  – beste Qualitaet, laengere Wartezeit\n"
-            "  [Phasen ueberspringen]  – etwas schneller fertig\n"
-            "  [Nochmal fragen]        – jetzt nicht entscheiden\n\n"
-            "Ohne Antwort in 60 s: Maximal weitermachen."
-        )
-        _btn_continue = _msg.addButton("Maximal weitermachen", QMessageBox.AcceptRole)
-        _btn_skip = _msg.addButton("Phasen ueberspringen", QMessageBox.DestructiveRole)
-        _btn_later = _msg.addButton("Nochmal fragen", QMessageBox.ResetRole)
+        _msg.setText(t("dialog.time_budget_text", minutes=_elapsed))
+        _msg.setInformativeText(t("dialog.time_budget_info", seconds=60))
+        # §Laien-Bedienung: Der Fachbegriff („Phasen überspringen") wird zum Ziel
+        # („Jetzt fertigstellen"), der Trade-off steht erklärend am Knopf statt als
+        # Konsolen-Liste im Text — vorher standen die Optionen doppelt (Text + Knopf).
+        _btn_continue = _msg.addButton(t("dialog.time_budget_continue"), QMessageBox.AcceptRole)
+        _btn_skip = _msg.addButton(t("dialog.time_budget_finish_now"), QMessageBox.DestructiveRole)
+        _btn_later = _msg.addButton(t("dialog.time_budget_ask_later"), QMessageBox.ResetRole)
+        for _btn, _tip_key in (
+            (_btn_continue, "dialog.time_budget_continue_tip"),
+            (_btn_skip, "dialog.time_budget_finish_now_tip"),
+            (_btn_later, "dialog.time_budget_ask_later_tip"),
+        ):
+            _btn.setToolTip(t(_tip_key))
+            _btn.setAccessibleName(_btn.text())
+            _btn.setAccessibleDescription(t(_tip_key))
         _msg.setDefaultButton(_btn_continue)
         _auto = QTimer(self)
         _auto.setSingleShot(True)
@@ -20102,7 +20105,7 @@ class ModernMainWindow(QMainWindow):
         _auto.stop()
         _clicked = _msg.clickedButton()
         if _clicked is _btn_skip:
-            logger.info("§v10.15 Nutzer: Phasen ueberspringen")
+            logger.info("§v10.15 Nutzer: jetzt fertigstellen (Restzeit-Reserve)")
             try:
                 _uv3 = _bridge_get_unified_restorer_v3_instance()
                 if _uv3 is not None:
@@ -20119,7 +20122,11 @@ class ModernMainWindow(QMainWindow):
         _new = self._watchdog_timer.interval() + _extend_ms
         self._watchdog_timer.start(_new)
         self._watchdog_budget_timer.start(int(_new * 0.75))
-        self.title_bar.set_status("Maximale Qualitaet – laeuft weiter …", "#68A068")
+        # §v10.990: Farbe aus der zentralen Palette (ui_constants), nicht als Hex
+        # in der Zeile — STATUS_OK_TEXT ist genau dieser Zustand („läuft weiter").
+        from Aurik10.ui.ui_constants import STATUS_OK_TEXT
+
+        self.title_bar.set_status(t("dialog.time_budget_status_continuing"), STATUS_OK_TEXT)
 
     def _on_watchdog_timeout(self):
         """§0c Watchdog: Zeitlimit — graceful stop statt hartem Kill.
@@ -21698,7 +21705,7 @@ class ModernMainWindow(QMainWindow):
             )
 
             _dlg = QMessageBox(self)
-            _dlg.setWindowTitle("Aurik — Danke für Dein Vertrauen!")
+            _dlg.setWindowTitle(t("dialog.thanks_title"))
             _dlg.setIcon(QMessageBox.Icon.Information)
             _dlg.setText(_msg)
             _dlg.setTextFormat(Qt.TextFormat.RichText)
@@ -21724,13 +21731,13 @@ class ModernMainWindow(QMainWindow):
             )
             _btn10.clicked.connect(lambda: (open_donation_reminder_link(), _dlg.accept()))
 
-            _btn_custom = QPushButton("💛 Freier Betrag")
+            _btn_custom = QPushButton(t("dialog.donate_free_amount"))
             _btn_custom.setStyleSheet(
                 _btn_style + "background-color: #e8a838; color: #333;QPushButton:hover { background-color: #c98e20; }"
             )
             _btn_custom.clicked.connect(lambda: (open_donation_reminder_link(), _dlg.accept()))
 
-            _btn_later = QPushButton("Später")
+            _btn_later = QPushButton(t("dialog.donate_later"))
             _btn_later.setStyleSheet(
                 _btn_style + "background-color: transparent; color: #888; border: 1px solid #555;"
                 "QPushButton:hover { color: #aaa; border-color: #777; }"
@@ -23966,11 +23973,9 @@ class ModernMainWindow(QMainWindow):
                     if hasattr(self, "btn_play_restored") and self._rest_audio is None:
                         if not self.btn_play_restored.isEnabled():
                             self.btn_play_restored.setEnabled(True)
-                            self.btn_play_restored.setText("🎧  Zwischenstand hören")
+                            self.btn_play_restored.setText(t("ui.snapshot_listen"))
                             self.btn_play_restored.setToolTip(
-                                "Zwischenstand der Restaurierung anh\u00f6ren "
-                                "(Snapshot der letzten Phase).\n"
-                                "Die Restaurierung l\u00e4uft im Hintergrund weiter."
+                                t("ui.snapshot_listen_tip") + "\nDie Restaurierung l\u00e4uft im Hintergrund weiter."
                             )
             except Exception:
                 logger.debug("modern_window: Live-Vorschau-Guard übersprungen", exc_info=True)
@@ -24081,10 +24086,9 @@ class ModernMainWindow(QMainWindow):
                     if hasattr(self, "btn_play_restored") and self._rest_audio is None:
                         if not self.btn_play_restored.isEnabled():
                             self.btn_play_restored.setEnabled(True)
-                            self.btn_play_restored.setText("🎧  Zwischenstand hören")
+                            self.btn_play_restored.setText(t("ui.snapshot_listen"))
                             self.btn_play_restored.setToolTip(
-                                "Zwischenstand der Restaurierung anhören (Snapshot der letzten Phase).\n"
-                                "Die Restaurierung läuft im Hintergrund weiter."
+                                t("ui.snapshot_listen_tip") + "\nDie Restaurierung läuft im Hintergrund weiter."
                             )
             except Exception:
                 logger.debug("Live-Preview-Snapshot fehlgeschlagen (optional)", exc_info=True)
@@ -24539,14 +24543,14 @@ class ModernMainWindow(QMainWindow):
                         if _active_names:
                             self.defect_count_live_label.setText(f"🔧 {_active_names}")
                         else:
-                            self.defect_count_live_label.setText(f"🔧 Schadensbehebung: {n} aktiv")
+                            self.defect_count_live_label.setText(t("status.damage_repair_active", count=n))
                         self.defect_count_live_label.setStyleSheet(
                             "color: #7BA8EE; font-size: 8pt; background: transparent; "
                             "font-weight: bold; padding: 0 2px;"
                         )
                     elif _status == "blocked":
                         _remaining = int((getattr(self, "_defect_progress_state", {}) or {}).get("remaining", n) or n)
-                        self.defect_count_live_label.setText(f"⛔ Lauf blockiert: {_remaining} offen")
+                        self.defect_count_live_label.setText(t("status.run_blocked", count=_remaining))
                         self._current_repair_names = ""
                         self.defect_count_live_label.setStyleSheet(
                             "color: #D08B8B; font-size: 8pt; background: transparent; "
@@ -24567,7 +24571,7 @@ class ModernMainWindow(QMainWindow):
                             "font-weight: bold; padding: 0 2px;"
                         )
                 else:
-                    self.defect_count_live_label.setText("✅ Schadensbehebung: sauber")
+                    self.defect_count_live_label.setText(t("status.damage_repair_clean"))
                     self.defect_count_live_label.setStyleSheet(
                         "color: #82B89A; font-size: 8pt; background: transparent; font-weight: bold; padding: 0 2px;"
                     )
@@ -24634,7 +24638,9 @@ class ModernMainWindow(QMainWindow):
                         if hasattr(self, "defect_count_live_label"):
                             _remain = len(_active_defects_set)
                             self.defect_count_live_label.setText(
-                                "✅ Schadensbehebung" if _remain == 0 else f"⚙ Verbleibende Schäden: {_remain}"
+                                t("status.damage_repair")
+                                if _remain == 0
+                                else t("status.remaining_defects") + f": {_remain}"
                             )
                 except Exception:
                     logger.debug("Defect-Chip-Aktualisierung fehlgeschlagen", exc_info=True)
@@ -24677,7 +24683,7 @@ class ModernMainWindow(QMainWindow):
                     self.defect_summary_label.setText("\n".join(_lines))
                     self._set_info_card_state(self.defect_summary_label, "good", animate=True)
                     if hasattr(self, "defect_count_live_label"):
-                        self.defect_count_live_label.setText("✅ Schadensbehebung")
+                        self.defect_count_live_label.setText(t("status.damage_repair"))
                         self.defect_count_live_label.setStyleSheet(
                             "color: #82B89A; font-size: 8pt; background: transparent; "
                             "font-weight: bold; padding: 0 2px;"
@@ -24693,7 +24699,7 @@ class ModernMainWindow(QMainWindow):
                     self.defect_summary_label.setText("\n".join(_lines))
                     self._set_info_card_state(self.defect_summary_label, "critical", animate=True)
                     if hasattr(self, "defect_count_live_label"):
-                        self.defect_count_live_label.setText("⛔ Schadensbehebung: blockiert")
+                        self.defect_count_live_label.setText(t("status.damage_repair_blocked"))
                         self.defect_count_live_label.setStyleSheet(
                             "color: #D08B8B; font-size: 8pt; background: transparent; "
                             "font-weight: bold; padding: 0 2px;"
@@ -24713,7 +24719,7 @@ class ModernMainWindow(QMainWindow):
                     self.defect_summary_label.setText("\n".join(_lines))
                     self._set_info_card_state(self.defect_summary_label, "warn", animate=True)
                     if hasattr(self, "defect_count_live_label"):
-                        self.defect_count_live_label.setText("⚠ Schadensbehebung: subtil")
+                        self.defect_count_live_label.setText(t("status.damage_repair_subtle"))
                         self.defect_count_live_label.setStyleSheet(
                             "color: #B8A068; font-size: 8pt; background: transparent; "
                             "font-weight: bold; padding: 0 2px;"
@@ -25063,7 +25069,7 @@ class ModernMainWindow(QMainWindow):
                 self.defect_count_live_label.setStyleSheet("color: #8894A8; font-size: 10pt;")
                 self.defect_count_live_label.setVisible(True)
             elif _remaining_def == 0 and _total_def > 0:
-                self.defect_count_live_label.setText("✅ Alle Defekte behoben")
+                self.defect_count_live_label.setText(t("status.all_defects_fixed"))
                 self.defect_count_live_label.setStyleSheet("color: #82B89A; font-size: 10pt; font-weight: bold;")
                 self.defect_count_live_label.setVisible(True)
         self._refresh_defect_summary_height()
@@ -25937,13 +25943,13 @@ class ModernMainWindow(QMainWindow):
             rb_formats.append(rb)
             dlg_layout.addWidget(rb)
 
-        sr_label = QLabel("Abtastrate")
+        sr_label = QLabel(t("ui.sample_rate"))
         sr_label.setFont(QFont(self.font().family(), 10, QFont.Weight.Bold))
         dlg_layout.addWidget(sr_label)
 
         sr_combo = QComboBox(dlg)
-        sr_combo.addItem("48,0 kHz", 48_000)
-        sr_combo.addItem("44,1 kHz", 44_100)
+        sr_combo.addItem(t("ui.sample_rate_48k"), 48_000)
+        sr_combo.addItem(t("ui.sample_rate_44k1"), 44_100)
         sr_combo.setCurrentIndex(0)
         sr_combo.setToolTip(t("tooltip.export_sample_rate"))
         dlg_layout.addWidget(sr_combo)
@@ -26354,10 +26360,8 @@ class ModernMainWindow(QMainWindow):
         if hasattr(self, "btn_play_restored"):
             self.btn_play_restored.setText(f"▶  {t('action.listen_restored')}")
         if hasattr(self, "btn_stop_playback"):
-            self.btn_stop_playback.setText("⏹  Song stoppen")
-            self.btn_stop_playback.setToolTip(
-                "Stoppt nur die Song-Wiedergabe. Die Restaurierung läuft unverändert weiter."
-            )
+            self.btn_stop_playback.setText(t("ui.stop_song"))
+            self.btn_stop_playback.setToolTip(t("ui.stop_song_tip"))
 
         # Tabs in main visualization area
         if hasattr(self, "viz_tabs") and self.viz_tabs.count() >= 2:

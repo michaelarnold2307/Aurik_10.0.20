@@ -340,7 +340,15 @@ class RestorationStatusPanel(QFrame):
             label.setStyleSheet(
                 f"font-size: 11px; padding: 2px 6px; border-radius: 3px; background: {bg}; color: {color};"
             )
-            label.setToolTip(f"{short_label}: {value:.3f} (Schwelle: {threshold:.2f} für {self._current_material})")
+            label.setToolTip(
+                t(
+                    "status_panel.dimension_tooltip_value",
+                    label=short_label,
+                    value=value,
+                    threshold=threshold,
+                    material=self._current_material,
+                )
+            )
 
     def set_complete(self) -> None:
         """Show completion state."""

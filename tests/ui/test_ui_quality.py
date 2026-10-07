@@ -89,7 +89,10 @@ def test_ab_player_disabled_states_have_actionable_reasons() -> None:
     assert "Kein Audio-Ausgabegerät gefunden." in src
     assert "Original-Audio ist noch nicht geladen." in src
     assert "Restaurierter Export liegt noch nicht vor." in src
-    assert "Audio-Ausgabe nicht verfügbar" in src
+    # §VI.5 (copilot-instructions.md): Der Hinweistext lebt seit 2026-10-07 im
+    # i18n-Katalog mit Platzhalter für den Grund.
+    assert 't("status.audio_output_unavailable", reason=_output_reason)' in src
+    assert '"status.audio_output_unavailable"' in I18N_FILE.read_text(encoding="utf-8")
 
 
 def test_ab_player_uses_loudness_matched_restored_playback() -> None:
@@ -145,7 +148,11 @@ def test_gui_has_professional_offline_system_check_surface() -> None:
     assert "Bridge-Vertrag" in src
     assert "Audio-Ausgabe" in src
     assert "Lokale Modelle" in src
-    assert "Aurik Systemcheck" in src
+    # §VI.5 (copilot-instructions.md): Der Fenstertitel lebt seit 2026-10-07 im
+    # i18n-Katalog (vorher hartkodiert) — geprüft wird die Anbindung, nicht der
+    # Literaltext (das prüft tests/unit/test_frontend_verboten_linter.py).
+    assert 'dlg.setWindowTitle(t("dialog.systemcheck_title"))' in src
+    assert '"dialog.systemcheck_title": "Aurik Systemcheck"' in I18N_FILE.read_text(encoding="utf-8")
 
 
 def test_result_banner_starts_with_clear_professional_verdict() -> None:

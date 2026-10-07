@@ -259,6 +259,33 @@ def _gc_after_test():
         pass
 
 
+@pytest.fixture(autouse=True)
+def _restore_ui_language():
+    """Autouse-Fixture: globalen i18n-Zustand pro Test wiederherstellen.
+
+    Befund 2026-10-07 (§V8 (copilot-instructions.md), Analog: kein Test darf den naechsten veraendern): `Aurik10.i18n.
+    set_language()` ist **globaler** Zustand. Tests, die auf Englisch umschalten
+    (`tests/unit/test_i18n.py`), ließen ihn stehen — GUI-Tests danach bekamen
+    englische Titel und fielen **ordnungsabhängig**. Beweis: drei Tests in
+    `tests/unit/test_gui_rest_panels.py` bestanden isoliert, in der gemeinsamen
+    Ausführung nicht (`plugin_manager.title` ist de „Plugin-Manager", en
+    „Plugin Manager"). Das ist kein GUI-Fehler, sondern fehlende
+    Zustands-Isolation — dieselbe Klasse wie D-K3-7 (Layout) und §V8 (copilot-instructions.md):
+    ein Test darf den nächsten nicht verändern.
+    """
+    try:
+        from Aurik10.i18n import get_language, set_language
+    except Exception:  # i18n nicht importierbar (z. B. minimales Umfeld)
+        yield
+        return
+    _before = get_language()
+    yield
+    try:
+        set_language(_before)
+    except Exception:
+        pass
+
+
 def pytest_sessionfinish(session, exitstatus):
     """Best-effort shutdown for background managers created during tests."""
     try:

@@ -55,8 +55,15 @@ def test_release_must_frontend_version_display_invariant_is_wired_to_single_sour
     assert "from Aurik10 import __version__ as _AURIK_VERSION" in window_src, (
         "Aurik10/ui/modern_window.py must derive title version from Aurik10.__version__."
     )
-    assert 'setWindowTitle(f"AURIK Professional v{_AURIK_VERSION}")' in window_src, (
+    # §VI.5 (copilot-instructions.md) + §v10.802: Der Titel läuft seit 2026-10-07
+    # über den i18n-Katalog, bleibt aber an die EINE Versionsquelle gebunden —
+    # der Test prüft genau diese Bindung (die Zeichenkette lebt im Katalog).
+    assert 't("app.window_title", version=_AURIK_VERSION)' in window_src, (
         "Aurik10/ui/modern_window.py must expose version in window title."
+    )
+    _catalog = (MAIN_FILE.parent / "i18n" / "__init__.py").read_text(encoding="utf-8")
+    assert '"app.window_title": "AURIK Professional v{version}"' in _catalog, (
+        "Der Fenstertitel-Platzhalter muss im i18n-Katalog liegen."
     )
 
     assert "from Aurik10 import __version__ as _VERSION" in splash_src, (

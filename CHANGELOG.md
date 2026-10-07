@@ -1,4 +1,53 @@
-# Changelog — Aurik 10.9.0
+# Changelog — Aurik 10.9.1
+
+## 10.9.1 (2026-10-07)
+
+### GUI-Tiefenanalyse: Premium-Killer behoben, Gate das mitzählt
+
+**Ausgangsfrage:** „Behebe alles, was den Eindruck einer extrem hochwertigen GUI
+trübt, und fördere die laienfreundliche Bedienung.“ — Gemessen über `Aurik10/`
+(4 Dateien), nicht nach Eindruck.
+
+**Befund A — sichtbar falsche Version (§v10.802 copilot-instructions.md):** Der
+Über-Dialog zeigte **„Über AURIK 10.0.15“**, während die Anwendung 10.9.0 ist —
+und zwar bei **jedem** Aufruf (`modern_window.py:16019` → `t("dialog.about_title")`).
+Die Version kommt jetzt aus `_AURIK_VERSION`; der veraltete Zähler in
+`legacy.main.window_title` (ungenutzt, aber eine Falle) ist entfernt.
+
+**Befund B — ASCII-Umlaute in dauerhaft sichtbaren Labels:**
+„Klangqualitaet“, „Natuerlichkeit“, „Authentizitaet“,
+„Klangfarben-Authentizitaet“, „Dimensionale Klangqualitaet“ — jetzt mit echten
+Umlauten.
+
+**Befund C — Zeitbudget-Dialog (§v10.15) sah nach Konsole aus:**
+`[Maximal weitermachen]` / `[Phasen ueberspringen]` standen als Klammer-Liste im
+Text **und** als Knöpfe darunter, dazu „moechtest“, „Qualitaet“, „laengere“,
+„Pipeline“ — und **kein** `t()`. Jetzt: laiengerechte Sprache ohne Fachbegriff
+(„Jetzt fertigstellen“ statt „Phasen überspringen“), der Trade-off steht im
+Knopf-Tooltip, Farbe aus `ui_constants.STATUS_OK_TEXT` statt Hex in der Zeile,
+alle Texte über den Katalog (de/en).
+
+**Befund D — das Frontend-Gate konnte nie fehlschlagen (§V7):**
+`tests/unit/test_frontend_verboten_linter.py` endete auf
+`assert magic_count >= 0` (immer wahr) und suchte UI-Texte nur in Zeilen > 80
+Zeichen. Deshalb waren **66** hartkodierte Nutzertexte unsichtbar. Prüfung 4
+ist jetzt **fail-closed** gegen neue sichtbare Setter-Literale ohne `t()`, mit
+vier präzisen Fehlalarm-Filtern (bereits-i18n-isierte f-Strings, Markup,
+Format-Vorlagen, Escape-Folgen/Einheiten).
+
+**Befund E — GUI-Tests waren ordnungsabhängig:** Drei Tests in
+`tests/unit/test_gui_rest_panels.py` bestanden **isoliert**, in der gemeinsamen
+Ausführung nicht: `Aurik10.i18n.set_language()` ist globaler Zustand, den
+`tests/unit/test_i18n.py` stehen ließ (`plugin_manager.title` ist de
+„Plugin-Manager“, en „Plugin Manager“). Eine autouse-Fixture in
+`tests/conftest.py` stellt die Sprache pro Test wieder her — dieselbe
+Zustands-Isolations-Klasse wie §V8.
+
+**Nachweis:** hartkodierte Nutzertexte **66 → 22** (44 umgestellt:
+Ergebnisleiste, Dialoge, Fenstertitel, Schadensbehebung, Abtastrate,
+Hörgenuss-/Hörermüdungs-Labels, Panel-Tooltip). `tests/ui/` + 6 UI-nahe
+Unit-Suiten **127 grün** (vorher 5 rot). i18n-Symmetrie de/en 20 grün. Die
+Restmenge ist als **D-K3-10** offen geführt, die Baseline sinkt nur.
 
 ## 10.9.0 (2026-10-07)
 

@@ -237,7 +237,7 @@ class ResultsSummaryDialog(QtWidgets.QDialog):
 
         # ── §v10.202: Arbeits-Zusammenfassung ────
         if phases > 0:
-            work_label = QtWidgets.QLabel(f"🔧 {phases} Phasen ausgeführt")
+            work_label = QtWidgets.QLabel(t("results.phases_executed", count=phases))
             work_label.setStyleSheet("font-size: 10pt; color: #8894A8; padding: 4px 0;")
             layout.addWidget(work_label)
 
@@ -259,7 +259,7 @@ class ResultsSummaryDialog(QtWidgets.QDialog):
             if joy_idx > 0:
                 joy_pct = int(joy_idx * 100)
                 joy_emoji = "😊" if joy_idx > 0.7 else ("🙂" if joy_idx > 0.4 else "😐")
-                joy_label = QtWidgets.QLabel(f"{joy_emoji}  Hörgenuss: {joy_pct}%")
+                joy_label = QtWidgets.QLabel(t("results.joy", emoji=joy_emoji, percent=joy_pct))
                 joy_color = "#82B89A" if joy_idx > 0.6 else ("#C8A84B" if joy_idx > 0.3 else "#B87A7A")
                 joy_label.setStyleSheet(f"font-size: 10pt; color: {joy_color}; padding: 4px 0;")
                 layout.addWidget(joy_label)
@@ -267,7 +267,7 @@ class ResultsSummaryDialog(QtWidgets.QDialog):
             if fatigue_idx > 0:
                 fat_pct = int(fatigue_idx * 100)
                 fat_emoji = "😫" if fatigue_idx > 0.6 else ("😐" if fatigue_idx > 0.3 else "😌")
-                fat_label = QtWidgets.QLabel(f"{fat_emoji}  Hörermüdung: {fat_pct}%")
+                fat_label = QtWidgets.QLabel(t("results.fatigue", emoji=fat_emoji, percent=fat_pct))
                 fat_color = "#82B89A" if fatigue_idx < 0.3 else ("#C8A84B" if fatigue_idx < 0.5 else "#B87A7A")
                 fat_label.setStyleSheet(f"font-size: 10pt; color: {fat_color}; padding: 4px 0;")
                 layout.addWidget(fat_label)
