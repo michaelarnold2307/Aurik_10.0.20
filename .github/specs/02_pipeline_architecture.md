@@ -443,7 +443,7 @@ Audio-Eingang (mono/stereo, beliebige SR)
     ↓
 [DefectScanner]  → DefectAnalysisResult (65 DefectTypes)
     ↓
-[CausalDefectReasoner]  → RestorationPlan (66 Kausal-Ursachen)
+[CausalDefectReasoner]  → RestorationPlan (72 Kausal-Ursachen)
     ↓
 [UncertaintyQuantifier]  → confidence → GP-Bounds adj.
     ↓
@@ -2518,7 +2518,7 @@ Aurik verarbeitet **kein generisches Audio** — jede Eingabe ist ein einzigarti
 3. GenreClassifier              → genre_label, RESTORATION_PROFILE (5 definierte + DEFAULT)
 4. RestorabilityEstimator       → 0–100, tier (GOOD/FAIR/POOR/EXTREME), scale_factor
 5. DefectScanner.scan()         → 65 defect_types × severity × locations
-6. CausalDefectReasoner         → 66 Ursachen → Phase-Selektion (CAUSE_TO_PHASES)
+6. CausalDefectReasoner         → 72 Ursachen → Phase-Selektion (CAUSE_TO_PHASES)
 7. SongCalibrationProfile       → family_scalars [0.30–1.80] + global_scalar [0.50–1.50]
 8. SongGoalImportance (§2.56)   → 14 Per-Song-Gewichte [0.3–2.0] aus 5 Stufen
                                    (Label/Audio/Psychoakustik/Vokal-Harmonik/Interactions)

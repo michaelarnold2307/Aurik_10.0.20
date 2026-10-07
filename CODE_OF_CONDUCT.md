@@ -1,4 +1,4 @@
-# Code of Conduct — Aurik 10.0.8
+# Code of Conduct — Aurik 10.11.0
 
 ## Unser Versprechen
 

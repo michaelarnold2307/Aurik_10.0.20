@@ -579,6 +579,12 @@ except Exception:
     logger.warning("ML→DSP-Ersatzpfad aktiviert", exc_info=True)  # §V6 (copilot-instructions.md)
     _AURIK_VERSION = "unknown"  # Fallback: Import-Fehler — wird beim nächsten Release-Bump automatisch korrekt
 
+# Live-Narrativ (§v10.305 copilot-instructions.md: kontextbewusste Kommunikation,
+# 2026-10-07): rotierende, fortschrittstragende Live-Zeile statt drei fester Sätze.
+from Aurik10.ui.live_narrative import band_for as _narrative_band
+from Aurik10.ui.live_narrative import compose_reassure as _narrative_compose
+from Aurik10.ui.live_narrative import milestone_key as _narrative_milestone
+
 # SVG-Phasen-Icons (2.5D mystisch-profi)
 try:
     from Aurik10.core.aurik_icons import get_icon as _get_stage_icon
@@ -3498,20 +3504,19 @@ class BatchProcessingThread(QThread):
                         _risk = float(_pid_hint_live.get("risk", 0.0) or 0.0)
                         if _suppressed > 0:
                             self._show_toast(
-                                f"🧠 Aurik Denker: {_suppressed} Phase(n) optimiert übersprungen"
-                                + (f" (Top-Ziel: {_goal})" if _goal else ""),
+                                t("narrative.thinker_skipped", count=_suppressed),
                                 severity="info",
                                 duration_ms=4500,
                             )
                         elif _injected > 0:
                             self._show_toast(
-                                f"🧠 Aurik Denker: {_injected} Zusatz-Phase(n) für {_goal} injiziert",
+                                t("narrative.thinker_injected", count=_injected, goal=_goal),
                                 severity="info",
                                 duration_ms=4500,
                             )
                         elif _risk >= 0.60:
                             self._show_toast(
-                                f"⚠️ Aurik Denker: Erhöhtes Risiko für {_goal} ({_risk:.0%})",
+                                t("narrative.thinker_risk", goal=_goal),
                                 severity="warning",
                                 duration_ms=5000,
                             )
@@ -14503,26 +14508,50 @@ class ModernMainWindow(QMainWindow):
         return f"  ·  {_text}" if with_leading_separator else _text
 
     def _long_phase_reassure_text(self, ui_pct: float, time_since_callback_s: float) -> str:
-        """Gibt konkrete, phasen-bewusste Beruhigungstexte bei langen Pausen.
+        """Live-Zeile bei langen Pausen — rotierend und fortschrittstragend.
 
-        §VI (copilot-instructions.md): Alle benutzersichtbaren Strings über t() —
-        die konkreten Texte liegen in Aurik10/i18n/__init__.py.
+        §v10.305 (copilot-instructions.md): „kontextbewusste Kommunikation“. Die
+        Zeile trägt jetzt **Fortschritt** (Störungen behoben) und **Restzeit** mit
+        sich, nicht nur den Zustand.
+
+        Befund 2026-10-07 (gemessen): Vorher wählte diese Stelle aus **drei**
+        festen Sätzen über das Fortschrittsband und wiederholte denselben Satz im
+        8-Sekunden-Takt — bei einer 30-Minuten-Phase rund 200-mal, ohne eine
+        einzige neue Information (Variantenmechanik: im Frontend nicht vorhanden).
+        Ausgerechnet der meistgesehene Satz trug „ - “ statt Gedankenstrich und das
+        Wort „Rechenintensive“.
+
+        Auswahl und Rotation sind deterministisch über den Zähler
+        ``_narrative_index`` (§G5 copilot-instructions.md: kein Zufall, keine
+        Uhrzeit); der Zähler und die Meilenstein-Menge werden pro Song
+        zurückgesetzt (§V8 copilot-instructions.md: kein Song trägt Zustand in den
+        nächsten).
         """
         if time_since_callback_s < 12.0:
             return ""
 
-        _mins = int(time_since_callback_s // 60)
-        _time_info = f"seit {_mins} min" if _mins >= 1 else ""
+        _idx = int(getattr(self, "_narrative_index", 0))
+        self._narrative_index = _idx + 1
 
-        # §v10.202: Phasen-bewusste Beruhigung statt generischer Floskeln (i18n).
-        if ui_pct < 12.0:
-            _msg = t("status.processing_reassure_analysis")
-        elif ui_pct < 92.0:
-            _msg = t("status.processing_reassure_long_phase")
-        else:
-            _msg = t("status.processing_reassure_finalize")
+        _def_state = getattr(self, "_defect_progress_state", None) or {}
+        _d_total = int(_def_state.get("total", 0) or 0)
+        _d_rem = int(_def_state.get("remaining", _d_total) or 0)
+        _d_done = max(0, _d_total - _d_rem)
 
-        return f"{_msg}{' · ' + _time_info if _time_info else ''}"
+        _eta_text = ""
+        _deadline = getattr(self.batch_thread, "_eta_deadline", -1.0) if self.batch_thread else -1.0
+        if _deadline and _deadline > 0:
+            _rem_s = _deadline - time.perf_counter()
+            if _rem_s > 0:
+                _eta_text = self._format_eta_short(_rem_s)
+
+        return _narrative_compose(
+            band=_narrative_band(ui_pct),
+            index=_idx,
+            defects_done=_d_done,
+            defects_total=_d_total,
+            eta_text=_eta_text,
+        )
 
     def _phase_risk_focus_label(
         self,
@@ -19851,6 +19880,11 @@ class ModernMainWindow(QMainWindow):
         self._heartbeat_dots = 0
         self._processing_start_time = time.perf_counter()  # §v10.500: Narrativ-Referenz
         self._long_phase_toast_bucket = -1
+        # §V8 (copilot-instructions.md): Narrativ-Zustand gehört zum Song, nicht
+        # zur Sitzung — sonst würde der nächste Song die Rotation und die bereits
+        # gemeldeten Meilensteine des vorherigen erben.
+        self._narrative_index = 0
+        self._narrative_milestones = set()
         self._defect_progress_state = {
             # §v10.704 B24: Initiale Defekt-Counts aus Pre-Analysis übernehmen,
             # nicht auf 0 initialisieren. Die Chips zeigen dann sofort den
@@ -20158,7 +20192,7 @@ class ModernMainWindow(QMainWindow):
             logger.debug("UV3 graceful stop Signalisierung fehlgeschlagen (unkritisch): %s", _gs_exc)
 
         # 2. Status-Anzeige: Recovery läuft, kein Fehler
-        self.title_bar.set_status("⏳ Zeitlimit — bestes Ergebnis wird gesichert …", "#B8A068")
+        self.title_bar.set_status(t("status.time_limit_securing"), "#B8A068")
         self.status_text.setText("⏳ Das beste Ergebnis wird gesichert — gleich geschafft …")
 
         # 3. Batch-Thread 60 s Zeit geben, graceful zu enden (FlashSR-Timeout ≤ 180 s,
@@ -20212,7 +20246,7 @@ class ModernMainWindow(QMainWindow):
 
         self._offtrack_guard_consumed_token = token
         logger.warning("OffTrack-Guard: Graceful stop angefordert (token=%s)", token)
-        self.title_bar.set_status("⚠ Off-Track — sichere Korrektur läuft …", "#B86B6B")
+        self.title_bar.set_status(t("status.off_track_correcting"), "#B86B6B")
         self.status_text.setText("⚠ Eine Unregelmäßigkeit wurde erkannt — Aurik korrigiert den Kurs …")
         self._request_processing_stop("offtrack_guard", timeout_s=60.0)
 
@@ -20347,6 +20381,18 @@ class ModernMainWindow(QMainWindow):
         _def_remaining = int(_def_state.get("remaining", _def_total) or 0)
         _def_resolved = max(0, _def_total - _def_remaining)
         _def_pct = int(_def_state.get("resolved_pct", 0) or 0)
+
+        # §Neues Live-Narrativ (2026-10-07): erreichte Meilensteine GENAU EINMAL
+        # melden. Vorher erfuhr der Nutzer während des Laufs nichts über den
+        # erreichten Fortschritt — die Oberfläche zeigte nur den Zustand, und der
+        # Restaurierungsverlauf blieb stumm. Die Menge der gemeldeten Meilensteine
+        # wird pro Song zurückgesetzt (§V8 copilot-instructions.md).
+        if not isinstance(getattr(self, "_narrative_milestones", None), set):
+            self._narrative_milestones = set()
+        _ms_key = _narrative_milestone(_def_resolved, _def_total, self._narrative_milestones)
+        if _ms_key is not None:
+            self._narrative_milestones.add(_ms_key)
+            self._show_toast(t(_ms_key), severity="info", duration_ms=4500)
 
         _phase_bp = 0
         _phase_detail = ""
@@ -20809,7 +20855,7 @@ class ModernMainWindow(QMainWindow):
                                 self._long_phase_toast_bucket = _toast_bucket
                                 _toast_prefix = "Aurik analysiert weiter" if _ui_pct < 19.0 else "Aurik arbeitet weiter"
                                 _toast_msg = f"{_toast_prefix}: {_base}"
-                                _toast_msg += f"  ·  {_reassure or 'Bitte noch kurz warten'}"
+                                _toast_msg += f"  ·  {_reassure or t('status.processing_wait_short')}"
                                 self._show_toast(_toast_msg, severity="info", duration_ms=3200)
                     _runtime_state = (
                         self._runtime_display_state if isinstance(self._runtime_display_state, dict) else {}
@@ -21774,7 +21820,7 @@ class ModernMainWindow(QMainWindow):
             # Show toast with success message
             _stats = self.batch_queue.get_stats() if hasattr(self, "batch_queue") else {}
             _n_ok = _stats.get("completed", 0)
-            self._show_toast(f"{_n_ok} Datei(en) vollständig restauriert ✓", severity="success", duration_ms=5000)
+            self._show_toast(t("narrative.batch_celebrate", count=_n_ok), severity="success", duration_ms=5000)
         except Exception as _ce:
             logger.debug("Celebration trigger fehlgeschlagen: %s", _ce)
 

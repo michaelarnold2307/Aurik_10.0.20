@@ -131,47 +131,38 @@ class TestTontraegerDenkerErkenne:
     def test_13_confidence_finite(self):
         from denker.tontraeger_denker import TontraegerDenker
 
-        audio = _sine()
-        try:
-            result = TontraegerDenker().erkenne(audio, SR)
-            assert math.isfinite(result.confidence)
-        except Exception:
-            logger.debug("Stiller optionaler Ausnahmefall ignoriert", exc_info=True)
-            pass
+        result = TontraegerDenker().erkenne(_sine(), SR)
+        assert math.isfinite(result.confidence)
+        assert 0.0 <= result.confidence <= 1.0
 
-    def test_14_no_nan_in_detected_media_confidences(self):
+    def test_14_bayesian_scores_are_finite(self):
+        """Befund 2026-10-07: Dieser Test prüfte ``result.detected_media`` — ein
+        Feld, das ``erkenne()`` nie liefert (Rückgabe ist ``TontraegerInfo``) und
+        das es nur in der toten Klasse ``TontraegerErgebnis`` gibt. Der
+        ``AttributeError`` wurde von ``except Exception: pass`` geschluckt, der
+        Test war grün, egal was der Code tat. Geprüft wird jetzt das echte Feld.
+        """
         from denker.tontraeger_denker import TontraegerDenker
 
-        audio = _sine()
-        try:
-            result = TontraegerDenker().erkenne(audio, SR)
-            for _, conf in result.detected_media:  # type: ignore[attr-defined]
-                assert math.isfinite(conf)
-        except Exception:
-            logger.debug("Stiller optionaler Ausnahmefall ignoriert", exc_info=True)
-            pass
+        result = TontraegerDenker().erkenne(_sine(), SR)
+        assert result.bayesian_scores, "Erkennung muss Bayes-Scores liefern"
+        for material, score in result.bayesian_scores.items():
+            assert math.isfinite(float(score)), f"{material}: {score}"
 
     def test_15_stereo_input_accepted(self):
-        from denker.tontraeger_denker import TontraegerDenker, TontraegerErgebnis
+        from denker.tontraeger_denker import TontraegerDenker, TontraegerInfo
 
         audio = np.stack([_sine(), _sine(freq=880.0)], axis=0)
-        try:
-            result = TontraegerDenker().erkenne(audio, SR)
-            assert isinstance(result, TontraegerErgebnis)
-        except Exception:
-            logger.debug("Stiller optionaler Ausnahmefall ignoriert", exc_info=True)
-            pass
+        result = TontraegerDenker().erkenne(audio, SR)
+        assert isinstance(result, TontraegerInfo)
+        assert len(result.material_type) > 0
 
     def test_16_silence_no_crash(self):
         from denker.tontraeger_denker import TontraegerDenker
 
-        audio = np.zeros(SR * 2, dtype=np.float32)
-        try:
-            result = TontraegerDenker().erkenne(audio, SR)
-            assert result is not None
-        except Exception:
-            logger.debug("Stiller optionaler Ausnahmefall ignoriert", exc_info=True)
-            pass
+        result = TontraegerDenker().erkenne(np.zeros(SR * 2, dtype=np.float32), SR)
+        assert result is not None
+        assert math.isfinite(result.confidence)
 
     def test_17_recommended_phases_strings(self):
         from denker.tontraeger_denker import TontraegerDenker

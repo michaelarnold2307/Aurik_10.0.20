@@ -35,6 +35,66 @@ except Exception:  # ImportError, AttributeError, etc.
 
 _3X_RT_LIMIT: float = 32.0  # Maximaler RT-Faktor (Spec §9.5)
 
+# ─── Hörordnung Ebene 3 (lexikografische Wohlklang-Ordnung) ──────────────
+# `hoerordnung.instructions.md` §5: ein höherrangiges Ziel darf für kein
+# niederrangigeres gesenkt werden — strikte Dominanz, keine weiche Gewichtung.
+_HEARING_NOISE_EPS_DEFAULT: float = 0.02  # §v10.306: spektrale Metriken ~0,02 Varianz
+
+
+def hearing_order_violation(
+    initial_goals: dict[str, float],
+    candidate_goals: dict[str, float],
+    *,
+    inapplicable: frozenset[str] = frozenset(),
+    noise_eps: float = _HEARING_NOISE_EPS_DEFAULT,
+) -> str | None:
+    """Prüft einen Kandidaten gegen die lexikografische Wohlklang-Ordnung.
+
+    Liefert eine Begründung, wenn der Kandidat ein Ziel einer **höheren** Stufe
+    senkt, um ein Ziel niedrigerer Stufe zu heben — sonst ``None``. Deltas
+    unterhalb ``noise_eps`` sind Messrauschen und zählen weder als Gewinn noch
+    als Verlust (§v10.306: ~0,02 Varianz spektraler Metriken).
+
+    Die Stufen kommen aus der kanonischen Instanz
+    ``GoalPriorityProtocol.HEARING_TIER_MAP`` — dieselbe Quelle wie im
+    ``ExcellenceOptimizer`` (§G9 (copilot-instructions.md)). Ist sie nicht
+    ladbar, gilt der Kandidat als **ungeprüft** und wird abgelehnt (§V6 (copilot-instructions.md): kein stiller Durchgriff).
+    """
+    try:
+        from backend.core.goal_priority_protocol import GoalPriorityProtocol as _GPP
+
+        _gpp = _GPP()
+    except Exception as _gpp_err:
+        logger.warning(
+            "§V6 (copilot-instructions.md) hearing_order_violation: Stufen-Quelle nicht verfügbar "
+            "(%s) — Kandidat gilt als ungeprüft und wird abgelehnt",
+            _gpp_err,
+        )
+        return "Hörordnungs-Prüfung nicht verfügbar"
+
+    winners: list[tuple[str, float]] = []
+    losers: list[tuple[str, float]] = []
+    for goal, value_cand in candidate_goals.items():
+        if goal in inapplicable:
+            continue
+        value_init = initial_goals.get(goal)
+        if value_init is None or not math.isfinite(value_init) or not math.isfinite(value_cand):
+            continue
+        delta = value_cand - value_init
+        if delta > noise_eps:
+            winners.append((goal, delta))
+        elif delta < -noise_eps:
+            losers.append((goal, delta))
+
+    for winner, gain in winners:
+        for loser, loss in losers:
+            if _gpp.would_violate_hearing_order(winner, loser):
+                return (
+                    f"{winner} (+{gain:.3f}) auf Kosten von {loser} ({loss:.3f}) — "
+                    f"Stufe {_gpp.hearing_tier(winner)} verbessert, Stufe {_gpp.hearing_tier(loser)} gesenkt"
+                )
+    return None
+
 
 # ─── Goal-Risk-Assessment (Muster D: gemeinsame Basis für prognostiziere + optimiere) ──
 # Zentral definierte Goal-Thresholds: beide Pfade nutzen dieselben Werte.
@@ -296,7 +356,7 @@ class ExzellenzDenker:
                 logger.debug("ExzellenzDenker: MERT-Proxy MOS nicht verfügbar: %s", _mert_exc)
 
         # Schritt 2 — Musical Goals messen
-        goals = self.messe_ziele(optimiertes_audio, sr)
+        goals = self.messe_ziele(optimiertes_audio, sr, material_type=str(material or "unknown"))
 
         # Excellence-Score: Mittelwert aller Goals
         # §09.2 Material-adaptive Mindest-Score (nicht hardcoded 0.75 — Shellac-Ceiling 0.70,
@@ -329,17 +389,26 @@ class ExzellenzDenker:
             if not _violations:
                 break
             try:
-                _opt_rp = self._get_optimizer(sr=sr, material=material)
+                # §V8 (copilot-instructions.md): FRISCHE Instanz statt der
+                # gecachten. Die degressive Dämpfung unten verändert die
+                # Optimizer-Konfiguration — auf der gecachten Instanz summierte
+                # sie sich über Songs auf (0,7 → 0,49 → 0,34 …) und Song N+1
+                # startete geschwächt. Eine frische Instanz trägt den Song-Zustand.
+                _opt_rp = self._build_optimizer(sr, material)
                 # Degressive intensity: reduce harmonic boost + modulation each pass
-                _opt_rp._harm_boost_db *= max(0.3, 1.0 - 0.3 * _re_pass_i)
-                _opt_rp._modulation_strength *= max(0.3, 1.0 - 0.25 * _re_pass_i)
+                _opt_rp._harm_boost_db = float(getattr(_opt_rp, "_harm_boost_db", 1.0)) * max(
+                    0.3, 1.0 - 0.3 * _re_pass_i
+                )
+                _opt_rp._modulation_strength = float(getattr(_opt_rp, "_modulation_strength", 1.0)) * max(
+                    0.3, 1.0 - 0.25 * _re_pass_i
+                )
                 _rp_audio, _rp_result = _opt_rp.optimize(optimiertes_audio)
                 _rp_audio = np.clip(
                     np.nan_to_num(_rp_audio.astype(np.float32), nan=0.0, posinf=0.0, neginf=0.0),
                     -1.0,
                     1.0,
                 )
-                _rp_goals = self.messe_ziele(_rp_audio, sr)
+                _rp_goals = self.messe_ziele(_rp_audio, sr, material_type=str(material or "unknown"))
                 _rp_passed = sum(1 for v in _rp_goals.values() if math.isfinite(v) and v >= _GOAL_MIN)
                 # Re-Pass nur übernehmen wenn er Goals verbessert
                 if _rp_passed >= passed:
@@ -463,7 +532,16 @@ class ExzellenzDenker:
             mert_proxy_used=bool(_metadata.get("mert_proxy_used", False)),
         )
 
-    def messe_ziele(self, audio: np.ndarray, sr: int, reference: np.ndarray | None = None) -> dict[str, float]:
+    def messe_ziele(
+        self,
+        audio: np.ndarray,
+        sr: int,
+        reference: np.ndarray | None = None,
+        *,
+        material_type: str = "unknown",
+        panns_singing: float = 0.0,
+        global_scalar: float = 1.0,
+    ) -> dict[str, float]:
         """Misst alle 15 Musical Goals für das übergebene Audio.
 
         Args:
@@ -472,6 +550,14 @@ class ExzellenzDenker:
             reference: Optionales Original-Audio (vor Restaurierung) — verbessert
                        Präzision von tonal_center, timbre_authentizitaet, authentizitaet,
                        separation_fidelity und artikulation erheblich (§S6).
+            material_type: Trägermedium DIESES Songs. Ohne Angabe messen die
+                       material-adaptiven Metriken (brillanz/waerme/sep_fidelity,
+                       §9.12.6 material-floor) gegen „unknown“ — der Material-Floor
+                       wäre wirkungslos.
+            panns_singing: PANNs-Gesangskonfidenz [0, 1]; ≥ 0,35 schaltet den
+                       SingMOS-Pfad der Natürlichkeits-Metrik frei.
+            global_scalar: Restaurationsstärke; < 0,15 löst den Proxy-Pfad aus
+                       und kürzt den teuren 15-Goal-Lauf.
 
         Returns:
             Dict mit Goal-Namen → Score ∈ [0, 1].
@@ -491,7 +577,15 @@ class ExzellenzDenker:
             # in any metric from blocking the pipeline forever.  120 s covers
             # all 15 metrics even on long tracks; normal run < 30 s.
             with _cf_mz.ThreadPoolExecutor(max_workers=1) as _exec_mz:
-                _fut_mz = _exec_mz.submit(checker.measure_all, audio, sr, reference)
+                _fut_mz = _exec_mz.submit(
+                    checker.measure_all,
+                    audio,
+                    sr,
+                    reference,
+                    material_type=material_type,
+                    panns_singing=panns_singing,
+                    global_scalar=global_scalar,
+                )
                 try:
                     raw = _fut_mz.result(timeout=120.0)
                 except _cf_mz.TimeoutError:
@@ -534,7 +628,13 @@ class ExzellenzDenker:
              Minimalste Rückmischung (max. 7 % Originalanteil).
           5. Bestes Kandidaten-Audio nur übernehmen wenn:
              goals_passed_after ≥ goals_passed_before UND
-             kein Ziel um mehr als 0.02 schlechter als vor der Reparatur (§0).
+             **kein Hörordnungs-Verstoß** vorliegt
+             (`hearing_order_violation`: kein Gewinn auf Kosten eines
+             höherrangigen Ziels — `hoerordnung.instructions.md` §5) UND
+             kein Ziel über die Messrausch-Toleranz hinaus fällt
+             (0.03/0.04/0.05 je Goal-Klasse, §v10.306: spektrale Metriken
+             haben ~0,02 Varianz — der frühere Docstring nannte hier 0.02,
+             was unterhalb der Rauschgrenze lag).
 
         Warum sicher nach UV3-FeedbackChain (Abgrenzung zu v10.0.0):
           - v10.0.0 deaktivierte den ExcellenceOptimizer *global* nach UV3, weil alle
@@ -652,7 +752,19 @@ class ExzellenzDenker:
             return audio, {}
 
         # Step 1: Basis-Messung
-        goals_initial = self.messe_ziele(audio, sr, reference=reference_audio)
+        # Goal-Messung mit dem Material DIESES Songs. Ohne Trägerangabe messen die
+        # material-adaptiven Metriken gegen „unknown“ und ihr Floor bleibt wirkungslos
+        # (§9.12.6 material-floor). „auto“ ist kein Träger und wird auf „unknown“
+        # normalisiert (§G9 (copilot-instructions.md): eine Quelle für Materialnamen).
+        _material_for_measure = str(material or "unknown").strip().lower()
+        if _material_for_measure in ("", "auto"):
+            _material_for_measure = "unknown"
+
+        def _measure(_audio: np.ndarray, _ref: np.ndarray | None = None) -> dict[str, float]:
+            """Goal-Messung mit dem Material dieses Songs."""
+            return self.messe_ziele(_audio, sr, reference=_ref, material_type=_material_for_measure)
+
+        goals_initial = _measure(audio, reference_audio)
         if not goals_initial:
             return audio, {}
 
@@ -752,13 +864,40 @@ class ExzellenzDenker:
         _best_goals: dict[str, float] = dict(goals_initial)
         _best_passed: int = _passed_initial
 
-        def _is_improvement(candidate_goals: dict[str, float]) -> bool:  # type: ignore[return]
+        # §v10.306: spektrale Metriken haben ~0,02 Varianz — kleinere Deltas
+        # sind Messrauschen und zählen weder als Gewinn noch als Verlust.
+        _HEARING_NOISE_EPS: float = _HEARING_NOISE_EPS_DEFAULT
+
+        def _hearing_order_violation(candidate_goals: dict[str, float]) -> str | None:
+            """Hörordnung Ebene 3 — delegiert an die testbare Modulfunktion."""
+            return hearing_order_violation(
+                goals_initial,
+                candidate_goals,
+                inapplicable=_inappl,
+                noise_eps=_HEARING_NOISE_EPS,
+            )
+
+        def _is_improvement(candidate_goals: dict[str, float]) -> bool:
             """Accept if net improvement OR no goal regresses beyond tolerance (§v10.306 recalibrated).
 
             §v10.306: Vorher _max_drop=0.01/0.015/0.02 war innerhalb Messrauschen
             (spektrale Metriken haben ~0.02 Varianz). Jede echte Verbesserung wurde
             abgelehnt. Neue Schwellen: 0.03/0.04/0.05 + Net-Improvement-Gate.
+
+            Davor liegt seit 2026-10-07 die **Hörordnung Ebene 3**
+            (`hoerordnung.instructions.md` §5): Ein Kandidat, der ein
+            höherrangiges Ziel (Natürlichkeit > Wärme > Klarheit > Brillanz)
+            senkt, um ein niederrangigeres zu heben, wird **immer** abgelehnt —
+            unabhängig von seiner Netto-Bilanz.
             """
+            _violation = _hearing_order_violation(candidate_goals)
+            if _violation is not None:
+                logger.info(
+                    "ExzellenzDenker: Kandidat abgelehnt — Hörordnung Ebene 3 verletzt (%s)",
+                    _violation,
+                )
+                return False
+
             _cand_passed = _count_passed(candidate_goals)
 
             # §v10.306 Net-Improvement-Gate: Erlaube Kandidat wenn Summe der
@@ -798,6 +937,11 @@ class ExzellenzDenker:
             if _cand_passed < _best_passed - 1:  # Toleranz: 1 Goal weniger passed ist ok
                 return False
 
+            # Kein Zweig griff → Ablehnung. Bewusst explizit statt implizit
+            # ``None`` (die Anmerkung oben, ``# type: ignore[return]``, ist damit
+            # gegenstandslos geworden).
+            return False
+
         # Step 2: Zeit-Domain-Reparatur (micro_dynamics + ola_edges — kein STFT)
         _needs_td = bool(_p35_violations & (_MICRO_DYN_GOALS | _OLA_GOALS))
         if _needs_td and _repair_attempts < _MAX_REPAIR_ATTEMPTS:
@@ -825,7 +969,7 @@ class ExzellenzDenker:
                     -1.0,
                     1.0,
                 )
-                _td_goals = self.messe_ziele(_td_out, sr, reference=reference_audio)
+                _td_goals = _measure(_td_out, reference_audio)
                 if _td_goals and _is_improvement(_td_goals):
                     _td_passed = _count_passed(_td_goals)
                     _best_audio = _td_out
@@ -863,7 +1007,7 @@ class ExzellenzDenker:
                         -1.0,
                         1.0,
                     )
-                    _blend_goals = self.messe_ziele(_blended, sr, reference=reference_audio)
+                    _blend_goals = _measure(_blended, reference_audio)
                     if not _blend_goals:
                         continue
                     _blend_passed = _count_passed(_blend_goals)
@@ -903,7 +1047,7 @@ class ExzellenzDenker:
                         -1.0,
                         1.0,
                     )
-                    _p12_goals = self.messe_ziele(_p12_blended, sr, reference=reference_audio)
+                    _p12_goals = _measure(_p12_blended, reference_audio)
                     if not _p12_goals:
                         continue
                     _p12_passed = _count_passed(_p12_goals)
@@ -953,7 +1097,7 @@ class ExzellenzDenker:
                             -1.0,
                             1.0,
                         )
-                        _local_goals = self.messe_ziele(_local_blended, sr, reference=reference_audio)
+                        _local_goals = _measure(_local_blended, reference_audio)
                         if not _local_goals:
                             continue
                         _spa_cand = float(_local_goals.get("spatial_depth", _spa_now))

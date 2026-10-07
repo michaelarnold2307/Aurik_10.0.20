@@ -40,6 +40,7 @@ v10.0.0 — PhaseInteractionDenker
 from __future__ import annotations
 
 import logging
+import math
 import threading
 from copy import copy
 from dataclasses import dataclass, field
@@ -57,21 +58,15 @@ logger = logging.getLogger(__name__)
 _SINGLETON: dict[str, PhaseInteractionDenker | None] = {"instance": None}
 _lock = threading.Lock()
 
-# §v10.303.3 Denker-Feedback-Loop: UV3 schreibt hier die Familien rein,
-# die es bei Low-Confidence gestrippt hat. Der Denker liest sie beim
-# nächsten Planungszyklus und plant diese Familien gar nicht erst ein.
-_low_confidence_stripped_cache: frozenset[str] = frozenset()
-
-
-def record_low_confidence_stripped_families(families: set[str] | frozenset[str]) -> None:
-    """§v10.303.3: UV3 ruft dies nach dem Strip, damit der Denker lernt."""
-    global _low_confidence_stripped_cache
-    _low_confidence_stripped_cache = frozenset(families)
-
-
-def get_low_confidence_stripped_families() -> frozenset[str]:
-    """§v10.303.3: Denker liest dies vor der Planung."""
-    return _low_confidence_stripped_cache
+# Hinweis (§v10.303.3, entfernt 2026-10-07): Hier lag ein Modul-globaler Cache
+# ``_low_confidence_stripped_cache``, den UV3 während des Laufs füllte und den
+# der Denker beim NÄCHSTEN Planungszyklus las. ``plan()`` läuft genau einmal je
+# Song (AurikDenker Stufe 5b) — der gelesene Wert konnte also ausschließlich aus
+# einem FRÜHEREN Song stammen. Damit beeinflusste ein Song die Phasen-Auswahl des
+# nächsten (Verstoß gegen §V8/§G1 (copilot-instructions.md), „kein Song
+# beeinflusst einen anderen") und strich Phasen still. Die Information bleibt
+# song-scoped in ``restoration_context["_low_confidence_stripped_families"]``
+# erhalten; der song-übergreifende Lernkanal ist entfernt.
 
 
 def _load_symbol(module_name: str, symbol_name: str) -> Any:
@@ -567,30 +562,10 @@ class PhaseInteractionDenker:
             except Exception:
                 logger.debug("Verarbeitungsschritt_interaction_denker.py:567: Silent exception absorbed", exc_info=True)
 
-        # §v10.303.3 Denker-Feedback-Loop: Familien die UV3 beim letzten Run
-        # bei Low-Confidence gestrippt hat, werden gar nicht erst eingeplant.
-        _stripped_cache = get_low_confidence_stripped_families()
-        if _stripped_cache:
-            try:
-                from backend.core.unified_restorer_v3 import UnifiedRestorerV3
-
-                _family_map = getattr(UnifiedRestorerV3, "_PHASE_INTERVENTION_CLASS", {})
-                _pre_count = len(merged_phases)
-                merged_phases = [_p for _p in merged_phases if _family_map.get(_p, "general") not in _stripped_cache]
-                _post_count = len(merged_phases)
-                if _post_count < _pre_count:
-                    logger.info(
-                        "§v10.303.3 Denker-Feedback: %d/%d Phasen aus Plan gestrichen (gelernte useless families: %s)",
-                        _pre_count - _post_count,
-                        _pre_count,
-                        ", ".join(sorted(_stripped_cache)),
-                    )
-                    injected_notes.append(
-                        f"§v10.303.3 Feedback-Strip: {_pre_count - _post_count} Phasen "
-                        f"aus {len(_stripped_cache)} gelernten Familien"
-                    )
-            except Exception:
-                logger.debug("Verarbeitungsschritt_interaction_denker.py:592: Silent exception absorbed", exc_info=True)
+        # §v10.303.3 Der song-übergreifende Feedback-Strip ist am 2026-10-07
+        # entfernt worden: Er ließ die Phasen-Auswahl dieses Songs von einem
+        # FRÜHEREN Song abhängen (§V8/§G1 (copilot-instructions.md)). Die
+        # Information zum Strip liegt song-scoped im ``restoration_context``.
 
         # 2. Ketten-Pflicht-Phasen (§2.46 Feature 1: TontraegerketteDenker)
         # Injiziert must_have_phases aus der erkannten Trägerkette,
@@ -715,8 +690,26 @@ class PhaseInteractionDenker:
         # 4. Semantische Annotation
         annotations = self._annotate(merged_phases)
 
+        # 4a. §2.59 Chirurgische Phasen schützen: Phasen, die einen
+        # chirurgischen Defekt behandeln (Klicks, Knistern, Dropouts, Transport-
+        # Bumps), dürfen NICHT durch die tag-basierte Konfliktaulösung
+        # verschwinden — sonst bleibt der Defekt hörbar.
+        _surgical_protected = self._surgical_phases(defekt_hint)
+        if _surgical_protected:
+            logger.info(
+                "§2.59 Chirurgischer Schutz: %d Phase(n) von der Supprimierung ausgenommen: %s",
+                len(_surgical_protected),
+                ", ".join(sorted(_surgical_protected)),
+            )
+
         # 5. Semantische Konflikterkennung + Auflösung (§2.48)
-        resolved, suppressed, conflict_notes = self._resolve_conflicts(merged_phases, annotations)
+        resolved, suppressed, conflict_notes = self._resolve_conflicts(
+            merged_phases, annotations, protected=_surgical_protected
+        )
+        if _surgical_protected & set(suppressed):
+            conflict_notes.append(
+                f"§2.59 chirurgischer Schutz hat {len(_surgical_protected & set(suppressed))} Supprimierung(en) verhindert"
+            )
 
         # 6. Reihenfolge-Constraints erzwingen (§2.46 / §7.2)
         ordered, ordering_applied = self._apply_order_constraints(resolved)
@@ -1193,15 +1186,64 @@ class PhaseInteractionDenker:
             result[phase] = tags if tags is not None else frozenset()
         return result
 
+    @staticmethod
+    def _surgical_phases(defekt_hint: Any) -> frozenset[str]:
+        """Phasen, die einen CHIRURGISCHEN Defekt behandeln (§2.59).
+
+        Die Zuordnung Phase → Defekt-Substrings kommt aus der kanonischen
+        Tabelle ``backend.core.phase_pruner._PHASE_DEFECT_REQUIREMENTS`` —
+        dieselbe Quelle, die der PhasePruner für seinen chirurgischen Keep
+        benutzt (§G9 (copilot-instructions.md)). Damit schützen beide Stellen
+        dieselben Phasen.
+
+        Ohne die Tabelle (Import-Fehler) wird nichts geschützt und das mit
+        Begründung protokolliert (§V6 (copilot-instructions.md)).
+        """
+        if not isinstance(defekt_hint, dict):
+            return frozenset()
+        try:
+            _types = [str(_d).lower() for _d in (defekt_hint.get("surgical_defect_types") or [])]
+        except Exception as _sh_err:
+            logger.warning(
+                "§V6 (copilot-instructions.md) _surgical_phases: Liste nicht lesbar (%s) — kein Schutz",
+                _sh_err,
+            )
+            return frozenset()
+        if not _types:
+            return frozenset()
+        try:
+            from backend.core.phase_pruner import _PHASE_DEFECT_REQUIREMENTS as _REQ
+        except Exception as _req_err:
+            logger.warning(
+                "§V6 (copilot-instructions.md) _surgical_phases: Pruner-Tabelle nicht verfügbar (%s) "
+                "— chirurgische Phasen sind NICHT geschützt",
+                _req_err,
+            )
+            return frozenset()
+
+        _protected: set[str] = set()
+        for _pid, _required in _REQ.items():
+            for _req in _required or []:
+                _needle = str(_req).lower()
+                if any(_needle in _defect for _defect in _types):
+                    _protected.add(str(_pid))
+                    break
+        return frozenset(_protected)
+
     def _resolve_conflicts(
         self,
         phases: list[str],
         annotations: dict[str, frozenset[str]],
+        *,
+        protected: frozenset[str] = frozenset(),
     ) -> tuple[list[str], dict[str, str], list[str]]:
         """Erkennt und löst semantische Phasen-Konflikte (§2.48).
 
         Für jede Konflikt-Regel: wenn Phase A Auslöser-Tags hat, wird die
         erste nachfolgende Phase mit Ziel-Tags supprimiert.
+
+        ``protected`` nennt Phasen, die einen chirurgischen Defekt behandeln
+        (§2.59) — sie werden NIE supprimiert (Begründung im Log, §G8 (copilot-instructions.md)).
 
         Invariante: Supprimierung ist deterministisch (First-Wins-Prinzip).
         """
@@ -1220,6 +1262,15 @@ class PhaseInteractionDenker:
                         continue
                 # Auslöser wurde bereits gefunden — suche Konflikt-Kandidaten
                 if trigger_phase is not None and tags & target_tags == target_tags:
+                    if phase in protected:
+                        reason = (
+                            f"§2.59 chirurgischer Schutz: {phase} behandelt einen chirurgischen "
+                            f"Defekt und bleibt trotz Konflikt mit {trigger_phase}"
+                        )
+                        conflict_notes.append(reason)
+                        logger.info("PhaseInteractionDenker: %s", reason)
+                        trigger_phase = None
+                        continue
                     reason = (
                         f"§2.48 [{', '.join(sorted(trigger_tags))}] "
                         f"→ [{', '.join(sorted(target_tags))}]: "
@@ -1592,6 +1643,147 @@ class PhaseInteractionDenker:
             return corrective + additive + dynamics + subtractive + other
         return corrective + subtractive + dynamics + additive + other
 
+    # ── §DENKER: Zentrale Guard-Modulation (Stärke-Intelligenz) ───────────
+    # Gewichtete MITTELUNG statt Multiplikation: drei unabhängige Dämpfungen
+    # multipliziert ergeben schon bei je 0,9 eine Absenkung auf 0,73 — die
+    # Reparatur wäre unterdosiert und der Defekt bliebe hörbar. Ziel der
+    # Reparatur ist die Maskierungsschwelle, nicht ein Mess-Nullwert
+    # (Hörordnung §4, §G6 (copilot-instructions.md)).
+    _GUARD_WEIGHTS: dict[str, float] = {"goal_budget": 0.40, "guard_wisdom": 0.50, "cross_guard": 0.10}
+
+    # Phasen, deren Unterdosierung einen HÖRBAREN Defekt hinterlässt (Klicks,
+    # Knacken, Brummen, Rumpeln, Dropouts, Phasen-/Azimutfehler). Für sie darf
+    # kein Guard die Stärke unter den Material-Floor drücken.
+    _CRITICAL_PHASES: frozenset[str] = frozenset(
+        {
+            "phase_01_click_removal",
+            "phase_02_hum_removal",
+            "phase_03_denoise",
+            "phase_05_rumble_filter",
+            "phase_09_crackle_removal",
+            "phase_14_phase_correction",
+            "phase_24_dropout_repair",
+            "phase_25_azimuth_correction",
+            "phase_27_click_pop_removal",
+            "phase_56_spectral_band_gap_repair",
+        }
+    )
+
+    _CRITICAL_FLOOR_DEFAULT: float = 0.30
+    _CRITICAL_FLOOR_BY_MATERIAL: dict[str, float] = {
+        "cassette": 0.40,
+        "tape": 0.40,
+        "reel_tape": 0.40,
+        "vinyl": 0.35,
+        "shellac": 0.35,
+    }
+
+    @staticmethod
+    def resolve_guard_modulation(
+        base_strength: float,
+        *,
+        goal_budget: Any = None,
+        guard_wisdom: Any = None,
+        cross_guard_results: dict[str, Any] | None = None,
+        phase_id: str = "",
+        material: str = "unknown",
+    ) -> float:
+        """Zentrale Guard-Modulation — EINE Stimme statt dreier Multiplikationen.
+
+        Ersetzt die blinde Multiplikation der Guards in ``_profiled_phase_call``
+        (UV3) durch eine gewichtete Mittelung:
+
+        * GoalBudget  40 % — Budget-Erschöpfung (nur wenn < 0,5 frei)
+        * GuardWisdom 50 % — Lern-Historie (``get_strength_mod``)
+        * CrossGuard  10 % — phasenübergreifender Konflikt („degraded“)
+
+        Zusagen (durch ``tests/unit/test_guard_modulation.py`` geprüft):
+
+        1. Ohne Guard-Einfluss ist das Ergebnis **bit-identisch** zur Eingabe —
+           es gibt keinen versteckten Stärke-Aufschlag.
+        2. Das Ergebnis ist **nie größer als die Eingabe**. Der Material-Floor
+           verhindert lediglich, dass ein Guard eine kritische Phase unter
+           ``min(Floor, Eingabe)`` drückt — er hebt nie über die Eingabe an.
+        3. Nicht-endliche Eingaben liefern 0,0 mit Protokolleintrag (§V6 (copilot-instructions.md)); kein NaN verlässt die Funktion (§III)
+           (copilot-instructions.md).
+        4. Deterministisch (§G5 (copilot-instructions.md)): dieselbe Eingabe
+           liefert dasselbe Ergebnis, ohne Zufall und ohne Uhrzeit.
+        """
+        _base = float(base_strength)
+        if not math.isfinite(_base):
+            logger.warning(
+                "§V6 (copilot-instructions.md) resolve_guard_modulation: "
+                "base_strength=%r ist nicht endlich — Phase %s auf 0.0 gesetzt",
+                base_strength,
+                phase_id or "<unbekannt>",
+            )
+            return 0.0
+        _base = max(0.0, min(1.0, _base))
+
+        penalties: list[tuple[float, float]] = []  # (Faktor, Gewicht)
+
+        # ── GoalBudget (40 %) ──
+        if goal_budget is not None and hasattr(goal_budget, "fraction_left"):
+            try:
+                _wf = min(float(goal_budget.fraction_left(_g)) for _g in ("waerme", "brillanz", "punch"))
+                if math.isfinite(_wf) and _wf < 0.5:
+                    penalties.append((max(0.5, _wf), PhaseInteractionDenker._GUARD_WEIGHTS["goal_budget"]))
+            except Exception as _gb_err:
+                logger.warning(
+                    "§V6 (copilot-instructions.md) resolve_guard_modulation: "
+                    "GoalBudget nicht lesbar (%s) — Budget-Einfluss entfällt",
+                    _gb_err,
+                )
+
+        # ── GuardWisdom (50 %) ──
+        if guard_wisdom is not None and hasattr(guard_wisdom, "get_strength_mod"):
+            try:
+                _sm = float(guard_wisdom.get_strength_mod())
+                if math.isfinite(_sm) and _sm < 1.0:
+                    penalties.append((max(0.0, _sm), PhaseInteractionDenker._GUARD_WEIGHTS["guard_wisdom"]))
+            except Exception as _gw_err:
+                logger.warning(
+                    "§V6 (copilot-instructions.md) resolve_guard_modulation: "
+                    "GuardWisdom nicht lesbar (%s) — Lern-Einfluss entfällt",
+                    _gw_err,
+                )
+
+        # ── CrossGuard (10 %) ──
+        if isinstance(cross_guard_results, dict) and cross_guard_results.get("verdict") == "degraded":
+            penalties.append((0.85, PhaseInteractionDenker._GUARD_WEIGHTS["cross_guard"]))
+
+        if not penalties:
+            # Kein Guard drängt — die Eingabe bleibt unangetastet (Zusage 1).
+            return _base
+
+        _total_w = sum(_w for _, _w in penalties)
+        if _total_w <= 0.0:
+            return _base
+        _factor = sum(_f * _w for _f, _w in penalties) / _total_w
+        _modulated = _base * max(0.0, min(1.0, _factor))
+
+        # ── Material-Floor nur für kritische Phasen (Zusage 2) ──
+        _pid = str(phase_id)
+        if _pid in PhaseInteractionDenker._CRITICAL_PHASES:
+            _mat = str(material).lower()
+            _floor = min(
+                PhaseInteractionDenker._CRITICAL_FLOOR_BY_MATERIAL.get(
+                    _mat, PhaseInteractionDenker._CRITICAL_FLOOR_DEFAULT
+                ),
+                _base,
+            )
+            if _modulated < _floor:
+                logger.info(
+                    "Guard-Floor hebt kritische Phase %s von %.3f auf %.3f (%s) — ein unterdosierter Defekt bliebe hörbar",
+                    _pid,
+                    _modulated,
+                    _floor,
+                    _mat,
+                )
+                _modulated = _floor
+
+        return max(0.0, min(1.0, _modulated))
+
 
 def _freq_range_to_band_name(f_low: float, f_high: float) -> str:
     """Mapped einen Frequenzbereich auf den nächstgelegenen FREQ_BANDS-Namen."""
@@ -1630,79 +1822,3 @@ def _categories_conflict_with_material(src_cat: str, dst_cat: str, material: str
     # Konflikt: src (Vorgänger) kommt in cat_order NACH dst (Nachfolger)
     # → after-Kante würde rückwärts durch die Kategorien zeigen
     return src_idx > dst_idx
-
-    # ── Guard-Modulation (zentrale Entscheidungs-Intelligenz) ─────────────
-
-    _CRITICAL_PHASES: frozenset[str] = frozenset(
-        {
-            "phase_14_phase_correction",
-            "phase_25_azimuth_correction",
-            "phase_56_spectral_band_gap_repair",
-            "phase_24_dropout_repair",
-            "phase_01_click_removal",
-            "phase_09_crackle_removal",
-            "phase_27_click_pop_removal",
-            "phase_03_denoise",
-            "phase_02_hum_removal",
-            "phase_05_rumble_filter",
-        }
-    )
-
-    @staticmethod  # type: ignore[misc]
-    def resolve_guard_modulation(
-        base_strength: float,
-        *,
-        goal_budget: Any = None,
-        guard_wisdom: Any = None,
-        cross_guard_results: dict[str, Any] | None = None,
-        phase_id: str = "",
-        material: str = "unknown",
-    ) -> float:
-        """Zentrale Guard-Modulation — eine Stimme, gewichtete Entscheidung.
-
-        Ersetzt die blinde Multiplikation dreier Guards in _profiled_phase_call.
-        Gewichtet die Guard-Einflüsse statt sie zu multiplizieren:
-          - GoalBudget:  40 % Gewicht (Budget-Erschöpfung)
-          - GuardWisdom: 50 % Gewicht (Lern-Historie)
-          - CrossGuard:  10 % Gewicht (phasenübergreifende Konflikte)
-
-        Returns modulierte Stärke ∈ [0.0, 1.0], nie unter Material-Floor.
-        """
-        penalties: list[tuple[float, float]] = []  # (faktor, gewicht)
-
-        # ── GoalBudget (40 %) ──
-        if goal_budget is not None and hasattr(goal_budget, "fraction_left"):
-            try:
-                wf = min(goal_budget.fraction_left(g) for g in ("waerme", "brillanz", "punch"))
-                if wf < 0.5:
-                    penalties.append((max(0.5, wf), 0.40))
-            except Exception:
-                logger.debug("resolve_guard_modulation: silent except suppressed", exc_info=True)
-
-        # ── GuardWisdom (50 %) ──
-        if guard_wisdom is not None and hasattr(guard_wisdom, "get_strength_mod"):
-            sm = guard_wisdom.get_strength_mod()
-            if sm < 1.0:
-                penalties.append((sm, 0.50))
-
-        # ── CrossGuard (10 %) ──
-        if isinstance(cross_guard_results, dict) and cross_guard_results.get("verdict") == "degraded":
-            penalties.append((0.85, 0.10))
-
-        # ── Gewichtete Modulation (nicht multiplikativ) ──
-        if penalties:
-            total_weight = sum(w for _, w in penalties)
-            if total_weight > 0:
-                weighted_factor = sum(f * w for f, w in penalties) / total_weight
-                base_strength *= weighted_factor
-
-        # ── Material-adaptive Mindest-Stärke ──
-        mat = str(material).lower()
-        _min = 0.30
-        if phase_id in PhaseInteractionDenker._CRITICAL_PHASES:
-            if mat in ("cassette", "tape", "reel_tape"):
-                _min = 0.40
-            elif mat in ("vinyl", "shellac"):
-                _min = 0.35
-
-        return max(_min, min(1.0, base_strength))

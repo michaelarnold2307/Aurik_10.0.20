@@ -10,7 +10,7 @@
 | Modul | Datei | Zweck |
 | --- | --- | --- |
 | `PerceptualEmbedder` | `backend/core/perceptual_embedder.py` | 256-dim L2-normalisierter Einbettungsraum |
-| `CausalDefectReasoner` | `backend/core/causal_defect_reasoner.py` | Bayesianisch: 65 DefectTypes → 66 Kausal-Ursachen |
+| `CausalDefectReasoner` | `backend/core/causal_defect_reasoner.py` | Bayesianisch: 65 DefectTypes → 72 Kausal-Ursachen |
 | `GPParameterOptimizer` | `backend/core/gp_parameter_optimizer.py` | RBF-GP + UCB + MOO Pareto-Front |
 | `PerceptualQualityScorer` | `backend/core/perceptual_quality_scorer.py` | Gammatone-NSIM+MCD+LUFS+MOS |
 | `MusicalGoalsChecker` | `backend/core/musical_goals/musical_goals_metrics.py` | 14 Qualitätsziele |
@@ -84,7 +84,7 @@ sim = embedding.cosine_similarity(other)  # ∈ [-1, 1]
 ## §2.4 CausalDefectReasoner
 
 ```python
-# 66 Kausal-Ursachen (≠ 65 DefectTypes des DefectScanners):
+# 72 Kausal-Ursachen (≠ 65 DefectTypes des DefectScanners):
 # Hinweis: transport_bump (v10.0.0b) und vocal_harshness (v10.0.0) als
 # eigenständige Ursachen ergänzt; Gruppe Pitch/Dynamik dadurch 4→5.
 #
@@ -105,7 +105,7 @@ sim = embedding.cosine_similarity(other)  # ∈ [-1, 1]
 #   dynamic_compression_excess
 #
 # Gesamtzahl: 10+4+2+9+2+2+5+1 = 35 dokumentierte Ursachen.
-# Autoritativ ist ausschliesslich CAUSES in causal_defect_reasoner.py (66 Ursachen,
+# Autoritativ ist ausschliesslich CAUSES in causal_defect_reasoner.py (72 Ursachen,
 # Stand 2026-10-06); die Liste oben ist ein nicht-vollstaendiger Auszug. Der Abgleich
 # "dokumentierte Zahl == Code" laeuft fail-closed in scripts/defect_coverage_check.py.
 #

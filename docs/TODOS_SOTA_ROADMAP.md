@@ -328,6 +328,15 @@ F14.
   Doku (`docs/UNIFIED_RESTORER_V3_SPEC.md` — veraltete „3× RT“-Angaben bereinigt) konsistent;
   `tests/unit/test_p0_3_budget_truth.py` (4 Fälle). Rekalibrierung der Realität (53×→32×)
   bleibt an TODO-P0-1 gebunden (extern blockiert: Laufzeit-Optimierung der F-Reihe).
+- **Nachtrag 2026-10-07 (Plan-Budget-Realismus):** Das `StrategieDenker`-Budget ist auf die
+  harte Guard-Grenze **gedeckelt** (es konnte bis **73,6×** zusagen — 32 × Kettentiefe 2,0 ×
+  Restaurierbarkeit 1,5 — und meldete damit Zeit, die der Ausstieg nie gewährt; das speiste
+  zugleich die Stufen-Wahl) und liest die Modus-Grenzen jetzt **aus** `PerformanceGuard`
+  (FAST 8×, sonst 32×), statt sie zu kopieren (§G9). Der Ist-Rest (`RT_REALITY_MEASURED = 53,0`)
+  ist im Modul benannt und **nicht** als Zusage verwendet. Damit ist Punkt (2) der drei
+  Größen modus-korrekt und die Plan-Zusage deckungsgleich; die 53×→32×-Lücke bleibt
+  ausschließlich TODO-P0-1 (Song-Ebene-Analytik) — die Korrektur dort ist eine
+  Strukturaufgabe an `unified_restorer_v3.py`, kein Zahlenwechsel.
 
 ## TODO-P1-1 · Modell-Residency & Warm-up-Policy
 

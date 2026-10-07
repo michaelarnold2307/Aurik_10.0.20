@@ -95,7 +95,7 @@ class TestMDX23CFallback:
     def test_stem_separator_fallback_chain(self):
         """Stem separator must have NMF and HPSS fallback layers."""
         try:
-            mod = _import_with_recovery("dsp.stem_separator")
+            mod = _import_with_recovery("backend.core.dsp.stem_separator")
             StemSeparator = mod.StemSeparator
 
             sep = StemSeparator()
@@ -107,7 +107,7 @@ class TestMDX23CFallback:
     def test_stem_separator_source_has_nmf_fallback(self):
         """Source code must reference NMF as fallback."""
         try:
-            mod = _import_with_recovery("dsp.stem_separator")
+            mod = _import_with_recovery("backend.core.dsp.stem_separator")
 
             src = Path(mod.__file__).read_text(encoding="utf-8", errors="replace")
             has_nmf = "nmf" in src.lower() or "NMF" in src
@@ -162,9 +162,13 @@ class TestCREPEFallback:
         """Pitch tracking module must have pYIN fallback."""
         found_pyin = False
         for mod_name in [
-            "backend.core.pitch_tracker",
-            "backend.core.pitch_tracking",
-            "dsp.pitch_tracking",
+            # Reale pYIN-implementierende Module (2026-10-07). Zuvor standen hier
+            # drei nicht existierende Pfade (backend.core.pitch_tracker,
+            # backend.core.pitch_tracking und ein dsp.pitch_tracking) — ein
+            # Top-Level-Paket dsp gibt es nicht; der Test lief nur über den
+            # Fallback auf phase_12 grün.
+            "backend.core.dsp.adaptive_pyint_pitch_tracking",
+            "backend.core.dsp.pyin_viterbi_fast",
             "plugins.crepe_plugin",
         ]:
             try:

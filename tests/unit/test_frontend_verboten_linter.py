@@ -66,6 +66,12 @@ _VISIBLE_SETTERS: tuple[tuple[str, str], ...] = (
     ("setInformativeText", r"\.setInformativeText\(\s*f?(?P<q>[\"'])(?P<s>(?:\\.|(?!\1).)*)(?P=q)"),
     ("QPushButton", r"QPushButton\(\s*f?(?P<q>[\"'])(?P<s>(?:\\.|(?!\1).)*)(?P=q)"),
     ("QLabel", r"QLabel\(\s*f?(?P<q>[\"'])(?P<s>(?:\\.|(?!\1).)*)(?P=q)"),
+    # Nutzertexte, die über einen **Helfer** zur Anzeige kommen. Befund
+    # 2026-10-07: `_show_toast(f"… {_reassure or 'Bitte noch kurz warten'}")`
+    # war für die erste Fassung dieser Prüfung unsichtbar, weil sie nur direkte
+    # Setter ansah — der Text erreicht den Nutzer aber genauso.
+    ("_show_toast", r"_show_toast\(\s*f?(?P<q>[\"'])(?P<s>(?:\\.|(?!\1).)*)(?P=q)"),
+    ("set_status", r"\.set_status\(\s*f?(?P<q>[\"'])(?P<s>(?:\\.|(?!\1).)*)(?P=q)"),
 )
 
 # Nicht-Nutzersichtbares/Triviales: reine Ziffern-/Symbolfolgen, Format-Reste.

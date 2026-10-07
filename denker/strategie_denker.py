@@ -1,13 +1,15 @@
 """
-StrategieDenker — Domäne: 8×RT-Budgetplanung + Performance-Guard
-=================================================================
+StrategieDenker — Domäne: 32×RT-Budgetplanung + Performance-Guard
+==================================================================
 
 Kapselt `core.performance_guard.PerformanceGuard` und plant die
 Verarbeitungs-Strategie anhand des verfügbaren Zeit-Budgets.
 
-Die 8×RT-Grenze (§9.5) ist hart: Verarbeitung darf maximal das
-Achtfache der Audiodauer dauern. Dieser Denker sorgt dafür, dass
-dieses Limit durchgesetzt und kommuniziert wird.
+Die 32×RT-Grenze (§9.5, §2.38 KMV) ist hart: Verarbeitung darf maximal das
+32-fache der Audiodauer dauern — für ALLE Modi (copilot-instructions.md,
+Abschnitt „Performance-Budget"). Frühere Fassungen dieses Docstrings nannten
+8×; das widersprach `_3X_RT_LIMIT = 32.0` und der normativen Tabelle.
+Dieser Denker sorgt dafür, dass dieses Limit durchgesetzt und kommuniziert wird.
 
 Singleton-Pattern nach §3.2 (Double-Checked Locking).
 Type-Annotations nach §3.7.
@@ -39,6 +41,40 @@ def _load_symbol(module_name: str, symbol_name: str) -> Any:
 # 32×RT-Grenze aus §9.5 / PerformanceGuard.LIMIT_3X_RT
 _3X_RT_LIMIT: float = 32.0
 
+# Gemessene Ist-Lage (Matrix-Endlauf 2026-09-07/08, copilot-instructions.md
+# §Performance-Budget): Die Voll-Pipeline kostet **~53× RT** — mehr, als der
+# Guard mit 32× gewährt. Ursache ist bekannt und dokumentiert: Analytik und
+# End-Gate laufen je **Chunk** statt je **Song** (TODO-P0-1; 8–9 End-Gate-Runden
+# × measure_all je Chunk). Der Wert ist KEINE Zusage und kein Planungsbudget —
+# er benennt die Lücke, die durch Performance-Arbeit zu schließen ist.
+RT_REALITY_MEASURED: float = 53.0
+
+
+def _mode_soft_rt_limit(mode: str) -> tuple[float, float]:
+    """Liefert (weiches Modus-Ziel, harte Obergrenze) als RT-Vielfache.
+
+    Die Zahlen werden aus dem ``PerformanceGuard`` **gelesen**, nicht kopiert
+    (§G9 (copilot-instructions.md) — eine Quelle). Befund 2026-10-07: Dieses
+    Modul rechnete pauschal mit 32× für ALLE Modi, während der Guard FAST auf
+    8× führt; zusätzlich konnten die Faktoren (Kettentiefe ≤ 2,0,
+    Restaurierbarkeit ≤ 1,5) das Budget auf bis zu 73,6× heben — also mehr Zeit
+    zusagen, als der harte Ausstieg bei 32× je gewährt.
+
+    Ohne den Guard (Import-Fehler) gilt 32×/32× und der Fallback wird nach §V6 (copilot-instructions.md) mit Begründung protokolliert.
+    """
+    try:
+        from backend.core.performance_guard import PerformanceGuard as _PG
+
+        _mode_key = str(mode).strip().lower()
+        _soft = float(_PG.LIMIT_FAST) if _mode_key in ("fast", "speed") else float(_PG.LIMIT_3X_RT)
+        return _soft, float(_PG.LIMIT_3X_RT)
+    except Exception as _pg_err:
+        logger.warning(
+            "§V6 (copilot-instructions.md) StrategieDenker: PerformanceGuard nicht lesbar (%s) — es gilt 32×/32×",
+            _pg_err,
+        )
+        return _3X_RT_LIMIT, _3X_RT_LIMIT
+
 
 # ---------------------------------------------------------------------------
 # Strategie-Daten
@@ -53,13 +89,13 @@ class StrategiePlan:
     """Länge der Quelldatei in Sekunden."""
 
     max_processing_s: float
-    """Maximal erlaubte Verarbeitungszeit in Sekunden (8× Audiodauer)."""
+    """Maximal erlaubte Verarbeitungszeit in Sekunden (32× Audiodauer, §9.5)."""
 
     quality_mode: str
     """Gewählter Qualitätsmodus: 'quality', 'balanced' oder 'speed'."""
 
     enforce_limit: bool
-    """True = 8×RT-Limit wird hart durchgesetzt."""
+    """True = 32×RT-Limit wird hart durchgesetzt."""
 
     enable_adaptive_skipping: bool
     """True = Nicht-kritische Phasen werden übersprungen wenn Budget knapp."""
@@ -128,34 +164,13 @@ class BudgetStatus:
     should_exit_early: bool
     """True wenn das Budget erschöpft ist und gestoppt werden sollte."""
 
-    phases_completed: int = 0
-    """Zahl der abgeschlossenen Phasen."""
 
-
-@dataclass
-class StrategieErgebnis:
-    """Ergebnis der Strategie-Planung für die Restaurierung."""
-
-    selected_phases: list
-    """Liste der ausgewählten Verarbeitungsphasen."""
-
-    phase_parameters: dict
-    """Parameter-Mapping pro Phase."""
-
-    strategy_name: str
-    """Name der gewählten Strategie (z. B. 'Rauschunterdrückung')."""
-
-    estimated_quality_gain: float
-    """Geschätzter Qualitätsgewinn durch die Strategie (0–1)."""
-
-    reasoning: str
-    """Laienverständliche Begründung der Strategie-Wahl."""
-
-    rt_limit: float = 3.0
-    """Echtzeit-Faktor-Grenze (z. B. 3.0 = max. 3× Audiodauer)."""
-
-    start_time: float = 0.0
-    """Startzeitpunkt (time.time()) für Budget-Tracking."""
+# Hinweis (2026-10-07): Die frühere Dataklasse ``StrategieErgebnis`` wurde
+# entfernt. Sie wurde von ``plan()`` NIE erzeugt (Rückgabe ist ``StrategiePlan``)
+# und nur in Tests konstruiert; ihre Docstrings nannten zusätzlich falsche
+# Grenzen („8×RT", „rt_limit 3.0 = max. 3× Audiodauer") gegenüber dem tatsächlich
+# geltenden 32×-Limit (§9.5). Ein Test, der ``plan()`` gegen einen Typ prüft, den
+# er nie liefert, kann den Defekt nicht bemerken.
 
 
 # ---------------------------------------------------------------------------
@@ -180,7 +195,7 @@ _CRITICAL_PHASE_PREFIXES: frozenset[str] = frozenset(
 
 
 class StrategieDenker:
-    """Plant die Verarbeitungs-Strategie und überwacht das 8×RT-Budget.
+    """Plant die Verarbeitungs-Strategie und überwacht das 32×RT-Budget.
 
     Kernaufgabe:
         1. plan()         → StrategiePlan erstellen
@@ -280,7 +295,11 @@ class StrategieDenker:
 
         Algorithmus:
             1. Audiodauer berechnen
-            2. 8×RT-Budget ableiten  (max_processing_s = 8 × audio_duration_s)
+            2. RT-Budget ableiten: weiches Modus-Ziel (FAST 8×, sonst 32×) ×
+               Kettentiefe- × Restaurierbarkeits-Faktor, **gedeckelt** auf die
+               harte Guard-Obergrenze (32×) — nie mehr zusagen, als der harte
+               Ausstieg hergibt (
+               `RT_REALITY_MEASURED = 53,0` benennt die Ist-Lücke, TODO-P0-1)
             3. Chunk-Größe gemäß §9.5 adaptiv-defektdichte setzen
             4. PerformanceGuard initialisieren
 
@@ -288,7 +307,7 @@ class StrategieDenker:
             audio:         Eingabe-Audio.
             sr:            Sample-Rate in Hz.
             mode:          Qualitätsmodus ('quality', 'balanced', 'speed').
-            enforce_3x_rt: 8×RT-Limit hart durchsetzen.
+            enforce_3x_rt: 32×RT-Limit hart durchsetzen.
 
         Returns:
             StrategiePlan mit Budget-Angaben.
@@ -299,14 +318,31 @@ class StrategieDenker:
 
         self._ensure_guard(mode=mode, enforce=enforce_3x_rt)
 
-        max_proc = _3X_RT_LIMIT * audio_dur
+        _soft_rt, _hard_rt = _mode_soft_rt_limit(str(mode))
+        max_proc = _soft_rt * audio_dur
         # §v10.706 Denker-IQ: Chain-depth-adaptive Budget-Skalierung.
         # Tiefe Ketten (4+) brauchen mehr Phasen → mehr Budget.
         # Jede zusätzliche Generation: +15% Budget (kumulativ).
         _depth_budget_factor = float(np.clip(1.0 + (chain_depth - 1) * 0.15, 1.0, 2.0))
         # Restorability-Adaption: schlechter restaurierbar → mehr Budget
         _rs_budget_factor = float(np.clip(1.0 + (100.0 - restorability_score) * 0.005, 1.0, 1.50))
-        max_proc *= _depth_budget_factor * _rs_budget_factor
+        _planned_s = max_proc * _depth_budget_factor * _rs_budget_factor
+        # Realismus-Deckel: Der Plan darf nie mehr Zeit zusagen, als der harte
+        # Guard-Ausstieg hergibt. Alles darüber ist Performance-Arbeit (TODO-P0-1),
+        # keine Zusage an Nutzer oder Narrative — vorher standen hier bis zu 73,6×
+        # gegen einen Ausstieg bei 32×.
+        max_proc = min(_planned_s, _hard_rt * audio_dur)
+        if _planned_s > max_proc + 1e-6:
+            logger.info(
+                "StrategieDenker: Budgetwunsch %.1f× (Kette %d, Restaurierbarkeit %.1f) auf die harte "
+                "Guard-Grenze %.1f× gedeckelt — die Differenz ist Performance-Schuld (Ist %.1f× gemessen, "
+                "Hebel TODO-P0-1), keine Planungszusage",
+                _planned_s / max(audio_dur, 1e-9),
+                chain_depth,
+                restorability_score,
+                _hard_rt,
+                RT_REALITY_MEASURED,
+            )
         _sev = float(defect_severity) if math.isfinite(float(defect_severity)) else 0.0
         _sev = max(0.0, min(1.0, _sev))
         _effective_sev = _derive_effective_defect_severity(_sev, signal_signature)
@@ -421,7 +457,7 @@ class StrategieDenker:
         if audio_dur > 300:
             note = (
                 "Lange Datei erkannt — Verarbeitung erfolgt in Abschnitten "
-                f"(jeweils {int(chunk_s)} s), um das 8×RT-Zeitbudget einzuhalten."
+                f"(jeweils {int(chunk_s)} s), um das 32×RT-Zeitbudget einzuhalten."
             )
         elif audio_dur < 5:
             note = "Sehr kurze Aufnahme — volle Verarbeitungstiefe aktiviert."

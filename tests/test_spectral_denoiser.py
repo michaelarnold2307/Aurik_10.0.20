@@ -66,8 +66,8 @@ def test_spectral_denoiser_consistent_after_backend_import():
 
     import backend  # aktiviert den signal.stft-Wrapper global (Seiteneffekt gewollt)
 
-    sys.modules.pop("dsp.spectral_denoiser", None)
-    mod = importlib.import_module("dsp.spectral_denoiser")
+    sys.modules.pop("backend.core.dsp.spectral_denoiser", None)
+    mod = importlib.import_module("backend.core.dsp.spectral_denoiser")
     sr = 16000
     t = np.linspace(0, 1, sr, endpoint=False)
     clean = (0.5 * np.sin(2 * np.pi * 440 * t)).astype(np.float64)

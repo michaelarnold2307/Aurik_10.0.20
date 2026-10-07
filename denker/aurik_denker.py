@@ -396,6 +396,19 @@ class AurikDenker:
         except Exception as _fa_reset_exc:
             logger.debug("FallbackAuditor.zurueckgesetzt nicht möglich (unkritisch): %s", _fa_reset_exc)
 
+        # ── §V8/§G1 (copilot-instructions.md): Song-Isolation für den Cross-Phase-Koordinator.
+        # Ohne Reset liefert get_capped_strength() im Folge-Song ohne vorherige
+        # analyze()-Analyse die Band-Kappungen des VOR-Songs.
+        try:
+            from denker.cross_phase_coordinator import CrossPhaseCoordinator
+
+            CrossPhaseCoordinator.reset_session()
+        except Exception as _cpc_reset_exc:
+            logger.debug(
+                "§V6 (copilot-instructions.md) CrossPhaseCoordinator.zurueckgesetzt nicht möglich: %s",
+                _cpc_reset_exc,
+            )
+
         # ── §3.5 Preview-Mode: 30s Vorschau vor voller Restaurierung ─────
         _PREVIEW_DURATION_S = 30.0
         from backend.api.bridge import normalize_user_mode as _bridge_norm
@@ -2761,7 +2774,16 @@ class AurikDenker:
             )
 
         # ── §v10.5 PerceptualQualityCouncil: SOTA holistische Bewertung ──
-        _defect_sev_final: float = 0.0
+        # Die Defekt-Schwere wird VOR dem Aufruf bestimmt. Zuvor stand hier
+        # ``_defect_sev_final = 0.0`` und die echte Severity entstand erst
+        # danach — der Rat bewertete also ein defektfreies Signal, und sein
+        # Urteil wurde anschließend von der normativen §8.1-Formel überschrieben
+        # (berechnet und verworfen).
+        # Der Rat ist Zeuge, nicht Richter (Hörordnung §1): er ersetzt die
+        # normative Schätzung nicht, sein Urteil muss aber berichtet werden (§G8 (copilot-instructions.md)).
+        _defect_sev_final: float = float(getattr(defekt, "overall_severity", 0.0)) if defekt is not None else 0.0
+        _defect_sev_final = max(0.0, min(1.0, _defect_sev_final))
+        _pqc_verdict = None
         try:
             from backend.core.perceptual_quality_council import get_perceptual_council
 
@@ -2774,15 +2796,20 @@ class AurikDenker:
                 excellence_score=excellence_score,
                 genre_label=str(getattr(cached_genre_result, "primary_genre", "")) if cached_genre_result else "",
             )
-            quality_estimate = _pqc_verdict.holistic_score
             logger.info(
-                "PerceptualQualityCouncil: holistic=%.3f recommendation=%s method=%s",
+                "PerceptualQualityCouncil: holistic=%.3f recommendation=%s method=%s (Schwere=%.3f)",
                 _pqc_verdict.holistic_score,
                 _pqc_verdict.recommendation,
                 _pqc_verdict.scoring_method,
+                _defect_sev_final,
             )
         except Exception as _pqc_err:
-            logger.debug("PerceptualQualityCouncil fehlgeschlagen: %s", _pqc_err)
+            # §V6 (copilot-instructions.md): kein stiller Fallback — Begründung.
+            logger.warning(
+                "§V6 (copilot-instructions.md) PerceptualQualityCouncil nicht verfügbar (%s) "
+                "— quality_estimate folgt allein der normativen §8.1-Formel",
+                _pqc_err,
+            )
 
         # ── RAM-Cleanup nach Pipeline ────────────────────────────────────────
         # PluginLifecycleManager entlädt inaktive ML-Modelle wenn RAM knapp ist.
@@ -2811,8 +2838,8 @@ class AurikDenker:
         # Qualitätsschätzung nach Spec §8.1 (normative Formel):
         # quality_estimate = 0.40*(1-defect_severity) + 0.60*(pqs_mos-1)/4
         # VERBOTEN: quality_estimate * 1.15 als fixer Bonus-Faktor
-        _defect_sev_final = float(getattr(defekt, "overall_severity", 0.0)) if defekt is not None else 0.0
-        _defect_sev_final = max(0.0, min(1.0, _defect_sev_final))
+        # §G9 (copilot-instructions.md): EINE Quelle für die Schwere — sie wurde
+        # oben bestimmt und dem Rat übergeben (nicht erneut berechnen).
         if _versa_mos > 0.0:
             # VERSA MOS als pqs_mos-Proxy (kalibriert, Pearson=0.74 vs PQS-Gammatone)
             _mos_norm = float(np.clip((_versa_mos - 1.0) / 4.0, 0.0, 1.0))
@@ -2826,6 +2853,22 @@ class AurikDenker:
             # DSP fallback: normative formula (§8.1) with defect_severity;
             # neutral mos_proxy = 0.55 corresponds to MOS ≈ 3.2 when no scorer available
             quality_estimate = float(np.clip(0.40 * (1.0 - _defect_sev_final) + 0.60 * 0.55, 0.0, 1.0))
+
+        # §v10.5 PQC-Zeuge berichten (§G8 (copilot-instructions.md)):
+        # Das Council-Urteil ersetzt die normative §8.1-Schätzung NICHT, darf aber
+        # nicht verschwinden. ``needs_retry`` ist der vom Rat selbst definierte
+        # Problem-Indikator — es wird keine eigene Schwelle erfunden.
+        if _pqc_verdict is not None:
+            stage_notes["perceptual_council"] = (
+                f"holistic={_pqc_verdict.holistic_score:.3f} "
+                f"recommendation={_pqc_verdict.recommendation} "
+                f"method={_pqc_verdict.scoring_method} severity={_defect_sev_final:.3f}"
+            )
+            if getattr(_pqc_verdict, "needs_retry", False):
+                warnings.append(
+                    f"PerceptualQualityCouncil: holistic={_pqc_verdict.holistic_score:.3f} "
+                    f"({_pqc_verdict.recommendation}: {_pqc_verdict.recommendation_reason})"
+                )
 
         # Structured degradation signaling for downstream gates and UI transparency.
         _failed_stage_details: dict[str, str] = {

@@ -10,10 +10,21 @@ DEFECT_SCANNER_FILE = Path("backend/core/defect_scanner.py")
 
 @pytest.mark.unit
 def test_ui_heartbeat_reassures_during_long_processing_phases() -> None:
+    """Lange Pausen werden über das Live-Narrativ erklärt (2026-10-07).
+
+    Vorher prüfte dieser Test die Anwesenheit **dreier fester** Beruhigungssätze —
+    also genau die Wiederholung, die den Lauf monoton machte (derselbe Satz im
+    8-Sekunden-Takt, rund 200-mal in einer 30-Minuten-Phase). Er prüft jetzt die
+    Anbindung an `Aurik10/ui/live_narrative.py`: Rotation, Fortschritt, Restzeit —
+    und dass die Zeile weiterhin erst nach echter Stille erscheint.
+    """
     src = GUI_FILE.read_text(encoding="utf-8")
-    assert 't("status.processing_reassure_analysis")' in src
-    assert 't("status.processing_reassure_long_phase")' in src
-    assert 't("status.processing_reassure_finalize")' in src
+    assert "_narrative_compose(" in src
+    assert "band=_narrative_band(ui_pct)" in src
+    assert "defects_done=_d_done" in src
+    assert "eta_text=_eta_text" in src
+    assert "self._narrative_index = _idx + 1" in src
+    assert "_narrative_milestone(_def_resolved, _def_total, self._narrative_milestones)" in src
     assert "_time_since_cb >= 8.0" in src
     assert '_user_phase_text = _expl.lstrip(" ·").strip() if _expl else ""' in src
     assert '"Jetzt: {_base}' in src
@@ -61,16 +72,37 @@ def test_defect_scanner_emits_fine_grained_tail_progress() -> None:
 
 
 def test_ui_i18n_contains_reassuring_processing_messages() -> None:
+    """Das Live-Narrativ braucht je Band **mehrere** Fassungen (2026-10-07).
+
+    Früher pinnte dieser Test drei einzelne Sätze fest — inklusive der beiden
+    Schönheitsfehler des meistgesehenen Satzes („ - “ statt Gedankenstrich,
+    „Rechenintensive“). Jetzt prüft er die Eigenschaft, die zählt: kein Band darf
+    bei einer einzigen Formulierung bleiben, sonst ist die Wiederholung
+    programmiert. Die Satzfolge selbst ist in `tests/unit/test_live_narrative.py`
+    abgesichert.
+    """
+    import importlib.util
+
+    spec = importlib.util.spec_from_file_location("_live_narrative_ut", Path("Aurik10/ui/live_narrative.py"))
+    if spec is None or spec.loader is None:
+        pytest.skip("live_narrative.py nicht auffindbar")
+    nav = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(nav)
+
     src = I18N_FILE.read_text(encoding="utf-8")
-    assert '"status.processing_reassure_analysis": "Aurik prüft die Aufnahme weiter sorgfältig"' in src
-    assert (
-        '"status.processing_reassure_long_phase": "Rechenintensive Phase aktiv - Fortschritt läuft stabil weiter"'
-        in src
-    )
-    assert (
-        '"status.processing_reassure_finalize": "Aurik finalisiert das Ergebnis und sichert alle Qualitätsprüfungen"'
-        in src
-    )
+
+    for band, keys in nav.BAND_VARIANTS.items():
+        assert len(keys) >= 3, f"Band {band} braucht mehrere Fassungen gegen Wiederholung"
+        for key in keys:
+            assert f'"{key}":' in src, f"{key} fehlt im Katalog"
+    for _threshold, key in nav.MILESTONES:
+        assert f'"{key}":' in src, f"{key} fehlt im Katalog"
+    assert '"narrative.clause.defects":' in src
+    assert '"narrative.clause.eta":' in src
+    # Die alten Wiederholungsschlüssel sind entfernt — sonst stünden zwei Systeme
+    # nebeneinander und das monotone ließe sich versehentlich wieder aktivieren.
+    assert "status.processing_reassure_long_phase" not in src
+    assert "Rechenintensive Phase aktiv" not in src
 
 
 def test_quality_meter_distinguishes_live_estimate_from_final_measurement() -> None:

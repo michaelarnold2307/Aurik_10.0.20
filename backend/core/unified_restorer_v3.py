@@ -33287,7 +33287,7 @@ class UnifiedRestorerV3:
 
                 _pid = str(getattr(phase_metadata, "phase_id", ""))
                 _mat = str(_ctx_pp.get("primary_material", "")).lower()
-                kwargs["strength"] = PhaseInteractionDenker.resolve_guard_modulation(  # type: ignore[attr-defined]
+                kwargs["strength"] = PhaseInteractionDenker.resolve_guard_modulation(
                     base_strength=float(kwargs["strength"]),
                     goal_budget=_ctx_pp.get("goal_budget"),
                     guard_wisdom=_ctx_pp.get("_guard_wisdom"),
@@ -33295,9 +33295,17 @@ class UnifiedRestorerV3:
                     phase_id=_pid,
                     material=_mat,
                 )
-            except Exception:
-                logger.debug("Ersatzpfad in unified_restorer_v3.py", exc_info=True)
-                pass  # Denker nicht verfügbar — unmodulierte Stärke
+            except Exception as _gmod_err:
+                # §V6 (copilot-instructions.md): kein stiller Fallback — die
+                # unmodulierte Stärke wird verwendet UND begründet protokolliert.
+                logger.warning(
+                    "§V6 (copilot-instructions.md) Denker-Guard-Modulation nicht verfügbar "
+                    "(%s: %s) — Phase %s läuft mit UNMODULIERTER Stärke %.3f",
+                    type(_gmod_err).__name__,
+                    _gmod_err,
+                    getattr(phase_metadata, "phase_id", "?"),
+                    float(kwargs["strength"]),
+                )
         # ── Ende Denker-Guard-Modulation ──────────────────────────
 
         # ── §3.0 Cross-Phase Naturalness Consensus ──
@@ -45392,15 +45400,14 @@ class UnifiedRestorerV3:
                 _threshold,
                 ", ".join(_removed),
             )
-            # §v10.303.3 Denker-Feedback: Gestrichene Familien im Context + PID-Cache
+            # §v10.303.3 Denker-Feedback: Gestrichene Familien im Context.
+            # Bewusst NUR song-scoped im ``restoration_context``: der frühere
+            # zusätzliche Modul-globale Kanal im PhaseInteractionDenker ließ die
+            # Phasen-Auswahl des Folge-Songs von diesem Song abhängen und wurde am
+            # 2026-10-07 entfernt (§V8/§G1 (copilot-instructions.md)).
             try:
                 _rctx = getattr(self, "_restoration_context", None) or {}
                 _rctx["_low_confidence_stripped_families"] = sorted(
-                    {self._PHASE_INTERVENTION_CLASS.get(_p, "general") for _p in _removed}
-                )
-                from denker.phase_interaction_denker import record_low_confidence_stripped_families
-
-                record_low_confidence_stripped_families(
                     {self._PHASE_INTERVENTION_CLASS.get(_p, "general") for _p in _removed}
                 )
             except Exception:

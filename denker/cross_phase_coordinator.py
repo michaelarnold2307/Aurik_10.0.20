@@ -546,6 +546,22 @@ class CrossPhaseCoordinator:
             return None
         return inst._get_capped_strength_impl(phase_id, base_strength)
 
+    @classmethod
+    def reset_session(cls) -> None:
+        """Setzt die Song-gebundene Analyse zurück (§V8/§G1 (copilot-instructions.md)).
+
+        Ohne Reset trägt die Singleton-Instanz ``_last_result`` (und damit die
+        gekappten Stärken) in den nächsten Song. ``get_capped_strength`` würde
+        dann ohne vorangegangene ``analyze()``-Analyse die Caps des VOR-Songs
+        liefern — der Folge-Song erbte fremde Kappungen. Aufzurufen am
+        Song-Anfang (``AurikDenker.restauriere()``).
+        """
+        inst = _SINGLETON.get("instance")
+        if inst is None:
+            return
+        inst._last_result = None
+        inst._current_material = "unknown"
+
     # ── Instance Implementation ───────────────────────────────────
 
     def _analyze_impl(
@@ -720,7 +736,11 @@ class CrossPhaseCoordinator:
             band_phases[band_name] = {}
 
         # Collect which phases affect which bands
-        for pid in phase_ids:
+        # §G5 (copilot-instructions.md): deterministische Iteration. `phase_ids`
+        # ist eine Menge — ihre Iterationsreihenfolge hängt von PYTHONHASHSEED
+        # ab. Weil hier Fließkommawerte aufsummiert und in Dicts eingetragen
+        # werden, wären die letzten Bits des Ergebnisses nicht reproduzierbar.
+        for pid in sorted(phase_ids):
             profile = PHASE_FREQ_PROFILES.get(pid)
             if profile is None:
                 continue
@@ -762,7 +782,8 @@ class CrossPhaseCoordinator:
         capped: dict[str, float] = {}
 
         # Collect the most restrictive cap per phase across all bands
-        for pid in phase_ids:
+        # §G5 (copilot-instructions.md): sortierte Iteration (Menge → feste Folge).
+        for pid in sorted(phase_ids):
             most_restrictive = 1.0
             for band_name, allocations in band_budgets.items():
                 if pid in allocations:
@@ -816,7 +837,9 @@ class CrossPhaseCoordinator:
         # und deren kumulative Stärke > 30 % der Bandbreite.
         nr_phases_in_presence = 0
         nr_cumulative_strength = 0.0
-        for pid in phase_ids:
+        # §G5 (copilot-instructions.md): sortiert — die Summe darf nicht von der
+        # Hash-Reihenfolge der Menge abhängen.
+        for pid in sorted(phase_ids):
             profile = PHASE_FREQ_PROFILES.get(pid)
             if profile and profile.get("category") == "subtractive":
                 int_2k = self._band_intensity(profile["affects"], 2000, 8000)
@@ -842,7 +865,8 @@ class CrossPhaseCoordinator:
         # Zwicker-Rauigkeit steigt, wenn additive Phasen die Modulations-
         # tiefe in 20–200 Hz und 2–5 kHz gleichzeitig erhöhen.
         roughness_deficit = 0.0
-        for pid in phase_ids:
+        # §G5 (copilot-instructions.md): sortiert (siehe oben).
+        for pid in sorted(phase_ids):
             profile = PHASE_FREQ_PROFILES.get(pid)
             if profile and profile.get("category") == "additive":
                 original = original_strengths.get(pid, 1.0)

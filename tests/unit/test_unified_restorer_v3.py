@@ -3367,7 +3367,7 @@ class TestDedicatedJitterRepairHook:
                 assert sample_rate == SR
                 return (np.asarray(x, dtype=np.float32) * 0.90).astype(np.float32)
 
-        monkeypatch.setattr("dsp.digital_restoration_specialist.JitterCorrector", _DummyJitterCorrector)
+        monkeypatch.setattr("backend.core.dsp.digital_restoration_specialist.JitterCorrector", _DummyJitterCorrector)
 
         out = restorer._apply_dedicated_jitter_repair(
             audio,
@@ -3395,7 +3395,7 @@ class TestDedicatedJitterRepairHook:
                 assert sample_rate == SR
                 return (np.asarray(x, dtype=np.float32) * 0.5).astype(np.float32)
 
-        monkeypatch.setattr("dsp.digital_restoration_specialist.JitterCorrector", _DummyJitterCorrector)
+        monkeypatch.setattr("backend.core.dsp.digital_restoration_specialist.JitterCorrector", _DummyJitterCorrector)
 
         out = restorer._apply_dedicated_jitter_repair(
             audio,
@@ -3424,7 +3424,7 @@ class TestDedicatedJitterRepairHook:
             def __init__(self, *args, **kwargs):
                 raise AssertionError("JitterCorrector darf hier nicht instanziiert werden")
 
-        monkeypatch.setattr("dsp.digital_restoration_specialist.JitterCorrector", _FailIfCalled)
+        monkeypatch.setattr("backend.core.dsp.digital_restoration_specialist.JitterCorrector", _FailIfCalled)
 
         out_a = restorer._apply_dedicated_jitter_repair(
             audio,
@@ -3588,7 +3588,7 @@ class TestDedicatedAliasingRepairHook:
                 return (np.asarray(x, dtype=np.float32) * 0.88).astype(np.float32)
 
         monkeypatch.setattr(
-            "dsp.bandwidth_artifact_remover.BandwidthArtifactRemover",
+            "backend.core.dsp.bandwidth_artifact_remover.BandwidthArtifactRemover",
             _DummyBandwidthArtifactRemover,
         )
 
@@ -3619,7 +3619,7 @@ class TestDedicatedAliasingRepairHook:
                 return (np.asarray(x, dtype=np.float32) * 0.5).astype(np.float32)
 
         monkeypatch.setattr(
-            "dsp.bandwidth_artifact_remover.BandwidthArtifactRemover",
+            "backend.core.dsp.bandwidth_artifact_remover.BandwidthArtifactRemover",
             _DummyBandwidthArtifactRemover,
         )
 
@@ -3651,7 +3651,7 @@ class TestDedicatedAliasingRepairHook:
                 raise AssertionError("Aliasing-Spezialist darf hier nicht instanziiert werden")
 
         monkeypatch.setattr(
-            "dsp.bandwidth_artifact_remover.BandwidthArtifactRemover",
+            "backend.core.dsp.bandwidth_artifact_remover.BandwidthArtifactRemover",
             _FailIfCalled,
         )
 
@@ -3691,7 +3691,7 @@ class TestDedicatedCompressionArtifactRepairHook:
                 return y
 
         monkeypatch.setattr(
-            "dsp.bandwidth_artifact_remover.BandwidthArtifactRemover",
+            "backend.core.dsp.bandwidth_artifact_remover.BandwidthArtifactRemover",
             _DummyBandwidthArtifactRemover,
         )
 
@@ -3722,7 +3722,7 @@ class TestDedicatedCompressionArtifactRepairHook:
                 return (np.asarray(x, dtype=np.float32) * 0.5).astype(np.float32)
 
         monkeypatch.setattr(
-            "dsp.bandwidth_artifact_remover.BandwidthArtifactRemover",
+            "backend.core.dsp.bandwidth_artifact_remover.BandwidthArtifactRemover",
             _DummyBandwidthArtifactRemover,
         )
 
@@ -3754,7 +3754,7 @@ class TestDedicatedCompressionArtifactRepairHook:
                 raise AssertionError("Compression-Spezialist darf hier nicht instanziiert werden")
 
         monkeypatch.setattr(
-            "dsp.bandwidth_artifact_remover.BandwidthArtifactRemover",
+            "backend.core.dsp.bandwidth_artifact_remover.BandwidthArtifactRemover",
             _FailIfCalled,
         )
 
@@ -3793,7 +3793,7 @@ class TestDedicatedDynamicCompressionExcessRepairHook:
                 return (np.asarray(x, dtype=np.float32) * 0.93).astype(np.float32)
 
         monkeypatch.setattr(
-            "dsp.dynamic_range_expander.DynamicRangeExpander",
+            "backend.core.dsp.dynamic_range_expander.DynamicRangeExpander",
             _DummyDynamicRangeExpander,
         )
 
@@ -3823,7 +3823,7 @@ class TestDedicatedDynamicCompressionExcessRepairHook:
                 assert sr == SR
                 return (np.asarray(x, dtype=np.float32) * 0.5).astype(np.float32)
 
-        monkeypatch.setattr("dsp.dynamic_range_expander.DynamicRangeExpander", _DummyDynamicRangeExpander)
+        monkeypatch.setattr("backend.core.dsp.dynamic_range_expander.DynamicRangeExpander", _DummyDynamicRangeExpander)
 
         out = restorer._apply_dedicated_dynamic_compression_excess_repair(
             audio,
@@ -3853,7 +3853,7 @@ class TestDedicatedDynamicCompressionExcessRepairHook:
                 raise AssertionError("DynamicRangeExpander darf hier nicht instanziiert werden")
 
         monkeypatch.setattr(
-            "dsp.dynamic_range_expander.DynamicRangeExpander",
+            "backend.core.dsp.dynamic_range_expander.DynamicRangeExpander",
             _FailIfCalled,
         )
 

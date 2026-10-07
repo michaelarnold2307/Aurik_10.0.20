@@ -1,6 +1,6 @@
 # 🎵 Aurik 10 — Intelligentes Musik-Restaurierungs- und Rekonstruktionssystem
 
-**Version:** 10.9.3 | **Status:** ✅ Weltspitze-Execution | **Stand:** v10.2.0 — Temporal-Consistency-Guard pro Phase, Phrase-Struktur-Snap, MG-ERB-Masking, Print-Through-Verdrahtung
+**Version:** 10.11.0 | **Status:** ✅ Weltspitze-Execution | **Stand:** v10.2.0 — Temporal-Consistency-Guard pro Phase, Phrase-Struktur-Snap, MG-ERB-Masking, Print-Through-Verdrahtung
 
 > Normativer Ist-Stand: `.github/specs/`, `.github/copilot-instructions.md`, `CHANGELOG.md`, `denker/README.md`.
 
@@ -183,7 +183,7 @@ DefectScanner (62 Typen)
 | Modul | Zweck |
 | --- | --- |
 | `PerceptualEmbedder` | 256-dim psychoakustischer Einbettungsraum (L2-normalisiert) |
-| `CausalDefectReasoner` | Bayesianische Kausalinferenz, **66 Kausal-Ursachen** |
+| `CausalDefectReasoner` | Bayesianische Kausalinferenz, **72 Kausal-Ursachen** |
 | `GPParameterOptimizer` | RBF-GP + UCB + **MOO Pareto-Front** (14 Objectives) |
 | `PerceptualQualityScorer` | Gammatone-NSIM + MCD + LUFS + MOS |
 | `MusicalGoalsChecker` | **15 musikalische Qualitätsziele** |

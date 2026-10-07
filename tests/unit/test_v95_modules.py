@@ -423,7 +423,7 @@ class TestRestorationBenchmark:
 
 class TestGPUPipelineStub:
     def _reload(self):
-        sys.modules.pop("dsp.gpu_pipeline", None)
+        sys.modules.pop("backend.core.dsp.gpu_pipeline", None)
 
     def test_import_warns_deprecation(self):
         self._reload()
@@ -431,7 +431,7 @@ class TestGPUPipelineStub:
             warnings.simplefilter("always")
             import importlib
 
-            importlib.import_module("dsp.gpu_pipeline")  # triggers the DeprecationWarning at module level
+            importlib.import_module("backend.core.dsp.gpu_pipeline")  # triggers the DeprecationWarning at module level
             assert any(issubclass(x.category, DeprecationWarning) for x in w)
 
     def test_gpu_is_cpu_alias(self):

@@ -547,6 +547,21 @@ CAUSE_TO_PHASES = {
                                   "phase_08_transient_preservation"],
     "tape_head_clog":            ["phase_56_spectral_band_gap_repair", "phase_25_azimuth_correction",
                                   "phase_24_dropout_repair"],
+    # ── 2026-10-07: 6 verwaiste Priors angeschlossen ───────────────────────────
+    # Diese Defekttypen hatten Priors in MATERIAL_PRIORS und eigene
+    # Scanner-Detektoren, fehlten aber in CAUSES — der Bayes-Loop iteriert über
+    # CAUSES, also wurden Detektor-Befund und Prior nie in einen Plan übersetzt.
+    "dropout_oxide":             ["phase_24_dropout_repair", "phase_55_diffusion_inpainting",
+                                  "phase_23_spectral_repair"],
+    "dropout_head_contact":      ["phase_24_dropout_repair", "phase_55_diffusion_inpainting",
+                                  "phase_12_wow_flutter_fix"],
+    "dropout_splice":            ["phase_24_dropout_repair", "phase_55_diffusion_inpainting",
+                                  "phase_01_click_removal"],
+    "mpeg_frame_loss":           ["phase_23_spectral_repair", "phase_50_spectral_repair",
+                                  "phase_24_dropout_repair"],
+    "phase_rotation":            ["phase_14_phase_correction", "phase_25_azimuth_correction"],
+    "stereo_field_collapse":     ["phase_15_stereo_balance", "phase_33_stereo_width_limiter",
+                                  "phase_34_mid_side_processing"],
     # ── v10.0.0: Erweiterte Kausal-Ursachen ───────────────────────────────────
     "proximity_effect_excess":   ["phase_04_eq_correction", "phase_05_rumble_filter"],
     "room_mode_resonance":       ["phase_04_eq_correction", "phase_16_final_eq",

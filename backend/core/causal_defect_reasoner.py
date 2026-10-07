@@ -49,7 +49,7 @@ logger = logging.getLogger(__name__)
 # Typ-Definitionen
 # ---------------------------------------------------------------------------
 
-# 66 Kausal-Ursachen (Spec §2.4): 10 Magnetband + 4 Vinyl + 2 Elektrik + 9 Digital/Codec + 9 v10.0.0
+# 72 Kausal-Ursachen (Spec §2.4): 10 Magnetband + 4 Vinyl + 2 Elektrik + 9 Digital/Codec + 9 v10.0.0
 # + 2 Spektral + 2 Stereo + 5 Pitch/Dynamik/Vokal + 1 Vintage + 2 Transport + 12 v10.0.0
 CAUSES = [
     # ── Analoge Magnetband-Ursachen ──────────────────────────────────────────
@@ -120,6 +120,17 @@ CAUSES = [
     "tape_head_level_dip",  # DefectType.TAPE_HEAD_LEVEL_DIP → phase_12/phase_24 (Bandkopf-Kontaktdruckvariation)
     "scrape_flutter",  # DefectType.SCRAPE_FLUTTER → phase_12/phase_31 (hochfrequente Bandführungsmodulation)
     "tape_head_clog",  # DefectType.TAPE_HEAD_CLOG → phase_56/phase_25 (temporäre HF-Auslöschung)
+    # ── 2026-10-07: 6 verwaiste Priors angeschlossen ───────────────────────
+    # Diese Defekttypen HATTEN bereits Priors in MATERIAL_PRIORS (0,02–0,14)
+    # und eigene Scanner-Detektoren, fehlten aber in CAUSES. Der Bayes-Loop
+    # iteriert über CAUSES → die Priors wurden nie gelesen und die Detektoren
+    # konnten keine Phase aktivieren (defekt erkannt, aber nie behandelt).
+    "dropout_oxide",  # DefectType.DROPOUT_OXIDE → phase_24/phase_55 (Oxid-Dropout 2–20 ms)
+    "dropout_head_contact",  # DefectType.DROPOUT_HEAD_CONTACT → phase_24/phase_55 (Bandkopf-Kontaktverlust)
+    "dropout_splice",  # DefectType.DROPOUT_SPLICE → phase_24/phase_55 (Klebeband-Schnitt)
+    "mpeg_frame_loss",  # DefectType.MPEG_FRAME_LOSS → phase_23/phase_50/phase_24 (Bitstream-Frame-Drops)
+    "phase_rotation",  # DefectType.PHASE_ROTATION → phase_14/phase_25 (Allpass-Phasenrotation)
+    "stereo_field_collapse",  # DefectType.STEREO_FIELD_COLLAPSE → phase_15/phase_33/phase_34 (Korrelation > 0,95)
     # ── v10.0.0: 9 neue Kausal-Ursachen — Carrier-Lücken geschlossen ─────────
     # Nahbesprechungseffekt (Richtmikrofon ≤30 cm) → LF +6–12 dB ≤250 Hz; häufig Vokal 1940–1970.
     "proximity_effect_excess",
@@ -147,7 +158,7 @@ CAUSES = [
     "vocal_stem_noise",  # Vokal-Stem + Begleitung haben unterschiedliche Rauschprofile
 ]
 
-# Material-Typen — Priors für alle 66 Kausal-Ursachen (v10.0.0b)
+# Material-Typen — Priors für alle 72 Kausal-Ursachen (v10.0.0b)
 # Priors pro Material nicht zwingend exakt auf 1.0 normiert — _infer() normalisiert Posterioren.
 MATERIAL_PRIORS: dict[str, dict[str, float]] = {
     "tape": {
@@ -919,6 +930,116 @@ MATERIAL_PRIORS: dict[str, dict[str, float]] = {
         "motor_interference": 0.1,
     },
 }
+
+# ── 2026-10-07: Träger „cassette" und „reel_tape" fehlten in MATERIAL_PRIORS ──
+# Folge: `_infer` fiel für beide Träger über `.get(_mk, UNKNOWN)` auf den
+# Ahnungslos-Prior zurück, obwohl der Rest des Systems sie unterscheidet
+# (`MaterialType.CASSETTE`/`REEL_TAPE`, DefectScanner-Materialprofile,
+# MediumDetector). Zusätzlich liefen die trägerspezifischen Tabellen weiter
+# unten ins Leere, weil sie ihre Einträge nur für bereits bekannte Träger setzen
+# (`if _mat in MATERIAL_PRIORS`) — für Kassette/Spulenband wurden sie still
+# übersprungen.
+# Ableitung vom Band-Prior mit den physikalisch belegten Unterschieden:
+#   * Kassette: geringere Spurlage- und Azimutstabilität (IEC 60094-1),
+#     Transport-Holpern, Dolby-B/C-Pumpen bei fehlender Dekodierung, kleinere
+#     HF-Reserve durch schmalere Spuren und langsamere Bandgeschwindigkeit.
+#   * Spulenband: beste mechanische Führung der analogen Träger (weniger
+#     Transport-Anteile), dafür Bandalterung/Vorecho bei enger Wicklung und
+#     Schnitt-Klebebänder im Archivbestand.
+# Die Werte sind an der Tabelle der 72 Ursachen ausgerichtet
+# (§G9 (copilot-instructions.md): eine Quelle) und werden weiter unten für alle
+# Ursachen aufgefüllt.
+_CARRIER_PRIOR_DELTAS: dict[str, dict[str, float]] = {
+    "cassette": {
+        "cassette_azimuth_tolerance": 0.14,
+        "transport_bump": 0.16,
+        "dolby_nr_mismatch": 0.10,
+        "tape_head_contact_instability": 0.09,
+        "hf_remanence_loss": 0.08,
+        "wow_flutter": 0.08,
+    },
+    "reel_tape": {
+        "print_through": 0.12,
+        "bias_error": 0.08,
+        "hf_remanence_loss": 0.10,
+        "tape_splice_artifact": 0.06,
+        "wow": 0.06,
+    },
+}
+for _carrier, _carrier_delta in _CARRIER_PRIOR_DELTAS.items():
+    _carrier_priors = dict(MATERIAL_PRIORS["tape"])
+    for _cause, _weight in _carrier_delta.items():
+        _carrier_priors[_cause] = max(_carrier_priors.get(_cause, 0.0), _weight)
+    MATERIAL_PRIORS.setdefault(_carrier, _carrier_priors)
+
+# ── §CODEC-Ursachenmengen (2026-10-07 korrigiert) ────────────────────────────
+# Der Codec-Contamination-Guard in `_infer` verglich die Priors mit Namen, die es
+# nicht gibt ("vinyl_wear", "tape_degradation", "shellac_deterioration",
+# "digital_compression", "codec_artifact", "streaming_loss") und war damit
+# wirkungslos. Diese Mengen nennen ausschließlich Schlüssel, die in CAUSES und
+# MATERIAL_PRIORS tatsächlich existieren; ein Modul-Check weiter unten stellt das
+# sicher (fail-loud statt still wirkungslos).
+_ANALOG_DEGRADATION_CAUSES: frozenset[str] = frozenset(
+    {
+        "vinyl_crackle",
+        "vinyl_warp",
+        "stylus_damage",
+        "inner_groove_distortion",
+        "groove_echo",
+        "print_through",
+        "lacquer_disc_degradation",
+        "tape_dropout",
+        "tape_hiss",
+        "tape_head_clog",
+        "tape_head_level_dip",
+        "tape_head_contact_instability",
+        "tape_splice_artifact",
+        "head_wear",
+        "head_misalignment",
+        "bias_error",
+        "sticky_shed_residue",
+        "hf_remanence_loss",
+        "dropout_oxide",
+        "dropout_head_contact",
+        "dropout_splice",
+        "wow",
+        "flutter",
+        "wow_flutter",
+        "multiband_wow_flutter",
+        "scrape_flutter",
+        "speed_calibration_error",
+        "motor_interference",
+        "cassette_azimuth_tolerance",
+        "generation_loss",
+    }
+)
+_DIGITAL_CODEC_CAUSES: frozenset[str] = frozenset(
+    {
+        "quantization_noise",
+        "aliasing",
+        "pre_echo",
+        "digital_artifacts",
+        "digital_clip",
+        "jitter_artifacts",
+        "compression_artifacts",
+        "mpeg_frame_loss",
+        "phase_rotation",
+        "stereo_field_collapse",
+        "dolby_nr_mismatch",
+        "nr_breathing_artifact",
+    }
+)
+
+# Fail-loud (§G9/§V6 (copilot-instructions.md)): Der Guard darf nicht erneut
+# wirkungslos werden, weil ein Name in CAUSES nicht existiert.
+_UNKNOWN_CODEC_GUARD_NAMES: frozenset[str] = (_ANALOG_DEGRADATION_CAUSES | _DIGITAL_CODEC_CAUSES) - set(CAUSES)
+if _UNKNOWN_CODEC_GUARD_NAMES:
+    logger.warning(
+        "§V6 (copilot-instructions.md) Codec-Guard nennt unbekannte Ursachen (%d): %s — "
+        "der Guard prüft diese Namen vergeblich",
+        len(_UNKNOWN_CODEC_GUARD_NAMES),
+        ", ".join(sorted(_UNKNOWN_CODEC_GUARD_NAMES)),
+    )
 
 # Ensure newly introduced causes are present in every material prior table.
 for _priors in MATERIAL_PRIORS.values():
@@ -1754,6 +1875,39 @@ CAUSE_TO_PHASES: dict[str, list[str]] = {
         "phase_66_stem_targeted_nr",  # Primary: BSRoFormer + stem-spezifische DFN-NR
         "phase_03_denoise",  # Sekundär: wideband-NR als Ergänzung
         "phase_65_vocal_naturalness_restoration",  # Tertiär: VQI-Korrektiv wenn nötig
+    ],
+    # ── 2026-10-07: Dropout-Carrier + Codec-/Stereo-Artefakte ───────────────
+    # Primär ist stets die Dropout-/Gap-Reparatur (Interpolation im Zeitbereich);
+    # die spektrale Reparatur folgt als Sekundärpfad, weil ein partieller
+    # Dropout auch eine Spektrallücke hinterlässt.
+    "dropout_oxide": [
+        "phase_24_dropout_repair",  # Primary: Gap-Interpolation (politiell 30–70 % Verlust)
+        "phase_55_diffusion_inpainting",  # Sekundär: generative Inpainting
+        "phase_23_spectral_repair",  # Tertiär: Spektral-Lücke nach Interpolation
+    ],
+    "dropout_head_contact": [
+        "phase_24_dropout_repair",  # Primary: Bandkopf-Kontaktverlust
+        "phase_55_diffusion_inpainting",  # Sekundär: generative Inpainting
+        "phase_12_wow_flutter_fix",  # Tertiär: Transport-Instabilität als Auslöser
+    ],
+    "dropout_splice": [
+        "phase_24_dropout_repair",  # Primary: Schnitt-Lücke
+        "phase_55_diffusion_inpainting",  # Sekundär: generative Inpainting
+        "phase_01_click_removal",  # Tertiär: Klick am Schnittrand
+    ],
+    "mpeg_frame_loss": [
+        "phase_23_spectral_repair",  # Primary: §4.7c POCS (vgl. digital_artifacts)
+        "phase_50_spectral_repair",  # Sekundär: PGHI
+        "phase_24_dropout_repair",  # Tertiär: Frame-Drop = kurze Signal-Lücke
+    ],
+    "phase_rotation": [
+        "phase_14_phase_correction",  # Primary (vgl. phase_issues)
+        "phase_25_azimuth_correction",  # Sekundär
+    ],
+    "stereo_field_collapse": [
+        "phase_15_stereo_balance",  # Primary (vgl. stereo_imbalance)
+        "phase_33_stereo_width_limiter",  # Sekundär
+        "phase_34_mid_side_processing",  # Tertiär
     ],
 }
 
@@ -3178,6 +3332,77 @@ def _likelihood_vocal_stem_noise(sf: SpectralFeatures, defect_scores: dict[str, 
     return float(np.clip(p, 0.0, 1.0))
 
 
+def _likelihood_dropout_oxide(sf: SpectralFeatures, defect_scores: dict[str, float]) -> float:
+    """P(Merkmale | dropout_oxide) — partielle Oxid-Dropouts (2–20 ms, 30–70 % Verlust).
+
+    Das Detektor-Signal trägt die Hauptlast; die Dropout-Dichte ist nur eine
+    Stütze, weil ein einzelner Oxid-Dropout die Dichte nicht hebt.
+    """
+    p = 0.0
+    p += _sigmoid_score(float(defect_scores.get("dropout_oxide", 0.0)), k=8.0, x0=0.25) * 0.60
+    p += _sigmoid_score(sf.dropout_density, k=2.5, x0=1.0) * 0.25
+    p += (1.0 - sf.hum_score) * 0.15  # Oxid-Dropouts sind nicht netzgebunden
+    return float(np.clip(p, 0.0, 1.0))
+
+
+def _likelihood_dropout_head_contact(sf: SpectralFeatures, defect_scores: dict[str, float]) -> float:
+    """P(Merkmale | dropout_head_contact) — Pegelabfälle durch Kontaktdruck."""
+    p = 0.0
+    p += _sigmoid_score(float(defect_scores.get("dropout_head_contact", 0.0)), k=8.0, x0=0.25) * 0.60
+    p += _sigmoid_score(sf.dropout_density, k=2.5, x0=0.5) * 0.25
+    p += (1.0 - min(1.0, sf.click_density / 5.0)) * 0.15  # Abfall, nicht Impuls
+    return float(np.clip(p, 0.0, 1.0))
+
+
+def _likelihood_dropout_splice(sf: SpectralFeatures, defect_scores: dict[str, float]) -> float:
+    """P(Merkmale | dropout_splice) — Lücke am Klebeband-Schnitt."""
+    p = 0.0
+    p += _sigmoid_score(float(defect_scores.get("dropout_splice", 0.0)), k=8.0, x0=0.30) * 0.60
+    p += _sigmoid_score(sf.dropout_density, k=2.5, x0=0.3) * 0.20
+    p += (1.0 - sf.hum_score) * 0.20
+    return float(np.clip(p, 0.0, 1.0))
+
+
+def _likelihood_mpeg_frame_loss(sf: SpectralFeatures, defect_scores: dict[str, float]) -> float:
+    """P(Merkmale | mpeg_frame_loss) — Bitstream-Frame-Drops/Sync-Verlust.
+
+    Neben dem Detektor spricht ein früher Spektral-Rolloff für den Codec-Pfad
+    (Frame-Verlust tritt bei bandbegrenzten Quellen auf).
+    """
+    p = 0.0
+    p += _sigmoid_score(float(defect_scores.get("mpeg_frame_loss", 0.0)), k=8.0, x0=0.25) * 0.60
+    p += (1.0 - min(1.0, sf.spectral_rolloff_hz / 16000.0)) * 0.20
+    p += (1.0 - sf.hum_score) * 0.20
+    return float(np.clip(p, 0.0, 1.0))
+
+
+def _likelihood_phase_rotation(sf: SpectralFeatures, defect_scores: dict[str, float]) -> float:
+    """P(Merkmale | phase_rotation) — Allpass-Phasenartefakte.
+
+    Phasenrotation ist spektral fast unsichtbar — deshalb lastet hier mehr
+    Gewicht auf dem speziellen Detektor als bei den übrigen Ursachen.
+    """
+    p = 0.0
+    p += _sigmoid_score(float(defect_scores.get("phase_rotation", 0.0)), k=8.0, x0=0.30) * 0.70
+    p += (1.0 - min(1.0, sf.click_density / 5.0)) * 0.15
+    p += (1.0 - sf.hum_score) * 0.15
+    return float(np.clip(p, 0.0, 1.0))
+
+
+def _likelihood_stereo_field_collapse(sf: SpectralFeatures, defect_scores: dict[str, float]) -> float:
+    """P(Merkmale | stereo_field_collapse) — progressiver Stereofeld-Kollaps.
+
+    Der Korrelations-Term ist bewusst schwach gewichtet (0,30): echtes
+    Monomaterial hat ebenfalls Korrelation ≈ 1,0, aber keinen erkannten
+    Kollaps. Nur die Kombination aus Detektor-Befund UND hoher Korrelation
+    hebt die Wahrscheinlichkeit.
+    """
+    p = 0.0
+    p += _sigmoid_score(float(defect_scores.get("stereo_field_collapse", 0.0)), k=8.0, x0=0.25) * 0.70
+    p += _sigmoid_score(sf.stereo_correlation, k=8.0, x0=0.95) * 0.30
+    return float(np.clip(p, 0.0, 1.0))
+
+
 LIKELIHOOD_FNS = {
     # ── Original 12 ──────────────────────────────────────────────────────────
     "tape_dropout": _likelihood_tape_dropout,
@@ -3253,6 +3478,13 @@ LIKELIHOOD_FNS = {
     "vocal_quality_degradation": _likelihood_vocal_quality_degradation,
     # ── v10.0.0: vocal_stem_noise ─────────────────────────────────────────────
     "vocal_stem_noise": _likelihood_vocal_stem_noise,
+    # ── 2026-10-07: angeschlossene Detektor-Ursachen (Priors waren verwaist) ─
+    "dropout_oxide": _likelihood_dropout_oxide,
+    "dropout_head_contact": _likelihood_dropout_head_contact,
+    "dropout_splice": _likelihood_dropout_splice,
+    "mpeg_frame_loss": _likelihood_mpeg_frame_loss,
+    "phase_rotation": _likelihood_phase_rotation,
+    "stereo_field_collapse": _likelihood_stereo_field_collapse,
 }
 
 
@@ -3418,17 +3650,16 @@ class CausalDefectReasoner:
 
         # §CODEC: Adjustiere Bayesian-Priors für analoge Ursachen wenn Codec-Contamination vorliegt.
         # Ohne diesen Guard: CausalReasoner leitet VINYL_WEAR aus MP3-Artefakten ab → falsche Phasen.
+        # Die Mengen MÜSSEN echte Prior-Schlüssel sein. Die frühere Fassung nannte
+        # "vinyl_wear"/"tape_degradation"/"shellac_deterioration"/
+        # "wow_flutter_damage"/"surface_damage" sowie "digital_compression"/
+        # "codec_artifact"/"streaming_loss" — KEINER davon existiert in
+        # MATERIAL_PRIORS (Befund 2026-10-07): der Guard konnte nie greifen.
         _cc = codec_contamination or {}
         if _cc:
             _avg_discount = sum(_cc.values()) / max(len(_cc), 1)
-            _digital_causes = {"digital_compression", "codec_artifact", "streaming_loss"}
-            _analog_causes = {
-                "vinyl_wear",
-                "tape_degradation",
-                "shellac_deterioration",
-                "wow_flutter_damage",
-                "surface_damage",
-            }
+            _digital_causes = _DIGITAL_CODEC_CAUSES
+            _analog_causes = _ANALOG_DEGRADATION_CAUSES
             for cause, prior_val in list(priors.items()):
                 if cause in _analog_causes and _avg_discount < 0.80:
                     priors[cause] = prior_val * _avg_discount
@@ -3505,9 +3736,17 @@ class CausalDefectReasoner:
                 if param not in merged_params:
                     merged_params[param] = val
 
-        # §v10 SNR-adaptive param scaling: Noise-Reduction-Strength und
-        # verwandte Parameter aus dem gemessenen SNR ableiten, nicht aus
-        # statischen CAUSE_PARAMS. Cleaner Song → weniger NR nötig.
+        # §v10 SNR-adaptive param scaling — NICHT AKTIV (Befund 2026-10-07).
+        # Dieses Attribut wird nirgends gesetzt; der Zweig lief in jedem Lauf ins
+        # Leere. Eine Aktivierung würde ``strength``/``boost``-Parameter um bis zu
+        # ×1,5 anheben (SNR 10 dB → 25/10 = 2,5 → geclippt 1,5) und damit die
+        # Eingriffsstärke global erhöhen. Das ist eine klangverndernde Stufe und
+        # benötigt die fünf Belege des Wohlklang-Vertrags (≥3 echte Songs,
+        # Produktionspfad, eingefrorene Baseline, blindes A/B, Budget) — sonst
+        # droht ein Natürlichkeits-Verlust (Hörordnung Ebene 3, §G6 (copilot-instructions.md)). Zielbild: docs/AURIK_10_ROADMAP.md:1286
+        # ("CAUSE_PARAMS vollständig SNR-adaptiv"). Als offenes Defizit
+        # registriert; Datenquelle wäre der kanonische Schätzer
+        # ``defect_scanner._estimate_local_snr`` (Spec 12 §"SNR-Adaption").
         if hasattr(self, "_last_snr_estimate") and self._last_snr_estimate > 0:
             _snr = self._last_snr_estimate
             _snr_scale = float(np.clip(25.0 / max(5.0, _snr), 0.5, 1.5))

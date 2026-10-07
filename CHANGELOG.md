@@ -1,4 +1,156 @@
-# Changelog — Aurik 10.9.3
+# Changelog — Aurik 10.11.0
+
+## 10.11.0 (2026-10-07)
+
+### Denker-Intelligenz: tote Entscheidungen wiederbelebt, Hörordnung erzwungen
+
+**Ausgangspunkt.** Tiefenanalyse aller **13 Denker** (12.893 Zeilen). Der
+wiederkehrende Befund war nicht „falscher Algorithmus", sondern **Entscheidung
+ohne Wirkung**: Regelwerk vorhanden, Ausführung nicht erreichbar.
+
+**Behoben (Ursache statt Symptom).**
+
+- **Die zentrale Guard-Modulation lief nie.** `resolve_guard_modulation` lag als
+  Code hinter einem `return` und war keine Klassenmethode; der Aufrufer in UV3
+  verschluckte den `AttributeError`. Die Stärke-Modulation ist jetzt eine echte
+  Methode: gewichtete Mittelung (Budget 40 % / Lern-Historie 50 % / Cross-Guard
+  10 %) statt Multiplikation, nie stärker als die Eingabe, Material-Floor nur für
+  kritische Phasen, `NaN` → 0,0 mit Warnung.
+- **Hörordnung Ebene 3 im Denker verankert.** Der Ziel-Reparaturpfad summierte
+  uniform und durfte Natürlichkeit (Stufe 1) für Brillanz (Stufe 4) senken. Jetzt
+  lehnt `hearing_order_violation()` jeden solchen Kandidaten ab — mit der
+  kanonischen Stufen-Quelle, nicht einer zweiten Tabelle.
+- **6 erkannte Defekte erreichten nie eine Phase.** `dropout_oxide`,
+  `dropout_head_contact`, `dropout_splice`, `mpeg_frame_loss`, `phase_rotation`
+  und `stereo_field_collapse` hatten Detektoren und Priors, fehlten aber in
+  `CAUSES`. Angeschlossen: `CAUSES`/`LIKELIHOOD_FNS`/`CAUSE_TO_PHASES` jetzt
+  72/72/72 synchron, Spec 06 nachgezogen.
+- **Zwei Träger ohne Priors.** `cassette` und `reel_tape` fielen auf den
+  „unknown"-Prior zurück, und die trägerspezifischen Tabellen übersprangen beide
+  still. Jetzt abgeleitet mit dokumentierten physikalischen Unterschieden.
+- **§V8 Song-Isolation.** Der song-übergreifende Low-Confidence-Kanal ist
+  entfernt (er ließ Song N die Phasenwahl von Song N+1 beeinflussen), der
+  `CrossPhaseCoordinator` bekommt einen Reset pro Song, und die Re-Pass-Dämpfung
+  mutiert nicht mehr die gecachte Optimizer-Instanz.
+- **§G5 Determinismus.** Die Band-Budgets iterierten über Mengen und summierten
+  Fließkommazahlen — mit hash-abhängiger Reihenfolge. Jetzt sortiert; gemessen
+  identisch über vier Hash-Seeds.
+- **Der PerceptualQualityCouncil bewertete ein defektfreies Signal** (Severity
+  wurde als 0,0 übergeben) und sein Urteil wurde verworfen. Er erhält die echte
+  Schwere, sein Urteil wird als Zeuge berichtet — ohne die normative
+  §8.1-Formel zu ersetzen.
+- **Tests, die nicht fehlschlagen konnten.** 11 Strategie- und 6 Tonträger-Tests
+  prüften Signaturen bzw. Felder, die es nicht gibt, hinter `try/except: pass`.
+  Ersetzt durch echte Vertragstests (`StrategiePlan`, `TontraegerInfo`).
+
+**Bewusst NICHT aktiviert.** Die SNR-adaptive `CAUSE_PARAMS`-Skalierung ist bis
+×1,5 eingriffsverstärkend und bleibt AUS, bis eine blinde A/B-Hörprobe auf
+eingefrorener Baseline vorliegt (Wohlklang-Vertrag, Hörordnung Ebene 3). Der
+tote Zustand ist im Code als solcher markiert.
+
+**Festgehalten, nicht angefasst** (Register D-K3-20…D-K3-23): restliche
+`try/except`-Hüllen in drei Test-Suiten, die SNR-Skalierung (D-K3-21), 327 Zeilen
+toter Code im RestaurierDenker und der doppelte PerceptualQualityCouncil
+(D-K3-23). Die 53×/32×-Lücke (D-K3-22) ist inzwischen auf der Plan-Seite
+geschlossen — siehe unten.
+
+**Nachweise.** 21 + 13 neue Vertragstests; 386 Tests in den berührten
+Denker-Suiten grün; Register ohne Verstoß; Datei-Registry 366 Dateien ohne
+Fehler.
+
+### Testhärtung: 16 Tests brachen an Phantom-Modulpfaden ab
+
+**Ausgangsbefund.** Die UV3-Hook-Tests patchten `dsp.digital_restoration_specialist`,
+`dsp.bandwidth_artifact_remover` und `dsp.dynamic_range_expander` — ein
+Top-Level-Paket `dsp` existiert nicht (die Wurzel `dsp/` ist leer), der
+Produktionscode importiert dieselben Klassen korrekt aus `backend.core.dsp.*`.
+Die Tests zielten also auf ein Phantom und brachen mit `ModuleNotFoundError` ab:
+**12 Fehler** in `tests/unit/test_unified_restorer_v3.py` (jetzt 283/283 grün).
+
+Dieselbe Ursache traf vier weitere Dateien, die dadurch still grün blieben statt zu
+prüfen: `tests/test_spectral_denoiser.py`, `tests/unit/test_v95_modules.py`,
+`tests/unit/test_v99_dsp_priority_modules.py` (25 Modul-/Klassenpaare) und
+`tests/unit/test_ml_fallback_cascades.py` — dort verwiesen sogar vier
+Pitch-Tracking-Kandidaten auf nicht existierende Module, sodass der Test nur über
+den Fallback auf `phase_12` bestand; er prüft jetzt die realen pYIN-Module.
+**Der Produktionscode war sauber** — der Defekt lag ausschließlich in der
+Prüfschicht. Nachweis: 581 grün in den vier Dateien.
+
+### Performance: Budget ehrlich gemacht, echter Hebel benannt
+
+**Plan-Budget.** `StrategieDenker.plan()` konnte bis **73,6×** RT zusagen
+(32 × Kettentiefe 2,0 × Restaurierbarkeit 1,5), während der harte Ausstieg bei
+**32×** liegt — der Plan meldete Zeit, die es nie gab, speiste darüber die
+Stufen-Wahl und den Anwender-Text. Jetzt gilt: das Budget ist auf die harte
+Guard-Grenze **gedeckelt**, und die Modus-Grenzen werden **aus** dem
+`PerformanceGuard` gelesen (FAST 8×, sonst 32×) statt kopiert. Eine Deckelung wird
+mit Begründung protokolliert. `RT_REALITY_MEASURED = 53,0` benennt die gemessene
+Ist-Lage samt Hebel — **nicht** als Zusage.
+
+**Der eigentliche Hebel bleibt offen und ist benannt:** Analytik und End-Gate
+laufen je Chunk statt je Song (TODO-P0-1); der dokumentierte Effekt ist
+**53× → 15–25× RT** (8–9 End-Gate-Runden × `measure_all` je Chunk entfallen). Das
+ist eine Strukturaufgabe an `unified_restorer_v3.py` und wurde hier **nicht** durch
+eine höhere Zusage kaschiert; ebenso wurde keine Beschleunigung behauptet, die
+nicht gemessen ist. Die normative Budget-Wahrheit (copilot-instructions.md) nennt
+jetzt beide Zahlen korrekt und verweist auf P0-1.
+
+## 10.10.0 (2026-10-07)
+
+### Live-Narrativ: die Oberfläche erzählt, statt sich zu wiederholen
+
+**Ausgangsbefund (gemeldet, dann gemessen).** „Es klingt noch alles sehr monoton
+und wenig innovativ." Die Messung bestätigt es und zeigt die Stelle:
+
+| Kanal während der Arbeit | vorher |
+| --- | --- |
+| Beruhigungszeile bei langen Pausen | **3** feste Sätze, gewählt allein über das Fortschrittsband |
+| Wiederholung | derselbe Satz im **8-Sekunden-Takt** — bei 30 Minuten rund **200-mal** |
+| Toast | derselbe Satz alle 35 s, Fallback-Text hartkodiert |
+| Variantenmechanik | **nicht vorhanden** (Suche über `modern_window.py`: 0 Treffer) |
+| Informationsgehalt je Meldung | Zustand — Phase, Fortschritt und Restzeit lagen vor, wurden aber nicht genutzt |
+
+Dazu zwei Schönheitsfehler ausgerechnet im meistgesehenen Satz: „ - " statt
+Gedankenstrich und das Wort „Rechenintensive".
+
+**Zusätzlich gefunden (6 verdeckte Nutzertexte).** Über die Helfer `_show_toast`
+und `set_status` erreichten sechs hartkodierte Texte den Nutzer, die für Prüfung 4
+des Frontend-Linters unsichtbar waren, weil sie nur **direkte** Setter ansah — drei
+davon mit internem Jargon: „Aurik **Denker**: {n} **Phase(n)** optimiert
+übersprungen", „… Zusatz-Phase(n) für {goal} **injiziert**", „⚠ **Off-Track** —
+sichere Korrektur läuft …".
+
+**Was jetzt geschieht.** Neues Modul `Aurik10/ui/live_narrative.py`:
+
+- **13 Situationssätze** (4 im Analyse-, 6 im Arbeits-, 3 im Abschlussband) statt
+  drei — jeder Satz ein eigener Übersetzungsschlüssel (de/en).
+- **Fortschritt im Text:** „🎛️ Hier entsteht der Klang… · 12 von 31 Störungen
+  behoben · noch ungefähr 7 Min." — jede Meldung trägt Neues.
+- **Vier Meilensteine** (25 %, Halbzeit, drei Viertel, alle Störungen), genau
+  **einmal** gemeldet: der Verlauf bekommt Etappen statt Gleichklang.
+- **Deterministisch** (§G5 copilot-instructions.md): Auswahl ist eine reine
+  Funktion aus Band und Meldungszähler — kein Zufall, keine Uhrzeit. Der Zähler
+  und die Meilenstein-Menge gehören dem **Song** und werden bei seinem Start
+  zurückgesetzt (§V8): kein Song erbt die Rotation des vorherigen.
+- **Sechs Jargon-Texte** laiengerecht im Katalog, z. B. „🧠 Aurik lässt
+  Arbeitsschritte aus, die hier nichts bringen (3)" statt „Aurik Denker: 3
+  Phase(n) optimiert übersprungen". Der alte Wiederholungsschlüssel ist entfernt
+  (kein zweites System daneben).
+- **Gate-Lücke geschlossen:** Prüfung 4 erfasst jetzt auch `_show_toast(` und
+  `set_status(` — sie deckte die sechs Stellen sofort auf.
+
+**Nachweis.** 17 neue Tests in `tests/unit/test_live_narrative.py`, darunter die
+eigentliche Zusage: _keine zwei aufeinander folgenden Meldungen identisch_ über
+200 Meldungen je Band. Weiter geprüft: Deterministizität über den Syntaxbaum,
+Meilensteine genau einmal, i18n-Symmetrie de/en, Jargon- und Bindestrich-Sperre.
+178 Tests grün in allen berührten Bereichen.
+
+**Eigene Fehlmessung sofort korrigiert.** Der neue Deterministizitäts-Test suchte
+zunächst Zeichenketten im Quelltext und fiel über seinen **eigenen Docstring** —
+das Wort „`time.time()`" steht dort als Verbot und wurde als Verstoß gelesen.
+Dieselbe Prosa-Falle wie in D-K3-5 und D-K3-9. Er prüft jetzt den Syntaxbaum.
+
+Register: **D-K3-12** geschlossen. Bei der Endabnahme gemessen und als **D-K3-13 offen** dokumentiert: `pytest tests/normative -m "not heavy"` endet mit 981 grün / **7 rot** — vorbestehend und nicht durch dieses Release verursacht (für die zwei GUI-Vertragsfälle über `git show HEAD:…` bewiesen: die geforderten Zeichenketten fehlen schon dort).
 
 ## 10.9.3 (2026-10-07)
 

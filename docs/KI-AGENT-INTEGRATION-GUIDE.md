@@ -31,7 +31,7 @@ Dieses Dokument liefert **praktische Ergänzungen** zu den Richtlinien.
 | Modul | Datei | Funktion |
 | --- | --- | --- |
 | `PerceptualEmbedder` | `core/perceptual_embedder.py` | 256-dim L2-normalisierter Einbettungsraum |
-| `CausalDefectReasoner` | `core/causal_defect_reasoner.py` | Bayesianische Kausalinferenz, 66 Kausal-Ursachen |
+| `CausalDefectReasoner` | `core/causal_defect_reasoner.py` | Bayesianische Kausalinferenz, 72 Kausal-Ursachen |
 | `GPParameterOptimizer` | `core/gp_parameter_optimizer.py` | RBF-GP + UCB, lernt dauerhaft pro Material |
 | `PerceptualQualityScorer` | `core/perceptual_quality_scorer.py` | Gammatone-NSIM + MCD + LUFS + MOS |
 | `MusicalGoalsChecker` | `backend/core/musical_goals/musical_goals_metrics.py` | 15 Ziele, `measure_all(audio, sr)` |
@@ -408,7 +408,7 @@ Jede neue DSP-Funktion MUSS auf mindestens einem dieser Prinzipien basieren:
 | NSIM / SSIM | Strukturelle Ähnlichkeit, Qualitätsbewertung |
 | PGHI (Perraudin 2013) | Phasenkonsistenz nach Spektralmodifikation |
 | GP/UCB + MOO Pareto | Parameteroptimierung (14 Objectives) |
-| Bayesianische Kausalinferenz | Defektursachen-Erkennung (66 Ursachen) |
+| Bayesianische Kausalinferenz | Defektursachen-Erkennung (72 Ursachen) |
 | ISO 226:2003 Equal-Loudness | BrillanzMetric + WaermeMetric-Gewichtung |
 | Virtual Pitch / Missing Fundamental | BassKraftMetric (Moore et al. 2006) |
 
