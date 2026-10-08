@@ -155,6 +155,13 @@ ONNX-Artefakte (Encoder, Decoder, Ende-zu-Ende) — deckungsgleich mit
 > Grenzen, VAD, Embeddings) oder als **ausdrücklich als Sprache markierter**
 > Pfad zulässig. Ein Einsatz als Musik-Signalpfad ist nur nach §III.11
 > (copilot-instructions.md) (belegter Musik-Finetune + A/B) erlaubt.
+>
+> **Aurik-Kriterium: Sprache muss Gesang sein.** Maßstab für Stimme ist die
+> **Singstimme (Gesang)**, nicht Sprache: Sprach-Korpora ohne Gesang (Podcasts,
+> VCTK, Expresso, LibriTTS …) belegen keine Gesangs-Tauglichkeit. Ein
+> sprach-trainierter Signalpfad ist nur mit belegtem
+> **Gesangs-/Musik-Finetune + A/B** zulässig; bis dahin zählt er als
+> §V6-Fallback mit Grund.
 
 | Modell | Upstream-Korpus | Rolle in Aurik | Risiko |
 | --- | --- | --- | --- |
@@ -167,7 +174,7 @@ ONNX-Artefakte (Encoder, Decoder, Ende-zu-Ende) — deckungsgleich mit
 | `nvsr` | Neuronales SR (Sprache) | FlashSR-Fallback (8–16 kHz) | **Signalpfad-Risiko**: Sprache auf Musik |
 | `aero` | slp-rl/aero SR 12→48 kHz (Sprache) | BWE-Challenger (nicht verdrahtet) | würden Musik-F4 verdrängen |
 | `vocos` | Vocos (LibriTTS, Sprache) | Vocoder-Stufe 24 kHz | Signalpfad-Risiko |
-| `vocos_48khz` | `kittn/vocos-mel-48khz-alpha1` — **Trainings-Domain undokumentiert** (Karte: „Training details: TODO") | Vocoder-Stufe 48 kHz (primär) | **Unbekannte Domäne — prüfen** |
+| `vocos_48khz` | `kittn/vocos-mel-48khz-alpha1` — **Sprache, belegt (2026-10-08):** Owner-Aussage in HF-Discussion #2 (2026-04-17) — „mostly podcasts I had scraped, plus VCTK and Expresso" (Sprach-Korpora, **kein Gesang**); Owner warnt selbst: „reconstruction quality is quite poor" (Karte: „Training details: TODO") | Vocoder-Stufe 48 kHz (primär) | **§III.11 (copilot-instructions.md): Sprach-Signalpfad auf Musik/Gesang nur als §V6-Fallback (hat nie Gesang gesehen) — Primär-Rolle offen; Ersatz: BigVGAN-F3 (D-K0-1, C4 ausstehend) oder Gesangs-Finetune** |
 | `versa` | wavlab-speech VERSA (Sprach-Eval-Toolkit) | Verzeichnis = Toolkit; der gleichnamige Aurik-Plugin nutzt **SingMOS Pro** (Gesang) | Namens-Verwechslung (§0) |
 
 ---

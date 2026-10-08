@@ -19,6 +19,12 @@ applyTo: "{plugins/**/*.py,backend/**/*.py,denker/**/*.py,models/**/*.py,scripts
 Aurik ist ein **Musik-Restaurierungssystem** — der Signalpfad-Kern
 (Separation, Pitch, Gesang, Inpainting, Deklipper) ist **Musik**.
 
+**Aurik-Kriterium — „Sprache muss Gesang sein":** Maßstab für Stimme ist in
+Aurik die **Singstimme (Gesang)**, nicht Sprache. Sprach-Korpora ohne Gesang
+(Podcasts, VCTK, Expresso, LibriTTS …) belegen **keine** Gesangs-Tauglichkeit;
+ein sprach-trainierter Stimm-Pfad braucht einen belegten
+**Gesangs-/Musik-Finetune + A/B** (§III.11 (copilot-instructions.md)).
+
 ## Regeln
 
 1. **Kein Domänen-Urteil aus dem Namen.** `whisper`, `silero`, `utmos`,

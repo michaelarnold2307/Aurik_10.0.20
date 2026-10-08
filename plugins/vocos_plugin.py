@@ -3,7 +3,7 @@
 PRIMÄRER Vocoder: Vocos 0.1.0 (Siuzdak 2023, MIT)
 Modell-Kaskade (§4.4 SOTA-Matrix, 3-Tier):
   1. Vocos ONNX 48 kHz nativ (models/vocos_48khz/vocos_48khz.onnx) — kein Resampling!
-  2. Vocos ONNX 44.1 kHz     (vocos_mel_spec_44khz.onnx, volles Spektrum bis 22 kHz)
+  2. Vocos ONNX 44.1 kHz     (vocos_mel_spec_44khz.onnx, volles Spektrum bis 22kHz) — Datei im Bestand nicht vorhanden, Stufe derzeit inaktiv
   3. Vocos ONNX 24 kHz       (vocos_mel_spec_24khz.onnx, 52 MB Release-Bundle)
   4. BigVGAN v2  (bigvgan_v2_plugin)                — neuronaler Fallback Stufe 1.5
   5. HiFi-GAN    (hifigan_plugin.HifiGanPlugin)     — neuronaler Fallback
@@ -196,6 +196,21 @@ class VocosPlugin:
                 self._mel_hop = _HOP_24K
                 self._mel_win = _WIN_24K
                 logger.info("Vocos 24 kHz ONNX geladen: %s [providers=%s]", path, _providers)
+            # ── §V6 (copilot-instructions.md) / §III.11/§III.13 Domänen-Transparenz ──
+            # Beide aktiven Tiers sind sprach-trainiert — 48 kHz belegt am Upstream
+            # (kittn/vocos-mel-48khz-alpha1, HF-Discussion #2, 2026-04-17:
+            # Podcasts/VCTK/Expresso), 24 kHz = LibriTTS; beide Korpora ohne
+            # Gesang. Für Aurik ist Gesang das Kriterium — ein Musik-/Gesangs-
+            # Signalpfad ist darum nur als §V6-Fallback mit Begründung zulässig;
+            # Ersatz: BigVGAN-F3 (D-K0-1, C4-Hörstichprobe ausstehend).
+            if "44" not in bname:
+                logger.warning(
+                    "§V6 (copilot-instructions.md) Vocos '%s' ist sprach-trainiert "
+                    "(Korpora ohne Gesang, §III.11 (copilot-instructions.md)) — "
+                    "Musik-/Gesangs-Einsatz nur als Fallback mit Begründung zulässig; "
+                    "Musik-Ersatz: BigVGAN-F3 (D-K0-1).",
+                    bname,
+                )
             # ── PLM-Registrierung (LRU-Tracking, §5.1 OOM-Schutz) ─────────────────
             try:
                 from backend.core.plugin_lifecycle_manager import get_plugin_lifecycle_manager

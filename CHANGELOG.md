@@ -1,4 +1,12 @@
-# Changelog — Aurik 10.12.23
+# Changelog — Aurik 10.12.24
+
+## 10.12.24 (2026-10-08)
+
+### D-K2-3: Vocos-48k-Domäne belegt — §V6-Domänen-Transparenz an den Ladepfaden
+
+- **Evidenz (Upstream geklärt):** `kittn/vocos-mel-48khz-alpha1` ist **sprach-trainiert, belegt** — Owner-Aussage in HF-Discussion #2 (2026-04-17): „mostly podcasts I had scraped, plus VCTK and Expresso“ (reine Sprach-Korpora, **kein Gesang**); der Owner warnt selbst vor schlechter Rekonstruktions-Qualität. Die Domäne der **primären** Studio-Finisher-Vocoder-Stufe ist damit nicht mehr „undokumentiert“, sondern belegt Sprache; das Aurik-Kriterium ist **Gesang** → §III.11 (copilot-instructions.md): Musik-/Gesangs-Signalpfad nur als §V6-Fallback; Ersatz-Kandidat BigVGAN-F3 (D-K0-1, C4 ausstehend).
+- **Fix:** §V6-Domänen-Warnung an den Vocos-Ladepfaden (48 kHz + 24 kHz); die 44,1-kHz-Kaskadenstufe ist als im Bestand fehlend markiert. Registry + Defizit-Register (D-K2-3) aktualisiert. Nachweis: `tests/unit/test_v99_vocos_plugin.py::TestVocosDomainTransparency`.
+- **Normativ verankert (Aurik-Kriterium):** „Sprache muss Gesang sein“ — copilot-instructions.md §III.13 (neuer Bullet), ML_MODEL_DOMAIN_REGISTRY.md (Sektion 3), ml_domain.instructions.md (Auto-Load für ML-Code) und Register-Kopf verlangen für Stimm-Pfade **Gesangs-Tauglichkeit** (nicht Sprache); Sprach-Korpora ohne Gesang belegen nichts.
 
 ## 10.12.23 (2026-10-08)
 

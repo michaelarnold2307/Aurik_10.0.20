@@ -94,7 +94,7 @@ class TestVocosResult(unittest.TestCase):
             audio=np.zeros(100, np.float32),
             sr=AURIK_SR,
             pqs_mos=3.5,
-            model_used="griffin_lim_fallback",
+            model_used="istft_phase_coherent_fallback",
             confidence=0.70,
             mel_snr_db=15.3,
             model_sr=MEL_SR_22K,
@@ -297,49 +297,49 @@ class TestVocosPluginFallback(unittest.TestCase):
         self.plugin._vocos_pypi = None
         self.plugin._onnx_session = None
         self.plugin._model_loaded = False
-        self.plugin._fallback_mode = "griffin_lim_fallback"
+        self.plugin._fallback_mode = "istft_phase_coherent_fallback"
 
     def test_25_fallback_output_shape(self):
-        """Griffin-Lim Fallback: Output-Länge = Input-Länge."""
+        """iSTFT-phase-coherent Fallback: Output-Länge = Input-Länge."""
         x = _white_noise(48000)
-        result, name, conf = self.plugin._synthesize_griffin_lim(x, AURIK_SR)  # type: ignore[attr-defined]
+        result, name, conf = self.plugin._synthesize_istft_phase_coherent(x, AURIK_SR)  # type: ignore[attr-defined]
         self.assertEqual(len(result), len(x))
 
     def test_26_fallback_no_nan(self):
-        """Griffin-Lim Fallback: kein NaN im Output."""
+        """iSTFT-phase-coherent Fallback: kein NaN im Output."""
         x = _sine()
-        result, _, _ = self.plugin._synthesize_griffin_lim(x, AURIK_SR)  # type: ignore[attr-defined]
+        result, _, _ = self.plugin._synthesize_istft_phase_coherent(x, AURIK_SR)  # type: ignore[attr-defined]
         self.assertTrue(np.isfinite(result).all())
 
     def test_27_fallback_clipped(self):
-        """Griffin-Lim Fallback: Ausgabe liegt in [-1, 1]."""
+        """iSTFT-phase-coherent Fallback: Ausgabe liegt in [-1, 1]."""
         x = _white_noise(48000)
-        result, _, _ = self.plugin._synthesize_griffin_lim(x, AURIK_SR)  # type: ignore[attr-defined]
+        result, _, _ = self.plugin._synthesize_istft_phase_coherent(x, AURIK_SR)  # type: ignore[attr-defined]
         self.assertLessEqual(float(np.max(np.abs(result))), 1.0)
 
     def test_28_fallback_model_name(self):
-        """Griffin-Lim Fallback: model_name korrekt."""
+        """iSTFT-phase-coherent Fallback: model_name korrekt."""
         x = _silence(4800)
-        _, name, _ = self.plugin._synthesize_griffin_lim(x, AURIK_SR)  # type: ignore[attr-defined]
-        self.assertIn("griffin_lim", name)
+        _, name, _ = self.plugin._synthesize_istft_phase_coherent(x, AURIK_SR)  # type: ignore[attr-defined]
+        self.assertIn("istft_phase_coherent", name)
 
     def test_29_fallback_confidence_lower(self):
         """Fallback-Konfidenz ist < 0.85 (schlechter als neuronales Modell)."""
         x = _white_noise(4800)
-        _, _, conf = self.plugin._synthesize_griffin_lim(x, AURIK_SR)  # type: ignore[attr-defined]
+        _, _, conf = self.plugin._synthesize_istft_phase_coherent(x, AURIK_SR)  # type: ignore[attr-defined]
         self.assertLess(conf, 0.85)
 
     def test_30_fallback_silence_input(self):
-        """Stille als Eingabe: Griffin-Lim gibt Stille (oder nahezu) zurück."""
+        """Stille als Eingabe: iSTFT-phase-coherent gibt Stille (oder nahezu) zurück."""
         x = _silence(48000)
-        result, _, _ = self.plugin._synthesize_griffin_lim(x, AURIK_SR)  # type: ignore[attr-defined]
+        result, _, _ = self.plugin._synthesize_istft_phase_coherent(x, AURIK_SR)  # type: ignore[attr-defined]
         self.assertLess(float(np.max(np.abs(result))), 0.1)
 
     def test_31_fallback_short_audio(self):
         """Sehr kurzes Audio (< 1024 Samples): kein Absturz."""
         x = np.zeros(100, dtype=np.float32)
         try:
-            result, name, conf = self.plugin._synthesize_griffin_lim(x, AURIK_SR)  # type: ignore[attr-defined]
+            result, name, conf = self.plugin._synthesize_istft_phase_coherent(x, AURIK_SR)  # type: ignore[attr-defined]
             self.assertEqual(len(result), 100)
         except Exception:
             logger.warning("test fallback", exc_info=True)
@@ -370,7 +370,7 @@ class TestVocosPluginFallback(unittest.TestCase):
 
     def test_36_active_backend_property(self):
         """active_backend-Property gibt aktuellen Backend-Namen zurück."""
-        self.assertEqual(self.plugin.active_backend, "griffin_lim_fallback")
+        self.assertEqual(self.plugin.active_backend, "istft_phase_coherent_fallback")
 
     def test_37_model_loaded_property_false(self):
         """model_loaded ist False wenn kein Modell geladen."""
@@ -390,7 +390,7 @@ class TestVocosPluginPqsMos(unittest.TestCase):
         self.plugin._vocos_pypi = None
         self.plugin._onnx_session = None
         self.plugin._model_loaded = False
-        self.plugin._fallback_mode = "griffin_lim_fallback"
+        self.plugin._fallback_mode = "istft_phase_coherent_fallback"
 
     def test_38_mos_bounds(self):
         """PQS-MOS liegt immer in [1.0, 5.0]."""
@@ -518,7 +518,7 @@ class TestVocosPlugin48kHz(unittest.TestCase):
         plugin._vocos_pypi = None
         plugin._onnx_session = None
         plugin._model_loaded = False
-        plugin._fallback_mode = "griffin_lim_fallback"
+        plugin._fallback_mode = "istft_phase_coherent_fallback"
         plugin._try_load(_MODEL_48K)
         if plugin._model_loaded:
             self.assertEqual(plugin._model_sr, _MEL_SR_48K)
@@ -576,11 +576,24 @@ class TestVocosPlugin48kHz(unittest.TestCase):
         plugin._vocos_pypi = None
         plugin._onnx_session = None
         plugin._model_loaded = False
-        plugin._fallback_mode = "griffin_lim_fallback"
+        plugin._fallback_mode = "istft_phase_coherent_fallback"
         plugin._try_load(_MODEL_48K)
         if plugin._model_loaded:
             self.assertEqual(plugin.active_backend, "vocos_onnx")
             self.assertTrue(plugin.model_loaded)
+
+
+class TestVocosDomainTransparency(unittest.TestCase):
+    """§V6/§III.11 (copilot-instructions.md): Sprach-Domäne der Vocos-Tiers wird beim Laden gemeldet."""
+
+    def test_domain_warnung_verdrahtet(self):
+        from pathlib import Path as _Path
+
+        _src = (_Path(__file__).resolve().parents[2] / "plugins" / "vocos_plugin.py").read_text(encoding="utf-8")
+        self.assertIn("§V6 (copilot-instructions.md) Vocos", _src)
+        self.assertIn("sprach-trainiert", _src)
+        self.assertIn("Korpora ohne Gesang", _src)
+        self.assertIn("BigVGAN-F3 (D-K0-1)", _src)
 
 
 if __name__ == "__main__":

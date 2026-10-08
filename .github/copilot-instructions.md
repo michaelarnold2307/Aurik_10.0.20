@@ -263,6 +263,11 @@ Jedes VERBOT definiert eine unzulässige Handlung. Verstöße sind Build-Fehler.
      VAD und Embeddings und dürfen das Ausgangssignal nicht verändern.
    - **Sprach-Vocoder/SR als Musik-Pfad** (HiFi-GAN, Vocos, NVSR, AERO) ist ein
      Risiko und nur nach §V6 (Warnung + Grund) als Fallback zulässig.
+   - **Aurik-Kriterium: Sprache muss Gesang sein.** Maßstab für Stimme ist die
+     **Singstimme (Gesang)**, nicht Sprache — Sprach-Korpora ohne Gesang
+     (Podcasts, VCTK, Expresso, LibriTTS …) belegen keine Gesangs-Tauglichkeit;
+     ein sprach-trainierter Stimm-Pfad braucht einen belegten
+     Gesangs-/Musik-Finetune + A/B (§III.11).
    - `nara_wpe` ist **unüberwacht** (kein Trainingskorpus) → domain-neutral.
    - Pflege: `python scripts/model_inventory.py --domains`;
      Registry im selben Commit aktualisieren (§G9).
