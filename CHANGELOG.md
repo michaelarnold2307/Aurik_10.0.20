@@ -1,4 +1,25 @@
-# Changelog — Aurik 10.12.19
+# Changelog — Aurik 10.12.20
+
+## 10.12.20 (2026-10-08)
+
+### Bughunt: Final-Ausgabe-Gate — Delta-Schutz für alle Referenzarten (D-K3-66)
+
+- **Befund (Läufe 10.12.17 + 10.12.12, je 1×):** `§2.44/§2.49 Final-Ausgabe-
+  Audio-Gate: af=0.000 hpi=0.0000 — Rollback auf sicheren finalen
+  Exportpuffer` — der AFG misst das finale Chunk-Audio gegen den
+  Carrier-Checkpoint (Stand nach phase_49); erfolgreiche Restaurierungs-
+  Deltas wirken dabei strukturell als Artefakte (~0.000). Der Delta-Schutz
+  (`if _using_degraded_ref ...`) griff bei dieser Referenzart NICHT (kein
+  Regression-Log im Lauf) → Gate-Fail → Rollback auf den Checkpoint:
+  **Wirkung der Phasen nach dem letzten Carrier-Checkpoint im betroffenen
+  Chunk-Segment verworfen.**
+- **Fix:** Pipeline-Baseline (§2.49 per-Phase-min) wird für ALLE
+  Referenzarten geladen; der Delta-Schutz gilt ohne degraded-Ref-Bindung
+  (AGENTS.md Guard-Kalibrierung). Damit greift die bestehende
+  Regression-Korrektur (Toleranz 0.15) auch bei Checkpoint-Referenz; die
+  HPI erhält den korrigierten af.
+- **Nachweis:** `tests/unit/test_dk366_final_gate_delta_guard.py`
+  (5 Kontrakte).
 
 ## 10.12.19 (2026-10-08)
 

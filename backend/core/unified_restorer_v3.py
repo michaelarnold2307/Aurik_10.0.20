@@ -22169,8 +22169,8 @@ class UnifiedRestorerV3:
             # §P0-1 Delta-basiertes Gate: Wenn Referenz = degradierte Eingabe,
             # messen wir die af des Inputs selbst und erlauben nur Regression.
             _input_baseline_af = None
-            if _using_degraded_ref:
-                try:
+            try:
+                if _using_degraded_ref:
                     _input_afg_result = _get_afg_final_export().evaluate(
                         _final_gate_ref,  # Input als Referenz (identisch)
                         _final_gate_ref,  # Input als Testsignal → af=1.0 (kein Delta)
@@ -22179,13 +22179,18 @@ class UnifiedRestorerV3:
                         phase_id="",
                         restorability_score=float(_pmgg_restorability_score),
                     )
-                    # Echte Baseline: Input gegen sich selbst = 1.0; wir brauchen
-                    # die af des Inputs GEGENÜBER einem sauberen Referenzsignal.
-                    # Da wir kein sauberes Signal haben, nutzen wir den vorherigen
-                    # Pipeline-Score als Proxy für die Input-Qualität.
-                    _input_baseline_af = float(getattr(self, "_artifact_freedom_score", 0.0) or 0.0)
-                except Exception as _ibaf_exc:
-                    logger.debug("§P0-1 Eingabe-Baseline-AF-Messung fehlgeschlagen: %s", _ibaf_exc)
+                # §D-K3-66 (2026-10-08): Die Pipeline-Baseline (§2.49 per-Phase-min)
+                # gilt für JEDE Referenzart — auch die Carrier-Checkpoint-Referenz
+                # misst der AFG strukturell als ~0.000 (finales Audio vs. früherer
+                # Pipeline-Stand: erfolgreiche Restaurierungs-Deltas wirken wie
+                # Artefakte). Produktionsbefund 10.12.17 + 10.12.12: Gate-Rollback
+                # in JEDEM Lauf, das betroffene Chunk-Segment verlor die Wirkung
+                # aller Phasen nach dem letzten Carrier-Checkpoint. Ohne Baseline
+                # bliebe der Delta-Schutz (AGENTS.md Guard-Kalibrierung: Hard-Fail
+                # nur bei Regression gegenüber der Pipeline-Baseline) wirkungslos.
+                _input_baseline_af = float(getattr(self, "_artifact_freedom_score", 0.0) or 0.0)
+            except Exception as _ibaf_exc:
+                logger.debug("§P0-1 Eingabe-Baseline-AF-Messung fehlgeschlagen: %s", _ibaf_exc)
 
             _final_afg_result = _get_afg_final_export().evaluate(
                 _final_gate_ref,
@@ -22200,13 +22205,14 @@ class UnifiedRestorerV3:
             # §P0-1 Delta-basierte Bewertung (AGENTS.md Guard-Kalibrierung):
             # Wenn Referenz = degradierte Eingabe, ist absolute af nicht aussagekräftig.
             # Stattdessen: Nur bei Regression gegenüber Input-Baseline schlagen.
-            if _using_degraded_ref and _input_baseline_af is not None:
+            # §D-K3-66: gilt für alle Referenzarten (s. Baseline-Ladung oben).
+            if _input_baseline_af is not None:
                 # Delta-Toleranz: Output darf bis zu 0.15 unter der Baseline liegen
                 # (Pipeline kann Artefakte einführen, aber nicht verschlechtern).
                 _delta_tolerance = 0.15
                 if _final_export_af < (_input_baseline_af - _delta_tolerance):
                     logger.warning(
-                        "§P0-1 Final-Ausgabe af=%.3f ist Regression gegenüber Eingabe-Baseline af=%.3f "
+                        "§P0-1 Final-Ausgabe af=%.3f ist Regression gegenüber Pipeline-Baseline af=%.3f "
                         "(Delta=%.3f, Toleranz=-%.2f) — verwende Baseline",
                         _final_export_af,
                         _input_baseline_af,
