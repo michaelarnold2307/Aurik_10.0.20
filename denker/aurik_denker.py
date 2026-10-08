@@ -2277,10 +2277,22 @@ class AurikDenker:
             except Exception as exc:
                 _record_stage_failure("restaurierung", "RestaurierDenker", exc)
                 logger.warning("AurikDenker [8/10] RestaurierDenker: %s", exc)
+                # §G8 (copilot-instructions.md) / D-K3-60: Metadaten-Verlust
+                # explizit markieren — der Export-Payload-Builder liest
+                # fail_reasons/degradation_status aus result.metadata
+                # (Endpunkt-Beweis 10.12.17: RT-Budget-Timeout ließ
+                # _rest_metadata leer, der Export zeigte Default-Leerwerte).
+                _rest_metadata["restaurierdenker_stage_error"] = str(exc)
         else:
+            _record_stage_failure(
+                "restaurierung",
+                "RestaurierDenker",
+                RuntimeError("RT-Budget ausgeschöpft — Restaurierung übersprungen"),
+            )
             stage_notes["restaurierung"] = "Übersprungen (RT-Budget ausgeschöpft)"
             warnings.append("Restaurierung übersprungen: RT-Budget ausgeschöpft")
             logger.warning("AurikDenker [8/10] Grenze erschöpft, Restaurierung übersprungen")
+            _rest_metadata["restaurierdenker_stage_error"] = "RT-Budget ausgeschöpft — Restaurierung übersprungen"
 
         # ── Stufe 7: Exzellenz-Optimierung + Musical Goals ───────────────────
         _emit(95, "Musikalische Exzellenz wird optimiert …")
@@ -2935,6 +2947,17 @@ class AurikDenker:
                 )
         else:
             stage_notes["degradation_status"] = PipelineHealthState.OK.value
+
+        # §G8 (copilot-instructions.md) / D-K3-60: Degradations-Evidenz in den
+        # Metadaten-Baum spiegeln — build_export_quality_gate_payload liest
+        # fail_reasons/fail_reason/degradation_status aus result.metadata.
+        # Endpunkt-Beweis 10.12.17: RT-Budget-Timeout ließ _rest_metadata leer,
+        # der Export zeigte dann Default-Leerwerte mit degradation_status="ok".
+        _rest_metadata["degradation_status"] = str(_degradation_status)
+        if _fail_reason:
+            _rest_metadata["fail_reason"] = str(_fail_reason)
+        if _stage_fail_reasons:
+            _rest_metadata["fail_reasons"] = [dict(entry) for entry in _stage_fail_reasons]
 
         # Material-adaptives MOS-Gate (zentral im Orchestrator).
         # Falls VERSA-MOS unter Materialziel liegt, erzwingt ein Clamp

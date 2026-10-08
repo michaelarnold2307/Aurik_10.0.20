@@ -1381,6 +1381,10 @@ def build_export_quality_gate_payload(result: object) -> dict[str, Any]:
             "profile": str(_wcs_gate.get("profile", "") or ""),
             "artifact_veto": bool(_wcs_gate.get("artifact_veto", False)),
             "passed": bool(_wcs_gate.get("passed", False)),
+            # D-K3-60: Ehrlicher Evidenzstand — ein fehlendes Gate-Ergebnis ist
+            # "nicht bewertet" (not_evaluated), keine stillen Nullwerte
+            # (§G8 (copilot-instructions.md)).
+            "evidence_state": "evaluated" if _wcs_gate else "not_evaluated",
         },
         "threshold_evidence": dict(_threshold_evidence) if _threshold_evidence else {},
         "muq_mos_witness": {

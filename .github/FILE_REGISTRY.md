@@ -428,6 +428,7 @@
 | tests/normative/test_weltklasse_kette.py | ACTIVE | tests/normative | ja | — | Weltklasse-Ketten-Validator §G10–§G12 (copilot-instructions.md): Norm→Code-Instanz→Verdrahtung — §G10 (Gate-Fail-closed-Semantik, Song-Audibility-Nachzug D-K3-68, Exportfeld defect_residual_audibility), §G11 (HPI-Produktformel, WCS-Builder-Runtime-Durchreichung, Transportkette UV3→Denker→CLI, Einladungs-Gate-Song-Ebene), §G12 (Norm, Deferral-Flags, Vertrags-Tests) |
 | tests/unit/test_dk360_denker_metadata_guard.py | ACTIVE | tests/unit | ja | — | Vertragstest D-K3-60 (2026-10-08): §V6-Wächter am ndarray-Metadaten-Verlustpfad im AurikDenker (Warnung + Folgen-Benennung) + Normalfall-Ketten-Pins (`_rest_metadata`-Erbe) |
 | tests/unit/test_dk367_phase_watchdog.py | ACTIVE | tests/unit | ja | — | Vertragstest D-K3-67 (2026-10-08): GIL-unabhängiger Phasen-Stack-Watchdog via faulthandler (Funktions-Dump nach Schwelle, Referenz-Zähler für parallele Phasen, Source-Pins für Heartbeat-Integration + ENV) |
+| tests/unit/test_dk360_rest_metadata_degradation.py | ACTIVE | tests/unit | ja | — | Vertragstest D-K3-60 Endpunkt-Fix (2026-10-08): RT-Budget-Timeout-/Skip-Pfad markiert den Metadaten-Verlust (`restaurierdenker_stage_error`), Degradations-Evidenz-Spiegelung in `_rest_metadata` (Builder-Keys), `evidence_state` `evaluated`/`not_evaluated` in beiden Buildern + CLI/Batch-Parität (5 Kontrakte, §G8/§G9) |
 
 ## Pflege-Regeln
 

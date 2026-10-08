@@ -1,4 +1,12 @@
-# Changelog — Aurik 10.12.22
+# Changelog — Aurik 10.12.23
+
+## 10.12.23 (2026-10-08)
+
+### D-K3-60 Endpunkt-Fix: Degradations-Evidenz erreicht den Export
+
+- **Befund (Endpunkt-Beweis Lauf 10.12.17→Export):** Der RT-Budget-Timeout des RestaurierDenkers (`⚠ …überschritt RT-Budget (11428.3s für 360.4s Audio)`) ließ `_rest_metadata` leer — der Export trug Default-Leerwerte (`worldclass threshold=0.0`/`profile=""`, `hybrid_engineer_vector={}`) und `degradation_status="ok"` trotz `⚠ Kritische Stufen ausgefallen: restaurierung` (§G8-Verstoß).
+- **Fix:** Timeout-/Skip-Pfad markieren `restaurierdenker_stage_error`; `degradation_status`/`fail_reason`/`fail_reasons` werden vor der AurikErgebnis-Konstruktion in den Metadaten-Baum gespiegelt (dieselben Keys, die `build_export_quality_gate_payload` liest); BEIDE Builder + CLI + Batch führen `quality_gate_evidence_worldclass_state` (`evaluated`/`not_evaluated`).
+- **Nachweis:** `tests/unit/test_dk360_rest_metadata_degradation.py` (5 Kontrakte inkl. Dual-Builder-Runtime).
 
 ## 10.12.22 (2026-10-08)
 

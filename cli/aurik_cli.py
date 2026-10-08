@@ -437,6 +437,12 @@ def _export_audio_frontend_parity(
         "quality_gate_hybrid_engineer_vector": _hybrid_engineer_vector_json,
         "quality_gate_evidence_worldclass_source_class": str(_wcs_evidence.get("source_class", "") or ""),
         "quality_gate_evidence_worldclass_revalidate_by": str(_wcs_evidence.get("revalidate_by", "") or ""),
+        # D-K3-60: Evidenzstand des WCS-Gates — fehlende Metadaten sind
+        # "nicht bewertet", keine stillen Nullwerte
+        # (§G8 (copilot-instructions.md)).
+        "quality_gate_evidence_worldclass_state": str(
+            _wcs_payload.get("evidence_state", "not_evaluated") or "not_evaluated"
+        ),
         "quality_gate_musiclover_vqi": str(float(_ml_vocal.get("vqi", 0.0) or 0.0)),
         "quality_gate_musiclover_sid": str(float(_ml_vocal.get("singer_identity_cosine", 0.0) or 0.0)),
         "quality_gate_musiclover_temporal_hotspots": str(int(_ml_temporal.get("hotspot_count", 0) or 0)),

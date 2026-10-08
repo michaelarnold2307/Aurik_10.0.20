@@ -68,7 +68,9 @@ def test_g10_gate_semantik_fail_closed() -> None:
 def test_g10_chunked_song_nachzug_verdrahtet() -> None:
     """D-K3-68: §G10 (copilot-instructions.md)-Exportfeld — Song-Audibility-Nachzug nach der Assembly."""
     src = _text(_UV3)
-    assert "§G10 Song-Audibility nach Assembly" in src  # Pin §G10 (copilot-instructions.md) — UV3-Logzeile
+    assert (
+        "§G10 (copilot-instructions.md) Song-Audibility nach Assembly" in src
+    )  # Pin §G10 (copilot-instructions.md) — UV3-Logzeile (R2-qualifiziert, 10.12.22)
     assert '_fd_meta["defect_residual_audibility"] = _song_aud_meta' in src
     assert "post_scan_ran=bool(_song_aud_data)" in src, "post_scan_ran muss fail-closed aus der Datenlage kommen"
 
