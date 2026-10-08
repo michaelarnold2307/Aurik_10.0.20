@@ -42788,7 +42788,7 @@ class UnifiedRestorerV3:
                                 # reproduzierbar (nur pitch/mod/hnr/hf/loud wurden geloggt).
                                 logger.warning(
                                     "👂 Reinhör-Witness %s: %s (pitch=%.1fc mod=%.1fc hnr=%.1fdB hf=%.3f "
-                                    "loud=%.1fdB pre_echo=%.1fdB)",
+                                    "loud=%.1fdB pre_echo=%.1fdB art=%s)",
                                     phase_id,
                                     ", ".join(_lw_res.findings),
                                     _lw_res.pitch_drift_cents,
@@ -42797,6 +42797,7 @@ class UnifiedRestorerV3:
                                     _lw_res.hf_flatness_rise,
                                     _lw_res.loud_mod_rise_db,
                                     _lw_res.pre_echo_db,
+                                    _lw_res.pre_echo_kind,
                                 )
                                 if not hasattr(self, "_phase_metadata_accumulator"):
                                     self._phase_metadata_accumulator = {}

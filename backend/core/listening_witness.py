@@ -126,6 +126,8 @@ class ListeningWitnessResult:
     ild_drift_db: float = 0.0
     iacc_drop: float = 0.0
     pre_echo_db: float = 0.0
+    pre_echo_corr: float = 0.0
+    pre_echo_kind: str = "none"
     sibilance_harshness_asper: float = 0.0
     muddiness_mask_db: float = 0.0
     temporal_mask_db: float = 0.0
@@ -152,6 +154,8 @@ class ListeningWitnessResult:
             "ild_drift_db": round(self.ild_drift_db, 2),
             "iacc_drop": round(self.iacc_drop, 4),
             "pre_echo_db": round(self.pre_echo_db, 2),
+            "pre_echo_corr": round(self.pre_echo_corr, 3),
+            "pre_echo_kind": self.pre_echo_kind,
             "sibilance_harshness_asper": round(self.sibilance_harshness_asper, 4),
             "muddiness_mask_db": round(self.muddiness_mask_db, 2),
             "temporal_mask_db": round(self.temporal_mask_db, 2),
@@ -930,6 +934,8 @@ def evaluate_listening_witness(
     _iacc_drop = 0.0
     _stereo_ok = True
     _pre_echo_db = -200.0
+    _pre_echo_corr = 0.0
+    _pre_echo_kind = "none"
     _cf_a = _channels_first_or_none(audio_before)
     _cf_b = _channels_first_or_none(audio_after)
     if _cf_a is not None and _cf_b is not None:
@@ -944,9 +950,12 @@ def evaluate_listening_witness(
         except Exception as _p3_exc:
             logger.debug("§Witness-SOTA P3 nicht verfügbar: %s", _p3_exc)
     try:
-        from backend.core.dsp.pre_echo_model import pre_echo_ratio_db as _pe_db
+        from backend.core.dsp.pre_echo_model import analyze_pre_echo as _pe_analyze  # §D-K3-62
 
-        _pre_echo_db = _pe_db(a, b, sr)
+        _pe_analysis = _pe_analyze(a, b, sr)
+        _pre_echo_db = _pe_analysis.ratio_db
+        _pre_echo_corr = float(_pe_analysis.corr)
+        _pre_echo_kind = str(_pe_analysis.kind)
     except Exception as _p4_exc:
         logger.debug("§Witness-SOTA P4 nicht verfügbar: %s", _p4_exc)
 
@@ -998,6 +1007,8 @@ def evaluate_listening_witness(
         ild_drift_db=_ild_drift,
         iacc_drop=_iacc_drop,
         pre_echo_db=_pre_echo_db,
+        pre_echo_corr=_pre_echo_corr,
+        pre_echo_kind=_pre_echo_kind,
         sibilance_harshness_asper=float(_sib_b),
         muddiness_mask_db=float(max(_mud_b, 0.0)),
         temporal_mask_db=float(max(_tmp_b, 0.0)),

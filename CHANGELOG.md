@@ -1,4 +1,12 @@
-# Changelog — Aurik 10.12.26
+# Changelog — Aurik 10.12.27
+
+## 10.12.27 (2026-10-08)
+
+### Punkt 17: Pre-Echo-Diskriminator (D-K3-62) — Echo-Duplikat vs. Reparatur-Füllung
+
+- **Kern:** `analyze_pre_echo` in `backend/core/dsp/pre_echo_model.py` klassifiziert das ausschlaggebende Onset per normierter Peak-Kreuzkorrelation (Vor-Δ gegen Onset-Fenster): „duplicate“ (≥ 0,30 — Codec-artige Kopie) vs. „repair_fill“ (lokale Reparatur-Energie; FP-Klasse des Laufs 10.12.17 mit −2,8/−8,4/−10,5 dB). Report-only — Witness-Schwelle und Veto-Anschluss unverändert (§V7 copilot-instructions.md); `pre_echo_ratio_db` bleibt als Wrapper bit-identisch (§G9 copilot-instructions.md).
+- **Transparenz:** Witness-Report trägt `pre_echo_kind`/`pre_echo_corr` (`as_dict`), die UV3-Witness-Logzeile zusätzlich `art=%s` (D-K3-57-Diagnostik erweitert).
+- **Nachweis:** `tests/unit/test_dk362_pre_echo_discriminator.py` (5 Kontrakte; Kopie → duplicate, corr 0,87 · Füllung → repair_fill, corr 0,05); alle Pre-Echo-Suiten 21 grün (D-K3-47/57/SOTA-P1P2 unverändert).
 
 ## 10.12.26 (2026-10-08)
 

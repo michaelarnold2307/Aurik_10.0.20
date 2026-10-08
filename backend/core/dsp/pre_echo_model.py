@@ -9,9 +9,18 @@ gesetzt — positiv dB = Pre-Echo-Verdacht. Rein deterministisch (5-ms-Hüllkurv
 
 Referenz: Zwicker & Fastl (2007) §7.2 (Pre-/Post-Masking); Godsill & Rayner
 (1998) (Impuls-Interpolation als Gegenstück).
+
+§D-K3-62 (2026-10-08): `analyze_pre_echo` klassifiziert zusätzlich das am
+schlechtesten befundene Onset — „duplicate“ (normierte Peak-Kreuzkorrelation
+der hinzugefügten Vor-Fenster-Energie gegen das Onset-Fenster ≥ 30 %:
+Codec-artige Kopie) vs. „repair_fill“ (lokale Reparatur-Energie, unkorreliert;
+FP-Klasse aus Lauf 10.12.17). Report-only — die Witness-Schwelle und das
+Finding bleiben unverändert: keine Verschärfung ohne Hörstichprobe (§V7 copilot-instructions.md).
 """
 
 from __future__ import annotations
+
+from dataclasses import dataclass
 
 import numpy as np
 
@@ -30,6 +39,76 @@ _FWD_MASK_DB = 18.0  # Forward-Masking (Zwicker & Fastl §7.2): Pre-Energie unte
 _ALIGN_SEARCH_MS = 5.0  # Suchfenster des lokalen Versatzes
 _ALIGN_CTX_MS = 25.0  # Kontextfenster der Kreuzkorrelation
 _ALIGN_MIN_CORR = 0.30  # Peak-Energie ≥ 30 % der Fenster-Energie → klarer Versatz
+
+# §D-K3-62 (2026-10-08): Diskriminator „Echo-Duplikat vs. lokale Reparatur-
+# Füllung“ gegen die Metrik-FP-Klasse aus Lauf 10.12.17 (Dropout-Füllung
+# −2,8 dB, Klick-Ersatz −8,4 dB, Wow-Resampling −10,5 dB — alle als „pre_echo“
+# gemeldet). Codec-Pre-Echo ist eine vorwärts verschmierte KOPIE des
+# Transienten (Korrelation hoch); Reparatur-Füllungen sind NEUE, unkorrelierte
+# lokale Energie. Schwelle konservativ wie das D-K3-47-Alignment (30 %) — der
+# Befund bleibt report-only (§V7 copilot-instructions.md): keine Verschärfung
+# des Vetos ohne Hörstichprobe (D-K3-62-Empfehlung).
+_KIND_MIN_CORR = 0.30
+_KIND_DUPLICATE = "duplicate"
+_KIND_REPAIR_FILL = "repair_fill"
+_KIND_NONE = "none"
+
+
+@dataclass(frozen=True)
+class PreEchoAnalysis:
+    """§D-K3-62 (2026-10-08): Pre-Echo-Befund mit Diskriminator-Klassifikation.
+
+    Attributes:
+        ratio_db: dB-Abstand der hinzugefügten Vor-Fenster-Energie zum Onset
+            (> −12 dB ⇒ Pre-Echo-Verdacht; −200.0 ⇒ kein Befund).
+        corr: Normierte Peak-Kreuzkorrelation (0..1) der hinzugefügten
+            Vor-Fenster-Energie gegen das Onset-Fenster am schlechtesten Onset.
+        kind: "duplicate" (Codec-artige Kopie) | "repair_fill" (lokale
+            Reparatur-Energie) | "none" (kein Befund).
+        onset_sample: Sample-Position des ausschlaggebenden Onsets (−1 = keins).
+    """
+
+    ratio_db: float
+    corr: float
+    kind: str
+    onset_sample: int
+
+
+def _pre_delta_onset_corr(
+    before: np.ndarray,
+    after: np.ndarray,
+    pre_lo: int,
+    pre_hi: int,
+    onset_lo: int,
+    onset_hi: int,
+) -> float:
+    """§D-K3-62: Normierte Peak-Kreuzkorrelation des Vor-Δ gegen das Onset.
+
+    Codec-Pre-Echo ist die rückwärts verschmierte KOPIE des Transienten — die
+    hinzugefügte Vor-Fenster-Energie (after − before) korreliert dann mit dem
+    Onset-Fenster (lag-verschoben bis zu eine Vor-Fenster-Länge, daher
+    Kreuzkorrelation statt Punktprodukt; Betrag, weil eine Kopie invertiert
+    ankommen kann). Lokale Reparatur-Füllungen sind unkorreliert.
+    Rückgabe ∈ [0, 1]; deterministisch.
+    """
+    lo = max(0, int(pre_lo))
+    hi = min(len(before), len(after), int(pre_hi))
+    o_lo = max(0, int(onset_lo))
+    o_hi = min(len(after), int(onset_hi))
+    if hi - lo < 8 or o_hi - o_lo < 8:
+        return 0.0
+    a = np.asarray(after[lo:hi], dtype=np.float64) - np.asarray(before[lo:hi], dtype=np.float64)
+    b = np.asarray(after[o_lo:o_hi], dtype=np.float64)
+    a = a - a.mean()
+    b = b - b.mean()
+    ea = float(np.dot(a, a))
+    eb = float(np.dot(b, b))
+    if ea <= 1e-18 or eb <= 1e-18:
+        return 0.0
+    cc = np.correlate(b, a, mode="full")
+    if cc.size == 0:
+        return 0.0
+    return float(np.max(np.abs(cc)) / np.sqrt(ea * eb))
 
 
 def _local_shift_samples(
@@ -100,25 +179,34 @@ def _aligned_delta_pre_energy(
     return float(np.mean(np.maximum(b - a_aligned, 0.0) ** 2))
 
 
-def pre_echo_ratio_db(x_before: np.ndarray, x_after: np.ndarray, sr: int) -> float:
-    """Maximales Pre-Echo-Verhältnis (dB) des Deltas (after − before).
+def analyze_pre_echo(
+    x_before: np.ndarray,
+    x_after: np.ndarray,
+    sr: int,
+    corr_threshold: float = _KIND_MIN_CORR,
+) -> PreEchoAnalysis:
+    """Pre-Echo-Verhältnis (dB) + §D-K3-62-Diskriminator (Duplikat vs. Füllung).
 
     Returns:
-        float — positiv = Pre-Echo-Verdacht; −200.0, wenn kein hörrelevantes
-        Delta existiert oder keine Onsets gefunden werden. Deterministisch.
+        PreEchoAnalysis — `ratio_db` positiv = Pre-Echo-Verdacht; −200.0, wenn
+        kein hörrelevantes Delta existiert oder keine Onsets gefunden werden
+        (dann `kind="none"`). `kind`: "duplicate" (normierte Peak-Kreuz-
+        korrelation der hinzugefügten Vor-Fenster-Energie gegen das Onset-
+        Fenster ≥ `corr_threshold` — Codec-artige Kopie) oder "repair_fill"
+        (lokale Reparatur-Energie, unkorreliert). Deterministisch.
     """
     before = np.asarray(x_before, dtype=np.float32)
     after = np.asarray(x_after, dtype=np.float32)
     n = min(len(before), len(after))
     before, after = before[:n], after[:n]
     if n < int(sr * 0.05):
-        return -200.0
+        return PreEchoAnalysis(ratio_db=-200.0, corr=0.0, kind=_KIND_NONE, onset_sample=-1)
 
     delta = (after - before).astype(np.float32)
     delta_rms = float(np.sqrt(np.mean(delta**2))) + 1e-12
     after_rms = float(np.sqrt(np.mean(after**2))) + 1e-12
     if delta_rms < 1e-4 * after_rms:
-        return -200.0  # kein hörrelevantes Delta — kein Pre-Echo möglich
+        return PreEchoAnalysis(ratio_db=-200.0, corr=0.0, kind=_KIND_NONE, onset_sample=-1)  # kein hörrelevantes Delta
     hop = max(1, int(sr * _ENV_WIN_S))
     n_frames = max(1, (n - hop) // hop + 1)
     idx = np.arange(hop)[None, :] + hop * np.arange(n_frames)[:, None]
@@ -154,13 +242,17 @@ def pre_echo_ratio_db(x_before: np.ndarray, x_after: np.ndarray, sr: int) -> flo
     rise = env_a / (_loc_base + 1e-12)
     onset_frames = np.where(rise > _ONSET_RISE)[0]
     if onset_frames.size == 0:
-        return -200.0
+        return PreEchoAnalysis(ratio_db=-200.0, corr=0.0, kind=_KIND_NONE, onset_sample=-1)
 
     pre_frames = max(1, int(_PRE_WIN_S / _ENV_WIN_S))
     gap_frames = max(1, int(_GAP_S / _ENV_WIN_S))
     post_frames = max(1, int(_POST_WIN_S / _ENV_WIN_S))
 
     worst_db = -200.0
+    worst_onset = -1
+    worst_pre_lo = 0
+    worst_pre_hi = 0
+    worst_post_hi = 0
     _mask_floor_db = 10.0 ** (-_FWD_MASK_DB / 10.0)
     # SUP-F6 (2026-09-16): Absolute Hörbarkeits-Schwelle — hinzugefügte
     # Pre-Energie unter −60 dB des Song-Peaks (gleiche Konstante wie die
@@ -218,5 +310,34 @@ def pre_echo_ratio_db(x_before: np.ndarray, x_after: np.ndarray, sr: int) -> flo
         _pre_e = _added_pre_e
         _onset_e = float(env_a[_of] ** 2)
         ratio_db = 10.0 * np.log10(_pre_e / max(_onset_e, 1e-18))
-        worst_db = max(worst_db, ratio_db)
-    return float(round(worst_db, 2))
+        if ratio_db > worst_db:
+            worst_db = ratio_db
+            worst_onset = int(_of)
+            worst_pre_lo, worst_pre_hi, worst_post_hi = _pre_lo, _pre_hi, _post_hi
+    if worst_db <= -200.0 or worst_onset < 0:
+        return PreEchoAnalysis(ratio_db=-200.0, corr=0.0, kind=_KIND_NONE, onset_sample=-1)
+    # §D-K3-62: Diskriminator am SCHLECHTESTEN (höchsten) Kandidaten.
+    corr = _pre_delta_onset_corr(
+        before,
+        after,
+        worst_pre_lo * hop,
+        worst_pre_hi * hop,
+        worst_onset * hop,
+        worst_post_hi * hop,
+    )
+    kind = _KIND_DUPLICATE if corr >= corr_threshold else _KIND_REPAIR_FILL
+    return PreEchoAnalysis(
+        ratio_db=float(round(worst_db, 2)),
+        corr=float(round(corr, 4)),
+        kind=kind,
+        onset_sample=worst_onset * hop,
+    )
+
+
+def pre_echo_ratio_db(x_before: np.ndarray, x_after: np.ndarray, sr: int) -> float:
+    """Kompatibilitäts-Wrapper (§G9 copilot-instructions.md): nur das Verhältnis.
+
+    Der volle Befund inkl. §D-K3-62-Diskriminator kommt aus
+    :func:`analyze_pre_echo`.
+    """
+    return analyze_pre_echo(x_before, x_after, sr).ratio_db
