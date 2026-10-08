@@ -12,6 +12,12 @@
 > unter Berücksichtigung der Quelldatei und der physikalischen Grenzen das maximal mögliche
 > Ergebnis erreicht. Ihre Schwellwerte sind so kalibriert, dass sie die qualitativ hochwertigsten
 > automatisierten Restaurierungsergebnisse für Musik mit Gesang weltweit ermöglichen.
+>
+> **Weltklasse-Maßstab (§G11/§G12 (copilot-instructions.md)):** Die Ziele werden
+> gegen den Weltklasse-Maßstab abgenommen — maximaler Wohlklang fürs menschliche Gehör
+> bei Defekt-Freiheit unter der Hörbarkeitsschwelle (§G10 (copilot-instructions.md))
+> für beliebige Importsongs. Verfehlungen führen zum bestmöglichen sicheren Export mit
+> Dokumentation (§0c), nie zu stiller Abnahme.
 
 ## §1.10 VocalQualityGate (v10.0.0-Phantom)
 
@@ -1286,7 +1292,7 @@ metadata["emotional_arc"] = _arc_result
 
 ### §v10.101.3 Implementierte Goal-Verbesserungen
 
-| Goal   | v10.101-Änderung | Wirkung |
+| Goal | v10.101-Änderung | Wirkung |
 | ------ | ---------------- | ------- |
 | groove | DTW-Radius von 7680→5 (Sakoe-Chiba) | Score 0.000→1.000 |
 | waerme | STFT-Cache shared mit Bass/Brillianz | −1.5s Latenz |

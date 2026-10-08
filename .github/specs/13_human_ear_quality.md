@@ -12,12 +12,31 @@ menschliche Gehör. Das bedeutet:
 3. **Fließend, nicht segmentiert** — Keine hörbaren Übergänge zwischen Sektionen
 4. **Das Ohr entscheidet, nicht die Metrik** — MUSHRA misst Ähnlichkeit, nicht Qualität
 
+### §13.0.1 Weltklasse-Abnahme (verbindlich, §G11 (copilot-instructions.md))
+
+Weltklasse ist MESSBAR, nicht behauptet. Jeder Export belegt:
+
+| Kriterium | Ziel | Messung |
+| --- | --- | --- |
+| Hörerlebnis | ≥ 90/100 | Panel-Simulation des Export-Narrativs |
+| Timbral-Treue | ≥ 0,98 | [in]-Komponente der HPI-Bewertung |
+| Einladungs-Gate | bestanden | hoerordnung.instructions.md Ebene 4 |
+| Höherrangige Ziele | keine Violation | lexikografische Ordnung (Ebene 3) |
+| Defekt-Freiheit | ≤ 0 dB je DefectType | `defect_residual_audibility`, §G10 |
+
+### §13.0.2 Universeller Geltungsbereich (§G12 (copilot-instructions.md))
+
+Die §13-Prinzipien gelten für BELIEBIGE Importsongs: jedes Material, jede Kette,
+jedes Genre, jede Sprache, jede Ära, Mono+Stereo, beliebige Abtastrate und Länge —
+ohne manuelle Eingriffe als Voraussetzung. Verfahren sind generisch; Kalibrierungen
+leitet der Song selbst ab (§G1). Chunked- und Voll-Pfad sind identisch (§G5, §G9).
+
 ## §13.1 Das menschliche Ohr als ultimatives Messinstrument
 
 ### §13.1.1 Frequenzabhängige Wahrnehmung (ISO 226:2003)
 
 | Bereich | Empfindlichkeit | Gewichtung |
-|---|---|---|
+| --- | --- | --- |
 | Bass (20–200 Hz) | −20 dB | 0.5× |
 | Mitten (200–2000 Hz) | Referenz | 1.0× |
 | Präsenz (2000–8000 Hz) | +10 dB | 1.5× |
@@ -104,7 +123,7 @@ BatchSessionLearner existiert bereits — Transfer-Learning für Künstler-Finge
 ## §13.9 Qualitäts-Schwellwerte
 
 | Material | Min. MOS | Preservation-Trigger |
-|---|---|---|
+| --- | --- | --- |
 | Vinyl | 4.0 | bw_loss ≥ 0.90 |
 | Kassette | 3.8 | bw_loss ≥ 0.90, SNR < 16dB |
 | Tonband | 4.2 | — |

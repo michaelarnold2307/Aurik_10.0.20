@@ -122,6 +122,13 @@ Maskierungsschwelle** liegt — nicht wenn sein Messwert Null ist.
   bei breitbandigem Musikmaterial, ist er als Pass-Through zu behandeln und
   darf keine Audibility-Entscheidung tragen (Befund 2026-08-23: 12969/12969
   salient, mean=1.000).
+- **Vollständigkeits-Pflicht (universell, §G10 (copilot-instructions.md)):** Das
+  Ziel „unter der Schwelle" gilt für ALLE DefectTypes über den GESAMTEN Song
+  jedes beliebigen Imports (§G12 (copilot-instructions.md)) — kein Typ gilt ohne
+  Messung als unhörbar (unbewiesen ≠ bestanden). Der Export trägt den
+  per-Typ-Audibility-Report (`defect_residual_audibility` ≤ 0 dB je Typ);
+  physikalisch irreduzible Reste werden als solche klassifiziert und begründet.
+  Erfolgs-/„vollständig"-Meldungen ohne diesen Nachweis sind unzulässig.
 
 ## 5. Ebene 3 — Lexikografische Wohlklang-Ordnung
 

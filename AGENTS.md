@@ -10,7 +10,7 @@ Musikwiederherstellung mit deterministischer Reproduzierbarkeit und natürlichem
 
 ## 1. Normative Kette — in dieser Reihenfolge maßgeblich
 
-1. **`.github/copilot-instructions.md`** — Eiserne Regeln: §I GEBOTE (G1–G9),
+1. **`.github/copilot-instructions.md`** — Eiserne Regeln: §I GEBOTE (G1–G12),
    §II VERBOTE (V1–V9), §III DSP-Spezialregeln, §IV Export-Reihenfolge,
    §V CD-Rauschprofil-Modell, §VI Startup-Vertrag (§v10.305),
    `[RELEASE_MUST]`-Anforderungen, §0a verbotene Phasen, Performance-Budget,
@@ -88,7 +88,7 @@ Details immer in der normativen Kette (§1) nachlesen.
   `.github/ML_MODEL_DOMAIN_REGISTRY.md` + `.github/instructions/ml_domain.instructions.md`;
   Prüfen mit `python scripts/model_inventory.py --domains`. Signalpfad-Regel
   §III.11 (copilot-instructions.md).
-- **Bridge-Verbot (§V4)**: UI/Frontend (Aurik10, CLI) importiert `backend/core/`
+- **Bridge-Verbot (§V4 (copilot-instructions.md))**: UI/Frontend (Aurik10, CLI) importiert `backend/core/`
   nie direkt — nur über `backend/api/bridge.py`. Denker-Schicht (`denker/`)
   ausgenommen.
 - **CLI/GUI-Funktionsgleichheit**: CLI und GUI rufen die gesamte Verarbeitung
@@ -104,11 +104,11 @@ Details immer in der normativen Kette (§1) nachlesen.
   Ohne Eintrag blockt `aurik-file-lifecycle` den Commit. Task-Ledger:
   `python scripts/change_ledger.py snapshot` → `TASK_CHANGES.md` (CI
   erzwingt Abdeckung im PR).
-- **Determinismus (§G5)**: gleicher Input + gleiche Version ⇒ bit-identischer
+- **Determinismus (§G5 (copilot-instructions.md))**: gleicher Input + gleiche Version ⇒ bit-identischer
   Output. Seeds pro Session; kein `time.time()` in Entscheidungslogik.
-- **Dither (§V5)**: bei bit_depth < 32 immer POW-r Type 3 (primär) oder TPDF
+- **Dither (§V5 (copilot-instructions.md))**: bei bit_depth < 32 immer POW-r Type 3 (primär) oder TPDF
   (Fallback); kein nacktes `astype(np.int16)`.
-- **Silent-Failure-Verbot (§V6)**: jeder ML→DSP-Fallback mit
+- **Silent-Failure-Verbot (§V6 (copilot-instructions.md))**: jeder ML→DSP-Fallback mit
   `logger.warning()` + Begründung.
 - **Export-Vertrag (§0c)**: Bei fehlgeschlagenem Export-Quality-Gate MUSS das
   bestmögliche sichere Ergebnis mit Status „degraded“ exportiert werden —
@@ -120,9 +120,9 @@ Details immer in der normativen Kette (§1) nachlesen.
 - **Guard-Kalibrierung**: Hard-Fail nur bei Regression gegenüber dem Input
   (delta-basiert). Absolute Produktions-Normalwerte (z.B. TP > −1 dBTP bei
   gemasterter Musik) sind kein Hard-Fail.
-- **Workaround-Verbot (§V7)**: Ursache statt Symptom; keine phasen-individuellen
+- **Workaround-Verbot (§V7 (copilot-instructions.md))**: Ursache statt Symptom; keine phasen-individuellen
   Schwellwerte; Stärke-Entscheidungen zentral über `global_scalar`.
-- **Song-Isolation (§V8/§G1)**: alle Stateful-Module (Circuit-Breaker, Caches,
+- **Song-Isolation (§V8/§G1 (copilot-instructions.md))**: alle Stateful-Module (Circuit-Breaker, Caches,
   Lernparameter) pro Song zurücksetzen.
 - **DSP (§III)**: Soft-Knee (6 dB, 200 ms Hanning) statt Hard-Clamp;
   PIM-first, RLP-last; Glue Stage immer als vorletzte Phase; 65 DefectTypes
@@ -133,7 +133,7 @@ Details immer in der normativen Kette (§1) nachlesen.
   ORT-ROCm-Kernel-Defekte (bs_roformer, BANQUET, FCPE, basicpitch, Whisper,
   MuQ-MuLan; rel 0,19–0,98) sind durch paritätsverifizierte,
   deterministische Torch-ROCm-Kerne ersetzt (`backend/core/dsp/*_torch_rocm.py`);
-  ONNX bleibt reiner CPU-Fallback (§V6).
+  ONNX bleibt reiner CPU-Fallback (§V6 (copilot-instructions.md)).
 - **Verbotene Phasen (§0a)**: `phase_21_exciter`,
   `phase_35_multiband_compression`, `phase_42_vocal_enhancement` sind im
   Restoration-Modus verboten.

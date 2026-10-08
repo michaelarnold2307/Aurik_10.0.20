@@ -16,8 +16,9 @@ Muster sind optional — der Parser entfernt sie.
 | Muster | Quelle | Status | Hinweis |
 | --- | --- | --- | --- |
 | `§G[1-9]` | `.github/copilot-instructions.md` | ambig | enforced (CI-geparst, hash-gewacht); Quelle immer angeben |
+| `§G1[0-2]` | `.github/copilot-instructions.md` | ambig | neu 2026-10-08 (§G10–§G12 Weltklasse-Verbund); Quelle immer angeben |
 | `§V[1-9]` | `.github/copilot-instructions.md` | ambig | enforced; Quelle immer angeben |
-| `§G[0-9]+` | `.github/GEBOTE.md` | enforced | Pre-Commit-Verifier (Teilmenge); §G1–§G9 ambig |
+| `§G[0-9]+` | `.github/GEBOTE.md` | enforced | Pre-Commit-Verifier (Teilmenge); §G1–§G12 ambig |
 | `§SC-G[0-9]+` | `.github/GEBOTE.md` Startup-Block (jetzt Kategorie XXIV) | veraltet | Alias auf §G173–§G182 (Phase 1 umgesetzt) |
 | `§G-DB[0-9]+` | `scripts/gebote_verifier.py` | verifier-intern | nicht in Code-Kommentaren zitieren |
 | `G[0-9]{2}` | `.github/GEBOTEN.md` | Referenz | nicht in Code-Kommentaren zitieren |
@@ -48,6 +49,9 @@ VERBOTEN. Zitierform: **„§G4 (copilot-instructions.md)“** bzw.
 | §G7 | Chirurgische Defektbehandlung | Interchannel-Lag |
 | §G8 | Transparenz (Audit-Log, Fallback-Logging) | CD-Rauschprofil-Pflicht (Export) |
 | §G9 | Projektweite Konsistenz | Quellmaterial-Unabhängigkeit |
+| §G10 | Defekt-Freiheit unter der Hörbarkeitsschwelle (universell) | ERB-Masking-First (Psychoakustik) |
+| §G11 | Weltklasse-Wohlklang-Abnahme (Hörerlebnis-Pflicht) | Natürlicher Wohlklang (PQS-MOS-Gate) |
+| §G12 | Universeller Import-Vertrag (beliebige Songs) | Lautheitskonsistenz (EBU R128) |
 | §V1 | Vocal-Distortion-Verbot | VERBOTE.md §V1 (andere Bedeutung; veraltet) |
 | §V2 | Ghost-Echo-Verbot | VERBOTE.md §V2 (andere Bedeutung; veraltet) |
 | §V3 | Rauschprofil-Full-Song-Verbot | VERBOTE.md §V3 = Hard-Clamp (veraltet) |

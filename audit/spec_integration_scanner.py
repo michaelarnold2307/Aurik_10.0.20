@@ -59,7 +59,7 @@ _NORMATIVE_DOCS: tuple[str, ...] = (
 _INTEGRATION_LEDGER = ".github/GEBOTE_INTEGRATION_MATRIX.md"
 
 _COPILOT_REQUIRED_SECTIONS: tuple[str, ...] = (
-    "§I",  # GEBOTE G1–G9
+    "§I",  # GEBOTE G1–G12
     "§II",  # VERBOTE V1–V9
     "§III",  # DSP-Spezialregeln
     "§IV",  # Export-Reihenfolge
@@ -305,7 +305,7 @@ def check_gebote_verboten_matrix(workspace: Path) -> list[IntegrationFinding]:
     joined = "\n".join(pools)
 
     for gid in sorted(_gebote_ids(workspace), key=lambda s: int(re.sub(r"\D", "", s) or 0)):
-        # Exakte ID-Prüfung: §G10 darf nicht über §G100 als „zitiert“ gelten.
+        # Exakte ID-Prüfung: §G10 (copilot-instructions.md) darf nicht über §G100 als „zitiert“ gelten.
         if re.search(re.escape(gid) + r"(?!\d)", joined) or gid in ledger:
             continue
         out.append(

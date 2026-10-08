@@ -69,6 +69,49 @@ Jedes GEBOT ist eine nicht verhandelbare Vorschrift. Verstöße sind Build-Fehle
   verwenden. Kein Parallelpfad darf eigene Mode-/Alias-Mappings definieren, die
   vom kanonischen Bridge-Vertrag abweichen (vgl. `tests/normative/test_canonical_contract_drift_gate.py`).
 
+### §G10 — Kategorie I: Defekt-Freiheit unter der Hörbarkeitsschwelle (universell)
+**Jeder Import-Song wird so restauriert, dass sämtliche Restdefekte unter der
+individuellen Hörbarkeitsschwelle des menschlichen Gehörs liegen.**
+- Das Abnahmekriterium ist die **Audibility**, NICHT der Mess-Null: Ein Defekt gilt als
+  behoben, wenn seine Restenergie in JEDER Zeit-Frequenz-Zelle unter der ERB-/Bark-
+  Maskierungsschwelle liegt (ISO 389-7 Hörschwelle + simultane/zeitliche Maskierung
+  nach Moore & Glasberg; Hörordnung Ebene 2).
+- Das gilt für **ALLE 65 DefectTypes über den GESAMTEN Song**: kein Typ darf ohne
+  Messung als „unhörbar“ gelten — fehlende Messgrößen sind „unbewiesen“, nicht „bestanden“.
+- Export-Metadaten MÜSSEN den per-Defekttyp-Audibility-Report tragen
+  (`defect_residual_audibility`, Zielwert ≤ 0 dB je Typ = kein Defekt über Schwelle).
+- Physikalisch unwiderrufliche Reste (z. B. zerstörtes Air-Band analoger Träger) werden
+  als „physikalisch irreduzibel“ klassifiziert und begründet (§G8) — nie still.
+- Kanonische Instanz: `backend/core/dsp/audibility_targets.py` (§G9 — eine Messung,
+  eine Quelle).
+- **VERBOTEN:** Eine Reparatur als abgeschlossen zu melden, deren Restdefekt über der
+  Schwelle liegt, während der Messwert „Null“ suggeriert wird. **VERBOTEN:** Reports/
+  Scorings, die Defekte UNTERHALB der Schwelle als offene Punkte zählen (§V7 — erzeugt
+  Workaround-Reparaturen gegen Unhörbares).
+
+### §G11 — Kategorie I: Weltklasse-Wohlklang-Abnahme (Hörerlebnis-Pflicht)
+**Jeder Export belegt für das menschliche Gehör Weltklasse — und hält die
+lexikografische Wohlklang-Ordnung (Hörordnung Ebene 3) kompromisslos ein.**
+- Pflicht-Nachweise je Export: Hörerlebnis ≥ 90/100 (Panel-Simulation des
+  Export-Narrativs), timbral-Treue ≥ 0,98 (HPI-Komponente), Einladungs-Gate bestanden
+  (Hörordnung Ebene 4), KEINE Violation höherrangiger Ziele (authentizitaet,
+  emotionalitaet, natuerlichkeit).
+- Der Abstand zur Weltspitze ist ein Zielpool-Nachweis (kalibrierte Referenzkette,
+  MUSHRA-Proxy — Metriken sind Zeugen, Hörordnung §7), keine Selbsteinschätzung.
+- Verfehlte Weltklasse ⇒ bestmöglicher sicherer Export mit Status + Hör-Instanz-
+  Begründung (§0c); Erfolgsmeldungen ohne diese Nachweise sind unzulässig.
+
+### §G12 — Kategorie I: Universeller Import-Vertrag
+**§G10 und §G11 gelten für beliebige Importsongs ohne Vorbedingungen.**
+- Jedes Material (Vinyl/Shellac/Band/Kassette/MP3/Digital/…), jede Kette, jedes Genre,
+  jede Sprache, jede Ära, Mono+Stereo, beliebige Abtastrate und Länge — kein manueller
+  Eingriff und kein Sonderpfad ist Voraussetzung.
+- Verfahren sind generisch: material-spezifische Kalibrierungen werden aus dem Song
+  selbst abgeleitet (§G1) und dokumentiert (§G8).
+- Chunked- und Voll-Pfad liefern das identische Ergebnis (§G5; §G9 Canonical Contract
+  Drift Gate). Chunk-Grenzen dürfen keine hörbaren Spuren hinterlassen (Hörordnung
+  Ebene 1).
+
 ---
 
 ## §II VERBOTE (Muss-Nicht-Vorschriften)
