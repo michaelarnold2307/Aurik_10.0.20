@@ -92,3 +92,16 @@ def test_domain_report_has_evidence_for_every_model() -> None:
     for path, entry in domain_report()["models"].items():
         assert entry["domain"], f"{path} ohne Domäne"
         assert entry["evidence"], f"{path} ohne Evidenz"
+
+
+def test_signalpfad_vocoder_warnen_domaene_beim_laden() -> None:
+    """§V6/§III.13 (copilot-instructions.md): Sprach-/unbelegte Vocoder-Signalpfade
+    melden ihre Trainings-Domäne beim Laden mit Begründung (Aurik-Kriterium: Gesang)."""
+    for rel, needle in (
+        ("plugins/vocos_plugin.py", "sprach-trainiert"),
+        ("plugins/hifigan_plugin.py", "unbelegte Trainings-Domäne"),
+    ):
+        src = (_ROOT / rel).read_text(encoding="utf-8")
+        assert "§V6 (copilot-instructions.md)" in src, f"{rel}: §V6-Domänen-Warnung fehlt"
+        assert needle in src, f"{rel}: Domänen-Begründung fehlt"
+        assert "Gesangs" in src, f"{rel}: Gesangs-Kriterium fehlt"

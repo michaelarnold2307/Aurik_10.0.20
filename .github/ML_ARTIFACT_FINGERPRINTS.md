@@ -555,6 +555,8 @@
 | `nvsr.onnx` | 389.3 KB | `a469b590a882bc6c…` | 0.09 M Params; IN ['batch', 1, 'time']; OUT ['batch', 1, 'time']; ops: Constant×69, Mul×39, Add×33, Resize×26 |
 | `nvsr.ts` | 702.4 KB | `c3dea9caa15308af…` | 396 Zip-Einträge |
 
+> **Archiviert (10.12.25):** `nvsr.ts` wurde nach `models/_archive_20260920/nvsr/nvsr.ts` verschoben (SHA unverändert `c3dea9caa15308af…`); Entscheid-Begründung: Defizit-Register D-K0-10 + `config/path_e2e_registry.json` (Status `archived`).
+
 ### `panns`
 
 | Artefakt | Größe | SHA-256 | Gemessener Fingerabdruck |

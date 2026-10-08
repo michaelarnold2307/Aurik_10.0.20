@@ -1,4 +1,13 @@
-# Changelog — Aurik 10.12.24
+# Changelog — Aurik 10.12.25
+
+## 10.12.25 (2026-10-08)
+
+### Registry, Archiv & Phantom-Gate: HiFi-GAN-§V6, nvsr.ts-Archiv (D-K0-10), D-K0-7-Entscheide, Path-E2E-Gate im Bestand
+
+- **HiFi-GAN-Domänen-Transparenz:** §V6-Warnung am Ladepfad (`plugins/hifigan_plugin.py`) — der Trainingskorpus ist unbelegt („UNIVERSAL_V1“ architektur-widerlegt); Musik-/Gesangs-Einsatz nur als Fallback mit Begründung (Aurik-Kriterium: Gesang). Die sechs Bestands-Logmeldungen wurden auf Deutsch gezogen (Language-Guard war rot: `Griffin-Lim-Fallback` / `ML-Budget` / `Operation failed (non-critical)`).
+- **nvsr.ts archiviert (D-K0-10 → geschlossen):** Move nach `models/_archive_20260920/nvsr/nvsr.ts` (SHA unverändert `c3dea9caa15308af…`); kein Loader/Konsument/Test, Aktivierung ohne Gesangs-Domänen-Beleg ausgeschlossen (§III.11/§III.13 copilot-instructions.md); E2E-Register-Status `archived`.
+- **D-K0-7 „Stilles Kapital“ → geschlossen:** Entscheide je Gruppe dokumentiert (§G8 copilot-instructions.md) — Behalten für Provenienz/Rollback/Belege; Verwerfen-Kandidaten benannt (Venv-Residuum nur mit Sign-off).
+- **Path-E2E-Register (K2-Maßnahme 1) in den Bestand:** `scripts/path_e2e_check.py`, `config/path_e2e_registry.json`, `tests/normative/test_path_e2e_registry.py` plus FILE_REGISTRY-Einträge — das Phantom-Pfad-Gate ist jetzt versioniert und im Pre-Commit fail-closed.
 
 ## 10.12.24 (2026-10-08)
 

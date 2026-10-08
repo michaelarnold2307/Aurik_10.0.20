@@ -41,7 +41,7 @@ class HifiGanPlugin:
 
     def _try_load(self, path: str) -> None:
         if not os.path.exists(path):
-            logger.warning("HiFi-GAN Modell fehlt: %s — Griffin-Lim-Fallback.", path)
+            logger.warning("HiFi-GAN-Modell fehlt: %s — Ersatzweg ueber Griffin-Lim.", path)
             return
         try:
             import onnxruntime as ort
@@ -50,10 +50,10 @@ class HifiGanPlugin:
                 from backend.core.ml_memory_budget import try_allocate as _try_alloc
 
                 if not _try_alloc("HiFiGAN", size_gb=0.004):
-                    logger.warning("HiFiGAN: ML-Budget erschöpft — Griffin-Lim-Fallback.")
+                    logger.warning("HiFiGAN: ML-Kontingent erschöpft — Ersatzweg ueber Griffin-Lim.")
                     return
             except Exception as _exc:
-                logger.debug("Operation failed (non-critical): %s", _exc)
+                logger.debug("Operation fehlgeschlagen (unkritisch): %s", _exc)
 
             opts = ort.SessionOptions()
             opts.inter_op_num_threads = 2
@@ -66,20 +66,31 @@ class HifiGanPlugin:
 
             self._session = ort.InferenceSession(path, sess_options=opts, providers=_providers)
             logger.info("HiFi-GAN ONNX geladen: %s [providers=%s]", path, _providers)
+            # §V6 (copilot-instructions.md) / §III.13 Domänen-Transparenz:
+            # Der HiFi-GAN-Korpus ist unbelegt (kein offizieller Checkpoint,
+            # „UNIVERSAL_V1" architektur-widerlegt) — auf Musik/Gesang nur als
+            # §V6-Fallback zulässig; Gesangs-Tauglichkeit ist nicht belegt
+            # (Aurik-Kriterium: Sprache muss Gesang sein).
+            logger.warning(
+                "§V6 (copilot-instructions.md) HiFi-GAN '%s' hat eine unbelegte Trainings-Domäne "
+                "(§III.13 (copilot-instructions.md)) — Musik-/Gesangs-Einsatz nur als Fallback "
+                "mit Begründung zulässig.",
+                os.path.basename(path),
+            )
             try:
                 from backend.core.plugin_lifecycle_manager import register_plugin as _reg_plm
 
                 _reg_plm("HiFiGAN", size_gb=0.004, unload_fn=self.unload)
             except Exception as _exc:
-                logger.debug("Operation failed (non-critical): %s", _exc)
+                logger.debug("Operation fehlgeschlagen (unkritisch): %s", _exc)
         except Exception as exc:
-            logger.warning("HiFi-GAN Ladefehler: %s — Fallback.", exc)
+            logger.warning("HiFi-GAN-Ladefehler: %s — Ersatzweg.", exc)
             try:
                 from backend.core.ml_memory_budget import release as _rel
 
                 _rel("HiFiGAN")
             except Exception as _exc:
-                logger.debug("Operation failed (non-critical): %s", _exc)
+                logger.debug("Operation fehlgeschlagen (unkritisch): %s", _exc)
 
     def vocode(self, mel: np.ndarray, sr_out: int = 48000) -> np.ndarray:
         """mel[80, T] → waveform float32. sr_out=48000 entspricht Aurik-Pipeline-SR."""
