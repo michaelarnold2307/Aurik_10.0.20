@@ -817,7 +817,10 @@ class TestDecisionReasonTelemetry:
         _, _, log_entry = gate.wrap_phase(_StrengthCapturingPhase(), audio, SR, phase_id="phase_29_tape_hiss_reduction")
 
         assert log_entry.metadata["pmgg_decision_class"] == "best_effort"
-        assert log_entry.metadata["pmgg_decision_reason"] == "catastrophic_regression_unresolved"
+        # §v10.703 SOTA: der konkrete Diagnose-Code ersetzt den überholten Wert
+        # „catastrophic_regression_unresolved" (Test am 2026-10-08 nachgezogen,
+        # D-K3-59 — der alte Wert existierte nur noch hier, nicht in Code/Spec).
+        assert log_entry.metadata["pmgg_decision_reason"] == "catastrophic_regression_best_effort_applied"
 
     def test_58_wrap_phase_sets_decision_reason_for_passthrough(self, monkeypatch):
         audio = _tone(3.0)

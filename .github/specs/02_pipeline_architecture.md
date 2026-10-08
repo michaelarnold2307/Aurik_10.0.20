@@ -306,7 +306,7 @@ Die weights werden von PyTorch automatisch in die neuen Parametrizations-Namen k
 ### §2.2.0 Sample-Rate-Vertrag (Dual-SR, [RELEASE_MUST])
 
 - `analysis_sr = import_sr` (native): DefectScanner, RestorabilityEstimator, EraClassifier, MediumDetector, classify_clipping/analyse_clipping.
-- `processing_sr = 48000`: alle Verarbeitungsphasen (01–64), PMGG, ML-Plugins, Export-Gates.
+- `processing_sr = 48000`: alle Verarbeitungsphasen (01–67), PMGG, ML-Plugins, Export-Gates.
 - Es müssen zwei getrennte Datenpfade geführt werden: `analysis_audio` (native SR) und `processing_audio` (48 kHz).
 - Wenn die Normierung `import_sr -> 48000` fehlschlägt, MUSS die Verarbeitung fail-fast abbrechen; ein Weiterlauf der Phasen auf Nicht-48k ist unzulässig.
 - Resampling darf nur `processing_audio` betreffen; `analysis_audio` bleibt unverändert in nativer SR.
@@ -471,7 +471,7 @@ Audio-Eingang (mono/stereo, beliebige SR)
     │       (Übergabe als `recompute_harmonic_mask=True` an HPG).
     │   (c) alle übrigen Phasen: kein HPG-Eingriff (Verarbeitungs-Semantik
     │       der Phase definiert selbst ihren Amplituden-Schutz).
-    │ VERBOTEN: Globale Maske ohne Ggültigkeit über alle 64 Phasen propagieren.
+    │ VERBOTEN: Globale Maske ohne Gültigkeit über alle 71 Phasen propagieren.
     ↓
 [UnifiedRestorerV3._select_phases()]
     ↓
@@ -610,7 +610,7 @@ gain_db_interp[quiet_mask & (gain_db_interp > 0.0)] = 0.0
 ## §2.56a [RELEASE_MUST] Global All-Phase Harmonic Adaptation (v10.0.0)
 
 `SongGoalImportance` muss nicht nur in Gates, sondern auch in der laufenden
-Phasensteuerung wirksam sein, damit alle 64 Phasen harmonisch zusammenarbeiten.
+Phasensteuerung wirksam sein, damit alle 71 Phasen harmonisch zusammenarbeiten.
 
 **Normativer Ort:** `UnifiedRestorerV3._profiled_phase_call`
 
@@ -636,7 +636,7 @@ harmonic_adaptation_scalar = _compute_harmonic_adaptation_scalar(
 
 **Invarianten:**
 
-- Keine Per-Phase-Divergenz: ein zentraler Pfad für alle 64 Phasen.
+- Keine Per-Phase-Divergenz: ein zentraler Pfad für alle 71 Phasen.
 - Keine Randwert-Klebung: Pullback von exakten Bound-Rändern.
 - Keine Pipeline-Blockade durch Adaptionsfehler.
 
@@ -4802,6 +4802,7 @@ Der **Perceptual Intensity Mapper (PIM)** wird VOR dem Phasen-Loop ausgeführt u
 | 64 | `phase_64_tape_splice_repair` | `TapeSpliceRepairPhase` | Physische Klebestellen-Reparatur (§6.12) |
 | 65 | `phase_65_vocal_naturalness_restoration` | `VocalNaturalnessRestorationPhase` | Formant/Vibrato-Erhalt (§6.13) |
 | 66 | `phase_66_stem_targeted_nr` | `StemTargetedNRPhase` | Source-Separation Rauschminderung (§6.14) |
+| 67 | `phase_67_crackle_texture_removal` | `CrackleTextureRemovalPhase` | Knistern-Textur-Entfernung (ML, Route A; CRACKLE) |
 
 Alle Phasen werden über `backend/core/phases/__init__.py` mit bedingten Imports exportiert
 (try/except ImportError, Graceful Degradation).

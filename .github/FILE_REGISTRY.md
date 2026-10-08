@@ -418,6 +418,8 @@
 | tests/unit/test_dk356_witness_mod_fp.py | ACTIVE | tests/unit | ja | — | Vertragstest D-K3-56 (2026-10-07): Witness pitch_modulation — identisch/Klick→Patch/SAUBER→Patch clean, echte +6-Hz-Modulation warnt (Positiv-Kontrolle), Verbesserungsrichtung 0,0 |
 | tests/unit/test_dk355_phase_heartbeat.py | ACTIVE | tests/unit | ja | — | Vertragstest D-K3-55 (2026-10-07): Phasen-Heartbeat — Log-Zeile ohne UI-Callback (§G8), Callback-Erhalt (0–100), Log-Format mit Phasenname/Minuten; Stop hinterlässt keinen Thread |
 | tests/unit/test_dk358_log_health_guard.py | ACTIVE | tests/unit | ja | — | Vertragstest D-K3-58 (2026-10-07): Log-Health-Guard — FileHandler-Verlust wird geheilt (True) und ist idempotent (False); geschlossener Stream zählt nicht als aktiv und wird ersetzt |
+| tests/unit/test_dk359_reject_action_classification.py | ACTIVE | tests/unit | ja | — | Vertragstest D-K3-59 (2026-10-07): Reject-Actions deterministisch klassifiziert — `pss_rejected`/`lag_rejected` → Klasse „reject“ ohne „unbekannte Action“-Warnung; Wurzel-Wächter über alle vom Gate erzeugten `*_rejected`-Returns; Gegenprobe: unbekannte Action bleibt im other-Fallback mit §G8-Warnung |
+| tests/unit/test_dk357_witness_log_diagnostics.py | ACTIVE | tests/unit | ja | — | Vertragstest D-K3-57 (2026-10-07): Witness-Logzeile trägt den echten `pre_echo_db`-Wert — Wiring-Guard (Platzhalter + Argument vorhanden) und Format-/Argument-Konsistenz über den echten `LogRecord.getMessage()`-Pfad (fehlendes Argument wäre „Logging error“ zur Laufzeit) |
 
 ## Pflege-Regeln
 

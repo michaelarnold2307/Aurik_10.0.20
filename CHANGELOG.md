@@ -1,4 +1,36 @@
-# Changelog — Aurik 10.12.16
+# Changelog — Aurik 10.12.17
+
+## 10.12.17 (2026-10-08)
+
+### Wurzel-Fix: PMGG-Reject-Actions registriert + Witness-mit-echtem-pre_echo-Wert (D-K3-59, D-K3-57-Diagnostik)
+
+- **Befund 1 (Walzer-Lauf):** `§v10.17 PSS-Gate [phase_50_spectral_repair]:
+  PSS=0.8265 rejected` → darauf `WARNING: PMGG unbekannte Action:
+  'pss_rejected' — klassifiziert als 'other'`. Die §v10.17-Gates (LAG, PSS)
+  geben je eine eigene Reject-Action zurück (Rollback auf Pre-Phasen-Audio) —
+  `_classify_action_decision` kannte sie nicht und warf sie in den
+  „other“-Fallback samt Warnung.
+- **Fix 1:** `pss_rejected` UND `lag_rejected` (gleicher Codeblock, gleiche
+  Fehlerklasse) sind als Klasse „reject“ registriert
+  (`pss_perceptual_similarity_rejected` / `stereo_lag_gate_rejected`). Der
+  Conflict-Report behandelt „reject“ unverändert als konflikt-relevant — ein
+  abgelehnter Phasen-Output ist ein echtes Guard-Ereignis, kein pass.
+- **Befund 2 (D-K3-57):** Die Witness meldete `pre_echo` bei komplett neutralen
+  Nachbarwerten (pitch=0.0c mod=0.0c hnr=0.0dB hf=0.000 loud=0.0dB) — der
+  echte `pre_echo_db`-Wert fehlte in der Logzeile, das Finding war dadurch aus
+  dem Lauf nicht reproduzierbar.
+- **Fix 2:** `pre_echo=%.1fdB` als 6. Messwert in der Reinhör-Witness-Logzeile
+  (`backend/core/unified_restorer_v3.py`); der nächste Lauf zeigt ohne
+  `AURIK_WITNESS_DEBUG=1` den Abstand zur −12-dB-Schwelle.
+- **Im selben Zug:** `test_57_wrap_phase_sets_decision_reason_for_best_effort_
+  emergency` prüfte den überholten Wert `catastrophic_regression_unresolved`
+  (existierte nur noch im Test — Code dokumentiert seit §v10.703 den konkreten
+  Diagnose-Code) → am aktuellen, dokumentierten Reason nachgezogen.
+- **Nachweis:** `tests/unit/test_dk359_reject_action_classification.py`
+  (4 Kontrakte inkl. Wurzel-Wächter über alle Gate-Rejects),
+  `tests/unit/test_dk357_witness_log_diagnostics.py` (2 Kontrakte: Wiring +
+  Format-/Argument-Konsistenz über den echten `LogRecord.getMessage()`-Pfad);
+  88 PMGG-/Conflict-Report-Regressionstests grün.
 
 ## 10.12.16 (2026-10-07)
 

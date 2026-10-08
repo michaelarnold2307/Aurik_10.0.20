@@ -42694,8 +42694,12 @@ class UnifiedRestorerV3:
                                 except Exception as _wdbg_exc:
                                     logger.debug("Witness-Debug-Dump fehlgeschlagen: %s", _wdbg_exc)
                             if _lw_res.findings:
+                                # D-K3-57: Der ECHTE pre_echo_db-Wert gehört in die Zeile —
+                                # ohne ihn war das pre_echo-Finding aus dem Walzer-Lauf nicht
+                                # reproduzierbar (nur pitch/mod/hnr/hf/loud wurden geloggt).
                                 logger.warning(
-                                    "👂 Reinhör-Witness %s: %s (pitch=%.1fc mod=%.1fc hnr=%.1fdB hf=%.3f loud=%.1fdB)",
+                                    "👂 Reinhör-Witness %s: %s (pitch=%.1fc mod=%.1fc hnr=%.1fdB hf=%.3f "
+                                    "loud=%.1fdB pre_echo=%.1fdB)",
                                     phase_id,
                                     ", ".join(_lw_res.findings),
                                     _lw_res.pitch_drift_cents,
@@ -42703,6 +42707,7 @@ class UnifiedRestorerV3:
                                     _lw_res.hnr_drop_db,
                                     _lw_res.hf_flatness_rise,
                                     _lw_res.loud_mod_rise_db,
+                                    _lw_res.pre_echo_db,
                                 )
                                 if not hasattr(self, "_phase_metadata_accumulator"):
                                     self._phase_metadata_accumulator = {}

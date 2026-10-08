@@ -125,7 +125,7 @@ assert all(scores[g] >= effective_targets[g] for g in applicable_goals), scores
 
 ### §1.2c Teamwork- statt Dominanz-Prinzip [RELEASE_MUST]
 
-Die 15 Musical Goals sind ein kooperativer Zielvektor. Jede der 64 Phasen liefert mit
+Die 15 Musical Goals sind ein kooperativer Zielvektor. Jede der 71 Phasen liefert mit
 phasenspezifischem Algorithmus und adaptiver Staerke einen Teilbeitrag. Ein Einzelziel darf
 die Endentscheidung nicht dominieren.
 
@@ -321,7 +321,7 @@ conflict_result = gpp.resolve_conflict(goal_a, goal_b, delta_a, delta_b)
 
 # In UnifiedRestorerV3._profiled_phase_call() — §2.56a all-phase coupling:
 # goal_weights steuern bounded harmonic_adaptation_scalar (advisory-only),
-# der implizite strength/wet-dry für alle Phasen 01-64 harmonisiert.
+# der implizite strength/wet-dry für alle 71 Phasen harmonisiert.
 ```
 
 ## §2.35 Vocal-Exzellenz-Zusatzmetriken (PFLICHT fuer Gesangsmaterial)

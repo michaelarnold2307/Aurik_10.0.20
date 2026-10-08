@@ -5986,6 +5986,18 @@ class PerPhaseMusicalGoalsGate:
         if a.startswith("hpe_"):
             return "pass", "hpe_adaptive_strength_accepted"
 
+        # D-K3-59: Gate-eigene Reject-Actions (Rollback auf Pre-Verarbeitungsschritt-Audio)
+        # deterministisch klassifizieren — vorher liefen sie in den 'other'-Fallback und
+        # erzeugten die Warnung „PMGG unbekannte Action“ (Produktionsbefund 2026-10-07,
+        # Walzer-Lauf: §v10.17 PSS-Gate [phase_50_spectral_repair] PSS=0.8265 rejected).
+        # Eigene Klasse „reject“ trennt sie in der Telemetrie von skip (übersprungen) und
+        # best_effort (angewendet) — der Conflict-Report behandelt sie unverändert als
+        # konflikt-relevant, denn ein abgelehnter Phasen-Output ist ein echtes Guard-Ereignis.
+        if a == "lag_rejected":
+            return "reject", "stereo_lag_gate_rejected"
+        if a == "pss_rejected":
+            return "reject", "pss_perceptual_similarity_rejected"
+
         # Deterministischer Fallback: Unbekannte Action wird geloggt und klassifiziert
         logger.warning("PMGG unbekannte Action: '%s' — klassifiziert als 'other'", a)
         return "other", "unclassified_action_fallback"
