@@ -47494,6 +47494,44 @@ class UnifiedRestorerV3:
             except Exception as _m1bc_exc:
                 logger.debug("§P1-7 m1b chunked nicht blockierend: %s", _m1bc_exc)
 
+            # §G10 (copilot-instructions.md) / D-K3-68 (2026-10-08): Song-globaler
+            # Audibility-Nachzug nach der Assembly. Ohne ihn bliebe im Export-Meta
+            # das Chunk-0-Verdikt aus _first_result.metadata stehen (evidence_state
+            # „scan_missing" → „Residuum NICHT gegen die Maskierungsschwelle
+            # belegt", §V6-fail-closed) — die §G10/§G11-Qualitäts-Zusage könnte
+            # nie vergeben werden (Lauf-Befund 10.12.17, Chunk-0-Tail). Basis sind
+            # die Per-Defekt-Reduktionsdaten des letzten Chunk-Laufs (selbe Quelle
+            # wie die Song-m1b oben); der §B2-Post-Scan lief gemäß §P0-1 (d) auf
+            # dem letzten Chunk — fehlen die Daten, bleibt es fail-closed.
+            try:
+                from backend.core.defect_audibility_gate import (
+                    evaluate_defect_audibility as _song_aud_eval,
+                )
+
+                _song_aud_mat = getattr(_first_result, "material_type", MaterialType.UNKNOWN)
+                _song_aud_data = getattr(self, "_defect_reduction_per_type", None) or {}
+                _song_aud_rep = _song_aud_eval(
+                    _song_aud_data if isinstance(_song_aud_data, dict) else {},
+                    material_key=str(getattr(_song_aud_mat, "value", _song_aud_mat)).lower(),
+                    chain_depth=int(getattr(self, "_transfer_chain_depth", 1) or 1),
+                    post_scan_ran=bool(_song_aud_data),  # Daten existieren nur bei gelaufenem §B2-Post-Scan
+                )
+                _song_aud_meta = _song_aud_rep.to_metadata()
+                _fd_meta = getattr(_first_result, "metadata", None)
+                if isinstance(_fd_meta, dict):
+                    _fd_meta["audibility_gate"] = _song_aud_meta
+                    _fd_meta["defect_residual_audibility"] = _song_aud_meta  # §G10-Feldname
+                logger.info(
+                    "§G10 Song-Audibility nach Assembly: evidence=%s gate_verified=%s audible=%d resolved=%d masked=%d",
+                    getattr(_song_aud_rep, "evidence_state", "?"),
+                    bool(getattr(_song_aud_rep, "gate_verified", False)),
+                    int(getattr(_song_aud_rep, "n_audible_unmasked", 0) or 0),
+                    int(getattr(_song_aud_rep, "n_resolved", 0) or 0),
+                    int(getattr(_song_aud_rep, "n_masked", 0) or 0),
+                )
+            except Exception as _song_aud_exc:
+                logger.debug("§G10 Song-Audibility-Nachzug nicht verfügbar: %s", _song_aud_exc)
+
             # §P1-8 (2026-09-08): Nach der song-globalen m1b die
             # Export-Finalisierung auf das FINALE Audio anwenden.
             # §D-K3-63 (2026-10-08): FinalPolish (Era-EQ, §2.73b CD-Noise-

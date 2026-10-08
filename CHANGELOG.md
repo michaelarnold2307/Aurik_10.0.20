@@ -1,4 +1,16 @@
-# Changelog — Aurik 10.12.20
+# Changelog — Aurik 10.12.21
+
+## 10.12.21 (2026-10-08)
+
+### Bughunt: §G10-Garantiekette im Chunked-Pfad — Song-Audibility-Nachzug (D-K3-68)
+
+- **Befund (Lauf 10.12.17, Chunk-0-Tail):** `§Hörbarkeits-Gate UNGEPRÜFT … gate_passed=True ist damit KEIN Nachweis` — Nicht-letzte Chunks überspringen den §B2-Post-Scan (§P0-1 (d)); ihr `audibility_gate`-Report ist `scan_missing` und wurde via `_meta = dict(_first_result.metadata)` zum Song-Verdikt geerbt ⇒ die §G10-Qualitäts-Zusage (`gate_verified`) war im Export nie vergebbar.
+- **Fix:** `_restore_chunked` wertet nach der Assembly das Audibility-Gate auf Song-Datenbasis neu aus (dieselbe Per-Defekt-Reduktion wie die Song-m1b), schreibt `audibility_gate` + §G10-Feld `defect_residual_audibility` in `_first_result.metadata`; `post_scan_ran` fail-closed aus der Datenlage (`bool(_song_aud_data)`).
+- **Nachweis:** `tests/unit/test_dk368_song_audibility_chain.py` (4 Kontrakte inkl. Wirkungs-Semantik `post_scan_ran=True ⇒ gate_verified`, `False ⇒ scan_missing`).
+
+### Validierung: Weltklasse-Enforcement-Matrix §G10–§G12
+
+- `docs/reports/current/2026-10-08_weltklasse_validierung.md` — Norm→Instanz→Lauf-Nachweis je Gebot; geschlossene Lücken D-K3-68/66/63/61, offene Punkte D-K3-60/64/65/67.
 
 ## 10.12.20 (2026-10-08)
 

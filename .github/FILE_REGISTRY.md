@@ -424,6 +424,7 @@
 | tests/unit/test_dk361_scanner_p3p4_triage.py | ACTIVE | tests/unit | ja | — | Vertragstest D-K3-61 (2026-10-08, Bughunt): P3/P4-Triage des Anti-Pattern-Scanners — 7 belegte Safe-Klassen (Tuple-/Signatur-Literale, min-Clamp, Faktor-Arithmetik, belegter Subtrahend, Safe-Helper, funktionslokaler os-Import) + 4 Positiv-Kontrollen (bare Variable, `noverlap=n_fft`, `- 0`, Literal ≥ nperseg bleiben Findings) |
 | tests/unit/test_dk363_finalpolish_chunk_guard.py | ACTIVE | tests/unit | ja | — | Vertragstest D-K3-63 (2026-10-08, Bughunt): FinalPolish/Dither läuft NICHT pro Chunk — Guard-Pin (`if not _chunked_tail_skip` um `apply_final_polish`), Narrativ-Guard („Restoration vollstaendig" + Banner nur am Song-Ende), Assembly-Reihenfolge (FinalPolish VOR OneTakeExport), genau zwei Importstellen |
 | tests/unit/test_dk366_final_gate_delta_guard.py | ACTIVE | tests/unit | ja | — | Vertragstest D-K3-66 (2026-10-08, Bughunt): Final-Ausgabe-Gate — Pipeline-Baseline wird für ALLE Referenzarten geladen (nicht mehr im degraded-Ref-Zweig), Gate-Check ohne `_using_degraded_ref`-Bindung, §D-K3-66-Marker, Log-Wording, FP-Schutz erhalten |
+| tests/unit/test_dk368_song_audibility_chain.py | ACTIVE | tests/unit | ja | — | Vertragstest D-K3-68 (2026-10-08, Bughunt): §G10-Song-Audibility-Nachzug im Chunked-Pfad — Wirkungs-Semantik (`post_scan_ran=True ⇒ gate_verified`, `False ⇒ scan_missing`), Source-Pins (Nachzug nach Assembly, Schreiben in `_first_result.metadata`, §G10-Feld `defect_residual_audibility`, fail-closed `bool(_song_aud_data)`) |
 
 ## Pflege-Regeln
 
