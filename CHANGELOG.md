@@ -1,4 +1,33 @@
-# Changelog — Aurik 10.12.18
+# Changelog — Aurik 10.12.19
+
+## 10.12.19 (2026-10-08)
+
+### Bughunt: Per-Chunk-Export-Finalisierung behoben — FinalPolish/Dither einmal nach der Assembly (D-K3-63)
+
+- **Befund (überwachter Lauf 10.12.17, Chunk 0):** `§P1-8 FinalPolish (nach
+  m1b)` + `§2.73c Noise-Shaped Dither: 16-bit TPDF` erschienen im
+  **Chunk-0-Durchlauf**, dazu Banner „✨ AURIK RESTAURATION ABGESCHLOSSEN"
+  und `✅ Restoration vollstaendig: 3852.5s (32.10× RT)` — alle 120 s pro
+  Chunk (rt_factor chunk-relativ). Der `apply_final_polish`-Aufruf (Era-EQ,
+  §2.73b CD-Noise-Texture, §2.73c Dither) lag ungeschützt VOR dem
+  `_chunked_tail_skip`-Guard, obwohl die gleichnamige OneTakeExport-Stufe
+  („§P1-8-Korrektur 2026-09-17") längst auf „einmal nach der Assembly"
+  umgestellt war; der Assembly-Kommentar dokumentierte nur den Ist-Zustand
+  („FinalPolish lief bereits je Chunk"). Der Dither lief damit VOR Assembly +
+  OneTakeExport (LUFS/True-Peak-Gain) — Widerspruch zum eigenen §V5-Gebot
+  („Dither ist der letzte Quantisierungsschritt des FINALEN Audio").
+- **Fix:** (a) `apply_final_polish` im `restore()` hinter
+  `if not _chunked_tail_skip:`; (b) FinalPolish EINMAL im
+  `_restore_chunked`-Assembly-Block in der non-chunked-Reihenfolge
+  (FinalPolish → OneTakeExport); (c) Abschluss-Narrativ („Restoration
+  vollstaendig" + Banner) nur am Song-Ende — kein falsches „Fertig" nach
+  Chunk 0 im GUI mehr.
+- **Nachweis:** `tests/unit/test_dk363_finalpolish_chunk_guard.py`
+  (4 Kontrakte: Guard-Pin, Narrativ-Guard, Assembly-Reihenfolge, genau zwei
+  Importstellen); P0-1-Chunking-Suite 15 Tests grün.
+- **Offen (Register D-K3-64):** Doppel-Dither-Kette restore-§2.73c ×
+  Export-`apply_dither` (beide Pfade) — im §G4-CD-Rauschboden-Bereich,
+  Klärung mit Hörstichprobe; kein Blind-Fix (§V7).
 
 ## 10.12.18 (2026-10-08)
 

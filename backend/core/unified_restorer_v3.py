@@ -23617,26 +23617,32 @@ class UnifiedRestorerV3:
         # gelten für das FINALE Audio. Alle DSP/ML-Schritte (Humanization,
         # PerceptualExportOptimizer, MDEM, Goosebumps, m1b-Retry) laufen
         # davor auf voller Float-Präzision.
+        # §D-K3-63 (2026-10-08): Im Chunked-Pfad läuft FinalPolish EINMAL nach
+        # der Assembly (in _restore_chunked) — ein Per-Chunk-Lauf ditherte
+        # jeden 120-s-Chunk VOR Assembly/OneTakeExport (Lauf-Befund 10.12.17:
+        # „§2.73c Noise-Shaped Dither“ im Chunk-0-Log) und widersprach dem
+        # §V5-Gebot „Dither = letzter Quantisierungsschritt des FINALEN Audio“.
         # ═══════════════════════════════════════════════════════════════════
-        try:
-            from backend.core.dsp.final_polish import apply_final_polish
+        if not _chunked_tail_skip:
+            try:
+                from backend.core.dsp.final_polish import apply_final_polish
 
-            _polish_decade = int(getattr(self, "_restoration_context", {}).get("decade", 1980) or 1980)
-            _polish_mat = str(getattr(self, "_restoration_context", {}).get("primary_material", "digital"))
-            restored_audio = apply_final_polish(
-                restored_audio,
-                sample_rate,
-                decade=_polish_decade,
-                bit_depth=24 if self.is_studio_mode() else 16,
-            )
-            logger.info(
-                "§P1-8 FinalPolish (nach m1b): era=%d mat=%s bits=%d",
-                _polish_decade,
-                _polish_mat,
-                24 if self.is_studio_mode() else 16,
-            )
-        except Exception as _polish_exc:
-            logger.debug("§P1-8 FinalPolish not verfuegbar: %s", _polish_exc)
+                _polish_decade = int(getattr(self, "_restoration_context", {}).get("decade", 1980) or 1980)
+                _polish_mat = str(getattr(self, "_restoration_context", {}).get("primary_material", "digital"))
+                restored_audio = apply_final_polish(
+                    restored_audio,
+                    sample_rate,
+                    decade=_polish_decade,
+                    bit_depth=24 if self.is_studio_mode() else 16,
+                )
+                logger.info(
+                    "§P1-8 FinalPolish (nach m1b): era=%d mat=%s bits=%d",
+                    _polish_decade,
+                    _polish_mat,
+                    24 if self.is_studio_mode() else 16,
+                )
+            except Exception as _polish_exc:
+                logger.debug("§P1-8 FinalPolish not verfuegbar: %s", _polish_exc)
 
         # §P1-8-Korrektur 2026-09-17: Im Chunk-Modus läuft der Export EINMAL
         # nach der Assembly (in _restore_chunked) — ein Per-Chunk-Export
@@ -23672,38 +23678,43 @@ class UnifiedRestorerV3:
         if hasattr(result, "audio"):
             result.audio = restored_audio
 
-        logger.info(
-            "✅ Restoration vollstaendig: %.1fs (%.2f× RT), Quality: %.1f%%",
-            total_time,
-            rt_factor,
-            quality_estimate * 100,
-        )
-
-        # Laienfreundliche Zusammenfassung
-        try:
-            from backend.core.phase_fazit import log_restoration_summary
-
-            _summary_chain = (
-                self._restoration_context.get("transfer_chain")
-                or self._restoration_context.get("chain")
-                or self._restoration_context.get("effective_chain")
+        # §D-K3-63: Abschluss-Narrativ NUR am Song-Ende — im Chunked-Pfad
+        # meldete JEDER 120-s-Chunk „Restoration vollstaendig“ samt Banner
+        # („AURIK RESTAURATION ABGESCHLOSSEN“) und weckte im GUI falsche
+        # Fertig-Hoffnungen (Lauf-Befund 10.12.17, Chunk 0).
+        if not _chunked_tail_skip:
+            logger.info(
+                "✅ Restoration vollstaendig: %.1fs (%.2f× RT), Quality: %.1f%%",
+                total_time,
+                rt_factor,
+                quality_estimate * 100,
             )
-            # §v10.101: MUSHRA/OQS-Score aus AnalyticsMeta in die Zusammenfassung integrieren
-            _summary_mushra = float((_analytics_meta.get("mushra") or {}).get("mushra_score", 0.0))
-            _summary_hpi = float(getattr(_hpi_result, "hpi", 0.0) if _hpi_result is not None else 0.0)
-            log_restoration_summary(
-                total_time_s=total_time,
-                rt_factor=rt_factor,
-                quality_pct=quality_estimate * 100,
-                chain=_summary_chain,
-                genre=str(self._restoration_context.get("genre_label", "")),
-                era_decade=int(self._restoration_context.get("decade", 0)),
-                phases_count=int(len(getattr(result, "phases_executed", []) or [])),
-                mushra_score=_summary_mushra,
-                hpi_score=_summary_hpi,
-            )
-        except Exception as _summary_exc:
-            logger.debug("Restoration summary uebersprungen: %s", _summary_exc)
+
+            # Laienfreundliche Zusammenfassung
+            try:
+                from backend.core.phase_fazit import log_restoration_summary
+
+                _summary_chain = (
+                    self._restoration_context.get("transfer_chain")
+                    or self._restoration_context.get("chain")
+                    or self._restoration_context.get("effective_chain")
+                )
+                # §v10.101: MUSHRA/OQS-Score aus AnalyticsMeta in die Zusammenfassung integrieren
+                _summary_mushra = float((_analytics_meta.get("mushra") or {}).get("mushra_score", 0.0))
+                _summary_hpi = float(getattr(_hpi_result, "hpi", 0.0) if _hpi_result is not None else 0.0)
+                log_restoration_summary(
+                    total_time_s=total_time,
+                    rt_factor=rt_factor,
+                    quality_pct=quality_estimate * 100,
+                    chain=_summary_chain,
+                    genre=str(self._restoration_context.get("genre_label", "")),
+                    era_decade=int(self._restoration_context.get("decade", 0)),
+                    phases_count=int(len(getattr(result, "phases_executed", []) or [])),
+                    mushra_score=_summary_mushra,
+                    hpi_score=_summary_hpi,
+                )
+            except Exception as _summary_exc:
+                logger.debug("Restoration summary uebersprungen: %s", _summary_exc)
 
         # --- Aggressive end-of-run memory cleanup (OOM hardening) ---
         # §PERF-R (2026-09-18): Im Chunked-Pfad läuft der Cleanup nur noch
@@ -47478,13 +47489,33 @@ class UnifiedRestorerV3:
                 logger.debug("§P1-7 m1b chunked nicht blockierend: %s", _m1bc_exc)
 
             # §P1-8 (2026-09-08): Nach der song-globalen m1b die
-            # Export-Finalisierung auf das FINALE Audio anwenden — nur
-            # OneTakeExport (LUFS/True-Peak-Zielkorrektur, idempotent);
-            # FinalPolish (Era-EQ) lief bereits je Chunk und darf nicht
-            # doppelt angewendet werden.
+            # Export-Finalisierung auf das FINALE Audio anwenden.
+            # §D-K3-63 (2026-10-08): FinalPolish (Era-EQ, §2.73b CD-Noise-
+            # Texture, §2.73c Dither) läuft seit dem Per-Chunk-Fix EINMAL hier
+            # auf dem assemblierten Song — die Chunk-Läufe überspringen ihn
+            # (_chunked_tail_skip, s. restore()); danach OneTakeExport
+            # (LUFS/True-Peak-Zielkorrektur, idempotent).
             # §P1-8-Korrektur 2026-09-17: UNBEDINGT auf dem assemblierten Song
             # laufen lassen (vorher nur bei m1b-Flag — der Per-Chunk-Export
             # ist seit heute deaktiviert, der finale Export darf nie fehlen).
+            try:
+                from backend.core.dsp.final_polish import apply_final_polish as _afp_song
+
+                _afp_decade = int(getattr(self, "_restoration_context", {}).get("decade", 1980) or 1980)
+                output = _afp_song(
+                    output,
+                    sample_rate,
+                    decade=_afp_decade,
+                    bit_depth=24 if self.is_studio_mode() else 16,
+                )
+                logger.info(
+                    "§P1-8 FinalPolish (nach Assembly): era=%d bits=%d",
+                    _afp_decade,
+                    24 if self.is_studio_mode() else 16,
+                )
+            except Exception as _afp_song_exc:
+                logger.debug("§P1-8 FinalPolish (Assembly) nicht verfügbar: %s", _afp_song_exc)
+
             try:
                 from backend.core.one_take_export import OneTakeExport
 
