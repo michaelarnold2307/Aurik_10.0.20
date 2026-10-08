@@ -1,4 +1,12 @@
-# Changelog — Aurik 10.12.28
+# Changelog — Aurik 10.12.29
+
+## 10.12.29 (2026-10-09)
+
+### Punkt 6/11: D-K3-60 End-to-End-Beweis — Degradations-Evidenz erreicht den Export (geschlossen)
+
+- **Beweis am realen Timeout-Pfad:** Der Export des 10.12.25-Laufs (6-min-Song „Trio Schweizer – 13 Tage“, Lauf 21:19–00:23) trägt in `processing_metadata`: `quality_gate_degradation_status="critical_degraded"`, `quality_gate_fail_reason="critical_stage_failure:restaurierung"`, `quality_gate_evidence_worldclass_state="not_evaluated"` — dieselbe reale Ursache wie 10.12.17 (RT-Budget-Timeout des RestaurierDenkers, Log: „11433,1 s für 360,4 s Audio“), die dort noch als `degradation_status="ok"` verloren ging. §0c erfüllt: bestmöglicher sicherer Export wurde geschrieben (103,7 MB WAV).
+- **Kontext:** Der Wand-Zeit-Timeout lief unter paralleler CPU-Messlast (SCNet-/SGMSE-Benchmarks derselben Session) — kein Regressionsbefund, sondern der gesuchte reale Fehlerpfad.
+- Register D-K3-60 → `geschlossen`; Evidenzpfad `output_audio/Trio Schweizer - 13 Tage (Restored 10.12.25).wav.export_metrics.json`.
 
 ## 10.12.28 (2026-10-08)
 
