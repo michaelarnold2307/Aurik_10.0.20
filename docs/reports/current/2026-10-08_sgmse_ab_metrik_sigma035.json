@@ -1,0 +1,38 @@
+{
+  "studie": "sgmse_ab_metrik",
+  "zweck": "D-K0-3 Metrik-A/B: WSJ0-Sprach-Core vs. Musik-Core vs. WPE (Hörteil offen)",
+  "clean_source": "output/scnet_ab_2026-10-06_fair/AM_Contra_-_Heart_Peripheral__gt_vocals.wav",
+  "start_s": 4.0,
+  "seconds": 8.0,
+  "snr_db": 10.0,
+  "sigma": 0.35,
+  "seed": 42,
+  "wege": {
+    "input": {
+      "si_sdr_db": 0.063,
+      "delta_vs_input_db": 0.0,
+      "sekunden": 0.0,
+      "model_used": "keine (Baseline)"
+    },
+    "wpe": {
+      "si_sdr_db": -0.09,
+      "delta_vs_input_db": -0.153,
+      "sekunden": 1.47,
+      "model_used": "nara-wpe"
+    },
+    "wsj0_core": {
+      "si_sdr_db": -5.134,
+      "delta_vs_input_db": -5.197,
+      "sekunden": 122.65,
+      "model_used": "sgmse_plus_onnx",
+      "core": "/media/michael/Software 4TB/Aurik_Standalone/models/sgmse_plus/sgmse_plus_core.onnx"
+    },
+    "musik_core": {
+      "si_sdr_db": -5.114,
+      "delta_vs_input_db": -5.177,
+      "sekunden": 111.5,
+      "model_used": "sgmse_plus_onnx",
+      "core": "/media/michael/Software 4TB/Aurik_Standalone/models/sgmse_plus/sgmse_musik_core.onnx"
+    }
+  }
+}

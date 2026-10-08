@@ -1,4 +1,12 @@
-# Changelog — Aurik 10.12.25
+# Changelog — Aurik 10.12.26
+
+## 10.12.26 (2026-10-08)
+
+### Punkt 16: SCNet-RT gemessen, SGMSE+-Metrik-A/B gefahren, C4-Runde-2-Paket gebaut
+
+- **SCNet-RT (D-K0-5, Gate-Voraussetzung):** 3,43× RT Chunked-Produktivpfad / 2,20× RT Ganzsegment — ~9× langsamer als Demucs v4 (0,38× RT gemessen); Flag nur im Messprozess gesetzt (Datei bleibt `False`, §V7 copilot-instructions.md unangetastet). Befund: `docs/reports/current/2026-10-08_scnet_rt_budget.json`.
+- **SGMSE+-Metrik-A/B (D-K0-3):** neuer Harness `scripts/benchmark_sgmse_ab.py` (3 Wege: WSJ0-Sprach-Core vs. Musik-Core vs. WPE; deterministische Degradation nach §G5 copilot-instructions.md, Core-Wahl per Prozess-Monkeypatch). n=3-Ergebnis (σ=0,35): SI-SDR-Delta vs. Input — Sprach-Core −5,2/−6,8/−11,7 dB, Musik-Core −5,2/−7,0/−8,6 dB (Musik im Mittel ~1 dB besser), WPE neutral. Einordnung: SI-SDR straft generative Diffusion; keine Aktivierungs-Empfehlung aus dem Metrik-Teil — Hörordnungs-Sign-off bleibt offen.
+- **C4-Runde 2 (SCNet vs. Demucs):** Runde 1 endete `ZU_WENIGE_TRIALS` (3/12, L02 per Fangfrage ausgeschlossen); Runde-2-Paket mit 12 Trials + 2 Fangfragen gebaut (`docs/reports/current/2026-10-08_hoerprobe_scnet_c4_r2.json`, Paket `output_audio/mushra/thresholds_scnet_c4_fair_r2`) — bereit für die menschliche Sitzung.
 
 ## 10.12.25 (2026-10-08)
 
