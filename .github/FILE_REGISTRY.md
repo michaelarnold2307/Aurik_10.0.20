@@ -420,6 +420,7 @@
 | tests/unit/test_dk358_log_health_guard.py | ACTIVE | tests/unit | ja | — | Vertragstest D-K3-58 (2026-10-07): Log-Health-Guard — FileHandler-Verlust wird geheilt (True) und ist idempotent (False); geschlossener Stream zählt nicht als aktiv und wird ersetzt |
 | tests/unit/test_dk359_reject_action_classification.py | ACTIVE | tests/unit | ja | — | Vertragstest D-K3-59 (2026-10-07): Reject-Actions deterministisch klassifiziert — `pss_rejected`/`lag_rejected` → Klasse „reject“ ohne „unbekannte Action“-Warnung; Wurzel-Wächter über alle vom Gate erzeugten `*_rejected`-Returns; Gegenprobe: unbekannte Action bleibt im other-Fallback mit §G8-Warnung |
 | tests/unit/test_dk357_witness_log_diagnostics.py | ACTIVE | tests/unit | ja | — | Vertragstest D-K3-57 (2026-10-07): Witness-Logzeile trägt den echten `pre_echo_db`-Wert — Wiring-Guard (Platzhalter + Argument vorhanden) und Format-/Argument-Konsistenz über den echten `LogRecord.getMessage()`-Pfad (fehlendes Argument wäre „Logging error“ zur Laufzeit) |
+| docs/reports/current/2026-10-08_wohlklang_garantie_erfordernisse.md | ACTIVE | docs/reports | ja | — | Erfordernis-Dokument Wohlklang-Garantie (2026-10-08, Tiefenanalyse Vorgaben/Specs/Code): 5 Garantie-Kriterien (G1–G5), Lauf-Belege (13-Tage-Lauf), D-K3-60 (WCS-Metadaten erreichen den Export im Chunked-Pfad nicht), Aufgaben A1–A16 mit Abnahmekriterien; Priorität P0: Chunked-Metadaten-Integrität + Exzellenz-Stufe budgetfrei |
 
 ## Pflege-Regeln
 
