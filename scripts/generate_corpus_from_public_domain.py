@@ -164,6 +164,12 @@ PUBLIC_DOMAIN_SOURCES: dict[str, list[dict[str, Any]]] = {
 MIN_FILES_PER_MATERIAL = 5
 MIN_TOTAL_FILES = 20
 MIN_MATERIALS = 4
+# §WP-7 (2026-10-09): Ziel des Datenaufbaus — ≥50 Provenienz-Labels je
+# Material-Klasse (Register D-K1-2; docs/TODOS_SOTA_ROADMAP.md WP-7).
+# Additiv zum Mindestmaß oben: `meets_minimum` bleibt unverändert.
+WP7_TARGET_PER_MATERIAL = 50
+# Kanonische Material-Klassen des Corpus-Schemas (corpus/MANIFEST_SCHEMA.yaml).
+_CORPUS_MATERIALS = ("shellac", "vinyl", "tape", "reel_tape", "cassette", "digital")
 
 
 def _ensure_dir(path: Path) -> None:
@@ -425,6 +431,10 @@ def check_coverage() -> dict[str, Any]:
             logger.debug("Stiller optionaler Ausnahmefall ignoriert", exc_info=True)
             continue
 
+    # §WP-7 (2026-10-09): Ziel-Lücke je Material-Klasse (≥50) — maschinenlesbar
+    # für den Datenaufbau-Stand (D-K1-2); fehlende Klassen zählen voll.
+    wp7_gap = {mat: max(0, WP7_TARGET_PER_MATERIAL - per_material.get(mat, 0)) for mat in _CORPUS_MATERIALS}
+
     return {
         "materials_found": materials_found,
         "materials_required": MIN_MATERIALS,
@@ -432,6 +442,9 @@ def check_coverage() -> dict[str, Any]:
         "total_required": MIN_TOTAL_FILES,
         "per_material": per_material,
         "meets_minimum": (len(materials_found) >= MIN_MATERIALS and total_files >= MIN_TOTAL_FILES),
+        "wp7_target_per_material": WP7_TARGET_PER_MATERIAL,
+        "wp7_gap": wp7_gap,
+        "wp7_met": all(gap == 0 for gap in wp7_gap.values()),
     }
 
 

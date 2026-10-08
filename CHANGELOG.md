@@ -1,4 +1,12 @@
-# Changelog — Aurik 10.12.29
+# Changelog — Aurik 10.12.30
+
+## 10.12.30 (2026-10-09)
+
+### Punkt 13: WP-7-Datenaufbau — Label-Korpus-Stand + maschinenlesbare Ziel-Lücke
+
+- **Stand (belegt):** 92 Provenienz-Labels im `corpus/` (9–23 je Klasse: shellac 23, vinyl 21, tape 20, digital 10, cassette 9, reel_tape 9); WP-7-Ziel ≥50 je Klasse → Gesamtlücke 208; `tests/corpus/` 42 grün. Bericht: `docs/reports/current/2026-10-09_wp7_label_korpus_stand.md`.
+- **Tooling additiv erweitert:** `scripts/generate_corpus_from_public_domain.py --check` trägt jetzt `wp7_target_per_material`, `wp7_gap` und `wp7_met` (bestehende `meets_minimum`-Semantik unverändert) — die Ziel-Lücke ist CI-tauglich; PD-Quellenpool derzeit nur shellac (12), vinyl/tape 0.
+- **F13-Teil dokumentiert:** `data/music` + `data/gender_labels.csv` fehlen (Musikmaterial liegt unter `data/musdb18hq`); `train_gender_head.py` bricht ohne Labels bewusst ab (§V7 copilot-instructions.md). Register D-K1-2 aktualisiert.
 
 ## 10.12.29 (2026-10-09)
 
