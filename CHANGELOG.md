@@ -1,4 +1,11 @@
-# Changelog — Aurik 10.12.30
+# Changelog — Aurik 10.12.31
+
+## 10.12.31 (2026-10-09)
+
+### P0-Performance: Phase-12-Zerlegung (D-K3-38) — Hotspots + Optimierungskandidat dokumentiert
+
+- **cProfile `phase_12_wow_flutter_fix`** (15-s-Vinyl-Corpus, `docs/reports/current/2026-10-09_phase12_cprofile.json`): 35,90 s = 143,6 s/min; Treiber: `kalman_smooth_warp` 11,8 s (33 % — bereits §G190-optimierte Skalarfassung), `_flutter_correction_pass` 9,8 s (`_score_fast` 538× mit 37 677 Mini-`lstsq`-SVDs 2,7 s, `hilbert` 242×/3,4 s, pYIN 3,6 s), `_speed_warp_resample` 14,2 s (Kalman-Anteil 11,8 s).
+- **Kandidat registriert (bewusst nicht umgesetzt):** gebündelte Normalengleichungen über die 41 Bänder je Frequenz (`np.linalg.solve` gestapelt) statt 37 677 Einzel-SVDs — nicht bit-exakt und hör-relevant (r²-Zeugen-Gate der Flattern-Suche) → erst mit A/B + Deviationsschranken nach §G190-Präzedenz.
 
 ## 10.12.30 (2026-10-09)
 
