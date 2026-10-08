@@ -22,7 +22,7 @@ import logging
 from dataclasses import dataclass, field
 
 import numpy as np
-from scipy.signal import butter, filtfilt, hilbert
+from scipy.signal import butter, hilbert
 
 logger = logging.getLogger(__name__)
 
@@ -60,9 +60,16 @@ def _to_channels(x: np.ndarray) -> tuple[np.ndarray, bool]:
 
 def _bandpass_env(channel: np.ndarray, sr: int) -> np.ndarray:
     """Hochband-Einhüllende (Hilbert), normiert auf [0, 1] im Median."""
+    # Bughunt 2026-10-08: safe_filtfilt statt rohem filtfilt — filtfilt
+    # crasht bei Signalen ≤ padlen ("The length of the input vector x must
+    # be greater than padlen"); Kurz-Segmente (Trim-/Chunk-Ränder) fallen
+    # auf den kanonischen Ersatzpfad zurück (§v10.101, audio_utils;
+    # §V6 (copilot-instructions.md)).
+    from backend.core.audio_utils import safe_filtfilt
+
     nyq = 0.5 * sr
     b, a = butter(4, [_HIGHPASS_HZ / nyq, _LOWPASS_HZ / nyq], btype="band")
-    hp = filtfilt(b, a, channel)
+    hp = safe_filtfilt(b, a, channel)
     env: np.ndarray = np.abs(hilbert(hp))
     med = float(np.median(env)) + 1e-12
     _env_norm: np.ndarray = env / med

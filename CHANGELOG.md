@@ -1,4 +1,29 @@
-# Changelog — Aurik 10.12.17
+# Changelog — Aurik 10.12.18
+
+## 10.12.18 (2026-10-08)
+
+### Bughunt: Kurz-Signal-Crash-Guard + Scanner-Triage — 131 von 198 Findings waren False Positives (D-K3-61)
+
+- **Befund:** Der Pre-Commit-Anti-Pattern-Scanner meldete „198 potentielle
+  Bugs" — Stichprobe (18 Stellen im Detail geprüft): fast alle waren False
+  Positives derselben Klassen: (a) P3 `noverlap=<literal|variable>` wurde
+  OHNE Beleg-Triage pauschal als Crash-Risiko gewertet, obwohl die Werte
+  belegbar sicher sind (Tuple-/Signatur-Literale `noverlap < nperseg`,
+  `min(...)`-Clamps, `nperseg * 3 // 4`-Arithmetik, `_safe_stft_params`-
+  Helper); (b) P4 `os.*` ignorierte funktionslokale `import os`-Importe.
+- **Echter Kandidat gefunden + gefixt:** `backend/core/dsp/scrape_flutter_rest.py`
+  nutzte rohes `filtfilt` — Crash bei Signalen ≤ padlen (12 Samples); läuft
+  jetzt über den kanonischen `safe_filtfilt` (§v10.101). Verifiziert an
+  8-Sample-Eingabe (vorher „The length of the input vector x must be greater
+  than padlen"); zwei Diagnose-Scripts gleichgezogen.
+- **Scanner-Triage:** `_p3_bare_variable_is_safe` + `_p3_subtrahend_is_safe` +
+  P4-Vorlauf-Import-Check — Wirkung **198 → 67** Findings auf derselben
+  Codebasis; Positiv-Kontrollen (bare Variable ohne Beleg, `noverlap=n_fft`,
+  `noverlap=n_fft - 0`, Literal ≥ nperseg, `os.*` ohne Import) bleiben
+  sichtbar.
+- **Nachweis:** `tests/unit/test_dk361_scanner_p3p4_triage.py` (12 Kontrakte:
+  7 Safe-Klassen + 4 Positiv-Kontrollen + 2 P4-Fälle); filtfilt-Kurzsignal-
+  Repro (8 Samples) grün.
 
 ## 10.12.17 (2026-10-08)
 

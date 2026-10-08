@@ -123,6 +123,83 @@ _P3_GUARD_MARKERS = (
     "min(nperseg - hop,",
 )
 
+_P3_NPERSEG_KEYS = frozenset({"nperseg", "n_fft", "_np", "nfft", "fft_size", "win_length"})
+
+
+def _p3_same_source(a: str, b: str) -> bool:
+    """Beide Ausdrücke bezeichnen dieselbe nperseg-Quelle (auch ``self.X`` vs ``X``)."""
+    a_s, b_s = a.strip(), b.strip()
+    if not a_s or not b_s:
+        return False
+    return a_s == b_s or a_s.split(".")[-1] == b_s.split(".")[-1]
+
+
+def _p3_bare_variable_is_safe(var: str, body: str, nperseg_term: str) -> bool:
+    """Triage für ``noverlap=<variable>`` (P3) — 2026-10-08 (Bughunt).
+
+    Belegte False-Positive-Klassen (Stichproben 2026-10-08: alle geprüften
+    Fälle waren Fehlalarme):
+      (1) die Variable ist per ``min(...)`` geclamped;
+      (2) die Variable UND ihr nperseg-Pendant sind Literale mit
+          ``var < nperseg`` — auch in Tuple-Form
+          (``nperseg, noverlap = 2048, 1536`` bzw. ``_np, _nov = 2048, 1536``)
+          und als Signatur-/Keyword-Default (``overlap=1536, nperseg=2048``);
+      (3) Arithmetik auf DERSELBEN nperseg-Quelle wie die stft-Zeile:
+          ``var = <nperseg> * p // q`` mit ``p < q`` oder ``var = <nperseg> // k``
+          mit ``k >= 2`` — strikt kleiner als nperseg.
+
+    Konservativ: kein Treffer ⇒ weiter melden (echte Crash-Kandidaten —
+    bare Variable ohne Clamp-/Literal-/Arithmetik-Beleg — bleiben sichtbar).
+    """
+    if not var.isidentifier():
+        return False
+    if re.search(rf"(?<![\w.]){re.escape(var)}\s*=\s*min\(", body):
+        return True
+    # Zuweisung aus einem 'safe'-benannten Helper (belegtes Produktionsmuster:
+    # `nperseg, noverlap, hop = self._safe_stft_params(...)`, phase_24).
+    if re.search(rf"\b{re.escape(var)}\b[^\n=]*=[^\n]*\w*safe\w*\s*\(", body, re.IGNORECASE):
+        return True
+    m = re.search(rf"(?<![\w.]){re.escape(var)}\s*=\s*([\w.]+)\s*\*\s*(\d+)\s*//\s*(\d+)", body)
+    if m and int(m.group(2)) < int(m.group(3)) and _p3_same_source(m.group(1), nperseg_term):
+        return True
+    m = re.search(rf"(?<![\w.]){re.escape(var)}\s*=\s*([\w.]+)\s*//\s*(\d+)", body)
+    if m and int(m.group(2)) >= 2 and _p3_same_source(m.group(1), nperseg_term):
+        return True
+    pairs: dict[str, int] = {}
+    for m in re.finditer(r"(\w+)\s*,\s*(\w+)\s*=\s*(\d+)\s*,\s*(\d+)", body):
+        pairs.setdefault(m.group(1), int(m.group(3)))
+        pairs.setdefault(m.group(2), int(m.group(4)))
+    for m in re.finditer(r"(?<![\w.])(\w+)\s*=\s*(\d+)(?![\d.])", body):
+        pairs.setdefault(m.group(1), int(m.group(2)))
+    if var not in pairs:
+        return False
+    return any(
+        v > pairs[var]
+        for k, v in pairs.items()
+        if k in _P3_NPERSEG_KEYS or k.startswith("nperseg") or k.startswith("n_fft")
+    )
+
+
+def _p3_subtrahend_is_safe(expr: str, subtrahend: str, body: str, nperseg_term: str) -> bool:
+    """Triage für ``noverlap = <a> - <b>`` mit UNBEKANNTEM Subtrahenden (P3).
+
+    2026-10-08 (Bughunt): safe, wenn der Minuend dieselbe nperseg-Quelle wie
+    die stft-Zeile ist UND ``<b>`` im Umfeld als ``>= 1`` belegt ist
+    (Literal ≥ 1, ``max(1, …)`` oder Integer-Division ``x // k`` mit k ≥ 2 —
+    Produktionsmuster ``hop = nperseg // 4`` in bandwidth_extension).
+    """
+    if "-" not in expr:
+        return False
+    minuend = expr[: expr.rfind("-")]
+    if not _p3_same_source(minuend, nperseg_term):
+        return False
+    b = re.escape(subtrahend)
+    if re.search(rf"(?<![\w.]){b}\s*=\s*max\(\s*1\s*,", body):
+        return True
+    if any(int(m.group(1)) >= 1 for m in re.finditer(rf"(?<![\w.]){b}\s*=\s*(\d+)(?![\d.])", body)):
+        return True
+    return bool(re.search(rf"(?<![\w.]){b}\s*=\s*[\w.]+\s*//\s*([2-9]|\d{{2,}})", body))
+
 
 def check_stft_without_clamp(filepath: str, source: str) -> list[str]:
     """Findet `stft(...)`-Aufrufe, bei denen `noverlap >= nperseg` eintreten kann.
@@ -153,14 +230,29 @@ def check_stft_without_clamp(filepath: str, source: str) -> list[str]:
         match = re.search(r"noverlap\s*=\s*([^,\)]+)", stripped)
         expr = (match.group(1) if match else "").replace(" ", "")
         subtrahend = expr.rsplit("-", 1)[1] if "-" in expr else None
+        _np_m = re.search(r"nperseg\s*=\s*([^,\)]+)", stripped)
+        nperseg_term = (_np_m.group(1) if _np_m else "").strip()
         body = "\n".join(lines[max(0, i - 30) : i + 5])
         guarded = any(marker in body for marker in _P3_GUARD_MARKERS)
         if subtrahend is None:
-            crash_possible = True  # noverlap = nperseg/n_fft direkt
+            # 2026-10-08 (Bughunt): Literale Zahlen (`noverlap=1536`) — safe,
+            # wenn das nperseg der Zeile ebenfalls ein Literal und größer ist.
+            if re.fullmatch(r"\d+", expr):
+                _np_lit = re.fullmatch(r"\d+", nperseg_term)
+                crash_possible = not (_np_lit and int(expr) < int(nperseg_term))
+            else:
+                # bare Variable (z. B. `noverlap=_nov`): safe bei min()-Clamp,
+                # Literal-Kleinwert (< nperseg-Pendant), Faktor-Arithmetik auf
+                # derselben nperseg-Quelle oder Zuweisung aus einem
+                # 'safe'-benannten Helper (`_safe_stft_params`).
+                crash_possible = not _p3_bare_variable_is_safe(expr, body, nperseg_term)
         elif subtrahend.isdigit():
             crash_possible = int(subtrahend) == 0
         else:
-            crash_possible = not guarded  # ungeprüfte Variable als Subtrahend
+            # 2026-10-08 (Bughunt): ungeprüfte Variable als Subtrahend —
+            # zusaetzlich safe, wenn Minuend == nperseg-Quelle UND der
+            # Subtrahend als >= 1 belegt ist.
+            crash_possible = not guarded and not _p3_subtrahend_is_safe(expr, subtrahend, body, nperseg_term)
         if crash_possible:
             issues.append(
                 f"{filepath}:{i}: P3 stft() noverlap kann nperseg erreichen "
@@ -181,12 +273,33 @@ def check_os_without_import(filepath: str, source: str) -> list[str]:
     # Prüfe ob import os existiert (nicht in Funktionen, sondern auf Module-Ebene)
     has_module_import = bool(re.search(r"^(import os|from os import)", source, re.MULTILINE))
     if not has_module_import:
+        # 2026-10-08 (Bughunt): Funktionslokale Importe zählen — ein
+        # `import os` VOR der Nutzungszeile (egal auf welcher Ebene, z. B.
+        # `if __name__ == "__main__":` + eingerücktes `import os` in
+        # stem_separator.py) deckt den Laufzeit-Scope ab
+        # (False-Positive-Klasse 2026-10-08).
+        _import_positions = [
+            m.start() for m in re.finditer(r"^\s*(?:import os\b|from os import)", source, re.MULTILINE)
+        ]
+        _line_starts = [0]
+        for _ln in source.split("\n")[:-1]:
+            _line_starts.append(_line_starts[-1] + len(_ln) + 1)
+
+        def _has_prior_import(lineno: int) -> bool:
+            if not _import_positions:
+                return False
+            _idx = min(max(lineno - 1, 0), len(_line_starts) - 1)
+            _cutoff = _line_starts[_idx]
+            return any(pos < _cutoff for pos in _import_positions)
+
         # Prüfe ob os.* in einer Funktion verwendet wird (wo import fehlen könnte)
         try:
             tree = ast.parse(source)
             for node in ast.walk(tree):
                 if isinstance(node, ast.Attribute):
                     if isinstance(node.value, ast.Name) and node.value.id == "os":
+                        if _has_prior_import(node.lineno):
+                            continue
                         issues.append(
                             f"{filepath}:{node.lineno}: P4 os.{node.attr} ohne `import os` "
                             f"(→ UnboundLocalError in bestimmten Umgebungen). "

@@ -28,7 +28,7 @@ from pathlib import Path
 
 import numpy as np
 from scipy.io import wavfile
-from scipy.signal import butter, filtfilt
+from scipy.signal import butter
 
 _ROOT = Path(__file__).resolve().parent.parent
 if str(_ROOT) not in sys.path:
@@ -64,8 +64,11 @@ def _load_mixture(track_dir: Path, seconds: int, seed: int) -> np.ndarray:
 
 
 def _bandlimit(x: np.ndarray, cutoff_hz: float) -> np.ndarray:
+    # Bughunt 2026-10-08: safe_filtfilt (Kurz-Signal-Crash-Guard, §v10.101).
+    from backend.core.audio_utils import safe_filtfilt
+
     b, a = butter(5, cutoff_hz / (0.5 * _SR), btype="low")
-    _y: np.ndarray = np.asarray(filtfilt(b, a, x), dtype=np.float32)
+    _y: np.ndarray = np.asarray(safe_filtfilt(b, a, x), dtype=np.float32)
     return _y
 
 

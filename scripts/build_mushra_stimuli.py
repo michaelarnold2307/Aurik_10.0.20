@@ -118,10 +118,13 @@ def _edge_fade(x: np.ndarray) -> np.ndarray:
 
 def lowpass_butter(x: np.ndarray, cutoff_hz: float) -> np.ndarray:
     """Butterworth-4.-Ordnung, zero-phase (filtfilt)."""
-    from scipy.signal import butter, filtfilt
+    # Bughunt 2026-10-08: safe_filtfilt (Kurz-Signal-Crash-Guard, §v10.101).
+    from scipy.signal import butter
+
+    from backend.core.audio_utils import safe_filtfilt
 
     b, a = butter(4, cutoff_hz / (_SR / 2.0), btype="low")
-    return filtfilt(b, a, x).astype(np.float32)
+    return safe_filtfilt(b, a, x).astype(np.float32)
 
 
 def _measure_lufs(x: np.ndarray) -> float | None:

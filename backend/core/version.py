@@ -3,5 +3,5 @@
 Import this everywhere instead of hardcoding version strings.
 """
 
-__version__ = "10.12.17"
+__version__ = "10.12.18"
 AURIK_VERSION = __version__
