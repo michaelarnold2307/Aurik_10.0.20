@@ -47,7 +47,7 @@ def test_semantics_gate_verified_requires_scan() -> None:
 def test_song_audibility_after_assembly_present() -> None:
     """Kontrakt 2: Der Nachzug existiert im Assembly-Pfad."""
     src = _src()
-    assert "§G10 Song-Audibility nach Assembly" in src
+    assert "§G10 (copilot-instructions.md) Song-Audibility nach Assembly" in src
     assert "D-K3-68" in src
 
 

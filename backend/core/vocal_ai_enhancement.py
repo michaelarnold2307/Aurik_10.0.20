@@ -135,6 +135,8 @@ def _panns_singing_scores(panns_tags: Any) -> tuple[float, float] | None:
         _male = float(panns_tags.get("Male singing", 0.0) or 0.0)
         _female = float(panns_tags.get("Female singing", 0.0) or 0.0)
     except (TypeError, ValueError):
+        # §G8 (copilot-instructions.md): nicht-numerischer PANNs-Tag → None-Vertrag.
+        logger.debug("§G8 (copilot-instructions.md) PANNs-Gender-Prior nicht-numerisch → None")
         return None
     if _male <= 0.0 and _female <= 0.0:
         return None
@@ -205,6 +207,8 @@ def _clap_singing_scores(clap_scores: Any) -> tuple[float, float] | None:
         _male = float(clap_scores.get(_CLAP_MALE_QUERY, 0.0) or 0.0)
         _female = float(clap_scores.get(_CLAP_FEMALE_QUERY, 0.0) or 0.0)
     except (TypeError, ValueError):
+        # §G8 (copilot-instructions.md): nicht-numerischer CLAP-Score → None-Vertrag.
+        logger.debug("§G8 (copilot-instructions.md) CLAP-Gender-Prior nicht-numerisch → None")
         return None
     if not (np.isfinite(_male) and np.isfinite(_female)):
         return None

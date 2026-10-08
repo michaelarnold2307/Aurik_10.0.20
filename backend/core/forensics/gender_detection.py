@@ -125,6 +125,8 @@ def _to_mono(audio: Any) -> np.ndarray | None:
     try:
         _arr = np.asarray(audio, dtype=np.float32)
     except (TypeError, ValueError):
+        # §G8 (copilot-instructions.md): nicht konvertierbares Audio → None-Vertrag.
+        logger.debug("§G8 (copilot-instructions.md) _to_mono: asarray fehlgeschlagen → None")
         return None
     if _arr.ndim == 2:
         # channels-first (C, N) ist die Pipeline-Invariante; (N, C) mit kleinem

@@ -2153,6 +2153,17 @@ class AurikDenker:
                     raise _err_box[0]  # type: ignore[misc]
                 rest = _result_box[0]
                 if isinstance(rest, np.ndarray):
+                    # §V6 (copilot-instructions.md): Im Normalfall liefert der
+                    # RestaurierDenker ein RestaurierErgebnis mit vollständigem
+                    # §2.53-Metadaten-Baum. Ein rohes ndarray bedeutet
+                    # Metadaten-VERLUST — WCS/hybrid_engineer_vector/
+                    # audibility_gate erreichen den Export dann nicht (D-K3-60-
+                    # Familie: „Prüfung existiert, sieht aber nichts"). Nie still.
+                    logger.warning(
+                        "§V6 (copilot-instructions.md) RestaurierDenker lieferte rohes ndarray statt "
+                        "RestaurierErgebnis — Restore-Metadaten fehlen (WCS/HPI/Audibility/Joy erreichen "
+                        "den Export nicht; D-K3-60-Familie)."
+                    )
                     rest = SimpleNamespace(
                         audio=np.asarray(rest, dtype=np.float32),
                         phases_executed=[],

@@ -426,6 +426,8 @@
 | tests/unit/test_dk366_final_gate_delta_guard.py | ACTIVE | tests/unit | ja | — | Vertragstest D-K3-66 (2026-10-08, Bughunt): Final-Ausgabe-Gate — Pipeline-Baseline wird für ALLE Referenzarten geladen (nicht mehr im degraded-Ref-Zweig), Gate-Check ohne `_using_degraded_ref`-Bindung, §D-K3-66-Marker, Log-Wording, FP-Schutz erhalten |
 | tests/unit/test_dk368_song_audibility_chain.py | ACTIVE | tests/unit | ja | — | Vertragstest D-K3-68 (2026-10-08, Bughunt): §G10-Song-Audibility-Nachzug im Chunked-Pfad — Wirkungs-Semantik (`post_scan_ran=True ⇒ gate_verified`, `False ⇒ scan_missing`), Source-Pins (Nachzug nach Assembly, Schreiben in `_first_result.metadata`, §G10-Feld `defect_residual_audibility`, fail-closed `bool(_song_aud_data)`) |
 | tests/normative/test_weltklasse_kette.py | ACTIVE | tests/normative | ja | — | Weltklasse-Ketten-Validator §G10–§G12 (copilot-instructions.md): Norm→Code-Instanz→Verdrahtung — §G10 (Gate-Fail-closed-Semantik, Song-Audibility-Nachzug D-K3-68, Exportfeld defect_residual_audibility), §G11 (HPI-Produktformel, WCS-Builder-Runtime-Durchreichung, Transportkette UV3→Denker→CLI, Einladungs-Gate-Song-Ebene), §G12 (Norm, Deferral-Flags, Vertrags-Tests) |
+| tests/unit/test_dk360_denker_metadata_guard.py | ACTIVE | tests/unit | ja | — | Vertragstest D-K3-60 (2026-10-08): §V6-Wächter am ndarray-Metadaten-Verlustpfad im AurikDenker (Warnung + Folgen-Benennung) + Normalfall-Ketten-Pins (`_rest_metadata`-Erbe) |
+| tests/unit/test_dk367_phase_watchdog.py | ACTIVE | tests/unit | ja | — | Vertragstest D-K3-67 (2026-10-08): GIL-unabhängiger Phasen-Stack-Watchdog via faulthandler (Funktions-Dump nach Schwelle, Referenz-Zähler für parallele Phasen, Source-Pins für Heartbeat-Integration + ENV) |
 
 ## Pflege-Regeln
 

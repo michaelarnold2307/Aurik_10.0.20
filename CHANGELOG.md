@@ -1,4 +1,13 @@
-# Changelog — Aurik 10.12.21
+# Changelog — Aurik 10.12.22
+
+## 10.12.22 (2026-10-08)
+
+### SOTA-Härtung: GIL-unabhängiger Phasen-Watchdog + Metadaten-Guard + §G8-Transparenz
+
+- **D-K3-67:** Phasen-Stack-Watchdog via `faulthandler.dump_traceback_later` (Stdlib-Deadlock-Debug, dumpt ohne Python-GIL) — der §D-K3-55-Heartbeat war unter GIL-Blockade wirkungslos (0 Heartbeats; 1/81 Threads CPU-aktiv in 20 s). Referenz-gezählt für parallele Phasen; Dumps nach `logs/phase_watchdog_<pid>.log`; ENV `AURIK_PHASE_WATCHDOG_S` (Default 180 s). Nachweis: `tests/unit/test_dk367_phase_watchdog.py`.
+- **D-K3-60-Teilfix:** §V6-Wächter am ndarray-Metadaten-Verlustpfad im AurikDenker (rohes ndarray → SimpleNamespace ohne Metadaten war STILL; jetzt Warnung mit Metadaten-Folgen WCS/HPI/Audibility). Nachweis: `tests/unit/test_dk360_denker_metadata_guard.py`.
+- **§G8-Transparenz:** 5 stille Neutral-Returns (Weakness-Scan `silent_fallback_no_log`) mit begründeten Debug-Logs versehen — `defect_audibility_gate._sev_or_none`, `level_1_invariants_guard._plugin_available`, `gender_detection._to_mono`, `vocal_ai_enhancement` (PANNs + CLAP). Scan: HIGH 5→0.
+- **R2-Zitierdisziplin:** Nackte §G10/§V6-Zitate in UV3 qualifiziert (Folge der §G10–§G12-Registry-Eintragung 10.12.21); `test_dk368`-Pin synchron.
 
 ## 10.12.21 (2026-10-08)
 

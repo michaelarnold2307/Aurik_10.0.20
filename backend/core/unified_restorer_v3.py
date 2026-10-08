@@ -1687,6 +1687,74 @@ def _full_gc_collect() -> int:
     return freed
 
 
+# ── §D-K3-67 (2026-10-08): GIL-unabhängiger Phasen-Stack-Watchdog ──────────
+# Der Python-Heartbeat (§D-K3-55) kann unter GIL-Blockade nicht loggen
+# (Befund 10.12.17: 0 Heartbeats, 1 von 81 Threads CPU-aktiv in 20 s). Der
+# faulthandler-Watchdog der Stdlib (offizieller Deadlock-Debug-Mechanismus)
+# dumpt bei Phase > Schwelle periodisch ALLE Thread-Stacks — ohne Python-GIL.
+# Referenz-gezählt für parallele Phasen; reine Beobachtung
+# (§G5 (copilot-instructions.md), §G8 (copilot-instructions.md)).
+_PHASE_WATCHDOG_STATE: dict[str, Any] = {"refs": 0, "fh": None, "path": ""}
+
+
+def _phase_watchdog_enter(silence_s: float | None = None) -> None:
+    """§D-K3-67: Phasen-Stack-Watchdog aktivieren (referenz-gezählt, faulthandler)."""
+    try:
+        import faulthandler as _fh_wd
+
+        if silence_s is None:
+            try:
+                silence_s = float(os.environ.get("AURIK_PHASE_WATCHDOG_S", "180") or 180.0)
+            except (TypeError, ValueError):
+                silence_s = 180.0
+        _st = _PHASE_WATCHDOG_STATE
+        _st["refs"] = int(_st.get("refs", 0) or 0) + 1
+        if int(_st["refs"]) == 1:
+            try:
+                _wd_path = os.path.join("logs", f"phase_watchdog_{os.getpid()}.log")
+                os.makedirs("logs", exist_ok=True)
+                _wd_fh = open(_wd_path, "a", encoding="utf-8")
+                _fh_wd.dump_traceback_later(float(silence_s), repeat=True, file=_wd_fh)
+                _st["fh"] = _wd_fh
+                _st["path"] = _wd_path
+                logger.info(
+                    "§D-K3-67 Phasen-Watchdog aktiv (faulthandler, %.0fs → Stack-Dump ohne GIL): %s",
+                    float(silence_s),
+                    _wd_path,
+                )
+            except Exception as _wd_inst_exc:
+                logger.warning(
+                    "§D-K3-67 Watchdog-Installation fehlgeschlagen — §V6 (copilot-instructions.md): %s",
+                    _wd_inst_exc,
+                )
+    except Exception:
+        logger.debug("§D-K3-67 Watchdog-Enter fehlgeschlagen", exc_info=True)
+
+
+def _phase_watchdog_exit() -> None:
+    """§D-K3-67: Phasen-Stack-Watchdog deaktivieren (refs=0 → cancel + Datei-Close)."""
+    try:
+        import faulthandler as _fh_wd
+
+        _st = _PHASE_WATCHDOG_STATE
+        _st["refs"] = max(0, int(_st.get("refs", 0) or 0) - 1)
+        if int(_st["refs"]) == 0:
+            try:
+                _fh_wd.cancel_dump_traceback_later()
+            except Exception:
+                logger.debug("§D-K3-67 Watchdog-Cancel fehlgeschlagen", exc_info=True)
+            _wd_fh = _st.get("fh")
+            if _wd_fh is not None:
+                try:
+                    _wd_fh.flush()
+                    _wd_fh.close()
+                except Exception:
+                    logger.debug("§D-K3-67 Watchdog-Datei schließen fehlgeschlagen", exc_info=True)
+            _st["fh"] = None
+    except Exception:
+        logger.debug("§D-K3-67 Watchdog-Exit fehlgeschlagen", exc_info=True)
+
+
 class UnifiedRestorerV3:
     """
     Einheitlicher Restorer V3 – Defektbasierte Audio-Restaurierungs-Engine.
@@ -33185,6 +33253,8 @@ class UnifiedRestorerV3:
 
         thread = threading.Thread(target=_run, daemon=True, name=f"aurik_phase_hb_{phase_name}")
         thread.start()
+        # §D-K3-67: GIL-unabhängiger Stack-Watchdog (faulthandler) mit dem Heartbeat starten.
+        _phase_watchdog_enter()
         return stop_ev, thread
 
     @staticmethod
@@ -34457,6 +34527,8 @@ class UnifiedRestorerV3:
                             result.audio = np.asarray(audio, dtype=np.float32)
         finally:
             _hb_stop_ev.set()
+            # §D-K3-67: Watchdog mit dem Heartbeat beenden (cancel bei refs=0).
+            _phase_watchdog_exit()
             if _hb_thread is not None:
                 _hb_thread.join(timeout=0.3)
 
@@ -47498,7 +47570,7 @@ class UnifiedRestorerV3:
             # Audibility-Nachzug nach der Assembly. Ohne ihn bliebe im Export-Meta
             # das Chunk-0-Verdikt aus _first_result.metadata stehen (evidence_state
             # „scan_missing" → „Residuum NICHT gegen die Maskierungsschwelle
-            # belegt", §V6-fail-closed) — die §G10/§G11-Qualitäts-Zusage könnte
+            # belegt", §V6-fail-closed) — die §G10/§G11 (copilot-instructions.md)-Qualitäts-Zusage könnte
             # nie vergeben werden (Lauf-Befund 10.12.17, Chunk-0-Tail). Basis sind
             # die Per-Defekt-Reduktionsdaten des letzten Chunk-Laufs (selbe Quelle
             # wie die Song-m1b oben); der §B2-Post-Scan lief gemäß §P0-1 (d) auf
@@ -47520,9 +47592,10 @@ class UnifiedRestorerV3:
                 _fd_meta = getattr(_first_result, "metadata", None)
                 if isinstance(_fd_meta, dict):
                     _fd_meta["audibility_gate"] = _song_aud_meta
-                    _fd_meta["defect_residual_audibility"] = _song_aud_meta  # §G10-Feldname
+                    _fd_meta["defect_residual_audibility"] = _song_aud_meta  # §G10 (copilot-instructions.md)-Feldname
                 logger.info(
-                    "§G10 Song-Audibility nach Assembly: evidence=%s gate_verified=%s audible=%d resolved=%d masked=%d",
+                    "§G10 (copilot-instructions.md) Song-Audibility nach Assembly: "
+                    "evidence=%s gate_verified=%s audible=%d resolved=%d masked=%d",
                     getattr(_song_aud_rep, "evidence_state", "?"),
                     bool(getattr(_song_aud_rep, "gate_verified", False)),
                     int(getattr(_song_aud_rep, "n_audible_unmasked", 0) or 0),
@@ -47530,7 +47603,10 @@ class UnifiedRestorerV3:
                     int(getattr(_song_aud_rep, "n_masked", 0) or 0),
                 )
             except Exception as _song_aud_exc:
-                logger.debug("§G10 Song-Audibility-Nachzug nicht verfügbar: %s", _song_aud_exc)
+                logger.debug(
+                    "§G10 (copilot-instructions.md) Song-Audibility-Nachzug nicht verfügbar: %s",
+                    _song_aud_exc,
+                )
 
             # §P1-8 (2026-09-08): Nach der song-globalen m1b die
             # Export-Finalisierung auf das FINALE Audio anwenden.

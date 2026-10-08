@@ -78,6 +78,9 @@ def _plugin_available(plugin: object) -> bool:
         try:
             return bool(_av())
         except Exception:  # pylint: disable=broad-except
+            # §G8 (copilot-instructions.md): fehlgeschlagene Verfügbarkeitsprüfung
+            # gilt als „nicht verfügbar" — transparent auf Debug-Level.
+            logger.debug("§G8 (copilot-instructions.md) Verfügbarkeitsprüfung des Plugins fehlgeschlagen → False")
             return False
     return bool(_av)
 

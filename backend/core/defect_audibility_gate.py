@@ -335,6 +335,9 @@ def _sev_or_none(value: Any) -> float | None:
     try:
         v = float(value)
     except (TypeError, ValueError):
+        # §G8 (copilot-instructions.md): nicht-numerischer Wert ist KEIN Beleg —
+        # Vertrag: None („nicht gemessen"); transparent auf Debug-Level.
+        logger.debug("§G8 (copilot-instructions.md) _sev_or_none: Wert nicht numerisch → None")
         return None
     return v if math.isfinite(v) else None
 
