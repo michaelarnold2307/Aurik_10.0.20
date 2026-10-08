@@ -38,7 +38,11 @@ def _witness_log_call() -> ast.Call:
     attr_end = src.find("_lw_res.pre_echo_db", idx)
     assert attr_end != -1, "pre_echo_db-Argument fehlt in der Witness-Zeile (D-K3-57-Regression)"
     call_end = src.find(")", attr_end) + 1
-    call = ast.parse(src[call_start:call_end]).body[0].value
+    # Typ-Sicherheit: `body[0]` ist ast.stmt — `.value` existiert nur auf ast.Expr;
+    # erst nach dem isinstance-Guard zugreifen (mypy attr-defined, strikt).
+    _stmt = ast.parse(src[call_start:call_end]).body[0]
+    assert isinstance(_stmt, ast.Expr), "Witness-Call ist kein Ausdrucks-Statement"
+    call = _stmt.value
     assert isinstance(call, ast.Call)
     return call
 

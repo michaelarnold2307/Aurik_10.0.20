@@ -63,6 +63,7 @@ explizit („gate_passed=True ist KEIN Nachweis", fail-closed) — genau die
 | D-K3-65 | Song-Analytik-Blöcke (ARC/Goosebumps/MDEM) laufen pro Chunk | Bewertungs-Qualität/Narrativ („Klimax 30 Segmente" = Chunk-Artefakt) |
 
 **Der finale Beweis-Lauf:** Ein Lauf mit 10.12.20/21 muss zeigen:
+
 1. `§G10 Song-Audibility nach Assembly: evidence=evaluated/no_residual_defects`
    und `gate_verified=True` im Export-Meta (`defect_residual_audibility`),
 2. **keine** `Final-Ausgabe-Audio-Gate … af=0.000`-Rollback-Zeile mehr (D-K3-66),

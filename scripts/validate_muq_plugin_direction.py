@@ -25,6 +25,7 @@ import datetime as _dt
 import json
 import sys
 from pathlib import Path
+from typing import Any, cast
 
 import numpy as np
 from scipy.io import wavfile
@@ -67,7 +68,10 @@ def _bandlimit(x: np.ndarray, cutoff_hz: float) -> np.ndarray:
     # Bughunt 2026-10-08: safe_filtfilt (Kurz-Signal-Crash-Guard, §v10.101).
     from backend.core.audio_utils import safe_filtfilt
 
-    b, a = butter(5, cutoff_hz / (0.5 * _SR), btype="low")
+    # scipy-Stubs: butter liefert Union(ba|zpk|sos|ndarray); output="ba" allein
+    # narrowt bei Pyright/Pylance nicht auf das 2er-Tupel (Tuple-Größen-Konflikt)
+    # → expliziter cast; die Laufzeit-Form ist durch output="ba" garantiert.
+    b, a = cast("tuple[np.ndarray, np.ndarray]", butter(5, cutoff_hz / (0.5 * _SR), btype="low", output="ba"))
     _y: np.ndarray = np.asarray(safe_filtfilt(b, a, x), dtype=np.float32)
     return _y
 
@@ -96,7 +100,7 @@ def _first10_resample24k(x: np.ndarray) -> np.ndarray:
     return _y
 
 
-def _build_ref_model() -> tuple[object, object, object]:
+def _build_ref_model() -> tuple[Any, Any, Any]:
     """MusicQualityModel (A1) + torch/cuda-Handles — 1:1 wie validiert."""
     import sys
 

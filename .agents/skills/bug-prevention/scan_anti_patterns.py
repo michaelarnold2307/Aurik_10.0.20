@@ -267,7 +267,7 @@ def check_stft_without_clamp(filepath: str, source: str) -> list[str]:
 
 def check_os_without_import(filepath: str, source: str) -> list[str]:
     """Findet `os.`-Nutzung ohne `import os` auf Module-Ebene."""
-    issues = []
+    issues: list[str] = []
     if "os." not in source:
         return issues
     # Prüfe ob import os existiert (nicht in Funktionen, sondern auf Module-Ebene)
@@ -315,7 +315,7 @@ def check_os_without_import(filepath: str, source: str) -> list[str]:
 
 def check_asarray_tuple(filepath: str, source: str) -> list[str]:
     """Findet `np.asarray(self.audio)` ohne Tuple-Check in __post_init__."""
-    issues = []
+    issues: list[str] = []
     if "def __post_init__" not in source:
         return issues
     if "np.asarray(self.audio" not in source and "np.asarray(self.audio" not in source:
@@ -335,7 +335,7 @@ def check_asarray_tuple(filepath: str, source: str) -> list[str]:
 
 def check_enum_as_dict_key(filepath: str, source: str) -> list[str]:
     """Findet Dict-Lookups mit material/mat wo Keys MaterialType-Enums sind."""
-    issues = []
+    issues: list[str] = []
     # Nur in Dateien die MaterialType importieren
     if "MaterialType" not in source:
         return issues
@@ -467,7 +467,7 @@ def _addition_partner(rhs: str, target: str) -> str | None:
             terms[idx + 1] if idx + 1 < len(terms) else "",
             terms[idx - 1] if idx > 0 else "",
         ):
-            ids = [
+            ids: list[str] = [
                 i
                 for i in re.findall(r"[A-Za-z_]\w*", re.sub(r"\d+(?:\.\d+)?(?:[eE][+-]?\d+)?", " ", other))
                 if i not in _MEASUREMENT_HELPERS

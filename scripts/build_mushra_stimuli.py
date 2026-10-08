@@ -85,7 +85,9 @@ def _load_mono_48k(path: Path) -> np.ndarray | None:
         return None
     if sr != _SR:
         g = gcd(int(sr), _SR)
-        mono = resample_poly(mono, _SR // g, int(sr) // g).astype(np.float32)
+        # np.asarray-Wrap: resample_poly ist in der scipy-Ausnahmeliste → Any
+        # (no-any-return); asarray bindet den Rückgabewert strikt an ndarray.
+        mono = np.asarray(resample_poly(mono, _SR // g, int(sr) // g), dtype=np.float32)
     return mono
 
 
@@ -124,7 +126,9 @@ def lowpass_butter(x: np.ndarray, cutoff_hz: float) -> np.ndarray:
     from backend.core.audio_utils import safe_filtfilt
 
     b, a = butter(4, cutoff_hz / (_SR / 2.0), btype="low")
-    return safe_filtfilt(b, a, x).astype(np.float32)
+    # np.asarray-Wrap: safe_filtfilt ist untyped (→ Any, no-any-return);
+    # asarray bindet den Rückgabewert strikt an ndarray und konvertiert float32.
+    return np.asarray(safe_filtfilt(b, a, x), dtype=np.float32)
 
 
 def _measure_lufs(x: np.ndarray) -> float | None:
