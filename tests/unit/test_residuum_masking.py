@@ -205,3 +205,20 @@ def test_mg_erb_silence_floor_stable() -> None:
     assert np.all(np.isfinite(thr))
     assert np.all(thr >= -80.0 + rm._MASK_OFFSET_DB - 1e-6)
     assert np.max(thr) <= -80.0 + rm._MASK_OFFSET_DB + 1e-6
+
+
+def test_median_flat_ist_bit_identisch_zu_numpy() -> None:
+    """§PERF (2026-10-08, D-K3-38): `_median_flat` ersetzt np.median **bit-exakt**.
+
+    64601 Median-Aufrufe je 30-s-Scan (17,5 % der Scanner-Zeit, cProfile
+    2026-10-08) laufen über den partition-Direktpfad ~2,5× schneller; der
+    Vertrag ist die Gleichheit auf allen Band-Formen inkl. dB-Bereich
+    (gleiche introselect-Auswahl, identische Mittelungs-Arithmetik;
+    §G5 copilot-instructions.md — Determinismus unverändert).
+    """
+    from backend.core.residuum_masking import _median_flat
+
+    rng = np.random.default_rng(42)
+    for shape in [(43, 80), (43, 79), (43, 81), (5, 13), (1, 1), (2, 2), (100, 7)]:
+        a = (rng.standard_normal(shape) * 60.0 - 120.0).astype(np.float64)
+        assert _median_flat(a) == float(np.median(a)), f"nicht bit-exakt bei {shape}"

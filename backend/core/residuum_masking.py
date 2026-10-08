@@ -125,6 +125,26 @@ _BARK_BIN_INDEX: list[np.ndarray] = []
 _BARK_BIN_INDEX_FREQS: np.ndarray | None = None
 
 
+def _median_flat(values: np.ndarray) -> float:
+    """§PERF (2026-10-08, D-K3-38): Bit-exakter np.median-Ersatz (flatten-Semantik).
+
+    np.median trägt je Aufruf die ``_ureduce``-Maschinerie (~27 µs für die
+    typische Band-Form 43×80 aus frames×bins); der direkte partition-Pfad ist
+    ~2,5× schneller und bit-identisch: gleiche introselect-Auswahl
+    (deterministisch bei identischem Input, §G5 copilot-instructions.md),
+    gleiche Mittelung der beiden Zentralwerte in identischer Float-Arithmetik
+    (a + b kommutativ, × ½ identisch). Messreihe 2026-10-08: 64601 Aufrufe im
+    30-s-Scan = 3,33 s (17,5 %) — Vertragstest pinnt die Gleichheit.
+    """
+    v = np.asarray(values, dtype=np.float64).ravel()
+    n = v.size
+    if n % 2 == 0:
+        k = n // 2
+        p = np.partition(v, [k - 1, k])
+        return float((p[k - 1] + p[k]) / 2)
+    return float(np.partition(v, n // 2)[n // 2])
+
+
 def _to_bark_bands(spec_db: np.ndarray, freqs: np.ndarray) -> np.ndarray:
     """Mittelt ein Spektrum (dB) über Bark-Bänder → pro Band der Median (dB)."""
     global _BARK_BIN_INDEX, _BARK_BIN_INDEX_FREQS
@@ -140,9 +160,9 @@ def _to_bark_bands(spec_db: np.ndarray, freqs: np.ndarray) -> np.ndarray:
         if _bin_idx.size > 0:
             if spec_db.ndim == 2:
                 # Median über Zeit-Frames und Frequenz-Bins des Bands
-                bands[b] = float(np.median(spec_db[:, _bin_idx]))
+                bands[b] = _median_flat(spec_db[:, _bin_idx])
             else:
-                bands[b] = float(np.median(spec_db[_bin_idx]))
+                bands[b] = _median_flat(spec_db[_bin_idx])
         else:
             bands[b] = -120.0
     return cast(np.ndarray, bands)

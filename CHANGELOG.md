@@ -1,4 +1,11 @@
-# Changelog — Aurik 10.12.27
+# Changelog — Aurik 10.12.28
+
+## 10.12.28 (2026-10-08)
+
+### Punkt 12: Defekt-Scanner zerlegt + bit-exakte Median-Optimierung (−15,4 %)
+
+- **Zerlegung (D-K3-38):** cProfile des Defekt-Scanners (30-s-Mix, `docs/reports/current/2026-10-08_defect_scanner_cprofile.json`) — Treiber: `annotate_defect_scores` 8,62 s (45 %; per-Event-Annotationen — Batch-Pfad 1,8× gemessen, aber Hör-Entscheidung blockiert), Median-Schleife `_to_bark_bands` 3,33 s (64601 np.median-Aufrufe), Direkt-Korrelationen `_detect_crackle`/`_detect_wow` 1,5 s (FFT-Ersatz nicht bit-identisch), GIL-Thread-Waits 3,64 s.
+- **Optimierung (§V7 (copilot-instructions.md)-clean, bit-exakt):** `_median_flat`-partition-Direktpfad ersetzt np.median in `_to_bark_bands` — A/B **19,05 → 16,12 s (−15,4 %)** pro 30-s-Scan, Median-Block 3,33 → 0,03 s; Vertragstest pinnt Bit-Gleichheit zu np.median (§G5 copilot-instructions.md unverändert — deterministisch).
 
 ## 10.12.27 (2026-10-08)
 
