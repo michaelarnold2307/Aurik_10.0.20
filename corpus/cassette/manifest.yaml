@@ -143,3 +143,76 @@ entries:
   - flutter
   chain:
   - cassette
+- file: damaged/cassette_1987_archive_20260930.mp3
+  duration_s: 74.371
+  sample_rate: 44100
+  material: cassette
+  era_year: 1987
+  genre: '[''Cassette'', ''Tape'', ''Noise-Arch'', ''Inde'
+  condition: damaged
+  channels: 2
+  bit_depth: 16
+  defect_types:
+  - wow
+  - flutter
+  - hiss
+  - dropouts
+  source_attribution: Various Artists — Archive (Internet Archive, archive_20260930)
+  license: CC0
+  source_url: https://archive.org/download/archive_20260930/A%20View%20From%20Somewhere/13%20-%20Bryan%20Ruryk%20-%20Osler%20Incident.mp3
+  checksum_sha256: 996dcfd425fa687455e35bfcceb84a5038f60cc70f222bc2385de3cc5b2860a9
+- file: damaged/cassette_1988_rare_recordings.mp3
+  duration_s: 50.991
+  sample_rate: 44100
+  material: cassette
+  era_year: 1988
+  genre: '[''kidzone'', ''kids music'', ''nursery rhyme'
+  condition: damaged
+  channels: 2
+  bit_depth: 16
+  defect_types:
+  - wow
+  - flutter
+  - hiss
+  - dropouts
+  source_attribution: Kidzone — Rare Recordings (Internet Archive, rare-recordings)
+  license: CC0
+  source_url: https://archive.org/download/rare-recordings/Rare%20Recording%20of%20Jack%20and%20Jill%20by%20Kidzone.mp3
+  checksum_sha256: 4bfca410befb5eb7c7fbc0f43206b74841805e02a4f5fa331102ecc43fa7cd4e
+- file: damaged/cassette_2020_revolution_202004.mp3
+  duration_s: 212.54
+  sample_rate: 44100
+  material: cassette
+  era_year: 2020
+  genre: Experimental
+  condition: damaged
+  channels: 2
+  bit_depth: 16
+  defect_types:
+  - wow
+  - flutter
+  - hiss
+  - dropouts
+  source_attribution: Shavon Grass & Gypsy & Federico Balducci — Revolution (Internet
+    Archive, revolution_202004)
+  license: Public Domain
+  source_url: https://archive.org/download/revolution_202004/Revolution.mp3
+  checksum_sha256: 03d589b12cbb02870642d482696173d36f3c6f8b1928cf923c0b3965c66493a1
+- file: damaged/cassette_2020_word_wise.mp3
+  duration_s: 546.096
+  sample_rate: 48000
+  material: cassette
+  era_year: 2020
+  genre: Experimental
+  condition: damaged
+  channels: 2
+  bit_depth: 16
+  defect_types:
+  - wow
+  - flutter
+  - hiss
+  - dropouts
+  source_attribution: Anti Media Foundation — Word Wise (Internet Archive, word-wise)
+  license: Public Domain
+  source_url: https://archive.org/download/word-wise/Word%20Wise.mp3
+  checksum_sha256: d2929849e30a9f3bb66f5fb8a86068d584d9d12937afbee39825ad5c9602e339

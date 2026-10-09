@@ -1,4 +1,13 @@
-# Changelog — Aurik 10.12.32
+# Changelog — Aurik 10.12.33
+
+## 10.12.33 (2026-10-09)
+
+### WP-7 vollzogen: 51 neue Echt-Träger, Korpus 92 → 143 Labels, Validierung erbringt D-K1-3
+
+- **Beschaffung (Lizenz strikt PD/CC0, corpus/README-Vertrag):** 47 Shellac-PD-78er (1902–1927, MWA-Frist 2026), 10 Netlabel-CC0/PD (digital), 4 Cassette-DIY-Selbstdedikationen, 1 Reel-Transfer (dokumentierte Kette), 1 Tape-Art-CC0; **vinyl bewusst 0** (LP-Ära rechtlich geschützt; Uploader-CC0 auf Kommerz-Releases verworfen — keine Schein-Provenienz).
+- **Code:** Lizenz-Gate (`_license_allowed` PD/CC0-Allowlist, §V6-Warnung), Merge-Manifeste im Volllauf verifiziert (vinyl-Bestand erhalten), Slug-Schema 47/47, Real-Träger-Zählwerk (`per_material_real`, `wp7_real_gap`, `wp7_real_met`), 9 hash-identische Alt-Orphans entfernt; 2 Totquellen (503) durch 2 verifizierte 1927-Träger ersetzt.
+- **Validierung:** 49 Tests grün; Coverage 143 Labels — shellac-Ziel ≥50 erreicht (58), 63 Echt-Träger statt 12; MediumDetector-Roh-Validierung an 9 Echt-Trägern: 5/9 als vinyl verkannt (0,60–0,99) → **neu registriert als D-K1-3** (Kalibrierung gegen den Real-Korpus; deckt sich mit §v10.19-Era-Prior-Befund).
+- **Belege:** `docs/reports/current/2026-10-09_wp7_realtraeger.md`, `docs/reports/current/2026-10-09_wp7_coverage.json`, `docs/reports/current/2026-10-09_wp7_medium_validierung.json`.
 
 ## 10.12.32 (2026-10-09)
 

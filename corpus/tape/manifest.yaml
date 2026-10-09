@@ -320,3 +320,21 @@ entries:
   - tape
   - cassette
   - mp3_low
+- file: damaged/tape_2011_cartepostal1diewurstbruckeinistanbul.mp3
+  duration_s: 65.567
+  sample_rate: 44100
+  material: tape
+  era_year: 2011
+  genre: carte postal
+  condition: damaged
+  channels: 2
+  bit_depth: 16
+  defect_types:
+  - wow
+  - flutter
+  - hiss
+  source_attribution: Blenno Die Wurstbrucke — carte postal1 Die wurstbrucke in istanbul
+    (Internet Archive, CartePostal1DieWurstbruckeInIstanbul)
+  license: CC0
+  source_url: https://archive.org/download/CartePostal1DieWurstbruckeInIstanbul/ZOOM0015.MP3
+  checksum_sha256: db890c243995a8b4656b28d8ccecbe3cf9eb7ea0c339217a701d0e09beaa2e3c

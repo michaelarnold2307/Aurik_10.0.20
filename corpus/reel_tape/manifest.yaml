@@ -141,3 +141,20 @@ entries:
   - flutter
   chain:
   - reel_tape
+- file: damaged/reel_tape_2025_summer_stuff_reel_t_02.flac
+  duration_s: 100.987
+  sample_rate: 48000
+  material: reel_tape
+  era_year: 2025
+  genre: Reel To Reel Old Time Radio
+  condition: damaged
+  channels: 2
+  bit_depth: 16
+  defect_types:
+  - wow
+  - flutter
+  - hiss
+  source_attribution: Taperwayne — Summer Stuff Reel (Internet Archive, summer-stuff-reel.t-02)
+  license: CC0
+  source_url: https://archive.org/download/summer-stuff-reel.t-02/Summer%20Stuff%20Reel.flac16/Summer%20Stuff%20Reel.t03.flac
+  checksum_sha256: 10b90a865397f17c43d2020792c1934751819380b3647c1da4fe0cb183a8f187

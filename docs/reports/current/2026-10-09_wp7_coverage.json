@@ -1,0 +1,50 @@
+{
+  "materials_found": [
+    "cassette",
+    "digital",
+    "reel_tape",
+    "shellac",
+    "tape",
+    "vinyl"
+  ],
+  "materials_required": 4,
+  "total_files": 143,
+  "total_required": 20,
+  "per_material": {
+    "cassette": 13,
+    "digital": 20,
+    "reel_tape": 10,
+    "shellac": 58,
+    "tape": 21,
+    "vinyl": 21
+  },
+  "per_material_real": {
+    "cassette": 4,
+    "digital": 10,
+    "reel_tape": 1,
+    "shellac": 47,
+    "tape": 1,
+    "vinyl": 0
+  },
+  "meets_minimum": true,
+  "wp7_target_per_material": 50,
+  "wp7_gap": {
+    "shellac": 0,
+    "vinyl": 29,
+    "tape": 29,
+    "reel_tape": 40,
+    "cassette": 37,
+    "digital": 30
+  },
+  "wp7_met": false,
+  "wp7_real_target_per_material": 10,
+  "wp7_real_gap": {
+    "shellac": 0,
+    "vinyl": 10,
+    "tape": 9,
+    "reel_tape": 9,
+    "cassette": 6,
+    "digital": 0
+  },
+  "wp7_real_met": false
+}

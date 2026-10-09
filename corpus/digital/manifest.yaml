@@ -155,3 +155,167 @@ entries:
   chain:
   - digital
   - mp3_low
+- file: damaged/digital_2007_marav994d.mp3
+  duration_s: 119.881
+  sample_rate: 44100
+  material: digital
+  era_year: 2007
+  genre: '[''Extended Play'', ''Compact Disc'']'
+  condition: damaged
+  channels: 2
+  bit_depth: 16
+  defect_types:
+  - bandwidth_loss
+  - clipping
+  source_attribution: the Red Light — Chernobyl (Internet Archive, MARAV994D)
+  license: Public Domain
+  source_url: https://archive.org/download/MARAV994D/02%20Keys%2C%20Lights%2C%20Ignition%2C%20Go.mp3
+  checksum_sha256: 39c87804dd3d85a5e94f8ff8f7c4a8855d3f88d905d77fda05eee0dc32bd8efb
+- file: damaged/digital_2008_seam0007.mp3
+  duration_s: 199.738
+  sample_rate: 44100
+  material: digital
+  era_year: 2008
+  genre: noise
+  condition: damaged
+  channels: 2
+  bit_depth: 16
+  defect_types:
+  - bandwidth_loss
+  - clipping
+  source_attribution: Buddhist on Fire — X (Internet Archive, SEAM0007)
+  license: Public Domain
+  source_url: https://archive.org/download/SEAM0007/03_X3.mp3
+  checksum_sha256: 9bc84a4056a354dbb6859ac4cae4119b0ce004b064a72829cf010bd3645b1cdc
+- file: damaged/digital_2008_seam0069.mp3
+  duration_s: 205.667
+  sample_rate: 44100
+  material: digital
+  era_year: 2008
+  genre: noise
+  condition: damaged
+  channels: 2
+  bit_depth: 16
+  defect_types:
+  - bandwidth_loss
+  - clipping
+  source_attribution: Buddhist on Fire — Zami (Internet Archive, SEAM0069)
+  license: Public Domain
+  source_url: https://archive.org/download/SEAM0069/03_Audre.mp3
+  checksum_sha256: 530c3684f1caead28634d51a337b1e7590bdac215b27dd326b50abad11464378
+- file: damaged/digital_2011_fourhorns_mountain_metal.mp3
+  duration_s: 151.884
+  sample_rate: 44100
+  material: digital
+  era_year: 2011
+  genre: Fourhorns
+  condition: damaged
+  channels: 2
+  bit_depth: 16
+  defect_types:
+  - bandwidth_loss
+  - clipping
+  source_attribution: Fourhorns — Fourhorns_-_Mountain_metal (Internet Archive, Fourhorns_-_Mountain_metal)
+  license: CC0
+  source_url: https://archive.org/download/Fourhorns_-_Mountain_metal/10Collect_the_Slaves.mp3
+  checksum_sha256: 673078f2d7316d437b9a7ed78e451de4d9e2cc6b7c228b827c40ff4d5d3d0355
+- file: damaged/digital_2012_ludwiggrossmann_ardaizopereduhvojvode.mp3
+  duration_s: 559.047
+  sample_rate: 44100
+  material: digital
+  era_year: 2012
+  genre: Vanzemlja.
+  condition: damaged
+  channels: 2
+  bit_depth: 16
+  defect_types:
+  - bandwidth_loss
+  - clipping
+  source_attribution: "Ludwig Grossmann — Ludwig Grossmann-C\x8Cardas Iz Opere Duh\
+    \ Vojvode (Internet Archive, LudwigGrossmann-ardaIzOpereDuhVojvode)"
+  license: CC0
+  source_url: https://archive.org/download/LudwigGrossmann-ardaIzOpereDuhVojvode/LudwigGrossmann-ardaIzOpereDuhVojvode.mp3
+  checksum_sha256: 734792db71927b4ad9310a79fff0104ab65156a7dc234f1c4e4f79c366cb7f78
+- file: damaged/digital_2012_meatforce_thebeast666.mp3
+  duration_s: 127.713
+  sample_rate: 44100
+  material: digital
+  era_year: 2012
+  genre: funtime
+  condition: damaged
+  channels: 2
+  bit_depth: 16
+  defect_types:
+  - bandwidth_loss
+  - clipping
+  source_attribution: Meat Force — Meat Force - The Beast 666 (Internet Archive, MeatForce-TheBeast666)
+  license: CC0
+  source_url: https://archive.org/download/MeatForce-TheBeast666/TheBeast666.mp3
+  checksum_sha256: c53e1e57a486700070a72514e634278e847b9a2f9a049f180eeeb7d9ab3fcc77
+- file: damaged/digital_2013_lemn018_thermaikarias_andthrowitaway.mp3
+  duration_s: 36.258
+  sample_rate: 44100
+  material: digital
+  era_year: 2013
+  genre: '[''Less Ego More Noise'', ''LEMN'']'
+  condition: damaged
+  channels: 2
+  bit_depth: 16
+  defect_types:
+  - bandwidth_loss
+  - clipping
+  source_attribution: Unbekannt — [LEMN018] - Therma Ikarias - And Throw It Away (Internet
+    Archive, LEMN018-ThermaIkarias-AndThrowItAway)
+  license: Public Domain
+  source_url: https://archive.org/download/LEMN018-ThermaIkarias-AndThrowItAway/Therma%20Ikarias%20-%2001%20-%20Lit%20Your.mp3
+  checksum_sha256: 3e479b4556bc2000e1d6a18c6813cd2a385cc6be5043288169f1214e425bdad0
+- file: damaged/digital_2014_malaventuratheplot.mp3
+  duration_s: 239.047
+  sample_rate: 44100
+  material: digital
+  era_year: 2014
+  genre: '[''cut&paste'', ''remix'', ''malaventura04'']'
+  condition: damaged
+  channels: 2
+  bit_depth: 16
+  defect_types:
+  - bandwidth_loss
+  - clipping
+  source_attribution: malaventura — Various Artist & Malaventura The Plot (Internet
+    Archive, MalaventuraThePlot)
+  license: CC0
+  source_url: https://archive.org/download/MalaventuraThePlot/Various%20Artist%20%26%20Malaventura%20-%20The%20Plot.mp3
+  checksum_sha256: 3b21ad627bab30cd11e0278095ea4f54e52dcdf3fd90fa58ca29a78caee16306
+- file: damaged/digital_2016_marav057d.mp3
+  duration_s: 177.624
+  sample_rate: 48000
+  material: digital
+  era_year: 2016
+  genre: '[''Demo Album'', ''Computer Audio Recorder'''
+  condition: damaged
+  channels: 2
+  bit_depth: 16
+  defect_types:
+  - bandwidth_loss
+  - clipping
+  source_attribution: the Maravines — Demos of Sloan (Internet Archive, MARAV057D)
+  license: Public Domain
+  source_url: https://archive.org/download/MARAV057D/07%20Fast%20Lane%20Geisha.mp3
+  checksum_sha256: f25d6bee5147748d778cc0e71174313d7d170ee50ef0348c5ee2b222f4eb5154
+- file: damaged/digital_2021_k_sigma_don.flac
+  duration_s: 58.888
+  sample_rate: 48000
+  material: digital
+  era_year: 2021
+  genre: '[''Thomas Park'', ''generative'', ''public do'
+  condition: damaged
+  channels: 2
+  bit_depth: 16
+  defect_types:
+  - bandwidth_loss
+  - clipping
+  source_attribution: Thomas Park — DJ Frankenstone- K Sigma Don [treetrunk 688] (Internet
+    Archive, K_Sigma_Don)
+  license: Public Domain
+  source_url: https://archive.org/download/K_Sigma_Don/drum_fast_investigate.flac
+  checksum_sha256: 872777b3feda35cb8572d4ecfceea3bc757684002fbfe3c67c03bfe6177f7d25
