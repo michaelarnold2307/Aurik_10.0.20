@@ -1,4 +1,13 @@
-# Changelog — Aurik 10.12.34
+# Changelog — Aurik 10.12.35
+
+## 10.12.35 (2026-10-09)
+
+### 2-Balken-Vertrag: Schritt-Balken im Phasenkern datengetrieben + Wellenform unifiziert
+
+- **Befund:** Der „Arbeitsschritt“-Balken wurde nur für Voranalyse (<20 %) und Post-Processing (≥86 %) gespeist — im Phasenkern (20–85 %) blieb er auf 0 stehen (§GUI-T9 hatte den Zeit-Fill entfernt, ohne datengetriebenes Ersatz-Mapping).
+- **Fix:** Phasen-lokales Mapping `local = (pct − Phasenstart)/(Phasenende − Phasenstart) · 100` (Band 20–85, Phasen-Index aus `_uv3`), monoton je Phase, Reset bei Phasenwechsel — gespeist aus den echten Engine-Callbacks, kein Zeit-Fill.
+- **Wellenform-Stage** zeigt denselben Wert wie der Schritt-Balken (vorher Defekt-Ratio → widersprüchliche Anzeigen).
+- **Vertrag gepinnt:** Balken 1 = Gesamtfortschritt (eine Unified-Quelle, monoton), Balken 2 = aktueller Arbeitsschritt; 16 Tests grün (`tests/unit/test_gui_progress_single_source.py::test_zwei_balken_vertrag`).
 
 ## 10.12.34 (2026-10-09)
 

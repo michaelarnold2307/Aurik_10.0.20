@@ -76,3 +76,24 @@ def test_badge_liest_kanonischen_snapshot() -> None:
     src = _src()
     assert "_live_progress_snapshot" in src
     assert 'n_active = int(_prog_snap.get("remaining", n_active) or 0)' in src
+
+
+def test_zwei_balken_vertrag() -> None:
+    """Nutzer-Vertrag (2026-10-09): Balken 1 = Gesamtfortschritt, Balken 2 = Arbeitsschritt.
+
+    Befund: Der Schritt-Balken wurde nur für Voranalyse (<20 %) und
+    Post-Processing (>=86 %) gespeist — im Phasenkern (20–85 %) blieb er auf 0
+    stehen. Fix: Phasen-lokales, datengetriebenes Mapping (kein Zeit-Fill).
+    """
+    src = _src()
+    # Balken 2 — Phasenkern-Mapping (datengetrieben, monoton je Phase):
+    assert "65.0 * _idx_step / _cnt_step" in src
+    assert 'if _loc_step > _sp2["target"]:' in src
+    # Balken 2 — Wellenform zeigt denselben Wert (kein zweiter Anzeigeweg):
+    assert "float(self.phase_progress_bar.value()) / 10000.0" in src
+    # Altpfad entfernt:
+    assert "purely time-driven" not in src
+    assert "_phase_frac = _phase_bp / 10000.0" not in src
+    # Balken 1 — Gesamtfortschritt aus der einen Unified-Quelle:
+    assert "_sync_unified_progress" in src
+    assert "min(10000, max(_cur_bp, _overall_bp))" in src

@@ -3273,7 +3273,24 @@ class BatchProcessingThread(QThread):
                             # Same phase continues: update _last_raw_phase_id if we now have one
                             if _raw_pid and not _last_raw_phase_id[0]:
                                 _last_raw_phase_id[0] = _raw_pid
-                        # No fallback nudge: sub-bar is now purely time-driven by the smooth emitter.
+                        # §WP-GUI-2026-10-09 (2-Balken-Vertrag): Der Arbeitsschritt-Balken
+                        # wird auch im Phasenkern (pct 20–85 %) datengetrieben gespeist —
+                        # Phasen-lokaler Anteil aus dem gemeldeten Fortschritt, Phasen-Index
+                        # aus _uv3; monoton je Phase, Reset bei Phasenwechsel (oben).
+                        if pct >= 20 and not _post_processing_started[0]:
+                            _uv3s_step = getattr(self, "_uv3", None)
+                            if _uv3s_step is not None and int(_uv3s_step.get("count", 0) or 0) > 0:
+                                _cnt_step = int(_uv3s_step["count"])
+                                _idx_step = max(0, min(_cnt_step - 1, int(_uv3s_step.get("idx", 0) or 0)))
+                                _ph_s = 20.0 + 65.0 * _idx_step / _cnt_step
+                                _ph_e = 20.0 + 65.0 * (_idx_step + 1) / _cnt_step
+                                _loc_step = 0.0 if _ph_e <= _ph_s else (float(pct) - _ph_s) / (_ph_e - _ph_s) * 100.0
+                                _loc_step = max(0.0, min(100.0, _loc_step))
+                                with _sp_lock:
+                                    if _loc_step > _sp2["target"]:
+                                        _sp2["target"] = _loc_step
+                        # Kein Fallback-Nudge: Der Schritt-Balken ist datengetrieben
+                        # (Phasen-lokal, §WP-GUI-2026-10-09).
                     _live_mos = self._estimate_live_quality_mos(
                         pct,
                         baseline_mos=_live_quality_baseline_mos[0],
@@ -20412,10 +20429,8 @@ class ModernMainWindow(QMainWindow):
             self._narrative_milestones.add(_ms_key)
             self._show_toast(t(_ms_key), severity="info", duration_ms=4500)
 
-        _phase_bp = 0
         _phase_detail = ""
         if _def_total > 0:
-            _phase_bp = int(round(_def_pct * 100.0))
             _phase_detail = f" · {_def_resolved}/{_def_total} Defekte behoben"
         # §GUI-T9: KEIN Zeit-Fill (uv3-Heartbeat-Fraktion) und KEIN direkter
         # Schreibzugriff auf den Phasenbalken mehr — der orange Balken wird
@@ -20463,11 +20478,15 @@ class ModernMainWindow(QMainWindow):
             self._phase_step_label.setVisible(True)
 
         # ── 5. Waveform sync ──────────────────────────────────────────
-        _phase_frac = _phase_bp / 10000.0
+        # §WP-GUI-2026-10-09 (2-Balken-Vertrag): Wellenform zeigt denselben Wert
+        # wie der Arbeitsschritt-Balken — kein zweiter Anzeigeweg.
+        _step_frac = 0.0
+        if hasattr(self, "phase_progress_bar"):
+            _step_frac = max(0.0, min(1.0, float(self.phase_progress_bar.value()) / 10000.0))
         if hasattr(self, "waveform_widget"):
-            self.waveform_widget.set_stage_progress(_phase_frac)
+            self.waveform_widget.set_stage_progress(_step_frac)
         if hasattr(self, "waveform_widget_rest_ab"):
-            self.waveform_widget_rest_ab.set_stage_progress(_phase_frac)
+            self.waveform_widget_rest_ab.set_stage_progress(_step_frac)
 
         # ── 6. Echtzeit-Defektzähler (EINE Quelle, §G9 copilot-instructions.md) ──
         if hasattr(self, "defect_count_live_label") and _def_total > 0:
