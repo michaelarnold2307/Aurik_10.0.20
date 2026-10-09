@@ -5,9 +5,10 @@
   "methode": "cProfile, identisch zur Baseline docs/reports/current/2026-10-09_phase12_cprofile.json (15-s-Vinyl-Corpus, material_type=vinyl)",
   "wall_s": {
     "baseline": 35.9,
-    "nachher": 21.08,
-    "delta_prozent": -41.3,
-    "nachher_ohne_cprofile": 19.99
+    "nachher_10_12_37": 21.08,
+    "nachher_10_12_38": 19.34,
+    "delta_prozent_total": -46.1,
+    "nachher_ohne_cprofile_10_12_38": 18.63
   },
   "kalman_smooth_warp_s": {
     "baseline": 11.79,
@@ -34,8 +35,17 @@
     },
     "aequivalenz": "synthetischer 6-Hz-Flutter (22,9 cents): virtual_pitch/conf max|Δ| = 0.0 gegen Vorversion (git HEAD); E2E-Audio bit-identisch; Rauschfall identisch verworfen"
   },
+  "subband_scan": {
+    "datum": "2026-10-09 (10.12.38)",
+    "lstsq_calls": { "vorher": 15619, "nachher": 0 },
+    "_scan_subband_modulation_frequency_s": {
+      "vorher": 1.49,
+      "nachher": 0.116
+    },
+    "_score_at_s": { "vorher": 1.46, "nachher": 0.094 },
+    "aequivalenz": "synthetische kohaerente 1,1-Hz-Modulation: Frequenz-Delta = 3,9e-14 Hz bei 7,4x Speedup; E2E-Audio bit-identisch (max = 0.0)"
+  },
   "verbleibende_phase12_kandidaten": [
-    "_score_at-Subband-Scan: 15 619 lstsq (~0,5 s) + Schleifenlogik — gleicher Buendelungs-Umbau moeglich",
     "hilbert-Serie: 242 Aufrufe / 3,4 s (scipy.signal.hilbert in der Teilband-Spur)",
     "pYIN/Hybrid-Pitch: ~3,6 s (FCPE-Torch-ROCm-Kern als SOTA-Ersatz — braucht A/B, hoer-relevant)",
     "butter-Designs: 242 Aufrufe / 0,2 s (Parameter wiederholen sich — Cache-Kandidat)",

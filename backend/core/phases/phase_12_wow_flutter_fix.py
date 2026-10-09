@@ -3076,34 +3076,64 @@ class WowFlutterFix(PhaseInterface):
         _w_all = np.clip(_c, 0.0, 1.0)
         _t = np.arange(_n_blk, dtype=np.float64) * (_dec / float(sample_rate))
 
+        # §D-K3-38 (Perf, 2026-10-09 — Register): Band-Gates und Gewichtssummen
+        # hängen NICHT von der Testfrequenz ab — einmal vorberechnen; der
+        # Band-Fit läuft als GEBÜNDELTE Normalengleichung je Frequenz
+        # (np.linalg.solve gestapelt) statt als ~15 619 Einzel-lstsq-Aufrufe
+        # (cProfile 2026-10-09: 129 Kandidaten × ~121 Bänder). lstsq bleibt
+        # Singular-Ausweichpfad je Band (continue-Semantik erhalten,
+        # §V6 copilot-instructions.md); Gate-Semantik unverändert (r² ≥ 0,30,
+        # 1,0 ≤ amp ≤ 80 cents, mindestens 4 Bänder).
+        _gate_mask = np.sum(_w_all > 0.5, axis=1) >= _n_blk // 3
+        _wsum_all = np.sum(_w_all, axis=1)
+
         def _score_at(_f: float) -> float:
             _des = np.column_stack([np.sin(2.0 * np.pi * _f * _t), np.cos(2.0 * np.pi * _f * _t), np.ones(_n_blk)])
-            _acc = np.zeros(2, dtype=np.float64)
-            _wsum = 0.0
-            _n_used = 0
-            for _b in range(_y_all.shape[0]):
-                _wb = _w_all[_b]
-                if float(np.sum(_wb > 0.5)) < _n_blk // 3:
-                    continue
-                _y = _y_all[_b]
-                try:
-                    _sw = np.sqrt(_wb)
-                    _cb, *_ = np.linalg.lstsq(_des * _sw[:, None], _y * _sw, rcond=None)
-                except Exception as _scan_lsq_exc:
-                    logger.debug("Teilband-Scan: Band %d bei %.3f Hz übersprungen (%s)", _b, _f, _scan_lsq_exc)
-                    continue
-                _fit_b = _des @ _cb
-                _ssr_b = float(np.sum(_wb * (_y - _fit_b) ** 2))
-                _wmu_b = float(np.sum(_wb * _y) / (float(np.sum(_wb)) + 1e-12))
-                _sst_b = float(np.sum(_wb * (_y - _wmu_b) ** 2) + 1e-12)
-                _r2_b = float(np.clip(1.0 - _ssr_b / _sst_b, 0.0, 1.0))
-                _amp_b = float(np.hypot(_cb[0], _cb[1]))
-                if _r2_b < 0.30 or _amp_b < 1.0 or _amp_b > 80.0:
-                    continue
-                _acc += _r2_b * _cb[:2]
-                _wsum += _r2_b
-                _n_used += 1
-            if _n_used < 4 or _wsum <= 1e-12:
+            _idx = np.flatnonzero(_gate_mask)
+            if _idx.size == 0:
+                return 0.0
+            _W = _w_all[_idx]
+            _Y = _y_all[_idx]
+            # Gewichtete Normalengleichungen je Band, gestapelt:
+            #   N[b] = des^T diag(w_b) des (3×3) ; rhs[b] = des^T (w_b ⊙ y_b).
+            _N = np.einsum("nc,bn,nd->bcd", _des, _W, _des, optimize=True)
+            _rhs = np.einsum("nc,bn,bn->bc", _des, _W, _Y, optimize=True)
+            _valid = np.ones(_idx.size, dtype=bool)
+            try:
+                _cb = np.linalg.solve(_N, _rhs)
+            except np.linalg.LinAlgError:
+                logger.debug(
+                    "Teilband-Scan: Normalengleichungen singulär bei %.3f Hz — Einzelband-Ausweichlösung aktiv", _f
+                )
+                _cb = np.zeros((_idx.size, 3), dtype=np.float64)
+                _ok_fb = np.zeros(_idx.size, dtype=bool)
+                for _li in range(_idx.size):
+                    _sw = np.sqrt(_W[_li])
+                    try:
+                        _row, *_ = np.linalg.lstsq(_des * _sw[:, None], _Y[_li] * _sw, rcond=None)
+                        _cb[_li] = _row
+                        _ok_fb[_li] = True
+                    except Exception as _scan_lsq_exc:
+                        logger.debug("Teilband-Scan: Band bei %.3f Hz übersprungen (%s)", _f, _scan_lsq_exc)
+                _valid = _ok_fb
+            _fit = _cb @ _des.T
+            _res = _Y - _fit
+            _ssr = np.einsum("bn,bn->b", _W, _res * _res)
+            _Sw = _wsum_all[_idx]
+            _Sy = np.einsum("bn,bn->b", _W, _Y)
+            _wmu = _Sy / (_Sw + 1e-12)
+            _dY = _Y - _wmu[:, None]
+            _sst = np.einsum("bn,bn->b", _W, _dY * _dY) + 1e-12
+            _r2 = np.clip(1.0 - _ssr / _sst, 0.0, 1.0)
+            _amp = np.hypot(_cb[:, 0], _cb[:, 1])
+            _sel = (_r2 >= 0.30) & (_amp >= 1.0) & (_amp <= 80.0) & _valid
+            _n_used = int(np.count_nonzero(_sel))
+            if _n_used < 4:
+                return 0.0
+            _r2s = _r2[_sel]
+            _acc = np.sum(_r2s[:, None] * _cb[_sel][:, :2], axis=0)
+            _wsum = float(np.sum(_r2s))
+            if _wsum <= 1e-12:
                 return 0.0
             return float(np.hypot(_acc[0], _acc[1]) / _wsum)
 

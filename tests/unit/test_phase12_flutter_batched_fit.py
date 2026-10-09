@@ -82,3 +82,36 @@ def test_flutter_batched_normal_equations_match_lstsq_formula() -> None:
         sw = np.sqrt(w[b])
         cb_ref, *_ = np.linalg.lstsq(des * sw[:, None], y[b] * sw, rcond=None)
         np.testing.assert_allclose(cb_batched[b], cb_ref, rtol=1e-8, atol=1e-10)
+
+
+def test_subband_scan_detects_coherent_modulation() -> None:
+    """§D-K3-38: kohärente 1,1-Hz-Modulation (10 in-phase Bänder, 6 cents) wird erkannt.
+
+    A/B gegen die Vorversion (git HEAD, 10.12.37-Stand): Frequenz-Δ = 3,9e-14 Hz
+    bei 7,4× Speedup auf der Synthetik; E2E-Audio bit-identisch.
+    """
+    rng = np.random.default_rng(41)
+    sr = 48000
+    n = 96000  # 2 s → 40 Blöcke auf dem 20-Hz-Raster (Gate: ≥ 32)
+    b = 41
+    t = np.arange(n) / sr
+    dev = rng.standard_normal((b, n)) * 3.0
+    for k in range(10):
+        dev[k] = 6.0 * np.sin(2.0 * np.pi * 1.1 * t)
+    val = np.ones((b, n), dtype=np.float64)
+    f_peak = WowFlutterFix._scan_subband_modulation_frequency(dev, val, sr)
+    assert f_peak is not None
+    assert abs(f_peak - 1.1) < 0.02, f"Kohärenz-Peak unerwartet: {f_peak:.4f} Hz"
+
+
+def test_subband_scan_uses_batched_solve_with_lstsq_fallback_only() -> None:
+    """Wiring-Pin: Auch der Subband-Scan rechnet gebündelt; lstsq nur im Singular-Ausweichpfad.
+
+    §D-K3-38 (Register): Der Einzel-lstsq-Pfad kostete gemessen 15 619 Aufrufe
+    / ~1,4 s je 15-s-Lauf (cProfile 2026-10-09); dieser Pin bricht, sobald der
+    Batch-Solve aus dem Rumpf verschwindet.
+    """
+    src = inspect.getsource(WowFlutterFix._scan_subband_modulation_frequency)
+    assert src.count("np.linalg.lstsq") == 1, "lstsq darf nur noch im Singular-Ausweichpfad stehen"
+    assert "np.linalg.solve(_N, _rhs)" in src
+    assert 'np.einsum("nc,bn,nd->bcd"' in src

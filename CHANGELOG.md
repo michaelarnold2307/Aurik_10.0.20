@@ -1,4 +1,14 @@
-# Changelog — Aurik 10.12.37
+# Changelog — Aurik 10.12.38
+
+## 10.12.38 (2026-10-09)
+
+### D-K3-38 Phase-12-Teilbehebung 3: Subband-Scan gebündelt (Phase 12 −46,1 % gesamt)
+
+- **Befund (cProfile 10.12.37):** Zweiter Einzel-lstsq-Hotspot — `_score_at` im Subband-Scan rechnete 15 619 Mini-SVDs (129 Kandidaten × ~121 Bänder), `_scan_subband_modulation_frequency` 1,49 s.
+- **Fix:** Gleiches Bündelungsmuster wie der Flutter-Fit — Band-Gates/Gewichtssummen einmal statt 129×, gestapelte Normalengleichungen (3×3, `np.linalg.solve` + `np.einsum`), lstsq nur als Singular-Ausweichpfad je Band (Gate-Semantik r² ≥ 0,30 / 1–80 cents / ≥ 4 Bänder unverändert).
+- **Messung:** `_scan_subband_modulation_frequency` 1,49 → 0,116 s (13×); lstsq im Lauf 15 619 → 10 (Reststellen außerhalb der Fit-Pfade); Phase 12 **21,08 → 19,34 s (−46,1 % vs. Baseline 35,90 s)**; Wall ohne cProfile 18,63 s.
+- **Äquivalenz:** Synthetische kohärente 1,1-Hz-Modulation: Frequenz-Δ = 3,9e-14 Hz; E2E-Audio bit-identisch (max-Δ = 0.0).
+- **Tests:** +2 (`test_subband_scan_detects_coherent_modulation`, `test_subband_scan_uses_batched_solve_with_lstsq_fallback_only`); 6/6 in der Datei grün.
 
 ## 10.12.37 (2026-10-09)
 
