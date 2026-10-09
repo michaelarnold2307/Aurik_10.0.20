@@ -1,4 +1,12 @@
-# Changelog — Aurik 10.12.31
+# Changelog — Aurik 10.12.32
+
+## 10.12.32 (2026-10-09)
+
+### D-K3-57 geschlossen: pre_echo-Repro des Walzer-Falls geliefert und eingeordnet
+
+- **Repro (10.12.25-Lauf derselben Quelle):** `phase_01_click_removal pre_echo=-2,8 dB` bei neutralen Nachbarwerten (pitch=0.0c/mod=0.0c/hnr=0.0dB/hf=0.003/loud=0.9dB); phase_12 −8,4 dB, phase_24 −10,5 dB, späte Chunks +0,1/+0,2 dB — **deterministisch identisch** zu den 10.12.17-Dump-Werten (−2,83/−8,36/−10,46, D-K3-62-Evidenz).
+- **Einordnung:** Trigger = D-K3-62-Reparatur-Energie-Klasse (gewünschte Füllung/Resampling); der Diskriminator (10.12.27) klassifiziert analoge Fälle als `repair_fill` (report-only); kein Defekt-Nachverfolgen (Hörordnung Ebene 2 — Reparatur-Energie ist kein Defekt).
+- **Beleg:** `docs/reports/current/2026-10-09_dk357_witness_pre_echo_werte.md`; Register D-K3-57 → `geschlossen`.
 
 ## 10.12.31 (2026-10-09)
 
