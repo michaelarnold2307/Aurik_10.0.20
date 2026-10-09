@@ -63,3 +63,6 @@ def test_verdrahtung_in_execute_pipeline() -> None:
     assert "from backend.core.phase_progress_weights import" in src
     # Altpfad entfernt (Zähl-Fraktion über abgeschlossene Phasen):
     assert "_idx_ex / _n_sel" not in src
+    # Parallel-Pre-Emission ebenfalls gewichtet (Audit-Fix 10.12.40 — kein
+    # `len(future_map)/n_sel`-Vorlauf mehr):
+    assert "* _n_sub_p / _n_sel_p" not in src

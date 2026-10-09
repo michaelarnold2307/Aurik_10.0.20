@@ -39780,18 +39780,17 @@ class UnifiedRestorerV3:
                     # §ORCHESTRATOR: Pre-Phase-Audio für Streaming-DoNoHarm sichern
                     self._last_pre_phase_audio = current_audio.copy()
                     # §PROGRESS: Emit on phase activation (parallel submission) — real-time ML plugin detection
+                    # §D-K3-69 (Audit-Fix 10.12.40): dauergewichtete Spanne statt Zähl-Fraktion —
+                    # `len(future_map)/n_sel` ließ den Balken bei frühen Kurzphasen vorlaufen
+                    # (§G9 copilot-instructions.md: eine Rechnung je Anzeige, identisch zur
+                    # sequenziellen Pre-Emission).
                     if progress_callback is not None:
                         try:
-                            _n_sub_p = len(future_map)
-                            _n_sel_p = max(len(selected_phases), 1)
-                            _pct_p = _phase_progress_start + int(
-                                (_phase_progress_end - _phase_progress_start) * _n_sub_p / _n_sel_p
-                            )
                             _lbl_p = (self.phase_metadata.get(phase_id) or {}).get("name") or phase_id.replace(
                                 "phase_", ""
                             ).replace("_", " ").title().lstrip("0123456789 ")
                             progress_callback(
-                                _pct_p,
+                                _hb_pct_start_p,
                                 f"{_lbl_p} [{phase_id}]",
                                 0.0,
                             )

@@ -1,4 +1,13 @@
-# Changelog — Aurik 10.12.39
+# Changelog — Aurik 10.12.40
+
+## 10.12.40 (2026-10-09)
+
+### Audit-Runde 2: Parallel-Pre-Emission dauergewichtet (A6-Fix)
+
+- **Befund (Audit der 10.12.36-Verdrahtung):** Die „phase activation"-Emission des Parallel-Pfads nutzte als EINZIGE verbliebene Stelle die alte Zähl-Fraktion (`len(future_map)/n_sel`) — bei frühen Kurzphasen konnte der Balken vorlaufen (die Monotonie-Klammer fängt Rücksprünge, nicht Vorlauf). Alle anderen Emissionen (4 Abschlüsse + 2 Heartbeat-Spannen + sequenzielle Pre-Emission) sind dauergewichtet.
+- **Fix:** Parallel-Pre-Emission nutzt jetzt `_hb_pct_start_p` (dauergewichtete Spanne; §G9 copilot-instructions.md — eine Rechnung je Anzeige).
+- **Pin:** `test_phase_progress_weights.py` verbietet das `* _n_sub_p / _n_sel_p`-Muster.
+- **Audit-Befund A5 (dokumentiert, kein Code):** Die `modern_window.py`-Pins sind bewusst Struktur-Greps (Qt headless); die Wirkungs-Lücke (Offscreen-GUI-Test mit echten Callback-Sequenzen) bleibt als Empfehlung offen.
 
 ## 10.12.39 (2026-10-09)
 
