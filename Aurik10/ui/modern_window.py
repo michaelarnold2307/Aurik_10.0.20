@@ -2890,22 +2890,24 @@ class BatchProcessingThread(QThread):
                         _res_cnt_live = _def_prog.get("resolved_counts") if isinstance(_def_prog, dict) else None
                         if _res_cnt_live:
                             try:
-                                from Aurik10.ui.hearing_gates_summary import apply_resolved_event_counts as _arec
-
-                                _init_evt = getattr(self, "_defect_initial_event_counts", {}) or {}
-                                if _init_evt:
-                                    _rem_evt_exact = _arec(_init_evt, _res_cnt_live)
-                                    self._defect_remaining_event_counts = _rem_evt_exact
-                                    _rem_sum = int(sum(_rem_evt_exact.values()))
-                                    _tot_sum = int(sum(int(v) for v in _init_evt.values()))
-                                    _def_state = dict(getattr(self, "_defect_progress_state", {}) or {})
-                                    _def_state["total"] = _tot_sum
-                                    _def_state["remaining"] = _rem_sum
-                                    _def_state["resolved"] = max(0, _tot_sum - _rem_sum)
-                                    _def_state["resolved_pct"] = int(
-                                        round(100.0 * (_tot_sum - _rem_sum) / max(1, _tot_sum))
-                                    )
-                                    self._defect_progress_state = _def_state
+                                # §WP-GUI-2026-10-09: exakte Engine-Zählung ins kanonische
+                                # Modell (§v10.802 + §G9 copilot-instructions.md) — kein
+                                # zweiter Subtraktionsweg mehr.
+                                _model_live = getattr(self, "_defect_progress_model", None)
+                                if _model_live is not None:
+                                    _model_live.apply_exact(_res_cnt_live)
+                                    if _model_live.has_initial():
+                                        self._defect_initial_event_counts = _model_live.initial_counts
+                                        self._defect_remaining_event_counts = _model_live.remaining_counts()
+                                        _snap_live = _model_live.snapshot()
+                                        _def_state = dict(getattr(self, "_defect_progress_state", {}) or {})
+                                        _def_state.update(
+                                            total=_snap_live["total"],
+                                            remaining=_snap_live["remaining"],
+                                            resolved=_snap_live["resolved"],
+                                            resolved_pct=_snap_live["resolved_pct"],
+                                        )
+                                        self._defect_progress_state = _def_state
                             except Exception:
                                 logger.debug("Defekt-Zähl-Subtraktion fehlgeschlagen", exc_info=True)
                                 pass
@@ -2963,22 +2965,10 @@ class BatchProcessingThread(QThread):
                                     self.chirurgie_label.setVisible(True)
                                 except Exception:
                                     logger.debug("Stiller optionaler Ausnahmefall ignoriert", exc_info=True)
-                                # §v10.702 G12: Per-Defekt-Countdown aus Chirurgie-Fortschritt
-                                # Verteile globale Resolution proportional auf alle Defekt-Typen
-                                try:
-                                    _ratio = self._chirurgie_done / max(1, self._chirurgie_total)
-                                    _init_counts = getattr(self, "_defect_initial_event_counts", {}) or {}
-                                    _rem_counts = getattr(self, "_defect_remaining_event_counts", {}) or {}
-                                    _updated = False
-                                    for _dk, _dt in _init_counts.items():
-                                        _rem = max(0, int(_dt * (1.0 - _ratio)))
-                                        if _rem != _rem_counts.get(_dk, _dt):
-                                            _rem_counts[_dk] = _rem
-                                            _updated = True
-                                    if _updated:
-                                        self._defect_remaining_event_counts = _rem_counts
-                                except Exception:
-                                    logger.debug("Stiller optionaler Ausnahmefall ignoriert", exc_info=True)
+                                # §WP-GUI-2026-10-09: Der Chirurgie-Live-Countdown hat sein
+                                # EIGENES Label („X/Y Defekte repariert") — er speist den
+                                # Haupt-Defektcounter NICHT mehr (divergente Totale waren
+                                # eine der Divergenz-Quellen der Tiefenanalyse 2026-10-09).
                         return
                     if msg.startswith("__pid_live_hint__:"):
                         _payload = msg.split(":", 1)[1]
@@ -7725,6 +7715,17 @@ class WaveformWidget(QWidget):
         n_resolved = sum(len(v) for v in self._resolved_locations.values())
         n_repaired = sum(len(v) for v in self._repair_history.values())
         _wf_status = self.defects.get("status", "detected") if self.defects else "detected"
+        # §WP-GUI-2026-10-09: Kanonischer Zählstand aus EINER Quelle
+        # (§G9 copilot-instructions.md) — Marker-Zählung nur noch Fallback.
+        _prog_snap = getattr(self, "_live_progress_snapshot", None)
+        if (
+            isinstance(_prog_snap, dict)
+            and int(_prog_snap.get("total", 0) or 0) > 0
+            and _wf_status in ("correcting", "completed", "blocked")
+        ):
+            n_active = int(_prog_snap.get("remaining", n_active) or 0)
+            n_resolved = int(_prog_snap.get("resolved", n_resolved) or 0)
+            n_repaired = n_resolved
         # Badge is shown only while correcting or after completion — never in
         # "detected" state (before magic-button press), as the defect panel
         # already shows all info and the badge would needlessly clutter the waveform.
@@ -12667,6 +12668,9 @@ class ModernMainWindow(QMainWindow):
         self._defect_initial_scores: dict[str, Any] = {}
         self._defect_initial_event_counts: dict[str, int] = {}
         self._defect_remaining_event_counts: dict[str, int] = {}
+        from Aurik10.ui.defect_progress_model import DefectProgressModel as _DPM0
+
+        self._defect_progress_model: _DPM0 = _DPM0()
         self._defect_anim_target: dict[str, Any] = {}
         self._defect_anim_frame: int = 0
         self._defect_anim_timer = None
@@ -14945,13 +14949,21 @@ class ModernMainWindow(QMainWindow):
             self._process_timeline_label.setText("")
             self._process_timeline_label.setVisible(False)
 
-        # Linkes Live-Feld: wenn echte Laufzeit-Hinweise vorhanden sind, diese priorisieren.
+        # Linkes Live-Feld: EINE Schreiber-Regel (§WP-GUI-2026-10-09)
+        # (§G9 copilot-instructions.md) — während die kanonische Zählung läuft,
+        # zeigt das Label NUR den Countdown; die Namen der aktiv reparierten
+        # Typen wandern in den Tooltip (vorher überschrieb jeder Phase-Hinweis
+        # den Zähler und ließ ihn „springen").
+        _prog_total_live = int((getattr(self, "_defect_progress_state", {}) or {}).get("total", 0) or 0)
         if _repair_names and hasattr(self, "defect_count_live_label") and self.defect_count_live_label is not None:
-            self.defect_count_live_label.setText(f"🔧 {_repair_names}")
-            self.defect_count_live_label.setStyleSheet(
-                "color: #7BA8EE; font-size: 8pt; background: transparent; font-weight: bold; padding: 0 2px;"
-            )
-            self.defect_count_live_label.setVisible(True)
+            if _prog_total_live > 0:
+                self.defect_count_live_label.setToolTip(f"🔧 {_repair_names}")
+            else:
+                self.defect_count_live_label.setText(f"🔧 {_repair_names}")
+                self.defect_count_live_label.setStyleSheet(
+                    "color: #7BA8EE; font-size: 8pt; background: transparent; font-weight: bold; padding: 0 2px;"
+                )
+                self.defect_count_live_label.setVisible(True)
         elif (
             _pid_goal_risk >= 0.60
             and hasattr(self, "defect_count_live_label")
@@ -19885,6 +19897,12 @@ class ModernMainWindow(QMainWindow):
         # gemeldeten Meilensteine des vorherigen erben.
         self._narrative_index = 0
         self._narrative_milestones = set()
+        # §WP-GUI-2026-10-09: Eine Zählquelle für alle Defektanzeigen
+        # (§G9 copilot-instructions.md) — pro Song neu aufgebaut.
+        from Aurik10.ui.defect_progress_model import DefectProgressModel as _DPM
+
+        self._defect_progress_model = _DPM()
+        self._defect_progress_model.set_initial(getattr(self, "_defect_initial_event_counts", {}) or {})
         self._defect_progress_state = {
             # §v10.704 B24: Initiale Defekt-Counts aus Pre-Analysis übernehmen,
             # nicht auf 0 initialisieren. Die Chips zeigen dann sofort den
@@ -20451,9 +20469,9 @@ class ModernMainWindow(QMainWindow):
         if hasattr(self, "waveform_widget_rest_ab"):
             self.waveform_widget_rest_ab.set_stage_progress(_phase_frac)
 
-        # ── 6. Echtzeit-Defektzähler ──────────────────────────────────
+        # ── 6. Echtzeit-Defektzähler (EINE Quelle, §G9 copilot-instructions.md) ──
         if hasattr(self, "defect_count_live_label") and _def_total > 0:
-            self.defect_count_live_label.setText(f"{_def_resolved}/{_def_total} behoben")
+            self.defect_count_live_label.setText(f"🔧 {_def_remaining} offen · {_def_resolved} behoben ({_def_pct}%)")
             self.defect_count_live_label.setVisible(True)
 
         # §v10.305: Periodisches Refresh der Defekt-Counts (jedes 4. Heartbeat-Tick, ~800ms)
@@ -24205,15 +24223,15 @@ class ModernMainWindow(QMainWindow):
             self._defect_initial_scores = {
                 k: v for k, v in defects.items() if isinstance(v, (int, float)) and k not in ("status", "_no_anim")
             }
-            # §v10.704 B24+: Sofort initiale Event-Counts aus Scores ableiten,
-            # damit Chips beim ersten Rendern korrekte Zahlen zeigen (nicht 0).
-            if not getattr(self, "_defect_initial_event_counts", None):
-                _init_evt: dict[str, int] = {}
-                for k, v in defects.items():
-                    if isinstance(v, (int, float)) and v > 0.01 and k not in ("status", "_no_anim"):
-                        _init_evt[k] = max(1, int(v * 100))
-                self._defect_initial_event_counts = _init_evt
-                self._defect_remaining_event_counts = dict(_init_evt)
+            # §WP-GUI-2026-10-09: Neuer Scan = neues Zähluniversum
+            # (§V8 copilot-instructions.md). Die falsche Severity×100-Heuristik wurde
+            # entfernt — die echten Ereigniszählungen kommen weiter unten aus dem
+            # Payload (`set_initial`), sonst zählt der Typ als ein Eintrag.
+            from Aurik10.ui.defect_progress_model import DefectProgressModel as _DPM1
+
+            self._defect_progress_model = _DPM1()
+            self._defect_initial_event_counts = {}
+            self._defect_remaining_event_counts = {}
         if _status == "detected" and not defects.get("_no_anim"):
             self._defect_anim_target = dict(defects)
             self._defect_anim_frame = 0
@@ -24318,6 +24336,10 @@ class ModernMainWindow(QMainWindow):
                 _aliases = {
                     "pops": ("clipping",),
                     "clipping": ("pops",),
+                    "noise": ("noise_level",),
+                    "noise_level": ("noise",),
+                    "dropout": ("dropouts",),
+                    "dropouts": ("dropout",),
                 }
                 _init_counts = getattr(self, "_defect_initial_event_counts", {}) or {}
                 _rem_counts = getattr(self, "_defect_remaining_event_counts", {}) or {}
@@ -24402,7 +24424,12 @@ class ModernMainWindow(QMainWindow):
                     _txt = _cur_txt
                 return f' <span style="color:#8FA6C8;">{_txt}</span>'
 
+            # §WP-GUI-2026-10-09: Basis-Universum-Fallback (detektierte Typen) — muss VOR
+            # dem Zählaufbau definiert sein (F821-Befund 2026-10-09).
+            _initial_sc = getattr(self, "_defect_initial_scores", {}) or {}
             if _status == "detected":
+                # §WP-GUI-2026-10-09: Ereignisse wo zählbar, sonst zählt der Typ als
+                # ein Eintrag (ehrliche Zählwährung, §G9 copilot-instructions.md).
                 _counts_init: dict[str, int] = {}
                 for _k in label_map:
                     _cnt = _event_count_from_payload(_k, defects)
@@ -24410,16 +24437,20 @@ class ModernMainWindow(QMainWindow):
                         _cnt = _event_count_from_payload("noise_level", defects)
                     elif _cnt <= 0 and _k == "noise_level":
                         _cnt = _event_count_from_payload("noise", defects)
+                    if _cnt <= 0:
+                        _v_univ = _initial_sc.get(_k)
+                        if isinstance(_v_univ, (int, float)) and float(_v_univ) > 0.01:
+                            _cnt = 1
                     if _cnt > 0:
                         _counts_init[_k] = _cnt
-                self._defect_initial_event_counts = dict(_counts_init)
-                self._defect_remaining_event_counts = dict(_counts_init)
+                self._defect_progress_model.set_initial(_counts_init)
+                self._defect_initial_event_counts = self._defect_progress_model.initial_counts
+                self._defect_remaining_event_counts = self._defect_progress_model.remaining_counts()
 
-            # Echte (nicht geschätzte) Restzähler aus lokalisierbaren Ereignissen:
-            # remaining = initial_events - bereits als behoben protokollierte Events.
-            _init_evt = dict(getattr(self, "_defect_initial_event_counts", {}) or {})
-            _initial_sc = getattr(self, "_defect_initial_scores", {}) or {}
-            if _init_evt:
+            # §WP-GUI-2026-10-09: Marker-Evidenz aus dem Wellenform-Widget als
+            # monotone Untergrenze ins Modell (keine Score-Ratio-Schätzung mehr).
+            _model_upd = getattr(self, "_defect_progress_model", None)
+            if _model_upd is not None and _model_upd.has_initial() and _status != "detected":
                 _resolved_by_type: dict[str, int] = {}
                 _pending_by_type: dict[str, int] = {}
                 _ww = getattr(self, "waveform_widget", None)
@@ -24439,39 +24470,13 @@ class ModernMainWindow(QMainWindow):
                         for _k, _entries in _pending.items():
                             if isinstance(_entries, (list, tuple)):
                                 _pending_by_type[str(_k)] = len(_entries)
-
-                _remaining_real: dict[str, int] = {}
-                for _k, _total in _init_evt.items():
-                    _resolved = int(_resolved_by_type.get(_k, 0) or 0)
-                    _remaining = max(0, int(_total) - _resolved)
-                    # Sicherheitsnetz gegen Tick-Race: pending darf remaining nicht unterschreiten.
-                    _remaining = max(_remaining, int(_pending_by_type.get(_k, 0) or 0))
-                    if _resolved <= 0 and _status in ("correcting", "completed", "blocked"):
-                        _score_aliases = {
-                            "noise": ("noise_level",),
-                            "noise_level": ("noise",),
-                            "pops": ("clipping",),
-                            "clipping": ("pops",),
-                            "dropout": ("dropouts", "DROPOUTS", "gap", "gaps", "tape_dropout"),
-                        }
-                        _score_key = next(
-                            (
-                                _lookup
-                                for _lookup in (_k, *_score_aliases.get(_k, ()))
-                                if isinstance(_initial_sc.get(_lookup), (int, float))
-                                and isinstance(defects.get(_lookup), (int, float))
-                            ),
-                            "",
-                        )
-                        if _score_key:
-                            _v_init = float(_initial_sc.get(_score_key, 0.0) or 0.0)
-                            _v_cur = float(defects.get(_score_key, _v_init) or 0.0)
-                            if _v_init > 1e-9 and math.isfinite(_v_cur):
-                                _score_ratio = max(0.0, min(1.0, _v_cur / _v_init))
-                                _phase_estimated_remaining = int(math.ceil(float(_total) * _score_ratio))
-                                _remaining = min(_remaining, max(0, _phase_estimated_remaining))
-                    _remaining_real[_k] = _remaining
-                self._defect_remaining_event_counts = _remaining_real
+                # Sicherheitsnetz gegen Tick-Race: noch nicht final entfernte Marker
+                # zählen nicht als behoben (Animation läuft).
+                for _k, _p in _pending_by_type.items():
+                    if _p > 0 and _k in _resolved_by_type:
+                        _resolved_by_type[_k] = max(0, int(_resolved_by_type[_k]) - int(_p))
+                _model_upd.apply_marker_resolved(_resolved_by_type)
+                self._defect_remaining_event_counts = _model_upd.remaining_counts()
             # Nur echte Defektfelder auswerten ("status"-Key ausschliessen)
             # When status=="detected" the animation replaced all scores with 0.001.
             # Use the preserved original scores for the chip panel so that
@@ -24515,28 +24520,17 @@ class ModernMainWindow(QMainWindow):
                             _remaining += 1
                     _resolved = max(0, len(_tracked_keys) - _remaining)
 
-                _event_init = dict(getattr(self, "_defect_initial_event_counts", {}) or {})
-                _event_remaining = dict(getattr(self, "_defect_remaining_event_counts", {}) or {})
-
-                def _sum_event_counts_dedup(_counts: dict[str, Any], _keys: object) -> int:
-                    _alias_groups = (("pops", "clipping"), ("noise", "noise_level"))
-                    _seen: set[str] = set()
-                    _total_count = 0
-                    for _key_raw in _keys:
-                        _key = str(_key_raw)
-                        if _key in _seen:
-                            continue
-                        _group = next((_grp for _grp in _alias_groups if _key in _grp), (_key,))
-                        _seen.update(_group)
-                        _total_count += max(max(0, int(_counts.get(_member, 0) or 0)) for _member in _group)
-                    return int(_total_count)
-
-                _event_total = _sum_event_counts_dedup(_event_init, _event_init.keys()) if _event_init else 0
-                _event_open = _sum_event_counts_dedup(_event_remaining, _event_init.keys()) if _event_total > 0 else 0
-                if _event_total > 0:
-                    _total_for_state = _event_total
-                    _remaining_for_state = int(np.clip(_event_open, 0, _event_total))
-                    _resolved_for_state = max(0, _total_for_state - _remaining_for_state)
+                # §WP-GUI-2026-10-09: Anzeigezustand aus dem KANONISCHEN Modell
+                # (eine Quelle, §G9 copilot-instructions.md) — kein Ereignis-Summen-
+                # Sonderweg mehr, keine proportionale Überschreibung.
+                _model_snap = None
+                _model_state = getattr(self, "_defect_progress_model", None)
+                if _model_state is not None and _model_state.has_initial():
+                    _model_snap = _model_state.snapshot()
+                if _model_snap and _model_snap["total"] > 0:
+                    _total_for_state = int(_model_snap["total"])
+                    _remaining_for_state = int(_model_snap["remaining"])
+                    _resolved_for_state = int(_model_snap["resolved"])
                 else:
                     _total_for_state = len(_tracked_keys)
                     _remaining_for_state = _remaining
@@ -24552,18 +24546,6 @@ class ModernMainWindow(QMainWindow):
                     "reduced_pct": _reduced_pct,
                     "status": _status,
                 }
-                # §v10.704 B24+: Chips in Echtzeit aktualisieren —
-                # synchronisiere _defect_remaining_event_counts mit dem aktuellen Stand.
-                _rem_evt = getattr(self, "_defect_remaining_event_counts", {}) or {}
-                _init_evt_sync = getattr(self, "_defect_initial_event_counts", {}) or {}
-                if _init_evt_sync and _remaining_for_state < _total_for_state:
-                    # Propagiere Reduktion proportional auf alle Event-Counts
-                    _ratio = _remaining_for_state / max(1, _total_for_state)
-                    for _k in _init_evt_sync:
-                        _init_val = _init_evt_sync.get(_k, 0)
-                        if _init_val > 0:
-                            _rem_evt[_k] = max(0, int(_init_val * _ratio))
-                    self._defect_remaining_event_counts = _rem_evt
             else:
                 self._defect_progress_state = {
                     "total": 0,
@@ -24572,6 +24554,16 @@ class ModernMainWindow(QMainWindow):
                     "resolved_pct": 0,
                     "reduced_pct": 0,
                 }
+
+            # §WP-GUI-2026-10-09: Badge/Wellenform lesen denselben kanonischen
+            # Zählstand (§G9 copilot-instructions.md) — kein zweiter Zählweg.
+            try:
+                if hasattr(self, "waveform_widget"):
+                    self.waveform_widget._live_progress_snapshot = dict(
+                        getattr(self, "_defect_progress_state", {}) or {}
+                    )
+            except Exception:
+                logger.debug("Waveform-Snapshot-Übergabe fehlgeschlagen", exc_info=True)
 
             _thread_state = getattr(getattr(self, "batch_thread", None), "_last_phase_state", None)
             _live_phase_id = ""
@@ -25104,7 +25096,7 @@ class ModernMainWindow(QMainWindow):
             _resolved_pct = int(_def_state.get("resolved_pct", 0) or 0)
             if _total_def > 0 and _done_def > 0:
                 self.defect_count_live_label.setText(
-                    f"🔧 {_remaining_def} offen · {_done_def} erledigt ({_resolved_pct}%)"
+                    f"🔧 {_remaining_def} offen · {_done_def} behoben ({_resolved_pct}%)"
                 )
                 self.defect_count_live_label.setStyleSheet("color: #B8A068; font-size: 10pt; font-weight: bold;")
                 self.defect_count_live_label.setVisible(True)

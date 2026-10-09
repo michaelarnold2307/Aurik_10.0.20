@@ -1,4 +1,12 @@
-# Changelog — Aurik 10.12.33
+# Changelog — Aurik 10.12.34
+
+## 10.12.34 (2026-10-09)
+
+### GUI-Tiefenanalyse: Defekt-Rückwärtszählung kanonisiert + Fortschritts-Ursache als D-K3-69 registriert
+
+- **Defekt-Zählung (§G9 copilot-instructions.md, eine Quelle):** Vier konkurrierende Zählwährungen (Typen, Severity×100-Heuristik, Scan-Ereignisse, Engine-Behebungen) und drei proportionale Überschreiber (Score-Ratio, Chirurgie-Proporz, Prozessanteil) ersetzt durch das kanonische Modell `Aurik10/ui/defect_progress_model.py`: Initial-Universum (Ereignisse wo zählbar, sonst Typ=1; nie schrumpfend), exakte Engine-Zählung (§v10.802), Marker-Untergrenzen (mit Pending-Schutz), Alias-Dedupe (pops~clipping, noise~noise_level, dropout~dropouts); Live-Label/„Schadensbilanz“/Chips/Badge lesen denselben Zustand; Repair-Namen wandern in den Tooltip (kein Überschreiben des Countdowns pro Phasen-Hinweis).
+- **Tests:** 15 neue grün (`tests/unit/test_defect_progress_model.py` 10, `tests/unit/test_gui_progress_single_source.py` 5) — Monotonie, Alias-Dedupe, Invarianz `remaining == Typsumme`, entfernte Alt-Währungen gepinnt.
+- **Fortschrittsanzeige (Tiefenanalyse):** `pct` = Zähl-Fraktion abgeschlossener Phasen im Band 20–85 (keine Dauer-Gewichtung; Emission an `unified_restorer_v3.py` Z. 39806/41674/42263/42493); gemessene Phasen-Imbalance 57:5 (≈ 11:1, Referenzlauf 10.12.25) erklärt „Sprint bei Kurzphasen, Einfrieren bei Langphasen“. Dauergewichtung braucht ein verifiziertes Denker-Kostenmodell — KEINE Fantasiegewichte (§V7 copilot-instructions.md) → **registriert als D-K3-69** mit Fix- und Validierungsplan.
 
 ## 10.12.33 (2026-10-09)
 
