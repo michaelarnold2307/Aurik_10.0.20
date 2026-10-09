@@ -221,14 +221,35 @@ def kalman_smooth_warp(
     # §G190 (GEBOTE.md) Laufzeit (2026-10-09): Forward-Rekursion über den
     # JIT-Kernel (Modulkopf) — identische Operationen wie die frühere
     # Inline-Schleife; ohne numba unverändert als Python-Skalarschleife.
-    _kalman_forward_impl(traj, dt, float(q), _r, x0, x1, h11, h12, h22)
+    # Resilienz (Audit-Finding 2026-10-09, Fix 10.12.39): numba-Kern-Defekte
+    # zur LAUFZEIT (Projektbefund „ROCm-Venv-numba-Defekt" — Muster
+    # backend/core/dsp/pghi.py) fängt der ImportError-Zweig NICHT; hier greift
+    # dann derselbe bit-identische Python-Skalarpfad, mit Warnung nach
+    # §V6 copilot-instructions.md (Ausweis im Log).
+    try:
+        _kalman_forward_impl(traj, dt, float(q), _r, x0, x1, h11, h12, h22)
+    except Exception as _jit_fwd_exc:  # z. B. numba-Typinferenz-/Backend-Defekt
+        logger.warning(
+            "Kalman: numba-Kern (vorwärts) zur Laufzeit gescheitert (%s) — weiche auf den "
+            "bit-identischen Python-Skalarpfad aus (§V6 copilot-instructions.md).",
+            _jit_fwd_exc,
+        )
+        _kalman_forward_scalar(traj, dt, float(q), _r, x0, x1, h11, h12, h22)
 
     # RTS-Smoothing-Rückwärtsdurchlauf (C = P F^T Pp^-1, 2×2 in geschlossener Form).
     # §G190 (GEBOTE.md) Laufzeit (2026-10-09): Rückwärts-Rekursion über den
-    # JIT-Kernel (Modulkopf).
+    # JIT-Kernel (Modulkopf); Laufzeit-Resilienz wie beim Vorwärts-Pass.
     xs0 = x0.copy()
     xs1 = x1.copy()
-    _kalman_rts_impl(dt, float(q), x0, x1, h11, h12, h22, xs0, xs1)
+    try:
+        _kalman_rts_impl(dt, float(q), x0, x1, h11, h12, h22, xs0, xs1)
+    except Exception as _jit_rts_exc:  # z. B. numba-Typinferenz-/Backend-Defekt
+        logger.warning(
+            "Kalman: numba-Kern (rückwärts) zur Laufzeit gescheitert (%s) — weiche auf den "
+            "bit-identischen Python-Skalarpfad aus (§V6 copilot-instructions.md).",
+            _jit_rts_exc,
+        )
+        _kalman_rts_backward_scalar(dt, float(q), x0, x1, h11, h12, h22, xs0, xs1)
 
     if drift_model:
         # Drift-Modell (Cassette-Hub-Wow): langsame und driftende Komponenten

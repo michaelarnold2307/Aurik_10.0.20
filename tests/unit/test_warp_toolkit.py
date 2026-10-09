@@ -228,3 +228,26 @@ def test_kalman_jit_matches_python_fallback() -> None:
     out_jit2 = np.asarray(kalman_smooth_warp(trj2.copy(), times=tt, q=1e-6, r=1e-4))
     out_py2 = _python_fallback(trj2.copy(), times=tt, q=1e-6, r=1e-4)
     assert np.array_equal(out_jit2, out_py2), "variables dt: bit-identisch erwartet"
+
+
+def test_kalman_runtime_jit_failure_falls_back_bit_identical(monkeypatch) -> None:
+    """Audit-Finding 2026-10-09 (Fix 10.12.39): Ein LAUFZEIT-Defekt des numba-Kerns
+    (Projektmuster „ROCm-Venv-numba-Defekt", vgl. backend/core/dsp/pghi.py) darf die
+    Phase nicht abbrechen — der bit-identische Python-Skalarpfad übernimmt, mit
+    §V6 copilot-instructions.md-Warnung.
+    """
+    if not _wk._HAS_NUMBA:
+        pytest.skip("numba nicht installiert — Fallback ist triviale Identität")
+    rng = np.random.default_rng(23)
+    n = 8000
+    trj = 1.0 + 3e-4 * np.sin(2 * np.pi * 1.7 * np.arange(n) / 48000.0) + 2e-5 * rng.standard_normal(n)
+    ref = np.asarray(kalman_smooth_warp(trj.copy(), q=1e-8, r=1e-5))
+
+    class _Boom:
+        def __call__(self, *_a, **_k):
+            raise RuntimeError("simulierter numba-Laufzeitdefekt (Test)")
+
+    monkeypatch.setattr(_wk, "_kalman_forward_impl", _Boom())
+    monkeypatch.setattr(_wk, "_kalman_rts_impl", _Boom())
+    got = np.asarray(kalman_smooth_warp(trj.copy(), q=1e-8, r=1e-5))
+    assert np.array_equal(ref, got), "Python-Fallback muss bit-identisch zum JIT-Pfad sein"

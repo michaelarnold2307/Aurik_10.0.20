@@ -115,3 +115,49 @@ def test_subband_scan_uses_batched_solve_with_lstsq_fallback_only() -> None:
     assert src.count("np.linalg.lstsq") == 1, "lstsq darf nur noch im Singular-Ausweichpfad stehen"
     assert "np.linalg.solve(_N, _rhs)" in src
     assert 'np.einsum("nc,bn,nd->bcd"' in src
+
+
+def test_flutter_singular_fallback_matches_batched(monkeypatch) -> None:
+    """Audit-Finding 2026-10-09 (Fix 10.12.39): Der bisher NIE ausgeführte lstsq-Ausweichpfad
+    des Flutter-Fits ist wirkungsgeprüft — er liefert bit-identische Ergebnisse (simuliert
+    durch werfendes np.linalg.solve).
+    """
+    dev, val = _synthetic_flutter_stack()
+    ph = WowFlutterFix()
+    ref_vp, ref_conf = ph._flutter_track_from_stacks(dev.copy(), val.copy(), SR)
+
+    def _boom(_nrm, _rhs, *_a, **_k):
+        raise np.linalg.LinAlgError("simuliert singuläre Normalengleichung (Test)")
+
+    monkeypatch.setattr(np.linalg, "solve", _boom)
+    got_vp, got_conf = ph._flutter_track_from_stacks(dev.copy(), val.copy(), SR)
+    assert np.array_equal(ref_vp, got_vp), "Ausweichpfad muss bit-identisch zum Batch-Solve sein"
+    assert np.array_equal(ref_conf, got_conf)
+
+
+def test_subband_singular_fallback_matches_batched(monkeypatch) -> None:
+    """Audit-Finding 2026-10-09 (Fix 10.12.39): Der Subband-Ausweichpfad liefert denselben Peak.
+
+    Ehrlich benannte Grenze: Der lstsq-Ausweichpfad ist NICHT bit-gleich zum
+    Batch-Solve (3×3-Inversions-Reihenfolge LAPACK-LU vs. lstsq-SVD) — gemessen
+    Δ = 3,4e-14 Hz auf der Parabel-Verfeinerung (≪ 0,002-Hz-Feinraster, keine
+    Hörrelevanz). Der Pin fordert < 1e-12 Hz.
+    """
+    rng = np.random.default_rng(41)
+    sr = 48000
+    n = 96000
+    b = 41
+    t = np.arange(n) / sr
+    dev = rng.standard_normal((b, n)) * 3.0
+    for k in range(10):
+        dev[k] = 6.0 * np.sin(2.0 * np.pi * 1.1 * t)
+    val = np.ones((b, n), dtype=np.float64)
+    ref = WowFlutterFix._scan_subband_modulation_frequency(dev.copy(), val.copy(), sr)
+
+    def _boom(_nrm, _rhs, *_a, **_k):
+        raise np.linalg.LinAlgError("simuliert singulär (Test)")
+
+    monkeypatch.setattr(np.linalg, "solve", _boom)
+    got = WowFlutterFix._scan_subband_modulation_frequency(dev.copy(), val.copy(), sr)
+    assert ref is not None and got is not None
+    assert abs(ref - got) < 1e-12, f"Subband-Ausweichpfad weicht ab: Δ = {abs(ref - got):.3e} Hz (> 1e-12)"

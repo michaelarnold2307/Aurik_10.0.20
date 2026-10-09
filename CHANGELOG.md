@@ -1,4 +1,13 @@
-# Changelog — Aurik 10.12.38
+# Changelog — Aurik 10.12.39
+
+## 10.12.39 (2026-10-09)
+
+### Audit-Folge zu 10.12.34–38: JIT-Laufzeit-Resilienz + Ausweichpfad-Wirkungstests
+
+- **Finding A1 (Resilienz, behoben):** Der numba-JIT-Pfad der Kalman-Rekursion (10.12.37) fing nur `ImportError` ab — ein **Laufzeit**-Defekt des Kerns (Projektmuster „ROCm-Venv-numba-Defekt", vgl. `backend/core/dsp/pghi.py`: dort expliziter Laufzeit-Fallback) hätte Phase 12 abgebrochen statt auszuweichen. Fix: try/except um beide Kernel-Aufrufe + einmalige `logger.warning` (§V6 copilot-instructions.md) + bit-identischer Python-Skalarpfad (verifiziert: Test simuliert den Defekt und prüft Bit-Gleichheit).
+- **Finding A2 (Wirkungsprüfung, geschlossen):** Die Singular-Ausweichpfade **beider** gebündelter Fit-Funktionen waren nie ausgeführt (Coverage-Lücke der D-K3-34/35-Klasse: „verdrahtet, aber ungeprüft"). Neu: Tests lassen `np.linalg.solve` künstlich werfen — Flutter-Ausweichpfad **bit-identisch**; Subband-Ausweichpfad Δ = **3,4e-14 Hz** auf der Parabel-Verfeinerung (Inversions-Reihenfolge LAPACK-LU vs. lstsq-SVD; ≪ 0,002-Hz-Feinraster, keine Hörrelevanz) — ehrlich benannte Schranke 1e-12 im Test.
+- **Audit A4 (Chunked-Progress, geprüft, kein Fix):** Die Chunk-Skalierung (`_make_chunk_pc`: `mapped = base + pct×(ceiling−base)/100`) und die GUI-Monotonie (10.12.35) decken die neuen dauergewichteten Emissionspfade ab; innere Bänder unverändert (20–85). Beobachtung: Test-Pin für „Chunk-Progress × Dauergewichtung" fehlt (Empfehlung, kein Blocker).
+- **Tests:** +3 (Kalman-Laufzeit-Fallback-Pin; Singular-Ausweichpfad-Tests Flutter/Subband) — 21/21 in den zwei Dateien grün.
 
 ## 10.12.38 (2026-10-09)
 
