@@ -1,4 +1,14 @@
-# Changelog — Aurik 10.12.36
+# Changelog — Aurik 10.12.37
+
+## 10.12.37 (2026-10-09)
+
+### D-K3-38 Phase-12-Teilbehebung 2: Kalman-JIT + gebündelter Flutter-Fit (Phase 12 −41,3 %)
+
+- **Kalman-JIT (§G190 GEBOTE.md):** Die §G190-Skalarfassung von `kalman_smooth_warp` (11,8 s = 33 % der Phasenzeit) läuft jetzt als numba-JIT über EXAKT denselben Quelltext (`backend/core/dsp/warp_kalman.py`: `_kalman_forward_scalar`/`_kalman_rts_backward_scalar`; `cache=True, fastmath=False, nogil=True`; ohne numba unverändert Python-Fallback, §V6 copilot-instructions.md). Messung: **bit-identisch** (max|Δ| = 0.0, konstantes UND variables dt) und **348×** (10,46 s → 0,030 s je 1,44-Mio-Sample-Trajektorie) — der Fixpunkt der Kovarianz-Rekursion liegt nach 91 Schritten, der Rest ist reine Schleifenausführung.
+- **Flutter-Fit gebündelt (Register-Kandidat D-K3-38):** `_flutter_track_from_stacks`/`_score_fast` rechnete 37 677 Einzel-lstsq-SVDs (2,63 s je 15-s-Lauf); jetzt gebündelte Normalengleichungen je Frequenz über alle Bänder (`np.linalg.solve` gestapelt + `np.einsum`; Band-Gewichte/Gates einmal statt 538×), lstsq nur noch als Singular-Fallback je Band (per-Band-isolierte skip-Semantik erhalten). A/B gegen die Vorversion (git HEAD): synthetischer 6-Hz-Flutter (22,9 cents) → virtual_pitch/conf **bit-identisch** (max|Δ| = 0.0); E2E-Audio bit-identisch; Rauschfall identisch verworfen.
+- **Messung (15-s-Vinyl-Corpus, cProfile, gleiche Methode wie Baseline):** Phase 12 **35,90 s → 21,08 s (−41,3 %)**; `kalman_smooth_warp` 11,79 → 0,89 s; `_flutter_correction_pass` 9,82 → 7,11 s. Verbleibende Kandidaten im Register benannt: `_score_at`-Subband-Scan (15 619 lstsq), hilbert-Serie (242×/3,4 s), pYIN/Hybrid (3,6 s; FCPE-A/B), Filter-/Faltungsserie (~3 s).
+- **Tests:** `tests/unit/test_phase12_flutter_batched_fit.py` (4 Tests: 6-Hz-Erkennung, Rausch-Verwerfung, Batch-Solve-Wiring, Normalengleichungs-Formelparität) + `tests/unit/test_warp_toolkit.py::test_kalman_jit_matches_python_fallback` (JIT-Verdrahtung + Bit-Parität); 34 bestehende Phase-12-Tests grün.
+- **Belege:** `docs/reports/current/2026-10-09_phase12_cprofile_nachher.json` (Baseline: `docs/reports/current/2026-10-09_phase12_cprofile.json`).
 
 ## 10.12.36 (2026-10-09)
 

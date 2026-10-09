@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 import numpy as np
+import pytest
 
+import backend.core.dsp.warp_kalman as _wk
 from backend.core.dsp.bandlimited_resampler import bandlimited_warp
 from backend.core.dsp.warp_estimator import consensus_warp, spectral_warp_estimate
 from backend.core.dsp.warp_kalman import kalman_smooth_warp
@@ -184,3 +186,45 @@ def test_kalman_is_deterministic_and_finite() -> None:
     b = np.asarray(kalman_smooth_warp(trj, q=1e-8, r=1e-5))
     assert np.array_equal(a, b)
     assert np.all(np.isfinite(a))
+
+
+@pytest.mark.skipif(not _wk._HAS_NUMBA, reason="numba nicht installiert — Fallback-Pfad ist trivially identisch")
+def test_kalman_jit_matches_python_fallback() -> None:
+    """JIT-Kernel und Python-Skalarschleife sind bit-identisch (§G5 copilot-instructions.md).
+
+    Der JIT kompiliert EXAKT dieselben Funktionen (fastmath=False → IEEE);
+    die Phase-12-Zerlegung 2026-10-09 maß **348× Speedup** (10,46 s → 0,030 s
+    je 1,44-Mio-Sample-Trajektorie, Produktionsparameter q = 1e-8, r = 1e-5)
+    ohne eine einzige Ergebnisänderung. Der Test pinnt die Verdrahtung (JIT
+    aktiv statt still inaktiv) und die Bit-Gleichheit für konstantes dt UND
+    variables dt (times-Argument).
+    """
+    assert _wk._kalman_forward_impl is not _wk._kalman_forward_scalar, (
+        "numba ist installiert, aber die JIT-Implementierung ist nicht verdrahtet"
+    )
+    fwd_jit, rts_jit = _wk._kalman_forward_impl, _wk._kalman_rts_impl
+
+    def _python_fallback(traj: np.ndarray, *, times: np.ndarray | None = None, **kw) -> np.ndarray:
+        try:
+            _wk._kalman_forward_impl = _wk._kalman_forward_scalar
+            _wk._kalman_rts_impl = _wk._kalman_rts_backward_scalar
+            return np.asarray(kalman_smooth_warp(traj, times=times, **kw))
+        finally:
+            _wk._kalman_forward_impl, _wk._kalman_rts_impl = fwd_jit, rts_jit
+
+    # Konstantes dt (Produktionsfall Phase 12: dt = 1, q = 1e-8, r = 1e-5).
+    rng = np.random.default_rng(17)
+    n = 20000
+    trj = 1.0 + 3e-4 * np.sin(2 * np.pi * 2.1 * np.arange(n) / 48000.0) + 2e-5 * rng.standard_normal(n)
+    out_jit = np.asarray(kalman_smooth_warp(trj.copy(), q=1e-8, r=1e-5))
+    out_py = _python_fallback(trj.copy(), q=1e-8, r=1e-5)
+    assert np.array_equal(out_jit, out_py), (
+        f"JIT und Python-Fallback müssen bit-identisch sein: max|Δ|={float(np.abs(out_jit - out_py).max()):.3e}"
+    )
+
+    # Variables dt (times-Argument) — zweiter Kernel-Pfad.
+    tt = np.linspace(0.0, 1.0, 5000)
+    trj2 = 1.0 + 5e-4 * np.sin(2 * np.pi * 4.0 * tt)
+    out_jit2 = np.asarray(kalman_smooth_warp(trj2.copy(), times=tt, q=1e-6, r=1e-4))
+    out_py2 = _python_fallback(trj2.copy(), times=tt, q=1e-6, r=1e-4)
+    assert np.array_equal(out_jit2, out_py2), "variables dt: bit-identisch erwartet"

@@ -12,11 +12,142 @@ Deterministisch (reine Matrix-Operationen, keine Zufallszahlen).
 from __future__ import annotations
 
 import logging
+from collections.abc import Callable
 from typing import cast
 
 import numpy as np
 
 logger = logging.getLogger(__name__)
+
+
+# ---------------------------------------------------------------------------
+# Numba-Beschleunigung der Skalar-Rekursionen (§G190 (GEBOTE.md), Muster wie
+# backend/core/dsp/pghi.py und backend/core/phase_defect_verifier.py)
+# ---------------------------------------------------------------------------
+# Befund der Phase-12-Zerlegung (2026-10-09, cProfile 15-s-Vinyl-Corpus):
+# `kalman_smooth_warp` war mit 11,8 s = 33 % der Phasenzeit der groesste
+# Einzelposten — die §G190-Skalarfassung rechnet pro Sample nur ~30 Flops,
+# aber in CPython-Interpretation (5,9 s je 720k-Sample-Trajektorie). Die
+# Kernel-Funktionen unten sind DIE EINE Logik-Quelle der Rekursion
+# (§G9 copilot-instructions.md): numba kompiliert exakt denselben Quelltext
+# (cache=True, fastmath=False → IEEE-Semantik, deterministisch —
+# §G5 copilot-instructions.md; nogil=True → blockiert nebenlaeufige
+# UI-/Monitor-Threads nicht). Ohne numba laufen unveraendert die
+# Python-Skalarschleifen als Fallback (§V6 copilot-instructions.md — gleiches Ergebnis, langsamer).
+# Keine neue Abhaengigkeit: numba ist ueber requirements/requirements_aurik.txt
+# Projektstandard.
+# ---------------------------------------------------------------------------
+try:
+    import numba as _numba  # type: ignore[import-untyped]
+
+    _HAS_NUMBA = True
+except ImportError:  # pragma: no cover - Laeufe ohne numba-Installation
+    _numba = None  # type: ignore[assignment]
+    _HAS_NUMBA = False
+    logger.info(
+        "numba nicht verfuegbar — Kalman-Rekursion laeuft als Python-Skalarschleife "
+        "(identisches Ergebnis, langsamer; §V6 copilot-instructions.md)."
+    )
+
+
+def _kalman_forward_scalar(
+    traj: np.ndarray,
+    dt: np.ndarray,
+    q: float,
+    r: float,
+    x0: np.ndarray,
+    x1: np.ndarray,
+    h11: np.ndarray,
+    h12: np.ndarray,
+    h22: np.ndarray,
+) -> None:
+    """Forward-Kalman-Rekursion (CV-Modell, Skalarform) — EINE Logik-Quelle für JIT und Fallback (§G9 copilot-instructions.md).
+
+    Füllt x0/x1 (Zustand) und h11/h12/h22 (Kovarianz) in-place ab Index 1;
+    Index 0 initialisiert der Aufrufer.
+    """
+    n_samples = traj.shape[0]
+    for k in range(1, n_samples):
+        d = dt[k]
+        _d2 = d * d
+        # F = [[1, d], [0, 1]], G = [[0.5 d²], [d]]
+        xp0 = x0[k - 1] + d * x1[k - 1]
+        xp1 = x1[k - 1]
+        # Pp = F P F^T + G G^T q
+        pp11 = h11[k - 1] + 2.0 * d * h12[k - 1] + _d2 * h22[k - 1] + 0.25 * _d2 * _d2 * q
+        pp12 = h12[k - 1] + d * h22[k - 1] + 0.5 * _d2 * d * q
+        pp22 = h22[k - 1] + _d2 * q
+        # S = H Pp H^T + R (skalar) ; K = Pp H^T / S
+        s = pp11 + r
+        k1 = pp11 / s
+        k2 = pp12 / s
+        y = traj[k] - xp0
+        x0[k] = xp0 + k1 * y
+        x1[k] = xp1 + k2 * y
+        # P = Pp - K (H Pp)
+        h11[k] = pp11 - k1 * pp11
+        h12[k] = pp12 - k1 * pp12
+        h22[k] = pp22 - k2 * pp12
+
+
+def _kalman_rts_backward_scalar(
+    dt: np.ndarray,
+    q: float,
+    x0: np.ndarray,
+    x1: np.ndarray,
+    h11: np.ndarray,
+    h12: np.ndarray,
+    h22: np.ndarray,
+    xs0: np.ndarray,
+    xs1: np.ndarray,
+) -> None:
+    """RTS-Glättung (Skalarform) — EINE Logik-Quelle für JIT und Fallback (§G9 copilot-instructions.md).
+
+    xs0/xs1 MÜSSEN als Kopie von x0/x1 initialisiert sein (Startwert der
+    Rückwärts-Rekursion); sie werden in-place überschrieben.
+    """
+    for k in range(x0.shape[0] - 2, -1, -1):
+        d = dt[k + 1]
+        _d2 = d * d
+        _q11 = 0.25 * _d2 * _d2 * q
+        _q12 = 0.5 * _d2 * d * q
+        _q22 = _d2 * q
+        _p11 = h11[k]
+        _p12 = h12[k]
+        _p22 = h22[k]
+        pp11 = _p11 + 2.0 * d * _p12 + _d2 * _p22 + _q11
+        pp12 = _p12 + d * _p22 + _q12
+        pp22 = _p22 + _q22
+        det = pp11 * pp22 - pp12 * pp12
+        if det > 0.0:
+            i11 = pp22 / det
+            i12 = -pp12 / det
+            i22 = pp11 / det
+            # (P F^T) @ inv(Pp)
+            pf11 = _p11
+            pf12 = _p11 * d + _p12
+            pf21 = _p12
+            pf22 = _p12 * d + _p22
+            c11 = pf11 * i11 + pf12 * i12
+            c12 = pf11 * i12 + pf12 * i22
+            c21 = pf21 * i11 + pf22 * i12
+            c22 = pf21 * i12 + pf22 * i22
+        else:  # degeneriertes Pp (praktisch unerreichbar) — Korrektur aussetzen
+            c11 = 0.0
+            c12 = 0.0
+            c21 = 0.0
+            c22 = 0.0
+        d0 = xs0[k + 1] - (x0[k] + d * x1[k])
+        d1 = xs1[k + 1] - x1[k]
+        xs0[k] = x0[k] + c11 * d0 + c12 * d1
+        xs1[k] = x1[k] + c21 * d0 + c22 * d1
+
+
+_kalman_forward_impl: Callable[..., None] = _kalman_forward_scalar
+_kalman_rts_impl: Callable[..., None] = _kalman_rts_backward_scalar
+if _HAS_NUMBA:
+    _kalman_forward_impl = _numba.njit(cache=True, fastmath=False, nogil=True)(_kalman_forward_scalar)
+    _kalman_rts_impl = _numba.njit(cache=True, fastmath=False, nogil=True)(_kalman_rts_backward_scalar)
 
 
 def kalman_smooth_warp(
@@ -87,63 +218,17 @@ def kalman_smooth_warp(
     h12[0] = 0.0
     h22[0] = _p_init
 
-    for k in range(1, n_samples):
-        d = dt[k]
-        _d2 = d * d
-        # F = [[1, d], [0, 1]], G = [[0.5 d²], [d]]
-        xp0 = x0[k - 1] + d * x1[k - 1]
-        xp1 = x1[k - 1]
-        # Pp = F P F^T + G G^T q
-        pp11 = h11[k - 1] + 2.0 * d * h12[k - 1] + _d2 * h22[k - 1] + 0.25 * _d2 * _d2 * q
-        pp12 = h12[k - 1] + d * h22[k - 1] + 0.5 * _d2 * d * q
-        pp22 = h22[k - 1] + _d2 * q
-        # S = H Pp H^T + R (skalar) ; K = Pp H^T / S
-        s = pp11 + _r
-        k1 = pp11 / s
-        k2 = pp12 / s
-        y = traj[k] - xp0
-        x0[k] = xp0 + k1 * y
-        x1[k] = xp1 + k2 * y
-        # P = Pp - K (H Pp)
-        h11[k] = pp11 - k1 * pp11
-        h12[k] = pp12 - k1 * pp12
-        h22[k] = pp22 - k2 * pp12
+    # §G190 (GEBOTE.md) Laufzeit (2026-10-09): Forward-Rekursion über den
+    # JIT-Kernel (Modulkopf) — identische Operationen wie die frühere
+    # Inline-Schleife; ohne numba unverändert als Python-Skalarschleife.
+    _kalman_forward_impl(traj, dt, float(q), _r, x0, x1, h11, h12, h22)
 
     # RTS-Smoothing-Rückwärtsdurchlauf (C = P F^T Pp^-1, 2×2 in geschlossener Form).
+    # §G190 (GEBOTE.md) Laufzeit (2026-10-09): Rückwärts-Rekursion über den
+    # JIT-Kernel (Modulkopf).
     xs0 = x0.copy()
     xs1 = x1.copy()
-    for k in range(n_samples - 2, -1, -1):
-        d = dt[k + 1]
-        _d2 = d * d
-        _q11 = 0.25 * _d2 * _d2 * q
-        _q12 = 0.5 * _d2 * d * q
-        _q22 = _d2 * q
-        _p11 = h11[k]
-        _p12 = h12[k]
-        _p22 = h22[k]
-        pp11 = _p11 + 2.0 * d * _p12 + _d2 * _p22 + _q11
-        pp12 = _p12 + d * _p22 + _q12
-        pp22 = _p22 + _q22
-        det = pp11 * pp22 - pp12 * pp12
-        if det > 0.0:
-            i11 = pp22 / det
-            i12 = -pp12 / det
-            i22 = pp11 / det
-            # (P F^T) @ inv(Pp)
-            pf11 = _p11
-            pf12 = _p11 * d + _p12
-            pf21 = _p12
-            pf22 = _p12 * d + _p22
-            c11 = pf11 * i11 + pf12 * i12
-            c12 = pf11 * i12 + pf12 * i22
-            c21 = pf21 * i11 + pf22 * i12
-            c22 = pf21 * i12 + pf22 * i22
-        else:  # degeneriertes Pp (praktisch unerreichbar) — Korrektur aussetzen
-            c11 = c12 = c21 = c22 = 0.0
-        d0 = xs0[k + 1] - (x0[k] + d * x1[k])
-        d1 = xs1[k + 1] - x1[k]
-        xs0[k] = x0[k] + c11 * d0 + c12 * d1
-        xs1[k] = x1[k] + c21 * d0 + c22 * d1
+    _kalman_rts_impl(dt, float(q), x0, x1, h11, h12, h22, xs0, xs1)
 
     if drift_model:
         # Drift-Modell (Cassette-Hub-Wow): langsame und driftende Komponenten

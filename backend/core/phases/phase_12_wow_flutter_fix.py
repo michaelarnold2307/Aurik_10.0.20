@@ -3246,56 +3246,88 @@ class WowFlutterFix(PhaseInterface):
         _dm_f = np.where(_cov_f > 0.5, _dm_f, 0.0)
         _t_f = np.arange(_n_f, dtype=np.float64) / 200.0
 
+        # §D-K3-38 (Perf, 2026-10-09 — Register): Gewichte und Band-Gates hängen
+        # NICHT von der Testfrequenz ab — einmal vorberechnen. Der eigentliche
+        # Band-Fit läuft dann als GEBÜNDELTE Normalengleichung je Frequenz
+        # (np.linalg.solve gestapelt über alle Bänder) statt als 37 677
+        # Einzel-lstsq-SVD-Aufrufe (gemessen: 2,63 s je 15-s-Lauf, cProfile
+        # 2026-10-09). Bewusste, dokumentierte Abweichung (§G8 copilot-instructions.md):
+        # Normalengleichungen (cond²) und vektorisierte Summenreihenfolge sind
+        # NICHT bit-exakt zur lstsq-SVD — der E2E-A/B (Audio-Differenz) und der
+        # Vertragstest test_flutter_score_fast_batched_vs_lstsq pinnen die
+        # Toleranz; die Gate-Semantik (Zeugen-Gate r² ≥ 0,10, Beating-Cap
+        # amp ≤ 120 cents, mindestens ein Zeuge) bleibt unverändert.
+        _W_all = np.clip(_cov_f, 0.0, 1.0)
+        _gate_mask = np.sum(_W_all > 0.5, axis=1) >= _n_f // 3
+        _wsum_all = np.sum(_W_all, axis=1)
+
         def _score_fast(_f: float) -> tuple[float, np.ndarray, np.ndarray, float, float]:
             _des = np.column_stack([np.sin(2.0 * np.pi * _f * _t_f), np.cos(2.0 * np.pi * _f * _t_f), np.ones(_n_f)])
-            _acc = np.zeros(2, dtype=np.float64)
-            _wsum = 0.0
-            _n_used = 0
-            _r2_sum = 0.0
-            _max_r2 = 0.0
-            for _b in range(_dm_f.shape[0]):
-                _wb = np.clip(_cov_f[_b], 0.0, 1.0)
-                if float(np.sum(_wb > 0.5)) < _n_f // 3:
-                    continue
-                _y = _dm_f[_b]
-                try:
-                    _sw = np.sqrt(_wb)
-                    _cb, *_ = np.linalg.lstsq(_des * _sw[:, None], _y * _sw, rcond=None)
-                except Exception as _fl_exc:
-                    logger.debug("Flutter-Scan: Band %d bei %.2f Hz übersprungen (%s)", _b, _f, _fl_exc)
-                    continue
-                _fit_b = _des @ _cb
-                _ssr_b = float(np.sum(_wb * (_y - _fit_b) ** 2))
-                _wmu_b = float(np.sum(_wb * _y) / (float(np.sum(_wb)) + 1e-12))
-                _sst_b = float(np.sum(_wb * (_y - _wmu_b) ** 2) + 1e-12)
-                _r2_b = float(np.clip(1.0 - _ssr_b / _sst_b, 0.0, 1.0))
-                _amp_b = float(np.hypot(_cb[0], _cb[1]))
-                # r²-Gewichtung mit Zeugen-Gate: die FM sitzt in 1–2 starken
-                # Bändern (GT-Befund 2026-09-26: 1 von 41 Zeilen trägt amp
-                # 22,9 cents, r² 0,36 — uniformer Mittel verwässerte auf 1,07
-                # cents). Bänder mit r² < 0,10 werden gar nicht akkumuliert:
-                # rauschende Großamplituden-Fits (amp bis 120 cents, r² ~0,04)
-                # trieben sonst den gewichteten Mittelwert auf 48,8 cents und
-                # gewannen die Peak-Suche gegen das echte 6-Hz-Signal
-                # (22,9 cents, r² 0,36). Gefordert wird am Ende mindestens EIN
-                # Zeuge mit r² ≥ 0,25. Beating-Artefakte (amp > 120 cents)
-                # werden verworfen.
-                if _amp_b > 120.0 or _r2_b < 0.10:
-                    continue
-                if _r2_b > _max_r2:
-                    _max_r2 = _r2_b
-                _acc += _r2_b * _cb[:2]
-                _wsum += _r2_b
-                _r2_sum += _r2_b
-                _n_used += 1
+            _idx = np.flatnonzero(_gate_mask)
+            if _idx.size == 0:
+                return 0.0, np.zeros(2), np.zeros(2), 0.0, 0.0
+            _W = _W_all[_idx]
+            _Y = _dm_f[_idx]
+            # Gewichtete Normalengleichungen je Band, gestapelt:
+            #   N[b] = des^T diag(w_b) des (3×3) ; rhs[b] = des^T (w_b ⊙ y_b).
+            _N = np.einsum("nc,bn,nd->bcd", _des, _W, _des, optimize=True)
+            _rhs = np.einsum("nc,bn,bn->bc", _des, _W, _Y, optimize=True)
+            _valid = np.ones(_idx.size, dtype=bool)
+            try:
+                _cb = np.linalg.solve(_N, _rhs)
+            except np.linalg.LinAlgError:
+                # Singuläre Normalengleichung (praktisch unerreichbar: des ist
+                # wohldefiniert) — konservativ je Band über lstsq wie zuvor,
+                # Band-Fehler bleiben pro Band isoliert (continue-Semantik).
+                logger.debug(
+                    "Flutter-Scan: Normalengleichungen singulär bei %.2f Hz — Einzelband-Ausweichlösung aktiv", _f
+                )
+                _cb = np.zeros((_idx.size, 3), dtype=np.float64)
+                _ok_fb = np.zeros(_idx.size, dtype=bool)
+                for _li in range(_idx.size):
+                    _sw = np.sqrt(_W[_li])
+                    try:
+                        _row, *_ = np.linalg.lstsq(_des * _sw[:, None], _Y[_li] * _sw, rcond=None)
+                        _cb[_li] = _row
+                        _ok_fb[_li] = True
+                    except Exception as _fl_exc:
+                        logger.debug("Flutter-Scan: Band bei %.2f Hz übersprungen (%s)", _f, _fl_exc)
+                _valid = _ok_fb
+            _fit = _cb @ _des.T
+            _res = _Y - _fit
+            _ssr = np.einsum("bn,bn->b", _W, _res * _res)
+            _Sw = _wsum_all[_idx]
+            _Sy = np.einsum("bn,bn->b", _W, _Y)
+            _wmu = _Sy / (_Sw + 1e-12)
+            _dY = _Y - _wmu[:, None]
+            _sst = np.einsum("bn,bn->b", _W, _dY * _dY) + 1e-12
+            _r2 = np.clip(1.0 - _ssr / _sst, 0.0, 1.0)
+            _amp = np.hypot(_cb[:, 0], _cb[:, 1])
+            # r²-Gewichtung mit Zeugen-Gate: die FM sitzt in 1–2 starken
+            # Bändern (GT-Befund 2026-09-26: 1 von 41 Zeilen trägt amp
+            # 22,9 cents, r² 0,36 — uniformer Mittel verwässerte auf 1,07
+            # cents). Bänder mit r² < 0,10 werden gar nicht akkumuliert:
+            # rauschende Großamplituden-Fits (amp bis 120 cents, r² ~0,04)
+            # trieben sonst den gewichteten Mittelwert auf 48,8 cents und
+            # gewannen die Peak-Suche gegen das echte 6-Hz-Signal
+            # (22,9 cents, r² 0,36). Gefordert wird am Ende mindestens EIN
+            # Zeuge mit r² ≥ 0,25. Beating-Artefakte (amp > 120 cents)
+            # werden verworfen.
+            _sel = (_amp <= 120.0) & (_r2 >= 0.10) & _valid
+            if not np.any(_sel):
+                return 0.0, np.zeros(2), np.zeros(2), 0.0, 0.0
+            _r2s = _r2[_sel]
+            _acc = np.sum(_r2s[:, None] * _cb[_sel][:, :2], axis=0)
+            _wsum = float(np.sum(_r2s))
+            _n_used = int(_r2s.size)
             if _n_used < 1 or _wsum <= 1e-12:
                 return 0.0, np.zeros(2), np.zeros(2), 0.0, 0.0
             return (
                 float(np.hypot(_acc[0], _acc[1]) / _wsum),
                 _acc,
                 np.array([_wsum, float(_n_used)]),
-                _r2_sum / _n_used,
-                _max_r2,
+                float(np.sum(_r2s)) / _n_used,
+                float(np.max(_r2s)),
             )
 
         # Grob-Raster 0,1 Hz (r²-Selektivität verträgt keinen 0,5-Hz-Schritt),
