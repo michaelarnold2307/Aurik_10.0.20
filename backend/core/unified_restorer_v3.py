@@ -37049,6 +37049,38 @@ class UnifiedRestorerV3:
             audio = np.nan_to_num(audio, nan=0.0, posinf=0.9, neginf=-0.9)
         audio = np.clip(audio, -1.0, 1.0)
 
+        # §D-K3-69 (2026-10-09): Dauergewichteter Phasenfortschritt — die
+        # Gewichte sind die GEMESSENEN Wand-Zeiten dieses Laufs
+        # (Selbstkalibrierung; keine statischen Fantasiegewichte,
+        # §V7 copilot-instructions.md). Behebt: Die Zähl-Fraktion ließ den
+        # Balken bei Kurzphasen sprinten und bei Langphasen (phase_12/24/…)
+        # einfrieren (gemessene Imbalance ca. 11:1). Rein anzeigend.
+        from backend.core.phase_progress_weights import (
+            weighted_phase_span as _wps,
+        )
+        from backend.core.phase_progress_weights import (
+            weighted_progress_fraction as _wpf,
+        )
+
+        _phase_dur_acc: dict[str, float] = {}
+        _last_weighted_frac: list[float] = [0.0]
+
+        def _record_phase_duration(_pid: str, _result: object) -> None:
+            try:
+                _dur = max(0.0, float(getattr(_result, "execution_time_seconds", 0.0) or 0.0))
+            except (TypeError, ValueError):
+                return
+            if _dur > 0.0:
+                _phase_dur_acc[str(_pid)] = max(_phase_dur_acc.get(str(_pid), 0.0), _dur)
+
+        def _phase_pct_weighted(_completed: list[str], _n_sel_c: int) -> int:
+            _frac = _wpf(_completed, _phase_dur_acc, _n_sel_c)
+            if _frac < _last_weighted_frac[0]:
+                _frac = _last_weighted_frac[0]
+            else:
+                _last_weighted_frac[0] = _frac
+            return _phase_progress_start + int((_phase_progress_end - _phase_progress_start) * _frac)
+
         # §v10.701 GDD-Budget-Manager: Proaktive Gruppenlaufzeit-Kontrolle initialisieren
         try:
             from backend.core.gdd_budget_manager import GddBudgetManager
@@ -39735,13 +39767,14 @@ class UnifiedRestorerV3:
                     )
                     # §PROGRESS: Set heartbeat scope for parallel phases so sub-bar fills
                     # proportionally during long ML phases (same as sequential phases).
+                    # §D-K3-69: dauergewichtete Spanne für die eingereichte Phase.
                     _hb_n_sel_p = max(len(selected_phases), 1)
-                    _hb_idx_p = len(future_map)  # index at submission time
+                    _hb_f_start_p, _hb_f_end_p = _wps(executed, _phase_dur_acc, phase_id, _hb_n_sel_p)
                     _hb_span_p = max(1, _phase_progress_end - _phase_progress_start)
-                    _hb_pct_start_p = _phase_progress_start + int(_hb_span_p * _hb_idx_p / _hb_n_sel_p)
+                    _hb_pct_start_p = _phase_progress_start + int(_hb_span_p * _hb_f_start_p)
                     _hb_pct_start_p = max(_phase_progress_start, min(_phase_progress_end - 1, _hb_pct_start_p))
-                    _hb_pct_end_raw_p = _phase_progress_start + int(_hb_span_p * (_hb_idx_p + 1) / _hb_n_sel_p)
-                    _hb_pct_end_p = min(_phase_progress_end, max(_hb_pct_start_p + 1, _hb_pct_end_raw_p))
+                    _hb_pct_end_p = _phase_progress_start + int(_hb_span_p * _hb_f_end_p)
+                    _hb_pct_end_p = min(_phase_progress_end, max(_hb_pct_start_p + 1, _hb_pct_end_p))
                     self._active_pipeline_cb_for_sub = progress_callback
                     self._active_phase_pct_for_sub = (_hb_pct_start_p, _hb_pct_end_p)
                     # §ORCHESTRATOR: Pre-Phase-Audio für Streaming-DoNoHarm sichern
@@ -39801,11 +39834,10 @@ class UnifiedRestorerV3:
                                 execution_time_s=round(float(getattr(result, "execution_time_seconds", 0.0) or 0.0), 3),
                             )
                             # §PROGRESS: Per-Phase Fortschritt (parallel)
+                            # §D-K3-69: dauergewichtete Fraktion (gemessene Zeiten).
                             _n_sel = max(len(selected_phases), 1)
-                            _idx_ex = min(len(executed) + 1, _n_sel)
-                            _phase_pct = _phase_progress_start + int(
-                                (_phase_progress_end - _phase_progress_start) * _idx_ex / _n_sel
-                            )
+                            _record_phase_duration(phase_id, result)
+                            _phase_pct = _phase_pct_weighted([*executed, phase_id], _n_sel)
                             if progress_callback is not None:
                                 try:
                                     _phase_label = (self.phase_metadata.get(phase_id) or {}).get(
@@ -40571,18 +40603,21 @@ class UnifiedRestorerV3:
                 # Compute heartbeat range so _profiled_phase_call can inject a scoped
                 # sub-progress callback into slow phases (e.g. phase_49 WPE dereverb).
                 _hb_n_sel = max(len(selected_phases), 1)
-                _hb_idx = len(executed)
+                # §D-K3-69: dauergewichtete Spanne der aktuellen Phase — Sub-Progress
+                # wird in denselben (gewichteten) Bereich gemappt wie die
+                # Phasen-Abschluss-Emissionen.
+                _hb_f_start, _hb_f_end = _wps(executed, _phase_dur_acc, phase_id, _hb_n_sel)
                 _hb_span = max(1, _phase_progress_end - _phase_progress_start)
-                _hb_pct_start = _phase_progress_start + int(_hb_span * _hb_idx / _hb_n_sel)
+                _hb_pct_start = _phase_progress_start + int(_hb_span * _hb_f_start)
                 _hb_pct_start = max(_phase_progress_start, min(_phase_progress_end - 1, _hb_pct_start))
-                _hb_pct_end_raw = _phase_progress_start + int(_hb_span * (_hb_idx + 1) / _hb_n_sel)
-                _hb_pct_end = min(_phase_progress_end, max(_hb_pct_start + 1, _hb_pct_end_raw))
+                _hb_pct_end = _phase_progress_start + int(_hb_span * _hb_f_end)
+                _hb_pct_end = min(_phase_progress_end, max(_hb_pct_start + 1, _hb_pct_end))
                 self._active_pipeline_cb_for_sub = progress_callback  # may be None
                 self._active_phase_pct_for_sub = (_hb_pct_start, _hb_pct_end)
                 if progress_callback is not None:
                     try:
                         _n_sel_pre = _hb_n_sel
-                        _idx_pre = _hb_idx
+                        _idx_pre = len(executed)
                         _pct_pre = _hb_pct_start
                         _lbl_pre = (self.phase_metadata.get(phase_id) or {}).get("name") or phase_id.replace(
                             "phase_", ""
@@ -41669,11 +41704,10 @@ class UnifiedRestorerV3:
                                 )
                                 continue
                             # §PROGRESS: Per-Phase Fortschritt (PMGG-Pfad)
+                            # §D-K3-69: dauergewichtete Fraktion (gemessene Zeiten).
                             _n_sel = max(len(selected_phases), 1)
-                            _idx_ex = min(len(executed) + 1, _n_sel)
-                            _phase_pct = _phase_progress_start + int(
-                                (_phase_progress_end - _phase_progress_start) * _idx_ex / _n_sel
-                            )
+                            _record_phase_duration(phase_id, result)
+                            _phase_pct = _phase_pct_weighted([*executed, phase_id], _n_sel)
                             if progress_callback is not None:
                                 try:
                                     _phase_label = (self.phase_metadata.get(phase_id) or {}).get(
@@ -42258,11 +42292,10 @@ class UnifiedRestorerV3:
                                     )
                                 if not _245_skipped_fb:
                                     # §PROGRESS: Per-Phase Fortschritt (PMGG-Fallback)
+                                    # §D-K3-69: dauergewichtete Fraktion (gemessene Zeiten).
                                     _n_sel = max(len(selected_phases), 1)
-                                    _idx_ex = min(len(executed) + 1, _n_sel)
-                                    _phase_pct = _phase_progress_start + int(
-                                        (_phase_progress_end - _phase_progress_start) * _idx_ex / _n_sel
-                                    )
+                                    _record_phase_duration(phase_id, result)
+                                    _phase_pct = _phase_pct_weighted([*executed, phase_id], _n_sel)
                                     if progress_callback is not None:
                                         try:
                                             _phase_label = (self.phase_metadata.get(phase_id) or {}).get(
@@ -42488,11 +42521,10 @@ class UnifiedRestorerV3:
                                 )
                             if not _245_skipped_dr:
                                 # §PROGRESS: Per-Phase Fortschritt (sequenziell)
+                                # §D-K3-69: dauergewichtete Fraktion (gemessene Zeiten).
                                 _n_sel = max(len(selected_phases), 1)
-                                _idx_ex = min(len(executed) + 1, _n_sel)
-                                _phase_pct = _phase_progress_start + int(
-                                    (_phase_progress_end - _phase_progress_start) * _idx_ex / _n_sel
-                                )
+                                _record_phase_duration(phase_id, result)
+                                _phase_pct = _phase_pct_weighted([*executed, phase_id], _n_sel)
                                 if progress_callback is not None:
                                     try:
                                         _phase_label = (self.phase_metadata.get(phase_id) or {}).get(

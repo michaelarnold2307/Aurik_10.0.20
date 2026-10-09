@@ -1,4 +1,12 @@
-# Changelog — Aurik 10.12.35
+# Changelog — Aurik 10.12.36
+
+## 10.12.36 (2026-10-09)
+
+### D-K3-69 geschlossen: Dauergewichteter Phasenfortschritt (Selbstkalibrierung)
+
+- **Befund:** Der UV3-Fortschritt war eine Zähl-Fraktion abgeschlossener Phasen (Band 20–85) — bei gemessen ca. 11:1 Phasen-Imbalance sprintete der Balken bei Kurzphasen und fror bei Langphasen (`phase_12` = 250–440 s) ein.
+- **Fix:** `backend/core/phase_progress_weights.py` — Gewicht = GEMESSENE Wand-Zeit dieses Laufs (Median-Prior für Unbekanntes, Untergrenze 0,5 s, Dedupe, Monotonie-Klammer). Verdrahtet an 4 Abschluss-Emissionen + 2 Heartbeat-Spannen (Sub-Progress und Abschluss in denselben gewichteten Spannen); Altpfad (Zähl-Fraktion) entfernt.
+- **Validierung:** 7 neue Vertrags-/Wiring-Tests (1-s-vs-100-s-Dauerbasis; Spannen-Grenzen == Fraktion; kein `_idx_ex / _n_sel`-Rest); ruff clean; Register D-K3-69 → `geschlossen` (Begründung Selbstkalibrierung statt statischer Fantasietabelle, §V7 copilot-instructions.md).
 
 ## 10.12.35 (2026-10-09)
 
