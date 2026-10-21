@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """Run a strict defect-detection readiness gate for Aurik.
 
 The audit uses deterministic synthetic fixtures as a fast release gate. Real

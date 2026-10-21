@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """Cantus-Training — MERT-conditioned Multi-Scale Flow-Matching DiT (3 Phasen).
 
 Phasen (Cantus-Design, Trainingsstrategie):

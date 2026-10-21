@@ -1,6 +1,4 @@
-#!/usr/bin/env python3
-"""
-§ Phase-Shape-Tracer — findet die Phase die als erste truncatet oder Stereo zerstört.
+"""§ Phase-Shape-Tracer — findet die Phase die als erste truncatet oder Stereo zerstört.
 Ausgabe: tabellarisch, bricht bei erstem Problem ab.
 Usage: .venv_aurik/bin/python scripts/_phase_shape_trace.py
 """

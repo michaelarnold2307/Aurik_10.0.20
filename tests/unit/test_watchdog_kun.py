@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """v10 Integrationstest fur Watchdog + Aurik-Agent-Optimierungen."""
 
 import os

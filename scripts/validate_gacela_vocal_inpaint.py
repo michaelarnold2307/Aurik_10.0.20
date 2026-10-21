@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """F2-Validierung: GaCELA-Vokal-Checkpoint auf 743-ms-Lücken (SDR + Witness).
 
 Hintergrund: Der Upstream-Generator erzeugt FEST 64 Zeit-Bins (= 743 ms bei

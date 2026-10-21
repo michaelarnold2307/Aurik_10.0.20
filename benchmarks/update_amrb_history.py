@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """benchmarks/update_amrb_history.py — §v10.700 J4.
 
 Automatisiert die AMRB-Performance-Historie.

@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """SOTA-VOCAL-INPAINT S4: Verifikation der phase_55-Kaskade auf Gesangslücken.
 
 §SOTA-VOCAL-INPAINT (Roadmap, Abschnitt 17): VOCAL-INPAINT-S4 — der formale

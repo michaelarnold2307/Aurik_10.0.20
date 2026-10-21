@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """Plugin-Validator — Prüft Plugin-Konformität mit Aurik SDK.
 
 §15.6: Validiert Plugin-Verzeichnisse gegen das SDK-Schema.

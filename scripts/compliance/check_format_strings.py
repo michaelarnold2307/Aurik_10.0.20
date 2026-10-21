@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """Pre-commit hook: Format-String-Guard.
 
 Prüft, ob logger.info/warning/debug/error-Aufrufe die korrekte Anzahl

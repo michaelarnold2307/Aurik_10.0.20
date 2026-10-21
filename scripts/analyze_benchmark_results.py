@@ -1,6 +1,4 @@
-#!/usr/bin/env python3
-"""
-Aurik 10.0.0 - Benchmark Results Analyzer
+"""Aurik 10.0.0 - Benchmark Results Analyzer
 Analysiert Benchmark-Ergebnisse und erstellt detaillierte Vergleichsberichte
 Phase 3b: Validation & Real-World Testing
 Datum: 16. Februar 2026

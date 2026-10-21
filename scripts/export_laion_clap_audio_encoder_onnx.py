@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """Export LAION-CLAP audio encoder to ONNX (local checkpoint).
 
 Exports audio embedding path using local CLAP checkpoint:

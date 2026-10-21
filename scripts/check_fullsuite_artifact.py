@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """Fullsuite-Artefakt-Prüfer — §CI-FULLSUITE-ARTEFAKT (Vorschlag 07).
 
 Prüft das Vollsuite-Artefakt-Paar

@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """§v10.306: Per-Defekt-Audibilität — Verification Tests."""
 
 import os

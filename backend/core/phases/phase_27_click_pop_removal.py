@@ -1,7 +1,5 @@
-#!/usr/bin/env python3
-"""
-Phase 27: Click/Pop Removal v3.0 — AR-Residual + Consistent Wiener
-====================================================================
+"""Phase 27: Click/Pop Removal v3.0 — AR-Residual + Consistent Wiener
+=====================================================================
 Advanced impulse noise detection and removal with AR-residual detection.
 
 Algorithm Overview:

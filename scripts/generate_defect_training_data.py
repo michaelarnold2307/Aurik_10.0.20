@@ -1,6 +1,4 @@
-#!/usr/bin/env python3
-"""
-Generator für synthetische Trainingsdaten: Bandwidth-Limit-Defekte.
+"""Generator für synthetische Trainingsdaten: Bandwidth-Limit-Defekte.
 
 Erzeugt Paare (bandbreitenbegrenzt, Original) aus hochwertigen Audio-Dateien.
 Nutzt Auriks internen DefectScanner, um nur "saubere" Segmente zu verwenden.

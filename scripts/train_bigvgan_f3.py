@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """scripts/train_bigvgan_f3.py — F3: BigVGAN-v2 Musik-Finetune (HR-V1/03/23/50/07).
 
 §SOTA-F3 (Roadmap TODOS_SOTA_ROADMAP.md): Der Basischeckpoint

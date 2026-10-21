@@ -1,6 +1,4 @@
-#!/usr/bin/env python3
-"""
-Phase 16: Final EQ v2.0 - Professional
+"""Phase 16: Final EQ v2.0 - Professional
 Multi-band linear-phase equalization for broadcast-grade frequency response.
 
 Algorithm Overview:

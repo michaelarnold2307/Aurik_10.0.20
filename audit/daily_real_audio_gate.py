@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """Daily Real-Audio-Gate Trend Reporter (R5-R12).
 
 Builds a compact daily status from existing UAT result files in audit/.

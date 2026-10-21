@@ -1,6 +1,4 @@
-#!/usr/bin/env python3
-"""
-Phase 10: Compression v2.0 - Professional
+"""Phase 10: Compression v2.0 - Professional
 Multi-band parallel compression with advanced envelope detection and material-adaptive dynamics.
 
 Algorithm Overview:

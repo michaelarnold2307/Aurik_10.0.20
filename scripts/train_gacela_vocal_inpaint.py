@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """SOTA-VOCAL-INPAINT-F2-Vorbereitung: GaCELA-Vokal-Finetune (Pfad B).
 
 Rezept nach dem EAR-VAE-Finetune (models/ear_vae_upstream/finetune_music.py)

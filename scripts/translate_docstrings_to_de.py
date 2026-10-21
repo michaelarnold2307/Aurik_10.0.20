@@ -1,6 +1,4 @@
-#!/usr/bin/env python3
-"""
-Übersetzt englische Docstrings in allen Aurik-Python-Dateien ins Deutsche.
+"""Übersetzt englische Docstrings in allen Aurik-Python-Dateien ins Deutsche.
 
 Strategie:
 1. AST-Analyse: findet Docstrings pro Funktion/Klasse/Modul

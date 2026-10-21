@@ -1,6 +1,4 @@
-#!/usr/bin/env python3
-"""
-Snyk Guard for pre‑commit.
+"""Snyk Guard for pre‑commit.
 Runs `snyk test` and, if vulnerabilities are found, attempts an automatic fix with `snyk fix`.
 If any vulnerability remains after the fix attempt, the hook fails and aborts the commit.
 

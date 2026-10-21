@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """§v10.702/§v10.703 Reproduzierbarkeits- und Autopilot-Guard (§G131–§G141, §V40–§V44).
 
 Prüft vor jedem Commit die architektonischen Garantien für vollständige SOTA-

@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """§SOTA-HR-V1 (F3, 2026-09-15) — BigVGAN-A/B-Validierung (af + HNR).
 
 F3-Aktivierungsvertrag: Der BigVGAN-Repair-Pfad (phase_07 HR-V1) wird nur

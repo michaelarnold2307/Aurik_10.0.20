@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """MERT-MUSHRA K-Fold Cross-Validation. Spec 15 §10.4, Sprint C2.
 
 Verbessert Kalibrierung von Bootstrap (R²≈0.19, synthetische Daten)

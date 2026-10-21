@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """Pre-commit hook: Logger-Debug-Guard — erkennt teure debug-Aufrufe in Hot-Loops.
 
 Warnt, wenn logger.debug() in for/while-Schleifen ohne isEnabledFor-Guard steht.

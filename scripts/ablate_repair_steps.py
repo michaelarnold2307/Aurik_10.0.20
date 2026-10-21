@@ -1,6 +1,4 @@
-#!/usr/bin/env python3
-"""
-§v10.880: Schritt-Ablation — welcher Repair-Schritt schadet wirklich?
+"""§v10.880: Schritt-Ablation — welcher Repair-Schritt schadet wirklich?
 
 Führt JEDEN Schritt des Plans EINZELN aus (nicht in Serie) und misst die
 SNR-Änderung gegenüber der beschädigten Eingabe. Damit wird präzise

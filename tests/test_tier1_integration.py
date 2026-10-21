@@ -1,7 +1,5 @@
-#!/usr/bin/env python3
-"""
-Test Suite: Tier 1 ML-Hybrid Integration
-=========================================
+"""Test Suite: Tier 1 ML-Hybrid Integration
+===========================================
 
 Tests für die Integration der Tier 1 Enhancement-Phasen:
 - Phase 37: Bass Enhancement

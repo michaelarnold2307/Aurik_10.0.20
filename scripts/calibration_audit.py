@@ -1,6 +1,4 @@
-#!/usr/bin/env python3
-"""
-§v10.118 Kalibrierungs-Audit — Automatische SOTA-Ceiling-Prüfung für Aurik.
+"""§v10.118 Kalibrierungs-Audit — Automatische SOTA-Ceiling-Prüfung für Aurik.
 
 Prüft alle ExcellenceOptimizer-Parameter gegen die SOTA-Zielwerte und warnt,
 wenn Werte >30% unter dem Ziel liegen. Verhindert die "defensive Kalibrierungs-Falle".

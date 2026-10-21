@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """Objektiver DSP-Benchmark: veraltete vs. moderne Rauschunterdrückungs-Stufen.
 
 Analog zum Pitch-Benchmark: synthetische Ground-Truth (deterministisch, §G5 (GEBOTE.md)),

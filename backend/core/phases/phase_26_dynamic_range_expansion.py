@@ -1,6 +1,4 @@
-#!/usr/bin/env python3
-"""
-Phase 26: Dynamic Range Expansion v2.0 - Professional
+"""Phase 26: Dynamic Range Expansion v2.0 - Professional
 Multi-band upward/downward expansion for dynamic restoration.
 
 Algorithm Overview:

@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """Parameter-Interaktions-Graph. Spec 22 C1.
 
 AST-basierte Analyse: Extrahiert Parameter-Definitionen, verfolgt Datenfluss

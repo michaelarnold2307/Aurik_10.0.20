@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """Detect drift between normative specs, tests, and key gate scripts."""
 
 from __future__ import annotations

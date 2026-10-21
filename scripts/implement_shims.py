@@ -1,6 +1,4 @@
-#!/usr/bin/env python3
-"""
-Automatisches Bulk-Replacement aller 33 Shim-Dateien in backend/core/.
+"""Automatisches Bulk-Replacement aller 33 Shim-Dateien in backend/core/.
 
 Ersetzt alle `from core.X import *` Shims durch vollständige Implementierungen
 gemäß Aurik 10.0.0 copilot-instructions §2.x.

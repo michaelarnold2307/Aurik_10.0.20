@@ -1,7 +1,5 @@
-#!/usr/bin/env python3
-"""
-Phase 22: Professional Tape Saturation v2.0
-=============================================
+"""Phase 22: Professional Tape Saturation v2.0
+==============================================
 
 Multi-band analog tape saturation emulation with harmonic series modeling.
 

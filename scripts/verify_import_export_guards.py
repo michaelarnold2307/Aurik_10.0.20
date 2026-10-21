@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """Quick Import-vs-Export guard verification for early-pipeline regressions.
 
 Focus checks:

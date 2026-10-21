@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """
 §v10.800: Echter-Corpus-Benchmark — die ehrliche Wahrheitsmessung.
 

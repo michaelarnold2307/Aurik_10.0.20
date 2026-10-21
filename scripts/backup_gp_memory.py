@@ -1,6 +1,4 @@
-#!/usr/bin/env python3
-"""
-scripts/backup_gp_memory.py — Sicherung des GP-Gedächtnisses (§6.4).
+"""scripts/backup_gp_memory.py — Sicherung des GP-Gedächtnisses (§6.4).
 
 Erstellt ein datiertes Backup aller ~/.aurik/gp_memory/*.json-Dateien
 und optional der artist_signatures/ und batch_sessions/.

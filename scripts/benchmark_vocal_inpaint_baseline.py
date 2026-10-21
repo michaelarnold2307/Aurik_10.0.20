@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """SOTA-VOCAL-INPAINT S1: Baseline-Benchmark für Gesangslücken auf MUSDB18HQ.
 
 Misst, wie gut kurze Lücken in echten Gesangsspuren heute geschlossen werden:

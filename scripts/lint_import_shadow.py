@@ -1,6 +1,4 @@
-#!/usr/bin/env python3
-"""
-§IMPORT-GUARD: Prevents import shadowing (UnboundLocalError) in Aurik codebase.
+"""§IMPORT-GUARD: Prevents import shadowing (UnboundLocalError) in Aurik codebase.
 
 Bug pattern detected 2026-07-22:
 from typing import Any

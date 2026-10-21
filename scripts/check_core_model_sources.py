@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """Check missing core model artifacts and discover possible local source files.
 
 This script does not download anything. It reports:

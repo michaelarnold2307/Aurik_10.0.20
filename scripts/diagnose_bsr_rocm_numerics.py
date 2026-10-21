@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """§SOTA-BSR-GPU-S1 — ROCm-Numerik-Bisektion (Diagnose, keine Verarbeitung).
 
 Lädt ein ONNX-Modell EINMAL und hängt N gleichmäßig verteilte Zwischenknoten

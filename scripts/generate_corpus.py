@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """Generate synthetic but realistic corpus audio files for Aurik benchmarking.
 
 Creates 20+ unique recordings across 6 material categories with clean + damaged

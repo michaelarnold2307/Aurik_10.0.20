@@ -1,6 +1,4 @@
-#!/usr/bin/env python3
-"""
-Fix two systematic spec violations (copilot-instructions.md §10.1, §6.6):
+"""Fix two systematic spec violations (copilot-instructions.md §10.1, §6.6):
 
 1. print() → logger.debug() in all production code (backend/core, plugins, denker)
 2. Add 'assert sample_rate == 48000' to all phase process() methods

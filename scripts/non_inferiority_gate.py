@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """Non-Inferiority-Gate auf MUSHRA-Hörurteilen (goldenes Hör-Set, Punkt 1).
 
 Fail-closed: Ohne vollständige Hörurteile (>= min_listeners pro Item) ist der

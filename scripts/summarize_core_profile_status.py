@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """Summarize core artifact state in a compact table.
 
 Reports for core artifacts:

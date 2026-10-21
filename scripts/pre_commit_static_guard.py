@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """Pre-Commit Static Guard — Fängt undefined-name Bugs VOR dem Commit.
 
 §Schutzschicht-1: Scannt alle geänderten .py-Dateien auf F821 (undefined name).

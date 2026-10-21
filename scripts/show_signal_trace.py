@@ -1,6 +1,4 @@
-#!/usr/bin/env python3
-"""
-§SFT Signal-Flow-Trace Viewer — zeigt den neuesten oder einen bestimmten Trace an.
+"""§SFT Signal-Flow-Trace Viewer — zeigt den neuesten oder einen bestimmten Trace an.
 
 Verwendung:
     python scripts/show_signal_trace.py           # neuester Trace

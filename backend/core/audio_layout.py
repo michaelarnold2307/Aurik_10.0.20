@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """backend/core/audio_layout.py — Kanonische Layout-Helfer (SOTA-Sweep 2026-08-22).
 
 Kontext: Die interne Pipeline-Konvention ist CHANNELS-FIRST (C, N)

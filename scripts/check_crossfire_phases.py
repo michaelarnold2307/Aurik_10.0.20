@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """§0a Crossfire-Guard — CAUSE_TO_PHASES darf keine Restoration-verbotenen Phasen enthalten.
 
 Verhindert Regression: phase_21_exciter, phase_35_multiband_compression, phase_42_vocal_enhancement

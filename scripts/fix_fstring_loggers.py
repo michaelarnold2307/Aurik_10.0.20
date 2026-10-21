@@ -1,7 +1,5 @@
-#!/usr/bin/env python3
-"""
-fix_fstring_loggers.py
-======================
+"""fix_fstring_loggers.py
+=========================
 Converts f-string logger calls to %-format (lazy evaluation, per coding standard).
 
     logger.info(f"text {var}")  →  logger.info("text %s", var)

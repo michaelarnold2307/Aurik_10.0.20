@@ -1,6 +1,4 @@
-#!/usr/bin/env python3
-"""
-Meta-Controller: classify medium + chain + route to best YAML profile.
+"""Meta-Controller: classify medium + chain + route to best YAML profile.
 
 Design goals:
 - Offline, deterministic, audit-friendly

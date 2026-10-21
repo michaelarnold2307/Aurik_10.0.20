@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """Compare DFN Speech vs DFN Musik on a corpus track (CPU inference)."""
 
 import sys

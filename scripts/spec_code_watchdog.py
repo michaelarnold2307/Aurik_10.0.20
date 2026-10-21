@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """spec_code_watchdog.py v1 — Spec↔Code Sync, fast mode using pre-computed caches."""
 
 from __future__ import annotations

@@ -1,6 +1,4 @@
-#!/usr/bin/env python3
-"""
-Run Validation Suite on Original vs AURIK-Processed Files
+"""Run Validation Suite on Original vs AURIK-Processed Files
 
 Compares objective metrics between original test files and AURIK-processed results.
 

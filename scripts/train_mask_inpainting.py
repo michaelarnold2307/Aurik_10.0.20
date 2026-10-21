@@ -1,6 +1,4 @@
-#!/usr/bin/env python3
-"""
-§v10.910: Mask-konditioniertes Inpainting-Re-Fine-Tuning.
+"""§v10.910: Mask-konditioniertes Inpainting-Re-Fine-Tuning.
 
 Root Cause aus §v10.900: Das Fine-Tuning maskierte den TARGET-Velocity,
 aber die Inferenz maskierte die INPUT-Regionen. Das Modell hat nie gelernt,

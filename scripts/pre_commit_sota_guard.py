@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """§v10.306 Pre-Commit SOTA-Guard — erzwingt alle Startup- und Qualitäts-Regeln.
 
 Prüft vor jedem Commit:

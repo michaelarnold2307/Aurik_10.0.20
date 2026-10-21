@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """Public-Domain Corpus Generator für Aurik — §15.2.
 
 Lädt gemeinfreie Audio-Aufnahmen von Internet Archive, Musopen und Freesound (CC0)

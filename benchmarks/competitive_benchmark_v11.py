@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """Aurik MAX vs iZotope RX 11 vs CEDAR — Competitive Benchmark v11.
 
 Reproduzierbarer Wettbewerbsvergleich mit objektiven Metriken.

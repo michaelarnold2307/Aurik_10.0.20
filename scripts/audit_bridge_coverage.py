@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """scripts/audit_bridge_coverage.py — §v10.700.2 Bridge-Coverage-Audit.
 
 Prüft dass Frontend/CLI das Backend NUR via bridge.py importiert.

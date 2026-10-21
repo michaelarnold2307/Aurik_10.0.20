@@ -1,6 +1,4 @@
-#!/usr/bin/env python3
-"""
-Bandwidth Reconstructor — U-Net Training Pipeline für Aurik.
+"""Bandwidth Reconstructor — U-Net Training Pipeline für Aurik.
 
 Trainiert ein schlankes U-Net (≈50 MB ONNX), das fehlende hohe Frequenzen
 aus bandbegrenztem Audio rekonstruiert.

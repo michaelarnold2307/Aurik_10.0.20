@@ -1,6 +1,4 @@
-#!/usr/bin/env python3
-"""
-Phase 29: Tape Hiss Reduction v3.1 - Über-SOTA OMLSA/IMCRA + MMSE-LSA
+"""Phase 29: Tape Hiss Reduction v3.1 - Über-SOTA OMLSA/IMCRA + MMSE-LSA
 Adaptive HF-Rauschunterdrückung für Tape-Aufnahmen via spektraler OMLSA/IMCRA-Verarbeitung.
 
 Algorithmus (v3.1):

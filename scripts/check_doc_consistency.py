@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """scripts/check_doc_consistency.py — §v10.700 F7.
 
 Prüft Konsistenz zwischen Dokumentation und Code:

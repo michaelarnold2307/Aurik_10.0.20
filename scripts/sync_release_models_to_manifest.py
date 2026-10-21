@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """scripts/sync_release_models_to_manifest.py — Release-Auslieferung ins Manifest.
 
 Release-Strategie 2026-09-23 (§13.3):

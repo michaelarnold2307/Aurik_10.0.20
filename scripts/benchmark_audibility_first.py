@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """§SOTA-R4 (Audibility-First-Scheduling-Benchmark) — PSY-A1-Einsparung je Phase.
 
 Roadmap 2026-09-14, R4: „Audibility-First-Scheduling: billige Detektion zuerst,

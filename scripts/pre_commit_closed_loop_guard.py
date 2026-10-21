@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """§v10.600 Pre-Commit Closed-Loop Guard — erzwingt Regelkreis-Integrität.
 
 

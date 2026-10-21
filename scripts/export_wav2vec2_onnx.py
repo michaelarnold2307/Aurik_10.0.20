@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """Export wav2vec2_forced_alignment ONNX (§2.36 Pflicht).
 
 Converts models/wav2vec2/pytorch_model.bin → models/wav2vec2/wav2vec2_forced_alignment.onnx

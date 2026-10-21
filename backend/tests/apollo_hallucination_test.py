@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """§v10.303.20 — Apollo MP3-Decompression Halluzinationstest.
 
 Prüft ob Apollo auf MP3-komprimiertem Material musikalische Inhalte

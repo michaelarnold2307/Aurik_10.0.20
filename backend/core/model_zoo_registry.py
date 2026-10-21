@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """
 §v10.950: Model Zoo Registry — alle Modelle sichtbar, keins brachliegend.
 

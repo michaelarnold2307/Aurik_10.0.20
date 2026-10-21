@@ -1,6 +1,4 @@
-#!/usr/bin/env python3
-"""
-scripts/generate_sbom.py — Software Bill of Materials (SBOM) Generator für Aurik 10.0.0.
+"""scripts/generate_sbom.py — Software Bill of Materials (SBOM) Generator für Aurik 10.0.0.
 
 Erzeugt ein maschinenlesbares SBOM im SPDX-ähnlichen JSON-Format aus:
   - pip-installierten Paketen (pip list --format=json)

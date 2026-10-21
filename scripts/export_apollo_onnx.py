@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """§P1-4d (2026-09-09): Apollo TorchScript → Core-only-ONNX-Export + Parität.
 
 Apollo enthält torch.stft im Graphen (→ §v10.736 CPU-Force, ROCm-Crash).

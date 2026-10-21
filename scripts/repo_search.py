@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """Repo-Suche — BM25 über Modul-Docstrings und Symbole mit Status-Gewichtung.
 
 Embedding-freies Retrieval (nur Standardbibliothek). Der BM25-Score folgt

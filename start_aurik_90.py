@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """Legacy launcher compatibility wrapper.
 
 Keeps existing user/developer docs and scripts working while routing all GUI starts

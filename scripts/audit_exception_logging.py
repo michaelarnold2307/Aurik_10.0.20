@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """scripts/audit_exception_logging.py — §v10.700 L6b.
 
 from typing import Any

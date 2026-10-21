@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """scripts/ci_quick_smoke.py — §v10.700 CI Quick Smoke Test.
 
 Schnellster möglicher Health-Check (~5s) für CI-Pipelines.

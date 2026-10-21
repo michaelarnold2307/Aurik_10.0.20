@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """Sync core model artifacts into models/manifest.json when files exist.
 
 Non-destructive behavior:

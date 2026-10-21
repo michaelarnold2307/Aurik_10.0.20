@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """backend/core/dsp/interaural_cues.py — HRTF-/interaurale Cue-Messung (SOTA-Basis).
 
 Hörfähigkeits-SOTA (psychoakustisch validierte JNDs, Quellen s. u.):

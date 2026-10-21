@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """File-Lifecycle-Check — Write-Gate für neue Code-Dateien + Registry-Validierung.
 
 Fail-closed nach dem Muster von `scripts/id_registry_check.py` (R1/R2),

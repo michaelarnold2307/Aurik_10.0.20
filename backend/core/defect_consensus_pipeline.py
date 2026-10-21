@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """
 §v10.220: Defect Consensus Pipeline — 30 Module → 1 Manifest.
 

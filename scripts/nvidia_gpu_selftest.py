@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """GPU-Selftest für NVIDIA-/ROCm-/CPU-Hosts (R3, 2026-09-14).
 
 Prüft ohne Hard-Fail, welche ML-Pfade auf DIESEM Host GPU-fähig sind —

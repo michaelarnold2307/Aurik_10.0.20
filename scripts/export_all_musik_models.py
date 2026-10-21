@@ -1,6 +1,4 @@
-#!/usr/bin/env python3
-"""
-Unified ONNX/TorchScript export pipeline for all music-trained models (§v10.14–17).
+"""Unified ONNX/TorchScript export pipeline for all music-trained models (§v10.14–17).
 
 Exports fine-tuned checkpoints to production-ready ONNX/TorchScript files.
 Replaces the speech-trained originals with music-adapted versions.

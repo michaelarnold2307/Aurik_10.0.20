@@ -1,7 +1,5 @@
-#!/usr/bin/env python3
-"""
-Phase 14: Professional Phase Correction v2.0.
-=============================================
+"""Phase 14: Professional Phase Correction v2.0.
+================================================
 
 Multi-band stereo phase alignment for optimal imaging and mono compatibility.
 

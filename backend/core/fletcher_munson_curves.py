@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """
 Fletcher-Munson Equal-Loudness Curves
 ======================================

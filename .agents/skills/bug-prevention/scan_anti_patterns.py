@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """Aurik SOTA Bug-Prevention Hook (§v10.105)
 
 Fängt die 6 Bug-Klassen aus der Exception-Forensik (Juli 2026) PROAKTIV ab,

@@ -1,7 +1,5 @@
-#!/usr/bin/env python3
-"""
-Aurik 10.0.0 — Frontend Launcher mit kontinuierlichem Qualitäts-Monitoring
-======================================================================
+"""Aurik 10.0.0 — Frontend Launcher mit kontinuierlichem Qualitäts-Monitoring
+=============================================================================
 
 Startet das PyQt5-Frontend und führt kontinuierliche Tiefenanalyse
 parallel durch. Bei kritischen Qualitätsproblemen werden automatische

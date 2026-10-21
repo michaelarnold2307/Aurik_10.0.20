@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """Listening Study Stimulus-Generator — §15.10.
 
 Generiert randomisierte Stimulus-Sets für MUSHRA-Hörstudien.

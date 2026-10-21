@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """
 §v10.620: Perceptual Closed-Loop — Wahrnehmungs-Regelkreis für die SOTA-Kette.
 

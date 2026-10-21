@@ -1,7 +1,5 @@
-#!/usr/bin/env python3
-"""
-Aurik Live-Guard Incident-Report-Aggregator
-============================================
+"""Aurik Live-Guard Incident-Report-Aggregator
+==============================================
 Liest alle Incident-Verzeichnisse unter reports/live_guard/incidents/
 und erstellt eine kompakte Tagesübersicht in reports/live_guard/daily_report.txt.
 

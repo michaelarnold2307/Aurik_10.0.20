@@ -1,6 +1,4 @@
-#!/usr/bin/env python3
-"""
-Real-World Validation Phase 2: Phase 2.3 Instrumental Enhancement Testing
+"""Real-World Validation Phase 2: Phase 2.3 Instrumental Enhancement Testing
 Tests Phase 2.3 enhancement on real degraded archive files.
 """
 

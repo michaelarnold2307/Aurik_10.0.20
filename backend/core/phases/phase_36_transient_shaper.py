@@ -1,6 +1,4 @@
-#!/usr/bin/env python3
-"""
-Phase 36: Transient Shaper v2.1 - Professional
+"""Phase 36: Transient Shaper v2.1 - Professional
 Multi-band transient enhancement and sustain control.
 
 Algorithm Overview:

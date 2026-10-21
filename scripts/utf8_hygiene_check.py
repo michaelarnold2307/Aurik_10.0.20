@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """UTF-8-Hygiene-Check (P2-1) — fail-closed im Pre-Commit.
 
 Normative Grundlage: TODO-P2-1 (docs/TODOS_SOTA_ROADMAP.md). Der gesamte

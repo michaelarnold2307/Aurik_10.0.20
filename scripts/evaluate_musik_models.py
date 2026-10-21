@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """A/B-Evaluierung für Musik-Modelle — §v10.19 §11.2, §v10.25 §6.
 
 Vergleicht eine Referenz (clean) mit beliebig vielen Kandidaten (restaurierte

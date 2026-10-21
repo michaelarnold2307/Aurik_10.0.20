@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """Genre-Single-Source-Guard (§G9 (copilot-instructions.md)) — fail-closed.
 
 Befund 2026-10-06 (Tranche 3): Die Genre-Auflösung war über **fünf** parallele

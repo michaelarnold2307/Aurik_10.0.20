@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """scripts/perf_trend.py — §v10.700 J4: Performance-Trend-Analyse.
 
 Liest amrb_history.jsonl und erkennt signifikante Regressionen

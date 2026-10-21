@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """
 Bark Scale Processor - Psychoacoustic Foundation
 ================================================

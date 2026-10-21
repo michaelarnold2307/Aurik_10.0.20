@@ -1,6 +1,4 @@
-#!/usr/bin/env python3
-"""
-Erzeugt den reproduzierbaren Experimentplan fuer Klasse-C-Revalidierung (PR-A).
+"""Erzeugt den reproduzierbaren Experimentplan fuer Klasse-C-Revalidierung (PR-A).
 
 Ausgabe:
 - reports/revalidation/<run_id>/plan.csv

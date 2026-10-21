@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """§v10.998-Diagnose: Welche Phase zerstört das Signal auf cassette_hiphop_1980s_hiss?
 
 Führt die SOTA-Kette Schritt für Schritt aus und misst NACH JEDER PHASE

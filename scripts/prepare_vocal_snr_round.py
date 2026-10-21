@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """Vokal-Challenger-Runde SNR<10 dB: Incumbent (MIIPHER-DiT) vs. Kandidat (SGMSE+).
 
 Die MIIPHER-Stufe ist Auriks Pfad für stark degradierten Gesang (SNR < 10 dB,

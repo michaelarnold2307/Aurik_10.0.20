@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """
 Masking Analyzer - Psychoacoustic Masking Model
 ================================================

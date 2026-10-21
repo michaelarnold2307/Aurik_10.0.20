@@ -1,6 +1,4 @@
-#!/usr/bin/env python3
-"""
-Export DeepFilterNet3 checkpoint → ONNX (enc, dec, erb_dec).
+"""Export DeepFilterNet3 checkpoint → ONNX (enc, dec, erb_dec).
 
 Converts the trained PyTorch model from DFN Musik Fine-Tuning (§v10.15)
 into the three ONNX files expected by the Aurik plugin:

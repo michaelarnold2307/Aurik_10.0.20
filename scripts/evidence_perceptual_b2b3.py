@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """B2/B3 Perzeptuelle Evidenz-Runner (§G131–§G134, §G150–§G152).
 
 Misst pro Korpus-Datei die Compliance-Metriken — NICHT SNR/THD (§G152):

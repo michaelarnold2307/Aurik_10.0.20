@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """
 Clipping-Erkennung — §6.3 Spec: CLIPPING vs. SOFT_SATURATION Diskriminierung.
 

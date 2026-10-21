@@ -1,6 +1,4 @@
-#!/usr/bin/env python3
-"""
-Fine-tune MP-SENet on MUSDB18 music data (§v10.17).
+"""Fine-tune MP-SENet on MUSDB18 music data (§v10.17).
 
 MP-SENet (Multi-Path SE Network) is Aurik's PRIMARY enhancement model,
 running on ALL material. Originally trained on DNS5 Challenge (speech at 16kHz).

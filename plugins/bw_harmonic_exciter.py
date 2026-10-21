@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """
 BW Harmonic Exciter — DSP-basierte Bandbreiten-Erweiterung für Aurik.
 

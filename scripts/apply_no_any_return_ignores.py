@@ -1,7 +1,5 @@
-#!/usr/bin/env python3
-"""
-scripts/apply_no_any_return_ignores.py — Sprint 3 Massenfix
-============================================================
+"""scripts/apply_no_any_return_ignores.py — Sprint 3 Massenfix
+==============================================================
 Fügt `# type: ignore[no-any-return]` an alle Zeilen ein, die mypy mit
 [no-any-return] markiert. Analog zum UV3-Fix (2026-06-26).
 

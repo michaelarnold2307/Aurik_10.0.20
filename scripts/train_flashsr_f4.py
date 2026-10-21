@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """scripts/train_flashsr_f4.py — F4: FlashSR-Musik-Finetune (Hochband-Rekonstruktion).
 
 §SOTA-ML-V1/F4 (Roadmap TODOS_SOTA_ROADMAP.md): FlashSR (FastAudioSR,

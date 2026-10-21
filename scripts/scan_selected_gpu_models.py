@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """§v10.748b (2026-09-09): Begrenzter GPU-Scan für ausgewählte Modelle.
 
 Der Voll-Scan (onnx_gpu_compat_scan.py) lädt ALLE ONNX-Modelle nacheinander

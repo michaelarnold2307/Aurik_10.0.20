@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """§v10.113 P6 Fixer v2 — konservativ, dateiweise, compile-verifiziert.
 
 Nur zwei Operationen:

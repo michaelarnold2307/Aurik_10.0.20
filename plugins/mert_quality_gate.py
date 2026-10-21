@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """
 §v10.130: MERT-v1-330M Quality Gate — music-aware quality assessment.
 

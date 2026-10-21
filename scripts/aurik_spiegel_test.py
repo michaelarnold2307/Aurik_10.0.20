@@ -1,6 +1,4 @@
-#!/usr/bin/env python3
-"""
-§v10 Aurik Spiegel-Test — End-to-End Demonstration aller Fähigkeiten.
+"""§v10 Aurik Spiegel-Test — End-to-End Demonstration aller Fähigkeiten.
 
 Erzeugt eine realistisch beschädigte Aufnahme (Gesang + Instrumente + 7 Defekttypen),
 durchläuft die komplette Aurik-Pipeline und zeigt:

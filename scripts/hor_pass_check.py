@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """Hör-Pass-Log-Check — automatische Marker-Prüfung für den GO/NO-GO-Hör-Pass.
 
 Ergänzt den menschlichen Hör-Entscheid nach

@@ -1,4 +1,12 @@
-# Changelog — Aurik 10.12.40
+# Changelog — Aurik 10.12.41
+
+## 10.12.41 (2026-10-19)
+
+### Shebang-Purge + Docstring-Kopf-Normalisierung (mechanischer Lint-Sweep)
+
+- **Scope:** 323 Python-Dateien über `backend/`, `plugins/`, `scripts/`, `tests/`, `denker/`, `Aurik10/`, `forensics/`, `benchmarks/`, Root — Docstring-Kopf-Normalisierung: das `#!/usr/bin/env python3`-Shebang entfällt; bei Dateien, deren Docstring mit einer isolierten `"""`-Zeile beginnt und die Titelzeile auf der Folgezeile steht, wird die Titelzeile an den öffnenden `"""` angehängt (z. B. `"""Phase 10: …`).
+- **Art:** rein mechanisch/strukturell — keine Logik-, Signatur- oder Semantikänderung; je Datei gegen HEAD transformiert und zeilenweise abgeglichen (nur Shebang-Zeile + Docstring-Kopfzeile differieren).
+- **Ausnahmen im selben Arbeitsbaum** (in 10.12.42 mit Task-Inhalt committet): alle Dateien mit zusätzlichem Feature-/Fix-Diff bleiben dort, damit der Sweep-Commit ausschließlich die Normalisierung trägt.
 
 ## 10.12.40 (2026-10-09)
 

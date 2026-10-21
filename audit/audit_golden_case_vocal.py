@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """Golden Case Audit: Musikalische Ziele bei echtem Gesang.
 
 Testet: Werden alle 15 musikalischen Ziele bei einer Restaurierung

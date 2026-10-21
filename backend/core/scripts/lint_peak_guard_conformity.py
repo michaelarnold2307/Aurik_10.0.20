@@ -1,6 +1,4 @@
-#!/usr/bin/env python3
-"""
-Peak-Guard Conformity Linter (§2.45a RELEASE_MUST)
+"""Peak-Guard Conformity Linter (§2.45a RELEASE_MUST)
 
 Detects violations of np.max(np.abs(...)) in productive gain-control paths.
 - Allowed: Artifact detection, telemetry/logging, analysis, synthesis references

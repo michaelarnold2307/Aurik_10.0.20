@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """
 BW Reconstructor V5 — Waveform-Domain U-Net + Multi-Resolution STFT Loss.
 

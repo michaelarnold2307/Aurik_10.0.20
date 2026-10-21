@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """AERO-Plugin — Challenger-Kandidat: Bandbreiten-Extension 12 kHz → 48 kHz.
 
 Bewertung gegen den Incumbent (FlashSR) über scripts/challenger_round.py auf

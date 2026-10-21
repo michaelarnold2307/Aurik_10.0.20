@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """Rule-Machine-Coverage-Check — Meta-Regel 0 (Vorschlag 00).
 
 REPORT-MODUS (noch nicht fail-closed): Prüft, dass jede normative Regel

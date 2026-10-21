@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """§SOTA-P1 (Residual-Artefakt-Diagnose) — artifact_freedom pro Phase.
 
 Session-Ertrag 2026-09-15, P1: „artifact_freedom pro Phase auf realem Material

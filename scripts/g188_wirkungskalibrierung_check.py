@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """§G188–§G190 (GEBOTE.md) — Wirkungs-Kalibrierungsgate für Pre-Commit.
 
 Auftrag (2026-09-26): Die Pre-Commit-Hooks MÜSSEN melden, wenn Aurik durch

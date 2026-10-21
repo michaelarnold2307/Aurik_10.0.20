@@ -1,6 +1,4 @@
-#!/usr/bin/env python3
-"""
-§2.59 Comprehensive Pre-Pipeline Validation (2026-07-09)
+"""§2.59 Comprehensive Pre-Pipeline Validation (2026-07-09)
 
 Führt ALLE Checks aus, bevor der User einen Pipeline-Run startet.
 Fängt jeden Fehler, der sonst erst nach Minuten im Run sichtbar würde.

@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """Discover and download missing core model artifacts from HuggingFace.
 
 This script is best-effort and prefers exact target filenames.

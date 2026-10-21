@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """Ambience-Match-Plugin (Spec 25, Hörordnung Ebene 2): additiv, deterministisch.
 
 Additives Raumambiente, das je Bark-Band unter der Maskierungsschwelle des

@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """Exportiert den FlashSR/FastAudioSR-Kern (16 → 48 kHz) nach ONNX.
 
 §v10.25 Export-only: f4-Finetune-Checkpoint (output/_training_archive_20260920/

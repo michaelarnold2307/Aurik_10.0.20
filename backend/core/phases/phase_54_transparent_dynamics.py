@@ -1,6 +1,4 @@
-#!/usr/bin/env python3
-"""
-Phase 54: Transparent Dynamics v1.0 - Tier 1 ML-Hybrid.
+"""Phase 54: Transparent Dynamics v1.0 - Tier 1 ML-Hybrid.
 Psychoacoustic-aware compression that adapts to musical genre and content.
 
 Algorithm Overview:

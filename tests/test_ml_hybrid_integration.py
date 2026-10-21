@@ -1,7 +1,5 @@
-#!/usr/bin/env python3
-"""
-ML-Hybrid Integration Test - Aurik 10.0.0
-=======================================
+"""ML-Hybrid Integration Test - Aurik 10.0.0
+============================================
 
 Comprehensive test for ML-Hybrid integrations across critical phases.
 

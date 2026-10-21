@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """eval_scnet_vs_mdx23c.py — TODO-P1-2: SCNet-4-Stems-Kandidat vs. Produktionsketten-Stand.
 
 Bewertet den Kandidaten-Checkpoint ``models/scnet_4stems/huge_scnet_4stems_v1.2.ckpt``

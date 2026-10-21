@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """hoerpanel_player — der Hör-Player für die Golden-Ear-Schwellenmessung.
 
 Der einzige Mensch-Schritt der Wohlklang-Roadmap: Hörproben bewerten, ohne

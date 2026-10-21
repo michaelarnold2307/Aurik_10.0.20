@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """
 Mini-Test für R11 P1/P2-Regression.
 Nutzt nur 10s real audio ür schnelle Diagnose

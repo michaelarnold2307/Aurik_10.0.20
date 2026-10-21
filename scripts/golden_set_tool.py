@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """Golden Listening Set — Manifest- und Coverage-Werkzeug (Ohr-Messapparatur).
 
 Das goldene Hör-Set ist der fixe Corpus, an dem jede Release-Entscheidung am

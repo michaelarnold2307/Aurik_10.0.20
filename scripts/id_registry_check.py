@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """ID-Registry-Check — prüft §-Zitate gegen die kanonische ID-Registry.
 
 Umsetzung der Phasen 2–4 des ID-Bereinigungsplans

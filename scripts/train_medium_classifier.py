@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """Flacher Medium-/Depth-Klassifikator — trainiert auf dem deklarierten Corpus.
 
 Empfehlung 9 (Ohr-Messprogramm): Die tiefen Modelle bleiben eingefroren; der

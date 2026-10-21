@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """Stepwise ONNX export orchestrator for Aurik.
 
 This script orchestrates existing export tooling in small, explicit steps.

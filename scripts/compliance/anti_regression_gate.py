@@ -1,6 +1,4 @@
-#!/usr/bin/env python3
-"""
-§2.59 Anti-Regression-Gate — alle 9 behobenen Bug-Muster abdecken.
+"""§2.59 Anti-Regression-Gate — alle 9 behobenen Bug-Muster abdecken.
 
 Jeder Bug dieser Session wird hier als Check verewigt.
 Läuft als Pre-Commit-Hook. Blockt Commits, die bekannte Fehlermuster

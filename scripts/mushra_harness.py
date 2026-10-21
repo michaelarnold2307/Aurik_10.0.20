@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """mushra_harness — Doppelblinde MUSHRA-Studie (ITU-R BS.1534) für Aurik.
 
 Vier Schritte (CLI):

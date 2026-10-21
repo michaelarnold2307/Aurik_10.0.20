@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """End-to-End Lag-Test: Lädt den Song, misst Lag an jeder Pipeline-Stufe."""
 
 import json

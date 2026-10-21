@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """Corpus-Ketten-Erweiterung — deklarierte Tonträgerketten (§15.2, goldenes Hör-Set).
 
 Zwei Schritte, beide deterministisch (§G5 (copilot-instructions.md)) und idempotent:

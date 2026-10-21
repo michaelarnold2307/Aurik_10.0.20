@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """§v10.113 Auto-fixer: P6 material Dict-Lookup absichern.
 
 Fügt `_mk = material.value if isinstance(material, MaterialType) else material`

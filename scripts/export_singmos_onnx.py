@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """Exportiert SingMOS Pro (MOS_Predictor, wav2vec2-large) nach ONNX.
 
 §v10-SINGMOS-ONNX (2026-09-10): singmos_pro.pt ist ein TorchScript-Artefakt,

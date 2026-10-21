@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """Run the real-audio Golden-Set gate for executed strategy and export safety."""
 
 from __future__ import annotations

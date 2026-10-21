@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """SOTA-Defizit-Register-Gate (fail-closed) — §G8/§III.13 (copilot-instructions.md).
 
 Prüft `.github/SOTA_DEFICIT_REGISTER.md` gegen die Akzeptanzkriterien des

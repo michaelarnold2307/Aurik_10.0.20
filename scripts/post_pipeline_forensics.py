@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """§v10.115 Post-Pipeline Forensik-Hook — automatisch nach jedem Lauf.
 
 Verdrahtet ExceptionAggregator + PatternMiner + QualityRegressionDetector

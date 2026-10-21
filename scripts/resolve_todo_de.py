@@ -1,6 +1,4 @@
-#!/usr/bin/env python3
-"""
-Löst alle verbleibenden TODO(de):-Marker in Docstrings auf.
+"""Löst alle verbleibenden TODO(de):-Marker in Docstrings auf.
 
 Zweiter Pass nach translate_docstrings_to_de.py.
 Strategie:

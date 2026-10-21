@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """backend/core/go_nogo_export_gate.py — Deterministisches GO/NO-GO-Gate (Export).
 
 Umsetzung des automatischen Teils des GO/NO-GO-Decision-Protocols

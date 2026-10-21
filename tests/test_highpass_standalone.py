@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """Quick test of HighpassFilter with stereo audio"""
 
 import numpy as np

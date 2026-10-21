@@ -1,6 +1,4 @@
-#!/usr/bin/env python3
-"""
-Phase 39: Air Band Enhancement v2.0 - Professional
+"""Phase 39: Air Band Enhancement v2.0 - Professional
 High-frequency shimmer and "air" enhancement (12-20 kHz).
 
 Algorithm Overview:

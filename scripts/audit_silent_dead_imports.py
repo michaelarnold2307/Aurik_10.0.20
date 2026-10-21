@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """Audit: findet `try: from X import Y ... except ImportError/Exception`-Blöcke,
 bei denen `Y` in Modul `X` (repo-intern) gar nicht existiert.
 

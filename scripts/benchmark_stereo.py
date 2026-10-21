@@ -1,6 +1,4 @@
-#!/usr/bin/env python3
-"""
-§v10.930: Stereo-Benchmark — die bisher ungemessene Dimension.
+"""§v10.930: Stereo-Benchmark — die bisher ungemessene Dimension.
 
 Der bisherige Corpus-Benchmark mischte Stereo zu Mono. Dieser Benchmark
 misst die STEREO-Integrität der Repair-Kette:

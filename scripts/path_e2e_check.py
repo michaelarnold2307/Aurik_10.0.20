@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """Pfad-E2E-Register-Gate (fail-closed) — Maßnahme 1 gegen Phantom-Pfade.
 
 Befund 2026-10-07 (K2-Inventur): Mehrere Signalpfade existierten im Code,

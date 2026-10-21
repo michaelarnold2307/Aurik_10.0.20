@@ -1,6 +1,4 @@
-#!/usr/bin/env python3
-"""
-Compliance Check: Defekt-Namen in .get() / in()-Patterns (§2.59)
+"""Compliance Check: Defekt-Namen in .get() / in()-Patterns (§2.59)
 
 Scannt auf das exakte Muster, das Bugs verursacht hat:
   - _ds.get("hiss", ...)      → "hiss" existiert nicht in DefectType

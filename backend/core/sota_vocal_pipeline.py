@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """
 §v10.210: SOTA 3-Ebenen Vocal Enhancement Pipeline.
 

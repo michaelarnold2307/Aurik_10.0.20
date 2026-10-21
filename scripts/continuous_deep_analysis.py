@@ -1,7 +1,5 @@
-#!/usr/bin/env python3
-"""
-Aurik 10.0.0 — Kontinuierliche Tiefenanalyse & Qualitäts-Monitoring
-=================================================================
+"""Aurik 10.0.0 — Kontinuierliche Tiefenanalyse & Qualitäts-Monitoring
+======================================================================
 
 Führt eine vollständige Restaurierung mit Phase-weisen Qualitäts-Checkpoints durch,
 monitort Musical Goals, HPI, Artefakt-Freiheit und erkennt Anomalien automatisch.

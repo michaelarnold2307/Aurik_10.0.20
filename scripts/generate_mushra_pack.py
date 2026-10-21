@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """Create a reproducible subjective listening pack (MUSHRA-style) for human review."""
 
 from __future__ import annotations

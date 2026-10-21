@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """Listening Study Analyse-Skript — §15.10.
 
 Liest MUSHRA-Session-Ergebnisse und berechnet:

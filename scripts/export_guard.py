@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """
 Export Guard für die CI‑Lite‑Pipeline.
 Der Guard führt:

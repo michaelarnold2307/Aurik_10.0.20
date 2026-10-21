@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """Prueft, dass mypy-Ignore-Kommentare vor anderen Inline-Kommentaren stehen.
 
 mypy 2.1.0 akzeptiert ein `# type: ignore[...]` nicht zuverlaessig, wenn davor

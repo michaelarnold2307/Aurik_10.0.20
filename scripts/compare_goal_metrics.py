@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """Kanonischer Delta-Vergleich für Analyse-JSONs (nested goals support)."""
 
 from __future__ import annotations

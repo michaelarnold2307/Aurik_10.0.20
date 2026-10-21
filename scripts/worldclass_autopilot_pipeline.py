@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """End-to-End-Orchestrierung fuer den Worldclass-Autopilot-Workflow.
 
 Ablauf:

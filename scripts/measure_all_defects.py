@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """§v10.998: Die ehrliche Gesamtmessung — jede Defekt-Art gegen die SOTA-Kette.
 
 Erzeugt kontrollierte Defekt-Fälle aus einer clean-Referenz, führt die

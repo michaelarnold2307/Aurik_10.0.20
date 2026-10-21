@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """SOTA-C4 / F5: DDSP-Prädiktor — EQ/Dynamik-Parameter aus CLAP-Embeddings.
 
 §SOTA-C4 (Roadmap, Phase-Tabelle 04/16/17): Ein neuronaler Prädiktor schätzt

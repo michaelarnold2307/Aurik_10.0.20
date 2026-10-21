@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """§v10.8xx benchmark_effizienz_matrix — Effizienz-Profil der UV3-Restaurierung.
 Misst Wandzeit, RT-Faktor und Qualitäts-Kennzahlen derselben Audio-Sequenz
 über eine Matrix aus Qualitätsmodi und Ebenen-Schaltern:

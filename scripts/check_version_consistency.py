@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """Version-Consistency-Check — Sprint D. Spec v10.700 F1.
 
 Prüft, dass die Versionsangaben in pyproject.toml, README.md und CHANGELOG.md mit

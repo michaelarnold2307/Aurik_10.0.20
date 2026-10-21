@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """§P1-4c (2026-09-09): MERT-v1-330M → ONNX-Export + Parität.
 
 Ziel: models/mert/mert.onnx — der MERT-Plugin-ONNX-Pfad erwartet genau diese

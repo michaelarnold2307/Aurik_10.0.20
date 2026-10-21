@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """Wohlklang-Vertrag-Gate (fail-closed) — §v10.802/§G8/§G9 (copilot-instructions.md).
 
 Vertrag: ``.github/WOHLKLANG_CLAIMS.md``

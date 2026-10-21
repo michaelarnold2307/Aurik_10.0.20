@@ -1,6 +1,4 @@
-#!/usr/bin/env python3
-"""
-Export FlowMatchingDiT checkpoint → ONNX (§v10.14).
+"""Export FlowMatchingDiT checkpoint → ONNX (§v10.14).
 
 The MIIPHER-DiT plugin expects a FlowMatchingDiT ONNX model with:
   Input  x: [B, T, 1] float32 — degraded vocal waveform

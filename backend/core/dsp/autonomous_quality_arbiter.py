@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """Autonomer Never-worsen-Arbiter — referenzfreie Eingabe-vs-Ausgabe-Bewertung.
 
 §v10.26 (2026-09-20): Aurik erkennt Verschlechterung eigenständig und wählt

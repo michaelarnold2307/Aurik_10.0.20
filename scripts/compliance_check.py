@@ -1,6 +1,4 @@
-#!/usr/bin/env python3
-"""
-Aurik 10.0.0 — Compliance-Check (VERBOTEN-Regeln aus copilot-instructions.md)
+"""Aurik 10.0.0 — Compliance-Check (VERBOTEN-Regeln aus copilot-instructions.md)
 =========================================================================
 Prüft alle Python-Quelldateien auf verbotene Muster aus der Ruleset-Tabelle.
 Exit 0 = clean, Exit 1 = Verstöße gefunden.

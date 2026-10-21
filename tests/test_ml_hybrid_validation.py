@@ -1,7 +1,5 @@
-#!/usr/bin/env python3
-"""
-ML-Hybrid Validation Test
-==========================
+"""ML-Hybrid Validation Test
+============================
 
 Direkter Test der 3 implementierten ML-Hybrid Phasen:
 - Phase 03: Denoise (OMLSA + DeepFilterNet)

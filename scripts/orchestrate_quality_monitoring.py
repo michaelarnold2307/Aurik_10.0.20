@@ -1,7 +1,5 @@
-#!/usr/bin/env python3
-"""
-Aurik 10.0.0 — Integriertes Qualitäts-Monitoring & Deep-Analysis Ökosystem
-=======================================================================
+"""Aurik 10.0.0 — Integriertes Qualitäts-Monitoring & Deep-Analysis Ökosystem
+=============================================================================
 
 Orchestriert:
 1. PyQt5 Frontend (GUI für Restoration)

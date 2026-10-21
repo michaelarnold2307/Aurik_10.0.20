@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """UAT Report Generator für Aurik 10.0.0
 Führt UAT-Tests aus und generiert formale Scorecard + Final Report
 

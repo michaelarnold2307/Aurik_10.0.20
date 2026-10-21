@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """Pre-Commit-Hook: §2.59 Surgical Repair — Vollständigkeits-Prüfung."""
 
 import os

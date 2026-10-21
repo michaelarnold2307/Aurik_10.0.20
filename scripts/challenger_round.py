@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """Challenger-Round-Harness (Punkt 3): Incumbent vs. Kandidat auf dem goldenen Set.
 
 prepare:  Validiert die Paarung (für jedes Golden-Set-Item müssen Incumbent- und

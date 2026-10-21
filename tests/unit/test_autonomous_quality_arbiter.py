@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """Unit-Tests für den autonomen Never-worsen-Arbiter (§v10.26).
 
 Schnell und deterministisch: `resolve_never_worsen` wird mit einem

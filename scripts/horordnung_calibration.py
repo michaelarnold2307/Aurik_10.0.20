@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """Hörordnungs-Kalibrierungs-Harness — psychoakustische Invarianten gegen
 synthetische Referenz-Signale (Hörordnung §8; Vorstufe echter Panel-Tests).
 

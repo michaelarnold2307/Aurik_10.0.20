@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """
 Aurik: MERT Denoiser Plugin.
 §v10.127: MERT (117M) features → Decoder (3.5M) → Clean Audio Mask.

@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """scripts/fix_silent_exceptions.py — §v10.700 L6b.
 
 Liest die Silent-Failure-Liste aus audit_exception_logging.py und fügt

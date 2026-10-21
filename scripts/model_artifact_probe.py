@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """scripts/model_artifact_probe.py — Artefakt-Probe für ``models/`` (§III.13).
 
 **Zweck (§III.13 (copilot-instructions.md) — Evidenzpflicht):** Die Identität und

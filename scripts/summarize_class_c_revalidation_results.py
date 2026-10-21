@@ -1,6 +1,4 @@
-#!/usr/bin/env python3
-"""
-Aggregiert Klasse-C-Revalidierungsresultate zu einem auditfaehigen Bericht.
+"""Aggregiert Klasse-C-Revalidierungsresultate zu einem auditfaehigen Bericht.
 
 Eingang:
 - result_template.csv (mit ausgefuellten Metriken)

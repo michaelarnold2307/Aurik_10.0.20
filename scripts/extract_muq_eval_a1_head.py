@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """Extrahiert den MuQ-Eval-A1-Head aus dem großen A1-Checkpoint.
 
 MuQ-Eval (Zhu & Li 2026, arXiv:2603.22677, MIT) veröffentlicht den trainierten

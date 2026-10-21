@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """Erstellt ein konsolidiertes Weltklasse-KPI-Dashboard aus Revalidierungs-/Gate-Artefakten.
 
 Quellen (optional, falls vorhanden):

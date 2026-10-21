@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """backend/core/dsp/dynamic_loudness_model.py — Dynamisches Loudness-Modell (DLM)
 mit binauraler Loudness (Moore & Glasberg 2007, vereinfacht).
 

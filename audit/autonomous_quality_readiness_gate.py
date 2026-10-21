@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """Autonomous quality-readiness gate for Aurik's non-interactive restoration flow.
 
 from typing import Any

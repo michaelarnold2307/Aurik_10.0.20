@@ -1,7 +1,5 @@
-#!/usr/bin/env python3
-"""
-Aurik Live-Pipeline-Monitor
-============================
+"""Aurik Live-Pipeline-Monitor
+==============================
 Verfolgt `logs/aurik_backend.log` in Echtzeit und meldet kritische Ereignisse:
 
   - 🔴 PEGELEXPLOSION:  WaveformPlausibilityGuard Notfallkorrektur

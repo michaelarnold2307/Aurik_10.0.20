@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 # pylint: disable=import-outside-toplevel
 """
 aurik_debug.py — Standalone Debug-CLI für die Aurik-Pipeline.

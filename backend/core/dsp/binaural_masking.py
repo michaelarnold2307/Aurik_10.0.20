@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """backend/core/dsp/binaural_masking.py — Equalization-Cancellation / BMLD (SOTA-Basis).
 
 Ehrlicher Scope: Deterministisches Equalization-Cancellation-Modell (Durlach

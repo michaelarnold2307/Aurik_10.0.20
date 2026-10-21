@@ -1,7 +1,5 @@
-#!/usr/bin/env python3
-"""
-Aurik 10.0.0 — Echtzeit-Pegelexplosion-Monitor
-===========================================
+"""Aurik 10.0.0 — Echtzeit-Pegelexplosion-Monitor
+=================================================
 
 Überwacht kontinuierlich die output_audio/-Verzeichnisse und prüft
 jede neue Export-Datei auf Pegelexplosionen. Zeigt Warnungen an und

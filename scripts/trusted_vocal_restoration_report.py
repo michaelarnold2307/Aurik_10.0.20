@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """Erzeugt den Aurik Trusted Vocal Restoration Report.
 
 Der Report ist die produktive Bruecke von internen KPI-Raten zu professioneller

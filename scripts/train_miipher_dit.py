@@ -1,6 +1,4 @@
-#!/usr/bin/env python3
-"""
-Train FlowMatchingDiT for vocal enhancement (§v10.14).
+"""Train FlowMatchingDiT for vocal enhancement (§v10.14).
 
 Training paradigm:
   Given clean vocal y and degraded vocal x_noisy (SNR 5–12 dB):

@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """Validate new ONNX artifact entries in models/manifest.json.
 
 Checks only the newly integrated artifacts:

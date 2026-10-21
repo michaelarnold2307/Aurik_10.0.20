@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """Auto-ingest missing core model artifacts from local drop-in folders.
 
 This script never downloads from the network. It only scans local directories,

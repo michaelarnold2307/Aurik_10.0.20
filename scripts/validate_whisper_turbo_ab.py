@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """§SOTA-ML-V10 (2026-10-03) — Whisper large-v3-turbo A/B-Vertrag (GESANG).
 
 Aktivierungsvertrag im validate_hr_v1-Muster: Turbo (large-v3-Encoder,

@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """Generiert synthetisch degradierte/clean-Vocal-Paare für das Cantus-Training.
 
 Problem: Es gibt keinen großen öffentlichen Datensatz mit paarweisen

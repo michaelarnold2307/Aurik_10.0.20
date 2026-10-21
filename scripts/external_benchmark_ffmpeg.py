@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """§v10.700 Externes Benchmark: Aurik vs. ffmpeg auf dem Real-Audio-Corpus.
 
 

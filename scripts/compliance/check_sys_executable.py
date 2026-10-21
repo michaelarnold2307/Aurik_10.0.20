@@ -1,6 +1,4 @@
-#!/usr/bin/env python3
-"""
-§v10.50 Pre-Commit-Hook: sys.executable in Orchestrator-Subprozessen.
+"""§v10.50 Pre-Commit-Hook: sys.executable in Orchestrator-Subprozessen.
 
 Scannt alle Python-Dateien in scripts/ auf hartcodierte .venv_aurik/bin/python-Pfade
 in subprocess.Popen/subprocess.run-Aufrufen.

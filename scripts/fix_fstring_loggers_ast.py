@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 r"""
 fix_fstring_loggers_ast.py
 ===========================

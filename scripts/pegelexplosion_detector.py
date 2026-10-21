@@ -1,7 +1,5 @@
-#!/usr/bin/env python3
-"""
-Aurik 10.0.0 — Pegelexplosion-Detektor & Auto-Fixer
-================================================
+"""Aurik 10.0.0 — Pegelexplosion-Detektor & Auto-Fixer
+======================================================
 
 Spezialisierter Analyzer für Pegelexplosionen (Level Spikes):
 - Überwacht Lautstärke-Verlauf pro Phase

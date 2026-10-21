@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """SOTA-ML-V1 VORAB: AERO-vs-FlashSR-Kandidaten-Benchmark auf MUSDB18HQ-Musik.
 
 Bandbreiten-Erweiterer (BWE) für die Rolle „Hochband-Rekonstruktion":

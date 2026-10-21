@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """Ear-Critical-Paritäts-Check (fail-closed, Pre-Commit-Hook `aurik-ear-parity`).
 
 Prüft die Registry `.github/EAR_CRITICAL_PARITY.md`:

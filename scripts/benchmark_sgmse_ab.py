@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """3-Wege-Metrik-A/B SGMSE+ (Defizit D-K0-3): WSJ0-Sprach-Core vs. Musik-Core vs. WPE.
 
 Baut aus einer sauberen Gesangsquelle eine deterministische Degradation

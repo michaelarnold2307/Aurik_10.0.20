@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """Fall-für-Fall-Quality-Gate-Diagnose — §19.
 
 Analysiert den Real-Audio-Quality-Gate-Report und erstellt eine

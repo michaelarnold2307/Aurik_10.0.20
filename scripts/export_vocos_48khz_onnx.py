@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """Export models/vocos_48khz/pytorch_model.bin -> models/vocos_48khz/vocos_48khz.onnx
 
 Model:  sample_rate=48000, n_mels=128, n_fft=2048, hop_length=256

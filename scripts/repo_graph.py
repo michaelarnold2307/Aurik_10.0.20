@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """Repo-Graph — Import-Graph, Top-Level-Symbole und Entry-Points über `ast`.
 
 Maschinenlesbare Repo-Karte für Agenten: „Repo → Karte → relevante Dateien"

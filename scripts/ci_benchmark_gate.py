@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """AMRB CI-Gate Lightweight — §Spec 07.
 
 Prüft ob Aurik die AMRB-Baseline in ≥8/10 Szenarien schlägt.

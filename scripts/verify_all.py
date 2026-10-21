@@ -1,6 +1,4 @@
-#!/usr/bin/env python3
-"""
-verify_all.py — Vollständige Aurik-Verifikationssuite.
+"""verify_all.py — Vollständige Aurik-Verifikationssuite.
 Führt alle Gates aus und produziert einen Abschlussbericht.
 """
 

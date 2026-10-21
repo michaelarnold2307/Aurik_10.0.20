@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """scripts/layout_invariant_check.py — §G9 (copilot-instructions.md): Layout-Entscheidung hat EINE Quelle.
 
 **Warum (Befund-Klasse D-K3-6, 2026-10-07).** Der Wohlklang-Schutz HR-V1 war auf

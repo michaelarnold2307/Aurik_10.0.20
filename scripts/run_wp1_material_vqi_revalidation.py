@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """WP1-Runner fuer material_vqi_floor-Revalidierung.
 
 Verarbeitet nur Planzeilen mit `workpackage == wp1_vqi_floor` und schreibt Ergebnisse

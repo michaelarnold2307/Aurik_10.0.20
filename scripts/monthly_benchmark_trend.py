@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """Monatlicher Benchmark-Trend-Report — §15.1 Punkt 1.5.
 
 Liest alle gespeicherten Benchmark-Ergebnisse aus benchmarks/competitive/results/

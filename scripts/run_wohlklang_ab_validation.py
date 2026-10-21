@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """Wohlklang-A/B-Validierung auf echten Songs (§Hörordnung §1–§3).
 
 Beweist den Effekt des Wohlklang-Optimums-Fixes (2026-09-26) hörbar auf

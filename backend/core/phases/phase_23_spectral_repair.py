@@ -1,6 +1,4 @@
-#!/usr/bin/env python3
-"""
-Phase 23: Spectral Repair v3.0 — IMCRA Adaptive Noise-Floor + Vectorized Inpainting
+"""Phase 23: Spectral Repair v3.0 — IMCRA Adaptive Noise-Floor + Vectorized Inpainting
 
 Algorithm (v3.0 — Über-SOTA):
 1. STFT Analysis (scipy.signal.stft, Hann, material-adaptive Fensterlänge)

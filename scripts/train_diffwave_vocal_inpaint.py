@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """SOTA-VOCAL-INPAINT-S2 / GPU-Finetune F1: DiffWave-Vokal-Finetune (HAUPTWEG).
 
 Ziel aus S1: Die Sprach-DiffWave schließt 300-ms-Gesangslücken mit mean SDR

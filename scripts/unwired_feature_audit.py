@@ -1,6 +1,4 @@
-#!/usr/bin/env python3
-"""
-§v10.118 Unverkabelte-Feature-Audit — SOTA-Features flächendeckend aktivieren.
+"""§v10.118 Unverkabelte-Feature-Audit — SOTA-Features flächendeckend aktivieren.
 
 Scannt alle 65 Phasen und identifiziert, welche SOTA-Features noch nicht
 genutzt werden — obwohl sie verfügbar und für die Phase relevant sind.

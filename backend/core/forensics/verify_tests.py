@@ -1,6 +1,4 @@
-#!/usr/bin/env python3
-"""
-Quick verification of all Signal Forensics tests.
+"""Quick verification of all Signal Forensics tests.
 Provides summary of test results without running full tests.
 """
 

@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """
 BW Reconstructor V2 — Besseres Training mit Multi-Resolution-STFT-Loss
 und Cutoff-Frequenz-Conditioning (FiLM).

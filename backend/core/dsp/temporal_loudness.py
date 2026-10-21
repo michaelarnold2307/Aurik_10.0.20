@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """backend/core/dsp/temporal_loudness.py — Zeitvariantes Lautheitsmodell (DLM-Basis).
 
 Ehrlicher Scope: Reduziertes, deterministisches dynamisches Lautheitsmodell

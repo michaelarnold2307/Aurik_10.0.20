@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """§v10.115 Exception-Forensik Dashboard — CLI für Exception-Trends und Q-Score.
 
 Usage:

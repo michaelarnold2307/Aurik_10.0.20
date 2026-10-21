@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """Stepwise ONNX export readiness checker for Aurik model candidates.
 
 This script does not modify production plugin code. It provides a practical,

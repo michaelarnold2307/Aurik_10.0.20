@@ -1,6 +1,4 @@
-#!/usr/bin/env python3
-"""
-Aurik 10.0.0 — Upload all custom/converted model files to HuggingFace Hub.
+"""Aurik 10.0.0 — Upload all custom/converted model files to HuggingFace Hub.
 Skips files that are available from official upstream repos.
 Resumes automatically if interrupted (checks existing files on HF).
 

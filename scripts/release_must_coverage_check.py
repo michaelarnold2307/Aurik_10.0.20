@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """Generate RELEASE_MUST coverage report for spec-to-test traceability.
 
 This script links RELEASE_MUST clauses in .github/copilot-instructions.md

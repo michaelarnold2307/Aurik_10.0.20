@@ -1,6 +1,4 @@
-#!/usr/bin/env python3
-"""
-Competitive Benchmarking Suite for AURIK v9 (Legacy Suite — eingeschränkte CI-Nutzung)
+"""Competitive Benchmarking Suite for AURIK v9 (Legacy Suite — eingeschränkte CI-Nutzung)
 ========================================================================================
 
 ⚠️  WICHTIGER HINWEIS — VERBOTENE METRIKEN (spec §3.1, §4.4):

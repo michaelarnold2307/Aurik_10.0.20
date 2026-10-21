@@ -1,6 +1,4 @@
-#!/usr/bin/env python3
-"""
-Phase 28: Surface Noise Profiling v3.0 - Über-SOTA OMLSA/IMCRA
+"""Phase 28: Surface Noise Profiling v3.0 - Über-SOTA OMLSA/IMCRA
 Adaptive spectral noise profiling via IMCRA minimum statistics
 und OMLSA-Gain (Optimally Modified Log-Spectral Amplitude).
 

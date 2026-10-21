@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """
 §v10.610: Post-Repair Artifact Guard — Pumping- und Verzerrungsschutz für die SOTA-Kette.
 

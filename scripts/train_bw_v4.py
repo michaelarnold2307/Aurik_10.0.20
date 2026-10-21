@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """BW Reconstructor V4 — GAN + MUSDB18 (echte Musik)."""
 
 import random

@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """API-Docs-Generator. Spec 15 paragraph 7.5.
 Extrahiert Docstrings aus backend/api/bridge.py und generiert Markdown.
 

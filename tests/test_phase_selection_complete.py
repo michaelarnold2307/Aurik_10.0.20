@@ -1,6 +1,4 @@
-#!/usr/bin/env python3
-"""
-Test: Complete Phase Selection V3
+"""Test: Complete Phase Selection V3
 Testet die erweiterte Phase Selection Logic mit allen 25 Phasen.
 """
 

@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """Exportiert Cantus (Flow-Matching-DiT) nach ONNX mit Paritäts-Gate.
 
 Signatur des Inferenzgraphs (models/cantus/cantus_dit.onnx):

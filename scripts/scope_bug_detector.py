@@ -1,6 +1,4 @@
-#!/usr/bin/env python3
-"""
-§v10.118 Scope-Bug-Detector — AST-basierte statische Analyse für Aurik-Phasen.
+"""§v10.118 Scope-Bug-Detector — AST-basierte statische Analyse für Aurik-Phasen.
 
 Erkennt die zwei häufigsten Scope-Bug-Klassen:
   1. Undefined variable in inner function (z.B. `kwargs` in _repair_channel)

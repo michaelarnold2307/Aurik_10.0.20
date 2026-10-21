@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """§F14 — Evidenz-Kalibrierung der Gender-Detektion auf echtem Musik-Korpus.
 
 Warum: Die Schwellen der kanonischen Gender-Fusion (Spec 19) stammen aus

@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """Aurik mypy Real-Bug-Gate.
 
 Fuehrt mypy auf den release-relevanten Ebenen aus und blockiert jeden Fehlercode.

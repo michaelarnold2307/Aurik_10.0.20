@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """Pre-commit hook: Import-Breaking-Change-Detektor.
 
 Prüft ob geänderte Dateien kritische Exports entfernt haben,

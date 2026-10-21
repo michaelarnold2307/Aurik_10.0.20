@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """Export AudioLDM2 VAE decoder to ONNX for Aurik.
 
 Input:  latent (batch=1, 8, H, W) float32, where H=mel_bins/8, W=time_frames/8

@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """§v10.51 Pre-Commit Sprache-Guard — erzwingt deutsche Log-Meldungen.
 
 Prüft vor jedem Commit:

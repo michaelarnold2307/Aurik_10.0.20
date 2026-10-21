@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """
 BW Reconstructor V3 — Adversarial Training (PatchGAN).
 

@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """Download PyTorch core models and export ONNX where possible.
 
 Workflow:

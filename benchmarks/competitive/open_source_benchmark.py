@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """Open-Source Competitive Benchmark v2 — Perzeptuelle Metrik, Echte Signale, Mini-Pipeline.
 
 §15.1 [RELEASE_MUST]: Vergleicht Aurik (IMCRA+OMLSA Mini-Pipeline) gegen

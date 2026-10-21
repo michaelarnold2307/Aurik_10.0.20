@@ -1,6 +1,4 @@
-#!/usr/bin/env python3
-"""
-AURIK Debug-Launcher — vollständige Ereignis-Instrumentierung aller §11.4-Features.
+"""AURIK Debug-Launcher — vollständige Ereignis-Instrumentierung aller §11.4-Features.
 
 Startet das Frontend mit erweitertem Debug-Logging auf DEBUG-Level für alle
 aurik/backend/Aurik10-Namespaces. Loggt in:

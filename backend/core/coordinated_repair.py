@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """
 §v10.400: Repair Planner + Coordinated Repair — Manifest-gesteuerte Defekt-Behebung.
 

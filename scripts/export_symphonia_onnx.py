@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """Exportiert Symphonia (Flow-Matching-DiT) nach ONNX mit Paritäts-Gate.
 
 Signatur des Inferenzgraphs (models/symphonia/symphonia.onnx):

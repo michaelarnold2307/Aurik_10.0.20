@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """V01–V75 VERBOTEN-Linter v6 — vollständig an VERBOTEN.md angepasst.
 
 Abdeckung (Rev. 2026-09-11, Katalog-Ausbau 30 → 52+):

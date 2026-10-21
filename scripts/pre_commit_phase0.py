@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """§v10.303.26 Pre-Commit-Hooks für Phase-0-Integrität.
 
 Prüft vor jedem Commit:

@@ -1,6 +1,4 @@
-#!/usr/bin/env python3
-"""
-§v10.710: Parameter-Kalibrierung — erfindet keine Werte, misst sie.
+"""§v10.710: Parameter-Kalibrierung — erfindet keine Werte, misst sie.
 
 Problem: Genre-Presets (Klassik 0.20, Rock 0.55) und Modul-Gewichte sind
 inventierte Zahlen. Kalibrierung via Wahrnehmungs-Regelkreis fehlte.

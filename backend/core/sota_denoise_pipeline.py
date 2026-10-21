@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """
 §v10.200: SOTA 4-Ebenen Musik-Denoiser — RX-11-überlegen durch Harmonic Inpainting.
 

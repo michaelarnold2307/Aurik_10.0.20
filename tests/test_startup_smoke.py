@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """§v10.305 Startup-Smoke-Test — GPU-Erkennung, Warmup, Pre-Analysis in <60s.
 
 Usage:

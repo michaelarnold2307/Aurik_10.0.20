@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """§v10.802 Version-Guard — Bump-Konsistenz gegen die Git-Historie (Warnstufe).
 
 Prüft seit der letzten Änderung an ``backend/core/version.py``:

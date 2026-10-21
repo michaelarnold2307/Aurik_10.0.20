@@ -1,6 +1,4 @@
-#!/usr/bin/env python3
-"""
-§v10.300: Harmonic Inpainting — DiT Fine-Tuning.
+"""§v10.300: Harmonic Inpainting — DiT Fine-Tuning.
 
 Nimmt das vortrainierte MIIPHER DiT (FlowMatchingDiT, 201M, Epoch 120)
 und trainiert es spezifisch auf HARMONIC INPAINTING:

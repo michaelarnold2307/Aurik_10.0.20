@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """backend/core/snr_reference.py — Kanonische SNR-Referenz-Definition.
 
 SNR-Kanonisierung (Projekt 2026-08-22, testbegleitet): Die vier im Lauf

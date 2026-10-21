@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """Harter Worldclass-Release-Gate auf Basis des KPI-Dashboards.
 
 Failt mit Exit-Code 2, wenn einer der konfigurierten KPI-Targets verfehlt wird.

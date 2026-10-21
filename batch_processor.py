@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """
 Batch Processing System for Aurik 10.0.0
 ========================================

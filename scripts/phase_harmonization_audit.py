@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """Audit psychoacoustic harmonization coverage across all phase modules.
 
 Non-blocking audit: identifies modules that still miss central strength/locality

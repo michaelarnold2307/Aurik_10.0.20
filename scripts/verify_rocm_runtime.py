@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """Verify the effective ROCm runtime path for Aurik restoration plugins."""
 
 from __future__ import annotations

@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """goal_monitor.py — Aurik 10.0.0 Musical-Goals-Diagnose-Monitor.
 
 Liest `logs/aurik_backend.log` und zeigt für jeden abgeschlossenen Lauf:

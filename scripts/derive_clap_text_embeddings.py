@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """§P1-5b (2026-09-09, rev. 2026-10-06): LAION-CLAP Text-Embeddings ableiten.
 
 Der ONNX-Pfad des CLAP-Plugins benötigt ``models/clap/text_embeddings.npy`` in der

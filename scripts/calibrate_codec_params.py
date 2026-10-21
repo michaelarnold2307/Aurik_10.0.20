@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """§CALIBRATE: Wissenschaftliche Parameter-Optimierung via AMRB-Sweep.
 
 Variiert die 3 kritischen Codec-Parameter über den AMRB-VOCAL-Benchmark

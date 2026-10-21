@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """§P1-4b (2026-09-09): BS-RoFormer-317 → Core-only-ONNX-Export + End-to-End-Parität.
 
 Architektur-Match verifiziert: bs-roformer==0.3.10 lädt den 317-Checkpoint

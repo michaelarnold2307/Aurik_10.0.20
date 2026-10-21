@@ -1,6 +1,4 @@
-#!/usr/bin/env python3
-"""
-Prepare MUSDB18 music data for SGMSE+ fine-tuning (§v10.16).
+"""Prepare MUSDB18 music data for SGMSE+ fine-tuning (§v10.16).
 
 Creates the directory structure expected by SpecsDataModule:
   data/sgmse_musik/train/{clean,noisy}/

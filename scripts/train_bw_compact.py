@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """
 Self-contained BW Reconstructor training — NO external data needed.
 Generates synthetic audio on the fly, trains a compact U-Net on CPU.

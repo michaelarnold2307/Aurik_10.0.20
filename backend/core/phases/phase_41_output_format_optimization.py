@@ -1,7 +1,5 @@
-#!/usr/bin/env python3
-"""
-Phase 41: Professional Output Format Optimization v2.0.
-=======================================================
+"""Phase 41: Professional Output Format Optimization v2.0.
+==========================================================
 
 High-quality resampling, dithering, and format-specific optimization for final delivery.
 

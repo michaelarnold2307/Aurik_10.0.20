@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """GPU-Fähigkeiten-Erkennung für Aurik.
 
 §15.5: Erkennt verfügbare GPUs und deren ML-Backends

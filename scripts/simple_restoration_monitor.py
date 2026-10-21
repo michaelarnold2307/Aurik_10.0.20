@@ -1,7 +1,5 @@
-#!/usr/bin/env python3
-"""
-Aurik 10.0.0 — Vereinfachter Restaurierungs-Monitor
-===============================================
+"""Aurik 10.0.0 — Vereinfachter Restaurierungs-Monitor
+======================================================
 
 Direkter Monitor ohne komplexe Orchestrierung.
 Startet Frontend + Überwacht Exports auf Pegelexplosionen.

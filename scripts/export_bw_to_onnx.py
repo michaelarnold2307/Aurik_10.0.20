@@ -1,6 +1,4 @@
-#!/usr/bin/env python3
-"""
-Export trainiertes Bandwidth-Reconstructor-Modell nach ONNX.
+"""Export trainiertes Bandwidth-Reconstructor-Modell nach ONNX.
 
 Voraussetzung: train_bw_reconstructor.py wurde erfolgreich ausgeführt und
 die Checkpoint-Datei liegt unter models/bw_reconstructor/best_model.pt.

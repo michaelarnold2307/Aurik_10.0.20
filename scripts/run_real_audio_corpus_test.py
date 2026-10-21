@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """Real-Audio-Corpus MUSHRA-Test (SOTA Implementation).
 
 Führt eine vollständige E2E-Validierung mit echten Audiodateien durch:

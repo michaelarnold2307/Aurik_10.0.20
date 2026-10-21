@@ -1,6 +1,4 @@
-#!/usr/bin/env python3
-"""
-Fine-tune SGMSE+ (Score-based Generative Model) on MUSDB18 music data (§v10.16).
+"""Fine-tune SGMSE+ (Score-based Generative Model) on MUSDB18 music data (§v10.16).
 
 Replaces speech-only training (VoiceBank-DEMAND, WSJ0, EARS-WHAM at 16kHz)
 with music-specific fine-tuning at 48kHz.

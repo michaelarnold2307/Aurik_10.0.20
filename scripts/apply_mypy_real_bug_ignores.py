@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """Annotiert bestehende mypy Real-Bugs mit zielgenauen `# type: ignore[...]`.
 
 Dieses Skript ist fuer Sprint-2-Altlagen gedacht. Es ignoriert `var-annotated`,

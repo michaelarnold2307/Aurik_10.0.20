@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """Trainiert Symphonia ausschließlich auf Instrumental-Paaren.
 
 Die Paare müssen aus ``generate_synthetic_degraded_instrumentals.py`` stammen:

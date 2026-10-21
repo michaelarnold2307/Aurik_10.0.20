@@ -1,6 +1,4 @@
-#!/usr/bin/env python3
-"""
-Phase 37: Bass Enhancement v2.0 - Professional
+"""Phase 37: Bass Enhancement v2.0 - Professional
 Harmonic bass synthesis and sub-bass generation.
 
 Algorithm Overview:

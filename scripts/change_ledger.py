@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """Change-Ledger — strukturiertes Working-Memory aus Git (TASK_CHANGES.md).
 
 Task-lokales Gegenstück zum PR-Evidenzblock: changed/deleted/renamed kommt

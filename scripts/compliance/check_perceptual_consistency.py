@@ -1,7 +1,5 @@
-#!/usr/bin/env python3
-"""
-§v10.101 Perceptual Consistency Guard — Pre-Commit Hook
-========================================================
+"""§v10.101 Perceptual Consistency Guard — Pre-Commit Hook
+==========================================================
 
 Prüft vor jedem Commit:
   1. Neue Phasen ohne v10.101-Annotation → WARNUNG

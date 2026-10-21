@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """Audit ErrorGuard-Coverage über alle 68 Phasen.
 
 §15.8: Scannt ``backend/core/phases/phase_*.py`` und identifiziert:

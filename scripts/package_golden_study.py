@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """MUSHRA-Studienpaket für das goldene Hör-Set (Empfehlung 10: die Ohr-Schleife).
 
 Erzeugt pro Golden-Set-Item:

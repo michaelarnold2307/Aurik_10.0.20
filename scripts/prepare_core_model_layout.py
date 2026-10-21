@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """Prepare directory layout for core missing model paths.
 
 Creates only parent directories for required model artifacts.

@@ -1,6 +1,4 @@
-#!/usr/bin/env python3
-"""
-Phase 2.3 Real-World Validation - Minimal Version
+"""Phase 2.3 Real-World Validation - Minimal Version
 Tests all 6 Phase 2.3 components on real audio files
 """
 

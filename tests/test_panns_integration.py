@@ -1,7 +1,5 @@
-#!/usr/bin/env python3
-"""
-Test PANNS Integration in AnalysisEngineAdapter
-===============================================
+"""Test PANNS Integration in AnalysisEngineAdapter
+==================================================
 
 Tests whether PANNS successfully extracts Genre, Vocals, and Instruments
 and integrates them into AnalysisProfile.

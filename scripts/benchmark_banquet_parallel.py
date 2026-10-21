@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """§PERF-R P8/P10-Benchmark — BANQUET-Fenster-Parallelität + ORT-Thread-Tuning.
 
 Misst die BANQUET-Inferenz (`_process_onnx`, phase_09-Pfad) unter verschiedenen

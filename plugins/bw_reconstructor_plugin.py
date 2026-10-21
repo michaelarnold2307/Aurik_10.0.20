@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """
 BW Reconstructor Plugin für Aurik — ONNX-basierte Bandbreiten-Rekonstruktion.
 

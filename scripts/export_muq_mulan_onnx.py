@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """MuQ-MuLan Audio-Turm → ONNX (Aurik, ROCm).
 
 Exportiert den Audio-Turm von OpenMuQ/MuQ-MuLan-large (Tencent AILab,

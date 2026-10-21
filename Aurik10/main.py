@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """
 AURIK Professional - Main Application Entry Point
 Launch the desktop application for audio restoration

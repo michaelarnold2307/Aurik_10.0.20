@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """SOTA-ML-V4: UTMOS-Musik-MOS-Validierung — Delta-Kalibrierung auf MUSDB-Paaren.
 
 Kein Finetune möglich (UTMOSv2 ist ein fertiges MOS-Prädiktions-Ensemble) —

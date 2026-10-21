@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """Freude-Gate for psychoacoustic release validation.
 
 Evaluates listening-test results (MUSHRA/subjective panel) with hard pass/fail

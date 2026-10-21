@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """MUSHRA-Stimuli-Builder (P1-4-Vorbereitung, Protokoll §10).
 
 Baut das Pilot-Set (Seed 42) aus test_audio/ (Referenz = Input) und

@@ -1,6 +1,4 @@
-#!/usr/bin/env python3
-"""
-Phase 30: DC Offset Removal v2.0 - Professional
+"""Phase 30: DC Offset Removal v2.0 - Professional
 Advanced DC offset and subsonic rumble removal with adaptive filtering.
 
 Algorithm Overview:

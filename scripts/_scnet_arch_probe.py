@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """Prototyp: BMWS/MVSep-SCNet-Architektur aus State-Dict-Shapes rekonstruieren.
 
 Ziel: exact-match (strict=True) zum Checkpoint models/scnet_4stems/huge_scnet_4stems_v1.2.ckpt

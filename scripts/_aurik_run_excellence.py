@@ -1,6 +1,4 @@
-#!/usr/bin/env python3
-"""
-_aurik_run_excellence.py — Internes Studio-2026-Hilfsskript
+"""_aurik_run_excellence.py — Internes Studio-2026-Hilfsskript
 ============================================================
 Lädt eine Audiodatei aus dem Arbeitsverzeichnis, restauriert sie mit
 mode="studio2026" und exportiert nach output/.

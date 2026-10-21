@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """Aurik Regression Gate — Selbstvergleich, Edge-Cases, DeepFilterNet3.
 
 §Echter Benchmark: Vergleicht Aurik gegen sich selbst (Regression-Erkennung),

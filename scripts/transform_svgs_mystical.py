@@ -1,7 +1,5 @@
-#!/usr/bin/env python3
-"""
-Aurik SVG Mystical Transformation
-==================================
+"""Aurik SVG Mystical Transformation
+====================================
 Transforms all Aurik SVG icons to:
   1. Transparent backgrounds (no solid dark fills)
   2. Mystical nebula-gradient backdrop (fades at edges)

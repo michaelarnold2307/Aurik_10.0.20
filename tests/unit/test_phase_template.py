@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """tests/unit/test_phase_template.py — §v10.700 I1: Per-Phase-Unit-Test-Template.
 
 Kopiere diese Datei als Vorlage für jede neue Phase:

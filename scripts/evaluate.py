@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """§v10.995: Der EINE Evaluations-Einstiegspunkt.
 
     python scripts/evaluate.py --mode objective --corpus corpus --limit 5 --gate

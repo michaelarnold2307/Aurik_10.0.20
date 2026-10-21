@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """SOTA-ML-V3-VORAB: MP-SENet-3-Song-Vorher/Nachher-Benchmark auf MUSDB18HQ.
 
 MP-SENet ist ein SPRACH-Enhancer (Noise-Reduction). Auf Musik (out-of-domain)

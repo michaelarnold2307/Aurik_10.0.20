@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """§SOTA-BSR-GPU — PyTorch-ROCm vs. ONNX-CPU Paritäts- und Speed-Validierung.
 
 Lädt den 317-Checkpoint (Rezept aus scripts/export_bs_roformer_onnx.py),

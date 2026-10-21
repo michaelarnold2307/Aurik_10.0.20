@@ -1,6 +1,4 @@
-#!/usr/bin/env python3
-"""
-Phase 34: Mid/Side Processing v2.0 - Professional.
+"""Phase 34: Mid/Side Processing v2.0 - Professional.
 Multi-band M/S dynamics processing with independent control over Mid and Side signals.
 
 Algorithm Overview:

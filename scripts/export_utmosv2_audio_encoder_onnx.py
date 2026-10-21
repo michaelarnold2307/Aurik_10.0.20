@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """Export UTMOSv2 audio encoder (wav2vec2-base backbone) to ONNX.
 
 This exports the SSL backbone used by UTMOSv2 to a standalone ONNX model.

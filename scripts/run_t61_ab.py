@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """run_t61_ab.py — TODO-T6-1 A/B-Abnahme: schritt-granulare Core-Guards vs. Status quo.
 
 Führt die in der Roadmap (Abschnitt TODO-T6-1) geforderte Vorher/Nachher-Abnahme

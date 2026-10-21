@@ -1,6 +1,4 @@
-#!/usr/bin/env python3
-"""
-scripts/verify_requirements.sh-equivalent in Python.
+"""scripts/verify_requirements.sh-equivalent in Python.
 
 Prüft alle Einträge in requirements/requirements_aurik.txt darauf,
 ob sie auf PyPI verfügbar sind (dry-run). Gibt Exit-Code 0 bei Erfolg,

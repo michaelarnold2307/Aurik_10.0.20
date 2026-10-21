@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """§v10.52 Bulk-Fix: Übersetzt bestehende englische Log-Meldungen nach Deutsch.
 
 Sicher: Nur logger-Meldungen werden ersetzt. Kein Code, keine Variablen.

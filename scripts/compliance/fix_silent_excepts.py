@@ -1,6 +1,4 @@
-#!/usr/bin/env python3
-"""
-Fix: silent except blocks in unified_restorer_v3.py (§2.59 Muster 2)
+"""Fix: silent except blocks in unified_restorer_v3.py (§2.59 Muster 2)
 
 Adds logger.debug(..., exc_info=True) before bare pass/return/continue
 in except Exception: blocks that have no logging.

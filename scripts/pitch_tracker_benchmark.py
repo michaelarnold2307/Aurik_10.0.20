@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """Objektiver Pitch-Tracker-Benchmark: CREPE (2018) vs. FCPE (2023) vs. RMVPE (2023).
 
 Pitch-Tracking ist der eine ML-Task mit objektiver Ground-Truth: synthetische

@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """Exportiert AERO (12 kHz → 48 kHz Super-Resolution) nach ONNX.
 
 §v10-AERO-Challenger (2026-09-10): Der AERO-Backbone (HDemucs-Abkömmling,

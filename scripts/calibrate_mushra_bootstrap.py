@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """MERT-MUSHRA Calibration Bootstrap — Sprint 3.
 
 Führt bootstrap_from_internal_metrics() aus und erzeugt das

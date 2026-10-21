@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """End-to-End Calibration Pipeline — Alle 5 Exzellenz-Module integriert.
 
 Führt Aureks Mini-Pipeline auf Testsignalen aus, sammelt Metriken,

@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """A/B-Test: Export-Kandidaten gegen aktive Produktionsmodelle (§v10.25 §6).
 
 Familien:

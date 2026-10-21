@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """Erzeugt deterministische MUSDB18-HQ-Instrumentalpaare für Symphonia.
 
 Die Referenz ist die phasengleiche Summe aus drums, bass und other. Die

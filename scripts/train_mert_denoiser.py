@@ -1,6 +1,4 @@
-#!/usr/bin/env python3
-"""
-§v10.128: MERT-Denoiser v4 — Stable training with gradient accumulation + ground-truth loss.
+"""§v10.128: MERT-Denoiser v4 — Stable training with gradient accumulation + ground-truth loss.
 
 Key fixes from v10.127:
   - Ground-truth loss: compare pred_spec against direct STFT(clean), not model(clean)

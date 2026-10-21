@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """§v10.50 Pre-Commit Calibration Guard — erzwingt Vorgaben und Specs.
 
 Prüft vor jedem Commit:

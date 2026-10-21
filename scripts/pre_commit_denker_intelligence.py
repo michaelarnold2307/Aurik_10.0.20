@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """scripts/pre_commit_denker_intelligence.py — §v10.700.
 
 Pre-Commit-Check für Denker-Intelligenz:

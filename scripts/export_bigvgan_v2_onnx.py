@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """Exportiert den BigVGAN-v2-Generator von PyTorch nach ONNX.
 
 Der Checkpoint wird als State-Dict geladen und mit der exakt im Plugin

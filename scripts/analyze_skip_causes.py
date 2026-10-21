@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """Static skip-cause analyzer for pytest suites.
 
 Scans tests and conftest files without executing the test suite and reports

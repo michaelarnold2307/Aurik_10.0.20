@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """backend/core/dsp/gammachirp_filterbank.py — Auditorische Peripherie (SOTA-Basis).
 
 Ehrlicher Scope: Deterministische Gammachirp-Filterbank nach Irino & Patterson

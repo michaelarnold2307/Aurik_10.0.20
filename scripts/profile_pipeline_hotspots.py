@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """cProfile-Hotspot-Analyse für die DSP-Phasen (P2-Perf, 2026-09-09).
 
 Profilert einen 10-s-Slice des Test-Track-Songs im Quality-Modus auf dem

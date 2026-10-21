@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """Validate core runtime readiness for missing-model rollout.
 
 Default mode checks whether Aurik is operational for each core capability,

@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """Exportiert den GACELA-ML-Kern (BorderEncoder ×2 + Generator) nach ONNX.
 
 §v10-GACELA-ONNX (2026-09-10): GACELA (GAN Audio Inpainting, 22,05 kHz) füllt
