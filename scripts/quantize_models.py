@@ -1,7 +1,5 @@
-#!/usr/bin/env python3
-"""
-ONNX Model Quantization Script for AURIK v8
-===========================================
+"""ONNX Model Quantization Script for AURIK v10
+===============================================
 
 Batch quantize all ONNX models in the registry from FP32 to INT8.
 Uses the ModelQuantizer from backend/core/onnx/quantizer.py.

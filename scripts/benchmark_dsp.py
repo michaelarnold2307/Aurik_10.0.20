@@ -1,6 +1,5 @@
-#!/usr/bin/env python3
 """
-DSP Optimization Benchmarks for AURIK v8
+DSP Optimization Benchmarks for AURIK v10
 =========================================
 
 Benchmarks all three DSP optimization strategies:

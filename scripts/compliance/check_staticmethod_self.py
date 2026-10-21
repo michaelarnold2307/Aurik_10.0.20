@@ -1,7 +1,4 @@
-#!/usr/bin/env python3
-"""
-
-Compliance Check: @staticmethod + self.X-Zugriffe (§2.59, Bugfix 2026-07-09)
+"""Compliance Check: @staticmethod + self.X-Zugriffe (§2.59, Bugfix 2026-07-09)
 
 Scannt alle Python-Dateien unter backend/, denker/, forensics/ auf:
 - Methoden mit @staticmethod-Dekorator, die trotzdem self.<attr> verwenden.

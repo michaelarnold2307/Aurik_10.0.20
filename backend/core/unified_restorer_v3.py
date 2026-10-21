@@ -7312,6 +7312,7 @@ class UnifiedRestorerV3:
         "phase_65_vocal_naturalness_restoration": "vocal_enhancement",
         "phase_66_stem_targeted_nr": "noise_reduction",  # v10.0.0: Stem-Targeted NR
         "phase_67_crackle_texture_removal": "subtractive_cleanup",  # Route A: Knistern-Textur (ML)
+        "phase_68_vinylnet_decrackle": "reconstruction_inpainting",  # ML-Chirurgie: Klicks/Pops + generative Lücken-Füllung (VinylNet v4)
         "phase_glue_stage": "dynamics_control",  # finale Bus-Kompression (Glue)
         "phase_ambience_polish": "stereo_enhancement",  # Spec 25: Raumhülle vor der Glue Stage
     }
@@ -28599,6 +28600,17 @@ class UnifiedRestorerV3:
                 transfer_chain,
             )
 
+        # ML-Chirurgie (VinylNet v4): chirurgisches De-Crackle als Nachpass.
+        # Disc-Medien mit Klick- oder Crackle-Last; läuft NACH den klassischen
+        # Phasen 01/27/09 (s.u. _move_before) und fängt deren Residuen plus grosse
+        # Lücken generativ (InpaintNet). Either-Or bleibt gewahrt: phase_09/27 bleiben
+        # Primärphasen, phase_68 ist der ML-Nachpass (§Spec 03/06 Abgrenzung).
+        # Studio-Modus-Guard wie bei phase_67: moderne digitale Quellen haben keine
+        # mechanische Rillenentstehung → Vinyl-Chirurgie physikalisch ohne Adressat
+        # (konsistent mit _ANALOG_ONLY_PHASES, §2.59).
+        if not self.is_studio_mode() and _is_disc and (sev(DefectType.CRACKLE) > 0.15 or sev(DefectType.CLICKS) > 0.25):
+            selected.append("phase_68_vinylnet_decrackle")
+
         # Brumm 50/60 Hz
         if sev(DefectType.HUM) > 0.10:
             selected.append("phase_02_hum_removal")
@@ -29996,6 +30008,14 @@ class UnifiedRestorerV3:
             _move_before("phase_50_spectral_repair", "phase_27_click_pop_removal")
             _move_before("phase_29_tape_hiss_reduction", "phase_27_click_pop_removal")
             _move_before("phase_23_spectral_repair", "phase_27_click_pop_removal")
+            # ML-Chirurgie (VinylNet v4) als finaler De-Crackle-Nachpass: nach allen
+            # klassischen Klick-/Crackle-Phasen und den spektralen Phasen, damit es
+            # deren Residuen/Re-Artefakte fängt (analog phase_27-Re-Sweep, tiefer).
+            _move_before("phase_01_click_removal", "phase_68_vinylnet_decrackle")
+            _move_before("phase_27_click_pop_removal", "phase_68_vinylnet_decrackle")
+            _move_before("phase_09_crackle_removal", "phase_68_vinylnet_decrackle")
+            _move_before("phase_50_spectral_repair", "phase_68_vinylnet_decrackle")
+            _move_before("phase_67_crackle_texture_removal", "phase_68_vinylnet_decrackle")
             # Vocal chain guard: classic de-esser before vocal enhancement
             _move_before("phase_19_de_esser", "phase_42_vocal_enhancement")
             # Vocal chain guard: classical de-esser before ML de-esser refinement

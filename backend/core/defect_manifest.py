@@ -93,12 +93,19 @@ class DefectManifest:
         """Definiert, welche Phase(n) jeden Defekt behandeln."""
         pm = self._phase_map = {
             # --- Grundreinigung ---
-            "clicks": ["phase_01_click_removal", "phase_27_click_pop_removal"],
+            # ML-Nachpass phase_68 (VinylNet v4) läuft NACH den klassischen Phasen 01/27/09
+            # und fängt deren Residuen plus grosse Lücken generativ (§Spec 03/06 Abgrenzung).
+            "clicks": [
+                "phase_01_click_removal",
+                "phase_27_click_pop_removal",
+                "phase_68_vinylnet_decrackle",
+            ],
             "crackle": [
                 "phase_03_denoise",
                 "phase_09_crackle_removal",
                 "phase_28_surface_noise_profiling",
                 "phase_67_crackle_texture_removal",
+                "phase_68_vinylnet_decrackle",
             ],
             "hum": ["phase_02_hum_removal"],
             "motor_interference": ["phase_02_hum_removal"],

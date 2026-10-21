@@ -1,4 +1,15 @@
-# Changelog — Aurik 10.12.41
+# Changelog — Aurik 10.12.42
+
+## 10.12.42 (2026-10-19)
+
+### VinylNet De-Crackle phase_68 — ML-Chirurgie für Klicks/Pops (D-K1-4)
+
+- **Neu:** `backend/core/phases/phase_68_vinylnet_decrackle.py` + `plugins/vinylnet_decrackle_plugin.py` (VinylNet v4 base 11,91 M + ClickNet v4). Either-Or-Nachpass NACH phase_01/27/09/50/67 (`unified_restorer_v3.py`, `_move_before`), Disc-Medien-Guard + Studio-Modus-Ausschluss (§Spec 03/06, §2.59-konsistent). Verdrahtet in `phases/__init__.py`, `phase_icons.py`, `phase_pruner.py`, `defect_manifest.py`, `causal_defect_reasoner.py`; Scope-Cap 71→72 Phasen (`policy/scope_guardrails.yaml`).
+- **Modelle:** `models/de_crackle/vinylnet_base_best.pt` neu deployt = GAN-Resume-Beste ep 52 (Val SI-SDR +0,58 dB; SHA `07f32782…`; Erstlauf-Vor-Beste ep 24 archiviert unter `runs/vinylnet/best_ep24_pre_resume_20261017.pt`); `detector_v4.pt` (ClickNet v4, Val-F1 0,601 MUSDB-Split) unverändert; Code (`model/train/infer/…`) + README versioniert, Checkpoints unversioniert (§G9: Plugin = einziger Loader).
+- **Tests:** `tests/unit/test_phase_68_vinylnet_decrackle.py` — 7/7 grün (Metadaten-Kontrakt, Layout cf/sf/mono, bit-identischer Passthrough + Warning §V6, Stub-Determinismus §G5, NaN/Inf-Schutz §0a, Factory; echter Modellpfad CPU mit neuen Gewichten deterministisch).
+- **Doku/Registry:** Report `docs/reports/current/2026-10-12_vinylnet_decrackle.md` (Stand 10-19: GAN-Resume abgeschlossen, Testsplit-Eval + A/B-Paket mit Vor-Besten gemessen), FILE_REGISTRY +14 Einträge, ML_MODEL_DOMAIN_REGISTRY 38/62 (+de_crackle musik-trainiert), SOTA_DEFICIT_REGISTER D-K1-4, `models/manifest.json` (2 Einträge).
+- **Mit im Commit** (vorher uncommittete Arbeitsbaum-Inhalte): SGMSE+-Validierung (Report 2026-10-09 + Spec v10.25-Nachtrag + D-K0-3-Stand), D-K1-3 Medium-Massen-Diagnose (`forensics/medium_detector.py` + zugehörige Tests, §G9-Zitat qualifiziert), RX11→RX12-Evidenz-Aktualisierung, `docs/SOTA_TRAINING_KONZEPT.md`, TASK_CHANGES-Ledger (381 Einträge, 315 Code-Änderungen abgedeckt).
+- **Offen (D-K1-4):** Leerrillen-Noise-Bank (`--noise-bank`), Testsplit-Re-Eval mit dem neuen Artefakt, Hörtest gegen iZotope RX 12 (Hörordnung Ebene 4).
 
 ## 10.12.41 (2026-10-19)
 

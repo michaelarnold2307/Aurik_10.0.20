@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """scripts/model_inventory.py — Modell-Inventar-Status mit Quellen-Empfehlung.
 
 §Modell-Transparenz (2026-09-11): Ehrlicher Überblick, welche SOTA-ML-Modelle
@@ -404,15 +403,15 @@ _DOMAIN_EVIDENCE: dict[str, str] = {
     "models/resemble_enhance/resample_enhance.pt": "Resemble-Enhance (Sprach-Enhancer; für Gesang NICHT empfohlen)",
 }
 
-# Kopfzahlen des GESAMTbestands (61 Verzeichnisse) — kanonisch in der Registry.
+# Kopfzahlen des GESAMTbestands (62 Verzeichnisse) — kanonisch in der Registry.
 _DOMAIN_TOTALS: dict[str, int] = {
-    "musik": 37,
+    "musik": 38,
     "gemischt": 4,
     "sprache": 11,
     "audio-allgemein": 8,
     "unueberwacht": 1,
 }
-_DOMAIN_TOTAL_DIRS = 61
+_DOMAIN_TOTAL_DIRS = 62
 
 
 def audit_wiring() -> dict[str, str]:

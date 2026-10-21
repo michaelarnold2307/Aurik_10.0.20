@@ -1,7 +1,4 @@
-#!/usr/bin/env python3
-"""
-
-§v10.21: Erweitertes DFN-Training mit FMA-small (8.000 Tracks) + MUSDB18.
+"""§v10.21: Erweitertes DFN-Training mit FMA-small (8.000 Tracks) + MUSDB18.
 
 Nutzt den PyTorch-GPU-Pfad direkt (ONNX-ROCm ist auf gfx1100 blockiert).
 """

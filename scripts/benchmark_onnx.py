@@ -1,6 +1,4 @@
-#!/usr/bin/env python3
-"""
-Benchmark ONNX vs PyTorch model performance
+"""Benchmark ONNX vs PyTorch model performance
 
 Compares inference speed and quality for:
 - PyTorch (baseline)
@@ -116,7 +114,7 @@ class ModelBenchmark:
             return results
 
         except Exception as e:
-            logger.error(f"Benchmark failed: {e}")
+            logger.error(f"Benchmark fehlgeschlagen: {e}")
             return {"model_name": model_name, "error": str(e)}
 
     def compare_models(self, model_paths: dict[str, Path], sample_audio: np.ndarray) -> dict[str, Any]:

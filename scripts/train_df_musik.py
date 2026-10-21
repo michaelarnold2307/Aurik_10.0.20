@@ -1,7 +1,4 @@
-#!/usr/bin/env python3
-"""
-
-Fine-tune DeepFilterNet v3.II on MUSDB18 music data (§v10.15).
+"""Fine-tune DeepFilterNet v3.II on MUSDB18 music data (§v10.15).
 
 Eliminates the Speech-Domain-Mismatch: instead of DNS-Challenge (speech+noise),
 the model is trained on MUSDB18 stems with additive/musical degradation.

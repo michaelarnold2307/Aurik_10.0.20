@@ -1,5 +1,4 @@
-#!/usr/bin/env python3
-"""External competitive evidence runner (Aurik vs RX11 vs CEDAR).
+"""External competitive evidence runner (Aurik vs RX12 vs CEDAR).
 
 Builds a reproducible, matrix-aware comparison report from externally processed
 outputs. This script is intended for release evidence generation where each

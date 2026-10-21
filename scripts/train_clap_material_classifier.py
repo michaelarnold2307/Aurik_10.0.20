@@ -1,7 +1,4 @@
-#!/usr/bin/env python3
-"""
-
-§v10.19 Train CLAP-Material-Classifier Head.
+"""§v10.19 Train CLAP-Material-Classifier Head.
 
 Trains a lightweight 2-layer MLP on frozen CLAP embeddings to classify
 audio into 16 canonical material types.

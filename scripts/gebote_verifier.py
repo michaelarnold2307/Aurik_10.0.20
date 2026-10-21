@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """§v10.15 Gebote-Verifier: Garantiert dass ALLE §G-Regeln im Code umgesetzt sind.
 
 
@@ -218,13 +217,13 @@ def check_g7() -> tuple[bool, str]:
 # ── Kategorie II: Psychoakustik ──────────────────────────────────────────────
 
 
-@gebot("§G11", "Natürlicher Wohlklang", "PQS-MOS < 3.0 löst Rollback aus.")
+@gebot("§G11 (GEBOTE.md)", "Natürlicher Wohlklang", "PQS-MOS < 3.0 löst Rollback aus.")
 def check_g11() -> tuple[bool, str]:
     ok = _find_in_code(r"PQS.*MOS.*3\.0|pqs_mos.*rollback|PQS-MOS.*<.*3")
     return ok, "PQS-MOS-Rollback-Schutz existiert" if ok else "Kein PQS-MOS-Rollback gefunden"
 
 
-@gebot("§G12", "Lautheitskonsistenz", "LUFS-integrated nach EBU R128.")
+@gebot("§G12 (GEBOTE.md)", "Lautheitskonsistenz", "LUFS-integrated nach EBU R128.")
 def check_g12() -> tuple[bool, str]:
     ok = _find_in_code(r"loudness_normalization|LUFS.*integrated|EBU.*R128|pyloudnorm")
     return ok, "LUFS-Normalisierung im Code" if ok else "Keine LUFS-Normalisierung"

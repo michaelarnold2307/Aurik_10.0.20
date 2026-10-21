@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """§F13 — Musik-trainiertes Gender-Head auf MERT-Features.
 
 Warum: Die einzige musiktaugliche Gender-Evidenz der kanonischen Fusion (Spec 19)
@@ -134,7 +133,7 @@ def _extract_dataset(
                 if _cached.shape == (_FEATURE_DIM,):
                     _vec = np.asarray(_cached, dtype=np.float32)
             except Exception as _exc:  # pylint: disable=broad-except
-                logger.debug("Feature-Cache unlesbar (%s) — wird neu berechnet: %s", _cache_file.name, _exc)
+                logger.debug("Zwischenspeicher unlesbar (%s) — wird neu berechnet: %s", _cache_file.name, _exc)
         if _vec is None:
             _mono = _load_mono(_path)
             if _mono is None or _mono.size < 24000:

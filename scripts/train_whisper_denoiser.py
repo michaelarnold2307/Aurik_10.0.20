@@ -1,7 +1,4 @@
-#!/usr/bin/env python3
-"""
-
-§v10.20: Whisper-gesteuertes Musik-Denoising (Ansatz 1 aus "unkonventionelle Lösungswege").
+"""§v10.20: Whisper-gesteuertes Musik-Denoising (Ansatz 1 aus "unkonventionelle Lösungswege").
 
 Architektur:
   Whisper-tiny (39M, frozen) → Feature-Extraktor (hört "durchs Rauschen")

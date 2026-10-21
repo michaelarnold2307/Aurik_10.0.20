@@ -1,7 +1,4 @@
-#!/usr/bin/env python3
-"""
-CLI-Review-Check für Policy-Templates: Führt die automatisierte Prüfung aller YAML-Templates im policy_templates/-Verzeichnis aus und gibt einen Review-Report aus.
-"""
+"""CLI-Review-Check für Policy-Templates: Führt die automatisierte Prüfung aller YAML-Templates im policy_templates/-Verzeichnis aus und gibt einen Review-Report aus."""
 
 import glob
 import logging

@@ -1,6 +1,4 @@
-#!/usr/bin/env python3
-"""
-Integration Test for AURIK 9.0 GUI
+"""Integration Test for AURIK 10.0.0 GUI
 Tests GUI components and UnifiedRestorerV3 integration without requiring display
 """
 

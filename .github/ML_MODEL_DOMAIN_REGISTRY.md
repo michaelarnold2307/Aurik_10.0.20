@@ -20,16 +20,16 @@ Arbeitssprache: Deutsch. Jedes §-Zitat mit Quelle.
 **Behauptung (FALSCH):** „Ein Großteil der lokal verfügbaren ML-Modelle sind
 Sprachmodelle."
 
-**Fakt (belegt am Ist-Bestand 2026-10-06):**
+**Fakt (belegt am Ist-Bestand, Stand 2026-10-13; +`de_crackle`):**
 
 | Domäne | Anzahl Verzeichnisse | Anteil |
 | --- | --- | --- |
-| **Musik-trainiert** | **37** | **≈ 61 %** |
+| **Musik-trainiert** | **38** | **≈ 61 %** |
 | Gemischt (Sprach-Basis + Musik-Variante) | 4 | ≈ 7 % |
 | Sprach-trainiert | 11 | ≈ 18 % |
 | Audio-allgemein (AudioSet / LAION-Audio / Codec) | 8 | ≈ 13 % |
 | Unüberwacht (kein Training) | 1 | ≈ 2 % |
-| **Summe** | **61** | 100 % |
+| **Summe** | **62** | 100 % |
 
 **Merksatz:** Aurik ist ein **Musik-Restaurierungssystem**. Der überwiegende
 Teil der lokalen ML-Modelle ist **musik-trainiert**. Wer die Modelle nach ihren
@@ -62,7 +62,7 @@ Mess-Block §4a). Auch im aktiven Pfad dominiert Musik — nicht Sprache.
 
 ---
 
-## 1. Musik-trainiert (37) — der Signalpfad-Kern
+## 1. Musik-trainiert (38) — der Signalpfad-Kern
 
 | Modell (`models/…`) | Beleg (Evidenz) | Produktion |
 | --- | --- | --- |
@@ -78,6 +78,7 @@ Mess-Block §4a). Auch im aktiven Pfad dominiert Musik — nicht Sprache.
 | `crackle_texture_removal` | `phase_67` — Bailey et al., **Vinyl-Knistern** | phase_67 |
 | `crepe` | Modell-Karte: **MedleyDB**, Musik-Pitch | Pitch-Witness |
 | `ddsp_predictor` | `train_ddsp_predictor_c4.py` → **MUSDB18-HQ** | nicht verdrahtet (val_MAE ohne Skill) |
+| `de_crackle` | Eigenes VinylNet v4 + ClickNet v4 (`models/de_crackle/train.py`, `train_detector.py`) auf **MUSDB18-HQ-Mixturen** (`mixture.wav`) + synthetischer Vinyl-Degradation; MUSDB18-HQ = Musik-Korpus (Stem-Referenzen) — Beleg `docs/reports/current/2026-10-12_vinylnet_decrackle.md` | phase_68 (VinylNet De-Crackle, ML-Chirurgie für Klicks/Pops + Inpainting) |
 | `demucs` | `htdemucs_6s`, **MUSDB**-Training (Stem-Separation) | Stem-Separation |
 | `ear_vae` | Upstream: „44.1 kHz **music** signal reconstruction model" (phase-aware, Stereo) | Phase-0 Clean-Pass |
 | `era_classifier` | `era_anchors.npy` — Musik-Ära-Anker | Ära-Klassifikation |
@@ -118,7 +119,7 @@ Mess-Block §4a). Auch im aktiven Pfad dominiert Musik — nicht Sprache.
 | --- | --- | --- | --- |
 | `bigvgan` | BigVGAN v2 in der **44,1-kHz-Konfiguration** — **lokal am Artefakt gemessen** (128 Mel-Bänder, 512×, 1536 Kanäle, SnakeBeta + Anti-Alias, 122,19 M Parameter; s. Mess-Block §4a). Der **Upstream-Korpus ist nicht belegbar** ⇒ §III.13 (copilot-instructions.md): `unbekannt`. Die frühere Angabe „LibriTTS (Sprache)" ist architektur-**widerlegt** (LibriTTS-Konfiguration = 24 kHz/100 Bänder/256×/512 Kanäle/≈14 M) | `train_bigvgan_f3.py` → **MUSDB18-HQ** (`output/_training_archive_20260920/f3_bigvgan/best.pt`), A/B bestanden (HNR **+4,42 dB**) | ⚠️ Flag `BIGVGAN_V2_HR_ACTIVATED = True` (§P1-2, `plugins/bigvgan_v2_plugin.py`) — der aktive Pfad nutzt aber den **Basis**-ONNX; der **F3-Finetune ist nicht verdrahtet** (469 von 783 Tensoren Basis≠F3, deployter ONNX == Basis mit max\|Δ\|=0). **Seit 2026-10-06 liegt F3 als eigenes ONNX-Artefakt vor** (`models/bigvgan/bigvgan_v2_f3.onnx`, Checkpoint-cfg epoch 7, Parität rel ≤ 6,5e-05 auf 3 strukturierten Feeds — §III.9 (copilot-instructions.md)), aber **ohne Loader-Pfad**: der Rollout ist am Budget gesperrt (13,2× RT je Passage = 792 s/Audio-Minute gegen ≤ 240 s Gesamtbudget, `docs/reports/current/2026-10-06_p1_3_bigvgan_f3_rollout_entscheid.md`); kein `bigvgan_v2_f3e29.onnx`. **§P1-3 (2026-10-06):** der aktive HR-V1-Pfad läuft jetzt mit Längen-Deckel (5 % der Signallänge, ≤ 10 s, gleichmäßig verteilte Ausschnitte, außerhalb bit-identisch) aus **einer** Aufrufstelle (`phase_07`) — 1,04× RT statt 13,2× |
 | `deepfilternet_v3_ii` | DFN-3 (Sprach-Denoise) | `finetuned/` (`train_df_musik.py` → `dfn_musik_best.pt`) | ✅ `finetuned/` geladen |
-| `sgmse_plus` | SGMSE+ (WSJ0/CHiME3, Sprache) | `finetuned/` + `sgmse_musik_core.onnx` (`train_sgmse_musik.py`) | ⚠️ Default AUS (`use_sgmse_musik=False`) |
+| `sgmse_plus` | SGMSE+ (WSJ0/CHiME3, Sprache) | `finetuned/` + `sgmse_musik_core.onnx` (`train_sgmse_musik.py`; **Korrektur 2026-10-09:** Checkpoint = epoch 80 / val loss 6,1525, Lauf abgeschlossen 2026-10-05; ONNX↔ckpt Parität max\|Δ\|=6,7e-5 (σ=0.5) — der frühere "Epoch 24"-Stand war überholt; Beleg `docs/reports/current/2026-10-09_ml_sota_validierung.md`) | ⚠️ Default AUS (`use_sgmse_musik=False`), Metrik-A/B 2026-10-08: Musik ~1 dB besser; Hörabnahme offen (D-K0-3) |
 | `diffwave` | DiffWave (Sprach-Vocoder) | `train_diffwave_vocal_inpaint.py` → Gesangs-Inpaint-Finetune (`diffwave_vocal_ft.ckpt`) | nur Vocal-Inpaint-Pfad |
 
 **EAR-VAE-KORREKTUR (2026-10-06, SHA-belegt):** Die frühere Fassung dieses

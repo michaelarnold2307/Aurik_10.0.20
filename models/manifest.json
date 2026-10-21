@@ -543,6 +543,34 @@
       }
     },
     {
+      "name": "de_crackle_vinylnet_base_best",
+      "bundled": false,
+      "bundled_path": "models/de_crackle/vinylnet_base_best.pt",
+      "sha256": "07f3278235df193a3a8abf91589af42a69cc76491b326a810534411f68869cb2",
+      "size_bytes": 47878885,
+      "size_gb": 0.0479,
+      "required": false,
+      "fallback": "dsp_ersatzpfad",
+      "license": "intern (Aurik-Training)",
+      "format": "pytorch",
+      "description": "VinylNet v4 base-Preset (11,91 M Par.) — chirurgisches ML-De-Crackle für phase_68; MUSDB18-HQ-Mixturen + synthetische Vinyl-Degradation; GAN+MERT-Zeuge-Training 100 Epochen abgeschlossen 2026-10-19, deployt = Best ep 52 (Val SI-SDR +0,58 dB) (D-K1-4)",
+      "experimental": true
+    },
+    {
+      "name": "de_crackle_detector_v4",
+      "bundled": false,
+      "bundled_path": "models/de_crackle/detector_v4.pt",
+      "sha256": "5d89c9921e9fb158986fead97893c3309bc5bf679fe3bc7a6ba2ed098db02f0d",
+      "size_bytes": 627777,
+      "size_gb": 0.0006,
+      "required": false,
+      "fallback": "dsp_ersatzpfad",
+      "license": "intern (Aurik-Training)",
+      "format": "pytorch",
+      "description": "ClickNet v4 gelernter Klickdetektor für phase_68 (M/S-Eingabe; Val-F1 0,601 auf MUSDB-Split); klassischer AR-Detektor als Fallback (§V6 copilot-instructions.md)",
+      "experimental": true
+    },
+    {
       "name": "ddsp_predictor",
       "bundled": true,
       "bundled_path": "models/ddsp_predictor/c4_head.pth",

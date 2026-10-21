@@ -1039,27 +1039,32 @@ class MediumDetector:
     ]
 
     # ── Bayesian Material-Modelle (Gaussian μ, σ) ────────────────────
-    # Identisch mit MediumClassifier._MATERIAL_MODELS — kanonische Quelle.
+    # D-K1-3 F5 (2026-10-09): Die Tabelle wurde aus der Massen-Diagnose über
+    # 120 Echt-Träger datengetrieben neu geschätzt (Median μ, 1.4826×MAD σ,
+    # robuste Floors je Feature, §G5-deterministisch). Die Vorgänger-Werte
+    # waren auf defekte Mess-Features kalibriert (F1 Rand-Peaks in
+    # _rotation_periodicity, F3 geclippter noise_color) — Report:
+    # docs/reports/current/2026-10-09_dk13_medium_massendiagnose.md
+    # Hinweis §G9 (GEBOTE.md): MediumClassifier._MATERIAL_MODELS ist historisch gewachsen
+    # und NICHT mehr identisch (Drift dokumentiert im SOTA-Defizit-Register
+    # D-K1-3).
     # Features: bandwidth_hz, snr_db, noise_color, crackle_density,
     #           wow_depth, block_artifact, pre_echo_ms,
     #           rotation_strength, infrasonic_rms, codec_type_code
     _MATERIAL_MODELS: dict[str, dict[str, tuple[float, float]]] = {
         # ── Analog-Materialien ────────────────────────────────────────────────────
-        # block_artifact σ=0.12 (statt 0.05): Schmalband-Rauschen und Hiss auf analogen
-        # Trägern kann MDCT-Block-Detektor aktivieren (false-positive ~0.10–0.15).
-        # σ=0.05 erzeugt exponentielle Strafe (–4.5) bei Score=0.15; σ=0.12 → –0.78.
-        # pre_echo_ms wird immer auf 0.0 gesetzt (Feature nicht implementiert) und ist
-        # daher im Bayesian-Scorer maskiert (→ _masked_features).
+        # shellac — D-K1-3 F5 (n=55): datengetrieben (Median μ, 1.4826×MAD σ).
+        # pre_echo_ms ist im Bayesian-Scorer maskiert (→ _masked_features).
         "shellac": {
-            "bandwidth_hz": (5500.0, 1500.0),
-            "snr_db": (10.0, 5.0),
-            "noise_color": (2.2, 0.5),
-            "crackle_density": (0.02, 0.02),
-            "wow_depth": (0.3, 0.3),
-            "block_artifact": (0.0, 0.12),
+            "bandwidth_hz": (16300.0, 3300.0),
+            "snr_db": (19.4, 4.4),
+            "noise_color": (1.35, 0.63),
+            "crackle_density": (0.0015, 0.002),
+            "wow_depth": (0.046, 0.05),
+            "block_artifact": (0.082, 0.067),
             "pre_echo_ms": (0.0, 2.0),
-            "rotation_strength": (0.40, 0.20),
-            "infrasonic_rms": (0.06, 0.04),
+            "rotation_strength": (0.007, 0.05),
+            "infrasonic_rms": (0.0085, 0.0096),
             "codec_type_code": (0.0, 0.3),
         },
         "wax_cylinder": {
@@ -1074,28 +1079,30 @@ class MediumDetector:
             "infrasonic_rms": (0.02, 0.03),
             "codec_type_code": (0.0, 0.3),
         },
+        # vinyl — D-K1-3 F5 (n=15): datengetrieben (Median μ, 1.4826×MAD σ).
         "vinyl": {
-            "bandwidth_hz": (14000.0, 4000.0),
-            "snr_db": (30.0, 10.0),
-            "noise_color": (1.5, 0.4),
-            "crackle_density": (0.004, 0.005),
-            "wow_depth": (0.15, 0.15),
-            "block_artifact": (0.0, 0.12),
+            "bandwidth_hz": (10290.0, 4480.0),
+            "snr_db": (3.7, 1.5),
+            "noise_color": (0.89, 0.95),
+            "crackle_density": (0.0002, 0.002),
+            "wow_depth": (0.029, 0.05),
+            "block_artifact": (0.0, 0.05),
             "pre_echo_ms": (0.0, 2.0),
-            "rotation_strength": (0.45, 0.20),
-            "infrasonic_rms": (0.08, 0.05),
+            "rotation_strength": (0.359, 0.05),
+            "infrasonic_rms": (0.0139, 0.0137),
             "codec_type_code": (0.0, 0.3),
         },
+        # tape — D-K1-3 F5 (n=15): datengetrieben (Median μ, 1.4826×MAD σ).
         "tape": {
-            "bandwidth_hz": (12000.0, 3000.0),
-            "snr_db": (25.0, 8.0),
-            "noise_color": (1.6, 0.4),
-            "crackle_density": (0.0, 0.001),
-            "wow_depth": (1.2, 0.8),
-            "block_artifact": (0.0, 0.12),
+            "bandwidth_hz": (15620.0, 12430.0),
+            "snr_db": (3.7, 1.5),
+            "noise_color": (0.40, 0.50),
+            "crackle_density": (0.0002, 0.002),
+            "wow_depth": (0.035, 0.05),
+            "block_artifact": (0.016, 0.05),
             "pre_echo_ms": (0.0, 2.0),
-            "rotation_strength": (0.0, 0.08),
-            "infrasonic_rms": (0.01, 0.02),
+            "rotation_strength": (0.348, 0.073),
+            "infrasonic_rms": (0.0095, 0.0062),
             "codec_type_code": (0.0, 0.3),
         },
         "reel_tape": {
@@ -1137,16 +1144,17 @@ class MediumDetector:
         # Compact Cassette IEC 60094-1 — kalibriert auf reale Digitalisierungen:
         # SNR 14–26 dB (Type I schlechter als Reel-Tape, abhängig von Dekaufnahme),
         # BW ≤ 12 kHz (Type I), wow/flutter 0.05–0.3 % WRMS @ 4.75 cm/s (variiert).
+        # cassette — D-K1-3 F5 (n=10): datengetrieben (Median μ, 1.4826×MAD σ).
         "cassette": {
-            "bandwidth_hz": (9500.0, 2500.0),
-            "snr_db": (18.0, 9.0),
-            "noise_color": (1.6, 0.4),
-            "crackle_density": (0.0, 0.001),
-            "wow_depth": (0.8, 0.9),
-            "block_artifact": (0.0, 0.12),
+            "bandwidth_hz": (13550.0, 15410.0),
+            "snr_db": (12.6, 12.5),
+            "noise_color": (1.70, 1.77),
+            "crackle_density": (0.0009, 0.002),
+            "wow_depth": (0.039, 0.05),
+            "block_artifact": (0.033, 0.05),
             "pre_echo_ms": (0.0, 2.0),
-            "rotation_strength": (0.0, 0.08),
-            "infrasonic_rms": (0.01, 0.02),
+            "rotation_strength": (0.297, 0.067),
+            "infrasonic_rms": (0.0113, 0.0123),
             "codec_type_code": (0.0, 0.3),
         },
         "dat": {
@@ -1185,17 +1193,21 @@ class MediumDetector:
             "infrasonic_rms": (0.0, 0.01),
             "codec_type_code": (1.0, 0.3),
         },
+        # mp3_high — D-K1-3 F5 (n=17): datengetrieben (Median μ, 1.4826×MAD σ).
+        # codec_type_code μ=0.0: Im Detector-Pfad wird das Feature nie befüllt
+        # (Default 0.0) — das alte μ=1.0 erzeugte eine systematische Strafe
+        # für jede Datei (dokumentiert als offener Punkt F4 im Register).
         "mp3_high": {
-            "bandwidth_hz": (17000.0, 2000.0),
-            "snr_db": (42.0, 7.0),
-            "noise_color": (0.4, 0.3),
-            "crackle_density": (0.0, 0.001),
-            "wow_depth": (0.0, 0.1),
-            "block_artifact": (0.15, 0.10),
-            "pre_echo_ms": (6.0, 4.0),
-            "rotation_strength": (0.0, 0.05),
-            "infrasonic_rms": (0.0, 0.01),
-            "codec_type_code": (1.0, 0.3),
+            "bandwidth_hz": (18620.0, 6400.0),
+            "snr_db": (11.1, 9.3),
+            "noise_color": (0.79, 1.14),
+            "crackle_density": (0.0009, 0.002),
+            "wow_depth": (0.048, 0.05),
+            "block_artifact": (0.026, 0.05),
+            "pre_echo_ms": (0.0, 2.0),
+            "rotation_strength": (0.292, 0.336),
+            "infrasonic_rms": (0.0143, 0.0178),
+            "codec_type_code": (0.0, 0.3),
         },
         "aac": {
             "bandwidth_hz": (19000.0, 1500.0),
@@ -1788,18 +1800,38 @@ class MediumDetector:
         acf = acf[n_dec - 1 :]  # positive lags only
         acf_norm = acf / (acf[0] + 1e-12)
 
-        # Search for peaks in 0.4–1.5 Hz range (turntable rotation)
+        # §D-K1-3 (Fix 2026-10-09, Massen-Diagnose): Drehzahl-gezielte Suche statt
+        # globalem argmax in 0.4–1.5 Hz. Zwei belegte Artefakte des Altpfads:
+        #  (a) Rand-Peaks: 32/120 Echt-Träger lieferten 1.54 Hz — exakt der
+        #      minimale Suchlag dec_sr/13 — Musik-Taktperiode, keine Drehung;
+        #  (b) der globale argmax akzeptierte Peaks bei beliebiger Frequenz,
+        #      obwohl Plattendrehung physikalisch NUR bei 33⅓/45/78 RPM existiert.
+        # Suche daher in ±2 Lag um die drei Standard-Drehzahlen und akzeptiere nur
+        # lokale Maxima (kein Segmentrand). Kein Fenstertreffer → keine Rotation.
         min_lag = max(1, int(dec_sr / 1.5))
         max_lag = min(n_dec - 1, int(dec_sr / 0.4))
         if max_lag <= min_lag:
             return 0.0, 0.0
 
         search = acf_norm[min_lag : max_lag + 1]
-        peak_idx = int(np.argmax(search))
-        peak_val = float(search[peak_idx])
-        rot_hz = float(dec_sr / (min_lag + peak_idx)) if (min_lag + peak_idx) > 0 else 0.0
+        best_hz = 0.0
+        best_val = 0.0
+        for _rpm_hz in (0.556, 0.750, 1.300):  # 33⅓ / 45 / 78 RPM
+            _center_lag = int(round(dec_sr / _rpm_hz))
+            _lo = max(min_lag, _center_lag - 2)
+            _hi = min(max_lag, _center_lag + 2)
+            if _hi - _lo < 3:
+                continue
+            seg = search[_lo - min_lag : _hi - min_lag + 1]
+            idx = int(np.argmax(seg))
+            if idx == 0 or idx == len(seg) - 1:
+                continue  # Rand des Drehzahl-Fensters ⇒ kein lokales Maximum
+            val = float(seg[idx])
+            if val > best_val:
+                best_val = val
+                best_hz = float(dec_sr / (_lo + idx))
 
-        return rot_hz, max(0.0, peak_val)
+        return best_hz, max(0.0, best_val)
 
     @staticmethod
     def _infrasonic_rms(mono: np.ndarray, sr: int) -> float:
@@ -2003,33 +2035,39 @@ class MediumDetector:
     def _noise_color(mono: np.ndarray, sr: int) -> float:
         """Schätzt noise colour as spectral tilt (0=white, 1=pink, 2=brown/red).
 
-        Uses 5th-percentile frames (noise floor) spectral slope.
+        §D-K1-3 (Fix 2026-10-09, Massen-Diagnose 120 Echt-Träger):
+        Minimum-Statistics je Frequenz-Bin (Martin 1994, zeitliches 5%-Perzentil
+        über 200 Hz–8 kHz) statt des leisesten Gesamt-Frames. Befund des
+        Altpfads: ALLE 120 Echt-Träger lieferten den Clipping-Wert 4.0 — auch
+        der leiseste Frame von Musik ist bass-lastig (polyphone Restenergie),
+        der gefittete Slope sättigte am braunen Anschlag; der Bayesian erhielt
+        damit eine materialsymmetrische Fehl-Evidenz gegen alle Modelle mit
+        μ ∈ [0.2, 2.8] (treibende Ursache der unknown/shellac-Kippungen).
+        Kalibrierung an Rausch-Referenzen verifiziert: white → 0.0,
+        pink → 1.0, brown → 2.0 (Amplitude-Slope → PSD-Exponent).
         """
         n = len(mono)
         fft_n = min(n, 16384)
-        win = np.hanning(fft_n).astype(np.float32)
-        hop_nc = fft_n
-        slopes: list[float] = []
-
-        for start in range(0, n - fft_n, hop_nc):
-            frame = mono[start : start + fft_n] * win
-            mag = np.abs(np.fft.rfft(frame)) + 1e-12
-            freqs = np.fft.rfftfreq(fft_n, 1.0 / sr)
-            freqs = freqs[1:]
-            mag = mag[1:]
-            if len(freqs) < 10:
-                continue
-            log_f = np.log10(freqs + 1e-6)
-            log_m = np.log10(mag)
-            slope = float(np.polyfit(log_f, log_m, 1)[0])
-            slopes.append(slope)
-
-        if not slopes:
+        if n < fft_n:
+            fft_n = 4096
+        if n < fft_n:
             return 1.0  # default pink
-        slopes_sorted = sorted(slopes)
-        n_quiet = max(1, len(slopes_sorted) // 5)
-        avg_slope = float(np.mean(slopes_sorted[:n_quiet]))
-        return float(np.clip(-avg_slope * 2.0, 0.0, 4.0))
+        win = np.hanning(fft_n).astype(np.float32)
+        spec_frames: list[np.ndarray] = []
+        for start in range(0, n - fft_n + 1, fft_n):
+            frame = mono[start : start + fft_n] * win
+            spec_frames.append(np.abs(np.fft.rfft(frame)))
+        if not spec_frames:
+            return 1.0  # default pink
+        spec_min = np.percentile(np.stack(spec_frames, axis=0), 5.0, axis=0) + 1e-12
+        freqs = np.fft.rfftfreq(fft_n, 1.0 / sr)
+        band = (freqs >= 200.0) & (freqs <= 8000.0)
+        if int(band.sum()) < 10:
+            return 1.0
+        log_f = np.log10(freqs[band] + 1e-6)
+        log_m = np.log10(spec_min[band])
+        slope = float(np.polyfit(log_f, log_m, 1)[0])
+        return float(np.clip(-slope * 2.0, 0.0, 4.0))
 
     # ── Bayesian Material Scoring ──────────────────────────────────────
 

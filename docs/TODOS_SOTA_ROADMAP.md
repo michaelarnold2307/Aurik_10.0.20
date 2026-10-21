@@ -29,10 +29,10 @@
 | DeepFilterNet v3 | Denoise (Spec-04-Kette) | Sprache | ✅ DFN Musik aktiv (`use_df_musik=True`) |
 | MIIPHER | Codec-Artefakte | Sprache (proprietär) | ✅ ersetzt durch MIIPHER-DiT (`use_miipher_dit=True`) |
 | Harmonic-Inpainting-DiT | gedämpfte Obertöne (Phase 07) | Musik | ✅ aktiv (`use_harmonic_inpainting=True`) |
-| EAR-VAE | Restaurations-VAE | Musik | ✅ v2-Finetune (ΔSDR +4,83 dB) |
-| FlashSR | HF-Rekonstruktion >12,9 kHz | Musik (Bandlimit-Synth) | 🔄 **F4 läuft** (Epoche 6→14, GPU) |
+| EAR-VAE | Restaurations-VAE | Musik | ✅ Aurik-MUSDB-Finetune aktiv (v2-Kette, ΔSDR +4,83 dB); Upstream `ear_vae2_upstream` = separate Beschaffung — Rollout-/Ersatz-Entscheidung offen (D-K0-9) |
+| FlashSR | HF-Rekonstruktion >12,9 kHz | Musik (Bandlimit-Synth) | ✅ **F4 ABGESCHLOSSEN** — Musik-Finetune verifiziert + Gate bestanden (+18…+19.5 dB), Export `models/flashsr/flashsr.onnx` aktiv (WP-4-Delta: „F4 abgeschlossen") |
 | BigVGAN-v2 | Vocoder/Repair (HR-V1) | Musik | 🟡 **F3 exportiert + Parität belegt** (2026-10-06) — Rollout am Budget gesperrt (12,7–13,2× RT je Passage) |
-| **SGMSE+** | Tape-Chain Diffusion-Inpainting | **Sprache** | 🔄 **F7 TEILWEISE** — Checkpoint/ONNX vorhanden (`finetuned/sgmse_musik_best.ckpt` Epoch 24, Val 88,3; `sgmse_musik_core.onnx`, Rev. v10.3.11); `use_sgmse_musik=False` = bewusste Sperre bis Drei-Wege-A/B (WSJ0 vs. Musik-Core vs. WPE) — §III.11 copilot-instructions.md |
+| **SGMSE+** | Tape-Chain Diffusion-Inpainting | **Sprache** | 🔄 **F7 TRAINING ABGESCHLOSSEN 2026-10-05** — `finetuned/sgmse_musik_best.ckpt` = **epoch 80 / val loss 6,1525** (am Artefakt gemessen; der frühere "Epoch 24, Val 88,3"-Wert stammte vom Sept-Stopp und ist überholt — `docs/reports/current/2026-10-09_ml_sota_validierung.md` A.2), ONNX↔ckpt Parität max\|Δ\|=6,7e-5 (σ=0.5) neu belegt; `use_sgmse_musik=False` = bewusste Sperre bis Drei-Wege-A/B + Hörabnahme — §III.11 copilot-instructions.md |
 | **UTMOSv2** | MOS-Orakel in FeedbackChain/ExcellenceOptimizer | **Sprache (BVCC)** | ⬜ **F8 NEU** — Musik-MOS, MUSHRA-kalibriert |
 | **resemblyzer VoiceEncoder** | Vokal-Identität/Witness | **Sprache (LibriSpeech)** | ⬜ **F9 NEU** — Musik-Vokal-Finetune |
 | **VersaSingMOS** | Gesangs-MOS-Gates | Gesang (nahe Musik) | ⬜ **F10 NEU** — Kalibrierung auf verarbeitete Musik-Vocals |
@@ -46,11 +46,15 @@
 - **F7 · SGMSE+ Musik-Finetune** — Basis `models/sgmse_plus/sgmse_plus_core.onnx` (Sprach-Enhancement-
   Score-Core). Ziel: Tape-Diffusion-Inpainting ohne Sprach-Klangfarbe (Vokalfärbung, Telefonband-
   Charakter). Daten: MUSDB18HQ + Tape-Rausch-Paare. Gate: ΔSDR ≥ +2 dB + Witness HNR/Brillianz neutral.
-  Status: **Checkpoint vorhanden** — `models/sgmse_plus/finetuned/sgmse_musik_best.ckpt`
-  (Epoch 24, Val 88,3) und Export `models/sgmse_plus/sgmse_musik_core.onnx`; das Training
-  wurde am 2026-09-20 wegen Loss-Spikes gestoppt (§v10.25). Offen ist allein der
-  Drei-Wege-A/B (WSJ0- vs. Musik-Core vs. WPE-DSP); bis dahin bleibt
-  `use_sgmse_musik=False` (§III.11 copilot-instructions.md).
+   Status: **Training abgeschlossen 2026-10-05** — Lauf 1 (200 Ep, Batch 1) lief bis
+   Ep 114 (best 6.1525 @ Ep 80), Lauf 2 (Resume, 120 Ep) endete nach Rollback-Budget:
+   "Done. Best val: 6.1525 | Rollbacks: 3" (`output/train_sgmse_musik.log` +
+   `…_musik2.log`). Deploytes `sgmse_musik_core.onnx` (Export 2026-10-05) ==
+   `finetuned/sgmse_musik_best.ckpt` (**epoch 80 / val loss 6,1525** — am Artefakt gemessen;
+   Paritätsprobe max\|Δ\|=6,7e-5 bei σ=0.5: `docs/reports/current/2026-10-09_ml_sota_validierung.md`).
+   Der frühere "Epoch 24, Val 88,3"-Stand (Stopp vom 2026-09-20 wegen Loss-Spikes, §v10.25) ist
+   **überholt**. Offen ist allein der Drei-Wege-A/B (WSJ0- vs. Musik-Core vs. WPE-DSP) + Hörabnahme;
+   bis dahin bleibt `use_sgmse_musik=False` (§III.11 copilot-instructions.md).
 - **F8 · UTMOSv2 → Musik-MOS (höchster Oracle-Hebel)** — Basis: UTMOSv2 (Sprach-MOS). Das Modell bewertet
   heute in FeedbackChain/ExcellenceOptimizer/MUSHRA-Proxy **Musik mit einem Sprach-Qualitätsmaß** —
   Wohlklang-Entscheidungen (Pareto-Rollbacks, End-Gate) erben damit eine falsche Domänen-Wahrnehmung.
@@ -137,7 +141,7 @@ F14.
 
 | Was fehlt | Rolle für maximalen Wohlklang | Blocker |
 | --- | --- | --- |
-| **AudioLDM2-Plugin** (ONNX liegt lokal) | generative Baseline für destruktive Fälle | Plugin-Neuanlage fehlt |
+| **AudioLDM2-Rolle** (ONNX + Plugin liegen lokal) | generative Baseline für destruktive Fälle | ~~Plugin-Neuanlage fehlt~~ — **korrigiert 2026-10-09:** `plugins/audioldm2_plugin.py` existiert und ist in `phase_24_dropout_repair.py` (Tier-3, Dropouts > 3 s) verdrahtet; offen ist nur die Rollenentscheidung "generative Baseline für destruktive Fälle" (nach S1 aufgeschoben) |
 | **Neuraler Warp-Schätzer (WF-V4)** | Rest-Wow/Flutter unter der Hörschwelle | **Quelle/Download unklar** |
 | **Neurale Phasen-Schätzung (TP-V2)** | Transienten-Phasenkohärenz (Kammfilter-Freiheit) | **Modell + Quelle fehlen** |
 | **BEATs-Tagger-Head (527 Klassen)** | Instrument-/Genre-Evidenz unabhängig von CLAP | Head-Training oder Tagger-ONNX fehlt (GPU) |
@@ -182,7 +186,11 @@ F14.
    (c) EAR-VAE v1↔v2-Vergleich. _(Der flache Material-Schätzer D-K0-8 ist
    konsolidiert — Depth zurückgezogen, Material blockiert auf Label-Korpus;
    es ist kein Messschritt mehr offen.)_
-2. **Beschaffung:** WF-V4-Quelle klären, TP-V2-Modell klären, AudioLDM2-Plugin.
+2. **Beschaffung:** WF-V4-Quelle klären (alternativ: Warp-Head auf FCPE/CRePE-F0 trainieren),
+   TP-V2-Modell klären _(AudioLDM2-Plugin ~~beschaffen~~ — **korrigiert 2026-10-09:**
+   `plugins/audioldm2_plugin.py` existiert bereits und ist in `phase_24_dropout_repair.py`
+   verdrahtet; offen ist nur die Rollenentscheidung „generative Baseline für destruktive
+   Fälle“, nach S1 aufgeschoben — Beleg: `docs/reports/current/2026-10-09_ml_sota_validierung.md` E.7)_.
 3. **GPU (7900 XTX):** DiffWave-Vokal → GaCELA-Vokal → BigVGAN-v2 Musik+Vokal
    → FlashSR-Musik → DDSP (BEATs-Encoder) → BEATs-Tagger-Head → Gender-Head.
 4. **Mensch:** externes Blind-Panel (P1-4) → MUSHRA-Proxy-Kalibrierung (§3.6).
@@ -864,8 +872,9 @@ F14.
       Report `docs/reports/current/2026-09-13_vocal_inpaint_baseline.json`):
       **DSP-Messlatte mean SDR −3,46 dB vs. Stille-Baseline (0 dB), DiffWave-Zero-Shot
       −1,69 dB — beide unter Never-worsen (min −7,2/−3,7 dB), DiffWave im Mittel +1,77 dB
-      über DSP.** AudioLDM2-Zero-Shot entfällt weiterhin — das PLUGIN fehlt
-      (`plugins/audiolm2_plugin.py` existiert nicht); **FS-Korrektur 2026-09-14:**
+       über DSP.** AudioLDM2-Zero-Shot entfällt (Stand 2026-09-13: ~~das PLUGIN fehlt~~ —
+       **Korrektur 2026-10-09:** `plugins/audioldm2_plugin.py` existiert inzwischen und ist in
+       `phase_24_dropout_repair.py` verdrahtet, Text-Konditionierung über LAION-CLAP statt FlanT5); **FS-Korrektur 2026-09-14:**
       die ONNX-Dateien `models/audioldm2/` sind real (1,39 GB + 132 MB, Kontrakte
       verifiziert) — der frühere „0-Bytes-Artefakt“-Befund war ein Messfehler.
       Plugin-Entscheidung: Neuanlage verschoben (FlanT5 fehlt lokal, Rolle durch
@@ -1027,9 +1036,15 @@ F14.
   Befund betraf nur das fehlende Plugin. **PLUGIN-ENTSCHEIDUNG (2026-09-14):
   Neuanlage verschoben** — FlanT5-Text-Conditioning ist nicht lokal
   (nur CLAP-Audio wäre nutzbar); die Rolle als VOCAL-INPAINT-Baseline ist
-  durch S1 obsolet, und der GPU-Finetune F1 (DiffWave, HAUPTWEG) läuft mit
-  Priorität. Reaktivierung, sobald ein Anwendungsfall mit CLAP-Audio-
-  Conditioning steht. Voraussetzungen präzisiert:
+   durch S1 obsolet, und der GPU-Finetune F1 (DiffWave, HAUPTWEG) läuft mit
+   Priorität. Reaktivierung, sobald ein Anwendungsfall mit CLAP-Audio-
+   Conditioning steht. **Korrektur 2026-10-09:** das Plugin existiert inzwischen —
+   `plugins/audioldm2_plugin.py` (vollständige ONNX-Pipeline: UNet + VAE-Dec +
+   HiFi-GAN-Vocoder, Text-Konditionierung über LAION-CLAP) und ist in
+   `phase_24_dropout_repair.py` (Tier-3, Dropouts > 3 s) verdrahtet; die Rolle
+   „generative Baseline für destruktive Fälle“ nach S1 bleibt eine offene
+   Rollenentscheidung (kein Mangel). Beleg:
+   `docs/reports/current/2026-10-09_ml_sota_validierung.md` E.7. Voraussetzungen präzisiert:
   (1) Vocoder ✓ **vorhanden**: `models/hifi_gan/hifi_gan.onnx` (37,3 MB,
   validiert: IN [1,80,seq] → OUT [1,1,2560] = 116-ms-Chunks, gleitend zu fahren) +
   `plugins/hifigan_plugin.py` (PLM „HiFiGAN“, 22.05 kHz) — **Achtung
@@ -1132,7 +1147,7 @@ F14.
 | Vokal-Langlücken 375–1500 ms | GaCELA-Vokal-Finetune (Pfad B) | Trainingscode lokal, **GPU-Finetune fehlt** |
 | Vokal-Extremfälle/Identität | RVC (MIT) | rmvpe.pt/.onnx ✓, hubert_base.pt ✓, hubert_model.onnx ✓ |
 | Vokal-Enhancement (Phase 03) | Flow-Matching-DiT (MIIPHER_DiT) | flow_matching_dit.onnx ✓, Plugin ✓, Guard ✓ — **bestätigt** |
-| Generative Baseline | AudioLDM2 | ONNX lokal ✓, **Plugin fehlt** |
+| Generative Baseline | AudioLDM2 | ONNX lokal ✓, Plugin existiert + in phase_24 verdrahtet (**Korrektur 2026-10-09**: „Plugin fehlt“ überholt); Rollenentscheidung nach S1 offen |
 | Repair (Spektralregionen) | BigVGAN-v2 Musik- + Vokal-Finetune | Basis lokal ✓, **GPU-Finetune fehlt** |
 | Hochband-Rekonstruktion | FlashSR-Musik-Finetune | Checkpoint lokal ✓, **GPU-Finetune fehlt** |
 | Musik-MOS-Witness | MuQ | Plugin + mulan-ONNX ✓ — **RICHTUNGS-VALIDIERT (2026-09-13)**: Audio-Chain-Fix (10-s-Eval-Kette), 3/3 MUSDB-Richtungen korrekt, 50/50-Blend aktiv |
@@ -1146,7 +1161,8 @@ F14.
 
 1. **Sofort einbindbar (lokal):** Resemblyzer-Witness ✓ VERDRAHTET (Ebene-1-Guard) →
    RT60/DeepFilterNet-Verdrahtung ✓ V1 (phase_20/49, konservativ) →
-   MuQ-Richtungs-Validierung ✓ 3/3 — **offen bleibt:** AudioLDM2-Plugin-Neuanlage.
+    MuQ-Richtungs-Validierung ✓ 3/3 (AudioLDM2-Plugin-Neuanlage ~~offen~~ →
+    **Korrektur 2026-10-09:** Plugin existiert + verdrahtet, offen ist nur die Rollenentscheidung).
 2. **Beschaffung (Downloads):** RVC-Basis ✓ (rmvpe + hubert, ONNX vorhanden),
    WF-V4-Checkpoint (Quelle klären), TP-V2-Modell (Quelle klären).
 3. **GPU-Finetunes (7900 XTX, MUSDB18HQ lokal):** DiffWave-Vokal → GaCELA-Vokal
@@ -2530,11 +2546,11 @@ mit belegtem Musik-Training, die **kein** Produktionskonsument lädt:
 | Artefakt | Domäne | Evidenz | Warum nicht deployt |
 | --- | --- | --- | --- |
 | `output/_training_archive_20260920/f3_bigvgan/best.pt` | Musik | `train_bigvgan_f3.py` → **MUSDB18-HQ** | Flag `BIGVGAN_V2_HR_ACTIVATED` OFF; A/B **bestanden** (HNR **+4,42 dB**); Blocker: Test-Suite + Budget |
-| `models/bigvgan/bigvgan_v2.onnx` (aktiv) | **Sprache** | BigVGAN v2 (LibriTTS) | Produktionspfad ist die Sprach-Basis → **Domänen-Schere** |
+| `models/bigvgan/bigvgan_v2.onnx` (aktiv) | **unbekannt** (LibriTTS-Zuordnung architektur-widerlegt 2026-10-06, D-K0-2: 44,1 kHz/128 Bänder ≠ LibriTTS-Config; Korpus ohne Karte/Hparams/SHA) | BigVGAN v2 (Korpus unbelegt am Artefakt) | Produktionspfad ist die Basis statt des MUSDB-Finetunes D-K0-1 → **Domänen-Schere** |
 | EAR-VAE MUSDB-Finetune | Musik | `finetune_music.py` → MUSDB18-HQ | **deployt** (SHA-belegt 2026-10-06: `models/ear_vae/*.onnx` == `ear_vae_ft_*_inline.onnx`; Checkpoint + Rezept in-repo) — **kein** Defizit |
 | `models/sgmse_plus/finetuned/` + `sgmse_musik_core.onnx` | Musik | `train_sgmse_musik.py` | `use_sgmse_musik=False` (A/B + Hörabnahme offen) |
 | `models/miipher_dit/whisper_denoiser_best.pt` | Musik | `train_whisper_v2.py` → MUSDB18-HQ | `use_whisper_denoiser=False` (deprecated) |
-| `models/scnet_4stems/` | Musik | SCNet (A/B gewonnen +10,3…+16,4 dB) | nicht verdrahtet (TODO-P1-2) |
+| `models/scnet_4stems/` | Musik | SCNet (fair A/B gewonnen **+1,96…+3,59 dB SI-SDR** vs. Demucs-v4; der ältere +10,3…+16,4-Bericht von 2026-10-04 ist überholt) | verdrahtet hinter Never-worsen (P1-2, 2026-10-06); Aktivierung `use_scnet_music=False` bis C4-Hörstichprobe + Hörordnungs-Sign-off (D-K0-5) |
 | `models/ddsp_predictor/c4_head.pth` | Musik | `train_ddsp_predictor_c4.py` → MUSDB | val_MAE ≈ Baseline (kein Skill) |
 
 **K1 — „Synthetisch trainiert statt Musik".** Bandbreiten-/Klassifikator-Modelle,

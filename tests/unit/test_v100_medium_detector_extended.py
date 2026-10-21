@@ -277,6 +277,9 @@ class TestV100MediumDetectorExtended:
         audio = np.random.randn(48000).astype(np.float32) * 0.1
         detector = MediumDetector()
         result = detector.detect(audio, sr=48000)
+        # D-K1-3 F5 (2026-10-09): 'cassette' ergänzt — §6.1 v10.0.0 First-Class-Material,
+        # Liste nie nachgezogen; die datengetriebene _MATERIAL_MODELS-Neukalibrierung
+        # (120 Echt-Träger) lässt Weißrauschen jetzt auf 'cassette' münden (früher 'tape').
         known_materials = [
             "tape",
             "vinyl",
@@ -294,6 +297,7 @@ class TestV100MediumDetectorExtended:
             "lacquer_disc",
             "minidisc",
             "reel_tape",
+            "cassette",
         ]
         assert result.primary_material in known_materials
 

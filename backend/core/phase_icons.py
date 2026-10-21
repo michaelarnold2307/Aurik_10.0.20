@@ -71,6 +71,7 @@ PHASE_ICONS: dict[str, str] = {
     "phase_63_intermodulation_reduction": "🧹📊",  # Intermodulations-Verzerrung
     "phase_66_stem_targeted_nr": "🧹🎤",  # Stem-basierte Rauschunterdrückung
     "phase_67_crackle_texture_removal": "🧹⚡",  # Knistern-Textur-Entfernung (ML, Route A)
+    "phase_68_vinylnet_decrackle": "🔬💿",  # VinylNet De-Crackle (ML-Chirurgie: Klicks/Pops + Inpainting)
     # ── EQ / Frequenz ──
     "phase_04_eq_correction": "🎛️📐",  # Tonlagen-Korrektur-EQ
     "phase_06_frequency_restoration": "🎛️🔧",  # Frequenzgang-Wiederherstellung
@@ -188,6 +189,7 @@ PHASE_NAMES_DE: dict[str, str] = {
     "phase_63_intermodulation_reduction": "Intermodulations-Reduktion",
     "phase_66_stem_targeted_nr": "Stem-Rauschunterdrückung",
     "phase_67_crackle_texture_removal": "Knistern-Textur-Entfernung",
+    "phase_68_vinylnet_decrackle": "VinylNet De-Crackle (ML)",
     # EQ / Frequenz
     "phase_04_eq_correction": "EQ-Korrektur",
     "phase_06_frequency_restoration": "Frequenz-Wiederherstellung",

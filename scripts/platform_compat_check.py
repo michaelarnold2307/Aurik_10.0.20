@@ -1,6 +1,4 @@
-#!/usr/bin/env python3
 """Plattform-Kompatibilitäts-Check für Aurik.
-
 
 §15.4: Prüft plattformübergreifende Kompatibilität vor Merge.
 - Echte Windows-Hartkodierte Pfade (C:\\...)

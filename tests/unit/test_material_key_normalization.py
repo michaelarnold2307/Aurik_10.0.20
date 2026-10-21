@@ -143,12 +143,26 @@ class TestDetectSupportedMaterialsInvariant:
         for key in result.transfer_chain:
             assert key in SUPPORTED_MATERIALS, f"transfer_chain enthält '{key}' — nicht in SUPPORTED_MATERIALS"
 
-    def test_no_cassette_key_in_result(self, detector):
-        """Das interne 'cassette'-Key darf nie in detect()-Ergebnissen erscheinen."""
+    def test_no_raw_internal_alias_keys_in_result(self, detector):
+        """Roh-Alias-Keys des Bayesian-Scorers dürfen nie in detect()-Ergebnissen erscheinen.
+
+        D-K1-3 F5 (2026-10-09): Die frühere Variante dieses Tests verbot auch den
+        kanonischen 'cassette'-Key ("interner Key statt tape") — das widersprach dem
+        eigenen §6.1-Vertrag in dieser Datei ('cassette' ∈ SUPPORTED_MATERIALS,
+        `test_cassette_passthrough`: `_normalize_material_key("cassette") == "cassette"`)
+        und war nur zufällig grün, solange Weißrauschen auf 'tape' mündete. Die
+        datengetriebene _MATERIAL_MODELS-Neukalibrierung (120 Echt-Träger) klassifiziert
+        den Testclip jetzt legitimerweise als 'cassette' ⇒ der Vertrag wird präzisiert:
+        verboten sind die ROHEN Scorer-Aliasse, nicht das First-Class-Material.
+        """
         audio = _make_audio()
         result = detector.detect(audio, 48000)
-        assert "cassette" not in result.transfer_chain, "transfer_chain enthält 'cassette' (interner Key) statt 'tape'"
-        assert result.primary_material != "cassette", "primary_material='cassette' (interner Key) statt 'tape'"
+        raw_aliases = {"reel_wire", "cassette_digital", "vhs_audio"}
+        for key in result.transfer_chain:
+            assert key not in raw_aliases, f"transfer_chain enthält Roh-Alias-Key '{key}' (nicht normalisiert)"
+        assert result.primary_material not in raw_aliases, (
+            f"primary_material='{result.primary_material}' ist ein Roh-Alias-Key (nicht normalisiert)"
+        )
 
     def test_no_reel_wire_key_in_result(self, detector):
         """Das interne 'reel_wire'-Key darf nie in detect()-Ergebnissen erscheinen."""

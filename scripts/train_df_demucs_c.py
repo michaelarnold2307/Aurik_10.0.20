@@ -1,7 +1,4 @@
-#!/usr/bin/env python3
-"""
-
-§v10.15-C: Demucs + DeepFilterNet — Residual Spectral Refinement.
+"""§v10.15-C: Demucs + DeepFilterNet — Residual Spectral Refinement.
 
 Strategy (NO model architecture changes):
   Demucs(noisy) → enhanced_audio → enhanced_spec

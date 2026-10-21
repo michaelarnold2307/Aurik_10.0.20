@@ -1550,6 +1550,7 @@ CAUSE_TO_PHASES: dict[str, list[str]] = {
         "phase_01_click_removal",
         "phase_28_surface_noise_profiling",
         "phase_03_denoise",
+        "phase_68_vinylnet_decrackle",  # ML-Chirurgie-Nachpass (VinylNet v4): Residuen + grosse Lücken (§Spec 03/06)
     ],
     "vinyl_warp": [
         "phase_12_wow_flutter_fix",
@@ -1790,6 +1791,7 @@ CAUSE_TO_PHASES: dict[str, list[str]] = {
     "clicks": [
         "phase_01_click_removal",  # Primary: Bayesian click/impulse detection
         "phase_09_crackle_removal",  # Secondary: handles dense click fields
+        "phase_68_vinylnet_decrackle",  # Tertiary (Disc-Medien): ML-Chirurgie-Nachpass, VinylNet v4
     ],
     "dolby_nr_mismatch": [
         "phase_04_eq_correction",  # Primary: high-shelf EQ inversion (Dolby B/C/S expand) ≈ −6 to −20 dB HF

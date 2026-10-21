@@ -1,6 +1,4 @@
-#!/usr/bin/env python3
-"""
-Spec-Compliance-Scan für alle 64 Phasen.
+"""Spec-Compliance-Scan für alle 67 Phasen.
 Prüft die 10 kritischen Anti-Patterns aus copilot-instructions.md
 """
 

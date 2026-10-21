@@ -224,6 +224,16 @@ except ImportError as _p67_err:
     _PHASE67_OK = False
     CrackleTextureRemovalPhase = None  # type: ignore[assignment, misc]
 
+# Phase 68: VinylNet De-Crackle — ML-Chirurgie (gelernter Detektor + InpaintNet + Transformer)
+try:
+    from .phase_68_vinylnet_decrackle import VinylNetDeCracklePhase
+
+    _PHASE68_OK = True
+except ImportError as _p68_err:
+    _logger.debug("Phase 68 nicht verfügbar: %s", _p68_err)
+    _PHASE68_OK = False
+    VinylNetDeCracklePhase = None  # type: ignore[assignment, misc]
+
 # Exported symbols
 __all__ = [
     "AdvancedDereverbPhase",
@@ -310,6 +320,8 @@ __all__ = [
     "StemTargetedNRPhase",
     # Phase 67 (v10.x): ML-Knistern-Textur-Entfernung (§Spec 06 Route A)
     "CrackleTextureRemovalPhase",
+    # Phase 68 (v10.x): VinylNet De-Crackle — ML-Chirurgie (gelernter Detektor + InpaintNet + Transformer)
+    "VinylNetDeCracklePhase",
 ]
 
 # Version info

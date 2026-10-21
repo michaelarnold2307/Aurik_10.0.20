@@ -123,6 +123,7 @@ _PHASE_DEFECT_REQUIREMENTS: dict[str, list[str]] = {
     "phase_65_vocal_naturalness_restoration": ["vocal_harshness"],
     "phase_66_stem_targeted_nr": ["high_freq_noise", "modulation_noise"],
     "phase_67_crackle_texture_removal": ["crackle"],
+    "phase_68_vinylnet_decrackle": ["clicks", "crackle"],  # ML-Chirurgie (VinylNet v4)
 }
 
 # ── Material-spezifische Skip-Phasen ──────────────────────────────────────────
@@ -134,6 +135,7 @@ _ANALOG_ONLY_PHASES: list[str] = [
     "phase_05_rumble_filter",
     "phase_09_crackle_removal",
     "phase_67_crackle_texture_removal",
+    "phase_68_vinylnet_decrackle",
     "phase_12_wow_flutter_fix",
     "phase_22_tape_saturation",
     "phase_25_azimuth_correction",
