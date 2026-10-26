@@ -1,0 +1,170 @@
+{
+  "date": "2026-10-25",
+  "script": "scripts/benchmark_vad_oracles.py",
+  "seed": 42,
+  "signal_seconds": 6.0,
+  "sr": 32000,
+  "musdb_tracks": 9,
+  "results": [
+    {
+      "name": "musdb:AM Contra - Heart Peripheral:vocals",
+      "kind": "vocal",
+      "panns_singing": 0.0007855892181396484,
+      "offset_db": 0.0,
+      "reasons": [
+        "PANNs-Singing=0.001 unter Mindest-Konfidenz 0.25 — kein Offset (konservativ)"
+      ],
+      "seconds": 11.86
+    },
+    {
+      "name": "musdb:AM Contra - Heart Peripheral:drums",
+      "kind": "instrumental",
+      "panns_singing": 0.00014066696166992188,
+      "offset_db": 0.0,
+      "reasons": [
+        "PANNs-Singing=0.000 unter Mindest-Konfidenz 0.25 — kein Offset (konservativ)"
+      ],
+      "seconds": 0.03
+    },
+    {
+      "name": "musdb:AM Contra - Heart Peripheral:other",
+      "kind": "instrumental",
+      "panns_singing": 1.3947486877441406e-5,
+      "offset_db": 0.0,
+      "reasons": [
+        "PANNs-Singing=0.000 unter Mindest-Konfidenz 0.25 — kein Offset (konservativ)"
+      ],
+      "seconds": 0.03
+    },
+    {
+      "name": "musdb:Al James - Schoolboy Facination:vocals",
+      "kind": "vocal",
+      "panns_singing": 0.09054780006408691,
+      "offset_db": 0.0,
+      "reasons": [
+        "PANNs-Singing=0.091 unter Mindest-Konfidenz 0.25 — kein Offset (konservativ)"
+      ],
+      "seconds": 0.04
+    },
+    {
+      "name": "musdb:Al James - Schoolboy Facination:drums",
+      "kind": "instrumental",
+      "panns_singing": 0.00017410516738891602,
+      "offset_db": 0.0,
+      "reasons": [
+        "PANNs-Singing=0.000 unter Mindest-Konfidenz 0.25 — kein Offset (konservativ)"
+      ],
+      "seconds": 0.05
+    },
+    {
+      "name": "musdb:Al James - Schoolboy Facination:other",
+      "kind": "instrumental",
+      "panns_singing": 0.00018197298049926758,
+      "offset_db": 0.0,
+      "reasons": [
+        "PANNs-Singing=0.000 unter Mindest-Konfidenz 0.25 — kein Offset (konservativ)"
+      ],
+      "seconds": 0.04
+    },
+    {
+      "name": "musdb:Angels In Amplifiers - I'm Alright:vocals",
+      "kind": "vocal",
+      "panns_singing": 0.00029271841049194336,
+      "offset_db": 0.0,
+      "reasons": [
+        "PANNs-Singing=0.000 unter Mindest-Konfidenz 0.25 — kein Offset (konservativ)"
+      ],
+      "seconds": 0.03
+    },
+    {
+      "name": "musdb:Angels In Amplifiers - I'm Alright:drums",
+      "kind": "instrumental",
+      "panns_singing": 0.00047385692596435547,
+      "offset_db": 0.0,
+      "reasons": [
+        "PANNs-Singing=0.000 unter Mindest-Konfidenz 0.25 — kein Offset (konservativ)"
+      ],
+      "seconds": 0.03
+    },
+    {
+      "name": "musdb:Angels In Amplifiers - I'm Alright:other",
+      "kind": "instrumental",
+      "panns_singing": 0.0020822882652282715,
+      "offset_db": 0.0,
+      "reasons": [
+        "PANNs-Singing=0.002 unter Mindest-Konfidenz 0.25 — kein Offset (konservativ)"
+      ],
+      "seconds": 0.03
+    },
+    {
+      "name": "vocal_196hz",
+      "kind": "vocal",
+      "panns_singing": 0.00022214651107788086,
+      "offset_db": 0.0,
+      "reasons": [
+        "PANNs-Singing=0.000 unter Mindest-Konfidenz 0.25 — kein Offset (konservativ)"
+      ],
+      "seconds": 0.03
+    },
+    {
+      "name": "vocal_261hz",
+      "kind": "vocal",
+      "panns_singing": 0.00019603967666625977,
+      "offset_db": 0.0,
+      "reasons": [
+        "PANNs-Singing=0.000 unter Mindest-Konfidenz 0.25 — kein Offset (konservativ)"
+      ],
+      "seconds": 0.03
+    },
+    {
+      "name": "vocal_329hz",
+      "kind": "vocal",
+      "panns_singing": 0.0001100301742553711,
+      "offset_db": 0.0,
+      "reasons": [
+        "PANNs-Singing=0.000 unter Mindest-Konfidenz 0.25 — kein Offset (konservativ)"
+      ],
+      "seconds": 0.03
+    },
+    {
+      "name": "instrumental_0",
+      "kind": "instrumental",
+      "panns_singing": 9.5367431640625e-7,
+      "offset_db": 0.0,
+      "reasons": [
+        "PANNs-Singing=0.000 unter Mindest-Konfidenz 0.25 — kein Offset (konservativ)"
+      ],
+      "seconds": 0.03
+    },
+    {
+      "name": "instrumental_1",
+      "kind": "instrumental",
+      "panns_singing": 2.9802322387695312e-6,
+      "offset_db": 0.0,
+      "reasons": [
+        "PANNs-Singing=0.000 unter Mindest-Konfidenz 0.25 — kein Offset (konservativ)"
+      ],
+      "seconds": 0.04
+    },
+    {
+      "name": "instrumental_2",
+      "kind": "instrumental",
+      "panns_singing": 1.1920928955078125e-6,
+      "offset_db": 0.0,
+      "reasons": [
+        "PANNs-Singing=0.000 unter Mindest-Konfidenz 0.25 — kein Offset (konservativ)"
+      ],
+      "seconds": 0.03
+    }
+  ],
+  "summary": {
+    "n": 15,
+    "direction_correct": 9,
+    "direction_total": 15,
+    "direction_rate": 0.6,
+    "never_worsen_agreement": 9,
+    "never_worsen_total": 9,
+    "panns_missing": 0,
+    "note": "Instrumental mit Offset 0 dB ⇒ identische Gate-Entscheidung wie der neutrale Pfad (Never-worsen); vocal mit Offset < 0 ist die dokumentierte prospektive Abweichung, deren Aktivierung erst nach Never-worsen-Beweis + Hörordnungs-Sign-off zulässig ist (KP-4-Vertrag)."
+  }
+}

@@ -13,15 +13,15 @@
   "tests/normative/test_competitive_ci_gate.py": "194d100c56e145810fd580122ff27b0a9894cfdecc408c86858e6ec0805f0fdf",
   "tests/normative/test_magic_button_autopilot_ci_gate.py": "e6edbfb3adcf851cf9c8519355bd549ae238c5291eaa7013254a70cad5f3a5b6",
   "tests/normative/test_material_priority_phases_gate.py": "c736b1b575b2e7cdefa449c8683b7f10b1db8280e7d600e29229796a1e69b1bd",
-  "scripts/release_must_coverage_check.py": "62815ad39798c1a5c0c0aadbb7e61ad124cd99641657c65eb6f7115d0da407e4",
-  "scripts/compliance_check.py": "646d1e5e090aea4c066aff64a451521b05d1e1349c976dece820c05c56dea64e",
-  "scripts/check_musical_goals.py": "e2560513df75ddcfd6aa954d88d69497158e61fb5dde2fb534b8f769f25cc8b2",
+  "tests/normative/test_weltklasse_kette.py": "7ca8bf32c368e315f8f99bef227a11c6c19e3513b023389e0f321a88d613cc58",
+  "scripts/release_must_coverage_check.py": "d81acc70c2dae8351e7602d20cc8a06e94f8e0a3e60fb954a90b912972c5ae40",
+  "scripts/compliance_check.py": "6b965fa46753bc686b2c9e5dd1b0558a522367793c5ecca885bc2ed2c460fc8f",
+  "scripts/check_musical_goals.py": "2a2665955188401c25d457cd5e1a40255c28d92b8a2f510ebf1a3e1689b3241b",
   ".github/ID_REGISTRY.md": "f434b1c22397d2a240249555a7823e1c027357640fe6ec8a5c4bb2fda5fb006d",
-  ".github/FILE_REGISTRY.md": "1b157910351890e35469a7c5a10cdd3d8740662ab7e2a9e6f7fdfe3ae6c08ee5",
+  ".github/FILE_REGISTRY.md": "1dad7f305ce13248d58ea0a08cdcfe417d8682d887c31bc269265a9c84695947",
   ".github/GEBOTE_INTEGRATION_MATRIX.md": "3ae76fffd192b52093a5291ee315b3c1e5b48bac4e16e8a65aeaf061228eb4b5",
   ".github/specs/00_SPEC_INDEX.md": "34055acfa9f91842cc3ae7863bba8821d3af2a667279017ce6df50408986b6b2",
   "scripts/gen_integration_matrix.py": "629740944935b08e3079d70dde8c86ee193ca33ea8161ea5eef6809241bb5dd3",
   "docs/ID_COLLISION_MAP.md": "44b8be2c56e87cb768bc4d67b1fd76c39358f2d59752982f05839dd58390a136",
-  "AGENTS.md": "aa2bb9fa181ea56a94946c85046c010dd0f764a8f0492f220b6761e948f59549",
-  "tests/normative/test_weltklasse_kette.py": "7ca8bf32c368e315f8f99bef227a11c6c19e3513b023389e0f321a88d613cc58"
+  "AGENTS.md": "d30703d029c5003d8b791a5fb645f92d219fe9a058f0faa40935a353a31b19f4"
 }

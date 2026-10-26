@@ -1424,7 +1424,9 @@ Sänger-Identität, MuQ-MOS nicht schlechter als Baseline).
    (importorskip-Muster), Timeout 120 min, Windows-numba-SIGSEGV (JIT-aus im Smoke),
    **Apollo-Endlos-Loop gefixt** (produktionsrelevant: DSP-Fallback lief endlos,
    bcfee116). Bekannte Ärgernis: `change_ledger.py snapshot` ohne Trailing-Newline →
-   eof-fixer bricht jeden ersten Commit ab (Folge-Fix offen).
+   eof-fixer bricht jeden ersten Commit ab. **Erledigt (2026-10-26 nachgemessen):**
+   `change_ledger.py:143` schreibt mit Trailing-Newline — der Folge-Fix war bereits
+   umgesetzt, die Notiz veraltet (TASK_CHANGES.md endet auf `\n`, `check` deckt ab).
 4. **CLI/GUI-Parität jetzt bewiesen**: echter Vollpipeline-A/B-Test im Solo Release
    Gate (tests/normative/test_cli_gui_output_parity.py, bitnah ≤ 1e-5). Befund:
    `no_rt_limit=True` = force-execute (§2.45-Skip) divergiert massiv (0.365) —
@@ -2719,3 +2721,73 @@ stützt die Notwendigkeit: Sprach-Orakel (UTMOS) können Musik nicht bewerten
 4. **WP-4/F3** (BigVGAN-F3-Rollout vorbereiten: ONNX-Export + Flag-Pfad + Tests).
 5. **WP-3** (Ordnungs-Forensik, inkl. Vocoder-Hypothese).
 6. WP-4/F8·F9·F5, WP-5 (GPU) → WP-6, WP-7, WP-8 (extern/Daten).
+
+---
+
+## SOTA-Maßnahmen 2026-10-25 — Welle A–F (`SOTA-M1`…`SOTA-M23`)
+
+> **Kanonische ID-Liste** zum Katalog
+> `docs/reports/current/2026-10-25_sota_massnahmen_katalog.md` (Inhalte und
+> Ausführungsanweisungen stehen dort; dieser Abschnitt ist das TODO-Verzeichnis
+> mit den `SOTA-M*`-IDs, die `.github/SOTA_DEFICIT_REGISTER.md` im Blocker-Feld
+> zitiert). Zero-Gap-Regel: jede Position endet in GESCHLOSSEN / ERSETZT /
+> GESTRICHEN mit Beleg-Pfad.
+>
+> **§5-ID-Korrektur (dokumentiert, §G8 copilot-instructions.md):** Das Register
+> zitierte `SOTA-M11` dreifach (D-K1-5 BW-v5 **und** D-K4-5/D-K4-6). Aufgelöst:
+> **M11 = Vokal-Identität/SingMOS-Familie** (F9/F10, zwei Register-Zeilen),
+> **KP-7 BW-v5 = M7** (D-K1-5-Blocker im selben Zug nachgezogen). Alle übrigen
+> historischen Zitate (M3, M8, M9, M10, M12, M13) bleiben unverändert gültig.
+
+### Welle A — sofort, ohne GPU (Hörinstanz)
+
+| TODO-ID | Maßnahme | Register-IDs | Status |
+| --- | --- | --- | --- |
+| `SOTA-M1` | A1 · Hörproben-Runde KP-1 fahren (SCNet C4-r2, HR-V1 W-1, SGMSE 3-Wege) → bis zu drei Flag-Flips | D-K0-1, D-K0-2, D-K0-3, D-K0-5 | offen — Hörinstanz |
+| `SOTA-M2` | A2 · Sign-off-Entscheidungen §9 (8 Zeilen: SCNet, F3-Studio, SGMSE, EAR-VAE v1↔v2, Whisper, AERO, Vinyl-Lizenz §9/7, AudioLDM2) | D-K0-4, D-K0-9, D-K2-4, D-K2-5 | offen — Maintainer |
+| `SOTA-M3` | A3 · MUSHRA-Entscheidung B2/WP-8: Studie n≥30 terminieren ODER Zwischenabnahme über Objektivmetriken formell beschließen | D-K4-9 | offen — Nutzerentscheidung |
+| `SOTA-M4` | A4 · Hängende Abnahmen (T6-1 D4/D5/D6, SGMSE A4/A5, B1/B3/B4) | — | offen |
+
+### Welle B — CPU-Substitutionen (§III.11 Signalpfad & Richterbank)
+
+| TODO-ID | Maßnahme | Register-IDs | Status |
+| --- | --- | --- | --- |
+| `SOTA-M5` | B3 · KP-4 Musik-VAD: Silero → PANNs-Singing/AST (report-only gebaut; Multi-Window-Score + Kalibrierung auf echten Stems) | — | teilweise (KP-4-Vorbereitung done) |
+| `SOTA-M6` | B4 · KP-5 Studio-Finisher-Vocoder: BigVGAN-F3 als Stufe 1 statt Vocos-48k-Primär (`use_bigvgan_f3_studio`, W-1-gesperrt) | D-K2-2, D-K2-3 | vorbereitet — W-1 gesperrt |
+| `SOTA-M10` | B1 · KP-2 Musik-MOS-Orakel (F8): MuQ+A1-Head + SingMOS statt UTMOSv2 (Zeuge geliefert, report-only) | D-K4-4 | Teil abgeschlossen (A-Evidenz), Veto nach Kalibrierung offen |
+| `SOTA-M11` | B2 · KP-3 Vokal-Identität (F9) + KP-12 SingMOS-Kalibrierung (F10): Resemblyzer-Ersatz via MuQ-MuLan | D-K4-5, D-K4-6 | teilweise (KP-3 done, Datenkalibrierung D-K4-6 offen) |
+
+### Welle C — GPU-Läufe (7900 XTX, ROCm)
+
+| TODO-ID | Maßnahme | Register-IDs | Status |
+| --- | --- | --- | --- |
+| `SOTA-M7` | C1 · KP-7 BW-Reconstructor v5 Re-Training (F11) — **Lauf abgeschlossen**, offen: Gate-Definition ≥1,02 oder Hörstichprobe | D-K1-5 | offen — Nutzerentscheidung |
+| `SOTA-M8` | E5 · neuronaler A-SPADE-Klassen-Declipper als Phase-07-Challenger (PCHIP = §V6-Fallback) | D-K4-1 | offen |
+| `SOTA-M9` | E5 · nicht-kausaler Vollband-Denoiser (TF-GridNet-Klasse) als optionale Quality-Mode-Stufe; DFN bleibt kausal | D-K4-2 | offen |
+| `SOTA-M12` | E5 · KP-17 WF-V4 Warp-Head auf FCPE/CRePE-F0 + KP-18 TP-V2 Phasen-Schätzung | D-K4-7, D-K4-8 | offen |
+| `SOTA-M13` | E5 · C·Ganzsong-Pipeline + Per-Stem-Restaurierung als Standard (Vorab-Entscheid D-K3-65 per Hörstichprobe) | D-K4-3 | offen |
+| `SOTA-M14` | C2 · KP-8 Cantus Vocal-Inpainting-DiT: pretrain → fine_tune (Daten `data/cantus_pairs` 3600 Paare lokal); domain_adapt ohne reale Daten nicht startklar | — | offen — lauffähig |
+| `SOTA-M15` | C3 · KP-10 RT60-Regressor auf RIR-Paaren | — | offen — **kein Skript, keine Daten** (Welle D) |
+| `SOTA-M16` | C4 · KP-6 BANQUET Real-Vinyl-Finetune (F12) | — | offen — Daten D1 + Lizenz §9/7 |
+| `SOTA-M17` | C5 · KP-11 Symphonia (Export/Registry-Hygiene vorab) + KP-9 GaCELA | — | offen (Skripte da, Checkpoint fehlt) |
+
+### Welle D — Daten-Beschaffung (Dauerläufer, Blocker der KP-Lanes)
+
+| TODO-ID | Maßnahme | Register-IDs | Status |
+| --- | --- | --- | --- |
+| `SOTA-M18` | D1–D6 · Vinyl↔Reissue-Paare ≥30 · Leerrillen-Noise-Bank · Echt-Träger ≥50 je Klasse · Gender-Labels · Genre-Labels · MUSHRA n≥30 | D-K0-8, D-K1-2, D-K1-3, D-K1-4 | offen — teils Lizenz §9/7 |
+
+### Welle E — hartes SOTA-Gleis (Hygiene & Klassen-Lücken)
+
+| TODO-ID | Maßnahme | Register-IDs | Status |
+| --- | --- | --- | --- |
+| `SOTA-M19` | E1 · WP-2 Phantom-ML-Stubs + Phantom-Referenzen | D-K3-3, D-K3-5 | abgeschlossen (D-K3-3) |
+| `SOTA-M20` | E2 · WP-1 §III.11-Lücken-Audit Richter + Signalpfad (K2) | D-K2-1, D-K2-2, D-K2-3, D-K2-4, D-K2-5 | teilweise (D-K2-1) |
+| `SOTA-M21` | E3 · WP-3 Wohlklang-Ordnung-Forensik (Vocoder-Hypothese) | D-K2-3 | abgeschlossen — 36 Verstöße, Gegenmaßnahme = M6 |
+| `SOTA-M22` | E4 · K3-Restbestand: D-K3-23 Denker-Tothoheit, D-K3-37 32×-Guard, D-K3-38/40 Scanner-Kosten, D-K3-54 AM-Peak, D-K3-64 Dither-Kaskade, D-K3-65 ARC/Goosebumps/MDEM je Chunk, D-K3-60 WCS-Chained-Export (geschlossen, Ersatz Beleg prüfen), D-K3-21 SNR-CAUSE, D-K3-31 SNR-Stärke, Restbestand D-K3-8/10/13/62 | D-K3-8, D-K3-10, D-K3-13, D-K3-21, D-K3-23, D-K3-31, D-K3-37, D-K3-38, D-K3-40, D-K3-54, D-K3-62, D-K3-64, D-K3-65 | offen |
+| `SOTA-M23` | E6 · Doku-Konsistenz: dieser Abschnitt + SOTA-M-Blocker im Register nachtragen (dieser Eintrag erfüllt sich selbst) | — | **GESCHLOSSEN (mit diesem Abschnitt)** |
+
+**Welle F** existiert im Katalog nicht als eigenständige Welle — der
+„Welle A–F"-Verweis des Registers meint die Bandbreite A…E inkl. der
+GPU-Wellen; die Abkürzung bleibt aus Gründen der Zitierstabilität (§G9
+copilot-instructions.md) unverändert.

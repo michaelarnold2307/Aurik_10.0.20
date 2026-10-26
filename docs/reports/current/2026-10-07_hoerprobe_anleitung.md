@@ -1,8 +1,8 @@
-# Hörproben-Anleitung — die menschliche Hör-Instanz (Stand 2026-10-07)
+# Hörproben-Anleitung — die menschliche Hör-Instanz (Stand 2026-10-07, erweitert 2026-10-23 um Runde C)
 
 > **Zweck:** Dies ist die einzig verbleibende „Mensch"-Stufe der Wohlklang-Roadmap.
-> Zwei Aktivierungen sind ohne Ihr Gehör **nicht** entscheidbar. Diese Anleitung
-> führt Schritt für Schritt durch beide Hörproben; sie dauert zusammen ca. 20–30 min.
+> Drei Entscheidungen sind ohne Ihr Gehör **nicht** entscheidbar. Diese Anleitung
+> führt Schritt für Schritt durch alle drei Hörproben; sie dauert zusammen ca. 30–45 min.
 >
 > **Warum Sie und nicht eine Metrik:** Nach `.github/instructions/hoerordnung.instructions.md`
 > sind Metriken **Zeugen**, nicht Richter. Ein Modell darf nur dann klangverändernd
@@ -12,12 +12,13 @@
 
 ---
 
-## 1. Die zwei offenen Entscheidungen
+## 1. Die drei offenen Entscheidungen
 
 | # | Frage | Was entschieden wird |
 | --- | --- | --- |
 | **A** | **SCNet (P1-2, C4):** Klingt der SCNet-Gesangskern besser als die Demucs-v4-Baseline? | Ob SCNet die Separation übernimmt (A/B: +1,96…+3,59 dB SI-SDR) oder verworfen wird |
-| **B** | **HR-V1 (W-1):** Ist die zusätzliche Höhen-Behandlung der Deckel-Fenster **hörbar**? | Ob HR-V1 wirken darf (siehe Abschnitt 6 — der Produktionspfad ist derzeit wirkungslos, deshalb Hörprobe über den Harness-Weg) |
+| **B** | **HR-V1 (W-1):** Ist die zusätzliche Höhen-Behandlung der Deckel-Fenster **hörbar**? | Ob HR-V1 wirken darf (siehe Abschnitt 7 — der Produktionspfad ist seit dem Kanal-Fix wirksam, deshalb Hörprobe über den Produktionspfad) |
+| **C** | **SGMSE+ (D-K0-3):** Trägt der Musik-Finetune-Core gegen Sprach-Core und WPE-DSP? | Ob `use_sgmse_musik` geflippt wird, ob nur WPE bleibt oder beide Cores gesperrt bleiben |
 
 ---
 
@@ -99,7 +100,37 @@ es bedeutet, dass die Ausschnitte zu leise/zu flüchtig gehört wurden.
 
 ---
 
-## 5. Auswerten (nach dem Hören)
+## 5. Hörprobe C starten — SGMSE+ 3-Wege (Präferenz)
+
+Gleiches Vorgehen, anderer Studienordner:
+
+```bash
+.venv_aurik/bin/python scripts/hoerpanel_player.py \
+  --study output_audio/mushra/thresholds_sgmse_3weg \
+  --port 8767
+```
+
+Dann <http://localhost:8767> öffnen (anderer Port, damit alle parallel laufen können).
+
+**Was Sie hören:** In jedem Trial stammen beide Ausschnitte **vom selben degradierten
+Gesangsausschnitt** (synthetischer Nachhall + Rauschen) — nur die Restaurierungs-Verfahren
+unterscheiden sich. Drei Vergleichspaare rotieren: Musik-Finetune-Core gegen Sprach-Core,
+Musik-Finetune-Core gegen WPE-DSP und Sprach-Core gegen WPE-DSP. Alle Arme sind auf
+gleiche Lautheit gebracht (RMS-Anker + Level-Match), damit Lautstärke kein Hinweisreiz ist.
+
+**Die Frage lautet:** Welches klingt klarer und natürlicher — Hall/Rauschen besser entfernt,
+Stimme ohne Verfärbung?
+
+**Diese Studie hat 18 echte Trials (6 je Vergleichspaar) + 2 Fangfragen.** Die Auswertung
+liefert je Klasse einen Belegwert; die Entscheidung folgt aus den beiden Klassen mit dem
+Musik-Core (`sgmse_musik_vs_wsj0`, `sgmse_musik_vs_wpe`): trägt er in **beiden**, wird
+`use_sgmse_musik=True`; verliert er gegen WPE, ist der WPE-only-Weg die Entscheidung.
+
+**Die zwei Fangfragen** sind wie bei B absichtlich deutlich hörbar (3,5-kHz-Tiefpass).
+
+---
+
+## 6. Auswerten (nach dem Hören)
 
 ```bash
 # Hörprobe A (SCNet, Präferenz)
@@ -109,6 +140,10 @@ es bedeutet, dass die Ausschnitte zu leise/zu flüchtig gehört wurden.
 # Hörprobe B (HR-V1)
 .venv_aurik/bin/python scripts/mushra_harness.py thresholds-fit \
   --study output_audio/mushra/thresholds_wohlklang_w1_hrv1 --min-trials 8
+
+# Hörprobe C (SGMSE+ 3-Wege, Präferenz je Klasse)
+.venv_aurik/bin/python scripts/mushra_harness.py thresholds-fit \
+  --study output_audio/mushra/thresholds_sgmse_3weg --min-trials 4
 ```
 
 Das Skript schreibt `fit.json` neben die Antworten und zeigt eine Tabelle. **`--min-trials`
@@ -131,7 +166,7 @@ Zusätzlich steht in `fit.json` je Hörer `catch.valid` (Fangfragen bestanden?) 
 
 ---
 
-## 6. Stand von HR-V1 (Ursache behoben — Hörprobe entscheidet über den Verbleib)
+## 7. Stand von HR-V1 (Ursache behoben — Hörprobe entscheidet über den Verbleib)
 
 **Befund 2026-10-07 (gemessen):** Der HR-V1-Produktionspfad
 (`plugins/bigvgan_v2_plugin.apply_hr_v1_additive`) **wirkte auf Stereo nicht**:
@@ -171,22 +206,23 @@ Signal unangetastet.
 
 ---
 
-## 7. Was danach passiert (ich übernehme)
+## 8. Was danach passiert (ich übernehme)
 
 Nach Ihrem Verdikt:
 
-1. **`.github/WOHLKLANG_CLAIMS.md`** wird in der Zeile **W-1** (HR-V1) bzw. der
-   SCNet-Zeile auf den belegten Stand gesetzt — Status wechselt von `ausnahme` auf
-   `aktiviert` (Belege vollständig) oder `gesperrt`.
-2. **`.github/SOTA_DEFICIT_REGISTER.md`**: D-K3-6 wird auf `geschlossen` (behoben)
-   oder `bewusst-akzeptiert` gesetzt — jeweils mit Ihrem `fit.json` als Belegpfad.
-3. Bei „beheben": die Kanalangleichung im Plugin bzw. der Broadcast im Gate wird
-   implementiert, mit §III.9-Paritätsnachweis (`rel ≤ 1e-3`) und Regressionstest.
+1. **`.github/WOHLKLANG_CLAIMS.md`** wird in der Zeile **W-1** (HR-V1), der SCNet-Zeile
+   bzw. der SGMSE-Stufe auf den belegten Stand gesetzt — Status wechselt von `ausnahme`
+   auf `aktiviert` (Belege vollständig) oder bleibt/wechselt zu `gesperrt`.
+2. **`.github/SOTA_DEFICIT_REGISTER.md`**: D-K3-6, D-K0-5 (SCNet), D-K0-1/D-K0-2 (HR-V1/F3)
+   und D-K0-3 (SGMSE) werden je Verdikt auf `geschlossen`, `bewusst-akzeptiert` oder
+   `offen` gesetzt — jeweils mit Ihrem `fit.json` als Belegpfad.
+3. **Feature-Flags** (`backend/core/music_model_flags.py`): nur bei belegtem Gewinn flippen
+   (`use_scnet_music`, `use_sgmse_musik`) — je einen pro Entscheidung, Test-Pins nachziehen.
 4. Version-Bump nach §v10.802 (Patch/Minor je nach Änderung) und Changelog-Eintrag.
 
 ---
 
-## 8. Grenzen dieser Anleitung (bewusst benannt)
+## 9. Grenzen dieser Anleitung (bewusst benannt)
 
 - **A hat 3 Trials** → Hör-Eindruck, kein statistischer Beleg. Für einen echten
   Beleg: mehr Songs (die drei MUSDB-Songs sind vorbereitet, es fehlen nur weitere
@@ -196,12 +232,13 @@ Nach Ihrem Verdikt:
   Ende**. Dort ist Musik oft ausgeblendet — dann ist die Behandlung schwächer hörbar als
   mitten im Stück. Das ist eine Eigenschaft der Fensterpolitik, keine Ihrer Hörleistung.
 - **Ein Hörer ist kein Panel.** Wohlklang-Entscheidungen mit Breitenwirkung sollten
-  mehrere Hörer haben (MUSHRA-Studie, Roadmap B2). Für die zwei hier offenen
-  Aktivierungen genügt die dokumentierte Einzelabnahme als **Zeugenaussage**.
+  mehrere Hörer haben (MUSHRA-Studie WP-8). Für die drei hier offenen Entscheidungen
+  genügt die dokumentierte Einzelabnahme als **Zeugenaussage** — das Flag-Flip-Votum
+  bleibt davon unberührt.
 
 ---
 
-## 9. Kommando-Sammlung (Kopieren → Einfügen)
+## 10. Kommando-Sammlung (Kopieren → Einfügen)
 
 ```bash
 cd "/media/michael/Software 4TB/Aurik_Standalone"
@@ -216,16 +253,25 @@ cd "/media/michael/Software 4TB/Aurik_Standalone"
   --study output_audio/mushra/thresholds_wohlklang_w1_hrv1 --port 8766
 #   Browser: http://localhost:8766
 
+# --- C: SGMSE+ 3-Wege (Präferenz) ---
+.venv_aurik/bin/python scripts/hoerpanel_player.py \
+  --study output_audio/mushra/thresholds_sgmse_3weg --port 8767
+#   Browser: http://localhost:8767
+
 # --- Auswerten ---
 .venv_aurik/bin/python scripts/mushra_harness.py thresholds-fit \
   --study output_audio/mushra/thresholds_scnet_c4_fair --min-trials 3
 .venv_aurik/bin/python scripts/mushra_harness.py thresholds-fit \
   --study output_audio/mushra/thresholds_wohlklang_w1_hrv1 --min-trials 8
+.venv_aurik/bin/python scripts/mushra_harness.py thresholds-fit \
+  --study output_audio/mushra/thresholds_sgmse_3weg --min-trials 4
 
 # --- Studien neu bauen (nur falls nötig) ---
 .venv_aurik/bin/python scripts/mushra_harness.py thresholds-build \
   --build wohlklang_w1_hrv1 \
   --manifest docs/reports/current/2026-10-07_hoerprobe_w1_hrv1.json --seed 20261007
+# C: vollständiger Neuaufbau (inkl. Arm-Generierung, ~25 min CPU):
+AURIK_FORCE_CPU=1 .venv_aurik/bin/python scripts/build_sgmse_hoerprobe_3weg.py
 ```
 
 **Dateiorte der Artefakte:**
@@ -234,6 +280,7 @@ cd "/media/michael/Software 4TB/Aurik_Standalone"
 | --- | --- |
 | SCNet-Hördateien (Referenz) | `output/scnet_ab_2026-10-06_fair/` |
 | HR-V1-Hördateien (Harness) | `output_audio/hr_v1_hoerprobe/` |
+| SGMSE-Arm-Quellen (degraded/wsj0/musik/wpe, FLOAT-WAV) | `output/sgmse_hoerprobe_3weg/` |
 | Studienordner | `output_audio/mushra/thresholds_*/` |
 | Antworten | `output_audio/mushra/thresholds_*/answers.csv` |
 | Ergebnis | `output_audio/mushra/thresholds_*/fit.json` |

@@ -4,6 +4,10 @@ Dieses Modul implementiert klassisches Spectral Inpainting (SOTA-Maximum, keine 
 Es interpoliert maskierte Spektrogrammwerte adaptiv und ist mit vollständigem DSPContract und Auditierbarkeit ausgestattet.
 """
 
+# WP-2-Deklaration (2026-10-25): Der deklarierte ML-/TorchScript-Pfad ist
+# NICHT implementiert — der DSP-Fallback ist das tatsächliche Verhalten.
+# §V6-Warnung beim ML-Aufruf bleibt Pflicht (D-K3-3, §G8 (copilot-instructions.md)).
+
 import logging
 from dataclasses import asdict, dataclass
 

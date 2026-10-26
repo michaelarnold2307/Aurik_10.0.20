@@ -203,7 +203,7 @@ Kollisions-Karte und Bereinigungsplan `docs/ID_COLLISION_MAP.md`.
 - Repo-Karte & Lifecycle: `.github/FILE_REGISTRY.md` +
   `scripts/repo_graph.py` (`--write-json` → `.github/repo_graph.json`,
   `--check`, `--duplicates`)
-- SOTA-Defizit-Register (Modell-/Wohlklang-Lücken der Klassen K0–K3):
+- SOTA-Defizit-Register (Modell-/Wohlklang-Lücken der Klassen K0–K4):
   `.github/SOTA_DEFICIT_REGISTER.md` + `scripts/sota_deficit_gate.py`
   (Pre-Commit `aurik-sota-deficit-gate`, fail-closed)
 - Artefakt-Fingerabdrücke **aller** Modelle + Herkunftsbelege (am Artefakt

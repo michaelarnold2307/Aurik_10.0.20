@@ -3,6 +3,10 @@ adaptive_spectral_peak_removal.py - SOTA-konformes Spectral Peak Removal Modul f
 Dieses Modul ist jetzt mit DSPContract für Auditierbarkeit und SOTA-Konformität ausgestattet.
 """
 
+# WP-2-Deklaration (2026-10-25): Der deklarierte ML-/TorchScript-Pfad ist
+# NICHT implementiert — der DSP-Fallback ist das tatsächliche Verhalten.
+# §V6-Warnung beim ML-Aufruf bleibt Pflicht (D-K3-3, §G8 (copilot-instructions.md)).
+
 import logging
 from dataclasses import asdict, dataclass
 from typing import Any

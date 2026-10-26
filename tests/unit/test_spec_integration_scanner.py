@@ -50,7 +50,7 @@ def _build_fixture(tmp_path: Path) -> Path:
     for name in _INSTRUCTION_FILES:
         (gh / "instructions" / f"{name}.instructions.md").write_text("# x\n", encoding="utf-8")
     (gh / "GEBOTE.md").write_text(
-        "## Kategorie I\n| §G10 | **Titel Zehn** | Beschreibung |\n| §G11 | **Titel Elf** | Beschreibung |\n",
+        "## Kategorie I\n| §G10 | **Titel Zehn** | Beschreibung |\n| §G11 | **Titel Elf** | Beschreibung |\n",  # Fixture-IDs (GEBOTE.md)
         encoding="utf-8",
     )
     (gh / "VERBOTEN.md").write_text(
@@ -87,33 +87,33 @@ def test_normative_docs_ok_and_missing(tmp_path: Path) -> None:
 
 def test_matrix_uncited_id_without_ledger_is_error(tmp_path: Path) -> None:
     ws = _build_fixture(tmp_path)
-    # §G11 wird nirgendwo zitiert und hat keinen Ledger-Eintrag → ERROR
+    # §G11 (GEBOTE.md, Fixture) wird nirgendwo zitiert und hat keinen Ledger-Eintrag → ERROR
     errs = check_gebote_verboten_matrix(ws)
-    assert any(f.item == "§G11" and f.severity == "error" for f in errs)
-    # §G10 ist im Code zitiert → kein Befund
-    assert not any(f.item == "§G10" for f in errs)
+    assert any(f.item == "§G11" and f.severity == "error" for f in errs), "§G11 (GEBOTE.md, Fixture)"
+    # §G10 (GEBOTE.md, Fixture) ist im Code zitiert → kein Befund
+    assert not any(f.item == "§G10" for f in errs), "§G10 (GEBOTE.md, Fixture)"
 
 
 def test_matrix_uncited_id_with_ledger_is_ok(tmp_path: Path) -> None:
     ws = _build_fixture(tmp_path)
     (ws / ".github" / "GEBOTE_INTEGRATION_MATRIX.md").write_text(
-        "# Matrix\n| §G11 | Kategorie I | Titel Elf | katalog |\n",
+        "# Matrix\n| §G11 | Kategorie I | Titel Elf | katalog |\n",  # Fixture-ID (GEBOTE.md)
         encoding="utf-8",
     )
     errs = check_gebote_verboten_matrix(ws)
-    assert not any(f.item == "§G11" for f in errs)
+    assert not any(f.item == "§G11" for f in errs), "§G11 (GEBOTE.md, Fixture)"
 
 
 def test_matrix_exact_id_no_prefix_collision(tmp_path: Path) -> None:
     ws = _build_fixture(tmp_path)
     (ws / ".github" / "GEBOTE.md").write_text(
-        "## Kategorie I\n| §G10 | **Titel Zehn** | … |\n| §G100 | **Titel Hundert** | … |\n",
+        "## Kategorie I\n| §G10 | **Titel Zehn** | … |\n| §G100 | **Titel Hundert** | … |\n",  # Fixture-IDs (GEBOTE.md)
         encoding="utf-8",
     )
-    # §G100 ist zitiert → §G10 darf NICHT über §G100 als zitiert gelten
+    # §G100 (GEBOTE.md, Fixture) ist zitiert → §G10 (GEBOTE.md, Fixture) darf NICHT über §G100 als zitiert gelten
     (ws / "backend" / "core" / "mod.py").write_text("# §G100 (GEBOTE.md)\n", encoding="utf-8")
     errs = check_gebote_verboten_matrix(ws)
-    assert any(f.item == "§G10" and f.severity == "error" for f in errs)
+    assert any(f.item == "§G10" and f.severity == "error" for f in errs), "§G10 (GEBOTE.md, Fixture)"
     assert not any(f.item == "§G100" for f in errs)
 
 

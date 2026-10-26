@@ -1,0 +1,149 @@
+{
+  "build": "sgmse_3weg",
+  "task": "preference",
+  "seed": 20261022,
+  "question": "Welches der beiden Gesangs-Ergebnisse klingt klarer und natuerlicher — Hall/Rauschen besser entfernt, Stimme ohne Verfärbung?",
+  "note": "SGMSE+ 3-Wege-Hörabnahme (D-K0-3): 18 Präferenz-Trials (3 Songs × 2 Fenster × 3 Paare: musik_vs_wsj0, musik_vs_wpe, wsj0_vs_wpe) + 2 Fangfragen. Arme über kanonische Plugin-Pfade generiert (identisch zum Metrik-Lauf 2026-10-08; w04/Seed 42 bit-exakt der Metrik-Evidenz, w20/Seed 43 = erweiterte Stichprobe). Degradation: synthetischer Nachhall (45 %) + Rauschen @ 10 dB SNR, σ=0.5, AURIK_FORCE_CPU=1; verarbeitete Arme RMS-anchored an die Input-Lautheit (SGMSE-Plugin-Ausgaben sind Peak-normalisiert), danach Harness-Level-Match für den Präferenz-Typ. Entscheidung: use_sgmse_musik-Flag-Flip nur nach Hörordnungs-Sign-off (§III.11 copilot-instructions.md); Metrik-Berichte docs/reports/current/2026-10-08_sgmse_ab_metrik*.json.",
+  "trials": [
+    {
+      "trial_id": "sgmse_amcontra_w04_musik_vs_wsj0",
+      "class": "sgmse_musik_vs_wsj0",
+      "reference": "output/sgmse_hoerprobe_3weg/amcontra/w04/wsj0.wav",
+      "candidate": "output/sgmse_hoerprobe_3weg/amcontra/w04/musik.wav",
+      "start_s": 0.0
+    },
+    {
+      "trial_id": "sgmse_amcontra_w04_musik_vs_wpe",
+      "class": "sgmse_musik_vs_wpe",
+      "reference": "output/sgmse_hoerprobe_3weg/amcontra/w04/wpe.wav",
+      "candidate": "output/sgmse_hoerprobe_3weg/amcontra/w04/musik.wav",
+      "start_s": 0.0
+    },
+    {
+      "trial_id": "sgmse_amcontra_w04_wsj0_vs_wpe",
+      "class": "sgmse_wsj0_vs_wpe",
+      "reference": "output/sgmse_hoerprobe_3weg/amcontra/w04/wpe.wav",
+      "candidate": "output/sgmse_hoerprobe_3weg/amcontra/w04/wsj0.wav",
+      "start_s": 0.0
+    },
+    {
+      "trial_id": "sgmse_amcontra_w20_musik_vs_wsj0",
+      "class": "sgmse_musik_vs_wsj0",
+      "reference": "output/sgmse_hoerprobe_3weg/amcontra/w20/wsj0.wav",
+      "candidate": "output/sgmse_hoerprobe_3weg/amcontra/w20/musik.wav",
+      "start_s": 0.0
+    },
+    {
+      "trial_id": "sgmse_amcontra_w20_musik_vs_wpe",
+      "class": "sgmse_musik_vs_wpe",
+      "reference": "output/sgmse_hoerprobe_3weg/amcontra/w20/wpe.wav",
+      "candidate": "output/sgmse_hoerprobe_3weg/amcontra/w20/musik.wav",
+      "start_s": 0.0
+    },
+    {
+      "trial_id": "sgmse_amcontra_w20_wsj0_vs_wpe",
+      "class": "sgmse_wsj0_vs_wpe",
+      "reference": "output/sgmse_hoerprobe_3weg/amcontra/w20/wpe.wav",
+      "candidate": "output/sgmse_hoerprobe_3weg/amcontra/w20/wsj0.wav",
+      "start_s": 0.0
+    },
+    {
+      "trial_id": "sgmse_aljames_w04_musik_vs_wsj0",
+      "class": "sgmse_musik_vs_wsj0",
+      "reference": "output/sgmse_hoerprobe_3weg/aljames/w04/wsj0.wav",
+      "candidate": "output/sgmse_hoerprobe_3weg/aljames/w04/musik.wav",
+      "start_s": 0.0
+    },
+    {
+      "trial_id": "sgmse_aljames_w04_musik_vs_wpe",
+      "class": "sgmse_musik_vs_wpe",
+      "reference": "output/sgmse_hoerprobe_3weg/aljames/w04/wpe.wav",
+      "candidate": "output/sgmse_hoerprobe_3weg/aljames/w04/musik.wav",
+      "start_s": 0.0
+    },
+    {
+      "trial_id": "sgmse_aljames_w04_wsj0_vs_wpe",
+      "class": "sgmse_wsj0_vs_wpe",
+      "reference": "output/sgmse_hoerprobe_3weg/aljames/w04/wpe.wav",
+      "candidate": "output/sgmse_hoerprobe_3weg/aljames/w04/wsj0.wav",
+      "start_s": 0.0
+    },
+    {
+      "trial_id": "sgmse_aljames_w20_musik_vs_wsj0",
+      "class": "sgmse_musik_vs_wsj0",
+      "reference": "output/sgmse_hoerprobe_3weg/aljames/w20/wsj0.wav",
+      "candidate": "output/sgmse_hoerprobe_3weg/aljames/w20/musik.wav",
+      "start_s": 0.0
+    },
+    {
+      "trial_id": "sgmse_aljames_w20_musik_vs_wpe",
+      "class": "sgmse_musik_vs_wpe",
+      "reference": "output/sgmse_hoerprobe_3weg/aljames/w20/wpe.wav",
+      "candidate": "output/sgmse_hoerprobe_3weg/aljames/w20/musik.wav",
+      "start_s": 0.0
+    },
+    {
+      "trial_id": "sgmse_aljames_w20_wsj0_vs_wpe",
+      "class": "sgmse_wsj0_vs_wpe",
+      "reference": "output/sgmse_hoerprobe_3weg/aljames/w20/wpe.wav",
+      "candidate": "output/sgmse_hoerprobe_3weg/aljames/w20/wsj0.wav",
+      "start_s": 0.0
+    },
+    {
+      "trial_id": "sgmse_motortapes_w04_musik_vs_wsj0",
+      "class": "sgmse_musik_vs_wsj0",
+      "reference": "output/sgmse_hoerprobe_3weg/motortapes/w04/wsj0.wav",
+      "candidate": "output/sgmse_hoerprobe_3weg/motortapes/w04/musik.wav",
+      "start_s": 0.0
+    },
+    {
+      "trial_id": "sgmse_motortapes_w04_musik_vs_wpe",
+      "class": "sgmse_musik_vs_wpe",
+      "reference": "output/sgmse_hoerprobe_3weg/motortapes/w04/wpe.wav",
+      "candidate": "output/sgmse_hoerprobe_3weg/motortapes/w04/musik.wav",
+      "start_s": 0.0
+    },
+    {
+      "trial_id": "sgmse_motortapes_w04_wsj0_vs_wpe",
+      "class": "sgmse_wsj0_vs_wpe",
+      "reference": "output/sgmse_hoerprobe_3weg/motortapes/w04/wpe.wav",
+      "candidate": "output/sgmse_hoerprobe_3weg/motortapes/w04/wsj0.wav",
+      "start_s": 0.0
+    },
+    {
+      "trial_id": "sgmse_motortapes_w20_musik_vs_wsj0",
+      "class": "sgmse_musik_vs_wsj0",
+      "reference": "output/sgmse_hoerprobe_3weg/motortapes/w20/wsj0.wav",
+      "candidate": "output/sgmse_hoerprobe_3weg/motortapes/w20/musik.wav",
+      "start_s": 0.0
+    },
+    {
+      "trial_id": "sgmse_motortapes_w20_musik_vs_wpe",
+      "class": "sgmse_musik_vs_wpe",
+      "reference": "output/sgmse_hoerprobe_3weg/motortapes/w20/wpe.wav",
+      "candidate": "output/sgmse_hoerprobe_3weg/motortapes/w20/musik.wav",
+      "start_s": 0.0
+    },
+    {
+      "trial_id": "sgmse_motortapes_w20_wsj0_vs_wpe",
+      "class": "sgmse_wsj0_vs_wpe",
+      "reference": "output/sgmse_hoerprobe_3weg/motortapes/w20/wpe.wav",
+      "candidate": "output/sgmse_hoerprobe_3weg/motortapes/w20/wsj0.wav",
+      "start_s": 0.0
+    },
+    {
+      "trial_id": "fangfrage_sgmse_1",
+      "class": "catch",
+      "reference": "output/sgmse_hoerprobe_3weg/amcontra/w04/degraded.wav",
+      "start_s": 0.0,
+      "catch": true
+    },
+    {
+      "trial_id": "fangfrage_sgmse_2",
+      "class": "catch",
+      "reference": "output/sgmse_hoerprobe_3weg/motortapes/w20/degraded.wav",
+      "start_s": 0.0,
+      "catch": true
+    }
+  ]
+}

@@ -58,6 +58,7 @@ from typing import Any, Optional, cast
 import numpy as np
 import scipy.fft as fft
 import scipy.signal as signal
+from scipy.ndimage import uniform_filter1d
 
 from backend.core.material_canonical import canonical_material_key
 
@@ -531,6 +532,77 @@ class DefectAnalysisResult:
         _rows.sort(key=lambda it: it[1], reverse=True)
         _top = _rows[: max(1, int(n))]
         return {k: float(v) for k, v in _top}
+
+
+def _uniform_smooth(x: np.ndarray, size: int, mode: str = "same") -> np.ndarray:
+    """§PERF (D-K3-38-Teilbehebung 4): Gleichmäßige Glättung als O(N)-Leitung.
+
+    Ersetzt das musterhafte ``np.convolve(x, np.ones(size)/size, ...)``, das
+    O(N·size) rechnet — auf dem 30-s-Produktionsfixture kostet die crackle-
+    Hüllkurve damit 0,36 s je Aufruf (15 solcher Stellen im Scanner, u. a.
+    Klick-/Crackle-/Wow-Envelope). ``scipy.ndimage.uniform_filter1d`` bildet
+    denselben gleitenden Mittelwert über eine laufende Summe: O(N), gemessen
+    **37× schneller** (363 ms → 9,8 ms, 2026-10-25).
+
+    **Numerik (ehrlich, D-K3-39-Muster):** nicht bit-identisch — die
+    laufende Summe addiert in anderer Reihenfolge als die Direkt-Faltung.
+    Gemessen amselben Fixture: max|Δ| = 3,3e-15 (rel 3,6e-14 ≈ 10 Größen-
+    ordnungen unter dem CD-Rauschboden von −96 dBFS) und **0 Kipp-Samples**
+    in der crackle-Maske über die getestete Schwellenspanne (0,5×/0,7×/1,0×
+    des 95. Perzentils) — die Detektor-Entscheidung ist identisch. Der
+    Vertragstest ``tests/unit/test_dk38_uniform_smooth.py`` pinnt die
+    Äquivalenz beider Modi gegen die NumPy-Referenz.
+
+    **Invariante:** bei nicht-negativem Input ist auch das Ergebnis nicht-
+    negativ. Die laufende Summe der O(N)-Leitung driftet bei Null-Läufen
+    (Dropouts) um ~1e-15 unter Null, die Direkt-Faltung liefert exakt ≥ 0;
+    der Clamp korrigiert nur diese Drift auf die Seite der Referenz. Ohne ihn
+    entsteht eine NaN-Kaskade in Folgestufen (Produktionsbefund: die
+    geglättete Rauschleistung wurde leicht negativ,
+    ``sqrt(_npow_s + 1e-20)`` in ``_detect_modulation_noise`` NaN — gefunden
+    von ``test_no_nan_severities``).
+
+    Args:
+        x: Eingabesignal (beliebiges Layout, wird intern float64 — wie
+            ``np.convolve`` mit float64-``ones(size)/size``-Kernel).
+        size: Fensterlänge in Samples (> 0).
+        mode: ``"same"`` (Länge wie x) oder ``"valid"`` (nur volle
+            Überlappung, Länge ``len(x) - size + 1``) — Semantik identisch
+            zum gleichnamigen ``np.convolve``-Modus.
+
+    Raises:
+        ValueError: bei ``mode`` außer ``{"same", "valid"}``.
+    """
+    if mode not in ("same", "valid"):
+        raise ValueError(f"_uniform_smooth: unbekannter mode {mode!r} (erwartet 'same' oder 'valid')")
+    w = int(size)
+    if w <= 0:
+        raise ValueError(f"_uniform_smooth: size muss > 0 sein, bekam {size!r}")
+    xs = np.asarray(x, dtype=np.float64)
+    out: np.ndarray
+    if w == 1 or xs.size < w:
+        # Randfälle: NumPy-Referenz aufrufen (bit-identisch; unkritisch, weil
+        # trivial bzw. das Signal kürzer als das Fenster ist). Der Ternary
+        # narrowed auf die nach dem Guard oben einzigen Modi — passt in den
+        # np.convolve-Overload (mypy call-overload) ohne Verhaltensänderung.
+        out = np.convolve(xs, np.ones(w) / w, mode="valid" if mode == "valid" else "same")
+    elif mode == "same":
+        out = uniform_filter1d(xs, size=w, mode="constant", cval=0.0)
+    else:
+        uf = uniform_filter1d(xs, size=w, mode="constant", cval=0.0)
+        n_valid = xs.size - w + 1
+        # scipy-Position j enthält mean(x[j - w//2 : j - w//2 + w]) (origin=0);
+        # np.convolve(valid)[i] = mean(x[i : i + w]) ⇒ i + w//2 (ungerades und
+        # gerades Fenster — der Vertragstest deckt beide Paritäten ab).
+        off = w // 2
+        out = uf[off : off + n_valid]
+    if xs.size and bool(np.all(xs >= 0.0)):
+        # Invariante (D-K3-38-Folge-Befund): gleitender Mittelwert nicht-
+        # negativer Werte ⇒ nicht-negatives Ergebnis. Der Clamp liegt
+        # innerhalb der ≤1e-12-Äquivalenz des Vertragstests und hält
+        # Folgestufen NaN-frei (sqrt/log10 geglätteter Leistungs-Größen).
+        out = np.maximum(out, 0.0)
+    return out
 
 
 class DefectScanner:
@@ -4303,7 +4375,7 @@ class DefectScanner:
 
         # Smoothed envelope
         window_size = int(0.05 * self.sample_rate)  # 50ms window
-        envelope_smooth = np.convolve(envelope, np.ones(window_size) / window_size, mode="same")
+        envelope_smooth = _uniform_smooth(envelope, window_size)
 
         # Crackle detection: regions with elevated noise-floor
         threshold = self.thresholds[DefectType.CRACKLE] * np.percentile(envelope_smooth, 95)
@@ -4615,7 +4687,7 @@ class DefectScanner:
             # Smooth to 50ms windows
             if_win = max(1, int(0.05 * self.sample_rate))
             if len(inst_freq) > if_win * 4:
-                if_smooth = np.convolve(inst_freq, np.ones(if_win) / if_win, mode="valid")
+                if_smooth = _uniform_smooth(inst_freq, if_win, mode="valid")
                 if_smooth = if_smooth / (np.median(if_smooth) + 1e-6)  # normalize
                 if_centered = if_smooth - if_smooth.mean()
                 if_rate = self.sample_rate / if_win
@@ -5068,8 +5140,7 @@ class DefectScanner:
                 med = float(np.median(if_b[valid]))
                 dev = np.zeros_like(if_b)
                 dev[valid] = 1200.0 * np.log2(np.maximum(if_b[valid] / med, 1e-6))
-                k = np.ones(if_win) / if_win
-                ds = np.convolve(np.where(valid, dev, 0.0), k, mode="valid")
+                ds = _uniform_smooth(np.where(valid, dev, 0.0), if_win, mode="valid")
                 sub = ds[::dec]
                 if len(sub) < 64:
                     continue
@@ -5160,7 +5231,7 @@ class DefectScanner:
                 if med < 1e-9:
                     continue
                 rel = env / med - 1.0
-                rel_s = np.convolve(rel, np.ones(win) / win, mode="same")
+                rel_s = _uniform_smooth(rel, win)
                 sub = rel_s[::dec]
                 if len(sub) < 128:
                     continue
@@ -5880,9 +5951,8 @@ class DefectScanner:
             # zwischen den Obertönen auf den numerischen Boden; zusätzlich hat
             # der Anti-FP-„Vollband-Ton“ KEINEN HF-Inhalt (hf/mid 3e-6) — der
             # Codec-Fall schon (0,61).
-            _k_sm = np.ones(5) / 5.0
-            _spec_sm = np.convolve(avg_spectrum, _k_sm, mode="same")
-            _env_sm = np.convolve(_spec_sm, np.ones(51) / 51.0, mode="same")
+            _spec_sm = _uniform_smooth(avg_spectrum, 5)
+            _env_sm = _uniform_smooth(_spec_sm, 51)
             _notch_band = (_f >= 2600.0) & (_f <= 4200.0)
             if np.any(_notch_band):
                 _env_db = 10.0 * np.log10(_env_sm + 1e-20)
@@ -8927,7 +8997,7 @@ class DefectScanner:
             analytic_arr = np.asarray(analytic, dtype=np.complex128)
             envelope = np.abs(analytic_arr)
             smooth_win = max(1, int(0.002 * self.sample_rate))
-            envelope = np.convolve(envelope, np.ones(smooth_win) / smooth_win, mode="same")
+            envelope = _uniform_smooth(envelope, smooth_win)
             envelope = np.nan_to_num(envelope, nan=0.0)
 
             threshold_level = float(np.percentile(envelope, 90))
@@ -9068,7 +9138,7 @@ class DefectScanner:
 
         try:
             win = max(1, int(0.008 * self.sample_rate))  # 8ms envelope smoothing
-            envelope = np.convolve(np.abs(audio), np.ones(win) / win, mode="same")
+            envelope = _uniform_smooth(np.abs(audio), win)
             envelope = np.nan_to_num(envelope)
 
             peak_env = float(np.max(envelope))
@@ -9463,13 +9533,13 @@ class DefectScanner:
             # dem Quadrat der Signal-Huelle auf Sample-Ebene.
             _env_full = np.abs(signal.hilbert(audio))
             _kern_s = 12  # 0,25 ms — kurzer als die Envelope-Periode (2,3 ms)
-            _env_s = np.convolve(_env_full, np.ones(_kern_s) / _kern_s, mode="same")
+            _env_s = _uniform_smooth(_env_full, _kern_s)
             _hp_sos = signal.butter(4, 2000, btype="high", fs=sr, output="sos")
             # sosfiltfilt (Nullphase): sosfilt verschiebt das Rauschen um die
             # Gruppenlaufzeit (~0,5 ms) gegen die Huellkurve und zerstoert bei
             # 0,5-ms-Frames die Korrelation (Nacht-Befund: corr_s 0,026).
             _audio_hp = signal.sosfiltfilt(_hp_sos, audio)
-            _npow_s = np.convolve(_audio_hp**2, np.ones(_kern_s) / _kern_s, mode="same")
+            _npow_s = _uniform_smooth(_audio_hp**2, _kern_s)
             _raster = slice(0, n_frames * hop, hop)
             _npow_r = _npow_s[_raster]
             _env_r = _env_s[_raster] ** 2
@@ -9725,7 +9795,7 @@ class DefectScanner:
             delay_samples = [int(d * sr) for d in delays_s]
 
             win = max(1, int(0.010 * sr))
-            envelope = np.convolve(np.abs(audio), np.ones(win) / win, mode="same")
+            envelope = _uniform_smooth(np.abs(audio), win)
             peak_thresh = float(np.percentile(envelope, 90))
             peaks = np.where(envelope > peak_thresh)[0]
             if len(peaks) == 0:
@@ -10175,7 +10245,7 @@ class DefectScanner:
 
             # Ghost harmonics: peaks that rise above smoothed envelope in HF region
             smooth_kernel = max(5, len(hf_db) // 20)
-            smoothed = np.convolve(hf_db, np.ones(smooth_kernel) / smooth_kernel, mode="same")
+            smoothed = _uniform_smooth(hf_db, smooth_kernel)
             residual_peaks = hf_db - smoothed
             n_ghost = int(np.sum(residual_peaks > 3.0))
 
@@ -10525,8 +10595,9 @@ class DefectScanner:
                         _hf_dev = np.zeros_like(_hf_if)
                         _hf_dev[_hf_valid] = 1200.0 * np.log2(np.maximum(_hf_if[_hf_valid] / _hf_med, 1e-6))
                         # 5-ms-Glaettung + Dezimation auf 100 fps (Nyquist 50 Hz).
-                        _k_hf = np.ones(max(1, int(0.005 * sr))) / max(1, int(0.005 * sr))
-                        _hf_ds = np.convolve(np.where(_hf_valid, _hf_dev, 0.0), _k_hf, mode="valid")
+                        _hf_ds = _uniform_smooth(
+                            np.where(_hf_valid, _hf_dev, 0.0), max(1, int(0.005 * sr)), mode="valid"
+                        )
                         _dec = max(1, int(sr / 100))
                         _hf_sub = _hf_ds[::_dec]
                         if len(_hf_sub) >= 32:

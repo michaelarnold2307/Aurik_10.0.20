@@ -20,7 +20,27 @@ from __future__ import annotations
 import time
 from pathlib import Path
 
+import pytest
+
 _UV3 = Path(__file__).resolve().parents[2] / "backend" / "core" / "unified_restorer_v3.py"
+
+
+@pytest.fixture(autouse=True)
+def _watchdog_state_sauber():
+    """Kontrakte 1/2 messen die absolute Refcount-Semantik von enter/exit.
+
+    Fremd-Leaks aus anderen Testdateien (unpaarte
+    ``_start_phase_heartbeat``-Aufrufe ohne ``_phase_watchdog_exit``) dürfen
+    diese Messung nicht verfälschen: vor und nach jedem Test auf refs=0
+    aufräumen (der Exit ist defensiv: cancel + Datei-Close bei 0).
+    """
+    from backend.core import unified_restorer_v3 as uv3
+
+    while int(uv3._PHASE_WATCHDOG_STATE.get("refs", 0) or 0) > 0:
+        uv3._phase_watchdog_exit()
+    yield
+    while int(uv3._PHASE_WATCHDOG_STATE.get("refs", 0) or 0) > 0:
+        uv3._phase_watchdog_exit()
 
 
 def test_watchdog_dumpt_und_cancelt() -> None:

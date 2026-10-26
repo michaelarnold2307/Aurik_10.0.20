@@ -6,7 +6,9 @@ import pytest
 
 """tests/unit/test_denker/test_defekt_denker.py
 
-Tests für DefektDenker — Defekterkennung & -klassifikation.
+Tests für DefektDenker — Defekterkennung & -klassifikation. ECHTE Verträge,
+keine `try/except: pass`-Hüllen (Lehre D-K3-20): fällt `analysiere()` aus,
+fällt der Test aus.
 """
 
 
@@ -32,9 +34,6 @@ def _noisy(dur: float = 1.0) -> np.ndarray:
     return np.clip(base + noise, -1.0, 1.0)  # type: ignore[no-any-return]
 
 
-# ─── DefektErgebnis ───────────────────────────────────────────────────────────
-
-
 @pytest.mark.unit
 class TestDefektErgebnisFields:
     def _make(self):
@@ -50,32 +49,23 @@ class TestDefektErgebnisFields:
         )
 
     def test_01_defect_scores_dict(self):
-        e = self._make()
-        assert isinstance(e.defect_scores, dict)
+        assert isinstance(self._make().defect_scores, dict)
 
     def test_02_primary_defect_str(self):
-        e = self._make()
-        assert isinstance(e.primary_defect, str)
+        assert isinstance(self._make().primary_defect, str)
 
     def test_03_confidence_bounded(self):
-        e = self._make()
-        assert 0.0 <= e.confidence <= 1.0
+        assert 0.0 <= self._make().confidence <= 1.0
 
     def test_04_recommended_phases_list(self):
-        e = self._make()
-        assert isinstance(e.recommended_phases, list)
+        assert isinstance(self._make().recommended_phases, list)
 
     def test_05_scores_finite(self):
-        e = self._make()
-        for v in e.defect_scores.values():
+        for v in self._make().defect_scores.values():
             assert math.isfinite(v)
 
     def test_06_reasoning_str(self):
-        e = self._make()
-        assert isinstance(e.reasoning, str)
-
-
-# ─── Singleton ────────────────────────────────────────────────────────────────
+        assert isinstance(self._make().reasoning, str)
 
 
 class TestDefektDenkerSingleton:
@@ -99,121 +89,77 @@ class TestDefektDenkerSingleton:
         assert all(i is insts[0] for i in insts)
 
 
-# ─── analysiere() Ausgabe-Invarianten ────────────────────────────────────────
-
-
 class TestDefektDenkerAnalysiere:
+    """10–20: direkte Aufrufe gegen den ECHTEN `analysiere()`-Pfad."""
+
     def test_10_returns_defekt_ergebnis(self):
         from denker.defekt_denker import DefektDenker, DefektErgebnis
 
-        audio = _sine()
-        try:
-            result = DefektDenker().analysiere(audio, SR)
-            assert isinstance(result, DefektErgebnis)
-        except Exception:
-            logger.warning("test fallback", exc_info=True)
+        result = DefektDenker().analysiere(_sine(), SR)
+        assert isinstance(result, DefektErgebnis)
 
     def test_11_primary_defect_nonempty(self):
         from denker.defekt_denker import DefektDenker
 
-        audio = _noisy()
-        try:
-            result = DefektDenker().analysiere(audio, SR)
-            assert len(result.primary_defect) > 0
-        except Exception:
-            logger.warning("test fallback", exc_info=True)
+        result = DefektDenker().analysiere(_noisy(), SR)
+        assert len(result.primary_defect) > 0
 
     def test_12_confidence_finite(self):
         from denker.defekt_denker import DefektDenker
 
-        audio = _sine()
-        try:
-            result = DefektDenker().analysiere(audio, SR)
-            assert math.isfinite(result.confidence)
-        except Exception:
-            logger.warning("test fallback", exc_info=True)
+        result = DefektDenker().analysiere(_sine(), SR)
+        assert math.isfinite(result.confidence)
 
     def test_13_defect_scores_all_finite(self):
         from denker.defekt_denker import DefektDenker
 
-        audio = _sine()
-        try:
-            result = DefektDenker().analysiere(audio, SR)
-            for v in result.defect_scores.values():
-                assert math.isfinite(v)
-        except Exception:
-            logger.warning("test fallback", exc_info=True)
+        result = DefektDenker().analysiere(_sine(), SR)
+        for v in result.defect_scores.values():
+            assert math.isfinite(v)
 
     def test_14_defect_scores_in_range(self):
         from denker.defekt_denker import DefektDenker
 
-        audio = _sine()
-        try:
-            result = DefektDenker().analysiere(audio, SR)
-            for v in result.defect_scores.values():
-                assert 0.0 <= v <= 1.0
-        except Exception:
-            logger.warning("test fallback", exc_info=True)
+        result = DefektDenker().analysiere(_sine(), SR)
+        for v in result.defect_scores.values():
+            assert 0.0 <= v <= 1.0
 
     def test_15_silence_no_crash(self):
         from denker.defekt_denker import DefektDenker
 
-        audio = np.zeros(SR * 2, dtype=np.float32)
-        try:
-            result = DefektDenker().analysiere(audio, SR)
-            assert result is not None
-        except Exception:
-            logger.warning("test fallback", exc_info=True)
+        result = DefektDenker().analysiere(np.zeros(SR * 2, dtype=np.float32), SR)
+        assert result is not None
 
     def test_16_material_context_in_result(self):
         from denker.defekt_denker import DefektDenker
 
-        audio = _sine()
-        try:
-            result = DefektDenker().analysiere(audio, SR, material="vinyl")
-            assert isinstance(result.material_context, str)
-        except Exception:
-            logger.warning("test fallback", exc_info=True)
+        result = DefektDenker().analysiere(_sine(), SR, material="vinyl")
+        assert isinstance(result.material_context, str)
 
     def test_17_noisy_signal_detects_noise(self):
         from denker.defekt_denker import DefektDenker
 
         np.random.seed(0)
         audio = np.random.randn(SR * 2).astype(np.float32) * 0.3
-        try:
-            result = DefektDenker().analysiere(audio, SR)
-            # hiss oder high_freq_noise sollte erhöhten Score haben
-            total = sum(result.defect_scores.values())
-            assert total >= 0
-        except Exception:
-            logger.warning("test fallback", exc_info=True)
+        result = DefektDenker().analysiere(audio, SR)
+        # hiss oder high_freq_noise sollte erhöhten Score haben
+        total = sum(result.defect_scores.values())
+        assert total >= 0
 
     def test_18_recommended_phases_strings(self):
         from denker.defekt_denker import DefektDenker
 
-        audio = _sine()
-        try:
-            result = DefektDenker().analysiere(audio, SR)
-            for p in result.recommended_phases:
-                assert isinstance(p, str)
-        except Exception:
-            logger.warning("test fallback", exc_info=True)
+        result = DefektDenker().analysiere(_sine(), SR)
+        for p in result.recommended_phases:
+            assert isinstance(p, str)
 
     def test_19_short_audio_no_crash(self):
         from denker.defekt_denker import DefektDenker
 
-        audio = np.zeros(256, dtype=np.float32)
-        try:
-            DefektDenker().analysiere(audio, SR)
-        except Exception:
-            logger.warning("test fallback", exc_info=True)
+        DefektDenker().analysiere(np.zeros(256, dtype=np.float32), SR)
 
     def test_20_confidence_bounded_on_real_signal(self):
         from denker.defekt_denker import DefektDenker
 
-        audio = _noisy(dur=2.0)
-        try:
-            result = DefektDenker().analysiere(audio, SR)
-            assert 0.0 <= result.confidence <= 1.0
-        except Exception:
-            logger.warning("test fallback", exc_info=True)
+        result = DefektDenker().analysiere(_noisy(dur=2.0), SR)
+        assert 0.0 <= result.confidence <= 1.0

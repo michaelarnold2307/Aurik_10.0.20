@@ -1,0 +1,515 @@
+{
+  "date": "2026-10-25",
+  "script": "scripts/benchmark_music_mos_oracles.py",
+  "seed": 42,
+  "pairs": [
+    {
+      "name": "AM Contra - Heart Peripheral",
+      "classes": {
+        "noise_10dB": {
+          "utmos": {
+            "ref": 1.5668,
+            "deg": 2.0471,
+            "delta": -0.4802
+          },
+          "muq_a1": {
+            "ref": 3.9,
+            "deg": 1.11,
+            "delta": 2.79
+          }
+        },
+        "noise_0dB": {
+          "utmos": {
+            "ref": 1.5668,
+            "deg": 2.3311,
+            "delta": -0.7643
+          },
+          "muq_a1": {
+            "ref": 3.9,
+            "deg": 1.0,
+            "delta": 2.9
+          }
+        },
+        "clip_0.3": {
+          "utmos": {
+            "ref": 1.5668,
+            "deg": 1.6382,
+            "delta": -0.0714
+          },
+          "muq_a1": {
+            "ref": 3.9,
+            "deg": 3.8,
+            "delta": 0.1
+          }
+        },
+        "clip_0.1": {
+          "utmos": {
+            "ref": 1.5668,
+            "deg": 1.4123,
+            "delta": 0.1546
+          },
+          "muq_a1": {
+            "ref": 3.9,
+            "deg": 3.3,
+            "delta": 0.6
+          }
+        },
+        "bandlimit_12k": {
+          "utmos": {
+            "ref": 1.5668,
+            "deg": 1.5671,
+            "delta": -0.0003
+          },
+          "muq_a1": {
+            "ref": 3.9,
+            "deg": 3.92,
+            "delta": -0.02
+          }
+        },
+        "bandlimit_8k": {
+          "utmos": {
+            "ref": 1.5668,
+            "deg": 1.6085,
+            "delta": -0.0417
+          },
+          "muq_a1": {
+            "ref": 3.9,
+            "deg": 4.07,
+            "delta": -0.17
+          }
+        },
+        "codec_16k": {
+          "utmos": {
+            "ref": 1.5668,
+            "deg": 1.5662,
+            "delta": 0.0007
+          },
+          "muq_a1": {
+            "ref": 3.9,
+            "deg": 3.89,
+            "delta": 0.01
+          }
+        }
+      }
+    },
+    {
+      "name": "Al James - Schoolboy Facination",
+      "classes": {
+        "noise_10dB": {
+          "utmos": {
+            "ref": 1.7967,
+            "deg": 1.7302,
+            "delta": 0.0665
+          },
+          "muq_a1": {
+            "ref": 4.59,
+            "deg": 1.36,
+            "delta": 3.23
+          }
+        },
+        "noise_0dB": {
+          "utmos": {
+            "ref": 1.7967,
+            "deg": 1.9363,
+            "delta": -0.1396
+          },
+          "muq_a1": {
+            "ref": 4.59,
+            "deg": 1.0,
+            "delta": 3.59
+          }
+        },
+        "clip_0.3": {
+          "utmos": {
+            "ref": 1.7967,
+            "deg": 1.713,
+            "delta": 0.0837
+          },
+          "muq_a1": {
+            "ref": 4.59,
+            "deg": 4.66,
+            "delta": -0.07
+          }
+        },
+        "clip_0.1": {
+          "utmos": {
+            "ref": 1.7967,
+            "deg": 2.037,
+            "delta": -0.2403
+          },
+          "muq_a1": {
+            "ref": 4.59,
+            "deg": 3.87,
+            "delta": 0.72
+          }
+        },
+        "bandlimit_12k": {
+          "utmos": {
+            "ref": 1.7967,
+            "deg": 1.7969,
+            "delta": -0.0002
+          },
+          "muq_a1": {
+            "ref": 4.59,
+            "deg": 4.6,
+            "delta": -0.01
+          }
+        },
+        "bandlimit_8k": {
+          "utmos": {
+            "ref": 1.7967,
+            "deg": 1.8054,
+            "delta": -0.0087
+          },
+          "muq_a1": {
+            "ref": 4.59,
+            "deg": 4.75,
+            "delta": -0.16
+          }
+        },
+        "codec_16k": {
+          "utmos": {
+            "ref": 1.7967,
+            "deg": 1.7832,
+            "delta": 0.0135
+          },
+          "muq_a1": {
+            "ref": 4.59,
+            "deg": 4.99,
+            "delta": -0.4
+          }
+        }
+      }
+    },
+    {
+      "name": "vinyl:vinyl_blues_1950s_clean",
+      "classes": {
+        "noise_10dB": {
+          "utmos": {
+            "ref": 2.091,
+            "deg": 2.7891,
+            "delta": -0.6981
+          },
+          "muq_a1": {
+            "ref": 3.03,
+            "deg": 1.0,
+            "delta": 2.03
+          }
+        },
+        "noise_0dB": {
+          "utmos": {
+            "ref": 2.091,
+            "deg": 2.9985,
+            "delta": -0.9075
+          },
+          "muq_a1": {
+            "ref": 3.03,
+            "deg": 1.0,
+            "delta": 2.03
+          }
+        },
+        "clip_0.3": {
+          "utmos": {
+            "ref": 2.091,
+            "deg": 2.4124,
+            "delta": -0.3214
+          },
+          "muq_a1": {
+            "ref": 3.03,
+            "deg": 3.49,
+            "delta": -0.46
+          }
+        },
+        "clip_0.1": {
+          "utmos": {
+            "ref": 2.091,
+            "deg": 2.777,
+            "delta": -0.686
+          },
+          "muq_a1": {
+            "ref": 3.03,
+            "deg": 3.08,
+            "delta": -0.05
+          }
+        },
+        "bandlimit_12k": {
+          "utmos": {
+            "ref": 2.091,
+            "deg": 2.0876,
+            "delta": 0.0034
+          },
+          "muq_a1": {
+            "ref": 3.03,
+            "deg": 3.01,
+            "delta": 0.02
+          }
+        },
+        "bandlimit_8k": {
+          "utmos": {
+            "ref": 2.091,
+            "deg": 2.0315,
+            "delta": 0.0595
+          },
+          "muq_a1": {
+            "ref": 3.03,
+            "deg": 2.96,
+            "delta": 0.07
+          }
+        },
+        "codec_16k": {
+          "utmos": {
+            "ref": 2.091,
+            "deg": 2.0125,
+            "delta": 0.0785
+          },
+          "muq_a1": {
+            "ref": 3.03,
+            "deg": 2.84,
+            "delta": 0.19
+          }
+        }
+      }
+    },
+    {
+      "name": "vinyl:vinyl_classical_1960s_clean",
+      "classes": {
+        "noise_10dB": {
+          "utmos": {
+            "ref": 1.8189,
+            "deg": 2.9631,
+            "delta": -1.1442
+          },
+          "muq_a1": {
+            "ref": 1.9,
+            "deg": 1.0,
+            "delta": 0.9
+          }
+        },
+        "noise_0dB": {
+          "utmos": {
+            "ref": 1.8189,
+            "deg": 2.2395,
+            "delta": -0.4206
+          },
+          "muq_a1": {
+            "ref": 1.9,
+            "deg": 1.0,
+            "delta": 0.9
+          }
+        },
+        "clip_0.3": {
+          "utmos": {
+            "ref": 1.8189,
+            "deg": 1.9555,
+            "delta": -0.1366
+          },
+          "muq_a1": {
+            "ref": 1.9,
+            "deg": 3.41,
+            "delta": -1.51
+          }
+        },
+        "clip_0.1": {
+          "utmos": {
+            "ref": 1.8189,
+            "deg": 1.9252,
+            "delta": -0.1063
+          },
+          "muq_a1": {
+            "ref": 1.9,
+            "deg": 2.86,
+            "delta": -0.96
+          }
+        },
+        "bandlimit_12k": {
+          "utmos": {
+            "ref": 1.8189,
+            "deg": 1.8151,
+            "delta": 0.0038
+          },
+          "muq_a1": {
+            "ref": 1.9,
+            "deg": 1.9,
+            "delta": 0.0
+          }
+        },
+        "bandlimit_8k": {
+          "utmos": {
+            "ref": 1.8189,
+            "deg": 1.8263,
+            "delta": -0.0074
+          },
+          "muq_a1": {
+            "ref": 1.9,
+            "deg": 1.47,
+            "delta": 0.43
+          }
+        },
+        "codec_16k": {
+          "utmos": {
+            "ref": 1.8189,
+            "deg": 1.8259,
+            "delta": -0.007
+          },
+          "muq_a1": {
+            "ref": 1.9,
+            "deg": 1.3,
+            "delta": 0.6
+          }
+        }
+      }
+    }
+  ],
+  "oracles": {},
+  "direction_stability": {
+    "noise_10dB": {
+      "utmos": {
+        "correct": 1,
+        "total": 4,
+        "rate": 0.25
+      },
+      "muq_a1": {
+        "correct": 4,
+        "total": 4,
+        "rate": 1.0
+      },
+      "singmos_pro": {
+        "correct": 0,
+        "total": 0,
+        "rate": null
+      }
+    },
+    "noise_0dB": {
+      "utmos": {
+        "correct": 0,
+        "total": 4,
+        "rate": 0.0
+      },
+      "muq_a1": {
+        "correct": 4,
+        "total": 4,
+        "rate": 1.0
+      },
+      "singmos_pro": {
+        "correct": 0,
+        "total": 0,
+        "rate": null
+      }
+    },
+    "clip_0.3": {
+      "utmos": {
+        "correct": 1,
+        "total": 4,
+        "rate": 0.25
+      },
+      "muq_a1": {
+        "correct": 1,
+        "total": 4,
+        "rate": 0.25
+      },
+      "singmos_pro": {
+        "correct": 0,
+        "total": 0,
+        "rate": null
+      }
+    },
+    "clip_0.1": {
+      "utmos": {
+        "correct": 1,
+        "total": 4,
+        "rate": 0.25
+      },
+      "muq_a1": {
+        "correct": 2,
+        "total": 4,
+        "rate": 0.5
+      },
+      "singmos_pro": {
+        "correct": 0,
+        "total": 0,
+        "rate": null
+      }
+    },
+    "bandlimit_12k": {
+      "utmos": {
+        "correct": 2,
+        "total": 4,
+        "rate": 0.5
+      },
+      "muq_a1": {
+        "correct": 1,
+        "total": 4,
+        "rate": 0.25
+      },
+      "singmos_pro": {
+        "correct": 0,
+        "total": 0,
+        "rate": null
+      }
+    },
+    "bandlimit_8k": {
+      "utmos": {
+        "correct": 1,
+        "total": 4,
+        "rate": 0.25
+      },
+      "muq_a1": {
+        "correct": 2,
+        "total": 4,
+        "rate": 0.5
+      },
+      "singmos_pro": {
+        "correct": 0,
+        "total": 0,
+        "rate": null
+      }
+    },
+    "codec_16k": {
+      "utmos": {
+        "correct": 3,
+        "total": 4,
+        "rate": 0.75
+      },
+      "muq_a1": {
+        "correct": 3,
+        "total": 4,
+        "rate": 0.75
+      },
+      "singmos_pro": {
+        "correct": 0,
+        "total": 0,
+        "rate": null
+      }
+    }
+  },
+  "non_inferiority_vs_utmos": {
+    "noise_10dB": {
+      "muq_a1": 0.75,
+      "singmos_pro": null
+    },
+    "noise_0dB": {
+      "muq_a1": 1.0,
+      "singmos_pro": null
+    },
+    "clip_0.3": {
+      "muq_a1": 0.0,
+      "singmos_pro": null
+    },
+    "clip_0.1": {
+      "muq_a1": 0.25,
+      "singmos_pro": null
+    },
+    "bandlimit_12k": {
+      "muq_a1": -0.25,
+      "singmos_pro": null
+    },
+    "bandlimit_8k": {
+      "muq_a1": 0.25,
+      "singmos_pro": null
+    },
+    "codec_16k": {
+      "muq_a1": 0.0,
+      "singmos_pro": null
+    }
+  }
+}

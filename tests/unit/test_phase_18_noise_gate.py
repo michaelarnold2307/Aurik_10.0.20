@@ -36,3 +36,27 @@ def test_not_silent(phase, audio):
 def test_length_preserved(phase, audio):
     result = phase.process(audio, sample_rate=48000, material_type="vinyl")
     assert len(result.audio) == len(audio)
+
+
+def test_panns_vad_offset_field_present_and_neutral_without_kwarg(phase, audio):
+    """KP-4 report-only: ohne PANNs-Evidenz bleibt der Offset neutral (0.0) und
+    das produktive Gate-Verhalten (Bestandsfelder) bleibt unverändert vorhanden."""
+    result = phase.process(audio, sample_rate=48000, material_type="vinyl")
+    assert "panns_vad_offset_db" in result.metadata
+    # Ohne panns_singing/panns_tags → neutraler Zeugen-Offset 0 dB.
+    assert result.metadata["panns_vad_offset_db"] == 0.0
+
+
+def test_panns_vad_offset_scaled_with_panns_singing(phase, audio):
+    """KP-4 report-only: der PANNs-Singing-Offset wird skaliert ins Meta geschrieben,
+    OHNE das Gate audio zu verändern (neutraler Bestands-Audio-Output)."""
+    # Grep-Verifikation: das Feld wird gesetzt, aber kein Flag geflippt.
+    result = phase.process(
+        audio,
+        sample_rate=48000,
+        material_type="vinyl",
+        panns_singing=0.6,
+    )
+    assert result.metadata["panns_vad_offset_db"] == -9.0
+    assert isinstance(result.audio, np.ndarray)
+    assert np.isfinite(result.audio).all()

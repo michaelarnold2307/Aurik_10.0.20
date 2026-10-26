@@ -22,6 +22,13 @@ logger = logging.getLogger(__name__)
 
 MODEL_PATH = "../../models/hifi_gan/hifi_gan.onnx"
 
+# §WP-1 (2026-10-25): Domänen-Deklaration — das Artefakt hat eine UNBELEGTE
+# Trainings-Domäne (§III.13 (copilot-instructions.md), D-K2-1): kein offizieller
+# Checkpoint (80 Mel-Bänder, 256×, 0,93 M Parameter — V1-Zeitplan widerlegt).
+# Musik-/Gesangs-Einsatz nur als §V6-Fallback mit Warnung + Begründung zulässig;
+# dieses Modul hat derzeit KEINE Produktions-Aufrufer (Register-Verifikation
+# 2026-10-07: `sota_speech_superres` und `vocoder_chain` ohne Aufrufer).
+
 
 class SotaSpeechSuperRes:
     def __init__(self, use_diffwave=True, use_hifigan=True):
@@ -55,6 +62,10 @@ class SotaSpeechSuperRes:
             hifigan_path = MODEL_PATH
             if use_hifigan and os.path.exists(hifigan_path):
                 if check_budget("speech_superres_hifigan", 0.15):
+                    logger.warning(
+                        "§V6 (copilot-instructions.md) HiFi-GAN hat eine unbelegte Trainings-Domäne "
+                        "(§III.13 (copilot-instructions.md), D-K2-1) — Einsatz nur als Fallback"
+                    )
                     self.hifigan_session = ort.InferenceSession(
                         hifigan_path, providers=get_onnx_providers(hifigan_path)
                     )

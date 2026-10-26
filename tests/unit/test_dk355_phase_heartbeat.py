@@ -17,6 +17,7 @@ from __future__ import annotations
 import logging
 import time
 
+from backend.core import unified_restorer_v3 as _uv3_mod
 from backend.core.unified_restorer_v3 import UnifiedRestorerV3
 
 _LOGGER = "backend.core.unified_restorer_v3"
@@ -31,11 +32,18 @@ def test_heartbeat_loggt_ohne_ui_callback(caplog) -> None:
     rst = _restorer_lite()
     with caplog.at_level(logging.INFO, logger=_LOGGER):
         stop, th = rst._start_phase_heartbeat("phase_test_hb", progress_cb=None, log_every_s=0.05)
-        assert th.daemon
-        time.sleep(0.28)
-        stop.set()
-        th.join(timeout=2.0)
-        assert not th.is_alive()
+        try:
+            assert th.daemon
+            time.sleep(0.28)
+            stop.set()
+            th.join(timeout=2.0)
+            assert not th.is_alive()
+        finally:
+            # §D-K3-67-Paarung: _start_phase_heartbeat enter't den Watchdog —
+            # jeder Stopp braucht den passenden Exit (Produktion: finally des
+            # Phase-Runners). Ohne Exit refcountet dieser Test global hoch und
+            # lässt den absoluten refs-Vertrag in test_dk367 flackern.
+            _uv3_mod._phase_watchdog_exit()
     msgs = [r.message for r in caplog.records if "Phasen-Heartbeat" in r.message]
     assert len(msgs) >= 2, f"Langphasen-Transparenz fehlt: {msgs}"
     assert all("phase_test_hb" in m for m in msgs)
@@ -49,11 +57,15 @@ def test_heartbeat_callbacks_bleiben_erhalten() -> None:
         progress_cb=lambda pct, _msg, _t: calls.append(float(pct)),
         log_every_s=10.0,
     )
-    time.sleep(0.3)
-    stop.set()
-    th.join(timeout=2.0)
-    assert calls, "Sub-Progress-Callbacks fehlen"
-    assert all(0.0 <= c <= 100.0 for c in calls)
+    try:
+        time.sleep(0.3)
+        stop.set()
+        th.join(timeout=2.0)
+        assert calls, "Sub-Progress-Callbacks fehlen"
+        assert all(0.0 <= c <= 100.0 for c in calls)
+    finally:
+        # §D-K3-67-Paarung: siehe oben — Exit zum enter'enden Start.
+        _uv3_mod._phase_watchdog_exit()
 
 
 def test_log_step_format_enthaelt_minuten(caplog) -> None:

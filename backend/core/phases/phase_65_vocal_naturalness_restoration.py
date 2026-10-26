@@ -785,6 +785,25 @@ class VocalNaturalnessRestorationPhase(PhaseInterface):
         except Exception as _p65_id_exc:
             logger.debug("§SOTA-P65 Sänger-Identitäts-Witness nicht blockierend: %s", _p65_id_exc)
 
+        # §KP-3 (Pfad A, 2026-10-25): Zusätzlicher report-only MuQ-MuLan-
+        # Identitäts-Kosinus als weiterer Zeuge neben der bestehenden Messung.
+        # Kein Veto, kein Flag-Flip, keine Schwelle geändert
+        # (§III.11 (copilot-instructions.md), Zeuge-Prinzip §V6 (copilot-instructions.md)).
+        try:
+            from backend.core.dsp.music_identity_oracle import (
+                music_identity_cosine,  # pylint: disable=import-outside-toplevel
+            )
+
+            _cos_muq_65, _reasons_muq_65 = music_identity_cosine(audio, result, sample_rate)
+            if _cos_muq_65 is not None:
+                _p65_meta["singer_identity_cosine_muq"] = round(_cos_muq_65, 4)
+            else:
+                _p65_meta["singer_identity_cosine_muq"] = None
+                if _reasons_muq_65:
+                    _p65_meta["singer_identity_muq_reason"] = _reasons_muq_65[0]
+        except Exception as _p65_muq_exc:
+            logger.debug("§KP-3 MuQ-Identitäts-Zeuge nicht blockierend: %s", _p65_muq_exc)
+
         # V19 Noise-Textur-Invariante (§NTI): Residual-Rauschen darf Material-Profil nicht ändern (non-blocking)
         try:
             from backend.core.dsp.noise_texture_guard import (  # pylint: disable=import-outside-toplevel

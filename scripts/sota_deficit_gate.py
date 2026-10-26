@@ -35,7 +35,7 @@ logger = logging.getLogger(__name__)
 ROOT = Path(__file__).resolve().parent.parent
 REGISTER = ROOT / ".github" / "SOTA_DEFICIT_REGISTER.md"
 
-REQUIRED_CLASSES: tuple[str, ...] = ("K0", "K1", "K2", "K3")
+REQUIRED_CLASSES: tuple[str, ...] = ("K0", "K1", "K2", "K3", "K4")
 STATUS_ENUM: tuple[str, ...] = ("offen", "in-arbeit", "geschlossen", "bewusst-akzeptiert")
 DOMAIN_ENUM: tuple[str, ...] = (
     "musik",

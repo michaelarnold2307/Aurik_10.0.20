@@ -12,6 +12,9 @@ Architektur inspiriert von Demucs/Wave-U-Net:
   - FiLM-Conditioning auf Cutoff-Frequenz
 
 Loss: Multi-Resolution STFT Loss (3 FFT-Größen) + L1-Waveform
+      + HF-Band-Loss (§v10.19) + optional maskierungs-informierter A1-Hör-Loss
+      (KP-7/F11 Re-Training: ``--a1-weight``, Muster SOTA-A1/EAR-VAE — Lader aus
+      ``train_banquet_vinyl_finetune.load_a1_masking_loss``, §G9 (copilot-instructions.md) eine Quelle).
 """
 
 import sys
@@ -25,6 +28,10 @@ import torch.nn.functional as F
 from scipy.signal import butter, sosfiltfilt
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+
+# §G9 (copilot-instructions.md): eine Quelle — der A1-Hör-Loss-Lader liegt
+# kanonisch im BANQUET-Finetune-Skript; ``sys.path[0]`` = scripts/ (Skript-Aufruf).
+from train_banquet_vinyl_finetune import load_a1_masking_loss
 
 from backend.core.training_artifacts import save_guarded
 
@@ -281,9 +288,38 @@ def hf_band_loss(pred_wave, target_wave, cutoff_hz=8000.0, sr=SR):
 # ═══════════════════════════════════════════════════════════════════════════
 
 
-def train(epochs=200, batch_size=4, lr=1e-4, base_ch=32, steps_per_epoch=200):
-    device = torch.device("cpu")
-    print(f"Device: {device}")
+def train(
+    epochs=200,
+    batch_size=4,
+    lr=1e-4,
+    base_ch=32,
+    steps_per_epoch=200,
+    device="cpu",
+    seed=42,
+    a1_weight=0.0,
+    out_dir="models/bw_reconstructor",
+    skip_export=False,
+    pregen_samples=0,
+):
+    # §G5 (copilot-instructions.md): Seeds pro Session — reproduzierbare Trainingsläufe.
+    torch.manual_seed(seed)
+    np.random.seed(seed)
+
+    device = torch.device(device)
+    if device.type == "cuda" and not torch.cuda.is_available():
+        # §V6 (copilot-instructions.md): ehrlicher Fallback statt Stille.
+        print("WARNUNG: CUDA angefordert, aber nicht verfügbar — CPU-Fallback (§V6, copilot-instructions.md)")
+        device = torch.device("cpu")
+    print(f"Device: {device} (Seed: {seed})")
+
+    # KP-7/F11: maskierungs-informierter A1-Hör-Loss (Muster SOTA-A1/EAR-VAE).
+    a1_loss_fn = load_a1_masking_loss(SR) if a1_weight > 0.0 else None
+    if a1_weight > 0.0:
+        print(
+            f"A1-Hör-Loss: aktiv (Gewicht {a1_weight})"
+            if a1_loss_fn is not None
+            else "WARNUNG: A1-Loss nicht ladbar — weiter ohne (§V6, copilot-instructions.md)"
+        )
 
     model = WaveformUNet(base_ch=base_ch).to(device)
     n_params = sum(p.numel() for p in model.parameters())
@@ -293,7 +329,7 @@ def train(epochs=200, batch_size=4, lr=1e-4, base_ch=32, steps_per_epoch=200):
     optimizer = torch.optim.AdamW(model.parameters(), lr=lr, weight_decay=1e-5)
     scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, epochs)
 
-    out_dir = Path("models/bw_reconstructor")
+    out_dir = Path(out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
 
     # Try loading V3 generator weights for the convolutional layers (partial transfer)
@@ -324,6 +360,27 @@ def train(epochs=200, batch_size=4, lr=1e-4, base_ch=32, steps_per_epoch=200):
     print(f"LR: {lr}, MR-STFT Loss (waveform)")
     print()
 
+    # KP-7-Performance: per-Step-Datengenerierung (make_synthetic + butter_lp,
+    # ~2 s/Step CPU-gebunden) dominiert die GPU-Trainingszeit. --pregen-samples
+    # erzeugt den synthetischen Pool EINMAL deterministisch (gleicher Seed ⇒
+    # gleicher Pool); die Steps ziehen nur noch Indizes. Legacy (0) unverändert.
+    pregen = None
+    if pregen_samples > 0:
+        pregen = []
+        for _ in range(pregen_samples):
+            y_full = make_synthetic(target_len + SR, SR)
+            cutoff = np.random.choice(CUTOFFS)
+            y_lim = butter_lp(y_full, cutoff, SR)
+            start = np.random.randint(0, len(y_full) - target_len)
+            pregen.append(
+                (
+                    y_lim[start : start + target_len].copy(),
+                    y_full[start : start + target_len].copy(),
+                    cutoff / 11025.0,
+                )
+            )
+        print(f"Pre-Gen-Pool: {len(pregen)} Samples ({pregen_samples}) generiert")
+
     for epoch in range(epochs):
         model.train()
         total_loss = 0.0
@@ -332,16 +389,23 @@ def train(epochs=200, batch_size=4, lr=1e-4, base_ch=32, steps_per_epoch=200):
         for step in range(steps_per_epoch):
             batch_x, batch_y, batch_c = [], [], []
 
-            for _ in range(batch_size):
-                y_full = make_synthetic(target_len + SR, SR)
-                cutoff = np.random.choice(CUTOFFS)
-                y_lim = butter_lp(y_full, cutoff, SR)
+            if pregen is not None:
+                for _idx in np.random.randint(0, len(pregen), size=batch_size):
+                    _px, _py, _pc = pregen[_idx]
+                    batch_x.append(torch.from_numpy(_px))
+                    batch_y.append(torch.from_numpy(_py))
+                    batch_c.append(_pc)
+            else:
+                for _ in range(batch_size):
+                    y_full = make_synthetic(target_len + SR, SR)
+                    cutoff = np.random.choice(CUTOFFS)
+                    y_lim = butter_lp(y_full, cutoff, SR)
 
-                # Random crop
-                start = np.random.randint(0, len(y_full) - target_len)
-                batch_x.append(torch.from_numpy(y_lim[start : start + target_len]))
-                batch_y.append(torch.from_numpy(y_full[start : start + target_len]))
-                batch_c.append(cutoff / 11025.0)
+                    # Random crop
+                    start = np.random.randint(0, len(y_full) - target_len)
+                    batch_x.append(torch.from_numpy(y_lim[start : start + target_len]))
+                    batch_y.append(torch.from_numpy(y_full[start : start + target_len]))
+                    batch_c.append(cutoff / 11025.0)
 
             x = torch.stack(batch_x).unsqueeze(1).to(device)  # (B, 1, T)
             y = torch.stack(batch_y).unsqueeze(1).to(device)
@@ -354,6 +418,8 @@ def train(epochs=200, batch_size=4, lr=1e-4, base_ch=32, steps_per_epoch=200):
             loss_stft = mr_stft_loss(pred, y)
             loss_hf = hf_band_loss(pred, y, cutoff_hz=8000.0)  # §v10.19: HF-Rekonstruktion erzwingen
             loss = loss_wave + 0.5 * loss_stft + 6.0 * loss_hf
+            if a1_loss_fn is not None:
+                loss = loss + a1_weight * a1_loss_fn(pred, y)
 
             loss.backward()
             torch.nn.utils.clip_grad_norm_(model.parameters(), 2.0)
@@ -378,6 +444,11 @@ def train(epochs=200, batch_size=4, lr=1e-4, base_ch=32, steps_per_epoch=200):
             )
 
     # Export ONNX
+    if skip_export:
+        print("ONNX-Export übersprungen (--skip-export)")
+        print(f"Best loss: {best_loss:.4f}")
+        print("Done!")
+        return
     model.eval()
     dummy_input = torch.randn(1, 1, target_len).to(device)
     dummy_cutoff = torch.tensor([[0.5]], dtype=torch.float32, device=device)
@@ -403,6 +474,7 @@ def train(epochs=200, batch_size=4, lr=1e-4, base_ch=32, steps_per_epoch=200):
             "waveform_out": {0: "batch", 2: "time"},
         },
         opset_version=17,
+        dynamo=False,  # Legacy-Exporter: torch 2.11-Dynamo-Pfad hängt am LSTM-Graphen (KP-7-Befund)
     )
 
     import onnx
@@ -422,5 +494,39 @@ if __name__ == "__main__":
     p.add_argument("--batch-size", type=int, default=4)
     p.add_argument("--lr", type=float, default=1e-4)
     p.add_argument("--base-ch", type=int, default=32)
+    p.add_argument("--steps-per-epoch", type=int, default=200)
+    p.add_argument("--device", type=str, default="cpu", help="cpu oder cuda (GPU-Training, §G5-Seed)")
+    p.add_argument("--seed", type=int, default=42, help="Determinismus §G5 (copilot-instructions.md)")
+    p.add_argument(
+        "--a1-weight",
+        type=float,
+        default=0.0,
+        help="KP-7/F11: Gewicht des maskierungs-informierten A1-Hör-Losses (0.0 = aus, Bestandsverhalten)",
+    )
+    p.add_argument(
+        "--out-dir",
+        type=str,
+        default="models/bw_reconstructor",
+        help="Ausgabeverzeichnis für Checkpoint + ONNX (Re-Training: separates Verzeichnis wählen)",
+    )
+    p.add_argument("--skip-export", action="store_true", help="ONNX-Export am Ende überspringen (Timing-/Smoke-Läufe)")
+    p.add_argument(
+        "--pregen-samples",
+        type=int,
+        default=0,
+        help="KP-7: synthetischen Pool EINMAL vorab erzeugen (deterministisch, §G5, copilot-instructions.md) — 0 = Legacy-Generierung je Step",
+    )
     args = p.parse_args()
-    train(args.epochs, args.batch_size, args.lr, args.base_ch)
+    train(
+        args.epochs,
+        args.batch_size,
+        args.lr,
+        args.base_ch,
+        args.steps_per_epoch,
+        args.device,
+        args.seed,
+        args.a1_weight,
+        args.out_dir,
+        args.skip_export,
+        args.pregen_samples,
+    )

@@ -50,6 +50,10 @@ use_scnet_music: bool = False  # SCNet-4-Stems-Tier (§P1-2/TODO-P1-2) — A/B g
 # (68,9 s vs. 9,8 s je 30 s) ⇒ Flag gesperrt; test_primary_paths_no_fallback pinnt False.
 # True ⇒ MLStemSeparator wertet SCNet als Kandidaten aus und übernimmt ihn NUR, wenn der
 # Never-worsen-Vergleich (Rekonstruktions-Rückfall + Vokal-Erhalt, §v10.26) ihn trägt.
+use_bigvgan_f3_studio: bool = False  # KP-5 (2026-10-25): BigVGAN(-F3) als Studio-Finisher-STUFE-1-Kandidat
+# im §1.4-Block (vor der Vocos-Kaskade, nur Maximum/Studio/Aggressive + PQS-MOS < 4.3). Aktivierung erst
+# nach W-1-Hörprobe (Timbre-Konsistenz, D-K0-1/D-K2-3) + Hörordnungs-Sign-off (§v10.802 copilot-instructions.md);
+# W-13 gesperrt. True ⇒ der §1.4-Block versucht die BigVGAN-Synthese zuerst, Vocos bleibt §V6-Fallback.
 
 
 # ── Model Paths (relative to project root) ──────────────────────────────────

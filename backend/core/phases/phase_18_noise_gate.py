@@ -101,6 +101,17 @@ except ImportError:  # pragma: no cover
 
 from backend.core.ml_model_readiness import check_ml_model_ready
 
+try:
+    from backend.core.dsp.music_vad_oracle import (
+        compute_music_vad_offset_db as _compute_music_vad_offset_18,
+    )
+    from backend.core.dsp.music_vad_oracle import (
+        music_vad_witness_log as _music_vad_witness_log_18,
+    )
+except ImportError:  # pragma: no cover
+    _compute_music_vad_offset_18 = None  # type: ignore[assignment]
+    _music_vad_witness_log_18 = None  # type: ignore[assignment]
+
 from .phase_interface import PhaseCategory, PhaseInterface, PhaseMetadata, PhaseResult
 
 logger = logging.getLogger(__name__)
@@ -768,22 +779,58 @@ class NoiseGate(PhaseInterface):
         _rms_gated_db = _rms_dbfs_gated(gated_audio)
         noise_reduction_db = (_rms_gated_db - _rms_orig_db) if _rms_orig_db > -80.0 else 0.0
 
+        # ── KP-4 (report-only): musikadaptierter VAD-Gate-Offset aus PANNs-Singing ──
+        # Der produktive Gate-Offset bleibt der bestehende Pfad (bei
+        # use_silero_vad_music=False neutral 0, §V7 (copilot-instructions.md)).
+        # Dieser Block berechnet NUR einen Zeugen-Offset aus der PANNs-Singing-
+        # Evidenz (Muster phase_19, Hörordnung §8) und loggt ihn — KEIN Veto,
+        # KEIN Flag-Flip, KEIN Einfluss auf gated_audio (W-11 bleibt gesperrt).
+        _p18_panns_vad_offset_db: float | None = None
+        try:
+            if _compute_music_vad_offset_18 is None:
+                raise RuntimeError("music_vad_oracle unavailable")
+            _p18_panns_singing_kw = kwargs.get("panns_singing", kwargs.get("panns_singing_confidence"))
+            _p18_panns_tags = kwargs.get("panns_tags")
+            _vad_witness_18 = _compute_music_vad_offset_18(_p18_panns_singing_kw, _p18_panns_tags)
+            _p18_panns_vad_offset_db = float(_vad_witness_18.offset_db)
+            # gated_audio wird hier NICHT verändert (report-only).
+            if _music_vad_witness_log_18 is not None:
+                logger.info("%s", _music_vad_witness_log_18(_vad_witness_18))
+            else:
+                logger.info(
+                    "musikVAD zeuge KP-4 (report-only): panns_singing=%s, offset_db=%+.2f",
+                    (_vad_witness_18.panns_singing if _vad_witness_18.panns_singing is not None else "n/a"),
+                    _vad_witness_18.offset_db,
+                )
+        except Exception as _kp4_18_exc:
+            # §V6 (copilot-instructions.md): Zeuge nicht berechenbar → neutral,
+            # nie blockierend für das produktive Gate.
+            logger.warning(
+                "musikVAD zeuge KP-4 nicht berechenbar (%s) — Offset neutral, Gate unverändert "
+                "(§V6 (copilot-instructions.md))",
+                _kp4_18_exc,
+            )
+            _p18_panns_vad_offset_db = 0.0
+
         execution_time = time.time() - start_time
         rt_factor = execution_time / (audio_sample_count(audio) / sample_rate)
+        _meta = {
+            "material": material.name,
+            "noise_reduction_db": float(noise_reduction_db),
+            "bands": len(config["thresholds_db"]),  # type: ignore[arg-type]
+            "phase_locality_factor": phase_locality_factor,
+            "effective_strength": _effective_strength,
+            "rms_drop_db": loudness_stats["rms_drop_db"],
+            "loudness_makeup_db": loudness_stats["makeup_gain_db"],
+            "rt_factor": float(rt_factor),
+        }
+        # KP-4-Zeuge als Zusatzfeld (report-only) — ändert das Gate-Verhalten nicht.
+        _meta["panns_vad_offset_db"] = _p18_panns_vad_offset_db
         return PhaseResult(
             success=True,
             audio=gated_audio,
             execution_time_seconds=execution_time,
-            metadata={
-                "material": material.name,
-                "noise_reduction_db": float(noise_reduction_db),
-                "bands": len(config["thresholds_db"]),  # type: ignore[arg-type]
-                "phase_locality_factor": phase_locality_factor,
-                "effective_strength": _effective_strength,
-                "rms_drop_db": loudness_stats["rms_drop_db"],
-                "loudness_makeup_db": loudness_stats["makeup_gain_db"],
-                "rt_factor": float(rt_factor),
-            },
+            metadata=_meta,
             warnings=[] if rt_factor < 0.18 else [f"Performance sub-optimal: {rt_factor:.2f}× realtime"],
         )
 

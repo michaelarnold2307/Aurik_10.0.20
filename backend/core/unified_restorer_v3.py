@@ -15799,6 +15799,31 @@ class UnifiedRestorerV3:
                                     }
                             except Exception as _utv_exc:  # pylint: disable=broad-except
                                 logger.debug("§C1 UTMOS-Veto nicht anwendbar: %s", _utv_exc)
+                            # §KP-2 (Musik-MOS-Orakel, report-only): zusätzlicher
+                            # musiknativer Zeuge (MuQ+A1 + SingMOS Pro) — misst und
+                            # protokolliert IMMER, übt NIE ein Veto aus
+                            # (applied konstant False; Hörordnung §8: Metriken sind
+                            # Zeugen, die Hör-Instanz entscheidet).
+                            try:
+                                from backend.core.dsp.music_mos_oracle import (  # pylint: disable=import-outside-toplevel
+                                    measure_and_log_music_mos,
+                                )
+
+                                _mm_wit = measure_and_log_music_mos(
+                                    _fc_veto_ref,
+                                    restored_audio,
+                                    sample_rate,
+                                    stage="feedback_chain_music_mos",
+                                )
+                                self._restoration_context["music_mos_witness"] = {
+                                    "stage": "feedback_chain",
+                                    "composite_delta": _mm_wit.composite_delta,
+                                    "muq_delta": _mm_wit.muq_delta,
+                                    "singmos_delta": _mm_wit.singmos_delta,
+                                    "reasons": _mm_wit.reasons,
+                                }
+                            except Exception as _mmv_exc:  # pylint: disable=broad-except
+                                logger.debug("§KP-2 Musik-MOS-Zeuge nicht anwendbar: %s", _mmv_exc)
                         except Exception as _wv_exc:  # pylint: disable=broad-except
                             logger.debug("§Witness-Veto Korrektur nicht anwendbar: %s", _wv_exc)
                 except Exception as _fc_veto_exc:  # pylint: disable=broad-except
@@ -18808,48 +18833,94 @@ class UnifiedRestorerV3:
                     _vsys.path.insert(0, _vos.path.abspath(_vplugins))
                 from vocos_plugin import get_vocos_plugin as _get_vocos_plg
 
-                _vplug = _get_vocos_plg()
-                _vocos_mel_snr_db = float("nan")
-                if restored_audio.ndim == 2:
-                    # Stereo: beide Kanäle separat synthetisieren und stapeln
-                    _vr0 = _vplug.vocode(restored_audio[0], sample_rate, mode="studio2026")
-                    _vr1 = _vplug.vocode(restored_audio[1], sample_rate, mode="studio2026")
-                    _vch0 = _vr0.audio
-                    _vch1 = _vr1.audio
-                    _vn = min(len(_vch0), len(_vch1), restored_audio.shape[1])
-                    _vocos_out = np.stack([_vch0[:_vn], _vch1[:_vn]], axis=0)
-                    _vocos_mel_snr_db = float(np.nanmean([_vr0.mel_snr_db, _vr1.mel_snr_db]))
-                    logger.info(
-                        "§1.4 Vocos: Stereo-Finisher angewendet (model=%s mel_snr=%.1f dB)",
-                        getattr(_vr0, "model_used", "vocos_mel_24khz/griffin_lim"),
-                        _vocos_mel_snr_db,
-                    )
-                else:
-                    _vr = _vplug.vocode(restored_audio, sample_rate, mode="studio2026")
-                    _vocos_out = _vr.audio
-                    _vocos_mel_snr_db = float(_vr.mel_snr_db)
-                    logger.info(
-                        "§1.4 Vocos: Mono-Finisher angewendet (model=%s pqs_mos=%.3f mel_snr=%.1f dB)",
-                        _vr.model_used,
-                        _vr.pqs_mos,
-                        _vr.mel_snr_db,
-                    )
-                # Keep pre-Vocos audio when the vocoder output is effectively silent.
-                _vocos_safe = np.clip(
-                    np.nan_to_num(_vocos_out, nan=0.0, posinf=0.0, neginf=0.0),
-                    -1.0,
-                    1.0,
-                )
-                _vocos_rms = float(np.sqrt(np.mean(_vocos_safe.astype(np.float64) ** 2) + 1e-12))
-                if _vocos_rms <= 1e-4:
+                # §KP-5 (2026-10-25): BigVGAN(-F3) als Studio-Finisher-STUFE-1-KANDIDAT
+                # (W-13 gesperrt, use_bigvgan_f3_studio Default AUS). Nur bei Flag True wird
+                # die BigVGAN-Synthese ZUERST versucht; Fehler/stille Ausgabe ⇒ §V6-Warnung
+                # + unveränderte Vocos-Kaskade (identisches Verhalten zu Flag AUS).
+                _kp5_audio = None
+                try:
+                    import backend.core.music_model_flags as _mmf_kp5  # pylint: disable=import-outside-toplevel
+
+                    if bool(getattr(_mmf_kp5, "use_bigvgan_f3_studio", False)):
+                        from bigvgan_v2_plugin import (
+                            get_bigvgan_v2 as _get_bgv2_kp5,  # pylint: disable=import-outside-toplevel
+                        )
+
+                        _kp5_sr48 = 48000
+                        _kp5_in = restored_audio
+                        if sample_rate != _kp5_sr48:
+                            from math import gcd as _kp5_gcd  # pylint: disable=import-outside-toplevel
+
+                            from scipy.signal import resample_poly as _kp5_rp  # pylint: disable=import-outside-toplevel
+
+                            _kp5_g = _kp5_gcd(sample_rate, _kp5_sr48)
+                            _kp5_in = _kp5_rp(_kp5_in, _kp5_sr48 // _kp5_g, sample_rate // _kp5_g)
+                        _kp5_out = _get_bgv2_kp5().synthesize(_kp5_in, _kp5_sr48, mode="studio2026").audio
+                        _kp5_safe = np.clip(np.nan_to_num(_kp5_out, nan=0.0, posinf=0.0, neginf=0.0), -1.0, 1.0)
+                        _kp5_rms = float(np.sqrt(np.mean(_kp5_safe.astype(np.float64) ** 2) + 1e-12))
+                        if _kp5_rms <= 1e-4:
+                            logger.warning(
+                                "§KP-5 BigVGAN-Stufe-1: Ausgabe stumm (RMS=%.2e) -> Vocos-Pfad "
+                                "(§V6 (copilot-instructions.md))",
+                                _kp5_rms,
+                            )
+                        else:
+                            _kp5_audio = _kp5_safe
+                            logger.info("§KP-5 BigVGAN-Stufe-1 angewendet (RMS=%.2e)", _kp5_rms)
+                except Exception as _kp5_exc:  # pylint: disable=broad-except
                     logger.warning(
-                        "§1.4 Vocos: Ausgabe stumm (RMS=%.2e, mel_snr=%.1f dB) -> "
-                        "verworfen, behalte Pre-Vocos-Audio (§0 Primum non nocere)",
-                        _vocos_rms,
-                        _vocos_mel_snr_db,
+                        "§KP-5 BigVGAN-Stufe-1 nicht verfügbar (%s) — Vocos-Kaskade unverändert "
+                        "(§V6 (copilot-instructions.md))",
+                        _kp5_exc,
                     )
+
+                if _kp5_audio is None:
+                    _vplug = _get_vocos_plg()
+                    _vocos_mel_snr_db = float("nan")
+                    if restored_audio.ndim == 2:
+                        # Stereo: beide Kanäle separat synthetisieren und stapeln
+                        _vr0 = _vplug.vocode(restored_audio[0], sample_rate, mode="studio2026")
+                        _vr1 = _vplug.vocode(restored_audio[1], sample_rate, mode="studio2026")
+                        _vch0 = _vr0.audio
+                        _vch1 = _vr1.audio
+                        _vn = min(len(_vch0), len(_vch1), restored_audio.shape[1])
+                        _vocos_out = np.stack([_vch0[:_vn], _vch1[:_vn]], axis=0)
+                        _vocos_mel_snr_db = float(np.nanmean([_vr0.mel_snr_db, _vr1.mel_snr_db]))
+                        logger.info(
+                            "§1.4 Vocos: Stereo-Finisher angewendet (model=%s mel_snr=%.1f dB)",
+                            getattr(_vr0, "model_used", "vocos_mel_24khz/griffin_lim"),
+                            _vocos_mel_snr_db,
+                        )
+                    else:
+                        _vr = _vplug.vocode(restored_audio, sample_rate, mode="studio2026")
+                        _vocos_out = _vr.audio
+                        _vocos_mel_snr_db = float(_vr.mel_snr_db)
+                        logger.info(
+                            "§1.4 Vocos: Mono-Finisher angewendet (model=%s pqs_mos=%.3f mel_snr=%.1f dB)",
+                            _vr.model_used,
+                            _vr.pqs_mos,
+                            _vr.mel_snr_db,
+                        )
+                    # Keep pre-Vocos audio when the vocoder output is effectively silent.
+                    _vocos_safe = np.clip(
+                        np.nan_to_num(_vocos_out, nan=0.0, posinf=0.0, neginf=0.0),
+                        -1.0,
+                        1.0,
+                    )
+                    _vocos_rms = float(np.sqrt(np.mean(_vocos_safe.astype(np.float64) ** 2) + 1e-12))
+                    if _vocos_rms <= 1e-4:
+                        logger.warning(
+                            "§1.4 Vocos: Ausgabe stumm (RMS=%.2e, mel_snr=%.1f dB) -> "
+                            "verworfen, behalte Pre-Vocos-Audio (§0 Primum non nocere)",
+                            _vocos_rms,
+                            _vocos_mel_snr_db,
+                        )
+                    else:
+                        restored_audio = _vocos_safe
                 else:
-                    restored_audio = _vocos_safe
+                    restored_audio = _kp5_audio
+                    _vocos_mel_snr_db = float("nan")
+                    logger.info("§1.4 Studio-Finisher: KP-5-Stufe-1 aktiv, Vocos-Kaskade übersprungen")
             elif _is_vocos_studio:
                 logger.debug(
                     "§1.4 Vocos: Übersprungen - PQS-MOS >= 4.3 "

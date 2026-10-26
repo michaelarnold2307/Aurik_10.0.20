@@ -4,6 +4,12 @@ Bewertung gegen den Incumbent (FlashSR) über scripts/challenger_round.py auf
 dem goldenen Hör-Set. NICHT in die Produktions-Routing-Pipeline verdrahtet —
 Aufnahme erst nach bestandener Challenger-Runde (ADOPT).
 
+§WP-1-Domänen-Deklaration (2026-10-25, D-K2-5): AERO ist SPRACH-trainiert
+(slp-rl/aero, Registry `.github/ML_MODEL_DOMAIN_REGISTRY.md`) — ein Einsatz
+würde das musik-trainierte F4/FlashSR verdrängen (§III.11 (copilot-instructions.md));
+bisheriger A/B-Befund: ΔSDR −2,4/−1,6 dB gegen FlashSR (10-06) ⇒ keine
+ADOPT-Grundlage; weitere Nutzung nur als Challenger mit §V6-Warnung.
+
 §v10-AERO-ONNX (2026-09-10): Primär ONNX (models/aero/aero_12_48.onnx,
 exportiert via scripts/export_aero_onnx.py, Parität rel≈2e-5, statisches
 Produktions-Shape 120000 Samples = 10 s @ 12 kHz). GPU-Policy über

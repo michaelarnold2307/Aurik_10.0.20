@@ -5,6 +5,10 @@ Dieses Modul entfernt Clipping-Artefakte automatisch aus Audiosignalen per klass
 Alle Algorithmen sind nachvollziehbar, auditierbar und rollback-fähig.
 """
 
+# WP-2-Deklaration (2026-10-25): Der deklarierte ML-/TorchScript-Pfad ist
+# NICHT implementiert — der DSP-Fallback ist das tatsächliche Verhalten.
+# §V6-Warnung beim ML-Aufruf bleibt Pflicht (D-K3-3, §G8 (copilot-instructions.md)).
+
 import logging
 from dataclasses import asdict, dataclass
 from typing import Any

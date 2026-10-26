@@ -171,6 +171,10 @@ class Level1Result:
         blend_factor: Empfohlener Blend-Faktor für die Phase
             (1.0 = kein Eingriff, < 1.0 = Strength reduzieren).
         violated_invariants: Liste der verletzten Invarianten-Namen.
+        singer_identity_cosine_muq: Zusätzlicher report-only MuQ-MuLan-
+            Identitäts-Kosinus [0,1] (KP-3, Pfad A — kein Veto). None wenn kein
+            Messwert vorliegt. Ändert KEINE Schwelle/Veto-Logik (§III.11
+            (copilot-instructions.md)).
     """
 
     singer_identity: float = 1.0
@@ -181,6 +185,7 @@ class Level1Result:
     breath_change_percent: float = 0.0
     blend_factor: float = 1.0
     violated_invariants: list[str] = field(default_factory=list)
+    singer_identity_cosine_muq: float | None = None
 
 
 # ── Singleton für teure Metriken (Resemblyzer, etc.) ───────────────────────
@@ -262,6 +267,11 @@ class Level1InvariantsGuard:
             # ── Invariante 1: Stimm-Identität ──────────────────────────────
             singer_identity = self._measure_singer_identity(pre, post, sr, context)
 
+            # ── MuQ-MuLan-Identitäts-Zeuge (KP-3, Pfad A — zusätzlicher
+            #    report-only Witness, kein Veto). Misst IMMER, ändert keine
+            #    Schwelle und flippt kein Flag (§III.11 (copilot-instructions.md)).
+            singer_identity_cosine_muq = self._measure_music_identity_muq(pre, post, sr)
+
             # ── Invariante 2: Konsonanten-/Atem-Energie ────────────────────
             consonant_clarity = self._measure_consonant_clarity(pre, post, sr)
 
@@ -320,6 +330,9 @@ class Level1InvariantsGuard:
                 breath_change_percent=round(breath_change, 4),
                 blend_factor=round(blend, 3),
                 violated_invariants=violated,
+                singer_identity_cosine_muq=(
+                    round(singer_identity_cosine_muq, 4) if singer_identity_cosine_muq is not None else None
+                ),
             )
 
         except Exception as exc:
@@ -354,6 +367,30 @@ class Level1InvariantsGuard:
         except Exception as e:
             logger.warning("§Ebene-1 singer_identity Messung fehlgeschlagen: %s", e)
             return 0.85  # konservativer Default
+
+    def _measure_music_identity_muq(self, pre: np.ndarray, post: np.ndarray, sr: int) -> float | None:
+        """Zusätzlicher report-only MuQ-MuLan-Identitäts-Kosinus (KP-3, Pfad A).
+
+        Misst den Kosinus der musiktrainierten MuQ-MuLan-Embeddings von pre/post
+        und liefert ihn als zusätzlichen Zeugenwert zurück — KEINE Änderung an
+        Schwelle, Veto-Logik oder `singer_identity` (§III.11 (copilot-instructions.md)).
+        None wenn kein Messwert vorliegt (Modell fehlt / konstantes Signal); das
+        ist ausdrücklich kein Eingriff (§V6 (copilot-instructions.md)).
+        """
+        try:
+            from backend.core.dsp.music_identity_oracle import (
+                music_identity_cosine,  # pylint: disable=import-outside-toplevel
+            )
+
+            _cos_muq, _reasons_muq = music_identity_cosine(pre, post, sr)
+            if _cos_muq is None:
+                if _reasons_muq:
+                    logger.debug("§Ebene-1 MuQ-Identitäts-Zeuge: %s", _reasons_muq[0])
+                return None
+            return float(_cos_muq)
+        except Exception as e:
+            logger.warning("§Ebene-1 MuQ-Identitäts-Zeuge fehlgeschlagen: %s", e)
+            return None
 
     def _measure_consonant_clarity(self, pre: np.ndarray, post: np.ndarray, sr: int) -> float:
         """Misst Konsonanten-/Atem-Energie im 2–4 kHz Band."""

@@ -364,8 +364,10 @@ def wiener_target_mask(damaged_ctx: object, clean_ctx: object) -> object:
     return torch.clamp(g, 1e-2, 1.0 - 1e-2)
 
 
-def load_a1_masking_loss():
+def load_a1_masking_loss(sr: int = TARGET_SR):
     """A1-Hör-Loss als uniforme ``(pred, target) -> loss``-Callable oder None.
+
+    ``sr`` parametrisiert das Rezept (BW-v5 nutzt 22050 statt TARGET_SR).
 
     Reihenfolge (§V7 (copilot-instructions.md): keine Zweit-Implementierung):
     1. EAR-VAE-Rezept ``models/ear_vae_upstream/masking_loss.py`` (gitignored,
@@ -387,7 +389,7 @@ def load_a1_masking_loss():
             _recipe = mod.masking_loss
 
             def _ear_adapter(pred, target):
-                return _recipe(pred, target, TARGET_SR)
+                return _recipe(pred, target, sr)
 
             logger.info("A1-Hör-Loss: EAR-VAE-Rezept (%s)", loss_path)
             return _ear_adapter
@@ -396,7 +398,7 @@ def load_a1_masking_loss():
     try:
         from backend.core.optimization.perceptual_loss import PsychoacousticMaskingLoss
 
-        _psy = PsychoacousticMaskingLoss(sr=TARGET_SR)
+        _psy = PsychoacousticMaskingLoss(sr=sr)
 
         def _psy_adapter(pred, target):
             loss, _details = _psy(pred, target)

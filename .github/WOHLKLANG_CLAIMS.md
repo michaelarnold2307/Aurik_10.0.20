@@ -51,8 +51,9 @@ P2 Bericht über Phantom-Referenzen im Produktionscode.
 | W-8 | BW-Reconstructor v5 | `backend/core/music_model_flags.py::use_bw_v5` | AUS | OFFEN | OFFEN | OFFEN | OFFEN | OFFEN | gesperrt (A1-Gate nicht bestanden: 0,73 < 1,02) |
 | W-9 | Whisper-Denoiser | `backend/core/music_model_flags.py::use_whisper_denoiser` | AUS | — | — | — | — | — | gesperrt (deprecated Rev. 2026-08-16) |
 | W-10 | UTMOSv2 Musik-MOS (Zeuge) | `backend/core/music_model_flags.py::use_utmos_music` | AUS | — | — | — | — | — | gesperrt (Sprach-Orakel, kein Veto-Recht bis Musik-Kalibrierung) |
-| W-11 | Silero-VAD Musik-Freigabe | `backend/core/music_model_flags.py::use_silero_vad_music` | AUS | — | — | — | — | — | gesperrt (sprachtrainiertes VAD darf Musik-Gate nicht steuern) |
+| W-11 | Silero-VAD Musik-Freigabe | `backend/core/music_model_flags.py::use_silero_vad_music` | AUS | — | — | — | — | — | gesperrt (sprachtrainiertes VAD darf Musik-Gate nicht steuern); KP-4 (2026-10-25): musikadaptiver PANNs-Singing-Offset liegt report-only vor (`backend/core/dsp/music_vad_oracle.py`, `panns_vad_offset_db` in phase_18-meta) — Aktivierung erst nach diskriminativer Gesangs-Evidenz + Never-worsen + Hörordnungs-Sign-off |
 | W-12 | Resemblyzer Musik-Freigabe | `backend/core/music_model_flags.py::use_resemblyzer_music` | AUS | — | — | — | — | — | gesperrt (sprachtrainierter Embedder, §III.11 copilot-instructions.md) |
+| W-13 | BigVGAN-F3 Studio-Finisher-Stufe-1 | `backend/core/music_model_flags.py::use_bigvgan_f3_studio` | AUS | — | — | — | — | — | gesperrt (KP-5: Kandidat-Pfad im §1.4-Block vorbereitet; Aktivierung erst nach W-1-Hörprobe D-K0-1/D-K2-3 + Hörordnungs-Sign-off §v10.802 copilot-instructions.md; Vocos bleibt §V6-Fallback) |
 
 ## Was dieses Gate nicht behauptet
 
