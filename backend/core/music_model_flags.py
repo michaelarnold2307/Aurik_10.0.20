@@ -54,6 +54,14 @@ use_bigvgan_f3_studio: bool = False  # KP-5 (2026-10-25): BigVGAN(-F3) als Studi
 # im §1.4-Block (vor der Vocos-Kaskade, nur Maximum/Studio/Aggressive + PQS-MOS < 4.3). Aktivierung erst
 # nach W-1-Hörprobe (Timbre-Konsistenz, D-K0-1/D-K2-3) + Hörordnungs-Sign-off (§v10.802 copilot-instructions.md);
 # W-13 gesperrt. True ⇒ der §1.4-Block versucht die BigVGAN-Synthese zuerst, Vocos bleibt §V6-Fallback.
+use_aspade_declipper: bool = False  # SOTA-M8 (D-K4-1): neuronaler A-SPADE-Klassen-Declipper als Challenger
+# zur heuristischen Phase 07. PCHIP bleibt §V6-DSP-Fallback (copilot-instructions.md §V6). Aktivierung erst
+# nach ΔSDR-Gate auf geclipptem Real-Material + blindem A/B + Hörordnungs-Sign-off (§v10.802
+# copilot-instructions.md). False ⇒ bit-identisches Bestandsverhalten.
+use_tf_gridnet_quality: bool = False  # SOTA-M9 (D-K4-2): nicht-kausaler TF-GridNet-Klassen-Vollband-Denoiser
+# als optionale Quality-Mode-Stufe. DeepFilterNet bleibt Default (§III.9 copilot-instructions.md:
+# kleine lokale Modelle bevorzugen). Aktivierung erst nach Never-worsen-Gate auf den 3 Referenz-Songs
+# + Hörordnungs-Sign-off (§v10.802 copilot-instructions.md). False ⇒ keine Verhaltensänderung.
 
 
 # ── Model Paths (relative to project root) ──────────────────────────────────

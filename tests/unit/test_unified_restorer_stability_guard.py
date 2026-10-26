@@ -4,8 +4,11 @@ import pytest
 
 """Stability guard tests for bounded-but-non-edge behavior.
 
-Ensures calibration scalars and implicit phase strengths are pulled away from
-hard bounds while explicit caller strengths remain untouched.
+Ensures calibration scalars are pulled away from hard bounds (§2.56a
+(02_pipeline_architecture.md)) while explicit caller strengths remain
+untouched (Stability-Guard-Invariante). Implicit phase strengths follow the
+measured defect posterior: §7.4e (06_phases_system.md) Punkt 1/5 +
+§G188 (GEBOTE.md, Kategorie XXV) — ohne Zieldefekt-Evidenz Stärke 0.
 """
 
 
@@ -62,7 +65,18 @@ def test_song_calibration_pullback_avoids_hard_edges():
     assert all(0.30 < float(v) < 1.80 for v in fam.values())
 
 
-def test_implicit_strength_gets_stability_corridor():
+def test_implicit_strength_uses_defect_posterior_not_conductor_hint():
+    """§7.4e (06_phases_system.md) + §G188 (GEBOTE.md, Kategorie XXV).
+
+    Realignment 2026-10-26 (Vorrangregel Spec > Code > Kommentar, AGENTS.md §1):
+    §7.4e (06_phases_system.md) Punkt 1 verlangt „Keine Evidenz ergibt Stärke 0",
+    Punkt 5 „0-Stärke ohne Zieldefekt“, Punkt 2 verbietet
+    PhaseConductor-Mindeststärken. Ein Conductor-Hint (0.99) ist reines Advisory
+    und darf die implizite Stärke nicht seeden. Die Vorgängerversion dieses
+    Tests (2026-04-08, test_implicit_strength_gets_stability_corridor) erwartete
+    Hint-Seeding plus Stabilitäts-Corridor-Floor 0.03 — beides durch §7.4e
+    (06_phases_system.md), eingeführt in a666b127 (2026-10-04), aufgehoben.
+    """
     uv3 = UnifiedRestorerV3()
     phase = _DummyPhase("phase_03_denoise")
     uv3._conductor_strength_hints = {"phase_03_denoise": 0.99}
@@ -73,7 +87,9 @@ def test_implicit_strength_gets_stability_corridor():
     uv3._profiled_phase_call(phase, audio, sample_rate=48000)
 
     assert isinstance(phase.last_strength, float)
-    assert 0.03 <= phase.last_strength <= 0.97
+    # §7.4e (06_phases_system.md) Punkt 1: ohne Zieldefekt-Evidenz exakt Stärke 0
+    assert phase.last_strength == 0.0
+    assert phase.last_kwargs.get("phase_g188_posterior_strength") == 0.0
 
 
 def test_explicit_strength_not_overridden_by_corridor():

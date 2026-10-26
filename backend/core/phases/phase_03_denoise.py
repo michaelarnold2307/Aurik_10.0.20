@@ -2108,6 +2108,33 @@ class DenoisePhase(PhaseInterface):
                 except Exception as _etc03ml_exc:
                     logger.debug("Verarbeitungsschritt_03 ML §2.46f Edge-Taper nicht blockierend: %s", _etc03ml_exc)
 
+                # SOTA-M9 (D-K4-2): optionaler TF-GridNet-Klassen-Quality-Mode — NUR
+                # hinter music_model_flags.use_tf_gridnet_quality (Default False ⇒ keine
+                # Verhaltensänderung, DFN bleibt Default §III.9 (copilot-instructions.md)).
+                # Fehler hinter dem Flag ⇒ §V6-Warnung + DFN/Bestand bleibt erhalten.
+                try:
+                    from backend.core.music_model_flags import (  # pylint: disable=import-outside-toplevel
+                        use_tf_gridnet_quality as _tfg_flag03,
+                    )
+
+                    if _tfg_flag03:
+                        from backend.core.dsp.tf_gridnet_denoiser import (  # pylint: disable=import-outside-toplevel
+                            apply_tf_gridnet_quality_stage as _tfg_stage03,
+                        )
+
+                        _ml_final_p03, _tfg_used03 = _tfg_stage03(
+                            np.asarray(_ml_final_p03, dtype=np.float32), sample_rate
+                        )
+                    else:
+                        _tfg_used03 = False
+                except Exception as _tfg_exc03:
+                    _tfg_used03 = False
+                    logger.warning(
+                        "SOTA-M9 TF-GridNet-Quality-Stage fehlgeschlagen (%s) — DFN/Bestand "
+                        "bleibt erhalten (§V6 (copilot-instructions.md)).",
+                        _tfg_exc03,
+                    )
+
                 # §2.51 Rückkonversion via globale _p03_out() Normalisierung
                 return create_phase_result(
                     audio=_ml_final_p03,
@@ -2127,6 +2154,7 @@ class DenoisePhase(PhaseInterface):
                         "bsrof_stem_aware_nr": _bsrof_stem_active,
                         "rms_drop_db": loudness_stats["rms_drop_db"],
                         "loudness_makeup_db": loudness_stats["makeup_gain_db"],
+                        "tf_gridnet_quality_used": bool(_tfg_used03),  # SOTA-M9 (D-K4-2)
                     },
                     warnings=warnings,
                     metadata={
@@ -2914,6 +2942,30 @@ class DenoisePhase(PhaseInterface):
         # deckelt die Rauschband-Energie (2-10 kHz) auf den OMLSA-Stand -
         # spektral (nur das Rauschband), Musik bleibt unangetastet.
         _final_out = _p03_out(result_audio)
+        # SOTA-M9 (D-K4-2): optionaler TF-GridNet-Klassen-Quality-Mode — NUR hinter
+        # music_model_flags.use_tf_gridnet_quality (Default False ⇒ keine
+        # Verhaltensänderung). Läuft VOR der finalen Rauschband-Schranke;
+        # Fehler ⇒ §V6-Warnung + DFN/Bestand bleibt erhalten.
+        try:
+            from backend.core.music_model_flags import (  # pylint: disable=import-outside-toplevel
+                use_tf_gridnet_quality as _tfg_flag03d,
+            )
+
+            if _tfg_flag03d:
+                from backend.core.dsp.tf_gridnet_denoiser import (  # pylint: disable=import-outside-toplevel
+                    apply_tf_gridnet_quality_stage as _tfg_stage03d,
+                )
+
+                _final_out, _tfg_used03d = _tfg_stage03d(np.asarray(_final_out, dtype=np.float32), sample_rate)
+            else:
+                _tfg_used03d = False
+        except Exception as _tfg_exc03d:
+            _tfg_used03d = False
+            logger.warning(
+                "SOTA-M9 TF-GridNet-Quality-Stage fehlgeschlagen (%s) — DFN/Bestand "
+                "bleibt erhalten (§V6 (copilot-instructions.md)).",
+                _tfg_exc03d,
+            )
         if _noise_band_budget is not None:
             try:
                 _final_out = _apply_band_cap(_final_out, _noise_band_budget)
@@ -2933,6 +2985,7 @@ class DenoisePhase(PhaseInterface):
                 "bsrof_stem_aware_nr": _bsrof_stem_active,
                 "rms_drop_db": loudness_stats["rms_drop_db"],
                 "loudness_makeup_db": loudness_stats["makeup_gain_db"],
+                "tf_gridnet_quality_used": bool(_tfg_used03d),  # SOTA-M9 (D-K4-2)
             },
             warnings=warnings,
             metadata={

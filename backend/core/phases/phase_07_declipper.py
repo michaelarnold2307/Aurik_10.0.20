@@ -395,11 +395,63 @@ class DeclipperPhase(PhaseInterface):
             except Exception as _sp_exc:
                 logger.warning("Verarbeitungsschritt 07 sparse nicht verfügbar (%s) — PCHIP bleibt", _sp_exc)
 
+        # SOTA-M8 (D-K4-1): neuronaler A-SPADE-Klassen-Declipper als CHALLENGER
+        # zur heuristischen Kaskade — NUR hinter use_aspade_declipper
+        # (backend/core/music_model_flags.py, Default False ⇒ bit-identisches
+        # Bestandsverhalten). Übernahme pro Kanal nur bei striktem Gewinn gegen
+        # Input UND heuristischen Amtsinhaber (Never-worsen, delta-basiert,
+        # AGENTS.md Guard-Kalibrierung); bei Fehler: §V6 (copilot-instructions.md)
+        # logger.warning + PCHIP-Kaskade bleibt. Kein Flag-Flip (§v10.802
+        # (copilot-instructions.md): erst ΔSDR-Gate + Hörordnungs-Sign-off).
+        from backend.core.music_model_flags import use_aspade_declipper  # pylint: disable=import-outside-toplevel
+
+        _aspade_class_used = False
+        if use_aspade_declipper:
+            try:
+                from backend.core.dsp.aspade_declipper import (  # pylint: disable=import-outside-toplevel
+                    declip_aspade_class,
+                )
+
+                _ac_out = audio_out.copy()
+                _ac_acc = 0
+                for _ch in range(audio_in.shape[0]):
+                    _ac_cand = declip_aspade_class(audio_in[_ch], sample_rate, float(self._clip_threshold))
+                    if _ac_cand is None:
+                        continue  # §V6-Warnung erfolgte im Challenger — PCHIP-Kaskade bleibt
+                    _ac_cand = np.asarray(_ac_cand, dtype=np.float64)
+                    if _ac_cand.shape != audio_in[_ch].shape or not bool(np.isfinite(_ac_cand).all()):
+                        logger.warning(
+                            "Verarbeitungsschritt 07 A-SPADE-Klassen-Declipper: ungültiger Kandidat "
+                            "(Shape/NaN) — PCHIP-Kaskade bleibt (§V6 (copilot-instructions.md))"
+                        )
+                        continue
+                    _pin = _harmonic_distortion_proxy(audio_in[_ch], sample_rate)
+                    _pinc = _harmonic_distortion_proxy(audio_out[_ch], sample_rate)
+                    _pout = _harmonic_distortion_proxy(_ac_cand, sample_rate)
+                    if _pout < _pin and _pout < _pinc:
+                        _ac_out[_ch] = _ac_cand
+                        _ac_acc += 1
+                if _ac_acc > 0:
+                    audio_out = _ac_out
+                    _aspade_class_used = True
+                    logger.info(
+                        "Verarbeitungsschritt 07 A-SPADE-Klassen-Declipper: %d/%d Kanäle übernommen "
+                        "(Harmonik-Proxy sank gegen Input und heuristischen Zweig)",
+                        _ac_acc,
+                        audio_in.shape[0],
+                    )
+            except Exception as _ac_exc:
+                logger.warning(
+                    "Verarbeitungsschritt 07 A-SPADE-Klassen-Declipper fehlgeschlagen (%s) — "
+                    "PCHIP-Kaskade bleibt (§V6 (copilot-instructions.md))",
+                    _ac_exc,
+                )
+
         # §DECLIPPER_SOTA_PLAN.md Slice B/C (2026-09-12): A-SPADE-ONNX als
         # erster neuronaler Zweig für schwere Fälle — Never-worsen über den
         # Harmonik-Proxy; ohne Modell oder ohne Gewinn bleibt CQT-Diff.
         _aspade_used = False
-        if _severe_runs and self._clip_fraction >= 0.01:
+        if _severe_runs and self._clip_fraction >= 0.01 and not _aspade_class_used:
             try:
                 from plugins.aspade_declipper_plugin import (  # pylint: disable=import-outside-toplevel
                     get_aspade_declipper_plugin,
@@ -510,21 +562,27 @@ class DeclipperPhase(PhaseInterface):
         _residual_clip_fraction = float(np.sum(np.abs(audio_out) >= self._clip_threshold)) / max(audio_out.size, 1)
         _residual_severity = float(np.clip(_residual_clip_fraction / max(self._clip_fraction, 1e-10), 0.0, 0.3))
 
+        # SOTA-M8 (D-K4-1): Challenger-Metrik NUR hinter dem Flag — bei Flag AUS
+        # bleibt auch die Metrik-Dict bit-identisch zum Bestand.
+        _metrics07: dict[str, Any] = {
+            "declip_applied": True,
+            "n_clips": self._n_clips,
+            "clip_fraction": float(self._clip_fraction),
+            "clip_threshold": float(self._clip_threshold),
+            "crossfade_samples": self._crossfade_n,
+            "reduction_db": float(reduction_db),
+            "sparse_used": bool(_sparse_used),  # §v10.755
+            "aspade_used": bool(_aspade_used),  # DECLIPPER_SOTA_PLAN Slice B
+            "cqtdiff_used": bool(_cqtdiff_used),  # §v10.752
+            "material": material,
+        }
+        if use_aspade_declipper:
+            _metrics07["aspade_class_used"] = bool(_aspade_class_used)
+
         return PhaseResult(
             success=True,
             audio=audio_out.astype(audio.dtype, copy=False),
-            metrics={
-                "declip_applied": True,
-                "n_clips": self._n_clips,
-                "clip_fraction": float(self._clip_fraction),
-                "clip_threshold": float(self._clip_threshold),
-                "crossfade_samples": self._crossfade_n,
-                "reduction_db": float(reduction_db),
-                "sparse_used": bool(_sparse_used),  # §v10.755
-                "aspade_used": bool(_aspade_used),  # DECLIPPER_SOTA_PLAN Slice B
-                "cqtdiff_used": bool(_cqtdiff_used),  # §v10.752
-                "material": material,
-            },
+            metrics=_metrics07,
             resolved_defects={
                 "CLIPPING": _residual_severity,  # 0.0 = vollständig behoben
             },

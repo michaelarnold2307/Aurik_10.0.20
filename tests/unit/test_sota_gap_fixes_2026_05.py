@@ -1757,22 +1757,42 @@ class TestFormantIntegrityGates:
         assert "_f1_post_49" in src
 
     def test_formant_gate_rollback_keyword_phase_20(self):
-        """phase_20 must log 'Formant drift' when rolling back."""
-        import inspect
+        """phase_20 loggt beim Formant-Drift-Rollback eine benannte §0p-Rollback-Meldung.
+
+        Nomenklatur-tolerant geprüft — Wirkung statt Formulierung: D-K3-34
+        (.github/SOTA_DEFICIT_REGISTER.md) akzeptiert die Log-Nomenklatur des
+        Nomenklatur-Sweeps („Verarbeitungsschritt_20" statt „phase_20", Mechanik
+        intakt) und schreibt für Wortlaut-Drift die Anpassung der Prüfung vor
+        („Prüfungen müssen Wirkung messen, nicht Zeichenketten kopieren").
+        """
+        import re
+        from pathlib import Path
 
         from backend.core.phases import phase_20_reverb_reduction
 
-        src = inspect.getsource(phase_20_reverb_reduction)
-        assert "Formant drift phase_20" in src
+        src = Path(phase_20_reverb_reduction.__file__).read_text(encoding="utf-8")
+        assert re.search(r"Formant drift \w*20\b[^\n\"']*\brollback", src), (
+            "§0p Formant-Drift-Rollback-Log mit Stufen-Nennung fehlt in phase_20"
+        )
 
     def test_formant_gate_rollback_keyword_phase_49(self):
-        """phase_49 must log 'Formant drift' when rolling back."""
-        import inspect
+        """phase_49 loggt beim Formant-Drift-Rollback eine benannte §0p-Rollback-Meldung.
+
+        Nomenklatur-tolerant geprüft — Wirkung statt Formulierung: D-K3-34
+        (.github/SOTA_DEFICIT_REGISTER.md) akzeptiert die Log-Nomenklatur des
+        Nomenklatur-Sweeps („Verarbeitungsschritt_49" statt „phase_49", Mechanik
+        intakt) und schreibt für Wortlaut-Drift die Anpassung der Prüfung vor
+        („Prüfungen müssen Wirkung messen, nicht Zeichenketten kopieren").
+        """
+        import re
+        from pathlib import Path
 
         from backend.core.phases import phase_49_advanced_dereverb
 
-        src = inspect.getsource(phase_49_advanced_dereverb)
-        assert "Formant drift phase_49" in src
+        src = Path(phase_49_advanced_dereverb.__file__).read_text(encoding="utf-8")
+        assert re.search(r"Formant drift \w*49\b[^\n\"']*\brollback", src), (
+            "§0p Formant-Drift-Rollback-Log mit Stufen-Nennung fehlt in phase_49"
+        )
 
 
 class TestEnergyBiasContextPropagation:

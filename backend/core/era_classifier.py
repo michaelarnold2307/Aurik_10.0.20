@@ -551,7 +551,18 @@ def _dsp_hf_rolloff(audio_mono: np.ndarray, sr: int) -> float:
     # bleiben unter der −6-dB-Schwelle und behalten ihr E90-/Cluster-Ergebnis.
     _band_mid = float(np.sum(avg_spec[(freqs >= 1000.0) & (freqs < 3000.0)])) + 1e-30
     _band_hf = float(np.sum(avg_spec[(freqs >= 10000.0) & (freqs < 20000.0)]))
-    if _band_hf >= _band_mid * 10.0 ** (-6.0 / 10.0):
+    # E90-Kollaps-Gate (LP-Skirt-Schutz): Der Band-Decay-Beweis ersetzt nur
+    # eine KOLLABIERTE E-Familie. Ein gesundes E90 (≥ ~50 % des Spektralendes
+    # E99.5) misst die Bandbreite bereits korrekt — genuine LP-Signale mit
+    # Cutoff ≥ 11 kHz haben flachen Passband-Anteil im 10–20-kHz-Fenster
+    # (≥ −6 dB) und dürfen ihr E90-Ergebnis (≈ 0,9 × Cutoff, kalibriert auf
+    # DECADE_HF_LIMITS, siehe tests/unit/test_era_hf_rolloff_calibration.py)
+    # nicht überschrieben bekommen. Dokumentierte Kollaps-Fälle (pinkes
+    # Rauschen E90 ≈ 6 kHz, Real-Musik E90 ≈ 2 kHz bei HF bis 16–24 kHz)
+    # bleiben ≥ 2× unter E99.5 und feuern weiterhin.
+    _e995_idx = int(np.clip(np.searchsorted(cum_energy, 0.995 * total_energy), 0, len(avg_spec) - 1))
+    _e995 = float(freqs[_e995_idx])
+    if _band_hf >= _band_mid * 10.0 ** (-6.0 / 10.0) and _e995 >= 2.0 * max(e90, 1.0):
         _band_bw = min(nyquist, max([*_high_estimators, 18000.0]))
         logger.debug(
             "BW Band-Decay Guard (D-K3-43): E(10–20k)=%.1f dB rel. E(1–3k) ⇒ HF physikalisch"

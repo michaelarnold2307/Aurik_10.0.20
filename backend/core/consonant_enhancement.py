@@ -221,8 +221,14 @@ class ConsonantEnhancement:
         n_fricative_frames = int(np.sum(sib_mask))
         if n_fricative_frames == 0:
             logger.debug("ConsonantEnhancement: keine Frikativ-Segmente gefunden, ueberspringen.")
+            _out = np.clip(audio, -1.0, 1.0)
+            # §V7 (copilot-instructions.md): Rückführung aufs Eingangs-Layout — auch
+            # dieser Early-Return (Stereo-Layout-Invariante, AGENTS.md: Modulgrenze
+            # normalisiert das Layout; (2,N)-Leak brach Phase 19 Zeile ~1937).
+            if not _was_channels_first and _out.ndim == 2:
+                _out = to_samples_first(_out)
             return ConsonantEnhancementResult(
-                audio=np.clip(audio, -1.0, 1.0),
+                audio=_out,
                 fricative_segments=0,
                 snr_improvement_db=0.0,
                 boost_applied_db=0.0,
@@ -244,8 +250,13 @@ class ConsonantEnhancement:
                 "kein Frikativ-Boost (Sprache hat untergeordnete Position).",
                 _singing,
             )
+            _out = np.clip(audio, -1.0, 1.0)
+            # §V7 (copilot-instructions.md): Rückführung aufs Eingangs-Layout — auch
+            # dieser Early-Return (Stereo-Layout-Invariante, AGENTS.md).
+            if not _was_channels_first and _out.ndim == 2:
+                _out = to_samples_first(_out)
             return ConsonantEnhancementResult(
-                audio=np.clip(audio, -1.0, 1.0),
+                audio=_out,
                 fricative_segments=n_fricative_frames,
                 snr_improvement_db=0.0,
                 boost_applied_db=0.0,

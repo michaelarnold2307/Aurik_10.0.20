@@ -1,4 +1,18 @@
-# Changelog — Aurik 10.12.44
+# Changelog — Aurik 10.12.45
+
+## 10.12.45 (2026-10-26)
+
+### Volle-Suite-Restbestand (11/12 Fehler behoben) + SOTA-M8/M9: K4-Challenger implementiert
+
+- **Stereo-Layout-Leak Phase 19 (5 Tests):** `ConsonantEnhancement.enhance()` gab in beiden Early-Returns (keine Frikativ-Segmente / Gesangs-Gate zu) das interne (2,N)-Array statt des Eingangs-Layouts zurück → `(2,1)×(N,2)`-Broadcast-Absturz in `phase_19_de_esser.py:1937` (Stereo-Layout-Invariante, AGENTS.md). Layout-Restore wie im Hauptpfad; Ziellauf 154 passed, 1 skipped.
+- **era-Decade-Physik bandlimited (2 Tests):** Der Band-Decay-Guard feuerte auch bei gesundem E90 (flache LP-Rauschsignale ≥ 11 kHz) und überschrieb das korrekte E90-Ergebnis → E90-Kollaps-Gate (`E99.5 ≥ 2 × E90`); 10/10-Physik-Matrix + D-K3-43-Kalibrierung bleiben erhalten.
+- **pre_analysis-Progress-Reihenfolge (1 Test):** CLAP-Async-Thread emittierte Band-Werte gegen die Hauptpfad-Emitte (87 nach 96 unter Volle-Suite-Last) → globaler, gesperrter Monotonie-Gate für alle Progress-Callbacks (dokumentierte Invariante „global monoton").
+- **Stability-Corridor (1 Test):** Test war nachweislich veraltet (2026-04-08er Vertrag „Conductor-Hint seedet implizite Stärke + Floor 0.03“) gegen die normative §7.4e (06_phases_system.md) / §G188 (GEBOTE.md) ab `a666b127` („Keine Evidenz ergibt Stärke 0“) — Test an die Norm ausgerichtet + umbenannt in `test_implicit_strength_uses_defect_posterior_not_conductor_hint`; keine Assert-Relaxierung.
+- **Formant-Rollback-Keywords (2 Tests):** Der Nomenklatur-Sweep `655a145b` (2026-10-01) war der akzeptierte Soll-Zustand (D-K3-34: „Prüfungen müssen Wirkung messen, nicht Zeichenketten kopieren“) — die zwei Tests prüfen jetzt nomenklatur-tolerant die Wirkung (Formant-Drift-Rollback-Log mit Stufen-Nennung), Quellenzitat im Docstring (AGENTS.md §5).
+- **SOTA-M8 (D-K4-1 → in-arbeit):** A-SPADE-Klassen-Declipper (`backend/core/dsp/aspade_declipper.py`, unrolled ADMM + 1-D-CNN-Proximal + Datenkonsistenz-Projektion) als Phase-07-Challenger hinter `use_aspade_declipper` (Default AUS ⇒ Bestandsverhalten bit-identisch gemessen, SHA-Vergleich); `scripts/train_aspade_declipper.py` (MUSDB18-HQ-Vocals + deterministische Clipping-Generierung §G5 (copilot-instructions.md), Resume, ONNX-Export mit Paritäts-Gate rel 5.8e-07 §III.9 (copilot-instructions.md)); 22 Vertragstests. PCHIP bleibt §V6-Fallback. Offen: Training, ΔSDR-Gate, Hörabnahme.
+- **SOTA-M9 (D-K4-2 → in-arbeit):** TF-GridNet-Klassen-Vollband-Denoiser (`backend/core/dsp/tf_gridnet_denoiser.py`, Intra-/Inter-Frame-BiLSTM, STFT/OLA, (C,N)-Layout) als optionale Quality-Mode-Stufe hinter `use_tf_gridnet_quality` (Default AUS ⇒ Audio bit-identisch gemessen); `scripts/train_tf_gridnet_denoiser.py`; Integration in phase_03 ausschließlich hinter dem Flag; 24 Vertragstests. DFN bleibt Default (§III.9 (copilot-instructions.md)). Offen: Modell-Training (Artefakt `models/tf_gridnet/tf_gridnet_quality.onnx` fehlt noch), Never-worsen-Gate, Hörabnahme.
+- **Offen (D-K3-70, Nutzerentscheidung):** Golden-Gate `test_real_audio_strategy_golden_manifest_passes_gate` bleibt ehrlich **rot** — Strategie-Metriken-Regression seit 2026-09 (Gate-Report-Snapshot 2026-08: alle Metriken 1,0 auf denselben 51 Fällen) + die `accepted_causes` der 3 synthetischen Cassette-Fälle widersprechen der annotierten Ground-Truth; bewusst NICHT durch Expectations-Relaxieren gelöst (D-K3-28). Pfade (A) Reasoner-/Detektor-Kalibrierung + (B) Manifest-Korrektur im Register dokumentiert.
+- **Flags/Registry:** `use_aspade_declipper`, `use_tf_gridnet_quality` (je Default AUS, §-qualifiziert) in `backend/core/music_model_flags.py`; FILE_REGISTRY +6 Einträge; SOTA_DEFICIT_REGISTER: D-K4-1/D-K4-2 → `in-arbeit`, neue Position D-K3-70.
 
 ## 10.12.44 (2026-10-26)
 

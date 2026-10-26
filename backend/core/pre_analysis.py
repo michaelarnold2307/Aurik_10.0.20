@@ -279,7 +279,25 @@ def run_pre_analysis(
     """
     t0 = time.monotonic()
 
-    _cb = progress_callback or (lambda pct, msg: None)
+    _raw_cb = progress_callback or (lambda pct, msg: None)
+    # §G5 (copilot-instructions.md): Fortschritt global monoton. Alle Quellen
+    # (CLAP-Async-Thread, Heartbeat, Pool-Collection, Hauptpfad) laufen durch
+    # einen einzigen Monotonie-Gate — ein später Band-Wert eines Async-Threads
+    # nach einem höheren Hauptpfad-Wert (Befund: 87 nach 96) wird auf den
+    # letzten Stand geklemmt statt rückwärts gemeldet (ProgressState als
+    # Single Source of Truth, §G19/V71).
+    _cb_floor = -1
+    _cb_gate = threading.Lock()
+
+    def _cb(pct: int, msg: str) -> None:
+        nonlocal _cb_floor
+        with _cb_gate:
+            if pct < _cb_floor:
+                pct = _cb_floor
+            else:
+                _cb_floor = pct
+            _raw_cb(pct, msg)
+
     _cb(0, "Voranalyse gestartet…")
 
     _cached_parts: dict[str, object | None] = {}

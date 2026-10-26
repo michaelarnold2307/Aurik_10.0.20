@@ -1,6 +1,6 @@
 # TASK_CHANGES — Live-Ledger der aktuellen Aufgabe
 
-> Generiert von `scripts/change_ledger.py snapshot` (Base: `HEAD`, Stand: 2026-10-26 20:04 CET).
+> Generiert von `scripts/change_ledger.py snapshot` (Base: `HEAD`, Stand: 2026-10-26 23:20 CET).
 > CI (`ci-lite.yml` pr-evidence-gate) erzwingt Abdeckung: jede geänderte Code-Datei muss hier stehen.
 
 ## Geänderte Dateien
@@ -9,84 +9,25 @@
 |---|---|---|
 | M | `.github/FILE_REGISTRY.md` | modifiziert |
 | M | `.github/SOTA_DEFICIT_REGISTER.md` | modifiziert |
-| M | `.github/WOHLKLANG_CLAIMS.md` | modifiziert |
-| M | `AGENTS.md` | modifiziert |
-| M | `Aurik10/__init__.py` | modifiziert |
 | M | `CHANGELOG.md` | modifiziert |
 | M | `README.md` | modifiziert |
 | M | `TASK_CHANGES.md` | modifiziert |
-| M | `backend/core/defect_scanner.py` | modifiziert |
-| M | `backend/core/dsp/adaptive_derecording.py` | modifiziert |
-| M | `backend/core/dsp/adaptive_formant_shifter.py` | modifiziert |
-| M | `backend/core/dsp/adaptive_fundamental_detection.py` | modifiziert |
-| M | `backend/core/dsp/adaptive_harmonic_tracking.py` | modifiziert |
-| M | `backend/core/dsp/adaptive_spectral_inpainting.py` | modifiziert |
-| M | `backend/core/dsp/adaptive_spectral_peak_removal.py` | modifiziert |
-| M | `backend/core/dsp/adaptive_spectral_rolloff.py` | modifiziert |
-| M | `backend/core/dsp/adaptive_spectral_subtraction.py` | modifiziert |
-| M | `backend/core/dsp/adaptive_spline_interpolation.py` | modifiziert |
-| M | `backend/core/dsp/adaptive_stft.py` | modifiziert |
-| M | `backend/core/dsp/adaptive_time_scale_modification.py` | modifiziert |
-| M | `backend/core/dsp/adaptive_transient_detection.py` | modifiziert |
-| M | `backend/core/dsp/adaptive_transient_preservation.py` | modifiziert |
-| M | `backend/core/dsp/adaptive_vad.py` | modifiziert |
-| M | `backend/core/dsp/automatic_declipper.py` | modifiziert |
-| M | `backend/core/dsp/level_1_invariants_guard.py` | modifiziert |
-| M | `backend/core/dsp/masking_aware_dynamic_eq.py` | modifiziert |
-| A | `backend/core/dsp/music_identity_oracle.py` | neu |
-| A | `backend/core/dsp/music_mos_oracle.py` | neu |
-| A | `backend/core/dsp/music_vad_oracle.py` | neu |
-| M | `backend/core/dsp/psychoacoustic_enhancement.py` | modifiziert |
-| M | `backend/core/dsp/sota_speech_superres.py` | modifiziert |
+| M | `backend/core/consonant_enhancement.py` | modifiziert |
+| A | `backend/core/dsp/aspade_declipper.py` | neu |
+| A | `backend/core/dsp/tf_gridnet_denoiser.py` | neu |
+| M | `backend/core/era_classifier.py` | modifiziert |
 | M | `backend/core/music_model_flags.py` | modifiziert |
-| M | `backend/core/phases/phase_18_noise_gate.py` | modifiziert |
-| M | `backend/core/phases/phase_65_vocal_naturalness_restoration.py` | modifiziert |
-| M | `backend/core/unified_restorer_v3.py` | modifiziert |
+| M | `backend/core/phases/phase_03_denoise.py` | modifiziert |
+| M | `backend/core/phases/phase_07_declipper.py` | modifiziert |
+| M | `backend/core/pre_analysis.py` | modifiziert |
 | M | `backend/core/version.py` | modifiziert |
-| M | `docs/SOTA_TRAINING_KONZEPT.md` | modifiziert |
-| M | `docs/TODOS_SOTA_ROADMAP.md` | modifiziert |
-| M | `docs/reports/current/2026-10-07_hoerprobe_anleitung.md` | modifiziert |
-| A | `docs/reports/current/2026-10-23_hoerprobe_sgmse_3weg.json` | neu |
-| A | `docs/reports/current/2026-10-25_kp2_musik_mos_orakel.json` | neu |
-| A | `docs/reports/current/2026-10-25_kp2_musik_mos_orakel.md` | neu |
-| A | `docs/reports/current/2026-10-25_kp3_vokal_identitaet.json` | neu |
-| A | `docs/reports/current/2026-10-25_kp3_vokal_identitaet.md` | neu |
-| A | `docs/reports/current/2026-10-25_kp4_musik_vad.json` | neu |
-| A | `docs/reports/current/2026-10-25_kp4_musik_vad.md` | neu |
-| A | `docs/reports/current/2026-10-25_kp7_bwv5_ergebnis.md` | neu |
-| A | `docs/reports/current/2026-10-25_kp7_hf_gate.json` | neu |
-| A | `docs/reports/current/2026-10-25_sota_massnahmen_katalog.md` | neu |
-| A | `docs/reports/current/2026-10-25_wp3_wohlklang_forensik.json` | neu |
-| A | `docs/reports/current/2026-10-25_wp3_wohlklang_forensik.md` | neu |
-| M | `plugins/aero_plugin.py` | modifiziert |
 | M | `pyproject.toml` | modifiziert |
-| M | `reports/spec_drift_baseline.json` | modifiziert |
-| A | `scripts/audit_k2_signalpfad.py` | neu |
-| A | `scripts/benchmark_identity_oracles.py` | neu |
-| A | `scripts/benchmark_music_mos_oracles.py` | neu |
-| A | `scripts/benchmark_vad_oracles.py` | neu |
-| A | `scripts/build_sgmse_hoerprobe_3weg.py` | neu |
-| A | `scripts/forensik_vocoder_ordnung.py` | neu |
-| M | `scripts/sota_deficit_gate.py` | modifiziert |
-| M | `scripts/train_banquet_vinyl_finetune.py` | modifiziert |
-| M | `scripts/train_bw_v5.py` | modifiziert |
-| A | `scripts/validate_bw_v5_hf_gate.py` | neu |
-| M | `tests/unit/test_denker/test_defekt_denker.py` | modifiziert |
-| M | `tests/unit/test_denker/test_rekonstruktions_denker.py` | modifiziert |
-| M | `tests/unit/test_denker/test_reparatur_denker.py` | modifiziert |
-| M | `tests/unit/test_dk355_phase_heartbeat.py` | modifiziert |
-| M | `tests/unit/test_dk367_phase_watchdog.py` | modifiziert |
-| A | `tests/unit/test_dk38_layout_reductions_pin.py` | neu |
-| A | `tests/unit/test_dk38_uniform_smooth.py` | neu |
-| A | `tests/unit/test_k2_signalpfad_audit.py` | neu |
-| A | `tests/unit/test_kp5_f3_studio_flag.py` | neu |
-| A | `tests/unit/test_level_1_guard_music_identity_muq.py` | neu |
-| A | `tests/unit/test_music_identity_oracle.py` | neu |
-| A | `tests/unit/test_music_mos_oracle.py` | neu |
-| A | `tests/unit/test_music_vad_oracle.py` | neu |
-| M | `tests/unit/test_phase_18_noise_gate.py` | modifiziert |
-| M | `tests/unit/test_spec_integration_scanner.py` | modifiziert |
-| A | `tests/unit/test_wp2_stub_declaration.py` | neu |
+| A | `scripts/train_aspade_declipper.py` | neu |
+| A | `scripts/train_tf_gridnet_denoiser.py` | neu |
+| A | `tests/unit/test_aspade_declipper.py` | neu |
+| M | `tests/unit/test_sota_gap_fixes_2026_05.py` | modifiziert |
+| A | `tests/unit/test_tf_gridnet_denoiser.py` | neu |
+| M | `tests/unit/test_unified_restorer_stability_guard.py` | modifiziert |
 | ?? | `tmp_repro/pe_verify.py` | ungetrackt |
 | ?? | `tmp_repro/pe_worst.py` | ungetrackt |
 
