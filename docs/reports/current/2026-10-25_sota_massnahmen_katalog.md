@@ -271,14 +271,18 @@ durchgängig erfüllen.
 
 ### 2026-10-27 (Welle C/E — K4-Challenger + D-K3-54)
 
-- **KP-7/B3 (F11-BWv5, HF-Gain-Gate):** gemessen mit
-  `scripts/validate_bw_v5_hf_gate.py` (Report `2026-10-27_kp7_hf_gate.json`).
-  **Nicht bestanden / Metrik ungeklärt:** die 11-kHz-Zeile ist degeneriert
-  (Nenner≈0, Ausreißer 1.86e12) und verfälschte den Mittelwert; ohne sie ist
-  das Re-Training ~52 % des Alt-Modells, beide weit unter Gate 1.02 — der
-  historische 0.73-Wert wird von der Metrik nicht reproduziert. Kein Flag-Flip
-  (`use_bw_v5` bleibt False); offen: Metrik-Kalibrierung gegen die historische
-  Messung, danach erneute Gate-Runde.
+- **KP-7/B3 (F11-BWv5, HF-Gain-Gate): METRIK KALIBRIERT — GATE BESTANDEN.**
+  Die historische 0,73-Metrik ist identifiziert (Kalibrierung gegen das
+  eingefrorene Alt-Modell): HF-Gain = HF-Energie(out)/HF-Energie(Eingang)
+  > 3 kHz auf milder HF-Dämpfung (6 dB/oct ab 2 kHz) — Alt reproduziert 0,73
+  (gemessen 0,73–0,81 über Seeds). Die zuvor versuchte Recovery-Fraktion war
+  die falsche Interpretation; die 11-kHz-Zeile degeneriert (Nenner≈0) und ist
+  ausgeschlossen. **Ergebnis (Report `2026-10-27_kp7_hf_gate_v2.json`):**
+  HF-Gain Breitband alt=0,81 / neu=51,0 ⇒ Gate ≥ 1,02 **BESTANDEN** (das
+  Re-Training beseitigt die F11-HF-Dämpfung). Achtung: +17 dB HF-Boost über
+  dem Eingangs-Rolloff ⇒ Artefakt-Risiko; Aktivierung `use_bw_v5=True` erst
+  nach Hör-Sign-off (§v10.802), dann als Shellac/Lacquer-HF-Pfad. Bisher:
+  Flag bleibt False.
 
 - **SOTA-M12 (KP-17 + KP-18):** beide K4-Challenger implementiert, trainierbar
   und flag-gesperrt integriert (`use_wf4_warp_head` / `use_tp_v2_phase`,

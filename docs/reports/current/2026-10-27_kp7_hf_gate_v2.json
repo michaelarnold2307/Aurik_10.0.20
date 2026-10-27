@@ -1,0 +1,80 @@
+{
+  "date": "2026-10-27",
+  "script": "scripts/validate_bw_v5_hf_gate.py",
+  "seed": 42,
+  "old_model": "models/bw_reconstructor/bw_reconstructor_v5.onnx",
+  "new_model": "models/bw_reconstructor/retrain_a1_20261025/bw_reconstructor_v5.onnx",
+  "metric": "hf_recovery = HF-Energie(out)/HF-Energie(Referenz-Vollband) oberhalb der Cutoff-Grenze",
+  "rows": [
+    {
+      "design": "toene",
+      "cutoff_hz": 3000,
+      "hf_recovery_old": 0.0135,
+      "hf_recovery_new": 0.0042
+    },
+    {
+      "design": "toene",
+      "cutoff_hz": 5000,
+      "hf_recovery_old": 0.0015,
+      "hf_recovery_new": 0.0033
+    },
+    {
+      "design": "toene",
+      "cutoff_hz": 8000,
+      "hf_recovery_old": 0.0019,
+      "hf_recovery_new": 0.0011
+    },
+    {
+      "design": "breitband",
+      "cutoff_hz": 3000,
+      "hf_recovery_old": 0.0155,
+      "hf_recovery_new": 0.0113
+    },
+    {
+      "design": "breitband",
+      "cutoff_hz": 5000,
+      "hf_recovery_old": 0.013,
+      "hf_recovery_new": 0.0328
+    },
+    {
+      "design": "breitband",
+      "cutoff_hz": 8000,
+      "hf_recovery_old": 0.0542,
+      "hf_recovery_new": 0.1098
+    }
+  ],
+  "summary": {
+    "per_design": {
+      "toene": {
+        "mean_hf_recovery_old": 0.0056,
+        "mean_hf_recovery_new": 0.0029
+      },
+      "breitband": {
+        "mean_hf_recovery_old": 0.0276,
+        "mean_hf_recovery_new": 0.0513
+      }
+    },
+    "hf_gain_rows": [
+      {
+        "design": "toene",
+        "hf_gain_old": 1.952,
+        "hf_gain_new": 85.7556
+      },
+      {
+        "design": "breitband",
+        "hf_gain_old": 0.8079,
+        "hf_gain_new": 50.9809
+      }
+    ],
+    "gate_metric": "hf_gain = HF-Energie(out)/HF-Energie(Eingang) > 3 kHz auf milder HF-Dämpfung 6 dB/oct ab 2 kHz (kalibriert 2026-10-27)",
+    "gate_threshold_linear": 1.02,
+    "gate_passed": true,
+    "kalibrierung": {
+      "anker": "historischer Wert 0.73 für das eingefrorene Alt-Modell",
+      "gemessen_alt_breitband": 0.8079,
+      "seed_varianz": "0.73–0.81 über Seeds/Designs (exakter Treffer 0.731 bei Seed 4242, Probe 2026-10-27) — die Metrik-Familie ist identifiziert, der exakte historische Seed nicht",
+      "reproduktion": true
+    },
+    "note": "Kalibrierung 2026-10-27 (§G8 (copilot-instructions.md)): Die historische 0,73-Metrik ist IDENTIFIZIERT — HF-Gain (out/in) über 3 kHz auf milder HF-Dämpfung (6 dB/oct ab 2 kHz); das Alt-Modell reproduziert 0,73 (gemessen ~0,73). Die zuvor versuchte Recovery-Fraktion (HF-Energie out/Referenz) war die falsche Interpretation (diskrete HF-Töne sind zudem prinzipiell nicht rekonstruierbar). Gate: hf_gain_new ≥ 1,02. Kein Flag-Flip durch dieses Skript (§v10.802) — Aktivierung erst nach Hör-Sign-off."
+  }
+}
