@@ -1,6 +1,6 @@
 # TASK_CHANGES — Live-Ledger der aktuellen Aufgabe
 
-> Generiert von `scripts/change_ledger.py snapshot` (Base: `HEAD`, Stand: 2026-10-26 23:20 CET).
+> Generiert von `scripts/change_ledger.py snapshot` (Base: `HEAD`, Stand: 2026-10-27 04:26 CET).
 > CI (`ci-lite.yml` pr-evidence-gate) erzwingt Abdeckung: jede geänderte Code-Datei muss hier stehen.
 
 ## Geänderte Dateien
@@ -11,23 +11,24 @@
 | M | `.github/SOTA_DEFICIT_REGISTER.md` | modifiziert |
 | M | `CHANGELOG.md` | modifiziert |
 | M | `README.md` | modifiziert |
-| M | `TASK_CHANGES.md` | modifiziert |
-| M | `backend/core/consonant_enhancement.py` | modifiziert |
-| A | `backend/core/dsp/aspade_declipper.py` | neu |
-| A | `backend/core/dsp/tf_gridnet_denoiser.py` | neu |
-| M | `backend/core/era_classifier.py` | modifiziert |
+| M | `backend/core/defect_scanner.py` | modifiziert |
 | M | `backend/core/music_model_flags.py` | modifiziert |
-| M | `backend/core/phases/phase_03_denoise.py` | modifiziert |
-| M | `backend/core/phases/phase_07_declipper.py` | modifiziert |
-| M | `backend/core/pre_analysis.py` | modifiziert |
+| M | `backend/core/phases/phase_12_wow_flutter_fix.py` | modifiziert |
+| M | `backend/core/phases/phase_20_reverb_reduction.py` | modifiziert |
+| M | `backend/core/phases/phase_49_advanced_dereverb.py` | modifiziert |
+| M | `backend/core/unified_restorer_v3.py` | modifiziert |
 | M | `backend/core/version.py` | modifiziert |
-| M | `pyproject.toml` | modifiziert |
-| A | `scripts/train_aspade_declipper.py` | neu |
-| A | `scripts/train_tf_gridnet_denoiser.py` | neu |
-| A | `tests/unit/test_aspade_declipper.py` | neu |
-| M | `tests/unit/test_sota_gap_fixes_2026_05.py` | modifiziert |
-| A | `tests/unit/test_tf_gridnet_denoiser.py` | neu |
-| M | `tests/unit/test_unified_restorer_stability_guard.py` | modifiziert |
+| M | `docs/reports/current/2026-10-25_sota_massnahmen_katalog.md` | modifiziert |
+| ?? | `backend/core/dsp/rt60_regressor.py` | ungetrackt |
+| ?? | `backend/core/dsp/tp_v2_phase.py` | ungetrackt |
+| ?? | `backend/core/dsp/wf4_warp_head.py` | ungetrackt |
+| ?? | `scripts/train_rt60_regressor.py` | ungetrackt |
+| ?? | `scripts/train_tp_v2_phase.py` | ungetrackt |
+| ?? | `scripts/train_wf4_warp_head.py` | ungetrackt |
+| ?? | `tests/unit/test_dk354_am_peak_calibration.py` | ungetrackt |
+| ?? | `tests/unit/test_rt60_regressor.py` | ungetrackt |
+| ?? | `tests/unit/test_tp_v2_phase.py` | ungetrackt |
+| ?? | `tests/unit/test_wf4_warp_head.py` | ungetrackt |
 | ?? | `tmp_repro/pe_verify.py` | ungetrackt |
 | ?? | `tmp_repro/pe_worst.py` | ungetrackt |
 

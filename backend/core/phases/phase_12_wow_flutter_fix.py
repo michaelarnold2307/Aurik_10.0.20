@@ -1423,6 +1423,57 @@ class WowFlutterFix(PhaseInterface):
                 "§WF-V2 übersprungen: Melodie-Guard hat F0-Stretch abgelehnt (musikalischer Inhalt, kein Wow-Verdacht)"
             )
 
+        # === SOTA-M12 WF-V4 (D-K4-7): Warp-Head-Challenger ===
+        # Challenger zur heuristischen Stretch-Schätzung der WF-V1/V2/V3-Kette.
+        # Flag `use_wf4_warp_head` (backend/core/music_model_flags.py, Default
+        # False) AUS ⇒ Block nicht betreten (bit-identisch). §V6 (copilot-instructions.md):
+        # Kein ONNX-Artefakt/Inferenz-Fehler ⇒
+        # heuristische Schätzung bleibt + logger.warning. Anwendung VOR dem
+        # §WF-V3-Slope-Limit (_smooth_stretch_factors), damit die Warp-Delta-
+        # Kappe des Heads und die Slope-Limit-Logik erhalten bleiben. Die
+        # 40-fps-Kurve des Heads wird auf die Länge der Stretch-Faktoren
+        # interpoliert (layout-robust, Stereo-Layout-Invariante AGENTS.md §3).
+        try:
+            from backend.core.dsp.wf4_warp_head import apply_wf4_warp_stage
+            from backend.core.music_model_flags import use_wf4_warp_head  # pylint: disable=import-outside-toplevel
+        except Exception as _wf4_import_exc:  # pragma: no cover
+            use_wf4_warp_head = False
+            logger.warning(
+                "SOTA-M12 WF4-Warp-Head nicht importierbar (%s) — heuristische "
+                "Phase-12-Schätzung bleibt aktiv (§V6 (copilot-instructions.md)).",
+                _wf4_import_exc,
+            )
+        if use_wf4_warp_head:
+            try:
+                _wf4_stretch, _wf4_used = apply_wf4_warp_stage(
+                    np.asarray(pitch_trajectory, dtype=np.float32),
+                    np.asarray(confidence, dtype=np.float32),
+                    sample_rate,
+                    audio=safe_to_mono(np.asarray(audio, dtype=np.float32)),
+                )
+            except Exception as _wf4_exc:  # pragma: no cover
+                logger.warning(
+                    "SOTA-M12 WF4-Warp-Head fehlgeschlagen (%s) — heuristische "
+                    "Phase-12-Schätzung bleibt aktiv (§V6 (copilot-instructions.md)).",
+                    _wf4_exc,
+                )
+                _wf4_stretch, _wf4_used = None, False
+            if _wf4_used and _wf4_stretch is not None:
+                _wf4_curve = np.asarray(_wf4_stretch, dtype=np.float64)
+                if _wf4_curve.size >= 2 and stretch_factors.size >= 2:
+                    _wf4_x_src = np.linspace(0.0, 1.0, num=_wf4_curve.size)
+                    _wf4_x_dst = np.linspace(0.0, 1.0, num=stretch_factors.size)
+                    stretch_factors = np.interp(_wf4_x_dst, _wf4_x_src, _wf4_curve).astype(
+                        stretch_factors.dtype, copy=False
+                    )
+                    logger.info(
+                        "SOTA-M12 WF4-Warp-Head aktiv (D-K4-7): Challenger ersetzt "
+                        "heuristische Stretch-Schätzung (%d → %d Stützstellen).",
+                        int(_wf4_curve.size),
+                        int(stretch_factors.size),
+                    )
+        # === ENDE WF-V4-Warp-Head Challenger (SOTA-M12, D-K4-7) ===
+
         # §WF-V3 (Root-Cause §v10.709, Produktionsbefund vinyl/1970):
         # Stufen in den Stretch-Faktoren (F0-Blend 55/45, Konsens-Umschaltung der
         # Spektral-Warp-Versorgung, Melodie-Guard-Grenzen) erzeugen Zeitwarp-

@@ -269,6 +269,19 @@ durchgängig erfüllen.
 
 ## Umsetzungsstand (Live — bei jeder Welle aktualisieren)
 
+### 2026-10-27 (Welle C/E — K4-Challenger + D-K3-54)
+
+- **SOTA-M12 (KP-17 + KP-18):** beide K4-Challenger implementiert, trainierbar
+  und flag-gesperrt integriert (`use_wf4_warp_head` / `use_tp_v2_phase`,
+  Default AUS ⇒ bit-identisch). Register D-K4-7/8 → in-arbeit. Offen:
+  Echt-Training, Never-worsen/A-B-Gates, Hörordnungs-Sign-off (§v10.802).
+- **SOTA-M15 (KP-10):** RT60-Regressor implementiert + flag-gesperrt in
+  phase_20/49 (`use_rt60_regressor`, Default AUS); Register D-K4-10 neu
+  (in-arbeit). Datenlücke: nur 1 lokale RIR-Simulation — Welle D offen.
+- **SOTA-M22 (D-K3-54):** **geschlossen** — Extremwert-korrigierte
+  Peak-Signifikanz (k=1,40, 48 Rausch-Realisierungen kalibriert),
+  24-Seed-Regression ohne AM-FP, IEC-AM-Never-worsen belegt.
+
 ### 2026-10-25
 
 - **Welle A:** drei Hörpakete verifiziert vorhanden (SCNet C4-r2, HR-V1 W-1,

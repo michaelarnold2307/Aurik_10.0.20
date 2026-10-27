@@ -62,6 +62,18 @@ use_tf_gridnet_quality: bool = False  # SOTA-M9 (D-K4-2): nicht-kausaler TF-Grid
 # als optionale Quality-Mode-Stufe. DeepFilterNet bleibt Default (§III.9 copilot-instructions.md:
 # kleine lokale Modelle bevorzugen). Aktivierung erst nach Never-worsen-Gate auf den 3 Referenz-Songs
 # + Hörordnungs-Sign-off (§v10.802 copilot-instructions.md). False ⇒ keine Verhaltensänderung.
+use_wf4_warp_head: bool = False  # SOTA-M12 (D-K4-7): WF-V4-Klassen-Warp-Head auf FCPE/CRePE-F0-Basis
+# für Rest-Wow/Flutter unter der Hörschwelle. Phase 12 (heuristische Warp-Schätzung) bleibt
+# §V6-DSP-Fallback. Aktivierung erst nach Never-worsen gegen den Phase-12-Ist-Zustand
+# + Hörordnungs-Sign-off (§v10.802 copilot-instructions.md). False ⇒ bit-identisches Bestandsverhalten.
+use_tp_v2_phase: bool = False  # SOTA-M12 (D-K4-8): TP-V2-Klassen-Phasenschätzung für
+# Transienten-Phasenkohärenz (kammfilter-frei). Aktivierung erst nach A/B auf transient-reichem
+# Material (Percussion ohne Kammfilter-Artefakte) + Hörordnungs-Sign-off (§v10.802
+# copilot-instructions.md). False ⇒ keine Verhaltensänderung.
+use_rt60_regressor: bool = False  # SOTA-M15 (KP-10): RT60-Regressor auf RIR-Paaren als
+# Ersatz des konservativen T60-Witness-Caps (phase_20/49). Aktivierung erst nach Gate auf
+# RIR-Referenzmaterial + Hörordnungs-Sign-off (§v10.802 copilot-instructions.md).
+# False ⇒ das heuristische T60-Witness-Cap bleibt unverändert.
 
 
 # ── Model Paths (relative to project root) ──────────────────────────────────

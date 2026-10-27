@@ -339,6 +339,44 @@ class AdvancedDereverbPhase(PhaseInterface):
         except Exception as _rt60_exc_49:  # pylint: disable=broad-except
             logger.debug("Verarbeitungsschritt 49 §SOTA-DR-V1 nicht blockierend: %s", _rt60_exc_49)
 
+        # SOTA-M15 (KP-10): RT60-Regressor auf RIR-Paaren — NUR hinter
+        # use_rt60_regressor (backend/core/music_model_flags.py, Default False
+        # ⇒ bit-identisches Bestandsverhalten). Ersetzt hinter True das
+        # konservative T60-Witness-Cap (§SOTA-DR-V1) durch die regressive
+        # RT60-Schätzung. Fallback: bestehendes Cap + §V6 (copilot-instructions.md)
+        # logger.warning (kein stiller Fallback). Kein Flag-Flip (§v10.802
+        # (copilot-instructions.md): erst Gate auf RIR-Referenzmaterial +
+        # Hörordnungs-Sign-off).
+        try:
+            from backend.core.music_model_flags import use_rt60_regressor  # pylint: disable=import-outside-toplevel
+
+            if use_rt60_regressor:
+                from backend.core.dsp.rt60_regressor import (
+                    estimate_rt60_regression,  # pylint: disable=import-outside-toplevel
+                )
+
+                _rt60_reg_p49 = estimate_rt60_regression(audio, sample_rate)
+                if _rt60_reg_p49 is not None and np.isfinite(_rt60_reg_p49):
+                    _rt60_delta_reg_49 = _rt60_delta_fn_49(float(_rt60_reg_p49), 1.0)
+                    if _rt60_delta_reg_49 > 0.0:
+                        effective_strength = float(np.clip(effective_strength + _rt60_delta_reg_49, 0.0, 1.0))
+                        logger.debug(
+                            "Verarbeitungsschritt 49 SOTA-M15 (KP-10): RT60-Regressor %.2f s → delta=%.3f",
+                            float(_rt60_reg_p49),
+                            _rt60_delta_reg_49,
+                        )
+                else:
+                    logger.warning(
+                        "Verarbeitungsschritt 49 SOTA-M15 (KP-10): RT60-Regressor ohne gültigen Wert "
+                        "— bestehendes T60-Witness-Cap bleibt (§V6 (copilot-instructions.md))"
+                    )
+        except Exception as _rt60_reg_exc_49:  # pylint: disable=broad-except
+            logger.warning(
+                "Verarbeitungsschritt 49 SOTA-M15 (KP-10): RT60-Regressor fehlgeschlagen (%s) — "
+                "bestehendes T60-Witness-Cap bleibt (§V6 (copilot-instructions.md))",
+                _rt60_reg_exc_49,
+            )
+
         if effective_strength <= 1e-6:
             dry = np.nan_to_num(audio, nan=0.0, posinf=0.0, neginf=0.0)
             dry = np.clip(dry, -1.0, 1.0)

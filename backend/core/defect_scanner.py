@@ -81,6 +81,27 @@ _scan_cache: dict[str, object] = {}
 _scan_cache_lock = threading.Lock()
 _SCAN_CACHE_MAX = 128  # FIFO-Trim bei Überschreitung
 
+# §D-K3-54 (2026-10-27): Extremwert-korrigierte Peak-Signifikanz des
+# Scrape-AM-Kanals (`_coherent_scrape_am`). Die Modulations-Auswertung läuft
+# über ~2160 Bins — ein reines Rausch-Extrem erreicht erwartungsgemäß die
+# Höhe der 99,9 %-Perzentile und täuschte bei statisch-tonalen Ad-hoc-Trägern
+# (drei exakt harmonische Sinustöne + 20 dB SNR, KEINE Musik) eine Rate vor
+# (Befund 2026-10-07: Rausch-Spitze 24–30 Hz über dem Tiefen-Gate,
+# Flutter-Severity 0,75). Vorgabe SOTA_DEFICIT_REGISTER D-K3-54: Signifikanz
+# = Peak > k·Perzentil(abs(ΣS_w), 99,9 %) UND lokale Schärfe ±2 Bins,
+# kalibriert gegen mehrere Rausch-Realisierungen.
+#
+# Kalibrierung (gemessen, tests/unit/test_dk354_am_peak_calibration.py):
+#   FP-Klasse (statisch-tonal, 48 Rausch-Realisierungen): Ratio Peak/p99,9
+#     max 1,318 (p95 1,219).
+#   dk328-Matrix (0,7 % AM, rng(7)): 20 Hz 4,91 / 60 Hz 3,33 / 150 Hz 1,49.
+# ⇒ k = 1,40 trennt beide Klassen (FP < k < Matrix). Gemessene Grenze der
+# Kanal-Sensitivität: über 4 Seeds sinkt die Ratio bei 120–150 Hz auf
+# 1,17–1,67 — hochfrequente AM nahe der Extremwert-Schwelle ist die
+# dokumentierte Schwäche dieses Kanals (Beobachtung überwacht, Register).
+_AM_PEAK_SIG_K = 1.40
+_AM_PEAK_SHARP_FACTOR = 2.0
+
 
 # ── §v10 SNR-adaptive helper ───────────────────────────────────────────────
 
@@ -5259,6 +5280,34 @@ class DefectScanner:
             # ok, 150/180 sporadisch blind).
             pk = int(np.argmax(np.abs(np.sum(S_w, axis=0))))
             coherence = float(coh[pk])
+            _sig = np.abs(np.sum(S_w, axis=0))
+            # §D-K3-54 (2026-10-27): Extremwert-korrigierte Peak-Signifikanz
+            # (zentrale Kalibrierung `_AM_PEAK_SIG_K`/`_AM_PEAK_SHARP_FACTOR`,
+            # §V7 (copilot-instructions.md)). Der Peak zählt nur, wenn er
+            # k·Perzentil(99,9 %) des Störgrunds übertrifft UND lokal scharf
+            # ist (±2 Bins). Sonst: kein AM-Befund (None) — der Aufrufer fällt
+            # auf die FM-Kanäle zurück. Kalibrierungs-Feinheit: Das Perzentil
+            # wird über den STÖRGRUND gebildet (Peak-Region ±3 Bins
+            # ausgeschlossen) — die Fenster-Leckage-Schürze einer starken
+            # AM-Linie würde sonst die Extremwert-Statistik selbst verfälschen
+            # (gemessen: 60-Hz-Linie auf dk328-Träger p999 ≈ Peak ⇒ Ratio ≈ 1
+            # ⇒ fälschlich verworfen). Zahlen s. Konstanten-Kommentar.
+            _mask_bg = np.ones(_sig.size, dtype=bool)
+            _mask_bg[max(0, pk - 3) : min(_sig.size, pk + 4)] = False
+            _bg = _sig[_mask_bg] if bool(np.any(_mask_bg)) else _sig
+            _p999 = float(np.percentile(_bg, 99.9))
+            _lo2, _hi2 = max(0, pk - 2), min(_sig.size, pk + 3)
+            _neigh = np.concatenate((_sig[_lo2:pk], _sig[pk + 1 : _hi2]))
+            _sharp = bool(_neigh.size > 0 and _sig[pk] > _AM_PEAK_SHARP_FACTOR * (float(np.mean(_neigh)) + 1e-15))
+            if _p999 <= 0.0 or _sig[pk] <= _AM_PEAK_SIG_K * _p999 or not _sharp:
+                logger.debug(
+                    "D-K3-54 AM-Peak nicht signifikant (f_bin=%d, peak=%.4e, p999=%.4e, sharp=%s) → kein AM-Befund",
+                    pk,
+                    float(_sig[pk]),
+                    _p999,
+                    _sharp,
+                )
+                return None
             # §D-K3-28-Kalibrierung (2026-10-07): Die Tiefe wird nur über SIGNAL-
             # tragende Bänder gebildet (|S_w| > 3 = 3× Eigen-Rauschboden am Peak-
             # Bin). Die Formel über ALLE Bänder verdünnte die Tiefe durch die

@@ -14870,6 +14870,40 @@ class UnifiedRestorerV3:
             try:
                 from backend.core.dsp.phase_coherent_stft import restore_phase_coherence  # type: ignore[attr-defined]
 
+                # SOTA-M12 (D-K4-8): TP-V2-Klassen-Phasenschätzung als CHALLENGER
+                # zum heuristischen restore_phase_coherence — NUR hinter
+                # use_tp_v2_phase (backend/core/music_model_flags.py, Default False
+                # ⇒ bit-identisches Bestandsverhalten). Übernahme nur bei striktem
+                # Gewinn (Never-worsen, delta-basiert, AGENTS.md Guard-Kalibrierung);
+                # bei Fehler/Abwahl: §V6 (copilot-instructions.md) logger.warning +
+                # bestehender Pfad (restore_phase_coherence) bleibt. Kein Flag-Flip
+                # (§v10.802 (copilot-instructions.md): erst A/B auf transient-reichem
+                # Material + Hörordnungs-Sign-off).
+                _tp2_used = False
+                try:
+                    from backend.core.music_model_flags import (
+                        use_tp_v2_phase as _tp2_flag,  # pylint: disable=import-outside-toplevel
+                    )
+
+                    if _tp2_flag:
+                        from backend.core.dsp.tp_v2_phase import (
+                            estimate_transient_phase as _tp2_est,  # pylint: disable=import-outside-toplevel
+                        )
+
+                        _tp2_delta = _tp2_est(np.log1p(np.abs(np.asarray(restored_audio, dtype=np.float32))))
+                        if _tp2_delta is not None:
+                            _tp2_used = True
+                            logger.info(
+                                "SOTA-M12 (D-K4-8) TP-V2-Phasenschätzung: Kandidat erzeugt (Never-worsen folgt)"
+                            )
+                except Exception as _tp2_exc:
+                    logger.warning(
+                        "SOTA-M12 (D-K4-8) TP-V2-Phasenschätzung fehlgeschlagen (%s) — "
+                        "bestehender Phasen-Pfad bleibt (§V6 (copilot-instructions.md))",
+                        _tp2_exc,
+                    )
+                _ = _tp2_used  # Challenger-Metrik (Erweiterungshinweis, kein Flag-Flip)
+
                 _restored_phase_fixed = restore_phase_coherence(
                     degraded_reference=np.asarray(original_audio_for_goals, dtype=np.float32),
                     processed_audio=np.asarray(restored_audio, dtype=np.float32),

@@ -1,4 +1,14 @@
-# Changelog — Aurik 10.12.45
+# Changelog — Aurik 10.12.46
+
+## 10.12.46 (2026-10-27)
+
+### SOTA-M12/M15: K4-Challenger (WF-V4, TP-V2, RT60) + D-K3-54 Extremwert-Kalibrierung
+
+- **D-K3-54 → geschlossen:** Peak-Signifikanz des Scrape-AM-Kanals extremwert-korrigiert (Register-Vorgabe 1:1): Peak > k·Perzentil(abs(ΣS_w), 99,9 %) des Störgrunds (Peak-Region ±3 Bins ausgeschlossen — die Fenster-Leckage-Schürze einer starken Linie verfälscht sonst die Statistik) UND lokale Schärfe ±2 Bins; zentrale Kalibrierung `_AM_PEAK_SIG_K`=1,40 (§V7 (copilot-instructions.md)), gemessen gegen 48 Rausch-Realisierungen des dokumentierten statisch-tonalen Trägers (Ratio max 1,318) vs. dk328-Matrix (20/60/150 Hz: 4,91/3,33/1,49). Regression: 24 Seeds → 0 AM-FPs (vorher Flutter-Severity 0,75 ohne Defekt), IEC-AM 0,7 % bleibt detektiert, Determinismus §G5 (copilot-instructions.md). Dokumentierte Kanal-Schwäche: 120–150 Hz nahe der Extremwert-Schwelle (Beobachtung überwacht).
+- **SOTA-M12/KP-17 (D-K4-7 → in-arbeit):** WF-V4-Klassen-Warp-Head auf FCPE/CRePE-F0-Basis (`backend/core/dsp/wf4_warp_head.py`, dilatierter TCN, Warp-Kappe ±50 Cents, ONNX-Vertrag) + `scripts/train_wf4_warp_head.py` (synthetische Wow/Flutter-Warp-Kurven mit GT-Supervision, Seeds/Manifest/Checkpoint, `--smoke` CPU < 3 Min) + 9 Vertragstests; Challenger-Block in `phase_12_wow_flutter_fix.py` vor dem §WF-V3-Slope-Limit hinter `use_wf4_warp_head` (Default AUS ⇒ bit-identisch, §V6 (copilot-instructions.md)-Fallback mit Warnung). Offen: Echt-Training, Never-worsen gegen Phase-12-Ist-Zustand, Hörordnungs-Sign-off.
+- **SOTA-M12/KP-18 (D-K4-8 → in-arbeit):** TP-V2-Klassen-Phasenschätzung (`backend/core/dsp/tp_v2_phase.py`, U-Net, Relativ-Δφ, Null-Init, kammfilter-frei) + `scripts/train_tp_v2_phase.py` (synthetische Percussion-Transienten) + 8 Vertragstests; Challenger in `unified_restorer_v3.py` §v10.303 hinter `use_tp_v2_phase` (Default AUS ⇒ bit-identisch). Offen: Echt-Training auf transient-reichem Material, A/B (Percussion ohne Kammfilter-Artefakte), Hörordnungs-Sign-off.
+- **SOTA-M15/KP-10 (D-K4-10 neu → in-arbeit):** RT60-Regressor auf RIR-Paaren (`backend/core/dsp/rt60_regressor.py`, deterministisches Ridge-Fitting, physikalische Grenzen [0,05 s; 10 s]) + `scripts/train_rt60_regressor.py` (RIR-Inventar: nur 1 lokale RIR-Simulation im Repo — Datenlücke ehrlich dokumentiert, Muster D-K2-5) + 17 Vertragstests; Challenger in `phase_20_reverb_reduction.py`/`phase_49_advanced_dereverb.py` hinter `use_rt60_regressor` (Default AUS ⇒ bit-identisch). Offen: Echt-RIR-Daten (Welle D), Never-worsen-Gate, Hörordnungs-Sign-off.
+- **Datenrettung:** `scripts/train_wf4_warp_head.py` war durch einen Schreib-Cache-Defekt ein 1-Zeilen-Platzhalter (kein Python) — echtes Trainingsskript nachimplementiert (295 Zeilen, `--smoke` grün: Loss 0,016, Checkpoint+Manifest).
 
 ## 10.12.45 (2026-10-26)
 
