@@ -641,7 +641,7 @@ repos:
       # einen zum Vertrag passenden Code-Schalter (§v10.802/§G9 — verhindert den
       # Drift „Aktenlage OFF, Code AN", Produktionsbefund 2026-10-06).
       - id: aurik-wohlklang-gate
-        name: "Wohlklang-Vertrag (5 Belege + Schalter-Abgleich, fail-closed)"
+        name: "Wohlklang-Vertrag (6 Belege + Gate-Zahlen + Schalter-Abgleich, fail-closed)"
         entry: .venv_aurik/bin/python scripts/wohlklang_gate.py
         language: system
         pass_filenames: false

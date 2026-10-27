@@ -10,7 +10,7 @@ Qualitätsstufe (BigVGAN HR-V1) wurde **produktiv aktiviert**, obwohl
   * die Aktenlage weiter „Flag OFF" sagte.
 
 Der Fehler war nicht das Modell, sondern die **Beweislage**. Dieses Gate
-bindet jede klangverändernde Stufe an fünf Belege **und** an den tatsächlichen
+bindet jede klangverändernde Stufe an sechs Belege **und** an den tatsächlichen
 Code-Zustand — damit „produktiv aktiv" nie wieder ohne Nachweis und nie wieder
 im Widerspruch zur Akte entsteht.
 
@@ -30,6 +30,12 @@ Regeln (ERROR ⇒ Exit 1):
       den Drift vom 2026-09-27 verhindert.
   E6  Status ``gesperrt`` ⇒ Soll muss ``AUS`` sein (eine gesperrte Stufe darf
       nicht eingeschaltet sein).
+  E7  **Gate-Zahlen & Metrik-Identität (Beleg 6):** Jede Zahl, die ein Tor
+      öffnet oder schließt, wird in der Tabelle ``Gate-Zahlen`` geführt als
+      Paar (Wert, Formel, Referenz-Set + Seed, Artefakt). Unvollständige
+      Identität ⇒ Status ``offen`` — eine solche Zahl darf keinen
+      Statuswechsel begründen (Pfeiler 2 der SOTA-Roadmap,
+      ``docs/TODOS_SOTA_ROADMAP.md``).
   P1  In den Evidenz-Harnessen muss jedes ``models/…``-Literal existieren — ein
       defekter Harness produziert keine gültigen Belege (Phantomziel D-K3-1).
   P2  Bericht (kein Fail): Anzahl nicht existenter ``models/…``-Literale im
@@ -63,6 +69,14 @@ STATUS_ENUM: tuple[str, ...] = ("aktiviert", "ausnahme", "gesperrt")
 SOLL_ENUM: tuple[str, ...] = ("AN", "AUS")
 N_COLUMNS = 10
 OPEN_MARKERS: tuple[str, ...] = ("OFFEN", "—")
+
+# E7 — Gate-Zahlen & Metrik-Identität (Beleg 6 des Vertrags):
+# Zeilen der Tabelle ``Gate-Zahlen`` mit ID ``G-<n>`` und 7 Zellen
+# (ID | Gate-Zahl | Wert | Formel | Referenz-Set + Seed | Artefakt | Status).
+GATE_ROW_RE = re.compile(r"^G-\d+$")
+GATE_N_COLUMNS = 7
+GATE_SECTION_RE = re.compile(r"^##\s+Gate-Zahlen", re.MULTILINE)
+GATE_STATUS_ENUM: tuple[str, ...] = ("aktiv", "offen")
 
 # Evidenz-Harneske: erzeugen die Belege, gelten daher selbst als beweispflichtig.
 EVIDENCE_HARNESSES: tuple[str, ...] = (
@@ -164,6 +178,87 @@ def parse_claims(text: str) -> list[Claim]:
             )
         )
     return claims
+
+
+def parse_gate_numbers(text: str) -> list[tuple[int, list[str]]]:
+    """Zeilen der Gate-Zahlen-Tabelle (Beleg 6) mit Zeilennummern."""
+    rows: list[tuple[int, list[str]]] = []
+    for line_no, line in enumerate(text.splitlines(), start=1):
+        if line.startswith("| G-"):
+            rows.append((line_no, _cells(line)))
+    return rows
+
+
+def check_gate_numbers(text: str) -> list[Finding]:
+    """E7: Jede Gate-Zahl trägt ihre Metrik-Identität (Paar-Pflicht).
+
+    Eine Zahl, die ein Tor öffnet oder schließt, wird geführt als
+    (Wert, Formel, Referenz-Set + Seed, Artefakt). Fehlt ein Teil, muss
+    die Zeile Status ``offen`` tragen — eine unvollständige Metrik-Identität
+    darf keinen Statuswechsel begründen.
+    """
+    findings: list[Finding] = []
+    if not GATE_SECTION_RE.search(text):
+        findings.append(Finding("ERROR", "E7", "Sektion '## Gate-Zahlen …' fehlt", 1))
+        return findings
+    rows = parse_gate_numbers(text)
+    if not rows:
+        findings.append(Finding("ERROR", "E7", "Gate-Zahlen-Tabelle ohne Datenzeilen", 1))
+    seen: set[str] = set()
+    for line_no, cells in rows:
+        gid = cells[0].strip() if cells else ""
+        if not GATE_ROW_RE.match(gid):
+            findings.append(Finding("ERROR", "E7", f"Gate-Zeile ohne ID G-<n>: {gid!r}", line_no))
+            continue
+        if gid in seen:
+            findings.append(Finding("ERROR", "E7", f"Doppelte Gate-Zahl-ID {gid}", line_no))
+        seen.add(gid)
+        if len(cells) != GATE_N_COLUMNS:
+            findings.append(Finding("ERROR", "E7", f"{gid}: {len(cells)} Zellen statt {GATE_N_COLUMNS}", line_no))
+            continue
+        wert, formel, referenz, artefakt, status = (c.strip() for c in cells[2:7])
+        status_word = status.split(" ")[0]
+        if status_word not in GATE_STATUS_ENUM:
+            findings.append(Finding("ERROR", "E7", f"{gid}: Status '{status_word}' ∉ {GATE_STATUS_ENUM}", line_no))
+        luecken = [
+            name
+            for name, cell in (
+                ("Wert", wert),
+                ("Formel", formel),
+                ("Referenz", referenz),
+                ("Artefakt", artefakt),
+            )
+            if "OFFEN" in cell
+        ]
+        if luecken and status_word == "aktiv":
+            findings.append(
+                Finding(
+                    "ERROR",
+                    "E7",
+                    f"{gid}: aktiv, aber Metrik-Identität unvollständig ({', '.join(luecken)} = OFFEN)",
+                    line_no,
+                )
+            )
+        if not luecken and status_word == "offen":
+            findings.append(
+                Finding(
+                    "ERROR",
+                    "E7",
+                    f"{gid}: Metrik-Identität vollständig, Status aber 'offen' — belegen oder Lücke setzen",
+                    line_no,
+                )
+            )
+        missing = _missing_paths(backticked_paths(" ".join(cells[1:6])))
+        if missing:
+            findings.append(
+                Finding(
+                    "ERROR",
+                    "E7",
+                    f"{gid}: zitierte Pfade fehlen: {', '.join(sorted(set(missing)))}",
+                    line_no,
+                )
+            )
+    return findings
 
 
 def backticked_paths(cell: str, *, skip_switch: bool = False) -> list[str]:
@@ -464,6 +559,7 @@ def main(argv: list[str] | None = None) -> int:
         return 1
 
     findings = check_contract(claims, version)
+    findings += check_gate_numbers(text)
     harness_findings, phantom_count = check_harnesses()
     findings += harness_findings
 

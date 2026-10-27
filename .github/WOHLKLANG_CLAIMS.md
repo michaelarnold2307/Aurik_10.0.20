@@ -1,4 +1,4 @@
-# Wohlklang-Vertrag — jede klangverändernde Stufe braucht fünf Belege
+# Wohlklang-Vertrag — jede klangverändernde Stufe braucht sechs Belege
 
 > **Normative Grundlage:** §v10.802/§G8/§G9 (copilot-instructions.md) ·
 > **Enforced durch:** `scripts/wohlklang_gate.py` (Pre-Commit-Hook
@@ -15,10 +15,10 @@ Aktenlage weiterhin „Flag OFF".
 
 Der Fehler war **nicht** das Modell, sondern die **Beweislage**. Dieser Vertrag
 macht daraus eine prüfbare Bedingung: Eine Stufe darf nur dann als _aktiviert_
-gelten, wenn alle fünf Belege vorliegen — und der Gate-Abgleich E5 verhindert,
+gelten, wenn alle sechs Belege vorliegen — und der Gate-Abgleich E5 verhindert,
 dass Vertrag und Code auseinanderlaufen.
 
-## Die fünf Belege
+## Die sechs Belege
 
 | # | Beleg | Anforderung |
 | --- | --- | --- |
@@ -27,15 +27,35 @@ dass Vertrag und Code auseinanderlaufen.
 | 3 | **Eingefrorene Baseline** | versionsgetaggter Vorher-Stand (§G5 copilot-instructions.md: gleiche Version ⇒ gleicher Output) |
 | 4 | **Blindes A/B für einen Menschen** | die Hör-Entscheidung — nicht der Proxy, nicht das Modell |
 | 5 | **Budget-Zahl** | RT-Beitrag gegen die Budget-Tabelle (copilot-instructions.md) |
+| 6 | **Metrik-Identität** | jede Gate-Zahl als Paar (Wert, Formel, Referenz-Set + Seed, Artefakt) — Tabelle „Gate-Zahlen“ unten |
 
-**Status-Enum:** `aktiviert` (alle fünf erfüllt) · `ausnahme` (befristete,
+**Status-Enum:** `aktiviert` (alle sechs erfüllt) · `ausnahme` (befristete,
 begründete Ausnahme — erscheint als Warnung) · `gesperrt` (Soll = AUS).
 
 **Regeln:** E1 Struktur/IDs · E2 zitierte Pfade müssen existieren ·
 E3 `aktiviert` ohne `OFFEN` · E4 `ausnahme` braucht `Grund:` (≥ 20 Zeichen) und
 `Review:` · E5 **Schalter-Abgleich Code ↔ Vertrag** · E6 `gesperrt` ⇒ Soll AUS ·
+E7 **Gate-Zahlen & Metrik-Identität (Paar-Pflicht)** ·
 P1 Evidenz-Harneske dürfen keine Phantom-Pfade referenzieren ·
 P2 Bericht über Phantom-Referenzen im Produktionscode.
+
+## Gate-Zahlen & Metrik-Identität (Beleg 6)
+
+Jede Zahl, die ein Tor öffnet oder schließt, wird hier geführt als Paar
+(**Wert, Formel, Referenz-Set + Seed, Artefakt**). Eine Zeile ohne
+vollständige Metrik-Identität trägt Status `offen` und darf keinen
+Statuswechsel begründen (E7). Genau dieses Muster ließ die ungeklärte
+„0,73"-Zahl (KP-7) jahrelang weiterleben — bis die Kalibrierung gegen das
+eingefrorene Alt-Artefakt die Metrik identifizierte
+(`docs/reports/current/2026-10-27_kp7_hf_gate_v2.json`).
+
+| ID | Gate-Zahl | Wert | Formel | Referenz-Set + Seed | Artefakt | Status |
+| --- | --- | --- | --- | --- | --- | --- |
+| G-1 | HF-Gain-Gate (D-K1-5) | ≥ 1,02 | HF-Energie(out)/HF-Energie(in) > 3 kHz | milde HF-Dämpfung 6 dB/oct ab 2 kHz, Seed 42 (`scripts/validate_bw_v5_hf_gate.py`) | `models/bw_reconstructor/retrain_a1_20261025/bw_reconstructor_v5.onnx` (Report `docs/reports/current/2026-10-27_kp7_hf_gate_v2.json`) | aktiv |
+| G-2 | AM-Peak-Signifikanz (D-K3-54) | k = 1,40 ∧ Schärfe ±2 Bins | Peak > k·Perzentil(abs(ΣS_w), 99,9 %) des Störgrunds | 48 Rausch-Realisierungen + dk328-Matrix, Seed 42 (`tests/unit/test_dk354_am_peak_calibration.py`) | `backend/core/defect_scanner.py` (`_AM_PEAK_SIG_K`) | aktiv |
+| G-3 | ΔSDR-Gate (D-K4-1, A-SPADE) | OFFEN | OFFEN | OFFEN | OFFEN | offen |
+| G-4 | Never-worsen-Grenzen (D-K4-2, TF-GridNet) | OFFEN | OFFEN | OFFEN | OFFEN | offen |
+| G-5 | SI-SDR-Vergleich SGMSE-Kerne (D-K0-3) | OFFEN | OFFEN | OFFEN | OFFEN | offen |
 
 ## Vertrag
 
@@ -58,7 +78,7 @@ P2 Bericht über Phantom-Referenzen im Produktionscode.
 ## Was dieses Gate nicht behauptet
 
 - **Keine Stufe steht auf `aktiviert`.** Genau das ist der Befund: Für **keine**
-  eingeschaltete Qualitätsstufe liegen derzeit alle fünf Belege vor.
+  eingeschaltete Qualitätsstufe liegen derzeit alle sechs Belege vor.
   Fünf Ausnahmen sind sichtbar und befristet, sieben Stufen sind gesperrt.
 - Der Vertrag ersetzt **keine** Hör-Entscheidung. Er erzwingt nur, dass eine
   Aktivierung ohne Beleg **auffällt** statt still zu geschehen.

@@ -56,15 +56,17 @@ Katalog A1). Jede Wartezeit ist vertanes stillgelegtes Kapital.
 Statistik" nur als Formel-Beispiel). Das ist der wirksamste einzelne
 Spec-Eingriff — es schließt zwei Muster strukturell aus.
 
-- [ ] **Spec-Regel:** Jede Gate-Zahl wird geführt als Paar
+- [x] **Spec-Regel:** Jede Gate-Zahl wird geführt als Paar
   **(Wert, Formel, Referenz-Set + Seed, Artefakt-Hash)**. Aufnahme in
   `.github/WOHLKLANG_CLAIMS.md` als Beleg + Prüfung im
   `aurik-spec-integration`-Gate.
-- [ ] **Audit der offenen Gate-Zahlen** (1 Tag): D-K1-5 (erfüllt —
+- [x] **Audit der offenen Gate-Zahlen** (durchgeführt 2026-10-27,
+  Ergebnis in der Vertragstabelle `G-1`…`G-5`: `G-1`/`G-2` aktiv mit voller
+  Identität, `G-3`/`G-4`/`G-5` als Lücken markiert): D-K1-5 (erfüllt —
   `scripts/validate_bw_v5_hf_gate.py` als Referenz-Implementierung),
   D-K3-28/54 (AM-Kalibrierung), SGMSE-SI-SDR (D-K0-3), ΔSDR-Gate (D-K4-1),
   Never-worsen-Grenzen (D-K4-2).
-- [ ] **Vorbild-Beleg:** `docs/reports/current/2026-10-27_kp7_hf_gate_v2.json`
+- [x] **Vorbild-Beleg:** `docs/reports/current/2026-10-27_kp7_hf_gate_v2.json`
   (Metrik identifiziert, kalibriert, Seed-Varianz dokumentiert).
 
 ## Pfeiler 3 — Flag-Queue entlasten (System statt Einzelstück)

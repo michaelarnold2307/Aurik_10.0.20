@@ -296,3 +296,55 @@ class TestRealContract:
         """Die Version wird statisch gelesen (kein Import im Pre-Commit-Pfad)."""
         version = gate.current_version()
         assert re.fullmatch(r"\d+\.\d+\.\d+", version), version
+
+
+# ── E7 — Gate-Zahlen & Metrik-Identität (Beleg 6) ──────────────────────────
+
+_GATE_HEADER = (
+    "## Gate-Zahlen & Metrik-Identität (Beleg 6)\n\n"
+    "| ID | Gate-Zahl | Wert | Formel | Referenz-Set + Seed | Artefakt | Status |\n"
+    "| --- | --- | --- | --- | --- | --- | --- |\n"
+)
+_GATE_ROW_OK = (
+    "| G-1 | HF-Gain-Gate | ≥ 1,02 | HF(out)/HF(in) > 3 kHz | Seed 42 "
+    "(`tests/unit/test_wohlklang_gate.py`) | `scripts/wohlklang_gate.py` | aktiv |"
+)
+
+
+def _gate_contract(*rows: str) -> str:
+    return _GATE_HEADER + "\n".join(rows) + "\n"
+
+
+def test_e7_vollstaendige_identitaet_aktiv() -> None:
+    assert gate.check_gate_numbers(_gate_contract(_GATE_ROW_OK)) == []
+
+
+def test_e7_sektion_fehlt() -> None:
+    findings = gate.check_gate_numbers("nur Prosa, keine Sektion")
+    assert {f.rule for f in findings} == {"E7"}
+
+
+def test_e7_aktiv_mit_offen_ist_fehler() -> None:
+    row = "| G-2 | X | OFFEN | Formel | Referenz | `scripts/wohlklang_gate.py` | aktiv |"
+    findings = gate.check_gate_numbers(_gate_contract(row))
+    assert any(f.rule == "E7" and "unvollständig" in f.message for f in findings)
+
+
+def test_e7_offen_mit_vollstaendiger_identitaet_ist_fehler() -> None:
+    row = "| G-2 | X | 1,0 | Formel | Seed 1 | `scripts/wohlklang_gate.py` | offen |"
+    findings = gate.check_gate_numbers(_gate_contract(row))
+    assert any(f.rule == "E7" and "vollständig" in f.message for f in findings)
+
+
+def test_e7_doppelte_id_und_falsche_zellzahl() -> None:
+    bad_cells = "| G-3 | nur drei | Zellen | offen |"
+    findings = gate.check_gate_numbers(_gate_contract(_GATE_ROW_OK, _GATE_ROW_OK, bad_cells))
+    msgs = " ".join(f.message for f in findings)
+    assert "Doppelte Gate-Zahl-ID" in msgs
+    assert "Zellen statt 7" in msgs
+
+
+def test_e7_fehlender_pfad_ist_fehler() -> None:
+    row = "| G-4 | X | 1,0 | Formel | Seed 1 | `models/gibt_es_nicht/x.onnx` | aktiv |"
+    findings = gate.check_gate_numbers(_gate_contract(row))
+    assert any(f.rule == "E7" and "fehlen" in f.message for f in findings)

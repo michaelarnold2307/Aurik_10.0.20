@@ -270,6 +270,14 @@ durchgängig erfüllen.
 ## Umsetzungsstand (Live — bei jeder Welle aktualisieren)
 
 ### 2026-10-27 (Welle C/E — K4-Challenger + D-K3-54)
+- **Pfeiler 2 umgesetzt (Metrik-Identität, 2026-10-27):** Wohlklang-Vertrag
+  erweitert auf **sechs Belege** (neu: Beleg 6 Metrik-Identität) + neue
+  Gate-Zahlen-Tabelle `G-1`…`G-5` (Wert, Formel, Referenz-Set + Seed,
+  Artefakt); `G-1` HF-Gain und `G-2` AM-Peak tragen ihre volle Identität,
+  `G-3`/`G-4`/`G-5` (ΔSDR, Never-worsen, SGMSE-SI-SDR) sind als Lücken
+  markiert und dürfen keinen Statuswechsel begründen. Prüfung fail-closed
+  als **E7** in `scripts/wohlklang_gate.py` (6 neue Tests, 39 grün);
+  Hook-Name aktualisiert (6 Belege + Gate-Zahlen).
 - **Roadmap neu gefasst (2026-10-27):** `docs/TODOS_SOTA_ROADMAP.md` ist jetzt
   um acht Pfeiler organisiert (Hör-Kapazität, Metrik-Identität, Flag-Queue,
   Provenienz, Fallback-KPI, Training, Daten, SOTA-Definition) — Anhang A
