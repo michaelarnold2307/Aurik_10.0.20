@@ -124,9 +124,15 @@ Umgebung (CUDA seit den Runtime-Restarts nicht verfügbar, CPU-Epoche
 204-M-Netz > 60 min).
 
 - [ ] **Dedizierte Trainings-Umgebung** (GPU-Zugang wiederherstellen).
-- [ ] **Bis dahin:** Auto-Resume (Pfeiler 4) + Epoch-Checkpointing nutzen
-  (Mechanik existiert in `scripts/train_cantus.py`); kein manueller
-  Relaunch-Zyklus.
+- [x] **Host-Schutz im Trainingscode** (2026-10-27): Thread-Cap vor
+  torch-Initialisierung, nice +10, RAM-Guard fail-closed (Start < 8 GB ⇒
+  Exit 2; Epoch-Wächter < 2 GB ⇒ Notablage statt OOM), `torch.load(mmap=True)`,
+  phasenbewusster Optimizer-Load. Das CPU-Training kann die Kun-Umgebung
+  nicht mehr abwürgen — schweres CPU-Training bleibt trotzdem ungestartet
+  (Betriebspolitik: nur in der GPU-Umgebung).
+- [x] **Auto-Resume + Epoch-Checkpointing** nutzen (Mechanik existiert in
+  `scripts/train_cantus.py`, Pfeiler 4: Run-Lock + Provenienz); kein
+  manueller Relaunch-Zyklus.
 - [ ] **Trainingsreihenfolge:** Cantus fine_tune (läuft) → domain_adapt →
   Symphonia-Full (KP-11) → M8 A-SPADE → M9 TF-GridNet → KP-12.
 

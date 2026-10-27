@@ -121,3 +121,17 @@ def test_sha256_file_ist_stabil(tmp_path) -> None:
     f.write_bytes(b"aurik")
     assert mod._sha256_file(f) == mod._sha256_file(f)
     assert len(mod._sha256_file(f)) == 64
+
+
+def test_system_mem_available_gb_plausibel() -> None:
+    mod = _load_train_cantus()
+    v = mod._system_mem_available_gb()
+    assert 0.0 <= v < 1024.0
+
+
+def test_apply_resource_ceiling_setzt_thread_cap() -> None:
+    mod = _load_train_cantus()
+    mod._apply_resource_ceiling(nice_delta=0)  # keine Prioritätsänderung im Test
+    import torch
+
+    assert torch.get_num_threads() <= 4

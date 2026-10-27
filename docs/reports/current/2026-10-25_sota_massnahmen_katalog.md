@@ -270,6 +270,22 @@ durchgängig erfüllen.
 ## Umsetzungsstand (Live — bei jeder Welle aktualisieren)
 
 ### 2026-10-27 (Welle C/E — K4-Challenger + D-K3-54)
+- **Pfeiler 6 · Host-Schutz implementiert (2026-10-27) — „Training reißt Kun
+  in den Tod" beseitigt:** Jeder CPU-fine_tune-Lauf (204-M-Netz, ~15–20 GB
+  RAM, alle 16 Kerne) zog Runtime-Restarts der Kun-Umgebung nach sich
+  (Korrelation: 5 Starts → 5 Restarts; das GPU-Pretrain lief davor Stunden
+  problemlos). Gegenmaßnahmen in `scripts/train_cantus.py`:
+  Thread-Cap `min(4, cpu//4)` (VOR torch-Initialisierung, überschreibbar via
+  `AURIK_TRAIN_THREADS`), Prozess-Priorität nice +10, RAM-Guard fail-closed
+  (Start abbruch unter 8 GB frei, epoch-weise Notablage unter 2 GB statt
+  OOM, Exit 3), `torch.load(..., mmap=True)` (2,45-GB-Checkpoint nicht mehr
+  voll im RAM) und phasenbewusster Optimizer-Load (Phasenwechsel ⇒ kein
+  ~1,6-GB-Optimizer-State). Verifiziert: 5 neue Tests (12 grün) +
+  fine_tune-Smoke EXIT=0 („Ressourcen-Deckel: 4 Threads von 16 Kernen").
+  **Betriebspolitik:** schweres CPU-Training bleibt in dieser Umgebung
+  bewusst ungestartet (sonst stirbt die Runtime) — die Läufe gehören in die
+  dedizierte GPU-Umgebung (Roadmap Pfeiler 6); alle Flags bleiben AUS,
+  Aurik bleibt bit-identisch SOTA.
 - **Pfeiler 4 begonnen (Provenienz & Single-Writer, 2026-10-27):**
   `scripts/train_cantus.py` führt jetzt **Run-ID + Single-Writer-Lock**
   (`<ckpt_dir>/.train.lock`, flock fail-closed; Doppel-Läufe wie am

@@ -41,6 +41,7 @@ import argparse
 import hashlib
 import json
 import logging
+import os
 import random
 import sys
 import tempfile
@@ -49,6 +50,12 @@ from pathlib import Path
 from typing import Any, cast
 
 import numpy as np
+
+# Host-Schutz (Pfeiler 6): Thread-Umgebung setzen, BEVOR torch die BLAS-Threads
+# initialisiert — siehe _apply_resource_ceiling.
+os.environ.setdefault("OMP_NUM_THREADS", str(max(1, min(4, (os.cpu_count() or 4) // 4))))
+os.environ.setdefault("MKL_NUM_THREADS", str(max(1, min(4, (os.cpu_count() or 4) // 4))))
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -845,6 +852,48 @@ def _acquire_run_lock(ckpt_dir: Path, run_id: str):
     return fh
 
 
+def _system_mem_available_gb() -> float:
+    """Verfügbarer Systemspeicher in GB (Linux ``/proc/meminfo``; 0.0 = unbekannt)."""
+    try:
+        with open("/proc/meminfo", encoding="utf-8") as fh:
+            for line in fh:
+                if line.startswith("MemAvailable:"):
+                    return float(line.split()[1]) / (1024.0 * 1024.0)
+    except OSError:
+        return 0.0
+    return 0.0
+
+
+def _apply_resource_ceiling(nice_delta: int = 10) -> None:
+    """Host-Schutz (Pfeiler 6): CPU-Training darf die Umgebung nicht abwürgen.
+
+    Befund 2026-10-27: Jeder CPU-fine_tune-Lauf (204-M-Netz, ~15–20 GB RAM,
+    volle Kernzahl) zog Kun-Runtime-Restarts nach sich (OOM/Starvation).
+    Gegenmaßnahmen: Thread-Cap (Standard min(4, cpu//4), überschreibbar über
+    AURIK_TRAIN_THREADS), niedrigere Prozess-Priorität und ein RAM-Wächter
+    für fail-closed-Start (train()) sowie epoch-weise Notablage.
+    """
+    cpu = os.cpu_count() or 4
+    threads = int(os.environ.get("AURIK_TRAIN_THREADS", max(1, min(4, cpu // 4))))
+    os.environ.setdefault("OMP_NUM_THREADS", str(threads))
+    os.environ.setdefault("MKL_NUM_THREADS", str(threads))
+    try:
+        torch.set_num_threads(threads)
+    except Exception:  # pragma: no cover - torch-Abweichung
+        logger.debug("torch.set_num_threads nicht verfügbar", exc_info=True)
+    if nice_delta:
+        try:
+            os.nice(nice_delta)
+        except OSError:  # pragma: no cover - Plattform ohne nice
+            logger.debug("os.nice nicht verfügbar", exc_info=True)
+    logger.info(
+        "Ressourcen-Deckel: %d Trainings-Threads von %d Kernen, nice +%d (Host-Schutz, Pfeiler 6)",
+        threads,
+        cpu,
+        nice_delta,
+    )
+
+
 def train(args: argparse.Namespace) -> int:
     # §G9 (copilot-instructions.md): genau EIN Config-Ladepfad (_load_config).
     cfg = _load_config()
@@ -852,6 +901,15 @@ def train(args: argparse.Namespace) -> int:
     model_cfg = cfg["model"][args.preset]
     seed = int(args.seed) if args.seed is not None else int(tcfg["seed"])
     _set_seeds(seed)
+    _apply_resource_ceiling()
+    avail_gb = _system_mem_available_gb()
+    if 0.0 < avail_gb < 8.0:
+        logger.error(
+            "System-Speicher %.1f GB < 8 GB — Training startet nicht (Host-Schutz, "
+            "Pfeiler 6). Andere Prozesse freigeben oder in der Trainingsumgebung starten.",
+            avail_gb,
+        )
+        return 2
     device = torch.device("cuda" if torch.cuda.is_available() and not args.cpu else "cpu")
     chunk_samples = int(float(tcfg["chunk_sec"]) * SR)
     cond_dropout = float(model_cfg.get("cond_dropout", 0.0))
@@ -911,14 +969,27 @@ def train(args: argparse.Namespace) -> int:
 
     start_epoch, global_step, best_val = 0, 0, float("inf")
     if args.resume:
-        ckpt = torch.load(args.resume, map_location=device, weights_only=True)
+        try:
+            # mmap: der 2,45-GB-Checkpoint wird nicht mehr voll in den RAM
+            # geholt (Host-Schutz, Pfeiler 6).
+            ckpt = torch.load(args.resume, map_location=device, weights_only=True, mmap=True)
+        except TypeError:  # pragma: no cover - torch ohne mmap-Unterstützung
+            ckpt = torch.load(args.resume, map_location=device, weights_only=True)
         model.load_state_dict(ckpt["model_state_dict"])
         if ckpt.get("singmos_proxy_state_dict"):
             loss_fn.singmos.proxy.load_state_dict(ckpt["singmos_proxy_state_dict"])
-        try:
-            opt.load_state_dict(ckpt["optimizer_state_dict"])
-        except Exception as exc:
-            logger.warning("Optimizer-State nicht ladbar (%s) — frischer Optimizer", exc)
+        if ckpt.get("phase") == args.phase:
+            try:
+                opt.load_state_dict(ckpt["optimizer_state_dict"])
+            except Exception as exc:
+                logger.warning("Optimizer-State nicht ladbar (%s) — frischer Optimizer", exc)
+        else:
+            logger.info(
+                "Phasenwechsel %s → %s: Optimizer-State wird bewusst NICHT übernommen "
+                "(frischer Optimizer — spart ~1,6 GB RAM, Pfeiler 6)",
+                ckpt.get("phase"),
+                args.phase,
+            )
         start_epoch = int(ckpt.get("epoch", 0))
         global_step = int(ckpt.get("step", 0))
         best_val = float(ckpt.get("val_loss", float("inf")))
@@ -1054,7 +1125,24 @@ def train(args: argparse.Namespace) -> int:
             best_val = val_loss
             save_guarded(ckpt_dir / "checkpoint_best.pt", payload)
 
+        avail_gb = _system_mem_available_gb()
+        if 0.0 < avail_gb < 2.0:
+            report["stopped_reason"] = f"system_memory {avail_gb:.1f} GB"
+            logger.error(
+                "System-Speicher %.1f GB < 2 GB — Training hält sicher an "
+                "(Host-Schutz, Pfeiler 6); Checkpoint ist gesichert.",
+                avail_gb,
+            )
+            break
+
     report["final_val_loss"] = best_val
+    if report.get("stopped_reason"):
+        report_path = ckpt_dir / f"train_report_{args.phase}.json"
+        write_text_guarded(report_path, json.dumps(report, indent=2, ensure_ascii=False))
+        logger.error("Vorzeitig beendet (%s) — Report: %s", report["stopped_reason"], report_path)
+        if run_lock is not None:
+            run_lock.close()
+        return 3
     report_path = ckpt_dir / f"train_report_{args.phase}.json"
     write_text_guarded(report_path, json.dumps(report, indent=2, ensure_ascii=False))
     logger.info("Fertig: best_val=%.4f — Report: %s", best_val, report_path)
