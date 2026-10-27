@@ -291,6 +291,11 @@ durchgängig erfüllen.
   der erste Startversuch mit `--epochs=30` war deshalb ein No-Op und der
   Lauf mit `--resume=checkpoint_latest.pt` traf auf einen
   Pretrain-Endzustand. Belege: `train_report_fine_tune.noop_20261027.json`).
+  **Phase-2-Pfad CPU-verifiziert:** offizieller Smoke `EXIT=0`
+  (`--phase=fine_tune --singmos-loss --smoke`: SingMOS-Learned-Loss +
+  Proxy-Kalibrierung + Checkpointing + Report, separater /tmp-Dir —
+  Produktionsartefakte unangetastet; Log
+  `output/train_cantus_finetune_smoke_20261027.log`).
   GPU nach Runtime-Restart der Umgebung nicht verfügbar ⇒ CPU-Lauf;
   Epoch-Checkpointing macht den Lauf über Runtime-Restarts resumierbar
   (`--resume=models/cantus/checkpoint_latest.pt --epochs=55`).
