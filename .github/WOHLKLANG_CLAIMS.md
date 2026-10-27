@@ -35,7 +35,8 @@ begründete Ausnahme — erscheint als Warnung) · `gesperrt` (Soll = AUS).
 **Regeln:** E1 Struktur/IDs · E2 zitierte Pfade müssen existieren ·
 E3 `aktiviert` ohne `OFFEN` · E4 `ausnahme` braucht `Grund:` (≥ 20 Zeichen) und
 `Review:` · E5 **Schalter-Abgleich Code ↔ Vertrag** · E6 `gesperrt` ⇒ Soll AUS ·
-E7 **Gate-Zahlen & Metrik-Identität (Paar-Pflicht)** ·
+E7 **Gate-Zahlen & Metrik-Identität (Paar-Pflicht)** · jede veröffentlichte Bewertung: Name · Messgröße · Referenz-Set + Seed · Belegpfad (alle Felder gefüllt; Status „aktiv“ nur bei vollständiger Identität) ·
+**Betriebsregeln (im Release-Report belegt, nicht Gate-geprüft):** B1 **Fallback-Quote 0** — kein ML→DSP-Fallback im Referenz-Korpus; Zählung `backend/core/fallback_ledger.py`, > 0 blockiert den Flag-Flip · B2 **Flag-Disziplin** — maximal 1–2 neue Flags pro Release; kein neuer K4-Challenger, solange mehr als 3 offene Kandidaten warten.
 P1 Evidenz-Harneske dürfen keine Phantom-Pfade referenzieren ·
 P2 Bericht über Phantom-Referenzen im Produktionscode.
 
@@ -53,9 +54,9 @@ eingefrorene Alt-Artefakt die Metrik identifizierte
 | --- | --- | --- | --- | --- | --- | --- |
 | G-1 | HF-Gain-Gate (D-K1-5) | ≥ 1,02 | HF-Energie(out)/HF-Energie(in) > 3 kHz | milde HF-Dämpfung 6 dB/oct ab 2 kHz, Seed 42 (`scripts/validate_bw_v5_hf_gate.py`) | `models/bw_reconstructor/retrain_a1_20261025/bw_reconstructor_v5.onnx` (Report `docs/reports/current/2026-10-27_kp7_hf_gate_v2.json`) | aktiv |
 | G-2 | AM-Peak-Signifikanz (D-K3-54) | k = 1,40 ∧ Schärfe ±2 Bins | Peak > k·Perzentil(abs(ΣS_w), 99,9 %) des Störgrunds | 48 Rausch-Realisierungen + dk328-Matrix, Seed 42 (`tests/unit/test_dk354_am_peak_calibration.py`) | `backend/core/defect_scanner.py` (`_AM_PEAK_SIG_K`) | aktiv |
-| G-3 | ΔSDR-Gate (D-K4-1, A-SPADE) | OFFEN | OFFEN | OFFEN | OFFEN | offen |
-| G-4 | Never-worsen-Grenzen (D-K4-2, TF-GridNet) | OFFEN | OFFEN | OFFEN | OFFEN | offen |
-| G-5 | SI-SDR-Vergleich SGMSE-Kerne (D-K0-3) | OFFEN | OFFEN | OFFEN | OFFEN | offen |
+| G-3 | ΔSDR-Gate (D-K4-1, A-SPADE) | ΔSDR ≥ 0 dB (Never-worsen) ∧ Blindes A/B trägt | ΔSDR = SDR(A-SPADE) − SDR(PCHIP-Baseline) auf geclipptem Real-Material | Geclipptes Real-Material des Referenz-Korpus, Seed 42 (`scripts/release_candidate_pipeline.py`) | `scripts/train_aspade_declipper.py` (Delta-SDR-Report) | aktiv (Messung offen) |
+| G-4 | Never-worsen-Grenzen (D-K4-2, TF-GridNet) | Score_nachher ≥ Score_vorher + Hör-Sign-off | ΔScore = Score(nachher) − Score(vorher) je Stufe ≥ 0 | 3 Referenz-Songs (AM_Contra, Al_James, Motor_Tapes laut Vertrag W-2), Seed 42 (`scripts/release_candidate_pipeline.py`) | `scripts/release_candidate_pipeline.py` (Metrik-Report je Kandidat) | aktiv (Messung offen) |
+| G-5 | SI-SDR-Vergleich SGMSE-Kerne (D-K0-3) | Kopf-an-Kopf-Vergleiche gewonnen (Hör) ∧ ΔSI-SDR ≥ 0 | ΔSI-SDR = SI-SDR(Musik-Core) − SI-SDR(WSJ0/WPE-Kern) auf Referenz-Fenstern | 3-Wege-Fenster w04/w20, Seeds 42/43 (`scripts/build_sgmse_hoerprobe_3weg.py`) | `models/sgmse_plus/sgmse_musik_core.onnx` + `docs/reports/current/2026-10-23_hoerprobe_sgmse_3weg.json` | aktiv (Messung offen) |
 
 ## Vertrag
 

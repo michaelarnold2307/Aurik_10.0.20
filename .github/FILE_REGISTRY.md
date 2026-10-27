@@ -499,6 +499,7 @@
 | tests/unit/test_dk354_am_peak_calibration.py | ACTIVE | tests/unit | ja | — | D-K3-54 (2026-10-27) Extremwert-Kalibrierung des Scrape-AM-Kanals: 24 Rausch-Realisierungen des dokumentierten statisch-tonalen Trägers → 0 AM-FP; IEC-AM 0,7 % (20–150 Hz) bleibt detektiert; Determinismus §G5 (copilot-instructions.md) |
 | scripts/release_candidate_pipeline.py | ACTIVE | scripts | ja | — | Pfeiler 3 der SOTA-Roadmap (2026-10-27): Release-Kandidaten-Pipeline — fester Referenz-Korpus × 9 Kandidaten-Flag-Varianten über den Produktionspfad (`UnifiedRestorerV3`, isolierte Kind-Prozesse mit Timeout, Host-Schutz); Metrik-Report + 2AFC-Hör-Pakete (`mushra_harness.py thresholds-build`); KEIN Flag-Flip (§v10.802 (copilot-instructions.md)) |
 | tests/unit/test_release_candidate_pipeline.py | ACTIVE | tests/unit | ja | — | Pfeiler 3 Vertragstests (leicht, 4): Kandidaten-Tabelle vollständig/eindeutig, Flags existieren und sind Default AUS, Manifest-Schema (trials: trial_id/class/catch/reference/candidate), Korpus materialbreit |
+| backend/core/fallback_ledger.py | ACTIVE | backend/core | ja | — | Pfeiler 5 der SOTA-Roadmap (2026-10-27): Fallback-Ledger — ML→DSP-Rückfälle zählen (B1 Wohlklang-Vertrag); `record_fallback` + Log-Counter für bestehende §V6 (copilot-instructions.md)-Stellen + `fallback_report` (Budget 0, Release-Gate); deterministische Buchführung §G5 (copilot-instructions.md) |
 
 ## Pflege-Regeln
 

@@ -125,6 +125,10 @@ def _restore_child(audio: np.ndarray, sr: int, flag_name: str, payload_path: str
         import backend.core.music_model_flags as mmf
 
         setattr(mmf, flag_name, True)  # Kandidaten-Flag für den gesamten Import
+        from backend.core.fallback_ledger import install_log_counter
+        from backend.core.fallback_ledger import snapshot as _fb_snapshot
+
+        install_log_counter()  # Pfeiler 5: §V6 (copilot-instructions.md)-Rückfälle zählen
         from backend.core.performance_guard import QualityMode
         from backend.core.unified_restorer_v3 import RestorationConfig, UnifiedRestorerV3
 
@@ -141,12 +145,13 @@ def _restore_child(audio: np.ndarray, sr: int, flag_name: str, payload_path: str
             payload_path,
             audio=np.asarray(result.audio, dtype=np.float32),
             material_type=np.asarray([str(material)]),
+            fallbacks=np.asarray([int(_fb_snapshot()["total"])]),
         )
     except Exception as exc:
         Path(error_path).write_text(f"{type(exc).__name__}: {exc}", encoding="utf-8")
 
 
-def _run_restored(audio: np.ndarray, sr: int, flag_name: str, *, timeout_s: float) -> tuple[np.ndarray, str]:
+def _run_restored(audio: np.ndarray, sr: int, flag_name: str, *, timeout_s: float) -> tuple[np.ndarray, str, int]:
     ctx = mp.get_context("spawn")
     tmp_dir = Path(tempfile.mkdtemp(prefix="aurik_rcp_"))
     payload_path = tmp_dir / "payload.npz"
@@ -173,7 +178,7 @@ def _run_restored(audio: np.ndarray, sr: int, flag_name: str, *, timeout_s: floa
         # schreibt sf.write ein N-Kanal-„WAV" und die Metriken rechnen falsch.
         if out.ndim == 2 and out.shape[0] <= 8 < out.shape[1]:
             out = out.T
-        return out, str(npz["material_type"][0])
+        return out, str(npz["material_type"][0]), int(np.asarray(npz.get("fallbacks", [0]))[0])
 
 
 def _corr(a: np.ndarray, b: np.ndarray) -> float:
@@ -242,7 +247,7 @@ def run_candidate(
         clip_path = ROOT / clip_info["path"]
         try:
             window, sr = _load_clip(clip_path, start_s=start_s, seconds=seconds)
-            restored, material = _run_restored(window, sr, cand["flag"], timeout_s=timeout_s)
+            restored, material, fallbacks = _run_restored(window, sr, cand["flag"], timeout_s=timeout_s)
         except Exception as exc:
             rows.append({"clip": clip_info["path"], "status": "fehler", "error": str(exc)[:300]})
             continue
@@ -257,6 +262,7 @@ def run_candidate(
                 "clip": clip_info["path"],
                 "material": material,
                 "status": "ok",
+                "fallbacks": fallbacks,
                 **m,
             }
         )
@@ -283,7 +289,11 @@ def run_candidate(
         "mean_rms_delta_db": round(float(np.mean([r["rms_delta_db"] for r in ok_rows])), 3) if ok_rows else None,
         "max_clip_ratio": round(float(max((r["clip_ratio"] for r in ok_rows), default=0.0)), 5),
         "min_stereo_corr_after": round(float(min((r["stereo_corr_after"] for r in ok_rows), default=1.0)), 3),
+        "fallback_count": int(sum(int(r.get("fallbacks", 0)) for r in ok_rows)),
     }
+    summary["flag_freigabe"] = (
+        "blockiert (Fallback-Quote > 0, Pfeiler 5)" if summary["fallback_count"] > 0 else "offen (Hör-Gate ausstehend)"
+    )
     return {
         "key": cand["key"],
         "flag": cand["flag"],

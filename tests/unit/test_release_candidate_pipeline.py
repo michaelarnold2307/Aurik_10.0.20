@@ -71,3 +71,47 @@ def test_korpusliste_fest_und_kategorisiert() -> None:
     assert len(mod.CORPUS) >= 4
     cats = {c.get("material") for c in mod.CORPUS}
     assert len(cats) >= 3, f"Korpus nicht materialbreit: {cats}"
+
+
+# ── Pfeiler 5 — Fallback-Ledger (B1 des Wohlklang-Vertrags) ─────────────────
+
+
+def test_fallback_ledger_zaehler_und_reset() -> None:
+    from backend.core import fallback_ledger as fl
+
+    fl.reset()
+    fl.record_fallback("x", "grund")
+    fl.record_fallback("x", "grund2")
+    fl.record_fallback("y", "g")
+    snap = fl.snapshot()
+    assert snap["total"] == 3
+    assert snap["by_component"] == {"x": 2, "y": 1}
+    fl.reset()
+    assert fl.snapshot()["total"] == 0
+
+
+def test_fallback_ledger_log_counter_findet_v6_meldungen() -> None:
+    import logging
+
+    from backend.core import fallback_ledger as fl
+
+    fl.reset()
+    counter = fl.install_log_counter("tests.fallback_probe")
+    try:
+        log = logging.getLogger("tests.fallback_probe")
+        log.warning("DeepFilterNet Fallback aktiv (§V6 (copilot-instructions.md))")
+        log.warning("irgendwas harmloses")
+    finally:
+        logging.getLogger("tests.fallback_probe").removeHandler(counter)
+    assert fl.snapshot()["total"] == 1
+    fl.reset()
+
+
+def test_fallback_ledger_release_gate() -> None:
+    from backend.core import fallback_ledger as fl
+
+    fl.reset()
+    assert fl.fallback_report()["release_gate"] == "erfuellt"
+    fl.record_fallback("z", "g")
+    assert fl.fallback_report()["release_gate"] == "gesperrt"
+    fl.reset()

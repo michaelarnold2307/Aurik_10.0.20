@@ -148,7 +148,17 @@ def export_model(preset: str, checkpoint: Path, out_path: Path, allow_random_ini
     logger.info("ONNX-Ausgabe erzeugt: %s (%.1f MB)", out_path, out_path.stat().st_size / 1e6)
 
     report = parity_check(wrapper, out_path, seed=seed)
-    report["model"] = {"preset": preset, "checkpoint": str(checkpoint), "params_m": round(model.num_params, 2)}
+    # Pfeiler 4 (SOTA-Roadmap): Paritäts-Report trägt den Checkpoint-Hash (§III.13 (copilot-instructions.md),
+    # Herkunftsbeleg am Artefakt) — kein Paritätsnachweis ohne identifiziertes Gewichts-Set.
+    import hashlib
+
+    _ck_sha = hashlib.sha256(checkpoint.read_bytes()).hexdigest() if checkpoint.is_file() else "kein-artefakt"
+    report["model"] = {
+        "preset": preset,
+        "checkpoint": str(checkpoint),
+        "checkpoint_sha256": _ck_sha,
+        "params_m": round(model.num_params, 2),
+    }
     report_path = out_path.with_suffix(".parity.json")
     report_path.write_text(json.dumps(report, indent=2), encoding="utf-8")
     logger.info("Paritäts-Report: %s", report_path)
