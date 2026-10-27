@@ -270,6 +270,15 @@ durchgängig erfüllen.
 ## Umsetzungsstand (Live — bei jeder Welle aktualisieren)
 
 ### 2026-10-27 (Welle C/E — K4-Challenger + D-K3-54)
+- **Pfeiler 4 begonnen (Provenienz & Single-Writer, 2026-10-27):**
+  `scripts/train_cantus.py` führt jetzt **Run-ID + Single-Writer-Lock**
+  (`<ckpt_dir>/.train.lock`, flock fail-closed; Doppel-Läufe wie am
+  2026-10-27 sind damit ausgeschlossen) und schreibt Provenienz in jeden
+  Report: `run_id`, `command`, `resume` + `resume_sha256`, `epochs_target`.
+  3 neue Tests in `tests/unit/test_training_artifacts.py` (leicht — laufen in
+  jedem Unit-Smoke); fine_tune-Smoke verifiziert (EXIT=0, Run-ID im Log).
+  Offen für Pfeiler 4: gleicher Mechanismus für die übrigen Trainings-
+  skripte + Paritäts-Reports mit Checkpoint-Hash.
 - **Pfeiler 2 umgesetzt (Metrik-Identität, 2026-10-27):** Wohlklang-Vertrag
   erweitert auf **sechs Belege** (neu: Beleg 6 Metrik-Identität) + neue
   Gate-Zahlen-Tabelle `G-1`…`G-5` (Wert, Formel, Referenz-Set + Seed,

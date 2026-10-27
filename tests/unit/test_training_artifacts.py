@@ -68,3 +68,56 @@ def test_write_text_guarded_backs_up(tmp_path: Path) -> None:
 
 def test_backup_existing_returns_none_for_missing(tmp_path: Path) -> None:
     assert backup_existing(tmp_path / "absent.pt") is None
+
+
+# ── Pfeiler 4 — Run-Lock & Provenienz (Single-Writer, SOTA-Roadmap) ─────────
+# Eigentümer-Datei ist scripts/train_cantus.py; die Tests sind bewusst leicht
+# (kein ML) und laufen damit in jedem Unit-Smoke.
+
+
+def _load_train_cantus():
+    import importlib.util
+
+    path = tmp_root = __file__
+    from pathlib import Path as _Path
+
+    path = _Path(tmp_root).resolve().parents[2] / "scripts" / "train_cantus.py"
+    spec = importlib.util.spec_from_file_location("train_cantus_runlock", path)
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod
+
+
+def test_run_lock_blockiert_zweiten_lauf(tmp_path) -> None:
+    mod = _load_train_cantus()
+    run_a = mod._acquire_run_lock(tmp_path, "run-a")
+    assert run_a is not None
+    try:
+        assert mod._acquire_run_lock(tmp_path, "run-b") is None
+    finally:
+        run_a.close()
+    run_c = mod._acquire_run_lock(tmp_path, "run-c")
+    assert run_c is not None
+    run_c.close()
+
+
+def test_run_lock_traegt_run_id_und_kommando_ein(tmp_path) -> None:
+    import json
+
+    mod = _load_train_cantus()
+    fh = mod._acquire_run_lock(tmp_path, "run-x")
+    assert fh is not None
+    try:
+        data = json.loads((tmp_path / ".train.lock").read_text(encoding="utf-8"))
+        assert data["run_id"] == "run-x"
+        assert data["command"]
+    finally:
+        fh.close()
+
+
+def test_sha256_file_ist_stabil(tmp_path) -> None:
+    mod = _load_train_cantus()
+    f = tmp_path / "a.bin"
+    f.write_bytes(b"aurik")
+    assert mod._sha256_file(f) == mod._sha256_file(f)
+    assert len(mod._sha256_file(f)) == 64
