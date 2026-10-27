@@ -95,13 +95,13 @@ unbekannt.
 README-Drift, stale Paritäts-Reports — jede Panne kostete Stunden
 (KP-8-Forensik 2026-10-27).
 
-- [ ] **Run-ID + Lock** für Trainings-Jobs auf `models/<modell>/`
+- [x] **Run-ID + Lock** für Trainings-Jobs auf `models/<modell>/`
   (Datei-Lock); Manifest erweitert um (Befehl, Seed, Phase,
   Checkpoint-Hash).
 - [ ] **Kein Artefakt ohne Manifest** (Muster: `models/cantus/README.md`-
   Tabelle); Paritäts-Reports tragen den Hash des gemessenen Checkpoints
   (das `cantus_dit.parity.json`-„stale"-Muster wird damit unmöglich).
-- [ ] **Job-Runner mit Auto-Resume** statt manuellem Relaunch (Ursache der
+- [x] **Job-Runner mit Auto-Resume** statt manuellem Relaunch (Ursache der
   Doppel-Läufe); Resume-Befehl steht dann im Manifest.
 
 ## Pfeiler 5 — Fallback-Quote als Qualitäts-KPI

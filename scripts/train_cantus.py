@@ -63,7 +63,22 @@ from torch.utils.data import DataLoader, Dataset
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from backend.core.training_artifacts import save_guarded, write_text_guarded
+from backend.core.training_artifacts import (
+    acquire_run_lock as _acquire_run_lock,
+)
+from backend.core.training_artifacts import (
+    make_run_id as _make_run_id,
+)
+from backend.core.training_artifacts import (
+    save_guarded,
+    write_text_guarded,
+)
+from backend.core.training_artifacts import (
+    sha256_file as _sha256_file,
+)
+from backend.core.training_artifacts import (
+    system_mem_available_gb as _system_mem_available_gb,
+)
 from models.cantus.cantus_model import CantusModel, create_cantus
 
 logger = logging.getLogger(__name__)
@@ -794,76 +809,6 @@ def _evaluate(model, loss_fn, loader, device, max_batches: int = 8) -> float:
 # ── Pfeiler 4 — Provenienz & Single-Writer (SOTA-Roadmap 2026-10-27) ────────
 
 
-def _make_run_id(phase: str) -> str:
-    """Eindeutige Run-ID (Provenienz-Metadaten, keine Entscheidungslogik)."""
-    from datetime import datetime, timezone
-
-    stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
-    return f"{phase}-{stamp}-{random.randrange(16**4):04x}"
-
-
-def _sha256_file(path: str | Path) -> str:
-    """SHA-256 einer Artefakt-Datei (Checkpoint-Identität im Report)."""
-    h = hashlib.sha256()
-    with open(path, "rb") as fh:
-        for chunk in iter(lambda: fh.read(1 << 20), b""):
-            h.update(chunk)
-    return h.hexdigest()
-
-
-def _acquire_run_lock(ckpt_dir: Path, run_id: str):
-    """Single-Writer-Lock auf das Checkpoint-Verzeichnis (fail-closed).
-
-    Ein Doppel-Lauf überschrieb 2026-10-27 ein ``checkpoint_latest.pt``
-    (Forensik im Katalog). Der Lock lebt in ``<ckpt_dir>/.train.lock``; der
-    Besitzer trägt Run-ID, PID und Kommando ein. Gibt die offene Datei
-    zurück (hält den Lock bis Prozessende) oder ``None``, wenn ein anderer
-    Lauf den Lock hält. Der OS-Lock wird beim Prozessende auch bei Absturz
-    freigegeben.
-    """
-    import fcntl
-
-    lock_path = ckpt_dir / ".train.lock"
-    fh = open(lock_path, "a+", encoding="utf-8")
-    try:
-        fcntl.flock(fh.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
-    except OSError:
-        fh.seek(0)
-        holder = fh.read().strip()[:300]
-        fh.close()
-        logger.error(
-            "Trainings-Lock gehalten von: %s — paralleler Lauf verboten (Pfeiler 4, Single-Writer).",
-            holder or "unbekannt",
-        )
-        return None
-    fh.seek(0)
-    fh.truncate()
-    fh.write(
-        json.dumps(
-            {
-                "run_id": run_id,
-                "pid": __import__("os").getpid(),
-                "command": " ".join(sys.argv),
-            },
-            ensure_ascii=False,
-        )
-    )
-    fh.flush()
-    return fh
-
-
-def _system_mem_available_gb() -> float:
-    """Verfügbarer Systemspeicher in GB (Linux ``/proc/meminfo``; 0.0 = unbekannt)."""
-    try:
-        with open("/proc/meminfo", encoding="utf-8") as fh:
-            for line in fh:
-                if line.startswith("MemAvailable:"):
-                    return float(line.split()[1]) / (1024.0 * 1024.0)
-    except OSError:
-        return 0.0
-    return 0.0
-
-
 def _apply_resource_ceiling(nice_delta: int = 10) -> None:
     """Host-Schutz (Pfeiler 6): CPU-Training darf die Umgebung nicht abwürgen.
 
@@ -1006,7 +951,7 @@ def train(args: argparse.Namespace) -> int:
     run_lock = _acquire_run_lock(ckpt_dir, run_id)
     if run_lock is None:
         return 2
-    logger.info("Run-ID: %s (Single-Writer-Lock aktiv, Pfeiler 4)", run_id)
+    logger.info("Lauf-ID: %s (Single-Writer-Lock aktiv, Pfeiler 4)", run_id)
     cal_every = int(tcfg["singmos"]["proxy_calibrate_every_steps"])
     report: dict[str, Any] = {
         "phase": args.phase,

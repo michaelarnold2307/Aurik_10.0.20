@@ -163,3 +163,84 @@ def write_text_guarded(
         if tmp.exists():
             tmp.unlink(missing_ok=True)
     return backup
+
+
+# ── Run-ID + Single-Writer-Lock (Pfeiler 4) ─────────────────────────────────
+# Kanonische Heimat für alle Trainings-Skripte und den Job-Runner
+# (scripts/train_job_runner.py). Ehemals in scripts/train_cantus.py — als
+# gemeinsame Quelle hierher verschoben, damit jeder Trainings-Job dieselbe
+# Provenienz- und Lock-Disziplin bekommt (Layout-EINE-Quelle).
+# Zitiert: §G9 (copilot-instructions.md).
+
+
+def make_run_id(phase: str) -> str:
+    """Eindeutige Run-ID (Provenienz-Metadaten; kein Entscheidungs-Datum)."""
+    import random as _random
+    from datetime import datetime, timezone
+
+    stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+    return f"{phase}-{stamp}-{_random.randrange(16**6):06x}"
+
+
+def sha256_file(path: str | Path) -> str:
+    """SHA-256 einer Datei (Checkpoint-Identität, Manifest-Provenienz)."""
+    import hashlib
+
+    h = hashlib.sha256()
+    with open(path, "rb") as fh:
+        for chunk in iter(lambda: fh.read(1 << 22), b""):
+            h.update(chunk)
+    return h.hexdigest()
+
+
+def acquire_run_lock(ckpt_dir: Path, run_id: str, lock_name: str = ".train.lock"):
+    """Single-Writer-Lock auf dem Checkpoint-Verzeichnis (Pfeiler 4).
+
+    Ein paralleler Lauf ist ausgeschlossen (``flock``). Der Lock-Inhalt
+    dokumentiert den Halter (run_id, pid, Befehl). Bei Konflikt: Fehler-Log
+    mit Halter + ``None`` — der Aufrufer MUSS ``None`` behandeln (vertraglich
+    gepinnt in ``tests/unit/test_training_artifacts.py``).
+    """
+    import fcntl
+    import json as _json
+    import sys as _sys
+
+    lock_path = ckpt_dir / lock_name
+    fh = open(lock_path, "a+", encoding="utf-8")
+    try:
+        fcntl.flock(fh, fcntl.LOCK_EX | fcntl.LOCK_NB)
+    except OSError:
+        fh.seek(0)
+        holder = fh.read().strip()[:300]
+        fh.close()
+        logger.error(
+            "Trainings-Lock bereits gehalten von: %s — kein paralleler Lauf (Pfeiler 4, Single-Writer).",
+            holder or "unbekannt",
+        )
+        return None
+    fh.seek(0)
+    fh.truncate()
+    fh.write(
+        _json.dumps(
+            {
+                "run_id": run_id,
+                "pid": os.getpid(),
+                "command": " ".join(_sys.argv),
+            },
+            ensure_ascii=False,
+        )
+    )
+    fh.flush()
+    return fh
+
+
+def system_mem_available_gb() -> float:
+    """Verfügbarer Systemspeicher (Linux, /proc/meminfo) in GiB (Host-Schutz)."""
+    try:
+        with open("/proc/meminfo", encoding="utf-8") as fh:
+            for line in fh:
+                if line.startswith("MemAvailable:"):
+                    return float(line.split()[1]) / (1024.0**2)
+    except OSError:
+        return 0.0
+    return 0.0
