@@ -52,9 +52,10 @@ Multi-Objective-Loss (scripts/train_cantus.py):
 
 | Datei | Inhalt | Status |
 |---|---|---|
-| `checkpoint_best.pt` | Torch-Training-Checkpoint | lokales Pretraining-Artefakt, 204,27 M Parameter, Seed `20261004`, Epoche 10 |
-| `cantus_dit.onnx` | Flow-Matching-DiT Inferenzgraph (OpSet 14+, dynamische Achsen) | lokaler CPU-Ersatzpfad; Export-Parität zum Checkpoint bestanden |
-| `cantus_singmos_proxy.pt` | Gewichte des SingMOS-Learned-Loss-Proxys | **Platzhalter** — via `scripts/train_cantus.py --phase=pretrain` |
+| `checkpoint_best.pt` | Torch-Training-Checkpoint (Best) | Pretrain-Lauf 2026-10-26/27 (`--phase=pretrain`, Full-Preset 204,27 M Parameter, Seed 42, best val 3,9013, Epoche ≥25); ersetzt den Checkpoint vom 2026-10-04 (Seed `20261004`) |
+| `checkpoint_latest.pt` | Torch-Training-Checkpoint (Letzter Stand) | Resume-Point des `fine_tune`-Laufs (Phase 2) |
+| `cantus_dit.onnx` | Flow-Matching-DiT Inferenzgraph (OpSet 14+, dynamische Achsen) | lokaler CPU-Ersatzpfad; Export 2026-10-04 mit damals gemessener Parität (rel ≤ 7,89e-06) — **Re-Export + Paritäts-Gate nach `fine_tune` ausstehend** |
+| `cantus_singmos_proxy.pt` | Gewichte des SingMOS-Learned-Loss-Proxys | **Platzhalter** — entsteht mit `scripts/train_cantus.py --phase=fine_tune --singmos-loss` |
 | `cantus_config.json` | Hyperparameter (Modell + Training + Loss-Gewichte) | aktiv |
 
 Die Modellartefakte sind lokal und werden nicht versioniert. Der vorgesehene
@@ -65,12 +66,17 @@ Checkpoint über Torch auf ROCm und verwendet ONNX ausschließlich über
 protokollierten DSP-Fallback (§V6 (copilot-instructions.md)).
 Die am 2026-10-04 auf der RX 7900 XTX gemessene Torch-ROCm↔ONNX-CPU-Parität
 beträgt maximal `7.89e-06` relativ (Gate: `≤ 1e-3`); zwei GPU-Wiederholungen
-waren bitidentisch. Scheitert Torch oder ONNX, läuft Cantus deterministisch auf
+waren bitidentisch. (Die Parität wurde zum Checkpoint-Stand 2026-10-04
+gemessen; dieses wurde 2026-10-27 durch den Pretrain-Lauf überschrieben — der
+Nachweis bindet daher nicht mehr an die aktuelle Datei und wird mit dem
+Re-Export nach `fine_tune` erneuert.) Scheitert Torch oder ONNX, läuft Cantus
+deterministisch auf
 den DSP-Ersatzpfad (Wiener, §V6 (copilot-instructions.md), mit
 `logger.warning`).
 
-Der Checkpoint befindet sich noch in der Pretraining-Phase. Ein Release mit
-Fine-Tuning oder Domain-Adaptation setzt die zugehörigen, reproduzierbaren
+Das Pretraining ist abgeschlossen (2026-10-27, best val 3,9013). `fine_tune`
+(Phase 2, SingMOS-Learned-Loss) ist gestartet; ein Release mit Fine-Tuning
+oder Domain-Adaptation setzt die zugehörigen, reproduzierbaren
 Trainings- und Hörqualitäts-Evidenzen voraus; der Artefaktstatus wird dabei
 aktualisiert.
 

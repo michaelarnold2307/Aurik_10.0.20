@@ -51,7 +51,7 @@ pro Entscheidung (§9).
 | KP-8 | Cantus = Vocal-Inpainting-DiT-Lane (§C) | offen — Full-Training ausstehend (tiny-Smoke CPU erledigt) | GPU: pretrain → fine_tune → domain_adapt, Re-Export, Paritätscheck, A/B gegen MIIPHER-DiT+HNR-Baseline, Hörabnahme, Zoo-Status training→active | voller Vertrag (§8-Kontrakt); Daten `data/cantus_pairs` (3600 Paare) lokal; Hygiene s. §4/KP-8 |
 | KP-9 | GaCELA Re-Training F2 (optional) | bedingt auf KP-8 | nur bei Lücken 375–1500 ms, die KP-8 nicht trägt; Task-Neuformulierung (Silence-Gap + Energy-Gating statt Full-Waveform-Match — Lehre aus der Verwerfung: fair validiert mean SDR −2.63 dB) | A/B gegen Cantus-Lane auf Langlücken |
 | KP-10 | RT60-Regressor | offen | GPU-Training auf RIR-Paaren (lokal DFN-Assets `rir_sim_*.wav` + echte Aufnahmen) | ersetzt konservatives T60-Witness-Cap in phase_20/49; Beleg Validierung E.3 (heute reines DSP, kein Modellbezug) |
-| KP-11 | Symphonia = Instrumental-Kern (Cantus-Spiegelbild) | pending_training | Registry-Pfad `symphonia.onnx` fehlt (Hygiene: auf echten Export zeigen oder anlegen); dann Full-Lauf wie KP-8 | gleicher Vertrag wie KP-8; Daten `data/symphonia_pairs(+_full/_batches)` lokal |
+| KP-11 | Symphonia = Instrumental-Kern (Cantus-Spiegelbild) | pending_training | Registry-Pfad bereinigt 2026-10-27 (Resolver zeigt auf `symphonia_tiny.onnx`); dann Full-Lauf wie KP-8 | gleicher Vertrag wie KP-8; Daten `data/symphonia_pairs(+_full/_batches)` lokal |
 | KP-12 | SingMOS Pro Kalibrierung F10 | offen | Leichtes Fine-Tuning/Kalibrierung auf verarbeitete Musik-Vocals (Golden Listening Set + MUSHRA/WP-8) | Vokal-MOS-Gates treffen bei Musik-Pegeln/-Spektren korrekt (heute Eichung auf trockene Gesangsaufnahmen); Beleg Validierung C.4 |
 | KP-13 | Material-Klassifikator (D-K0-8) | in-arbeit (WP-7 Daten-Aufbau) | 6-Klassen-CLAP-/Shallow-Head erst bei ≥10 Echt-Trägern je Klasse trainieren; danach Wiring-Entscheidung (CLAP-Zeuge vs. trainierter Kopf) + Sign-off | Accuracy gegen Human-Labels + A/B — Material steuert Bandbreiten-Ceilings, Defekt-Schwellen, Era-Priors (§V7 copilot-instructions.md: kein Rollout ohne A/B); Stand `docs/reports/current/2026-10-09_wp7_coverage.json` |
 | KP-14 | MERT Genre-Head | offen | GTZAN/MagnaTagATune ODER MUSDB-basierte Genre-Labels beschaffen (keiner lokal, Validierung E.5) | Accuracy gegen Human-Labels + A/B der Goal-Adaption |
@@ -231,8 +231,8 @@ ersetzt das konservative T60-Witness-Cap in phase_20/49.
 
 ### KP-11 · Symphonia = Instrumental-Kern (Cantus-Spiegelbild)
 
-Status pending_training, nur Tiny-ONNX; Registry-Pfad `symphonia.onnx` fehlt
-(Hygiene: auf echten Export zeigen oder anlegen); Daten `data/symphonia_pairs(
+Status pending_training, nur Tiny-ONNX; Registry-Pfad bereinigt 2026-10-27 (Resolver
+zeigt auf `symphonia_tiny.onnx`); Daten `data/symphonia_pairs(
 +_full/_batches)` lokal. Nach dem Training → gleicher Vertrag wie KP-8.
 
 ### KP-12 · SingMOS Pro Kalibrierung F10

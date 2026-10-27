@@ -132,9 +132,16 @@ class SymphoniaPlugin:
         self._mert_init_failed = False
 
         model_dir = Path(__file__).parent.parent / "models" / "symphonia"
-        self._onnx_path: Path = (
-            Path(model_path) if model_path else _resolve_or(model_dir / "symphonia.onnx", "symphonia")
-        )
+        # KP-11-Hygiene (2026-10-27): Der kanonische Full-Export `symphonia.onnx`
+        # entsteht erst mit dem Training; der verifizierte Stand ist der
+        # Tiny-Export `symphonia_tiny.onnx` (ML_ARTIFACT_FINGERPRINTS.md).
+        # Der Resolver zeigt auf den VORHANDENEN Export statt auf eine künftige
+        # Datei — die Zoo-Freigabe in `_production_qualified` bleibt das
+        # eigentliche Tor (§V6 (copilot-instructions.md)).
+        _default_onnx = model_dir / "symphonia.onnx"
+        if not _default_onnx.exists():
+            _default_onnx = model_dir / "symphonia_tiny.onnx"
+        self._onnx_path: Path = Path(model_path) if model_path else _resolve_or(_default_onnx, "symphonia")
         # Ein expliziter model_path isoliert Tests und alternative Modelle. Der
         # produktive Torch-ROCm-Kern gehört nur zum kanonischen Symphonia-Modell.
         self._checkpoint_path: Path | None = model_dir / "checkpoint_best.pt" if model_path is None else None

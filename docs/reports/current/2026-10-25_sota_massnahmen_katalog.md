@@ -165,7 +165,7 @@ durchgängig erfüllen.
 ### C5 · Welle-C-Abschlüsse (bedingt / pending)
 
 - KP-11 Symphonia (Instrumental-Kern, Cantus-Spiegelbild; Registry-Pfad
-  `symphonia.onnx` fehlt — Hygiene vorab), KP-12 SingMOS-Pro-Kalibrierung
+  `symphonia.onnx` Hygiene erledigt 2026-10-27: Resolver zeigt auf `symphonia_tiny.onnx`), KP-12 SingMOS-Pro-Kalibrierung
   F10, KP-9 GaCELA nur bei Cantus-Lücken 375–1500 ms (Task-Neuformulierung:
   Silence-Gap + Energy-Gating).
 
@@ -283,6 +283,27 @@ durchgängig erfüllen.
   dem Eingangs-Rolloff ⇒ Artefakt-Risiko; Aktivierung `use_bw_v5=True` erst
   nach Hör-Sign-off (§v10.802), dann als Shellac/Lacquer-HF-Pfad. Bisher:
   Flag bleibt False.
+- **KP-8 (Cantus): Pretrain ABGESCHLOSSEN (2026-10-27, best val 3,9013,
+  Full-Preset 204,27 M, Seed 42; `checkpoint_best.pt` epoch=25/step=5000
+  verifiziert).** `fine_tune` (Phase 2, SingMOS-Learned-Loss) läuft korrekt
+  gestartet: Resume ab `checkpoint_best.pt`, Ziel-Epoche 55 (= 30
+  Phasen-Epochen; `range(start_epoch, epochs)` ist ein absolutes Ziel —
+  der erste Startversuch mit `--epochs=30` war deshalb ein No-Op und der
+  Lauf mit `--resume=checkpoint_latest.pt` traf auf einen
+  Pretrain-Endzustand. Belege: `train_report_fine_tune.noop_20261027.json`).
+  GPU nach Runtime-Restart der Umgebung nicht verfügbar ⇒ CPU-Lauf;
+  Epoch-Checkpointing macht den Lauf über Runtime-Restarts resumierbar
+  (`--resume=models/cantus/checkpoint_latest.pt --epochs=55`).
+  **KP-8-Hygiene erledigt:** README-Artefakt-Tabelle korrigiert (alter
+  „Seed 20261004, Epoche 10“-Fehlbeleg entfernt, `checkpoint_latest.pt`
+  ergänzt, ONNX-Re-Export-Vermerk), `cantus_dit.parity.json` mit
+  stale-Notiz versehen (Parität band an den überschriebenen Checkpoint),
+  zwei irreführende Platzhalter entfernt (echte Artefakte vorhanden; nur
+  `cantus_singmos_proxy.pt.placeholder` bleibt, solange kein Artefakt da ist).
+- **GPU-Blocker (extern):** SOTA-M8/M9-Echt-Trainings und Cantus-Phasen 2/3
+  bevorzugt GPU; die Trainings-Smokes sind CPU-verifiziert (M8/M9/Lanes).
+  Sobald GPU verfügbar: `train_aspade_declipper.py`, `train_tf_gridnet_denoiser.py`
+  (beide mit `--smoke` validiert) und ggf. fine_tune auf GPU fortsetzen.
 
 - **SOTA-M12 (KP-17 + KP-18):** beide K4-Challenger implementiert, trainierbar
   und flag-gesperrt integriert (`use_wf4_warp_head` / `use_tp_v2_phase`,
