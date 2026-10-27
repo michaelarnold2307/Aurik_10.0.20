@@ -468,6 +468,31 @@ After completing both decision flows:
 
 ---
 
+## X. Release-Checkliste — Vier Bedingungen (Pfeiler 8, SOTA-Roadmap)
+
+Aurik ist genau dann „durchgehend SOTA", wenn für den Release-Kandidaten alle
+vier Bedingungen gelten (Nordstern & SOTA-Definition in
+`docs/TODOS_SOTA_ROADMAP.md`). Fehlt eine Bedingung: **NO-GO**.
+
+- [ ] **1. Never-worsen-Invarianten erfüllt** — gemessen auf dem
+  eingefrorenen Referenz-Korpus (`scripts/release_candidate_pipeline.py`,
+  Metrik-Report je Kandidat); jede Gate-Zahl mit Metrik-Identität
+  (Wohlklang-Vertrag, Beleg 6).
+- [ ] **2. Hör-Gate bestanden** — Release-Hörstichprobe (3×10 s
+  Golden-Sample) **und** Kandidaten-Abnahme (2AFC,
+  `scripts/mushra_harness.py thresholds-fit`); Verdikte im
+  `.github/SOTA_DEFICIT_REGISTER.md` gebucht (Beleg 4 Wohlklang-Vertrag).
+- [ ] **3. Fallback-Quote 0** — im Referenz-Korpus kein ML→DSP-Fallback
+  (§V6 (copilot-instructions.md)-Warnungen werden gezählt, nicht nur
+  geloggt; Zähler-Lane Pfeiler 5 der SOTA-Roadmap).
+- [ ] **4. Provenienz vollständig** — jedes Artefakt mit (Befehl, Seed,
+  Phase, Checkpoint-Hash); Trainingsläufe mit Run-ID/Lock (Pfeiler 4).
+
+**Freigabe:** `GO` nur bei 4/4 — andernfalls `NO-GO` mit der fehlenden
+Bedingung als Begründung. Keine „Beobachtung überwacht"-Ausnahme.
+
+---
+
 ## IX. Version History
 
 - 9.10.130 | 2026-04-07 | Initial release; 6-scenario template + GO/NO-GO decision logic

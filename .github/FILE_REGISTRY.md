@@ -497,6 +497,8 @@
 | scripts/train_rt60_regressor.py | ACTIVE | scripts | ja | — | SOTA-M15 (KP-10) Training: RIR-Paar-Training (GT aus Decay-Kurven der Simulationen), lokales RIR-Inventar + Manifest, deterministisches Ridge-Fitting §G5 (copilot-instructions.md), CPU-Smoke-Test < 3 Min; Datenlücke ehrlich dokumentiert (nur 1 lokale RIR-Simulation); KEIN automatischer Flag-Flip |
 | tests/unit/test_rt60_regressor.py | ACTIVE | tests/unit | ja | — | SOTA-M15 (KP-10) Vertragstests (17): Flag AUS ⇒ bit-identisch, Determinismus §G5 (copilot-instructions.md), physikalische Grenzen [0,05 s; 10 s] §0a, Fallback-Warnung §V6, Synth-RIR-Schätzung grob korrekt, Stereo-Layout-Invariante |
 | tests/unit/test_dk354_am_peak_calibration.py | ACTIVE | tests/unit | ja | — | D-K3-54 (2026-10-27) Extremwert-Kalibrierung des Scrape-AM-Kanals: 24 Rausch-Realisierungen des dokumentierten statisch-tonalen Trägers → 0 AM-FP; IEC-AM 0,7 % (20–150 Hz) bleibt detektiert; Determinismus §G5 (copilot-instructions.md) |
+| scripts/release_candidate_pipeline.py | ACTIVE | scripts | ja | — | Pfeiler 3 der SOTA-Roadmap (2026-10-27): Release-Kandidaten-Pipeline — fester Referenz-Korpus × 9 Kandidaten-Flag-Varianten über den Produktionspfad (`UnifiedRestorerV3`, isolierte Kind-Prozesse mit Timeout, Host-Schutz); Metrik-Report + 2AFC-Hör-Pakete (`mushra_harness.py thresholds-build`); KEIN Flag-Flip (§v10.802 (copilot-instructions.md)) |
+| tests/unit/test_release_candidate_pipeline.py | ACTIVE | tests/unit | ja | — | Pfeiler 3 Vertragstests (leicht, 4): Kandidaten-Tabelle vollständig/eindeutig, Flags existieren und sind Default AUS, Manifest-Schema (trials: trial_id/class/catch/reference/candidate), Korpus materialbreit |
 
 ## Pflege-Regeln
 

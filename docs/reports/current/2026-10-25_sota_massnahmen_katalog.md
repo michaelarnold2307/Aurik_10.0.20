@@ -270,6 +270,25 @@ durchgängig erfüllen.
 ## Umsetzungsstand (Live — bei jeder Welle aktualisieren)
 
 ### 2026-10-27 (Welle C/E — K4-Challenger + D-K3-54)
+- **Pfeiler 3 umgesetzt (Release-Kandidaten-Pipeline, 2026-10-27):**
+  `scripts/release_candidate_pipeline.py` — fester Referenz-Korpus (8
+  Echt-Audio-Clips, materialbreit) × 9 Kandidaten-Flag-Varianten über den
+  Produktionspfad (`UnifiedRestorerV3` in isolierten Kind-Prozessen mit
+  Timeout + Host-Schutz), Metrik-Vergleichsreport + 2AFC-Hör-Pakete
+  (`mushra_harness.py thresholds-build`, Manifest-Schema vertragstestet).
+  **Verifiziert:** 4 leichte Vertragstests + End-to-End-Lauf (bw_v5,
+  1 Fall grün: ΔRMS 2,87 dB, kein Clipping, Stereo-Korr. 0,588).
+  Befunde beim Einfahren (behoben): `load_audio_file(Path)` liefert sr=None
+  (nur str-Aufruf füllt es), Restore-Ausgabe ist channels-first (Stereo-
+  Layout-Invariante — ohne Normalisierung entsteht ein 88k-Kanal-„WAV"),
+  0-Byte-Reste blockierten Writes; Restore-Kosten gemessen ~96 s je
+  Audio-Sekunde (4 Threads) ⇒ Kind-Timeout-Default 600 s.
+  **Offen (Pfeiler 3):** Volllauf aller 9 Kandidaten (GPU-Umgebung sinnvoll)
+  + Archivierungs-Sign-offs Whisper/AERO (§9/5–6 der A2-Liste, User).
+- **Pfeiler 8 umgesetzt:** Release-Checkliste „Vier Bedingungen" in
+  `docs/guides/GO_NO_GO_DECISION_PROTOCOL.md` (Abschnitt X) —
+  Never-worsen-Invarianten + Hör-Gate + Fallback-Quote 0 + Provenienz;
+  GO nur bei 4/4.
 - **Pfeiler 6 · Host-Schutz implementiert (2026-10-27) — „Training reißt Kun
   in den Tod" beseitigt:** Jeder CPU-fine_tune-Lauf (204-M-Netz, ~15–20 GB
   RAM, alle 16 Kerne) zog Runtime-Restarts der Kun-Umgebung nach sich
