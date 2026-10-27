@@ -504,6 +504,8 @@
 | scripts/release_report.py | ACTIVE | scripts | ja | — | Pfeiler 8 der SOTA-Roadmap (2026-10-27): Release-Report je Version — „keine Zeile ohne Beleg“; Version/Git/Artefakt-Fingerabdrücke/Kandidaten-Metriken/Hör-Verdikte/Fallback-Quote + Provenienz-Lücken; jede Zeile mit Quelle |
 | tests/unit/test_ab_harness.py | ACTIVE | tests/unit | ja | — | Tests zum A/B-Hör-Harness (Determinismus, Blindheit, Statistik, Ties) |
 | tests/unit/test_release_report.py | ACTIVE | tests/unit | ja | — | Tests zum Release-Report (Quell-Pflicht je Zeile, Lücken-Liste, Kandidaten-/Verdikt-Einspeisung) |
+| scripts/flag_freigabe.py | ACTIVE | scripts | ja | — | Pfeiler 1 der SOTA-Roadmap (2026-10-27): Flag-Freigabe-Kette „Verdikt → Register-Buchung → Flag-Flip → Commit in einem Kommando“; fail-closed ohne Hör-Sign-off (§v10.802 (copilot-instructions.md)); Nach-Gates sota_deficit_gate + wohlklang_gate; Worktree-Rücksetzung bei Fehlschlag |
+| tests/unit/test_flag_freigabe.py | ACTIVE | tests/unit | ja | — | Tests zur Flag-Freigabe-Kette (Verdikt-Validierung fit.json/ab_stats, Register-Buchung 8 Zellen, Ambiguität, Flag-Flip, Test-Angleichung) |
 
 ## Pflege-Regeln
 

@@ -43,7 +43,7 @@ Katalog A1). Jede Wartezeit ist vertanes stillgelegtes Kapital.
 - [ ] **Standardfrage vereinfachen:** pro Trial „Klingt die Restaurierung
   schlechter als die Referenz?" (2AFC/Never-worsen) statt Skala;
   „nicht hörbar" ist ein gültiges, zu buchendes Ergebnis.
-- [ ] **Verdikt → Flag-Flip in einem Kommando:** `mushra_harness.py
+- [x] **Verdikt → Flag-Flip in einem Kommando:** `mushra_harness.py
   thresholds-fit` → Register-Buchung (Beleg-Pfad, `scripts/sota_deficit_gate.py`)
   → Flag-Flip → Commit. Ziel: ≤ 10 min vom Hören zum Commit.
 - [ ] **Release-Hörstichprobe** (3×10 s Golden-Korpus) als Pflichtteil
