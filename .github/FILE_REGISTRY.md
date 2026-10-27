@@ -500,6 +500,10 @@
 | scripts/release_candidate_pipeline.py | ACTIVE | scripts | ja | — | Pfeiler 3 der SOTA-Roadmap (2026-10-27): Release-Kandidaten-Pipeline — fester Referenz-Korpus × 9 Kandidaten-Flag-Varianten über den Produktionspfad (`UnifiedRestorerV3`, isolierte Kind-Prozesse mit Timeout, Host-Schutz); Metrik-Report + 2AFC-Hör-Pakete (`mushra_harness.py thresholds-build`); KEIN Flag-Flip (§v10.802 (copilot-instructions.md)) |
 | tests/unit/test_release_candidate_pipeline.py | ACTIVE | tests/unit | ja | — | Pfeiler 3 Vertragstests (leicht, 4): Kandidaten-Tabelle vollständig/eindeutig, Flags existieren und sind Default AUS, Manifest-Schema (trials: trial_id/class/catch/reference/candidate), Korpus materialbreit |
 | backend/core/fallback_ledger.py | ACTIVE | backend/core | ja | — | Pfeiler 5 der SOTA-Roadmap (2026-10-27): Fallback-Ledger — ML→DSP-Rückfälle zählen (B1 Wohlklang-Vertrag); `record_fallback` + Log-Counter für bestehende §V6 (copilot-instructions.md)-Stellen + `fallback_report` (Budget 0, Release-Gate); deterministische Buchführung §G5 (copilot-instructions.md) |
+| scripts/ab_harness.py | ACTIVE | scripts | ja | — | Pfeiler 7 der SOTA-Roadmap (2026-10-27): A/B-Hör-Harness — Verblindung (Byte-Kopien unter neutralen Namen, getrennter Schlüssel) + exakte Binomial-Statistik (Vorzeichen-Test, Wilson-CI); Hör-Instanz entscheidet, Statistik ist Zeuge (Hörordnung); Seed-Determinismus §G5 (copilot-instructions.md) |
+| scripts/release_report.py | ACTIVE | scripts | ja | — | Pfeiler 8 der SOTA-Roadmap (2026-10-27): Release-Report je Version — „keine Zeile ohne Beleg“; Version/Git/Artefakt-Fingerabdrücke/Kandidaten-Metriken/Hör-Verdikte/Fallback-Quote + Provenienz-Lücken; jede Zeile mit Quelle |
+| tests/unit/test_ab_harness.py | ACTIVE | tests/unit | ja | — | Tests zum A/B-Hör-Harness (Determinismus, Blindheit, Statistik, Ties) |
+| tests/unit/test_release_report.py | ACTIVE | tests/unit | ja | — | Tests zum Release-Report (Quell-Pflicht je Zeile, Lücken-Liste, Kandidaten-/Verdikt-Einspeisung) |
 
 ## Pflege-Regeln
 

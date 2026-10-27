@@ -152,7 +152,7 @@ menschliche Politik gebunden (Lizenzen, Goldens).
 
 - [ ] Die Vier-Bedingungen-Definition oben als Release-Checkliste in
   `docs/guides/GO_NO_GO_DECISION_PROTOCOL.md` übernehmen.
-- [ ] **Release-Report** je Version: Invarianten-Metriken, Hör-Verdikte,
+- [x] **Release-Report** je Version: Invarianten-Metriken, Hör-Verdikte,
   Fallback-Quote, Provenienz-Lücken (keine Zeile ohne Beleg).
 - [ ] **Qualitäts-Schwelle:** jede neue Phase/Metrik braucht vor dem
   Rollout eine Hörstichprobe — Metriken sind Zeugen (Hörordnung), nicht
