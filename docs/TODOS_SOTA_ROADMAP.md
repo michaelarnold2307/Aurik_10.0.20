@@ -1,13 +1,176 @@
 # TODOS — SOTA-Roadmap & Lücken-Schluss (nächste Sessions)
 
-> **Stand:** 2026-09-08 · Quelle: Matrix-Endlauf (3 Zellen, Test-Track-Vinyl) + unabhängige
-> Spec-vs-SOTA-Tiefenanalyse (`docs/reports/current/2026-09-08_envelope_root_cause_sota_fixes_matrix.md`).
-> **Wie erkannt wird:** Jede Aufgabe hat eine TODO-ID (`TODO-P0-1` …), Ziel, Wirkung,
-> Beleg (Pfad:Zeile) und Akzeptanzkriterium. Agenten: Aufgabe mit ID greppen, Beleg lesen, umsetzen,
-> Akzeptanzkriterium als Test/Gate nachziehen, `change_ledger.py snapshot` + Commit.
-> **Reihenfolge:** P0-1 → P0-2 → P0-3 → P1-1 → P1-2 → P1-3 → P1-4 → P2-1.
+> **Neufassung 2026-10-27 (v10.12.46).** Die operative Planung ist jetzt um
+> acht **Pfeiler** organisiert — hergeleitet aus der Musteranalyse der
+> SOTA-Lücken vom 2026-10-27: sechs wiederkehrende Muster → vier fehlende
+> Invarianten (Artefakt, Messidentität, Wahrnehmungs-Validität, Provenienz)
+> → acht Maßnahmen-Pfeiler. Die Pfeiler sind die Arbeits-Ebene der nächsten
+> Sessions; der **Anhang A** darunter ist die unveränderte Bestandsplanung.
+> Alle Abschnitts-Anker des Anhangs (Lücken-Matrix A–D, TODO-P0/P1/P2,
+> F7–F14, WP-0…WP-7, `SOTA-M1`…`SOTA-M23`) bleiben gültig — weiterhin
+> **mit Namen** zitieren (AGENTS.md §5), nie mit Zeile.
+> `docs/AURIK_10_ROADMAP.md` (historische Meilensteine, Planungshoheit
+> B.H.) ist von dieser Neufassung unberührt.
+
+## Nordstern & SOTA-Definition
+
+**Nordstern:** weltbester Wohlklang für das menschliche Ohr bei erhaltener
+Authentizität des Trägers.
+
+**Operative Definition (Pfeiler 8):** Aurik ist genau dann SOTA, wenn alle
+vier Bedingungen gelten — nicht „wenn die Tests grün sind":
+
+1. **Never-worsen-Invarianten** erfüllt (messbar, auf eingefrorenem
+   Referenz-Korpus);
+2. **Hör-Gate** bestanden (Release-Hörstichprobe + Kandidaten-Abnahme,
+   Hörordnung Ebene 4);
+3. **Fallback-Quote 0** im Referenz-Korpus (kein ML-Pfad still auf DSP
+   gefallen — §V6 (copilot-instructions.md)-Warnungen werden gezählt,
+   nicht nur geloggt);
+4. **Provenienz vollständig** (jedes Artefakt: Befehl, Seed, Phase,
+   Checkpoint-Hash; jede Gate-Zahl mit Metrik-Identität).
+
+## Pfeiler 1 — Hör-Kapazität als Fließband (höchster Hebel)
+
+**Muster:** Die Gate-Kette endet in einem menschlichen Ohr, das nicht
+skaliert; SOTA-Zuwachs stapelt sich hinter Hör-Kapazität („Flag-Flips 0/3",
+Katalog A1). Jede Wartezeit ist vertanes stillgelegtes Kapital.
+
+- [ ] **Wöchentliches Hör-Ritual** (30 min): die drei fertigen Pakete
+  abarbeiten — `thresholds_scnet_c4_fair_r2`, `thresholds_wohlklang_w1_hrv1`,
+  `thresholds_sgmse_3weg` (Start: `scripts/hoerpanel_player.py --study …`;
+  Anleitung `docs/reports/current/2026-10-07_hoerprobe_anleitung.md`).
+- [ ] **Standardfrage vereinfachen:** pro Trial „Klingt die Restaurierung
+  schlechter als die Referenz?" (2AFC/Never-worsen) statt Skala;
+  „nicht hörbar" ist ein gültiges, zu buchendes Ergebnis.
+- [ ] **Verdikt → Flag-Flip in einem Kommando:** `mushra_harness.py
+  thresholds-fit` → Register-Buchung (Beleg-Pfad, `scripts/sota_deficit_gate.py`)
+  → Flag-Flip → Commit. Ziel: ≤ 10 min vom Hören zum Commit.
+- [ ] **Release-Hörstichprobe** (3×10 s Golden-Korpus) als Pflichtteil
+  jedes Release-Candidates (`docs/guides/GO_NO_GO_DECISION_PROTOCOL.md`).
+
+## Pfeiler 2 — Gate-Zahlen nur mit Metrik-Identität
+
+**Muster:** Schwellenwerte überleben in der Doku, ihre Messmethoden nicht
+(KP-7 „0,73 < 1,02" war ohne Metrik-Definition; D-K3-54 „Extremwert-
+Statistik" nur als Formel-Beispiel). Das ist der wirksamste einzelne
+Spec-Eingriff — es schließt zwei Muster strukturell aus.
+
+- [ ] **Spec-Regel:** Jede Gate-Zahl wird geführt als Paar
+  **(Wert, Formel, Referenz-Set + Seed, Artefakt-Hash)**. Aufnahme in
+  `.github/WOHLKLANG_CLAIMS.md` als Beleg + Prüfung im
+  `aurik-spec-integration`-Gate.
+- [ ] **Audit der offenen Gate-Zahlen** (1 Tag): D-K1-5 (erfüllt —
+  `scripts/validate_bw_v5_hf_gate.py` als Referenz-Implementierung),
+  D-K3-28/54 (AM-Kalibrierung), SGMSE-SI-SDR (D-K0-3), ΔSDR-Gate (D-K4-1),
+  Never-worsen-Grenzen (D-K4-2).
+- [ ] **Vorbild-Beleg:** `docs/reports/current/2026-10-27_kp7_hf_gate_v2.json`
+  (Metrik identifiziert, kalibriert, Seed-Varianz dokumentiert).
+
+## Pfeiler 3 — Flag-Queue entlasten (System statt Einzelstück)
+
+**Muster:** 9+ gesperrte Flags sind gewartete Fläche ohne Nutzen; ihre
+Interaktionen über §V6 (copilot-instructions.md)-Fallback-Ketten sind
+unbekannt.
+
+- [ ] **Release-Kandidaten-Pipeline:** fester Referenz-Korpus, alle
+  Kandidaten-Flags als Varianten, je eine Metrik- + Hör-Runde. Reihenfolge
+  nach Evidenzstärke: `use_scnet_music` → `use_sgmse_musik` →
+  `use_bigvgan_f3_studio` → `use_bw_v5` → `use_wf4_warp_head` /
+  `use_tp_v2_phase` / `use_rt60_regressor` / `use_aspade_declipper` /
+  `use_tf_gridnet_quality`.
+- [ ] **Schwache Kandidaten archivieren statt pflegen:** Whisper-Denoiser
+  (D-K0-4, §9/5 der A2-Liste in
+  `docs/reports/current/2026-10-25_sota_massnahmen_katalog.md`),
+  AERO (D-K2-5, §9/6 dort) — Archivierung ist ein SOTA-Urteil.
+- [ ] **Maximal 1–2 neue Flags pro Release**; keine neuen K4-Challenger
+  (kein neues `SOTA-M` ohne Pfeiler-Kontext), solange die Queue mehr als
+  3 offene Kandidaten hat.
+
+## Pfeiler 4 — Provenienz & Single-Writer (Betriebsdisziplin)
+
+**Muster:** Doppelt gestartete Trainings, überschriebene Checkpoints,
+README-Drift, stale Paritäts-Reports — jede Panne kostete Stunden
+(KP-8-Forensik 2026-10-27).
+
+- [ ] **Run-ID + Lock** für Trainings-Jobs auf `models/<modell>/`
+  (Datei-Lock); Manifest erweitert um (Befehl, Seed, Phase,
+  Checkpoint-Hash).
+- [ ] **Kein Artefakt ohne Manifest** (Muster: `models/cantus/README.md`-
+  Tabelle); Paritäts-Reports tragen den Hash des gemessenen Checkpoints
+  (das `cantus_dit.parity.json`-„stale"-Muster wird damit unmöglich).
+- [ ] **Job-Runner mit Auto-Resume** statt manuellem Relaunch (Ursache der
+  Doppel-Läufe); Resume-Befehl steht dann im Manifest.
+
+## Pfeiler 5 — Fallback-Quote als Qualitäts-KPI
+
+**Muster:** §V6 (copilot-instructions.md)-Fallbacks machen defekte ML-Pfade
+*funktionierend* — die Lücke wird unsichtbar, solange „Tests grün" gilt.
+
+- [ ] **Fallback-Zähler** pro Song/Phase (ML→DSP-Umschaltungen aus
+  `logger.warning`-Ereignissen aggregieren) als Report-Feld im
+  Analyse-Output.
+- [ ] **Budget:** 0 ML-Fallbacks im Referenz-Korpus — „bestanden" heißt
+  „echter ML-Pfad aktiv", nicht „kein Absturz".
+- [ ] **Release-Gate:** Fallback-Quote > 0 blockiert den Flag-Flip.
+
+## Pfeiler 6 — Training muss laufen können
+
+**Muster:** Welle C/D hängt an GPU + stabilen Zeitfenstern (fine_tune, M8/M9,
+KP-12, Symphonia); Smokes sind CPU-geprüft, Echt-Läufe erliegen der
+Umgebung (CUDA seit den Runtime-Restarts nicht verfügbar, CPU-Epoche
+204-M-Netz > 60 min).
+
+- [ ] **Dedizierte Trainings-Umgebung** (GPU-Zugang wiederherstellen).
+- [ ] **Bis dahin:** Auto-Resume (Pfeiler 4) + Epoch-Checkpointing nutzen
+  (Mechanik existiert in `scripts/train_cantus.py`); kein manueller
+  Relaunch-Zyklus.
+- [ ] **Trainingsreihenfolge:** Cantus fine_tune (läuft) → domain_adapt →
+  Symphonia-Full (KP-11) → M8 A-SPADE → M9 TF-GridNet → KP-12.
+
+## Pfeiler 7 — Daten-Entscheidungen freigeben (Welle D)
+
+**Muster:** Synthetik-Daten deckeln jede Modell-Lane; die Beschaffung ist an
+menschliche Politik gebunden (Lizenzen, Goldens).
+
+- [ ] **Vinyl-Lizenz-Politik** (§9/7 der A2-Liste) — blockiert KP-6a/13 und
+  den Leerrillen-Nachschub (D-K1-2/D-K1-4).
+- [ ] **Echte RIRs** ≥ 30–50 (KP-10/D-K4-10; heute 1 lokale Simulation).
+- [ ] **Voice-Identity-Golden-Set** (D-K4-5/6) und Gender-Labels (KP-15).
+- [ ] **MUSHRA n≥30** terminieren **oder** formal Objektivmetrik-Beschluss
+  (Katalog A3 — beides ist ein gültiger Endzustand).
+
+## Pfeiler 8 — „Absolut hochwertig" operationalisieren
+
+- [ ] Die Vier-Bedingungen-Definition oben als Release-Checkliste in
+  `docs/guides/GO_NO_GO_DECISION_PROTOCOL.md` übernehmen.
+- [ ] **Release-Report** je Version: Invarianten-Metriken, Hör-Verdikte,
+  Fallback-Quote, Provenienz-Lücken (keine Zeile ohne Beleg).
+- [ ] **Qualitäts-Schwelle:** jede neue Phase/Metrik braucht vor dem
+  Rollout eine Hörstichprobe — Metriken sind Zeugen (Hörordnung), nicht
+  Richter.
+
+## Umsetzungsreihenfolge
+
+| Zeit | Was | Wer |
+| --- | --- | --- |
+| **Woche 1** | Hör-Runde (3 Pakete → bis zu 3 Flag-Flips, Pfeiler 1) + Metrik-Regel & Audit (Pfeiler 2) | User hört; Manager bucht + flippt |
+| **Woche 2** | Kandidaten-Pipeline + Archivierung (Pfeiler 3) + Provenienz-Locks (Pfeiler 4) | Manager |
+| **Danach parallel** | Fallback-KPI (5), Trainings-Infra (6), Datenfreigaben (7), Release-Report (8) | Manager + User-Entscheidungen |
+
+**Harte Vorgabe:** Keine neuen K4-Challenger, solange die Flag-Queue mehr
+als 3 offene Kandidaten hat.
 
 ---
+
+# Anhang A — Bestandsplanung (unverändert, Stand 2026-10-25/26)
+
+> Aufgaben-IDs (`TODO-P0-1` …, `SOTA-M1` … `SOTA-M23`) sind die
+> Zitier-Anker des Bestands. Ablauf: Aufgabe mit ID greppen, Beleg lesen,
+> umsetzen, Akzeptanzkriterium als Test/Gate nachziehen,
+> `change_ledger.py snapshot` + Commit. Reihenfolge-Aussagen dieses
+> Anhangs sind historisch (Stand 2026-09/10) und werden von der
+> Pfeiler-Reihenfolge oben überlagert.
 
 ## ML-TRAININGS-SOTA-ROADMAP — Wohlklang-Trainings auf echter Musik (2026-09-19)
 
@@ -2761,15 +2924,15 @@ stützt die Notwendigkeit: Sprach-Orakel (UTMOS) können Musik nicht bewerten
 
 | TODO-ID | Maßnahme | Register-IDs | Status |
 | --- | --- | --- | --- |
-| `SOTA-M7` | C1 · KP-7 BW-Reconstructor v5 Re-Training (F11) — **Lauf abgeschlossen**, offen: Gate-Definition ≥1,02 oder Hörstichprobe | D-K1-5 | offen — Nutzerentscheidung |
-| `SOTA-M8` | E5 · neuronaler A-SPADE-Klassen-Declipper als Phase-07-Challenger (PCHIP = §V6-Fallback) | D-K4-1 | offen |
-| `SOTA-M9` | E5 · nicht-kausaler Vollband-Denoiser (TF-GridNet-Klasse) als optionale Quality-Mode-Stufe; DFN bleibt kausal | D-K4-2 | offen |
-| `SOTA-M12` | E5 · KP-17 WF-V4 Warp-Head auf FCPE/CRePE-F0 + KP-18 TP-V2 Phasen-Schätzung | D-K4-7, D-K4-8 | offen |
+| `SOTA-M7` | C1 · KP-7 BW-Reconstructor v5 Re-Training (F11) — **Lauf abgeschlossen**, offen: Gate-Definition ≥1,02 oder Hörstichprobe | D-K1-5 | in-arbeit — **Gate BESTANDEN 2026-10-27** (kalibrierte Metrik `scripts/validate_bw_v5_hf_gate.py`: HF-Gain neu=51,0 ≥ 1,02; Alt reproduziert 0,73); offen: Hör-Sign-off (§v10.802 (copilot-instructions.md)) vor `use_bw_v5=True` wegen +17 dB HF-Boost |
+| `SOTA-M8` | E5 · neuronaler A-SPADE-Klassen-Declipper als Phase-07-Challenger (PCHIP = §V6-Fallback) | D-K4-1 | in-arbeit — Challenger implementiert 10.12.45 (22 Vertragstests, Flag `use_aspade_declipper` AUS); offen: GPU-Training, ΔSDR-Gate, Hörabnahme |
+| `SOTA-M9` | E5 · nicht-kausaler Vollband-Denoiser (TF-GridNet-Klasse) als optionale Quality-Mode-Stufe; DFN bleibt kausal | D-K4-2 | in-arbeit — Challenger implementiert 10.12.45 (46 Vertragstests, Flag `use_tf_gridnet_quality` AUS); offen: GPU-Training, Never-worsen-Gate, Hörabnahme |
+| `SOTA-M12` | E5 · KP-17 WF-V4 Warp-Head auf FCPE/CRePE-F0 + KP-18 TP-V2 Phasen-Schätzung | D-K4-7, D-K4-8 | in-arbeit — implementiert 10.12.46 (WF-V4 + TP-V2, Flags `use_wf4_warp_head`/`use_tp_v2_phase` AUS, 9+8 Vertragstests); offen: Training, A/B, Hör-Sign-off |
 | `SOTA-M13` | E5 · C·Ganzsong-Pipeline + Per-Stem-Restaurierung als Standard (Vorab-Entscheid D-K3-65 per Hörstichprobe) | D-K4-3 | offen |
-| `SOTA-M14` | C2 · KP-8 Cantus Vocal-Inpainting-DiT: pretrain → fine_tune (Daten `data/cantus_pairs` 3600 Paare lokal); domain_adapt ohne reale Daten nicht startklar | — | offen — lauffähig |
-| `SOTA-M15` | C3 · KP-10 RT60-Regressor auf RIR-Paaren | — | offen — **kein Skript, keine Daten** (Welle D) |
+| `SOTA-M14` | C2 · KP-8 Cantus Vocal-Inpainting-DiT: pretrain → fine_tune (Daten `data/cantus_pairs` 3600 Paare lokal); domain_adapt ohne reale Daten nicht startklar | — | in-arbeit — Pretrain abgeschlossen 2026-10-27 (best val 3,9013); fine_tune läuft (Phase-2-Smoke EXIT=0); domain_adapt mit Real-Daten offen |
+| `SOTA-M15` | C3 · KP-10 RT60-Regressor auf RIR-Paaren | — | in-arbeit — implementiert 10.12.46 (RT60-Regressor, Flag `use_rt60_regressor` AUS, D-K4-10); Daten offen: 1 lokale RIR-Simulation, Echt-RIRs Welle D |
 | `SOTA-M16` | C4 · KP-6 BANQUET Real-Vinyl-Finetune (F12) | — | offen — Daten D1 + Lizenz §9/7 |
-| `SOTA-M17` | C5 · KP-11 Symphonia (Export/Registry-Hygiene vorab) + KP-9 GaCELA | — | offen (Skripte da, Checkpoint fehlt) |
+| `SOTA-M17` | C5 · KP-11 Symphonia (Export/Registry-Hygiene vorab) + KP-9 GaCELA | — | in-arbeit — Export/Registry-Hygiene erledigt 2026-10-27 (Resolver zeigt auf `symphonia_tiny.onnx`); offen: Full-Training (KP-11) + KP-9-Bedingung |
 
 ### Welle D — Daten-Beschaffung (Dauerläufer, Blocker der KP-Lanes)
 
@@ -2784,7 +2947,7 @@ stützt die Notwendigkeit: Sprach-Orakel (UTMOS) können Musik nicht bewerten
 | `SOTA-M19` | E1 · WP-2 Phantom-ML-Stubs + Phantom-Referenzen | D-K3-3, D-K3-5 | abgeschlossen (D-K3-3) |
 | `SOTA-M20` | E2 · WP-1 §III.11-Lücken-Audit Richter + Signalpfad (K2) | D-K2-1, D-K2-2, D-K2-3, D-K2-4, D-K2-5 | teilweise (D-K2-1) |
 | `SOTA-M21` | E3 · WP-3 Wohlklang-Ordnung-Forensik (Vocoder-Hypothese) | D-K2-3 | abgeschlossen — 36 Verstöße, Gegenmaßnahme = M6 |
-| `SOTA-M22` | E4 · K3-Restbestand: D-K3-23 Denker-Tothoheit, D-K3-37 32×-Guard, D-K3-38/40 Scanner-Kosten, D-K3-54 AM-Peak, D-K3-64 Dither-Kaskade, D-K3-65 ARC/Goosebumps/MDEM je Chunk, D-K3-60 WCS-Chained-Export (geschlossen, Ersatz Beleg prüfen), D-K3-21 SNR-CAUSE, D-K3-31 SNR-Stärke, Restbestand D-K3-8/10/13/62 | D-K3-8, D-K3-10, D-K3-13, D-K3-21, D-K3-23, D-K3-31, D-K3-37, D-K3-38, D-K3-40, D-K3-54, D-K3-62, D-K3-64, D-K3-65 | offen |
+| `SOTA-M22` | E4 · K3-Restbestand: D-K3-23 Denker-Tothoheit, D-K3-37 32×-Guard, D-K3-38/40 Scanner-Kosten, D-K3-54 AM-Peak, D-K3-64 Dither-Kaskade, D-K3-65 ARC/Goosebumps/MDEM je Chunk, D-K3-60 WCS-Chained-Export (geschlossen, Ersatz Beleg prüfen), D-K3-21 SNR-CAUSE, D-K3-31 SNR-Stärke, Restbestand D-K3-8/10/13/62 | D-K3-8, D-K3-10, D-K3-13, D-K3-21, D-K3-23, D-K3-31, D-K3-37, D-K3-38, D-K3-40, D-K3-54, D-K3-62, D-K3-64, D-K3-65 | teilweise — D-K3-54 **GESCHLOSSEN 2026-10-27** (Extremwert-Kalibrierung, 24-Seed-Regression); offen: D-K3-23/31/37/38/40/62/64/65 + D-K3-21 (Nutzer-A/B) |
 | `SOTA-M23` | E6 · Doku-Konsistenz: dieser Abschnitt + SOTA-M-Blocker im Register nachtragen (dieser Eintrag erfüllt sich selbst) | — | **GESCHLOSSEN (mit diesem Abschnitt)** |
 
 **Welle F** existiert im Katalog nicht als eigenständige Welle — der

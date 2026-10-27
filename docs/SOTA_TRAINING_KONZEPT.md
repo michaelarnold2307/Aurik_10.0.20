@@ -19,10 +19,14 @@
 
 ## 0. Status und Abarbeitungs-Fortsetzung (Live-Abschnitt — bei jeder Änderung aktualisieren)
 
-**Stand: 2026-10-23 (v10.12.43).** Alle drei Hörproben-Pakete der Welle A sind
-gebaut; die menschlichen Gates stehen aus. Die GPU-Lanes (Wellen B/C) sind nur noch
-durch Daten-Beschaffung blockiert (BANQUET, RT60, Material-Klassifikator) — KP-7 und
-KP-8 wären sofort ausführbar.
+**Stand: 2026-10-27 (v10.12.46).** Alle drei Hörproben-Pakete der Welle A sind
+gebaut; die menschlichen Gates stehen aus (Hörproben + §9-Sign-offs). Erledigt
+seit v10.12.43: KP-7 HF-Gain-Gate kalibriert + **bestanden** (D-K1-5 in-arbeit,
+Hör-Sign-off offen), KP-8 Pretrain abgeschlossen + fine_tune läuft
+(Phase-2-Smoke geprüft), KP-10/KP-17/KP-18 implementiert + flag-gesperrt
+(10.12.46), KP-11-Registry-Hygiene erledigt. GPU-Lanes (Wellen B/C) warten
+weiter auf GPU-Zugang bzw. Daten-Beschaffung (BANQUET, RT60-Echt-RIRs,
+Material-Klassifikator).
 
 | Welle | KPs | Zustand | Nächster Schritt |
 | --- | --- | --- | --- |
@@ -47,18 +51,18 @@ pro Entscheidung (§9).
 | KP-4 | VAD: Silero → PANNs-Singing/AST | offen | Musikadaptierten Gate-Offset (Muster phase_19); A/B auf Korpus | Never-worsen der phase_18-Gate-Entscheidungen + Witness-neutral; Beleg Validierung C.3, Flag `use_silero_vad_music=False` (neutral §V7 copilot-instructions.md) |
 | KP-5 | Studio-Finisher-Vocoder-Entscheidung (D-K2-3) | offen — wartet auf W-1-Hörprobe | BigVGAN-F3 als Stufe 1 des Studio-Pfads nach C4/W-1-Sign-off; bei RT-Budget-Verstoß: Vocos-Vokal-Finetune auf MUSDB18-HQ | W-1-Hörstichprobe + RT-Budget (D-K0-1); §V6-Domänen-Warnung sitzt bereits am Ladepfad (10.12.24) |
 | KP-6 | BANQUET Real-Vinyl-Finetune F12 (+ Upstream-Optimalitäts-Bewertung) | in-arbeit — Daten der Flaschenhals | Echte Vinyl↔Reissue-Paare beschaffen (heute nur 16 damaged/6 clean, alle synthetische CC0), dann GPU-Run (wenige Stunden, 23.7 M Par.) | ΔSDR ≥ +2 dB vs. Zero-Shot auf destruktiven Fällen + never-worsen ≥ −0.1 dB auf sauberen Referenzen → voller Vertrag; Beleg Validierung D.2, Report `docs/reports/current/2026-10-09_ml_sota_validierung.md` |
-| KP-7 | BW-Reconstructor v5 Re-Training F11 | offen — sofort ausführbar | Masking-aware A1-Loss (Muster SOTA-A1/EAR-VAE), GPU-Run (~Stunden) | HF-Gain-Gate ≥ 1.02 (aktuell 0.73) → `use_bw_v5=True` als Shellac/Lacquer-HF-Pfad; sonst bleibt DSP-SBR/FlashSR-Paar |
-| KP-8 | Cantus = Vocal-Inpainting-DiT-Lane (§C) | offen — Full-Training ausstehend (tiny-Smoke CPU erledigt) | GPU: pretrain → fine_tune → domain_adapt, Re-Export, Paritätscheck, A/B gegen MIIPHER-DiT+HNR-Baseline, Hörabnahme, Zoo-Status training→active | voller Vertrag (§8-Kontrakt); Daten `data/cantus_pairs` (3600 Paare) lokal; Hygiene s. §4/KP-8 |
+| KP-7 | BW-Reconstructor v5 Re-Training F11 | in-arbeit — Re-Training durchgeführt + **Gate BESTANDEN 2026-10-27** (kalibrierte Metrik, HF-Gain neu=51,0); offen: Hör-Sign-off vor `use_bw_v5=True` | Masking-aware A1-Loss (Muster SOTA-A1/EAR-VAE), GPU-Run (~Stunden) | HF-Gain-Gate ≥ 1.02 (aktuell 0.73) → `use_bw_v5=True` als Shellac/Lacquer-HF-Pfad; sonst bleibt DSP-SBR/FlashSR-Paar |
+| KP-8 | Cantus = Vocal-Inpainting-DiT-Lane (§C) | in-arbeit — Pretrain abgeschlossen (best val 3,9013, 2026-10-27); fine_tune läuft (Phase-2-Smoke EXIT=0); domain_adapt mit Real-Daten offen | GPU: pretrain → fine_tune → domain_adapt, Re-Export, Paritätscheck, A/B gegen MIIPHER-DiT+HNR-Baseline, Hörabnahme, Zoo-Status training→active | voller Vertrag (§8-Kontrakt); Daten `data/cantus_pairs` (3600 Paare) lokal; Hygiene s. §4/KP-8 |
 | KP-9 | GaCELA Re-Training F2 (optional) | bedingt auf KP-8 | nur bei Lücken 375–1500 ms, die KP-8 nicht trägt; Task-Neuformulierung (Silence-Gap + Energy-Gating statt Full-Waveform-Match — Lehre aus der Verwerfung: fair validiert mean SDR −2.63 dB) | A/B gegen Cantus-Lane auf Langlücken |
-| KP-10 | RT60-Regressor | offen | GPU-Training auf RIR-Paaren (lokal DFN-Assets `rir_sim_*.wav` + echte Aufnahmen) | ersetzt konservatives T60-Witness-Cap in phase_20/49; Beleg Validierung E.3 (heute reines DSP, kein Modellbezug) |
+| KP-10 | RT60-Regressor | in-arbeit — implementiert + flag-gesperrt (D-K4-10, 10.12.46, `use_rt60_regressor` AUS); Echt-RIR-Daten Welle D offen | GPU-Training auf RIR-Paaren (lokal DFN-Assets `rir_sim_*.wav` + echte Aufnahmen) | ersetzt konservatives T60-Witness-Cap in phase_20/49; Beleg Validierung E.3 (heute reines DSP, kein Modellbezug) |
 | KP-11 | Symphonia = Instrumental-Kern (Cantus-Spiegelbild) | pending_training | Registry-Pfad bereinigt 2026-10-27 (Resolver zeigt auf `symphonia_tiny.onnx`); dann Full-Lauf wie KP-8 | gleicher Vertrag wie KP-8; Daten `data/symphonia_pairs(+_full/_batches)` lokal |
 | KP-12 | SingMOS Pro Kalibrierung F10 | offen | Leichtes Fine-Tuning/Kalibrierung auf verarbeitete Musik-Vocals (Golden Listening Set + MUSHRA/WP-8) | Vokal-MOS-Gates treffen bei Musik-Pegeln/-Spektren korrekt (heute Eichung auf trockene Gesangsaufnahmen); Beleg Validierung C.4 |
 | KP-13 | Material-Klassifikator (D-K0-8) | in-arbeit (WP-7 Daten-Aufbau) | 6-Klassen-CLAP-/Shallow-Head erst bei ≥10 Echt-Trägern je Klasse trainieren; danach Wiring-Entscheidung (CLAP-Zeuge vs. trainierter Kopf) + Sign-off | Accuracy gegen Human-Labels + A/B — Material steuert Bandbreiten-Ceilings, Defekt-Schwellen, Era-Priors (§V7 copilot-instructions.md: kein Rollout ohne A/B); Stand `docs/reports/current/2026-10-09_wp7_coverage.json` |
 | KP-14 | MERT Genre-Head | offen | GTZAN/MagnaTagATune ODER MUSDB-basierte Genre-Labels beschaffen (keiner lokal, Validierung E.5) | Accuracy gegen Human-Labels + A/B der Goal-Adaption |
 | KP-15 | Gender-Head F13 + Kalibrierung F14 | datenblockiert | Label-Korpus ≥50 Aufnahmen je Klasse lizenzkonform (`data/gender_labels.csv` fehlt); Skripte fertig | empirische Konsens-Rate (F14) mit Mindest-Stichprobe + Mindest-Konsens 0.80; Beleg Validierung D.7 |
 | KP-16 | DDSP C4 Re-Training auf DAC-Encoder | bedingt | nur wenn val-MAE klar unter der Mean-Baseline liegt, sonst D-K0-6 akzeptieren (heute: 0.2447 ≈ 0.2455 ⇒ kein Skill) | ΔSDR-Beleg vs. CLAP-Head; Ersatz-Basis lokal `models/dac/encoder_model.onnx` |
-| KP-17 | Neuronaler Warp-Schätzer WF-V4 | offen | Warp-Head auf FCPE/CRePE-F0-Features trainieren (beide Basen lokal — kein Download nötig) | Rest-Wow/Flutter unter der Hörschwelle + never-worsen gegen phase_12-Warp; Beleg Validierung E.1 |
-| KP-18 | Neuronale Phasen-Schätzung für Transienten TP-V2 | offen | Vocoder als Phasen-Synthesizer / kleines Netz; Daten = transient-reiche Musiksegmente mit Phasengroundtruth aus sauberen Referenzen | Kammfilter-Freiheit (Hörordnung Ebene 3) + never-worsen; Beleg Validierung E.2 |
+| KP-17 | Neuronaler Warp-Schätzer WF-V4 | in-arbeit — implementiert 10.12.46 (D-K4-7, `use_wf4_warp_head` AUS); offen: Training, A/B, Hör-Sign-off | Warp-Head auf FCPE/CRePE-F0-Features trainieren (beide Basen lokal — kein Download nötig) | Rest-Wow/Flutter unter der Hörschwelle + never-worsen gegen phase_12-Warp; Beleg Validierung E.1 |
+| KP-18 | Neuronale Phasen-Schätzung für Transienten TP-V2 | in-arbeit — implementiert 10.12.46 (D-K4-8, `use_tp_v2_phase` AUS); offen: Training, A/B, Hör-Sign-off | Vocoder als Phasen-Synthesizer / kleines Netz; Daten = transient-reiche Musiksegmente mit Phasengroundtruth aus sauberen Referenzen | Kammfilter-Freiheit (Hörordnung Ebene 3) + never-worsen; Beleg Validierung E.2 |
 | KP-19 | AudioLDM2 Latent-Inpainting F6 (optional) | offen — Rollenentscheidung nach S1 | nur wenn KP-8 extreme Fälle nicht deckt: RePaint-artige CLAP-Audio-Konditionierung | A/B auf Dropouts > 3 s; Plugin existiert und ist in phase_24 Tier 3 verdrahtet (Validierung E.7) |
 
 ---
@@ -206,6 +210,15 @@ Witness-Belege → Hörordnungs-Abnahme → erst dann Feature-Flag-Flip
 Masking-aware A1-Loss (Muster SOTA-A1, EAR-VAE); Ziel HF-Gain-Gate ≥ 1.02 (aktuell
 0.73). Bestanden → `use_bw_v5=True` als Shellac/Lacquer-HF-Pfad; sonst bleibt das
 DSP-SBR/FlashSR-Paar der HF-Weg (Flag aus).
+
+**Ergebnis 2026-10-27:** Re-Training durchgeführt
+(`models/bw_reconstructor/retrain_a1_20261025/`); die 0,73-Metrik ist
+identifiziert und kalibriert (`scripts/validate_bw_v5_hf_gate.py`, Report
+`docs/reports/current/2026-10-27_kp7_hf_gate_v2.json`): HF-Gain (out/in > 3 kHz
+auf milder HF-Dämpfung 6 dB/oct ab 2 kHz) neu = 51,0 ≥ 1,02 ⇒ **Gate
+bestanden** (Alt reproduziert 0,73). Wegen +17 dB HF-Boost über dem
+Eingangs-Rolloff: Aktivierung erst nach Hör-Sign-off
+(§v10.802 (copilot-instructions.md)).
 
 ### KP-8 · Cantus = Vocal-Inpainting-DiT-Lane (§C)
 

@@ -270,6 +270,11 @@ durchgängig erfüllen.
 ## Umsetzungsstand (Live — bei jeder Welle aktualisieren)
 
 ### 2026-10-27 (Welle C/E — K4-Challenger + D-K3-54)
+- **Roadmap neu gefasst (2026-10-27):** `docs/TODOS_SOTA_ROADMAP.md` ist jetzt
+  um acht Pfeiler organisiert (Hör-Kapazität, Metrik-Identität, Flag-Queue,
+  Provenienz, Fallback-KPI, Training, Daten, SOTA-Definition) — Anhang A
+  enthält die unveränderte Bestandsplanung, alle Abschnitts-Anker bleiben
+  gültig. `docs/AURIK_10_ROADMAP.md` (Planungshoheit B.H.) unberührt.
 
 - **KP-7/B3 (F11-BWv5, HF-Gain-Gate): METRIK KALIBRIERT — GATE BESTANDEN.**
   Die historische 0,73-Metrik ist identifiziert (Kalibrierung gegen das
