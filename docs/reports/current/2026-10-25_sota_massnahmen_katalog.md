@@ -271,6 +271,15 @@ durchgängig erfüllen.
 
 ### 2026-10-27 (Welle C/E — K4-Challenger + D-K3-54)
 
+- **KP-7/B3 (F11-BWv5, HF-Gain-Gate):** gemessen mit
+  `scripts/validate_bw_v5_hf_gate.py` (Report `2026-10-27_kp7_hf_gate.json`).
+  **Nicht bestanden / Metrik ungeklärt:** die 11-kHz-Zeile ist degeneriert
+  (Nenner≈0, Ausreißer 1.86e12) und verfälschte den Mittelwert; ohne sie ist
+  das Re-Training ~52 % des Alt-Modells, beide weit unter Gate 1.02 — der
+  historische 0.73-Wert wird von der Metrik nicht reproduziert. Kein Flag-Flip
+  (`use_bw_v5` bleibt False); offen: Metrik-Kalibrierung gegen die historische
+  Messung, danach erneute Gate-Runde.
+
 - **SOTA-M12 (KP-17 + KP-18):** beide K4-Challenger implementiert, trainierbar
   und flag-gesperrt integriert (`use_wf4_warp_head` / `use_tp_v2_phase`,
   Default AUS ⇒ bit-identisch). Register D-K4-7/8 → in-arbeit. Offen:

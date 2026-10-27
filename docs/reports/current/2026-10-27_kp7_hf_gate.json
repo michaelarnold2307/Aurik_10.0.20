@@ -1,0 +1,58 @@
+{
+  "date": "2026-10-27",
+  "script": "scripts/validate_bw_v5_hf_gate.py",
+  "seed": 42,
+  "old_model": "models/bw_reconstructor/bw_reconstructor_v5.onnx",
+  "new_model": "models/bw_reconstructor/retrain_a1_20261025/bw_reconstructor_v5.onnx",
+  "metric": "hf_recovery = HF-Energie(out)/HF-Energie(Referenz-Vollband) oberhalb der Cutoff-Grenze",
+  "rows": [
+    {
+      "cutoff_hz": 3000,
+      "hf_recovery_old": 0.0135,
+      "hf_recovery_new": 0.0042
+    },
+    {
+      "cutoff_hz": 5000,
+      "hf_recovery_old": 0.0015,
+      "hf_recovery_new": 0.0033
+    },
+    {
+      "cutoff_hz": 8000,
+      "hf_recovery_old": 0.0019,
+      "hf_recovery_new": 0.0011
+    },
+    {
+      "cutoff_hz": 11000,
+      "hf_recovery_old": 1855607480402.322,
+      "hf_recovery_new": 267196481165.072
+    }
+  ],
+  "summary": {
+    "mean_hf_recovery_old": 463901870100.5847,
+    "mean_hf_recovery_new": 66799120291.2701,
+    "gate_threshold_linear": 1.02,
+    "gate_passed": false,
+    "note": "Historischer 0.73-Wert wird hier als HF-Recovery-Rate interpretiert; beide Exporte auf demselben deterministischen Set gemessen (§G8 (copilot-instructions.md)). Kein Flag-Flip durch dieses Skript."
+  },
+  "review": {
+    "status": "nicht_bestanden_metrik_klaerung_offen",
+    "kontamination": "11-kHz-Zeile degeneriert (Referenz-HF-Energie≈0) — Werte 1.86e12/2.67e11 sind Divisions-Ausreißer, keine Messwerte; der summary.mean und gate_passed=true waren Artefakte.",
+    "belastbare_zeilen": {
+      "cutoff_3000": {
+        "alt": 0.0135,
+        "neu": 0.0042
+      },
+      "cutoff_5000": {
+        "alt": 0.0015,
+        "neu": 0.0033
+      },
+      "cutoff_8000": {
+        "alt": 0.0019,
+        "neu": 0.0011
+      }
+    },
+    "relativvergleich": "neu ≈ 0.52 × alt (Mean ohne 11 kHz) — das Re-Training ist nach dieser Metrik NICHT besser als das Alt-Modell (alt gewinnt 3 kHz und 8 kHz).",
+    "gate_bewertung": "Gate ≥ 1.02 (hf_recovery) wird von BEIDEN Exporten um ~2 Faktorgrößenordnungen verfehlt; der historische 0.73-Wert wird von dieser Metrik nicht reproduziert (Ehrlichkeits-Klausel im Skript bestätigt: historische Messmetrik undokumentiert).",
+    "schluss": "Kein Flag-Flip (use_bw_v5 bleibt False). Vor erneuter Gate-Messung muss die HF-Recovery-Metrik gegen die historische 0.73-Messung kalibriert/reproduziert werden (§G8 (copilot-instructions.md))."
+  }
+}
