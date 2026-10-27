@@ -75,7 +75,7 @@ Spec-Eingriff — es schließt zwei Muster strukturell aus.
 Interaktionen über §V6 (copilot-instructions.md)-Fallback-Ketten sind
 unbekannt.
 
-- [ ] **Release-Kandidaten-Pipeline:** fester Referenz-Korpus, alle
+- [x] **Release-Kandidaten-Pipeline:** fester Referenz-Korpus, alle
   Kandidaten-Flags als Varianten, je eine Metrik- + Hör-Runde. Reihenfolge
   nach Evidenzstärke: `use_scnet_music` → `use_sgmse_musik` →
   `use_bigvgan_f3_studio` → `use_bw_v5` → `use_wf4_warp_head` /
@@ -85,7 +85,7 @@ unbekannt.
   (D-K0-4, §9/5 der A2-Liste in
   `docs/reports/current/2026-10-25_sota_massnahmen_katalog.md`),
   AERO (D-K2-5, §9/6 dort) — Archivierung ist ein SOTA-Urteil.
-- [ ] **Maximal 1–2 neue Flags pro Release**; keine neuen K4-Challenger
+- [x] **Maximal 1–2 neue Flags pro Release**; keine neuen K4-Challenger
   (kein neues `SOTA-M` ohne Pfeiler-Kontext), solange die Queue mehr als
   3 offene Kandidaten hat.
 

@@ -508,6 +508,8 @@
 | tests/unit/test_flag_freigabe.py | ACTIVE | tests/unit | ja | — | Tests zur Flag-Freigabe-Kette (Verdikt-Validierung fit.json/ab_stats, Register-Buchung 8 Zellen, Ambiguität, Flag-Flip, Test-Angleichung) |
 | scripts/train_job_runner.py | ACTIVE | scripts | ja | — | Pfeiler 4 der SOTA-Roadmap (2026-10-27): Trainings-Job-Runner — Job-Lock (.train_job.lock) gegen Doppel-Läufe, Run-ID + Manifest (Befehl, Seed, Phase, Checkpoint-Hash, Resume-Befehl), Timeout-Kappt Prozessgruppe, Auto-Resume; Helfer kanonisch in backend/core/training_artifacts.py |
 | tests/unit/test_train_job_runner.py | ACTIVE | tests/unit | ja | — | Tests zum Job-Runner (Manifest-Provenienz, Timeout→Auto-Resume, Lock gegen Doppel-Lauf, Fehlschlag-Kette) |
+| scripts/kandidaten_archiv.py | ACTIVE | scripts | ja | — | Pfeiler 3 der SOTA-Roadmap (2026-10-27): schwache Kandidaten archivieren statt pflegen — Trockenlauf-Plan, Snapshot nach models/_archive_* (deployt bleibt stehen, reversibel), Register-Buchung, Nach-Gates; Ausführung fail-closed nur mit User-Sign-off (§9/5–6 der A2-Liste, SOTA-Urteil) |
+| tests/unit/test_kandidaten_archiv.py | ACTIVE | tests/unit | ja | — | Tests zur Kandidaten-Archivierung (Plan/Trockenlauf, Sign-off-Pflicht, Snapshot+Buchung, Gate-Rollback) |
 
 ## Pflege-Regeln
 
