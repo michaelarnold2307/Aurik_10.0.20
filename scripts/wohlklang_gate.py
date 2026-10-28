@@ -523,9 +523,21 @@ def check_harnesses() -> tuple[list[Finding], int]:
         root = ROOT / root_name
         if not root.exists():
             continue
-        for path in root.rglob("*.py"):
+        try:
+            py_files = list(root.rglob("*.py"))
+        except OSError as exc:  # FS-Wettlauf mit laufenden Trainings
+            findings.append(
+                Finding("WARN", "P1", f"{root_name}: Verzeichnislauf abgebrochen ({exc}) — Prüfung unvollständig")
+            )
+            continue
+        for path in py_files:
+            try:
+                text = _read(path)
+            except OSError as exc:
+                findings.append(Finding("WARN", "P1", f"{path}: nicht lesbar ({exc}) — übersprungen"))
+                continue
             checked += 1
-            for ref in _scan_code_paths(_read(path)):
+            for ref in _scan_code_paths(text):
                 if _path_missing(ref):
                     phantom_paths.append(f"{path.relative_to(ROOT)} → {ref}")
     findings.append(
