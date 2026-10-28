@@ -332,8 +332,11 @@ def train(
 def export_onnx(model: AspadeClassNet, onnx_path: Path, seg_samples: int) -> None:
     """ONNX-Export (opset 17, dynamische Zeitachse, dynamo=False wie train_bw_v5.py)."""
     model.eval()
-    dummy_y = torch.zeros(1, 1, seg_samples, dtype=torch.float32)
-    dummy_theta = torch.tensor([[[0.3]]], dtype=torch.float32)
+    # Device-Paritaet (§III.9 (copilot-instructions.md)): Dummies auf das
+    # Modell-Device — CPU-Dummy + CUDA-Modell crasht in conv1d (Ketten-Befund).
+    _dev = next(model.parameters()).device
+    dummy_y = torch.zeros(1, 1, seg_samples, dtype=torch.float32, device=_dev)
+    dummy_theta = torch.tensor([[[0.3]]], dtype=torch.float32, device=_dev)
     torch.onnx.export(
         model,
         (dummy_y, dummy_theta),
@@ -364,7 +367,8 @@ def check_onnx_parity(model: AspadeClassNet, onnx_path: Path, seed: int) -> floa
     theta_np = np.array([[[theta]]], dtype=np.float32)
 
     with torch.inference_mode():
-        ref = model(torch.from_numpy(y_np), torch.from_numpy(theta_np)).numpy()
+        _dev2 = next(model.parameters()).device
+        ref = model(torch.from_numpy(y_np).to(_dev2), torch.from_numpy(theta_np).to(_dev2)).detach().cpu().numpy()
     sess = ort.InferenceSession(str(onnx_path), providers=["CPUExecutionProvider"])
     feed = {sess.get_inputs()[0].name: y_np, sess.get_inputs()[1].name: theta_np}
     got = sess.run(None, feed)[0]

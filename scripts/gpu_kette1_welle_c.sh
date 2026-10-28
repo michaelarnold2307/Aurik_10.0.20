@@ -16,20 +16,20 @@ R --name m8_aspade --ckpt-dir models/aspade --phase sota_m8 \
 
 echo "=== R2: SOTA-M9 TF-GridNet Echt-Training (GPU) ==="
 R --name m9_tf_gridnet --ckpt-dir models/tf_gridnet --phase sota_m9 \
-  --cmd "env PYTHONPATH=. $PY -B scripts/train_tf_gridnet_denoiser.py --epochs 30 --device cuda" \
-  --resume-cmd "env PYTHONPATH=. $PY -B scripts/train_tf_gridnet_denoiser.py --epochs 30 --device cuda --resume models/tf_gridnet/checkpoint_latest.pt" \
+  --cmd "env PYTHONPATH=. $PY -B scripts/train_tf_gridnet_denoiser.py --epochs 30 --device cuda --synthetic 4000" \
+  --resume-cmd "bash -c \"if [ -f models/tf_gridnet/checkpoint_latest.pt ]; then exec env PYTHONPATH=. $PY -B scripts/train_tf_gridnet_denoiser.py --epochs 30 --device cuda --synthetic 4000 --resume models/tf_gridnet/checkpoint_latest.pt; else exec env PYTHONPATH=. $PY -B scripts/train_tf_gridnet_denoiser.py --epochs 30 --device cuda --synthetic 4000; fi\"" \
   --timeout-s 21600 --retries 1
 
 echo "=== R3: KP-8 Cantus pretrain (Full-Preset, GPU) ==="
 R --name c2_cantus_pretrain --ckpt-dir models/cantus --phase pretrain \
-  --cmd "env PYTHONPATH=. $PY -B scripts/train_cantus.py --phase=pretrain --preset=full --freeze-encoder=true --epochs=50" \
-  --resume-cmd "env PYTHONPATH=. $PY -B scripts/train_cantus.py --phase=pretrain --preset=full --freeze-encoder=true --epochs=50 --resume models/cantus/checkpoint_latest.pt" \
+  --cmd "env PYTHONPATH=. $PY -B scripts/train_cantus.py --phase=pretrain --preset=full --freeze-encoder --epochs=50" \
+  --resume-cmd "env PYTHONPATH=. $PY -B scripts/train_cantus.py --phase=pretrain --preset=full --freeze-encoder --epochs=50 --resume models/cantus/checkpoint_latest.pt" \
   --timeout-s 43200 --retries 1
 
 echo "=== R4: KP-8 Cantus fine_tune (Phase 2, GPU) ==="
 R --name c2_cantus_finetune --ckpt-dir models/cantus --phase fine_tune \
-  --cmd "env PYTHONPATH=. $PY -B scripts/train_cantus.py --phase=fine_tune --preset=full --singmos-loss=true --epochs=30 --resume models/cantus/checkpoint_latest.pt" \
-  --resume-cmd "env PYTHONPATH=. $PY -B scripts/train_cantus.py --phase=fine_tune --preset=full --singmos-loss=true --epochs=30 --resume models/cantus/checkpoint_latest.pt" \
+  --cmd "env PYTHONPATH=. $PY -B scripts/train_cantus.py --phase=fine_tune --preset=full --singmos-loss --epochs=30 --resume models/cantus/checkpoint_latest.pt" \
+  --resume-cmd "env PYTHONPATH=. $PY -B scripts/train_cantus.py --phase=fine_tune --preset=full --singmos-loss --epochs=30 --resume models/cantus/checkpoint_latest.pt" \
   --timeout-s 43200 --retries 1
 
 echo "=== R5: KP-8 Cantus domain_adapt (Phase 3, GPU) ==="

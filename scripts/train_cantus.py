@@ -29,8 +29,8 @@ Determinismus (§G5 (GEBOTE.md)): Session-Master-Seed → alle Ableitungen
 und Report mitgeführt. NaN/Inf-Guard je Step (§0a (copilot-instructions.md)).
 
 Usage:
-    python3 -B scripts/train_cantus.py --phase=pretrain   --freeze-encoder=true  --epochs=50
-    python3 -B scripts/train_cantus.py --phase=fine_tune  --singmos-loss=true    --epochs=30
+    python3 -B scripts/train_cantus.py --phase=pretrain   --freeze-encoder  --epochs=50
+    python3 -B scripts/train_cantus.py --phase=fine_tune  --singmos-loss    --epochs=30
     python3 -B scripts/train_cantus.py --phase=domain_adapt --data=data/real_degraded_vocals --epochs=10
     python3 -B scripts/train_cantus.py --smoke            # CPU-End-to-End-Smoke (2 Steps)
 """
