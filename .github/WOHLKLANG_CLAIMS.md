@@ -36,7 +36,7 @@ begründete Ausnahme — erscheint als Warnung) · `gesperrt` (Soll = AUS).
 E3 `aktiviert` ohne `OFFEN` · E4 `ausnahme` braucht `Grund:` (≥ 20 Zeichen) und
 `Review:` · E5 **Schalter-Abgleich Code ↔ Vertrag** · E6 `gesperrt` ⇒ Soll AUS ·
 E7 **Gate-Zahlen & Metrik-Identität (Paar-Pflicht)** · jede veröffentlichte Bewertung: Name · Messgröße · Referenz-Set + Seed · Belegpfad (alle Felder gefüllt; Status „aktiv“ nur bei vollständiger Identität) ·
-**Betriebsregeln (im Release-Report belegt, nicht Gate-geprüft):** B1 **Fallback-Quote 0** — kein ML→DSP-Fallback im Referenz-Korpus; Zählung `backend/core/fallback_ledger.py`, > 0 blockiert den Flag-Flip · B2 **Flag-Disziplin** — maximal 1–2 neue Flags pro Release; kein neuer K4-Challenger, solange mehr als 3 offene Kandidaten warten.
+**Betriebsregeln (im Release-Report belegt, nicht Gate-geprüft):** B1 **Fallback-Quote 0 (ungeplant)** — kein ungeplanter ML→DSP-Fallback im Referenz-Korpus; Zählung `backend/core/fallback_ledger.py` mit Klassifikation (`geplant` = bewusst gesperrte Flags §v10.802 (copilot-instructions.md) bzw. offene Zeugen-Modelle — separat ausgewiesen; `defekt` > 0 blockiert den Flag-Flip) · B2 **Flag-Disziplin** — maximal 1–2 neue Flags pro Release; kein neuer K4-Challenger, solange mehr als 3 offene Kandidaten warten.
 P1 Evidenz-Harneske dürfen keine Phantom-Pfade referenzieren ·
 P2 Bericht über Phantom-Referenzen im Produktionscode.
 

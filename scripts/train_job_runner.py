@@ -116,6 +116,10 @@ def run_job(
     manifest_path: Path,
 ) -> int:
     """Führt den Job aus; liefert Exit-Code (0 = ein Versuch lief sauber durch)."""
+    try:
+        os.nice(10)  # Host-Schutz (Pfeiler 6): Kinder erben die niedrige Priorität
+    except OSError:
+        pass
     ckpt_dir.mkdir(parents=True, exist_ok=True)
     run_id = make_run_id(phase)
     lock = acquire_run_lock(ckpt_dir, run_id, lock_name=JOB_LOCK_NAME)

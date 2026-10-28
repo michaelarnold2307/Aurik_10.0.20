@@ -111,7 +111,24 @@ def test_fallback_ledger_release_gate() -> None:
     from backend.core import fallback_ledger as fl
 
     fl.reset()
-    assert fl.fallback_report()["release_gate"] == "erfuellt"
+    assert fl.fallback_report()["release_gate"].startswith("erfuellt")
     fl.record_fallback("z", "g")
     assert fl.fallback_report()["release_gate"] == "gesperrt"
+    fl.reset()
+
+
+def test_fallback_ledger_klassifikation_geplant() -> None:
+    from backend.core import fallback_ledger as fl
+
+    fl.reset()
+    fl.record_fallback("ml", "x", art="geplant")
+    fl.record_fallback("ml", "y")  # Default: defekt
+    rep = fl.fallback_report()
+    assert rep["fallback_by_art"] == {"geplant": 1, "defekt": 1}
+    assert rep["release_gate"] == "gesperrt", "Defekt-Rueckfall sperrt weiterhin"
+    fl.record_fallback("ml", "z", art="unbekannt")
+    assert fl.fallback_report()["fallback_by_art"]["defekt"] == 2, "unbekannte Art = defekt (fail-closed)"
+    fl.reset()
+    fl.record_fallback("ml", "nur geplant", art="geplant")
+    assert fl.fallback_report()["release_gate"].startswith("erfuellt"), "geplant sperrt nicht"
     fl.reset()

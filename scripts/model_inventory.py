@@ -317,6 +317,10 @@ _CONSUMER_ROOTS = ("backend", "plugins", "denker", "cli", "Aurik10")
 # Bewusst ohne Konsumenten — JEDER Eintrag ist ein Entscheid mit Begründung
 # und Aufgabenziel, kein vergessener Rest (§G8 copilot-instructions.md, Transparenz).
 _WIRING_ALLOWLIST: dict[str, str] = {
+    "_archive_20261028": (
+        "Snapshot-Archiv der Kandidaten-Archivierung (Pfeiler 3, §9/5 SOTA-Urteil D-K0-4 2026-10-28) — "
+        "Kopien deployter Artefakte zur reversiblen Aufbewahrung; kein Laufzeitpfad (Muster _archive_20260920)."
+    ),
     "applade": (
         "port/ ist ein Zwilling von models/aspade/aspade_declipper.onnx (identischer SHA 8161ed93…) — "
         "das Musik-Finetune ist bereits über A-SPADE in phase_07 PRODUKTIV; nur applade_dnn.onnx (Basis) ist verwaist"
