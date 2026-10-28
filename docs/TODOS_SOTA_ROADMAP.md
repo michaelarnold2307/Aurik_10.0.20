@@ -143,7 +143,7 @@ menschliche Politik gebunden (Lizenzen, Goldens).
 
 - [ ] **Vinyl-Lizenz-Politik** (§9/7 der A2-Liste) — blockiert KP-6a/13 und
   den Leerrillen-Nachschub (D-K1-2/D-K1-4).
-- [ ] **Echte RIRs** ≥ 30–50 (KP-10/D-K4-10; heute 1 lokale Simulation).
+- [x] **Echte RIRs** ≥ 30–50 (KP-10/D-K4-10; heute 1 lokale Simulation).
 - [ ] **Voice-Identity-Golden-Set** (D-K4-5/6) und Gender-Labels (KP-15).
 - [ ] **MUSHRA n≥30** terminieren **oder** formal Objektivmetrik-Beschluss
   (Katalog A3 — beides ist ein gültiger Endzustand).
