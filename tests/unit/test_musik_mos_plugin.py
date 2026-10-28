@@ -51,3 +51,13 @@ def test_details_vollstaendig() -> None:
     res = get_musik_mos().estimate_mos(_musik_basis(), 48000)
     for schluessel in ("z", "flatness", "q_rausch", "q_tonal", "q_clip", "q_hf", "q_dyn"):
         assert schluessel in res.details, schluessel
+
+
+def test_layout_invariante_stereo() -> None:
+    """Regression: (C, N) vs. (N, C) — AGENTS.md §3 Stereo-Layout-Falle."""
+    p = get_musik_mos()
+    x = _musik_basis()
+    mono = p.estimate_mos(x, 48000).mos
+    cn = p.estimate_mos(np.stack([x, x]), 48000).mos
+    nc = p.estimate_mos(np.stack([x, x], axis=1), 48000).mos
+    assert abs(mono - cn) < 1e-6 and abs(mono - nc) < 1e-6

@@ -79,7 +79,14 @@ def _restore_fenster(audio: np.ndarray, sr: int) -> tuple[np.ndarray, dict]:
     )
     restorer = UnifiedRestorerV3(config=cfg)
     ergebnis = restorer.restore(audio, sample_rate=sr, mode="fast", ml_runtime_budget_s=2.0)
-    return np.asarray(ergebnis.audio, dtype=np.float32), snapshot()
+    # Stereo-Layout-Invariante (AGENTS.md §3): pipeline-intern (C, N) — ohne
+    # Normierung kollabiert mean(axis=1) auf C Samples (Produktionsbefund).
+    a = np.asarray(ergebnis.audio, dtype=np.float32)
+    if a.ndim == 2 and a.shape[0] <= 8 and a.shape[-1] > 8:
+        a = a.T
+    if a.ndim == 2:
+        a = a.mean(axis=1)
+    return a, snapshot()
 
 
 def _bewerte(audio: np.ndarray, sr: int) -> tuple[float, float]:

@@ -317,6 +317,11 @@ _CONSUMER_ROOTS = ("backend", "plugins", "denker", "cli", "Aurik10")
 # Bewusst ohne Konsumenten — JEDER Eintrag ist ein Entscheid mit Begründung
 # und Aufgabenziel, kein vergessener Rest (§G8 copilot-instructions.md, Transparenz).
 _WIRING_ALLOWLIST: dict[str, str] = {
+    "diffwave_vocal_inpaint": (
+        "Trainingsziel der Matrix-D.3-Kette (DiffWave-Vokal-Inpaint, S1 -1,7 dB Beleg) — "
+        "Checkpoints entstehen ueber scripts/gpu_kette2_matrix_d3.sh (Auto-Resume), "
+        "Aktivierung erst nach B3/Hoer-Abnahme."
+    ),
     "_archive_20261028": (
         "Snapshot-Archiv der Kandidaten-Archivierung (Pfeiler 3, §9/5 SOTA-Urteil D-K0-4 2026-10-28) — "
         "Kopien deployter Artefakte zur reversiblen Aufbewahrung; kein Laufzeitpfad (Muster _archive_20260920)."

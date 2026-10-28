@@ -58,6 +58,9 @@ class MusikMOSPlugin:
         """Schätzt Musik-Qualität 1–5 ohne Referenzsignal (höher = besser)."""
         x = np.asarray(audio, dtype=np.float32)
         if x.ndim == 2:
+            # Stereo-Layout-Invariante (AGENTS.md §3): (C, N) -> (N, C) erkennen
+            if x.shape[0] <= 8 and x.shape[-1] > 8:
+                x = x.T
             x = x.mean(axis=1)
         ziel_sr = 48000
         if sr != ziel_sr:

@@ -1,0 +1,36 @@
+{
+  "schema": "aurik.train_job/1",
+  "run_id": "fine_tune-20261028T121337Z-c493bd",
+  "name": "c2_cantus_finetune",
+  "phase": "fine_tune",
+  "seed": null,
+  "befehl": "env PYTHONPATH=. /home/michael/.local/share/aurik/venv_rocm72/bin/python -B scripts/train_cantus.py --phase=fine_tune --preset=full --singmos-loss=true --epochs=30 --resume models/cantus/checkpoint_latest.pt",
+  "resume_befehl": "env PYTHONPATH=. /home/michael/.local/share/aurik/venv_rocm72/bin/python -B scripts/train_cantus.py --phase=fine_tune --preset=full --singmos-loss=true --epochs=30 --resume models/cantus/checkpoint_latest.pt",
+  "timeout_s": 43200.0,
+  "retries": 1,
+  "versuche": [
+    {
+      "exit_code": 2,
+      "sekunden": 2.9,
+      "timed_out": false,
+      "output_tail": "usage: train_cantus.py [-h] [--phase {pretrain,fine_tune,domain_adapt}]\n                       [--encoder ENCODER]\n                       [--freeze-encoder | --no-freeze-encoder]\n                       [--singmos-loss | --no-singmos-loss] [--data DATA]\n                       [--epochs EPOCHS] [--batch-size BATCH_SIZE] [--lr LR]\n                       [--resume RESUME] [--preset {full,tiny}]\n                       [--checkpoint-every CHECKPOINT_EVERY]\n                       [--steps-per-epoch STEPS_PER_EPOCH] [--seed SEED]\n                       [--cpu] [--smoke]\ntrain_cantus.py: error: argument --singmos-loss/--no-singmos-loss: ignored explicit argument 'true'\n",
+      "versuch": 1,
+      "befehl": "env PYTHONPATH=. /home/michael/.local/share/aurik/venv_rocm72/bin/python -B scripts/train_cantus.py --phase=fine_tune --preset=full --singmos-loss=true --epochs=30 --resume models/cantus/checkpoint_latest.pt"
+    },
+    {
+      "exit_code": 2,
+      "sekunden": 2.5,
+      "timed_out": false,
+      "output_tail": "usage: train_cantus.py [-h] [--phase {pretrain,fine_tune,domain_adapt}]\n                       [--encoder ENCODER]\n                       [--freeze-encoder | --no-freeze-encoder]\n                       [--singmos-loss | --no-singmos-loss] [--data DATA]\n                       [--epochs EPOCHS] [--batch-size BATCH_SIZE] [--lr LR]\n                       [--resume RESUME] [--preset {full,tiny}]\n                       [--checkpoint-every CHECKPOINT_EVERY]\n                       [--steps-per-epoch STEPS_PER_EPOCH] [--seed SEED]\n                       [--cpu] [--smoke]\ntrain_cantus.py: error: argument --singmos-loss/--no-singmos-loss: ignored explicit argument 'true'\n",
+      "versuch": 2,
+      "befehl": "env PYTHONPATH=. /home/michael/.local/share/aurik/venv_rocm72/bin/python -B scripts/train_cantus.py --phase=fine_tune --preset=full --singmos-loss=true --epochs=30 --resume models/cantus/checkpoint_latest.pt"
+    }
+  ],
+  "quelle": "scripts/train_job_runner.py",
+  "checkpoint_hashes": {
+    "cantus_dit.onnx": "ea2556b23dd511bb8e73eb231efd06bfdfd3128f4bf941f3550bdf5b6d7820cc",
+    "checkpoint_best.pt": "b09822bcb957858f3779cddf0e7109913d1f80928b351a22cd5595ede4d48130",
+    "checkpoint_latest.pt": "78ec1319eb28d05fcacd4dc5517f130b2afc3e35f097710ce8ac1eb38e70cb20"
+  },
+  "ergebnis": "fehlgeschlagen"
+}

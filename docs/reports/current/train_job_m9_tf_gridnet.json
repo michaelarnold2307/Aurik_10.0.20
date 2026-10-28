@@ -1,0 +1,32 @@
+{
+  "schema": "aurik.train_job/1",
+  "run_id": "sota_m9-20261028T121259Z-edfe7b",
+  "name": "m9_tf_gridnet",
+  "phase": "sota_m9",
+  "seed": null,
+  "befehl": "env PYTHONPATH=. /home/michael/.local/share/aurik/venv_rocm72/bin/python -B scripts/train_tf_gridnet_denoiser.py --epochs 30 --device cuda",
+  "resume_befehl": "env PYTHONPATH=. /home/michael/.local/share/aurik/venv_rocm72/bin/python -B scripts/train_tf_gridnet_denoiser.py --epochs 30 --device cuda --resume models/tf_gridnet/checkpoint_latest.pt",
+  "timeout_s": 21600.0,
+  "retries": 1,
+  "versuche": [
+    {
+      "exit_code": 1,
+      "sekunden": 4.4,
+      "timed_out": false,
+      "output_tail": "Traceback (most recent call last):\n  File \"/media/michael/Software 4TB/Aurik_Standalone/scripts/train_tf_gridnet_denoiser.py\", line 386, in <module>\n    main()\n  File \"/media/michael/Software 4TB/Aurik_Standalone/scripts/train_tf_gridnet_denoiser.py\", line 368, in main\n    train(\n  File \"/media/michael/Software 4TB/Aurik_Standalone/scripts/train_tf_gridnet_denoiser.py\", line 219, in train\n    dataset = PairedChunkDataset(clean_dir, noisy_dir, synthetic=synthetic, seed=seed)\n  File \"/media/michael/Software 4TB/Aurik_Standalone/scripts/train_tf_gridnet_denoiser.py\", line 132, in __init__\n    raise ValueError(\"PairedChunkDataset: --clean-dir/--noisy-dir oder --synthetic nötig\")\nValueError: PairedChunkDataset: --clean-dir/--noisy-dir oder --synthetic nötig\n",
+      "versuch": 1,
+      "befehl": "env PYTHONPATH=. /home/michael/.local/share/aurik/venv_rocm72/bin/python -B scripts/train_tf_gridnet_denoiser.py --epochs 30 --device cuda"
+    },
+    {
+      "exit_code": 1,
+      "sekunden": 4.2,
+      "timed_out": false,
+      "output_tail": "Traceback (most recent call last):\n  File \"/media/michael/Software 4TB/Aurik_Standalone/scripts/train_tf_gridnet_denoiser.py\", line 386, in <module>\n    main()\n  File \"/media/michael/Software 4TB/Aurik_Standalone/scripts/train_tf_gridnet_denoiser.py\", line 368, in main\n    train(\n  File \"/media/michael/Software 4TB/Aurik_Standalone/scripts/train_tf_gridnet_denoiser.py\", line 211, in train\n    ckpt = torch.load(resume, map_location=dev, weights_only=False)\n  File \"/home/michael/.local/share/aurik/venv_rocm72/lib/python3.10/site-packages/torch/serialization.py\", line 1530, in load\n    with _open_file_like(f, \"rb\") as opened_file:\n  File \"/home/michael/.local/share/aurik/venv_rocm72/lib/python3.10/site-packages/torch/serialization.py\", line 795, in _open_file_like\n    return _open_file(name_or_buffer, mode)\n  File \"/home/michael/.local/share/aurik/venv_rocm72/lib/python3.10/site-packages/torch/serialization.py\", line 776, in __init__\n    super().__init__(open(name, mode))  # noqa: SIM115\nFileNotFoundError: [Errno 2] No such file or directory: 'models/tf_gridnet/checkpoint_latest.pt'\n",
+      "versuch": 2,
+      "befehl": "env PYTHONPATH=. /home/michael/.local/share/aurik/venv_rocm72/bin/python -B scripts/train_tf_gridnet_denoiser.py --epochs 30 --device cuda --resume models/tf_gridnet/checkpoint_latest.pt"
+    }
+  ],
+  "quelle": "scripts/train_job_runner.py",
+  "checkpoint_hashes": {},
+  "ergebnis": "fehlgeschlagen"
+}
