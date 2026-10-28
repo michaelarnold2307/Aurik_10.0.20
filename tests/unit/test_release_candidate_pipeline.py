@@ -132,3 +132,24 @@ def test_fallback_ledger_klassifikation_geplant() -> None:
     fl.record_fallback("ml", "nur geplant", art="geplant")
     assert fl.fallback_report()["release_gate"].startswith("erfuellt"), "geplant sperrt nicht"
     fl.reset()
+
+
+def test_fallback_ledger_planned_rules_ueber_log_counter() -> None:
+    """Regression: Regel-RegEx gegen gemappte lowercase-Meldungen (Bug 2026-10-28)."""
+    import logging
+
+    from backend.core import fallback_ledger as fl
+
+    fl.reset()
+    counter = fl.install_log_counter("backend")
+    try:
+        logging.getLogger("backend.core.phases.phase_49_advanced_dereverb").warning("ML→DSP-Ersatzpfad aktiviert")
+        logging.getLogger("backend.core.dsp.music_mos_oracle").warning(
+            "SingMOS Pro nicht verfügbar (model_used=pqs_dsp_fallback)"
+        )
+    finally:
+        logging.getLogger("backend").removeHandler(counter)
+    snap = fl.snapshot()
+    assert snap["total"] == 2
+    assert snap["by_art"] == {"geplant": 2}, f"PLANNED_RULES muessen greifen: {snap}"
+    fl.reset()

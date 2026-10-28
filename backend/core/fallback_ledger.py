@@ -90,7 +90,7 @@ class FallbackLogCounter(logging.Handler):
         if any(marker in message for marker in FALLBACK_MARKERS):
             art = (
                 "geplant"
-                if any(record.name.endswith(rule[0]) and rule[1] in message for rule in PLANNED_RULES)
+                if any(record.name.endswith(rule[0]) and rule[1].lower() in message for rule in PLANNED_RULES)
                 else "defekt"
             )
             record_fallback(self.component, record.getMessage()[:120], art=art)

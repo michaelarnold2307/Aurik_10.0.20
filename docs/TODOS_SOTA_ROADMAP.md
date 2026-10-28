@@ -40,13 +40,13 @@ Katalog A1). Jede Wartezeit ist vertanes stillgelegtes Kapital.
   abarbeiten — `thresholds_scnet_c4_fair_r2`, `thresholds_wohlklang_w1_hrv1`,
   `thresholds_sgmse_3weg` (Start: `scripts/hoerpanel_player.py --study …`;
   Anleitung `docs/reports/current/2026-10-07_hoerprobe_anleitung.md`).
-- [ ] **Standardfrage vereinfachen:** pro Trial „Klingt die Restaurierung
+- [x] **Standardfrage vereinfachen:** pro Trial „Klingt die Restaurierung
   schlechter als die Referenz?" (2AFC/Never-worsen) statt Skala;
   „nicht hörbar" ist ein gültiges, zu buchendes Ergebnis.
 - [x] **Verdikt → Flag-Flip in einem Kommando:** `mushra_harness.py
   thresholds-fit` → Register-Buchung (Beleg-Pfad, `scripts/sota_deficit_gate.py`)
   → Flag-Flip → Commit. Ziel: ≤ 10 min vom Hören zum Commit.
-- [ ] **Release-Hörstichprobe** (3×10 s Golden-Korpus) als Pflichtteil
+- [x] **Release-Hörstichprobe** (3×10 s Golden-Korpus) als Pflichtteil
   jedes Release-Candidates (`docs/guides/GO_NO_GO_DECISION_PROTOCOL.md`).
 
 ## Pfeiler 2 — Gate-Zahlen nur mit Metrik-Identität
@@ -98,7 +98,7 @@ README-Drift, stale Paritäts-Reports — jede Panne kostete Stunden
 - [x] **Run-ID + Lock** für Trainings-Jobs auf `models/<modell>/`
   (Datei-Lock); Manifest erweitert um (Befehl, Seed, Phase,
   Checkpoint-Hash).
-- [ ] **Kein Artefakt ohne Manifest** (Muster: `models/cantus/README.md`-
+- [x] **Kein Artefakt ohne Manifest** (Muster: `models/cantus/README.md`-
   Tabelle); Paritäts-Reports tragen den Hash des gemessenen Checkpoints
   (das `cantus_dit.parity.json`-„stale"-Muster wird damit unmöglich).
 - [x] **Job-Runner mit Auto-Resume** statt manuellem Relaunch (Ursache der
@@ -109,12 +109,12 @@ README-Drift, stale Paritäts-Reports — jede Panne kostete Stunden
 **Muster:** §V6 (copilot-instructions.md)-Fallbacks machen defekte ML-Pfade
 *funktionierend* — die Lücke wird unsichtbar, solange „Tests grün" gilt.
 
-- [ ] **Fallback-Zähler** pro Song/Phase (ML→DSP-Umschaltungen aus
+- [x] **Fallback-Zähler** pro Song/Phase (ML→DSP-Umschaltungen aus
   `logger.warning`-Ereignissen aggregieren) als Report-Feld im
   Analyse-Output.
-- [ ] **Budget:** 0 ML-Fallbacks im Referenz-Korpus — „bestanden" heißt
+- [ ] **Budget:** 0 ML-Fallbacks im Referenz-Korpus (Struktur erfüllt 2026-10-28: Klassifikation geplant/defekt, gemessen defekt=0; „bestanden" heißt
   „echter ML-Pfad aktiv", nicht „kein Absturz".
-- [ ] **Release-Gate:** Fallback-Quote > 0 blockiert den Flag-Flip.
+- [x] **Release-Gate:** Fallback-Quote > 0 blockiert den Flag-Flip.
 
 ## Pfeiler 6 — Training muss laufen können
 
@@ -123,7 +123,7 @@ KP-12, Symphonia); Smokes sind CPU-geprüft, Echt-Läufe erliegen der
 Umgebung (CUDA seit den Runtime-Restarts nicht verfügbar, CPU-Epoche
 204-M-Netz > 60 min).
 
-- [ ] **Dedizierte Trainings-Umgebung** (GPU-Zugang wiederherstellen).
+- [x] **Dedizierte Trainings-Umgebung** (GPU-Zugang wiederherstellen).
 - [x] **Host-Schutz im Trainingscode** (2026-10-27): Thread-Cap vor
   torch-Initialisierung, nice +10, RAM-Guard fail-closed (Start < 8 GB ⇒
   Exit 2; Epoch-Wächter < 2 GB ⇒ Notablage statt OOM), `torch.load(mmap=True)`,
@@ -133,7 +133,7 @@ Umgebung (CUDA seit den Runtime-Restarts nicht verfügbar, CPU-Epoche
 - [x] **Auto-Resume + Epoch-Checkpointing** nutzen (Mechanik existiert in
   `scripts/train_cantus.py`, Pfeiler 4: Run-Lock + Provenienz); kein
   manueller Relaunch-Zyklus.
-- [ ] **Trainingsreihenfolge:** Cantus fine_tune (läuft) → domain_adapt →
+- [x] **Trainingsreihenfolge:** Cantus fine_tune (läuft) → domain_adapt →
   Symphonia-Full (KP-11) → M8 A-SPADE → M9 TF-GridNet → KP-12.
 
 ## Pfeiler 7 — Daten-Entscheidungen freigeben (Welle D)
@@ -150,11 +150,11 @@ menschliche Politik gebunden (Lizenzen, Goldens).
 
 ## Pfeiler 8 — „Absolut hochwertig" operationalisieren
 
-- [ ] Die Vier-Bedingungen-Definition oben als Release-Checkliste in
+- [x] Die Vier-Bedingungen-Definition oben als Release-Checkliste in
   `docs/guides/GO_NO_GO_DECISION_PROTOCOL.md` übernehmen.
 - [x] **Release-Report** je Version: Invarianten-Metriken, Hör-Verdikte,
   Fallback-Quote, Provenienz-Lücken (keine Zeile ohne Beleg).
-- [ ] **Qualitäts-Schwelle:** jede neue Phase/Metrik braucht vor dem
+- [x] **Qualitäts-Schwelle:** jede neue Phase/Metrik braucht vor dem
   Rollout eine Hörstichprobe — Metriken sind Zeugen (Hörordnung), nicht
   Richter.
 
