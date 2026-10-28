@@ -201,7 +201,7 @@ def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description="B3-Stufenmessung (Objektivbeschluss fuer Ausnahme-Stufen)")
     ap.add_argument("--clips", type=int, default=3)
     ap.add_argument("--windows", type=int, default=2)
-    ap.add_argument("--seconds", type=float, default=3.5)
+    ap.add_argument("--seconds", type=float, default=2.5)
     ap.add_argument("--seed", type=int, default=42)
     ap.add_argument("--stages", default="W-1,W-4,W-5,W-6,W-7")
     args = ap.parse_args(argv)
@@ -212,9 +212,10 @@ def main(argv: list[str] | None = None) -> int:
     fenster: list[tuple[str, np.ndarray, int]] = []
     for eintrag in _existing_corpus()[: args.clips]:
         pfad = Path(eintrag["path"])
-        # Adaptive Fenster: Clips im Referenz-Korpus sind ~10 s lang — Start bei
-        # 0/3,5/7 s, übersprungen, wenn das Fenster über das Ende ragen würde.
-        for w_start in (0.0, 3.5, 7.0):
+        # Adaptive Fenster: Starts alle 2,5 s (Clips 7–10 s => 3–4 Fenster je
+        # Clip => ~10–12 Paare). Statistik-Pflicht: ab 6 Paaren ist p<0,05
+        # ueberhaupt erreichbar (5 Paare: selbst 5/5 nur p=0,0625).
+        for w_start in (0.0, 2.5, 5.0, 7.5):
             try:
                 audio, sr = _load_clip(pfad, start_s=w_start, seconds=args.seconds)
             except ValueError:

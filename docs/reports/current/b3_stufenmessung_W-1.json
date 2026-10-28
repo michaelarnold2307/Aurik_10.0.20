@@ -1,5 +1,47 @@
 {
   "stufe": "W-1",
-  "fehler": "Signal zu kurz für MusikMOS (mindestens 2048 Samples)",
+  "zeilen": [
+    {
+      "trial_id": "cassette_1980s_wow__w0",
+      "mos_an": 4.7134,
+      "mos_aus": 4.7661,
+      "last_an": 0.4854,
+      "last_aus": 0.4012
+    },
+    {
+      "trial_id": "cassette_1980s_wow__w1",
+      "mos_an": 4.8098,
+      "mos_aus": 4.7771,
+      "last_an": 0.4582,
+      "last_aus": 0.448
+    },
+    {
+      "trial_id": "cassette_1980s_wow__w2",
+      "mos_an": 4.7449,
+      "mos_aus": 4.719,
+      "last_an": 0.4866,
+      "last_aus": 0.4857
+    },
+    {
+      "trial_id": "reel_1940s_dropout__w3",
+      "mos_an": 4.7436,
+      "mos_aus": 4.7436,
+      "last_an": 0.4984,
+      "last_aus": 0.4984
+    },
+    {
+      "trial_id": "jazz_1950s_scratched__w4",
+      "mos_an": 4.9381,
+      "mos_aus": 4.9381,
+      "last_an": 0.1487,
+      "last_aus": 0.1487
+    }
+  ],
+  "never_worsen": false,
+  "vorteile": "2/5",
+  "p_wert": 1.0,
+  "signifikant": false,
+  "defekt_fallbacks": 0,
+  "b1_sauber": true,
   "erfuellt": false
 }
