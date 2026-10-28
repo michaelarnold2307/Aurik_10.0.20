@@ -25,7 +25,7 @@ Wohlklang für das menschliche Gehör**. Normative Kette: `AGENTS.md` §1
 | # | Lücke | Typ | Wo dokumentiert |
 | --- | --- | --- | --- |
 | 1 | ~~WP-2-Hygiene~~ **ERLEDIGT 2026-10-28:** Stubs (D-K3-3), Phantome (D-K3-5), D-K2-4 Namens-Drift und Domänen-Status sind register-seitig geschlossen; die P2-INFO-Findings des Gates sind dokumentierter Akzeptanz-Bestand | — | Register D-K3-3/D-K3-5/D-K2-4/D-K0-10 |
-| 2 | Referenzfreie Qualitätsmetrik (UTMOS richtungs-invertiert!) | autonom | Tiefenanalyse E2 |
+| 2 | Referenzfreie Qualitätsmetrik — **Zertifikat-System steht 2026-10-28**: `defektlast` zertifiziert (rho 0,95), UTMOS/PQS-DSP bewiesen blind → gesperrt; offen: MOS-Kandidatin (SingMOS Pro, KP-12) | autonom (KP-12 teils Daten) | `scripts/quality_metric_direction_gate.py` + Zertifikat-JSON |
 | 3 | P1-7 (m1b-Stufe-2 intern) + P1-10 (Defekt-Chips) | autonom | Roadmap TODO-P1-7/P1-10 |
 | 4 | Laufzeit 53×→32× RT (F-Reihe optimieren) | autonom | Roadmap TODO-P0-3 Nachtrag |
 | 5 | F3-BigVGAN-Rollout + EAR-VAE v1↔v2 als Vergleichsmessungen | autonom (Urteil = Hör/B3) | LÜCKEN-MATRIX D.1b/c |

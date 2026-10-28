@@ -512,6 +512,8 @@
 | tests/unit/test_kandidaten_archiv.py | ACTIVE | tests/unit | ja | — | Tests zur Kandidaten-Archivierung (Plan/Trockenlauf, Sign-off-Pflicht, Snapshot+Buchung, Gate-Rollback) |
 | scripts/gpu_kette1_welle_c.sh | ACTIVE | scripts | ja | — | Dauerhafte GPU-Trainingskette 1 (Welle C + SOTA-M8/M9, 7 Jobs ueber train_job_runner mit Lock/Manifest/Auto-Resume); interruptionssicher neu startbar — siehe docs/SOTA_HANDOVER.md §3 |
 | scripts/gpu_kette2_matrix_d3.sh | ACTIVE | scripts | ja | — | Dauerhafte GPU-Trainingskette 2 (LUECKEN-MATRIX D.3: DiffWave-Vokal, BigVGAN-v2, FlashSR-Musik); startet nach Kette 1, Job-Locks verhindern Doppellauf — siehe docs/SOTA_HANDOVER.md §3 |
+| scripts/quality_metric_direction_gate.py | ACTIVE | scripts | ja | — | E2 (Tiefenanalyse): Richtungszertifikat referenzfreier Qualitaetsmetriken — deterministische Degradations-Leiter + Spearman gegen Erwartungsordnung; nur zertifizierte Metriken duerfen B3-Entscheidungen tragen; defektlast zertifiziert, UTMOS/PQS blind gesperrt |
+| tests/unit/test_quality_metric_direction_gate.py | ACTIVE | tests/unit | ja | — | Tests: Spearman mit Gleichstands-Mittelung, beide Richtungen, Blindheit wird abgelehnt, Defektlast-Richtung auf der Leiter |
 
 ## Pflege-Regeln
 

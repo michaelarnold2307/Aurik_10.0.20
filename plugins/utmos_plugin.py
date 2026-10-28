@@ -701,14 +701,18 @@ class UTMOSPlugin:
         spectral_flatness = float(np.exp(np.mean(log_spec)) / (np.mean(spec) + 1e-12))
         spectral_flatness = float(np.clip(spectral_flatness, 0.0, 1.0))
 
-        # Harmonizitäts-Näherung (einfache Autokorrelation)
-        if len(audio_seg) >= 512:
-            acf = np.correlate(audio_seg[:512], audio_seg[:512], "full")
+        # Harmonizitaet-Naeherung: Median ueber 2048er-Rahmen (512er-Blick war
+        # anfaellig fuer Klicks im Oberflaechen-Rauschen - Richtungszertifikat
+        # 2026-10-28, scripts/quality_metric_direction_gate.py).
+        harmonicity_werte: list[float] = []
+        rahmen = 2048
+        for start_ in range(0, max(0, len(audio_seg) - rahmen + 1), rahmen):
+            rahmen_audio = audio_seg[start_ : start_ + rahmen]
+            acf = np.correlate(rahmen_audio, rahmen_audio, "full")
             acf = acf[len(acf) // 2 :]
-            peak_idx = np.argmax(acf[20:]) + 20  # f0-Schätzung (> 20 Hz)
-            harmonicity = float(np.clip(acf[peak_idx] / (acf[0] + 1e-12), 0.0, 1.0))
-        else:
-            harmonicity = 0.5
+            peak_idx = int(np.argmax(acf[20:])) + 20
+            harmonicity_werte.append(float(np.clip(acf[peak_idx] / (acf[0] + 1e-12), 0.0, 1.0)))
+        harmonicity = float(np.median(harmonicity_werte)) if harmonicity_werte else 0.5
 
         # Clipping-Ratio (Flat-Top-Detektion)
         clip_ratio = float(np.mean(np.abs(audio_seg) > 0.98))
@@ -722,7 +726,9 @@ class UTMOSPlugin:
             (1.0 - spectral_flatness) * 0.30  # tonal = gut
             + harmonicity * 0.35  # harmonisch = gut
             + (1.0 - clip_ratio * 10.0) * 0.20  # kein Clipping = gut
-            + float(np.clip(hf_ratio * 5.0, 0.0, 1.0)) * 0.15  # HF-Vollständigkeit
+            # HF-Vollstaendigkeit NUR bei nicht-rauschartigem Spektrum
+            # (sonst belohnt Breitband-Rauschen sich selbst - Richtungszertifikat 2026-10-28)
+            + float(np.clip(hf_ratio * 5.0, 0.0, 1.0)) * (1.0 - spectral_flatness) * 0.15  # HF-Vollständigkeit
         )
         quality = float(np.clip(quality, 0.0, 1.0))
 

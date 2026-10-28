@@ -107,7 +107,10 @@ Erbringung (fail-closed — **alle** Bedingungen Pflicht):
 2. **Never-worsen:** keine Metrik signifikant schlechter (Δ ≥ 0 bzw. innerhalb
    95 %-CI/JND) — Gate-Zahl G-4.
 3. **Signifikanter Vorteil** in der Zielmetrik (G-1/G-2/G-3), 95 %-CI über
-   der Schwelle.
+   der Schwelle. Die Zielmetrik MUSS ein gültiges **Richtungszertifikat**
+   tragen (`docs/reports/current/qualitaetsmetrik_richtungszertifikat.json`,
+   `scripts/quality_metric_direction_gate.py`) — blind/invertierte Metriken
+   sind gesperrt (Stand: `defektlast` zertifiziert; UTMOS/PQS blind).
 4. **B1:** ungeplante ML→DSP-Rückfälle = 0 (`backend/core/fallback_ledger.py`).
 5. **Blindheit:** Auswertung auf anonymisierten Paaren
    (`scripts/ab_harness.py`-Schlüssel), Auswertung ohne Label-Kenntnis.
