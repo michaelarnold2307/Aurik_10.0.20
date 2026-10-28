@@ -517,6 +517,8 @@
 | plugins/musik_mos_plugin.py | ACTIVE | plugins | ja | — | E2: MusikMOS — UTMOS-Ersatz, referenzfreie Musik-MOS 1–5 (hoeher=besser) aus dokumentierten Komponenten (Rauschlast/Tonalitaet/Clipping/HF/Dynamik); Richtungszertifikat bestanden (Spearman 0,95); deterministisch, ohne Modell-Datei |
 | tests/unit/test_musik_mos_plugin.py | ACTIVE | tests/unit | ja | — | Tests: MOS-Bereich, Determinismus G5, Richtung (Rauschen/Clipping senken), Detail-Herleitung |
 | scripts/b3_stufenmessung.py | ACTIVE | scripts | ja | — | B3-Objektivbeschluss-Messung fuer die 5 Ausnahme-Stufen (W-1/4/5/6/7): blinde On/Off-Paarvergleiche auf Referenz-Korpus, Bewertung NUR mit richtungszertifizierten Metriken (MusikMOS/Defektlast), exakter Vorzeichen-Test, B1-Pruefung; erzeugt Beschluss-JSONs fuer flag_freigabe --objektivbeschluss |
+| scripts/build_echothief_equiv_bank.py | ACTIVE | scripts | ja | — | EchoThief-SOTA-Aequivalenz Pfeiler C (2026-10-28): kategorie-kalibrierter Synth-Generator fuer exotische Lang-RIRs (12 EchoThief-Kategorien, RT60 0.8-8s, DRR, frequenzabhaengiger Zerfall); Selbstverifikation RT60, deterministisch S5; synthetisch, KEIN EchoThief-Audio (SDSURF-Ausschluss gewahrt); Bank data/rir_synth_echothief/ |
+| tests/unit/test_echothief_equiv_bank.py | ACTIVE | tests/unit | ja | — | Tests zum EchoThief-Aequivalenz-Generator: Lizenz-Schutz (kein EchoThief-Audio), 12 Kategorien mit Summe 195, RT60-Selbstverifikation, DRR-Wirkung, Determinismus S5, Robustheit NaN/Inf, Manifest-Schema |
 
 ## Pflege-Regeln
 
