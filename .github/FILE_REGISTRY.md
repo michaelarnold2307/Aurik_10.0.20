@@ -516,6 +516,7 @@
 | tests/unit/test_quality_metric_direction_gate.py | ACTIVE | tests/unit | ja | — | Tests: Spearman mit Gleichstands-Mittelung, beide Richtungen, Blindheit wird abgelehnt, Defektlast-Richtung auf der Leiter |
 | plugins/musik_mos_plugin.py | ACTIVE | plugins | ja | — | E2: MusikMOS — UTMOS-Ersatz, referenzfreie Musik-MOS 1–5 (hoeher=besser) aus dokumentierten Komponenten (Rauschlast/Tonalitaet/Clipping/HF/Dynamik); Richtungszertifikat bestanden (Spearman 0,95); deterministisch, ohne Modell-Datei |
 | tests/unit/test_musik_mos_plugin.py | ACTIVE | tests/unit | ja | — | Tests: MOS-Bereich, Determinismus G5, Richtung (Rauschen/Clipping senken), Detail-Herleitung |
+| scripts/b3_stufenmessung.py | ACTIVE | scripts | ja | — | B3-Objektivbeschluss-Messung fuer die 5 Ausnahme-Stufen (W-1/4/5/6/7): blinde On/Off-Paarvergleiche auf Referenz-Korpus, Bewertung NUR mit richtungszertifizierten Metriken (MusikMOS/Defektlast), exakter Vorzeichen-Test, B1-Pruefung; erzeugt Beschluss-JSONs fuer flag_freigabe --objektivbeschluss |
 
 ## Pflege-Regeln
 
