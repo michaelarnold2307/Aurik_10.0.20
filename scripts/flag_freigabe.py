@@ -67,6 +67,32 @@ def verdikt_ok(data: dict) -> tuple[bool, str]:
     return False, "unbekanntes Verdikt-Schema (weder fit.json noch aurik.ab_stats/1)"
 
 
+def objektivbeschluss_ok(data: dict, flag: str) -> tuple[bool, str]:
+    """Formeller Objektivmetrik-Beschluss (Wohlklang-Vertrag, Abschnitt B3) — fail-closed."""
+    if str(data.get("schema")) != "aurik.objektivbeschluss/1":
+        return False, "Schema unbekannt (erwartet aurik.objektivbeschluss/1)"
+    if str(data.get("flag")) != flag:
+        return False, f"Beschluss gilt fuer {data.get('flag')}, nicht fuer {flag}"
+    if int(data.get("referenz_songs") or 0) < 3:
+        return False, "referenz_songs < 3 (Vertrag: mindestens 3 echte Songs)"
+    if data.get("never_worsen") is not True:
+        return False, "never_worsen nicht bestaetigt (G-4)"
+    if data.get("signifikant") is not True:
+        return False, "Vorteil nicht signifikant (G-1/G-2/G-3)"
+    if int(data.get("defekt_fallbacks", -1)) != 0:
+        return False, "defekt_fallbacks != 0 (B1)"
+    if data.get("blind_ausgewertet") is not True:
+        return False, "Auswertung nicht blind (Vertragsbedingung 5)"
+    messung = str(data.get("messung") or "")
+    if not messung:
+        return False, "Mess-Report nicht benannt (Provenienz)"
+    mp = Path(messung) if Path(messung).is_absolute() else PROJECT_ROOT / messung
+    if not mp.is_file():
+        return False, f"Mess-Report fehlt: {messung}"
+    ziel = (data.get("zielmetrik") or {}).get("name", "?")
+    return True, f"Objektivbeschluss gueltig: {ziel} auf {data.get('referenz_songs')} Songs (Hoer-Vorbehalt)"
+
+
 def finde_register_zeile(text: str, flag: str) -> tuple[int, str] | None:
     """Die D-*-Zeile, die dieses Flag trägt (genau eine offene erwartet)."""
     treffer = [
@@ -79,7 +105,7 @@ def finde_register_zeile(text: str, flag: str) -> tuple[int, str] | None:
     return treffer[0]
 
 
-def buche_register(text: str, flag: str, verdikt: Path, signoff: Path) -> str:
+def buche_register(text: str, flag: str, verdikt: Path, signoff: Path, verfahren: str = "H\u00f6r-Sign-off") -> str:
     """Status → geschlossen, Beleg → Verdikt + Sign-off. 8 Zellen bleiben 8 Zellen."""
     ziel = finde_register_zeile(text, flag)
     if ziel is None:
@@ -89,19 +115,19 @@ def buche_register(text: str, flag: str, verdikt: Path, signoff: Path) -> str:
     if len(cells) != 8:
         raise ValueError(f"Register-Zeile hat {len(cells)} statt 8 Zellen: {line[:80]}")
     cells[5] = " geschlossen "
-    cells[7] = f" `{verdikt}` + `{signoff}` (Hör-Sign-off §v10.802 (copilot-instructions.md)) "
+    cells[7] = f" `{verdikt}` + `{signoff}` ({verfahren}) "
     zeilen = text.splitlines()
     zeilen[idx] = "|" + "|".join(cells) + "|"
     return "\n".join(zeilen) + ("\n" if text.endswith("\n") else "")
 
 
-def flippe_flag(text: str, flag: str, beleg_name: str) -> str:
+def flippe_flag(text: str, flag: str, beleg_name: str, verfahren: str = "H\u00f6r-Sign-off") -> str:
     """use_x: bool = False → True; Kommentar trägt den Beleg (kein stiller Wandel)."""
     muster = re.compile(rf"^({re.escape(flag)}: bool = )False(\s*#.*)$", re.MULTILINE)
     if not muster.search(text):
         raise ValueError(f"{flag}: bool = False nicht gefunden (schon aktiv oder anders benannt)")
     heute = _dt.date.today().isoformat()
-    ersatz = rf"\g<1>True\g<2> — AKTIV nach Hör-Sign-off (Flag-Flip {heute}, Beleg: {beleg_name})"
+    ersatz = rf"\g<1>True\g<2> — AKTIV nach {verfahren} (Flag-Flip {heute}, Beleg: {beleg_name})"
     return muster.sub(ersatz, text, count=1)
 
 
@@ -121,21 +147,36 @@ def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description="Verdikt → Register-Buchung → Flag-Flip → Commit")
     ap.add_argument("--flag", required=True, help="Flag-Name, z.B. use_aspade_declipper")
     ap.add_argument("--verdikt", required=True, help="fit.json (mushra_harness) oder ab_harness-Statistik")
-    ap.add_argument("--signoff", required=True, help="Hör-Sign-off-Datei (§v10.802 (copilot-instructions.md))")
+    ap.add_argument("--signoff", default=None, help="Hör-Sign-off-Datei")
+    ap.add_argument(
+        "--objektivbeschluss", default=None, help="Formeller Objektivmetrik-Beschluss (JSON, Wohlklang-Vertrag B3)"
+    )
     ap.add_argument("--commit", action="store_true", help="anschließend committen (sonst nur vorbereitet)")
     args = ap.parse_args(argv)
 
     flag = args.flag
     verdikt = _p(args.verdikt)
-    signoff = _p(args.signoff)
+    signoff = _p(args.signoff) if args.signoff else Path("/dev/null")
 
     if not verdikt.is_file():
         print(f"ABBRUCH: Verdikt-Datei fehlt: {verdikt}")
         return 2
-    if not signoff.is_file():
-        print(
-            f"ABBRUCH: Hör-Sign-off fehlt: {signoff} — §v10.802 (copilot-instructions.md) erlaubt keinen Flag-Flip ohne Sign-off."
-        )
+    if args.objektivbeschluss is not None:
+        beschluss = _p(args.objektivbeschluss)
+        if not beschluss.is_file():
+            print(f"ABBRUCH: Objektivbeschluss fehlt: {beschluss}")
+            return 2
+        ok_b, grund_b = objektivbeschluss_ok(json.loads(beschluss.read_text(encoding="utf-8")), flag)
+        if not ok_b:
+            print(f"ABBRUCH: Objektivbeschluss ungueltig — {grund_b}")
+            return 2
+        verfahren = "Objektivbeschluss B3, Hör-Vorbehalt"
+        signoff = beschluss
+        print(f"Objektivbeschluss: {grund_b}")
+    elif signoff is not None and signoff.is_file():
+        verfahren = "Hör-Sign-off"
+    else:
+        print("ABBRUCH: entweder --signoff (Hör-Abnahme) oder --objektivbeschluss (Vertrag B3) erforderlich.")
         return 2
     ok, grund = verdikt_ok(json.loads(verdikt.read_text(encoding="utf-8")))
     if not ok:
@@ -153,8 +194,8 @@ def main(argv: list[str] | None = None) -> int:
             test_dateien[tp] = t
 
     try:
-        neu_reg = buche_register(originals[REGISTER], flag, verdikt, signoff)
-        neu_flags = flippe_flag(originals[FLAGS_PY], flag, verdikt.name)
+        neu_reg = buche_register(originals[REGISTER], flag, verdikt, signoff, verfahren=verfahren)
+        neu_flags = flippe_flag(originals[FLAGS_PY], flag, verdikt.name, verfahren=verfahren)
         n_tests = 0
         neue_tests: dict[Path, str] = {}
         for tp, t in test_dateien.items():

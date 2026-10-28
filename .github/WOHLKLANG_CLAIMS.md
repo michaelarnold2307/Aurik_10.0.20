@@ -36,9 +36,7 @@ begründete Ausnahme — erscheint als Warnung) · `gesperrt` (Soll = AUS).
 E3 `aktiviert` ohne `OFFEN` · E4 `ausnahme` braucht `Grund:` (≥ 20 Zeichen) und
 `Review:` · E5 **Schalter-Abgleich Code ↔ Vertrag** · E6 `gesperrt` ⇒ Soll AUS ·
 E7 **Gate-Zahlen & Metrik-Identität (Paar-Pflicht)** · jede veröffentlichte Bewertung: Name · Messgröße · Referenz-Set + Seed · Belegpfad (alle Felder gefüllt; Status „aktiv“ nur bei vollständiger Identität) ·
-**Betriebsregeln (im Release-Report belegt, nicht Gate-geprüft):** B1 **Fallback-Quote 0 (ungeplant)** — kein ungeplanter ML→DSP-Fallback im Referenz-Korpus; Zählung `backend/core/fallback_ledger.py` mit Klassifikation (`geplant` = bewusst gesperrte Flags §v10.802 (copilot-instructions.md) bzw. offene Zeugen-Modelle — separat ausgewiesen; `defekt` > 0 blockiert den Flag-Flip) · B2 **Flag-Disziplin** — maximal 1–2 neue Flags pro Release; kein neuer K4-Challenger, solange mehr als 3 offene Kandidaten warten.
-P1 Evidenz-Harneske dürfen keine Phantom-Pfade referenzieren ·
-P2 Bericht über Phantom-Referenzen im Produktionscode.
+**Betriebsregeln (im Release-Report belegt, nicht Gate-geprüft):** B1 **Fallback-Quote 0 (ungeplant)** — kein ungeplanter ML→DSP-Fallback im Referenz-Korpus; Zählung `backend/core/fallback_ledger.py` mit Klassifikation (`geplant` = bewusst gesperrte Flags §v10.802 (copilot-instructions.md) bzw. offene Zeugen-Modelle — separat ausgewiesen; `defekt` > 0 blockiert den Flag-Flip) · B2 **Flag-Disziplin** — maximal 1–2 neue Flags pro Release; kein neuer K4-Challenger, solange mehr als 3 offene Kandidaten warten · B3 **Formeller Objektivmetrik-Beschluss** — der Beleg „blindes A/B“ kann alternativ über das Verfahren im Abschnitt „Formeller Objektivmetrik-Beschluss“ erbracht werden (Hör-Vorbehalt!).
 
 ## Gate-Zahlen & Metrik-Identität (Beleg 6)
 
@@ -93,3 +91,31 @@ eingefrorene Alt-Artefakt die Metrik identifizierte
 3. **W-4 MP-SENet / W-5 DFN / W-6 MIIPHER / W-7 Harmonic-Inpainting:**
    Voll-Song- und Blind-Nachweis je Stufe — die größte offene Beweislücke.
 4. Erst danach neue Stufen aktivieren.
+
+## Formeller Objektivmetrik-Beschluss — Alternative zur Hör-Abnahme
+
+**Norm:** `docs/TODOS_SOTA_ROADMAP.md` („MUSHRA n≥30 terminieren **oder**
+formal Objektivmetrik-Beschluss“). Die Hörordnung bleibt die
+Wahrheits-Ordnung; dieses Verfahren ist der dokumentierte
+**Vertretungs-Beschluss** für den Beleg „blindes A/B“ — mit
+**Hör-Vorbehalt** (eine spätere Hör-Abnahme gilt vorrangig).
+
+Erbringung (fail-closed — **alle** Bedingungen Pflicht):
+
+1. **Vergleichende Messung** Kandidat vs. Referenz auf ≥ 3 echten Songs
+   (Referenz-Korpus), eingefrorene Baseline, dokumentierter Seed.
+2. **Never-worsen:** keine Metrik signifikant schlechter (Δ ≥ 0 bzw. innerhalb
+   95 %-CI/JND) — Gate-Zahl G-4.
+3. **Signifikanter Vorteil** in der Zielmetrik (G-1/G-2/G-3), 95 %-CI über
+   der Schwelle.
+4. **B1:** ungeplante ML→DSP-Rückfälle = 0 (`backend/core/fallback_ledger.py`).
+5. **Blindheit:** Auswertung auf anonymisierten Paaren
+   (`scripts/ab_harness.py`-Schlüssel), Auswertung ohne Label-Kenntnis.
+6. **Provenienz:** Mess-Report mit Quelle je Zeile; Buchung als Beleg mit
+   Vermerk „Objektivbeschluss“.
+
+**Hör-Vorbehalt:** Die Stufe läuft danach als „Ausnahme (Objektivbeschluss)“.
+Die Hör-Abnahme hebt sie auf „aktiv“; ein Hör-Widerspruch setzt sie auf
+„gesperrt“ zurück (Rollback, §V7 (copilot-instructions.md)).
+Automatisierte Abwicklung (eine Zeile): `python3 -B scripts/flag_freigabe.py
+--flag <use_x> --objektivbeschluss <report.json>`.

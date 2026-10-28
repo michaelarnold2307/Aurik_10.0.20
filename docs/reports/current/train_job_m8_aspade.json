@@ -8,6 +8,15 @@
   "resume_befehl": "env PYTHONPATH=. /home/michael/.local/share/aurik/venv_rocm72/bin/python -B scripts/train_aspade_declipper.py --musdb-root data/musdb18hq --epochs 60 --device cuda --out-dir models/aspade --resume models/aspade/checkpoint_latest.pt",
   "timeout_s": 21600.0,
   "retries": 1,
-  "versuche": [],
+  "versuche": [
+    {
+      "exit_code": 1,
+      "sekunden": 14189.6,
+      "timed_out": false,
+      "output_tail": "h/nn/modules/module.py\", line 1769, in _slow_forward\n    result = self.forward(*input, **kwargs)\n  File \"/media/michael/Software 4TB/Aurik_Standalone/backend/core/dsp/aspade_declipper.py\", line 190, in forward\n    v = proximal(x + u)\n  File \"/home/michael/.local/share/aurik/venv_rocm72/lib/python3.10/site-packages/torch/nn/modules/module.py\", line 1779, in _wrapped_call_impl\n    return self._call_impl(*args, **kwargs)\n  File \"/home/michael/.local/share/aurik/venv_rocm72/lib/python3.10/site-packages/torch/nn/modules/module.py\", line 1790, in _call_impl\n    return forward_call(*args, **kwargs)\n  File \"/home/michael/.local/share/aurik/venv_rocm72/lib/python3.10/site-packages/torch/nn/modules/module.py\", line 1769, in _slow_forward\n    result = self.forward(*input, **kwargs)\n  File \"/media/michael/Software 4TB/Aurik_Standalone/backend/core/dsp/aspade_declipper.py\", line 143, in forward\n    h = nn.functional.gelu(self.inp(x))\n  File \"/home/michael/.local/share/aurik/venv_rocm72/lib/python3.10/site-packages/torch/nn/modules/module.py\", line 1779, in _wrapped_call_impl\n    return self._call_impl(*args, **kwargs)\n  File \"/home/michael/.local/share/aurik/venv_rocm72/lib/python3.10/site-packages/torch/nn/modules/module.py\", line 1790, in _call_impl\n    return forward_call(*args, **kwargs)\n  File \"/home/michael/.local/share/aurik/venv_rocm72/lib/python3.10/site-packages/torch/nn/modules/module.py\", line 1769, in _slow_forward\n    result = self.forward(*input, **kwargs)\n  File \"/home/michael/.local/share/aurik/venv_rocm72/lib/python3.10/site-packages/torch/nn/modules/conv.py\", line 375, in forward\n    return self._conv_forward(input, self.weight, self.bias)\n  File \"/home/michael/.local/share/aurik/venv_rocm72/lib/python3.10/site-packages/torch/nn/modules/conv.py\", line 370, in _conv_forward\n    return F.conv1d(\nRuntimeError: Input type (torch.FloatTensor) and weight type (torch.cuda.FloatTensor) should be the same or input should be a MKLDNN tensor and weight is a dense tensor\n",
+      "versuch": 1,
+      "befehl": "env PYTHONPATH=. /home/michael/.local/share/aurik/venv_rocm72/bin/python -B scripts/train_aspade_declipper.py --musdb-root data/musdb18hq --epochs 30 --device cuda --out-dir models/aspade"
+    }
+  ],
   "quelle": "scripts/train_job_runner.py"
 }

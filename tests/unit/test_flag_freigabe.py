@@ -109,3 +109,61 @@ def test_flag_flip_und_test_angleichung() -> None:
     assert n == 2
     assert "flags.use_x is True" in nt and "mmf.use_x is True" in nt
     assert "other.use_z is False" in nt, "fremde Flags bleiben unangetastet"
+
+
+def test_objektivbeschluss_validierung(tmp_path: Path) -> None:
+    from scripts.flag_freigabe import objektivbeschluss_ok
+
+    messung = tmp_path / "messung.json"
+    messung.write_text("{}", encoding="utf-8")
+    gueltig = {
+        "schema": "aurik.objektivbeschluss/1",
+        "flag": "use_x",
+        "referenz_songs": 3,
+        "never_worsen": True,
+        "signifikant": True,
+        "defekt_fallbacks": 0,
+        "blind_ausgewertet": True,
+        "messung": str(messung),
+        "zielmetrik": {"name": "G-2"},
+    }
+    ok, grund = objektivbeschluss_ok(gueltig, "use_x")
+    assert ok and "G-2" in grund and "Vorbehalt" in grund
+
+    for feld, wert in (
+        ("referenz_songs", 2),
+        ("never_worsen", False),
+        ("signifikant", False),
+        ("defekt_fallbacks", 1),
+        ("blind_ausgewertet", False),
+        ("schema", "falsch"),
+        ("flag", "use_y"),
+    ):
+        kaputt = dict(gueltig)
+        kaputt[feld] = wert
+        ok2, grund2 = objektivbeschluss_ok(kaputt, "use_x")
+        assert not ok2, f"{feld}={wert} muss abgelehnt werden"
+        assert grund2
+
+    ohne = dict(gueltig)
+    ohne["messung"] = str(tmp_path / "fehlt.json")
+    ok3, grund3 = objektivbeschluss_ok(ohne, "use_x")
+    assert not ok3 and "fehlt" in grund3, "Provenienz-Pflicht"
+
+
+def test_buchung_mit_objektivbeschluss_text() -> None:
+    from scripts.flag_freigabe import buche_register, flippe_flag
+
+    zeile = "| D-K4-1 | `x.py` | K4 | Musik | 4/4 | in-arbeit | F | use_x |"
+    reg = (
+        "# R\n| ID | Artefakt | Klasse | Domäne | Evidenz | Status | Blocker | Beleg |\n| --- | --- | --- | --- | --- | --- | --- | --- |\n"
+        + zeile
+        + "\n"
+    )
+    neu = buche_register(
+        reg, "use_x", Path("docs/a.json"), Path("docs/b.json"), verfahren="Objektivbeschluss B3, Hör-Vorbehalt"
+    )
+    assert "Objektivbeschluss B3" in neu and "Hör-Vorbehalt" in neu
+    flags = "use_x: bool = False  # Alt\n"
+    geflippt = flippe_flag(flags, "use_x", "fit.json", verfahren="Objektivbeschluss B3, Hör-Vorbehalt")
+    assert "AKTIV nach Objektivbeschluss B3" in geflippt
