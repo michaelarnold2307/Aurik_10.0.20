@@ -199,6 +199,7 @@ Kollisions-Karte und Bereinigungsplan `docs/ID_COLLISION_MAP.md`.
 - Startup/GUI/Threading: `.github/specs/v10.305_startup_integration_contract.md`
   - §VI der copilot-instructions
 - Neue Spec anlegen: `.github/specs/XX_measure_template.md`
+- **Autonomer Lückenschluss & Wiederaufnahme — für JEDEN Agenten zuerst:** `docs/SOTA_HANDOVER.md` (Rest-Lücken priorisiert, Wiederherstellung nach Session-Abbruch/Reboot, B3-Aktivierungsverfahren, harte Regeln).
 - Hör-Tests / GO-NO-GO: `docs/guides/GO_NO_GO_DECISION_PROTOCOL.md` (beratend)
 - Repo-Karte & Lifecycle: `.github/FILE_REGISTRY.md` +
   `scripts/repo_graph.py` (`--write-json` → `.github/repo_graph.json`,
