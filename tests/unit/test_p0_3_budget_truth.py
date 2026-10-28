@@ -51,9 +51,42 @@ def test_single_norm_all_modes_share_32x():
 def test_analytics_does_not_inflate_processing_rt():
     guard = PerformanceGuard()
     guard.start_monitoring(5.0)
-    guard.add_analytics_overhead(50.0)  # Analytics weit über Audio-Dauer
+    guard.add_analytics_overhead(50.0)  # Analytics weit ueber Audio-Dauer
     report = guard.get_budget_truth_report()
     # Processing-RT bleibt 0 (Analytics abgezogen), Wand-RT weist es aus.
     assert report["processing_elapsed_s"] == 0.0
     assert report["rt_processing"] == 0.0
     assert report["analytics_overhead_s"] == 50.0
+
+
+def test_plan_budget_capped_to_hard_guard_despite_chain_depth_and_restorability():
+    """D-K3-22: Budget-Divergenz im StrategieDenker ist geschlossen.
+
+    ``StrategieDenker.plan()`` skaliert das Budget mit Ketten-Tiefe (<=2.0) und
+    Restaurierbarkeits-Faktor (<=1.5) und meldete frueher bis zu 73.6x RT,
+    waehrend der harte Ausstieg bei 32x stoppt. Der Plan darf nie mehr Zeit
+    zusagen, als der Guard-Ausstieg hergibt: der Wunsch wird auf die harte
+    32x-Grenze gedeckelt.
+    """
+    import numpy as np
+
+    from denker.strategie_denker import StrategieDenker
+
+    audio_dur = 10.0
+    audio = np.zeros(int(48000 * audio_dur), dtype=np.float32)
+    denker = StrategieDenker()
+
+    # Extremfall: tiefe Kette (9) + minimale Restaurierbarkeit (0) =>
+    # Budget-Wunsch = 32 x 2.0 x 1.5 = 96x RT, also weit ueber dem Ausstieg.
+    plan = denker.plan(
+        audio, 48000, mode="quality", chain_depth=9, restorability_score=0.0
+    )
+
+    assert plan.audio_duration_s == audio_dur
+    # Deckel: nie mehr als die harte Guard-Grenze (32x) * Audiodauer.
+    _hard_cap = PerformanceGuard.LIMIT_3X_RT * plan.audio_duration_s
+    assert plan.max_processing_s <= _hard_cap + 1e-6
+    # Der Deckel muss bei diesem Wunsch exakt greifen (Wunsch > Grenze).
+    assert abs(plan.max_processing_s - _hard_cap) < 1e-6
+    # Konsistenz: die harte Grenze ist die 32x-Norm (§2.38 KMV).
+    assert PerformanceGuard.LIMIT_3X_RT == 32.0
