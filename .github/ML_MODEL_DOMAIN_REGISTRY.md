@@ -40,9 +40,9 @@ Deklipper) **Musik-Modelle** sind.
 **Zusatz-Beleg — kuratiertes Produktions-Manifest** (`scripts/model_inventory.py
 --domains`, Stand 2026-10-06): Von den **32** kuratierten Produktionsmodellen
 sind **22 musik** (≈ 69 %), **3 sprach**, **5 audio-allgemein** und
-**2 unbekannt** (`models/bigvgan/bigvgan_v2.onnx`,
-`models/hifi_gan/hifi_gan.onnx` — Sprach-Zuordnung am Artefakt widerlegt,
-Mess-Block §4a). Auch im aktiven Pfad dominiert Musik — nicht Sprache.
+**2 bewusst unbelegbar** (`models/bigvgan/bigvgan_v2.onnx`,
+`models/hifi_gan/hifi_gan.onnx` — Trainingsdomäne am Artefakt **nicht belegbar** (Vocoder-Topologie, sprach- und musikfähig; Sprach-Zuordnung widerlegt, Mess-Block §4a);
+geführt als `audio-allgemein` mit lokalen Konfigurations-Messungen).. Auch im aktiven Pfad dominiert Musik — nicht Sprache.
 
 ### Warum die Verwechslung entsteht
 
@@ -172,7 +172,7 @@ ONNX-Artefakte (Encoder, Decoder, Ende-zu-Ende) — deckungsgleich mit
 | `silero` | Silero VAD **English v5** (Sprache) | Sprach-/Gesangspräsenz | VAD auf Musik unzuverlässig |
 | `utmosv2` | **VoiceMOS** Challenge (Sprache) | MOS-Proxy (Plugin „Musik-orientiert") | Modell ist sprach-trainiert; `use_utmos_music=False` |
 | `resemblyzer` | GE2E/LibriSpeech (Sprache) | Sprecher-Identität | `use_resemblyzer_music=False` |
-| `nvsr` | Neuronales SR (Sprache) | FlashSR-Fallback (8–16 kHz) | **Signalpfad-Risiko**: Sprache auf Musik |
+| `nvsr` | **Zwei Artefakte (Verifikation 2026-10-07, D-K2-4):** `nvsr.onnx` = byte-identisch zum FlashSR-Produktionsexport ⇒ **Musik** (BW-Extension, SBR-Kern 8–16 kHz in phase_06 verdrahtet); `nvsr.ts` = echtes NVSR (Sprache, 8→48 kHz, 132 k Par.) ohne Ladepfad | `nvsr.onnx` = bewusste Eskalationsstufe des nvsr_plugin („onnx“/„flashsr_onnx“); `hybrid_nvsr` liefert nur Status | Deployt: kein Sprache-auf-Musik-Risiko (Alias = Musik); `nvsr.ts` verwaist → D-K0-10 |
 | `aero` | slp-rl/aero SR 12→48 kHz (Sprache) | BWE-Challenger (nicht verdrahtet) | würden Musik-F4 verdrängen |
 | `vocos` | Vocos (LibriTTS, Sprache) | Vocoder-Stufe 24 kHz | Signalpfad-Risiko |
 | `vocos_48khz` | `kittn/vocos-mel-48khz-alpha1` — **Sprache, belegt (2026-10-08):** Owner-Aussage in HF-Discussion #2 (2026-04-17) — „mostly podcasts I had scraped, plus VCTK and Expresso" (Sprach-Korpora, **kein Gesang**); Owner warnt selbst: „reconstruction quality is quite poor" (Karte: „Training details: TODO") | Vocoder-Stufe 48 kHz (primär) | **§III.11 (copilot-instructions.md): Sprach-Signalpfad auf Musik/Gesang nur als §V6-Fallback (hat nie Gesang gesehen) — Primär-Rolle offen; Ersatz: BigVGAN-F3 (D-K0-1, C4 ausstehend) oder Gesangs-Finetune** |

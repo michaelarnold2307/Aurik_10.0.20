@@ -24,7 +24,7 @@ Wohlklang für das menschliche Gehör**. Normative Kette: `AGENTS.md` §1
 
 | # | Lücke | Typ | Wo dokumentiert |
 | --- | --- | --- | --- |
-| 1 | WP-2-Hygiene: 53 Phantom-`models/`-Referenzen + 17 TorchScript-Stubs | autonom | Tiefenanalyse E4; `scripts/wohlklang_gate.py` (P2-Findings) |
+| 1 | ~~WP-2-Hygiene~~ **ERLEDIGT 2026-10-28:** Stubs (D-K3-3), Phantome (D-K3-5), D-K2-4 Namens-Drift und Domänen-Status sind register-seitig geschlossen; die P2-INFO-Findings des Gates sind dokumentierter Akzeptanz-Bestand | — | Register D-K3-3/D-K3-5/D-K2-4/D-K0-10 |
 | 2 | Referenzfreie Qualitätsmetrik (UTMOS richtungs-invertiert!) | autonom | Tiefenanalyse E2 |
 | 3 | P1-7 (m1b-Stufe-2 intern) + P1-10 (Defekt-Chips) | autonom | Roadmap TODO-P1-7/P1-10 |
 | 4 | Laufzeit 53×→32× RT (F-Reihe optimieren) | autonom | Roadmap TODO-P0-3 Nachtrag |
