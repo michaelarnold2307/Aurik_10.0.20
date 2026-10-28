@@ -26,6 +26,22 @@
       "spearman_min": 0.9487,
       "richtungssicher": true
     },
+    "musik_mos": {
+      "pro_material": {
+        "cassette_1980s_wow.wav": {
+          "stufenwerte": [4.7955, 4.7955, 4.6611, 4.6564],
+          "spearman": 0.9487,
+          "richtungssicher": true
+        },
+        "reel_1940s_dropout.wav": {
+          "stufenwerte": [4.912, 4.912, 4.5604, 4.5456],
+          "spearman": 0.9487,
+          "richtungssicher": true
+        }
+      },
+      "spearman_min": 0.9487,
+      "richtungssicher": true
+    },
     "pqs_dsp": {
       "pro_material": {
         "cassette_1980s_wow.wav": {

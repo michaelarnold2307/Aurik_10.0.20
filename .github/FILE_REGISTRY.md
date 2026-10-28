@@ -514,6 +514,8 @@
 | scripts/gpu_kette2_matrix_d3.sh | ACTIVE | scripts | ja | — | Dauerhafte GPU-Trainingskette 2 (LUECKEN-MATRIX D.3: DiffWave-Vokal, BigVGAN-v2, FlashSR-Musik); startet nach Kette 1, Job-Locks verhindern Doppellauf — siehe docs/SOTA_HANDOVER.md §3 |
 | scripts/quality_metric_direction_gate.py | ACTIVE | scripts | ja | — | E2 (Tiefenanalyse): Richtungszertifikat referenzfreier Qualitaetsmetriken — deterministische Degradations-Leiter + Spearman gegen Erwartungsordnung; nur zertifizierte Metriken duerfen B3-Entscheidungen tragen; defektlast zertifiziert, UTMOS/PQS blind gesperrt |
 | tests/unit/test_quality_metric_direction_gate.py | ACTIVE | tests/unit | ja | — | Tests: Spearman mit Gleichstands-Mittelung, beide Richtungen, Blindheit wird abgelehnt, Defektlast-Richtung auf der Leiter |
+| plugins/musik_mos_plugin.py | ACTIVE | plugins | ja | — | E2: MusikMOS — UTMOS-Ersatz, referenzfreie Musik-MOS 1–5 (hoeher=besser) aus dokumentierten Komponenten (Rauschlast/Tonalitaet/Clipping/HF/Dynamik); Richtungszertifikat bestanden (Spearman 0,95); deterministisch, ohne Modell-Datei |
+| tests/unit/test_musik_mos_plugin.py | ACTIVE | tests/unit | ja | — | Tests: MOS-Bereich, Determinismus G5, Richtung (Rauschen/Clipping senken), Detail-Herleitung |
 
 ## Pflege-Regeln
 

@@ -170,6 +170,14 @@ def _messe_metriken(audio: np.ndarray, sr: int) -> dict[str, float | None]:
     except Exception as exc:
         log.warning("PQS-DSP nicht messbar (%s)", exc)
         werte["pqs_dsp"] = None
+    try:
+        from plugins.musik_mos_plugin import get_musik_mos
+
+        res3 = get_musik_mos().estimate_mos(audio, sr)
+        werte["musik_mos"] = float(res3.mos)
+    except Exception as exc:
+        log.warning("MusikMOS nicht messbar (%s)", exc)
+        werte["musik_mos"] = None
     werte["defektlast"] = _defektlast(audio, sr)
     return werte
 
