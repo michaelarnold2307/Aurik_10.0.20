@@ -2266,6 +2266,7 @@ class DefectPhaseMapper:
         mode: str = "restoration",
         material: str | None = None,
         phase_coalitions: dict[str, tuple[str, ...]] | None = None,
+        forbidden_phases: set[str] | None = None,
     ) -> list[str]:
         """
         Gibt eine de-duplizierte, priorisierte Phase-Liste für mehrere Defekte zurück.
@@ -2298,6 +2299,7 @@ class DefectPhaseMapper:
                 return float(default)
 
         seen: dict[str, float] = {}  # phase_id → max_severity
+        must_have: set[str] = set()  # Primary-Phasen AKTIVER Defekte (Abdeckung)
         _confidences: list[float] = []
         for defect in defects:
             severity = _sanitize_01(getattr(defect, "severity", 0.5), 0.5)
@@ -2321,14 +2323,29 @@ class DefectPhaseMapper:
             assignment = _PHASE_MAP.get(dt)
             if assignment is None:
                 continue
+            # §Spec 03 Abdeckungsgarantie: Primary-Phasen eines AKTIVEN Defekts
+            # (Severity > activation_threshold) sind verpflichtend und duerfen nie
+            # durch das globale Phasen-Budget abgeschnitten werden — sonst bleibt
+            # ein bestaetigter Defekt ohne Primaer-Reparatur (Befund 2026-10-29:
+            # phase_03_denoise/phase_23_spectral_repair fielen dem 12er-Budget zum
+            # Opfer, obwohl high_freq_noise/generation_loss/compression_artifacts
+            # aktiv erkannt waren).
+            if severity > activation_threshold(dt):
+                must_have.update(assignment.primary_phases)
             for phase_id in assignment.primary_phases:
                 seen[phase_id] = max(seen.get(phase_id, 0.0), severity * confidence_gain * primary_weight)
             for phase_id in assignment.secondary_phases:
                 seen[phase_id] = max(seen.get(phase_id, 0.0), severity * confidence_gain * secondary_weight)
 
-        # §0a: Verbotene Phasen im Restoration-Modus herausfiltern
-        if mode == "restoration":
-            seen = {p: s for p, s in seen.items() if p not in _RESTORATION_FORBIDDEN_PHASES}
+        # §0a: Verbotene Phasen im Restoration-Modus herausfiltern — plus
+        # fall-spezifische Forbidden-Phasen des Aufrufers (z.B. Golden-Gate),
+        # damit die Abdeckungsgarantie nie eine verbotene Phase erzwingt.
+        _forbidden = set(_RESTORATION_FORBIDDEN_PHASES) if mode == "restoration" else set()
+        if forbidden_phases:
+            _forbidden |= set(forbidden_phases)
+        if _forbidden:
+            seen = {p: s for p, s in seen.items() if p not in _forbidden}
+            must_have -= _forbidden
 
         # V29/§4.11: Kratzentferner ist physikalisch falsch für digitale Codec-Materialien
         # (Codec-Artefakte sind keine Vinyl/Shellac-Kratzer — KEIN phase_09 für MP3/AAC/CD)
@@ -2360,7 +2377,17 @@ class DefectPhaseMapper:
             elif _avg_conf < 0.50:
                 _effective_max_phases = max(4, int(max_phases * 0.7))
 
-        return [phase_id for phase_id, _ in sorted_phases[:_effective_max_phases]]
+        # §Spec 03 Abdeckungsgarantie (Coverage vor Budget): Primary-Phasen
+        # aktiver Defekte duerfen nie durch das Budget entfallen — sonst bleibt
+        # ein bestaetigter Defekt ohne Primaer-Reparatur. Die gewichtsbasierte
+        # Reihenfolge (inkl. §2.67-Koalitions-Priorisierung) bleibt erhalten;
+        # nur fehlende Coverage-Phasen werden ergaenzt. Gegen Überverarbeitung
+        # ist das Ergebnis bei 2× Budget gedeckelt.
+        _must_have = {pid for pid in must_have if pid in seen}
+        _selected = {pid for pid, _ in sorted_phases[:_effective_max_phases]} | _must_have
+        _ordered = [pid for pid, _ in sorted_phases if pid in _selected]
+        _cap = max(_effective_max_phases, min(len(_ordered), _effective_max_phases * 2))
+        return _ordered[:_cap]
 
     def describe(self, defect_type: DefectType) -> str:
         """Menschenlesbare Beschreibung der Strategie für einen Defekttyp."""

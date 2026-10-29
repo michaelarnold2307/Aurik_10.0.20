@@ -206,12 +206,14 @@ def _scan_strategy_case(raw_case: dict[str, Any], repo_root: Path, target_sr: in
     plan = reason_about_defects(defect_scores, material=material.value, audio=audio, sample_rate=sr)
     reasoner_phases = [str(phase) for phase in plan.recommended_phases]
     active_phase_coalitions = _resolve_strategy_phase_coalitions(reasoner_phases, is_studio_2026=False)
+    _case_forbidden = set(_string_tuple(raw_case.get("forbidden_phases"), "forbidden_phases"))
     mapper_phases = DefectPhaseMapper().phases_for_defect_profile(
         list(defect_result.scores.values()),
         max_phases=12,
         mode="restoration",
         material=material.value,
         phase_coalitions=active_phase_coalitions if active_phase_coalitions else None,
+        forbidden_phases=_case_forbidden,
     )
     runtime_seconds = float(time.time() - start_time)
 
@@ -224,7 +226,6 @@ def _scan_strategy_case(raw_case: dict[str, Any], repo_root: Path, target_sr: in
 
     required_phases = _string_tuple(raw_case.get("required_phases"), "required_phases")
     missing_required = tuple(phase for phase in required_phases if phase not in combined_set)
-    _case_forbidden = set(_string_tuple(raw_case.get("forbidden_phases"), "forbidden_phases"))
     forbidden_phases = tuple(sorted(set(_RESTORATION_FORBIDDEN_PHASES) | _case_forbidden))
     forbidden_present = tuple(phase for phase in forbidden_phases if phase in combined_set)
 
