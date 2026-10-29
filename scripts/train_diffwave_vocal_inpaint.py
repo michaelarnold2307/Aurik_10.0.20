@@ -376,6 +376,9 @@ def main() -> int:
     ap.add_argument("--seed", type=int, default=42)
     ap.add_argument("--smoke", action="store_true", help="1 Epoch, 2 Tracks (Setup-Test)")
     ap.add_argument("--skip-a1", action="store_true", help="A1-Hör-Loss deaktivieren")
+    # D-K3-22: Resume-Anker — Timeout-/Retry-Weiterlauf setzt ab der letzten
+    # Epoche fort statt bei 0 neu (Budget vs. Epoch-Zeit).
+    ap.add_argument("--resume", type=str, default="", help="checkpoint_latest.pt zum Fortsetzen")
     args = ap.parse_args()
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -435,7 +438,26 @@ def main() -> int:
     best_epoch = -1
     no_improve = 0
 
-    for epoch in range(args.epochs):
+    # D-K3-22: Resume — bricht die Budget-vs-Epoch-Zeit-Lücke: ein
+    # Timeout-/Retry-Weiterlauf setzt ab der letzten Epoche fort statt bei 0.
+    start_epoch = 0
+    if args.resume:
+        _rp = Path(args.resume)
+        if _rp.is_file():
+            _res = torch.load(_rp, map_location="cpu", weights_only=False)  # nosec B614
+            if isinstance(_res, dict) and "model" in _res:
+                model.load_state_dict(_res["model"])
+                opt.load_state_dict(_res.get("optimizer", opt.state_dict()))
+                if "scheduler" in _res:
+                    scheduler.load_state_dict(_res["scheduler"])
+                start_epoch = int(_res.get("epoch", -1)) + 1
+            else:
+                model.load_state_dict(_res)  # reines state_dict
+            print(f"Resume ab Epoche {start_epoch} ({_rp.name})")
+        else:
+            print(f"Resume-Datei fehlt ({_rp}) — starte bei Epoche 0")
+
+    for epoch in range(start_epoch, args.epochs):
         t0 = time.perf_counter()
         model.train()
         rng = np.random.default_rng(args.seed + epoch)
@@ -498,6 +520,17 @@ def main() -> int:
             f"Epoch {epoch + 1}/{args.epochs}: Loss={train_loss:.6f} | Val-SDR mean={val_mean:+.2f} dB min={val_min:+.2f} dB [{dt:.0f}s]{tag}"
         )
         scheduler.step()
+        # D-K3-22: Resume-Anker JEDE Epoche (nicht nur bei best) — damit ein
+        # Timeout-/Retry-Weiterlauf ab der letzten Epoche fortsetzt statt bei 0.
+        save_guarded(
+            str(_OUT_CKPT.parent / "checkpoint_latest.pt"),
+            {
+                "model": model.state_dict(),
+                "optimizer": opt.state_dict(),
+                "scheduler": scheduler.state_dict(),
+                "epoch": epoch,
+            },
+        )
         if no_improve >= args.patience:
             print(f"Early-Stop nach {args.epochs - (epoch + 1)} Runden ohne Verbesserung (Patience {args.patience}).")
             break

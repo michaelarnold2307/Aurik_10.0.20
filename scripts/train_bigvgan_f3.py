@@ -344,6 +344,10 @@ def main() -> int:
             "cfg": CFG,
         }
         save_guarded(out_dir / f"checkpoint_epoch{epoch}.pt", ckpt)
+        # Stabiler Resume-Anker (§G5 (copilot-instructions.md)): checkpoint_latest.pt — damit ein
+        # Timeout-/Retry-Weiterlauf (D-K3-22 Budget vs. Epoch-Zeit) ab der
+        # letzten Epoche fortsetzt statt bei Epoche 0 neu zu starten.
+        save_guarded(out_dir / "checkpoint_latest.pt", ckpt)
         if v_a1 < best_val:
             best_val = v_a1
             patience_left = 5
