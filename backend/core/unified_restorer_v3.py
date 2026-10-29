@@ -28684,19 +28684,6 @@ class UnifiedRestorerV3:
 
         if sev(DefectType.CRACKLE) > 0.15 and _is_disc:
             selected.append("phase_09_crackle_removal")
-            # §Spec 06 Route A: dichte Knistern-Textur (keine isolierten Impulse)
-            # → phase_67_crackle_texture_removal (ML, RESTORATION_ONLY).
-            # Spärliche Einzelimpulse bleiben bei phase_09 (Either-Or, Spec 06).
-            # Der Scanner liefert sparse_impulse_rate in den CRACKLE-Metadaten
-            # (Schwelle 0,0008 = Detektor-Klassifikation „kein spärliches Knistern“).
-            _crackle_score = scores.get(DefectType.CRACKLE)
-            _crackle_sparse = (
-                float((_crackle_score.metadata or {}).get("sparse_impulse_rate", 0.0) or 0.0)
-                if _crackle_score is not None
-                else 0.0
-            )
-            if not self.is_studio_mode() and _crackle_sparse < 0.0008:
-                selected.append("phase_67_crackle_texture_removal")
         elif sev(DefectType.CRACKLE) > 0.15:
             logger.debug(
                 "Verarbeitungsschritt_09_crackle_removal übersprungen: material=%s chain=%s — kein Disc-Träger"
@@ -28704,6 +28691,22 @@ class UnifiedRestorerV3:
                 material,
                 transfer_chain,
             )
+
+        # §SR-CK-Textur (Spec 03) + §Spec 06 Route A: dichte Knistern-Textur
+        # (keine isolierten Impulse) → phase_67_crackle_texture_removal (ML,
+        # RESTORATION_ONLY). Routing nach **Knistern-Art** (Severity +
+        # sparse_impulse_rate), NICHT nach Träger: die Material-Erkennung kann den
+        # Träger fehlklassifizieren (Befund 2026-10-29: Shellac → TAPE), die
+        # Knistern-Art ist im Scanner robust gemessen. Deshalb ohne _is_disc-Gate
+        # (Wurzel-Fix, Spec-konform). Schwelle 0,0008 = „kein spärliches Knistern“.
+        _crackle_score = scores.get(DefectType.CRACKLE)
+        _crackle_sparse = (
+            float((_crackle_score.metadata or {}).get("sparse_impulse_rate", 0.0) or 0.0)
+            if _crackle_score is not None
+            else 0.0
+        )
+        if sev(DefectType.CRACKLE) > 0.15 and not self.is_studio_mode() and _crackle_sparse < 0.0008:
+            selected.append("phase_67_crackle_texture_removal")
 
         # ML-Chirurgie (VinylNet v4): chirurgisches De-Crackle als Nachpass.
         # Disc-Medien mit Klick- oder Crackle-Last; läuft NACH den klassischen

@@ -4477,10 +4477,23 @@ class DefectScanner:
             kurtosis_discount = max(0.1, (hp_kurtosis - 4.0) / 2.0)
         # Kurtosis > 6 → impulsive, keep full weight
 
-        if tonal_or_dense_hf:
+        if tonal_or_dense_hf and not (severity_raw >= 0.5 and hp_kurtosis >= 6.0):
+            # §Spec 06 Route A / Hoer-Befund 2026-10-29: dichte Knistern-Textur
+            # (Phase 67 CrackleTextureRemoval) ist dicht (sparse_impulse_rate
+            # < 0.0008) UND impulsiv (hp_kurtosis >= 6) — tonal_or_dense_hf wuerde
+            # sie als "tonal/gaußsch" fehlklassifizieren und die Severity auf 0
+            # druecken, waehrend die Selektions-Logik (unified_restorer_v3) genau
+            # dann Phase 67 waehlt. Fuer echtes dichtes Knistern nicht nullen.
             kurtosis_discount = 0.0
 
-        severity = min(1.0, severity_raw * 10 * kurtosis_discount)
+        # Severity = Masken-Dichte (Crackle-Intensitaet), ohne *10-Saettigung.
+        # Befund 2026-10-29 (Hoer-Abnahme): die *10-Saettigung zerrte eine
+        # spaerliche Maske (musikalische Transienten der Referenz, 0,134) in den
+        # False-Positive-Bereich (0,79). Masken-Dichte allein trennt sauber
+        # (Referenz 0,134 vs. dichtes Knistern 1,000); Schwelle 0,15 =
+        # „Crackle > 15 % der Samples". Stereo-Gate ist hierfuer ungeeignet
+        # (Knistern ist auf diesem Material amp-korreliert, s. Report).
+        severity = min(1.0, severity_raw * kurtosis_discount)
 
         # Find connected regions
         from scipy.ndimage import label  # pylint: disable=import-outside-toplevel
