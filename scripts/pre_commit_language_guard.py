@@ -368,8 +368,11 @@ def _replace_forbidden_terms(text: str) -> str:
     translated = text
     word_letters = "A-Za-zäöüÄÖÜß"
     for term, replacement in _AUTO_FIX_REPLACEMENTS:
+        # §5 AGENTS.md: kanonische Phasen-IDs (z.B. phase_20) sind Vertragstext
+        # und duerfen NICHT uebersetzt werden — _<Ziffer> schliesst die
+        # Phasen-ID-Form von der Ersetzung aus (Befund 2026-10-29, 3. Ueberschreibung).
         pattern = re.compile(
-            rf"(^|\\[abfnrtv]|[^{word_letters}])({re.escape(term)})(?![{word_letters}])", re.IGNORECASE
+            rf"(^|\\[abfnrtv]|[^{word_letters}])({re.escape(term)})(?![{word_letters}])(?!_\d)", re.IGNORECASE
         )
         translated = pattern.sub(lambda match, replacement=replacement: f"{match.group(1)}{replacement}", translated)
     return translated
