@@ -585,12 +585,36 @@ def test_denoise_activates_single_noise_chip_without_hum_alias() -> None:
 
 @pytest.mark.normative
 def test_chip_event_remaining_counts_follow_serial_phase_score_reduction() -> None:
+    """D-K3-13 (2026-10-28): Chip-Restwerte aus der KANONISCHEN Zählung.
+
+    a33d2314 kanonisierte die Defekt-Rückwärtszählung auf EINE Quelle
+    (defect_progress_model, §G9 (copilot-instructions.md)) und entfernte die
+    proportionale Score-Schätzung („keine proportionale Überschreibung“).
+    Vertrag (Wirkung statt Formulierung, D-K3-34): die Anzeige hängt an der
+    kanonischen Quelle, deren Restzahlen SINKEN mit der Auflösung. Keine zweite
+    Zähl-Logik (Sonderweg) — die Score-Senkung bleibt als separater
+    „% reduziert“-Anzeigewert in _format_defect_progress_suffix erhalten.
+    """
     src = _read_gui_source()
-    assert "_drop_factor = 0.84  # 16 % konservative Absenkung pro abgeschlossener Phase" in src
-    assert "_current_defect_scores[_rkey] = _next_val" in src
-    assert 'if _resolved <= 0 and _status in ("correcting", "completed", "blocked"):' in src
-    assert "_phase_estimated_remaining = int(math.ceil(float(_total) * _score_ratio))" in src
-    assert "_remaining = min(_remaining, max(0, _phase_estimated_remaining))" in src
+    # Struktur: EINE Zählquelle — das kanonische Modell liefert die Restzahlen.
+    assert "defect_progress_model" in src
+    assert "remaining_counts()" in src
+    # Negativ: der proportionale Score-Sonderweg (D-K3-34) ist NICHT wieder da.
+    assert "_phase_estimated_remaining" not in src
+    # Wirkung: kanonische Restzahlen sinken monoton mit der Auflösung.
+    from Aurik10.ui.defect_progress_model import DefectProgressModel
+
+    _m = DefectProgressModel()
+    _m.set_initial({"noise": 10, "clicks": 4})
+    assert _m.remaining_counts() == {"noise": 10, "clicks": 4}
+    _m.apply_exact({"noise": 3})
+    assert _m.remaining_counts()["noise"] == 7  # 10 − 3
+    _m.apply_exact({"noise": 6})  # max-Semantik: 6 aufgeloest
+    assert _m.remaining_counts()["noise"] == 4  # 10 − 6
+    _m.apply_marker_resolved({"clicks": 4})
+    assert _m.remaining_counts()["clicks"] == 0  # 4 − 4
+    _m.apply_exact({"noise": 99})  # Ueber-Aufloesung darf nicht negativ werden
+    assert _m.remaining_counts()["noise"] >= 0
 
 
 @pytest.mark.normative
@@ -671,13 +695,33 @@ def test_quality_risk_message_explains_user_relevant_protection() -> None:
 
 @pytest.mark.normative
 def test_defect_progress_uses_open_done_wording_and_deduped_event_totals() -> None:
+    """D-K3-13 (2026-10-28): Offen/Erledigt-Wording + deduplizierte Event-Summen.
+
+    Die Anzeige nutzt „offen/erledigt“ (in _format_defect_progress_suffix) und
+    die deduplizierten Event-Summen der KANONISCHEN Quelle (defect_progress_model,
+    Alias-Gruppen) — eine Zählquelle (a33d2314), Wirkung statt Formulierung
+    (D-K3-34). Kein zweiter Summen-Sonderweg.
+    """
     src = _read_gui_source()
     assert "_has_progress = _remaining < _total or _resolved > 0 or _reduced >= 3" in src
     assert "if _pct < 19.0 and not _has_progress:" in src
     assert "offen" in src
-    assert "def _sum_event_counts_dedup" in src
-    assert '_alias_groups = (("pops", "clipping"), ("noise", "noise_level"))' in src
-    assert "_total_count += max(max(0, int(_counts.get(_member, 0) or 0)) for _member in _group)" in src
+    # Dedup ueber die kanonische Alias-Quelle (eine Quelle, a33d2314).
+    from Aurik10.ui.defect_progress_model import DefectProgressModel, kanonischer_schluessel
+
+    # Alias-Partner werden auf EINEN Schluessel abgebildet (Dedup).
+    assert kanonischer_schluessel("noise") == kanonischer_schluessel("noise_level")
+    assert kanonischer_schluessel("pops") == kanonischer_schluessel("clipping")
+    # Wirkung: doppelte Event-Zahlen ueber Aliase werden NICHT doppelt gezaehlt.
+    _m = DefectProgressModel()
+    _m.set_initial({"noise": 6, "noise_level": 6, "pops": 4, "clipping": 4, "clicks": 5})
+    _dedup_total = sum(_m.initial_counts.values())
+    # Dedup: noise~noise_level zaehlen einmal (6), pops~clipping einmal (4).
+    assert _dedup_total == 6 + 4 + 5  # = 15, nicht 6+6+4+4+5 = 25
+    # Verschiedene Werte im Alias-Paar: der groessere gewinnt (kein Doppelzählen).
+    _m2 = DefectProgressModel()
+    _m2.set_initial({"noise": 6, "noise_level": 3})
+    assert sum(_m2.initial_counts.values()) == 6
 
 
 @pytest.mark.normative
