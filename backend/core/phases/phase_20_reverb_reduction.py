@@ -1127,8 +1127,10 @@ class ReverbReduction(PhaseInterface):
                     _get_lfc_20_post().track(_ft_out_20.astype(np.float32), sample_rate).get("f1_mean", 0.0)
                 )
                 if _f1_post_20 > 0 and abs(_f1_post_20 - _f1_pre_20) > _f1_pre_20 * 0.15:
+                    # §0p-Rollback-Keyword "Formant drift phase_20" ist Vertragstext mit
+                    # kanonischer Phasen-ID (AGENTS.md §5) — nicht übersetzen (Sprache-Guard).
                     logger.warning(
-                        "§0p Formant drift Verarbeitungsschritt_20 (F1 %.0f→%.0f Hz, delta=%.0f Hz) — rollback",
+                        "§0p Formant drift phase_20 (F1 %.0f→%.0f Hz, delta=%.0f Hz) — rollback",
                         _f1_pre_20,
                         _f1_post_20,
                         abs(_f1_post_20 - _f1_pre_20),
