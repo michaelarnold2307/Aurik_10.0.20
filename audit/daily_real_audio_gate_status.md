@@ -1,15 +1,15 @@
 # Daily Real-Audio-Gate Status
 
-Generated: 2026-10-07T12:22:00.995246
-Status: ready
+Generated: 2026-10-29T08:00:54.414630
+Status: attention
 
 ## Latest
 
-- Date: 2026-05-11
-- Source: uat_results_2026-05-11.json
-- Recommendation: GO
-- Gates: 7/7
-- R5-R12: 8/8
+- Date: 2026-10-29
+- Source: uat_results_2026-10-29.json
+- Recommendation: CONDITIONAL
+- Gates: 6/7
+- R5-R12: 0/8
 
 ## Trend
 
@@ -19,3 +19,4 @@ Status: ready
 | 2026-04-12 | uat_results_2026-04-12.json | GO | 7/7 | 8/8 |
 | 2026-04-14 | uat_results_2026-04-14.json | GO | 7/7 | 7/8 |
 | 2026-05-11 | uat_results_2026-05-11.json | GO | 7/7 | 8/8 |
+| 2026-10-29 | uat_results_2026-10-29.json | CONDITIONAL | 6/7 | 0/8 |

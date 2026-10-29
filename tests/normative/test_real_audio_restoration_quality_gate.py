@@ -156,17 +156,24 @@ class TestDailyGateStatus:
         return data  # type: ignore[return-value]
 
     def test_daily_gate_stored_recently(self, status: dict):
-        """Daily-Status muss in den letzten 48h aktualisiert worden sein."""
-        from datetime import datetime, timedelta, timezone
+        """Evidenz-Frische: die UAT-ANALYSE muss aktuell sein (D-K3-34).
 
-        ts = status.get("timestamp") or status.get("generated_at")
-        if ts is None:
-            pytest.fail("Daily-Status hat keinen Timestamp")
-        last_run = datetime.fromisoformat(str(ts)).replace(tzinfo=timezone.utc)
-        age = datetime.now(timezone.utc) - last_run
-        assert age < timedelta(hours=48), (
-            f"Daily-Status ist {age.total_seconds() / 3600:.1f}h alt "
-            f"(maximal 48h). Führe audit/daily_real_audio_gate.py aus."
+        Der Reporter `audit/daily_real_audio_gate.py` aggregiert vorhandene
+        `uat_results_*.json` und stempelt `generated_at` neu — das ist die
+        Reporter-Laufzeit, nicht frische Qualitäts-Evidenz. Maßgeblich für
+        echte Evidenz ist die UAT-Analyse selbst (`latest.date`):
+        Wirkung statt Formulierung (D-K3-34).
+        """
+        from datetime import date, datetime, timedelta, timezone
+
+        latest = status.get("latest") or {}
+        ds = latest.get("date")
+        if not ds:
+            pytest.fail("Daily-Status hat keine UAT-Analyse (latest.date fehlt)")
+        analysis_age = datetime.now(timezone.utc).date() - date.fromisoformat(str(ds))
+        assert analysis_age < timedelta(days=2), (
+            f"UAT-Analyse ist {analysis_age.days} Tage alt (maximal 48h). "
+            f"Führe audit/uat_report_generator.py aus (echte Evidenz erneuern)."
         )
 
     def test_daily_status_consistent_with_report(self, status: dict):
