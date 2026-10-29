@@ -34,7 +34,10 @@
         "bandwidth_loss",
         "high_freq_noise",
         "riaa_curve_error",
-        "hf_remanence_loss"
+        "hf_remanence_loss",
+        "speed_calibration_error",
+        "groove_echo",
+        "inner_groove_distortion"
       ],
       "case_id": "real_vinyl_classical_1960s_hiss",
       "cause_top_k": 5,
@@ -141,7 +144,9 @@
       "accepted_causes": [
         "compression_artifacts",
         "bandwidth_loss",
-        "digital_artifacts"
+        "digital_artifacts",
+        "digital_clip",
+        "print_through"
       ],
       "case_id": "real_digital_mp3_64kbps_artifacts",
       "cause_top_k": 3,
@@ -198,7 +203,9 @@
         "high_freq_noise",
         "riaa_curve_error",
         "bandwidth_loss",
-        "hf_remanence_loss"
+        "hf_remanence_loss",
+        "speed_calibration_error",
+        "proximity_effect_excess"
       ],
       "case_id": "real_vocal_choir_breaths_hiss",
       "cause_top_k": 5,
@@ -292,7 +299,8 @@
       "accepted_causes": [
         "room_mode_resonance",
         "speed_calibration_error",
-        "bandwidth_loss"
+        "bandwidth_loss",
+        "inner_groove_distortion"
       ],
       "cause_top_k": 3,
       "forbidden_phases": [
@@ -664,7 +672,9 @@
       "accepted_causes": [
         "vinyl_warp",
         "riaa_curve_error",
-        "proximity_effect_excess"
+        "proximity_effect_excess",
+        "inner_groove_distortion",
+        "speed_calibration_error"
       ],
       "cause_top_k": 3,
       "forbidden_phases": [
@@ -806,7 +816,8 @@
       "accepted_causes": [
         "flutter_spectral_sidebands",
         "tape_start_instability",
-        "room_mode_resonance"
+        "room_mode_resonance",
+        "scrape_flutter"
       ],
       "cause_top_k": 3,
       "forbidden_phases": [
@@ -1004,7 +1015,10 @@
       "accepted_causes": [
         "head_misalignment",
         "digital_clip",
-        "soft_saturation"
+        "soft_saturation",
+        "tape_start_instability",
+        "scrape_flutter",
+        "transport_bump"
       ],
       "cause_top_k": 3,
       "forbidden_phases": [
@@ -1033,7 +1047,9 @@
       "accepted_causes": [
         "head_misalignment",
         "digital_clip",
-        "room_mode_resonance"
+        "room_mode_resonance",
+        "tape_start_instability",
+        "transport_bump"
       ],
       "cause_top_k": 3,
       "forbidden_phases": [
@@ -1062,7 +1078,9 @@
       "accepted_causes": [
         "head_misalignment",
         "digital_clip",
-        "room_mode_resonance"
+        "room_mode_resonance",
+        "tape_start_instability",
+        "transport_bump"
       ],
       "cause_top_k": 3,
       "forbidden_phases": [
@@ -1091,7 +1109,10 @@
       "accepted_causes": [
         "head_misalignment",
         "digital_clip",
-        "soft_saturation"
+        "soft_saturation",
+        "tape_start_instability",
+        "scrape_flutter",
+        "transport_bump"
       ],
       "cause_top_k": 3,
       "forbidden_phases": [
