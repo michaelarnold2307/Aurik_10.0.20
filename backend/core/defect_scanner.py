@@ -1788,6 +1788,12 @@ class DefectScanner:
         # Welch-PSD-Cache (P1): gültig für Dauer eines scan()-Calls - wird in scan() gesetzt.
         self._scan_welch_cache: dict[tuple[object, ...], tuple[np.ndarray, np.ndarray]] = {}
 
+        # §PERF-R18 (2026-10-28): Wow/Flutter-Feature-Cache (bit-exakt, siehe
+        # _wf_cached_features). Reset zusammen mit _scan_welch_cache
+        # (§G1 (GEBOTE.md) Song-Isolation); Inhalt ist content-adressiert.
+        self._wf_feature_cache: dict[tuple[object, ...], tuple[Any, ...]] = {}
+        self._wf_feature_cache_enabled: bool = True
+
     def _cached_welch(
         self,
         audio: np.ndarray,
@@ -1821,6 +1827,40 @@ class DefectScanner:
         _result: tuple[np.ndarray, np.ndarray] = signal.welch(audio, sr, nperseg=nperseg)  # type: ignore[assignment]
         self._scan_welch_cache[_key] = _result
         return _result
+
+    def _wf_cached_features(self, tag: str, audio: np.ndarray, compute: Callable[[], Any]) -> Any:
+        """§PERF-R18 (2026-10-28): Content-Keyed Feature-Cache für Wow/Flutter.
+
+        Schlüssel = (Tag, sample_rate, dtype, BLAKE2b des kompletten
+        Signal-Bytes). Gecachet werden ausschließlich Feature-Schichten, die
+        reine Funktionen aus (audio, sample_rate) sind — ein Treffer liefert
+        exakt dieselben Floats wie die Neuberechnung (bit-identisch,
+        §G5 (copilot-instructions.md)). Schwellwerte/Material sind bewusst
+        NICHT Teil des Schlüssels, weil sie ausschließlich im Verdict-Teil
+        einfließen, der pro Aufruf neu läuft. Damit umgeht der Cache den
+        D-K3-40-Negativbefund: das Verdict-Memo ohne Zustand war
+        verhaltensändernd (3 Typen wichen ab), das Memo mit Zustand wirkungslos
+        (0 Treffer). Duplikationsquelle: Material-Erkennung und Haupt-Scan
+        rechnen die Detektoren auf identischem Mono-Signal doppelt
+        (44,9 s von 58,4 s Scan-Zeit, c4307207).
+        """
+        if not self._wf_feature_cache_enabled:
+            return compute()
+        _arr = np.ascontiguousarray(audio)
+        _key = (
+            tag,
+            int(self.sample_rate),
+            str(_arr.dtype),
+            hashlib.blake2b(_arr.tobytes(), digest_size=16).digest(),
+        )
+        _cached = self._wf_feature_cache.get(_key)
+        if _cached is not None:
+            return _cached[0]
+        _value = compute()
+        if len(self._wf_feature_cache) >= 8:
+            self._wf_feature_cache.pop(next(iter(self._wf_feature_cache)))
+        self._wf_feature_cache[_key] = (_value,)
+        return _value
 
     def adjust_thresholds_for_ast(
         self,
@@ -2479,6 +2519,7 @@ class DefectScanner:
         # bleiben serial.
         # Welch-PSD-Cache zurücksetzen: neuer scan()-Call, neues audio_mono-Objekt.
         self._scan_welch_cache = {}
+        self._wf_feature_cache = {}
         scores = {}
 
         from concurrent.futures import ThreadPoolExecutor
@@ -3367,6 +3408,7 @@ class DefectScanner:
             _scan_cache[_cache_key] = _scan_result
         # Welch-PSD-Cache leeren: gibt Speicher frei (audio_mono bleibt sonst im Cache)
         self._scan_welch_cache = {}
+        self._wf_feature_cache = {}
         return _scan_result
 
     def scan_defect_presence(
@@ -4653,24 +4695,22 @@ class DefectScanner:
             },
         )
 
-    def _detect_wow(self, audio: np.ndarray) -> DefectScore:
-        """Erkennt WOW: slow pitch modulation < 0.5 Hz (IEC 60386, Blum 1984).
+    @staticmethod
+    def _wow_track_features(audio: np.ndarray, sample_rate: int) -> dict[str, Any]:
+        """§PERF-R18 (2026-10-28): reine Feature-Schicht des WOW-Detektors.
 
-        Upgraded v10.0.0b: Dual-track detection using both RMS-envelope AND
-        instantaneous-frequency (Hilbert analytic signal) for pitch-based WOW.
-        RMS catches amplitude-WOW; IF catches pure pitch-WOW missed by RMS.
+        Bit-exakte Übernahme des threshold-unabhängigen Rechenteils aus
+        ``_detect_wow`` (RMS-Hüllkurven-Track, IF/Hilbert-Track,
+        Modulationsspektren). Reine Funktion aus ``(audio, sample_rate)`` —
+        Schwellwerte fließen erst im Verdict-Teil ein (bit-exaktes Caching,
+        §G5 (copilot-instructions.md)).
         """
         n = len(audio)
-        if n < self.sample_rate * 2:  # need at least 2s for sub-0.5Hz
-            return DefectScore(DefectType.WOW, 0.0, 0.3)
-
         # --- Track 1: RMS envelope modulation (amplitude WOW) ---
-        win_len = max(1, int(0.5 * self.sample_rate))
+        win_len = max(1, int(0.5 * sample_rate))
         hop = max(1, win_len // 2)
         # Vectorized RMS
         n_frames = (n - win_len) // hop
-        if n_frames < 4:
-            return DefectScore(DefectType.WOW, 0.0, 0.3)
         indices = np.arange(n_frames) * hop
         rms_series = np.array(
             [float(np.sqrt(np.mean(audio[i : i + win_len] ** 2) + 1e-12)) for i in indices],
@@ -4678,7 +4718,7 @@ class DefectScanner:
         )
         rms_series /= rms_series.mean() + 1e-12
 
-        frame_rate = self.sample_rate / hop
+        frame_rate = sample_rate / hop
         # Power spectrum (squared magnitude) for proper energy metric
         rms_centered = rms_series - rms_series.mean()
         win_h = np.hanning(len(rms_centered))
@@ -4695,23 +4735,23 @@ class DefectScanner:
         try:
             bp_sos = signal.butter(
                 3,
-                [80.0 / (self.sample_rate / 2), min(4000.0, self.sample_rate * 0.45) / (self.sample_rate / 2)],
+                [80.0 / (sample_rate / 2), min(4000.0, sample_rate * 0.45) / (sample_rate / 2)],
                 btype="band",
                 output="sos",
             )
             bp_audio = signal.sosfilt(bp_sos, audio)
             # Hilbert transform for analytic signal
-            analytic = signal.hilbert(bp_audio[: min(n, self.sample_rate * 30)])  # cap at 30s
+            analytic = signal.hilbert(bp_audio[: min(n, sample_rate * 30)])  # cap at 30s
             analytic_arr = np.asarray(analytic, dtype=np.complex128)
             inst_phase = np.unwrap(np.angle(analytic_arr))
-            inst_freq = np.diff(inst_phase) * self.sample_rate / (2 * np.pi)
+            inst_freq = np.diff(inst_phase) * sample_rate / (2 * np.pi)
             # Smooth to 50ms windows
-            if_win = max(1, int(0.05 * self.sample_rate))
+            if_win = max(1, int(0.05 * sample_rate))
             if len(inst_freq) > if_win * 4:
                 if_smooth = _uniform_smooth(inst_freq, if_win, mode="valid")
                 if_smooth = if_smooth / (np.median(if_smooth) + 1e-6)  # normalize
                 if_centered = if_smooth - if_smooth.mean()
-                if_rate = self.sample_rate / if_win
+                if_rate = sample_rate / if_win
                 win_if = np.hanning(len(if_centered))
                 fft_if = np.abs(np.fft.rfft(if_centered * win_if)) ** 2
                 freqs_if = np.fft.rfftfreq(len(if_centered), d=1.0 / if_rate)
@@ -4735,6 +4775,61 @@ class DefectScanner:
         # aktiviert FM-Wow (0,272) zuverlässig — dieser Skalen-Boost bleibt
         # bewusst weg.
         wow_ratio = max(wow_ratio_rms, wow_ratio_if * 0.8)
+
+        return {
+            "n": n,
+            "win_len": win_len,
+            "hop": hop,
+            "n_frames": n_frames,
+            "rms_series": rms_series,
+            "frame_rate": frame_rate,
+            "fft_rms": fft_rms,
+            "freqs_rms": freqs_rms,
+            "wow_mask": wow_mask,
+            "wow_power_rms": wow_power_rms,
+            "wow_ratio_rms": wow_ratio_rms,
+            "wow_ratio_if": wow_ratio_if,
+            "wow_ratio": wow_ratio,
+        }
+
+    def _detect_wow(self, audio: np.ndarray) -> DefectScore:
+        """Erkennt WOW: slow pitch modulation < 0.5 Hz (IEC 60386, Blum 1984).
+
+        Upgraded v10.0.0b: Dual-track detection using both RMS-envelope AND
+        instantaneous-frequency (Hilbert analytic signal) for pitch-based WOW.
+        RMS catches amplitude-WOW; IF catches pure pitch-WOW missed by RMS.
+        """
+        n = len(audio)
+        if n < self.sample_rate * 2:  # need at least 2s for sub-0.5Hz
+            return DefectScore(DefectType.WOW, 0.0, 0.3)
+
+        # --- Track 1: RMS envelope modulation (amplitude WOW) ---
+        win_len = max(1, int(0.5 * self.sample_rate))
+        hop = max(1, win_len // 2)
+        # Vectorized RMS
+        n_frames = (n - win_len) // hop
+        if n_frames < 4:
+            return DefectScore(DefectType.WOW, 0.0, 0.3)
+
+        # §PERF-R18 (2026-10-28): Feature-Cache — reine Funktion aus
+        # (audio, sample_rate), im Scan doppelt gerechnet (Material-Erkennung +
+        # Haupt-Scan). Verdict-Teil liest self.thresholds und läuft pro Aufruf.
+        _feat = self._wf_cached_features(
+            "wow_tracks",
+            audio,
+            lambda: self._wow_track_features(audio, int(self.sample_rate)),
+        )
+        win_len = _feat["win_len"]
+        hop = _feat["hop"]
+        rms_series = _feat["rms_series"]
+        frame_rate = _feat["frame_rate"]
+        fft_rms = _feat["fft_rms"]
+        freqs_rms = _feat["freqs_rms"]
+        wow_mask = _feat["wow_mask"]
+        wow_power_rms = _feat["wow_power_rms"]
+        wow_ratio_rms = _feat["wow_ratio_rms"]
+        wow_ratio_if = _feat["wow_ratio_if"]
+        wow_ratio = _feat["wow_ratio"]
 
         # --- Periodicity check (anti-FP): real WOW is quasi-periodic ---
         # Find dominant modulation frequency
@@ -5325,29 +5420,26 @@ class DefectScanner:
             logger.debug("Scrape-AM-Kanal fehlgeschlagen", exc_info=True)
             return None
 
-    def _detect_flutter(self, audio: np.ndarray) -> DefectScore:
-        """Erkennt FLUTTER: rapid pitch modulation 0.5-200 Hz (IEC 60386).
+    @staticmethod
+    def _flutter_base_features(audio: np.ndarray, sample_rate: int) -> dict[str, Any]:
+        """§PERF-R18 (2026-10-28): reine Feature-Schicht des FLUTTER-Detektors.
 
-        Upgraded v10.0.0b: Spectral-centroid modulation analysis replaces
-        primitive ZCR. Flutter causes rapid spectral centroid oscillation
-        at characteristic mechanical frequencies (guide roller 4-8 Hz,
-        capstan 2-4 Hz, tape resonance 10-30 Hz).
+        Bit-exakte Übernahme des threshold-unabhängigen Rechenteils aus
+        ``_detect_flutter`` (Centroid-Reihe inkl. tonaler ZC-Korrektur,
+        Modulationsspektrum, Band-Energie). Reine Funktion aus
+        ``(audio, sample_rate)`` — Schwellwerte/Material fließen erst im
+        Verdict-Teil ein, der pro Aufruf neu läuft. Damit ist das Caching
+        dieser Features bit-exakt (§G5 (copilot-instructions.md)) und
+        verhaltensneutral, anders das in c4307207 verworfene Verdict-Memo.
         """
         n = len(audio)
-        if n < self.sample_rate // 2:
-            return DefectScore(DefectType.FLUTTER, 0.0, 0.3)
-
-        # --- Short-time spectral centroid series ---
-        # 20ms windows, 10ms hop (captures up to 50 Hz modulation = Nyquist)
-        win_len = max(256, int(0.020 * self.sample_rate))
+        win_len = max(256, int(0.020 * sample_rate))
         hop = max(1, win_len // 2)
         n_frames = (n - win_len) // hop
-        if n_frames < 16:
-            return DefectScore(DefectType.FLUTTER, 0.0, 0.3)
 
         # Vectorized spectral centroid computation
         centroid_series = np.empty(n_frames, dtype=np.float64)
-        freqs_stft = np.fft.rfftfreq(win_len, 1.0 / self.sample_rate)
+        freqs_stft = np.fft.rfftfreq(win_len, 1.0 / sample_rate)
         win_h = np.hanning(win_len)
 
         for fi in range(n_frames):
@@ -5370,7 +5462,7 @@ class DefectScanner:
         if _tonal:
             # 100-ms-Kontext je Frame: ZC-Praezision ~1/sqrt(N) — 20 ms reichten
             # nicht fuer ±0,2 % FM (Präzision ~0,5 %; Nacht-Befund).
-            _ctx = int(0.050 * self.sample_rate)
+            _ctx = int(0.050 * sample_rate)
             for fi in range(n_frames):
                 start = fi * hop
                 _lo = max(0, start - _ctx)
@@ -5378,7 +5470,7 @@ class DefectScanner:
                 seg = audio[_lo:_hi]
                 _zc = np.where(np.diff(np.signbit(seg)))[0]
                 if len(_zc) >= 2:
-                    _periods = np.diff(_zc) / self.sample_rate
+                    _periods = np.diff(_zc) / sample_rate
                     centroid_series[fi] = 1.0 / (2.0 * np.mean(_periods) + 1e-12)
                 else:
                     centroid_series[fi] = 0.0
@@ -5388,7 +5480,7 @@ class DefectScanner:
         centroid_norm = (centroid_series - mean_c) / mean_c
 
         # --- Modulation spectrum of centroid ---
-        frame_rate = self.sample_rate / hop
+        frame_rate = sample_rate / hop
         nyquist_mod = frame_rate / 2.0
         centroid_win = np.hanning(len(centroid_norm))
         fft_c = np.abs(np.fft.rfft(centroid_norm * centroid_win)) ** 2
@@ -5407,12 +5499,77 @@ class DefectScanner:
         _peak_mod = float(np.max(fft_c[flutter_mask])) if flutter_mask.any() else 0.0
         _coherence = _peak_mod / (flutter_power + 1e-12)
 
+        return {
+            "n": n,
+            "win_len": win_len,
+            "hop": hop,
+            "n_frames": n_frames,
+            "centroid_norm": centroid_norm,
+            "frame_rate": frame_rate,
+            "flutter_hi": flutter_hi,
+            "flutter_mask": flutter_mask,
+            "fft_c": fft_c,
+            "freqs_mod": freqs_mod,
+            "total_power": total_power,
+            "flutter_power": flutter_power,
+            "flutter_ratio": flutter_ratio,
+            "coherence": _coherence,
+            "tonal": _tonal,
+        }
+
+    def _detect_flutter(self, audio: np.ndarray) -> DefectScore:
+        """Erkennt FLUTTER: rapid pitch modulation 0.5-200 Hz (IEC 60386).
+
+        Upgraded v10.0.0b: Spectral-centroid modulation analysis replaces
+        primitive ZCR. Flutter causes rapid spectral centroid oscillation
+        at characteristic mechanical frequencies (guide roller 4-8 Hz,
+        capstan 2-4 Hz, tape resonance 10-30 Hz).
+        """
+        n = len(audio)
+        if n < self.sample_rate // 2:
+            return DefectScore(DefectType.FLUTTER, 0.0, 0.3)
+
+        # --- Short-time spectral centroid series ---
+        # 20ms windows, 10ms hop (captures up to 50 Hz modulation = Nyquist)
+        win_len = max(256, int(0.020 * self.sample_rate))
+        hop = max(1, win_len // 2)
+        n_frames = (n - win_len) // hop
+        if n_frames < 16:
+            return DefectScore(DefectType.FLUTTER, 0.0, 0.3)
+
+        # §PERF-R18 (2026-10-28): Feature-Cache — die Feature-Schicht ist eine
+        # reine Funktion aus (audio, sample_rate) und wird je Scan doppelt
+        # gerechnet (Material-Erkennung + Haupt-Scan; c4307207: 44,9 s von
+        # 58,4 s Scan-Zeit). Der Verdict-Teil liest self.thresholds und läuft
+        # weiterhin pro Aufruf — Ergebnis bit-identisch zum Uncached-Pfad.
+        _feat = self._wf_cached_features(
+            "flutter_base",
+            audio,
+            lambda: self._flutter_base_features(audio, int(self.sample_rate)),
+        )
+        win_len = _feat["win_len"]
+        hop = _feat["hop"]
+        centroid_norm = _feat["centroid_norm"]
+        frame_rate = _feat["frame_rate"]
+        flutter_hi = _feat["flutter_hi"]
+        flutter_mask = _feat["flutter_mask"]
+        fft_c = _feat["fft_c"]
+        freqs_mod = _feat["freqs_mod"]
+        flutter_power = _feat["flutter_power"]
+        flutter_ratio = _feat["flutter_ratio"]
+        _coherence = _feat["coherence"]
+        _tonal = _feat["tonal"]
+
         # §D-K3-28 (2026-10-07): Kohärenter Mehrband-AM-Kanal — Scrape-Flutter
         # (IEC 60386, 20–200 Hz) ist primär Amplitudenmodulation; Centroid≈FM
         # und Subband-IF≈FM waren für AM bei IEC-Pegeln blind (Messung: AM
         # 20–150 Hz @ 0,7 % → 0.000 in allen Kanälen). Kohärenz über 1/3-Oktav-
         # Bänder trennt mechanische Gemeinsamkeit von musikalischer Dynamik.
-        _am = self._coherent_scrape_am(audio)
+        _am = self._wf_cached_features(
+            "scrape_am",
+            audio,
+            lambda: self._coherent_scrape_am(audio),
+        )
         if _am is not None:
             _am_f, _am_depth, _am_coh = _am
             # IEC-60386-Untergrenze ~0,2 %; konservativ: Tiefe ≥ 0,35 % (Kalibrier-
@@ -5456,7 +5613,11 @@ class DefectScanner:
             # Perkussion dominiert (Befund: 6-Hz-FM ±0,2 % → sev 0,000 trotz
             # klarem Defekt). Die GEMEINSAME FM misst der kohärente Kanal über
             # 1/24-Oktav-Bänder (phase_12-Prinzip, Detektor-Leichtgewicht).
-            _sb = self._coherent_subband_fm(audio)
+            _sb = self._wf_cached_features(
+                "subband_fm",
+                audio,
+                lambda: self._coherent_subband_fm(audio),
+            )
             if _sb is not None:
                 _sb_f, _sb_amp, _sb_coh = _sb
                 # §7.4c-L3-Kalibrierung (2026-09-27): Der Kanal misst die

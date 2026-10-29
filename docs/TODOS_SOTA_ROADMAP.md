@@ -2230,6 +2230,51 @@ BIT-IDENTISCH. Messung 1025×5626: ~6,9 s → ~2,6 s Kern (integriert ~3,9 s
 inkl. Python-Overhead). Tests erweitert: `test_15_numba_heapq_bit_identical`
 (+2-Bin/1-Frame/Tie/konstant-Fälle, 58 grün).
 
+### §PERF-R18 (2026-10-28) — Wow/Flutter-Feature-Cache + pYIN-Tau-Suche vektorisiert (beide bit-exakt)
+
+F-Reihe (SOTA-Laufzeit 53× → 32× RT, D-K3-22-Deckel im Betrieb). Zwei
+klangneutrale, bit-exakte Engpass-Hebel an den dokumentierten cProfil-Treibern
+(phase_12 wow/flutter, defect_scanner) — „gebündelte Operationen statt
+Schleifen, cachebare Zwischenwerte":
+
+1. **defect_scanner — Feature-Cache für Wow/Flutter**
+   (`_wf_cached_features`, `_flutter_base_features`, `_wow_track_features`):
+   Material-Erkennung und Haupt-Scan rechnen `_detect_flutter`/`_detect_wow`
+   doppelt auf identischem Mono-Signal (D-K3-40, c4307207: 44,9 s der 58,4 s
+   Scan-Zeit liefen doppelt). Das dort verworfene Verdict-Memo (ohne Zustand
+   im Schlüssel verhaltensändernd — 3 Typen wichen ab; mit Zustand 0 Treffer)
+   wird umgangen: gecacht wird ausschließlich die Feature-Schicht als reine
+   Funktion aus (audio, sample_rate); Schwellwerte/Material fließen
+   weiterhin PRO AUFRUF im Verdict-Teil ein ⇒ Ergebnis bit-identisch by
+   construction (§G5 (copilot-instructions.md)). Content-Key =
+   BLAKE2b(Signal-Bytes)+SR+dtype+Tag, Reset mit `_scan_welch_cache`
+   (Song-Isolation §G1 (GEBOTE.md)); auch `_coherent_scrape_am`/
+   `_coherent_subband_fm` mitgecacht (ebenfalls rein in (audio, sr)).
+   Erwartete Wirkung (extrapoliert aus D-K3-40, nicht neu gemessen): je Scan
+   entfällt die ~22-s-Duplikat-Rechnung des Feature-Layers der zweiten
+   Detektor-Ausführung. Gepinnt in
+   `tests/unit/test_perf_r18_cache_equivalence.py`: Cached ≡ Uncached über
+   Schwellwerte hinweg (D-K3-40-Szenario), Cache-Treffer-Zählung,
+   Scan-Ebenen-A/B alle Scores identisch, Determinismus.
+2. **phase_12 — pYIN-Multi-Threshold-Tau-Suche vektorisiert**
+   (`_pyin_candidate_taus`): der Python-Doppel-Loop (20 Thresholds ×
+   ~912 tau je Fenster ⇒ ≈ 4·10^8 Interpreter-Iterationen über 224 s) ist
+   ersetzt durch eine vektorisierte Suche mit identischen Vergleichen in
+   identischer Reihenfolge (Break == erstes True == argmax, `<=`-Tie-Break,
+   Randbedingung `0 < tau < max_period-1` exakt abgebildet). Betroffen ist
+   der Pure-Python-Fallback (FAST/BALANCED/ohne librosa); Fallback-argmin
+   und parabolische Interpolation bleiben unverändert im Aufrufer. Gepinnt
+   gegen eine Kopie des alten Doppel-Loops: bit-identisch über 10
+   strukturierte Fälle inkl. Plateau, Grenzminima (max_period-1
+   ausgeschlossen), min_period=0 und leeren Suchbereich.
+
+**Ehrliche Einordnung:** Beide Maßnahmen adressieren die zwei benannten
+Hotspots; die 53×-Restlücke zur 32×-Norm wird nach aktueller Messlage
+maßgeblich von ML-Lade-/Inferenzkosten (P1, GPU-gebunden) und der
+Phasen-Gap-Maschinerie (P2, ~27 min je Song, offen) getragen. Der
+End-to-End-Nachweis ≤ 32× RT auf dem Referenz-Song bleibt Aufgabe der
+F-Reihe-Messkette (Methode + Befehle im F-Reihe-Report 2026-10-28).
+
 ## SOTA-RESTHEBEL-MATRIX 2026-09-19 — schöpfen die DSP/ML-Hybride 100 % aus?
 
 **Antwort: NEIN — weder Performance noch Wohlklang sind ausgeschöpft**

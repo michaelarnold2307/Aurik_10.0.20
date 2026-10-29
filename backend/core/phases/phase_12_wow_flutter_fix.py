@@ -135,6 +135,39 @@ _POLYPHONIC_CB_MAX_FAILURES: int = 8  # Max consecutive zero-consensus chunks be
 _POLYPHONIC_CB_ACTIVE: bool = False  # True = polyphonic estimator permanently skipped for this run
 
 
+def _pyin_candidate_taus(
+    cmnd: np.ndarray, min_period: int, max_period: int, thresholds: np.ndarray
+) -> np.ndarray:
+    """§PERF-R18 (2026-10-28): vektorisierte Multi-Threshold-Tau-Suche (pYIN).
+
+    Bit-identische Umsetzung der alten Doppel-Loop-Struktur über alle
+    Thresholds: pro Schwelle der erste tau in [min_period, max_period-2] mit
+    cmnd[tau] < thr UND lokalem Minimum (cmnd[tau] <= Nachbarn); sonst 0 als
+    „nicht gefunden"-Marker (Fallback/Interpolation bleibt im Aufrufer).
+    Gleiche boolesche Vergleiche in gleicher Reihenfolge, Break-Position ==
+    erstes True == argmax (§G5 (copilot-instructions.md)). Motivation:
+    20 Thresholds × ~912 tau Python-Iterationen je Fenster sind der
+    Hot-Fallback (FAST/BALANCED/ohne librosa) — über 224 s ≈ 4·10^8
+    Interpreter-Iterationen.
+    """
+    _thr = np.asarray(thresholds, dtype=np.float64)
+    # Alte Loop: range(min_period, max_period) mit Bedingung 0 < tau < max_period - 1
+    # => gueltige tau: max(min_period,1) .. max_period-2 (inkl.)
+    # => Scan-Bereich [max(min_period,1), max_period-1) (End-Exklusiv).
+    _lo = max(int(min_period), 1)
+    _hi = int(max_period) - 1
+    _found = np.zeros(_thr.shape[0], dtype=np.int64)
+    if _hi > _lo:
+        _idx = np.arange(_lo, _hi, dtype=np.int64)
+        _vals = cmnd[_idx]
+        _is_local_min = (_vals <= cmnd[_idx - 1]) & (_vals <= cmnd[_idx + 1])
+        _hits = (_vals[None, :] < _thr[:, None]) & _is_local_min[None, :]
+        _any = _hits.any(axis=1)
+        _first = np.argmax(_hits, axis=1)
+        _found = np.where(_any, _idx[_first], 0)
+    return _found
+
+
 def _reset_polyphonic_circuit_breaker() -> None:
     """Reset circuit breaker state at the start of each restoration run."""
     global _POLYPHONIC_CONSECUTIVE_ZERO_CONSENSUS, _POLYPHONIC_CB_ACTIVE
@@ -2352,13 +2385,13 @@ class WowFlutterFix(PhaseInterface):
             cand_pitches: list = []
             cand_weights: list = []
 
-            for thr, w in zip(thresholds, beta_weights):
-                tau_est = 0
-                for tau in range(min_period, max_period):
-                    if cmnd[tau] < thr and 0 < tau < max_period - 1:
-                        if cmnd[tau] <= cmnd[tau - 1] and cmnd[tau] <= cmnd[tau + 1]:
-                            tau_est = tau
-                            break
+            # §PERF-R18 (2026-10-28): die tau-Suche ist vektorisiert (gleiche
+            # Vergleiche in gleicher Reihenfolge, bit-identisch — die
+            # Schleifen-Restlogik unten ist unverändert).
+            _tau_found = _pyin_candidate_taus(cmnd, min_period, max_period, thresholds)
+
+            for w, tau_search in zip(beta_weights, _tau_found):
+                tau_est: float | int = int(tau_search)
                 if tau_est == 0:
                     tau_est = min_period + int(np.argmin(cmnd[min_period:max_period]))
 
