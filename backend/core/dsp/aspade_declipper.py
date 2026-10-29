@@ -118,7 +118,8 @@ class _ResConv1d(nn.Module):
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         h = nn.functional.gelu(self.conv1(x))
-        return x + self.conv2(h)
+        _out: torch.Tensor = x + self.conv2(h)
+        return _out
 
 
 class AspadeProximalNet(nn.Module):
@@ -143,7 +144,8 @@ class AspadeProximalNet(nn.Module):
         h = nn.functional.gelu(self.inp(x))
         for block in self.blocks:
             h = block(h)
-        return x + self.out(h)
+        _out2: torch.Tensor = x + self.out(h)
+        return _out2
 
 
 class AspadeClassNet(nn.Module):
@@ -189,7 +191,8 @@ class AspadeClassNet(nn.Module):
             x = self._project(v - u, y, mask_pos, mask_neg, theta)
             v = proximal(x + u)
             u = u + x - v
-        return self._project(v - u, y, mask_pos, mask_neg, theta)
+        _out3: torch.Tensor = self._project(v - u, y, mask_pos, mask_neg, theta)
+        return _out3
 
 
 def build_model(

@@ -135,9 +135,7 @@ _POLYPHONIC_CB_MAX_FAILURES: int = 8  # Max consecutive zero-consensus chunks be
 _POLYPHONIC_CB_ACTIVE: bool = False  # True = polyphonic estimator permanently skipped for this run
 
 
-def _pyin_candidate_taus(
-    cmnd: np.ndarray, min_period: int, max_period: int, thresholds: np.ndarray
-) -> np.ndarray:
+def _pyin_candidate_taus(cmnd: np.ndarray, min_period: int, max_period: int, thresholds: np.ndarray) -> np.ndarray:
     """§PERF-R18 (2026-10-28): vektorisierte Multi-Threshold-Tau-Suche (pYIN).
 
     Bit-identische Umsetzung der alten Doppel-Loop-Struktur über alle
@@ -165,7 +163,8 @@ def _pyin_candidate_taus(
         _any = _hits.any(axis=1)
         _first = np.argmax(_hits, axis=1)
         _found = np.where(_any, _idx[_first], 0)
-    return _found
+    _found_arr: np.ndarray = np.asarray(_found)
+    return _found_arr
 
 
 def _reset_polyphonic_circuit_breaker() -> None:
@@ -2397,7 +2396,8 @@ class WowFlutterFix(PhaseInterface):
 
                 # Parabolic interpolation
                 if 0 < tau_est < max_period - 1:
-                    s0, s1, s2 = cmnd[tau_est - 1], cmnd[tau_est], cmnd[tau_est + 1]
+                    _tau_i = int(tau_est)
+                    s0, s1, s2 = cmnd[_tau_i - 1], cmnd[_tau_i], cmnd[_tau_i + 1]
                     denom = s0 - 2 * s1 + s2
                     if abs(denom) > 1e-10:
                         delta = 0.5 * (s0 - s2) / denom

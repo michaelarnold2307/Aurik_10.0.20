@@ -1922,6 +1922,19 @@ class DeEsserPhase(PhaseInterface):
                     100.0 * float(np.mean(_gate19)),
                 )
 
+        # §Stereo-Layout-Invariante (AGENTS.md): deessed_audio kann (C,N) channels-first
+        # aus dem Per-Gender-Pfad (_process_per_gender_segments) kommen, waehrend
+        # enhanced_audio (N,2) channels-last vorliegt (to_channels_last Z. 652). Vor dem
+        # Sibilance-Profil + Blend auf dasselbe Layout normalisieren — sonst kollabiert
+        # der Broadcast (2,1)x(N,2) (Befund 2026-10-29, Stereo-Broadcast-Absturz).
+        if (
+            deessed_audio.ndim == 2
+            and enhanced_audio.ndim == 2
+            and deessed_audio.shape != enhanced_audio.shape
+            and deessed_audio.shape[0] == enhanced_audio.shape[1]
+            and deessed_audio.shape[1] == enhanced_audio.shape[0]
+        ):
+            deessed_audio = np.ascontiguousarray(deessed_audio.T)
         _sib_locality19, _sib_locality_coverage19 = self._build_sibilance_locality_profile(
             n_samples=deessed_audio.shape[0],
             sample_rate=sample_rate,
