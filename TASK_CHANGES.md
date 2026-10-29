@@ -1,36 +1,26 @@
 # TASK_CHANGES — Live-Ledger der aktuellen Aufgabe
 
-> Generiert von `scripts/change_ledger.py snapshot` (Base: `HEAD`, Stand: 2026-10-27 04:26 CET).
+> Generiert von `scripts/change_ledger.py snapshot` (Base: `HEAD`, Stand: 2026-10-29 05:06 CET).
 > CI (`ci-lite.yml` pr-evidence-gate) erzwingt Abdeckung: jede geänderte Code-Datei muss hier stehen.
 
 ## Geänderte Dateien
 
 | Status | Pfad | Art |
 |---|---|---|
-| M | `.github/FILE_REGISTRY.md` | modifiziert |
-| M | `.github/SOTA_DEFICIT_REGISTER.md` | modifiziert |
-| M | `CHANGELOG.md` | modifiziert |
-| M | `README.md` | modifiziert |
-| M | `backend/core/defect_scanner.py` | modifiziert |
-| M | `backend/core/music_model_flags.py` | modifiziert |
 | M | `backend/core/phases/phase_12_wow_flutter_fix.py` | modifiziert |
-| M | `backend/core/phases/phase_20_reverb_reduction.py` | modifiziert |
-| M | `backend/core/phases/phase_49_advanced_dereverb.py` | modifiziert |
-| M | `backend/core/unified_restorer_v3.py` | modifiziert |
-| M | `backend/core/version.py` | modifiziert |
-| M | `docs/reports/current/2026-10-25_sota_massnahmen_katalog.md` | modifiziert |
-| ?? | `backend/core/dsp/rt60_regressor.py` | ungetrackt |
-| ?? | `backend/core/dsp/tp_v2_phase.py` | ungetrackt |
-| ?? | `backend/core/dsp/wf4_warp_head.py` | ungetrackt |
-| ?? | `scripts/train_rt60_regressor.py` | ungetrackt |
-| ?? | `scripts/train_tp_v2_phase.py` | ungetrackt |
-| ?? | `scripts/train_wf4_warp_head.py` | ungetrackt |
-| ?? | `tests/unit/test_dk354_am_peak_calibration.py` | ungetrackt |
-| ?? | `tests/unit/test_rt60_regressor.py` | ungetrackt |
-| ?? | `tests/unit/test_tp_v2_phase.py` | ungetrackt |
-| ?? | `tests/unit/test_wf4_warp_head.py` | ungetrackt |
-| ?? | `tmp_repro/pe_verify.py` | ungetrackt |
-| ?? | `tmp_repro/pe_worst.py` | ungetrackt |
+| M | `docs/reports/current/b3_objektivbeschluss_W-1.json` | modifiziert |
+| M | `docs/reports/current/b3_objektivbeschluss_W-4.json` | modifiziert |
+| M | `docs/reports/current/b3_objektivbeschluss_W-5.json` | modifiziert |
+| M | `docs/reports/current/b3_stufenmessung_W-1.json` | modifiziert |
+| M | `docs/reports/current/b3_stufenmessung_W-4.json` | modifiziert |
+| M | `docs/reports/current/b3_stufenmessung_W-5.json` | modifiziert |
+| M | `docs/reports/current/b3_stufenmessung_W-6.json` | modifiziert |
+| M | `docs/reports/current/b3_stufenmessung_W-7.json` | modifiziert |
+| M | `docs/reports/current/train_job_d3_diffwave_vokal.json` | modifiziert |
+| M | `tests/unit/test_perf_r18_cache_equivalence.py` | modifiziert |
+| ?? | `docs/reports/current/b3_objektivbeschluss_W-6.json` | ungetrackt |
+| ?? | `docs/reports/current/b3_objektivbeschluss_W-7.json` | ungetrackt |
+| ?? | `docs/reports/current/train_job_d3_bigvgan_f3.json` | ungetrackt |
 
 ## Entscheidungen
 
