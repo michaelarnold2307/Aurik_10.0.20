@@ -2959,8 +2959,12 @@ class BatchProcessingThread(QThread):
                                 try:
                                     _pct = int(100 * self._chirurgie_done / max(1, self._chirurgie_total))
                                     self.chirurgie_label.setText(
-                                        f"🔬 Chirurgie: {self._chirurgie_done}/{self._chirurgie_total} "
-                                        f"Defekte repariert ({_pct}%)"
+                                        t(
+                                            "surgery.progress",
+                                            done=self._chirurgie_done,
+                                            total=self._chirurgie_total,
+                                            pct=_pct,
+                                        )
                                     )
                                     self.chirurgie_label.setVisible(True)
                                 except Exception:
@@ -10417,7 +10421,7 @@ class RecordSleeveWidget(QtWidgets.QFrame):
         panel_layout.setSpacing(8)
 
         # Schließen-Button (schiebt Platte zurück)
-        close_btn = QtWidgets.QPushButton("▶✕ Zurückschieben")
+        close_btn = QtWidgets.QPushButton(t("ui.slide_panel_push_back"))
         close_btn.setFixedHeight(30)
         close_btn.clicked.connect(self.hide_panel)
         panel_layout.addWidget(close_btn, alignment=QtCore.Qt.AlignmentFlag.AlignRight)
@@ -10466,7 +10470,7 @@ class RecordSleeveWidget(QtWidgets.QFrame):
         page = QtWidgets.QWidget()
         layout = QtWidgets.QVBoxLayout(page)
         layout.setSpacing(8)
-        layout.addWidget(QtWidgets.QLabel("<b style='font-size:11pt; color:#C8D8FF;'>🎧 Player</b>"))
+        layout.addWidget(QtWidgets.QLabel(t("ui.player_heading")))
         row = QtWidgets.QHBoxLayout()
         # §v10.203: Player-Buttons mit echten Audio-Player-Funktionen verdrahtet
         self._panel_btn_play = QtWidgets.QPushButton("▶")
@@ -10511,7 +10515,7 @@ class RecordSleeveWidget(QtWidgets.QFrame):
         page = QtWidgets.QWidget()
         layout = QtWidgets.QVBoxLayout(page)
         layout.setSpacing(8)
-        layout.addWidget(QtWidgets.QLabel("<b style='font-size:11pt; color:#C8D8FF;'>ℹ Aurik</b>"))
+        layout.addWidget(QtWidgets.QLabel(t("ui.info_heading")))
         # §v10.204: Dynamisches Info-Panel — wird nach Restauration aktualisiert
         self._slide_info_label = QtWidgets.QLabel(
             "<span style='font-size:9pt; color:#8899bb;'>"
@@ -10625,7 +10629,7 @@ class RecordSleeveWidget(QtWidgets.QFrame):
         page = QtWidgets.QWidget()
         layout = QtWidgets.QVBoxLayout(page)
         layout.setSpacing(8)
-        layout.addWidget(QtWidgets.QLabel("<b style='font-size:11pt; color:#C8D8FF;'>💿 Export</b>"))
+        layout.addWidget(QtWidgets.QLabel(t("ui.export_heading")))
         info = QtWidgets.QLabel(
             "<span style='font-size:9pt; color:#8899bb;'>"
             "WAV · FLAC · 16/24 Bit · 48 kHz<br>"
@@ -11804,11 +11808,7 @@ class ExportConfigDialog(QDialog):
                     color: #FFFFFF;
                 }
             """)
-        self._fmt_combo.setToolTip(
-            "Wählen Sie das Ausgabeformat.\n"
-            "Für beste Qualität und Archivierung: FLAC (verlustfrei).\n"
-            "Für kompakte Dateien zum Teilen: MP3 (beste Qualität)."
-        )
+        self._fmt_combo.setToolTip(t("tooltip.export_format_choice"))
         form.addRow(t("ui.export_cfg_format"), self._fmt_combo)
 
         # Sample Rate
@@ -11846,9 +11846,7 @@ class ExportConfigDialog(QDialog):
                     color: #FFFFFF;
                 }
             """)
-        self._sr_combo.setToolTip(
-            "Legt die Export-Abtastrate fest. 48,0 kHz ist Standard für Aurik, 44,1 kHz für CD-kompatible Exporte."
-        )
+        self._sr_combo.setToolTip(t("tooltip.export_sample_rate_choice"))
         form.addRow("Abtastrate", self._sr_combo)
         self._apply_format_default_sr()
 
@@ -13396,9 +13394,10 @@ class ModernMainWindow(QMainWindow):
             _msg.setIcon(QtWidgets.QMessageBox.Icon.Warning)
             _n = len(reports)
             _msg.setText(
-                f"Aurik hatte in der letzten Sitzung {_n} unerwartete"
-                f"{'s' if _n == 1 else ''} Problem{'e' if _n != 1 else ''}."
-                " Die Details wurden automatisch gespeichert — deine Musik ist nicht betroffen."
+                t(
+                    "dialog.session_crash_one" if _n == 1 else "dialog.session_crash_other",
+                    n=_n,
+                )
             )
             _msg.setInformativeText(f"Letzter Fehler: {latest.get('type', 'unbekannt')} — {latest.get('message', '')}")
             _btn_copy = _msg.addButton("Bericht kopieren", QtWidgets.QMessageBox.ButtonRole.ActionRole)
@@ -13407,10 +13406,12 @@ class ModernMainWindow(QMainWindow):
             if _msg.clickedButton() is _btn_copy:
                 try:
                     QtWidgets.QApplication.clipboard().setText(
-                        "Aurik Fehlerbericht\n"
-                        f"Typ: {latest.get('type', 'unbekannt')}\n"
-                        f"Meldung: {latest.get('message', '')}\n"
-                        f"Gespeichert: {latest.get('_file', '')}"
+                        t(
+                            "dialog.error_report",
+                            err_type=latest.get("type", "unbekannt"),
+                            message=latest.get("message", ""),
+                            file=latest.get("_file", ""),
+                        )
                     )
                 except Exception as _clip_err:
                     logger.debug("Clipboard-Kopie fehlgeschlagen: %s", _clip_err)
@@ -14055,7 +14056,7 @@ class ModernMainWindow(QMainWindow):
         _orig_col_layout = QVBoxLayout(_orig_col)
         _orig_col_layout.setContentsMargins(0, 0, 0, 0)
         _orig_col_layout.setSpacing(4)
-        _lbl_orig = QLabel("▶  Original")
+        _lbl_orig = QLabel(t("ui.ab_label_original"))
         _lbl_orig.setAlignment(Qt.AlignmentFlag.AlignCenter)
         _lbl_orig.setStyleSheet(
             f"color:rgba(100,150,255,0.9);font-weight:bold;font-size:{self._pt(9.0):.1f}pt;padding:2px 0;"
@@ -14069,7 +14070,7 @@ class ModernMainWindow(QMainWindow):
         _rest_col_layout = QVBoxLayout(_rest_col)
         _rest_col_layout.setContentsMargins(0, 0, 0, 0)
         _rest_col_layout.setSpacing(4)
-        _lbl_rest = QLabel("✦  Restauriert")
+        _lbl_rest = QLabel(t("ui.ab_label_restored"))
         _lbl_rest.setAlignment(Qt.AlignmentFlag.AlignCenter)
         _lbl_rest.setStyleSheet(
             f"color:rgba(80,220,100,0.9);font-weight:bold;font-size:{self._pt(9.0):.1f}pt;padding:2px 0;"
@@ -14198,10 +14199,7 @@ class ModernMainWindow(QMainWindow):
         self.btn_ab_sync.setFixedHeight(self._sp(38))
         self.btn_ab_sync.setCheckable(True)
         self.btn_ab_sync.setStyleSheet(_ab_style_rest)
-        self.btn_ab_sync.setToolTip(
-            "Startet einen synchronisierten Loop.\n"
-            "A und B spielen ab derselben Position — schnell wechseln mit Tasten A / B."
-        )
+        self.btn_ab_sync.setToolTip(t("tooltip.ab_sync"))
         self.btn_ab_sync.clicked.connect(self._ab_sync_toggle)
         ab_row_layout.addWidget(self.btn_ab_sync)
 
@@ -14266,7 +14264,7 @@ class ModernMainWindow(QMainWindow):
             _btn.clicked.connect(lambda checked, r=_rating: self._rate_blindtest(r))
             self._blindtest_rating_buttons.append(_btn)
             _bt_rating_layout.addWidget(_btn)
-        self._blindtest_rating_label = QLabel("A bewerten (1-5):")
+        self._blindtest_rating_label = QLabel(t("blindtest.rate_a"))
         self._blindtest_rating_label.setStyleSheet("color: #c8b8ee; font-size: 8pt;")
         _bt_rating_layout.insertWidget(0, self._blindtest_rating_label)
         _bt_rating_layout.addStretch()
@@ -16115,7 +16113,7 @@ class ModernMainWindow(QMainWindow):
         inner.setSpacing(10)
 
         # ── Header ──────────────────────────────────────────────────
-        header = QLabel("<b style='font-size:16pt; color:#E8ECFF;'>🎵 AURIK Professional</b>")
+        header = QLabel(t("about.title"))
         header.setTextFormat(QtCore.Qt.TextFormat.RichText)
         inner.addWidget(header)
 
@@ -16138,7 +16136,7 @@ class ModernMainWindow(QMainWindow):
         inner.addSpacing(4)
 
         # ── Was ist Aurik? ──────────────────────────────────────────
-        what_label = QLabel("<b style='font-size:11pt; color:#C8D8FF;'>Was ist Aurik?</b>")
+        what_label = QLabel(t("about.what"))
         what_label.setTextFormat(QtCore.Qt.TextFormat.RichText)
         inner.addWidget(what_label)
 
@@ -16163,7 +16161,7 @@ class ModernMainWindow(QMainWindow):
         inner.addSpacing(6)
 
         # ── Wie arbeitet Aurik? ─────────────────────────────────────
-        how_label = QLabel("<b style='font-size:11pt; color:#C8D8FF;'>Wie arbeitet Aurik?</b>")
+        how_label = QLabel(t("about.how"))
         how_label.setTextFormat(QtCore.Qt.TextFormat.RichText)
         inner.addWidget(how_label)
 
@@ -16208,7 +16206,7 @@ class ModernMainWindow(QMainWindow):
         inner.addSpacing(6)
 
         # ── Die zwei Modi ───────────────────────────────────────────
-        modes_label = QLabel("<b style='font-size:11pt; color:#C8D8FF;'>Die zwei Modi</b>")
+        modes_label = QLabel(t("about.modes"))
         modes_label.setTextFormat(QtCore.Qt.TextFormat.RichText)
         inner.addWidget(modes_label)
 
@@ -16243,7 +16241,7 @@ class ModernMainWindow(QMainWindow):
         inner.addSpacing(6)
 
         # ── Kern-Fähigkeiten ────────────────────────────────────────
-        caps_label = QLabel("<b style='font-size:11pt; color:#C8D8FF;'>Kern-Fähigkeiten</b>")
+        caps_label = QLabel(t("about.capabilities"))
         caps_label.setTextFormat(QtCore.Qt.TextFormat.RichText)
         inner.addWidget(caps_label)
 
@@ -16294,9 +16292,7 @@ class ModernMainWindow(QMainWindow):
         inner.addSpacing(6)
 
         # ── Denker-Intelligenz ──────────────────────────────────────
-        thinker_label = QLabel(
-            "<b style='font-size:11pt; color:#C8D8FF;'>🧠 Denker-Intelligenz — Autonome Entscheidungskette</b>"
-        )
+        thinker_label = QLabel(t("about.thinker_heading"))
         thinker_label.setTextFormat(QtCore.Qt.TextFormat.RichText)
         inner.addWidget(thinker_label)
 
@@ -16326,7 +16322,7 @@ class ModernMainWindow(QMainWindow):
         inner.addSpacing(6)
 
         # ── Über-SOTA DSP ───────────────────────────────────────────
-        dsp_label = QLabel("<b style='font-size:11pt; color:#C8D8FF;'>Über-SOTA DSP-Algorithmen</b>")
+        dsp_label = QLabel(t("about.dsp"))
         dsp_label.setTextFormat(QtCore.Qt.TextFormat.RichText)
         inner.addWidget(dsp_label)
 
@@ -16347,7 +16343,7 @@ class ModernMainWindow(QMainWindow):
         inner.addSpacing(6)
 
         # ── Technische Eckdaten ─────────────────────────────────────
-        tech_label = QLabel("<b style='font-size:11pt; color:#C8D8FF;'>Technische Eckdaten</b>")
+        tech_label = QLabel(t("about.tech"))
         tech_label.setTextFormat(QtCore.Qt.TextFormat.RichText)
         inner.addWidget(tech_label)
 
@@ -16384,9 +16380,7 @@ class ModernMainWindow(QMainWindow):
         inner.addSpacing(6)
 
         # ── ML-Hybrid-Architektur ───────────────────────────────────
-        ml_label = QLabel(
-            "<b style='font-size:11pt; color:#C8D8FF;'>🤖 ML-Hybrid-Architektur — DSP-Fundament + ML-Erweiterung</b>"
-        )
+        ml_label = QLabel(t("about.ml_heading"))
         ml_label.setTextFormat(QtCore.Qt.TextFormat.RichText)
         inner.addWidget(ml_label)
 
@@ -16420,7 +16414,7 @@ class ModernMainWindow(QMainWindow):
         inner.addSpacing(6)
 
         # ── Systemstatus ────────────────────────────────────────────
-        sys_label = QLabel("<b style='font-size:11pt; color:#C8D8FF;'>Aktueller Systemstatus</b>")
+        sys_label = QLabel(t("about.system_status"))
         sys_label.setTextFormat(QtCore.Qt.TextFormat.RichText)
         inner.addWidget(sys_label)
 
@@ -16443,7 +16437,7 @@ class ModernMainWindow(QMainWindow):
         inner.addWidget(sep2)
 
         # ── Copyright ───────────────────────────────────────────────
-        copyright_lbl = QLabel("<span style='font-size:9pt; color:#667799;'>© 2026 AURIK — Apache-2.0-Lizenz</span>")
+        copyright_lbl = QLabel(t("about.copyright"))
         copyright_lbl.setTextFormat(QtCore.Qt.TextFormat.RichText)
         inner.addWidget(copyright_lbl)
 
@@ -16613,7 +16607,7 @@ class ModernMainWindow(QMainWindow):
         inner.setSpacing(10)
 
         # Header
-        header = QLabel("<b style='font-size:16pt; color:#E8ECFF;'>✓ Systemcheck</b>")
+        header = QLabel(t("about.system_check"))
         header.setTextFormat(QtCore.Qt.TextFormat.RichText)
         inner.addWidget(header)
 
@@ -18673,9 +18667,7 @@ class ModernMainWindow(QMainWindow):
             if audio is None or (hasattr(audio, "size") and audio.size == 0):
                 if hasattr(self, "status_text"):
                     self._apply_status_text_style("error")
-                    self.status_text.setText(
-                        "⚠ Wiedergabe nicht möglich: Die Audiodatei enthält keine abspielbaren Samples."
-                    )
+                    self.status_text.setText(t("playback.no_samples"))
                 if hasattr(self, "title_bar"):
                     self.title_bar.set_status(t("status.playback_error"), "#B87A7A")
                 return
@@ -18714,9 +18706,7 @@ class ModernMainWindow(QMainWindow):
         if prepared_audio.size == 0:
             if hasattr(self, "status_text"):
                 self._apply_status_text_style("error")
-                self.status_text.setText(
-                    "⚠ Wiedergabe nicht möglich: Die Audiodatei enthält keine abspielbaren Samples."
-                )
+                self.status_text.setText(t("playback.no_samples"))
             if hasattr(self, "title_bar"):
                 self.title_bar.set_status(t("status.playback_error"), "#B87A7A")
             return
@@ -18815,9 +18805,7 @@ class ModernMainWindow(QMainWindow):
                     err = str(_exc)[:140]
                     if hasattr(self, "status_text"):
                         self._apply_status_text_style("error")
-                        self.status_text.setText(
-                            f"⚠ Wiedergabe fehlgeschlagen: {err}. Hinweis: Audio-Ausgabegerät prüfen."
-                        )
+                        self.status_text.setText(t("playback.failed_with_error", err=err))
                     if hasattr(self, "title_bar"):
                         self.title_bar.set_status(t("status.playback_error"), "#B87A7A")
 
@@ -19186,7 +19174,7 @@ class ModernMainWindow(QMainWindow):
         self._blindtest_a_is_original = bool(np.random.randint(0, 2))
         # Rating-Leiste einblenden
         self._blindtest_rating_row.setVisible(True)
-        self._blindtest_rating_label.setText("A bewerten (1-5):")
+        self._blindtest_rating_label.setText(t("blindtest.rate_a"))
         for _btn in self._blindtest_rating_buttons:
             _btn.setEnabled(True)
         # Playhead: Lila für Blindtest
@@ -19195,7 +19183,7 @@ class ModernMainWindow(QMainWindow):
         # Spiele erste Runde (A)
         self._play_blindtest_round()
         # Button-Label updaten
-        self.btn_blindtest.setText("🎲  Läuft...")
+        self.btn_blindtest.setText(t("blindtest.running"))
         self.btn_blindtest.setEnabled(False)
 
     def _play_blindtest_round(self) -> None:
@@ -19221,7 +19209,7 @@ class ModernMainWindow(QMainWindow):
             self._blindtest_score_a = rating
             # Runde 2: B
             self._blindtest_round = 2
-            self._blindtest_rating_label.setText("B bewerten (1-5):")
+            self._blindtest_rating_label.setText(t("blindtest.rate_b"))
             self._play_blindtest_round()
         else:
             self._blindtest_score_b = rating
@@ -19267,7 +19255,7 @@ class ModernMainWindow(QMainWindow):
         self._ab_source_label.setStyleSheet("color: #e8d8ff; font-size: 9pt; font-weight: bold; padding: 0 4px;")
         self._ab_source_label.setVisible(True)
         # Button reset
-        self.btn_blindtest.setText("🎲  Blindtest")
+        self.btn_blindtest.setText(t("blindtest.start"))
         self.btn_blindtest.setEnabled(True)
         self._stop_song_playback_only()
 
@@ -20228,7 +20216,7 @@ class ModernMainWindow(QMainWindow):
 
         # 2. Status-Anzeige: Recovery läuft, kein Fehler
         self.title_bar.set_status(t("status.time_limit_securing"), "#B8A068")
-        self.status_text.setText("⏳ Das beste Ergebnis wird gesichert — gleich geschafft …")
+        self.status_text.setText(t("status.securing_best_result"))
 
         # 3. Batch-Thread 60 s Zeit geben, graceful zu enden (FlashSR-Timeout ≤ 180 s,
         #    aber nach graceful_stop_event bricht die Phase-Loop sofort nach FlashSR-Return ab).
@@ -20282,7 +20270,7 @@ class ModernMainWindow(QMainWindow):
         self._offtrack_guard_consumed_token = token
         logger.warning("OffTrack-Guard: Graceful stop angefordert (token=%s)", token)
         self.title_bar.set_status(t("status.off_track_correcting"), "#B86B6B")
-        self.status_text.setText("⚠ Eine Unregelmäßigkeit wurde erkannt — Aurik korrigiert den Kurs …")
+        self.status_text.setText(t("status.course_correcting"))
         self._request_processing_stop("offtrack_guard", timeout_s=60.0)
 
     def _apply_heartbeat_progress_forecast(self, phase_state: dict[str, Any]) -> None:
@@ -20490,7 +20478,7 @@ class ModernMainWindow(QMainWindow):
 
         # ── 6. Echtzeit-Defektzähler (EINE Quelle, §G9 copilot-instructions.md) ──
         if hasattr(self, "defect_count_live_label") and _def_total > 0:
-            self.defect_count_live_label.setText(f"🔧 {_def_remaining} offen · {_def_resolved} behoben ({_def_pct}%)")
+            self.defect_count_live_label.setText(t("defects.resolved_progress", n_open=_def_remaining, n_done=_def_resolved, pct=_def_pct))
             self.defect_count_live_label.setVisible(True)
 
         # §v10.305: Periodisches Refresh der Defekt-Counts (jedes 4. Heartbeat-Tick, ~800ms)
@@ -20566,7 +20554,7 @@ class ModernMainWindow(QMainWindow):
             self.status_text.setText(_narr)
 
         if hasattr(self, "_phase_step_label"):
-            self._phase_step_label.setText(f"Stufe {_ph_cur}/{_ph_tot}  ·  {_clean}")
+            self._phase_step_label.setText(t("progress.stage_step", cur=_ph_cur, tot=_ph_tot, clean=_clean))
 
         # _last_phase_state für alte Heartbeat-Kompatibilität
         _bt = getattr(self, "batch_thread", None)
@@ -22129,9 +22117,7 @@ class ModernMainWindow(QMainWindow):
         _fname = Path(output_path).name
         if hasattr(self, "status_text"):
             self._apply_status_text_style("refine")
-            self.status_text.setText(
-                f'⏳ Song wird mit KI nachbearbeitet — bitte Programm nicht schließen · "{_fname}"'
-            )
+            self.status_text.setText(t("status.refinement_running", fname=_fname))
         logger.info("KMV Stufe-2-Indikator eingeblendet (%d Phasen)", n_phases)
 
     def _on_refinement_progress(self, pct: int, phase_name: str) -> None:
@@ -22182,11 +22168,7 @@ class ModernMainWindow(QMainWindow):
         self._ml_refinement_thread = None
         if hasattr(self, "status_text"):
             self._apply_status_text_style("warning")
-            self.status_text.setText(
-                "Das restaurierte Ergebnis wurde gespeichert. "
-                "Die optionale KI-Nachbearbeitung wurde übersprungen "
-                "(z.\u202fB. zu wenig Arbeitsspeicher oder kein messbarer Unterschied)."
-            )
+            self.status_text.setText(t("status.refinement_skipped"))
         logger.info("KMV Stufe 2 abgebrochen: Stufe-1-Ausgabe behalten für %s", output_path)
         # Nächsten queued KMV-Job starten (Batch-Items 2..N) — §2.38
         self._start_next_kmv_job()
@@ -23522,7 +23504,7 @@ class ModernMainWindow(QMainWindow):
                 """)
                 )
                 if hasattr(self, "defect_count_live_label"):
-                    self.defect_count_live_label.setText("✅ Fertig")
+                    self.defect_count_live_label.setText(t("defects.done"))
                     self.defect_count_live_label.setStyleSheet(
                         "color: #82B89A; font-size: 8pt; background: transparent; font-weight: bold; padding: 0 2px;"
                     )
@@ -23682,13 +23664,13 @@ class ModernMainWindow(QMainWindow):
                 )
                 if hasattr(self, "defect_count_live_label"):
                     if has_problem:
-                        self.defect_count_live_label.setText("⚠ Eingeschränkt")
+                        self.defect_count_live_label.setText(t("defects.limited"))
                         self.defect_count_live_label.setStyleSheet(
                             "color: #B8A068; font-size: 8pt; background: transparent; "
                             "font-weight: bold; padding: 0 2px;"
                         )
                     else:
-                        self.defect_count_live_label.setText("✅ Fertig")
+                        self.defect_count_live_label.setText(t("defects.done"))
                         self.defect_count_live_label.setStyleSheet(
                             "color: #82B89A; font-size: 8pt; background: transparent; "
                             "font-weight: bold; padding: 0 2px;"
@@ -23949,7 +23931,7 @@ class ModernMainWindow(QMainWindow):
                 _ex_msg = str(_ex)
 
                 def _show_err(_msg=_ex_msg):
-                    self.quality_score_label.setText(f"⚠️ Score-Berechnung fehlgeschlagen: {_msg}")
+                    self.quality_score_label.setText(t("quality.score_error", msg=_msg))
 
                 QTimer.singleShot(0, _show_err)
 
@@ -25115,7 +25097,7 @@ class ModernMainWindow(QMainWindow):
             _resolved_pct = int(_def_state.get("resolved_pct", 0) or 0)
             if _total_def > 0 and _done_def > 0:
                 self.defect_count_live_label.setText(
-                    f"🔧 {_remaining_def} offen · {_done_def} behoben ({_resolved_pct}%)"
+                    t("defects.repair_progress", n_open=_remaining_def, n_done=_done_def, pct=_resolved_pct)
                 )
                 self.defect_count_live_label.setStyleSheet("color: #B8A068; font-size: 10pt; font-weight: bold;")
                 self.defect_count_live_label.setVisible(True)
@@ -25129,7 +25111,7 @@ class ModernMainWindow(QMainWindow):
                 _tooltip = f"{_total_def} akustische Störungen erkannt"
                 if _type_hint:
                     _tooltip += f" ({_type_hint})"
-                self.defect_count_live_label.setText(f"🔍 {_total_def} Störungen gefunden")
+                self.defect_count_live_label.setText(t("defects.found_count", count=_total_def))
                 self.defect_count_live_label.setToolTip(_tooltip)
                 self.defect_count_live_label.setStyleSheet("color: #8894A8; font-size: 10pt;")
                 self.defect_count_live_label.setVisible(True)

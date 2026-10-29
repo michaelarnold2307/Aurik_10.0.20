@@ -614,9 +614,7 @@ class SongPrognoseWidget(QWidget):
         self._material_confidence = float(confidence or 1.0)  # §v10.303.9
         name = _MATERIAL_NAMES.get(self._material, self._material)
         pct = int(round(confidence * 100))
-        self._meta_rows["material"].setText(
-            f"{name}  <span style='color:{_C_MUTED};font-size:8pt;'>({pct}\u202f% Sicherheit)</span>"
-        )
+        self._meta_rows["material"].setText(t("song.material_confidence", name=name, color=_C_MUTED, pct=pct))
         self._meta_rows["material"].setTextFormat(Qt.TextFormat.RichText)
         self._refresh_phase_prognosis()
 
@@ -677,7 +675,7 @@ class SongPrognoseWidget(QWidget):
         self._mos_val_lbl.setStyleSheet(f"color:{bar_color}; font-size:10pt; font-weight:bold; background:transparent;")
         lo = float(mos_range[0]) if mos_range else predicted_mos - 0.3
         hi = float(mos_range[1]) if len(mos_range) >= 2 else predicted_mos + 0.3  # type: ignore[arg-type]
-        self._mos_range_lbl.setText(f"90\u202f%-Wahrscheinlichkeit: {lo:.1f} – {hi:.1f}")
+        self._mos_range_lbl.setText(t("song.mos_range", lo=lo, hi=hi))
 
         # SNR
         self._meta_rows["snr"].setText(
@@ -752,10 +750,8 @@ class SongPrognoseWidget(QWidget):
 
         # ── Tiefen-Badge ──
         if hasattr(self, "_depth_badge") and _depth >= 3:
-            _stage_names = {2: "2-stufig", 3: "3-stufig", 4: "4-stufig", 5: "5-stufig"}
-            _label = _stage_names.get(_depth, f"{_depth}-stufig")
             _color = self._depth_ui.quality_color
-            self._depth_badge.setText(f"◉ {_label}e Transfer-Kette")
+            self._depth_badge.setText(t("song.depth_chain", depth=_depth))
             self._depth_badge.setStyleSheet(
                 f"color: {_color}; font-size: 8pt; "
                 f"background: rgba(102,126,234,0.10);"

@@ -170,11 +170,13 @@ def _blank_prose_local(text: str) -> str:
 # (Ergebnisleiste, Dialoge, Fenstertitel, Schadensbehebung, Abtastrate,
 # Panel-Buttons, Herz-/Fatigue-Labels des Berichts, Panel-Tooltip).
 # Die verbleibenden 47 (44 in `modern_window.py`, 3 in
-# `song_prognose_widget.py`) sind im SOTA-Defizit-Register als **D-K3-10**
-# gefuehrt. Der Wert darf nur **sinken**; ein Anstieg laesst diesen Test
-# fallen.
+# `song_prognose_widget.py`) liefen als SOTA-Defizit **D-K3-10** und sind
+# 2026-10-29 ebenfalls auf `t(...)` umgestellt — §VI.5 (copilot-instructions.md):
+# `t()` für alle benutzersichtbaren Strings. Damit ist
+# `hardcoded_texts` = **0**. Der Wert darf nur **sinken**; ein Anstieg
+# laesst diesen Test fallen (fail-closed nach oben).
 _BASELINE: dict[str, int] = {
-    "hardcoded_texts": 47,
+    "hardcoded_texts": 0,
     # Informativ (heuristisch, nicht erzwungen) — Stand 2026-10-07:
     "long_strings": 69,
     "magic_numbers": 196,
