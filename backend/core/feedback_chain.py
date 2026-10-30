@@ -136,7 +136,7 @@ class FeedbackChain:
                     self._versa_score_fn = _versa_plugin.score
             except Exception as exc:
                 logger.warning(
-                    "FeedbackChain: VERSA scorer nicht verfügbar — PQS/RMS-Ersatzpfad (§V6 (copilot-instructions.md)): %s",
+                    "FeedbackChain: VERSA scorer nicht verfügbar — PQS/RMS-Ersatzpfad (§V6 (copilot-instructions.md) (copilot-instructions.md)): %s",
                     exc,
                 )
                 try:
@@ -166,7 +166,7 @@ class FeedbackChain:
 
     @classmethod
     def _score_windows(cls, audio: np.ndarray, sr: int) -> list[np.ndarray]:
-        """Deterministische Analyse-Fenster für ML-Scorer (§G5 (copilot-instructions.md), §9 Performance-Budget).
+        """Deterministische Analyse-Fenster für ML-Scorer (§G5 (copilot-instructions.md) (copilot-instructions.md), §9 Performance-Budget).
 
         Bei Signalen > 90 s: 3 Fenster à 30 s (Anfang/Mitte/Ende). Gleicher Input
         ⇒ gleiche Fenster ⇒ bit-identische Scores. Kürzere Signale: als Ganzes.
@@ -251,7 +251,7 @@ class FeedbackChain:
             # (224 s ⇒ ~30+ s pro Aufruf). VQI daher NUR auf den denselben
             # deterministischen Analyse-Fenstern wie der ML-Scorer berechnen:
             # ≤90 s ⇒ 1 Fenster (Voll-Audio, identisch zum alten Verhalten),
-            # >90 s ⇒ 3×30 s statt Voll-Länge (Kosten-Bound, §G5 (copilot-instructions.md) deterministisch).
+            # >90 s ⇒ 3×30 s statt Voll-Länge (Kosten-Bound, §G5 (copilot-instructions.md) (copilot-instructions.md) deterministisch).
             _vqi_windows_o = self._score_windows(self._vqi_orig_audio, sr)
             _vqi_windows_c = self._score_windows(audio, sr)
             _vqi_scores: list[float] = []
@@ -655,12 +655,18 @@ class FeedbackChain:
         phases_or_fn: Callable[[np.ndarray, int], np.ndarray] | list,
         sr: int | None = None,
         ceiling: float | None = None,
+        gate_check: Callable[[np.ndarray, int], bool] | None = None,
     ) -> FeedbackChainResult:
         """Führt die Feedback-Schleife aus.
 
         Akzeptiert zwei Aufruf-Varianten:
           - run(audio, improve_fn, sr)           – klassisch
           - run(audio, [(phase_id, fn, kwargs)]) – Phasen-Listen-Modus
+
+        gate_check: optionaler §4-Hörordnung-Abbruch — ``(audio, sr) -> True``
+        wenn alle Defekte unter der Maskierungsschwelle liegen (geschlossener
+        Re-scan-Loop „bis alles unter Schwelle"). Bei True bricht die Schleife
+        vorzeitig ab (Ziel erreicht), unabhängig von der MOS-Konvergenz.
         """
         _sr = sr if sr is not None else self.sample_rate
         assert _sr == 48000, f"FeedbackChain.run() erwartet SR=48000, erhalten: {_sr}"
@@ -1177,6 +1183,20 @@ class FeedbackChain:
                     best_mos,
                 )
                 break
+
+            # §4 Hörordnung: geschlossener Re-scan-Loop — alle Defekte unter der
+            # Maskierungsschwelle => Schleife beenden (auch ohne MOS-Konvergenz).
+            if gate_check is not None:
+                try:
+                    if bool(gate_check(candidate, _sr)):
+                        converged = True
+                        logger.info(
+                            "FeedbackChain: §4-Ziel erreicht — alle Defekte unter Maskierungsschwelle nach %d Iterationen",
+                            i,
+                        )
+                        break
+                except Exception as _gc_exc:  # §V6 (copilot-instructions.md) (copilot-instructions.md)
+                    logger.warning("FeedbackChain Maskierungs-Gate Ersatzpfad: %s", _gc_exc)
 
             if abs(history[-1] - history[-2]) < self._adaptive_convergence_delta(best_mos):
                 converged = True
