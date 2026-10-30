@@ -2519,7 +2519,11 @@ class DefectScanner:
         # bleiben serial.
         # Welch-PSD-Cache zurücksetzen: neuer scan()-Call, neues audio_mono-Objekt.
         self._scan_welch_cache = {}
-        self._wf_feature_cache = {}
+        # §PERF-R18: _wf_feature_cache NICHT zurücksetzen — der Schlüssel ist
+        # audio-sicher (blake2b(audio.tobytes()), Z.1855). Die Material-Erkennung
+        # (_auto_detect_material, vor dieser Stelle) befüllt ihn bereits mit den
+        # Wow/Flutter-Features; der Parallel-Detektor teilt sie dann. Ein Reset hier
+        # erzwang die D-K3-40-Duplikatrechnung (44,9 s/58,4 s).
         scores = {}
 
         from concurrent.futures import ThreadPoolExecutor
