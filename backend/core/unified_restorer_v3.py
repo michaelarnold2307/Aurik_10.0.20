@@ -15746,7 +15746,28 @@ class UnifiedRestorerV3:
 
                     _fc_numbered_list.append((_fc_n, _fc_wrap(), {}))
                 _t_fc0 = time.perf_counter()
-                _fc_chain_result = _fc_chain.run(restored_audio, _fc_numbered_list, ceiling=_fc_ceiling_val)
+                # §4 Re-scan-Loop: gate_check — FeedbackChain bricht ab, sobald alle
+                # Defekte unter der Maskierungsschwelle liegen (nicht nur MOS-Konvergenz).
+                _fc_gate_check: Any = None
+                try:
+                    from backend.core.defect_audibility_gate import (
+                        rescan_below_masking_threshold as _rescan_gate,
+                    )
+
+                    _fc_mat = str(getattr(self, "_last_material_key", None) or "vinyl")
+
+                    def _fc_gate_fn(_a: Any, _s: int) -> bool:
+                        _post = self.defect_scanner.scan(_a, _s)
+                        _post_scores = {_sc.defect_type.value: float(_sc.severity) for _sc in _post.get_top_defects(65)}
+                        return _rescan_gate({}, _post_scores, material_key=_fc_mat, audio=_a, sample_rate=_s)
+
+                    _fc_gate_check = _fc_gate_fn
+                except Exception as _feg_exc:  # §V6 (copilot-instructions.md)
+                    logger.warning("FeedbackChain Re-scan-Gate nicht verfügbar: %s", _feg_exc)
+                    _fc_gate_check = None
+                _fc_chain_result = _fc_chain.run(
+                    restored_audio, _fc_numbered_list, ceiling=_fc_ceiling_val, gate_check=_fc_gate_check
+                )
                 _budget_timings["feedback_chain_s"] = round(time.perf_counter() - _t_fc0, 4)
                 restored_audio = _fc_chain_result.audio
                 # §Witness-Veto-Korrekturschleife (Hörordnung §8a, todo t11): Die

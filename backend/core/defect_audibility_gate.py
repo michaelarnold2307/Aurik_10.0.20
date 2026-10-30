@@ -45,6 +45,8 @@ import math
 from dataclasses import dataclass, field
 from typing import Any
 
+import numpy as np
+
 logger = logging.getLogger(__name__)
 
 # --- Kanonische Hörbarkeits-Schwellen (§v10.704 S3) --------------------------
@@ -536,3 +538,39 @@ def log_audibility_report(report: DefectAudibilityReport) -> None:
             report.n_audible_unmasked,
             ", ".join(report.improvable_types) or "(keine Reduktion erzielt)",
         )
+
+
+def rescan_below_masking_threshold(
+    pre_scores: dict[str, float],
+    post_scores: dict[str, float],
+    material_key: str = "vinyl",
+    chain_depth: int = 1,
+    audio: np.ndarray | None = None,
+    sample_rate: int | None = None,
+    defect_locations: dict[str, list[tuple[float, float]]] | None = None,
+) -> bool:
+    """§4 Re-scan-Loop-Ziel: True wenn alle Defekte unter der Maskierungsschwelle.
+
+    Komposition fuer den FeedbackChain ``gate_check``: baut aus Pre-/Post-Scan-
+    Scores die §B2-Reduktion je Typ und fragt die kanonische Maskierungs-Instanz
+    (``evaluate_defect_audibility`` → ``gate_passed``) ab. Fail-open
+    §V6 (copilot-instructions.md): bei Fehlern True (kein Block).
+    """
+    try:
+        reduction: dict[str, dict[str, float]] = {}
+        for t in set(pre_scores) | set(post_scores):
+            pre = float(pre_scores.get(t, 0.0))
+            post = float(post_scores.get(t, 0.0))
+            reduction[t] = {"pre": pre, "post": post, "reduction": pre - post}
+        report = evaluate_defect_audibility(
+            defect_reduction_per_type=reduction,
+            material_key=material_key,
+            chain_depth=chain_depth,
+            audio=audio,
+            sample_rate=sample_rate,
+            defect_locations=defect_locations,
+        )
+        return bool(report.gate_passed)
+    except Exception as exc:  # §V6 (copilot-instructions.md)
+        logger.warning("Re-scan-Gate Ersatzpfad: %s", exc)
+        return True
