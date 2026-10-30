@@ -80,11 +80,18 @@ def test_scan_strategy_case_passes_coalitions_to_mapper(monkeypatch, tmp_path) -
 
     class _DummyMapper:
         def phases_for_defect_profile(
-            self, defects, max_phases=10, mode="restoration", material=None, phase_coalitions=None
+            self,
+            defects,
+            max_phases=10,
+            mode="restoration",
+            material=None,
+            phase_coalitions=None,
+            forbidden_phases=None,
         ):
             captured["mode"] = mode
             captured["material"] = material
             captured["phase_coalitions"] = phase_coalitions
+            captured["forbidden_phases"] = forbidden_phases
             return ["phase_23_spectral_repair", "phase_50_spectral_repair"]
 
     monkeypatch.setattr(_strategy_gate, "DefectPhaseMapper", lambda: _DummyMapper())
