@@ -522,6 +522,7 @@
 | docs/reports/current/2026-10-29_crackle_texture_severity_routing_fix.md | ACTIVE | docs/reports | ja | — | Crackle-Texture-Severity/Routing-Fix-Report (2026-10-29): Hör-Befund „hörbar künstlich/unrestauriert" → Grundursache toter Code-Pfad (tonal_or_dense_hf-Guard drückte CRACKLE-Severity für dichte Textur auf 0 → phase_67_crackle_texture_removal startete nie); Fix defect_scanner.py (Guard-Nullung nur noch bei nicht (severity_raw ≥ 0,5 ∧ hp_kurtosis ≥ 6)); Validierung Severity 0,0 → 1,0, 2962 Unit-Tests grün; Vorgabe Spec 03 §SR-CK-Textur ergänzt |
 | tests/unit/test_defect_scanner_crackle_texture_severity.py | ACTIVE | tests/unit | ja | — | Regressionstest §SR-CK-Textur (Spec 03): dichte impulsive Knistern-Textur muss CRACKLE-Severity > 0,15 liefern (phase_67-Routing-Gate) und darf durch tonal_or_dense_hf nicht genullt werden; pinnt den Fix 2026-10-29 (toter phase_67-Code-Pfad) |
 | tests/unit/test_pre_commit_language_guard.py | ACTIVE | tests/unit | ja | — | Regressionstest Sprache-Guard: kanonische Phasen-IDs (`phase_<Ziffer>`) bleiben unübersetzt (§5 AGENTS.md Vertragstext), freistehendes 'phase' wird weiterhin ersetzt; pinnt die Härtung 2026-10-29 (3. Ueberschreibung durch --fix-Sweep verhindert) |
+| tests/unit/test_phase_skipping_audibility_gate.py | ACTIVE | tests/unit | ja | — | Regressionstest Audibility-Gate (§4 Hörordnung Ebene 2): Ziel-Defekt unter Maskierungsschwelle => Phase wird übersprungen (kein Overprocessing); audibility=None = Bestand, fail-safe §V6; pinnt das Gate 2026-10-30 |
 
 ## Pflege-Regeln
 

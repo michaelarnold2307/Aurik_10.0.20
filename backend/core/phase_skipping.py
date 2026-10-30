@@ -13,6 +13,7 @@ Date: 2026-02-08
 """
 
 import logging
+from collections.abc import Mapping
 from dataclasses import dataclass
 from enum import Enum
 from typing import Any
@@ -47,6 +48,20 @@ class PhaseSkipDecision:
     confidence: float  # 0-1
 
 
+# §4 Hörordnung (Ebene 2 — Audibility): Ziel-Defekt je reparierender Phase für
+# das Audibilitäts-Gate. False im `audibility`-Mapping = Ziel-Defekt liegt unter
+# der Maskierungsschwelle (maskiert/unhörbar) → nicht reparieren (kein
+# Overprocessing, §4-Vertrag).
+_PHASE_TARGET_DEFECT: dict[ProcessingPhase, str] = {
+    ProcessingPhase.PHASE_2_DENOISE: "noise",
+    ProcessingPhase.PHASE_4_DECLIP: "clipping",
+    ProcessingPhase.PHASE_5_CLICK_REMOVAL: "clicks",
+    ProcessingPhase.PHASE_6_DEHUM: "hum",
+    ProcessingPhase.PHASE_7_DROPOUT_REPAIR: "dropouts",
+    ProcessingPhase.PHASE_8_SPECTRAL_REPAIR: "spectral",
+}
+
+
 class PhaseSkipper:
     """Decides which processing phases can be skipped."""
 
@@ -62,7 +77,10 @@ class PhaseSkipper:
         self.min_confidence = min_confidence
 
     def analyze_pipeline(
-        self, defect_analysis: DefectAnalysis, semantic_profile: Any | None = None
+        self,
+        defect_analysis: DefectAnalysis,
+        semantic_profile: Any | None = None,
+        audibility: Mapping[str, bool] | None = None,
     ) -> dict[ProcessingPhase, PhaseSkipDecision]:
         """
         Analysiert, welche Phasen übersprungen werden können.
@@ -120,7 +138,34 @@ class PhaseSkipper:
             phase=ProcessingPhase.PHASE_10_FINALIZE, skip=False, reason="Finalization always required", confidence=1.0
         )
 
+        # §4 Hörordnung (Ebene 2 — Audibility): nur hörbare Ziel-Defekte
+        # reparieren. Liegt ein Ziel-Defekt unter der Maskierungsschwelle
+        # (audibility[target] == False), wird die zugehörige Phase übersprungen.
+        if audibility is not None:
+            for _phase in list(decisions):
+                decisions[_phase] = self._apply_audibility_gate(decisions[_phase], audibility)
+
         return decisions
+
+    def _apply_audibility_gate(self, decision: PhaseSkipDecision, audibility: Mapping[str, bool]) -> PhaseSkipDecision:
+        """§4 Hörordnung (Ebene 2 — Audibility): unter der Maskierungsschwelle
+        liegende Ziel-Defekte werden nicht repariert (kein Overprocessing).
+
+        Nur wenn der Ziel-Defekt explizit als unhörbar (False) gemeldet wird,
+        wird die Phase übersprungen; fehlt der Eintrag, bleibt das
+        detektionsbasierte Verhalten unverändert (fail-safe §V6 (copilot-instructions.md)).
+        """
+        target = _PHASE_TARGET_DEFECT.get(decision.phase)
+        if target is None:
+            return decision
+        if audibility.get(target, True) is False:
+            return PhaseSkipDecision(
+                phase=decision.phase,
+                skip=True,
+                reason=f"Ziel-Defekt '{target}' unter Maskierungsschwelle (§4 Hörordnung)",
+                confidence=1.0,
+            )
+        return decision
 
     def _should_skip_denoise(self, defect_analysis: DefectAnalysis) -> PhaseSkipDecision:
         """Decide whether to skip denoising."""
