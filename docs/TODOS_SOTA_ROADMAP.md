@@ -284,6 +284,28 @@ sind jetzt als Infrastruktur hinterlegt:
 Aufnahmen pro Klasse, lizenzkonform nach `corpus/README.md`) und ausreichende PANNs-Tags für
 F14.
 
+### F15 · Musik-spezifisches Preference-Modell auf Hör-Labels (Wohlklang-Orakel)
+
+- **Rolle:** Skalierbares Vorfilter-/Ranking-Orakel für Restaurierungs-Kandidaten. Es lernt
+  die **gehörte Präferenz** (paarweise/listwise: „Variante A klingt natürlicher als B“) statt
+  eines einzelnen MOS-Skalenwerts. Es **ersetzt NICHT die Hör-Instanz** (Hörordnung §1/§9),
+  sondern macht sie skalierbar: es sichtet viele Kandidaten, die dann gezielt zur menschlichen
+  Abnahme vorgelegt werden.
+- **Basis:** kein vortrainiertes Sprach-MOS — UTMOSv2 ist auf Musik richtungsblind/invertiert
+  (D-K4-4). Sondern **eigenes musik-spezifisches Modell**, trainiert auf den Hör-Labels des
+  Projekts (MUSHRA/A/B-Runden, Wohlklang-Vertrag `WOHLKLANG_CLAIMS.md` W-1…W-13, B3-Protokoll).
+- **Architektur (Vorschlag):** Paired/Ranking-Kopf (z. B. Bradley-Terry / ListNet) auf einem
+  musik-spezifischen Embedding (MERT/MuQ) mit **Regionen-Attention** → erklärt, **wo** +
+  **welcher** Defekt die Präferenz treibt (erklärbar statt Black-Box).
+- **Gate:** Korrelation mit gehörten Präferenzen ≥ MOS-Proxy (D-K4-4) auf gehaltenen Hör-Runden;
+  keine Verhaltensänderung ohne Hör-Verbesserung (§V7 (copilot-instructions.md)).
+- **Daten (Blocker, ehrlich):** hängt an denselben Hör-Labels wie F8/D-K4-4 + D-K4-9
+  (MUSHRA-Panel). Ohne ausreichende Hör-Labels (Richtwert n≥30, §9/5–7 „menschlich“) kein
+  Trainingskorpus ⇒ **daten-blockiert**, nicht code-blockiert.
+- **Hybrid-Rolle (normativ):** ML = Vorfilter/Ranking, **menschliche Hör-Instanz = finale
+  GO/NO-GO-Entscheidung** (Hörordnung: Metriken sind Zeugen, die Hör-Instanz entscheidet —
+  nie gegen Ebene 1). Das Modell ist ein skalierbarer Zeuge, keine Autorität.
+
 ---
 
 ## LÜCKEN-MATRIX 2026-10-06 (gemessen) — Weg zum weltbesten Wohlklang
