@@ -64,3 +64,20 @@ besseren Baselines (Demucs-v4, WPE-DSP) bleiben aktiv → kein Qualitätsverlust
 
 **Entscheidung:** Beide Rollouts verworfen (§v10.802 — kein klangveränderndes Modell
 ohne Hör-Sign-off). Kein Offen-Posten außer K0-C.
+
+### K0-C Ergebnis (2026-10-30, Hör-Instanz L01)
+
+| Paar | Hör-Urteil |
+|---|---|
+| cassette_1980s_wow | Referenz (Basis) **deutlich besser** → F3 schlechter |
+| jazz_1950s_scratched | Kandidat (F3) besser |
+| reel_1940s_dropout | Kandidat angenehmer, aber **wesentlich dumpfer** (Höhenverlust) |
+
+**Urteil: NO-GO.** F3 ist nicht timbre-konsistent (in Extremfällen dumpf =
+Höhenverlust, genau der im Report Z.192-195 befürchtete Timbre-Sprung), dazu
+1× klar schlechter vs. 1× besser. Kein konsistenter Gewinn + Timbre-Nachteil +
+Kosten +0,9 % ⇒ kein Rollout-Grund. **Basis-BigVGAN bleibt aktiv.**
+
+**Strang H (Hör-Instanz) damit KOMPLETT:** K0-A SCNet NO-GO, K0-B SGMSE NO-GO,
+K0-C BigVGAN-F3 NO-GO. Alle drei Musik-Rollouts verworfen — die hörbar besseren
+Baselines (Demucs-v4, WPE-DSP, Basis-BigVGAN) bleiben aktiv.
