@@ -313,10 +313,11 @@ def compute_simultaneous_masking(
 
 
 def _compute_temporal_masking_boost(audio: np.ndarray, sr: int, defect_band: tuple[float, float]) -> float:
-    """Temporale Maskierung: Forward (200ms) + Backward (5ms) nach ISO 11172-3.
+    """Temporale Maskierung: Post/Forward (100ms) + Pre/Backward (20ms) nach ISO 11172-3.
 
-    Nach einem lauten Transienten ist das Ohr für ~200 ms desensibilisiert.
-    Defekte in diesem Zeitfenster sind teilweise maskiert.
+    §G110 (GEBOTE.md) + §4.10.6 (04_dsp_standards.md): Pre-Masking 20ms,
+    Post-Masking 100ms. Nach einem lauten Transienten ist das Ohr für ~100 ms
+    desensibilisiert (Forward/Post), davor für ~20 ms (Backward/Pre).
 
     Returns:
         Zusätzliche Maskierungsschwelle in dB durch temporale Effekte.
@@ -349,8 +350,8 @@ def _compute_temporal_masking_boost(audio: np.ndarray, sr: int, defect_band: tup
     if not np.any(transient_mask):
         return -80.0
 
-    # Forward-Masking-Kurve: exponentieller Abfall über 200 ms
-    fwd_mask_duration_frames = int(0.200 * sr / hop)  # 200 ms
+    # Forward/Post-Masking-Kurve: exponentieller Abfall über 100 ms (§G110)
+    fwd_mask_duration_frames = int(0.100 * sr / hop)  # Post-Masking 100 ms
     temporal_boost_db = np.full(n_frames, -80.0)
 
     for i in np.where(transient_mask)[0]:
@@ -361,8 +362,8 @@ def _compute_temporal_masking_boost(audio: np.ndarray, sr: int, defect_band: tup
             boost = peak_db - decay_db - 20.0  # 20 dB unter Transienten-Pegel
             if boost > temporal_boost_db[i + offset]:
                 temporal_boost_db[i + offset] = boost
-        # Backward masking: 5 ms vor dem Transienten
-        for offset in range(1, min(int(0.005 * sr / hop), i)):
+        # Backward/Pre masking: 20 ms vor dem Transienten (§G110)
+        for offset in range(1, min(int(0.020 * sr / hop), i)):
             boost = peak_db - 30.0  # Rückwärtsmaskierung ist schwächer
             if boost > temporal_boost_db[i - offset]:
                 temporal_boost_db[i - offset] = boost
