@@ -45,3 +45,22 @@
 
 Sign-off → Aktivierung der GO-Modelle → **Substanz-Hebung** (das hörbare Niveau) →
 parallel läuft Pfeiler A (Wohlklang-Balken) → Pfeiler B (Welt-SOTA-Vergleich).
+
+---
+
+## Ergebnis der Hör-Runde (2026-10-30, Hör-Instanz L01)
+
+| Runde | Hör-Ergebnis | Fangfragen | Urteil | Aktivierung |
+|---|---|---|---|---|
+| **K0-A** SCNet vs Demucs-v4 | SCNet **0** – Demucs **12** | 2/2 | **NO-GO** | `use_scnet_music` = False (bleibt) |
+| **K0-B** SGMSE-Musik vs Baselines | musik **2** – Baseline **16** (WPE 12×, WSJ0 4×) | 2/2 | **NO-GO** | `use_sgmse_musik` = False (bleibt) |
+| **K0-C** BigVGAN-F3 (Timbre) | *offen* | — | — | — |
+
+**Befund (Hörordnung §4 validiert):** Beide Modelle wurden vom Ohr abgelehnt, obwohl
+die SI-SDR-Metrik sie „besser" bescheinigte (SCNet +1,96…+3,59 dB; SGMSE ~1 dB). Die
+SI-SDR-Metrik ist hier **nicht wahrnehmungsnah** — sie pries Modelle an, die das Ohr
+schlechter findet. **Metriken sind Zeugen, die Hör-Instanz entscheidet.** Die hörbar
+besseren Baselines (Demucs-v4, WPE-DSP) bleiben aktiv → kein Qualitätsverlust.
+
+**Entscheidung:** Beide Rollouts verworfen (§v10.802 — kein klangveränderndes Modell
+ohne Hör-Sign-off). Kein Offen-Posten außer K0-C.
