@@ -27,7 +27,7 @@ def main() -> int:
     from backend.core.performance_guard import QualityMode
     from backend.core.unified_restorer_v3 import RestorationConfig, UnifiedRestorerV3
 
-    src = "test_audio/Testkünstlerin (Schlager) - Du wolltest nur ein Abenteuer, aber ich suchte einen Freund.mp3"
+    src = "test_audio/Elke Best - Du wolltest nur ein Abenteuer, aber ich suchte einen Freund.mp3"
     y, sr = sf.read(src, dtype="float32", always_2d=True)
     y = np.asarray(y[: sr * 10], dtype=np.float32)  # 10-s-Slice
 
