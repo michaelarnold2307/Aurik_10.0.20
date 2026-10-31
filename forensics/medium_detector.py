@@ -3215,7 +3215,22 @@ def get_medium_detector() -> MediumDetector:
 
 def detect_medium_chain(audio: np.ndarray, sr: int) -> MediumDetectionResult:
     """Convenience-Wrapper: erkennt die Tonträgerkette eines Audio-Signals."""
-    return get_medium_detector().detect(audio, sr)
+    # §D-K1-3 Feature-Engineering 2026-10-31: Ära-Prior aktivieren. Der
+    # §v10.14.1-Ära-Prior (Decade) trennt shellac (Pre-1950) / vinyl (Post-1950)
+    # / digital (Post-1980) stark — war im Wrapper aber inaktiv (era_decade=None).
+    # Ära aus dem EraClassifier schätzen + an detect() übergeben.
+    era_decade: int | None = None
+    era_confidence: float = 0.0
+    try:
+        from backend.core.era_classifier import classify_era
+
+        _er = classify_era(audio, sr)
+        if _er is not None:
+            era_decade = int(_er.decade)
+            era_confidence = float(_er.confidence)
+    except Exception as _era_exc:  # §V6 (copilot-instructions.md): ohne Aera wie bisher
+        logger.warning("detect_medium_chain: Aera-Schaetzung nicht verfuegbar: %s", _era_exc)
+    return get_medium_detector().detect(audio, sr, era_decade=era_decade, era_confidence=era_confidence)
 
 
 # §DSD: DSD/DSF/SACD import support (via dsdlib/pydsd)
