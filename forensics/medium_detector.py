@@ -3256,7 +3256,7 @@ def detect_medium_chain(audio: np.ndarray, sr: int) -> MediumDetectionResult:
     era_decade: int | None = None
     era_confidence: float = 0.0
     try:
-        from backend.core.era_classifier import classify_era
+        from backend.core.era_classifier import classify_era, constrain_era_to_medium
 
         _er = classify_era(audio, sr)
         if _er is not None:
@@ -3264,7 +3264,26 @@ def detect_medium_chain(audio: np.ndarray, sr: int) -> MediumDetectionResult:
             era_confidence = float(_er.confidence)
     except Exception as _era_exc:  # §V6 (copilot-instructions.md): ohne Aera wie bisher
         logger.warning("detect_medium_chain: Aera-Schaetzung nicht verfuegbar: %s", _era_exc)
-    return get_medium_detector().detect(audio, sr, era_decade=era_decade, era_confidence=era_confidence)
+        _er = None
+    _det = get_medium_detector()
+    _r1 = _det.detect(audio, sr, era_decade=era_decade, era_confidence=era_confidence)
+    # §D-K1-3 Phase A (2026-10-31): Aera de-konfundieren. Die Aera wird vom
+    # mp3-Codec der Digitalisierung in die Irre gefuehrt (shellac -> 1980).
+    # Das Medium begrenzt die Aera physisch (constrain_era_to_medium: shellac
+    # Ceiling 1955, vinyl Floor 1948) — 2. Pass mit der begrenzten Aera.
+    if _er is not None and _r1.primary_material not in (None, "", "unknown"):
+        try:
+            _er2 = constrain_era_to_medium(_er, str(_r1.primary_material))
+            if _er2 is not None and int(_er2.decade) != era_decade:
+                return _det.detect(
+                    audio,
+                    sr,
+                    era_decade=int(_er2.decade),
+                    era_confidence=float(_er2.confidence),
+                )
+        except Exception as _c_exc:  # §V6 (copilot-instructions.md)
+            logger.debug("detect_medium_chain: Aera-Begrenzung fehlgeschlagen: %s", _c_exc)
+    return _r1
 
 
 # §DSD: DSD/DSF/SACD import support (via dsdlib/pydsd)
