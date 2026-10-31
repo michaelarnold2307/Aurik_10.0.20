@@ -1286,6 +1286,132 @@ class MediumDetector:
             }.get(_mat, (0.900, 0.150)),
         )
 
+    # §D-K1-3 Phase C (2026-10-31): 2-Mode-Mixture je Material. Die Klassen
+    # sind bimodal (tape noise 0.078 ODER 1.9). Ein Gauss pro Modus + logsumexp
+    # in _bayesian_score. Moden aus 2-Means (noise_color-Median-Split) gemessen.
+    _MATERIAL_MIXTURE: dict[str, list[dict[str, tuple[float, float]]]] = {
+        "shellac": [
+            {
+                "bandwidth_hz": (18161.97613, 1071.54166),
+                "snr_db": (15.02642, 3.33866),
+                "noise_color": (0.84527, 0.48064),
+                "crackle_density": (0.00153, 0.00053),
+                "wow_depth": (0.02984, 0.01694),
+                "block_artifact": (0.10877, 0.07019),
+                "rotation_strength": (0.21086, 0.18013),
+                "infrasonic_rms": (0.15090, 0.24111),
+                "noise_centroid": (0.35323, 0.17215),
+            },
+            {
+                "bandwidth_hz": (14829.24408, 4099.28829),
+                "snr_db": (20.79186, 5.38481),
+                "noise_color": (2.03072, 0.77568),
+                "crackle_density": (0.00151, 0.00035),
+                "wow_depth": (0.05842, 0.03509),
+                "block_artifact": (0.10609, 0.05915),
+                "rotation_strength": (0.17388, 0.16079),
+                "infrasonic_rms": (0.01294, 0.01508),
+                "noise_centroid": (0.46194, 0.20413),
+            },
+        ],
+        "vinyl": [
+            {
+                "bandwidth_hz": (20464.94751, 6132.63661),
+                "snr_db": (5.07978, 4.57259),
+                "noise_color": (0.21230, 0.31590),
+                "crackle_density": (0.00173, 0.00172),
+                "wow_depth": (0.02611, 0.01553),
+                "block_artifact": (0.05051, 0.13364),
+                "rotation_strength": (0.32318, 0.12672),
+                "infrasonic_rms": (0.01371, 0.00794),
+                "noise_centroid": (0.92335, 0.07360),
+            },
+            {
+                "bandwidth_hz": (10596.65876, 6247.42632),
+                "snr_db": (5.51891, 4.84357),
+                "noise_color": (1.16751, 0.29721),
+                "crackle_density": (0.00042, 0.00051),
+                "wow_depth": (0.02855, 0.01462),
+                "block_artifact": (0.06125, 0.13959),
+                "rotation_strength": (0.30912, 0.12911),
+                "infrasonic_rms": (0.01492, 0.00872),
+                "noise_centroid": (0.97875, 0.03117),
+            },
+        ],
+        "tape": [
+            {
+                "bandwidth_hz": (22801.27651, 2933.62977),
+                "snr_db": (5.49760, 4.95224),
+                "noise_color": (0.14415, 0.11249),
+                "crackle_density": (0.00013, 0.00010),
+                "wow_depth": (0.03141, 0.01324),
+                "block_artifact": (0.00229, 0.00560),
+                "rotation_strength": (0.29608, 0.12801),
+                "infrasonic_rms": (0.00969, 0.00440),
+                "noise_centroid": (0.96870, 0.03129),
+            },
+            {
+                "bandwidth_hz": (6281.29185, 8594.16843),
+                "snr_db": (9.65317, 6.87777),
+                "noise_color": (1.70706, 0.87494),
+                "crackle_density": (0.00093, 0.00053),
+                "wow_depth": (0.04379, 0.01698),
+                "block_artifact": (0.03577, 0.01848),
+                "rotation_strength": (0.19618, 0.17150),
+                "infrasonic_rms": (0.00760, 0.00475),
+                "noise_centroid": (0.95018, 0.04223),
+            },
+        ],
+        "cassette": [
+            {
+                "bandwidth_hz": (22396.15192, 3207.03700),
+                "snr_db": (15.39473, 11.56071),
+                "noise_color": (0.37946, 0.43486),
+                "crackle_density": (0.00033, 0.00038),
+                "wow_depth": (0.03840, 0.02210),
+                "block_artifact": (0.01682, 0.01277),
+                "rotation_strength": (0.12363, 0.15175),
+                "infrasonic_rms": (0.03409, 0.05543),
+                "noise_centroid": (0.87165, 0.15387),
+            },
+            {
+                "bandwidth_hz": (6551.11670, 5628.90316),
+                "snr_db": (7.73180, 5.49681),
+                "noise_color": (2.61210, 0.84936),
+                "crackle_density": (0.00100, 0.00024),
+                "wow_depth": (0.03875, 0.02365),
+                "block_artifact": (0.07521, 0.06315),
+                "rotation_strength": (0.28382, 0.04590),
+                "infrasonic_rms": (0.19781, 0.36770),
+                "noise_centroid": (0.74758, 0.27589),
+            },
+        ],
+        "reel_tape": [
+            {
+                "bandwidth_hz": (14893.21289, 9730.02956),
+                "snr_db": (6.83986, 5.89142),
+                "noise_color": (0.69704, 0.76095),
+                "crackle_density": (0.00050, 0.00044),
+                "wow_depth": (0.03602, 0.01563),
+                "block_artifact": (0.01664, 0.02065),
+                "rotation_strength": (0.29160, 0.16892),
+                "infrasonic_rms": (0.00452, 0.00253),
+                "noise_centroid": (0.97071, 0.03765),
+            },
+            {
+                "bandwidth_hz": (2446.14258, 1708.75263),
+                "snr_db": (13.28878, 6.88278),
+                "noise_color": (3.02932, 0.68739),
+                "crackle_density": (0.00119, 0.00026),
+                "wow_depth": (0.04947, 0.01690),
+                "block_artifact": (0.05962, 0.04744),
+                "rotation_strength": (0.18443, 0.17128),
+                "infrasonic_rms": (0.00897, 0.00628),
+                "noise_centroid": (0.68738, 0.37054),
+            },
+        ],
+    }
+
     _FEATURE_KEYS: list[str] = [
         "bandwidth_hz",
         "snr_db",
@@ -2189,6 +2315,24 @@ class MediumDetector:
 
         log_likes: dict[str, float] = {}
         for mat, params in self._MATERIAL_MODELS.items():
+            _mix = getattr(self, "_MATERIAL_MIXTURE", {}).get(mat)
+            if _mix:
+                # §D-K1-3 Phase C: 2-Mode-Mixture (bimodal innerhalb der Klasse).
+                # ll = logsumexp(Modus-1-ll, Modus-2-ll) - log(2).
+                _mode_lls = []
+                for _mode in _mix:
+                    _ll = 0.0
+                    for feat_key in self._FEATURE_KEYS:
+                        if feat_key in _masked_features:
+                            continue
+                        mu, sigma = _mode.get(feat_key, (0.0, 1.0))
+                        sigma = max(sigma, 1e-6)
+                        x = feature_vals.get(feat_key, 0.0)
+                        _ll -= 0.5 * ((x - mu) / sigma) ** 2 + math.log(sigma)
+                    _mode_lls.append(_ll)
+                _mx = max(_mode_lls)
+                log_likes[mat] = _mx + math.log(sum(math.exp(l - _mx) for l in _mode_lls)) - math.log(2)
+                continue
             ll = 0.0
             for feat_key in self._FEATURE_KEYS:
                 if feat_key in _masked_features:
