@@ -47,7 +47,7 @@ import threading
 from dataclasses import dataclass, field
 
 import numpy as np
-from scipy.signal import butter, decimate, hilbert, sosfilt
+from scipy.signal import butter, decimate, hilbert, sosfilt, welch
 
 logger = logging.getLogger(__name__)
 
@@ -71,6 +71,7 @@ class SpectralFingerprint:
     rotation_hz: float = 0.0  # Vinyl-Plattentellerfrequenz [Hz]; 0 = keine Rotation
     rotation_strength: float = 0.0  # Normierter Peak-SNR des Rotationssignals [0, 1]
     infrasonic_rms: float = 0.0  # Sub-20 Hz normierter RMS (Vinyl-Rumble)
+    noise_centroid: float = 0.0  # Tief-Frequenz-Anteil des Rauschens (<500 Hz / total) [0, 1]
     codec_artifact_score: float = 0.0  # MDCT-Quantisierungs-Artefakt-Score [0, 1]
     codec_type_code: float = 0.0  # 0=clean, 1=mp3, 2=aac, 3=lossy
     crackle_density: float = 0.0  # Anteil Samples > 4σ (Vinyl-Knackser)
@@ -1269,6 +1270,22 @@ class MediumDetector:
         },
     }
 
+    # §D-K1-3 Feature-Engineering 2026-10-31: noise_centroid (noise_low_ratio,
+    # Rausch-Tief-Anteil <500 Hz) als 11. Feature. Starker Trenner: shellac
+    # (0.402, breites Oberflaechenrauschen) vs. vinyl/tape/cassette/digital
+    # (0.898-0.991, Rumble/Hiss-dominiert). gemessen (Korpus-Median/MAD).
+    for _mat in _MATERIAL_MODELS:
+        _MATERIAL_MODELS[_mat].setdefault(
+            "noise_centroid",
+            {
+                "shellac": (0.402, 0.218),
+                "vinyl": (0.991, 0.005),
+                "tape": (0.980, 0.029),
+                "cassette": (0.901, 0.141),
+                "reel_tape": (0.950, 0.080),
+            }.get(_mat, (0.900, 0.150)),
+        )
+
     _FEATURE_KEYS: list[str] = [
         "bandwidth_hz",
         "snr_db",
@@ -1280,6 +1297,7 @@ class MediumDetector:
         "rotation_strength",
         "infrasonic_rms",
         "codec_type_code",
+        "noise_centroid",
     ]
 
     def _best_matching_chain(  # type: ignore[return]
@@ -1755,6 +1773,18 @@ class MediumDetector:
         except (ValueError, IndexError, TypeError, ZeroDivisionError) as _exc:
             logger.debug("MediumDetector: computation fehlgeschlagen in spectral fingerprint: %s", _exc)
 
+        # §D-K1-3 Feature-Engineering 2026-10-31: noise_low_ratio — Anteil des
+        # Rauschens unter 500 Hz an der Gesamt-PSD. Trennt die Materialien ueber
+        # die Rausch-SpektralFORM (shellac = breites Oberflaechenrauschen, wenig
+        # Tief-Anteil; vinyl/tape = Rumble/Hiss, dominanter Tief-Anteil).
+        # Gemessen (Median): shellac 0.402 vs. vinyl 0.991 / tape 0.980 /
+        # cassette 0.901 / digital 0.898 — starker Trenner.
+        try:
+            _nc_f, _nc_p = welch(mono.astype(np.float64), fs=sr, nperseg=4096)
+            _noise_centroid = float(np.sum(_nc_p[_nc_f < 500.0]) / (np.sum(_nc_p) + 1e-20))
+        except Exception:
+            _noise_centroid = 0.0
+
         return SpectralFingerprint(
             rolloff_95_hz=float(np.nan_to_num(rolloff_95)),
             wow_flutter_index=float(np.nan_to_num(wow_flutter)),
@@ -1764,6 +1794,7 @@ class MediumDetector:
             rotation_hz=float(np.nan_to_num(rotation_hz)),
             rotation_strength=float(np.nan_to_num(rotation_strength)),
             infrasonic_rms=float(np.nan_to_num(infrasonic_rms)),
+            noise_centroid=float(np.nan_to_num(_noise_centroid)),
             codec_artifact_score=float(np.nan_to_num(codec_artifact_score)),
             codec_type_code=float(np.nan_to_num(codec_type_code)),
             crackle_density=float(np.nan_to_num(crackle_density)),
@@ -2137,7 +2168,9 @@ class MediumDetector:
         # Strafe (μ=12/6 ms ≠ 0), während Analog-Materialien (μ=0) ungestraft bleiben.
         # Das erzeugt einen systematischen Bias Richtung Analog → immer maskieren.
         _masked_features: frozenset[str] = (
-            frozenset({"rotation_strength", "pre_echo_ms"}) if _short_clip else frozenset({"pre_echo_ms"})
+            frozenset({"rotation_strength", "pre_echo_ms", "noise_centroid"})
+            if _short_clip
+            else frozenset({"pre_echo_ms"})
         )
 
         feature_vals = {
@@ -2151,6 +2184,7 @@ class MediumDetector:
             "rotation_strength": fp.rotation_strength,
             "infrasonic_rms": fp.infrasonic_rms,
             "codec_type_code": fp.codec_type_code,
+            "noise_centroid": fp.noise_centroid,
         }
 
         log_likes: dict[str, float] = {}
