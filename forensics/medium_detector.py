@@ -1112,14 +1112,18 @@ class MediumDetector:
             "codec_type_code": (0.0, 0.3),
         },
         "reel_tape": {
-            "bandwidth_hz": (15000.0, 3000.0),
-            "snr_db": (28.0, 7.0),
-            "noise_color": (1.3, 0.3),
+            # §D-K1-3 breite Rekalibrierung 2026-10-31 (Echt-Korpus n=7):
+            # bandwidth/snr/noise_color/rotation waren 2.3–4.7σ fehlkalibriert.
+            # mu = Korpus-Median, sigma = max(Korpus-MAD*1.4826, Floor) gegen
+            # Ueber-Enge bei kleinen n.
+            "bandwidth_hz": (4388.5, 5353.4),
+            "snr_db": (3.5726, 2.0),
+            "noise_color": (1.988, 2.1977),
             "crackle_density": (0.0, 0.001),
             "wow_depth": (0.3, 0.3),
             "block_artifact": (0.0, 0.12),
             "pre_echo_ms": (0.0, 2.0),
-            "rotation_strength": (0.0, 0.08),
+            "rotation_strength": (0.3758, 0.0547),
             "infrasonic_rms": (0.01, 0.02),
             "codec_type_code": (0.0, 0.3),
         },
