@@ -1996,7 +1996,16 @@ class MediumDetector:
 
         if cv < 0.35 and n_events >= 20:
             dominant_period = float(np.median(intervals))
-            if dominant_period > 0:
+            # Nur Events an der echten Codec-MDCT-Frames-Periode streichen
+            # (MP3 ≈ 576, AC-3 ≈ 480, AAC ≈ 1024 Samples). Regelmässiges
+            # analoges Knistern bei anderer Periode (z. B. dichte synthetische
+            # Textur ≈ 250 Samples) ist echtes Crackle, KEIN Codec-Artefakt —
+            # es wird sonst faelschlich als periodisch gestrichen (Befund
+            # 2026-10-30: shellac_classical_1940s_crackle CV=0.071, Periode
+            # 5,2 ms != MDCT 13 ms → crackle_density 0 → als TAPE klassifiziert).
+            _CODEC_FRAME_SAMPLES = (480.0, 576.0, 1024.0)
+            is_codec_period = any(abs(dominant_period - _p) / _p < 0.30 for _p in _CODEC_FRAME_SAMPLES)
+            if dominant_period > 0 and is_codec_period:
                 pos_arr = np.array(event_positions, dtype=np.float64)
                 ivs_to_prev = np.concatenate([[dominant_period], np.diff(pos_arr)])
                 ivs_to_next = np.concatenate([np.diff(pos_arr), [dominant_period]])
