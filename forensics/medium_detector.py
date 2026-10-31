@@ -1279,8 +1279,8 @@ class MediumDetector:
             "noise_centroid",
             {
                 "shellac": (0.402, 0.218),
-                "vinyl": (0.991, 0.005),
-                "tape": (0.980, 0.029),
+                "vinyl": (0.991, 0.060),
+                "tape": (0.980, 0.060),
                 "cassette": (0.901, 0.141),
                 "reel_tape": (0.950, 0.080),
             }.get(_mat, (0.900, 0.150)),
