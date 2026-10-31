@@ -1063,7 +1063,13 @@ class MediumDetector:
             "wow_depth": (0.046, 0.05),
             "block_artifact": (0.082, 0.067),
             "pre_echo_ms": (0.0, 2.0),
-            "rotation_strength": (0.007, 0.05),
+            # §D-K1-3 Rekalibrierung 2026-10-30: alter Wert (0.007, 0.05) war
+            # 4.5σ fehlkalibriert (echtes Shellac hat rotation ~0.232, nicht
+            # ~0.007 — gemessen an 8 Echt-Shallac-Korpus-Traegern). Das erzwang
+            # eine ~34-nat-Bestrafung fuer JEDES echte Shellac (rotation weit
+            # weg von 0.007) und liess tape gewinnen. Neue Werte = Echt-Messung
+            # (mu=0.232, sigma=0.151 aus dem Korpus-Median/Std).
+            "rotation_strength": (0.232, 0.151),
             "infrasonic_rms": (0.0085, 0.0096),
             "codec_type_code": (0.0, 0.3),
         },
