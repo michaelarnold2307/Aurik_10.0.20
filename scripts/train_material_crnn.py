@@ -37,7 +37,18 @@ logger = logging.getLogger(__name__)
 SEED = 42
 N_MELS = 64
 FRAMES = 96
-MATERIALS = ["shellac", "vinyl", "tape", "cassette", "reel_tape", "digital"]
+MATERIALS = [
+    "shellac",
+    "vinyl",
+    "tape",
+    "cassette",
+    "reel_tape",
+    "digital",
+    "wax_cylinder",
+    "wire_recording",
+    "lacquer_disc",
+    "minidisc",
+]
 
 
 # ── Determinismus (§G5 (copilot-instructions.md)) ─────────────────────────────────────────────────
