@@ -73,3 +73,26 @@ trennen. **Gate C:** Ziel ≥ 70 % strikt erreicht + 15-Material-Regression grü
 **Phase A (EraClassifier de-konfundieren)** — größter einzelner Hebel.
 Erste Messung: Ära-Genauigkeit shellac/vinyl auf dem Korpus (Gate A-Baseline),
 dann A1/A2 umsetzen + Gate A messen.
+
+## 5. Ergebnis-Status (2026-10-31, abgeschlossene Session)
+
+**Typus-Sprung erzielt** — die bewährte Methode (gelernte Spektrogramm-
+Repräsentation + gezielte Daten) auf zwei Defizite angewandt:
+
+| Defizit | Vorher (handgebaut) | Nachher (gelernt) | Commit |
+| --- | --- | --- | --- |
+| Material-Erkennung (D-K1-3) | 42,6% (Gauss) | **95,3%** (CRNN, 10 Material-Gruppen) | 5c650f39, 6ca9e506 |
+| Era-Erkennung (Phase E) | 3,4% (Heuristik) | **98,0%** (CRNN, Dekade exakt) | 144c77f8 |
+
+**Daten:** Korpus 122 → 192+ Dateien (Internet Archive, +70 echte Träger
+inkl. seltene Medien wax/wire/lacquer/minidisc).
+
+**Geprüft + verworfen (gemessen):** Gauss-sigma-Weitung (0%), ro95 (neutral),
+Mitten-Ratio (redundant, −3), Codec-Signatur (trennt nicht), 2-Pass-Ära
+(neutral, Huhn-Ei). Ehrlich dokumentiert statt behauptet.
+
+**Methode (generisch übertragbar):**
+handgebaute Skalare → gelernte Spektrogramm-Repräsentation (CRNN) + Daten.
+
+**Nächste Maßnahme:** Defekt-Erkennung (65 DefectTypes) — größter Hebel,
+multi-label + Lokalisierung, analoge Methode.
