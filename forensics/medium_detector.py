@@ -3396,7 +3396,18 @@ def get_medium_detector() -> MediumDetector:
 # §V6 (copilot-instructions.md): bei Fehlern/ohne Modell → None (Gauss/Mixture-Pfad).
 _CRNN_MODEL = None
 _CRNN_LOADED = False
-_CRNN_MATERIALS = ("shellac", "vinyl", "tape", "cassette", "reel_tape", "digital")
+_CRNN_MATERIALS = (
+    "shellac",
+    "vinyl",
+    "tape",
+    "cassette",
+    "reel_tape",
+    "digital",
+    "wax_cylinder",
+    "wire_recording",
+    "lacquer_disc",
+    "minidisc",
+)
 
 
 def _load_material_crnn():
