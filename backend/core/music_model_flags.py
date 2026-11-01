@@ -70,6 +70,7 @@ use_tp_v2_phase: bool = False  # SOTA-M12 (D-K4-8): TP-V2-Klassen-Phasenschätzu
 # Transienten-Phasenkohärenz (kammfilter-frei). Aktivierung erst nach A/B auf transient-reichem
 # Material (Percussion ohne Kammfilter-Artefakte) + Hörordnungs-Sign-off (§v10.802
 # copilot-instructions.md). False ⇒ keine Verhaltensänderung.
+use_material_crnn: bool = False  # D-K1-3 Phase D: CRNN-Material-Classifier (models/material_crnn.pt) als Challenger zum Gauss/Mixture-Pfad. Default AUS. Gelernte Spektrogramm-Repraesentation: 95.3% vs. 59-63% (gemessen).
 use_rt60_regressor: bool = False  # SOTA-M15 (KP-10): RT60-Regressor auf RIR-Paaren als
 # Ersatz des konservativen T60-Witness-Caps (phase_20/49). Aktivierung erst nach Gate auf
 # RIR-Referenzmaterial + Hörordnungs-Sign-off (§v10.802 copilot-instructions.md).

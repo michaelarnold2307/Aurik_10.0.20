@@ -3391,6 +3391,60 @@ def get_medium_detector() -> MediumDetector:
     return _instance
 
 
+# §D-K1-3 Phase D: CRNN-Material-Classifier (Challenger, hinter use_material_crnn).
+# Gelernte Material-Repraesentation aus dem Log-Mel-Spektrogramm. Default AUS.
+# §V6 (copilot-instructions.md): bei Fehlern/ohne Modell → None (Gauss/Mixture-Pfad).
+_CRNN_MODEL = None
+_CRNN_LOADED = False
+_CRNN_MATERIALS = ("shellac", "vinyl", "tape", "cassette", "reel_tape", "digital")
+
+
+def _load_material_crnn():
+    global _CRNN_MODEL, _CRNN_LOADED
+    if _CRNN_LOADED:
+        return _CRNN_MODEL
+    _CRNN_LOADED = True
+    try:
+        from pathlib import Path as _P
+
+        import torch
+
+        from scripts.train_material_crnn import MaterialCRNN
+
+        _p = _P("models/material_crnn.pt")
+        if not _p.exists():
+            return None
+        _ck = torch.load(_p, map_location="cpu", weights_only=False)
+        _m = MaterialCRNN(len(_CRNN_MATERIALS))
+        _m.load_state_dict(_ck["state_dict"])
+        _m.eval()
+        _CRNN_MODEL = _m
+    except Exception as _e:  # §V6 (copilot-instructions.md)
+        logger.warning("Material-CRNN nicht geladen: %s", _e)
+        _CRNN_MODEL = None
+    return _CRNN_MODEL
+
+
+def _crnn_predict(audio: np.ndarray, sr: int) -> str | None:
+    """CRNN-Material-Vorhersage. None bei Fehlern (§V6 (copilot-instructions.md), Fallback Gauss)."""
+    try:
+        import torch
+
+        from scripts.train_material_crnn import _logmel
+
+        _m = _load_material_crnn()
+        if _m is None:
+            return None
+        _x = torch.tensor(_logmel(np.asarray(audio).ravel()[: sr * 25], sr), dtype=torch.float32)
+        _x = _x.unsqueeze(0).unsqueeze(0)
+        with torch.no_grad():
+            _idx = int(_m(_x).argmax(1))
+        return _CRNN_MATERIALS[_idx]
+    except Exception as _e:  # §V6 (copilot-instructions.md)
+        logger.warning("Material-CRNN-Vorhersage fehlgeschlagen: %s", _e)
+        return None
+
+
 def detect_medium_chain(audio: np.ndarray, sr: int) -> MediumDetectionResult:
     """Convenience-Wrapper: erkennt die Tonträgerkette eines Audio-Signals."""
     # §D-K1-3 Feature-Engineering 2026-10-31: Ära-Prior aktivieren. Der
@@ -3407,7 +3461,7 @@ def detect_medium_chain(audio: np.ndarray, sr: int) -> MediumDetectionResult:
             era_decade = int(_er.decade)
             era_confidence = float(_er.confidence)
     except Exception as _era_exc:  # §V6 (copilot-instructions.md): ohne Aera wie bisher
-        logger.warning("detect_medium_chain: Aera-Schaetzung nicht verfuegbar: %s", _era_exc)
+        logger.warning("Medium-Erkennung: Aera-Schaetzung nicht verfuegbar: %s", _era_exc)
         _er = None
     _det = get_medium_detector()
     _r1 = _det.detect(audio, sr, era_decade=era_decade, era_confidence=era_confidence)
@@ -3426,7 +3480,21 @@ def detect_medium_chain(audio: np.ndarray, sr: int) -> MediumDetectionResult:
                     era_confidence=float(_er2.confidence),
                 )
         except Exception as _c_exc:  # §V6 (copilot-instructions.md)
-            logger.debug("detect_medium_chain: Aera-Begrenzung fehlgeschlagen: %s", _c_exc)
+            logger.debug("Medium-Erkennung: Aera-Begrenzung fehlgeschlagen: %s", _c_exc)
+    # §D-K1-3 Phase D: CRNN-Challenger (hinter use_material_crnn, Default AUS).
+    # Gelernte Spektrogramm-Repraesentation (95.3% gemessen vs. 59-63% Gauss).
+    # §V6 (copilot-instructions.md): bei Fehlern/ohne Modell → Gauss/Mixture-Pfad.
+    try:
+        from backend.core.music_model_flags import use_material_crnn as _crnn_on
+
+        if _crnn_on:
+            _mat = _crnn_predict(audio, sr)
+            if _mat:
+                from dataclasses import replace as _dc_replace
+
+                _r1 = _dc_replace(_r1, primary_material=_mat, confidence=1.0)
+    except Exception as _crnn_exc:  # §V6 (copilot-instructions.md)
+        logger.warning("Medium-Erkennung: Klassifikator-Modul nicht aktiv: %s", _crnn_exc)
     return _r1
 
 
