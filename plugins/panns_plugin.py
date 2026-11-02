@@ -279,8 +279,27 @@ class PANNsPlugin(MLPluginBase):  # §A2
             # TUPEL — der Namensvergleich muss das Tupel auspacken, sonst wird
             # der GPU-Provider auf ROCm-Maschinen IMMER verworfen (PANNs lief
             # dauerhaft CPU — Defizit-Fix, belegt im überwachten 225-s-Lauf).
+            # §III.9/§V6 (copilot-instructions.md): zusätzlich GPU-EPs nur bei
+            # echter, sichtbarer GPU — get_available_providers() meldet ROCm auch
+            # build-seitig OHNE Gerät (Abort: HIP failure 100 auf per Env
+            # versteckter GPU — Produktionsbefund phase_03-Denoise).
+            try:
+                from backend.core.gpu_model_registry import _gpu_device_present as _dev_ok
+
+                _gpu_ok = _dev_ok()
+            except Exception:  # §V6 (copilot-instructions.md)
+                _gpu_ok = True
+            _GPU_EPS = (
+                "ROCMExecutionProvider",
+                "CUDAExecutionProvider",
+                "MIGraphXExecutionProvider",
+                "TensorrtExecutionProvider",
+            )
             _filtered_providers = [
-                p for p in _providers if ((p[0] if isinstance(p, tuple) else str(p)) in _avail_ort_providers)
+                p
+                for p in _providers
+                if ((p[0] if isinstance(p, tuple) else str(p)) in _avail_ort_providers)
+                and (_gpu_ok or (p[0] if isinstance(p, tuple) else str(p)) not in _GPU_EPS)
             ]
             if not _filtered_providers:
                 _filtered_providers = ["CPUExecutionProvider"]

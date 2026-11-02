@@ -96,6 +96,61 @@ def _force_cpu_requested() -> bool:
     return os.environ.get("AURIK_FORCE_CPU", "").strip().lower() in ("1", "true", "yes")
 
 
+_device_probe_cache: dict[str, bool] = {}
+
+
+def _gpu_device_present() -> bool:
+    """True wenn ein ECHTES GPU-Gerät existiert (nicht nur ORT-Build-Unterstützung).
+
+    §III.9 / §V6 (copilot-instructions.md): ``ort.get_available_providers()``
+    meldet ``ROCMExecutionProvider`` bereits build-seitig. Auf Hosts OHNE
+    ROCm-Gerät (``hipGetDeviceProperties`` → ``HIP failure 100: no ROCm-capable
+    device``) abortet ORT dann nativ (``Fatal Python error: Aborted``) —
+    Produktionsbefund (phase_03-Denoise, Nativ-Absturz im Testlauf). GPU-EPs
+    werden deshalb nur bei nachgewiesenem Gerät zugelassen.
+    """
+    if "present" in _device_probe_cache:
+        return _device_probe_cache["present"]
+    present = False
+    try:
+        import re
+
+        # CUDA_VISIBLE_DEVICES/HIP_VISIBLE_DEVICES steuern die GPU-Sicht fuer ORT's
+        # HIP. §III.9/§V6 (copilot-instructions.md): Produktionsbefund — eine
+        # kaputte/leere Wertliste (z.B. " OMP_NUM_THREADS=1") laesst ORT's HIP
+        # ``hipGetDeviceProperties`` → GPU=-1 liefern (HIP failure 100) und
+        # abortet nativ. torch.cuda.is_available() sieht das NICHT (nutzt
+        # HIP_VISIBLE_DEVICES) — deshalb hier explizit die Env-Liste pruefen:
+        #   nicht gesetzt → None (alle Geraete), "" → versteckt, "0"/"0,1" →
+        #   sichtbar, sonst (kaputt) → versteckt (sicherster Weg).
+        def _visible(env: str) -> bool | None:
+            v = os.environ.get(env)
+            if v is None:
+                return None
+            v = v.strip()
+            if v == "":
+                return False
+            return bool(re.fullmatch(r"\d+(,\d+)*", v))
+
+        _cvd = _visible("CUDA_VISIBLE_DEVICES")
+        _hvd = _visible("HIP_VISIBLE_DEVICES")
+        if _cvd is False or _hvd is False:
+            present = False
+        elif _cvd is True or _hvd is True:
+            present = True
+        else:
+            try:
+                import torch
+
+                present = bool(torch.cuda.is_available())
+            except Exception:  # §V6 (copilot-instructions.md) — kein torch
+                present = os.path.exists("/dev/kfd") or os.path.exists("/dev/nvidiactl")
+    except Exception:  # §V6 (copilot-instructions.md)
+        present = False
+    _device_probe_cache["present"] = present
+    return present
+
+
 def apply_gpu_policy(providers: Sequence[_Provider], model_path: str | Path) -> list[_Provider]:
     """Wendet die Registry auf die Provider-Liste an (nie GPU-Hinzufügen bei CPU-only).
 
@@ -128,6 +183,14 @@ def apply_gpu_policy(providers: Sequence[_Provider], model_path: str | Path) -> 
     )
     if not _gpu_requested:
         return _providers  # CPU-only-Aufrufer respektieren
+    # §III.9 / §V6 (copilot-instructions.md): kein echtes GPU-Gerät → CPU erzwungen
+    # (kein nativer ORT-Abort auf CPU-Hosts wie HIP failure 100).
+    if not _gpu_device_present():
+        logger.info(
+            "§v10.40c GPU-Policy: %s → CPU erzwungen (kein GPU-Gerät, nur ORT-Build-Support)",
+            Path(model_path).name,
+        )
+        return ["CPUExecutionProvider"]
 
     if _force_cpu_requested():
         logger.info(
@@ -183,6 +246,10 @@ def get_onnx_providers(model_path: str | Path, prefer_gpu: bool = True) -> list[
         )
         return ["CPUExecutionProvider"]
     if not prefer_gpu:
+        return ["CPUExecutionProvider"]
+    # §III.9 / §V6 (copilot-instructions.md): GPU-EP nur bei echtem Gerät — ORT
+    # meldet ROCm build-seitig auch OHNE Gerät (Abort: HIP failure 100).
+    if not _gpu_device_present():
         return ["CPUExecutionProvider"]
     candidates: list[_Provider] = []
     for _p in ("ROCMExecutionProvider", "MIGraphXExecutionProvider", "CUDAExecutionProvider"):

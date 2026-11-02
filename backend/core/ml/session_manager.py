@@ -207,6 +207,19 @@ class InferenceSessionManager:
         # Provider-Präferenz: CUDA > ROCm > CoreML > CPU
         providers = ort.get_available_providers()
         logger.debug("ONNX-Provider verfügbar: %s", providers)
+        # §III.9 / §V6 (copilot-instructions.md): GPU-EPs nur bei echter, für den
+        # Prozess sichtbarer GPU. ort.get_available_providers() meldet ROCm/CUDA
+        # bereits build-seitig — bei per Env versteckter GPU (CUDA_VISIBLE_DEVICES/
+        # HIP_VISIBLE_DEVICES) abortet ORT nativ (HIP failure 100: no ROCm-capable
+        # device). Ohne sichtbares Gerät wird deshalb CPU erzwungen.
+        try:
+            from backend.core.gpu_model_registry import _gpu_device_present as _dev_present
+
+            if not _dev_present():
+                providers = ["CPUExecutionProvider"]
+                logger.debug("SessionManager: kein sichtbares GPU-Gerät → CPU-EP erzwungen")
+        except Exception:  # §V6 (copilot-instructions.md)
+            logger.debug("SessionManager: Geräte-Prüfung nicht verfügbar — Provider unverändert")
 
         sess_options = ort.SessionOptions()
         sess_options.graph_optimization_level = ort.GraphOptimizationLevel.ORT_ENABLE_ALL
