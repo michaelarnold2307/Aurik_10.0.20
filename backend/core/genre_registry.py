@@ -39,6 +39,7 @@ from typing import Any
 
 __all__ = [
     "CANONICAL_GENRES",
+    "GENRE_ADAPTIVE_FACTORS",
     "GenreResolution",
     "delta_key",
     "goal_profile_key",
@@ -49,6 +50,39 @@ __all__ = [
     "resolve_genre",
     "semantic_hint_label",
 ]
+
+# §G9 (copilot-instructions.md): Zentrale genre-adaptive Kalibrierung (Single
+# Source of Truth) für die Restaurierungs-Stärkefaktoren. Ein kanonischer
+# Genre-Schlüssel (nach normalize_genre) → Faktoren; nicht genannte Faktoren
+# bleiben 1.0. Werte = die zuvor inline in unified_restorer_v3.py verstreuten
+# Literale — bit-identisch (§G5 (copilot-instructions.md)) hierher gehoben:
+# eine dokumentierte Stelle statt verstreuter Magic Numbers. Faktoren wirken
+# als Multiplikatoren auf die Phasen-Stärke: reverb = Dereverb-Druck,
+# dynamics = Kompressions-/EQ-Druck, transient = Transienten-Integrität,
+# denoise = Rauschreduzierungs-Druck, vocal = Vokalprominenz-Boost.
+# Oper = Klassik-Basis + Vokal-Boost.
+GENRE_ADAPTIVE_FACTORS: dict[str, dict[str, float]] = {
+    "klassik": {"reverb": 0.80, "dynamics": 0.85, "transient": 1.05, "denoise": 0.92},
+    "oper": {"reverb": 0.80, "dynamics": 0.85, "transient": 1.05, "denoise": 0.92, "vocal": 1.08},
+    "jazz": {"reverb": 0.85, "dynamics": 0.88, "transient": 1.02},
+    "rock": {"transient": 1.05, "denoise": 0.95},
+    "metal": {"transient": 1.08, "reverb": 0.90, "denoise": 0.95},
+    "electronic": {"dynamics": 0.80, "transient": 1.03, "denoise": 0.92, "reverb": 0.75},
+    "hip-hop": {"dynamics": 0.80, "transient": 1.03, "denoise": 0.92, "reverb": 0.75},
+    "hiphop": {"dynamics": 0.80, "transient": 1.03, "denoise": 0.92, "reverb": 0.75},
+    "pop": {"dynamics": 0.90, "reverb": 0.90, "denoise": 0.93},
+    "soul/r&b": {"reverb": 0.85, "dynamics": 0.92, "vocal": 1.05},
+    "soul": {"reverb": 0.85, "dynamics": 0.92, "vocal": 1.05},
+    "r&b": {"reverb": 0.85, "dynamics": 0.92, "vocal": 1.05},
+    "soul_rnb": {"reverb": 0.85, "dynamics": 0.92, "vocal": 1.05},
+    "blues": {"denoise": 0.92, "transient": 1.03, "reverb": 0.88},
+    "country": {"reverb": 0.85, "transient": 1.04},
+    "folk": {"reverb": 0.83, "denoise": 0.90},
+    "reggae": {"reverb": 0.55, "transient": 0.97},
+    "latin": {"transient": 1.05, "reverb": 0.88},
+    "funk": {"transient": 1.06, "dynamics": 0.93},
+    "gospel": {"reverb": 0.65, "vocal": 1.05},
+}
 
 # ---------------------------------------------------------------------------
 # Kanonische Genre-Menge

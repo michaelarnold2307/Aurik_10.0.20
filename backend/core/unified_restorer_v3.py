@@ -3309,99 +3309,25 @@ class UnifiedRestorerV3:
         # Die Zweige unten prüfen dadurch kanonische IDs statt Schreibvarianten —
         # "Soul/R&B"/"soul"/"r&b" und "Hip-Hop"/"hiphop" sind nicht mehr je ein
         # eigener Zweig, sondern ein kanonischer Schlüssel.
-        from backend.core.genre_registry import normalize_genre as _normalize_genre
+        from backend.core.genre_registry import (
+            GENRE_ADAPTIVE_FACTORS,
+        )
+        from backend.core.genre_registry import (
+            normalize_genre as _normalize_genre,
+        )
 
         _genre_canonical = _normalize_genre(genre_label)
         if _genre_canonical:
             _genre_label_l = _genre_canonical
-        if _genre_label_l in ("klassik", "oper"):
-            # Klassik/Oper: Raumklang ist Teil der Authentizität → Dereverb-Druck dämpfen.
-            _genre_reverb_factor = 0.80
-            # Orchesterdynamik bewahren → Kompression/EQ minimal.
-            _genre_dynamics_factor = 0.85
-            # Pizzicato-, Forte-Anschläge: Transient-Integrität wichtig.
-            _genre_transient_factor = 1.05
-            # Gemäßigte Rauschreduzierung (Rauschanteile tragen Raumgefühl).
-            _genre_denoise_factor = 0.92
-            if _genre_label_l == "oper":
-                # Oper: Vokalprominenz zusätzlich stärken (Formanten, Vibrato, Singformant).
-                _genre_vocal_factor = 1.08
-        elif _genre_label_l == "jazz":
-            # Jazz: Club-Raumatmosphäre + Swing-Dynamik bewahren.
-            _genre_reverb_factor = 0.85
-            _genre_dynamics_factor = 0.88
-            # Bass/Bläser/Schlagzeug-Transienten stärken.
-            _genre_transient_factor = 1.02
-        elif _genre_label_l == "rock":
-            # Rock: Schlagzeug-Punch + Power-Chord-Transienten.
-            _genre_transient_factor = 1.05
-            # Rock hat oft gewollte Sättigung → denoise konservativer.
-            _genre_denoise_factor = 0.95
-        elif _genre_label_l in ("metal",):
-            # Metal: Extremtransienten (Double-Bass, Gitarren-Attack) bewahren.
-            _genre_transient_factor = 1.08
-            # Gewollte Gainstruktur → kein aggressives Dereverb.
-            _genre_reverb_factor = 0.90
-            _genre_denoise_factor = 0.95
-        elif _genre_label_l in ("electronic", "hip-hop", "hiphop"):
-            # Electronic / Hip-Hop: absichtlich komprimiert und begrenzt produziert.
-            # Dynamik-Prozesse interpretieren legitime Limitierung als Defekt → dämpfen.
-            _genre_dynamics_factor = 0.80
-            # Sub-Bass-Transienten (808, Kick) sind genre-definierend → schonen.
-            _genre_transient_factor = 1.03
-            # Digitale Quellen: denoise eher konservativ (oft sauber produziert).
-            _genre_denoise_factor = 0.92
-            # Dereverb: Producer-Raum ist Intention, nicht Defekt → stark dämpfen.
-            _genre_reverb_factor = 0.75
-        elif _genre_label_l == "pop":
-            # Pop: Modernes Studio-Finish, oft bereits sauber produziert.
-            # Artifizielle Komprimierung respektieren → Dynamik-Phasen gedämpft.
-            _genre_dynamics_factor = 0.90
-            # Pop-Mix-Reverb ist Produktion, kein Raumakustikartefakt → konservativ.
-            _genre_reverb_factor = 0.90
-            # Denoise nur wo nötig (Pop oft digitaler Ursprung).
-            _genre_denoise_factor = 0.93
-        elif _genre_label_l in ("soul/r&b", "soul", "r&b", "soul_rnb"):
-            # Soul/R&B: Warmer, intimer Raumklang durch Studiomischregel — bewahren.
-            _genre_reverb_factor = 0.85
-            # Dynamische Ausdruckskraft schützen (Vocal-Swells, Fade-Ins).
-            _genre_dynamics_factor = 0.92
-            # Vokalprominenz leicht steigern — Vokallinien sind Genre-definierend.
-            _genre_vocal_factor = 1.05
-        elif _genre_label_l in ("blues",):
-            # Blues: Röhrenverstärker-Sättigung + Slide-Transienten sind Klangidentität.
-            _genre_denoise_factor = 0.92
-            _genre_transient_factor = 1.03
-            # Club-Raumatmosphäre bewahren.
-            _genre_reverb_factor = 0.88
-        elif _genre_label_l in ("country",):
-            # Country: Nashville-Raumklang + akustische Transienten (Banjo, Flat-Pick).
-            _genre_reverb_factor = 0.85
-            _genre_transient_factor = 1.04
-        elif _genre_label_l in ("folk",):
-            # Folk: Minimale Produktion, natürlicher Raumklang eines kleinen Raums.
-            _genre_reverb_factor = 0.83
-            # Sehr natürlich → denoise sehr konservativ (Atemgeräusche, Saiten = Textur).
-            _genre_denoise_factor = 0.90
-        elif _genre_label_l in ("reggae",):
-            # Reggae: Hall + Echo sind ABSICHTLICHE ikonische Stilmittel (Dub, One-Drop).
-            # Aggressives Dereverb würde den Klang zerstören → sehr stark dämpfen.
-            _genre_reverb_factor = 0.55
-            # Laid-back One-Drop-Groove nicht verschärfen.
-            _genre_transient_factor = 0.97
-        elif _genre_label_l in ("latin",):
-            # Latin (Salsa, Bossa Nova, Cumbia): Rhythmische Transienten (Conga, Bongo, Claves).
-            _genre_transient_factor = 1.05
-            _genre_reverb_factor = 0.88
-        elif _genre_label_l in ("funk",):
-            # Funk: Groove-Präzision, Brass-Attacken, Slap-Bass-Transienten.
-            _genre_transient_factor = 1.06
-            _genre_dynamics_factor = 0.93
-        elif _genre_label_l in ("gospel",):
-            # Gospel: Kirchenhall ist Teil der Authentizität → Dereverb stark dämpfen.
-            _genre_reverb_factor = 0.65
-            # Chor-Vokalprominenz schützen.
-            _genre_vocal_factor = 1.05
+        # §G9 (copilot-instructions.md): zentrale genre-adaptive Regel (Single
+        # Source in backend/core/genre_registry.py) statt Inline-Literale.
+        _genre_gf = GENRE_ADAPTIVE_FACTORS.get(_genre_label_l, {})
+        _genre_reverb_factor = float(_genre_gf.get("reverb", 1.0))
+        _genre_dynamics_factor = float(_genre_gf.get("dynamics", 1.0))
+        _genre_transient_factor = float(_genre_gf.get("transient", 1.0))
+        _genre_denoise_factor = float(_genre_gf.get("denoise", 1.0))
+        _genre_vocal_factor = float(_genre_gf.get("vocal", 1.0))
+
         _snr_val_for_fragile = _snr  # für §2.15 Fragile-Material-Guard
         _bw_loss_sev = float(defect_scores.get("bandwidth_loss", 0.0)) if isinstance(defect_scores, dict) else 0.0
         _global = 1.0
