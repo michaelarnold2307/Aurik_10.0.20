@@ -585,9 +585,14 @@ class AdvancedDereverbPhase(PhaseInterface):
                 "Verarbeitungsschritt 49: SGMSE+ (Sprach-Core) ohne Musik-Finetune gesperrt → WPE-DSP "
                 "(§v10.16/F7; §V1 (copilot-instructions.md))"
             )
+        # §V7 (copilot-instructions.md): Kontrollfluss NICHT über Ausnahmen.
+        # Früher: raise ImportError("short-signal-skip") — propagierte unhandled aus
+        # restore() statt intern zur WPE-DSP-Routine zu springen. Jetzt sauberer
+        # Verzweigungs-Kontrollfluss: Skip-Flag steuert die SGMSE-ML-Verarbeitung.
+        _sgmse_skip_49 = bool(_sgmse_skipped_short or _sgmse_flag_locked)
+        if _sgmse_skip_49:
+            logger.debug("Verarbeitungsschritt 49: kurzes Signal/SGMSE gesperrt → WPE-DSP direkt")
         try:
-            if _sgmse_skipped_short or _sgmse_flag_locked:
-                raise ImportError("short-signal-skip")  # → WPE-DSP direkt
             from backend.core.ml_memory_budget import (  # pylint: disable=import-outside-toplevel
                 release as _release_49,
             )
@@ -598,7 +603,7 @@ class AdvancedDereverbPhase(PhaseInterface):
                 get_sgmse_plus_plugin as _sgmse_factory_49,
             )
 
-            if _alloc_49("SGMSE+_phase49", 0.25):
+            if not _sgmse_skip_49 and _alloc_49("SGMSE+_phase49", 0.25):
                 try:
                     _plm49 = None
                     try:
