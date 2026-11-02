@@ -151,6 +151,63 @@ def _gpu_device_present() -> bool:
     return present
 
 
+_ort_guard_installed = False
+
+
+def install_onnx_gpu_guard() -> None:
+    """Globaler ORT-GPU-Guard (§III.9/§V6 (copilot-instructions.md)).
+
+    Patcht ``onnxruntime.InferenceSession`` so, dass GPU-EPs (ROCM/CUDA/MIGraphX/
+    Tensorrt) entfernt werden, wenn keine echte sichtbare GPU existiert. Deckt ALLE
+    Aufrufstellen ab (Plugins, ml_device_manager, onnx/runtime) — nicht nur die
+    zentralen. Idempotent. Produktionsbefund: ORT's ROCm-EP abortet nativ
+    (HIP failure 100) auf per Env versteckter GPU, wenn GPU-EP ohne Gerät
+    angefordert wird.
+    """
+    global _ort_guard_installed
+    if _ort_guard_installed:
+        return
+    try:
+        import onnxruntime as ort
+
+        _orig = ort.InferenceSession
+        _GPU_EPS = {
+            "ROCMExecutionProvider",
+            "CUDAExecutionProvider",
+            "MIGraphXExecutionProvider",
+            "TensorrtExecutionProvider",
+        }
+
+        def _ep_name(p) -> str:
+            return str(p[0]) if isinstance(p, tuple) else str(p)
+
+        def _guarded(*args, **kwargs):
+            providers = kwargs.get("providers")
+            if providers is None:
+                for _a in args[1:]:  # positional: (path, sess_options, providers, ...)
+                    if isinstance(_a, (list, tuple)):
+                        providers = _a
+                        break
+            if providers is not None and not _gpu_device_present():
+                kept = [p for p in providers if _ep_name(p) not in _GPU_EPS] or ["CPUExecutionProvider"]
+                kwargs["providers"] = kept
+                args = tuple(a for a in args if a is not providers)  # Doppel-Arg vermeiden
+            return _orig(*args, **kwargs)
+
+        ort.InferenceSession = _guarded
+        _ort_guard_installed = True
+    except Exception as _guard_exc:  # §V6 (copilot-instructions.md)
+        logger.warning(
+            "§V6 (copilot-instructions.md): ORT-GPU-Guard nicht installierbar (%s: %s) — GPU-EPs bleiben ungeschützt",
+            type(_guard_exc).__name__,
+            _guard_exc,
+        )
+
+
+# Beim Import installieren — deckt alle späteren ort.InferenceSession-Aufrufe ab.
+install_onnx_gpu_guard()
+
+
 def apply_gpu_policy(providers: Sequence[_Provider], model_path: str | Path) -> list[_Provider]:
     """Wendet die Registry auf die Provider-Liste an (nie GPU-Hinzufügen bei CPU-only).
 

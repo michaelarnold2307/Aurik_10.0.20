@@ -771,7 +771,18 @@ class MLDeviceManager:
             import onnxruntime as ort  # type: ignore[import]
 
             providers = ort.get_available_providers()
-            if "ROCMExecutionProvider" in providers:
+            # §III.9 / §V6 (copilot-instructions.md): get_available_providers() meldet
+            # ROCm bereits BUILD-seitig — auch OHNE sichtbares Gerät. GPU darf nur
+            # bei echter, sichtbarer GPU zugewiesen werden (sonst späterer ORT-ROCm-
+            # Abort: HIP failure 100 auf per Env versteckter GPU). Genau dieser
+            # Fallback läuft, wenn torch.cuda.is_available() False liefert.
+            try:
+                from backend.core.gpu_model_registry import _gpu_device_present as _dev_ok
+
+                _has_dev = _dev_ok()
+            except Exception:  # §V6 (copilot-instructions.md)
+                _has_dev = True
+            if "ROCMExecutionProvider" in providers and _has_dev:
                 self._backend = GPUBackend.ROCM
                 self._torch_gpu_device = "cpu"
                 self._ort_gpu_providers = ["ROCMExecutionProvider", "CPUExecutionProvider"]
