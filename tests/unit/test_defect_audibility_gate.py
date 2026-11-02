@@ -12,10 +12,17 @@ import pytest
 from backend.core.defect_audibility_gate import (
     AUDIBLE_BASE,
     MATERIAL_JND_OFFSET,
+    STRENGTH_CEIL,
+    STRENGTH_FLOOR,
     DefectAudibilityReport,
+    MaskingStrengthDecision,
     audible_threshold,
     canonical_audibility_verdicts,
     evaluate_defect_audibility,
+    is_fully_masked,
+    masking_governed_strength,
+    masking_governed_strength_from_report,
+    target_residual_severity,
 )
 
 
@@ -294,3 +301,80 @@ class TestCanonicalConsolidation:
         audio = self._masked_burst_signal(0.01)
         out = canonical_audibility_verdicts(audio, self.SR, {"wow": [(1.0, 1.03)]}, types=["wow"])
         assert out == {}
+
+
+class TestMaskingGovernedStrength:
+    """Maskierungsgesteuerte Stärke (§V7 (copilot-instructions.md), Hörordnung §4): knapp unter Schwelle
+    statt Mess-Null; Do-no-harm sobald alles maskiert."""
+
+    def test_target_below_threshold_not_zero(self) -> None:
+        thr = audible_threshold("vinyl", 1)
+        tgt = target_residual_severity("vinyl", 1)
+        assert 0.0 < tgt < thr  # knapp UNTER der Schwelle, nie Mess-Null
+
+    def test_all_masked_returns_floor_and_skip(self) -> None:
+        d = masking_governed_strength({"clicks": 0.01, "hiss": 0.02}, "vinyl", 1)
+        assert d.skip is True
+        assert d.strength == STRENGTH_FLOOR
+        assert d.binding_type == ""
+
+    def test_far_above_threshold_uses_high_strength(self) -> None:
+        near = masking_governed_strength({"clicks": 0.085}, "vinyl", 1)
+        far = masking_governed_strength({"clicks": 0.55}, "vinyl", 1)
+        assert near.skip is False and far.skip is False
+        assert far.strength > near.strength  # weiter weg → mehr Stärke
+        assert far.binding_type == "clicks"
+
+    def test_strength_within_contract_bounds(self) -> None:
+        for sev in (0.06, 0.2, 0.5, 0.9, 1.0):
+            d = masking_governed_strength({"clicks": sev}, "shellac", 3)
+            assert STRENGTH_FLOOR <= d.strength <= STRENGTH_CEIL
+
+    def test_masked_type_does_not_drive_strength(self) -> None:
+        d = masking_governed_strength({"clicks": 0.55}, "vinyl", 1, masked_types={"clicks"})
+        assert d.skip is True and d.strength == STRENGTH_FLOOR
+
+    def test_physical_cap_does_not_drive_strength(self) -> None:
+        d = masking_governed_strength({"bandwidth_loss": 0.9}, "vinyl", 1)
+        assert d.skip is True and d.strength == STRENGTH_FLOOR
+
+    def test_non_finite_is_safe(self) -> None:
+        for bad in (float("nan"), float("inf"), float("-inf")):
+            d = masking_governed_strength({"clicks": bad}, "vinyl", 1)
+            assert d.skip is True and d.strength == STRENGTH_FLOOR
+
+    def test_deterministic(self) -> None:
+        a = masking_governed_strength({"clicks": 0.4, "pops": 0.2}, "vinyl", 2)
+        b = masking_governed_strength({"clicks": 0.4, "pops": 0.2}, "vinyl", 2)
+        assert a == b
+
+    def test_is_fully_masked_consistent_with_decision(self) -> None:
+        assert is_fully_masked({"clicks": 0.01}, "vinyl", 1) is True
+        assert is_fully_masked({"clicks": 0.5}, "vinyl", 1) is False
+
+    def test_from_report_treats_resolved_as_non_binding(self) -> None:
+        rep = DefectAudibilityReport(
+            threshold=audible_threshold("vinyl", 1),
+            material_key="vinyl",
+            chain_depth=1,
+            per_type={
+                "clicks": {"pre": 0.2, "post": 0.005, "status": "resolved"},
+                "hiss": {"pre": 0.2, "post": 0.01, "status": "masked"},
+            },
+        )
+        d = masking_governed_strength_from_report(rep)
+        assert isinstance(d, MaskingStrengthDecision)
+        assert d.skip is True and d.strength == STRENGTH_FLOOR
+
+    def test_from_report_driven_by_audible_type(self) -> None:
+        rep = DefectAudibilityReport(
+            threshold=audible_threshold("vinyl", 1),
+            material_key="vinyl",
+            chain_depth=1,
+            per_type={
+                "clicks": {"pre": 0.5, "post": 0.5, "status": "audible"},
+                "hiss": {"pre": 0.2, "post": 0.01, "status": "masked"},
+            },
+        )
+        d = masking_governed_strength_from_report(rep)
+        assert d.skip is False and d.binding_type == "clicks"

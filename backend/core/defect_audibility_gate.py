@@ -574,3 +574,170 @@ def rescan_below_masking_threshold(
     except Exception as exc:  # §V6 (copilot-instructions.md)
         logger.warning("Re-scan-Gate Ersatzpfad: %s", exc)
         return True
+
+
+# --- Maskierungsgesteuerte Restaurierungsstärke (§V7 (copilot-instructions.md)) ---
+# Hörordnung §4: "Reparatur gilt als abgeschlossen, wenn ein Defekt unter der
+# Maskierungsschwelle liegt - nicht wenn sein Messwert Null ist." Daraus folgt
+# die Stärke-Regel: NICHT bis Mess-Null verarbeiten (kein Über-Restaurieren,
+# kein "Plastik-Sound"), sondern nur so weit, bis der Rest knapp UNTER der
+# Schwelle liegt. Der Ziel-Rest liegt mit _MASKING_SAFETY_MARGIN unter der
+# JND-Schwelle. Die Stärke wird ZENTRAL als eine Skalar-Komponente für
+# global_scalar geliefert (keine phasen-individuellen Schwellen, §V7 (copilot-instructions.md)).
+#
+# Hinweis zum "Aufhören": global_scalar ist vertraglich auf [0.50, 1.50]
+# festgelegt (RELEASE_MUST-Assert) und darf NICHT 0 werden. "Nichts mehr tun"
+# wird deshalb als separates Skip-Signal (MaskingStrengthDecision.skip) geführt
+# und vom Aufrufer als Phasen-Überspringung umgesetzt (phase_skipping).
+_MASKING_SAFETY_MARGIN = 0.8
+_SEVERITY_FLOOR = 0.0
+# global_scalar-Vertrag ist [0.50, 1.50]. Maskierung begrenzt nach Bedarf:
+# 0.50 = kein hörbarer Restbedarf (Ruhe), 1.0 = volle Stärke für Restdefekte
+# deutlich über der Schwelle.
+STRENGTH_FLOOR = 0.50
+STRENGTH_CEIL = 1.0
+
+
+@dataclass
+class MaskingStrengthDecision:
+    """Maskierungsgesteuerte Stärke-Entscheidung (zentral, §V7 (copilot-instructions.md))."""
+
+    strength: float  # global_scalar-Komponente in [STRENGTH_FLOOR, STRENGTH_CEIL]
+    skip: bool  # True = Do-no-harm: nicht weiter verarbeiten (alles maskiert)
+    binding_type: str  # Defekttyp, der die Stärke bestimmt ("" wenn keiner)
+    target_severity: float  # angestrebte Rest-Severity (knapp unter Schwelle)
+    threshold: float  # verwendete JND-Schwelle
+
+
+def target_residual_severity(
+    material_key: str,
+    chain_depth: int = 1,
+    margin: float = _MASKING_SAFETY_MARGIN,
+) -> float:
+    """Angestrebte Rest-Severity: knapp UNTER der Maskierungsschwelle.
+
+    Statt Mess-Null (0.0) wird als Ziel der knapp unter der material-/ketten-
+    adaptiven JND-Schwelle liegende Rest gesetzt - das ist der Punkt, an dem
+    die Reparatur fürs Ohr abgeschlossen ist (Hörordnung §4).
+    """
+    thr = audible_threshold(material_key, chain_depth)
+    return float(max(_SEVERITY_FLOOR, thr * margin))
+
+
+def masking_governed_strength(
+    current_severities: dict[str, float],
+    material_key: str = "vinyl",
+    chain_depth: int = 1,
+    masked_types: set[str] | frozenset[str] | None = None,
+    margin: float = _MASKING_SAFETY_MARGIN,
+) -> MaskingStrengthDecision:
+    """Zentrale maskierungsgesteuerte Stärke-Vorgabe (§V7 (copilot-instructions.md) via global_scalar).
+
+    Regel (Hörordnung §4): Sobald ein Restdefekt unter der Maskierungsschwelle
+    liegt, wird nicht weiter an ihm verarbeitet (Do-no-harm, skip). Liegt ein
+    Defekt darüber, wird nur so stark verarbeitet, bis er knapp unter die
+    Schwelle fällt - nie bis Mess-Null (kein Über-Restaurieren).
+
+    Verfahren: pro Typ wird der noch nötige Anteil der Reduktion bis zum Ziel
+    ``frac = (cur - target) / (cur - floor)`` gebildet; maßgeblich ist der
+    anspruchsvollste nicht-maskierte Typ (Bindungs-Constraint), da global_scalar
+    zentral eine Größe bleibt (§V7). Deterministisch (§G5 (copilot-instructions.md)),
+    NaN/Inf-sicher (§0a (copilot-instructions.md)).
+
+    Returns:
+        MaskingStrengthDecision: strength in [STRENGTH_FLOOR, STRENGTH_CEIL]
+        (Rückgabe-Komponente für global_scalar), skip=True wenn nichts mehr
+        hörbar zu tun ist, binding_type = treibender Defekttyp.
+    """
+    masked = set(masked_types or ())
+    thr = audible_threshold(material_key, chain_depth)
+    target = target_residual_severity(material_key, chain_depth, margin)
+
+    best_frac = 0.0
+    binding = ""
+    needs_work = False
+    for dt, cur in (current_severities or {}).items():
+        key = str(dt).lower()
+        # Physikalische Obergrenze (z. B. bandwidth_loss): kein Nachbehandlungs-
+        # spielraum - treibt die Stärke nicht an (kein sinnloser Aufwand).
+        if key in PHYSICAL_CAP_DEFECT_TYPES:
+            continue
+        # ERB-/kanonisch maskierte Defekte nicht antasten (Do-no-harm).
+        if key in masked:
+            continue
+        try:
+            c = float(cur)
+        except (TypeError, ValueError):
+            continue
+        if not math.isfinite(c):  # §0a (copilot-instructions.md)
+            continue
+        if c <= target:
+            continue  # bereits knapp unter Ziel → kein Bedarf
+        denom = c - _SEVERITY_FLOOR
+        frac = (c - target) / denom if denom > 1e-9 else 1.0
+        frac = min(1.0, max(0.0, frac))
+        if frac >= best_frac:
+            best_frac = frac
+            binding = key
+        needs_work = True
+
+    strength = STRENGTH_FLOOR + best_frac * (STRENGTH_CEIL - STRENGTH_FLOOR)
+    strength = float(min(STRENGTH_CEIL, max(STRENGTH_FLOOR, strength)))
+    return MaskingStrengthDecision(
+        strength=strength,
+        skip=not needs_work,
+        binding_type=binding,
+        target_severity=target,
+        threshold=thr,
+    )
+
+
+def is_fully_masked(
+    current_severities: dict[str, float],
+    material_key: str = "vinyl",
+    chain_depth: int = 1,
+    masked_types: set[str] | frozenset[str] | None = None,
+    margin: float = _MASKING_SAFETY_MARGIN,
+) -> bool:
+    """True wenn jeder Restdefekt unter der Maskierungsschwelle liegt.
+
+    Do-no-harm-Signal für den Aufrufer: bei True keine weitere Restaurierung
+    anstoßen (die Stärke allein darf wegen des global_scalar-Vertrags [0.50, 1.50]
+    nicht auf 0 gehen).
+    """
+    return masking_governed_strength(
+        current_severities=current_severities,
+        material_key=material_key,
+        chain_depth=chain_depth,
+        masked_types=masked_types,
+        margin=margin,
+    ).skip
+
+
+def masking_governed_strength_from_report(
+    report: DefectAudibilityReport,
+    margin: float = _MASKING_SAFETY_MARGIN,
+) -> MaskingStrengthDecision:
+    """Komfort-Wrapper: Stärke-Entscheidung aus einem Gate-Report (§v10.702).
+
+    Zieht pro Typ die Rest-Severity (``post``) heran und behandelt die Status
+    ``masked``/``physical_cap``/``never_audible``/``resolved`` als nicht treibend.
+    """
+    masked: set[str] = set()
+    currents: dict[str, float] = {}
+    for dt, info in (getattr(report, "per_type", None) or {}).items():
+        key = str(dt).lower()
+        if not isinstance(info, dict):
+            continue
+        status = str(info.get("status", "")).lower()
+        if status in ("masked", "physical_cap", "never_audible", "resolved"):
+            masked.add(key)
+            continue
+        currents[key] = float(info.get("post", info.get("post_severity", 0.0)) or 0.0)
+    return masking_governed_strength(
+        current_severities=currents,
+        material_key=getattr(report, "material_key", "vinyl"),
+        chain_depth=int(getattr(report, "chain_depth", 1) or 1),
+        masked_types=masked,
+        margin=margin,
+    )

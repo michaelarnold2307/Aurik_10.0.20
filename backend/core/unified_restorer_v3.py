@@ -23735,6 +23735,35 @@ class UnifiedRestorerV3:
                 post_scan_ran=_post_defect_result is not None,
             )
             log_audibility_report(_ag_report)
+            # §Hörordnung §4 / §V7 (copilot-instructions.md): maskierungs-
+            # gesteuerte Stärke. Ziel-Rest-Severity liegt knapp UNTER der
+            # Maskierungsschwelle (nicht Mess-Null) → kein Über-Restaurieren
+            # (kein "Plastik-Sound"). Aus dem Gate-Report wird die zentrale
+            # Stärke-Vorgabe für die Stufe-2-Nachbehandlung abgeleitet: nur so
+            # stark, bis der Rest unter die Schwelle fällt. Do-no-harm: sind
+            # alle Restdefekte maskiert, wird keine Stärke mehr investiert.
+            try:
+                from backend.core.defect_audibility_gate import (
+                    masking_governed_strength_from_report as _mask_strength,
+                )
+
+                _msd = _mask_strength(_ag_report)
+                if isinstance(_flow_meta, dict):
+                    _flow_meta["masking_governed_strength"] = float(_msd.strength)
+                    _flow_meta["masking_governed_skip"] = bool(_msd.skip)
+                    _flow_meta["masking_governed_binding_type"] = str(_msd.binding_type)
+                if _msd.skip:
+                    logger.info(
+                        "§Hörbarkeits-Gate maskierungsgesteuert: alle Restdefekte unter "
+                        "Maskierungsschwelle → keine weitere Nachbehandlung (Do-no-harm)",
+                    )
+            except Exception as _ms_err:  # §V6 (copilot-instructions.md)
+                logger.warning(
+                    "§V6 (copilot-instructions.md) maskierungsgesteuerte Stärke nicht "
+                    "verfügbar (%s: %s) — Nachbehandlung mit Standard-Stärke",
+                    type(_ms_err).__name__,
+                    _ms_err,
+                )
             # §2.46g (2026-09-06): Gate-Befund für die Endverdikt-Kopplung ablegen —
             # ein nicht bestandenes Hörbarkeits-Gate mit n_audible_unmasked > 0
             # degradiert QUALITY-GUARANTEED-Verdikte (siehe MQA-Kopplung).
