@@ -640,6 +640,87 @@ SEVERITY_RAW_IMPULSIVE_MIN = 0.5  # rohe Severity über dieser Schwelle = impuls
 KURTOSIS_GAUSSIAN_DEFAULT = 3.0  # Gauß-Default (sicherer Fallback)
 
 
+# Defekt-CRNN (Challenger, hinter use_defect_crnn, Default AUS). Multi-label
+# Defekt-Wahrscheinlichkeiten aus dem Log-Mel-Spektrogramm (88.6% Hamming,
+# gemessen). §V6 (copilot-instructions.md): bei Fehlern/ohne Modell → None
+# (handgebaute _detect_*-Routinen bleiben).
+_DEFECT_CRNN_MODEL = None
+_DEFECT_CRNN_LOADED = False
+_DEFECT_CRNN_LABELS = ("clicks", "crackle", "hum", "wow", "pops", "hiss", "none")
+
+
+def _load_defect_crnn():
+    global _DEFECT_CRNN_MODEL, _DEFECT_CRNN_LOADED
+    if _DEFECT_CRNN_LOADED:
+        return _DEFECT_CRNN_MODEL
+    _DEFECT_CRNN_LOADED = True
+    try:
+        from pathlib import Path as _P
+
+        import torch
+
+        from backend.models.de_crackle.train_defect_crnn import DefectCRNN
+
+        _p = _P("models/defect_crnn.pt")
+        if not _p.exists():
+            return None
+        _ck = torch.load(_p, map_location="cpu", weights_only=False)
+        _m = DefectCRNN(len(_DEFECT_CRNN_LABELS))
+        _m.load_state_dict(_ck["state_dict"])
+        _m.eval()
+        _DEFECT_CRNN_MODEL = _m
+    except Exception as _e:  # §V6 (copilot-instructions.md)
+        logger.warning("Defekt-CRNN nicht geladen: %s", _e)
+        _DEFECT_CRNN_MODEL = None
+    return _DEFECT_CRNN_MODEL
+
+
+def _defect_crnn_predict(audio: np.ndarray, sr: int) -> dict[str, float] | None:
+    """{defect: wahrscheinlichkeit} (multi-label sigmoid). None bei Fehlern."""
+    try:
+        import torch
+
+        from backend.models.de_crackle.train_defect_crnn import _logmel
+
+        _m = _load_defect_crnn()
+        if _m is None:
+            return None
+        _mono = np.mean(audio, axis=-1 if audio.shape[-1] <= 2 else 0) if audio.ndim > 1 else audio
+        _x = _logmel(_mono, sr)
+        with torch.no_grad():
+            _p = torch.sigmoid(_m(torch.tensor(_x[None, None], dtype=torch.float32)))[0]
+        return {str(_d): float(_v) for _d, _v in zip(_DEFECT_CRNN_LABELS, _p.tolist())}
+    except Exception:  # §V6 (copilot-instructions.md)
+        return None
+
+
+def _defect_crnn_challenger(scores, audio: np.ndarray, sr: int):
+    """Defekt-CRNN Challenger (hinter use_defect_crnn, Default AUS).
+
+    Setzt die Severity je Defekt-Typ aus der CRNN-Wahrscheinlichkeit (multi-label).
+    §V6 (copilot-instructions.md): bei Fehlern/ohne Modell → scores unverändert.
+    Default AUS = bit-identisch.
+    """
+    try:
+        from backend.core.music_model_flags import use_defect_crnn as _crnn_on
+
+        if not _crnn_on:
+            return scores
+        _probs = _defect_crnn_predict(audio, sr)
+        if not _probs:
+            return scores
+        import dataclasses
+
+        _out = dict(scores)
+        for _dt, _sc in list(scores.items()):
+            _key = str(getattr(_dt, "value", _dt)).lower()
+            if _key in _probs:
+                _out[_dt] = dataclasses.replace(_sc, severity=float(_probs[_key]))
+        return _out
+    except Exception:  # §V6 (copilot-instructions.md)
+        return scores
+
+
 class DefectScanner:
     """
     Hauptklasse für Defekt-Erkennung in Aurik 10.0.0.
@@ -3389,6 +3470,8 @@ class DefectScanner:
                 logger.debug("Chain-Stufe annotation fehlgeschlagen: %s", _cann_exc)
 
         _prog(100)
+        # §D-K1-3 (copilot-instructions.md) Phase F: Defekt-CRNN Challenger (hinter use_defect_crnn, Default AUS).
+        scores = _defect_crnn_challenger(scores, audio, sr)
         _scan_result = DefectAnalysisResult(
             material_type=material_type,
             scores=scores,
