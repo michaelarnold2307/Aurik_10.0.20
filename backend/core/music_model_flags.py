@@ -71,6 +71,9 @@ use_tp_v2_phase: bool = False  # SOTA-M12 (D-K4-8): TP-V2-Klassen-Phasenschätzu
 # Material (Percussion ohne Kammfilter-Artefakte) + Hörordnungs-Sign-off (§v10.802
 # copilot-instructions.md). False ⇒ keine Verhaltensänderung.
 use_material_crnn: bool = False  # D-K1-3 Phase D: CRNN-Material-Classifier (models/material_crnn.pt) als Challenger zum Gauss/Mixture-Pfad. Default AUS. Gelernte Spektrogramm-Repraesentation: 95.3% vs. 59-63% (gemessen).
+use_era_crnn: bool = False  # D-K1-3 Phase E: CRNN-Era-Classifier (models/era_crnn.pt) als Challenger zur Dekaden-Heuristik. Default AUS. 98% Dekade exakt (gemessen).
+use_defect_crnn: bool = False  # Phase F: Defekt-CRNN multi-label (models/defect_crnn.pt) als Challenger zu den _detect_*-Routinen. Default AUS. 88.6% Hamming (gemessen).
+use_loudness_dpn: bool = False  # F002: Loudness-DPN (models/loudness_dpn.pt) als Challenger zur Schwellwert-/Zielwert-Logik. Default AUS. MAE LUFS 2.46 dB (gemessen).
 use_rt60_regressor: bool = False  # SOTA-M15 (KP-10): RT60-Regressor auf RIR-Paaren als
 # Ersatz des konservativen T60-Witness-Caps (phase_20/49). Aktivierung erst nach Gate auf
 # RIR-Referenzmaterial + Hörordnungs-Sign-off (§v10.802 copilot-instructions.md).
