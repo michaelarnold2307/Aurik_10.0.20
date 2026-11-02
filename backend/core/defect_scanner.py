@@ -626,6 +626,20 @@ def _uniform_smooth(x: np.ndarray, size: int, mode: str = "same") -> np.ndarray:
     return out
 
 
+# §D-K1-3 (copilot-instructions.md) / Naht 3: zentrale, dokumentierte Detektions-
+# Schwellen (Single Source) statt verstreuter Magic Numbers. Werte unverändert
+# (bit-identisch, §G5 (copilot-instructions.md)).
+# HF-Remanence-Detektion: Impuls- (Crackle) vs. tonal/dicht (kein Crackle).
+HF_IMPULSE_MULTIPLIER = 6.0  # Impuls-Schwelle: max(p95 * M, std * M)
+HF_PEAK_RATIO_TONAL_MAX = 3.0  # peak_ratio < 3.0 → tonal (nicht impulsiv)
+HF_SPARSE_IMPULSE_RATE_MAX = 0.0008  # rate < 0.0008 → dichte Textur (nicht-sparse)
+KURTOSIS_TONAL_MAX = 4.0  # kurtosis < 4.0 → tonal/gaussch (nicht Crackle)
+KURTOSIS_IMPULSIVE_MIN = 6.0  # kurtosis >= 6.0 → impulsiv (Crackle)
+KURTOSIS_DISCOUNT_FLOOR = 0.1  # Untergrenze des linearen kurtosis-Discounts
+SEVERITY_RAW_IMPULSIVE_MIN = 0.5  # rohe Severity über dieser Schwelle = impulsiv
+KURTOSIS_GAUSSIAN_DEFAULT = 3.0  # Gauß-Default (sicherer Fallback)
+
+
 class DefectScanner:
     """
     Hauptklasse für Defekt-Erkennung in Aurik 10.0.0.
@@ -4454,7 +4468,7 @@ class DefectScanner:
         # Crackle is impulsive → high kurtosis (>> 3.0 for Gaussian).
         # Tonal HF (cymbals, synths, sibilants) has near-sinusoidal distribution
         # → kurtosis ≈ 1.5 (pure sine) to 3.0 (Gaussian noise).
-        hp_kurtosis = 3.0  # Gaussian default (safe fallback)
+        hp_kurtosis = KURTOSIS_GAUSSIAN_DEFAULT  # Gaussian default (safe fallback)
         hp_std = float(np.std(audio_hp))
         if hp_std > 1e-8:
             hp_mean = float(np.mean(audio_hp))
@@ -4467,21 +4481,27 @@ class DefectScanner:
             hp_p95 = float(np.percentile(hp_abs, 95)) + 1e-12
             hp_p999 = float(np.percentile(hp_abs, 99.9))
             peak_ratio = hp_p999 / hp_p95
-            sparse_impulse_rate = float(np.mean(hp_abs > max(hp_p95 * 6.0, hp_std * 6.0)))
+            sparse_impulse_rate = float(
+                np.mean(hp_abs > max(hp_p95 * HF_IMPULSE_MULTIPLIER, hp_std * HF_IMPULSE_MULTIPLIER))
+            )
 
-        tonal_or_dense_hf = bool(peak_ratio < 3.0 and sparse_impulse_rate < 0.0008)
+        tonal_or_dense_hf = bool(
+            peak_ratio < HF_PEAK_RATIO_TONAL_MAX and sparse_impulse_rate < HF_SPARSE_IMPULSE_RATE_MAX
+        )
 
         kurtosis_discount = 1.0
-        if hp_kurtosis < 4.0:
+        if hp_kurtosis < KURTOSIS_TONAL_MAX:
             # Clearly tonal or Gaussian HF - NOT impulsive crackle.
             # Hard cap severity to near-zero regardless of energy ratio.
             kurtosis_discount = 0.0
-        elif hp_kurtosis < 6.0:
+        elif hp_kurtosis < KURTOSIS_IMPULSIVE_MIN:
             # Borderline zone - scale linearly
-            kurtosis_discount = max(0.1, (hp_kurtosis - 4.0) / 2.0)
+            kurtosis_discount = max(KURTOSIS_DISCOUNT_FLOOR, (hp_kurtosis - KURTOSIS_TONAL_MAX) / 2.0)
         # Kurtosis > 6 → impulsive, keep full weight
 
-        if tonal_or_dense_hf and not (severity_raw >= 0.5 and hp_kurtosis >= 6.0):
+        if tonal_or_dense_hf and not (
+            severity_raw >= SEVERITY_RAW_IMPULSIVE_MIN and hp_kurtosis >= KURTOSIS_IMPULSIVE_MIN
+        ):
             # §Spec 06 Route A / Hoer-Befund 2026-10-29: dichte Knistern-Textur
             # (Phase 67 CrackleTextureRemoval) ist dicht (sparse_impulse_rate
             # < 0.0008) UND impulsiv (hp_kurtosis >= 6) — tonal_or_dense_hf wuerde

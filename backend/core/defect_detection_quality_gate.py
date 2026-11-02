@@ -40,16 +40,27 @@ class DefectBenchmarkCaseResult:
     metadata: dict[str, Any] = field(default_factory=dict)
 
 
+# §v10.762 / D-K1-3 (copilot-instructions.md): zentrale, dokumentierte Release-
+# Schwellen für die Defekt-Detektions-Bereitschaft — eine Quelle statt verstreuter
+# Literale (Naht 3 Konsistenz, Single Source). Werte unverändert (bit-identisch, §G5 (copilot-instructions.md)).
+MIN_RECALL = 0.95
+MIN_PRECISION = 0.92
+MIN_MEAN_CONFIDENCE = 0.62
+MIN_LOCALITY_RECALL = 0.90
+MAX_FORBIDDEN_SEVERITY = 0.15
+MAX_RUNTIME_FACTOR = 1.20
+
+
 @dataclass(frozen=True)
 class DefectDetectionGateThresholds:
     """Release thresholds for defect-detection readiness."""
 
-    min_recall: float = 0.95
-    min_precision: float = 0.92
-    min_mean_confidence: float = 0.62
-    min_locality_recall: float = 0.90
-    max_forbidden_severity: float = 0.15
-    max_runtime_factor: float = 1.20
+    min_recall: float = MIN_RECALL
+    min_precision: float = MIN_PRECISION
+    min_mean_confidence: float = MIN_MEAN_CONFIDENCE
+    min_locality_recall: float = MIN_LOCALITY_RECALL
+    max_forbidden_severity: float = MAX_FORBIDDEN_SEVERITY
+    max_runtime_factor: float = MAX_RUNTIME_FACTOR
 
 
 @dataclass(frozen=True)
