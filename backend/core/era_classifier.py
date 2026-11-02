@@ -2280,6 +2280,8 @@ def classify_era(audio: np.ndarray, sr: int, transfer_chain: list[str] | None = 
     result = _clf.classify(audio, sr, transfer_chain=transfer_chain)
     # §v10.304: AST-Instrument-Constraints NACH DSP-Klassifikation anwenden
     result = _clf._apply_ast_constraints(audio, sr, result)
+    # §D-K1-3 (copilot-instructions.md) Phase E: CRNN-Era-Challenger (hinter use_era_crnn, Default AUS).
+    result = _era_crnn_challenger(audio, sr, result)
     return result
 
 
@@ -2418,3 +2420,87 @@ def constrain_era_to_medium(era_result: EraResult, medium: str) -> EraResult:
         hf_rolloff_hz=era_result.hf_rolloff_hz,
         is_remaster_suspected=era_result.is_remaster_suspected,
     )
+
+
+# §D-K1-3 (copilot-instructions.md) Phase E: CRNN-Era-Classifier (Challenger,
+# hinter use_era_crnn, Default AUS). Gelernte Dekaden-Repraesentation aus dem
+# Log-Mel-Spektrogramm statt heuristischer Bandbreiten-/SNR-Kaskade (98% Dekade
+# exakt, gemessen). §V6 (copilot-instructions.md): bei Fehlern/ohne Modell → None
+# (heuristischer Pfad bleibt).
+_ERA_CRNN_MODEL = None
+_ERA_CRNN_LOADED = False
+_ERA_CRNN_DECADES = (1900, 1910, 1920, 1930, 1940, 1950, 1960, 1970, 1980, 1990, 2000, 2010, 2020)
+
+
+def _load_era_crnn():
+    global _ERA_CRNN_MODEL, _ERA_CRNN_LOADED
+    if _ERA_CRNN_LOADED:
+        return _ERA_CRNN_MODEL
+    _ERA_CRNN_LOADED = True
+    try:
+        from pathlib import Path as _P
+
+        import torch
+
+        from scripts.train_era_crnn import EraCRNN
+
+        _p = _P("models/era_crnn.pt")
+        if not _p.exists():
+            return None
+        _ck = torch.load(_p, map_location="cpu", weights_only=False)
+        _m = EraCRNN(len(_ERA_CRNN_DECADES))
+        _m.load_state_dict(_ck["state_dict"])
+        _m.eval()
+        _ERA_CRNN_MODEL = _m
+    except Exception as _e:  # §V6 (copilot-instructions.md)
+        logger.warning("Era-CRNN nicht geladen: %s", _e)
+        _ERA_CRNN_MODEL = None
+    return _ERA_CRNN_MODEL
+
+
+def _era_crnn_decade(audio: np.ndarray, sr: int) -> tuple[int, float] | None:
+    """CRNN-Dekaden-Vorhersage (decade, softmax-Konfidenz). None bei Fehlern."""
+    try:
+        import torch
+
+        from scripts.train_era_crnn import _logmel
+
+        _m = _load_era_crnn()
+        if _m is None:
+            return None
+        _mono = np.mean(audio, axis=-1 if audio.shape[-1] <= 2 else 0) if audio.ndim > 1 else audio
+        _x = _logmel(_mono, sr)
+        with torch.no_grad():
+            _prob = torch.softmax(_m(torch.tensor(_x[None, None], dtype=torch.float32)), dim=-1)[0]
+        _idx = int(torch.argmax(_prob).item())
+        return int(_ERA_CRNN_DECADES[_idx]), float(_prob[_idx])
+    except Exception:  # §V6 (copilot-instructions.md)
+        return None
+
+
+def _era_crnn_challenger(audio: np.ndarray, sr: int, result: EraResult) -> EraResult:
+    """§D-K1-3 (copilot-instructions.md) Phase E: CRNN-Era-Challenger.
+
+    Hinter use_era_crnn (Default AUS): setzt die Dekade aus der CRNN-Vorhersage,
+    wenn der CRNN liefert (98% exakt). §V6 (copilot-instructions.md): bei
+    Fehlern/ohne Modell → unverändertes Ergebnis. Default AUS = bit-identisch.
+    """
+    try:
+        from backend.core.music_model_flags import use_era_crnn as _crnn_on
+
+        if not _crnn_on:
+            return result
+        _pred = _era_crnn_decade(audio, sr)
+        if _pred is None:
+            return result
+        _dec, _conf = _pred
+        import dataclasses
+
+        return dataclasses.replace(
+            result,
+            decade=_dec,
+            era_label=f"{_dec}er",
+            confidence=max(float(result.confidence), _conf),
+        )
+    except Exception:  # §V6 (copilot-instructions.md)
+        return result
