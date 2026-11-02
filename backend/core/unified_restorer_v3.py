@@ -34170,6 +34170,57 @@ class UnifiedRestorerV3:
             except Exception as _hnr_budget_exc:
                 logger.debug("HNR-Grenze pre-Pruefung nicht blockierend: %s", _hnr_budget_exc)
 
+        # §Hörordnung §4 / §V7 (copilot-instructions.md): maskierungsgesteuerte
+        # Stärke (finale Kappe). Sobald der Post-Scan die Rest-Schwere kennt
+        # (Stufe-2-Nachbehandlung), wird die Phasen-Stärke auf "genau ausreichend"
+        # begrenzt: Ziel ist der knapp UNTER der Maskierungsschwelle liegende Rest,
+        # nicht Mess-Null → kein Über-Restaurieren (kein Plastik-Sound). Reine
+        # Reduktion (min) — verstärkt nie. Erster Durchlauf ohne Post-Scan-Residuum
+        # bleibt unangetastet (open-loop). Do-no-harm: alles maskiert → minimale
+        # Stärke (kein Vertragsbruch, da hier der Phasen-Skalars und nicht
+        # global_scalar gesetzt wird).
+        if "strength" in kwargs and isinstance(kwargs.get("strength"), (int, float)):
+            try:
+                _mg_reduct = getattr(self, "_defect_reduction_per_type", None) or {}
+                if _mg_reduct:
+                    from backend.core.defect_audibility_gate import (
+                        masking_governed_strength as _mg_strength,
+                    )
+
+                    _mg_cur = {
+                        str(_k).lower(): float(_v.get("post", 0.0) or 0.0)
+                        for _k, _v in _mg_reduct.items()
+                        if isinstance(_v, dict)
+                    }
+                    _mg_mat = ""
+                    if isinstance(_ctx_pp, dict):
+                        _mg_mat = str(_ctx_pp.get("primary_material", "") or "")
+                    _mg_dec = _mg_strength(_mg_cur, material_key=_mg_mat, chain_depth=1)
+                    _mg_old = float(kwargs["strength"])
+                    if _mg_dec.skip:
+                        # Do-no-harm: keine hörbaren Restdefekte → minimale Stärke.
+                        kwargs["strength"] = float(min(_mg_old, 0.10))
+                    else:
+                        # Nur reduzieren (nie verstärken): "genau ausreichend".
+                        kwargs["strength"] = float(min(_mg_old, _mg_dec.strength))
+                    if abs(float(kwargs["strength"]) - _mg_old) > 1e-9:
+                        logger.info(
+                            "§Hörordnung §4 maskierungsgesteuerte Stärke: %s %.3f → %.3f "
+                            "(Ziel-Rest knapp unter Maskierungsschwelle, binding=%s)",
+                            getattr(phase_metadata, "phase_id", "?"),
+                            _mg_old,
+                            float(kwargs["strength"]),
+                            _mg_dec.binding_type or "-",
+                        )
+            except Exception as _mg_exc:  # §V6 (copilot-instructions.md)
+                logger.warning(
+                    "§V6 (copilot-instructions.md) maskierungsgesteuerte Stärke nicht "
+                    "wirksam (%s: %s) — Phase %s mit unveränderter Stärke",
+                    type(_mg_exc).__name__,
+                    _mg_exc,
+                    getattr(phase_metadata, "phase_id", "?"),
+                )
+
         # §2.82 Segment-Probe-Kalibrierung [RELEASE_MUST]
         # Für schnelle DSP-Phasen: empirische Stärkenverifikation auf 3 s-Segment.
         # Ersetzt oracle-Stärke durch empirisch bestätigten Wert wenn Probe nicht übersprungen.
