@@ -185,17 +185,27 @@ def _hr_v1_ramp_mask(n: int, spans: list[tuple[int, int]], sr: int) -> np.ndarra
 
 
 def bigvgan_v2_ready() -> bool:
-    """HR-V1-Bereitschaft (fail-closed): Checkpoint vorhanden UND F3-validiert."""
+    """HR-V1-Bereitschaft (fail-closed): Deploytes Artefakt vorhanden.
+
+    §V7 (copilot-instructions.md): Der Ready-Check MUSS zum deployten Artefakt
+    passen — deployt ist ``bigvgan_v2.onnx`` (ONNX-CPU) bzw. ``bigvgan_v2_f3.onnx``,
+    nicht ``bigvgan_v2.pth``. Der alte Check verlangte die .pth und ließ HR-V1
+    fail-closed nie anspringen (``applied=False``), obwohl der Wohlklang-Vertrag
+    W-1 als aktiv führt (applied=True seit Kanal-Fix 2026-10-07).
+    """
     if not BIGVGAN_V2_HR_ACTIVATED:
         return False
-    return bool((BigVGANv2Plugin.MODELS_DIR / "bigvgan_v2.pth").exists())
+    _md = BigVGANv2Plugin.MODELS_DIR
+    return bool(
+        (_md / "bigvgan_v2.onnx").exists() or (_md / "bigvgan_v2.pth").exists() or (_md / "bigvgan_v2_f3.onnx").exists()
+    )
 
 
 def hr_v1_activation_status() -> dict[str, object]:
     """Aktivierungs-Witness für phase_07-Metadaten (ZEUGE, Hörordnung §8a)."""
     return {
         "activated": bool(BIGVGAN_V2_HR_ACTIVATED),
-        "checkpoint_present": bool((BigVGANv2Plugin.MODELS_DIR / "bigvgan_v2.pth").exists()),
+        "checkpoint_present": bigvgan_v2_ready(),
         "reason": "activated" if BIGVGAN_V2_HR_ACTIVATED else "f3_validation_pending",
     }
 
