@@ -461,16 +461,20 @@ class TestMaterialScorerIntegration:
         return _MaterialScorer().score(features, None)
 
     def _base_vinyl_features(self) -> dict:
+        # §D-K1-3 (Spec > Code): kalibrierte Vinyl-Means aus forensics.medium_detector
+        # (kanonische Quelle). Vorher auf das alte driftige Profil getuned
+        # (snr_db 42 / bandwidth 18000) — unrealistisch fuer kalibriertes Vinyl
+        # (snr_db 3.7 / bandwidth 10290), klassifizierte daher 'unknown'.
         return {
-            "bandwidth_hz": 18_000.0,
-            "snr_db": 42.0,
-            "noise_color": 1.6,
-            "crackle_density": 0.002,
+            "bandwidth_hz": 10_290.0,
+            "snr_db": 3.7,
+            "noise_color": 0.89,
+            "crackle_density": 0.0002,
             "wow_flutter_hz": 0.5,
-            "wow_depth": 0.3,
+            "wow_depth": 0.029,
             "block_artifact": 0.0,
             "codec_type_code": 0.0,
-            "pre_echo_ms": 0.5,
+            "pre_echo_ms": 0.0,
             "rotation_hz": 0.0,
             "rotation_strength": 0.0,
             "infrasonic_rms": 0.0,
@@ -482,7 +486,7 @@ class TestMaterialScorerIntegration:
         enhanced = self._base_vinyl_features()
         enhanced["rotation_hz"] = 0.556
         enhanced["rotation_strength"] = 0.35
-        enhanced["infrasonic_rms"] = 0.06
+        enhanced["infrasonic_rms"] = 0.014
         self._score(enhanced)
         # With rotation features, vinyl posterior should increase or remain dominant
         from backend.core.medium_classifier import _MaterialScorer

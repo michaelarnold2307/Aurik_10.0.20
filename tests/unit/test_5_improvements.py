@@ -113,16 +113,20 @@ class TestBayesianMaterialScorer:
 
     def test_tape_characteristics(self):
         scorer = _MaterialScorer()
+        # §D-K1-3 (Spec > Code): kalibrierte Tape-Means aus forensics.medium_detector
+        # (kanonische Quelle). Vorher auf das alte driftige Profil getuned (snr_db 28 /
+        # noise 1.6 / wow 1.0) — unrealistisch fuer kalibriertes Tape (snr_db 3.7,
+        # wow 0.035), klassifizierte daher 'unknown'.
         features = {
-            "bandwidth_hz": 12000.0,
-            "snr_db": 28.0,
-            "noise_color": 1.6,
-            "crackle_density": 0.0,
-            "wow_depth": 1.0,
-            "block_artifact": 0.0,
-            "pre_echo_ms": 2.5,
-            "rotation_strength": 0.0,
-            "infrasonic_rms": 0.0,
+            "bandwidth_hz": 15620.0,
+            "snr_db": 3.7,
+            "noise_color": 0.4,
+            "crackle_density": 0.0002,
+            "wow_depth": 0.035,
+            "block_artifact": 0.016,
+            "pre_echo_ms": 0.0,
+            "rotation_strength": 0.348,
+            "infrasonic_rms": 0.0095,
             "codec_type_code": 0.0,
         }
         result = scorer.score(features, None)
