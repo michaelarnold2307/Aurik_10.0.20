@@ -702,3 +702,165 @@ def test_router_instrumental_nr_falls_back_cleanly(monkeypatch):
     assert result.fallback_chain
     assert result.metadata["capability_status"] == "dsp_fallback"
     np.testing.assert_allclose(result.audio, audio, atol=1e-7)
+
+
+# ---------------------------------------------------------------------------
+# §III.9/§V7 (copilot-instructions.md): RoFormer-Modell-Klassifikation und
+# §V6-Fallback-Vertrag (B3-Abbruch 2026-11-03, roformer_fallback_result).
+# ---------------------------------------------------------------------------
+
+
+def test_is_primary_roformer_model_accepts_torch_rocm_port():
+    """§III.9 (copilot-instructions.md): paritätsbewiesener Torch-ROCm-Port ist
+    primäre Inferenz — sein Modellname darf nicht als Ersatzpfad verworfen werden."""
+    from backend.core.dsp.sota_vocal_model_router import SotaVocalModelRouter
+
+    for name in (
+        "bs_roformer",
+        "bs_roformer_317_torch_rocm",
+        "melbandroformer",
+        "melband_roformer",
+        "mel_roformer",
+    ):
+        assert SotaVocalModelRouter._is_primary_roformer_model(name) is True, name
+
+
+def test_is_primary_roformer_model_rejects_plugin_fallbacks():
+    """§V6 (copilot-instructions.md): Plugin-Fallbacks sind keine primäre Inferenz."""
+    from backend.core.dsp.sota_vocal_model_router import SotaVocalModelRouter
+
+    for name in ("nmf_dsp_fallback", "demucs_v4_fallback", "dsp_fallback_required", "", "   "):
+        assert SotaVocalModelRouter._is_primary_roformer_model(name) is False, name
+
+
+def test_router_accepts_torch_rocm_port_result_as_primary(monkeypatch):
+    """Ergebnis des Torch-ROCm-Ports wird akzeptiert: kein Ersatzpfad,
+    keine empty_stems-Kette, kein Demucs-Lauf."""
+    from backend.core.dsp.sota_vocal_model_router import SotaVocalModelRouter
+
+    class _FakeTorchRocmResult:
+        stems = {"vocals": np.full(48000, 0.10, dtype=np.float32), "other": np.full(48000, 0.20, dtype=np.float32)}
+        model_used = "bs_roformer_317_torch_rocm"
+        confidence = 0.9
+        sdri_db = 3.0
+
+    class _FakeBs:
+        _model_loaded = True
+
+        @staticmethod
+        def separate(audio: np.ndarray, sr: int, *, stems: list[str] | None = None):  # pylint: disable=unused-argument
+            return _FakeTorchRocmResult()
+
+    def _demucs_must_not_run():
+        raise AssertionError("Demucs darf bei primärem RoFormer-Ergebnis nicht laufen")
+
+    monkeypatch.setitem(
+        __import__("sys").modules,
+        "plugins.bs_roformer_plugin",
+        types.SimpleNamespace(get_bs_roformer=lambda: _FakeBs()),
+    )
+    monkeypatch.setitem(
+        __import__("sys").modules,
+        "plugins.demucs_v4_plugin",
+        types.SimpleNamespace(get_demucs_plugin=_demucs_must_not_run),
+    )
+    monkeypatch.setattr(SotaVocalModelRouter, "_available_memory_gb", staticmethod(lambda: 32.0))
+
+    result = SotaVocalModelRouter().separate_vocal_instrumental(_audio(), 48000, panns_singing=0.8)
+    assert result.success is True
+    assert result.model_used == "bs_roformer_317_torch_rocm"
+    assert "bs_roformer:empty_stems" not in result.fallback_chain
+
+
+def test_router_dsp_fallback_warns_and_chain_stays_accurate(monkeypatch, caplog):
+    """§V6 (copilot-instructions.md): echter ML→DSP-Rückfall des Plugins erzeugt
+    eine Warnung; die Fallback-Kette bekommt KEINE doppelte empty_stems-Markierung."""
+    from backend.core.dsp.sota_vocal_model_router import SotaVocalModelRouter
+
+    class _FakeFallbackBsResult:
+        stems = {"vocals": np.full(48000, 0.10, dtype=np.float32), "other": np.full(48000, 0.20, dtype=np.float32)}
+        model_used = "nmf_dsp_fallback"
+        confidence = 0.20
+        sdri_db = 0.0
+
+    class _FakeBs:
+        @staticmethod
+        def separate(audio: np.ndarray, sr: int, *, stems: list[str] | None = None):  # pylint: disable=unused-argument
+            return _FakeFallbackBsResult()
+
+    class _FakeDemucs:
+        _session = object()
+
+        @staticmethod
+        def separate(audio: np.ndarray, sr: int) -> dict[str, np.ndarray]:  # pylint: disable=unused-argument
+            return {
+                "vocals": np.full(48000, 0.30, dtype=np.float32),
+                "other": np.full(48000, 0.40, dtype=np.float32),
+            }
+
+    monkeypatch.setitem(
+        __import__("sys").modules,
+        "plugins.bs_roformer_plugin",
+        types.SimpleNamespace(get_bs_roformer=lambda: _FakeBs()),
+    )
+    monkeypatch.setitem(
+        __import__("sys").modules,
+        "plugins.demucs_v4_plugin",
+        types.SimpleNamespace(get_demucs_plugin=lambda: _FakeDemucs()),
+    )
+    monkeypatch.setattr(SotaVocalModelRouter, "_available_memory_gb", staticmethod(lambda: 32.0))
+
+    with caplog.at_level(logging.WARNING, logger="backend.core.dsp.sota_vocal_model_router"):
+        result = SotaVocalModelRouter().separate_vocal_instrumental(_audio(), 48000, panns_singing=0.8)
+
+    assert result.success is True
+    assert "bs_roformer:nmf_dsp_fallback" in result.fallback_chain
+    assert "bs_roformer:empty_stems" not in result.fallback_chain
+    assert any("ML→DSP-Ersatzpfad aktiviert" in rec.getMessage() for rec in caplog.records)
+
+
+def test_router_ml_to_ml_fallback_keeps_ledger_clean(monkeypatch, caplog):
+    """ML→ML-Ersatzpfad (demucs_v4_fallback) ist kein ML→DSP-Rückfall (B1
+    Wohlklang-Vertrag, .github/WOHLKLANG_CLAIMS.md) — keine Ledger-Warnung."""
+    from backend.core.dsp.sota_vocal_model_router import SotaVocalModelRouter
+
+    class _FakeFallbackBsResult:
+        stems = {"vocals": np.full(48000, 0.10, dtype=np.float32), "other": np.full(48000, 0.20, dtype=np.float32)}
+        model_used = "demucs_v4_fallback"
+        confidence = 0.20
+        sdri_db = 0.0
+
+    class _FakeBs:
+        @staticmethod
+        def separate(audio: np.ndarray, sr: int, *, stems: list[str] | None = None):  # pylint: disable=unused-argument
+            return _FakeFallbackBsResult()
+
+    class _FakeDemucs:
+        _session = object()
+
+        @staticmethod
+        def separate(audio: np.ndarray, sr: int) -> dict[str, np.ndarray]:  # pylint: disable=unused-argument
+            return {
+                "vocals": np.full(48000, 0.30, dtype=np.float32),
+                "other": np.full(48000, 0.40, dtype=np.float32),
+            }
+
+    monkeypatch.setitem(
+        __import__("sys").modules,
+        "plugins.bs_roformer_plugin",
+        types.SimpleNamespace(get_bs_roformer=lambda: _FakeBs()),
+    )
+    monkeypatch.setitem(
+        __import__("sys").modules,
+        "plugins.demucs_v4_plugin",
+        types.SimpleNamespace(get_demucs_plugin=lambda: _FakeDemucs()),
+    )
+    monkeypatch.setattr(SotaVocalModelRouter, "_available_memory_gb", staticmethod(lambda: 32.0))
+
+    with caplog.at_level(logging.WARNING, logger="backend.core.dsp.sota_vocal_model_router"):
+        result = SotaVocalModelRouter().separate_vocal_instrumental(_audio(), 48000, panns_singing=0.8)
+
+    assert result.success is True
+    assert result.model_used == "demucs_v4_htdemucs"
+    assert "bs_roformer:demucs_v4_fallback" in result.fallback_chain
+    assert not any("ML→DSP-Ersatzpfad" in rec.getMessage() for rec in caplog.records)

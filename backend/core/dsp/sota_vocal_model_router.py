@@ -110,12 +110,18 @@ class SotaVocalModelRouter:
                             "§SMR-1 BS/MelBand-RoFormer returned Ersatzpfad model=%s; trying next separator",
                             model_used,
                         )
-                        raise RuntimeError("roformer_fallback_result")
-                    attempts.append("bs_roformer:empty_stems")
+                        if "dsp" in model_used.lower():
+                            # §V6 (copilot-instructions.md) + Vertrag StemSeparationResult
+                            # (plugins/bs_roformer_plugin.py): ML→DSP-Rückfall des Plugins —
+                            # Warnung am Call-Site, zählt im Fallback-Ledger als „defekt".
+                            logger.warning("ML→DSP-Ersatzpfad aktiviert: %s", model_used)
+                    else:
+                        # §V7 (copilot-instructions.md): kein Kontrollfluss über Ausnahmen —
+                        # leere Stems sind ein eigener Zweig, keine Fehlerbehandlung.
+                        attempts.append("bs_roformer:empty_stems")
                 except Exception as exc:  # pylint: disable=broad-except
                     logger.warning("ML→DSP-Ersatzpfad aktiviert", exc_info=True)  # §V6 (copilot-instructions.md)
-                    if str(exc) != "roformer_fallback_result":
-                        attempts.append(f"bs_roformer:{type(exc).__name__}")
+                    attempts.append(f"bs_roformer:{type(exc).__name__}")
                     logger.debug("§SMR-1 BS-RoFormer separation nicht verfuegbar: %s", exc)
                 # §SMR-1 Transparenz (2026-09-13): Grund im INFO-Log sichtbar machen,
                 # damit im Produktionslauf erkennbar ist, WARUM BSRoFormer nicht
@@ -676,9 +682,18 @@ class SotaVocalModelRouter:
 
     @classmethod
     def _is_primary_roformer_model(cls, model_used: str) -> bool:
-        """True only for actual BS/MelBand-RoFormer inference, not plugin fallbacks."""
-        normalized = model_used.lower()
-        return normalized in {"bs_roformer", "melbandroformer", "melband_roformer"}
+        """True only for actual BS/MelBand-RoFormer inference, not plugin fallbacks.
+
+        §III.9 (copilot-instructions.md): paritätsbewiesene Torch-ROCm-Kerne
+        (``bsr317_torch_rocm``) sind der Produktionspfad — ihre Modellnamen
+        (z. B. ``bs_roformer_317_torch_rocm``) zählen als primäre ML-Inferenz.
+        Plugin-Fallbacks (``demucs_v4_fallback``/``nmf_dsp_fallback``,
+        §V6 (copilot-instructions.md)) sind es nicht.
+        """
+        normalized = str(model_used).lower().strip()
+        if not normalized or "fallback" in normalized:
+            return False
+        return normalized.startswith(("bs_roformer", "melband", "mel_roformer"))
 
     @classmethod
     def _stems_to_vocal_instr(
