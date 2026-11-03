@@ -36,5 +36,7 @@
   "deploy_status": "Plugin laedt alle 3 ONNX (enc/dec/erb_dec True) + use_df_musik=True + Dateien vorhanden. ABER enhance gibt Input unveraendert zurueck (interne Fallback-Routine) — segSNR +0.00dB.",
   "w5_final": "ONNX-Pfad LAEUFT (enc->dec->_apply_df_filter, alle 3 Modelle deployed + ausgefuehrt). ABER Output = Input (segSNR +0.00dB): der Deep-Filter ist ein No-op (DF-Koeffizienten erzeugen keine Veraenderung).",
   "w5_ursache": "Moeglich: exportierte ONNX-Koeffizienten skaliert falsch ODER _apply_df_filter wendet coefs nicht korrekt an ODER Modell-Checkpoint war nicht trainiert (dfn_musik_best.pt).",
-  "w5_naechster_schritt": "DF-Koeffizienten-Pruefung (coefs-Werte + _apply_df_filter-Semantik gegen eager-Referenz); dann W-5-Nachweis (seg-SNR/Blind/Signifikanz)."
+  "w5_naechster_schritt": "DF-Koeffizienten-Pruefung (coefs-Werte + _apply_df_filter-Semantik gegen eager-Referenz); dann W-5-Nachweis (seg-SNR/Blind/Signifikanz).",
+  "w5_apply_df_filter": "_apply_df_filter ist der Deep Filter (komplexer Spektral-Filter, DF-Taps [S,96,10]). No-op = exportierte Koeffizienten erzeugen Identitaet.",
+  "w5_endstand": "W-5 ONNX-Deploy steht (enc/erb_dec/dec exportiert + geladen + ausgefuehrt). Tiefere Ursache des No-ops: DF-Koeffizienten aus dfn_musik_best.pt evtl. untrainiert/Identity oder Skalierung. Braucht Koeffizienten-Vergleich gegen eager-Referenz."
 }
