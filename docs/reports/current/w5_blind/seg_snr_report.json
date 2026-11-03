@@ -48,5 +48,7 @@
   "w5_c0_versuch": "Dummy_spec auf Freq=96 gesetzt -> enc interne View-Shape brach ([1,96,16,48] invalid fuer 76800). enc intern braucht Freq=100. Revertiert.",
   "w5_c0_offen": "enc intern Freq=100, dec c0 Freq=96: die Frequenz-Dim ist MODELL-intern verschieden (enc feat_spec Freq=100 -> c0 Freq, dec c0 Freq=96). Braucht genaue eager-Referenz (df.model) um das korrekte c0-Layout zu sehen — blockiert am torchaudio eager-Import.",
   "w5_eager_fix": "pip df/io.py torchaudio-Import robust gemacht (eager laedt jetzt). Eager enc-Forward hat dieselbe feat_spec-Shape-Problematik ([1,100,16,48] invalid fuer 40000) — die Dims sind modell-intern anspruchsvoll.",
-  "w5_eager_status": "eager Model.load via df.deepfilternet3.init_model laedt (enc/dec), aber enc-Forward braucht korrekte feat_spec-Dims. W-5 c0-Layout-Vergleich somit weiter offen, aber Import-Blocker behoben."
+  "w5_eager_status": "eager Model.load via df.deepfilternet3.init_model laedt (enc/dec), aber enc-Forward braucht korrekte feat_spec-Dims. W-5 c0-Layout-Vergleich somit weiter offen, aber Import-Blocker behoben.",
+  "w5_dims": "DfParams: nb_erb=32 (feat_erb-Freq), nb_df=96 (dec-c0-Freq), fft_size=960, hop_size=480, sr=48000, df_order=5. Bestätigt dec-c0-Freq=96 (nb_df); enc feat_spec-Freq (100 im Export) ist die Spektral-Dim (fft/erb).",
+  "w5_dims_offen": "feat_spec-Freq (100) vs nb_df (96) ist der Kern des c0-Mismatch: enc c0 hat Freq=Spektral-Dim (100), dec c0 erwartet Freq=nb_df (96). Fix: enc->dec c0 auf nb_df=96 projizieren (Slice/Linear) ODER Export-Dummy auf nb_df=96 angleichen (braucht enc-internen Pfad, der 100->96 mapped)."
 }
