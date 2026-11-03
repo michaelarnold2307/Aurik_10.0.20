@@ -14,6 +14,31 @@
       "left": "A",
       "quelle": "Schlüssel · w1_2__r0",
       "right": "B"
+    },
+    "w1_3__r0": {
+      "left": "A",
+      "quelle": "Schlüssel · w1_3__r0",
+      "right": "B"
+    },
+    "w1_4__r0": {
+      "left": "B",
+      "quelle": "Schlüssel · w1_4__r0",
+      "right": "A"
+    },
+    "w1_5__r0": {
+      "left": "B",
+      "quelle": "Schlüssel · w1_5__r0",
+      "right": "A"
+    },
+    "w1_6__r0": {
+      "left": "B",
+      "quelle": "Schlüssel · w1_6__r0",
+      "right": "A"
+    },
+    "w1_7__r0": {
+      "left": "A",
+      "quelle": "Schlüssel · w1_7__r0",
+      "right": "B"
     }
   },
   "quelle": "scripts/ab_harness.py prepare (VERTRAULICH — nicht an Hör-Instanz)",

@@ -1,0 +1,66 @@
+{
+  "alpha": 0.05,
+  "ci95_wilson_a": [0.6756, 1.0],
+  "empfehlung": "A vorzuziehen (signifikant, p=0.0078)",
+  "gleichstaende": 0,
+  "hinweis": "Hör-Instanz entscheidet (hoerordnung.instructions.md); Statistik ist Zeuge, kein Urteil.",
+  "n_entscheidend": 8,
+  "n_verdikte": 8,
+  "p_wert_vorzeichen_test": 0.007812,
+  "quelle": "scripts/ab_harness.py collect",
+  "schema": "aurik.ab_stats/1",
+  "siege_a": 8,
+  "siege_b": 0,
+  "siegquote_a": 1.0,
+  "signifikant": true,
+  "verdikte": [
+    {
+      "gewinner": "A",
+      "preferred": "right",
+      "quelle": "Verdikt · w1_0__r0",
+      "trial_id": "w1_0__r0"
+    },
+    {
+      "gewinner": "A",
+      "preferred": "left",
+      "quelle": "Verdikt · w1_1__r0",
+      "trial_id": "w1_1__r0"
+    },
+    {
+      "gewinner": "A",
+      "preferred": "left",
+      "quelle": "Verdikt · w1_2__r0",
+      "trial_id": "w1_2__r0"
+    },
+    {
+      "gewinner": "A",
+      "preferred": "left",
+      "quelle": "Verdikt · w1_3__r0",
+      "trial_id": "w1_3__r0"
+    },
+    {
+      "gewinner": "A",
+      "preferred": "right",
+      "quelle": "Verdikt · w1_4__r0",
+      "trial_id": "w1_4__r0"
+    },
+    {
+      "gewinner": "A",
+      "preferred": "right",
+      "quelle": "Verdikt · w1_5__r0",
+      "trial_id": "w1_5__r0"
+    },
+    {
+      "gewinner": "A",
+      "preferred": "right",
+      "quelle": "Verdikt · w1_6__r0",
+      "trial_id": "w1_6__r0"
+    },
+    {
+      "gewinner": "A",
+      "preferred": "left",
+      "quelle": "Verdikt · w1_7__r0",
+      "trial_id": "w1_7__r0"
+    }
+  ]
+}
