@@ -1,0 +1,6 @@
+{
+  "verfahren": "B3 Objektivbeschluss fuer 4 Modelle (Material/Era/Defekt/Loudness)",
+  "ziel": "Modelle aktivieren ohne Ohr (ausnahme/Objektivbeschluss mit Hoer-Vorbehalt)",
+  "befund": "Vergleichende Messung (restore an vs aus) auf 3 Samples: UV3-FAST-Lauf zu langsam fuer Timeout (2 Runs x 3 Samples). B3 braucht die Messung; Lauf muss laenger/hintergrund laufen.",
+  "groesster_ohne_ohr": "Material-CRNN 95.3% vs medium_detector 40.2% (groesste Messluecke) — Aktivierung via B3 bringt den groessten Qualitaetssprung ohne Ohr (bessere Material-Erkennung -> bessere material-spezifische Restaurierung)."
+}
