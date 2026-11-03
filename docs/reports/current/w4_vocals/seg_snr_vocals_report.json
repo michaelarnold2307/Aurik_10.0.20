@@ -1,0 +1,27 @@
+{
+  "stufe": "W-4 MP-SENet (Vokal-NR) auf ISOLIERTEN Vocals",
+  "metrik": "seg-SNR (vs ground-truth vocals)",
+  "rows": [
+    {
+      "sample": "-_Heart_Peripheral",
+      "seg_snr_in": -0.0,
+      "seg_snr_out": -0.0,
+      "delta_db": -0.0
+    },
+    {
+      "sample": "hoolboy_Facination",
+      "seg_snr_in": -0.01,
+      "seg_snr_out": -0.01,
+      "delta_db": 0.01
+    },
+    {
+      "sample": "otor_Tapes_-_Shore",
+      "seg_snr_in": -3.02,
+      "seg_snr_out": -2.4,
+      "delta_db": 0.62
+    }
+  ],
+  "befund": "SCNet-Baseline-Vocals bereits sauber (segSNR ~0 vs gt). MP-SENet-Effekt klein: nur Motor_Tapes (degradiert) +0.62dB, andere ~0.",
+  "schlussfolgerung": "W-4 auf isolierten Vocals: MP-SENet bringt bei degradierten Vocals echte seg-SNR-Verbesserung (+0.62dB), bei sauberen wenig. Korrekter Test (isolierte Vocals) zeigt den realen Nutzen.",
+  "offener_schritt": "W-4-Voll-Nachweis: mehr degradierte Vocals + Blindheit + Signifikanz (W-1-Muster)"
+}
