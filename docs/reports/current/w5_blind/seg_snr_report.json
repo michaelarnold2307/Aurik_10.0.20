@@ -50,5 +50,7 @@
   "w5_eager_fix": "pip df/io.py torchaudio-Import robust gemacht (eager laedt jetzt). Eager enc-Forward hat dieselbe feat_spec-Shape-Problematik ([1,100,16,48] invalid fuer 40000) — die Dims sind modell-intern anspruchsvoll.",
   "w5_eager_status": "eager Model.load via df.deepfilternet3.init_model laedt (enc/dec), aber enc-Forward braucht korrekte feat_spec-Dims. W-5 c0-Layout-Vergleich somit weiter offen, aber Import-Blocker behoben.",
   "w5_dims": "DfParams: nb_erb=32 (feat_erb-Freq), nb_df=96 (dec-c0-Freq), fft_size=960, hop_size=480, sr=48000, df_order=5. Bestätigt dec-c0-Freq=96 (nb_df); enc feat_spec-Freq (100 im Export) ist die Spektral-Dim (fft/erb).",
-  "w5_dims_offen": "feat_spec-Freq (100) vs nb_df (96) ist der Kern des c0-Mismatch: enc c0 hat Freq=Spektral-Dim (100), dec c0 erwartet Freq=nb_df (96). Fix: enc->dec c0 auf nb_df=96 projizieren (Slice/Linear) ODER Export-Dummy auf nb_df=96 angleichen (braucht enc-internen Pfad, der 100->96 mapped)."
+  "w5_dims_offen": "feat_spec-Freq (100) vs nb_df (96) ist der Kern des c0-Mismatch: enc c0 hat Freq=Spektral-Dim (100), dec c0 erwartet Freq=nb_df (96). Fix: enc->dec c0 auf nb_df=96 projizieren (Slice/Linear) ODER Export-Dummy auf nb_df=96 angleichen (braucht enc-internen Pfad, der 100->96 mapped).",
+  "w5_c0_fix_versuch": "c0-Transpose+Projektion (100->96) eingefuegt: Filter wendet an, aber SCHAEDLICH (segSNR 20.97->-1.45, -22dB). Layout-Annahme falsch. REVERTIERT (besser No-op als schaedliche Verzerrung).",
+  "w5_c0_offen_final": "Korrektes enc->dec c0-Layout weiter offen. Braucht den echten enc-internen c0-Pfad (eager: df.deepfilternet3.init_model + korrekte feat_spec-Dims [fft/erb-Projektion]) — dann Export exakt nachbauen. Annahmen ohne Referenz fuehren zu schaedlicher Verzerrung."
 }
