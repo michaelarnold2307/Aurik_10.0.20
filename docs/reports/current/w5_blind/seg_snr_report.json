@@ -34,7 +34,7 @@
   "deploy_naechster_schritt": "torchaudio-backend-Import in df/io.py modernisieren (torchaudio>=2.x API) ODER torchaudio-Pin; dann Export + enhance wirkt + W-5-Nachweis.",
   "deploy_export": "ONNX-Export ERFOLGREICH (dynamo=False fix): enc.onnx + erb_dec.onnx + dec.onnx in finetuned/",
   "deploy_status": "Plugin laedt alle 3 ONNX (enc/dec/erb_dec True) + use_df_musik=True + Dateien vorhanden. ABER enhance gibt Input unveraendert zurueck (interne Fallback-Routine) — segSNR +0.00dB.",
-  "w5_final": "ONNX-Pfad LAEUFT (enc->dec->_apply_df_filter, alle 3 Modelle deployed + ausgefuehrt). ABER Output = Input (segSNR +0.00dB): der Deep-Filter ist ein No-op (DF-Koeffizienten erzeugen keine Veraenderung).",
+  "w5_final": "W-5 durchdiagnostiziert: torchaudio-Import gefixt, ONNX-Deploy steht, eager laedt, conv-Dims bekannt. Offen: feat_spec-F (100 vs 96) gegen echten enc-Pfad bestimmen (braucht korrekte feat_spec-Erzeugung aus fft/erb), dann c0-Layout exakt + dec laeuft. Annahmen ohne Referenz -> schaedlich (bewiesen, revertiert).",
   "w5_ursache": "Moeglich: exportierte ONNX-Koeffizienten skaliert falsch ODER _apply_df_filter wendet coefs nicht korrekt an ODER Modell-Checkpoint war nicht trainiert (dfn_musik_best.pt).",
   "w5_naechster_schritt": "DF-Koeffizienten-Pruefung (coefs-Werte + _apply_df_filter-Semantik gegen eager-Referenz); dann W-5-Nachweis (seg-SNR/Blind/Signifikanz).",
   "w5_apply_df_filter": "_apply_df_filter ist der Deep Filter (komplexer Spektral-Filter, DF-Taps [S,96,10]). No-op = exportierte Koeffizienten erzeugen Identitaet.",
@@ -52,5 +52,6 @@
   "w5_dims": "DfParams: nb_erb=32 (feat_erb-Freq), nb_df=96 (dec-c0-Freq), fft_size=960, hop_size=480, sr=48000, df_order=5. Bestätigt dec-c0-Freq=96 (nb_df); enc feat_spec-Freq (100 im Export) ist die Spektral-Dim (fft/erb).",
   "w5_dims_offen": "feat_spec-Freq (100) vs nb_df (96) ist der Kern des c0-Mismatch: enc c0 hat Freq=Spektral-Dim (100), dec c0 erwartet Freq=nb_df (96). Fix: enc->dec c0 auf nb_df=96 projizieren (Slice/Linear) ODER Export-Dummy auf nb_df=96 angleichen (braucht enc-internen Pfad, der 100->96 mapped).",
   "w5_c0_fix_versuch": "c0-Transpose+Projektion (100->96) eingefuegt: Filter wendet an, aber SCHAEDLICH (segSNR 20.97->-1.45, -22dB). Layout-Annahme falsch. REVERTIERT (besser No-op als schaedliche Verzerrung).",
-  "w5_c0_offen_final": "Korrektes enc->dec c0-Layout weiter offen. Braucht den echten enc-internen c0-Pfad (eager: df.deepfilternet3.init_model + korrekte feat_spec-Dims [fft/erb-Projektion]) — dann Export exakt nachbauen. Annahmen ohne Referenz fuehren zu schaedlicher Verzerrung."
+  "w5_c0_offen_final": "Korrektes enc->dec c0-Layout weiter offen. Braucht den echten enc-internen c0-Pfad (eager: df.deepfilternet3.init_model + korrekte feat_spec-Dims [fft/erb-Projektion]) — dann Export exakt nachbauen. Annahmen ohne Referenz fuehren zu schaedlicher Verzerrung.",
+  "w5_conv_dims": "enc conv: erb_conv0 in=1 (feat_erb [B,1,32,T]), df_conv0 in=2 (feat_spec [B,2,F,T] real+imag). feat_spec F=100 (Export) vs nb_df=96 (dec-c0). F-Dim ist der Kern des c0-Mismatch."
 }
