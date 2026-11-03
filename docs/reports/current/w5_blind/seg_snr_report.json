@@ -28,5 +28,8 @@
     }
   ],
   "befund": "DFN enhance gibt Input unveraendert zurueck (segSNR +0.00dB auf allen 4) — DFN wendet NICHT an (Modell nicht geladen oder Fallback).",
-  "offener_schritt": "W-5-Nachweis braucht: DFN-Modell laden (dfn.onnx) + enhance wirkt + dann seg-SNR/Blind/Signifikanz. Aktuell nicht messbar, da Stufe wirkungslos."
+  "offener_schritt": "W-5-Nachweis braucht: DFN-Modell laden (dfn.onnx) + enhance wirkt + dann seg-SNR/Blind/Signifikanz. Aktuell nicht messbar, da Stufe wirkungslos.",
+  "deploy_versuch": "ONNX-Export (scripts/export_df_musik_onnx.py) aus dfn_musik_best.pt: FAILED",
+  "deploy_blocker": "torchaudio.backend.common entfernt (neueres torchaudio) — vendored DeepFilterNet df/io.py importiert es noch (ModuleNotFoundError). Dependency-Version-Inkompatibilitaet, nicht Modell-Problem.",
+  "deploy_naechster_schritt": "torchaudio-backend-Import in df/io.py modernisieren (torchaudio>=2.x API) ODER torchaudio-Pin; dann Export + enhance wirkt + W-5-Nachweis."
 }
