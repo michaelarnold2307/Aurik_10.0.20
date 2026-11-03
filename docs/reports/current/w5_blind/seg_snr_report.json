@@ -33,5 +33,8 @@
   "deploy_blocker": "torchaudio.backend.common entfernt (neueres torchaudio) — vendored DeepFilterNet df/io.py importiert es noch (ModuleNotFoundError). Dependency-Version-Inkompatibilitaet, nicht Modell-Problem.",
   "deploy_naechster_schritt": "torchaudio-backend-Import in df/io.py modernisieren (torchaudio>=2.x API) ODER torchaudio-Pin; dann Export + enhance wirkt + W-5-Nachweis.",
   "deploy_export": "ONNX-Export ERFOLGREICH (dynamo=False fix): enc.onnx + erb_dec.onnx + dec.onnx in finetuned/",
-  "deploy_status": "Plugin laedt alle 3 ONNX (enc/dec/erb_dec True) + use_df_musik=True + Dateien vorhanden. ABER enhance gibt Input unveraendert zurueck (interne Fallback-Routine) — segSNR +0.00dB."
+  "deploy_status": "Plugin laedt alle 3 ONNX (enc/dec/erb_dec True) + use_df_musik=True + Dateien vorhanden. ABER enhance gibt Input unveraendert zurueck (interne Fallback-Routine) — segSNR +0.00dB.",
+  "w5_final": "ONNX-Pfad LAEUFT (enc->dec->_apply_df_filter, alle 3 Modelle deployed + ausgefuehrt). ABER Output = Input (segSNR +0.00dB): der Deep-Filter ist ein No-op (DF-Koeffizienten erzeugen keine Veraenderung).",
+  "w5_ursache": "Moeglich: exportierte ONNX-Koeffizienten skaliert falsch ODER _apply_df_filter wendet coefs nicht korrekt an ODER Modell-Checkpoint war nicht trainiert (dfn_musik_best.pt).",
+  "w5_naechster_schritt": "DF-Koeffizienten-Pruefung (coefs-Werte + _apply_df_filter-Semantik gegen eager-Referenz); dann W-5-Nachweis (seg-SNR/Blind/Signifikanz)."
 }
