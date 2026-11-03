@@ -1,0 +1,22 @@
+[
+  {
+    "id": "w4_0",
+    "a": "docs/reports/current/w4_blind/stimuli_src/0_a.wav",
+    "b": "docs/reports/current/w4_blind/stimuli_src/0_b.wav"
+  },
+  {
+    "id": "w4_1",
+    "a": "docs/reports/current/w4_blind/stimuli_src/1_a.wav",
+    "b": "docs/reports/current/w4_blind/stimuli_src/1_b.wav"
+  },
+  {
+    "id": "w4_2",
+    "a": "docs/reports/current/w4_blind/stimuli_src/2_a.wav",
+    "b": "docs/reports/current/w4_blind/stimuli_src/2_b.wav"
+  },
+  {
+    "id": "w4_3",
+    "a": "docs/reports/current/w4_blind/stimuli_src/3_a.wav",
+    "b": "docs/reports/current/w4_blind/stimuli_src/3_b.wav"
+  }
+]
