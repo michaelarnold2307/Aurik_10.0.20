@@ -63,7 +63,7 @@ def export_enc(model, out_path: str):
             "e2": {0: "batch", 2: "time"},
             "e3": {0: "batch", 2: "time"},
             "emb": {0: "batch", 1: "time"},
-            "c0": {0: "batch", 2: "time"},
+            "c0": {0: "batch", 3: "time"},
             "lsnr": {0: "batch", 1: "time"},
         },
         opset_version=17,
@@ -126,7 +126,7 @@ def export_dec(model, out_path: str):
         output_names=["coefs"],
         dynamic_axes={
             "emb": {0: "batch", 1: "time"},
-            "c0": {0: "batch", 2: "time"},
+            "c0": {0: "batch", 3: "time"},
             "coefs": {0: "batch", 1: "time"},
         },
         opset_version=17,

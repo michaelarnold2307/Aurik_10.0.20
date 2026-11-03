@@ -44,5 +44,7 @@
   "w5_shape_fix": "c0-Bug klar: enc dynamic_axes markiert dim2 als time, aber echte c0 hat time an dim3 (Freq=100 fix) + dec erwartet [B,16,T,96]. Fix: c0 dynamic_axes dim3=time + enc->dec c0-Layout angleichen.",
   "w5_eager_blocker": "eager-Referenz-Laden (df.model.Model.load) scheitert am torchaudio.backend-Import — der io.py-Fix greift auf dem eager-Pfad noch nicht (anderer Import-Weg).",
   "w5_c0_befund": "enc c0 [B,16,100,T] (Freq=100, Time=dim3) vs dec c0 [B,16,T,96] (Time=dim2, Freq=96): TRANSPOSE + Freq-Dim-Mismatch. Export-Dummy-Shapes inkonsistent (enc dummy_spec [1,2,100,96] vs dec dummy_c0 [1,16,100,96]).",
-  "w5_c0_fix": "Vor dec Transpose (dim2<->dim3) + Freq-Dim angleichen (100->96 via Slice/Pad ODER Dummy-Shapes konsistent setzen). Dann enc->dec kompatibel, dec laeuft, Koeffizienten wirken."
+  "w5_c0_fix": "Vor dec Transpose (dim2<->dim3) + Freq-Dim angleichen (100->96 via Slice/Pad ODER Dummy-Shapes konsistent setzen). Dann enc->dec kompatibel, dec laeuft, Koeffizienten wirken.",
+  "w5_c0_versuch": "Dummy_spec auf Freq=96 gesetzt -> enc interne View-Shape brach ([1,96,16,48] invalid fuer 76800). enc intern braucht Freq=100. Revertiert.",
+  "w5_c0_offen": "enc intern Freq=100, dec c0 Freq=96: die Frequenz-Dim ist MODELL-intern verschieden (enc feat_spec Freq=100 -> c0 Freq, dec c0 Freq=96). Braucht genaue eager-Referenz (df.model) um das korrekte c0-Layout zu sehen — blockiert am torchaudio eager-Import."
 }
