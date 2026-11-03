@@ -1,0 +1,32 @@
+{
+  "stufe": "W-5 DFN Musik-NR",
+  "metrik": "seg-SNR",
+  "rows": [
+    {
+      "sample": "cassette_hiphop_1980",
+      "seg_snr_in": 20.97,
+      "seg_snr_out": 20.97,
+      "delta_db": 0.0
+    },
+    {
+      "sample": "cassette_pop_1980s_c",
+      "seg_snr_in": 21.69,
+      "seg_snr_out": 21.69,
+      "delta_db": 0.0
+    },
+    {
+      "sample": "cassette_rock_1990s_",
+      "seg_snr_in": 18.93,
+      "seg_snr_out": 18.93,
+      "delta_db": 0.0
+    },
+    {
+      "sample": "digital_electronic_2",
+      "seg_snr_in": 99.21,
+      "seg_snr_out": 99.21,
+      "delta_db": 0.0
+    }
+  ],
+  "befund": "DFN enhance gibt Input unveraendert zurueck (segSNR +0.00dB auf allen 4) — DFN wendet NICHT an (Modell nicht geladen oder Fallback).",
+  "offener_schritt": "W-5-Nachweis braucht: DFN-Modell laden (dfn.onnx) + enhance wirkt + dann seg-SNR/Blind/Signifikanz. Aktuell nicht messbar, da Stufe wirkungslos."
+}
