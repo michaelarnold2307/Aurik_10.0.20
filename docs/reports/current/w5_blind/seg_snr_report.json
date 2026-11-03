@@ -38,5 +38,7 @@
   "w5_ursache": "Moeglich: exportierte ONNX-Koeffizienten skaliert falsch ODER _apply_df_filter wendet coefs nicht korrekt an ODER Modell-Checkpoint war nicht trainiert (dfn_musik_best.pt).",
   "w5_naechster_schritt": "DF-Koeffizienten-Pruefung (coefs-Werte + _apply_df_filter-Semantik gegen eager-Referenz); dann W-5-Nachweis (seg-SNR/Blind/Signifikanz).",
   "w5_apply_df_filter": "_apply_df_filter ist der Deep Filter (komplexer Spektral-Filter, DF-Taps [S,96,10]). No-op = exportierte Koeffizienten erzeugen Identitaet.",
-  "w5_endstand": "W-5 ONNX-Deploy steht (enc/erb_dec/dec exportiert + geladen + ausgefuehrt). Tiefere Ursache des No-ops: DF-Koeffizienten aus dfn_musik_best.pt evtl. untrainiert/Identity oder Skalierung. Braucht Koeffizienten-Vergleich gegen eager-Referenz."
+  "w5_endstand": "W-5 ONNX-Deploy steht (enc/erb_dec/dec exportiert + geladen + ausgefuehrt). Tiefere Ursache des No-ops: DF-Koeffizienten aus dfn_musik_best.pt evtl. untrainiert/Identity oder Skalierung. Braucht Koeffizienten-Vergleich gegen eager-Referenz.",
+  "w5_wurzelursache": "enc/dec c0-Shape-Mismatch im Export: enc gibt c0 [B,16,100,T] (Freq=100 fix), dec erwartet [B,16,T,96] (transponiert). dec-Reshape schlaegt fehl (/df_fc_emb Reshape {1,100,400}->{1,100,16,48}) -> Fallback -> Deep-Filter No-op.",
+  "w5_fix": "Export: c0-Achsen enc->dec angleichen (Transpose vor dec ODER dynamische Freq-Achse im enc-Export). Dann dec laeuft -> Koeffizienten wirken -> W-5-Nachweis."
 }
