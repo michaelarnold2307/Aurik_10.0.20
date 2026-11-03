@@ -1,0 +1,54 @@
+{
+  "schema": "aurik.ear_vae_v1_v2_messung/1",
+  "verfahren": "EAR-VAE v1<->v2 Vergleichsmessung (Never-worsen-Benchmark, D-K0-9)",
+  "kontext": "LUECKEN-MATRIX D.1c (docs/TODOS_SOTA_ROADMAP.md) + D-K0-9 (.github/SOTA_DEFICIT_REGISTER.md) — Vorbereitung der menschlichen Entscheidung, KEINE Aktivierung",
+  "status": "nicht_ausfuehrbar",
+  "fehler": "v2-Gewichte fehlen: models/ear_vae2_upstream/ enthaelt kein Modell-Gewicht (Upstream-Klon ohne ear_vae2.pt; gemessener Artefakt-Bestand 0 B, .github/ML_ARTIFACT_FINGERPRINTS.md). Zusaetzlich Format-/Architektur-Bruch: v2 = Torch-Monolith (EarVAE2) vs. v1 = ONNX-Paar — kein v2-ONNX-Export, kein Adapter im Produktionspfad.",
+  "seed": 42,
+  "zeilen": [],
+  "never_worsen": null,
+  "vorteile": null,
+  "p_wert": null,
+  "signifikant": null,
+  "zielmetriken": {
+    "musik_mos": "richtungszertifiziert (Spearman 0,95) — docs/reports/current/qualitaetsmetrik_richtungszertifikat.json",
+    "defektlast": "richtungszertifiziert — docs/reports/current/qualitaetsmetrik_richtungszertifikat.json",
+    "delta_sdr": "nicht korpusfaehig: Referenz-Korpus (test_audio/) hat keine sauberen Referenzen"
+  },
+  "v1": {
+    "rolle": "deployt (MUSDB-Finetune, Delta-SDR +4.83 dB)",
+    "artefakte": {
+      "models/ear_vae/encoder.onnx": "8f97ef673d4120ed1d92e762f8687b072de45dc666a166f38209cf9cf629c387",
+      "models/ear_vae/decoder.onnx": "ed64a1f12b685bb1e55eb27f69683430692c3570f6812c54a898109df5d911ab",
+      "models/ear_vae/ear_vae_music_finetuned.pyt": "993e69bea97bd9c9 (Gekuerzt, vollstaendig in .github/ML_ARTIFACT_FINGERPRINTS.md)"
+    },
+    "quelle": "models/manifest.json + .github/ML_ARTIFACT_FINGERPRINTS.md"
+  },
+  "v2": {
+    "rolle": "Upstream-Klon (D-K0-9) — nicht lauffaehig, siehe fehler",
+    "artefakte": {},
+    "quelle": "models/ear_vae2_upstream/ (README.md: huggingface-cli download earlab/EAR_VAE2 — nicht ausgefuehrt); .github/ML_ARTIFACT_FINGERPRINTS.md (0 Artefakte, 0 B)"
+  },
+  "quellen": {
+    "korpus": "scripts/release_candidate_pipeline.py CORPUS (8 Clips unter test_audio/ im Bestands-Root, Verzeichnis-Inventar 2026-11-03 verifiziert)",
+    "fenster": "_load_clip-MUSTER (scripts/release_candidate_pipeline.py): Starts 0.0/2.5/5.0/7.5 s, 2.5 s lang, Fenster nur bei Rest >= 1 s",
+    "harness": "scripts/ear_vae_v1_v2_vergleich.py",
+    "statistik": "scripts/ab_harness.py sign_test_two_sided (exakter Vorzeichen-Test)",
+    "bericht": "docs/reports/current/2026-11-03_ear_vae_v1_v2_vergleich.md"
+  },
+  "harness": {
+    "datei": "scripts/ear_vae_v1_v2_vergleich.py",
+    "befehl": "python3 -B scripts/ear_vae_v1_v2_vergleich.py --root <Bestands-Root>",
+    "verhalten": "fail-closed: ohne v2-Gewichte status nicht_ausfuehrbar + technischer Grund, KEINE erfundenen Zahlen (§V7 (copilot-instructions.md))",
+    "tests": "tests/unit/test_ear_vae_v1_v2_vergleich.py"
+  },
+  "hoer_stimuli": {
+    "status": "vorbereitet — Rendern ausstehend",
+    "zielordner": "output/ear_vae_v1_v2/hoer_stimuli/",
+    "verfahren": "Blind-Paare v1/v2 je Fenster via scripts/ab_harness.py prepare (Stimuli byte-identisch unter neutralen Namen, Schluessel getrennt; Hinweis in key.json beachten: Schluesselexemplar NICHT an die Hoer-Instanz)",
+    "frage": "Welcher Kandidat klingt besser und authentischer?",
+    "ausstehend": "Stimuli-WAVs koennen erst nach Beschaffung von ear_vae2.pt gerendert werden; die Render-Mechanik ist im Harness implementiert (--root genuegt)"
+  },
+  "offen": "Gewichts-Beschaffung (HF earlab/EAR_VAE2) inkl. Lizenz-/SHA-Feststellung (§III.13 (copilot-instructions.md)), Adapter-Export v2 (Torch->ONNX oder dokumentierter Torch-Pfad), dann Messlauf + Hoer-Stimuli + Hörordnungs-Sign-off (§v10.802 (copilot-instructions.md)). Kein Austausch ohne belegten Gewinn (§V7 (copilot-instructions.md)).",
+  "hinweis": "Urteil = menschliche Hoer-Instanz (Hörordnung, .github/instructions/hoerordnung.instructions.md — Konfliktregel §7 dort; im Auftrag als '§4 Hoerordnung' bezeichnet). Metriken sind Zeugen, kein Urteil. KEINE Flag-Flips, KEINE Aktivierung durch diese Messung (D-K0-9 menschlich-gated)."
+}
