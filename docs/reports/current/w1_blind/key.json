@@ -1,0 +1,22 @@
+{
+  "mapping": {
+    "w1_0__r0": {
+      "left": "B",
+      "quelle": "Schlüssel · w1_0__r0",
+      "right": "A"
+    },
+    "w1_1__r0": {
+      "left": "A",
+      "quelle": "Schlüssel · w1_1__r0",
+      "right": "B"
+    },
+    "w1_2__r0": {
+      "left": "A",
+      "quelle": "Schlüssel · w1_2__r0",
+      "right": "B"
+    }
+  },
+  "quelle": "scripts/ab_harness.py prepare (VERTRAULICH — nicht an Hör-Instanz)",
+  "schema": "aurik.ab_key/1",
+  "seed": 42
+}

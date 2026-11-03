@@ -1,0 +1,12 @@
+{
+  "quelle": "scripts/ab_harness.py prepare",
+  "schema": "aurik.ab_sources/1",
+  "sha256": {
+    "docs/reports/current/w1_blind/stimuli_src/0_a.wav": "7616a5c3377139bb6684a085308b3eff788c93f2c6d0739bddd7af3087e81a90",
+    "docs/reports/current/w1_blind/stimuli_src/0_b.wav": "544072e378bbb9e3acccfbe3a57416dd1b675386e5171b8dea58f59fdbfac236",
+    "docs/reports/current/w1_blind/stimuli_src/1_a.wav": "d90add0dd1312b495612233a1f70b2786ae2a463f7f077c5b2d3fb50621221c1",
+    "docs/reports/current/w1_blind/stimuli_src/1_b.wav": "7a4775a667db84c1177c6ad79984b92bd171e4aa2cf526f6ee52997949fcc7a2",
+    "docs/reports/current/w1_blind/stimuli_src/2_a.wav": "7c620a36b46cc5a676ccd6f0110508e31a2f3af6a91683b3461d4b8a81d5a8cc",
+    "docs/reports/current/w1_blind/stimuli_src/2_b.wav": "458963ec99ab1d312bbd9f8ac201946b1668d3935b6d5253be28baf49cd006bc"
+  }
+}
