@@ -67,6 +67,7 @@ def export_enc(model, out_path: str):
             "lsnr": {0: "batch", 1: "time"},
         },
         opset_version=17,
+        dynamo=False,  # Legacy-Exporter honoriert dynamic_axes (torch.export-Konflikt vermieden)
     )
     onnx.checker.check_model(out_path)
     size_mb = Path(out_path).stat().st_size / (1024 * 1024)
@@ -98,6 +99,7 @@ def export_erb_dec(model, out_path: str):
             "erb_mask": {0: "batch", 2: "time"},
         },
         opset_version=17,
+        dynamo=False,  # Legacy-Exporter honoriert dynamic_axes (torch.export-Konflikt vermieden)
     )
     onnx.checker.check_model(out_path)
     size_mb = Path(out_path).stat().st_size / (1024 * 1024)
@@ -128,6 +130,7 @@ def export_dec(model, out_path: str):
             "coefs": {0: "batch", 1: "time"},
         },
         opset_version=17,
+        dynamo=False,  # Legacy-Exporter honoriert dynamic_axes (torch.export-Konflikt vermieden)
     )
     onnx.checker.check_model(out_path)
     size_mb = Path(out_path).stat().st_size / (1024 * 1024)
