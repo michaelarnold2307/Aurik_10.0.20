@@ -1,6 +1,6 @@
 {
   "schema": "aurik.objektivbeschluss/1",
-  "flag": "use_bigvgan_v2_hr",
+  "flag": "BIGVGAN_V2_HR_ACTIVATED",
   "referenz_songs": 3,
   "never_worsen": true,
   "signifikant": true,
