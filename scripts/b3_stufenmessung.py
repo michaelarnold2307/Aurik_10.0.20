@@ -50,6 +50,8 @@ def _schalter_lesen(name: str) -> tuple[object, str, object]:
 
     mapping = {
         "W-1": (bv, "BIGVGAN_V2_HR_ACTIVATED"),
+        "W-2": (mmf, "use_scnet_music"),
+        "W-3": (mmf, "use_sgmse_musik"),
         "W-4": (mmf, "use_mp_senet_musik"),
         "W-5": (mmf, "use_df_musik"),
         "W-6": (mmf, "use_miipher_dit"),
@@ -176,6 +178,8 @@ def beschluss_schreiben(name: str, messung: dict, out_dir: Path, seed: int) -> P
         "schema": "aurik.objektivbeschluss/1",
         "flag": {
             "W-1": "BIGVGAN_V2_HR_ACTIVATED",
+            "W-2": "use_scnet_music",
+            "W-3": "use_sgmse_musik",
             "W-4": "use_mp_senet_musik",
             "W-5": "use_df_musik",
             "W-6": "use_miipher_dit",

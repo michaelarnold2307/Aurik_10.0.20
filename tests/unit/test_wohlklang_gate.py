@@ -348,3 +348,57 @@ def test_e7_fehlender_pfad_ist_fehler() -> None:
     row = "| G-4 | X | 1,0 | Formel | Seed 1 | `models/gibt_es_nicht/x.onnx` | aktiv |"
     findings = gate.check_gate_numbers(_gate_contract(row))
     assert any(f.rule == "E7" and "fehlen" in f.message for f in findings)
+
+
+# ---------------------------------------------------------------------------
+# B3-Harness-Schalter ↔ Vertragsschalter (WOHLKLANG_CLAIMS.md Vertragstabelle)
+# ---------------------------------------------------------------------------
+
+_VERTRAGSSCHALTER = {
+    "W-1": "BIGVGAN_V2_HR_ACTIVATED",
+    "W-2": "use_scnet_music",
+    "W-3": "use_sgmse_musik",
+    "W-4": "use_mp_senet_musik",
+    "W-5": "use_df_musik",
+    "W-6": "use_miipher_dit",
+    "W-7": "use_harmonic_inpainting",
+}
+
+
+def test_b3_schalter_mapping_deckt_vertragsschalter_ab() -> None:
+    """Jeder Vertragsschalter W-1…W-7 (WOHLKLANG_CLAIMS.md) ist im Harness
+    messbar (`scripts/b3_stufenmessung.py::_schalter_lesen`) und existiert am
+    Modul — sonst wäre die Stufenmessung still unmöglich (§V6 (copilot-instructions.md))."""
+    from scripts.b3_stufenmessung import _schalter_lesen
+
+    for stufe, attr in _VERTRAGSSCHALTER.items():
+        modul, name, wert = _schalter_lesen(stufe)
+        assert name == attr, f"{stufe}: Schalter {name} != Vertrag {attr}"
+        assert wert is getattr(modul, attr)
+
+
+def test_b3_beschlussflag_bleibt_konsistent_zum_schalter_mapping(monkeypatch, tmp_path) -> None:
+    """Beschluss-JSON und Schalter-Mapping dürfen nicht auseinanderlaufen
+    (E5 Schalter-Abgleich Code ↔ Vertrag, WOHLKLANG_CLAIMS.md)."""
+    import json as _json
+
+    import scripts.b3_stufenmessung as b3s
+
+    monkeypatch.setattr(b3s, "PROJECT_ROOT", tmp_path)
+    messung = {
+        "stufe": "W-2",
+        "zeilen": [{"trial_id": "clip__w0"}],
+        "never_worsen": True,
+        "vorteile": "1/1",
+        "p_wert": 0.5,
+        "signifikant": False,
+        "defekt_fallbacks": 0,
+        "b1_sauber": True,
+        "erfuellt": False,
+    }
+    ziel = b3s.beschluss_schreiben("W-2", messung, tmp_path, 42)
+    daten = _json.loads(ziel.read_text(encoding="utf-8"))
+    _, attr, _ = b3s._schalter_lesen("W-2")
+    assert daten["flag"] == attr == _VERTRAGSSCHALTER["W-2"]
+    assert daten["schema"] == "aurik.objektivbeschluss/1"
+    assert daten["ergebnis"] == "ABGELEHNT"
