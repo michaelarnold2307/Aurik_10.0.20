@@ -197,3 +197,53 @@ def test_messung_ist_deterministisch():
     erst = get_transient_energy_metric().measure_transient_energy(audio_input=sig, audio_restored=sig.copy(), sr=_SR)
     zweit = get_transient_energy_metric().measure_transient_energy(audio_input=sig, audio_restored=sig.copy(), sr=_SR)
     assert erst == zweit
+
+
+# ---------------------------------------------------------------------------
+# Mess-Rate: Corpus-Fenster mit 44,1 kHz (B3-Harness, Report 2026-11-04 §7)
+# ---------------------------------------------------------------------------
+
+
+def test_messfenster_resampeln_deterministisch_auf_48k():
+    """Corpus-Fenster mit 44,1 kHz werden auf die Mess-Rate 48 kHz gebracht
+    (01_musical_goals.md §1.4.6) — deterministisch (§G5 (copilot-instructions.md)),
+    Länge korrekt; 48-kHz-Eingabe bleibt unverändert."""
+    from scripts.b3_transient_energie_neverworsen import _auf_messrate_48k
+
+    sr = 44100
+    t = np.arange(int(sr * 0.5), dtype=np.float32) / sr
+    audio = (0.4 * np.sin(2 * np.pi * 440.0 * t)).astype(np.float32)
+
+    out1, sr1 = _auf_messrate_48k(audio, sr)
+    out2, sr2 = _auf_messrate_48k(audio, sr)
+    assert (sr1, sr2) == (48000, 48000)
+    assert out1.dtype == np.float32
+    # 0,5 s × 48 kHz = 24000 Samples (±1 Sample der Polyphasen-Filterung)
+    assert abs(len(out1) - 24000) <= 2
+    assert np.array_equal(out1, out2)  # §G5 (copilot-instructions.md): gleicher Input ⇒ gleicher Output
+
+    out3, sr3 = _auf_messrate_48k(out1, 48000)
+    assert sr3 == 48000
+    assert np.array_equal(out3, out1)  # Passthrough ohne erneutes Resampeln
+
+
+def test_resample_trifft_die_sample_achse_in_beiden_stereo_layouts():
+    """Stereo-Layout-Invariante (AGENTS.md §3): Resample entlang der
+    Sample-Achse — (N, C) wie ``_load_clip`` und (C, N) wie pipeline-intern;
+    Kanalzahl bleibt erhalten (keine Schein-Kanäle)."""
+    from scripts.b3_transient_energie_neverworsen import _auf_messrate_48k
+
+    sr = 44100
+    n = int(sr * 0.5)
+    links = np.sin(2 * np.pi * 440.0 * np.arange(n) / sr).astype(np.float32)
+    rechts = np.sin(2 * np.pi * 220.0 * np.arange(n) / sr).astype(np.float32)
+
+    nc = np.stack([links, rechts], axis=1)  # (N, C) — Layout von _load_clip
+    out_nc, _ = _auf_messrate_48k(nc, sr)
+    assert out_nc.ndim == 2 and out_nc.shape[1] == 2  # Kanalzahl erhalten
+    assert abs(out_nc.shape[0] - 24000) <= 2  # Sample-Achse resampelt
+
+    cn = np.stack([links, rechts], axis=0)  # (C, N) — pipeline-intern
+    out_cn, _ = _auf_messrate_48k(cn, sr)
+    assert out_cn.ndim == 2 and out_cn.shape[0] == 2  # Kanalzahl erhalten
+    assert abs(out_cn.shape[1] - 24000) <= 2  # Sample-Achse resampelt

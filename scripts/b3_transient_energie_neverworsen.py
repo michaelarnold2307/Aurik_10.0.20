@@ -124,6 +124,32 @@ def _scorecard_messen(audio_in: np.ndarray, audio_out: np.ndarray, sr: int, mate
     )
 
 
+def _auf_messrate_48k(audio: np.ndarray, sr: int) -> tuple[np.ndarray, int]:
+    """Deterministische Resampelung auf die Mess-Rate der Metrik
+    (§G5 (copilot-instructions.md); 01_musical_goals.md §1.4.6: 48 kHz).
+
+    Corpus-Fenster liegen teils mit 44,1 kHz vor; ohne Normalisierung misst
+    die Metrik gegen eine falsche Rate und der Never-worsen-Beleg ist wertlos.
+    Die Sample-Achse wird layout-sicher bestimmt (Stereo-Layout-Invariante:
+    ``_load_clip`` liefert (N, C), pipeline-intern gilt (C, N) — AGENTS.md §3;
+    ein Resample entlang der Kanal-Achse erzeugt Schein-Kanäle).
+    """
+    from fractions import Fraction
+
+    from scipy.signal import resample_poly
+
+    audio = np.asarray(audio, dtype=np.float32)
+    if sr == 48000:
+        return audio, 48000
+    if audio.ndim == 2 and audio.shape[0] <= 2 and audio.shape[1] > audio.shape[0]:
+        sample_achse = 1  # (C, N)
+    else:
+        sample_achse = 0  # (N,) oder (N, C)
+    _g = Fraction(48000, sr)
+    audio = resample_poly(audio, _g.numerator, _g.denominator, axis=sample_achse).astype(np.float32)
+    return audio, 48000
+
+
 def _kontrakt_doppelmessung(audio_in: np.ndarray, audio_out: np.ndarray, sr: int, material: str) -> tuple[dict, dict]:
     """(neu, alt) — transient_energie unter beiden Messverträgen auf selbem Audio."""
     from backend.core.musical_goals.transient_energy_metric import get_transient_energy_metric
@@ -321,7 +347,8 @@ def main(argv: list[str] | None = None) -> int:
                 audio, sr = _load_clip(pfad, start_s=w_start, seconds=args.seconds)
             except ValueError:
                 continue
-            fenster.append((pfad.stem, np.asarray(audio, dtype=np.float32), int(sr)))
+            audio, sr = _auf_messrate_48k(np.asarray(audio, dtype=np.float32), int(sr))
+            fenster.append((pfad.stem, audio, sr))
     if not fenster:
         log.error("kein Referenzmaterial")
         return 2
