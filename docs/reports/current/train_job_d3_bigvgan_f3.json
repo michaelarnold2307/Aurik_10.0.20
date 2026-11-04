@@ -1,0 +1,22 @@
+{
+  "schema": "aurik.train_job/1",
+  "run_id": "matrix_d3-20261029T002228Z-8533d9",
+  "name": "d3_bigvgan_f3",
+  "phase": "matrix_d3",
+  "seed": null,
+  "befehl": "env PYTHONPATH=. /home/michael/.local/share/aurik/venv_rocm72/bin/python -B scripts/train_bigvgan_f3.py --epochs 30",
+  "resume_befehl": "env PYTHONPATH=. /home/michael/.local/share/aurik/venv_rocm72/bin/python -B scripts/train_bigvgan_f3.py --epochs 30",
+  "timeout_s": 21600.0,
+  "retries": 1,
+  "versuche": [
+    {
+      "exit_code": -15,
+      "sekunden": 21600.4,
+      "timed_out": true,
+      "output_tail": "1278 STFT=0.8951\n2026-10-29 04:22:04,369 INFO Epoche 2 Schritt 800/2000: A1=0.1280 STFT=0.8935\n2026-10-29 04:29:27,870 INFO Epoche 2 Schritt 1000/2000: A1=0.1274 STFT=0.8927\n2026-10-29 04:36:51,438 INFO Epoche 2 Schritt 1200/2000: A1=0.1278 STFT=0.8930\n2026-10-29 04:44:14,990 INFO Epoche 2 Schritt 1400/2000: A1=0.1284 STFT=0.8921\n2026-10-29 04:51:46,430 INFO Epoche 2 Schritt 1600/2000: A1=0.1282 STFT=0.8919\n2026-10-29 04:59:20,354 INFO Epoche 2 Schritt 1800/2000: A1=0.1277 STFT=0.8914\n2026-10-29 05:06:55,735 INFO Epoche 2 fertig (4467.3 s): A1=0.1275 STFT=0.8904 Val=0.6089\n2026-10-29 05:14:38,106 INFO Epoche 3 Schritt 200/2000: A1=0.1262 STFT=0.8837\n2026-10-29 05:22:19,072 INFO Epoche 3 Schritt 400/2000: A1=0.1294 STFT=0.8865\n2026-10-29 05:29:55,472 INFO Epoche 3 Schritt 600/2000: A1=0.1291 STFT=0.8852\n2026-10-29 05:37:31,339 INFO Epoche 3 Schritt 800/2000: A1=0.1297 STFT=0.8865\n2026-10-29 05:45:07,341 INFO Epoche 3 Schritt 1000/2000: A1=0.1296 STFT=0.8863\n2026-10-29 05:52:45,009 INFO Epoche 3 Schritt 1200/2000: A1=0.1297 STFT=0.8854\n2026-10-29 06:00:18,961 INFO Epoche 3 Schritt 1400/2000: A1=0.1293 STFT=0.8857\n2026-10-29 06:07:42,649 INFO Epoche 3 Schritt 1600/2000: A1=0.1290 STFT=0.8850\n2026-10-29 06:15:15,667 INFO Epoche 3 Schritt 1800/2000: A1=0.1291 STFT=0.8839\n2026-10-29 06:22:51,400 INFO Epoche 3 fertig (4550.3 s): A1=0.1291 STFT=0.8837 Val=0.5725\n2026-10-29 06:23:10,473 INFO Neues bestes Modell (Val=0.5725) gespeichert\n2026-10-29 06:30:48,266 INFO Epoche 4 Schritt 200/2000: A1=0.1292 STFT=0.8794\n2026-10-29 06:38:24,081 INFO Epoche 4 Schritt 400/2000: A1=0.1272 STFT=0.8813\n2026-10-29 06:45:58,438 INFO Epoche 4 Schritt 600/2000: A1=0.1259 STFT=0.8800\n2026-10-29 06:53:34,239 INFO Epoche 4 Schritt 800/2000: A1=0.1263 STFT=0.8798\n2026-10-29 07:01:10,492 INFO Epoche 4 Schritt 1000/2000: A1=0.1270 STFT=0.8799\n2026-10-29 07:08:46,547 INFO Epoche 4 Schritt 1200/2000: A1=0.1270 STFT=0.8795\n2026-10-29 07:16:22,510 INFO Epoche 4 Schritt 1400/2000: A1=0.1263 STFT=0.8785\n",
+      "versuch": 1,
+      "befehl": "env PYTHONPATH=. /home/michael/.local/share/aurik/venv_rocm72/bin/python -B scripts/train_bigvgan_f3.py --epochs 30"
+    }
+  ],
+  "quelle": "scripts/train_job_runner.py"
+}

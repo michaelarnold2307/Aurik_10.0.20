@@ -1,31 +1,19 @@
 # TASK_CHANGES — Live-Ledger der aktuellen Aufgabe
 
-> Generiert von `scripts/change_ledger.py snapshot` (Base: `HEAD`, Stand: 2026-10-29 11:13 CET).
+> Generiert von `scripts/change_ledger.py snapshot` (Base: `HEAD`, Stand: 2026-11-04 08:25 CET).
 > CI (`ci-lite.yml` pr-evidence-gate) erzwingt Abdeckung: jede geänderte Code-Datei muss hier stehen.
 
 ## Geänderte Dateien
 
 | Status | Pfad | Art |
 |---|---|---|
-| M | `.github/FILE_REGISTRY.md` | modifiziert |
-| M | `.github/specs/03_cognitive_modules.md` | modifiziert |
-| M | `backend/core/defect_scanner.py` | modifiziert |
-| M | `docs/reports/current/b3_objektivbeschluss_W-1.json` | modifiziert |
-| M | `docs/reports/current/b3_objektivbeschluss_W-4.json` | modifiziert |
-| M | `docs/reports/current/b3_objektivbeschluss_W-5.json` | modifiziert |
-| M | `docs/reports/current/b3_stufenmessung_W-1.json` | modifiziert |
-| M | `docs/reports/current/b3_stufenmessung_W-4.json` | modifiziert |
-| M | `docs/reports/current/b3_stufenmessung_W-5.json` | modifiziert |
-| M | `docs/reports/current/b3_stufenmessung_W-6.json` | modifiziert |
-| M | `docs/reports/current/b3_stufenmessung_W-7.json` | modifiziert |
+| M | `docs/SOTA_HANDOVER.md` | modifiziert |
+| M | `docs/reports/current/2026-11-03_ear_vae_v1_v2_vergleich.json` | modifiziert |
+| A | `docs/reports/current/2026-11-04_sota_sitzung_ear_vae_messung_ketten_checks.md` | neu |
 | M | `docs/reports/current/train_job_d3_diffwave_vokal.json` | modifiziert |
-| M | `docs/reports/current/train_job_m8_aspade.json` | modifiziert |
 | ?? | `docs/reports/current/2026-10-29_c4_hoerprobe_bigvgan_f3.md` | ungetrackt |
-| ?? | `docs/reports/current/2026-10-29_crackle_texture_severity_routing_fix.md` | ungetrackt |
-| ?? | `docs/reports/current/b3_objektivbeschluss_W-6.json` | ungetrackt |
-| ?? | `docs/reports/current/b3_objektivbeschluss_W-7.json` | ungetrackt |
 | ?? | `docs/reports/current/train_job_d3_bigvgan_f3.json` | ungetrackt |
-| ?? | `tests/unit/test_defect_scanner_crackle_texture_severity.py` | ungetrackt |
+| ?? | `study_stimuli/model_ab/manifest.json` | ungetrackt |
 
 ## Entscheidungen
 
