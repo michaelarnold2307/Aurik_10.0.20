@@ -740,7 +740,7 @@ F14.
 - **Akzeptanz:** Nächster Lauf ohne „ML→DSP-Fallback“-Traceback für DeepFilterNet;
   Rauschunterdrückung über trainiertes DFN statt OMLSA.
 
-## TODO-P1-7 · Keine hörbaren Restdefekte: m1b intern ausführen (Stufe-2-Nachbehandlung)
+## TODO-P1-7 · Keine hörbaren Restdefekte: m1b intern ausführen (Stufe-2-Nachbehandlung) — UMGESETZT 2026-11-03 (verifiziert)
 
 - **Ziel (User-Anforderung 2026-09-08):** In allen Importfiles sollen keine hörbaren
   Restdefekte übrig bleiben — bei vollem Erhalt von Musikalität und Klang, soweit möglich.
@@ -759,6 +759,15 @@ F14.
 - **Beleg:** `tests/unit/test_m1b_targeted_retry.py` (6 Fälle, grün: nur gemappte Phasen,
   §0a-Ausschluss, Re-Entry-Guard, no-exec → None, Chunk-Shift-Restore);
   Restorer-Suiten 289 passed.
+- **Verifikation 2026-11-03:** Spec-Abgleich vollständig erfüllt — Audit mit
+  file:line-Evidenz je Spec-Punkt:
+  `docs/reports/current/2026-11-03_p1_7_p1_10_status_audit.md`. Verkabelung belegt:
+  restore()-Tail `backend/core/unified_restorer_v3.py:23737` + Metadata `:23761-23762`,
+  `_restore_chunked` `:47732` + Metadata `:47880-47881`; `DEFECT_RETRY_PHASE_MAP` ohne
+  §0a (copilot-instructions.md)-Verbotsphasen (`backend/core/defect_audibility_gate.py:86-104`);
+  Re-Entry-Guard `_m1b_pass_active` (`unified_restorer_v3.py:46939/46955/47003`).
+  Test-Lücken geschlossen: 15 neue Tests (`test_m1b_targeted_retry.py` +
+  `test_p1_7_p1_10_wiring.py`).
 - **Akzeptanz:** Nächster Referenzlauf: `n_audible_unmasked` deutlich reduziert (Ziel: 0,
   soweit physisch möglich — `physical_cap`-Typen dokumentiert ausgenommen);
   `m1b_retry_applied=True` im Metadata; keine Verschlechterung von
@@ -2421,6 +2430,8 @@ Maskierung je Defekt-Kontext — ein Cache wäre nicht exakt).
 | TODO-P1-3 (Audibility-Guards) | ✅ GESCHLOSSEN 2026-09-08 | SCK/WBG/ATI/Formant/Gain-Step umgesetzt |
 | TODO-P1-4 (Blind-Hörstudie) | **EXTERN BLOCKIERT (menschliche Hörer)** | §0c-Export-Bug geschlossen (B); n≥30-Studie braucht Hörer |
 | TODO-P1-5 … P1-12 | ✅ GESCHLOSSEN 2026-09-08 | Status im jeweiligen Abschnitt |
+| TODO-P1-7 (m1b intern ausführen) | ✅ UMGESETZT 2026-11-03 (verifiziert) | Spec-Abgleich vollständig: `_run_m1b_targeted_retry` (`backend/core/unified_restorer_v3.py:46909-47022`), Verkabelung Tail `:23737` + Chunked `:47732`, Metadata `m1b_retry_applied`/`m1b_retry_types` (`:23761-23762`/`:47880-47881`), `DEFECT_RETRY_PHASE_MAP` ohne §0a (copilot-instructions.md)-Phasen (`backend/core/defect_audibility_gate.py:86-104`), Re-Entry-Guard (`:46939/46955/47003`); Test-Lücken geschlossen (15 neue Tests); Beleg: `docs/reports/current/2026-11-03_p1_7_p1_10_status_audit.md` |
+| TODO-P1-10 (Defekt-Rückwärtszählung Chips) | ✅ UMGESETZT 2026-09-08 — verifiziert 2026-11-03 | Chip-Init beim ersten Render (`Aurik10/ui/modern_window.py:24645-24647`), Kumulation `_resolved_defects_accumulated` (`:2867-2869`) + `_done_filter` (`:24631/24637`), Reset neuer Scan (`:24220-24223`), Backend-Reset `_resolved_sent_keys` pro restore() §V8 (copilot-instructions.md) (`backend/core/unified_restorer_v3.py:8118-8121`); Verkabelungs-Invarianten nachimplementiert (`tests/unit/test_p1_7_p1_10_wiring.py`); Beleg: `docs/reports/current/2026-11-03_p1_7_p1_10_status_audit.md` |
 | PSY-A1/A2/A3/A4/A5/A8 | ✅ GESCHLOSSEN 2026-09-14/15 | Rollouts in den Tabellenzeilen; PSY-A2-zeitvariant via P5 |
 | PSY-A6 (CIPIC-HRIR) | AUSBAUSTUFE (dokumentiert) | persönliche HRIR; nicht blockierend |
 | R1/R4/R5/R8 | ✅ GESCHLOSSEN 2026-09-15 | s. o. G + Welle 1 (R4-Benchmark, R5-Zertifikat, R8-Infrastruktur); **R8-Per-Phase-Rollout: phase_59 umgesetzt** (Defekt-Maske als Rechen-Maske, sub-STFT-Fenster unverändert, Coverage-Fallback ≥0,85). **Folge-Befund 2026-09-16 (Profiling):** ein Rollout auf phase_01/19 hätte KEINEN Nutzen — die Roadmap-Attribution „phase_01 = DSP-Multiscale-Bottleneck“ war falsch: `_detect_clicks_multiscale` kostet nur ~3 s/225 s (0,013× RT, 11 % der Phasen-Zeit); Treiber sind der einmalige BANQUET-ML-Load (0,78 s/Prozess, 62 %) und die ML-Device-Detection (0,26 s) bzw. im Lauf die CPU-Inferenz nach SUP-F2. phase_19 hat das Sparse-Muster bereits (segment-selektives Gate). R8-Rollout damit EVIDENZBASIERT BEENDET — der P0-1-Rest ist GPU-/ML-gebunden (R3) |
