@@ -4693,6 +4693,7 @@ class MusicalGoalsChecker:
         material_type: str = "unknown",
         panns_singing: float = 0.0,
         global_scalar: float = 1.0,
+        pre_pipeline_reference: np.ndarray | None = None,
     ) -> dict[str, float]:
         """Misst alle 15 musikalischen Qualitätsziele (Spec §1.2 v10.0.0).
 
@@ -4703,6 +4704,13 @@ class MusicalGoalsChecker:
                             Verbessert Präzision von ``authentizitaet``,
                             ``timbre_authenticity``, ``separation_fidelity`` und
                             ``articulation`` erheblich.
+            pre_pipeline_reference: Pre-Pipeline-Original für ``transient_energie``
+                            (§1.4.6: „Pre-Pipeline-Original (Reference)").
+                            Der transient_energie-Messpfad misst IMMER gegen
+                            diese Referenz — ein Carrier-Checkpoint als
+                            ``reference`` (§0d Referenz-Shift) darf den
+                            transient_energie-Zähler nicht verfälschen. Fallback:
+                            ``reference``.
             material_type:  Materialtyp (z.B. "tape", "vinyl", "cd") für
                             material-adaptive Metriken (§9.12.6 material-floor).
             panns_singing:  PANNs singing confidence [0, 1].
@@ -4777,7 +4785,22 @@ class MusicalGoalsChecker:
         # Referenz, material_type und panns_singing ändern den Messpfad
         # (DTW vs. IOI, SingMOS) und gehören daher in den Schlüssel.
         _ref_hash = hash(reference.tobytes()) if reference is not None and hasattr(reference, "tobytes") else None
-        _cache_key = (_audio_hash, _ref_hash, sr, material_type, float(panns_singing), round(_global_scalar, 4))
+        # §v10.x Cache-Korrektheit: auch pre_pipeline_reference gehört in den
+        # Schlüssel — sie ändert den transient_energie-Messpfad (§1.4.6).
+        _ppref_hash = (
+            hash(pre_pipeline_reference.tobytes())
+            if pre_pipeline_reference is not None and hasattr(pre_pipeline_reference, "tobytes")
+            else None
+        )
+        _cache_key = (
+            _audio_hash,
+            _ref_hash,
+            _ppref_hash,
+            sr,
+            material_type,
+            float(panns_singing),
+            round(_global_scalar, 4),
+        )
         _cache = getattr(self, "_measure_all_cache", {})
         # §a Mess-Cache (2026-09-11): Mehr-Eintrags-FIFO (8) statt 1-Eintrag —
         # die measure_all-Kaskade pro Song wiederholt Varianten (pre/post/
@@ -4920,15 +4943,19 @@ class MusicalGoalsChecker:
                 logger.debug("measure_all: goal=%s %.3f s", goal_name, _dt)
         logger.info("measure_all: 15 goals abgeschlossen in %.1f s", time.perf_counter() - _t_all_start)
 
-        # §1.4.6 [RELEASE_MUST] Transient-Energie (15. Goal) — nur wenn reference vorhanden
+        # §1.4.6 [RELEASE_MUST] Transient-Energie (15. Goal) — nur wenn eine
+        # Referenz vorhanden ist. Messkontrakt: audio_input IST das
+        # Pre-Pipeline-Original (§1.4.6 „Pre-Pipeline-Original (Reference)"),
+        # nicht der pipeline-interne Carrier-Checkpoint des §0d-Referenz-Shifts.
         # PHASE_GOAL_EXCLUSIONS: phase_18 + phase_26 sind ausgenommen (see transient_energy_metric.py)
-        if reference is not None:
+        _tem_reference = pre_pipeline_reference if pre_pipeline_reference is not None else reference
+        if _tem_reference is not None:
             try:
                 if _GET_TRANSIENT_ENERGY_METRIC is None:
                     raise ImportError("transient_energy_metric unavailable")
 
                 _tem_result = _GET_TRANSIENT_ENERGY_METRIC().measure_transient_energy(
-                    audio_input=reference,
+                    audio_input=_tem_reference,
                     audio_restored=audio,
                     sr=sr,
                     material_type=material_type,

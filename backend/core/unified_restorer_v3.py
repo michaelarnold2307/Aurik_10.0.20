@@ -17404,6 +17404,7 @@ class UnifiedRestorerV3:
                 _ccr_mat_val,
                 chunked_tail_skip=_chunked_tail_skip,
                 chunked_last=_chunked_last,
+                pre_pipeline_reference=original_audio_for_goals,
             )
             # §1.2 Teamwork-Invariante [RELEASE_MUST]: Pipeline-Ende MUSS den vollen
             # 15-Ziel-Vektor (effective thresholds) auswerten. Kein Goal darf durch
@@ -46339,7 +46340,11 @@ class UnifiedRestorerV3:
                         1.0,
                     )
                     _blend_scores = _mg_checker.measure_all(
-                        _blended, sample_rate, reference=_mg_ref, material_type=_ccr_mat_val
+                        _blended,
+                        sample_rate,
+                        reference=_mg_ref,
+                        material_type=_ccr_mat_val,
+                        pre_pipeline_reference=original_audio_for_goals,
                     )
                     _endgate_measure_count += 1
                     _resolved = sum(
@@ -47101,6 +47106,7 @@ class UnifiedRestorerV3:
         *,
         chunked_tail_skip: bool = False,
         chunked_last: bool = False,
+        pre_pipeline_reference=None,
     ):
         """§P0-1 Song-Ebene-Analytik (Block a1): measure_all() ist der teuerste
         per-Chunk-Analytics-Block (~40–60 s je Chunk). Im Chunked-Pfad misst
@@ -47119,6 +47125,7 @@ class UnifiedRestorerV3:
             reference=reference,
             material_type=material_type,
             panns_singing=float(self._restoration_context.get("panns_singing", 0.0)),
+            pre_pipeline_reference=pre_pipeline_reference,
         )
         # Container-Normalisierung (Produktionsbefund 2026-09-21): Der
         # get_checker()-Singleton liefert SimpleNamespace, die übrigen
@@ -47657,6 +47664,7 @@ class UnifiedRestorerV3:
                     sample_rate,
                     audio,
                     getattr(_first_result, "material_type", MaterialType.UNKNOWN),
+                    pre_pipeline_reference=audio,
                 )
                 if _song_goals:
                     logger.info("🎯 §P0-1 Song-SCORECARD nach Assembly: %d Goals gemessen", len(_song_goals))

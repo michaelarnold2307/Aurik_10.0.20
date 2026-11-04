@@ -18,11 +18,19 @@ def _make_stable_audio(n: int = 48000) -> np.ndarray:
 
 
 def _make_audio_with_onsets(sr: int = 48000, n_onsets: int = 5) -> np.ndarray:
-    """Signal mit klar definierten Impulsen (Onsets)."""
+    """Signal mit klar definierten musikalischen Anschlägen (Attack + Sustain).
+
+    Seit dem Messkontrakt 2026-11-04 zählen isolierte Impulse ohne Klangkörper
+    nicht als musikalische Transienten (§V36) — die Anschläge brauchen daher
+    einen Sustain-Anteil, damit sie gewertet werden.
+    """
     audio = np.zeros(sr, dtype=np.float32)
     for i in range(n_onsets):
         onset = int((i + 0.5) / n_onsets * sr)
-        audio[onset : onset + int(0.002 * sr)] = 0.8  # 2ms Impuls
+        audio[onset : onset + int(0.002 * sr)] = 0.8  # 2ms Attack-Impuls
+        sustain_len = int(0.12 * sr)
+        sustain_start = onset + int(0.002 * sr)
+        audio[sustain_start : sustain_start + sustain_len] = 0.32  # Sustain (Klangkörper)
     return audio
 
 
@@ -158,9 +166,11 @@ def test_result_dict_structure():
     )
     required_keys = {
         "transient_energy_score",
+        "transient_energy_score_unfiltered",
         "per_onset_ratios",
         "onset_positions_samples",
         "n_onsets_detected",
+        "n_onsets_excluded_impulse",
         "material_floor",
         "is_valid",
     }

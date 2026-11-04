@@ -1,4 +1,8 @@
-# Changelog — Aurik 10.12.46
+# Changelog — Aurik 10.12.47
+
+## 10.12.47 (2026-11-04)
+
+* **fix(musical_goals): transient_energie-Messkontrakt (§1.4.6) wiederhergestellt** — Referenz = Pre-Pipeline-Original (`01_musical_goals.md:1061`) statt post-NR-Carrier-Checkpoint (§0d-Shift-Kopplung entkoppelt); Timing-Invarianz ±10 ms (`02_pipeline_architecture.md:4158`) statt starrer Fensterlage; isolierte Defekt-Impulse zählen nicht als verlorene musikalische Transienten (§V36 — transparent ausgezählt, ungefilterter Score mitgeführt). Pipeline-Ausgabe bit-identisch (§G5); Never-worsen-Harness `scripts/b3_transient_energie_neverworsen.py`; 22 Tests; Report `docs/reports/current/2026-11-04_transient_energie_ursache_fix.md`. Offen: §1.4.6-Revision V27 (Onset-Set) + Pipeline-Baustein U4 (phase_08 ≈ 1 % Wirkung).
 
 ## 10.12.46 (2026-10-27)
 

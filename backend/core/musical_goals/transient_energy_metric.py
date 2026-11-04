@@ -9,6 +9,25 @@ an Onset-Punkten erhalten haben.
 Metrik: Geometrischer Mittelwert von E(attack_restored, 5ms) / E(attack_original, 5ms)
         über alle erkannten Onsets.
 
+Messkontrakt (§1.4.6, präzisiert 2026-11-04 — Ursachen-Report
+``docs/reports/current/2026-11-04_transient_energie_ursache_fix.md``):
+
+1. **Referenz:** ``audio_input`` IST das Pre-Pipeline-Original (§1.4.6:
+   „Pre-Pipeline-Original (Reference)"). Es darf KEIN Pipeline-interner
+   Carrier-Checkpoint übergeben werden — der Checkpoint ist post-NR und
+   verfälscht den Zähler der Ratio.
+2. **Timing-Invarianz:** Die Attack-Energie des Restaurierten wird als
+   Maximum im Fenster ±10 ms um den Onset gemessen. §1.4.6 grenzt zu
+   ``artikulation`` ab: transient_energie „misst ausschließlich die
+   Amplitude/Energie des Transient-Impuls"; Timing gehört zu ``artikulation``
+   (Attack-Time-Abweichung ≤ 10 ms). Wow-/Flutter- oder Speed-Korrekturen
+   dürfen transient_energie nicht als Energieverlust bestrafen.
+3. **Onset-Set:** Isolierte Defekt-Impulse (Clicks/Crackle/Scratches) ohne
+   Klangkörper sind keine musikalischen Transienten und werden nicht
+   gezählt (Beleg §V36: „OMLSA/DFN entfernt Rauschimpulse, die im
+   ursprünglichen Signal als Onsets zählen → transient_energie false
+   regression", ``per_phase_musical_goals_gate.py``).
+
 PHASE_GOAL_EXCLUSIONS:
     - phase_18 (NMF-Separation) — verändert per Definition Transient-Balance
     - phase_26 (Transient-Shaper) — ist selbst der Repair-Mechanismus
@@ -42,7 +61,23 @@ def _is_fast_validation_context() -> bool:
 # ---------------------------------------------------------------------------
 
 # Energie-Messfenster: 5 ms nach jedem Onset (§1.4.6a)
+# Hinweis: Das V26-Fenster „0–20 ms nach Transient" (dsp.instructions.md §ATI,
+# Onset-Guard in phase_03_denoise) ist ein SCHUTZfenster gegen NR-Eingriffe,
+# nicht das Messfenster dieser Metrik (§1.4.6a: 5 ms).
 _ATTACK_WINDOW_MS: float = 5.0
+
+# Timing-Toleranz für die Attack-Energie des Restaurierten (±10 ms):
+# §1.4.6-Abgrenzung zu artikulation — transient_energie misst ausschließlich
+# Amplitude/Energie; Timing bewertet artikulation (≤ 10 ms Attack-Time-Abweichung).
+_ATTACK_ALIGNMENT_TOL_MS: float = 10.0
+
+# Impuls-Isolations-Test (§V36-False-Regression-Schutz): Attack-Fenster
+# 0–20 ms vs. Sustain 20–60 ms (Transienten-Modell aus
+# phase_08_transient_preservation: Attack 1–20 ms, Sustain 20–200 ms).
+# Ein isolierter Defekt-Impuls zerfällt ohne Klangkörper (decay < 0.10).
+_IMPULSE_ISOLATION_ATTACK_MS: float = 20.0
+_IMPULSE_ISOLATION_TAIL_MS: float = 40.0
+_IMPULSE_ISOLATION_DECAY_MAX: float = 0.10
 
 # Minimale RMS-Energie eines Onsets (um Stille-Onsets auszuschließen)
 _MIN_ONSET_ENERGY_DBFS: float = -52.0
@@ -145,9 +180,13 @@ class TransientEnergyMetric:
     Algorithmus:
     1. HPSS auf Original und Restaurierung (Percussive-Komponente isolieren)
     2. librosa.onset.onset_detect auf Percussive-Komponente des Originals
-    3. Pro Onset: E_orig = RMS(original[i:i+5ms]), E_rest = RMS(restored[i:i+5ms])
+    3. Pro Onset: E_orig = RMS(original[i:i+5ms]),
+       E_rest = max RMS(restored[s:s+5ms]) für s ∈ [i−10ms, i+10ms]
+       (Timing-Invarianz, §1.4.6-Abgrenzung zu artikulation)
     4. ratio[i] = min(1.0, E_rest / max(E_orig, 1e-9))
     5. score = exp(mean(log(ratio[:])))  # Geometrischer Mittelwert
+       (isolierte Defekt-Impulse ohne Klangkörper sind vom Onset-Set
+       ausgeschlossen, §V36)
     """
 
     def measure_transient_energy(
@@ -156,21 +195,30 @@ class TransientEnergyMetric:
         audio_restored: np.ndarray,
         sr: int,
         material_type: str = "unknown",
+        alignment_tolerance_ms: float | None = None,
+        exclude_impulse_onsets: bool = True,
     ) -> dict[str, Any]:
         """Misst Transient-Energie-Erhaltung.
 
         Args:
-            audio_input:    Original-Audio (vor Pipeline) [T] oder [C,T] oder [T,C]
+            audio_input:    Pre-Pipeline-Original (§1.4.6 „Pre-Pipeline-Original
+                            (Reference)") [T] oder [C,T] oder [T,C]
             audio_restored: Restauriertes Audio (gleiche Form) [T] oder [C,T] oder [T,C]
             sr:             Abtastrate — MUSS 48000 Hz sein
             material_type:  Material-Typ für Floor-Lookup
+            alignment_tolerance_ms: Timing-Toleranz für E_rest (Default 10 ms;
+                            0.0 reproduziert den starren Messpfad)
+            exclude_impulse_onsets: isolierte Defekt-Impulse ausschließen
+                            (Default True; False reproduziert den alten Onset-Set)
 
         Returns:
             Dict mit Schlüsseln:
             - transient_energy_score (float): Geometrischer Mittelwert [0, 1]
+            - transient_energy_score_unfiltered (float): ohne Impuls-Filter
             - per_onset_ratios (list[float]): Ratio pro Onset
             - onset_positions_samples (list[int]): Onset-Positionen
-            - n_onsets_detected (int): Anzahl erkannter Onsets
+            - n_onsets_detected (int): Anzahl gewerteter Onsets
+            - n_onsets_excluded_impulse (int): als Defekt-Impuls ausgeschlossen
             - material_floor (float): Erwarteter Mindest-Score für Material
             - is_valid (bool): True wenn genug Onsets für valide Messung
         """
@@ -178,19 +226,30 @@ class TransientEnergyMetric:
 
         mat = str(material_type or "unknown").strip().lower()
         material_floor = get_transient_energy_material_floor(mat)
+        tol_ms = _ATTACK_ALIGNMENT_TOL_MS if alignment_tolerance_ms is None else float(alignment_tolerance_ms)
 
         # Sichere Fallback-Antwort
         _fallback = {
             "transient_energy_score": 1.0,
+            "transient_energy_score_unfiltered": 1.0,
             "per_onset_ratios": [],
             "onset_positions_samples": [],
             "n_onsets_detected": 0,
+            "n_onsets_excluded_impulse": 0,
             "material_floor": material_floor,
             "is_valid": False,
         }
 
         try:
-            return self._measure_impl(audio_input, audio_restored, sr, mat, material_floor)
+            return self._measure_impl(
+                audio_input,
+                audio_restored,
+                sr,
+                mat,
+                material_floor,
+                alignment_tolerance_ms=tol_ms,
+                exclude_impulse_onsets=bool(exclude_impulse_onsets),
+            )
         except Exception as exc:
             logger.debug("TransientEnergyMetric.measure_transient_energy nicht blockierend: %s", exc)
             return _fallback
@@ -202,8 +261,23 @@ class TransientEnergyMetric:
         sr: int,
         mat: str,
         material_floor: float,
+        alignment_tolerance_ms: float = _ATTACK_ALIGNMENT_TOL_MS,
+        exclude_impulse_onsets: bool = True,
     ) -> dict[str, Any]:
-        """Interne Implementierung."""
+        """Interne Implementierung (Messkontrakt siehe Modul-Docstring)."""
+
+        def _leer(energie: float = 1.0) -> dict[str, Any]:
+            return {
+                "transient_energy_score": round(float(energie), 4),
+                "transient_energy_score_unfiltered": round(float(energie), 4),
+                "per_onset_ratios": [],
+                "onset_positions_samples": [],
+                "n_onsets_detected": 0,
+                "n_onsets_excluded_impulse": 0,
+                "material_floor": material_floor,
+                "is_valid": False,
+            }
+
         # Mono-Konvertierung
         mono_in = _to_mono_float32(audio_input)
         mono_rest = _to_mono_float32(audio_restored)
@@ -211,14 +285,7 @@ class TransientEnergyMetric:
         # Längen angleichen
         n = min(len(mono_in), len(mono_rest))
         if n < sr * 0.1:  # < 100 ms
-            return {
-                "transient_energy_score": 1.0,
-                "per_onset_ratios": [],
-                "onset_positions_samples": [],
-                "n_onsets_detected": 0,
-                "material_floor": material_floor,
-                "is_valid": False,
-            }
+            return _leer()
         mono_in = mono_in[:n]
         mono_rest = mono_rest[:n]
 
@@ -230,20 +297,17 @@ class TransientEnergyMetric:
 
         if len(onset_samples) == 0:
             logger.debug("TransientEnergyMetric: keine Onsets erkannt in %d samples", n)
-            return {
-                "transient_energy_score": 1.0,
-                "per_onset_ratios": [],
-                "onset_positions_samples": [],
-                "n_onsets_detected": 0,
-                "material_floor": material_floor,
-                "is_valid": False,
-            }
+            return _leer()
 
         # Angriffs-Fenster (5 ms)
         attack_win = max(int(_ATTACK_WINDOW_MS / 1000.0 * sr), 8)
+        # Timing-Toleranz ±10 ms in Samples (§1.4.6-Abgrenzung zu artikulation)
+        align_tol = max(int(float(alignment_tolerance_ms) / 1000.0 * sr), 0)
 
         ratios: list[float] = []
+        unfiltered_ratios: list[float] = []
         valid_onset_positions: list[int] = []
+        n_excluded_impulse = 0
 
         for onset_s in onset_samples:
             onset_s = int(onset_s)
@@ -252,19 +316,33 @@ class TransientEnergyMetric:
                 continue
 
             seg_orig = mono_in[onset_s:end_s]
-            seg_rest = mono_rest[onset_s:end_s]
-
             e_orig = float(np.sqrt(np.mean(seg_orig**2)) + 1e-9)
-            e_rest = float(np.sqrt(np.mean(seg_rest**2)) + 1e-9)
 
             # Energie-Gate: Stille-Onsets ignorieren
             e_orig_dbfs = 20.0 * np.log10(e_orig + 1e-10)
             if e_orig_dbfs < _MIN_ONSET_ENERGY_DBFS:
                 continue
 
+            # Attack-Energie des Restaurierten mit Timing-Toleranz: Maximum
+            # über alle Verschiebungen ±align_tol (Messung ausschließlich der
+            # Amplitude/Energie — Timing bewertet artikulation, §1.4.6).
+            e_rest = _attack_energy_with_tolerance(mono_rest, onset_s, attack_win, align_tol, n)
+            if e_rest is None:
+                continue
+
             ratio = float(np.clip(e_rest / e_orig, 0.0, 1.0))
+            unfiltered_ratios.append(ratio)
+
+            # §V36: isolierte Defekt-Impulse ohne Klangkörper sind keine
+            # musikalischen Transienten (false regression) und zählen nicht.
+            if exclude_impulse_onsets and _is_isolated_impulse(mono_in, onset_s, n, sr):
+                n_excluded_impulse += 1
+                continue
+
             ratios.append(ratio)
             valid_onset_positions.append(onset_s)
+
+        unfiltered_score = _geometric_mean(unfiltered_ratios)
 
         if len(ratios) < _MIN_ONSETS_FOR_VALID_SCORE:
             logger.debug(
@@ -275,33 +353,36 @@ class TransientEnergyMetric:
             score = float(np.mean(ratios)) if ratios else 1.0
             return {
                 "transient_energy_score": round(score, 4),
+                "transient_energy_score_unfiltered": round(unfiltered_score, 4),
                 "per_onset_ratios": [round(r, 4) for r in ratios],
                 "onset_positions_samples": valid_onset_positions,
                 "n_onsets_detected": len(ratios),
+                "n_onsets_excluded_impulse": n_excluded_impulse,
                 "material_floor": material_floor,
                 "is_valid": False,
             }
 
         # Geometrischer Mittelwert (§1.4.6a: exp(mean(log(ratio))))
-        ratios_arr = np.array(ratios, dtype=np.float64)
-        # Clampen um log(0) zu vermeiden
-        ratios_arr = np.clip(ratios_arr, 1e-6, 1.0)
-        geo_mean = float(np.exp(np.mean(np.log(ratios_arr))))
-        geo_mean = float(np.clip(geo_mean, 0.0, 1.0))
+        geo_mean = _geometric_mean(ratios)
 
         logger.debug(
-            "TransientEnergyMetric: n_onsets=%d, geo_mean=%.3f, material_floor=%.2f, material=%s",
+            "TransientEnergyMetric: n_onsets=%d, excluded_impulse=%d, geo_mean=%.3f, "
+            "unfiltered=%.3f, material_floor=%.2f, material=%s",
             len(ratios),
+            n_excluded_impulse,
             geo_mean,
+            unfiltered_score,
             material_floor,
             mat,
         )
 
         return {
             "transient_energy_score": round(geo_mean, 4),
+            "transient_energy_score_unfiltered": round(unfiltered_score, 4),
             "per_onset_ratios": [round(r, 4) for r in ratios],
             "onset_positions_samples": valid_onset_positions,
             "n_onsets_detected": len(ratios),
+            "n_onsets_excluded_impulse": n_excluded_impulse,
             "material_floor": material_floor,
             "is_valid": True,
         }
@@ -487,3 +568,67 @@ def _detect_onsets(
             i += 2  # Kurze Refraktärzeit
 
     return onsets
+
+
+def _geometric_mean(ratios: list[float]) -> float:
+    """Geometrischer Mittelwert über Ratio-Werte (§1.4.6a), clamp-sicher."""
+    if not ratios:
+        return 1.0
+    arr = np.clip(np.array(ratios, dtype=np.float64), 1e-6, 1.0)
+    geo = float(np.exp(np.mean(np.log(arr))))
+    return float(np.clip(geo, 0.0, 1.0))
+
+
+def _attack_energy_with_tolerance(
+    mono_rest: np.ndarray,
+    onset_s: int,
+    attack_win: int,
+    align_tol: int,
+    n: int,
+) -> float | None:
+    """Attack-Energie des Restaurierten mit Timing-Toleranz ±align_tol.
+
+    Maximum der 5-ms-RMS über alle Verschiebungen im Suchfenster — misst
+    ausschließlich die Amplitude/Energie des Transient-Impuls (§1.4.6);
+    Timing-Abweichungen ≤ 10 ms bewertet artikulation. Bei align_tol = 0
+    entspricht das exakt dem starren Messpfad (StartPosition = Onset).
+    """
+    best = 0.0
+    found = False
+    for s in range(onset_s - align_tol, onset_s + align_tol + 1):
+        if s < 0 or s + attack_win > n:
+            continue
+        seg = mono_rest[s : s + attack_win]
+        e = float(np.sqrt(np.mean(seg**2)))
+        if e > best:
+            best = e
+        found = True
+    if not found:
+        return None
+    return best + 1e-9
+
+
+def _is_isolated_impulse(
+    mono_ref: np.ndarray,
+    onset_s: int,
+    n: int,
+    sr: int,
+) -> bool:
+    """True wenn der Onset ein isolierter Defekt-Impuls ohne Klangkörper ist.
+
+    §V36-False-Regression-Schutz: Attack 0–20 ms vs. Sustain 20–60 ms
+    (Transienten-Modell: Attack 1–20 ms, Sustain 20–200 ms).
+    Clicks/Crackle/Scratches zerfallen ohne Sustain-Anteil (decay < 0.10);
+    musikalische Anschläge haben einen Klangkörper. Am Rand der Signale
+    wird konservativ NICHT ausgeschlossen.
+    """
+    attack_win = int(_IMPULSE_ISOLATION_ATTACK_MS / 1000.0 * sr)
+    tail_win = int(_IMPULSE_ISOLATION_TAIL_MS / 1000.0 * sr)
+    a_end = min(onset_s + attack_win, n)
+    t_start = a_end
+    t_end = min(t_start + tail_win, n)
+    if a_end <= onset_s or (t_end - t_start) < max(tail_win // 2, 1):
+        return False
+    e_attack = float(np.sqrt(np.mean(mono_ref[onset_s:a_end] ** 2)) + 1e-12)
+    e_tail = float(np.sqrt(np.mean(mono_ref[t_start:t_end] ** 2)) + 1e-12)
+    return bool((e_tail / e_attack) < _IMPULSE_ISOLATION_DECAY_MAX)
