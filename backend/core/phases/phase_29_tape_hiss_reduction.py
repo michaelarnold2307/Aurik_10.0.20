@@ -1283,7 +1283,9 @@ class TapeHissReductionPhase(PhaseInterface):
             )
 
             _nt29_residual = audio.astype(np.float32) - audio_processed.astype(np.float32)
-            _nt29_dist = _nt29_dist_fn(_nt29_residual, str(material_key or "unknown"), sr=sample_rate)
+            _nt29_dist = _nt29_dist_fn(
+                _nt29_residual, str(material_key or "unknown"), sr=sample_rate, pre=audio, post=audio_processed
+            )
             if _nt29_dist > 0.25:
                 audio_processed = (0.5 * audio_processed + 0.5 * audio).astype(np.float32)
                 logger.warning(
@@ -1308,7 +1310,15 @@ class TapeHissReductionPhase(PhaseInterface):
                 if _corr29 < 0.97:
                     _need29 = float(kwargs.get("mikrodynamik_global_need", kwargs.get("global_need", 0.0)) or 0.0)
                     # §v10.101 Material-adaptiv
-                    _wet29 = _recommend_mkk_wet(_corr29, _p29_panns, global_need=_need29, material=material_key)
+                    _wet29 = _recommend_mkk_wet(
+                        _corr29,
+                        _p29_panns,
+                        global_need=_need29,
+                        material=material_key,
+                        pre=audio,
+                        post=audio_processed,
+                        sr=sample_rate,
+                    )
                     audio_processed = (_wet29 * audio_processed + (1.0 - _wet29) * audio).astype(np.float32)
                     logger.warning(
                         "Verarbeitungsschritt29 V20 Mikrodynamik-Korr=%.3f < 0.97 → wet=%.3f Blend",

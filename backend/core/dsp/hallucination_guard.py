@@ -31,6 +31,8 @@ from typing import Any
 import numpy as np
 import numpy.typing as npt
 
+from backend.core.residuum_masking import estimate_delta_masking_jnd_db
+
 logger = logging.getLogger(__name__)
 
 # §2.46e normative thresholds (floors — may be raised by SFT adaptation)
@@ -72,8 +74,8 @@ class HallucinationCheckResult:
 
     Attributes:
         spectral_novelty: Fraction of energy in new/hallucinated spectral bins [0, 1].
-        requires_rollback: True if spectral_novelty > 0.15 (Restoration hard limit §2.46e).
-        score_penalty: Score deduction to apply; 0.3 when spectral_novelty > 0.08.
+        requires_rollback: True if audible spectral_novelty > 0.15 (Restoration hard limit §2.46e).
+        score_penalty: Score deduction to apply; 0.3 when audible spectral_novelty > 0.08.
         harmonic_ceiling_violation: True if energy above BW-Ceiling grew > 8× (§2.46e).
         metadata: Additional diagnostic information.
     """
@@ -187,6 +189,18 @@ def check_hallucination(
         spectral_novelty = 0.0
         meta["error"] = str(exc)
 
+    # P1-3-Restdeckung (§G10 (copilot-instructions.md), §SOTA-PSY-A1): Nur
+    # hörbare Novelty zählt — der maskierte Anteil des Phasen-Deltas erzeugt
+    # keinen Rollback. §SCK-Form (dsp.instructions.md §0p): linearer Faktor
+    # aus exponiertem vs. maskiertem Delta-Anteil.
+    _jnd = estimate_delta_masking_jnd_db(pre_arr, post_arr, sr)
+    if _jnd.delta_above_db <= 0.0:
+        _audible_novelty = 0.0  # Delta vollständig maskiert → unhörbar
+    else:
+        _audible_novelty = float(spectral_novelty * (_jnd.delta_above_db / (_jnd.delta_above_db + _jnd.jnd_db + 1e-9)))
+    meta["spectral_novelty_audible"] = _audible_novelty
+    meta["novelty_masking_jnd_db"] = float(_jnd.jnd_db)
+
     # --- Apply §2.46e threshold logic ---
     requires_rollback = False
     score_penalty = 0.0
@@ -239,23 +253,27 @@ def check_hallucination(
             "§2.46e HallucinationGuard: harmonic_ceiling_violation=True (ceiling=%.0f Hz) → hard rollback.",
             material_bw_ceiling_hz or -1,
         )
-    elif spectral_novelty > _effective_rollback_threshold:
+    elif _audible_novelty > _effective_rollback_threshold:
         if mode == "restoration":
             requires_rollback = True
         score_penalty = 0.3
         logger.warning(
-            "§2.46e HallucinationGuard: spectral_novelty=%.3f > %.2f (Betriebsart=%s) → %s, Wert_penalty=%.1f",
+            "§2.46e HallucinationGuard: spectral_novelty=%.3f (hoerbar %.3f, JND %.2f) > %.2f (Betriebsart=%s) → %s, Wert_penalty=%.1f",
             spectral_novelty,
+            _audible_novelty,
+            _jnd.jnd_db,
             _effective_rollback_threshold,
             mode,
             "rollback" if requires_rollback else "penalty_only",
             score_penalty,
         )
-    elif spectral_novelty > _get_adaptive_penalty_threshold():
+    elif _audible_novelty > _get_adaptive_penalty_threshold():
         score_penalty = 0.3
         logger.debug(
-            "§2.46e HallucinationGuard: spectral_novelty=%.3f > %.2f → Wert_penalty=%.1f",
+            "§2.46e HallucinationGuard: spectral_novelty=%.3f (hoerbar %.3f, JND %.2f) > %.2f → Wert_penalty=%.1f",
             spectral_novelty,
+            _audible_novelty,
+            _jnd.jnd_db,
             _get_adaptive_penalty_threshold(),
             score_penalty,
         )

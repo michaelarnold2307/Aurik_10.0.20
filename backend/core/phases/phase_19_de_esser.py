@@ -2044,7 +2044,7 @@ class DeEsserPhase(PhaseInterface):
                 if (deessed_audio.ndim == 2 and deessed_audio.shape[1] == 2 and deessed_audio.shape[0] > 2)
                 else deessed_audio.astype(np.float32)
             )
-            _nt19_d = _nt19_fn(_a19cf - _d19cf, _mat19_str, sr=sample_rate)
+            _nt19_d = _nt19_fn(_a19cf - _d19cf, _mat19_str, sr=sample_rate, pre=_a19cf, post=_d19cf)
             if _nt19_d > 0.25:
                 deessed_audio = (0.5 * deessed_audio + 0.5 * audio).astype(np.float32)
                 logger.warning(

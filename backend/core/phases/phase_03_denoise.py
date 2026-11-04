@@ -2754,7 +2754,13 @@ class DenoisePhase(PhaseInterface):
             )
 
             _nt03_residual = _post_nr_guard_ref_audio.astype(np.float32) - result_audio.astype(np.float32)
-            _nt03_dist = _nt03_dist_fn(_nt03_residual, _mat03_str, sr=sample_rate)
+            _nt03_dist = _nt03_dist_fn(
+                _nt03_residual,
+                _mat03_str,
+                sr=sample_rate,
+                pre=_post_nr_guard_ref_audio,
+                post=result_audio,
+            )
             if _nt03_dist > 0.25:
                 result_audio = (0.5 * result_audio + 0.5 * _post_nr_guard_ref_audio).astype(np.float32)
                 logger.warning(
@@ -2779,7 +2785,15 @@ class DenoisePhase(PhaseInterface):
                 if _corr03 < 0.97:
                     _need03 = float(kwargs.get("mikrodynamik_global_need", kwargs.get("global_need", 0.0)) or 0.0)
                     # §v10.101 Material-adaptiv: Kassette/Tape brauchen höheren Wet-Floor
-                    _wet03 = _recommend_mkk_wet(_corr03, _panns_singing, global_need=_need03, material=_mat03_str)
+                    _wet03 = _recommend_mkk_wet(
+                        _corr03,
+                        _panns_singing,
+                        global_need=_need03,
+                        material=_mat03_str,
+                        pre=_post_nr_guard_ref_audio,
+                        post=result_audio,
+                        sr=sample_rate,
+                    )
                     result_audio = (_wet03 * result_audio + (1.0 - _wet03) * _post_nr_guard_ref_audio).astype(
                         np.float32
                     )

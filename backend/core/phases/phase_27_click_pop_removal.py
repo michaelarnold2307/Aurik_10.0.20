@@ -437,7 +437,11 @@ class ClickPopRemoval(PhaseInterface):
 
             if cleaned_audio.shape == audio.shape:
                 _nt27_d = _nt27_fn(
-                    audio.astype(np.float32) - cleaned_audio.astype(np.float32), _mat27_str, sr=sample_rate
+                    audio.astype(np.float32) - cleaned_audio.astype(np.float32),
+                    _mat27_str,
+                    sr=sample_rate,
+                    pre=audio,
+                    post=cleaned_audio,
                 )
                 if _nt27_d > 0.25:
                     cleaned_audio = (0.5 * cleaned_audio + 0.5 * audio).astype(np.float32)

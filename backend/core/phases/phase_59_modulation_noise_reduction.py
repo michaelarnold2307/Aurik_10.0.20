@@ -606,7 +606,7 @@ class ModulationNoiseReductionPhase(PhaseInterface):
             )
 
             if _nt59_residual.shape == audio.shape:
-                _nt59_d = _nt59_dist_fn(_nt59_residual, _mat59_guards, sr=sample_rate)
+                _nt59_d = _nt59_dist_fn(_nt59_residual, _mat59_guards, sr=sample_rate, pre=audio, post=result_audio)
                 if _nt59_d > 0.25:
                     result_audio = (0.5 * result_audio + 0.5 * audio).astype(np.float32)
                     logger.warning(
@@ -630,7 +630,9 @@ class ModulationNoiseReductionPhase(PhaseInterface):
                 _corr59 = _fec59(audio, result_audio, sample_rate, frame_ms=10.0)
                 if _corr59 < 0.97:
                     _need59 = float(kwargs.get("mikrodynamik_global_need", kwargs.get("global_need", 0.0)) or 0.0)
-                    _wet59 = _recommend_mkk_wet(_corr59, _p59_panns, global_need=_need59)
+                    _wet59 = _recommend_mkk_wet(
+                        _corr59, _p59_panns, global_need=_need59, pre=audio, post=result_audio, sr=sample_rate
+                    )
                     result_audio = (_wet59 * result_audio + (1.0 - _wet59) * audio).astype(np.float32)
                     logger.warning(
                         "§V20 Verarbeitungsschritt_59: mikrodynamik_corr=%.4f < 0.97 → wet=%.3f", _corr59, _wet59

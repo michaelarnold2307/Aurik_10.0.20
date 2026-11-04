@@ -562,7 +562,7 @@ class SurfaceNoiseProfiling(PhaseInterface):
             )
 
             if _nt28_residual.shape == audio.shape:
-                _nt28_d = _nt28_dist_fn(_nt28_residual, _material_key, sr=sample_rate)
+                _nt28_d = _nt28_dist_fn(_nt28_residual, _material_key, sr=sample_rate, pre=audio, post=denoised_audio)
                 if _nt28_d > 0.25:
                     denoised_audio = (0.5 * denoised_audio + 0.5 * audio).astype(np.float32)
                     logger.warning(
@@ -587,7 +587,15 @@ class SurfaceNoiseProfiling(PhaseInterface):
                 if _corr28 < 0.97:
                     _need28 = float(kwargs.get("mikrodynamik_global_need", kwargs.get("global_need", 0.0)) or 0.0)
                     # §v10.101 Material-adaptiv
-                    _wet28 = _recommend_mkk_wet(_corr28, _p28_panns, global_need=_need28, material=_material_key)
+                    _wet28 = _recommend_mkk_wet(
+                        _corr28,
+                        _p28_panns,
+                        global_need=_need28,
+                        material=_material_key,
+                        pre=audio,
+                        post=denoised_audio,
+                        sr=sample_rate,
+                    )
                     denoised_audio = (_wet28 * denoised_audio + (1.0 - _wet28) * audio).astype(np.float32)
                     logger.warning(
                         "§V20 Verarbeitungsschritt_28: mikrodynamik_corr=%.4f < 0.97 → wet=%.3f", _corr28, _wet28

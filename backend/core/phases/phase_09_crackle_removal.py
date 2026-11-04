@@ -1259,7 +1259,7 @@ class CrackleRemovalPhase(PhaseInterface):
                     _r09cf = _r09cf.ravel()[: min(_a09cf.size, _r09cf.size)]
                 else:
                     raise ValueError(f"Incompatible shapes: {_a09cf.shape} vs {_r09cf.shape}")
-            _nt09_d = _nt09_fn(_a09cf - _r09cf, _mat09_str, sr=sample_rate)
+            _nt09_d = _nt09_fn(_a09cf - _r09cf, _mat09_str, sr=sample_rate, pre=_a09cf, post=_r09cf)
             if _nt09_d > 0.25:
                 restored = (0.5 * restored + 0.5 * audio).astype(np.float32)
                 # §SOTA: Noise-Texture-Guard ist eine Schutzmaßnahme, kein Fehler.

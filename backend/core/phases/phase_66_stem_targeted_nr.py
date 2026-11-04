@@ -494,7 +494,7 @@ class StemTargetedNRPhase(PhaseInterface):
 
             _nt66_residual = audio.astype(np.float32) - audio_combined.astype(np.float32)
             _nt66_mat = material_type.value if hasattr(material_type, "value") else str(material_type)
-            _nt66_dist = _nt66_dist_fn(_nt66_residual, _nt66_mat, sr=sample_rate)
+            _nt66_dist = _nt66_dist_fn(_nt66_residual, _nt66_mat, sr=sample_rate, pre=audio, post=audio_combined)
             if _nt66_dist > 0.25:
                 audio_combined = (0.5 * audio_combined + 0.5 * audio).astype(np.float32)
                 logger.warning("Verarbeitungsschritt66 V19 Noise-Textur-Dist=%.3f > 0.25 → 50%%-Blend", _nt66_dist)

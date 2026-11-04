@@ -1072,7 +1072,7 @@ class AdvancedDereverbPhase(PhaseInterface):
             )
 
             if _nt49_residual.shape == audio.shape:
-                _nt49_d = _nt49_dist_fn(_nt49_residual, _mat49_guards, sr=sample_rate)
+                _nt49_d = _nt49_dist_fn(_nt49_residual, _mat49_guards, sr=sample_rate, pre=audio, post=processed)
                 if _nt49_d > 0.25:
                     processed = (0.5 * processed + 0.5 * audio).astype(np.float32)
                     logger.warning(
@@ -1096,7 +1096,9 @@ class AdvancedDereverbPhase(PhaseInterface):
                 _corr49 = _fec49(audio, processed, sample_rate, frame_ms=10.0)
                 if _corr49 < 0.97:
                     _need49 = float(kwargs.get("mikrodynamik_global_need", kwargs.get("global_need", 0.0)) or 0.0)
-                    _wet49 = _recommend_mkk_wet(_corr49, _p49_panns, global_need=_need49)
+                    _wet49 = _recommend_mkk_wet(
+                        _corr49, _p49_panns, global_need=_need49, pre=audio, post=processed, sr=sample_rate
+                    )
                     processed = (_wet49 * processed + (1.0 - _wet49) * audio).astype(np.float32)
                     logger.warning(
                         "§V20 Verarbeitungsschritt_49: mikrodynamik_corr=%.4f < 0.97 → wet=%.3f", _corr49, _wet49

@@ -823,7 +823,7 @@ class VocalNaturalnessRestorationPhase(PhaseInterface):
             )
             _mat65_str = str(material_type) if material_type else "unknown"
             _nt65_thr = 0.18 if panns_singing >= 0.35 else 0.25
-            _nt65_d = _nt65_fn(_a65cf - _r65cf, _mat65_str, sr=sample_rate)
+            _nt65_d = _nt65_fn(_a65cf - _r65cf, _mat65_str, sr=sample_rate, pre=_a65cf, post=_r65cf)
             if _nt65_d > _nt65_thr:
                 result = (0.5 * result + 0.5 * audio).astype(np.float32)
                 logger.warning(

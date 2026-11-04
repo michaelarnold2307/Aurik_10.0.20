@@ -519,7 +519,9 @@ class GrooveEchoCancellationPhase(PhaseInterface):
             )
 
             _nt61_residual = audio.astype(np.float32) - result_audio.astype(np.float32)
-            _nt61_dist = compute_noise_texture_distance(_nt61_residual, str(material_type or "unknown"), sr=sample_rate)
+            _nt61_dist = compute_noise_texture_distance(
+                _nt61_residual, str(material_type or "unknown"), sr=sample_rate, pre=audio, post=result_audio
+            )
             if _nt61_dist > 0.25:
                 result_audio = (0.5 * result_audio + 0.5 * audio).astype(np.float32)
                 logger.warning(
@@ -542,7 +544,9 @@ class GrooveEchoCancellationPhase(PhaseInterface):
                 _corr61 = frame_energy_correlation(audio, result_audio, sample_rate, frame_ms=10.0)
                 if _corr61 < 0.97:
                     _need61 = float(kwargs.get("mikrodynamik_global_need", kwargs.get("global_need", 0.0)) or 0.0)
-                    _wet61 = recommend_mikrodynamik_wet(_corr61, _panns61, global_need=_need61)
+                    _wet61 = recommend_mikrodynamik_wet(
+                        _corr61, _panns61, global_need=_need61, pre=audio, post=result_audio, sr=sample_rate
+                    )
                     result_audio = (_wet61 * result_audio + (1.0 - _wet61) * audio).astype(np.float32)
                     logger.warning(
                         "Verarbeitungsschritt61 V20 Mikrodynamik-Korr=%.3f < 0.97 → wet=%.3f Blend",

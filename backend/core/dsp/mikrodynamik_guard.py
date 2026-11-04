@@ -18,6 +18,8 @@ import logging
 
 import numpy as np
 
+from backend.core.residuum_masking import estimate_delta_masking_jnd_db
+
 logger = logging.getLogger(__name__)
 
 # Schwellwert: Delta-Korrelation ≥ 0.93 auf Voiced-Frames (siehe Docstring frame_energy_correlation)
@@ -33,6 +35,12 @@ _MATERIAL_FLOOR_THRESHOLD: dict[str, float] = {
     "tape": 0.80,
     "vinyl": 0.85,
 }
+# P1-3-Restdeckung (§G10 (copilot-instructions.md)): §SCK-Form-Kalibrierung
+# (§v10.759) — volle 6-dB-Maskierungs-JND relaxiert die Korrelations-Schwelle
+# linear um max. _JND_RELAX_CAP. Korrelation ist keine dB-Größe → beschränkte
+# Relaxation statt max(fest, JND).
+_DELTA_JND_FULL_DB = 6.0
+_JND_RELAX_CAP = 0.20
 # Voiced-Frame-Schwellwert: Frames mit Energie über diesem Wert
 _VOICED_ENERGY_PERCENTILE = 25.0
 
@@ -43,6 +51,9 @@ def recommend_mikrodynamik_wet(
     *,
     global_need: float = 0.0,
     material: str = "unknown",
+    pre: np.ndarray | None = None,
+    post: np.ndarray | None = None,
+    sr: int = 48000,
 ) -> float:
     """Empfiehlt einen bedarfsorientierten Dry-Wet-Blend für V20-Mikrodynamik.
 
@@ -52,6 +63,10 @@ def recommend_mikrodynamik_wet(
     kann eine vorsichtige Phase stärker erhalten.
 
     §v10.101: material-Parameter senkt effektiven Schwellwert für Kassette/Tape.
+
+    P1-3-Restdeckung (§G10 (copilot-instructions.md)): mit pre/post (Phasen-
+    Delta) wird die Schwelle um den maskierten Anteil begrenzt relaxiert
+    (§SCK-Form, dsp.instructions.md §0p) — volle 6-dB-JND → max. −0.20.
     """
 
     vocal_material = panns_singing >= 0.35
@@ -63,6 +78,15 @@ def recommend_mikrodynamik_wet(
     floor_corr = max(mat_floor - 0.10, 0.90 if vocal_material else 0.87)
     base_min_wet = 0.35 if mat_lower in ("cassette", "reel_tape", "tape") else (0.20 if vocal_material else 0.15)
     need = float(np.clip(global_need, 0.0, 1.0))
+
+    if pre is not None and post is not None:
+        # P1-3-Restdeckung (§G10 (copilot-instructions.md), §SOTA-PSY-A1): §SCK-Form — maskierter
+        # Anteil des Phasen-Deltas ist unhörbar → Korrelations-Schwelle
+        # begrenzt relaxieren (linear, max. _JND_RELAX_CAP bei voller JND).
+        _jnd = estimate_delta_masking_jnd_db(pre, post, sr)
+        _relax = float(np.clip(_jnd.jnd_db * (_JND_RELAX_CAP / _DELTA_JND_FULL_DB), 0.0, _JND_RELAX_CAP))
+        target_corr = max(0.0, target_corr - _relax)
+        floor_corr = max(0.0, floor_corr - _relax)
 
     if corr >= target_corr:
         return 1.0

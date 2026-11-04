@@ -20,6 +20,8 @@ import logging
 import numpy as np
 import numpy.typing as npt
 
+from backend.core.residuum_masking import estimate_delta_masking_jnd_db
+
 logger = logging.getLogger(__name__)
 
 # Maximale akzeptable HNR-Verbesserung durch NR (§2.35c).
@@ -149,13 +151,19 @@ def check_hnr_delta(
     hnr_post = compute_hnr(audio_post, sr)
     delta = hnr_post - hnr_pre
 
-    over_cleaned = delta > _HNR_DELTA_THRESHOLD_DB
+    # P1-3-Restdeckung (§G10 (copilot-instructions.md), §SOTA-PSY-A1):
+    # Maskierter Anteil des Phasen-Deltas ist unhörbar → effektive Schwelle =
+    # max(fest, JND) (§ATI-Form, dsp.instructions.md §0p).
+    _jnd = estimate_delta_masking_jnd_db(audio_pre, audio_post, sr)
+    _eff_threshold = max(_HNR_DELTA_THRESHOLD_DB, float(_jnd.jnd_db))
+
+    over_cleaned = delta > _eff_threshold
 
     # Blend-Empfehlung: proportional zur Überschreitung
-    # Ziel: ΔHNR auf Schwellwert begrenzen
+    # Ziel: ΔHNR auf effektive Schwelle begrenzen
     if over_cleaned and delta > 0.0:
         # Wie viel "Dry" brauchen wir um von hnr_post auf hnr_pre + Schwelle zu kommen?
-        target_hnr = hnr_pre + _HNR_DELTA_THRESHOLD_DB
+        target_hnr = hnr_pre + _eff_threshold
         # Linear angenähert: blend_ratio = (hnr_post - target_hnr) / (hnr_post - hnr_pre)
         blend_ratio = float(np.clip((hnr_post - target_hnr) / max(delta, 0.01), 0.05, 0.60))
     else:
@@ -167,15 +175,19 @@ def check_hnr_delta(
         "delta_hnr": float(delta),
         "over_cleaned": bool(over_cleaned),
         "blend_ratio": float(blend_ratio),
+        "effective_threshold_db": float(_eff_threshold),
+        "masking_jnd_db": float(_jnd.jnd_db),
     }
 
     if over_cleaned:
         logger.debug(
-            "§HNR-Guard: ΔHNR=+%.1f dB (%.1f→%.1f dB) > Schwelle %.1f dB — Dry-Blend %.0f%% empfohlen",
+            "§HNR-Guard: ΔHNR=+%.1f dB (%.1f→%.1f dB) > effektive Schwelle %.1f dB (fest %.1f, JND %.1f) — Dry-Blend %.0f%% empfohlen",
             delta,
             hnr_pre,
             hnr_post,
+            _eff_threshold,
             _HNR_DELTA_THRESHOLD_DB,
+            _jnd.jnd_db,
             blend_ratio * 100.0,
         )
 

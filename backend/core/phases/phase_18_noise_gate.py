@@ -691,7 +691,7 @@ class NoiseGate(PhaseInterface):
             )
 
             if _nt18_residual.shape == audio.shape:
-                _nt18_d = _nt18_dist_fn(_nt18_residual, _mat18_guards, sr=sample_rate)
+                _nt18_d = _nt18_dist_fn(_nt18_residual, _mat18_guards, sr=sample_rate, pre=audio, post=gated_audio)
                 if _nt18_d > 0.10:
                     # Progressiver Blend statt binär 50/50:
                     # _nt18_d 0.10→0% dry, 0.25→20% dry, 0.40→50% dry, 0.60→80% dry
@@ -716,7 +716,9 @@ class NoiseGate(PhaseInterface):
                 _corr18 = _fec18(audio, gated_audio, sample_rate, frame_ms=10.0)
                 if _corr18 < 0.97:
                     _need18 = float(kwargs.get("mikrodynamik_global_need", kwargs.get("global_need", 0.0)) or 0.0)
-                    _wet18 = _recommend_mkk_wet(_corr18, _p18_panns, global_need=_need18)
+                    _wet18 = _recommend_mkk_wet(
+                        _corr18, _p18_panns, global_need=_need18, pre=audio, post=gated_audio, sr=sample_rate
+                    )
                     gated_audio = (_wet18 * gated_audio + (1.0 - _wet18) * audio).astype(np.float32)
                     logger.warning(
                         "§V20 Verarbeitungsschritt_18: mikrodynamik_corr=%.4f < 0.97 → wet=%.3f", _corr18, _wet18

@@ -28,6 +28,8 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 
+from backend.core.residuum_masking import estimate_delta_masking_jnd_db
+
 if TYPE_CHECKING:
     pass
 
@@ -97,6 +99,9 @@ def compute_noise_texture_distance(
     residual: np.ndarray,
     material: str,
     sr: int = 48000,
+    *,
+    pre: np.ndarray | None = None,
+    post: np.ndarray | None = None,
 ) -> float:
     """Berechnet die Distanz zwischen dem Residual (entferntem Rauschen) und dem
     erwarteten Defektprofil der Materialklasse.
@@ -111,6 +116,10 @@ def compute_noise_texture_distance(
         material: Materialklasse (z.B. ``"vinyl"``, ``"shellac"``).
         sr: Sample-Rate. Standardmäßig 48000 Hz (wird nicht assertions-geprüft,
             da auch in Analyse-Kontexten aufrufbar).
+        pre: Optional — Audio vor der Phase (P1-3-Maskierungs-Abdeckung §G10 (copilot-instructions.md)).
+        post: Optional — Audio nach der Phase. Zusammen mit ``pre`` wird der
+            maskierte Anteil des Phasen-Deltas geschätzt; vollständig maskierte
+            Residuals sind unhörbar und ergeben Distanz 0.
 
     Returns:
         Normierte Distanz [0.0 … 1.0]. 0 = materialkonformes Residual, > 0.25 = Whitening-Warnung.
@@ -136,6 +145,14 @@ def compute_noise_texture_distance(
         # Abstand zur nächsten Grenze normieren auf [0, 1]
         dist = max(0.0, lo - slope) if slope < lo else max(0.0, slope - hi)
         normalized = float(np.clip(dist / _MAX_DEVIATION, 0.0, 1.0))
+        if pre is not None and post is not None:
+            # P1-3-Restdeckung (§G10 (copilot-instructions.md), §SOTA-PSY-A1):
+            # Textur-Abweichung zählt nur, soweit das Residual (Phasen-Delta)
+            # hörbar ist — §SCK-Form (dsp.instructions.md §0p), linear.
+            _jnd = estimate_delta_masking_jnd_db(pre, post, sr)
+            if _jnd.delta_above_db <= 0.0:
+                return 0.0  # vollständig maskiert → Whitening unhörbar
+            normalized = float(normalized * (_jnd.delta_above_db / (_jnd.delta_above_db + _jnd.jnd_db + 1e-9)))
         return float(np.nan_to_num(normalized, nan=0.0))
 
     except Exception as exc:

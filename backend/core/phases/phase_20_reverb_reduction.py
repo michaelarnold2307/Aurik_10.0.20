@@ -1220,7 +1220,7 @@ class ReverbReduction(PhaseInterface):
             )
 
             _nt20_residual = audio.astype(np.float32) - reduced.astype(np.float32)
-            _nt20_dist = _nt20_dist_fn(_nt20_residual, _mat20_str, sr=sample_rate)
+            _nt20_dist = _nt20_dist_fn(_nt20_residual, _mat20_str, sr=sample_rate, pre=audio, post=reduced)
             if _nt20_dist > 0.25:
                 reduced = (0.5 * reduced + 0.5 * audio).astype(np.float32)
                 logger.warning(
@@ -1244,7 +1244,9 @@ class ReverbReduction(PhaseInterface):
                 _corr20 = _fec20(audio, reduced, sample_rate, frame_ms=10.0)
                 if _corr20 < 0.97:
                     _need20 = float(kwargs.get("mikrodynamik_global_need", kwargs.get("global_need", 0.0)) or 0.0)
-                    _wet20 = _recommend_mkk_wet(_corr20, _p20_panns, global_need=_need20)
+                    _wet20 = _recommend_mkk_wet(
+                        _corr20, _p20_panns, global_need=_need20, pre=audio, post=reduced, sr=sample_rate
+                    )
                     reduced = (_wet20 * reduced + (1.0 - _wet20) * audio).astype(np.float32)
                     logger.warning(
                         "Verarbeitungsschritt20 V20 Mikrodynamik-Korr=%.3f < 0.97 → wet=%.3f Blend",

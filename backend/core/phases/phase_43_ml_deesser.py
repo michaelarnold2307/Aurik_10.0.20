@@ -1013,7 +1013,7 @@ class AdaptiveDeEsserPhase(PhaseInterface):
             )
 
             _nt43_residual = audio.astype(np.float32) - processed.astype(np.float32)
-            _nt43_dist = _nt43_dist_fn(_nt43_residual, str(material_type), sr=sample_rate)
+            _nt43_dist = _nt43_dist_fn(_nt43_residual, str(material_type), sr=sample_rate, pre=audio, post=processed)
             if _nt43_dist > 0.25:
                 processed = (0.5 * processed + 0.5 * audio).astype(np.float32)
                 logger.warning("Verarbeitungsschritt43 V19 Noise-Textur-Dist=%.3f > 0.25 → 50%%-Blend", _nt43_dist)

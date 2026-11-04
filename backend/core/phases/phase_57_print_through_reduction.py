@@ -680,7 +680,7 @@ class PrintThroughReductionPhase(PhaseInterface):
             )
 
             if _nt57_residual.shape == audio.shape:
-                _nt57_d = _nt57_dist_fn(_nt57_residual, _mat57_str, sr=sample_rate)
+                _nt57_d = _nt57_dist_fn(_nt57_residual, _mat57_str, sr=sample_rate, pre=audio, post=result_audio)
                 if _nt57_d > 0.25:
                     result_audio = (0.5 * result_audio + 0.5 * audio).astype(np.float32)
                     logger.warning(
@@ -704,7 +704,9 @@ class PrintThroughReductionPhase(PhaseInterface):
                 _corr57 = _fec57(audio, result_audio, sample_rate, frame_ms=10.0)
                 if _corr57 < 0.97:
                     _need57 = float(kwargs.get("mikrodynamik_global_need", kwargs.get("global_need", 0.0)) or 0.0)
-                    _wet57 = _recommend_mkk_wet(_corr57, _p57_panns, global_need=_need57)
+                    _wet57 = _recommend_mkk_wet(
+                        _corr57, _p57_panns, global_need=_need57, pre=audio, post=result_audio, sr=sample_rate
+                    )
                     result_audio = (_wet57 * result_audio + (1.0 - _wet57) * audio).astype(np.float32)
                     logger.warning(
                         "\u00a7V20 Verarbeitungsschritt_57: mikrodynamik_corr=%.4f < 0.97 \u2192 wet=%.3f",

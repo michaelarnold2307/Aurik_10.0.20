@@ -785,7 +785,7 @@ class SpectralRepairPhase(PhaseInterface):
             )
 
             if _nt50_residual.shape == audio.shape:
-                _nt50_d = _nt50_dist_fn(_nt50_residual, _mat50_guards, sr=sample_rate)
+                _nt50_d = _nt50_dist_fn(_nt50_residual, _mat50_guards, sr=sample_rate, pre=audio, post=repaired_audio)
                 if _nt50_d > 0.25:
                     repaired_audio = (0.5 * repaired_audio + 0.5 * audio).astype(np.float32)
                     logger.warning(
@@ -809,7 +809,16 @@ class SpectralRepairPhase(PhaseInterface):
                 _corr50 = _fec50(audio, repaired_audio, sample_rate, frame_ms=10.0)
                 if _corr50 < 0.97:
                     _need50 = float(kwargs.get("mikrodynamik_global_need", kwargs.get("global_need", 0.0)) or 0.0)
-                    mikrodynamik_wet_scalar: float = float(_recommend_mkk_wet(_corr50, _p50_panns, global_need=_need50))
+                    mikrodynamik_wet_scalar: float = float(
+                        _recommend_mkk_wet(
+                            _corr50,
+                            _p50_panns,
+                            global_need=_need50,
+                            pre=audio,
+                            post=repaired_audio,
+                            sr=sample_rate,
+                        )
+                    )
                     repaired_audio = (
                         mikrodynamik_wet_scalar * repaired_audio + (1.0 - mikrodynamik_wet_scalar) * audio
                     ).astype(np.float32)

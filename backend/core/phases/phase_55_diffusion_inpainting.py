@@ -1969,7 +1969,7 @@ class DiffusionInpaintingPhase(PhaseInterface):
             )
 
             _nt55_thr = 0.18 if _vocals_conf >= 0.35 else 0.25
-            _nt55_d = _nt55_fn(source_audio - repaired, _mat_key_p55, sr=sample_rate)
+            _nt55_d = _nt55_fn(source_audio - repaired, _mat_key_p55, sr=sample_rate, pre=source_audio, post=repaired)
             if _nt55_d > _nt55_thr:
                 repaired = (0.5 * repaired + 0.5 * source_audio).astype(np.float32)
                 logger.warning(

@@ -482,7 +482,9 @@ class CrosstalkCancellationPhase(PhaseInterface):
                 _corr62 = frame_energy_correlation(audio, result_audio, sample_rate, frame_ms=10.0)
                 if _corr62 < 0.97:
                     _need62 = float(kwargs.get("mikrodynamik_global_need", kwargs.get("global_need", 0.0)) or 0.0)
-                    _wet62 = recommend_mikrodynamik_wet(_corr62, _panns62, global_need=_need62)
+                    _wet62 = recommend_mikrodynamik_wet(
+                        _corr62, _panns62, global_need=_need62, pre=audio, post=result_audio, sr=sample_rate
+                    )
                     result_audio = (_wet62 * result_audio + (1.0 - _wet62) * audio).astype(np.float32)
                     logger.warning(
                         "Verarbeitungsschritt62 V20 Mikrodynamik-Korr=%.3f < 0.97 → wet=%.3f Blend",

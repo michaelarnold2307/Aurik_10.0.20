@@ -20,6 +20,7 @@ from dataclasses import dataclass
 import numpy as np
 
 from backend.core.core_utils import fft_autocorr
+from backend.core.residuum_masking import estimate_delta_masking_jnd_db
 
 logger = logging.getLogger(__name__)
 
@@ -31,6 +32,11 @@ _MIN_VIBRATO_HZ = 0.3  # unter 0.3 Hz = kein Vibrato
 _MAX_VIBRATO_HZ = 40.0  # über 40 Hz = kein Vibrato
 # Erlaubte Tiefe-Reduktion in Prozent
 VIBRATO_MAX_REDUCTION_PCT = 10.0
+# P1-3-Restdeckung (§G10 (copilot-instructions.md)): §SCK-Form — Reduktion in
+# Prozent ist keine dB-Größe → beschränkte lineare Relaxation der Toleranz
+# bei maskiertem Phasen-Delta (volle 6-dB-JND → max. +5 Prozentpunkte).
+_JND_FULL_DB = 6.0
+_RELAX_CAP_PP = 5.0
 
 
 @dataclass
@@ -41,13 +47,17 @@ class VibratoDepthResult:
         depth_pre_hz: F0-Modulationstiefe vor der Phase (max-min F0 in Hz).
         depth_post_hz: F0-Modulationstiefe nach der Phase.
         depth_reduction_pct: Relative Reduktion in Prozent (0–100).
-        ok: True wenn depth_reduction_pct <= 10 %.
+        ok: True wenn depth_reduction_pct <= effektive Toleranz (max(10 %, JND-relaxiert)).
+        effective_tolerance_pct: Effektive Toleranz in Prozent (10 % + JND-Relaxation).
+        masking_jnd_db: Maskierte Delta-Marge in dB (P1-3, §SOTA-PSY-A1).
     """
 
     depth_pre_hz: float
     depth_post_hz: float
     depth_reduction_pct: float
     ok: bool
+    effective_tolerance_pct: float = VIBRATO_MAX_REDUCTION_PCT
+    masking_jnd_db: float = 0.0
 
 
 def _f0_from_autocorr(mono: np.ndarray, sr: int) -> np.ndarray:
@@ -136,15 +146,22 @@ def check_vibrato_depth_preservation(
             return _fallback
 
         reduction_pct = float(np.clip(100.0 * (depth_pre - depth_post) / (depth_pre + 1e-9), 0.0, 100.0))
-        ok = reduction_pct <= VIBRATO_MAX_REDUCTION_PCT
+        # P1-3-Restdeckung (§G10 (copilot-instructions.md), §SOTA-PSY-A1): maskierter Anteil des
+        # Phasen-Deltas ist unhörbar → Toleranz begrenzt relaxiert (§SCK-Form).
+        _jnd = estimate_delta_masking_jnd_db(pre, post, sr)
+        _relax_pp = float(np.clip(_jnd.jnd_db * (_RELAX_CAP_PP / _JND_FULL_DB), 0.0, _RELAX_CAP_PP))
+        _eff_tolerance_pct = VIBRATO_MAX_REDUCTION_PCT + _relax_pp
+        ok = reduction_pct <= _eff_tolerance_pct
 
         if not ok:
             logger.info(
-                "§2.72 Vibrato-Tiefe: pre=%.2f Hz post=%.2f Hz reduction=%.1f%% > %.0f%%",
+                "§2.72 Vibrato-Tiefe: pre=%.2f Hz post=%.2f Hz reduction=%.1f%% > %.1f%% (fest %.0f%%, JND-Relax %.1f pp)",
                 depth_pre,
                 depth_post,
                 reduction_pct,
+                _eff_tolerance_pct,
                 VIBRATO_MAX_REDUCTION_PCT,
+                _relax_pp,
             )
 
         return VibratoDepthResult(
@@ -152,6 +169,8 @@ def check_vibrato_depth_preservation(
             depth_post_hz=round(depth_post, 3),
             depth_reduction_pct=round(reduction_pct, 2),
             ok=ok,
+            effective_tolerance_pct=round(_eff_tolerance_pct, 2),
+            masking_jnd_db=round(float(_jnd.jnd_db), 3),
         )
 
     except Exception as exc:
