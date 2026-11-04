@@ -303,3 +303,40 @@ Version 10.12.49.
 
 **Never-worsen-Messung** (§8) bleibt wie bei den Vorgänger-Dispatches durch den
 Manager vorzubereiten/auszuführen; die Befehle stehen in §8/§9.
+
+---
+
+## 11. Never-worsen-Messung + Laufzeit-Beweise (Manager, 2026-11-04)
+
+Durchgeführt mit dem realen Harness `scripts/b3_transient_energie_neverworsen.py`
+(Fensterplan B3-Muster, Seed 42, 6 Fenster aus dem Corpus, `--alt`
+`35ed39bb:defect_scanner.py` für die Kontrakt-Doppelmessung):
+
+| Lauf | Code-Stand | Artefakt |
+|---|---|---|
+| `u4_vor` | `6445ba61` (10.12.48, ohne U4) | `docs/reports/current/b3_transient_energie_u4_vor.json` |
+| `u4_nach` | `9b643e60` (10.12.49, mit U4) | `docs/reports/current/b3_transient_energie_u4_nach.json` |
+| Beschluss | vor ↔ nach | `docs/reports/current/b3_transient_energie_beschluss.json` |
+
+**Beschluss: ERFUELLT** — `never_worsen=True`, p = 0,03125, B1 `defekt_fallbacks = 0`
+beider Läufe. **§G5-Nachweis:** `transient_energie` (und alle 15 Goals) vor ↔ nach
+**bit-identisch** (+0,000 in allen 6 Fenstern; Mittel 0,905; Material-Mittel MOS
+4,76–4,96) — ohne hörbare Ziel-Lücke greift exakt der Altpfad, wie spezifiziert.
+
+**Laufzeit-Probe 1 (Verdrahtung live):** In der echten Pipeline wird
+`goal_need_strength()` je profilierter Phase mit echten Proxys/Targets aufgerufen
+(Beispiel-Fenster: `transient_energie`-Proxy 1,0 vs. Ziel 0,8 → Dosis 0,0 korrekt,
+da keine Lücke).
+
+**Laufzeit-Probe 2 (Aktivierung):** Mit gezielt transienten-geschädigtem Fenster
+vergab der §G188-Override im echten Pipeline-Lauf **Dosis 0,266** (≥ JND 0,05) bei
+gemessener Ziel-Lücke — die Bedarfs-Kopplung ist nachweislich wirksam, nicht tot
+(Gegenprobe zum Ausgangsbefund „effektiv ≈ 1 %").
+
+**Korrektur Berichts-§9:** Die dort genannten Mess-Befehle beruhten auf nicht
+existierenden Skripten/Pfaden (u. a. `decision_round_preparation.py`,
+`samples/corpus_music/B3_transient_energie_v2_wave_validation_input`); ersetzt durch
+die oben dokumentierte reale Harness-Kette. Die „harten Fenster 0,63/0,73" stammen
+aus Messungen des ALTEN Messvertrags (§10.12.47 korrigiert); der kanonische
+Zielkorridor für `transient_energie` beträgt 0,70 (`calibration_matrix.py:1222`),
+die gemessenen Nach-Werte liegen bei 0,73–1,00.
