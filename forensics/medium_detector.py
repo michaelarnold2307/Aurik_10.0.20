@@ -45,6 +45,7 @@ import logging
 import math
 import threading
 from dataclasses import dataclass, field
+from pathlib import Path
 
 import numpy as np
 from scipy.signal import butter, decimate, hilbert, sosfilt, welch
@@ -3191,6 +3192,42 @@ class MediumDetector:
                     confidence,
                 )
 
+        # ── §D-K1-3 Phase D: Material-CRNN im Material-Entscheidungspfad ──
+        # Gelernte Material-Repraesentation aus dem Log-Mel-Spektrogramm
+        # (95.3% echte Korpus vs. 59-63% Gauss/Mixture) statt der 9 handgemachten
+        # Skalar-Features (Register D-K1-3: 40,2% Gauss/Rekalibrierung). Hier im
+        # Roh-Aufruf verdrahtet — Wrapper/Konsumenten erben den Pfad.
+        # Flag-bewusst: hinter use_material_crnn (Default AUS = bisheriges
+        # Verhalten); Flag-Flip offen (§4-Verfahren, scripts/flag_freigabe.py).
+        # §V6 (copilot-instructions.md): ohne Modell/Bei Fehlern →
+        # Gauss/Mixture-Pfad (logger.warning + Begründung in _load_material_crnn
+        # bzw. _crnn_predict). Determinismus §G5 (copilot-instructions.md).
+        _decision_source = "bayesian_fusion"
+        try:
+            from backend.core.music_model_flags import use_material_crnn as _crnn_on
+
+            if _crnn_on:
+                _crnn_hit = _crnn_predict(audio, sr)
+                if _crnn_hit is not None:
+                    _crnn_mat, _crnn_conf = _crnn_hit
+                    # Spec 05 §6.1 [RELEASE_MUST]: alle Keys vor Rückgabe normieren.
+                    _crnn_key = self._normalize_material_key(_crnn_mat)
+                    evidence.append(
+                        f"Material-CRNN: {_crnn_key} (D-K1-3 gelernte Spektrogramm-Repräsentation, "
+                        f"Konfidenz {_crnn_conf:.2f})"
+                    )
+                    logger.info(
+                        "§D-K1-3 Material-CRNN: Material-Entscheidung %s → %s (Konfidenz %.2f)",
+                        primary,
+                        _crnn_key,
+                        _crnn_conf,
+                    )
+                    primary = _crnn_key
+                    confidence = float(np.clip(_crnn_conf, 0.0, 1.0))
+                    _decision_source = "material_crnn"
+        except Exception as _crnn_exc:  # §V6 (copilot-instructions.md)
+            logger.warning("Material-CRNN-Entscheidung nicht aktiv: %s — Gauss/Mixture-Pfad", _crnn_exc)
+
         # ── ClassificationResult für Passthrough bauen ───────────────
         try:
             from backend.core.medium_classifier import ClassificationResult  # pylint: disable=import-outside-toplevel
@@ -3208,7 +3245,7 @@ class MediumDetector:
                 rotation_strength=fp.rotation_strength,
                 infrasonic_rms=fp.infrasonic_rms,
                 codec_type="mp3" if fp.codec_type_code >= 0.5 else "clean",
-                classifier_source="bayesian_fusion",
+                classifier_source=_decision_source,
             )
         except (ImportError, TypeError):
             classification_result = None
@@ -3354,6 +3391,10 @@ class MediumDetector:
             "reel_wire": "wire_recording",
             "cassette_digital": "dat",
             "vhs_audio": "tape",
+            # D-K1-3 CRNN-Klasse "digital" (Korpus-Label, mp3-Born-Netlabels):
+            # nicht in SUPPORTED_MATERIALS (Spec 05 §6.1) — Ground-Truth der
+            # WP-7-Validierung war mp3_high (Register D-K1-3, 2026-10-09).
+            "digital": "mp3_high",
         }
         normalized = _KEY_MAP.get(key, key)
         if normalized != key:
@@ -3391,9 +3432,12 @@ def get_medium_detector() -> MediumDetector:
     return _instance
 
 
-# §D-K1-3 Phase D: CRNN-Material-Classifier (Challenger, hinter use_material_crnn).
-# Gelernte Material-Repraesentation aus dem Log-Mel-Spektrogramm. Default AUS.
+# §D-K1-3 Phase D: CRNN-Material-Classifier (hinter use_material_crnn).
+# Gelernte Material-Repraesentation aus dem Log-Mel-Spektrogramm — verdrahtet
+# in MediumDetector.detect (Roh-Aufruf, Register-Artefakt D-K1-3). Default AUS
+# = bisheriges Verhalten; Flag-Flip offen (§4-Verfahren, scripts/flag_freigabe.py).
 # §V6 (copilot-instructions.md): bei Fehlern/ohne Modell → None (Gauss/Mixture-Pfad).
+# Determinismus §G5 (copilot-instructions.md): CPU-Inferenz ohne Sampling.
 _CRNN_MODEL = None
 _CRNN_LOADED = False
 _CRNN_MATERIALS = (
@@ -3415,44 +3459,70 @@ def _load_material_crnn():
     if _CRNN_LOADED:
         return _CRNN_MODEL
     _CRNN_LOADED = True
+    _p = Path("models/material_crnn.pt")
+    if not _p.exists():
+        # §V6 (copilot-instructions.md): ML→DSP-Rueckfall MIT logger.warning + Begruendung.
+        logger.warning(
+            "Material-CRNN: models/material_crnn.pt fehlt — §V6-Ersatzpfad Gauss/Mixture-Pfad "
+            "(D-K1-3: Modell noch nicht trainiert/deployt; Training: scripts/train_material_crnn.py)",
+        )
+        _CRNN_MODEL = None
+        return None
     try:
-        from pathlib import Path as _P
-
         import torch
 
         from scripts.train_material_crnn import MaterialCRNN
 
-        _p = _P("models/material_crnn.pt")
-        if not _p.exists():
-            return None
         _ck = torch.load(_p, map_location="cpu", weights_only=False)
         _m = MaterialCRNN(len(_CRNN_MATERIALS))
         _m.load_state_dict(_ck["state_dict"])
         _m.eval()
         _CRNN_MODEL = _m
     except Exception as _e:  # §V6 (copilot-instructions.md)
-        logger.warning("Material-CRNN nicht geladen: %s", _e)
+        logger.warning("Material-CRNN nicht geladen: %s — §V6-Ersatzpfad Gauss/Mixture-Pfad", _e)
         _CRNN_MODEL = None
     return _CRNN_MODEL
 
 
-def _crnn_predict(audio: np.ndarray, sr: int) -> str | None:
-    """CRNN-Material-Vorhersage. None bei Fehlern (§V6 (copilot-instructions.md), Fallback Gauss)."""
+def _crnn_mono(audio: np.ndarray) -> np.ndarray:
+    """Mono-Kanal 0 in BEIDEN Stereo-Layouts (AGENTS.md §3: (C, N) und (N, C)).
+
+    Das Training nahm Kanal 0 (scripts/train_material_crnn.py::_load_dataset) —
+    die Inferenz muss dasselbe Fenster bedienen. `np.ravel()` mischt bei
+    Stereo die Kanaele interleaved und verfaelscht das Spektrogramm
+    (Produktionsbefund AGENTS.md §3: Layout ohne Check kollabiert).
+    """
+    a = np.asarray(audio)
+    if a.ndim == 2:
+        a = a[0] if a.shape[0] <= a.shape[1] else a[:, 0]
+    return np.nan_to_num(np.asarray(a, dtype=np.float32).ravel(), nan=0.0, posinf=0.0, neginf=0.0)
+
+
+def _crnn_predict(audio: np.ndarray, sr: int) -> tuple[str, float] | None:
+    """CRNN-Material-Vorhersage (Klasse, Softmax-Konfidenz).
+
+    None bei Fehlern/ohne Modell (§V6 (copilot-instructions.md), Fallback
+    Gauss/Mixture). Deterministisch (§G5 (copilot-instructions.md)): gleicher
+    Input ⇒ gleiches Ergebnis, kein Sampling, kein `time.time()`.
+    """
     try:
+        _m = _load_material_crnn()
+        if _m is None:
+            return None
         import torch
 
         from scripts.train_material_crnn import _logmel
 
-        _m = _load_material_crnn()
-        if _m is None:
-            return None
-        _x = torch.tensor(_logmel(np.asarray(audio).ravel()[: sr * 25], sr), dtype=torch.float32)
+        _mono = _crnn_mono(audio)[: int(sr) * 25]
+        _x = torch.tensor(_logmel(_mono, sr), dtype=torch.float32)
         _x = _x.unsqueeze(0).unsqueeze(0)
         with torch.no_grad():
-            _idx = int(_m(_x).argmax(1))
-        return _CRNN_MATERIALS[_idx]
+            _logits = _m(_x)
+            _idx = int(_logits.argmax(1))
+            _conf = float(torch.softmax(_logits, dim=1)[0, _idx])
+        return _CRNN_MATERIALS[_idx], _conf
     except Exception as _e:  # §V6 (copilot-instructions.md)
-        logger.warning("Material-CRNN-Vorhersage fehlgeschlagen: %s", _e)
+        logger.warning("Material-CRNN-Vorhersage fehlgeschlagen: %s — §V6-Ersatzpfad Gauss/Mixture-Pfad", _e)
         return None
 
 
@@ -3492,20 +3562,9 @@ def detect_medium_chain(audio: np.ndarray, sr: int) -> MediumDetectionResult:
                 )
         except Exception as _c_exc:  # §V6 (copilot-instructions.md)
             logger.debug("Medium-Erkennung: Aera-Begrenzung fehlgeschlagen: %s", _c_exc)
-    # §D-K1-3 Phase D: CRNN-Challenger (hinter use_material_crnn, Default AUS).
-    # Gelernte Spektrogramm-Repraesentation (95.3% gemessen vs. 59-63% Gauss).
-    # §V6 (copilot-instructions.md): bei Fehlern/ohne Modell → Gauss/Mixture-Pfad.
-    try:
-        from backend.core.music_model_flags import use_material_crnn as _crnn_on
-
-        if _crnn_on:
-            _mat = _crnn_predict(audio, sr)
-            if _mat:
-                from dataclasses import replace as _dc_replace
-
-                _r1 = _dc_replace(_r1, primary_material=_mat, confidence=1.0)
-    except Exception as _crnn_exc:  # §V6 (copilot-instructions.md)
-        logger.warning("Medium-Erkennung: Klassifikator-Modul nicht aktiv: %s", _crnn_exc)
+    # §D-K1-3 Phase D: Die Material-CRNN-Entscheidung sitzt seit der Verdrahtung
+    # im Material-Entscheidungspfad selbst (MediumDetector.detect, Roh-Aufruf,
+    # Register-Artefakt D-K1-3) — beide detect()-Pässe dieses Wrappers erben sie.
     return _r1
 
 

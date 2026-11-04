@@ -53,7 +53,7 @@ use_scnet_music: bool = False  # SCNet-4-Stems-Tier (§P1-2/TODO-P1-2) — A/B g
 use_bigvgan_f3_studio: bool = False  # KP-5 (2026-10-25): BigVGAN(-F3) als Studio-Finisher-STUFE-1-Kandidat
 # im §1.4-Block (vor der Vocos-Kaskade, nur Maximum/Studio/Aggressive + PQS-MOS < 4.3). Aktivierung erst
 # nach W-1-Hörprobe (Timbre-Konsistenz, D-K0-1/D-K2-3) + Hörordnungs-Sign-off (§v10.802 copilot-instructions.md);
-# W-13 gesperrt. True ⇒ der §1.4-Block versucht die BigVGAN-Synthese zuerst, Vocos bleibt §V6-Fallback.
+# W-13 gesperrt. True ⇒ der §1.4-Block versucht die BigVGAN-Synthese zuerst, Vocos bleibt §V6-Ersatzpfad (copilot-instructions.md §V6).
 use_aspade_declipper: bool = False  # SOTA-M8 (D-K4-1): neuronaler A-SPADE-Klassen-Declipper als Challenger
 # zur heuristischen Phase 07. PCHIP bleibt §V6-DSP-Fallback (copilot-instructions.md §V6). Aktivierung erst
 # nach ΔSDR-Gate auf geclipptem Real-Material + blindem A/B + Hörordnungs-Sign-off (§v10.802
@@ -70,7 +70,12 @@ use_tp_v2_phase: bool = False  # SOTA-M12 (D-K4-8): TP-V2-Klassen-Phasenschätzu
 # Transienten-Phasenkohärenz (kammfilter-frei). Aktivierung erst nach A/B auf transient-reichem
 # Material (Percussion ohne Kammfilter-Artefakte) + Hörordnungs-Sign-off (§v10.802
 # copilot-instructions.md). False ⇒ keine Verhaltensänderung.
-use_material_crnn: bool = False  # D-K1-3 Phase D: CRNN-Material-Classifier (models/material_crnn.pt) als Challenger zum Gauss/Mixture-Pfad. Default AUS. Gelernte Spektrogramm-Repraesentation: 95.3% vs. 59-63% (gemessen).
+use_material_crnn: bool = (
+    False  # D-K1-3 Phase D: CRNN-Material-Classifier (models/material_crnn.pt) im Material-Entscheidungspfad
+)
+# (MediumDetector.detect, Roh-Aufruf) statt 9 handgebaute Skalar-Features/Gauss-Mixture. Default AUS =
+# bisheriges Verhalten. Gelernte Spektrogramm-Repraesentation: 95.3% vs. 59-63% (gemessen). Flag-Flip
+# offen — nur nach §4-Verfahren (scripts/flag_freigabe.py: Verdikt → Register-Buchung → Flag-Flip → Commit).
 use_era_crnn: bool = False  # D-K1-3 Phase E: CRNN-Era-Classifier (models/era_crnn.pt) als Challenger zur Dekaden-Heuristik. Default AUS. 98% Dekade exakt (gemessen).
 use_defect_crnn: bool = False  # Phase F: Defekt-CRNN multi-label (models/defect_crnn.pt) als Challenger zu den _detect_*-Routinen. Default AUS. 88.6% Hamming (gemessen).
 use_loudness_dpn: bool = False  # F002: Loudness-DPN (models/loudness_dpn.pt) als Challenger zur Schwellwert-/Zielwert-Logik. Default AUS. MAE LUFS 2.46 dB (gemessen).
