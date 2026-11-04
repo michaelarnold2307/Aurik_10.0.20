@@ -2180,7 +2180,12 @@ class TransparenzMetric:
         self.threshold = threshold
 
     def measure(
-        self, audio: np.ndarray, sr: int, reference: np.ndarray | None = None, material_type: str = "unknown"
+        self,
+        audio: np.ndarray,
+        sr: int,
+        reference: np.ndarray | None = None,
+        material_type: str = "unknown",
+        short_form_prior: bool = False,
     ) -> float:
         """Measure transparenz score (0.0 - 1.0).
 
@@ -2198,6 +2203,12 @@ class TransparenzMetric:
             material_type: Materialtyp für BW-adaptive Band-Selektion. Wird bereits
                            intern über HF/LF-Ratio erkannt; expliziter material_type
                            kann Fallback-Logik steuern (API-Erweiterung v10.0.0).
+            short_form_prior: Nur für den reproduzierbaren A/B-Never-worsen-Beleg
+                           (2026-11-04): True reproduziert bit-genau den
+                           wall-clock Short-Form-Blend VOR dem Messkontrakt-Fix.
+                           Default False = neuer Vertrag (Mess-API mit
+                           spec-konformem Default, kein Flag-Flip §v10.802
+                           (copilot-instructions.md)).
         """
         _ = reference, material_type
         if audio.ndim > 1:
@@ -2213,6 +2224,15 @@ class TransparenzMetric:
         if len(audio) < 2:
             return 0.5
 
+        # PMGG-Identität (per_phase_musical_goals_gate.py::_measure_quick):
+        # Near-Silence ist unmessbar → neutral 0.5 statt 0.0 (0.0 heißt
+        # „katastrophal gescheitert" und vergiftet End-Gates, §v10.732-Analogie).
+        # Nur im neuen Vertrag — short_form_prior bleibt bit-identisch zum Alt-Pfad.
+        if not short_form_prior:
+            _rms_tr = float(np.sqrt(np.mean(np.square(np.asarray(audio, dtype=np.float64))) + 1e-12))
+            if _rms_tr < 1e-5:
+                return 0.5
+
         # §v10.0.0 Algorithmus-Alignment §9.7.25 (v10.0.0):
         # Root-cause des verbleibenden Fehlers nach §v10.0.0: Selbst mit 3-Segment-Averaging
         # gibt p95/p50-Crest-Faktor für dichte Pop-Musik ~0.37, weil viele Harmoniken jeden
@@ -2227,9 +2247,11 @@ class TransparenzMetric:
         _N_FFT_TR = 4096
         _win_tr = np.hanning(_N_FFT_TR).astype(np.float32)
         _hop_tr = _N_FFT_TR // 2
+        _n_support_frames = 1  # Frames in der gemittelten Band-Energie-Schätzung
         try:
             if len(audio) >= _N_FFT_TR:
                 _n_frames_tr = min(100, max(1, (len(audio) - _N_FFT_TR) // _hop_tr))
+                _n_support_frames = _n_frames_tr
                 fft_mag = (
                     np.stack(
                         [
@@ -2281,12 +2303,32 @@ class TransparenzMetric:
         else:
             score = 0.5
 
-        # Short-form reliability blend: bei < 8 s wenig Kontext für Energieverteilung.
-        _tdur_s = float(len(audio)) / float(sr + 1e-9)
-        if _tdur_s < 8.0:
-            _reliability = float(np.clip((_tdur_s - 2.0) / 10.0, 0.0, 1.0))
-            _neutral_prior = 0.50
-            score = float(np.clip(_reliability * score + (1.0 - _reliability) * _neutral_prior, 0.0, 1.0))
+        # §V7 (copilot-instructions.md) Messkontrakt-Fix (2026-11-04, Report
+        # docs/reports/current/2026-11-04_transparenz_ursache_fix.md):
+        # Der Alt-Blend skalierte den Score mit der Excerpt-Dauer statt mit der
+        # Estimator-Unterstützung (score = ((dauer−2 s)/10 s)·raw + (1−…)·0.50
+        # für dauer < 8 s). Vertragsbruch: (a) PMGG-Identität gebrochen
+        # (02_pipeline_architecture.md:4152 „identisch-semantisch zu PMGG/finaler
+        # TransparenzMetric" — _measure_quick hat KEINEN Blend); (b) der
+        # B3-Fensterplan misst auf 2,5-s-Fenstern (b3_stufenmessung.py:227) →
+        # reliability 0.05 → Score auf [0.475, 0.525] gestaucht (gemessen
+        # 0.505–0.519 bei Roherwerten 0.60–0.88), Zielkorridor 0.55
+        # (backend/core/calibration_matrix.py:1132) dort mathematisch
+        # unerreichbar (Maximalwert 0.525). Neu: Neutral-Shrinkage nur noch bei
+        # fehlender Spectral-Support (< 3 STFT-Frames ≈ 0,13 s @ 48 kHz); ab
+        # 3 Frames liefert die Metrik den rohen §9.7.25-Score PMGG-identisch
+        # ohne Dauer-Bias (§G5 (copilot-instructions.md): deterministisch).
+        if short_form_prior:
+            # Alt-Vertrag (vor dem Fix) — nur für den reproduzierbaren A/B-Beleg.
+            _tdur_s = float(len(audio)) / float(sr + 1e-9)
+            if _tdur_s < 8.0:
+                _reliability = float(np.clip((_tdur_s - 2.0) / 10.0, 0.0, 1.0))
+                _neutral_prior = 0.50
+                score = float(np.clip(_reliability * score + (1.0 - _reliability) * _neutral_prior, 0.0, 1.0))
+        else:
+            _support_reliability = float(np.clip(_n_support_frames / 3.0, 0.0, 1.0))
+            if _support_reliability < 1.0:
+                score = float(np.clip(_support_reliability * score + (1.0 - _support_reliability) * 0.50, 0.0, 1.0))
 
         return float(np.clip(score, 0.0, 1.0))
 

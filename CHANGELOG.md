@@ -1,4 +1,8 @@
-# Changelog — Aurik 10.12.47
+# Changelog — Aurik 10.12.48
+
+## 10.12.48 (2026-11-04)
+
+* **fix(musical_goals): transparenz-Messkontrakt wiederhergestellt** — der Short-Form-Blend skalierte den Score mit der Excerpt-Dauer statt mit der Estimator-Unterstützung; auf 2,5-s-Fenstern (B3-Plan) wurde der Score auf 0,475–0,525 gestaucht (Roherwerte 0,60–0,88), der Zielkorridor 0,55 (`calibration_matrix.py:1132`) war mathematisch unerreichbar. Neu: Neutral-Shrinkage nur bei fehlender Spectral-Support (< 3 STFT-Frames), sonst roher §9.7.25-Score PMGG-identisch (`02_pipeline_architecture.md:4152`); Near-Silence → 0,5 (PMGG-Identität). `short_form_prior=True` reproduziert bit-genau den Alt-Pfad (A/B-Beleg, Default = neuer Vertrag, kein Flag-Flip §v10.802). 9 Tests; Never-worsen-Harness `scripts/b3_transparenz_neverworsen.py`; Report `docs/reports/current/2026-11-04_transparenz_ursache_fix.md`.
 
 ## 10.12.47 (2026-11-04)
 
