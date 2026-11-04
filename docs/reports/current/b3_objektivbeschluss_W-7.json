@@ -1,0 +1,19 @@
+{
+  "schema": "aurik.objektivbeschluss/1",
+  "flag": "use_harmonic_inpainting",
+  "stufe": "W-7",
+  "referenz_songs": 3,
+  "seed": 42,
+  "never_worsen": true,
+  "signifikant": false,
+  "defekt_fallbacks": 2236,
+  "blind_ausgewertet": true,
+  "messung": "docs/reports/current/b3_stufenmessung_W-7.json",
+  "zielmetrik": {
+    "name": "musik_mos (G-2)",
+    "vorteile": "1/6",
+    "p_wert": 0.21875
+  },
+  "ergebnis": "ABGELEHNT",
+  "quelle": "scripts/b3_stufenmessung.py"
+}

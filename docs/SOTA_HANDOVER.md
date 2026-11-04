@@ -3,7 +3,7 @@
 > **Zweck:** Dieses Dokument macht den Zustand von Aurik session-unabhängig
 > lesbar. Jede KI (Kun, Claude Code, Copilot, Codex, Cursor …) soll nach dem
 > Lesen **sofort** wissen, was zu tun ist — auch nach Abbruch, Reboot oder
-> Wochen Pause. Stand: 2026-10-28.
+> Wochen Pause. Stand: 2026-11-03.
 
 ## 0. Mission
 
@@ -26,12 +26,14 @@ Wohlklang für das menschliche Gehör**. Normative Kette: `AGENTS.md` §1
 | --- | --- | --- | --- |
 | 1 | ~~WP-2-Hygiene~~ **ERLEDIGT 2026-10-28:** Stubs (D-K3-3), Phantome (D-K3-5), D-K2-4 Namens-Drift und Domänen-Status sind register-seitig geschlossen; die P2-INFO-Findings des Gates sind dokumentierter Akzeptanz-Bestand | — | Register D-K3-3/D-K3-5/D-K2-4/D-K0-10 |
 | 2 | Referenzfreie Qualitätsmetrik — **ERLEDIGT 2026-10-28**: `musik_mos` (UTMOS-Ersatz, `plugins/musik_mos_plugin.py`) + `defektlast` beide **zertifiziert** (Spearman 0,95); UTMOS/PQS blind gesperrt; offen nur noch absolute MOS-Kalibrierung (KP-12/MUSHRA-Proxy, menschlich) | — | Zertifikat-JSON + `plugins/musik_mos_plugin.py` |
-| 3 | P1-7 (m1b-Stufe-2 intern) + P1-10 (Defekt-Chips) | autonom | Roadmap TODO-P1-7/P1-10 |
-| 4 | Laufzeit 53×→32× RT (F-Reihe optimieren) | autonom | Roadmap TODO-P0-3 Nachtrag |
-| 5 | F3-BigVGAN-Rollout + EAR-VAE v1↔v2 als Vergleichsmessungen | autonom (Urteil = Hör/B3) | LÜCKEN-MATRIX D.1b/c |
-| 6 | Wohlklang-Stufen W-1…W-13 aktivieren (0/13 vollständig) | **B3-Verfahren** | Wohlklang-Vertrag `WOHLKLANG_CLAIMS.md` |
+| 3 | ~~P1-7 (m1b-Stufe-2 intern) + P1-10 (Defekt-Chips)~~ **ERLEDIGT 2026-11-03:** Spec-Verifikation + 15 Verkabelungs-Invarianten, Roadmap-Status geschlossen (Commit `e12a49c7`) | — | Roadmap TODO-P1-7/P1-10 + Report `2026-11-03_p1_7_p1_10_status_audit.md` |
+| 4 | Laufzeit 53×→32× RT (F-Reihe optimieren) | autonom (GPU-gebunden) | **IN ARBEIT 2026-11-03:** GPU-D3-Kette gestartet (DiffWave→BigVGAN→FlashSR, Manifeste `docs/reports/current/train_job_d3_*.json`); Verifikation im nächsten Lauf |
+| 5 | ~~F3-BigVGAN-Rollout~~ **ENTSCHEIDEN 2026-10-30 (K0-C NO-GO, Hör-Instanz)** + ~~EAR-VAE v1↔v2~~ **VORBEREITET 2026-11-03:** Blind-Vergleichs-Harness + Report (Commit `ecf6a65a`); Messung offen bis HF-Gewichte `earlab/EAR_VAE2` (D-K0-9 menschlich) | — | LÜCKEN-MATRIX D.1b/c + K0-Sign-off-Paket |
+| 6 | Wohlklang-Stufen W-1…W-13 aktivieren (0/13 vollständig) | **B3-Verfahren** | **Stand 2026-11-03:** Beschlüsse W-1…W-7 vorhanden; W-6/W-7 nach Router-Fix valide nachgemessen (ABGELEHNT — never_worsen ✓, nicht signifikant; alte Zahlen archiviert `*_vor_routerfix_20261102.json`); B1-Zähler präzise gemacht (Commit `ef3795b7`, nächste Messung ohne Zähl-Artefakte); Hör-Sessions W-1/W-4/W-5 vorbereitet = **menschlich offen** |
 | 7 | Modelle: WF-V4, TP-V2, BEATs-Head, MERT-Head, Gender-Head | teils Daten-blockiert | Tiefenanalyse E2 |
 | 8 | Hör-/Lizenz-Entscheidungen (§9/5–7, AERO, MUSHRA n≥30) | **menschlich** | Katalog A2 |
+| 9 | ~~P1-3-Restdeckung (Audibility-Guards)~~ **ERLEDIGT 2026-11-03:** HNR/Mikrodynamik/Vibrato/Hallucination/Noise-Texture mit Maskierungs-Abdeckung (§G10), 19 Phasen verdrahtet (Commit `2c5e5522`) | — | Report `2026-11-03_p1_3_audibility_restdeckung.md` |
+| 10 | ~~D-K1-3 Material-CRNN-Verdrahtung (95,3 % statt 40,2 %)~~ **ERLEDIGT 2026-11-03:** im Material-Entscheidungspfad hinter `use_material_crnn` (Default AUS — Flag-Flip offen, nur §4-Verfahren) (Commit `28f2947d`) | — | Report `2026-11-03_d_k1_3_material_crnn_wiring.md` |
 
 **Regel:** Punkte 1–5 ohne Rückfrage erledigen. Punkt 6 NUR über das
 B3-Verfahren (§4). Punkt 8 nie eigenmächtig — abbrechen und begründet
