@@ -97,7 +97,7 @@ pro Entscheidung (§9).
 | MP-SENet Musik | ✅ aktiv (`use_mp_senet_musik=True`) | — | A/B 2026-09-20 bestanden (seg-SNR +5.3…+11.3 dB), §v10.17/§v10.25 |
 | FlashSR F4 | ✅ abgeschlossen | — | Musik-Finetune verifiziert, Gate +18…+19.5 dB bestanden, Export aktiv (WP-4-Delta) |
 | APPLADE/A-SPADE | ✅ Produktion phase_07 De-Clicker | — | A/B 2026-09-12 (SOTA-ML-V3) |
-| EAR-VAE v1-MUSDB | ✅ deployt (Phase-0-Clean-Pass) | v2-Upstream beschafft (298 M) → Vergleichs-Benchmark ausstehend | D-K0-9: Never-worsen + Hörordnungs-Sign-off vor Austausch (§V7 copilot-instructions.md) |
+| EAR-VAE v1-MUSDB | ✅ deployt (Phase-0-Clean-Pass) | v2-Upstream + Gewichte beschafft → **Vergleichs-Benchmark erfüllt 2026-11-04** (v2 schlägt v1: 16/17, p=0,000275, never_worsen ✓) | D-K0-9: Never-worsen ✅ gemessen + Hörordnungs-Sign-off weiterhin vor Austausch (§V7 copilot-instructions.md) |
 | BigVGAN-F3 (MUSDB-Finetune) | exportiert + paritätsbewiesen (`bigvgan_v2_f3.onnx`, rel ≤ 6.5e-05) | C4-Hörstichprobe (W-1-Paket bereit, §10) → Rollout-Entscheidung | D-K0-1/D-K0-2; Budget-Weg 2 umgesetzt (1.04× RT je Passage) |
 | SGMSE+ Musik-Core | trainiert (ep 80 / val loss 6.1525), ONNX-Parität max\|Δ\|=6.7e-5, Metrik-A/B ~1 dB besser als WSJ0-Core | Hörabnahme (3-Wege-Paket seit 10-23 bereit, §10) → Flag-Flip | D-K0-3; SI-SDR straft generative Diffusion stärker als die Hörewahrnehmung — Entscheidung braucht das Ohr (§III.11 copilot-instructions.md) |
 | SCNet 4stems | verdrahtet hinter Never-worsen (`plugins/scnet_plugin.py`, `use_scnet_music=False`) | C4-r2-Hörprobe (Paket bereit, §10) + Sign-off → Aktivierung | D-K0-5; RT gemessen 3.43× Chunked / 2.20× Ganzsegment (Performance-Schuld D-K3-37 wächst bei Aktivierung) |
@@ -313,7 +313,7 @@ Daten aus Golden Listening Set + MUSHRA (WP-8).
 | 1 | SCNet-Aktivierung nach C4-r2 (+ RT-Budget-Akzeptanz D-K3-37/D-K0-5: 3.43× Chunked / 2.20× Ganzsegment) | aktivieren, wenn Hörabnahme trägt und Performance-Schuld akzeptiert ist | §9/1 der Lücken-Matrix; Paket bereit (§10) |
 | 2 | BigVGAN-F3-Rollout in die Studio-Finisher-Kaskade statt Vocos-48k-Primär (KP-5) | nach W-1-Sign-off: F3 als Stufe 1, Vocos bleibt §V6-Fallback | D-K0-1/D-K2-3; W-1-Paket bereit (§10) |
 | 3 | SGMSE-Flag-Flip nach Hörabnahme (oder WPE-only-Entscheid) | Musik-Core nur bei gewonnenen Kopf-an-Kopf-Vergleichen in der Abnahme | D-K0-3; 3-Wege-Paket seit 10-23 bereit (§10) |
-| 4 | EAR-VAE v1↔v2 Vergleichs-Benchmark | Never-worsen + Sign-off vor jedem Austausch (heute: v1-MUSDB-Finetune produktiv) | D-K0-9; v2-Upstream liegt lokal (298 M) |
+| 4 | EAR-VAE v1↔v2 Vergleichs-Benchmark | **gemessen 2026-11-04** (never_worsen ✓, 16/17, p=0,000275) + Sign-off vor jedem Austausch (heute: v1-MUSDB-Finetune produktiv) | D-K0-9; Gewichte `ear_vae2_upstream/checkpoints/ear_vae2.pt` (apache-2.0) |
 | 5 | Whisper-Denoiser: archivieren oder neu bewerten | je nach Nutzen-Nachweis in der Spec-04-Kette (NR trägt heute) | D-K0-4; Flag False, deprecated |
 | 6 | AERO: MUSHRA-Challenger-Runde vs. Task-Reformulierung vs. Archiv | bisheriger A/B-Verlust gegen FlashSR (ΔSDR min −2.4 / mean −1.6 dB) — erst menschliche Runde | D-K2-5; Challenger-Infrastruktur vollständig |
 | 7 | Vinyl-Lizenz-Politik für den Echt-Träger-Korpus (Unlocked Recordings; D-K1-2) | Freigabe-Politik festlegen — blockiert KP-6a + KP-13-Vinyl-Klasse (+ Leerrillen-Nachschub für D-K1-4) | WP-7: vinyl strukturell 0 (LP-Ära unter Schutz, Upload-CC0 auf Kommerz-Releases verworfen) |

@@ -200,7 +200,7 @@ als 3 offene Kandidaten hat.
 | DeepFilterNet v3 | Denoise (Spec-04-Kette) | Sprache | ✅ DFN Musik aktiv (`use_df_musik=True`) |
 | MIIPHER | Codec-Artefakte | Sprache (proprietär) | ✅ ersetzt durch MIIPHER-DiT (`use_miipher_dit=True`) |
 | Harmonic-Inpainting-DiT | gedämpfte Obertöne (Phase 07) | Musik | ✅ aktiv (`use_harmonic_inpainting=True`) |
-| EAR-VAE | Restaurations-VAE | Musik | ✅ Aurik-MUSDB-Finetune aktiv (v2-Kette, ΔSDR +4,83 dB); Upstream `ear_vae2_upstream` = separate Beschaffung — Rollout-/Ersatz-Entscheidung offen (D-K0-9) |
+| EAR-VAE | Restaurations-VAE | Musik | ✅ Aurik-MUSDB-Finetune aktiv (v2-Kette, ΔSDR +4,83 dB); Upstream `ear_vae2_upstream` = separate Beschaffung — **Vergleichsmessung 2026-11-04: v2 schlägt v1 (16/17, p=0,000275, never_worsen ✓, erfuellt_objektiv ✓)**; Rollout-/Ersatz-Entscheidung offen (D-K0-9, menschlich) |
 | FlashSR | HF-Rekonstruktion >12,9 kHz | Musik (Bandlimit-Synth) | ✅ **F4 ABGESCHLOSSEN** — Musik-Finetune verifiziert + Gate bestanden (+18…+19.5 dB), Export `models/flashsr/flashsr.onnx` aktiv (WP-4-Delta: „F4 abgeschlossen") |
 | BigVGAN-v2 | Vocoder/Repair (HR-V1) | Musik | 🟡 **F3 exportiert + Parität belegt** (2026-10-06) — Rollout am Budget gesperrt (12,7–13,2× RT je Passage) |
 | **SGMSE+** | Tape-Chain Diffusion-Inpainting | **Sprache** | 🔄 **F7 TRAINING ABGESCHLOSSEN 2026-10-05** — `finetuned/sgmse_musik_best.ckpt` = **epoch 80 / val loss 6,1525** (am Artefakt gemessen; der frühere "Epoch 24, Val 88,3"-Wert stammte vom Sept-Stopp und ist überholt — `docs/reports/current/2026-10-09_ml_sota_validierung.md` A.2), ONNX↔ckpt Parität max\|Δ\|=6,7e-5 (σ=0.5) neu belegt; `use_sgmse_musik=False` = bewusste Sperre bis Drei-Wege-A/B + Hörabnahme — §III.11 copilot-instructions.md |
@@ -326,7 +326,7 @@ F14.
 | 2 | `models/medium_shallow_v1.joblib` | CV **64,3 %** Material (n=56) — Material-Baseline unzulässig (andere Messgröße / nicht applikationsgleich); Depth-Accuracy **zurückgezogen** (nicht bewertbar: `len(transfer_chain)` und kein Depth-Konsument) | **kein Konsument**: `medium_classifier` nutzt im `use_ml`-Zweig CLAP; Rollout blockiert auf **DATEN** (Label-Korpus ≥ ~50 je Klasse) + Wiring-Entscheidung + Sign-off (D-K0-8) |
 | 3 | `models/sgmse_plus/sgmse_musik_core.onnx` | Musik-Finetune (Epoch 24) + ONNX 263 MB vorhanden | `use_sgmse_musik=False` — 3-Wege-A/B + Hörabnahme offen (D-K0-3) |
 | 4 | `output/_training_archive_20260920/f3_bigvgan/best.pt` | A/B bestanden (HNR **+4,42 dB**, af +0,0073) | **exportiert + paritätsbewiesen** (`bigvgan_v2_f3.onnx`, 2026-10-06), aber **nicht verdrahtet**: die aktive HR-V1-Stufe lädt bytescharf die **Basis** (469/783 Tensoren ≠ F3) (D-K0-1/D-K0-2) — Rollout am Budget gesperrt |
-| 5 | `models/ear_vae2_upstream/` | EAR-VAE **v2**-Upstream beschafft (298 M) | keine Rollout-/Ersatz-Entscheidung vs. v1-Finetune (D-K0-9) |
+| 5 | `models/ear_vae2_upstream/` | EAR-VAE **v2**-Upstream beschafft (298 M + Gewichte `checkpoints/ear_vae2.pt` 713,5 MB) | **Vergleichsmessung 2026-11-04 erfüllt** (16/17, p=0,000275, never_worsen ✓); keine Rollout-/Ersatz-Entscheidung vs. v1-Finetune (D-K0-9, menschlich) |
 | 6 | `models/_archive_20260920/` (14 ohne Gegenstück) | melbandroformer-ROCm-Safe-Exporte (225,13 M), BANQUET-Vinyl-Batch (23,69 M), `inpainting_mask_best.pt` (201,89 M), BW-Reconstructor-Generationen | weder Deploy noch Verwerfen dokumentiert (D-K0-7) |
 | 7 | `models/ddsp_predictor/c4_head.pth` | val_MAE 0,2447 ≈ Baseline 0,2455 ⇒ **kein Skill** | korrekt deaktiviert — Neu-Training (BEATs-Encoder statt CLAP) offen (SOTA-C4/F5) |
 
@@ -376,7 +376,9 @@ F14.
 1. **Sofort, CPU, ohne Training:** (a) SCNet-Verdrahtung hinter Never-worsen
    (P1-2) — **erledigt 2026-10-06**, Aktivierung gesperrt bis Sign-off;
    (b) F3-BigVGAN-Rollout-Entscheid (A/B liegt vor, D-K0-1);
-   (c) EAR-VAE v1↔v2-Vergleich. _(Der flache Material-Schätzer D-K0-8 ist
+   (c) ~~EAR-VAE v1↔v2-Vergleich~~ **gemessen 2026-11-04** (never_worsen ✓,
+   16/17 v2-vorteilhaft, p=0,000275; Report `2026-11-04_sota_sitzung_ear_vae_messung_ketten_checks.md`)
+   — Rollout-Entscheidung bleibt D-K0-9/menschlich. _(Der flache Material-Schätzer D-K0-8 ist
    konsolidiert — Depth zurückgezogen, Material blockiert auf Label-Korpus;
    es ist kein Messschritt mehr offen.)_
 2. **Beschaffung:** WF-V4-Quelle klären (alternativ: Warp-Head auf FCPE/CRePE-F0 trainieren),
