@@ -161,6 +161,25 @@ PHASE_EFFECT_CATALOG: dict[str, PhaseEffectProfile] = {
         note="HF-Anhebung; nur bei echten Bandbreitenverlust, nicht als Default-Enhancement",
     ),
     # ── §2.76: Bisher fehlende Phasen im Catalog → Joint-Calibrator kannte sie nicht
+    # §U4 (2026-11-04): phase_08 fehlte — die Ziel-Lücke transient_energie konnte
+    # die Stärke/Wet-Dry-Entscheidung nicht speisen (Bedarfs-Kopplung tot).
+    "phase_08_transient_preservation": PhaseEffectProfile(
+        phase_id="phase_08_transient_preservation",
+        goal_impact={
+            "transient_energie": +0.05,  # Primär: Onset-Energie-Erhalt (§1.4.6)
+            "artikulation": +0.03,  # 06_phases_system.md:170 — Attacke = Artikulationsklarheit
+            "groove": +0.02,  # 06_phases_system.md:170 — Punch der Rhythmik
+            "micro_dynamics": +0.02,  # 06_phases_system.md:170 — MikroDynamik
+        },
+        risks=["harshness", "over_punchiness"],
+        preconditions={"transient_energy_gap": "> 0"},
+        time_profile="fast",
+        min_severity=0.0,  # Dosis folgt der Ziel-Lücke (§G188), kein eigener Severity-Floor
+        note=(
+            "§U4: Onset-Protection + HPSS-Rescue + Transient Re-Injection (füllt/ersetzt "
+            "Transienten-Energie → §G69-Repair-Kriterium bei gemessener Ziel-Lücke)"
+        ),
+    ),
     "phase_57_print_through_reduction": PhaseEffectProfile(
         phase_id="phase_57_print_through_reduction",
         goal_impact={

@@ -32548,6 +32548,37 @@ class UnifiedRestorerV3:
 
         _sev_wet_dry: float = 1.0
         _phase_defect_posterior: float | None = None
+        # ── §U4/§G188 (GEBOTE.md) Ziel-Bedarfs-Kopplung ─────────────────────────
+        # Eine gemessene, HÖRBARE Ziel-Lücke (z. B. transient_energie unter dem
+        # kanonischen Boden, musical_goals.instructions.md:20) ist ein
+        # reparaturwürdiger Defekt und speist die Stärke/Wet-Dry-Entscheidung.
+        # Zentrale Quelle: §2.70 Joint-Calibration (goal_need_strength) —
+        # deterministisch aus den Goal-Proxys der Voranalyse; keine
+        # phasen-individuellen Schwellwerte oder Stärke-Festzahlen (§V7 (copilot-instructions.md)).
+        # Ohne hörbare Lücke: 0.0 → der alte Pfad bleibt bit-identisch (§G5 (copilot-instructions.md)).
+        _goal_need_posterior = 0.0
+        try:
+            from backend.core.calibration_matrix import (
+                CANONICAL_THRESHOLDS_RESTORATION as _U4_TARGETS_REST,
+            )
+            from backend.core.calibration_matrix import (
+                CANONICAL_THRESHOLDS_STUDIO2026 as _U4_TARGETS_STUDIO,
+            )
+            from backend.core.joint_calibrator import goal_need_strength as _u4_goal_need
+
+            _u4_rc = getattr(self, "_restoration_context", None) or {}
+            _u4_proxies = _u4_rc.get("goal_baseline_scores")
+            if not isinstance(_u4_proxies, dict) or not _u4_proxies:
+                _u4_proxies = getattr(self, "_phase_pre_snapshot", None)
+            _u4_targets = _U4_TARGETS_STUDIO if self.is_studio_mode() else _U4_TARGETS_REST
+            _goal_need_posterior = _u4_goal_need(
+                phase_metadata.phase_id,
+                _u4_proxies if isinstance(_u4_proxies, dict) else {},
+                dict(_u4_targets),
+            )
+        except Exception as _goal_need_exc:
+            logger.debug("§U4 Ziel-Bedarfs-Kopplung nicht blockierend: %s", _goal_need_exc)
+            _goal_need_posterior = 0.0
         _TIMING_PHASES_WD = frozenset(
             {
                 "phase_12_wow_flutter_fix",
@@ -33203,7 +33234,9 @@ class UnifiedRestorerV3:
         # als Passthrough überspringen — verhindert 270s NOVELTY_CRIT-Kaskaden
         # wie bei phase_36/37/38 auf Kassette mit planned cap 0.100.
         _final_strength = float(kwargs.get("strength", 1.0))
-        if _final_strength < 0.05 and _final_strength > 0.0:
+        # §U4: Bei hörbarem Ziel-Bedarf ist die Phase keine Passthrough-Kandidatin —
+        # ihre wirksame Dosis kommt aus dem Ziel-Bedarfs-Posterior (§G188).
+        if _final_strength < 0.05 and _final_strength > 0.0 and _goal_need_posterior <= 0.0:
             logger.info(
                 "§v10.0.5 Min-Effective-Strength %s: strength=%.3f < 0.05 → Verarbeitungsschritt uebersprungen (negligible effect)",
                 phase_metadata.phase_id,
@@ -33264,6 +33297,36 @@ class UnifiedRestorerV3:
             kwargs["phase_g188_posterior_strength"] = _phase_defect_posterior
             if not strength_explicit:
                 kwargs["strength"] = _phase_defect_posterior
+        elif _goal_need_posterior > 0.0:
+            # §U4/§G188 (GEBOTE.md) Ziel-Bedarfs-Kopplung: die gemessene,
+            # hörbare Ziel-Lücke ist die Reparatur-Dosis (§2.70 Joint-Calibration).
+            # Die Risiko-Kette (UQ-Drive, §8.6g-II Psycho-Scalar u. a.) darf sie
+            # nicht pauschal teil-dämpfen (§G188: nie einen gemessenen,
+            # reparaturwürdigen Defekt pauschal nur teilweise entfernen).
+            # Wet/Dry = 1.0: die Dosis steckt bereits in der Stärke (die Phase
+            # blendet intern dosiert) — die zweite Misch-Reduktion wäre die
+            # beobachtete Doppel-Dämpfung (U4: effektiv ≈ 1 %).
+            if phase_metadata.phase_id not in _TIMING_PHASES_WD:
+                _sev_wet_dry = 1.0
+            kwargs["phase_goal_need_strength"] = _goal_need_posterior
+            if not strength_explicit:
+                kwargs["strength"] = _goal_need_posterior
+            logger.info(
+                "§U4 Ziel-Bedarfs-Kopplung %s: hörbare Ziel-Lücke → Dosis %.3f "
+                "(strength=%.3f wet_dry=%.3f, Kompensationsgrad 1,0 — §G188 (GEBOTE.md))",
+                phase_metadata.phase_id,
+                _goal_need_posterior,
+                float(kwargs.get("strength", 0.0) or 0.0),
+                float(_sev_wet_dry),
+            )
+            if _goal_need_posterior < 0.15:
+                logger.warning(
+                    "§U4/§G71-Grenzfall %s: Bedarfs-Dosis %.3f unter der §G71-"
+                    "Wirksamkeitsschwelle 0.15 — dosiert nach gemessener Ziel-Lücke "
+                    "statt Festwert (§G188); Wirkung wird über die Scorecard gemessen",
+                    phase_metadata.phase_id,
+                    _goal_need_posterior,
+                )
 
         return _sev_wet_dry
 
@@ -33648,14 +33711,33 @@ class UnifiedRestorerV3:
         _sfr_min_strength = 0.15  # Hörschwelle (§G71 (GEBOTE.md))
         # §v10.303.1: Core-Familien nie skippen — sie sind chirurgisch nötig
         _sfg_family = self._PHASE_INTERVENTION_CLASS.get(_phase_id_sfg, "general")
-        if _kw_strength < _sfr_min_strength and _sfg_family not in self._LOW_CONFIDENCE_CORE_FAMILIES:
+        # §U4/§G188 (GEBOTE.md): Bei gemessenem, hörbarem Ziel-Bedarf wirkt die
+        # Phase als Repair (§G69: füllt/ersetzt/repariert → Repair-Klassifikation
+        # steuert Strength-Floor) — kein stilles Überspringen (§V6 (copilot-instructions.md)/§G8 (copilot-instructions.md)).
+        _sfg_goal_need = float(kwargs.get("phase_goal_need_strength", 0.0) or 0.0)
+        if (
+            _kw_strength < _sfr_min_strength
+            and _sfg_family not in self._LOW_CONFIDENCE_CORE_FAMILIES
+            and _sfg_goal_need <= 0.0
+        ):
             logger.info(
-                "🪫 Strength-Floor-Gate %s: effective_strength=%.3f < %.2f → uebersprungen",
+                "🪫 Strength-Floor-Gate %s: effective_strength=%.3f < %.2f → uebersprungen "
+                "(kein hörbarer Ziel-Bedarf — Familie %s ohne Reparatur-Evidenz)",
                 _phase_id_sfg,
                 _kw_strength,
                 _sfr_min_strength,
+                _sfg_family,
             )
             return np.asarray(audio, dtype=np.float32)
+        if _sfg_goal_need > 0.0 and _kw_strength < _sfr_min_strength:
+            logger.info(
+                "§U4 Strength-Floor-Gate %s: Dosis %.3f < %.2f, aber hörbarer "
+                "Ziel-Bedarf %.3f → Reparatur wirkt (§G188/§G69 (GEBOTE.md))",
+                _phase_id_sfg,
+                _kw_strength,
+                _sfr_min_strength,
+                _sfg_goal_need,
+            )
 
         # §v10.304 AST-Transient-Guard: Bei NR-Phasen die Strength reduzieren
         # wenn AST starke Instrument-Präsenz meldet (Piano/Snare/Cello).

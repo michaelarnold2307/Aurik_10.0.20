@@ -1,4 +1,8 @@
-# Changelog — Aurik 10.12.48
+# Changelog — Aurik 10.12.49
+
+## 10.12.49 (2026-11-04)
+
+* **fix(pipeline): U4 — Ziel-Bedarfs-Kopplung für phase_08_transient_preservation (§G188 (GEBOTE.md))** — die Transienten-Reparaturphase war funktionslos (effektive Wirkung ≈ 1 %): die gemessene Ziel-Lücke transient_energie speiste die Stärke-/Wet-Dry-Entscheidung nicht (Bedarfs-Kopplung tot), die Risiko-Kette dämpfte auf Clip-Floor 0,12 und das Strength-Floor-Gate übersprang die Phase still. Ursachen-Fix (kein Blind-Justieren, §V7 (copilot-instructions.md)): (1) `PHASE_EFFECT_CATALOG`-Profil für phase_08 (transient_energie/artikulation/groove/micro_dynamics, `06_phases_system.md:170`) — der §2.70 Joint-Calibrator kennt die Phase wieder; (2) `goal_need_strength()` (joint_calibrator.py) als zentrale, deterministische Dosis aus dem gewichteten Ziel-Gap, nur bei hörbarer Lücke (JND 0,05, repo-weite Konvention); (3) §G188-Override in `_prepare_profiled_phase_runtime_context`: bei hörbarem Bedarf Dosis = gewichteter Gap, Wet/Dry = 1,0 (keine Doppel-Dämpfung) — ohne Bedarf bit-identisch (§G5 (copilot-instructions.md)); (4) Strength-Floor-Gate/§v10.0.5 überspringen bei nachweisbarem Bedarf nicht (begründet geloggt, §V6/§G8 (copilot-instructions.md)). Ebene-1/2-Schutz: Dosis-Gewichte respektieren die Hörordnung §2; Wohlklang-Ordnungs-Enforcer unberührt. 17 Tests; Report `docs/reports/current/2026-11-04_u4_phase08_transient_reparatur.md`; Never-worsen-Messbefehle vorbereitet (Ausführung: Manager).
 
 ## 10.12.48 (2026-11-04)
 
