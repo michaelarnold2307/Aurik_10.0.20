@@ -17429,6 +17429,155 @@ class UnifiedRestorerV3:
             # _musical_excellence_score, PQS-MOS und die ExzellenzDenker-Entscheidung
             # (Befund Test-Track-Lauf: 15 fehlende Goals → PQS-MOS=1.9 → Rollback-
             # Signale auf jedem Nicht-Letzten-Chunk). Nur GEMESSENE Goals zählen.
+            # §P1-1 Wohlklang-Ordnungs-Audit + ENFORCEMENT auf Pipeline-Ebene
+            # (Audit 2026-09-27, Durchsetzung 2026-11-04):
+            # Die FC-GPP-Callback prüft nur einzelne Kandidaten; kumulative
+            # Phasen-Effekte können trotzdem eine Hörordnungs-Violation erzeugen.
+            # Hier wird das Endergebnis gegen den Input geprüft — bei Violation
+            # wird der verletzende Anteil ZENTRAL gekappt/zurückgeworfen (Muster:
+            # ExcellenceOptimizer-Rollback; Hörordnung §5/§2
+            # (hoerordnung.instructions.md)) statt nur zu protokollieren.
+            # Bewusst VOR den abgeleiteten Werten (§GOAL_SCORECARD,
+            # _musical_goals_passed, End-Gate-Kaskade), damit diese den
+            # ERZWUNGENEN Zustand zeigen (2026-11-04).
+            # §G8 (copilot-instructions.md): die Befund-Warnungen bleiben;
+            # zusätzlich deutsche Enforcement-Events ("Ordnung erzwungen: …").
+            # §G5 (copilot-instructions.md): deterministische feste Blend-Stufen,
+            # kein time.time()/Sampling in der Entscheidung.
+            try:
+                from backend.core.wohlklang_ordnung_gate import (
+                    WohlklangOrdnungEnforcer as _WOEnforcer_pipeline,
+                )
+                from backend.core.wohlklang_ordnung_gate import (
+                    WohlklangOrdnungGate as _WOGate_pipeline,
+                )
+                from backend.core.wohlklang_ordnung_gate import (
+                    blend_with_reference as _wo_blend_ref,
+                )
+                from backend.core.wohlklang_ordnung_gate import (
+                    compute_goal_deltas as _wo_score_deltas,
+                )
+
+                if isinstance(_musical_goal_scores, dict) and _musical_goal_scores:
+                    # Input-Scores messen (für Delta-Berechnung)
+                    _input_scores_for_wo = None
+                    try:
+                        _input_scores_for_wo = _mg_checker.measure_all(
+                            original_audio_for_goals,
+                            sample_rate,
+                            reference=None,
+                        )
+                    except Exception as _iswo_exc:
+                        logger.debug("§P1-1 Eingabe-Scores für WO-Audit nicht verfügbar: %s", _iswo_exc)
+
+                    if isinstance(_input_scores_for_wo, dict) and _input_scores_for_wo:
+                        # Deltas berechnen (Output - Input)
+                        _wo_pipeline_deltas = _wo_score_deltas(_input_scores_for_wo, _musical_goal_scores)
+
+                        if _wo_pipeline_deltas:
+                            _wo_pipeline_result = _WOGate_pipeline().evaluate(_wo_pipeline_deltas)
+                            self._last_wohlklang_audit = _wo_pipeline_result.to_dict()
+                            if _wo_pipeline_result.status == "VIOLATION":
+                                logger.warning(
+                                    "§P1-1 Pipeline-Wohlklang-Ordnungs-Violation: %s",
+                                    _wo_pipeline_result.detail,
+                                )
+                                # Metadaten für GUI + Forensik (Befund bleibt
+                                # sichtbar — keine stille Unterdrückung,
+                                # §V6 (copilot-instructions.md))
+                                self._phase_metadata_accumulator["wohlklang_ordnung_violation"] = {
+                                    "status": "VIOLATION",
+                                    "detail": _wo_pipeline_result.detail,
+                                    "violated_goals": list(_wo_pipeline_result.violated_goals),
+                                    "violations": [dict(v) for v in _wo_pipeline_result.violations],
+                                }
+                                # ── Zentrale Durchsetzung statt nur Protokoll ──
+                                # §V7 (copilot-instructions.md): die
+                                # Kandidaten-Entscheidung läuft NUR über die
+                                # Ordnung + zentrale Stärke-Logik (feste
+                                # Blend-Stufen des Enforcers) — keine
+                                # phasen-individuellen Schwellwerte.
+                                _wo_shapes_ok = getattr(restored_audio, "shape", None) == getattr(
+                                    original_audio_for_goals, "shape", None
+                                )
+
+                                def _wo_blend_probe(_alpha: float) -> dict[str, float] | None:
+                                    # Deterministische Mess-Probe je Blend-Stufe.
+                                    try:
+                                        _blended_wo = (
+                                            float(_alpha) * restored_audio
+                                            + (1.0 - float(_alpha)) * original_audio_for_goals
+                                        )
+                                        _probe_scores = _mg_checker.measure_all(
+                                            _blended_wo, sample_rate, reference=None
+                                        )
+                                        if not isinstance(_probe_scores, dict) or not _probe_scores:
+                                            return None
+                                        return _wo_score_deltas(_input_scores_for_wo, _probe_scores)
+                                    except Exception as _wo_probe_exc:
+                                        logger.debug(
+                                            "§P1-1 Ordnungs-Blend-Probe fehlgeschlagen: %s",
+                                            _wo_probe_exc,
+                                        )
+                                        return None
+
+                                _wo_enf = _WOEnforcer_pipeline().enforce(
+                                    _wo_pipeline_deltas,
+                                    blend_probe=_wo_blend_probe if _wo_shapes_ok else None,
+                                )
+                                _wo_applied = False
+                                if _wo_enf.action != "ACCEPT":
+                                    if _wo_shapes_ok:
+                                        restored_audio = _wo_blend_ref(
+                                            restored_audio,
+                                            original_audio_for_goals,
+                                            _wo_enf.blend_factor,
+                                        )
+                                        # Goal-Scores in den erzwungenen Zustand
+                                        # übernehmen — die Scorecard zeigt dann
+                                        # den ERZWUNGENEN Zustand (§G8 (copilot-instructions.md)).
+                                        _musical_goal_scores = {
+                                            str(_g_wo): float(_input_scores_for_wo.get(_g_wo, 0.0)) + float(_d_wo)
+                                            for _g_wo, _d_wo in _wo_enf.enforced_deltas.items()
+                                        }
+                                        _wo_applied = True
+                                    else:
+                                        logger.warning(
+                                            "Ordnung erzwungen nicht möglich: Shape-Mismatch %s vs %s — "
+                                            "Blend/Rollback übersprungen (§V6 (copilot-instructions.md)); "
+                                            "Befund bleibt unverändert bestehen",
+                                            getattr(restored_audio, "shape", "?"),
+                                            getattr(original_audio_for_goals, "shape", "?"),
+                                        )
+                                _wo_enf_meta = _wo_enf.to_dict()
+                                _wo_enf_meta["applied"] = bool(_wo_applied)
+                                if not _wo_applied:
+                                    # Ehrliche Restzählung: ohne angewendetes
+                                    # Enforcement bleiben die Befund-Verletzungen.
+                                    _wo_enf_meta["residual_violations"] = len(_wo_pipeline_result.violations)
+                                if isinstance(getattr(self, "_phase_metadata_accumulator", None), dict):
+                                    self._phase_metadata_accumulator["wohlklang_ordnung_enforcement"] = dict(
+                                        _wo_enf_meta
+                                    )
+                                if isinstance(self._last_wohlklang_audit, dict):
+                                    self._last_wohlklang_audit["enforcement"] = dict(_wo_enf_meta)
+                                if _wo_applied:
+                                    for _wo_ev in _wo_enf.events:
+                                        logger.warning("%s", _wo_ev)
+                                    logger.info(
+                                        "§P1-1 Ordnung erzwungen: action=%s blend_factor=%.4f — Restverletzungen: %d",
+                                        _wo_enf.action,
+                                        _wo_enf.blend_factor,
+                                        int(_wo_enf_meta["residual_violations"]),
+                                    )
+                            else:
+                                logger.info(
+                                    "§P1-1 Pipeline-Wohlklang-Ordnung: %s",
+                                    _wo_pipeline_result.detail,
+                                )
+            except Exception as _p1_1_exc:
+                logger.debug("§P1-1 Wohlklang-Ordnungs-Audit fehlgeschlagen (nicht blockierend): %s", _p1_1_exc)
+
             _measured_goals = {k: v for k, v in _musical_goal_scores.items() if k in _goal_vector_keys}
 
             _musical_goals_passed = {
@@ -17483,61 +17632,10 @@ class UnifiedRestorerV3:
             except Exception as _sc_exc:
                 logger.warning("GOAL_SCORECARD log fehlgeschlagen (nicht blockierend): %s", _sc_exc, exc_info=True)
 
-            # §P1-1 Wohlklang-Ordnungs-Audit auf Pipeline-Ebene (2026-09-27):
-            # Die FC-GPP-Callback prüft nur einzelne Kandidaten; kumulative
-            # Phasen-Effekte können trotzdem eine Hörordnungs-Violation erzeugen.
-            # Hier wird das Endergebnis gegen den Input geprüft — bei Violation
-            # werden die verantwortlichen Zielkonflikte dokumentiert und in die
-            # Metadaten geschrieben (für GUI-Ampel + Forensik).
-            try:
-                from backend.core.wohlklang_ordnung_gate import WohlklangOrdnungGate as _WOGate_pipeline
-
-                if isinstance(_musical_goal_scores, dict) and _musical_goal_scores:
-                    # Input-Scores messen (für Delta-Berechnung)
-                    _input_scores_for_wo = None
-                    try:
-                        _input_scores_for_wo = _mg_checker.measure_all(
-                            original_audio_for_goals,
-                            sample_rate,
-                            reference=None,
-                        )
-                    except Exception as _iswo_exc:
-                        logger.debug("§P1-1 Eingabe-Scores für WO-Audit nicht verfügbar: %s", _iswo_exc)
-
-                    if isinstance(_input_scores_for_wo, dict) and _input_scores_for_wo:
-                        # Deltas berechnen (Output - Input)
-                        _wo_pipeline_deltas = {}
-                        for _g_key in set(list(_musical_goal_scores.keys()) + list(_input_scores_for_wo.keys())):
-                            try:
-                                _out_val = float(_musical_goal_scores.get(_g_key, 0.0))
-                                _in_val = float(_input_scores_for_wo.get(_g_key, 0.0))
-                                if math.isfinite(_out_val) and math.isfinite(_in_val):
-                                    _wo_pipeline_deltas[str(_g_key)] = _out_val - _in_val
-                            except (TypeError, ValueError):
-                                continue
-
-                        if _wo_pipeline_deltas:
-                            _wo_pipeline_result = _WOGate_pipeline().evaluate(_wo_pipeline_deltas)
-                            self._last_wohlklang_audit = _wo_pipeline_result.to_dict()
-                            if _wo_pipeline_result.status == "VIOLATION":
-                                logger.warning(
-                                    "§P1-1 Pipeline-Wohlklang-Ordnungs-Violation: %s",
-                                    _wo_pipeline_result.detail,
-                                )
-                                # Metadaten für GUI + Forensik
-                                self._phase_metadata_accumulator["wohlklang_ordnung_violation"] = {
-                                    "status": "VIOLATION",
-                                    "detail": _wo_pipeline_result.detail,
-                                    "violated_goals": list(_wo_pipeline_result.violated_goals),
-                                    "violations": [dict(v) for v in _wo_pipeline_result.violations],
-                                }
-                            else:
-                                logger.info(
-                                    "§P1-1 Pipeline-Wohlklang-Ordnung: %s",
-                                    _wo_pipeline_result.detail,
-                                )
-            except Exception as _p1_1_exc:
-                logger.debug("§P1-1 Wohlklang-Ordnungs-Audit fehlgeschlagen (nicht blockierend): %s", _p1_1_exc)
+            # §P1-1 Wohlklang-Ordnungs-Audit + -Enforcement: bewusst NACH der
+            # Ziel-Messung, aber VOR den abgeleiteten Werten (siehe oben) —
+            # GOAL_SCORECARD, _musical_goals_passed und die End-Gate-Kaskade
+            # zeigen damit den ERZWUNGENEN Zustand (2026-11-04).
 
             if _should_run_end_gate_cascade(_mg_violations, _chunked_tail_skip, _chunked_last):
                 # §P0-1 Block a2: Kaskade als Methode (unveraendertes Verhalten;
