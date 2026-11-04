@@ -1,0 +1,227 @@
+{
+  "schema": "aurik.transient_energie.messung/1",
+  "label": "neu",
+  "seed": 42,
+  "blind_schluessel": {
+    "cassette_1980s_wow__w0": "alt",
+    "cassette_1980s_wow__w1": "neu",
+    "cassette_1980s_wow__w2": "alt",
+    "cassette_1980s_wow__w3": "neu",
+    "reel_1940s_dropout__w4": "alt",
+    "jazz_1950s_scratched__w5": "neu"
+  },
+  "defekt_fallbacks": 0,
+  "zeilen": [
+    {
+      "trial_id": "cassette_1980s_wow__w0",
+      "material": "vinyl",
+      "musik_mos": 4.7958,
+      "defektlast": 0.386,
+      "scorecard": {
+        "bass_kraft": 1.0,
+        "brillanz": 0.4334725768089779,
+        "waerme": 0.5803181717533321,
+        "natuerlichkeit": 0.964768290315492,
+        "authentizitaet": 0.9879731443131493,
+        "emotionalitaet": 0.9531853527411817,
+        "transparenz": 0.5050533970111816,
+        "groove": 0.9377154045956847,
+        "spatial_depth": 0.75,
+        "timbre_authentizitaet": 0.9333276939301244,
+        "tonal_center": 0.9972866300450464,
+        "micro_dynamics": 0.9429999999999996,
+        "separation_fidelity": 0.8045608311990974,
+        "artikulation": 0.9222590892055866,
+        "transient_energie": 1.0
+      },
+      "transient_neu": {
+        "score": 1.0,
+        "score_unfiltered": 1.0,
+        "n_onsets": 21,
+        "n_excluded_impulse": 0
+      },
+      "transient_alt": {
+        "score": 1.0,
+        "score_unfiltered": 1.0,
+        "n_onsets": 21,
+        "n_excluded_impulse": 0
+      }
+    },
+    {
+      "trial_id": "cassette_1980s_wow__w1",
+      "material": "shellac",
+      "musik_mos": 4.7837,
+      "defektlast": 0.4965,
+      "scorecard": {
+        "bass_kraft": 1.0,
+        "brillanz": 0.422899219485452,
+        "waerme": 0.8942749879953,
+        "natuerlichkeit": 0.9721993569573412,
+        "authentizitaet": 0.9297245978075841,
+        "emotionalitaet": 0.9707272376577057,
+        "transparenz": 0.5190634054457093,
+        "groove": 0.9328548143487096,
+        "spatial_depth": 0.75,
+        "timbre_authentizitaet": 0.9293181884344255,
+        "tonal_center": 0.9589072083063273,
+        "micro_dynamics": 0.9429999999999996,
+        "separation_fidelity": 0.8143572187770299,
+        "artikulation": 0.915817788491846,
+        "transient_energie": 1.0
+      },
+      "transient_neu": {
+        "score": 1.0,
+        "score_unfiltered": 1.0,
+        "n_onsets": 18,
+        "n_excluded_impulse": 0
+      },
+      "transient_alt": {
+        "score": 1.0,
+        "score_unfiltered": 1.0,
+        "n_onsets": 18,
+        "n_excluded_impulse": 0
+      }
+    },
+    {
+      "trial_id": "cassette_1980s_wow__w2",
+      "material": "shellac",
+      "musik_mos": 4.8274,
+      "defektlast": 0.489,
+      "scorecard": {
+        "bass_kraft": 1.0,
+        "brillanz": 0.36736114157138744,
+        "waerme": 0.8912147042701463,
+        "natuerlichkeit": 0.929718509323892,
+        "authentizitaet": 0.9480697600175805,
+        "emotionalitaet": 0.972285272524754,
+        "transparenz": 0.5190710599091442,
+        "groove": 0.9370616089200896,
+        "spatial_depth": 0.75,
+        "timbre_authentizitaet": 0.9298751496944447,
+        "tonal_center": 0.9729590073920462,
+        "micro_dynamics": 0.9429999999999996,
+        "separation_fidelity": 0.8034983006380828,
+        "artikulation": 0.9104763966810664,
+        "transient_energie": 0.8546
+      },
+      "transient_neu": {
+        "score": 0.8546,
+        "score_unfiltered": 0.8546,
+        "n_onsets": 18,
+        "n_excluded_impulse": 0
+      },
+      "transient_alt": {
+        "score": 0.6739,
+        "score_unfiltered": 0.6739,
+        "n_onsets": 18,
+        "n_excluded_impulse": 0
+      }
+    },
+    {
+      "trial_id": "cassette_1980s_wow__w3",
+      "material": "shellac",
+      "musik_mos": 4.8251,
+      "defektlast": 0.4963,
+      "scorecard": {
+        "bass_kraft": 1.0,
+        "brillanz": 0.45242167239255693,
+        "waerme": 0.9064384129644564,
+        "natuerlichkeit": 0.8834573752196105,
+        "authentizitaet": 0.9182146317950076,
+        "emotionalitaet": 0.9712620481560625,
+        "transparenz": 0.5179427410331588,
+        "groove": 0.7803032379150391,
+        "spatial_depth": 0.75,
+        "timbre_authentizitaet": 0.9297938968526749,
+        "tonal_center": 0.953833496738737,
+        "micro_dynamics": 0.9429999999999996,
+        "separation_fidelity": 0.803035598469404,
+        "artikulation": 0.9126871397823196,
+        "transient_energie": 0.9345
+      },
+      "transient_neu": {
+        "score": 0.9345,
+        "score_unfiltered": 0.9345,
+        "n_onsets": 16,
+        "n_excluded_impulse": 0
+      },
+      "transient_alt": {
+        "score": 0.7583,
+        "score_unfiltered": 0.7583,
+        "n_onsets": 16,
+        "n_excluded_impulse": 0
+      }
+    },
+    {
+      "trial_id": "reel_1940s_dropout__w4",
+      "material": "tape",
+      "musik_mos": 4.9589,
+      "defektlast": 0.0321,
+      "scorecard": {
+        "bass_kraft": 0.09237396311922468,
+        "brillanz": 0.15919992022534743,
+        "waerme": 0.6188502074819429,
+        "natuerlichkeit": 0.9554741236350707,
+        "authentizitaet": 0.9666013272096149,
+        "emotionalitaet": 0.9048549630999569,
+        "transparenz": 0.5187862233469377,
+        "groove": 0.8299019927978516,
+        "spatial_depth": 0.75,
+        "timbre_authentizitaet": 0.9257723831163138,
+        "tonal_center": 0.9991899002433802,
+        "micro_dynamics": 0.9429999999999996,
+        "separation_fidelity": 0.8045846892033449,
+        "artikulation": 0.9028004979582035,
+        "transient_energie": 0.7311
+      },
+      "transient_neu": {
+        "score": 0.7311,
+        "score_unfiltered": 0.7311,
+        "n_onsets": 7,
+        "n_excluded_impulse": 0
+      },
+      "transient_alt": {
+        "score": 0.6238,
+        "score_unfiltered": 0.6238,
+        "n_onsets": 7,
+        "n_excluded_impulse": 0
+      }
+    },
+    {
+      "trial_id": "jazz_1950s_scratched__w5",
+      "material": "tape",
+      "musik_mos": 4.9037,
+      "defektlast": 0.1463,
+      "scorecard": {
+        "bass_kraft": 0.49779312686525684,
+        "brillanz": 0.0201570821651084,
+        "waerme": 0.5134970398065666,
+        "natuerlichkeit": 0.9656407349141894,
+        "authentizitaet": 0.9640581414041709,
+        "emotionalitaet": 0.9137957114301626,
+        "transparenz": 0.5160348435282238,
+        "groove": 0.9035057559244377,
+        "spatial_depth": 0.75,
+        "timbre_authentizitaet": 0.9285537864470547,
+        "tonal_center": 0.9826363293803834,
+        "micro_dynamics": 0.9402101899713818,
+        "separation_fidelity": 0.8047367299893763,
+        "artikulation": 0.9062558157559988,
+        "transient_energie": 0.6335
+      },
+      "transient_neu": {
+        "score": 0.6335,
+        "score_unfiltered": 0.6335,
+        "n_onsets": 34,
+        "n_excluded_impulse": 0
+      },
+      "transient_alt": {
+        "score": 0.5669,
+        "score_unfiltered": 0.5669,
+        "n_onsets": 34,
+        "n_excluded_impulse": 0
+      }
+    }
+  ],
+  "quelle": "scripts/b3_transient_energie_neverworsen.py"
+}

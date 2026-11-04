@@ -1,13 +1,32 @@
 {
   "schema": "aurik.train_job/1",
-  "run_id": "matrix_d3-20261028T122226Z-1b33c7",
+  "run_id": "matrix_d3-20261103T215537Z-12dbe7",
   "name": "d3_diffwave_vokal",
   "phase": "matrix_d3",
   "seed": null,
   "befehl": "env PYTHONPATH=. /home/michael/.local/share/aurik/venv_rocm72/bin/python -B scripts/train_diffwave_vocal_inpaint.py --epochs 30",
-  "resume_befehl": "env PYTHONPATH=. /home/michael/.local/share/aurik/venv_rocm72/bin/python -B scripts/train_diffwave_vocal_inpaint.py --epochs 30",
+  "resume_befehl": "env PYTHONPATH=. /home/michael/.local/share/aurik/venv_rocm72/bin/python -B scripts/train_diffwave_vocal_inpaint.py --epochs 30 --resume models/diffwave/checkpoint_latest.pt",
   "timeout_s": 21600.0,
   "retries": 1,
-  "versuche": [],
-  "quelle": "scripts/train_job_runner.py"
+  "versuche": [
+    {
+      "exit_code": -15,
+      "sekunden": 21600.2,
+      "timed_out": true,
+      "output_tail": "MIOpen(HIP): Warning [IsEnoughWorkspace] [GetSolutionsFallback WTI] Solver <GemmWrwUniversal>, workspace required: 12570624, provided ptr: 0 size: 0\nMIOpen(HIP): Warning [IsEnoughWorkspace] [EvaluateInvokers] Solver <GemmWrwUniversal>, workspace required: 12570624, provided ptr: 0 size: 0\nMIOpen(HIP): Warning [IsEnoughWorkspace] [GetSolutionsFallback WTI] Solver <GemmBwdRest>, workspace required: 12570624, provided ptr: 0 size: 0\nMIOpen(HIP): Warning [IsEnoughWorkspace] [EvaluateInvokers] Solver <GemmBwdRest>, workspace required: 12570624, provided ptr: 0 size: 0\nMIOpen(HIP): Warning [IsEnoughWorkspace] [GetSolutionsFallback WTI] Solver <GemmWrwUniversal>, workspace required: 12570624, provided ptr: 0 size: 0\nMIOpen(HIP): Warning [IsEnoughWorkspace] [EvaluateInvokers] Solver <GemmWrwUniversal>, workspace required: 12570624, provided ptr: 0 size: 0\nMIOpen(HIP): Warning [IsEnoughWorkspace] [GetSolutionsFallback WTI] Solver <GemmBwdRest>, workspace required: 12570624, provided ptr: 0 size: 0\nMIOpen(HIP): Warning [IsEnoughWorkspace] [EvaluateInvokers] Solver <GemmBwdRest>, workspace required: 12570624, provided ptr: 0 size: 0\nMIOpen(HIP): Warning [IsEnoughWorkspace] [GetSolutionsFallback WTI] Solver <GemmWrwUniversal>, workspace required: 12570624, provided ptr: 0 size: 0\nMIOpen(HIP): Warning [IsEnoughWorkspace] [EvaluateInvokers] Solver <GemmWrwUniversal>, workspace required: 12570624, provided ptr: 0 size: 0\nMIOpen(HIP): Warning [IsEnoughWorkspace] [GetSolutionsFallback WTI] Solver <GemmBwdRest>, workspace required: 12570624, provided ptr: 0 size: 0\nMIOpen(HIP): Warning [IsEnoughWorkspace] [EvaluateInvokers] Solver <GemmBwdRest>, workspace required: 12570624, provided ptr: 0 size: 0\nMIOpen(HIP): Warning [IsEnoughWorkspace] [GetSolutionsFallback WTI] Solver <GemmWrwUniversal>, workspace required: 12570624, provided ptr: 0 size: 0\nMIOpen(HIP): Warning [IsEnoughWorkspace] [EvaluateInvokers] Solver <GemmWrwUniversal>, workspace required: 12570624, provided ptr: 0 size: 0\n",
+      "versuch": 1,
+      "befehl": "env PYTHONPATH=. /home/michael/.local/share/aurik/venv_rocm72/bin/python -B scripts/train_diffwave_vocal_inpaint.py --epochs 30"
+    },
+    {
+      "exit_code": 0,
+      "sekunden": 19620.7,
+      "timed_out": false,
+      "output_tail": "mmWrwUniversal>, workspace required: 12570624, provided ptr: 0 size: 0\nDevice: cuda\nmasking_loss nicht ladbar (No module named 'masking_loss') — trainiere ohne Hör-Loss\nDiffWave geladen: 2.62 M Parameter (strict)\nZero-Shot-Baseline: Val-SDR mean=-3.01 dB min=-9.11 dB\nResume ab Epoche 16 (checkpoint_latest.pt)\nEpoch 17/30: Loss=0.115331 | Val-SDR mean=+1.08 dB min=-0.55 dB [1387s] *best*\nEpoch 18/30: Loss=0.104081 | Val-SDR mean=-6.79 dB min=-20.11 dB [1407s]\nEpoch 19/30: Loss=0.112982 | Val-SDR mean=-0.77 dB min=-2.13 dB [1438s]\nEpoch 20/30: Loss=0.111745 | Val-SDR mean=+3.23 dB min=-0.41 dB [1470s] *best*\nEpoch 21/30: Loss=0.110516 | Val-SDR mean=-6.41 dB min=-19.06 dB [1514s]\nEpoch 22/30: Loss=0.111459 | Val-SDR mean=-5.41 dB min=-16.12 dB [1501s]\nEpoch 23/30: Loss=0.114293 | Val-SDR mean=-2.92 dB min=-8.73 dB [1476s]\nEpoch 24/30: Loss=0.110992 | Val-SDR mean=-4.59 dB min=-13.68 dB [1479s]\nEpoch 25/30: Loss=0.109608 | Val-SDR mean=+1.68 dB min=-0.42 dB [1441s]\nEpoch 26/30: Loss=0.102629 | Val-SDR mean=-3.31 dB min=-9.80 dB [1311s]\nEpoch 27/30: Loss=0.112594 | Val-SDR mean=-1.36 dB min=-3.91 dB [1262s]\nEpoch 28/30: Loss=0.100759 | Val-SDR mean=-1.34 dB min=-3.90 dB [1274s]\nEpoch 29/30: Loss=0.103299 | Val-SDR mean=-1.30 dB min=-3.74 dB [1264s]\nEpoch 30/30: Loss=0.110672 | Val-SDR mean=-3.69 dB min=-10.98 dB [1290s]\nEarly-Stop nach 0 Runden ohne Verbesserung (Patience 10).\n\nReport: /media/michael/Software 4TB/Aurik_Standalone/docs/reports/current/2026-11-04_diffwave_vocal_finetune.json\n{\n  \"date\": \"2026-11-04\",\n  \"script\": \"scripts/train_diffwave_vocal_inpaint.py\",\n  \"goal\": \"VOCAL-INPAINT-S2/F1: \\u0394SDR \\u2265 0 je L\\u00fccke (S1-Ziell\\u00fccke: mean \\u22121,69 dB)\",\n  \"lr\": 0.0002,\n  \"epochs\": 14,\n  \"masking_beta\": 0.3,\n  \"seed\": 42,\n  \"best_epoch\": 19,\n  \"best_val_mean_sdr_db\": 3.23,\n  \"baseline_zero_shot_mean_sdr_db\": -3.01,\n  \"baseline_zero_shot_min_sdr_db\": -9.11,\n  \"never_worsen_per_gap\": true\n}\nGate BESTANDEN — Checkpoint aktiviert: diffwave_vocal_ft.ckpt\n",
+      "versuch": 2,
+      "befehl": "env PYTHONPATH=. /home/michael/.local/share/aurik/venv_rocm72/bin/python -B scripts/train_diffwave_vocal_inpaint.py --epochs 30 --resume models/diffwave/checkpoint_latest.pt"
+    }
+  ],
+  "quelle": "scripts/train_job_runner.py",
+  "checkpoint_hashes": {},
+  "ergebnis": "erfolgreich"
 }
