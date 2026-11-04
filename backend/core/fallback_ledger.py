@@ -38,6 +38,10 @@ _TOTAL = 0
 PLANNED_RULES: tuple[tuple[str, str], ...] = (
     ("phase_49_advanced_dereverb", "ML→DSP-Ersatzpfad"),  # SGMSE+ gesperrt (D-K0-3)
     ("music_mos_oracle", "SingMOS Pro nicht verfügbar"),  # Zeugen-Modell KP-12 offen
+    (
+        "harmonic_context_analyzer",
+        "Ersatzpfad",
+    ),  # Metrik-Kurzfenster (Chroma n_fft > Signal, B3-Fenster-Artefakt) — kein ML→DSP-Rückfall
 )
 ARTEN = ("defekt", "geplant")
 
@@ -97,9 +101,17 @@ class FallbackLogCounter(logging.Handler):
 
 
 def install_log_counter(logger_name: str = "backend", component: str = "ml") -> FallbackLogCounter:
-    """Log-Counter an einen Logger-Hierarchie-Ast hängen (idempotent pro Ast)."""
+    """Log-Counter an einen Logger-Hierarchie-Ast hängen (idempotent pro Ast).
+
+    Idempotenz ist Vertragsinhalt: doppelte Installation würde jeden Record
+    mehrfach zählen und die B1-Kennzahl (WOHLKLANG_CLAIMS.md) verfälschen.
+    """
+    logger = logging.getLogger(logger_name)
+    for handler in logger.handlers:
+        if isinstance(handler, FallbackLogCounter):
+            return handler
     counter = FallbackLogCounter(component=component)
-    logging.getLogger(logger_name).addHandler(counter)
+    logger.addHandler(counter)
     return counter
 
 

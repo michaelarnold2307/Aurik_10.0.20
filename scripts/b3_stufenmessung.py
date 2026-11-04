@@ -67,10 +67,15 @@ def _schalter_setzen(name: str, wert: object) -> None:
 def _restore_fenster(audio: np.ndarray, sr: int) -> tuple[np.ndarray, dict]:
     """Produktionspfad wie im Kind der Release-Pipeline (FAST-Profil)."""
     from backend.core.fallback_ledger import install_log_counter, snapshot
+    from backend.core.fallback_ledger import reset as ledger_reset
     from backend.core.performance_guard import QualityMode
     from backend.core.unified_restorer_v3 import RestorationConfig, UnifiedRestorerV3
 
     install_log_counter()
+    # Delta-Semantik (§G1 (copilot-instructions.md): Song-Isolation, fallback_ledger.reset): der Snapshot
+    # am Ende darf nur DIESEN Lauf zählen — ohne Reset summieren sich kumulative
+    # Stände je Fenster und verfälschen die B1-Kennzahl (WOHLKLANG_CLAIMS.md).
+    ledger_reset()
     cfg = RestorationConfig(
         mode=QualityMode.FAST,
         enable_performance_guard=True,

@@ -156,3 +156,73 @@ class TestAuditorSongScopeContract:
         src = (_ROOT / "backend" / "core" / "pre_export_validator.py").read_text(encoding="utf-8")
         assert "fa.report()" in src, "PreExportValidator muss den konsolidierten Bericht ausgeben"
         assert "should_block_pipeline" in src
+
+
+# ---------------------------------------------------------------------------
+# 4. Fallback-Ledger Präzision (B1-Kennzahl, WOHLKLANG_CLAIMS.md)
+# ---------------------------------------------------------------------------
+
+
+class TestFallbackLedgerPraezision:
+    def test_install_log_counter_idempotent_pro_ast(self) -> None:
+        """Doppelte Installation darf Records nicht mehrfach zählen (B1)."""
+        import logging
+
+        from backend.core import fallback_ledger as fl
+
+        logger_name = "test_ledger_idempotent"
+        logging.getLogger(logger_name).handlers.clear()
+        try:
+            h1 = fl.install_log_counter(logger_name)
+            h2 = fl.install_log_counter(logger_name)
+            assert h1 is h2, "idempotent pro Ast: zweite Installation liefert denselben Counter"
+            anzahl = sum(1 for h in logging.getLogger(logger_name).handlers if isinstance(h, fl.FallbackLogCounter))
+            assert anzahl == 1, "genau ein Counter je Ast — sonst mehrfache Event-Zählung"
+        finally:
+            logging.getLogger(logger_name).handlers.clear()
+            fl.reset()
+
+    def test_metrik_kurzfenster_ist_geplant_kein_defekt(self) -> None:
+        """harmonic_context_analyzer 'Ersatzpfad' (Chroma n_fft > Signal) ist ein
+        Metrik-Kurzfenster-Artefakt, kein ML→DSP-Rückfall (B1 (WOHLKLANG_CLAIMS.md))."""
+        import logging
+
+        from backend.core import fallback_ledger as fl
+
+        fl.install_log_counter()
+        fl.reset()
+        try:
+            logging.getLogger("backend.core.harmonic_context_analyzer").warning(
+                "harmonic_context_analyzer.py::_berechnen_chroma Ersatzpfad: n_fft=1024 is too large for input signal of length=938"
+            )
+            snap = fl.snapshot()
+            assert snap["by_art"].get("geplant", 0) == 1, "Planregel PLANNED_RULES muss greifen"
+            assert snap["by_art"].get("defekt", 0) == 0, "Metrik-Artefakt darf B1 nicht verfälschen"
+        finally:
+            fl.reset()
+
+    def test_ungeplanter_ersatzpfad_bleibt_defekt(self) -> None:
+        """Echte ML→DSP-Ersatzpfade zählen weiter als defekt (B1)."""
+        import logging
+
+        from backend.core import fallback_ledger as fl
+
+        fl.install_log_counter()
+        fl.reset()
+        try:
+            logging.getLogger("backend.core.dsp.sota_vocal_model_router").warning(
+                "ML→DSP-Ersatzpfad aktiviert: nmf_dsp_fallback"
+            )
+            snap = fl.snapshot()
+            assert snap["by_art"].get("defekt", 0) == 1, "ungeplanter ML→DSP-Rückfall bleibt defekt"
+        finally:
+            fl.reset()
+
+    def test_restore_fenster_setzt_ledger_zurueck(self) -> None:
+        """b3_stufenmessung._restore_fenster muss vor jedem Lauf reset() aufrufen
+        (Delta-Semantik — sonst kumulative Doppelzählung der B1-Kennzahl)."""
+        src = (_ROOT / "scripts" / "b3_stufenmessung.py").read_text(encoding="utf-8")
+        assert "ledger_reset()" in src, (
+            "B3-Messung braucht fallback_ledger.reset() je Lauf (§G1 (copilot-instructions.md))"
+        )
+        assert "reset as ledger_reset" in src
