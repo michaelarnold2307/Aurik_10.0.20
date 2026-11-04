@@ -34,7 +34,7 @@
 | `demucs` | 1 | 2.5 MB | — |
 | `diffwave` | 2 | 10.6 MB | — |
 | `ear_vae` | 5 | 1.1 GB | — |
-| `ear_vae2_upstream` | 0 | 0 B | LICENSE, README.md |
+| `ear_vae2_upstream` | 1 | 713.5 MB | LICENSE, README.md |
 | `era_classifier` | 1 | 30.2 KB | — |
 | `fcpe` | 2 | 131.8 MB | LICENSE, README.md |
 | `flashsr` | 6 | 9.6 MB | README.md |
@@ -344,6 +344,7 @@
 
 | Artefakt | Größe | SHA-256 | Gemessener Fingerabdruck |
 | --- | --- | --- | --- |
+| `checkpoints/ear_vae2.pt` | 713.5 MB | `c87215f857c90915…` | torch-zip (`gen` = `ear_vae2_small_refiner_step120000_generator`); 178.36 M Params (tensor_shapes); 326 Tensoren; 332 Zip-Einträge |
 
 ### `era_classifier`
 

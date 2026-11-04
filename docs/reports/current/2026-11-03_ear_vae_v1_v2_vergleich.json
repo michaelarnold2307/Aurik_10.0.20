@@ -1,54 +1,238 @@
 {
   "schema": "aurik.ear_vae_v1_v2_messung/1",
-  "verfahren": "EAR-VAE v1<->v2 Vergleichsmessung (Never-worsen-Benchmark, D-K0-9)",
-  "kontext": "LUECKEN-MATRIX D.1c (docs/TODOS_SOTA_ROADMAP.md) + D-K0-9 (.github/SOTA_DEFICIT_REGISTER.md) — Vorbereitung der menschlichen Entscheidung, KEINE Aktivierung",
-  "status": "nicht_ausfuehrbar",
-  "fehler": "v2-Gewichte fehlen: models/ear_vae2_upstream/ enthaelt kein Modell-Gewicht (Upstream-Klon ohne ear_vae2.pt; gemessener Artefakt-Bestand 0 B, .github/ML_ARTIFACT_FINGERPRINTS.md). Zusaetzlich Format-/Architektur-Bruch: v2 = Torch-Monolith (EarVAE2) vs. v1 = ONNX-Paar — kein v2-ONNX-Export, kein Adapter im Produktionspfad.",
+  "verfahren": "EAR-VAE v1<->v2 Vergleichsmessung (LUECKEN-MATRIX D.1c, Defizit D-K0-9)",
   "seed": 42,
   "zeilen": [],
   "never_worsen": null,
   "vorteile": null,
   "p_wert": null,
   "signifikant": null,
-  "zielmetriken": {
-    "musik_mos": "richtungszertifiziert (Spearman 0,95) — docs/reports/current/qualitaetsmetrik_richtungszertifikat.json",
-    "defektlast": "richtungszertifiziert — docs/reports/current/qualitaetsmetrik_richtungszertifikat.json",
-    "delta_sdr": "nicht korpusfaehig: Referenz-Korpus (test_audio/) hat keine sauberen Referenzen"
+  "zielmetriken": ["musik_mos", "defektlast"],
+  "delta_sdr": {
+    "status": "nicht_korpusfaehig",
+    "grund": "Fester Referenz-Korpus (test_audio/) hat keine sauberen Referenzen — Delta-SDR nur bei Referenz-Paarung aussagefaehig; fuer D-K0-9 tragen musik_mos + defektlast (beide richtungszertifiziert)."
   },
-  "v1": {
-    "rolle": "deployt (MUSDB-Finetune, Delta-SDR +4.83 dB)",
-    "artefakte": {
-      "models/ear_vae/encoder.onnx": "8f97ef673d4120ed1d92e762f8687b072de45dc666a166f38209cf9cf629c387",
-      "models/ear_vae/decoder.onnx": "ed64a1f12b685bb1e55eb27f69683430692c3570f6812c54a898109df5d911ab",
-      "models/ear_vae/ear_vae_music_finetuned.pyt": "993e69bea97bd9c9 (Gekuerzt, vollstaendig in .github/ML_ARTIFACT_FINGERPRINTS.md)"
+  "geplante_fenster": [
+    {
+      "clip": "cassette_1980s_wow",
+      "pfad": "test_audio/tape/cassette_1980s_wow.wav",
+      "start_s": 0.0,
+      "seconds": 2.5
     },
-    "quelle": "models/manifest.json + .github/ML_ARTIFACT_FINGERPRINTS.md"
-  },
-  "v2": {
-    "rolle": "Upstream-Klon (D-K0-9) — nicht lauffaehig, siehe fehler",
-    "artefakte": {},
-    "quelle": "models/ear_vae2_upstream/ (README.md: huggingface-cli download earlab/EAR_VAE2 — nicht ausgefuehrt); .github/ML_ARTIFACT_FINGERPRINTS.md (0 Artefakte, 0 B)"
+    {
+      "clip": "cassette_1980s_wow",
+      "pfad": "test_audio/tape/cassette_1980s_wow.wav",
+      "start_s": 2.5,
+      "seconds": 2.5
+    },
+    {
+      "clip": "cassette_1980s_wow",
+      "pfad": "test_audio/tape/cassette_1980s_wow.wav",
+      "start_s": 5.0,
+      "seconds": 2.5
+    },
+    {
+      "clip": "cassette_1980s_wow",
+      "pfad": "test_audio/tape/cassette_1980s_wow.wav",
+      "start_s": 7.5,
+      "seconds": 2.5
+    },
+    {
+      "clip": "reel_1940s_dropout",
+      "pfad": "test_audio/tape/reel_1940s_dropout.wav",
+      "start_s": 0.0,
+      "seconds": 2.5
+    },
+    {
+      "clip": "reel_1940s_dropout",
+      "pfad": "test_audio/tape/reel_1940s_dropout.wav",
+      "start_s": 2.5,
+      "seconds": 2.5
+    },
+    {
+      "clip": "reel_1940s_dropout",
+      "pfad": "test_audio/tape/reel_1940s_dropout.wav",
+      "start_s": 5.0,
+      "seconds": 2.5
+    },
+    {
+      "clip": "reel_1940s_dropout",
+      "pfad": "test_audio/tape/reel_1940s_dropout.wav",
+      "start_s": 7.5,
+      "seconds": 2.5
+    },
+    {
+      "clip": "jazz_1950s_scratched",
+      "pfad": "test_audio/vinyl/jazz_1950s_scratched.wav",
+      "start_s": 0.0,
+      "seconds": 2.5
+    },
+    {
+      "clip": "jazz_1950s_scratched",
+      "pfad": "test_audio/vinyl/jazz_1950s_scratched.wav",
+      "start_s": 2.5,
+      "seconds": 2.5
+    },
+    {
+      "clip": "jazz_1950s_scratched",
+      "pfad": "test_audio/vinyl/jazz_1950s_scratched.wav",
+      "start_s": 5.0,
+      "seconds": 2.5
+    },
+    {
+      "clip": "jazz_1950s_scratched",
+      "pfad": "test_audio/vinyl/jazz_1950s_scratched.wav",
+      "start_s": 7.5,
+      "seconds": 2.5
+    },
+    {
+      "clip": "rock_1970s_worn",
+      "pfad": "test_audio/vinyl/rock_1970s_worn.wav",
+      "start_s": 0.0,
+      "seconds": 2.5
+    },
+    {
+      "clip": "rock_1970s_worn",
+      "pfad": "test_audio/vinyl/rock_1970s_worn.wav",
+      "start_s": 2.5,
+      "seconds": 2.5
+    },
+    {
+      "clip": "rock_1970s_worn",
+      "pfad": "test_audio/vinyl/rock_1970s_worn.wav",
+      "start_s": 5.0,
+      "seconds": 2.5
+    },
+    {
+      "clip": "rock_1970s_worn",
+      "pfad": "test_audio/vinyl/rock_1970s_worn.wav",
+      "start_s": 7.5,
+      "seconds": 2.5
+    },
+    {
+      "clip": "mp3_64kbps_artifacts",
+      "pfad": "test_audio/digital/mp3_64kbps_artifacts.wav",
+      "start_s": 0.0,
+      "seconds": 2.5
+    },
+    {
+      "clip": "mp3_64kbps_artifacts",
+      "pfad": "test_audio/digital/mp3_64kbps_artifacts.wav",
+      "start_s": 2.5,
+      "seconds": 2.5
+    },
+    {
+      "clip": "mp3_64kbps_artifacts",
+      "pfad": "test_audio/digital/mp3_64kbps_artifacts.wav",
+      "start_s": 5.0,
+      "seconds": 2.5
+    },
+    {
+      "clip": "mp3_64kbps_artifacts",
+      "pfad": "test_audio/digital/mp3_64kbps_artifacts.wav",
+      "start_s": 7.5,
+      "seconds": 2.5
+    },
+    {
+      "clip": "cd_clipped_2000s",
+      "pfad": "test_audio/digital/cd_clipped_2000s.wav",
+      "start_s": 0.0,
+      "seconds": 2.5
+    },
+    {
+      "clip": "cd_clipped_2000s",
+      "pfad": "test_audio/digital/cd_clipped_2000s.wav",
+      "start_s": 2.5,
+      "seconds": 2.5
+    },
+    {
+      "clip": "cd_clipped_2000s",
+      "pfad": "test_audio/digital/cd_clipped_2000s.wav",
+      "start_s": 5.0,
+      "seconds": 2.5
+    },
+    {
+      "clip": "cd_clipped_2000s",
+      "pfad": "test_audio/digital/cd_clipped_2000s.wav",
+      "start_s": 7.5,
+      "seconds": 2.5
+    },
+    {
+      "clip": "opera_sibilance",
+      "pfad": "test_audio/vocals/opera_sibilance.wav",
+      "start_s": 0.0,
+      "seconds": 2.5
+    },
+    {
+      "clip": "opera_sibilance",
+      "pfad": "test_audio/vocals/opera_sibilance.wav",
+      "start_s": 2.5,
+      "seconds": 2.5
+    },
+    {
+      "clip": "opera_sibilance",
+      "pfad": "test_audio/vocals/opera_sibilance.wav",
+      "start_s": 5.0,
+      "seconds": 2.5
+    },
+    {
+      "clip": "opera_sibilance",
+      "pfad": "test_audio/vocals/opera_sibilance.wav",
+      "start_s": 7.5,
+      "seconds": 2.5
+    },
+    {
+      "clip": "choir_breaths",
+      "pfad": "test_audio/vocals/choir_breaths.wav",
+      "start_s": 0.0,
+      "seconds": 2.5
+    },
+    {
+      "clip": "choir_breaths",
+      "pfad": "test_audio/vocals/choir_breaths.wav",
+      "start_s": 2.5,
+      "seconds": 2.5
+    },
+    {
+      "clip": "choir_breaths",
+      "pfad": "test_audio/vocals/choir_breaths.wav",
+      "start_s": 5.0,
+      "seconds": 2.5
+    },
+    {
+      "clip": "choir_breaths",
+      "pfad": "test_audio/vocals/choir_breaths.wav",
+      "start_s": 7.5,
+      "seconds": 2.5
+    }
+  ],
+  "harness": "scripts/ear_vae_v1_v2_vergleich.py",
+  "hoer_stimuli": {
+    "status": "vorbereitet",
+    "verfahren": "scripts/ab_harness.py prepare (Blind-Paare A/B, Schlüssel getrennt)",
+    "ziel": "output/ear_vae_v1_v2/hoer_stimuli",
+    "frage": "Welcher Kandidat klingt besser/authentischer — A oder B? (blind, Reihenfolge verlost)"
   },
   "quellen": {
-    "korpus": "scripts/release_candidate_pipeline.py CORPUS (8 Clips unter test_audio/ im Bestands-Root, Verzeichnis-Inventar 2026-11-03 verifiziert)",
-    "fenster": "_load_clip-MUSTER (scripts/release_candidate_pipeline.py): Starts 0.0/2.5/5.0/7.5 s, 2.5 s lang, Fenster nur bei Rest >= 1 s",
-    "harness": "scripts/ear_vae_v1_v2_vergleich.py",
-    "statistik": "scripts/ab_harness.py sign_test_two_sided (exakter Vorzeichen-Test)",
-    "bericht": "docs/reports/current/2026-11-03_ear_vae_v1_v2_vergleich.md"
+    "v1_deployt": "models/ear_vae/{encoder,decoder}.onnx (byte-identisch ear_vae_ft_*_inline.onnx, SHA-belegt 2026-10-06; docs/reports/current/2026-10-06_steps_0-5_preparation.md Schritt 1d)",
+    "v1_encoder_sha256": "8f97ef673d4120ed1d92e762f8687b072de45dc666a166f38209cf9cf629c387",
+    "v1_decoder_sha256": "ed64a1f12b685bb1e55eb27f69683430692c3570f6812c54a898109df5d911ab",
+    "v2_upstream": "/media/michael/Software 4TB/Aurik_Standalone/models/ear_vae2_upstream (Klon earlab/EAR_VAE2 — README, LICENSE; Artefakt-Fingerabdruck: 0 Gewichte, .github/ML_ARTIFACT_FINGERPRINTS.md)",
+    "corpus": [
+      "/media/michael/Software 4TB/Aurik_Standalone/test_audio/tape/cassette_1980s_wow.wav (cassette)",
+      "/media/michael/Software 4TB/Aurik_Standalone/test_audio/tape/reel_1940s_dropout.wav (reel_tape)",
+      "/media/michael/Software 4TB/Aurik_Standalone/test_audio/vinyl/jazz_1950s_scratched.wav (vinyl)",
+      "/media/michael/Software 4TB/Aurik_Standalone/test_audio/vinyl/rock_1970s_worn.wav (vinyl)",
+      "/media/michael/Software 4TB/Aurik_Standalone/test_audio/digital/mp3_64kbps_artifacts.wav (mp3_low)",
+      "/media/michael/Software 4TB/Aurik_Standalone/test_audio/digital/cd_clipped_2000s.wav (cd)",
+      "/media/michael/Software 4TB/Aurik_Standalone/test_audio/vocals/opera_sibilance.wav (vocals)",
+      "/media/michael/Software 4TB/Aurik_Standalone/test_audio/vocals/choir_breaths.wav (vocals)"
+    ],
+    "metriken": "musik_mos + defektlast (richtungszertifiziert, docs/reports/current/qualitaetsmetrik_richtungszertifikat.json)",
+    "statistik": "scripts/ab_harness.py sign_test_two_sided (exakter Vorzeichen-Test)"
   },
-  "harness": {
-    "datei": "scripts/ear_vae_v1_v2_vergleich.py",
-    "befehl": "python3 -B scripts/ear_vae_v1_v2_vergleich.py --root <Bestands-Root>",
-    "verhalten": "fail-closed: ohne v2-Gewichte status nicht_ausfuehrbar + technischer Grund, KEINE erfundenen Zahlen (§V7 (copilot-instructions.md))",
-    "tests": "tests/unit/test_ear_vae_v1_v2_vergleich.py"
-  },
-  "hoer_stimuli": {
-    "status": "vorbereitet — Rendern ausstehend",
-    "zielordner": "output/ear_vae_v1_v2/hoer_stimuli/",
-    "verfahren": "Blind-Paare v1/v2 je Fenster via scripts/ab_harness.py prepare (Stimuli byte-identisch unter neutralen Namen, Schluessel getrennt; Hinweis in key.json beachten: Schluesselexemplar NICHT an die Hoer-Instanz)",
-    "frage": "Welcher Kandidat klingt besser und authentischer?",
-    "ausstehend": "Stimuli-WAVs koennen erst nach Beschaffung von ear_vae2.pt gerendert werden; die Render-Mechanik ist im Harness implementiert (--root genuegt)"
-  },
-  "offen": "Gewichts-Beschaffung (HF earlab/EAR_VAE2) inkl. Lizenz-/SHA-Feststellung (§III.13 (copilot-instructions.md)), Adapter-Export v2 (Torch->ONNX oder dokumentierter Torch-Pfad), dann Messlauf + Hoer-Stimuli + Hörordnungs-Sign-off (§v10.802 (copilot-instructions.md)). Kein Austausch ohne belegten Gewinn (§V7 (copilot-instructions.md)).",
-  "hinweis": "Urteil = menschliche Hoer-Instanz (Hörordnung, .github/instructions/hoerordnung.instructions.md — Konfliktregel §7 dort; im Auftrag als '§4 Hoerordnung' bezeichnet). Metriken sind Zeugen, kein Urteil. KEINE Flag-Flips, KEINE Aktivierung durch diese Messung (D-K0-9 menschlich-gated)."
+  "hinweis": "Urteil = menschliche Hoer-Instanz (Hörordnung, Konfliktregel §7 in .github/instructions/hoerordnung.instructions.md; im Auftrag D.1c als \"§4 Hoerordnung\" bezeichnet). Metriken sind Zeugen. KEINE Aktivierung, KEIN Flag-Flip (§v10.802 (copilot-instructions.md)) — D-K0-9 bleibt menschlich-gated (.github/SOTA_DEFICIT_REGISTER.md).",
+  "status": "preflight_ok",
+  "technischer_grund": null,
+  "quelle": "scripts/ear_vae_v1_v2_vergleich.py"
 }
