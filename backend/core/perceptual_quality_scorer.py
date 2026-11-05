@@ -55,6 +55,17 @@ class PQSResult:
         return f"PQSResult(MOS={self.mos:.2f}, NSIM={self.nsim:.3f}, MCD={self.mcd_db:.2f}dB)"
 
 
+def _pqs_to_mono(x: np.ndarray) -> np.ndarray:
+    """Channels-first (2, N) → Mono-Mix (N,) für konsistente Längenberechnung.
+
+    len() auf (2, N) liefert 2 (Kanäle), nicht Samples → würde Stub auslösen.
+    Eine Quelle für Kern und Ausrichtung (§G9 (copilot-instructions.md)).
+    """
+    if x.ndim == 2:
+        return np.mean(x, axis=0) if x.shape[0] <= x.shape[1] else np.mean(x, axis=1)  # type: ignore[no-any-return]
+    return x
+
+
 class PerceptualQualityScorer:
     """Gammatone-NSIM + MCD + LUFS + MOS für Musik-Qualität (§2.6).
 
@@ -78,6 +89,10 @@ class PerceptualQualityScorer:
     W_MCD = 0.30
     W_LUFS = 0.15
     W_COH = 0.15
+    # Timing-Ausrichtung (Vertrag §2.6, erfüllt 2026-11-05): maximale Verschiebung
+    # ±20 ms — Latenz-Fenster typischer DSP-/Resample-Ketten (§V7 (copilot-instructions.md):
+    # Ursache „Timing-Konflation" beheben, nicht die Pipeline-Schwelle verbiegen).
+    ALIGN_MAX_LAG_S = 0.02
 
     def __init__(self, align_signals: bool = True):
         """Initialisiert den PerceptualQualityScorer.
@@ -92,24 +107,41 @@ class PerceptualQualityScorer:
         return self.score_audio(reference, degraded, sr)
 
     def score_audio(self, reference: np.ndarray, degraded: np.ndarray, sr: int) -> PQSResult:
-        """Referenz-basierte PQS-Bewertung.
+        """Referenz-basierte PQS-Bewertung (§2.6) — Timing-Vertrag erfüllt 2026-11-05.
 
         Akzeptiert beliebige Sample-Raten — intern wird korrekt verarbeitet.
         Die SR-Invariante (48000 Hz) gilt für die Produktionspipeline; Tests
         dürfen abweichende SRs übergeben (§5.4 copilot-instructions.md).
+
+        ``align_signals=True`` (Default): Signale werden vor der Bewertung in
+        einem begrenzten Lag-Fenster (±``ALIGN_MAX_LAG_S``) zeitlich
+        ausgerichtet. Der Vertrag war bisher nur dokumentiert (``__init__``)
+        und nie implementiert — Timing-Konflation: ein Latenz-Offset wurde als
+        Qualitätsverlust gemessen und konnte den §1.4-Studio-Finisher
+        (K2-Sprach-Vocoder auf Musik) unnötig auslösen. Auswahl:
+        ``max(MOS(lag0), MOS(+k), MOS(-k))`` mit ``k`` = stärkster
+        Kreuzkorrelations-Lag ⇒ **Never-worsen je Fenster konstruktiv** (Lag 0
+        ist immer Kandidat; Gleichstand gewinnt Lag 0). ``align_signals=False``
+        reproduziert exakt den Vertrag ALT (nur Trunkierung auf die gemeinsame
+        Länge). A/B-Beleg Vertrag alt/neu: ``scripts/b3_pqs_mos_neverworsen.py``.
         """
+        if not self.align_signals:
+            return self._score_audio_lag0(reference, degraded, sr)
+        # Mono wie im Kern, damit die Lag-Schätzung auf der Sample-Achse liegt.
+        ref_m = _pqs_to_mono(reference)
+        deg_m = _pqs_to_mono(degraded)
+        ergebnisse = [self._score_audio_lag0(ref_m, deg_m, sr)]
+        for ref_a, deg_a in self._pqs_align_kandidaten(ref_m, deg_m, sr):
+            ergebnisse.append(self._score_audio_lag0(ref_a, deg_a, sr))
+        return max(ergebnisse, key=lambda r: r.mos)  # erster = lag0 ⇒ Gleichstand gewinnt Vertrag ALT
+
+    def _score_audio_lag0(self, reference: np.ndarray, degraded: np.ndarray, sr: int) -> PQSResult:
+        """Vertrag ALT: Bewertung ohne Ausrichtung (Trunkierung auf gemeinsame Länge)."""
         if sr != 48000:
             logger.debug("Wert_audio: SR=%d (erwartet 48000) — weiterverarbeitung trotzdem", sr)
 
-        # Channels-first (2, N) → Mono-Mix (N,) für konsistente Längenberechnung.
-        # len() auf (2, N) liefert 2 (Kanäle), nicht Samples → würde Stub auslösen.
-        def _to_mono(x: np.ndarray) -> np.ndarray:
-            if x.ndim == 2:
-                return np.mean(x, axis=0) if x.shape[0] <= x.shape[1] else np.mean(x, axis=1)  # type: ignore[no-any-return]
-            return x
-
-        reference = _to_mono(reference)
-        degraded = _to_mono(degraded)
+        reference = _pqs_to_mono(reference)
+        degraded = _pqs_to_mono(degraded)
 
         # Auf gleiche Länge bringen
         min_len = min(len(reference), len(degraded))
@@ -247,6 +279,57 @@ class PerceptualQualityScorer:
             gc_nsim=float(gc_nsim),
             dlm_loudness_ratio_db=_dlm_ratio_db,
         )
+
+    # ---- Timing-Ausrichtung (Vertrag §2.6, 2026-11-05) ---------------------
+
+    @staticmethod
+    def _pqs_shift_pair(ref: np.ndarray, deg: np.ndarray, lag: int) -> tuple[np.ndarray, np.ndarray]:
+        """Verschiebt ``deg`` um ``lag`` Samples relativ zu ``ref`` (Schnitt auf Überlappung)."""
+        n = min(len(ref), len(deg))
+        if lag > 0:
+            return ref[: n - lag], deg[lag:]
+        if lag < 0:
+            return ref[-lag:], deg[: n + lag]
+        return ref[:n], deg[:n]
+
+    @staticmethod
+    def _pqs_peak_lag(ref: np.ndarray, deg: np.ndarray, max_lag: int) -> int:
+        """Stärkster Kreuzkorrelations-Lag in ±max_lag (FFT, entdämpft, deterministisch §G5 (copilot-instructions.md)).
+
+        Vorzeichen-Konvention ist bewusst egal: die Auswahl probiert +k und −k.
+        """
+        n = min(len(ref), len(deg))
+        if n < 8 or max_lag < 1:
+            return 0
+        r = np.nan_to_num(np.asarray(ref[:n], dtype=np.float64), nan=0.0, posinf=0.0, neginf=0.0)
+        d = np.nan_to_num(np.asarray(deg[:n], dtype=np.float64), nan=0.0, posinf=0.0, neginf=0.0)
+        r = r - r.mean()
+        d = d - d.mean()
+        if not np.any(r) or not np.any(d):
+            return 0
+        nfft = int(2 ** np.ceil(np.log2(2 * n)))
+        xc = np.fft.irfft(np.fft.rfft(r, n=nfft) * np.conj(np.fft.rfft(d, n=nfft)), n=nfft)
+        lags = np.arange(-max_lag, max_lag + 1)
+        werte = np.abs(xc[lags % nfft])
+        return int(lags[int(np.argmax(werte))])
+
+    def _pqs_align_kandidaten(
+        self, reference: np.ndarray, degraded: np.ndarray, sr: int
+    ) -> list[tuple[np.ndarray, np.ndarray]]:
+        """Ausrichtungs-Kandidaten (±Peak-Lag); leer, wenn Lag 0 schon optimal ist."""
+        n = min(len(reference), len(degraded))
+        if n < 8:
+            return []
+        max_lag = min(int(self.ALIGN_MAX_LAG_S * sr), n // 8)
+        k = abs(self._pqs_peak_lag(reference, degraded, max_lag))
+        if k < 1:
+            return []
+        kandidaten: list[tuple[np.ndarray, np.ndarray]] = []
+        for lag in (k, -k):
+            paar = self._pqs_shift_pair(reference, degraded, lag)
+            if min(len(paar[0]), len(paar[1])) >= 8:
+                kandidaten.append(paar)
+        return kandidaten
 
     def score_absolute(self, audio: np.ndarray, sr: int) -> PQSResult:
         """Alias für score_audio_absolute() — Rückwärtskompatibilität (§2.6)."""

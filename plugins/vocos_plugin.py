@@ -196,21 +196,30 @@ class VocosPlugin:
                 self._mel_hop = _HOP_24K
                 self._mel_win = _WIN_24K
                 logger.info("Vocos 24 kHz ONNX geladen: %s [providers=%s]", path, _providers)
-            # ── §V6 (copilot-instructions.md) / §III.11/§III.13 Domänen-Transparenz ──
-            # Beide aktiven Tiers sind sprach-trainiert — 48 kHz belegt am Upstream
-            # (kittn/vocos-mel-48khz-alpha1, HF-Discussion #2, 2026-04-17:
-            # Podcasts/VCTK/Expresso), 24 kHz = LibriTTS; beide Korpora ohne
-            # Gesang. Für Aurik ist Gesang das Kriterium — ein Musik-/Gesangs-
-            # Signalpfad ist darum nur als §V6-Fallback mit Begründung zulässig;
-            # Ersatz: BigVGAN-F3 (D-K0-1, C4-Hörstichprobe ausstehend).
-            if "44" not in bname:
-                logger.warning(
-                    "§V6 (copilot-instructions.md) Vocos '%s' ist sprach-trainiert "
-                    "(Korpora ohne Gesang, §III.11 (copilot-instructions.md)) — "
-                    "Musik-/Gesangs-Einsatz nur als Fallback mit Begründung zulässig; "
-                    "Musik-Ersatz: BigVGAN-F3 (D-K0-1).",
-                    bname,
-                )
+            # ── §V6 (copilot-instructions.md) / §III.11/§III.13 (copilot-instructions.md) Domänen-Transparenz ──
+            # 24 kHz = LibriTTS (sprach-trainiert, belegt in
+            # `.github/ML_MODEL_DOMAIN_REGISTRY.md`); 48 kHz =
+            # `kittn/vocos-mel-48khz-alpha1` — Owner-Aussage HF-Discussion #2
+            # (Antwort 2026-04-17): „mostly podcasts I had scraped, plus VCTK and
+            # Expresso" — reine Sprach-Korpora, KEIN Gesang; re-verifiziert
+            # 2026-11-05 (HF-API `/api/models/kittn/vocos-mel-48khz-alpha1` +
+            # Discussion #2, Artefakt-Identität `models/manifest.json`
+            # `size_bytes` 147342055 ≡ HF `usedStorage`); 44.1-kHz-Tier nicht im
+            # Bestand, Domäne unbelegt (§III.13 (copilot-instructions.md)).
+            # Für Aurik ist Gesang das Kriterium — jedes Tier ist sprach-trainiert
+            # oder domänen-unbelegt und damit auf Musik/Gesang NUR als §V6-Fallback
+            # mit Begründung zulässig (K2, WP-1 „keine unflagged Sprach-Vocoder-
+            # Synthese auf Musik"); Ersatz: BigVGAN-F3 (D-K0-1, C4-Hörstichprobe
+            # ausstehend). D-K2-2 (2026-11-05): Warnung gilt für JEDES Tier — die
+            # frühere Bedingung `if "44" not in bname` ließ ein nachgeladenes
+            # 44.1-kHz-Tier ohne Domänen-Warnung als Stufe 1 laufen (Gate-Lücke).
+            logger.warning(
+                "§V6 (copilot-instructions.md) Vocos '%s': sprach-trainiert bzw. "
+                "domänen-unbelegt (Korpora ohne Gesang, §III.11 (copilot-instructions.md), "
+                "§III.13 (copilot-instructions.md)) — Musik-/Gesangs-Einsatz nur als "
+                "Fallback mit Begründung zulässig; Musik-Ersatz: BigVGAN-F3 (D-K0-1).",
+                bname,
+            )
             # ── PLM-Registrierung (LRU-Tracking, §5.1 OOM-Schutz) ─────────────────
             try:
                 from backend.core.plugin_lifecycle_manager import get_plugin_lifecycle_manager
