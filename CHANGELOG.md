@@ -1,4 +1,8 @@
-# Changelog — Aurik 10.12.50
+# Changelog — Aurik 10.12.51
+
+## 10.12.51 (2026-11-05)
+
+* **perf(pipeline): TODO-P0-1 Slice B — Song-Level Perceptual-Gates (HPI/EmotionalArc/VQI/Singer-ID)** — die song-globalen Größen laufen nach der Assemblierung EINMAL auf dem Song statt je Chunk (Song-Bogen statt 30-s-Fenster, §V7 (copilot-instructions.md): Ursache statt Symptom): HPI-Reevaluation, EmotionalArc-Messung + Korrektur, VQI-Gate mit zentralen Schwellen (`get_vqi_material_floor`, Singer-ID 0.92 — keine neuen phasen-individuellen Schwellwerte) und Song-Wohlklang-Audit über den bestehenden Enforcer; Ebene-1-Schutz (Hörordnung §2) via Snapshot-Rollback mit Verifikation (der Snapshot VOR den Gates gewinnt nur bei belegter Verbesserung); Pre-Excellence-`measure_all` entfällt auf Nicht-Letzten-Chunks. Der §G10-Song-Audibility-Nachzug (D-K3-68) bleibt unverändert davor erhalten. 17 Tests; Report `docs/reports/current/2026-11-05_p0_1_song_ebene_analytik.md`. Offen: Never-worsen-Scorecard + RT-Nachmessung nach dem D3-Training.
 
 ## 10.12.50 (2026-11-05)
 

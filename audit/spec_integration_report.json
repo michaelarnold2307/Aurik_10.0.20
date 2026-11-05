@@ -1,10 +1,10 @@
 {
-  "generated_at": "2026-10-08T05:49:04.075517",
-  "duration_s": 6.614,
+  "generated_at": "2026-11-05T16:26:34.185400",
+  "duration_s": 4.486,
   "totals": {
     "error": 0,
     "warning": 0,
-    "info": 47
+    "info": 46
   },
   "findings": [
     {
@@ -249,13 +249,6 @@
       "check": "spec_references",
       "severity": "info",
       "item": "v10.25_echtmusik_training.md",
-      "detail": "Spec ist nur im Index verankert, sonst nirgendwo referenziert",
-      "recommendation": "Spec in der normativen Kette oder im Code verlinken, sonst als obsolet markieren."
-    },
-    {
-      "check": "spec_references",
-      "severity": "info",
-      "item": "v10.26_autonomer_never_worsen_arbiter.md",
       "detail": "Spec ist nur im Index verankert, sonst nirgendwo referenziert",
       "recommendation": "Spec in der normativen Kette oder im Code verlinken, sonst als obsolet markieren."
     },

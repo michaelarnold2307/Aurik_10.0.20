@@ -16551,12 +16551,23 @@ class UnifiedRestorerV3:
         try:
             from backend.core.musical_goals.musical_goals_metrics import MusicalGoalsChecker as _PreExMGChecker
 
-            _pre_ex_checker = _PreExMGChecker()
             _pre_ex_ref = original_audio_for_goals if original_audio_for_goals.shape == restored_audio.shape else None
             _pre_ex_mat = str(getattr(material_type, "value", material_type) or "unknown").lower()
-            _pre_excellence_mg_scores = _pre_ex_checker.measure_all(
-                restored_audio, sample_rate, reference=_pre_ex_ref, material_type=_pre_ex_mat
-            )
+            if _chunked_tail_skip and not _chunked_last:
+                # §P0-1 Slice B (2026-11-05): measure_all ist eine song-globale
+                # Größe (HPI/Sänger-Identität/EmotionalArc/VQI u. a.) — auf
+                # 30-s-Chunks misst sie Ausschnitts-Scores und erzeugt falsche
+                # Excellence-Rollbacks (Analogie §v10.735 (copilot-instructions.md),
+                # PQS). Die Verifikation läuft einmal song-global nach der
+                # Assembly (GOAL_SCORECARD + End-Gate-Recovery-Kaskade).
+                logger.info(
+                    "§P0-1 Slice B: Pre-Excellence-Messung übersprungen (Nicht-Letzter-Chunk) — song-global nach Assembly"
+                )
+            else:
+                _pre_ex_checker = _PreExMGChecker()
+                _pre_excellence_mg_scores = _pre_ex_checker.measure_all(
+                    restored_audio, sample_rate, reference=_pre_ex_ref, material_type=_pre_ex_mat
+                )
         except Exception as _mg_exc:
             logger.debug("Pre-Excellence Musical-Goals-Messung fehlgeschlagen: %s", _mg_exc)
 
@@ -17809,23 +17820,34 @@ class UnifiedRestorerV3:
             try:
                 from backend.core.emotional_arc_preservation import measure_emotional_arc
 
-                _arc_result = measure_emotional_arc(
-                    original_audio_for_goals,
-                    restored_audio,
-                    sample_rate,
-                    lyrics_saliency=_lge_saliency_for_eap,  # §2.36/§2.44: Lyrics-Salienz
-                    frisson_zones=(self._restoration_context or {}).get("frisson_zones"),  # §2.44: Frisson ×2.0
-                    transfer_chain_depth=max(1, int(getattr(self, "_transfer_chain_depth", 1))),
-                )
-                if _arc_result.skipped:
+                if _chunked_tail_skip and not _chunked_last:
+                    # §P0-1 Slice B (2026-11-05): EmotionalArc ist song-global
+                    # (§2.45b (pipeline.instructions.md)) — auf 30-s-Chunks misst
+                    # die Messung Ausschnitts-Bögen und der Rollback griff bis
+                    # §v10.735 (copilot-instructions.md) sogar chunk-lokal ein.
+                    # Messung + Rollback laufen einmal song-global nach der
+                    # Assembly (_restore_chunked).
+                    logger.info(
+                        "§P0-1 Slice B: EmotionalArc-Messung übersprungen (Nicht-Letzter-Chunk) — song-global nach Assembly"
+                    )
+                else:
+                    _arc_result = measure_emotional_arc(
+                        original_audio_for_goals,
+                        restored_audio,
+                        sample_rate,
+                        lyrics_saliency=_lge_saliency_for_eap,  # §2.36/§2.44: Lyrics-Salienz
+                        frisson_zones=(self._restoration_context or {}).get("frisson_zones"),  # §2.44: Frisson ×2.0
+                        transfer_chain_depth=max(1, int(getattr(self, "_transfer_chain_depth", 1))),
+                    )
+                if _arc_result is not None and _arc_result.skipped:
                     logger.debug("EmotionalArc: übersprungen (Datei zu kurz, < 30 s)")
-                elif _arc_result.arc_preserved:
+                elif _arc_result is not None and _arc_result.arc_preserved:
                     logger.info(
                         "✅ EmotionalArc: Bogen erhalten — arousal_pearson=%.3f valence_pearson=%.3f",
                         _arc_result.arousal_pearson,
                         _arc_result.valence_pearson,
                     )
-                else:
+                elif _arc_result is not None:
                     # §v10.0.4 Restorability-adaptives Log-Level
                     _ea_rest = float(getattr(self, "_last_restorability_score", 70.0))
                     if _ea_rest >= 70.0:
@@ -18488,12 +18510,23 @@ class UnifiedRestorerV3:
                 measure_emotional_arc,
             )
 
-            _arc_post_mdem = measure_emotional_arc(
-                original_audio_for_goals,
-                restored_audio,
-                sample_rate,
-                frisson_zones=_frisson_zones,  # §2.44: Frisson ×2.0 auch bei der Entscheidungsmessung
-            )
+            if _chunked_tail_skip and not _chunked_last:
+                # §P0-1 Slice B (2026-11-05): EmotionalArc ist song-global (§2.45b
+                # (pipeline.instructions.md)) — Messung + Makro-Korrektur laufen
+                # einmal auf dem assemblierten Song (_restore_chunked), nicht auf
+                # 30-s-Chunks. _arc_post_mdem=None überspringt Korrektur und
+                # Nachmessung über die bestehenden None-Guards.
+                _arc_post_mdem = None
+                logger.info(
+                    "§P0-1 Slice B: EmotionalArc Post-MDEM übersprungen (Nicht-Letzter-Chunk) — song-global nach Assembly"
+                )
+            else:
+                _arc_post_mdem = measure_emotional_arc(
+                    original_audio_for_goals,
+                    restored_audio,
+                    sample_rate,
+                    frisson_zones=_frisson_zones,  # §2.44: Frisson ×2.0 auch bei der Entscheidungsmessung
+                )
             if _arc_post_mdem is not None and not _arc_post_mdem.skipped and not _is_bronze_post:
                 # §v10.14: Korrektur IMMER laufen lassen, Dämpfung adaptiv.
                 # Bei bereits gutem Bogen (Pearson > 0.85) nur sanft korrigieren;
@@ -19758,7 +19791,15 @@ class UnifiedRestorerV3:
             _hg = _get_hg()
             _vqi_for_hpi = float((self._phase_metadata_accumulator or {}).get("vqi", 1.0))
             _panns_singing_for_hpi = float(getattr(self, "_panns_singing", 0.0))
-            if self.is_studio_mode():
+            if _chunked_tail_skip:
+                # §P0-1 Slice B (2026-11-05): HPI ist der song-globale Export-Gate
+                # (§2.44 (pipeline.instructions.md)) — Ausschnitts-HPI auf
+                # 30-s-Chunks ist semantisch verfälscht und löst falsche
+                # fail-closed-Rollbacks aus (§V7 (copilot-instructions.md):
+                # Ursache statt Symptom). Der Gate läuft EINMAL auf dem
+                # assemblierten Song (_restore_chunked).
+                logger.info("§P0-1 Slice B: HPI-Ausgabe-Gate übersprungen (Chunk) — song-global nach Assembly")
+            elif self.is_studio_mode():
                 _pqs_impr = self._resolve_studio_pqs_improvement(_pqs_result, _fail_reasons)
                 _hpi_result = _hg.evaluate_studio(
                     original_audio_for_goals,
@@ -19786,7 +19827,7 @@ class UnifiedRestorerV3:
                     reference_audio=_hpi_reference_audio,
                     transfer_chain=_hpi_transfer_chain or None,
                 )
-            if not _hpi_result.passed:
+            if _hpi_result is not None and not _hpi_result.passed:
                 _fail_reasons.append(
                     {
                         "component": "HolisticPerceptualGate",
@@ -19865,7 +19906,7 @@ class UnifiedRestorerV3:
                         "(HPI=%.4f) — fail-closed auf Originalsignal",
                         _hpi_result.hpi,
                     )
-            else:
+            elif _hpi_result is not None:
                 logger.info(
                     "🎯 HPI_COMP Betriebsart=%s hpi=%.4f passed=%s timbral=%.3f mert=%.3f artifact=%.3f emotional=%.3f",
                     "Studio" if self.is_studio_mode() else "Restoration",
@@ -20046,7 +20087,10 @@ class UnifiedRestorerV3:
         except Exception as _sft_fin_exc:
             logger.debug("§SFT abschliessen nicht blockierend: %s", _sft_fin_exc)
 
-        if _hpi_result is None:
+        # §P0-1 Slice B (2026-11-05): Im Chunked-Pfad ist _hpi_result erlaubt
+        # None (Gate läuft song-global nach Assembly) — die fail-closed-Regel
+        # gilt nur für Pfade, die den Gate tatsächlich ausgewertet haben.
+        if _hpi_result is None and not _chunked_tail_skip:
             restored_audio = np.clip(
                 np.nan_to_num(np.asarray(original_audio_for_goals, dtype=np.float32), nan=0.0, posinf=0.0, neginf=0.0),
                 -1.0,
@@ -20082,7 +20126,11 @@ class UnifiedRestorerV3:
             _vqi_singing_conf = float(getattr(self, "_panns_singing", 0.0))
             _vqi_prior_active = bool(self._restoration_context.get("vocal_material_prior", False))
             # §G100: Adaptive Vocal-Schwelle via zentraler Convenience-Methode
-            if _vqi_singing_conf >= self._vocal_threshold() or _vqi_prior_active:
+            # §P0-1 Slice B (2026-11-05): VQI + Singer-ID sind song-globale
+            # Größen (§2.35c (phases.instructions.md), §0p Vocal-Supremacy) —
+            # Ausschnitts-VQI auf 30-s-Chunks erzeugt falsche Ebene-1-Rollbacks.
+            # Der Gate läuft einmal auf dem assemblierten Song (_restore_chunked).
+            if not _chunked_tail_skip and (_vqi_singing_conf >= self._vocal_threshold() or _vqi_prior_active):
                 from backend.core.musical_goals.vocal_quality_index import compute_vqi as _compute_vqi
 
                 _vqi_orig = original_audio_for_goals if original_audio_for_goals is not None else restored_audio
@@ -20544,7 +20592,14 @@ class UnifiedRestorerV3:
             _hg_final = _get_hg_final()
             _vqi_for_hpi_final = float((self._phase_metadata_accumulator or {}).get("vqi", 1.0))
             _panns_singing_final = float(getattr(self, "_panns_singing", 0.0))
-            if self.is_studio_mode():
+            _hpi_result_final = None
+            if _chunked_tail_skip:
+                # §P0-1 Slice B (2026-11-05): finale HPI-Neubewertung ist Teil
+                # des song-globalen Export-Gates (§2.44 (pipeline.instructions.md))
+                # — einmal auf dem assemblierten Song (_restore_chunked),
+                # nicht je Chunk.
+                logger.info("§P0-1 Slice B: Finale HPI-Neubewertung übersprungen (Chunk) — song-global nach Assembly")
+            elif self.is_studio_mode():
                 _pqs_impr_final = self._resolve_studio_pqs_improvement(_pqs_result, _fail_reasons)
                 _hpi_result_final = _hg_final.evaluate_studio(
                     original_audio_for_goals,
@@ -20572,8 +20627,9 @@ class UnifiedRestorerV3:
                     reference_audio=_hpi_reference_audio,
                     transfer_chain=_hpi_transfer_chain or None,
                 )
-            _hpi_result = _hpi_result_final
-            if not _hpi_result_final.passed:
+            if _hpi_result_final is not None:
+                _hpi_result = _hpi_result_final
+            if _hpi_result_final is not None and not _hpi_result_final.passed:
                 _fail_reasons.append(
                     {
                         "component": "HolisticPerceptualGate",
@@ -47983,6 +48039,289 @@ class UnifiedRestorerV3:
                     _song_aud_exc,
                 )
 
+            # §P0-1 Slice B (2026-11-05): Song-Level Perceptual-Gates — die
+            # song-globalen Größen EmotionalArc (§8.2 (phases.instructions.md),
+            # §2.45b (pipeline.instructions.md)), VQI + Singer-ID
+            # (§2.35c (phases.instructions.md), §0p Vocal-Supremacy) und HPI
+            # (§2.44 (pipeline.instructions.md)) laufen hier EINMAL auf dem
+            # assemblierten Song statt je Chunk — Song-Bogen statt 30-s-Fenster
+            # (§V7 (copilot-instructions.md): Ursache statt Symptom).
+            # Aktuator für Ebene-1 (Hörordnung §2
+            # (.github/instructions/hoerordnung.instructions.md)):
+            # Snapshot-Rollback mit Verifikation — der Snapshot VOR den Gates
+            # (Analogon §v10.14 (copilot-instructions.md)
+            # Post-Processing-Checkpoint) gewinnt nur, wenn er das Ziel
+            # tatsächlich verbessert. Audio-Recovery bleibt zentral bei End-Gate
+            # (Block a2) + m1b (§P1-7); Stärke-Entscheidungen zentral (§V7 (copilot-instructions.md)).
+            _p01_gates_meta: dict = {}
+            _song_arc_result = None
+            _p01_snapshot = output.copy()
+            try:
+                _p01_ctx = getattr(self, "_restoration_context", None) or {}
+                _p01_mat = getattr(_first_result, "material_type", MaterialType.UNKNOWN)
+                _p01_mat_str = str(getattr(_p01_mat, "value", _p01_mat) or "digital").lower()
+                _p01_frisson = _p01_ctx.get("frisson_zones")
+                _p01_is_studio = bool(self.is_studio_mode())
+
+                # 1) EmotionalArc song-weit: Messung + adaptive Makro-Korrektur
+                #    (dieselbe zentrale Stärke-Policy wie §8.2 im Per-Chunk-Tail).
+                try:
+                    from backend.core.emotional_arc_preservation import (
+                        correct_emotional_arc as _p01_correct_arc,
+                    )
+                    from backend.core.emotional_arc_preservation import (
+                        measure_emotional_arc as _p01_measure_arc,
+                    )
+
+                    _song_arc_result = _p01_measure_arc(audio, output, sample_rate, frisson_zones=_p01_frisson)
+                    if _song_arc_result is not None and not _song_arc_result.skipped:
+                        if not _song_arc_result.arc_preserved:
+                            _p01_arc_gain_db, _p01_arc_damp = 6.0, 0.70
+                        else:
+                            _p01_arc_gain_db, _p01_arc_damp = 3.0, 0.40
+                        _p01_rest = float(getattr(self, "_last_restorability_score", 70.0) or 70.0)
+                        if _p01_rest < 40.0:
+                            _p01_arc_gain_db, _p01_arc_damp = 4.0, 0.55
+                        elif _p01_rest < 70.0:
+                            _p01_arc_gain_db, _p01_arc_damp = 5.0, 0.65
+                        if _p01_is_studio:
+                            _p01_arc_damp = min(0.80, _p01_arc_damp + 0.05)
+                        else:
+                            _p01_arc_damp = max(0.50, _p01_arc_damp - 0.05)
+                        output, _p01_arc_corrected = _p01_correct_arc(
+                            audio,
+                            output,
+                            sample_rate,
+                            max_gain_db=_p01_arc_gain_db,
+                            damping=_p01_arc_damp,
+                            frisson_zones=_p01_frisson,
+                        )
+                        output = np.clip(
+                            np.nan_to_num(np.asarray(output, dtype=np.float32), nan=0.0, posinf=0.0, neginf=0.0),
+                            -1.0,
+                            1.0,
+                        )
+                        _song_arc_result = _p01_arc_corrected
+                        logger.info(
+                            "🎵 §P0-1 Slice B: EmotionalArc song-weit korrigiert (arousal=%.3f valence=%.3f preserved=%s)",
+                            float(getattr(_song_arc_result, "arousal_pearson", 0.0)),
+                            float(getattr(_song_arc_result, "valence_pearson", 0.0)),
+                            bool(getattr(_song_arc_result, "arc_preserved", False)),
+                        )
+                    elif _song_arc_result is not None:
+                        logger.info(
+                            "🎵 §P0-1 Slice B: EmotionalArc song-weit erhalten (arousal=%.3f valence=%.3f)",
+                            float(getattr(_song_arc_result, "arousal_pearson", 0.0)),
+                            float(getattr(_song_arc_result, "valence_pearson", 0.0)),
+                        )
+                except Exception as _p01_eap_exc:
+                    logger.warning("§P0-1 Slice B: EmotionalArc song-weit nicht verfügbar: %s", _p01_eap_exc)
+
+                # 2) VQI + Singer-ID song-weit (§2.35c/§0p) — zentrale Schwellen
+                #    (Singer-ID 0.92, Material-Floor via get_vqi_material_floor)
+                #    identisch zum Per-Chunk-Pfad (§V7 (copilot-instructions.md): keine
+                #    phasen-individuellen Schwellwerte); Ebene-1-Aktuator =
+                #    Snapshot-Rollback mit Verifikation.
+                try:
+                    from backend.core.musical_goals.vocal_quality_index import (
+                        compute_vqi as _p01_compute_vqi,
+                    )
+                    from backend.core.musical_goals.vocal_quality_index import (
+                        get_vqi_material_floor as _p01_vqi_floor,
+                    )
+
+                    _p01_ssa_src = locals().get("_song_structure_ana6") or []
+                    _p01_vqi_segments = [
+                        (float(_seg.start_s), float(_seg.end_s))
+                        for _seg in _p01_ssa_src
+                        if bool(getattr(_seg, "has_vocals", False)) and float(_seg.end_s) > float(_seg.start_s)
+                    ]
+                    _p01_ms = bool(
+                        (getattr(self, "_phase_metadata_accumulator", None) or {}).get("multi_singer", False)
+                    )
+                    _p01_era_profile = __import__(
+                        "backend.core.musical_goals.era_vocal_profile",
+                        fromlist=["get_era_vocal_profile"],
+                    ).get_era_vocal_profile(int(_p01_ctx.get("decade", 1975) or 1975))
+                    _p01_vqi_kwargs = {
+                        "audio_orig": audio,
+                        "sr": sample_rate,
+                        "vocal_segments": _p01_vqi_segments or None,
+                        "skip_singer_identity": _p01_ms,
+                        "genre": str(_p01_ctx.get("genre_label") or ""),
+                        "era_profile": _p01_era_profile,
+                    }
+                    _p01_vqi_res = _p01_compute_vqi(audio_restored=output, **_p01_vqi_kwargs)
+                    _song_vqi_score = float(_p01_vqi_res.get("vqi", 0.85))
+                    _p01_sid = float(_p01_vqi_res.get("singer_identity_cosine", 0.85))
+                    _p01_sid_fb = bool(_p01_vqi_res.get("singer_id_dsp_fallback", True))
+                    _p01_vqi_floor_val = float(_p01_vqi_floor(_p01_mat_str, is_studio_2026=_p01_is_studio))
+                    logger.info(
+                        "§P0-1 Slice B: §2.35c VQI song-weit=%.3f singer_id=%.3f floor=%.3f tier=%s",
+                        _song_vqi_score,
+                        _p01_sid,
+                        _p01_vqi_floor_val,
+                        _p01_vqi_res.get("vqi_tier", "unknown"),
+                    )
+                    _p01_sid_fails = not _p01_ms and _p01_sid < 0.92 and not _p01_sid_fb
+                    _p01_vqi_fails = _song_vqi_score < _p01_vqi_floor_val
+                    if _p01_sid_fails or _p01_vqi_fails:
+                        # §v10.x Rollback-Verifikation: der Snapshot gewinnt nur,
+                        # wenn er das Ziel tatsächlich verbessert.
+                        _p01_rb_res = _p01_compute_vqi(audio_restored=_p01_snapshot, **_p01_vqi_kwargs)
+                        _p01_rb_vqi = float(_p01_rb_res.get("vqi", 0.85))
+                        _p01_rb_sid = float(_p01_rb_res.get("singer_identity_cosine", 0.85))
+                        if _p01_rb_vqi > _song_vqi_score or (_p01_sid < 0.92 and _p01_rb_sid >= 0.92):
+                            output = _p01_snapshot
+                            _song_vqi_score = _p01_rb_vqi
+                            _p01_sid = _p01_rb_sid
+                            _song_arc_result = None
+                            logger.warning(
+                                "§P0-1 Slice B Ebene-1-Rollback (Song): VQI=%.3f/singer_id=%.3f — Snapshot besser "
+                                "(VQI=%.3f/ID=%.3f), Song-Gates ohne Makro-Korrektur",
+                                float(_p01_vqi_res.get("vqi", 0.85)),
+                                float(_p01_vqi_res.get("singer_identity_cosine", 0.85)),
+                                _p01_rb_vqi,
+                                _p01_rb_sid,
+                            )
+                        else:
+                            logger.warning(
+                                "§P0-1 Slice B: §2.35c/§0p Song-Gate verfehlt (VQI=%.3f floor=%.3f singer_id=%.3f) — "
+                                "Snapshot nicht besser; Recovery bleibt zentral bei End-Gate (a2) + m1b",
+                                _song_vqi_score,
+                                _p01_vqi_floor_val,
+                                _p01_sid,
+                            )
+                    _p01_gates_meta.update(
+                        {
+                            "vqi": _song_vqi_score,
+                            "vqi_floor": _p01_vqi_floor_val,
+                            "singer_identity_cosine": _p01_sid,
+                            "multi_singer": _p01_ms,
+                        }
+                    )
+                except Exception as _p01_vqi_exc:
+                    logger.warning("§P0-1 Slice B: VQI song-weit nicht verfügbar: %s", _p01_vqi_exc)
+
+                # 3) HPI-Ausgabe-Gate song-weit (§2.44) — Validierung + Metadaten;
+                #    die audio-seitige Recovery bleibt zentral (§0c-Vertrag
+                #    (copilot-instructions.md): bestmögliche Ausgabe; Aktuatoren
+                #    End-Gate (a2) + m1b).
+                try:
+                    from backend.core.holistic_perceptual_gate import get_holistic_gate as _p01_get_hg
+
+                    _p01_hg = _p01_get_hg()
+                    _p01_arc_score = max(
+                        0.25,
+                        float(getattr(_song_arc_result, "preservation_score", 1.0))
+                        if _song_arc_result is not None
+                        else 1.0,
+                    )
+                    _p01_vqi_for_hpi = float(_p01_gates_meta.get("vqi", 1.0) or 1.0)
+                    _p01_panns = float(getattr(self, "_panns_singing", 0.0))
+                    _p01_af = float(getattr(self, "_artifact_freedom_score", 1.0) or 1.0)
+                    _p01_rest = float(getattr(self, "_last_restorability_score", 70.0) or 70.0)
+                    _p01_genre = str(_p01_ctx.get("genre_label") or "general").strip().lower() or "general"
+                    _p01_decade = int(
+                        getattr(_first_result, "era_decade", None) or _p01_ctx.get("decade", 1990) or 1990
+                    )
+                    _p01_era = "pre-1950" if _p01_decade < 1950 else "pre-1980" if _p01_decade < 1980 else "post-1980"
+                    _p01_chain = list(_p01_ctx.get("transfer_chain", []) or [])
+                    if _p01_is_studio:
+                        try:
+                            _p01_pqs_impr = self._resolve_studio_pqs_improvement(
+                                getattr(_last_result, "pqs_result", None), []
+                            )
+                        except Exception:
+                            _p01_pqs_impr = 0.0
+                        _p01_hpi_res = _p01_hg.evaluate_studio(
+                            audio,
+                            output,
+                            sample_rate,
+                            pqs_improvement=_p01_pqs_impr,
+                            artifact_freedom=_p01_af,
+                            emotional_arc_score=_p01_arc_score,
+                            vqi=_p01_vqi_for_hpi,
+                            panns_singing=_p01_panns,
+                        )
+                    else:
+                        _p01_hpi_res = _p01_hg.evaluate_restoration(
+                            audio,
+                            output,
+                            sample_rate,
+                            artifact_freedom=_p01_af,
+                            emotional_arc_score=_p01_arc_score,
+                            restorability_score=_p01_rest,
+                            genre=_p01_genre,
+                            material=_p01_mat_str,
+                            era_bin=_p01_era,
+                            vqi=_p01_vqi_for_hpi,
+                            panns_singing=_p01_panns,
+                            reference_audio=None,
+                            transfer_chain=_p01_chain or None,
+                        )
+                    _song_hpi_score = float(getattr(_p01_hpi_res, "hpi", 0.0))
+                    _p01_hpi_passed = bool(getattr(_p01_hpi_res, "passed", False))
+                    logger.info(
+                        "🎯 §P0-1 Slice B: HPI song-weit=%.4f passed=%s (Betriebsart=%s)",
+                        _song_hpi_score,
+                        "1" if _p01_hpi_passed else "0",
+                        "Studio" if _p01_is_studio else "Restoration",
+                    )
+                    if not _p01_hpi_passed:
+                        logger.warning(
+                            "§P0-1 Slice B: HPI-Ausgabe-Gate song-weit verfehlt (HPI=%.4f) — bestmögliche Ausgabe "
+                            "gemäß §0c (copilot-instructions.md); Recovery zentral bei End-Gate (a2) + m1b",
+                            _song_hpi_score,
+                        )
+                        _all_warnings.append(f"§P0-1 Song-HPI-Gate verfehlt (HPI={_song_hpi_score:.4f})")
+                    _p01_gates_meta.update({"hpi": _song_hpi_score, "hpi_passed": _p01_hpi_passed})
+                except Exception as _p01_hpi_exc:
+                    logger.warning("§P0-1 Slice B: HPI song-weit nicht verfügbar: %s", _p01_hpi_exc)
+
+                # 4) §P1-1 Wohlklang-Ordnungs-Audit song-weit — der Enforcer
+                #    (backend/core/wohlklang_ordnung_gate.py) bewertet das
+                #    FINALE Lied gegen den Input; Hörordnung §2: nie gegen
+                #    Ebene 1.
+                try:
+                    from backend.core.musical_goals.musical_goals_metrics import (
+                        MusicalGoalsChecker as _P01WoChecker,
+                    )
+                    from backend.core.wohlklang_ordnung_gate import WohlklangOrdnungGate as _P01WoGate
+
+                    if _song_goals:
+                        _p01_wo_in = _P01WoChecker(
+                            mode=getattr(getattr(self.config, "mode", None), "value", "restoration")
+                        ).measure_all(audio, sample_rate, reference=None)
+                        _p01_wo_deltas = {}
+                        for _g_key in set(list(_song_goals.keys()) + list((_p01_wo_in or {}).keys())):
+                            try:
+                                _out_val = float(_song_goals.get(_g_key, 0.0))
+                                _in_val = float((_p01_wo_in or {}).get(_g_key, 0.0))
+                                if math.isfinite(_out_val) and math.isfinite(_in_val):
+                                    _p01_wo_deltas[str(_g_key)] = _out_val - _in_val
+                            except (TypeError, ValueError):
+                                continue
+                        if _p01_wo_deltas:
+                            _p01_wo_res = _P01WoGate().evaluate(_p01_wo_deltas)
+                            self._last_wohlklang_audit = _p01_wo_res.to_dict()
+                            _p01_gates_meta["wohlklang_ordnung"] = dict(self._last_wohlklang_audit)
+                            if _p01_wo_res.status == "VIOLATION":
+                                logger.warning(
+                                    "§P0-1 Slice B §P1-1 Song-Wohlklang-Ordnungs-Violation: %s",
+                                    _p01_wo_res.detail,
+                                )
+                                _all_warnings.append(f"§P0-1 Song-Wohlklang-Ordnungs-Violation: {_p01_wo_res.detail}")
+                            else:
+                                logger.info(
+                                    "§P0-1 Slice B §P1-1 Song-Wohlklang-Ordnung: %s",
+                                    _p01_wo_res.detail,
+                                )
+                except Exception as _p01_wo_exc:
+                    logger.warning("§P0-1 Slice B: Song-Wohlklang-Audit nicht verfügbar: %s", _p01_wo_exc)
+            except Exception as _p01_exc:
+                logger.warning("§P0-1 Slice B: Song-Level Perceptual-Gates nicht blockierend: %s", _p01_exc)
+
             # §P1-8 (2026-09-08): Nach der song-globalen m1b die
             # Export-Finalisierung auf das FINALE Audio anwenden.
             # §D-K3-63 (2026-10-08): FinalPolish (Era-EQ, §2.73b CD-Noise-
@@ -48064,6 +48403,7 @@ class UnifiedRestorerV3:
             _meta["chunks_total"] = len(chunks)
             _meta["chunks_completed"] = _chunk_count
             _meta["p0_1_song_end_gate_applied"] = bool(_song_end_gate_applied)
+            _meta["p0_1_song_perceptual_gates"] = dict(_p01_gates_meta)
             if _m1b_chunked_flag:
                 _meta["m1b_retry_applied"] = True
                 _meta["m1b_retry_types"] = list(_m1b_chunked_types)
@@ -48088,7 +48428,9 @@ class UnifiedRestorerV3:
                 era_decade=getattr(_first_result, "era_decade", None),
                 confidence=getattr(_first_result, "confidence", 1.0),
                 restorability=getattr(_first_result, "restorability", None),
-                emotional_arc=getattr(_first_result, "emotional_arc", None),
+                emotional_arc=(
+                    _song_arc_result if _song_arc_result is not None else getattr(_first_result, "emotional_arc", None)
+                ),
                 temporal_coherence=getattr(_first_result, "temporal_coherence", None),
                 goosebumps_score=getattr(_first_result, "goosebumps_score", None),
                 excellence=getattr(_first_result, "excellence", None),

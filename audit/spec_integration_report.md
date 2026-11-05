@@ -1,9 +1,9 @@
 # Spec-Integrations-Fehlerprotokoll
 
-- Erzeugt: 2026-10-08T05:49:04.081929
+- Erzeugt: 2026-11-05T16:26:34.186189
 - Fehler: **0** · Warnungen: 0
 
-## INFO (47)
+## INFO (46)
 
 - **[spec_references]** `10_lag_integrity_architecture.md` — Spec ist nur im Index verankert, sonst nirgendwo referenziert
   - Behebung: Spec in der normativen Kette oder im Code verlinken, sonst als obsolet markieren.
@@ -74,8 +74,6 @@
 - **[spec_references]** `v10.24_architecture_reference.md` — Spec ist nur im Index verankert, sonst nirgendwo referenziert
   - Behebung: Spec in der normativen Kette oder im Code verlinken, sonst als obsolet markieren.
 - **[spec_references]** `v10.25_echtmusik_training.md` — Spec ist nur im Index verankert, sonst nirgendwo referenziert
-  - Behebung: Spec in der normativen Kette oder im Code verlinken, sonst als obsolet markieren.
-- **[spec_references]** `v10.26_autonomer_never_worsen_arbiter.md` — Spec ist nur im Index verankert, sonst nirgendwo referenziert
   - Behebung: Spec in der normativen Kette oder im Code verlinken, sonst als obsolet markieren.
 - **[spec_references]** `v10.303.23_fine_tuning_spec.md` — Spec ist nur im Index verankert, sonst nirgendwo referenziert
   - Behebung: Spec in der normativen Kette oder im Code verlinken, sonst als obsolet markieren.
