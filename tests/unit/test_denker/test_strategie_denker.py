@@ -73,8 +73,9 @@ class TestStrategiePlanContract:
         (32 × Tiefe 2,0 × Restaurierbarkeit 1,5), während der harte Ausstieg bei
         32× liegt — der Plan meldete Zeit, die es nie gab, und speiste darüber
         die Stufen-Wahl. Jetzt ist er auf die Guard-Obergrenze gedeckelt.
-        Die gemessene Ist-Lage (~53×, `RT_REALITY_MEASURED`) ist als Lücke
-        benannt, nicht als Zusage.
+        Die gemessene Ist-Lage (32,2×, `RT_REALITY_MEASURED`, Nachmessung
+        2026-11-05) benennt die Realität — keine Zusage; die frühere Ist-Lücke
+        (~53×) ist durch die F-Reihe-Performance-Arbeit geschlossen.
         """
         plan = self._plan(seconds=10.0)
         assert plan.max_processing_s <= 32.0 * 10.0 + 1e-6

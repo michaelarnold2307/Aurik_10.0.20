@@ -177,3 +177,37 @@ Baseline regenerieren.
 - `docs/TODOS_SOTA_ROADMAP.md` — §PERF-R18
 - `CHANGELOG.md`, `README.md`, `pyproject.toml`, `backend/core/version.py`,
   `Aurik10/__init__.py` — Version 10.12.16
+
+## 9. Nachmessung 2026-11-05 (gemessen) — 53×→32× abgeschlossen
+
+Durchgeführt wie Protokoll §6, trainingsfreies Fenster (keine parallelen
+GPU-Trainingsjobs), `scripts/_aurik_run_excellence.py` auf Referenz-Song
+„Elke Best — Du wolltest nur ein Abenteuer, aber ich suchte einen Freund.mp3"
+(= „Testkünstlerin", 225,33 s / 10.815.948 Samples @ 48 kHz), 3 Läufe:
+
+| Lauf | Start (MEZ) | Wall (s) | RT-Faktor (Wall/Dauer) |
+| --- | --- | --- | --- |
+| 1 | 2026-11-05 04:16 | 7252,2 | 32,19× |
+| 2 | 2026-11-05 06:18 | 7259,2 | 32,22× |
+| 3 | 2026-11-05 08:20 | 7248,7 | 32,17× |
+| **Median** | | **7252,2** | **32,19×** |
+
+**Ergebnis: Die 53×→32×-Lücke ist geschlossen.** Baseline (überwachter Lauf
+2026-09): Wall 12 137,5 s ≈ 53,9×; gemessen jetzt **32,19×** (−40 % Laufzeit,
++0,6 % über der 32×-Norm — innerhalb der Lauf-Streuung 32,17–32,22×).
+
+**Zahlenwahrheit (wichtig, §9.5):** Der von `aurik_run` geloggte „RT-Faktor:
+32,00×" ist die **Ausgabe-Kappe** `min(rt, 32.0)` aus
+`denker/aurik_denker.py` (Spec §9.5), nicht die Messung. Die wahren
+Wall-basierten Faktoren stehen oben; `RT_REALITY_MEASURED` ist entsprechend
+auf **32,2** gesetzt (`denker/strategie_denker.py`) — nur bei gemessenem
+Nachweis korrigiert (Protokoll §6, TODO-P0-1 „kein Zahlenwechsel ohne
+Strukturaufgabe" — begleitende Struktur: F-Reihe Feature-Cache, pYIN-
+Vektorisierung, Ketten-Fixes M8/M9/c2).
+
+Beobachtungen im Log (ohne Zahlen-Einfluss auf die RT-Messung): BANQUET lief
+in Lauf 2 kurz über den DSP-Ersatzpfad (§V6-konform geloggt); das
+Final-Ausgabe-Audio-Gate rollte zweimal auf sichere Ausgabe zurück.
+
+**Noch offen:** Verifikation nach D3-Lauf (BigVGAN-F3/DiffWave/FlashSR —
+D3-Fortsetzung startete automatisch 2026-11-05 10:23 nach der RT-Kette).

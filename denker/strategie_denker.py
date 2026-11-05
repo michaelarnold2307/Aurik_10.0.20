@@ -41,13 +41,18 @@ def _load_symbol(module_name: str, symbol_name: str) -> Any:
 # 32×RT-Grenze aus §9.5 / PerformanceGuard.LIMIT_3X_RT
 _3X_RT_LIMIT: float = 32.0
 
-# Gemessene Ist-Lage (Matrix-Endlauf 2026-09-07/08, copilot-instructions.md
-# §Performance-Budget): Die Voll-Pipeline kostet **~53× RT** — mehr, als der
-# Guard mit 32× gewährt. Ursache ist bekannt und dokumentiert: Analytik und
-# End-Gate laufen je **Chunk** statt je **Song** (TODO-P0-1; 8–9 End-Gate-Runden
-# × measure_all je Chunk). Der Wert ist KEINE Zusage und kein Planungsbudget —
-# er benennt die Lücke, die durch Performance-Arbeit zu schließen ist.
-RT_REALITY_MEASURED: float = 53.0
+# Gemessene Ist-Lage (Nachmessung 2026-11-05, Referenz-Song 225,33 s, 3 Läufe
+# mit 7248,7–7259,2 s Wall, Median 32,19× RT — Log
+# `docs/reports/current/rt_messung_2026-11-04.log`; Vorgänger-Messung
+# Matrix-Endlauf 2026-09-07/08 waren ~53× RT, copilot-instructions.md
+# §Performance-Budget): Die Voll-Pipeline liegt damit auf der 32×-Guard-Norm
+# (Abweichung +0,6 %); der gemeldete `rt_factor` ist zusätzlich auf 32,0
+# gekappt (Spec §9.5). Die frühere Ist-Lücke ist durch die F-Reihe-
+# Performance-Arbeit geschlossen (Feature-Cache, pYIN-Vektorisierung,
+# Ketten-Fixes M8/M9/c2); weiterer Hebel bleibt TODO-P0-1 (Analytik/End-Gate
+# song-globale statt je Chunk). Der Wert ist KEINE Zusage und kein
+# Planungsbudget — er benennt die gemessene Ist-Lage (§G5 (copilot-instructions.md)).
+RT_REALITY_MEASURED: float = 32.2
 
 
 def _mode_soft_rt_limit(mode: str) -> tuple[float, float]:
@@ -299,7 +304,7 @@ class StrategieDenker:
                Kettentiefe- × Restaurierbarkeits-Faktor, **gedeckelt** auf die
                harte Guard-Obergrenze (32×) — nie mehr zusagen, als der harte
                Ausstieg hergibt (
-               `RT_REALITY_MEASURED = 53,0` benennt die Ist-Lücke, TODO-P0-1)
+               `RT_REALITY_MEASURED = 32,2` benennt die gemessene Ist-Lage 2026-11-05)
             3. Chunk-Größe gemäß §9.5 adaptiv-defektdichte setzen
             4. PerformanceGuard initialisieren
 
@@ -335,8 +340,8 @@ class StrategieDenker:
         if _planned_s > max_proc + 1e-6:
             logger.info(
                 "StrategieDenker: Budgetwunsch %.1f× (Kette %d, Restaurierbarkeit %.1f) auf die harte "
-                "Guard-Grenze %.1f× gedeckelt — die Differenz ist Performance-Schuld (Ist %.1f× gemessen, "
-                "Hebel TODO-P0-1), keine Planungszusage",
+                "Guard-Grenze %.1f× gedeckelt — gemessene Ist-Lage %.1f× (2026-11-05, auf der 32×-Norm, "
+                "weiterer Hebel TODO-P0-1), keine Planungszusage",
                 _planned_s / max(audio_dur, 1e-9),
                 chain_depth,
                 restorability_score,

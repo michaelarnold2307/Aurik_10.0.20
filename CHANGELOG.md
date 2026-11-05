@@ -1,4 +1,8 @@
-# Changelog — Aurik 10.12.49
+# Changelog — Aurik 10.12.50
+
+## 10.12.50 (2026-11-05)
+
+* **perf(denker): Laufzeit-Wahrheit nachgemessen — `RT_REALITY_MEASURED` 53,0 → 32,2** — die 53×→32×-Lücke ist mit gemessenem Nachweis geschlossen: Referenz-Song 225,33 s, 3 Läufe (Wall 7248,7–7259,2 s), **Median 32,19× RT** (`docs/reports/current/rt_messung_2026-11-04.log`), Baseline war 53,9×. Damit konvergieren Plan-Guard, harte Grenze und gemessene Ist-Lage auf EINE Norm (P0-3). Zahlenwahrheit: der geloggte `rt_factor` ist die §9.5-Ausgabe-Kappe 32,0 (`denker/aurik_denker.py`), die Messung steht in den Wall-Zeiten; Budget-Log des StrategieDenker spricht jetzt von der gemessenen Ist-Lage statt von „Performance-Schuld". Protokoll `docs/reports/current/2026-10-28_f_reihe_laufzeit_optimierung.md` §6/§9 („kein Zahlenwechsel ohne Strukturaufgabe" — begleitend: F-Reihe Feature-Cache/pYIN/Ketten-Fixes). Offen: Verifikation nach D3-Lauf, weiterer Hebel TODO-P0-1 (Song-Ebene-Analytik).
 
 ## 10.12.49 (2026-11-04)
 
