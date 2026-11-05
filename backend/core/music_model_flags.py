@@ -27,7 +27,10 @@ use_sgmse_musik: bool = False  # SGMSE+ Musik (§v10.16/F7): Musik-Core + ONNX-E
 use_mp_senet_musik: bool = True  # MP-SENet Musik (§v10.17) — A/B 2026-09-20 bestanden: seg-SNR +5,3…+11,3 dB,
 # VERSA 4,96–4,99 auf 3 Korpus-Paaren; ONNX: models/mp_senet/finetuned/mp_senet_musik.onnx (§v10.25)
 use_miipher_dit: bool = True  # MIIPHER-DiT (§v10.14) replaces proprietary MIIPHER (flow_matching_dit.onnx)
-use_bw_v5: bool = False  # BW-Reconstructor v5 — A1: HF-Gain-Gate nicht bestanden (0.73 < 1.02);
+use_bw_v5: bool = False  # BW-Reconstructor v5 — A1-HF-Gain-Gate 2026-10-27 bestanden (kalibriert,
+# neu 51,0 ≥ 1,02; Beleg docs/reports/current/2026-10-27_kp7_hf_gate_v2.json). Flag bleibt AUS:
+# Hör-Sign-off offen (+17 dB HF-Boost-Artefakt-Risiko, §v10.802 (copilot-instructions.md)),
+# §4-Verfahren (scripts/flag_freigabe.py).
 # redundant zu FlashSR/NVSR/DSP-SBR in Phase_06. Gated-Forschungsmodell.
 use_harmonic_inpainting: bool = True  # Harmonic-Inpainting-DiT (§v10.300) — DiT-Finetune für gedämpfte Obertöne
 use_whisper_denoiser: bool = False  # Whisper-Denoiser — DEPRECATED (Rev. 2026-08-16), nur A/B-Gate; NR trägt die Spec-04-Kette (DFN/SGMSE+/OMLSA)

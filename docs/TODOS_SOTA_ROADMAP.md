@@ -3013,7 +3013,7 @@ stützt die Notwendigkeit: Sprach-Orakel (UTMOS) können Musik nicht bewerten
 
 | TODO-ID | Maßnahme | Register-IDs | Status |
 | --- | --- | --- | --- |
-| `SOTA-M1` | A1 · Hörproben-Runde KP-1 fahren (SCNet C4-r2, HR-V1 W-1, SGMSE 3-Wege) → bis zu drei Flag-Flips | D-K0-1, D-K0-2, D-K0-3, D-K0-5 | offen — Hörinstanz |
+| `SOTA-M1` | A1 · Hörproben-Runde KP-1 fahren (SCNet C4-r2, HR-V1 W-1, SGMSE 3-Wege) → bis zu drei Flag-Flips | D-K0-1, D-K0-2, D-K0-3, D-K0-5 | **entschieden (K0-Runde 2026-10-30, Hör-Instanz L01)** — Ergebnisse in `docs/reports/current/2026-10-30_k0_signoff_paket.md` + den D-K0-Einträgen (u. a. D-K0-2 = NO-GO); Flips nur über §4-Verfahren |
 | `SOTA-M2` | A2 · Sign-off-Entscheidungen §9 (8 Zeilen: SCNet, F3-Studio, SGMSE, EAR-VAE v1↔v2, Whisper, AERO, Vinyl-Lizenz §9/7, AudioLDM2) | D-K0-4, D-K0-9, D-K2-4, D-K2-5 | offen — Maintainer |
 | `SOTA-M3` | A3 · MUSHRA-Entscheidung B2/WP-8: Studie n≥30 terminieren ODER Zwischenabnahme über Objektivmetriken formell beschließen | D-K4-9 | offen — Nutzerentscheidung |
 | `SOTA-M4` | A4 · Hängende Abnahmen (T6-1 D4/D5/D6, SGMSE A4/A5, B1/B3/B4) | — | offen |

@@ -52,7 +52,8 @@ _CORE_ONNX: dict[str, tuple[str, int]] = {
 _CONSCIOUSLY_GATED = {
     "sgmse_musik": "§v10.16/F7 — Musik-Core + ONNX-Export vorhanden, A/B-Abnahme offen (Flag gesperrt)",
     "whisper_denoiser": "§v10.20 — deprecated, nur A/B-Gate",
-    "bw_v5": "A1: HF-Gain-Gate nicht bestanden (0.73 < 1.02)",
+    "bw_v5": "A1-HF-Gain-Gate 2026-10-27 bestanden (kalibriert, neu 51,0 ≥ 1,02) — Hör-Sign-off offen "
+    "(+17 dB HF-Boost-Artefakt-Risiko); Flag gesperrt (§v10.802 (copilot-instructions.md))",
     "scnet_musik": (
         "§P1-2 — A/B liegt vor (+1,96…+3,59 dB SI-SDR gegen die faire Demucs-v4-Stufe, "
         "docs/reports/current/2026-10-06_p1_2_scnet_vs_demucs_fair_ab.md), aber "
