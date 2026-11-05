@@ -58,6 +58,20 @@ berichten.
 - **Mess-/Trainingsstand:** alles liegt in `docs/reports/current/` (mit Quelle
   je Zeile) und `data/`-Manifesten (`vinyl_noise_bank/`, `rir_real/`) —
   Reproduzierbarkeit über Seeds + sha256.
+- **Worker-Worktrees (Manager-Erfahrung 2026-11-05, ADE-Dispatches):** Frisch
+  erzeugte Task-Worktrees (`/home/michael/.kun/worktrees/tasks/…/tws_*`) können
+  auf einem **veralteten Stand** hängen (beobachtet: `65c6ef4d` vom 2026-10-08
+  statt aktuellem main). Symptom: der Worker meldet fehlende Quellen
+  (Register/Reports/Harnesses) und blockert korrekt. **Abhilfe (Manager):**
+  `git -C <tws> stash push -u && git -C <tws> merge --ff-only main &&
+  git -C <tws> stash pop` (bei unverändertem Worktree genügt `merge --ff-only`),
+  danach den Worker mit `worker_send` fortsetzen. **Hook-/Gate-Umgebung in
+  Worktrees:** `.venv_aurik`-Symlink auf das Haupt-Checkout, `chmod +x
+  run_tests_chunked_safe.sh`, und unverfolgte Modell-/Mess-Pfade
+  (`models/sgmse_plus/…`, `models/harmonic_inpainting`, `models/vocos_48khz`,
+  `output_audio/mushra/…`, `output/scnet_ab_…`) als Symlinks nachziehen — sonst
+  scheitern Wohlklang-/SOTA-Gates mit „zitierte Pfade fehlen" (Umgebungs-Artefakt,
+  kein Code-Defekt).
 
 ## 4. Aktivierungs-Verfahren (Wohlklang-Stufen/Flags) — WIE
 
