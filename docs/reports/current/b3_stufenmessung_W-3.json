@@ -1,0 +1,54 @@
+{
+  "stufe": "W-3",
+  "zeilen": [
+    {
+      "trial_id": "cassette_1980s_wow__w0",
+      "mos_an": 4.796,
+      "mos_aus": 4.796,
+      "last_an": 0.3979,
+      "last_aus": 0.3979
+    },
+    {
+      "trial_id": "cassette_1980s_wow__w1",
+      "mos_an": 4.795,
+      "mos_aus": 4.7951,
+      "last_an": 0.4853,
+      "last_aus": 0.4853
+    },
+    {
+      "trial_id": "cassette_1980s_wow__w2",
+      "mos_an": 4.7926,
+      "mos_aus": 4.7926,
+      "last_an": 0.4577,
+      "last_aus": 0.4578
+    },
+    {
+      "trial_id": "cassette_1980s_wow__w3",
+      "mos_an": 4.8333,
+      "mos_aus": 4.8334,
+      "last_an": 0.4943,
+      "last_aus": 0.4943
+    },
+    {
+      "trial_id": "reel_1940s_dropout__w4",
+      "mos_an": 4.9223,
+      "mos_aus": 4.9223,
+      "last_an": 0.2612,
+      "last_aus": 0.2612
+    },
+    {
+      "trial_id": "jazz_1950s_scratched__w5",
+      "mos_an": 4.9329,
+      "mos_aus": 4.9329,
+      "last_an": 0.1882,
+      "last_aus": 0.1882
+    }
+  ],
+  "never_worsen": true,
+  "vorteile": "0/6",
+  "p_wert": 0.03125,
+  "signifikant": false,
+  "defekt_fallbacks": 0,
+  "b1_sauber": true,
+  "erfuellt": false
+}

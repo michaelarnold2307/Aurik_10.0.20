@@ -19,7 +19,7 @@ Datenquellen: `docs/reports/current/b3_stufenmessung_W-*.json`,
 | --- | --- | --- | --- | --- | --- |
 | **W-1** | `BIGVGAN_V2_HR_ACTIVATED` (ausnahme) | 5 / **False** / 2/5 / 1,0 — **einzige Stufe mit verfehltem Never-worsen** | Widerspruch: HF-Gain-Beleg BESTÄTIGT vs. musik_mos ABGELEHNT ⇒ §7-Konfliktregel | **JA — Hör-Instanz entscheidet** | keine (nur Ohr) |
 | **W-2** | `use_scnet_music` (gesperrt) | 6 / True / 2/6 / 0,6875 (Nachmessung 2026-11-04, `b3_objektivbeschluss_W-2.json`) | never-worsen ⇒ Ebene 1–3 unverletzt | ja — objektiv ABGELEHNT (kein Nutzen signifikant), Sicherheit belegt | Aktivierung nur §4 + Hör-Bestätigung |
-| **W-3** | `use_sgmse_musik` (gesperrt) | **kein Mess-Record** — der W-2/W-3-Lauf (Report `2026-11-04_sitzung_w2_w3_b3_messung.md` §4) hat nur W-2 geschrieben | — | **NEIN** — Messung fehlt | Stufe im Lauf gesperrt/übersprungen; Nachlauf `b3_stufenmessung.py --stages W-3` nötig |
+| **W-3** | `use_sgmse_musik` (gesperrt) | 6 / True / **0/6** / **0,031** (Nachmessung 2026-11-05 nachgereicht, `b3_objektivbeschluss_W-3.json`) | never-worsen ⇒ unverletzt; Vorteile 0/6 ⇒ signifikant GEGEN | ja — objektiv ABGELEHNT (stärkstes Nein) | keine (Akte objektiv geschlossen) |
 | **W-4** | `use_mp_senet_musik` (ausnahme) | 5 / True / 2/5 / 1,0 | never-worsen ⇒ unverletzt | ja — objektiv ABGELEHNT | Review-Bedingung Voll-Song-Blindnachweis (Vertrag) |
 | **W-5** | `use_df_musik` (ausnahme) | 5 / True / 0/5 / 0,0625 | never-worsen ⇒ unverletzt | ja — objektiv ABGELEHNT (kein Vorteil) | Evidenz-Matrix WP-2 |
 | **W-6** | `use_miipher_dit` (ausnahme) | 6 / True / 1/6 / 0,219 | never-worsen ⇒ unverletzt | ja — objektiv ABGELEHNT | Evidenz-Matrix WP-2 |
@@ -38,11 +38,12 @@ mit `fehler`-Status dokumentieren den vorherigen Bruchzustand). Die B3-Beschlüs
 selbst blieben ABGELEHNT (nie signifikant) — der Fix erhöht die Robustheit, nicht
 die gemessene Qualität.
 
-**Gesamturteil:** 12 von 13 Stufen sind **objektiv entscheidungsreif** (7 mit
-B3-Messung, 5 als „gesperrt mit dokumentiertem Grund"). **W-3 ist die einzige
-Stufe ohne Mess-Record** (Nachlauf nötig). **W-1 ist die einzige Stufe, die eine
-menschliche Entscheidung BRAUCHT** (Widerspruch nach §7) — alle übrigen
-Aktivierungen sind Ermessens-/Hör-Fragen über bereits vorhandene Objektiv-Befunde.
+**Gesamturteil:** 13 von 13 Stufen haben einen Objektiv-Befund (8 mit
+B3-Messung inkl. nachgereichtem W-3 am 2026-11-05, 5 als „gesperrt mit
+dokumentiertem Grund"). **W-1 ist die einzige Stufe, die eine menschliche
+Entscheidung BRAUCHT** (Widerspruch nach §7) — alle übrigen Aktivierungen sind
+Ermessens-/Hör-Fragen über bereits vorhandene Objektiv-Befunde (W-3 objektiv
+klar abgelehnt: 0/6, p=0,031).
 
 ---
 
