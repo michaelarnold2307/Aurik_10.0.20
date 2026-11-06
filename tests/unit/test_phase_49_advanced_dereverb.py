@@ -106,3 +106,74 @@ class TestWpeBandsBatch:
         a, _ = phase._predict_reverb_bands_batch(stft, power, 4, 8, 0.7)
         b, _ = phase._predict_reverb_bands_batch(stft, power, 4, 8, 0.7)
         assert np.array_equal(a, b)  # §G5 (GEBOTE.md): bit-identisch bei gleichem Input
+
+
+class TestSgmseTier0PfadW3:
+    """Pfad-Klaerung W-3 (2026-11-06):
+
+    Report docs/reports/current/2026-11-06_w3_pfadklaerung.md. Der
+    SGMSE+-Tier-0 in Verarbeitungsschritt 49 muss fuer Stereo-Fenster
+    ERREICHBAR sein, sobald music_model_flags.use_sgmse_musik gesetzt ist.
+    Bis zum Fix berechnete die Mindest-Signallaengen-Pruefung die Dauer auf
+    der Kanal-Achse (shape[-1] auf dem channels-last-Array nach
+    to_channels_last): jedes Stereo-Fenster galt als „< 1 s“, der Tier-0
+    blieb unerreichbar und der W-3-Schalter war wirkungslos (Delta == 0 in
+    der B3-Messung 2026-11-05). Die Tests pinnen die Schalter-Verdrahtung
+    (Setzung wirkt, Sperre bleibt Sperre) und die Kurzsignal-Schwelle.
+    """
+
+    _SAMPLE_RATE = 48000
+
+    @staticmethod
+    def _stub_factory(calls):
+        class _StubResult:
+            def __init__(self, audio):
+                self.audio = audio
+                self.model_used = "stub"
+
+        class _StubPlugin:
+            def enhance(self, audio, sample_rate, sigma=0.5, max_runtime_s=None):
+                calls.append({"sigma": float(sigma), "shape": tuple(audio.shape)})
+                return _StubResult(np.asarray(audio, dtype=np.float32).copy())
+
+        def _factory():
+            return _StubPlugin()
+
+        return _factory
+
+    def _run(self, monkeypatch, samples, flag):
+        calls = []
+        monkeypatch.setattr("backend.core.music_model_flags.use_sgmse_musik", flag)
+        monkeypatch.setattr("plugins.sgmse_plugin.get_sgmse_plus_plugin", self._stub_factory(calls))
+        # System-RAM-abhaengige Budget-Entscheidung deterministisch festnageln
+        # (§G5 (copilot-instructions.md)).
+        monkeypatch.setattr("backend.core.ml_memory_budget.try_allocate", lambda name, gb: True)
+        monkeypatch.setattr("backend.core.ml_memory_budget.release", lambda name: None)
+        rng = np.random.RandomState(7)
+        audio = (rng.randn(samples, 2) * 0.1).astype(np.float32)
+        phase = AdvancedDereverbPhase()
+        # Reverb-Presence Gate (§2.46f) wie der UV3-Orchestrator mit
+        # DefectScanner-Ergebnis speisen — sonst überspringt Schritt 49 komplett.
+        result = phase.process(
+            audio,
+            sample_rate=self._SAMPLE_RATE,
+            material_type="vinyl",
+            defect_scores={"reverb_excess": 0.5},
+        )
+        return audio, result, calls
+
+    def test_sgmse_tier0_erreichbar_stereo(self, monkeypatch):
+        # 2.5 s Stereo = Fenster-Laenge der B3-Messung (scripts/b3_stufenmessung.py).
+        audio, result, calls = self._run(monkeypatch, 120000, flag=True)
+        assert calls, "SGMSE+-Tier-0 bei freigeschaltetem W-3-Schalter nicht aufgerufen"
+        assert result.audio.shape == audio.shape
+
+    def test_sgmse_tier0_gesperrt_ohne_flag(self, monkeypatch):
+        # §V7 (copilot-instructions.md): ohne Freigabe bleibt der Sprach-Core gesperrt.
+        _audio, _result, calls = self._run(monkeypatch, 120000, flag=False)
+        assert calls == []
+
+    def test_sgmse_tier0_kurzsignal_skip_bleibt(self, monkeypatch):
+        # 0.5 s < 1.0 s Mindest-Signallaenge → WPE-DSP-Fallback, kein SGMSE+.
+        _audio, _result, calls = self._run(monkeypatch, 24000, flag=True)
+        assert calls == []

@@ -56,6 +56,7 @@ import numpy as np
 import scipy.signal as sig
 from scipy.ndimage import median_filter
 
+from backend.core.audio_layout import sample_axis
 from backend.core.audio_utils import (
     restore_layout,
     safe_stft,  # §v10.115 explicit wrapper (no monkey-patch)
@@ -561,7 +562,14 @@ class AdvancedDereverbPhase(PhaseInterface):
         # Mindest-Signallänge für SGMSE+: RT60 > 0.4 s ist nur aus ≥ 1 s Audio
         # zuverlässig messbar; kürzere Signale haben unzureichenden Kontext und
         # erzeugen hohe ML-Overhead (> 10 s/call) ohne Qualitätsgewinn.
-        _audio_dur_mono_s = float(audio.shape[-1] if audio.ndim > 1 else len(audio)) / max(1, sample_rate)
+        # §G9 (copilot-instructions.md): Achsen-Entscheidung aus
+        # backend.core.audio_layout — nach to_channels_last am Prozess-Eingang
+        # ist audio (N, C) bzw. Mono, die ZEITACHSE ist also Achse 0 und nicht
+        # shape[-1]. Bis 2026-11-06 stand hier shape[-1] (= Kanalzahl 2 bei
+        # Stereo): jedes Stereo-Fenster galt als „< 1 s“, der SGMSE+-Tier-0
+        # blieb unerreichbar und der W-3-Schalter wirkungslos (Pfad-Klärung
+        # W-3, Report docs/reports/current/2026-11-06_w3_pfadklaerung.md).
+        _audio_dur_mono_s = float(audio.shape[sample_axis(audio)]) / max(1, sample_rate)
         _sgmse_min_dur_s = 1.0  # < 1 s → direkt WPE DSP
         _sgmse_skipped_short = _audio_dur_mono_s < _sgmse_min_dur_s
         if _sgmse_skipped_short:
