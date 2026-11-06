@@ -68,10 +68,13 @@ wenn man `--data` einfach auf `cantus_pairs` gesetzt hätte.
   `--batch-size 1 --grad-accum 4` — sonst würde der neue Batch-Default 1 die
   effektive Batch-Größe des Kette-3-Laufs still von 4 auf 1 senken.
 - Tests:
-  - neu `tests/unit/test_gpu_kette1_wiring.py` (6 Tests): bash-Syntax,
+  - neu `tests/unit/test_gpu_kette1_wiring.py` (7 Tests): bash-Syntax,
     Speicherbudget in **jedem** M9-Aufruf inkl. Resume-Zweig, kein
     `--synthetic`, `--data` in R3/R4/R5 + fail-closed-Guards, Kette 3 mit
-    denselben M9-Flags.
+    denselben M9-Flags, und eine statische CLI-Prüfung **aller vier Ketten**:
+    kein Aufruf darf ein Flag übergeben, das der Ziel-Trainer nicht kennt
+    (56 Aufrufe gegen die `add_argument`-Flags geprüft) — genau die
+    Fehlerklasse, die Cantus 2 s nach Start abbrechen ließ.
   - `tests/unit/test_tf_gridnet_denoiser.py` (+2): `grad_accum = 0` wird
     abgelehnt; **Äquivalenz** Batch 2 ⇔ Micro-Batch 1 × Akkumulation 2
     (Gewichte `allclose`, atol 1e-5) — die Akkumulation ist damit nicht nur
@@ -80,7 +83,7 @@ wenn man `--data` einfach auf `cantus_pairs` gesetzt hätte.
 ## 4. Verifikation
 
 - `pytest tests/unit/test_gpu_kette1_wiring.py tests/unit/test_tf_gridnet_denoiser.py`
-  → **32 passed** (27,1 s), inkl. der Äquivalenzprüfung.
+  → **33 passed**, inkl. der Äquivalenzprüfung.
 - `bash -n scripts/gpu_kette1_welle_c.sh scripts/gpu_kette3_k4_rest.sh` → OK
   (im Test verankert).
 - Alle Pre-Commit-Gates grün (u. a. Unit-Smoke, SOTA-Defizit-Register,

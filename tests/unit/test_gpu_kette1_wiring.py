@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Regressionstests GPU-Kette 1 — Verdrahtung der Jobs R2–R5 (Befund 2026-11-06).
+"""Regressionstests der GPU-Ketten-Verdrahtung (Befund 2026-11-06).
 
 Belege aus ``docs/reports/current/``:
 
@@ -17,10 +17,26 @@ kein stiller Fehlpfad, Ursache statt Symptom).
 
 from __future__ import annotations
 
+import re
 import subprocess
 from pathlib import Path
 
-_SCRIPT = Path(__file__).resolve().parents[2] / "scripts" / "gpu_kette1_welle_c.sh"
+_ROOT = Path(__file__).resolve().parents[2]
+_SCRIPT = _ROOT / "scripts" / "gpu_kette1_welle_c.sh"
+_KETTEN = (
+    _ROOT / "scripts" / "gpu_kette1_welle_c.sh",
+    _ROOT / "scripts" / "gpu_kette2_matrix_d3.sh",
+    _ROOT / "scripts" / "gpu_kette3_k4_rest.sh",
+    _ROOT / "scripts" / "gpu_kette4_modellkoepfe.sh",
+)
+_FLAG_RE = re.compile(r"--[a-z0-9][a-z0-9-]*")
+_AUFTRAG_RE = re.compile(r"([a-z0-9_]+)\.py(?P<rest>.*)")
+
+
+def _trainer_flags(script: Path) -> set[str]:
+    """Bekannte Flags eines Trainers (``add_argument("--x" …)``)."""
+    quelle = script.read_text(encoding="utf-8")
+    return set(re.findall(r'add_argument\(\s*"(--[a-z0-9-]+)"', quelle))
 
 
 def _text(script: Path = _SCRIPT) -> str:
@@ -97,3 +113,36 @@ def test_cantus_domain_adapt_nur_mit_realen_degradationen() -> None:
     assert "*_degraded.wav" in text, "Erkennung realer Paare fehlt"
     block = _block("R5:")
     assert "--data $CANTUS_REAL" in block
+
+
+def test_ketten_flags_existieren_in_den_trainern() -> None:
+    """Kein Ketten-Aufruf darf ein Flag übergeben, das der Trainer nicht kennt.
+
+    Ein unbekanntes Flag beendet argparse mit Exit 2 — der Job stirbt wie die
+    Cantus-Läufe nach 2 s, ohne dass es wie ein Verdrahtungsfehler aussieht.
+    Geprüft werden alle Ketten (1–4) gegen die ``add_argument``-Flags des
+    jeweiligen Zielskripts.
+    """
+    geprueft = 0
+    for kette in _KETTEN:
+        for zeile in kette.read_text(encoding="utf-8").splitlines():
+            if zeile.lstrip().startswith("#"):
+                continue
+            # Jede Zeile kann mehrere Aufrufe tragen (bash -c mit if/else).
+            for teil in re.split(r"scripts/", zeile)[1:]:
+                treffer = _AUFTRAG_RE.match(teil)
+                if not treffer:
+                    continue
+                ziel = _ROOT / "scripts" / f"{treffer.group(1)}.py"
+                if not ziel.is_file():
+                    continue  # z. B. train_gender_head.py (daten-blockiert)
+                bekannt = _trainer_flags(ziel)
+                if not bekannt:
+                    continue  # Skript ohne argparse (Helfer)
+                genutzt = set(_FLAG_RE.findall(treffer.group("rest")))
+                unbekannt = genutzt - bekannt
+                assert not unbekannt, (
+                    f"{kette.name}: {ziel.name} kennt {sorted(unbekannt)} nicht (argparse würde mit Exit 2 abbrechen)"
+                )
+                geprueft += 1
+    assert geprueft >= 10, f"zu wenige Aufrufe geprüft: {geprueft}"
