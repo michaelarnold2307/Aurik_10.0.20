@@ -1,15 +1,54 @@
 # Code-Schwachstellen-Report (Watchdog)
 
-- Erzeugt: 2026-10-05T05:53:45.459039
-- Geprüfte Dateien: 1691 (Dauer: 103.352s)
-- Befunde gesamt: **6**
+- Erzeugt: 2026-11-05T20:01:43.774845
+- Geprüfte Dateien: 1744 (Dauer: 81.904s)
+- Befunde gesamt: **15**
   - critical: 0
-  - high: 0
+  - high: 9
   - medium: 0
   - low: 6
-- Pro Regel: wallclock_ttl_housekeeping=6
+- Pro Regel: silent_fallback_no_log=9, wallclock_ttl_housekeeping=6
 - Unterdrückte Befunde (unter Schwelle/Kappung, bewusst sichtbar): determinism_time_usage=318
   (Schwellen: AST-Cap 3/Datei, print ≥ 3 im echten Code, Top-N 10, max_findings. determinism_time_usage listet NUR Wall-Clock in Entscheidungslogik (§G5 (GEBOTE.md)); Messungen und Zeitstempel sind kein Verstoß — persistierte Zeitstempel MÜSSEN Wall-Clock bleiben, time.monotonic() ist prozesslokal und über Prozess-/Session-Grenzen bedeutungslos. Unterdrückt heißt nicht: nicht vorhanden.)
+
+## HIGH (9)
+
+- `backend/core/defect_scanner.py:693` — **silent_fallback_no_log** (§V6 (copilot-instructions.md))
+  - Fallback/Return in except-Block ohne Logging
+  - Evidenz: `except Exception:  # §V6 (copilot-instructions.md)`
+  - Empfehlung: logger.warning() + Begründung ergänzen, damit ML→DSP-Fallbacks nie stumm bleiben. (§V6 (copilot-instructions.md) Silent-Failure-Verbot)
+- `backend/core/defect_scanner.py:720` — **silent_fallback_no_log** (§V6 (copilot-instructions.md))
+  - Fallback/Return in except-Block ohne Logging
+  - Evidenz: `except Exception:  # §V6 (copilot-instructions.md)`
+  - Empfehlung: logger.warning() + Begründung ergänzen, damit ML→DSP-Fallbacks nie stumm bleiben. (§V6 (copilot-instructions.md) Silent-Failure-Verbot)
+- `backend/core/dsp/deep_loudness_net.py:82` — **silent_fallback_no_log** (§V6 (copilot-instructions.md))
+  - Fallback/Return in except-Block ohne Logging
+  - Evidenz: `except Exception:  # §V6 (copilot-instructions.md)`
+  - Empfehlung: logger.warning() + Begründung ergänzen, damit ML→DSP-Fallbacks nie stumm bleiben. (§V6 (copilot-instructions.md) Silent-Failure-Verbot)
+- `backend/core/dsp/deep_loudness_net.py:100` — **silent_fallback_no_log** (§V6 (copilot-instructions.md))
+  - Fallback/Return in except-Block ohne Logging
+  - Evidenz: `except Exception:  # §V6 (copilot-instructions.md)`
+  - Empfehlung: logger.warning() + Begründung ergänzen, damit ML→DSP-Fallbacks nie stumm bleiben. (§V6 (copilot-instructions.md) Silent-Failure-Verbot)
+- `backend/core/dsp/music_mos_oracle.py:79` — **silent_fallback_no_log** (§V6 (copilot-instructions.md))
+  - Fallback/Return in except-Block ohne Logging
+  - Evidenz: `except (TypeError, ValueError):`
+  - Empfehlung: logger.warning() + Begründung ergänzen, damit ML→DSP-Fallbacks nie stumm bleiben. (§V6 (copilot-instructions.md) Silent-Failure-Verbot)
+- `backend/core/dsp/music_vad_oracle.py:110` — **silent_fallback_no_log** (§V6 (copilot-instructions.md))
+  - Fallback/Return in except-Block ohne Logging
+  - Evidenz: `except (TypeError, ValueError):`
+  - Empfehlung: logger.warning() + Begründung ergänzen, damit ML→DSP-Fallbacks nie stumm bleiben. (§V6 (copilot-instructions.md) Silent-Failure-Verbot)
+- `backend/core/era_classifier.py:2477` — **silent_fallback_no_log** (§V6 (copilot-instructions.md))
+  - Fallback/Return in except-Block ohne Logging
+  - Evidenz: `except Exception:  # §V6 (copilot-instructions.md)`
+  - Empfehlung: logger.warning() + Begründung ergänzen, damit ML→DSP-Fallbacks nie stumm bleiben. (§V6 (copilot-instructions.md) Silent-Failure-Verbot)
+- `backend/core/era_classifier.py:2505` — **silent_fallback_no_log** (§V6 (copilot-instructions.md))
+  - Fallback/Return in except-Block ohne Logging
+  - Evidenz: `except Exception:  # §V6 (copilot-instructions.md)`
+  - Empfehlung: logger.warning() + Begründung ergänzen, damit ML→DSP-Fallbacks nie stumm bleiben. (§V6 (copilot-instructions.md) Silent-Failure-Verbot)
+- `backend/core/training_artifacts.py:244` — **silent_fallback_no_log** (§V6 (copilot-instructions.md))
+  - Fallback/Return in except-Block ohne Logging
+  - Evidenz: `except OSError:`
+  - Empfehlung: logger.warning() + Begründung ergänzen, damit ML→DSP-Fallbacks nie stumm bleiben. (§V6 (copilot-instructions.md) Silent-Failure-Verbot)
 
 ## LOW (6)
 
