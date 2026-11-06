@@ -412,7 +412,9 @@ def test_grad_accum_entspricht_grossem_batch(tmp_path, monkeypatch) -> None:
     import torch
 
     gross = _trainer_lauf(tmp_path, monkeypatch, batch_size=2, grad_accum=1, steps=2)
-    klein = _trainer_lauf(tmp_path, monkeypatch, batch_size=1, grad_accum=2, steps=4)
+    # steps zaehlt Optimizer-Schritte: 2 × Akkumulation 2 = 4 Micro-Batches mit
+    # Batch 1 — dieselben 4 Samples wie 2 Optimizer-Schritte mit Batch 2.
+    klein = _trainer_lauf(tmp_path, monkeypatch, batch_size=1, grad_accum=2, steps=2)
 
     assert set(gross) == set(klein)
     for key in gross:

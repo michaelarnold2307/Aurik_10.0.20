@@ -241,8 +241,12 @@ def train(
         model.train()
         t0 = time.time()
         train_loss, seen = 0.0, 0
+        # --steps-per-epoch zaehlt OPTIMIZER-Schritte; mit Akkumulation braucht
+        # jeder davon grad_accum Micro-Batches. Sonst saehe der Lauf mit
+        # --grad-accum 4 nur ein Viertel der Samples je Epoche.
+        micro_steps = int(steps_per_epoch) * grad_accum
         for step, batch in enumerate(train_loader):
-            if step >= steps_per_epoch:
+            if step >= micro_steps:
                 break
             log_mag = batch["log_mag"].to(dev)
             target = batch["target"].to(dev)
@@ -255,7 +259,7 @@ def train(
             # OOM bei batch_size=4, 4,42 GiB angefragt). Rechnerisch identisch zu
             # einem großen Batch, nur mit kleinerem Peak.
             (loss / grad_accum).backward()
-            if (step + 1) % grad_accum == 0 or step + 1 == steps_per_epoch:
+            if (step + 1) % grad_accum == 0 or step + 1 == micro_steps:
                 torch.nn.utils.clip_grad_norm_(model.parameters(), 2.0)
                 optimizer.step()
             train_loss += float(loss.item())

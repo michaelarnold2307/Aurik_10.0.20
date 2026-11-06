@@ -51,7 +51,10 @@ wenn man `--data` einfach auf `cantus_pairs` gesetzt hätte.
 - `scripts/train_tf_gridnet_denoiser.py`: neues `--grad-accum` (Default 1),
   Micro-Batch-Akkumulation im Trainingsloop, `--batch-size`-Default 4 → 1,
   `grad_accum` im Checkpoint dokumentiert, `0` wird mit `ValueError`
-  abgelehnt (kein stiller „kein Optimizer-Schritt"-Pfad).
+  abgelehnt (kein stiller „kein Optimizer-Schritt"-Pfad). **`--steps-per-epoch`
+  zählt jetzt Optimizer-Schritte** (`micro_steps = steps_per_epoch ×
+  grad_accum`): sonst hätte der Lauf mit Akkumulation 4 nur ein Viertel der
+  Samples je Epoche gesehen — der Äquivalenztest deckt genau diesen Fehler ab.
 - `scripts/gpu_kette1_welle_c.sh`
   - R2: **echte** Musik-Paare (`data/tfgrid_pairs/{clean,noisy}`),
     `--batch-size 1 --grad-accum 4`, Guard „Daten fehlen ⇒ übersprungen";
