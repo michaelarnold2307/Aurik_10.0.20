@@ -24,10 +24,12 @@ R --name m8_aspade --ckpt-dir models/aspade --phase sota_m8 \
   --timeout-s 21600 --retries 1
 
 echo "=== R2: SOTA-M9 TF-GridNet Echt-Training (Musik-Paare, KEIN --synthetic) ==="
+# Speicherbudget 24 GiB (Befund 2026-11-06: OOM bei batch_size 4) — Micro-Batch 1
+# + Gradient-Akkumulation 4 haelt die effektive Batch-Groesse 4 bei kleinerem Peak.
 if [ -d data/tfgrid_pairs/clean ] && [ -d data/tfgrid_pairs/noisy ]; then
   R --name m9_tf_gridnet --ckpt-dir models/tf_gridnet --phase sota_m9 \
-    --cmd "env PYTHONPATH=. $PY -B scripts/train_tf_gridnet_denoiser.py --epochs 30 --device cuda --clean-dir data/tfgrid_pairs/clean --noisy-dir data/tfgrid_pairs/noisy" \
-    --resume-cmd "bash -c \"if [ -f models/tf_gridnet/checkpoint_latest.pt ]; then exec env PYTHONPATH=. $PY -B scripts/train_tf_gridnet_denoiser.py --epochs 30 --device cuda --clean-dir data/tfgrid_pairs/clean --noisy-dir data/tfgrid_pairs/noisy --resume models/tf_gridnet/checkpoint_latest.pt; else exec env PYTHONPATH=. $PY -B scripts/train_tf_gridnet_denoiser.py --epochs 30 --device cuda --clean-dir data/tfgrid_pairs/clean --noisy-dir data/tfgrid_pairs/noisy; fi\"" \
+    --cmd "env PYTHONPATH=. $PY -B scripts/train_tf_gridnet_denoiser.py --epochs 30 --device cuda --clean-dir data/tfgrid_pairs/clean --noisy-dir data/tfgrid_pairs/noisy --batch-size 1 --grad-accum 4" \
+    --resume-cmd "bash -c \"if [ -f models/tf_gridnet/checkpoint_latest.pt ]; then exec env PYTHONPATH=. $PY -B scripts/train_tf_gridnet_denoiser.py --epochs 30 --device cuda --clean-dir data/tfgrid_pairs/clean --noisy-dir data/tfgrid_pairs/noisy --batch-size 1 --grad-accum 4 --resume models/tf_gridnet/checkpoint_latest.pt; else exec env PYTHONPATH=. $PY -B scripts/train_tf_gridnet_denoiser.py --epochs 30 --device cuda --clean-dir data/tfgrid_pairs/clean --noisy-dir data/tfgrid_pairs/noisy --batch-size 1 --grad-accum 4; fi\"" \
     --timeout-s 21600 --retries 1
 else
   echo "M9-Daten fehlen (data/tfgrid_pairs/{clean,noisy}) — R2 uebersprungen."

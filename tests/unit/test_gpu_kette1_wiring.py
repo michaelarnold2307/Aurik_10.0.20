@@ -23,15 +23,15 @@ from pathlib import Path
 _SCRIPT = Path(__file__).resolve().parents[2] / "scripts" / "gpu_kette1_welle_c.sh"
 
 
-def _text() -> str:
-    return _SCRIPT.read_text(encoding="utf-8")
+def _text(script: Path = _SCRIPT) -> str:
+    return script.read_text(encoding="utf-8")
 
 
-def _block(name: str) -> str:
+def _block(name: str, script: Path = _SCRIPT) -> str:
     """Textblock eines Jobs: ab ``=== <name>`` bis zum nächsten Job-Echo."""
-    text = _text()
+    text = _text(script)
     start = text.find(f"=== {name}")
-    assert start != -1, f"Job {name} fehlt in {_SCRIPT.name}"
+    assert start != -1, f"Job {name} fehlt in {script.name}"
     rest = text[start:]
     nxt = rest.find('echo "=== ', 10)
     return rest if nxt == -1 else rest[:nxt]
@@ -62,6 +62,21 @@ def test_m9_trainiert_nur_auf_echten_musik_paaren() -> None:
             continue
         if "train_tf_gridnet_denoiser.py" in zeile:
             assert "--synthetic" not in zeile, f"M9 auf synthetischen Sinustönen: {zeile.strip()}"
+
+
+def test_kette3_traegt_dasselbe_m9_speicherbudget() -> None:
+    """Kette 3 trainiert denselben Job — ohne die Flags fiele sie auf Batch 1 zurück."""
+    kette3 = _SCRIPT.with_name("gpu_kette3_k4_rest.sh")
+    res = subprocess.run(["bash", "-n", str(kette3)], capture_output=True, text=True)
+    assert res.returncode == 0, res.stderr
+    block = _block("R2:", kette3)
+    assert "data/tfgrid_pairs/clean" in block
+    for zeile in block.splitlines():
+        if zeile.lstrip().startswith("#"):
+            continue
+        if "train_tf_gridnet_denoiser.py" in zeile:
+            assert "--batch-size 1 --grad-accum 4" in zeile, f"Kette-3-M9 ohne Speicherbudget: {zeile.strip()}"
+            assert "--synthetic" not in zeile
 
 
 def test_cantus_pretrain_und_finetune_uebergeben_das_paar_manifest() -> None:

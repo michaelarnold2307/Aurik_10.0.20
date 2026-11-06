@@ -61,10 +61,14 @@ wenn man `--data` einfach auf `cantus_pairs` gesetzt hätte.
   - R5 (`domain_adapt`): nur mit echten `*_degraded.wav`-Paaren
     (`data/cantus_real`, `data/real_degraded_vocals`), sonst begründetes
     Überspringen (§V7 (copilot-instructions.md)).
+- `scripts/gpu_kette3_k4_rest.sh`: derselbe M9-Job trägt jetzt ebenfalls
+  `--batch-size 1 --grad-accum 4` — sonst würde der neue Batch-Default 1 die
+  effektive Batch-Größe des Kette-3-Laufs still von 4 auf 1 senken.
 - Tests:
-  - neu `tests/unit/test_gpu_kette1_wiring.py` (5 Tests): bash-Syntax,
+  - neu `tests/unit/test_gpu_kette1_wiring.py` (6 Tests): bash-Syntax,
     Speicherbudget in **jedem** M9-Aufruf inkl. Resume-Zweig, kein
-    `--synthetic`, `--data` in R3/R4/R5 + fail-closed-Guards.
+    `--synthetic`, `--data` in R3/R4/R5 + fail-closed-Guards, Kette 3 mit
+    denselben M9-Flags.
   - `tests/unit/test_tf_gridnet_denoiser.py` (+2): `grad_accum = 0` wird
     abgelehnt; **Äquivalenz** Batch 2 ⇔ Micro-Batch 1 × Akkumulation 2
     (Gewichte `allclose`, atol 1e-5) — die Akkumulation ist damit nicht nur
@@ -73,8 +77,9 @@ wenn man `--data` einfach auf `cantus_pairs` gesetzt hätte.
 ## 4. Verifikation
 
 - `pytest tests/unit/test_gpu_kette1_wiring.py tests/unit/test_tf_gridnet_denoiser.py`
-  → **30 passed** (28,8 s), inkl. der Äquivalenzprüfung.
-- `bash -n scripts/gpu_kette1_welle_c.sh` → OK (im Test verankert).
+  → **32 passed** (27,1 s), inkl. der Äquivalenzprüfung.
+- `bash -n scripts/gpu_kette1_welle_c.sh scripts/gpu_kette3_k4_rest.sh` → OK
+  (im Test verankert).
 - Alle Pre-Commit-Gates grün (u. a. Unit-Smoke, SOTA-Defizit-Register,
   Wohlklang-Vertrag, File-Lifecycle, Repo-Graph).
 
