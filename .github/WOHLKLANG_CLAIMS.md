@@ -122,3 +122,20 @@ Die Hör-Abnahme hebt sie auf „aktiv“; ein Hör-Widerspruch setzt sie auf
 „gesperrt“ zurück (Rollback, §V7 (copilot-instructions.md)).
 Automatisierte Abwicklung (eine Zeile): `python3 -B scripts/flag_freigabe.py
 --flag <use_x> --objektivbeschluss <report.json>`.
+
+## Ziel-Koordinate der Hör-Instanz (Block C, 2026-11-05)
+
+Aus der EAR-VAE-v1↔v2-Blind-Runde (17 Paare, Entblindung 12:3 für v1,
+p = 0,035) hat die Hör-Instanz die verbindliche Wunsch-Richtung für
+künftige klangverändernde Iterationen notiert: **heller UND weniger Rauschen**
+(v2-Helligkeit bei v1-Sauberkeit) — belegt in
+`docs/reports/current/2026-11-05_hoer_signoff.md`.
+
+Leitplanke für Stufen, die dieser Richtung dienen:
+
+- Brillanz bleibt **gebunden** durch das Material-BW-Ceiling (Hörordnung §5,
+  Tier-Kette: Natürlichkeit > Wärme > Klarheit > Brillanz).
+- Kein HF-Boost über ein Gain-Gate — W-1 Höhen-Behandlung = **NO-GO**
+  (0/8 Trials, Artefakte auf der behandelten Seite) ist das Referenzbeispiel.
+- Erwünscht: Rauschreduktion zuerst, dann begrenzte Brillanz
+  (Stufe-2-Nachbehandlung, P1-7-Muster).
