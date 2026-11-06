@@ -1,6 +1,6 @@
 # TASK_CHANGES — Live-Ledger der aktuellen Aufgabe
 
-> Generiert von `scripts/change_ledger.py snapshot` (Base: `HEAD`, Stand: 2026-11-06 22:19 CET).
+> Generiert von `scripts/change_ledger.py snapshot` (Base: `HEAD`, Stand: 2026-11-06 22:54 CET).
 > CI (`ci-lite.yml` pr-evidence-gate) erzwingt Abdeckung: jede geänderte Code-Datei muss hier stehen.
 
 ## Geänderte Dateien
@@ -9,15 +9,14 @@
 |---|---|---|
 | M | `.github/FILE_REGISTRY.md` | modifiziert |
 | M | `.github/SOTA_DEFICIT_REGISTER.md` | modifiziert |
-| M | `TASK_CHANGES.md` | modifiziert |
 | M | `docs/SOTA_HANDOVER.md` | modifiziert |
-| A | `scripts/calibrate_singmos_music.py` | neu |
-| A | `scripts/train_vocos_48khz_finetune.py` | neu |
-| A | `scripts/train_voiceencoder_finetune.py` | neu |
-| A | `tests/unit/test_calibrate_singmos_music.py` | neu |
-| A | `tests/unit/test_train_vocos_48khz_finetune.py` | neu |
-| A | `tests/unit/test_train_voiceencoder_finetune.py` | neu |
+| M | `docs/TODOS_SOTA_ROADMAP.md` | modifiziert |
+| M | `scripts/gpu_kette1_welle_c.sh` | modifiziert |
+| M | `scripts/train_tf_gridnet_denoiser.py` | modifiziert |
+| M | `tests/unit/test_tf_gridnet_denoiser.py` | modifiziert |
+| ?? | `docs/reports/current/2026-11-06_ketten_verdrahtung_m9_m14.md` | ungetrackt |
 | ?? | `study_stimuli/model_ab/manifest.json` | ungetrackt |
+| ?? | `tests/unit/test_gpu_kette1_wiring.py` | ungetrackt |
 
 ## Entscheidungen
 

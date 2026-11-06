@@ -199,8 +199,12 @@ def train(
     hidden: int,
     blocks: int,
     skip_onnx: bool,
+    grad_accum: int = 1,
 ) -> Path:
     set_determinism(seed)  # §G5 (copilot-instructions.md)
+    if int(grad_accum) < 1:
+        raise ValueError(f"--grad-accum muss >= 1 sein (erhalten: {grad_accum})")
+    grad_accum = int(grad_accum)
     dev = torch.device(device)
     model = build_tf_gridnet_model(n_freq=N_FREQ, hidden=hidden, n_blocks=blocks).to(dev)
     optimizer = torch.optim.Adam(model.parameters(), lr=lr)
@@ -216,6 +220,12 @@ def train(
         best_val = float(ckpt.get("val_loss", best_val))
         logger.info("Resume ab Epoche %d (best_val=%.4f)", start_epoch, best_val)
 
+    logger.info(
+        "Effektive Batch-Größe %d (batch_size=%d × grad_accum=%d)",
+        batch_size * grad_accum,
+        batch_size,
+        grad_accum,
+    )
     dataset = PairedChunkDataset(clean_dir, noisy_dir, synthetic=synthetic, seed=seed)
     val_set = PairedChunkDataset(
         clean_dir,
@@ -236,12 +246,18 @@ def train(
                 break
             log_mag = batch["log_mag"].to(dev)
             target = batch["target"].to(dev)
-            optimizer.zero_grad()
+            if step % grad_accum == 0:
+                optimizer.zero_grad(set_to_none=True)
             pred = model(log_mag)
             loss = F.mse_loss(pred, target)
-            loss.backward()
-            torch.nn.utils.clip_grad_norm_(model.parameters(), 2.0)
-            optimizer.step()
+            # Gradient-Akkumulation: die Inter-Frame-BiLSTM-Aktivierungen des
+            # 4-s-CHUNK (b·f Sequenzen) sprengen sonst 24 GiB (Befund 2026-11-06:
+            # OOM bei batch_size=4, 4,42 GiB angefragt). Rechnerisch identisch zu
+            # einem großen Batch, nur mit kleinerem Peak.
+            (loss / grad_accum).backward()
+            if (step + 1) % grad_accum == 0 or step + 1 == steps_per_epoch:
+                torch.nn.utils.clip_grad_norm_(model.parameters(), 2.0)
+                optimizer.step()
             train_loss += float(loss.item())
             seen += 1
         scheduler.step()
@@ -275,6 +291,7 @@ def train(
                 "scheduler_state_dict": scheduler.state_dict(),
                 "val_loss": avg_val,
                 "seed": seed,
+                "grad_accum": grad_accum,
             },
         )
         if avg_val < best_val:
@@ -352,7 +369,13 @@ def main() -> None:
     logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
     p = argparse.ArgumentParser(description="Train TF-GridNet-class full-band denoiser (SOTA-M9, D-K4-2)")
     p.add_argument("--epochs", type=int, default=50)
-    p.add_argument("--batch-size", type=int, default=4)
+    p.add_argument("--batch-size", type=int, default=1)
+    p.add_argument(
+        "--grad-accum",
+        type=int,
+        default=1,
+        help="Micro-Batch-Akkumulation (Speicherbudget 24 GiB); effektiv = batch_size × grad_accum",
+    )
     p.add_argument("--lr", type=float, default=1e-3)
     p.add_argument("--steps-per-epoch", type=int, default=200)
     p.add_argument("--resume", type=str, default=None)
@@ -379,6 +402,7 @@ def main() -> None:
         hidden=args.hidden,
         blocks=args.blocks,
         skip_onnx=args.skip_onnx,
+        grad_accum=args.grad_accum,
     )
 
 

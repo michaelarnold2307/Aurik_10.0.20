@@ -34,6 +34,7 @@ Wohlklang für das menschliche Gehör**. Normative Kette: `AGENTS.md` §1
 | 8 | Hör-/Lizenz-Entscheidungen (§9/5–7, AERO, MUSHRA n≥30) | **menschlich** | Katalog A2 |
 | 9 | ~~P1-3-Restdeckung (Audibility-Guards)~~ **ERLEDIGT 2026-11-03:** HNR/Mikrodynamik/Vibrato/Hallucination/Noise-Texture mit Maskierungs-Abdeckung (§G10), 19 Phasen verdrahtet (Commit `2c5e5522`) | — | Report `2026-11-03_p1_3_audibility_restdeckung.md` |
 | 10 | ~~D-K1-3 Material-CRNN-Verdrahtung (95,3 % statt 40,2 %)~~ **ERLEDIGT 2026-11-03:** im Material-Entscheidungspfad hinter `use_material_crnn` (Default AUS — Flag-Flip offen, nur §4-Verfahren) (Commit `28f2947d`) | — | Report `2026-11-03_d_k1_3_material_crnn_wiring.md` |
+| 11 | **Ketten-Verdrahtung (Trainingslücke, kein Modellproblem)** — **BEHOBEN 2026-11-06, GPU-Neulauf offen:** Drei Kette-1-Jobs liefen ins Leere, obwohl die Artefakte lokal liegen. (a) **M9/SOTA-M9** starb nach 5 s am 24-GiB-OOM (`--batch-size 4` ⇒ 4·513 Inter-Frame-LSTM-Sequenzen, 4,42 GiB angefragt) **und** trainierte auf `--synthetic 4000` (Sinus+Rauschen = K1-Domänen-Defizit §III.11) statt auf den vorhandenen `data/tfgrid_pairs` (25 MUSDB-Paare) — ein erfolgreicher synthetischer Lauf hätte den echten Kette-3-Lauf über Job-Lock/Manifest blockiert. Fix: echte Paare + `--batch-size 1 --grad-accum 4` (neues Trainer-Flag, Äquivalenz Batch 2 ⇔ Akkumulation 2 getestet). (b) **Cantus/SOTA-M14** rief R3–R5 ohne `--data` auf (Exit 2 „--data fehlt“, 2 s), obwohl `data/cantus_pairs/manifest.jsonl` 3600 Paare hat — jetzt `--data` + fail-closed-Guard; `domain_adapt` nur mit echten `*_degraded.wav`-Paaren (bleibt datenblockiert). Tests: `tests/unit/test_gpu_kette1_wiring.py` (5) + 2 Trainer-Tests. Offen: GPU-Neulauf, Never-worsen-Gate/Hörabnahme (M9), M9-Datenmenge (25 Paare, D-K2-5-Muster). **Kein Flag-Flip.** | autonom (GPU-gebunden) | Report `2026-11-06_ketten_verdrahtung_m9_m14.md` |
 
 **Regel:** Punkte 1–5 ohne Rückfrage erledigen. Punkt 6 NUR über das
 B3-Verfahren (§4). Punkt 8 nie eigenmächtig — abbrechen und begründet
@@ -44,6 +45,14 @@ berichten.
 - **GPU-Trainingsketten** (dauerhaft im Repo, jederzeit neu startbar):
   - Kette 1 (Welle C + M8/M9): `nohup bash scripts/gpu_kette1_welle_c.sh > /tmp/k1.log 2>&1 &`
   - Kette 2 (Matrix D.3, startet nach Kette 1): `nohup bash scripts/gpu_kette2_matrix_d3.sh > /tmp/k2.log 2>&1 &`
+  - Kette 3 (K4-Rest: A-SPADE + M9 auf echten Paaren):
+    `nohup bash scripts/gpu_kette3_k4_rest.sh > /tmp/k3.log 2>&1 &`
+  - Kette 4 (Modell-Köpfe/Trainingsdaten, bricht bei laufendem
+    `train_job_runner` fail-closed ab):
+    `nohup bash scripts/gpu_kette4_modellkoepfe.sh > /tmp/k4.log 2>&1 &`
+  - **Reihenfolge bei Neustart:** 1 → 2 → 3 → 4. Kette 2 wartet selbst auf
+    Kette 1; Kette 3/4 nur starten, wenn kein Training mehr läuft. Danach
+    `pgrep -af gpu_kette` + `pgrep -af train_job_runner` prüfen.
   - **Kein Doppelläuft-Schutz nötig:** `scripts/train_job_runner.py` hält
     Job-Locks (`models/*/.train_job.lock`) und schreibt Manifeste
     (`docs/reports/current/train_job_*.json`) inkl. Auto-Resume-Befehl.
@@ -126,3 +135,15 @@ Phantom-Verdrahtungs-Fixes, die F0-Beobachtung, den fail-closed-Lader und den
 (NO-GO v2 — Buchführung der Hör-Entscheidung vom 2026-11-05, keine neue
 Entscheidung; Roadmap 3 Stellen + `SOTA-M2` nachgezogen). Report
 `docs/reports/current/2026-11-06_wf4_echt_pfad_verdrahtung.md`.
+
+**Update 2026-11-06 (Ketten-Verdrahtung, §2 Zeile 11 NEU):** Die Job-Manifeste
+des Kette-1-Laufs (18:32–18:33) zeigten drei Fehlschläge, die keine
+Modellfehler sind: M9 (SOTA-M9/D-K4-2) starb am 24-GiB-OOM und trainierte
+zusätzlich auf synthetischen Sinustönen (K1-Defizit) statt auf
+`data/tfgrid_pairs`; Cantus R3–R5 (SOTA-M14) riefen `train_cantus.py` ohne
+`--data` auf, obwohl 3600 Paare lokal liegen. Behoben: echtes M9-Datenset +
+neues `--grad-accum` (Äquivalenztest), Cantus-`--data` + fail-closed-Guards,
+`domain_adapt` nur mit echten Degradationen; 5 neue Ketten-Tests + 2
+Trainer-Tests, alle Gates grün. **GPU-Neulauf steht aus** (Kette 2 belegt die
+GPU), **kein Flag-Flip.** Report
+`docs/reports/current/2026-11-06_ketten_verdrahtung_m9_m14.md`.

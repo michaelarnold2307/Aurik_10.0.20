@@ -348,3 +348,74 @@ def test_phase_flag_on_error_keeps_dfn_result_with_warning(monkeypatch, caplog):
     result = DenoisePhase(sample_rate=SR).process(_tone_noisy(), sample_rate=SR, material_type="vinyl")
     assert np.isfinite(result.audio).all()
     assert _has_warning(caplog, "TF-GridNet")
+
+
+# ── Trainer: Gradient-Akkumulation (Speicherbudget 24 GiB, Befund 2026-11-06) ──
+
+
+def _trainer_lauf(tmp_path, monkeypatch, *, batch_size: int, grad_accum: int, steps: int) -> dict:
+    """Kurz-Training auf synthetischen Paaren (CPU), Checkpoints in tmp_path."""
+    import torch
+
+    from scripts import train_tf_gridnet_denoiser as trainer
+
+    latest = tmp_path / f"latest_b{batch_size}_a{grad_accum}.pt"
+    best = tmp_path / f"best_b{batch_size}_a{grad_accum}.pt"
+    monkeypatch.setattr(trainer, "LATEST_PT", latest)
+    monkeypatch.setattr(trainer, "BEST_PT", best)
+    monkeypatch.setattr(trainer, "CHECKPOINT_DIR", tmp_path)
+
+    trainer.train(
+        epochs=1,
+        batch_size=batch_size,
+        lr=1e-3,
+        steps_per_epoch=steps,
+        resume=None,
+        seed=42,
+        clean_dir=None,
+        noisy_dir=None,
+        synthetic=4,
+        device="cpu",
+        hidden=8,
+        blocks=1,
+        skip_onnx=True,
+        grad_accum=grad_accum,
+    )
+    return torch.load(latest, map_location="cpu", weights_only=False)["model_state_dict"]
+
+
+def test_grad_accum_lehnt_null_ab(tmp_path) -> None:
+    """``--grad-accum 0`` darf nicht still zu „kein Optimizer-Schritt“ werden."""
+    from scripts import train_tf_gridnet_denoiser as trainer
+
+    with pytest.raises(ValueError):
+        trainer.train(
+            epochs=1,
+            batch_size=1,
+            lr=1e-3,
+            steps_per_epoch=1,
+            resume=None,
+            seed=42,
+            clean_dir=None,
+            noisy_dir=None,
+            synthetic=2,
+            device="cpu",
+            hidden=4,
+            blocks=1,
+            skip_onnx=True,
+            grad_accum=0,
+        )
+
+
+def test_grad_accum_entspricht_grossem_batch(tmp_path, monkeypatch) -> None:
+    """Micro-Batch 1 × Akkumulation 2 == Batch 2 (gleiche Samples, gleiche Schritte)."""
+    import torch
+
+    gross = _trainer_lauf(tmp_path, monkeypatch, batch_size=2, grad_accum=1, steps=2)
+    klein = _trainer_lauf(tmp_path, monkeypatch, batch_size=1, grad_accum=2, steps=4)
+
+    assert set(gross) == set(klein)
+    for key in gross:
+        assert torch.allclose(gross[key], klein[key], atol=1e-5, rtol=1e-4), (
+            f"Gewicht {key} weicht ab — Akkumulation ist nicht äquivalent"
+        )
