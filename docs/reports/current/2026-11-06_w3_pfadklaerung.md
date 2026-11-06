@@ -191,5 +191,12 @@ mos_aus 4,796) und wertete das als „Schalter ohne messbare Pfad-Wirkung“
   `/home/michael/.local/share/aurik/venv_rocm72/bin/python` (torch
   2.11+rocm7.2).
 - Befehle: `python3 -B -m pytest tests/unit/test_phase_49_advanced_dereverb.py
-  -q` (11 passed, davon 3 neu), `python3 -m pytest tests/unit -q`,
-  `python3 scripts/wohlklang_gate.py`.
+  -q` (11 passed, davon 3 neu; Rot→Grün gegen den alten Ausdruck verifiziert),
+  `python3 scripts/wohlklang_gate.py` („Vertrag erfüllt"; Phantom-Referenzen 30
+  = dokumentierter P2-Bestand), Pre-Commit-Gauntlet im Commit `c0ff1a26`:
+  **alle Hooks grün** (u. a. `aurik-unit-smoke` tests/unit, Coverage-Gate,
+  ID-Registry R1/R2 fail-closed, Gebote-Verifier 25/25, File-Lifecycle,
+  Wohlklang-Vertrag, Layout-EINE-Quelle §G9 (copilot-instructions.md),
+  Conventional Commits).
+- Commits dieser Sitzung: `0c02c90d` (Ketten-Resume-Pfad Kette 2), `c0ff1a26`
+  (W-3-Pfad-Klärung: Fix + Tests + Report + §2/Roadmap).
