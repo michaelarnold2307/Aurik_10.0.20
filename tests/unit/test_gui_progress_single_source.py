@@ -63,9 +63,18 @@ def test_falsche_zaehlwaehrungen_entfernt() -> None:
 
 def test_kanonischer_labeltext_und_single_writer() -> None:
     src = _src()
-    # Zählungstext (beide Live-Schreiber: _update_defects + _sync_unified_progress)
-    assert "offen · {_done_def} behoben" in src
-    assert "offen · {_def_resolved} behoben" in src
+    # Zählungstext: EINE kanonische Quelle — _format_defect_progress_suffix.
+    # Nach der D-K3-69-Kanonisierung + i18n-Umstellung (f25897c1, D-K3-10)
+    # trägt kein Live-Schreiber mehr eigene Roh-Labels; der Formatter ist
+    # die einzige Formatierungsstelle (mehrere Aufrufer).
+    assert "def _format_defect_progress_suffix(" in src
+    assert 'f"Schadensbilanz: {_remaining} offen, {_done} erledigt (von {_total})"' in src
+    assert src.count("_format_defect_progress_suffix(") >= 2, (
+        "Kanonischer Defektfortschritt-Text nicht durchgehend verdrahtet"
+    )
+    # Alte Roh-Labels (mehrere Schreiber, D-K3-69-Befund) entfernt:
+    assert "offen · {_done_def} behoben" not in src
+    assert "offen · {_def_resolved} behoben" not in src
     # Alter Formatbruch entfernt:
     assert 'setText(f"{_def_resolved}/{_def_total} behoben")' not in src
     # Phase-Hinweise überschreiben den Countdown nicht mehr:

@@ -1,38 +1,14 @@
 # TASK_CHANGES — Live-Ledger der aktuellen Aufgabe
 
-> Generiert von `scripts/change_ledger.py snapshot` (Base: `HEAD`, Stand: 2026-11-06 21:17 CET).
+> Generiert von `scripts/change_ledger.py snapshot` (Base: `HEAD`, Stand: 2026-11-06 21:43 CET).
 > CI (`ci-lite.yml` pr-evidence-gate) erzwingt Abdeckung: jede geänderte Code-Datei muss hier stehen.
 
 ## Geänderte Dateien
 
 | Status | Pfad | Art |
 |---|---|---|
-| M | `.github/FILE_REGISTRY.md` | modifiziert |
-| M | `.github/SOTA_DEFICIT_REGISTER.md` | modifiziert |
-| M | `TASK_CHANGES.md` | modifiziert |
-| M | `docs/SOTA_HANDOVER.md` | modifiziert |
-| M | `docs/TODOS_SOTA_ROADMAP.md` | modifiziert |
-| A | `docs/reports/current/2026-11-06_trainingswelle_modelle.md` | neu |
-| A | `docs/reports/current/2026-11-06_wf4_echt_pfad_verdrahtung.md` | neu |
-| A | `docs/reports/current/b3_transient_energie_neu_vor_enforcer.json` | neu |
-| M | `docs/reports/current/train_job_c2_cantus_domain.json` | modifiziert |
-| M | `docs/reports/current/train_job_c2_cantus_finetune.json` | modifiziert |
-| M | `docs/reports/current/train_job_c2_cantus_pretrain.json` | modifiziert |
-| M | `docs/reports/current/train_job_c3_rt60.json` | modifiziert |
-| M | `docs/reports/current/train_job_d3_diffwave_vokal.json` | modifiziert |
-| A | `docs/reports/current/train_job_d3_diffwave_vokal_fortsetzung_20261105.json` | neu |
-| A | `docs/reports/current/train_job_d3_flashsr_musik.json` | neu |
-| M | `docs/reports/current/train_job_m8_aspade.json` | modifiziert |
-| M | `docs/reports/current/train_job_m9_tf_gridnet.json` | modifiziert |
-| A | `scripts/gpu_kette4_modellkoepfe.sh` | neu |
-| A | `scripts/prepare_tfgrid_pairs.py` | neu |
-| A | `scripts/prepare_tp2_transient_pairs.py` | neu |
-| A | `scripts/prepare_wf4_warp_pairs.py` | neu |
-| M | `scripts/train_tp_v2_phase.py` | modifiziert |
-| M | `scripts/train_wf4_warp_head.py` | modifiziert |
-| A | `tests/unit/test_prepare_tfgrid_pairs.py` | neu |
-| A | `tests/unit/test_train_tp_v2_real_dir_vorrang.py` | neu |
-| A | `tests/unit/test_wf4_warp_real_pairs.py` | neu |
+| M | `tests/unit/test_gpu_model_registry.py` | modifiziert |
+| M | `tests/unit/test_gui_progress_single_source.py` | modifiziert |
 | ?? | `study_stimuli/model_ab/manifest.json` | ungetrackt |
 
 ## Entscheidungen

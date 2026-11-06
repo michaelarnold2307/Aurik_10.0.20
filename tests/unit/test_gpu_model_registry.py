@@ -29,8 +29,18 @@ def _neutralize_force_cpu(monkeypatch) -> None:
     (Vollscan Chunk 26): mit gesetztem `AURIK_FORCE_CPU` lieferten die
     GPU-Verdikte CPU-only — vier Fehlschläge; ohne die Variable sind alle zehn
     Tests grün (§G5 (GEBOTE.md): Tests dürfen nicht umgebungsabhängig kippen).
+
+    Befund 2026-11-06: zusätzlich pinnt die Fixture die Geräte-Probe
+    `_gpu_device_present` → True. Ohne Pin liefert die Probe unter
+    CPU-only-Python (System-Python ohne ROCm) False und die beiden
+    Mapping-Tests (migraphx/rocm) kippen auf CPU-only — dieselbe
+    Umgebungsabhängigkeits-Klasse. Der Geräte-abwesende Pfad wird bewusst
+    separat getestet (`test_no_gpu_device_forces_cpu_despite_verdict`).
     """
     monkeypatch.delenv("AURIK_FORCE_CPU", raising=False)
+    import backend.core.gpu_model_registry as _mod
+
+    monkeypatch.setattr(_mod, "_gpu_device_present", lambda: True)
 
 
 def _setup_registry(monkeypatch, entries: dict) -> None:
@@ -54,6 +64,21 @@ def test_verdict_matched_by_filename_suffix(monkeypatch) -> None:
 
 def test_cpu_verdict_forces_cpu_even_on_gpu_request(monkeypatch) -> None:
     _setup_registry(monkeypatch, {"models/x/foo.onnx": {"verdict": "cpu"}})
+    out = apply_gpu_policy(["ROCMExecutionProvider", "CPUExecutionProvider"], "models/x/foo.onnx")
+    assert out == ["CPUExecutionProvider"]
+
+
+def test_no_gpu_device_forces_cpu_despite_verdict(monkeypatch) -> None:
+    """§III.9/§V6 (copilot-instructions.md): ohne echtes GPU-Gerät CPU erzwungen.
+
+    Produktionsbefund: ORT baut ROCm-Sessions auch ohne Gerät (HIP failure 100,
+    nativer Abort) — die Policy darf GPU-EPs nur bei nachgewiesenem Gerät
+    zulassen, unabhängig vom Registry-Verdict.
+    """
+    import backend.core.gpu_model_registry as _mod
+
+    _setup_registry(monkeypatch, {"models/x/foo.onnx": {"verdict": "migraphx"}})
+    monkeypatch.setattr(_mod, "_gpu_device_present", lambda: False)
     out = apply_gpu_policy(["ROCMExecutionProvider", "CPUExecutionProvider"], "models/x/foo.onnx")
     assert out == ["CPUExecutionProvider"]
 
