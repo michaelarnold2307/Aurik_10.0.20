@@ -16,9 +16,15 @@ R --name d3_diffwave_vokal --ckpt-dir models/diffwave_vocal_inpaint --phase matr
   --timeout-s 21600 --retries 1
 
 echo "=== D3-2: BigVGAN-v2 Musik+Vokal ==="
-R --name d3_bigvgan_f3 --ckpt-dir models/bigvgan --phase matrix_d3 \
+# Resume-Pfad = output/f3_bigvgan (Default --out-dir von train_bigvgan_f3.py);
+# models/bigvgan enthaelt nur die vortrainierten Artefakte, KEINE Trainings-
+# checkpoints — der alte Pfad startete den Lauf bei jedem Start von vorn
+# (Korrektur 2026-11-06, Beleg: Manifest
+# docs/reports/current/train_job_d3_bigvgan_f3_fortsetzung_20261105.json:
+# 4x Timeout-Lauf bis Epoche 16 mit Resume auf output/f3_bigvgan).
+R --name d3_bigvgan_f3 --ckpt-dir output/f3_bigvgan --phase matrix_d3 \
   --cmd "env PYTHONPATH=. $PY -B scripts/train_bigvgan_f3.py --epochs 30" \
-  --resume-cmd "env PYTHONPATH=. $PY -B scripts/train_bigvgan_f3.py --epochs 30 --resume models/bigvgan/checkpoint_latest.pt" \
+  --resume-cmd "env PYTHONPATH=. $PY -B scripts/train_bigvgan_f3.py --epochs 30 --resume output/f3_bigvgan/checkpoint_latest.pt" \
   --timeout-s 21600 --retries 1
 
 echo "=== D3-3: FlashSR-Musik-Finetune (out-of-domain -21..-24 dB) ==="
