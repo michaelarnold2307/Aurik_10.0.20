@@ -165,8 +165,28 @@ class TransientPhaseDataset:
 
     def __init__(self, *, synthetic: int, real_dir: Path | None, seed: int) -> None:
         self._seed = int(seed)
-        self._synthetic = int(synthetic)
         self._real_paths: list[Path] = sorted(real_dir.glob("*.wav")) if real_dir and real_dir.is_dir() else []
+        # §V7 (copilot-instructions.md) — Ursache statt Symptom: ein explizit
+        # gesetztes --real-dir darf nicht still von --synthetic (Default 16)
+        # überstimmt werden; sonst trainiert die Kette unauffällig auf
+        # synthetischen Signalen statt auf Musik (§III.11).
+        if self._real_paths:
+            if int(synthetic) > 0:
+                logger.warning(
+                    "--synthetic=%d ignoriert: --real-dir %s liefert %d reale Segmente (§III.11 real hat Vorrang)",
+                    int(synthetic),
+                    real_dir,
+                    len(self._real_paths),
+                )
+            self._synthetic = 0
+        else:
+            self._synthetic = int(synthetic)
+            if real_dir is not None:
+                logger.warning(
+                    "--real-dir %s enthält keine *.wav — Rückfall auf %d synthetische Segmente (§V6 (copilot-instructions.md))",
+                    real_dir,
+                    self._synthetic,
+                )
         self._cache: dict[int, tuple[np.ndarray, np.ndarray]] = {}
 
     def __len__(self) -> int:

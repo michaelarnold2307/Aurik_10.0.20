@@ -1,6 +1,6 @@
 {
   "schema": "aurik.train_job/1",
-  "run_id": "kp10-20261028T121413Z-2ddf37",
+  "run_id": "kp10-20261106T173330Z-30837e",
   "name": "c3_rt60",
   "phase": "kp10",
   "seed": null,
@@ -11,9 +11,9 @@
   "versuche": [
     {
       "exit_code": 0,
-      "sekunden": 10.6,
+      "sekunden": 6.7,
       "timed_out": false,
-      "output_tail": "2026-10-28 13:14:24,486 INFO __main__: Daten-Inventar: 1 RIR-Simulationen gefunden, davon 1 mit GT-RT60 aus Dateiname\n2026-10-28 13:14:24,486 INFO __main__: Manifest geschrieben: models/rt60_regressor/manifest.json (1 Einträge)\n2026-10-28 13:14:24,499 WARNING __main__: Echt-Training auf nur 1 RIR(s) — statistisch nicht belastbar (Datenlücke D-K2-5-Muster). Checkpoint nur als Platzhalter markieren, kein Flag-Flip ohne Gate.\n2026-10-28 13:14:24,500 INFO __main__: R² auf dem Trainingssatz: 1.0000 (Bestimmtheitsmaß, informativ)\n2026-10-28 13:14:24,501 INFO __main__: Checkpoint gespeichert: models/rt60_regressor/rt60_regressor.joblib (seed=42)\n",
+      "output_tail": "2026-11-06 18:33:37,391 INFO __main__: Daten-Inventar: 1 RIR-Simulationen gefunden, davon 1 mit GT-RT60 aus Dateiname\n2026-11-06 18:33:37,391 INFO __main__: Manifest geschrieben: models/rt60_regressor/manifest.json (1 Einträge)\n2026-11-06 18:33:37,403 WARNING __main__: Echt-Training auf nur 1 RIR(s) — statistisch nicht belastbar (Datenlücke D-K2-5-Muster). Checkpoint nur als Platzhalter markieren, kein Flag-Flip ohne Gate.\n2026-11-06 18:33:37,405 INFO __main__: R² auf dem Trainingssatz: 1.0000 (Bestimmtheitsmaß, informativ)\n2026-11-06 18:33:37,406 INFO __main__: Checkpoint gespeichert: models/rt60_regressor/rt60_regressor.joblib (seed=42)\n",
       "versuch": 1,
       "befehl": "env PYTHONPATH=. /home/michael/.local/share/aurik/venv_rocm72/bin/python -B scripts/train_rt60_regressor.py --out models/rt60_regressor/rt60_regressor.joblib --manifest-out models/rt60_regressor/manifest.json"
     }

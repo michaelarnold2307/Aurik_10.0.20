@@ -1,6 +1,6 @@
 {
   "schema": "aurik.train_job/1",
-  "run_id": "domain_adapt-20261028T121357Z-2bd9ee",
+  "run_id": "domain_adapt-20261106T173320Z-480c5b",
   "name": "c2_cantus_domain",
   "phase": "domain_adapt",
   "seed": null,
@@ -11,7 +11,7 @@
   "versuche": [
     {
       "exit_code": 2,
-      "sekunden": 2.7,
+      "sekunden": 2.3,
       "timed_out": false,
       "output_tail": "INFO __main__: Ressourcen-Deckel: 4 Trainings-Threads von 16 Kernen, nice +10 (Host-Schutz, Pfeiler 6)\nERROR __main__: --data fehlt (Manifest-JSONL/Ordner) — oder --smoke fuer den CPU-Smoke\n",
       "versuch": 1,
@@ -19,7 +19,7 @@
     },
     {
       "exit_code": 2,
-      "sekunden": 2.7,
+      "sekunden": 2.2,
       "timed_out": false,
       "output_tail": "INFO __main__: Ressourcen-Deckel: 4 Trainings-Threads von 16 Kernen, nice +10 (Host-Schutz, Pfeiler 6)\nERROR __main__: --data fehlt (Manifest-JSONL/Ordner) — oder --smoke fuer den CPU-Smoke\n",
       "versuch": 2,

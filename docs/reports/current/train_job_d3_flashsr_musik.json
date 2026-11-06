@@ -1,0 +1,13 @@
+{
+  "schema": "aurik.train_job/1",
+  "run_id": "matrix_d3-20261104T152352Z-906e46",
+  "name": "d3_flashsr_musik",
+  "phase": "matrix_d3",
+  "seed": null,
+  "befehl": "env PYTHONPATH=. /home/michael/.local/share/aurik/venv_rocm72/bin/python -B scripts/train_flashsr_f4.py --epochs 30 --data-dir data/musdb18hq --out-dir models/flashsr",
+  "resume_befehl": "env PYTHONPATH=. /home/michael/.local/share/aurik/venv_rocm72/bin/python -B scripts/train_flashsr_f4.py --epochs 30 --data-dir data/musdb18hq --out-dir models/flashsr --resume models/flashsr/checkpoint_latest.pt",
+  "timeout_s": 21600.0,
+  "retries": 1,
+  "versuche": [],
+  "quelle": "scripts/train_job_runner.py"
+}

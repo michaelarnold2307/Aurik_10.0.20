@@ -1,0 +1,13 @@
+{
+  "schema": "aurik.train_job/1",
+  "run_id": "matrix_d3-20261106T092421Z-43f90e",
+  "name": "d3_diffwave_vokal",
+  "phase": "matrix_d3",
+  "seed": 42,
+  "befehl": "env PYTHONPATH=. /home/michael/.local/share/aurik/venv_rocm72/bin/python -B scripts/train_diffwave_vocal_inpaint.py --epochs 30",
+  "resume_befehl": "env PYTHONPATH=. /home/michael/.local/share/aurik/venv_rocm72/bin/python -B scripts/train_diffwave_vocal_inpaint.py --epochs 30 --resume models/diffwave/checkpoint_latest.pt",
+  "timeout_s": 21600.0,
+  "retries": 3,
+  "versuche": [],
+  "quelle": "scripts/train_job_runner.py"
+}
