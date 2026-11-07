@@ -1,6 +1,6 @@
 # TASK_CHANGES — Live-Ledger der aktuellen Aufgabe
 
-> Generiert von `scripts/change_ledger.py snapshot` (Base: `HEAD`, Stand: 2026-11-07 05:19 CET).
+> Generiert von `scripts/change_ledger.py snapshot` (Base: `HEAD`, Stand: 2026-11-07 05:55 CET).
 > CI (`ci-lite.yml` pr-evidence-gate) erzwingt Abdeckung: jede geänderte Code-Datei muss hier stehen.
 
 ## Geänderte Dateien
@@ -8,18 +8,17 @@
 | Status | Pfad | Art |
 |---|---|---|
 | M | `.github/FILE_REGISTRY.md` | modifiziert |
+| M | `TASK_CHANGES.md` | modifiziert |
 | M | `docs/SOTA_HANDOVER.md` | modifiziert |
 | M | `docs/TODOS_SOTA_ROADMAP.md` | modifiziert |
-| M | `docs/reports/current/train_job_d3_diffwave_vokal.json` | modifiziert |
-| M | `scripts/b3_stufenmessung.py` | modifiziert |
-| M | `scripts/flag_freigabe.py` | modifiziert |
+| A | `docs/reports/current/2026-11-07_train_job_runner_idempotent.md` | neu |
 | M | `scripts/gpu_kette3_k4_rest.sh` | modifiziert |
 | M | `scripts/train_job_runner.py` | modifiziert |
 | M | `tests/unit/test_train_job_runner.py` | modifiziert |
-| ?? | `docs/reports/current/2026-11-07_train_job_runner_idempotent.md` | ungetrackt |
-| ?? | `scripts/b3_pfad_wirksamkeit.py` | ungetrackt |
+| ?? | `docs/reports/current/2026-11-07_diffwave_vocal_finetune.json` | ungetrackt |
+| ?? | `scripts/b3_komposition_suche.py` | ungetrackt |
 | ?? | `study_stimuli/model_ab/manifest.json` | ungetrackt |
-| ?? | `tests/unit/test_b3_pfad_wirksamkeit.py` | ungetrackt |
+| ?? | `tests/unit/test_b3_komposition_suche.py` | ungetrackt |
 
 ## Entscheidungen
 
