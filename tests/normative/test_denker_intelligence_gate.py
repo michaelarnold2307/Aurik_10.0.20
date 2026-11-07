@@ -35,25 +35,24 @@ def test_calibration_returns_valid_range():
     from backend.core.phase_effect_catalog import calibrate_phase_intensity
 
     for pid in ["phase_03_denoise", "phase_19_de_esser"]:
-        for snr in (None, 3.0, 6.9, 15.0, 25.0):
-            for panns in (0.0, 0.35, 0.80):
-                v = calibrate_phase_intensity(pid, 1.0, snr_db=snr, panns_singing=panns, era_decade=1970)
-                assert 0.0 <= v <= 1.0, f"{pid} snr={snr}→{v}"
+        for panns in (0.0, 0.35, 0.80):
+            v = calibrate_phase_intensity(pid, 1.0, panns_singing=panns, era_decade=1970)
+            assert 0.0 <= v <= 1.0, f"{pid} panns={panns}→{v}"
 
 
 def test_vocal_reduces_ml_strength():
     from backend.core.phase_effect_catalog import calibrate_phase_intensity
 
-    nv = calibrate_phase_intensity("phase_03_denoise", 1.0, panns_singing=0.0, snr_db=6.9)
-    wv = calibrate_phase_intensity("phase_03_denoise", 1.0, panns_singing=0.35, snr_db=6.9)
+    nv = calibrate_phase_intensity("phase_03_denoise", 1.0, panns_singing=0.0)
+    wv = calibrate_phase_intensity("phase_03_denoise", 1.0, panns_singing=0.35)
     assert wv <= nv, f"Vocal {wv} > NoVocal {nv}"
 
 
 def test_vintage_reduces_ml_strength():
     from backend.core.phase_effect_catalog import calibrate_phase_intensity
 
-    m = calibrate_phase_intensity("phase_03_denoise", 1.0, era_decade=2000, snr_db=6.9)
-    v = calibrate_phase_intensity("phase_03_denoise", 1.0, era_decade=1970, snr_db=6.9)
+    m = calibrate_phase_intensity("phase_03_denoise", 1.0, era_decade=2000)
+    v = calibrate_phase_intensity("phase_03_denoise", 1.0, era_decade=1970)
     assert v <= m, f"Vintage {v} > Modern {m}"
 
 
@@ -62,8 +61,8 @@ def test_low_snr_reduces_ml():
 
     Befund 2026-10-07 (am Code gemessen): Die ursprünglich hier geprüfte Zusage
     „SNR senkt die ML-Stärke" ist NICHT implementiert. ``calibrate_phase_intensity``
-    nimmt ``snr_db`` entgegen, nutzt den Wert in der Stärke-Kette aber nirgends
-    (toter Parameter; Register D-K3-31) — gemessen: SNR 3 → 1,0 == SNR 15 → 1,0
+    nahm ``snr_db`` entgegen, nutzte den Wert in der Stärke-Kette aber nirgends
+    (toter Parameter; Register D-K3-31, 2026-11-07 entfernt) — gemessen: SNR 3 → 1,0 == SNR 15 → 1,0
     bei aktivem Defekt (severity 0,6 > min_severity 0,3).
 
     Der implementierte Schutz ist das RISIKO-Modell: ``get_phase_risk_level``
@@ -77,12 +76,15 @@ def test_low_snr_reduces_ml():
     from backend.core.phase_effect_catalog import calibrate_phase_intensity, get_phase_risk_level
 
     # Vorbedingung §G188: Die Phase ist AKTIV (Defekt über der Anwendungsschwelle).
-    lo = calibrate_phase_intensity("phase_03_denoise", 1.0, defect_severity=0.6, snr_db=3.0)
-    hi = calibrate_phase_intensity("phase_03_denoise", 1.0, defect_severity=0.6, snr_db=15.0)
-    assert lo <= hi, f"SNR=3→{lo} > SNR=15→{hi}: niedriger SNR darf die ML-Stärke nicht verstärken"
-    # Dokumentierte Lücke: identische Stärke ⇒ keine SNR-Regel (D-K3-31). Sobald
-    # eine (belegte) Senkung implementiert wird, fällt dieser Pin bewusst um.
-    assert lo == hi, f"SNR-Regel neu implementiert? lo={lo} hi={hi} → D-K3-31/Register aktualisieren"
+    lo = calibrate_phase_intensity("phase_03_denoise", 1.0, defect_severity=0.6)
+    hi = calibrate_phase_intensity("phase_03_denoise", 1.0, defect_severity=0.6)
+    assert lo == hi
+    # D-K3-31 (geschlossen): Der tote Parameter ``snr_db`` ist ENTFERNT — die
+    # Stärke-Kette ist SNR-neutral. Eine Stärke-Senkung wäre klangverändernd
+    # und bräuchte die fünf Belege (.github/WOHLKLANG_CLAIMS.md); sie ist als
+    # Zielbild im Roadmap hinterlegt (D-K3-21, Gate _SNR_ADAPTIVE_ENABLED).
+    with pytest.raises(TypeError):
+        calibrate_phase_intensity("phase_03_denoise", 1.0, snr_db=3.0)
 
     # Implementierter Schutz: ml_artifact-Risiko bei niedrigem SNR und alter Ära.
     assert get_phase_risk_level("phase_03_denoise", snr_db=3.0, era_decade=1970, panns_singing=0.0) in (

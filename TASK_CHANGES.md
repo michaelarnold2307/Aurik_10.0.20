@@ -1,15 +1,16 @@
 # TASK_CHANGES — Live-Ledger der aktuellen Aufgabe
 
-> Generiert von `scripts/change_ledger.py snapshot` (Base: `HEAD`, Stand: 2026-11-07 06:34 CET).
+> Generiert von `scripts/change_ledger.py snapshot` (Base: `HEAD`, Stand: 2026-11-07 06:57 CET).
 > CI (`ci-lite.yml` pr-evidence-gate) erzwingt Abdeckung: jede geänderte Code-Datei muss hier stehen.
 
 ## Geänderte Dateien
 
 | Status | Pfad | Art |
 |---|---|---|
-| M | `docs/reports/current/2026-11-07_d3_verifikation.md` | modifiziert |
-| M | `docs/reports/current/train_job_d3_diffwave_vokal.json` | modifiziert |
-| ?? | `docs/reports/current/2026-11-07_diffwave_vocal_finetune.json` | ungetrackt |
+| M | `.github/SOTA_DEFICIT_REGISTER.md` | modifiziert |
+| M | `backend/core/phase_effect_catalog.py` | modifiziert |
+| M | `tests/normative/test_denker_intelligence_gate.py` | modifiziert |
+| ?? | `study_stimuli/model_ab/manifest.json` | ungetrackt |
 
 ## Entscheidungen
 
