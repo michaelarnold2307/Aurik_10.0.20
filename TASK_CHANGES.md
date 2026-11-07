@@ -1,25 +1,14 @@
 # TASK_CHANGES — Live-Ledger der aktuellen Aufgabe
 
-> Generiert von `scripts/change_ledger.py snapshot` (Base: `HEAD`, Stand: 2026-11-07 11:54 CET).
+> Generiert von `scripts/change_ledger.py snapshot` (Base: `HEAD`, Stand: 2026-11-07 13:08 CET).
 > CI (`ci-lite.yml` pr-evidence-gate) erzwingt Abdeckung: jede geänderte Code-Datei muss hier stehen.
 
 ## Geänderte Dateien
 
 | Status | Pfad | Art |
 |---|---|---|
-| M | `.github/FILE_REGISTRY.md` | modifiziert |
 | M | `.github/SOTA_DEFICIT_REGISTER.md` | modifiziert |
-| M | `.github/WOHLKLANG_CLAIMS.md` | modifiziert |
-| A | `backend/core/dsp/audibility_budget.py` | neu |
-| M | `backend/core/music_model_flags.py` | modifiziert |
-| M | `backend/core/phases/phase_03_denoise.py` | modifiziert |
-| M | `backend/core/phases/phase_43_ml_deesser.py` | modifiziert |
-| M | `docs/SOTA_HANDOVER.md` | modifiziert |
-| M | `docs/TODOS_SOTA_ROADMAP.md` | modifiziert |
-| M | `scripts/b3_stufenmessung.py` | modifiziert |
-| A | `tests/unit/test_audibility_budget.py` | neu |
-| A | `tests/unit/test_audibility_budget_wiring.py` | neu |
-| ?? | `docs/reports/current/2026-11-07_audibility_budget.md` | ungetrackt |
+| M | `backend/core/defect_scanner.py` | modifiziert |
 | ?? | `study_stimuli/model_ab/manifest.json` | ungetrackt |
 
 ## Entscheidungen

@@ -5357,11 +5357,18 @@ class DefectScanner:
                 try:
                     sos = signal.butter(3, [lo, hi], btype="bandpass", output="sos")
                     b = signal.sosfiltfilt(sos, audio)
-                    an = signal.hilbert(b)
+                    # §PERF-R19 (D-K3-38): Band-Dekadierung vor der Hilbert-Analyse.
+                    # Das Band ist auf [fc±3 %] bandbegrenzt; eine Abtastrate von
+                    # ~8×fc erhält die Momentanfrequenz exakt (Nyquist 4×fc > 1,03·fc)
+                    # und verkürzt Hilbert/angle der tiefen Bänder bis ~16×.
+                    _band_q = max(1, int(round(float(sr) / (8.0 * fc))))
+                    _band_sr = float(sr) / float(_band_q)
+                    _b_d = b[::_band_q]
+                    an = signal.hilbert(_b_d)
                 except Exception:
                     logger.debug("Hilbert-Subband-Analyse fehlgeschlagen", exc_info=True)
                     continue
-                if_b = np.diff(np.unwrap(np.angle(an))) * float(sr) / (2.0 * np.pi)
+                if_b = np.diff(np.unwrap(np.angle(an))) * _band_sr / (2.0 * np.pi)
                 valid = (if_b > fc * 0.85) & (if_b < fc * 1.15)
                 # §7.4c-L3 (2026-09-27): MAGNITUDEN-GATE — in den Noten-
                 # Decay-Tails (Hülle → 0) ist die Hilbert-Phase Rauschen
@@ -5376,8 +5383,10 @@ class DefectScanner:
                 med = float(np.median(if_b[valid]))
                 dev = np.zeros_like(if_b)
                 dev[valid] = 1200.0 * np.log2(np.maximum(if_b[valid] / med, 1e-6))
-                ds = _uniform_smooth(np.where(valid, dev, 0.0), if_win, mode="valid")
-                sub = ds[::dec]
+                ds = _uniform_smooth(
+                    np.where(valid, dev, 0.0), max(3, int(round(if_win * _band_sr / float(sr)))), mode="valid"
+                )
+                sub = ds[:: max(1, int(round(_band_sr / 100.0)))]
                 if len(sub) < 64:
                     continue
                 band_specs.append(np.fft.rfft(sub - np.mean(sub)))
