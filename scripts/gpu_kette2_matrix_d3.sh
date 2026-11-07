@@ -28,9 +28,15 @@ R --name d3_bigvgan_f3 --ckpt-dir output/f3_bigvgan --phase matrix_d3 \
   --timeout-s 21600 --retries 1
 
 echo "=== D3-3: FlashSR-Musik-Finetune (out-of-domain -21..-24 dB) ==="
+# Resume-Anker = <out-dir>/checkpoint_latest.pt. Der Trainer schreibt ihn seit
+# 2026-11-08 nach jeder Epoche; vorher existierte er NIE, und Versuch 2 starb
+# 61 s nach dem 6-h-Timeout in einen harten FileNotFoundError (Manifest
+# docs/reports/current/train_job_d3_flashsr_musik.json) — 6 h GPU-Zeit ohne
+# Resume. Beide Befehle sind deshalb datei-geschuetzt (Muster wie A-SPADE in
+# Kette 3): mit Anker wird fortgesetzt, ohne Anker frisch gestartet.
 R --name d3_flashsr_musik --ckpt-dir models/flashsr --phase matrix_d3 \
-  --cmd "env PYTHONPATH=. $PY -B scripts/train_flashsr_f4.py --epochs 30 --data-dir data/musdb18hq --out-dir models/flashsr" \
-  --resume-cmd "env PYTHONPATH=. $PY -B scripts/train_flashsr_f4.py --epochs 30 --data-dir data/musdb18hq --out-dir models/flashsr --resume models/flashsr/checkpoint_latest.pt" \
+  --cmd "bash -c \"if [ -f models/flashsr/checkpoint_latest.pt ]; then exec env PYTHONPATH=. $PY -B scripts/train_flashsr_f4.py --epochs 30 --data-dir data/musdb18hq --out-dir models/flashsr --resume models/flashsr/checkpoint_latest.pt; else exec env PYTHONPATH=. $PY -B scripts/train_flashsr_f4.py --epochs 30 --data-dir data/musdb18hq --out-dir models/flashsr; fi\"" \
+  --resume-cmd "bash -c \"if [ -f models/flashsr/checkpoint_latest.pt ]; then exec env PYTHONPATH=. $PY -B scripts/train_flashsr_f4.py --epochs 30 --data-dir data/musdb18hq --out-dir models/flashsr --resume models/flashsr/checkpoint_latest.pt; else exec env PYTHONPATH=. $PY -B scripts/train_flashsr_f4.py --epochs 30 --data-dir data/musdb18hq --out-dir models/flashsr; fi\"" \
   --timeout-s 21600 --retries 1
 
 echo "=== KETTE-2-ENDE (DDSP bedingt kein Skill; BEATs-Head/Gender-Head datenblockiert) ==="

@@ -22,6 +22,14 @@ Never-worsen-Bedingung gilt je Segment.
 Aufruf:
   python scripts/train_flashsr_f4.py --smoke          # 3 Schritte, 1 Track
   python scripts/train_flashsr_f4.py --epochs 30      # voller Lauf (GPU)
+  python scripts/train_flashsr_f4.py --epochs 30 --resume models/flashsr/checkpoint_latest.pt
+
+Resume-Anker: ``<out-dir>/checkpoint_latest.pt`` (Konvention aller Trainer
+im Repo, §G5 (copilot-instructions.md)) — wird seit 2026-11-08 nach jeder
+Epoche geschrieben. Vorher existierte der Anker nicht; der Kette-2-Resume-
+Befehl lief deshalb 61 s nach dem 6-h-Timeout in einen harten
+``FileNotFoundError`` (Beleg: ``docs/reports/current/train_job_d3_flashsr_musik.json``,
+Versuch 2).
 """
 
 from __future__ import annotations
@@ -127,7 +135,11 @@ def val_loss(model: torch.nn.Module, device: torch.device, tracks: list[np.ndarr
         for tr in tracks:
             for _ in range(4):
                 lo, hi = crop_pair(tr, rng)
-                y = model(lo.unsqueeze(0).unsqueeze(1).to(device)).squeeze(1).squeeze(1)
+                # ``reshape(-1)`` statt doppeltem ``squeeze(1)``: das Modell liefert
+                # [1, 1, N], der zweite squeeze greift nicht (N != 1) und l1_loss /
+                # MR-STFT bekamen [1, N] gegen [N] — Broadcasting-Warnung im Lauf
+                # (Manifest train_job_d3_flashsr_musik.json) bei identischem Wert.
+                y = model(lo.unsqueeze(0).unsqueeze(1).to(device)).squeeze(1).reshape(-1)
                 hi_g = hi.to(device)
                 n_min = min(hi_g.shape[-1], y.shape[-1])
                 y = y[..., :n_min]
@@ -197,6 +209,14 @@ def main() -> int:
     out_dir = Path(args.out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
     if args.resume:
+        if not Path(args.resume).is_file():
+            logger.error(
+                "Resume-Checkpoint fehlt: %s — Lauf NICHT gestartet. Ein Resume ohne "
+                "Datei verbrennt GPU-Zeit (Befund 2026-11-08: Versuch 2 starb 61 s nach "
+                "dem 6-h-Timeout). Ohne --resume neu starten.",
+                args.resume,
+            )
+            return 2
         res = torch.load(args.resume, map_location="cpu", weights_only=True)  # nosec B614
         model.load_state_dict(res["model"])
         opt.load_state_dict(res.get("optimizer", opt.state_dict()))
@@ -250,6 +270,9 @@ def main() -> int:
         )
         ckpt = {"model": model.state_dict(), "optimizer": opt.state_dict(), "epoch": epoch, "val_a1": v_a1}
         save_guarded(out_dir / f"checkpoint_epoch{epoch}.pt", ckpt)
+        # Stabiler Resume-Anker (Konvention aller Trainer, §G5 (copilot-instructions.md)):
+        # die Ketten verweisen mit --resume auf genau diesen Pfad.
+        save_guarded(out_dir / "checkpoint_latest.pt", ckpt)
         if v_a1 < best_val:
             best_val = v_a1
             patience_left = 5

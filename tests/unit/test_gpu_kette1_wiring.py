@@ -146,3 +146,66 @@ def test_ketten_flags_existieren_in_den_trainern() -> None:
                 )
                 geprueft += 1
     assert geprueft >= 10, f"zu wenige Aufrufe geprüft: {geprueft}"
+
+
+_RESUME_RE = re.compile(r"--resume\s+([^\s\"';]+)")
+_SKIPPT_RE = re.compile(r"scripts/([a-z0-9_]+)\.py")
+
+
+def test_jeder_ketten_resume_anker_wird_vom_trainer_geschrieben() -> None:
+    """Kein ``--resume <pfad>`` darf auf einen Checkpoint zeigen, den der
+    Trainer nie erzeugt.
+
+    Befund 2026-11-08: ``train_flashsr_f4.py`` schrieb nur
+    ``checkpoint_epoch<N>.pt`` und ``best.pt``; der Kette-2-Resume-Befehl
+    zeigte auf ``models/flashsr/checkpoint_latest.pt``. Versuch 2 starb
+    deshalb **61 s nach dem 6-h-Timeout** in einen harten
+    ``FileNotFoundError`` (Manifest ``train_job_d3_flashsr_musik.json``) —
+    sechs GPU-Stunden ohne jede Wiederaufnahme.
+    """
+    geprueft = 0
+    for kette in _KETTEN:
+        for zeile in kette.read_text(encoding="utf-8").splitlines():
+            if zeile.lstrip().startswith("#"):
+                continue
+            treffer = _RESUME_RE.search(zeile)
+            if not treffer:
+                continue
+            ziel_treffer = _SKIPPT_RE.search(zeile)
+            assert ziel_treffer, f"{kette.name}: --resume ohne Trainer: {zeile.strip()}"
+            ziel = _ROOT / "scripts" / f"{ziel_treffer.group(1)}.py"
+            if not ziel.is_file():
+                continue
+            anker = Path(treffer.group(1)).name
+            assert anker in ziel.read_text(encoding="utf-8"), (
+                f"{kette.name}: {ziel.name} erzeugt den Resume-Anker '{anker}' nie "
+                "(Resume würde mit FileNotFoundError sterben)"
+            )
+            geprueft += 1
+    assert geprueft >= 6, f"zu wenige Resume-Pfade geprüft: {geprueft}"
+
+
+def test_flashsr_trainer_schreibt_anker_und_faellt_fail_closed() -> None:
+    """Der Trainer hält die Repo-Konvention ``<out-dir>/checkpoint_latest.pt``
+    und startet ein Resume ohne Datei gar nicht erst (Exit 2 statt Traceback)."""
+    quelle = (_ROOT / "scripts" / "train_flashsr_f4.py").read_text(encoding="utf-8")
+    assert 'save_guarded(out_dir / "checkpoint_latest.pt", ckpt)' in quelle
+    assert "is_file()" in quelle, "Resume-Guard fehlt (FileNotFoundError statt Exit 2)"
+
+
+def test_flashsr_resume_ist_datei_geschuetzt() -> None:
+    """Beide Befehle (Erstlauf + Retry) prüfen den Anker vor dem Resume.
+
+    ``train_job_runner`` nutzt bei Versuch 1 ``--cmd`` und erst danach
+    ``--resume-cmd``; ohne Guard im ``--cmd`` startet jeder Kettenlauf von
+    Epoche 0 und wirft die bereits trainierten Epochen weg.
+    """
+    kette2 = _SCRIPT.with_name("gpu_kette2_matrix_d3.sh")
+    block = _block("D3-3:", kette2)
+    assert block.count("if [ -f models/flashsr/checkpoint_latest.pt ]") == 2, (
+        "Erstlauf und Retry müssen den Anker prüfen"
+    )
+    assert block.count("--resume models/flashsr/checkpoint_latest.pt") == 2
+    for zeile in block.splitlines():
+        if "train_flashsr_f4.py" in zeile:
+            assert "--out-dir models/flashsr" in zeile, f"Anker läge neben dem Out-Dir: {zeile.strip()}"

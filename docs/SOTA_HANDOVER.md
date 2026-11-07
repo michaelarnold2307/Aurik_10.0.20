@@ -3,7 +3,7 @@
 > **Zweck:** Dieses Dokument macht den Zustand von Aurik session-unabhängig
 > lesbar. Jede KI (Kun, Claude Code, Copilot, Codex, Cursor …) soll nach dem
 > Lesen **sofort** wissen, was zu tun ist — auch nach Abbruch, Reboot oder
-> Wochen Pause. Stand: 2026-11-03.
+> Wochen Pause. Stand: 2026-11-08.
 
 ## 0. Mission
 
@@ -34,7 +34,7 @@ Wohlklang für das menschliche Gehör**. Normative Kette: `AGENTS.md` §1
 | 8 | Hör-/Lizenz-Entscheidungen (§9/5–7, AERO, MUSHRA n≥30) | **menschlich** | Katalog A2 |
 | 9 | ~~P1-3-Restdeckung (Audibility-Guards)~~ **ERLEDIGT 2026-11-03:** HNR/Mikrodynamik/Vibrato/Hallucination/Noise-Texture mit Maskierungs-Abdeckung (§G10), 19 Phasen verdrahtet (Commit `2c5e5522`) | — | Report `2026-11-03_p1_3_audibility_restdeckung.md` |
 | 10 | ~~D-K1-3 Material-CRNN-Verdrahtung (95,3 % statt 40,2 %)~~ **ERLEDIGT 2026-11-03:** im Material-Entscheidungspfad hinter `use_material_crnn` (Default AUS — Flag-Flip offen, nur §4-Verfahren) (Commit `28f2947d`) | — | Report `2026-11-03_d_k1_3_material_crnn_wiring.md` |
-| 11 | **Ketten-Verdrahtung (Trainingslücke, kein Modellproblem)** — **BEHOBEN 2026-11-06, GPU-Neulauf offen:** Drei Kette-1-Jobs liefen ins Leere, obwohl die Artefakte lokal liegen. (a) **M9/SOTA-M9** starb nach 5 s am 24-GiB-OOM (`--batch-size 4` ⇒ 4·513 Inter-Frame-LSTM-Sequenzen, 4,42 GiB angefragt) **und** trainierte auf `--synthetic 4000` (Sinus+Rauschen = K1-Domänen-Defizit §III.11) statt auf den vorhandenen `data/tfgrid_pairs` (25 MUSDB-Paare) — ein erfolgreicher synthetischer Lauf hätte den echten Kette-3-Lauf über Job-Lock/Manifest blockiert. Fix: echte Paare + `--batch-size 1 --grad-accum 4` (neues Trainer-Flag, Äquivalenz Batch 2 ⇔ Akkumulation 2 getestet; Kette 3 trägt dieselben Flags). (b) **Cantus/SOTA-M14** rief R3–R5 ohne `--data` auf (Exit 2 „--data fehlt“, 2 s), obwohl `data/cantus_pairs/manifest.jsonl` 3600 Paare hat — jetzt `--data` + fail-closed-Guard; `domain_adapt` nur mit echten `*_degraded.wav`-Paaren (bleibt datenblockiert). Tests: `tests/unit/test_gpu_kette1_wiring.py` (7 — inkl. statischer CLI-Prüfung ALLER vier Ketten gegen die `add_argument`-Flags der Trainer, 56 Aufrufe) + 2 Trainer-Tests. Offen: GPU-Neulauf, Never-worsen-Gate/Hörabnahme (M9), M9-Datenmenge (25 Paare, D-K2-5-Muster). **Kein Flag-Flip.** **Wiederaufnahme-Fix 2026-11-07:** `train_job_runner.py` überspringt Jobs mit `ergebnis: erfolgreich` bei identischem Befehl/Phase/Seed (Manifest bleibt unverändert; `--force` erzwingt Neulauf) — der nächste Kette-1-Neulauf überspringt M8/RT60 und startet direkt M9/Cantus. | autonom (GPU-gebunden) | Report `2026-11-06_ketten_verdrahtung_m9_m14.md` + `2026-11-07_train_job_runner_idempotent.md` |
+| 11 | **Ketten-Verdrahtung (Trainingslücke, kein Modellproblem)** — **BEHOBEN 2026-11-06, GPU-Neulauf offen:** Drei Kette-1-Jobs liefen ins Leere, obwohl die Artefakte lokal liegen. (a) **M9/SOTA-M9** starb nach 5 s am 24-GiB-OOM (`--batch-size 4` ⇒ 4·513 Inter-Frame-LSTM-Sequenzen, 4,42 GiB angefragt) **und** trainierte auf `--synthetic 4000` (Sinus+Rauschen = K1-Domänen-Defizit §III.11) statt auf den vorhandenen `data/tfgrid_pairs` (25 MUSDB-Paare) — ein erfolgreicher synthetischer Lauf hätte den echten Kette-3-Lauf über Job-Lock/Manifest blockiert. Fix: echte Paare + `--batch-size 1 --grad-accum 4` (neues Trainer-Flag, Äquivalenz Batch 2 ⇔ Akkumulation 2 getestet; Kette 3 trägt dieselben Flags). (b) **Cantus/SOTA-M14** rief R3–R5 ohne `--data` auf (Exit 2 „--data fehlt“, 2 s), obwohl `data/cantus_pairs/manifest.jsonl` 3600 Paare hat — jetzt `--data` + fail-closed-Guard; `domain_adapt` nur mit echten `*_degraded.wav`-Paaren (bleibt datenblockiert). Tests: `tests/unit/test_gpu_kette1_wiring.py` (7 — inkl. statischer CLI-Prüfung ALLER vier Ketten gegen die `add_argument`-Flags der Trainer, 56 Aufrufe) + 2 Trainer-Tests. Offen: GPU-Neulauf, Never-worsen-Gate/Hörabnahme (M9), M9-Datenmenge (25 Paare, D-K2-5-Muster). **Kein Flag-Flip.** **Wiederaufnahme-Fix 2026-11-07:** `train_job_runner.py` überspringt Jobs mit `ergebnis: erfolgreich` bei identischem Befehl/Phase/Seed (Manifest bleibt unverändert; `--force` erzwingt Neulauf) — der nächste Kette-1-Neulauf überspringt M8/RT60 und startet direkt M9/Cantus. | autonom (GPU-gebunden) | Report `2026-11-06_ketten_verdrahtung_m9_m14.md` + `2026-11-07_train_job_runner_idempotent.md`. **Resume-Anker-Defekt 2026-11-08 (Kette 2, D3-3 FlashSR) BEHOBEN:** `train_flashsr_f4.py` schrieb nur `checkpoint_epoch<N>.pt`/`best.pt`, nie den Repo-Standardanker `<out-dir>/checkpoint_latest.pt` — der Kette-2-Resume-Befehl zeigte genau darauf und starb 61 s nach dem 6-h-Timeout in `FileNotFoundError`; zusätzlich resumte `--cmd` (Versuch 1) nie, sodass jeder Kettenstart bei Epoche 0 begann und die 5,37 h aus Versuch 1 wegwarf. Fix: Anker je Epoche, `--resume` prüft die Datei fail-closed (Exit 2 statt Traceback), **beide** Kette-2-Befehle datei-geschützt (Aspade-Muster), `val_loss`-Broadcasting bereinigt; Anker aus `checkpoint_epoch3.pt` restauriert (Epoche 3, val 0,3726). Tests 10/10 (`test_gpu_kette1_wiring.py`, 3 neue — davon einer generisch: jeder `--resume`-Pfad der vier Ketten muss vom Trainer erzeugt werden). **Kein Training gestartet** (Kette 3 belegte die GPU), kein Flag-Flip. Report `2026-11-08_flashsr_resume_anker.md` |
 
 **Regel:** Punkte 1–5 ohne Rückfrage erledigen. Punkt 6 NUR über das
 B3-Verfahren (§4). Punkt 8 nie eigenmächtig — abbrechen und begründet
@@ -232,3 +232,31 @@ Permutations-Copy statt 24 Fancy-Index-Copies; `_coherent_subband_fm` mit
 der nächste Hebel (Batch-Residuum, ~1,8×) ändert die Maskierungs-Klassifikation
 ⇒ Hör-Entscheidung nach §4, nicht autonom. Kein Flag-Flip. Report
 `docs/reports/current/2026-11-07_perf_r20_salience_caches.md`.
+
+**Update 2026-11-08 (FlashSR-Resume-Anker, Kette 2 · D3-3):** Das Manifest
+`train_job_d3_flashsr_musik.json` zeigte einen Fehler, der keine Modell-
+sondern eine Wiederaufnahme-Lücke war: Versuch 2 starb **61 s nach dem
+6-h-Timeout** an `FileNotFoundError: models/flashsr/checkpoint_latest.pt`,
+während Versuch 1 zuvor 5,37 h bis Epoche 3 trainiert hatte. Ursache:
+`train_flashsr_f4.py` schrieb den Repo-Standardanker nie (nur
+`checkpoint_epoch<N>.pt`/`best.pt`), der Retry war nicht datei-geschützt, und
+`--cmd` (Versuch 1) resumte grundsätzlich nicht — jeder Kettenstart begann bei
+Epoche 0. Behoben: Anker je Epoche, `--resume` fail-closed (Exit 2 statt
+Traceback), **beide** Kette-2-Befehle datei-geschützt (A-SPADE-Muster),
+`val_loss`-Broadcasting bereinigt; Anker aus `checkpoint_epoch3.pt` restauriert.
+Neuer generischer Regressionstest: **jeder** `--resume`-Pfad der vier Ketten
+muss vom Ziel-Trainer erzeugt werden (die Fehlerklasse, die BigVGAN 2026-11-06
+und FlashSR 2026-11-08 getroffen hat). 10/10 Tests grün, kein Training
+parallel gestartet, **kein Flag-Flip**. Report
+`docs/reports/current/2026-11-08_flashsr_resume_anker.md`.
+
+**GPU-Fenster-Wächter (2026-11-08):** Damit §2 Zeile 7 nicht auf einen Menschen
+wartet, pollt `/tmp/k4_warte.sh` (detached, `setsid` + `nohup`, Log
+`/tmp/k4_warte.log`) alle 300 s und startet
+`scripts/gpu_kette4_modellkoepfe.sh`, sobald **kein** `train_job_runner` und
+**keine** `gpu_kette<N>` mehr läuft. Nach einem Reboot ist der Wächter weg und
+muss neu gesetzt werden (Kette 4 dann direkt starten). **Kette 2 läuft bewusst
+nicht automatisch an** — sie beginnt mit D3-2 BigVGAN (bisher 0 Erfolge, ~6 h
+je Versuch) und würde D3-3 FlashSR um ~12 h verzögern; der restaurierte Anker
+(`models/flashsr/checkpoint_latest.pt`, Epoche 3) wartet auf den nächsten
+Kette-2- oder Einzeljob-Start.
