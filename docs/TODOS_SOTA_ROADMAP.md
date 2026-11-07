@@ -205,9 +205,9 @@ als 3 offene Kandidaten hat.
 | BigVGAN-v2 | Vocoder/Repair (HR-V1) | Musik | 🟡 **F3 exportiert + Parität belegt** (2026-10-06) — Rollout am Budget gesperrt (12,7–13,2× RT je Passage) |
 | **SGMSE+** | Tape-Chain Diffusion-Inpainting | **Sprache** | 🔄 **F7 TRAINING ABGESCHLOSSEN 2026-10-05** — `finetuned/sgmse_musik_best.ckpt` = **epoch 80 / val loss 6,1525** (am Artefakt gemessen; der frühere "Epoch 24, Val 88,3"-Wert stammte vom Sept-Stopp und ist überholt — `docs/reports/current/2026-10-09_ml_sota_validierung.md` A.2), ONNX↔ckpt Parität max\|Δ\|=6,7e-5 (σ=0.5) neu belegt; `use_sgmse_musik=False` = bewusste Sperre bis Drei-Wege-A/B + Hörabnahme — §III.11 copilot-instructions.md; **B3-Nachmessung 2026-11-05: 0/6 Vorteile, Δ ≈ 0 (Schalter-Wirkung im Pfad nicht nachweisbar) ⇒ ABGELEHNT** (fail-closed, `docs/reports/current/2026-11-05_sitzung_w2w3_b3_nachmessung.md` §3.2) — **Nachtrag 2026-11-06: als Qualitätsurteil ungültig** — Δ ≈ 0 war ein No-Op-Artefakt (Dauer-Achsen-Defekt in Verarbeitungsschritt 49 ließ den Schalter wirkungslos; behoben + Regressionstests, Report `docs/reports/current/2026-11-06_w3_pfadklaerung.md`); Neumessung nur über §4 mit Vertrags-Referenz-Songs |
 | **UTMOSv2** | MOS-Orakel in FeedbackChain/ExcellenceOptimizer | **Sprache (BVCC)** | ⬜ **F8 NEU** — Musik-MOS, MUSHRA-kalibriert |
-| **resemblyzer VoiceEncoder** | Vokal-Identität/Witness | **Sprache (LibriSpeech)** | ⬜ **F9 NEU** — Musik-Vokal-Finetune |
-| **VersaSingMOS** | Gesangs-MOS-Gates | Gesang (nahe Musik) | ⬜ **F10 NEU** — Kalibrierung auf verarbeitete Musik-Vocals |
-| BW-Reconstructor v5 | Lacquer/Shellac HF-Band | Musik (selbst trainiert) | ⬜ **F11 NEU** — A1-Gate 0,73 < 1,02 nicht bestanden → Re-Training |
+| **resemblyzer VoiceEncoder** | Vokal-Identität/Witness | **Sprache (LibriSpeech)** | 🔧 **F9 IMPLEMENTIERT 2026-11-06** — Musik-Vokal-Finetune-Trainer `scripts/train_voiceencoder_finetune.py` (MUSDB18-HQ, NT-Xent, Never-worsen-Gate; CLI exakt Kette-4 R3, 21 Vertragstests grün); Echt-Training + Identitäts-Gate + Hörordnungs-Abnahme offen (Commit `d06c765f`) |
+| **VersaSingMOS** | Gesangs-MOS-Gates | Gesang (nahe Musik) | 🔧 **F10 IMPLEMENTIERT 2026-11-06** — Kalibrierer `scripts/calibrate_singmos_music.py` (5 Effektketten deterministisch, Produktions-Score-Pfad, affine Kalibrierung; CLI exakt Kette-4 R4); Lauf im trainingsfreien Fenster, Read-Side-Verdrahtung bleibt aus (Commit `d06c765f`) |
+| BW-Reconstructor v5 | Lacquer/Shellac HF-Band | Musik (selbst trainiert) | 🔧 **F11 TEILERLEDIGT** — A1-HF-Gain-Gate nach Re-Training **BESTANDEN** (2026-10-27, kalibriert 51,0 ≥ 1,02; `scripts/validate_bw_v5_hf_gate.py`, D-K1-5); offen nur noch **Hör-Sign-off** vor `use_bw_v5` (§4-Verfahren, +17-dB-HF-Boost-Risiko) |
 | BANQUET | Vinyl-Denoise | Musik/Synth | 🔧 **F12 UMGESETZT 2026-10-03** — Real-Vinyl-Paare: Trainingscode `scripts/train_banquet_vinyl_finetune.py` vorhanden (GPU-Lauf + ΔSDR-Gate offen) |
 | MP-SENet | Denoise (ex) | Sprache | ❌ de-wired nach Negativmessung (SOTA-ML-V3: −5,9…−8,5 dB) — KEIN Training |
 | Whisper-tiny | Semantische Konditionierung (DiT) | Sprache/Web | ⏭ bewusst nur Konditionierung, kein Wohlklang-Generator |
@@ -344,8 +344,8 @@ F14.
 | **RT60-Regressor (präzise)** | Dereverb-Steuerung statt Witness-Cap | konservativer T60-Witness läuft (V1) |
 | **Referenzfreie Musik-Qualitätsmetrik** | Wohlklang-Entscheid ohne Referenz | UTMOS richtungs-**blind/invertiert** (NEGATIVBEFUND); MuQ ist der einzige richtungsvalidierte Zeuge (3/3) |
 | **Human-Panel (MUSHRA, §3.6)** | Kalibrierung des MUSHRA-Proxys | Hörtest-Daten fehlen |
-| **Song-Ebene-Analytik (P0-1)** | Per-Chunk→Per-Song: 53× RT → 32×-Guard | größter Performance-Hebel, offen |
-| **Audibility (JND) auf allen Schwellwert-Guards (P1-3)** | Defekte unter die Hörschwelle drücken statt Null-Messung | teilweise offen |
+| **Song-Ebene-Analytik (P0-1)** | Per-Chunk→Per-Song: 53× RT → 32×-Guard | **ERLEDIGT** — song-globale Analytik seit P0-1 (D-K4-3); RT-Messung 2026-11-05 abgeschlossen (Median 32,19× RT, Handover §2 Zeile 4); verbleibend: D3-Verifikation im trainingsfreien Fenster |
+| **Audibility (JND) auf allen Schwellwert-Guards (P1-3)** | Defekte unter die Hörschwelle drücken statt Null-Messung | **ERLEDIGT 2026-11-03** — HNR/Mikrodynamik/Vibrato/Hallucination/Noise-Texture mit Maskierungs-Abdeckung (§G10), 19 Phasen verdrahtet (Commit `2c5e5522`, Handover §2 Zeile 9) |
 
 ### C. Pfad-/Hygiene-Lücken (Fehlerfreiheit der Pfade)
 
