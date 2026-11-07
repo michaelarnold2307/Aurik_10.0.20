@@ -102,7 +102,10 @@ README-Drift, stale Paritäts-Reports — jede Panne kostete Stunden
   Tabelle); Paritäts-Reports tragen den Hash des gemessenen Checkpoints
   (das `cantus_dit.parity.json`-„stale"-Muster wird damit unmöglich).
 - [x] **Job-Runner mit Auto-Resume** statt manuellem Relaunch (Ursache der
-  Doppel-Läufe); Resume-Befehl steht dann im Manifest.
+  Doppel-Läufe); Resume-Befehl steht dann im Manifest. **2026-11-07 idempotent:**
+  erfolgreiche Manifeste (Befehl/Phase/Seed identisch) werden übersprungen,
+  `--force` erzwingt einen Neulauf — kein Re-Training erledigter Modelle und
+  kein Überschreiben des Erfolgs-Manifests beim Ketten-Neustart.
 
 ## Pfeiler 5 — Fallback-Quote als Qualitäts-KPI
 

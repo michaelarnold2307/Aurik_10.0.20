@@ -90,3 +90,94 @@ def test_alle_versuche_fehlgeschlagen(tmp_path: Path) -> None:
     m = json.loads(man.read_text(encoding="utf-8"))
     assert m["ergebnis"] == "fehlgeschlagen"
     assert [v["exit_code"] for v in m["versuche"]] == [3, 3], "Resume wurde versucht"
+
+
+def _zaehl_befehl(counter: Path, zeichen: str = "x") -> list[str]:
+    """Kommando, das bei jeder echten Ausfuehrung ein Zeichen anhaengt."""
+    code = (
+        "from pathlib import Path; "
+        f"p = Path(r'{counter}'); "
+        f"p.write_text((p.read_text() if p.exists() else '') + '{zeichen}')"
+    )
+    return [sys.executable, "-c", code]
+
+
+def test_erfolgreicher_job_wird_uebersprungen(tmp_path: Path) -> None:
+    """Wiederaufnahme darf erledigte Jobs nicht erneut auf die GPU schicken."""
+    ckpt = tmp_path / "ckpt"
+    man = tmp_path / "man.json"
+    counter = tmp_path / "counter.txt"
+    cmd = _zaehl_befehl(counter)
+    kwargs = {
+        "name": "skip",
+        "ckpt_dir": ckpt,
+        "cmd": cmd,
+        "resume_cmd": PY_OK,
+        "phase": "x",
+        "seed": 42,
+        "timeout_s": 30,
+        "retries": 0,
+        "manifest_path": man,
+    }
+    assert run_job(**kwargs) == 0
+    vorher = man.read_text(encoding="utf-8")
+    assert run_job(**kwargs) == 0
+    assert counter.read_text(encoding="utf-8") == "x", "kein zweiter Trainingslauf"
+    assert man.read_text(encoding="utf-8") == vorher, "Erfolgs-Manifest bleibt unveraendert"
+
+
+def test_force_erzwingt_neulauf(tmp_path: Path) -> None:
+    ckpt = tmp_path / "ckpt"
+    man = tmp_path / "man.json"
+    counter = tmp_path / "counter.txt"
+    cmd = _zaehl_befehl(counter)
+    kwargs = {
+        "name": "force",
+        "ckpt_dir": ckpt,
+        "cmd": cmd,
+        "resume_cmd": PY_OK,
+        "phase": "x",
+        "seed": 42,
+        "timeout_s": 30,
+        "retries": 0,
+        "manifest_path": man,
+    }
+    assert run_job(**kwargs) == 0
+    assert run_job(**kwargs, force=True) == 0
+    assert counter.read_text(encoding="utf-8") == "xx", "--force trainiert erneut"
+
+
+def test_geaenderter_befehl_trainiert_neu(tmp_path: Path) -> None:
+    ckpt = tmp_path / "ckpt"
+    man = tmp_path / "man.json"
+    counter = tmp_path / "counter.txt"
+    kwargs = {
+        "name": "neu",
+        "ckpt_dir": ckpt,
+        "resume_cmd": PY_OK,
+        "phase": "x",
+        "seed": 42,
+        "timeout_s": 30,
+        "retries": 0,
+        "manifest_path": man,
+    }
+    assert run_job(cmd=_zaehl_befehl(counter, "x"), **kwargs) == 0
+    assert run_job(cmd=_zaehl_befehl(counter, "y"), **kwargs) == 0
+    assert counter.read_text(encoding="utf-8") == "xy", "geaenderter Befehl ist ein neuer Job"
+
+
+def test_unlesbares_manifest_blockiert_nicht(tmp_path: Path) -> None:
+    man = tmp_path / "man.json"
+    man.write_text("{kaputt", encoding="utf-8")
+    code = run_job(
+        name="kaputt",
+        ckpt_dir=tmp_path / "ckpt",
+        cmd=PY_OK,
+        resume_cmd=PY_OK,
+        phase="x",
+        timeout_s=30,
+        retries=0,
+        manifest_path=man,
+    )
+    assert code == 0, "unlesbares Manifest blockiert den Job nicht"
+    assert json.loads(man.read_text(encoding="utf-8"))["ergebnis"] == "erfolgreich"

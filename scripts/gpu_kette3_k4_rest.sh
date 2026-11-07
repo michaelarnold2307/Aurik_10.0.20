@@ -2,8 +2,8 @@
 # GPU-Trainingskette 3 — K4-Rest (SOTA-M8 A-SPADE + SOTA-M9 TF-GridNet Echt-Daten).
 # Dauerhaftes Repo-Artefakt: jederzeit neu startbar (bash scripts/gpu_kette3_k4_rest.sh)
 # — Job-Locks + Manifeste verhindern Doppellaeufe (train_job_runner.py, siehe
-# docs/SOTA_HANDOVER.md §3). Läuft parallel zur D3-Kette (A-SPADE ist ein
-# kleines 1-D-CNN, VRAM-Kopf vorhanden) — kleine Modelle zuerst, dann M9.
+# docs/SOTA_HANDOVER.md §3). NICHT parallel zur D3-Kette starten (§5: keine
+# parallelen Trainings) — kleine Modelle zuerst, dann M9.
 #
 # WICHTIG (K1-Vermeidung): M9 trainiert NUR mit echten Musik-Paaren
 # (data/tfgrid_pairs/{clean,noisy} via scripts/prepare_tfgrid_pairs.py).

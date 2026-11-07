@@ -34,11 +34,44 @@ Wohlklang für das menschliche Gehör**. Normative Kette: `AGENTS.md` §1
 | 8 | Hör-/Lizenz-Entscheidungen (§9/5–7, AERO, MUSHRA n≥30) | **menschlich** | Katalog A2 |
 | 9 | ~~P1-3-Restdeckung (Audibility-Guards)~~ **ERLEDIGT 2026-11-03:** HNR/Mikrodynamik/Vibrato/Hallucination/Noise-Texture mit Maskierungs-Abdeckung (§G10), 19 Phasen verdrahtet (Commit `2c5e5522`) | — | Report `2026-11-03_p1_3_audibility_restdeckung.md` |
 | 10 | ~~D-K1-3 Material-CRNN-Verdrahtung (95,3 % statt 40,2 %)~~ **ERLEDIGT 2026-11-03:** im Material-Entscheidungspfad hinter `use_material_crnn` (Default AUS — Flag-Flip offen, nur §4-Verfahren) (Commit `28f2947d`) | — | Report `2026-11-03_d_k1_3_material_crnn_wiring.md` |
-| 11 | **Ketten-Verdrahtung (Trainingslücke, kein Modellproblem)** — **BEHOBEN 2026-11-06, GPU-Neulauf offen:** Drei Kette-1-Jobs liefen ins Leere, obwohl die Artefakte lokal liegen. (a) **M9/SOTA-M9** starb nach 5 s am 24-GiB-OOM (`--batch-size 4` ⇒ 4·513 Inter-Frame-LSTM-Sequenzen, 4,42 GiB angefragt) **und** trainierte auf `--synthetic 4000` (Sinus+Rauschen = K1-Domänen-Defizit §III.11) statt auf den vorhandenen `data/tfgrid_pairs` (25 MUSDB-Paare) — ein erfolgreicher synthetischer Lauf hätte den echten Kette-3-Lauf über Job-Lock/Manifest blockiert. Fix: echte Paare + `--batch-size 1 --grad-accum 4` (neues Trainer-Flag, Äquivalenz Batch 2 ⇔ Akkumulation 2 getestet; Kette 3 trägt dieselben Flags). (b) **Cantus/SOTA-M14** rief R3–R5 ohne `--data` auf (Exit 2 „--data fehlt“, 2 s), obwohl `data/cantus_pairs/manifest.jsonl` 3600 Paare hat — jetzt `--data` + fail-closed-Guard; `domain_adapt` nur mit echten `*_degraded.wav`-Paaren (bleibt datenblockiert). Tests: `tests/unit/test_gpu_kette1_wiring.py` (7 — inkl. statischer CLI-Prüfung ALLER vier Ketten gegen die `add_argument`-Flags der Trainer, 56 Aufrufe) + 2 Trainer-Tests. Offen: GPU-Neulauf, Never-worsen-Gate/Hörabnahme (M9), M9-Datenmenge (25 Paare, D-K2-5-Muster). **Kein Flag-Flip.** | autonom (GPU-gebunden) | Report `2026-11-06_ketten_verdrahtung_m9_m14.md` |
+| 11 | **Ketten-Verdrahtung (Trainingslücke, kein Modellproblem)** — **BEHOBEN 2026-11-06, GPU-Neulauf offen:** Drei Kette-1-Jobs liefen ins Leere, obwohl die Artefakte lokal liegen. (a) **M9/SOTA-M9** starb nach 5 s am 24-GiB-OOM (`--batch-size 4` ⇒ 4·513 Inter-Frame-LSTM-Sequenzen, 4,42 GiB angefragt) **und** trainierte auf `--synthetic 4000` (Sinus+Rauschen = K1-Domänen-Defizit §III.11) statt auf den vorhandenen `data/tfgrid_pairs` (25 MUSDB-Paare) — ein erfolgreicher synthetischer Lauf hätte den echten Kette-3-Lauf über Job-Lock/Manifest blockiert. Fix: echte Paare + `--batch-size 1 --grad-accum 4` (neues Trainer-Flag, Äquivalenz Batch 2 ⇔ Akkumulation 2 getestet; Kette 3 trägt dieselben Flags). (b) **Cantus/SOTA-M14** rief R3–R5 ohne `--data` auf (Exit 2 „--data fehlt“, 2 s), obwohl `data/cantus_pairs/manifest.jsonl` 3600 Paare hat — jetzt `--data` + fail-closed-Guard; `domain_adapt` nur mit echten `*_degraded.wav`-Paaren (bleibt datenblockiert). Tests: `tests/unit/test_gpu_kette1_wiring.py` (7 — inkl. statischer CLI-Prüfung ALLER vier Ketten gegen die `add_argument`-Flags der Trainer, 56 Aufrufe) + 2 Trainer-Tests. Offen: GPU-Neulauf, Never-worsen-Gate/Hörabnahme (M9), M9-Datenmenge (25 Paare, D-K2-5-Muster). **Kein Flag-Flip.** **Wiederaufnahme-Fix 2026-11-07:** `train_job_runner.py` überspringt Jobs mit `ergebnis: erfolgreich` bei identischem Befehl/Phase/Seed (Manifest bleibt unverändert; `--force` erzwingt Neulauf) — der nächste Kette-1-Neulauf überspringt M8/RT60 und startet direkt M9/Cantus. | autonom (GPU-gebunden) | Report `2026-11-06_ketten_verdrahtung_m9_m14.md` + `2026-11-07_train_job_runner_idempotent.md` |
 
 **Regel:** Punkte 1–5 ohne Rückfrage erledigen. Punkt 6 NUR über das
 B3-Verfahren (§4). Punkt 8 nie eigenmächtig — abbrechen und begründet
 berichten.
+
+## 2b. Muster zur Qualitätssteigerung (Stand 2026-11-07)
+
+Muster-Analyse (Manager-Sitzung 2026-11-07): Das Regelwerk ist ein starker
+Never-worsen-**Bremser**, aber ohne **Beschleuniger** (0/13 W-Stufen aktiv;
+Einzel-Flips nie signifikant; Kombinationen nie gemessen). Sechs Hebel,
+Priorität C→B→A→D→E/F:
+
+- **C — Pfad-Reachability-Gate (ERLEDIGT, Commit `df512a5e`):**
+  `scripts/b3_pfad_wirksamkeit.py` + Integration in `b3_stufenmessung.py` +
+  `flag_freigabe.py`. Keine Ablehnung mehr auf Mess-Artefakten (W-3-Lehre).
+- **B — Kompositions-Suche (ERLEDIGT, Commit `5a94c0a6`):**
+  `scripts/b3_komposition_suche.py` — Lazy-Forward-Selection über
+  W-2/W-3/W-8/W-9/W-13 mit never-worsen-Schranke; Ergebnis = KANDIDAT für
+  EINE Hör-Session. **AUSFÜHREN im trainingsfreien Fenster:**
+  `nice -n 15 python3 -B scripts/b3_komposition_suche.py --clips 3 --windows 2`
+- **A — Audibility-Budget (OFFEN, spezifiziert):** klangwirksam ⇒ flag-gesperrt
+  (Default AUS, bit-identisch). Kanonische Bausteine bereits identifiziert:
+  `backend/core/erb_auditory_masking.py::ERBMaskingThreshold(centre_freq_hz,
+  erb_width_hz, threshold_db, masking_type)`,
+  `backend/core/dsp/audibility_gate.py::defect_audibility_from_signal`
+  (Zwicker, Produktions-Wahrheit),
+  `backend/core/dsp/psychoacoustics.py::compute_bark_energy_profile`.
+  NICHT unverdrahtet anlegen (§G9: sonst stilles Kapital K0) — Modul + Flag
+  `use_audibility_budget` + Pilot-Verdrahtung in 2–3 Phasen (Kandidaten:
+  phase_03 Denoise-Stärke, phase_19 De-Esser, phase_43 Sibilanten) als EINE
+  Welle, danach B3-/Kompositions-Messung im freien Fenster + Hör-Sign-off.
+- **D — MUSHRA n≥30 (menschlicher Multiplikator):** Protokoll §10 + Builder
+  fertig; entriegelt D-K4-4 (F8), D-K4-11 (F15), Proxy-Kalibrierung.
+- **E — RT-Budget-Ledger:** 32×-Budget allozierbar machen
+  (`PerformanceGuard.get_budget_truth_report` existiert; D-K3-37 offen).
+- **F — Forensik-Monitor:** WP-3-Forensik + musik_mos/defektlast als
+  Dauer-Wohlklang-Zeuge je Lauf (nur gerichtete Fälle zur Hör-Instanz).
 
 ## 3. Zustand & Wiederherstellung nach Abbruch/Reboot
 
@@ -53,9 +86,14 @@ berichten.
   - **Reihenfolge bei Neustart:** 1 → 2 → 3 → 4. Kette 2 wartet selbst auf
     Kette 1; Kette 3/4 nur starten, wenn kein Training mehr läuft. Danach
     `pgrep -af gpu_kette` + `pgrep -af train_job_runner` prüfen.
-  - **Kein Doppelläuft-Schutz nötig:** `scripts/train_job_runner.py` hält
-    Job-Locks (`models/*/.train_job.lock`) und schreibt Manifeste
+  - **Doppelläuft-Schutz + idempotente Wiederaufnahme:** `train_job_runner.py`
+    hält Job-Locks (`models/*/.train_job.lock`) und schreibt Manifeste
     (`docs/reports/current/train_job_*.json`) inkl. Auto-Resume-Befehl.
+    Ein Manifest mit `ergebnis: erfolgreich` und identischem Befehl/Phase/Seed
+    wird beim Ketten-Neustart **übersprungen** (kein GPU-Verbrauch, kein
+    Überschreiben des Erfolgs-Manifests); `--force` erzwingt einen Neulauf
+    (z. B. nach geänderten Trainingsdaten). Unlesbare Manifeste blockieren
+    nicht, sie werden mit `logger.warning()` neu aufgebaut (§V6).
   - Status prüfen: Manifeste lesen (`ergebnis`, `versuche`) + `rocm-smi`.
     Laufende Kette erkennen: `pgrep -f gpu_kette`.
   - **D3-Verifikation (trainingsfreies Fenster):** Nach Abschluss der
@@ -156,3 +194,18 @@ neues `--grad-accum` (Äquivalenztest), Cantus-`--data` + fail-closed-Guards,
 Trainer-Tests, alle Gates grün. **GPU-Neulauf steht aus** (Kette 2 belegt die
 GPU), **kein Flag-Flip.** Report
 `docs/reports/current/2026-11-06_ketten_verdrahtung_m9_m14.md`.
+
+**Update 2026-11-07 (idempotente Ketten-Wiederaufnahme):** Befund aus den
+Manifesten: `train_job_m8_aspade.json` ist `erfolgreich`, `train_job_m9_tf_gridnet.json`
+und die drei Cantus-Jobs sind `fehlgeschlagen`. Ein Neustart der Kette 1 hätte
+M8 **erneut** trainiert und dabei das Erfolgs-Manifest überschrieben. Fix:
+`train_job_runner.py` vergleicht vor dem Start `ergebnis`, `befehl`, `phase`
+und `seed`; bei erfolgreichem, unverändertem Job wird ohne GPU-Zeit
+übersprungen, `--force` erzwingt einen Neulauf. Unlesbare Manifeste werden
+mit `logger.warning()` neu aufgebaut (§V6), nicht still übersprungen. Tests:
+`tests/unit/test_train_job_runner.py` 8/8, `tests/unit/test_gpu_kette1_wiring.py`
+7/7. **Wirkung:** Der nächste Kette-1-Neulauf überspringt M8/RT60 und startet
+direkt M9 (echte Paare, `--batch-size 1 --grad-accum 4`) und Cantus (`--data`).
+**Stand:** Kette 2 läuft (D3-1 Versuch 2/2 nach 21600-s-Timeout), Kette 3/4
+warten auf das freie GPU-Fenster; **kein paralleles Training, kein Flag-Flip.**
+Report `docs/reports/current/2026-11-07_train_job_runner_idempotent.md`.
