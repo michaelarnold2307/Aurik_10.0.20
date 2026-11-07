@@ -39,8 +39,15 @@ Versuch 1 (Timeout, `ergebnis` fehlt). Ursache: Eine parallele Session hat
 während der Sitzung mit `git reset`/Pre-Commit-Stash den Arbeitsbaum auf einen
 älteren Stand zurückgesetzt; der vom Runner geschriebene Erfolgsstand
 (Versuch 2 + `ergebnis: erfolgreich`) ging dabei verloren. Der Trainer-Report
-und das Ketten-Log sind davon unberührt und belegen den Erfolg. Es wurde
-**kein** Manifest-Eintrag manuell erfunden oder nachgetragen.
+und das Ketten-Log sind davon unberührt und belegen den Erfolg. Der
+Erfolgsstand wurde nach dem Reset **transparent rekonstruiert**: Versuch 2
+(Exit 0) und `ergebnis: erfolgreich` stammen aus `/tmp/k2.log`; der
+Checkpoint-Hash wurde am Artefakt gemessen
+(`sha256 66be83d48f7e2ba7dce56c9f698ae01b7e840c09686c6833416be437c7993835`,
+mtime 05:35:27). Nicht rekonstruierbare Felder sind als `null`/leer markiert
+(`sekunden`, `output_tail`), der Eintrag trägt `rekonstruiert: true`. Kein
+Messwert wurde erfunden. Wirkung: Der nächste Kette-2-Lauf überspringt D3-1
+(Skip-Bedingung erfüllt), statt 6 h erneut zu trainieren.
 
 ## 3. Einordnung
 

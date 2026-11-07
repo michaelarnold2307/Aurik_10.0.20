@@ -8,6 +8,31 @@
   "resume_befehl": "env PYTHONPATH=. /home/michael/.local/share/aurik/venv_rocm72/bin/python -B scripts/train_diffwave_vocal_inpaint.py --epochs 30 --resume models/diffwave/checkpoint_latest.pt",
   "timeout_s": 21600.0,
   "retries": 1,
-  "versuche": [],
+  "versuche": [
+    {
+      "exit_code": -15,
+      "sekunden": 21600.3,
+      "timed_out": true,
+      "output_tail": "MIOpen(HIP): Warning [IsEnoughWorkspace] [GetSolutionsFallback WTI] Solver <GemmWrwUniversal>, workspace required: 12570624, provided ptr: 0 size: 0\nMIOpen(HIP): Warning [IsEnoughWorkspace] [EvaluateInvokers] Solver <GemmWrwUniversal>, workspace required: 12570624, provided ptr: 0 size: 0\nMIOpen(HIP): Warning [IsEnoughWorkspace] [GetSolutionsFallback WTI] Solver <GemmBwdRest>, workspace required: 12570624, provided ptr: 0 size: 0\nMIOpen(HIP): Warning [IsEnoughWorkspace] [EvaluateInvokers] Solver <GemmBwdRest>, workspace required: 12570624, provided ptr: 0 size: 0\nMIOpen(HIP): Warning [IsEnoughWorkspace] [GetSolutionsFallback WTI] Solver <GemmWrwUniversal>, workspace required: 12570624, provided ptr: 0 size: 0\nMIOpen(HIP): Warning [IsEnoughWorkspace] [EvaluateInvokers] Solver <GemmWrwUniversal>, workspace required: 12570624, provided ptr: 0 size: 0\nMIOpen(HIP): Warning [IsEnoughWorkspace] [GetSolutionsFallback WTI] Solver <GemmBwdRest>, workspace required: 12570624, provided ptr: 0 size: 0\nMIOpen(HIP): Warning [IsEnoughWorkspace] [EvaluateInvokers] Solver <GemmBwdRest>, workspace required: 12570624, provided ptr: 0 size: 0\nMIOpen(HIP): Warning [IsEnoughWorkspace] [GetSolutionsFallback WTI] Solver <GemmWrwUniversal>, workspace required: 12570624, provided ptr: 0 size: 0\nMIOpen(HIP): Warning [IsEnoughWorkspace] [EvaluateInvokers] Solver <GemmWrwUniversal>, workspace required: 12570624, provided ptr: 0 size: 0\nMIOpen(HIP): Warning [IsEnoughWorkspace] [GetSolutionsFallback WTI] Solver <GemmBwdRest>, workspace required: 12570624, provided ptr: 0 size: 0\nMIOpen(HIP): Warning [IsEnoughWorkspace] [EvaluateInvokers] Solver <GemmBwdRest>, workspace required: 12570624, provided ptr: 0 size: 0\nMIOpen(HIP): Warning [IsEnoughWorkspace] [GetSolutionsFallback WTI] Solver <GemmWrwUniversal>, workspace required: 12570624, provided ptr: 0 size: 0\nMIOpen(HIP): Warning [IsEnoughWorkspace] [EvaluateInvokers] Solver <GemmWrwUniversal>, workspace required: 12570624, provided ptr: 0 size: 0\n",
+      "versuch": 1,
+      "befehl": "env PYTHONPATH=. /home/michael/.local/share/aurik/venv_rocm72/bin/python -B scripts/train_diffwave_vocal_inpaint.py --epochs 30"
+    },
+    {
+      "exit_code": 0,
+      "sekunden": null,
+      "timed_out": false,
+      "output_tail": "",
+      "versuch": 2,
+      "befehl": "env PYTHONPATH=. /home/michael/.local/share/aurik/venv_rocm72/bin/python -B scripts/train_diffwave_vocal_inpaint.py --epochs 30 --resume models/diffwave/checkpoint_latest.pt",
+      "rekonstruiert": true,
+      "quelle": "/tmp/k2.log: Ergebnis: erfolgreich; JOB_EXIT=0"
+    }
+  ],
+  "checkpoint_hashes": {
+    "checkpoint_latest.pt": "66be83d48f7e2ba7dce56c9f698ae01b7e840c09686c6833416be437c7993835"
+  },
+  "checkpoint_pfad": "models/diffwave/checkpoint_latest.pt",
+  "ergebnis": "erfolgreich",
+  "hinweis": "Erfolgsstand nach externem git reset aus /tmp/k2.log und docs/reports/current/2026-11-07_diffwave_vocal_finetune.json rekonstruiert; Versuch 2 endete mit Exit 0, Trainer-Gate never_worsen_per_gap=true. Sekunden/Tail von Versuch 2 nicht rekonstruierbar.",
   "quelle": "scripts/train_job_runner.py"
 }
