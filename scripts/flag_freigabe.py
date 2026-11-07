@@ -89,6 +89,21 @@ def objektivbeschluss_ok(data: dict, flag: str) -> tuple[bool, str]:
     mp = Path(messung) if Path(messung).is_absolute() else PROJECT_ROOT / messung
     if not mp.is_file():
         return False, f"Mess-Report fehlt: {messung}"
+    # Pfad-Wirksamkeits-Gate (Muster C, W-3-Lehre, Commit c0ff1a26): Eine
+    # Messung ohne nachgewiesene Flag-Wirkung ist kein Qualitätsurteil über
+    # das Modell, sondern ein Mess-Artefakt — fail-closed ablehnen.
+    try:
+        roh = json.loads(mp.read_text(encoding="utf-8"))
+    except Exception:
+        roh = {}
+    if roh.get("messung_ungueltig") is True or roh.get("pfad_wirksam") is False:
+        grund = "; ".join(roh.get("wirksam_probleme", ["unbekannt"]))[:200]
+        return False, f"Messung ungültig — Flag-Pfad nicht nachweislich wirksam (W-3-Lehre): {grund}"
+    if "pfad_wirksam" not in roh and "messung_ungueltig" not in roh:
+        log.warning(
+            "Mess-Report %s ohne Pfad-Wirksamkeits-Felder (Altformat) — Gate greift nicht, §V6 (copilot-instructions.md) dokumentiert",
+            messung,
+        )
     ziel = (data.get("zielmetrik") or {}).get("name", "?")
     return True, f"Objektivbeschluss gueltig: {ziel} auf {data.get('referenz_songs')} Songs (Hoer-Vorbehalt)"
 

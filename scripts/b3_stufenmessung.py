@@ -66,8 +66,13 @@ def _schalter_setzen(name: str, wert: object) -> None:
     setattr(modul, attr, wert)
 
 
-def _restore_fenster(audio: np.ndarray, sr: int) -> tuple[np.ndarray, dict]:
-    """Produktionspfad wie im Kind der Release-Pipeline (FAST-Profil)."""
+def _restore_fenster(audio: np.ndarray, sr: int) -> tuple[np.ndarray, dict, dict]:
+    """Produktionspfad wie im Kind der Release-Pipeline (FAST-Profil).
+
+    Rückgabe: (mono_audio, fallback_ledger_snapshot, restore_metadata) —
+    die Metadaten speisen das Pfad-Wirksamkeits-Gate (Muster C, W-3-Lehre,
+    scripts/b3_pfad_wirksamkeit.py).
+    """
     from backend.core.fallback_ledger import install_log_counter, snapshot
     from backend.core.fallback_ledger import reset as ledger_reset
     from backend.core.performance_guard import QualityMode
@@ -93,7 +98,8 @@ def _restore_fenster(audio: np.ndarray, sr: int) -> tuple[np.ndarray, dict]:
         a = a.T
     if a.ndim == 2:
         a = a.mean(axis=1)
-    return a, snapshot()
+    meta = dict(getattr(ergebnis, "metadata", {}) or {})
+    return a, snapshot(), meta
 
 
 def _bewerte(audio: np.ndarray, sr: int) -> tuple[float, float]:
@@ -105,8 +111,14 @@ def _bewerte(audio: np.ndarray, sr: int) -> tuple[float, float]:
 
 
 def stufe_messen(name: str, fenster: list[tuple[str, np.ndarray, int]], seed: int) -> dict:
-    """Misst eine Stufe blind: Paare je Fenster, Auswertung erst nach Entblindung."""
+    """Misst eine Stufe blind: Paare je Fenster, Auswertung erst nach Entblindung.
+
+    Seit Muster C (W-3-Lehre) inklusive Pfad-Wirksamkeits-Gate: jede Messung
+    trägt Flag-Readback, Wirkungs-Fußabdruck und (falls konfiguriert) den
+    Modellzeugen je Seite — `erfuellt` gilt nur bei nachgewiesener Wirkung.
+    """
     from scripts.ab_harness import sign_test_two_sided
+    from scripts.b3_pfad_wirksamkeit import fussabdruck, pfad_wirksam_ok, zeugnis
 
     rng = random.Random(f"{seed}:{name}")
     schluessel: dict[str, str] = {}
@@ -115,10 +127,17 @@ def stufe_messen(name: str, fenster: list[tuple[str, np.ndarray, int]], seed: in
 
     for i, (clip, audio, sr) in enumerate(fenster):
         _schalter_setzen(name, False)
-        aus_audio, snap_aus = _restore_fenster(audio, sr)
+        _modul, _attr, _gelesen_aus = _schalter_lesen(name)
+        aus_audio, snap_aus, meta_aus = _restore_fenster(audio, sr)
         _schalter_setzen(name, True)
-        an_audio, snap_an = _restore_fenster(audio, sr)
+        _modul, _attr, _gelesen_an = _schalter_lesen(name)
+        an_audio, snap_an, meta_an = _restore_fenster(audio, sr)
         defekt_gesamt += int(snap_aus["by_art"].get("defekt", 0)) + int(snap_an["by_art"].get("defekt", 0))
+
+        # Pfad-Wirksamkeit (Muster C): Fußabdruck + Zeugen je Seite
+        fuss = fussabdruck(an_audio, aus_audio)
+        zeuge_an = zeugnis(meta_an, name)
+        zeuge_aus = zeugnis(meta_aus, name)
 
         # Blindheit: Seiten verlosen, Bewertung sieht nur "links"/"rechts"
         links_ist_an = rng.random() < 0.5
@@ -131,7 +150,17 @@ def stufe_messen(name: str, fenster: list[tuple[str, np.ndarray, int]], seed: in
         ):
             mos, last = _bewerte(sig, sr)
             werte[seite] = {"musik_mos": mos, "defektlast": last}
-        paare.append({"trial_id": tid, "blindwerte": werte})
+        paare.append(
+            {
+                "trial_id": tid,
+                "blindwerte": werte,
+                "flag_an_gelesen": bool(_gelesen_an),
+                "flag_aus_gelesen": bool(_gelesen_aus),
+                "fussabdruck_rms": fuss,
+                "zeuge_an": zeuge_an,
+                "zeuge_aus": zeuge_aus,
+            }
+        )
 
     # Entblindung + Auswertung
     zeilen = []
@@ -157,7 +186,11 @@ def stufe_messen(name: str, fenster: list[tuple[str, np.ndarray, int]], seed: in
     signifikant = bool(p_wert < 0.05 and sum(mos_deltas) > 0)
     b1_sauber = defekt_gesamt == 0
 
-    erfuellt = bool(never_worsen and signifikant and b1_sauber)
+    # Pfad-Wirksamkeit (Muster C, W-3-Lehre): ohne Wirkungs-Nachweis ist die
+    # Messung kein Qualitätsurteil — fail-closed ungültig.
+    wirksam, wirksam_report = pfad_wirksam_ok(paare)
+
+    erfuellt = bool(never_worsen and signifikant and b1_sauber and wirksam)
     return {
         "stufe": name,
         "zeilen": zeilen,
@@ -167,6 +200,10 @@ def stufe_messen(name: str, fenster: list[tuple[str, np.ndarray, int]], seed: in
         "signifikant": signifikant,
         "defekt_fallbacks": defekt_gesamt,
         "b1_sauber": b1_sauber,
+        "pfad_wirksam": wirksam,
+        "fussabdruck_max_rms": wirksam_report["fussabdruck_max_rms"],
+        "wirksam_probleme": wirksam_report["probleme"],
+        "messung_ungueltig": not wirksam,
         "erfuellt": erfuellt,
     }
 
@@ -192,11 +229,14 @@ def beschluss_schreiben(name: str, messung: dict, out_dir: Path, seed: int) -> P
         "signifikant": bool(messung["signifikant"]),
         "defekt_fallbacks": messung["defekt_fallbacks"],
         "blind_ausgewertet": True,
+        "pfad_wirksam": bool(messung.get("pfad_wirksam", False)),
         "messung": "",
         "zielmetrik": {"name": "musik_mos (G-2)", "vorteile": messung["vorteile"], "p_wert": messung["p_wert"]},
         "ergebnis": "ERFUELLT" if erfuellt else "ABGELEHNT",
         "quelle": "scripts/b3_stufenmessung.py",
     }
+    if messung.get("messung_ungueltig"):
+        daten["messung_ungueltig_grund"] = "; ".join(messung.get("wirksam_probleme", ["unbekannt"]))[:400]
     ziel = out_dir / f"b3_objektivbeschluss_{name}.json"
     ziel.write_text(json.dumps(daten, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
     roh = out_dir / f"b3_stufenmessung_{name}.json"
