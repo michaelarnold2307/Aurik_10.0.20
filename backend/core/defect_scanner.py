@@ -5569,6 +5569,17 @@ class DefectScanner:
         dieser Features bit-exakt (§G5 (copilot-instructions.md)) und
         verhaltensneutral, anders das in c4307207 verworfene Verdict-Memo.
         """
+        # §PERF-R19c (D-K3-38): Analyse-Dekadierung auf ~11 kHz — die
+        # Centroid-MODULATION (Flutter 0,5–200 Hz) bleibt vollständig erhalten;
+        # der Anteil über 5,5 kHz trägt zur Flutter-Detektion nicht bei.
+        # 4× kürzere FFT-Fenster bei identischer 100-fps-Rasterung (§G5 (copilot-instructions.md):
+        # resample_poly ist deterministisch).
+        if sample_rate > 12000:
+            from scipy.signal import resample_poly as _rp_wf
+
+            _g_wf = int(np.gcd(11025, int(sample_rate)))
+            audio = _rp_wf(np.asarray(audio, dtype=np.float64), 11025 // _g_wf, int(sample_rate) // _g_wf)
+            sample_rate = 11025
         n = len(audio)
         win_len = max(256, int(0.020 * sample_rate))
         hop = max(1, win_len // 2)
