@@ -1369,7 +1369,7 @@ F14.
 
 | Rolle | Modell | Stand |
 | --- | --- | --- |
-| Vokal-Langlücken | DiffWave-Vokal-Finetune (HAUPTWEG) | Checkpoint lokal, **GPU-Finetune fehlt** (S1: −1,7 dB → Ziel ΔSDR ≥ 0) |
+| Vokal-Langlücken | DiffWave-Vokal-Finetune (HAUPTWEG) | **GPU-Finetune 2026-11-07 erfolgreich, S1-Gate bestanden:** Val-SDR **+3,23 dB** vs. Zero-Shot **−3,01 dB**, `never_worsen_per_gap: true` (Seed 42); Deploy/Hörabnahme offen (`2026-11-07_d3_verifikation.md`) |
 | Vokal-Langlücken 375–1500 ms | GaCELA-Vokal-Finetune (Pfad B) | Trainingscode lokal, **GPU-Finetune fehlt** |
 | Vokal-Extremfälle/Identität | RVC (MIT) | rmvpe.pt/.onnx ✓, hubert_base.pt ✓, hubert_model.onnx ✓ |
 | Vokal-Enhancement (Phase 03) | Flow-Matching-DiT (MIIPHER_DiT) | flow_matching_dit.onnx ✓, Plugin ✓, Guard ✓ — **bestätigt** |
