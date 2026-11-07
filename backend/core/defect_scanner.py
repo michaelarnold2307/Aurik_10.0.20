@@ -5468,7 +5468,12 @@ class DefectScanner:
                 try:
                     sos = signal.butter(3, [lo, hi], btype="bandpass", output="sos")
                     b = signal.sosfiltfilt(sos, audio)
-                    env = np.abs(signal.hilbert(b))
+                    # §PERF-R19b (D-K3-38): Band-Dekadierung vor der Hilbert-
+                    # Hüllkurve — das Band ist auf [fc±12 %] begrenzt, die
+                    # interessierende AM liegt bei 20-200 Hz (Nyquist 4×fc ≫).
+                    _band_q = max(1, int(round(float(sr) / (8.0 * fc))))
+                    _band_sr = float(sr) / float(_band_q)
+                    env = np.abs(signal.hilbert(b[::_band_q]))
                 except Exception:
                     logger.debug("Scrape-AM-Band fehlgeschlagen", exc_info=True)
                     continue
@@ -5476,8 +5481,8 @@ class DefectScanner:
                 if med < 1e-9:
                     continue
                 rel = env / med - 1.0
-                rel_s = _uniform_smooth(rel, win)
-                sub = rel_s[::dec]
+                rel_s = _uniform_smooth(rel, max(3, int(round(win * _band_sr / float(sr))) | 1))
+                sub = rel_s[:: max(1, int(round(_band_sr / 400.0)))]
                 if len(sub) < 128:
                     continue
                 band_specs.append(np.fft.rfft(sub - np.mean(sub)))
