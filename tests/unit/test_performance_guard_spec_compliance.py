@@ -116,3 +116,33 @@ class TestPerformanceGuardSpecCompliance:
             remaining_phases=2,
         )
         assert should_skip_mandatory is False
+
+
+class TestDK337BudgetWahrheit:
+    """D-K3-37 (geschlossen 2026-11-07): Die 32×-Norm ist ehrlich deklariert.
+
+    Durchsetzung (`enforce_limit=True`) ist Opt-in; der Standardpfad ist
+    MONITORING (budget_violations, kein Abbruch) mit dem UI-Watchdog als
+    Enforcement-Oberfläche. Aussagen über Laufzeit-Begrenzung sind NUR bei
+    aktivem enforce_limit belegt.
+    """
+
+    def test_guard_docstring_deklariert_monitoring_wahrheit(self):
+        import pathlib
+
+        src = (pathlib.Path(__file__).resolve().parents[2] / "backend" / "core" / "performance_guard.py").read_text(
+            encoding="utf-8"
+        )
+        assert "D-K3-37" in src
+        assert "MONITORING-Instrument" in src
+        assert "NUR bei aktivem enforce_limit belegt" in src
+
+    def test_config_kommentar_nennt_budget_eigentuemer(self):
+        import pathlib
+
+        src = (pathlib.Path(__file__).resolve().parents[2] / "backend" / "core" / "unified_restorer_v3.py").read_text(
+            encoding="utf-8"
+        )
+        assert "RT-Budget-Durchsetzung (32×-Norm §2.38 KMV)" in src
+        assert "Budget-Eigentümer" in src
+        assert 'Flag-Name "3x" ist Legacy' in src

@@ -5,6 +5,13 @@ Performance Guard for Aurik 10.0.0 - adaptive Real-Time Enforcement
 Überwacht Processing-Performance und stellt sicher, dass das mode-adaptive
 Real-Time-Budget eingehalten wird. Implementiert adaptive Quality-Reduction bei Bedarf.
 
+D-K3-37 (2026-11-07) — Budget-Wahrheit: Die Durchsetzung (`enforce_limit=True`)
+ist Opt-in; im Standardpfad ist der Guard ein MONITORING-Instrument
+(budget_violations im Ergebnis-JSON, kein Abbruch). Enforcement-Oberfläche des
+Produktionspfads ist der UI-Watchdog; Budget-Eigentümer der 32×-Norm
+(§2.38 KMV) ist das Export-Quality-Gate. Aussagen über „Begrenzung der
+Laufzeit" sind NUR bei aktivem enforce_limit belegt.
+
 Performance Target: FAST max 8× Real-Time; Quality/Maximum max 32× Real-Time.
 
 Key Features:

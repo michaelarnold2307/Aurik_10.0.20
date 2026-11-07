@@ -110,7 +110,7 @@ class RestorationConfig:
     phase_skipping_conservative: bool = False  # Conservative skipping (safer)
     enable_phase_gate: bool = True  # §2.29 PMGG — deaktivierbar via --no-phase-gate
     num_cores: int = 4
-    enforce_3x_rt: bool = False  # RT enforcement — opt-in only; standard paths use no_rt_limit=True + UI watchdog
+    enforce_3x_rt: bool = False  # RT-Budget-Durchsetzung (32×-Norm §2.38 KMV) — Opt-in; Standardpfade: Monitoring + UI-Watchdog als Enforcement-Oberfläche (Budget-Eigentümer); Flag-Name "3x" ist Legacy — das normative Budget ist 32× RT (D-K3-37)
     enable_psychoacoustic_enhancement: bool = True
     global_plan: Any | None = None  # MusikalischerGlobalplan.StilbewussterRestaurierungsplan (§Dach)
     # P2-2: Deployment mode — PRODUCT = stable paths only, RESEARCH = experimental SOTA
