@@ -81,6 +81,13 @@ unbekannt.
   `use_bigvgan_f3_studio` → `use_bw_v5` → `use_wf4_warp_head` /
   `use_tp_v2_phase` / `use_rt60_regressor` / `use_aspade_declipper` /
   `use_tf_gridnet_quality`.
+- [x] **A-1 Audibility-Budget verdrahtet (2026-11-07, Wirkungsmessung offen):**
+  `use_audibility_budget` (Default AUS, bit-identisch) begrenzt die Dämpfung
+  in `phase_03_denoise` und `phase_43_ml_deesser` auf den Hörbarkeits-Überschuss
+  über der Maskierungsschwelle (`backend/core/dsp/audibility_budget.py`,
+  Johnston-Kern bit-identisch zu `masking_model`). **Kein Release-Kandidat**,
+  bis `scripts/b3_stufenmessung.py --stages A-1 --clips 3` + blindes A/B ≥ 3
+  Songs + Hör-Sign-off vorliegen (D-K3-71).
 - [ ] **Schwache Kandidaten archivieren statt pflegen:** Whisper-Denoiser
   (D-K0-4, §9/5 der A2-Liste in
   `docs/reports/current/2026-10-25_sota_massnahmen_katalog.md`),

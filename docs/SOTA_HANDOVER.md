@@ -55,21 +55,26 @@ Priorität C→B→A→D→E/F:
   W-2/W-3/W-8/W-9/W-13 mit never-worsen-Schranke; Ergebnis = KANDIDAT für
   EINE Hör-Session. **AUSFÜHREN im trainingsfreien Fenster:**
   `nice -n 15 python3 -B scripts/b3_komposition_suche.py --clips 3 --windows 2`
-- **A — Audibility-Budget (OFFEN, spezifiziert):** klangwirksam ⇒ flag-gesperrt
-  (Default AUS, bit-identisch). Kanonische Bausteine bereits identifiziert:
-  `backend/core/erb_auditory_masking.py::ERBMaskingThreshold(centre_freq_hz,
-  erb_width_hz, threshold_db, masking_type)`,
-  `backend/core/dsp/audibility_gate.py::defect_audibility_from_signal`
-  (Zwicker, Produktions-Wahrheit),
-  `backend/core/dsp/psychoacoustics.py::compute_bark_energy_profile`.
-  NICHT unverdrahtet anlegen (§G9: sonst stilles Kapital K0) — Modul + Flag
-  `use_audibility_budget` + Pilot-Verdrahtung in 2–3 Phasen (Kandidaten:
-  phase_03 Denoise-Stärke, phase_19 De-Esser, phase_43 Sibilanten) als EINE
-  Welle, danach B3-/Kompositions-Messung im freien Fenster + Hör-Sign-off.
+- **A — Audibility-Budget (VERDRAHTET 2026-11-07, Flag AUS; Wirkungsmessung offen):**
+  klangwirksam ⇒ flag-gesperrt (Default AUS, bit-identisch; 30 Vertragstests).
+  `backend/core/dsp/audibility_budget.py` definiert das Budget als
+  Hörbarkeits-Überschuss `max(0, L_defekt − (T_signal − Marge))`; der
+  Johnston-Kern ist bit-identisch zu `masking_model.compute_masking_threshold_db`
+  (Diff 0,0). Pilot-Verdrahtung in **zwei** Phasen: `phase_03_denoise.py::
+  _denoise_mono_mrsa` (rauschbewusst je Zone; Masker = spektrale Subtraktion
+  `max(|Y|²−|N|²,0)`, damit rauschdominierte Bänder nicht fälschlich gekappt
+  werden) und `phase_43_ml_deesser.py::_deess_channel` (Sibilantenband aus dem
+  Masker ausgenommen). Phase 19 bleibt bewusst außen vor — sie hat bereits
+  `apply_psychoacoustic_masking_clamp` + PSY-A1. Nächster Schritt im
+  trainingsfreien Fenster: `nice -n 15 python3 -B scripts/b3_stufenmessung.py
+  --stages A-1 --clips 3`, RT-Kosten je Zone, blindes A/B; Aktivierung NUR
+  über `scripts/flag_freigabe.py --objektivbeschluss` nach Hör-Sign-off.
+  Beleg: `docs/reports/current/2026-11-07_audibility_budget.md`, D-K3-71.
 - **D — MUSHRA n≥30 (menschlicher Multiplikator):** Protokoll §10 + Builder
   fertig; entriegelt D-K4-4 (F8), D-K4-11 (F15), Proxy-Kalibrierung.
 - **E — RT-Budget-Ledger:** 32×-Budget allozierbar machen
-  (`PerformanceGuard.get_budget_truth_report` existiert; D-K3-37 offen).
+  (`PerformanceGuard.get_budget_truth_report` existiert; D-K3-37 ist seit
+  2026-11-07 geschlossen — offen bleibt die Allokation im Ledger).
 - **F — Forensik-Monitor:** WP-3-Forensik + musik_mos/defektlast als
   Dauer-Wohlklang-Zeuge je Lauf (nur gerichtete Fälle zur Hör-Instanz).
 

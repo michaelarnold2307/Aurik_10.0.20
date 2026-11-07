@@ -86,6 +86,11 @@ use_rt60_regressor: bool = False  # SOTA-M15 (KP-10): RT60-Regressor auf RIR-Paa
 # Ersatz des konservativen T60-Witness-Caps (phase_20/49). Aktivierung erst nach Gate auf
 # RIR-Referenzmaterial + Hörordnungs-Sign-off (§v10.802 copilot-instructions.md).
 # False ⇒ das heuristische T60-Witness-Cap bleibt unverändert.
+use_audibility_budget: bool = False  # Hörordnung §4 (hoerordnung.instructions.md): Dämpfung nur so weit,
+# wie der Defekt die Maskierungsschwelle des verbleibenden Materials übersteigt (Audibility-Budget,
+# backend/core/dsp/audibility_budget.py; Pilot-Verdrahtung phase_03/phase_43). False ⇒ bit-identisches
+# Bestandsverhalten. Aktivierung nur über §4-Verfahren (scripts/flag_freigabe.py) nach B3-/Kompositions-
+# Messung + Hör-Sign-off; keine Ableitung aus Mess-Artefakten (W-3-Lehre 2026-11-06).
 
 
 # ── Model Paths (relative to project root) ──────────────────────────────────

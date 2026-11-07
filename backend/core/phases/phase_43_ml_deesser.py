@@ -380,6 +380,24 @@ def _deess_channel(
     if strength_cap < 1.0:
         gr_smooth = np.maximum(gr_smooth, max(strength_cap, 0.3))
 
+    # 7b. Audibility-Budget (Hörordnung §4 (hoerordnung.instructions.md), Flag `use_audibility_budget`, Default AUS):
+    # Nur so tief dämpfen, wie der Sibilant die Maskierungsschwelle des übrigen
+    # Materials übersteigt — verhindert Lispeln/Überunterdrückung. Der Boden hebt
+    # ausschließlich an (nie über 1.0); bei Fehlern bleibt der De-Esser unverändert.
+    try:
+        from backend.core.dsp.audibility_budget import audibility_budget_enabled, band_budget_curve
+
+        if audibility_budget_enabled():
+            _budget_floor, _budget_stats = band_budget_curve(ch, sr, (freq_low, freq_high))
+            if _budget_floor.size == gr_smooth.size:
+                gr_smooth = np.maximum(gr_smooth, _budget_floor.astype(gr_smooth.dtype))
+                logger.debug("Hörbarkeits-Grenze Stufe 43: %s", _budget_stats.as_dict())
+    except Exception as _budget_exc:  # §V6 (copilot-instructions.md): nie blockierend
+        logger.warning(
+            "Hörbarkeits-Grenze in Phase 43 nicht anwendbar (%s) — De-Esser unverändert (§V6, copilot-instructions.md)",
+            _budget_exc,
+        )
+
     # 8. Anwenden: Sibilantenband dämpfen
     processed = ch - sib_band + sib_band * gr_smooth
 

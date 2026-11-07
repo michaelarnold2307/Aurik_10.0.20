@@ -56,6 +56,10 @@ def _schalter_lesen(name: str) -> tuple[object, str, object]:
         "W-5": (mmf, "use_df_musik"),
         "W-6": (mmf, "use_miipher_dit"),
         "W-7": (mmf, "use_harmonic_inpainting"),
+        # A-1 (2026-11-07): Audibility-Budget — Hörbarkeits-Überschuss als
+        # Obergrenze der Dämpfung (phase_03/phase_43). Kein W-Flag; eigene
+        # Stufe, damit die B3-/Kompositions-Messung sie adressieren kann.
+        "A-1": (mmf, "use_audibility_budget"),
     }
     modul, attr = mapping[name]
     return modul, attr, getattr(modul, attr)

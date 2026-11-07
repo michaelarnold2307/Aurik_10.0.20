@@ -3013,6 +3013,7 @@ class DenoisePhase(PhaseInterface):
                 "scientific_ref": "Cohen & Berdugo IMCRA (2002), Cohen OMLSA (2003), Cappé (1994)",
                 "benchmark": "iZotope RX Voice De-noise Pro, CEDAR DNS One",
                 "algorithm_version": "3.0_omlsa_imcra",
+                "audibility_budget": dict(getattr(self, "_audibility_budget_stats", {}) or {}),
                 "execution_time_seconds": execution_time,
                 "tdp_mode": _tdp_mode,
                 "tdp_requested": _tdp_enabled,
@@ -3129,6 +3130,8 @@ class DenoisePhase(PhaseInterface):
         # MRSA Multi-Resolution Spectral Analysis (§DSP-Spezialregeln)
         # 5-zone optimal STFT windows + PGHI reconstruction — replaces fixed nperseg=2048.
         # VERBOTEN: arbitrary FFT sizes (§DSP-Spezialregeln).
+        # §Audibility-Budget: Zähler je Aufruf zurücksetzen (§V8 (copilot-instructions.md) Song-Isolation).
+        self._audibility_budget_stats: dict[str, float | bool] = {}
         audio_filtered, gain_multiband_mean, gain_smoothed_mean = self._denoise_mono_mrsa(
             audio, params, self.sample_rate, noise_start, noise_end
         )
@@ -3184,7 +3187,11 @@ class DenoisePhase(PhaseInterface):
         reduction_db = self._measure_noise_reduction(audio, audio_filtered)
         musical_suppression = gain_smoothed_mean / (gain_multiband_mean + 1e-10)
 
-        return audio_filtered, {"reduction_db": reduction_db, "musical_suppression": musical_suppression}
+        return audio_filtered, {
+            "reduction_db": reduction_db,
+            "musical_suppression": musical_suppression,
+            "audibility_budget": dict(self._audibility_budget_stats),
+        }
 
     def _denoise_mono_mrsa(
         self,
@@ -3271,6 +3278,21 @@ class DenoisePhase(PhaseInterface):
         except Exception as _msk_exc_03:
             logger.debug(
                 "§2.62 Verarbeitungsschritt_03 Masking-Guard nicht verfügbar (nicht blockierend): %s", _msk_exc_03
+            )
+
+        # §Audibility-Budget (Hörordnung §4 (hoerordnung.instructions.md), Flag `use_audibility_budget`, Default AUS):
+        # Pro Zone Begrenzung der Dämpfung auf den Hörbarkeits-Überschuss der
+        # Rauschschätzung über der Maskierungsschwelle des Signalanteils.
+        _budget_on = False
+        _budget_stats_acc: dict[str, float] = {}
+        try:
+            from backend.core.dsp.audibility_budget import audibility_budget_enabled
+
+            _budget_on = audibility_budget_enabled()
+        except Exception as _budget_flag_exc:  # §V6 (copilot-instructions.md): nie blockierend
+            logger.warning(
+                "Hörbarkeits-Grenze: Schalter nicht lesbar (%s) — Grenze bleibt AUS (§V6, copilot-instructions.md)",
+                _budget_flag_exc,
             )
 
         for zone_name, zone_win, zone_hop, f_low, f_high in MRSA_ZONES:
@@ -3380,6 +3402,31 @@ class DenoisePhase(PhaseInterface):
                     G_ms[_hf_prot_mask, :] = 1.0
 
                 G_tr = preserve_transients(mag_z, G_ms, params["transient_preserve"])
+
+                # §Audibility-Budget: finale Untergrenze der Zonen-Gains. Hebt nur an
+                # (nie über 1.0); bei Fehlern bleibt G_tr unverändert (§V6 (copilot-instructions.md)).
+                if _budget_on:
+                    try:
+                        from backend.core.dsp.audibility_budget import apply_gain_budget, spectrum_budget_db
+
+                        _budget_db, _budget_band_idx, _budget_zone_stats = spectrum_budget_db(mag_z, nm_z, f_z, sr)
+                        G_tr, _budget_apply_stats = apply_gain_budget(G_tr, _budget_band_idx, _budget_db)
+                        _budget_stats_acc["zones"] = _budget_stats_acc.get("zones", 0.0) + 1.0
+                        _budget_stats_acc["max_budget_db"] = max(
+                            _budget_stats_acc.get("max_budget_db", 0.0), _budget_zone_stats.max_budget_db
+                        )
+                        _budget_stats_acc["bound_fraction_sum"] = (
+                            _budget_stats_acc.get("bound_fraction_sum", 0.0) + _budget_apply_stats.bound_fraction
+                        )
+                        _budget_stats_acc["mean_lift_db_sum"] = (
+                            _budget_stats_acc.get("mean_lift_db_sum", 0.0) + _budget_apply_stats.mean_lift_db
+                        )
+                    except Exception as _budget_zone_exc:  # §V6 (copilot-instructions.md): nie blockierend
+                        logger.warning(
+                            "Hörbarkeits-Grenze Zone %s nicht anwendbar (%s) — Gain unverändert (§V6 (copilot-instructions.md))",
+                            zone_name,
+                            _budget_zone_exc,
+                        )
 
                 all_gain_mb_means.append(float(np.mean(G_mb)))
                 all_gain_sm_means.append(float(np.mean(G_sm)))
@@ -3542,6 +3589,19 @@ class DenoisePhase(PhaseInterface):
             gain_mb_mean,
             gain_sm_mean,
         )
+
+        if _budget_on and _budget_stats_acc.get("zones", 0.0) > 0.0:
+            _n_zones = _budget_stats_acc["zones"]
+            self._audibility_budget_stats = {
+                "applied": True,
+                "zones": int(_n_zones),
+                "max_budget_db": round(_budget_stats_acc.get("max_budget_db", 0.0), 3),
+                "mean_bound_fraction": round(_budget_stats_acc.get("bound_fraction_sum", 0.0) / _n_zones, 4),
+                "mean_lift_db": round(_budget_stats_acc.get("mean_lift_db_sum", 0.0) / _n_zones, 3),
+            }
+            logger.info("Hörbarkeits-Grenze Stufe 03: %s", self._audibility_budget_stats)
+        else:
+            self._audibility_budget_stats = {"applied": False}
 
         return audio_out, gain_mb_mean, gain_sm_mean
 
