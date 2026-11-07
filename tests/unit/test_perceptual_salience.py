@@ -656,3 +656,58 @@ class TestEdgeCases:
         result = pse.annotate_defect_scores(audio, sr, dr)
         assert result.scores[DefectType.CLICKS].metadata["custom_key"] == "preserved"
         assert "perceptual_salience" in result.scores[DefectType.CLICKS].metadata
+
+
+class TestPerfR20CacheContracts:
+    """§PERF-R20 (D-K3-38): Caches im Salience-Pfad dürfen NICHTS verändern."""
+
+    def test_event_fft_bins_bit_identisch_zur_unkached_referenz(self):
+        """Gecachtes Fenster/Bins == frisch gebaute numpy-Referenz (bit-exakt)."""
+        from backend.core import perceptual_salience as ps
+
+        sr = 16000
+        rng = np.random.default_rng(7)
+        mono = (0.2 * rng.standard_normal(sr)).astype(np.float64)
+        pse = PerceptualSalienceEstimator()
+
+        t0, t1 = 0.25, 0.253
+        s, e = int(t0 * sr), int(t1 * sr)
+        segment = mono[s:e]
+        n_fft = max(256, min(pse._GLOBAL_N_FFT, len(segment)))
+        segment = np.pad(segment, (0, n_fft - len(segment))) if len(segment) < n_fft else segment
+        freqs = np.fft.rfftfreq(n_fft, 1.0 / sr)
+        spectrum = np.abs(np.fft.rfft(segment * np.hanning(n_fft))) ** 2 + 1e-15
+        referenz = np.zeros(len(pse._BARK_EDGES_HZ) - 1, dtype=np.float64)
+        for b in range(len(pse._BARK_EDGES_HZ) - 1):
+            mask = (freqs >= pse._BARK_EDGES_HZ[b]) & (freqs < pse._BARK_EDGES_HZ[b + 1])
+            referenz[b] = float(10.0 * np.log10(np.mean(spectrum[mask]))) if np.any(mask) else -120.0
+
+        ps._EVENT_FFT_CACHE.clear()
+        kalt = pse._estimate_event_spectral_content(mono, sr, t0, t1)
+        warm = pse._estimate_event_spectral_content(mono, sr, t0, t1)  # Cache-Treffer
+        assert np.array_equal(kalt, referenz)
+        assert np.array_equal(warm, kalt)
+
+    def test_annotate_defect_scores_deterministisch(self):
+        """§G5 (copilot-instructions.md): gleicher Input ⇒ identische Salienzen/Severities."""
+        sr = 16000
+        rng = np.random.default_rng(11)
+        audio = (0.2 * rng.standard_normal(sr * 3)).astype(np.float64)
+        dr1 = _make_defect_result(
+            {DefectType.CLICKS: DefectScore(DefectType.CLICKS, 0.5, 0.8, [(0.4, 0.404), (1.7, 1.704)])},
+            sr=sr,
+            duration=3.0,
+        )
+        dr2 = _make_defect_result(
+            {DefectType.CLICKS: DefectScore(DefectType.CLICKS, 0.5, 0.8, [(0.4, 0.404), (1.7, 1.704)])},
+            sr=sr,
+            duration=3.0,
+        )
+        pse = get_perceptual_salience_estimator()
+        a = pse.annotate_defect_scores(audio, sr, dr1, use_erb_model=True)
+        b = pse.annotate_defect_scores(audio, sr, dr2, use_erb_model=True)
+        assert a.scores[DefectType.CLICKS].severity == b.scores[DefectType.CLICKS].severity
+        assert (
+            a.scores[DefectType.CLICKS].metadata["perceptual_salience"]
+            == b.scores[DefectType.CLICKS].metadata["perceptual_salience"]
+        )

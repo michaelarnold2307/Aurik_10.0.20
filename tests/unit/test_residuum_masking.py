@@ -222,3 +222,52 @@ def test_median_flat_ist_bit_identisch_zu_numpy() -> None:
     for shape in [(43, 80), (43, 79), (43, 81), (5, 13), (1, 1), (2, 2), (100, 7)]:
         a = (rng.standard_normal(shape) * 60.0 - 120.0).astype(np.float64)
         assert _median_flat(a) == float(np.median(a)), f"nicht bit-exakt bei {shape}"
+
+
+def test_to_bark_bands_bit_identisch_zur_fancy_index_referenz() -> None:
+    """§PERF-R20 (D-K3-38): Band-Mittelung mit EINEM Permutations-Copy statt 24.
+
+    Vorher kopierte jedes der 24 Bänder seinen Block per Fancy-Index; jetzt wird
+    die Spaltenreihenfolge einmal permutiert und jedes Band ist ein
+    zusammenhängender Slice. Der Median ist ordnungsunabhängig, die Element-Menge
+    je Band identisch ⇒ das Ergebnis MUSS bit-gleich bleiben (§G5 (copilot-instructions.md)
+    copilot-instructions.md). Geprüft über mehrere n_fft/SR-Kombinationen (die
+    Band-Masken hängen von beiden ab) sowie 1-D- und 2-D-Spektren.
+    """
+    from backend.core import residuum_masking as rm
+
+    rng = np.random.default_rng(42)
+
+    def referenz(spec: np.ndarray, freqs: np.ndarray) -> np.ndarray:
+        out = np.zeros(len(rm._BARK_CENTERS), dtype=np.float64)
+        for b in range(len(rm._BARK_CENTERS)):
+            idx = np.where((freqs >= rm._BARK_EDGES_HZ[b]) & (freqs < rm._BARK_EDGES_HZ[b + 1]))[0]
+            if idx.size > 0:
+                out[b] = rm._median_flat(spec[:, idx] if spec.ndim == 2 else spec[idx])
+            else:
+                out[b] = -120.0
+        return out
+
+    for n_fft, sr in [(4096, 44100), (2048, 16000), (256, 48000), (8192, 96000)]:
+        freqs = np.fft.rfftfreq(n_fft, 1.0 / sr)
+        for shape in [(1, len(freqs)), (31, len(freqs)), (len(freqs),)]:
+            spec = (rng.standard_normal(shape) * 60.0 - 120.0).astype(np.float64)
+            assert np.array_equal(referenz(spec, freqs), rm._to_bark_bands(spec, freqs)), (
+                f"nicht bit-identisch bei n_fft={n_fft}, sr={sr}, shape={shape}"
+            )
+
+
+def test_stft_vorbereitung_caches_bit_identisch_zu_numpy() -> None:
+    """§PERF-R20 (D-K3-38): gecachtes Hann-Fenster/rfftfreq == numpy-Original.
+
+    Die Caches ersetzen `np.hanning(_N_FFT)` und `np.fft.rfftfreq(_N_FFT, 1/sr)`,
+    die vorher bei JEDEM der ~2 200 STFT-Aufrufe im 33-s-Scan neu gebaut wurden.
+    """
+    from backend.core import residuum_masking as rm
+
+    assert np.array_equal(rm._hann_window(rm._N_FFT), np.hanning(rm._N_FFT))
+    assert np.array_equal(rm._rfftfreq(rm._N_FFT, 44100), np.fft.rfftfreq(rm._N_FFT, 1.0 / 44100))
+    # Identitaets-Cache: zweiter Aufruf liefert dasselbe Objekt (Fast-Path in
+    # _to_bark_bands haengt daran).
+    assert rm._rfftfreq(rm._N_FFT, 44100) is rm._rfftfreq(rm._N_FFT, 44100)
+    assert not rm._hann_window(rm._N_FFT).flags.writeable

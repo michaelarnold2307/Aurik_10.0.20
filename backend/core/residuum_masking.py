@@ -99,14 +99,44 @@ class ResiduumMaskingResult:
     band_count: int
 
 
+# §PERF-R20 (D-K3-38): Fenster und Frequenzachse sind für die feste _N_FFT
+# konstant — einmal bauen statt pro STFT-Aufruf (~2 200 Aufrufe im 33-s-Scan).
+# np.hanning(4096) allein kostete 0,14 s der Salience-Kette (cProfile 2026-11-07).
+_HANN_CACHE: dict[int, np.ndarray] = {}
+_RFFTFREQ_CACHE: dict[tuple[int, int], np.ndarray] = {}
+
+
+def _hann_window(n_fft: int) -> np.ndarray:
+    """Gecachtes Hann-Fenster — bit-identisch zu ``np.hanning(n_fft)`` (§G5 (copilot-instructions.md))."""
+    win = _HANN_CACHE.get(n_fft)
+    if win is None:
+        win = np.hanning(n_fft)
+        win.flags.writeable = False
+        _HANN_CACHE[n_fft] = win
+    return win
+
+
+def _rfftfreq(n_fft: int, sr: int) -> np.ndarray:
+    """Gecachte rfft-Frequenzachse — bit-identisch zu ``np.fft.rfftfreq(n_fft, 1/sr)``."""
+    key = (n_fft, int(sr))
+    freqs = _RFFTFREQ_CACHE.get(key)
+    if freqs is None:
+        freqs = np.fft.rfftfreq(n_fft, 1.0 / sr)
+        freqs.flags.writeable = False
+        if len(_RFFTFREQ_CACHE) >= 8:
+            del _RFFTFREQ_CACHE[next(iter(_RFFTFREQ_CACHE))]
+        _RFFTFREQ_CACHE[key] = freqs
+    return freqs
+
+
 def _stft_magnitude_db(x: np.ndarray, sr: int) -> tuple[np.ndarray, np.ndarray]:
     """Kurzzeit-Magnituden-Spektren (dB) eines Signals → (times, freqs_db)."""
     hop = max(_N_FFT // 4, 1)
     if len(x) < _N_FFT:
         x = np.pad(x, (0, _N_FFT - len(x)))
     n_frames = 1 + (len(x) - _N_FFT) // hop
-    freqs = np.fft.rfftfreq(_N_FFT, 1.0 / sr)
-    win = np.hanning(_N_FFT)
+    freqs = _rfftfreq(_N_FFT, sr)
+    win = _hann_window(_N_FFT)
     # §2.46h (2026-09-06) Vektorisierung: Strided-Batch statt Python-Frame-Loop.
     # pocketfft transformiert jede Zeile unabhängig mit identischem Algorithmus
     # wie der frühere Per-Frame-rfft → bit-identisches Ergebnis, ~N× schneller.
@@ -123,6 +153,11 @@ def _stft_magnitude_db(x: np.ndarray, sr: int) -> tuple[np.ndarray, np.ndarray]:
 # 20s-Scan). Die Median-Berechnung bleibt numerisch identisch.
 _BARK_BIN_INDEX: list[np.ndarray] = []
 _BARK_BIN_INDEX_FREQS: np.ndarray | None = None
+# §PERF-R20 (D-K3-38): Band-Reihenfolge + zusammenhängende Band-Slices.
+# Vorher kopierte jede der 24 Band-Schleifen-Calls den Block (fancy index);
+# jetzt EIN Permutations-Copy pro Aufruf, danach nur noch Slices.
+_BARK_ORDER: np.ndarray | None = None
+_BARK_SLICES: list[tuple[int, int]] = []
 
 
 def _median_flat(values: np.ndarray) -> float:
@@ -147,24 +182,46 @@ def _median_flat(values: np.ndarray) -> float:
 
 def _to_bark_bands(spec_db: np.ndarray, freqs: np.ndarray) -> np.ndarray:
     """Mittelt ein Spektrum (dB) über Bark-Bänder → pro Band der Median (dB)."""
-    global _BARK_BIN_INDEX, _BARK_BIN_INDEX_FREQS
+    global _BARK_BIN_INDEX, _BARK_BIN_INDEX_FREQS, _BARK_ORDER, _BARK_SLICES
     bands = np.zeros(len(_BARK_CENTERS), dtype=np.float64)
-    if _BARK_BIN_INDEX_FREQS is None or not np.array_equal(_BARK_BIN_INDEX_FREQS, freqs):
+    # Identitäts-Fast-Path: die Frequenzachse kommt aus dem Cache (§PERF-R20)
+    # und ist damit dasselbe Objekt — der Array-Vergleich (2 049 Floats, im
+    # 33-s-Scan ~2 600 Aufrufe) entfällt dann.
+    if freqs is not _BARK_BIN_INDEX_FREQS and (
+        _BARK_BIN_INDEX_FREQS is None or not np.array_equal(_BARK_BIN_INDEX_FREQS, freqs)
+    ):
         _BARK_BIN_INDEX = [
             np.where((freqs >= _BARK_EDGES_HZ[b]) & (freqs < _BARK_EDGES_HZ[b + 1]))[0]
             for b in range(len(_BARK_CENTERS))
         ]
+        _BARK_ORDER = np.concatenate(_BARK_BIN_INDEX) if _BARK_BIN_INDEX else np.empty(0, dtype=np.intp)
+        _BARK_SLICES = []
+        _off = 0
+        for _idx in _BARK_BIN_INDEX:
+            _BARK_SLICES.append((_off, _off + int(_idx.size)))
+            _off += int(_idx.size)
         _BARK_BIN_INDEX_FREQS = np.asarray(freqs, dtype=np.float64)
+    if spec_db.ndim == 2:
+        # Median über Zeit-Frames und Frequenz-Bins des Bands — die Band-Blöcke
+        # werden in Spalten-Reihenfolge gelegt, damit jeder Block im 1-D-Fall
+        # zusammenhängend ist (ein Copy für alle 24 Bänder). Die Element-Menge
+        # je Band ist identisch zur früheren Fancy-Index-Variante; der Median
+        # ist ordnungsunabhängig ⇒ bit-identisches Ergebnis (§G5 (copilot-instructions.md)).
+        _order = _BARK_ORDER if _BARK_ORDER is not None else np.empty(0, dtype=np.intp)
+        n_frames = spec_db.shape[0]
+        # Bin-major (T) ⇒ jedes Band belegt einen zusammenhängenden Block von
+        # ``n_bins_band * n_frames`` Werten; Slice-Grenzen daher in Bin-Einheiten
+        # mal Frame-Anzahl.
+        flat = spec_db[:, _order].T.ravel()
+        for b in range(len(_BARK_CENTERS)):
+            _lo, _hi = _BARK_SLICES[b]
+            bands[b] = _median_flat(flat[_lo * n_frames : _hi * n_frames]) if _hi > _lo else -120.0
+        return cast(np.ndarray, bands)
+    _order = _BARK_ORDER if _BARK_ORDER is not None else np.empty(0, dtype=np.intp)
+    flat1 = spec_db[_order]
     for b in range(len(_BARK_CENTERS)):
-        _bin_idx = _BARK_BIN_INDEX[b]
-        if _bin_idx.size > 0:
-            if spec_db.ndim == 2:
-                # Median über Zeit-Frames und Frequenz-Bins des Bands
-                bands[b] = _median_flat(spec_db[:, _bin_idx])
-            else:
-                bands[b] = _median_flat(spec_db[_bin_idx])
-        else:
-            bands[b] = -120.0
+        _lo, _hi = _BARK_SLICES[b]
+        bands[b] = _median_flat(flat1[_lo:_hi]) if _hi > _lo else -120.0
     return cast(np.ndarray, bands)
 
 

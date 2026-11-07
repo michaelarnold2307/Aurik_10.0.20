@@ -36,6 +36,10 @@ from backend.core.defect_scanner import DefectAnalysisResult, DefectType
 
 logger = logging.getLogger(__name__)
 
+# §PERF-R20 (D-K3-38): Fenster/Frequenzachse/Bark-Bin-Indizes je (n_fft, sr).
+# Bounded (16 Einträge) — pro Song sind es typisch 3–6 verschiedene n_fft.
+_EVENT_FFT_CACHE: dict[tuple[int, int], tuple[np.ndarray, np.ndarray, list[np.ndarray]]] = {}
+
 
 @dataclass
 class SalienceAnnotation:
@@ -679,20 +683,53 @@ class PerceptualSalienceEstimator:
         if len(segment) < n_fft:
             segment = np.pad(segment, (0, n_fft - len(segment)))
 
-        win = np.hanning(n_fft)
+        # §PERF-R20 (D-K3-38): Fenster, Frequenzachse und Bark-Bin-Indizes sind
+        # je (n_fft, sr) konstant — im 33-s-Scan wurde np.hanning/rfftfreq sowie
+        # die 24 Band-Masken für JEDES Event neu gebaut (cProfile 2026-11-07).
+        # Die Mittelung läuft über identische Indizes in identischer Reihenfolge
+        # ⇒ bit-identisches Ergebnis zu ``np.mean(spectrum[mask])`` (§G5 (copilot-instructions.md)).
+        win, freqs, band_idx = self._event_fft_bins(n_fft, sr)
         spectrum = np.abs(np.fft.rfft(segment * win)) ** 2 + 1e-15
-        freqs = np.fft.rfftfreq(n_fft, 1.0 / sr)
 
         bark_levels = np.zeros(n_bands, dtype=np.float64)
         for b in range(n_bands):
-            f_lo, f_hi = self._BARK_EDGES_HZ[b], self._BARK_EDGES_HZ[b + 1]
-            mask = (freqs >= f_lo) & (freqs < f_hi)
-            if np.any(mask):
-                bark_levels[b] = float(10.0 * np.log10(np.mean(spectrum[mask])))
+            _idx = band_idx[b]
+            if _idx.size > 0:
+                bark_levels[b] = float(10.0 * np.log10(np.mean(spectrum[_idx])))
             else:
                 bark_levels[b] = -120.0
 
         return bark_levels  # type: ignore[no-any-return]
+
+    def _event_fft_bins(
+        self,
+        n_fft: int,
+        sr: int,
+    ) -> tuple[np.ndarray, np.ndarray, list[np.ndarray]]:
+        """Gecachte FFT-Vorbereitung je (n_fft, sr): Fenster, Frequenzachse, Bark-Bins.
+
+        §PERF-R20 (D-K3-38): ``np.hanning``/``np.fft.rfftfreq`` und die 24
+        Band-Masken hängen nur von ``(n_fft, sr)`` ab, wurden aber im 33-s-Scan
+        für jedes Event neu gebaut. Die Bin-Indizes sind dieselben, die
+        ``np.where(mask)`` liefern (aufsteigend) — die Mittelung bleibt damit
+        bit-identisch, inklusive Summationsreihenfolge (§G5 (copilot-instructions.md)).
+        """
+        key = (int(n_fft), int(sr))
+        cached = _EVENT_FFT_CACHE.get(key)
+        if cached is not None:
+            return cached
+        win = np.hanning(n_fft)
+        win.flags.writeable = False
+        freqs = np.fft.rfftfreq(n_fft, 1.0 / sr)
+        freqs.flags.writeable = False
+        band_idx = [
+            np.where((freqs >= self._BARK_EDGES_HZ[b]) & (freqs < self._BARK_EDGES_HZ[b + 1]))[0]
+            for b in range(len(self._BARK_EDGES_HZ) - 1)
+        ]
+        if len(_EVENT_FFT_CACHE) >= 16:
+            del _EVENT_FFT_CACHE[next(iter(_EVENT_FFT_CACHE))]
+        _EVENT_FFT_CACHE[key] = (win, freqs, band_idx)
+        return win, freqs, band_idx
 
     def _pre_screen_salience_from_profile(
         self,

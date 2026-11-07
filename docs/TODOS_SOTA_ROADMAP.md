@@ -2337,6 +2337,39 @@ Phasen-Gap-Maschinerie (P2, ~27 min je Song, offen) getragen. Der
 End-to-End-Nachweis ≤ 32× RT auf dem Referenz-Song bleibt Aufgabe der
 F-Reihe-Messkette (Methode + Befehle im F-Reihe-Report 2026-10-28).
 
+### §PERF-R20 (2026-11-07) — Salience-Kette: FFT-Vorbereitung gecacht + ein Permutations-Copy (bit-identisch)
+
+D-K3-38, Fortsetzung von §PERF-R19/R19b (Scanner 62 → 16,0 s/min). cProfile
+eines echten 33-s-Scans zeigte `perceptual_salience.annotate_defect_scores`
+als größten verbliebenen Block (4,73 s = 25 %), davon 63 % im
+Residuum-Kontext-STFT (`residuum_masking`).
+
+1. **Fenster/Frequenzachse gecacht** (`_hann_window`, `_rfftfreq`):
+   `np.hanning(4096)` und `np.fft.rfftfreq(4096, 1/sr)` wurden bei jedem der
+   ~2 200 STFT-Aufrufe neu gebaut (Fenster allein 0,14 s).
+2. **`_to_bark_bands` mit EINEM Permutations-Copy** statt 24
+   Fancy-Index-Copies (Spalten in Band-Reihenfolge, bin-major,
+   zusammenhängende Slices). Der Median ist ordnungsunabhängig — gleiche
+   Element-Menge je Band ⇒ bit-gleich.
+3. **`_event_fft_bins`** (`perceptual_salience`): Fenster + 24 Bark-Bin-Indizes
+   je `(n_fft, sr)` (bounded Cache) statt je Event.
+4. **`_coherent_subband_fm`**: `np.arctan2(an.imag, an.real)` statt
+   `np.angle(an)` (np.angle ist arctan2·1) — ein Ufunc-Pass weniger.
+
+**Messung:** Salience-Kette 6,50 → **5,30 s/min (−18,5 %)** (1 100 Events /
+33 s, warm); echter Scan 16,57 → 16,19 s (−2,3 %), Register-Skala
+16,0 → ~15,4 s/min. **Bit-Identität:** Salience-SHA256 und kompletter
+Scan-Hash unverändert (`c599791d…`). **Gates:** strategy 3/3 (402 s,
+Schwellen 1,0), defect 1/1 (19,3 s). Tests: 2 neue Vertragstests in
+`tests/unit/test_residuum_masking.py` (16 grün) und 2 in
+`tests/unit/test_perceptual_salience.py` (37 grün).
+
+**Ehrliche Einordnung:** der bit-identische Spielraum im Salience-Block ist
+ausgeschöpft (Rest = rfft + Median-Selektion). Der nächste Hebel — der
+Batch-Residuum-Pfad, ~1,8× — ändert die Maskierungs-Klassifikation und ist
+damit eine HÖR-ENTSCHEIDUNG (§4-Verfahren, nicht autonom). Report:
+`docs/reports/current/2026-11-07_perf_r20_salience_caches.md`.
+
 ## SOTA-RESTHEBEL-MATRIX 2026-09-19 — schöpfen die DSP/ML-Hybride 100 % aus?
 
 **Antwort: NEIN — weder Performance noch Wohlklang sind ausgeschöpft**
@@ -3064,7 +3097,7 @@ stützt die Notwendigkeit: Sprach-Orakel (UTMOS) können Musik nicht bewerten
 | `SOTA-M19` | E1 · WP-2 Phantom-ML-Stubs + Phantom-Referenzen | D-K3-3, D-K3-5 | abgeschlossen (D-K3-3) |
 | `SOTA-M20` | E2 · WP-1 §III.11-Lücken-Audit Richter + Signalpfad (K2) | D-K2-1, D-K2-2, D-K2-3, D-K2-4, D-K2-5 | teilweise (D-K2-1) |
 | `SOTA-M21` | E3 · WP-3 Wohlklang-Ordnung-Forensik (Vocoder-Hypothese) | D-K2-3 | abgeschlossen — 36 Verstöße, Gegenmaßnahme = M6 |
-| `SOTA-M22` | E4 · K3-Restbestand: D-K3-23 Denker-Tothoheit, D-K3-37 32×-Guard, D-K3-38/40 Scanner-Kosten, D-K3-54 AM-Peak, D-K3-64 Dither-Kaskade, D-K3-65 ARC/Goosebumps/MDEM je Chunk, D-K3-60 WCS-Chained-Export (geschlossen, Ersatz Beleg prüfen), D-K3-21 SNR-CAUSE, D-K3-31 SNR-Stärke, Restbestand D-K3-8/10/13/62 | D-K3-8, D-K3-10, D-K3-13, D-K3-21, D-K3-23, D-K3-31, D-K3-37, D-K3-38, D-K3-40, D-K3-54, D-K3-62, D-K3-64, D-K3-65 | teilweise — D-K3-54 **GESCHLOSSEN 2026-10-27** (Extremwert-Kalibrierung, 24-Seed-Regression); offen: D-K3-23/31/37/38/40/62/64/65 + D-K3-21 (Nutzer-A/B) |
+| `SOTA-M22` | E4 · K3-Restbestand: D-K3-23 Denker-Tothoheit, D-K3-37 32×-Guard, D-K3-38/40 Scanner-Kosten, D-K3-54 AM-Peak, D-K3-64 Dither-Kaskade, D-K3-65 ARC/Goosebumps/MDEM je Chunk, D-K3-60 WCS-Chained-Export (geschlossen, Ersatz Beleg prüfen), D-K3-21 SNR-CAUSE, D-K3-31 SNR-Stärke, Restbestand D-K3-8/10/13/62 | D-K3-8, D-K3-10, D-K3-13, D-K3-21, D-K3-23, D-K3-31, D-K3-37, D-K3-38, D-K3-40, D-K3-54, D-K3-62, D-K3-64, D-K3-65 | teilweise — D-K3-54 **GESCHLOSSEN 2026-10-27** (Extremwert-Kalibrierung, 24-Seed-Regression); D-K3-37 **GESCHLOSSEN 2026-11-07** (Weg b, Monitoring-Deklaration); D-K3-40 **GESCHLOSSEN 2026-11-07** (Struktur-Redundanz behoben, PERF-R18); D-K3-38 **in-arbeit** (PERF-R19/R19b/R20: Scanner 62 → ~15,4 s/min auf Register-Skala, Rest-Gap ~3,9×; bit-identischer Spielraum ausgeschöpft, nächster Hebel = Hör-Entscheidung); offen: D-K3-23/31/38/62/64/65 + D-K3-21 (Nutzer-A/B) |
 | `SOTA-M23` | E6 · Doku-Konsistenz: dieser Abschnitt + SOTA-M-Blocker im Register nachtragen (dieser Eintrag erfüllt sich selbst) | — | **GESCHLOSSEN (mit diesem Abschnitt)** |
 
 **Welle F** existiert im Katalog nicht als eigenständige Welle — der

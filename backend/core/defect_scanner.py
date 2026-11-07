@@ -5368,7 +5368,10 @@ class DefectScanner:
                 except Exception:
                     logger.debug("Hilbert-Subband-Analyse fehlgeschlagen", exc_info=True)
                     continue
-                if_b = np.diff(np.unwrap(np.angle(an))) * _band_sr / (2.0 * np.pi)
+                # §PERF-R20 (D-K3-38): np.angle(z) ist arctan2(Im, Re)*1 — der
+                # direkte arctan2 spart einen vollen Ufunc-Pass + Temp-Array über
+                # alle Bänder und ist bit-identisch (§G5 (copilot-instructions.md)), kein RNG.
+                if_b = np.diff(np.unwrap(np.arctan2(an.imag, an.real))) * _band_sr / (2.0 * np.pi)
                 valid = (if_b > fc * 0.85) & (if_b < fc * 1.15)
                 # §7.4c-L3 (2026-09-27): MAGNITUDEN-GATE — in den Noten-
                 # Decay-Tails (Hülle → 0) ist die Hilbert-Phase Rauschen
