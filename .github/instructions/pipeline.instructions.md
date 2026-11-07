@@ -1222,7 +1222,7 @@ metadata["phrase_structure"] = {
 `phase_29_tape_hiss_reduction` um — obwohl `phase_57_print_through_reduction.py`
 eine vollständige, dedizierte Implementierung enthält (bidirektionales LMS,
 Pre+Post-Echo getrennt, Kreuzkorrelations-Delay-Suche, Coherence-Rollback,
-NMF-Fallback, Guard-Kette §2.46f/§2.36/§V19/§V20/§V21). Selektion
+NMF-Fallback, Guard-Kette §2.46f/§2.36/§V19/§V20/§V21 (copilot-instructions.md)). Selektion
 (causal_defect_reasoner §2.6, `_select_phases`) wählte phase_57 als Primärphase
 für `print_through` — die Auflösung ersetzte sie durch Breitband-Hiss-NR,
 wodurch die Print-Through-Kette zu totem Code wurde.
@@ -1524,7 +1524,7 @@ werden Phasen bevorzugt, die mehrere offene Defizite zusammen adressieren könne
 volle Stärke würde Doppel-Bearbeitung hörbar machen. Der PMGG-Regelkreis kann die
 Stärke bei klarem Goal-Gewinn wieder anheben. Timing-Phasen (phase_12/phase_31)
 sind ausgenommen. Markierung: `_restoration_context["rescheduler_injected_phases"]`
-(Song-lokal, §V8/§G1-Song-Isolation bleibt gewahrt).
+(Song-lokal, §V8 (copilot-instructions.md)/§G1-Song-Isolation bleibt gewahrt).
 
 **Modul**: `backend/core/adaptive_phase_rescheduler.py` (Singleton `get_adaptive_phase_rescheduler()`)
 
@@ -1803,3 +1803,28 @@ ist die Rollen-Spitze für Hör-Entscheidungen. Ihre Verdrahtungspunkte in UV3:
   Kennzeichnung („Messartefakt-Verdacht“ bei gehaltener Hör-Instanz).
 - **Wächter (§8a):** Pre-Commit-Hook `aurik-horordnung-calibration`
   (`scripts/horordnung_calibration.py`).
+
+## §2.75 Ganzsong-Norm — Zweipass-Architektur (normativ, D-K4-3)
+
+Zielbild aus `docs/TIEFENANALYSE_SOTA_ABGLEICH.md` §6 (Lücke 3 „Ganzsong-
+Pipeline statt 30-s-Chunks“ + Lücke 5 „Per-Stem-Restaurierung als Standard“).
+Der Chunk-Lauf ist eine Implementierungsform, KEINE Semantik-Quelle:
+
+1. **Pass 1 — Voranalyse (song-global, VOR dem Chunking):** Defect-Map,
+   Loudness-/Formant-/Gender-/Sänger-Identitäts-Targets und HPI-Baselines
+   werden EINMAL auf dem Ganzsong (oder einem Downsample-Proxy) berechnet.
+   Kein Chunk berechnet diese Größen selbst; Chunks KONSUMIEREN die Targets.
+2. **Pass 2 — Chunked DSP:** Audio-Phasen laufen je Fenster, aber jede
+   song-globale Bewertung innerhalb der Chunk-Schleife folgt der
+   P0-1-Slice-Semantik: `_chunked_tail_skip and not _chunked_last` ⇒
+   deferren (EmotionalArc-Messung ist so umgesetzt; Goosebumps-Wahl/
+   MDEM-Morphing sind als Rest unter D-K3-65 (b) Hör-blockiert, §V7 (copilot-instructions.md) — kein Blind-Fix).
+3. **Pass 3 — Evaluation nach Assembly:** EmotionalArc, GoosebumpsQuality-
+   Checker, MDEM und PQS laufen EINMAL auf dem assemblierten Song
+   (`_restore_chunked`-Tail) — ein Chunk-Artefakt ist kein Song-Urteil.
+4. **SOTA-M12-Rollout (Per-Stem):** Stem-Split (Vocals/Drums/Bass/Other) mit
+   stem-konsistenten Identitäts-Targets wird Standard — aber ausschließlich
+   über das §4-Verfahren: A/B auf 3 Referenz-Songs, Never-worsen,
+   Hör-Sign-off (`scripts/flag_freigabe.py`). Bis dahin bleibt der
+   Stem-Pfad Opt-in; die Norm ist das Zielbild, der Ist-Zustand der
+   dokumentierte Zwischenstand (Register D-K4-3).

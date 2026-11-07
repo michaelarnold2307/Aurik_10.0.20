@@ -1,15 +1,17 @@
 # TASK_CHANGES — Live-Ledger der aktuellen Aufgabe
 
-> Generiert von `scripts/change_ledger.py snapshot` (Base: `HEAD`, Stand: 2026-11-07 10:48 CET).
+> Generiert von `scripts/change_ledger.py snapshot` (Base: `HEAD`, Stand: 2026-11-07 11:11 CET).
 > CI (`ci-lite.yml` pr-evidence-gate) erzwingt Abdeckung: jede geänderte Code-Datei muss hier stehen.
 
 ## Geänderte Dateien
 
 | Status | Pfad | Art |
 |---|---|---|
-| M | `.github/ML_ARTIFACT_FINGERPRINTS.md` | modifiziert |
+| M | `.github/FILE_REGISTRY.md` | modifiziert |
 | M | `.github/SOTA_DEFICIT_REGISTER.md` | modifiziert |
+| M | `.github/instructions/pipeline.instructions.md` | modifiziert |
 | ?? | `study_stimuli/model_ab/manifest.json` | ungetrackt |
+| ?? | `tests/normative/test_ganzsong_norm.py` | ungetrackt |
 
 ## Entscheidungen
 
