@@ -377,17 +377,23 @@ def apply_final_polish(
     *,
     mode: str = "restoration",
     decade: int | None = None,
-    dither: bool = True,
+    dither: bool = False,
     bit_depth: int = 16,
 ) -> np.ndarray:
-    """Finale Politur: Era-EQ + CD-Noise + Dithering.
+    """Finale Politur: Era-EQ + CD-Noise.
+
+    Dithering ist hier seit D-K3-64 bewusst AUS: Der EINE Dither ist die
+    finale Quantisierung im Exporter (``apply_dither``, POW-r primär,
+    §V5 (copilot-instructions.md) + §IV). Ein Restore-seitiger TPDF-Vordither
+    erzeugte eine Dither-Kaskade (Register D-K3-64, geschlossen 2026-11-07).
 
     Args:
         audio: Finales Audio-Signal
         sample_rate: Abtastrate
         mode: 'restoration' (Era-EQ aktiv) oder 'studio2026' (Era-EQ deaktiviert)
         decade: Aufnahme-Jahrzehnt (nur für Restoration)
-        dither: Noise-Shaped Dithering aktivieren
+        dither: Noise-Shaped Dithering aktivieren (nur für Standalone-Pfade
+            OHNE Exporter-Quantisierung; Produktionspfade übergeben False)
         bit_depth: Ziel-Bit-Tiefe für Dithering
     """
     result = np.asarray(audio, dtype=np.float32)

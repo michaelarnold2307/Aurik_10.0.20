@@ -23945,6 +23945,7 @@ class UnifiedRestorerV3:
                     sample_rate,
                     decade=_polish_decade,
                     bit_depth=24 if self.is_studio_mode() else 16,
+                    dither=False,  # §D-K3-64: der EINE Dither ist der Exporter
                 )
                 logger.info(
                     "§P1-8 FinalPolish (nach m1b): era=%d mat=%s bits=%d",
@@ -48341,6 +48342,7 @@ class UnifiedRestorerV3:
                     sample_rate,
                     decade=_afp_decade,
                     bit_depth=24 if self.is_studio_mode() else 16,
+                    dither=False,  # §D-K3-64: der EINE Dither ist der Exporter
                 )
                 logger.info(
                     "§P1-8 FinalPolish (nach Assembly): era=%d bits=%d",

@@ -295,3 +295,36 @@ class TestExportNuanceGuard:
 
         assert out_left_rms < in_left_rms
         assert out_right_rms <= in_right_rms * 1.001
+
+
+class TestDK364DitherKaskade:
+    """D-K3-64 (geschlossen 2026-11-07): Der EINE Dither ist der Exporter.
+
+    Ein Restore-seitiger TPDF-Vordither (``apply_final_polish``) erzeugte
+    zusammen mit dem Export-``apply_dither`` eine Dither-Kaskade
+    (doppelte Quantisierung, §V5 (copilot-instructions.md), §IV).
+    """
+
+    def test_final_polish_default_dither_aus(self):
+        import inspect
+
+        from backend.core.dsp.final_polish import apply_final_polish
+
+        sig = inspect.signature(apply_final_polish)
+        assert sig.parameters["dither"].default is False
+
+    def test_unified_restorer_uebergibt_dither_false(self):
+        import pathlib
+
+        src = pathlib.Path("backend/core/unified_restorer_v3.py").read_text(encoding="utf-8")
+        assert "dither=False,  # §D-K3-64: der EINE Dither ist der Exporter" in src
+        assert src.count("apply_final_polish(") + src.count("_afp_song(") >= 2
+        assert src.count("dither=False,  # §D-K3-64") == 2  # beide Call-Sites gepinnt
+
+    def test_exporter_bleibt_der_eine_dither(self):
+        import pathlib
+
+        src = pathlib.Path("backend/exporter.py").read_text(encoding="utf-8")
+        # Genau EINE Dither-Aufrufstelle im Export-Quantisierungspfad.
+        assert src.count("apply_dither(audio") == 1
+        assert "cd_active=True" in src  # §G4 (GEBOTE.md)-CD-Rauschprofil-Kopplung bleibt
