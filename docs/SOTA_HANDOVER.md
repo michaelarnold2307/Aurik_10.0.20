@@ -96,14 +96,18 @@ Priorität C→B→A→D→E/F:
     nicht, sie werden mit `logger.warning()` neu aufgebaut (§V6).
   - Status prüfen: Manifeste lesen (`ergebnis`, `versuche`) + `rocm-smi`.
     Laufende Kette erkennen: `pgrep -f gpu_kette`.
-  - **D3-Verifikation (trainingsfreies Fenster):** Nach Abschluss der
-    D3-Kette `docs/reports/current/train_job_d3_diffwave_vokal.json` prüfen:
-    `ergebnis: erfolgreich` + `never_worsen_per_gap: true` (S1-Protokoll lief
-    im Trainer mit Zero-Shot-Baseline −3,01 dB; Referenzwerte Val-SDR
-    +3,23 dB) = Gate bestanden. Ein separates `verify_d3_quality_gate.sh`
-    existiert NICHT — das Trainer-interne S1-Gate ist die Messung. Ein
-    Deploy eines D3-Artefakts ist klangwirksam und KEIN automatischer Schritt:
-    nur mit Never-worsen-A/B gegen den deployten Checkpoint (D3-Berichte
+  - **D3-Verifikation — BESTANDEN 2026-11-07 (D3-1 DiffWave-Vokal):**
+    Kanonischer Beleg ist der Trainer-Report
+    `docs/reports/current/2026-11-07_diffwave_vocal_finetune.json`:
+    `never_worsen_per_gap: true`, `best_val_mean_sdr_db: 3.23` vs.
+    `baseline_zero_shot_mean_sdr_db: −3.01` (Seed 42, best_epoch 19); dazu
+    Kette-2-Log `Ergebnis: erfolgreich` + `JOB_EXIT=0`. **Manifest-Hinweis:**
+    `train_job_d3_diffwave_vokal.json` wurde während der Parallel-Session durch
+    einen externen `git reset` auf den Stand von Versuch 1 zurückgesetzt; das
+    Trainer-interne S1-Gate ist die Messung, der Report bleibt der Beleg.
+    Ein separates `verify_d3_quality_gate.sh` existiert NICHT. Ein Deploy eines
+    D3-Artefakts ist klangwirksam und KEIN automatischer Schritt: nur mit
+    Never-worsen-A/B gegen den deployten Checkpoint (D3-Berichte
     `2026-10-28_f_reihe_laufzeit_optimierung.md` §9, §4-Verfahren).
   - GPU-Umgebung: `/home/michael/.local/share/aurik/venv_rocm72/bin/python`
     (torch 2.11+rocm7.2, Radeon 7900 XTX). System-python ist CPU-only.

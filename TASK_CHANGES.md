@@ -1,22 +1,15 @@
 # TASK_CHANGES — Live-Ledger der aktuellen Aufgabe
 
-> Generiert von `scripts/change_ledger.py snapshot` (Base: `HEAD`, Stand: 2026-11-07 06:12 CET).
+> Generiert von `scripts/change_ledger.py snapshot` (Base: `HEAD`, Stand: 2026-11-07 06:16 CET).
 > CI (`ci-lite.yml` pr-evidence-gate) erzwingt Abdeckung: jede geänderte Code-Datei muss hier stehen.
 
 ## Geänderte Dateien
 
 | Status | Pfad | Art |
 |---|---|---|
-| M | `TASK_CHANGES.md` | modifiziert |
 | M | `docs/SOTA_HANDOVER.md` | modifiziert |
 | M | `docs/TODOS_SOTA_ROADMAP.md` | modifiziert |
-| A | `docs/reports/current/2026-11-07_train_job_runner_idempotent.md` | neu |
-| M | `docs/reports/current/train_job_d3_diffwave_vokal.json` | modifiziert |
-| M | `scripts/gpu_kette3_k4_rest.sh` | modifiziert |
-| M | `scripts/train_job_runner.py` | modifiziert |
-| M | `tests/unit/test_train_job_runner.py` | modifiziert |
-| ?? | `docs/reports/current/2026-11-07_diffwave_vocal_finetune.json` | ungetrackt |
-| ?? | `study_stimuli/model_ab/manifest.json` | ungetrackt |
+| ?? | `docs/reports/current/2026-11-07_d3_verifikation.md` | ungetrackt |
 
 ## Entscheidungen
 
