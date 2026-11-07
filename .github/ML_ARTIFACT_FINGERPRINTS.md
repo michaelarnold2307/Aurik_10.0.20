@@ -3,17 +3,18 @@
 > **Erzeugt von** `scripts/model_artifact_probe.py` (§III.13 (copilot-instructions.md) — Evidenzpflicht).
 > Die Tabelle nennt **gemessene** Architektur-Fingerabdrücke (Mel-Bänder, Upsample-Faktor, Kanalbreiten, Parameterzahl, Hparams, Dtype-Mix) — **keine** Domänen-Behauptung. Ob ein Artefakt Musik- oder sprach-trainiert ist, entscheidet sich an Trainings-Skript, Modell-Karte, SHA-Identität oder einem widerspruchsfreien Plugin-Header; fehlt das, gilt die Domäne als `unbekannt`.
 
-**Bestand:** 66 Verzeichnisse · 154 Artefakte · 41.1 GB.
+**Bestand:** 71 Verzeichnisse · 181 Artefakte · 46.9 GB.
 
 ## Verzeichnis-Übersicht
 
 | Verzeichnis | Artefakte | Größe | Lokale Doku-Evidenz |
 | --- | --- | --- | --- |
-| `_archive_20260920` | 28 | 8.9 GB | — |
+| `_archive_20260920` | 29 | 8.9 GB | — |
+| `_archive_20261028` | 1 | 12.9 MB | — |
 | `aero` | 1 | 77.6 MB | — |
 | `apollo` | 2 | 129.0 MB | LICENSE, README.md |
 | `applade` | 3 | 9.8 MB | LICENSE.pdf, README.md |
-| `aspade` | 1 | 3.3 MB | — |
+| `aspade` | 4 | 5.5 MB | — |
 | `ast` | 1 | 287.5 KB | — |
 | `ast_perceptual_base` | 0 | 0 B | README.md; config.json, preprocessor_config.json |
 | `audioldm2` | 2 | 1.4 GB | — |
@@ -22,22 +23,24 @@
 | `beats` | 1 | 344.8 MB | — |
 | `bigvgan` | 3 | 471.8 MB | — |
 | `bs_roformer` | 2 | 1.2 GB | — |
-| `bw_reconstructor` | 3 | 33.2 MB | — |
-| `cantus` | 3 | 788.8 MB | README.md; cantus_config.json |
+| `bw_reconstructor` | 5 | 64.7 MB | — |
+| `cantus` | 5 | 5.3 GB | README.md; cantus_config.json |
 | `clap` | 5 | 2.5 GB | LICENSE, README.md |
 | `cqtdiff` | 3 | 182.8 MB | LICENSE, README.md |
 | `crackle_texture_removal` | 2 | 2.3 MB | — |
 | `crepe` | 1 | 84.9 MB | LICENSE, README.md |
 | `dac` | 2 | 293.4 MB | — |
 | `ddsp_predictor` | 1 | 647.1 KB | — |
+| `de_crackle` | 10 | 492.8 MB | README.md |
 | `deepfilternet_v3_ii` | 8 | 67.5 MB | LICENSE, LICENSE-APACHE, LICENSE-MIT |
 | `demucs` | 1 | 2.5 MB | — |
-| `diffwave` | 2 | 10.6 MB | — |
+| `diffwave` | 4 | 51.0 MB | — |
+| `diffwave_vocal_inpaint` | 0 | 0 B | — |
 | `ear_vae` | 5 | 1.1 GB | — |
-| `ear_vae2_upstream` | 1 | 713.5 MB | LICENSE, README.md |
+| `ear_vae2_upstream` | 1 | 680.5 MB | LICENSE, README.md |
 | `era_classifier` | 1 | 30.2 KB | — |
 | `fcpe` | 2 | 131.8 MB | LICENSE, README.md |
-| `flashsr` | 6 | 9.6 MB | README.md |
+| `flashsr` | 8 | 12.1 MB | README.md |
 | `forensics` | 0 | 0 B | — |
 | `gacela` | 3 | 440.9 MB | LICENSE, README.md |
 | `gacela_upstream` | 0 | 0 B | LICENSE, README.md |
@@ -57,16 +60,18 @@
 | `muq_eval` | 0 | 0 B | LICENSE, README.md |
 | `muq_mulan` | 5 | 3.7 GB | —config.json |
 | `nara_wpe` | 0 | 0 B | LICENSE, README.rst |
-| `nvsr` | 2 | 1.1 MB | — |
+| `nvsr` | 1 | 389.3 KB | — |
 | `panns` | 1 | 79.1 KB | — |
 | `resemblyzer` | 3 | 38.0 MB | LICENSE, README.md |
 | `rmvpe` | 1 | 344.9 MB | — |
+| `rt60_regressor` | 0 | 0 B | — |
 | `rvc` | 2 | 353.5 MB | — |
 | `scnet_4stems` | 1 | 377.3 MB | README.md |
 | `sgmse_plus` | 6 | 2.9 GB | LICENSE, README.md |
 | `silero` | 1 | 112.1 MB | — |
 | `singmos` | 1 | 2.7 MB | LICENSE, README.md |
 | `symphonia` | 1 | 1.3 MB | README.md; symphonia_config.json |
+| `tf_gridnet` | 0 | 0 B | — |
 | `utmosv2` | 2 | 1.1 GB | LICENSE, README.md |
 | `uvr_mdx_net` | 4 | 247.3 MB | — |
 | `versa` | 1 | 1.2 GB | LICENSE, README (1).md, README.md |
@@ -108,8 +113,15 @@
 | `melbandroformer/melbandroformer_optimized.onnx.rocm_safe.onnx` | 859.5 MB | `6f090d26d1adbcb1…` | 225.13 M Params; IN [1, 'duration', 60, 384]; OUT ['Reshapeoutput_dim_0', 'duration', 'Reshapeoutput_dim_2', 'Reshapeoutput_dim_3', 'Reshapeoutput_dim_4']; ops: Unsqueeze×613, Gather×502, Mul×350, MatMul×264 |
 | `melbandroformer/melbandroformer_optimized.onnx.rocm_safe.onnx.probe.onnx` | 859.7 MB | `6e8d64f04a6e02bd…` | 225.13 M Params; IN [1, 'duration', 60, 384]; OUT ['Reshapeoutput_dim_0', 'duration', 'Reshapeoutput_dim_2', 'Reshapeoutput_dim_3', 'Reshapeoutput_dim_4']; ops: Unsqueeze×613, Gather×502, Mul×350, MatMul×264 |
 | `miipher_dit/whisper_denoiser_latest.pt` | 12.9 MB | `c66aec0bf57971fe…` | 3.38 M Params |
+| `nvsr/nvsr.ts` | 702.4 KB | `c3dea9caa15308af…` | 396 Zip-Einträge |
 | `sgmse_plus/sgmse_wsj0_reverb.ckpt` | 1.2 GB | — | 327.95 M Params; 1 Stubs ohne Formangabe; hparams: 31 Felder; [hash_note: übersprungen (> 1024 MB)] |
 | `singmos/singmos_pro.pt` | 1.2 GB | — | 1 Stubs ohne Formangabe; [hash_note: übersprungen (> 1024 MB)] |
+
+### `_archive_20261028`
+
+| Artefakt | Größe | SHA-256 | Gemessener Fingerabdruck |
+| --- | --- | --- | --- |
+| `D-K0-4_models_miipher_dit_whisper_denoiser_best/whisper_denoiser_best.pt` | 12.9 MB | `b1c00ad50d657bf9…` | 3.38 M Params |
 
 ### `aero`
 
@@ -146,7 +158,10 @@
 
 | Artefakt | Größe | SHA-256 | Gemessener Fingerabdruck |
 | --- | --- | --- | --- |
+| `aspade_class_v1.onnx` | 334.0 KB | `7f43d7a68714feb3…` | 0.08 M Params; IN [1, 1, 'time'], [1, 1, 1]; OUT [1, 1, 'time']; ops: Constant×61, Add×58, Mul×51, Conv×40 |
+| `aspade_class_v1.pt` | 983.6 KB | `ea2a7de04e8ea3cf…` | 0.23 M Params; 80 Stubs ohne Formangabe; hparams: 4 Felder |
 | `aspade_declipper.onnx` | 3.3 MB | `8161ed93dd28362e…` | 0.86 M Params; IN ['batch', 1, 512, 'time']; OUT ['batch', 1, 512, 'time']; ops: ReduceMean×27, Add×19, Sub×19, Mul×18 |
+| `checkpoint_latest.pt` | 984.3 KB | `c867f534bf74d321…` | 0.23 M Params; 80 Stubs ohne Formangabe; hparams: 4 Felder |
 
 ### `ast`
 
@@ -199,8 +214,8 @@
 | Artefakt | Größe | SHA-256 | Gemessener Fingerabdruck |
 | --- | --- | --- | --- |
 | `bigvgan_v2.onnx` | 2.7 MB | `43a6bb965dee2151…` | 122.81 M Params; IN [1, 128, 64]; OUT [1, 1, 32768]; ops: Mul×413, Conv×219, Pad×206, Add×175 |
-| `bigvgan_v2_f3.onnx` | 2.7 MB | `0e37c21083c5d4c7…` | 122.81 M Params; IN [1, 128, 64]; OUT [1, 1, 32768]; ops: Mul×413, Conv×219, Pad×206, Add×175 |
 | `bigvgan_v2.pth` | 466.4 MB | `d9fe7ec6bd0b44ed…` | 122.19 M Params |
+| `bigvgan_v2_f3.onnx` | 2.7 MB | `0e37c21083c5d4c7…` | 122.81 M Params; IN [1, 128, 64]; OUT [1, 1, 32768]; ops: Mul×413, Conv×219, Pad×206, Add×175 |
 
 ### `bs_roformer`
 
@@ -216,6 +231,8 @@
 | `best_model_v5.pt` | 15.7 MB | `2a01a6823ad4eff2…` | 4.12 M Params; 8 Stubs ohne Formangabe |
 | `bw_reconstructor.onnx` | 1.8 MB | `4a4e4f58b9679abe…` | 0.48 M Params; IN ['batch', 1, 'freq', 'time']; OUT ['batch', 1, 'freq', 'time']; ops: Conv×15, Relu×14, MaxPool×3, ConvTranspose×3 |
 | `bw_reconstructor_v5.onnx` | 15.7 MB | `7888e65678234fa3…` | 4.10 M Params; IN ['batch', 1, 'time'], ['batch', 1]; OUT ['batch', 1, 'time']; ops: Constant×22, Conv×14, Mul×8, Split×7 |
+| `retrain_a1_20261025/best_model_v5.pt` | 15.7 MB | `259c583602139376…` | 4.12 M Params; 8 Stubs ohne Formangabe |
+| `retrain_a1_20261025/bw_reconstructor_v5.onnx` | 15.7 MB | `548c0127eb871f4c…` | 4.10 M Params; IN ['batch', 1, 'time'], ['batch', 1]; OUT ['batch', 1, 'time']; ops: Constant×22, Conv×14, Mul×8, Split×7 |
 
 ### `cantus`
 
@@ -229,9 +246,11 @@
 
 | Artefakt | Größe | SHA-256 | Gemessener Fingerabdruck |
 | --- | --- | --- | --- |
+| `_backup_pre_kp8_20261025/checkpoint_best.pt` | 4.5 MB | `c121f8849cfdc835…` | 1.17 M Params; 67 Stubs ohne Formangabe; hparams: 60 Felder |
+| `_backup_pre_kp8_20261025/checkpoint_latest.pt` | 4.5 MB | `3169ecb1cce814a8…` | 1.17 M Params; 67 Stubs ohne Formangabe; hparams: 60 Felder |
 | `cantus_dit.onnx` | 779.7 MB | `ea2556b23dd511bb…` | 204.27 M Params; IN ['batch', 'time', 1], ['batch']; OUT ['Addv_dim_0', 'Addv_dim_1', 1]; ops: Constant×935, Mul×393, Add×333, Unsqueeze×223 |
-| `checkpoint_best.pt` | 4.5 MB | `c121f8849cfdc835…` | 1.17 M Params; 67 Stubs ohne Formangabe; hparams: 60 Felder |
-| `checkpoint_latest.pt` | 4.5 MB | `3169ecb1cce814a8…` | 1.17 M Params; 67 Stubs ohne Formangabe; hparams: 60 Felder |
+| `checkpoint_best.pt` | 2.3 GB | — | 612.89 M Params; 283 Stubs ohne Formangabe; hparams: 60 Felder; [hash_note: übersprungen (> 1024 MB)] |
+| `checkpoint_latest.pt` | 2.3 GB | — | 612.89 M Params; 283 Stubs ohne Formangabe; hparams: 60 Felder; [hash_note: übersprungen (> 1024 MB)] |
 
 ### `clap`
 
@@ -292,6 +311,25 @@
 | --- | --- | --- | --- |
 | `c4_head.pth` | 647.1 KB | `761f5d0e7c004b35…` | 0.16 M Params |
 
+### `de_crackle`
+
+**Lokale Karten/Lizenzen:**
+
+- `README.md` — `# VinylNet v4 — chirurgische ML-Restaurierung für Vinyl (gelernter Detektor + InpaintNet + Band-Split-Transformer) / Stand: **2026-10-19** (v4, base-Preset auf MUSDB18-HQ trainiert; GAN-Resume 100 Epo`
+
+| Artefakt | Größe | SHA-256 | Gemessener Fingerabdruck |
+| --- | --- | --- | --- |
+| `detector_v4.pt` | 613.1 KB | `5d89c9921e9fb158…` | 0.15 M Params; hparams: 3 Felder |
+| `runs/detector/detector.pt` | 613.1 KB | `5d89c9921e9fb158…` | 0.15 M Params; hparams: 3 Felder |
+| `runs/vinylnet/best_ep24_pre_resume_20261017.pt` | 45.7 MB | `2263cad841b5baef…` | 11.91 M Params; hparams: 9 Felder |
+| `runs/vinylnet/best_infer.pt` | 45.7 MB | `07f3278235df193a…` | 11.91 M Params; hparams: 9 Felder |
+| `runs/vinylnet/final_infer.pt` | 45.7 MB | `9db0f8fb42a94600…` | 11.91 M Params; hparams: 9 Felder |
+| `runs/vinylnet/last.pt` | 184.9 MB | `bd5a4f90ac6df44d…` | 48.26 M Params; 689 Stubs ohne Formangabe; hparams: 9 Felder |
+| `runs/vinylnet_small_musdb_20261013/best_infer.pt` | 20.7 MB | `a127c2d55ffe188c…` | 5.37 M Params; hparams: 9 Felder |
+| `runs/vinylnet_small_musdb_20261013/final_infer.pt` | 20.7 MB | `07e5bae16aae5994…` | 5.37 M Params; hparams: 9 Felder |
+| `runs/vinylnet_small_musdb_20261013/last.pt` | 82.7 MB | `aafbaf12ad1b05e8…` | 21.48 M Params; 603 Stubs ohne Formangabe; hparams: 9 Felder |
+| `vinylnet_base_best.pt` | 45.7 MB | `07f3278235df193a…` | 11.91 M Params; hparams: 9 Felder |
+
 ### `deepfilternet_v3_ii`
 
 **Lokale Karten/Lizenzen:**
@@ -322,8 +360,15 @@
 
 | Artefakt | Größe | SHA-256 | Gemessener Fingerabdruck |
 | --- | --- | --- | --- |
+| `checkpoint_latest.pt` | 30.3 MB | `66be83d48f7e2ba7…` | 7.86 M Params; 254 Stubs ohne Formangabe |
 | `diffwave.ckpt` | 10.1 MB | `b434ac56f45486ec…` | 2.62 M Params |
 | `diffwave_model.onnx` | 550.8 KB | `a07f3ca160873b7d…` | 2.63 M Params; IN [1, 16384], [1]; OUT [1, 1, 16384]; ops: Add×118, Conv×93, Split×60, Unsqueeze×33 |
+| `diffwave_vocal_ft.ckpt` | 10.1 MB | `499579d42ae49da1…` | 2.62 M Params |
+
+### `diffwave_vocal_inpaint`
+
+| Artefakt | Größe | SHA-256 | Gemessener Fingerabdruck |
+| --- | --- | --- | --- |
 
 ### `ear_vae`
 
@@ -344,7 +389,7 @@
 
 | Artefakt | Größe | SHA-256 | Gemessener Fingerabdruck |
 | --- | --- | --- | --- |
-| `checkpoints/ear_vae2.pt` | 713.5 MB | `c87215f857c90915…` | torch-zip (`gen` = `ear_vae2_small_refiner_step120000_generator`); 178.36 M Params (tensor_shapes); 326 Tensoren; 332 Zip-Einträge |
+| `checkpoints/ear_vae2.pt` | 680.5 MB | `c87215f857c90915…` | 178.36 M Params |
 
 ### `era_classifier`
 
@@ -373,6 +418,8 @@
 | Artefakt | Größe | SHA-256 | Gemessener Fingerabdruck |
 | --- | --- | --- | --- |
 | `FastAudioSR/SR48k.pth` | 1.6 MB | `62c70874ac4efeb4…` | 0.40 M Params; 96 Stubs ohne Formangabe |
+| `best.pt` | 1.3 MB | `0b9f50aa6aef4351…` | 0.31 M Params; 40 Stubs ohne Formangabe |
+| `checkpoint_epoch0.pt` | 1.3 MB | `466c80003dfba36d…` | 0.31 M Params; 40 Stubs ohne Formangabe |
 | `flashsr.onnx` | 2.4 MB | `41396e3d58fc24fa…` | 0.29 M Params; IN [1, 1, 68000]; OUT [1, 1, 204000]; ops: Mul×47, Transpose×39, Concat×39, Add×37 |
 | `flashsr_f4.onnx` | 2.4 MB | `41396e3d58fc24fa…` | 0.29 M Params; IN [1, 1, 68000]; OUT [1, 1, 204000]; ops: Mul×47, Transpose×39, Concat×39, Add×37 |
 | `models/model.onnx` | 759.7 KB | `db8f28d1babc905a…` | 0.09 M Params; IN [1, 1, 's0']; OUT [1, 1, '3*s0']; ops: Mul×47, Conv×27, Pad×25, Add×23 |
@@ -554,9 +601,6 @@
 | Artefakt | Größe | SHA-256 | Gemessener Fingerabdruck |
 | --- | --- | --- | --- |
 | `nvsr.onnx` | 389.3 KB | `a469b590a882bc6c…` | 0.09 M Params; IN ['batch', 1, 'time']; OUT ['batch', 1, 'time']; ops: Constant×69, Mul×39, Add×33, Resize×26 |
-| `nvsr.ts` | 702.4 KB | `c3dea9caa15308af…` | 396 Zip-Einträge |
-
-> **Archiviert (10.12.25):** `nvsr.ts` wurde nach `models/_archive_20260920/nvsr/nvsr.ts` verschoben (SHA unverändert `c3dea9caa15308af…`); Entscheid-Begründung: Defizit-Register D-K0-10 + `config/path_e2e_registry.json` (Status `archived`).
 
 ### `panns`
 
@@ -582,6 +626,11 @@
 | Artefakt | Größe | SHA-256 | Gemessener Fingerabdruck |
 | --- | --- | --- | --- |
 | `rmvpe.onnx` | 344.9 MB | `5370e71ac80af8b4…` | 90.40 M Params; IN [1, 128, 'time']; OUT ['Sigmoidoutput_dim_0', 'Sigmoidoutput_dim_1', 'time']; ops: Conv×124, Relu×117, Add×57, Constant×8 |
+
+### `rt60_regressor`
+
+| Artefakt | Größe | SHA-256 | Gemessener Fingerabdruck |
+| --- | --- | --- | --- |
 
 ### `rvc`
 
@@ -646,6 +695,11 @@
 | Artefakt | Größe | SHA-256 | Gemessener Fingerabdruck |
 | --- | --- | --- | --- |
 | `symphonia_tiny.onnx` | 1.3 MB | `3c56e737e484663e…` | 0.31 M Params; IN ['batch', 'time', 1], ['batch']; OUT ['Addv_dim_0', 'Addv_dim_1', 1]; ops: Constant×199, Mul×81, Add×65, Unsqueeze×39 |
+
+### `tf_gridnet`
+
+| Artefakt | Größe | SHA-256 | Gemessener Fingerabdruck |
+| --- | --- | --- | --- |
 
 ### `utmosv2`
 
@@ -743,6 +797,10 @@
 
 | Artefakt | Größe | SHA-256 | Gemessener Fingerabdruck |
 | --- | --- | --- | --- |
+| `defect_crnn.pt` | 1.4 MB | `7f0c2063e9dc515a…` | 0.38 M Params; 3 Stubs ohne Formangabe |
+| `era_crnn.pt` | 1.5 MB | `15488efe4db5e5f4…` | 0.38 M Params; 3 Stubs ohne Formangabe |
+| `loudness_dpn.pt` | 1.4 MB | `59d4883aa95f66c4…` | 0.38 M Params; 3 Stubs ohne Formangabe |
+| `material_crnn.pt` | 1.4 MB | `d19ccbc65a75cfab…` | 0.38 M Params; 3 Stubs ohne Formangabe |
 | `medium_shallow_v1.joblib` | 1.7 MB | `bf3f7ab1e9af6154…` | joblib: dict |
 
 ## Herkunftsbelege (`_archive_20260920` ↔ deployt)
@@ -767,13 +825,13 @@
 | Archiv-Artefakt | Parameter | Partner (deployt) |
 | --- | --- | --- |
 | `_archive_20260920/bs_roformer/bsr317_core_fp16.onnx` | 159.76 M | `bs_roformer/bs_roformer_317_core.onnx` |
-| `_archive_20260920/diffwave/diffwave_vocal_ft_rejected_epoch2_gatefail.ckpt` | 2.62 M | `diffwave/diffwave.ckpt` |
-| `_archive_20260920/diffwave/diffwave_vocal_ft_rejected_epoch7_aborted.ckpt` | 2.62 M | `diffwave/diffwave.ckpt` |
+| `_archive_20260920/diffwave/diffwave_vocal_ft_rejected_epoch2_gatefail.ckpt` | 2.62 M | `diffwave/diffwave.ckpt`, `diffwave/diffwave_vocal_ft.ckpt` |
+| `_archive_20260920/diffwave/diffwave_vocal_ft_rejected_epoch7_aborted.ckpt` | 2.62 M | `diffwave/diffwave.ckpt`, `diffwave/diffwave_vocal_ft.ckpt` |
 | `_archive_20260920/ear_vae_upstream/ear_vae_upstream/pretrained_weight/ear_vae_44k.pyt` | 147.86 M | `ear_vae/ear_vae_music_finetuned.pyt` |
-| `_archive_20260920/miipher_dit/whisper_denoiser_latest.pt` | 3.38 M | `miipher_dit/whisper_denoiser_best.pt` |
+| `_archive_20260920/miipher_dit/whisper_denoiser_latest.pt` | 3.38 M | `_archive_20261028/D-K0-4_models_miipher_dit_whisper_denoiser_best/whisper_denoiser_best.pt`, `miipher_dit/whisper_denoiser_best.pt` |
 | `_archive_20260920/sgmse_plus/sgmse_wsj0_reverb.ckpt` | 327.95 M | `sgmse_plus/sgmse_plus_src_1.ckpt` |
 
-### Ohne Gegenstück im deployten Bestand — 14
+### Ohne Gegenstück im deployten Bestand — 15
 
 | Archiv-Artefakt | Parameter | Partner (deployt) |
 | --- | --- | --- |
@@ -790,4 +848,5 @@
 | `_archive_20260920/medium_classifier/medium_shallow_v1.joblib` | — | — |
 | `_archive_20260920/melbandroformer/melbandroformer_optimized.onnx.rocm_safe.onnx` | 225.13 M | — |
 | `_archive_20260920/melbandroformer/melbandroformer_optimized.onnx.rocm_safe.onnx.probe.onnx` | 225.13 M | — |
+| `_archive_20260920/nvsr/nvsr.ts` | — | — |
 | `_archive_20260920/singmos/singmos_pro.pt` | — | — |
