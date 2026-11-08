@@ -108,3 +108,65 @@ def test_nt_xent_ausrichtung() -> None:
 def test_keine_flag_flips() -> None:
     assert "flag_freigabe" not in _SRC
     assert ".flags" not in _SRC
+
+
+# ── Regressionen 2026-11-08 (Kette 4 R3, D-K4-5) ─────────────────────────────
+def test_verification_accuracy_terminiert_bei_einem_track() -> None:
+    """Regression: die früheren `while t2 == t1`-Schleifen hingen bei EINEM Track endlos.
+
+    Produktionsbefund: der Smoke-Lauf (4 Tracks ⇒ 1 Validierungs-Track) lief mit
+    100 % CPU sieben Minuten ohne Ergebnis. Der Test würde bei Rückfall hängen;
+    darum prüft er zusätzlich, dass die Negativ-Paare ersetzt werden statt zu drehen.
+    """
+    emb = {"nur_ein_track": np.array([[1.0, 0.0], [0.9, 0.1]], dtype=np.float64)}
+    acc = tve._verification_accuracy(emb, np.random.default_rng(42), pairs=16)
+    assert np.isfinite(acc)
+    assert 0.0 <= acc <= 1.0
+
+
+def test_verification_accuracy_ohne_paarmoeglichkeit() -> None:
+    """Ein Track mit EINEM Segment: keine Paar-Bildung möglich ⇒ 0.0 statt Endlosschleife."""
+    emb = {"t": np.array([[1.0, 0.0]], dtype=np.float64)}
+    assert tve._verification_accuracy(emb, np.random.default_rng(0), pairs=8) == 0.0
+
+
+def test_verification_accuracy_deterministisch() -> None:
+    emb = {
+        "a": np.array([[1.0, 0.0], [0.8, 0.2]], dtype=np.float64),
+        "b": np.array([[-1.0, 0.0], [0.0, 1.0]], dtype=np.float64),
+    }
+    a1 = tve._verification_accuracy(emb, np.random.default_rng(7), pairs=32)
+    a2 = tve._verification_accuracy(emb, np.random.default_rng(7), pairs=32)
+    assert a1 == a2  # §G5 (copilot-instructions.md): gleicher Seed ⇒ gleiches Ergebnis
+
+
+def test_trainingsschleife_nutzt_differenzierbaren_pfad() -> None:
+    """Regression: `embed_utterance` läuft in `torch.no_grad()` — niemals im Training."""
+    assert "_embed_utterance_diff(encoder, a, torch)" in _SRC
+    assert 'zs = [encoder.embed_utterance(a) for a in b["views"]]' not in _SRC
+
+
+def test_embed_utterance_diff_liefert_gradienten() -> None:
+    """Wirkungs-Pin: der differenzierbare Pfad ist rückpropagierbar UND numerisch gleich."""
+    torch = pytest.importorskip("torch")
+    if not (tve._RESEMBLYZER_PKG / "resemblyzer" / "pretrained.pt").is_file():
+        pytest.skip("resemblyzer-Paket nicht im Repo")
+    import sys
+
+    sys.path.insert(0, str(tve._RESEMBLYZER_PKG))
+    try:
+        from resemblyzer import VoiceEncoder  # type: ignore[import-not-found]
+    except ImportError as exc:  # resemblyzer braucht webrtcvad & Co. — Test-Python nicht zwingend
+        pytest.skip(f"resemblyzer-Abhaengigkeiten fehlen: {exc}")
+
+    enc = VoiceEncoder("cpu")
+    rng = np.random.default_rng(0)
+    t = np.arange(16000) / 16000.0
+    wav = (0.3 * np.sin(2 * np.pi * 220.0 * t) + 0.02 * rng.standard_normal(t.size)).astype(np.float32)
+
+    z = tve._embed_utterance_diff(enc, wav, torch)
+    assert z.requires_grad  # Kern des Defekts: ohne Graph kein Training
+    z.sum().backward()
+    ref = enc.embed_utterance(wav)
+    cos = float(np.dot(ref, z.detach().numpy()) / (np.linalg.norm(ref) * float(z.detach().norm())))
+    assert cos > 0.9999  # gleiche Vorverarbeitung wie das Vorbild

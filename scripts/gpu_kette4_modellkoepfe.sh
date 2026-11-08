@@ -75,8 +75,8 @@ fi
 
 echo "=== R3: D-K4-5 F9 VoiceEncoder Musik-Vokal-Finetune (MUSDB18-HQ-Vocals) ==="
 # F9: resemblyzer VoiceEncoder (sprach-trainiert) auf MUSDB18-HQ-Vocals finetunen.
-# Trainings-Script scripts/train_voiceencoder_finetune.py existiert NOCH NICHT (daten/code-offen) —
-# Job eingereiht, aber OHNE --cmd-Ausfuehrung bis das Script + die MUSDB-Vocals vorliegen.
+# Trainer implementiert 2026-11-06 (Commit d06c765f, 21 Vertragstests) — Job
+# eingereiht; Aktivierung sobald data/musdb18hq vorliegt (Guard unten).
 if [ -f scripts/train_voiceencoder_finetune.py ] && [ -d data/musdb18hq ]; then
   R --name f9_voiceencoder_finetune --ckpt-dir models/resemblyzer/finetune --phase f9_voiceencoder \
     --cmd "env PYTHONPATH=. nice -n 15 $PY -B scripts/train_voiceencoder_finetune.py --musdb-root data/musdb18hq --epochs 30 --device cuda --out-dir models/resemblyzer/finetune" \
@@ -88,7 +88,8 @@ fi
 
 echo "=== R4: D-K4-6 F10 SingMOS-Kalibrierung auf verarbeitete Musik-Vocals ==="
 # F10: SingMOS-Kalibrierung auf Effektketten/Misch-Material aus MUSDB-Vocals.
-# Trainings-Script scripts/calibrate_singmos_music.py existiert NOCH NICHT — Job eingereiht.
+# Kalibrierer implementiert 2026-11-06 (Commit d06c765f, 21 Vertragstests) —
+# Job eingereiht; Aktivierung sobald data/musdb18hq vorliegt (Guard unten).
 if [ -f scripts/calibrate_singmos_music.py ] && [ -d data/musdb18hq ]; then
   R --name f10_singmos_calibrate --ckpt-dir models/singmos/calibration --phase f10_singmos \
     --cmd "env PYTHONPATH=. nice -n 15 $PY -B scripts/calibrate_singmos_music.py --musdb-root data/musdb18hq --out-dir models/singmos/calibration" \

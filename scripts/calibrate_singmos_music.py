@@ -38,12 +38,22 @@ logger = logging.getLogger(__name__)
 
 _ROOT = Path(__file__).resolve().parent.parent
 _SCHEMA = "aurik.singmos_calibration/1"
-_SR_MOS = 16_000  # Produktionspfad score_mos: I/O @ 16 kHz (Mono)
+_SR_MOS = 48_000  # Produktionsvertrag score_mos: I/O @ 48 kHz (Plugin resampelt intern auf 16 kHz)
+# Befund 2026-11-08 (Kette 4 R4): der Kommentar behauptete "I/O @ 16 kHz", aber
+# plugins/versa_plugin.py::score() asserted sr == 48_000 — der Kalibrierlauf starb
+# nach 56 s an AssertionError. Vertragsquelle ist das Plugin, nicht der Kommentar
+# (§V1 (copilot-instructions.md): Spec > Code > Kommentar).
+# Messfenster: MUSS unter der 30-s-Kappung des Plugins liegen (sonst wird ein
+# beliebiger Mittelausschnitt gescort statt der Degradation, siehe _pick_window).
+_WINDOW_S = 20.0
+# Mindest-Abstand clean↔stärkste Kette in MOS, unter dem die affine Abbildung
+# numerisch entartet (früher: span-Boden 1e-6 ⇒ a = 2,4e6).
+_MIN_SPAN_MOS = 0.05
 
 
 # ── Effektketten (deterministisch, seed-gebunden) ────────────────────────────
-def _mono_16k(x: np.ndarray, sr: int) -> np.ndarray:
-    """Stereo (N, C) -> Mono @ 16 kHz; layout-sicher (AGENTS.md §3)."""
+def _mono_ziel_sr(x: np.ndarray, sr: int) -> np.ndarray:
+    """Stereo (N, C) -> Mono @ _SR_MOS (48 kHz, Produktionsvertrag); layout-sicher (AGENTS.md §3)."""
     if x.ndim == 2 and x.shape[1] == 2:
         x = x.mean(axis=1)
     elif x.ndim == 2:
@@ -91,7 +101,11 @@ def _codec(x: np.ndarray, rng: np.random.Generator) -> np.ndarray:
     g = int(np.gcd(_SR_MOS, target_sr))
     down = signal.resample_poly(x, target_sr // g, _SR_MOS // g)
     up = signal.resample_poly(down, _SR_MOS // g, target_sr // g)
-    return signal.lfilter(*signal.butter(6, 0.9 * target_sr / _SR_MOS, btype="low"), up).astype(np.float32)
+    y = signal.lfilter(*signal.butter(6, 0.9 * target_sr / _SR_MOS, btype="low"), up)
+    # Form-Invariante (§III): resample_poly kann um wenige Samples driften —
+    # ohne Trim wären clean/verarbeitet nicht sample-gleich (Produktionsbefund
+    # 2026-11-08: 16002 vs. 16000).
+    return y[: x.size].astype(np.float32)
 
 
 def _mixpegel(x: np.ndarray, rng: np.random.Generator) -> np.ndarray:
@@ -135,7 +149,7 @@ def _load_vocal(path: Path) -> tuple[np.ndarray, int]:
 def score_pair(clean: np.ndarray, processed: np.ndarray, score_fn) -> dict:
     """Misst clean + verarbeitet über den injizierten Produktions-Score.
 
-    `score_fn(audio_mono_16k: np.ndarray) -> float` liefert den rohen MOS.
+    `score_fn(audio_mono_48k: np.ndarray) -> float` liefert den rohen MOS.
     NaN/Inf wird wie im Produktionspfad auf 3.0 gestellt (§V6 (copilot-instructions.md) mit Zählung).
     """
     out = {"clean": None, "processed": None, "nan_fallback": 0}
@@ -175,12 +189,28 @@ def fit_calibration(pair_rows: list[dict]) -> dict:
     # 4.2 und die stärkste Kette auf 1.8 skaliert (Grenzen [1, 5]).
     lo = min((s["mean"] for s in chain_stats.values()), default=3.0)
     hi = clean_stats["mean"]
-    span = max(hi - lo, 1e-6)
-    a = max(0.0, (4.2 - 1.8) / span)
-    b = 4.2 - a * hi
+    span = hi - lo
+    # Fail-closed (§V6 (copilot-instructions.md)): liegt der Clean-Mittelwert nicht messbar über der stärksten
+    # Kette, ist die affine Abbildung entartet — früher wurde der Nenner auf 1e-6
+    # geklemmt und das Artefakt meldete a = 2,4e6, b = −7,4e6 (Produktionsbefund
+    # 2026-11-08). Ein solches Artefakt ist unbrauchbar; es wird als `degeneriert`
+    # gekennzeichnet und NICHT als gültige Kalibrierung ausgegeben.
+    degeneriert = bool(span < _MIN_SPAN_MOS)
+    if degeneriert:
+        a, b = 0.0, hi
+    else:
+        a = max(0.0, (4.2 - 1.8) / span)
+        b = 4.2 - a * hi
     return {
         "a": float(a),
         "b": float(b),
+        "degeneriert": degeneriert,
+        "span_mos": float(span),
+        "grund": (
+            f"clean-Mittel {hi:.3f} liegt nicht > {_MIN_SPAN_MOS} MOS über der staerksten Kette {lo:.3f}"
+            if degeneriert
+            else None
+        ),
         "clean": clean_stats,
         "chains": chain_stats,
         "monotonicity_violations": int(mono_violations),
@@ -200,6 +230,29 @@ def _manifest(artefact: dict, path: Path, seed: int) -> dict:
     }
 
 
+def _pick_window(x: np.ndarray, sr: int, seconds: float = _WINDOW_S, hop_s: float = 5.0) -> np.ndarray:
+    """Wählt das energiereichste Fenster fester Länge (deterministisch, §G5 (copilot-instructions.md)).
+
+    Warum: der Produktions-Score kappt auf einen **30-s-Mittelausschnitt**
+    (plugins/versa_plugin.py, `_SINGMOS_MAX_SAMPLES_16K`). Ein ganzer 238-s-Vocal
+    wird dadurch an einer beliebigen Stelle gemessen — Produktionsbefund
+    2026-11-08: derselbe Track clean 1,30 gegen verarbeitet 4,86, d. h. der
+    Score maß den Ausschnitt, nicht die Degradation. Ein Fenster ≤ 30 s mit
+    stimmaktiver Lage macht clean und verarbeitet vergleichbar (gleiche Stelle,
+    gleiche Länge) und umgeht die Kappung.
+    """
+    n = int(round(seconds * sr))
+    if x.size <= n:
+        return x
+    hop = max(1, int(round(hop_s * sr)))
+    best_start, best_energy = 0, -1.0
+    for start in range(0, x.size - n + 1, hop):
+        energy = float(np.sum(np.square(x[start : start + n], dtype=np.float64)))
+        if energy > best_energy:  # strikt größer: bei Gleichstand gewinnt der frühere Start
+            best_start, best_energy = start, energy
+    return x[best_start : best_start + n]
+
+
 def build_pairs(
     musdb_root: Path, seed: int, pairs_per_effect: int, rng: np.random.Generator | None = None
 ) -> list[dict]:
@@ -213,7 +266,7 @@ def build_pairs(
     rows: list[dict] = []
     for track in sorted(chosen, key=str):
         x, sr = _load_vocal(track)
-        clean = _mono_16k(x, sr)
+        clean = _pick_window(_mono_ziel_sr(x, sr), _SR_MOS)
         for chain in sorted(_EFFECTS, key=lambda c: _EFFECT_STRENGTH[c]):
             for _ in range(pairs_per_effect):
                 processed = _EFFECTS[chain](clean, rng)
@@ -259,6 +312,7 @@ def main(argv: list[str] | None = None) -> int:
     calibration["schema"] = _SCHEMA
     calibration["seed"] = seed
     calibration["smoke"] = bool(args.smoke)
+    calibration["fenster_s"] = float(_WINDOW_S)
 
     out_dir = Path(args.out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -277,6 +331,13 @@ def main(argv: list[str] | None = None) -> int:
     logger.info(
         "KEIN Flag-Flip, KEINE Konsument-Verdrahtung (§V8 (copilot-instructions.md)) — Read-Side-Bedarf im Report dokumentieren"
     )
+    if calibration.get("degeneriert"):
+        logger.error(
+            "Kalibrierung ENTARTET (%s): das Proxy-Ranking trägt die Grund-Ordnung nicht — "
+            "Artefakt als Beleg geschrieben, aber KEINE gültige Kalibrierung (Exit 3, §V6 (copilot-instructions.md))",
+            calibration.get("grund"),
+        )
+        return 3
     return 0
 
 

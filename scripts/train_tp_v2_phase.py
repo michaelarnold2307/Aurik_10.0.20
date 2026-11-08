@@ -250,6 +250,25 @@ def train(
     model = build_model(n_freq=N_FREQ, context_frames=CONTEXT_FRAMES, hidden=hidden, blocks=blocks, seed=seed).to(dev)
     opt = torch.optim.Adam(model.parameters(), lr=lr)
 
+    # Resume-Anker (D-K3-72-Klasse, 2026-11-08): checkpoint_latest.pt wird je
+    # Epoche geschrieben und beim Neustart geladen — sonst verliert ein
+    # 6-h-Timeout den gesamten Lauf (Produktionsbefund FlashSR, D-K3-72).
+    start_epoch = 0
+    _anchor = out_dir / "checkpoint_latest.pt"
+    if _anchor.exists():
+        try:
+            _ck = torch.load(_anchor, map_location="cpu", weights_only=False)
+            model.load_state_dict(_ck["model_state_dict"])
+            start_epoch = int(_ck.get("epoch", 0))
+            if "optimizer_state_dict" in _ck:
+                opt.load_state_dict(_ck["optimizer_state_dict"])
+            logger.info("Resume ab Epoche %d aus %s", start_epoch, _anchor)
+        except Exception as _exc:  # fail-closed: nie still bei Epoche 0 neu starten
+            logger.error(
+                "Resume-Anker korrupt (%s): %s — Abbruch Exit 2 (§V6 (copilot-instructions.md))", _anchor, _exc
+            )
+            raise SystemExit(2) from _exc
+
     ds = TransientPhaseDataset(synthetic=synthetic, real_dir=real_dir, seed=seed)
     out_dir.mkdir(parents=True, exist_ok=True)
     ckpt = out_dir / "tp_v2_phase_v1.pt"
@@ -263,7 +282,7 @@ def train(
 
     n_seen = 0
     loss_acc = 0.0
-    for epoch in range(epochs):
+    for epoch in range(start_epoch, epochs):
         model.train()
         for step in range(steps_per_epoch):
             rng = np.random.default_rng(_seed_for(seed, f"e{epoch}", f"s{step}"))
@@ -288,6 +307,17 @@ def train(
             loss_acc += float(loss.item())
             n_seen += 1
         logger.info("Epoch %d/%d | Loss %.4f", epoch + 1, epochs, loss_acc / max(n_seen, 1))
+        # Per-Epoche-Anker (D-K3-72-Klasse): nur so überlebt ein Timeout die Kette.
+        save_guarded(
+            _anchor,
+            {
+                "model_state_dict": {k: v.detach().cpu() for k, v in model.state_dict().items()},
+                "optimizer_state_dict": opt.state_dict(),
+                "seed": seed,
+                "epoch": epoch + 1,
+                "loss": loss_acc / max(n_seen, 1),
+            },
+        )
         if smoke:
             break  # ein Smoke-Schritt genügt (CPU < 3 Min, kein Echt-Training)
 

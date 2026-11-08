@@ -110,3 +110,51 @@ def test_load_vocos_fail_closed_missing_package(monkeypatch, tmp_path: pathlib.P
 def test_keine_flag_flips() -> None:
     assert "flag_freigabe" not in _SRC
     assert ".flags" not in _SRC
+
+
+# ── Regressionen 2026-11-08 (Kette 4 R5, D-K2-3) ────────────────────────────
+def test_kein_hub_download_fuer_lokales_checkpoint() -> None:
+    """Regression: `Vocos.from_pretrained(<lokaler Pfad>)` starb an der Repo-ID-Prüfung.
+
+    Produktionsbefund: Exit 1 nach 2,1 s, „Repo id must be in the form …". Ein
+    lokales Checkpoint muss offline über `from_hparams` + `load_state_dict` laden.
+    """
+    assert "model = Vocos.from_pretrained" not in _SRC
+    assert "Vocos.from_hparams(" in _SRC
+
+
+def test_load_vocos_offline(monkeypatch, tmp_path: pathlib.Path) -> None:
+    import sys
+    import types
+
+    torch = pytest.importorskip("torch")
+    calls: dict[str, object] = {}
+
+    class FakeVocos:
+        @classmethod
+        def from_pretrained(cls, *a, **k):
+            raise AssertionError("from_pretrained darf fuer ein lokales Checkpoint nicht genutzt werden")
+
+        @classmethod
+        def from_hparams(cls, config_path: str):
+            calls["hparams"] = config_path
+            obj = cls()
+            obj.load_state_dict = lambda sd: calls.setdefault("state", sd)  # type: ignore[attr-defined]
+            obj.to = lambda dev: obj  # type: ignore[attr-defined]
+            obj.eval = lambda: obj  # type: ignore[attr-defined]
+            return obj
+
+    fake = types.ModuleType("vocos")
+    fake.pretrained = types.ModuleType("vocos.pretrained")
+    fake.pretrained.Vocos = FakeVocos
+    monkeypatch.setitem(sys.modules, "vocos", fake)
+    monkeypatch.setitem(sys.modules, "vocos.pretrained", fake.pretrained)
+    monkeypatch.setattr(tvf, "_ROOT", tmp_path)
+    ckpt = tmp_path / "models" / "vocos_48khz"
+    ckpt.mkdir(parents=True)
+    (ckpt / "config.yaml").write_text("backbone: {}\n", encoding="utf-8")
+    torch.save({"w": torch.zeros(1)}, ckpt / "pytorch_model.bin")
+
+    tvf._load_vocos("cpu")
+    assert str(calls["hparams"]).endswith("config.yaml")
+    assert "w" in calls["state"]  # type: ignore[operator]

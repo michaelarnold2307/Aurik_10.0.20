@@ -76,6 +76,7 @@ TARGET_SR = 48000
 SEGMENT_S = 2.5
 SEGMENT_FRAMES = int(SEGMENT_S * TARGET_FPS)
 CHECKPOINT_SUBPATH = "wf4_warp_head_v1.pt"
+CHECKPOINT_ANCHOR_SUBPATH = "checkpoint_latest.pt"  # Repo-Standardanker (Resume-Guard der Kette)
 DEFAULT_SEED = 20261027
 LOSS_CONF_WEIGHT = 0.1
 
@@ -269,6 +270,25 @@ def train(
     model = build_wf4_warp_model(n_feat=N_SPEC_FEAT, hidden=hidden, dilations=blocks).to(dev)
     opt = torch.optim.Adam(model.parameters(), lr=lr)
 
+    # Resume-Anker (D-K3-72-Klasse, 2026-11-08): checkpoint_latest.pt wird je
+    # Epoche geschrieben und beim Neustart geladen — sonst verliert ein
+    # 6-h-Timeout den gesamten Lauf (Produktionsbefund FlashSR, D-K3-72).
+    start_epoch = 0
+    _anchor = out_dir / CHECKPOINT_ANCHOR_SUBPATH
+    if _anchor.exists():
+        try:
+            _ck = torch.load(_anchor, map_location="cpu", weights_only=False)
+            model.load_state_dict(_ck["model_state_dict"])
+            start_epoch = int(_ck.get("epoch", 0))
+            if "optimizer_state_dict" in _ck:
+                opt.load_state_dict(_ck["optimizer_state_dict"])
+            logger.info("Resume ab Epoche %d aus %s", start_epoch, _anchor)
+        except Exception as _exc:  # fail-closed: nie still bei Epoche 0 neu starten
+            logger.error(
+                "Resume-Anker korrupt (%s): %s — Abbruch Exit 2 (§V6 (copilot-instructions.md))", _anchor, _exc
+            )
+            raise SystemExit(2) from _exc
+
     n_synth = 32 if smoke else synthetic_segments
     if smoke:
         epochs, steps_per_epoch = 1, 2
@@ -285,7 +305,7 @@ def train(
         )
 
     loss_acc = 0.0
-    for epoch in range(epochs):
+    for epoch in range(start_epoch, epochs):
         model.train()
         for step in range(steps_per_epoch):
             rng = np.random.default_rng(_seed_for(seed, "batch", epoch, step))
@@ -328,6 +348,23 @@ def train(
             opt.step()
             loss_acc = float(loss.detach().cpu())
         logger.info("Epoch %d/%d Loss %.6f", epoch + 1, epochs, loss_acc)
+        # Per-Epoche-Anker (D-K3-72-Klasse): nur so überlebt ein Timeout die Kette.
+        save_guarded(
+            out_dir / CHECKPOINT_ANCHOR_SUBPATH,
+            {
+                "model_state_dict": {k: v.detach().cpu() for k, v in model.state_dict().items()},
+                "optimizer_state_dict": opt.state_dict(),
+                "wf4_warp_config": {
+                    "n_feat": N_SPEC_FEAT,
+                    "hidden": hidden,
+                    "dilations": list(blocks),
+                    "target_fps": TARGET_FPS,
+                },
+                "seed": seed,
+                "epoch": epoch + 1,
+                "loss": loss_acc,
+            },
+        )
 
     ckpt = {
         "model_state_dict": {k: v.detach().cpu() for k, v in model.state_dict().items()},

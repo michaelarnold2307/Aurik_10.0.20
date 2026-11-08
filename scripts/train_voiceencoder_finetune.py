@@ -39,6 +39,10 @@ _ROOT = Path(__file__).resolve().parent.parent
 _RESEMBLYZER_PKG = _ROOT / "models" / "resemblyzer"
 _SR_TARGET = 16_000  # Witness-/VoiceEncoder-Arbeitsrate (train/serve-konsistent)
 _SEG_S = 3.0
+# Partial-Slice-Parameter des Vorbilds `VoiceEncoder.embed_utterance` (dort Defaults
+# im Methodenkörper; diese resemblyzer-Version hat KEINE Default-Argumente).
+_PARTIAL_RATE = 1.3
+_PARTIAL_MIN_COVERAGE = 0.75
 _AUG_KINDS = ("clean", "hall", "saettigung", "bandlimit")
 _MANIFEST_SCHEMA = "aurik.voiceencoder_finetune/1"
 
@@ -152,26 +156,72 @@ def _nt_xent_torch(z, labels: np.ndarray, tau: float):
 
 def _verification_accuracy(embeddings: dict[str, np.ndarray], rng: np.random.Generator, pairs: int = 64) -> float:
     ids = sorted(embeddings)
+    if not ids:
+        return 0.0
+    # Endlosschleifen-Fix (§0a/§V6 (copilot-instructions.md)): die früheren `while j == i`-Schleifen konnten
+    # nie terminieren, wenn nur EIN Track (bzw. ein Embedding mit < 2 Segmenten)
+    # vorliegt — der Smoke-Modus (4 Tracks ⇒ 1 Validierungs-Track) hing dadurch
+    # mit 100 % CPU statt zu messen. Jetzt wird der zweite Index über den
+    # Rest-Bereich gezogen (Bias-frei, deterministisch aus demselben RNG).
+    can_neg = len(ids) >= 2
+    multi_ids = [t for t in ids if len(embeddings[t]) >= 2]
+    if not multi_ids and not can_neg:
+        logger.warning(
+            "Validierung ohne Paar-Möglichkeit (1 Track, 1 Segment) — Genauigkeit 0.0 (§V6 (copilot-instructions.md))"
+        )
+        return 0.0
     same = 0
     total = 0
     for _ in range(pairs):
-        if rng.random() < 0.5:
-            t = ids[int(rng.integers(len(ids)))]
+        want_same = bool(rng.random() < 0.5)
+        if want_same and not multi_ids:
+            want_same = False
+        elif not want_same and not can_neg:
+            want_same = True
+        if want_same:
+            t = multi_ids[int(rng.integers(len(multi_ids)))]
             e = embeddings[t]
-            i, j = int(rng.integers(len(e))), int(rng.integers(len(e)))
-            while j == i:
-                j = int(rng.integers(len(e)))
+            i = int(rng.integers(len(e)))
+            j = int(rng.integers(len(e) - 1))  # garantiert != i nach dem Bump
+            if j >= i:
+                j += 1
             sim = float(e[i] @ e[j])
             label = 1.0
         else:
-            t1, t2 = ids[int(rng.integers(len(ids)))], ids[int(rng.integers(len(ids)))]
-            while t2 == t1:
-                t2 = ids[int(rng.integers(len(ids)))]
-            sim = float(embeddings[t1][0] @ embeddings[t2][0])
+            a = int(rng.integers(len(ids)))
+            b = int(rng.integers(len(ids) - 1))
+            if b >= a:
+                b += 1
+            sim = float(embeddings[ids[a]][0] @ embeddings[ids[b]][0])
             label = 0.0
         same += 1.0 if (sim > 0.0) == (label > 0.5) else 0.0
         total += 1
     return same / max(total, 1)
+
+
+def _embed_utterance_diff(encoder, wav: np.ndarray, torch_mod):
+    """Differenzierbares Pendant zu `VoiceEncoder.embed_utterance`.
+
+    `embed_utterance` kapselt den Forward-Pass in `torch.no_grad()`
+    (models/resemblyzer/resemblyzer/voice_encoder.py) — ein darauf gestütztes
+    Training kann nie Gradienten liefern (Produktionsbefund 2026-11-08, Kette 4
+    R3: `loss.backward()` starb an "element 0 of tensors does not require grad").
+    Hier wird derselbe Pfad (Partial-Slices → Log-Mel → Modell → Mittelwert →
+    L2-Norm) ohne `no_grad` gegangen, damit die NT-Xent-Loss backpropagierbar
+    bleibt. Die Vorverarbeitung ist bit-identisch zu der des Vorbilds.
+    """
+    from resemblyzer import audio as _rz_audio  # type: ignore[import-not-found]
+
+    wav_slices, mel_slices = encoder.compute_partial_slices(len(wav), _PARTIAL_RATE, _PARTIAL_MIN_COVERAGE)
+    max_wave_length = wav_slices[-1].stop
+    if max_wave_length >= len(wav):
+        wav = np.pad(wav, (0, max_wave_length - len(wav)), "constant")
+    mel = _rz_audio.wav_to_mel_spectrogram(wav)
+    mels = np.array([mel[s] for s in mel_slices])
+    mels_t = torch_mod.from_numpy(np.ascontiguousarray(mels, dtype=np.float32)).to(getattr(encoder, "device", "cpu"))
+    partial = encoder(mels_t)  # [n_partials, embedding] — mit Autograd-Graph
+    raw = partial.mean(dim=0)
+    return raw / raw.norm(p=2).clamp_min(1e-8)
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -254,16 +304,38 @@ def main(argv: list[str] | None = None) -> int:
     logger.info("Basis-Validierungs-Genauigkeit: %.3f", base_acc)
 
     opt = torch.optim.Adam(model_mod.parameters(), lr=args.lr)
+    n_trainable = sum(p.numel() for p in model_mod.parameters() if p.requires_grad)
+    if n_trainable == 0:  # fail-closed statt 60-s-Traceback in der ersten Batch (§V6 (copilot-instructions.md))
+        logger.error(
+            "VoiceEncoder hat keine trainierbaren Parameter — Finetune unmoeglich (§V6 (copilot-instructions.md))"
+        )
+        return 2
+    logger.info("Trainierbare Parameter: %d", n_trainable)
     epochs = 1 if args.smoke else args.epochs
     best_acc = base_acc
     out_dir = args.out_dir
     out_dir.mkdir(parents=True, exist_ok=True)
+    # Resume-Anker (D-K3-72-Klasse, 2026-11-08): checkpoint_latest.pt je Epoche
+    # + Load beim Neustart — sonst verliert ein 6-h-Timeout den ganzen Lauf.
+    start_ep = 1
+    _anchor_f9 = out_dir / "checkpoint_latest.pt"
+    if _anchor_f9.exists():
+        try:
+            _ckf9 = torch.load(_anchor_f9, map_location="cpu", weights_only=False)
+            model_mod.load_state_dict(_ckf9["model_state_dict"])
+            start_ep = int(_ckf9.get("epoch", 0)) + 1
+            logger.info("Resume ab Epoche %d aus %s", start_ep, _anchor_f9)
+        except Exception as _exc:  # fail-closed: nie still bei Epoche 1 neu starten
+            logger.error(
+                "Resume-Anker korrupt (%s): %s — Abbruch Exit 2 (§V6 (copilot-instructions.md))", _anchor_f9, _exc
+            )
+            raise SystemExit(2) from _exc
     manifest_path = out_dir / "manifest.json"
 
     def _checkpoint(acc: float, ep: int, loss: float) -> None:
         from backend.core.training_artifacts import save_guarded
 
-        save_guarded(out_dir / "voiceencoder_vocal_ft.pt", lambda p: torch.save(model_mod.state_dict(), p))
+        save_guarded(out_dir / "voiceencoder_vocal_ft.pt", model_mod.state_dict())
         manifest = {
             "schema": _MANIFEST_SCHEMA,
             "seed": args.seed,
@@ -284,11 +356,11 @@ def main(argv: list[str] | None = None) -> int:
         }
         manifest_path.write_text(json.dumps(manifest, indent=2, sort_keys=True), encoding="utf-8")
 
-    for ep in range(1, epochs + 1):
+    for ep in range(start_ep, epochs + 1):
         total = 0.0
         for b in batches:
-            zs = [encoder.embed_utterance(a) for a in b["views"]]
-            z = torch.stack([torch.as_tensor(e, dtype=torch.float32) for e in zs])
+            zs = [_embed_utterance_diff(encoder, a, torch) for a in b["views"]]
+            z = torch.stack(zs)
             z = torch.nn.functional.normalize(z, dim=1)
             labels = np.asarray(b["labels"], dtype=np.int64)
             loss = _nt_xent_torch(z, labels, 0.1)
@@ -298,6 +370,18 @@ def main(argv: list[str] | None = None) -> int:
             total += float(loss.item())
         mean_loss = total / max(len(batches), 1)
         logger.info("Epoch %d/%d loss=%.6f", ep, epochs, mean_loss)
+        # Per-Epoche-Anker (D-K3-72-Klasse): unabhängig vom Never-worsen-Gate —
+        # der Resume soll auch bei schwankender Val-Acc den letzten Stand behalten.
+        from backend.core.training_artifacts import save_guarded as _sg_f9
+
+        _sg_f9(
+            _anchor_f9,
+            {
+                "model_state_dict": model_mod.state_dict(),
+                "epoch": ep,
+                "loss": mean_loss,
+            },
+        )
         acc = _verification_accuracy(_embed_val(), val_rng)
         logger.info("Validierungs-Genauigkeit: %.3f (Basis %.3f)", acc, base_acc)
         if acc >= best_acc - 0.01:  # Never-worsen (§V6 (copilot-instructions.md)): nur besserer Stand wird persistiert

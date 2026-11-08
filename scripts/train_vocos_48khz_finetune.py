@@ -175,8 +175,22 @@ def _load_vocos(device: str):
     for needed in ("config.yaml", "pytorch_model.bin"):
         if not (ckpt_dir / needed).is_file():
             raise SystemExit(f"Deploytes Checkpoint unvollstaendig: {ckpt_dir / needed}")
+    # Lokales Checkpoint: Vocos.from_pretrained() reicht den Pfad an
+    # huggingface_hub.hf_hub_download() weiter und akzeptiert nur Repo-IDs
+    # ("Repo id must be in the form 'repo_name' oder 'namespace/repo_name'") —
+    # Befund 2026-11-08 (Kette 4 R5, Exit 1 nach 2 s). Deshalb der Offline-Pfad:
+    # from_hparams() + load_state_dict() auf die deployten Dateien (§G5 (copilot-instructions.md): kein
+    # Netzwerk, deterministisch derselbe Stand wie das ONNX-Artefakt).
     try:
-        model = Vocos.from_pretrained(str(ckpt_dir))
+        import torch as _torch
+
+        model = Vocos.from_hparams(str(ckpt_dir / "config.yaml"))
+        state = _torch.load(ckpt_dir / "pytorch_model.bin", map_location="cpu", weights_only=True)
+        if isinstance(state, dict) and "state_dict" in state:
+            state = state["state_dict"]
+        model.load_state_dict(state)
+    except SystemExit:
+        raise
     except Exception as exc:
         raise SystemExit(f"Vocos-Checkpoint nicht ladbar: {exc}") from exc
     model = model.to(device)
@@ -198,6 +212,25 @@ def _run(args: argparse.Namespace) -> dict:
     params = [p for p in model.parameters() if p.requires_grad]
     optimizer = optim.Adam(params, lr=args.lr)
 
+    # Resume-Anker (D-K3-72-Klasse, 2026-11-08): checkpoint_latest.pt je Epoche
+    # + Load beim Neustart — sonst verliert ein 6-h-Timeout den ganzen Lauf.
+    _anchor_v = Path(args.out_dir) / "checkpoint_latest.pt"
+    _anchor_v.parent.mkdir(parents=True, exist_ok=True)
+    start_epoch = 0
+    if _anchor_v.exists():
+        import torch as _torch_v
+
+        try:
+            _ckv = _torch_v.load(_anchor_v, map_location="cpu", weights_only=False)
+            model.load_state_dict(_ckv["state_dict"])
+            start_epoch = int(_ckv.get("epoch", 0))
+            logger.info("Resume ab Epoche %d aus %s", start_epoch, _anchor_v)
+        except Exception as _exc:  # fail-closed: nie still bei Epoche 0 neu starten
+            logger.error(
+                "Resume-Anker korrupt (%s): %s — Abbruch Exit 2 (§V6 (copilot-instructions.md))", _anchor_v, _exc
+            )
+            raise SystemExit(2) from _exc
+
     tracks = _stable_track_list(args.musdb_root, args.seed)
     if args.smoke:
         tracks, epochs, batch = tracks[:2], 1, 2
@@ -206,7 +239,7 @@ def _run(args: argparse.Namespace) -> dict:
 
     rng = np.random.default_rng(args.seed)
     history: list[float] = []
-    for epoch in range(epochs):
+    for epoch in range(start_epoch, epochs):
         epoch_losses: list[float] = []
         for track in tracks:
             vocal = Path(track) / "vocals.wav"
@@ -249,6 +282,19 @@ def _run(args: argparse.Namespace) -> dict:
         mean_loss = float(np.mean(epoch_losses)) if epoch_losses else float("inf")
         history.append(mean_loss)
         logger.info("Epoch %d/%d — Verlust %.5f", epoch + 1, epochs, mean_loss)
+        # Per-Epoche-Anker (D-K3-72-Klasse): nur so überlebt ein Timeout die Kette.
+        # KEIN lokaler torch-Import: `torch` ist oben in `_run` gebunden und ein
+        # `import torch as …` im Loop-Körper shadowte den Namen (flake8 F402).
+        from backend.core.training_artifacts import save_guarded as _sg_vocos
+
+        _sg_vocos(
+            _anchor_v,
+            {
+                "state_dict": model.state_dict(),
+                "epoch": epoch + 1,
+                "loss": mean_loss,
+            },
+        )
         if args.smoke:
             break
 
@@ -258,7 +304,8 @@ def _run(args: argparse.Namespace) -> dict:
     from backend.core.training_artifacts import save_guarded
 
     save_guarded(
-        ckpt_path, lambda p: torch.save({"state_dict": model.state_dict(), "epochs": epochs, "seed": args.seed}, p)
+        ckpt_path,
+        {"state_dict": model.state_dict(), "epochs": epochs, "seed": args.seed},
     )
     manifest = {
         "schema": _SCHEMA,
