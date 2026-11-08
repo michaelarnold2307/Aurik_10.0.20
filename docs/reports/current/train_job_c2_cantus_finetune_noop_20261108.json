@@ -1,0 +1,28 @@
+{
+  "schema": "aurik.train_job/1",
+  "run_id": "fine_tune-20261108T162606Z-09c30f",
+  "name": "c2_cantus_finetune",
+  "phase": "fine_tune",
+  "seed": null,
+  "befehl": "env PYTHONPATH=. /home/michael/.local/share/aurik/venv_rocm72/bin/python -B scripts/train_cantus.py --phase=fine_tune --preset=full --singmos-loss --epochs=30 --data data/cantus_pairs/manifest.jsonl --resume models/cantus/checkpoint_latest.pt",
+  "resume_befehl": "env PYTHONPATH=. /home/michael/.local/share/aurik/venv_rocm72/bin/python -B scripts/train_cantus.py --phase=fine_tune --preset=full --singmos-loss --epochs=30 --data data/cantus_pairs/manifest.jsonl --resume models/cantus/checkpoint_latest.pt",
+  "timeout_s": 43200.0,
+  "retries": 1,
+  "versuche": [
+    {
+      "exit_code": 0,
+      "sekunden": 11.9,
+      "timed_out": false,
+      "output_tail": "INFO __main__: Ressourcen-Deckel: 4 Trainings-Threads von 16 Kernen, nice +10 (Host-Schutz, Pfeiler 6)\nINFO __main__: Phasenwechsel pretrain → fine_tune: Optimizer-State wird bewusst NICHT übernommen (frischer Optimizer — spart ~1,6 GB RAM, Pfeiler 6)\nINFO __main__: Resume: epoch=50 step=10000 best_val=4.5922 (seed=42)\nINFO __main__: Lauf-ID: fine_tune-20261108T162615Z-596634 (Single-Writer-Lock aktiv, Pfeiler 4)\nINFO __main__: Training: phase=fine_tune epochs=30 lr=2.0e-05 device=cuda model=204.3M params\nINFO __main__: Fertig: best_val=4.5922 — Report: /media/michael/Software 4TB/Aurik_Standalone/models/cantus/train_report_fine_tune.json\n",
+      "versuch": 1,
+      "befehl": "env PYTHONPATH=. /home/michael/.local/share/aurik/venv_rocm72/bin/python -B scripts/train_cantus.py --phase=fine_tune --preset=full --singmos-loss --epochs=30 --data data/cantus_pairs/manifest.jsonl --resume models/cantus/checkpoint_latest.pt"
+    }
+  ],
+  "quelle": "scripts/train_job_runner.py",
+  "checkpoint_hashes": {
+    "cantus_dit.onnx": "ea2556b23dd511bb8e73eb231efd06bfdfd3128f4bf941f3550bdf5b6d7820cc",
+    "checkpoint_best.pt": "b09822bcb957858f3779cddf0e7109913d1f80928b351a22cd5595ede4d48130",
+    "checkpoint_latest.pt": "78ec1319eb28d05fcacd4dc5517f130b2afc3e35f097710ce8ac1eb38e70cb20"
+  },
+  "ergebnis": "erfolgreich"
+}

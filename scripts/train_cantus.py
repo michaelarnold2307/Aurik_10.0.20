@@ -839,6 +839,30 @@ def _apply_resource_ceiling(nice_delta: int = 10) -> None:
     )
 
 
+def _phasen_lokale_resume_groessen(
+    ckpt_phase: str | None,
+    ziel_phase: str,
+    epoch: int,
+    step: int,
+    val_loss: float,
+) -> tuple[int, int, float, bool]:
+    """Liefert ``(start_epoch, global_step, best_val, phasenwechsel)``.
+
+    D-K3-84: ``epoch``/``step``/``val_loss`` eines Checkpoints sind
+    **phasen-lokal** — die Verlust-Definition von ``pretrain`` ist nicht die
+    von ``fine_tune`` (SingMOS-Loss). Wird beim Phasenwechsel weitergezählt,
+    ist ``range(start_epoch, epochs)`` leer (Pretrain ``epoch=50`` gegen
+    ``--epochs=30``): der Lauf beendet sich ohne einen einzigen
+    Gradienten-Schritt **und meldet Erfolg** (D-K3-80-Klasse), und
+    ``checkpoint_best.pt`` kann in der neuen Phase nie geschrieben werden,
+    weil ``best_val`` an einer fremden Verlust-Achse hängt. Die Gewichte
+    bleiben geladen — genau das ist der Sinn des Finetunes.
+    """
+    if ckpt_phase == ziel_phase:
+        return int(epoch), int(step), float(val_loss), False
+    return 0, 0, float("inf"), True
+
+
 def train(args: argparse.Namespace) -> int:
     # §G9 (copilot-instructions.md): genau EIN Config-Ladepfad (_load_config).
     cfg = _load_config()
@@ -935,9 +959,20 @@ def train(args: argparse.Namespace) -> int:
                 ckpt.get("phase"),
                 args.phase,
             )
-        start_epoch = int(ckpt.get("epoch", 0))
-        global_step = int(ckpt.get("step", 0))
-        best_val = float(ckpt.get("val_loss", float("inf")))
+        start_epoch, global_step, best_val, _phase_wechsel = _phasen_lokale_resume_groessen(
+            ckpt.get("phase"),
+            args.phase,
+            int(ckpt.get("epoch", 0)),
+            int(ckpt.get("step", 0)),
+            float(ckpt.get("val_loss", float("inf"))),
+        )
+        if _phase_wechsel:
+            logger.info(
+                "Phasenwechsel %s → %s: Epochen-/Schritt-Zähler und best_val zurückgesetzt "
+                "(phasen-lokale Größen; Gewichte bleiben geladen)",
+                ckpt.get("phase"),
+                args.phase,
+            )
         logger.info(
             "Resume: epoch=%d step=%d best_val=%.4f (seed=%s)", start_epoch, global_step, best_val, ckpt.get("seed")
         )
@@ -977,7 +1012,9 @@ def train(args: argparse.Namespace) -> int:
         device,
         model.num_params,
     )
+    _epochen_trainiert = 0
     for epoch in range(start_epoch, int(args.epochs)):
+        _epochen_trainiert += 1
         train_ds.set_epoch(epoch)
         model.train()
         for step_i, batch in enumerate(train_loader):
@@ -1080,6 +1117,18 @@ def train(args: argparse.Namespace) -> int:
             )
             break
 
+    report["epochen_trainiert"] = _epochen_trainiert
+    if _epochen_trainiert == 0:
+        # §V6 (copilot-instructions.md): ein Lauf ohne eine einzige Epoche ist
+        # KEIN Erfolg. Vorher meldete der Trainer "Fertig" + Exit 0, und das
+        # Job-Manifest verbuchte einen No-Op als Erfolg (D-K3-84).
+        report["stopped_reason"] = "no_epochs"
+        logger.error(
+            "Keine Epoche trainiert: Ziel %d ist mit dem geladenen Stand (epoch=%d) bereits erreicht — "
+            "das ist ein No-Op, kein Erfolg. Echter Lauf nur mit höherem --epochs oder ohne --resume.",
+            int(args.epochs),
+            start_epoch,
+        )
     report["final_val_loss"] = best_val
     if report.get("stopped_reason"):
         report_path = ckpt_dir / f"train_report_{args.phase}.json"

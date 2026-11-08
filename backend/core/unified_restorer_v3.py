@@ -24305,6 +24305,12 @@ class UnifiedRestorerV3:
         except Exception:
             logger.debug("Terminal-100-Callback nicht blockierend")
 
+        # §2b Hebel F (2026-11-08): referenzfreier Wohlklang-Zeuge je Lauf —
+        # REPORT-ONLY (kein Sample-Eingriff, kein Rollback); gerichtete Fälle
+        # werden der Hör-Instanz vorgelegt (Hörordnung §7/§8a).
+        if isinstance(getattr(result, "metadata", None), dict):
+            result.metadata["wohlklang_zeuge"] = self._wohlklang_zeuge_meta(audio, result.audio, sample_rate)
+
         return result
 
     def get_phase_progress(self) -> dict:
@@ -45606,6 +45612,7 @@ class UnifiedRestorerV3:
                 "final_score": opt_result.final_score,
                 "iterations": opt_result.iterations,
                 "segment_strategies": opt_result.segment_strategies,
+                "wohlklang_zeuge": self._wohlklang_zeuge_meta(audio, opt_result.audio, sample_rate),
             },
         )
 
@@ -47472,6 +47479,22 @@ class UnifiedRestorerV3:
             logger.debug("Final memory cleanup fehlgeschlagen: %s", _cleanup_exc)
         return _cleanup_report
 
+    def _wohlklang_zeuge_meta(self, eingang: Any, ausgang: Any, sample_rate: int) -> dict[str, Any]:
+        """§2b Hebel F (2026-11-08): referenzfreier Wohlklang-Zeuge je Lauf.
+
+        Misst die beiden richtungszertifizierten Metriken (``musik_mos``,
+        ``defektlast``; Spearman 0,95) an Eingang und Ausgang und markiert
+        gerichtete Fälle für die Hör-Instanz. REPORT-ONLY: kein Sample wird
+        verändert, kein Rollback, keine Export-Blockade (Hörordnung §7/§8a).
+        Der Aufruf ist nie werfend (§V6 (copilot-instructions.md): Warnung +
+        ``verfuegbar=False``).
+        """
+        from backend.core.dsp.wohlklang_zeuge import (  # pylint: disable=import-outside-toplevel
+            zeuge_meta,
+        )
+
+        return zeuge_meta(eingang, ausgang, sample_rate)
+
     def _restore_chunked(
         self,
         audio: np.ndarray,
@@ -48434,6 +48457,10 @@ class UnifiedRestorerV3:
                 _meta["analytics_last_chunk"] = dict(getattr(_last_result, "metadata", {}) or {})
             if _inviting_song is not None:
                 _meta["inviting_gate_song_level"] = _inviting_song
+
+            # §2b Hebel F (2026-11-08): referenzfreier Wohlklang-Zeuge je Lauf —
+            # REPORT-ONLY; Eingang ist die Original-Audio (wie beim Einladungs-Gate).
+            _meta["wohlklang_zeuge"] = self._wohlklang_zeuge_meta(audio, output, sample_rate)
 
             return RestorationResult(
                 audio=output,

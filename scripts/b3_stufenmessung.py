@@ -40,7 +40,10 @@ if str(PROJECT_ROOT) not in sys.path:
 
 log = logging.getLogger(__name__)
 
-JND_TOLERANZ = 0.05  # MOS-Punkte — Never-worsen-Toleranz (Audibility-Stufe)
+# Never-worsen-Toleranz (Audibility-Stufe) — EINE Quelle: der Produktions-Zeuge
+# (backend/core/dsp/wohlklang_zeuge.py). Ein Test pinnt die Gleichheit aller
+# drei Verbraucher (Stufenmessung, Kompositions-Suche, Zeuge).
+from backend.core.dsp.wohlklang_zeuge import JND_TOLERANZ
 
 
 def _schalter_lesen(name: str) -> tuple[object, str, object]:
@@ -60,6 +63,10 @@ def _schalter_lesen(name: str) -> tuple[object, str, object]:
         # Obergrenze der Dämpfung (phase_03/phase_43). Kein W-Flag; eigene
         # Stufe, damit die B3-/Kompositions-Messung sie adressieren kann.
         "A-1": (mmf, "use_audibility_budget"),
+        # M12-Stufen (2026-11-08): Kette-4-SOTA-Köpfe (D-K4-7/D-K4-8) —
+        # Never-worsen-Messung nach dem Training, Aktivierung nur über §4.
+        "M12-WF4": (mmf, "use_wf4_warp_head"),
+        "M12-TPV2": (mmf, "use_tp_v2_phase"),
     }
     modul, attr = mapping[name]
     return modul, attr, getattr(modul, attr)
@@ -225,6 +232,9 @@ def beschluss_schreiben(name: str, messung: dict, out_dir: Path, seed: int) -> P
             "W-5": "use_df_musik",
             "W-6": "use_miipher_dit",
             "W-7": "use_harmonic_inpainting",
+            "A-1": "use_audibility_budget",
+            "M12-WF4": "use_wf4_warp_head",
+            "M12-TPV2": "use_tp_v2_phase",
         }[name],
         "stufe": name,
         "referenz_songs": len({z["trial_id"].split("__")[0] for z in messung["zeilen"]}),

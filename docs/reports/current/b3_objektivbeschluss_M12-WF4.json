@@ -1,0 +1,20 @@
+{
+  "schema": "aurik.objektivbeschluss/1",
+  "flag": "use_wf4_warp_head",
+  "stufe": "M12-WF4",
+  "referenz_songs": 3,
+  "seed": 42,
+  "never_worsen": true,
+  "signifikant": false,
+  "defekt_fallbacks": 1,
+  "blind_ausgewertet": true,
+  "pfad_wirksam": true,
+  "messung": "docs/reports/current/b3_stufenmessung_M12-WF4.json",
+  "zielmetrik": {
+    "name": "musik_mos (G-2)",
+    "vorteile": "1/6",
+    "p_wert": 0.21875
+  },
+  "ergebnis": "ABGELEHNT",
+  "quelle": "scripts/b3_stufenmessung.py"
+}

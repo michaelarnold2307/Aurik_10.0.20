@@ -36,6 +36,14 @@ if str(PROJECT_ROOT) not in sys.path:
 log = logging.getLogger(__name__)
 
 SCHWELLE = 0.8
+
+# Degradations-Leiter der Richtungs-Zertifizierung: Rauschbett relativ zur
+# Stimulus-Spitze, Index = Stufe. Diese Werte sind Bestandteil des Zertifikats
+# (docs/reports/current/qualitaetsmetrik_richtungszertifikat.json) — eine
+# Änderung erfordert eine Neuzertifizierung. Bewusst ein geordnetes Tupel
+# (experimentelles Design des Test-Rigs), KEINE verstufte Schwellwert-Tabelle
+# (§V26 (copilot-instructions.md)).
+_RAUSCH_LEITER = (0.0, 0.12, 0.3, 0.6)
 GRAD = ("Original", "Overlay -18 dB", "+ Clipping + LP8k", "+ starkes Clipping + LP3k5")
 
 
@@ -94,24 +102,13 @@ def _degradiere(
         return x
     if rauschen is not None and len(rauschen) > 0:
         r = rauschen[: len(x)] if len(rauschen) >= len(x) else np.tile(rauschen, len(x) // len(rauschen) + 1)[: len(x)]
-        pegel = {1: 0.12, 2: 0.3, 3: 0.6}.get(stufe, 0.12)
+        pegel = _RAUSCH_LEITER[min(max(stufe, 0), len(_RAUSCH_LEITER) - 1)]
         x = x + pegel * r.astype(np.float32)
     if stufe >= 2:
         x = np.tanh(2.2 * x) / 2.2  # zunehmendes Clipping
     if stufe >= 2:
         kern = np.ones(5 if stufe == 2 else 11, dtype=np.float32) / (5 if stufe == 2 else 11)
         x = np.convolve(x, kern, mode="same").astype(np.float32)  # HF-Verlust 8k/3k5
-    return x
-    if rauschen is not None and len(rauschen) > 0:
-        r = rauschen[: len(x)] if len(rauschen) >= len(x) else np.tile(rauschen, len(x) // len(rauschen) + 1)[: len(x)]
-        pegel = {1: 0.05, 2: 0.2, 3: 0.4}.get(stufe, 0.05)
-        x = x + pegel * r.astype(np.float32)
-    if stufe >= 2:
-        x = np.tanh(1.6 * x) / 1.6  # Softclip
-    if stufe >= 3:
-        # deterministischer 3,5-kHz-Tiefpass (fensterloser IIR-nahe Approximation)
-        kern = np.ones(7, dtype=np.float32) / 7.0
-        x = np.convolve(x, kern, mode="same").astype(np.float32)
     return x
 
 
@@ -186,17 +183,20 @@ DEFEKTLAST_RICHTUNG = "aufsteigend"
 
 
 def _defektlast(audio: np.ndarray, sr: int) -> float:
-    """Richtungstrivialer Defekt-Index (höher = mehr Defekte): Clipping,
-    Spektral-Flatness (Rauschanteil) und HF-Verlust — jede Komponente misst
-    den Defekt selbst, daher ist die Richtung per Konstruktion bekannt."""
-    seg = audio[: min(len(audio), 2048 * 8)]
-    clip = float(np.mean(np.abs(seg) > 0.98))
-    spec = np.abs(np.fft.rfft(seg, n=2048)) ** 2 + 1e-18
-    flatness = float(np.clip(np.exp(np.mean(np.log(spec))) / (np.mean(spec) + 1e-12), 0.0, 1.0))
-    freqs = np.fft.rfftfreq(2048, d=1.0 / sr)
-    hf = float(np.sum(spec[freqs > 8000]) / (np.sum(spec) + 1e-12))
-    hf_verlust = max(0.0, 1.0 - min(1.0, hf / 0.02))
-    return round(clip * 2.0 + flatness + hf_verlust * 0.5, 4)
+    """Richtungstrivialer Defekt-Index (höher = mehr Defekte) — Delegation.
+
+    Kanonische Definition lebt seit 2026-11-08 in
+    ``backend/core/dsp/wohlklang_zeuge.py`` (EINE Quelle für Mess-Skripte und
+    den Produktions-Zeugen; ein Test pinnt die Bit-Identität). Die Formel ist
+    unverändert: Clipping, Spektral-Flatness (Rauschanteil) und HF-Verlust —
+    jede Komponente misst den Defekt selbst, die Richtung ist per Konstruktion
+    bekannt.
+    """
+    from backend.core.dsp.wohlklang_zeuge import (  # pylint: disable=import-outside-toplevel
+        defektlast as _kanonische_defektlast,
+    )
+
+    return _kanonische_defektlast(audio, sr)
 
 
 def erstelle_zertifikat(

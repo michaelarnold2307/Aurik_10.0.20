@@ -1,0 +1,20 @@
+{
+  "schema": "aurik.objektivbeschluss/1",
+  "flag": "use_tp_v2_phase",
+  "stufe": "M12-TPV2",
+  "referenz_songs": 3,
+  "seed": 42,
+  "never_worsen": true,
+  "signifikant": false,
+  "defekt_fallbacks": 0,
+  "blind_ausgewertet": true,
+  "pfad_wirksam": true,
+  "messung": "docs/reports/current/b3_stufenmessung_M12-TPV2.json",
+  "zielmetrik": {
+    "name": "musik_mos (G-2)",
+    "vorteile": "0/6",
+    "p_wert": 0.03125
+  },
+  "ergebnis": "ABGELEHNT",
+  "quelle": "scripts/b3_stufenmessung.py"
+}

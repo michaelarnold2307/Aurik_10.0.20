@@ -17,9 +17,12 @@ kein stiller Fehlpfad, Ursache statt Symptom).
 
 from __future__ import annotations
 
+import importlib.util
 import re
 import subprocess
 from pathlib import Path
+
+import pytest
 
 _ROOT = Path(__file__).resolve().parents[2]
 _SCRIPT = _ROOT / "scripts" / "gpu_kette1_welle_c.sh"
@@ -209,3 +212,60 @@ def test_flashsr_resume_ist_datei_geschuetzt() -> None:
     for zeile in block.splitlines():
         if "train_flashsr_f4.py" in zeile:
             assert "--out-dir models/flashsr" in zeile, f"Anker läge neben dem Out-Dir: {zeile.strip()}"
+
+
+# ── D-K3-84: Cantus-Phasenwechsel trainierte NULL Epochen ────────────────────
+# Befund 2026-11-08 aus `train_job_c2_cantus_finetune.json`: der Lauf stand als
+# „erfolgreich" im Manifest, war aber nach 11,9 s fertig — `start_epoch` kam aus
+# dem Pretrain (50) und `--epochs=30`, also lief `range(50, 30)` leer (kein
+# einziger Gradienten-Schritt). Zusätzlich konnte `checkpoint_best.pt` in der
+# neuen Phase nie geschrieben werden, weil `best_val` (4,5922) an einer fremden
+# Verlust-Definition hing. Dieselbe Klasse wie D-K3-80 (Manifest-Lüge).
+
+
+def _cantus_trainer():
+    """Lädt ``scripts/train_cantus.py`` als Modul (braucht torch → skip ohne torch)."""
+    pytest.importorskip("torch")
+    spec = importlib.util.spec_from_file_location("train_cantus_dk384", _ROOT / "scripts" / "train_cantus.py")
+    assert spec and spec.loader
+    modul = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(modul)
+    return modul
+
+
+def test_phasenwechsel_setzt_epoche_und_bestval_zurueck() -> None:
+    tc = _cantus_trainer()
+    start, step, best, wechsel = tc._phasen_lokale_resume_groessen("pretrain", "fine_tune", 50, 10000, 4.5922)
+
+    assert (start, step, best) == (0, 0, float("inf")), "Pretrain-Epoche darf fine_tune nicht blockieren"
+    assert wechsel is True
+
+
+def test_gleiche_phase_resumt_weiter() -> None:
+    tc = _cantus_trainer()
+    start, step, best, wechsel = tc._phasen_lokale_resume_groessen("fine_tune", "fine_tune", 7, 900, 1.23)
+
+    assert (start, step, best) == (7, 900, 1.23)
+    assert wechsel is False
+
+
+def test_ohne_phasenangabe_gilt_als_wechsel() -> None:
+    """Alte Checkpoints ohne ``phase``-Feld dürfen keinen Fremd-Zähler erben."""
+    tc = _cantus_trainer()
+    start, step, best, wechsel = tc._phasen_lokale_resume_groessen(None, "fine_tune", 12, 340, 0.9)
+
+    assert (start, step, best) == (0, 0, float("inf"))
+    assert wechsel is True
+
+
+def test_no_op_lauf_meldet_keinen_erfolg() -> None:
+    """0 trainierte Epochen ⇒ ``stopped_reason`` ⇒ Exit 3, nie Exit 0."""
+    quelle = (_ROOT / "scripts" / "train_cantus.py").read_text(encoding="utf-8")
+
+    assert 'report["stopped_reason"] = "no_epochs"' in quelle
+    assert 'report["epochen_trainiert"] = _epochen_trainiert' in quelle
+    # Der bestehende stopped_reason-Pfad schreibt den Report und liefert 3.
+    assert 'logger.error("Vorzeitig beendet (%s) — Report: %s", report["stopped_reason"], report_path)' in quelle
+    assert "return 3" in quelle
+    # Der Zähler muss IM Epochen-Loop erhöht werden (nicht aus start_epoch geraten).
+    assert "_epochen_trainiert += 1" in quelle

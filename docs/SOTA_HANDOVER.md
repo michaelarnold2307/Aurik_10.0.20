@@ -34,7 +34,7 @@ Wohlklang für das menschliche Gehör**. Normative Kette: `AGENTS.md` §1
 | 8 | Hör-/Lizenz-Entscheidungen (§9/5–7, AERO, MUSHRA n≥30) | **menschlich** | Katalog A2 |
 | 9 | ~~P1-3-Restdeckung (Audibility-Guards)~~ **ERLEDIGT 2026-11-03:** HNR/Mikrodynamik/Vibrato/Hallucination/Noise-Texture mit Maskierungs-Abdeckung (§G10), 19 Phasen verdrahtet (Commit `2c5e5522`) | — | Report `2026-11-03_p1_3_audibility_restdeckung.md` |
 | 10 | ~~D-K1-3 Material-CRNN-Verdrahtung (95,3 % statt 40,2 %)~~ **ERLEDIGT 2026-11-03:** im Material-Entscheidungspfad hinter `use_material_crnn` (Default AUS — Flag-Flip offen, nur §4-Verfahren) (Commit `28f2947d`) | — | Report `2026-11-03_d_k1_3_material_crnn_wiring.md` |
-| 11 | **Ketten-Verdrahtung (Trainingslücke, kein Modellproblem)** — **BEHOBEN 2026-11-06, GPU-Neulauf offen:** Drei Kette-1-Jobs liefen ins Leere, obwohl die Artefakte lokal liegen. (a) **M9/SOTA-M9** starb nach 5 s am 24-GiB-OOM (`--batch-size 4` ⇒ 4·513 Inter-Frame-LSTM-Sequenzen, 4,42 GiB angefragt) **und** trainierte auf `--synthetic 4000` (Sinus+Rauschen = K1-Domänen-Defizit §III.11) statt auf den vorhandenen `data/tfgrid_pairs` (25 MUSDB-Paare) — ein erfolgreicher synthetischer Lauf hätte den echten Kette-3-Lauf über Job-Lock/Manifest blockiert. Fix: echte Paare + `--batch-size 1 --grad-accum 4` (neues Trainer-Flag, Äquivalenz Batch 2 ⇔ Akkumulation 2 getestet; Kette 3 trägt dieselben Flags). (b) **Cantus/SOTA-M14** rief R3–R5 ohne `--data` auf (Exit 2 „--data fehlt“, 2 s), obwohl `data/cantus_pairs/manifest.jsonl` 3600 Paare hat — jetzt `--data` + fail-closed-Guard; `domain_adapt` nur mit echten `*_degraded.wav`-Paaren (bleibt datenblockiert). Tests: `tests/unit/test_gpu_kette1_wiring.py` (7 — inkl. statischer CLI-Prüfung ALLER vier Ketten gegen die `add_argument`-Flags der Trainer, 56 Aufrufe) + 2 Trainer-Tests. Offen: GPU-Neulauf, Never-worsen-Gate/Hörabnahme (M9), M9-Datenmenge (25 Paare, D-K2-5-Muster). **Kein Flag-Flip.** **Wiederaufnahme-Fix 2026-11-07:** `train_job_runner.py` überspringt Jobs mit `ergebnis: erfolgreich` bei identischem Befehl/Phase/Seed (Manifest bleibt unverändert; `--force` erzwingt Neulauf) — der nächste Kette-1-Neulauf überspringt M8/RT60 und startet direkt M9/Cantus. | autonom (GPU-gebunden) | Report `2026-11-06_ketten_verdrahtung_m9_m14.md` + `2026-11-07_train_job_runner_idempotent.md`. **Resume-Anker-Defekt 2026-11-08 (Kette 2, D3-3 FlashSR) BEHOBEN:** `train_flashsr_f4.py` schrieb nur `checkpoint_epoch<N>.pt`/`best.pt`, nie den Repo-Standardanker `<out-dir>/checkpoint_latest.pt` — der Kette-2-Resume-Befehl zeigte genau darauf und starb 61 s nach dem 6-h-Timeout in `FileNotFoundError`; zusätzlich resumte `--cmd` (Versuch 1) nie, sodass jeder Kettenstart bei Epoche 0 begann und die 5,37 h aus Versuch 1 wegwarf. Fix: Anker je Epoche, `--resume` prüft die Datei fail-closed (Exit 2 statt Traceback), **beide** Kette-2-Befehle datei-geschützt (Aspade-Muster), `val_loss`-Broadcasting bereinigt; Anker aus `checkpoint_epoch3.pt` restauriert (Epoche 3, val 0,3726). Tests 10/10 (`test_gpu_kette1_wiring.py`, 3 neue — davon einer generisch: jeder `--resume`-Pfad der vier Ketten muss vom Trainer erzeugt werden). **Kein Training gestartet** (Kette 3 belegte die GPU), kein Flag-Flip. Report `2026-11-08_flashsr_resume_anker.md` |
+| 11 | **Ketten-Verdrahtung (Trainingslücke, kein Modellproblem)** — **BEHOBEN 2026-11-06, GPU-Neulauf offen:** Drei Kette-1-Jobs liefen ins Leere, obwohl die Artefakte lokal liegen. (a) **M9/SOTA-M9** starb nach 5 s am 24-GiB-OOM (`--batch-size 4` ⇒ 4·513 Inter-Frame-LSTM-Sequenzen, 4,42 GiB angefragt) **und** trainierte auf `--synthetic 4000` (Sinus+Rauschen = K1-Domänen-Defizit §III.11) statt auf den vorhandenen `data/tfgrid_pairs` (25 MUSDB-Paare) — ein erfolgreicher synthetischer Lauf hätte den echten Kette-3-Lauf über Job-Lock/Manifest blockiert. Fix: echte Paare + `--batch-size 1 --grad-accum 4` (neues Trainer-Flag, Äquivalenz Batch 2 ⇔ Akkumulation 2 getestet; Kette 3 trägt dieselben Flags). (b) **Cantus/SOTA-M14** rief R3–R5 ohne `--data` auf (Exit 2 „--data fehlt“, 2 s), obwohl `data/cantus_pairs/manifest.jsonl` 3600 Paare hat — jetzt `--data` + fail-closed-Guard; `domain_adapt` nur mit echten `*_degraded.wav`-Paaren (bleibt datenblockiert). Tests: `tests/unit/test_gpu_kette1_wiring.py` (7 — inkl. statischer CLI-Prüfung ALLER vier Ketten gegen die `add_argument`-Flags der Trainer, 56 Aufrufe) + 2 Trainer-Tests. Offen: GPU-Neulauf, Never-worsen-Gate/Hörabnahme (M9), M9-Datenmenge (25 Paare, D-K2-5-Muster). **Kein Flag-Flip.** **Wiederaufnahme-Fix 2026-11-07:** `train_job_runner.py` überspringt Jobs mit `ergebnis: erfolgreich` bei identischem Befehl/Phase/Seed (Manifest bleibt unverändert; `--force` erzwingt Neulauf) — der nächste Kette-1-Neulauf überspringt M8/RT60 und startet direkt M9/Cantus. | autonom (GPU-gebunden) | Report `2026-11-06_ketten_verdrahtung_m9_m14.md` + `2026-11-07_train_job_runner_idempotent.md`. **Resume-Anker-Defekt 2026-11-08 (Kette 2, D3-3 FlashSR) BEHOBEN:** `train_flashsr_f4.py` schrieb nur `checkpoint_epoch<N>.pt`/`best.pt`, nie den Repo-Standardanker `<out-dir>/checkpoint_latest.pt` — der Kette-2-Resume-Befehl zeigte genau darauf und starb 61 s nach dem 6-h-Timeout in `FileNotFoundError`; zusätzlich resumte `--cmd` (Versuch 1) nie, sodass jeder Kettenstart bei Epoche 0 begann und die 5,37 h aus Versuch 1 wegwarf. Fix: Anker je Epoche, `--resume` prüft die Datei fail-closed (Exit 2 statt Traceback), **beide** Kette-2-Befehle datei-geschützt (Aspade-Muster), `val_loss`-Broadcasting bereinigt; Anker aus `checkpoint_epoch3.pt` restauriert (Epoche 3, val 0,3726). Tests 10/10 (`test_gpu_kette1_wiring.py`, 3 neue — davon einer generisch: jeder `--resume`-Pfad der vier Ketten muss vom Trainer erzeugt werden). **Kein Training gestartet** (Kette 3 belegte die GPU), kein Flag-Flip. Report `2026-11-08_flashsr_resume_anker.md`. **Cantus-No-Op 2026-11-08 (D-K3-84, BEHOBEN):** `c2_cantus_finetune` trainierte **null Epochen** (Pretrain-`epoch=50` gegen `--epochs=30` ⇒ leeres `range`) und stand trotzdem auf „erfolgreich“; Fix: phasen-lokale Resume-Größen + „0 Epochen ⇒ Exit 3“, No-Op-Manifest archiviert — echter Neulauf beim nächsten Kette-1-Start (Runner hätte den Job sonst übersprungen). |
 
 **Regel:** Punkte 1–5 ohne Rückfrage erledigen. Punkt 6 NUR über das
 B3-Verfahren (§4). Punkt 8 nie eigenmächtig — abbrechen und begründet
@@ -90,8 +90,20 @@ Priorität C→B→A→D→E/F:
   **Offen (bewusst, kein autonomer Schritt):** 60 der 69 Phasen-Module treffen
   weiterhin keinen Tabelleneintrag (Default 5) — Neubewertung braucht
   RT-Profil + Hör-Impact je Phase.
-- **F — Forensik-Monitor:** WP-3-Forensik + musik_mos/defektlast als
-  Dauer-Wohlklang-Zeuge je Lauf (nur gerichtete Fälle zur Hör-Instanz).
+- **F — Forensik-Monitor (ERLEDIGT 2026-11-08, D-K3-83):** WP-3-Forensik +
+  musik_mos/defektlast als Dauer-Wohlklang-Zeuge je Lauf (nur gerichtete Fälle
+  zur Hör-Instanz). Befund: `backend/` hatte **null** Aufrufstellen der beiden
+  zertifizierten Metriken. Neu: `backend/core/dsp/wohlklang_zeuge.py` misst
+  Eingang/Ausgang je Lauf, schreibt `metadata["wohlklang_zeuge"]` in allen drei
+  Produktionspfaden (Einzelpass/Chunked/Options) und markiert
+  `gerichteter_fall` → `hoer_instanz=vorzulegen`; **REPORT-ONLY** (kein
+  Sample-Eingriff, kein Rollback, keine Export-Blockade, kein Flag; Quell-Pin:
+  drei Schreibstellen, keine Lesestelle), deterministisch (§G5), §V6-fail-safe.
+  Zusätzlich EINE Wahrheit: `defektlast`-Definition und JND 0,05 liegen jetzt
+  im Modul (Zertifikats-Skript, B3-Stufenmessung und Kompositions-Suche
+  greifen darauf zu). 13 Vertragstests. Offen (nur GPU-Fenster):
+  End-to-End-Lauf + RT-Delta-Messung. Beleg:
+  `docs/reports/current/2026-11-08_wohlklang_zeuge_hebel_f.md`.
 
 ## 3. Zustand & Wiederherstellung nach Abbruch/Reboot
 
@@ -408,6 +420,25 @@ Langsam-Lauf war offenbar kontaminationsbedingt). R3 (F9, 30 Epochen) läuft.
 Sättigung) — kein Korruptionsrisiko, aber beide langsamer; die Anker-Fixes
 machen Timeouts beherrschbar (Resume ab letzter Epoche). Laufen gelassen statt
 Kill (fremde Sitzung).
+**Fortsetzung 13 (Nachfahrt ERFOLGREICH + B3-M12-Stages):** Die kontrollierte
+Nachfahrt (R1→R3→R4→R5) ist KOMPLETT ERFOLGREICH (15:08): alle JOB_EXIT=0 —
+WF4 50/50 (316 s), F9 30/30 (val_acc 0,672 vs. Basis 0,422 — der
+differenzierbare Pfad trainierte durch), F10-Kalibrierung (49,8 s, Produktions-
+artefakt), vocos 30/30. Damit R1–R5 ECHT fertig (R2 war es schon). Zusätzlich:
+B3-Stages `M12-WF4`/`M12-TPV2` ergänzt + A-1-KeyError im beschluss-Mapping
+behoben (D-K3-82) — die Never-worsen-Messungen sind jetzt sofort fahrbar.
+Register D-K3-80 aktualisiert (ERFOLGREICH). Substanz-Befund der parallelen
+Sitzung (D-K3-81): SingMOS trägt die Grund-Ordnung auf Musik-Gesang NICHT
+(144/320 Paar-Verletzungen) ⇒ D-K4-6 bleibt offen mit präziser Ursache —
+Metrik-Entscheidung (musik_mos/defektlast, Spearman 0,95) ist menschlich.
+**Fortsetzung 14 (B3-M12-Messung gefahren):** `b3_stufenmessung.py --stages
+M12-WF4,M12-TPV2` (3 Clips × 2 Fenster × 2,5 s, Seed 42, ~2,5 h unter GPU-
+Kontention): **M12-WF4 ABGELEHNT** (never_worsen ✓, 1/6 Vorteile, signifikant=
+False), **M12-TPV2 ABGELEHNT** (never_worsen ✓, 0/6 Vorteile) — beide Flags
+bleiben AUS (fail-closed, §4-konform; Beschlüsse `docs/reports/current/
+b3_objektivbeschluss_M12-*.json`). Ehrlich: n=6 ist eine kleine Stichprobe —
+die echte Aktivierungsentscheidung bleibt Hörpanel/menschlich; die Mess-
+Infrastruktur (D-K3-82) hat ihren ersten vollen Durchlauf bestanden.
 **Fortsetzung 11 (R1-Anker-Defekt — D-K3-78):** Auf die Frage „läuft R1
 mangelfrei?“: NEIN — beide Kette-4-Trainer (wf4_warp_head, tp_v2_phase)
 schrieben ihren Checkpoint erst nach ALLEN 50 Epochen, WF4 zudem unter dem
@@ -471,3 +502,30 @@ allen drei Prioritäts-Pfaden; die alten Schlüssel bleiben. Verifikation:
 60 Phasen-Module ohne Tabelleneintrag (breite Scheduling-/Klang-Stufe, §V7).
 Kein Flag-Flip, kein Training gestartet. Report
 `docs/reports/current/2026-11-08_rt_budget_ledger.md`.
+
+**Update 2026-11-08 (Hebel F — Wohlklang-Zeuge je Lauf, D-K3-83):** Der letzte
+§2b-Hebel ohne Status ist geschlossen. Befund: die beiden
+richtungszertifizierten Metriken `musik_mos`/`defektlast` (Spearman 0,95)
+wurden **nur** in Mess-Skripten aufgerufen — `backend/` hatte null
+Aufrufstellen, es gab also keinen Dauer-Zeugen am Fließband. Neu:
+`backend/core/dsp/wohlklang_zeuge.py` (Eingangs-/Ausgangspaar, JND 0,05,
+`gerichteter_fall` → Hör-Instanz) + `UnifiedRestorerV3._wohlklang_zeuge_meta`
+in Einzel-, Chunked- und Options-Pfad, **REPORT-ONLY** und §V6-fail-safe;
+`defektlast` und die JND-Konstante sind jetzt EINE Quelle (Zertifikats-Skript,
+Stufenmessung und Kompositions-Suche greifen darauf zu — sonst könnte die
+Mess-Seite unbemerkt von der Produktions-Seite abweichen). 13 Vertragstests,
+37 B3-Tests grün. Offen bleibt nur der End-to-End-/RT-Nachweis im
+trainingsfreien GPU-Fenster (Kette 2 belegte die GPU). Report
+`docs/reports/current/2026-11-08_wohlklang_zeuge_hebel_f.md`.
+
+**Update 2026-11-08 (Ketten-Wahrheit: Cantus-No-Op, D-K3-84):** Beim Prüfen der
+Kette-1-Manifeste fiel ein falscher Erfolg auf: `c2_cantus_finetune` war nach
+11,9 s „erfolgreich“, weil der Trainer `start_epoch` phasen-blind aus dem
+Checkpoint übernahm (Pretrain `epoch=50` gegen `--epochs=30`) — null
+Gradienten-Schritte; zusätzlich wäre `checkpoint_best.pt` nie geschrieben
+worden, weil `best_val` an der Pretrain-Verlust-Achse hing. Fix: phasen-lokale
+Resume-Größen (Gewichte bleiben) + „0 Epochen ⇒ Exit 3“; das No-Op-Manifest
+wurde als `train_job_c2_cantus_finetune_noop_20261108.json` archiviert, sonst
+hätte der Runner den Job dauerhaft übersprungen. Kein GPU-Lauf gestartet
+(Kette 2 läuft), kein Flag-Flip. Report
+`docs/reports/current/2026-11-08_wohlklang_zeuge_hebel_f.md`.

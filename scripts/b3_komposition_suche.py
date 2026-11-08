@@ -34,7 +34,9 @@ if str(PROJECT_ROOT) not in sys.path:
 
 log = logging.getLogger(__name__)
 
-JND_TOLERANZ = 0.05  # wie b3_stufenmessung (Audibility-Stufe)
+# Never-worsen-Toleranz — EINE Quelle: der Produktions-Zeuge
+# (backend/core/dsp/wohlklang_zeuge.py); ein Test pinnt die Gleichheit.
+from backend.core.dsp.wohlklang_zeuge import JND_TOLERANZ
 
 # Audio-wirksame Kandidaten-Flags (W-10/W-11/W-12 sind Zeugen/Release-Flags
 # ohne Audio-Wirkung — bewusst NICHT Teil der Suche, §V7 (copilot-instructions.md)).
