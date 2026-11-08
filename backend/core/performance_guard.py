@@ -27,7 +27,7 @@ Date: 2026-02-15
 
 import logging
 import time
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any
@@ -543,8 +543,11 @@ class PerformanceGuard:
             self.skipped_phases.append(phase_id)
             return True
 
-        # Skip-Kriterien basierend auf Phase Priority
-        phase_priority = self.PHASE_PRIORITIES.get(short_id, 5)  # Default: Medium
+        # Skip-Kriterien basierend auf Phase Priority. §PERF-R21b: `short_id`
+        # allein genügt hier NICHT — die Prioritäts-Suche braucht die
+        # Alias-Auflösung (wow_flutter_fix → wow_flutter, crackle_removal →
+        # decracklé), sonst gelten zwei CRITICAL-Phasen als MEDIUM.
+        phase_priority = self.PHASE_PRIORITIES.get(self._priority_key(phase_id), 5)  # Default: Medium
 
         # Skip-Thresholds relativ zum aktiven Budget.
         if phase_priority <= 3:  # LOW Priority
@@ -741,7 +744,8 @@ class PerformanceGuard:
 
     def _is_phase_critical(self, phase_id: str) -> bool:
         """Prüft ob Phase kritisch für Quality ist."""
-        short = self._normalize_phase_id(phase_id)
+        # §PERF-R21b: Alias-Auflösung ist Teil der Prioritäts-Wahrheit.
+        short = self._priority_key(phase_id)
         priority = self.PHASE_PRIORITIES.get(short, 5)
         return priority >= 9  # Priority ≥ 9 = CRITICAL
 
@@ -757,18 +761,189 @@ class PerformanceGuard:
 
         # Summiere Priorities der geskippten Phasen
         total_priority = sum(self.PHASE_PRIORITIES.values())
-        skipped_priority = sum(
-            self.PHASE_PRIORITIES.get(self._normalize_phase_id(pid), 5) for pid in self.skipped_phases
-        )
+        skipped_priority = sum(self.PHASE_PRIORITIES.get(self._priority_key(pid), 5) for pid in self.skipped_phases)
 
         # Degradation = Anteil der geskippten Priority
         degradation = skipped_priority / total_priority if total_priority > 0 else 0
 
         return min(1.0, degradation)
 
+    # ── §PERF-R21 (2026-11-08): Budget-Allokation / RT-Budget-Ledger ────────
+    # Bis hierher war das 32×-Budget nur eine Anzeige (D-K3-37) und die
+    # Phasen-Zuteilung eine flache Division (`Restbudget / verbleibende Phasen`)
+    # in einer Methode OHNE Aufrufer — eine zweite Budget-Wahrheit neben der
+    # Prioritäts-Ordnung. Der Ledger macht das Budget allozierbar: Soll aus der
+    # normativen Hör-Impact-Ordnung (PHASE_PRIORITIES), Ist aus den gemessenen
+    # Phasenzeiten. REINE BUCHFÜHRUNG — keine Skip-/Deferral-Entscheidung liest
+    # das Ergebnis (§V7 (copilot-instructions.md): kein stiller Verhaltens-Flip).
+
+    # Unbekannte Phase: Median der Prioritäts-Tabelle, nicht 0 (sonst würde eine
+    # unbenannte Phase stillschweigend aus der Allokation fallen).
+    BUDGET_ALLOCATION_DEFAULT_PRIORITY: int = 5
+
+    # §PERF-R21b (2026-11-08, D-K3-76): Zwei Tabelleneinträge trafen KEINE echte
+    # Phase. `_normalize_phase_id` erzeugt aus den Modulnamen
+    # `phase_12_wow_flutter_fix`/`phase_09_crackle_removal` die Kurznamen
+    # `wow_flutter_fix`/`crackle_removal`; die Tabelle kannte nur
+    # `wow_flutter`/`decracklé` (beide CRITICAL, 9). Beide fielen deshalb auf
+    # Default 5 (MEDIUM) und wurden unter Budgetdruck geskippt/deferred — obwohl
+    # die Norm „Priority ≥ 9 wird NIEMALS übersprungen" (§2.29, §9.5) genau diese
+    # beiden Phasen meint. Die alten Schlüssel bleiben (keine Funktion ohne
+    # Ersatz), die Aliasse lösen auf sie auf.
+    PHASE_PRIORITY_ALIASES: dict[str, str] = {
+        "wow_flutter_fix": "wow_flutter",
+        "crackle_removal": "decracklé",
+    }
+
+    @classmethod
+    def _priority_key(cls, phase_id: str) -> str:
+        """Kurzname für die ``PHASE_PRIORITIES``-Suche (inkl. Alias-Auflösung).
+
+        Immer wenn eine Priorität gebraucht wird, MUSS dieser Schlüssel benutzt
+        werden — sonst entsteht eine zweite, driftende Zuordnung (§PERF-R21b).
+        """
+        _short = cls._normalize_phase_id(phase_id)
+        return cls.PHASE_PRIORITY_ALIASES.get(_short, _short)
+
+    @staticmethod
+    def _budget_row_status(measured_s: float, budget_s: float, acceptable_fraction: float) -> str:
+        """Status einer Ledger-Zeile (rein beschreibend, keine Entscheidung)."""
+        if budget_s <= 0.0:
+            return "ohne_budget"
+        if measured_s <= 0.0:
+            return "nicht_gelaufen"
+        if measured_s > budget_s:
+            return "ueberzogen"
+        if measured_s >= budget_s * acceptable_fraction:
+            return "knapp"
+        return "im_budget"
+
+    def get_budget_allocation(self, planned_phase_ids: Sequence[str] | None = None) -> dict[str, Any]:
+        """§PERF-R21: Das RT-Budget auf die Phasen allozieren (Ledger).
+
+        Beantwortet zwei Fragen, die vorher niemand beantworten konnte:
+        **Wie viel des 32×-Budgets hat welche Phase verbraucht** und **wie viel
+        Reserve blieb** — je Phase und in Summe.
+
+        Aufbau:
+        - ``total_budget_s`` = ``target_rt_factor × audio_duration`` (Budget-Basis
+          des Guards, inkl. 30-s-Floor aus :meth:`start_monitoring`).
+        - ``budget_s`` je Phase = Soll-Anteil nach ``PHASE_PRIORITIES``
+          (normative Hör-Impact-Ordnung, normalisiert über den Allokations-Scope).
+        - ``measured_s`` = gemessene Phasenzeit aus :attr:`phase_performances`
+          (mehrere Läufe derselben Phase werden summiert — Deckungsgleichheit mit
+          ``current_rt_factor``, das kumulativ rechnet).
+        - ``reserve_s`` = ``total_budget_s − measured_total_s`` (negativ ⇒
+          Budget überzogen).
+
+        **Ehrliche Grenze (keine Fantasiegewichte, D-K3-69-Lehre):** Die
+        Priorität ist eine Wichtigkeits-Ordnung, KEINE Kostenschätzung. Der
+        Ledger sagt deshalb nicht „so viel Zeit hat Phase X verdient“, sondern
+        „so hat sich das Budget unter den Phasen verteilt, für die er gilt“.
+        ``scope`` benennt das: ``planned`` nur mit ``planned_phase_ids``
+        (Vorab-Planung), sonst ``measured`` (retrospektiv über die gelaufenen
+        Phasen).
+
+        Args:
+            planned_phase_ids: Optionale Phasen-Liste für eine Vorab-Allokation.
+                Ohne sie allokiert der Ledger über die tatsächlich gelaufenen
+                Phasen (Nachschau).
+
+        Returns:
+            Ledger-Dict (``schema``, Summen, ``phases``-Zeilen, ``top_consumers``).
+            Zero-safe: vor :meth:`start_monitoring` sind die Summen 0 und
+            ``phases`` kann leer sein.
+        """
+        _dur = float(self.audio_duration) if self.audio_duration else 0.0
+        _total_budget = float(self.target_rt_factor) * _dur
+
+        # Reihenfolge: geplante Phasen zuerst (Planungs-Reihenfolge), dann
+        # gemessene in Auftritts-Reihenfolge — dedupliziert über den Kurznamen.
+        _order: list[str] = []
+        _seen: set[str] = set()
+        for _pid in tuple(planned_phase_ids or ()):
+            _short = self._normalize_phase_id(str(_pid))
+            if _short and _short not in _seen:
+                _seen.add(_short)
+                _order.append(_short)
+        for _perf in self.phase_performances:
+            _short = self._normalize_phase_id(_perf.phase_id)
+            if _short not in _seen:
+                _seen.add(_short)
+                _order.append(_short)
+
+        _measured: dict[str, float] = {}
+        for _perf in self.phase_performances:
+            _short = self._normalize_phase_id(_perf.phase_id)
+            _measured[_short] = _measured.get(_short, 0.0) + max(0.0, float(_perf.duration_seconds))
+
+        _weights = {
+            _pid: float(self.PHASE_PRIORITIES.get(self._priority_key(_pid), self.BUDGET_ALLOCATION_DEFAULT_PRIORITY))
+            for _pid in _order
+        }
+        _weight_sum = sum(_weights.values())
+        _acceptable = float(self.WARNING_FRACTION_ACCEPTABLE)
+
+        _rows: list[dict[str, Any]] = []
+        _measured_total = 0.0
+        _allocated_total = 0.0
+        _overrun_total = 0.0
+        for _pid in _order:
+            _share = (_weights[_pid] / _weight_sum) if _weight_sum > 0 else 0.0
+            _budget_s = _total_budget * _share
+            _measured_s = _measured.get(_pid, 0.0)
+            _delta = _measured_s - _budget_s
+            _measured_total += _measured_s
+            _allocated_total += _budget_s
+            _overrun_total += max(0.0, _delta)
+            _rows.append(
+                {
+                    "phase_id": _pid,
+                    "priority": int(_weights[_pid]),
+                    "share": round(_share, 4),
+                    "budget_s": round(_budget_s, 3),
+                    "measured_s": round(_measured_s, 3),
+                    "overrun_s": round(max(0.0, _delta), 3),
+                    "headroom_s": round(max(0.0, -_delta), 3),
+                    "utilisation": round(_measured_s / _budget_s, 3) if _budget_s > 0 else 0.0,
+                    "status": self._budget_row_status(_measured_s, _budget_s, _acceptable),
+                }
+            )
+
+        # Größte Budget-Verbraucher (ehrlich, ohne Prioritäts-Anspruch):
+        # Determinismus §G5 (copilot-instructions.md) — Gleichstand deterministisch
+        # nach phase_id.
+        _top = sorted(
+            (row for row in _rows if row["measured_s"] > 0.0),
+            key=lambda row: (-row["measured_s"], row["phase_id"]),
+        )[:5]
+
+        return {
+            "schema": "aurik.rt_budget_ledger/1",
+            "scope": "planned" if planned_phase_ids else "measured",
+            "target_rt_factor": round(float(self.target_rt_factor), 3),
+            "audio_duration_s": round(_dur, 3),
+            "total_budget_s": round(_total_budget, 3),
+            "allocated_s": round(_allocated_total, 3),
+            "measured_total_s": round(_measured_total, 3),
+            "reserve_s": round(_total_budget - _measured_total, 3),
+            "overrun_total_s": round(_overrun_total, 3),
+            "budget_exceeded": bool(_total_budget > 0 and _measured_total > _total_budget),
+            "rt_measured": round(_measured_total / _dur, 3) if _dur > 0 else 0.0,
+            "phases": _rows,
+            "top_consumers": [{"phase_id": row["phase_id"], "measured_s": row["measured_s"]} for row in _top],
+            "skipped_phases": list(self.skipped_phases),
+        }
+
     def get_phase_budget_seconds(self, phase_id: str, total_phases: int, completed_phases: int) -> float:
         """
-        Berechnet verbleibendes Time-Budget für eine Phase.
+        Soll-Zeitbudget einer Phase in Sekunden.
+
+        Delegiert an :meth:`get_budget_allocation` (§PERF-R21) — damit es EINE
+        Budget-Wahrheit gibt statt einer flachen Division daneben. Kennt die
+        Allokation die Phase nicht (sie lief noch nicht und wurde nicht geplant),
+        fällt die Methode auf das historische Verhalten zurück
+        (``Restbudget / verbleibende Phasen``), damit die Signatur nichts verliert.
 
         Args:
             phase_id: Phase ID
@@ -776,22 +951,19 @@ class PerformanceGuard:
             completed_phases: Anzahl abgeschlossener Phasen
 
         Returns:
-            Verbleibendes Budget in Sekunden
+            Soll-Budget in Sekunden
         """
-        # Gesamtbudget
+        _short = self._normalize_phase_id(phase_id)
+        for _row in self.get_budget_allocation()["phases"]:
+            if _row["phase_id"] == _short:
+                return float(_row["budget_s"])
+
+        # Fallback (Phase unbekannt): historisches Verhalten.
         total_budget = self.target_rt_factor * self.audio_duration if self.audio_duration else 0
-
-        # Bereits verbrauchte Zeit
         elapsed_time = time.perf_counter() - self.start_time if self.start_time else 0
-
-        # Verbleibendes Budget
         remaining_budget = total_budget - elapsed_time
-
-        # Verteile auf verbleibende Phasen
         remaining_phases = total_phases - completed_phases
-        phase_budget = remaining_budget / remaining_phases if remaining_phases > 0 else 0
-
-        return max(0, phase_budget)
+        return max(0, remaining_budget / remaining_phases) if remaining_phases > 0 else 0
 
 
 # ========== CLI/Testing Interface ==========

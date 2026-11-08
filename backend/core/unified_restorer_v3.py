@@ -23085,6 +23085,15 @@ class UnifiedRestorerV3:
                     if getattr(self, "performance_guard", None) is not None
                     else {}
                 ),
+                # §PERF-R21 RT-Budget-Ledger: das 32×-Budget alloziert (Soll aus
+                # der normativen Prioritäts-Ordnung, Ist aus den gemessenen
+                # Phasenzeiten) statt nur als eine Zahl angezeigt. Reine
+                # Buchführung — kein Skip-/Deferral-Pfad liest das Ergebnis.
+                "rt_budget_ledger": (
+                    self.performance_guard.get_budget_allocation()
+                    if getattr(self, "performance_guard", None) is not None
+                    else {}
+                ),
                 # §SOTA-R1: Wahrnehmungs-Budget-Bilanz (JND-Einheiten, PSY-A8)
                 "perceptual_budget_summary": _perceptual_budget_summary,
                 "quality_risk_flags": list(_quality_risk_flags),

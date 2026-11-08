@@ -189,6 +189,16 @@ def should_skip_phase(current_rt: float, priority: int, mode: QualityMode) -> bo
     return False
 ```
 
+**Namens-Auflösung der Priorität (verbindlich, §PERF-R21b / D-K3-76):** Die
+Priorität wird **nicht** über den rohen Phasennamen gesucht. `_priority_key()`
+strippt das `phase_XX_`-Präfix **und** löst `PHASE_PRIORITY_ALIASES` auf:
+`wow_flutter_fix → wow_flutter` und `crackle_removal → decracklé` (beide
+CRITICAL 9). Ohne diese Auflösung fielen genau diese zwei Phasen auf den
+Default 5 (MEDIUM) und wären unter Budgetdruck skippbar — der Produktionsbefund
+2026-11-08 (D-K3-76). Alle drei Prioritäts-Pfade (`should_skip_phase`,
+`_is_phase_critical`, `_calculate_quality_degradation`) müssen `_priority_key()`
+benutzen; ein Quelltext-Test pinnt das.
+
 ### 5.2 Skipping Thresholds
 
 **FAST Mode (1.5× RT limit):**
@@ -463,6 +473,20 @@ class PerformanceGuard:
 
         Returns:
             PerformanceReport with all metrics
+        """
+
+    def get_budget_allocation(self, planned_phase_ids=None) -> dict:
+        """§PERF-R21 (2026-11-08): RT-Budget-Ledger — REINE BUCHFÜHRUNG.
+
+        Alloziert das aktive RT-Budget auf die Phasen: Soll je Phase aus
+        ``PHASE_PRIORITIES`` (normativ, über den Scope normalisiert), Ist aus den
+        gemessenen ``phase_performances``, dazu ``reserve_s``,
+        ``overrun_total_s``, ``budget_exceeded`` und ``top_consumers``.
+
+        ``scope`` = ``planned`` (mit ``planned_phase_ids``, Vorab-Allokation)
+        oder ``measured`` (Nachschau über die gelaufenen Phasen). Zero-safe vor
+        ``start_monitoring``. Kein Skip-/Deferral-Pfad liest das Ergebnis —
+        der Ledger macht das Budget sichtbar, er erzwingt es nicht (§V7).
         """
 ```
 

@@ -569,6 +569,19 @@ F14.
   F-Reihe-Aufgaben Feature-Cache/pYIN/Ketten-Fixes). Weiterer Hebel bleibt
   TODO-P0-1 (Song-Ebene-Analytik, Ziel 15–25×) — dort ist die Korrektur eine
   Strukturaufgabe an `unified_restorer_v3.py`, kein Zahlenwechsel.
+  **Nachtrag 2026-11-08 (Allokation — D-K3-75/D-K3-76):** Die dritte fehlende
+  Achse war nicht die Summe, sondern die **Verteilung**: `get_phase_budget_seconds()`
+  teilte das Restbudget flach (`/ verbleibende Phasen`) und hatte **null Aufrufer**.
+  Jetzt alloziert `PerformanceGuard.get_budget_allocation()` (§PERF-R21) das Budget
+  je Phase (Soll aus `PHASE_PRIORITIES`, Ist aus `phase_performances`, plus
+  `reserve_s`/`overrun_total_s`/`budget_exceeded`/`top_consumers`), verdrahtet als
+  `rt_budget_ledger` in den UV3-Metadaten — reine Buchführung, kein Skip-Pfad liest
+  es. Beim Testen fiel die **Prioritäts-Drift** auf: `wow_flutter`/`decracklé`
+  (CRITICAL 9) wurden nie getroffen, weil die Modulnamen andere Kurznamen erzeugen
+  ⇒ Default 5 ⇒ die teuerste Reparaturphase war unter Budgetdruck skippbar
+  (`_priority_key()`-Alias behoben, D-K3-76). Damit ist P0-3 vollständig:
+  Norm, Messung **und** Allokation. Beleg:
+  `docs/reports/current/2026-11-08_rt_budget_ledger.md`.
 
 ## TODO-P1-1 · Modell-Residency & Warm-up-Policy
 

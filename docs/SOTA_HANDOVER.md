@@ -72,9 +72,24 @@ Priorität C→B→A→D→E/F:
   Beleg: `docs/reports/current/2026-11-07_audibility_budget.md`, D-K3-71.
 - **D — MUSHRA n≥30 (menschlicher Multiplikator):** Protokoll §10 + Builder
   fertig; entriegelt D-K4-4 (F8), D-K4-11 (F15), Proxy-Kalibrierung.
-- **E — RT-Budget-Ledger:** 32×-Budget allozierbar machen
-  (`PerformanceGuard.get_budget_truth_report` existiert; D-K3-37 ist seit
-  2026-11-07 geschlossen — offen bleibt die Allokation im Ledger).
+- **E — RT-Budget-Ledger (ERLEDIGT 2026-11-08, D-K3-75/D-K3-76):**
+  `PerformanceGuard.get_budget_allocation()` (§PERF-R21) alloziert das
+  32×-Budget je Phase — Soll aus der normativen `PHASE_PRIORITIES`-Ordnung,
+  Ist aus den gemessenen `phase_performances`, plus `reserve_s`,
+  `overrun_total_s`, `budget_exceeded`, `top_consumers`; verdrahtet als
+  `rt_budget_ledger` in den UV3-Metadaten. **Reine Buchführung** (kein
+  Skip-Pfad liest es, Quelltext-Pin). `get_phase_budget_seconds` delegiert
+  dorthin (vorher: tote Methode mit flacher Division, NULL Aufrufer).
+  **Dabei gefunden und behoben (D-K3-76):** `wow_flutter` und `decracklé`
+  (beide CRITICAL 9) wurden von der Tabelle NIE getroffen — die Modulnamen
+  heißen `phase_12_wow_flutter_fix`/`phase_09_crackle_removal`, die
+  Normalisierung erzeugt `wow_flutter_fix`/`crackle_removal` ⇒ Default 5
+  (MEDIUM) ⇒ die teuerste Reparaturphase war unter Budgetdruck skippbar.
+  Alias-Auflösung `_priority_key()` in allen drei Prioritäts-Pfaden.
+  Beleg: `docs/reports/current/2026-11-08_rt_budget_ledger.md`.
+  **Offen (bewusst, kein autonomer Schritt):** 60 der 69 Phasen-Module treffen
+  weiterhin keinen Tabelleneintrag (Default 5) — Neubewertung braucht
+  RT-Profil + Hör-Impact je Phase.
 - **F — Forensik-Monitor:** WP-3-Forensik + musik_mos/defektlast als
   Dauer-Wohlklang-Zeuge je Lauf (nur gerichtete Fälle zur Hör-Instanz).
 
@@ -376,3 +391,26 @@ nicht automatisch an** — sie beginnt mit D3-2 BigVGAN (bisher 0 Erfolge, ~6 h
 je Versuch) und würde D3-3 FlashSR um ~12 h verzögern; der restaurierte Anker
 (`models/flashsr/checkpoint_latest.pt`, Epoche 3) wartet auf den nächsten
 Kette-2- oder Einzeljob-Start.
+
+**Update 2026-11-08 (Hebel E — RT-Budget-Ledger + Prioritäts-Drift):** Der
+Handover-Hebel E ist geschlossen, und beim Testen fiel ein echter
+Scheduling-Defekt auf. (a) `get_phase_budget_seconds` verteilte das Budget
+flach (`Restbudget / verbleibende Phasen`) und hatte **keinen Aufrufer** —
+das 32×-Budget war nur eine Zahl. Jetzt: `get_budget_allocation()`
+(§PERF-R21) mit Soll/Ist je Phase, `reserve_s`, `overrun_total_s`,
+`budget_exceeded`, `top_consumers` (deterministisch, §G5), zero-safe;
+`scope` = `planned`/`measured`; verdrahtet als `rt_budget_ledger` in den
+UV3-Metadaten; ein Quelltext-Pin schließt aus, dass ein Skip-Pfad es liest
+(§V7). **Ehrliche Grenze:** Priorität ist eine Wichtigkeits-, keine
+Kosten-Ordnung — der Ledger sagt „so hat sich das Budget verteilt", nicht
+„so viel verdient Phase X". (b) **D-K3-76:** `wow_flutter`/`decracklé`
+(Prio 9, CRITICAL) wurden nie getroffen, weil die Modulnamen
+`phase_12_wow_flutter_fix`/`phase_09_crackle_removal` andere Kurznamen
+erzeugen ⇒ Default 5 ⇒ `should_skip_phase` durfte **die teuerste
+Reparaturphase** (Wow/Flutter, 250–440 s im Referenzlauf) bei 93 % Budget
+verwerfen. Alias-Auflösung `PHASE_PRIORITY_ALIASES` + `_priority_key()` in
+allen drei Prioritäts-Pfaden; die alten Schlüssel bleiben. Verifikation:
+35 Tests (Ledger + Compliance), Ruff clean. **Nicht** geändert: die übrigen
+60 Phasen-Module ohne Tabelleneintrag (breite Scheduling-/Klang-Stufe, §V7).
+Kein Flag-Flip, kein Training gestartet. Report
+`docs/reports/current/2026-11-08_rt_budget_ledger.md`.
