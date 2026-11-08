@@ -1,6 +1,6 @@
 # TASK_CHANGES — Live-Ledger der aktuellen Aufgabe
 
-> Generiert von `scripts/change_ledger.py snapshot` (Base: `HEAD`, Stand: 2026-11-08 14:51 CET).
+> Generiert von `scripts/change_ledger.py snapshot` (Base: `HEAD`, Stand: 2026-11-08 14:57 CET).
 > CI (`ci-lite.yml` pr-evidence-gate) erzwingt Abdeckung: jede geänderte Code-Datei muss hier stehen.
 
 ## Geänderte Dateien
@@ -8,21 +8,11 @@
 | Status | Pfad | Art |
 |---|---|---|
 | M | `.github/SOTA_DEFICIT_REGISTER.md` | modifiziert |
-| M | `TASK_CHANGES.md` | modifiziert |
 | M | `docs/SOTA_HANDOVER.md` | modifiziert |
-| M | `docs/TODOS_SOTA_ROADMAP.md` | modifiziert |
-| A | `docs/reports/current/2026-11-08_kette4_trainer_defekte.md` | neu |
+| M | `docs/reports/current/2026-11-08_kette4_trainer_defekte.md` | modifiziert |
 | M | `docs/reports/current/train_job_m8_aspade.json` | modifiziert |
 | M | `docs/reports/current/train_job_m9_tf_gridnet.json` | modifiziert |
-| M | `scripts/calibrate_singmos_music.py` | modifiziert |
-| M | `scripts/gpu_kette4_modellkoepfe.sh` | modifiziert |
-| M | `scripts/train_tp_v2_phase.py` | modifiziert |
-| M | `scripts/train_vocos_48khz_finetune.py` | modifiziert |
-| M | `scripts/train_voiceencoder_finetune.py` | modifiziert |
-| M | `scripts/train_wf4_warp_head.py` | modifiziert |
-| M | `tests/unit/test_calibrate_singmos_music.py` | modifiziert |
-| M | `tests/unit/test_train_vocos_48khz_finetune.py` | modifiziert |
-| M | `tests/unit/test_train_voiceencoder_finetune.py` | modifiziert |
+| M | `scripts/gpu_kette1_welle_c.sh` | modifiziert |
 | ?? | `docs/reports/current/train_job_d_k2_3_vocos_finetune.json` | ungetrackt |
 | ?? | `docs/reports/current/train_job_f10_singmos_calibrate.json` | ungetrackt |
 | ?? | `docs/reports/current/train_job_f9_voiceencoder_finetune.json` | ungetrackt |

@@ -9,9 +9,14 @@ export PYTHONPATH=.
 R() { python3 -B scripts/train_job_runner.py "$@"; echo "JOB_EXIT=$?"; }
 
 echo "=== R1: SOTA-M8 A-SPADE Echt-Training (GPU) ==="
+# Befehl MUSS dem von Kette 3 entsprechen (D-K3-78/D-K3-80-Klasse): zwei Ketten
+# fuhren denselben Job mit 30-Epochen-ohne-Resume vs. 60-Epochen-mit-Resume. Der
+# Runner wertete das als „Befehl weicht ab — Neulauf" und startete m8 bei Epoche 0
+# NEU, waehrend ein 60-Epochen-Anker auf der Platte lag (Befund 2026-11-08). Jetzt
+# beide Ketten identisch + datei-geschuetzt: vorhandener Anker wird fortgesetzt.
 R --name m8_aspade --ckpt-dir models/aspade --phase sota_m8 \
-  --cmd "env PYTHONPATH=. $PY -B scripts/train_aspade_declipper.py --musdb-root data/musdb18hq --epochs 30 --device cuda --out-dir models/aspade" \
-  --resume-cmd "env PYTHONPATH=. $PY -B scripts/train_aspade_declipper.py --musdb-root data/musdb18hq --epochs 60 --device cuda --out-dir models/aspade --resume models/aspade/checkpoint_latest.pt" \
+  --cmd "bash -c \"if [ -f models/aspade/checkpoint_latest.pt ]; then exec env PYTHONPATH=. $PY -B scripts/train_aspade_declipper.py --musdb-root data/musdb18hq --epochs 60 --device cuda --out-dir models/aspade --resume models/aspade/checkpoint_latest.pt; else exec env PYTHONPATH=. $PY -B scripts/train_aspade_declipper.py --musdb-root data/musdb18hq --epochs 30 --device cuda --out-dir models/aspade; fi\"" \
+  --resume-cmd "bash -c \"if [ -f models/aspade/checkpoint_latest.pt ]; then exec env PYTHONPATH=. $PY -B scripts/train_aspade_declipper.py --musdb-root data/musdb18hq --epochs 60 --device cuda --out-dir models/aspade --resume models/aspade/checkpoint_latest.pt; else exec env PYTHONPATH=. $PY -B scripts/train_aspade_declipper.py --musdb-root data/musdb18hq --epochs 30 --device cuda --out-dir models/aspade; fi\"" \
   --timeout-s 21600 --retries 1
 
 echo "=== R2: SOTA-M9 TF-GridNet Echt-Training (Musik-Paare, KEIN --synthetic) ==="

@@ -1,7 +1,7 @@
 # Kette-4-Trainer: drei Defekte, die R3/R4/R5 am Training hinderten (D-K3-81)
 
 **Datum:** 2026-11-08 · **Klasse:** K3 (Verdrahtung/Determinismus, kein Modellproblem)
-**Auslöser:** Wiederaufnahme nach Stillstand — `pgrep -f gpu_kette`/`train_job_runner`
+**Auslöser:** Wiederaufnahme nach Stillstand - `pgrep -f gpu_kette`/`train_job_runner`
 leer, drei Kette-4-Jobs `fehlgeschlagen` in Sekunden bis 65 s.
 **Kein Flag-Flip. Kein Deploy. Kein Training gestartet (nur CPU-Smokes).**
 
@@ -16,12 +16,12 @@ leer, drei Kette-4-Jobs `fehlgeschlagen` in Sekunden bis 65 s.
 Alle drei sind **Trainer-Defekte**, keine Daten- oder GPU-Blocker: die
 MUSDB18-HQ-Daten lagen vor, die Kette-4-Guards griffen, die GPU war frei.
 
-## 2. F9 — der Trainer konnte strukturell keine Gradienten bilden
+## 2. F9 - der Trainer konnte strukturell keine Gradienten bilden
 
 `VoiceEncoder.embed_utterance()` kapselt den Forward-Pass in
 `torch.no_grad()` (`models/resemblyzer/resemblyzer/voice_encoder.py`). Die
 Trainingsschleife baute die d-Vektoren genau damit und rief danach
-`loss.backward()` — das musste bei jedem Lauf scheitern, unabhängig von Daten
+`loss.backward()` - das musste bei jedem Lauf scheitern, unabhängig von Daten
 und Gerät.
 
 **Fix:** `_embed_utterance_diff(encoder, wav, torch)` geht denselben Pfad
@@ -38,13 +38,13 @@ Val-Track) lief **7 min mit 100 % CPU** ohne Ergebnis; ein Stack-Dump
 Rest-Bereich gezogen (bias-frei, deterministisch, garantiert ≠ erster).
 
 **Verifikation:** Smoke-Lauf vorher `Exit 124` (Timeout), nachher **Exit 0 in
-7,7 s** — `Basis-Validierungs-Genauigkeit 1.000`, `Epoch 1/1 loss=3.129583`,
+7,7 s** - `Basis-Validierungs-Genauigkeit 1.000`, `Epoch 1/1 loss=3.129583`,
 `checkpoint_latest.pt` + `voiceencoder_vocal_ft.pt` + `manifest.json`
 geschrieben.
 
-## 3. F10 — 16 kHz an einem 48-kHz-Vertrag, danach ein entarteter Fit
+## 3. F10 - 16 kHz an einem 48-kHz-Vertrag, danach ein entarteter Fit
 
-`_SR_MOS = 16_000` trug den Kommentar „Produktionspfad score_mos: I/O @ 16 kHz",
+`_SR_MOS = 16_000` trug den Kommentar "Produktionspfad score_mos: I/O @ 16 kHz",
 aber `plugins/versa_plugin.py::score()` asserted `sr == 48_000` (und resampelt
 intern selbst auf die 16-kHz-Modellrate). Der Kalibrierlauf starb nach 56 s an
 der Assertion. **Vertragsquelle ist das Plugin, nicht der Kommentar**
@@ -56,16 +56,16 @@ die Wahrheit), Form-Invariante in `_codec` (Trim auf Eingangslänge, sonst
 
 **Fix 2 (Mess-Validität):** Der Produktions-Score kappt auf einen
 **30-s-Mittelausschnitt**. Ein ganzer 238-s-Vocal wurde damit an einer
-beliebigen Stelle bewertet — gemessen: derselbe Track **clean 1,303 vs.
+beliebigen Stelle bewertet - gemessen: derselbe Track **clean 1,303 vs.
 `codec` 4,858**. Eine solche Zahl misst den Ausschnitt, nicht die Degradation.
 Neu: `_pick_window()` wählt deterministisch das energiereichste 20-s-Fenster
 (`_WINDOW_S = 20.0` < 30-s-Kappung, 5-s-Hop, §G5). Clean und verarbeitet werden
 jetzt auf **derselben Stelle und Länge** verglichen.
 
 **Fix 3 (fail-closed statt Schein-Artefakt):** `fit_calibration` klemmte den
-Nenner auf `1e-6` und meldete im ersten Lauf **a = 2,4e6, b = −7,4e6**. Jetzt
+Nenner auf `1e-6` und meldete im ersten Lauf **a = 2,4e6, b = -7,4e6**. Jetzt
 gilt `span < _MIN_SPAN_MOS (0,05)` als **entartet**: `degeneriert: true`,
-`a = 0.0`, `grund`, und `main()` endet mit **Exit 3** — das Artefakt bleibt als
+`a = 0.0`, `grund`, und `main()` endet mit **Exit 3** - das Artefakt bleibt als
 Beleg liegen, ist aber nicht als gültige Kalibrierung ausgegeben.
 
 ### 3.1 Substantiver Messbefund (der eigentliche Punkt)
@@ -88,22 +88,22 @@ Volle Kalibrierung, 320 Paare / 20 Tracks, Seed 42 (`/tmp/f10_voll/calibration.j
 
 **Interpretation (ehrlich):** Der Produktions-Proxy SingMOS-Pro ist auf
 MUSDB-Gesang am **Ceiling** (4,96 von 5,00, Std 0,02) und für Bandbegrenzung
-und Codec-Artefakte **nicht sensitiv** — er bewertet sie sogar leicht besser als
+und Codec-Artefakte **nicht sensitiv** - er bewertet sie sogar leicht besser als
 clean. Damit ist eine affine Kalibrierung auf dieser Grundlage **nicht
 belastbar**; das Artefakt trägt die Grund-Ordnung nicht. Das ist **kein
-Verdrahtungsfehler mehr**, sondern eine Eigenschaft der Metrik — und damit eine
+Verdrahtungsfehler mehr**, sondern eine Eigenschaft der Metrik - und damit eine
 Entscheidung über die Messgröße (Kandidaten: `musik_mos`/`defektlast`, beide
 zertifiziert, Spearman 0,95), nicht ein autonomer Code-Schritt.
 
-**D-K4-6 bleibt offen** — mit jetzt präziser Ursache: nicht „Lauf fehlt“,
-sondern „Proxy trägt die Ordnung nicht“. Keine Flag-Aktivierung, keine
+**D-K4-6 bleibt offen** - mit jetzt präziser Ursache: nicht "Lauf fehlt",
+sondern "Proxy trägt die Ordnung nicht". Keine Flag-Aktivierung, keine
 Read-Side-Verdrahtung.
 
-## 4. D-K2-3 — `Vocos.from_pretrained()` ist ein Hugging-Face-Aufruf
+## 4. D-K2-3 - `Vocos.from_pretrained()` ist ein Hugging-Face-Aufruf
 
 `vocos==0.1.0` implementiert `from_pretrained(repo_id)` als
 `hf_hub_download(...)`; ein lokaler Pfad wird von der Repo-ID-Validierung
-abgelehnt (`Repo id must be in the form …`) — Exit 1 nach 2,1 s, obwohl
+abgelehnt (`Repo id must be in the form ...`) - Exit 1 nach 2,1 s, obwohl
 `models/vocos_48khz/{config.yaml,pytorch_model.bin}` vollständig deployt sind.
 
 **Fix:** Offline-Pfad `Vocos.from_hparams(config.yaml)` +
@@ -111,7 +111,7 @@ abgelehnt (`Repo id must be in the form …`) — Exit 1 nach 2,1 s, obwohl
 (dieselbe Reihenfolge wie das Vorbild, ohne Netzwerk; die `EncodecFeatures`-
 Sonderbehandlung des Originals ist nicht nötig, die Config nutzt
 `MelSpectrogramFeatures`). **Verifikation:** Smoke-Lauf **Exit 0 in 7,6 s**,
-`Epoch 1/1 — Verlust 0.16940`, Artefakte `vocos_48khz_music_ft.pt` +
+`Epoch 1/1 - Verlust 0.16940`, Artefakte `vocos_48khz_music_ft.pt` +
 `checkpoint_latest.pt` + `manifest.json`.
 
 ## 5. Verifikation (alle Zahlen aus diesem Lauf)
@@ -128,17 +128,47 @@ Sonderbehandlung des Originals ist nicht nötig, die Config nutzt
 | `ruff check` (6 Dateien) | clean |
 | `py_compile` (3 Trainer) | OK |
 
-Neue Regressionstests: 13 (F9: 5 — Terminierung, Determinismus, Gradienten,
-Quelltext-Pin; F10: 6 — 48-kHz-Vertrag, Fenster ≤ 30 s, Fensterwahl,
-Entartungs-Guard, Nicht-Entartung; vocos: 2 — Offline-Pin, Offline-Laden).
+Neue Regressionstests: 13 (F9: 5 - Terminierung, Determinismus, Gradienten,
+Quelltext-Pin; F10: 6 - 48-kHz-Vertrag, Fenster ≤ 30 s, Fensterwahl,
+Entartungs-Guard, Nicht-Entartung; vocos: 2 - Offline-Pin, Offline-Laden).
 
 ## 6. Ehrliche Grenzen
 
-- **Kein Training behauptet.** Die drei Trainer sind jetzt *startbar*; das ist
-  nicht dasselbe wie „trainiert“. R3/R4/R5 laufen im nächsten freien
-  GPU-Fenster über Kette 4.
+- **Zum Commit-Zeitpunkt** waren die Trainer nur *startbar* — das ist nicht
+  dasselbe wie „trainiert". Der echte Nachweis steht in **§7** (R1/R3/R4
+  erfolgreich, R5 gestartet).
 - **F10 ist inhaltlich nicht gelöst** (siehe §3.1): die Kalibrierung ist
   diagnostisch, nicht anwendbar.
 - **F9-Never-worsen-Gate** und **Hörabnahme** bleiben offen (menschlich/GPU).
 - Die volle F10-Kalibrierung lief auf `/tmp` (CPU, `nice 15`) — die GPU-Kette 1
   (m8/A-SPADE) lief parallel, es wurde **kein** zweites Training gestartet.
+
+## 7. Nachtrag: die echten Läufe (gleiche Sitzung, nach dem Commit)
+
+Die Nachfahrt der Sitzung hat R1/R3/R4 mit genau diesen Fixes **echt** gefahren:
+
+| Job | Ergebnis | Laufzeit | Beleg |
+| --- | --- | --- | --- |
+| R1 WF4 (D-K4-7) | **erfolgreich** | 316 s | Epoche 50/50, Loss 0,002167 |
+| R3 F9 (D-K4-5) | **erfolgreich** | 1555,8 s | Epoche 30/30, `val_acc 0.672` (Basis 0,422) — der differenzierbare Pfad trainierte 30 Epochen durch |
+| R4 F10 (D-K4-6) | **erfolgreich** | 49,8 s | `models/singmos/calibration/calibration.json`, a = 3,5562 |
+| R5 vocos (D-K2-3) | gestartet | — | lief zum Berichtszeitpunkt |
+
+**Determinismus-Nachweis (§G5):** die R4-Produktionsdatei ist mit dem
+unabhängigen `/tmp`-Lauf **zahlengleich** — a 3,5562, `span` 0,675, n = 320,
+clean 4,959, 144 Paar-Verletzungen, gleiche Kettenmittel. Zwei Läufe,
+zwei Verzeichnisse, identische Zahlen.
+
+**F9 ist damit nicht mehr nur „startbar":** die Validierungs-Genauigkeit stieg
+von 0,422 (Basis) auf **0,672** (bester Stand, never-worsen hat ihn behalten);
+der letzte Epochenwert 0,312 wurde verworfen, weil unter Basis − 0,01.
+
+**Nachtrag 2 — Befehlskonsistenz der Ketten (gleiche Fehlerklasse):** Kette 1
+und Kette 3 fuhren `m8_aspade` mit **verschiedenen** Befehlen (30 Epochen ohne
+Resume vs. 60 Epochen mit Resume). Der Runner wertete das als „Befehl weicht
+ab" und startete m8 bei Epoche 0 neu, obwohl ein 60-Epochen-Anker auf der
+Platte lag (~3,8 h Vortrainingsstand überschrieben). Kette 1 nutzt jetzt
+dasselbe datei-geschützte Resume-Muster wie Kette 3 (`--epochs 60 --resume`,
+sonst 30 ohne Resume), `bash -n` + `test_gpu_kette1_wiring.py` 10/10 grün.
+Der **laufende** Kette-1-Prozess wurde nicht angefasst; er endet bei 30
+Epochen, Kette 3 setzt später auf dem Anker auf (kein Doppelaufwand).
