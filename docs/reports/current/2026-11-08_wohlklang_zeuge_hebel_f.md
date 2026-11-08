@@ -114,10 +114,13 @@ für drei Signale (Test) — die Zertifikatszahlen bleiben damit gültig.
   die GPU/Modelle; Kette 2 belegte die GPU (kein paralleles Training, §5).
   Verifiziert ist die Wirkungs-Semantik am Modul und die Verdrahtung per
   Quell-Pin.
-* **Kein RT-Delta gemessen.** Erwartung: zwei numpy-Metrikfenster
-  (`musik_mos` sieht 32 k Samples, `defektlast` 16 k) — deutlich unter 100 ms
-  je Lauf; die 32×-RT-Norm bleibt unberührt, weil der Zeuge **kein** Audio
-  verändert. Die Messung gehört ins trainingsfreie Fenster.
+* **RT: Zeuge gemessen, Kette-RT-Delta offen.** Der Zeuge selbst kostet
+  **37 ms pro 225-s-Song** (warm, 3 Läufe: 36,7/37,2/37,5 ms; erster Aufruf
+  2,5 s inkl. Modul-Import) — zwei numpy-Metrikfenster (`musik_mos` sieht
+  32 k Samples, `defektlast` 16 k), also < 0,02 % des 32×-RT-Budgets. Die
+  Marginalkosten im echten Pipeline-Lauf (Cache-/IO-Effekte) gehören ins
+  trainingsfreie Fenster; die 32×-RT-Norm bleibt unberührt, weil der Zeuge
+  **kein** Audio verändert.
 * **Kein Cantus-Neulauf.** Der Trainer ist gefixt und getestet, der echte
   `fine_tune` (30 Epochen) läuft beim nächsten Kette-1-Start.
 * **Kein Flag-Flip, kein Deploy.** `use_wf4_warp_head`/`use_tp_v2_phase`
