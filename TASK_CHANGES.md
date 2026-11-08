@@ -1,6 +1,6 @@
 # TASK_CHANGES — Live-Ledger der aktuellen Aufgabe
 
-> Generiert von `scripts/change_ledger.py snapshot` (Base: `HEAD`, Stand: 2026-11-08 14:57 CET).
+> Generiert von `scripts/change_ledger.py snapshot` (Base: `HEAD`, Stand: 2026-11-08 15:10 CET).
 > CI (`ci-lite.yml` pr-evidence-gate) erzwingt Abdeckung: jede geänderte Code-Datei muss hier stehen.
 
 ## Geänderte Dateien
@@ -12,7 +12,7 @@
 | M | `docs/reports/current/2026-11-08_kette4_trainer_defekte.md` | modifiziert |
 | M | `docs/reports/current/train_job_m8_aspade.json` | modifiziert |
 | M | `docs/reports/current/train_job_m9_tf_gridnet.json` | modifiziert |
-| M | `scripts/gpu_kette1_welle_c.sh` | modifiziert |
+| M | `scripts/gpu_kette4_modellkoepfe.sh` | modifiziert |
 | ?? | `docs/reports/current/train_job_d_k2_3_vocos_finetune.json` | ungetrackt |
 | ?? | `docs/reports/current/train_job_f10_singmos_calibrate.json` | ungetrackt |
 | ?? | `docs/reports/current/train_job_f9_voiceencoder_finetune.json` | ungetrackt |

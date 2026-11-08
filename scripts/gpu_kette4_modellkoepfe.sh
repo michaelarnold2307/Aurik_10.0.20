@@ -103,7 +103,13 @@ echo "=== R5: D-K2-3 vocos_48khz Musik-Finetune (MUSDB18-HQ-Gesang) ==="
 # D-K2-3: Musik-Finetune für models/vocos_48khz (Primär-Rollen-Entscheidung Studio-Finisher
 # bleibt menschlich — dieser Job trainiert NUR, kein Flag-Flip, kein Rollout).
 if [ -f scripts/train_vocos_48khz_finetune.py ] && [ -d data/musdb18hq ]; then
-  R --name d_k2_3_vocos_finetune --ckpt-dir models/vocos_48khz/finetune --phase d_k2_3 \
+  # Job-Name IST der Idempotenz-Schlüssel des Runners (Manifest-Datei). Die
+  # kontrollierte Nachfahrt 2026-11-08 hat den 30-Epochen-Lauf unter
+  # `vocos_48khz_finetune` echt gefahren (Exit 0, 1768,8 s, Artefakte in
+  # models/vocos_48khz/finetune/); mit dem alten Namen `d_k2_3_vocos_finetune`
+  # hätte Kette 4 dieselben 30 Epochen ein ZWEITES Mal trainiert. Name angeglichen
+  # — das alte Manifest bleibt als Fehlerbeleg (Repo-ID-Defekt) liegen.
+  R --name vocos_48khz_finetune --ckpt-dir models/vocos_48khz/finetune --phase d_k2_3 \
     --cmd "env PYTHONPATH=. nice -n 15 $PY -B scripts/train_vocos_48khz_finetune.py --musdb-root data/musdb18hq --epochs 30 --device cuda --out-dir models/vocos_48khz/finetune" \
     --resume-cmd "env PYTHONPATH=. nice -n 15 $PY -B scripts/train_vocos_48khz_finetune.py --musdb-root data/musdb18hq --epochs 30 --device cuda --out-dir models/vocos_48khz/finetune" \
     --timeout-s 21600 --retries 1

@@ -152,7 +152,7 @@ Die Nachfahrt der Sitzung hat R1/R3/R4 mit genau diesen Fixes **echt** gefahren:
 | R1 WF4 (D-K4-7) | **erfolgreich** | 316 s | Epoche 50/50, Loss 0,002167 |
 | R3 F9 (D-K4-5) | **erfolgreich** | 1555,8 s | Epoche 30/30, `val_acc 0.672` (Basis 0,422) — der differenzierbare Pfad trainierte 30 Epochen durch |
 | R4 F10 (D-K4-6) | **erfolgreich** | 49,8 s | `models/singmos/calibration/calibration.json`, a = 3,5562 |
-| R5 vocos (D-K2-3) | gestartet | — | lief zum Berichtszeitpunkt |
+| R5 vocos (D-K2-3) | **erfolgreich** | 1768,8 s | 30/30 Epochen (Verlust 0,199), `models/vocos_48khz/finetune/{vocos_48khz_music_ft.pt, checkpoint_latest.pt, manifest.json}` |
 
 **Determinismus-Nachweis (§G5):** die R4-Produktionsdatei ist mit dem
 unabhängigen `/tmp`-Lauf **zahlengleich** — a 3,5562, `span` 0,675, n = 320,
@@ -172,3 +172,13 @@ dasselbe datei-geschützte Resume-Muster wie Kette 3 (`--epochs 60 --resume`,
 sonst 30 ohne Resume), `bash -n` + `test_gpu_kette1_wiring.py` 10/10 grün.
 Der **laufende** Kette-1-Prozess wurde nicht angefasst; er endet bei 30
 Epochen, Kette 3 setzt später auf dem Anker auf (kein Doppelaufwand).
+
+**Nachtrag 3 — Job-Name ist der Idempotenz-Schlüssel:** die Nachfahrt fuhr den
+vocos-Finetune unter `vocos_48khz_finetune` (Exit 0, 30/30 Epochen), Kette 4
+kannte ihn als `d_k2_3_vocos_finetune` — Kette 4 hätte dieselben 30 Epochen
+**ein zweites Mal** trainiert (~30 min GPU). Die drei anderen Jobs (R1/R3/R4)
+trugen bereits die Ketten-Namen. Kette 4 heißt der Job jetzt
+`vocos_48khz_finetune`; das alte Fehlschlag-Manifest bleibt als Beleg für den
+Repo-ID-Defekt liegen. **Stand danach: R1, R2, R3, R4, R5 haben echte
+Erfolgs-Manifeste** — Kette 4 würde sie überspringen und nur den
+daten-blockierten Gender-Head (R6) melden.
