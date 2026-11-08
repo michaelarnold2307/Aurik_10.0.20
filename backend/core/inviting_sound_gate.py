@@ -5,6 +5,25 @@ hineinlegt": gemessen als Fenster-Gate (5 s, überlappend), nicht als Einzelwert
 
 Regeln (normativ, Hörordnung §6):
 - Roughness (Zwicker, asper): keine Spitze > 0.5 asper in Stimm-/Klimax-Zonen.
+- Loudness (Zwicker/ISO 532-1, phon): **delta-basiertes Sprung-Kriterium** —
+  keine Lautheits-Sprünge zwischen benachbarten Fenstern, die den Input um
+  mehr als die JND-Marge (1.0 phon) übersteigen (Guard-Kalibrierungs-Grundsatz:
+  natürliche Musik-Dynamik erzeugt große Sprünge — nur eine REGRESSION der
+  Sprunggröße gegenüber der Referenz ist ein Befund; ohne `reference_audio`
+  rein diagnostisch). Messung: `compute_loudness_phon` je 5-s-Fenster.
+- Fluktuationsstärke (Zwicker, vacil) — Pumpen-Gate (2026-11-08):
+  **delta-basiert** (Guard-Kalibrierungs-Grundsatz: absolute Normalwerte sind
+  kein Hard-Fail — der musikalische Grundpuls 2–4 Hz liegt im Fluktuationsband
+  und treibt echte Musik bis zum Mess-Clip; Messbefund 2026-11-08 auf der
+  Elke-1977-Referenz: Input und Output beide 10.0 vacil). Kriterium:
+  `max_vacil > max_vacil_input × 1.20` UND `max_vacil > 0.25` (absoluter
+  Boden; V42-Logik auf Song-Ebene). Ohne `reference_audio` ist der vacil-Wert
+  rein diagnostisch — ohne Referenz ist Pumpen von musikalischem Puls nicht
+  unterscheidbar. Schwelle = Panel-Vorbelegung (`vorbelegung_hoerpanel_offen`,
+  Golden-Ear-Konvention Hörordnung §4). Messstrecke: 60-s-Zentrum
+  (Welch-Auflösung nperseg = 2 s; 5-s-Fenster lösen 4-Hz-Modulation nicht
+  auf). Gemessen 2026-11-08: 15 % Pump-Tiefe auf Rauschhintergrund =
+  0.27 vacil, ungepumpt < 0.01.
 - Sharpness (Bismarck-Näherung, acum): keine Sprünge > 0.2 acum zwischen
   benachbarten Fenstern.
 - Ermüdung: fatigue_index > 0.40 ⇒ `fatigue_abort` — beendet die Optimierung
@@ -33,6 +52,8 @@ logger = logging.getLogger(__name__)
 _WINDOW_S_DEFAULT = 5.0
 _HOP_S_DEFAULT = 2.5
 _ASPER_LIMIT = 0.50  # Hörordnung §6: Roughness-Spitze > 0.5 asper
+_VACIL_LIMIT = 0.25  # Hörordnung §6: Fluktuations-Spitze > 0.25 vacil (Panel-Vorbelegung)
+_LOUDNESS_JND_MARGIN_PHON = 1.0  # Hörordnung §6: Lautheits-Sprung-Regression > Input + 1.0 phon
 _SHARPNESS_JUMP_LIMIT = 0.20  # Hörordnung §6: Sprung > 0.2 acum
 _FATIGUE_ABORT_THRESHOLD = 0.40  # Hörordnung §6: Ermüdung > 0.40 → Abbruch
 
@@ -76,6 +97,13 @@ class InvitingGateResult:
     passed: bool = True
     max_asper: float = 0.0
     max_asper_in_voice: float = 0.0
+    max_vacil: float = 0.0
+    max_vacil_in_voice: float = 0.0
+    max_vacil_input: float = 0.0
+    fluctuation_regression: bool = False
+    loudness_jump_max: float = 0.0
+    loudness_jump_max_input: float = 0.0
+    loudness_jump_regression: bool = False
     sharpness_jump_max: float = 0.0
     fatigue_score: float = 1.0
     fatigue_abort: bool = False
@@ -144,6 +172,7 @@ def check_inviting_gate(
     window_s: float = _WINDOW_S_DEFAULT,
     hop_s: float = _HOP_S_DEFAULT,
     repair_windows: list[tuple[float, float]] | None = None,
+    reference_audio: np.ndarray | None = None,
 ) -> InvitingGateResult:
     """Fenster-Gate der Hörordnung Ebene 4.
 
@@ -156,6 +185,10 @@ def check_inviting_gate(
         repair_windows: optionale Reparatur-Zeiträume (s) — Sharpness-Sprünge,
             die ein Reparatur-Fenster überlappen, sind beabsichtigt und werden
             vom Jump-Kriterium ausgenommen (advisory, 2026-09-07).
+        reference_audio: optionales Eingangssignal (Pre-Restaurierung). Ohne
+            Referenz ist der vacil-Wert rein diagnostisch (Pumpen ist von
+            musikalischem Puls nicht unterscheidbar); mit Referenz gilt das
+            delta-basierte Pumpen-Kriterium (Hörordnung §6, 2026-11-08).
     """
     res = InvitingGateResult()
     mono = np.asarray(audio, dtype=np.float64)
@@ -169,7 +202,7 @@ def check_inviting_gate(
         return res
 
     try:
-        from backend.core.dsp.zwicker_metrics import compute_roughness_asper
+        from backend.core.dsp.zwicker_metrics import compute_fluctuation_strength_vacil, compute_roughness_asper
     except Exception as exc:
         logger.debug(
             "§V6 (copilot-instructions.md) zwicker_metrics.berechnen_roughness_asper nicht verfügbar — Gate mit Default-Werten zurückgegeben: %s",
@@ -181,6 +214,17 @@ def check_inviting_gate(
     windows = _window_slices(total, sr, window_s, hop_s)
     asper_values: list[float] = []
     sharp_values: list[float] = []
+    phon_values: list[float] = []
+    _phon_fn = None
+    try:
+        from backend.core.dsp.zwicker_loudness import compute_loudness_phon
+
+        _phon_fn = compute_loudness_phon
+    except Exception as _phon_exc:
+        logger.debug(
+            "§V6 (copilot-instructions.md) compute_loudness_phon nicht verfügbar — Lautheits-Sprünge bleiben 0.0: %s",
+            _phon_exc,
+        )
     for wi, (s, e) in enumerate(windows):
         seg = mono[s:e]
         try:
@@ -193,8 +237,19 @@ def check_inviting_gate(
             )
             asper = 0.0
         sharp = compute_sharpness_acum(seg, sr)
+        _phon = 0.0
+        if _phon_fn is not None:
+            try:
+                _phon = float(_phon_fn(seg.astype(np.float32), sr))
+            except Exception as _phon_m_exc:
+                logger.debug(
+                    "§V6 (copilot-instructions.md) compute_loudness_phon fehlgeschlagen — 0.0 (Window %d): %s",
+                    wi,
+                    _phon_m_exc,
+                )
         asper_values.append(asper)
         sharp_values.append(sharp)
+        phon_values.append(_phon)
         in_voice = True
         if singing_mask is not None:
             in_voice = bool(singing_mask[wi]) if wi < len(singing_mask) else bool(singing_mask[-1])
@@ -202,6 +257,82 @@ def check_inviting_gate(
             res.max_asper_in_voice = max(res.max_asper_in_voice, asper)
 
     res.max_asper = float(max(asper_values)) if asper_values else 0.0
+    _raw_loudness_jump = (
+        float(max(abs(phon_values[i + 1] - phon_values[i]) for i in range(len(phon_values) - 1)))
+        if len(phon_values) > 1
+        else 0.0
+    )
+    res.loudness_jump_max = _raw_loudness_jump
+    res.details["phon_per_window"] = [round(p, 2) for p in phon_values]
+    # Fluktuationsstärke (Hörordnung §6): Ganzsignal-Größe auf einem 60-s-Zentrum —
+    # 4-Hz-Modulation löst sich in 5-s-Fenstern nicht auf (Welch nperseg = 2 s).
+    # Pumpen ist ein global wahrnehmbarer Effekt: der Wert gilt immer als kritisch
+    # (max_vacil_in_voice = max_vacil), konsistent mit "ohne Maske = alle Zonen
+    # kritisch".
+    _vacil_seg = mono
+    if total > sr * 60:
+        _c = total // 2
+        _vacil_seg = mono[_c - (sr * 60) // 2 : _c + (sr * 60) // 2]
+    try:
+        vacil = float(compute_fluctuation_strength_vacil(_vacil_seg.astype(np.float32), sr))
+    except Exception as exc:
+        logger.debug(
+            "§V6 (copilot-instructions.md) berechnen_fluctuation_strength_vacil fehlgeschlagen — 0.0 zurückgegeben: %s",
+            exc,
+        )
+        vacil = 0.0
+    res.max_vacil = vacil
+    res.max_vacil_in_voice = vacil
+    res.details["vacil_center_segment_s"] = round(len(_vacil_seg) / sr, 2)
+    # Delta-basiertes Pumpen-Kriterium (Hörordnung §6, 2026-11-08): der
+    # musikalische Grundpuls (2–4 Hz) liegt im Fluktuationsband — nur eine
+    # REGRESSION gegenüber dem Input ist ein Pumpen-Befund, nie der Absolutwert
+    # allein (Guard-Kalibrierungs-Grundsatz, V42-Logik auf Song-Ebene).
+    # Ohne Referenz: rein diagnostisch.
+    if reference_audio is not None:
+        _ref_mono = np.asarray(reference_audio, dtype=np.float64)
+        if _ref_mono.ndim == 2 and _ref_mono.shape[0] <= 8:
+            _ref_mono = _ref_mono.mean(axis=0)
+        elif _ref_mono.ndim == 2:
+            _ref_mono = _ref_mono.mean(axis=-1)
+        _ref_total = len(_ref_mono)
+        if _ref_total >= sr // 2:
+            _ref_seg = _ref_mono
+            if _ref_total > sr * 60:
+                _ref_c = _ref_total // 2
+                _ref_seg = _ref_mono[_ref_c - (sr * 60) // 2 : _ref_c + (sr * 60) // 2]
+            try:
+                _ref_vacil = float(compute_fluctuation_strength_vacil(_ref_seg.astype(np.float32), sr))
+            except Exception as exc:
+                logger.debug(
+                    "§V6 (copilot-instructions.md) Referenz-vacil fehlgeschlagen — 0.0: %s",
+                    exc,
+                )
+                _ref_vacil = 0.0
+            res.max_vacil_input = _ref_vacil
+            res.fluctuation_regression = bool(res.max_vacil > _ref_vacil * 1.20 and res.max_vacil > _VACIL_LIMIT)
+            # Loudness-Sprünge der Referenz (delta-basis für das Sprung-Kriterium)
+            if _phon_fn is not None:
+                try:
+                    _ref_windows = _window_slices(len(_ref_seg), sr, window_s, hop_s)
+                    _ref_phons: list[float] = []
+                    for _rs, _re in _ref_windows:
+                        _ref_phons.append(float(_phon_fn(_ref_seg[_rs:_re].astype(np.float32), sr)))
+                    res.loudness_jump_max_input = (
+                        float(max(abs(_ref_phons[i + 1] - _ref_phons[i]) for i in range(len(_ref_phons) - 1)))
+                        if len(_ref_phons) > 1
+                        else 0.0
+                    )
+                except Exception as _ref_phon_exc:
+                    logger.debug(
+                        "§V6 (copilot-instructions.md) Referenz-Lautheitssprünge fehlgeschlagen — 0.0: %s",
+                        _ref_phon_exc,
+                    )
+            res.loudness_jump_regression = bool(
+                res.loudness_jump_max > res.loudness_jump_max_input + _LOUDNESS_JND_MARGIN_PHON
+            )
+        else:
+            res.details["vacil_reference_skipped"] = "reference_too_short"
     _raw_jump_max = (
         float(max(abs(sharp_values[i + 1] - sharp_values[i]) for i in range(len(sharp_values) - 1)))
         if len(sharp_values) > 1
@@ -251,6 +382,12 @@ def check_inviting_gate(
     failed = []
     if res.max_asper_in_voice > _ASPER_LIMIT:
         failed.append(f"roughness_spike={res.max_asper_in_voice:.3f}asper")
+    if res.fluctuation_regression:
+        failed.append(f"fluctuation_regression={res.max_vacil:.3f}vacil(input={res.max_vacil_input:.3f}vacil)")
+    if res.loudness_jump_regression:
+        failed.append(
+            f"loudness_jump_regression={res.loudness_jump_max:.2f}phon(input={res.loudness_jump_max_input:.2f}phon)"
+        )
     if res.sharpness_jump_max > _SHARPNESS_JUMP_LIMIT:
         failed.append(f"sharpness_jump={res.sharpness_jump_max:.3f}acum")
     res.passed = not failed

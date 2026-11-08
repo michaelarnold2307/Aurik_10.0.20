@@ -1,6 +1,6 @@
 {
   "schema": "aurik.train_job/1",
-  "run_id": "matrix_d3-20261104T152352Z-906e46",
+  "run_id": "matrix_d3-20261107T163625Z-8aac4a",
   "name": "d3_flashsr_musik",
   "phase": "matrix_d3",
   "seed": null,
@@ -8,6 +8,33 @@
   "resume_befehl": "env PYTHONPATH=. /home/michael/.local/share/aurik/venv_rocm72/bin/python -B scripts/train_flashsr_f4.py --epochs 30 --data-dir data/musdb18hq --out-dir models/flashsr --resume models/flashsr/checkpoint_latest.pt",
   "timeout_s": 21600.0,
   "retries": 1,
-  "versuche": [],
-  "quelle": "scripts/train_job_runner.py"
+  "versuche": [
+    {
+      "exit_code": -15,
+      "sekunden": 21600.4,
+      "timed_out": true,
+      "output_tail": "lver <GemmBwdRest>, workspace required: 202752000, provided ptr: 0 size: 0\nMIOpen(HIP): Warning [IsEnoughWorkspace] [EvaluateInvokers] Solver <GemmWrwUniversal>, workspace required: 202752000, provided ptr: 0 size: 0\nMIOpen(HIP): Warning [IsEnoughWorkspace] [EvaluateInvokers] Solver <GemmBwdRest>, workspace required: 202752000, provided ptr: 0 size: 0\nMIOpen(HIP): Warning [IsEnoughWorkspace] [EvaluateInvokers] Solver <GemmWrwUniversal>, workspace required: 202752000, provided ptr: 0 size: 0\nMIOpen(HIP): Warning [IsEnoughWorkspace] [EvaluateInvokers] Solver <GemmFwdRest>, workspace required: 202752000, provided ptr: 0 size: 0\nMIOpen(HIP): Warning [IsEnoughWorkspace] [EvaluateInvokers] Solver <GemmFwdRest>, workspace required: 202752000, provided ptr: 0 size: 0\nMIOpen(HIP): Warning [IsEnoughWorkspace] [EvaluateInvokers] Solver <GemmFwdRest>, workspace required: 55296000, provided ptr: 0 size: 0\nMIOpen(HIP): Warning [IsEnoughWorkspace] [EvaluateInvokers] Solver <GemmFwdRest>, workspace required: 55296000, provided ptr: 0 size: 0\n/media/michael/Software 4TB/Aurik_Standalone/scripts/train_flashsr_f4.py:135: UserWarning: Using a target size (torch.Size([144000])) that is different to the input size (torch.Size([1, 144000])). This will likely lead to incorrect results due to broadcasting. Please ensure they have the same size.\n  loss = torch.nn.functional.l1_loss(y, hi_g) + 0.5 * mr_stft_loss(y, hi_g)\n2026-11-07 18:58:13,500 INFO Epoche 0 fertig (4840.0 s): A1=0.0114 STFT=0.7773 Val=0.4756\n2026-11-07 18:58:13,605 INFO Neues bestes Modell (Val=0.4756) gespeichert\n2026-11-07 20:20:50,025 INFO Epoche 1 fertig (4956.4 s): A1=0.0113 STFT=0.7363 Val=0.4864\n2026-11-07 21:40:20,295 INFO Epoche 2 fertig (4770.2 s): A1=0.0113 STFT=0.7215 Val=0.4726\n2026-11-07 21:40:20,420 INFO Neues bestes Modell (Val=0.4726) gespeichert\n2026-11-07 22:59:49,476 INFO Epoche 3 fertig (4769.1 s): A1=0.0111 STFT=0.7165 Val=0.3726\n2026-11-07 22:59:49,539 INFO Neues bestes Modell (Val=0.3726) gespeichert\n",
+      "versuch": 1,
+      "befehl": "env PYTHONPATH=. /home/michael/.local/share/aurik/venv_rocm72/bin/python -B scripts/train_flashsr_f4.py --epochs 30 --data-dir data/musdb18hq --out-dir models/flashsr"
+    },
+    {
+      "exit_code": 1,
+      "sekunden": 61.3,
+      "timed_out": false,
+      "output_tail": "2026-11-07 23:36:27,624 INFO F4 FlashSR-Finetune — Gerät: cuda\n2026-11-07 23:36:27,671 INFO Trainings-Tracks: 100, Test-Tracks: 50\n/home/michael/.local/share/aurik/venv_rocm72/lib/python3.10/site-packages/torch/nn/utils/weight_norm.py:144: FutureWarning: `torch.nn.utils.weight_norm` is deprecated in favor of `torch.nn.utils.parametrizations.weight_norm`.\n  WeightNorm.apply(module, name, dim)\n2026-11-07 23:36:30,653 INFO Modell geladen (131904 Parameter) aus models/flashsr/models/upsampler.pth\nTraceback (most recent call last):\n  File \"/media/michael/Software 4TB/Aurik_Standalone/scripts/train_flashsr_f4.py\", line 277, in <module>\n    raise SystemExit(main())\n  File \"/media/michael/Software 4TB/Aurik_Standalone/scripts/train_flashsr_f4.py\", line 200, in main\n    res = torch.load(args.resume, map_location=\"cpu\", weights_only=True)  # nosec B614\n  File \"/home/michael/.local/share/aurik/venv_rocm72/lib/python3.10/site-packages/torch/serialization.py\", line 1530, in load\n    with _open_file_like(f, \"rb\") as opened_file:\n  File \"/home/michael/.local/share/aurik/venv_rocm72/lib/python3.10/site-packages/torch/serialization.py\", line 795, in _open_file_like\n    return _open_file(name_or_buffer, mode)\n  File \"/home/michael/.local/share/aurik/venv_rocm72/lib/python3.10/site-packages/torch/serialization.py\", line 776, in __init__\n    super().__init__(open(name, mode))  # noqa: SIM115\nFileNotFoundError: [Errno 2] No such file or directory: 'models/flashsr/checkpoint_latest.pt'\n",
+      "versuch": 2,
+      "befehl": "env PYTHONPATH=. /home/michael/.local/share/aurik/venv_rocm72/bin/python -B scripts/train_flashsr_f4.py --epochs 30 --data-dir data/musdb18hq --out-dir models/flashsr --resume models/flashsr/checkpoint_latest.pt"
+    }
+  ],
+  "quelle": "scripts/train_job_runner.py",
+  "checkpoint_hashes": {
+    "best.pt": "8f188672b2d019e22f90246bf3c77c8842663cc78c5f096f0d3959d39ff868f4",
+    "checkpoint_epoch0.pt": "0b3334840b9c79108afc188e7f76a7e34b656a0643e9155063e71938a335e719",
+    "checkpoint_epoch1.pt": "3a8f446571c9c6b4e3083604c3d918e45c4c53884aeee9c583ed03e649fa9793",
+    "checkpoint_epoch2.pt": "e7484aa4c9a0e03fe43af6577990e795e898a780baa842ce2fb5c2728cb6a0a7",
+    "checkpoint_epoch3.pt": "b5ba51f467a4a5f17933277c14e4bbeb166f345a63bac89be81d3449cbfc531d",
+    "flashsr.onnx": "41396e3d58fc24faabe3351dfc860de193a745911048d9eab30025de9c16d994",
+    "flashsr_f4.onnx": "41396e3d58fc24faabe3351dfc860de193a745911048d9eab30025de9c16d994"
+  },
+  "ergebnis": "fehlgeschlagen"
 }

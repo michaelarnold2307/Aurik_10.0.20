@@ -55,6 +55,13 @@ class TestPannsRocmProviderFilter:
         monkeypatch.setattr(ort, "InferenceSession", _fake_inference_session)
         monkeypatch.setattr(ort, "SessionOptions", mock.MagicMock)
         monkeypatch.setattr(ort, "GraphOptimizationLevel", mock.MagicMock())
+        # §G5 (GEBOTE.md): Tests dürfen nicht umgebungsabhängig kippen — dieser
+        # Test prüft den Provider-Filter (Tupel-Auspacken), nicht die
+        # GPU-Präsenz. `_gpu_device_present()` hängt am torch-Backend des
+        # Test-Pythons (System-Python ohne ROCm-torch → False, obwohl die
+        # Maschine eine laufende GPU hat; Produktions-venv_rocm72 liefert
+        # True). Determinismus: Gerät als vorhanden voraussetzen.
+        monkeypatch.setattr("backend.core.gpu_model_registry._gpu_device_present", lambda: True)
 
         plugin._load_onnx()
 

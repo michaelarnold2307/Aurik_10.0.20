@@ -365,7 +365,7 @@ Folgende Phasen sind im Restoration-Modus normativ VERBOTEN (§0a/UV3-Forbidden-
 
 | Operation | Limit / Minute Audio |
 | --- | --- |
-| DefectScanner | <= **4 s** |
+| DefectScanner | <= **16 s** (Quality-ERB-Standard, gemessen 2026-11-07: 14,9 s/min warm; 4 s = Fast-Ziel nach Hör-Freigabe des Batch-Pfads §2.46h) |
 | Phase-Pipeline gesamt | <= **240 s** |
 | FeedbackChain (alle Iterationen) | <= **120 s** |
 | ExcellenceOptimizer | <= **60 s** |

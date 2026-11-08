@@ -64,6 +64,7 @@ zurückgenommen oder geblendet** — nicht erst am Pipeline-Ende „wiederherges
 | Vibrato-Erhalt | `vibrato_precision` (Spec 01 §2.35d-i) | Rate-Fehler ≤ 0.3 Hz, Tiefen-Erhalt ≥ 0.85 |
 | Dynamikbogen | EmotionalArc (Spec 01 §2.35e) | Arc-Korrelation ≥ Schwelle aus §2.35e-ii |
 | Atem-Zeitstruktur | BreathEmotionClassifier-Segmente | Anzahl/Position der Atemer dürfen sich durch NR nicht um > 10 % ändern |
+| Stereo-Abbildung (binaural) | ITD/ILD/IACC gegen den Input (delta-basiert) — Messgrößen + JNDs in §8b | Warn ab JND 1 (Log), **Hard-Fail ab JND 2 → Rollback** der verursachenden Phase auf Input/HPI-Best (`STEREO_SAFETY_HARD_FAIL`) |
 
 **Verboten:** Eine Ebene-1-Verletzung durch „Recovery-Kaskade" zu kaschieren,
 wenn die Ursache eine identifizierbare Einzelphase ist (Ursache statt Symptom —
@@ -78,7 +79,13 @@ Stelle mit harter Phasen-Rücknahme: §SCK-R (Spektralfarben-Korrelation < 0.60)
 und §WBG-R (Einzelphasen-Wärmeband-Verlust > 3 dB, Restoration) — Metadatum
 `hearing_invariant_retreat`, kumulativer Wärme-Tracker wird zurückgedreht
 (Ursache statt Symptom — §V7 (copilot-instructions.md); keine
-End-Gate-Kompensation).
+End-Gate-Kompensation). Die sechste Invariante (Stereo-Abbildung) ist über
+`_evaluate_stereo_safety_guard` verdrahtet (Verankerung 2026-11-08):
+Warnstufe loggt (`itd_drift_gt_30us` u. a.), Hard-Fail
+(`STEREO_SAFETY_HARD_FAIL`) rollt auf `_hpi_best_rollback_audio` bzw. das
+Original zurück — delta-basiert gegen den Input (§8b-Regel 1: nur eine
+Verschlechterung ist ein Befund; analoge Träger tragen inhärenten
+L/R-Versatz).
 
 ## 4. Ebene 2 — Audibility: Reparaturziel ist die Maskierungsschwelle
 
@@ -110,6 +117,17 @@ Maskierungsschwelle** liegt — nicht wenn sein Messwert Null ist.
   (dsp.instructions.md)) — asymmetrisch (Aufwärts-Masking > Abwärts) und
   level-abhängig (SOTA-Upgrade, Kalibrierung §8a: Checks 13/14). Beide zeitlich
   **und** spektral lokal.
+- **Temporal-Masking-Integration (2026-11-08):** Die erzwingbare Instanz
+  `audibility_targets.residual_audibility` misst jetzt auch die ZEIT-Dimension:
+  Liegt der Residual-Schwerpunkt in einer Forward-Masking-Zone des Kontexts
+  (`temporal_masking.compute_zones`, Zwicker & Fastl §4.2), wird die effektive
+  Schwelle um bis zu **6 dB** angehoben (konservativ unter den Literaturwerten
+  ≈10–20 dB, Moore 2003; die bestehende 6-dB-Marge bleibt zusätzlich).
+  Vertrag: `residual` und `context` müssen zeitaligniert sein (voll-längige
+  Arrays; der Schwerpunkt des Rests trägt die Song-Position). Fail-closed:
+  Messfehler ⇒ boost=0 (keine Aufweichung). Ergebnis-Transparenz:
+  `threshold_db_eff`/`temporal_boost_db`/`in_forward_mask_zone` im Report.
+  Harness-Invariante 19; Wirkungs-Test `test_temporal_masking_kippt_audible_konservativ`.
 - Jede Reparatur-Entscheidung (Phase an/aus, Stärke, Re-Scan) fragt zuerst:
   **„Ist dieser Defekt über der Maskierungsschwelle hörbar?"** Nur dann wird
   repariert.
@@ -163,6 +181,32 @@ wird als Fenster-Gate gemessen, nicht als Einzelwert:
   der Sharpness-Verlauf keine Sprünge > 0.2 acum zwischen benachbarten Fenstern
   aufweist. (Die Größen sind bereits als Gewichtungs-Input in Spec 01 §2.56
   Stufe 3 definiert — hier werden sie zum eigenständigen Gate.)
+- **Loudness-Sprünge (Zwicker/ISO 532-1, phon) — delta-basiert (2026-11-08):**
+  Die Loudness wird je Fenster gemessen (`compute_loudness_phon` je 5-s-Fenster);
+  Befund ist nur eine **Regression der Sprunggröße gegenüber dem Input**
+  (`loudness_jump_max > loudness_jump_max_input + 1.0 phon`, JND-Marge) —
+  natürliche Musik-Dynamik erzeugt große Sprünge, die kein Artefakt sind
+  (Guard-Kalibrierungs-Grundsatz). Ohne Input-Referenz rein diagnostisch.
+  Träger: `inviting_sound_gate.py` (`loudness_jump_max`/`loudness_jump_regression`);
+  Harness-Invariante 18 (`scripts/horordnung_calibration.py`).
+- **Fluktuationsstärke (Zwicker, vacil) — Pumpen-Gate (2026-11-08):**
+  NR-Pumpen/Kompressor-Atmen ist ein langsamer (≈4 Hz), global wahrnehmbarer
+  Effekt und wird als Ganzsignal-Größe auf einem 60-s-Zentrum gemessen
+  (die Welch-Auflösung der Messung verlangt ≥ 2-s-Segmente — 5-s-Fenster
+  lösen 4-Hz-Modulation nicht auf; Messbefund 2026-11-08). **Das Kriterium
+  ist delta-basiert** (Guard-Kalibrierungs-Grundsatz: absolute Normalwerte
+  sind kein Hard-Fail — der musikalische Grundpuls 2–4 Hz liegt im
+  Fluktuationsband und treibt echte Musik bis zum Mess-Clip; Messbefund
+  2026-11-08 auf der Elke-1977-Referenz: Input und Output beide 10.0 vacil):
+  Pumpen-Befund nur wenn `max_vacil > max_vacil_input × 1.20` UND
+  `max_vacil > 0.25` (absoluter Boden; V42-Logik auf Song-Ebene). Ohne
+  Input-Referenz ist der vacil-Wert rein diagnostisch. Schwelle = Panel-
+  Vorbelegung `vorbelegung_hoerpanel_offen` (Golden-Ear-Konvention §4;
+  1 vacil = 100 % AM bei 4 Hz; gemessen: 15 % Pump-Tiefe auf
+  Rauschhintergrund = 0.27 vacil, ungepumpt < 0.01). Träger:
+  `inviting_sound_gate.py` (`max_vacil`/`fluctuation_regression`,
+  `reference_audio`-Parameter); Harness-Invariante 15
+  (`scripts/horordnung_calibration.py`).
 - **Ermüdungs-Abbruch:** Fatigue (experience_runtime) > 0.40 beendet die
   Optimierung (gilt schon in OneTakeExport; hier generell für End-Gate/FC).
   Die audio-basierte Listening-Fatigue (Spektralbalance/Crest/Mikrodynamik,
@@ -198,9 +242,9 @@ jeweiligen Mess-Definitionen; hier zählt nur der Entscheidungsfluss):
 | Ebene | Träger |
 |---|---|
 | 1 | VQI-Gate + singer_identity-Rollback + EmotionalArc (UV3, Spec 01 §2.35c–e), ConsonantClarity; **§SCK-R/§WBG-R** Phasen-Rücknahme im zentralen Phasen-Call (`unified_restorer_v3.py`, Konkretisierung zu V24/V25 in dsp.instructions.md), **Level-1-Guard-Blend** (`level_1_invariants_guard.check_level_1_invariants` → `blend_factor < 1.0`), **Witness-Veto** (`witness_correction_loop.py`: `compute_witness_veto`/`apply_witness_veto` → `global_scalar`/`family_scalars`) |
-| 2 | `compute_masking_threshold_iso11172` (dsp §2.62), PerceptualSalience (Pass-Through-Guard), `residuum_masking.py` (3. Blend-Term), `_should_skip_masked_phase` (Stufe B), §v10.703-Countdown (Stufe A: ERB-maskierte Events), **`audibility_targets.residual_audibility`/`repair_objective_met`/`repair_strength_for`** (erzwingbare Hörbarkeits-Instanz, Ziel „Maske − Marge", Default 6 dB; Alias `is_audible`), **`golden_ear_corpus.py`** (Ohren-Kalibrierung: `inject_at_margin`/`calibration_report`; Hörpanel-Status `vorbelegung_hoerpanel_offen`) |
+| 2 | `compute_masking_threshold_iso11172` (dsp §2.62), PerceptualSalience (Pass-Through-Guard), `residuum_masking.py` (3. Blend-Term), `_should_skip_masked_phase` (Stufe B), §v10.703-Countdown (Stufe A: ERB-maskierte Events), **`audibility_targets.residual_audibility`/`repair_objective_met`/`repair_strength_for`** (erzwingbare Hörbarkeits-Instanz, Ziel „Maske − Marge", Default 6 dB; Alias `is_audible`; **Temporal-Masking-Integration 2026-11-08: Forward-Masking-Zonen heben die effektive Schwelle um bis zu 6 dB — Harness-Invariante 19**), **`golden_ear_corpus.py`** (Ohren-Kalibrierung: `inject_at_margin`/`calibration_report`; Hörpanel-Status `vorbelegung_hoerpanel_offen`), **`temporal_masking.py`** (Forward-Masking-Zonen, Zwicker & Fastl 1999 §4.2; NR-Stärke-Boost nur in maskierten Nachklang-Fenstern — Harness-Invariante 17), **`pre_echo_detector.py`/`pre_echo_model.py`** (Pre-/Post-Masking-Artefakt-Schutz), **`tonality_gate.py`** (§23-TONALITY: tonales/sauberes Signal ⇒ spectral_denoiser-Passthrough; Harness-Invariante 16) |
 | 3 | GoalPriorityProtocol (Spec 01 §2.34) + `HEARING_TIER_MAP`/`hearing_tier()` (Hörordnungs-Dominanzstufe), `goal_weights` (§2.56), PhaseConductor/PMGG; Guards in FeedbackChain (intern + UV3-Callback) und End-Gate-Ranking; `wohlklang_ordnung_gate.py` (`WohlklangOrdnungGate`, maschineller Audit der Dominanz-Konformität, meldet Verstöße an die GUI-Ampel) |
-| 4 | `inviting_sound_gate.py` (Fenster-Gate), experience_runtime (fatigue_index), GoosebumpsQualityChecker, OneTakeExport |
+| 4 | `inviting_sound_gate.py` (Fenster-Gate: Roughness/Sharpness + **Fluktuationsstärke `max_vacil` — Pumpen-Gate 2026-11-08** (Harness-Invariante 15) + **Lautheits-Sprünge `loudness_jump_max` — delta-basiert, 1-phon-JND-Marge, Harness-Invariante 18**), experience_runtime (fatigue_index), GoosebumpsQualityChecker, OneTakeExport |
 | §7 Konfliktregel | Wohlklang-Garantie-Alignment-Guard, af-false-positive-Handling, MQA-Verdict-Kennzeichnung („Messartefakt-Verdacht“) |
 
 Änderungen an diesen Trägern bleiben der jeweiligen Spec unterworfen; diese

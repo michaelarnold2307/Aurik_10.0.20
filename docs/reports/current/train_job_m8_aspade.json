@@ -1,29 +1,29 @@
 {
   "schema": "aurik.train_job/1",
-  "run_id": "sota_m8-20261106T134426Z-44b954",
+  "run_id": "sota_m8-20261107T224448Z-04d8cf",
   "name": "m8_aspade",
   "phase": "sota_m8",
   "seed": null,
-  "befehl": "env PYTHONPATH=. /home/michael/.local/share/aurik/venv_rocm72/bin/python -B scripts/train_aspade_declipper.py --musdb-root data/musdb18hq --epochs 30 --device cuda --out-dir models/aspade",
-  "resume_befehl": "env PYTHONPATH=. /home/michael/.local/share/aurik/venv_rocm72/bin/python -B scripts/train_aspade_declipper.py --musdb-root data/musdb18hq --epochs 60 --device cuda --out-dir models/aspade --resume models/aspade/checkpoint_latest.pt",
+  "befehl": "bash -c if [ -f models/aspade/checkpoint_latest.pt ]; then exec env PYTHONPATH=. /home/michael/.local/share/aurik/venv_rocm72/bin/python -B scripts/train_aspade_declipper.py --musdb-root data/musdb18hq --epochs 60 --device cuda --out-dir models/aspade --resume models/aspade/checkpoint_latest.pt; else exec env PYTHONPATH=. /home/michael/.local/share/aurik/venv_rocm72/bin/python -B scripts/train_aspade_declipper.py --musdb-root data/musdb18hq --epochs 30 --device cuda --out-dir models/aspade; fi",
+  "resume_befehl": "bash -c if [ -f models/aspade/checkpoint_latest.pt ]; then exec env PYTHONPATH=. /home/michael/.local/share/aurik/venv_rocm72/bin/python -B scripts/train_aspade_declipper.py --musdb-root data/musdb18hq --epochs 60 --device cuda --out-dir models/aspade --resume models/aspade/checkpoint_latest.pt; else exec env PYTHONPATH=. /home/michael/.local/share/aurik/venv_rocm72/bin/python -B scripts/train_aspade_declipper.py --musdb-root data/musdb18hq --epochs 30 --device cuda --out-dir models/aspade; fi",
   "timeout_s": 21600.0,
   "retries": 1,
   "versuche": [
     {
       "exit_code": 0,
-      "sekunden": 13682.9,
+      "sekunden": 13706.4,
       "timed_out": false,
-      "output_tail": "ort.html. For exporting control flow: https://pytorch.org/tutorials/beginner/onnx/export_control_flow_model_to_onnx_tutorial.html\n  torch.onnx.export(\nMIOpen(HIP): Warning [IsEnoughWorkspace] [GetSolutionsFallback WTI] Solver <GemmFwdRest>, workspace required: 32256000, provided ptr: 0 size: 0\nMIOpen(HIP): Warning [IsEnoughWorkspace] [EvaluateInvokers] Solver <GemmFwdRest>, workspace required: 32256000, provided ptr: 0 size: 0\nMIOpen(HIP): Warning [IsEnoughWorkspace] [GetSolutionsFallback WTI] Solver <GemmFwdRest>, workspace required: 32256000, provided ptr: 0 size: 0\nMIOpen(HIP): Warning [IsEnoughWorkspace] [EvaluateInvokers] Solver <GemmFwdRest>, workspace required: 32256000, provided ptr: 0 size: 0\nMIOpen(HIP): Warning [IsEnoughWorkspace] [GetSolutionsFallback WTI] Solver <GemmFwdRest>, workspace required: 32256000, provided ptr: 0 size: 0\nMIOpen(HIP): Warning [IsEnoughWorkspace] [EvaluateInvokers] Solver <GemmFwdRest>, workspace required: 32256000, provided ptr: 0 size: 0\nMIOpen(HIP): Warning [IsEnoughWorkspace] [GetSolutionsFallback WTI] Solver <GemmFwdRest>, workspace required: 5505024, provided ptr: 0 size: 0\nMIOpen(HIP): Warning [IsEnoughWorkspace] [EvaluateInvokers] Solver <GemmFwdRest>, workspace required: 5505024, provided ptr: 0 size: 0\nMIOpen(HIP): Warning [IsEnoughWorkspace] [GetSolutionsFallback WTI] Solver <GemmFwdRest>, workspace required: 5505024, provided ptr: 0 size: 0\nMIOpen(HIP): Warning [IsEnoughWorkspace] [EvaluateInvokers] Solver <GemmFwdRest>, workspace required: 5505024, provided ptr: 0 size: 0\nMIOpen(HIP): Warning [IsEnoughWorkspace] [GetSolutionsFallback WTI] Solver <GemmFwdRest>, workspace required: 5505024, provided ptr: 0 size: 0\nMIOpen(HIP): Warning [IsEnoughWorkspace] [EvaluateInvokers] Solver <GemmFwdRest>, workspace required: 5505024, provided ptr: 0 size: 0\nBest loss: 0.1502\nONNX exported: models/aspade/aspade_class_v1.onnx (0.34 MB)\nONNX-Parität (Torch vs. ONNX-CPU): rel=3.42e-07 (Gate ≤ 1e-03, §III.9 (copilot-instructions.md))\n",
+      "output_tail": "ort.html. For exporting control flow: https://pytorch.org/tutorials/beginner/onnx/export_control_flow_model_to_onnx_tutorial.html\n  torch.onnx.export(\nMIOpen(HIP): Warning [IsEnoughWorkspace] [GetSolutionsFallback WTI] Solver <GemmFwdRest>, workspace required: 32256000, provided ptr: 0 size: 0\nMIOpen(HIP): Warning [IsEnoughWorkspace] [EvaluateInvokers] Solver <GemmFwdRest>, workspace required: 32256000, provided ptr: 0 size: 0\nMIOpen(HIP): Warning [IsEnoughWorkspace] [GetSolutionsFallback WTI] Solver <GemmFwdRest>, workspace required: 32256000, provided ptr: 0 size: 0\nMIOpen(HIP): Warning [IsEnoughWorkspace] [EvaluateInvokers] Solver <GemmFwdRest>, workspace required: 32256000, provided ptr: 0 size: 0\nMIOpen(HIP): Warning [IsEnoughWorkspace] [GetSolutionsFallback WTI] Solver <GemmFwdRest>, workspace required: 32256000, provided ptr: 0 size: 0\nMIOpen(HIP): Warning [IsEnoughWorkspace] [EvaluateInvokers] Solver <GemmFwdRest>, workspace required: 32256000, provided ptr: 0 size: 0\nMIOpen(HIP): Warning [IsEnoughWorkspace] [GetSolutionsFallback WTI] Solver <GemmFwdRest>, workspace required: 5505024, provided ptr: 0 size: 0\nMIOpen(HIP): Warning [IsEnoughWorkspace] [EvaluateInvokers] Solver <GemmFwdRest>, workspace required: 5505024, provided ptr: 0 size: 0\nMIOpen(HIP): Warning [IsEnoughWorkspace] [GetSolutionsFallback WTI] Solver <GemmFwdRest>, workspace required: 5505024, provided ptr: 0 size: 0\nMIOpen(HIP): Warning [IsEnoughWorkspace] [EvaluateInvokers] Solver <GemmFwdRest>, workspace required: 5505024, provided ptr: 0 size: 0\nMIOpen(HIP): Warning [IsEnoughWorkspace] [GetSolutionsFallback WTI] Solver <GemmFwdRest>, workspace required: 5505024, provided ptr: 0 size: 0\nMIOpen(HIP): Warning [IsEnoughWorkspace] [EvaluateInvokers] Solver <GemmFwdRest>, workspace required: 5505024, provided ptr: 0 size: 0\nBest loss: 0.1455\nONNX exported: models/aspade/aspade_class_v1.onnx (0.34 MB)\nONNX-Parität (Torch vs. ONNX-CPU): rel=4.03e-07 (Gate ≤ 1e-03, §III.9 (copilot-instructions.md))\n",
       "versuch": 1,
-      "befehl": "env PYTHONPATH=. /home/michael/.local/share/aurik/venv_rocm72/bin/python -B scripts/train_aspade_declipper.py --musdb-root data/musdb18hq --epochs 30 --device cuda --out-dir models/aspade"
+      "befehl": "bash -c if [ -f models/aspade/checkpoint_latest.pt ]; then exec env PYTHONPATH=. /home/michael/.local/share/aurik/venv_rocm72/bin/python -B scripts/train_aspade_declipper.py --musdb-root data/musdb18hq --epochs 60 --device cuda --out-dir models/aspade --resume models/aspade/checkpoint_latest.pt; else exec env PYTHONPATH=. /home/michael/.local/share/aurik/venv_rocm72/bin/python -B scripts/train_aspade_declipper.py --musdb-root data/musdb18hq --epochs 30 --device cuda --out-dir models/aspade; fi"
     }
   ],
   "quelle": "scripts/train_job_runner.py",
   "checkpoint_hashes": {
-    "aspade_class_v1.onnx": "7f43d7a68714feb3afcea6600d5ea428ce027ca2741144f9730bfa7945ccfb16",
-    "aspade_class_v1.pt": "ea2a7de04e8ea3cf543bd9e5779cc206dbccb17bd62afefc499aada722a89f26",
+    "aspade_class_v1.onnx": "d23fd7752ef3ad4936c1b564485bd7847c1f79fa9607c156d0fac1127c42a6b6",
+    "aspade_class_v1.pt": "f7b7b9063a8eebb5bb9e124e57c7a3953bd86a0a84d427407d5fd01105d4e642",
     "aspade_declipper.onnx": "8161ed93dd28362ed5fe759c98c502a2624ec9cc6b5c7defe29545aab34cfe61",
-    "checkpoint_latest.pt": "c867f534bf74d32156665da177b56ee56184b9f395cbe8f11a48d4f122dcc367"
+    "checkpoint_latest.pt": "e3baf58920e01237a2370bfc618297662338d6cbf39ebfa44ef5eb00fa9e44c5"
   },
   "ergebnis": "erfolgreich"
 }

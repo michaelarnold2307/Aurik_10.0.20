@@ -24,8 +24,19 @@ class _FakeChecker:
     def __init__(self) -> None:
         self.calls: list[tuple] = []
 
-    def measure_all(self, audio, sample_rate, *, reference=None, material_type=None, panns_singing=0.0):
-        self.calls.append((len(audio), sample_rate, reference, material_type, panns_singing))
+    def measure_all(
+        self,
+        audio,
+        sample_rate,
+        *,
+        reference=None,
+        material_type=None,
+        panns_singing=0.0,
+        pre_pipeline_reference=None,
+    ):
+        # Fake-Double synchron zur echten Signatur (musical_goals_metrics.py
+        # Z. 4730: pre_pipeline_reference ist Produktions-Kwarg, §1.4.6).
+        self.calls.append((len(audio), sample_rate, reference, material_type, panns_singing, pre_pipeline_reference))
         return {"brillanz": 0.5}
 
 
@@ -105,7 +116,11 @@ def test_inviting_gate_skip_returns_none() -> None:
 
 
 def test_inviting_gate_measure_stubbed(monkeypatch: pytest.MonkeyPatch) -> None:
-    """§P0-1 (b): Messpfad liefert das Context-Dict (Modul-Stub)."""
+    """§P0-1 (b): Messpfad liefert das Context-Dict (Modul-Stub) — und reicht
+    die Pre-Referenz durch (Wiring-Guard: ohne dieses Durchreichen wäre das
+    delta-basierte Pumpen-Kriterium der Hörordnung §6 eine Phantom-Norm;
+    2026-11-08).
+    """
     mod = types.ModuleType("backend.core.inviting_sound_gate")
 
     class _Res:
@@ -113,18 +128,38 @@ def test_inviting_gate_measure_stubbed(monkeypatch: pytest.MonkeyPatch) -> None:
         max_asper_in_voice = 0.01
         sharpness_jump_max = 0.1
         details = {"sharpness_jump_raw_max": 0.2, "exempted_jumps": 3, "failures": []}
+        max_vacil = 0.03
+        max_vacil_input = 0.02
+        fluctuation_regression = False
         fatigue_abort = False
         n_windows = 4
 
-    mod.check_inviting_gate = lambda *a, **k: _Res()  # type: ignore[attr-defined]
+    _captured: dict = {}
+
+    def _fake_check_inviting(*a: object, **k: object) -> _Res:  # type: ignore[valid-type]
+        _captured.update(k)
+        return _Res()
+
+    mod.check_inviting_gate = _fake_check_inviting
     monkeypatch.setitem(sys.modules, "backend.core.inviting_sound_gate", mod)
     restorer = UnifiedRestorerV3.__new__(UnifiedRestorerV3)
     restorer._restoration_context = {"singing_mask": None}
-    ctx = restorer._run_inviting_gate_measure(np.zeros(1000, dtype=np.float32), 48000, None)
+    _ref = np.zeros(1000, dtype=np.float32)
+    ctx = restorer._run_inviting_gate_measure(np.zeros(1000, dtype=np.float32), 48000, None, reference_audio=_ref)
     assert ctx is not None
     assert ctx["passed"] is True
     assert ctx["n_windows"] == 4
     assert ctx["exempted_jumps"] == 3
+    assert ctx["max_vacil"] == 0.03
+    assert ctx["fluctuation_regression"] is False
+    # Wiring-Guard: die Referenz MUSS als reference_audio beim Gate ankommen.
+    assert _captured.get("reference_audio") is _ref
+
+    # Ohne Referenz: None durchreichen (diagnostischer Modus).
+    _captured.clear()
+    ctx2 = restorer._run_inviting_gate_measure(np.zeros(1000, dtype=np.float32), 48000, None)
+    assert ctx2 is not None
+    assert _captured.get("reference_audio") is None
 
 
 # ============================================================

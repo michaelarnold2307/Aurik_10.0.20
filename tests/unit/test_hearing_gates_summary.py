@@ -149,3 +149,72 @@ class TestApplyResolvedEventCounts:
         init = {"CLICKS": 5}
         rem = apply_resolved_event_counts(init, {"WOW": 3})
         assert rem == {"CLICKS": 5}
+
+
+class TestInvitingGateEbene4:
+    """Hörordnungs-Einladungs-Gate (Ebene 4) in der Ampel — _meta["inviting_gate_song_level"]
+    (2026-11-08): delta-basierte Regressionen (Pumpen/Lautheits-Sprung) machen die
+    Ampel GELB (advisory), nie ROT; erfülltes Gate bleibt grün.
+    """
+
+    def test_pumpen_regression_macht_gelb_mit_detail(self) -> None:
+        meta = {
+            "inviting_gate_song_level": {
+                "passed": False,
+                "max_vacil": 0.55,
+                "max_vacil_input": 0.10,
+                "fluctuation_regression": True,
+                "loudness_jump_regression": False,
+            }
+        }
+        assert hearing_gate_status(meta) == "yellow"
+        details = hearing_gates_details(meta)
+        assert any("Pumpen-Regression" in d and "0.55 vacil" in d for d in details)
+
+    def test_loudness_sprung_regression_macht_gelb(self) -> None:
+        meta = {
+            "inviting_gate_song_level": {
+                "passed": False,
+                "loudness_jump_max": 4.2,
+                "loudness_jump_max_input": 1.1,
+                "fluctuation_regression": False,
+                "loudness_jump_regression": True,
+            }
+        }
+        assert hearing_gate_status(meta) == "yellow"
+        details = hearing_gates_details(meta)
+        assert any("Lautheits-Sprung-Regression" in d and "4.20 phon" in d for d in details)
+
+    def test_erfuelltes_gate_bleibt_gruen(self) -> None:
+        meta = {
+            "inviting_gate_song_level": {
+                "passed": True,
+                "max_vacil": 0.03,
+                "max_vacil_input": 0.02,
+                "fluctuation_regression": False,
+                "loudness_jump_regression": False,
+            }
+        }
+        assert hearing_gate_status(meta) == "green"
+        details = hearing_gates_details(meta)
+        assert any("Einladungs-Gate (Ebene 4): erfüllt" in d for d in details)
+
+    def test_advisory_passed_false_ohne_regression_bleibt_gruen(self) -> None:
+        # Sharpness/Asper-Absolutwerte sind advisory — KEIN Ampel-Befund
+        # (Guard-Kalibrierungs-Grundsatz: absolute Normalwerte sind kein Hard-Fail).
+        meta = {
+            "inviting_gate_song_level": {
+                "passed": False,
+                "max_asper_in_voice": 0.9,
+                "sharpness_jump_max": 0.85,
+                "fluctuation_regression": False,
+                "loudness_jump_regression": False,
+            }
+        }
+        assert hearing_gate_status(meta) == "green"
+        details = hearing_gates_details(meta)
+        assert any("advisory" in d for d in details)
+
+    def test_ohne_metadaten_unveraendert(self) -> None:
+        assert hearing_gate_status({}) == "green"
+        assert hearing_gates_details({}) == ["Hör-Gates: keine Gate-Metadaten (n/a)"]

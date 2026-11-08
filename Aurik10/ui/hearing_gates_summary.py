@@ -24,6 +24,12 @@ def _wo(meta: dict) -> dict:
     return v if isinstance(v, dict) else {}
 
 
+def _inv(meta: dict) -> dict:
+    """Hörordnungs-Einladungs-Gate (Ebene 4) — _meta["inviting_gate_song_level"]."""
+    v = meta.get("inviting_gate_song_level") or {}
+    return v if isinstance(v, dict) else {}
+
+
 def _num(v: Any, default: float = 0.0) -> float:
     try:
         return float(v)
@@ -48,6 +54,8 @@ def hearing_gate_status(meta: dict) -> str:
         or _num(ag.get("n_masked")) > 0
         or (bool(ag.get("improvable_types")) and meta.get("m1b_retry_applied") is not True)
         or meta.get("vocal_drive_blend", 1.0) < 1.0
+        or bool(_inv(meta).get("fluctuation_regression"))
+        or bool(_inv(meta).get("loudness_jump_regression"))
     ):
         return "yellow"
     return "green"
@@ -96,6 +104,26 @@ def hearing_gates_details(meta: dict) -> list[str]:
         out.append("Vocal-Drive: Phasen-Rücknahme aktiv")
     elif meta.get("vocal_drive_blend", 1.0) < 1.0:
         out.append(f"Vocal-Drive: Blend {_num(meta.get('vocal_drive_blend')):.2f}")
+    inv = _inv(meta)
+    if inv:
+        if inv.get("fluctuation_regression"):
+            out.append(
+                "Einladungs-Gate: Pumpen-Regression "
+                f"({_num(inv.get('max_vacil')):.2f} vacil > Input {_num(inv.get('max_vacil_input')):.2f})"
+            )
+        if inv.get("loudness_jump_regression"):
+            out.append(
+                "Einladungs-Gate: Lautheits-Sprung-Regression "
+                f"({_num(inv.get('loudness_jump_max')):.2f} phon > Input {_num(inv.get('loudness_jump_max_input')):.2f})"
+            )
+        if not inv.get("fluctuation_regression") and not inv.get("loudness_jump_regression"):
+            if inv.get("passed") is False:
+                out.append(
+                    "Einladungs-Gate: advisory (asper="
+                    f"{_num(inv.get('max_asper_in_voice')):.2f}, sharpness_sprung={_num(inv.get('sharpness_jump_max')):.2f})"
+                )
+            else:
+                out.append("Einladungs-Gate (Ebene 4): erfüllt")
     return out or ["Hör-Gates: keine Gate-Metadaten (n/a)"]
 
 

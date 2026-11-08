@@ -1,6 +1,6 @@
 # TASK_CHANGES — Live-Ledger der aktuellen Aufgabe
 
-> Generiert von `scripts/change_ledger.py snapshot` (Base: `HEAD`, Stand: 2026-11-08 00:48 CET).
+> Generiert von `scripts/change_ledger.py snapshot` (Base: `HEAD`, Stand: 2026-11-08 07:06 CET).
 > CI (`ci-lite.yml` pr-evidence-gate) erzwingt Abdeckung: jede geänderte Code-Datei muss hier stehen.
 
 ## Geänderte Dateien
@@ -8,14 +8,28 @@
 | Status | Pfad | Art |
 |---|---|---|
 | M | `.github/SOTA_DEFICIT_REGISTER.md` | modifiziert |
+| M | `.github/copilot-instructions.md` | modifiziert |
+| M | `.github/instructions/hoerordnung.instructions.md` | modifiziert |
+| M | `.github/specs/07_quality_and_tests.md` | modifiziert |
+| M | `Aurik10/ui/hearing_gates_summary.py` | modifiziert |
+| M | `TASK_CHANGES.md` | modifiziert |
+| M | `audit/spec_integration_report.json` | modifiziert |
+| M | `audit/spec_integration_report.md` | modifiziert |
+| M | `backend/core/dsp/audibility_targets.py` | modifiziert |
+| M | `backend/core/inviting_sound_gate.py` | modifiziert |
+| M | `backend/core/unified_restorer_v3.py` | modifiziert |
 | M | `docs/SOTA_HANDOVER.md` | modifiziert |
-| M | `docs/TODOS_SOTA_ROADMAP.md` | modifiziert |
 | M | `docs/reports/current/train_job_d3_flashsr_musik.json` | modifiziert |
 | M | `docs/reports/current/train_job_m8_aspade.json` | modifiziert |
-| M | `scripts/gpu_kette2_matrix_d3.sh` | modifiziert |
-| M | `scripts/train_flashsr_f4.py` | modifiziert |
-| M | `tests/unit/test_gpu_kette1_wiring.py` | modifiziert |
-| ?? | `docs/reports/current/2026-11-08_flashsr_resume_anker.md` | ungetrackt |
+| M | `docs/reports/current/train_job_m9_tf_gridnet.json` | modifiziert |
+| M | `scripts/horordnung_calibration.py` | modifiziert |
+| M | `tests/normative/test_audibility_targets.py` | modifiziert |
+| M | `tests/normative/test_spec_performance_budget_sync.py` | modifiziert |
+| M | `tests/unit/test_hearing_gates_summary.py` | modifiziert |
+| M | `tests/unit/test_inviting_sound_gate.py` | modifiziert |
+| M | `tests/unit/test_p0_1_end_gate_chunking.py` | modifiziert |
+| M | `tests/unit/test_panns_rocm_provider_filter.py` | modifiziert |
+| ?? | `docs/reports/current/2026-11-08_hoerordnung_ausbau.md` | ungetrackt |
 | ?? | `study_stimuli/model_ab/manifest.json` | ungetrackt |
 
 ## Entscheidungen

@@ -1,32 +1,13 @@
 {
   "schema": "aurik.train_job/1",
-  "run_id": "sota_m9-20261106T173230Z-28f116",
+  "run_id": "sota_m9-20261108T023317Z-fe4191",
   "name": "m9_tf_gridnet",
   "phase": "sota_m9",
   "seed": null,
-  "befehl": "env PYTHONPATH=. /home/michael/.local/share/aurik/venv_rocm72/bin/python -B scripts/train_tf_gridnet_denoiser.py --epochs 30 --device cuda --synthetic 4000",
-  "resume_befehl": "bash -c if [ -f models/tf_gridnet/checkpoint_latest.pt ]; then exec env PYTHONPATH=. /home/michael/.local/share/aurik/venv_rocm72/bin/python -B scripts/train_tf_gridnet_denoiser.py --epochs 30 --device cuda --synthetic 4000 --resume models/tf_gridnet/checkpoint_latest.pt; else exec env PYTHONPATH=. /home/michael/.local/share/aurik/venv_rocm72/bin/python -B scripts/train_tf_gridnet_denoiser.py --epochs 30 --device cuda --synthetic 4000; fi",
+  "befehl": "env PYTHONPATH=. /home/michael/.local/share/aurik/venv_rocm72/bin/python -B scripts/train_tf_gridnet_denoiser.py --epochs 30 --device cuda --clean-dir data/tfgrid_pairs/clean --noisy-dir data/tfgrid_pairs/noisy --batch-size 1 --grad-accum 4",
+  "resume_befehl": "bash -c if [ -f models/tf_gridnet/checkpoint_latest.pt ]; then exec env PYTHONPATH=. /home/michael/.local/share/aurik/venv_rocm72/bin/python -B scripts/train_tf_gridnet_denoiser.py --epochs 30 --device cuda --clean-dir data/tfgrid_pairs/clean --noisy-dir data/tfgrid_pairs/noisy --batch-size 1 --grad-accum 4 --resume models/tf_gridnet/checkpoint_latest.pt; else exec env PYTHONPATH=. /home/michael/.local/share/aurik/venv_rocm72/bin/python -B scripts/train_tf_gridnet_denoiser.py --epochs 30 --device cuda --clean-dir data/tfgrid_pairs/clean --noisy-dir data/tfgrid_pairs/noisy --batch-size 1 --grad-accum 4; fi",
   "timeout_s": 21600.0,
   "retries": 1,
-  "versuche": [
-    {
-      "exit_code": 1,
-      "sekunden": 5.5,
-      "timed_out": false,
-      "output_tail": "2/lib/python3.10/site-packages/torch/nn/modules/module.py\", line 1779, in _wrapped_call_impl\n    return self._call_impl(*args, **kwargs)\n  File \"/home/michael/.local/share/aurik/venv_rocm72/lib/python3.10/site-packages/torch/nn/modules/module.py\", line 1790, in _call_impl\n    return forward_call(*args, **kwargs)\n  File \"/media/michael/Software 4TB/Aurik_Standalone/backend/core/dsp/tf_gridnet_denoiser.py\", line 573, in forward\n    h = blk(h)\n  File \"/home/michael/.local/share/aurik/venv_rocm72/lib/python3.10/site-packages/torch/nn/modules/module.py\", line 1779, in _wrapped_call_impl\n    return self._call_impl(*args, **kwargs)\n  File \"/home/michael/.local/share/aurik/venv_rocm72/lib/python3.10/site-packages/torch/nn/modules/module.py\", line 1790, in _call_impl\n    return forward_call(*args, **kwargs)\n  File \"/media/michael/Software 4TB/Aurik_Standalone/backend/core/dsp/tf_gridnet_denoiser.py\", line 540, in forward\n    y, _ = self.lstm(seq)\n  File \"/home/michael/.local/share/aurik/venv_rocm72/lib/python3.10/site-packages/torch/nn/modules/module.py\", line 1779, in _wrapped_call_impl\n    return self._call_impl(*args, **kwargs)\n  File \"/home/michael/.local/share/aurik/venv_rocm72/lib/python3.10/site-packages/torch/nn/modules/module.py\", line 1790, in _call_impl\n    return forward_call(*args, **kwargs)\n  File \"/home/michael/.local/share/aurik/venv_rocm72/lib/python3.10/site-packages/torch/nn/modules/rnn.py\", line 1169, in forward\n    result = _VF.lstm(\ntorch.OutOfMemoryError: CUDA out of memory. Tried to allocate 4.42 GiB. GPU 0 has a total capacity of 23.98 GiB of which 2.60 GiB is free. Of the allocated memory 16.64 GiB is allocated by PyTorch, and 4.40 GiB is reserved by PyTorch but unallocated. If reserved but unallocated memory is large try setting PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True to avoid fragmentation.  See documentation for Memory Management  (https://docs.pytorch.org/docs/stable/notes/cuda.html#optimizing-memory-usage-with-pytorch-cuda-alloc-conf)\n",
-      "versuch": 1,
-      "befehl": "env PYTHONPATH=. /home/michael/.local/share/aurik/venv_rocm72/bin/python -B scripts/train_tf_gridnet_denoiser.py --epochs 30 --device cuda --synthetic 4000"
-    },
-    {
-      "exit_code": 1,
-      "sekunden": 4.2,
-      "timed_out": false,
-      "output_tail": "2/lib/python3.10/site-packages/torch/nn/modules/module.py\", line 1779, in _wrapped_call_impl\n    return self._call_impl(*args, **kwargs)\n  File \"/home/michael/.local/share/aurik/venv_rocm72/lib/python3.10/site-packages/torch/nn/modules/module.py\", line 1790, in _call_impl\n    return forward_call(*args, **kwargs)\n  File \"/media/michael/Software 4TB/Aurik_Standalone/backend/core/dsp/tf_gridnet_denoiser.py\", line 573, in forward\n    h = blk(h)\n  File \"/home/michael/.local/share/aurik/venv_rocm72/lib/python3.10/site-packages/torch/nn/modules/module.py\", line 1779, in _wrapped_call_impl\n    return self._call_impl(*args, **kwargs)\n  File \"/home/michael/.local/share/aurik/venv_rocm72/lib/python3.10/site-packages/torch/nn/modules/module.py\", line 1790, in _call_impl\n    return forward_call(*args, **kwargs)\n  File \"/media/michael/Software 4TB/Aurik_Standalone/backend/core/dsp/tf_gridnet_denoiser.py\", line 540, in forward\n    y, _ = self.lstm(seq)\n  File \"/home/michael/.local/share/aurik/venv_rocm72/lib/python3.10/site-packages/torch/nn/modules/module.py\", line 1779, in _wrapped_call_impl\n    return self._call_impl(*args, **kwargs)\n  File \"/home/michael/.local/share/aurik/venv_rocm72/lib/python3.10/site-packages/torch/nn/modules/module.py\", line 1790, in _call_impl\n    return forward_call(*args, **kwargs)\n  File \"/home/michael/.local/share/aurik/venv_rocm72/lib/python3.10/site-packages/torch/nn/modules/rnn.py\", line 1169, in forward\n    result = _VF.lstm(\ntorch.OutOfMemoryError: CUDA out of memory. Tried to allocate 4.42 GiB. GPU 0 has a total capacity of 23.98 GiB of which 2.60 GiB is free. Of the allocated memory 16.64 GiB is allocated by PyTorch, and 4.40 GiB is reserved by PyTorch but unallocated. If reserved but unallocated memory is large try setting PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True to avoid fragmentation.  See documentation for Memory Management  (https://docs.pytorch.org/docs/stable/notes/cuda.html#optimizing-memory-usage-with-pytorch-cuda-alloc-conf)\n",
-      "versuch": 2,
-      "befehl": "bash -c if [ -f models/tf_gridnet/checkpoint_latest.pt ]; then exec env PYTHONPATH=. /home/michael/.local/share/aurik/venv_rocm72/bin/python -B scripts/train_tf_gridnet_denoiser.py --epochs 30 --device cuda --synthetic 4000 --resume models/tf_gridnet/checkpoint_latest.pt; else exec env PYTHONPATH=. /home/michael/.local/share/aurik/venv_rocm72/bin/python -B scripts/train_tf_gridnet_denoiser.py --epochs 30 --device cuda --synthetic 4000; fi"
-    }
-  ],
-  "quelle": "scripts/train_job_runner.py",
-  "checkpoint_hashes": {},
-  "ergebnis": "fehlgeschlagen"
+  "versuche": [],
+  "quelle": "scripts/train_job_runner.py"
 }

@@ -156,3 +156,58 @@ def test_fail_closed_ohne_kontext():
     assert report["objective_met"] is False, "Fail-closed verletzt"
     empty = residual_audibility(np.zeros(1024), np.ones(1024) * 0.1, SR)
     assert empty["objective_met"] is True
+
+
+@pytest.mark.timeout(120)
+def test_temporal_masking_zone_hebt_schwelle():
+    """Hörordnung §4 (2026-11-08): liegt der Residual-Schwerpunkt in einer
+    Forward-Masking-Zone des Kontexts, wird die effektive Schwelle angehoben
+    (zeitlich UND spektral lokal); ohne Transient keine Anhebung.
+    """
+    from backend.core.dsp.audibility_targets import residual_audibility
+
+    rng = np.random.default_rng(7)
+    ctx = (rng.standard_normal(SR * 6) * 0.01).astype(np.float64)
+    ctx[int(SR * 3.0) : int(SR * 3.0) + 96] += 0.9  # 2-ms-Klick (starker Masker)
+    res = np.zeros(SR * 6)
+    res[int(SR * 3.05) : int(SR * 3.05) + 480] = 0.05 * rng.standard_normal(480)
+    rep = residual_audibility(res, ctx, SR)
+    assert rep["in_forward_mask_zone"] is True, "Impuls 50 ms nach Klick muss in der Zone liegen"
+    assert rep["temporal_boost_db"] > 0.0
+    assert rep["threshold_db_eff"] > rep["threshold_db"]
+    # Gleicher Impuls, Kontext ohne Klick: keine Zone, keine Anhebung.
+    ctx_plain = (rng.standard_normal(SR * 6) * 0.01).astype(np.float64)
+    rep2 = residual_audibility(res, ctx_plain, SR)
+    assert rep2["in_forward_mask_zone"] is False
+    assert rep2["temporal_boost_db"] == 0.0
+    assert rep2["threshold_db_eff"] == rep2["threshold_db"]
+    # Determinismus (§G5 (copilot-instructions.md))
+    rep3 = residual_audibility(res, ctx, SR)
+    assert rep3["threshold_db_eff"] == rep["threshold_db_eff"]
+
+
+@pytest.mark.timeout(120)
+def test_temporal_masking_kippt_audible_konservativ():
+    """Wirkungs-Invariante: ein Defekt, dessen Pegel zwischen spektraler und
+    effektiver Schwelle liegt, ist in der Forward-Masking-Zone unhörbar
+    (audible=False), ohne zeitliche Maskierung aber hörbar (audible=True).
+    """
+    from backend.core.dsp.audibility_targets import residual_audibility
+
+    rng = np.random.default_rng(7)
+    ctx = (rng.standard_normal(SR * 6) * 0.01).astype(np.float64)
+    ctx[int(SR * 3.0) : int(SR * 3.0) + 96] += 0.9
+    res_ref = np.zeros(SR * 6)
+    res_ref[int(SR * 3.05) : int(SR * 3.05) + 480] = 0.05 * rng.standard_normal(480)
+    rep_ref = residual_audibility(res_ref, ctx, SR, temporal_masking=False)
+    rep_tm = residual_audibility(res_ref, ctx, SR)
+    boost_db = float(rep_tm["temporal_boost_db"])
+    assert boost_db > 0.0
+    # Ziel-Pegel: knapp ÜBER der spektralen Schwelle, UNTER der effektiven.
+    target_delta = float(rep_ref["threshold_db"]) + boost_db / 2.0
+    gain = 10.0 ** ((target_delta - float(rep_ref["delta_db"])) / 20.0)
+    res_new = res_ref * gain
+    a_no = residual_audibility(res_new, ctx, SR, temporal_masking=False)
+    a_tm = residual_audibility(res_new, ctx, SR)
+    assert a_no["audible"] is True, f"ohne temporal: {a_no}"
+    assert a_tm["audible"] is False, f"mit temporal: {a_tm}"

@@ -38,11 +38,20 @@ _LO, _HI = 800.0, 10000.0
 _N_FFT = 512
 _GRAV_WIN = 512  # Schwerpunkt-Fenster (Energiefenster für den hörbarsten Moment)
 _PAD = 4096  # Tail-Pad = masking_model._N_FFT: garantiert zwei volle Frames
+# Temporal-Masking-Integration (Hörordnung §4 „zeitlich UND spektral lokal“):
+# Forward-Masking-Boost (temporal_masking, 0..0.40) → Schwellen-Anhebung in dB.
+# 0.40 × 15 = 6 dB Maximum — konservativ unter den Literaturwerten für
+# Forward-Masking direkt nach starkem Masker (≈10–20 dB, Moore 2003; Fastl &
+# Zwicker §7.2); die bestehende margin_db bleibt zusätzlich bestehen.
+_TEMPORAL_BOOST_DB_PER_BOOST = 15.0
 _MISSING = {
     "audible": True,
     "objective_met": False,
     "delta_db": 0.0,
     "threshold_db": 0.0,
+    "threshold_db_eff": 0.0,
+    "temporal_boost_db": 0.0,
+    "in_forward_mask_zone": False,
     "target_db": 0.0,
     "overshoot_db": 0.0,
     "margin_db": 0.0,
@@ -52,6 +61,14 @@ _MISSING = {
 def repair_strength_for(margin_db: float) -> float:
     """Stärke ∝ Hörbarkeits-Überschuss, geclippt [0.25, 1.0] (Hörordnung §4)."""
     return float(np.clip(abs(float(margin_db)) / 12.0, 0.25, 1.0))
+
+
+def _gravity_center(seg: np.ndarray) -> int:
+    """Sample-Index des energiereichsten Schwerpunkts (Masking-Zonen-Abgleich)."""
+    if seg.size <= _GRAV_WIN:
+        return 0
+    power = np.asarray(seg, dtype=np.float64) ** 2
+    return int(np.argmax(np.convolve(power, np.ones(_GRAV_WIN), mode="same")))
 
 
 def _gravity_window(seg: np.ndarray) -> np.ndarray:
@@ -66,9 +83,7 @@ def _gravity_window(seg: np.ndarray) -> np.ndarray:
     if seg.size <= _GRAV_WIN:
         win = np.pad(seg, (0, _GRAV_WIN))
     else:
-        power = seg * seg
-        center = int(np.argmax(np.convolve(power, np.ones(_GRAV_WIN), mode="same")))
-        start = int(np.clip(center - _GRAV_WIN // 2, 0, seg.size - _GRAV_WIN))
+        start = int(np.clip(_gravity_center(seg) - _GRAV_WIN // 2, 0, seg.size - _GRAV_WIN))
         win = seg[start : start + _GRAV_WIN]
     return np.asarray(np.pad(win, (0, _PAD)))  # type: ignore[no-any-return]
 
@@ -80,6 +95,7 @@ def residual_audibility(
     margin_db: float = 6.0,
     lo_hz: float = _LO,
     hi_hz: float = _HI,
+    temporal_masking: bool = True,
 ) -> dict[str, float | bool]:
     """Hörbarkeit eines Residuals gegen die Maskierung des Kontexts.
 
@@ -87,6 +103,13 @@ def residual_audibility(
     Material (Materialverlust — gegen den Verbleib gemessen). Der hörbarste
     Moment zählt (Schwerpunkt-Fenster); Delta und Schwelle kommen aus
     derselben masking_model-Domäne.
+
+    temporal_masking (Hörordnung §4, 2026-11-08): liegt der Residual-Schwerpunkt
+    in einer Forward-Masking-Zone des Kontexts (temporal_masking.compute_zones),
+    wird die Schwelle um bis zu 6 dB angehoben (konservativ unter den
+    Literaturwerten) — das Ohr ist im Nachklang-Fenster eines Transienten
+    weniger sensitiv; Überreparatur von Unhörbarem wird vermieden. Fail-closed:
+    Messfehler ⇒ boost=0 (keine Aufweichung der Schwelle).
     """
     res = np.nan_to_num(np.asarray(residual, dtype=np.float64).ravel(), nan=0.0, posinf=0.0, neginf=0.0)
     ctx = np.nan_to_num(np.asarray(context, dtype=np.float64).ravel(), nan=0.0, posinf=0.0, neginf=0.0)
@@ -130,20 +153,43 @@ def residual_audibility(
         # Delta in SELBER Domäne wie die Schwelle: Referenz-Messfunktion.
         band_e_db, _ = _frame_band_energies(_gravity_window(res), sr)
         delta_db = float(np.max(np.asarray(band_e_db)[:, band_idx]))
+        # Temporal-Masking (Hörordnung §4): Forward-Masking-Zonen des Kontexts
+        # heben die effektive Schwelle an (fail-closed: Fehler ⇒ boost=0).
+        temporal_boost_db = 0.0
+        in_zone = False
+        if temporal_masking:
+            try:
+                _center = _gravity_center(res)
+                from backend.core.dsp.temporal_masking import get_forward_masking_guard
+
+                for _z in get_forward_masking_guard().compute_zones(ctx, sr):
+                    if _z.start_sample <= _center < _z.end_sample:
+                        temporal_boost_db = float(_z.max_nr_strength_boost) * _TEMPORAL_BOOST_DB_PER_BOOST
+                        in_zone = True
+                        break
+            except Exception as _tm_exc:
+                logger.debug(
+                    "temporal_masking in residual_audibility nicht verfügbar (fail-closed boost=0): %s",
+                    _tm_exc,
+                )
+        threshold_db_eff = threshold_db + temporal_boost_db
     except Exception as _exc:  # §V6 (VERBOTEN.md): nie still „alles gut"
         logger.warning("residual_audibility: Messung fehlgeschlagen (%s) — fail-closed", _exc)
         out = dict(_MISSING)
         out["margin_db"] = m
         return out
 
-    target_db = threshold_db - m
+    target_db = threshold_db_eff - m
     return {
-        "audible": bool(delta_db > threshold_db),
+        "audible": bool(delta_db > threshold_db_eff),
         "objective_met": bool(delta_db <= target_db),
         "delta_db": round(delta_db, 2),
         "threshold_db": round(threshold_db, 2),
+        "threshold_db_eff": round(threshold_db_eff, 2),
+        "temporal_boost_db": round(temporal_boost_db, 2),
+        "in_forward_mask_zone": in_zone,
         "target_db": round(target_db, 2),
-        "overshoot_db": round(delta_db - threshold_db, 2),
+        "overshoot_db": round(delta_db - threshold_db_eff, 2),
         "margin_db": m,
     }
 

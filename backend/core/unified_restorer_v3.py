@@ -18350,6 +18350,7 @@ class UnifiedRestorerV3:
             sample_rate,
             defect_result,
             skip=bool(_chunked_tail_skip and not _chunked_last),
+            reference_audio=original_audio_for_goals,
         )
         if _inviting_ctx is not None and isinstance(getattr(self, "_restoration_context", None), dict):
             self._restoration_context["inviting_gate"] = _inviting_ctx
@@ -47253,12 +47254,18 @@ class UnifiedRestorerV3:
         defect_result: Any | None,
         *,
         skip: bool = False,
+        reference_audio: np.ndarray | None = None,
     ) -> dict | None:
         """§P0-1 (b): Einladungs-Gate-Messung als Methode (Hörordnung §6).
 
-        Reine Analytik (Roughness/Sharpness/Ermüdung — kein Audio-Eingriff);
-        im Chunked-Pfad nur auf dem letzten Chunk. Rückgabe: Context-Dict
-        für self._restoration_context["inviting_gate"] oder None.
+        Reine Analytik (Roughness/Sharpness/Fluktuationsstärke/Ermüdung — kein
+        Audio-Eingriff); im Chunked-Pfad nur auf dem letzten Chunk. Rückgabe:
+        Context-Dict für self._restoration_context["inviting_gate"] oder None.
+
+        reference_audio: Pre-Restaurierungs-Signal — erst damit wirkt das
+        delta-basierte Pumpen-Kriterium (Hörordnung §6, 2026-11-08: der
+        musikalische Grundpuls 2–4 Hz liegt im Fluktuationsband; ohne Referenz
+        ist max_vacil rein diagnostisch).
         """
         if skip:
             return None
@@ -47298,6 +47305,7 @@ class UnifiedRestorerV3:
                 singing_mask=(getattr(self, "_restoration_context", None) or {}).get("singing_mask"),
                 fatigue_index=_fatigue_idx,
                 repair_windows=_repair_windows_inv or None,
+                reference_audio=reference_audio,
             )
             _inviting_ctx: dict[str, Any] = {
                 "passed": bool(_inviting_res.passed),
@@ -47305,6 +47313,9 @@ class UnifiedRestorerV3:
                 "sharpness_jump_max": round(float(_inviting_res.sharpness_jump_max), 4),
                 "sharpness_jump_raw_max": round(float(_inviting_res.details.get("sharpness_jump_raw_max", 0.0)), 4),
                 "exempted_jumps": int(_inviting_res.details.get("exempted_jumps", 0)),
+                "max_vacil": round(float(_inviting_res.max_vacil), 4),
+                "max_vacil_input": round(float(_inviting_res.max_vacil_input), 4),
+                "fluctuation_regression": bool(_inviting_res.fluctuation_regression),
                 "fatigue_abort": bool(_inviting_res.fatigue_abort),
                 "n_windows": int(_inviting_res.n_windows),
             }
@@ -48374,10 +48385,11 @@ class UnifiedRestorerV3:
                 logger.debug("§P1-8 OneTakeExport chunked nicht blockierend: %s", _otec_exc)
 
             # §P0-1 (b): Einladungs-Gate einmal auf dem assemblierten Song
-            # (reine Analytik, kein Audio-Eingriff).
+            # (reine Analytik, kein Audio-Eingriff). Referenz = Eingangs-Audio
+            # (delta-basiertes Pumpen-Kriterium, Hörordnung §6, 2026-11-08).
             _inviting_song: dict | None = None
             try:
-                _inviting_song = self._run_inviting_gate_measure(output, sample_rate, None)
+                _inviting_song = self._run_inviting_gate_measure(output, sample_rate, None, reference_audio=audio)
             except Exception as _invs_exc:
                 logger.debug("§P0-1 (b) Song-Einladungs-Gate nicht blockierend: %s", _invs_exc)
 

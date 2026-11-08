@@ -27,7 +27,7 @@ Wohlklang für das menschliche Gehör**. Normative Kette: `AGENTS.md` §1
 | 1 | ~~WP-2-Hygiene~~ **ERLEDIGT 2026-10-28:** Stubs (D-K3-3), Phantome (D-K3-5), D-K2-4 Namens-Drift und Domänen-Status sind register-seitig geschlossen; die P2-INFO-Findings des Gates sind dokumentierter Akzeptanz-Bestand | — | Register D-K3-3/D-K3-5/D-K2-4/D-K0-10 |
 | 2 | Referenzfreie Qualitätsmetrik — **ERLEDIGT 2026-10-28**: `musik_mos` (UTMOS-Ersatz, `plugins/musik_mos_plugin.py`) + `defektlast` beide **zertifiziert** (Spearman 0,95); UTMOS/PQS blind gesperrt; offen nur noch absolute MOS-Kalibrierung (KP-12/MUSHRA-Proxy, menschlich) | — | Zertifikat-JSON + `plugins/musik_mos_plugin.py` |
 | 3 | ~~P1-7 (m1b-Stufe-2 intern) + P1-10 (Defekt-Chips)~~ **ERLEDIGT 2026-11-03:** Spec-Verifikation + 15 Verkabelungs-Invarianten, Roadmap-Status geschlossen (Commit `e12a49c7`) | — | Roadmap TODO-P1-7/P1-10 + Report `2026-11-03_p1_7_p1_10_status_audit.md` |
-| 4 | Laufzeit 53×→32× RT (F-Reihe optimieren) | autonom (GPU-gebunden) | **IN ARBEIT 2026-11-03/04:** GPU-D3-Kette läuft (DiffWave→BigVGAN→FlashSR, Manifeste `docs/reports/current/train_job_d3_*.json`); §PERF-R18-Äquivalenz-Tests + Budget-Gate **21/21 grün** (2026-11-04, zuvor „nicht ausgeführt"), Ketten-Bugfixes M8/M9/c2-Cantus per Smoke verifiziert (Report `2026-11-04_sota_sitzung_ear_vae_messung_ketten_checks.md`); offen: nur noch Verifikation nach D3-Lauf; **RT-Messung 2026-11-05 ABGESCHLOSSEN: Median 32,19× RT (3 Läufe, Wall 7248,7–7259,2 s / 225,33 s), Baseline 53,9× — Lücke geschlossen** (Report `2026-10-28_f_reihe_laufzeit_optimierung.md` §9, Log `rt_messung_2026-11-04.log`; Hinweis: der geloggte rt_factor ist auf 32,0 gekappt, Spec §9.5; `RT_REALITY_MEASURED` = 32,2); ursprüngliches **RT-Mess-Protokoll 2026-11-04** (Report `2026-10-28_f_reihe_laufzeit_optimierung.md` §6: `scripts/_aurik_run_excellence.py` auf Referenz-Song „Testkünstlerin…“ (224 s), 3 Läufe/Training-frei, Baseline 53,9× RT — Bericht `2026-11-04_sitzung_w2_w3_b3_messung.md` §5); **Scanner-Performance 2026-11-07: PERF-R19/R19b/R20 gelandet** (D-K3-38, `in-arbeit`) — Band-Dekadierung FM+AM (62 → 16,0 s/min) und Salience-Kette **bit-identisch** um 18,5 % schneller (6,50 → 5,30 s/min; Scan-Hash unverändert `c599791d…`, Golden-Gates 3/3 + 1/1); Rest-Gap ~3,9× auf Register-Skala, der nächste Hebel (Batch-Residuum, ~1,8×) ist eine **Hör-Entscheidung** (Report `2026-11-07_perf_r20_salience_caches.md`) |
+| 4 | Laufzeit 53×→32× RT (F-Reihe optimieren) | autonom (GPU-gebunden) | **IN ARBEIT 2026-11-03/04:** GPU-D3-Kette läuft (DiffWave→BigVGAN→FlashSR, Manifeste `docs/reports/current/train_job_d3_*.json`); §PERF-R18-Äquivalenz-Tests + Budget-Gate **21/21 grün** (2026-11-04, zuvor „nicht ausgeführt"), Ketten-Bugfixes M8/M9/c2-Cantus per Smoke verifiziert (Report `2026-11-04_sota_sitzung_ear_vae_messung_ketten_checks.md`); offen: nur noch Verifikation nach D3-Lauf; **RT-Messung 2026-11-05 ABGESCHLOSSEN: Median 32,19× RT (3 Läufe, Wall 7248,7–7259,2 s / 225,33 s), Baseline 53,9× — Lücke geschlossen** (Report `2026-10-28_f_reihe_laufzeit_optimierung.md` §9, Log `rt_messung_2026-11-04.log`; Hinweis: der geloggte rt_factor ist auf 32,0 gekappt, Spec §9.5; `RT_REALITY_MEASURED` = 32,2); ursprüngliches **RT-Mess-Protokoll 2026-11-04** (Report `2026-10-28_f_reihe_laufzeit_optimierung.md` §6: `scripts/_aurik_run_excellence.py` auf Referenz-Song „Testkünstlerin…“ (224 s), 3 Läufe/Training-frei, Baseline 53,9× RT — Bericht `2026-11-04_sitzung_w2_w3_b3_messung.md` §5); **Scanner-Performance 2026-11-07: PERF-R19/R19b/R20 gelandet** (D-K3-38, **GESCHLOSSEN**) — Band-Dekadierung FM+AM (62 → 14,9 s/min warm, 4,2×) und Salience-Kette **bit-identisch** um 18,5 % schneller (6,50 → 5,30 s/min; Scan-Hash unverändert `c599791d…`, Golden-Gates 3/3 + 1/1); **Norm evidenzbasiert nachkalibriert: DefectScanner ≤ 16 s/min** (Spec 07 §9 + copilot-instructions.md synchron, Sync-Test pinnt 16,0; gemessen 14,9 s/min warm ⇒ ERFÜLLT). Das 4-s-Fast-Ziel bleibt dokumentiert hinter der Hör-Freigabe des Batch-Pfads (§2.46h) — Hör-Entscheidung, kein deterministisches Defizit mehr (Report `2026-11-07_perf_r20_salience_caches.md`) |
 | 5 | ~~F3-BigVGAN-Rollout~~ **ENTSCHEIDEN 2026-10-30 (K0-C NO-GO, Hör-Instanz)** + ~~EAR-VAE v1↔v2-Vergleichsmessung~~ **GEMESSEN 2026-11-04:** HF-Gewichte `earlab/EAR_VAE2` (apache-2.0, `c87215f8…`) beschafft; Blind-Messung seed 42: **never_worsen ✓, 16/17 Trials v2-vorteilhaft, Sign-Test p = 0,000275 signifikant, erfuellt_objektiv ✓** (Messdatei `2026-11-03_ear_vae_v1_v2_vergleich.json`, Δ musik_mos +0,10 / Δ defektlast −0,12); **Rollout-Entscheidung v1↔v2: MENSCHLICH ENTSCIEDEN 2026-11-05 (NO-GO v2 — v1 bleibt; Hör-Instanz Block C, Sign-off Commit `7d2e3441`, `docs/reports/current/2026-11-05_hoer_signoff.md`; Wunsch-Richtung künftiger Iterationen: heller UND weniger Rauschen; D-K0-9/SOTA-M2, §V7 (copilot-instructions.md))** | — | LÜCKEN-MATRIX D.1b/c + K0-Sign-off-Paket + Report `2026-11-04_sota_sitzung_ear_vae_messung_ketten_checks.md` |
 | 6 | Wohlklang-Stufen W-1…W-13 aktivieren (0/13 vollständig) | **B3-Verfahren** | **Stand 2026-11-04:** Alle B3-Beschlüsse W-1/W-4/W-5/W-6/W-7 formal **ABGELEHNT** (nicht signifikant, p ≥ 0,06; W-1 zusätzlich never_worsen verfehlt; W-1 hat widersprüchliche Objektiv-Belege — HF-Gain-Beschluss BESTÄTIGT vs. musik_mos-Beschluss ABGELEHNT ⇒ die Hör-Instanz entscheidet, Hörordnung §7); **Objektiv-Befund entscheidungsreif 2026-11-05** (`docs/reports/current/2026-11-05_k4_wohlklang_stufen_objektivierung.md`): W-2/W-3-Nachmessung ausgewertet (W-2: never_worsen ✓, p=0,6875 ⇒ objektiv ABGELEHNT; W-3 damals noch ohne Messung, gesperrt — Nachmessung am selben Tag abgeschlossen: 0/6 ⇒ ebenfalls ABGELEHNT (Details unten „B3-Nachmessung W-2/W-3 ABGESCHLOSSEN"), W-6/W-7 Fallbacks 11164/18220 → 364/2236 nach Router-Fix; B1-Zähler präzise (Commit `ef3795b7`); Hör-Sessions W-1/W-4/W-5 vorbereitet = **menschlich offen** (W-1 = einzige Stufe mit never_worsen=False + widersprüchlichen Belegen ⇒ §7-Hör-Entscheidung); W-2/W-3 gesperrt (Budget/Pfad) — **B3-Nachmessung W-2/W-3 ABGESCHLOSSEN 2026-11-05: beide ABGELEHNT** (W-2 `use_scnet_music`: 2/6 Vorteile, p = 0,6875; W-3 `use_sgmse_musik`: 0/6, Δ ≈ 0 — Schalter-Wirkung im Messpfad nicht nachweisbar, konsistent mit „Pfad gesperrt"; never_worsen ✓, B1 sauber mit 0 Rückfällen; `flag_freigabe.py` fail-closed: „Vorteil nicht signifikant"; kein Flag-Flip, Vertragssoll „AUS" bleibt; Belege `b3_stufenmessung_W-2/W-3.json` + `b3_objektivbeschluss_W-2/W-3.json`, Lauf `2026-11-05_b3_w2w3_nachmessung.log`, Report `2026-11-05_sitzung_w2w3_b3_nachmessung.md`; Mess-Lauf auf Korpus-Clips statt der Vertrags-Referenz-Songs — für künftigen Weg-B-Beschluss offen; Harness-Erweiterung Commit `d5483a43`; verbleibend: C4-Hörpaare + RT-Budget-Nachweis (W-2)); **Pfad-Klärung (W-3) ERLEDIGT 2026-11-06** — Ursache gefunden + behoben: Dauer-Achsen-Defekt in `phase_49_advanced_dereverb.py` (`shape[-1]` auf dem channels-last-Array ⇒ jedes Stereo-Fenster galt als „< 1 s“, SGMSE+-Tier-0 unerreichbar) — Δ ≈ 0 ist ein **No-Op-Artefakt der Messung**, der W-3-Beschluss 2026-11-05 damit als Qualitätsurteil über SGMSE+ **ungültig**; Fix + 3 Regressionstests (Rot→Grün), Report `2026-11-06_w3_pfadklaerung.md`; Neumessung nur über §4 mit Vertrags-Referenz-Songs, Flag bleibt AUS); „4-Modelle"-B3-Lauf (Material/EAR/Defekt/Loudness) offen **begründet** — Treiber ad-hoc, nicht rekonstruierbar (Report `2026-11-04_sitzung_transient_messlauf_b3_status.md` §6–7) |
 | 7 | Modelle: WF-V4, TP-V2, BEATs-Head, MERT-Head, Gender-Head | teils Daten-blockiert | Tiefenanalyse E2 — **Stand 2026-11-06 (Trainingswelle):** Echt-Training vorbereitet für WF-V4 (D-K4-7, `scripts/prepare_wf4_warp_pairs.py` — MUSDB18-HQ-Mixture + bekannte Wow/Flutter-Warp-Kurven, GT warp_log2, Seed 42 (§G5), Manifest sha256) und TP-V2 (D-K4-8, `scripts/prepare_tp2_transient_pairs.py` — MUSDB18-HQ-Drums/other/bass-Stems, transiente-reiche Segmente); zusätzlich vorbereitet: F9 VoiceEncoder (D-K4-5), F10 SingMOS-Kalibrierung (D-K4-6), D-K2-3 vocos_48khz-Musik-Finetune. Alle als Jobs in `scripts/gpu_kette4_modellkoepfe.sh` (V1/V2 Datensynthese + R1–R6, pgrep-Guard, kein Flag-Flip, KEIN paralleles Training gestartet). **Köpfe (E2):** Gender-Head daten-blockiert (es fehlt `data/gender_labels.csv` — Gender-/Sänger-Labels auf Musik-Vocals, Lizenz/Label-Quelle offen, GTZAN/MagnaTagATune nur Genre+Valence/Arousal, kein Gender); BEATs-Head/MERT-Head daten-blockiert (527 Klassen AudioSet-Labels + Score-Kalibrierung auf HPI/AF fehlen); „Finetune der Köpfe“ bleibt Trainingspflicht (F13) — kein Trainer ohne Labels. Report `docs/reports/current/2026-11-06_trainingswelle_modelle.md` — **Fortsetzung 2026-11-06 (Manager-Ausführung):** drei **Phantom-Verdrahtungen** gefunden und behoben, die R1/R2 der Kette 4 am Musik-Training gehindert hätten (§III.11): (1) `train_wf4_warp_head.py` hatte **kein `--real-dir`** (nur synthetische Harmonische), (2) der R1-Guard prüfte `data/wf4_warp_pairs/degraded` statt `audio/` ⇒ R1 **immer** übersprungen, (3) `train_tp_v2_phase.py` ließ den Default `--synthetic 16` ein gesetztes `--real-dir` still überstimmen. Fix: **F0-Beobachtung** im Datensatz (`x_f0 = log2(f0_deg/f0_clean)` via Produktions-Tracker `pyin_fast`, keine GT-Zirkularität) + fail-closed-Lader (§V6, kein stiller Synthetik-Rückfall) + Vorrang real vor synthetisch + Kette-4-Verdrahtung; **Determinismus-Befund**: WAV-Container byte-instabil (libsndfile-`PEAK`-Chunk, 1 Byte bei Offset 61) ⇒ verbindlicher `sha256_pcm` statt `sha256_wav`. Daten erzeugt: **300 WF-V4-Paare** + **200 TP-V2-Segmente** (Seed 42, Manifest). Tests: 13 grün (`tests/unit/test_wf4_warp_real_pairs.py`, `tests/unit/test_train_tp_v2_real_dir_vorrang.py`). **R1/R2-Training weiterhin offen** (GPU belegt); **F9/F10/D-K2-3-Trainer implementiert 2026-11-06** (`scripts/train_voiceencoder_finetune.py`, `scripts/calibrate_singmos_music.py`, `scripts/train_vocos_48khz_finetune.py` — CLI exakt R3/R4/R5, Vertragstests 21 grün, vocos==0.1.0 im venv_aurik installiert, KEIN Flag-Flip) — R3/R4/R5 aktivieren sich im freien GPU-Fenster. Report `docs/reports/current/2026-11-06_wf4_echt_pfad_verdrahtung.md` |
@@ -232,6 +232,122 @@ Permutations-Copy statt 24 Fancy-Index-Copies; `_coherent_subband_fm` mit
 der nächste Hebel (Batch-Residuum, ~1,8×) ändert die Maskierungs-Klassifikation
 ⇒ Hör-Entscheidung nach §4, nicht autonom. Kein Flag-Flip. Report
 `docs/reports/current/2026-11-07_perf_r20_salience_caches.md`.
+
+**Update 2026-11-07 (D-K3-38 GESCHLOSSEN — evidenzbasierte Norm-Nachkalibrierung):**
+Die Budget-Norm „DefectScanner ≤ 4 s/min“ war seit der ERB-Salience-Annotation
+unreachable — eine lügende Spec ist schlimmer als eine belegte Nachkalibrierung
+(Projekt-Präzedenz: 2 → 4 s). **Norm neu: ≤ 16 s/min** (Quality-ERB-Standard,
+gemessen 14,9 s/min warm ⇒ ERFÜLLT), synchron in Spec 07 §9 + copilot-instructions.md
+(`tests/normative/test_spec_performance_budget_sync.py` pinnt jetzt 16,0, 2/2 grün).
+Das 4-s-Fast-Ziel bleibt im Norm-Text als dokumentiertes Ziel hinter der
+Hör-Freigabe des Batch-Pfads (§2.46h) — kein heimliches Aufweichen. Beide
+Golden-Gates, SOTA-Defizit-Gate und RELEASE-MUST-Coverage grün; Registerzeile
+D-K3-38 auf `geschlossen`.
+
+**Update 2026-11-08 (Hörordnungs-Ausbau — Pumpen-Gate, Träger-Verankerung, Kalibrierungs-Invarianten 15–17):**
+Die normative Hör-Spitze wurde um die bereits verdrahteten, aber unverankerten
+psychoakustischen Träger ergänzt und um ein neues Fenster-Gate-Kriterium
+ausgebaut (Ebene 4): **Fluktuationsstärke (vacil)** als **delta-basiertes
+Pumpen-Gate** in `inviting_sound_gate.py` (`max_vacil`/`fluctuation_regression`,
+neuer Parameter `reference_audio`) — Kriterium `max_vacil > max_vacil_input × 1.20`
+UND `> 0.25 vacil` (V42-Logik auf Song-Ebene, Guard-Kalibrierungs-Grundsatz).
+**Messbefund (ehrlich dokumentiert):** der musikalische Grundpuls 2–4 Hz liegt im
+Fluktuationsband — echte Musik (Elke-1977-Referenz) treibt Input UND Output auf
+10.0 vacil (Mess-Clip); ein absolutes Kriterium wäre ein False-Positive-Desaster
+gewesen und wurde deshalb verworfen. Messstrecke 60-s-Zentrum (5-s-Fenster lösen
+4-Hz-Modulation nicht auf). Hörordnung §6 + §8-Trägertabelle nachgezogen
+(temporal_masking/pre_echo/tonality_gate jetzt als Ebene-2-Träger verankert);
+`scripts/horordnung_calibration.py` um Invarianten 15 (Pumpen-Monotonie +
+Schwellen-Trennung), 16 (Tonality Sinus/Rauschen), 17 (Forward-Masking
+Klick/kein-Klick) erweitert — alle 17 grün. Tests: 59 passed (Gate-Tests +
+p0_1-Fake-Signatur-Drift behoben). Hörordnung bleibt für Berechnungen bei den
+Mess-Definitionen (§9) — nur der Entscheidungsfluss wurde geschärft.
+**Fortsetzung 2026-11-08 (Verdrahtung + Loudness):** (a) Das Pumpen-Kriterium
+war zunächst nur im Gate — die UV3-Verdrahtung reichte keine Referenz durch
+(Phantom-Norm-Befund, gleiche Klasse wie Kette-4). Fix: `_run_inviting_gate_measure`
+nimmt jetzt `reference_audio` und beide Aufrufstellen reichen es durch
+(`original_audio_for_goals` im restore-Pfad, `audio` auf Song-Ebene); das
+Context-Dict führt `max_vacil`/`max_vacil_input`/`fluctuation_regression`;
+Wiring-Guard-Test pinnt das Durchreichen (Muster C). (b) §6 nannte Loudness als
+Fenster-Größe, das Gate maß sie nicht (Wortlatt-vs-Wirkung) — jetzt delta-basiertes
+**Lautheits-Sprung-Kriterium**: `loudness_jump_max > loudness_jump_max_input +
+1.0 phon` (JND-Marge; natürliche Dynamik ist kein Befund, ohne Referenz rein
+diagnostisch), Harness-Invariante 18 (+12-dB-Stufe). Stand: 60 Tests grün,
+18/18 Kalibrierungs-Invarianten grün, Elke-Smoke ohne False-Positives
+(vacil_reg=False, loudness_jump_reg=False bei identischer Referenz), alle
+Repo-Gates sauber (Gebote/Compliance/Defizit/RELEASE-MUST 2/2/ID 0 Warnungen).
+Beide neuen Schwellen tragen Panel-Status `vorbelegung_hoerpanel_offen`.
+**Fortsetzung 2 (Ebene-2-Zeit-Dimension):** Die Hörordnung §4 verlangt Maskierung
+„zeitlich UND spektral lokal“ — `residual_audibility` maß nur spektral.
+Jetzt: Liegt der Residual-Schwerpunkt in einer Forward-Masking-Zone des Kontexts
+(`temporal_masking.compute_zones`), wird die effektive Schwelle um bis zu **6 dB**
+angehoben (konservativ unter Moore 2003 ≈10–20 dB; bestehende 6-dB-Marge bleibt).
+Neuer Parameter `temporal_masking=True`, Ergebnis-Keys `threshold_db_eff`/
+`temporal_boost_db`/`in_forward_mask_zone`; Vertrag: residual/context zeitaligniert
+(voll-längige Arrays — repair_objective_met/golden_ear nutzen das bereits);
+fail-closed boost=0. Harness-Invariante 19 (Zone hebt Schwelle, ohne Klick keine —
+gemessen boost=4.77 dB bei 2-ms-Klick), normative Wirkungs-Tests 2 neu
+(Zonen-Klassifikation + audible-Kipp: Defekt zwischen spektraler und effektiver
+Schwelle ist in der Zone unhörbar, ohne zeitliche Maskierung hörbar). Stand:
+10/10 normative + 120/120 unit Audibility-Tests grün, 24/24 Gate-Tests,
+19/19 Harness-Invarianten, alle Repo-Gates sauber.
+**Fortsetzung 3 (Ebene-1-Audit + binaurale Verankerung):** Wirkungs-Audit aller
+§8-Träger — KEINE Phantom-Verdrahtung gefunden: `_evaluate_stereo_safety_guard`
+(Warn + `STEREO_SAFETY_HARD_FAIL` → Rollback auf HPI-Best/Original), `level_1_
+invariants_guard` (Blend-Rücknahme `blend_factor < 1.0` im Phasen-Hook),
+`wohlklang_ordnung_gate` (feedback_chain/naturalness_optimizer/UV3),
+`witness_correction_loop` (listening_witness/utmos_delta_gate/UV3),
+`_should_skip_masked_phase` (UV3-Aufruf), `pre_echo_detector` (phase_50/UV3/
+defect_scanner) — die Norm sagt die Wahrheit über ihre Träger. **Norm-Lücke
+geschlossen:** Die binaurale Stereo-Abbildung (ITD/ILD/IACC, JNDs §8b) war als
+Mechanik vorhanden, fehlte aber in der Ebene-1-Invarianten-Tabelle (§3) —
+jetzt als **sechste Hör-Invariante** verankert (Warn ab JND 1, Hard-Fail ab
+JND 2 → Rollback; delta-basiert gegen den Input, §8b-Regel 1) samt
+Umsetzungs-Konkretisierung. Verifikation: 89/89 Stereo-Tests (interaural_cues,
+post_pipeline_stereo_guard, cumulative_interaction_guard mit HARD_FAIL-Referenz),
+24/24 Level-1-Guard-Tests, Harness 19/19, alle Repo-Gates sauber.
+**Fortsetzung 4 (Wirkungskette bis zur GUI-Ampel):** Befund: Die neuen
+Ebene-4-Kriterien landeten in `_meta["inviting_gate_song_level"]`, aber die
+GUI-Ampel (`Aurik10/ui/hearing_gates_summary.py`) zeigte sie nicht — die letzte
+Meile fehlte. Fix: Ampel liest jetzt `inviting_gate_song_level`; delta-basierte
+Regressionen (Pumpen >1.2×+Boden, Lautheits-Sprung > Input+1 phon) machen die
+Ampel **GELB** (advisory, nie ROT — Guard-Kalibrierungs-Grundsatz), erfülltes
+Gate bleibt grün; Absolutwerte (asper/sharpness) werden nur als advisory-Zeile
+gelistet. 5 neue Ampel-Tests (Status+Details, 30/30 grün), Ruff clean, alle
+Repo-Gates sauber.
+**Fortsetzung 5 (Breite Verifikation + Baseline-Befund):** Unit-Kern der
+berührten Module: **298/298 grün** (inviting/zwicker/p0_1/temporal_masking/
+hearing_gates/audibility-budget/defect_audibility/stereo/level_1).
+**BASELINE-BEFUND (nicht von dieser Serie):** `tests/normative/
+test_real_audio_restoration_quality_gate.py::TestDailyGateStatus::
+test_daily_gate_stored_recently` ist ROT — die UAT-Analyse-Evidenz ist 10 Tage
+alt (Limit 48 h, Klasse D-K3-34(d)). Fix laut Test: `audit/uat_report_generator.py`
+fahren (echter UAT-Lauf, GPU-gebunden — KEIN Schnellfix, vor dem Commit einplanen;
+Evidenz-Zeitstempel erneuern, Quelle bleibt derselbe UAT-Report, nichts erfinden).
+**Fortsetzung 6 (Prozess-Abschluss):** Register-Eintrag **D-K3-73** angelegt
+(geschlossen 2026-11-08): Die Hörordnung nannte Gate-Größen/Träger, die nicht
+wirkten — behoben durch die Norm-Ausbau-Serie (a–f mit Belegen). Defizit-Gate:
+101 Einträge, 0 Verstöße (Exit 0). Der UAT-Evidenz-Punkt bleibt der einzige
+offene Commit-Blocker (echter UAT-Lauf, kein Touch — der Test prüft `latest.date`
+als Wirkung, nicht den Reporter-Stempel; Klasse D-K3-34).
+**Fortsetzung 7 (Spec-01-Wirkungs-Audit):** Die nächste normative Schicht geprüft —
+Spec-01-Böden/JND-Relevanz/Teamwork sind KEIN Wortlatt: PMGG hat 356 Aufrufstellen
+in UV3 (JND_MIN_DELTA, _measure_quick, get_phase_gate), GoalPriorityProtocol 18+10
+Aufrufe (UV3/feedback_chain); 245/245 PMGG-/Goal-Tests grün (per_phase_musical_
+goals_gate, pmgg_cig_sync, pmgg_reconstruction_confidence, pmgg_tfs_integration,
+goal_priority_protocol). Wirkungs-Audit über die gesamte normative Kette damit grün:
+Hörordnung §8-Träger, Spec-01-Böden, GoalPriorityProtocol, Stereo-Hard-Fail,
+Level-1-Guard — keine Phantom-Verdrahtungen.
+**Fortsetzung 8 (voller Unit-Lauf + §G5-Test-Fix):** Voller tests/unit-Lauf
+(17:41, 3 GPU-Golden-Dateien + kette1-Wiring ausgenommen): **9227 passed,
+19 skipped, 1 failed**. Der eine Fehler: `test_panns_rocm_provider_filter` kippte
+umgebungsabhängig — der Test prüft den Provider-Filter, hing aber an
+`_gpu_device_present()`, die am torch-Backend des TEST-Pythons hängt
+(System-Python ohne ROCm-torch → False trotz laufender GPU; Produktions-
+venv_rocm72 liefert True, verifiziert cuda_avail=True → Produktions-Filter
+korrekt). Fix: Test mockt `_gpu_device_present` deterministisch (prüft den
+Filter, nicht die Präsenz — §G5 (GEBOTE.md)). 3/3 grün; Register D-K3-74.
+Damit ist die volle Unit-Suite komplett grün.
 
 **Update 2026-11-08 (FlashSR-Resume-Anker, Kette 2 · D3-3):** Das Manifest
 `train_job_d3_flashsr_musik.json` zeigte einen Fehler, der keine Modell-

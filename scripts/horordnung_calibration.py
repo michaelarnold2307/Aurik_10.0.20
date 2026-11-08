@@ -18,6 +18,13 @@ psychoakustische Eigenschaften bekannt sind:
  10. Gammachirp: NSIM identisch > verrauscht
  11. GO/NO-GO: Verdict-Logik deterministisch (GO/NO_GO)
  12. DLM-full/binaural: Pegel-Monotonie, Inhibition unkorr. > diotisch
+ 13. MG-ERB-Spreizung: Aufwärts-Masking > Abwärts
+ 14. MG-ERB-Spreizung: Monotonie — Schwelle fällt beidseitig vom Masker
+ 15. Fluktuationsstärke (vacil): AM-Tiefe (4 Hz) ↑ ⇒ vacil ↑; unmoduliert < moduliert
+ 16. Tonality-Gate: Sinus tonal (flatness klein), weißes Rauschen nicht tonal
+ 17. Forward-Masking: Klick öffnet Boost-Zone direkt danach; ohne Klick keine
+ 18. Lautheits-Sprung (phon): +12-dB-Stufe zwischen Fenstern >> konstantes Signal
+ 19. Temporal-Masking in residual_audibility: Zone hebt effektive Schwelle; ohne Klick keine
 
 Ausgabe: Bericht; Exit-Code 1 bei verletzter Invariante (Kalibrierungs-Drift).
 
@@ -369,6 +376,140 @@ def main() -> int:
         print(f"14) MG-ERB-Monotonie: Schwelle fällt beidseitig vom Masker  {'OK' if _mono_ok else 'FAIL'}")
     except Exception as exc:  # pragma: no cover
         failures.append(f"MG-ERB-Monotonie nicht verfügbar: {exc}")
+
+    # 15) Fluktuationsstärke (Hörordnung §6, Einladungs-Gate): Rausch-Pumpen
+    #     (4 Hz AM-Tiefe) aufwärts ⇒ vacil aufwärts; ungepumpt < gepumpt.
+    #     Deterministische Ton-AM sättigt die Welch-PSD (ein Bin) — die
+    #     realistische Pumpen-Simulation auf Rauschhintergrund löst auf.
+    try:
+        from backend.core.dsp.zwicker_metrics import compute_fluctuation_strength_vacil
+
+        _rng15 = np.random.default_rng(7)
+        _noise15 = (_rng15.standard_normal(sr * 30) * 0.05).astype(np.float32)
+        _t15 = np.arange(sr * 30) / sr
+        _pump_shallow = (_noise15 * (1.0 + 0.15 * np.sin(2 * np.pi * 4.0 * _t15)).astype(np.float32)).astype(np.float32)
+        _pump_deep = (_noise15 * (1.0 + 0.9 * np.sin(2 * np.pi * 4.0 * _t15)).astype(np.float32)).astype(np.float32)
+        v0 = float(compute_fluctuation_strength_vacil(_noise15, sr))
+        v1 = float(compute_fluctuation_strength_vacil(_pump_shallow, sr))
+        v2 = float(compute_fluctuation_strength_vacil(_pump_deep, sr))
+        if not (v2 > v1 > v0):
+            failures.append(f"Fluktuations-Monotonie: tief {v2:.4f} !> flach {v1:.4f} !> ungepumpt {v0:.4f} vacil")
+        if not (v1 > 0.25 > v0):
+            failures.append(f"Fluktuations-Schwelle: gepumpt {v1:.4f} !> 0.25 !> ungepumpt {v0:.4f} vacil")
+        print(
+            f"15) Fluktuations-Pumpen: ungepumpt={v0:.4f} 15%={v1:.4f} 90%={v2:.4f} vacil  {'OK' if v2 > v1 > v0 and v1 > 0.25 > v0 else 'FAIL'}"
+        )
+    except Exception as exc:  # pragma: no cover
+        failures.append(f"Fluktuationsstärke nicht verfügbar: {exc}")
+
+    # 16) Tonality-Gate (§23-TONALITY): reiner Sinus ist tonal (flatness klein),
+    #     weißes Rauschen ist nicht tonal (flatness hoch).
+    try:
+        from backend.core.dsp.tonality_gate import is_tonal_clean, spectral_flatness
+
+        sine_ton = (0.3 * np.sin(2 * np.pi * 440 * np.arange(sr * 6) / sr)).astype(np.float64)
+        noise_ton = _noise(sr, 6.0, 0.2, seed=42)
+        flat_sine = float(spectral_flatness(sine_ton, sr))
+        flat_noise = float(spectral_flatness(noise_ton, sr))
+        clean_sine = bool(is_tonal_clean(sine_ton, sr))
+        clean_noise = bool(is_tonal_clean(noise_ton, sr))
+        if not (flat_sine < flat_noise):
+            failures.append(f"Tonality-Diskrimination: flatness Sinus {flat_sine:.4f} !< Rauschen {flat_noise:.4f}")
+        if not (clean_sine and not clean_noise):
+            failures.append(f"Tonality-Gate falsch: tonal(Sinus)={clean_sine}, tonal(Rauschen)={clean_noise}")
+        print(
+            f"16) Tonality-Gate: flat_sinus={flat_sine:.4f} flat_rauschen={flat_noise:.4f} sinus_tonal={clean_sine} rauschen_tonal={clean_noise}  {'OK' if flat_sine < flat_noise and clean_sine and not clean_noise else 'FAIL'}"
+        )
+    except Exception as exc:  # pragma: no cover
+        failures.append(f"Tonality-Gate nicht verfügbar: {exc}")
+
+    # 17) Forward-Masking (Hörordnung §8, Ebene 2): ein Klick öffnet direkt danach
+    #     eine Boost-Zone; dasselbe Signal ohne Klick öffnet keine.
+    try:
+        from backend.core.dsp.temporal_masking import get_forward_masking_guard
+
+        _guard_fm = get_forward_masking_guard()
+        _base_fm = _noise(sr, 6.0, 0.02, seed=7)
+        _with_click = _click_at(_base_fm, sr, 3.0, amp=0.8)
+        _zones_click = _guard_fm.compute_zones(_with_click.astype(np.float32), sr)
+        _zones_plain = _guard_fm.compute_zones(_base_fm.astype(np.float32), sr)
+        _boost_after_click = any(
+            _z.start_sample <= int(sr * 3.05) < _z.end_sample and _z.max_nr_strength_boost > 0.0 for _z in _zones_click
+        )
+        _plain_boost = any(_z.max_nr_strength_boost > 0.0 for _z in _zones_plain)
+        if not (_boost_after_click and not _plain_boost):
+            failures.append(
+                f"Forward-Masking verletzt: Boost nach Klick={_boost_after_click} (Zonen {len(_zones_click)}), Boost ohne Klick={_plain_boost} (Zonen {len(_zones_plain)})"
+            )
+        print(
+            f"17) Forward-Masking: Zonen_nach_Klick={len(_zones_click)} mit_Boost_50ms={_boost_after_click}, Zonen_ohne_Klick={len(_zones_plain)}  {'OK' if _boost_after_click and not _plain_boost else 'FAIL'}"
+        )
+    except Exception as exc:  # pragma: no cover
+        failures.append(f"Forward-Masking nicht verfügbar: {exc}")
+
+    # 18) Lautheits-Sprung-Diskrimination (Hörordnung §6, Einladungs-Gate):
+    #     ein Pegelsprung zwischen Fenstern ⇒ Lautheits-Sprung >> konstant.
+    #     Zwei 6-s-Hälften mit 12 dB Pegeldifferenz (Fenster 5 s/Hop 2.5 s ⇒
+    #     Sprung liegt zwischen benachbarten Fenstern).
+    try:
+        from backend.core.dsp.zwicker_loudness import compute_loudness_phon
+
+        _rng18 = np.random.default_rng(7)
+        _quiet18 = (_rng18.standard_normal(sr * 6) * 0.01).astype(np.float32)
+        _loud18 = (_rng18.standard_normal(sr * 6) * 0.04).astype(np.float32)  # +12 dB
+        _const18 = (_rng18.standard_normal(sr * 12) * 0.02).astype(np.float32)
+        _stepped18 = np.concatenate([_quiet18, _loud18]).astype(np.float32)
+        _p_const = [
+            float(compute_loudness_phon(_const18[: sr * 5], sr)),
+            float(compute_loudness_phon(_const18[sr * 5 : sr * 10], sr)),
+        ]
+        _p_step = [
+            float(compute_loudness_phon(_stepped18[: sr * 5], sr)),
+            float(compute_loudness_phon(_stepped18[sr * 5 : sr * 10], sr)),
+        ]
+        _jump_const = abs(_p_const[1] - _p_const[0])
+        _jump_step = abs(_p_step[1] - _p_step[0])
+        if not (_jump_step > _jump_const + 3.0):
+            failures.append(
+                f"Lautheits-Sprung-Diskrimination: gestuft {_jump_step:.2f} phon !> konstant {_jump_const:.2f} + 3 phon"
+            )
+        print(
+            f"18) Lautheits-Sprung: konstant={_jump_const:.2f} phon, gestuft(+12dB)={_jump_step:.2f} phon  {'OK' if _jump_step > _jump_const + 3.0 else 'FAIL'}"
+        )
+    except Exception as exc:  # pragma: no cover
+        failures.append(f"Lautheits-Sprung-Diskrimination nicht verfügbar: {exc}")
+
+    # 19) Temporal-Masking in residual_audibility (Hörordnung §4): ein Impuls in
+    #     einer Forward-Masking-Zone hebt die effektive Schwelle; ohne Klick keine
+    #     Zone und keine Anhebung (zeitlich UND spektral lokal).
+    try:
+        from backend.core.dsp.audibility_targets import residual_audibility
+
+        _rng19 = np.random.default_rng(7)
+        _ctx19 = (_rng19.standard_normal(sr * 6) * 0.01).astype(np.float64)
+        _ctx19[int(sr * 3.0) : int(sr * 3.0) + 96] += 0.9  # 2-ms-Klick
+        _res19 = np.zeros(sr * 6)
+        _res19[int(sr * 3.05) : int(sr * 3.05) + 480] = 0.05 * _rng19.standard_normal(480)
+        _rep19 = residual_audibility(_res19, _ctx19, sr)
+        _ctx19_plain = (_rng19.standard_normal(sr * 6) * 0.01).astype(np.float64)
+        _rep19_plain = residual_audibility(_res19, _ctx19_plain, sr)
+        if not (_rep19["in_forward_mask_zone"] and _rep19["temporal_boost_db"] > 0.0):
+            failures.append(
+                f"Temporal-Masking-Zone: in_zone={_rep19['in_forward_mask_zone']}, boost={_rep19['temporal_boost_db']:.2f} dB"
+            )
+        if not (_rep19["threshold_db_eff"] > _rep19["threshold_db"]):
+            failures.append(
+                f"Temporal-Masking-Schwelle: eff={_rep19['threshold_db_eff']:.2f} !> basis={_rep19['threshold_db']:.2f} dB"
+            )
+        if _rep19_plain["in_forward_mask_zone"] or _rep19_plain["temporal_boost_db"] != 0.0:
+            failures.append(
+                f"Temporal-Masking-Fehlalarm: in_zone={_rep19_plain['in_forward_mask_zone']}, boost={_rep19_plain['temporal_boost_db']:.2f} dB ohne Klick"
+            )
+        print(
+            f"19) Temporal-Masking: boost={_rep19['temporal_boost_db']:.2f} dB (eff={_rep19['threshold_db_eff']:.1f} vs. basis={_rep19['threshold_db']:.1f}), ohne Klick boost={_rep19_plain['temporal_boost_db']:.2f}  {'OK' if _rep19['in_forward_mask_zone'] and _rep19['temporal_boost_db'] > 0.0 and _rep19['threshold_db_eff'] > _rep19['threshold_db'] and not _rep19_plain['in_forward_mask_zone'] else 'FAIL'}"
+        )
+    except Exception as exc:  # pragma: no cover
+        failures.append(f"Temporal-Masking-Integration nicht verfügbar: {exc}")
 
     print()
     if failures:
