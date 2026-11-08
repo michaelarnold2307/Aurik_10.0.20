@@ -1,0 +1,27 @@
+{
+  "schema": "aurik.train_job/1",
+  "run_id": "f9_voiceencoder-20261108T131235Z-46a164",
+  "name": "f9_voiceencoder_finetune",
+  "phase": "f9_voiceencoder",
+  "seed": null,
+  "befehl": "env PYTHONPATH=. nice -n 15 /home/michael/.local/share/aurik/venv_rocm72/bin/python -B scripts/train_voiceencoder_finetune.py --musdb-root data/musdb18hq --epochs 30 --device cuda --out-dir models/resemblyzer/finetune",
+  "resume_befehl": "env PYTHONPATH=. nice -n 15 /home/michael/.local/share/aurik/venv_rocm72/bin/python -B scripts/train_voiceencoder_finetune.py --musdb-root data/musdb18hq --epochs 30 --device cuda --out-dir models/resemblyzer/finetune",
+  "timeout_s": 21600.0,
+  "retries": 1,
+  "versuche": [
+    {
+      "exit_code": 0,
+      "sekunden": 1555.8,
+      "timed_out": false,
+      "output_tail": "Basis 0.422)\nINFO __main__: Epoch 13/30 loss=3.077360\nINFO __main__: Validierungs-Genauigkeit: 0.375 (Basis 0.422)\nINFO __main__: Epoch 14/30 loss=3.050327\nINFO __main__: Validierungs-Genauigkeit: 0.516 (Basis 0.422)\nINFO __main__: Epoch 15/30 loss=3.026187\nINFO __main__: Validierungs-Genauigkeit: 0.516 (Basis 0.422)\nINFO __main__: Epoch 16/30 loss=3.003349\nINFO __main__: Validierungs-Genauigkeit: 0.438 (Basis 0.422)\nINFO __main__: Epoch 17/30 loss=2.981413\nINFO __main__: Validierungs-Genauigkeit: 0.453 (Basis 0.422)\nINFO __main__: Epoch 18/30 loss=2.960391\nINFO __main__: Validierungs-Genauigkeit: 0.562 (Basis 0.422)\nINFO __main__: Epoch 19/30 loss=2.940057\nINFO __main__: Validierungs-Genauigkeit: 0.609 (Basis 0.422)\nINFO __main__: Epoch 20/30 loss=2.920682\nINFO __main__: Validierungs-Genauigkeit: 0.672 (Basis 0.422)\nINFO __main__: Epoch 21/30 loss=2.901907\nINFO __main__: Validierungs-Genauigkeit: 0.500 (Basis 0.422)\nINFO __main__: Epoch 22/30 loss=2.883666\nINFO __main__: Validierungs-Genauigkeit: 0.359 (Basis 0.422)\nINFO __main__: Epoch 23/30 loss=2.865952\nINFO __main__: Validierungs-Genauigkeit: 0.594 (Basis 0.422)\nINFO __main__: Epoch 24/30 loss=2.848490\nINFO __main__: Validierungs-Genauigkeit: 0.594 (Basis 0.422)\nINFO __main__: Epoch 25/30 loss=2.831255\nINFO __main__: Validierungs-Genauigkeit: 0.453 (Basis 0.422)\nINFO __main__: Epoch 26/30 loss=2.814285\nINFO __main__: Validierungs-Genauigkeit: 0.469 (Basis 0.422)\nINFO __main__: Epoch 27/30 loss=2.797539\nINFO __main__: Validierungs-Genauigkeit: 0.578 (Basis 0.422)\nINFO __main__: Epoch 28/30 loss=2.781008\nINFO __main__: Validierungs-Genauigkeit: 0.438 (Basis 0.422)\nINFO __main__: Epoch 29/30 loss=2.764631\nINFO __main__: Validierungs-Genauigkeit: 0.547 (Basis 0.422)\nINFO __main__: Epoch 30/30 loss=2.748459\nINFO __main__: Validierungs-Genauigkeit: 0.312 (Basis 0.422)\nINFO __main__: Fertig: Checkpoint + Manifest unter models/resemblyzer/finetune (val_acc=0.672)\nLoaded the voice encoder model on cuda in 0.13 seconds.\n",
+      "versuch": 1,
+      "befehl": "env PYTHONPATH=. nice -n 15 /home/michael/.local/share/aurik/venv_rocm72/bin/python -B scripts/train_voiceencoder_finetune.py --musdb-root data/musdb18hq --epochs 30 --device cuda --out-dir models/resemblyzer/finetune"
+    }
+  ],
+  "quelle": "scripts/train_job_runner.py",
+  "checkpoint_hashes": {
+    "checkpoint_latest.pt": "05c7616d5e1f6b75c36c4659ab9ba86e11e056f9a4712af7bda837a9ddfcb9e7",
+    "voiceencoder_vocal_ft.pt": "1fba7cadba7a1eb84169add9bd1f2453521183019862acd11ed3db1d7f317af6"
+  },
+  "ergebnis": "erfolgreich"
+}

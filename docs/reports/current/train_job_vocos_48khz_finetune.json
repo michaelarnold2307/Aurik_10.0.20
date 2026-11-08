@@ -1,0 +1,27 @@
+{
+  "schema": "aurik.train_job/1",
+  "run_id": "vocos_48khz_finetune-20261108T133924Z-afb96e",
+  "name": "vocos_48khz_finetune",
+  "phase": "vocos_48khz_finetune",
+  "seed": null,
+  "befehl": "env PYTHONPATH=. nice -n 15 /home/michael/.local/share/aurik/venv_rocm72/bin/python -B scripts/train_vocos_48khz_finetune.py --musdb-root data/musdb18hq --epochs 30 --device cuda --out-dir models/vocos_48khz/finetune",
+  "resume_befehl": "env PYTHONPATH=. nice -n 15 /home/michael/.local/share/aurik/venv_rocm72/bin/python -B scripts/train_vocos_48khz_finetune.py --musdb-root data/musdb18hq --epochs 30 --device cuda --out-dir models/vocos_48khz/finetune",
+  "timeout_s": 21600.0,
+  "retries": 1,
+  "versuche": [
+    {
+      "exit_code": 0,
+      "sekunden": 1768.8,
+      "timed_out": false,
+      "output_tail": "2/30 — Verlust 0.19133\n2026-11-08 14:42:23,091 INFO __main__: Epoch 3/30 — Verlust 0.18929\n2026-11-08 14:43:21,465 INFO __main__: Epoch 4/30 — Verlust 0.19480\n2026-11-08 14:44:20,109 INFO __main__: Epoch 5/30 — Verlust 0.19054\n2026-11-08 14:45:19,518 INFO __main__: Epoch 6/30 — Verlust 0.18628\n2026-11-08 14:46:18,183 INFO __main__: Epoch 7/30 — Verlust 0.18819\n2026-11-08 14:47:16,706 INFO __main__: Epoch 8/30 — Verlust 0.19364\n2026-11-08 14:48:15,549 INFO __main__: Epoch 9/30 — Verlust 0.19323\n2026-11-08 14:49:14,961 INFO __main__: Epoch 10/30 — Verlust 0.19888\n2026-11-08 14:50:13,678 INFO __main__: Epoch 11/30 — Verlust 0.19183\n2026-11-08 14:51:12,421 INFO __main__: Epoch 12/30 — Verlust 0.19333\n2026-11-08 14:52:11,750 INFO __main__: Epoch 13/30 — Verlust 0.19839\n2026-11-08 14:53:10,548 INFO __main__: Epoch 14/30 — Verlust 0.18839\n2026-11-08 14:54:10,026 INFO __main__: Epoch 15/30 — Verlust 0.19261\n2026-11-08 14:55:08,865 INFO __main__: Epoch 16/30 — Verlust 0.19329\n2026-11-08 14:56:07,491 INFO __main__: Epoch 17/30 — Verlust 0.18538\n2026-11-08 14:57:06,057 INFO __main__: Epoch 18/30 — Verlust 0.18601\n2026-11-08 14:58:04,635 INFO __main__: Epoch 19/30 — Verlust 0.18896\n2026-11-08 14:59:03,268 INFO __main__: Epoch 20/30 — Verlust 0.18405\n2026-11-08 15:00:02,174 INFO __main__: Epoch 21/30 — Verlust 0.19287\n2026-11-08 15:01:01,171 INFO __main__: Epoch 22/30 — Verlust 0.19445\n2026-11-08 15:01:59,626 INFO __main__: Epoch 23/30 — Verlust 0.18125\n2026-11-08 15:02:58,671 INFO __main__: Epoch 24/30 — Verlust 0.18889\n2026-11-08 15:03:57,501 INFO __main__: Epoch 25/30 — Verlust 0.18734\n2026-11-08 15:04:55,974 INFO __main__: Epoch 26/30 — Verlust 0.18962\n2026-11-08 15:05:54,283 INFO __main__: Epoch 27/30 — Verlust 0.18857\n2026-11-08 15:06:52,766 INFO __main__: Epoch 28/30 — Verlust 0.18890\n2026-11-08 15:07:51,183 INFO __main__: Epoch 29/30 — Verlust 0.19404\n2026-11-08 15:08:49,571 INFO __main__: Epoch 30/30 — Verlust 0.19886\n2026-11-08 15:08:52,489 INFO __main__: Manifest: ok\n",
+      "versuch": 1,
+      "befehl": "env PYTHONPATH=. nice -n 15 /home/michael/.local/share/aurik/venv_rocm72/bin/python -B scripts/train_vocos_48khz_finetune.py --musdb-root data/musdb18hq --epochs 30 --device cuda --out-dir models/vocos_48khz/finetune"
+    }
+  ],
+  "quelle": "scripts/train_job_runner.py",
+  "checkpoint_hashes": {
+    "checkpoint_latest.pt": "aa36414ccce5cc7abcf25f706b10c9cf508035d94071095b5bf92d17a51e5942",
+    "vocos_48khz_music_ft.pt": "bccd5e24c6fc52d560aff25c021ef9afc068bfe592a1b62d0e85768429977676"
+  },
+  "ergebnis": "erfolgreich"
+}

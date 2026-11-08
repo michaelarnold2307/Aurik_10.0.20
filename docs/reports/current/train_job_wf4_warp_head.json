@@ -1,0 +1,27 @@
+{
+  "schema": "aurik.train_job/1",
+  "run_id": "sota_m12-20261108T130717Z-dda499",
+  "name": "wf4_warp_head",
+  "phase": "sota_m12",
+  "seed": null,
+  "befehl": "env PYTHONPATH=. nice -n 15 /home/michael/.local/share/aurik/venv_rocm72/bin/python -B scripts/train_wf4_warp_head.py --epochs 50 --steps-per-epoch 200 --real-dir data/wf4_warp_pairs --device cuda --out-dir models/wf4_warp_head",
+  "resume_befehl": "env PYTHONPATH=. nice -n 15 /home/michael/.local/share/aurik/venv_rocm72/bin/python -B scripts/train_wf4_warp_head.py --epochs 50 --steps-per-epoch 200 --real-dir data/wf4_warp_pairs --device cuda --out-dir models/wf4_warp_head",
+  "timeout_s": 21600.0,
+  "retries": 1,
+  "versuche": [
+    {
+      "exit_code": 0,
+      "sekunden": 316.1,
+      "timed_out": false,
+      "output_tail": "006979\n2026-11-08 14:09:19,758 INFO Epoch 17/50 Loss 0.005655\n2026-11-08 14:09:25,478 INFO Epoch 18/50 Loss 0.005233\n2026-11-08 14:09:31,166 INFO Epoch 19/50 Loss 0.006032\n2026-11-08 14:09:36,807 INFO Epoch 20/50 Loss 0.007603\n2026-11-08 14:09:42,480 INFO Epoch 21/50 Loss 0.004254\n2026-11-08 14:09:48,129 INFO Epoch 22/50 Loss 0.004468\n2026-11-08 14:09:53,791 INFO Epoch 23/50 Loss 0.005745\n2026-11-08 14:09:59,567 INFO Epoch 24/50 Loss 0.004407\n2026-11-08 14:10:05,438 INFO Epoch 25/50 Loss 0.005448\n2026-11-08 14:10:11,038 INFO Epoch 26/50 Loss 0.004064\n2026-11-08 14:10:16,823 INFO Epoch 27/50 Loss 0.004436\n2026-11-08 14:10:22,747 INFO Epoch 28/50 Loss 0.004506\n2026-11-08 14:10:28,728 INFO Epoch 29/50 Loss 0.004591\n2026-11-08 14:10:34,603 INFO Epoch 30/50 Loss 0.003733\n2026-11-08 14:10:40,329 INFO Epoch 31/50 Loss 0.003912\n2026-11-08 14:10:45,911 INFO Epoch 32/50 Loss 0.003793\n2026-11-08 14:10:51,502 INFO Epoch 33/50 Loss 0.002710\n2026-11-08 14:10:57,095 INFO Epoch 34/50 Loss 0.005048\n2026-11-08 14:11:03,104 INFO Epoch 35/50 Loss 0.004369\n2026-11-08 14:11:09,998 INFO Epoch 36/50 Loss 0.002939\n2026-11-08 14:11:15,975 INFO Epoch 37/50 Loss 0.003199\n2026-11-08 14:11:21,998 INFO Epoch 38/50 Loss 0.002905\n2026-11-08 14:11:28,350 INFO Epoch 39/50 Loss 0.004108\n2026-11-08 14:11:34,535 INFO Epoch 40/50 Loss 0.003240\n2026-11-08 14:11:40,679 INFO Epoch 41/50 Loss 0.003314\n2026-11-08 14:11:46,822 INFO Epoch 42/50 Loss 0.003136\n2026-11-08 14:11:52,608 INFO Epoch 43/50 Loss 0.003303\n2026-11-08 14:11:58,458 INFO Epoch 44/50 Loss 0.002089\n2026-11-08 14:12:04,262 INFO Epoch 45/50 Loss 0.002642\n2026-11-08 14:12:09,951 INFO Epoch 46/50 Loss 0.002602\n2026-11-08 14:12:15,730 INFO Epoch 47/50 Loss 0.002776\n2026-11-08 14:12:21,525 INFO Epoch 48/50 Loss 0.002942\n2026-11-08 14:12:27,264 INFO Epoch 49/50 Loss 0.002674\n2026-11-08 14:12:33,224 INFO Epoch 50/50 Loss 0.002167\n2026-11-08 14:12:33,249 INFO Fertig: models/wf4_warp_head/wf4_warp_head_v1.pt, Manifest models/wf4_warp_head/manifest.json\n",
+      "versuch": 1,
+      "befehl": "env PYTHONPATH=. nice -n 15 /home/michael/.local/share/aurik/venv_rocm72/bin/python -B scripts/train_wf4_warp_head.py --epochs 50 --steps-per-epoch 200 --real-dir data/wf4_warp_pairs --device cuda --out-dir models/wf4_warp_head"
+    }
+  ],
+  "quelle": "scripts/train_job_runner.py",
+  "checkpoint_hashes": {
+    "checkpoint_latest.pt": "08c13dffa4b3af2007de3b39e9e0bda57afccfb62b7dd8685e50f806de4ae579",
+    "wf4_warp_head_v1.pt": "61b8ca6a5a0de92c2abf0dbf3b10a196e7b30295d3b4f75863e49063c7b2616a"
+  },
+  "ergebnis": "erfolgreich"
+}

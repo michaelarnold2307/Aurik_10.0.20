@@ -1,0 +1,27 @@
+{
+  "schema": "aurik.train_job/1",
+  "run_id": "sota_m12-20261108T120215Z-c1ae81",
+  "name": "tp_v2_phase",
+  "phase": "sota_m12",
+  "seed": null,
+  "befehl": "env PYTHONPATH=. nice -n 15 /home/michael/.local/share/aurik/venv_rocm72/bin/python -B scripts/train_tp_v2_phase.py --epochs 50 --steps-per-epoch 200 --real-dir data/tp2_transient_pairs --synthetic 0 --out-dir models/tp_v2 --device cuda",
+  "resume_befehl": "env PYTHONPATH=. nice -n 15 /home/michael/.local/share/aurik/venv_rocm72/bin/python -B scripts/train_tp_v2_phase.py --epochs 50 --steps-per-epoch 200 --real-dir data/tp2_transient_pairs --synthetic 0 --out-dir models/tp_v2 --device cuda",
+  "timeout_s": 21600.0,
+  "retries": 1,
+  "versuche": [
+    {
+      "exit_code": 0,
+      "sekunden": 307.8,
+      "timed_out": false,
+      "output_tail": ": Epoch 4/50 | Loss 1.3584\nINFO __main__: Epoch 5/50 | Loss 1.3598\nINFO __main__: Epoch 6/50 | Loss 1.3615\nINFO __main__: Epoch 7/50 | Loss 1.3621\nINFO __main__: Epoch 8/50 | Loss 1.3599\nINFO __main__: Epoch 9/50 | Loss 1.3577\nINFO __main__: Epoch 10/50 | Loss 1.3575\nINFO __main__: Epoch 11/50 | Loss 1.3571\nINFO __main__: Epoch 12/50 | Loss 1.3570\nINFO __main__: Epoch 13/50 | Loss 1.3567\nINFO __main__: Epoch 14/50 | Loss 1.3565\nINFO __main__: Epoch 15/50 | Loss 1.3576\nINFO __main__: Epoch 16/50 | Loss 1.3574\nINFO __main__: Epoch 17/50 | Loss 1.3568\nINFO __main__: Epoch 18/50 | Loss 1.3560\nINFO __main__: Epoch 19/50 | Loss 1.3561\nINFO __main__: Epoch 20/50 | Loss 1.3559\nINFO __main__: Epoch 21/50 | Loss 1.3558\nINFO __main__: Epoch 22/50 | Loss 1.3563\nINFO __main__: Epoch 23/50 | Loss 1.3572\nINFO __main__: Epoch 24/50 | Loss 1.3574\nINFO __main__: Epoch 25/50 | Loss 1.3577\nINFO __main__: Epoch 26/50 | Loss 1.3575\nINFO __main__: Epoch 27/50 | Loss 1.3578\nINFO __main__: Epoch 28/50 | Loss 1.3576\nINFO __main__: Epoch 29/50 | Loss 1.3576\nINFO __main__: Epoch 30/50 | Loss 1.3576\nINFO __main__: Epoch 31/50 | Loss 1.3576\nINFO __main__: Epoch 32/50 | Loss 1.3577\nINFO __main__: Epoch 33/50 | Loss 1.3576\nINFO __main__: Epoch 34/50 | Loss 1.3576\nINFO __main__: Epoch 35/50 | Loss 1.3578\nINFO __main__: Epoch 36/50 | Loss 1.3579\nINFO __main__: Epoch 37/50 | Loss 1.3578\nINFO __main__: Epoch 38/50 | Loss 1.3576\nINFO __main__: Epoch 39/50 | Loss 1.3577\nINFO __main__: Epoch 40/50 | Loss 1.3580\nINFO __main__: Epoch 41/50 | Loss 1.3577\nINFO __main__: Epoch 42/50 | Loss 1.3579\nINFO __main__: Epoch 43/50 | Loss 1.3578\nINFO __main__: Epoch 44/50 | Loss 1.3577\nINFO __main__: Epoch 45/50 | Loss 1.3578\nINFO __main__: Epoch 46/50 | Loss 1.3579\nINFO __main__: Epoch 47/50 | Loss 1.3580\nINFO __main__: Epoch 48/50 | Loss 1.3582\nINFO __main__: Epoch 49/50 | Loss 1.3581\nINFO __main__: Epoch 50/50 | Loss 1.3580\nINFO __main__: Fertig: models/tp_v2/tp_v2_phase_v1.pt | Manifest models/tp_v2/manifest.json\n",
+      "versuch": 1,
+      "befehl": "env PYTHONPATH=. nice -n 15 /home/michael/.local/share/aurik/venv_rocm72/bin/python -B scripts/train_tp_v2_phase.py --epochs 50 --steps-per-epoch 200 --real-dir data/tp2_transient_pairs --synthetic 0 --out-dir models/tp_v2 --device cuda"
+    }
+  ],
+  "quelle": "scripts/train_job_runner.py",
+  "checkpoint_hashes": {
+    "checkpoint_latest.pt": "a739a586a2167e8575b397a65eab486b5f1f0f1278b13ce58649a1991de9bcba",
+    "tp_v2_phase_v1.pt": "dd884dbd65a1c094655210b5cc9bb93830dc6687bbe975e49370a2683bc51a58"
+  },
+  "ergebnis": "erfolgreich"
+}
