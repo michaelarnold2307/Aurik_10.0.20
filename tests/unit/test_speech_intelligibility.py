@@ -10,7 +10,12 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-from backend.core.dsp.speech_intelligibility import SII_JND_VORBELEGUNG, sii_delta, sii_index
+from backend.core.dsp.speech_intelligibility import (
+    SII_JND_VORBELEGUNG,
+    eingang_brauchbar,
+    sii_delta,
+    sii_index,
+)
 
 
 def _band_limited(sr: int, dur_s: float, lo_hz: float, hi_hz: float, seed: int = 42) -> np.ndarray:
@@ -86,6 +91,16 @@ def test_sii_zeitmittelung_nicht_blind_bei_stille_anfang() -> None:
     ton = _band_limited(sr, 3.0, 300.0, 6000.0, seed=11)
     sig = np.concatenate([stille, ton])
     assert sii_index(sig, sr) > 0.2
+
+
+def test_eingang_brauchbar_weist_none_und_kurzes_ab() -> None:
+    """§V6 (copilot-instructions.md): ein ausgefallener Messpfad darf nicht als „verfuegbar“ gelten."""
+    sr = 48000
+    gut = _band_limited(sr, 1.0, 300.0, 6000.0, seed=5)
+    assert eingang_brauchbar(gut) == (True, "")
+    assert eingang_brauchbar(None)[0] is False
+    assert eingang_brauchbar("kein audio")[0] is False
+    assert eingang_brauchbar(np.zeros(64))[0] is False
 
 
 def test_uv3_verdrahtung_drei_produktionspfade() -> None:

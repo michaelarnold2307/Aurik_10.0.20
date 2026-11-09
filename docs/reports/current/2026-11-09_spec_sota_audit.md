@@ -84,12 +84,14 @@ Ohne Hör-Labels kein musik-spezifisches MOS-Orakel; musik_mos/defektlast
 
 - **L1 ✅:** `backend/core/dsp/speech_intelligibility.py` (SII-Proxy, ANSI-S3.5-
   Band-Wichtung, `sii_delta`), §3-Tabellenzeile (Report-Only, Panel-Vorbelegung),
-  Harness-Invariante 20, 8 Vertragstests. **Nachtrag (Träger-Audit, D-K3-86):**
+  Harness-Invariante 20, 9 Vertragstests. **Nachtrag (Träger-Audit, D-K3-86):**
   der erste Stand hatte **null** Aufrufstellen — der Befund wäre in keinem Lauf
   entstanden. Jetzt Träger `UnifiedRestorerV3._sii_zeuge_meta` →
   `metadata["sii_zeuge"]` in Einzel-, Chunked- und Options-Pfad (REPORT-ONLY,
   3 Schreibstellen, keine Lesestelle); Messfenster zeitlich gemittelt (vorher
   EIN 42-ms-Fenster ⇒ bei Stille-/Fade-Anfang blind).
+  Eingangs-Trägerprüfung `eingang_brauchbar`: `None`/Strings/zu kurze Puffer ⇒
+  `verfuegbar=False` + Warnung statt stillem „Delta 0“.
 - **L2 ✅:** Hörordnung §6 — zeitvariable Lautheit als ISO-532-2/DIN-45631-
   Struktur normativ verankert.
 - **L3 🟡 (Fähigkeit geschlossen, Träger offen):** `residual_audibility(stereo_pair=…)`

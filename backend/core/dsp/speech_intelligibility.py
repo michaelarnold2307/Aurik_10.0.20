@@ -164,6 +164,24 @@ def sii_index(audio: np.ndarray, sr: int) -> float:
         return 0.0
 
 
+def eingang_brauchbar(audio: object, min_samples: int = 512) -> tuple[bool, str]:
+    """Träger-Prüfung vor der Messung: liefert ``(brauchbar, grund)``.
+
+    ``None``, Objekte, Strings und zu kurze Puffer sind KEIN Messfall — sonst
+    meldet der Zeuge fälschlich ``verfuegbar=True`` mit Delta 0 und verdeckt
+    damit den Ausfall (§V6 (copilot-instructions.md): nie still „alles gut").
+    """
+    try:
+        arr = np.asarray(audio)
+    except Exception as exc:
+        return False, f"nicht in ein Array wandelbar: {exc}"
+    if arr.dtype.kind not in "fiu":
+        return False, f"kein reeller Zahlen-Typ ({arr.dtype})"
+    if arr.size < min_samples:
+        return False, f"zu kurz ({arr.size} < {min_samples} Samples)"
+    return True, ""
+
+
 def sii_delta(pre: np.ndarray, post: np.ndarray, sr: int) -> dict[str, float | bool | str]:
     """Delta-basierte Verständlichkeits-Schutzgröße (Hörordnung §3, L1).
 
@@ -183,4 +201,4 @@ def sii_delta(pre: np.ndarray, post: np.ndarray, sr: int) -> dict[str, float | b
     }
 
 
-__all__ = ["sii_index", "sii_delta", "SII_JND_VORBELEGUNG"]
+__all__ = ["sii_index", "sii_delta", "eingang_brauchbar", "SII_JND_VORBELEGUNG"]

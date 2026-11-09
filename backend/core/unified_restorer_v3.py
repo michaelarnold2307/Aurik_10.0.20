@@ -47507,10 +47507,15 @@ class UnifiedRestorerV3:
         vorgelegt. Nie werfend (§V6 (copilot-instructions.md)).
         """
         from backend.core.dsp.speech_intelligibility import (  # pylint: disable=import-outside-toplevel
+            eingang_brauchbar,
             sii_delta,
         )
 
         try:
+            for name, signal in (("eingang", eingang), ("ausgang", ausgang)):
+                brauchbar, grund = eingang_brauchbar(signal)
+                if not brauchbar:
+                    raise ValueError(f"{name}: {grund}")
             befund: dict[str, Any] = dict(sii_delta(eingang, ausgang, int(sample_rate)))
             befund["verfuegbar"] = True
             befund["hoer_instanz"] = "vorzulegen" if befund.get("verschlechterung") else "kein_befund"
