@@ -67,11 +67,12 @@ from backend.core.training_artifacts import (
     acquire_run_lock as _acquire_run_lock,
 )
 from backend.core.training_artifacts import (
-    make_run_id as _make_run_id,
-)
-from backend.core.training_artifacts import (
+    akkumulations_schritt_faellig,
     save_guarded,
     write_text_guarded,
+)
+from backend.core.training_artifacts import (
+    make_run_id as _make_run_id,
 )
 from backend.core.training_artifacts import (
     sha256_file as _sha256_file,
@@ -1017,8 +1018,13 @@ def train(args: argparse.Namespace) -> int:
         _epochen_trainiert += 1
         train_ds.set_epoch(epoch)
         model.train()
+        # D-K3-88: Gradient-Akkumulation statt groesserer Mikro-Batch — die
+        # effektive Batch (batch_size × grad_accum) und die Rezeptur bleiben
+        # gleich, der Aktivierungs-Peak sinkt um Faktor grad_accum.
+        _accum = max(1, int(args.grad_accum))
+        _n_mikro = min(len(train_loader), int(args.steps_per_epoch))
         for step_i, batch in enumerate(train_loader):
-            if step_i >= int(args.steps_per_epoch):
+            if step_i >= _n_mikro:
                 break
             clean = batch["clean"].to(device)
             degraded = batch["degraded"].to(device)
@@ -1041,13 +1047,16 @@ def train(args: argparse.Namespace) -> int:
                     epoch,
                     step_i,
                 )
-                opt.zero_grad(set_to_none=True)
+                # Vorherige Mikro-Gradienten eines offenen Fensters bleiben
+                # gueltig — NICHT nullen, nur diesen Mikro-Batch verwerfen.
                 continue
 
-            opt.zero_grad(set_to_none=True)
-            total.backward()
+            (total / _accum).backward()
+            if not akkumulations_schritt_faellig(mikro_index=step_i, grad_accum=_accum, n_mikro=_n_mikro):
+                continue  # Akkumulations-Fenster noch offen
             torch.nn.utils.clip_grad_norm_([p for p in model.parameters() if p.requires_grad], 5.0)
             opt.step()
+            opt.zero_grad(set_to_none=True)
 
             if opt_proxy is not None and global_step % cal_every == 0:
                 cal = loss_fn.singmos.calibration_loss(y_hat.detach())
@@ -1155,6 +1164,12 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--data", default="", help="Komma-getrennte Manifest-JSONL/Ordner (synthetisch+real)")
     p.add_argument("--epochs", type=int, default=50)
     p.add_argument("--batch-size", type=int, default=8)
+    p.add_argument(
+        "--grad-accum",
+        type=int,
+        default=1,
+        help="Mikro-Batch-Akkumulation: effektive Batch = batch_size × grad_accum (D-K3-88)",
+    )
     p.add_argument("--lr", type=float, default=None)
     p.add_argument("--resume", type=Path, default=None)
     p.add_argument("--preset", choices=("full", "tiny"), default=None)
@@ -1164,6 +1179,8 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--cpu", action="store_true", help="Erzwingt CPU-Inferenz/-Training")
     p.add_argument("--smoke", action="store_true", help="CPU-Ende-zu-Ende-Smoke auf synthetischen Sample-Vocals")
     args = p.parse_args(argv)
+    if args.grad_accum < 1:
+        p.error("--grad-accum muss >= 1 sein")
     if args.preset is None:
         args.preset = "tiny" if args.smoke else "full"
     return train(args)

@@ -45,7 +45,13 @@ from pathlib import Path
 import numpy as np
 import torch
 
-from backend.core.training_artifacts import save_guarded
+from backend.core.training_artifacts import (
+    historie_zusammenfuehren,
+    report_historie_laden,
+    save_guarded,
+    write_text_guarded,
+    zeitbudget_erreicht,
+)
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 logger = logging.getLogger("train_flashsr_f4")
@@ -163,7 +169,15 @@ def main() -> int:
     ap.add_argument("--out-dir", type=str, default="output/f4_flashsr")
     ap.add_argument("--seed", type=int, default=42)
     ap.add_argument("--resume", type=str, default="")
+    ap.add_argument(
+        "--max-seconds",
+        type=float,
+        default=0.0,
+        help="Zeitbudget je Prozess; stoppt an der Epochen-Grenze (Exit 75), 0 = unbegrenzt",
+    )
     args = ap.parse_args()
+
+    t_prozessstart = time.perf_counter()
 
     random.seed(args.seed)
     np.random.seed(args.seed)
@@ -221,12 +235,79 @@ def main() -> int:
         model.load_state_dict(res["model"])
         opt.load_state_dict(res.get("optimizer", opt.state_dict()))
         start_epoch = int(res.get("epoch", 0)) + 1
-        best_val = float(res.get("val_a1", best_val))
-        logger.info("Resume ab Epoche %d (best_val=%.4f)", start_epoch, best_val)
+        best_val = float(res.get("best_val", res.get("val_a1", best_val)))
+        # §G5 (copilot-instructions.md): RNG-Stand fortsetzen — der unterbrochene Lauf folgt derselben
+        # Crop-Reihenfolge wie ein durchgehender Lauf (Seed 42). Bit-Gleichheit
+        # garantiert das nicht (Backend-Kernel können zwischen Prozessen abweichen).
+        if "rng_state" in res:
+            rng.bit_generator.state = res["rng_state"]
+        if "torch_rng_state" in res:
+            torch.set_rng_state(res["torch_rng_state"])
+        history = report_historie_laden(out_dir, seed=args.seed)
+        logger.info(
+            "Resume ab Epoche %d (best_val=%.4f, Historie=%d Epochen, RNG=%s)",
+            start_epoch,
+            best_val,
+            len(history),
+            "fortgesetzt" if "rng_state" in res else "neu",
+        )
+
+    epochen_dieser_lauf = 0
+    letzte_epoche_s = 0.0
+    early_stopped = False
+
+    def _report(*, completed: bool, stop_reason: str) -> None:
+        """Schreibt den Beleg-Report atomar (Historie über Resume-Grenzen)."""
+        zusammengefuehrt = historie_zusammenfuehren(history)
+        report = {
+            "device": str(device),
+            "seed": args.seed,
+            "history": zusammengefuehrt,
+            "best_val_a1": round(best_val, 6),
+            "completed": completed,
+            "stop_reason": stop_reason,
+            "target_epochs": args.epochs,
+            "epochs_done": start_epoch + epochen_dieser_lauf,
+            "gate_hint": "MUSDB-ΔSDR ≥ +2 dB (Bandbreiten-Extension) NACH dem Lauf messen",
+        }
+        write_text_guarded(out_dir / "report.json", json.dumps(report, indent=2, ensure_ascii=False))
+
+    if start_epoch > args.epochs:
+        logger.error(
+            "Resume-Anker liegt hinter dem Ziel: start_epoch=%d > epochs=%d — inkonsistent "
+            "(fremder/zu hoher Anker), Lauf NICHT gestartet.",
+            start_epoch,
+            args.epochs,
+        )
+        return 3
+    if start_epoch == args.epochs:
+        # Kill zwischen letztem Checkpoint und Report ist kein No-Op-Fehler:
+        # der Anker belegt, dass alle Ziel-Epochen trainiert sind (D-K3-87).
+        _report(completed=True, stop_reason="ziel_epochen_bereits_erreicht")
+        logger.info(
+            "Ziel bereits erreicht: Anker steht auf Epoche %d/%d — kein GPU-Lauf nötig.",
+            start_epoch,
+            args.epochs,
+        )
+        return 0
 
     steps_per_epoch = 3 if args.smoke else args.steps_per_epoch
     model.train()
     for epoch in range(start_epoch, args.epochs):
+        if zeitbudget_erreicht(
+            verstrichen_s=time.perf_counter() - t_prozessstart,
+            letzte_epoche_s=letzte_epoche_s,
+            max_seconds=args.max_seconds,
+        ):
+            _report(completed=False, stop_reason="zeitbudget")
+            logger.info(
+                "Zeitbudget %.0f s erreicht — Stopp an der Epochen-Grenze (Epochen in diesem "
+                "Versuch: %d). Resume: --resume %s",
+                args.max_seconds,
+                epochen_dieser_lauf,
+                out_dir / "checkpoint_latest.pt",
+            )
+            return 75
         t0 = time.perf_counter()
         run_a1 = 0.0
         run_stft = 0.0
@@ -258,6 +339,8 @@ def main() -> int:
         run_stft /= max(1, steps_per_epoch)
         v_a1 = val_loss(model, device, val_tracks, rng)
         dt = time.perf_counter() - t0
+        letzte_epoche_s = dt
+        epochen_dieser_lauf += 1
         logger.info("Epoche %d fertig (%.1f s): A1=%.4f STFT=%.4f Val=%.4f", epoch, dt, run_a1, run_stft, v_a1)
         history.append(
             {
@@ -268,7 +351,15 @@ def main() -> int:
                 "seconds": round(dt, 1),
             }
         )
-        ckpt = {"model": model.state_dict(), "optimizer": opt.state_dict(), "epoch": epoch, "val_a1": v_a1}
+        ckpt = {
+            "model": model.state_dict(),
+            "optimizer": opt.state_dict(),
+            "epoch": epoch,
+            "val_a1": v_a1,
+            "best_val": best_val,
+            "rng_state": rng.bit_generator.state,
+            "torch_rng_state": torch.get_rng_state(),
+        }
         save_guarded(out_dir / f"checkpoint_epoch{epoch}.pt", ckpt)
         # Stabiler Resume-Anker (Konvention aller Trainer, §G5 (copilot-instructions.md)):
         # die Ketten verweisen mit --resume auf genau diesen Pfad.
@@ -282,17 +373,22 @@ def main() -> int:
             patience_left -= 1
             if patience_left <= 0 and not args.smoke:
                 logger.info("Early-Stop nach Epoche %d (Val stagniert)", epoch)
+                early_stopped = True
                 break
-        report = {
-            "device": str(device),
-            "seed": args.seed,
-            "history": history,
-            "best_val_a1": round(best_val, 6),
-            "gate_hint": "MUSDB-ΔSDR ≥ +2 dB (Bandbreiten-Extension) NACH dem Lauf messen",
-        }
-        (out_dir / "report.json").write_text(json.dumps(report, indent=2, ensure_ascii=False))
+        _report(
+            completed=(epoch + 1) >= args.epochs,
+            stop_reason="ziel_epochen" if (epoch + 1) >= args.epochs else "laeuft",
+        )
 
-    logger.info("F4-Finetune abgeschlossen — bestes Val-A1: %.4f (Checkpoint: %s)", best_val, out_dir / "best.pt")
+    ziel_erreicht = (not early_stopped) and (start_epoch + epochen_dieser_lauf) >= args.epochs
+    _report(completed=ziel_erreicht, stop_reason="early_stop" if early_stopped else "ziel_epochen")
+    logger.info(
+        "F4-Finetune beendet — %d/%d Epochen, bestes Val-A1: %.4f (Checkpoint: %s)",
+        start_epoch + epochen_dieser_lauf,
+        args.epochs,
+        best_val,
+        out_dir / "best.pt",
+    )
     return 0
 
 

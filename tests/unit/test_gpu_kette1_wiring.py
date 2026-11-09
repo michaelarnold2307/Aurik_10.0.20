@@ -18,6 +18,7 @@ kein stiller Fehlpfad, Ursache statt Symptom).
 from __future__ import annotations
 
 import importlib.util
+import json
 import re
 import subprocess
 from pathlib import Path
@@ -269,3 +270,159 @@ def test_no_op_lauf_meldet_keinen_erfolg() -> None:
     assert "return 3" in quelle
     # Der Zähler muss IM Epochen-Loop erhöht werden (nicht aus start_epoch geraten).
     assert "_epochen_trainiert += 1" in quelle
+
+
+# ── D-K3-87: D3-Finetunes waren in 2×6 h strukturell unerreichbar ──────────
+# Befund 2026-11-09 (Manifeste train_job_d3_bigvgan_f3.json /
+# train_job_d3_flashsr_musik.json): BigVGAN 4418–4424 s/Epoche, FlashSR
+# 4799–4843 s/Epoche ⇒ 30 Epochen = 36,8 h bzw. 40,3 h. Die Kette gab 2×6 h
+# und markierte den gesunden Teilfortschritt als „fehlgeschlagen“ (Epoche 8
+# bzw. 10 von 30). Die Tests pinnen die Taktung gegen die Messwerte, damit ein
+# späterer Refactor die Lücke nicht wieder einbaut.
+
+
+def test_d3_finetunes_haben_realistisches_zeitbudget() -> None:
+    kette2 = _SCRIPT.with_name("gpu_kette2_matrix_d3.sh")
+    gemessene_epoche_s = {"D3-2:": 4424.0, "D3-3:": 4843.0}
+
+    for job, epoche_s in gemessene_epoche_s.items():
+        block = _block(job, kette2)
+        timeout = float(re.search(r"--timeout-s\s+(\d+)", block).group(1))
+        retries = int(re.search(r"--retries\s+(\d+)", block).group(1))
+        budget = float(re.search(r"--max-seconds\s+(\d+)", block).group(1))
+
+        assert budget < timeout, f"{job}: Zeitbudget {budget} muss unter dem Timeout {timeout} liegen"
+        kapazitaet = (retries + 1) * budget
+        assert kapazitaet >= 30 * epoche_s, (
+            f"{job}: {kapazitaet:.0f} s Kapazität < 30 Epochen à {epoche_s:.0f} s "
+            "— der Job wäre wieder strukturell unerreichbar"
+        )
+
+
+def test_d3_jobs_tragen_das_zeitbudget_in_allen_befehlen() -> None:
+    """Erstlauf UND Resume müssen an der Epochen-Grenze stoppen (kein SIGTERM)."""
+    kette2 = _SCRIPT.with_name("gpu_kette2_matrix_d3.sh")
+    for job in ("D3-2:", "D3-3:"):
+        block = _block(job, kette2)
+        assert block.count("--max-seconds") >= 2, f"{job}: Zeitbudget fehlt in cmd/resume-cmd"
+
+
+def test_flashsr_laeuft_vor_bigvgan() -> None:
+    """Der kurze FlashSR-Lauf darf nicht hinter dem 37-h-BigVGAN-Lauf warten."""
+    kette2 = _SCRIPT.with_name("gpu_kette2_matrix_d3.sh").read_text(encoding="utf-8")
+    assert kette2.find("=== D3-3:") < kette2.find("=== D3-2:")
+
+
+def test_bigvgan_erstlauf_resumt_vom_anker() -> None:
+    """D3-2: Auch der Erstlauf muss den Anker prüfen (D-K3-72-Klasse).
+
+    Befund 2026-11-09: der `--cmd` rief `train_bigvgan_f3.py --epochs 30`
+    **ohne** `--resume`; jeder Kettenstart begann bei Epoche 0 und überschrieb
+    `checkpoint_latest.pt`. Der Job kam dadurch über ~8 Epochen nie hinaus,
+    obwohl `checkpoint_epoch8.pt` bereits existierte. FlashSR hatte den Guard
+    seit 2026-11-08, BigVGAN nicht.
+    """
+    kette2 = _SCRIPT.with_name("gpu_kette2_matrix_d3.sh")
+    block = _block("D3-2:", kette2)
+
+    assert block.count("if [ -f output/f3_bigvgan/checkpoint_latest.pt ]") == 2, (
+        "Erstlauf und Retry müssen den BigVGAN-Anker prüfen"
+    )
+    assert block.count("--resume output/f3_bigvgan/checkpoint_latest.pt") == 2
+
+
+def test_zeitbudget_stoppt_vor_der_naechsten_epoche() -> None:
+    from backend.core.training_artifacts import zeitbudget_erreicht
+
+    assert not zeitbudget_erreicht(verstrichen_s=0.0, letzte_epoche_s=0.0, max_seconds=100.0)
+    assert not zeitbudget_erreicht(verstrichen_s=10.0, letzte_epoche_s=50.0, max_seconds=100.0)
+    assert zeitbudget_erreicht(verstrichen_s=60.0, letzte_epoche_s=50.0, max_seconds=100.0)
+    assert not zeitbudget_erreicht(verstrichen_s=1e9, letzte_epoche_s=50.0, max_seconds=0.0)
+
+
+def test_historie_zusammenfuehren_ist_resume_fest() -> None:
+    from backend.core.training_artifacts import historie_zusammenfuehren
+
+    alt = [{"epoch": 0, "val_a1": 1.0}, {"epoch": 1, "val_a1": 0.9}]
+    neu = [{"epoch": 1, "val_a1": 0.85}, {"epoch": 2, "val_a1": 0.8}]
+
+    zusammen = historie_zusammenfuehren(alt, neu)
+
+    assert [eintrag["epoch"] for eintrag in zusammen] == [0, 1, 2]
+    assert zusammen[1]["val_a1"] == 0.85, "der jüngste Versuch muss gewinnen"
+
+
+def test_report_historie_verwirft_fremden_seed(tmp_path: Path) -> None:
+    from backend.core.training_artifacts import report_historie_laden
+
+    (tmp_path / "report.json").write_text(json.dumps({"seed": 7, "history": [{"epoch": 0}]}), encoding="utf-8")
+    assert report_historie_laden(tmp_path, seed=42) == []
+
+    (tmp_path / "report.json").write_text(
+        json.dumps({"seed": 42, "history": [{"epoch": 0}, "kaputt"]}), encoding="utf-8"
+    )
+    assert report_historie_laden(tmp_path, seed=42) == [{"epoch": 0}]
+
+
+def test_beide_d3_trainer_stoppen_an_der_epochengrenze() -> None:
+    for name in ("train_bigvgan_f3.py", "train_flashsr_f4.py"):
+        quelle = (_ROOT / "scripts" / name).read_text(encoding="utf-8")
+        assert "zeitbudget_erreicht(" in quelle, f"{name}: Zeitbudget fehlt"
+        assert "return 75" in quelle, f"{name}: Exit 75 (Zeitbudget) fehlt"
+        assert "start_epoch > args.epochs" in quelle, f"{name}: Fail-closed-Guard (Anker hinter Ziel) fehlt"
+        assert "start_epoch == args.epochs" in quelle, f"{name}: Ziel-bereits-erreicht-Zweig fehlt"
+        assert "ziel_epochen_bereits_erreicht" in quelle, f"{name}: Beleg-Grund fehlt"
+        assert '"best_val": best_val' in quelle, f"{name}: best_val nicht resume-fest"
+        assert '"rng_state": rng.bit_generator.state' in quelle, f"{name}: RNG-Fortsetzung fehlt"
+
+
+def _m8_optionen(script: Path) -> tuple[str, str]:
+    """Liefert die `--cmd`- und `--resume-cmd`-Zeile des M8-Jobs einer Kette."""
+    zeilen = script.read_text(encoding="utf-8").splitlines()
+    start = next(i for i, z in enumerate(zeilen) if "--name m8_aspade" in z)
+    cmd = next(z for z in zeilen[start:] if "--cmd " in z)
+    resume = next(z for z in zeilen[start:] if "--resume-cmd " in z)
+    return cmd.strip(), resume.strip()
+
+
+def test_m8_ziel_ist_30_epochen_und_beide_ketten_identisch() -> None:
+    """M8 (A-SPADE) ist mit 30 Epochen ECHT FERTIG (D-K4-1, 3,8 h, 2026-11-08).
+
+    `train_job_runner` vergleicht die Befehlszeile LITERAL gegen das Manifest.
+    Eine abweichende 60-Epochen-Variante wurde deshalb als „Befehl weicht ab —
+    Neulauf" gewertet und startete den fertig belegten Job erneut (Befund
+    2026-11-09, rund 6 h GPU-Zeit). Der Erstlauf trägt daher exakt den
+    dokumentierten Zielumfang; nur der Resume-Pfad darf den Datei-Guard tragen.
+    """
+    cmd1, resume1 = _m8_optionen(_ROOT / "scripts" / "gpu_kette1_welle_c.sh")
+    cmd3, resume3 = _m8_optionen(_ROOT / "scripts" / "gpu_kette3_k4_rest.sh")
+
+    assert cmd1 == cmd3, "Kette 1 und Kette 3 müssen denselben M8-Erstlaufbefehl fahren"
+    assert "--epochs 30" in cmd1, "M8-Ziel sind 30 Epochen (D-K4-1)"
+    assert "--epochs 60" not in cmd1 and "--epochs 60" not in resume1
+    assert "--resume" not in cmd1, "der Erstlauf darf nicht resumen (Manifest-Vergleich)"
+    assert "--resume models/aspade/checkpoint_latest.pt" in resume1
+    assert "--resume models/aspade/checkpoint_latest.pt" in resume3
+
+
+def test_cantus_finetune_haelt_das_vram_budget_ein() -> None:
+    """D-K3-88: Der Full-Preset-fine_tune starb reproduzierbar am 24-GiB-OOM
+    (22,77 GiB belegt, Versuch 1 nach 55 s, Versuch 2 nach 31 s). Fix: Mikro-Batch
+    2 × Akkumulation 4 = effektive Batch 8 (Rezeptur unverändert, Peak /4).
+    Beide Befehle (Erstlauf + Resume) müssen die Flags tragen — sonst startet der
+    Runner den OOM-Lauf erneut.
+    """
+    _quelle = (_ROOT / "scripts" / "gpu_kette1_welle_c.sh").read_text(encoding="utf-8")
+    _zeilen = _quelle.splitlines()
+    _start = next(i for i, z in enumerate(_zeilen) if "--name c2_cantus_finetune" in z)
+    _cmd = next(z for z in _zeilen[_start:] if "--cmd " in z)
+    _resume = next(z for z in _zeilen[_start:] if "--resume-cmd " in z)
+    for _zeile in (_cmd, _resume):
+        assert "--batch-size 2" in _zeile, f"Cantus-fine_tune ohne Mikro-Batch 2: {_zeile}"
+        assert "--grad-accum 4" in _zeile, f"Cantus-fine_tune ohne Akkumulation 4: {_zeile}"
+        assert "--singmos-loss" in _zeile, (
+            "SingMOS-Lehrer darf nicht still abgeschaltet werden (§V7 (copilot-instructions.md))"
+        )
+    _trainer = (_ROOT / "scripts" / "train_cantus.py").read_text(encoding="utf-8")
+    assert '"--grad-accum"' in _trainer, "train_cantus.py: --grad-accum fehlt"
+    assert "akkumulations_schritt_faellig" in _trainer, "train_cantus.py: Akkumulations-Logik fehlt"

@@ -26,6 +26,7 @@ Beispiel::
 
 from __future__ import annotations
 
+import json
 import logging
 import os
 import shutil
@@ -244,3 +245,98 @@ def system_mem_available_gb() -> float:
     except OSError:
         return 0.0
     return 0.0
+
+
+# ── Zeitbudget + Resume-feste Report-Historie (D-K3-87, 2026-11-09) ─────────
+# Befund: 30-Epochen-Finetunes (BigVGAN ~74 min/Epoche, FlashSR ~80 min/Epoche)
+# passen nicht in 2×6 h. Der harte Runner-Timeout killte mitten in der Epoche
+# (bis zu 80 min Fortschritt verloren) und das Manifest meldete den gesunden
+# Teilfortschritt als „fehlgeschlagen". Diese Helfer beenden den Lauf an der
+# Epochen-Grenze und führen die Beleg-Historie über Resume-Grenzen zusammen.
+
+
+def zeitbudget_erreicht(
+    *,
+    verstrichen_s: float,
+    letzte_epoche_s: float,
+    max_seconds: float,
+) -> bool:
+    """True, wenn die nächste Epoche das Zeitbudget überschreiten würde.
+
+    Die Schätzung nutzt die zuletzt gemessene Epochen-Dauer. Ohne Messung
+    (erste Epoche) oder bei ``max_seconds <= 0`` (unbegrenzt) wird nie
+    abgebrochen — der Lauf endet dann nur am Ziel oder per Early-Stop.
+    """
+    if max_seconds <= 0.0 or letzte_epoche_s <= 0.0:
+        return False
+    return (verstrichen_s + letzte_epoche_s) > max_seconds
+
+
+def report_historie_laden(out_dir: Path | str, *, seed: int) -> list[dict[str, Any]]:
+    """Liest die Epochen-Historie eines früheren Versuchs (Resume-Verkettung).
+
+    Der Report ist das Beleg-Artefakt des Laufs. Ohne diese Zusammenführung
+    überschreibt jeder Resume die Historie; der finale Report zeigt dann nur
+    die letzte Versuchs-Spanne (Befund 2026-11-09: der FlashSR-Report enthielt
+    nur die Epochen 8–10 von 30). Fremde Seeds werden verworfen (§G5 (copilot-instructions.md)).
+    """
+    pfad = Path(out_dir) / "report.json"
+    if not pfad.is_file():
+        return []
+    try:
+        daten = json.loads(pfad.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        logger.warning(
+            "Trainings-Report unlesbar (%s) — Historie wird neu begonnen (§V6 (copilot-instructions.md)).", exc
+        )
+        return []
+    try:
+        report_seed = int(daten.get("seed", -1))
+    except (TypeError, ValueError):
+        report_seed = -1
+    if report_seed != int(seed):
+        logger.warning(
+            "Trainings-Report gehört zu Seed %s (erwartet %s) — Historie wird nicht übernommen.",
+            daten.get("seed"),
+            seed,
+        )
+        return []
+    historie = daten.get("history")
+    if not isinstance(historie, list):
+        return []
+    return [eintrag for eintrag in historie if isinstance(eintrag, dict)]
+
+
+def historie_zusammenfuehren(*historien: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Führt Epochen-Historien zusammen: eine Zeile je Epoche, aufsteigend.
+
+    Bei doppelten Epochen gewinnt der später übergebene Eintrag (der jüngste
+    Versuch), damit ein erneut ausgeführter Resume-Stand sichtbar bleibt.
+    """
+    pro_epoche: dict[int, dict[str, Any]] = {}
+    for historie in historien:
+        for eintrag in historie:
+            if not isinstance(eintrag, dict) or "epoch" not in eintrag:
+                continue
+            try:
+                epoche = int(eintrag["epoch"])
+            except (TypeError, ValueError):
+                continue
+            pro_epoche[epoche] = eintrag
+    return [pro_epoche[epoche] for epoche in sorted(pro_epoche)]
+
+
+def akkumulations_schritt_faellig(*, mikro_index: int, grad_accum: int, n_mikro: int) -> bool:
+    """True, wenn nach diesem Mikro-Batch ein Optimizer-Schritt fällig ist.
+
+    Gradient-Akkumulation (D-K3-88): Die Mikro-Batches eines Fensters werden
+    aufsummiert; gesteppt wird am Fensterende UND am Epochenende (Rest-Fenster
+    geht nie verloren). ``grad_accum <= 1`` bedeutet: jeder Mikro-Batch ist ein
+    Schritt (Bestand).
+    """
+    _accum = max(1, int(grad_accum))
+    if _accum <= 1:
+        return True
+    if mikro_index < 0 or n_mikro <= 0:
+        return False
+    return (mikro_index + 1) % _accum == 0 or (mikro_index + 1) >= int(n_mikro)

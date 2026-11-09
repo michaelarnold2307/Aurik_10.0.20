@@ -1,6 +1,6 @@
 # TASK_CHANGES — Live-Ledger der aktuellen Aufgabe
 
-> Generiert von `scripts/change_ledger.py snapshot` (Base: `HEAD`, Stand: 2026-11-09 09:36 CET).
+> Generiert von `scripts/change_ledger.py snapshot` (Base: `HEAD`, Stand: 2026-11-09 21:27 CET).
 > CI (`ci-lite.yml` pr-evidence-gate) erzwingt Abdeckung: jede geänderte Code-Datei muss hier stehen.
 
 ## Geänderte Dateien
@@ -10,15 +10,36 @@
 | M | `.github/FILE_REGISTRY.md` | modifiziert |
 | M | `.github/SOTA_DEFICIT_REGISTER.md` | modifiziert |
 | M | `TASK_CHANGES.md` | modifiziert |
-| M | `backend/core/dsp/speech_intelligibility.py` | modifiziert |
-| M | `backend/core/unified_restorer_v3.py` | modifiziert |
+| M | `audit/spec_integration_report.json` | modifiziert |
+| M | `audit/spec_integration_report.md` | modifiziert |
+| M | `backend/core/training_artifacts.py` | modifiziert |
 | M | `docs/SOTA_HANDOVER.md` | modifiziert |
-| M | `docs/reports/current/2026-11-09_spec_sota_audit.md` | modifiziert |
-| M | `docs/reports/current/train_job_d3_flashsr_musik.json` | modifiziert |
-| M | `tests/unit/test_speech_intelligibility.py` | modifiziert |
+| M | `docs/TODOS_SOTA_ROADMAP.md` | modifiziert |
+| A | `docs/reports/current/2026-11-09_cantus_finetune_oom.md` | neu |
+| A | `docs/reports/current/2026-11-09_d3_taktung_zeitbudget.md` | neu |
+| M | `scripts/gpu_kette1_welle_c.sh` | modifiziert |
+| M | `scripts/gpu_kette2_matrix_d3.sh` | modifiziert |
+| M | `scripts/gpu_kette3_k4_rest.sh` | modifiziert |
+| M | `scripts/train_bigvgan_f3.py` | modifiziert |
+| M | `scripts/train_cantus.py` | modifiziert |
+| M | `scripts/train_flashsr_f4.py` | modifiziert |
+| M | `scripts/train_job_runner.py` | modifiziert |
+| M | `tests/unit/test_gpu_kette1_wiring.py` | modifiziert |
+| M | `tests/unit/test_train_job_runner.py` | modifiziert |
+| ?? | `backend/core/dsp/musik_mos_v2.py` | ungetrackt |
+| ?? | `backend/core/dsp/ohr_brief.py` | ungetrackt |
+| ?? | `backend/core/dsp/ohr_prior.py` | ungetrackt |
+| ?? | `docs/reports/current/2026-11-09_mein_ohr_richtungsfix.md` | ungetrackt |
 | ?? | `docs/reports/current/2026-11-09_roadmap_qualitaetsstufe2.md` | ungetrackt |
+| ?? | `docs/reports/current/train_job_c2_cantus_finetune.json` | ungetrackt |
 | ?? | `docs/reports/current/train_job_d_k2_3_vocos_finetune.json` | ungetrackt |
+| ?? | `scripts/ohr_kalibrieren.py` | ungetrackt |
+| ?? | `scripts/ohr_panel.py` | ungetrackt |
 | ?? | `study_stimuli/model_ab/manifest.json` | ungetrackt |
+| ?? | `tests/unit/test_export_vocos_48khz_finetune.py` | ungetrackt |
+| ?? | `tests/unit/test_musik_mos_v2.py` | ungetrackt |
+| ?? | `tests/unit/test_ohr_panel.py` | ungetrackt |
+| ?? | `tests/unit/test_ohr_prior.py` | ungetrackt |
 
 ## Entscheidungen
 

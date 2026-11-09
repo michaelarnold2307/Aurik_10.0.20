@@ -17,6 +17,10 @@ Der Runner startet Prozesse in eigenen Prozessgruppen (``start_new_session``)
 und kappt sie bei Timeout sauber (TERM → KILL). Jeder Versuch landet sofort
 im Manifest (crash-sicher); der Resume-Befehl steht darin — wie gefordert.
 
+Manifest-Status: ``erfolgreich`` (Ziel erreicht), ``zeitbudget`` (Trainer
+stoppte an der Epochen-Grenze, Exit 75 — gesund, aber fortsetzbar) oder
+``fehlgeschlagen``. Nur ``erfolgreich`` wird beim Ketten-Neustart uebersprungen.
+
 Aufruf:
     python3 -B scripts/train_job_runner.py --name cantus --phase v2 --seed 42 \\
         --ckpt-dir models/cantus/cantus_training \\
@@ -47,6 +51,13 @@ from backend.core.training_artifacts import (
     make_run_id,
     sha256_file,
 )
+
+# Trainer mit Zeitbudget (``--max-seconds``) stoppen SELBST an der Epochen-Grenze
+# und melden Exit 75 (``zeitbudget_erreicht``). Das ist kein Modellfehler: der
+# Lauf ist gesund und wird am Anker fortgesetzt. Vor D-K3-87 (2026-11-09) stand
+# ein solcher Lauf als "fehlgeschlagen" im Manifest — die Fehldiagnose liess
+# die D3-Finetunes "gescheitert" aussehen, obwohl sie nur nicht fertig waren.
+ZEITBUDGET_EXITCODE = 75
 
 log = logging.getLogger(__name__)
 
@@ -191,6 +202,13 @@ def run_job(
         _write_manifest(manifest_path, manifest)
         if exit_code == 0:
             break
+        if exit_code == ZEITBUDGET_EXITCODE and not res["timed_out"]:
+            print(
+                f"[{run_id}] Versuch {versuch}: Zeitbudget erreicht (exit=75) — "
+                "kein Fehler, Fortsetzung am Epochen-Anker.",
+                flush=True,
+            )
+            continue
         print(
             f"[{run_id}] Versuch {versuch} fehlgeschlagen "
             f"(exit={res['exit_code']}, timeout={res['timed_out']}) — Auto-Resume.",
@@ -198,7 +216,12 @@ def run_job(
         )
 
     manifest["checkpoint_hashes"] = _checkpoint_hashes(ckpt_dir)
-    manifest["ergebnis"] = "erfolgreich" if exit_code == 0 else "fehlgeschlagen"
+    if exit_code == 0:
+        manifest["ergebnis"] = "erfolgreich"
+    elif exit_code == ZEITBUDGET_EXITCODE:
+        manifest["ergebnis"] = "zeitbudget"
+    else:
+        manifest["ergebnis"] = "fehlgeschlagen"
     _write_manifest(manifest_path, manifest)
     lock.close()
     print(f"[{run_id}] Ergebnis: {manifest['ergebnis']} — Manifest: {manifest_path}", flush=True)

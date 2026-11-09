@@ -15,6 +15,7 @@ from scripts.train_job_runner import JOB_LOCK_NAME, run_job
 
 PY_OK = [sys.executable, "-c", "print('ok')"]
 PY_FAIL = [sys.executable, "-c", "raise SystemExit(3)"]
+PY_ZEITBUDGET = [sys.executable, "-c", "raise SystemExit(75)"]
 PY_SLEEP = [sys.executable, "-c", "import time; time.sleep(60)"]
 
 
@@ -90,6 +91,29 @@ def test_alle_versuche_fehlgeschlagen(tmp_path: Path) -> None:
     m = json.loads(man.read_text(encoding="utf-8"))
     assert m["ergebnis"] == "fehlgeschlagen"
     assert [v["exit_code"] for v in m["versuche"]] == [3, 3], "Resume wurde versucht"
+
+
+def test_zeitbudget_stopp_ist_kein_fehlschlag(tmp_path: Path) -> None:
+    """Exit 75 (Zeitbudget-Stopp an der Epochen-Grenze) ist kein Modellfehler.
+
+    Befund D-K3-87: die D3-Finetunes standen als "fehlgeschlagen" im Manifest,
+    obwohl der Lauf gesund war und nur das 6-h-Fenster nicht reichte.
+    """
+    man = tmp_path / "man.json"
+    code = run_job(
+        name="t75",
+        ckpt_dir=tmp_path / "ckpt",
+        cmd=PY_ZEITBUDGET,
+        resume_cmd=PY_ZEITBUDGET,
+        phase="d3",
+        timeout_s=30,
+        retries=1,
+        manifest_path=man,
+    )
+    assert code == 75
+    m = json.loads(man.read_text(encoding="utf-8"))
+    assert m["ergebnis"] == "zeitbudget", "Zeitbudget-Stopp darf nicht als Fehler gelten"
+    assert [v["exit_code"] for v in m["versuche"]] == [75, 75], "Resume wurde versucht"
 
 
 def _zaehl_befehl(counter: Path, zeichen: str = "x") -> list[str]:

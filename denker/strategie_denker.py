@@ -45,7 +45,7 @@ _3X_RT_LIMIT: float = 32.0
 # mit 7248,7–7259,2 s Wall, Median 32,19× RT — Log
 # `docs/reports/current/rt_messung_2026-11-04.log`; Vorgänger-Messung
 # Matrix-Endlauf 2026-09-07/08 waren ~53× RT, copilot-instructions.md
-# §Performance-Budget): Die Voll-Pipeline liegt damit auf der 32×-Guard-Norm
+# §Performance-Budget (copilot-instructions.md)): Die Voll-Pipeline liegt damit auf der 32×-Guard-Norm
 # (Abweichung +0,6 %); der gemeldete `rt_factor` ist zusätzlich auf 32,0
 # gekappt (Spec §9.5). Die frühere Ist-Lücke ist durch die F-Reihe-
 # Performance-Arbeit geschlossen (Feature-Cache, pYIN-Vektorisierung,
@@ -130,6 +130,10 @@ class StrategiePlan:
     goosebumps_baseline: float = 0.0
     """Gänsehaut-Baseline vor der Verarbeitung — misst emotionale Wirkung."""
 
+    ohr_brief: dict = field(default_factory=dict)
+    """Ohr-Brief (ohr_brief.py): ALLE Hör-Informationen für die Maßnahmen-
+    Ableitung — Ohr-Prior, Hör-Instanz-Werte, musik_mos-Status (§7)."""
+
     budget_note: str = ""
     """Hinweis auf Budget-Engpässe (Deutsch, laienverständlich)."""
 
@@ -149,6 +153,7 @@ class StrategiePlan:
             "human_hearing_comfort_profile": dict(self.human_hearing_comfort_profile),
             "pleasantness_baseline": self.pleasantness_baseline,
             "goosebumps_baseline": self.goosebumps_baseline,
+            "ohr_brief": dict(self.ohr_brief),
             "budget_note": self.budget_note,
         }
 
@@ -458,6 +463,18 @@ class StrategieDenker:
             except Exception:
                 logger.warning("strategie_denker.py::Goosebumps Ersatzpfad", exc_info=True)
 
+        # Ohr-Brief (§7): Das Ohr versorgt den StrategieDenker mit ALLEN
+        # Hör-Informationen aus einer Quelle (ohr_brief.py) — Ohr-Prior-Artefakt,
+        # HPE- und Goosebumps-Baseline. Fail-safe: wirft nie, ohne Artefakt gilt
+        # verfuegbar=False und die Default-Strategie bleibt unverändert.
+        try:
+            from backend.core.dsp.ohr_brief import erstelle_ohr_brief
+
+            _ohr_brief = erstelle_ohr_brief(goosebumps=_goose_base, hpe=_hpe_base)
+        except Exception as _ob_exc:
+            logger.debug("StrategieDenker: Ohr-Brief nicht verfügbar: %s", _ob_exc)
+            _ohr_brief = erstelle_ohr_brief()
+
         note = ""
         if audio_dur > 300:
             note = (
@@ -481,9 +498,16 @@ class StrategieDenker:
             human_hearing_comfort_profile=_comfort_profile,
             pleasantness_baseline=_hpe_base,  # §v10
             goosebumps_baseline=_goose_base,  # §v10
+            ohr_brief=_ohr_brief.as_dict(),  # Ohr-Prior + Hör-Instanz (§7)
             budget_note=note,
         )
         self._current_plan = plan
+        logger.info(
+            "StrategieDenker: Ohr-Brief — prior=%s, getragen=%.2f, goosebumps=%.3f",
+            _ohr_brief.ohr_prior_verfuegbar,
+            _ohr_brief.getragen,
+            float(_ohr_brief.goosebumps or 0.0),
+        )
         logger.info(
             "StrategieDenker: Strategieplan — Dauer=%.1fs, Grenze=%.1fs, Chunk=%.1fs, Sev=%.2f (base=%.2f)",
             audio_dur,
