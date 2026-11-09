@@ -76,9 +76,11 @@ Verifikation: `tests/unit/test_ohr_prior.py`,
 - **Kalibrierung ist menschlich:** `python3 -B scripts/ohr_panel.py
   --erzeuge-paare --verzeichnis <Musikordner>` erzeugt A/B-Paare und fragt
   l/ r/ = ab; erst danach entsteht `models/ohr/ohr_prior.json`.
-- Die Denker-Verdrahtung ist **report-only** (Ohr-Brief in den Ergebnissen,
-  Priorisierung im Sweet-Spot-Loop); sie entscheidet nie gegen das
-  Never-worsen-Gate oder die Hör-Instanz (§7 Hörordnung).
+- **Konsumenten heute:** UV3 schreibt `metadata["ohr_prior"]` (report-only),
+  der StrategieDenker legt den Ohr-Brief in den Strategieplan. Die
+  Priorisierung im Sweet-Spot-Loop (Restaurier-/Defekt-/Exzellenz-Denker) ist
+  **bewusst nicht** verdrahtet — sie wäre klangwirksam und braucht eine
+  Hör-/B3-Entscheidung; sie entscheidet nie gegen das Never-worsen-Gate.
 - `sii` bleibt als Feature mit kleinem Gewicht (0,10) erhalten, obwohl es ein
   Sprach-Intelligibilitäts-Maß ist; die Musik-Tauglichkeit ist nicht belegt.
   Das ist als offener Punkt dokumentiert, kein Qualitätsurteil.

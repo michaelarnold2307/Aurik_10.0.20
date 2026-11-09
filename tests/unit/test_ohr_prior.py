@@ -209,24 +209,24 @@ def test_uv3_ohr_prior_konsultation_verdrahtet() -> None:
 
 
 def test_denker_ohr_brief_verdrahtet() -> None:
-    """Wiring-Guard (Muster C, §7): Das Ohr MUSS die Denker mit ALLEN
-    Informationen versorgen — StrategieDenker (Maßnahmen-Ableitung),
-    RestaurierDenker (Umsetzung), ExzellenzDenker (Exzellenz-Bewertung).
+    """Wiring-Guard (Muster C, §7): Das Ohr MUSS im Produktionspfad ankommen.
+
+    Aktuell verbraucht: UV3 (Report `metadata["ohr_prior"]`) und der
+    StrategieDenker (Ohr-Brief im Strategieplan). Die weitergehende
+    Priorisierung im Sweet-Spot-Loop (Restaurier-/Defekt-/Exzellenz-Denker)
+    ist bewusst noch NICHT verdrahtet — sie wäre klangwirksam und braucht
+    eine eigene Hör-/B3-Entscheidung (Blocker in D-K3-89).
     """
     from pathlib import Path as _P
 
     _root = _P(__file__).resolve().parents[2]
     for name, erwartet in [
         ("denker/strategie_denker.py", ["erstelle_ohr_brief", "ohr_brief"]),
-        ("denker/restaurier_denker.py", ["erstelle_ohr_brief", "ohr_gewichte"]),
-        ("denker/exzellenz_denker.py", ["erstelle_ohr_brief", "ohr_brief"]),
-        ("denker/defekt_denker.py", ["erstelle_ohr_brief", "severity_ohr_kalibriert"]),
-        ("denker/reparatur_denker.py", ["erstelle_ohr_brief", "ohr_brief"]),
-        ("denker/rekonstruktions_denker.py", ["erstelle_ohr_brief", "ohr_brief"]),
+        ("backend/core/unified_restorer_v3.py", ["erstelle_ohr_brief", '_flow_meta["ohr_prior"]']),
     ]:
         src = (_root / name).read_text(encoding="utf-8")
         for token in erwartet:
-            assert token in src, f"{token} fehlt in {name} — Denker nicht mit dem Ohr verdrahtet"
+            assert token in src, f"{token} fehlt in {name} — Ohr nicht verdrahtet"
 
 
 def test_ohr_brief_ziel_gewichte_invarianten() -> None:

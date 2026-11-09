@@ -17995,6 +17995,23 @@ class UnifiedRestorerV3:
             # Bewusst still (kein WARN): GC-Aufräumung ist best-effort, kein Fehlerpfad.
             logger.debug("GC-Aufräumung fehlgeschlagen (unkritisch)")
 
+        # Ohr-Prior (§7, 2026-11-09): personalisierte Hör-Instanz — Report-Only.
+        # Zentral via ohr_brief.erstelle_ohr_brief() — Denker und UV3 teilen
+        # dieselbe Quelle. Der Zeuge entscheidet NIE — er wird gemessen und
+        # ausgewiesen (§V6 (copilot-instructions.md) Fail-safe im Brief).
+        try:
+            from backend.core.dsp.ohr_brief import erstelle_ohr_brief
+
+            _op_brief = erstelle_ohr_brief()
+            _flow_meta["ohr_prior"] = _op_brief.as_dict()
+            if _op_brief.ohr_prior_verfuegbar and _op_brief.ohr_prior is not None:
+                logger.info(
+                    "Ohr-Prior konsultiert: n=%d, getragen=%.2f", _op_brief.ohr_prior.n_labels, _op_brief.getragen
+                )
+        except Exception as _op_exc:
+            _flow_meta["ohr_prior"] = {"ohr_prior_verfuegbar": False, "grund": type(_op_exc).__name__}
+            logger.debug("Ohr-Prior-Konsultation nicht verfügbar: %s", _op_exc)
+
         # §8.3 GoosebumpsQualityChecker — Holistische psychoakustische Qualitätsprüfung
         _goosebumps_result = None
         _goosebumps_score: float | None = None
