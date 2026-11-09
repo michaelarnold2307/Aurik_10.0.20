@@ -431,7 +431,36 @@ Register D-K3-80 aktualisiert (ERFOLGREICH). Substanz-Befund der parallelen
 Sitzung (D-K3-81): SingMOS trägt die Grund-Ordnung auf Musik-Gesang NICHT
 (144/320 Paar-Verletzungen) ⇒ D-K4-6 bleibt offen mit präziser Ursache —
 Metrik-Entscheidung (musik_mos/defektlast, Spearman 0,95) ist menschlich.
-**Fortsetzung 14 (B3-M12-Messung gefahren):** `b3_stufenmessung.py --stages
+**Fortsetzung 14 (B3-Messung + Artefakt-Korrektur + Stand 04:46):** Die erste
+M12-Messung lief durch (3 Clips × 2 Fenster × 2,5 s) — ABER die parallele
+Sitzung hat beide Ablehnungen als **MESS-ARTEFAKTE** belegt (D-K3-85, Commit
+a82e0c14): WF-V4 lud ein nie existierendes ONNX ⇒ `is_available()=False` —
+die AN/AUS-Messung verglich den Heuristik-Pfad mit sich selbst (No-Op); TP-V2
+hatte denselben Pfad-Fehler. Beide Modellpfade sind gefixt; **Neumessung steht
+aus (GPU-Fenster — BigVGAN Kette 2 läuft, 50 % VRAM)**. UAT-Tests collecten
+sauber (21/37) — der Evidenz-Lauf ist vorbereitet. Repo fast sauber (alle
+Arbeiten committet; 2 untracked: altes vocos-Fehlschlag-Manifest + study_stimuli).
+**Fortsetzung 16 (Spec-SOTA-Audit L1+L2 umgesetzt):** Audit-Bericht
+`docs/reports/current/2026-11-09_spec_sota_audit.md` — fünf Lücken, davon
+L1/L2 jetzt geschlossen: **L2** (ISO 532-2/DIN-45631-Struktur der zeitvariablen
+Lautheit normativ in Hörordnung §6 verankert). **L1** (SII-Proxy als siebte
+Ebene-1-Invariante, Report-Only): neues Modul
+`backend/core/dsp/speech_intelligibility.py` (ANSI-S3.5-Band-Wichtung, 18
+Bänder, relative skalen-freie Audibility, `sii_delta`-Schutzgröße, JND 0,05
+Panel-Vorbelegung), §3-Tabellenzeile, Harness-Invariante 20, 6 Vertragstests
+(inkl. Stereo-Layout-Invariante — der erste Entwurf brach sie via ravel, Fix:
+Kanal-Mittelung), FILE_REGISTRY-Einträge. Verifiziert: 6/6 Tests, Harness
+20/20, Ruff clean, Defizit-Gate 0.
+**Fortsetzung 17 (L3 — Cross-Ear/BMLD-Bonus):** `residual_audibility` hat
+jetzt einen optionalen `stereo_pair`-Parameter (Rest, Kontext): Ein
+diotischer Rest (lowband_corr 250 Hz–1 kHz) hebt die effektive Schwelle um
+bis zu 6 dB (konservativ unter der 15-dB-BMLD-Literatur, proportional zur
+Kohärenz); inkohärenter Rest ⇒ kein Bonus; ohne `stereo_pair` unverändert
+(Rückwärtskompatibilität). Ergebnis-Keys `binaural_boost_db`/`bmld_rest_corr`;
+Harness-Invariante 21 (diotisch 6.00 dB vs. inkohärent 1.10 dB), normativer
+Wirkungs-Test, Hörordnung §4 + §8-Träger nachgezogen. Verifiziert: 11/11
+normative + 42/42 unit Audibility-Tests, Harness 21/21, Ruff/Gates grün.
+**Fortsetzung 15 (B3-M12-Messung — Rohdaten; durch D-K3-85-Korrektur oben überholt):** `b3_stufenmessung.py --stages
 M12-WF4,M12-TPV2` (3 Clips × 2 Fenster × 2,5 s, Seed 42, ~2,5 h unter GPU-
 Kontention): **M12-WF4 ABGELEHNT** (never_worsen ✓, 1/6 Vorteile, signifikant=
 False), **M12-TPV2 ABGELEHNT** (never_worsen ✓, 0/6 Vorteile) — beide Flags
@@ -557,3 +586,22 @@ schreiben `NICHT_BEWERTBAR` statt `ABGELEHNT`. 10 neue/erweiterte Tests,
 die **Neumessung im trainingsfreien GPU-Fenster** (Kette 2 fährt D3-2
 BigVGAN). Register D-K3-85, Roadmap-Modelltabelle nachgezogen. Report
 `docs/reports/current/2026-11-09_m12_pfad_erreichbarkeit.md`.
+
+**Update 2026-11-09 (Spec-SOTA-Audit L1–L3 + Träger-Audit, D-K3-86):** Das
+Audit `docs/reports/current/2026-11-09_spec_sota_audit.md` benennt drei
+autonome Norm-Lücken; L1 (SII-Verständlichkeit), L2 (ISO 532-2/DIN-45631) und
+L3 (Cross-Ear/BMLD) sind umgesetzt. **Träger-Audit derselben Sitzung:** L1 war
+zunächst eine **Phantom-Norm** — `speech_intelligibility` hatte **null**
+Aufrufstellen in `backend/` (der Befund wäre in keinem Lauf entstanden). Jetzt
+schreibt `UnifiedRestorerV3._sii_zeuge_meta` den Befund als **REPORT-ONLY** in
+`metadata["sii_zeuge"]` (Einzel-, Chunked- und Options-Pfad; 3 Schreibstellen,
+keine Lesestelle, §V6-fail-safe); das Messfenster mittelt Hann-Frames (vorher
+EIN 42-ms-Fenster ⇒ bei Stille-/Fade-Anfang blind). **L3 bleibt ehrlich
+träger-offen:** kein Produktionspfad übergibt `stereo_pair`
+(`repair_objective_met`/`verify_declick_repair` raveln mono) — die Aktivierung
+ist klangwirksam und läuft ausschließlich über §4/Flag; bis dahin bleibt die
+effektive Schwelle bit-identisch. Verifiziert: 19 Tests (2 neu:
+Zeitmittelungs-Regression + Verdrahtungs-Pin), Harness 21/21, SII-Delta
+unverändert (0,782 / 0,576). Register **D-K3-86**, Roadmap Pfeiler 3,
+Hörordnung §3/§4 und FILE_REGISTRY nachgezogen. **Kein Flag-Flip, kein
+Training gestartet** (Kette 2 fährt D3-3 FlashSR).

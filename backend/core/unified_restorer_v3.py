@@ -24310,6 +24310,7 @@ class UnifiedRestorerV3:
         # werden der Hör-Instanz vorgelegt (Hörordnung §7/§8a).
         if isinstance(getattr(result, "metadata", None), dict):
             result.metadata["wohlklang_zeuge"] = self._wohlklang_zeuge_meta(audio, result.audio, sample_rate)
+            result.metadata["sii_zeuge"] = self._sii_zeuge_meta(audio, result.audio, sample_rate)
 
         return result
 
@@ -45613,6 +45614,7 @@ class UnifiedRestorerV3:
                 "iterations": opt_result.iterations,
                 "segment_strategies": opt_result.segment_strategies,
                 "wohlklang_zeuge": self._wohlklang_zeuge_meta(audio, opt_result.audio, sample_rate),
+                "sii_zeuge": self._sii_zeuge_meta(audio, opt_result.audio, sample_rate),
             },
         )
 
@@ -47495,6 +47497,32 @@ class UnifiedRestorerV3:
 
         return zeuge_meta(eingang, ausgang, sample_rate)
 
+    def _sii_zeuge_meta(self, eingang: Any, ausgang: Any, sample_rate: int) -> dict[str, Any]:
+        """Hörordnung §3 (L1, 2026-11-09): Verständlichkeits-Zeuge je Lauf.
+
+        Misst ``sii_delta`` (ANSI-S3.5-Band-Wichtung, delta-basiert) zwischen
+        Eingang und Ausgang. REPORT-ONLY wie der Wohlklang-Zeuge: kein Sample
+        wird verändert, kein Rollback, keine Export-Blockade; ein Befund
+        (Verschlechterung über der Panel-Vorbelegung) wird der Hör-Instanz
+        vorgelegt. Nie werfend (§V6 (copilot-instructions.md)).
+        """
+        from backend.core.dsp.speech_intelligibility import (  # pylint: disable=import-outside-toplevel
+            sii_delta,
+        )
+
+        try:
+            befund: dict[str, Any] = dict(sii_delta(eingang, ausgang, int(sample_rate)))
+            befund["verfuegbar"] = True
+            befund["hoer_instanz"] = "vorzulegen" if befund.get("verschlechterung") else "kein_befund"
+            return befund
+        except Exception as exc:  # §V6 (copilot-instructions.md): nie still „alles gut"
+            logger.warning("SII-Zeuge nicht verfügbar (%s) — fail-safe", exc)
+            return {
+                "verfuegbar": False,
+                "grund": f"sii_delta: {exc}",
+                "panel_status": "vorbelegung_hoerpanel_offen",
+            }
+
     def _restore_chunked(
         self,
         audio: np.ndarray,
@@ -48461,6 +48489,7 @@ class UnifiedRestorerV3:
             # §2b Hebel F (2026-11-08): referenzfreier Wohlklang-Zeuge je Lauf —
             # REPORT-ONLY; Eingang ist die Original-Audio (wie beim Einladungs-Gate).
             _meta["wohlklang_zeuge"] = self._wohlklang_zeuge_meta(audio, output, sample_rate)
+            _meta["sii_zeuge"] = self._sii_zeuge_meta(audio, output, sample_rate)
 
             return RestorationResult(
                 audio=output,

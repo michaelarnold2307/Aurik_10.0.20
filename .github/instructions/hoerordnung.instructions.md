@@ -65,6 +65,7 @@ zurückgenommen oder geblendet** — nicht erst am Pipeline-Ende „wiederherges
 | Dynamikbogen | EmotionalArc (Spec 01 §2.35e) | Arc-Korrelation ≥ Schwelle aus §2.35e-ii |
 | Atem-Zeitstruktur | BreathEmotionClassifier-Segmente | Anzahl/Position der Atemer dürfen sich durch NR nicht um > 10 % ändern |
 | Stereo-Abbildung (binaural) | ITD/ILD/IACC gegen den Input (delta-basiert) — Messgrößen + JNDs in §8b | Warn ab JND 1 (Log), **Hard-Fail ab JND 2 → Rollback** der verursachenden Phase auf Input/HPI-Best (`STEREO_SAFETY_HARD_FAIL`) |
+| Sprach-/Gesangsverständlichkeit (SII-Proxy, L1 aus dem Spec-SOTA-Audit 2026-11-09) | `sii_delta` gegen den Input (delta-basiert, ANSI-S3.5-Band-Wichtung, 18 Bänder 160 Hz–8 kHz), Träger `UnifiedRestorerV3._sii_zeuge_meta` → `metadata["sii_zeuge"]` in Einzel-, Chunked- und Options-Pfad | Verschlechterung > 0.05 SII (Panel-Vorbelegung `vorbelegung_hoerpanel_offen`) ⇒ **Befund (Report-Only, `hoer_instanz=vorzulegen`)**; die Rücknahme-Schwelle (Blend) bleibt Panel-Entscheidung — Harness-Invariante 20 |
 
 **Verboten:** Eine Ebene-1-Verletzung durch „Recovery-Kaskade" zu kaschieren,
 wenn die Ursache eine identifizierbare Einzelphase ist (Ursache statt Symptom —
@@ -128,6 +129,22 @@ Maskierungsschwelle** liegt — nicht wenn sein Messwert Null ist.
   Messfehler ⇒ boost=0 (keine Aufweichung). Ergebnis-Transparenz:
   `threshold_db_eff`/`temporal_boost_db`/`in_forward_mask_zone` im Report.
   Harness-Invariante 19; Wirkungs-Test `test_temporal_masking_kippt_audible_konservativ`.
+- **Cross-Ear/BMLD-Bonus (L3 aus dem Spec-SOTA-Audit, 2026-11-09):**
+  `residual_audibility` akzeptiert optional ein `stereo_pair` (Rest, Kontext).
+  Ein **diotischer** Rest (beide Ohren kohärent, `lowband_corr` 250 Hz–1 kHz)
+  wird durch die binaurale Verarbeitung besser maskiert (BMLD bis ~15 dB
+  NπS0 vs. N0S0, §8b) — die effektive Schwelle wird konservativ um bis zu
+  **6 dB** angehoben (proportional zur Rest-Kohärenz; inkohärenter Rest ⇒
+  kein Bonus). Fail-closed: Messfehler ⇒ Bonus 0. Ohne `stereo_pair` bleibt
+  das Verhalten unverändert (Rückwärtskompatibilität). Ergebnis-Transparenz:
+  `binaural_boost_db`/`bmld_rest_corr`. Harness-Invariante 21; Wirkungs-Test
+  `test_cross_ear_bmld_bonus`.
+  **Träger-Status (ehrlich, 2026-11-09):** die Fähigkeit ist kalibriert und
+  testgedeckt, aber **noch von keinem Produktionspfad übergeben** —
+  `repair_objective_met`/`verify_declick_repair` (die einzigen Audibility-
+  Verbraucher) arbeiten mono. Eine Aktivierung im Entscheidungspfad ist
+  klangwirksam und läuft deshalb ausschließlich über §4/Flag; bis dahin bleibt
+  die effektive Schwelle bit-identisch. Kein Phantom-Anspruch einer Wirkung.
 - Jede Reparatur-Entscheidung (Phase an/aus, Stärke, Re-Scan) fragt zuerst:
   **„Ist dieser Defekt über der Maskierungsschwelle hörbar?"** Nur dann wird
   repariert.
@@ -183,6 +200,12 @@ wird als Fenster-Gate gemessen, nicht als Einzelwert:
   Stufe 3 definiert — hier werden sie zum eigenständigen Gate.)
 - **Loudness-Sprünge (Zwicker/ISO 532-1, phon) — delta-basiert (2026-11-08):**
   Die Loudness wird je Fenster gemessen (`compute_loudness_phon` je 5-s-Fenster);
+  **Zeitvariable Lautheit (ISO 532-2 / DIN-45631-Struktur):**
+  `compute_time_varying_loudness` (`zwicker_loudness.py`) — gefensterte
+  Kurzzeit-Lautheit + Angriffs-/Abkling-Zeitbewertung + N5/N10-Perzentile —
+  ist die normative Referenz für Pegel-Zeitverläufe, wo Fenster-Mittelwerte
+  nicht genügen; dokumentierte Abweichungen (deterministisch, keine ad-hoc-
+  Steigungs-Interpolation) gelten analog zum stationären Modell.
   Befund ist nur eine **Regression der Sprunggröße gegenüber dem Input**
   (`loudness_jump_max > loudness_jump_max_input + 1.0 phon`, JND-Marge) —
   natürliche Musik-Dynamik erzeugt große Sprünge, die kein Artefakt sind
@@ -242,7 +265,7 @@ jeweiligen Mess-Definitionen; hier zählt nur der Entscheidungsfluss):
 | Ebene | Träger |
 |---|---|
 | 1 | VQI-Gate + singer_identity-Rollback + EmotionalArc (UV3, Spec 01 §2.35c–e), ConsonantClarity; **§SCK-R/§WBG-R** Phasen-Rücknahme im zentralen Phasen-Call (`unified_restorer_v3.py`, Konkretisierung zu V24/V25 in dsp.instructions.md), **Level-1-Guard-Blend** (`level_1_invariants_guard.check_level_1_invariants` → `blend_factor < 1.0`), **Witness-Veto** (`witness_correction_loop.py`: `compute_witness_veto`/`apply_witness_veto` → `global_scalar`/`family_scalars`) |
-| 2 | `compute_masking_threshold_iso11172` (dsp §2.62), PerceptualSalience (Pass-Through-Guard), `residuum_masking.py` (3. Blend-Term), `_should_skip_masked_phase` (Stufe B), §v10.703-Countdown (Stufe A: ERB-maskierte Events), **`audibility_targets.residual_audibility`/`repair_objective_met`/`repair_strength_for`** (erzwingbare Hörbarkeits-Instanz, Ziel „Maske − Marge", Default 6 dB; Alias `is_audible`; **Temporal-Masking-Integration 2026-11-08: Forward-Masking-Zonen heben die effektive Schwelle um bis zu 6 dB — Harness-Invariante 19**), **`golden_ear_corpus.py`** (Ohren-Kalibrierung: `inject_at_margin`/`calibration_report`; Hörpanel-Status `vorbelegung_hoerpanel_offen`), **`temporal_masking.py`** (Forward-Masking-Zonen, Zwicker & Fastl 1999 §4.2; NR-Stärke-Boost nur in maskierten Nachklang-Fenstern — Harness-Invariante 17), **`pre_echo_detector.py`/`pre_echo_model.py`** (Pre-/Post-Masking-Artefakt-Schutz), **`tonality_gate.py`** (§23-TONALITY: tonales/sauberes Signal ⇒ spectral_denoiser-Passthrough; Harness-Invariante 16) |
+| 2 | `compute_masking_threshold_iso11172` (dsp §2.62), PerceptualSalience (Pass-Through-Guard), `residuum_masking.py` (3. Blend-Term), `_should_skip_masked_phase` (Stufe B), §v10.703-Countdown (Stufe A: ERB-maskierte Events), **`audibility_targets.residual_audibility`/`repair_objective_met`/`repair_strength_for`** (erzwingbare Hörbarkeits-Instanz, Ziel „Maske − Marge", Default 6 dB; Alias `is_audible`; **Temporal-Masking-Integration 2026-11-08: Forward-Masking-Zonen heben die effektive Schwelle um bis zu 6 dB — Harness-Invariante 19**; **Cross-Ear/BMLD-Bonus 2026-11-09: diotischer Rest hebt die effektive Schwelle um bis zu 6 dB — Harness-Invariante 21**), **`golden_ear_corpus.py`** (Ohren-Kalibrierung: `inject_at_margin`/`calibration_report`; Hörpanel-Status `vorbelegung_hoerpanel_offen`), **`temporal_masking.py`** (Forward-Masking-Zonen, Zwicker & Fastl 1999 §4.2; NR-Stärke-Boost nur in maskierten Nachklang-Fenstern — Harness-Invariante 17), **`pre_echo_detector.py`/`pre_echo_model.py`** (Pre-/Post-Masking-Artefakt-Schutz), **`tonality_gate.py`** (§23-TONALITY: tonales/sauberes Signal ⇒ spectral_denoiser-Passthrough; Harness-Invariante 16) |
 | 3 | GoalPriorityProtocol (Spec 01 §2.34) + `HEARING_TIER_MAP`/`hearing_tier()` (Hörordnungs-Dominanzstufe), `goal_weights` (§2.56), PhaseConductor/PMGG; Guards in FeedbackChain (intern + UV3-Callback) und End-Gate-Ranking; `wohlklang_ordnung_gate.py` (`WohlklangOrdnungGate`, maschineller Audit der Dominanz-Konformität, meldet Verstöße an die GUI-Ampel) |
 | 4 | `inviting_sound_gate.py` (Fenster-Gate: Roughness/Sharpness + **Fluktuationsstärke `max_vacil` — Pumpen-Gate 2026-11-08** (Harness-Invariante 15) + **Lautheits-Sprünge `loudness_jump_max` — delta-basiert, 1-phon-JND-Marge, Harness-Invariante 18**), experience_runtime (fatigue_index), GoosebumpsQualityChecker, OneTakeExport |
 | §7 Konfliktregel | Wohlklang-Garantie-Alignment-Guard, af-false-positive-Handling, MQA-Verdict-Kennzeichnung („Messartefakt-Verdacht“) |

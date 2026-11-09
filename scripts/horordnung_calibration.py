@@ -25,6 +25,8 @@ psychoakustische Eigenschaften bekannt sind:
  17. Forward-Masking: Klick öffnet Boost-Zone direkt danach; ohne Klick keine
  18. Lautheits-Sprung (phon): +12-dB-Stufe zwischen Fenstern >> konstantes Signal
  19. Temporal-Masking in residual_audibility: Zone hebt effektive Schwelle; ohne Klick keine
+ 20. SII-Proxy (Hörordnung §3, L1): Tiefpass senkt SII deutlich; identisch ⇒ Delta 0
+ 21. BMLD-Bonus in residual_audibility (L3): diotisch ≈ 6 dB, inkohärent ≪ — Bonus ≤ 6
 
 Ausgabe: Bericht; Exit-Code 1 bei verletzter Invariante (Kalibrierungs-Drift).
 
@@ -510,6 +512,64 @@ def main() -> int:
         )
     except Exception as exc:  # pragma: no cover
         failures.append(f"Temporal-Masking-Integration nicht verfügbar: {exc}")
+
+    # 20) SII-Proxy (Hörordnung §3, L1 aus dem Spec-SOTA-Audit 2026-11-09):
+    #     Bandbegrenzung (Tiefpass 2 kHz) senkt die verständlichkeitsrelevante
+    #     Band-Energie deutlich; identisches Signal ⇒ Delta 0.
+    try:
+        from backend.core.dsp.speech_intelligibility import sii_delta, sii_index
+
+        _rng20 = np.random.default_rng(42)
+        _n20 = _rng20.standard_normal(sr * 8)
+        _sp20 = np.fft.rfft(_n20)
+        _f20 = np.fft.rfftfreq(sr * 8, 1 / sr)
+        _sp20[_f20 > 8000] = 0
+        _full20 = (np.fft.irfft(_sp20, n=sr * 8) / 3).astype(np.float32)
+        _sp20b = _sp20.copy()
+        _sp20b[_f20 > 2000] *= 0.02
+        _tp20 = (np.fft.irfft(_sp20b, n=sr * 8) / 3).astype(np.float32)
+        _s_full = float(sii_index(_full20, sr))
+        _s_tp = float(sii_index(_tp20, sr))
+        _d20 = sii_delta(_full20, _tp20, sr)
+        _d_id = sii_delta(_full20, _full20, sr)
+        if not (_s_full > _s_tp + 0.15):
+            failures.append(f"SII-Richtung: voll {_s_full:.3f} !> tiefpass {_s_tp:.3f} + 0.15")
+        if not (_d20["verschlechterung"] and not _d_id["verschlechterung"]):
+            failures.append(
+                f"SII-Delta: verschlechterung={_d20['verschlechterung']} (erwartet True), identisch={_d_id['verschlechterung']} (erwartet False)"
+            )
+        print(
+            f"20) SII-Proxy: voll={_s_full:.3f} tiefpass={_s_tp:.3f} delta={_d20['delta']:.3f} identisch={_d_id['delta']:.3f}  {'OK' if _s_full > _s_tp + 0.15 and _d20['verschlechterung'] and not _d_id['verschlechterung'] else 'FAIL'}"
+        )
+    except Exception as exc:  # pragma: no cover
+        failures.append(f"SII-Proxy nicht verfügbar: {exc}")
+
+    # 21) Cross-Ear/BMLD-Bonus in residual_audibility (Hörordnung §4, L3,
+    #     Spec-SOTA-Audit 2026-11-09): diotischer Rest (beide Ohren identisch)
+    #     ⇒ Bonus nahe 6 dB; inkohärenter Rest ⇒ deutlich weniger; Bonus ≤ 6.
+    try:
+        from backend.core.dsp.audibility_targets import residual_audibility
+
+        _rng21 = np.random.default_rng(7)
+        _ctx21 = (_rng21.standard_normal(sr * 6) * 0.01).astype(np.float64)
+        _res21 = np.zeros(sr * 6)
+        _res21[sr * 3 : sr * 3 + 480] = 0.05 * _rng21.standard_normal(480)
+        _dio21 = np.stack([_res21, _res21])
+        _rng21b = np.random.default_rng(8)
+        _ink21 = np.stack([_res21, np.zeros_like(_res21)])
+        _ink21[1, sr * 3 : sr * 3 + 480] = 0.05 * _rng21b.standard_normal(480)
+        _ctxst21 = np.stack([_ctx21, _ctx21])
+        _a21 = residual_audibility(_res21, _ctx21, sr, temporal_masking=False, stereo_pair=(_dio21, _ctxst21))
+        _b21 = residual_audibility(_res21, _ctx21, sr, temporal_masking=False, stereo_pair=(_ink21, _ctxst21))
+        _bo_a = float(_a21["binaural_boost_db"])
+        _bo_b = float(_b21["binaural_boost_db"])
+        if not (_bo_a > 5.0 and _bo_b < 2.0 and _bo_a <= 6.0):
+            failures.append(f"BMLD-Bonus: diotisch {_bo_a:.2f} (erwartet >5), inkoherent {_bo_b:.2f} (erwartet <2)")
+        print(
+            f"21) BMLD-Bonus: diotisch={_bo_a:.2f} dB, inkoherent={_bo_b:.2f} dB  {'OK' if _bo_a > 5.0 and _bo_b < 2.0 and _bo_a <= 6.0 else 'FAIL'}"
+        )
+    except Exception as exc:  # pragma: no cover
+        failures.append(f"BMLD-Bonus nicht verfügbar: {exc}")
 
     print()
     if failures:

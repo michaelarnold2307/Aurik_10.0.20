@@ -211,3 +211,34 @@ def test_temporal_masking_kippt_audible_konservativ():
     a_tm = residual_audibility(res_new, ctx, SR)
     assert a_no["audible"] is True, f"ohne temporal: {a_no}"
     assert a_tm["audible"] is False, f"mit temporal: {a_tm}"
+
+
+@pytest.mark.timeout(120)
+def test_cross_ear_bmld_bonus():
+    """Hörordnung §4 (L3, 2026-11-09): ein diotischer Rest (beide Ohren
+    kohärent) bekommt den Cross-Ear-Bonus (bis 6 dB, §8b-BMLD konservativ);
+    ein inkohärenter Rest nicht; ohne stereo_pair bleibt alles beim Alten.
+    """
+    from backend.core.dsp.audibility_targets import residual_audibility
+
+    rng = np.random.default_rng(7)
+    ctx = (rng.standard_normal(SR * 6) * 0.01).astype(np.float64)
+    res = np.zeros(SR * 6)
+    res[SR * 3 : SR * 3 + 480] = 0.05 * rng.standard_normal(480)
+    dio = np.stack([res, res])
+    rng2 = np.random.default_rng(8)
+    ink = np.stack([res, np.zeros_like(res)])
+    ink[1, SR * 3 : SR * 3 + 480] = 0.05 * rng2.standard_normal(480)
+    ctx_st = np.stack([ctx, ctx])
+    a = residual_audibility(res, ctx, SR, temporal_masking=False, stereo_pair=(dio, ctx_st))
+    b = residual_audibility(res, ctx, SR, temporal_masking=False, stereo_pair=(ink, ctx_st))
+    assert a["binaural_boost_db"] > 5.0, f"diotisch: {a['binaural_boost_db']}"
+    assert a["bmld_rest_corr"] > 0.95
+    assert b["binaural_boost_db"] < 2.0, f"inkoherent: {b['binaural_boost_db']}"
+    assert a["threshold_db_eff"] > b["threshold_db_eff"]
+    # Rückwärtskompatibilität: ohne stereo_pair kein Bonus.
+    c = residual_audibility(res, ctx, SR, temporal_masking=False)
+    assert c["binaural_boost_db"] == 0.0
+    # Determinismus (§G5 (copilot-instructions.md))
+    a2 = residual_audibility(res, ctx, SR, temporal_masking=False, stereo_pair=(dio, ctx_st))
+    assert a2["binaural_boost_db"] == a["binaural_boost_db"]

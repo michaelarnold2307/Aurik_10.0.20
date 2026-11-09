@@ -88,6 +88,12 @@ unbekannt.
   Johnston-Kern bit-identisch zu `masking_model`). **Kein Release-Kandidat**,
   bis `scripts/b3_stufenmessung.py --stages A-1 --clips 3` + blindes A/B ≥ 3
   Songs + Hör-Sign-off vorliegen (D-K3-71).
+- [x] **SII-Verständlichkeits-Zeuge verdrahtet (2026-11-09, D-K3-86):**
+  `sii_delta` (ANSI-S3.5, 18 Bänder 160 Hz–8 kHz, zeitlich gemittelt) läuft als
+  **Report-Only-Zeuge** in Einzel-, Chunked- und Options-Pfad
+  (`UnifiedRestorerV3._sii_zeuge_meta` → `metadata["sii_zeuge"]`, Hörordnung
+  §3); die Schwelle 0,05 bleibt Panel-Vorbelegung, kein Sample-Eingriff.
+  **Offen:** BMLD-Bonus im Entscheidungspfad (braucht Träger + §4, klangwirksam).
 - [ ] **Schwache Kandidaten archivieren statt pflegen:** Whisper-Denoiser
   (D-K0-4, §9/5 der A2-Liste in
   `docs/reports/current/2026-10-25_sota_massnahmen_katalog.md`),

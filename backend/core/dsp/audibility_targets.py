@@ -44,6 +44,12 @@ _PAD = 4096  # Tail-Pad = masking_model._N_FFT: garantiert zwei volle Frames
 # Forward-Masking direkt nach starkem Masker (≈10–20 dB, Moore 2003; Fastl &
 # Zwicker §7.2); die bestehende margin_db bleibt zusätzlich bestehen.
 _TEMPORAL_BOOST_DB_PER_BOOST = 15.0
+# Cross-Ear/BMLD-Bonus (Hörordnung §4, L3 aus dem Spec-SOTA-Audit 2026-11-09):
+# Ein diotischer Rest (beide Ohren kohärent) wird durch die binaurale
+# Verarbeitung besser maskiert (BMLD bis ~15 dB NπS0 vs. N0S0, §8b);
+# konservativ auf 6 dB begrenzt, proportional zur interauralen
+# Lowband-Kohärenz (250 Hz–1 kHz) des Rests.
+_BINAURAL_BOOST_MAX_DB = 6.0
 _MISSING = {
     "audible": True,
     "objective_met": False,
@@ -51,6 +57,8 @@ _MISSING = {
     "threshold_db": 0.0,
     "threshold_db_eff": 0.0,
     "temporal_boost_db": 0.0,
+    "binaural_boost_db": 0.0,
+    "bmld_rest_corr": 0.0,
     "in_forward_mask_zone": False,
     "target_db": 0.0,
     "overshoot_db": 0.0,
@@ -96,6 +104,7 @@ def residual_audibility(
     lo_hz: float = _LO,
     hi_hz: float = _HI,
     temporal_masking: bool = True,
+    stereo_pair: tuple[np.ndarray, np.ndarray] | None = None,
 ) -> dict[str, float | bool]:
     """Hörbarkeit eines Residuals gegen die Maskierung des Kontexts.
 
@@ -173,6 +182,31 @@ def residual_audibility(
                     _tm_exc,
                 )
         threshold_db_eff = threshold_db + temporal_boost_db
+        # Cross-Ear/BMLD-Bonus (Hörordnung §4, L3, 2026-11-09): nur bei
+        # Stereo-Paar (Rest, Kontext) und kohärentem Rest — fail-closed 0.
+        binaural_boost_db = 0.0
+        bmld_rest_corr = 0.0
+        if stereo_pair is not None:
+            try:
+                _rest_st, _ctx_st = stereo_pair
+                _rest_st = np.asarray(_rest_st, dtype=np.float64)
+                _ctx_st = np.asarray(_ctx_st, dtype=np.float64)
+                _both_stereo = (
+                    _rest_st.ndim == 2 and _ctx_st.ndim == 2 and _rest_st.shape[0] == 2 and _ctx_st.shape[0] == 2
+                )
+                if _both_stereo:
+                    from backend.core.dsp.interaural_cues import compute_interaural_profile
+
+                    _prof = compute_interaural_profile(_rest_st, sr)
+                    bmld_rest_corr = float(_prof.lowband_corr)
+                    if bmld_rest_corr > 0.0:
+                        binaural_boost_db = min(_BINAURAL_BOOST_MAX_DB, bmld_rest_corr * _BINAURAL_BOOST_MAX_DB)
+            except Exception as _be_exc:
+                logger.debug(
+                    "Cross-Ear-Bonus in residual_audibility nicht verfügbar (fail-closed boost=0): %s",
+                    _be_exc,
+                )
+        threshold_db_eff = threshold_db + temporal_boost_db + binaural_boost_db
     except Exception as _exc:  # §V6 (VERBOTEN.md): nie still „alles gut"
         logger.warning("residual_audibility: Messung fehlgeschlagen (%s) — fail-closed", _exc)
         out = dict(_MISSING)
@@ -187,6 +221,8 @@ def residual_audibility(
         "threshold_db": round(threshold_db, 2),
         "threshold_db_eff": round(threshold_db_eff, 2),
         "temporal_boost_db": round(temporal_boost_db, 2),
+        "binaural_boost_db": round(binaural_boost_db, 2),
+        "bmld_rest_corr": round(bmld_rest_corr, 3),
         "in_forward_mask_zone": in_zone,
         "target_db": round(target_db, 2),
         "overshoot_db": round(delta_db - threshold_db_eff, 2),
