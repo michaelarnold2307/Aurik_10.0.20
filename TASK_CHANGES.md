@@ -1,6 +1,6 @@
 # TASK_CHANGES — Live-Ledger der aktuellen Aufgabe
 
-> Generiert von `scripts/change_ledger.py snapshot` (Base: `HEAD`, Stand: 2026-11-08 20:54 CET).
+> Generiert von `scripts/change_ledger.py snapshot` (Base: `HEAD`, Stand: 2026-11-09 02:48 CET).
 > CI (`ci-lite.yml` pr-evidence-gate) erzwingt Abdeckung: jede geänderte Code-Datei muss hier stehen.
 
 ## Geänderte Dateien
@@ -8,7 +8,17 @@
 | Status | Pfad | Art |
 |---|---|---|
 | M | `.github/SOTA_DEFICIT_REGISTER.md` | modifiziert |
-| M | `docs/reports/current/2026-11-08_wohlklang_zeuge_hebel_f.md` | modifiziert |
+| M | `backend/core/dsp/tp_v2_phase.py` | modifiziert |
+| M | `backend/core/dsp/wf4_warp_head.py` | modifiziert |
+| M | `docs/SOTA_HANDOVER.md` | modifiziert |
+| M | `docs/TODOS_SOTA_ROADMAP.md` | modifiziert |
+| M | `scripts/b3_pfad_wirksamkeit.py` | modifiziert |
+| M | `scripts/b3_stufenmessung.py` | modifiziert |
+| M | `tests/unit/test_b3_pfad_wirksamkeit.py` | modifiziert |
+| M | `tests/unit/test_tp_v2_phase.py` | modifiziert |
+| M | `tests/unit/test_wf4_warp_head.py` | modifiziert |
+| ?? | `docs/reports/current/2026-11-09_m12_pfad_erreichbarkeit.md` | ungetrackt |
+| ?? | `docs/reports/current/b3_messung_ungueltig_20261109.json` | ungetrackt |
 | ?? | `docs/reports/current/train_job_d_k2_3_vocos_finetune.json` | ungetrackt |
 | ?? | `study_stimuli/model_ab/manifest.json` | ungetrackt |
 

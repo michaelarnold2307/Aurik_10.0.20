@@ -152,3 +152,93 @@ def test_flag_freigabe_altformat_akzeptiert_mit_warnung(tmp_path) -> None:
     messung.write_text(json.dumps({"stufe": "W-Z", "erfuellt": True}), encoding="utf-8")
     ok, _ = objektivbeschluss_ok(_beschluss(str(messung)), "use_test_flag")
     assert ok is True  # Altformat bleibt akzeptiert; Warnung erfolgt (§V6 (copilot-instructions.md))
+
+
+# ── Modell-Zeuge für Modell-Stufen (D-K3-85) ──────────────────────────────────
+#
+# Befund 2026-11-09: `M12-WF4` hatte nie ein ladbares Artefakt (Trainer schreibt
+# .pt, Consumer erwartete .onnx) und `M12-TPV2` lud Seed-Gewichte (falsche
+# Projekt-Wurzel). Das Fußabdruck-Gate war blind, weil die Pipeline nicht
+# bit-reproduzierbar ist: es meldete bei totem Pfad `pfad_wirksam: true`.
+# Diese Tests pinnen den Modell-Zeugen als fail-closed Gegenmittel.
+
+
+def test_modellzeuge_meldet_toten_pfad() -> None:
+    from scripts import b3_pfad_wirksamkeit as pw
+
+    def _tot() -> dict:
+        return {"vorhanden": False, "wert": {"quelle": "nicht_geladen"}, "aktiv": False}
+
+    orig = pw.PFAD_ZEUGEN["M12-WF4"]
+    pw.PFAD_ZEUGEN["M12-WF4"] = {"modell": _tot}
+    try:
+        zeuge = pw.zeugnis({}, "M12-WF4")
+        assert zeuge["vorhanden"] is False
+        assert zeuge["aktiv"] is False
+        # Fußabdruck-Rauschen > 0 (nicht reproduzierbare Pipeline) darf NICHT
+        # als Wirkung durchgehen.
+        ok, report = pw.pfad_wirksam_ok([_zeile(fussabdruck_rms=7.8e-4, zeuge_an=zeuge)])
+        assert ok is False
+        assert any("fehlt" in p or "inaktiv" in p for p in report["probleme"])
+    finally:
+        pw.PFAD_ZEUGEN["M12-WF4"] = orig
+
+
+def test_modellzeuge_meldet_seed_gewichte_als_inaktiv() -> None:
+    from scripts import b3_pfad_wirksamkeit as pw
+
+    def _seed() -> dict:
+        return {"vorhanden": True, "wert": {"quelle": "seed"}, "aktiv": False}
+
+    orig = pw.PFAD_ZEUGEN["M12-TPV2"]
+    pw.PFAD_ZEUGEN["M12-TPV2"] = {"modell": _seed}
+    try:
+        zeuge = pw.zeugnis({}, "M12-TPV2")
+        ok, report = pw.pfad_wirksam_ok([_zeile(fussabdruck_rms=6.5e-4, zeuge_an=zeuge)])
+        assert ok is False
+        assert any("inaktiv" in p for p in report["probleme"])
+    finally:
+        pw.PFAD_ZEUGEN["M12-TPV2"] = orig
+
+
+def test_modellzeuge_mit_trainiertem_artefakt_ist_aktiv() -> None:
+    """Integration: beide Artefakte liegen im Repo ⇒ Zeuge meldet `aktiv`."""
+    import pytest
+
+    pytest.importorskip("torch")
+    from scripts import b3_pfad_wirksamkeit as pw
+
+    zeuge_wf4 = pw.zeugnis({}, "M12-WF4")
+    assert zeuge_wf4["wert"]["quelle"].startswith("checkpoint:"), zeuge_wf4
+    assert zeuge_wf4["aktiv"] is True
+
+    zeuge_tp2 = pw.zeugnis({}, "M12-TPV2")
+    assert zeuge_tp2["wert"]["quelle"].startswith("checkpoint:"), zeuge_tp2
+    assert zeuge_tp2["aktiv"] is True
+
+
+def test_beschluss_ungueltige_messung_ist_nicht_bewertbar(tmp_path, monkeypatch) -> None:
+    """Eine ungültige Messung darf nicht als Qualitäts-Ablehnung protokolliert werden."""
+    from scripts import b3_stufenmessung as st
+
+    monkeypatch.setattr(st, "PROJECT_ROOT", tmp_path.parent)
+    messung = {
+        "stufe": "M12-WF4",
+        "zeilen": [{"trial_id": "clip__w0", "mos_an": 4.8, "mos_aus": 4.8, "last_an": 0.4, "last_aus": 0.4}],
+        "never_worsen": True,
+        "vorteile": "0/1",
+        "p_wert": 0.5,
+        "signifikant": False,
+        "defekt_fallbacks": 0,
+        "b1_sauber": True,
+        "pfad_wirksam": False,
+        "fussabdruck_max_rms": 0.0,
+        "wirksam_probleme": ["fussabdruck_null: AN==AUS bit-identisch in allen Fenstern (W-3-Lehre)"],
+        "messung_ungueltig": True,
+        "erfuellt": False,
+    }
+    ziel = st.beschluss_schreiben("M12-WF4", messung, tmp_path, 42)
+    daten = json.loads(ziel.read_text(encoding="utf-8"))
+    assert daten["ergebnis"] == "NICHT_BEWERTBAR"
+    assert daten["pfad_wirksam"] is False
+    assert "messung_ungueltig_grund" in daten

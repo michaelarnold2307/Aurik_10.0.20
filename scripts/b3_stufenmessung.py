@@ -246,7 +246,9 @@ def beschluss_schreiben(name: str, messung: dict, out_dir: Path, seed: int) -> P
         "pfad_wirksam": bool(messung.get("pfad_wirksam", False)),
         "messung": "",
         "zielmetrik": {"name": "musik_mos (G-2)", "vorteile": messung["vorteile"], "p_wert": messung["p_wert"]},
-        "ergebnis": "ERFUELLT" if erfuellt else "ABGELEHNT",
+        "ergebnis": (
+            "NICHT_BEWERTBAR" if messung.get("messung_ungueltig") else ("ERFUELLT" if erfuellt else "ABGELEHNT")
+        ),
         "quelle": "scripts/b3_stufenmessung.py",
     }
     if messung.get("messung_ungueltig"):

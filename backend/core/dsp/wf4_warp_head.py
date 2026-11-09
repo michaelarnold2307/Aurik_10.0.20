@@ -92,6 +92,12 @@ DEFAULT_DILATIONS = (1, 3, 9)
 DEFAULT_HIDDEN = 32
 #: Default ONNX-Modellpfad (analog SOTA-M9: models/<slug>/<name>.onnx).
 DEFAULT_MODEL_SUBPATH = "models/wf4_warp_head/wf4_warp_head.onnx"
+# Produktionsartefakt des Trainings (`scripts/train_wf4_warp_head.py`): das
+# ONNX-Export-Artefakt existiert nicht, der Trainer schreibt ausschließlich
+# Torch-Checkpoints. Ohne diesen zweiten Ladepfad war der Flag-Pfad tot
+# (D-K3-85: `is_available() == False` ⇒ jede AN/AUS-Messung verglich den
+# heuristischen Pfad mit sich selbst).
+DEFAULT_CHECKPOINT_SUBPATH = "models/wf4_warp_head/wf4_warp_head_v1.pt"
 
 _PROJECT_ROOT = Path(__file__).resolve().parents[3]
 
@@ -221,41 +227,117 @@ class WF4WarpHead:
     Phase-12-Schätzung zurück (§V6 (copilot-instructions.md)).
     """
 
-    def __init__(self, model_path: str | Path | None = None) -> None:
+    def __init__(
+        self,
+        model_path: str | Path | None = None,
+        checkpoint_path: str | Path | None = None,
+    ) -> None:
         self._session: Any | None = None
+        self._net: Any | None = None
         self._input_names: list[str] = []
         self._output_names: list[str] = []
         self._model_ok: bool = False
+        self._source: str = "nicht_geladen"
         if model_path is None:
             self._model_path = _PROJECT_ROOT / DEFAULT_MODEL_SUBPATH
         else:
             self._model_path = Path(model_path)
+        if checkpoint_path is None:
+            self._checkpoint_path = _PROJECT_ROOT / DEFAULT_CHECKPOINT_SUBPATH
+        else:
+            self._checkpoint_path = Path(checkpoint_path)
         self._try_load_model()
+        if not self._model_ok:
+            self._try_load_checkpoint()
+
+    @property
+    def source(self) -> str:
+        """Herkunft der Inferenz (``onnx:…`` / ``checkpoint:…`` / ``nicht_geladen``)."""
+        return self._source
+
+    def _budget_granted(self, *, size_gb: float, was: str) -> bool:
+        """ML-Speicher-Kontingent prüfen (Systemgrenze, unkritisch bei Fehlen)."""
+        try:
+            from backend.core.ml_memory_budget import try_allocate as _try_alloc
+
+            if not _try_alloc("WF4WarpHead", size_gb=size_gb):
+                logger.warning(
+                    "SOTA-M12 WF4-Warp-Head: ML-Memory-Budget erschöpft — Challenger inaktiv (%s; "
+                    "§V6 (copilot-instructions.md): heuristische Phase-12-Schätzung als Fallback).",
+                    was,
+                )
+                return False
+        except Exception as _exc:  # pragma: no cover - Systemgrenze
+            logger.debug("SOTA-M12 WF4-Warp-Head: Speicher-Kontingent-Prüfung nicht verfügbar (unkritisch): %s", _exc)
+        return True
+
+    def _try_load_checkpoint(self) -> bool:
+        """Torch-Checkpoint des Trainings laden (zweiter Pfad, §V6-fail-closed).
+
+        Das Training (`scripts/train_wf4_warp_head.py`) schreibt
+        ``wf4_warp_head_v1.pt`` mit ``model_state_dict`` + ``wf4_warp_config``;
+        ein ONNX-Export existiert nicht. Die Architektur kommt aus
+        :func:`build_wf4_warp_model` — EINE Quelle für Training und Inferenz
+        (kein Export-Drift).
+        """
+        path = self._checkpoint_path
+        if not path.exists():
+            logger.warning(
+                "SOTA-M12 WF4-Warp-Head: weder ONNX (%s) noch Checkpoint (%s) vorhanden — Challenger "
+                "inaktiv (§V6 (copilot-instructions.md): heuristische Phase-12-Schätzung als Fallback).",
+                self._model_path,
+                path,
+            )
+            return False
+        if not self._budget_granted(size_gb=0.15, was=f"Checkpoint {path.name}"):
+            return False
+        try:
+            import torch
+
+            payload = torch.load(path, map_location="cpu", weights_only=True)
+            if not isinstance(payload, dict) or "model_state_dict" not in payload:
+                raise ValueError("Checkpoint ohne 'model_state_dict'")
+            cfg = dict(payload.get("wf4_warp_config", {}))
+            net = build_wf4_warp_model(
+                n_feat=int(cfg.get("n_feat", N_SPEC_FEAT)),
+                hidden=int(cfg.get("hidden", DEFAULT_HIDDEN)),
+                dilations=tuple(cfg.get("dilations", DEFAULT_DILATIONS)),
+            )
+            net.load_state_dict(payload["model_state_dict"], strict=True)
+            net.eval()
+            self._net = net
+            self._source = f"checkpoint:{path.name}"
+            logger.info(
+                "SOTA-M12 WF4-Warp-Head Checkpoint geladen: %s (hidden=%s, dilations=%s, loss=%s)",
+                path,
+                cfg.get("hidden", DEFAULT_HIDDEN),
+                cfg.get("dilations", DEFAULT_DILATIONS),
+                payload.get("loss"),
+            )
+            return True
+        except Exception as _exc:
+            logger.warning(
+                "SOTA-M12 WF4-Warp-Head Checkpoint nicht ladbar (%s) — Challenger inaktiv "
+                "(§V6 (copilot-instructions.md): heuristische Phase-12-Schätzung als Fallback).",
+                _exc,
+            )
+            return False
 
     def _try_load_model(self) -> None:
         if not self._model_path.exists():
-            logger.warning(
-                "SOTA-M12 WF4-Warp-Head ONNX nicht gefunden: %s — Challenger inaktiv "
-                "(§V6 (copilot-instructions.md): heuristische Phase-12-Schätzung als Fallback).",
+            # Kein Fehler per se: der Trainer erzeugt Torch-Checkpoints; die
+            # definitive §V6-Warnung kommt aus ``_try_load_checkpoint``, wenn
+            # BEIDE Quellen fehlen.
+            logger.debug(
+                "SOTA-M12 WF4-Warp-Head: kein ONNX-Artefakt unter %s — prüfe Torch-Checkpoint.",
                 self._model_path,
             )
             return
         try:
             import onnxruntime as ort
 
-            try:
-                from backend.core.ml_memory_budget import try_allocate as _try_alloc
-
-                if not _try_alloc("WF4WarpHead", size_gb=0.15):
-                    logger.warning(
-                        "SOTA-M12 WF4-Warp-Head: ML-Memory-Budget erschöpft — Challenger inaktiv "
-                        "(§V6 (copilot-instructions.md): heuristische Phase-12-Schätzung als Fallback)."
-                    )
-                    return
-            except Exception as _exc:  # pragma: no cover - Systemgrenze
-                logger.debug(
-                    "SOTA-M12 WF4-Warp-Head: Speicher-Kontingent-Prüfung nicht verfügbar (unkritisch): %s", _exc
-                )
+            if not self._budget_granted(size_gb=0.15, was=f"ONNX {self._model_path.name}"):
+                return
 
             opts = ort.SessionOptions()
             opts.inter_op_num_threads = 1
@@ -275,6 +357,7 @@ class WF4WarpHead:
                 self._session = None
                 return
             self._model_ok = True
+            self._source = f"onnx:{self._model_path.name}"
             logger.info(
                 "SOTA-M12 WF4-Warp-Head ONNX geladen: %s | In=%s | Out=%s",
                 self._model_path,
@@ -316,7 +399,8 @@ class WF4WarpHead:
         return True
 
     def is_available(self) -> bool:
-        return self._model_ok and self._session is not None
+        """Ein Ladepfad genügt: ONNX-Session ODER Torch-Checkpoint."""
+        return (self._model_ok and self._session is not None) or self._net is not None
 
     def predict(
         self,
@@ -324,16 +408,21 @@ class WF4WarpHead:
         x_conf: np.ndarray,
         x_feat: np.ndarray,
     ) -> tuple[np.ndarray, np.ndarray]:
-        """ONNX-Inferenz: (warp_log2, conf_out) für eine Frame-Sequenz ≤ T_MAX_FRAMES.
+        """Inferenz: (warp_log2, conf_out) für eine Frame-Sequenz ≤ T_MAX_FRAMES.
 
-        Deterministisch (§G5 (copilot-instructions.md)): feste Session-Threads,
-        keine Zufallszustände. NaN/Inf-Schutz (§0a (copilot-instructions.md)):
-        Eingaben werden vor dem Feed gesäubert, Ausgaben nach dem Run.
+        Zwei Quellen, identischer Vertrag: ONNX-Session (falls exportiert) oder
+        Torch-Checkpoint des Trainings (``_source``). Deterministisch
+        (§G5 (copilot-instructions.md)): feste Session-Thread-Struktur bzw.
+        ``eval()``/``inference_mode()``, keine Zufallszustände. NaN/Inf-Schutz
+        (§0a (copilot-instructions.md)): Eingaben werden vor dem Feed gesäubert,
+        Ausgaben nach dem Run.
         """
+        if self._net is not None:
+            return self._predict_torch(x_f0, x_conf, x_feat)
         sess = self._session
         if sess is None:
             # Ehrlicher Abbruch statt stiller Fallback (§V6 (copilot-instructions.md)).
-            raise RuntimeError("WF4-Warp-Head: ONNX-Session nicht geladen — Inferenz unmöglich")
+            raise RuntimeError("WF4-Warp-Head: weder ONNX-Session noch Checkpoint geladen — Inferenz unmöglich")
         t = int(np.asarray(x_f0).shape[-1])
         f0 = np.nan_to_num(np.asarray(x_f0, dtype=np.float32), nan=0.0, posinf=0.0, neginf=0.0)
         conf = np.clip(np.nan_to_num(np.asarray(x_conf, dtype=np.float32), nan=0.0), 0.0, 1.0)
@@ -346,6 +435,32 @@ class WF4WarpHead:
         outs = sess.run(self._output_names, feed)
         warp = np.nan_to_num(np.asarray(outs[0], dtype=np.float32).reshape(-1)[:t], nan=0.0)
         conf_out = np.clip(np.nan_to_num(np.asarray(outs[1], dtype=np.float32).reshape(-1)[:t], nan=0.0), 0.0, 1.0)
+        warp = np.clip(warp, -WARP_LIMIT_LOG2, WARP_LIMIT_LOG2).astype(np.float32)
+        return warp, conf_out.astype(np.float32)
+
+    def _predict_torch(
+        self,
+        x_f0: np.ndarray,
+        x_conf: np.ndarray,
+        x_feat: np.ndarray,
+    ) -> tuple[np.ndarray, np.ndarray]:
+        """Torch-CPU-Inferenz des trainierten Checkpoints (Vertrag identisch zu ONNX)."""
+        import torch
+
+        net = self._net
+        if net is None:  # pragma: no cover - Aufrufer prüft is_available()
+            raise RuntimeError("WF4-Warp-Head: Checkpoint nicht geladen — Inferenz unmöglich")
+        t = int(np.asarray(x_f0).shape[-1])
+        f0 = np.nan_to_num(np.asarray(x_f0, dtype=np.float32), nan=0.0, posinf=0.0, neginf=0.0)
+        conf = np.clip(np.nan_to_num(np.asarray(x_conf, dtype=np.float32), nan=0.0), 0.0, 1.0)
+        feat = np.nan_to_num(np.asarray(x_feat, dtype=np.float32), nan=0.0, posinf=0.0, neginf=0.0)
+        t_f0 = torch.from_numpy(np.ascontiguousarray(f0.reshape(1, t), dtype=np.float32))
+        t_conf = torch.from_numpy(np.ascontiguousarray(conf.reshape(1, t), dtype=np.float32))
+        t_feat = torch.from_numpy(np.ascontiguousarray(feat.reshape(1, t, -1), dtype=np.float32))
+        with torch.inference_mode():
+            out_warp, out_conf = net(t_f0, t_conf, t_feat)
+        warp = np.nan_to_num(np.asarray(out_warp, dtype=np.float32).reshape(-1)[:t], nan=0.0)
+        conf_out = np.clip(np.nan_to_num(np.asarray(out_conf, dtype=np.float32).reshape(-1)[:t], nan=0.0), 0.0, 1.0)
         warp = np.clip(warp, -WARP_LIMIT_LOG2, WARP_LIMIT_LOG2).astype(np.float32)
         return warp, conf_out.astype(np.float32)
 

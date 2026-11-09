@@ -95,7 +95,7 @@ DEFAULT_SEED = 42
 
 # Produktionsartefakt des Trainings (scripts/train_tp_v2_phase.py).
 DEFAULT_CHECKPOINT_SUBPATH = "models/tp_v2/tp_v2_phase_v1.pt"
-_PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
+_PROJECT_ROOT = Path(__file__).resolve().parents[3]
 DEFAULT_CHECKPOINT = _PROJECT_ROOT / DEFAULT_CHECKPOINT_SUBPATH
 
 

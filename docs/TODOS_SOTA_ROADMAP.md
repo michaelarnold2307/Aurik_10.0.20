@@ -346,8 +346,8 @@ F14.
 | Was fehlt | Rolle für maximalen Wohlklang | Blocker |
 | --- | --- | --- |
 | **AudioLDM2-Rolle** (ONNX + Plugin liegen lokal) | generative Baseline für destruktive Fälle | ~~Plugin-Neuanlage fehlt~~ — **korrigiert 2026-10-09:** `plugins/audioldm2_plugin.py` existiert und ist in `phase_24_dropout_repair.py` (Tier-3, Dropouts > 3 s) verdrahtet; offen ist nur die Rollenentscheidung "generative Baseline für destruktive Fälle" (nach S1 aufgeschoben) |
-| **Neuraler Warp-Schätzer (WF-V4)** | Rest-Wow/Flutter unter der Hörschwelle | ✅ **selbst trainiert 2026-11-08** (Warp-Head auf FCPE/CRePE-F0, R1 50/50, 316 s) — keine externe Quelle nötig; B3-M12-WF4 **ABGELEHNT** (1/6), Flag AUS |
-| **Neurale Phasen-Schätzung (TP-V2)** | Transienten-Phasenkohärenz (Kammfilter-Freiheit) | ✅ **selbst trainiert 2026-11-08** (U-Net, R2 50/50, 307,8 s) — B3-M12-TPV2 **ABGELEHNT** (0/6), Flag AUS |
+| **Neuraler Warp-Schätzer (WF-V4)** | Rest-Wow/Flutter unter der Hörschwelle | ✅ **selbst trainiert 2026-11-08** (Warp-Head auf FCPE/CRePE-F0, R1 50/50, 316 s) — keine externe Quelle nötig; B3-M12-WF4 **ABGELEHNT 2026-11-08 → 2026-11-09 als Mess-Artefakt INVALIDIERT** (das Modell war nie ladbar, D-K3-85; jetzt Checkpoint-Ladepfad + Modell-Zeuge), Flag AUS, Neumessung offen |
+| **Neurale Phasen-Schätzung (TP-V2)** | Transienten-Phasenkohärenz (Kammfilter-Freiheit) | ✅ **selbst trainiert 2026-11-08** (U-Net, R2 50/50, 307,8 s) — B3-M12-TPV2 **ABGELEHNT 2026-11-08 → 2026-11-09 als Mess-Artefakt INVALIDIERT** (gemessen wurden Seed-Gewichte: falsche Projekt-Wurzel, D-K3-85), Flag AUS, Neumessung offen |
 | **BEATs-Tagger-Head (527 Klassen)** | Instrument-/Genre-Evidenz unabhängig von CLAP | Head-Training oder Tagger-ONNX fehlt (GPU) |
 | **Genre-Modell (MERT-Head)** | Genre-adaptive Goals statt Hand-DSP | GTZAN/MagnaTagATune-Trainingslauf fehlt |
 | **Gender-Head (F13) + Label-Korpus** | Register/Formant-Entscheidungen | ≥ ~50 Labels je Klasse fehlen |

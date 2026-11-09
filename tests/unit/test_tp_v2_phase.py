@@ -135,6 +135,42 @@ def test_ohne_artefakt_warnung_beim_laden(tmp_path, caplog) -> None:
         monkeypatch.undo()
 
 
+# ── Erreichbarkeit des trainierten Artefakts (D-K3-85) ────────────────────────
+
+
+def test_default_checkpoint_zeigt_in_die_repo_wurzel() -> None:
+    """Regression D-K3-85: `_PROJECT_ROOT` ist die Repo-Wurzel, nicht `backend/`.
+
+    Vor dem Fix ergab ``Path(__file__).parent.parent.parent`` = ``backend/``;
+    der Default-Checkpoint war ``backend/models/tp_v2/…`` (nie vorhanden) ⇒ der
+    Flag-Pfad lief still mit untrainierten Seed-Gewichten.
+    """
+    import pathlib
+
+    repo = pathlib.Path(tp2.__file__).resolve().parents[3]
+    assert repo == tp2._PROJECT_ROOT
+    assert repo / tp2.DEFAULT_CHECKPOINT_SUBPATH == tp2.DEFAULT_CHECKPOINT
+    assert tp2.DEFAULT_CHECKPOINT_SUBPATH == "models/tp_v2/tp_v2_phase_v1.pt"
+
+
+def test_trainer_dateiname_passt_zum_default_checkpoint() -> None:
+    """Der Trainer muss genau den Dateinamen schreiben, den der Consumer lädt."""
+    import pathlib
+
+    repo = pathlib.Path(tp2.__file__).resolve().parents[3]
+    quelle = (repo / "scripts" / "train_tp_v2_phase.py").read_text(encoding="utf-8")
+    assert f'"{tp2.DEFAULT_CHECKPOINT.name}"' in quelle
+
+
+def test_trainiertes_artefakt_ist_erreichbar() -> None:
+    """Regression D-K3-85: deployter Checkpoint ⇒ Quelle `checkpoint:…`, nie `seed`."""
+    pytest.importorskip("torch")
+    if not tp2.DEFAULT_CHECKPOINT.is_file():
+        pytest.skip("TP-V2-Trainingsartefakt nicht vorhanden (CI ohne models/)")
+    est = tp2.TPv2PhaseEstimator(checkpoint=tp2.DEFAULT_CHECKPOINT)
+    assert est.source.startswith("checkpoint:"), est.source
+
+
 # ── Rekonstruktion auf Synth-Transient plausibel (STFT-Rücklauf tolerant) ─────
 
 

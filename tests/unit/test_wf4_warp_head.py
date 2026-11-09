@@ -209,3 +209,81 @@ def test_stage_handles_long_curve_chunked(monkeypatch) -> None:
     assert res is not None
     assert res.shape == (t,)
     assert bool(np.isfinite(res).all())
+
+
+# ── Ladepfad: Trainings-Checkpoint statt ONNX (D-K3-85) ───────────────────────
+
+
+def _save_ckpt(path, *, hidden: int = 8) -> None:
+    """Legt einen Checkpoint im Vertrag von `scripts/train_wf4_warp_head.py` an."""
+    torch = pytest.importorskip("torch")
+    torch.manual_seed(7)
+    net = build_wf4_warp_model(hidden=hidden)
+    torch.save(
+        {
+            "model_state_dict": {k: v.detach().cpu() for k, v in net.state_dict().items()},
+            "wf4_warp_config": {"n_feat": N_SPEC_FEAT, "hidden": hidden, "target_fps": TARGET_FPS},
+            "seed": 7,
+            "loss": 0.25,
+        },
+        path,
+    )
+
+
+def test_ladepfad_checkpoint_wenn_onnx_fehlt(monkeypatch, tmp_path) -> None:
+    """Ohne ONNX-Export muss der Torch-Checkpoint des Trainings tragen.
+
+    Vor dem Fix war `is_available()` immer False (ONNX existiert nie) ⇒ der
+    Flag-Pfad war tot und jede AN/AUS-Messung verglich den heuristischen Pfad
+    mit sich selbst (D-K3-85).
+    """
+    pytest.importorskip("torch")
+    monkeypatch.setattr("backend.core.ml_memory_budget.try_allocate", lambda *a, **k: True)
+    ckpt = tmp_path / "wf4_warp_head_v1.pt"
+    _save_ckpt(ckpt)
+
+    head = WF4WarpHead(model_path=tmp_path / "fehlt.onnx", checkpoint_path=ckpt)
+    assert head.is_available() is True
+    assert head.source == "checkpoint:wf4_warp_head_v1.pt"
+
+    n = 64
+    f0 = np.full(n, 0.01, dtype=np.float32)
+    conf = np.ones(n, dtype=np.float32)
+    feat = np.zeros((n, N_SPEC_FEAT), dtype=np.float32)
+    w1, c1 = head.predict(f0, conf, feat)
+    w2, c2 = head.predict(f0, conf, feat)
+
+    np.testing.assert_array_equal(w1, w2)  # §G5 (copilot-instructions.md): bit-identisch
+    np.testing.assert_array_equal(c1, c2)
+    assert w1.shape == (n,) and w1.dtype == np.float32
+    assert bool(np.isfinite(w1).all())
+    assert float(np.abs(w1).max()) <= WARP_LIMIT_LOG2 + 1e-6
+    assert float(np.min(c1)) >= 0.0 and float(np.max(c1)) <= 1.0
+
+
+def test_ladepfad_ohne_artefakt_bleibt_inaktiv(tmp_path) -> None:
+    """Fehlt beides, bleibt der Challenger inaktiv und bricht ehrlich ab (§V6 (copilot-instructions.md))."""
+    head = WF4WarpHead(model_path=tmp_path / "fehlt.onnx", checkpoint_path=tmp_path / "fehlt.pt")
+    assert head.is_available() is False
+    assert head.source == "nicht_geladen"
+    with pytest.raises(RuntimeError):
+        head.predict(
+            np.zeros(8, dtype=np.float32),
+            np.ones(8, dtype=np.float32),
+            np.zeros((8, N_SPEC_FEAT), dtype=np.float32),
+        )
+
+
+def test_echtes_trainingsartefakt_ist_erreichbar() -> None:
+    """Regression D-K3-85: der deployte Checkpoint muss ladbar sein (kein Phantom)."""
+    pytest.importorskip("torch")
+    import pathlib
+
+    import backend.core.dsp.wf4_warp_head as wf4mod
+
+    repo = pathlib.Path(wf4mod.__file__).resolve().parents[3]
+    if not (repo / wf4mod.DEFAULT_CHECKPOINT_SUBPATH).is_file():
+        pytest.skip("WF4-Trainingsartefakt nicht vorhanden (CI ohne models/)")
+    head = WF4WarpHead()
+    assert head.is_available() is True
+    assert head.source.startswith("checkpoint:")
