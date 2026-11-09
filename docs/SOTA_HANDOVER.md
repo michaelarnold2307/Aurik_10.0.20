@@ -652,3 +652,35 @@ dem Ziel ⇒ Exit 3; Anker auf dem Ziel ⇒ `completed: true`). 8 neue Tests,
 `tests/unit/test_gpu_kette1_wiring.py` 23/23 grün, Ruff/Compile clean. **Offen
 ist nur der reale 30-Epochen-Lauf** (GPU); kein Flag-Flip, keine Hör-/Lizenz-
 entscheidung. Report `docs/reports/current/2026-11-09_d3_taktung_zeitbudget.md`.
+
+**Update 2026-11-09 (Cantus-OOM + Ohr-Richtungsfix — D-K3-88/D-K3-89, Commits `01c02033`/`9f0a84ac`):**
+(a) **D-K3-88 (Kette 1/R4):** `c2_cantus_finetune` starb reproduzierbar am
+24-GiB-OOM (Batch 8 + SingMOS-Lehrer: 22,77 GiB belegt, 750 MiB angefragt;
+Versuch 1 nach 55 s, Versuch 2 nach 31 s). `train_cantus.py` hat jetzt
+`--grad-accum` (Step am Fensterende UND am Epochenende, NaN-Guard verwirft nur
+den Mikro-Batch); Kette 1 fährt `--batch-size 2 --grad-accum 4` (effektive
+Batch 8, Rezeptur unverändert, Peak /4) in Erst- **und** Resume-Befehl.
+Verifiziert: Fenster-/Rest-Logik + Gradienten-Äquivalenz 2×2 == 1×4
+(atol 1e-7), 36 Tests, `bash -n`. **GPU-Nachweis offen** (nächster
+Kette-1-Lauf). Report `2026-11-09_cantus_finetune_oom.md`.
+(b) **D-K3-89 („Mein Ohr"):** Der Ohr-Prior wertete ROHWERTE — `defektlast`
+(per Definition höher = mehr Defekte) hatte **+0,30**-Prior; an MUSDB18-HQ
+gemessen war `w·Δ(clean−noisy)` nur **+0,045** (P(clean) = 0,511, Münzwurf),
+der defektlast-Term wirkte mit −0,149 gegen das saubere Signal. Fix:
+`qualitaets_vektor()` + `FEATURE_RICHTUNG` drehen niedriger-besser-Größen in
+Qualität, Loudness als musik-typisches Band (Prior, kein Gate), Schema
+`aurik.ohr_prior/2` fail-closed (alte Artefakte werden abgelehnt); nachher
+`w·Δ` = **+0,354** (P = 0,588). Konsumenten: UV3
+(`metadata["ohr_prior"]`, report-only) + StrategieDenker; die klangwirksame
+Sweet-Spot-Priorisierung in Restaurier-/Defekt-/Exzellenz-Denker ist
+**bewusst offen** (Hör-/B3-Entscheidung, Register-Blocker). Menschliche
+Kalibrierung: `python3 -B scripts/ohr_panel.py --erzeuge-paare --verzeichnis
+<Musikordner>`; ohne Artefakt ist die Wirkung null. Report
+`2026-11-09_mein_ohr_richtungsfix.md`.
+(c) **Wiederaufnahme nach Reboot 2026-11-09 21:0x:** keine Kette lief, `/tmp`
+war leer; Ketten 1→2→3→4 neu gestartet. **Kette 2 fährt D3-3 FlashSR**
+(Resume, `--max-seconds 37800`, 4×12 h); Kette 1 lief R4 erneut in den OOM
+(das war der reproduzierbare Beleg für D-K3-88), Kette 3/4 ohne offene Jobs.
+(d) **Beleg-Lehre:** D-K3-80 zitierte `/tmp/nachfahrt.sh` — nach dem Reboot
+weg. Der Register-Eintrag belegt jetzt mit dauerhaften Report-/Manifest-Pfaden
+(**`/tmp` ist KEIN Beleg**).
