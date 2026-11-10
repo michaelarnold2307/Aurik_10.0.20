@@ -1,21 +1,19 @@
 # TASK_CHANGES — Live-Ledger der aktuellen Aufgabe
 
-> Generiert von `scripts/change_ledger.py snapshot` (Base: `HEAD`, Stand: 2026-11-10 18:07 CET).
+> Generiert von `scripts/change_ledger.py snapshot` (Base: `HEAD`, Stand: 2026-11-10 18:31 CET).
 > CI (`ci-lite.yml` pr-evidence-gate) erzwingt Abdeckung: jede geänderte Code-Datei muss hier stehen.
 
 ## Geänderte Dateien
 
 | Status | Pfad | Art |
 |---|---|---|
-| M | `.github/FILE_REGISTRY.md` | modifiziert |
 | M | `.github/SOTA_DEFICIT_REGISTER.md` | modifiziert |
 | M | `TASK_CHANGES.md` | modifiziert |
 | M | `docs/SOTA_HANDOVER.md` | modifiziert |
-| M | `docs/TODOS_SOTA_ROADMAP.md` | modifiziert |
-| A | `docs/reports/current/2026-11-10_flashsr_d3_gate.json` | neu |
-| A | `docs/reports/current/2026-11-10_flashsr_d3_gate.md` | neu |
-| A | `scripts/verify_flashsr_d3_gate.py` | neu |
-| A | `tests/unit/test_flashsr_d3_gate.py` | neu |
+| M | `docs/reports/current/2026-11-10_flashsr_d3_gate.md` | modifiziert |
+| A | `docs/reports/current/2026-11-10_flashsr_d3_gate_2.json` | neu |
+| M | `scripts/verify_flashsr_d3_gate.py` | modifiziert |
+| M | `tests/unit/test_flashsr_d3_gate.py` | modifiziert |
 
 ## Entscheidungen
 

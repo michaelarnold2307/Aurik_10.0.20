@@ -1,0 +1,442 @@
+{
+  "schema": "aurik.flashsr_d3_gate/1",
+  "datum": "2026-11-10",
+  "seed": 42,
+  "sekunden": 30,
+  "schwelle_db": 2.0,
+  "checkpoint": {
+    "pfad": "models/flashsr/best.pt",
+    "sha256": "97403806f20adc186ab173072bd93a182617034e1f0d7cb7f478438e68b4eb0c"
+  },
+  "basis_checkpoint": {
+    "pfad": "models/flashsr/models/upsampler.pth",
+    "sha256": "62c70874ac4efeb4dc9c8aa9dc0a611a951e1c36292abeb4c406d7fb91e0eefc"
+  },
+  "tracks": [
+    {
+      "track": "BKS - Bulldozer",
+      "raw": {
+        "mean_dSDR": -5.6590869728888675,
+        "min_dSDR": -8.715554568924574,
+        "max_dSDR": -3.412473032291974,
+        "n_segmente": 30,
+        "sdr_est_db": 17.295526643062942,
+        "sdr_basis_db": 22.47833425826501,
+        "passband_sdr_est_db": 17.41487226826483,
+        "passband_sdr_basis_db": 22.8412088170396,
+        "hf_sdr_est_db": -0.5228185331623109,
+        "rms_est": 0.12197799847028556,
+        "rms_ref": 0.12204578681456016,
+        "rms_verhaeltnis": 0.9994445662890633,
+        "optimale_verstaerkung": 0.9912326066264994,
+        "beste_verzoegerung_samples": -1,
+        "gate": {
+          "bestanden": false,
+          "schwelle_db": 2.0,
+          "grund": "Mittel -5.66 dB < Schwelle +2.0 dB"
+        }
+      },
+      "residual": {
+        "mean_dSDR": -0.04941353701392164,
+        "min_dSDR": -0.09528620331662552,
+        "max_dSDR": -0.01838748466945006,
+        "n_segmente": 30,
+        "sdr_est_db": 22.434155447371253,
+        "sdr_basis_db": 22.47833425826501,
+        "passband_sdr_est_db": 22.84120881412333,
+        "passband_sdr_basis_db": 22.8412088170396,
+        "hf_sdr_est_db": -0.5199222866746092,
+        "rms_est": 0.1217134939109813,
+        "rms_ref": 0.12204578681456016,
+        "rms_verhaeltnis": 0.9972773095061138,
+        "optimale_verstaerkung": 0.9998668754908623,
+        "beste_verzoegerung_samples": 0,
+        "gate": {
+          "bestanden": false,
+          "schwelle_db": 2.0,
+          "grund": "Mittel -0.05 dB < Schwelle +2.0 dB"
+        }
+      },
+      "pretrained": {
+        "mean_dSDR": -7.712956049615702,
+        "min_dSDR": -11.728788948668832,
+        "max_dSDR": -4.447996497302446,
+        "n_segmente": 30,
+        "sdr_est_db": 15.6080917667386,
+        "sdr_basis_db": 22.47833425826501,
+        "passband_sdr_est_db": 15.694745421705745,
+        "passband_sdr_basis_db": 22.8412088170396,
+        "hf_sdr_est_db": -0.8629112609124288,
+        "rms_est": 0.13037324731743372,
+        "rms_ref": 0.12204578681456016,
+        "rms_verhaeltnis": 1.0682322652852125,
+        "optimale_verstaerkung": 0.9261282237457865,
+        "beste_verzoegerung_samples": 0,
+        "gate": {
+          "bestanden": false,
+          "schwelle_db": 2.0,
+          "grund": "Mittel -7.71 dB < Schwelle +2.0 dB"
+        }
+      }
+    },
+    {
+      "track": "Lyndsey Ollard - Catching Up",
+      "raw": {
+        "mean_dSDR": -16.06901589253384,
+        "min_dSDR": -27.724930366747277,
+        "max_dSDR": -3.8167463243593627,
+        "n_segmente": 30,
+        "sdr_est_db": 14.033905676546933,
+        "sdr_basis_db": 24.306932555836035,
+        "passband_sdr_est_db": 14.044319654029886,
+        "passband_sdr_basis_db": 24.366669878970534,
+        "hf_sdr_est_db": -2.7791220893275534,
+        "rms_est": 0.062255342104863234,
+        "rms_ref": 0.062249389871452974,
+        "rms_verhaeltnis": 1.000095619144582,
+        "optimale_verstaerkung": 0.9801648940330638,
+        "beste_verzoegerung_samples": -1,
+        "gate": {
+          "bestanden": false,
+          "schwelle_db": 2.0,
+          "grund": "Mittel -16.07 dB < Schwelle +2.0 dB"
+        }
+      },
+      "residual": {
+        "mean_dSDR": -0.25829831867119485,
+        "min_dSDR": -1.2201409126642915,
+        "max_dSDR": 0.0016824764058469555,
+        "n_segmente": 30,
+        "sdr_est_db": 24.25376564356911,
+        "sdr_basis_db": 24.306932555836035,
+        "passband_sdr_est_db": 24.366669878248516,
+        "passband_sdr_basis_db": 24.366669878970534,
+        "hf_sdr_est_db": -2.7770170685260616,
+        "rms_est": 0.06216401193031622,
+        "rms_ref": 0.062249389871452974,
+        "rms_verhaeltnis": 0.9986284533661605,
+        "optimale_verstaerkung": 0.9994930840679315,
+        "beste_verzoegerung_samples": 0,
+        "gate": {
+          "bestanden": false,
+          "schwelle_db": 2.0,
+          "grund": "Mittel -0.26 dB < Schwelle +2.0 dB"
+        }
+      },
+      "pretrained": {
+        "mean_dSDR": -22.93993117493867,
+        "min_dSDR": -39.43199295959421,
+        "max_dSDR": -6.179061077285825,
+        "n_segmente": 30,
+        "sdr_est_db": 12.033965459164836,
+        "sdr_basis_db": 24.306932555836035,
+        "passband_sdr_est_db": 12.055960838001969,
+        "passband_sdr_basis_db": 24.366669878970534,
+        "hf_sdr_est_db": -7.973069080534305,
+        "rms_est": 0.06527537944097696,
+        "rms_ref": 0.062249389871452974,
+        "rms_verhaeltnis": 1.0486107506559141,
+        "optimale_verstaerkung": 0.9262570264543409,
+        "beste_verzoegerung_samples": 0,
+        "gate": {
+          "bestanden": false,
+          "schwelle_db": 2.0,
+          "grund": "Mittel -22.94 dB < Schwelle +2.0 dB"
+        }
+      }
+    },
+    {
+      "track": "Raft Monk - Tiring",
+      "raw": {
+        "mean_dSDR": -9.923877325636012,
+        "min_dSDR": -17.670711419784226,
+        "max_dSDR": -3.3297868376988102,
+        "n_segmente": 30,
+        "sdr_est_db": 16.977855300695307,
+        "sdr_basis_db": 24.188444012514935,
+        "passband_sdr_est_db": 16.999617027800006,
+        "passband_sdr_basis_db": 24.267575082995457,
+        "hf_sdr_est_db": -1.6810922557149381,
+        "rms_est": 0.16407328918041933,
+        "rms_ref": 0.16409173061755844,
+        "rms_verhaeltnis": 0.9998876150731685,
+        "optimale_verstaerkung": 0.9900862263117974,
+        "beste_verzoegerung_samples": -1,
+        "gate": {
+          "bestanden": false,
+          "schwelle_db": 2.0,
+          "grund": "Mittel -9.92 dB < Schwelle +2.0 dB"
+        }
+      },
+      "residual": {
+        "mean_dSDR": -0.0664613477803023,
+        "min_dSDR": -0.12691855768398597,
+        "max_dSDR": -0.017363337783820043,
+        "n_segmente": 30,
+        "sdr_est_db": 24.151917546155126,
+        "sdr_basis_db": 24.188444012514935,
+        "passband_sdr_est_db": 24.267575082295387,
+        "passband_sdr_basis_db": 24.267575082995457,
+        "hf_sdr_est_db": -1.6669434960917622,
+        "rms_est": 0.1638029022001669,
+        "rms_ref": 0.16409173061755844,
+        "rms_verhaeltnis": 0.9982398356315426,
+        "optimale_verstaerkung": 0.9998393501211951,
+        "beste_verzoegerung_samples": 0,
+        "gate": {
+          "bestanden": false,
+          "schwelle_db": 2.0,
+          "grund": "Mittel -0.07 dB < Schwelle +2.0 dB"
+        }
+      },
+      "pretrained": {
+        "mean_dSDR": -10.36899527352092,
+        "min_dSDR": -17.24919989563596,
+        "max_dSDR": -3.7016299821322676,
+        "n_segmente": 30,
+        "sdr_est_db": 16.74577511820768,
+        "sdr_basis_db": 24.188444012514935,
+        "passband_sdr_est_db": 16.776018572522396,
+        "passband_sdr_basis_db": 24.267575082995457,
+        "hf_sdr_est_db": -3.3219071510718097,
+        "rms_est": 0.17433513105674933,
+        "rms_ref": 0.16409173061755844,
+        "rms_verhaeltnis": 1.062424842499009,
+        "optimale_verstaerkung": 0.9336007808680195,
+        "beste_verzoegerung_samples": 0,
+        "gate": {
+          "bestanden": false,
+          "schwelle_db": 2.0,
+          "grund": "Mittel -10.37 dB < Schwelle +2.0 dB"
+        }
+      }
+    },
+    {
+      "track": "Signe Jakobsen - What Have You Done To Me",
+      "raw": {
+        "mean_dSDR": -7.664604496016835,
+        "min_dSDR": -27.231039894589657,
+        "max_dSDR": -1.9192399132486582,
+        "n_segmente": 30,
+        "sdr_est_db": 13.428260441850362,
+        "sdr_basis_db": 18.257532210300333,
+        "passband_sdr_est_db": 13.445124913830252,
+        "passband_sdr_basis_db": 18.29232986323555,
+        "hf_sdr_est_db": -1.7610477382480165,
+        "rms_est": 0.10518356502840957,
+        "rms_ref": 0.10573561807559378,
+        "rms_verhaeltnis": 0.9947789301539853,
+        "optimale_verstaerkung": 0.9823218682947987,
+        "beste_verzoegerung_samples": -1,
+        "gate": {
+          "bestanden": false,
+          "schwelle_db": 2.0,
+          "grund": "Mittel -7.66 dB < Schwelle +2.0 dB"
+        }
+      },
+      "residual": {
+        "mean_dSDR": -0.04028840114374006,
+        "min_dSDR": -0.30788662790772037,
+        "max_dSDR": -0.008099721351733535,
+        "n_segmente": 30,
+        "sdr_est_db": 18.240031071697576,
+        "sdr_basis_db": 18.257532210300333,
+        "passband_sdr_est_db": 18.292329863877455,
+        "passband_sdr_basis_db": 18.29232986323555,
+        "hf_sdr_est_db": -1.75690983950348,
+        "rms_est": 0.1049377382258759,
+        "rms_ref": 0.10573561807559378,
+        "rms_verhaeltnis": 0.9924540106329406,
+        "optimale_verstaerkung": 1.0000225401769416,
+        "beste_verzoegerung_samples": 0,
+        "gate": {
+          "bestanden": false,
+          "schwelle_db": 2.0,
+          "grund": "Mittel -0.04 dB < Schwelle +2.0 dB"
+        }
+      },
+      "pretrained": {
+        "mean_dSDR": -8.035110382853516,
+        "min_dSDR": -35.26297348409173,
+        "max_dSDR": -2.3290209445354275,
+        "n_segmente": 30,
+        "sdr_est_db": 13.344157320588984,
+        "sdr_basis_db": 18.257532210300333,
+        "passband_sdr_est_db": 13.372083854120149,
+        "passband_sdr_basis_db": 18.29232986323555,
+        "hf_sdr_est_db": -3.9777483461192764,
+        "rms_est": 0.11093760926436882,
+        "rms_ref": 0.10573561807559378,
+        "rms_verhaeltnis": 1.049198096946442,
+        "optimale_verstaerkung": 0.9331814599069143,
+        "beste_verzoegerung_samples": 0,
+        "gate": {
+          "bestanden": false,
+          "schwelle_db": 2.0,
+          "grund": "Mittel -8.04 dB < Schwelle +2.0 dB"
+        }
+      }
+    },
+    {
+      "track": "The Long Wait - Dark Horses",
+      "raw": {
+        "mean_dSDR": -3.0610130326401506,
+        "min_dSDR": -7.503605631745824,
+        "max_dSDR": -1.7113878034934835,
+        "n_segmente": 30,
+        "sdr_est_db": 17.63563570630429,
+        "sdr_basis_db": 20.60672985881976,
+        "passband_sdr_est_db": 18.153693287395367,
+        "passband_sdr_basis_db": 21.689812312084925,
+        "hf_sdr_est_db": -0.07842059523520183,
+        "rms_est": 0.1339741187874134,
+        "rms_ref": 0.13428809530973057,
+        "rms_verhaeltnis": 0.9976619184180623,
+        "optimale_verstaerkung": 0.9936922531683066,
+        "beste_verzoegerung_samples": -1,
+        "gate": {
+          "bestanden": false,
+          "schwelle_db": 2.0,
+          "grund": "Mittel -3.06 dB < Schwelle +2.0 dB"
+        }
+      },
+      "residual": {
+        "mean_dSDR": -0.01650694608345636,
+        "min_dSDR": -0.056059944685827645,
+        "max_dSDR": 0.0008180064009728483,
+        "n_segmente": 30,
+        "sdr_est_db": 20.58934439878799,
+        "sdr_basis_db": 20.60672985881976,
+        "passband_sdr_est_db": 21.689812312161653,
+        "passband_sdr_basis_db": 21.689812312084925,
+        "hf_sdr_est_db": -0.07779512906583856,
+        "rms_est": 0.13373004481308845,
+        "rms_ref": 0.13428809530973057,
+        "rms_verhaeltnis": 0.9958443784956887,
+        "optimale_verstaerkung": 0.9997826355702555,
+        "beste_verzoegerung_samples": 0,
+        "gate": {
+          "bestanden": false,
+          "schwelle_db": 2.0,
+          "grund": "Mittel -0.02 dB < Schwelle +2.0 dB"
+        }
+      },
+      "pretrained": {
+        "mean_dSDR": -5.407332624007599,
+        "min_dSDR": -10.679630406216887,
+        "max_dSDR": -3.6312365304888274,
+        "n_segmente": 30,
+        "sdr_est_db": 15.548032849433625,
+        "sdr_basis_db": 20.60672985881976,
+        "passband_sdr_est_db": 15.865514733743664,
+        "passband_sdr_basis_db": 21.689812312084925,
+        "hf_sdr_est_db": -0.18162379434564224,
+        "rms_est": 0.1438820721306463,
+        "rms_ref": 0.13428809530973057,
+        "rms_verhaeltnis": 1.0714432414786104,
+        "optimale_verstaerkung": 0.9234086070636327,
+        "beste_verzoegerung_samples": 0,
+        "gate": {
+          "bestanden": false,
+          "schwelle_db": 2.0,
+          "grund": "Mittel -5.41 dB < Schwelle +2.0 dB"
+        }
+      }
+    },
+    {
+      "track": "We Fell From The Sky - Not You",
+      "raw": {
+        "mean_dSDR": -11.882154509744757,
+        "min_dSDR": -15.632755396328935,
+        "max_dSDR": -4.367500166206877,
+        "n_segmente": 30,
+        "sdr_est_db": 14.183274384714789,
+        "sdr_basis_db": 23.760935912223612,
+        "passband_sdr_est_db": 14.214510184030637,
+        "passband_sdr_basis_db": 24.040505023624668,
+        "hf_sdr_est_db": -0.32265796201123736,
+        "rms_est": 0.13391462268331028,
+        "rms_ref": 0.13410968951811222,
+        "rms_verhaeltnis": 0.9985454680008368,
+        "optimale_verstaerkung": 0.9823235709545122,
+        "beste_verzoegerung_samples": -1,
+        "gate": {
+          "bestanden": false,
+          "schwelle_db": 2.0,
+          "grund": "Mittel -11.88 dB < Schwelle +2.0 dB"
+        }
+      },
+      "residual": {
+        "mean_dSDR": -0.0313822827523697,
+        "min_dSDR": -0.05883646166668299,
+        "max_dSDR": -0.0072307606269763625,
+        "n_segmente": 30,
+        "sdr_est_db": 23.74019153250274,
+        "sdr_basis_db": 23.760935912223612,
+        "passband_sdr_est_db": 24.040505022973075,
+        "passband_sdr_basis_db": 24.040505023624668,
+        "hf_sdr_est_db": -0.3217672661373978,
+        "rms_est": 0.1338844957046695,
+        "rms_ref": 0.13410968951811222,
+        "rms_verhaeltnis": 0.9983208236910257,
+        "optimale_verstaerkung": 0.9995660471999905,
+        "beste_verzoegerung_samples": 0,
+        "gate": {
+          "bestanden": false,
+          "schwelle_db": 2.0,
+          "grund": "Mittel -0.03 dB < Schwelle +2.0 dB"
+        }
+      },
+      "pretrained": {
+        "mean_dSDR": -9.535510217295357,
+        "min_dSDR": -13.16880207158794,
+        "max_dSDR": -2.3353109283868427,
+        "n_segmente": 30,
+        "sdr_est_db": 16.48876205389987,
+        "sdr_basis_db": 23.760935912223612,
+        "passband_sdr_est_db": 16.551508123218763,
+        "passband_sdr_basis_db": 24.040505023624668,
+        "hf_sdr_est_db": -0.9532125166817907,
+        "rms_est": 0.13907584423787214,
+        "rms_ref": 0.13410968951811222,
+        "rms_verhaeltnis": 1.0370305437109315,
+        "optimale_verstaerkung": 0.954497445176086,
+        "beste_verzoegerung_samples": 0,
+        "gate": {
+          "bestanden": false,
+          "schwelle_db": 2.0,
+          "grund": "Mittel -9.54 dB < Schwelle +2.0 dB"
+        }
+      }
+    }
+  ],
+  "varianten": {
+    "raw": {
+      "mean_dSDR_ueber_tracks": -9.04329203824341,
+      "min_dSDR_ueber_tracks": -27.724930366747277,
+      "gate": {
+        "bestanden": false,
+        "schwelle_db": 2.0,
+        "grund": "Mittel -9.04 dB < Schwelle +2.0 dB"
+      }
+    },
+    "residual": {
+      "mean_dSDR_ueber_tracks": -0.07705847224083083,
+      "min_dSDR_ueber_tracks": -1.2201409126642915,
+      "gate": {
+        "bestanden": false,
+        "schwelle_db": 2.0,
+        "grund": "Mittel -0.08 dB < Schwelle +2.0 dB"
+      }
+    },
+    "pretrained": {
+      "mean_dSDR_ueber_tracks": -10.666639287038628,
+      "min_dSDR_ueber_tracks": -39.43199295959421,
+      "gate": {
+        "bestanden": false,
+        "schwelle_db": 2.0,
+        "grund": "Mittel -10.67 dB < Schwelle +2.0 dB"
+      }
+    }
+  }
+}

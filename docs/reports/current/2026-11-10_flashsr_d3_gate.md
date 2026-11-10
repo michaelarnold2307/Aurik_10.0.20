@@ -41,6 +41,24 @@ Je Track (`raw`): SDR 17,40 / 16,75 / 17,80 dB gegen Basis 22,41 / 22,40 /
 **Der Finetune ist besser als das Vortrainings-Modell (+1,8 dB), aber er
 verliert gegen „nichts tun" (Bandlimit) um 2,1–6,2 dB.**
 
+### 2b. Robustheitslauf (6 Tracks × 30 s, unabhängige Stichprobe)
+
+Weil 3 Tracks dünn sind, derselbe Lauf mit `--tracks 6 --seconds 30` (anderes
+Track-Subset, Seed 42): `docs/reports/current/2026-11-10_flashsr_d3_gate_2.json`.
+
+| Variante | mean ΔSDR | min ΔSDR | Spanne je Track |
+| --- | --- | --- | --- |
+| `raw` | **−9,04 dB** | −27,72 dB | −3,06 … −16,07 dB |
+| `residual` | −0,08 dB | −1,22 dB | −0,02 … −0,26 dB |
+| `pretrained` | −10,67 dB | −35,26 dB | −5,41 … −22,94 dB |
+
+Auch hier ist die Peilung artefaktfrei (Lag 0/−1 Sample, Gain 0,92–1,00), und
+die Passband-SDR der Ausgabe (12,1–18,2 dB) liegt weit unter der Basis
+(18,3–24,4 dB). **Zwei unabhängige Stichproben, beide deutlich unter der
+Schwelle** (−4,6 dB und −9,0 dB): das Urteil hängt nicht an der Track-Auswahl.
+Der Unterschied zwischen den Läufen (3 vs. 6 Tracks) ist Material-Streuung,
+kein Widerspruch — die Richtung und die Größenordnung sind gleich.
+
 ## 3. Diagnose — kein Mess-Artefakt
 
 Die Lehre aus D-K3-85 („erst den Pfad prüfen, dann urteilen") ist hier
@@ -96,7 +114,10 @@ Hör-Instanz (§4/B3), nicht diesem Lauf.
   und alle Diagnosegrößen.
 - Determinismus: Seed 42, keine Zeitquelle in der Auswahl (§G5); CPU-only, damit
   das Ergebnis nicht von der GPU-Auslastung abhängt.
-- Grenze: 3 Tracks × 20 s (60 s Material) — ein *grober* Gate-Befund. Für ein
-  endgültiges Urteil über die Modellklasse wären mehr Tracks nötig; die
-  Größenordnung (−4,6 dB bei drei unabhängigen Stücken, min −10,6 dB) lässt
-  aber keinen Grenzfall erwarten.
+- Grenze: 3 Tracks × 20 s (60 s Material) plus ein unabhängiger Robustheitslauf
+  mit 6 Tracks × 30 s (180 s) — zusammen 9 Track-Läufe. Für ein *endgültiges*
+  Urteil über die Modellklasse wären mehr Tracks nötig; die Größenordnung
+  (−4,6 dB bzw. −9,0 dB, min bis −27,7 dB) lässt aber keinen Grenzfall erwarten.
+- Der zweite Lauf überschreibt den ersten **nicht**: `_zielpfad()` vergibt einen
+  numerischen Beleg-Namen (`…_2.json`), eine identische Wiederholung bleibt
+  idempotent (2 Tests).

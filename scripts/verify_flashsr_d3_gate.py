@@ -207,6 +207,25 @@ def _messe(ref: np.ndarray, est: np.ndarray, basis: np.ndarray) -> dict:
     }
 
 
+def _zielpfad(ziel: Path, inhalt: str) -> Path:
+    """Nie einen vorhandenen Beleg ueberschreiben (Lehre D-K3-85: Belege sind Beweise).
+
+    Eine identische Wiederholung ist idempotent (derselbe Pfad), ein abweichender
+    Lauf bekommt einen numerischen Nebennamen ``_2``, ``_3``, ...
+    """
+    if not ziel.exists():
+        return ziel
+    if ziel.read_text(encoding="utf-8") == inhalt:
+        return ziel
+    for nummer in range(2, 100):
+        kandidat = ziel.with_name(f"{ziel.stem}_{nummer}{ziel.suffix}")
+        if not kandidat.exists():
+            return kandidat
+        if kandidat.read_text(encoding="utf-8") == inhalt:
+            return kandidat
+    raise RuntimeError(f"kein freier Beleg-Pfad neben {ziel}")
+
+
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(
         description="D3-3-Gate: MUSDB-ΔSDR des FlashSR-Finetunes (CPU, §G5 (copilot-instructions.md))"
@@ -299,7 +318,9 @@ def main(argv: list[str] | None = None) -> int:
     if not ziel.is_absolute():
         ziel = _ROOT / ziel
     ziel.parent.mkdir(parents=True, exist_ok=True)
-    ziel.write_text(json.dumps(ergebnis, indent=2, ensure_ascii=False), encoding="utf-8")
+    inhalt = json.dumps(ergebnis, indent=2, ensure_ascii=False) + "\n"
+    ziel = _zielpfad(ziel, inhalt)
+    ziel.write_text(inhalt, encoding="utf-8")
 
     print(
         f"\nVariante raw      : meanΔSDR={primaer['mean_dSDR_ueber_tracks']:+.2f} dB, "

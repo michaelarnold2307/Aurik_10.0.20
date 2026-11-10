@@ -116,3 +116,19 @@ def test_cpu_guard_fail_closed_bei_sichtbarer_gpu(monkeypatch) -> None:
 
     monkeypatch.setattr(torch.cuda, "is_available", lambda: False)
     assert gate._cpu_guard() is None
+
+
+def test_zielpfad_zerstoert_keinen_beleg(tmp_path) -> None:
+    """Ein zweiter Lauf darf den Beweis des ersten nicht ueberschreiben (D-K3-85)."""
+    ziel = tmp_path / "beleg.json"
+    ziel.write_text("alt", encoding="utf-8")
+    assert gate._zielpfad(ziel, "alt") == ziel  # identische Wiederholung: idempotent
+    assert gate._zielpfad(ziel, "neu") == tmp_path / "beleg_2.json"
+    (tmp_path / "beleg_2.json").write_text("x", encoding="utf-8")
+    assert gate._zielpfad(ziel, "neu") == tmp_path / "beleg_3.json"
+
+
+def test_zielpfad_freier_pfad_bleibt_unveraendert(tmp_path) -> None:
+    ziel = tmp_path / "frisch.json"
+    assert gate._zielpfad(ziel, "x") == ziel
+    assert not ziel.exists()
