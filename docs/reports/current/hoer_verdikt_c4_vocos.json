@@ -1,0 +1,15 @@
+{
+  "schema": "aurik.ab_stats/1",
+  "n_verdikte": 3,
+  "n_entscheidend": 1,
+  "gleichstaende": 2,
+  "siege_a": 0,
+  "siege_b": 1,
+  "siegquote_a": 0.0,
+  "p_wert_vorzeichen_test": 1.0,
+  "signifikant": false,
+  "label_a": "Kandidat A",
+  "label_b": "Kandidat B",
+  "entscheidung": "C4 Studio-Finisher-Teilentscheidung: vocos-Base (Sprach-Korpus) vs. Musik-Finetune (D-K2-3)",
+  "quelle": "scripts/hoer_entscheidung.py"
+}

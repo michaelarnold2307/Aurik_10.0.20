@@ -80,6 +80,13 @@ use_tp_v2_phase: bool = False  # SOTA-M12 (D-K4-8): TP-V2-Klassen-Phasenschätzu
 # Transienten-Phasenkohärenz (kammfilter-frei). Aktivierung erst nach A/B auf transient-reichem
 # Material (Percussion ohne Kammfilter-Artefakte) + Hörordnungs-Sign-off (§v10.802
 # copilot-instructions.md). False ⇒ keine Verhaltensänderung.
+use_vocos_ft_reconstruction: bool = False  # M5 (D-K2-3, 2026-11-09): vocos-48k-Musik-Finetune
+# (models/vocos_48khz/finetune/vocos_48khz_music_ft.onnx) als Challenger für die Lücken-
+# Rekonstruktion im RekonstruktionsDenker — lokale Fenster-Resynthese statt linearer
+# Interpolation, Never-worsen via Mel-SNR gegen die lineare Füllung. Aktivierung erst nach
+# Hör-Sign-off (Proben: study_stimuli/hoerproben/m5_rekonstruktion, scripts/hoer_entscheidung.py)
+# (§v10.802 copilot-instructions.md). False ⇒ bit-identisches Bestandsverhalten; fehlt das ONNX,
+# fällt auch True fail-closed auf linear zurück (§V6 (copilot-instructions.md)).
 use_material_crnn: bool = (
     False  # D-K1-3 Phase D: CRNN-Material-Classifier (models/material_crnn.pt) im Material-Entscheidungspfad
 )

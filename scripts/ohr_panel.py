@@ -70,8 +70,25 @@ def erkenne_paare(verzeichnis: Path) -> list[dict[str, str]]:
         gemeinsame = sorted(set(a_files) & set(b_files))
         return [{"id": n.rsplit(".", 1)[0], "a": str(a_files[n]), "b": str(b_files[n])} for n in gemeinsame]
 
-    # Suffix-Layout: <stamm>.a.wav / <stamm>.b.wav
+    # Restauriert-Layout (echte Aurik-Paare, 2026-11-10):
+    # <stamm>_restauriert*.wav ↔ <stamm>.wav bzw. <stamm>_ORIGINAL.wav
     audio = _audio_dateien(verzeichnis)
+    restauriert: dict[str, Path] = {}
+    for p in audio:
+        if "_restauriert" in p.stem:
+            basis = p.stem.split("_restauriert")[0]
+            restauriert[basis] = p
+    if restauriert:
+        by_name = {p.stem: p for p in audio}
+        paare = []
+        for basis in sorted(restauriert):
+            original = by_name.get(basis) or by_name.get(basis + "_ORIGINAL") or by_name.get(basis + "_original")
+            if original:
+                paare.append({"id": basis, "a": str(original), "b": str(restauriert[basis])})
+        if paare:
+            return paare
+
+    # Suffix-Layout: <stamm>.a.wav / <stamm>.b.wav
     a_by_stamm: dict[str, Path] = {}
     b_by_stamm: dict[str, Path] = {}
     for p in audio:
@@ -124,7 +141,14 @@ def _lade_48k(pfad: Path):
 
 
 def defekt_variante(audio, variante: str, rng) -> np.ndarray:
-    """Kontrollierte, deterministische Defekt-Variante (Stärke bewusst hörbar)."""
+    """Kontrollierte, deterministische Defekt-Variante (Stärke bewusst hörbar).
+
+    Die Bibliothek deckt ALLE 7 Ohr-Feature-Dimensionen ab
+    (ohr_prior.FEATURE_NAMEN): defektlast (rausch, brummen, kammfilter),
+    roughness (kammfilter, wowflutter, verzerrung), sharpness (bandlimit,
+    saettigung, verzerrung), loudness (lautheit, kompression), fluctuation
+    (tremolo, wowflutter, kompression), sii (bandlimit), musik_mos (alle).
+    """
     x = np.asarray(audio, dtype=np.float64)
     if variante == "rausch":
         ziel_snr_db = 24.0
@@ -140,6 +164,59 @@ def defekt_variante(audio, variante: str, rng) -> np.ndarray:
         return y.astype(np.float32)
     if variante == "saettigung":
         return (np.tanh(3.0 * x) / np.tanh(3.0)).astype(np.float32)
+    if variante == "kammfilter":
+        # Phasen-Interferenz: Delay 5 ms, Feedback 0.7, Mix 50 % — typisch
+        # für Mehrweg-Übertragungen (Kamm-Metrik des Sweet-Spots).
+        delay = int(0.005 * 48000)
+        out = x.copy()
+        out[delay:] += 0.7 * x[:-delay]
+        out = 0.5 * x + 0.5 * out
+        out /= float(np.abs(out).max()) + 1e-9
+        return out.astype(np.float32)
+    if variante == "wowflutter":
+        # Periodische Geschwindigkeitsschwankung (4 Hz, ±1 %) — Vinyl/Tape.
+        from scipy.interpolate import interp1d
+
+        n = x.size
+        t = np.arange(n, dtype=np.float64) / 48000.0
+        warp = t + 0.01 * np.sin(2 * np.pi * 4.0 * t) / (2 * np.pi * 4.0)
+        warp = np.clip(warp, warp[0], warp[-1])
+        f = interp1d(t, x, kind="linear", fill_value="extrapolate")
+        return f(warp).astype(np.float32)
+    if variante == "kompression":
+        # Harte Dynamik-Kompression: Envelope-Follower, Threshold −20 dBFS,
+        # Ratio 4:1, deterministisch.
+        from scipy.signal import lfilter
+
+        env = np.abs(x)
+        b = [1.0]
+        a = [1.0, -0.999]
+        smooth = lfilter(b, a, env)
+        threshold = 10 ** (-20.0 / 20)
+        gain = np.ones_like(x)
+        over = smooth > threshold
+        gain[over] = (threshold + (smooth[over] - threshold) / 4.0) / smooth[over]
+        return (x * gain).astype(np.float32)
+    if variante == "brummen":
+        # Netzbrumm 50 Hz + Harmonische bei −30 dB (tonale Defektlast).
+        t = np.arange(x.size, dtype=np.float64) / 48000.0
+        brumm = 0.0
+        for harmonische, amp in ((1, 0.0316), (2, 0.0158), (3, 0.0079)):
+            brumm += amp * np.sin(2 * np.pi * 50.0 * harmonische * t + float(rng.uniform(0, 2 * np.pi)))
+        return (x + brumm).astype(np.float32)
+    if variante == "tremolo":
+        # Amplitudenmodulation 5 Hz, 30 % Tiefe — Fluktuationsstärke direkt.
+        t = np.arange(x.size, dtype=np.float64) / 48000.0
+        mod = 1.0 - 0.3 * (0.5 + 0.5 * np.sin(2 * np.pi * 5.0 * t))
+        return (x * mod).astype(np.float32)
+    if variante == "verzerrung":
+        # Kubische Nichtlinearität — Obertöne, Rauigkeit.
+        y = x + 0.3 * x**3
+        y /= float(np.abs(y).max()) + 1e-9
+        return y.astype(np.float32)
+    if variante == "lautheit":
+        # Pegel −6 dB — kalibriert die Loudness-Dimension direkt.
+        return (x * 0.5).astype(np.float32)
     raise ValueError(f"Unbekannte Variante: {variante}")
 
 
@@ -164,11 +241,11 @@ def erzeuge_paare(
     ausgang: Path,
     varianten: list[str],
     seed: int,
-    ausschnitt_s: float = 20.0,
+    ausschnitt_s: float = 10.0,
 ) -> list[dict[str, str]]:
     """Erzeugt A/B-Paare aus einem Musik-Ordner: A = Original, B = Defekt-Variante.
     Deterministisch (Seed); Ausgabe als A/-B/-Ordnerlayout unter `ausgang`.
-    `ausschnitt_s` > 0: nur der Mittel-Ausschnitt wird verglichen (Standard 20 s).
+    `ausschnitt_s` > 0: nur der Mittel-Ausschnitt wird verglichen (Standard 10 s).
     """
     import numpy as np
     import soundfile as sf
@@ -326,14 +403,25 @@ def baue_session(verdikte: list[dict[str, str]], key: dict, sr_hint: int = 48000
     }
 
 
-def erstelle_trials(paare: list[dict[str, str]], work: Path, seed: int, wiederholen: int = 1) -> tuple[dict, dict]:
+def erstelle_trials(
+    paare: list[dict[str, str]],
+    work: Path,
+    seed: int,
+    wiederholen: int = 1,
+    ausschnitt_s: float = 10.0,
+) -> tuple[dict, dict]:
     """Verblindetes Versuchsblatt + Schlüssel DIREKT im Panel (autark — die
     ab_harness-Datei teilt sich das Repo mit der parallelen Sitzung).
     Deterministisch (Seed, §G5 (copilot-instructions.md)); der Schlüssel trägt
     die Originalpfade je Trial für die spätere Entblindung.
+
+    JEDE Stimulus-Datei wird auf den deterministischen Mittel-Ausschnitt
+    (ausschnitt_s) gekürzt — auch ERKANNTE Paare (restauriert/A/B-Ordner),
+    damit nie ganze Songs abgespielt werden.
     """
     import random
-    import shutil
+
+    import soundfile as sf
 
     rng = random.Random(seed)
     stimuli_dir = work / "stimuli"
@@ -349,8 +437,10 @@ def erstelle_trials(paare: list[dict[str, str]], work: Path, seed: int, wiederho
             slots: dict[str, str] = {}
             for slot in ("left", "right"):
                 src = Path(item[mapping[slot]])
-                dst = stimuli_dir / f"{trial_id}_{slot}{src.suffix}"
-                shutil.copyfile(src, dst)
+                dst = stimuli_dir / f"{trial_id}_{slot}.wav"
+                # Mittel-Ausschnitt statt Ganztrack (§G5 (copilot-instructions.md))
+                audio = _mittel_ausschnitt(_lade_48k(src), ausschnitt_s)
+                sf.write(str(dst), audio, 48000)
                 slots[slot] = str(dst.relative_to(work))
             trials.append(
                 {
@@ -416,7 +506,7 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument(
         "--ausschnitt-sekunden",
         type=float,
-        default=20.0,
+        default=10.0,
         help="Nur den Mittel-Ausschnitt dieser Länge vergleichen (0 = ganzer Song)",
     )
     ap.add_argument(
@@ -479,7 +569,9 @@ def main(argv: list[str] | None = None) -> int:
     items.write_text(json.dumps(paare, indent=2, ensure_ascii=False), encoding="utf-8")
 
     # Verblindung DIREKT im Panel (autark, §G5 (copilot-instructions.md)).
-    sheet_doc, key_doc = erstelle_trials(paare, work, args.seed, wiederholen=args.wiederholen)
+    sheet_doc, key_doc = erstelle_trials(
+        paare, work, args.seed, wiederholen=args.wiederholen, ausschnitt_s=args.ausschnitt_sekunden
+    )
     (work / "trials.json").write_text(json.dumps(sheet_doc, indent=2, ensure_ascii=False), encoding="utf-8")
     (work / "key.json").write_text(json.dumps(key_doc, indent=2, ensure_ascii=False), encoding="utf-8")
 

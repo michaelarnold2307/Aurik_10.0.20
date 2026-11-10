@@ -152,3 +152,81 @@ class TestRekonstruktionsDenkerRekonstruiere:
         assert isinstance(result.phases_applied, list)
         for item in result.phases_applied:
             assert isinstance(item, str)
+
+    # ── M5-Challenger (vocos-Finetune, D-K2-3, 2026-11-09) ──
+
+    def _signal_mit_luecke(self) -> np.ndarray:
+        x = _sine(2.0)
+        lo, hi = SR - 12000, SR + 12000  # 0,5-s-Lücke in der Mitte
+        x[lo:hi] = 0.0
+        return x
+
+    def test_vocos_ft_flag_aus_liefert_none(self) -> None:
+        """Default AUS: Challenger bleibt still — bit-identisches Bestandsverhalten."""
+        from unittest import mock
+
+        with mock.patch("backend.core.music_model_flags.use_vocos_ft_reconstruction", False):
+            assert RekonstruktionsDenker._vocos_ft_fill(self._signal_mit_luecke(), SR) is None
+
+    def test_vocos_ft_onnx_fehlt_liefert_none(self, monkeypatch) -> None:
+        """ONNX fehlt (leeres cwd) ⇒ fail-closed auf None (§V6 (copilot-instructions.md))."""
+        import tempfile
+        from pathlib import Path
+        from unittest import mock
+
+        with tempfile.TemporaryDirectory() as td:
+            monkeypatch.chdir(Path(td))
+            with mock.patch("backend.core.music_model_flags.use_vocos_ft_reconstruction", True):
+                assert RekonstruktionsDenker._vocos_ft_fill(self._signal_mit_luecke(), SR) is None
+
+    def test_vocos_ft_energie_gate_und_ersetzung(self) -> None:
+        """Energie-Gate: explodierender Fill ⇒ None; korrekter Fill ersetzt die
+        Lücke und lässt den Kontext bit-identisch (konstruktives Never-worsen).
+        """
+        import numpy as np
+        import pytest
+
+        pytest.importorskip("torch")
+        pytest.importorskip("torchaudio")
+        pytest.importorskip("onnxruntime")
+        from unittest import mock
+
+        x = self._signal_mit_luecke()
+
+        class _Input:
+            name = "mel"
+
+        class _FakeSess:
+            def __init__(self, *args, explode: bool = False, **kwargs):
+                self._explode = explode
+
+            def get_inputs(self):
+                return [_Input()]
+
+            def run(self, _out, feed):
+                mel = feed["mel"]
+                b, m, t = mel.shape
+                laenge = (t - 7) * 256
+                out = np.zeros(laenge, dtype=np.float32)
+                mitte = laenge // 2
+                out[mitte - 12000 : mitte + 12000] = 50.0 if self._explode else 0.05
+                return [out]
+
+        with mock.patch("backend.core.music_model_flags.use_vocos_ft_reconstruction", True):
+            with mock.patch(
+                "onnxruntime.InferenceSession",
+                lambda *a, **k: _FakeSess(explode=True),
+            ):
+                assert RekonstruktionsDenker._vocos_ft_fill(x, SR) is None, (
+                    "Energie-Gate muss explodierenden Fill ablehnen"
+                )
+            with mock.patch(
+                "onnxruntime.InferenceSession",
+                lambda *a, **k: _FakeSess(explode=False),
+            ):
+                ergebnis = RekonstruktionsDenker._vocos_ft_fill(x, SR)
+                assert ergebnis is not None
+                lo, hi = SR - 12000, SR + 12000
+                assert float(np.abs(ergebnis[lo:hi]).mean()) > 1e-4, "Lücke muss ersetzt sein"
+                assert np.array_equal(ergebnis[: lo - 24000], x[: lo - 24000]), "Kontext bleibt bit-identisch"
+                assert np.array_equal(ergebnis[hi + 24000 :], x[hi + 24000 :]), "Kontext bleibt bit-identisch"

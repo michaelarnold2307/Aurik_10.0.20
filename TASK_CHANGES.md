@@ -1,13 +1,33 @@
 # TASK_CHANGES — Live-Ledger der aktuellen Aufgabe
 
-> Generiert von `scripts/change_ledger.py snapshot` (Base: `HEAD`, Stand: 2026-11-10 05:39 CET).
+> Generiert von `scripts/change_ledger.py snapshot` (Base: `HEAD`, Stand: 2026-11-10 11:40 CET).
 > CI (`ci-lite.yml` pr-evidence-gate) erzwingt Abdeckung: jede geänderte Code-Datei muss hier stehen.
 
 ## Geänderte Dateien
 
 | Status | Pfad | Art |
 |---|---|---|
+| M | `.github/FILE_REGISTRY.md` | modifiziert |
+| M | `.github/SOTA_DEFICIT_REGISTER.md` | modifiziert |
+| M | `.pre-commit-config.yaml` | modifiziert |
+| M | `TASK_CHANGES.md` | modifiziert |
+| M | `backend/core/music_model_flags.py` | modifiziert |
+| M | `denker/rekonstruktions_denker.py` | modifiziert |
+| M | `docs/SOTA_HANDOVER.md` | modifiziert |
 | M | `docs/TODOS_SOTA_ROADMAP.md` | modifiziert |
+| A | `docs/reports/current/2026-11-10_m5_hoerbefund_und_c4_teilbefund.md` | neu |
+| A | `docs/reports/current/hoer_verdikt_c4_vocos.json` | neu |
+| A | `docs/reports/current/hoer_verdikt_m5_rekonstruktion.json` | neu |
+| M | `docs/reports/current/train_job_d3_flashsr_musik.json` | modifiziert |
+| A | `scripts/erstelle_hoerproben.py` | neu |
+| A | `scripts/hoer_entscheidung.py` | neu |
+| M | `scripts/ohr_panel.py` | modifiziert |
+| M | `tests/unit/test_denker/test_rekonstruktions_denker.py` | modifiziert |
+| A | `tests/unit/test_hoerproben_b3c4.py` | neu |
+| M | `tests/unit/test_ohr_panel.py` | modifiziert |
+| ?? | `docs/reports/current/2026-11-10_flag_wirkung_gate.md` | ungetrackt |
+| ?? | `scripts/flag_wirkung_gate.py` | ungetrackt |
+| ?? | `tests/unit/test_flag_wirkung_gate.py` | ungetrackt |
 
 ## Entscheidungen
 

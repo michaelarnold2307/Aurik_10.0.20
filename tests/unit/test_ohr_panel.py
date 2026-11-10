@@ -61,6 +61,51 @@ def test_erkenne_paare_unterordner_layout(tmp_path: Path) -> None:
     assert [p["id"] for p in paare] == ["paar1"]
 
 
+def test_erkenne_paare_restauriert_layout(tmp_path: Path) -> None:
+    """Echte Aurik-Paare: <stamm>_restauriert.wav ↔ <stamm>.wav bzw. _ORIGINAL."""
+    _schreibe(tmp_path / "lied.wav")
+    _schreibe(tmp_path / "lied_restauriert.wav")
+    _schreibe(tmp_path / "song.wav")
+    _schreibe(tmp_path / "song_restauriert_27.09.2026.wav")
+    _schreibe(tmp_path / "andere.wav")
+    _schreibe(tmp_path / "andere_ORIGINAL.wav")
+    _schreibe(tmp_path / "andere_restauriert.wav")
+    _schreibe(tmp_path / "nur_ORIGINAL.wav")
+    _schreibe(tmp_path / "nur_restauriert.wav")
+    paare = erkenne_paare(tmp_path)
+    ids = {p["id"] for p in paare}
+    assert ids == {"lied", "song", "andere", "nur"}, ids
+    # a = Original, b = restauriert; exakter Name hat Vorrang vor _ORIGINAL
+    by_id = {p["id"]: p for p in paare}
+    assert by_id["lied"]["a"].endswith("lied.wav")
+    assert by_id["lied"]["b"].endswith("lied_restauriert.wav")
+    assert by_id["andere"]["a"].endswith("andere.wav")
+    assert by_id["nur"]["a"].endswith("nur_ORIGINAL.wav"), "_ORIGINAL-Fallback ohne exakten Namen"
+
+
+def test_erstelle_trials_kuerzt_immer_auf_10s(tmp_path: Path) -> None:
+    """Auch ERKANNTE Paare (restauriert) werden auf den 10-s-Ausschnitt gekürzt —
+    nie ganze Songs abspielen (2026-11-10).
+    """
+    import numpy as np
+    import soundfile as sf
+
+    from scripts.ohr_panel import erstelle_trials
+
+    for name in ("lied.wav", "lied_restauriert.wav"):
+        sf.write(
+            tmp_path / name,
+            (np.sin(2 * np.pi * 440 * np.arange(48000 * 120) / 48000) * 0.4).astype(np.float32),
+            48000,
+        )
+    paare = [{"id": "lied", "a": str(tmp_path / "lied.wav"), "b": str(tmp_path / "lied_restauriert.wav")}]
+    sheet, _key = erstelle_trials(paare, tmp_path / "work", seed=7, ausschnitt_s=10.0)
+    for trial in sheet["trials"]:
+        for slot in ("left", "right"):
+            d, sr = sf.read(str(tmp_path / "work" / trial["stimuli"][slot]))
+            assert round(len(d) / sr) == 10.0, f"{slot} muss 10 s sein: {len(d) / sr}"
+
+
 def test_erkenne_paare_leer_und_fehler(tmp_path: Path) -> None:
     assert erkenne_paare(tmp_path) == []
     try:
@@ -130,7 +175,18 @@ def test_defekt_varianten_deterministisch_und_unterscheidbar() -> None:
 
     rng = np.random.default_rng(1)
     x = (np.sin(2 * np.pi * 440 * np.arange(48000) / 48000) * 0.4).astype(np.float32)
-    for variante in ("rausch", "bandlimit", "saettigung"):
+    for variante in (
+        "rausch",
+        "bandlimit",
+        "saettigung",
+        "kammfilter",
+        "wowflutter",
+        "kompression",
+        "brummen",
+        "tremolo",
+        "verzerrung",
+        "lautheit",
+    ):
         v1 = defekt_variante(x, variante, np.random.default_rng(7))
         v2 = defekt_variante(x, variante, np.random.default_rng(7))
         assert np.array_equal(v1, v2), f"{variante} nicht deterministisch"

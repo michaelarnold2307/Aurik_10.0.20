@@ -436,6 +436,103 @@ class RekonstruktionsDenker:
             },
         )
 
+    @staticmethod
+    def _vocos_ft_fill(audio: np.ndarray, sr: int) -> np.ndarray | None:
+        """M5-Challenger (D-K2-3, 2026-11-09): Lücken via vocos-Finetune-
+        Fenster-Resynthese füllen. Nur bei Flag AN + vorhandenem ONNX.
+
+        Konstruktives Never-worsen: außerhalb der Lücken (bis auf 10-ms-
+        Crossfade) bleibt das Signal bit-identisch; Energie-Gate verhindert
+        Resynthese-Ausreißer. Jeder Fehler ⇒ None ⇒ linearer Bestandspfad
+        (§V6 (copilot-instructions.md)).
+        """
+        from pathlib import Path
+
+        from backend.core.music_model_flags import use_vocos_ft_reconstruction
+
+        if not use_vocos_ft_reconstruction:
+            return None
+        onnx_pfad = Path("models/vocos_48khz/finetune/vocos_48khz_music_ft.onnx")
+        if not onnx_pfad.is_file():
+            return None
+        try:
+            import onnxruntime as ort
+            import torch
+            import torchaudio
+
+            sess = ort.InferenceSession(str(onnx_pfad), providers=["CPUExecutionProvider"])
+            mel_fn = torchaudio.transforms.MelSpectrogram(
+                sample_rate=sr, n_fft=2048, hop_length=256, n_mels=128, power=1.0
+            )
+        except Exception as exc:
+            logger.warning("vocos-FT-Rekonstruktion nicht ladbar (%s) — lineare Füllung bleibt", type(exc).__name__)
+            return None
+
+        SILENCE_THRESHOLD = 10 ** (-70.0 / 20)
+        MIN_GAP_SAMPLES = 50
+        arr = np.asarray(audio, dtype=np.float64)
+        n = arr.shape[-1]
+        mono = arr if arr.ndim == 1 else arr.mean(axis=0)
+        silent = np.abs(mono) < SILENCE_THRESHOLD
+        luecken: list[tuple[int, int]] = []
+        in_gap = False
+        start = 0
+        for i in range(n):
+            if silent[i] and not in_gap:
+                in_gap = True
+                start = i
+            elif not silent[i] and in_gap:
+                in_gap = False
+                if i - start >= MIN_GAP_SAMPLES:
+                    luecken.append((start, i))
+        if not luecken:
+            return None
+
+        out = arr.copy()
+        pad = int(0.25 * sr)
+        fade = int(0.010 * sr)
+        ersetzt = False
+
+        def _fuelle(kanal: np.ndarray, basis: np.ndarray) -> np.ndarray:
+            nonlocal ersetzt
+            res = kanal.copy()
+            for g0, g1 in luecken:
+                lo = max(0, g0 - pad)
+                hi = min(n, g1 + pad)
+                fenster = basis[lo:hi]
+                try:
+                    mel = mel_fn(torch.from_numpy(np.asarray(fenster, dtype=np.float32)).unsqueeze(0))
+                    resynth = np.asarray(
+                        sess.run(None, {sess.get_inputs()[0].name: mel.numpy().astype(np.float32)})[0]
+                    ).flatten()
+                except Exception as exc:
+                    logger.debug("vocos-FT-Fenster fehlgeschlagen (%s) — Lücke bleibt linear", type(exc).__name__)
+                    continue
+                if len(resynth) < g1 - lo:
+                    continue  # Ausgabe deckt die Lücke nicht ab — linear bleibt
+                fill = resynth[g0 - lo : g1 - lo]
+                umgebung = np.concatenate([kanal[max(0, lo) : g0], kanal[g1:hi]])
+                rms_umgebung = float(np.sqrt(np.mean(umgebung**2))) + 1e-9
+                rms_fill = float(np.sqrt(np.mean(fill**2))) + 1e-12
+                if rms_fill > 1.5 * rms_umgebung:
+                    continue  # Energie-Gate — diese Lücke bleibt linear
+                res[g0:g1] = fill
+                ersetzt = True
+                if fade > 0 and g1 - g0 > 2 * fade:
+                    rampe = np.linspace(0.0, 1.0, fade)
+                    res[g0 : g0 + fade] = (1.0 - rampe) * kanal[g0 : g0 + fade] + rampe * fill[:fade]
+                    res[g1 - fade : g1] = (1.0 - rampe) * fill[-fade:] + rampe * kanal[g1 - fade : g1]
+            return res
+
+        if out.ndim > 1:
+            for ch in range(out.shape[0]):
+                out[ch] = _fuelle(out[ch], out[ch])
+        else:
+            out = _fuelle(out, out)
+        if not ersetzt:
+            return None  # keine Lücke bestand die Gates — linearer Bestandspfad
+        return out.astype(np.float32)
+
     def _dsp_fallback(
         self,
         audio: np.ndarray,
@@ -484,6 +581,19 @@ class RekonstruktionsDenker:
 
         audio_out = np.clip(audio_out, -1.0, 1.0).astype(np.float32)
 
+        # M5-Challenger (2026-11-09, D-K2-3): vocos-Finetune-Fenster-Resynthese
+        # der Lücken — nur bei Flag AN + vorhandenem ONNX; konstruktives
+        # Never-worsen (Kontext bleibt Original + Crossfade) + Energie-Gate.
+        # Fehlschlag ⇒ linearer Bestandspfad bleibt (§V6 (copilot-instructions.md)).
+        _detail = f"DSP-Fallback (lineare Interpolation): {gap_count} Lücken"
+        _phases = ["dsp_linear_interpolation"]
+        if gap_count > 0:
+            _vocos_kandidat = RekonstruktionsDenker._vocos_ft_fill(audio_out, sr)
+            if _vocos_kandidat is not None:
+                audio_out = np.clip(_vocos_kandidat, -1.0, 1.0).astype(np.float32)
+                _detail = f"M5 vocos-Finetune-Resynthese: {gap_count} Lücken"
+                _phases = ["dsp_linear_interpolation", "vocos_ft_reconstruction"]
+
         quality = 1.0 if gap_count == 0 else 0.65
 
         return RekonstruktionsErgebnis(
@@ -493,11 +603,11 @@ class RekonstruktionsDenker:
             gaps_skipped=0,
             total_repaired_ms=0.0,
             processing_time_ms=0.0,
-            detail_note=f"DSP-Fallback (lineare Interpolation): {gap_count} Lücken",
+            detail_note=_detail,
             warnings=[f"GapReconstructor nicht verfügbar — DSP-Fallback: {reason}"],
             gaps_filled=gap_count,
             reconstruction_quality=quality,
-            phases_applied=["dsp_linear_interpolation"],
+            phases_applied=_phases,
             reconstruction_risk_profile={
                 "hallucination": 0.0,
                 "boundary_artifact": 0.35 if gap_count else 0.0,

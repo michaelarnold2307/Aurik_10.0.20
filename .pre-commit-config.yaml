@@ -512,6 +512,20 @@ repos:
         pass_filenames: false
         files: ^(backend|plugins|denker|Aurik10|cli|tests/unit)/.*\.py$
 
+      # Flag-Wirkungs-Gate (2026-11-10, D-K3-92): Jeder use_*-Schalter in
+      # backend/core/music_model_flags.py MUSS im Produktionspfad gelesen werden.
+      # Die Klasse „Schalter/Artefakt ohne Lesestelle" (D-K3-85/D-K3-90/D-K3-91)
+      # erzeugte No-Op-Messungen (AN/AUS verglich den Pfad mit sich selbst);
+      # der manuelle Suchlauf vergisst, dieses Gate nicht. Nur-Mess-Flags sind
+      # ausschließlich mit begründeter Ausnahme (Register-ID) zulässig, und ein
+      # B3-/Release-Kandidat ohne Produktionswirkung wird abgelehnt.
+      - id: aurik-flag-wirkung-gate
+        name: "Flag-Wirkungs-Gate (§V7: jeder use_*-Schalter wirkt im Produktionspfad)"
+        entry: .venv_aurik/bin/python scripts/flag_wirkung_gate.py --ci
+        language: system
+        pass_filenames: false
+        files: ^(backend|plugins|denker|Aurik10|cli|forensics|scripts)/.*\.py$
+
       # Coverage-Gate — normativ: RELEASE_MUST-Coverage (§Fix 2026-09-08)
       # Der frühere 90-%-pytest-cov-Lauf über backend/core+dsp+plugins+denker+
       # Aurik10 war strukturell unerreichbar (gemessen 16,83 %) und blockierte

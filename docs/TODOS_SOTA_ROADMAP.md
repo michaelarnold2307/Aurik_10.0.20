@@ -125,10 +125,17 @@ README-Drift, stale Paritäts-Reports — jede Panne kostete Stunden
   `use_miipher_dit` stand nur in der Flag-Datei (D-K3-91, stiller No-Op).
   Beide geschlossen, je mit Reachability-Tests (Artefaktname, Flag-Default,
   Auswahl im Produktionspfad, §4-Flip-Pfad).
-- [ ] **Den Audit als Gate statt als Suchlauf** (offen): ein Pre-Commit-Check
-  „jeder `use_*`-Flag hat mindestens eine Lesestelle außerhalb der Flag-Datei"
-  würde die Klasse mechanisch schließen — der manuelle Suchlauf (2026-11-10,
-  22 Flags) ist billig, aber er vergisst.
+- [x] **Den Audit als Gate statt als Suchlauf** (ERLEDIGT 2026-11-10, D-K3-92):
+  `scripts/flag_wirkung_gate.py` + Pre-Commit `aurik-flag-wirkung-gate` prüft
+  drei Stufen — (A) jede `use_*`-Definition hat eine Lesestelle außerhalb der
+  Flag-Datei (Name-Load, Attribut, `getattr`/`hasattr`-Literal, benutzter
+  Import-Alias; toter Import und `setattr` zählen NICHT), (B) die Lesestelle
+  liegt im Produktionspfad, sonst begründete Ausnahme mit Register-ID, (C) ein
+  B3-/Release-Kandidat ohne Produktionswirkung wird als No-Op-Artefakt
+  abgelehnt. Bestand: **24 Schalter, 0 Verstöße, eine Ausnahme** — `use_bw_v5`
+  (der BW-v5-Pfad hängt an `_use_nvsr`, nicht am Schalter; W-8 ist bis zur
+  Verdrahtung kein messbarer B3-Kandidat, Verdrahtung wäre klangwirksam ⇒ §4).
+  12 Vertragstests.
 
 ## Pfeiler 5 — Fallback-Quote als Qualitäts-KPI
 
