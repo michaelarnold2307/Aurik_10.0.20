@@ -1,26 +1,17 @@
 # TASK_CHANGES — Live-Ledger der aktuellen Aufgabe
 
-> Generiert von `scripts/change_ledger.py snapshot` (Base: `HEAD`, Stand: 2026-11-10 04:36 CET).
+> Generiert von `scripts/change_ledger.py snapshot` (Base: `HEAD`, Stand: 2026-11-10 05:11 CET).
 > CI (`ci-lite.yml` pr-evidence-gate) erzwingt Abdeckung: jede geänderte Code-Datei muss hier stehen.
 
 ## Geänderte Dateien
 
 | Status | Pfad | Art |
 |---|---|---|
-| M | `.github/FILE_REGISTRY.md` | modifiziert |
 | M | `.github/SOTA_DEFICIT_REGISTER.md` | modifiziert |
-| M | `.gitignore` | modifiziert |
-| M | `TASK_CHANGES.md` | modifiziert |
-| M | `backend/core/music_model_flags.py` | modifiziert |
-| M | `backend/core/unified_restorer_v3.py` | modifiziert |
+| M | `backend/core/dsp/sota_vocal_model_router.py` | modifiziert |
 | M | `docs/SOTA_HANDOVER.md` | modifiziert |
-| M | `plugins/vocos_plugin.py` | modifiziert |
-| M | `reports/spec_drift_baseline.json` | modifiziert |
-| M | `scripts/export_vocos_48khz_onnx.py` | modifiziert |
-| M | `scripts/ohr_panel.py` | modifiziert |
-| M | `tests/unit/test_denker/test_strategie_denker.py` | modifiziert |
-| ?? | `docs/reports/current/2026-11-10_m5_vocos_konsum.md` | ungetrackt |
-| ?? | `tests/unit/test_vocos_music_ft_flag.py` | ungetrackt |
+| M | `docs/reports/current/2026-11-10_m5_vocos_konsum.md` | modifiziert |
+| M | `tests/unit/test_sota_vocal_model_router.py` | modifiziert |
 
 ## Entscheidungen
 

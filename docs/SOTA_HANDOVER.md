@@ -701,4 +701,9 @@ Nachzüge samt `spec_drift_baseline` (FILE_REGISTRY-Hash). **Kein Flag-Flip,
 kein Training gestartet** (Kette 2 fährt D3-3 FlashSR). Offen (nicht autonom):
 B3-Never-worsen des Finetunes gegen die Basis im GPU-Fenster, danach Hör-Sign-off
 ⇒ §4-Flip; C4-Primärrollen-Entscheidung menschlich. Report
-`docs/reports/current/2026-11-10_m5_vocos_konsum.md`, Register D-K3-90.
+`docs/reports/current/2026-11-10_m5_vocos_konsum.md`, Register D-K3-90. Direkt
+anschließend **D-K3-91**: Quer-Audit aller 22 Modell-Flags — `use_miipher_dit`
+war der einzige **stille No-Op** (MIIPHER-DiT lief unbedingt, `False` schaltete
+nichts ab ⇒ der dokumentierte Rollback existierte nicht); jetzt liest
+`_miipher_dit_enabled()` den Flag, `False` ⇒ `miipher_dit:flag_off` + Bestands-
+Fallback, Default unverändert (3 Tests, 27 passed).

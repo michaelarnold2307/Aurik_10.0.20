@@ -23,6 +23,22 @@ from backend.core.dsp.stem_routing_policy import prefer_demucs_native_from_ctx
 logger = logging.getLogger(__name__)
 
 
+def _miipher_dit_enabled() -> bool:
+    """Rollback-Hebel ``music_model_flags.use_miipher_dit`` wirklich lesen.
+
+    Der Flag stand bisher nur in der Flag-Datei (Default True) — der dokumentierte
+    Per-Modell-Rollback war damit ein stiller No-Op. Fail-open: ist das
+    Flag-Modul nicht importierbar, bleibt der bisherige Pfad aktiv (§V6 (copilot-instructions.md)).
+    """
+    try:
+        from backend.core import music_model_flags  # pylint: disable=import-outside-toplevel
+
+        return bool(getattr(music_model_flags, "use_miipher_dit", True))
+    except Exception:  # pylint: disable=broad-except
+        logger.debug("music_model_flags nicht importierbar — MIIPHER-DiT bleibt aktiv", exc_info=True)
+        return True
+
+
 @dataclass
 class StemSeparationRouteResult:
     """Result of routed vocal/instrumental separation."""
@@ -420,38 +436,43 @@ class SotaVocalModelRouter:
         # §v10.14: MIIPHER-DiT als primärer Open-Source-Ersatz (SOTA)
         # §v10.19 MP-SENet Musik als Post-Enhancer nach DFN implementiert
         # §v10.19 Proprietäre MIIPHER-Stufe dokumentiert und als Fallback erhalten
-        try:
-            from plugins.miipher_dit_plugin import get_miipher_dit
+        if not _miipher_dit_enabled():
+            # Rollback-Hebel (Default True) — false ⇒ Bestands-Fallbackkette.
+            attempts.append("miipher_dit:flag_off")
+            logger.info("§v10.14 MIIPHER-DiT per Flag abgeschaltet (use_miipher_dit=False)")
+        else:
+            try:
+                from plugins.miipher_dit_plugin import get_miipher_dit
 
-            _miipher_dit = get_miipher_dit()
-            _dit_loaded = getattr(_miipher_dit, "_model_loaded", False)
-            _dit_fallback = getattr(_miipher_dit, "_fallback_active", True)
-            if _dit_loaded and not _dit_fallback:
-                _dit_result = _miipher_dit.enhance(
-                    reference,
-                    sr,
-                    material="unknown",
-                    restorability_score=20.0,
-                )
-                if _dit_result.applied and _dit_result.model_used == "miipher_dit":
-                    attempts.append("miipher_dit:primary")
-                    logger.info(
-                        "§v10.14 MIIPHER-DiT: Gesangsverbesserung erfolgreich (novelty=%.3f)", _dit_result.novelty
+                _miipher_dit = get_miipher_dit()
+                _dit_loaded = getattr(_miipher_dit, "_model_loaded", False)
+                _dit_fallback = getattr(_miipher_dit, "_fallback_active", True)
+                if _dit_loaded and not _dit_fallback:
+                    _dit_result = _miipher_dit.enhance(
+                        reference,
+                        sr,
+                        material="unknown",
+                        restorability_score=20.0,
                     )
-                    return EnhancementRouteResult(
-                        audio=np.asarray(_dit_result.audio, dtype=np.float32),
-                        success=True,
-                        model_used="miipher_dit",
-                        fallback_chain=list(attempts),
-                        metadata={"route_taken": "miipher_dit", "implicit_harmonic_recovery": True},
-                    )
+                    if _dit_result.applied and _dit_result.model_used == "miipher_dit":
+                        attempts.append("miipher_dit:primary")
+                        logger.info(
+                            "§v10.14 MIIPHER-DiT: Gesangsverbesserung erfolgreich (novelty=%.3f)", _dit_result.novelty
+                        )
+                        return EnhancementRouteResult(
+                            audio=np.asarray(_dit_result.audio, dtype=np.float32),
+                            success=True,
+                            model_used="miipher_dit",
+                            fallback_chain=list(attempts),
+                            metadata={"route_taken": "miipher_dit", "implicit_harmonic_recovery": True},
+                        )
+                    else:
+                        attempts.append(f"miipher_dit:{_dit_result.model_used}")
                 else:
-                    attempts.append(f"miipher_dit:{_dit_result.model_used}")
-            else:
-                attempts.append("miipher_dit:not_loaded")
-        except Exception as _dit_exc:
-            logger.debug("MIIPHER-DiT nicht verfügbar: %s", _dit_exc)
-            attempts.append("miipher_dit:import_error")
+                    attempts.append("miipher_dit:not_loaded")
+            except Exception as _dit_exc:
+                logger.debug("MIIPHER-DiT nicht verfügbar: %s", _dit_exc)
+                attempts.append("miipher_dit:import_error")
 
         # §v10.14: Proprietäres MIIPHER als Fallback (falls Modell vorhanden)
         try:

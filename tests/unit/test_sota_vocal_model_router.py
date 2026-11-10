@@ -864,3 +864,37 @@ def test_router_ml_to_ml_fallback_keeps_ledger_clean(monkeypatch, caplog):
     assert result.model_used == "demucs_v4_htdemucs"
     assert "bs_roformer:demucs_v4_fallback" in result.fallback_chain
     assert not any("ML→DSP-Ersatzpfad" in rec.getMessage() for rec in caplog.records)
+
+
+# ---------------------------------------------------------------------------
+# D-K3-91: use_miipher_dit ist ein echter Rollback-Hebel (kein stiller No-Op)
+# ---------------------------------------------------------------------------
+def test_miipher_dit_flag_default_ist_an():
+    """Default True ⇒ der Bestandspfad bleibt unverändert."""
+    from backend.core import music_model_flags
+
+    assert music_model_flags.use_miipher_dit is True
+
+
+def test_miipher_dit_helper_liest_das_flag(monkeypatch):
+    """Der Router muss den Flag-Wert tatsächlich auswerten (§V7 (copilot-instructions.md))."""
+    from backend.core import music_model_flags
+    from backend.core.dsp import sota_vocal_model_router as router_mod
+
+    monkeypatch.setattr(music_model_flags, "use_miipher_dit", False)
+    assert router_mod._miipher_dit_enabled() is False
+    monkeypatch.setattr(music_model_flags, "use_miipher_dit", True)
+    assert router_mod._miipher_dit_enabled() is True
+
+
+def test_miipher_dit_block_ist_hinter_dem_flag():
+    """Quelltext-Pin: das DIT-Band darf nur im else-Zweig der Flag-Prüfung laden."""
+    import pathlib
+
+    text = (
+        pathlib.Path(__file__).resolve().parents[2] / "backend" / "core" / "dsp" / "sota_vocal_model_router.py"
+    ).read_text(encoding="utf-8")
+    gate = text.index("if not _miipher_dit_enabled():")
+    import_idx = text.index("from plugins.miipher_dit_plugin import get_miipher_dit", gate)
+    assert gate < import_idx
+    assert "miipher_dit:flag_off" in text[gate:import_idx]

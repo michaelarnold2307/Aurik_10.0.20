@@ -67,3 +67,27 @@ geworden, und die Messung hätte das nicht angezeigt.
 3. Der Panel-Autarkie-Teil ist eine Robustheits-/Kollisionsmaßnahme, keine
    Kalibrierung: die Ohr-Kalibrierung selbst (Hör-Sitzung) ist und bleibt
    menschlich.
+
+## 5. Quer-Audit „Flag ohne Lesestelle“ (D-K3-91)
+
+Weil die M5-Lücke eine Klasse ist (Modell/Artefakt vorhanden, Pfad fehlt), wurde
+unmittelbar danach **jeder** Modell-Flag der Flag-Datei auf Lesestellen geprüft
+(Suchlauf über `backend/`, `plugins/`, `denker/`, `cli/`, `forensics/`, `scripts/`,
+jeweils ohne die Flag-Definition selbst):
+
+| Ergebnis | Flags |
+| --- | --- |
+| gelesen (21) | `use_df_musik`, `use_sgmse_musik`, `use_mp_senet_musik`, `use_bw_v5`, `use_harmonic_inpainting`, `use_utmos_music`, `use_silero_vad_music`, `use_resemblyzer_music`, `use_scnet_music`, `use_bigvgan_f3_studio`, `use_aspade_declipper`, `use_tf_gridnet_quality`, `use_wf4_warp_head`, `use_tp_v2_phase`, `use_material_crnn`, `use_era_crnn`, `use_defect_crnn`, `use_loudness_dpn`, `use_rt60_regressor`, `use_audibility_budget`, `use_vocos_music_ft` (neu) |
+| **nicht gelesen (1)** | **`use_miipher_dit`** |
+
+`use_miipher_dit` (Default **True**) war ein **stiller No-Op**: der MIIPHER-DiT-Block
+in `enhance_vocal` lief unbedingt, ein `False` hätte nichts abgeschaltet — der
+dokumentierte Per-Modell-Rollback existierte nicht (§V7-Klasse). Behoben ohne
+Verhaltensänderung: `_miipher_dit_enabled()` liest den Flag (fail-open `True`,
+falls das Flag-Modul nicht importierbar ist), der DIT-Block liegt im `else`-Zweig,
+`False` ⇒ `miipher_dit:flag_off` in der `fallback_chain` + INFO-Log. 3 Tests in
+`tests/unit/test_sota_vocal_model_router.py` (27 passed).
+
+**Lehre für die nächste Sitzung:** ein Flag, das niemand liest, ist kein
+Sicherheitsnetz, sondern eine Behauptung. Der Audit ist billig (ein Suchlauf) und
+sollte bei jedem neuen Flag mitlaufen.
