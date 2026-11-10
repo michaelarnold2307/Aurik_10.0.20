@@ -1,25 +1,21 @@
 # TASK_CHANGES — Live-Ledger der aktuellen Aufgabe
 
-> Generiert von `scripts/change_ledger.py snapshot` (Base: `HEAD`, Stand: 2026-11-10 17:42 CET).
+> Generiert von `scripts/change_ledger.py snapshot` (Base: `HEAD`, Stand: 2026-11-10 18:07 CET).
 > CI (`ci-lite.yml` pr-evidence-gate) erzwingt Abdeckung: jede geänderte Code-Datei muss hier stehen.
 
 ## Geänderte Dateien
 
 | Status | Pfad | Art |
 |---|---|---|
+| M | `.github/FILE_REGISTRY.md` | modifiziert |
 | M | `.github/SOTA_DEFICIT_REGISTER.md` | modifiziert |
 | M | `TASK_CHANGES.md` | modifiziert |
 | M | `docs/SOTA_HANDOVER.md` | modifiziert |
-| A | `docs/reports/current/2026-11-10_hoer_panel_sitzungsfest.md` | neu |
-| M | `docs/reports/current/hoer_verdikt_c4_vocos.json` | modifiziert |
-| M | `docs/reports/current/train_job_d3_flashsr_musik.json` | modifiziert |
-| M | `scripts/erstelle_hoerproben.py` | modifiziert |
-| M | `scripts/hoer_entscheidung.py` | modifiziert |
-| M | `scripts/ohr_kalibrieren.py` | modifiziert |
-| M | `scripts/ohr_panel.py` | modifiziert |
-| M | `tests/unit/test_hoerproben_b3c4.py` | modifiziert |
-| M | `tests/unit/test_ohr_panel.py` | modifiziert |
-| M | `tests/unit/test_ohr_prior.py` | modifiziert |
+| M | `docs/TODOS_SOTA_ROADMAP.md` | modifiziert |
+| A | `docs/reports/current/2026-11-10_flashsr_d3_gate.json` | neu |
+| A | `docs/reports/current/2026-11-10_flashsr_d3_gate.md` | neu |
+| A | `scripts/verify_flashsr_d3_gate.py` | neu |
+| A | `tests/unit/test_flashsr_d3_gate.py` | neu |
 
 ## Entscheidungen
 
