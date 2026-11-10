@@ -143,3 +143,22 @@ def test_uv3_waehlt_finetune_nur_hinter_dem_flag():
     assert block < kp5 < flag < accessor
     # Der Basis-Pfad muss VOR der Flag-Prüfung gesetzt sein (Default-Verhalten).
     assert text.index("_vplug = _get_vocos_plg()", kp5) < flag
+
+
+# ── 5. Der §4-Flip-Pfad muss offen bleiben ─────────────────────────────────
+def test_flag_freigabe_findet_genau_eine_offene_register_zeile():
+    """Ein Flag mit zwei offenen Register-Zeilen ist nicht freigebbar (fail-closed).
+
+    ``scripts/flag_freigabe.py`` verlangt genau EINE offene D-Zeile, die den
+    Flag-Namen nennt; sonst bricht der legale §4-Flip ab. Dieser Test pinnt,
+    dass die M5-Freigabe nicht unbemerkt blockiert.
+    """
+    sys.path.insert(0, str(ROOT / "scripts"))
+    import flag_freigabe
+
+    register = (ROOT / ".github" / "SOTA_DEFICIT_REGISTER.md").read_text(encoding="utf-8")
+    treffer = flag_freigabe.finde_register_zeile(register, "use_vocos_music_ft")
+    assert treffer is not None
+    zellen = treffer[1].strip().strip("|").split("|")
+    assert len(zellen) == 8
+    assert zellen[0].strip() == "D-K3-90"

@@ -1,6 +1,6 @@
 # TASK_CHANGES — Live-Ledger der aktuellen Aufgabe
 
-> Generiert von `scripts/change_ledger.py snapshot` (Base: `HEAD`, Stand: 2026-11-10 05:11 CET).
+> Generiert von `scripts/change_ledger.py snapshot` (Base: `HEAD`, Stand: 2026-11-10 05:29 CET).
 > CI (`ci-lite.yml` pr-evidence-gate) erzwingt Abdeckung: jede geänderte Code-Datei muss hier stehen.
 
 ## Geänderte Dateien
@@ -8,10 +8,8 @@
 | Status | Pfad | Art |
 |---|---|---|
 | M | `.github/SOTA_DEFICIT_REGISTER.md` | modifiziert |
-| M | `backend/core/dsp/sota_vocal_model_router.py` | modifiziert |
-| M | `docs/SOTA_HANDOVER.md` | modifiziert |
 | M | `docs/reports/current/2026-11-10_m5_vocos_konsum.md` | modifiziert |
-| M | `tests/unit/test_sota_vocal_model_router.py` | modifiziert |
+| M | `tests/unit/test_vocos_music_ft_flag.py` | modifiziert |
 
 ## Entscheidungen
 

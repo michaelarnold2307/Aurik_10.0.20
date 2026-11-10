@@ -43,6 +43,9 @@ geworden, und die Messung hätte das nicht angezeigt.
   `backend.core`-Abhängigkeit (Layer-Trennung bleibt).
 - Default AUS ⇒ der Pfad ist **bit-identisch** zum Bestand (kein zusätzlicher
   Session-Start, kein zusätzlicher Speicher).
+- **Der legale §4-Flip bleibt möglich:** `scripts/flag_freigabe.py` verlangt genau
+  *eine* offene Register-Zeile mit dem Flag-Namen; zwei offene Träger hätten den
+  Flip fail-closed abgebrochen. Es bleibt genau `D-K3-90` (Test pinnt das).
 
 ## 3. Nachweise
 
