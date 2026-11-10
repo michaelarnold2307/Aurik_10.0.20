@@ -16,7 +16,45 @@
       "output_tail": "ce] [EvaluateInvokers] Solver <GemmWrwUniversal>, workspace required: 55296000, provided ptr: 0 size: 0\nMIOpen(HIP): Warning [IsEnoughWorkspace] [EvaluateInvokers] Solver <GemmBwdRest>, workspace required: 202752000, provided ptr: 0 size: 0\nMIOpen(HIP): Warning [IsEnoughWorkspace] [EvaluateInvokers] Solver <GemmWrwUniversal>, workspace required: 202752000, provided ptr: 0 size: 0\nMIOpen(HIP): Warning [IsEnoughWorkspace] [EvaluateInvokers] Solver <GemmBwdRest>, workspace required: 202752000, provided ptr: 0 size: 0\nMIOpen(HIP): Warning [IsEnoughWorkspace] [EvaluateInvokers] Solver <GemmWrwUniversal>, workspace required: 202752000, provided ptr: 0 size: 0\nMIOpen(HIP): Warning [IsEnoughWorkspace] [EvaluateInvokers] Solver <GemmFwdRest>, workspace required: 202752000, provided ptr: 0 size: 0\nMIOpen(HIP): Warning [IsEnoughWorkspace] [EvaluateInvokers] Solver <GemmFwdRest>, workspace required: 202752000, provided ptr: 0 size: 0\nMIOpen(HIP): Warning [IsEnoughWorkspace] [EvaluateInvokers] Solver <GemmFwdRest>, workspace required: 55296000, provided ptr: 0 size: 0\nMIOpen(HIP): Warning [IsEnoughWorkspace] [EvaluateInvokers] Solver <GemmFwdRest>, workspace required: 55296000, provided ptr: 0 size: 0\n2026-11-09 22:58:34,442 INFO Epoche 12 fertig (5366.7 s): A1=0.0111 STFT=0.6811 Val=0.4370\n2026-11-10 00:29:59,513 INFO Epoche 13 fertig (5484.4 s): A1=0.0113 STFT=0.6849 Val=0.4446\n2026-11-10 02:03:12,155 INFO Epoche 14 fertig (5592.3 s): A1=0.0113 STFT=0.6815 Val=0.4500\n2026-11-10 03:36:23,889 INFO Epoche 15 fertig (5591.7 s): A1=0.0110 STFT=0.6860 Val=0.3550\n2026-11-10 03:36:24,079 INFO Neues bestes Modell (Val=0.3550) gespeichert\n2026-11-10 05:09:33,528 INFO Epoche 16 fertig (5589.4 s): A1=0.0111 STFT=0.6748 Val=0.4339\n2026-11-10 06:42:31,166 INFO Epoche 17 fertig (5577.6 s): A1=0.0110 STFT=0.6778 Val=0.4416\n2026-11-10 06:42:31,256 INFO Zeitbudget 37800 s erreicht — Stopp an der Epochen-Grenze (Epochen in diesem Versuch: 6). Resume: --resume models/flashsr/checkpoint_latest.pt\n",
       "versuch": 1,
       "befehl": "bash -c if [ -f models/flashsr/checkpoint_latest.pt ]; then exec env PYTHONPATH=. /home/michael/.local/share/aurik/venv_rocm72/bin/python -B scripts/train_flashsr_f4.py --epochs 30 --data-dir data/musdb18hq --out-dir models/flashsr --max-seconds 37800 --resume models/flashsr/checkpoint_latest.pt; else exec env PYTHONPATH=. /home/michael/.local/share/aurik/venv_rocm72/bin/python -B scripts/train_flashsr_f4.py --epochs 30 --data-dir data/musdb18hq --out-dir models/flashsr --max-seconds 37800; fi"
+    },
+    {
+      "exit_code": 0,
+      "sekunden": 24839.4,
+      "timed_out": false,
+      "output_tail": "rkspace] [EvaluateInvokers] Solver <GemmBwdRest>, workspace required: 55296000, provided ptr: 0 size: 0\nMIOpen(HIP): Warning [IsEnoughWorkspace] [EvaluateInvokers] Solver <GemmWrwUniversal>, workspace required: 55296000, provided ptr: 0 size: 0\nMIOpen(HIP): Warning [IsEnoughWorkspace] [EvaluateInvokers] Solver <GemmBwdRest>, workspace required: 202752000, provided ptr: 0 size: 0\nMIOpen(HIP): Warning [IsEnoughWorkspace] [EvaluateInvokers] Solver <GemmWrwUniversal>, workspace required: 202752000, provided ptr: 0 size: 0\nMIOpen(HIP): Warning [IsEnoughWorkspace] [EvaluateInvokers] Solver <GemmBwdRest>, workspace required: 202752000, provided ptr: 0 size: 0\nMIOpen(HIP): Warning [IsEnoughWorkspace] [EvaluateInvokers] Solver <GemmWrwUniversal>, workspace required: 202752000, provided ptr: 0 size: 0\nMIOpen(HIP): Warning [IsEnoughWorkspace] [EvaluateInvokers] Solver <GemmFwdRest>, workspace required: 202752000, provided ptr: 0 size: 0\nMIOpen(HIP): Warning [IsEnoughWorkspace] [EvaluateInvokers] Solver <GemmFwdRest>, workspace required: 202752000, provided ptr: 0 size: 0\nMIOpen(HIP): Warning [IsEnoughWorkspace] [EvaluateInvokers] Solver <GemmFwdRest>, workspace required: 55296000, provided ptr: 0 size: 0\nMIOpen(HIP): Warning [IsEnoughWorkspace] [EvaluateInvokers] Solver <GemmFwdRest>, workspace required: 55296000, provided ptr: 0 size: 0\n2026-11-10 08:07:03,283 INFO Epoche 18 fertig (4996.6 s): A1=0.0111 STFT=0.6761 Val=0.4516\n2026-11-10 09:27:42,261 INFO Epoche 19 fertig (4838.9 s): A1=0.0110 STFT=0.6770 Val=0.4243\n2026-11-10 10:47:41,874 INFO Epoche 20 fertig (4799.5 s): A1=0.0109 STFT=0.6730 Val=0.4180\n2026-11-10 12:09:51,287 INFO Epoche 21 fertig (4929.3 s): A1=0.0108 STFT=0.6700 Val=0.4044\n2026-11-10 13:36:34,557 INFO Epoche 22 fertig (5203.2 s): A1=0.0111 STFT=0.6733 Val=0.4705\n2026-11-10 13:36:34,623 INFO Early-Stop nach Epoche 22 (Val stagniert)\n2026-11-10 13:36:34,625 INFO F4-Finetune beendet — 23/30 Epochen, bestes Val-A1: 0.3550 (Checkpoint: models/flashsr/best.pt)\n",
+      "versuch": 2,
+      "befehl": "bash -c if [ -f models/flashsr/checkpoint_latest.pt ]; then exec env PYTHONPATH=. /home/michael/.local/share/aurik/venv_rocm72/bin/python -B scripts/train_flashsr_f4.py --epochs 30 --data-dir data/musdb18hq --out-dir models/flashsr --max-seconds 37800 --resume models/flashsr/checkpoint_latest.pt; else exec env PYTHONPATH=. /home/michael/.local/share/aurik/venv_rocm72/bin/python -B scripts/train_flashsr_f4.py --epochs 30 --data-dir data/musdb18hq --out-dir models/flashsr --max-seconds 37800; fi"
     }
   ],
-  "quelle": "scripts/train_job_runner.py"
+  "quelle": "scripts/train_job_runner.py",
+  "checkpoint_hashes": {
+    "best.pt": "97403806f20adc186ab173072bd93a182617034e1f0d7cb7f478438e68b4eb0c",
+    "checkpoint_epoch0.pt": "0b3334840b9c79108afc188e7f76a7e34b656a0643e9155063e71938a335e719",
+    "checkpoint_epoch1.pt": "3a8f446571c9c6b4e3083604c3d918e45c4c53884aeee9c583ed03e649fa9793",
+    "checkpoint_epoch10.pt": "f306cd876d18eb04a5b8b56dbaf3dd255ba700e51e23622687bb44297389d97b",
+    "checkpoint_epoch11.pt": "04a3629478a8888aa9b820e35130add5d4347e8dd561b9ab407e65efb9644124",
+    "checkpoint_epoch12.pt": "22461ca8c8efe69cacba8739190153623ef927da5021feff1679b73a581f3398",
+    "checkpoint_epoch13.pt": "bf0004a21d6133dd9f5a1f63928e00ee985b794f0acf81dfdf23807a015aa913",
+    "checkpoint_epoch14.pt": "2018f9b0190a62a0c0609f5b7b8babddaec1734f2f78c388cd5bef72d7f8ba0a",
+    "checkpoint_epoch15.pt": "2f9ac6f378e55bcab897f9f8c18a2f45c91d7ff06b564cb3576cce9be5bd3973",
+    "checkpoint_epoch16.pt": "e00bdb0097fb010c9cd687e85cdd2adac246b9c9a415b14817e62c1adef070a2",
+    "checkpoint_epoch17.pt": "1103a79d0bacdac0ede79d345b592cfb0547cd271ef1e2d2e9a6313ec12092a3",
+    "checkpoint_epoch18.pt": "02828336ac8eb7ac850324cb6f17da764ad8e048e1cdbead04f1f3fe3b3aa69a",
+    "checkpoint_epoch19.pt": "5ed5783dea69d2d08bb5d206048e6a17f28ca78bf96f6c1922891a3a587336b4",
+    "checkpoint_epoch2.pt": "e7484aa4c9a0e03fe43af6577990e795e898a780baa842ce2fb5c2728cb6a0a7",
+    "checkpoint_epoch20.pt": "569aa432329c5cf92ffe0154a8dfbab4ea31b8fb04ae4a22b41a207b6ff53812",
+    "checkpoint_epoch21.pt": "658afcff7ef4f7ca81e328dc1f797636668f19edf72b1135b9e886826bf26607",
+    "checkpoint_epoch22.pt": "b3f29c4c0b6d59f0c3a6263d0f14ac8c86571b77096332f635ecd6ec9e8c390d",
+    "checkpoint_epoch3.pt": "b5ba51f467a4a5f17933277c14e4bbeb166f345a63bac89be81d3449cbfc531d",
+    "checkpoint_epoch4.pt": "da667fcf6f77d3dd48f1495bc140fa6f530197d4a7765b61b138e38ce4a29c38",
+    "checkpoint_epoch5.pt": "15694a0dd55e1a901171a367a58c824fd0fb7bb15f3425ffe4f8cfcc11135ba1",
+    "checkpoint_epoch6.pt": "d1e176de56bba345c952c55971af1a97e72f0833dc1ce905864d65c29170fbdf",
+    "checkpoint_epoch7.pt": "9e95a19bbb83d0235d03ad5d4be6ce5d3eb154bc03f7caf41e2c2016bd3e62e9",
+    "checkpoint_epoch8.pt": "9f368daaa1ae877da0d875764c60efa73e2b1a376dcca9fe6245b1cb756d37be",
+    "checkpoint_epoch9.pt": "7f7797ed36e44bb25703530ca8c392e8305a4701c50e9a03e3332005a52f2e1f",
+    "checkpoint_latest.pt": "9257f33510a6438b55d305bda7ce447989c07c29e8a01785cf8696231ad4844c",
+    "flashsr.onnx": "41396e3d58fc24faabe3351dfc860de193a745911048d9eab30025de9c16d994",
+    "flashsr_f4.onnx": "41396e3d58fc24faabe3351dfc860de193a745911048d9eab30025de9c16d994"
+  },
+  "ergebnis": "erfolgreich"
 }

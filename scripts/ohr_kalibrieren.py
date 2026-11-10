@@ -38,14 +38,24 @@ logger = logging.getLogger(__name__)
 
 
 def _load_audio(path: str, sr: int) -> np.ndarray:
+    """Lädt Mono@`sr` — abweichende Datei-Raten werden deterministisch
+    resampelt (§G5 (copilot-instructions.md)); kein Hard-Fail auf 44,1-kHz-
+    Quellen (Produktionsbefund: restaurierte Exporte sind 44,1 kHz).
+    """
+    import math
+
     import soundfile as sf
+    from scipy.signal import resample_poly
 
     data, file_sr = sf.read(path, always_2d=False)
     if data.ndim == 2:
         data = data.mean(axis=1)
+    x = np.asarray(data, dtype=np.float64)
     if file_sr != sr:
-        raise ValueError(f"SR {file_sr} != erwartet {sr} für {path}")
-    return np.asarray(data, dtype=np.float32)
+        gcd = math.gcd(file_sr, sr)
+        x = resample_poly(x, sr // gcd, file_sr // gcd)
+        logger.info("ohr_kalibrieren: %s von %d Hz auf %d Hz resampelt", path, file_sr, sr)
+    return x.astype(np.float32)
 
 
 def main(argv: list[str] | None = None) -> int:

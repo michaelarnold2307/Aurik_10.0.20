@@ -229,7 +229,7 @@ def test_denker_ohr_brief_verdrahtet() -> None:
             assert token in src, f"{token} fehlt in {name} — Ohr nicht verdrahtet"
 
 
-def test_ohr_brief_ziel_gewichte_invarianten() -> None:
+def test_ohr_brief_ziel_gewichte_invarianten(monkeypatch) -> None:
     """Ohr-Brief: ohne Artefakt None (Default-Pfad); mit Artefakt deterministisch,
     Summe exakt 1, nur die 9 Sweet-Spot-Metriken.
     """
@@ -240,6 +240,11 @@ def test_ohr_brief_ziel_gewichte_invarianten() -> None:
     from backend.core.dsp.ohr_brief import erstelle_ohr_brief
     from backend.core.dsp.ohr_prior import OhrPriorFit
 
+    # Default-Pfad isolieren: das echte Nutzer-Artefakt darf den Test nicht steuern.
+    monkeypatch.setattr(
+        "backend.core.dsp.ohr_brief.OHR_ARTEFAKT",
+        _P_tmp(tempfile.gettempdir()) / "nicht_vorhanden_ohr_prior.json",
+    )
     _brief_ohne = erstelle_ohr_brief()
     assert _brief_ohne.ohr_prior_verfuegbar is False
     assert _brief_ohne.ziel_gewichte() is None
@@ -268,7 +273,7 @@ def test_ohr_brief_ziel_gewichte_invarianten() -> None:
         assert _w["goosebumps"] == 0.0, "goosebumps hat kein Ohr-Feature-Mapping (neutral)"
 
 
-def test_ohr_stufen_und_zonen_kalibrierung() -> None:
+def test_ohr_stufen_und_zonen_kalibrierung(monkeypatch) -> None:
     """§7 M3 (2026-11-09): Gestufte Ohr-Reifung — Stufe 0/1 neutral, Stufe 2
     Zonen-Kalibrierung ±5 %, Stufe 3 ±8 %; deterministisch und summen-neutral.
     """
@@ -278,6 +283,12 @@ def test_ohr_stufen_und_zonen_kalibrierung() -> None:
 
     from backend.core.dsp.ohr_brief import erstelle_ohr_brief
     from backend.core.dsp.ohr_prior import OhrPriorFit
+
+    # Default-Pfad isolieren: das echte Nutzer-Artefakt darf den Test nicht steuern.
+    monkeypatch.setattr(
+        "backend.core.dsp.ohr_brief.OHR_ARTEFAKT",
+        _P(tempfile.gettempdir()) / "nicht_vorhanden_ohr_prior.json",
+    )
 
     # Stufe 0: ohne Artefakt — alles neutral
     _b0 = erstelle_ohr_brief()
@@ -352,3 +363,15 @@ def test_ohr_zonen_loop_cap() -> None:
     for _k in GREEN_ZONE:
         assert GREEN_ZONE[_k] * 0.85 <= _t[_k] <= GREEN_ZONE[_k] * 1.10, _k
     assert all(abs(_t[_k] - GREEN_ZONE[_k] * 1.10) < 1e-9 for _k in GREEN_ZONE)
+
+
+def test_kalibrierer_resampelt_44100_auf_sitzung(tmp_path) -> None:
+    """44,1-kHz-Quellen (restaurierte Exporte) sind kein Hard-Fail — §V7 (copilot-instructions.md)."""
+    import soundfile as sf
+
+    from scripts.ohr_kalibrieren import _load_audio
+
+    p = tmp_path / "restauriert_44k.wav"
+    sf.write(p, np.zeros(44100, dtype=np.float32), 44100)
+    x = _load_audio(str(p), SR)
+    assert len(x) == 48000, f"44100 → 48000 Samples erwartet, erhalten {len(x)}"

@@ -8,7 +8,10 @@ from __future__ import annotations
 
 import subprocess
 import sys
+from collections.abc import Iterator
 from pathlib import Path
+
+import pytest
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 if str(PROJECT_ROOT) not in sys.path:
@@ -31,6 +34,21 @@ def _schreibe(pfad: Path, sr: int = 48000, seed: int = 1) -> None:
 
     rng = np.random.default_rng(seed)
     sf.write(pfad, (rng.standard_normal(sr).astype(np.float32) * 0.1), sr)
+
+
+@pytest.fixture
+def ohr_artefakt_gesichert() -> Iterator[None]:
+    """Echte Nutzer-Kalibrierung nie löschen: das Produktions-Artefakt wird
+    um E2E-Läufe herum gesichert und danach bit-identisch wiederhergestellt.
+    """
+    artefakt = PROJECT_ROOT / "models" / "ohr" / "ohr_prior.json"
+    sicherung = artefakt.read_bytes() if artefakt.is_file() else None
+    artefakt.unlink(missing_ok=True)
+    yield
+    artefakt.unlink(missing_ok=True)
+    if sicherung is not None:
+        artefakt.parent.mkdir(parents=True, exist_ok=True)
+        artefakt.write_bytes(sicherung)
 
 
 def test_erkenne_paare_a_b_ordner(tmp_path: Path) -> None:
@@ -106,6 +124,53 @@ def test_erstelle_trials_kuerzt_immer_auf_10s(tmp_path: Path) -> None:
             assert round(len(d) / sr) == 10.0, f"{slot} muss 10 s sein: {len(d) / sr}"
 
 
+def test_panel_nur_ties_sauber_ohne_crash(tmp_path: Path) -> None:
+    """Nur Gleichstände ⇒ saubere Meldung, kein ohr_kalibrieren-Absturz,
+    bestehendes Ohr-Artefakt bleibt unverändert (2026-11-10).
+    """
+    (tmp_path / "A").mkdir()
+    (tmp_path / "B").mkdir()
+    _schreibe(tmp_path / "A" / "lied.wav")
+    _schreibe(tmp_path / "B" / "lied.wav")
+    r = subprocess.run(
+        [
+            sys.executable,
+            "-B",
+            "scripts/ohr_panel.py",
+            "--verzeichnis",
+            str(tmp_path),
+            "--arbeits-verzeichnis",
+            str(tmp_path / "work"),
+            "--kein-player",
+        ],
+        cwd=PROJECT_ROOT,
+        input="=\n",
+        text=True,
+        capture_output=True,
+        timeout=180,
+    )
+    assert r.returncode == 1, r.returncode
+    assert "Traceback" not in r.stderr, r.stderr[-300:]
+    assert "bleibt unverändert" in r.stdout, r.stdout[-200:]
+
+
+def test_erkenne_paare_original_varianten_layout(tmp_path: Path) -> None:
+    """ORIGINAL-Varianten: <stamm>_ORIGINAL ↔ <stamm>_ML-ADAPT(-v2/-v3) —
+    die stärksten Restaurierungs-Vergleiche (2026-11-10).
+    """
+    _schreibe(tmp_path / "song_60s_ORIGINAL.wav")
+    _schreibe(tmp_path / "song_60s_ML-ADAPT.wav")
+    _schreibe(tmp_path / "song_60s_ML-ADAPT-v2.wav")
+    _schreibe(tmp_path / "song_60s_ML-ADAPT-v3.wav")
+    paare = erkenne_paare(tmp_path)
+    ids = {p["id"] for p in paare}
+    assert ids == {"song_60s_ML-ADAPT", "song_60s_ML-ADAPT-v2", "song_60s_ML-ADAPT-v3"}, ids
+    by_id = {p["id"]: p for p in paare}
+    for var in ids:
+        assert by_id[var]["a"].endswith("song_60s_ORIGINAL.wav"), "a muss das Original sein"
+        assert by_id[var]["b"].endswith(var + ".wav")
+
+
 def test_erkenne_paare_leer_und_fehler(tmp_path: Path) -> None:
     assert erkenne_paare(tmp_path) == []
     try:
@@ -130,14 +195,13 @@ def test_frage_verdikte_abbruch_und_ties() -> None:
     assert v2 == [{"trial_id": "t0", "preferred": "right"}]
 
 
-def test_panel_e2e_ein_kommando(tmp_path: Path) -> None:
+def test_panel_e2e_ein_kommando(tmp_path: Path, ohr_artefakt_gesichert: None) -> None:
     """E2E: Verzeichnis + 2 Eingabezeichen → Artefakt models/ohr/ohr_prior.json."""
     (tmp_path / "A").mkdir()
     (tmp_path / "B").mkdir()
     _schreibe(tmp_path / "A" / "song.wav")
     _schreibe(tmp_path / "B" / "song.wav")
     artefakt = PROJECT_ROOT / "models" / "ohr" / "ohr_prior.json"
-    artefakt.unlink(missing_ok=True)
     r = subprocess.run(
         [
             sys.executable,
@@ -164,7 +228,8 @@ def test_panel_e2e_ein_kommando(tmp_path: Path) -> None:
     d = json.loads(artefakt.read_text(encoding="utf-8"))
     assert d["schema"].startswith("aurik.ohr_prior/"), d["schema"]
     assert d["n_labels"] == 1
-    artefakt.unlink(missing_ok=True)  # Test-Artefakt nicht als echtes Ohr zurücklassen
+    # Test-Artefakt nicht als echtes Ohr zurücklassen — die Fixture stellt das
+    # vorher gesicherte Nutzer-Artefakt anschließend bit-identisch wieder her.
 
 
 def test_defekt_varianten_deterministisch_und_unterscheidbar() -> None:
@@ -261,7 +326,7 @@ def test_erfrage_verzeichnis_enter_nimmt_vorschlag() -> None:
             assert erg == td_path
 
 
-def test_panel_e2e_auto_erzeugt_ohne_flag(tmp_path: Path) -> None:
+def test_panel_e2e_auto_erzeugt_ohne_flag(tmp_path: Path, ohr_artefakt_gesichert: None) -> None:
     """Der Normalfall für den Nutzer: Musik-Ordner, KEIN --erzeuge-paare —
     das Panel erzeugt die Paare automatisch und läuft komplett durch.
     """
@@ -269,7 +334,6 @@ def test_panel_e2e_auto_erzeugt_ohne_flag(tmp_path: Path) -> None:
     musik.mkdir()
     _schreibe(musik / "lied.wav")
     artefakt = PROJECT_ROOT / "models" / "ohr" / "ohr_prior.json"
-    artefakt.unlink(missing_ok=True)
     r = subprocess.run(
         [
             sys.executable,
@@ -290,7 +354,6 @@ def test_panel_e2e_auto_erzeugt_ohne_flag(tmp_path: Path) -> None:
     assert r.returncode == 0, r.stderr[-500:]
     assert "automatisch aus der Musik erzeugt" in r.stdout, r.stdout[-400:]
     assert artefakt.is_file()
-    artefakt.unlink(missing_ok=True)
 
 
 def test_player_erkennung_und_fallback() -> None:

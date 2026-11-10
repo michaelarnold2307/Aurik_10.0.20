@@ -83,3 +83,65 @@ def test_hoerproben_manifest_schema(tmp_path: Path) -> None:
     d = json.loads(p.read_text(encoding="utf-8"))
     assert d["schema"] == "aurik.hoerproben/1"
     assert d["sekunden"] == 10.0 and d["seed"] == 42
+
+
+def test_trial_id_stabil_aus_stamm_und_position() -> None:
+    from scripts.hoer_entscheidung import _trial_id
+
+    tid = _trial_id("Elke Best - Sing ein neues Lied (1975)", 1)
+    assert tid == "elke_best_sing_ein_neues_lied_1975__1"
+    assert _trial_id("Elke Best - Sing ein neues Lied (1975)", 1) == tid
+    assert _trial_id("Elke Best - Sing ein neues Lied (1975)", 2) != tid
+
+
+def test_aggregiere_akkumuliert_und_nicht_signifikant() -> None:
+    from scripts.hoer_entscheidung import _aggregiere
+
+    trials = {
+        "a__1": {"gewinner": "A"},
+        "a__2": {"gewinner": "A"},
+        "a__3": {"gewinner": "A"},
+        "a__4": {"gewinner": "B"},
+        "a__5": {"gewinner": None},
+    }
+    stats = _aggregiere(trials)
+    assert stats["siege_a"] == 3
+    assert stats["siege_b"] == 1
+    assert stats["gleichstaende"] == 1
+    assert stats["n_verdikte"] == 5
+    assert stats["n_entscheidend"] == 4
+    assert stats["signifikant"] is False
+
+
+def test_aggregiere_9_1_signifikant() -> None:
+    from scripts.hoer_entscheidung import _aggregiere
+
+    trials = {f"a__{i}": {"gewinner": "A"} for i in range(1, 10)}
+    trials["b__1"] = {"gewinner": "B"}
+    stats = _aggregiere(trials)
+    assert stats["signifikant"] is True
+    assert stats["p_wert_vorzeichen_test"] < 0.05
+
+
+def test_wiederholen_flag_im_parser() -> None:
+    r = subprocess.run(
+        [sys.executable, "-B", "scripts/hoer_entscheidung.py", "--help"],
+        cwd=PROJECT_ROOT,
+        capture_output=True,
+        text=True,
+        timeout=120,
+    )
+    assert r.returncode == 0, r.stderr[-400:]
+    assert "--wiederholen" in r.stdout
+
+
+def test_merge_set_haengt_nur_neue_staemme_an() -> None:
+    from scripts.erstelle_hoerproben import _merge_set
+
+    bestehende = [{"stamm": "lied_a", "a": "x", "b": "y"}]
+    neu = [
+        {"stamm": "lied_a", "a": "x2", "b": "y2"},
+        {"stamm": "lied_b", "a": "z", "b": "w"},
+    ]
+    merged = _merge_set(bestehende, neu)
+    assert [p["stamm"] for p in merged] == ["lied_a", "lied_b"]

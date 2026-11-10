@@ -9,7 +9,11 @@ Hör-Sign-off konsumiert (signifikant + siege_a ≠ siege_b).
 Subkommandos:
   --status                     zeigt offene B3/C4-Entscheidungen + vorhandene Proben
   --hoeren <set>               verblindetes A/B über ein Proben-Set, Urteil → Beleg
-                               (z. B. c4_vocos, m5_rekonstruktion)
+                               (z. B. c4_vocos, m5_rekonstruktion); bereits
+                               beurteilte Proben werden übersprungen, neue Urteile
+                               akkumulieren additiv im Beleg
+  --wiederholen                mit --hoeren: auch bereits beurteilte Proben erneut
+                               anhören (neues Urteil ersetzt das alte je Probe)
 
 Die B3-W-Stufen-Entscheidungen (0/13) werden erst NACH den objektiven
 Messungen im trainingsfreien GPU-Fenster anhörbar — das Panel zeigt deren
@@ -20,7 +24,9 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
 import random
+import re
 import subprocess
 import sys
 from pathlib import Path
@@ -108,7 +114,45 @@ def status() -> int:
     return 0
 
 
-def hoeren(set_name: str, seed: int) -> int:
+def _sign_test(wins: int, n: int) -> float:
+    """Zweiseitiger Vorzeichentest gegen H0 = 1/2 (exakt, §G5 (copilot-instructions.md))."""
+    if n <= 0:
+        return 1.0
+    wins = max(0, min(wins, n))
+    tail = sum(math.comb(n, k) for k in range(0, min(wins, n - wins) + 1))
+    return min(1.0, 2.0 * tail / float(2**n))
+
+
+def _trial_id(stamm: str, idx: int) -> str:
+    """Stabiler Trial-Schlüssel aus Stamm-Slug + Position im Set.
+
+    Die Position ist stabil, weil der Erzeuger Proben nur anhängt und nie
+    umsortiert — Urteile überleben so spätere Set-Erweiterungen.
+    """
+    slug = re.sub(r"[^a-z0-9]+", "_", stamm.lower()).strip("_")[:48] or "stueck"
+    return f"{slug}__{idx}"
+
+
+def _aggregiere(trials: dict[str, dict]) -> dict:
+    """ab_stats-Kennzahlen über alle gespeicherten Trials (Sitzungs-übergreifend)."""
+    wins_a = sum(1 for v in trials.values() if v.get("gewinner") == "A")
+    wins_b = sum(1 for v in trials.values() if v.get("gewinner") == "B")
+    ties = sum(1 for v in trials.values() if v.get("gewinner") is None)
+    n_dec = wins_a + wins_b
+    p = _sign_test(wins_a, n_dec)
+    return {
+        "n_verdikte": len(trials),
+        "n_entscheidend": n_dec,
+        "gleichstaende": ties,
+        "siege_a": wins_a,
+        "siege_b": wins_b,
+        "siegquote_a": round(wins_a / n_dec, 4) if n_dec else None,
+        "p_wert_vorzeichen_test": round(p, 6),
+        "signifikant": bool(n_dec > 0 and p < 0.05),
+    }
+
+
+def hoeren(set_name: str, seed: int, wiederholen: bool = False) -> int:
     manifest_pfad = PROBEN / "manifest.json"
     if not manifest_pfad.is_file():
         print("Keine Proben vorhanden — erst erstelle_hoerproben.py ausführen.")
@@ -118,6 +162,14 @@ def hoeren(set_name: str, seed: int) -> int:
     if not s:
         print(f"Set '{set_name}' nicht im Manifest. Verfügbar: {list(m.get('sets', {}))}")
         return 2
+    verdikt_pfad = VERDIKTE / f"hoer_verdikt_{set_name}.json"
+    gespeichert: dict[str, dict] = {}
+    if verdikt_pfad.is_file():
+        try:
+            alt = json.loads(verdikt_pfad.read_text(encoding="utf-8"))
+            gespeichert = dict(alt.get("trials") or {})
+        except Exception:
+            pass  # defekter Alt-Beleg: neue Urteile schreiben ihn neu
     player = _player()
     if not player:
         print("Kein CLI-Player (ffplay/aplay/paplay) — bitte die Dateien im eigenen Player öffnen:")
@@ -126,10 +178,24 @@ def hoeren(set_name: str, seed: int) -> int:
             print(f"  B: {p['b']}")
         return 1
     rng = random.Random(seed)
-    verdicts: list[dict[str, str]] = []
+    neue: dict[str, dict] = {}
+    abgebrochen = False
     print(f"\nSet: {set_name} — {s['entscheidung']}")
+    if gespeichert:
+        print(
+            f"Bereits beurteilt: {len(gespeichert)} Trial(s) — neue Urteile werden addiert"
+            f"{' (Wiederholung: alte Urteile werden ersetzt)' if wiederholen else ''}."
+        )
     print(f"Player: {player} — automatisch links → rechts; Antwort l/r/=, Enter = nochmal, q = Abbruch.\n")
     for idx, probe in enumerate(s["proben"], start=1):
+        tid = _trial_id(probe["stamm"], idx)
+        if tid in gespeichert and not wiederholen:
+            vor = gespeichert[tid]
+            print(
+                f"── Probe {idx}/{len(s['proben'])}: {probe['stamm'][:50]} — bereits beurteilt"
+                f" ({vor.get('gewinner') or '='}) — übersprungen."
+            )
+            continue
         left_is_a = rng.random() < 0.5
         pa = Path(probe["a"])
         pb = Path(probe["b"])
@@ -143,66 +209,55 @@ def hoeren(set_name: str, seed: int) -> int:
             antwort = input("  l / r / = ? ").strip().lower()
             if antwort == "q":
                 print("Abbruch — bisherige Urteile werden verwendet.")
+                abgebrochen = True
                 break
             if antwort == "":
                 print("  (nochmal hören …)")
                 continue
             if antwort in ("l", "r"):
                 gewinner = "A" if (left is pa) == (antwort == "l") else "B"
-                verdicts.append({"trial_id": f"{set_name}__{idx}", "preferred": antwort, "gewinner": gewinner})
+                neue[tid] = {"stamm": probe["stamm"], "preferred": antwort, "gewinner": gewinner}
                 break
             if antwort == "=":
-                verdicts.append({"trial_id": f"{set_name}__{idx}", "preferred": "tie", "gewinner": None})
+                neue[tid] = {"stamm": probe["stamm"], "preferred": "tie", "gewinner": None}
                 break
             print("  Bitte l, r oder = eingeben.")
-        if antwort == "q":
+        if abgebrochen:
             break
-    if not verdicts:
+    if not neue:
+        if gespeichert:
+            print("Keine neuen Urteile — Beleg unverändert.")
+            return 0
         print("Keine Urteile — kein Beleg geschrieben.")
         return 1
 
-    # ab_stats-Beleg (flag_freigabe-kompatibel, aurik.ab_stats/1)
-    wins_a = sum(1 for v in verdicts if v["gewinner"] == "A")
-    wins_b = sum(1 for v in verdicts if v["gewinner"] == "B")
-    ties = sum(1 for v in verdicts if v["gewinner"] is None)
-    n_dec = wins_a + wins_b
-    import math
-
-    def _sign_test(wins: int, n: int) -> float:
-        if n <= 0:
-            return 1.0
-        wins = max(0, min(wins, n))
-        tail = sum(math.comb(n, k) for k in range(0, min(wins, n - wins) + 1))
-        return min(1.0, 2.0 * tail / float(2**n))
-
-    p = _sign_test(wins_a, n_dec)
-    stats = {
-        "schema": "aurik.ab_stats/1",
-        "n_verdikte": len(verdicts),
-        "n_entscheidend": n_dec,
-        "gleichstaende": ties,
-        "siege_a": wins_a,
-        "siege_b": wins_b,
-        "siegquote_a": round(wins_a / n_dec, 4) if n_dec else None,
-        "p_wert_vorzeichen_test": round(p, 6),
-        "signifikant": bool(n_dec > 0 and p < 0.05),
-        "label_a": "Kandidat A",
-        "label_b": "Kandidat B",
-        "entscheidung": s["entscheidung"],
-        "quelle": "scripts/hoer_entscheidung.py",
-    }
-    out = VERDIKTE / f"hoer_verdikt_{set_name}.json"
-    out.write_text(json.dumps(stats, indent=2, ensure_ascii=False), encoding="utf-8")
-    print(f"\nBeleg geschrieben: {out}")
-    print(f"  Siege A/B: {wins_a}/{wins_b} (n={n_dec}), p={p:.4f}, signifikant={stats['signifikant']}")
-    if stats["signifikant"] and wins_a != wins_b:
-        if wins_a > wins_b:
+    gespeichert.update(neue)
+    stats = _aggregiere(gespeichert)
+    stats.update(
+        {
+            "schema": "aurik.ab_stats/1",
+            "label_a": "Kandidat A",
+            "label_b": "Kandidat B",
+            "entscheidung": s["entscheidung"],
+            "quelle": "scripts/hoer_entscheidung.py",
+            "n_trials_gesamt": len(gespeichert),
+            "trials": gespeichert,
+        }
+    )
+    verdikt_pfad.write_text(json.dumps(stats, indent=2, ensure_ascii=False), encoding="utf-8")
+    print(f"\nBeleg geschrieben: {verdikt_pfad} ({len(gespeichert)} Trial(s) gesamt)")
+    print(
+        f"  Siege A/B: {stats['siege_a']}/{stats['siege_b']} (n={stats['n_entscheidend']}), "
+        f"p={stats['p_wert_vorzeichen_test']:.4f}, signifikant={stats['signifikant']}"
+    )
+    if stats["signifikant"] and stats["siege_a"] != stats["siege_b"]:
+        if stats["siege_a"] > stats["siege_b"]:
             print("  → Kandidat A (Referenz/Bestand) signifikant bevorzugt — KEIN Flag-Flip nötig.")
-            print(f"    Der Bestandspfad ist der bestätigte SOTA-Zustand (Beleg: {out.name}).")
+            print(f"    Der Bestandspfad ist der bestätigte SOTA-Zustand (Beleg: {verdikt_pfad.name}).")
         else:
-            print(f"  → Kandidat B (Challenger) signifikant bevorzugt — flag_freigabe: --verdikt {out}")
+            print(f"  → Kandidat B (Challenger) signifikant bevorzugt — flag_freigabe: --verdikt {verdikt_pfad}")
     else:
-        print("  → noch nicht signifikant — mehr Proben hören (--wiederholen oder mehr Stücke).")
+        print("  → noch nicht signifikant — nächster Lauf spielt nur die noch unbeurteilten Proben.")
     return 0
 
 
@@ -210,10 +265,11 @@ def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description="B3/C4-Hör-Entscheidung ohne Wartezeit")
     ap.add_argument("--status", action="store_true", help="Status der Entscheidungen + Proben")
     ap.add_argument("--hoeren", default=None, help="Proben-Set verblindet anhören (c4_vocos, m5_rekonstruktion)")
+    ap.add_argument("--wiederholen", action="store_true", help="mit --hoeren: bereits beurteilte Proben erneut anhören")
     ap.add_argument("--seed", type=int, default=42)
     args = ap.parse_args(argv)
     if args.hoeren:
-        return hoeren(args.hoeren, args.seed)
+        return hoeren(args.hoeren, args.seed, args.wiederholen)
     return status()
 
 

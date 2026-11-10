@@ -1,15 +1,78 @@
 {
-  "schema": "aurik.ab_stats/1",
-  "n_verdikte": 3,
-  "n_entscheidend": 1,
+  "n_verdikte": 12,
+  "n_entscheidend": 10,
   "gleichstaende": 2,
-  "siege_a": 0,
-  "siege_b": 1,
-  "siegquote_a": 0.0,
+  "siege_a": 5,
+  "siege_b": 5,
+  "siegquote_a": 0.5,
   "p_wert_vorzeichen_test": 1.0,
   "signifikant": false,
+  "schema": "aurik.ab_stats/1",
   "label_a": "Kandidat A",
   "label_b": "Kandidat B",
   "entscheidung": "C4 Studio-Finisher-Teilentscheidung: vocos-Base (Sprach-Korpus) vs. Musik-Finetune (D-K2-3)",
-  "quelle": "scripts/hoer_entscheidung.py"
+  "quelle": "scripts/hoer_entscheidung.py",
+  "n_trials_gesamt": 12,
+  "trials": {
+    "elke_best_sing_ein_neues_lied_1975_hd_audio_320___1": {
+      "stamm": "Elke Best - Sing ein neues Lied (1975) HD audio 320 kbps german (original)",
+      "preferred": "tie",
+      "gewinner": null
+    },
+    "elke_best_wie_kann_es_sein_1972_hd_audio_320_kbp__2": {
+      "stamm": "Elke Best - Wie kann es sein (1972) HD audio 320 kbps german (original)",
+      "preferred": "tie",
+      "gewinner": null
+    },
+    "stephan_remmler_vogel_der_nacht_ml_engine_autopr__3": {
+      "stamm": "Stephan Remmler - Vogel der Nacht_ML-Engine-AUTOPROFIL_FULL",
+      "preferred": "l",
+      "gewinner": "A"
+    },
+    "roxy_music_in_every_dream_home_60s_ml_adapt_v3__4": {
+      "stamm": "Roxy Music - In Every Dream Home_60s_ML-ADAPT-v3",
+      "preferred": "r",
+      "gewinner": "B"
+    },
+    "elke_best_jenny_john_1976_hd_audio_320_kbps_germ__5": {
+      "stamm": "Elke Best - Jenny & John (1976) HD audio 320 kbps german (original)",
+      "preferred": "r",
+      "gewinner": "A"
+    },
+    "elke_best_der_matador_1981_hd_audio_320_kbps_ger__6": {
+      "stamm": "Elke Best - Der Matador (1981) HD audio 320 kbps german (original)",
+      "preferred": "r",
+      "gewinner": "A"
+    },
+    "elke_best_nichts_bleibt_ungescheh_n_1972_hd_audi__7": {
+      "stamm": "Elke Best - Nichts bleibt ungescheh'n (1972) HD audio 320 kbps german (original)",
+      "preferred": "r",
+      "gewinner": "A"
+    },
+    "elke_best_wach_auf_1980_hd_audio_320_kbps_german__8": {
+      "stamm": "Elke Best - Wach auf (1980) HD audio 320 kbps german (original)",
+      "preferred": "r",
+      "gewinner": "B"
+    },
+    "stephan_remmler_vogel_der_nacht_ml_engine_autopr__9": {
+      "stamm": "Stephan Remmler - Vogel der Nacht_ML-Engine-AUTOPROFIL-v5_FULL",
+      "preferred": "r",
+      "gewinner": "B"
+    },
+    "roxy_music_in_every_dream_home_60s_ml_adapt_v2__10": {
+      "stamm": "Roxy Music - In Every Dream Home_60s_ML-ADAPT-v2",
+      "preferred": "r",
+      "gewinner": "B"
+    },
+    "elke_best_ich_denk_an_dich_1974_hd_audio_320_kbp__11": {
+      "stamm": "Elke Best - Ich denk an dich (1974) HD audio 320 kbps german (original)",
+      "preferred": "r",
+      "gewinner": "B"
+    },
+    "elke_best_danny_1981_hd_audio_320_kbps_german_or__12": {
+      "stamm": "Elke Best - Danny (1981) HD audio 320 kbps german (original)",
+      "preferred": "r",
+      "gewinner": "A"
+    }
+  }
 }

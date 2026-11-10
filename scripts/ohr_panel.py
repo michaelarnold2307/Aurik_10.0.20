@@ -78,15 +78,29 @@ def erkenne_paare(verzeichnis: Path) -> list[dict[str, str]]:
         if "_restauriert" in p.stem:
             basis = p.stem.split("_restauriert")[0]
             restauriert[basis] = p
+    paare_restauriert: list[dict[str, str]] = []
     if restauriert:
         by_name = {p.stem: p for p in audio}
-        paare = []
         for basis in sorted(restauriert):
             original = by_name.get(basis) or by_name.get(basis + "_ORIGINAL") or by_name.get(basis + "_original")
             if original:
-                paare.append({"id": basis, "a": str(original), "b": str(restauriert[basis])})
-        if paare:
-            return paare
+                paare_restauriert.append({"id": basis, "a": str(original), "b": str(restauriert[basis])})
+
+    # ORIGINAL-Varianten-Layout (2026-11-10): <stamm>_ORIGINAL ↔ <stamm>_<variante>
+    # (z. B. Roxy Music ML-ADAPT-v2/v3 — die stärksten Restaurierungs-Vergleiche)
+    paare_original: list[dict[str, str]] = []
+    original_staemme: dict[str, Path] = {}
+    for p in audio:
+        if p.stem.endswith("_ORIGINAL"):
+            original_staemme[p.stem.rsplit("_ORIGINAL", 1)[0]] = p
+    for stamm in sorted(original_staemme):
+        orig = original_staemme[stamm]
+        kandidaten = [p for p in audio if p.stem.startswith(stamm + "_") and p != orig and "_restauriert" not in p.stem]
+        for var in sorted(kandidaten, key=lambda p: p.stem):
+            paare_original.append({"id": var.stem, "a": str(orig), "b": str(var)})
+
+    if paare_restauriert or paare_original:
+        return sorted(paare_restauriert + paare_original, key=lambda p: p["id"])
 
     # Suffix-Layout: <stamm>.a.wav / <stamm>.b.wav
     a_by_stamm: dict[str, Path] = {}
@@ -603,6 +617,9 @@ def main(argv: list[str] | None = None) -> int:
         f"Ohr-Urteils-Session: {len(session_doc['pairs'])} Paare "
         f"({session_doc['gleichstaende_ausgeschlossen']} Gleichstände ausgeschlossen) → {session}"
     )
+    if not session_doc["pairs"]:
+        print("Keine entscheidenden Urteile (nur Gleichstände) — das bestehende Ohr-Artefakt bleibt unverändert.")
+        return 1
     run(
         [
             "scripts/ohr_kalibrieren.py",

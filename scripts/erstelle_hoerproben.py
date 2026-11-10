@@ -44,6 +44,16 @@ def _audio_dateien(verzeichnis: Path) -> list[Path]:
     )
 
 
+def _merge_set(bestehende: list[dict], neu: list[dict]) -> list[dict]:
+    """Bestehende Proben behalten, neue nur anhängen, wenn ihr Stamm fehlt.
+
+    Set-Erweiterungen sind rein additiv — bereits beurteilte Trial-IDs
+    (Stamm-Slug + Position) bleiben dadurch stabil.
+    """
+    bekannte = {p.get("stamm") for p in bestehende}
+    return bestehende + [p for p in neu if p.get("stamm") not in bekannte]
+
+
 def _lade_48k(pfad: Path) -> np.ndarray:
     import soundfile as sf
 
@@ -90,7 +100,12 @@ def vocode(onnx: Path, mel: np.ndarray) -> np.ndarray:
 
 
 def erzeuge_c4_proben(
-    verzeichnis: Path, ausgang: Path, anzahl: int = 3, sekunden: float = 10.0, seed: int = 42
+    verzeichnis: Path,
+    ausgang: Path,
+    anzahl: int = 3,
+    sekunden: float = 10.0,
+    seed: int = 42,
+    bestehende_staemme: set[str] | None = None,
 ) -> list[dict]:
     import soundfile as sf
 
@@ -100,8 +115,11 @@ def erzeuge_c4_proben(
     ziel.mkdir(parents=True, exist_ok=True)
     rng = np.random.default_rng(seed)
     dateien = _audio_dateien(verzeichnis)
+    if bestehende_staemme:
+        dateien = [p for p in dateien if p.stem not in bestehende_staemme]
     if not dateien:
-        raise FileNotFoundError(f"Keine Audiodateien in {verzeichnis}")
+        zusatz = " (alle Stämme bereits im Set)" if bestehende_staemme else ""
+        raise FileNotFoundError(f"Keine Audiodateien in {verzeichnis}{zusatz}")
     gewaehlt = [dateien[i] for i in rng.choice(len(dateien), size=min(anzahl, len(dateien)), replace=False)]
     proben: list[dict] = []
     for stueck in gewaehlt:
@@ -119,7 +137,12 @@ def erzeuge_c4_proben(
 
 
 def erzeuge_m5_proben(
-    verzeichnis: Path, ausgang: Path, anzahl: int = 3, sekunden: float = 10.0, seed: int = 42
+    verzeichnis: Path,
+    ausgang: Path,
+    anzahl: int = 3,
+    sekunden: float = 10.0,
+    seed: int = 42,
+    bestehende_staemme: set[str] | None = None,
 ) -> list[dict]:
     import soundfile as sf
 
@@ -129,8 +152,11 @@ def erzeuge_m5_proben(
     ziel.mkdir(parents=True, exist_ok=True)
     rng = np.random.default_rng(seed)
     dateien = _audio_dateien(verzeichnis)
+    if bestehende_staemme:
+        dateien = [p for p in dateien if p.stem not in bestehende_staemme]
     if not dateien:
-        raise FileNotFoundError(f"Keine Audiodateien in {verzeichnis}")
+        zusatz = " (alle Stämme bereits im Set)" if bestehende_staemme else ""
+        raise FileNotFoundError(f"Keine Audiodateien in {verzeichnis}{zusatz}")
     gewaehlt = [dateien[i] for i in rng.choice(len(dateien), size=min(anzahl, len(dateien)), replace=False)]
     proben: list[dict] = []
     for stueck in gewaehlt:
@@ -173,21 +199,32 @@ def main(argv: list[str] | None = None) -> int:
         manifest["sets"] = dict(alt.get("sets", {}))
     for set_name in [s.strip() for s in args.nur.split(",") if s.strip()]:
         if set_name == "c4_vocos":
-            proben = erzeuge_c4_proben(Path(args.verzeichnis), ausgang, args.anzahl, args.sekunden, args.seed)
-            manifest["sets"]["c4_vocos"] = {
-                "entscheidung": "C4 Studio-Finisher-Teilentscheidung: vocos-Base (Sprach-Korpus) vs. Musik-Finetune (D-K2-3)",
-                "proben": proben,
-            }
+            entscheidung = "C4 Studio-Finisher-Teilentscheidung: vocos-Base (Sprach-Korpus) vs. Musik-Finetune (D-K2-3)"
+            generator = erzeuge_c4_proben
         elif set_name == "m5_rekonstruktion":
-            proben = erzeuge_m5_proben(Path(args.verzeichnis), ausgang, args.anzahl, args.sekunden, args.seed)
-            manifest["sets"]["m5_rekonstruktion"] = {
-                "entscheidung": "M5 Lücken-Synthese: lineare Interpolation vs. vocos-Finetune-Resynthese",
-                "proben": proben,
-            }
+            entscheidung = "M5 Lücken-Synthese: lineare Interpolation vs. vocos-Finetune-Resynthese"
+            generator = erzeuge_m5_proben
         else:
             print(f"Unbekanntes Set: {set_name}")
             return 2
-        print(f"{set_name}: {len(manifest['sets'][set_name]['proben'])} Proben-Paare erzeugt")
+        alt_set = manifest["sets"].get(set_name)
+        bestehende: list[dict] = list(alt_set["proben"]) if alt_set else []
+        staemme = {str(p.get("stamm")) for p in bestehende}
+        offen = max(0, args.anzahl - len(bestehende))
+        if offen > 0:
+            try:
+                neu = generator(
+                    Path(args.verzeichnis), ausgang, offen, args.sekunden, args.seed, bestehende_staemme=staemme
+                )
+            except FileNotFoundError as fe:
+                print(f"{set_name}: {fe}")
+                return 1
+            proben = _merge_set(bestehende, neu)
+            manifest["sets"][set_name] = {"entscheidung": entscheidung, "proben": proben}
+            print(f"{set_name}: {len(proben)} Proben-Paare ({len(proben) - len(bestehende)} neu)")
+        else:
+            manifest["sets"][set_name] = {"entscheidung": entscheidung, "proben": bestehende}
+            print(f"{set_name}: bereits {len(bestehende)} Proben-Paare (Ziel {args.anzahl}) — nichts zu tun")
 
     manifest_path.write_text(json.dumps(manifest, indent=2, ensure_ascii=False), encoding="utf-8")
     print(f"Manifest: {manifest_path}")
