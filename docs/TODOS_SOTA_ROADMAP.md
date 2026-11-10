@@ -119,6 +119,16 @@ README-Drift, stale Paritäts-Reports — jede Panne kostete Stunden
   erfolgreiche Manifeste (Befehl/Phase/Seed identisch) werden übersprungen,
   `--force` erzwingt einen Neulauf — kein Re-Training erledigter Modelle und
   kein Überschreiben des Erfolgs-Manifests beim Ketten-Neustart.
+- [x] **Kein Artefakt ohne Pfad, kein Flag ohne Lesestelle** (2026-11-10):
+  Quer-Audit aller Modell-Flags nach D-K3-85 fand zwei Findlinge — der
+  M5-Vocos-Musik-Finetune war exportiert, aber unerreichbar (D-K3-90), und
+  `use_miipher_dit` stand nur in der Flag-Datei (D-K3-91, stiller No-Op).
+  Beide geschlossen, je mit Reachability-Tests (Artefaktname, Flag-Default,
+  Auswahl im Produktionspfad, §4-Flip-Pfad).
+- [ ] **Den Audit als Gate statt als Suchlauf** (offen): ein Pre-Commit-Check
+  „jeder `use_*`-Flag hat mindestens eine Lesestelle außerhalb der Flag-Datei"
+  würde die Klasse mechanisch schließen — der manuelle Suchlauf (2026-11-10,
+  22 Flags) ist billig, aber er vergisst.
 
 ## Pfeiler 5 — Fallback-Quote als Qualitäts-KPI
 
