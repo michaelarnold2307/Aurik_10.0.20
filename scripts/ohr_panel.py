@@ -293,6 +293,84 @@ def run(cmd: list[str]) -> None:
     subprocess.run([sys.executable, "-B", *cmd], cwd=ROOT, check=True, capture_output=True)
 
 
+def baue_session(verdikte: list[dict[str, str]], key: dict, sr_hint: int = 48000) -> dict:
+    """Baut die Ohr-Urteils-Session (aurik.ohr_urteile/1) direkt im Panel —
+    unabhängig vom ab_harness-Subkommando (dessen Datei teilt sich das Repo
+    mit der parallelen Sitzung). Entblindet über den Schlüssel, übernimmt die
+    ORIGINAL-Kandidatenpfade; Gleichstände fliegen raus (dokumentiert).
+    """
+    mapping: dict = key["mapping"]
+    pairs: list[dict[str, str]] = []
+    ties = 0
+    for v in verdikte:
+        tid = str(v["trial_id"])
+        if tid not in mapping:
+            raise KeyError(f"Unbekannte trial_id in Verdikten: {tid}")
+        pref = str(v["preferred"]).lower()
+        if pref not in ("left", "right", "tie"):
+            raise ValueError(f"preferred muss left|right|tie sein: {v!r}")
+        if pref == "tie":
+            ties += 1
+            continue
+        winner = str(mapping[tid][pref])  # "A" | "B"
+        paths = mapping[tid].get("paths")
+        if not paths:
+            raise KeyError(f"Trial {tid} ohne Originalpfade — Key zu alt, Panel neu starten")
+        pairs.append({"a": str(paths["A"]), "b": str(paths["B"]), "choice": winner})
+    return {
+        "schema": "aurik.ohr_urteile/1",
+        "sr_hint": sr_hint,
+        "pairs": pairs,
+        "gleichstaende_ausgeschlossen": ties,
+        "quelle": "scripts/ohr_panel.py",
+    }
+
+
+def erstelle_trials(paare: list[dict[str, str]], work: Path, seed: int, wiederholen: int = 1) -> tuple[dict, dict]:
+    """Verblindetes Versuchsblatt + Schlüssel DIREKT im Panel (autark — die
+    ab_harness-Datei teilt sich das Repo mit der parallelen Sitzung).
+    Deterministisch (Seed, §G5 (copilot-instructions.md)); der Schlüssel trägt
+    die Originalpfade je Trial für die spätere Entblindung.
+    """
+    import random
+    import shutil
+
+    rng = random.Random(seed)
+    stimuli_dir = work / "stimuli"
+    stimuli_dir.mkdir(parents=True, exist_ok=True)
+    trials: list[dict] = []
+    key: dict[str, dict] = {}
+    for item in paare:
+        item_id = str(item["id"])
+        for rep in range(wiederholen):
+            trial_id = f"{item_id}__r{rep}"
+            left_is_a = rng.random() < 0.5
+            mapping = {"left": "a" if left_is_a else "b", "right": "b" if left_is_a else "a"}
+            slots: dict[str, str] = {}
+            for slot in ("left", "right"):
+                src = Path(item[mapping[slot]])
+                dst = stimuli_dir / f"{trial_id}_{slot}{src.suffix}"
+                shutil.copyfile(src, dst)
+                slots[slot] = str(dst.relative_to(work))
+            trials.append(
+                {
+                    "trial_id": trial_id,
+                    "item_id": item_id,
+                    "repeat": rep,
+                    "stimuli": slots,
+                }
+            )
+            key[trial_id] = {
+                "left": mapping["left"].upper(),
+                "right": mapping["right"].upper(),
+                "paths": {"A": str(item["a"]), "B": str(item["b"])},
+            }
+    return {"schema": "aurik.ab_trials/1", "seed": seed, "trials": trials}, {
+        "schema": "aurik.ab_key/1",
+        "mapping": key,
+    }
+
+
 def erfrage_verzeichnis(eingaben) -> Path:
     """Fragt interaktiv nach dem Musik-/Paar-Ordner; Enter nimmt den ersten
     vorhandenen Vorschlag (~/Musik, ~/Music, ~/Schreibtisch/Musik).
@@ -400,26 +478,12 @@ def main(argv: list[str] | None = None) -> int:
     items.parent.mkdir(parents=True, exist_ok=True)
     items.write_text(json.dumps(paare, indent=2, ensure_ascii=False), encoding="utf-8")
 
-    run(
-        [
-            "scripts/ab_harness.py",
-            "prepare",
-            "--items",
-            str(items),
-            "--out-dir",
-            str(work),
-            "--seed",
-            str(args.seed),
-            "--label-a",
-            "Kandidat A",
-            "--label-b",
-            "Kandidat B",
-            "--repeats",
-            str(args.wiederholen),
-        ]
-    )
+    # Verblindung DIREKT im Panel (autark, §G5 (copilot-instructions.md)).
+    sheet_doc, key_doc = erstelle_trials(paare, work, args.seed, wiederholen=args.wiederholen)
+    (work / "trials.json").write_text(json.dumps(sheet_doc, indent=2, ensure_ascii=False), encoding="utf-8")
+    (work / "key.json").write_text(json.dumps(key_doc, indent=2, ensure_ascii=False), encoding="utf-8")
 
-    sheet = json.loads((work / "trials.json").read_text(encoding="utf-8"))
+    sheet = sheet_doc
     player = None if args.kein_player else finde_player()
     if player:
         print(f"\nAudio-Player: {player} — Trials werden automatisch abgespielt (links → rechts).")
@@ -439,17 +503,13 @@ def main(argv: list[str] | None = None) -> int:
     verdikte_path = work / "verdikte.json"
     verdikte_path.write_text(json.dumps(verdikte, indent=2, ensure_ascii=False), encoding="utf-8")
     session = work / "ohr_urteile.json"
-    run(
-        [
-            "scripts/ab_harness.py",
-            "ohr",
-            "--key",
-            str(work / "key.json"),
-            "--verdicts",
-            str(verdikte_path),
-            "--out",
-            str(session),
-        ]
+    # Session-Baunng direkt im Panel (robust gegen parallele Repo-Schreibvorgänge).
+    key_doc = json.loads((work / "key.json").read_text(encoding="utf-8"))
+    session_doc = baue_session(verdikte, key_doc, sr_hint=48000)
+    session.write_text(json.dumps(session_doc, indent=2, ensure_ascii=False), encoding="utf-8")
+    print(
+        f"Ohr-Urteils-Session: {len(session_doc['pairs'])} Paare "
+        f"({session_doc['gleichstaende_ausgeschlossen']} Gleichstände ausgeschlossen) → {session}"
     )
     run(
         [

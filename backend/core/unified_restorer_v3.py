@@ -19007,6 +19007,29 @@ class UnifiedRestorerV3:
 
                 if _kp5_audio is None:
                     _vplug = _get_vocos_plg()
+                    # M5 (D-K2-3): Musik-Finetune des 48-kHz-Vocoders NUR bei
+                    # use_vocos_music_ft=True (Default AUS ⇒ Basis-Kaskade unverändert
+                    # = bit-identisch). Der Accessor ist fail-closed: fehlt das Artefakt
+                    # oder ist es nicht ladbar, kommt der Basis-Singleton zurück (§V6 (copilot-instructions.md)).
+                    try:
+                        import backend.core.music_model_flags as _mmf_m5  # pylint: disable=import-outside-toplevel
+
+                        if bool(getattr(_mmf_m5, "use_vocos_music_ft", False)):
+                            from vocos_plugin import (  # pylint: disable=import-outside-toplevel
+                                get_vocos_music_ft_plugin as _get_vocos_ft_plg,
+                            )
+
+                            _vplug = _get_vocos_ft_plg()
+                            logger.info(
+                                "§1.4 M5: Vocos-Musik-Finetune aktiv (Gewichte=%s)",
+                                getattr(_vplug, "weights_basename", "unbekannt"),
+                            )
+                    except Exception as _m5_exc:  # pylint: disable=broad-except
+                        logger.warning(
+                            "§1.4 M5: Vocos-Musik-Finetune nicht verfügbar (%s) — Basis-Kaskade "
+                            "(§V6 (copilot-instructions.md))",
+                            _m5_exc,
+                        )
                     _vocos_mel_snr_db = float("nan")
                     if restored_audio.ndim == 2:
                         # Stereo: beide Kanäle separat synthetisieren und stapeln

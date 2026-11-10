@@ -34,6 +34,9 @@ MODEL_DIR = os.path.join(ROOT, "models", "vocos_48khz")
 CONFIG_PATH = os.path.join(MODEL_DIR, "config.yaml")
 WPATH = os.path.join(MODEL_DIR, "pytorch_model.bin")
 OUT_PATH = os.path.join(MODEL_DIR, "vocos_48khz.onnx")
+FINETUNE_DIR = os.path.join(MODEL_DIR, "finetune")
+FINETUNE_WPATH = os.path.join(FINETUNE_DIR, "vocos_48khz_music_ft.pt")
+FINETUNE_OUT = os.path.join(FINETUNE_DIR, "vocos_48khz_music_ft.onnx")
 OPSET = 18
 
 with open(CONFIG_PATH) as fh:
@@ -50,16 +53,37 @@ assert N_FFT % HOP == 0
 log.info("Config: sr=%d n_mels=%d n_fft=%d hop=%d G=%d", SR, N_MELS, N_FFT, HOP, G)
 
 
-def load_vocos():
+def _resolve_paths(finetune: bool) -> tuple[str, str]:
+    """Gewichts- und Ausgabepfad je Modus — testbar ohne Modell-Ladung (M5)."""
+    if finetune:
+        return FINETUNE_WPATH, FINETUNE_OUT
+    return WPATH, OUT_PATH
+
+
+def _load_state_dict(weights_path: str, state_key: str | None = None) -> dict:
+    """Lädt das state_dict — Finetune-Checkpoint trägt es unter ``state_dict``
+    (Misch-Dict Tensoren+Ints ⇒ weights_only=False, lokales Eigen-Artefakt).
+    """
+    raw = torch.load(weights_path, map_location="cpu", weights_only=state_key is None)
+    if state_key:
+        if not isinstance(raw, dict) or state_key not in raw:
+            raise KeyError(f"Checkpoint ohne '{state_key}': {list(raw)[:5] if isinstance(raw, dict) else type(raw)}")
+        raw = raw[state_key]
+    if not isinstance(raw, dict):
+        raise TypeError(f"state_dict erwartet, erhalten {type(raw).__name__}")
+    return raw
+
+
+def load_vocos(weights_path: str = WPATH, state_key: str | None = None):
     from vocos.pretrained import Vocos, instantiate_class  # type: ignore
 
     fe = instantiate_class(args=(), init=cfg["feature_extractor"])
     bb = instantiate_class(args=(), init=cfg["backbone"])
     hd = instantiate_class(args=(), init=cfg["head"])
     m = Vocos(feature_extractor=fe, backbone=bb, head=hd)
-    m.load_state_dict(torch.load(WPATH, map_location="cpu", weights_only=True))
+    m.load_state_dict(_load_state_dict(weights_path, state_key))
     m.eval()
-    log.info("Loaded: %s", WPATH)
+    log.info("Loaded: %s", weights_path)
     return m
 
 
@@ -165,14 +189,24 @@ def verify(path, mel_np):
 
 
 def main():
-    if not os.path.exists(WPATH):
-        log.error("Weights missing: %s", WPATH)
+    import argparse
+    import hashlib
+    import json
+
+    ap = argparse.ArgumentParser(description="Vocos-48kHz ONNX-Export (Base oder Musik-Finetune, M5)")
+    ap.add_argument("--finetune", action="store_true", help="Musik-Finetune exportieren (M5) statt der Base")
+    args = ap.parse_args()
+
+    wpath, out_path = _resolve_paths(args.finetune)
+    state_key = "state_dict" if args.finetune else None
+    if not os.path.exists(wpath):
+        log.error("Weights missing: %s", wpath)
         sys.exit(1)
 
-    if os.path.exists(OUT_PATH):
-        os.remove(OUT_PATH)
+    if os.path.exists(out_path):
+        os.remove(out_path)
 
-    vm = load_vocos()
+    vm = load_vocos(weights_path=wpath, state_key=state_key)
     dec = build_decoder(vm)
     dummy = torch.randn(1, N_MELS, 200)
 
@@ -187,7 +221,7 @@ def main():
             torch.onnx.export(
                 dec,
                 (dummy,),
-                OUT_PATH,
+                out_path,
                 input_names=["mel"],
                 output_names=["audio"],
                 dynamic_axes={"mel": {0: "batch", 2: "T"}, "audio": {0: "batch", 1: "S"}},
@@ -198,17 +232,17 @@ def main():
         log.error("Export failed: %s", e, exc_info=True)
         sys.exit(1)
 
-    mb = os.path.getsize(OUT_PATH) / 1024 / 1024
-    log.info("Saved: %s  (%.1f MB, %.1f s)", OUT_PATH, mb, time.perf_counter() - t0)
+    mb = os.path.getsize(out_path) / 1024 / 1024
+    log.info("Saved: %s  (%.1f MB, %.1f s)", out_path, mb, time.perf_counter() - t0)
 
-    if not verify(OUT_PATH, dummy.numpy()):
+    if not verify(out_path, dummy.numpy()):
         log.error("ONNX verification failed")
         sys.exit(1)
 
     # Dynamic-T cross-check
     import onnxruntime as ort
 
-    sess = ort.InferenceSession(OUT_PATH, providers=["CPUExecutionProvider"])
+    sess = ort.InferenceSession(out_path, providers=["CPUExecutionProvider"])
     iname = sess.get_inputs()[0].name
     dec2 = build_decoder(vm)
     log.info("\nDynamic-T cross-validation:")
@@ -220,6 +254,26 @@ def main():
             pa = dec2(mel).numpy().flatten()
         d = float(np.abs(oa - pa).max())
         log.info("  %s T=%3d  len=%6d  max|delta|=%.2e", "OK" if d < 1e-4 else "!!", T, len(oa), d)
+
+    if args.finetune:
+        # Export-Manifest (M5): kein Deploy/Flag-Flip — nur Paritäts-Beleg (§III.9).
+        _h = hashlib.sha256()
+        with open(out_path, "rb") as fh:
+            for chunk in iter(lambda: fh.read(1 << 20), b""):
+                _h.update(chunk)
+        manifest = {
+            "schema": "aurik.vocos48k_finetune_export/1",
+            "onnx": os.path.basename(out_path),
+            "sha256_onnx": _h.hexdigest(),
+            "quelle_checkpoint": os.path.basename(wpath),
+            "opset": OPSET,
+            "paritaet_max_abs_delta": "< 1e-4 (Dynamic-T cross-check)",
+            "hinweis": "KEIN Deploy, KEIN Flag-Flip — Studio-Finisher-Rollen-Entscheidung bleibt menschlich (C4).",
+        }
+        manifest_path = os.path.join(os.path.dirname(out_path), "export_manifest.json")
+        with open(manifest_path, "w", encoding="utf-8") as fh:
+            json.dump(manifest, fh, indent=2, sort_keys=True)
+        log.info("Export-Manifest: %s", manifest_path)
 
     log.info("\n✅ ONNX export complete.")
     log.info("   Input  'mel'   : [B, %d, T]", N_MELS)

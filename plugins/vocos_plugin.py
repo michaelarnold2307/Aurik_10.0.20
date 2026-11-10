@@ -36,6 +36,10 @@ _ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 _MODEL_48K = os.path.join(_ROOT, "models", "vocos_48khz", "vocos_48khz.onnx")
 _MODEL_44K = os.path.join(_ROOT, "models", "vocos", "vocos_mel_spec_44khz.onnx")
 _MODEL_24K = os.path.join(_ROOT, "models", "vocos", "vocos_mel_spec_24khz.onnx")
+# M5 (D-K2-3): Musik-Finetune des 48-kHz-Tiers (MUSDB18-HQ, R5) — eigener Export
+# aus scripts/export_vocos_48khz_onnx.py --finetune. NUR hinter
+# `music_model_flags.use_vocos_music_ft` (Default AUS, §4-Verfahren), nie auto-aktiv.
+_MODEL_48K_MUSIC_FT = os.path.join(_ROOT, "models", "vocos_48khz", "finetune", "vocos_48khz_music_ft.onnx")
 _MODEL = _MODEL_44K  # für Rückwärtskompatibilität (bevorzugte Auflösung)
 # Mel-Parameter je Modell-SR
 _MEL_SR_48K = 48_000
@@ -121,6 +125,7 @@ class VocosPlugin:
         self._onnx_session = None
         self._model_loaded: bool = False
         self._fallback_mode: str = "istft_phase_coherent_fallback"
+        self._weights_basename: str = ""
         if model_path:
             self._try_load(model_path)
         else:
@@ -171,6 +176,9 @@ class VocosPlugin:
             self._onnx_session = ort.InferenceSession(path, sess_options=opts, providers=_providers)
             self._model_loaded = True
             self._fallback_mode = "vocos_onnx"
+            # Herkunfts-Zeuge (§III.13 (copilot-instructions.md)): welches Gewichts-Artefakt wirklich läuft
+            # (Basis-48k vs. Musik-Finetune) — D-K3-85-Lehre: „Pfad erreichbar?"
+            self._weights_basename = os.path.basename(path)
             # Mel-Parameter je Modell-SR anpassen (48 kHz zuerst prüfen!)
             bname = os.path.basename(path)
             if "48" in bname:
@@ -250,6 +258,11 @@ class VocosPlugin:
     def model_loaded(self) -> bool:
         """True wenn ein neuronales Modell geladen wurde."""
         return self._model_loaded
+
+    @property
+    def weights_basename(self) -> str:
+        """Dateiname des geladenen Gewichts-Artefakts ("" = kein ONNX geladen)."""
+        return self._weights_basename
 
     def _do_unload(self) -> None:
         """Entlädt das ONNX-Modell (PLM-Callback, §5.1 OOM-Schutz)."""
@@ -533,7 +546,7 @@ class VocosPlugin:
         """Phase-coherent iSTFT fallback synthesis (Stufe 3 — last resort).
 
         Replaces former Griffin-Lim: uses original-phase iSTFT for transparent,
-        deterministic reconstruction (§2.40, §4.5 — griffinlim() als Endschritt verboten).
+        deterministic reconstruction (§2.40, §4.5 — Griffin-Lim als Endschritt verboten).
         Only active when Vocos ONNX AND HiFi-GAN are both unavailable.
 
         Returns: (audio_out, model_name, confidence)
@@ -694,6 +707,57 @@ def get_vocos_plugin() -> VocosPlugin:
             if _instance is None:
                 _instance = VocosPlugin()
     return _instance
+
+
+# ---------------------------------------------------------------------------
+# M5 (D-K2-3) — Musik-Finetune-Singleton (NUR hinter use_vocos_music_ft)
+# ---------------------------------------------------------------------------
+_music_ft_instance: VocosPlugin | None = None
+# Negativ-Cache: ein fehlgeschlagener Ladeversuch wird NICHT je Aufruf wiederholt
+# (163 MB Gewichte); der Aufrufer bekommt dann dauerhaft den Basis-Singleton.
+_music_ft_unavailable: bool = False
+
+
+def _build_music_ft_plugin() -> VocosPlugin | None:
+    """Lädt den Musik-Finetune-Vocoder; ``None`` statt Teil-Ladung (§V6 (copilot-instructions.md))."""
+    ft = VocosPlugin(model_path=_MODEL_48K_MUSIC_FT)
+    if not ft.model_loaded:
+        logger.warning(
+            "Vocos-Musik-Finetune nicht ladbar (%s) — Basis-Kaskade bleibt aktiv (§V6 (copilot-instructions.md))",
+            _MODEL_48K_MUSIC_FT,
+        )
+        return None
+    logger.info("Vocos-Musik-Finetune (M5, D-K2-3) geladen: %s", _MODEL_48K_MUSIC_FT)
+    return ft
+
+
+def get_vocos_music_ft_plugin() -> VocosPlugin:
+    """Singleton des Musik-Finetunes (M5, D-K2-3) — fail-closed auf die Basis.
+
+    Fehlt das Artefakt oder ist es nicht ladbar, kommt der reguläre
+    Basis-Singleton zurück: der Aufrufer braucht KEINEN Sonderpfad, und das
+    Bestandsverhalten bleibt identisch (§V6, §V7 (copilot-instructions.md)).
+    Die Flag-Prüfung selbst liegt beim Aufrufer (backend/core), damit das
+    Plugin keine Core-Abhängigkeit bekommt.
+    """
+    global _music_ft_instance, _music_ft_unavailable  # pylint: disable=global-statement
+    if _music_ft_unavailable:
+        return get_vocos_plugin()
+    if not os.path.exists(_MODEL_48K_MUSIC_FT):
+        logger.warning(
+            "Vocos-Musik-Finetune-Artefakt fehlt (%s) — Basis-Kaskade (§V6 (copilot-instructions.md))",
+            _MODEL_48K_MUSIC_FT,
+        )
+        return get_vocos_plugin()
+    if _music_ft_instance is None:
+        with _lock:
+            if _music_ft_instance is None:
+                _music_ft_instance = _build_music_ft_plugin()
+                if _music_ft_instance is None:
+                    _music_ft_unavailable = True
+        if _music_ft_instance is None:
+            return get_vocos_plugin()
+    return _music_ft_instance
 
 
 # ---------------------------------------------------------------------------

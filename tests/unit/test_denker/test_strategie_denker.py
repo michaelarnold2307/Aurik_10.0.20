@@ -114,6 +114,7 @@ class TestStrategiePlanContract:
             "human_hearing_comfort_profile",
             "pleasantness_baseline",
             "goosebumps_baseline",
+            "ohr_brief",
             "budget_note",
         }
         assert payload["max_processing_s"] == pytest.approx(plan.max_processing_s)

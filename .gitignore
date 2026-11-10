@@ -210,3 +210,7 @@ Setupfile/aurik/
 Setupfile/*.deb
 # 24-GB Modell-Archiv für DEB-Builds (lokal erzeugt, nicht versionieren)
 Setupfile/aurik_modelle_*.tar.zst
+
+# Lauf-Artefakt-Ordner (von Skripten lokal erzeugt, nie versioniert)
+study_stimuli/
+.ohr_panel/
