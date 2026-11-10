@@ -384,6 +384,27 @@ def run(cmd: list[str]) -> None:
     subprocess.run([sys.executable, "-B", *cmd], cwd=ROOT, check=True, capture_output=True)
 
 
+def merge_session(bestehend: dict, neu: dict) -> dict:
+    """Akkumuliert Ohr-Urteile über Sitzungen (aurik.ohr_urteile/1).
+
+    Gleiches (a, b)-Stimulus-Paar wird durch das neueste Urteil ERSETZT —
+    kein Doppelzählen desselben Reizes; neue Paare kommen hinzu. Dadurch
+    wachsen n_labels und die Ohr-Stufen (1→2→3) mit jedem Durchgang.
+    """
+    pairs: dict[tuple[str, str], dict] = {}
+    for p in bestehend.get("pairs", []):
+        pairs[(str(p["a"]), str(p["b"]))] = dict(p)
+    for p in neu.get("pairs", []):
+        pairs[(str(p["a"]), str(p["b"]))] = dict(p)
+    doc = dict(neu)
+    doc["pairs"] = list(pairs.values())
+    doc["gleichstaende_ausgeschlossen"] = int(neu.get("gleichstaende_ausgeschlossen", 0)) + int(
+        bestehend.get("gleichstaende_ausgeschlossen", 0)
+    )
+    doc["n_urteile_gesamt"] = len(doc["pairs"])
+    return doc
+
+
 def baue_session(verdikte: list[dict[str, str]], key: dict, sr_hint: int = 48000) -> dict:
     """Baut die Ohr-Urteils-Session (aurik.ohr_urteile/1) direkt im Panel —
     unabhängig vom ab_harness-Subkommando (dessen Datei teilt sich das Repo
@@ -612,9 +633,18 @@ def main(argv: list[str] | None = None) -> int:
     # Session-Baunng direkt im Panel (robust gegen parallele Repo-Schreibvorgänge).
     key_doc = json.loads((work / "key.json").read_text(encoding="utf-8"))
     session_doc = baue_session(verdikte, key_doc, sr_hint=48000)
+    # Akkumulation: Urteile früherer Sitzungen bleiben erhalten (gleiches Paar
+    # wird durch das neueste Urteil ersetzt — kein Doppelzählen).
+    if session.is_file():
+        try:
+            alt = json.loads(session.read_text(encoding="utf-8"))
+        except Exception:
+            alt = {}
+        if alt.get("schema") == "aurik.ohr_urteile/1":
+            session_doc = merge_session(alt, session_doc)
     session.write_text(json.dumps(session_doc, indent=2, ensure_ascii=False), encoding="utf-8")
     print(
-        f"Ohr-Urteils-Session: {len(session_doc['pairs'])} Paare "
+        f"Ohr-Urteils-Session: {len(session_doc['pairs'])} Paare gesamt "
         f"({session_doc['gleichstaende_ausgeschlossen']} Gleichstände ausgeschlossen) → {session}"
     )
     if not session_doc["pairs"]:

@@ -1,0 +1,275 @@
+{
+  "schema": "aurik.schadensbewertung/1",
+  "pegel_matching": true,
+  "jnd_defektlast": 0.05,
+  "n_paare": 12,
+  "n_besser": 3,
+  "aggregat": {
+    "vinyl": {
+      "n": 3,
+      "delta_defektlast": -0.00353,
+      "delta_musik_mos": 0.0004,
+      "besser": 1
+    },
+    "kassette": {
+      "n": 3,
+      "delta_defektlast": -0.02713,
+      "delta_musik_mos": -0.0246,
+      "besser": 1
+    },
+    "clipping": {
+      "n": 3,
+      "delta_defektlast": 0.16673,
+      "delta_musik_mos": -0.0935,
+      "besser": 0
+    },
+    "mp3_128": {
+      "n": 3,
+      "delta_defektlast": -0.0319,
+      "delta_musik_mos": -0.015,
+      "besser": 1
+    }
+  },
+  "zeilen": [
+    {
+      "song": "Elke Best - Träumer (Dreamer) 1981 Digital Source audio 320 ",
+      "rezept": "vinyl",
+      "clean": {
+        "defektlast": 0.2801,
+        "musik_mos": 4.8441
+      },
+      "schaden": {
+        "defektlast": 0.4071,
+        "musik_mos": 4.7704
+      },
+      "restauriert": {
+        "defektlast": 0.4071,
+        "musik_mos": 4.7704
+      },
+      "delta_defektlast": 0.0,
+      "delta_musik_mos": 0.0,
+      "besser": false,
+      "pegel_gain_ist": 1.0
+    },
+    {
+      "song": "Elke Best - Träumer (Dreamer) 1981 Digital Source audio 320 ",
+      "rezept": "kassette",
+      "clean": {
+        "defektlast": 0.2801,
+        "musik_mos": 4.8441
+      },
+      "schaden": {
+        "defektlast": 0.4939,
+        "musik_mos": 4.7305
+      },
+      "restauriert": {
+        "defektlast": 0.4876,
+        "musik_mos": 4.7152
+      },
+      "delta_defektlast": -0.0063,
+      "delta_musik_mos": -0.0153,
+      "besser": false,
+      "pegel_gain_ist": 1.0095
+    },
+    {
+      "song": "Elke Best - Träumer (Dreamer) 1981 Digital Source audio 320 ",
+      "rezept": "clipping",
+      "clean": {
+        "defektlast": 0.2801,
+        "musik_mos": 4.8441
+      },
+      "schaden": {
+        "defektlast": 0.2731,
+        "musik_mos": 4.6816
+      },
+      "restauriert": {
+        "defektlast": 0.5025,
+        "musik_mos": 4.6691
+      },
+      "delta_defektlast": 0.2294,
+      "delta_musik_mos": -0.0125,
+      "besser": false,
+      "pegel_gain_ist": 0.3239
+    },
+    {
+      "song": "Elke Best - Träumer (Dreamer) 1981 Digital Source audio 320 ",
+      "rezept": "mp3_128",
+      "clean": {
+        "defektlast": 0.2801,
+        "musik_mos": 4.8441
+      },
+      "schaden": {
+        "defektlast": 0.2232,
+        "musik_mos": 4.8583
+      },
+      "restauriert": {
+        "defektlast": 0.3818,
+        "musik_mos": 4.7887
+      },
+      "delta_defektlast": 0.1586,
+      "delta_musik_mos": -0.0696,
+      "besser": false,
+      "pegel_gain_ist": 1.399
+    },
+    {
+      "song": "Elke Best - Boogie Woogie Mama (1977) HD audio 320 kbps engl",
+      "rezept": "vinyl",
+      "clean": {
+        "defektlast": 0.4823,
+        "musik_mos": 4.5377
+      },
+      "schaden": {
+        "defektlast": 0.477,
+        "musik_mos": 4.5428
+      },
+      "restauriert": {
+        "defektlast": 0.477,
+        "musik_mos": 4.5428
+      },
+      "delta_defektlast": 0.0,
+      "delta_musik_mos": 0.0,
+      "besser": false,
+      "pegel_gain_ist": 1.0
+    },
+    {
+      "song": "Elke Best - Boogie Woogie Mama (1977) HD audio 320 kbps engl",
+      "rezept": "kassette",
+      "clean": {
+        "defektlast": 0.4823,
+        "musik_mos": 4.5377
+      },
+      "schaden": {
+        "defektlast": 0.4996,
+        "musik_mos": 4.5172
+      },
+      "restauriert": {
+        "defektlast": 0.4258,
+        "musik_mos": 4.575
+      },
+      "delta_defektlast": -0.0738,
+      "delta_musik_mos": 0.0578,
+      "besser": true,
+      "pegel_gain_ist": 1.0869
+    },
+    {
+      "song": "Elke Best - Boogie Woogie Mama (1977) HD audio 320 kbps engl",
+      "rezept": "clipping",
+      "clean": {
+        "defektlast": 0.4823,
+        "musik_mos": 4.5377
+      },
+      "schaden": {
+        "defektlast": 0.4694,
+        "musik_mos": 3.7403
+      },
+      "restauriert": {
+        "defektlast": 0.5022,
+        "musik_mos": 3.8529
+      },
+      "delta_defektlast": 0.0328,
+      "delta_musik_mos": 0.1126,
+      "besser": false,
+      "pegel_gain_ist": 0.7094
+    },
+    {
+      "song": "Elke Best - Boogie Woogie Mama (1977) HD audio 320 kbps engl",
+      "rezept": "mp3_128",
+      "clean": {
+        "defektlast": 0.4823,
+        "musik_mos": 4.5377
+      },
+      "schaden": {
+        "defektlast": 0.4748,
+        "musik_mos": 4.5938
+      },
+      "restauriert": {
+        "defektlast": 0.2594,
+        "musik_mos": 4.6559
+      },
+      "delta_defektlast": -0.2154,
+      "delta_musik_mos": 0.0621,
+      "besser": true,
+      "pegel_gain_ist": 1.2101
+    },
+    {
+      "song": "Elke and The Jets - Me I'm So Beautiful (1983) HD audio 320 ",
+      "rezept": "vinyl",
+      "clean": {
+        "defektlast": 0.4749,
+        "musik_mos": 4.7065
+      },
+      "schaden": {
+        "defektlast": 0.4755,
+        "musik_mos": 4.7115
+      },
+      "restauriert": {
+        "defektlast": 0.4649,
+        "musik_mos": 4.7126
+      },
+      "delta_defektlast": -0.0106,
+      "delta_musik_mos": 0.0011,
+      "besser": true,
+      "pegel_gain_ist": 1.054
+    },
+    {
+      "song": "Elke and The Jets - Me I'm So Beautiful (1983) HD audio 320 ",
+      "rezept": "kassette",
+      "clean": {
+        "defektlast": 0.4749,
+        "musik_mos": 4.7065
+      },
+      "schaden": {
+        "defektlast": 0.4987,
+        "musik_mos": 4.7047
+      },
+      "restauriert": {
+        "defektlast": 0.4974,
+        "musik_mos": 4.5883
+      },
+      "delta_defektlast": -0.0013,
+      "delta_musik_mos": -0.1164,
+      "besser": false,
+      "pegel_gain_ist": 0.9541
+    },
+    {
+      "song": "Elke and The Jets - Me I'm So Beautiful (1983) HD audio 320 ",
+      "rezept": "clipping",
+      "clean": {
+        "defektlast": 0.4749,
+        "musik_mos": 4.7065
+      },
+      "schaden": {
+        "defektlast": 0.4779,
+        "musik_mos": 4.0595
+      },
+      "restauriert": {
+        "defektlast": 0.7159,
+        "musik_mos": 3.6789
+      },
+      "delta_defektlast": 0.238,
+      "delta_musik_mos": -0.3806,
+      "besser": false,
+      "pegel_gain_ist": 0.2995
+    },
+    {
+      "song": "Elke and The Jets - Me I'm So Beautiful (1983) HD audio 320 ",
+      "rezept": "mp3_128",
+      "clean": {
+        "defektlast": 0.4749,
+        "musik_mos": 4.7065
+      },
+      "schaden": {
+        "defektlast": 0.4608,
+        "musik_mos": 4.6789
+      },
+      "restauriert": {
+        "defektlast": 0.4219,
+        "musik_mos": 4.6414
+      },
+      "delta_defektlast": -0.0389,
+      "delta_musik_mos": -0.0375,
+      "besser": false,
+      "pegel_gain_ist": 0.8898
+    }
+  ]
+}

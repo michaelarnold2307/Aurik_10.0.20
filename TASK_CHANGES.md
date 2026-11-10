@@ -1,19 +1,25 @@
 # TASK_CHANGES — Live-Ledger der aktuellen Aufgabe
 
-> Generiert von `scripts/change_ledger.py snapshot` (Base: `HEAD`, Stand: 2026-11-10 18:31 CET).
+> Generiert von `scripts/change_ledger.py snapshot` (Base: `HEAD`, Stand: 2026-11-11 00:22 CET).
 > CI (`ci-lite.yml` pr-evidence-gate) erzwingt Abdeckung: jede geänderte Code-Datei muss hier stehen.
 
 ## Geänderte Dateien
 
 | Status | Pfad | Art |
 |---|---|---|
+| M | `.github/FILE_REGISTRY.md` | modifiziert |
 | M | `.github/SOTA_DEFICIT_REGISTER.md` | modifiziert |
 | M | `TASK_CHANGES.md` | modifiziert |
 | M | `docs/SOTA_HANDOVER.md` | modifiziert |
-| M | `docs/reports/current/2026-11-10_flashsr_d3_gate.md` | modifiziert |
-| A | `docs/reports/current/2026-11-10_flashsr_d3_gate_2.json` | neu |
-| M | `scripts/verify_flashsr_d3_gate.py` | modifiziert |
-| M | `tests/unit/test_flashsr_d3_gate.py` | modifiziert |
+| M | `docs/TODOS_SOTA_ROADMAP.md` | modifiziert |
+| M | `docs/reports/current/train_job_c2_cantus_finetune.json` | modifiziert |
+| M | `scripts/ohr_panel.py` | modifiziert |
+| M | `tests/unit/test_ohr_panel.py` | modifiziert |
+| ?? | `docs/reports/current/2026-11-11_schadens_proben_sinnbeweis.md` | ungetrackt |
+| ?? | `docs/reports/current/2026-11-11_schadensbewertung.json` | ungetrackt |
+| ?? | `scripts/bewerte_schadens_proben.py` | ungetrackt |
+| ?? | `scripts/erstelle_schadens_proben.py` | ungetrackt |
+| ?? | `tests/unit/test_bewerte_schadens_proben.py` | ungetrackt |
 
 ## Entscheidungen
 

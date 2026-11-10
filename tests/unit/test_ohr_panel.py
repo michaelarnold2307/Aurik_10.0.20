@@ -385,3 +385,68 @@ def test_frage_verdikte_mit_player_enter_wiederholt_und_q_bricht_ab() -> None:
     assert v == [{"trial_id": "t0", "preferred": "left"}], v
     assert gespielt[:4] == ["/basis/l.wav", "/basis/r.wav"] * 2, gespielt  # Enter ⇒ beide nochmal
     assert len(gespielt) == 6  # t1: links+rechts gespielt, dann q
+
+
+def test_merge_session_ersetzt_gleiches_paar_und_sammelt_neue() -> None:
+    """Sitzungs-Akkumulation: gleiches (a, b)-Paar wird ersetzt (kein
+    Doppelzählen), neue Paare kommen hinzu — n_labels wächst über Sitzungen.
+    """
+    from scripts.ohr_panel import merge_session
+
+    alt = {
+        "schema": "aurik.ohr_urteile/1",
+        "sr_hint": 48000,
+        "pairs": [
+            {"a": "/m/a.wav", "b": "/m/b.wav", "choice": "A"},
+            {"a": "/m/c.wav", "b": "/m/d.wav", "choice": "B"},
+        ],
+        "gleichstaende_ausgeschlossen": 1,
+    }
+    neu = {
+        "schema": "aurik.ohr_urteile/1",
+        "sr_hint": 48000,
+        "pairs": [
+            {"a": "/m/a.wav", "b": "/m/b.wav", "choice": "B"},
+            {"a": "/m/e.wav", "b": "/m/f.wav", "choice": "A"},
+        ],
+        "gleichstaende_ausgeschlossen": 0,
+    }
+    merged = merge_session(alt, neu)
+    assert merged["n_urteile_gesamt"] == 3
+    assert {p["a"] for p in merged["pairs"]} == {"/m/a.wav", "/m/c.wav", "/m/e.wav"}
+    assert [p["choice"] for p in merged["pairs"] if p["a"] == "/m/a.wav"] == ["B"]
+    assert merged["gleichstaende_ausgeschlossen"] == 1
+
+
+def test_schaden_rezepte_deterministisch_und_unterscheidbar() -> None:
+    """Schadens-Rezepte: deterministisch (gleicher Seed ⇒ identisch), hörbar
+    verschieden vom sauberen Signal — die Basis des Sinn-Beweises.
+    """
+    import numpy as np
+
+    from scripts.erstelle_schadens_proben import schaden_rezept
+
+    x = (np.sin(2 * np.pi * 440 * np.arange(48000) / 48000) * 0.4).astype(np.float32)
+    for rezept in ("vinyl", "kassette", "clipping"):
+        a = schaden_rezept(x, rezept, np.random.default_rng(7))
+        b = schaden_rezept(x, rezept, np.random.default_rng(7))
+        assert np.array_equal(a, b), f"{rezept} nicht deterministisch"
+        assert float(np.abs(a - x).mean()) > 1e-4, f"{rezept} zu schwach"
+        assert np.isfinite(a).all()
+
+
+def test_schadens_paare_werden_vom_panel_erkannt(tmp_path: Path) -> None:
+    """Restauriert-Layout `<stamm> (<rezept>)_restauriert.wav` ↔ `<stamm> (<rezept>).wav`
+    wird von erkenne_paare als A/B-Paar erkannt — Komfort-Pfad ohne neue UI.
+    """
+    import numpy as np
+    import soundfile as sf
+
+    from scripts.ohr_panel import erkenne_paare
+
+    sf.write(tmp_path / "Titel (vinyl).wav", np.zeros(4800, dtype=np.float32), 48000)
+    sf.write(tmp_path / "Titel (vinyl)_restauriert.wav", np.zeros(4800, dtype=np.float32), 48000)
+    paare = erkenne_paare(tmp_path)
+    assert len(paare) == 1
+    assert Path(paare[0]["a"]).name == "Titel (vinyl).wav"
+    assert Path(paare[0]["b"]).name == "Titel (vinyl)_restauriert.wav"

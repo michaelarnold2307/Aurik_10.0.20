@@ -190,6 +190,18 @@ menschliche Politik gebunden (Lizenzen, Goldens).
 - [x] **Qualitäts-Schwelle:** jede neue Phase/Metrik braucht vor dem
   Rollout eine Hörstichprobe — Metriken sind Zeugen (Hörordnung), nicht
   Richter.
+- [ ] **Sinn-Beweis auf Gegner-Material (2026-11-11, D-K3-95):** Bis hier war
+  nur belegt, dass die Pipeline *sauberes* Material unangetastet lässt — der
+  eigentliche Nutzen (Reparatur) war unbewiesen. Werkzeuge stehen:
+  `scripts/erstelle_schadens_proben.py` (4 deterministische Schadens-Rezepte,
+  Seed 42) + `scripts/bewerte_schadens_proben.py` (pegelgematchte
+  `defektlast`/`musik_mos`-Bewertung, Beleg `aurik.schadensbewertung/1`).
+  **Erstbefund (12 Paare): 3/12 besser**, Clipping **0/3 und schlechter**
+  (Δ defektlast +0,167; Einzelfall 0,478 → 0,716), zwei vinyl-Paare bit-identisch
+  (No-Op); `defektlast` erkennt Sättigung nicht (Metrik-Blindstelle).
+  **Offen:** ganze Titel statt 10-s-Snippets (GPU-Fenster), Declip-/Pegel-Ursache,
+  Metrik-Blindstelle. Beleg:
+  `docs/reports/current/2026-11-11_schadens_proben_sinnbeweis.md`.
 
 ## Umsetzungsreihenfolge
 
