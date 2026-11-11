@@ -202,6 +202,20 @@ menschliche Politik gebunden (Lizenzen, Goldens).
   **Offen:** ganze Titel statt 10-s-Snippets (GPU-Fenster), Declip-/Pegel-Ursache,
   Metrik-Blindstelle. Beleg:
   `docs/reports/current/2026-11-11_schadens_proben_sinnbeweis.md`.
+- [ ] **Declip-/Pegel-Ursache der Clipping-Verschlechterung (2026-11-11, D-K3-97):**
+  Der Declipper ist **entlastet** — `DeclipperPhase` läuft im UV3-Pfad nicht
+  (einzige Aufrufstelle `coordinated_repair.py:1361`, 0 Treffer im 3,1-MB-Log),
+  PCHIP ist formtreu (der ±1,0-Clamp griff nie) und auf den Sättigungs-Proben
+  wirkungslos; auf sparse Hard-Clips dagegen schädlich (−6,84/−17,70/−115,97 dB
+  SDR) ⇒ Never-worsen-Guard + Wahrheits-Passthrough (13/13 Tests). Die neu
+  erzeugten Clipping-WAVs sind **kein** Beleg für den Patch (kein UV3-Code
+  geändert, kein Log, keine Wiederholung). **Offen (in dieser Reihenfolge):**
+  (1) Reproduzierbarkeit — derselbe Lauf zweimal, Logs + WAV-Hashes;
+  (2) Pegel-/Entscheidungskette (Gain 0,30 vs. bit-identisch,
+  `-91,1 dBFS`-Silence-Guard im Goal-Compensation-Sekundärlauf);
+  (3) Detektor-Untergrenze 0,85 (klangwirksam ⇒ §4); (4) `defektlast`-Grenzen
+  (Sättigung, nur erste 16384 Samples). Beleg:
+  `docs/reports/current/2026-11-11_declip_never_worsen_und_ursachenpruefung.md`.
 
 ## Umsetzungsreihenfolge
 

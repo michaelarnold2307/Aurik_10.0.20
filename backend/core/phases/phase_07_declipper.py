@@ -231,7 +231,10 @@ def _declip_pchip(audio: np.ndarray, threshold: float) -> np.ndarray:
 
         declipped = blend * declipped + (1.0 - blend) * audio
 
-    # Normalisierung: PCHIP kann über 1.0 hinausgehen
+    # Normalisierung: PCHIP ist formtreu (kein Überschwinger über die Eingangs-
+    # Decke — `test_pchip_ist_formtreu_unter_der_eingangs_decke` pinnt das). Die
+    # Decke bei 1.0 bleibt als Billig-Schutz für den `np.interp`-Ersatzpfad
+    # stehen; sie hat im Messlauf nie gegriffen (§D-K3-97, 2026-11-11).
     max_val = float(np.max(np.abs(declipped)))
     if max_val > 1.0:
         declipped = np.clip(declipped, -1.0, 1.0)
@@ -351,10 +354,25 @@ class DeclipperPhase(PhaseInterface):
 
         self._crossfade_n = _adaptive_crossfade_width(self._clip_fraction)
 
-        # — Declipping pro Kanal —
+        # — Declipping pro Kanal (Never-worsen, §D-K3-97) —
+        # PCHIP ersetzt Samples ab der Schwelle durch interpolierte Kurven. Bei
+        # SPARSE Hard-Clips ist das messbar schädlich: gegen das saubere Original
+        # gemessen sinkt das SDR um 6,84 dB (Decke 0,90), 17,70 dB (0,95) und
+        # 115,97 dB (0,99) — wenige ersetzte Samples tragen riesige Einzelfehler.
+        # Bei tanh-Sättigung ist PCHIP wirkungslos (ΔSDR 0,00). Delta-Guard wie im
+        # Sparse-Zweig: Übernahme nur, wenn der Harmonik-Proxy gegen den EINGANG
+        # sinkt (Guard-Kalibrierung: delta-basiert; §V7 (copilot-instructions.md)).
         audio_out = np.zeros_like(audio_in)
+        _pchip_angenommen = 0
         for ch in range(audio_in.shape[0]):
-            audio_out[ch] = _declip_pchip(audio_in[ch], self._clip_threshold)
+            _cand = _declip_pchip(audio_in[ch], self._clip_threshold)
+            _pin = _harmonic_distortion_proxy(audio_in[ch], sample_rate)
+            _pout = _harmonic_distortion_proxy(_cand, sample_rate)
+            if _pout < _pin:
+                audio_out[ch] = _cand
+                _pchip_angenommen += 1
+            else:
+                audio_out[ch] = audio_in[ch]
 
         # §v10.755 (2026-09-09, DECLIPPER_SOTA_PLAN.md Slice A): Sparse-Zweig
         # für Nicht-Severe-Fälle — A-SPADE-lite rekonstruiert Obertöne, wo
@@ -526,6 +544,29 @@ class DeclipperPhase(PhaseInterface):
                     "Verarbeitungsschritt 07 CQT-Diff nicht verfügbar (%s) — klassisch bleibt",
                     _exc752,
                 )
+
+        # §D-K3-97 (2026-11-11): Wahrheits-Passthrough — kein Zweig hat den
+        # Harmonik-Proxy gegen den Eingang gesenkt, `audio_out` ist damit je Kanal
+        # identisch zum Eingang. Dann darf die Phase KEINE Reparatur melden:
+        # sonst zählt CLIPPING downstream als behoben, obwohl kein Sample geändert
+        # wurde (`declip_applied`/`resolved_defects` sind Belege, keine Deko).
+        if (
+            _pchip_angenommen == 0
+            and not _sparse_used
+            and not _aspade_class_used
+            and not _aspade_used
+            and not _cqtdiff_used
+        ):
+            logger.info("Verarbeitungsschritt 07: kein Kandidat senkte den Harmonik-Proxy — Passthrough (§D-K3-97)")
+            return PhaseResult(
+                success=True,
+                audio=audio.copy(),
+                metrics={
+                    "declip_applied": False,
+                    "reason": "never_worsen_proxy",
+                    "clip_threshold": self._clip_threshold,
+                },
+            )
 
         # — Strength-Skalierung: PMGG kann Stärke reduzieren —
         if strength < 1.0:
