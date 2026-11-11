@@ -13,8 +13,11 @@ als `unbekannt` — nicht als „Sprache". Der Musik-Finetune adaptiert den Gene
 an MUSDB18-HQ als Rekonstruktions-Vocoder — Ziel: der additive HR-V1-Synthesepfad
 (phase_07 + 23/50/03) rekonstruiert Musik-Harmonik korrekt statt Basis-Artefakte.
 A/B-Teilvalidierung liegt vor (af +0,0073, HNR +4,42 dB); dieses Skript liefert
-den MUSDB-Finetune für das Roadmap-Gate (ΔSDR ≥ +2 dB, gemessen NACH dem Lauf via
-scripts/validate_hr_v1.py auf dem Finetune-Checkpoint).
+den MUSDB-Finetune. **Gate (korrigiert 2026-11-11, D-K3-96):** gemessen wird
+NACH dem Lauf mit ``scripts/verify_bigvgan_d3_gate.py`` — af/HNR/musik_mos/
+defektlast gegen die **Basis** (Never-worsen + Vorteil auf ≥ 2/3 Tracks). Ein
+zeitlicher ΔSDR ist für einen Mel-Vocoder unzulässig: der Generator erzeugt eine
+neue Phase, der SDR liegt für Basis und Finetune alike bei ≈ 0 dB (gemessen).
 
 Rezept (EAR-VAE-Muster, deterministisch §G5 (GEBOTE.md)):
   - Ziel: Mel → Wellenform-Rekonstruktion (self-supervised, kein Paar-Datensatz)
@@ -329,7 +332,11 @@ def main() -> int:
             "stop_reason": stop_reason,
             "target_epochs": args.epochs,
             "epochs_done": start_epoch + epochen_dieser_lauf,
-            "gate_hint": "MUSDB-ΔSDR ≥ +2 dB via scripts/validate_hr_v1.py NACH dem Lauf messen",
+            "gate_hint": (
+                "D3-2-Gate via scripts/verify_bigvgan_d3_gate.py NACH dem Lauf messen "
+                "(af/HNR/musik_mos/defektlast gegen die Basis; SDR ist fuer phasen-unabhaengige "
+                "Mel-Vocoder unzulaessig)"
+            ),
         }
         write_text_guarded(out_dir / "report.json", json.dumps(report, indent=2, ensure_ascii=False))
 

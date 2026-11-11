@@ -1,0 +1,618 @@
+{
+  "schema": "aurik.bigvgan_d3_gate/1",
+  "datum": "2026-11-11",
+  "seed": 42,
+  "sekunden": 10,
+  "toleranzen": {
+    "af": 0.02,
+    "hnr_db": 0.5,
+    "jnd": 0.05,
+    "vorteil_min_tracks": 2
+  },
+  "checkpoint": {
+    "pfad": "output/f3_bigvgan/best.pt",
+    "sha256": "25642f9571edff764a344a1a8f40bcc89a009acd28f4fe6f64e2cb9a37dc11db"
+  },
+  "basis_checkpoint": {
+    "pfad": "models/bigvgan/bigvgan_v2.pth",
+    "sha256": "d9fe7ec6bd0b44ed9d66973d5012d8181c1570b01e5c72df51973e241dccd357"
+  },
+  "tracks": [
+    {
+      "track": "Al James - Schoolboy Facination",
+      "varianten": {
+        "basis": {
+          "applied": true,
+          "attempted": true,
+          "bands_released": 5,
+          "processed_seconds": 0.5,
+          "pqs_mos": 1.11,
+          "fenster_s": 0.7,
+          "fenster": {
+            "af": 0.9011,
+            "hnr_db": -4.605,
+            "musik_mos": 4.6949,
+            "defektlast": 0.4806
+          },
+          "fenster_ausgang": {
+            "af": 0.9011,
+            "hnr_db": -4.5984,
+            "musik_mos": 4.694,
+            "defektlast": 0.4806
+          },
+          "roh_norm": {
+            "af": 1.0,
+            "hnr_db": -1.1911,
+            "musik_mos": 4.9264,
+            "defektlast": 0.0074,
+            "rms": 0.12253,
+            "peak": 0.95
+          },
+          "roh": {
+            "rms": 0.1026,
+            "peak": 0.7955,
+            "clip_anteil": 0.0,
+            "mel_mittel": -35.28,
+            "mel_std": 14.794
+          },
+          "delta": {
+            "af": 0.0,
+            "hnr_db": 0.0066,
+            "musik_mos": -0.0009,
+            "defektlast": 0.0
+          },
+          "synth_statistik": {
+            "aufrufe": 1,
+            "rms_mittel": 0.1026,
+            "peak": 0.7955,
+            "clip_anteil": 0.0,
+            "mel_mittel": -35.28,
+            "mel_std": 14.794
+          },
+          "mel_modus": "prod"
+        },
+        "f3_prod": {
+          "applied": true,
+          "attempted": true,
+          "bands_released": 7,
+          "processed_seconds": 0.5,
+          "pqs_mos": 2.547,
+          "fenster_s": 0.7,
+          "fenster": {
+            "af": 0.9011,
+            "hnr_db": -4.605,
+            "musik_mos": 4.6949,
+            "defektlast": 0.4806
+          },
+          "fenster_ausgang": {
+            "af": 0.9011,
+            "hnr_db": -4.6121,
+            "musik_mos": 4.6863,
+            "defektlast": 0.4806
+          },
+          "roh_norm": {
+            "af": 0.5455,
+            "hnr_db": -7.7472,
+            "musik_mos": 4.628,
+            "defektlast": 0.4897,
+            "rms": 0.18798,
+            "peak": 0.7165
+          },
+          "roh": {
+            "rms": 0.26237,
+            "peak": 1.0,
+            "clip_anteil": 0.000804,
+            "mel_mittel": -35.28,
+            "mel_std": 14.794
+          },
+          "delta": {
+            "af": 0.0,
+            "hnr_db": -0.0071,
+            "musik_mos": -0.0086,
+            "defektlast": 0.0
+          },
+          "synth_statistik": {
+            "aufrufe": 1,
+            "rms_mittel": 0.26237,
+            "peak": 1.0,
+            "clip_anteil": 0.000804,
+            "mel_mittel": -35.28,
+            "mel_std": 14.794
+          },
+          "mel_modus": "prod",
+          "delta_gegen_basis": {
+            "af": -0.4545,
+            "hnr_db": -6.5561,
+            "musik_mos": -0.2984,
+            "defektlast": 0.4823
+          },
+          "never_worsen": {
+            "af": false,
+            "hnr_db": false,
+            "musik_mos": false,
+            "defektlast": false
+          },
+          "vorteil": false,
+          "bestanden": false
+        },
+        "f3_trainmel": {
+          "applied": true,
+          "attempted": true,
+          "bands_released": 9,
+          "processed_seconds": 0.5,
+          "pqs_mos": 4.656,
+          "fenster_s": 0.7,
+          "fenster": {
+            "af": 0.9011,
+            "hnr_db": -4.605,
+            "musik_mos": 4.6949,
+            "defektlast": 0.4806
+          },
+          "fenster_ausgang": {
+            "af": 0.9011,
+            "hnr_db": -4.7482,
+            "musik_mos": 4.692,
+            "defektlast": 0.4806
+          },
+          "roh_norm": {
+            "af": 0.4466,
+            "hnr_db": -5.055,
+            "musik_mos": 4.6597,
+            "defektlast": 0.486,
+            "rms": 0.18798,
+            "peak": 0.85682
+          },
+          "roh": {
+            "rms": 0.19188,
+            "peak": 0.87456,
+            "clip_anteil": 0.0,
+            "mel_mittel": -2.59,
+            "mel_std": 1.736
+          },
+          "delta": {
+            "af": 0.0,
+            "hnr_db": -0.1432,
+            "musik_mos": -0.0029,
+            "defektlast": 0.0
+          },
+          "synth_statistik": {
+            "aufrufe": 1,
+            "rms_mittel": 0.19188,
+            "peak": 0.87456,
+            "clip_anteil": 0.0,
+            "mel_mittel": -2.59,
+            "mel_std": 1.736
+          },
+          "mel_modus": "train",
+          "delta_gegen_basis": {
+            "af": -0.5534,
+            "hnr_db": -3.8639,
+            "musik_mos": -0.2667,
+            "defektlast": 0.4786
+          },
+          "never_worsen": {
+            "af": false,
+            "hnr_db": false,
+            "musik_mos": false,
+            "defektlast": false
+          },
+          "vorteil": false,
+          "bestanden": false
+        }
+      }
+    },
+    {
+      "track": "Bobby Nobody - Stitch Up",
+      "varianten": {
+        "basis": {
+          "applied": true,
+          "attempted": true,
+          "bands_released": 20,
+          "processed_seconds": 0.5,
+          "pqs_mos": 1.767,
+          "fenster_s": 0.7,
+          "fenster": {
+            "af": 0.5455,
+            "hnr_db": -0.0681,
+            "musik_mos": 4.8078,
+            "defektlast": 0.3663
+          },
+          "fenster_ausgang": {
+            "af": 0.5455,
+            "hnr_db": -0.3671,
+            "musik_mos": 4.8074,
+            "defektlast": 0.3663
+          },
+          "roh_norm": {
+            "af": 0.6591,
+            "hnr_db": -2.4382,
+            "musik_mos": 4.7809,
+            "defektlast": 0.4632,
+            "rms": 0.16006,
+            "peak": 0.65607
+          },
+          "roh": {
+            "rms": 0.15548,
+            "peak": 0.63727,
+            "clip_anteil": 0.0,
+            "mel_mittel": -37.866,
+            "mel_std": 14.55
+          },
+          "delta": {
+            "af": 0.0,
+            "hnr_db": -0.299,
+            "musik_mos": -0.0004,
+            "defektlast": 0.0
+          },
+          "synth_statistik": {
+            "aufrufe": 2,
+            "rms_mittel": 0.12904,
+            "peak": 0.7955,
+            "clip_anteil": 0.0,
+            "mel_mittel": -36.573,
+            "mel_std": 14.672
+          },
+          "mel_modus": "prod"
+        },
+        "f3_prod": {
+          "applied": true,
+          "attempted": true,
+          "bands_released": 22,
+          "processed_seconds": 0.5,
+          "pqs_mos": 2.892,
+          "fenster_s": 0.7,
+          "fenster": {
+            "af": 0.5455,
+            "hnr_db": -0.0681,
+            "musik_mos": 4.8078,
+            "defektlast": 0.3663
+          },
+          "fenster_ausgang": {
+            "af": 0.5455,
+            "hnr_db": -0.3511,
+            "musik_mos": 4.8085,
+            "defektlast": 0.3663
+          },
+          "roh_norm": {
+            "af": 0.6591,
+            "hnr_db": -8.8283,
+            "musik_mos": 4.6635,
+            "defektlast": 0.495,
+            "rms": 0.16006,
+            "peak": 0.57872
+          },
+          "roh": {
+            "rms": 0.27658,
+            "peak": 1.0,
+            "clip_anteil": 0.001369,
+            "mel_mittel": -37.866,
+            "mel_std": 14.55
+          },
+          "delta": {
+            "af": 0.0,
+            "hnr_db": -0.283,
+            "musik_mos": 0.0007,
+            "defektlast": 0.0
+          },
+          "synth_statistik": {
+            "aufrufe": 2,
+            "rms_mittel": 0.26947,
+            "peak": 1.0,
+            "clip_anteil": 0.001086,
+            "mel_mittel": -36.573,
+            "mel_std": 14.672
+          },
+          "mel_modus": "prod",
+          "delta_gegen_basis": {
+            "af": 0.0,
+            "hnr_db": -6.3901,
+            "musik_mos": -0.1174,
+            "defektlast": 0.0318
+          },
+          "never_worsen": {
+            "af": true,
+            "hnr_db": false,
+            "musik_mos": false,
+            "defektlast": true
+          },
+          "vorteil": false,
+          "bestanden": false
+        },
+        "f3_trainmel": {
+          "applied": true,
+          "attempted": true,
+          "bands_released": 18,
+          "processed_seconds": 0.5,
+          "pqs_mos": 4.481,
+          "fenster_s": 0.7,
+          "fenster": {
+            "af": 0.5455,
+            "hnr_db": -0.0681,
+            "musik_mos": 4.8078,
+            "defektlast": 0.3663
+          },
+          "fenster_ausgang": {
+            "af": 0.4935,
+            "hnr_db": -0.081,
+            "musik_mos": 4.8071,
+            "defektlast": 0.3663
+          },
+          "roh_norm": {
+            "af": 0.4935,
+            "hnr_db": -0.4042,
+            "musik_mos": 4.7741,
+            "defektlast": 0.3918,
+            "rms": 0.15199,
+            "peak": 0.95
+          },
+          "roh": {
+            "rms": 0.15999,
+            "peak": 1.0,
+            "clip_anteil": 3e-5,
+            "mel_mittel": -3.062,
+            "mel_std": 1.708
+          },
+          "delta": {
+            "af": -0.0519,
+            "hnr_db": -0.0129,
+            "musik_mos": -0.0007,
+            "defektlast": 0.0
+          },
+          "synth_statistik": {
+            "aufrufe": 2,
+            "rms_mittel": 0.17593,
+            "peak": 1.0,
+            "clip_anteil": 1.5e-5,
+            "mel_mittel": -2.826,
+            "mel_std": 1.722
+          },
+          "mel_modus": "train",
+          "delta_gegen_basis": {
+            "af": -0.1656,
+            "hnr_db": 2.034,
+            "musik_mos": -0.0068,
+            "defektlast": -0.0714
+          },
+          "never_worsen": {
+            "af": false,
+            "hnr_db": true,
+            "musik_mos": true,
+            "defektlast": true
+          },
+          "vorteil": true,
+          "bestanden": false
+        }
+      }
+    },
+    {
+      "track": "The Easton Ellises (Baumi) - SDRNR",
+      "varianten": {
+        "basis": {
+          "applied": true,
+          "attempted": true,
+          "bands_released": 8,
+          "processed_seconds": 0.5,
+          "pqs_mos": 3.192,
+          "fenster_s": 0.7,
+          "fenster": {
+            "af": 0.6364,
+            "hnr_db": -1.248,
+            "musik_mos": 4.8262,
+            "defektlast": 0.498
+          },
+          "fenster_ausgang": {
+            "af": 0.6364,
+            "hnr_db": -1.3494,
+            "musik_mos": 4.8299,
+            "defektlast": 0.498
+          },
+          "roh_norm": {
+            "af": 0.5455,
+            "hnr_db": -6.1953,
+            "musik_mos": 4.7876,
+            "defektlast": 0.4709,
+            "rms": 0.16969,
+            "peak": 0.52718
+          },
+          "roh": {
+            "rms": 0.16233,
+            "peak": 0.50431,
+            "clip_anteil": 0.0,
+            "mel_mittel": -48.967,
+            "mel_std": 20.545
+          },
+          "delta": {
+            "af": 0.0,
+            "hnr_db": -0.1014,
+            "musik_mos": 0.0037,
+            "defektlast": 0.0
+          },
+          "synth_statistik": {
+            "aufrufe": 3,
+            "rms_mittel": 0.14014,
+            "peak": 0.7955,
+            "clip_anteil": 0.0,
+            "mel_mittel": -40.704,
+            "mel_std": 16.63
+          },
+          "mel_modus": "prod"
+        },
+        "f3_prod": {
+          "applied": true,
+          "attempted": true,
+          "bands_released": 4,
+          "processed_seconds": 0.5,
+          "pqs_mos": 4.585,
+          "fenster_s": 0.7,
+          "fenster": {
+            "af": 0.6364,
+            "hnr_db": -1.248,
+            "musik_mos": 4.8262,
+            "defektlast": 0.498
+          },
+          "fenster_ausgang": {
+            "af": 0.6364,
+            "hnr_db": -1.4159,
+            "musik_mos": 4.8253,
+            "defektlast": 0.498
+          },
+          "roh_norm": {
+            "af": 0.5455,
+            "hnr_db": -7.2297,
+            "musik_mos": 4.4627,
+            "defektlast": 0.4932,
+            "rms": 0.16969,
+            "peak": 0.58614
+          },
+          "roh": {
+            "rms": 0.28951,
+            "peak": 1.0,
+            "clip_anteil": 0.001935,
+            "mel_mittel": -48.967,
+            "mel_std": 20.545
+          },
+          "delta": {
+            "af": 0.0,
+            "hnr_db": -0.1679,
+            "musik_mos": -0.0009,
+            "defektlast": 0.0
+          },
+          "synth_statistik": {
+            "aufrufe": 3,
+            "rms_mittel": 0.27615,
+            "peak": 1.0,
+            "clip_anteil": 0.001369,
+            "mel_mittel": -40.704,
+            "mel_std": 16.63
+          },
+          "mel_modus": "prod",
+          "delta_gegen_basis": {
+            "af": 0.0,
+            "hnr_db": -1.0344,
+            "musik_mos": -0.3249,
+            "defektlast": 0.0223
+          },
+          "never_worsen": {
+            "af": true,
+            "hnr_db": false,
+            "musik_mos": false,
+            "defektlast": true
+          },
+          "vorteil": false,
+          "bestanden": false
+        },
+        "f3_trainmel": {
+          "applied": true,
+          "attempted": true,
+          "bands_released": 7,
+          "processed_seconds": 0.5,
+          "pqs_mos": 4.403,
+          "fenster_s": 0.7,
+          "fenster": {
+            "af": 0.6364,
+            "hnr_db": -1.248,
+            "musik_mos": 4.8262,
+            "defektlast": 0.498
+          },
+          "fenster_ausgang": {
+            "af": 0.6364,
+            "hnr_db": -1.4843,
+            "musik_mos": 4.83,
+            "defektlast": 0.498
+          },
+          "roh_norm": {
+            "af": 0.4935,
+            "hnr_db": -1.6388,
+            "musik_mos": 4.8048,
+            "defektlast": 0.4975,
+            "rms": 0.16969,
+            "peak": 0.62447
+          },
+          "roh": {
+            "rms": 0.16675,
+            "peak": 0.61364,
+            "clip_anteil": 0.0,
+            "mel_mittel": -4.061,
+            "mel_std": 2.924
+          },
+          "delta": {
+            "af": 0.0,
+            "hnr_db": -0.2364,
+            "musik_mos": 0.0038,
+            "defektlast": 0.0
+          },
+          "synth_statistik": {
+            "aufrufe": 3,
+            "rms_mittel": 0.17287,
+            "peak": 1.0,
+            "clip_anteil": 1e-5,
+            "mel_mittel": -3.238,
+            "mel_std": 2.123
+          },
+          "mel_modus": "train",
+          "delta_gegen_basis": {
+            "af": -0.052,
+            "hnr_db": 4.5565,
+            "musik_mos": 0.0172,
+            "defektlast": 0.0266
+          },
+          "never_worsen": {
+            "af": false,
+            "hnr_db": true,
+            "musik_mos": true,
+            "defektlast": true
+          },
+          "vorteil": true,
+          "bestanden": false
+        }
+      }
+    }
+  ],
+  "gate": {
+    "f3_prod": {
+      "bestanden": false,
+      "never_worsen_alle": false,
+      "vorteil_tracks": 0,
+      "angewendet_tracks": 3,
+      "grund": "Never-worsen verletzt: Al James - Schoolboy Facination, Bobby Nobody - Stitch Up, The Easton Ellises (Baumi) - SDRNR; Vorteil nur 0/3 (nötig ≥ 2)"
+    },
+    "f3_trainmel": {
+      "bestanden": false,
+      "never_worsen_alle": false,
+      "vorteil_tracks": 2,
+      "angewendet_tracks": 3,
+      "grund": "Never-worsen verletzt: Al James - Schoolboy Facination, Bobby Nobody - Stitch Up, The Easton Ellises (Baumi) - SDRNR"
+    },
+    "gesamt": {
+      "bestanden": false,
+      "deploybar_heute": false,
+      "kandidat_mit_mel_adapter": false
+    }
+  },
+  "rohdaten": {
+    "basis": {
+      "aufrufe": 3,
+      "rms_mittel": 0.14014,
+      "peak": 0.7955,
+      "clip_anteil": 0.0,
+      "mel_mittel": -40.704,
+      "mel_std": 16.63
+    },
+    "f3_prod": {
+      "aufrufe": 3,
+      "rms_mittel": 0.27615,
+      "peak": 1.0,
+      "clip_anteil": 0.001369,
+      "mel_mittel": -40.704,
+      "mel_std": 16.63
+    },
+    "f3_trainmel": {
+      "aufrufe": 3,
+      "rms_mittel": 0.17287,
+      "peak": 1.0,
+      "clip_anteil": 1e-5,
+      "mel_mittel": -3.238,
+      "mel_std": 2.123
+    }
+  }
+}
