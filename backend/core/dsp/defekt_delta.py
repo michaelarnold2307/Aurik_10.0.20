@@ -272,3 +272,72 @@ def lade_defekt_delta(beleg: dict[str, Any] | str) -> dict[str, Any]:
             "grund": f"fremdes schema {fremd!r} — erwartet {SCHEMA!r}",
         }
     return {"verfuegbar": True, "beleg": daten}
+
+
+_REGION_SCHWELLE = 0.1  # Severity-Untergrenze der Regionen-Extraktion (dokumentierter Vertrag)
+_KONTROLL_ANTEILE = (0.1, 0.25, 0.5, 0.75, 0.9)
+_KONTROLL_FENSTER_S = 2.0
+_KONTROLL_MAX = 3
+
+
+def regionen_aus_defekt_scores(scores: dict, sample_rate: int) -> list[dict[str, Any]]:
+    """Extrahiert Defektregionen aus DefectScanner-Scores (§G191 (GEBOTE.md)).
+
+    Vertrag Spec 07 §8.6: Regionen-JSON {start, end, typ, staerke} in
+    Samples. Aufgenommen werden Location-Intervalle von DefektTypen mit
+    severity ≥ `_REGION_SCHWELLE`; staerke = severity (0..1). Determinismus
+    §G5 (copilot-instructions.md): rein funktional, sortierte Ausgabe.
+    """
+    regionen: list[dict[str, Any]] = []
+    for typ, score in sorted(scores.items(), key=lambda kv: str(kv[0])):
+        sev = float(getattr(score, "severity", 0.0))
+        if sev < _REGION_SCHWELLE:
+            continue
+        locs = getattr(score, "locations", None) or []
+        for start_s, end_s in locs:
+            start = int(round(float(start_s) * sample_rate))
+            end = int(round(float(end_s) * sample_rate))
+            if end <= start:
+                continue
+            regionen.append(
+                {
+                    "start": start,
+                    "end": end,
+                    "typ": str(getattr(typ, "value", typ)),
+                    "staerke": round(sev, 4),
+                }
+            )
+    regionen.sort(key=lambda r: (r["start"], r["end"]))
+    return regionen
+
+
+def kontrollregionen_aus_abdeckung(
+    regionen: list[dict[str, Any]], dauer_samples: int, sample_rate: int
+) -> list[dict[str, Any]]:
+    """Deterministische Kontrollregionen (defektfrei, Δ ≈ 0 erwartet).
+
+    Kandidaten-Fenster (`_KONTROLL_FENSTER_S` Sekunden) bei festen Anteilen
+    `_KONTROLL_ANTEILE` der Dauer; Fenster, die eine Defektregion
+    überlappen, werden übersprungen; maximal `_KONTROLL_MAX` Regionen.
+    §G5 (copilot-instructions.md): rein deterministisch, kein Zufall.
+    """
+    fenster = int(_KONTROLL_FENSTER_S * sample_rate)
+    kandidaten: list[tuple[int, int]] = []
+    for anteil in _KONTROLL_ANTEILE:
+        mitte = int(round(dauer_samples * anteil))
+        start = max(0, mitte - fenster // 2)
+        end = min(dauer_samples, start + fenster)
+        if end - start >= _MIN_SAMPLES:
+            kandidaten.append((start, end))
+
+    def _ueberlappt(a: tuple[int, int], b: tuple[int, int]) -> bool:
+        return a[0] < b[1] and b[0] < a[1]
+
+    kontrollen: list[dict[str, Any]] = []
+    for start, end in kandidaten:
+        if any(_ueberlappt((start, end), (int(r["start"]), int(r["end"]))) for r in regionen):
+            continue
+        kontrollen.append({"start": start, "end": end, "typ": "kontrolle", "staerke": 0.0})
+        if len(kontrollen) >= _KONTROLL_MAX:
+            break
+    return kontrollen

@@ -233,3 +233,44 @@ def test_aggregat_nach_defektklasse() -> None:
     assert agg["clipping"]["delta_median"] == pytest.approx(0.5, abs=1e-5)
     # Q = Δ(1,0 → 0,5) / Δ(1,0 → 0,0) = 0,5 / 1,0
     assert agg["clipping"]["reparaturquote_median"] == pytest.approx(0.5, abs=1e-3)
+
+
+def test_regionen_aus_defekt_scores() -> None:
+    """Spec 07 §8.6: Locations (Sekunden) → Regionen (Samples), Schwelle 0,1,
+    sortiert, staerke = severity — deterministisch (§G5 (GEBOTE.md))."""
+
+    class _Score:
+        def __init__(self, value: str, severity: float, locations: list[tuple[float, float]]) -> None:
+            self.value = value
+            self.severity = severity
+            self.locations = locations
+
+    scores = {
+        "clipping": _Score("clipping", 0.8, [(1.0, 2.0), (10.0, 10.5)]),
+        "vinyl_noise": _Score("vinyl_noise", 0.05, [(5.0, 6.0)]),  # unter Schwelle
+        "dropouts": _Score("dropouts", 0.4, []),
+    }
+    regionen = dd.regionen_aus_defekt_scores(scores, sample_rate=44100)
+    assert regionen == [
+        {"start": 44100, "end": 88200, "typ": "clipping", "staerke": 0.8},
+        {"start": 441000, "end": 463050, "typ": "clipping", "staerke": 0.8},
+    ]
+
+
+def test_kontrollregionen_deterministisch_ohne_ueberlappung() -> None:
+    """Spec 07 §8.6: Kontrollregionen bei festen Anteilen, maximal 3, nie
+    überlappend mit Defektregionen, wiederholbar identisch."""
+    sr = 44100
+    dauer = 100 * sr
+    # Defekt deckt den 0,1-Kandidaten (9–11 s) ab ⇒ der wird übersprungen
+    defekt = [{"start": 8 * sr, "end": 12 * sr, "typ": "kassette", "staerke": 0.5}]
+    kontrollen = dd.kontrollregionen_aus_abdeckung(defekt, dauer, sr)
+    assert 0 < len(kontrollen) <= 3
+    assert kontrollen == dd.kontrollregionen_aus_abdeckung(defekt, dauer, sr)  # deterministisch
+    for k in kontrollen:
+        assert k["typ"] == "kontrolle"
+        assert k["staerke"] == 0.0
+        assert k["end"] > k["start"] + 2048
+        assert not (k["start"] < defekt[0]["end"] and defekt[0]["start"] < k["end"])
+    anteil_10 = int(round(dauer * 0.1))
+    assert not any(k["start"] <= anteil_10 < k["end"] for k in kontrollen)

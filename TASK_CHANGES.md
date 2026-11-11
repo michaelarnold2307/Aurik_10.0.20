@@ -1,28 +1,19 @@
 # TASK_CHANGES — Live-Ledger der aktuellen Aufgabe
 
-> Generiert von `scripts/change_ledger.py snapshot` (Base: `HEAD`, Stand: 2026-11-11 20:05 CET).
+> Generiert von `scripts/change_ledger.py snapshot` (Base: `HEAD`, Stand: 2026-11-11 20:48 CET).
 > CI (`ci-lite.yml` pr-evidence-gate) erzwingt Abdeckung: jede geänderte Code-Datei muss hier stehen.
 
 ## Geänderte Dateien
 
 | Status | Pfad | Art |
 |---|---|---|
-| M | `.github/FILE_REGISTRY.md` | modifiziert |
-| M | `.github/GEBOTE.md` | modifiziert |
-| M | `.github/GEBOTE_INTEGRATION_MATRIX.md` | modifiziert |
-| M | `.github/WOHLKLANG_CLAIMS.md` | modifiziert |
-| M | `.github/instructions/hoerordnung.instructions.md` | modifiziert |
-| M | `.github/specs/01_musical_goals.md` | modifiziert |
-| M | `.github/specs/07_quality_and_tests.md` | modifiziert |
-| M | `TASK_CHANGES.md` | modifiziert |
-| M | `audit/spec_integration_report.json` | modifiziert |
-| M | `audit/spec_integration_report.md` | modifiziert |
+| M | `backend/core/dsp/defekt_delta.py` | modifiziert |
 | M | `docs/SOTA_HANDOVER.md` | modifiziert |
-| M | `docs/reports/current/2026-11-11_defekt_delta_metrik_design.md` | modifiziert |
-| M | `reports/spec_drift_baseline.json` | modifiziert |
-| ?? | `backend/core/dsp/defekt_delta.py` | ungetrackt |
-| ?? | `scripts/bewerte_defekt_delta.py` | ungetrackt |
-| ?? | `tests/unit/test_defekt_delta.py` | ungetrackt |
+| M | `scripts/bewerte_defekt_delta.py` | modifiziert |
+| M | `tests/unit/test_defekt_delta.py` | modifiziert |
+| ?? | `docs/reports/current/2026-11-11_b3_defektdelta_erstbelege.md` | ungetrackt |
+| ?? | `docs/reports/current/b3_defektdelta_jets_clipping.json` | ungetrackt |
+| ?? | `docs/reports/current/b3_defektdelta_jets_kontrast.json` | ungetrackt |
 
 ## Entscheidungen
 
