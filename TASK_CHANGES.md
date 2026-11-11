@@ -1,14 +1,15 @@
 # TASK_CHANGES — Live-Ledger der aktuellen Aufgabe
 
-> Generiert von `scripts/change_ledger.py snapshot` (Base: `HEAD`, Stand: 2026-11-11 21:22 CET).
+> Generiert von `scripts/change_ledger.py snapshot` (Base: `HEAD`, Stand: 2026-11-11 21:46 CET).
 > CI (`ci-lite.yml` pr-evidence-gate) erzwingt Abdeckung: jede geänderte Code-Datei muss hier stehen.
 
 ## Geänderte Dateien
 
 | Status | Pfad | Art |
 |---|---|---|
-| M | `scripts/b3_stufenmessung.py` | modifiziert |
-| M | `tests/unit/test_b3_pfad_wirksamkeit.py` | modifiziert |
+| M | `.github/SOTA_DEFICIT_REGISTER.md` | modifiziert |
+| M | `docs/SOTA_HANDOVER.md` | modifiziert |
+| ?? | `docs/reports/current/2026-11-11_defektlast_zertifikatsgrenzen.md` | ungetrackt |
 
 ## Entscheidungen
 
