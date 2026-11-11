@@ -1,19 +1,25 @@
 # TASK_CHANGES — Live-Ledger der aktuellen Aufgabe
 
-> Generiert von `scripts/change_ledger.py snapshot` (Base: `HEAD`, Stand: 2026-11-11 19:43 CET).
+> Generiert von `scripts/change_ledger.py snapshot` (Base: `HEAD`, Stand: 2026-11-11 20:05 CET).
 > CI (`ci-lite.yml` pr-evidence-gate) erzwingt Abdeckung: jede geänderte Code-Datei muss hier stehen.
 
 ## Geänderte Dateien
 
 | Status | Pfad | Art |
 |---|---|---|
+| M | `.github/FILE_REGISTRY.md` | modifiziert |
+| M | `.github/GEBOTE.md` | modifiziert |
 | M | `.github/GEBOTE_INTEGRATION_MATRIX.md` | modifiziert |
-| M | `.github/SOTA_DEFICIT_REGISTER.md` | modifiziert |
+| M | `.github/WOHLKLANG_CLAIMS.md` | modifiziert |
+| M | `.github/instructions/hoerordnung.instructions.md` | modifiziert |
+| M | `.github/specs/01_musical_goals.md` | modifiziert |
+| M | `.github/specs/07_quality_and_tests.md` | modifiziert |
 | M | `TASK_CHANGES.md` | modifiziert |
-| M | `backend/core/dsp/air_presence_enhancer.py` | modifiziert |
+| M | `audit/spec_integration_report.json` | modifiziert |
+| M | `audit/spec_integration_report.md` | modifiziert |
 | M | `docs/SOTA_HANDOVER.md` | modifiziert |
-| A | `docs/reports/current/2026-11-11_d_k3_98_air_presence_nola.md` | neu |
-| M | `tests/unit/test_air_presence_enhancer.py` | modifiziert |
+| M | `docs/reports/current/2026-11-11_defekt_delta_metrik_design.md` | modifiziert |
+| M | `reports/spec_drift_baseline.json` | modifiziert |
 | ?? | `backend/core/dsp/defekt_delta.py` | ungetrackt |
 | ?? | `scripts/bewerte_defekt_delta.py` | ungetrackt |
 | ?? | `tests/unit/test_defekt_delta.py` | ungetrackt |

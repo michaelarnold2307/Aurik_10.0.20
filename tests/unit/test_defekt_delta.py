@@ -1,0 +1,235 @@
+"""Vertragstests Defekt-Delta-Witness (§G191 (GEBOTE.md), Spec 07 §8.6).
+
+Modell-frei und deterministisch (§G5 (GEBOTE.md)): alle Fälle laufen über
+synthetische Signale mit injizierten Metriken — kein Modell, keine GPU,
+keine Umgebungsabhängigkeit. Zitierdisziplin AGENTS.md §5: IDs immer mit
+Quelle qualifiziert.
+"""
+
+from __future__ import annotations
+
+import numpy as np
+import pytest
+
+from backend.core.dsp import defekt_delta as dd
+from backend.core.dsp.wohlklang_zeuge import JND_TOLERANZ, defektlast  # EINE Wahrheit
+
+
+def _rng_seg(n: int, seed: int = 42) -> np.ndarray:
+    rng = np.random.default_rng(seed)
+    return rng.normal(0.0, 0.05, size=n).astype(np.float32)
+
+
+def _metrik_rms(audio: object, sample_rate: int) -> float:
+    """Synthetische Metrik: RMS in dB — deterministisch, injizierbar."""
+    x = np.asarray(audio, dtype=np.float64).reshape(-1)
+    rms = float(np.sqrt(np.mean(np.square(x)) + 1e-12))
+    return float(np.log10(rms + 1e-12))
+
+
+def _regionen(typ: str, n_reg: int = 2, laenge: int = 8192) -> list[dict]:
+    return [{"start": i * laenge, "end": (i + 1) * laenge, "typ": typ, "staerke": 0.5} for i in range(n_reg)]
+
+
+def test_defektlast_lang_ist_auf_dem_zertifikatsfenster_bitidentisch() -> None:
+    """§G191 (GEBOTE.md): die Voll-Fenster-Variante darf die zertifizierte
+    Referenz auf deren 16384-Samples-Fenster nicht verändern (Äquivalenz-Pin)."""
+    for seed in (42, 7):
+        x = _rng_seg(16384, seed=seed)
+        assert dd.defektlast_lang(x, 44100) == defektlast(x, 44100)
+
+
+def test_defektlast_lang_sieht_spaete_clips_die_die_referenz_verpasst() -> None:
+    """D-K3-95/97-Grenze: die Referenz liest nur 16384 Samples — ein Clip
+    hinter dem Fenster ist für sie unsichtbar, für `defektlast_lang` nicht."""
+    x = _rng_seg(65536, seed=42)
+    basis = dd.defektlast_lang(x, 44100)
+    x_late = x.copy()
+    x_late[40000:40800] = 1.0  # harter Clip weit hinter dem Referenzfenster
+    assert dd.defektlast_lang(x_late, 44100) > basis
+    assert defektlast(x_late, 44100) == defektlast(x, 44100)  # Referenz bleibt blind
+
+
+def test_pegel_matching_gleicht_restauriert_auf_den_schaden() -> None:
+    """D-K3-95-Lehre: ohne Matching misst man den Loudness-Regelkreis — mit
+    identischen Regeln liefert die RMS-Metrik identische Werte je Region."""
+    schaden = _rng_seg(16384, seed=1) * 0.5
+    restauriert = _rng_seg(16384, seed=1) * 0.25  # Gain 0,5-Regelkreis
+    reg = [{"start": 0, "end": 16384, "typ": "vinyl_noise", "staerke": 0.5}]
+    beleg = dd.berechne_defekt_delta(
+        regionen=reg,
+        schaden=schaden,
+        restauriert=restauriert,
+        clean=None,
+        sample_rate=44100,
+        metrik=_metrik_rms,
+        metrik_name="rms_test",
+        metrik_richtung=dd.RICHTUNG_NIEDRIGER,
+    )
+    werte = beleg["regionen"][0]
+    assert abs(werte["metrik_schaden"] - werte["metrik_restauriert"]) < 1e-6
+
+
+def test_reparaturquote_exakt() -> None:
+    """Q = Δ(schaden→restauriert) / Δ(schaden→clean) — exakte Rechnung mit
+    einer formbasierten Metrik (Vorzeichen-Anteil), die das Pegel-Matching
+    nicht nivelliert (D-K3-95-Lehre: Pegel-Metriken messen den Regelkreis)."""
+    n = 16384
+    reg = [{"start": 0, "end": n, "typ": "clipping", "staerke": 0.8}]
+
+    def metrik_pos(audio: object, sample_rate: int) -> float:
+        x = np.asarray(audio, dtype=np.float64).reshape(-1)
+        return float(np.mean(x > 0.0))
+
+    # gleiche RMS je Signal ⇒ Gain-Matching 1,0; Formen: 100 % / 50 % / 0 % positiv
+    schaden = np.full(n, 0.6, dtype=np.float32)  # metrik 1.0
+    restauriert = np.tile(np.array([0.6, -0.6], dtype=np.float32), n // 2)  # metrik 0.5
+    clean = np.full(n, -0.6, dtype=np.float32)  # metrik 0.0
+    beleg = dd.berechne_defekt_delta(
+        regionen=reg,
+        schaden=schaden,
+        restauriert=restauriert,
+        clean=clean,
+        sample_rate=44100,
+        metrik=metrik_pos,
+        metrik_name="pos_test",
+        metrik_richtung=dd.RICHTUNG_NIEDRIGER,
+    )
+    werte = beleg["regionen"][0]
+    # Δ = 1.0 − 0.5 = 0.5; Nenner = 1.0 − 0.0 = 1.0 ⇒ Q = 0.5
+    assert werte["delta"] == pytest.approx(0.5, abs=1e-5)
+    assert werte["reparaturquote_q"] == pytest.approx(0.5, abs=1e-5)
+
+
+def test_jnd_grenzen() -> None:
+    """JND-Klassifikation mit der einen Wahrheit `JND_TOLERANZ` (0,05) —
+    formbasierte Metrik (Vorzeichen-Anteil), die das Pegel-Matching nicht
+    nivelliert (D-K3-95-Lehre)."""
+    n = 16384
+    eps = 0.001
+
+    def metrik_pos(audio: object, sample_rate: int) -> float:
+        x = np.asarray(audio, dtype=np.float64).reshape(-1)
+        return float(np.mean(x > 0.0))
+
+    def _flip(x: np.ndarray, k: int) -> np.ndarray:
+        y = x.copy()
+        y[:k] = -y[:k]
+        return y
+
+    schaden = np.full(n, 0.6, dtype=np.float32)  # metrik 1.0
+
+    for d, erwartet in (
+        (JND_TOLERANZ + eps, "ueber_jnd"),
+        (JND_TOLERANZ - eps, "unter_jnd"),
+    ):
+        k = int(round(d * n))  # delta = k/n (Vorzeichen-Wechsel erhalten die RMS)
+        restauriert = _flip(schaden, k)  # metrik = 1 − k/n
+        beleg = dd.berechne_defekt_delta(
+            regionen=[{"start": 0, "end": n, "typ": "kassette", "staerke": 0.5}],
+            schaden=schaden,
+            restauriert=restauriert,
+            clean=None,
+            sample_rate=44100,
+            metrik=metrik_pos,
+            metrik_name="pos_jnd_test",
+            metrik_richtung=dd.RICHTUNG_NIEDRIGER,
+        )
+        assert beleg["regionen"][0]["jnd_klasse"] == erwartet, (
+            d,
+            beleg["regionen"][0]["delta"],
+        )
+
+    # verschlechtert: der Schaden hat FEWIGER positives Signal als die Restauration
+    schaden_halb = _flip(schaden, n // 2)  # metrik 0.5
+    restauriert_schlecht = np.full(n, 0.6, dtype=np.float32)  # metrik 1.0
+    beleg = dd.berechne_defekt_delta(
+        regionen=[{"start": 0, "end": n, "typ": "kassette", "staerke": 0.5}],
+        schaden=schaden_halb,
+        restauriert=restauriert_schlecht,
+        clean=None,
+        sample_rate=44100,
+        metrik=metrik_pos,
+        metrik_name="pos_jnd_test",
+        metrik_richtung=dd.RICHTUNG_NIEDRIGER,
+    )
+    assert beleg["regionen"][0]["jnd_klasse"] == "verschlechtert"
+
+
+def test_stereo_layout_invariante() -> None:
+    """AGENTS.md §3: (C, N) und (N, C) müssen identische Ergebnisse liefern."""
+    n = 16384
+    l = _rng_seg(n, seed=3)
+    r = _rng_seg(n, seed=4)
+    reg = [{"start": 0, "end": n, "typ": "mp3_128", "staerke": 0.4}]
+    cn = np.stack([l, r], axis=0)
+    nc = np.stack([l, r], axis=1)
+    b1 = dd.berechne_defekt_delta(regionen=reg, schaden=cn, restauriert=cn, clean=cn, sample_rate=44100)
+    b2 = dd.berechne_defekt_delta(regionen=reg, schaden=nc, restauriert=nc, clean=nc, sample_rate=44100)
+    assert b1["aggregate"] == b2["aggregate"]
+
+
+def test_stille_region_erhaelt_gain_1_ohne_nan() -> None:
+    """§V6 (copilot-instructions.md): Stille darf nicht verstärkt werden —
+    Gain 1,0 und keine NaN/Inf im Beleg."""
+    n = 16384
+    reg = [{"start": 0, "end": n, "typ": "dropouts", "staerke": 0.2}]
+    beleg = dd.berechne_defekt_delta(
+        regionen=reg,
+        schaden=np.zeros(n, dtype=np.float32),
+        restauriert=np.zeros(n, dtype=np.float32),
+        clean=np.zeros(n, dtype=np.float32),
+        sample_rate=44100,
+    )
+    w = beleg["regionen"][0]
+    assert w["gain_restauriert"] == 1.0
+    assert w["gain_clean"] == 1.0
+    assert np.isfinite(w["delta"])
+    assert np.isfinite(w["metrik_schaden"])
+
+
+def test_schema_fail_closed() -> None:
+    """Unbekanntes Schema wird abgelehnt statt interpretiert (Muster
+    ohr_prior/2-Ablehnung, D-K3-89)."""
+    gueltig = {"schema": dd.SCHEMA, "jnd": 0.05, "aggregate": {}}
+    assert dd.lade_defekt_delta(gueltig)["verfuegbar"] is True
+    fremd = {"schema": "aurik.defektdelta/9", "aggregate": {}}
+    geladen = dd.lade_defekt_delta(fremd)
+    assert geladen["verfuegbar"] is False
+    assert "grund" in geladen
+    assert "fehlt" in geladen["grund"] or "schema" in geladen["grund"]
+
+
+def test_aggregat_nach_defektklasse() -> None:
+    """Aggregat je DefectType (n, Median Δ, Median Q) — formbasierte Metrik,
+    die das Pegel-Matching nicht nivelliert (D-K3-95-Lehre)."""
+    n = 8192
+
+    def metrik_pos(audio: object, sample_rate: int) -> float:
+        x = np.asarray(audio, dtype=np.float64).reshape(-1)
+        return float(np.mean(x > 0.0))
+
+    reg = [
+        {"start": 0, "end": n, "typ": "clipping", "staerke": 0.9},
+        {"start": n, "end": 2 * n, "typ": "clipping", "staerke": 0.9},
+        {"start": 2 * n, "end": 3 * n, "typ": "vinyl_noise", "staerke": 0.3},
+    ]
+    schaden = np.full(3 * n, 0.6, dtype=np.float32)  # metrik 1.0
+    restauriert = np.tile(np.array([0.6, -0.6], dtype=np.float32), (3 * n) // 2)  # metrik 0.5
+    clean = np.full(3 * n, -0.6, dtype=np.float32)  # metrik 0.0
+    beleg = dd.berechne_defekt_delta(
+        regionen=reg,
+        schaden=schaden,
+        restauriert=restauriert,
+        clean=clean,
+        sample_rate=44100,
+        metrik=metrik_pos,
+        metrik_name="pos_agg_test",
+        metrik_richtung=dd.RICHTUNG_NIEDRIGER,
+    )
+    agg = beleg["aggregate"]
+    assert agg["clipping"]["n"] == 2
+    assert agg["vinyl_noise"]["n"] == 1
+    assert agg["clipping"]["delta_median"] == pytest.approx(0.5, abs=1e-5)
+    # Q = Δ(1,0 → 0,5) / Δ(1,0 → 0,0) = 0,5 / 1,0
+    assert agg["clipping"]["reparaturquote_median"] == pytest.approx(0.5, abs=1e-3)

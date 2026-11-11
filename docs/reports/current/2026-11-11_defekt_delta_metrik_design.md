@@ -1,6 +1,9 @@
 # Defekt-Delta-Metrik — Design-Skizze (Muster 3: Reparatur messbar machen)
 
-> Stand 2026-11-11. Skizze als nächster Baustein nach dem Sinn-Beweis
+> Stand 2026-11-11. **IMPLEMENTIERT am selben Tag:** Norm §G191 (GEBOTE.md,
+> Kategorie XXVI), Spec 07 §8.6, Spec 01 §8.2 Punkt 13, Hörordnung §7-Zeuge,
+> WOHLKLANG_CLAIMS B3-Begleiter; Träger `backend/core/dsp/defekt_delta.py`,
+> `scripts/bewerte_defekt_delta.py`, 9 Vertragstests.
 > (D-K3-95) und den ersten echten B3-Ablehnungen (W-3/M12, alle
 > pfad_wirksam ✓). **Report-only-Zeuge**, kein Gate, kein Flag-Flip,
 > keine Stärke-Änderung — Aktivierung im Entscheidungspfad wäre

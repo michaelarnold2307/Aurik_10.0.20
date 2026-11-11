@@ -257,6 +257,15 @@ Warnung geloggt und die Messung ggf. auf einem korrekten Fenster wiederholt
 Wenn Ebene 1 verletzt ist, hat die Hör-Instanz **keinen** Vorrang — die
 Invariante dominiert.
 
+**Zeugen (Report-Only):** `musik_mos` und `defektlast` (zertifiziert,
+Spearman 0,95) sowie der **Defekt-Delta-Witness** (`aurik.defektdelta/1`,
+§G191 (GEBOTE.md)) sind Zeugen, keine Richter: Sie dokumentieren, wo und wie
+Reparatur wirkt (Regionen-Deltas, Reparaturquote Q), lösen aber **keinen**
+Re-Run, kein Veto, keinen Rollback und keinen Phase-Strip aus. Der
+Defekt-Delta-Witness trägt **kein** Richtungszertifikat, solange seine
+Regionen-Urteile nicht gegen Hör-Labels kalibriert sind (D-K4-9); bis dahin
+darf er B3-Beschlüsse nur **begleiten**, nie eine Bedingung ersetzen.
+
 ## 8. Maschinen-Wahrheit — wo die Ebenen leben
 
 Die Ebenen binden Komponenten an ihre Rolle (Berechnung bleibt bei den

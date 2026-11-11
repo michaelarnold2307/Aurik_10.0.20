@@ -111,15 +111,17 @@ Priorität C→B→A→D→E/F:
   greifen darauf zu). 13 Vertragstests. Offen (nur GPU-Fenster):
   End-to-End-Lauf + RT-Delta-Messung. Beleg:
   `docs/reports/current/2026-11-08_wohlklang_zeuge_hebel_f.md`.
-- **G — Defekt-Delta-Metrik (DESIGN 2026-11-11, Implementierung offen):**
+- **G — Defekt-Delta-Metrik (DESIGN 2026-11-11, IMPLEMENTIERT):**
   Ganzclip-Metriken sehen Reparatur nicht (defektlast: 0,34-s-Fenster +
   Sättigungs-Blindheit D-K3-95/97; musik_mos integriert über den Clip).
-  Design: Metriken nur in annotierten Defektregionen, vorher/nachher,
-  pegel-gematcht, Reparaturquote Q je Region/Defektklasse, JND 0,05
-  (eine Wahrheit `wohlklang_zeuge.py`); Schema `aurik.defektdelta/1`
-  fail-closed; **Report-Only** bis Richtungs-Zertifizierung (braucht
-  Hör-Labels, D-K4-9). Diagnostischer Sofortnutzen: Jets·clipping
-  (0,478→0,716) lokalisieren. Beleg:
+  **Norm verankert 2026-11-11: §G191 (GEBOTE.md, Kategorie XXVI „Reparatur-Nachweis je Defektklasse") + Spec 07 §8.6 + Spec 01 §8.2 Punkt 13 +
+  Hörordnung §7-Zeuge + WOHLKLANG_CLAIMS B3-Begleiter. Träger implementiert:**
+  `backend/core/dsp/defekt_delta.py` (Regionen-Deltas, pegel-gematcht,
+  Reparaturquote Q, JND 0,05, Schema `aurik.defektdelta/1` fail-closed,
+  `defektlast_lang` mit Zertifikats-Fenster-Äquivalenz),
+  `scripts/bewerte_defekt_delta.py` (CLI), `tests/unit/test_defekt_delta.py`
+  (9 modell-freie Tests). **Report-Only** bis Richtungs-Zertifizierung
+  (Hör-Labels, D-K4-9). Beleg:
   `docs/reports/current/2026-11-11_defekt_delta_metrik_design.md`.
 
 ## 3. Zustand & Wiederherstellung nach Abbruch/Reboot

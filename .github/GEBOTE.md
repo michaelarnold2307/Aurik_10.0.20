@@ -1,6 +1,6 @@
 # Aurik 10 — GEBOTE & VERBOTE (Normativer Katalog)
 
-> **Status:** Normativ | **Version:** 10.16.0 | **Stand:** August 2026
+> **Status:** Normativ | **Version:** 10.17.3 | **Stand:** November 2026
 >
 > Dieser Katalog definiert alle unverhandelbaren GEBOTE (positiv, was Aurik TUN MUSS)
 > und VERBOTE (negativ, was Aurik NIEMALS tun darf). Jedes Gebot und Verbot ist mit
@@ -537,10 +537,17 @@ Der ExcellenceOptimizer ist auf iZotope-RX11-Niveau kalibriert (Naturalness 0.86
 | §G189 | **Dokumentierte Ausnahmen & Rest-Autonomie** | Dokumentierte Ausnahmen — Materialphysik (`SourceMediumProfile`), Chain-Injection (§G171), injizierte Faktoren, externe Ziel-Vorgaben (PMGG `strength`) — DÜRFEN Ziel, Detektions-Schwelle und Warp-Sicherheitsgrenzen (z. B. `max_stretch_delta`) mitbestimmen; sie MÜSSEN im Code als Ausnahme kommentiert und in der zugehörigen Spec-Stelle gelistet sein (§7.4d (06_phases_system.md)). Auch in Ausnahmefällen MUSS Aurik das Ergebnis selbst auf das Optimum rechnen: geschlossener Regelkreis mit eigener Restfehler-Messung, Nachlauf nur behalten wenn besser (nie-schlechter), bounded und deterministisch (§G5 (copilot-instructions.md)). Eine manuelle Nachjustierung nach dem Lauf darf nie Voraussetzung für ein maximal optimiertes Ergebnis sein. |
 | §G190 | **Zielfunktion, physikalische Grenzen & Meldeauftrag** | Höchstes Ziel jeder Wirkungs-Kalibrierung ist der maximal mögliche Wohlklang für das menschliche Ohr bei natürlichem Klang und gleichzeitig unhörbaren Defekten (Hörordnung §8a). Physikalische Grenzen (Nyquist/Abtastrate, Warp-Anstieg, Dynamikumfang, Material-Ermüdung, Mess-Auflösungsgrenzen) sind zu AKZEPTIEREN — was Aurik physisch nicht besser machen kann, ist erreicht; was er durch eine Begrenzung nicht versucht hat, nicht. Die Pre-Commit-Hooks MÜSSEN melden, wenn Aurik durch Begrenzungen blockiert ist oder sich die benötigte Intensität nicht eigenständig korrekt berechnen kann (Gate `aurik-g188-wirkungskalibrierung`, `scripts/g188_wirkungskalibrierung_check.py`). |
 
+## Kategorie XXVI — Reparatur-Nachweis je Defektklasse (§G191)
+
+| ID | Regel | Beschreibung |
+| ---- | ------- | ------------- |
+| §G191 | **Reparatur-Nachweis je Defektklasse** | Für jede der 65 DefectTypes MUSS die Wirkung der Restaurierung **messbar belegbar** sein — globales Never-worsen allein ist kein Reparatur-Nachweis. Methode: Defekt-Delta (`aurik.defektdelta/1`): Metriken nur in den annotierten Defektregionen, vorher (Schaden) / nachher (restauriert), **pegel-gematcht** (D-K3-95-Lehre: ungematcht misst man den Loudness-Regelkreis), JND 0,05 (eine Wahrheit `wohlklang_zeuge.JND_TOLERANZ`), Reparaturquote Q = Δ(schaden→restauriert) / Δ(schaden→clean) wo ein sauberes Original vorliegt, Aggregat je DefectType + Kontrollregionen (Δ ≈ 0 erwartet). Never-worsen bleibt harte Leitplanke (§G4 (GEBOTE.md)-Prinzip, Hörordnung Ebene 1). Status: **Report-Only-Zeuge** (Hörordnung §7) bis zur Richtungs-Zertifizierung über Hör-Labels (D-K4-9/Hör-Instanz); Stärke-/Schwellen-Entscheidungen daraus NUR über das §4-Verfahren (`flag_freigabe.py`). Sinn-Beweis-Klasse: Jets·clipping (defektlast 0,478 → 0,716) wäre mit §G191 lokalisiert statt nur beobachtet (D-K3-95). |
+
 ## Änderungshistorie
 
 | Version | Datum | Änderung |
 | --------- | ------- | ---------- |
+| 10.17.3 | 2026-11-11 | **§G191: Reparatur-Nachweis je Defektklasse (Kategorie XXVI).** Beschleuniger-Anker: Wirkung je DefectType messbar belegen (Defekt-Delta, pegel-gematcht, Reparaturquote Q, JND 0,05); Report-Only-Zeuge bis Richtungs-Zertifizierung über Hör-Labels; Stärke-Entscheidungen nur §4. Träger: `backend/core/dsp/defekt_delta.py`, `scripts/bewerte_defekt_delta.py`, `tests/unit/test_defekt_delta.py`. |
 | 10.17.2 | 2026-09-26 | **§G190: Zielfunktion, physikalische Grenzen & Meldeauftrag (Kategorie XXV).** Höchstes Ziel: maximaler Wohlklang + natürlicher Klang bei unhörbaren Defekten (Hörordnung). Physikalische Grenzen sind zu akzeptieren (kein Verstoß). Pre-Commit-Gate `aurik-g188-wirkungskalibrierung` meldet blockierende Begrenzungen und nicht-selbstberechenbare Intensitäten. |
 | 10.17.1 | 2026-09-26 | **§G188–§G189: Autonome Wirkungs-Kalibrierung (Kategorie XXV).** Feste konservative Stärke-Kappen verboten; Kompensationsgrad folgt der Evidenzqualität bis 1,0; dokumentierte Ausnahmen (Materialphysik, Chain-Injection, PMGG-Ziel) mit Rest-Autonomie — geschlossener Regelkreis rechnet das Optimum selbst (§7.4d (06_phases_system.md)). Erste Umsetzung: phase_12. |
 | 10.0.19 | 2026-08 | **ID-Bereinigung Phase 1:** §SC-G71–§SC-G80 → §G173–§G182 (Kategorie XXIV), XI-b → §G183–§G187, XXII-Duplikat entfernt, XIX-Bereich auf §G131–§G137 korrigiert, Kategorien-Reihenfolge bereinigt, Änderungshistorien zusammengeführt. |

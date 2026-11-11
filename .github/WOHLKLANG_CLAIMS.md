@@ -117,6 +117,11 @@ Erbringung (fail-closed — **alle** Bedingungen Pflicht):
    (`scripts/ab_harness.py`-Schlüssel), Auswertung ohne Label-Kenntnis.
 6. **Provenienz:** Mess-Report mit Quelle je Zeile; Buchung als Beleg mit
    Vermerk „Objektivbeschluss“.
+7. **Optionaler Begleiter:** Ein Defekt-Delta-Beleg (`aurik.defektdelta/1`,
+   §G191 (GEBOTE.md)) darf den Beschluss begleiten — er ersetzt keine der
+   Bedingungen 1–6 und trägt bis zur Richtungs-Zertifizierung (Hör-Labels,
+   D-K4-9) **kein** eigenes Entscheidungsgewicht (Report-Only-Zeuge,
+   Hörordnung §7).
 
 **Hör-Vorbehalt:** Die Stufe läuft danach als „Ausnahme (Objektivbeschluss)“.
 Die Hör-Abnahme hebt sie auf „aktiv“; ein Hör-Widerspruch setzt sie auf

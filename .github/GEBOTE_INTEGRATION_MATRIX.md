@@ -8,7 +8,7 @@
 > Fehlerprotokoll. `katalog` = Referenzkatalog-Eintrag ohne externes Zitat;
 > `integriert` = extern zitiert; VERBOTEN-IDs zusätzlich mit Linter-Status.
 
-Stand: 235 IDs (180 integriert, 55 katalog).
+Stand: 237 IDs (185 integriert, 52 katalog).
 Regeneriert mit `python scripts/gen_integration_matrix.py`.
 
 | ID | Kategorie | Titel | Status |
@@ -81,7 +81,7 @@ Regeneriert mit `python scripts/gen_integration_matrix.py`.
 | §G66 | Kategorie VII — Stereo-Lag-Integrität (§G60–§G67) | Keine konkurrierenden Lag-Fixes | integriert |
 | §G67 | Kategorie VII — Stereo-Lag-Integrität (§G60–§G67) | STFT-Input-Length-Guard | integriert |
 | §G68 | Kategorie IX — SFT-Adaptivität & Defekt-Audibilität (§G68–§G75) | SFT-Novelty-Schwelle adaptiv pro Song | integriert |
-| §G69 | Kategorie IX — SFT-Adaptivität & Defekt-Audibilität (§G68–§G75) | Defekt-Reparatur-Phasen-Klassifikation | katalog |
+| §G69 | Kategorie IX — SFT-Adaptivität & Defekt-Audibilität (§G68–§G75) | Defekt-Reparatur-Phasen-Klassifikation | integriert |
 | §G70 | Kategorie IX — SFT-Adaptivität & Defekt-Audibilität (§G68–§G75) | SFT-Prioritätskette: Zerstörung vor Neuheit | integriert |
 | §G71 | Kategorie IX — SFT-Adaptivität & Defekt-Audibilität (§G68–§G75) | Unhörbare Defekte als Qualitätsziel | integriert |
 | §G72 | Kategorie IX — SFT-Adaptivität & Defekt-Audibilität (§G68–§G75) | Keine pauschalen Wet-Werte | integriert |
@@ -127,7 +127,7 @@ Regeneriert mit `python scripts/gen_integration_matrix.py`.
 | §G107 | Kategorie XVI — Perzeptuelle Architektur: Das menschliche Ohr als Richter (§G100–§G112) | Ermüdungsfreier Klang | integriert |
 | §G108 | Kategorie XVI — Perzeptuelle Architektur: Das menschliche Ohr als Richter (§G100–§G112) | Stille als psychoakustischer Raum | katalog |
 | §G109 | Kategorie XVI — Perzeptuelle Architektur: Das menschliche Ohr als Richter (§G100–§G112) | Binaurale Natürlichkeit | katalog |
-| §G110 | Kategorie XVI — Perzeptuelle Architektur: Das menschliche Ohr als Richter (§G100–§G112) | Transiente Hörbarkeit | katalog |
+| §G110 | Kategorie XVI — Perzeptuelle Architektur: Das menschliche Ohr als Richter (§G100–§G112) | Transiente Hörbarkeit | integriert |
 | §G111 | Kategorie XVI — Perzeptuelle Architektur: Das menschliche Ohr als Richter (§G100–§G112) | Adaptiver Frequenzgang | katalog |
 | §G112 | Kategorie XVI — Perzeptuelle Architektur: Das menschliche Ohr als Richter (§G100–§G112) | Perzeptuelles Monitoring | integriert |
 | §G113 | Kategorie XVII — Universelle Phasen-Sicherheit & Excellence-Kalibrierung (§G113–§G120) | Universal RMS-Guard | katalog |
@@ -189,7 +189,7 @@ Regeneriert mit `python scripts/gen_integration_matrix.py`.
 | §G173 | Kategorie XXIV — Startup-Integration & Kommunikation (§G173–§G182, früher §SC-G71–§SC-G80, §v10.305) | Event-Garantie | integriert |
 | §G174 | Kategorie XXIV — Startup-Integration & Kommunikation (§G173–§G182, früher §SC-G71–§SC-G80, §v10.305) | Lock-freie Importe | integriert |
 | §G175 | Kategorie XXIV — Startup-Integration & Kommunikation (§G173–§G182, früher §SC-G71–§SC-G80, §v10.305) | Plugin-Namen-Validierung | integriert |
-| §G176 | Kategorie XXIV — Startup-Integration & Kommunikation (§G173–§G182, früher §SC-G71–§SC-G80, §v10.305) | Watchdog-Selbsttest | katalog |
+| §G176 | Kategorie XXIV — Startup-Integration & Kommunikation (§G173–§G182, früher §SC-G71–§SC-G80, §v10.305) | Watchdog-Selbsttest | integriert |
 | §G177 | Kategorie XXIV — Startup-Integration & Kommunikation (§G173–§G182, früher §SC-G71–§SC-G80, §v10.305) | Cache-Safety | katalog |
 | §G178 | Kategorie XXIV — Startup-Integration & Kommunikation (§G173–§G182, früher §SC-G71–§SC-G80, §v10.305) | Happy-Path-Gate | integriert |
 | §G179 | Kategorie XXIV — Startup-Integration & Kommunikation (§G173–§G182, früher §SC-G71–§SC-G80, §v10.305) | Startup-Smoke-Test | katalog |
@@ -199,6 +199,7 @@ Regeneriert mit `python scripts/gen_integration_matrix.py`.
 | §G188 | Kategorie XXV — Autonome Wirkungs-Kalibrierung (§G188–§G189) | Autonome Stärke-Einstellung | integriert |
 | §G189 | Kategorie XXV — Autonome Wirkungs-Kalibrierung (§G188–§G189) | Dokumentierte Ausnahmen & Rest-Autonomie | integriert |
 | §G190 | Kategorie XXV — Autonome Wirkungs-Kalibrierung (§G188–§G189) | Zielfunktion, physikalische Grenzen & Meldeauftrag | integriert |
+| §G191 | Kategorie XXVI — Reparatur-Nachweis je Defektklasse (§G191) | Reparatur-Nachweis je Defektklasse | integriert |
 | V01 | VERBOTEN.md | `backend/`, `plugins/` | integriert (Linter) |
 | V02 | VERBOTEN.md | `backend/`, `plugins/` | integriert (Linter) |
 | V03 | VERBOTEN.md | `plugins/` | integriert (Linter) |
@@ -240,11 +241,12 @@ Regeneriert mit `python scripts/gen_integration_matrix.py`.
 | V57 | VERBOTEN.md | `backend/core/phases/phase_*.py` (alle additiven Phasen mit `panns_singing ≥ 0.25`) | integriert (Linter) |
 | V58 | VERBOTEN.md | `backend/core/unified_restorer_v3.py` (und alle ndarray-Return-Funktionen) | integriert (Linter) |
 | V59 | VERBOTEN.md | VERBOTEN V59 | integriert (Linter) |
-| V63 | VERBOTEN.md | > den Stereo-Kollaps), V63 (MD5/B324), V64 (rtol-in-numpy), V73–V75. | integriert (Linter) |
-| V64 | VERBOTEN.md | > den Stereo-Kollaps), V63 (MD5/B324), V64 (rtol-in-numpy), V73–V75. | integriert (Linter) |
+| V63 | VERBOTEN.md | > den Stereo-Kollaps), V63 (MD5/B324), V64 (rtol-in-numpy), V73, V75–V76. | integriert (Linter) |
+| V64 | VERBOTEN.md | > den Stereo-Kollaps), V63 (MD5/B324), V64 (rtol-in-numpy), V73, V75–V76. | integriert (Linter) |
 | V70 | VERBOTEN.md | `denker/`, `backend/core/`, `Aurik10/ui/` | integriert (Linter) |
 | V71 | VERBOTEN.md | `Aurik10/ui/`, `backend/core/pre_analysis.py` | integriert (Linter) |
 | V72 | VERBOTEN.md | `backend/core/pre_analysis.py`, `Aurik10/ui/` | integriert (Linter) |
 | V73 | VERBOTEN.md | `Aurik10/ui/` | integriert (Linter) |
 | V74 | VERBOTEN.md | Alle `.py`-Dateien | integriert (Linter) |
 | V75 | VERBOTEN.md | `Aurik10/ui/` | integriert (Linter) |
+| V76 | VERBOTEN.md | VERBOTEN V76 | integriert (Linter) |

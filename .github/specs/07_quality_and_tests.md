@@ -410,6 +410,36 @@ automatisch geprüft werden.
 
 ---
 
+## §8.6 Defekt-Delta-Witness — Reparatur-Nachweis je Defektklasse (§G191 (GEBOTE.md))
+
+> Mess-Definition (Hörordnung §9): Die Berechnung der Messgrößen bleibt bei den
+> Domain-Regeln; die Hörordnung regelt nur den Entscheidungsfluss (Zeuge, kein Richter).
+
+- **Eingabe:** Schadens-Tripel (clean / schaden / restauriert) aus
+  `scripts/erstelle_schadens_proben.py` + DefectScanner-Regionen
+  (start/end/typ/staerke) als Regionen-JSON.
+- **Pegel-Matching je Region** (RMS auf den Schaden) — ungematcht misst man den
+  Loudness-Regelkreis statt der Reparatur (D-K3-95-Lehre); Stille-/zu kurze
+  Regionen: Gain 1,0 + §V6 (copilot-instructions.md)-Warnung, kein stiller Ausfall.
+- **Regionen-Metriken:** `defektlast_lang` — Voll-Fenster-Verallgemeinerung der
+  zertifizierten Referenz `wohlklang_zeuge.defektlast`; auf dem
+  16384-Samples-Fenster bit-identisch (Test-gepinnt); **trägt nicht** das
+  Richtungszertifikat (Grenzen: Sättigungs-Blindheit dokumentiert, D-K3-97).
+  Optional `musik_mos` (Mindestfenster dokumentiert, Padding-Regel).
+- **Reparaturquote** Q(r) = Δ(schaden→restauriert) / Δ(schaden→clean) je Region;
+  JND-Klassifikation mit `wohlklang_zeuge.JND_TOLERANZ` (0,05).
+- **Aggregate** je DefectType (n, Median Δ, Median Q, Anteil ≥ JND) +
+  Kontrollregionen (Δ ≈ 0 erwartet — Never-worsen-Leitplanke der Metrik selbst).
+- **Schema** `aurik.defektdelta/1`, fail-closed (unbekanntes/altes Schema ⇒
+  `verfuegbar=false` + Grund, Muster `ohr_prior`/2-Ablehnung).
+- **Determinismus** §G5 (copilot-instructions.md): Seed 42, sha256 der
+  Eingangs-WAVs im Beleg, kein `time.time()` in Entscheidungslogik;
+  Stereo-Layout-Invariante (C, N).
+- **Status:** Report-Only-Zeuge. Richtungs-Zertifizierung über Hör-Labels
+  (D-K4-9); Stärke-/Schwellen-Nutzung nur über das §4-Verfahren.
+
+---
+
 ## §9 Performance-Budget (Desktop-Hardware, GPU-Mixed-Mode optional)
 
 > **Kanonische Quelle für RT-Limits:** copilot-instructions.md §2.37 (LIMIT_BALANCED = 32.0× RT).

@@ -686,6 +686,7 @@ Nutzer-Meldung wenn Decke erreicht (Deutsch):
     - 1965–1975: Tape-Saturation-Signatur nicht entfernen
 11. **Kompetitiver Benchmark**: Aurik ≥ iZotope RX 11 in ≥ 7/10 AMRB-Szenarien
 12. **Emotionaler Dynamik-Bogen**: Arousal-Pearson ≥ 0.85, Valence-Pearson ≥ 0.80, Klimax-Peak-Abw. ≤ 2 Segmente
+13. **Reparatur-Nachweis je Defektklasse** (§G191 (GEBOTE.md)): Für die Defektklassen des Songs ist die Wirkung der Restaurierung regional belegbar (Defekt-Delta, `aurik.defektdelta/1`): Reparaturquote Q ≥ 0 in Kontrollregionen (Never-worsen) und Q > 0 in Regionen mit messbarem Schaden — Ziel: maximale Verbesserung je Defektklasse, nie auf Kosten der Verpflichtungen 1–12.
 
 ---
 
