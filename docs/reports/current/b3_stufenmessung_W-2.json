@@ -10,22 +10,22 @@
     },
     {
       "trial_id": "cassette_1980s_wow__w1",
-      "mos_an": 4.7952,
-      "mos_aus": 4.7944,
-      "last_an": 0.4852,
-      "last_aus": 0.4809
+      "mos_an": 4.7954,
+      "mos_aus": 4.7951,
+      "last_an": 0.4847,
+      "last_aus": 0.4852
     },
     {
       "trial_id": "cassette_1980s_wow__w2",
       "mos_an": 4.7925,
       "mos_aus": 4.7925,
       "last_an": 0.4578,
-      "last_aus": 0.4578
+      "last_aus": 0.4577
     },
     {
       "trial_id": "cassette_1980s_wow__w3",
-      "mos_an": 4.8334,
-      "mos_aus": 4.8333,
+      "mos_an": 4.8331,
+      "mos_aus": 4.8337,
       "last_an": 0.4943,
       "last_aus": 0.4943
     },
@@ -33,8 +33,8 @@
       "trial_id": "reel_1940s_dropout__w4",
       "mos_an": 4.9223,
       "mos_aus": 4.9223,
-      "last_an": 0.2612,
-      "last_aus": 0.2612
+      "last_an": 0.2611,
+      "last_aus": 0.2611
     },
     {
       "trial_id": "jazz_1950s_scratched__w5",
@@ -45,10 +45,14 @@
     }
   ],
   "never_worsen": true,
-  "vorteile": "2/6",
-  "p_wert": 0.6875,
+  "vorteile": "1/6",
+  "p_wert": 0.21875,
   "signifikant": false,
   "defekt_fallbacks": 0,
   "b1_sauber": true,
+  "pfad_wirksam": true,
+  "fussabdruck_max_rms": 0.0007848367633876779,
+  "wirksam_probleme": [],
+  "messung_ungueltig": false,
   "erfuellt": false
 }
