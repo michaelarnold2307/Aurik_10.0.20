@@ -1,6 +1,6 @@
 # TASK_CHANGES — Live-Ledger der aktuellen Aufgabe
 
-> Generiert von `scripts/change_ledger.py snapshot` (Base: `HEAD`, Stand: 2026-11-11 21:46 CET).
+> Generiert von `scripts/change_ledger.py snapshot` (Base: `HEAD`, Stand: 2026-11-11 22:08 CET).
 > CI (`ci-lite.yml` pr-evidence-gate) erzwingt Abdeckung: jede geänderte Code-Datei muss hier stehen.
 
 ## Geänderte Dateien
@@ -9,7 +9,8 @@
 |---|---|---|
 | M | `.github/SOTA_DEFICIT_REGISTER.md` | modifiziert |
 | M | `docs/SOTA_HANDOVER.md` | modifiziert |
-| ?? | `docs/reports/current/2026-11-11_defektlast_zertifikatsgrenzen.md` | ungetrackt |
+| ?? | `docs/reports/current/b3_objektivbeschluss_M5-vocos.json` | ungetrackt |
+| ?? | `docs/reports/current/b3_stufenmessung_M5-vocos.json` | ungetrackt |
 
 ## Entscheidungen
 
