@@ -128,7 +128,7 @@ Priorität C→B→A→D→E/F:
 1. Laufende Messläufe (Logs in /tmp, NICHT im Repo): **W-3 und M12-WF4/M12-TPV2 sind FERTIG und gebucht** (Register D-K3-82/D-K3-85/D-K4-7/D-K4-8, Handover Zeile 6/7, Report `2026-11-11_b3_neumessung_w3_m12.md`) — alle drei ABGELEHNT auf Substanz (pfad_wirksam ✓, nie signifikant); Flips bleiben AUS. **Kompositions-Suche FERTIG 2026-11-11:** Beste Komposition **W-3,W-8** (never-worsen ✓, sub-JND — musik_mos +0,0005 / defektlast −0,006), Beleg `b3_komposition_suche.json` — Kandidat für EINE Hör-Session, kein Flip.
 2. **§V8-Leck GESCHLOSSEN** (Register D-K3-95 + Zeile 13): Reset-Ketten-Fix in `denker/aurik_denker.py` (8 verwaiste Stateful-Module je Song, §V6-geschützt), Gegenbeweis bestanden (Kontext-Hash `be0e87cb…` == solo). Folge-Hygiene notiert: `~/.aurik/session_memory.json` (200 Songs) + `§SSC-1`-Strategy-Cache (content-keyed).
 3. **M5-vocos-B3-Stage NEU (2026-11-11, VERIFIZIERT):** `_schalter_lesen("M5-vocos")` in `b3_stufenmessung.py` + Modell-Zeuge `vocos_ft_modell_zeugnis` in `b3_pfad_wirksamkeit.py` (prüft `weights_basename == vocos_48khz_music_ft.onnx`) + 2 Tests in `tests/unit/test_b3_pfad_wirksamkeit.py`. Verifikation 2026-11-11 erbracht: `py_compile` sauber, `pytest tests/unit/test_b3_pfad_wirksamkeit.py -q` **20 passed**, Ruff clean. Offen: Messung `python3 -B scripts/b3_stufenmessung.py --stages M5-vocos` im freien Fenster — **GPU jetzt frei, Messung kann starten** (W-3/M12/Kompositions-Suche abgeschlossen).
-4. **Nächster Fix-Zyklus: D-K3-98** (Air-Presence-Enhancer: Analyse-`np.hanning` symmetrisch vs. Synthese-scipy-hann periodisch bei 75 % Overlap ⇒ NOLA-Warnung; `np.clip(±1.0)` am Ausgang) — erst NACH Abschluss der laufenden Messungen (§V7 (copilot-instructions.md): eine Änderung je Messzyklus) — Messungen 2026-11-11 abgeschlossen, **Zyklus freigegeben**.
+4. **D-K3-98 ERLEDIGT 2026-11-11** (Air-Presence-Enhancer): periodisches Hann in Analyse **und** Synthese, scipy-Konvention (`detrend=False`, `boundary="zeros"`, `padded=True`, Kurzsignal-Guard), Hard-Clip ersetzt durch Eingangs-Decke (Zusatz `enhanced−orig` linear auf `min(0,999, peak_in)` zurückgenommen; Eingang über Decke ⇒ bit-identischer Passthrough). Vorher/Nachher: Roundtrip **8,93e-2 → 1,78e-8**, 440-Hz-Ton **0,25 → 1,49e-8**, hart geklippte Samples **23.804 → 0**, keine NOLA-Warnung. Tests: `test_air_presence_enhancer.py` 10/10 (4 neu), `test_stem_level_restorer.py` 17/17, Phase-19-Suite 81/81, Ruff/Compile clean. **Kein Flag-Flip, keine Verdrahtung geändert.** Offen (eigener Messzyklus): Wirkungsmessung auf die D-K3-95-Rezepte. Beleg `docs/reports/current/2026-11-11_d_k3_98_air_presence_nola.md`.
 5. **Commit-Hygiene:** `python3 scripts/change_ledger.py snapshot` ausgeführt 2026-11-11 (16 Einträge, `check` grün); Zyklus committet als `4ba83b71` (alle Pre-Commit-Gates grün). UAT-Evidenz ist frisch (`audit/uat_results_2026-11-11.json`, `latest.date`).
 
 - **GPU-Trainingsketten** (dauerhaft im Repo, jederzeit neu startbar):
@@ -859,3 +859,24 @@ zweimal, Logs + WAV-Hashes) — erst danach ist „repariert/nicht repariert" ei
 Aussage. Report
 `docs/reports/current/2026-11-11_declip_never_worsen_und_ursachenpruefung.md`,
 Register D-K3-97.
+
+**Update 2026-11-11 (D-K3-98 — Air-Presence-NOLA-Fix, Zyklus aus §3.4):** Der
+Enhancer analysierte mit symmetrischem `np.hanning` und synthetisierte mit
+periodischem scipy-hann (75 % Overlap) — gemessen **8,93 % Relativfehler** im
+STFT→ISTFT-Roundtrip, NOLA-Warnung, ein 440-Hz-Ton (Maske 0) wurde um **0,25**
+verändert; der Ausgang wurde hart auf ±1,0 geklippt (**23.804 Samples** bei
+0,99/12 kHz). Fix: periodisches Hann in **Analyse und Synthese**,
+scipy-Konvention (`win/Σwin`, `detrend=False`, `boundary="zeros"`,
+`padded=True`, Kurzsignal-Guard) und **Eingangs-Decke statt Hard-Clip**
+(Zusatz `enhanced−orig` linear auf `min(0,999, peak_in)` zurückgenommen;
+Eingang über der Decke ⇒ `k=0` = bit-identischer Passthrough). Nachher:
+Roundtrip **1,78e-8**, 440-Hz-Abweichung **1,49e-8**, 12-kHz-0,99-Ausgang
+**0,9900** ohne Sample auf 1,0, keine NOLA-Warnung. Tests:
+`test_air_presence_enhancer.py` **10/10** (4 neue Vertragstests),
+`test_stem_level_restorer.py` 17/17, Phase-19-Suite 81/81; Ruff/Compile clean;
+Performance 2,54 s je 3-min-Stereo (≈ 71× RT, Budget unkritisch). **Kein
+Flag-Flip, keine Verdrahtung geändert.** Offen: Wirkungsmessung auf die
+D-K3-95-Rezepte (clipping/kassette) — der Enhancer läuft nur im Stem-Pfad,
+`phase_19` ist witness-guarded. Beleg
+`docs/reports/current/2026-11-11_d_k3_98_air_presence_nola.md`, Register
+D-K3-98 (geschlossen).

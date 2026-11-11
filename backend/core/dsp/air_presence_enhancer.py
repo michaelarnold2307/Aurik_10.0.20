@@ -20,38 +20,92 @@ from __future__ import annotations
 import numpy as np
 
 
+def _hann_periodic(n_fft: int) -> np.ndarray:
+    """Periodisches Hann-Fenster (scipy-Konvention ``fftbins=True``).
+
+    Analyse und Synthese MÜSSEN dasselbe Fenster verwenden (D-K3-98): das
+    symmetrische ``np.hanning`` endet auf 0 und ist um ein Sample gegenüber
+    dem periodischen Fenster verschoben; mit 75 % Overlap verletzt die
+    Kombination die NOLA-Bedingung (``scipy.signal.istft`` warnt) und die
+    Rekonstruktion hat mehrere Prozent Fehler.
+    """
+    _n = np.arange(n_fft, dtype=np.float64)
+    _win: np.ndarray = (0.5 - 0.5 * np.cos(2.0 * np.pi * _n / n_fft)).astype(np.float32)
+    return _win
+
+
 def _stft_frames(x: np.ndarray, n_fft: int, hop: int) -> np.ndarray:
-    """STFT-Frames (rfft) mit Hann-Fenster, deterministisch."""
-    win = np.hanning(n_fft).astype(np.float32)
-    n_frames = max(0, (len(x) - n_fft) // hop + 1)
-    x = np.asarray(x, dtype=np.float32)
-    idx = np.arange(n_fft)[None, :] + hop * np.arange(n_frames)[:, None]
-    _spec: np.ndarray = np.fft.rfft(x[idx] * win, n=n_fft, axis=1).astype(np.complex64)
-    return _spec
+    """STFT-Frames (rfft) mit periodischem Hann-Fenster, scipy-Konvention.
 
+    Frames sind wie bei ``scipy.signal.stft`` mit ``win/Σwin`` skaliert, damit
+    ``_istft_frames`` mit demselben Fenster exakt invertiert
+    (§G5 (copilot-instructions.md), D-K3-98).
+    """
+    from scipy.signal import stft as _stft
 
-def _istft_frames(spec: np.ndarray, n_fft: int, hop: int, orig_len: int) -> np.ndarray:
-    """Overlap-Add-Rekonstruktion (scipy.signal.istft, Hann) — deterministisch."""
-    from scipy.signal import istft as _istft
-
-    # scipy-Konvention: Frames sind mit win/Σwin gefenstert — unsere STFT
-    # nutzt win allein, daher hier um Σwin dividieren (Einheits-Gain-Rekonstruktion).
-    _win_sum = float(np.hanning(n_fft).sum())
-    _spec = (np.asarray(spec, dtype=np.complex64) / max(_win_sum, 1e-12)).T  # (n_freq, n_frames)
-    _, _rec = _istft(
-        _spec,
+    _x = np.asarray(x, dtype=np.float64)
+    if _x.shape[0] < n_fft:  # sehr kurze Stems: auf ein Fenster nullpolstern
+        _x = np.pad(_x, (0, n_fft - _x.shape[0]))
+    _, _, _spec = _stft(
+        _x,
         fs=1.0,
-        window="hann",
+        window=_hann_periodic(n_fft),
         nperseg=n_fft,
         noverlap=n_fft - hop,
         nfft=n_fft,
-        boundary=False,
+        detrend=False,
+        boundary="zeros",
+        padded=True,
+        return_onesided=True,
+    )
+    _frames: np.ndarray = np.asarray(_spec.T, dtype=np.complex64)  # (n_frames, n_freq)
+    return _frames
+
+
+def _istft_frames(spec: np.ndarray, n_fft: int, hop: int, orig_len: int) -> np.ndarray:
+    """Overlap-Add-Rekonstruktion mit demselben periodischen Fenster
+    (§G5 (copilot-instructions.md))."""
+    from scipy.signal import istft as _istft
+
+    _, _rec = _istft(
+        np.asarray(spec, dtype=np.complex128).T,  # (n_freq, n_frames)
+        fs=1.0,
+        window=_hann_periodic(n_fft),
+        nperseg=n_fft,
+        noverlap=n_fft - hop,
+        nfft=n_fft,
+        boundary="zeros",
         input_onesided=True,
     )
     _out: np.ndarray = np.asarray(_rec, dtype=np.float32)
     if len(_out) < orig_len:
         _out = np.pad(_out, (0, orig_len - len(_out)))
     return _out[:orig_len]
+
+
+def _begrenze_auf_eingangsdecke(orig: np.ndarray, enhanced: np.ndarray, ceiling: float) -> np.ndarray:
+    """Skaliert den ZUSATZ (enhanced−orig) linear, bis die Eingangs-Decke hält.
+
+    Ersetzt den früheren harten ``np.clip(±1.0)`` (D-K3-98c): Der Basis-Anteil
+    bleibt unangetastet, nur die Luftband-Anhebung wird zurückgenommen. Liegt
+    das Eingangssignal selbst über der Decke, ist ``k=0`` ⇒ bit-identischer
+    Passthrough (Never-worsen, §0).
+    """
+    _delta = (enhanced - orig).astype(np.float32)
+    _k = 1.0
+    _pos = _delta > 0.0
+    _neg = _delta < 0.0
+    if bool(np.any(_pos)):
+        _k = min(_k, float(np.min((ceiling - orig[_pos]) / _delta[_pos])))
+    if bool(np.any(_neg)):
+        _k = min(_k, float(np.min((-ceiling - orig[_neg]) / _delta[_neg])))
+    _k = float(np.clip(_k, 0.0, 1.0))
+    _begrenzt: np.ndarray
+    if _k >= 1.0:
+        _begrenzt = enhanced.astype(np.float32)
+    else:
+        _begrenzt = (orig + _k * _delta).astype(np.float32)
+    return _begrenzt
 
 
 def enhance_air_presence(
@@ -95,7 +149,7 @@ def enhance_air_presence(
     gain_lin = 10.0 ** ((_max_gain_db * band_ramp) / 20.0)
 
     # Noise-Floor in der Spektraldomäne: |X[k]| ~ RMS * sqrt(Σ win²) für weißes Rauschen.
-    _win = np.hanning(n_fft).astype(np.float32)
+    _win = _hann_periodic(n_fft)
     noise_ref = 10.0 ** (float(noise_floor_db) / 20.0) * float(np.sqrt(np.sum(_win**2)))
 
     _channels = [_in] if _in.ndim == 1 else [_in[c] for c in range(_in.shape[0])]
@@ -114,6 +168,10 @@ def enhance_air_presence(
 
     _out = np.stack(_out_ch, axis=0) if _in.ndim == 2 else _out_ch[0]
     _out = np.nan_to_num(_out, nan=0.0, posinf=0.0, neginf=0.0)
-    _out = np.clip(_out, -1.0, 1.0).astype(np.float32)
+    # D-K3-98c: keine harte Begrenzung mehr — der Zusatz wird auf die
+    # Eingangs-Decke (max. 0,999) zurückgenommen, die Basis bleibt erhalten.
+    _peak_in = float(np.max(np.abs(_in))) if _in.size else 0.0
+    _ceiling = min(0.999, _peak_in)
+    _out = _begrenze_auf_eingangsdecke(_in, _out.astype(np.float32), _ceiling)
     _result: np.ndarray = np.asarray(_out, dtype=np.float32)
     return _result
