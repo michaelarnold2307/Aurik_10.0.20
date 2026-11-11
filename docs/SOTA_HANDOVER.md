@@ -57,6 +57,11 @@ Priorität C→B→A→D→E/F:
   W-2/W-3/W-8/W-9/W-13 mit never-worsen-Schranke; Ergebnis = KANDIDAT für
   EINE Hör-Session. **AUSFÜHREN im trainingsfreien Fenster:**
   `nice -n 15 python3 -B scripts/b3_komposition_suche.py --clips 3 --windows 2`
+  — **AUSGEFÜHRT 2026-11-11 (2,3 h, Seed 42, 6 Fenster):** Beste Komposition
+  **W-3,W-8** (musik_mos 4,8459 vs. Baseline 4,8454; defektlast 0,3745 vs.
+  0,3808) — never-worsen ✓, aber die Vorteile liegen **unter der JND 0,05**
+  (sub-JND); Beleg `b3_komposition_suche.json`. Kein Flip: KANDIDAT für EINE
+  Hör-Session (§4-Verfahren).
 - **A — Audibility-Budget (VERDRAHTET 2026-11-07, Flag AUS; Wirkungsmessung offen):**
   klangwirksam ⇒ flag-gesperrt (Default AUS, bit-identisch; 30 Vertragstests).
   `backend/core/dsp/audibility_budget.py` definiert das Budget als
@@ -119,12 +124,12 @@ Priorität C→B→A→D→E/F:
 
 ## 3. Zustand & Wiederherstellung nach Abbruch/Reboot
 
-**Wiederaufnahme-Stand 2026-11-11 (Sinn-Beweis-/§V8-Kette, uncommitted):**
-1. Laufende Messläufe (Logs in /tmp, NICHT im Repo): `tail -3 /tmp/m12_neu.log` (M12-WF4/M12-TPV2-Neumessung — erste echte Messung nach D-K3-85), `/tmp/w3_neu.log` (W-3 nach Achsen-Fix), `/tmp/komposition_suche.log` (Kandidaten-Suche). Ergebnisse nach Abschluss buchen (Register D-K4-7/D-K4-8 bzw. W-3 + `b3_objektivbeschluss`); **Flips bleiben AUS** bis §4/Hör-Sign-off.
+**Wiederaufnahme-Stand 2026-11-11 (Sinn-Beweis-/§V8-Kette, committet 4ba83b71):**
+1. Laufende Messläufe (Logs in /tmp, NICHT im Repo): **W-3 und M12-WF4/M12-TPV2 sind FERTIG und gebucht** (Register D-K3-82/D-K3-85/D-K4-7/D-K4-8, Handover Zeile 6/7, Report `2026-11-11_b3_neumessung_w3_m12.md`) — alle drei ABGELEHNT auf Substanz (pfad_wirksam ✓, nie signifikant); Flips bleiben AUS. **Kompositions-Suche FERTIG 2026-11-11:** Beste Komposition **W-3,W-8** (never-worsen ✓, sub-JND — musik_mos +0,0005 / defektlast −0,006), Beleg `b3_komposition_suche.json` — Kandidat für EINE Hör-Session, kein Flip.
 2. **§V8-Leck GESCHLOSSEN** (Register D-K3-95 + Zeile 13): Reset-Ketten-Fix in `denker/aurik_denker.py` (8 verwaiste Stateful-Module je Song, §V6-geschützt), Gegenbeweis bestanden (Kontext-Hash `be0e87cb…` == solo). Folge-Hygiene notiert: `~/.aurik/session_memory.json` (200 Songs) + `§SSC-1`-Strategy-Cache (content-keyed).
-3. **M5-vocos-B3-Stage NEU (2026-11-11, VERIFIZIERT):** `_schalter_lesen("M5-vocos")` in `b3_stufenmessung.py` + Modell-Zeuge `vocos_ft_modell_zeugnis` in `b3_pfad_wirksamkeit.py` (prüft `weights_basename == vocos_48khz_music_ft.onnx`) + 2 Tests in `tests/unit/test_b3_pfad_wirksamkeit.py`. Verifikation 2026-11-11 erbracht: `py_compile` sauber, `pytest tests/unit/test_b3_pfad_wirksamkeit.py -q` **20 passed**, Ruff clean. Offen: Messung `python3 -B scripts/b3_stufenmessung.py --stages M5-vocos` im freien Fenster (GPU bis dahin durch M12/W-3/Kompositions-Suche belegt).
-4. **Nächster Fix-Zyklus: D-K3-98** (Air-Presence-Enhancer: Analyse-`np.hanning` symmetrisch vs. Synthese-scipy-hann periodisch bei 75 % Overlap ⇒ NOLA-Warnung; `np.clip(±1.0)` am Ausgang) — erst NACH Abschluss der laufenden Messungen (§V7 (copilot-instructions.md): eine Änderung je Messzyklus).
-5. **Commit-Hygiene:** `python3 scripts/change_ledger.py snapshot` ausgeführt 2026-11-11 (16 Einträge, `check` grün) — Commit des Zyklus folgt unmittelbar. UAT-Evidenz ist frisch (`audit/uat_results_2026-11-11.json`, `latest.date`).
+3. **M5-vocos-B3-Stage NEU (2026-11-11, VERIFIZIERT):** `_schalter_lesen("M5-vocos")` in `b3_stufenmessung.py` + Modell-Zeuge `vocos_ft_modell_zeugnis` in `b3_pfad_wirksamkeit.py` (prüft `weights_basename == vocos_48khz_music_ft.onnx`) + 2 Tests in `tests/unit/test_b3_pfad_wirksamkeit.py`. Verifikation 2026-11-11 erbracht: `py_compile` sauber, `pytest tests/unit/test_b3_pfad_wirksamkeit.py -q` **20 passed**, Ruff clean. Offen: Messung `python3 -B scripts/b3_stufenmessung.py --stages M5-vocos` im freien Fenster — **GPU jetzt frei, Messung kann starten** (W-3/M12/Kompositions-Suche abgeschlossen).
+4. **Nächster Fix-Zyklus: D-K3-98** (Air-Presence-Enhancer: Analyse-`np.hanning` symmetrisch vs. Synthese-scipy-hann periodisch bei 75 % Overlap ⇒ NOLA-Warnung; `np.clip(±1.0)` am Ausgang) — erst NACH Abschluss der laufenden Messungen (§V7 (copilot-instructions.md): eine Änderung je Messzyklus) — Messungen 2026-11-11 abgeschlossen, **Zyklus freigegeben**.
+5. **Commit-Hygiene:** `python3 scripts/change_ledger.py snapshot` ausgeführt 2026-11-11 (16 Einträge, `check` grün); Zyklus committet als `4ba83b71` (alle Pre-Commit-Gates grün). UAT-Evidenz ist frisch (`audit/uat_results_2026-11-11.json`, `latest.date`).
 
 - **GPU-Trainingsketten** (dauerhaft im Repo, jederzeit neu startbar):
   - Kette 1 (Welle C + M8/M9): `nohup bash scripts/gpu_kette1_welle_c.sh > /tmp/k1.log 2>&1 &`

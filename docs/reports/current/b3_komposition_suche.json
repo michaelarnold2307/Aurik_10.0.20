@@ -1,0 +1,53 @@
+{
+  "beste": ["W-3", "W-8"],
+  "protokoll": [
+    {
+      "komposition": ["W-13"],
+      "messung": {
+        "musik_mos": 4.8453,
+        "defektlast": 0.38075,
+        "fenster": 6
+      }
+    },
+    {
+      "komposition": ["W-8"],
+      "messung": {
+        "musik_mos": 4.845416666666667,
+        "defektlast": 0.3807666666666667,
+        "fenster": 6
+      }
+    },
+    {
+      "komposition": ["W-8", "W-9"],
+      "messung": {
+        "musik_mos": 4.845400000000001,
+        "defektlast": 0.38081666666666664,
+        "fenster": 6
+      }
+    },
+    {
+      "komposition": ["W-3", "W-8"],
+      "messung": {
+        "musik_mos": 4.845916666666667,
+        "defektlast": 0.3745,
+        "fenster": 6
+      }
+    },
+    {
+      "komposition": ["W-2", "W-3", "W-8"],
+      "messung": {
+        "musik_mos": 4.845766666666667,
+        "defektlast": 0.37465,
+        "fenster": 6
+      }
+    }
+  ],
+  "baseline": {
+    "musik_mos": 4.845383333333333,
+    "defektlast": 0.38075,
+    "fenster": 6
+  },
+  "seed": 42,
+  "kandidaten": ["W-2", "W-3", "W-8", "W-9", "W-13"],
+  "hinweis": "KANDIDAT für EINE Hör-Session — keine Entscheidung, kein dauerhafter Flag-Flip; Freigabe nur über §4-Verfahren (flag_freigabe.py)."
+}

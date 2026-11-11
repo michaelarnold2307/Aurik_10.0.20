@@ -76,8 +76,10 @@ Belege: `docs/reports/current/b3_stufenmessung_M12-WF4.json`,
   und Zeile 7 (M12) aktualisiert; dieser Report.
 - **M12-TPV2-Neumessung ABGESCHLOSSEN** — ABGELEHNT auf Substanz
   (pfad_wirksam ✓, never_worsen ✓, 2/6, p=0,6875, 0 Fallbacks); Buchung D-K4-8 erfolgt.
-- **Kompositions-Suche** (`/tmp/komposition_suche.log`) läuft noch — Ergebnis
-  (Kandidat für EINE Hör-Session) nach Abschluss buchen.
+- **Kompositions-Suche ABGESCHLOSSEN (2026-11-11, 2,3 h, Seed 42):** Beste
+  Komposition **W-3,W-8** — never-worsen ✓, aber sub-JND (musik_mos +0,0005,
+  defektlast −0,006); Beleg `b3_komposition_suche.json`. Kandidat für EINE
+  Hör-Session, kein Flip (§4-Verfahren).
 - **M5-vocos-B3-Stage** ist implementiert und verifiziert (20 Vertragstests,
   Ruff clean, Commit-Hygiene inkl. Ledger-Snapshot); Messung
   `python3 -B scripts/b3_stufenmessung.py --stages M5-vocos` im nächsten
