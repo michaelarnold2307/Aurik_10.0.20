@@ -254,6 +254,20 @@ def test_m5_vocos_stage_existiert_und_zeigt_auf_flag() -> None:
     assert wert is False
 
 
+def test_schalter_und_beschluss_mapping_sind_konsistent() -> None:
+    """D-K3-82-Klasse (2026-11-11 erneut bei M5-vocos): jede messbare Stufe
+    MUSS im Beschluss-Flag-Mapping existieren — und umgekehrt. Generisch,
+    damit neue Stufen nie wieder per KeyError im Beschluss sterben."""
+    import scripts.b3_stufenmessung as st
+
+    assert set(st.SCHALTER_MAPPING) == set(st.BESCHLUSS_FLAGS), (
+        f"Schalter ohne Beschluss: {set(st.SCHALTER_MAPPING) - set(st.BESCHLUSS_FLAGS)} | "
+        f"Beschluss ohne Schalter: {set(st.BESCHLUSS_FLAGS) - set(st.SCHALTER_MAPPING)}"
+    )
+    for stufe, flag in st.BESCHLUSS_FLAGS.items():
+        assert st.SCHALTER_MAPPING[stufe][1] == flag, stufe
+
+
 def test_vocos_ft_zeugnis_unterscheidet_finetune_von_basis(monkeypatch) -> None:
     """M5-vocos-Zeuge: aktiv nur, wenn das TRAINIERTE Finetune-ONNX trägt —
     die Getter-Funktion fällt sonst auf die Basis zurück (Basis-gegen-Basis

@@ -45,34 +45,54 @@ log = logging.getLogger(__name__)
 # drei Verbraucher (Stufenmessung, Kompositions-Suche, Zeuge).
 from backend.core.dsp.wohlklang_zeuge import JND_TOLERANZ
 
+# Eine Tabelle je Stufe — Modulebene, damit ein generischer Test beide
+# Tabellen auf Konsistenz pinnt (D-K3-82-Klasse: KeyError bei A-1 und
+# 2026-11-11 erneut bei M5-vocos).
+SCHALTER_MAPPING: dict[str, tuple[str, str]] = {
+    "W-1": ("plugins.bigvgan_v2_plugin", "BIGVGAN_V2_HR_ACTIVATED"),
+    "W-2": ("backend.core.music_model_flags", "use_scnet_music"),
+    "W-3": ("backend.core.music_model_flags", "use_sgmse_musik"),
+    "W-4": ("backend.core.music_model_flags", "use_mp_senet_musik"),
+    "W-5": ("backend.core.music_model_flags", "use_df_musik"),
+    "W-6": ("backend.core.music_model_flags", "use_miipher_dit"),
+    "W-7": ("backend.core.music_model_flags", "use_harmonic_inpainting"),
+    # A-1 (2026-11-07): Audibility-Budget — Hörbarkeits-Überschuss als
+    # Obergrenze der Dämpfung (phase_03/phase_43). Kein W-Flag; eigene
+    # Stufe, damit die B3-/Kompositions-Messung sie adressieren kann.
+    "A-1": ("backend.core.music_model_flags", "use_audibility_budget"),
+    # M12-Stufen (2026-11-08): Kette-4-SOTA-Köpfe (D-K4-7/D-K4-8) —
+    # Never-worsen-Messung nach dem Training, Aktivierung nur über §4.
+    "M12-WF4": ("backend.core.music_model_flags", "use_wf4_warp_head"),
+    "M12-TPV2": ("backend.core.music_model_flags", "use_tp_v2_phase"),
+    # M5 (2026-11-11): vocos-48k-Musik-Finetune (D-K2-3/D-K3-90) —
+    # Never-worsen gegen die Basis; Aktivierung nur über §4. Der
+    # §1.4-Finisher wählt das Finetune NUR bei Flag True.
+    "M5-vocos": ("backend.core.music_model_flags", "use_vocos_music_ft"),
+}
+
+# Flag-Name je Stufe für den Objektivbeschluss — MUSS dieselbe Schlüsselmenge
+# wie SCHALTER_MAPPING tragen (Test-gepinnt).
+BESCHLUSS_FLAGS: dict[str, str] = {
+    "W-1": "BIGVGAN_V2_HR_ACTIVATED",
+    "W-2": "use_scnet_music",
+    "W-3": "use_sgmse_musik",
+    "W-4": "use_mp_senet_musik",
+    "W-5": "use_df_musik",
+    "W-6": "use_miipher_dit",
+    "W-7": "use_harmonic_inpainting",
+    "A-1": "use_audibility_budget",
+    "M12-WF4": "use_wf4_warp_head",
+    "M12-TPV2": "use_tp_v2_phase",
+    "M5-vocos": "use_vocos_music_ft",
+}
+
 
 def _schalter_lesen(name: str) -> tuple[object, str, object]:
     """Liefert (Modul, Attribut, aktueller Wert) je Stufen-Schalter."""
-    import backend.core.music_model_flags as mmf
-    import plugins.bigvgan_v2_plugin as bv
+    import importlib
 
-    mapping = {
-        "W-1": (bv, "BIGVGAN_V2_HR_ACTIVATED"),
-        "W-2": (mmf, "use_scnet_music"),
-        "W-3": (mmf, "use_sgmse_musik"),
-        "W-4": (mmf, "use_mp_senet_musik"),
-        "W-5": (mmf, "use_df_musik"),
-        "W-6": (mmf, "use_miipher_dit"),
-        "W-7": (mmf, "use_harmonic_inpainting"),
-        # A-1 (2026-11-07): Audibility-Budget — Hörbarkeits-Überschuss als
-        # Obergrenze der Dämpfung (phase_03/phase_43). Kein W-Flag; eigene
-        # Stufe, damit die B3-/Kompositions-Messung sie adressieren kann.
-        "A-1": (mmf, "use_audibility_budget"),
-        # M12-Stufen (2026-11-08): Kette-4-SOTA-Köpfe (D-K4-7/D-K4-8) —
-        # Never-worsen-Messung nach dem Training, Aktivierung nur über §4.
-        "M12-WF4": (mmf, "use_wf4_warp_head"),
-        "M12-TPV2": (mmf, "use_tp_v2_phase"),
-        # M5 (2026-11-11): vocos-48k-Musik-Finetune (D-K2-3/D-K3-90) —
-        # Never-worsen gegen die Basis; Aktivierung nur über §4. Der
-        # §1.4-Finisher wählt das Finetune NUR bei Flag True.
-        "M5-vocos": (mmf, "use_vocos_music_ft"),
-    }
-    modul, attr = mapping[name]
+    modul_name, attr = SCHALTER_MAPPING[name]
+    modul = importlib.import_module(modul_name)
     return modul, attr, getattr(modul, attr)
 
 
@@ -228,18 +248,7 @@ def beschluss_schreiben(name: str, messung: dict, out_dir: Path, seed: int) -> P
     erfuellt = messung["erfuellt"]
     daten = {
         "schema": "aurik.objektivbeschluss/1",
-        "flag": {
-            "W-1": "BIGVGAN_V2_HR_ACTIVATED",
-            "W-2": "use_scnet_music",
-            "W-3": "use_sgmse_musik",
-            "W-4": "use_mp_senet_musik",
-            "W-5": "use_df_musik",
-            "W-6": "use_miipher_dit",
-            "W-7": "use_harmonic_inpainting",
-            "A-1": "use_audibility_budget",
-            "M12-WF4": "use_wf4_warp_head",
-            "M12-TPV2": "use_tp_v2_phase",
-        }[name],
+        "flag": BESCHLUSS_FLAGS[name],
         "stufe": name,
         "referenz_songs": len({z["trial_id"].split("__")[0] for z in messung["zeilen"]}),
         "seed": seed,
