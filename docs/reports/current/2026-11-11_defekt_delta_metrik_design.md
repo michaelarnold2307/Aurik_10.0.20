@@ -3,7 +3,7 @@
 > Stand 2026-11-11. **IMPLEMENTIERT am selben Tag:** Norm §G191 (GEBOTE.md,
 > Kategorie XXVI), Spec 07 §8.6, Spec 01 §8.2 Punkt 13, Hörordnung §7-Zeuge,
 > WOHLKLANG_CLAIMS B3-Begleiter; Träger `backend/core/dsp/defekt_delta.py`,
-> `scripts/bewerte_defekt_delta.py`, 9 Vertragstests.
+> `scripts/bewerte_defekt_delta.py`, 12 Vertragstests.
 > (D-K3-95) und den ersten echten B3-Ablehnungen (W-3/M12, alle
 > pfad_wirksam ✓). **Report-only-Zeuge**, kein Gate, kein Flag-Flip,
 > keine Stärke-Änderung — Aktivierung im Entscheidungspfad wäre
@@ -77,8 +77,9 @@ JND verschlechtert — die Verschlechterung sitzt in den Regionen X/Y/Z"*.
 
 ## 4. Schema & Determinismus
 
-- Schema `aurik.defektdelta/1` — fail-closed: unbekanntes/altes Schema
-  ⇒ `verfuegbar=false` + Grund (Muster `ohr_prior`/2-Ablehnung).
+- Schema `aurik.defektdelta/2` — fail-closed: unbekanntes Schema ⇒
+  `verfuegbar=false` + Grund; `/1` (veraltete RMS-Matching-Definition) ⇒
+  `veraltet` statt still interpretiert (Muster `ohr_prior`/2-Ablehnung).
 - Seed 42, sha256 der Eingangs-WAVs im Beleg, kein `time.time()` in
   Entscheidungslogik (§G5 (copilot-instructions.md)).
 - Stereo-Layout-Invariante: (C, N) intern, Kanal-Mittelung explizit

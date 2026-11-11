@@ -122,8 +122,8 @@ Priorität C→B→A→D→E/F:
   `scripts/bewerte_defekt_delta.py` (CLI), `tests/unit/test_defekt_delta.py`
   (9 modell-freie Tests). **Report-Only** bis Richtungs-Zertifizierung
   (Hör-Labels, D-K4-9). **Erstbelege 2026-11-11 (Jets·clipping):**
-  (1) No-Op auf Regionsebene belegt (alle Δ=0 — der D-K3-97-Bit-identisch-Befund wird sichtbar); (2) Kontrast-Messung dokumentiert zwei Metrik-Grenzen: RMS-Matching nivelliert Sättigung, absolute 0,98-Clip-Schwelle + 2048er-Spektralfenster (Zertifikats-Grenzen-Doku); nächste Iteration: Body-Perzentil-Matching + relative Clip-Statistik. Belege:
-  `docs/reports/current/2026-11-11_defekt_delta_metrik_design.md` + `2026-11-11_b3_defektdelta_erstbelege.md` (+ `b3_defektdelta_jets_clipping.json` / `_kontrast.json`).
+  (1) No-Op auf Regionsebene belegt (alle Δ=0 — der D-K3-97-Bit-identisch-Befund wird sichtbar); (2) Kontrast-Messung dokumentierte zwei Metrik-Grenzen → **Schema /2 UMGESETZT:** Body-Perzentil-Matching (p25) statt RMS + relative Sättigungs-Komponente `flat_top_anteil` (gain-invariant) — die Kontrast-v2-Messung lokalisiert die Flat-Top-Verschlechterung in 172/173 Regionen (Δ ≈ −0,33); /1-Belege gelten als veraltet. Belege:
+  `docs/reports/current/2026-11-11_defekt_delta_metrik_design.md` + `2026-11-11_b3_defektdelta_erstbelege.md` (+ `b3_defektdelta_jets_clipping(_v2).json` / `_kontrast(_v2).json`).
 
 ## 3. Zustand & Wiederherstellung nach Abbruch/Reboot
 

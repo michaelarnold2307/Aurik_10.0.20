@@ -30,7 +30,8 @@ from backend.core.dsp.wohlklang_zeuge import JND_TOLERANZ  # EINE Wahrheit
 
 logger = logging.getLogger(__name__)
 
-SCHEMA = "aurik.defektdelta/1"
+SCHEMA = "aurik.defektdelta/2"
+_SCHEMA_VERALTET = "aurik.defektdelta/1"  # RMS-Matching-Definition (Belege veraltet, §G191 (GEBOTE.md))
 # defektlast ist "höher = mehr Defekte"; musik_mos "höher = besser".
 RICHTUNG_NIEDRIGER = "niedriger_besser"
 RICHTUNG_HOEHER = "hoeher_besser"
@@ -81,26 +82,50 @@ def defektlast_lang(audio: Any, sample_rate: int) -> float:
     return round(clip * 2.0 + flatness + hf_verlust * 0.5, 4)
 
 
-def _rms(x: np.ndarray) -> float:
-    return float(np.sqrt(np.mean(np.square(x, dtype=np.float64))) + 1e-12)
-
-
 def pegel_gain(signal: np.ndarray, referenz: np.ndarray) -> float:
-    """RMS-Matching-Gain, um ``signal`` auf den Pegel der ``referenz`` zu heben.
+    """Body-Perzentil-Matching (p25 von |x|), um ``signal`` auf den Pegel der
+    ``referenz`` zu heben.
 
     D-K3-95-Lehre: ungematcht misst man den Loudness-Regelkreis, nicht die
-    Reparatur. Stille-Referenz (RMS unter 1e-6) ⇒ Gain 1,0 —
-    §V6 (copilot-instructions.md): kein stiller Ausfall, Warnung wird geloggt.
+    Reparatur. RMS ist dafür **ungeeignet**: Sättigung hebt die RMS an, das
+    RMS-Matching zieht den Sättigungs-Beweis wieder unter die Schwelle
+    (Erstbeleg 2026-11-11_b3_defektdelta_erstbelege.md §3). Das p25-Body-
+    Perzentil ist ausreißer-/Flat-Top-robust. Stille-Referenz (p25 unter
+    1e-6) ⇒ Gain 1,0 — §V6 (copilot-instructions.md): kein stiller Ausfall,
+    Warnung wird geloggt.
     """
-    rms_sig = _rms(signal)
-    rms_ref = _rms(referenz)
-    if rms_ref < 1e-6:
+    a = np.abs(np.asarray(signal, dtype=np.float64).reshape(-1))
+    b = np.abs(np.asarray(referenz, dtype=np.float64).reshape(-1))
+    if a.size < 4 or b.size < 4:
+        logger.warning("§V6 (copilot-instructions.md) pegel_gain: Signal zu kurz — Gain 1,0")
+        return 1.0
+    p25_sig = float(np.percentile(a, 25.0))
+    p25_ref = float(np.percentile(b, 25.0))
+    if p25_ref < 1e-6:
         logger.warning("§V6 (copilot-instructions.md) pegel_gain: Referenz ist Stille — Gain 1,0")
         return 1.0
-    if rms_sig < 1e-6:
+    if p25_sig < 1e-6:
         logger.warning("§V6 (copilot-instructions.md) pegel_gain: Signal ist Stille — Gain 1,0")
         return 1.0
-    return min(max(rms_ref / rms_sig, 0.25), 4.0)
+    return min(max(p25_ref / p25_sig, 0.25), 4.0)
+
+
+def flat_top_anteil(audio: Any, band: float = 0.002) -> float:
+    """Sättigungs-Zusatzkomponente: Anteil der Samples an der EIGENEN
+    Hüllen-Decke (|x| ≥ max(|x|) − band).
+
+    Relativ und gain-invariant: Skalierung verschiebt die Decke mit — die
+    absolute 0,98-Schwelle der zertifizierten Referenz kann genau das nicht
+    (Erstbeleg §3, D-K3-97-Klasse). Höher = mehr Sättigung.
+    **Nicht zertifiziert** — Report-Only-Zeuge (§G191 (GEBOTE.md)).
+    """
+    x = _mono(audio)
+    if x.size == 0:
+        return 0.0
+    m = float(np.max(np.abs(x)))
+    if m < 1e-6:
+        return 0.0
+    return float(np.mean(np.abs(x) >= m - band))
 
 
 def _delta_qualitaet(wert_schaden: float, wert_restauriert: float, richtung: str) -> float:
@@ -170,6 +195,8 @@ def berechne_defekt_delta(
         w_schaden = float(messe(r_schaden, int(sample_rate)))
         w_rest = float(messe(r_rest * gain_rest, int(sample_rate)))
         delta = _delta_qualitaet(w_schaden, w_rest, richtung)
+        ft_schaden = flat_top_anteil(r_schaden)
+        ft_rest = flat_top_anteil(r_rest * gain_rest)
         eintrag: dict[str, Any] = {
             "start": int(region["start"]),
             "end": int(region["end"]),
@@ -180,6 +207,10 @@ def berechne_defekt_delta(
             "delta": round(delta, 4),
             "jnd_klasse": _jnd_klasse(delta),
             "gain_restauriert": round(gain_rest, 4),
+            "flat_top_schaden": round(ft_schaden, 4),
+            "flat_top_restauriert": round(ft_rest, 4),
+            "delta_flat_top": round(ft_schaden - ft_rest, 4),
+            "jnd_klasse_flat_top": _jnd_klasse(ft_schaden - ft_rest),
             "reparaturquote_q": None,
         }
         if mono_clean is not None:
@@ -190,6 +221,7 @@ def berechne_defekt_delta(
                 delta_clean = _delta_qualitaet(w_schaden, w_clean, richtung)
                 eintrag["metrik_clean"] = w_clean
                 eintrag["gain_clean"] = round(gain_clean, 4)
+                eintrag["flat_top_clean"] = round(flat_top_anteil(r_clean * gain_clean), 4)
                 if delta_clean > _JND:
                     eintrag["reparaturquote_q"] = round(delta / delta_clean, 4)
                 else:
@@ -215,8 +247,10 @@ def berechne_defekt_delta(
 def _aggregiere(ergebnisse: list[dict[str, Any]]) -> dict[str, Any]:
     typen: dict[str, list[float]] = {}
     quoten: dict[str, list[float]] = {}
+    flattops: dict[str, list[float]] = {}
     for e in ergebnisse:
         typen.setdefault(str(e["typ"]), []).append(float(e["delta"]))
+        flattops.setdefault(str(e["typ"]), []).append(float(e.get("delta_flat_top", 0.0)))
         if e.get("reparaturquote_q") is not None:
             quoten.setdefault(str(e["typ"]), []).append(float(e["reparaturquote_q"]))
     aggregat: dict[str, Any] = {}
@@ -226,6 +260,8 @@ def _aggregiere(ergebnisse: list[dict[str, Any]]) -> dict[str, Any]:
             "delta_median": round(float(np.median(deltas)), 4),
             "anteil_ueber_jnd": round(float(np.mean([d >= _JND for d in deltas])), 4),
             "anteil_verschlechtert": round(float(np.mean([d <= -_JND for d in deltas])), 4),
+            "flat_top_delta_median": round(float(np.median(flattops[typ])), 4),
+            "anteil_verschlechtert_flat_top": round(float(np.mean([d <= -_JND for d in flattops[typ]])), 4),
             "reparaturquote_median": (round(float(np.median(quoten[typ])), 4) if quoten.get(typ) else None),
         }
     return aggregat
@@ -255,9 +291,10 @@ def beleg_schreiben(ergebnis: dict[str, Any], zielpfad: str, quellen: dict[str, 
 def lade_defekt_delta(beleg: dict[str, Any] | str) -> dict[str, Any]:
     """Fail-closed-Lader: fremdes Schema ⇒ verfuegbar=false + Grund.
 
-    Akzeptiert einen Beleg-Dict oder einen Pfad (str). Muster:
-    ``ohr_prior``/2-Ablehnung (D-K3-89) — ein Beleg mit anderer Semantik
-    wird nie still interpretiert.
+    Akzeptiert einen Beleg-Dict oder einen Pfad (str). ``/1``-Belege tragen
+    die veraltete RMS-Matching-Definition und werden als ``veraltet``
+    markiert statt still interpretiert (Muster ``ohr_prior``/2-Ablehnung,
+    D-K3-89).
     """
     import json
 
@@ -265,13 +302,18 @@ def lade_defekt_delta(beleg: dict[str, Any] | str) -> dict[str, Any]:
     if isinstance(beleg, str):
         with open(beleg, encoding="utf-8") as f:
             daten = json.load(f)
-    if not isinstance(daten, dict) or daten.get("schema") != SCHEMA:
-        fremd = daten.get("schema") if isinstance(daten, dict) else "unbekannt"
+    schema = daten.get("schema") if isinstance(daten, dict) else "unbekannt"
+    if schema == SCHEMA:
+        return {"verfuegbar": True, "beleg": daten}
+    if schema == _SCHEMA_VERALTET:
         return {
             "verfuegbar": False,
-            "grund": f"fremdes schema {fremd!r} — erwartet {SCHEMA!r}",
+            "grund": f"veraltetes schema {schema!r} (RMS-Matching) — neu messen mit {SCHEMA!r}",
         }
-    return {"verfuegbar": True, "beleg": daten}
+    return {
+        "verfuegbar": False,
+        "grund": f"fremdes schema {schema!r} — erwartet {SCHEMA!r}",
+    }
 
 
 _REGION_SCHWELLE = 0.1  # Severity-Untergrenze der Regionen-Extraktion (dokumentierter Vertrag)

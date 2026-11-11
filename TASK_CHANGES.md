@@ -1,19 +1,23 @@
 # TASK_CHANGES — Live-Ledger der aktuellen Aufgabe
 
-> Generiert von `scripts/change_ledger.py snapshot` (Base: `HEAD`, Stand: 2026-11-11 20:48 CET).
+> Generiert von `scripts/change_ledger.py snapshot` (Base: `HEAD`, Stand: 2026-11-11 21:01 CET).
 > CI (`ci-lite.yml` pr-evidence-gate) erzwingt Abdeckung: jede geänderte Code-Datei muss hier stehen.
 
 ## Geänderte Dateien
 
 | Status | Pfad | Art |
 |---|---|---|
+| M | `.github/GEBOTE.md` | modifiziert |
+| M | `.github/specs/07_quality_and_tests.md` | modifiziert |
+| M | `TASK_CHANGES.md` | modifiziert |
 | M | `backend/core/dsp/defekt_delta.py` | modifiziert |
 | M | `docs/SOTA_HANDOVER.md` | modifiziert |
-| M | `scripts/bewerte_defekt_delta.py` | modifiziert |
+| M | `docs/reports/current/2026-11-11_b3_defektdelta_erstbelege.md` | modifiziert |
+| M | `docs/reports/current/2026-11-11_defekt_delta_metrik_design.md` | modifiziert |
+| M | `reports/spec_drift_baseline.json` | modifiziert |
 | M | `tests/unit/test_defekt_delta.py` | modifiziert |
-| ?? | `docs/reports/current/2026-11-11_b3_defektdelta_erstbelege.md` | ungetrackt |
-| ?? | `docs/reports/current/b3_defektdelta_jets_clipping.json` | ungetrackt |
-| ?? | `docs/reports/current/b3_defektdelta_jets_kontrast.json` | ungetrackt |
+| ?? | `docs/reports/current/b3_defektdelta_jets_clipping_v2.json` | ungetrackt |
+| ?? | `docs/reports/current/b3_defektdelta_jets_kontrast_v2.json` | ungetrackt |
 
 ## Entscheidungen
 

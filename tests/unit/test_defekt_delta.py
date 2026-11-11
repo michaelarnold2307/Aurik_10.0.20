@@ -189,15 +189,45 @@ def test_stille_region_erhaelt_gain_1_ohne_nan() -> None:
 
 
 def test_schema_fail_closed() -> None:
-    """Unbekanntes Schema wird abgelehnt statt interpretiert (Muster
-    ohr_prior/2-Ablehnung, D-K3-89)."""
+    """Fremdes Schema wird abgelehnt, /1 (RMS-Matching) als veraltet markiert
+    statt still interpretiert (Muster ohr_prior/2-Ablehnung, D-K3-89)."""
     gueltig = {"schema": dd.SCHEMA, "jnd": 0.05, "aggregate": {}}
     assert dd.lade_defekt_delta(gueltig)["verfuegbar"] is True
+    alt = {"schema": "aurik.defektdelta/1", "aggregate": {}}
+    geladen_alt = dd.lade_defekt_delta(alt)
+    assert geladen_alt["verfuegbar"] is False
+    assert "veraltet" in geladen_alt["grund"]
     fremd = {"schema": "aurik.defektdelta/9", "aggregate": {}}
     geladen = dd.lade_defekt_delta(fremd)
     assert geladen["verfuegbar"] is False
-    assert "grund" in geladen
-    assert "fehlt" in geladen["grund"] or "schema" in geladen["grund"]
+    assert "fremdes" in geladen["grund"]
+
+
+def test_flat_top_saettigung_wird_relativ_erkannt() -> None:
+    """Erstbeleg §3 (D-K3-97-Klasse): die relative Flat-Top-Statistik muss
+    Sättigung sehen, die das Body-Matching nicht nivelliert — verschlechtert
+    in jnd_klasse_flat_top bei hart geclippter Variante."""
+    n = 16384
+    t = np.linspace(0.0, 2.0 * np.pi * 256.0, n, endpoint=False)
+    schaden = (0.5 * np.sin(t)).astype(np.float32)  # sauberer Sinus
+    variant = np.clip(schaden, -0.35, 0.35).astype(np.float32)  # Flat-Tops bei ±0,35
+    reg = [{"start": 0, "end": n, "typ": "soft_saturation", "staerke": 0.7}]
+    beleg = dd.berechne_defekt_delta(
+        regionen=reg,
+        schaden=schaden,
+        restauriert=variant,
+        clean=None,
+        sample_rate=44100,
+    )
+    w = beleg["regionen"][0]
+    # p25-Matching lässt den Body gleich (Gain ≈ 1) — die Decke bleibt relativ sichtbar
+    assert w["gain_restauriert"] == pytest.approx(1.0, abs=0.05)
+    assert w["flat_top_schaden"] < 0.05
+    assert w["flat_top_restauriert"] > 0.3
+    assert w["delta_flat_top"] < -0.25
+    assert w["jnd_klasse_flat_top"] == "verschlechtert"
+    # Zusatzkomponente aggregiert je Typ
+    assert beleg["aggregate"]["soft_saturation"]["flat_top_delta_median"] < -0.25
 
 
 def test_aggregat_nach_defektklasse() -> None:

@@ -69,8 +69,24 @@
 - **Erbracht:** erster End-to-End-Beleg des Witness auf echtem Material
   (No-Op sichtbar) + Kontrast-Beleg, der die Metrik-Grenzen
   **maschinenlesbar** dokumentiert.
-- **Offen:** relative Sättigungs-Komponente (Body-Perzentil-Matching +
-  relative Clip-Statistik) als eigene Iteration — klangwirksam ist das
-  nicht (Report-Only), aber es ändert die Mess-Definition ⇒ eigener
-  Zyklus mit Test-Anpassung; Richtungs-Zertifizierung über Hör-Labels
-  (D-K4-9) bleibt Voraussetzung für jede B3-Nutzung.
+- **UMSGESETZT (gleicher Zyklus):** relative Sättigungs-Komponente —
+  Schema `aurik.defektdelta/2` (Body-Perzentil-Matching p25 statt RMS +
+  `flat_top_anteil` relativ zur eigenen Hüllen-Decke, gain-invariant);
+  `/1`-Belege werden als `veraltet` markiert statt still interpretiert
+  (ohr_prior-Lehre, D-K3-89).
+- **Offen:** Richtungs-Zertifizierung über Hör-Labels (D-K4-9) — bleibt
+  Voraussetzung für jede B3-Nutzung (Report-Only-Zeuge).
+
+## 5. Iteration /2 — Ergebnis (v2-Belege)
+
+- **Beleg 1 v2** (`b3_defektdelta_jets_clipping_v2.json`): No-Op-Befund
+  bestätigt — alle Δ = 0, alle `delta_flat_top` = 0 (restauriert ist
+  bit-identisch zum Schaden).
+- **Beleg 2 v2** (`b3_defektdelta_jets_kontrast_v2.json`): Die
+  Flat-Top-Variante wird jetzt **lokalisiert**: **172/173 Regionen**
+  `jnd_klasse_flat_top = verschlechtert` (Median Δ ≈ −0,33, Anteil 1,0 in
+  allen 11 Defekttypen; Beispiel phase_rotation: flat_top 0,015 → 0,345).
+  Die relative Statistik sieht die Sättigung, die das RMS-Matching unter
+  die absolute 0,98-Schwelle gezogen hatte — die in §3 dokumentierten
+  Grenzen sind damit behoben bzw. als Zertifikats-Grenzen der Referenz
+  dokumentiert.

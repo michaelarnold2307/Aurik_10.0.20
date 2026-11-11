@@ -418,20 +418,29 @@ automatisch geprüft werden.
 - **Eingabe:** Schadens-Tripel (clean / schaden / restauriert) aus
   `scripts/erstelle_schadens_proben.py` + DefectScanner-Regionen
   (start/end/typ/staerke) als Regionen-JSON.
-- **Pegel-Matching je Region** (RMS auf den Schaden) — ungematcht misst man den
-  Loudness-Regelkreis statt der Reparatur (D-K3-95-Lehre); Stille-/zu kurze
-  Regionen: Gain 1,0 + §V6 (copilot-instructions.md)-Warnung, kein stiller Ausfall.
+- **Pegel-Matching je Region** (robustes Body-Perzentil p25 von |x| auf den
+  Schaden) — ungematcht misst man den Loudness-Regelkreis statt der Reparatur
+  (D-K3-95-Lehre); RMS ist dafür **ungeeignet** (Sättigung hebt die RMS an,
+  RMS-Matching nivelliert den Sättigungs-Beweis — Erstbeleg 2026-11-11);
+  Stille-/zu kurze Regionen: Gain 1,0 + §V6 (copilot-instructions.md)-Warnung,
+  kein stiller Ausfall.
 - **Regionen-Metriken:** `defektlast_lang` — Voll-Fenster-Verallgemeinerung der
   zertifizierten Referenz `wohlklang_zeuge.defektlast`; auf dem
   16384-Samples-Fenster bit-identisch (Test-gepinnt); **trägt nicht** das
   Richtungszertifikat (Grenzen: Sättigungs-Blindheit dokumentiert, D-K3-97).
   Optional `musik_mos` (Mindestfenster dokumentiert, Padding-Regel).
+  **Sättigungs-Zusatzkomponente** `flat_top_anteil` (Anteil der Samples an der
+  EIGENEN Hüllen-Decke, gain-invariant, relativ — die absolute 0,98-Schwelle
+  der Referenz kann Sättigung nach Body-Matching nicht sehen; nicht
+  zertifiziert, Report-Only).
 - **Reparaturquote** Q(r) = Δ(schaden→restauriert) / Δ(schaden→clean) je Region;
   JND-Klassifikation mit `wohlklang_zeuge.JND_TOLERANZ` (0,05).
 - **Aggregate** je DefectType (n, Median Δ, Median Q, Anteil ≥ JND) +
   Kontrollregionen (Δ ≈ 0 erwartet — Never-worsen-Leitplanke der Metrik selbst).
-- **Schema** `aurik.defektdelta/1`, fail-closed (unbekanntes/altes Schema ⇒
-  `verfuegbar=false` + Grund, Muster `ohr_prior`/2-Ablehnung).
+- **Schema** `aurik.defektdelta/2` (Definition 2026-11-11: Body-Perzentil-
+  Matching + Sättigungs-Zusatzkomponente), fail-closed (unbekanntes Schema ⇒
+  `verfuegbar=false` + Grund; `/1` = veraltete RMS-Matching-Definition ⇒
+  `veraltet` statt still interpretiert, Muster `ohr_prior`/2-Ablehnung).
 - **Determinismus** §G5 (copilot-instructions.md): Seed 42, sha256 der
   Eingangs-WAVs im Beleg, kein `time.time()` in Entscheidungslogik;
   Stereo-Layout-Invariante (C, N).
