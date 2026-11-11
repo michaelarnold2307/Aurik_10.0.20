@@ -74,6 +74,29 @@ def tp_v2_modell_zeugnis() -> dict:
     }
 
 
+def vocos_ft_modell_zeugnis() -> dict:
+    """M5 (D-K3-90): prüft, ob das TRAINIERTE vocos-48k-Finetune trägt.
+
+    `get_vocos_music_ft_plugin()` fällt bei fehlendem/nicht ladbarem Artefakt
+    auf die BASIS zurück — ohne Zeugen-Prüfung würde die AN/AUS-Messung die
+    Basis gegen die Basis vergleichen (No-Op-Artefakt, D-K3-85-Klasse).
+    `aktiv` ist nur True, wenn der Herkunfts-Zeuge `weights_basename` exakt
+    das Finetune-ONNX nennt (§III.13 (copilot-instructions.md)).
+    """
+    from plugins.vocos_plugin import get_vocos_music_ft_plugin
+
+    try:
+        plug = get_vocos_music_ft_plugin()
+    except Exception:
+        plug = None
+    ist_ft = bool(plug and plug.weights_basename == "vocos_48khz_music_ft.onnx")
+    return {
+        "vorhanden": ist_ft,
+        "wert": {"quelle": plug.weights_basename if plug else ""},
+        "aktiv": ist_ft,
+    }
+
+
 # (c) Deklarative Zeugen-Tabelle — nur verifizierte Schlüssel:
 # W-1: "hr_v1"-Witness in den Phasen-Metadaten (attempted/applied),
 #      belegt in phase_03_denoise.py / phase_07_harmonic_restoration.py /
@@ -87,6 +110,7 @@ PFAD_ZEUGEN: dict[str, dict] = {
     "W-1": {"schluessel": "hr_v1", "aktiv_praedikat": "attempted_or_applied"},
     "M12-WF4": {"modell": wf4_modell_zeugnis},
     "M12-TPV2": {"modell": tp_v2_modell_zeugnis},
+    "M5-vocos": {"modell": vocos_ft_modell_zeugnis},
 }
 
 

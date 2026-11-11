@@ -67,6 +67,10 @@ def _schalter_lesen(name: str) -> tuple[object, str, object]:
         # Never-worsen-Messung nach dem Training, Aktivierung nur über §4.
         "M12-WF4": (mmf, "use_wf4_warp_head"),
         "M12-TPV2": (mmf, "use_tp_v2_phase"),
+        # M5 (2026-11-11): vocos-48k-Musik-Finetune (D-K2-3/D-K3-90) —
+        # Never-worsen gegen die Basis; Aktivierung nur über §4. Der
+        # §1.4-Finisher wählt das Finetune NUR bei Flag True.
+        "M5-vocos": (mmf, "use_vocos_music_ft"),
     }
     modul, attr = mapping[name]
     return modul, attr, getattr(modul, attr)

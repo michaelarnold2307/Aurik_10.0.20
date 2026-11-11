@@ -409,6 +409,35 @@ class AurikDenker:
                 _cpc_reset_exc,
             )
 
+        # ── §V8/§G1 (copilot-instructions.md): Song-Isolation — ERWEITERT 2026-11-11
+        # (D-K3-95/97-Leck-Befund): Boogie·clipping war solo 3× bit-identisch
+        # (be0e87cb…), mit vinyl+kassette VOR dem Paar im selben Prozess aber
+        # 50ef5583… — vorherige Restaurationen veränderten die Entscheidung des
+        # clipping-Paars. Diese Stateful-Module hatten Reset-Funktionen OHNE
+        # Aufrufer; ab jetzt werden sie pro Song zurückgesetzt (je Modul
+        # §V6-geschützt, Fehler unkritisch).
+        import importlib as _importlib_v8
+
+        _song_resets_v8: list[tuple[str, str]] = [
+            ("backend.core.calibration_context", "reset_calibration_context"),
+            ("backend.core.quality_feedback_loop", "reset_steer_state"),
+            ("backend.core.dsp.dynamics_budget", "reset_dynamics_budget"),
+            ("backend.core.phase_effectiveness_cache", "reset_scope"),
+            ("backend.core.stereo_drift_state", "reset_stereo_drift_state"),
+            ("backend.core.listening_witness", "reset_witness_bundle_cache"),
+            ("backend.core.cross_phase_naturalness", "reset_tracker"),
+            ("backend.core.mushra_proxy", "reset_mushra_proxy"),
+        ]
+        for _mod_name_v8, _fn_name_v8 in _song_resets_v8:
+            try:
+                getattr(_importlib_v8.import_module(_mod_name_v8), _fn_name_v8)()
+            except Exception as _reset_v8_exc:
+                logger.debug(
+                    "§V6 (copilot-instructions.md) %s-Reset nicht möglich (unkritisch): %s",
+                    _mod_name_v8,
+                    _reset_v8_exc,
+                )
+
         # ── §3.5 Preview-Mode: 30s Vorschau vor voller Restaurierung ─────
         _PREVIEW_DURATION_S = 30.0
         from backend.api.bridge import normalize_user_mode as _bridge_norm

@@ -6,7 +6,7 @@
   "seed": 42,
   "never_worsen": true,
   "signifikant": false,
-  "defekt_fallbacks": 1,
+  "defekt_fallbacks": 0,
   "blind_ausgewertet": true,
   "pfad_wirksam": true,
   "messung": "docs/reports/current/b3_stufenmessung_M12-WF4.json",

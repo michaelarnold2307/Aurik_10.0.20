@@ -6,13 +6,14 @@
   "seed": 42,
   "never_worsen": true,
   "signifikant": false,
-  "defekt_fallbacks": 0,
+  "defekt_fallbacks": 9,
   "blind_ausgewertet": true,
+  "pfad_wirksam": true,
   "messung": "docs/reports/current/b3_stufenmessung_W-3.json",
   "zielmetrik": {
     "name": "musik_mos (G-2)",
-    "vorteile": "0/6",
-    "p_wert": 0.03125
+    "vorteile": "2/6",
+    "p_wert": 0.6875
   },
   "ergebnis": "ABGELEHNT",
   "quelle": "scripts/b3_stufenmessung.py"

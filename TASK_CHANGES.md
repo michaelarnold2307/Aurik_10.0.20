@@ -1,6 +1,6 @@
 # TASK_CHANGES — Live-Ledger der aktuellen Aufgabe
 
-> Generiert von `scripts/change_ledger.py snapshot` (Base: `HEAD`, Stand: 2026-11-11 13:17 CET).
+> Generiert von `scripts/change_ledger.py snapshot` (Base: `HEAD`, Stand: 2026-11-11 17:44 CET).
 > CI (`ci-lite.yml` pr-evidence-gate) erzwingt Abdeckung: jede geänderte Code-Datei muss hier stehen.
 
 ## Geänderte Dateien
@@ -8,20 +8,20 @@
 | Status | Pfad | Art |
 |---|---|---|
 | M | `.github/SOTA_DEFICIT_REGISTER.md` | modifiziert |
-| M | `TASK_CHANGES.md` | modifiziert |
 | M | `audit/daily_real_audio_gate_status.json` | modifiziert |
 | M | `audit/daily_real_audio_gate_status.md` | modifiziert |
-| M | `backend/core/phases/phase_07_declipper.py` | modifiziert |
+| M | `denker/aurik_denker.py` | modifiziert |
 | M | `docs/SOTA_HANDOVER.md` | modifiziert |
-| M | `docs/TODOS_SOTA_ROADMAP.md` | modifiziert |
+| M | `docs/reports/current/2026-11-11_schadens_proben_sinnbeweis.md` | modifiziert |
 | M | `docs/reports/current/train_job_c2_cantus_finetune.json` | modifiziert |
 | M | `docs/reports/current/train_job_vocos_48khz_finetune.json` | modifiziert |
-| M | `tests/unit/test_phase_07_declipper.py` | modifiziert |
+| M | `scripts/b3_pfad_wirksamkeit.py` | modifiziert |
+| M | `scripts/b3_stufenmessung.py` | modifiziert |
+| M | `tests/unit/test_b3_pfad_wirksamkeit.py` | modifiziert |
+| M | `tests/unit/test_denker_sota_contracts.py` | modifiziert |
 | ?? | `audit/uat_results_2026-11-11.json` | ungetrackt |
 | ?? | `docs/UAT_REPORT_2026-11-11.md` | ungetrackt |
 | ?? | `docs/UAT_SCORECARD_2026-11-11.md` | ungetrackt |
-| ?? | `docs/reports/current/2026-11-11_declip_never_worsen_und_ursachenpruefung.md` | ungetrackt |
-| ?? | `docs/reports/current/2026-11-11_schadensbewertung_nach_declip_fix.json` | ungetrackt |
 | ?? | `docs/reports/current/uat_results_latest.json` | ungetrackt |
 
 ## Entscheidungen

@@ -91,16 +91,28 @@ Rollback` — die Never-worsen-Guards greifen wie spezifiziert.
 ## 6. Was daraus folgt
 
 **Nicht** gemacht — und bewusst nicht: kein Eingriff in den Klangpfad, kein
-Flag-Flip, keine W-Stufen-Buchung. Die Ursache liegt im Declipping-/Pegel-Pfad
-und wäre klangwirksam (§V7 (copilot-instructions.md), §4-Verfahren).
+Flag-Flip, keine W-Stufen-Buchung. Die zunächst vermutete Declip-Ursache ist
+**gemessen widerlegt** (D-K3-97, `docs/reports/current/2026-11-11_declip_never_worsen_und_ursachenpruefung.md`):
+`DeclipperPhase` läuft im UV3-Produktionspfad nicht (einzige Aufrufstelle
+`backend/core/coordinated_repair.py:1361`), PCHIP ist formtreu und auf den
+Sättigungs-Proben wirkungslos. Der Never-worsen-Guard in der Phase bleibt —
+mit gültiger Begründung: PCHIP kostet auf echten Sparse-Hard-Clips bis zu
+−18 dB SDR. Der offene Ort ist die **Export-/Entscheidungskette** (Gain 0,30
+vs. bit-identisch) und die **Reproduzierbarkeit** des UV3-Pfads.
 
 Nächste Schritte, in dieser Reihenfolge:
 
-1. **Ganze Titel statt Snippets** (1 Titel × 4 Rezepte) im trainingsfreien
+1. **Reproduzierbarkeit zuerst:** dasselbe Clipping-Paar zweimal durch den
+   Produktionspfad, beide Logs + WAV-Hashes vergleichen (RMS-Rauschen ~6,5e-4
+   macht den Pfad potenziell nicht bit-reproduzierbar, D-K3-85). Erst danach
+   ist „repariert/nicht repariert" eine Aussage.
+2. **Export-/Entscheidungskette:** warum exportiert die Pipeline Jets
+   gelegentlich mit Gain 0,30 (verzerrt) und gelegentlich bit-identisch?
+   Kandidaten: Loudness-Ziel gegen Qualitäts-Gate, Goal-Compensation-
+   Sekundärlauf (−91,1 dBFS, vom Silence-Guard abgefangen).
+3. **Ganze Titel statt Snippets** (1 Titel × 4 Rezepte) im trainingsfreien
    GPU-Fenster — klärt, ob der Clipping-Effekt ein Snippet-Artefakt ist.
-2. **Declip-Pfad prüfen**: warum senkt Clipping den Pegel auf 0,30 und warum
-   steigt `defektlast`? Kandidat: `tanh(8x)`-Sättigung wird als
-   Loudness-/Dynamik-Fall fehlklassifiziert.
-3. **`defektlast`-Blindstelle** bei Sättigung: entweder Metrik erweitern oder
-   die Grenze im Zertifikat dokumentieren (`musik_mos` deckt den Fall ab).
-4. Erst danach eine Rezeptur-Entscheidung — und die braucht die Hör-Instanz.
+4. **`defektlast`-Grenzen** bei Sättigung UND dem 0,34-s-Fenster: entweder
+   Metrik erweitern oder als Zertifikats-Grenzen dokumentieren (`musik_mos`
+   deckt die Sättigung ab).
+5. Erst danach eine Rezeptur-Entscheidung — und die braucht die Hör-Instanz.

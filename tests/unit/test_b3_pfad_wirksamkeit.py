@@ -242,3 +242,39 @@ def test_beschluss_ungueltige_messung_ist_nicht_bewertbar(tmp_path, monkeypatch)
     assert daten["ergebnis"] == "NICHT_BEWERTBAR"
     assert daten["pfad_wirksam"] is False
     assert "messung_ungueltig_grund" in daten
+
+
+def test_m5_vocos_stage_existiert_und_zeigt_auf_flag() -> None:
+    """M5-vocos-Stufe (2026-11-11, D-K3-90): messbar via `_schalter_lesen`,
+    Flag-Default AUS (bit-identisches Bestandsverhalten)."""
+    from scripts.b3_stufenmessung import _schalter_lesen
+
+    _modul, attr, wert = _schalter_lesen("M5-vocos")
+    assert attr == "use_vocos_music_ft"
+    assert wert is False
+
+
+def test_vocos_ft_zeugnis_unterscheidet_finetune_von_basis(monkeypatch) -> None:
+    """M5-vocos-Zeuge: aktiv nur, wenn das TRAINIERTE Finetune-ONNX trägt —
+    die Getter-Funktion fällt sonst auf die Basis zurück (Basis-gegen-Basis
+    wäre ein No-Op-Artefakt, D-K3-85-Klasse)."""
+    import scripts.b3_pfad_wirksamkeit as pw
+
+    class _FakePlug:
+        def __init__(self, basename: str) -> None:
+            self.weights_basename = basename
+
+    monkeypatch.setattr(
+        "plugins.vocos_plugin.get_vocos_music_ft_plugin",
+        lambda: _FakePlug("vocos_48khz_music_ft.onnx"),
+    )
+    assert pw.vocos_ft_modell_zeugnis()["aktiv"] is True
+
+    monkeypatch.setattr(
+        "plugins.vocos_plugin.get_vocos_music_ft_plugin",
+        lambda: _FakePlug("vocos_48khz.onnx"),
+    )
+    assert pw.vocos_ft_modell_zeugnis()["aktiv"] is False
+
+    monkeypatch.setattr("plugins.vocos_plugin.get_vocos_music_ft_plugin", lambda: None)
+    assert pw.vocos_ft_modell_zeugnis()["aktiv"] is False

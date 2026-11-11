@@ -163,6 +163,28 @@ def test_low_confidence_cross_song_channel_is_gone() -> None:
     assert not hasattr(module, "get_low_confidence_stripped_families")
 
 
+def test_denker_reset_kette_deckt_verwaiste_stateful_module_ab() -> None:
+    """§V8/§G1 (copilot-instructions.md): D-K3-95/97-Leck-Befund — die Reset-Kette
+    im Denker-Einstieg muss auch die Module zurücksetzen, deren Reset-Funktionen
+    zuvor OHNE Aufrufer waren (Boogie·clipping solo 3× identisch, mit Vorsong im
+    selben Prozess verschieden)."""
+    from pathlib import Path as _P
+
+    src = (_P(__file__).resolve().parents[2] / "denker" / "aurik_denker.py").read_text(encoding="utf-8")
+    for token in (
+        "_song_resets_v8",
+        "reset_calibration_context",
+        "reset_steer_state",
+        "reset_dynamics_budget",
+        "reset_scope",
+        "reset_stereo_drift_state",
+        "reset_witness_bundle_cache",
+        "reset_tracker",
+        "reset_mushra_proxy",
+    ):
+        assert token in src, f"{token} fehlt in der §V8-Reset-Kette des Denkers (D-K3-95/97)"
+
+
 def test_optimizer_cache_is_not_mutated_by_goal_repair(monkeypatch: pytest.MonkeyPatch) -> None:
     """Der Re-Pass dämpft auf einer FRISCHEN Instanz, nicht auf der gecachten —
     §V8 (copilot-instructions.md)."""
