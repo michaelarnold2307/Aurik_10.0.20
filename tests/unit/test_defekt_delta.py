@@ -263,6 +263,64 @@ def test_aggregat_nach_defektklasse() -> None:
     assert agg["clipping"]["delta_median"] == pytest.approx(0.5, abs=1e-5)
     # Q = Δ(1,0 → 0,5) / Δ(1,0 → 0,0) = 0,5 / 1,0
     assert agg["clipping"]["reparaturquote_median"] == pytest.approx(0.5, abs=1e-3)
+    # §G13 (copilot-instructions.md): Q >= REPARATURQUOTE_ZIEL (0,5) erfüllt.
+    assert agg["clipping"]["q_ziel_erfuellt"] is True
+
+
+def test_q_ziel_erfuellt_verfehlt_und_nicht_bewertbar() -> None:
+    """§G13 (copilot-instructions.md): q_ziel_erfuellt je Defektklasse —
+    True ab Q >= 0,5, False bei keiner Rückgewinnung, None ohne Clean."""
+    n = 4096
+
+    def metrik_pos(audio: object, sample_rate: int) -> float:
+        x = np.asarray(audio, dtype=np.float64).reshape(-1)
+        return float(np.mean(x > 0.0))
+
+    reg = [
+        {"start": 0, "end": n, "typ": "repariert", "staerke": 0.9},
+        {"start": n, "end": 2 * n, "typ": "unrepariert", "staerke": 0.9},
+    ]
+    schaden = np.full(2 * n, 0.6, dtype=np.float32)  # metrik 1.0
+    restauriert = np.tile(np.array([0.6, -0.6], dtype=np.float32), n)  # metrik 0.5
+    clean = np.full(2 * n, -0.6, dtype=np.float32)  # metrik 0.0
+    beleg = dd.berechne_defekt_delta(
+        regionen=reg,
+        schaden=schaden,
+        restauriert=restauriert,
+        clean=clean,
+        sample_rate=44100,
+        metrik=metrik_pos,
+        metrik_name="pos_q_test",
+        metrik_richtung=dd.RICHTUNG_NIEDRIGER,
+    )
+    agg = beleg["aggregate"]
+    assert agg["repariert"]["q_ziel_erfuellt"] is True
+    # ohne Clean: Q nicht bewertbar (None), nie still True
+    beleg_ohne_clean = dd.berechne_defekt_delta(
+        regionen=reg[:1],
+        schaden=schaden[:n],
+        restauriert=restauriert[:n],
+        clean=None,
+        sample_rate=44100,
+        metrik=metrik_pos,
+        metrik_name="pos_q_test",
+        metrik_richtung=dd.RICHTUNG_NIEDRIGER,
+    )
+    assert beleg_ohne_clean["aggregate"]["repariert"]["q_ziel_erfuellt"] is None
+    # unrepariert: nur 1/5 des Schadens zurückgewonnen => Q = 0,2 < 0,5
+    restauriert_schwach = np.tile(np.array([0.6, 0.6, 0.6, 0.6, -0.6], dtype=np.float32), n // 5)  # metrik 0.8
+    beleg_flat = dd.berechne_defekt_delta(
+        regionen=[{"start": 0, "end": n, "typ": "unrepariert", "staerke": 0.9}],
+        schaden=schaden[:n],
+        restauriert=restauriert_schwach,
+        clean=clean[:n],
+        sample_rate=44100,
+        metrik=metrik_pos,
+        metrik_name="pos_q_test",
+        metrik_richtung=dd.RICHTUNG_NIEDRIGER,
+    )
+    assert beleg_flat["aggregate"]["unrepariert"]["reparaturquote_median"] == pytest.approx(0.2, abs=1e-2)
+    assert beleg_flat["aggregate"]["unrepariert"]["q_ziel_erfuellt"] is False
 
 
 def test_regionen_aus_defekt_scores() -> None:

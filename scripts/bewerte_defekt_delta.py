@@ -160,6 +160,15 @@ def main(argv: list[str] | None = None) -> int:
     out_pfad.parent.mkdir(parents=True, exist_ok=True)
     beleg_schreiben(beleg, str(out_pfad), quellen)
     print(f"Defekt-Delta-Beleg geschrieben: {out_pfad}")
+    # §G13 (copilot-instructions.md): Q-Ziel je Defektklasse sichtbar machen.
+    from backend.core.dsp.defekt_delta import REPARATURQUOTE_ZIEL
+
+    print(f"Q-Ziel je Defektklasse (>= {REPARATURQUOTE_ZIEL}):")
+    for typ, agg in sorted((beleg.get("aggregate") or {}).items()):
+        q = agg.get("reparaturquote_median")
+        erfuellt = agg.get("q_ziel_erfuellt")
+        status = "erfuellt" if erfuellt else ("verfehlt" if erfuellt is False else "nicht bewertbar")
+        print(f"  {typ}: Q={q} -> {status}")
     return 0
 
 

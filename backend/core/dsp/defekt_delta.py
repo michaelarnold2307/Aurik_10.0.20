@@ -259,6 +259,7 @@ def _aggregiere(ergebnisse: list[dict[str, Any]]) -> dict[str, Any]:
             quoten.setdefault(str(e["typ"]), []).append(float(e["reparaturquote_q"]))
     aggregat: dict[str, Any] = {}
     for typ, deltas in typen.items():
+        q_median = round(float(np.median(quoten[typ])), 4) if quoten.get(typ) else None
         aggregat[typ] = {
             "n": len(deltas),
             "delta_median": round(float(np.median(deltas)), 4),
@@ -266,7 +267,10 @@ def _aggregiere(ergebnisse: list[dict[str, Any]]) -> dict[str, Any]:
             "anteil_verschlechtert": round(float(np.mean([d <= -_JND for d in deltas])), 4),
             "flat_top_delta_median": round(float(np.median(flattops[typ])), 4),
             "anteil_verschlechtert_flat_top": round(float(np.mean([d <= -_JND for d in flattops[typ]])), 4),
-            "reparaturquote_median": (round(float(np.median(quoten[typ])), 4) if quoten.get(typ) else None),
+            "reparaturquote_median": q_median,
+            # §G13 (copilot-instructions.md): Q >= 0,5 je Defektklasse;
+            # None = kein Clean-Original vorhanden (Q nicht bewertbar).
+            "q_ziel_erfuellt": (bool(q_median >= REPARATURQUOTE_ZIEL) if q_median is not None else None),
         }
     return aggregat
 
