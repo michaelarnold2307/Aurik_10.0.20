@@ -177,7 +177,12 @@ menschliche Politik gebunden (Lizenzen, Goldens).
 - [ ] **Vinyl-Lizenz-Politik** (§9/7 der A2-Liste) — blockiert KP-6a/13 und
   den Leerrillen-Nachschub (D-K1-2/D-K1-4).
 - [x] **Echte RIRs** ≥ 30–50 (KP-10/D-K4-10; heute 1 lokale Simulation).
-- [ ] **Voice-Identity-Golden-Set** (D-K4-5/6) und Gender-Labels (KP-15).
+- [x] **Gender-Labels (KP-15)** — `data/gender_labels.csv` via Produktions-
+  Gender-Detektor + PANNs-Fusion (2026-11-12: male=61, female=83, ≥50 ✓),
+  R6/Kette 4 entblockt (Handover §3 Punkt 6).
+- [ ] **Voice-Identity-Golden-Set** (D-K4-5/6) — menschliche Voice-Identity-
+  Labels fehlen; F9-Training ist fertig (R3: val_acc 0,672 vs. Basis 0,422),
+  das Golden-Set für die Verifikation bleibt offen.
 - [ ] **MUSHRA n≥30** terminieren **oder** formal Objektivmetrik-Beschluss
   (Katalog A3 — beides ist ein gültiger Endzustand).
 
@@ -209,12 +214,15 @@ menschliche Politik gebunden (Lizenzen, Goldens).
   wirkungslos; auf sparse Hard-Clips dagegen schädlich (−6,84/−17,70/−115,97 dB
   SDR) ⇒ Never-worsen-Guard + Wahrheits-Passthrough (13/13 Tests). Die neu
   erzeugten Clipping-WAVs sind **kein** Beleg für den Patch (kein UV3-Code
-  geändert, kein Log, keine Wiederholung). **Offen (in dieser Reihenfolge):**
-  (1) Reproduzierbarkeit — derselbe Lauf zweimal, Logs + WAV-Hashes;
-  (2) Pegel-/Entscheidungskette (Gain 0,30 vs. bit-identisch,
-  `-91,1 dBFS`-Silence-Guard im Goal-Compensation-Sekundärlauf);
-  (3) Detektor-Untergrenze 0,85 (klangwirksam ⇒ §4); (4) `defektlast`-Grenzen
-  (Sättigung, nur erste 16384 Samples). Beleg:
+  geändert, kein Log, keine Wiederholung). **Stand 2026-11-12:**
+  (1) Reproduzierbarkeit **GESCHLOSSEN** (§V8-Leck-Fix 2026-11-11: solo 3×
+  bit-identisch `be0e87cb…`, Kontext-Lauf wieder `be0e87cb…`);
+  (2) Pegel-/Entscheidungskette **GESCHLOSSEN** — Gain-0,30-Jets-Fall = §V8-
+  Leck, Silence-Guard-Ereignisse = korrektes Guard-Verhalten auf echten
+  Stille-Segmenten (Log-Analyse 2026-11-12);
+  (3) Detektor-Untergrenze 0,85 (klangwirksam ⇒ §4) **offen**;
+  (4) `defektlast`-Grenzen **dokumentiert** (2026-11-11, Zertifikatsgrenzen).
+  Beleg:
   `docs/reports/current/2026-11-11_declip_never_worsen_und_ursachenpruefung.md`.
 
 ## Umsetzungsreihenfolge
