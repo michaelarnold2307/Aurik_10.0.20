@@ -1,39 +1,15 @@
 # TASK_CHANGES — Live-Ledger der aktuellen Aufgabe
 
-> Generiert von `scripts/change_ledger.py snapshot` (Base: `HEAD`, Stand: 2026-11-12 07:16 CET).
+> Generiert von `scripts/change_ledger.py snapshot` (Base: `HEAD`, Stand: 2026-11-12 07:44 CET).
 > CI (`ci-lite.yml` pr-evidence-gate) erzwingt Abdeckung: jede geänderte Code-Datei muss hier stehen.
 
 ## Geänderte Dateien
 
 | Status | Pfad | Art |
 |---|---|---|
-| M | `.github/FILE_REGISTRY.md` | modifiziert |
-| M | `.github/SOTA_DEFICIT_REGISTER.md` | modifiziert |
-| M | `TASK_CHANGES.md` | modifiziert |
-| M | `backend/core/aurik_orchestrator.py` | modifiziert |
-| M | `backend/core/song_strategy_cache.py` | modifiziert |
-| M | `corpus/cassette/manifest.yaml` | modifiziert |
-| M | `corpus/reel_tape/manifest.yaml` | modifiziert |
-| M | `corpus/tape/manifest.yaml` | modifiziert |
-| M | `corpus/vinyl/manifest.yaml` | modifiziert |
 | M | `docs/SOTA_HANDOVER.md` | modifiziert |
-| M | `plugins/bigvgan_v2_plugin.py` | modifiziert |
-| A | `scripts/_vendor_bigvgan_disc.py` | neu |
-| M | `scripts/b3_komposition_suche.py` | modifiziert |
-| A | `scripts/erstelle_cantus_real_paare.py` | neu |
-| A | `scripts/erstelle_corpus_tape.py` | neu |
-| A | `scripts/erstelle_corpus_vinyl.py` | neu |
-| A | `scripts/erstelle_gender_labels.py` | neu |
-| M | `scripts/gpu_kette1_welle_c.sh` | modifiziert |
-| M | `scripts/train_bigvgan_f3.py` | modifiziert |
-| M | `scripts/train_gender_head.py` | modifiziert |
-| A | `scripts/verify_f9_identity_gate.py` | neu |
-| M | `tests/unit/test_b3_komposition_suche.py` | modifiziert |
-| A | `tests/unit/test_d_k3_96_mel_wahrheit.py` | neu |
-| A | `tests/unit/test_erstelle_daten_autark.py` | neu |
-| A | `tests/unit/test_f9_identity_gate_und_w8.py` | neu |
-| A | `tests/unit/test_gan_rezept_und_klassen.py` | neu |
-| A | `tests/unit/test_orchestrator_memory_song_isolation.py` | neu |
+| M | `scripts/b3_stufenmessung.py` | modifiziert |
+| M | `tests/unit/test_b3_pfad_wirksamkeit.py` | modifiziert |
 
 ## Entscheidungen
 

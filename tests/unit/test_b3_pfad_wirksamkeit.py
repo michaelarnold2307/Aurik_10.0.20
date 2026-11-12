@@ -254,6 +254,25 @@ def test_m5_vocos_stage_existiert_und_zeigt_auf_flag() -> None:
     assert wert is False
 
 
+def test_m4_stages_existieren_und_zeigen_auf_flags() -> None:
+    """M4-Stufen (2026-11-12): der „4-Modelle“-B3-Lauf (Material/ERA/Defekt/
+    Loudness, Commit 0f528943) ist damit mechanisch rekonstruierbar — gleiche
+    Stufen-Namen wie der Messrahmen, Flag-Defaults AUS (bit-identisches
+    Bestandsverhalten, Aktivierung nur über §4-Verfahren)."""
+    from scripts.b3_stufenmessung import _schalter_lesen
+
+    erwartet = {
+        "M4-Material": "use_material_crnn",
+        "M4-ERA": "use_era_crnn",
+        "M4-Defekt": "use_defect_crnn",
+        "M4-Loudness": "use_loudness_dpn",
+    }
+    for stufe, flag in erwartet.items():
+        _modul, attr, wert = _schalter_lesen(stufe)
+        assert attr == flag, stufe
+        assert wert is False, f"{stufe}: Flag-Default muss AUS bleiben (§4-Verfahren)"
+
+
 def test_schalter_und_beschluss_mapping_sind_konsistent() -> None:
     """D-K3-82-Klasse (2026-11-11 erneut bei M5-vocos): jede messbare Stufe
     MUSS im Beschluss-Flag-Mapping existieren — und umgekehrt. Generisch,

@@ -21,6 +21,9 @@ Bedingungen erfüllt sind**, sonst ein begründeter Ablehnungs-Report.
 
 Aufruf (host-sicher, parallel zur GPU-Kette):
     nice -n 15 python3 -B scripts/b3_stufenmessung.py [--clips 3] [--windows 2] [--seed 42]
+
+M4-Stufen (4-Modelle-B3-Lauf, Material/ERA/Defekt/Loudness):
+    nice -n 15 python3 -B scripts/b3_stufenmessung.py --stages M4-Material,M4-ERA,M4-Defekt,M4-Loudness
 """
 
 from __future__ import annotations
@@ -64,6 +67,19 @@ SCHALTER_MAPPING: dict[str, tuple[str, str]] = {
     # Never-worsen-Messung nach dem Training, Aktivierung nur über §4.
     "M12-WF4": ("backend.core.music_model_flags", "use_wf4_warp_head"),
     "M12-TPV2": ("backend.core.music_model_flags", "use_tp_v2_phase"),
+    # M4-Stufen (2026-11-12): der „4-Modelle“-B3-Lauf (Commit 0f528943) war
+    # ad-hoc und nicht rekonstruierbar (Report
+    # 2026-11-04_sitzung_transient_messlauf_b3_status.md §6) — mit diesen
+    # Stufen ist er mechanisch wiederholbar (§4-Verfahren, keine Flag-Flips).
+    # Alle vier Challenger sind produktions-verdrahtet und Default AUS
+    # (Material: forensics/medium_detector.py:3207; ERA:
+    # backend/core/era_classifier.py:2489; Defekt:
+    # backend/core/defect_scanner.py:705; Loudness:
+    # backend/core/dsp/deep_loudness_net.py:94).
+    "M4-Material": ("backend.core.music_model_flags", "use_material_crnn"),
+    "M4-ERA": ("backend.core.music_model_flags", "use_era_crnn"),
+    "M4-Defekt": ("backend.core.music_model_flags", "use_defect_crnn"),
+    "M4-Loudness": ("backend.core.music_model_flags", "use_loudness_dpn"),
     # M5 (2026-11-11): vocos-48k-Musik-Finetune (D-K2-3/D-K3-90) —
     # Never-worsen gegen die Basis; Aktivierung nur über §4. Der
     # §1.4-Finisher wählt das Finetune NUR bei Flag True.
@@ -83,6 +99,10 @@ BESCHLUSS_FLAGS: dict[str, str] = {
     "A-1": "use_audibility_budget",
     "M12-WF4": "use_wf4_warp_head",
     "M12-TPV2": "use_tp_v2_phase",
+    "M4-Material": "use_material_crnn",
+    "M4-ERA": "use_era_crnn",
+    "M4-Defekt": "use_defect_crnn",
+    "M4-Loudness": "use_loudness_dpn",
     "M5-vocos": "use_vocos_music_ft",
 }
 
