@@ -232,6 +232,14 @@ def _macro_f1(y_true: np.ndarray, y_pred: np.ndarray, n_classes: int) -> float:
     return float(np.mean(_f1s)) if _f1s else 0.0
 
 
+def _klassen_bilanz(pairs: list[tuple[str, str]]) -> dict[str, int]:
+    """Zählt Labels je Klasse — ehrliche Unterstützung unvollständiger Klassen (D-K4-11/E2)."""
+    _bilanz: dict[str, int] = dict.fromkeys(_LABELS, 0)
+    for _name, _gender in pairs:
+        _bilanz[_gender] = _bilanz.get(_gender, 0) + 1
+    return _bilanz
+
+
 def main(argv: list[str] | None = None) -> int:
     """Extrahiert MERT-Features, trainiert das Head und speichert guarded."""
     from backend.core.training_artifacts import save_guarded, write_text_guarded
@@ -252,6 +260,15 @@ def main(argv: list[str] | None = None) -> int:
         return 2
 
     logger.info("F13: %d gelabelte Paare — Extraktion startet", len(_pairs))
+    _bilanz = _klassen_bilanz(_pairs)
+    logger.info("Klassen-Bilanz: %s", _bilanz)
+    for _klasse in _LABELS:
+        if _bilanz.get(_klasse, 0) == 0:
+            logger.warning(
+                "Klasse '%s' hat 0 Labels — Training läuft ehrlich mit den vorhandenen Klassen "
+                "(§V6 (copilot-instructions.md), kein Label-Raten; D-K4-11)",
+                _klasse,
+            )
     _x, _y, _seen = _extract_dataset(_args.audio_dir, _pairs, _args.out / _CACHE_SUBDIR)
     if _x.shape[0] < 4:
         logger.error("Zu wenige verwertbare Paare (%d) — kein Training", _x.shape[0])

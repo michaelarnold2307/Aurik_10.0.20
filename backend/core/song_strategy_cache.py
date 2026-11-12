@@ -216,9 +216,21 @@ def compute_audio_fingerprint(audio: np.ndarray, sr: int) -> str:
         h = hashlib.sha256(fingerprint_payload).hexdigest()
         return h[:16]
     except Exception as exc:
-        logger.debug("audio fingerprint fehlgeschlagen: %s", exc)
-        # Fallback: time-based (no cache hit guaranteed)
-        return hashlib.sha256(str(time.time()).encode()).hexdigest()[:16]
+        logger.warning(
+            "audio-Fingerprint fehlgeschlagen — roher PCM-Hash als Fallback (§V6, §G5 (copilot-instructions.md)): %s",
+            exc,
+        )
+        # §G5 (copilot-instructions.md): KEIN time.time() in Entscheidungslogik —
+        # der Fallback ist content-basiert (roher float32-PCM-Hash), damit
+        # derselbe Song deterministisch denselben song_id behält (§V8-Isolation).
+        try:
+            return hashlib.sha256(np.asarray(audio, dtype=np.float32).tobytes()).hexdigest()[:16]
+        except Exception as exc2:
+            logger.warning(
+                "PCM-Hash-Fallback ebenfalls fehlgeschlagen — leerer song_id (§V6 (copilot-instructions.md)): %s",
+                exc2,
+            )
+            return ""
 
 
 def build_strategy_entry_from_result(

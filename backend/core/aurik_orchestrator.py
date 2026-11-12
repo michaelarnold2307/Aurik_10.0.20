@@ -378,11 +378,27 @@ class SessionLearner:
         self._memory: dict[str, Any] = self._load()
         self._current_session_songs: list[dict[str, Any]] = []
 
-    def recall(self, material_type: str, restorability: float, terminal_codec: str | None) -> dict[str, Any] | None:
-        """Erinnert sich an ähnliche Songs aus früheren Sessions."""
+    def recall(
+        self,
+        material_type: str,
+        restorability: float,
+        terminal_codec: str | None,
+        song_id: str | None = None,
+    ) -> dict[str, Any] | None:
+        """Erinnert sich an frühere Läufe DESSELBEN Songs (§V8 (copilot-instructions.md)).
+
+        Song-Isolation: Einträge ohne ``song_id`` (Altbestand) und Einträge
+        fremder Songs matchen NIE — der Lernparameter-Cache ist pro Song
+        geschlossen, kein Cross-Song-Recall (D-K3-95-Folge-Hygiene).
+        """
+        if not song_id:
+            logger.warning("§Sitzung-MEMORY: recall ohne song_id — kein Abruf (§V8-Isolation, fail-closed)")
+            return None
         best_match = None
         best_score = 0.0
         for entry in self._memory.get("songs", []):
+            if entry.get("song_id") != song_id:
+                continue
             score = 0.0
             if entry.get("material") == material_type:
                 score += 0.4
@@ -413,8 +429,9 @@ class SessionLearner:
         phases_run: int,
         time_s: float,
         warnings: list[str],
+        song_id: str = "",
     ) -> None:
-        """Speichert das Ergebnis dieses Songs."""
+        """Speichert das Ergebnis dieses Songs (song_id-gekeyt, §V8 (copilot-instructions.md))."""
         # §Sitzung-MEMORY Hygiene (2026-08-22): Nur objektiv verbesserte Läufe
         # persistieren — sonst lernt das Gedächtnis aus Fehlentscheidungen und
         # reaktiviert sie beim nächsten ähnlichen Song (Befund: rs=50-Repair-Mode
@@ -423,6 +440,7 @@ class SessionLearner:
             logger.debug("§Sitzung-MEMORY: Lauf nicht persistiert (verdict=%s)", verdict)
             return
         entry = {
+            "song_id": song_id,
             "material": material_type,
             "restorability": restorability,
             "terminal_codec": terminal_codec,
@@ -683,11 +701,14 @@ class AurikOrchestrator:
     ) -> tuple[list[str], PreFlightDecision]:
         """P1+P3+P5: Entscheidet und reduziert VOR der Pipeline."""
 
-        # P3: Erfahrung abrufen
-        experience = self.learner.recall(material_type, restorability_score, terminal_codec)
+        # P3: Erfahrung abrufen (§V8 (copilot-instructions.md): nur derselbe Song, content-keyed)
+        from backend.core.song_strategy_cache import compute_audio_fingerprint
+
+        _song_id = compute_audio_fingerprint(original_audio, sample_rate)
+        experience = self.learner.recall(material_type, restorability_score, terminal_codec, song_id=_song_id)
         if experience:
             logger.info(
-                "§ORCHESTRATOR recall: ähnlicher Song → %s (%d Phasen)",
+                "§ORCHESTRATOR recall: gleicher Song → %s (%d Phasen)",
                 experience.get("verdict", "?"),
                 experience.get("phases_run", 0),
             )
@@ -713,6 +734,7 @@ class AurikOrchestrator:
         self._phase_results.clear()
 
         self._session = {
+            "song_id": _song_id,
             "material": material_type,
             "restorability": restorability_score,
             "terminal_codec": terminal_codec,
@@ -804,6 +826,7 @@ class AurikOrchestrator:
             phases_run=phases_run,
             time_s=elapsed,
             warnings=assessment.warnings,
+            song_id=str(self._session.get("song_id", "")),
         )
 
         logger.info(

@@ -43,9 +43,17 @@ from backend.core.dsp.wohlklang_zeuge import JND_TOLERANZ
 KANDIDATEN: dict[str, str] = {
     "W-2": "use_scnet_music",
     "W-3": "use_sgmse_musik",
-    "W-8": "use_bw_v5",
     "W-9": "use_whisper_denoiser",
     "W-13": "use_bigvgan_f3_studio",
+}
+
+# Nicht messbare Stufen: stiller No-Op ohne Produktions-Lesestelle — eine
+# Messung wäre ein No-Op-Artefakt (D-K3-92 (SOTA_DEFICIT_REGISTER.md)).
+NICHT_MESSBAR: dict[str, str] = {
+    "W-8": (
+        "use_bw_v5 hat keine Produktions-Lesestelle (BW-v5 hängt an _use_nvsr) — "
+        "eine AN/AUS-Messung vergliche den Pfad mit sich selbst (D-K3-92)"
+    ),
 }
 
 
@@ -145,11 +153,20 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--windows", type=int, default=2)
     ap.add_argument("--seconds", type=float, default=2.5)
     ap.add_argument("--seed", type=int, default=42)
-    ap.add_argument("--stufen", default="W-2,W-3,W-8,W-9,W-13")
+    ap.add_argument("--stufen", default="W-2,W-3,W-9,W-13")
     args = ap.parse_args(argv)
     logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
 
-    kandidaten = [s.strip() for s in args.stufen.split(",") if s.strip() in KANDIDATEN]
+    _ausgeschlossen = [s.strip() for s in args.stufen.split(",") if s.strip() in NICHT_MESSBAR]
+    for _stufe in _ausgeschlossen:
+        log.warning(
+            "Stufe %s ausgeschlossen (nicht messbar): %s (§V6 (copilot-instructions.md), D-K3-92)",
+            _stufe,
+            NICHT_MESSBAR[_stufe],
+        )
+    kandidaten = [
+        s.strip() for s in args.stufen.split(",") if s.strip() in KANDIDATEN and s.strip() not in NICHT_MESSBAR
+    ]
     if not kandidaten:
         log.error("keine gültigen Kandidaten (KANDIDATEN: %s)", ",".join(KANDIDATEN))
         return 2

@@ -114,24 +114,22 @@ def build_model(device: torch.device, checkpoint: Path) -> torch.nn.Module:
 
 
 def extract_mel(wave: torch.Tensor) -> torch.Tensor:
-    from bigvgan.meldataset import mel_spectrogram
+    """Produktions-identisches Mel (D-K3-96, §G9 (copilot-instructions.md): EINE Mel-Wahrheit).
 
-    # Wave [B, T] auf CPU/GPU; mel_spectrogram erwartet [1, T]
+    Der Trainer delegiert an die Produktions-Funktion
+    ``plugins.bigvgan_v2_plugin.compute_mel_produktion`` statt eine zweite
+    Mel-Kopie (bigvgan.meldataset, log(abs-STFT)) zu pflegen — der Mel-Drift
+    D-K3-96 (Training log(abs-STFT) vs Produktion power_to_db(ref=max)) ist
+    damit per Konstruktion geschlossen.
+    """
+    from plugins.bigvgan_v2_plugin import compute_mel_produktion
+
     mels = []
     for i in range(wave.shape[0]):
-        m = mel_spectrogram(
-            wave[i : i + 1],
-            n_fft=CFG["n_fft"],
-            num_mels=CFG["num_mels"],
-            sampling_rate=SR,
-            hop_size=CFG["hop_size"],
-            win_size=CFG["win_size"],
-            fmin=CFG["fmin"],
-            fmax=CFG["fmax"],
-            center=False,
-        )
-        mels.append(m)
-    return torch.cat(mels, dim=0)  # [B, n_mels, T]
+        _np = wave[i].detach().cpu().numpy()
+        _mel = compute_mel_produktion(_np, SR)
+        mels.append(torch.from_numpy(np.asarray(_mel, dtype=np.float32)).unsqueeze(0))
+    return torch.cat(mels, dim=0).to(wave.device)
 
 
 def stft_mag(x: torch.Tensor, n_fft: int, hop: int, win: int) -> torch.Tensor:
@@ -217,6 +215,17 @@ def main() -> int:
     ap.add_argument("--data-dir", type=str, default="data/musdb18hq")
     ap.add_argument("--out-dir", type=str, default="output/f3_bigvgan")
     ap.add_argument("--seed", type=int, default=42)
+    ap.add_argument(
+        "--crop-sec",
+        type=float,
+        default=0.5,
+        help="Crop-Länge in Sekunden (D-K3-96 Teil 3: längere Schedule = längere Crops)",
+    )
+    ap.add_argument(
+        "--gan",
+        action="store_true",
+        help="D-K3-96 Teil 2: Multi-Period-Diskriminator + Hinge-Loss (Default AUS = alter Pfad)",
+    )
     ap.add_argument("--resume", type=str, default="")
     ap.add_argument(
         "--max-seconds",
@@ -225,6 +234,9 @@ def main() -> int:
         help="Zeitbudget je Prozess; stoppt an der Epochen-Grenze (Exit 75), 0 = unbegrenzt",
     )
     args = ap.parse_args()
+
+    global CROP_N  # pylint: disable=global-statement
+    CROP_N = int(round(args.crop_sec * SR))
 
     t_prozessstart = time.perf_counter()
 
@@ -273,6 +285,16 @@ def main() -> int:
     opt = torch.optim.AdamW(
         filter(lambda p: p.requires_grad, model.parameters()), lr=args.lr, betas=(0.8, 0.99), weight_decay=1e-2
     )
+    disc = None
+    opt_d = None
+    if args.gan:
+        # D-K3-96 Teil 2: vendored MPD (BigVGAN-Upstream-Stil, MIT) — Default AUS,
+        # damit der bestehende Trainingspfad bit-identisch bleibt (§V7 (copilot-instructions.md)).
+        from scripts._vendor_bigvgan_disc import MultiPeriodDiscriminator
+
+        disc = MultiPeriodDiscriminator().to(device)
+        opt_d = torch.optim.AdamW(disc.parameters(), lr=args.lr, betas=(0.8, 0.99), weight_decay=0.0)
+        logger.info("GAN aktiviert: MPD mit %d Perioden", len(disc.discriminators))
     scaler = torch.cuda.amp.GradScaler(enabled=device.type == "cuda")
 
     rng = np.random.default_rng(args.seed)
@@ -392,6 +414,21 @@ def main() -> int:
                 a1 = torch.nn.functional.l1_loss(y_a.float(), x_a.float())
                 st = mr_stft_loss(y_a.float(), x_a.float())
                 loss = a1 + 0.5 * st
+                if args.gan:
+                    from scripts._vendor_bigvgan_disc import discriminator_hinge_loss, generator_hinge_loss
+
+                    assert disc is not None and opt_d is not None
+                    _d_real, _ = disc(x_a.float())
+                    _d_fake, _ = disc(y_a.detach().float())
+                    _d_loss = discriminator_hinge_loss(_d_real, _d_fake)
+                    opt_d.zero_grad(set_to_none=True)
+                    scaler.scale(_d_loss).backward()
+                    scaler.unscale_(opt_d)
+                    torch.nn.utils.clip_grad_norm_(disc.parameters(), 1.0)
+                    scaler.step(opt_d)
+                    scaler.update()
+                    _d_fake_g, _ = disc(y_a.float())
+                    loss = loss + 1.0 * generator_hinge_loss(_d_fake_g)
             opt.zero_grad(set_to_none=True)
             scaler.scale(loss).backward()
             scaler.unscale_(opt)
@@ -444,6 +481,10 @@ def main() -> int:
             "torch_rng_state": torch.get_rng_state(),
             "cfg": CFG,
         }
+        if args.gan and disc is not None and opt_d is not None:
+            ckpt["discriminator"] = disc.state_dict()
+            ckpt["optimizer_d"] = opt_d.state_dict()
+            ckpt["gan"] = True
         save_guarded(out_dir / f"checkpoint_epoch{epoch}.pt", ckpt)
         # Stabiler Resume-Anker (§G5 (copilot-instructions.md)): checkpoint_latest.pt — damit ein
         # Timeout-/Retry-Weiterlauf (D-K3-22 Budget vs. Epoch-Zeit) ab der

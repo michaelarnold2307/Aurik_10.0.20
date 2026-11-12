@@ -97,7 +97,14 @@ R --name c3_rt60 --ckpt-dir models/rt60_regressor --phase kp10 \
   --timeout-s 14400 --retries 1
 
 echo "=== R7: KP-11 Symphonia (GPU) ==="
-SYMDATA=$(find data -name "*Instrumental-manifest.jsonl" 2>/dev/null | head -1)
+# Ursache statt Symptom (§V7 (copilot-instructions.md)): Der Generator
+# generate_synthetic_degraded_instrumentals.py schreibt kanonisch
+# manifest.jsonl (Paare liegen bereits in data/symphonia_pairs); der
+# alte Suchname "*Instrumental-manifest.jsonl" existierte nie (D-K3-99).
+SYMDATA=""
+for cand in data/symphonia_pairs/manifest.jsonl data/symphonia_pairs_full/manifest.jsonl; do
+  if [ -f "$cand" ]; then SYMDATA="$cand"; break; fi
+done
 if [ -n "$SYMDATA" ]; then
   R --name c4_symphonia --ckpt-dir models/symphonia --phase kp11 \
     --cmd "env PYTHONPATH=. $PY -B scripts/train_symphonia.py --data $SYMDATA --preset full --epochs 30" \

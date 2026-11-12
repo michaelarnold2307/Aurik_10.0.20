@@ -16,6 +16,7 @@ sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[2]))
 from scripts.b3_komposition_suche import (
     JND_TOLERANZ,
     KANDIDATEN,
+    NICHT_MESSBAR,
     forward_auswahl,
     never_worsen_ok,
     suche,
@@ -116,7 +117,11 @@ def test_kandidaten_nur_audio_wirksam() -> None:
     # Zeugen-/Release-Flags (W-10/W-11/W-12) duerfen nicht in der Suche sein:
     for w in ("W-10", "W-11", "W-12"):
         assert w not in KANDIDATEN
-    assert set(KANDIDATEN) == {"W-2", "W-3", "W-8", "W-9", "W-13"}
+    assert set(KANDIDATEN) == {"W-2", "W-3", "W-9", "W-13"}
+    # W-8 (use_bw_v5) hat keine Produktions-Lesestelle (D-K3-92): kein
+    # messbarer B3-Kandidat — als NICHT_MESSBAR mit Begruendung gefuehrt.
+    assert "W-8" in NICHT_MESSBAR
+    assert "use_bw_v5" in NICHT_MESSBAR["W-8"]
 
 
 def test_flag_restore_vertrag_im_quelltext() -> None:

@@ -706,24 +706,9 @@ class BigVGANv2Plugin:
             np.ndarray: [n_mel, T] float32
         """
         try:
-            import librosa
-
-            # Resample auf Checkpoint-SR (44100 Hz) vor Mel-Berechnung
-            audio_mel = audio
-            if sr != _BIGVGAN_SR:
-                audio_mel = librosa.resample(audio, orig_sr=sr, target_sr=_BIGVGAN_SR)
-
-            mel = librosa.feature.melspectrogram(
-                y=audio_mel,
-                sr=_BIGVGAN_SR,
-                n_fft=self.MEL_WIN,
-                hop_length=self.MEL_HOP,
-                n_mels=MEL_BANDS,
-                fmin=MEL_FMIN,
-                fmax=MEL_FMAX,
-            )
-            mel_db = librosa.power_to_db(mel, ref=np.max).astype(np.float32)
-            return np.clip(mel_db, -80.0, 0.0)
+            # §G9 (copilot-instructions.md): EINE Mel-Wahrheit — die reine
+            # Funktion compute_mel_produktion trägt auch den Trainer (D-K3-96).
+            return compute_mel_produktion(audio, sr)
 
         except ImportError:
             # Minimaler Fallback ohne librosa
@@ -777,6 +762,35 @@ class BigVGANv2Plugin:
 # ---------------------------------------------------------------------------
 # Singleton-Accessor
 # ---------------------------------------------------------------------------
+
+
+def compute_mel_produktion(audio: np.ndarray, sr: int) -> np.ndarray:
+    """Produktions-Mel als EINE Wahrheit (§G9 (copilot-instructions.md), D-K3-96).
+
+    Der D-K3-96-Befund: der Trainer (``train_bigvgan_f3.py``) speiste
+    ``log(abs-STFT)``-Mel (bigvgan.meldataset, Mittel ≈ −3,2), die Produktion
+    speist ``power_to_db(mel, ref=np.max)`` (Mittel ≈ −40,7) — Mel-Drift.
+    Diese reine Funktion ist die einzige Mel-Implementierung: Produktion
+    (``_compute_mel``) und Trainer (``extract_mel``) delegieren hierher.
+    """
+    import librosa
+
+    # Resample auf Checkpoint-SR (44100 Hz) vor Mel-Berechnung
+    audio_mel = np.asarray(audio, dtype=np.float32)
+    if sr != _BIGVGAN_SR:
+        audio_mel = librosa.resample(audio_mel, orig_sr=sr, target_sr=_BIGVGAN_SR)
+
+    mel = librosa.feature.melspectrogram(
+        y=audio_mel,
+        sr=_BIGVGAN_SR,
+        n_fft=_BIGVGAN_WIN,
+        hop_length=_BIGVGAN_HOP,
+        n_mels=MEL_BANDS,
+        fmin=MEL_FMIN,
+        fmax=MEL_FMAX,
+    )
+    mel_db = librosa.power_to_db(mel, ref=np.max).astype(np.float32)
+    return np.clip(mel_db, -80.0, 0.0)
 
 
 def get_bigvgan_v2() -> BigVGANv2Plugin:
