@@ -279,6 +279,34 @@ ohne Qualitätsversagen zu verschleiern.
 
 ---
 
+## §8.2c [RELEASE_MUST] Hoerbarkeits-Dominanz je Defektklasse (§G13)
+
+Restaurierung heißt: jeder hörbare Defekt wird unter die Maskierungsschwelle
+gedrückt — never-worsen ist der Boden, die Verbesserung ist die Pflicht.
+Gilt für ALLE 65 DefectTypes (`backend/core/defect_scanner.py::DefectType`).
+
+**Verbindliche Zielwerte je Defektklasse:**
+
+| Ziel | Messung (kanonisch) | Schwelle |
+|---|---|---|
+| Rest unhörbar | `audibility_targets.residual_audibility` → `objective_met` | Rest ≤ Maskierungsschwelle − 6 dB Marge |
+| Verbesserung | `defekt_delta.berechne_defekt_delta` → Reparaturquote Q | Q ≥ `REPARATURQUOTE_ZIEL` (0,5) |
+| Musik unversehrt | Kontrollregionen (defekt_delta) + Frage B (`repair_objective_met`/`verify_declick_repair`) | Δ ≈ 0; Frage B NIE OK |
+| Hör-Invarianten | Hörordnung Ebene 1 (`level_1_invariants_guard`) | unverletzt (Veto) |
+
+**Konsistente Erreichbarkeit (kanonisches Messprotokoll):** je DefectType
+Harness-Fall (`scripts/defect_evidence_harness.py` CASES) + Phase-Mapping
+(`backend/core/defect_phase_mapper.py`) + Audibility-Nachprüfung — erzählt von
+`scripts/defect_coverage_check.py` (fail-closed, 65/65). Messung: Seed 42 (§G5),
+≥ 6 degradierte Paare, pegel-gematcht (Body-Perzentil p25), JND 0,05
+(`wohlklang_zeuge.JND_TOLERANZ`), Aggregat je DefectType. Ohne Messung ist
+eine Klasse „offen/unbewiesen", nie „bestanden"; physikalisch irreduzible
+Reste werden als solche klassifiziert und begründet (§G10/§G8). Stärke-/
+Schwellen-Änderungen aus Q-Befunden nur über das §4-Verfahren
+(`flag_freigabe.py`) — never-worsen bleibt harte Leitplanke.
+
+---
+
 ## §8.3 Perceptuelle Verpflichtungen
 
 1. **Natürlichkeit**: MERT-Naturalness-Score ≥ 0.7

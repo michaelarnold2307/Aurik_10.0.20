@@ -1,6 +1,6 @@
 # TASK_CHANGES — Live-Ledger der aktuellen Aufgabe
 
-> Generiert von `scripts/change_ledger.py snapshot` (Base: `HEAD`, Stand: 2026-11-12 09:50 CET).
+> Generiert von `scripts/change_ledger.py snapshot` (Base: `HEAD`, Stand: 2026-11-12 10:25 CET).
 > CI (`ci-lite.yml` pr-evidence-gate) erzwingt Abdeckung: jede geänderte Code-Datei muss hier stehen.
 
 ## Geänderte Dateien
@@ -8,12 +8,17 @@
 | Status | Pfad | Art |
 |---|---|---|
 | M | `.github/FILE_REGISTRY.md` | modifiziert |
+| M | `.github/GEBOTE.md` | modifiziert |
+| M | `.github/ID_REGISTRY.md` | modifiziert |
+| M | `.github/WOHLKLANG_CLAIMS.md` | modifiziert |
+| M | `.github/copilot-instructions.md` | modifiziert |
+| M | `.github/instructions/hoerordnung.instructions.md` | modifiziert |
+| M | `.github/specs/07_quality_and_tests.md` | modifiziert |
+| M | `backend/core/dsp/defekt_delta.py` | modifiziert |
 | M | `docs/SOTA_HANDOVER.md` | modifiziert |
-| A | `docs/reports/current/2026-11-12_air_presence_wirkung.json` | neu |
-| A | `docs/reports/current/2026-11-12_air_presence_wirkung.md` | neu |
-| A | `docs/reports/current/2026-11-12_air_presence_wirkung_stem.json` | neu |
-| A | `scripts/messe_air_presence_wirkung.py` | neu |
-| A | `tests/unit/test_messe_air_presence_wirkung.py` | neu |
+| M | `reports/spec_drift_baseline.json` | modifiziert |
+| M | `scripts/gebote_verifier.py` | modifiziert |
+| ?? | `tests/normative/test_g13_hoerbarkeits_dominanz.py` | ungetrackt |
 
 ## Entscheidungen
 

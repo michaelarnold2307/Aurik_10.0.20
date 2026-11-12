@@ -112,6 +112,37 @@ lexikografische Wohlklang-Ordnung (Hörordnung Ebene 3) kompromisslos ein.**
   Drift Gate). Chunk-Grenzen dürfen keine hörbaren Spuren hinterlassen (Hörordnung
   Ebene 1).
 
+### §G13 — Kategorie I: Hörbarkeits-Dominanz (Verbesserungs-Pflicht über alle Defektklassen)
+**Restaurierung heißt: jeder hörbare Defekt wird unter die Maskierungsschwelle gedrückt — „nur nicht schlechter" verfehlt den Auftrag.**
+- Never-worsen ist der **Boden**, nicht das Ziel: Eine Restaurierung, die hörbare
+  Defekte lediglich unverändert lässt, ist unvollständig. Für JEDE der 65
+  DefectTypes gilt die Verbesserungs-Pflicht (§G10-Ziel + §G191-Methode).
+- Ziel je Defektklasse (messbar, deterministisch):
+  (a) Rest ≤ Maskierungsschwelle − **6 dB Marge** (`objective_met`, Hörordnung Ebene 2);
+  (b) Reparaturquote **Q ≥ 0,5** (defekt_delta: mindestens die Hälfte des
+  Schaden→Clean-Deltas zurückgewonnen, `REPARATURQUOTE_ZIEL`);
+  (c) Kontrollregionen Δ ≈ 0 (kein Eingriff in unversehrte Musik);
+  (d) Musik-Schutz: Frage B „kein hörbares Musikmaterial entfernt" (NIE OK) +
+  Hör-Invarianten (Ebene 1) dominieren jede Verbesserung.
+- **Konsistente Erreichbarkeit (kanonisches Messprotokoll je DefectType):**
+  Seed 42 (§G5), ≥ 6 degradierte Paare, pegel-gematcht (Body-Perzentil p25,
+  §G191), JND 0,05 (eine Wahrheit `wohlklang_zeuge.JND_TOLERANZ`), Aggregat je
+  DefectType, richtungszertifizierte Metriken (musik_mos/defektlast).
+- **Coverage-Pflicht:** Jede DefectType MUSS Harness-Fall + Phase-Mapping +
+  Audibility-Nachprüfung tragen (Gate `scripts/defect_coverage_check.py`,
+  fail-closed). Ohne Messung ist eine Klasse „offen/unbewiesen" — nie
+  „bestanden" (§V6). Physikalisch irreduzible Reste werden als „physikalisch
+  irreduzibel" klassifiziert und begründet (§G10/§G8), nie still.
+
+### [RELEASE_MUST] Hoerbarkeits-Dominanz ueber alle 65 Defektklassen (§G13)
+**Hoerbarkeits-Dominanz: Jede der 65 Defektklassen ist auf das Ziel „Rest unter
+Maskierungsschwelle − 6 dB Marge" verpflichtet, mit Reparaturquote Q ≥ 0,5
+(defekt_delta), Kontrollregionen Δ ≈ 0 und Musik-Schutz (Frage B + Ebene 1).**
+- Der Nachweis ist je Defektklasse über das kanonische Messprotokoll zu führen
+  (Seed 42, ≥ 6 Paare, p25-Pegelmatching, JND 0,05); fehlender Beleg = offen.
+- Stärke-/Schwellen-Änderungen aus Q-Befunden laufen ausschließlich über das
+  §4-Verfahren (`flag_freigabe.py`) — never-worsen bleibt die harte Leitplanke.
+
 ---
 
 ## §II VERBOTE (Muss-Nicht-Vorschriften)

@@ -93,6 +93,18 @@ L/R-Versatz).
 Reparatur gilt als **abgeschlossen**, wenn ein Defekt **unter der psychoakustischen
 Maskierungsschwelle** liegt — nicht wenn sein Messwert Null ist.
 
+**Reparatur-Auftrag (§G13 (copilot-instructions.md), Verbesserungs-Pflicht):**
+Never-worsen ist der Boden, nicht das Ziel. Für JEDE der 65 DefectTypes gilt
+messbar: (a) Rest ≤ Maskierungsschwelle − 6 dB Marge (`objective_met`),
+(b) Reparaturquote Q ≥ 0,5 (defekt_delta, `REPARATURQUOTE_ZIEL`),
+(c) Kontrollregionen Δ ≈ 0, (d) Frage B „kein hörbares Musikmaterial
+entfernt" NIE OK — die Hör-Invarianten (Ebene 1) dominieren jede
+Verbesserung. Konsistente Erreichbarkeit über das kanonische Messprotokoll
+(Seed 42, ≥ 6 Paare, p25-Pegelmatching, JND 0,05) und die Coverage-Gates
+(`scripts/defect_coverage_check.py`): ohne Messung ist eine Klasse offen,
+nie „bestanden". Physikalisch irreduzible Reste werden klassifiziert (§G10
+(copilot-instructions.md)). Stärke-Änderungen aus Q-Befunden nur über §4.
+
 - **Erzwingbare Instanz (kanonisch):** `backend/core/dsp/audibility_targets.py`
   — `residual_audibility` (Nutzung als `is_audible`) misst mit EINER Messung in
   der `masking_model`-Domäne Hörbarkeit (`audible`), Zielabnahme

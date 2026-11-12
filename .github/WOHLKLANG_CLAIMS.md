@@ -145,3 +145,21 @@ Leitplanke für Stufen, die dieser Richtung dienen:
   (0/8 Trials, Artefakte auf der behandelten Seite) ist das Referenzbeispiel.
 - Erwünscht: Rauschreduktion zuerst, dann begrenzte Brillanz
   (Stufe-2-Nachbehandlung, P1-7-Muster).
+
+## Hörbarkeits-Dominanz (Verbesserungs-Pflicht je Defektklasse, §G13 (copilot-instructions.md))
+
+Der Wohlklang-Vertrag garantiert bisher, dass Aurik **nie verschlechtert**.
+§G13 ergänzt die Verbesserungs-Pflicht — der Vertrag gilt damit zweiseitig:
+
+1. **Boden (never-worsen):** Hör-Invarianten (Ebene 1), Musik-Schutz
+   (Frage B NIE OK), delta-basierte Gates — unverändert.
+2. **Ziel (Hörbarkeits-Dominanz):** Für jede der 65 DefectTypes gilt
+   messbar: Rest ≤ Maskierungsschwelle − 6 dB Marge (`objective_met`),
+   Reparaturquote **Q ≥ 0,5** (`REPARATURQUOTE_ZIEL`), Kontrollregionen
+   Δ ≈ 0. Ohne Messung ist die Klasse offen/unbewiesen — nie „bestanden".
+3. **Konsistenz:** kanonisches Messprotokoll (Seed 42, ≥ 6 Paare,
+   p25-Pegelmatching, JND 0,05) + Coverage-Gate `scripts/defect_coverage_check.py`
+   (Harness-Fall + Phase-Mapping + Audibility-Nachprüfung je DefectType, 65/65).
+4. **Freigabe:** Stärke-/Schwellen-Änderungen aus Q-Befunden laufen
+   ausschließlich über das §4-Verfahren (`flag_freigabe.py`) — ein Q-Befund
+   ist ein Zeuge (Hörordnung §7), kein automatischer Flip.

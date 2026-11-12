@@ -41,6 +41,10 @@ _METRIK_RICHTUNGEN: dict[str, str] = {
 }
 _MIN_SAMPLES = 2048  # Untergrenze der Metrik-Definition (2048er-FFT)
 _JND = float(JND_TOLERANZ)
+# §G13 (copilot-instructions.md): Verbesserungs-Pflicht — mindestens die
+# Hälfte des Schaden→Clean-Deltas muss zurückgewonnen werden (je Defektklasse).
+# EINE Quelle für Norm, Verifier und Tests; Anhebung nur über §4/Hör-Sign-off.
+REPARATURQUOTE_ZIEL = 0.5
 
 
 def _mono(audio: Any) -> np.ndarray:

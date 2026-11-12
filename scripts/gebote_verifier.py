@@ -229,6 +229,36 @@ def check_g12() -> tuple[bool, str]:
     return ok, "LUFS-Normalisierung im Code" if ok else "Keine LUFS-Normalisierung"
 
 
+@gebot(
+    "§G13 (copilot-instructions.md)",
+    "Hörbarkeits-Dominanz",
+    "Reparaturquote Q ≥ 0,5 je Defektklasse + Audibility-Nachprüfung.",
+)
+def check_g13() -> tuple[bool, str]:
+    ziel = _file_contains(
+        "backend/core/dsp/defekt_delta.py",
+        r"REPARATURQUOTE_ZIEL\s*=\s*0\.5",
+    )
+    delta = _file_contains("backend/core/dsp/defekt_delta.py", r"def berechne_defekt_delta")
+    zeuge = _file_contains("backend/core/dsp/audibility_targets.py", r"def residual_audibility")
+    nachpruefung = _file_contains(
+        "backend/core/dsp/audibility_targets.py",
+        r"def repair_objective_met|def verify_declick_repair",
+    )
+    if ziel and delta and zeuge and nachpruefung:
+        return True, "§G13 (copilot-instructions.md): Q-Ziel + Defekt-Delta + Audibility-Nachprüfung vorhanden"
+    fehlend = []
+    if not ziel:
+        fehlend.append("REPARATURQUOTE_ZIEL=0.5")
+    if not delta:
+        fehlend.append("berechne_defekt_delta")
+    if not zeuge:
+        fehlend.append("residual_audibility")
+    if not nachpruefung:
+        fehlend.append("repair_objective_met/verify_declick_repair")
+    return False, "§G13 (copilot-instructions.md) fehlt: " + ", ".join(fehlend)
+
+
 @gebot("§G14", "Spectral-Tilt-Guard", "Spektrale Neigung nach jeder Phase geprüft.")
 def check_g14() -> tuple[bool, str]:
     ok = _find_in_code(r"spectral_tilt|spectral.*neigung|tilt.*guard")
