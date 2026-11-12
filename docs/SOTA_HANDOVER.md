@@ -859,7 +859,15 @@ Begründung liegen bleibt. Tests 13/13 (`test_phase07_senkt_den_harmonik_proxy_n
 `test_pchip_ist_formtreu_unter_der_eingangs_decke`), Ruff clean. **Nebenbefund
 aus dem alten Lauf:** `Verarbeitungsschritt-07-Silence-Guard: Ausgabe-RMS
 -91.1 dBFS → Rollback` in einem Goal-Compensation-Sekundärlauf, während die
-Hauptketten-Pegel stabil bei −14,4…−14,9 dBFS bleiben. **Dritte Metrik-Grenze:**
+Hauptketten-Pegel stabil bei −14,4…−14,9 dBFS bleiben. **Aufgeklärt
+2026-11-12 (Log-Analyse `schadens_restore.log`):** echte Stille-Segmente im
+Quellmaterial (SegmentAdaptive zählt 20 Stille-Segmente; Shellac-Quelle mit
+Ausklängen) — Early-Silence-Gate übersprang die Phasen 07/40/24/29/57 auf
+−91,1 dBFS-Eingang korrekt, der Guard rollte zurück, die Folgekette lief
+normal weiter (FeedbackChain 4,021, artifact_freedom 0,973) — **kein Defekt,
+Guard-Verhalten korrekt**. Der Gain-0,30-Jets-Fall war das §V8-Leck
+(geschlossen 2026-11-11). Damit ist D-K3-97-Punkt (2) (Pegel-/
+Entscheidungskette) evidenz-basiert abgeschlossen. **Dritte Metrik-Grenze:**
 `defektlast` liest nur die ersten 16384 Samples (0,34 s). **Kein Flag-Flip,
 kein Deploy.** Nächster autonomer Schritt: Reproduzierbarkeit (derselbe Lauf
 zweimal, Logs + WAV-Hashes) — erst danach ist „repariert/nicht repariert" eine
