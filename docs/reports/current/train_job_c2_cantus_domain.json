@@ -1,36 +1,36 @@
 {
   "schema": "aurik.train_job/1",
-  "run_id": "domain_adapt-20261106T173320Z-480c5b",
+  "run_id": "domain_adapt-20261112T193010Z-de5e5c",
   "name": "c2_cantus_domain",
   "phase": "domain_adapt",
   "seed": null,
-  "befehl": "env PYTHONPATH=. /home/michael/.local/share/aurik/venv_rocm72/bin/python -B scripts/train_cantus.py --phase=domain_adapt --preset=full --epochs=20 --resume models/cantus/checkpoint_latest.pt",
-  "resume_befehl": "env PYTHONPATH=. /home/michael/.local/share/aurik/venv_rocm72/bin/python -B scripts/train_cantus.py --phase=domain_adapt --preset=full --epochs=20 --resume models/cantus/checkpoint_latest.pt",
+  "befehl": "env PYTHONPATH=. /home/michael/.local/share/aurik/venv_rocm72/bin/python -B scripts/train_cantus.py --phase=domain_adapt --preset=full --epochs=20 --data data/cantus_real --resume models/cantus/checkpoint_latest.pt",
+  "resume_befehl": "env PYTHONPATH=. /home/michael/.local/share/aurik/venv_rocm72/bin/python -B scripts/train_cantus.py --phase=domain_adapt --preset=full --epochs=20 --data data/cantus_real --resume models/cantus/checkpoint_latest.pt",
   "timeout_s": 43200.0,
   "retries": 1,
   "versuche": [
     {
-      "exit_code": 2,
-      "sekunden": 2.3,
+      "exit_code": 1,
+      "sekunden": 45.7,
       "timed_out": false,
-      "output_tail": "INFO __main__: Ressourcen-Deckel: 4 Trainings-Threads von 16 Kernen, nice +10 (Host-Schutz, Pfeiler 6)\nERROR __main__: --data fehlt (Manifest-JSONL/Ordner) — oder --smoke fuer den CPU-Smoke\n",
+      "output_tail": "packages/torch/nn/modules/module.py\", line 1779, in _wrapped_call_impl\n    return self._call_impl(*args, **kwargs)\n  File \"/home/michael/.local/share/aurik/venv_rocm72/lib/python3.10/site-packages/torch/nn/modules/module.py\", line 1790, in _call_impl\n    return forward_call(*args, **kwargs)\n  File \"/media/michael/Software 4TB/Aurik_Standalone/models/cantus/cantus_model.py\", line 342, in forward\n    v_high = self.high_path(high, t_emb)\n  File \"/home/michael/.local/share/aurik/venv_rocm72/lib/python3.10/site-packages/torch/nn/modules/module.py\", line 1779, in _wrapped_call_impl\n    return self._call_impl(*args, **kwargs)\n  File \"/home/michael/.local/share/aurik/venv_rocm72/lib/python3.10/site-packages/torch/nn/modules/module.py\", line 1790, in _call_impl\n    return forward_call(*args, **kwargs)\n  File \"/media/michael/Software 4TB/Aurik_Standalone/models/cantus/cantus_model.py\", line 189, in forward\n    h = block(h, cond)\n  File \"/home/michael/.local/share/aurik/venv_rocm72/lib/python3.10/site-packages/torch/nn/modules/module.py\", line 1779, in _wrapped_call_impl\n    return self._call_impl(*args, **kwargs)\n  File \"/home/michael/.local/share/aurik/venv_rocm72/lib/python3.10/site-packages/torch/nn/modules/module.py\", line 1790, in _call_impl\n    return forward_call(*args, **kwargs)\n  File \"/media/michael/Software 4TB/Aurik_Standalone/models/cantus/cantus_model.py\", line 169, in forward\n    h = h * (1 + scale.unsqueeze(-1)) + shift.unsqueeze(-1)\ntorch.OutOfMemoryError: CUDA out of memory. Tried to allocate 750.00 MiB. GPU 0 has a total capacity of 23.98 GiB of which 280.00 MiB is free. Of the allocated memory 22.77 GiB is allocated by PyTorch, and 454.09 MiB is reserved by PyTorch but unallocated. If reserved but unallocated memory is large try setting PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True to avoid fragmentation.  See documentation for Memory Management  (https://docs.pytorch.org/docs/stable/notes/cuda.html#optimizing-memory-usage-with-pytorch-cuda-alloc-conf)\n",
       "versuch": 1,
-      "befehl": "env PYTHONPATH=. /home/michael/.local/share/aurik/venv_rocm72/bin/python -B scripts/train_cantus.py --phase=domain_adapt --preset=full --epochs=20 --resume models/cantus/checkpoint_latest.pt"
+      "befehl": "env PYTHONPATH=. /home/michael/.local/share/aurik/venv_rocm72/bin/python -B scripts/train_cantus.py --phase=domain_adapt --preset=full --epochs=20 --data data/cantus_real --resume models/cantus/checkpoint_latest.pt"
     },
     {
-      "exit_code": 2,
-      "sekunden": 2.2,
+      "exit_code": 1,
+      "sekunden": 30.1,
       "timed_out": false,
-      "output_tail": "INFO __main__: Ressourcen-Deckel: 4 Trainings-Threads von 16 Kernen, nice +10 (Host-Schutz, Pfeiler 6)\nERROR __main__: --data fehlt (Manifest-JSONL/Ordner) — oder --smoke fuer den CPU-Smoke\n",
+      "output_tail": "packages/torch/nn/modules/module.py\", line 1779, in _wrapped_call_impl\n    return self._call_impl(*args, **kwargs)\n  File \"/home/michael/.local/share/aurik/venv_rocm72/lib/python3.10/site-packages/torch/nn/modules/module.py\", line 1790, in _call_impl\n    return forward_call(*args, **kwargs)\n  File \"/media/michael/Software 4TB/Aurik_Standalone/models/cantus/cantus_model.py\", line 342, in forward\n    v_high = self.high_path(high, t_emb)\n  File \"/home/michael/.local/share/aurik/venv_rocm72/lib/python3.10/site-packages/torch/nn/modules/module.py\", line 1779, in _wrapped_call_impl\n    return self._call_impl(*args, **kwargs)\n  File \"/home/michael/.local/share/aurik/venv_rocm72/lib/python3.10/site-packages/torch/nn/modules/module.py\", line 1790, in _call_impl\n    return forward_call(*args, **kwargs)\n  File \"/media/michael/Software 4TB/Aurik_Standalone/models/cantus/cantus_model.py\", line 189, in forward\n    h = block(h, cond)\n  File \"/home/michael/.local/share/aurik/venv_rocm72/lib/python3.10/site-packages/torch/nn/modules/module.py\", line 1779, in _wrapped_call_impl\n    return self._call_impl(*args, **kwargs)\n  File \"/home/michael/.local/share/aurik/venv_rocm72/lib/python3.10/site-packages/torch/nn/modules/module.py\", line 1790, in _call_impl\n    return forward_call(*args, **kwargs)\n  File \"/media/michael/Software 4TB/Aurik_Standalone/models/cantus/cantus_model.py\", line 169, in forward\n    h = h * (1 + scale.unsqueeze(-1)) + shift.unsqueeze(-1)\ntorch.OutOfMemoryError: CUDA out of memory. Tried to allocate 750.00 MiB. GPU 0 has a total capacity of 23.98 GiB of which 280.00 MiB is free. Of the allocated memory 22.77 GiB is allocated by PyTorch, and 454.09 MiB is reserved by PyTorch but unallocated. If reserved but unallocated memory is large try setting PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True to avoid fragmentation.  See documentation for Memory Management  (https://docs.pytorch.org/docs/stable/notes/cuda.html#optimizing-memory-usage-with-pytorch-cuda-alloc-conf)\n",
       "versuch": 2,
-      "befehl": "env PYTHONPATH=. /home/michael/.local/share/aurik/venv_rocm72/bin/python -B scripts/train_cantus.py --phase=domain_adapt --preset=full --epochs=20 --resume models/cantus/checkpoint_latest.pt"
+      "befehl": "env PYTHONPATH=. /home/michael/.local/share/aurik/venv_rocm72/bin/python -B scripts/train_cantus.py --phase=domain_adapt --preset=full --epochs=20 --data data/cantus_real --resume models/cantus/checkpoint_latest.pt"
     }
   ],
   "quelle": "scripts/train_job_runner.py",
   "checkpoint_hashes": {
     "cantus_dit.onnx": "ea2556b23dd511bb8e73eb231efd06bfdfd3128f4bf941f3550bdf5b6d7820cc",
-    "checkpoint_best.pt": "b09822bcb957858f3779cddf0e7109913d1f80928b351a22cd5595ede4d48130",
-    "checkpoint_latest.pt": "78ec1319eb28d05fcacd4dc5517f130b2afc3e35f097710ce8ac1eb38e70cb20"
+    "checkpoint_best.pt": "25981eef425fa7688e31cc059f11c192299081395a4967c50bca33af90f872e9",
+    "checkpoint_latest.pt": "c6132ce8b231e80db7a28b15cd14918d70dd657ed473281fd2e589b468f8957c"
   },
   "ergebnis": "fehlgeschlagen"
 }
