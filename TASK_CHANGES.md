@@ -1,15 +1,19 @@
 # TASK_CHANGES — Live-Ledger der aktuellen Aufgabe
 
-> Generiert von `scripts/change_ledger.py snapshot` (Base: `HEAD`, Stand: 2026-11-12 07:44 CET).
+> Generiert von `scripts/change_ledger.py snapshot` (Base: `HEAD`, Stand: 2026-11-12 09:50 CET).
 > CI (`ci-lite.yml` pr-evidence-gate) erzwingt Abdeckung: jede geänderte Code-Datei muss hier stehen.
 
 ## Geänderte Dateien
 
 | Status | Pfad | Art |
 |---|---|---|
+| M | `.github/FILE_REGISTRY.md` | modifiziert |
 | M | `docs/SOTA_HANDOVER.md` | modifiziert |
-| M | `scripts/b3_stufenmessung.py` | modifiziert |
-| M | `tests/unit/test_b3_pfad_wirksamkeit.py` | modifiziert |
+| A | `docs/reports/current/2026-11-12_air_presence_wirkung.json` | neu |
+| A | `docs/reports/current/2026-11-12_air_presence_wirkung.md` | neu |
+| A | `docs/reports/current/2026-11-12_air_presence_wirkung_stem.json` | neu |
+| A | `scripts/messe_air_presence_wirkung.py` | neu |
+| A | `tests/unit/test_messe_air_presence_wirkung.py` | neu |
 
 ## Entscheidungen
 

@@ -886,3 +886,23 @@ D-K3-95-Rezepte (clipping/kassette) — der Enhancer läuft nur im Stem-Pfad,
 `phase_19` ist witness-guarded. Beleg
 `docs/reports/current/2026-11-11_d_k3_98_air_presence_nola.md`, Register
 D-K3-98 (geschlossen).
+
+**Update 2026-11-12 (D-K3-98-Folgemessung — Wirkung auf den Rezepten GEMESSEN, Nullwirkung belegt):**
+`scripts/messe_air_presence_wirkung.py` (neu, 4 Vertragstests) misst auf den
+6 D-K3-95-Rezept-Proben (3 Titel × clipping/kassette) beide Ebenen:
+**Kern:** never-worsen ✓ (Witness 6/6, Decke 6/6, Metrik-JND 6/6) — aber die
+Wirkung ist **Null**: clipping 3/3 **bit-identisch** (rms_delta 0,0),
+kassette 3/3 nur STFT-Numerik (≤ 4e-5), alle Metrik-Deltas 0,000. **Stem-Pfad:**
+6/6 gelaufen, `air_presence_used` + Zeugen-`applied` = true auf allen Proben —
+die Produktionsstufe **meldet Anwendung, wo nichts passiert** (No-Op-Artefakt
+mit aktivem Zeugen, D-K3-85-Klasse). **Ursache (Code-verifiziert):**
+`_begrenze_auf_eingangsdecke` setzt `ceiling = min(0,999, peak_in)` = peak_in
+bei Realsignalen ⇒ jede positive Anhebung am Peak-Sample ergibt `k=0` ⇒ der
+gesamte Zusatz wird linear auf Null zurückgenommen — auf realer Musik
+strukturell ein No-Op (die D-K3-98-Verifikationstabelle ist mit k=0
+erfüllbar, sie belegte nie die Anhebung). **Konsequenz für D-K3-95/97:** der
+Enhancer kann die Clipping-Verschlechterung nicht verursacht haben; die
+Ursachensuche verengt sich auf die Pegel-/Entscheidungskette. **Fix wäre
+klangwirksam** (per-Frame-Decke o. Ä.) ⇒ §4/Hör-Sign-off, bewusst NICHT
+eigenmächtig. Belege `2026-11-12_air_presence_wirkung.json` (+ `…_stem.json`),
+Report `2026-11-12_air_presence_wirkung.md`.

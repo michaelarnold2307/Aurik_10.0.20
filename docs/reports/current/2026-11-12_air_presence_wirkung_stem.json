@@ -1,0 +1,354 @@
+{
+  "schema": "aurik.air_presence_wirkung/1",
+  "datum": "2026-11-12",
+  "quelle": "scripts/messe_air_presence_wirkung.py",
+  "proben_anzahl": 6,
+  "rezepte": ["clipping", "kassette"],
+  "panns_singing": 0.8,
+  "zeilen": [
+    {
+      "titel": "Elke Best - Boogie Woogie Mama (1977) HD audio 320 kbps engl (clipping)",
+      "rezept": "clipping",
+      "ebene_kern": {
+        "applied": true,
+        "witness_ok": true,
+        "hnr_drop_db": 0.0,
+        "pitch_drift_cents": 0.0,
+        "flat_top_rise": 0.0,
+        "decke_in": 0.899994,
+        "decke_out": 0.899994,
+        "decke_ok": true,
+        "rms_delta": 0.0,
+        "delta_metriken": {
+          "musik_mos_delta": 0.0,
+          "defektlast_delta": 0.0,
+          "nie_schlechter_als_jnd": true
+        }
+      },
+      "ebene_stem": {
+        "gelaufen": true,
+        "success": false,
+        "air_presence_used": true,
+        "applied": true,
+        "witness": {
+          "applied": true,
+          "algorithm": "air_presence_stft",
+          "strength": 0.15,
+          "witness": {
+            "phase_id": "air_presence",
+            "pitch_drift_cents": 0.0,
+            "pitch_mod_depth_cents": 0.0,
+            "hnr_drop_db": 0.0,
+            "hf_flatness_rise": 0.0,
+            "flat_top_rise": 0.0,
+            "loud_mod_rise_db": 0.0,
+            "bass_drop_db": 0.0,
+            "transient_smear_ratio": 0.0,
+            "air_gain_db": 0.0,
+            "masked_residual_db": -120.0,
+            "air_audible": false,
+            "roughness_rise_asper": 0.0,
+            "itd_drift_us": 0.0,
+            "ild_drift_db": 0.0,
+            "iacc_drop": 0.0,
+            "pre_echo_db": -200.0,
+            "pre_echo_corr": 0.0,
+            "pre_echo_kind": "none",
+            "sibilance_harshness_asper": 2217.6437,
+            "muddiness_mask_db": 19.03,
+            "temporal_mask_db": 11.69,
+            "findings": []
+          }
+        }
+      }
+    },
+    {
+      "titel": "Elke Best - Boogie Woogie Mama (1977) HD audio 320 kbps engl (kassette)",
+      "rezept": "kassette",
+      "ebene_kern": {
+        "applied": true,
+        "witness_ok": true,
+        "hnr_drop_db": -0.0,
+        "pitch_drift_cents": 0.0,
+        "flat_top_rise": 0.0,
+        "decke_in": 0.700287,
+        "decke_out": 0.700287,
+        "decke_ok": true,
+        "rms_delta": 4.8e-6,
+        "delta_metriken": {
+          "musik_mos_delta": 0.0,
+          "defektlast_delta": 0.0,
+          "nie_schlechter_als_jnd": true
+        }
+      },
+      "ebene_stem": {
+        "gelaufen": true,
+        "success": false,
+        "air_presence_used": true,
+        "applied": true,
+        "witness": {
+          "applied": true,
+          "algorithm": "air_presence_stft",
+          "strength": 0.15,
+          "witness": {
+            "phase_id": "air_presence",
+            "pitch_drift_cents": 0.0,
+            "pitch_mod_depth_cents": 0.0,
+            "hnr_drop_db": -0.0,
+            "hf_flatness_rise": -0.0,
+            "flat_top_rise": 0.0,
+            "loud_mod_rise_db": 0.0,
+            "bass_drop_db": 0.0,
+            "transient_smear_ratio": 0.0,
+            "air_gain_db": 0.0,
+            "masked_residual_db": -115.35,
+            "air_audible": false,
+            "roughness_rise_asper": 0.0,
+            "itd_drift_us": 0.0,
+            "ild_drift_db": 0.0,
+            "iacc_drop": 0.0,
+            "pre_echo_db": -200.0,
+            "pre_echo_corr": 0.0,
+            "pre_echo_kind": "none",
+            "sibilance_harshness_asper": 1456.7179,
+            "muddiness_mask_db": 44.96,
+            "temporal_mask_db": 11.17,
+            "findings": []
+          }
+        }
+      }
+    },
+    {
+      "titel": "Elke Best - Träumer (Dreamer) 1981 Digital Source audio 320  (clipping)",
+      "rezept": "clipping",
+      "ebene_kern": {
+        "applied": true,
+        "witness_ok": true,
+        "hnr_drop_db": 0.0,
+        "pitch_drift_cents": 0.0,
+        "flat_top_rise": 0.0,
+        "decke_in": 0.900024,
+        "decke_out": 0.900024,
+        "decke_ok": true,
+        "rms_delta": 0.0,
+        "delta_metriken": {
+          "musik_mos_delta": 0.0,
+          "defektlast_delta": 0.0,
+          "nie_schlechter_als_jnd": true
+        }
+      },
+      "ebene_stem": {
+        "gelaufen": true,
+        "success": true,
+        "air_presence_used": true,
+        "applied": true,
+        "witness": {
+          "applied": true,
+          "algorithm": "air_presence_stft",
+          "strength": 0.15,
+          "witness": {
+            "phase_id": "air_presence",
+            "pitch_drift_cents": 0.0,
+            "pitch_mod_depth_cents": 0.0,
+            "hnr_drop_db": 0.0,
+            "hf_flatness_rise": 0.0004,
+            "flat_top_rise": 0.0,
+            "loud_mod_rise_db": 0.0,
+            "bass_drop_db": 0.0,
+            "transient_smear_ratio": 0.0,
+            "air_gain_db": 0.37,
+            "masked_residual_db": 24.17,
+            "air_audible": false,
+            "roughness_rise_asper": 0.0,
+            "itd_drift_us": 0.0,
+            "ild_drift_db": 0.0,
+            "iacc_drop": 0.0,
+            "pre_echo_db": -200.0,
+            "pre_echo_corr": 0.0,
+            "pre_echo_kind": "none",
+            "sibilance_harshness_asper": 1667.4024,
+            "muddiness_mask_db": 70.56,
+            "temporal_mask_db": 11.86,
+            "findings": []
+          }
+        }
+      }
+    },
+    {
+      "titel": "Elke Best - Träumer (Dreamer) 1981 Digital Source audio 320  (kassette)",
+      "rezept": "kassette",
+      "ebene_kern": {
+        "applied": true,
+        "witness_ok": true,
+        "hnr_drop_db": -0.0,
+        "pitch_drift_cents": 0.0,
+        "flat_top_rise": 0.0,
+        "decke_in": 0.759827,
+        "decke_out": 0.759827,
+        "decke_ok": true,
+        "rms_delta": 4.27e-5,
+        "delta_metriken": {
+          "musik_mos_delta": 0.0,
+          "defektlast_delta": 0.0,
+          "nie_schlechter_als_jnd": true
+        }
+      },
+      "ebene_stem": {
+        "gelaufen": true,
+        "success": true,
+        "air_presence_used": true,
+        "applied": true,
+        "witness": {
+          "applied": true,
+          "algorithm": "air_presence_stft",
+          "strength": 0.15,
+          "witness": {
+            "phase_id": "air_presence",
+            "pitch_drift_cents": 0.0,
+            "pitch_mod_depth_cents": 0.0,
+            "hnr_drop_db": 0.0,
+            "hf_flatness_rise": 0.0,
+            "flat_top_rise": 0.0,
+            "loud_mod_rise_db": 0.0,
+            "bass_drop_db": 0.0,
+            "transient_smear_ratio": 0.0,
+            "air_gain_db": -0.0,
+            "masked_residual_db": -37.2,
+            "air_audible": false,
+            "roughness_rise_asper": 0.0,
+            "itd_drift_us": 0.0,
+            "ild_drift_db": 0.0,
+            "iacc_drop": 0.0,
+            "pre_echo_db": -200.0,
+            "pre_echo_corr": 0.0,
+            "pre_echo_kind": "none",
+            "sibilance_harshness_asper": 1562.6709,
+            "muddiness_mask_db": 56.69,
+            "temporal_mask_db": 11.72,
+            "findings": []
+          }
+        }
+      }
+    },
+    {
+      "titel": "Elke and The Jets - Me I'm So Beautiful (1983) HD audio 320  (clipping)",
+      "rezept": "clipping",
+      "ebene_kern": {
+        "applied": true,
+        "witness_ok": true,
+        "hnr_drop_db": 0.0,
+        "pitch_drift_cents": 0.0,
+        "flat_top_rise": 0.0,
+        "decke_in": 0.900024,
+        "decke_out": 0.900024,
+        "decke_ok": true,
+        "rms_delta": 0.0,
+        "delta_metriken": {
+          "musik_mos_delta": 0.0,
+          "defektlast_delta": 0.0,
+          "nie_schlechter_als_jnd": true
+        }
+      },
+      "ebene_stem": {
+        "gelaufen": true,
+        "success": true,
+        "air_presence_used": true,
+        "applied": true,
+        "witness": {
+          "applied": true,
+          "algorithm": "air_presence_stft",
+          "strength": 0.15,
+          "witness": {
+            "phase_id": "air_presence",
+            "pitch_drift_cents": 0.0,
+            "pitch_mod_depth_cents": 0.0,
+            "hnr_drop_db": 0.0,
+            "hf_flatness_rise": 0.0,
+            "flat_top_rise": 0.0,
+            "loud_mod_rise_db": 0.0,
+            "bass_drop_db": 0.0,
+            "transient_smear_ratio": 0.0,
+            "air_gain_db": 0.0,
+            "masked_residual_db": -120.0,
+            "air_audible": false,
+            "roughness_rise_asper": 0.0,
+            "itd_drift_us": 0.0,
+            "ild_drift_db": 0.0,
+            "iacc_drop": 0.0,
+            "pre_echo_db": -200.0,
+            "pre_echo_corr": 0.0,
+            "pre_echo_kind": "none",
+            "sibilance_harshness_asper": 1530.8454,
+            "muddiness_mask_db": 67.25,
+            "temporal_mask_db": 10.81,
+            "findings": []
+          }
+        }
+      }
+    },
+    {
+      "titel": "Elke and The Jets - Me I'm So Beautiful (1983) HD audio 320  (kassette)",
+      "rezept": "kassette",
+      "ebene_kern": {
+        "applied": true,
+        "witness_ok": true,
+        "hnr_drop_db": -0.0,
+        "pitch_drift_cents": 0.0,
+        "flat_top_rise": 0.0,
+        "decke_in": 0.849213,
+        "decke_out": 0.848895,
+        "decke_ok": true,
+        "rms_delta": 3.79e-5,
+        "delta_metriken": {
+          "musik_mos_delta": 0.0,
+          "defektlast_delta": 0.0,
+          "nie_schlechter_als_jnd": true
+        }
+      },
+      "ebene_stem": {
+        "gelaufen": true,
+        "success": false,
+        "air_presence_used": true,
+        "applied": true,
+        "witness": {
+          "applied": true,
+          "algorithm": "air_presence_stft",
+          "strength": 0.15,
+          "witness": {
+            "phase_id": "air_presence",
+            "pitch_drift_cents": 0.0,
+            "pitch_mod_depth_cents": 0.0,
+            "hnr_drop_db": -0.0,
+            "hf_flatness_rise": 0.0,
+            "flat_top_rise": 0.0,
+            "loud_mod_rise_db": 0.0,
+            "bass_drop_db": 0.0,
+            "transient_smear_ratio": 0.0,
+            "air_gain_db": -0.0,
+            "masked_residual_db": -111.72,
+            "air_audible": false,
+            "roughness_rise_asper": 0.0,
+            "itd_drift_us": 0.0,
+            "ild_drift_db": 0.0,
+            "iacc_drop": 0.0,
+            "pre_echo_db": -200.0,
+            "pre_echo_corr": 0.0,
+            "pre_echo_kind": "none",
+            "sibilance_harshness_asper": 1102.1767,
+            "muddiness_mask_db": 53.02,
+            "temporal_mask_db": 9.89,
+            "findings": []
+          }
+        }
+      }
+    }
+  ],
+  "zusammenfassung": {
+    "kern_engagiert": 6,
+    "kern_witness_ok": 6,
+    "kern_decke_ok": 6,
+    "kern_nie_schlechter": 6,
+    "stem_gelaufen": 6,
+    "stem_air_used": 6
+  }
+}
