@@ -446,6 +446,53 @@ class DeclipperPhase(PhaseInterface):
                     _ac_exc,
                 )
 
+        # SOTA-M8-Folge (D-K4-1-Durchbruch 2026-11-13): Musik-Declip-Kopf als
+        # zweiter Challenger — identischer Guard (strikt gegen Input UND den
+        # aktuellen Amtsinhaber); Masken-Blend + Witness liegen im Modul
+        # (backend/core/dsp/musik_declip_kopf.py). Flag bleibt der selbe
+        # use_aspade_declipper (§v10.802 (copilot-instructions.md)).
+        _musik_kopf_used = False
+        if use_aspade_declipper:
+            try:
+                from backend.core.dsp.musik_declip_kopf import (  # pylint: disable=import-outside-toplevel
+                    declip_musik_kopf,
+                )
+
+                _ko_out = np.asarray(audio_out, dtype=np.float64).copy()
+                _ko_acc = 0
+                for _ch in range(audio_in.shape[0]):
+                    _ko_cand = declip_musik_kopf(audio_in[_ch], sample_rate, float(self._clip_threshold))
+                    if _ko_cand is None:
+                        continue  # §V6-Warnung erfolgte im Challenger
+                    _ko_cand = np.asarray(_ko_cand, dtype=np.float64)
+                    if _ko_cand.shape != audio_in[_ch].shape or not bool(np.isfinite(_ko_cand).all()):
+                        logger.warning(
+                            "Verarbeitungsschritt 07 Musik-Declip-Kopf: ungültiger Kandidat "
+                            "(Shape/NaN) — bleibt (§V6 (copilot-instructions.md))"
+                        )
+                        continue
+                    _pin = _harmonic_distortion_proxy(audio_in[_ch], sample_rate)
+                    _pinc = _harmonic_distortion_proxy(_ko_out[_ch], sample_rate)
+                    _pout = _harmonic_distortion_proxy(_ko_cand, sample_rate)
+                    if _pout < _pin and _pout < _pinc:
+                        _ko_out[_ch] = _ko_cand
+                        _ko_acc += 1
+                if _ko_acc > 0:
+                    audio_out = _ko_out
+                    _musik_kopf_used = True
+                    logger.info(
+                        "Verarbeitungsschritt 07 Musik-Declip-Kopf: %d/%d Kanäle übernommen "
+                        "(Harmonik-Proxy sank gegen Input und Amtsinhaber)",
+                        _ko_acc,
+                        audio_in.shape[0],
+                    )
+            except Exception as _ko_exc:
+                logger.warning(
+                    "Verarbeitungsschritt 07 Musik-Declip-Kopf fehlgeschlagen (%s) — "
+                    "Kaskade bleibt (§V6 (copilot-instructions.md))",
+                    _ko_exc,
+                )
+
         # §DECLIPPER_SOTA_PLAN.md Slice B/C (2026-09-12): A-SPADE-ONNX als
         # erster neuronaler Zweig für schwere Fälle — Never-worsen über den
         # Harmonik-Proxy; ohne Modell oder ohne Gewinn bleibt CQT-Diff.
@@ -603,6 +650,7 @@ class DeclipperPhase(PhaseInterface):
         }
         if use_aspade_declipper:
             _metrics07["aspade_class_used"] = bool(_aspade_class_used)
+            _metrics07["musik_kopf_used"] = bool(_musik_kopf_used)
 
         return PhaseResult(
             success=True,

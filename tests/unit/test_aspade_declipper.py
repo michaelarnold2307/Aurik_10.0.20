@@ -638,10 +638,12 @@ def test_flag_an_abstinenz_bit_identisch_zu_flag_aus(monkeypatch) -> None:
 
     monkeypatch.setattr(mmf, "use_aspade_declipper", True)
     monkeypatch.setattr(asp, "declip_aspade_class", lambda *_a, **_k: None)
+    monkeypatch.setattr("backend.core.dsp.musik_declip_kopf.declip_musik_kopf", lambda *_a, **_k: None)
     out = DeclipperPhase().process(x, sample_rate=SR)
 
     np.testing.assert_array_equal(out.audio, ref.audio)
     assert out.metrics["aspade_class_used"] is False
+    assert out.metrics["musik_kopf_used"] is False
 
 
 def test_flag_an_orakel_wird_uebernommen(monkeypatch) -> None:
@@ -669,6 +671,7 @@ def test_flag_an_fehler_pchip_kaskade_mit_warnung(monkeypatch, caplog) -> None:
         raise RuntimeError("kaputt")
 
     monkeypatch.setattr(asp, "declip_aspade_class", _boom)
+    monkeypatch.setattr("backend.core.dsp.musik_declip_kopf.declip_musik_kopf", _boom)
     with caplog.at_level(logging.WARNING, logger="backend.core.phases.phase_07_declipper"):
         out = DeclipperPhase().process(x, sample_rate=SR)
 

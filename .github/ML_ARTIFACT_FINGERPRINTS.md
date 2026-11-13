@@ -94,6 +94,7 @@
 | `bw_reconstructor/best_model_v3.pt` | 4.2 MB | `85943655b6d5ada7…` | 1.09 M Params; 14 Stubs ohne Formangabe |
 | `bw_reconstructor/best_model_v4.pt` | 4.2 MB | `c44ff60798739f56…` | 1.09 M Params; 14 Stubs ohne Formangabe |
 | `bw_reconstructor/best_model_v5_pre_retrain.pt` | 4.0 MB | `9ec868098067db95…` | 1.03 M Params; 8 Stubs ohne Formangabe |
+| `klassen_koepfe/musik_declip/best.pt` | 345 KB | `69388a9e940c7dba95…` | ~60k Params; Musik-Declip-Kopf (D-K4-1-Durchbruch 2026-11-13): identity-residualer Conv1d-Encoder-Decoder, trainiert auf 60 MUSDB18-HQ-Mischungen (Rezept clipping) + 3 k398-Clean-Kulturen, 40 Epochen, Seed 42, L1+MR-STFT; leak-freier LOO-Beleg 3/3 k398-Titel SDR-verbessert; Deployment erst nach ΔSDR-Gate + §4 |
 | `clean_music_centroid.npy` | 3.1 KB | `7b098b2e53307c3d…` | npy [768] float32 |
 | `diffwave/diffwave_vocal_ft_rejected_epoch2_gatefail.ckpt` | 10.1 MB | `5c81b41467db7878…` | 2.62 M Params |
 | `diffwave/diffwave_vocal_ft_rejected_epoch7_aborted.ckpt` | 10.1 MB | `c0292a3e2f06a184…` | 2.62 M Params |
