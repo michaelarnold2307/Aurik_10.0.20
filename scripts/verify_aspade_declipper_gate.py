@@ -62,13 +62,19 @@ def _mono(audio: np.ndarray) -> np.ndarray:
 
 
 def _sdr_aligned(schaetzung: np.ndarray, referenz: np.ndarray, max_lag: int = 50) -> float:
-    """SDR mit best-lag-Ausrichtung (Standard-Declip-Evaluation, deterministisch)."""
+    """SDR mit best-lag-Ausrichtung (Standard-Declip-Evaluation, deterministisch).
+
+    FFT-Korrelation statt np.correlate(mode="full"): letzteres ist direkte
+    O(N²)-Konvolution und lief auf 30-s-Fenstern (1,44 M Samples) in Minuten.
+    """
+    from scipy.signal import correlate
+
     a = _mono(schaetzung).astype(np.float64)
     b = _mono(referenz).astype(np.float64)
     n = min(len(a), len(b))
     a, b = a[:n], b[:n]
-    # Korrelations-Peak im ±max_lag-Fenster (numpy correlate, deterministisch).
-    korr = np.correlate(a - a.mean(), b - b.mean(), mode="full")
+    # Korrelations-Peak im ±max_lag-Fenster (FFT-basiert, deterministisch).
+    korr = correlate(a - a.mean(), b - b.mean(), mode="full", method="fft")
     mitte = len(b) - 1
     fenster = korr[mitte - max_lag : mitte + max_lag + 1]
     lag = int(np.argmax(fenster)) - max_lag
