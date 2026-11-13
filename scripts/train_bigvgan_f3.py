@@ -212,6 +212,13 @@ def main() -> int:
     ap.add_argument("--no-amp", action="store_true", help="FP32 statt fp16 (ROCm-Kernel-Diagnose)")
     ap.add_argument("--steps-per-epoch", type=int, default=2000)
     ap.add_argument("--checkpoint", type=str, default="models/bigvgan/bigvgan_v2.pth")
+    ap.add_argument(
+        "--epoch-gate-n",
+        type=int,
+        default=2,
+        help="Trainingsstrategie Stufe B: alle N Epochen Produktions-Domänen-HNR gegen die Basis; "
+        "Degradation > 1 dB ⇒ Abbruch (0 = aus)",
+    )
     ap.add_argument("--data-dir", type=str, default="data/musdb18hq")
     ap.add_argument("--out-dir", type=str, default="output/f3_bigvgan")
     ap.add_argument("--seed", type=int, default=42)
@@ -383,6 +390,7 @@ def main() -> int:
 
     steps_per_epoch = 3 if args.smoke else args.steps_per_epoch
     model.train()
+    basis_modell = None  # Stufe B: Basis-Modell lazy, einmal geladen
     for epoch in range(start_epoch, args.epochs):
         if zeitbudget_erreicht(
             verstrichen_s=time.perf_counter() - t_prozessstart,
@@ -451,6 +459,48 @@ def main() -> int:
         run_a1 /= max(1, steps_per_epoch)
         run_stft /= max(1, steps_per_epoch)
         v_a1 = val_loss(model, device, val_tracks, rng)
+        if args.epoch_gate_n and epoch > 0 and epoch % args.epoch_gate_n == 0:
+            # Trainingsstrategie Stufe B (Report
+            # 2026-11-13_hoerzentrierte_trainingsstrategie.md):
+            # Produktions-Domänen-HNR gegen die Basis — das D-K3-96-Muster
+            # (Finetune degradiert die Basis) fällt bei Epoche N statt nach Tagen.
+            from scripts.trainings_flugschein import epoch_gate_pruefung
+
+            if basis_modell is None:
+                basis_modell = build_model(device, Path("models/bigvgan/bigvgan_v2.pth"))
+                basis_modell.eval()
+
+            def _basis_aufruf(m):
+                return lambda m_t: m(m_t)
+
+            war_train = model.training
+            model.eval()
+            try:
+                befunde = epoch_gate_pruefung(
+                    lambda mel: model(mel),
+                    _basis_aufruf(basis_modell),
+                    val_tracks[0],
+                    SR,
+                    device,
+                )
+            finally:
+                if war_train:
+                    model.train()
+            logger.info(
+                "Epoche %d Epoch-Gate: HNR %.2f dB vs. Basis %.2f dB (Degradation %.2f dB)",
+                epoch,
+                befunde["hnr_finetune_db"],
+                befunde["hnr_basis_db"],
+                befunde["degradation_db"],
+            )
+            history[-1]["epoch_gate"] = befunde
+            if befunde["abbruch"]:
+                _report(completed=False, stop_reason="epoch_gate")
+                logger.warning(
+                    "Epoch-Gate: Basis-Degradation %.2f dB > 1 dB — Abbruch (D-K3-96-Muster, Fail-fast)",
+                    befunde["degradation_db"],
+                )
+                return 3
         dt = time.perf_counter() - t0
         letzte_epoche_s = dt
         epochen_dieser_lauf += 1

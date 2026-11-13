@@ -1,0 +1,20 @@
+{
+  "schema": "aurik.objektivbeschluss/1",
+  "flag": "use_era_crnn",
+  "stufe": "M4-ERA",
+  "referenz_songs": 3,
+  "seed": 42,
+  "never_worsen": true,
+  "signifikant": false,
+  "defekt_fallbacks": 0,
+  "blind_ausgewertet": true,
+  "pfad_wirksam": true,
+  "messung": "docs/reports/current/b3_stufenmessung_M4-ERA.json",
+  "zielmetrik": {
+    "name": "musik_mos (G-2)",
+    "vorteile": "2/6",
+    "p_wert": 0.6875
+  },
+  "ergebnis": "ABGELEHNT",
+  "quelle": "scripts/b3_stufenmessung.py"
+}

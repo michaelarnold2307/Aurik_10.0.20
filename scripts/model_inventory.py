@@ -330,6 +330,11 @@ _WIRING_ALLOWLIST: dict[str, str] = {
         "port/ ist ein Zwilling von models/aspade/aspade_declipper.onnx (identischer SHA 8161ed93…) — "
         "das Musik-Finetune ist bereits über A-SPADE in phase_07 PRODUKTIV; nur applade_dnn.onnx (Basis) ist verwaist"
     ),
+    "gender_head": (
+        "F13 Gender-Head trainiert 2026-11-12 (Kette-4-R6, 144 PANNs-gelabelte Paare male=61/female=83, "
+        "112,9 s, Manifest train_job_gender_head.json) — Konsum-Verdrahtung offen (D-K3-102-Kontext, "
+        "Aktivierung erst nach §4-Verfahren)."
+    ),
     "ddsp_predictor": "trainiert (c4_head.pth), aber val_MAE 0.2447 ≈ Baseline 0.2455 (kein Skill) — NICHT aktivierbar (F5/C4, §V7-Blindaktivierungs-Verbot)",
     "gacela_upstream": "Upstream-Architekturkopie als Vergleichsquelle — kein Laufzeitpfad",
     "matchering2.0": "Referenz-Matching-Werkzeug (Mastering-Vergleich) — Rolle ungeklaert",
