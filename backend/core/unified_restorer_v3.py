@@ -7269,6 +7269,10 @@ class UnifiedRestorerV3:
             "phase_03_denoise",
             "phase_04_eq_correction",
             "phase_05_rumble_filter",
+            # D-K4-1-Produktionspfad-Puzzle 2026-11-13, Schicht 4: der Pilot-
+            # Rollout erlaubte den Declipper nicht (formtreu + Never-worsen-
+            # Witnesses, D-K3-97) — Phase gehört in die Kernphasen-Menge.
+            "phase_07_declipper",
             "phase_08_transient_preservation",
             "phase_09_crackle_removal",
             "phase_10_compression",
@@ -10604,7 +10608,7 @@ class UnifiedRestorerV3:
             logger.debug("DCOffsetPreRemoval Fehler (scipy nicht verfügbar): %s", _dc_exc)
 
         # §LAG_PROBE_0B: NACH DC-Offset-Removal, VOR TDP
-        # §G13/F1: Multi-Point-GCC-PHAT — misst Lag an 3 Positionen (0%, 50%, 90%)
+        # §G13/F1 (copilot-instructions.md): Multi-Point-GCC-PHAT — misst Lag an 3 Positionen (0%, 50%, 90%)
         # für präzise Erkennung von konsistentem vs. zeitlich variierendem Lag.
         try:
             if audio.ndim == 2:
@@ -10627,7 +10631,7 @@ class UnifiedRestorerV3:
                         _pts_str,
                     )
                 else:
-                    # §G13/SOTA: Variierender Interchannel-Lag ist KEIN Defekt, sondern
+                    # §G13/SOTA (copilot-instructions.md): Variierender Interchannel-Lag ist KEIN Defekt, sondern
                     # eine normale Eigenschaft analoger Tonträger (Azimuth-Drift,
                     # Banddehnung, Kopfspalt-Versatz). Die Pipeline korrigiert ihn
                     # automatisch: Median-Korrektur + STCG per-Chunk-Residuale.
@@ -10640,7 +10644,7 @@ class UnifiedRestorerV3:
                         _lag_spread,
                         _pts_str,
                     )
-                # §G13/F1: Globaler Interchannel-Lag MUSS vor Phase 1 korrigiert werden.
+                # §G13/F1 (copilot-instructions.md): Globaler Interchannel-Lag MUSS vor Phase 1 korrigiert werden.
                 # Der Lag wird PRÄZISE via GCC-PHAT gemessen (kein statischer Offset).
                 # Er kann pro Song variieren, auch innerhalb eines Songs (positive/negative
                 # Werte).  Ohne Korrektur arbeiten alle Phasen auf zeitlich dekorrelierten
@@ -10656,13 +10660,13 @@ class UnifiedRestorerV3:
                 #     Korrektur; Residuals < 50 samples gelten als behandelt.
                 _MIN_CORRECTABLE_LAG_SAMPLES = 50  # ~1 ms @ 48 kHz – darunter nicht korrigieren
                 if abs(_lp0b_lag) > _MIN_CORRECTABLE_LAG_SAMPLES:
-                    # §G13/F4: Multi-point spread > 1000 samples (≈20 ms) means
+                    # §G13/F4 (copilot-instructions.md): Multi-point spread > 1000 samples (≈20 ms) means
                     # measurements are totally inconsistent across the song —
                     # this is a false positive (no physical mechanism produces
                     # 185 ms lag variation across a single recording).
                     if _lag_spread > 1000:
                         logger.info(
-                            "§G13 LAG_PROBE_0B: spread=%d samples (%.0f ms) > 1000 limit — "
+                            "§G13 (copilot-instructions.md) LAG_PROBE_0B: spread=%d samples (%.0f ms) > 1000 limit — "
                             "inconsistent measurements = FALSE POSITIVE, skipping correction",
                             int(_lag_spread),
                             _lag_spread / sample_rate * 1000,
@@ -10679,11 +10683,11 @@ class UnifiedRestorerV3:
                             )
                         except Exception as _stcg_lagfix_exc:
                             logger.warning(
-                                "§G13 STCG-Lag-Korrektur fehlgeschlagen (nicht blockierend): %s",
+                                "§G13 (copilot-instructions.md) STCG-Lag-Korrektur fehlgeschlagen (nicht blockierend): %s",
                                 _stcg_lagfix_exc,
                             )
                     logger.info(
-                        "§G13 Interchannel-Lag-Korrektur: Median %d samples (%.1f ms) — "
+                        "§G13 (copilot-instructions.md) Interchannel-Lag-Korrektur: Median %d samples (%.1f ms) — "
                         "Kanal-Alignment via STCG sub-sample shift. Messpunkte: %s. "
                         "STCG behandelt residuale per-Chunk-Variationen.",
                         _lp0b_lag,
@@ -12636,6 +12640,25 @@ class UnifiedRestorerV3:
             selected_phases = self._strip_low_confidence_phases(list(_precomputed_phase_plan))
             # §v10.303.19 Phase-Effectiveness: Auch historisch wirkungslose Phasen strippen
             selected_phases = self._strip_historically_ineffective_phases(selected_phases)
+            # D-K4-1-Produktionspfad-Puzzle 2026-11-13: der vorberechnete
+            # PID-Plan enthält phase_07_declipper nicht, weil der Scanner
+            # Sättigungs-Clipping (k398 ±0,90-Plateaus) mit Severity 0,0
+            # bewertet (gemessen). Signal-Trigger am Plan-Merge: harte
+            # Plateau-Fraktion holt die Phase in den Plan; die
+            # Never-worsen-Witnesses der Phase machen Fehl-Trigger
+            # bit-identisch (Passthrough), es kostet nur Laufzeit.
+            _clip_frac_roh_pid = 0.0
+            if audio is not None and int(sample_rate) > 0:
+                try:
+                    _a_pid = np.asarray(audio, dtype=np.float64)
+                    if _a_pid.ndim == 2:
+                        _a_pid = _a_pid.mean(axis=0) if _a_pid.shape[0] <= 8 else _a_pid.mean(axis=-1)
+                    _peak_pid = float(np.max(np.abs(_a_pid))) + 1e-9
+                    _clip_frac_roh_pid = float(np.mean(np.abs(_a_pid) >= 0.85 * _peak_pid))
+                except Exception:
+                    _clip_frac_roh_pid = 0.0
+            if _clip_frac_roh_pid >= 0.005 and "phase_07_declipper" not in selected_phases:
+                selected_phases.append("phase_07_declipper")
         else:
             # Kein Denker-Plan — UV3 selektiert und optimiert autonom (Legacy/fail-safe).
             selected_phases = self._select_phases(
@@ -13243,7 +13266,9 @@ class UnifiedRestorerV3:
                 "phase_30_dc_offset_removal",
                 "phase_08_transient_preservation",
                 # Tier 1 — Defektkorrektur (alle defektspezifischen Phasen behalten)
-                "phase_01_declipping",
+                # D-K4-1-Puzzle 2026-11-13: veralteter Name "phase_01_declipping" →
+                # kanonisch "phase_07_declipper" (Selektion Zeile 29030 emittiert NUR diesen).
+                "phase_07_declipper",
                 "phase_02_dehum",
                 "phase_03_denoise",
                 "phase_04_eq_correction",
@@ -14918,7 +14943,7 @@ class UnifiedRestorerV3:
                     _lag_pre = _lag_profile_pre["median_lag"]
                     _lag_spread = _lag_profile_pre.get("max_spread", 0)
 
-                    # §G13/F4: Spread > 1000 samples (≈20 ms) = inconsistent
+                    # §G13/F4 (copilot-instructions.md): Spread > 1000 samples (≈20 ms) = inconsistent
                     # measurements = FALSE POSITIVE. No physical mechanism produces
                     # 195 ms lag variation across a single recording.
                     if _lag_spread > 1000:
@@ -29024,9 +29049,26 @@ class UnifiedRestorerV3:
                 selected.append("phase_20_reverb_reduction")
 
         # Spektral-Reparatur (Clipping / Digital-Artefakte)
-        if sev(DefectType.CLIPPING) > 0.10 or sev(DefectType.DIGITAL_ARTIFACTS) > 0.20:
+        # D-K4-1-Produktionspfad-Puzzle 2026-11-13: der Scanner bewertet
+        # Sättigungs-Clipping (±0,90-Plateaus, k398-Rezepte) mit Severity 0,0
+        # (gemessen am Boogie-Schlimmstfenster) — sev(CLIPPING) > 0.10 griff
+        # daher nie, die Phase blieb toter Code. Signal-basierter Trigger:
+        # harte Plateau-Fraktion (≥ 0,85 × Peak) selektiert die Phase; die
+        # Never-worsen-Witnesses der Phase machen Fehl-Trigger bit-identisch
+        # (Passthrough), es kostet nur Laufzeit.
+        _clip_frac_roh = 0.0
+        if audio is not None and int(sr) > 0:
+            try:
+                _a_roh = np.asarray(audio, dtype=np.float64)
+                if _a_roh.ndim == 2:
+                    _a_roh = _a_roh.mean(axis=0) if _a_roh.shape[0] <= 8 else _a_roh.mean(axis=-1)
+                _peak_roh = float(np.max(np.abs(_a_roh))) + 1e-9
+                _clip_frac_roh = float(np.mean(np.abs(_a_roh) >= 0.85 * _peak_roh))
+            except Exception:
+                _clip_frac_roh = 0.0
+        if sev(DefectType.CLIPPING) > 0.10 or sev(DefectType.DIGITAL_ARTIFACTS) > 0.20 or _clip_frac_roh >= 0.005:
             # §v10.18: Selbstkalibrierender Declipper als Primäraktion für CLIPPING
-            if sev(DefectType.CLIPPING) > 0.10:
+            if sev(DefectType.CLIPPING) > 0.10 or _clip_frac_roh >= 0.005:
                 selected.append("phase_07_declipper")
             selected.append("phase_23_spectral_repair")
 
