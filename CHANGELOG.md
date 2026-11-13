@@ -1,4 +1,9 @@
-# Changelog — Aurik 10.12.51
+# Changelog — Aurik 10.12.52
+
+## 10.12.52 (2026-11-13)
+
+* **fix(training): hörzentrierte Trainingsschutz-Gates und Klassenkopf-Holdout** — Vocos verwendet den Produktions-Mel-Extraktor, schützt den differenzierbaren Spektral-Loss und prüft Kandidaten gegen eine unveränderliche Baseline. Der `groove_echo`-Klassenkopf nutzt disjunkten Titel-Holdout, JND-gerechtes Q und einen identity-initialisierten Residual-Ausgang mit Clean-Identity-Loss. Der Folgepilot verbesserte Never-worsen, verfehlte aber weiterhin Q-/Kontroll-Gates; kein Modell-Rollout.
+* **fix(defect-scanner): leerer Dropout-Vergleichsbereich** — Dropouts direkt am Signalbeginn werden ohne NumPy-Warnung konservativ generisch klassifiziert. Tests bestätigen die unveränderte Klassifikation regulärer Dropouts.
 
 ## 10.12.51 (2026-11-05)
 

@@ -104,8 +104,48 @@ def test_epoch_gate_erkennt_degradation() -> None:
 def test_flugschein_pflicht_nur_mel_familie() -> None:
     assert tf.flugschein_pflicht(_ECHTER_TRAINER) is True  # train_bigvgan_f3.py
     assert tf.flugschein_pflicht(Path("scripts/train_flashsr_f4.py")) is True
+    vocos = Path(__file__).resolve().parents[2] / "scripts" / "train_vocos_48khz_finetune.py"
+    assert tf.flugschein_pflicht(vocos) is True
     assert tf.flugschein_pflicht(Path("scripts/train_cantus.py")) is False
     assert tf.flugschein_pflicht(Path("scripts/train_gender_head.py")) is False
+
+
+def test_vocos_flugschein_pinnt_produktionsmel() -> None:
+    trainer = Path(__file__).resolve().parents[2] / "scripts" / "train_vocos_48khz_finetune.py"
+    ok, befund = tf.flugschein_trainer_pruefen(trainer)
+    assert ok, befund
+    assert "VocosPlugin._compute_mel" in befund
+
+
+def test_vocos_train_mel_ist_produktionsmel() -> None:
+    from plugins.vocos_plugin import _HOP_48K, _N_FFT_48K, _N_MELS_48K, VocosPlugin
+    from scripts.train_vocos_48khz_finetune import _mel_from_wave
+
+    audio = _sine(8192)
+    erwartet = VocosPlugin._compute_mel(
+        audio,
+        48000,
+        n_mels=_N_MELS_48K,
+        n_fft=_N_FFT_48K,
+        hop=_HOP_48K,
+    )
+    np.testing.assert_array_equal(_mel_from_wave(audio), erwartet)
+
+
+def test_vocos_flugschein_lehnt_modellinterne_eingangsmel_ab(tmp_path) -> None:
+    trainer = tmp_path / "train_vocos_48khz_finetune.py"
+    _schreibe_trainer(
+        trainer,
+        "mel = model.feature_extractor(wt)\n"
+        'GATE_HINT = "gate_hint"\n'
+        "def _mel_from_wave(wav):\n"
+        "    return VocosPlugin._compute_mel(wav, 48000)\n"
+        "mel = np.stack([_mel_from_wave(sample) for sample in chunk], axis=0)\n"
+        '"gate_hint": GATE_HINT\n',
+    )
+    ok, befund = tf.vocos_mel_paritaet_pruefen(trainer)
+    assert not ok
+    assert "Vocos-Mel-Parität" in befund
 
 
 def test_runner_lehnt_flashsr_ohne_gpu_job_ab(tmp_path) -> None:

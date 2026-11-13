@@ -6620,7 +6620,10 @@ class DefectScanner:
 
         # Pegelverlust-Tiefe: RMS vor Dropout vs während Dropout
         pre_start = max(0, start_sample - (end_sample - start_sample))
-        pre_rms = float(np.sqrt(np.mean(audio_data[pre_start:start_sample] ** 2))) + 1e-12
+        pre_segment = audio_data[pre_start:start_sample]
+        if pre_segment.size == 0:
+            return DefectType.DROPOUTS
+        pre_rms = float(np.sqrt(np.mean(pre_segment**2))) + 1e-12
         seg_rms = float(np.sqrt(np.mean(segment**2)))
         loss_ratio = 1.0 - float(np.clip(seg_rms / pre_rms, 0.0, 1.0))
 

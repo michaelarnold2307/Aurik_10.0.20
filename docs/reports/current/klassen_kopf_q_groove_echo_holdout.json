@@ -1,0 +1,551 @@
+{
+  "schema": "aurik.klassen_kopf_q/2",
+  "klasse": "groove_echo",
+  "checkpoint": "/tmp/aurik_groove_echo_holdout_seed42/checkpoint_latest.pt",
+  "checkpoint_sha256": "8ada99f8183e447b4b9c028a353eb38fb945ddd3353284e5e1cbbacac580db20",
+  "checkpoint_epoch": 1,
+  "checkpoint_seed": 42,
+  "checkpoint_val_mae": 0.08232750184834003,
+  "manifest_sha256": "3b97bcf9191b8cb78dd57424fa232d0fe4b1ef9f4f866182b912509ef628a041",
+  "split_provenance": {
+    "schema": "aurik.klassen_kopf_split/1",
+    "strategie": "whole_title_sha256_seeded",
+    "seed": 42,
+    "train_titel_sha256": [
+      "100db620c6d403d87deb8454c360441f68432a17143ea7e2d107951a69c3c91a",
+      "ff559af320a99d65957bdcfa487609a95ca1b47901cdb0d06de02c699875a3db"
+    ],
+    "holdout_titel_sha256": "0b10d445d36569b5e1817241b1a2f3c112dd2309726fddf832709dcf8aa1a2a6",
+    "manifest_sha256": "3b97bcf9191b8cb78dd57424fa232d0fe4b1ef9f4f866182b912509ef628a041"
+  },
+  "metrik": "defektlast_lang",
+  "metrik_richtung": "niedriger_besser",
+  "q_definition": "(defektlast_schaden - defektlast_repariert) / (defektlast_schaden - defektlast_clean); nur delta_clean > JND",
+  "seed": 42,
+  "holdout_titel_sha256": "0b10d445d36569b5e1817241b1a2f3c112dd2309726fddf832709dcf8aa1a2a6",
+  "holdout_titel_anzahl": 1,
+  "evidence_status": "nicht_bestanden",
+  "n_regionen": 1445,
+  "n_holdout_regionen_disjunkt": 1445,
+  "holdout_ausgewertet_vollstaendig": true,
+  "n_ausgeschlossen_hash_ueberlappung": 30,
+  "n_q": 773,
+  "n_q_unter_jnd_ausgeschlossen": 672,
+  "q_jnd": 0.05,
+  "q_mindest_paare": 6,
+  "q_median": 2.2342,
+  "q_p25": 1.0121,
+  "q_p75": 4.3638,
+  "q_ziel": 0.5,
+  "q_ziel_erfuellt": true,
+  "nie_schlechter_anteil": 0.9246,
+  "nie_schlechter_erfuellt": false,
+  "kontrollregionen_jnd": 0.05,
+  "kontrollregionen_erfuellt": false,
+  "kontrollregionen_rms_delta_median": 0.051689,
+  "audibility_objective": "nicht_gemessen",
+  "q_messung_vorlaeufig": true,
+  "zeilen": [
+    {
+      "sha256": "0004d217",
+      "defektlast_schaden": 0.4243,
+      "defektlast_repariert": 0.1384,
+      "defektlast_clean": 0.4599,
+      "delta_clean": -0.0356,
+      "q": null,
+      "delta_kontroll_clean": -0.4499,
+      "rms_delta_kontroll_clean": 0.016039
+    },
+    {
+      "sha256": "005f613f",
+      "defektlast_schaden": 0.1791,
+      "defektlast_repariert": 0.1254,
+      "defektlast_clean": 0.4833,
+      "delta_clean": -0.3042,
+      "q": null,
+      "delta_kontroll_clean": -0.4699,
+      "rms_delta_kontroll_clean": 0.024351
+    },
+    {
+      "sha256": "007053a2",
+      "defektlast_schaden": 0.4898,
+      "defektlast_repariert": 0.0268,
+      "defektlast_clean": 0.4478,
+      "delta_clean": 0.042,
+      "q": null,
+      "delta_kontroll_clean": -0.4278,
+      "rms_delta_kontroll_clean": 0.03274
+    },
+    {
+      "sha256": "00763144",
+      "defektlast_schaden": 0.4666,
+      "defektlast_repariert": 0.0443,
+      "defektlast_clean": 0.3173,
+      "delta_clean": 0.1493,
+      "q": 2.8285,
+      "delta_kontroll_clean": -0.2193,
+      "rms_delta_kontroll_clean": 0.13016
+    },
+    {
+      "sha256": "00bd2e23",
+      "defektlast_schaden": 0.2211,
+      "defektlast_repariert": 0.1366,
+      "defektlast_clean": 0.0841,
+      "delta_clean": 0.137,
+      "q": 0.6168,
+      "delta_kontroll_clean": 0.0267,
+      "rms_delta_kontroll_clean": 0.065317
+    },
+    {
+      "sha256": "00e25efe",
+      "defektlast_schaden": 0.3032,
+      "defektlast_repariert": 0.0408,
+      "defektlast_clean": 0.4954,
+      "delta_clean": -0.1922,
+      "q": null,
+      "delta_kontroll_clean": -0.4872,
+      "rms_delta_kontroll_clean": 0.019255
+    },
+    {
+      "sha256": "00efa213",
+      "defektlast_schaden": 0.4989,
+      "defektlast_repariert": 0.0224,
+      "defektlast_clean": 0.3275,
+      "delta_clean": 0.1714,
+      "q": 2.78,
+      "delta_kontroll_clean": -0.3147,
+      "rms_delta_kontroll_clean": 0.019049
+    },
+    {
+      "sha256": "00f39ff7",
+      "defektlast_schaden": 0.4777,
+      "defektlast_repariert": 0.0397,
+      "defektlast_clean": 0.2999,
+      "delta_clean": 0.1778,
+      "q": 2.4634,
+      "delta_kontroll_clean": -0.2737,
+      "rms_delta_kontroll_clean": 0.03286
+    },
+    {
+      "sha256": "010bac7e",
+      "defektlast_schaden": 0.481,
+      "defektlast_repariert": 0.0236,
+      "defektlast_clean": 0.4603,
+      "delta_clean": 0.0207,
+      "q": null,
+      "delta_kontroll_clean": -0.4287,
+      "rms_delta_kontroll_clean": 0.071137
+    },
+    {
+      "sha256": "015bdc03",
+      "defektlast_schaden": 0.3292,
+      "defektlast_repariert": 0.0918,
+      "defektlast_clean": 0.4961,
+      "delta_clean": -0.1669,
+      "q": null,
+      "delta_kontroll_clean": -0.4824,
+      "rms_delta_kontroll_clean": 0.022179
+    },
+    {
+      "sha256": "01729184",
+      "defektlast_schaden": 0.3019,
+      "defektlast_repariert": 0.1177,
+      "defektlast_clean": 0.4075,
+      "delta_clean": -0.1056,
+      "q": null,
+      "delta_kontroll_clean": -0.3596,
+      "rms_delta_kontroll_clean": 0.058302
+    },
+    {
+      "sha256": "01cf08bd",
+      "defektlast_schaden": 0.4817,
+      "defektlast_repariert": 0.0608,
+      "defektlast_clean": 0.0329,
+      "delta_clean": 0.4488,
+      "q": 0.9378,
+      "delta_kontroll_clean": 0.0436,
+      "rms_delta_kontroll_clean": 0.08319
+    },
+    {
+      "sha256": "01d7bd87",
+      "defektlast_schaden": 0.4918,
+      "defektlast_repariert": 0.0211,
+      "defektlast_clean": 0.0183,
+      "delta_clean": 0.4735,
+      "q": 0.9941,
+      "delta_kontroll_clean": 0.0058,
+      "rms_delta_kontroll_clean": 0.01966
+    },
+    {
+      "sha256": "023acc86",
+      "defektlast_schaden": 0.4091,
+      "defektlast_repariert": 0.1231,
+      "defektlast_clean": 0.2793,
+      "delta_clean": 0.1298,
+      "q": 2.2034,
+      "delta_kontroll_clean": -0.1972,
+      "rms_delta_kontroll_clean": 0.089853
+    },
+    {
+      "sha256": "023b7f84",
+      "defektlast_schaden": 0.4925,
+      "defektlast_repariert": 0.0141,
+      "defektlast_clean": 0.3322,
+      "delta_clean": 0.1603,
+      "q": 2.9844,
+      "delta_kontroll_clean": -0.2537,
+      "rms_delta_kontroll_clean": 0.118686
+    },
+    {
+      "sha256": "024df7a2",
+      "defektlast_schaden": 0.4988,
+      "defektlast_repariert": 0.0142,
+      "defektlast_clean": 0.3098,
+      "delta_clean": 0.189,
+      "q": 2.564,
+      "delta_kontroll_clean": -0.2902,
+      "rms_delta_kontroll_clean": 0.038467
+    },
+    {
+      "sha256": "026fc9a4",
+      "defektlast_schaden": 0.3667,
+      "defektlast_repariert": 0.0953,
+      "defektlast_clean": 0.3837,
+      "delta_clean": -0.017,
+      "q": null,
+      "delta_kontroll_clean": -0.3592,
+      "rms_delta_kontroll_clean": 0.05906
+    },
+    {
+      "sha256": "027e7d1e",
+      "defektlast_schaden": 0.4691,
+      "defektlast_repariert": 0.0368,
+      "defektlast_clean": 0.4586,
+      "delta_clean": 0.0105,
+      "q": null,
+      "delta_kontroll_clean": -0.4354,
+      "rms_delta_kontroll_clean": 0.102748
+    },
+    {
+      "sha256": "02b37da2",
+      "defektlast_schaden": 0.0261,
+      "defektlast_repariert": 0.2558,
+      "defektlast_clean": 0.3017,
+      "delta_clean": -0.2756,
+      "q": null,
+      "delta_kontroll_clean": -0.1892,
+      "rms_delta_kontroll_clean": 0.142412
+    },
+    {
+      "sha256": "02d2034c",
+      "defektlast_schaden": 0.4974,
+      "defektlast_repariert": 0.036,
+      "defektlast_clean": 0.4505,
+      "delta_clean": 0.0469,
+      "q": null,
+      "delta_kontroll_clean": -0.4314,
+      "rms_delta_kontroll_clean": 0.025561
+    },
+    {
+      "sha256": "02d6e745",
+      "defektlast_schaden": 0.3939,
+      "defektlast_repariert": 0.1371,
+      "defektlast_clean": 0.2658,
+      "delta_clean": 0.1281,
+      "q": 2.0047,
+      "delta_kontroll_clean": -0.2558,
+      "rms_delta_kontroll_clean": 0.016039
+    },
+    {
+      "sha256": "036dbaf3",
+      "defektlast_schaden": 0.481,
+      "defektlast_repariert": 0.0321,
+      "defektlast_clean": 0.3923,
+      "delta_clean": 0.0887,
+      "q": 5.0609,
+      "delta_kontroll_clean": -0.3469,
+      "rms_delta_kontroll_clean": 0.051862
+    },
+    {
+      "sha256": "03731dee",
+      "defektlast_schaden": 0.4743,
+      "defektlast_repariert": 0.0212,
+      "defektlast_clean": 0.4721,
+      "delta_clean": 0.0022,
+      "q": null,
+      "delta_kontroll_clean": -0.457,
+      "rms_delta_kontroll_clean": 0.029495
+    },
+    {
+      "sha256": "037987fc",
+      "defektlast_schaden": 0.4236,
+      "defektlast_repariert": 0.0501,
+      "defektlast_clean": 0.4459,
+      "delta_clean": -0.0223,
+      "q": null,
+      "delta_kontroll_clean": -0.4259,
+      "rms_delta_kontroll_clean": 0.042175
+    },
+    {
+      "sha256": "03e05a54",
+      "defektlast_schaden": 0.4898,
+      "defektlast_repariert": 0.0259,
+      "defektlast_clean": 0.4385,
+      "delta_clean": 0.0513,
+      "q": 9.0429,
+      "delta_kontroll_clean": -0.3957,
+      "rms_delta_kontroll_clean": 0.057349
+    },
+    {
+      "sha256": "04050e3a",
+      "defektlast_schaden": 0.2722,
+      "defektlast_repariert": 0.1615,
+      "defektlast_clean": 0.4217,
+      "delta_clean": -0.1495,
+      "q": null,
+      "delta_kontroll_clean": -0.3621,
+      "rms_delta_kontroll_clean": 0.076235
+    },
+    {
+      "sha256": "0408dc89",
+      "defektlast_schaden": 0.4565,
+      "defektlast_repariert": 0.0668,
+      "defektlast_clean": 0.3665,
+      "delta_clean": 0.09,
+      "q": 4.33,
+      "delta_kontroll_clean": -0.3477,
+      "rms_delta_kontroll_clean": 0.028877
+    },
+    {
+      "sha256": "040f9128",
+      "defektlast_schaden": 0.4889,
+      "defektlast_repariert": 0.0546,
+      "defektlast_clean": 0.0092,
+      "delta_clean": 0.4797,
+      "q": 0.9054,
+      "delta_kontroll_clean": 0.048,
+      "rms_delta_kontroll_clean": 0.041719
+    },
+    {
+      "sha256": "042cf8d1",
+      "defektlast_schaden": 0.459,
+      "defektlast_repariert": 0.0768,
+      "defektlast_clean": 0.479,
+      "delta_clean": -0.02,
+      "q": null,
+      "delta_kontroll_clean": -0.4633,
+      "rms_delta_kontroll_clean": 0.062953
+    },
+    {
+      "sha256": "04a90f58",
+      "defektlast_schaden": 0.4914,
+      "defektlast_repariert": 0.0504,
+      "defektlast_clean": 0.4114,
+      "delta_clean": 0.08,
+      "q": 5.5125,
+      "delta_kontroll_clean": -0.342,
+      "rms_delta_kontroll_clean": 0.147845
+    },
+    {
+      "sha256": "04c7a1ee",
+      "defektlast_schaden": 0.4958,
+      "defektlast_repariert": 0.0163,
+      "defektlast_clean": 0.3631,
+      "delta_clean": 0.1327,
+      "q": 3.6134,
+      "delta_kontroll_clean": -0.2944,
+      "rms_delta_kontroll_clean": 0.124657
+    },
+    {
+      "sha256": "04d3dfe6",
+      "defektlast_schaden": 0.4118,
+      "defektlast_repariert": 0.0931,
+      "defektlast_clean": 0.4761,
+      "delta_clean": -0.0643,
+      "q": null,
+      "delta_kontroll_clean": -0.4631,
+      "rms_delta_kontroll_clean": 0.021262
+    },
+    {
+      "sha256": "055d8df4",
+      "defektlast_schaden": 0.3944,
+      "defektlast_repariert": 0.1099,
+      "defektlast_clean": 0.2825,
+      "delta_clean": 0.1119,
+      "q": 2.5424,
+      "delta_kontroll_clean": -0.2584,
+      "rms_delta_kontroll_clean": 0.026443
+    },
+    {
+      "sha256": "055edb4f",
+      "defektlast_schaden": 0.4861,
+      "defektlast_repariert": 0.0225,
+      "defektlast_clean": 0.3766,
+      "delta_clean": 0.1095,
+      "q": 4.2338,
+      "delta_kontroll_clean": -0.3662,
+      "rms_delta_kontroll_clean": 0.016691
+    },
+    {
+      "sha256": "057fed77",
+      "defektlast_schaden": 0.488,
+      "defektlast_repariert": 0.032,
+      "defektlast_clean": 0.4462,
+      "delta_clean": 0.0418,
+      "q": null,
+      "delta_kontroll_clean": -0.3905,
+      "rms_delta_kontroll_clean": 0.118175
+    },
+    {
+      "sha256": "05961cd6",
+      "defektlast_schaden": 0.4985,
+      "defektlast_repariert": 0.0435,
+      "defektlast_clean": 0.2458,
+      "delta_clean": 0.2527,
+      "q": 1.8006,
+      "delta_kontroll_clean": -0.1893,
+      "rms_delta_kontroll_clean": 0.04711
+    },
+    {
+      "sha256": "05adad17",
+      "defektlast_schaden": 0.4954,
+      "defektlast_repariert": 0.0571,
+      "defektlast_clean": 0.2934,
+      "delta_clean": 0.202,
+      "q": 2.1698,
+      "delta_kontroll_clean": -0.26,
+      "rms_delta_kontroll_clean": 0.037924
+    },
+    {
+      "sha256": "05aed89d",
+      "defektlast_schaden": 0.4613,
+      "defektlast_repariert": 0.0586,
+      "defektlast_clean": 0.2157,
+      "delta_clean": 0.2456,
+      "q": 1.6397,
+      "delta_kontroll_clean": -0.1159,
+      "rms_delta_kontroll_clean": 0.144421
+    },
+    {
+      "sha256": "05c6ab8a",
+      "defektlast_schaden": 0.4831,
+      "defektlast_repariert": 0.0471,
+      "defektlast_clean": 0.4359,
+      "delta_clean": 0.0472,
+      "q": null,
+      "delta_kontroll_clean": -0.4059,
+      "rms_delta_kontroll_clean": 0.039365
+    },
+    {
+      "sha256": "05e8608c",
+      "defektlast_schaden": 0.3085,
+      "defektlast_repariert": 0.1491,
+      "defektlast_clean": 0.0985,
+      "delta_clean": 0.21,
+      "q": 0.759,
+      "delta_kontroll_clean": -0.0733,
+      "rms_delta_kontroll_clean": 0.081538
+    },
+    {
+      "sha256": "05e93bde",
+      "defektlast_schaden": 0.4585,
+      "defektlast_repariert": 0.0836,
+      "defektlast_clean": 0.454,
+      "delta_clean": 0.0045,
+      "q": null,
+      "delta_kontroll_clean": -0.438,
+      "rms_delta_kontroll_clean": 0.050364
+    },
+    {
+      "sha256": "06003823",
+      "defektlast_schaden": 0.0263,
+      "defektlast_repariert": 0.3403,
+      "defektlast_clean": 0.2616,
+      "delta_clean": -0.2353,
+      "q": null,
+      "delta_kontroll_clean": -0.1962,
+      "rms_delta_kontroll_clean": 0.079697
+    },
+    {
+      "sha256": "060ec7bc",
+      "defektlast_schaden": 0.4507,
+      "defektlast_repariert": 0.1307,
+      "defektlast_clean": 0.2316,
+      "delta_clean": 0.2191,
+      "q": 1.4605,
+      "delta_kontroll_clean": -0.1673,
+      "rms_delta_kontroll_clean": 0.063041
+    },
+    {
+      "sha256": "063a9157",
+      "defektlast_schaden": 0.4894,
+      "defektlast_repariert": 0.0178,
+      "defektlast_clean": 0.3889,
+      "delta_clean": 0.1005,
+      "q": 4.6925,
+      "delta_kontroll_clean": -0.3598,
+      "rms_delta_kontroll_clean": 0.051345
+    },
+    {
+      "sha256": "064c47d3",
+      "defektlast_schaden": 0.4997,
+      "defektlast_repariert": 0.0096,
+      "defektlast_clean": 0.2622,
+      "delta_clean": 0.2375,
+      "q": 2.0636,
+      "delta_kontroll_clean": -0.216,
+      "rms_delta_kontroll_clean": 0.048203
+    },
+    {
+      "sha256": "066c0674",
+      "defektlast_schaden": 0.4968,
+      "defektlast_repariert": 0.0186,
+      "defektlast_clean": 0.3471,
+      "delta_clean": 0.1497,
+      "q": 3.1944,
+      "delta_kontroll_clean": -0.3256,
+      "rms_delta_kontroll_clean": 0.029083
+    },
+    {
+      "sha256": "0699381a",
+      "defektlast_schaden": 0.4598,
+      "defektlast_repariert": 0.0432,
+      "defektlast_clean": 0.483,
+      "delta_clean": -0.0232,
+      "q": null,
+      "delta_kontroll_clean": -0.4648,
+      "rms_delta_kontroll_clean": 0.057733
+    },
+    {
+      "sha256": "06db7798",
+      "defektlast_schaden": 0.4957,
+      "defektlast_repariert": 0.0521,
+      "defektlast_clean": 0.4486,
+      "delta_clean": 0.0471,
+      "q": null,
+      "delta_kontroll_clean": -0.4207,
+      "rms_delta_kontroll_clean": 0.083989
+    },
+    {
+      "sha256": "06e75236",
+      "defektlast_schaden": 0.4871,
+      "defektlast_repariert": 0.0397,
+      "defektlast_clean": 0.2244,
+      "delta_clean": 0.2627,
+      "q": 1.7031,
+      "delta_kontroll_clean": -0.1578,
+      "rms_delta_kontroll_clean": 0.072513
+    },
+    {
+      "sha256": "07070c4f",
+      "defektlast_schaden": 0.4934,
+      "defektlast_repariert": 0.012,
+      "defektlast_clean": 0.2841,
+      "delta_clean": 0.2093,
+      "q": 2.3,
+      "delta_kontroll_clean": -0.2369,
+      "rms_delta_kontroll_clean": 0.040597
+    }
+  ],
+  "hinweis": "Report-Only-Zeuge (Hörordnung §7), keine Hörbarkeits-/Maskierungsmessung; kein Flag-Flip, Freigaben nur §4."
+}

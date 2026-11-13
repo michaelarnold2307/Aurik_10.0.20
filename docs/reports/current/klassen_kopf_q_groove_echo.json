@@ -1,0 +1,371 @@
+{
+  "schema": "aurik.klassen_kopf_q/1",
+  "evidence_status": "invalidated",
+  "invalidity_reason": "Der historische 500-Regionen-Auszug stammte aus nur einem Titel, enthielt 389 Trainingsregionen und berechnete Q auch bei Clean-Kontrasten unter JND. Der Checkpoint enthält keine unabhängige Titel-Holdout-Provenienz.",
+  "historical_q_median_unvalidated": 0.5834,
+  "klasse": "groove_echo",
+  "checkpoint": "models/klassen_koepfe/groove_echo/checkpoint_latest.pt",
+  "checkpoint_sha256": "05b886417602b08913fb5e7688134a499ab4b2594f5e948b4d29afc0ed2eefd0",
+  "manifest_sha256": "3b97bcf9191b8cb78dd57424fa232d0fe4b1ef9f4f866182b912509ef628a041",
+  "n_regionen": 500,
+  "n_q": 498,
+  "n_train_regionen_im_historischen_auszug": 389,
+  "n_titel_im_historischen_auszug": 1,
+  "q_median": null,
+  "q_ziel": 0.5,
+  "q_ziel_erfuellt": null,
+  "nie_schlechter_anteil": null,
+  "zeilen": [
+    {
+      "sha256": "0004d217",
+      "defektlast_schaden": 0.4243,
+      "defektlast_repariert": 0.4201,
+      "defektlast_clean": 0.4599,
+      "q": -0.118
+    },
+    {
+      "sha256": "000fc8ea",
+      "defektlast_schaden": 0.4849,
+      "defektlast_repariert": 0.2302,
+      "defektlast_clean": 0.2968,
+      "q": 1.3541
+    },
+    {
+      "sha256": "0035f0ee",
+      "defektlast_schaden": 0.4777,
+      "defektlast_repariert": 0.3142,
+      "defektlast_clean": 0.4628,
+      "q": 10.9732
+    },
+    {
+      "sha256": "00539362",
+      "defektlast_schaden": 0.4972,
+      "defektlast_repariert": 0.2935,
+      "defektlast_clean": 0.4225,
+      "q": 2.7269
+    },
+    {
+      "sha256": "005f613f",
+      "defektlast_schaden": 0.1791,
+      "defektlast_repariert": 0.021,
+      "defektlast_clean": 0.4833,
+      "q": -0.5197
+    },
+    {
+      "sha256": "007053a2",
+      "defektlast_schaden": 0.4898,
+      "defektlast_repariert": 0.3151,
+      "defektlast_clean": 0.4478,
+      "q": 4.1595
+    },
+    {
+      "sha256": "00763144",
+      "defektlast_schaden": 0.4666,
+      "defektlast_repariert": 0.3024,
+      "defektlast_clean": 0.3173,
+      "q": 1.0998
+    },
+    {
+      "sha256": "00854b1a",
+      "defektlast_schaden": 0.0256,
+      "defektlast_repariert": 0.2253,
+      "defektlast_clean": 0.4524,
+      "q": 0.4679
+    },
+    {
+      "sha256": "009afe16",
+      "defektlast_schaden": 0.4763,
+      "defektlast_repariert": 0.4523,
+      "defektlast_clean": 0.4906,
+      "q": -1.6783
+    },
+    {
+      "sha256": "00a6c174",
+      "defektlast_schaden": 0.4936,
+      "defektlast_repariert": 0.288,
+      "defektlast_clean": 0.1754,
+      "q": 0.6461
+    },
+    {
+      "sha256": "00aeea62",
+      "defektlast_schaden": 0.4837,
+      "defektlast_repariert": 0.465,
+      "defektlast_clean": 0.4934,
+      "q": -1.9278
+    },
+    {
+      "sha256": "00bd2e23",
+      "defektlast_schaden": 0.2211,
+      "defektlast_repariert": 0.2463,
+      "defektlast_clean": 0.0841,
+      "q": -0.1839
+    },
+    {
+      "sha256": "00d737cc",
+      "defektlast_schaden": 0.3758,
+      "defektlast_repariert": 0.4013,
+      "defektlast_clean": 0.1353,
+      "q": -0.106
+    },
+    {
+      "sha256": "00e25efe",
+      "defektlast_schaden": 0.3032,
+      "defektlast_repariert": 0.2959,
+      "defektlast_clean": 0.4954,
+      "q": -0.038
+    },
+    {
+      "sha256": "00e5b0c6",
+      "defektlast_schaden": 0.4467,
+      "defektlast_repariert": 0.2142,
+      "defektlast_clean": 0.4362,
+      "q": 22.1429
+    },
+    {
+      "sha256": "00eecf7c",
+      "defektlast_schaden": 0.2394,
+      "defektlast_repariert": 0.1978,
+      "defektlast_clean": 0.2981,
+      "q": -0.7087
+    },
+    {
+      "sha256": "00efa213",
+      "defektlast_schaden": 0.4989,
+      "defektlast_repariert": 0.4209,
+      "defektlast_clean": 0.3275,
+      "q": 0.4551
+    },
+    {
+      "sha256": "00f39ff7",
+      "defektlast_schaden": 0.4777,
+      "defektlast_repariert": 0.3248,
+      "defektlast_clean": 0.2999,
+      "q": 0.86
+    },
+    {
+      "sha256": "00f60df8",
+      "defektlast_schaden": 0.3972,
+      "defektlast_repariert": 0.3841,
+      "defektlast_clean": 0.4885,
+      "q": -0.1435
+    },
+    {
+      "sha256": "010bac7e",
+      "defektlast_schaden": 0.481,
+      "defektlast_repariert": 0.4282,
+      "defektlast_clean": 0.4603,
+      "q": 2.5507
+    },
+    {
+      "sha256": "010beadf",
+      "defektlast_schaden": 0.4594,
+      "defektlast_repariert": 0.3161,
+      "defektlast_clean": 0.4641,
+      "q": -30.4894
+    },
+    {
+      "sha256": "014359b9",
+      "defektlast_schaden": 0.4957,
+      "defektlast_repariert": 0.2736,
+      "defektlast_clean": 0.4369,
+      "q": 3.7772
+    },
+    {
+      "sha256": "0159eb57",
+      "defektlast_schaden": 0.4982,
+      "defektlast_repariert": 0.4079,
+      "defektlast_clean": 0.3769,
+      "q": 0.7444
+    },
+    {
+      "sha256": "015bdc03",
+      "defektlast_schaden": 0.3292,
+      "defektlast_repariert": 0.3594,
+      "defektlast_clean": 0.4961,
+      "q": 0.1809
+    },
+    {
+      "sha256": "0167ee3e",
+      "defektlast_schaden": 0.0357,
+      "defektlast_repariert": 0.3512,
+      "defektlast_clean": 0.1603,
+      "q": 2.5321
+    },
+    {
+      "sha256": "016851ac",
+      "defektlast_schaden": 0.3117,
+      "defektlast_repariert": 0.339,
+      "defektlast_clean": 0.3298,
+      "q": 1.5083
+    },
+    {
+      "sha256": "01729184",
+      "defektlast_schaden": 0.3019,
+      "defektlast_repariert": 0.3008,
+      "defektlast_clean": 0.4075,
+      "q": -0.0104
+    },
+    {
+      "sha256": "0192404f",
+      "defektlast_schaden": 0.0257,
+      "defektlast_repariert": 0.2649,
+      "defektlast_clean": 0.0109,
+      "q": -16.1622
+    },
+    {
+      "sha256": "01a13aeb",
+      "defektlast_schaden": 0.4676,
+      "defektlast_repariert": 0.4507,
+      "defektlast_clean": 0.4683,
+      "q": -24.1429
+    },
+    {
+      "sha256": "01b8a46b",
+      "defektlast_schaden": 0.3747,
+      "defektlast_repariert": 0.3569,
+      "defektlast_clean": 0.4294,
+      "q": -0.3254
+    },
+    {
+      "sha256": "01cf08bd",
+      "defektlast_schaden": 0.4817,
+      "defektlast_repariert": 0.3124,
+      "defektlast_clean": 0.0329,
+      "q": 0.3772
+    },
+    {
+      "sha256": "01d7bd87",
+      "defektlast_schaden": 0.4918,
+      "defektlast_repariert": 0.3836,
+      "defektlast_clean": 0.0183,
+      "q": 0.2285
+    },
+    {
+      "sha256": "020390b2",
+      "defektlast_schaden": 0.4772,
+      "defektlast_repariert": 0.3991,
+      "defektlast_clean": 0.1869,
+      "q": 0.269
+    },
+    {
+      "sha256": "020bcc8d",
+      "defektlast_schaden": 0.4939,
+      "defektlast_repariert": 0.2075,
+      "defektlast_clean": 0.0096,
+      "q": 0.5914
+    },
+    {
+      "sha256": "02122001",
+      "defektlast_schaden": 0.4949,
+      "defektlast_repariert": 0.3216,
+      "defektlast_clean": 0.0217,
+      "q": 0.3662
+    },
+    {
+      "sha256": "02254ccd",
+      "defektlast_schaden": 0.4989,
+      "defektlast_repariert": 0.3551,
+      "defektlast_clean": 0.463,
+      "q": 4.0056
+    },
+    {
+      "sha256": "0227dd82",
+      "defektlast_schaden": 0.4932,
+      "defektlast_repariert": 0.2652,
+      "defektlast_clean": 0.005,
+      "q": 0.467
+    },
+    {
+      "sha256": "023acc86",
+      "defektlast_schaden": 0.4091,
+      "defektlast_repariert": 0.4258,
+      "defektlast_clean": 0.2793,
+      "q": -0.1287
+    },
+    {
+      "sha256": "023b7f84",
+      "defektlast_schaden": 0.4925,
+      "defektlast_repariert": 0.3287,
+      "defektlast_clean": 0.3322,
+      "q": 1.0218
+    },
+    {
+      "sha256": "0247bcfd",
+      "defektlast_schaden": 0.3766,
+      "defektlast_repariert": 0.3525,
+      "defektlast_clean": 0.3777,
+      "q": -21.9091
+    },
+    {
+      "sha256": "024df7a2",
+      "defektlast_schaden": 0.4988,
+      "defektlast_repariert": 0.3723,
+      "defektlast_clean": 0.3098,
+      "q": 0.6693
+    },
+    {
+      "sha256": "0254f970",
+      "defektlast_schaden": 0.0233,
+      "defektlast_repariert": 0.0631,
+      "defektlast_clean": 0.0139,
+      "q": -4.234
+    },
+    {
+      "sha256": "0267b2fc",
+      "defektlast_schaden": 0.4899,
+      "defektlast_repariert": 0.2421,
+      "defektlast_clean": 0.4763,
+      "q": 18.2206
+    },
+    {
+      "sha256": "026b5881",
+      "defektlast_schaden": 0.4163,
+      "defektlast_repariert": 0.3919,
+      "defektlast_clean": 0.2858,
+      "q": 0.187
+    },
+    {
+      "sha256": "026fc9a4",
+      "defektlast_schaden": 0.3667,
+      "defektlast_repariert": 0.3022,
+      "defektlast_clean": 0.3837,
+      "q": -3.7941
+    },
+    {
+      "sha256": "0272420d",
+      "defektlast_schaden": 0.4949,
+      "defektlast_repariert": 0.3917,
+      "defektlast_clean": 0.4367,
+      "q": 1.7732
+    },
+    {
+      "sha256": "027e7d1e",
+      "defektlast_schaden": 0.4691,
+      "defektlast_repariert": 0.4329,
+      "defektlast_clean": 0.4586,
+      "q": 3.4476
+    },
+    {
+      "sha256": "027f057f",
+      "defektlast_schaden": 0.3004,
+      "defektlast_repariert": 0.3929,
+      "defektlast_clean": 0.1701,
+      "q": -0.7099
+    },
+    {
+      "sha256": "02a3d605",
+      "defektlast_schaden": 0.456,
+      "defektlast_repariert": 0.3886,
+      "defektlast_clean": 0.0364,
+      "q": 0.1606
+    },
+    {
+      "sha256": "02a729f2",
+      "defektlast_schaden": 0.4947,
+      "defektlast_repariert": 0.2266,
+      "defektlast_clean": 0.3449,
+      "q": 1.7897
+    }
+  ],
+  "hinweis": "Report-Only-Zeuge (Hörordnung §7) — kein Flag-Flip, Freigaben nur §4."
+}

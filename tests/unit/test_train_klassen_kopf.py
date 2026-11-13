@@ -55,6 +55,7 @@ def test_build_model_geometrie() -> None:
     with torch.no_grad():
         y = model(x)
     assert y.shape == (2, 1, kk.WINDOW)
+    assert torch.equal(y, x), "Untrainierter Reparaturkopf muss identity-initialisiert sein"
     n_params = sum(p.numel() for p in model.parameters())
     assert n_params < 200_000, f"Per-Klassen-Kopf soll klein bleiben, hat {n_params} Parameter"
 
@@ -68,3 +69,38 @@ def test_report_schema_felder() -> None:
         "anker": "checkpoint_latest.pt",
     }
     assert json.loads(json.dumps(report, ensure_ascii=False)) == report
+
+
+def test_titel_holdout_ist_deterministisch_und_disjunkt() -> None:
+    entries = [
+        {"titel": title, "sha256_pcm_schaden": f"{title}-{index}"}
+        for title in ("song-a", "song-b", "song-c")
+        for index in range(3)
+    ]
+
+    train_a, holdout_a, provenance_a = kk._split_nach_titel(entries, 42)
+    train_b, holdout_b, provenance_b = kk._split_nach_titel(entries, 42)
+
+    assert provenance_a == provenance_b
+    assert holdout_a == holdout_b
+    assert {entry["titel"] for entry in holdout_a}.isdisjoint({entry["titel"] for entry in train_a})
+    assert len({entry["titel"] for entry in train_a}) == 2
+    assert len({entry["titel"] for entry in holdout_a}) == 1
+
+
+def test_titel_holdout_scheitert_bei_nur_einem_titel() -> None:
+    with pytest.raises(ValueError, match="mindestens zwei"):
+        kk._split_nach_titel([{"titel": "song-a"}], 42)
+
+
+def test_resume_verlangt_exakt_passende_split_provenienz() -> None:
+    provenance = {"schema": "aurik.klassen_kopf_split/1", "manifest_sha256": "abc"}
+    checkpoint = {"split_provenance": provenance, "model_schema": kk._MODEL_SCHEMA}
+
+    assert kk._resume_provenance_gueltig(checkpoint, provenance)
+    assert not kk._resume_provenance_gueltig(
+        {"split_provenance": provenance, "model_schema": "aurik.klassen_kopf_model/1"}, provenance
+    )
+    assert not kk._resume_provenance_gueltig({"split_provenance": {}}, provenance)
+    assert not kk._resume_provenance_gueltig({"modell": {}}, provenance)
+    assert not kk._resume_provenance_gueltig(None, provenance)

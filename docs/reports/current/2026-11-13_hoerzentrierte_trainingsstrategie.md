@@ -22,9 +22,11 @@ wurde erst nach Tagen sichtbar.
    unter der Maskierungsschwelle − 6 dB liegt (`objective_met`, Hörordnung
    Ebene 2) und die Reparaturquote Q ≥ 0,5 erreicht (§G13) — nicht wenn der
    SDR/Mel-Abstand minimal ist.
-2. **Eine Mel-Wahrheit (D-K3-96/§G9).** Trainer und Produktion konsumieren
-   exakt `compute_mel_produktion` — keine Kopie, kein anderes Format. Der
-   Mel-Drift ist als Klasse verboten, nicht als Entdeckung nach Tagen.
+2. **Eine Produktions-Wahrheit je Modell (§G9).** Trainer und Produktion
+   konsumieren dieselbe Mel-Implementierung — keine Kopie, kein anderes
+   Format. BigVGAN nutzt `compute_mel_produktion`; Vocos nutzt
+   `VocosPlugin._compute_mel`. Der Mel-Drift ist als Klasse verboten, nicht
+   als Entdeckung nach Tagen.
 3. **Never-worsen wird Verlust-Term, nicht nur End-Gate.** Jeder Batch trägt
    Kontrollregionen (Δ ≈ 0 erzwingen, §G13(c)) — das Modell lernt
    chirurgisches Eingreifen statt Flächenänderung.
@@ -89,3 +91,46 @@ wurde erst nach Tagen sichtbar.
 2. Epoch-Level-Gate-Verdrahtung in die Trainer (N=2, Abbruch bei Basis-Degradation).
 3. Per-Klassen-Datensatz-Generator aus den Schadens-Rezepten (Klasse = Scanner-Typ).
 4. Erster Per-Klassen-Kopf auf der Q≈0-Spitzenklasse (compression_artifacts).
+
+**Paritäts-Nachtrag 2026-11-13:** Der Vocos-Trainer verwendete bislang den
+Modell-Feature-Extractor als Eingangs-Mel, während die Produktion
+`VocosPlugin._compute_mel` verwendet. Der Trainer nutzt jetzt denselben
+Produktions-Preprozessor; der Flugschein prüft die Verkabelung vor dem GPU-Job.
+Ein deterministischer Holdout-Never-worsen-Gate vergleicht den Finetune-
+Validierungsverlust mit der unveränderten Baseline (Toleranz 1 %) und stellt
+bei Verfehlung den Baseline-Checkpoint wieder her. Auch bei Resume wird die
+Baseline-Metrik jedes Mal mit dem unveränderten Deployment-Checkpoint erhoben;
+der 1-%-Spielraum kann nicht über mehrere Trainingsläufe kumulieren. Ein
+Kandidat wird alle zwei Epochen sowie an der letzten Epoche geprüft; nur
+bestätigte Epochen werden als Resume-Anker gespeichert. Ein Modell-Rollout
+oder Flag-Flip ist davon nicht umfasst.
+
+**Holdout-Korrektur 2026-11-13:** Der erste `groove_echo`-Q-Auszug ist
+invalidiert. Der 500-Regionen-Auszug enthielt 389 Regionen aus dem
+Region-basierten Training und stammte aus nur einem der drei Titel; außerdem
+wurden Q-Werte mit Clean-Kontrast unterhalb des gemeinsamen JND 0,05 gezählt.
+Der Klassenkopf trennt jetzt einen deterministischen vollständigen Titel als
+Holdout ab. Checkpoints tragen Manifest- und Split-Provenienz; Resume und
+Auswertung lehnen fehlende oder abweichende Provenienz ab. Identische PCM-Hashes
+zwischen Train und Holdout werden ausgeschlossen. Q wird nur bei gerichtetem
+Clean-Kontrast > JND berechnet. Never-worsen, Kontrollregionen und Q-Ziel
+werden separat ausgewiesen; mindestens sechs bewertbare Paare sind Pflicht.
+Die Maskierungs-/Audibility-Abnahme ist damit ausdrücklich nicht erbracht.
+
+Der technische CPU-Pilot (1 Epoche, 3 Schritte) auf 2 Trainingstiteln und
+dem vollständigen unabhängigen Holdout (1 Titel, 1.445 disjunkte Regionen)
+erreichte Q-Median 2,2342 bei 773 JND-fähigen Paaren, verfehlte aber
+Never-worsen (92,46 %) und Kontrollregionen. Gesamtstatus: `nicht_bestanden`;
+ein längeres Training ist kein Rollout-Beleg und muss erneut gegen den
+unabhängigen Holdout sowie später durch Hörprobe geprüft werden.
+
+**Identity-Residual-Folgepilot:** Der Kopf startet jetzt als exakte Identität
+(nullinitialisierter Residual-Ausgang) und der Loss enthält zusätzlich einen
+Clean-Identity-Term. Alte Checkpoints ohne passenden Modellvertrag werden
+fail-closed abgewiesen. Im gleichen 1-Epochen-/3-Schritte-CPU-Pilot stieg
+Never-worsen auf 100 %; der Median der RMS-Kontrolländerung sank von 0,051689
+auf 0,005425. Trotzdem verfehlte der vollständige 1.445-Regionen-Holdout das
+Q-Ziel (Median 0,2005 < 0,5) und das Kontrollregionen-Gate (Defektlast-Delta
+weiter außerhalb JND). Audibility bleibt ungemessen, und ein Holdout-Titel
+belegt keine breite Generalisierung. Gesamtstatus bleibt `nicht_bestanden`;
+kein Rollout und kein Flag-Flip.

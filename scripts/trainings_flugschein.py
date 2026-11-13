@@ -40,6 +40,7 @@ _PRODUKTIONS_MEL = "compute_mel_produktion"
 # (HR-V1/§1.4-Vocoder, D-K3-96). Andere Trainer (Cantus/WF4/TP2/Gender/Vocos) haben
 # eigene Paritäts-Verträge und werden vom Flugschein (noch) nicht geprüft.
 MEL_FAMILIE_TRAINER: tuple[str, ...] = ("train_bigvgan_f3.py", "train_flashsr_f4.py")
+VOCOS_TRAINER = "train_vocos_48khz_finetune.py"
 
 
 def _ohne_docstrings_und_kommentare(text: str) -> str:
@@ -75,6 +76,21 @@ def gate_hint_pruefen(trainer_pfad: Path) -> tuple[bool, str]:
     if "gate_hint" not in text:
         return False, f"gate_hint fehlt in {trainer_pfad.name} — Gate-Konvention undokumentiert (D-K3-96)"
     return True, "gate_hint vorhanden"
+
+
+def vocos_mel_paritaet_pruefen(trainer_pfad: Path) -> tuple[bool, str]:
+    """Vocos muss seine Eingangs-Mel direkt aus dem Produktions-Plugin beziehen."""
+    text = _ohne_docstrings_und_kommentare(trainer_pfad.read_text(encoding="utf-8"))
+    nutzt_produktionsmel = (
+        "VocosPlugin._compute_mel(" in text and "_mel_from_wave(sample)" in text and '"gate_hint": GATE_HINT' in text
+    )
+    nutzt_modellmel_als_eingang = "mel = model.feature_extractor(wt)" in text
+    if not nutzt_produktionsmel or nutzt_modellmel_als_eingang:
+        return False, (
+            f"Vocos-Mel-Parität verletzt: {trainer_pfad.name} muss die Eingangs-Mel "
+            "über VocosPlugin._compute_mel erzeugen (D-K2-3, §G9 (copilot-instructions.md))"
+        )
+    return True, "Vocos-Mel-Parität ok: VocosPlugin._compute_mel wird für den Modelleingang genutzt"
 
 
 def daten_pruefen(daten_pfad: Path) -> tuple[bool, str]:
@@ -163,12 +179,20 @@ def epoch_gate_pruefung(model_fn, basis_fn, track, sr: int, device, *, schwelle_
 
 
 def flugschein_pflicht(trainer_pfad: Path) -> bool:
-    """True nur für die Trainer-Familie mit verifiziertem Mel-Paritäts-Vertrag."""
-    return trainer_pfad.name in MEL_FAMILIE_TRAINER
+    """True für Trainer mit vertraglich festgelegter Produktions-Mel-Parität."""
+    return trainer_pfad.name in (*MEL_FAMILIE_TRAINER, VOCOS_TRAINER)
 
 
 def flugschein_trainer_pruefen(trainer_pfad: Path) -> tuple[bool, str]:
-    """Kombinierte Trainer-Prüfung für den Runner (Mel-Parität + gate_hint)."""
+    """Kombinierte Trainer-Prüfung für den Runner (Produktions-Mel + gate_hint)."""
+    if trainer_pfad.name == VOCOS_TRAINER:
+        ok1, befund1 = vocos_mel_paritaet_pruefen(trainer_pfad)
+        if not ok1:
+            return False, befund1
+        ok2, befund2 = gate_hint_pruefen(trainer_pfad)
+        if not ok2:
+            return False, befund2
+        return True, "Flugschein ok (VocosPlugin._compute_mel + gate_hint)"
     ok1, befund1 = mel_paritaet_pruefen(trainer_pfad)
     if not ok1:
         return False, befund1

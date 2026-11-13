@@ -14,10 +14,10 @@ Upstream-Paket `vocos==0.1.0` (MIT, Siuzdak 2023 — wie beim ONNX-Export,
 scripts/export_vocos_48khz_onnx.py Zeile 54) und laedt das deployte Checkpoint
 models/vocos_48khz/{config.yaml,pytorch_model.bin} via
 vocos.pretrained.Vocos.from_pretrained — identische Architektur wie das
-deployte vocos_48khz.onnx. Mel-Extraktion: der Konfig-Extraktor
-(MelSpectrogramFeatures, n_fft 2048/hop 256/n_mels 128/center, 48 kHz) — das
-ist die Trainings-Pipeline des ONNX selbst; die Serve-Paritaet des Plugins
-(plugins/vocos_plugin.py) ist dort bereits vertraglich gepinnt.
+deployte vocos_48khz.onnx. Die Eingangs-Mel-Extraktion nutzt exakt
+`VocosPlugin._compute_mel` aus dem Produktionspfad (48 kHz, n_fft 2048,
+hop 256, 128 Bänder); der Modell-Feature-Extractor wird nur für den
+Rekonstruktions-Verlust verwendet. Der Flugschein pinnt diese Trennung.
 
 Determinismus (§G5 (copilot-instructions.md)): Seed 42, deterministische
 Track-Auswahl und Segment-Fenster, kein time.time in Entscheidungslogik.
@@ -42,8 +42,12 @@ import json
 import logging
 import sys
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 import numpy as np
+
+if TYPE_CHECKING:
+    import torch
 
 logger = logging.getLogger(__name__)
 
@@ -52,6 +56,11 @@ _SR = 48000
 _WIN_S = 4.0
 _DEFAULT_BATCH = 8
 _DEFAULT_LR = 2e-5
+_EPOCH_GATE_N = 2
+GATE_HINT = (
+    "Eingangs-Mel ueber plugins.vocos_plugin.VocosPlugin._compute_mel; "
+    "Rekonstruktionsverlust darf den Produktions-Preprozessor nicht ersetzen."
+)
 
 # Manifest-Schema (analog aurik.wf4_warp_pairs/1 und aurik.train_job/1):
 _SCHEMA = "aurik.vocos48k_finetune/1"
@@ -97,17 +106,21 @@ def _windows(x: np.ndarray, rng: np.random.Generator, n: int) -> list[np.ndarray
     return [np.ascontiguousarray(x[s : s + win], dtype=np.float32) for s in starts]
 
 
-def _mel_from_wave(wav: np.ndarray, model) -> np.ndarray:
-    """Mel via Konfig-Extraktor des geladenen Modells (train/serve-quellidentisch)."""
-    import torch
+def _mel_from_wave(wav: np.ndarray) -> np.ndarray:
+    """Produktions-Mel [128, T]; dieselbe Implementierung wie der Vocos-Plugin-Pfad."""
+    from plugins.vocos_plugin import _HOP_48K, _N_FFT_48K, _N_MELS_48K, VocosPlugin
 
-    t = torch.from_numpy(np.asarray(wav, dtype=np.float32)).unsqueeze(0)  # [1, T]
-    with torch.no_grad():
-        mel = model.feature_extractor(t.to(next(model.parameters()).device))
-    return mel.detach().cpu().numpy()
+    mono = np.asarray(wav, dtype=np.float32).reshape(-1)
+    return VocosPlugin._compute_mel(
+        mono,
+        _SR,
+        n_mels=_N_MELS_48K,
+        n_fft=_N_FFT_48K,
+        hop=_HOP_48K,
+    )
 
 
-def _spectral_loss(y_pred, y_true, model, device) -> float:
+def _spectral_loss(y_pred, y_true, model, device) -> torch.Tensor:
     """Multi-Resolution: L1-Mel + L1-STFT (2048/512, hop 1/4) — Vocos-Stil."""
     import torch
     import torch.nn.functional as F
@@ -138,7 +151,102 @@ def _spectral_loss(y_pred, y_true, model, device) -> float:
             window=torch.hann_window(n_fft, device=device),
         )
         total = total + F.l1_loss(st.abs(), st_t.abs().detach()) + eps
-    return float(total.item())
+    return total
+
+
+def _validation_loss(model, tracks: list[Path], device) -> float:
+    """Deterministischer Holdout-Verlust über eine Produktions-Mel-Probe je Track."""
+    import soundfile as sf
+    import torch
+    import torch.nn.functional as F
+
+    if not tracks:
+        raise ValueError("Vocos-Never-worsen-Gate benötigt mindestens einen Holdout-Track")
+
+    model_was_training = model.training
+    model.eval()
+    losses: list[float] = []
+    try:
+        with torch.no_grad():
+            for track in tracks:
+                vocal = Path(track) / "vocals.wav"
+                if not vocal.is_file():
+                    raise ValueError(f"Vocos-Validierung: Vocal fehlt: {vocal}")
+                data, sr = sf.read(vocal, dtype="float32", always_2d=True)
+                if sr != _SR:
+                    from scipy.signal import resample_poly
+
+                    n_samples = int(round(len(data) * _SR / sr))
+                    data = resample_poly(data, _SR, sr, axis=0)[:n_samples].astype(np.float32)
+                mono = data.mean(axis=1)
+                window = _windows(mono, np.random.default_rng(42), 1)[0]
+                target = torch.from_numpy(window[None, :]).to(device)
+                mel = torch.from_numpy(_mel_from_wave(window)[None, ...]).to(device)
+                restored = _decode_mel(model, mel, device)
+                if restored is None or not hasattr(restored, "shape"):
+                    raise ValueError(f"Vocos-Validierung: ungültige Modellausgabe für {vocal}")
+                if restored.shape[-1] < target.shape[-1]:
+                    restored = F.pad(restored, (0, target.shape[-1] - restored.shape[-1]))
+                else:
+                    restored = restored[..., : target.shape[-1]]
+                if restored.dim() == 3 and restored.shape[1] == 1:
+                    restored = restored.squeeze(1)
+                loss = _spectral_loss(restored, target, model, device)
+                loss_value = float(loss.item())
+                if not np.isfinite(loss_value) or loss_value < 0:
+                    raise ValueError(f"Vocos-Validierung: ungültiger Verlust für {vocal}: {loss_value}")
+                losses.append(loss_value)
+    finally:
+        model.train(model_was_training)
+    return float(np.mean(losses))
+
+
+def _baseline_validation_loss(model, base_state: dict, tracks: list[Path], device) -> float:
+    """Misst den echten Basis-Checkpoint und stellt danach einen Resume-Kandidaten wieder her."""
+    candidate_state = {key: value.detach().cpu().clone() for key, value in model.state_dict().items()}
+    try:
+        model.load_state_dict(base_state)
+        return _validation_loss(model, tracks, device)
+    finally:
+        model.load_state_dict(candidate_state)
+
+
+def _epoch_never_worsen_gate(model, base_state: dict, baseline_loss: float, tracks: list[Path], device) -> dict:
+    """Prüft einen Epochen-Checkpoint gegen die unveränderte Basis; Fehler verwerfen den Kandidaten."""
+    try:
+        candidate_loss = _validation_loss(model, tracks, device)
+    except (OSError, ValueError) as exc:
+        logger.warning(
+            "Vocos-Epoch-Gate nicht messbar: %s — Baseline wird wiederhergestellt (§V6 (copilot-instructions.md))",
+            exc,
+        )
+        candidate_loss = float("inf")
+    passed = _never_worsen_gate(model, base_state, baseline_loss, candidate_loss)
+    return {
+        "candidate_loss": candidate_loss if np.isfinite(candidate_loss) else None,
+        "never_worsen": passed,
+    }
+
+
+def _epoch_gate_due(epoch_number: int, total_epochs: int, smoke: bool = False) -> bool:
+    """Gate alle zwei Epochen, am Laufende und bei Smoke-Läufen."""
+    return smoke or epoch_number % _EPOCH_GATE_N == 0 or epoch_number == total_epochs
+
+
+def _never_worsen_gate(
+    model, base_state: dict, base_loss: float, candidate_loss: float, tolerance: float = 0.01
+) -> bool:
+    """Verwirft nichtfinite oder mehr als 1 % schlechtere Finetunes (§V6 (copilot-instructions.md))."""
+    passed = (
+        np.isfinite(base_loss)
+        and np.isfinite(candidate_loss)
+        and base_loss >= 0.0
+        and candidate_loss >= 0.0
+        and candidate_loss <= base_loss * (1.0 + tolerance)
+    )
+    if not passed:
+        model.load_state_dict(base_state)
+    return bool(passed)
 
 
 def _decode_mel(model, mel, device):
@@ -208,6 +316,7 @@ def _run(args: argparse.Namespace) -> dict:
     device = torch.device(args.device if args.device != "cuda" or torch.cuda.is_available() else "cpu")
     model = _load_vocos(str(device))
     model.train()
+    base_state = {key: value.detach().cpu().clone() for key, value in model.state_dict().items()}
     # Nur die Rekonstruktions-Komponenten optimieren (kein Discriminator vorhanden):
     params = [p for p in model.parameters() if p.requires_grad]
     optimizer = optim.Adam(params, lr=args.lr)
@@ -237,11 +346,27 @@ def _run(args: argparse.Namespace) -> dict:
     else:
         epochs, batch = args.epochs, args.batch
 
+    val_tracks = tracks[::5]
+    train_tracks = [track for index, track in enumerate(tracks) if index % 5 != 0]
+    if not train_tracks:
+        raise SystemExit("Vocos-Finetune benötigt mindestens zwei Tracks für Train/Holdout (fail-closed)")
+    try:
+        baseline_loss = _baseline_validation_loss(model, base_state, val_tracks, device)
+    except (OSError, ValueError) as exc:
+        logger.error("Vocos-Baseline-Validierung fehlgeschlagen: %s — Abbruch (fail-closed)", exc)
+        raise SystemExit(3) from exc
+    if not np.isfinite(baseline_loss):
+        logger.error("Vocos-Baseline-Verlust ist nicht endlich — Abbruch (fail-closed)")
+        raise SystemExit(3)
+
     rng = np.random.default_rng(args.seed)
     history: list[float] = []
+    epoch_gate_failed = False
+    candidate_validated = False
+    candidate_loss = baseline_loss
     for epoch in range(start_epoch, epochs):
         epoch_losses: list[float] = []
-        for track in tracks:
+        for track in train_tracks:
             vocal = Path(track) / "vocals.wav"
             if not vocal.is_file():
                 logger.warning("Vocal fehlt: %s — uebersprungen (§V6 (copilot-instructions.md))", vocal)
@@ -259,7 +384,8 @@ def _run(args: argparse.Namespace) -> dict:
             for i in range(0, len(wins), batch):
                 chunk = np.stack(wins[i : i + batch])
                 wt = torch.from_numpy(chunk).to(device)  # [B, T]
-                mel = model.feature_extractor(wt)
+                mel = np.stack([_mel_from_wave(sample) for sample in chunk], axis=0)
+                mel = torch.from_numpy(mel).to(device)
                 y = _decode_mel(model, mel, device)
                 if y is None or not hasattr(y, "shape"):
                     raise SystemExit(
@@ -275,28 +401,75 @@ def _run(args: argparse.Namespace) -> dict:
                     y = y.squeeze(1)  # [B, T] konsistent halten (Layout-Invariante AGENTS.md §3)
                 loss = _spectral_loss(y, wt, model, device)
                 optimizer.zero_grad(set_to_none=True)
-                if torch.is_tensor(loss) and loss.requires_grad:
-                    loss.backward()
-                    optimizer.step()
-                epoch_losses.append(float(loss.item()) if torch.is_tensor(loss) else float(loss))
+                if not torch.is_tensor(loss) or not loss.requires_grad:
+                    raise RuntimeError(
+                        "Vocos-Trainingsverlust ist nicht differenzierbar (§V6 (copilot-instructions.md))"
+                    )
+                loss.backward()
+                optimizer.step()
+                epoch_losses.append(float(loss.detach().item()))
         mean_loss = float(np.mean(epoch_losses)) if epoch_losses else float("inf")
         history.append(mean_loss)
         logger.info("Epoch %d/%d — Verlust %.5f", epoch + 1, epochs, mean_loss)
-        # Per-Epoche-Anker (D-K3-72-Klasse): nur so überlebt ein Timeout die Kette.
-        # KEIN lokaler torch-Import: `torch` ist oben in `_run` gebunden und ein
-        # `import torch as …` im Loop-Körper shadowte den Namen (flake8 F402).
-        from backend.core.training_artifacts import save_guarded as _sg_vocos
+        gate_due = _epoch_gate_due(epoch + 1, epochs, args.smoke)
+        if gate_due:
+            gate_result = _epoch_never_worsen_gate(model, base_state, baseline_loss, val_tracks, device)
+            candidate_validated = True
+            gate_loss = gate_result["candidate_loss"]
+            candidate_loss = float(gate_loss) if gate_loss is not None else float("inf")
+            logger.info(
+                "Epoche %d Epoch-Gate: Basis %.6f, Kandidat %s — %s",
+                epoch + 1,
+                baseline_loss,
+                f"{candidate_loss:.6f}" if np.isfinite(candidate_loss) else "nicht messbar",
+                "BESTANDEN" if gate_result["never_worsen"] else "ABGELEHNT",
+            )
+            if not gate_result["never_worsen"]:
+                epoch_gate_failed = True
+                from backend.core.training_artifacts import save_guarded as save_guarded_anchor
 
-        _sg_vocos(
-            _anchor_v,
-            {
-                "state_dict": model.state_dict(),
-                "epoch": epoch + 1,
-                "loss": mean_loss,
-            },
-        )
+                save_guarded_anchor(
+                    _anchor_v,
+                    {"state_dict": base_state, "epoch": 0, "loss": baseline_loss, "status": "degraded"},
+                )
+                break
+
+            # Resume-Anker enthält ausschließlich Epochen mit bestandenem Gate.
+            from backend.core.training_artifacts import save_guarded as _sg_vocos
+
+            _sg_vocos(
+                _anchor_v,
+                {
+                    "state_dict": model.state_dict(),
+                    "epoch": epoch + 1,
+                    "loss": mean_loss,
+                    "validation_loss": candidate_loss,
+                    "never_worsen": True,
+                },
+            )
         if args.smoke:
             break
+
+    never_worsen = not epoch_gate_failed
+    if never_worsen and not candidate_validated:
+        final_gate = _epoch_never_worsen_gate(model, base_state, baseline_loss, val_tracks, device)
+        candidate_loss = (
+            float(final_gate["candidate_loss"]) if final_gate["candidate_loss"] is not None else float("inf")
+        )
+        never_worsen = bool(final_gate["never_worsen"])
+    if not never_worsen and not epoch_gate_failed:
+        logger.warning(
+            "Vocos-Never-worsen-Gate verfehlt: Baseline %.6f, Finetune %.6f; Baseline wird gespeichert "
+            "(§V6 (copilot-instructions.md))",
+            baseline_loss,
+            candidate_loss,
+        )
+        from backend.core.training_artifacts import save_guarded as save_guarded_anchor
+
+        save_guarded_anchor(
+            _anchor_v,
+            {"state_dict": base_state, "epoch": 0, "loss": baseline_loss, "status": "degraded"},
+        )
 
     out_dir = Path(args.out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -317,8 +490,15 @@ def _run(args: argparse.Namespace) -> dict:
         "batch": batch,
         "tracks": len(tracks),
         "final_train_loss": history[-1] if history else None,
+        "validation": {
+            "baseline_loss": baseline_loss,
+            "candidate_loss": candidate_loss if np.isfinite(candidate_loss) else None,
+            "tolerance": 0.01,
+            "never_worsen": never_worsen,
+        },
         "sha256_ckpt": _sha256(ckpt_path),
-        "status": "ok" if (history and np.isfinite(history[-1])) else "degraded",
+        "gate_hint": GATE_HINT,
+        "status": "ok" if (never_worsen and history and np.isfinite(history[-1])) else "degraded",
         "hinweis": (
             "Rekonstruktions-only-Finetune; PRIMAER-ROLLEN-Entscheidung "
             "(Studio-Finisher Vocos vs. BigVGAN-F3) bleibt menschlich (C4). "
@@ -337,7 +517,7 @@ def main(argv=None) -> int:
     )
     manifest = _run(args)
     logger.info("Manifest: %s", manifest["status"])
-    return 0
+    return 0 if manifest["status"] == "ok" else 3
 
 
 if __name__ == "__main__":

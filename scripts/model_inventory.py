@@ -317,6 +317,11 @@ _CONSUMER_ROOTS = ("backend", "plugins", "denker", "cli", "Aurik10")
 # Bewusst ohne Konsumenten — JEDER Eintrag ist ein Entscheid mit Begründung
 # und Aufgabenziel, kein vergessener Rest (§G8 copilot-instructions.md, Transparenz).
 _WIRING_ALLOWLIST: dict[str, str] = {
+    "klassen_koepfe": (
+        "Experimentelle, defektklassenspezifische Reparatur-Checkpoints aus der Hör-zentrierten "
+        "Trainingsstrategie; kein Produktionskonsument und kein Modell-Rollout, solange "
+        "unabhängiger §G13 (copilot-instructions.md)-Q-/Never-worsen-/Kontroll- und Audibility-Nachweis fehlt."
+    ),
     "diffwave_vocal_inpaint": (
         "Trainingsziel der Matrix-D.3-Kette (DiffWave-Vokal-Inpaint, S1 -1,7 dB Beleg) — "
         "Checkpoints entstehen ueber scripts/gpu_kette2_matrix_d3.sh (Auto-Resume), "

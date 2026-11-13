@@ -1,6 +1,6 @@
 # TASK_CHANGES — Live-Ledger der aktuellen Aufgabe
 
-> Generiert von `scripts/change_ledger.py snapshot` (Base: `HEAD`, Stand: 2026-11-13 03:12 CET).
+> Generiert von `scripts/change_ledger.py snapshot` (Base: `HEAD`, Stand: 2026-11-13 06:15 CET).
 > CI (`ci-lite.yml` pr-evidence-gate) erzwingt Abdeckung: jede geänderte Code-Datei muss hier stehen.
 
 ## Geänderte Dateien
@@ -8,9 +8,27 @@
 | Status | Pfad | Art |
 |---|---|---|
 | M | `.github/FILE_REGISTRY.md` | modifiziert |
+| M | `Aurik10/__init__.py` | modifiziert |
+| M | `CHANGELOG.md` | modifiziert |
+| M | `README.md` | modifiziert |
+| M | `TASK_CHANGES.md` | modifiziert |
+| M | `backend/core/defect_scanner.py` | modifiziert |
+| M | `backend/core/version.py` | modifiziert |
 | M | `docs/SOTA_HANDOVER.md` | modifiziert |
-| ?? | `scripts/train_klassen_kopf.py` | ungetrackt |
-| ?? | `tests/unit/test_train_klassen_kopf.py` | ungetrackt |
+| M | `docs/reports/current/2026-11-13_hoerzentrierte_trainingsstrategie.md` | modifiziert |
+| A | `docs/reports/current/klassen_kopf_q_groove_echo.json` | neu |
+| A | `docs/reports/current/klassen_kopf_q_groove_echo_holdout.json` | neu |
+| M | `pyproject.toml` | modifiziert |
+| A | `scripts/bewerte_klassen_kopf.py` | neu |
+| M | `scripts/model_inventory.py` | modifiziert |
+| M | `scripts/train_klassen_kopf.py` | modifiziert |
+| M | `scripts/train_vocos_48khz_finetune.py` | modifiziert |
+| M | `scripts/trainings_flugschein.py` | modifiziert |
+| A | `tests/unit/test_bewerte_klassen_kopf.py` | neu |
+| M | `tests/unit/test_tier2_defect_detectors.py` | modifiziert |
+| M | `tests/unit/test_train_klassen_kopf.py` | modifiziert |
+| M | `tests/unit/test_train_vocos_48khz_finetune.py` | modifiziert |
+| M | `tests/unit/test_trainings_flugschein.py` | modifiziert |
 
 ## Entscheidungen
 

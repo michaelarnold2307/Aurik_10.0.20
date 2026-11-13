@@ -112,6 +112,188 @@ def test_keine_flag_flips() -> None:
     assert ".flags" not in _SRC
 
 
+def test_never_worsen_gate_erhaelt_baseline_bei_degradation() -> None:
+    torch = pytest.importorskip("torch")
+    model = torch.nn.Linear(2, 1, bias=False)
+    baseline = {key: value.detach().clone() for key, value in model.state_dict().items()}
+    with torch.no_grad():
+        model.weight.add_(1.0)
+
+    assert not tvf._never_worsen_gate(model, baseline, 1.0, 1.02)
+    for key, value in baseline.items():
+        assert torch.equal(model.state_dict()[key], value)
+
+
+def test_never_worsen_gate_akzeptiert_innerhalb_toleranz() -> None:
+    torch = pytest.importorskip("torch")
+    model = torch.nn.Linear(2, 1, bias=False)
+    baseline = {key: value.detach().clone() for key, value in model.state_dict().items()}
+
+    assert tvf._never_worsen_gate(model, baseline, 1.0, 1.01)
+
+
+def test_epoch_gate_laeuft_alle_zwei_epochen_und_am_ende() -> None:
+    assert not tvf._epoch_gate_due(1, 5)
+    assert tvf._epoch_gate_due(2, 5)
+    assert not tvf._epoch_gate_due(3, 5)
+    assert tvf._epoch_gate_due(5, 5)
+    assert tvf._epoch_gate_due(1, 1, smoke=True)
+
+
+def test_epoch_never_worsen_gate_verwirft_degradierte_epoche(monkeypatch) -> None:
+    torch = pytest.importorskip("torch")
+    model = torch.nn.Linear(1, 1, bias=False)
+    baseline = {key: value.detach().clone() for key, value in model.state_dict().items()}
+    with torch.no_grad():
+        model.weight.fill_(2.0)
+    monkeypatch.setattr(tvf, "_validation_loss", lambda *_args: 1.02)
+
+    result = tvf._epoch_never_worsen_gate(model, baseline, 1.0, [], torch.device("cpu"))
+
+    assert result == {"candidate_loss": 1.02, "never_worsen": False}
+    assert torch.equal(model.weight, baseline["weight"])
+
+
+def test_epoch_never_worsen_gate_schlaegt_bei_messfehler_fail_closed(monkeypatch) -> None:
+    torch = pytest.importorskip("torch")
+    model = torch.nn.Linear(1, 1, bias=False)
+    baseline = {key: value.detach().clone() for key, value in model.state_dict().items()}
+    with torch.no_grad():
+        model.weight.fill_(2.0)
+
+    def _messfehler(*_args):
+        raise ValueError("kein Holdout")
+
+    monkeypatch.setattr(tvf, "_validation_loss", _messfehler)
+    result = tvf._epoch_never_worsen_gate(model, baseline, 1.0, [], torch.device("cpu"))
+
+    assert result == {"candidate_loss": None, "never_worsen": False}
+    assert torch.equal(model.weight, baseline["weight"])
+
+
+def test_run_verwirft_resume_anker_nach_fehlgeschlagenem_epoch_gate(monkeypatch, tmp_path: pathlib.Path) -> None:
+    import sys
+    import types
+    from types import SimpleNamespace
+
+    torch = pytest.importorskip("torch")
+
+    class TinyVocos(torch.nn.Module):
+        def __init__(self) -> None:
+            super().__init__()
+            self.scale = torch.nn.Parameter(torch.tensor(0.25))
+
+    model = TinyVocos()
+    baseline = model.scale.detach().clone()
+    tracks = [pathlib.Path("holdout"), pathlib.Path("train")]
+    monkeypatch.setattr(tvf, "_load_vocos", lambda _device: model)
+    monkeypatch.setattr(tvf, "_stable_track_list", lambda *_args: tracks)
+    monkeypatch.setattr(tvf, "_windows", lambda *_args: [np.zeros(16, dtype=np.float32)])
+    monkeypatch.setattr(tvf, "_mel_from_wave", lambda _wave: np.ones((2, 2), dtype=np.float32))
+    monkeypatch.setattr(
+        tvf,
+        "_decode_mel",
+        lambda current, mel, _device: current.scale.expand(mel.shape[0], 16),
+    )
+    monkeypatch.setattr(
+        tvf,
+        "_spectral_loss",
+        lambda prediction, target, _current, _device: torch.mean((prediction - target) ** 2),
+    )
+
+    soundfile = types.ModuleType("soundfile")
+    soundfile.read = lambda *_args, **_kwargs: (np.zeros((16, 1), dtype=np.float32), 48000)
+    monkeypatch.setitem(sys.modules, "soundfile", soundfile)
+
+    validation_losses = iter((1.0, 1.0, 1.1))
+    monkeypatch.setattr(tvf, "_validation_loss", lambda *_args: next(validation_losses))
+    gate_results = []
+    epoch_gate = tvf._epoch_never_worsen_gate
+
+    def _record_gate(*args, **kwargs):
+        result = epoch_gate(*args, **kwargs)
+        gate_results.append(result)
+        return result
+
+    monkeypatch.setattr(tvf, "_epoch_never_worsen_gate", _record_gate)
+    out_dir = tmp_path / "vocos-out"
+    args = SimpleNamespace(
+        seed=42,
+        device="cpu",
+        musdb_root=tmp_path,
+        out_dir=out_dir,
+        smoke=False,
+        epochs=5,
+        batch=1,
+        lr=1e-3,
+    )
+
+    manifest = tvf._run(args)
+
+    assert len(gate_results) == 2, "Bei fünf Epochen muss das Gate in Epoche 2 und 4 laufen"
+    assert [result["never_worsen"] for result in gate_results] == [True, False]
+    assert manifest["status"] == "degraded"
+    assert manifest["validation"]["never_worsen"] is False
+    assert manifest["validation"]["candidate_loss"] == pytest.approx(1.1)
+
+    anchor = torch.load(out_dir / "checkpoint_latest.pt", map_location="cpu", weights_only=False)
+    assert anchor["epoch"] == 0
+    assert anchor["status"] == "degraded"
+    assert torch.equal(anchor["state_dict"]["scale"], baseline)
+    assert torch.equal(model.scale.detach(), baseline)
+    backups = list((out_dir / ".checkpoint_backups").glob("checkpoint_latest.pt.*.bak"))
+    assert len(backups) == 1
+    accepted_anchor = torch.load(backups[0], map_location="cpu", weights_only=False)
+    assert accepted_anchor["epoch"] == 2
+    assert accepted_anchor["never_worsen"] is True
+
+
+def test_resume_baseline_gate_vergleicht_gegen_originalcheckpoint(monkeypatch) -> None:
+    torch = pytest.importorskip("torch")
+    model = torch.nn.Linear(1, 1, bias=False)
+    with torch.no_grad():
+        model.weight.fill_(1.0)
+    baseline = {key: value.detach().clone() for key, value in model.state_dict().items()}
+    with torch.no_grad():
+        model.weight.fill_(1.5)
+
+    monkeypatch.setattr(tvf, "_validation_loss", lambda current, _tracks, _device: float(current.weight.item()))
+    baseline_loss = tvf._baseline_validation_loss(model, baseline, [], torch.device("cpu"))
+
+    assert baseline_loss == 1.0
+    assert model.weight.item() == 1.5, "Resume-Kandidat muss nach Baseline-Messung wieder aktiv sein"
+    assert not tvf._never_worsen_gate(model, baseline, baseline_loss, float(model.weight.item()))
+    assert model.weight.item() == 1.0, "Never-worsen muss bei kumulierter Resume-Degradation auf Basis zurückfallen"
+
+
+def test_never_worsen_gate_lehnt_nichtfinite_metriken_ab() -> None:
+    torch = pytest.importorskip("torch")
+    model = torch.nn.Linear(2, 1, bias=False)
+    baseline = {key: value.detach().clone() for key, value in model.state_dict().items()}
+    with torch.no_grad():
+        model.weight.add_(1.0)
+
+    assert not tvf._never_worsen_gate(model, baseline, 1.0, float("nan"))
+    for key, value in baseline.items():
+        assert torch.equal(model.state_dict()[key], value)
+
+
+def test_spectral_loss_erhaelt_gradienten_bis_zum_modell() -> None:
+    torch = pytest.importorskip("torch")
+    target = torch.zeros((1, 4096), dtype=torch.float32)
+    prediction = torch.full((1, 4096), 0.1, dtype=torch.float32, requires_grad=True)
+    model = type("FeatureModel", (), {"feature_extractor": staticmethod(lambda audio: audio)})()
+
+    loss = tvf._spectral_loss(prediction, target, model, torch.device("cpu"))
+
+    assert torch.is_tensor(loss)
+    assert loss.requires_grad
+    loss.backward()
+    assert prediction.grad is not None
+    assert torch.isfinite(prediction.grad).all()
+    assert torch.count_nonzero(prediction.grad).item() > 0
+
+
 # ── Regressionen 2026-11-08 (Kette 4 R5, D-K2-3) ────────────────────────────
 def test_kein_hub_download_fuer_lokales_checkpoint() -> None:
     """Regression: `Vocos.from_pretrained(<lokaler Pfad>)` starb an der Repo-ID-Prüfung.

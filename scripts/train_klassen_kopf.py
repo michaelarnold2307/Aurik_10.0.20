@@ -6,12 +6,12 @@ Hör-zentrierte Trainingsstrategie (Report
 Statt tagelanger Vollband-Finetunes trainiert jeder Kopf EINE Defektklasse
 auf den Rezept-abgeleiteten Regionen (`scripts/erstelle_klassen_paare.py`):
 schaden → clean, kleines Modell, Stunden statt Tage. Erster Kopf:
-**groove_echo** (4.072 Regionen, größte Q≈0-Klasse der §G13-Erstbelege).
+**groove_echo** (4.072 Regionen, größte Q≈0-Klasse der §G13 (copilot-instructions.md)-Erstbelege).
 
 Konventionen: Seed 42 (§G5 (copilot-instructions.md)), Zeitbudget
 (`--max-seconds`, Exit 75, D-K3-87), Anker `checkpoint_latest.pt`,
 fail-closed Datenprüfung (§V6 (copilot-instructions.md)), kein Flag-Flip —
-der Erfolg wird nach dem Lauf als §G13-Q-Erstbeleg gebucht
+der Erfolg wird nach dem Lauf als §G13 (copilot-instructions.md)-Q-Erstbeleg gebucht
 (`scripts/bewerte_defekt_delta.py`).
 
 Aufruf:
@@ -40,6 +40,8 @@ if str(ROOT) not in sys.path:
 log = logging.getLogger(__name__)
 
 WINDOW = 8192  # feste Fensterlänge in Samples (Regionen werden gepaddet/gecroppt)
+_SPLIT_SCHEMA = "aurik.klassen_kopf_split/1"
+_MODEL_SCHEMA = "aurik.klassen_kopf_model/residual_identity_v2"
 
 
 def _wav_lesen(pfad: Path) -> tuple[int, np.ndarray]:
@@ -82,6 +84,40 @@ def _eintraege_laden(manifest_pfad: Path, klasse: str) -> list[dict]:
     return eintraege
 
 
+def _titel_hash(titel: str) -> str:
+    return hashlib.sha256(titel.encode("utf-8")).hexdigest()
+
+
+def _split_nach_titel(eintraege: list[dict], seed: int) -> tuple[list[dict], list[dict], dict]:
+    """Hält einen ganzen, deterministischen Titel für die unabhängige Prüfung zurück."""
+    titel = sorted({str(e.get("titel", "")).strip() for e in eintraege})
+    if len(titel) < 2 or any(not name for name in titel):
+        raise ValueError("Titel-Holdout benötigt mindestens zwei benannte Titel")
+    holdout_titel = min(
+        titel,
+        key=lambda name: hashlib.sha256(f"{seed}:{name}".encode()).hexdigest(),
+    )
+    train_titel = [name for name in titel if name != holdout_titel]
+    train = [e for e in eintraege if str(e.get("titel", "")).strip() in train_titel]
+    holdout = [e for e in eintraege if str(e.get("titel", "")).strip() == holdout_titel]
+    provenance = {
+        "schema": _SPLIT_SCHEMA,
+        "strategie": "whole_title_sha256_seeded",
+        "seed": int(seed),
+        "train_titel_sha256": sorted(_titel_hash(name) for name in train_titel),
+        "holdout_titel_sha256": _titel_hash(holdout_titel),
+    }
+    return train, holdout, provenance
+
+
+def _resume_provenance_gueltig(checkpoint: object, expected: dict) -> bool:
+    return (
+        isinstance(checkpoint, dict)
+        and checkpoint.get("split_provenance") == expected
+        and checkpoint.get("model_schema") == _MODEL_SCHEMA
+    )
+
+
 def _mr_stft_loss(y_hat: torch.Tensor, y: torch.Tensor) -> torch.Tensor:
     """Multi-Resolution-STFT-Verlust (Muster train_bigvgan_f3, klein gehalten)."""
     import torch
@@ -113,6 +149,8 @@ def build_model(device: torch.Module) -> torch.nn.Module:
             self.dec2 = nn.ConvTranspose1d(64, 16, 15, stride=2, padding=7, output_padding=1)
             self.dec1 = nn.ConvTranspose1d(32, 1, 15, stride=2, padding=7, output_padding=1)
             self.act = nn.LeakyReLU(0.2)
+            nn.init.zeros_(self.dec1.weight)
+            nn.init.zeros_(self.dec1.bias)
 
         def forward(self, x):
             e1 = self.act(self.enc1(x))
@@ -123,7 +161,7 @@ def build_model(device: torch.Module) -> torch.nn.Module:
             d2 = self.act(self.dec2(d3))
             d2 = torch.cat([d2, e1[:, :, : d2.shape[-1]]], dim=1)
             d1 = self.dec1(d2)
-            return d1[:, :, : x.shape[-1]]
+            return x + d1[:, :, : x.shape[-1]]
 
     return Kopf().to(device)
 
@@ -147,12 +185,26 @@ def main(argv: list[str] | None = None) -> int:
 
     torch.manual_seed(args.seed)
     np.random.seed(args.seed)
-    eintraege = _eintraege_laden(ROOT / args.manifest, args.klasse)
-    # Deterministischer Val-Split: jede 5. Region (nach sha256-Sortierung stabil).
-    eintraege.sort(key=lambda z: z.get("sha256_pcm_schaden", ""))
-    val_eintraege = eintraege[::5]
-    train_eintraege = [z for i, z in enumerate(eintraege) if i % 5 != 0]
-    log.info("Klasse %s: %d Train- / %d Val-Regionen", args.klasse, len(train_eintraege), len(val_eintraege))
+    manifest_pfad = ROOT / args.manifest
+    eintraege = _eintraege_laden(manifest_pfad, args.klasse)
+    try:
+        train_titel_eintraege, holdout_eintraege, split_provenance = _split_nach_titel(eintraege, args.seed)
+    except ValueError as exc:
+        print(f"FEHLER: {exc}", file=sys.stderr)
+        return 2
+    manifest_sha256 = hashlib.sha256(manifest_pfad.read_bytes()).hexdigest()
+    split_provenance["manifest_sha256"] = manifest_sha256
+    # Interne Val-Regionen stammen ausschließlich aus den Trainingstiteln.
+    train_titel_eintraege.sort(key=lambda z: z.get("sha256_pcm_schaden", ""))
+    val_eintraege = train_titel_eintraege[::5]
+    train_eintraege = [z for i, z in enumerate(train_titel_eintraege) if i % 5 != 0]
+    log.info(
+        "Klasse %s: %d Train- / %d interne Val-Regionen; %d unabhängige Holdout-Regionen",
+        args.klasse,
+        len(train_eintraege),
+        len(val_eintraege),
+        len(holdout_eintraege),
+    )
 
     out_dir = Path(args.out) if args.out else (ROOT / "models" / "klassen_koepfe" / args.klasse)
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -166,6 +218,12 @@ def main(argv: list[str] | None = None) -> int:
             print(f"FEHLER: Resume-Anker fehlt: {anker}", file=sys.stderr)
             return 2
         res = torch.load(anker, map_location=device)
+        if not _resume_provenance_gueltig(res, split_provenance):
+            print(
+                f"FEHLER: Resume-Anker ohne passende Titel-Holdout-Provenienz: {anker}",
+                file=sys.stderr,
+            )
+            return 2
         model.load_state_dict(res["modell"])
         opt.load_state_dict(res["optimizer"])
         start_epoch = res["epoch"] + 1
@@ -214,9 +272,12 @@ def main(argv: list[str] | None = None) -> int:
             x = torch.from_numpy(np.stack([train_x[i] for i in idx])).unsqueeze(1).to(device)
             y = torch.from_numpy(np.stack([train_y[i] for i in idx])).unsqueeze(1).to(device)
             y_hat = model(x)
+            y_control_hat = model(y)
             l1 = torch.nn.functional.l1_loss(y_hat, y)
             st = _mr_stft_loss(y_hat, y)
-            verlust = l1 + 0.5 * st
+            clean_identity_l1 = torch.nn.functional.l1_loss(y_control_hat, y)
+            clean_identity_stft = _mr_stft_loss(y_control_hat, y)
+            verlust = l1 + 0.5 * st + clean_identity_l1 + 0.5 * clean_identity_stft
             opt.zero_grad(set_to_none=True)
             verlust.backward()
             torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
@@ -239,13 +300,17 @@ def main(argv: list[str] | None = None) -> int:
         ckpt = {
             "modell": model.state_dict(),
             "optimizer": opt.state_dict(),
+            "model_schema": _MODEL_SCHEMA,
             "epoch": epoch,
             "val_mae": v_mae,
             "best_val": best_val,
             "seed": args.seed,
+            "split_provenance": split_provenance,
         }
-        torch.save(ckpt, out_dir / f"checkpoint_epoch{epoch}.pt")
-        torch.save(ckpt, out_dir / "checkpoint_latest.pt")
+        from backend.core.training_artifacts import save_guarded
+
+        save_guarded(out_dir / f"checkpoint_epoch{epoch}.pt", ckpt)
+        save_guarded(out_dir / "checkpoint_latest.pt", ckpt)
 
     report = {
         "schema": "aurik.klassen_kopf/1",
@@ -256,6 +321,8 @@ def main(argv: list[str] | None = None) -> int:
         "val_mae": best_val,
         "history": history,
         "anker": str(out_dir / "checkpoint_latest.pt"),
+        "split_provenance": split_provenance,
+        "holdout_regionen": len(holdout_eintraege),
         "hinweis": "§G13 (copilot-instructions.md): der Erfolg wird als Q-Erstbeleg je Defektklasse gebucht (scripts/bewerte_defekt_delta.py) — KEIN Flag-Flip, Freigabe nur §4.",
     }
     (out_dir / "report.json").write_text(json.dumps(report, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")

@@ -13,6 +13,7 @@ Prüft:
 - Keine False-Positives auf sauberem Audio
 """
 
+import warnings
 
 import numpy as np
 import pytest
@@ -332,6 +333,15 @@ class TestDropoutSubtypes:
         audio = self._inject_splice_dropout(audio, SR, 1.5)
         ox, hc, sp, locs = s._detect_dropout_subtypes(audio)
         assert sp.defect_type == DefectType.DROPOUT_SPLICE
+
+    def test_dropout_at_signal_start_uses_generic_subtype_without_warning(self):
+        scanner = _scanner(MaterialType.CASSETTE)
+        audio = _sine(440, 0.1)
+        audio[: int(0.015 * SR)] = 0.0
+        with warnings.catch_warnings():
+            warnings.simplefilter("error", RuntimeWarning)
+            subtype = scanner._classify_dropout_subtype(audio, 0, int(0.015 * SR))
+        assert subtype == DefectType.DROPOUTS
 
     def test_all_subtype_scores_have_metadata(self):
         s = _scanner(MaterialType.TAPE)
