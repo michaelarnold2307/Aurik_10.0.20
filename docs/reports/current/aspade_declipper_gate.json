@@ -1,0 +1,54 @@
+{
+  "schema": "aurik.aspade_gate/1",
+  "titel": [
+    "Elke Best - Boogie Woogie Mama (1977) HD audio 320 kbps engl",
+    "Elke Best - Träumer (Dreamer) 1981 Digital Source audio 320 ",
+    "Elke and The Jets - Me I'm So Beautiful (1983) HD audio 320 "
+  ],
+  "zeilen": [
+    {
+      "titel": "Elke Best - Boogie Woogie Mama (1977) HD audio 320 kbps engl",
+      "sdr_input_db": -11.433,
+      "sdr_pchip_db": -11.433,
+      "sdr_aspade_db": -11.433,
+      "harmonik_input": 0.70284,
+      "harmonik_pchip": 0.70281,
+      "harmonik_aspade": 0.70281,
+      "delta_musik_mos_aspade_vs_input": 0.0,
+      "delta_defektlast_aspade_vs_input": 0.0,
+      "delta_musik_mos_aspade_vs_pchip": 0.0,
+      "delta_defektlast_aspade_vs_pchip": 0.0
+    },
+    {
+      "titel": "Elke Best - Träumer (Dreamer) 1981 Digital Source audio 320 ",
+      "sdr_input_db": -13.168,
+      "sdr_pchip_db": -13.168,
+      "sdr_aspade_db": -13.168,
+      "harmonik_input": 0.20332,
+      "harmonik_pchip": 0.20332,
+      "harmonik_aspade": 0.20332,
+      "delta_musik_mos_aspade_vs_input": 0.0,
+      "delta_defektlast_aspade_vs_input": 0.0,
+      "delta_musik_mos_aspade_vs_pchip": 0.0,
+      "delta_defektlast_aspade_vs_pchip": 0.0
+    },
+    {
+      "titel": "Elke and The Jets - Me I'm So Beautiful (1983) HD audio 320 ",
+      "sdr_input_db": -11.923,
+      "sdr_pchip_db": -11.923,
+      "sdr_aspade_db": -11.927,
+      "harmonik_input": 0.12662,
+      "harmonik_pchip": 0.12662,
+      "harmonik_aspade": 0.12651,
+      "delta_musik_mos_aspade_vs_input": 0.0657,
+      "delta_defektlast_aspade_vs_input": 0.0,
+      "delta_musik_mos_aspade_vs_pchip": 0.0657,
+      "delta_defektlast_aspade_vs_pchip": 0.0
+    }
+  ],
+  "nie_schlechter_gegen_pchip": false,
+  "nie_schlechter_gegen_input": false,
+  "harmonik_never_worsen": true,
+  "gate_bestanden": false,
+  "hinweis": "Objektiver Teil der D-K4-1-Aktivierung. Blindes A/B + Hörordnungs-Sign-off bleiben §4/Hör-Instanz — kein Flag-Flip."
+}

@@ -18,9 +18,9 @@ Vertrag:
   (N,), (C, N) und (N, C) mit C ≤ 2 werden bedient und im Eingangs-Layout
   zurückgegeben. Kanalprozessierung strikt unabhängig ⇒ (2, N) und (N, 2)
   liefern bit-identische Kanalergebnisse.
-- **Never-worsen**: Der Kandidat wird pro Kanal nur übernommen, wenn der
-  Harmonik-Witness sinkt (delta-basiert, AGENTS.md Guard-Kalibrierung); sonst
-  bleibt der Eingang bit-identisch.
+- **Kandidatenfilter**: Der Kandidat wird pro Kanal nur übernommen, wenn der
+  Harmonik-Witness sinkt; sonst bleibt der Eingang bit-identisch. Der Witness
+  beweist weder Never-worsen noch Hörgewinn (SOTA-M8-Holdoutbefund).
 - **§V6 (copilot-instructions.md) — Silent-Failure-Verbot**: jeder Ersatzpfad
   (fehlendes Artefakt, NaN/Inf, nicht-finites Modell-Ergebnis) wird mit
   `logger.warning` + Begründung protokolliert — kein stiller Fallback.
@@ -59,7 +59,7 @@ DEFAULT_DILATIONS: tuple[int, ...] = (1, 2, 4, 8)
 
 # Produktionsartefakt des Trainings (scripts/train_aspade_declipper.py).
 DEFAULT_CHECKPOINT_SUBPATH = "models/aspade/aspade_class_v1.pt"
-_PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
+_PROJECT_ROOT = Path(__file__).resolve().parents[3]
 DEFAULT_CHECKPOINT = _PROJECT_ROOT / DEFAULT_CHECKPOINT_SUBPATH
 
 
@@ -80,7 +80,7 @@ def _estimate_clip_threshold(work: np.ndarray) -> float:
 def harmonic_distortion_witness(x: np.ndarray, sample_rate: int) -> float:
     """THD-ähnlicher Harmonik-Witness (Grundton 60 Hz–2 kHz, Harmonische 2–10).
 
-    Standalone-Witness für den Never-worsen-Vertrag dieses Moduls; die
+    Standalone-Filter für dieses Modul, kein Never-worsen-Nachweis; die
     Router-Entscheidung in Phase 07 nutzt weiterhin die Phase-lokale
     `_harmonic_distortion_proxy` (§G9 (copilot-instructions.md): eine Quelle je
     Entscheidung). Deterministisch, O(N log N).
@@ -220,7 +220,7 @@ def build_model(
     return model
 
 
-# ── Inferenz (Layout-sicher, chunked, Never-worsen) ─────────────────────────
+# ── Inferenz (Layout-sicher, chunked, Kandidatenfilter) ───────────────────────
 
 
 def _to_channels_first(arr: np.ndarray) -> tuple[np.ndarray, str]:
@@ -240,7 +240,7 @@ def _to_channels_first(arr: np.ndarray) -> tuple[np.ndarray, str]:
 
 
 class AspadeClassDeclipper:
-    """Inferenz-Hülle um `AspadeClassNet` — Layout (C, N), Chunking, Never-worsen.
+    """Inferenz-Hülle um `AspadeClassNet` — Layout (C, N), Chunking, Kandidatenfilter.
 
     Ohne `checkpoint` werden deterministische Seed-Gewichte geladen (Test-/
     Challenger-Betrieb, §V6 (copilot-instructions.md)-Warnung); produktiv
@@ -287,6 +287,11 @@ class AspadeClassDeclipper:
                 "(seed=%d) nur für Test-/Challenger-Betrieb (§V6 (copilot-instructions.md))",
                 seed,
             )
+        self._context_samples = sum(
+            (layer.kernel_size[0] - 1) * layer.dilation[0] // 2
+            for layer in self._net.modules()
+            if isinstance(layer, nn.Conv1d)
+        )
 
     # ------------------------------------------------------------------
 
@@ -300,12 +305,12 @@ class AspadeClassDeclipper:
 
         Args:
             audio: (N,), (C, N) oder (N, C) mit C ≤ 2, float32/float64.
-            sample_rate: Abtastrate (> 0) — nur für den Never-worsen-Witness.
+            sample_rate: Abtastrate (> 0) — nur für den Harmonik-Witness.
             clip_threshold: Clip-Schwelle θ > 0; None ⇒ deterministische
                 P99.5-Schätzung (`_estimate_clip_threshold`).
 
         Returns:
-            Array exakt in Eingangs-Shape und -dtype. Bei Never-worsen-Abwahl
+            Array in Eingangs-Shape und -dtype. Bei Abwahl durch den Witness
             oder Fehlerpfaden (§V6 (copilot-instructions.md)) wird der Eingang
             unverändert zurückgegeben; ungültige Argumente werfen `ValueError`.
         """
@@ -374,7 +379,7 @@ class AspadeClassDeclipper:
         if w_out < w_in:
             return cand
         logger.info(
-            "A-SPADE-Klassen-Declipper: Kandidat abgelehnt (Witness %.6f ≥ %.6f) — Eingang bleibt (Never-worsen)",
+            "A-SPADE-Klassen-Declipper: Kandidat abgelehnt (Witness %.6f ≥ %.6f) — Eingang bleibt",
             w_out,
             w_in,
         )
@@ -386,23 +391,17 @@ class AspadeClassDeclipper:
         if n <= chunk:
             return self._infer_block(x32, theta)
 
-        # Chunked Overlap-Add: Sinus-Fenster (sqrt-Hann-Charakter), hop = chunk/2
-        # ⇒ w²[n] + w²[n + hop] = 1. Padding je hop an beiden Rändern stellt
-        # sicher, dass jedes echte Sample exakt zweifach fenstriert wird.
-        hop = chunk // 2
-        ext = np.zeros(n + 2 * hop, dtype=np.float32)
-        ext[hop : hop + n] = x32
-        acc = np.zeros_like(ext)
-        norm = np.zeros_like(ext)
-        w = np.sin(np.pi * (np.arange(chunk, dtype=np.float64) + 0.5) / chunk).astype(np.float32)
-        ww = w * w
-        for start in range(0, ext.size - chunk + 1, hop):
-            rec = self._infer_block(ext[start : start + chunk], theta)
-            acc[start : start + chunk] += rec * w
-            norm[start : start + chunk] += ww
-        norm = np.maximum(norm, 1e-9)
-        res_ola: np.ndarray = (acc / norm)[hop : hop + n]
-        return res_ola
+        # Der Kontextrand entspricht dem rezeptiven Feld aller Conv-Schichten.
+        # Songgrenzen bleiben echte Netzgrenzen; künstliches Padding dort würde
+        # wegen der Conv-Biases eine andere Vollsignal-Ausgabe erzeugen.
+        out: np.ndarray = np.empty_like(x32)
+        for start in range(0, n, chunk):
+            end = min(start + chunk, n)
+            left = max(0, start - self._context_samples)
+            right = min(n, end + self._context_samples)
+            rec = self._infer_block(x32[left:right], theta)
+            out[start:end] = rec[start - left : end - left]
+        return out
 
     def _infer_block(self, seg32: np.ndarray, theta: float) -> np.ndarray:
         y_t = torch.from_numpy(np.ascontiguousarray(seg32, dtype=np.float32)).reshape(1, 1, -1)

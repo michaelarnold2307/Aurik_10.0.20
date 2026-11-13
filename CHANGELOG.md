@@ -1,4 +1,16 @@
-# Changelog — Aurik 10.12.52
+# Changelog — Aurik 10.12.53
+
+## 10.12.53 (2026-11-13)
+
+* **fix(declipper): Stereo-Kanalabdeckung und A-SPADE-Chunking** — Phase 07 zählt Clip-Samples über alle Kanäle; explizite Bypass-/No-Op-Ausgaben bleiben bit-identisch. Die neuronale A-SPADE-Klasse lädt ihr Artefakt aus dem richtigen Projektpfad und erhält bei Chunk-Übergängen den Modellkontext. Ein kleiner MUSDB-Holdout zeigt teils objektiven SDR-Gewinn, aber auch Rückschritte der vollständigen Phase; eine Hörfreigabe fehlt. Der Sparse-Zweig ist deaktiviert, nachdem sein Harmonik-Proxy trotz **−24,63 dB SDR** auf einem Ground-Truth-Repro einen Gewinn meldete; A-SPADE bleibt bis zu vollständiger Abnahme gesperrt.
+* **test(declipper): reproduzierbare Stereo-Gegenprobe** — ein Evaluationsskript trennt bekannte Modellschwelle, bekanntes Defektkanal-Orakel, automatische Phase und saubere Kontrollregionen. Ein experimenteller kanalbezogener Plateaupfad erreicht auf synthetischem Hard-Clipping teils erhebliche Gewinne, zeigt jedoch nach Resampling Detektionsausfälle, bei leichterem Clipping erhebliche Rückschritte und bei Sättigung Fehlauslösungen; keine Produktionsfreigabe.
+* **test(declipper): Stereo-Zeuge als Forschungsvariante** — ein lokal aus dem Gegenkanal abgeleiteter Zeuge vermeidet in einer kleinen Testprobe die beobachteten Rückschritte, büßt aber einen großen Teil der zuvor gemessenen Gewinne ein. Kein Sicherheits- oder Hörnachweis und keine Aktivierung.
+* **test(declipper): selektiver Stereo-Zeuge** — eine experimentelle Kombination aus Plateau-Dichte und lokaler Stereo-Korrelation erhält auf 50 bereits untersuchten Testtiteln einen Großteil des synthetischen SDR-Gewinns ohne gemessenen SDR-Rückschritt; einzelne Fortschritte gehen verloren und ein Sättigungs-Negativfall wird verändert. Kein Produktivpfad, kein Hörnachweis.
+* **test(declipper): Flag-Pfad messbar** — der Evaluator vergleicht den bestehenden Phase-07-Opt-in-Pfad mit dem Default und kontrolliert saubere Signale; die Messung zeigt fortbestehende Rückschritte und Kontrollveränderungen. Die Freigabe bleibt offen.
+* **test(declipper): separater Monokorpus** — der Evaluator akzeptiert alternative lokale WAV-Korpora mit Signal- und Quellenprovenienz. Ein FMA-Monotest zeigt weiterhin Detektionsausfälle und einen Modell-Rückschritt; er ist keine Hör- oder Produktionsfreigabe.
+* **test(declipper): asymmetrisches Clipping** — ein polaritätsgetrennter Forschungszweig verbessert die ΔSDR mehrerer asymmetrischer synthetischer Paare, zeigt aber weiter einen Stereo-Rückschritt, Sättigungs-Fehlauslösungen und Ausfälle nach Resampling. Keine Produktivaktivierung oder Hörabnahme.
+* **test(declipper): Stereo-Zeuge und Resampling-Orakel** — getrennte Plateau-Masken ermöglichen eine Stereo-Gegenprobe für asymmetrische Schäden. Die kleine Stichprobe reduziert Rückschritte auf Kosten erheblicher Gewinne; nach Resampling zeigen sich selbst mit bekannter Schwelle und bekanntem Kanal Modellrückschritte. Kein Produktionsnachweis.
+* **test(declipper): Reihenfolge-Gegenprobe** — ein Orakelvergleich misst die Modellreparatur vor und nach Resampling gegen dieselbe Referenz. Die SDR-Berechnung bleibt auch bei perfekt rekonstruierten Testpaaren endlich; die Produktionsfreigabe bleibt offen.
 
 ## 10.12.52 (2026-11-13)
 

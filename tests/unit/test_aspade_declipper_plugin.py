@@ -115,3 +115,24 @@ def test_phase07_router_fallback_when_unavailable(monkeypatch):
     assert result.metrics.get("aspade_used") is False
     assert result.metrics.get("declip_applied") is True
     assert np.isfinite(result.audio).all()
+
+
+def test_plugin_resampling_robustheit(tmp_path):
+    """D-K4-1-Voraussetzung: sr ≠ 48 kHz ⇒ deterministischer Resampling-Pfad
+    statt None-Ersatzpfad (robuste Modellreparatur nach Resampling)."""
+    from plugins.aspade_declipper_plugin import AspadeDeclipperPlugin
+
+    _save_identity_onnx(tmp_path / "aspade_declipper.onnx")
+    plug = AspadeDeclipperPlugin(model_dir=str(tmp_path))
+    assert plug.is_available() is True
+    sr = 32000
+    t = np.arange(sr) / sr  # 1 s
+    x32 = np.clip(np.sin(2 * np.pi * 440.0 * t) * 1.4, -0.99, 0.99).astype(np.float32)
+    out = plug.declip(x32, sr, 0.99)
+    assert out is not None, "sr ≠ 48 kHz muss den Resampling-Pfad nutzen (kein None-Ersatzpfad)"
+    assert out.shape == x32.shape
+    assert np.isfinite(out).all()
+    out2 = plug.declip(x32, sr, 0.99)
+    assert np.array_equal(out, out2), "Determinismus (§G5 (copilot-instructions.md))"
+    # ungültige Rate fail-closed (§V6 (copilot-instructions.md))
+    assert plug.declip(x32, 0, 0.99) is None

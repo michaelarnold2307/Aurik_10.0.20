@@ -151,66 +151,43 @@ class AspadeDeclipperPlugin:
     def declip(self, audio: np.ndarray, sr: int, clip_threshold: float) -> np.ndarray | None:
         """Neuronaler Declip eines Mono-Signals; None, wenn nicht verfügbar.
 
+        Robuste Modellreparatur nach Resampling (D-K4-1-Voraussetzung):
+        beliebige Quellrate wird deterministisch auf 48 kHz gehoben, declippt
+        und auf die Quellrate zurückgeführt — kein stiller Ersatzpfad mehr
+        für sr ≠ 48 kHz (§V6 (copilot-instructions.md)).
+
         Args:
             audio: Mono-Waveform (N,) float32.
-            sr: Abtastrate (48 kHz erwartet; sonst None).
-            clip_threshold: Detektionsschwelle — wird dem Aufrufer überlassen;
-                das Modell rekonstruiert unabhängig davon die Wellenform.
+            sr: Abtastrate (> 0).
+            clip_threshold: Detektionsschwelle — wird dem Aufrufer überlassen.
 
         Returns:
             Degeclipptes Mono-Signal (N,) float32 — oder None (Ersatzpfad).
         """
         if not self.is_available():
             return None
-        if int(sr) != TARGET_SR:
-            logger.warning("A-SPADE: sr=%d ≠ 48 kHz — Ersatzpfad.", sr)
-            return None
-        return self._declip_applade(audio, sr, clip_threshold)
         x = np.asarray(audio, dtype=np.float32)
         x = np.nan_to_num(x, nan=0.0, posinf=0.0, neginf=0.0)
-        n = len(x)
-        if n < 1024:
-            return x.copy()  # type: ignore[no-any-return]
+        if int(sr) <= 0:
+            logger.warning("A-SPADE: sr=%d ungültig — Ersatzpfad.", sr)
+            return None
+        if int(sr) == TARGET_SR:
+            return self._declip_applade(x, int(sr), clip_threshold)
+        # Resampling-Robustheit: gcd-reduzierte resample_poly (deterministisch).
+        from scipy.signal import resample_poly
 
-        chunk = int(CHUNK_SEC * TARGET_SR)
-        hop = max(1, chunk - int(OVERLAP_SEC * TARGET_SR))
-        win = np.hanning(chunk).astype(np.float32)
-        out = np.zeros(n, dtype=np.float32)
-        norm_acc = np.zeros(n, dtype=np.float32)
-
-        peak = float(np.max(np.abs(x))) + 1e-9
-        x_norm = (x * (_PEAK_NORM / peak)).astype(np.float32)
-
-        if n <= chunk:
-            # Einzel-Segment: padden, inferieren, zurückschneiden (deterministisch).
-            seg_pad = np.zeros(chunk, dtype=np.float32)
-            seg_pad[:n] = x_norm
-            rec = self._infer(seg_pad) * (peak / _PEAK_NORM)
-            out[:] = rec[:n]
-            norm_acc[:] = 1.0
-            out = np.nan_to_num(out, nan=0.0, posinf=0.0, neginf=0.0)
-            return np.clip(out, -1.0, 1.0).astype(np.float32)  # type: ignore[no-any-return]
-
-        for start in range(0, n - chunk + 1, hop):
-            seg = x_norm[start : start + chunk]
-            rec = self._infer(seg)
-            rec = rec * (peak / _PEAK_NORM)
-            out[start : start + chunk] += (rec * win).astype(np.float32)
-            norm_acc[start : start + chunk] += win * win
-        # Reststück ohne Overlap verarbeiten (deterministisch, gepaddet).
-        tail_start = n - chunk
-        if tail_start > 0:
-            seg_pad = np.zeros(chunk, dtype=np.float32)
-            seg_pad[: n - tail_start] = x_norm[tail_start:]
-            rec = self._infer(seg_pad) * (peak / _PEAK_NORM)
-            _len = n - tail_start
-            out[tail_start:] += (rec[:_len] * win[:_len]).astype(np.float32)
-            norm_acc[tail_start:] += win[:_len] * win[:_len]
-
-        norm_acc = np.maximum(norm_acc, 1e-9)
-        out = out / norm_acc
-        out = np.nan_to_num(out, nan=0.0, posinf=0.0, neginf=0.0)
-        return np.clip(out, -1.0, 1.0).astype(np.float32)  # type: ignore[no-any-return]
+        try:
+            g = int(np.gcd(int(sr), TARGET_SR))
+            x48 = resample_poly(x.astype(np.float64), TARGET_SR // g, int(sr) // g).astype(np.float32)
+            rec48 = self._declip_applade(x48, TARGET_SR, clip_threshold)
+            if rec48 is None:
+                return None
+            zurueck = resample_poly(rec48.astype(np.float64), int(sr) // g, TARGET_SR // g)[: len(x)]
+            aus: np.ndarray = np.array(zurueck, dtype=np.float32)
+            return aus
+        except Exception as _exc:
+            logger.warning("A-SPADE-Resampling fehlgeschlagen (%s) — Ersatzpfad.", _exc)
+            return None
 
     def _declip_applade(self, audio: np.ndarray, sr: int, clip_threshold: float) -> np.ndarray | None:
         """APPLADE-PnP-ADMM um das ONNX-DNN (16-kHz-Sprachmodell, Papier-Setup).

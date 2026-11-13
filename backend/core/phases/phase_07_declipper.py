@@ -318,6 +318,7 @@ class DeclipperPhase(PhaseInterface):
                 success=True,
                 audio=audio.copy(),
                 metrics={"declip_applied": False, "reason": "strength_bypass"},
+                _skip_soft_clip=True,
             )
 
         material = str(kwargs.get("material", "unknown")).lower()
@@ -332,10 +333,12 @@ class DeclipperPhase(PhaseInterface):
         self._clip_threshold = _histogram_clip_threshold(audio_in[0], material)
         # Verwende die Schwelle des ersten Kanals für alle Kanäle (Konsistenz)
 
-        # — Prüfe ob Clipping vorhanden ist —
-        n_total = int(audio_in[0].size)
-        self._n_clips = int(np.sum(np.abs(audio_in[0]) >= self._clip_threshold))
-        self._clip_fraction = self._n_clips / max(n_total, 1)
+        # Stereo-Layout-Invariante (AGENTS.md §3): Ein unbeschädigter erster
+        # Kanal darf Clipping im zweiten Kanal nicht maskieren.
+        clip_masks = np.abs(audio_in) >= self._clip_threshold
+        self._n_clips = int(np.count_nonzero(clip_masks))
+        channel_clip_fractions = np.mean(clip_masks, axis=1)
+        self._clip_fraction = float(np.max(channel_clip_fractions, initial=0.0))
 
         if self._n_clips == 0:
             logger.info(
@@ -350,6 +353,7 @@ class DeclipperPhase(PhaseInterface):
                     "reason": "no_clipping_detected",
                     "clip_threshold": self._clip_threshold,
                 },
+                _skip_soft_clip=True,
             )
 
         self._crossfade_n = _adaptive_crossfade_width(self._clip_fraction)
@@ -374,44 +378,21 @@ class DeclipperPhase(PhaseInterface):
             else:
                 audio_out[ch] = audio_in[ch]
 
-        # §v10.755 (2026-09-09, DECLIPPER_SOTA_PLAN.md Slice A): Sparse-Zweig
-        # für Nicht-Severe-Fälle — A-SPADE-lite rekonstruiert Obertöne, wo
-        # PCHIP nichts bewirkt. Never-worsen: Übernahme pro Kanal nur, wenn der
-        # Harmonik-Proxy sinkt (Evidenz: starkes Flat-Top 6×/12× → Sparse −48/−80 %,
-        # mildes 2.5× → PCHIP besser). PCHIP bleibt der Fallback (§V6 (copilot-instructions.md)).
-        _mask07 = np.abs(audio_in[0]) >= self._clip_threshold
-        _runs07 = _clip_runs(_mask07)
-        _severe_runs = [r for r in _runs07 if (r[1] - r[0]) >= int(0.05 * sample_rate)]
+        # §G10/§G13 (copilot-instructions.md): Der Harmonik-Proxy ist kein
+        # Never-worsen-Beleg für Sparse-Declipping. Ein reproduzierbares
+        # Ground-Truth-Paar zeigte trotz sinkendem Proxy einen SDR-Rückgang
+        # von 24,63 dB; deshalb bleibt dieser Kandidat bis zur Holdout- und
+        # Hörabnahme deaktiviert.
+        severe_run_min_samples = int(0.05 * sample_rate)
+        severe_runs_by_channel = [
+            [run for run in _clip_runs(mask) if (run[1] - run[0]) >= severe_run_min_samples] for mask in clip_masks
+        ]
+        has_severe_runs = any(severe_runs_by_channel)
         _sparse_used = False
-        if not _severe_runs:
-            try:
-                from backend.core.dsp.sparse_declipper import (  # pylint: disable=import-outside-toplevel
-                    sparse_declip,
-                )
-
-                _sparse_out = np.zeros_like(audio_in)
-                _accepted = 0
-                for _ch in range(audio_in.shape[0]):
-                    _cand = sparse_declip(audio_in[_ch], sample_rate, float(self._clip_threshold))
-                    _pin = _harmonic_distortion_proxy(audio_in[_ch], sample_rate)
-                    _pout = _harmonic_distortion_proxy(_cand, sample_rate)
-                    if _pout < _pin:
-                        _sparse_out[_ch] = _cand
-                        _accepted += 1
-                    else:
-                        _sparse_out[_ch] = audio_out[_ch]  # PCHIP bleibt
-                if _accepted > 0:
-                    audio_out = _sparse_out
-                    _sparse_used = True
-                    logger.info(
-                        "Verarbeitungsschritt 07 sparse (A-SPADE-lite): %d/%d Kanäle übernommen (Harmonik-Proxy sank)",
-                        _accepted,
-                        audio_in.shape[0],
-                    )
-                else:
-                    logger.info("Verarbeitungsschritt 07 sparse abgelehnt (Harmonik-Proxy: kein Gewinn) — PCHIP bleibt")
-            except Exception as _sp_exc:
-                logger.warning("Verarbeitungsschritt 07 sparse nicht verfügbar (%s) — PCHIP bleibt", _sp_exc)
+        if not has_severe_runs:
+            logger.info(
+                "Verarbeitungsschritt 07 sparse deaktiviert: SDR-/Hörabnahme ausstehend (§G10/§G13 (copilot-instructions.md))"
+            )
 
         # SOTA-M8 (D-K4-1): neuronaler A-SPADE-Klassen-Declipper als CHALLENGER
         # zur heuristischen Kaskade — NUR hinter use_aspade_declipper
@@ -469,7 +450,7 @@ class DeclipperPhase(PhaseInterface):
         # erster neuronaler Zweig für schwere Fälle — Never-worsen über den
         # Harmonik-Proxy; ohne Modell oder ohne Gewinn bleibt CQT-Diff.
         _aspade_used = False
-        if _severe_runs and self._clip_fraction >= 0.01 and not _aspade_class_used:
+        if has_severe_runs and self._clip_fraction >= 0.01 and not _aspade_class_used:
             try:
                 from plugins.aspade_declipper_plugin import (  # pylint: disable=import-outside-toplevel
                     get_aspade_declipper_plugin,
@@ -479,7 +460,10 @@ class DeclipperPhase(PhaseInterface):
                 if _asp.is_available():
                     _asp_out = np.zeros_like(audio_in)
                     _acc = 0
-                    for _ch in range(audio_in.shape[0]):
+                    for _ch, _channel_runs in enumerate(severe_runs_by_channel):
+                        if not _channel_runs:
+                            _asp_out[_ch] = audio_out[_ch]
+                            continue
                         _asp_cand: np.ndarray | None = _asp.declip(
                             audio_in[_ch], sample_rate, float(self._clip_threshold)
                         )
@@ -510,7 +494,7 @@ class DeclipperPhase(PhaseInterface):
         # Guard: KL-Divergenz < 0.2 (Plugin-Metrik) + Energie-Plausibilität —
         # sonst bleibt das klassische Ergebnis (§V7 (copilot-instructions.md): ML nur bei nachweisbarem Gewinn).
         _cqtdiff_used = False
-        if _severe_runs and self._clip_fraction >= 0.01 and not _aspade_used:
+        if has_severe_runs and self._clip_fraction >= 0.01 and not _aspade_used:
             try:
                 import torch as _torch752  # pylint: disable=import-outside-toplevel
 
@@ -520,7 +504,7 @@ class DeclipperPhase(PhaseInterface):
                 _cand = audio_out.copy()
                 _ok_runs = 0
                 for ch in range(_cand.shape[0]):
-                    for _s, _e in _severe_runs:
+                    for _s, _e in severe_runs_by_channel[ch]:
                         _res752 = _cq752(_cand[ch], sample_rate, _s, _e, context_audio=audio_in[ch])
                         _seg752 = getattr(_res752, "audio", None)
                         _kl752 = float(getattr(_res752, "kl_divergence", 1.0) or 1.0)
@@ -535,7 +519,7 @@ class DeclipperPhase(PhaseInterface):
                         _cqtdiff_used = True
                 logger.info(
                     "Verarbeitungsschritt 07 CQT-Diff: %d schwere Regionen, %d übernommen, Zweig aktiv=%s",
-                    len(_severe_runs),
+                    sum(len(runs) for runs in severe_runs_by_channel),
                     _ok_runs,
                     _cqtdiff_used,
                 )
@@ -566,6 +550,7 @@ class DeclipperPhase(PhaseInterface):
                     "reason": "never_worsen_proxy",
                     "clip_threshold": self._clip_threshold,
                 },
+                _skip_soft_clip=True,
             )
 
         # — Strength-Skalierung: PMGG kann Stärke reduzieren —
@@ -576,6 +561,8 @@ class DeclipperPhase(PhaseInterface):
         # NaN/Inf-Guard
         audio_out = np.nan_to_num(audio_out, nan=0.0, posinf=0.0, neginf=0.0)
         audio_out = np.clip(audio_out, -1.0, 1.0)
+        _residual_clip_fraction = float(np.max(np.mean(np.abs(audio_out) >= self._clip_threshold, axis=1), initial=0.0))
+        _residual_severity = float(np.clip(_residual_clip_fraction / max(self._clip_fraction, 1e-10), 0.0, 0.3))
 
         # Original-Shape wiederherstellen
         if is_mono:
@@ -600,9 +587,6 @@ class DeclipperPhase(PhaseInterface):
         # §v10.18: Melde CLIPPING als behoben → Folgephasen (phase_23) können
         # ihre Strategie anpassen. Die residuale Severity wird aus dem
         # verbleibenden Clip-Anteil im reparierten Signal berechnet.
-        _residual_clip_fraction = float(np.sum(np.abs(audio_out) >= self._clip_threshold)) / max(audio_out.size, 1)
-        _residual_severity = float(np.clip(_residual_clip_fraction / max(self._clip_fraction, 1e-10), 0.0, 0.3))
-
         # SOTA-M8 (D-K4-1): Challenger-Metrik NUR hinter dem Flag — bei Flag AUS
         # bleibt auch die Metrik-Dict bit-identisch zum Bestand.
         _metrics07: dict[str, Any] = {

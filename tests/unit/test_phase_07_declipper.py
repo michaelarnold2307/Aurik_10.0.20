@@ -59,52 +59,56 @@ def test_mild_clipping_sparse_rejected_pchip_stays(phase):
     assert result.metrics.get("sparse_used") is False
 
 
-def test_strong_clipping_uses_sparse_path(phase):
-    """Evidenz: starkes 6× — Sparse übernimmt (Harmonik-Proxy sinkt)."""
+def test_unvalidated_sparse_path_is_not_applied(phase, monkeypatch):
+    """Ein Proxy-Gewinn reicht ohne Ground-Truth-/Hörabnahme nicht zur Übernahme."""
+    import backend.core.dsp.sparse_declipper as sparse_mod
+
+    def _unexpected_call(*_args, **_kwargs):
+        pytest.fail("Der nicht validierte Sparse-Declipper darf nicht ausgeführt werden.")
+
+    monkeypatch.setattr(sparse_mod, "sparse_declip", _unexpected_call)
     x = _clipped_bursts(6.0)
     result = phase.process(x, sample_rate=48000)
     assert result.metrics.get("declip_applied") is True
-    assert result.metrics.get("sparse_used") is True
+    assert result.metrics.get("sparse_used") is False
 
 
-def test_sparse_path_deterministic(phase):
+def test_phase_output_deterministic(phase):
     x = _clipped_bursts(6.0)
     r1 = phase.process(x, sample_rate=48000)
     r2 = phase.process(x, sample_rate=48000)
     np.testing.assert_array_equal(r1.audio, r2.audio)  # §G5 (copilot-instructions.md)
 
 
-def test_sparse_path_reduces_thd(phase):
-    """THD-Verhältnis (Harmonische 2–10 vs. Grundton) sinkt durch den Sparse-Zweig."""
-    x = _clipped_bursts(6.0)
-    result = phase.process(x, sample_rate=48000)
-    assert result.metrics.get("sparse_used") is True
+def test_sparse_proxy_gain_cannot_cause_large_sdr_regression(phase, monkeypatch):
+    """Ground-truth regression guard: reduced harmonic proxy had hidden a 24.63 dB loss."""
+    import backend.core.phases.phase_07_declipper as mod
 
-    def _thd(y: np.ndarray) -> float:
-        spec = np.abs(np.fft.rfft(y.astype(np.float64)))
-        freqs = np.fft.rfftfreq(len(y), 1.0 / 48000)
-        fund = float(spec[np.argmin(np.abs(freqs - 440))]) + 1e-12
-        harm = 0.0
-        for h in range(2, 11):
-            _i = int(np.argmin(np.abs(freqs - 440 * h)))
-            harm += float(spec[_i]) ** 2
-        return float(np.sqrt(harm) / fund)
+    sr = 48000
+    t = np.linspace(0, 1, sr, endpoint=False)
+    clean = 0.72 * np.sin(2 * np.pi * 440 * t) + 0.18 * np.sin(2 * np.pi * 880 * t)
+    clean += 0.08 * np.sin(2 * np.pi * 1320 * t)
+    for onset in (0.25, 0.5, 0.75):
+        start = int(onset * sr)
+        clean[start : start + int(0.025 * sr)] *= 1.8
+    clean = (0.95 * clean / np.max(np.abs(clean))).astype(np.float32)
+    clipped = np.clip(clean, -0.85, 0.85)
+    left = (0.6 * np.sin(2 * np.pi * 440 * t)).astype(np.float32)
+    monkeypatch.setattr(mod, "_histogram_clip_threshold", lambda *_args, **_kwargs: 0.85)
 
-    assert _thd(result.audio) < _thd(x)
+    result = phase.process(np.stack((left, clipped)), sample_rate=sr, material="cd_digital")
 
+    def _sdr_db(reference: np.ndarray, estimate: np.ndarray) -> float:
+        ref = np.asarray(reference, dtype=np.float64)
+        err = np.mean((np.asarray(estimate, dtype=np.float64) - ref) ** 2)
+        return float(10.0 * np.log10(np.mean(ref**2) / max(float(err), 1e-12)))
 
-def test_sparse_fallback_to_pchip(phase, monkeypatch):
-    """Sparse-Modul nicht verfügbar → PCHIP bleibt, kein Crash (§V6 (copilot-instructions.md))."""
-    x = _clipped_bursts(6.0)
-
-    def _boom(_a, _sr, _t, **_kw):
-        raise RuntimeError("sparse unavailable")
-
-    monkeypatch.setattr("backend.core.dsp.sparse_declipper.sparse_declip", _boom)
-    result = phase.process(x, sample_rate=48000)
-    assert result.metrics.get("declip_applied") is True
+    input_sdr = _sdr_db(clean, clipped)
+    output_sdr = _sdr_db(clean, np.asarray(result.audio[1]))
+    assert result.metrics.get("n_clips", 0) > 0
     assert result.metrics.get("sparse_used") is False
-    assert np.isfinite(result.audio).all()
+    assert output_sdr > 30.0, f"Sparse candidate caused severe SDR regression: {input_sdr:.2f} → {output_sdr:.2f} dB"
+    np.testing.assert_array_equal(result.audio[0], left)
 
 
 def _saettigung_tanh8() -> np.ndarray:
@@ -172,9 +176,53 @@ def test_passthrough_meldet_keine_reparatur(phase, monkeypatch):
 
     monkeypatch.setattr(mod, "_declip_pchip", _kein_gewinn)
     monkeypatch.setattr(sparse_mod, "sparse_declip", _kein_gewinn_sparse)
-    x = _saettigung_tanh8()
+    x = _clipped_bursts(6.0)
     result = phase.process(x, sample_rate=48000, material="cd_digital")
     assert result.metrics.get("declip_applied") is False
     assert result.metrics.get("reason") == "never_worsen_proxy"
     assert result.resolved_defects == {}
     assert np.array_equal(np.asarray(result.audio), x)
+
+
+def test_stereo_clipping_in_second_channel_is_detected(phase, monkeypatch):
+    """Ein unbeschädigter erster Kanal darf Clipping im zweiten nicht maskieren."""
+    sr = 48000
+    t = np.linspace(0, 1, sr, endpoint=False, dtype=np.float32)
+    left = 0.6 * np.sin(2 * np.pi * 440 * t)
+    right = _clipped_bursts(6.0)
+    monkeypatch.setattr(
+        "backend.core.phases.phase_07_declipper._histogram_clip_threshold",
+        lambda *_args, **_kwargs: 0.88,
+    )
+    stereo = np.stack((left, right))
+
+    result = phase.process(stereo, sample_rate=sr, material="cd_digital")
+
+    assert result.metrics.get("n_clips", 0) > 0
+    np.testing.assert_array_equal(result.audio[0], left)
+    assert result.metrics.get("sparse_used") is False
+    assert np.isfinite(result.audio).all()
+
+
+def test_no_clip_passthrough_is_bit_identical(phase, monkeypatch):
+    """Ein echter Passthrough darf nicht durch PhaseResult-Softclip verändert werden."""
+    import backend.core.phases.phase_07_declipper as mod
+
+    monkeypatch.setattr(mod, "_histogram_clip_threshold", lambda *_args, **_kwargs: 0.999)
+    t = np.linspace(0, 1, 48000, endpoint=False, dtype=np.float32)
+    audio = np.stack((0.98 * np.sin(2 * np.pi * 440 * t), 0.98 * np.sin(2 * np.pi * 660 * t)))
+
+    result = phase.process(audio, sample_rate=48000, material="cd_digital")
+
+    assert result.metrics.get("reason") == "no_clipping_detected"
+    np.testing.assert_array_equal(result.audio, audio)
+
+
+def test_strength_bypass_is_bit_identical(phase):
+    t = np.linspace(0, 1, 48000, endpoint=False, dtype=np.float32)
+    audio = np.sin(2 * np.pi * 440 * t)
+
+    result = phase.process(audio, sample_rate=48000, strength=0.0)
+
+    assert result.metrics.get("reason") == "strength_bypass"
+    np.testing.assert_array_equal(result.audio, audio)

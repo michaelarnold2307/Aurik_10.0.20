@@ -3141,12 +3141,370 @@ stützt die Notwendigkeit: Sprach-Orakel (UTMOS) können Musik nicht bewerten
 | `SOTA-M10` | B1 · KP-2 Musik-MOS-Orakel (F8): MuQ+A1-Head + SingMOS statt UTMOSv2 (Zeuge geliefert, report-only) | D-K4-4 | Teil abgeschlossen (A-Evidenz), Veto nach Kalibrierung offen |
 | `SOTA-M11` | B2 · KP-3 Vokal-Identität (F9) + KP-12 SingMOS-Kalibrierung (F10): Resemblyzer-Ersatz via MuQ-MuLan | D-K4-5, D-K4-6 | teilweise (KP-3 done, Datenkalibrierung D-K4-6 offen) |
 
+**SOTA-M8 Chunk-Reparatur, 2026-11-13:** Das trainierte Artefakt wurde bisher
+unter `backend/models/aspade/` statt `models/aspade/` gesucht. Zusätzlich
+verstärkte die Chunk-Assemblierung das ungefenstert inferierte Signal
+(`rec*w` / `sum(w²)`); ein Identitätsmodell erzeugte bis +3 dB und am
+unvollständigen Ende mehr. Eine erste Korrektur mittels Residuum-Overlap
+erhielt die ungeclippten Samples, wich aber beim trainierten Netz durch
+fehlenden Kontext und künstliches Padding an einzelnen Samples noch um bis zu
+0,209 vom Vollsignal ab. Die aktuelle Fassung inferiert jeden Chunk mit dem
+aus allen Convolution-Schichten berechneten rezeptiven Kontext und bewahrt
+echte Songgrenzen. Auf 30.000 synthetischen Samples mit dem trainierten Netz:
+maximale Abweichung vom Vollsignal 1,08e-6 (CPU-Rundung), statt 0,209;
+**nicht bit-identisch**, §G12-Nachweis bleibt offen. Regressionstests decken
+gerade/ungerade Chunk-Größen, Endstücke, Datenkonsistenz und Songgrenzen ab.
+
+Erkundungsmessung mit `models/aspade/aspade_class_v1.pt` (SHA `b2fd35a9…`),
+CPU, 10-s-Standardchunks: die ersten sechs alphabetischen MUSDB18-HQ-Testsplit-
+`mixture.wav`-Titel, jeweils 10,2 s ab 30 s, Stereo zu Mono gemittelt, 44,1 auf
+48 kHz resampelt, auf Peak 0,95 normalisiert und synthetisch bei ±0,60
+geclippt; die bekannte Clip-Schwelle wird direkt übergeben. Rohkandidaten
+verbesserten das SDR gegen Clean in 6/6 Fällen um +2,918 bis +5,906 dB
+(Mittel +4,481 dB; auf drei Dezimalstellen mit der aktuellen
+Kontext-Assemblierung nachgemessen).
+Der ursprüngliche Chunk-Code lag bei 10,1–10,8 dB SDR
+und veränderte ungeclippte Samples um bis zu 0,249; der korrigierte Code
+ändert diese Samples nicht. Der bestehende Harmonik-Filter übernimmt jedoch
+nur 2/6 Kandidaten (+5,249 bzw. +4,590 dB) und verwirft 4/6 objektiv
+verbesserte Beispiele. Dies ist ein kleiner, synthetischer Explorationssatz,
+kein Hörtest, keine Vollsong- oder Phase-07-End-to-End-Abnahme und kein Beleg
+für alle Importsongs. Der frühere 50-Titel-Befund mit Rückschritten bleibt
+maßgeblich; der Flag bleibt AUS. Offen: repräsentatives Holdout, belastbare
+lokale Akzeptanz und blinde Hörabnahme.
+
+**Stereo-Ursachenprobe und reproduzierbares Werkzeug:** Der neue
+`scripts/evaluate_aspade_declipper.py` vergleicht auf MUSDB-Ausschnitten
+Rohmodell mit bekannter Schwelle, Phase 07 mit ihrer tatsächlichen
+automatischen Schwelle und saubere Kontrollsignale. Bei einseitigem Clipping
+misst er zusätzlich ein **Orakel mit bekanntem Defektkanal**. JSON enthält
+Segment- und Checkpoint-Hashes, Fehlerenergie, ΔSDR und Sample-Änderungen in
+Kontrollregionen; die Energierückgewinnung ist **nicht** die kanonische
+Reparaturquote Q und kein Hör-Nachweis. Beispiel:
+
+```
+.venv_aurik/bin/python scripts/evaluate_aspade_declipper.py --musdb-root data/musdb18hq --split train --stem mixture --layout stereo --right-only --limit 6 --output /tmp/aspade-train-stereo.json
+```
+
+Entwicklungsprobe: erste sechs alphabetische **Trainingssplit**-Titel, Stereo,
+je 1 s ab 30 s, beide Kanäle gemeinsam auf Peak 0,95 normalisiert, nur rechts
+hart geclippt, Modell-Flag in Phase 07 AUS. Bei ±0,30 bzw. ±0,60 liefert das
+Orakel mit bekanntem Kanal +5,30 bzw. +5,03 dB ΔSDR im Mittel (je 6/6 positiv)
+und verändert keine Kontrollsamples. Wird dieselbe bekannte Schwelle auf
+**beide Kanäle** angewandt, verändern sich in allen sechs Beispielen
+Kontrollsamples; Mittel nur +1,66 bzw. +1,61 dB, bei ±0,60 ein Rückschritt
+bis −1,42 dB. Bei ±0,85 sind nur vier Paare tatsächlich beschädigt: selbst
+das Kanal-Orakel hat zwei Rückschritte, schlechtester −0,19 dB. Die echte
+Phase schätzte in allen Fällen 0,88 und veränderte auch vier der sechs
+unbeschädigten Stereo-Kontrollen. Die 0,85-Zelle enthält zudem zwei
+unbeschädigte rechte Kanäle; sie zählen nicht in den ΔSDR-Mitteln.
+Trainingssplit und synthetisches Hard-Clipping sind **kein unabhängiger
+Holdout**, kein Realmaterial-Beleg und keine Hörfreigabe. Der Kanal-Orakelpfad
+ist keine implementierte automatische Erkennung und wird nicht aktiviert.
+
+Eine weitere Entwicklungs-Hypothese, ein Kandidatengate aus künstlich
+niedrigerem Clipping innerhalb der unverletzten Samples abzuleiten, scheitert
+bereits auf zwölf Trainingssplit-Mono-Mischungen (1 s ab 30 s, 36 aktive
+Paare): bei ±0,30 verwirft es bei drei untersuchten Hilfsschwellen
+0,7/0,8/0,9 × θ sämtliche zwölf tatsächlich verbesserten Kandidaten; bei
+±0,85 nimmt die 0,7-/0,8-Variante zugleich einen verschlechterten Kandidaten
+an. Kein Produktions-Gate aus diesem Proxy. Nächste Pflichtschritte sind
+kanal- und polaritätsspezifische Erkennung inklusive verlustbehafteter
+Codierung, realer Limiter und Sättigungs-Negativkontrollen, von Entwicklung
+und Training getrennte Titel sowie validierte lokale Kandidatenauswahl und
+Hörprüfung. Keine Flag-Freigabe aus diesen Explorationen.
+
+**Experiment: Kanalbezogene exakte Plateaus.** Das Evaluationsskript prüft
+jetzt ohne Wissen über den Defektkanal, ob zwei aufeinanderfolgende Samples
+am betragsmäßigen Kanalmaximum identisch sind. Nur solche Kanäle verarbeitet es
+mit der jeweiligen Maximum-Amplitude als Modellschwelle. Das ist
+**ausschließlich ein Forschungszweig**: ein quantisiertes sauberes Signal oder
+beabsichtigte Sättigung kann dasselbe Muster tragen; Asymmetrie, einzelne
+Clip-Samples und nachfolgende Filterung werden nicht zuverlässig erkannt.
+Insbesondere zerstörte eine 48→44,1→48-kHz-Polyphasen-Resamplingkette auf
+12 Entwicklungs-Mischungen jedes der zuvor erkannten Plateaus: 0/12 bei
+±0,30, 0/12 bei ±0,60 und 0/10 tatsächlich beschädigten Paaren bei ±0,85.
+Dies ist eine Detektions-Gegenprobe, keine Rekonstruktions- oder Hörbewertung.
+
+Vorabmessung auf den ersten 20 alphabetischen MUSDB-Testtiteln, jeweils
+Stereo-Mix, 1 s ab 60 s, nur rechts künstlich geclippt und global auf Peak
+0,95 normalisiert (die Titel wurden früher bereits für andere Explorationen
+eingesehen; daher keine vollständig unberührte Testmenge): Bei ±0,30 betrug
+ΔSDR durchschnittlich +4,99 dB (20/20 positiv), bei ±0,60 +4,51 dB
+(19/20 positiv, ein Fall unverändert). Bei ±0,85 gab es nur 15 tatsächlich
+beschädigte Paare, Mittel +4,24 dB, aber zwei Verschlechterungen bis
+−0,70 dB. Im Versuchsmodell wurden keine unbeschädigten Kontrollsamples
+verändert. Die automatische Phase mit Flag AUS lag bei denselben drei
+Stufen im Mittel bei −0,09 / −0,75 / −3,38 dB, mit 11 / 11 / 7
+verschlechterten aktiven Paaren. Saubere Kontrollen: keine
+Plateau-Aktivierung; bei tanh8 wurde ein Titel als Plateau erkannt, ohne dass
+das Modell dort die Samples veränderte. tanh4 und PCM16 ohne Aktivierung.
+Diese kleinen, künstlichen Kontrollgruppen belegen keine allgemeine Sicherheit.
+
+Im Trainingssplit (12 Titel, gleicher Versuchsaufbau ab 30 s) verringerte
+eine feste 0,75-Beimischung des Modellresiduums die zwei negativen
+±0,85-Fälle auf keine, reduzierte aber den mittleren Gewinn bei ±0,30 von
++5,25 auf +4,64 dB und bei ±0,60 von +5,16 auf +4,37 dB. Die
+Beimischung ist **nur eine Forschungs-Hypothese**, keine zentral freigegebene
+Strength-Entscheidung und kein allgemeiner Never-worsen-Beleg. Das
+Evaluationsskript zeichnet diese Variante getrennt auf. Hörinvarianten,
+Audibility, Stereo-Abbildung, Klangabnahme und reale Volltitel bleiben offen.
+
+**Erweiterung auf alle 50 Testtitel:** gleicher Aufbau mit dem 1-s-Ausschnitt
+ab 60 s, rechtsseitiges Hard-Clipping. Das Forschungsmodell erreicht bei
+±0,30 **+5,17 dB Mittel, 50/50 positiv**, bei ±0,60 **+4,82 dB Mittel,
+49/50 positiv und 1 unverändert**. Bei ±0,85 sind 43 Paare beschädigt:
+**+2,27 dB Mittel, 8/43 schlechter, Minimum −13,97 dB**. Die
+0,75-Beimischung bringt bei ±0,85 +3,12 dB im Mittel, aber **5/43
+Rückschritte bis −10,90 dB**; sie ist somit ebenfalls nicht freigabefähig.
+In keinem dieser Hard-Clip-Paare veränderte der Forschungszweig unbeschädigte
+Samples. Die mitgemessene automatische Phase lag im Mittel bei −0,04 /
+−0,41 / −3,05 dB; je 50er-Stufe wurden bei 24 Fällen Kontrollsamples
+verändert. Auf den Negativkontrollen aktivierte der Plateau-Detektor bei
+5/50 tanh8-Titeln und veränderte bei 3/50 das Signal (maximal 0,0638);
+sauberes, tanh4- und PCM16-Material zeigte keine Aktivierung in dieser
+Stichprobe. Die Blend-Hypothese und die Plateau-Erkennung sind damit
+**widerlegt als universell sicher**, trotz deutlicher Gewinne in Teilklassen.
+Die 50 Titel wurden in früheren Untersuchungen bereits herangezogen — keine
+vollständig unangetastete Testmenge. Ergebnis-JSON und Checkpoint-Hash liegen
+in der Sitzung; das Skript erzeugt die Messung erneut. Der 50-Titel-Lauf
+enthält noch nicht das erst anschließend eingebaute Resampling-Messfeld.
+
+**Phase-07-Flag-Wirksamkeit, 12 Titel:** `scripts/evaluate_aspade_declipper.py`
+kann seit Schema `aurik.aspade-exploration/6` mit `--phase-opt-in` den
+existierenden Flag-Pfad in demselben Prozess separat gegen den Flag-aus-Pfad
+messen; das Flag wird im `finally` wiederhergestellt. Das ist **nicht** der
+selektive Stereo-Forschungszweig. Erste 12 alphabetische Testsplit-Mischungen,
+1 s ab 90 s, Stereo, nur rechts künstliches Clipping, ±0,30/0,60/0,85:
+Pro Stufe unterscheidet sich die Opt-in-Ausgabe in 2/12 Fällen vom Default;
+bei ±0,85 verschlechterten sich 7/11 tatsächlich beschädigten Paare
+(Minimum −20,30 dB), beim Default 5/11. Kontrollsamples veränderte Opt-in
+in 8/12 statt 6/12 Fällen pro Stufe. Alle 12 sauberen Opt-in-Kontrollen
+wurden verändert: 11 bereits durch den Default-Pfad; bei zwei Titel-Kontrollen
+unterschied sich Opt-in vom Default. Darunter ein sauberes Signal, das der
+Default unangetastet ließ, während Opt-in sechs Samples veränderte
+(max. 0,0588). Ein Gewinn des Forschungszweigs ist **keine** Evidenz für
+diesen Flagpfad. Die Testtitel sind nicht unberührt, die Werte sind keine
+Hörprüfung, kein Vollsong-/Export-/CLI- oder GUI-Nachweis.
+
+Beispiel:
+
+```
+.venv_aurik/bin/python scripts/evaluate_aspade_declipper.py --musdb-root data/musdb18hq --split test --stem mixture --layout stereo --right-only --offset 90 --limit 12 --phase-opt-in --output /tmp/aspade-phase-opt-in.json
+```
+
+`--phase-opt-in` ist eine lokale Messung, kein dauerhafter Flag-Flip; für
+diesen Vergleich ist der Standard-Checkpoint vorgeschrieben. Die Freigabe
+setzt einen wirksamen, verbesserten Produktionspfad und die tatsächlichen
+§4-Belege voraus; ein menschliches Hör-Sign-off kann das Werkzeug nicht
+erzeugen. `scripts/flag_freigabe.py` wird erst mit echtem, positivem Verdikt
+und bestehendem Sign-off bzw. formellem Beschluss aufgerufen.
+
+**Separater FMA-Monokorpus, 2026-11-13:** Schema
+`aurik.aspade-exploration/7` erlaubt mit `--audio-root` auch einen anderen
+lokalen WAV-Korpus und dokumentiert ursprüngliche Samplerate, Kanalzahl,
+Korpuspfad und den Hash des verarbeiteten Ausschnitts. 12 alphabetische
+MUSAN/FMA-Dateien, Mono, ursprünglich 16 kHz, je 1 s ab 30 s auf 48 kHz
+resampelt und peak-normalisiert; künstliches Hard-Clipping bei ±0,30/0,60/0,85.
+Für jede der 36 beschädigten Aufnahmen meldete die tatsächliche Phase 07
+`no_clipping_detected`: ihre geschätzte Schwelle lag jeweils bei 0,88 und
+damit über dem synthetischen Clip-Pegel; Opt-in und Default blieben
+unverändert. Auf den 12 sauberen Ausschnitten änderte der Default fünf,
+Opt-in acht; bei drei unterschied sich Opt-in vom Default.
+
+Mit **bekannter synthetischer Schwelle** erreichte das rohe Modell im Mittel
++5,35/+6,00/+3,14 dB ΔSDR; bei ±0,85 gab es einen Rückschritt um −0,89 dB.
+Diese Orakel-Messung ist kein Produktionsnachweis. Ein anderer Korpus bedeutet
+nicht automatisch einen vollständig unabhängigen Titel-Holdout: etwaige
+Überschneidungen mit Trainings- oder zuvor betrachteten Aufnahmen sind nicht
+geprüft. Mono, begrenzte Quellbandbreite, künstliche Schäden, 1-s-Fenster und
+Peak-Normalisierung begrenzen die Aussage; weder Hörbarkeit noch §G13-Q oder
+Vollsong-/Exportverhalten wurden hier nachgewiesen.
+
+```
+.venv_aurik/bin/python scripts/evaluate_aspade_declipper.py --audio-root 'data/musan (2)/music/fma' --layout mono --offset 30 --duration 1 --limit 12 --phase-opt-in --output /tmp/aspade-fma-mono-phase-12.json
+```
+
+**Polaritätsgetrennte Plateau-Forschung, 2026-11-13:** Schema
+`aurik.aspade-exploration/8` prüft pro Kanal positive und negative exakte
+Plateaus getrennt. Bei zwei Pegeln wird für das symmetrische Netz um deren
+Mittelpunkt zentriert; ausschließlich detektierte Plateaus werden in den
+Eingang zurückgeschrieben. Ein Float32-Rundungstest stellt sicher, dass beide
+detektierten Pegel für das Modell tatsächlich an der Schwelle liegen. Der
+Ansatz ist ausschließlich im Evaluator; er ändert keinen Produktionspfad.
+
+Für asymmetrische synthetische Schäden (positive Grenze θ, negative Grenze
+−min(0,95; 1,5θ)) erzielte die Variante auf denselben zwölf 1-s-FMA-Monos
+mittlere ΔSDR +5,22/+5,24/+2,93 dB bei θ=0,30/0,60/0,85; die bisherige
+Maximum-Plateauvariante erzielte +0,71/+0,01/+0,65 dB. Bei θ=0,85 waren
+nur zehn Paare tatsächlich beschädigt. Auf den zwölf bereits untersuchten
+MUSDB-Stereo-Ausschnitten (nur rechter Kanal beschädigt) ergaben sich
++4,54/+3,74/+0,65 dB gegenüber +0,46/−0,01/+0,47 dB; bei θ=0,85 waren
+nur neun Paare beschädigt. Bei θ=0,60 verschlechterte der neue Stereo-Zweig
+einen Fall um 0,17 dB. Der separate symmetrische Stereo-Fall bei θ=0,85
+hatte weiterhin einen Rückschritt um 1,39 dB.
+
+Die sauberen Kontrollausschnitte wurden nicht verändert, aber **tanh8** wurde
+bei fünf von zwölf Mono- und einem von zwölf Stereo-Titeln verändert.
+Nach dem getesteten 48→44,1→48-kHz-Resampling detektierte die Variante
+keines der 36 synthetischen Schadenssignale pro Korpus. Diese Gegenprobe ist
+keine unabhängige Holdout-, Vollsong-, Audibility-, §G13-Q- oder Hörabnahme.
+Der Mittelwert ist eine technische Referenzmetrik, kein Hörgewinn-Nachweis.
+Fehlauslösungen, Resampling-Ausfälle, Stereo-Rückschritt und die fehlende
+Produktivpfad-Integration bleiben Freigabeblocker.
+
+```
+.venv_aurik/bin/python scripts/evaluate_aspade_declipper.py --audio-root 'data/musan (2)/music/fma' --layout mono --offset 30 --duration 1 --limit 12 --phase-opt-in --output /tmp/aspade-polarity-fma-12.json
+.venv_aurik/bin/python scripts/evaluate_aspade_declipper.py --musdb-root data/musdb18hq --split test --stem mixture --layout stereo --right-only --offset 90 --limit 12 --phase-opt-in --output /tmp/aspade-polarity-stereo-12.json
+```
+
+**Stereo-Zeuge und Resampling-Orakel, 2026-11-13:** Für die
+polaritätsgetrennte Forschung schätzt `scripts/evaluate_aspade_declipper.py`
+zusätzlich einen Gegenkanal-Zeugen; positive UND negative erkannte Plateaus
+werden aus der lokalen Regression ausgeschlossen. Die Modelländerung wird
+je Sample auf Richtung und Betrag der Zeugenschätzung begrenzt. Bei keinem
+oder mehreren erkannten Kanälen bleibt der Eingang unverändert. Dies ist
+ein Forschungsansatz ohne Garantie für tatsächlich unbeeinträchtigte oder
+hinreichend ähnliche Gegenkanäle, kein Produktionspfad.
+
+Auf den zwölf bereits untersuchten Stereo-Mischungen (1 s ab 90 s, nur rechts
+synthetisch geclippt) beseitigte er die zuvor beobachteten Einzelrückschritte:
+asymmetrisch bei θ=0,30/0,60/0,85 im Mittel +1,37/+1,02/+0,07 dB gegenüber
++4,54/+3,74/+0,65 dB ohne Zeugen; symmetrisch +1,31/+1,18/+0,21 dB gegenüber
++4,82/+4,61/+3,43 dB. Bei θ=0,85 waren neun asymmetrische und elf
+symmetrische Paare tatsächlich beschädigt. Keine der zwölf tanh8- oder
+Clean-Kontrollen wurde verändert. Das Ergebnis verzichtet damit auf einen
+großen Teil des bisherigen Gewinns und belegt weder universelle Sicherheit
+noch menschlichen Hörgewinn.
+
+Schema `aurik.aspade-exploration/10` misst außerdem die Reparatur **nach**
+48→44,1→48-kHz-Resampling von Clean und Schaden. Das Modell erhält dabei
+orakelartig die ursprüngliche synthetische Schwelle und den beschädigten
+Kanal — keine automatisch verfügbare Information. Selbst so gab es auf
+zwölf 1-s-FMA-Monos bei θ=0,85 **drei Rückschritte**, Minimum −0,81 dB;
+auf den zwölf bereits untersuchten MUSDB-Stereo-Ausschnitten gab es bei
+θ=0,60 einen Rückschritt bis −0,20 dB und bei θ=0,85 vier von elf
+beschädigten Paaren bis −0,68 dB. Ein besserer Schwellen-Detektor allein
+reicht also nicht; Modell und Datenkonsistenz nach Resampling müssen selbst
+untersucht werden. Die Kontrollregion ist hier durch exakte Gleichheit
+zwischen beiden resampelten Signalen definiert und kein lokaler
+psychoakustischer Musikschutz. Kein §G13-Q-/Hör- oder Vollpfadbeleg.
+
+**Reparaturreihenfolge vor/nach Resampling, 2026-11-13:** Schema
+`aurik.aspade-exploration/11` vergleicht auf derselben resampelten Referenz
+die Reparatur vor und nach 48→44,1→48 kHz. In beiden Fällen sind
+Schadenskanal und ursprüngliche Schwelle künstlich bekannt; die Reparatur
+vor Resampling verwendet zusätzlich das ursprünglich geclippte Signal.
+Auf den zwölf bereits untersuchten FMA-Monos beträgt der mittlere ΔSDR vor
+gegen nach Resampling +5,35 vs. +0,60 dB bei θ=0,30, +6,01 vs. +0,73 dB
+bei θ=0,60 und +3,21 vs. +1,16 dB bei θ=0,85. Selbst vor Resampling bleibt
+bei θ=0,85 ein Rückschritt bis −0,87 dB; nach Resampling sind es drei.
+Die Gegenprobe zeigt ein Reihenfolgen-/Eingangssignalproblem, beweist aber
+weder, dass das ursprüngliche Signal beim echten Import verfügbar ist, noch
+dass eine Vorverlagerung erlaubt oder sicher wäre. Es ist kein Hör- oder
+Produktionsnachweis.
+
+Die erneute Stereo-Gegenprobe auf **50 bereits untersuchten MUSDB-Titeln**,
+aber 1-s-Ausschnitt ab 60 s und nur rechts beschädigt, bestätigt die Grenze:
+Bei θ=0,30/0,60/0,85 ergibt die Reparatur **vor** Resampling im Mittel
++5,17/+4,85/+2,46 dB, **nach** Resampling +0,53/+0,60/+0,21 dB.
+Bei θ=0,85 sind 43 Paare beschädigt; davon verschlechtern sich vor
+Resampling neun (Minimum −18,55 dB) und danach 18 (Minimum −18,77 dB).
+Der polaritätsgetrennte Stereo-Zeuge erzielt bei asymmetrischem
+θ=0,60 im Mittel +1,64 dB statt +3,71 dB ohne Zeugen, verschlechtert aber
+eines von 50 Paaren um 0,24 dB und verändert drei der 50 tanh8-Kontrollen.
+Er beseitigt die Risiken also nicht allgemein. Auch diese Testtitel sind
+kein unabhängiger Holdout; Fehlerenergie und ΔSDR sind keine Hörabnahme.
+
+```
+.venv_aurik/bin/python scripts/evaluate_aspade_declipper.py --musdb-root data/musdb18hq --split test --stem mixture --layout stereo --right-only --offset 60 --limit 50 --output /tmp/aspade-order-stereo50.json
+```
+
+**Rückschritt-/Fortschritts-Gegenprobe:** Eine selbstüberwachte
+Least-Squares-Skalierung des Modellresiduums anhand zusätzlich künstlich
+geclippter, bisher unverletzter Samples (18 Trainings-Mischungen, 1 s ab
+30 s) verfehlte beide Ziele: bei ±0,85 blieb je nach Hilfsschwelle mindestens
+ein Rückschritt (bis −6,21 dB), zugleich sank der mittlere Gewinn bei ±0,30
+von +5,37 dB auf +1,14 bis +2,69 dB. Kein Produktions-Gate.
+
+Ein weiterer **Stereo-Forschungszweig** im Evaluationsskript schätzt den
+beschädigten Kanal über eine lokale lineare Beziehung zum anderen Kanal und
+begrenzt das Modellresiduum anhand dieser Schätzung (5-ms-Fenster, nur bei
+genau einem erkannten Plateau-Kanal). Auf 20 Testsplit-Mischungen, Stereo,
+1 s ab 90 s, nur rechts künstlich geclippt, erzielte er bei ±0,30 im Mittel
++1,27 statt +4,76 dB des unkorrigierten Plateau-Kandidaten, bei ±0,60
++1,11 statt +4,49 dB. Bei ±0,85 (16 aktive Paare) hatte der Ausgangskandidat
+zwei Rückschritte bis −2,73 dB; der Stereo-Zeuge hatte in diesen 16 Fällen
+keinen, erreichte aber nur +0,40 statt +3,24 dB im Mittel und verbesserte
+nur vier statt neun Paare. Saubere, tanh4-, tanh8- und PCM16-Kontrollen wurden
+in dieser Stichprobe durch den Stereo-Zeugen nicht verändert.
+Die Testtitel wurden bereits in früheren Untersuchungen verwendet; der
+Ausschnitt bei 90 s ist jedoch von den bisherigen 30-/60-s-Proben getrennt.
+Dies ist weder ein unabhängiger Titel-Holdout noch ein Hörtest. Zwei
+gleichzeitig beschädigte Kanäle bleiben im Forschungspfad unverändert;
+der andere Kanal kann auch bei nur einer detektierten Seite beschädigt oder
+inhaltlich verschieden sein. **Der Auftrag „Rückschritte beseitigen ohne
+Fortschrittseinbuße" ist nicht erfüllt**, daher kein Produktionspfad und kein
+Flag-Flip. Messbericht: Schema `aurik.aspade-exploration/3`, Befehlsmuster
+wie oben mit `--split test --offset 90 --limit 20`.
+
+**Selektiver Stereo-Zeuge (Forschung):** Auf 24 Trainingssplit-Mischungen,
+1 s ab 30 s, wurden Plateau-Dichte-Grenzen 0,0005/0,001/0,003/0,01
+erkundet. Die Variante 0,001 behielt die mittleren Rohmodell-Gewinne bei
+±0,30 und ±0,60 (+5,46/+5,40 dB), hatte auf 20 aktiven ±0,85-Paaren
+keinen Rückschritt, aber nur +0,60 statt +3,54 dB im Mittel. Anschließend
+wurde die lokale Stereo-Korrelation als weiterer Forschungszeuge geprüft
+(R² 0,8/0,9/0,95/0,99; 5-ms-Fenster); R² 0,95 erhöhte auf der
+Entwicklungsstichprobe den starken Mittelwert auf +5,52 dB, den mittleren
+auf +5,26 dB, ±0,85 blieb +0,60 dB. Fenster, Dichte und Korrelation sind
+**experimentelle**, nicht zentral freigegebene Entscheidungswerte.
+
+Mit diesen vorher auf dem Trainingssplit festgelegten Werten ergibt die
+50-Titel-Messung, 1 s ab 60 s, rechtsseitiges synthetisches Hard-Clipping:
+±0,30 **+5,21 dB im Mittel, 50/50 positiv, kein Rückschritt**;
+±0,60 **+4,64 dB, 49/50 positiv, einer unverändert, kein Rückschritt**;
+±0,85 **+1,54 dB, 20/43 positiv, 23 unverändert, kein Rückschritt**.
+Der Plateau-Rohkandidat lag bei +5,17/+4,82/+2,27 dB; ±0,85 hatte
+8/43 Rückschritte bis −13,97 dB. In den künstlich beschädigten Paaren
+veränderte die neue Variante keine Kontrollsamples. Sie erhält damit
+**nicht alle Fortschritte**: bei ±0,60 sinkt der mittlere Gewinn um
+0,18 dB, bei ±0,85 um 0,73 dB und es werden weniger Fälle verbessert.
+Sie ist außerdem **nicht sicher für alle Signale**: auf tanh8 wurde noch
+1/50 Kontrollen verändert (max. 0,0187); sauberes Material, tanh4 und PCM16
+blieben in dieser Stichprobe unverändert. Resampling-Kette zerstört weiterhin
+das exakte Plateau; Mono und beidseitige Schäden sind nicht gelöst. Die
+Testtitel und der 60-s-Ausschnitt wurden zuvor exploriert und sind kein
+unberührter Holdout. Weder SDR-Gewinn noch diese Stichprobe beweisen
+hörbaren Gewinn, Audibility-Abnahme oder Stereo-Invarianten.
+
+Reproduzierbar mit `scripts/evaluate_aspade_declipper.py`, Schema
+`aurik.aspade-exploration/5`, Parametern `--split test --stem mixture
+--layout stereo --right-only --offset 60 --limit 50`; Bericht und
+Checkpoint-Hash sind in der Sitzung gespeichert. Kein Flag-Flip und keine
+Änderung des produktiven Signalpfads: gefordert bleiben unberührter
+Titel-Holdout, reale Schäden/Sättigung, Hör- und Sicherheitsnachweis.
+
+**Phase-07-Gegenprobe 2026-11-13:** dieselben ersten 12 Testsplit-Titel,
+jeweils 1 s ab 30 s, Stereo-Mono-Mittel, resampelt 48 kHz, Peak 0,95;
+`mixture` und `vocals`, synthetisch geclippt bei ±0,30/0,60/0,85. Drei
+stille Vocal-Segmente ausgeschlossen ⇒ 63 aktive Paare. Modell-Flag für
+diese Messung explizit AN. Mit **bekannter, eingespeister Clip-Schwelle**
+ergaben Rohkandidaten je Material/Schwelle einen mittleren ΔSDR von
++3,14 bis +5,93 dB, aber einzelne Rückschritte bis −5,17 dB. In der
+vollständigen Phase trat bis −7,30 dB auf. Mit tatsächlicher automatischer
+Schwelle erkannte die Phase 62/63 Paare nicht; das verbleibende Paar
+verschlechterte sich um −2,45 dB. Diese Explorationsmessung ist weder
+akustische Abnahme noch repräsentativer Vollsong-Test, belegt aber:
+Schwellen-Ermittlung, Auswahl und PCHIP-Ersatzpfad müssen gemeinsam auf
+unabhängigen Daten verbessert werden. Ein abgeschalteter Proxy oder das
+Übernehmen aller Rohkandidaten wäre kein Never-worsen-Nachweis.
+
 ### Welle C — GPU-Läufe (7900 XTX, ROCm)
 
 | TODO-ID | Maßnahme | Register-IDs | Status |
 | --- | --- | --- | --- |
 | `SOTA-M7` | C1 · KP-7 BW-Reconstructor v5 Re-Training (F11) — **Lauf abgeschlossen**, offen: Gate-Definition ≥1,02 oder Hörstichprobe | D-K1-5 | in-arbeit — **Gate BESTANDEN 2026-10-27** (kalibrierte Metrik `scripts/validate_bw_v5_hf_gate.py`: HF-Gain neu=51,0 ≥ 1,02; Alt reproduziert 0,73); offen: Hör-Sign-off (§v10.802 (copilot-instructions.md)) vor `use_bw_v5=True` wegen +17 dB HF-Boost |
-| `SOTA-M8` | E5 · neuronaler A-SPADE-Klassen-Declipper als Phase-07-Challenger (PCHIP = §V6-Fallback) | D-K4-1 | in-arbeit — Challenger implementiert 10.12.45 (22 Vertragstests, Flag `use_aspade_declipper` AUS); **GPU-Training ECHT FERTIG 2026-11-08** (3,8 h, 30 Epochen, `train_job_m8_aspade.json` = erfolgreich); offen: B3-A/B (W-7) + ΔSDR-/Hörabnahme |
+| `SOTA-M8` | E5 · neuronaler A-SPADE-Klassen-Declipper als Phase-07-Challenger (PCHIP = §V6-Fallback) | D-K4-1 | in-arbeit — Challenger implementiert 10.12.45 (Flag `use_aspade_declipper` AUS); GPU-Training 30 Epochen abgeschlossen 2026-11-08. **Unabhängiger CPU-Holdout 2026-11-13:** MUSDB18-HQ-Testsplit, 50 Titel, 71 aktive 1-s-Paare (synthetische Clips, Seed 42), Checkpoint SHA-256 `b2fd35a9…`: mittleres titelaggregiertes ΔSDR +1,59 dB, Median 0,00 dB, titel-geclusterter Bootstrap-95%-CI [0,89; 2,36] dB; nur 22/48 aktive Titel positiv, SDR-Never-worsen 66/71 Segmente (5 Rückschritte, schlechtester −8,53 dB). **Never-worsen verfehlt — kein Rollout/Flag-Flip.** Separater Phase-07-Repro: Sparse senkte den Harmonik-Proxy, verschlechterte aber SDR um 24,63 dB; der automatische Sparse-Zweig bleibt bis zu einer Ground-Truth-/Hörabnahme deaktiviert. Offen: Ursachenanalyse beider Pfade, vollständige ΔSDR-Messung, blindes A/B und Hör-Sign-off |
 | `SOTA-M9` | E5 · nicht-kausaler Vollband-Denoiser (TF-GridNet-Klasse) als optionale Quality-Mode-Stufe; DFN bleibt kausal | D-K4-2 | in-arbeit — Challenger implementiert 10.12.45 (46 Vertragstests, Flag `use_tf_gridnet_quality` AUS); **Verdrahtung korrigiert 2026-11-06:** Kette 1 trainierte M9 mit `--synthetic 4000` (Sinus+Rauschen, K1-Defizit) und starb am 24-GiB-OOM (4·513 LSTM-Sequenzen, 4,42 GiB) — jetzt echte Musik-Paare (`data/tfgrid_pairs`, 25 Paare) mit `--batch-size 1 --grad-accum 4`, Äquivalenz Batch 2 ⇔ Akkumulation 2 getestet (Report `2026-11-06_ketten_verdrahtung_m9_m14.md`); **GPU-Neulauf ECHT FERTIG 2026-11-08** (Epoche 30/30, val 0,0190, `train_job_m9_tf_gridnet.json` = erfolgreich); offen: Never-worsen-Gate, Hörabnahme; Datenmenge 25 Paare statistisch dünn (D-K2-5-Muster) |
 | `SOTA-M12` | E5 · KP-17 WF-V4 Warp-Head auf FCPE/CRePE-F0 + KP-18 TP-V2 Phasen-Schätzung | D-K4-7, D-K4-8 | in-arbeit — implementiert 10.12.46 (WF-V4 + TP-V2, Flags `use_wf4_warp_head`/`use_tp_v2_phase` AUS, 9+8 Vertragstests); **Echt-Pfad verdrahtet 2026-11-06** (F0-Beobachtung via `pyin_fast` im Datensatz, fail-closed `--real-dir`-Lader, TP-V2-Vorrang real>synthetisch, Kette-4-Guards korrigiert; Daten 300 WF-V4-Paare + 200 TP-V2-Segmente, Seed 42; 13 neue Tests grün — Report `docs/reports/current/2026-11-06_wf4_echt_pfad_verdrahtung.md`); **R1/R2 ECHT FERTIG 2026-11-08** (WF4 50/50 in 316 s, TP-V2 50/50 in 307,8 s); **B3-M12-Messung 2026-11-08: beide ABGELEHNT** (M12-WF4 1/6 Vorteile, M12-TPV2 0/6; never_worsen ✓ ⇒ Flags bleiben AUS, fail-closed §4; Belege `docs/reports/current/b3_objektivbeschluss_M12-*.json`); offen: Hörsign-off/Hörpanel (n=6 ist klein) |
 | `SOTA-M13` | E5 · C·Ganzsong-Pipeline + Per-Stem-Restaurierung als Standard (Vorab-Entscheid D-K3-65 per Hörstichprobe) | D-K4-3 | offen |
