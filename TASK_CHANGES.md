@@ -1,6 +1,6 @@
 # TASK_CHANGES — Live-Ledger der aktuellen Aufgabe
 
-> Generiert von `scripts/change_ledger.py snapshot` (Base: `HEAD`, Stand: 2026-11-12 21:58 CET).
+> Generiert von `scripts/change_ledger.py snapshot` (Base: `HEAD`, Stand: 2026-11-13 01:10 CET).
 > CI (`ci-lite.yml` pr-evidence-gate) erzwingt Abdeckung: jede geänderte Code-Datei muss hier stehen.
 
 ## Geänderte Dateien
@@ -8,12 +8,22 @@
 | Status | Pfad | Art |
 |---|---|---|
 | M | `docs/SOTA_HANDOVER.md` | modifiziert |
-| M | `docs/reports/current/train_job_c2_cantus_domain.json` | modifiziert |
-| A | `docs/reports/current/train_job_c4_symphonia.json` | neu |
-| A | `docs/reports/current/train_job_gender_head.json` | neu |
-| ?? | `docs/reports/current/q_delta_Elke_Best_-_Boogie_Woogie_Mama.json` | ungetrackt |
-| ?? | `"docs/reports/current/q_delta_Elke_Best_-_Tr\303\244umer_(Dreamer)_1981_Digital_Source_audio_320_.json"` | ungetrackt |
-| ?? | `docs/reports/current/q_delta_Elke_and_The_Jets_-_Me_I'm_So_Beautiful.json` | ungetrackt |
+| A | `docs/reports/current/2026-11-12_g13_q_erstbelege_ganztitel.md` | neu |
+| A | `docs/reports/current/q_delta_Elke_Best_-_Boogie_Woogie_Mama.json` | neu |
+| A | `"docs/reports/current/q_delta_Elke_Best_-_Tr\303\244umer_(Dreamer)_1981_Digital_Source_audio_320_.json"` | neu |
+| A | `docs/reports/current/q_delta_Elke_and_The_Jets_-_Me_I'm_So_Beautiful.json` | neu |
+| A | `docs/reports/current/q_delta_clipping_Elke_Best_-_Boogie_Woogie_Mama.json` | neu |
+| A | `"docs/reports/current/q_delta_clipping_Elke_Best_-_Tr\303\244umer_(Dreamer)_1981_Digital_Source_audio_320_.json"` | neu |
+| A | `docs/reports/current/q_delta_clipping_Elke_and_The_Jets_-_Me_I'm_So_Beautiful.json` | neu |
+| A | `docs/reports/current/q_delta_kassette_Elke_Best_-_Boogie_Woogie_Mama.json` | neu |
+| A | `"docs/reports/current/q_delta_kassette_Elke_Best_-_Tr\303\244umer_(Dreamer)_1981_Digital_Source_audio_320_.json"` | neu |
+| A | `docs/reports/current/q_delta_kassette_Elke_and_The_Jets_-_Me_I'm_So_Beautiful.json` | neu |
+| ?? | `docs/reports/current/b3_objektivbeschluss_M4-Defekt.json` | ungetrackt |
+| ?? | `docs/reports/current/b3_objektivbeschluss_M4-ERA.json` | ungetrackt |
+| ?? | `docs/reports/current/b3_objektivbeschluss_M4-Material.json` | ungetrackt |
+| ?? | `docs/reports/current/b3_stufenmessung_M4-Defekt.json` | ungetrackt |
+| ?? | `docs/reports/current/b3_stufenmessung_M4-ERA.json` | ungetrackt |
+| ?? | `docs/reports/current/b3_stufenmessung_M4-Material.json` | ungetrackt |
 
 ## Entscheidungen
 
