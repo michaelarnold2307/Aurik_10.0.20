@@ -1,6 +1,6 @@
 # TASK_CHANGES — Live-Ledger der aktuellen Aufgabe
 
-> Generiert von `scripts/change_ledger.py snapshot` (Base: `HEAD`, Stand: 2026-11-13 01:10 CET).
+> Generiert von `scripts/change_ledger.py snapshot` (Base: `HEAD`, Stand: 2026-11-13 01:31 CET).
 > CI (`ci-lite.yml` pr-evidence-gate) erzwingt Abdeckung: jede geänderte Code-Datei muss hier stehen.
 
 ## Geänderte Dateien
@@ -8,16 +8,7 @@
 | Status | Pfad | Art |
 |---|---|---|
 | M | `docs/SOTA_HANDOVER.md` | modifiziert |
-| A | `docs/reports/current/2026-11-12_g13_q_erstbelege_ganztitel.md` | neu |
-| A | `docs/reports/current/q_delta_Elke_Best_-_Boogie_Woogie_Mama.json` | neu |
-| A | `"docs/reports/current/q_delta_Elke_Best_-_Tr\303\244umer_(Dreamer)_1981_Digital_Source_audio_320_.json"` | neu |
-| A | `docs/reports/current/q_delta_Elke_and_The_Jets_-_Me_I'm_So_Beautiful.json` | neu |
-| A | `docs/reports/current/q_delta_clipping_Elke_Best_-_Boogie_Woogie_Mama.json` | neu |
-| A | `"docs/reports/current/q_delta_clipping_Elke_Best_-_Tr\303\244umer_(Dreamer)_1981_Digital_Source_audio_320_.json"` | neu |
-| A | `docs/reports/current/q_delta_clipping_Elke_and_The_Jets_-_Me_I'm_So_Beautiful.json` | neu |
-| A | `docs/reports/current/q_delta_kassette_Elke_Best_-_Boogie_Woogie_Mama.json` | neu |
-| A | `"docs/reports/current/q_delta_kassette_Elke_Best_-_Tr\303\244umer_(Dreamer)_1981_Digital_Source_audio_320_.json"` | neu |
-| A | `docs/reports/current/q_delta_kassette_Elke_and_The_Jets_-_Me_I'm_So_Beautiful.json` | neu |
+| A | `docs/reports/current/2026-11-13_hoerzentrierte_trainingsstrategie.md` | neu |
 | ?? | `docs/reports/current/b3_objektivbeschluss_M4-Defekt.json` | ungetrackt |
 | ?? | `docs/reports/current/b3_objektivbeschluss_M4-ERA.json` | ungetrackt |
 | ?? | `docs/reports/current/b3_objektivbeschluss_M4-Material.json` | ungetrackt |
