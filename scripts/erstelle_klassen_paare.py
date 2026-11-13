@@ -50,6 +50,22 @@ def _pfad_relativ(pfad: Path) -> str:
         return str(aufgeloest)
 
 
+def _regions_mergen(regionen: list[dict], merge_gap: int, min_dauer: int) -> list[dict]:
+    """Gleiche Klasse mit Gap ≤ merge_gap verschmelzen; unter min_dauer verwerfen.
+
+    Trainingsstrategie-Lektion (2026-11-13): die Roh-Scanner-Regionen sind
+    Millisekunden-Fragmente (~10k/Titel) — für Per-Klassen-Köpfe braucht es
+    zusammenhängende Regionen mit Mindestdauer.
+    """
+    verschmolzen: list[dict] = []
+    for r in regionen:
+        if verschmolzen and verschmolzen[-1]["typ"] == r["typ"] and (r["start"] - verschmolzen[-1]["end"]) <= merge_gap:
+            verschmolzen[-1]["end"] = r["end"]
+        else:
+            verschmolzen.append(dict(r))
+    return [r for r in verschmolzen if (r["end"] - r["start"]) >= min_dauer]
+
+
 def _wav_lesen(pfad: Path) -> tuple[int, np.ndarray]:
     from scipy.io import wavfile
 
@@ -78,6 +94,8 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--clean-dir", default="/home/michael/Musik/k398_quellen")
     ap.add_argument("--out", default=str(ROOT / "data" / "klassen_paare"))
     ap.add_argument("--rezepte", default="clipping,kassette")
+    ap.add_argument("--merge-gap-s", type=float, default=0.25, help="Gleiche Klasse mit Gap ≤ s verschmelzen")
+    ap.add_argument("--min-dauer-ms", type=int, default=50, help="Mindestdauer einer Region (ms)")
     args = ap.parse_args(argv)
 
     from backend.core.defect_scanner import DefectScanner
@@ -90,6 +108,14 @@ def main(argv: list[str] | None = None) -> int:
 
     rezepte = tuple(r.strip() for r in args.rezepte.split(",") if r.strip())
     manifest_pfad = out / "manifest.jsonl"
+    # Deterministische Neugenerierung: Altbestand entfernen (keine Stale-WAVs).
+    for kind in out.glob("*"):
+        if kind.is_dir():
+            import shutil
+
+            shutil.rmtree(kind)
+        elif kind.name != "manifest.jsonl":
+            kind.unlink()
     zeilen: list[str] = []
     klassen_zaehler: dict[str, int] = {}
 
@@ -121,7 +147,11 @@ def main(argv: list[str] | None = None) -> int:
             audio_rest = audio_rest[:n]
 
         scan = DefectScanner().scan(audio_schaden, sample_rate=int(sr_d))
-        regionen = regionen_aus_defekt_scores(scan.scores, int(sr_d))
+        regionen = _regions_mergen(
+            regionen_aus_defekt_scores(scan.scores, int(sr_d)),
+            merge_gap=int(args.merge_gap_s * sr_d),
+            min_dauer=int(args.min_dauer_ms / 1000.0 * sr_d),
+        )
         slug_titel = "".join(c if c.isalnum() else "_" for c in base)
 
         for region in regionen:

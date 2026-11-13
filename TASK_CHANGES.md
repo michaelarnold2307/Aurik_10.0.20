@@ -1,27 +1,18 @@
 # TASK_CHANGES — Live-Ledger der aktuellen Aufgabe
 
-> Generiert von `scripts/change_ledger.py snapshot` (Base: `HEAD`, Stand: 2026-11-13 02:06 CET).
+> Generiert von `scripts/change_ledger.py snapshot` (Base: `HEAD`, Stand: 2026-11-13 02:51 CET).
 > CI (`ci-lite.yml` pr-evidence-gate) erzwingt Abdeckung: jede geänderte Code-Datei muss hier stehen.
 
 ## Geänderte Dateien
 
 | Status | Pfad | Art |
 |---|---|---|
-| M | `.github/FILE_REGISTRY.md` | modifiziert |
 | M | `docs/SOTA_HANDOVER.md` | modifiziert |
-| A | `docs/reports/current/b3_objektivbeschluss_M4-Defekt.json` | neu |
-| A | `docs/reports/current/b3_objektivbeschluss_M4-ERA.json` | neu |
-| A | `docs/reports/current/b3_objektivbeschluss_M4-Loudness.json` | neu |
-| A | `docs/reports/current/b3_objektivbeschluss_M4-Material.json` | neu |
-| A | `docs/reports/current/b3_stufenmessung_M4-Defekt.json` | neu |
-| A | `docs/reports/current/b3_stufenmessung_M4-ERA.json` | neu |
-| A | `docs/reports/current/b3_stufenmessung_M4-Loudness.json` | neu |
-| A | `docs/reports/current/b3_stufenmessung_M4-Material.json` | neu |
-| A | `scripts/erstelle_klassen_paare.py` | neu |
-| M | `scripts/train_bigvgan_f3.py` | modifiziert |
-| A | `scripts/trainings_flugschein.py` | neu |
-| A | `tests/unit/test_erstelle_klassen_paare.py` | neu |
-| A | `tests/unit/test_trainings_flugschein.py` | neu |
+| M | `scripts/erstelle_klassen_paare.py` | modifiziert |
+| M | `scripts/train_job_runner.py` | modifiziert |
+| M | `scripts/trainings_flugschein.py` | modifiziert |
+| M | `tests/unit/test_erstelle_klassen_paare.py` | modifiziert |
+| M | `tests/unit/test_trainings_flugschein.py` | modifiziert |
 
 ## Entscheidungen
 

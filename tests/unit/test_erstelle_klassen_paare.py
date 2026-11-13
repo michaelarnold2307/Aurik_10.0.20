@@ -31,6 +31,17 @@ def test_sha256_pcm_deterministisch() -> None:
     assert len(ek._sha256_pcm(a)) == 16
 
 
+def test_regions_mergen_verschmilzt_und_filtert() -> None:
+    regionen = [
+        {"start": 0, "end": 100, "typ": "clicks", "staerke": 0.5},
+        {"start": 120, "end": 200, "typ": "clicks", "staerke": 0.5},
+        {"start": 1000, "end": 1010, "typ": "hum", "staerke": 0.5},
+    ]
+    gemergt = ek._regions_mergen(regionen, merge_gap=50, min_dauer=150)
+    assert gemergt == [{"start": 0, "end": 200, "typ": "clicks", "staerke": 0.5}]
+    assert ek._regions_mergen(regionen, merge_gap=50, min_dauer=0)[1]["end"] == 1010
+
+
 def test_wav_lesen_normalisiert_int16() -> None:
     sr = 48000
     t = np.arange(sr // 2) / sr

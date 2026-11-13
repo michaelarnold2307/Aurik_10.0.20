@@ -99,3 +99,41 @@ def test_epoch_gate_erkennt_degradation() -> None:
     befunde_boese = tf.epoch_gate_pruefung(boese_fn, basis_fn, mono, sr, torch.device("cpu"))
     assert befunde_boese["degradation_db"] < -1.0, befunde_boese
     assert befunde_boese["abbruch"] is True
+
+
+def test_flugschein_pflicht_nur_mel_familie() -> None:
+    assert tf.flugschein_pflicht(_ECHTER_TRAINER) is True  # train_bigvgan_f3.py
+    assert tf.flugschein_pflicht(Path("scripts/train_flashsr_f4.py")) is True
+    assert tf.flugschein_pflicht(Path("scripts/train_cantus.py")) is False
+    assert tf.flugschein_pflicht(Path("scripts/train_gender_head.py")) is False
+
+
+def test_runner_lehnt_flashsr_ohne_gpu_job_ab(tmp_path) -> None:
+    """train_job_runner: Flugschein ABGELEHNT ⇒ Manifest + Exit 3, KEIN Subprozess."""
+    import scripts.train_job_runner as runner
+
+    manifest = tmp_path / "job.json"
+    exit_code = runner.run_job(
+        name="test_flashsr",
+        ckpt_dir=tmp_path / "ckpt",
+        cmd=["python3", "scripts/train_flashsr_f4.py", "--help"],
+        resume_cmd=["python3", "scripts/train_flashsr_f4.py", "--help"],
+        phase="test",
+        manifest_path=manifest,
+        force=True,
+    )
+    assert exit_code == 3
+    inhalt = __import__("json").loads(manifest.read_text(encoding="utf-8"))
+    assert inhalt["ergebnis"] == "flugschein_abgelehnt"
+    assert "Mel-Parität" in inhalt["begruendung"]
+
+
+def test_trainer_aus_cmd() -> None:
+    import scripts.train_job_runner as runner
+
+    assert (
+        runner._trainer_aus_cmd(["env", "X=1", "python3", "-B", "scripts/train_bigvgan_f3.py", "--data", "x"]).name
+        == "train_bigvgan_f3.py"
+    )
+    assert runner._trainer_aus_cmd(["python3", "-B", "scripts/train_cantus.py"]).name == "train_cantus.py"
+    assert runner._trainer_aus_cmd(["python3", "-m", "pytest"]) is None

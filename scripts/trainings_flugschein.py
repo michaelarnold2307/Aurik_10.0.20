@@ -36,6 +36,10 @@ if str(ROOT) not in sys.path:
 # D-K3-96-Muster: eigenes Mel aus log(abs-STFT) statt Produktions-Mel.
 _MEL_DRIFT_MUSTER = ("log(abs", "log10(abs", "np.log(np.abs", "amplitude_to_db", "librosa.power_to_db")
 _PRODUKTIONS_MEL = "compute_mel_produktion"
+# Trainer-Familie, für die die Produktions-Mel-Parität der VERIFIZIERTE Vertrag ist
+# (HR-V1/§1.4-Vocoder, D-K3-96). Andere Trainer (Cantus/WF4/TP2/Gender/Vocos) haben
+# eigene Paritäts-Verträge und werden vom Flugschein (noch) nicht geprüft.
+MEL_FAMILIE_TRAINER: tuple[str, ...] = ("train_bigvgan_f3.py", "train_flashsr_f4.py")
 
 
 def _ohne_docstrings_und_kommentare(text: str) -> str:
@@ -156,6 +160,22 @@ def epoch_gate_pruefung(model_fn, basis_fn, track, sr: int, device, *, schwelle_
         "degradation_db": round(degradation, 4),
         "abbruch": bool(degradation < -float(schwelle_db)),
     }
+
+
+def flugschein_pflicht(trainer_pfad: Path) -> bool:
+    """True nur für die Trainer-Familie mit verifiziertem Mel-Paritäts-Vertrag."""
+    return trainer_pfad.name in MEL_FAMILIE_TRAINER
+
+
+def flugschein_trainer_pruefen(trainer_pfad: Path) -> tuple[bool, str]:
+    """Kombinierte Trainer-Prüfung für den Runner (Mel-Parität + gate_hint)."""
+    ok1, befund1 = mel_paritaet_pruefen(trainer_pfad)
+    if not ok1:
+        return False, befund1
+    ok2, befund2 = gate_hint_pruefen(trainer_pfad)
+    if not ok2:
+        return False, befund2
+    return True, "Flugschein ok (Mel-Parität + gate_hint)"
 
 
 def main(argv: list[str] | None = None) -> int:

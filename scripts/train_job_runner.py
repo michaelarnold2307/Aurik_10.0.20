@@ -125,6 +125,15 @@ def _run_attempt(cmd: list[str], timeout_s: float) -> dict:
     }
 
 
+def _trainer_aus_cmd(cmd: list[str]) -> Path | None:
+    """Extrahiert den Trainer-Pfad aus einem Job-Befehl (scripts/train_*.py)."""
+    for teil in cmd:
+        if "scripts/train_" in teil and teil.endswith(".py"):
+            p = Path(teil)
+            return p if p.is_absolute() else (PROJECT_ROOT / p)
+    return None
+
+
 def run_job(
     *,
     name: str,
@@ -146,6 +155,34 @@ def run_job(
     ``--force``) erzwingt einen Neulauf, z. B. nach geänderten Trainingsdaten.
     """
     befehl_str = " ".join(cmd)
+    # Trainingsstrategie Stufe A (Report
+    # docs/reports/current/2026-11-13_hoerzentrierte_trainingsstrategie.md):
+    # Flugschein-Pflicht für die Mel-Familie — kein GPU-Job ohne
+    # Produktions-Domänen-Parität (D-K3-96/§G9 (copilot-instructions.md)).
+    trainer = _trainer_aus_cmd(cmd)
+    if trainer is not None and trainer.exists():
+        from scripts.trainings_flugschein import flugschein_pflicht, flugschein_trainer_pruefen
+
+        if flugschein_pflicht(trainer):
+            ok, befund = flugschein_trainer_pruefen(trainer)
+            if not ok:
+                _write_manifest(
+                    manifest_path,
+                    {
+                        "schema": "aurik.train_job/1",
+                        "name": name,
+                        "phase": phase,
+                        "befehl": befehl_str,
+                        "ergebnis": "flugschein_abgelehnt",
+                        "begruendung": befund,
+                        "quelle": "scripts/trainings_flugschein.py",
+                    },
+                )
+                print(
+                    f"[{name}] Flugschein ABGELEHNT: {befund} — kein GPU-Job (Fail-fast, Stufe A).",
+                    flush=True,
+                )
+                return 3
     if not force:
         vorhanden = _load_manifest(manifest_path)
         if vorhanden and vorhanden.get("ergebnis") == "erfolgreich":
