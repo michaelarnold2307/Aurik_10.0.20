@@ -12659,6 +12659,8 @@ class UnifiedRestorerV3:
                     _clip_frac_roh_pid = 0.0
             if _clip_frac_roh_pid >= 0.005 and "phase_07_declipper" not in selected_phases:
                 selected_phases.append("phase_07_declipper")
+            # Für die Skip-Guard-Schicht (5.) merken (§v10.24 resolved-Defekte).
+            self._clip_fraction_raw = _clip_frac_roh_pid
         else:
             # Kein Denker-Plan — UV3 selektiert und optimiert autonom (Legacy/fail-safe).
             selected_phases = self._select_phases(
@@ -29070,6 +29072,8 @@ class UnifiedRestorerV3:
             # §v10.18: Selbstkalibrierender Declipper als Primäraktion für CLIPPING
             if sev(DefectType.CLIPPING) > 0.10 or _clip_frac_roh >= 0.005:
                 selected.append("phase_07_declipper")
+            # Für die Skip-Guard-Schicht (5.) merken (§v10.24 resolved-Defekte).
+            self._clip_fraction_raw = _clip_frac_roh
             selected.append("phase_23_spectral_repair")
 
         # Print-Through (Magnetisches Übersprechen bei Bandaufnahmen — Vor-/Nachecho)
@@ -40769,16 +40773,27 @@ class UnifiedRestorerV3:
                     continue
                 # §v10.707: Skip-Phase wenn der Defekt gar nicht im Signal vorhanden ist
                 if self._should_skip_absent_defect_phase(phase_id):
-                    _k_step, _n_step = self._next_step()
-                    logger.info(
-                        "⏭️ %s uebersprungen (%d/%d) — Defekt nicht im Signal vorhanden (§v10.707)",
-                        phase_id,
-                        _k_step,
-                        _n_step,
-                    )
-                    skipped.append(phase_id)
-                    _record_oom_probe("phase_skip_defect_absent", phase_id)
-                    continue
+                    # D-K4-1 (2026-11-13), Schicht 6: Sättigungs-Clipping hat Scanner-
+                    # Severity 0,0 ⇒ das Defekt-Absenz-Gate würde den Declipper trotz
+                    # harter Plateaus skippen (v10-Log: phase_skip_defect_absent).
+                    # Signal-Override: bei harter Plateau-Fraktion läuft die Phase.
+                    if phase_id == "phase_07_declipper" and float(getattr(self, "_clip_fraction_raw", 0.0)) >= 0.005:
+                        logger.info(
+                            "§v10.707-Override: %s läuft trotz Defekt-Absenz (Plateau-Fraktion %.4f)",
+                            phase_id,
+                            float(self._clip_fraction_raw),
+                        )
+                    else:
+                        _k_step, _n_step = self._next_step()
+                        logger.info(
+                            "⏭️ %s uebersprungen (%d/%d) — Defekt nicht im Signal vorhanden (§v10.707)",
+                            phase_id,
+                            _k_step,
+                            _n_step,
+                        )
+                        skipped.append(phase_id)
+                        _record_oom_probe("phase_skip_defect_absent", phase_id)
+                        continue
                 # §v10.303: Skip enhancement phases when material confidence critically low
                 if self._should_skip_low_confidence_phase(phase_id):
                     skipped.append(phase_id)
@@ -45797,6 +45812,13 @@ class UnifiedRestorerV3:
             )
             return True
         # ── §v10.300: Phase 06 ist für analoge Träger immer erforderlich ──
+        if phase_id == "phase_07_declipper":
+            # D-K4-1 (2026-11-13), Schicht 5: Sättigungs-Clipping hat Scanner-
+            # Severity 0,0, daher würde die resolved-Defekt-Logik die Phase
+            # trotz harter Plateaus skippen (Probe v8: phase_07 in skipped).
+            # Signal-Guard: bei harter Plateau-Fraktion nie skippen.
+            if float(getattr(self, "_clip_fraction_raw", 0.0)) >= 0.005:
+                return False
         if phase_id == "phase_06_frequency_restoration":
             _rctx = getattr(self, "_restoration_context", None) or {}
             _mat = str(_rctx.get("material_key", "")).lower()
