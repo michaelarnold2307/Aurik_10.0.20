@@ -252,6 +252,12 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--tracks", type=int, default=N_TRACKS)
     ap.add_argument("--seed", type=int, default=42)
     ap.add_argument("--seconds", type=float, default=SEGMENT_S)
+    ap.add_argument(
+        "--modell",
+        type=Path,
+        default=None,
+        help="ONNX-Pfad des zu messenden Kandidaten (Default: Produktions-Artifakt models/tf_gridnet/tf_gridnet_quality.onnx)",
+    )
     args = ap.parse_args(argv)
 
     SEGMENT_S = args.seconds
@@ -263,7 +269,8 @@ def main(argv: list[str] | None = None) -> int:
 
     from backend.core.dsp.tf_gridnet_denoiser import TFGridNetDenoiser
 
-    m9 = TFGridNetDenoiser()
+    m9 = TFGridNetDenoiser(model_path=args.modell) if args.modell is not None else TFGridNetDenoiser()
+    modell_pfad = Path(str(m9._model_path))
     if not m9.is_available():
         print("ABBRUCH: M9-Modell nicht verfügbar (models/tf_gridnet/tf_gridnet_quality.onnx fehlt).")
         return 2
@@ -289,8 +296,8 @@ def main(argv: list[str] | None = None) -> int:
         "datum": date.today().isoformat(),
         "seed": args.seed,
         "segmente_s": args.seconds,
-        "modell": "models/tf_gridnet/tf_gridnet_quality.onnx",
-        "modell_sha256": _sha256(_ROOT / "models" / "tf_gridnet" / "tf_gridnet_quality.onnx"),
+        "modell": str(modell_pfad.relative_to(_ROOT)) if modell_pfad.is_relative_to(_ROOT) else str(modell_pfad),
+        "modell_sha256": _sha256(modell_pfad),
         "tracks": [t.name for t in tracks],
         "never_worsen": never_worsen,
         "vorteile_rauscharm": vorteile,

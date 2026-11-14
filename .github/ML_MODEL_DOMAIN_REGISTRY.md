@@ -110,6 +110,7 @@ geführt als `audio-allgemein` mit lokalen Konfigurations-Messungen).. Auch im a
 | `witness_sibilance` | `scripts/train_witness_detektor.py` → k398-Regionen (Musik, clean/schaden, leak-frei) — Schadens-Witness | Report-only-Zeuge (`backend/core/dsp/witness_detektor.py`) |
 | `witness_compression_artifacts` | `scripts/train_witness_detektor.py` → k398-Regionen (Musik, clean/schaden, leak-frei) — Schadens-Witness | Report-only-Zeuge (`backend/core/dsp/witness_detektor.py`) |
 | `witness_transport_bump` | `scripts/train_witness_detektor.py` → k398-Regionen (Musik, clean/schaden, leak-frei) — Schadens-Witness | Report-only-Zeuge (`backend/core/dsp/witness_detektor.py`) |
+| `tf_gridnet_v2` | `scripts/train_tf_gridnet_denoiser.py` → MUSDB18-HQ-Mixture + Rauschen (Musik, 2.000 Paare, Seed 42) — M9-V2-Kandidat | Kandidat: `scripts/export_tf_gridnet_onnx.py` + `verify_m9_gate.py --modell` nach bestandenem Gate (Produktions-Artefakte bleiben unangetastet) |
 
 ---
 

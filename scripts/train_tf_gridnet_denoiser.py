@@ -121,6 +121,7 @@ class PairedChunkDataset(Dataset):
         *,
         synthetic: int = 0,
         seed: int = 2026,
+        exclude_pairs: set[str] | None = None,
     ) -> None:
         self._chunk = window_samples()
         self._seed = int(seed)
@@ -132,8 +133,14 @@ class PairedChunkDataset(Dataset):
                 raise ValueError("PairedChunkDataset: --clean-dir/--noisy-dir oder --synthetic nötig")
             noisy_index = {p.name: p for p in sorted(noisy_dir.glob("*.wav"))}
             self._pairs = [(p, noisy_index[p.name]) for p in sorted(clean_dir.glob("*.wav")) if p.name in noisy_index]
+            # Leak-Schutz (2026-11-14, M9-Gate-Befund): Paare von Gate-Tracks
+            # ausschließen — das Gate misst sonst auf Trainingsmaterial.
+            if exclude_pairs:
+                self._pairs = [(c, n) for c, n in self._pairs if c.name not in exclude_pairs]
             if not self._pairs:
-                raise ValueError(f"Keine passenden wav-Paare in {clean_dir} / {noisy_dir}")
+                raise ValueError(
+                    f"Keine passenden wav-Paare in {clean_dir} / {noisy_dir} (nach Ausschluss: {len(exclude_pairs) if exclude_pairs else 0})"
+                )
             self._synthetic = 0
         self._cache: dict[int, tuple[np.ndarray, np.ndarray]] = {}
 
@@ -200,8 +207,17 @@ def train(
     blocks: int,
     skip_onnx: bool,
     grad_accum: int = 1,
+    exclude_pairs: set[str] | None = None,
+    checkpoint_dir: Path | None = None,
 ) -> Path:
     set_determinism(seed)  # §G5 (copilot-instructions.md)
+    # M9-V2 (2026-11-14): Kandidaten-Läufe schreiben in einen eigenen Ordner,
+    # damit die deployten Produktions-Artefakte (models/tf_gridnet/) bis zum
+    # Gate-Bestehen unangetastet bleiben.
+    ckpt_dir = Path(checkpoint_dir) if checkpoint_dir is not None else CHECKPOINT_DIR
+    latest_pt = ckpt_dir / "checkpoint_latest.pt"
+    best_pt = ckpt_dir / "tf_gridnet_best.pt"
+    onnx_pt = ckpt_dir / "tf_gridnet_quality.onnx"
     if int(grad_accum) < 1:
         raise ValueError(f"--grad-accum muss >= 1 sein (erhalten: {grad_accum})")
     grad_accum = int(grad_accum)
@@ -226,17 +242,18 @@ def train(
         batch_size,
         grad_accum,
     )
-    dataset = PairedChunkDataset(clean_dir, noisy_dir, synthetic=synthetic, seed=seed)
+    dataset = PairedChunkDataset(clean_dir, noisy_dir, synthetic=synthetic, seed=seed, exclude_pairs=exclude_pairs)
     val_set = PairedChunkDataset(
         clean_dir,
         noisy_dir,
         synthetic=max(synthetic, 0),
         seed=seed + 500_000,
+        exclude_pairs=exclude_pairs,
     )
     train_loader = DataLoader(dataset, batch_size=batch_size, shuffle=False, num_workers=0)
     val_loader = DataLoader(val_set, batch_size=batch_size, shuffle=False, num_workers=0)
 
-    CHECKPOINT_DIR.mkdir(parents=True, exist_ok=True)
+    ckpt_dir.mkdir(parents=True, exist_ok=True)
     for epoch in range(start_epoch, epochs):
         model.train()
         t0 = time.time()
@@ -287,7 +304,7 @@ def train(
         )
 
         save_guarded(
-            LATEST_PT,
+            latest_pt,
             {
                 "model_state_dict": model.state_dict(),
                 "epoch": epoch + 1,
@@ -301,16 +318,16 @@ def train(
         if avg_val < best_val:
             best_val = avg_val
             save_guarded(
-                BEST_PT,
+                best_pt,
                 {"model_state_dict": model.state_dict(), "epoch": epoch + 1, "val_loss": avg_val, "seed": seed},
             )
             logger.info(">> Best: %.4f", best_val)
 
     if not skip_onnx:
-        model.load_state_dict(torch.load(BEST_PT, map_location=dev, weights_only=False)["model_state_dict"])
-        export_onnx(model, DEFAULT_ONNX, device=dev)
-    logger.info("Fertig. best_val=%.4f | %s", best_val, BEST_PT)
-    return BEST_PT
+        model.load_state_dict(torch.load(best_pt, map_location=dev, weights_only=False)["model_state_dict"])
+        export_onnx(model, onnx_pt, device=dev)
+    logger.info("Fertig. best_val=%.4f | %s", best_val, best_pt)
+    return best_pt
 
 
 # ── ONNX-Export + Paritäts-Nachweis (§III.9 (copilot-instructions.md)) ───────
@@ -387,11 +404,34 @@ def main() -> None:
     p.add_argument("--clean-dir", type=Path, default=None)
     p.add_argument("--noisy-dir", type=Path, default=None)
     p.add_argument("--synthetic", type=int, default=0, help="n synthetische Paare (Smoke/CI)")
+    p.add_argument(
+        "--exclude-pairs",
+        type=Path,
+        default=None,
+        help="Textdatei mit auszuschließenden Paar-Dateinamen (je Zeile) — Leak-Schutz gegen Gate-Tracks",
+    )
+    p.add_argument(
+        "--checkpoint-dir",
+        type=Path,
+        default=None,
+        help="Ziel-Ordner für Checkpoints/ONNX (Default: models/tf_gridnet) — Kandidaten-Läufe schreiben in einen eigenen Ordner",
+    )
     p.add_argument("--device", type=str, default="cpu")
     p.add_argument("--hidden", type=int, default=64)
     p.add_argument("--blocks", type=int, default=2)
     p.add_argument("--skip-onnx", action="store_true")
     args = p.parse_args()
+    exclude_pairs: set[str] | None = None
+    if args.exclude_pairs is not None:
+        if not args.exclude_pairs.is_file():
+            print(f"ABBRUCH: --exclude-pairs Datei fehlt: {args.exclude_pairs}")
+            raise SystemExit(2)
+        exclude_pairs = {
+            zeile.strip() for zeile in args.exclude_pairs.read_text(encoding="utf-8").splitlines() if zeile.strip()
+        }
+        if not exclude_pairs:
+            print(f"ABBRUCH: --exclude-pairs Datei ist leer: {args.exclude_pairs}")
+            raise SystemExit(2)
     train(
         epochs=args.epochs,
         batch_size=args.batch_size,
@@ -407,6 +447,8 @@ def main() -> None:
         blocks=args.blocks,
         skip_onnx=args.skip_onnx,
         grad_accum=args.grad_accum,
+        exclude_pairs=exclude_pairs,
+        checkpoint_dir=args.checkpoint_dir,
     )
 
 

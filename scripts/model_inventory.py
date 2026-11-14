@@ -341,6 +341,12 @@ _WIRING_ALLOWLIST: dict[str, str] = {
         "Aktivierung erst nach §4-Verfahren)."
     ),
     "ddsp_predictor": "trainiert (c4_head.pth), aber val_MAE 0.2447 ≈ Baseline 0.2455 (kein Skill) — NICHT aktivierbar (F5/C4, §V7-Blindaktivierungs-Verbot)",
+    "tf_gridnet_v2": (
+        "M9-V2-Kandidat (2026-11-14): Neulauf auf 2.000 expandierten Paaren mit Leak-Schutz — "
+        "Checkpoints entstehen hier DURCHGÄNGIG während des Trainings; Konsumenten stehen mit "
+        "scripts/export_tf_gridnet_onnx.py + scripts/verify_m9_gate.py --modell bereit, die deployten "
+        "Produktions-Artefakte (models/tf_gridnet) bleiben bis zum bestandenen Gate unangetastet."
+    ),
     "gacela_upstream": "Upstream-Architekturkopie als Vergleichsquelle — kein Laufzeitpfad",
     "matchering2.0": "Referenz-Matching-Werkzeug (Mastering-Vergleich) — Rolle ungeklaert",
     # scnet_4stems ist seit §P1-2 verdrahtet (plugins/scnet_plugin.py +
