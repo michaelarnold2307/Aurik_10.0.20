@@ -82,9 +82,15 @@ done
 
 echo "=== R5: KP-8 Cantus domain_adapt (Phase 3, reale Degradationen) ==="
 if [ -n "$CANTUS_REAL" ]; then
+  # D-K3-103 (2026-11-14): R5 starb 2× am CUDA-OOM — der Lauf ohne
+  # Batch-Flags nutzte den Trainer-Default 8 (=22,77 GiB). Fix: Mikro-Batch 2
+  # × Grad-Accum 4 ⇒ effektive Batch 8 unverändert (Trainingsdynamik
+  # äquivalent), VRAM ÷4; expandable_segments gegen die vom OOM gemeldete
+  # 454-MiB-Fragmentierung. R4 (fine_tune) lief mit demselben 2×4-Rezept
+  # erfolgreich.
   R --name c2_cantus_domain --ckpt-dir models/cantus --phase domain_adapt \
-    --cmd "env PYTHONPATH=. $PY -B scripts/train_cantus.py --phase=domain_adapt --preset=full --epochs=20 --data $CANTUS_REAL --resume models/cantus/checkpoint_latest.pt" \
-    --resume-cmd "env PYTHONPATH=. $PY -B scripts/train_cantus.py --phase=domain_adapt --preset=full --epochs=20 --data $CANTUS_REAL --resume models/cantus/checkpoint_latest.pt" \
+    --cmd "env PYTHONPATH=. PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True $PY -B scripts/train_cantus.py --phase=domain_adapt --preset=full --epochs=20 --batch-size 2 --grad-accum 4 --data $CANTUS_REAL --resume models/cantus/checkpoint_latest.pt" \
+    --resume-cmd "env PYTHONPATH=. PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True $PY -B scripts/train_cantus.py --phase=domain_adapt --preset=full --epochs=20 --batch-size 2 --grad-accum 4 --data $CANTUS_REAL --resume models/cantus/checkpoint_latest.pt" \
     --timeout-s 43200 --retries 1
 else
   echo "Reale degradierte Vocal-Paare fehlen (data/cantus_real, data/real_degraded_vocals) — R5 uebersprungen (datenblockiert, SOTA-M14)."
