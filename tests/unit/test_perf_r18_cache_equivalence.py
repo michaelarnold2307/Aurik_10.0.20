@@ -183,9 +183,7 @@ def test_flutter_feature_cache_hit_is_bit_identical_across_thresholds(
 
 
 @pytest.mark.parametrize("kind", ["fm_tone", "noise"])
-def test_wow_feature_cache_hit_is_bit_identical_across_thresholds(
-    monkeypatch: pytest.MonkeyPatch, kind: str
-) -> None:
+def test_wow_feature_cache_hit_is_bit_identical_across_thresholds(monkeypatch: pytest.MonkeyPatch, kind: str) -> None:
     audio = _flut_signal(kind)
     scanner = DefectScanner(sample_rate=SR)
 
@@ -246,6 +244,125 @@ def test_scan_scores_bit_identical_with_and_without_feature_cache() -> None:
     assert result_on.material_type == result_off.material_type
     assert set(result_on.scores.keys()) == set(result_off.scores.keys())
     for defect_type, score_on in result_on.scores.items():
-        _assert_score_equal(
-            result_off.scores[defect_type], score_on, f"scan/{defect_type}"
-        )
+        _assert_score_equal(result_off.scores[defect_type], score_on, f"scan/{defect_type}")
+
+
+# ---------------------------------------------------------------------------
+# 3) §PERF-R21d (2026-11-14): Material-Erkennungs-Wow/Flutter auf dem
+#    geteilten 60-s-Center-Crop — ein FM-Lauf pro Scan statt zwei
+# ---------------------------------------------------------------------------
+
+
+def _long_signal(seconds: float = 65.0) -> np.ndarray:
+    """Deterministisches Lang-Signal (> 60 s → Crop greift in beiden Pfaden)."""
+    rng = np.random.default_rng(20261114)
+    t = np.arange(int(seconds * SR)) / SR
+    sig = 0.4 * np.sin(2.0 * np.pi * 440.0 * t)
+    sig += 0.02 * rng.standard_normal(len(t))
+    return np.asarray(sig, dtype=np.float64)
+
+
+def test_wf_stationary_crop_matches_scan_crop_arithmetic() -> None:
+    """Der Crop der Material-Erkennung muss exakt dieselben Samples liefern
+    wie die §9.7.5-Center-Crop-Arithmetik des scan()-Hauptpfads — sonst greift
+    der content-keyed FM-Cache (§PERF-R18) nicht."""
+    scanner = DefectScanner(sample_rate=SR)
+    mono = _long_signal()
+    cap = scanner.WF_CROP_CAP_S * SR
+    mid, half = len(mono) // 2, cap // 2
+    expected = mono[mid - half : mid + half]
+    got = scanner._wf_stationary_crop(mono)
+    assert got.shape == expected.shape
+    assert np.array_equal(got, expected)
+
+
+def test_wf_stationary_crop_short_signal_passthrough() -> None:
+    """Signale ≤ 60 s werden unverändert (identische Samples) durchgereicht."""
+    scanner = DefectScanner(sample_rate=SR)
+    mono = _long_signal(seconds=5.0)
+    got = scanner._wf_stationary_crop(mono)
+    assert len(got) == len(mono)
+    assert np.array_equal(got, mono)
+
+
+def test_material_detection_wow_flutter_uses_60s_crop(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Mono- UND Stereo-Material-Erkennung rechnen Wow/Flutter auf dem
+    60-s-Crop — damit ist der Cache-Schlüssel identisch zum Haupt-Scan."""
+    seen: dict[str, list[int]] = {"mono_wow": [], "mono_flut": [], "stereo_wow": [], "stereo_flut": []}
+    mono = _long_signal()
+
+    class _LenScore:
+        defect_type = DefectType.WOW
+
+        def __init__(self, sev: float):
+            self.severity = sev
+            self.confidence = 0.5
+            self.locations = []
+            self.metadata = {}
+
+    def _fake_det(which: str):
+        def _fn(self, audio):
+            seen[which].append(len(audio))
+            return _LenScore(0.0)
+
+        return _fn
+
+    monkeypatch.setattr(DefectScanner, "_detect_wow", _fake_det("mono_wow"))
+    monkeypatch.setattr(DefectScanner, "_detect_flutter", _fake_det("mono_flut"))
+    scanner = DefectScanner(sample_rate=SR)
+    scanner._detect_mono_material(mono)
+    assert seen["mono_wow"] == [SR * scanner.WF_CROP_CAP_S]
+    assert seen["mono_flut"] == [SR * scanner.WF_CROP_CAP_S]
+
+    seen["stereo_wow"] = []
+    seen["stereo_flut"] = []
+    monkeypatch.setattr(DefectScanner, "_detect_wow", _fake_det("stereo_wow"))
+    monkeypatch.setattr(DefectScanner, "_detect_flutter", _fake_det("stereo_flut"))
+    stereo = np.stack([mono, mono[::-1]], axis=1)
+    scanner._detect_stereo_material(stereo)
+    assert seen["stereo_wow"] == [SR * scanner.WF_CROP_CAP_S]
+    assert seen["stereo_flut"] == [SR * scanner.WF_CROP_CAP_S]
+
+
+def test_material_detection_fills_fm_cache_for_scan_crop(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Der Kern des Rätsels: Material-Erkennung rechnet die Wow/Flutter-
+    Feature-Schicht auf dem Crop vor — der Haupt-Scan trifft danach den
+    content-keyed Cache (Feature-Schicht genau EINMAL gerechnet statt zweimal).
+    Ein ANDERES Array (anderer Inhalt) muss neu rechnen (kein Stale-Hit)."""
+    mono = _long_signal()
+    calls = {"wow": 0, "flutter": 0}
+
+    _wow_orig = DefectScanner._wow_track_features
+    _flut_orig = DefectScanner._flutter_base_features
+
+    def _counting_wow(audio, sr):
+        calls["wow"] += 1
+        return _wow_orig(audio, sr)
+
+    def _counting_flut(audio, sr):
+        calls["flutter"] += 1
+        return _flut_orig(audio, sr)
+
+    monkeypatch.setattr(DefectScanner, "_wow_track_features", staticmethod(_counting_wow))
+    monkeypatch.setattr(DefectScanner, "_flutter_base_features", staticmethod(_counting_flut))
+
+    scanner = DefectScanner(sample_rate=SR)
+    scanner._wf_feature_cache_enabled = True
+    # Material-Erkennung: Feature-Schicht auf dem 60-s-Crop (je 1×)
+    scanner._detect_mono_material(mono)
+    assert calls["wow"] == 1
+    assert calls["flutter"] == 1
+
+    # Haupt-Scan-Aufrufe auf dem identischen Crop → Cache-Treffer, kein Nachrechnen
+    crop = scanner._wf_stationary_crop(mono)
+    scanner._detect_wow(crop)
+    scanner._detect_flutter(crop)
+    assert calls["wow"] == 1, "WOW-Feature-Schicht wurde trotz identischem Crop neu gerechnet"
+    assert calls["flutter"] == 1, "FLUTTER-Feature-Schicht wurde trotz identischem Crop neu gerechnet"
+
+    # Anderes Array (anderer Inhalt) → content-keyed: neuer Eintrag, Neuberechnung
+    intro = mono[: SR * 20]
+    scanner._detect_flutter(intro)
+    assert calls["flutter"] == 2, "content-keyed Cache traf trotz anderem Array (Stale-Hit)"

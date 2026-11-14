@@ -732,6 +732,14 @@ class DefectScanner:
     - Performance-optimiert (max 5% overhead)
     """
 
+    # §PERF-R21d (2026-11-14): Geteilter 60-s-Cap (§9.7.5) für stationäre
+    # Wow/Flutter-Detektoren — der scan()-Hauptpfad und die
+    # Material-Erkennung müssen exakt denselben Center-Crop nutzen, damit
+    # der content-keyed FM-Cache (§PERF-R18) trifft; sonst läuft der
+    # Subband-FM-Kern zweimal pro Scan (Material volles Audio + Haupt-Scan
+    # Crop = verschiedene Arrays, kein Cache-Hit).
+    WF_CROP_CAP_S: int = 60
+
     # §v10.306: Per-Defekt-Audibilität - JND-Schwellen pro Defekttyp
     # Format: {defect_type: (jnd_db, masking_factor, material_factors_dict)}
     # material_factors: Multiplikator - höher = schwerer hörbar (maskiert)
@@ -1957,6 +1965,27 @@ class DefectScanner:
         self._wf_feature_cache[_key] = (_value,)
         return _value
 
+    def _wf_stationary_crop(self, mono: np.ndarray) -> np.ndarray:
+        """§PERF-R21d (2026-11-14): Derselbe 60-s-Center-Crop wie scan() (§9.7.5).
+
+        Material-Erkennung und Haupt-Scan rechneten Wow/Flutter auf
+        verschiedenen Arrays (volles Audio vs. 60-s-Crop) — der content-keyed
+        FM-Cache (§PERF-R18) konnte dadurch nie treffen und der
+        Subband-FM-Kern lief zweimal pro Scan (Kaltprofil 2026-11-14:
+        2×6,3 s, dominanter Kaltposten). Wow/Flutter sind stationär
+        (§9.7.5a-Kommentar im scan(): „Other detectors (noise, hum, flutter)
+        are stationary and still use the cropped audio for performance") —
+        die Material-Erkennung nutzt jetzt exakt denselben Crop (identische
+        Index-Arithmetik wie scan(), Z. ~2534): Cache-Treffer,
+        bit-identische Features (§G5 (copilot-instructions.md)).
+        """
+        _cap = self.WF_CROP_CAP_S * int(self.sample_rate)
+        if len(mono) > _cap:
+            _mid = len(mono) // 2
+            _half = _cap // 2
+            return mono[_mid - _half : _mid + _half]
+        return mono
+
     def adjust_thresholds_for_ast(
         self,
         ast_classifier: Any = None,
@@ -2519,7 +2548,7 @@ class DefectScanner:
         # Reduces scan time from ~22 s (225 s track) to ~6 s.
         # The spectral fingerprint and _auto_detect_material() above intentionally
         # run on the full audio for a representative signal characterisation.
-        _DETECTOR_CAP_S = 60
+        _DETECTOR_CAP_S = self.WF_CROP_CAP_S  # §PERF-R21d: identisch zum _wf_stationary_crop der Material-Erkennung
         _detector_cap_n = _DETECTOR_CAP_S * sr
         _location_offset_s = 0.0  # seconds to add to all detector locations
         # §9.7.5a - Full-audio reference for non-stationary defects (dropouts).
@@ -3788,9 +3817,16 @@ class DefectScanner:
         # auf Stille. Ohne Signal-Energie ist Wow/Flutter nicht definiert → 0.
         _mono_rms = float(np.sqrt(np.mean(audio.astype(np.float64) ** 2)))
         if _mono_rms > 1e-6:
+            # §PERF-R21d (2026-11-14): Wow/Flutter sind stationär (§9.7.5a) —
+            # auf demselben 60-s-Center-Crop wie der Haupt-Scan rechnen, damit
+            # der content-keyed FM-Cache (§PERF-R18) trifft: ein FM-Lauf pro
+            # Scan statt zwei (Material-Erkennung + Haupt-Scan auf
+            # verschiedenen Arrays).
+            _wf_audio = audio if audio.ndim == 1 else audio.mean(axis=1)
+            _wf_audio = self._wf_stationary_crop(_wf_audio)
             wow_flutter_score = max(
-                self._detect_wow(audio if audio.ndim == 1 else audio.mean(axis=1)).severity,
-                self._detect_flutter(audio if audio.ndim == 1 else audio.mean(axis=1)).severity,
+                self._detect_wow(_wf_audio).severity,
+                self._detect_flutter(_wf_audio).severity,
             )
         else:
             wow_flutter_score = 0.0
@@ -3992,9 +4028,13 @@ class DefectScanner:
         # ist Wow/Flutter nicht definiert → 0.
         _stereo_rms = float(np.sqrt(np.mean(audio_mono.astype(np.float64) ** 2)))
         if _stereo_rms > 1e-6:
+            # §PERF-R21d (2026-11-14): wie mono — stationärer 60-s-Center-Crop
+            # mit identischen Indizes zum Haupt-Scan → FM-Cache-Treffer
+            # (§PERF-R18), ein FM-Lauf pro Scan.
+            _wf_audio = self._wf_stationary_crop(audio_mono)
             wow_flutter_score = max(
-                self._detect_wow(audio_mono).severity,
-                self._detect_flutter(audio_mono).severity,
+                self._detect_wow(_wf_audio).severity,
+                self._detect_flutter(_wf_audio).severity,
             )
         else:
             wow_flutter_score = 0.0
