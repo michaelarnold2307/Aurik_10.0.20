@@ -366,3 +366,41 @@ def test_material_detection_fills_fm_cache_for_scan_crop(
     intro = mono[: SR * 20]
     scanner._detect_flutter(intro)
     assert calls["flutter"] == 2, "content-keyed Cache traf trotz anderem Array (Stale-Hit)"
+
+
+def test_stereo_material_detection_fills_fm_cache_for_scan_crop(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Stereo-Variante: der Mono-Mix der Stereo-Material-Erkennung ist
+    wertidentisch zum audio_mono des scan()-Hauptpfads (np.mean deterministisch)
+    ⇒ auch im Stereo-Pfad trifft der content-keyed FM-Cache."""
+    mono = _long_signal()
+    stereo = np.stack([mono, mono[::-1]], axis=1)
+    calls = {"wow": 0, "flutter": 0}
+
+    _wow_orig = DefectScanner._wow_track_features
+    _flut_orig = DefectScanner._flutter_base_features
+
+    def _counting_wow(audio, sr):
+        calls["wow"] += 1
+        return _wow_orig(audio, sr)
+
+    def _counting_flut(audio, sr):
+        calls["flutter"] += 1
+        return _flut_orig(audio, sr)
+
+    monkeypatch.setattr(DefectScanner, "_wow_track_features", staticmethod(_counting_wow))
+    monkeypatch.setattr(DefectScanner, "_flutter_base_features", staticmethod(_counting_flut))
+
+    scanner = DefectScanner(sample_rate=SR)
+    scanner._detect_stereo_material(stereo)
+    assert calls["wow"] == 1
+    assert calls["flutter"] == 1
+
+    # Haupt-Scan-Pendant: scan() rechnet np.mean(audio, axis=1) + denselben Crop
+    scan_mono = np.mean(stereo, axis=1)
+    crop = scanner._wf_stationary_crop(scan_mono)
+    scanner._detect_wow(crop)
+    scanner._detect_flutter(crop)
+    assert calls["wow"] == 1, "Stereo-Pfad: WOW-Feature-Schicht trotz identischem Crop neu gerechnet"
+    assert calls["flutter"] == 1, "Stereo-Pfad: FLUTTER-Feature-Schicht trotz identischem Crop neu gerechnet"
