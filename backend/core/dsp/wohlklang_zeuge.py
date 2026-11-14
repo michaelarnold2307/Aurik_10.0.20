@@ -83,6 +83,28 @@ def defektlast(audio: Any, sample_rate: int) -> float:
     return round(clip * 2.0 + flatness + hf_verlust * 0.5, 4)
 
 
+def saettigung_kanal(audio: Any) -> float:
+    """Gain-invarianter Sättigungs-Kanal: 1 / Crest-Faktor (kanonisch).
+
+    D-K3-95/97-Lücke: die zertifizierte defektlast-Referenz sieht
+    tanh-/Soft-Clipping-Sättigung nicht (gemessen 2026-11-14: defektlast
+    identisch vor/nach k398-Clipping-Rezeptur; flat_top_anteil ≈ 0, weil
+    tanh keine harten Plateaus erzeugt). Der Crest-Faktor (peak/rms) fällt
+    bei Sättigung monoton — 1/crest ist gain-invariant (Skalierung kürzt
+    sich) und normiert: Sinus ≈ 0,707, schwere Sättigung → 1,0.
+    **Nicht zertifiziert** — Report-Only-Zeuge (§G191 (GEBOTE.md)),
+    Richtung = höher ist mehr Defekt.
+    """
+    x = _mono(audio)
+    if x.size < 4:
+        return 0.0
+    rms = float(np.sqrt(np.mean(np.square(np.asarray(x, dtype=np.float64))))) + 1e-12
+    if rms < 1e-9:
+        return 0.0
+    crest = float(np.max(np.abs(x))) / rms
+    return round(1.0 / max(crest, 1.0), 4)
+
+
 def _musik_mos(audio: Any, sample_rate: int) -> float:
     """Richtungszertifiziertes Musik-MOS (höher = besser), numpy-only."""
     from plugins.musik_mos_plugin import get_musik_mos  # pylint: disable=import-outside-toplevel
@@ -122,9 +144,15 @@ def messe_wohlklang_zeuge(
     mos_out = _musik_mos(x_out, sr)
     last_in = defektlast(x_in, sr)
     last_out = defektlast(x_out, sr)
+    # D-K3-95/97-Blindheit: defektlast sieht tanh-Sättigung nicht — der
+    # Sättigungskanal ist der Report-Only-Zweitkanal (§G191 (GEBOTE.md)),
+    # er ändert KEIN Gate und KEINEN gerichteter_fall-Zweig.
+    saett_in = saettigung_kanal(x_in)
+    saett_out = saettigung_kanal(x_out)
 
     delta_mos = round(mos_out - mos_in, 4)
     delta_last = round(last_out - last_in, 4)
+    delta_saett = round(saett_out - saett_in, 4)
     # musik_mos: höher = besser ⇒ Regression, wenn der Ausgang DEUTLICH tiefer liegt.
     # defektlast: höher = schlechter ⇒ Regression, wenn der Ausgang DEUTLICH steigt.
     reg_mos = bool(delta_mos < -float(jnd))
@@ -142,11 +170,11 @@ def messe_wohlklang_zeuge(
         "verfuegbar": True,
         "report_only": True,
         "jnd": float(jnd),
-        "metriken": ["musik_mos", "defektlast"],
+        "metriken": ["musik_mos", "defektlast", "saettigung_kanal"],
         "zertifikat": ZERTIFIKAT,
-        "eingang": {"musik_mos": round(mos_in, 4), "defektlast": round(last_in, 4)},
-        "ausgang": {"musik_mos": round(mos_out, 4), "defektlast": round(last_out, 4)},
-        "delta": {"musik_mos": delta_mos, "defektlast": delta_last},
+        "eingang": {"musik_mos": round(mos_in, 4), "defektlast": round(last_in, 4), "saettigung_kanal": saett_in},
+        "ausgang": {"musik_mos": round(mos_out, 4), "defektlast": round(last_out, 4), "saettigung_kanal": saett_out},
+        "delta": {"musik_mos": delta_mos, "defektlast": delta_last, "saettigung_kanal": delta_saett},
         "regression": {"musik_mos": reg_mos, "defektlast": reg_last},
         "gerichteter_fall": gerichtet,
         "hoer_instanz": "vorzulegen" if gerichtet else "keine_vorlage",

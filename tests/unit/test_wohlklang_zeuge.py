@@ -51,11 +51,11 @@ def test_identisches_signal_ist_kein_gerichteter_fall() -> None:
 
     assert befund["verfuegbar"] is True
     assert befund["report_only"] is True
-    assert befund["delta"] == {"musik_mos": 0.0, "defektlast": 0.0}
+    assert befund["delta"] == {"musik_mos": 0.0, "defektlast": 0.0, "saettigung_kanal": 0.0}
     assert befund["gerichteter_fall"] is False
     assert befund["hoer_instanz"] == "keine_vorlage"
     assert befund["grund"] == []
-    assert befund["metriken"] == ["musik_mos", "defektlast"]
+    assert befund["metriken"] == ["musik_mos", "defektlast", "saettigung_kanal"]
 
 
 def test_verschlechterung_wird_gerichteter_fall() -> None:
@@ -93,7 +93,7 @@ def test_stereo_layout_invarianz() -> None:
     assert wz.defektlast(stereo_cf, SR) == wz.defektlast(stereo_nc, SR)
     a = wz.messe_wohlklang_zeuge(stereo_cf, stereo_cf, SR)
     b = wz.messe_wohlklang_zeuge(stereo_nc, stereo_nc, SR)
-    assert a["delta"] == b["delta"] == {"musik_mos": 0.0, "defektlast": 0.0}
+    assert a["delta"] == b["delta"] == {"musik_mos": 0.0, "defektlast": 0.0, "saettigung_kanal": 0.0}
 
 
 def test_kein_eingriff_in_die_audio_daten() -> None:

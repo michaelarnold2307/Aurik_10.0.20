@@ -3,8 +3,9 @@
 
 Misst Metriken nur in den annotierten Defektregionen, vorher (Schaden) und
 nachher (restauriert), pegel-gematcht, mit Reparaturquote Q je Region und
-Defektklasse. Schreibziel: Beleg ``aurik.defektdelta/1`` (kein Gate, kein
-Flag, keine Stärke-Änderung — Hörordnung §7, Report-Only-Zeuge).
+Defektklasse. Schreibziel: Beleg ``aurik.defektdelta/3`` (kein Gate, kein
+Flag, keine Stärke-Änderung — Hörordnung §7, Report-Only-Zeuge; /3 trägt
+zusätzlich den Sättigungskanal 1/Crest, D-K3-95/97).
 
 Eingaben:
   --schaden / --restauriert / --clean   WAV-Dateien des Schadens-Tripels

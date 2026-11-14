@@ -14,7 +14,8 @@ kalibriert sind (D-K4-9); Stärke-/Schwellen-Nutzung NUR über das
 §4-Verfahren. Determinismus: §G5 (copilot-instructions.md) — kein
 `time.time()`, Seed-frei (reine Funktionen), sha256 der Eingänge im Beleg.
 
-Schema: ``aurik.defektdelta/1`` — fail-closed (Muster ohr_prior/2-Ablehnung).
+Schema: ``aurik.defektdelta/3`` — fail-closed (Muster ohr_prior/2-Ablehnung);
+/3 ergänzt den gain-invarianten Sättigungskanal (1/Crest, D-K3-95/97).
 """
 
 from __future__ import annotations
@@ -30,8 +31,11 @@ from backend.core.dsp.wohlklang_zeuge import JND_TOLERANZ  # EINE Wahrheit
 
 logger = logging.getLogger(__name__)
 
-SCHEMA = "aurik.defektdelta/2"
-_SCHEMA_VERALTET = "aurik.defektdelta/1"  # RMS-Matching-Definition (Belege veraltet, §G191 (GEBOTE.md))
+SCHEMA = "aurik.defektdelta/3"
+_SCHEMA_VERALTET = (
+    "aurik.defektdelta/2",
+    "aurik.defektdelta/1",
+)  # RMS-Matching-Definition bzw. ohne Sättigungskanal (Belege veraltet, §G191 (GEBOTE.md))
 # defektlast ist "höher = mehr Defekte"; musik_mos "höher = besser".
 RICHTUNG_NIEDRIGER = "niedriger_besser"
 RICHTUNG_HOEHER = "hoeher_besser"
@@ -132,6 +136,18 @@ def flat_top_anteil(audio: Any, band: float = 0.002) -> float:
     return float(np.mean(np.abs(x) >= m - band))
 
 
+def saettigung_kanal(audio: Any, _sample_rate: int = 0) -> float:
+    """Gain-invarianter Sättigungs-Kanal — kanonisch in wohlklang_zeuge (eine Wahrheit, §G9 (copilot-instructions.md))."""
+    from backend.core.dsp.wohlklang_zeuge import saettigung_kanal as _kanon
+
+    return float(_kanon(audio))
+
+
+def _saettigungs_jnd(delta: float) -> str:
+    """JND des Sättigungskanals: 0,02 (gemessen: k398-Rezeptur Δ ≈ 0,2–0,3; Rauschen < 0,01)."""
+    return _jnd_klasse(delta) if abs(delta) >= 0.02 else "unter_jnd"
+
+
 def _delta_qualitaet(wert_schaden: float, wert_restauriert: float, richtung: str) -> float:
     """Delta in Qualitätsrichtung: > 0 bedeutet besser."""
     if richtung == RICHTUNG_NIEDRIGER:
@@ -201,6 +217,11 @@ def berechne_defekt_delta(
         delta = _delta_qualitaet(w_schaden, w_rest, richtung)
         ft_schaden = flat_top_anteil(r_schaden)
         ft_rest = flat_top_anteil(r_rest * gain_rest)
+        # §G191-Zweitkanal (GEBOTE.md, D-K3-95/97-Blindheit): gain-invarianter
+        # Sättigungskanal — tanh-Sättigung ist für defektlast/flat_top
+        # unsichtbar (gemessen 2026-11-14).
+        st_schaden = saettigung_kanal(r_schaden)
+        st_rest = saettigung_kanal(r_rest * gain_rest)
         eintrag: dict[str, Any] = {
             "start": int(region["start"]),
             "end": int(region["end"]),
@@ -215,6 +236,10 @@ def berechne_defekt_delta(
             "flat_top_restauriert": round(ft_rest, 4),
             "delta_flat_top": round(ft_schaden - ft_rest, 4),
             "jnd_klasse_flat_top": _jnd_klasse(ft_schaden - ft_rest),
+            "saettigung_schaden": st_schaden,
+            "saettigung_restauriert": round(st_rest, 4),
+            "delta_saettigung": round(st_schaden - st_rest, 4),
+            "jnd_klasse_saettigung": _saettigungs_jnd(st_schaden - st_rest),
             "reparaturquote_q": None,
         }
         if mono_clean is not None:
@@ -226,6 +251,7 @@ def berechne_defekt_delta(
                 eintrag["metrik_clean"] = w_clean
                 eintrag["gain_clean"] = round(gain_clean, 4)
                 eintrag["flat_top_clean"] = round(flat_top_anteil(r_clean * gain_clean), 4)
+                eintrag["saettigung_clean"] = round(saettigung_kanal(r_clean * gain_clean), 4)
                 if delta_clean > _JND:
                     eintrag["reparaturquote_q"] = round(delta / delta_clean, 4)
                 else:
@@ -252,9 +278,11 @@ def _aggregiere(ergebnisse: list[dict[str, Any]]) -> dict[str, Any]:
     typen: dict[str, list[float]] = {}
     quoten: dict[str, list[float]] = {}
     flattops: dict[str, list[float]] = {}
+    saettigungen: dict[str, list[float]] = {}
     for e in ergebnisse:
         typen.setdefault(str(e["typ"]), []).append(float(e["delta"]))
         flattops.setdefault(str(e["typ"]), []).append(float(e.get("delta_flat_top", 0.0)))
+        saettigungen.setdefault(str(e["typ"]), []).append(float(e.get("delta_saettigung", 0.0)))
         if e.get("reparaturquote_q") is not None:
             quoten.setdefault(str(e["typ"]), []).append(float(e["reparaturquote_q"]))
     aggregat: dict[str, Any] = {}
@@ -267,6 +295,9 @@ def _aggregiere(ergebnisse: list[dict[str, Any]]) -> dict[str, Any]:
             "anteil_verschlechtert": round(float(np.mean([d <= -_JND for d in deltas])), 4),
             "flat_top_delta_median": round(float(np.median(flattops[typ])), 4),
             "anteil_verschlechtert_flat_top": round(float(np.mean([d <= -_JND for d in flattops[typ]])), 4),
+            "saettigung_delta_median": round(float(np.median(saettigungen[typ])), 4),
+            "anteil_ueber_jnd_saettigung": round(float(np.mean([d >= 0.02 for d in saettigungen[typ]])), 4),
+            "anteil_verschlechtert_saettigung": round(float(np.mean([d <= -0.02 for d in saettigungen[typ]])), 4),
             "reparaturquote_median": q_median,
             # §G13 (copilot-instructions.md): Q >= 0,5 je Defektklasse;
             # None = kein Clean-Original vorhanden (Q nicht bewertbar).
@@ -313,10 +344,10 @@ def lade_defekt_delta(beleg: dict[str, Any] | str) -> dict[str, Any]:
     schema = daten.get("schema") if isinstance(daten, dict) else "unbekannt"
     if schema == SCHEMA:
         return {"verfuegbar": True, "beleg": daten}
-    if schema == _SCHEMA_VERALTET:
+    if schema in _SCHEMA_VERALTET:
         return {
             "verfuegbar": False,
-            "grund": f"veraltetes schema {schema!r} (RMS-Matching) — neu messen mit {SCHEMA!r}",
+            "grund": f"veraltetes schema {schema!r} — neu messen mit {SCHEMA!r}",
         }
     return {
         "verfuegbar": False,

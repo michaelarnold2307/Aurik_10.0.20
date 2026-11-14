@@ -8,8 +8,12 @@ Quelle qualifiziert.
 
 from __future__ import annotations
 
+from pathlib import Path
+
 import numpy as np
 import pytest
+
+ROOT = Path(__file__).resolve().parent.parent.parent
 
 from backend.core.dsp import defekt_delta as dd
 from backend.core.dsp.wohlklang_zeuge import JND_TOLERANZ, defektlast  # EINE Wahrheit
@@ -362,3 +366,86 @@ def test_kontrollregionen_deterministisch_ohne_ueberlappung() -> None:
         assert not (k["start"] < defekt[0]["end"] and defekt[0]["start"] < k["end"])
     anteil_10 = int(round(dauer * 0.1))
     assert not any(k["start"] <= anteil_10 < k["end"] for k in kontrollen)
+
+
+def test_saettigungskanal_gain_invariant() -> None:
+    """D-K3-95/97-Lücke: 1/crest muss Skalierung kürzen (relativ, gain-invariant)."""
+    rng = np.random.default_rng(42)
+    x = rng.standard_normal(8192).astype(np.float32) + 0.5 * np.sin(np.linspace(0, 3000 * np.pi, 8192))
+    x = (x / np.abs(x).max() * 0.8).astype(np.float32)
+    assert dd.saettigung_kanal(x) == pytest.approx(dd.saettigung_kanal(x * 0.1), abs=1e-3)
+    assert dd.saettigung_kanal(x) == pytest.approx(dd.saettigung_kanal(x * 2.5), abs=1e-3)
+
+
+def test_saettigungskanal_sieht_tanh_saettigung() -> None:
+    """k398-Clipping-Rezeptur: tanh-Sättigung senkt den Crest-Faktor — der
+    Kanal muss sie auf beliebigem Material sehen (universelle Eigenschaft)."""
+    rng = np.random.default_rng(7)
+    x = rng.standard_normal(16384).astype(np.float64) + 0.8 * np.sin(np.linspace(0, 4000 * np.pi, 16384))
+    x = (x / np.abs(x).max()).astype(np.float32)
+    gesaettigt = (np.tanh(8 * x) / np.tanh(8)).astype(np.float32)
+    assert dd.saettigung_kanal(gesaettigt) > dd.saettigung_kanal(x) + 0.05
+
+
+_MUSDB_MIXTURES = ROOT / "data" / "musdb_mixtures"
+
+
+def _musdb_beispiel() -> np.ndarray | None:
+    """Erste MUSDB-Mixture (falls lokal vorhanden), mono, 20 s."""
+    titel = sorted(_MUSDB_MIXTURES.glob("*.wav"))
+    if not titel:
+        return None
+    from scipy.io import wavfile
+
+    sr, d = wavfile.read(titel[0])
+    x = np.asarray(d, np.float32)
+    if x.ndim == 2:
+        x = x.mean(axis=1)
+    x = x / (np.abs(x).max() + 1e-12)
+    return np.ascontiguousarray(x[: 20 * sr])
+
+
+@pytest.mark.skipif(_MUSDB_MIXTURES is None or not _MUSDB_MIXTURES.exists(), reason="MUSDB-Mixtures nicht vorhanden")
+def test_saettigungskanal_sieht_was_defektlast_uebersieht_auf_musik() -> None:
+    """Echte Musik (D-K3-95/97-Befund 2026-11-14): die k398-Rezeptur ändert
+    defektlast nicht messbar (blind), der Sättigungskanal sieht sie deutlich."""
+    x = _musdb_beispiel()
+    assert x is not None
+    gesaettigt = (np.tanh(8 * x) / np.tanh(8)).astype(np.float32)
+    sr = 48000
+    # defektlast-Delta unter JND 0,05 = Blindheit (gemessener Befund)
+    delta_last = abs(dd.defektlast_lang(x, sr) - dd.defektlast_lang(gesaettigt, sr))
+    assert delta_last < 0.05
+    # Sättigungskanal sieht die Rezeptur deutlich
+    assert dd.saettigung_kanal(gesaettigt) > dd.saettigung_kanal(x) + 0.1
+
+
+def test_saettigungskanal_sinus_normiert_und_stille_sicher() -> None:
+    n = 8192
+    t = np.linspace(0.0, 2.0 * np.pi * 100.0, n, endpoint=False)
+    sinus = np.sin(t).astype(np.float32)
+    assert dd.saettigung_kanal(sinus) == pytest.approx(1.0 / np.sqrt(2.0), abs=0.02)
+    assert dd.saettigung_kanal(np.zeros(n, dtype=np.float32)) == 0.0
+
+
+def test_schema_3_region_enthaelt_saettigungskanal() -> None:
+    """Schema /3: jede Region trägt den Sättigungs-Zweitkanal + Aggregat."""
+    n = 16384
+    t = np.linspace(0.0, 2.0 * np.pi * 256.0, n, endpoint=False)
+    schaden = (0.5 * np.sin(t)).astype(np.float32)
+    gesaettigt = (np.tanh(6 * schaden) / np.tanh(6) * 0.5).astype(np.float32)
+    beleg = dd.berechne_defekt_delta(
+        regionen=[{"start": 0, "end": n, "typ": "soft_saturation", "staerke": 0.7}],
+        schaden=gesaettigt,
+        restauriert=schaden,
+        clean=schaden,
+        sample_rate=44100,
+    )
+    assert beleg["schema"] == "aurik.defektdelta/3"
+    w = beleg["regionen"][0]
+    assert "delta_saettigung" in w and "jnd_klasse_saettigung" in w
+    assert w["delta_saettigung"] > 0.02
+    assert w["jnd_klasse_saettigung"] == "ueber_jnd"
+    agg = beleg["aggregate"]["soft_saturation"]
+    assert agg["saettigung_delta_median"] > 0.02
+    assert agg["anteil_ueber_jnd_saettigung"] > 0.5
