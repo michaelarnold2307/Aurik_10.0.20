@@ -63,15 +63,15 @@ def _lauf(mini_corpus: Path, out: Path, seed: int = 42, anzahl: int = 4) -> dict
 
 
 def test_determinismus_gleicher_seed_byte_identisch(mini_corpus: Path, tmp_path: Path) -> None:
-    """§G5 (copilot-instructions.md): gleicher Seed ⇒ byte-identische Paare."""
-    _lauf(mini_corpus, tmp_path / "lauf1")
-    _lauf(mini_corpus, tmp_path / "lauf2")
-    for unter in ("clean", "noisy"):
-        f1 = sorted((tmp_path / "lauf1" / unter).glob("*.wav"))
-        f2 = sorted((tmp_path / "lauf2" / unter).glob("*.wav"))
-        assert [f.name for f in f1] == [f.name for f in f2]
-        for a, b in zip(f1, f2):
-            assert a.read_bytes() == b.read_bytes(), f"{a.name} nicht reproduzierbar"
+    """§G5 (copilot-instructions.md): gleicher Seed ⇒ identische PCM-Samples.
+    Vergleich über sha256_pcm — der WAV-Container ist durch den
+    libsndfile-PEAK-Chunk byte-instabil (Determinismus-Befund Handover Punkt 7)."""
+    m1 = _lauf(mini_corpus, tmp_path / "lauf1")
+    m2 = _lauf(mini_corpus, tmp_path / "lauf2")
+    assert [e["datei"] for e in m1["paare"]] == [e["datei"] for e in m2["paare"]]
+    for a, b in zip(m1["paare"], m2["paare"]):
+        assert a["sha256_pcm_clean"] == b["sha256_pcm_clean"]
+        assert a["sha256_pcm_noisy"] == b["sha256_pcm_noisy"]
 
 
 def test_determinismus_unterschiedlicher_seed_unterschiedlich(mini_corpus: Path, tmp_path: Path) -> None:
@@ -110,8 +110,10 @@ def test_manifest_schema(mini_corpus: Path, tmp_path: Path) -> None:
             "snr_db",
             "rauschquelle",
             "rauschquelle_art",
-            "sha256_clean",
-            "sha256_noisy",
+            "sha256_wav_clean",
+            "sha256_wav_noisy",
+            "sha256_pcm_clean",
+            "sha256_pcm_noisy",
         ):
             assert schluessel in eintrag, f"Manifest-Feld fehlt: {schluessel}"
 
@@ -156,3 +158,50 @@ def test_lade_wav_mono_resampling(tmp_path: Path) -> None:
     mono = _lade_wav_mono(p, TARGET_SR)
     assert mono.ndim == 1
     assert abs(len(mono) - 2 * TARGET_SR) <= TARGET_SR * 0.01
+
+
+def test_stille_guard_ueberspringt_schweigende_fenster(tmp_path: Path) -> None:
+    """Stille-Guard (M9-Datenexpansion 2026-11-14): ein Korpus mit einem
+    stillen und einem lauten Track bricht nicht mehr mit „Null-Leistung“ ab —
+    der Re-Draw landet deterministisch auf einem nicht-schweigenden Fenster."""
+    root = tmp_path / "musdb"
+    still = root / "train" / "Silent"
+    laut = root / "train" / "Loud"
+    for d in (still, laut):
+        d.mkdir(parents=True)
+    sf.write(str(still / "mixture.wav"), np.zeros((4 * TARGET_SR, 2), dtype=np.float32), TARGET_SR)
+    t = np.arange(4 * TARGET_SR) / TARGET_SR
+    ton = np.stack([0.3 * np.sin(2 * np.pi * 440.0 * t)] * 2, axis=1)
+    sf.write(str(laut / "mixture.wav"), ton.astype(np.float32), TARGET_SR)
+
+    manifest = erzeuge_paare(root, tmp_path / "out", anzahl=4, seg_s=1.0, seed=42, noise_wavs=())
+    assert manifest["anzahl"] == 4
+    for paar in manifest["paare"]:
+        p = tmp_path / "out" / "clean" / paar["datei"]
+        x = _lade_wav_mono(p, TARGET_SR)
+        assert float(np.sqrt(np.mean(x**2))) > 1e-4, f"{paar['datei']} ist schweigend (Stille-Guard versagt)"
+
+
+def test_stille_guard_determinismus(tmp_path: Path) -> None:
+    """§G5 (copilot-instructions.md): der Re-Draw bleibt rein aus (seed, i) —
+    zwei Läufe über denselben Stille-Korpus sind byte-identisch."""
+    root = tmp_path / "musdb"
+    still = root / "train" / "Silent"
+    laut = root / "train" / "Loud"
+    for d in (still, laut):
+        d.mkdir(parents=True)
+    sf.write(str(still / "mixture.wav"), np.zeros((4 * TARGET_SR, 2), dtype=np.float32), TARGET_SR)
+    t = np.arange(4 * TARGET_SR) / TARGET_SR
+    sf.write(
+        str(laut / "mixture.wav"),
+        np.stack([0.3 * np.sin(2 * np.pi * 440.0 * t)] * 2, axis=1).astype(np.float32),
+        TARGET_SR,
+    )
+    ma = erzeuge_paare(root, tmp_path / "a", anzahl=4, seg_s=1.0, seed=42, noise_wavs=())
+    mb = erzeuge_paare(root, tmp_path / "b", anzahl=4, seg_s=1.0, seed=42, noise_wavs=())
+    # sha256_pcm statt WAV-Bytes: der Container ist durch den libsndfile-
+    # PEAK-Chunk byte-instabil (Determinismus-Befund Handover Punkt 7).
+    assert [e["datei"] for e in ma["paare"]] == [e["datei"] for e in mb["paare"]]
+    for x, y in zip(ma["paare"], mb["paare"]):
+        assert x["sha256_pcm_clean"] == y["sha256_pcm_clean"]
+        assert x["sha256_pcm_noisy"] == y["sha256_pcm_noisy"]

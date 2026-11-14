@@ -59,6 +59,12 @@ def _sha256(pfad: Path) -> str:
     return hashlib.sha256(pfad.read_bytes()).hexdigest()
 
 
+def _sha256_pcm(x: np.ndarray) -> str:
+    """PCM-Hash über die float32-Samples (§G5 (copilot-instructions.md)): der WAV-Container
+    ist durch den libsndfile-PEAK-Chunk byte-instabil (Determinismus-Befund Handover Punkt 7)."""
+    return hashlib.sha256(np.ascontiguousarray(x, dtype=np.float32).tobytes()).hexdigest()
+
+
 def _zu_mono(audio: np.ndarray) -> np.ndarray:
     """Stereo-Layout-Invariante (AGENTS.md §3): akzeptiert (C, N) ODER (N, C).
 
@@ -161,6 +167,25 @@ def erzeuge_paare(
             raise ValueError(f"Track zu kurz für {seg_s}s-Segment: {mix_pfad}")
         start = int(rng.integers(0, len(mono) - seg_n + 1))
         clean = mono[start : start + seg_n]
+        # Stille-Guard (2026-11-14, M9-Datenexpansion): ein zufällig gezogenes
+        # Fenster kann in Stille landen (Intro-/Outro-Pausen) — _snr_skalieren
+        # bricht dann mit „Null-Leistung“ ab. Deterministischer Re-Draw aus
+        # demselben rng (rein aus (seed, i), §G5 (GEBOTE.md)) — erst Fenster,
+        # dann Track, dann ehrlicher Abbruch.
+        _stille_versuche = 0
+        while float(np.sqrt(np.mean(clean**2)) + 1e-12) < 1e-4 and _stille_versuche < 60:
+            _stille_versuche += 1
+            if _stille_versuche % 10 == 0:
+                mix_pfad = mix_pfade[int(rng.integers(len(mix_pfade)))]
+                mono = _lade_wav_mono(mix_pfad, TARGET_SR)
+                if len(mono) < seg_n:
+                    continue
+            start = int(rng.integers(0, len(mono) - seg_n + 1))
+            clean = mono[start : start + seg_n]
+        if float(np.sqrt(np.mean(clean**2)) + 1e-12) < 1e-4:
+            raise ValueError(
+                f"kein nicht-schweigendes {seg_s}s-Fenster gefunden (Pair {i}, Stille-Guard) — Quellen prüfen"
+            )
         snr_db = float(snr_db_stufen[i % len(snr_db_stufen)])
 
         if echte_noise and rng.random() < 0.5:
@@ -196,8 +221,10 @@ def erzeuge_paare(
                 "snr_db": snr_db,
                 "rauschquelle": quelle,
                 "rauschquelle_art": quelle_art,
-                "sha256_clean": _sha256(clean_dir / name),
-                "sha256_noisy": _sha256(noisy_dir / name),
+                "sha256_wav_clean": _sha256(clean_dir / name),
+                "sha256_wav_noisy": _sha256(noisy_dir / name),
+                "sha256_pcm_clean": _sha256_pcm(clean),
+                "sha256_pcm_noisy": _sha256_pcm(noisy),
             }
         )
         if (i + 1) % 50 == 0:

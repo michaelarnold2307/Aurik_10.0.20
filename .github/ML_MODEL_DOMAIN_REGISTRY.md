@@ -104,6 +104,12 @@ geführt als `audio-allgemein` mit lokalen Konfigurations-Messungen).. Auch im a
 | `singmos` | South-TP-AI-Lab/SingMOS-Pro — **Gesangs**-MOS | MOS-Witness Gesang |
 | `symphonia` | Instrumentalrestaurierung aus MERT + MuQ-MuLan + Flow-DiT (Musik) | Instrumental-Restaurierung |
 | `uvr_mdx_net` | UVR MDX-Net (Musik-Separation) | Separation |
+| `witness_groove_echo` | `scripts/train_witness_detektor.py` → k398-Regionen (Musik, clean/schaden, leak-frei) — Schadens-Witness | Report-only-Zeuge (`backend/core/dsp/witness_detektor.py`) |
+| `witness_sticky_shed_residue` | `scripts/train_witness_detektor.py` → k398-Regionen (Musik, clean/schaden, leak-frei) — Schadens-Witness | Report-only-Zeuge (`backend/core/dsp/witness_detektor.py`) |
+| `witness_tape_head_level_dip` | `scripts/train_witness_detektor.py` → k398-Regionen (Musik, clean/schaden, leak-frei) — Schadens-Witness | Report-only-Zeuge (`backend/core/dsp/witness_detektor.py`) |
+| `witness_sibilance` | `scripts/train_witness_detektor.py` → k398-Regionen (Musik, clean/schaden, leak-frei) — Schadens-Witness | Report-only-Zeuge (`backend/core/dsp/witness_detektor.py`) |
+| `witness_compression_artifacts` | `scripts/train_witness_detektor.py` → k398-Regionen (Musik, clean/schaden, leak-frei) — Schadens-Witness | Report-only-Zeuge (`backend/core/dsp/witness_detektor.py`) |
+| `witness_transport_bump` | `scripts/train_witness_detektor.py` → k398-Regionen (Musik, clean/schaden, leak-frei) — Schadens-Witness | Report-only-Zeuge (`backend/core/dsp/witness_detektor.py`) |
 
 ---
 
