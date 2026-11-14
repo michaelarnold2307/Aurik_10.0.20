@@ -63,6 +63,17 @@ nächsten Schritt und das billige Stopp-Kriterium VOR jedem GPU-Lauf.
   10-s-Clipping-Fenster, Seed-Seiten, Schlüssel getrennt).
 - `hoer_entscheidung.py`-Protokoll + Evidenz-Bundle (alle Gate-Belege).
 
+## Stand der Ausführung (2026-11-14)
+
+- **Kette B GESTOPPT (Stopp-Kriterium gegriffen):** B-0(2) Proxy-Loss
+  committet (`d1e08fd6`), B-1 Training `groove_echo_proxy` gelaufen
+  (val_mae 0,04979), B-0(3) Pre-Flight-Skript nachgerüstet
+  (`scripts/bewerte_in_sample_q.py`). In-Sample-Q 0,0046 und Holdout-Q
+  0,0115 — beide VERFEHLT ⇒ Ansatz verworfen, nicht mehr Epochen.
+  Report `docs/reports/current/2026-11-14_kette_b_stopp_preflight.md`.
+- **A-1 im Repo:** `erstelle_aspade_hoerpaare.py --produktionspfad` +
+  p25-Pegelmatching; Regeneration der 3 Paare läuft.
+
 ## Verbindliche Regeln
 - **Kein GPU-Lauf ohne erfülltes Pre-Flight-Gate.**
 - Jede Stufe bucht ihren Beleg; bei Stopp wird der Befund (nicht der Erfolg)
