@@ -2630,7 +2630,11 @@ class DefectScanner:
             (DefectType.CRACKLE, lambda: self._detect_crackle(audio_mono)),
             (DefectType.HUM, lambda: self._detect_hum(audio_mono)),
             (DefectType.WOW, lambda: self._detect_wow(audio_mono)),  # IEC 60386 < 0.5 Hz
-            (DefectType.FLUTTER, lambda: self._detect_flutter(audio_mono)),  # IEC 60386 0.5-200 Hz
+            # FLUTTER läuft NICHT im Pool: der Subband-FM-Kern öffnet intern
+            # bis zu 6 Threads; im 8-Worker-Pool parallel zu WOW erzeugte das
+            # verschachtelte Pools + GIL-Stau (17 s _thread.lock-acquire im
+            # Kaltprofil 2026-11-14). Seriell im Hauptthread nach dem Pool
+            # (§PERF-R21c) — Detektoren sind unabhängig, Ergebnis bit-identisch.
             (DefectType.AZIMUTH_ERROR, lambda: self._detect_azimuth_error(audio)),  # PHD-Slope L/R
             (
                 DefectType.STEREO_IMBALANCE,
@@ -2809,6 +2813,10 @@ class DefectScanner:
                 scores.update(_det_score)  # Dropout-Subtypen-Task liefert 3 Scores
             else:
                 scores[_det_dt] = _det_score
+        # §PERF-R21c (2026-11-14): FLUTTER seriell im Hauptthread — der
+        # Subband-FM-Kern nutzt hier seine 6 internen Threads ohne
+        # verschachtelte Pool-Konkurrenz; Ergebnis bit-identisch (§G5 (copilot-instructions.md)).
+        scores[DefectType.FLUTTER] = self._detect_flutter(audio_mono)
         _prog(_lead_pct(64), "Detektion abgeschlossen — abhängige Merges")
 
         # ── §2.46h: Abhängige Merge-Schritte (serial, deterministisch) ────────
