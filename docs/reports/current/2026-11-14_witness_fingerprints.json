@@ -1,0 +1,306 @@
+{
+  "artifact_count": 11,
+  "directories": [
+    {
+      "artifact_count": 1,
+      "artifacts": [
+        {
+          "format": "torch-zip",
+          "magic_hex": "504b030400000808",
+          "param_count": 670209,
+          "param_source": "tensor_shapes",
+          "path": "witness.pt",
+          "sha256": "4a9928609896247883e6ec21e430b007d8b88d7101ed3e16bf76f71fc81410b2",
+          "size_bytes": 2689926,
+          "tensor_count": 28,
+          "top_level_keys": ["state_dict", "n_mels", "frames", "seed"],
+          "unresolved_tensor_stubs": 3,
+          "walk_nodes": 36,
+          "zip_entries": 37,
+          "zip_entry_sample": [
+            "witness/.data/serialization_id",
+            "witness/.format_version",
+            "witness/.storage_alignment",
+            "witness/byteorder",
+            "witness/data.pkl",
+            "witness/data/0"
+          ]
+        }
+      ],
+      "dir": "witness_compression_artifacts",
+      "doc_evidence": {
+        "configs": {},
+        "docs": []
+      },
+      "total_bytes": 2689926
+    },
+    {
+      "artifact_count": 1,
+      "artifacts": [
+        {
+          "format": "torch-zip",
+          "magic_hex": "504b030400000808",
+          "param_count": 670209,
+          "param_source": "tensor_shapes",
+          "path": "witness.pt",
+          "sha256": "ecea0b9f3d56dc982f5bb3e97a97ef822920f551520edf4b972e1ca814f8c1e6",
+          "size_bytes": 2689926,
+          "tensor_count": 28,
+          "top_level_keys": ["state_dict", "n_mels", "frames", "seed"],
+          "unresolved_tensor_stubs": 3,
+          "walk_nodes": 36,
+          "zip_entries": 37,
+          "zip_entry_sample": [
+            "witness/.data/serialization_id",
+            "witness/.format_version",
+            "witness/.storage_alignment",
+            "witness/byteorder",
+            "witness/data.pkl",
+            "witness/data/0"
+          ]
+        }
+      ],
+      "dir": "witness_groove_echo",
+      "doc_evidence": {
+        "configs": {},
+        "docs": []
+      },
+      "total_bytes": 2689926
+    },
+    {
+      "artifact_count": 1,
+      "artifacts": [
+        {
+          "format": "torch-zip",
+          "magic_hex": "504b030400000808",
+          "param_count": 670209,
+          "param_source": "tensor_shapes",
+          "path": "witness.pt",
+          "sha256": "48c43e976b4478d787ca70688f34b95ae8d8d5990402d9fdb2e304b5306cf7cd",
+          "size_bytes": 2689926,
+          "tensor_count": 28,
+          "top_level_keys": ["state_dict", "n_mels", "frames", "seed"],
+          "unresolved_tensor_stubs": 3,
+          "walk_nodes": 36,
+          "zip_entries": 37,
+          "zip_entry_sample": [
+            "witness/.data/serialization_id",
+            "witness/.format_version",
+            "witness/.storage_alignment",
+            "witness/byteorder",
+            "witness/data.pkl",
+            "witness/data/0"
+          ]
+        }
+      ],
+      "dir": "witness_sibilance",
+      "doc_evidence": {
+        "configs": {},
+        "docs": []
+      },
+      "total_bytes": 2689926
+    },
+    {
+      "artifact_count": 1,
+      "artifacts": [
+        {
+          "format": "torch-zip",
+          "magic_hex": "504b030400000808",
+          "param_count": 670209,
+          "param_source": "tensor_shapes",
+          "path": "witness.pt",
+          "sha256": "5350e4500ac4125b20a8022c412e2541146f0a924705a537a0ad83fec6c32a2c",
+          "size_bytes": 2689926,
+          "tensor_count": 28,
+          "top_level_keys": ["state_dict", "n_mels", "frames", "seed"],
+          "unresolved_tensor_stubs": 3,
+          "walk_nodes": 36,
+          "zip_entries": 37,
+          "zip_entry_sample": [
+            "witness/.data/serialization_id",
+            "witness/.format_version",
+            "witness/.storage_alignment",
+            "witness/byteorder",
+            "witness/data.pkl",
+            "witness/data/0"
+          ]
+        }
+      ],
+      "dir": "witness_sticky_shed_residue",
+      "doc_evidence": {
+        "configs": {},
+        "docs": []
+      },
+      "total_bytes": 2689926
+    },
+    {
+      "artifact_count": 1,
+      "artifacts": [
+        {
+          "format": "torch-zip",
+          "magic_hex": "504b030400000808",
+          "param_count": 670209,
+          "param_source": "tensor_shapes",
+          "path": "witness.pt",
+          "sha256": "5a0d89e2535a618dcf6f5341822029b314249a186745d88bae038e1e3e1b8499",
+          "size_bytes": 2689926,
+          "tensor_count": 28,
+          "top_level_keys": ["state_dict", "n_mels", "frames", "seed"],
+          "unresolved_tensor_stubs": 3,
+          "walk_nodes": 36,
+          "zip_entries": 37,
+          "zip_entry_sample": [
+            "witness/.data/serialization_id",
+            "witness/.format_version",
+            "witness/.storage_alignment",
+            "witness/byteorder",
+            "witness/data.pkl",
+            "witness/data/0"
+          ]
+        }
+      ],
+      "dir": "witness_tape_head_level_dip",
+      "doc_evidence": {
+        "configs": {},
+        "docs": []
+      },
+      "total_bytes": 2689926
+    },
+    {
+      "artifact_count": 1,
+      "artifacts": [
+        {
+          "format": "torch-zip",
+          "magic_hex": "504b030400000808",
+          "param_count": 670209,
+          "param_source": "tensor_shapes",
+          "path": "witness.pt",
+          "sha256": "0bbfbf332ab8c0089b501429530434fe6031685c0d8ef30994c519061f7dd6f5",
+          "size_bytes": 2689926,
+          "tensor_count": 28,
+          "top_level_keys": ["state_dict", "n_mels", "frames", "seed"],
+          "unresolved_tensor_stubs": 3,
+          "walk_nodes": 36,
+          "zip_entries": 37,
+          "zip_entry_sample": [
+            "witness/.data/serialization_id",
+            "witness/.format_version",
+            "witness/.storage_alignment",
+            "witness/byteorder",
+            "witness/data.pkl",
+            "witness/data/0"
+          ]
+        }
+      ],
+      "dir": "witness_transport_bump",
+      "doc_evidence": {
+        "configs": {},
+        "docs": []
+      },
+      "total_bytes": 2689926
+    }
+  ],
+  "directory_count": 6,
+  "loose_artifacts": [
+    {
+      "format": "torch-zip",
+      "magic_hex": "504b030400000808",
+      "param_count": 376455,
+      "param_source": "tensor_shapes",
+      "path": "defect_crnn.pt",
+      "sha256": "7f0c2063e9dc515a284b49ffdcaedc1e3a471c4df5da6001e00228eeb69927c6",
+      "size_bytes": 1516186,
+      "tensor_count": 28,
+      "top_level_keys": ["state_dict", "defects", "seed"],
+      "unresolved_tensor_stubs": 3,
+      "walk_nodes": 42,
+      "zip_entries": 37,
+      "zip_entry_sample": [
+        "defect_crnn/.data/serialization_id",
+        "defect_crnn/.format_version",
+        "defect_crnn/.storage_alignment",
+        "defect_crnn/byteorder",
+        "defect_crnn/data.pkl",
+        "defect_crnn/data/0"
+      ]
+    },
+    {
+      "format": "torch-zip",
+      "magic_hex": "504b030400000808",
+      "param_count": 377613,
+      "param_source": "tensor_shapes",
+      "path": "era_crnn.pt",
+      "sha256": "15488efe4db5e5f4151a86defbb2abeb5177e664fb5af252d40cc2b3019706c4",
+      "size_bytes": 1521003,
+      "tensor_count": 28,
+      "top_level_keys": ["state_dict", "decades", "seed"],
+      "unresolved_tensor_stubs": 3,
+      "walk_nodes": 48,
+      "zip_entries": 37,
+      "zip_entry_sample": [
+        "era_crnn/.data/serialization_id",
+        "era_crnn/.format_version",
+        "era_crnn/.storage_alignment",
+        "era_crnn/byteorder",
+        "era_crnn/data.pkl",
+        "era_crnn/data/0"
+      ]
+    },
+    {
+      "format": "torch-zip",
+      "magic_hex": "504b030400000808",
+      "param_count": 375490,
+      "param_source": "tensor_shapes",
+      "path": "loudness_dpn.pt",
+      "sha256": "59d4883aa95f66c491fd49128e6886c24aed4e9a5fe517d98f77c6fb86918e17",
+      "size_bytes": 1512639,
+      "tensor_count": 28,
+      "top_level_keys": ["state_dict", "seed"],
+      "unresolved_tensor_stubs": 3,
+      "walk_nodes": 34,
+      "zip_entries": 37,
+      "zip_entry_sample": [
+        "loudness_dpn/.data/serialization_id",
+        "loudness_dpn/.format_version",
+        "loudness_dpn/.storage_alignment",
+        "loudness_dpn/byteorder",
+        "loudness_dpn/data.pkl",
+        "loudness_dpn/data/0"
+      ]
+    },
+    {
+      "format": "torch-zip",
+      "magic_hex": "504b030400000808",
+      "param_count": 377034,
+      "param_source": "tensor_shapes",
+      "path": "material_crnn.pt",
+      "sha256": "d19ccbc65a75cfab8faf19f06bca0349acc2831afd98003c1531367ccaf588f0",
+      "size_bytes": 1519076,
+      "tensor_count": 28,
+      "top_level_keys": ["state_dict", "materials", "seed"],
+      "unresolved_tensor_stubs": 3,
+      "walk_nodes": 45,
+      "zip_entries": 37,
+      "zip_entry_sample": [
+        "material_crnn/.data/serialization_id",
+        "material_crnn/.format_version",
+        "material_crnn/.storage_alignment",
+        "material_crnn/byteorder",
+        "material_crnn/data.pkl",
+        "material_crnn/data/0"
+      ]
+    },
+    {
+      "format": "joblib",
+      "magic_hex": "800495fc03000000",
+      "object_repr": "{'version': 1, 'trained_at': '2026-08-15T20:59:06+00:00', 'feature_version': 'dsp_v1', 'seed': 42, 'material': {'model': RandomForestClassifier(class_weight='balanced', n_estimators=300,\n             ",
+      "object_type": "dict",
+      "path": "medium_shallow_v1.joblib",
+      "sha256": "bf3f7ab1e9af6154d2f3ea51ee81ddc13a54437aa3ae5462c1849421071a66a6",
+      "size_bytes": 1746425
+    }
+  ],
+  "provenance": [],
+  "root": "models",
+  "total_bytes": 23954885
+}
