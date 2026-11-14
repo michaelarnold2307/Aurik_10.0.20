@@ -5349,11 +5349,13 @@ class DefectScanner:
             dec = max(1, int(sr / 100))  # 100 fps, Nyquist 50 Hz
             band_specs: list[np.ndarray] = []
             sub_lens: list[int] = []
-            for fc in centers:
+
+            def _fm_band(fc: float) -> tuple[np.ndarray, int] | None:
+                """Ein Subband — reine Funktion aus (fc, audio, sr); parallelläufig, deterministisch."""
                 lo = max(fc * 0.970 / nyq, 0.001)
                 hi = min(fc * 1.030 / nyq, 0.999)
                 if lo >= hi:
-                    continue
+                    return None
                 try:
                     sos = signal.butter(3, [lo, hi], btype="bandpass", output="sos")
                     b = signal.sosfiltfilt(sos, audio)
@@ -5367,7 +5369,7 @@ class DefectScanner:
                     an = signal.hilbert(_b_d)
                 except Exception:
                     logger.debug("Hilbert-Subband-Analyse fehlgeschlagen", exc_info=True)
-                    continue
+                    return None
                 # §PERF-R20 (D-K3-38): np.angle(z) ist arctan2(Im, Re)*1 — der
                 # direkte arctan2 spart einen vollen Ufunc-Pass + Temp-Array über
                 # alle Bänder und ist bit-identisch (§G5 (copilot-instructions.md)), kein RNG.
@@ -5382,7 +5384,7 @@ class DefectScanner:
                 _mag_ref = float(np.percentile(_mag_b[valid], 90.0)) + 1e-12
                 valid &= _mag_b > 0.3 * _mag_ref
                 if int(np.sum(valid)) < max(32, int(0.2 * len(if_b))):
-                    continue
+                    return None
                 med = float(np.median(if_b[valid]))
                 dev = np.zeros_like(if_b)
                 dev[valid] = 1200.0 * np.log2(np.maximum(if_b[valid] / med, 1e-6))
@@ -5391,9 +5393,22 @@ class DefectScanner:
                 )
                 sub = ds[:: max(1, int(round(_band_sr / 100.0)))]
                 if len(sub) < 64:
+                    return None
+                return np.fft.rfft(sub - np.mean(sub)), len(sub)
+
+            # §PERF-R21b (2026-11-14): Subbänder sind unabhängige, reine
+            # Funktionen — parallele Auswertung, Sammlung in Band-Reihenfolge
+            # (bit-identisch zur seriellen Schleife, §G5 (copilot-instructions.md)).
+            from concurrent.futures import ThreadPoolExecutor
+
+            _fm_workers = min(6, max(1, (os.cpu_count() or 4) // 2))
+            with ThreadPoolExecutor(max_workers=_fm_workers, thread_name_prefix="subbandfm") as _fm_pool:
+                _band_ergebnisse = list(_fm_pool.map(_fm_band, centers))
+            for _res in _band_ergebnisse:
+                if _res is None:
                     continue
-                band_specs.append(np.fft.rfft(sub - np.mean(sub)))
-                sub_lens.append(len(sub))
+                band_specs.append(_res[0])
+                sub_lens.append(_res[1])
             if len(band_specs) < 4:
                 return None
             # Exakte Signallänge je Band mitführen (rfftfreq braucht die
