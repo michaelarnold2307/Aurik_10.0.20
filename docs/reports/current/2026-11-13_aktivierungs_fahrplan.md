@@ -71,8 +71,10 @@ nächsten Schritt und das billige Stopp-Kriterium VOR jedem GPU-Lauf.
   (`scripts/bewerte_in_sample_q.py`). In-Sample-Q 0,0046 und Holdout-Q
   0,0115 — beide VERFEHLT ⇒ Ansatz verworfen, nicht mehr Epochen.
   Report `docs/reports/current/2026-11-14_kette_b_stopp_preflight.md`.
-- **A-1 im Repo:** `erstelle_aspade_hoerpaare.py --produktionspfad` +
-  p25-Pegelmatching; Regeneration der 3 Paare läuft.
+- **A-1 im Repo + ABGESCHLOSSEN:** `erstelle_aspade_hoerpaare.py --produktionspfad`
+  + p25-Pegelmatching; 3 verifizierte Paare liegen in
+  `study_stimuli/hoerproben/declip_produktionspfad/` (Schlüssel getrennt).
+  **Ausstehend: blindes A/B-Hören + Hörordnungs-Sign-off (§4, menschlich).**
 
 ## Verbindliche Regeln
 - **Kein GPU-Lauf ohne erfülltes Pre-Flight-Gate.**
