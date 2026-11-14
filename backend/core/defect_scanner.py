@@ -5486,11 +5486,13 @@ class DefectScanner:
             win = max(3, int(0.0015 * sr) | 1)  # ~1,5 ms Hüllkurven-Glättung
             band_specs: list[np.ndarray] = []
             sub_lens: list[int] = []
-            for fc in centers:
+
+            def _am_band(fc: float) -> tuple[np.ndarray, int] | None:
+                """Ein Subband — reine Funktion aus (fc, audio, sr); parallelläufig, deterministisch."""
                 lo = max(fc * 0.891 / nyq, 0.001)
                 hi = min(fc * 1.122 / nyq, 0.999)
                 if lo >= hi:
-                    continue
+                    return None
                 try:
                     sos = signal.butter(3, [lo, hi], btype="bandpass", output="sos")
                     b = signal.sosfiltfilt(sos, audio)
@@ -5502,17 +5504,29 @@ class DefectScanner:
                     env = np.abs(signal.hilbert(b[::_band_q]))
                 except Exception:
                     logger.debug("Scrape-AM-Band fehlgeschlagen", exc_info=True)
-                    continue
+                    return None
                 med = float(np.median(env)) + 1e-12
                 if med < 1e-9:
-                    continue
+                    return None
                 rel = env / med - 1.0
                 rel_s = _uniform_smooth(rel, max(3, int(round(win * _band_sr / float(sr))) | 1))
                 sub = rel_s[:: max(1, int(round(_band_sr / 400.0)))]
                 if len(sub) < 128:
+                    return None
+                return np.fft.rfft(sub - np.mean(sub)), len(sub)
+
+            # §PERF-R21c (2026-11-14): Subbänder unabhängig — parallele
+            # Auswertung, Sammlung in Band-Reihenfolge (bit-identisch).
+            from concurrent.futures import ThreadPoolExecutor
+
+            _am_workers = min(6, max(1, (os.cpu_count() or 4) // 2))
+            with ThreadPoolExecutor(max_workers=_am_workers, thread_name_prefix="scrapeam") as _am_pool:
+                _band_ergebnisse = list(_am_pool.map(_am_band, centers))
+            for _res in _band_ergebnisse:
+                if _res is None:
                     continue
-                band_specs.append(np.fft.rfft(sub - np.mean(sub)))
-                sub_lens.append(len(sub))
+                band_specs.append(_res[0])
+                sub_lens.append(_res[1])
             if len(band_specs) < 4:
                 return None
             n_sub = min(sub_lens)
