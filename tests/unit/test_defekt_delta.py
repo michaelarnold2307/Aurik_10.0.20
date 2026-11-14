@@ -449,3 +449,7 @@ def test_schema_3_region_enthaelt_saettigungskanal() -> None:
     agg = beleg["aggregate"]["soft_saturation"]
     assert agg["saettigung_delta_median"] > 0.02
     assert agg["anteil_ueber_jnd_saettigung"] > 0.5
+    # Q über den Sättigungskanal: Reparatur = vollständige De-Sättigung ⇒ Q ≈ 1
+    assert w["reparaturquote_q_saettigung"] == pytest.approx(1.0, abs=0.15)
+    assert agg["reparaturquote_saettigung_median"] == pytest.approx(1.0, abs=0.15)
+    assert agg["q_saettigung_ziel_erfuellt"] is True

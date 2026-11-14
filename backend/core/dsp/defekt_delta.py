@@ -251,11 +251,19 @@ def berechne_defekt_delta(
                 eintrag["metrik_clean"] = w_clean
                 eintrag["gain_clean"] = round(gain_clean, 4)
                 eintrag["flat_top_clean"] = round(flat_top_anteil(r_clean * gain_clean), 4)
-                eintrag["saettigung_clean"] = round(saettigung_kanal(r_clean * gain_clean), 4)
+                st_clean = round(saettigung_kanal(r_clean * gain_clean), 4)
+                eintrag["saettigung_clean"] = st_clean
                 if delta_clean > _JND:
                     eintrag["reparaturquote_q"] = round(delta / delta_clean, 4)
                 else:
                     eintrag["reparaturquote_q"] = None
+                # Q über den Sättigungskanal (D-K3-95/97-Blindheit): nur bei
+                # Clean-Kontrast > Kanal-JND 0,02 — sonst nicht bewertbar.
+                delta_clean_saett = float(st_schaden - st_clean)
+                if delta_clean_saett > 0.02:
+                    eintrag["reparaturquote_q_saettigung"] = round((st_schaden - st_rest) / delta_clean_saett, 4)
+                else:
+                    eintrag["reparaturquote_q_saettigung"] = None
         ergebnisse.append(eintrag)
 
     return {
@@ -279,15 +287,19 @@ def _aggregiere(ergebnisse: list[dict[str, Any]]) -> dict[str, Any]:
     quoten: dict[str, list[float]] = {}
     flattops: dict[str, list[float]] = {}
     saettigungen: dict[str, list[float]] = {}
+    quoten_saett: dict[str, list[float]] = {}
     for e in ergebnisse:
         typen.setdefault(str(e["typ"]), []).append(float(e["delta"]))
         flattops.setdefault(str(e["typ"]), []).append(float(e.get("delta_flat_top", 0.0)))
         saettigungen.setdefault(str(e["typ"]), []).append(float(e.get("delta_saettigung", 0.0)))
         if e.get("reparaturquote_q") is not None:
             quoten.setdefault(str(e["typ"]), []).append(float(e["reparaturquote_q"]))
+        if e.get("reparaturquote_q_saettigung") is not None:
+            quoten_saett.setdefault(str(e["typ"]), []).append(float(e["reparaturquote_q_saettigung"]))
     aggregat: dict[str, Any] = {}
     for typ, deltas in typen.items():
         q_median = round(float(np.median(quoten[typ])), 4) if quoten.get(typ) else None
+        q_saett_median = round(float(np.median(quoten_saett[typ])), 4) if quoten_saett.get(typ) else None
         aggregat[typ] = {
             "n": len(deltas),
             "delta_median": round(float(np.median(deltas)), 4),
@@ -302,6 +314,11 @@ def _aggregiere(ergebnisse: list[dict[str, Any]]) -> dict[str, Any]:
             # §G13 (copilot-instructions.md): Q >= 0,5 je Defektklasse;
             # None = kein Clean-Original vorhanden (Q nicht bewertbar).
             "q_ziel_erfuellt": (bool(q_median >= REPARATURQUOTE_ZIEL) if q_median is not None else None),
+            # Q über den Sättigungskanal (D-K3-95/97): eigener Zeuge, gleiche Zielschwelle.
+            "reparaturquote_saettigung_median": q_saett_median,
+            "q_saettigung_ziel_erfuellt": (
+                bool(q_saett_median >= REPARATURQUOTE_ZIEL) if q_saett_median is not None else None
+            ),
         }
     return aggregat
 
