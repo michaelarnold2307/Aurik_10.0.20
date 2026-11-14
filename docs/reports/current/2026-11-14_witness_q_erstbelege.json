@@ -1,0 +1,61 @@
+{
+  "schema": "aurik.witness_q/1",
+  "datum": "2026-11-14",
+  "seed": 42,
+  "ergebnisse": [
+    {
+      "klasse": "compression_artifacts",
+      "regionen_stichprobe": 300,
+      "uebersprungen": 0,
+      "n_q_bewertbar": 273,
+      "q_witness_median": 0.0,
+      "anteil_q_ge_0_5": 0.2784,
+      "never_worsen_anteil": 1.0
+    },
+    {
+      "klasse": "groove_echo",
+      "regionen_stichprobe": 300,
+      "uebersprungen": 0,
+      "n_q_bewertbar": 287,
+      "q_witness_median": 0.0,
+      "anteil_q_ge_0_5": 0.223,
+      "never_worsen_anteil": 1.0
+    },
+    {
+      "klasse": "sibilance",
+      "regionen_stichprobe": 300,
+      "uebersprungen": 0,
+      "n_q_bewertbar": 286,
+      "q_witness_median": 0.0,
+      "anteil_q_ge_0_5": 0.2622,
+      "never_worsen_anteil": 1.0
+    },
+    {
+      "klasse": "sticky_shed_residue",
+      "regionen_stichprobe": 300,
+      "uebersprungen": 0,
+      "n_q_bewertbar": 276,
+      "q_witness_median": 0.0,
+      "anteil_q_ge_0_5": 0.1775,
+      "never_worsen_anteil": 1.0
+    },
+    {
+      "klasse": "tape_head_level_dip",
+      "regionen_stichprobe": 300,
+      "uebersprungen": 0,
+      "n_q_bewertbar": 223,
+      "q_witness_median": 0.0,
+      "anteil_q_ge_0_5": 0.3408,
+      "never_worsen_anteil": 1.0
+    },
+    {
+      "klasse": "transport_bump",
+      "regionen_stichprobe": 300,
+      "uebersprungen": 0,
+      "n_q_bewertbar": 200,
+      "q_witness_median": 0.0,
+      "anteil_q_ge_0_5": 0.245,
+      "never_worsen_anteil": 1.0
+    }
+  ]
+}

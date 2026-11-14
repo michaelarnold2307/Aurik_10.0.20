@@ -26,7 +26,7 @@ import numpy as np
 
 logger = logging.getLogger(__name__)
 
-_ROOT = Path(__file__).resolve().parents[2]
+_ROOT = Path(__file__).resolve().parents[3]  # backend/core/dsp/witness_detektor.py → Repo-Root
 MODELS_DIR = _ROOT / "models"
 FRAMES = 64
 

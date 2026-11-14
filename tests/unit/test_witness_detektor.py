@@ -92,7 +92,7 @@ def test_dataset_leak_frei_nach_titel(monkeypatch: pytest.MonkeyPatch, tmp_path:
 
 def test_inferenz_fail_closed_ohne_checkpoint(monkeypatch: pytest.MonkeyPatch) -> None:
     """Fehlendes Checkpoint ⇒ 0.0, kein Traceback (§V6 (copilot-instructions.md))."""
-    monkeypatch.setattr(wd, "MODELS_DIR", Path("/gibt/es/nicht"))
+    monkeypatch.setattr(wd, "_ROOT", Path("/gibt/es/nicht"))
     wd._cache.clear()
     assert wd.witness_kanal_verfuegbar("groove_echo") is False
     assert wd.witness_schaden_kanal(np.zeros(4096, dtype=np.float32), 44100, "groove_echo") == 0.0
