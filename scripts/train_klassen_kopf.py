@@ -161,6 +161,11 @@ def _defektlast_proxy(y_hat: torch.Tensor) -> torch.Tensor:
 DEFEKTLAST_PROXY_GEWICHT = 0.1
 
 
+def _proxy_gewicht_lesen(wert: float | None) -> float:
+    """CLI-Override des Proxy-Gewichts (Fahrplan B-0(2)-Hebel); Default bleibt 0,1."""
+    return DEFEKTLAST_PROXY_GEWICHT if wert is None else float(wert)
+
+
 def build_model(device: torch.Module) -> torch.nn.Module:
     """Kompakter Conv1d-Encoder-Decoder (~60k Parameter, Reparatur-Kopf)."""
     import torch
@@ -205,6 +210,9 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--seed", type=int, default=42)
     ap.add_argument("--max-seconds", type=float, default=7200.0)
     ap.add_argument("--resume", type=str, default="")
+    ap.add_argument(
+        "--proxy-gewicht", type=float, default=None, help="Override des defektlast-Proxy-Gewichts (Default 0.1)"
+    )
     ap.add_argument("--smoke", action="store_true")
     args = ap.parse_args(argv)
 
@@ -309,7 +317,7 @@ def main(argv: list[str] | None = None) -> int:
                 + 0.5 * st
                 + clean_identity_l1
                 + 0.5 * clean_identity_stft
-                + DEFEKTLAST_PROXY_GEWICHT * _defektlast_proxy(y_hat)
+                + _proxy_gewicht_lesen(args.proxy_gewicht) * _defektlast_proxy(y_hat)
             )
             opt.zero_grad(set_to_none=True)
             verlust.backward()

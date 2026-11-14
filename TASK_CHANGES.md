@@ -1,15 +1,22 @@
 # TASK_CHANGES — Live-Ledger der aktuellen Aufgabe
 
-> Generiert von `scripts/change_ledger.py snapshot` (Base: `HEAD`, Stand: 2026-11-14 05:45 CET).
+> Generiert von `scripts/change_ledger.py snapshot` (Base: `HEAD`, Stand: 2026-11-14 07:19 CET).
 > CI (`ci-lite.yml` pr-evidence-gate) erzwingt Abdeckung: jede geänderte Code-Datei muss hier stehen.
 
 ## Geänderte Dateien
 
 | Status | Pfad | Art |
 |---|---|---|
+| M | `.github/FILE_REGISTRY.md` | modifiziert |
 | M | `docs/SOTA_HANDOVER.md` | modifiziert |
-| M | `docs/reports/current/2026-11-13_aktivierungs_fahrplan.md` | modifiziert |
-| ?? | `docs/reports/current/2026-11-14_hoerpaket_declip_evidenz.md` | ungetrackt |
+| M | `scripts/train_klassen_kopf.py` | modifiziert |
+| ?? | `docs/reports/current/2026-11-14_bandwidth_loss_befund.md` | ungetrackt |
+| ?? | `docs/reports/current/in_sample_q_bandwidth_loss.json` | ungetrackt |
+| ?? | `docs/reports/current/in_sample_q_bandwidth_loss_proxy10.json` | ungetrackt |
+| ?? | `docs/reports/current/klassen_kopf_q_bandwidth_loss.json` | ungetrackt |
+| ?? | `docs/reports/current/klassen_kopf_q_bandwidth_loss_proxy10.json` | ungetrackt |
+| ?? | `scripts/erstelle_bandlimit_paare.py` | ungetrackt |
+| ?? | `tests/unit/test_erstelle_bandlimit_paare.py` | ungetrackt |
 
 ## Entscheidungen
 
