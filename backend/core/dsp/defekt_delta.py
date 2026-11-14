@@ -31,11 +31,12 @@ from backend.core.dsp.wohlklang_zeuge import JND_TOLERANZ  # EINE Wahrheit
 
 logger = logging.getLogger(__name__)
 
-SCHEMA = "aurik.defektdelta/3"
+SCHEMA = "aurik.defektdelta/4"
 _SCHEMA_VERALTET = (
+    "aurik.defektdelta/3",
     "aurik.defektdelta/2",
     "aurik.defektdelta/1",
-)  # RMS-Matching-Definition bzw. ohne Sättigungskanal (Belege veraltet, §G191 (GEBOTE.md))
+)  # ohne Jitter-Kanal bzw. RMS-Matching-Definition bzw. ohne Sättigungskanal (Belege veraltet, §G191 (GEBOTE.md))
 # defektlast ist "höher = mehr Defekte"; musik_mos "höher = besser".
 RICHTUNG_NIEDRIGER = "niedriger_besser"
 RICHTUNG_HOEHER = "hoeher_besser"
@@ -143,8 +144,23 @@ def saettigung_kanal(audio: Any, _sample_rate: int = 0) -> float:
     return float(_kanon(audio))
 
 
+def jitter_kanal(audio: Any, sample_rate: int = 0) -> float:
+    """Gain-invarianter Jitter-Kanal (Seitenband-Ratio) — kanonisch in
+    wohlklang_zeuge (eine Wahrheit, §G9 (copilot-instructions.md)).
+    Q0-Witness-Forschung 2026-11-14: Median(schaden − clean) = +0,180,
+    98,3 % über JND 0,02 auf den k398-jitter_artifacts-Regionen."""
+    from backend.core.dsp.wohlklang_zeuge import jitter_kanal as _kanon_j
+
+    return float(_kanon_j(audio, int(sample_rate)))
+
+
 def _saettigungs_jnd(delta: float) -> str:
     """JND des Sättigungskanals: 0,02 (gemessen: k398-Rezeptur Δ ≈ 0,2–0,3; Rauschen < 0,01)."""
+    return _jnd_klasse(delta) if abs(delta) >= 0.02 else "unter_jnd"
+
+
+def _jitter_jnd(delta: float) -> str:
+    """JND des Jitter-Kanals: 0,02 (gemessen: k398-jitter_artifacts Δ ≈ 0,18; Rauschen < 0,01)."""
     return _jnd_klasse(delta) if abs(delta) >= 0.02 else "unter_jnd"
 
 
@@ -222,6 +238,12 @@ def berechne_defekt_delta(
         # unsichtbar (gemessen 2026-11-14).
         st_schaden = saettigung_kanal(r_schaden)
         st_rest = saettigung_kanal(r_rest * gain_rest)
+        # §G191-Zweitkanal 2 (GEBOTE.md, Q0-Witness-Forschung 2026-11-14):
+        # Jitter-Kanal (Seitenband-Ratio) — jitter_artifacts ist für
+        # defektlast blind (gemessen: Median(schaden − clean) = +0,180,
+        # 98,3 % über JND 0,02).
+        jt_schaden = jitter_kanal(r_schaden, int(sample_rate))
+        jt_rest = jitter_kanal(r_rest * gain_rest, int(sample_rate))
         eintrag: dict[str, Any] = {
             "start": int(region["start"]),
             "end": int(region["end"]),
@@ -240,6 +262,10 @@ def berechne_defekt_delta(
             "saettigung_restauriert": round(st_rest, 4),
             "delta_saettigung": round(st_schaden - st_rest, 4),
             "jnd_klasse_saettigung": _saettigungs_jnd(st_schaden - st_rest),
+            "jitter_schaden": jt_schaden,
+            "jitter_restauriert": round(jt_rest, 4),
+            "delta_jitter": round(jt_schaden - jt_rest, 4),
+            "jnd_klasse_jitter": _jitter_jnd(jt_schaden - jt_rest),
             "reparaturquote_q": None,
         }
         if mono_clean is not None:
@@ -253,6 +279,8 @@ def berechne_defekt_delta(
                 eintrag["flat_top_clean"] = round(flat_top_anteil(r_clean * gain_clean), 4)
                 st_clean = round(saettigung_kanal(r_clean * gain_clean), 4)
                 eintrag["saettigung_clean"] = st_clean
+                jt_clean = round(jitter_kanal(r_clean * gain_clean, int(sample_rate)), 4)
+                eintrag["jitter_clean"] = jt_clean
                 if delta_clean > _JND:
                     eintrag["reparaturquote_q"] = round(delta / delta_clean, 4)
                 else:
@@ -264,6 +292,13 @@ def berechne_defekt_delta(
                     eintrag["reparaturquote_q_saettigung"] = round((st_schaden - st_rest) / delta_clean_saett, 4)
                 else:
                     eintrag["reparaturquote_q_saettigung"] = None
+                # Q über den Jitter-Kanal (Q0-Witness-Forschung): nur bei
+                # Clean-Kontrast > Kanal-JND 0,02 — sonst nicht bewertbar.
+                delta_clean_jitter = float(jt_schaden - jt_clean)
+                if delta_clean_jitter > 0.02:
+                    eintrag["reparaturquote_q_jitter"] = round((jt_schaden - jt_rest) / delta_clean_jitter, 4)
+                else:
+                    eintrag["reparaturquote_q_jitter"] = None
         ergebnisse.append(eintrag)
 
     return {
@@ -288,18 +323,24 @@ def _aggregiere(ergebnisse: list[dict[str, Any]]) -> dict[str, Any]:
     flattops: dict[str, list[float]] = {}
     saettigungen: dict[str, list[float]] = {}
     quoten_saett: dict[str, list[float]] = {}
+    jitters: dict[str, list[float]] = {}
+    quoten_jitter: dict[str, list[float]] = {}
     for e in ergebnisse:
         typen.setdefault(str(e["typ"]), []).append(float(e["delta"]))
         flattops.setdefault(str(e["typ"]), []).append(float(e.get("delta_flat_top", 0.0)))
         saettigungen.setdefault(str(e["typ"]), []).append(float(e.get("delta_saettigung", 0.0)))
+        jitters.setdefault(str(e["typ"]), []).append(float(e.get("delta_jitter", 0.0)))
         if e.get("reparaturquote_q") is not None:
             quoten.setdefault(str(e["typ"]), []).append(float(e["reparaturquote_q"]))
         if e.get("reparaturquote_q_saettigung") is not None:
             quoten_saett.setdefault(str(e["typ"]), []).append(float(e["reparaturquote_q_saettigung"]))
+        if e.get("reparaturquote_q_jitter") is not None:
+            quoten_jitter.setdefault(str(e["typ"]), []).append(float(e["reparaturquote_q_jitter"]))
     aggregat: dict[str, Any] = {}
     for typ, deltas in typen.items():
         q_median = round(float(np.median(quoten[typ])), 4) if quoten.get(typ) else None
         q_saett_median = round(float(np.median(quoten_saett[typ])), 4) if quoten_saett.get(typ) else None
+        q_jitter_median = round(float(np.median(quoten_jitter[typ])), 4) if quoten_jitter.get(typ) else None
         aggregat[typ] = {
             "n": len(deltas),
             "delta_median": round(float(np.median(deltas)), 4),
@@ -318,6 +359,14 @@ def _aggregiere(ergebnisse: list[dict[str, Any]]) -> dict[str, Any]:
             "reparaturquote_saettigung_median": q_saett_median,
             "q_saettigung_ziel_erfuellt": (
                 bool(q_saett_median >= REPARATURQUOTE_ZIEL) if q_saett_median is not None else None
+            ),
+            # Q über den Jitter-Kanal (Q0-Witness-Forschung 2026-11-14).
+            "jitter_delta_median": round(float(np.median(jitters[typ])), 4),
+            "anteil_ueber_jnd_jitter": round(float(np.mean([d >= 0.02 for d in jitters[typ]])), 4),
+            "anteil_verschlechtert_jitter": round(float(np.mean([d <= -0.02 for d in jitters[typ]])), 4),
+            "reparaturquote_jitter_median": q_jitter_median,
+            "q_jitter_ziel_erfuellt": (
+                bool(q_jitter_median >= REPARATURQUOTE_ZIEL) if q_jitter_median is not None else None
             ),
         }
     return aggregat

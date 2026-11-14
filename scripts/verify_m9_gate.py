@@ -65,7 +65,7 @@ logger = logging.getLogger("verify_m9_gate")
 SCHEMA = "aurik.m9_gate/1"
 MUSDB_TEST = _ROOT / "data" / "musdb18hq" / "test"
 REPORT_DIR = _ROOT / "docs" / "reports" / "current"
-SR = 44100
+SR = 48000  # Pipeline-Rate — Quellen (z.B. MUSDB 44,1 kHz) werden deterministisch auf 48 kHz resampelt
 
 JND = 0.05
 HNR_TOLERANZ_DB = 0.5
@@ -114,23 +114,33 @@ def _waehle_tracks(anzahl: int, seed: int) -> list[Path]:
     return sorted(rng.sample(tracks, min(anzahl, len(tracks))))
 
 
-def _lade_segment(track: Path, seconds: float) -> np.ndarray:
-    """Center-Segment (seconds) des Mono-Mixes, float32 (−1..1)."""
+def _lade_segment(track: Path, seconds: float) -> tuple[np.ndarray, int]:
+    """Center-Segment (seconds) des Mono-Mixes, float32 (−1..1), plus Quellrate."""
     from scipy.io import wavfile
 
     roh = wavfile.read(track / "mixture.wav")
     if not isinstance(roh, tuple) or len(roh) != 2:
         raise RuntimeError("wavfile.read lieferte unerwartetes Format (Bug 12, §V36)")
-    sr = int(roh[0])
+    sr_src = int(roh[0])
     d = roh[1]
     x = np.asarray(d, np.float32)
     x = x / (float(np.abs(x).max()) + 1e-9)
     mono = x.mean(axis=1) if x.ndim == 2 else x
-    n = int(seconds * sr)
+    n = int(seconds * sr_src)
     if len(mono) <= n:
-        return np.asarray(mono, dtype=np.float32)
+        return np.asarray(mono, dtype=np.float32), sr_src
     mid = len(mono) // 2
-    return np.asarray(mono[mid - n // 2 : mid + n // 2], dtype=np.float32)
+    return np.asarray(mono[mid - n // 2 : mid + n // 2], dtype=np.float32), sr_src
+
+
+def _auf_48k(mono: np.ndarray, sr_src: int) -> np.ndarray:
+    """Deterministisches Resampling auf die Pipeline-Rate (§G5 (copilot-instructions.md))."""
+    if sr_src == SR:
+        return np.asarray(mono, dtype=np.float32)
+    from scipy.signal import resample_poly
+
+    gcd = int(np.gcd(SR, sr_src))
+    return np.asarray(resample_poly(mono.astype(np.float64), SR // gcd, sr_src // gcd), dtype=np.float32)
 
 
 def _rausch_arm(audio: np.ndarray, seed: int) -> np.ndarray:
@@ -155,10 +165,10 @@ def _zeugen(eingang: np.ndarray, ausgang: np.ndarray, sr: int) -> dict[str, Any]
     return out
 
 
-def _hnr(audio: np.ndarray, sr: int) -> float:
+def _hnr(audio: np.ndarray) -> float:
     from scripts.validate_hr_v1 import _hnr_db
 
-    return float(_hnr_db(audio, sr))
+    return float(_hnr_db(audio))
 
 
 @dataclass
@@ -189,10 +199,10 @@ class Messung:
 
 
 def _messe(track: Path, arm: str, m9, seed: int) -> Messung:
-    segment = _lade_segment(track, SEGMENT_S)
-    basis = segment
+    segment, sr_src = _lade_segment(track, SEGMENT_S)
+    basis = _auf_48k(segment, sr_src)  # M9-Vertrag: 48 kHz (§V6-Fallback sonst)
     if arm == "rausch":
-        basis = _rausch_arm(segment, seed)
+        basis = _rausch_arm(basis, seed)
     try:
         out = m9.denoise(basis, SR)
     except Exception as _exc:  # pragma: no cover — Fail-closed zählt als nicht angewandt
@@ -205,8 +215,8 @@ def _messe(track: Path, arm: str, m9, seed: int) -> Messung:
     return Messung(
         arm=arm,
         track=track.name,
-        hnr_basis=_hnr(basis, SR),
-        hnr_m9=_hnr(ausgang, SR),
+        hnr_basis=_hnr(basis),
+        hnr_m9=_hnr(ausgang),
         mos_basis=float(z_basis["musik_mos"]),
         mos_m9=float(z_m9["musik_mos"]),
         defekt_basis=float(z_basis["defektlast"]),

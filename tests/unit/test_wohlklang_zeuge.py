@@ -51,11 +51,11 @@ def test_identisches_signal_ist_kein_gerichteter_fall() -> None:
 
     assert befund["verfuegbar"] is True
     assert befund["report_only"] is True
-    assert befund["delta"] == {"musik_mos": 0.0, "defektlast": 0.0, "saettigung_kanal": 0.0}
+    assert befund["delta"] == {"musik_mos": 0.0, "defektlast": 0.0, "saettigung_kanal": 0.0, "jitter_kanal": 0.0}
     assert befund["gerichteter_fall"] is False
     assert befund["hoer_instanz"] == "keine_vorlage"
     assert befund["grund"] == []
-    assert befund["metriken"] == ["musik_mos", "defektlast", "saettigung_kanal"]
+    assert befund["metriken"] == ["musik_mos", "defektlast", "saettigung_kanal", "jitter_kanal"]
 
 
 def test_verschlechterung_wird_gerichteter_fall() -> None:
@@ -93,7 +93,9 @@ def test_stereo_layout_invarianz() -> None:
     assert wz.defektlast(stereo_cf, SR) == wz.defektlast(stereo_nc, SR)
     a = wz.messe_wohlklang_zeuge(stereo_cf, stereo_cf, SR)
     b = wz.messe_wohlklang_zeuge(stereo_nc, stereo_nc, SR)
-    assert a["delta"] == b["delta"] == {"musik_mos": 0.0, "defektlast": 0.0, "saettigung_kanal": 0.0}
+    assert (
+        a["delta"] == b["delta"] == {"musik_mos": 0.0, "defektlast": 0.0, "saettigung_kanal": 0.0, "jitter_kanal": 0.0}
+    )
 
 
 def test_kein_eingriff_in_die_audio_daten() -> None:
@@ -181,3 +183,47 @@ def test_uv3_verdrahtung_beide_produktionspfade() -> None:
     # REPORT-ONLY: genau DREI Schreibstellen, keine Lesestelle (kein Gate/Pfad
     # entscheidet über den Zeugen — die Hör-Instanz entscheidet).
     assert quelle.count('"wohlklang_zeuge"') == 3
+
+
+# ---------------------------------------------------------------------------
+# Jitter-Kanal (Q0-Witness-Forschung 2026-11-14)
+# ---------------------------------------------------------------------------
+
+
+def test_jitter_kanal_ist_gain_invariant() -> None:
+    """Skalierung kürzt sich im Seitenband-Verhältnis (gain-invariant)."""
+    x = _musik()
+    assert wz.jitter_kanal(x, SR) == pytest.approx(wz.jitter_kanal(0.2 * x, SR), abs=1e-3)
+
+
+def test_jitter_kanal_sieht_fm_jitter() -> None:
+    """FM-Jitter (8 Hz Phasenmodulation) erhöht den Seitenband-Anteil messbar.
+    Akkord statt Einzelton: bei einer einzelnen Sinus-Linie liegen alle
+    Top-Bins im selben Hauptkeulen (degeneriert) — gemessen: Akkord
+    clean 1,18 → FM 1,25 (Δ +0,068 > JND 0,02)."""
+    t = np.arange(8192) / SR
+    clean = (
+        0.25
+        * (
+            np.sin(2 * np.pi * 440 * t)
+            + np.sin(2 * np.pi * 880 * t)
+            + np.sin(2 * np.pi * 1320 * t)
+            + np.sin(2 * np.pi * 1760 * t)
+        )
+    ).astype(np.float32)
+    fm = 0.3 * np.sin(2 * np.pi * 8 * t)
+    jittert = (
+        0.25
+        * (
+            np.sin(2 * np.pi * 440 * t + fm)
+            + np.sin(2 * np.pi * 880 * t + fm)
+            + np.sin(2 * np.pi * 1320 * t + fm)
+            + np.sin(2 * np.pi * 1760 * t + fm)
+        )
+    ).astype(np.float32)
+    assert wz.jitter_kanal(jittert, SR) > wz.jitter_kanal(clean, SR) + 0.02
+
+
+def test_jitter_kanal_stille_ist_null() -> None:
+    """Stille-Guard: ohne Signal-Energie ist Jitter nicht definiert ⇒ 0,0."""
+    assert wz.jitter_kanal(np.zeros(8192, dtype=np.float32), SR) == 0.0

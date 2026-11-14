@@ -1,0 +1,102 @@
+{
+  "schema": "aurik.q0_witness_forschung/1",
+  "datum": "2026-11-14",
+  "seed": 42,
+  "jnd": 0.02,
+  "stichprobe_ziel": 300,
+  "ergebnisse": [
+    {
+      "klasse": "groove_echo",
+      "regionen_gesamt": 4072,
+      "regionen_stichprobe": 300,
+      "cepstral_echo": {
+        "delta_schaden_clean_median": 0.0,
+        "anteil_ueber_jnd": 0.0067,
+        "delta_restauriert_schaden_median": 0.0,
+        "richtung_ok": false,
+        "reparatur_bewegung_ok": false,
+        "n_verwertbar": 297,
+        "n_uebersprungen": 3
+      },
+      "ripple_tiefe": {
+        "delta_schaden_clean_median": 0.0,
+        "anteil_ueber_jnd": 0.0,
+        "delta_restauriert_schaden_median": 0.0,
+        "richtung_ok": false,
+        "reparatur_bewegung_ok": false,
+        "n_verwertbar": 297,
+        "n_uebersprungen": 3
+      }
+    },
+    {
+      "klasse": "jitter_artifacts",
+      "regionen_gesamt": 1547,
+      "regionen_stichprobe": 300,
+      "seitenband_ratio": {
+        "delta_schaden_clean_median": 0.18005,
+        "anteil_ueber_jnd": 0.9828,
+        "delta_restauriert_schaden_median": 0.0,
+        "richtung_ok": true,
+        "reparatur_bewegung_ok": false,
+        "n_verwertbar": 116,
+        "n_uebersprungen": 184
+      }
+    },
+    {
+      "klasse": "sibilance",
+      "regionen_gesamt": 452,
+      "regionen_stichprobe": 300,
+      "crest_4_12k": {
+        "delta_schaden_clean_median": 0.02171,
+        "anteil_ueber_jnd": 1.0,
+        "delta_restauriert_schaden_median": 0.0,
+        "richtung_ok": true,
+        "reparatur_bewegung_ok": false,
+        "n_verwertbar": 161,
+        "n_uebersprungen": 139
+      }
+    },
+    {
+      "klasse": "sticky_shed_residue",
+      "regionen_gesamt": 1055,
+      "regionen_stichprobe": 300,
+      "impulsdichte": {
+        "delta_schaden_clean_median": 0.0,
+        "anteil_ueber_jnd": 0.0,
+        "delta_restauriert_schaden_median": 0.0,
+        "richtung_ok": false,
+        "reparatur_bewegung_ok": false,
+        "n_verwertbar": 171,
+        "n_uebersprungen": 129
+      }
+    },
+    {
+      "klasse": "tape_head_level_dip",
+      "regionen_gesamt": 2364,
+      "regionen_stichprobe": 300,
+      "modulationstiefe": {
+        "delta_schaden_clean_median": 0.0,
+        "anteil_ueber_jnd": 0.4279,
+        "delta_restauriert_schaden_median": 0.0,
+        "richtung_ok": false,
+        "reparatur_bewegung_ok": false,
+        "n_verwertbar": 215,
+        "n_uebersprungen": 85
+      }
+    },
+    {
+      "klasse": "transport_bump",
+      "regionen_gesamt": 375,
+      "regionen_stichprobe": 300,
+      "lf_stoss": {
+        "delta_schaden_clean_median": 6e-5,
+        "anteil_ueber_jnd": 0.0211,
+        "delta_restauriert_schaden_median": 0.0,
+        "richtung_ok": false,
+        "reparatur_bewegung_ok": false,
+        "n_verwertbar": 285,
+        "n_uebersprungen": 15
+      }
+    }
+  ]
+}

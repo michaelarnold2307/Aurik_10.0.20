@@ -105,6 +105,45 @@ def saettigung_kanal(audio: Any) -> float:
     return round(1.0 / max(crest, 1.0), 4)
 
 
+def jitter_kanal(audio: Any, sample_rate: int) -> float:
+    """Gain-invarianter Jitter-Kanal: Seitenband-Energie-Verhältnis um die
+    stärksten Spektrallinien (kanonisch, 2026-11-14).
+
+    Q0-Witness-Forschung: die Q≈0-Klasse ``jitter_artifacts`` ist für
+    defektlast blind; gemessen auf 116 verwertbaren k398-Regionen
+    (docs/reports/current/2026-11-14_q0_witness_forschung.json):
+    Median(schaden − clean) = +0,180, 98,3 % über JND 0,02 — der Kanal
+    sieht den Schaden mit richtiger Richtung. Jitter (Zeitbasis-Unruhe)
+    verbreitert Spektrallinien ⇒ mehr Energie in der ±0,5–20-Hz-Nachbarschaft
+    der stärksten Linien relativ zur Linien-Energie. Das Verhältnis ist
+    gain-invariant (Skalierung kürzt sich), Stille ⇒ 0,0.
+    **Nicht zertifiziert** — Report-Only-Zeuge (§G191 (GEBOTE.md)),
+    Richtung = höher ist mehr Defekt.
+    """
+    x = _mono(audio)
+    sr = int(sample_rate)
+    if x.size < _MIN_SAMPLES or sr <= 0:
+        return 0.0
+    rms = float(np.sqrt(np.mean(np.square(np.asarray(x, dtype=np.float64))))) + 1e-12
+    if rms < 1e-9:
+        return 0.0
+    win = np.hanning(x.size)
+    P = np.abs(np.fft.rfft(x * win)) ** 2
+    f = np.fft.rfftfreq(x.size, 1.0 / sr)
+    n = len(P)
+    m = np.argpartition(P, -8)[-8:]
+    linie = 0.0
+    seite = 0.0
+    df = f[1] - f[0] if n > 1 else 0.0
+    r = max(int(20.0 / df), 2) if df > 0 else 2
+    for i in m:
+        lo = max(0, int(i) - r)
+        hi = min(n, int(i) + r)
+        linie += float(P[i])
+        seite += float(np.sum(P[lo:hi]) - P[i])
+    return round(seite / (linie + 1e-20), 4)
+
+
 def _musik_mos(audio: Any, sample_rate: int) -> float:
     """Richtungszertifiziertes Musik-MOS (höher = besser), numpy-only."""
     from plugins.musik_mos_plugin import get_musik_mos  # pylint: disable=import-outside-toplevel
@@ -149,10 +188,16 @@ def messe_wohlklang_zeuge(
     # er ändert KEIN Gate und KEINEN gerichteter_fall-Zweig.
     saett_in = saettigung_kanal(x_in)
     saett_out = saettigung_kanal(x_out)
+    # Q0-Witness-Forschung (2026-11-14): jitter_artifacts ist für defektlast
+    # blind — der Jitter-Kanal ist der zweite Report-Only-Zweitkanal
+    # (§G191 (GEBOTE.md)), ebenfalls ohne Gate-Wirkung.
+    jitter_in = jitter_kanal(x_in, sr)
+    jitter_out = jitter_kanal(x_out, sr)
 
     delta_mos = round(mos_out - mos_in, 4)
     delta_last = round(last_out - last_in, 4)
     delta_saett = round(saett_out - saett_in, 4)
+    delta_jitter = round(jitter_out - jitter_in, 4)
     # musik_mos: höher = besser ⇒ Regression, wenn der Ausgang DEUTLICH tiefer liegt.
     # defektlast: höher = schlechter ⇒ Regression, wenn der Ausgang DEUTLICH steigt.
     reg_mos = bool(delta_mos < -float(jnd))
@@ -170,11 +215,26 @@ def messe_wohlklang_zeuge(
         "verfuegbar": True,
         "report_only": True,
         "jnd": float(jnd),
-        "metriken": ["musik_mos", "defektlast", "saettigung_kanal"],
+        "metriken": ["musik_mos", "defektlast", "saettigung_kanal", "jitter_kanal"],
         "zertifikat": ZERTIFIKAT,
-        "eingang": {"musik_mos": round(mos_in, 4), "defektlast": round(last_in, 4), "saettigung_kanal": saett_in},
-        "ausgang": {"musik_mos": round(mos_out, 4), "defektlast": round(last_out, 4), "saettigung_kanal": saett_out},
-        "delta": {"musik_mos": delta_mos, "defektlast": delta_last, "saettigung_kanal": delta_saett},
+        "eingang": {
+            "musik_mos": round(mos_in, 4),
+            "defektlast": round(last_in, 4),
+            "saettigung_kanal": saett_in,
+            "jitter_kanal": jitter_in,
+        },
+        "ausgang": {
+            "musik_mos": round(mos_out, 4),
+            "defektlast": round(last_out, 4),
+            "saettigung_kanal": saett_out,
+            "jitter_kanal": jitter_out,
+        },
+        "delta": {
+            "musik_mos": delta_mos,
+            "defektlast": delta_last,
+            "saettigung_kanal": delta_saett,
+            "jitter_kanal": delta_jitter,
+        },
         "regression": {"musik_mos": reg_mos, "defektlast": reg_last},
         "gerichteter_fall": gerichtet,
         "hoer_instanz": "vorzulegen" if gerichtet else "keine_vorlage",

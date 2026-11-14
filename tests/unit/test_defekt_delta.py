@@ -441,9 +441,10 @@ def test_schema_3_region_enthaelt_saettigungskanal() -> None:
         clean=schaden,
         sample_rate=44100,
     )
-    assert beleg["schema"] == "aurik.defektdelta/3"
+    assert beleg["schema"] == "aurik.defektdelta/4"
     w = beleg["regionen"][0]
     assert "delta_saettigung" in w and "jnd_klasse_saettigung" in w
+    assert "delta_jitter" in w and "jnd_klasse_jitter" in w
     assert w["delta_saettigung"] > 0.02
     assert w["jnd_klasse_saettigung"] == "ueber_jnd"
     agg = beleg["aggregate"]["soft_saturation"]
@@ -453,3 +454,50 @@ def test_schema_3_region_enthaelt_saettigungskanal() -> None:
     assert w["reparaturquote_q_saettigung"] == pytest.approx(1.0, abs=0.15)
     assert agg["reparaturquote_saettigung_median"] == pytest.approx(1.0, abs=0.15)
     assert agg["q_saettigung_ziel_erfuellt"] is True
+
+
+def test_jitter_kanal_sieht_fm_jitter_und_bucht_q() -> None:
+    """Q0-Witness-Forschung (2026-11-14): der Jitter-Kanal (Seitenband-Ratio)
+    sieht FM-Jitter-Schaden, den defektlast nicht sieht — und bucht
+    Q_jitter ≈ 1 bei vollständiger Reparatur."""
+    sr = 44100
+    n = 8192
+    t = np.arange(n) / sr
+    # Akkord (vier Harmonische) — Einzelton ist degeneriert (alle Top-Bins
+    # liegen im selben Hauptkeulen, gemessen 2026-11-14).
+    clean = (
+        0.25
+        * (
+            np.sin(2 * np.pi * 440 * t)
+            + np.sin(2 * np.pi * 880 * t)
+            + np.sin(2 * np.pi * 1320 * t)
+            + np.sin(2 * np.pi * 1760 * t)
+        )
+    ).astype(np.float32)
+    # FM-Jitter: 8 Hz Phasenmodulation (Zeitbasis-Unruhe ⇒ Seitenbänder)
+    fm = 0.3 * np.sin(2 * np.pi * 8 * t)
+    jittert = (
+        0.25
+        * (
+            np.sin(2 * np.pi * 440 * t + fm)
+            + np.sin(2 * np.pi * 880 * t + fm)
+            + np.sin(2 * np.pi * 1320 * t + fm)
+            + np.sin(2 * np.pi * 1760 * t + fm)
+        )
+    ).astype(np.float32)
+    beleg = dd.berechne_defekt_delta(
+        regionen=[{"start": 0, "end": n, "typ": "jitter_artifacts", "staerke": 0.6}],
+        schaden=jittert,
+        restauriert=clean,
+        clean=clean,
+        sample_rate=sr,
+    )
+    assert beleg["schema"] == "aurik.defektdelta/4"
+    w = beleg["regionen"][0]
+    assert w["jitter_schaden"] > w["jitter_clean"] + 0.02  # Richtung: Schaden höher
+    assert w["jnd_klasse_jitter"] == "ueber_jnd"
+    # Reparatur = vollständige Jitter-Entfernung ⇒ Q_jitter ≈ 1
+    assert w["reparaturquote_q_jitter"] == pytest.approx(1.0, abs=0.15)
+    agg = beleg["aggregate"]["jitter_artifacts"]
+    assert agg["jitter_delta_median"] > 0.02
+    assert agg["q_jitter_ziel_erfuellt"] is True
