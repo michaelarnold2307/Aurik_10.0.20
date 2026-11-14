@@ -134,6 +134,33 @@ def _mr_stft_loss(y_hat: torch.Tensor, y: torch.Tensor) -> torch.Tensor:
     return verlust
 
 
+def _defektlast_proxy(y_hat: torch.Tensor) -> torch.Tensor:
+    """Differenzierbarer defektlast-Proxy (Fahrplan B-0(2), 2026-11-13).
+
+    Spiegel der kanonischen Metrik `backend/core/dsp/wohlklang_zeuge.defektlast`
+    (clip(≥0,98)·2 + flatness + hf_verlust·0,5), aber differenzierbar:
+    Soft-Clip bei 0,90 (Rezeptur-Schwelle — die Metrik zählt erst ab 0,98,
+    das Reparaturziel ist die 0,90-Plateau-Beseitigung), Flatness und
+    HF-Anteil über die 2048er-STFT. Minimiert wird der Proxy des OUTPUTS.
+    """
+    import torch
+
+    x = y_hat.squeeze(1)
+    tau = 0.005
+    soft_clip = torch.sigmoid((x.abs() - 0.90) / tau).mean()
+    window = torch.hann_window(2048, device=x.device)
+    spec = torch.stft(x, n_fft=2048, hop_length=1024, return_complex=True, window=window).abs() ** 2 + 1e-18
+    flatness = (torch.exp(spec.log().mean(dim=0)) / (spec.mean(dim=0) + 1e-12)).mean()
+    freqs = torch.fft.rfftfreq(2048, d=1.0 / 48000, device=x.device)
+    hf_mask = (freqs > 8000).float().unsqueeze(1)
+    hf = (spec * hf_mask).sum(dim=0) / (spec.sum(dim=0) + 1e-12)
+    hf_verlust = torch.clamp(1.0 - torch.clamp(hf / 0.02, 0.0, 1.0), min=0.0).mean()
+    return 2.0 * soft_clip + flatness + 0.5 * hf_verlust
+
+
+DEFEKTLAST_PROXY_GEWICHT = 0.1
+
+
 def build_model(device: torch.Module) -> torch.nn.Module:
     """Kompakter Conv1d-Encoder-Decoder (~60k Parameter, Reparatur-Kopf)."""
     import torch
@@ -277,7 +304,13 @@ def main(argv: list[str] | None = None) -> int:
             st = _mr_stft_loss(y_hat, y)
             clean_identity_l1 = torch.nn.functional.l1_loss(y_control_hat, y)
             clean_identity_stft = _mr_stft_loss(y_control_hat, y)
-            verlust = l1 + 0.5 * st + clean_identity_l1 + 0.5 * clean_identity_stft
+            verlust = (
+                l1
+                + 0.5 * st
+                + clean_identity_l1
+                + 0.5 * clean_identity_stft
+                + DEFEKTLAST_PROXY_GEWICHT * _defektlast_proxy(y_hat)
+            )
             opt.zero_grad(set_to_none=True)
             verlust.backward()
             torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)

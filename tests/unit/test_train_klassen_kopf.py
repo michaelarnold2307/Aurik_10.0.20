@@ -104,3 +104,42 @@ def test_resume_verlangt_exakt_passende_split_provenienz() -> None:
     assert not kk._resume_provenance_gueltig({"split_provenance": {}}, provenance)
     assert not kk._resume_provenance_gueltig({"modell": {}}, provenance)
     assert not kk._resume_provenance_gueltig(None, provenance)
+
+
+def test_defektlast_proxy_clipping_erhoeht(tmp_path):
+    """Fahrplan B-0(2): geclipptes Signal hat höheren Proxy als ungeclippt."""
+    import torch
+
+    from scripts.train_klassen_kopf import _defektlast_proxy
+
+    n = 16384
+    t = torch.arange(n, dtype=torch.float32) / 48000.0
+    tone = (torch.sin(2 * torch.pi * 440.0 * t) * 0.8).unsqueeze(0).unsqueeze(0)
+    clipped = torch.clamp(tone * 1.4, -0.9, 0.9)
+    p_clean = float(_defektlast_proxy(tone).item())
+    p_clip = float(_defektlast_proxy(clipped).item())
+    assert p_clip > p_clean, f"{p_clip} <= {p_clean}"
+
+
+def test_defektlast_proxy_differenzierbar():
+    """Proxy muss Gradienten liefern (differenzierbarer Loss-Baustein)."""
+    import torch
+
+    from scripts.train_klassen_kopf import _defektlast_proxy
+
+    x = torch.clamp(torch.randn(1, 1, 16384) * 1.6, -0.9, 0.9).requires_grad_(True)
+    p = _defektlast_proxy(x)
+    p.backward()
+    assert x.grad is not None
+    assert float(x.grad.abs().max().item()) > 0.0
+
+
+def test_defektlast_proxy_begrenzt():
+    """Wertebereich ungefähr wie die Metrik (>= 0, <= ~3)."""
+    import torch
+
+    from scripts.train_klassen_kopf import _defektlast_proxy
+
+    x = torch.randn(1, 1, 16384)
+    p = float(_defektlast_proxy(x).item())
+    assert 0.0 <= p <= 3.5
