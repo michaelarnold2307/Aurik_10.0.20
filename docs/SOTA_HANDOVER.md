@@ -956,3 +956,27 @@ Gate-Aufrufe, der Status `degraded` und ein auf den unveränderten
 Baseline-Checkpoint zurückgesetzter `checkpoint_latest.pt`-Resume-Anker.
 Gezielte Vocos-Tests: 18/18 bestanden; kein GPU-Training, Rollout oder
 Flag-Flip.
+
+**Update 2026-11-15 (autonome Prüfrunde — D-K3-10 bereits geschlossen, keine Schein-Schließung):**
+Der Auftrag ging von 44+3 offenen GUI-Texten aus; gemessen ist das Gegenteil:
+D-K3-10 wurde am 2026-10-29 in `f25897c1` geschlossen (Doku `665f7955`).
+Belege: Der kanonische Frontend-Scanner meldet `hardcoded_texts` = **0** für
+`modern_window.py` und `song_prognose_widget.py` (Baseline 0); die 47
+historischen Literale (44+3) laufen nachweislich über `t()`. Tests:
+`test_frontend_verboten_linter.py` + `test_i18n.py` +
+`test_restoration_status_panel_i18n.py` = **24 passed**; GUI-/Aurik10-
+Vertragstests (offscreen) = **76 passed, 7 skipped**. **Kein Code geändert** —
+die 47 sind nicht mehr da; ein erneutes Umwickeln wäre ein Schein-Fix.
+**Blindstellen (im Register-Abschluss benannt, jetzt gemessen):** Ein
+Datenfluss-Scan (Setter + `drawText` + Variablen-/Listen-Indirektion) findet
+**244** indirekte Prosa-Kandidaten, u. a. `_warn` in
+`song_prognose_widget.py:746` und `_badge` in `modern_window.py:7757ff`.
+Das sind **nicht** die 44+3, sondern eine eigene Katalogwelle (Fachlabels,
+Fragmente, Duplikate); sie braucht Kuratierung + de/en-Katalog, kein
+mechanisches `t()`-Umwickeln. Als Folgewelle offen, nicht als D-K3-10.
+**Nächste genannte Kandidaten — alle nicht autonom schließbar:** D-K3-13
+(UAT-Neulauf nur im trainingsfreien GPU-Fenster; M9-V2 belegt die GPU),
+D-K3-60 und D-K3-75 (bereits geschlossen), D-K3-92 (Rest `use_bw_v5` ist
+klangwirksam ⇒ §4/Hör-Sign-off), D-K3-65/94/95 (Hörstichprobe/GPU/Modell-
+entscheidung). Damit bleibt in diesem Fenster **keine** autonom schließbare
+Register-Lücke; kein Flag-Flip, kein GPU-Training, keine Klangänderung.
