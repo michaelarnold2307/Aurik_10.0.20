@@ -1,6 +1,6 @@
 # TASK_CHANGES — Live-Ledger der aktuellen Aufgabe
 
-> Generiert von `scripts/change_ledger.py snapshot` (Base: `HEAD`, Stand: 2026-11-13 11:35 CET).
+> Generiert von `scripts/change_ledger.py snapshot` (Base: `HEAD`, Stand: 2026-11-14 04:13 CET).
 > CI (`ci-lite.yml` pr-evidence-gate) erzwingt Abdeckung: jede geänderte Code-Datei muss hier stehen.
 
 ## Geänderte Dateien
@@ -8,19 +8,12 @@
 | Status | Pfad | Art |
 |---|---|---|
 | M | `.github/FILE_REGISTRY.md` | modifiziert |
-| M | `.github/SOTA_DEFICIT_REGISTER.md` | modifiziert |
-| M | `Aurik10/__init__.py` | modifiziert |
-| M | `CHANGELOG.md` | modifiziert |
-| M | `README.md` | modifiziert |
-| M | `TASK_CHANGES.md` | modifiziert |
-| M | `backend/core/dsp/aspade_declipper.py` | modifiziert |
-| M | `backend/core/phases/phase_07_declipper.py` | modifiziert |
-| M | `backend/core/version.py` | modifiziert |
-| M | `docs/TODOS_SOTA_ROADMAP.md` | modifiziert |
-| M | `pyproject.toml` | modifiziert |
-| M | `tests/unit/test_aspade_declipper.py` | modifiziert |
-| M | `tests/unit/test_phase_07_declipper.py` | modifiziert |
-| ?? | `scripts/evaluate_aspade_declipper.py` | ungetrackt |
+| M | `docs/SOTA_HANDOVER.md` | modifiziert |
+| ?? | `docs/reports/current/2026-11-14_kette_b_stopp_preflight.md` | ungetrackt |
+| ?? | `docs/reports/current/in_sample_q_groove_echo_proxy.json` | ungetrackt |
+| ?? | `docs/reports/current/klassen_kopf_q_groove_echo_proxy.json` | ungetrackt |
+| ?? | `scripts/bewerte_in_sample_q.py` | ungetrackt |
+| ?? | `tests/unit/test_bewerte_in_sample_q.py` | ungetrackt |
 
 ## Entscheidungen
 
