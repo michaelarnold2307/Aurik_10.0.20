@@ -103,11 +103,28 @@ def _pruefe_dsp(fehler: list[str]) -> None:
             _fehler(f"DRT-6: {m.name} ohne Trigger/Never-worsen-Konstruktion", fehler)
 
 
+def _pruefe_drt_789(fehler: list[str]) -> None:
+    """DRT-7/8/9 (2026-11-15-Verschärfung): Ganz-Titel-Sinn-Beweis + No-Op-Erkennung."""
+    for skript in ("scripts/erstelle_schadens_proben.py", "scripts/bewerte_schadens_proben.py"):
+        if not (_ROOT / skript).is_file():
+            _fehler(f"DRT-8: {skript} fehlt (Ganz-Titel-Sinn-Beweis-Infrastruktur)", fehler)
+    bewerte = _ROOT / "scripts" / "bewerte_schadens_proben.py"
+    if bewerte.is_file():
+        q = bewerte.read_text(encoding="utf-8")
+        if "n_besser" not in q or "besser" not in q:
+            _fehler("DRT-9: Bewertungs-Skript ohne besser/n_besser-No-Op-Erkennung", fehler)
+    # DRT-7/8: der Ganz-Titel-Beleg muss existieren — ohne ihn ist keine Aktivierung erlaubt
+    belege = list((_ROOT / "docs" / "reports" / "current").glob("*sinnbeweis*.json"))
+    if not belege:
+        _fehler("DRT-8: kein Sinn-Beweis-Beleg (Ganz-Titel-Ebene unbelegt — Aktivierung nicht erlaubt)", fehler)
+
+
 def main() -> int:
     fehler: list[str] = []
     _pruefe_trainer(fehler)
     _pruefe_gate(fehler)
     _pruefe_dsp(fehler)
+    _pruefe_drt_789(fehler)
     if fehler:
         print("🔌 DRT-VERTRAG (Spec 26) — VERSTOSS:")
         for f in fehler:

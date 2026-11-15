@@ -49,5 +49,22 @@ def test_spec_datei_existiert() -> None:
     spec = drt._ROOT / ".github" / "specs" / "26_defekt_reparatur_trainingsvertrag.md"
     assert spec.is_file()
     q = spec.read_text(encoding="utf-8")
-    for regel in ["DRT-1", "DRT-2", "DRT-3", "DRT-4", "DRT-5", "DRT-6"]:
+    for regel in ["DRT-1", "DRT-2", "DRT-3", "DRT-4", "DRT-5", "DRT-6", "DRT-7", "DRT-8", "DRT-9"]:
         assert regel in q
+
+
+def test_drt_789_baseline_gruen() -> None:
+    """Verschärfung 2026-11-15: Sinn-Beweis-Beleg vorhanden, No-Op-Erkennung im Skript."""
+    fehler: list[str] = []
+    drt._pruefe_drt_789(fehler)
+    assert fehler == [], f"DRT-7/8/9-Baseline verletzt: {fehler}"
+
+
+def test_drt_8_ohne_sinn_beweis_blockt(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """DRT-8: fehlender Sinn-Beweis-Beleg ⇒ Verstoß (keine Aktivierung ohne Ganz-Titel-Ebene)."""
+    leer = tmp_path / "reports"
+    leer.mkdir()
+    monkeypatch.setattr(drt, "_ROOT", tmp_path)
+    fehler: list[str] = []
+    drt._pruefe_drt_789(fehler)
+    assert any("DRT-8" in f for f in fehler)

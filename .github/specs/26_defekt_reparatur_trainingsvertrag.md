@@ -85,6 +85,32 @@ Ausgabe-Länge = Eingangs-Länge). Muster:
   Input und Amtsinhaber), §4-Hörproben (nur wirksame Regionen, A≠B verifiziert).
 - Trainings-/Gate-Infrastruktur bleibt wiederverwendbar (kein toter Code).
 
+## DRT-7 — Produktions-Semantik-Gate für ALLE Reparatur-Kandidaten
+
+Auch BESTEHENDE Kandidaten (Musik-Declip-Kopf, A-SPADE, de_crackle-CRNN,
+Dritt-Denoiser) brauchen vor Verdrahtung bzw. Aktivierung den Gate-Lauf über
+den PRODUKTIONS-Pfad (Trigger-Maske + Never-worsen-Guard, DRT-4-Semantik) —
+ein Regionen-/LOO-Beweis allein ist nicht hinreichend. Befund 2026-11-15: der
+„objektiv bestandene" Declip-Kopf verfehlt auf Ganz-Titel-Ebene (clipping
+Δ defektlast +0,036) — sein Beweis deckte die Produktions-Ebene nicht ab.
+
+## DRT-8 — Ganz-Titel-Sinn-Beweis als Aktivierungs-Beleg
+
+Vor jedem §4-Sign-off MUSS der Ganz-Titel-Vergleich auf dem zuständigen
+Rezept-Material belegt sein (`scripts/erstelle_schadens_proben.py` +
+`scripts/bewerte_schadens_proben.py`: defektlast/musik_mos, pegelgematcht,
+Seed 42). Regionen-Q (DRT-5) ist notwendig, nicht hinreichend — die
+Aktivierungs-Entscheidung braucht beide Ebenen. Befund 2026-11-15: die
+10 Witness-Kopf-Kanäle zeigen vinyl 0→1 besser und kassette doppelt so stark
+auf Ganz-Titel-Ebene — dieser Beleg gehört zum §4-Paket dazu.
+
+## DRT-9 — No-Op-Erkennung, kein stilles Verschwinden
+
+Kommt ein Kanal auf seinem Zielmaterial bit-identisch zurück (No-Op — Befund
+2026-11-15: mp3_128-Paar), wird das im Beleg als „unwirksam (No-Op)" geflaggt
+mit Ursachen-Vermerk (Material-Erkennung? Phase nicht aktiv? Flag AUS?).
+Kein stiller No-Op, kein Schein-Erfolg, keine Aktivierung ohne Wirkungs-Beleg.
+
 ## Normative Einordnung
 
 Diese Spec konkretisiert für das Reparatur-Training: §G5 (copilot-instructions.md)
