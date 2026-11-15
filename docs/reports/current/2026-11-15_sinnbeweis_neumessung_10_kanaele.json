@@ -31,5 +31,7 @@
   "quellen": [
     "study_stimuli/sinn_beweis_neu/bewertung.json",
     "docs/reports/current/2026-11-11_schadensbewertung.json"
-  ]
+  ],
+  "status": "ueberholt_durch_v2",
+  "korrektur": "Der 4-Paar-Befund war ein Kontext-Artefakt — siehe 2026-11-15_sinnbeweis_v2_12_paare.json (0/12)."
 }
