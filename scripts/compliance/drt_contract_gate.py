@@ -113,6 +113,8 @@ def _pruefe_drt_789(fehler: list[str]) -> None:
         q = bewerte.read_text(encoding="utf-8")
         if "n_besser" not in q or "besser" not in q:
             _fehler("DRT-9: Bewertungs-Skript ohne besser/n_besser-No-Op-Erkennung", fehler)
+        if "ueberrestauration" not in q or "JND_MOS" not in q:
+            _fehler("DRT-10: Bewertungs-Skript ohne Überrestaurations-Erkennung (JND_MOS/ueberrestauration)", fehler)
     # DRT-7/8: der Ganz-Titel-Beleg muss existieren — ohne ihn ist keine Aktivierung erlaubt
     belege = list((_ROOT / "docs" / "reports" / "current").glob("*sinnbeweis*.json"))
     if not belege:

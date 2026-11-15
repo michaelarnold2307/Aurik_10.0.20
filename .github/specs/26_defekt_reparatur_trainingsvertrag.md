@@ -100,9 +100,10 @@ Vor jedem §4-Sign-off MUSS der Ganz-Titel-Vergleich auf dem zuständigen
 Rezept-Material belegt sein (`scripts/erstelle_schadens_proben.py` +
 `scripts/bewerte_schadens_proben.py`: defektlast/musik_mos, pegelgematcht,
 Seed 42). Regionen-Q (DRT-5) ist notwendig, nicht hinreichend — die
-Aktivierungs-Entscheidung braucht beide Ebenen. Befund 2026-11-15: die
-10 Witness-Kopf-Kanäle zeigen vinyl 0→1 besser und kassette doppelt so stark
-auf Ganz-Titel-Ebene — dieser Beleg gehört zum §4-Paket dazu.
+Aktivierungs-Entscheidung braucht beide Ebenen. Befund 2026-11-15 (voller
+12-Paare-Lauf `2026-11-15_sinnbeweis_v2_12_paare.json`): 0/12 besser im
+Zwei-Metrik-Maß; der 4-Paar-Teilbefund war ein Kontext-Artefakt (DRT-9-korrigiert).
+Reproduzierbar: Boogie-kassette defektlast −0,079 (mos-neutral).
 
 ## DRT-9 — No-Op-Erkennung, kein stilles Verschwinden
 
@@ -110,6 +111,17 @@ Kommt ein Kanal auf seinem Zielmaterial bit-identisch zurück (No-Op — Befund
 2026-11-15: mp3_128-Paar), wird das im Beleg als „unwirksam (No-Op)" geflaggt
 mit Ursachen-Vermerk (Material-Erkennung? Phase nicht aktiv? Flag AUS?).
 Kein stiller No-Op, kein Schein-Erfolg, keine Aktivierung ohne Wirkungs-Beleg.
+
+## DRT-10 — Ganz-Titel-Zwei-Metrik-Never-worsen mit Überrestaurations-Erkennung
+
+Der Ganz-Titel-Sinn-Beweis (DRT-8) MUSS beide Arme prüfen: defektlast-Gewinn
+UND musik_mos-Never-worsen. Ein Paar, das defektlast deutlich gewinnt (≥ JND)
+und musik_mos deutlich verliert (≥ JND_MOS = 0,05), wird als **Überrestauration**
+geflaggt (`ueberrestauration`-Feld in `bewerte_schadens_proben.py`) und ist
+**nicht aktivierungsfähig** — Ursachen-Analyse ist Pflicht (§V7 (copilot-instructions.md)),
+niemals eine Schwellwert- oder Mess-Anpassung. Befund 2026-11-15: Jets-vinyl
+defektlast −0,203 bei musik_mos −0,551 — die Regionen-Gates (Witness-Q) sehen
+diesen Wohlklang-Verlust nicht; erst die Ganz-Titel-Zwei-Metrik-Messung deckt ihn auf.
 
 ## Normative Einordnung
 

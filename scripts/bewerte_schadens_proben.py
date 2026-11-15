@@ -37,6 +37,7 @@ if str(ROOT) not in sys.path:
 
 SR = 48000
 JND_DEFEKTLAST = 0.05  # identisch zu wohlklang_zeuge.JND_TOLERANZ
+JND_MOS = 0.05  # DRT-10 (Spec 26, 2026-11-15): musik_mos-JND für die Überrestaurations-Erkennung
 REZEPTE = ("vinyl", "kassette", "clipping", "mp3_128")
 
 
@@ -84,6 +85,10 @@ def bewerte_paar(
     d_musik_mos = e["musik_mos"] - d["musik_mos"]
     # "besser" verlangt, dass KEINE der beiden Metriken über die JND kippt.
     besser = (d_defektlast <= -JND_DEFEKTLAST and d_musik_mos >= 0.0) or (d_musik_mos > 0.0 and d_defektlast <= 0.0)
+    # DRT-10 (Spec 26, 2026-11-15): ÜBERRESTAURATION — die Restauration gewinnt defektlast
+    # deutlich, verliert aber Wohlklang deutlich (Jets-vinyl-Befund: −0,203 / −0,551).
+    # Ein solcher Kanal ist nicht aktivierungsfähig — Ursachen-Analyse Pflicht (§V7 (copilot-instructions.md)).
+    ueberrestauration = bool(d_defektlast <= -JND_DEFEKTLAST and d_musik_mos <= -JND_MOS)
     return {
         "clean": k,
         "schaden": d,
@@ -91,6 +96,7 @@ def bewerte_paar(
         "delta_defektlast": round(float(d_defektlast), 5),
         "delta_musik_mos": round(float(d_musik_mos), 4),
         "besser": bool(besser),
+        "ueberrestauration": ueberrestauration,
         "pegel_gain_ist": round(float(np.sqrt((r.astype(np.float64) ** 2).mean())) / max(1e-12, rms_schaden), 4),
     }
 
@@ -164,6 +170,7 @@ def main(argv: list[str] | None = None) -> int:
         "jnd_defektlast": JND_DEFEKTLAST,
         "n_paare": len(zeilen),
         "n_besser": int(sum(1 for z in zeilen if z["besser"])),
+        "n_ueberrestauration": int(sum(1 for z in zeilen if z.get("ueberrestauration"))),
         "aggregat": agg,
         "zeilen": zeilen,
     }

@@ -49,7 +49,7 @@ def test_spec_datei_existiert() -> None:
     spec = drt._ROOT / ".github" / "specs" / "26_defekt_reparatur_trainingsvertrag.md"
     assert spec.is_file()
     q = spec.read_text(encoding="utf-8")
-    for regel in ["DRT-1", "DRT-2", "DRT-3", "DRT-4", "DRT-5", "DRT-6", "DRT-7", "DRT-8", "DRT-9"]:
+    for regel in ["DRT-1", "DRT-2", "DRT-3", "DRT-4", "DRT-5", "DRT-6", "DRT-7", "DRT-8", "DRT-9", "DRT-10"]:
         assert regel in q
 
 
