@@ -342,10 +342,12 @@ _WIRING_ALLOWLIST: dict[str, str] = {
     ),
     "ddsp_predictor": "trainiert (c4_head.pth), aber val_MAE 0.2447 ≈ Baseline 0.2455 (kein Skill) — NICHT aktivierbar (F5/C4, §V7-Blindaktivierungs-Verbot)",
     "tf_gridnet_v2": (
-        "M9-V2-Kandidat (2026-11-14): Neulauf auf 2.000 expandierten Paaren mit Leak-Schutz — "
-        "Checkpoints entstehen hier DURCHGÄNGIG während des Trainings; Konsumenten stehen mit "
-        "scripts/export_tf_gridnet_onnx.py + scripts/verify_m9_gate.py --modell bereit, die deployten "
-        "Produktions-Artefakte (models/tf_gridnet) bleiben bis zum bestandenen Gate unangetastet."
+        "M9-V2-Kandidat (2026-11-14/15): Neulauf auf 2.000 expandierten Paaren mit Leak-Schutz; "
+        "Training erfolgreich, aber Never-worsen-Gate verfehlt (Beleg docs/reports/current/2026-11-15_m9_gate.json: "
+        "never_worsen=false auf 3/3 Tracks) — als dokumentierter Vergleichs-Kandidat erhalten, KEIN toter Code: "
+        "die M9-Infrastruktur bleibt aktiv (verify_m9_gate.py --modell als Kandidaten-Gate, "
+        "data/tfgrid_pairs_erweitert mit exclude_pairs.txt, prepare_tfgrid_pairs mit Stille-Guard) und "
+        "wird vom Witness-Kopf-Gate (verify_witness_kopf_gate.py, D-K3-95) als Vorlage weiterverwendet."
     ),
     "gacela_upstream": "Upstream-Architekturkopie als Vergleichsquelle — kein Laufzeitpfad",
     "matchering2.0": "Referenz-Matching-Werkzeug (Mastering-Vergleich) — Rolle ungeklaert",

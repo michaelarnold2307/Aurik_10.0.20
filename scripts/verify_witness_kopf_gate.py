@@ -1,0 +1,157 @@
+"""scripts/verify_witness_kopf_gate.py — Aktivierungs-Gate für den Witness-Kopf (D-K3-95, 2026-11-15).
+
+Misst das, was der M9-Pfad nicht konnte: defekt-spezifische Wirkung + Never-worsen.
+- Gewinn-Arm: auf schaden-Regionen des Holdout-Titels muss der Kopf den Schaden
+  reduzieren — Witness-Q = (P_s − P_out)/(P_s − P_c), Median ≥ 0,5.
+- Schutz-Arm: auf clean-Regionen darf der Kopf nichts verschlechtern —
+  P(out(clean)) ≤ P(clean) + 0,02 in ≥ 95 % der Regionen.
+CPU-only, Seed 42 (§G5 (copilot-instructions.md)), fail-closed, Report-only:
+kein Flag-Flip, kein Produktionskonsument — die Aktivierung bleibt §4 vorbehalten.
+"""
+
+from __future__ import annotations
+
+import argparse
+import json
+import sys
+from datetime import date
+from pathlib import Path
+from typing import Any
+
+import numpy as np
+
+_ROOT = Path(__file__).resolve().parent.parent
+if str(_ROOT) not in sys.path:
+    sys.path.insert(0, str(_ROOT))
+
+import torch
+
+from scripts.train_witness_detektor import WitnessCRNN
+from scripts.train_witness_kopf import (
+    FENSTER,
+    MANIFEST,
+    RMS_ZIEL,
+    WitnessKopf,
+    _baue_regionen,
+    _lade_mono,
+    _mel_torch,
+    _witness_q,
+)
+
+SCHEMA = "aurik.witness_kopf_gate/1"
+Q_MIN = 0.5
+NW_TOL = 0.02
+NW_ANTEIL_MIN = 0.95
+MAX_REGIONEN = 200
+
+
+def _lade(checkpoint: Path, klasse: str) -> tuple[Any, Any]:
+    if not checkpoint.is_file():
+        raise FileNotFoundError(f"Kopf-Checkpoint fehlt: {checkpoint}")
+    ckpt = torch.load(str(checkpoint), map_location="cpu", weights_only=False)
+    kopf = WitnessKopf(int(ckpt.get("hidden", 64)), int(ckpt.get("stufen", 4)))
+    kopf.load_state_dict(ckpt["state_dict"])
+    kopf.eval()
+    w_ckpt = _ROOT / "models" / f"witness_{klasse}" / "witness.pt"
+    if not w_ckpt.is_file():
+        raise FileNotFoundError(
+            f"Witness-Checkpoint fehlt: {w_ckpt} — erst scripts/train_witness_detektor.py ausführen"
+        )
+    wd = torch.load(str(w_ckpt), map_location="cpu", weights_only=False)
+    witness = WitnessCRNN(int(wd["n_mels"]))
+    witness.load_state_dict(wd["state_dict"])
+    witness.eval()
+    return kopf, witness
+
+
+def _p(witness: Any, x: torch.Tensor) -> float:
+    mel = _mel_torch(x.reshape(len(x), -1))[:, None, :, :]
+    return float(torch.sigmoid(witness(mel)).mean())
+
+
+def _fenster(x: np.ndarray) -> np.ndarray:
+    if len(x) >= FENSTER:
+        start = (len(x) - FENSTER) // 2
+        return x[start : start + FENSTER]
+    return np.pad(x, (0, FENSTER - len(x)))
+
+
+def messe(kopf: Any, witness: Any, regionen: list[tuple[Path, Path]]) -> dict[str, Any]:
+    quoten: list[float] = []
+    never_worsen: list[bool] = []
+    uebersprungen = 0
+    with torch.no_grad():
+        for _titel, s_pfad, c_pfad in regionen:
+            s = _lade_mono(str(s_pfad))
+            c = _lade_mono(str(c_pfad))
+            if len(s) < 512 or len(c) < 512:
+                uebersprungen += 1
+                continue
+            s_w, c_w = _fenster(s), _fenster(c)
+            rms = float(np.sqrt(np.mean(s_w**2)) + 1e-8)
+            s_n = (s_w / rms * RMS_ZIEL).astype(np.float32)
+            c_n = (c_w / rms * RMS_ZIEL).astype(np.float32)
+            s_t = torch.from_numpy(s_n[None, None])
+            c_t = torch.from_numpy(c_n[None, None])
+            out_s = kopf(s_t)
+            out_c = kopf(c_t)
+            p_s = _p(witness, s_t)
+            p_c = _p(witness, c_t)
+            p_out_s = _p(witness, out_s)
+            p_out_c = _p(witness, out_c)
+            q = _witness_q(p_s, p_c, p_out_s)
+            if q is not None:
+                quoten.append(q)
+            never_worsen.append(p_out_c <= p_c + NW_TOL)
+    return {
+        "n_regionen": len(regionen),
+        "n_uebersprungen": uebersprungen,
+        "q_median": round(float(np.median(quoten)), 4) if quoten else None,
+        "q_anteil_ge_0_5": round(float(np.mean([q >= Q_MIN for q in quoten])), 4) if quoten else None,
+        "never_worsen_anteil": round(float(np.mean(never_worsen)), 4) if never_worsen else None,
+        "gate_bestanden": bool(
+            quoten and float(np.median(quoten)) >= Q_MIN and float(np.mean(never_worsen)) >= NW_ANTEIL_MIN
+        ),
+    }
+
+
+def main(argv: list[str] | None = None) -> int:
+    ap = argparse.ArgumentParser(description=__doc__)
+    ap.add_argument("--klasse", default="groove_echo")
+    ap.add_argument("--checkpoint", default=None)
+    ap.add_argument("--max-regionen", type=int, default=MAX_REGIONEN)
+    ap.add_argument("--seed", type=int, default=42)
+    args = ap.parse_args(argv)
+    checkpoint = (
+        Path(args.checkpoint)
+        if args.checkpoint
+        else _ROOT / "models" / "klassen_koepfe" / f"witness_{args.klasse}_best.pt"
+    )
+    try:
+        kopf, witness = _lade(checkpoint, args.klasse)
+    except FileNotFoundError as exc:
+        print(f"ABBRUCH: {exc}")
+        return 2
+    alle, holdout_titel, _ = _baue_regionen(args.klasse)
+    hold = [r for r in alle if r[0] == holdout_titel]
+    rng = np.random.default_rng(args.seed)
+    hold = [hold[i] for i in rng.permutation(len(hold))][: args.max_regionen]
+    ergebnis = messe(kopf, witness, hold)
+    beleg = {
+        "schema": SCHEMA,
+        "datum": date.today().isoformat(),
+        "seed": args.seed,
+        "klasse": args.klasse,
+        "holdout_titel": holdout_titel,
+        "checkpoint": str(checkpoint.relative_to(_ROOT)),
+        **ergebnis,
+    }
+    ziel = _ROOT / "docs" / "reports" / "current" / f"{date.today().isoformat()}_witness_kopf_gate_{args.klasse}.json"
+    ziel.write_text(json.dumps(beleg, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+    print(json.dumps(beleg, indent=2, ensure_ascii=False))
+    print(f"Beleg: {ziel}")
+    return 0 if ergebnis["gate_bestanden"] else 1
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
