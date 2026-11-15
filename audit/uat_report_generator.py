@@ -75,16 +75,20 @@ class UATSummary:
     restoration_passed: int = 0
     restoration_failed: int = 0
     restoration_skipped: int = 0
+    restoration_errors: int = 0
     studio_2026_passed: int = 0
     studio_2026_failed: int = 0
     studio_2026_skipped: int = 0
+    studio_2026_errors: int = 0
     gates_passed: int = 0
     gates_failed: int = 0
     gates_skipped: int = 0
+    gates_errors: int = 0
     ko_violations: int = 0
     criteria_passed: int = 0
     criteria_failed: int = 0
     criteria_skipped: int = 0
+    criteria_errors: int = 0
     criteria_executed: int = 0
     recommendation: str = "UNKNOWN"
     rationale: str = ""
@@ -319,38 +323,66 @@ class UATReportGenerator:
         """Compute summary statistics."""
         print("[INFO] Computing summary...")
 
-        # Count restoration results
+        # Count restoration results. ERROR is a distinct outcome: the criterion
+        # existed but could not be evaluated (setup error/timeout). It must not
+        # disappear from the counters or silently become a non-blocking SKIP.
         self.summary.restoration_passed = sum(1 for r in self.restoration_results if r.status == ResultStatus.PASSED)
         self.summary.restoration_failed = sum(1 for r in self.restoration_results if r.status == ResultStatus.FAILED)
         self.summary.restoration_skipped = sum(1 for r in self.restoration_results if r.status == ResultStatus.SKIPPED)
+        self.summary.restoration_errors = sum(1 for r in self.restoration_results if r.status == ResultStatus.ERROR)
 
         # Count studio 2026 results
         self.summary.studio_2026_passed = sum(1 for r in self.studio_2026_results if r.status == ResultStatus.PASSED)
         self.summary.studio_2026_failed = sum(1 for r in self.studio_2026_results if r.status == ResultStatus.FAILED)
         self.summary.studio_2026_skipped = sum(1 for r in self.studio_2026_results if r.status == ResultStatus.SKIPPED)
+        self.summary.studio_2026_errors = sum(1 for r in self.studio_2026_results if r.status == ResultStatus.ERROR)
 
         # Count gate results
         self.summary.gates_passed = sum(1 for g in self.gate_results if g.status == ResultStatus.PASSED)
         self.summary.gates_failed = sum(1 for g in self.gate_results if g.status == ResultStatus.FAILED)
         self.summary.gates_skipped = sum(1 for g in self.gate_results if g.status == ResultStatus.SKIPPED)
+        self.summary.gates_errors = sum(1 for g in self.gate_results if g.status == ResultStatus.ERROR)
         self.summary.ko_violations = sum(1 for g in self.gate_results if g.ko and g.status == ResultStatus.FAILED)
 
         # Compute recommendation
         total_passed = self.summary.restoration_passed + self.summary.studio_2026_passed
         total_failed = self.summary.restoration_failed + self.summary.studio_2026_failed
         total_skipped = self.summary.restoration_skipped + self.summary.studio_2026_skipped
+        total_errors = self.summary.restoration_errors + self.summary.studio_2026_errors
         total_executed = total_passed + total_failed
 
         self.summary.criteria_passed = total_passed
         self.summary.criteria_failed = total_failed
         self.summary.criteria_skipped = total_skipped
+        self.summary.criteria_errors = total_errors
         self.summary.criteria_executed = total_executed
 
-        total_criteria = 30
+        total_criteria = self.summary.restoration_total + self.summary.studio_2026_total
+        total_accounted = total_passed + total_failed + total_skipped + total_errors
 
         if self.summary.ko_violations > 0:
             self.summary.recommendation = "NO-GO"
             self.summary.rationale = f"Critical K.O. violations: {self.summary.ko_violations}"
+        elif self.summary.gates_errors > 0:
+            self.summary.recommendation = "NO-GO"
+            self.summary.rationale = (
+                f"{self.summary.gates_errors} Release-Gates nicht auswertbar (ERROR) — UAT unvollständig"
+            )
+        elif total_errors > 0:
+            # Fail-closed: an ERROR means the criterion could not be evaluated at
+            # all. A CONDITIONAL/GO recommendation would claim evidence that does
+            # not exist (same class as D-K3-34: a check that cannot see).
+            self.summary.recommendation = "NO-GO"
+            self.summary.rationale = (
+                f"{total_errors} Kriterien nicht auswertbar (ERROR) — UAT unvollständig; "
+                f"keine Qualitätsaussage möglich ({total_passed}/{total_criteria} bestanden)"
+            )
+        elif total_accounted < total_criteria:
+            self.summary.recommendation = "NO-GO"
+            self.summary.rationale = (
+                f"{total_criteria - total_accounted} Kriterien ohne Ergebnis — UAT unvollständig "
+                f"({total_passed}/{total_criteria} bestanden)"
+            )
         elif total_passed >= 24 and self.summary.gates_failed == 0:
             self.summary.recommendation = "GO"
             self.summary.rationale = (
@@ -388,13 +420,7 @@ class UATReportGenerator:
         ]
 
         for r in self.restoration_results:
-            result_sym = (
-                "✅ PASS"
-                if r.status == ResultStatus.PASSED
-                else "❌ FAIL"
-                if r.status == ResultStatus.FAILED
-                else "⊘ SKIP"
-            )
+            result_sym = self._status_symbol(r.status)
             evidence_cell = self._scorecard_cell(r.evidence, r.notes)
             lines.append(
                 f"| {r.criterion_id} | {r.name} | {r.category} | {r.severity} | {result_sym} | {evidence_cell} |"
@@ -411,13 +437,7 @@ class UATReportGenerator:
         )
 
         for r in self.studio_2026_results:
-            result_sym = (
-                "✅ PASS"
-                if r.status == ResultStatus.PASSED
-                else "❌ FAIL"
-                if r.status == ResultStatus.FAILED
-                else "⊘ SKIP"
-            )
+            result_sym = self._status_symbol(r.status)
             evidence_cell = self._scorecard_cell(r.evidence, r.notes)
             lines.append(
                 f"| {r.criterion_id} | {r.name} | {r.category} | {r.severity} | {result_sym} | {evidence_cell} |"
@@ -434,13 +454,7 @@ class UATReportGenerator:
         )
 
         for g in self.gate_results:
-            result_sym = (
-                "✅ PASS"
-                if g.status == ResultStatus.PASSED
-                else "❌ FAIL"
-                if g.status == ResultStatus.FAILED
-                else "⊘ SKIP"
-            )
+            result_sym = self._status_symbol(g.status)
             ko_mark = "🔴" if g.ko else "⚪"
             lines.append(f"| {g.gate_id} | {g.name} | {ko_mark} | {result_sym} |")
 
@@ -451,9 +465,11 @@ class UATReportGenerator:
                 "",
                 "### Acceptance Criteria Results",
                 f"- **Restoration:** {self.summary.restoration_passed}/{self.summary.restoration_total} passed "
-                f"({self.summary.restoration_failed} failed, {self.summary.restoration_skipped} skipped)",
+                f"({self.summary.restoration_failed} failed, {self.summary.restoration_skipped} skipped, "
+                f"{self.summary.restoration_errors} error)",
                 f"- **Studio 2026:** {self.summary.studio_2026_passed}/{self.summary.studio_2026_total} passed "
-                f"({self.summary.studio_2026_failed} failed, {self.summary.studio_2026_skipped} skipped)",
+                f"({self.summary.studio_2026_failed} failed, {self.summary.studio_2026_skipped} skipped, "
+                f"{self.summary.studio_2026_errors} error)",
                 "",
                 "### Release Gate Status",
                 f"- **Passed:** {self.summary.gates_passed}/{self.summary.gates_total}",
@@ -467,6 +483,21 @@ class UATReportGenerator:
         )
 
         return "\n".join(lines)
+
+    @staticmethod
+    def _status_symbol(status: ResultStatus, *, compact: bool = True) -> str:
+        """Eine Quelle für die Statusdarstellung in allen drei Tabellen.
+
+        Kopien divergieren still (eine Tabelle zeigt sonst SKIP, wo die andere
+        ERROR meint); ERROR muss sichtbar und darf nie als bestanden zählen.
+        """
+        if status == ResultStatus.PASSED:
+            return "✅ PASS" if compact else "✅ PASSED"
+        if status == ResultStatus.FAILED:
+            return "❌ FAIL" if compact else "❌ FAILED"
+        if status == ResultStatus.ERROR:
+            return "⚠ ERROR"
+        return "⊘ SKIP" if compact else "⊘ SKIPPED"
 
     @staticmethod
     def _scorecard_cell(evidence: str, notes: str, limit: int = 110) -> str:
@@ -515,8 +546,9 @@ class UATReportGenerator:
         ]
 
         for r in self.restoration_results:
-            result_emoji = "✅" if r.status == ResultStatus.PASSED else "❌" if r.status == ResultStatus.FAILED else "⊘"
-            lines.append(f"| {r.criterion_id} | {r.name} | {result_emoji} {r.status.value} | {r.notes} |")
+            lines.append(
+                f"| {r.criterion_id} | {r.name} | {self._status_symbol(r.status, compact=False)} | {r.notes} |"
+            )
 
         lines.extend(
             [
@@ -529,8 +561,9 @@ class UATReportGenerator:
         )
 
         for r in self.studio_2026_results:
-            result_emoji = "✅" if r.status == ResultStatus.PASSED else "❌" if r.status == ResultStatus.FAILED else "⊘"
-            lines.append(f"| {r.criterion_id} | {r.name} | {result_emoji} {r.status.value} | {r.notes} |")
+            lines.append(
+                f"| {r.criterion_id} | {r.name} | {self._status_symbol(r.status, compact=False)} | {r.notes} |"
+            )
 
         lines.extend(
             [
@@ -543,9 +576,10 @@ class UATReportGenerator:
         )
 
         for g in self.gate_results:
-            result_emoji = "✅" if g.status == ResultStatus.PASSED else "❌" if g.status == ResultStatus.FAILED else "⊘"
             ko_mark = "🔴" if g.ko else "⚪"
-            lines.append(f"| {g.gate_id} | {g.name} | {ko_mark} | {result_emoji} {g.status.value} | {g.notes} |")
+            lines.append(
+                f"| {g.gate_id} | {g.name} | {ko_mark} | {self._status_symbol(g.status, compact=False)} | {g.notes} |"
+            )
 
         lines.extend(
             [
@@ -558,6 +592,7 @@ class UATReportGenerator:
                 f"- **Total Passed:** {self.summary.restoration_passed + self.summary.studio_2026_passed}",
                 f"- **Total Failed:** {self.summary.restoration_failed + self.summary.studio_2026_failed}",
                 f"- **Total Skipped:** {self.summary.restoration_skipped + self.summary.studio_2026_skipped}",
+                f"- **Total Errors (nicht auswertbar):** {self.summary.criteria_errors}",
                 f"- **Pass Rate:** {criteria_pass_rate:.1f}%",
                 "",
                 "### Release Gate Summary",
@@ -566,6 +601,7 @@ class UATReportGenerator:
                 f"- **Passed:** {self.summary.gates_passed}",
                 f"- **Failed:** {self.summary.gates_failed}",
                 f"- **Skipped:** {self.summary.gates_skipped}",
+                f"- **Errors:** {self.summary.gates_errors}",
                 f"- **K.O. Violations:** {self.summary.ko_violations}",
                 "",
                 "### Regression Assessment",
@@ -603,6 +639,12 @@ class UATReportGenerator:
                     "= 0 (für Staging)",
                     str(self.summary.criteria_failed),
                     self.summary.criteria_failed == 0,
+                ),
+                self._decision_matrix_line(
+                    "Unexecutable Criteria (ERROR)",
+                    "= 0",
+                    str(self.summary.criteria_errors),
+                    self.summary.criteria_errors == 0,
                 ),
                 "",
                 "---",

@@ -1,15 +1,18 @@
 # TASK_CHANGES — Live-Ledger der aktuellen Aufgabe
 
-> Generiert von `scripts/change_ledger.py snapshot` (Base: `HEAD`, Stand: 2026-11-14 08:07 CET).
+> Generiert von `scripts/change_ledger.py snapshot` (Base: `HEAD`, Stand: 2026-11-15 04:46 CET).
 > CI (`ci-lite.yml` pr-evidence-gate) erzwingt Abdeckung: jede geänderte Code-Datei muss hier stehen.
 
 ## Geänderte Dateien
 
 | Status | Pfad | Art |
 |---|---|---|
-| M | `backend/core/defect_scanner.py` | modifiziert |
+| M | `.github/SOTA_DEFICIT_REGISTER.md` | modifiziert |
+| M | `TASK_CHANGES.md` | modifiziert |
+| M | `audit/uat_report_generator.py` | modifiziert |
 | M | `docs/SOTA_HANDOVER.md` | modifiziert |
-| ?? | `docs/reports/current/2026-11-14_scanner_kaltstart_fm_parallel.md` | ungetrackt |
+| A | `docs/reports/current/2026-11-15_uat_report_error_accounting.md` | neu |
+| M | `tests/unit/test_uat_report_generator.py` | modifiziert |
 
 ## Entscheidungen
 

@@ -168,6 +168,8 @@ Priorität C→B→A→D→E/F:
 
 30. **Empfehlungs-Umsetzung Runde 3 (2026-11-14):** (a) **M9-Datenexpansion FERTIG:** `prepare_tfgrid_pairs.py` + Stille-Guard (deterministischer Re-Draw aus (seed, i) — der 2.000-Paar-Lauf brach zuvor an einem stillen Fenster mit „Null-Leistung“ ab) + `sha256_pcm`-Manifestfelder (der WAV-Container ist durch den libsndfile-PEAK-Chunk byte-instabil, Determinismus-Test auf PCM-Hash umgestellt); **2.000 Paare erzeugt** in `data/tfgrid_pairs_erweitert/` (Seed 42, Manifest aurik.tfgrid_pairs/1) — M9-Neulauf im nächsten GPU-Fenster, danach erneutes Never-worsen-Gate. 10/10 Generator-Tests. (b) **Hör-Batch-Brief:** `docs/guides/HOERBATCH_DECLIP_MUSHRA_W1.md` — Declip-Sign-off + MUSHRA n≥30 + W-1 in einer Sitzung, Befehle + Belege + Reihenfolge. (c) HF-Rezeptur bleibt zurückgestellt (GPU + Hör-Instanz, schwächste Wirkungs-Evidenz — dokumentiert).
 
+31. **Autonome Lückenschluss-Runde 2026-11-15 (UAT-Evidenz-Audit, D-K3-104):** Die Kandidatenliste war überholt: D-K3-60/71/75/83/90 stehen bereits auf `geschlossen`; D-K3-13 bleibt offen (UAT 4 Tage alt, GPU-/trainingsfreies Fenster nötig — die M9-v2-Kette läuft), D-K3-92 bleibt §4-pflichtig (`use_bw_v5` klangwirksam). Beim Prüfen der UAT-Evidenz fand sich eine echte, autonom schließbare K3-Lücke: `audit/uat_results_2026-11-11.json` führt alle 15 Restoration-Kriterien als `ERROR`, die Summary meldete aber `restoration_failed=0`, `restoration_skipped=0`, `criteria_executed=15` und `CONDITIONAL` („15/15 bestanden“), weil `compute_summary` ERROR in keinem Zähler führte; die Scorecard zeigte `⊘ SKIP`. **Geschlossen (D-K3-104):** eigene ERROR-Felder + `total_accounted`, fail-closed `NO-GO` bei ERROR/fehlendem Ergebnis, eine Statusquelle rendert `⚠ ERROR`. Derselbe Beleg ergibt nachher `criteria_errors=15` und `NO-GO`; 7 Unit-Tests grün; `test_real_audio_restoration_quality_gate.py` bleibt 8 passed/1 skipped/1 failed (nur Frische, D-K3-13). Keine Klangwirkung, kein Flag, kein GPU-Training. Beleg: `docs/reports/current/2026-11-15_uat_report_error_accounting.md`.
+
 **R5-Cantus-domain_adapt ERFOLGREICH (2026-11-14, 64 min, exit 0, best_val 2,4149):** der D-K3-103-Fix (Batch 2×4 + expandable_segments) überwand den OOM — Kette 1 ist vollständig, alle Jobs erfolgreich; Never-worsen-Gate/Hörabnahme bleiben klangwirksam ⇒ §4. **M9-V2-Neulauf GESTARTET (2026-11-14, GPU frei nach R5):** Job `c2_m9_v2` (train_job_runner, Manifest getrennt) trainiert auf den 2.000 expandierten Paaren (data/tfgrid_pairs_erweitert, Seed 42) mit Leak-Schutz (`--exclude-pairs exclude_pairs.txt` — 35 Paare der 3 Gate-Tracks ausgeschlossen, Befund: die 2.000 Paare enthielten alle 3 Gate-Tracks) und eigener Checkpoint-Dir `models/tf_gridnet_v2` (neues Trainer-Flag `--checkpoint-dir` — die deployten Produktions-Artefakte models/tf_gridnet bleiben bis zum Gate unangetastet; --skip-onnx, Export erst nach bestandenem Gate). 30 Epochen, 12-h-Fenster, danach erneuter Gate-Lauf (verify_m9_gate.py). Trainer-Edits: --exclude-pairs + --checkpoint-dir, Smoke (Synthetik-Epoche) grün, 5 Leak-Schutz-Tests.
 
 - **GPU-Trainingsketten** (dauerhaft im Repo, jederzeit neu startbar):
@@ -980,3 +982,19 @@ D-K3-60 und D-K3-75 (bereits geschlossen), D-K3-92 (Rest `use_bw_v5` ist
 klangwirksam ⇒ §4/Hör-Sign-off), D-K3-65/94/95 (Hörstichprobe/GPU/Modell-
 entscheidung). Damit bleibt in diesem Fenster **keine** autonom schließbare
 Register-Lücke; kein Flag-Flip, kein GPU-Training, keine Klangänderung.
+
+**Update 2026-11-15 (Nachtrag UAT-Evidenz-Audit — D-K3-104 geschlossen):**
+Die vorherige Runde hatte „keine autonom schließbare Register-Lücke“ notiert;
+die Prüfung der UAT-Evidenz selbst hat eine gefunden.
+`audit/uat_results_2026-11-11.json` enthält 15 Restoration-Kriterien, alle
+`ERROR`, aber die Summary meldete `restoration_failed=0`,
+`restoration_skipped=0`, `criteria_executed=15` und `CONDITIONAL`
+(„15/15 bestanden“), weil `compute_summary` ERROR in keinem Zähler führte;
+die Scorecard zeigte `⊘ SKIP`. **D-K3-104 geschlossen:** eigene ERROR-Felder,
+`total_accounted`, fail-closed `NO-GO` bei ERROR oder fehlendem Ergebnis, eine
+Statusquelle rendert `⚠ ERROR`. Derselbe Beleg ergibt nachher
+`criteria_errors=15` / `NO-GO`; 7 Unit-Tests grün.
+`tests/normative/test_real_audio_restoration_quality_gate.py` bleibt bei
+**8 passed, 1 skipped, 1 failed** — der Rote ist weiterhin nur die
+UAT-Frische (D-K3-13). Keine Klangwirkung, kein Flag, kein GPU-Training.
+Beleg: `docs/reports/current/2026-11-15_uat_report_error_accounting.md`.
