@@ -41,6 +41,7 @@ KANAELE = {
     "sibilance": ("witness_kopf_sibilance", "witness_kopf_sibilance"),
     "sticky_shed_residue": ("witness_kopf_sticky_shed", "witness_kopf_sticky_shed_residue"),
     "jitter_artifacts": ("witness_kopf_jitter", "witness_kopf_jitter_artifacts"),
+    "transport_bump": ("witness_kopf_transport_bump", "witness_kopf_transport_bump"),
 }
 
 

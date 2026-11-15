@@ -3,33 +3,9 @@
   "datum": "2026-11-15",
   "seed": 42,
   "klassen": {
-    "clicks": {
-      "paare": 6,
-      "ziel": "study_stimuli/hoerproben/witness_kopf/clicks"
-    },
-    "compression_artifacts": {
-      "paare": 6,
-      "ziel": "study_stimuli/hoerproben/witness_kopf/compression_artifacts"
-    },
-    "tape_head_clog": {
-      "paare": 6,
-      "ziel": "study_stimuli/hoerproben/witness_kopf/tape_head_clog"
-    },
-    "phase_rotation": {
-      "paare": 6,
-      "ziel": "study_stimuli/hoerproben/witness_kopf/phase_rotation"
-    },
-    "sibilance": {
-      "paare": 6,
-      "ziel": "study_stimuli/hoerproben/witness_kopf/sibilance"
-    },
-    "sticky_shed_residue": {
-      "paare": 6,
-      "ziel": "study_stimuli/hoerproben/witness_kopf/sticky_shed_residue"
-    },
-    "jitter_artifacts": {
+    "transport_bump": {
       "paare": 1,
-      "ziel": "study_stimuli/hoerproben/witness_kopf/jitter_artifacts"
+      "ziel": "study_stimuli/hoerproben/witness_kopf/transport_bump"
     }
   }
 }
