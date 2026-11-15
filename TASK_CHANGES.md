@@ -1,33 +1,19 @@
 # TASK_CHANGES — Live-Ledger der aktuellen Aufgabe
 
-> Generiert von `scripts/change_ledger.py snapshot` (Base: `HEAD`, Stand: 2026-11-15 09:48 CET).
+> Generiert von `scripts/change_ledger.py snapshot` (Base: `HEAD`, Stand: 2026-11-15 17:37 CET).
 > CI (`ci-lite.yml` pr-evidence-gate) erzwingt Abdeckung: jede geänderte Code-Datei muss hier stehen.
 
 ## Geänderte Dateien
 
 | Status | Pfad | Art |
 |---|---|---|
-| M | `.github/FILE_REGISTRY.md` | modifiziert |
 | M | `.github/SOTA_DEFICIT_REGISTER.md` | modifiziert |
-| M | `audit/daily_real_audio_gate_status.json` | modifiziert |
-| M | `audit/daily_real_audio_gate_status.md` | modifiziert |
-| M | `audit/uat_report_generator.py` | modifiziert |
-| A | `audit/uat_results_2026-11-15.json` | neu |
-| A | `backend/core/dsp/witness_kopf_groove_echo.py` | neu |
-| M | `backend/core/music_model_flags.py` | modifiziert |
-| M | `backend/core/phases/phase_07_declipper.py` | modifiziert |
 | M | `docs/SOTA_HANDOVER.md` | modifiziert |
-| A | `docs/UAT_REPORT_2026-11-15.md` | neu |
-| A | `docs/UAT_SCORECARD_2026-11-15.md` | neu |
-| A | `docs/reports/current/2026-11-15_uat_freshness_d_k3_13.md` | neu |
-| A | `docs/reports/current/2026-11-15_witness_kopf_gate_sticky_shed_residue.json` | neu |
-| A | `docs/reports/current/2026-11-15_witness_kopf_gate_tape_head_level_dip.json` | neu |
-| M | `docs/reports/current/train_job_c2_witness_kopf.json` | modifiziert |
-| M | `scripts/model_inventory.py` | modifiziert |
-| M | `scripts/train_witness_kopf.py` | modifiziert |
-| M | `tests/test_uat_acceptance_criteria.py` | modifiziert |
-| M | `tests/unit/test_witness_kopf.py` | modifiziert |
-| A | `tests/unit/test_witness_kopf_wiring.py` | neu |
+| M | `scripts/b3_komposition_suche.py` | modifiziert |
+| M | `scripts/flag_wirkung_gate.py` | modifiziert |
+| M | `tests/unit/test_dk0_k1_rest_luecken.py` | modifiziert |
+| M | `tests/unit/test_flag_wirkung_gate.py` | modifiziert |
+| ?? | `docs/reports/current/2026-11-15_d_k3_92_schalter_wirkung.md` | ungetrackt |
 
 ## Entscheidungen
 

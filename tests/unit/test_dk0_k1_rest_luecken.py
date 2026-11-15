@@ -112,6 +112,36 @@ def test_kein_flag_flip_use_bw_v5() -> None:
     assert flags.use_bw_v5 is False
 
 
+def test_dk3_92_bw_v5_schalter_waehlt_das_artefakt(monkeypatch) -> None:
+    """D-K3-92: `use_bw_v5` ist KEIN stiller No-Op — er wählt das zu ladende ONNX.
+
+    AUS → MUSDB-trainierte Basis (`bw_reconstructor.onnx`), AN → v5
+    (`bw_reconstructor_v5.onnx`). Beide Pfade existieren; der Schalter ist damit
+    ein echtes Artefakt-A/B und kein Mess-Artefakt.
+    """
+    from backend.core import music_model_flags as flags
+
+    basis = flags.resolve_model_path("bw")
+    assert basis is not None and basis.name == "bw_reconstructor.onnx"
+    monkeypatch.setattr(flags, "use_bw_v5", True)
+    v5 = flags.resolve_model_path("bw")
+    assert v5 is not None and v5.name == "bw_reconstructor_v5.onnx"
+    assert v5.is_file()
+    assert v5 != basis
+
+
+def test_dk3_92_produktions_ladepfad_nutzt_den_aufloeser() -> None:
+    """Der Produktions-Ladepfad konsultiert den Schalter (Quelltext-Pin).
+
+    `phase_06` baut `BWReconstructorStage(...)` ohne `model_path`; der Plugin-
+    Konstruktor ruft `_resolve_model_path_flag("bw")` — genau dort wird
+    `use_bw_v5` gelesen. Ohne diesen Pin wäre die Lesestelle nur im Test belegt.
+    """
+    quelle = (_ROOT / "plugins" / "bw_reconstructor_plugin.py").read_text(encoding="utf-8")
+    assert '_resolve_model_path_flag("bw")' in quelle
+    assert "BWReconstructorPlugin(model_path=model_path)" in quelle
+
+
 def test_wohlklang_w8_sperrt_mit_aktueller_begruendung() -> None:
     """W-8 (.github/WOHLKLANG_CLAIMS.md) bleibt gesperrt — mit dem aktuellen Sperrgrund (§G9 (copilot-instructions.md))."""
     line = next(ln for ln in _WOHLKLANG.read_text(encoding="utf-8").splitlines() if ln.startswith("| W-8 |"))

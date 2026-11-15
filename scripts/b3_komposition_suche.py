@@ -47,12 +47,15 @@ KANDIDATEN: dict[str, str] = {
     "W-13": "use_bigvgan_f3_studio",
 }
 
-# Nicht messbare Stufen: stiller No-Op ohne Produktions-Lesestelle — eine
-# Messung wäre ein No-Op-Artefakt (D-K3-92 (SOTA_DEFICIT_REGISTER.md)).
+# Nicht messbare Stufen: keine B3-Stufe, deren Wirkung das Werkzeug belegen
+# könnte — eine Messung wäre ein No-Op-Artefakt (D-K3-92).
 NICHT_MESSBAR: dict[str, str] = {
     "W-8": (
-        "use_bw_v5 hat keine Produktions-Lesestelle (BW-v5 hängt an _use_nvsr) — "
-        "eine AN/AUS-Messung vergliche den Pfad mit sich selbst (D-K3-92)"
+        "use_bw_v5 ist produktion-wirksam (Artefakt-A/B Basis-ONNX vs. v5-ONNX über "
+        "resolve_model_path, D-K3-92) — aber die Stufe hat keinen Ladeweisen-Zeugen: "
+        "der BW-Pfad läuft nur bei Rolloff >= 7 kHz und nicht-tapeartigem Material "
+        "(phase_06::_use_nvsr), ein Lauf ohne Zeuge könnte Basis gegen Basis "
+        "vergleichen; der Flip bleibt ohnehin §4 + Hör-Sign-off (D-K1-5)"
     ),
 }
 

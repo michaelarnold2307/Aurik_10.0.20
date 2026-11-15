@@ -16,6 +16,11 @@ A. **Lesestelle** — jeder Flag wird außerhalb von
    Als Lesestelle zählt ein Name-Load, ein Attribut-Zugriff (`mmf.use_x`)
    oder ein Import-Alias, dessen lokaler Name danach auch geladen wird
    (ein toter `import ... as` zählt ausdrücklich NICHT).
+   **Indirekte Dispatch-Lesestelle (D-K3-92, 2026-11-15):** Ein Flag, das in
+   einer Dispatch-Tabelle INNERHALB der Flag-Datei steht (z. B. `flag_map` in
+   `resolve_model_path`), wird über diese Funktion gelesen — die Lesestelle ist
+   der Aufrufer der Funktion. Ohne diese Stufe galt `use_bw_v5` fälschlich als
+   No-Op, obwohl der Schalter das zu ladende ONNX-Artefakt auswählt.
 B. **Produktionslesestelle** — dieselbe Definition, beschränkt auf
    `backend/`, `plugins/`, `denker/`, `Aurik10/`, `cli/`, `forensics/`.
    Ein nur in `scripts/` gelesener Flag ist im Betrieb wirkungslos; er ist
@@ -83,14 +88,9 @@ AUSGESCHLOSSEN: frozenset[str] = frozenset(
 
 # Bewusste, begründete Ausnahmen (fail-closed: ohne Eintrag = Verstoß).
 # Jede Ausnahme nennt die Register-ID und den Grund; sie erscheint im Report.
-AUSNAHMEN: dict[str, str] = {
-    "use_bw_v5": (
-        "D-K3-92: Der BW-v5-Pfad läuft in phase_06 über die NVSR-Route "
-        "(`_use_nvsr`), nicht über diesen Schalter — es gibt keine "
-        "Produktions-Lesestelle. W-8 ist damit kein messbarer B3-Kandidat, "
-        "bis der Schalter verdrahtet ist (klangwirksam ⇒ nur über §4)."
-    ),
-}
+# Bestand 2026-11-15: LEER — die frühere Ausnahme `use_bw_v5` war ein
+# Falsch-Negativ des Gates (indirekter Dispatch, D-K3-92) und ist aufgelöst.
+AUSNAHMEN: dict[str, str] = {}
 
 
 @dataclass(frozen=True)
@@ -172,6 +172,131 @@ def _lesestellen(datei: Path) -> set[str]:
     return gelesen
 
 
+def _tabellen_in(knoten: ast.AST) -> dict[str, dict[str, str]]:
+    """Dict-Literale `{schlüssel: use_flag}` nach Zielname → Schlüssel → Flag."""
+    tabellen: dict[str, dict[str, str]] = {}
+    for kind in ast.walk(knoten):
+        if not isinstance(kind, (ast.Assign, ast.AnnAssign)):
+            continue
+        wert = kind.value
+        if not isinstance(wert, ast.Dict):
+            continue
+        zuordnung: dict[str, str] = {}
+        for schluessel, element in zip(wert.keys, wert.values):
+            if not isinstance(element, ast.Name) or not element.id.startswith("use_"):
+                continue
+            if isinstance(schluessel, ast.Constant) and isinstance(schluessel.value, str):
+                zuordnung[schluessel.value] = element.id
+        if not zuordnung:
+            continue
+        ziele = kind.targets if isinstance(kind, ast.Assign) else [kind.target]
+        for ziel in ziele:
+            if isinstance(ziel, ast.Name):
+                tabellen.setdefault(ziel.id, {}).update(zuordnung)
+    return tabellen
+
+
+def _liest_tabelle(knoten: ast.AST, name: str) -> bool:
+    """Wird die Tabelle `name` in `knoten` per `.get(...)`/Subscript gelesen?"""
+    for kind in ast.walk(knoten):
+        if isinstance(kind, ast.Subscript) and isinstance(kind.value, ast.Name) and kind.value.id == name:
+            return True
+        if (
+            isinstance(kind, ast.Call)
+            and isinstance(kind.func, ast.Attribute)
+            and isinstance(kind.func.value, ast.Name)
+            and kind.func.value.id == name
+            and kind.func.attr in {"get", "pop", "setdefault", "__getitem__"}
+        ):
+            return True
+    return False
+
+
+def _dispatch_tabellen(flag_datei: Path) -> dict[str, dict[str, set[str]]]:
+    """Flags, die über eine Dispatch-Tabelle im Flag-Modul gelesen werden.
+
+    Muster (D-K3-92, 2026-11-15): `resolve_model_path()` baut
+    `flag_map = {"bw": use_bw_v5, ...}`, liest die Tabelle per `.get(...)` und
+    gibt das Ergebnis zurück. Der Flag-Wert verlässt das Modul damit über den
+    Rückgabewert — die tatsächliche Lesestelle ist der Aufrufer der Funktion
+    mit dem passenden Schlüssel (`resolve_model_path("bw")`).
+    `_lesestellen()` kann das nicht sehen, weil die Flag-Datei dort ausgenommen
+    ist; ohne diese Stufe galt `use_bw_v5` fälschlich als toter Schalter.
+
+    Gezählt wird nur, wenn (a) ein Dict-Literal `use_*`-Namen als Wert enthält,
+    (b) dieselbe Funktion dieses Dict liest und einen Wert zurückgibt und
+    (c) die Funktion außerhalb der Flag-Datei aufgerufen wird (Stufe B prüft,
+    aus welchem Verzeichnis).
+
+    Rückgabe: Flag → Funktionsname → Schlüssel, unter denen der Flag gewählt wird.
+    """
+    baum = ast.parse(flag_datei.read_text(encoding="utf-8"))
+    modul_tabellen: dict[str, dict[str, str]] = {}
+    for knoten in baum.body:
+        if isinstance(knoten, (ast.Assign, ast.AnnAssign)):
+            modul_tabellen.update(_tabellen_in(ast.Module(body=[knoten], type_ignores=[])))
+
+    ergebnis: dict[str, dict[str, set[str]]] = {}
+    funktionen = [knoten for knoten in ast.walk(baum) if isinstance(knoten, (ast.FunctionDef, ast.AsyncFunctionDef))]
+    for funktion in funktionen:
+        tabellen = {name: dict(zuordnung) for name, zuordnung in modul_tabellen.items()}
+        for name, zuordnung in _tabellen_in(funktion).items():
+            tabellen.setdefault(name, {}).update(zuordnung)
+        if not any(isinstance(kind, ast.Return) and kind.value is not None for kind in ast.walk(funktion)):
+            continue
+        for name, zuordnung in tabellen.items():
+            if not _liest_tabelle(funktion, name):
+                continue
+            for schluessel, flag in zuordnung.items():
+                ergebnis.setdefault(flag, {}).setdefault(funktion.name, set()).add(schluessel)
+    return ergebnis
+
+
+def _dispatch_aufrufer(wurzel: Path, schluessel: dict[str, set[str]]) -> dict[str, list[tuple[str, str | None]]]:
+    """Aufrufe einer Dispatch-Funktion als (Datei, Literal-Schlüssel|None).
+
+    `None` steht für einen nicht auflösbaren Schlüssel (Variable); solche
+    Aufrufe werden konservativ allen Flags der Tabelle zugerechnet, damit die
+    Stufe keine Lesestelle übersieht.
+    """
+    stellen: dict[str, list[tuple[str, str | None]]] = {name: [] for name in schluessel}
+    funktionsnamen = set(schluessel)
+    flag_datei = wurzel / FLAG_DATEI
+    for datei in _quelltext_dateien(wurzel):
+        if datei == flag_datei:
+            continue
+        try:
+            baum = ast.parse(datei.read_text(encoding="utf-8", errors="replace"))
+        except (SyntaxError, OSError) as exc:
+            logger.warning("Überspringe nicht lesbare Datei %s (%s)", datei, type(exc).__name__)
+            continue
+        alias_zu_original = {name: name for name in funktionsnamen}
+        for knoten in ast.walk(baum):
+            if isinstance(knoten, ast.ImportFrom) and knoten.module and knoten.module.endswith("music_model_flags"):
+                for alias in knoten.names:
+                    if alias.name in funktionsnamen:
+                        alias_zu_original[alias.asname or alias.name] = alias.name
+        relativ = str(datei.relative_to(wurzel))
+        for knoten in ast.walk(baum):
+            if not isinstance(knoten, ast.Call):
+                continue
+            name: str | None = None
+            if isinstance(knoten.func, ast.Name):
+                name = knoten.func.id
+            elif isinstance(knoten.func, ast.Attribute):
+                name = knoten.func.attr
+            if name not in alias_zu_original:
+                continue
+            original = alias_zu_original[name]
+            argument = knoten.args[0] if knoten.args else None
+            if isinstance(argument, ast.Constant) and isinstance(argument.value, str):
+                if argument.value in schluessel[original]:
+                    stellen[original].append((relativ, argument.value))
+            else:
+                stellen[original].append((relativ, None))
+    return stellen
+
+
 def _quelltext_dateien(wurzel: Path) -> list[Path]:
     """Alle Python-Dateien außer Tests, Modellen, Daten und Umgebungen (sortiert)."""
     dateien = [
@@ -225,6 +350,25 @@ def pruefe(
         ziel = produktiv if relativ.parts[0] in PRODUKTIONS_VERZEICHNISSE else messend
         for flag in treffer:
             ziel[flag].add(str(relativ))
+
+    # Indirekte Dispatch-Lesestellen (D-K3-92): Flags, die nur über eine Tabelle
+    # im Flag-Modul ausgewertet werden, wirken dort, wo die Funktion aufgerufen
+    # wird. Der Aufrufer entscheidet über Stufe A (gelesen) und B (Produktion).
+    dispatch = _dispatch_tabellen(flag_datei)
+    if dispatch:
+        schluessel: dict[str, set[str]] = {}
+        for namen in dispatch.values():
+            for fn, keys in namen.items():
+                schluessel.setdefault(fn, set()).update(keys)
+        aufrufer = _dispatch_aufrufer(wurzel, schluessel)
+        for flag, namen in dispatch.items():
+            for fn in sorted(namen):
+                for relativ, key in aufrufer.get(fn, ()):
+                    if key is not None and key not in namen[fn]:
+                        continue
+                    ziel = produktiv if Path(relativ).parts[0] in PRODUKTIONS_VERZEICHNISSE else messend
+                    marker = "" if key is not None else "[dyn]"
+                    ziel[flag].add(f"{relativ}::{fn}{marker}")
 
     return [
         Befund(
