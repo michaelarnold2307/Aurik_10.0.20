@@ -7,8 +7,8 @@
   "checkpoint": "models/klassen_koepfe/witness_transport_bump_best.pt",
   "n_regionen": 171,
   "n_uebersprungen": 2,
-  "q_median": 0.284,
-  "q_anteil_ge_0_5": 0.2,
+  "q_median": 0.6577,
+  "q_anteil_ge_0_5": 0.6333,
   "never_worsen_anteil": 1.0,
-  "gate_bestanden": false
+  "gate_bestanden": true
 }

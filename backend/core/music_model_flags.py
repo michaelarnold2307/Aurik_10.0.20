@@ -122,6 +122,10 @@ use_witness_kopf_sticky_shed_residue: bool = False
 # mit Produktions-Semantik-Schutz-Arm (q 0,57, never_worsen 1,0). Konsum in phase_07.
 # Default AUS; Flag-Flip NUR nach §4-Hör-Sign-off.
 use_witness_kopf_jitter_artifacts: bool = False
+# Witness-Kopf transport_bump (D-K3-95-Nacharbeit lokalisiert, 2026-11-15): gate-bestanden
+# mit lokalisiertem Loss (|schaden-clean|-Maske) + Produktions-Semantik-Schutz-Arm
+# (q 0,66, never_worsen 1,0). Konsum in phase_07. Default AUS; Flag-Flip NUR nach §4-Hör-Sign-off.
+use_witness_kopf_transport_bump: bool = False
 # (MediumDetector.detect, Roh-Aufruf) statt 9 handgebaute Skalar-Features/Gauss-Mixture. Default AUS =
 # bisheriges Verhalten. Gelernte Spektrogramm-Repraesentation: 95.3% vs. 59-63% (gemessen). Flag-Flip
 # offen — nur nach §4-Verfahren (scripts/flag_freigabe.py: Verdikt → Register-Buchung → Flag-Flip → Commit).

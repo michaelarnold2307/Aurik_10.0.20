@@ -24,6 +24,7 @@ def test_flag_default_aus() -> None:
     assert music_model_flags.use_witness_kopf_sibilance is False
     assert music_model_flags.use_witness_kopf_sticky_shed_residue is False
     assert music_model_flags.use_witness_kopf_jitter_artifacts is False
+    assert music_model_flags.use_witness_kopf_transport_bump is False
 
 
 def test_lesestelle_phase_07_rest_koepfe_verdrahtet() -> None:
@@ -42,6 +43,7 @@ def test_lesestelle_phase_07_rest_koepfe_verdrahtet() -> None:
     assert "witness_kopf_sibilance_used" in phase
     assert "witness_kopf_sticky_shed_used" in phase
     assert "witness_kopf_jitter_used" in phase
+    assert "witness_kopf_transport_used" in phase
 
 
 def test_lesestelle_phase_07_tape_head_verdrahtet() -> None:

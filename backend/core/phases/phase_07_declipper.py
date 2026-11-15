@@ -611,6 +611,7 @@ class DeclipperPhase(PhaseInterface):
             use_witness_kopf_sibilance,
             use_witness_kopf_sticky_shed_residue,
             use_witness_kopf_tape_head_clog,
+            use_witness_kopf_transport_bump,
         )
 
         for _wk_name, _wk_flag, _wk_modul, _wk_funktion in (
@@ -639,6 +640,12 @@ class DeclipperPhase(PhaseInterface):
                 use_witness_kopf_sticky_shed_residue,
                 "witness_kopf_sticky_shed",
                 "witness_kopf_sticky_shed_residue",
+            ),
+            (
+                "transport_bump",
+                use_witness_kopf_transport_bump,
+                "witness_kopf_transport_bump",
+                "witness_kopf_transport_bump",
             ),
             (
                 "jitter_artifacts",
@@ -873,6 +880,8 @@ class DeclipperPhase(PhaseInterface):
             )
         if use_witness_kopf_jitter_artifacts:
             _metrics07["witness_kopf_jitter_used"] = bool(_witness_kopf_rest_used.get("jitter_artifacts", False))
+        if use_witness_kopf_transport_bump:
+            _metrics07["witness_kopf_transport_used"] = bool(_witness_kopf_rest_used.get("transport_bump", False))
 
         return PhaseResult(
             success=True,

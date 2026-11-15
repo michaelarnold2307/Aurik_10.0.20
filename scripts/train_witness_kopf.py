@@ -233,6 +233,7 @@ def trainiere(
     device: str,
     max_regionen: int = 0,
     lam_id: float = 0.5,
+    lam_lokal: float = 0.0,
 ) -> dict[str, Any]:
     regionen, holdout_titel, n_gesamt = _baue_regionen(klasse)
     xs, xc, xc_id, hs, hc, hc_id = _lade_split(regionen, holdout_titel, max_regionen)
@@ -276,7 +277,16 @@ def trainiere(
             idx = perm[i : i + batch]
             s_b, c_b = Xs_t[idx].to(device), Xc_t[idx].to(device)
             out = model(s_b)
-            l1 = nn.functional.l1_loss(out, c_b)
+            if lam_lokal > 0.0:
+                # Lokalisierter Loss (transport_bump-Befund 2026-11-15, DRT-3-Mechanismus):
+                # der globale L1 gibt kurzen transienten Impulsen kaum Gradient — die
+                # |schaden−clean|-Maske (aus den Trainings-Paaren, KEIN Leak) gewichtet den
+                # Defekt-Ort proportional. Maske gedeckelt, damit kein Einzel-Sample dominiert.
+                maske = (s_b - c_b).abs()
+                maske = torch.clamp(maske / (maske.mean(dim=2, keepdim=True) + 1e-6), 0.0, 8.0)
+                l1 = (maske * (out - c_b).abs()).mean() / (maske.mean() + 1e-8)
+            else:
+                l1 = nn.functional.l1_loss(out, c_b)
             # Identitäts-Anker (D-K3-95-Nacharbeiten 2026-11-15): der Kopf muss auf
             # clean-Regionen identisch bleiben — das ist der Never-worsen-Schutz-Arm
             # als Loss-Ziel. Die gate-verfehlten Kanäle überrestaurierten auf clean,
@@ -336,6 +346,7 @@ def trainiere(
         "stufen": stufen,
         "lambda_witness": lam,
         "lambda_id": lam_id,
+        "lambda_lokal": lam_lokal,
         "n_regionen_gesamt": n_gesamt,
         "n_train": len(xs),
         "n_holdout": len(hs),
@@ -368,6 +379,12 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument(
         "--lambda-id", type=float, default=0.5, help="Identitäts-Anker-Gewicht (Never-worsen-Schutz im Loss)"
     )
+    ap.add_argument(
+        "--lambda-lokal",
+        type=float,
+        default=0.0,
+        help=">0 = lokalisierter L1 über die |schaden-clean|-Maske (transiente Defekte)",
+    )
     ap.add_argument("--device", default="cpu")
     ap.add_argument("--max-regionen", type=int, default=0, help=">0 = Smoke (begrenzte Regionen)")
     args = ap.parse_args(argv)
@@ -380,6 +397,7 @@ def main(argv: list[str] | None = None) -> int:
         args.device,
         args.max_regionen,
         args.lambda_id,
+        args.lambda_lokal,
     )
     print(json.dumps(report, indent=2, ensure_ascii=False))
     return 0
