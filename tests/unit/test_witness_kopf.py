@@ -63,7 +63,8 @@ def test_fail_closed_witness_checkpoint_vor_training() -> None:
     fehlendes Checkpoint bricht ab, bevor Rechenzeit verbraucht wird (§V6 (copilot-instructions.md))."""
     quelltext = Path(wk.__file__).read_text(encoding="utf-8")
     assert "w_ckpt" in quelltext
-    assert 'FileNotFoundError(f"Witness-Checkpoint fehlt' in quelltext
+    assert "FileNotFoundError" in quelltext
+    assert "Witness-Checkpoint fehlt" in quelltext
     i_pruefung = quelltext.find("Witness-Checkpoint fehlt")
     i_loop = quelltext.find("for ep in range(epochen)")
     assert i_pruefung > 0 and i_loop > i_pruefung

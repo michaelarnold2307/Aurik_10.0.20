@@ -320,7 +320,7 @@ def trainiere(
         "n_holdout": len(hs),
         "holdout_titel": holdout_titel,
         "beste_epoche": best["ep"] + 1,
-        "holdout_score": round(best["score"], 4),
+        "holdout_score": round(float(best["score"]), 4),
         "q_witness_in_sample": round(q_in, 4) if q_in is not None else None,
         "q_witness_holdout": round(q_hold, 4) if q_hold is not None else None,
         "preflight_q_ge_0_5": bool(q_in is not None and q_in >= 0.5),

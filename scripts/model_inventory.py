@@ -319,8 +319,10 @@ _CONSUMER_ROOTS = ("backend", "plugins", "denker", "cli", "Aurik10")
 _WIRING_ALLOWLIST: dict[str, str] = {
     "klassen_koepfe": (
         "Experimentelle, defektklassenspezifische Reparatur-Checkpoints aus der Hör-zentrierten "
-        "Trainingsstrategie; kein Produktionskonsument und kein Modell-Rollout, solange "
-        "unabhängiger §G13 (copilot-instructions.md)-Q-/Never-worsen-/Kontroll- und Audibility-Nachweis fehlt."
+        "Trainingsstrategie; für groove_echo liegt der §G13 (copilot-instructions.md)-Q-/Never-worsen-Nachweis "
+        "seit 2026-11-15 vor (verify_witness_kopf_gate.py: q_median 1,03 auf 200 Holdout-Regionen, never_worsen 0,964) — "
+        "Produktionskonsument witness_groove_echo in phase_07 hinter music_model_flags.use_witness_kopf_groove_echo "
+        "(Default AUS = bit-identisch; §4 für den Flag-Flip). Übrige Klassen bleiben report-only bis zum eigenen Nachweis."
     ),
     "diffwave_vocal_inpaint": (
         "Trainingsziel der Matrix-D.3-Kette (DiffWave-Vokal-Inpaint, S1 -1,7 dB Beleg) — "

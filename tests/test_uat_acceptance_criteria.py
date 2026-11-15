@@ -843,7 +843,13 @@ def real_audio_runtime_case(real_audio_gate_case: dict[str, object]) -> dict[str
     # Overrides remain possible for explicit deep runs.
     _max_gate_seconds = int(float(os.environ.get("AURIK_R5_R12_MAX_SECONDS", "12") or 12))
     _ml_runtime_budget_s = float(os.environ.get("AURIK_R5_R12_ML_RUNTIME_BUDGET_S", "3.0") or 3.0)
-    _restore_timeout_s = float(os.environ.get("AURIK_R5_R12_RESTORE_TIMEOUT_S", "120") or 120.0)
+    # D-K3-13 (2026-11-15): 120 s war kein belastbares Wall-Clock-Limit fuer den
+    # kalten Produktionspfad. Gemessen auf 8 s Eingang: 714,1 s Verarbeitung
+    # (PerformanceGuard: 23,8x RT fuer 30 s interne Analyse, also INNERHALB des
+    # 32x-Budgets) plus Modell-Ladezeit; ein 120-s-Limit erzeugte 15/15 ERROR
+    # (audit/uat_results_2026-11-11.json). 1800 s laesst den legitimen Lauf zu
+    # und bleibt fail-closed fuer echte Haenger.
+    _restore_timeout_s = float(os.environ.get("AURIK_R5_R12_RESTORE_TIMEOUT_S", "1800") or 1800.0)
     if r5_only_fastpath:
         _max_gate_seconds = min(_max_gate_seconds, 4)
     _max_n = int(sr * _max_gate_seconds)
@@ -936,7 +942,7 @@ def real_audio_runtime_case(real_audio_gate_case: dict[str, object]) -> dict[str
 
 @pytest.mark.parametrize("criterion", RESTORATION_CRITERIA, ids=lambda c: c["id"])
 @pytest.mark.slow
-@pytest.mark.timeout(900)
+@pytest.mark.timeout(1800)
 def test_restoration_criteria(criterion: dict[str, Any], real_audio_runtime_case: dict[str, Any]):
     """Parametrized test for all Restoration criteria."""
 

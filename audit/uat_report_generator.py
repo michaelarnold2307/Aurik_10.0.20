@@ -140,12 +140,16 @@ class UATReportGenerator:
                 cwd=self.workspace_root,
                 capture_output=True,
                 check=False,
-                timeout=1200,
+                # D-K3-13 (2026-11-15): der kalte Produktionspfad braucht auf
+                # 8 s Eingang gemessen 714,1 s Verarbeitung (23,8x RT fuer 30 s
+                # interne Analyse, innerhalb des 32x-Budgets) plus Modell-Laden.
+                # 1200 s kappten den legitimen Lauf; 3600 s bleiben fail-closed.
+                timeout=3600,
                 text=True,
             )
             return result.returncode, result.stdout + result.stderr
         except subprocess.TimeoutExpired:
-            print("[WARNING] Pytest timeout after 1200s")
+            print("[WARNING] Pytest timeout after 3600s")
             return 1, "Pytest timeout"
         except Exception as e:
             print(f"[ERROR] Pytest execution failed: {e}")

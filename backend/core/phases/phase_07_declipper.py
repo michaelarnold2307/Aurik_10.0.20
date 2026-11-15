@@ -493,6 +493,61 @@ class DeclipperPhase(PhaseInterface):
                     _ko_exc,
                 )
 
+        # D-K3-95-Folge (2026-11-15): Witness-Kopf groove_echo — gate-bestandener
+        # Reparatur-Kopf (verify_witness_kopf_gate.py: q_median 1,03 auf 200
+        # Holdout-Regionen, never_worsen 0,964; Q-Erstbeleg
+        # docs/reports/current/2026-11-15_q0_erstbeleg_witness_kopf.json).
+        # Trigger + Never-worsen liegen im Modul
+        # (backend/core/dsp/witness_kopf_groove_echo.py); Konsum NUR hinter
+        # use_witness_kopf_groove_echo (Default AUS = bit-identisch, §4 für den Flip).
+        _witness_kopf_used = False
+        from backend.core.music_model_flags import (
+            use_witness_kopf_groove_echo,  # pylint: disable=import-outside-toplevel
+        )
+
+        if use_witness_kopf_groove_echo:
+            try:
+                from backend.core.dsp.witness_kopf_groove_echo import (  # pylint: disable=import-outside-toplevel
+                    witness_kopf_groove_echo,
+                )
+
+                _wk_out = np.asarray(audio_out, dtype=np.float64).copy()
+                _wk_acc = 0
+                for _ch in range(audio_in.shape[0]):
+                    _wk_cand = witness_kopf_groove_echo(audio_in[_ch], sample_rate)
+                    if _wk_cand is None:
+                        continue  # §V6-Warnung erfolgte im Modul (Trigger ohne Gewinn / Fallback)
+                    _wk_cand = np.asarray(_wk_cand, dtype=np.float64)
+                    if _wk_cand.shape != audio_in[_ch].shape or not bool(np.isfinite(_wk_cand).all()):
+                        logger.warning(
+                            "Verarbeitungsschritt 07 Witness-Kopf: ungültiger Kandidat "
+                            "(Shape/NaN) — bleibt (§V6 (copilot-instructions.md))"
+                        )
+                        continue
+                    # Doppel-Guard wie beim Musik-Declip-Kopf: Harmonik-Proxy strikt
+                    # gegen Input UND Amtsinhaber.
+                    _pin = _harmonic_distortion_proxy(audio_in[_ch], sample_rate)
+                    _pinc = _harmonic_distortion_proxy(_wk_out[_ch], sample_rate)
+                    _pout = _harmonic_distortion_proxy(_wk_cand, sample_rate)
+                    if _pout < _pin and _pout < _pinc:
+                        _wk_out[_ch] = _wk_cand
+                        _wk_acc += 1
+                if _wk_acc > 0:
+                    audio_out = _wk_out
+                    _witness_kopf_used = True
+                    logger.info(
+                        "Verarbeitungsschritt 07 Witness-Kopf groove_echo: %d/%d Kanäle übernommen "
+                        "(Witness-Trigger + Harmonik-Proxy sank gegen Input und Amtsinhaber)",
+                        _wk_acc,
+                        audio_in.shape[0],
+                    )
+            except Exception as _wk_exc:
+                logger.warning(
+                    "Verarbeitungsschritt 07 Witness-Kopf fehlgeschlagen (%s) — "
+                    "Kaskade bleibt (§V6 (copilot-instructions.md))",
+                    _wk_exc,
+                )
+
         # §DECLIPPER_SOTA_PLAN.md Slice B/C (2026-09-12): A-SPADE-ONNX als
         # erster neuronaler Zweig für schwere Fälle — Never-worsen über den
         # Harmonik-Proxy; ohne Modell oder ohne Gewinn bleibt CQT-Diff.
@@ -651,6 +706,8 @@ class DeclipperPhase(PhaseInterface):
         if use_aspade_declipper:
             _metrics07["aspade_class_used"] = bool(_aspade_class_used)
             _metrics07["musik_kopf_used"] = bool(_musik_kopf_used)
+        if use_witness_kopf_groove_echo:
+            _metrics07["witness_kopf_used"] = bool(_witness_kopf_used)
 
         return PhaseResult(
             success=True,

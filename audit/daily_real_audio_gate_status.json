@@ -1,18 +1,18 @@
 {
-  "generated_at": "2026-11-11T05:34:02.935433",
+  "generated_at": "2026-11-15T09:39:41.136248",
   "status": "attention",
   "latest": {
-    "date": "2026-11-11",
-    "source_file": "uat_results_2026-11-11.json",
-    "recommendation": "CONDITIONAL",
+    "date": "2026-11-15",
+    "source_file": "uat_results_2026-11-15.json",
+    "recommendation": "GO",
     "gates": {
-      "passed": 6,
+      "passed": 5,
       "total": 7
     },
     "r5_r12": {
-      "passed": 0,
+      "passed": 7,
       "total": 8,
-      "pass_rate": 0.0
+      "pass_rate": 0.875
     }
   },
   "trend": [
@@ -75,6 +75,16 @@
       "r5_r12_passed": 0,
       "r5_r12_total": 8,
       "r5_r12_pass_rate": 0.0
+    },
+    {
+      "date": "2026-11-15",
+      "source_file": "uat_results_2026-11-15.json",
+      "recommendation": "GO",
+      "gates_passed": 5,
+      "gates_total": 7,
+      "r5_r12_passed": 7,
+      "r5_r12_total": 8,
+      "r5_r12_pass_rate": 0.875
     }
   ]
 }

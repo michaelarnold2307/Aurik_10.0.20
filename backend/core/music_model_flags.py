@@ -90,6 +90,12 @@ use_vocos_ft_reconstruction: bool = False  # M5 (D-K2-3, 2026-11-09): vocos-48k-
 use_material_crnn: bool = (
     False  # D-K1-3 Phase D: CRNN-Material-Classifier (models/material_crnn.pt) im Material-Entscheidungspfad
 )
+# Witness-Kopf groove_echo (D-K3-95-Folge, 2026-11-15): gate-bestandener Reparatur-Kopf
+# (verify_witness_kopf_gate.py: q_median 1,03 auf 200 Holdout-Regionen, never_worsen 0,964;
+# Q-Erstbeleg docs/reports/current/2026-11-15_q0_erstbeleg_witness_kopf.json). Konsum in
+# phase_07_declipper (backend/core/dsp/witness_kopf_groove_echo.py, Witness-Trigger + Never-worsen
+# fail-closed). Default AUS = bit-identisches Bestandsverhalten; Flag-Flip NUR nach §4-Hör-Sign-off.
+use_witness_kopf_groove_echo: bool = False
 # (MediumDetector.detect, Roh-Aufruf) statt 9 handgebaute Skalar-Features/Gauss-Mixture. Default AUS =
 # bisheriges Verhalten. Gelernte Spektrogramm-Repraesentation: 95.3% vs. 59-63% (gemessen). Flag-Flip
 # offen — nur nach §4-Verfahren (scripts/flag_freigabe.py: Verdikt → Register-Buchung → Flag-Flip → Commit).

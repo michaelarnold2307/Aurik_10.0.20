@@ -1,26 +1,28 @@
 {
   "schema": "aurik.train_job/1",
-  "run_id": "witness_kopf_groove_v2-20261115T064311Z-40150e",
+  "run_id": "witness_kopf_tape_head_level_dip-20261115T080855Z-77b62a",
   "name": "c2_witness_kopf",
-  "phase": "witness_kopf_groove_v2",
+  "phase": "witness_kopf_tape_head_level_dip",
   "seed": null,
-  "befehl": "env PYTHONPATH=. PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True /home/michael/.local/share/aurik/venv_rocm72/bin/python -B scripts/train_witness_kopf.py --klasse groove_echo --epochen 30 --hidden 64 --stufen 4 --lambda-witness 0.1 --device cuda",
-  "resume_befehl": "env PYTHONPATH=. PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True /home/michael/.local/share/aurik/venv_rocm72/bin/python -B scripts/train_witness_kopf.py --klasse groove_echo --epochen 30 --hidden 64 --stufen 4 --lambda-witness 0.1 --device cuda",
+  "befehl": "env PYTHONPATH=. PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True /home/michael/.local/share/aurik/venv_rocm72/bin/python -B scripts/train_witness_kopf.py --klasse tape_head_level_dip --epochen 30 --hidden 64 --stufen 4 --lambda-witness 0.1 --device cuda",
+  "resume_befehl": "env PYTHONPATH=. PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True /home/michael/.local/share/aurik/venv_rocm72/bin/python -B scripts/train_witness_kopf.py --klasse tape_head_level_dip --epochen 30 --hidden 64 --stufen 4 --lambda-witness 0.1 --device cuda",
   "timeout_s": 43200.0,
   "retries": 1,
   "versuche": [
     {
       "exit_code": 0,
-      "sekunden": 542.4,
+      "sekunden": 708.5,
       "timed_out": false,
-      "output_tail": "/home/michael/.local/share/aurik/venv_rocm72/lib/python3.10/site-packages/torch/nn/modules/module.py:1370: UserWarning: expandable_segments not supported on this platform (Triggered internally at /pytorch/c10/hip/HIPAllocatorConfig.h:40.)\n  return t.to(\n  groove_echo: ep 7/30 loss 0.0588 hold 0.0586\n  groove_echo: ep 14/30 loss 0.0570 hold 0.0640\n  groove_echo: ep 21/30 loss 0.0957 hold 0.0842\n  groove_echo: ep 28/30 loss 0.0661 hold 0.0482\n  groove_echo: ep 30/30 loss 0.0883 hold 0.0568\n{\n  \"schema\": \"aurik.witness_kopf_training/1\",\n  \"datum\": \"2026-11-15\",\n  \"klasse\": \"groove_echo\",\n  \"seed\": 42,\n  \"epochen\": 30,\n  \"hidden\": 64,\n  \"stufen\": 4,\n  \"lambda_witness\": 0.1,\n  \"n_regionen_gesamt\": 4072,\n  \"n_train\": 2571,\n  \"n_holdout\": 1445,\n  \"holdout_titel\": \"Elke Best - Träumer (Dreamer) 1981 Digital Source audio 320 \",\n  \"beste_epoche\": 10,\n  \"holdout_score\": 0.0378,\n  \"q_witness_in_sample\": 1.2535,\n  \"q_witness_holdout\": 1.0526,\n  \"preflight_q_ge_0_5\": true,\n  \"hinweis\": \"Report-only: Aktivierung erst nach Never-worsen-Gate (verify_witness_kopf_gate.py) + §4\",\n  \"checkpoint\": \"models/klassen_koepfe/witness_groove_echo_best.pt\"\n}\n",
+      "output_tail": "/home/michael/.local/share/aurik/venv_rocm72/lib/python3.10/site-packages/torch/nn/modules/module.py:1370: UserWarning: expandable_segments not supported on this platform (Triggered internally at /pytorch/c10/hip/HIPAllocatorConfig.h:40.)\n  return t.to(\n  tape_head_level_dip: ep 7/30 loss 0.0677 hold 0.0411\n  tape_head_level_dip: ep 14/30 loss 0.0676 hold 0.0424\n  tape_head_level_dip: ep 21/30 loss 0.0673 hold 0.0407\n  tape_head_level_dip: ep 28/30 loss 0.0678 hold 0.0417\n  tape_head_level_dip: ep 30/30 loss 0.0674 hold 0.0415\n{\n  \"schema\": \"aurik.witness_kopf_training/1\",\n  \"datum\": \"2026-11-15\",\n  \"klasse\": \"tape_head_level_dip\",\n  \"seed\": 42,\n  \"epochen\": 30,\n  \"hidden\": 64,\n  \"stufen\": 4,\n  \"lambda_witness\": 0.1,\n  \"n_regionen_gesamt\": 2364,\n  \"n_train\": 1181,\n  \"n_holdout\": 1046,\n  \"holdout_titel\": \"Elke Best - Boogie Woogie Mama (1977) HD audio 320 kbps engl\",\n  \"beste_epoche\": 23,\n  \"holdout_score\": 0.0404,\n  \"q_witness_in_sample\": 0.9862,\n  \"q_witness_holdout\": null,\n  \"preflight_q_ge_0_5\": true,\n  \"hinweis\": \"Report-only: Aktivierung erst nach Never-worsen-Gate (verify_witness_kopf_gate.py) + §4\",\n  \"checkpoint\": \"models/klassen_koepfe/witness_tape_head_level_dip_best.pt\"\n}\n",
       "versuch": 1,
-      "befehl": "env PYTHONPATH=. PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True /home/michael/.local/share/aurik/venv_rocm72/bin/python -B scripts/train_witness_kopf.py --klasse groove_echo --epochen 30 --hidden 64 --stufen 4 --lambda-witness 0.1 --device cuda"
+      "befehl": "env PYTHONPATH=. PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True /home/michael/.local/share/aurik/venv_rocm72/bin/python -B scripts/train_witness_kopf.py --klasse tape_head_level_dip --epochen 30 --hidden 64 --stufen 4 --lambda-witness 0.1 --device cuda"
     }
   ],
   "quelle": "scripts/train_job_runner.py",
   "checkpoint_hashes": {
-    "witness_groove_echo_best.pt": "978f0a857eacb2158db4a5c066de96cd4bde166e6e72b515f5e53945578dfa05"
+    "witness_groove_echo_best.pt": "978f0a857eacb2158db4a5c066de96cd4bde166e6e72b515f5e53945578dfa05",
+    "witness_sticky_shed_residue_best.pt": "312eac1fc85db31758d35cbe14b9f0f9b069605769bbbfa1a8b1b6c97389e904",
+    "witness_tape_head_level_dip_best.pt": "497213702d4eef1bd5979d3842155e8290570efaa403a4ccc17dd666910df611"
   },
   "ergebnis": "erfolgreich"
 }
