@@ -3,13 +3,33 @@
   "datum": "2026-11-15",
   "seed": 42,
   "klassen": {
-    "groove_echo": {
+    "clicks": {
       "paare": 6,
-      "ziel": "study_stimuli/hoerproben/witness_kopf/groove_echo"
+      "ziel": "study_stimuli/hoerproben/witness_kopf/clicks"
     },
-    "tape_head_level_dip": {
+    "compression_artifacts": {
       "paare": 6,
-      "ziel": "study_stimuli/hoerproben/witness_kopf/tape_head_level_dip"
+      "ziel": "study_stimuli/hoerproben/witness_kopf/compression_artifacts"
+    },
+    "tape_head_clog": {
+      "paare": 6,
+      "ziel": "study_stimuli/hoerproben/witness_kopf/tape_head_clog"
+    },
+    "phase_rotation": {
+      "paare": 6,
+      "ziel": "study_stimuli/hoerproben/witness_kopf/phase_rotation"
+    },
+    "sibilance": {
+      "paare": 6,
+      "ziel": "study_stimuli/hoerproben/witness_kopf/sibilance"
+    },
+    "sticky_shed_residue": {
+      "paare": 6,
+      "ziel": "study_stimuli/hoerproben/witness_kopf/sticky_shed_residue"
+    },
+    "jitter_artifacts": {
+      "paare": 1,
+      "ziel": "study_stimuli/hoerproben/witness_kopf/jitter_artifacts"
     }
   }
 }

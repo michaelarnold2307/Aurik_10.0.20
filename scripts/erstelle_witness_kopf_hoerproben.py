@@ -34,6 +34,13 @@ SCHEMA = "aurik.hoerproben_witness_kopf/1"
 KANAELE = {
     "groove_echo": ("witness_kopf_groove_echo", "witness_kopf_groove_echo"),
     "tape_head_level_dip": ("witness_kopf_tape_head", "witness_kopf_tape_head_level_dip"),
+    "clicks": ("witness_kopf_clicks", "witness_kopf_clicks"),
+    "compression_artifacts": ("witness_kopf_compression", "witness_kopf_compression_artifacts"),
+    "tape_head_clog": ("witness_kopf_tape_head_clog", "witness_kopf_tape_head_clog"),
+    "phase_rotation": ("witness_kopf_phase_rotation", "witness_kopf_phase_rotation"),
+    "sibilance": ("witness_kopf_sibilance", "witness_kopf_sibilance"),
+    "sticky_shed_residue": ("witness_kopf_sticky_shed", "witness_kopf_sticky_shed_residue"),
+    "jitter_artifacts": ("witness_kopf_jitter", "witness_kopf_jitter_artifacts"),
 }
 
 
