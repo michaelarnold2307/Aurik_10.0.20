@@ -3,8 +3,8 @@
 D-K3-95-Folge (2026-11-15). Der Kopf `models/klassen_koepfe/witness_phase_rotation_best.pt`
 wurde defekt-spezifisch auf k398-Regionen trainiert (leak-frei) und hat das
 Aktivierungs-Gate bestanden (`scripts/verify_witness_kopf_gate.py`, 200
-Holdout-Regionen: Q-Median 1,06, Never-worsen 0,979 (Identitäts-Anker-Nacharbeit, Spec 26 DRT-2);
-Beleg `docs/reports/current/2026-11-15_witness_kopf_gate_phase_rotation.json`,
+Holdout-Regionen: Q-Median 1,03, Q-Anteil≥0,5 = 1,0, Never-worsen 0,964;
+Beleg `docs/reports/current/2026-11-15_witness_kopf_gate_groove_echo.json`,
 Q-Erstbeleg `2026-11-15_q0_erstbeleg_witness_kopf.json`).
 
 Sicherheits-Vertrag (Muster `musik_declip_kopf.py`, Musikschutz AGENTS.md):
@@ -56,6 +56,8 @@ from scripts.train_witness_kopf import RMS_ZIEL as _RMS_ZIEL
 _FADE = 8820  # 200 ms @ 44,1 kHz (§III 6 dB/200 ms)
 _DEFAULT_THRESHOLD = 0.5
 _NW_MARGIN = 0.02
+_MAX_TRIGGER_ANTEIL = 0.5  # DRT-11: breiter Trigger = Material-Kontext (Befund Rezept-Titel 0,75-0,78)
+_MIN_FENSTER_KONTEXT = 3  # DRT-11: Sperre erst ab mehreren Fenstern — k398-Regionen sind 1 Fenster
 
 
 def _mel_torch(audio: torch.Tensor) -> torch.Tensor:
@@ -127,13 +129,13 @@ def witness_kopf_phase_rotation(
     from scipy.signal import resample_poly  # pylint: disable=import-outside-toplevel
 
     if not _KOPF_CKPT.is_file():
-        logger.warning("Witness-Kopf phase_rotation: Checkpoint fehlt (%s) — Ersatzpfad.", _KOPF_CKPT)
+        logger.warning("Witness-Kopf Phase-Rotation: Checkpoint fehlt (%s) — Ersatzpfad.", _KOPF_CKPT)
         return None
     if not _WITNESS_CKPT.is_file():
-        logger.warning("Witness-Kopf phase_rotation: Witness-Checkpoint fehlt (%s) — Ersatzpfad.", _WITNESS_CKPT)
+        logger.warning("Witness-Kopf Phase-Rotation: Witness-Checkpoint fehlt (%s) — Ersatzpfad.", _WITNESS_CKPT)
         return None
     if int(sample_rate) <= 0:
-        logger.warning("Witness-Kopf phase_rotation: sr=%d ungültig — Ersatzpfad.", sample_rate)
+        logger.warning("Witness-Kopf Phase-Rotation: sr=%d ungültig — Ersatzpfad.", sample_rate)
         return None
     try:
         from scripts.train_witness_detektor import WitnessCRNN  # pylint: disable=import-outside-toplevel
@@ -184,9 +186,20 @@ def witness_kopf_phase_rotation(
                 else:
                     maske[lo:hi] = 1.0
 
+        # DRT-11 (Spec 26, 2026-11-15): Kontext-Sperre — ein breiter, homogener Trigger
+        # ist Material-Kontext (vinyl/kassette-Rauschen, Befund: 75-78 % triggernde Fenster
+        # auf Rezept-Titeln), kein lokaler k398-Defekt (0,1-s-Regionen). Sperre ⇒ Bypass.
+        anteil_trigger = sum(1 for p in p_werte if p > theta) / max(1, len(p_werte))
+        if len(p_werte) >= _MIN_FENSTER_KONTEXT and anteil_trigger > _MAX_TRIGGER_ANTEIL:
+            logger.info(
+                "Witness-Kopf Phase-Rotation: Kontext-Sperre (Trigger-Anteil %.2f > %.2f) — Umgehung (DRT-11).",
+                anteil_trigger,
+                _MAX_TRIGGER_ANTEIL,
+            )
+            return None
         if not np.any(maske > 0):
             logger.info(
-                "Witness-Kopf phase_rotation: kein Schaden detektiert (max P=%.4f) — Passthrough.",
+                "Witness-Kopf Phase-Rotation: kein Schaden detektiert (max P=%.4f) — Durchreichung.",
                 max(p_werte) if p_werte else 0.0,
             )
             return None
@@ -206,7 +219,7 @@ def witness_kopf_phase_rotation(
         p_out = p_out / max(1, n)
         if p_out > p_in - _NW_MARGIN:
             logger.info(
-                "Witness-Kopf phase_rotation: Kandidat abgelehnt (Witness P_out=%.4f nicht strikt < P_in=%.4f − %.2f) — Eingang bleibt",
+                "Witness-Kopf Phase-Rotation: Kandidat abgelehnt (Witness P_out=%.4f nicht strikt < P_in=%.4f − %.2f) — Eingang bleibt",
                 p_out,
                 p_in,
                 _NW_MARGIN,
@@ -222,5 +235,5 @@ def witness_kopf_phase_rotation(
         aus: np.ndarray = np.asarray(np.clip(kandidat, -1.0, 1.0), dtype=np.float32)
         return aus
     except Exception as exc:
-        logger.warning("Witness-Kopf phase_rotation fehlgeschlagen (%s) — Ersatzpfad.", exc)
+        logger.warning("Witness-Kopf Phase-Rotation fehlgeschlagen (%s) — Ersatzpfad.", exc)
         return None

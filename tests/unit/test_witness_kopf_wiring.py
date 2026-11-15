@@ -27,6 +27,16 @@ def test_flag_default_aus() -> None:
     assert music_model_flags.use_witness_kopf_transport_bump is False
 
 
+def test_drt11_kontext_sperre_in_allen_modulen() -> None:
+    """DRT-11: jedes DSP-Modul hat die Trigger-Anteil-Sperre (Befund 2026-11-15)."""
+    import glob
+
+    for pfad in glob.glob(str(Path(__file__).resolve().parents[2] / "backend" / "core" / "dsp" / "witness_kopf_*.py")):
+        q = Path(pfad).read_text(encoding="utf-8")
+        assert "_MAX_TRIGGER_ANTEIL" in q, f"{Path(pfad).name} ohne DRT-11-Sperre"
+        assert "anteil_trigger" in q and "Kontext-Sperre" in q, f"{Path(pfad).name} ohne Trigger-Anteil-Logik"
+
+
 def test_lesestelle_phase_07_rest_koepfe_verdrahtet() -> None:
     """Ausrollung: Phase 07 konsumiert auch die clicks- und compression-Flags."""
     phase = (Path(__file__).resolve().parents[2] / "backend" / "core" / "phases" / "phase_07_declipper.py").read_text(

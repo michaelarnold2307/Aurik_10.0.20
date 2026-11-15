@@ -133,6 +133,17 @@ Bestands-Pipeline OHNE Kanäle 4/4 besser; MIT Kanälen 0/4. Vor jeder Aktivieru
 braucht der Kanal eine Kontext-Sperre (nur auf detektiertem k398-Material feuern,
 sonst Bypass) — die Sperre ist Teil der Verdrahtung, nicht des Trainings.
 
+## DRT-12 — Kontroll-Bedingung (Ablation ohne Kanal) im Ganz-Titel-Beleg
+
+Der DRT-8-Ganz-Titel-Beleg MUSS die Kontroll-Bedingung enthalten: dieselben
+Paare einmal MIT und einmal OHNE den Kandidaten (Bestands-Pipeline), sonst ist
+„besser/schlechter" nicht zurechenbar. Ablations-Befund 2026-11-15: Der
+12-Paare-Lauf MIT den 10 Kanälen zeigte 0/12 — erst die Kontrolle OHNE Kanäle
+(4/4 + 2/4 besser) offenbarte, dass die Kanäle die Bestands-Reparatur
+blockieren. Ohne Kontrolle wäre die Verschlechterung unsichtbar geblieben.
+Kontroll-Delta-Pflicht: Kandidat aktiviert nur, wenn MIT-Kanal ≥ OHNE-Kanal
+(kein Paar darf durch den Kanal netto schlechter werden als die Bestands-Pipeline).
+
 ## Normative Einordnung
 
 Diese Spec konkretisiert für das Reparatur-Training: §G5 (copilot-instructions.md)

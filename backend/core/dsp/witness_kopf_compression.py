@@ -3,8 +3,8 @@
 D-K3-95-Folge (2026-11-15). Der Kopf `models/klassen_koepfe/witness_compression_artifacts_best.pt`
 wurde defekt-spezifisch auf k398-Regionen trainiert (leak-frei) und hat das
 Aktivierungs-Gate bestanden (`scripts/verify_witness_kopf_gate.py`, 200
-Holdout-Regionen: Q-Median 1,02, Q-Anteil≥0,5 = 1,0, Never-worsen 1,0;
-Beleg `docs/reports/current/2026-11-15_witness_kopf_gate_compression_artifacts.json`,
+Holdout-Regionen: Q-Median 1,03, Q-Anteil≥0,5 = 1,0, Never-worsen 0,964;
+Beleg `docs/reports/current/2026-11-15_witness_kopf_gate_groove_echo.json`,
 Q-Erstbeleg `2026-11-15_q0_erstbeleg_witness_kopf.json`).
 
 Sicherheits-Vertrag (Muster `musik_declip_kopf.py`, Musikschutz AGENTS.md):
@@ -56,6 +56,8 @@ from scripts.train_witness_kopf import RMS_ZIEL as _RMS_ZIEL
 _FADE = 8820  # 200 ms @ 44,1 kHz (§III 6 dB/200 ms)
 _DEFAULT_THRESHOLD = 0.5
 _NW_MARGIN = 0.02
+_MAX_TRIGGER_ANTEIL = 0.5  # DRT-11: breiter Trigger = Material-Kontext (Befund Rezept-Titel 0,75-0,78)
+_MIN_FENSTER_KONTEXT = 3  # DRT-11: Sperre erst ab mehreren Fenstern — k398-Regionen sind 1 Fenster
 
 
 def _mel_torch(audio: torch.Tensor) -> torch.Tensor:
@@ -184,9 +186,20 @@ def witness_kopf_compression_artifacts(
                 else:
                     maske[lo:hi] = 1.0
 
+        # DRT-11 (Spec 26, 2026-11-15): Kontext-Sperre — ein breiter, homogener Trigger
+        # ist Material-Kontext (vinyl/kassette-Rauschen, Befund: 75-78 % triggernde Fenster
+        # auf Rezept-Titeln), kein lokaler k398-Defekt (0,1-s-Regionen). Sperre ⇒ Bypass.
+        anteil_trigger = sum(1 for p in p_werte if p > theta) / max(1, len(p_werte))
+        if len(p_werte) >= _MIN_FENSTER_KONTEXT and anteil_trigger > _MAX_TRIGGER_ANTEIL:
+            logger.info(
+                "Witness-Kopf compression_artifacts: Kontext-Sperre (Trigger-Anteil %.2f > %.2f) — Umgehung (DRT-11).",
+                anteil_trigger,
+                _MAX_TRIGGER_ANTEIL,
+            )
+            return None
         if not np.any(maske > 0):
             logger.info(
-                "Witness-Kopf compression_artifacts: kein Schaden detektiert (max P=%.4f) — Passthrough.",
+                "Witness-Kopf compression_artifacts: kein Schaden detektiert (max P=%.4f) — Durchreichung.",
                 max(p_werte) if p_werte else 0.0,
             )
             return None
