@@ -188,15 +188,20 @@ def _lade_split(regionen: list[tuple[str, Path, Path]], holdout_titel: str, max_
         regionen = regionen[:max_regionen]
     train = [r for r in regionen if r[0] != holdout_titel]
     hold = [r for r in regionen if r[0] == holdout_titel]
-    xs, xc = [], []
+    xs, xc, xc_id = [], [], []
     for _, s, c in train:
         a, b = _fenster_mitte(_lade_mono(str(s))), _fenster_mitte(_lade_mono(str(c)))
         if a is None or b is None:
             continue
         rms = float(np.sqrt(np.mean(a**2)) + 1e-8)
         xs.append((a / rms * RMS_ZIEL).astype(np.float32))
+        # Gewinn-Arm-Ziel: clean mit SCHADEN-RMS (Ausgabe wird so denormalisiert).
         xc.append((b / rms * RMS_ZIEL).astype(np.float32))
-    hs, hc = [], []
+        # DRT-4-Parität (Befund 2026-11-15, Runde 2): der Identitäts-Anker braucht clean mit
+        # der CLEAN-EIGENEN RMS — das Gate normalisiert clean-Regionen mit ihrer eigenen RMS.
+        rms_c = float(np.sqrt(np.mean(b**2)) + 1e-8)
+        xc_id.append((b / rms_c * RMS_ZIEL).astype(np.float32))
+    hs, hc, hc_id = [], [], []
     for _, s, c in hold:
         a, b = _fenster_mitte(_lade_mono(str(s))), _fenster_mitte(_lade_mono(str(c)))
         if a is None or b is None:
@@ -204,7 +209,9 @@ def _lade_split(regionen: list[tuple[str, Path, Path]], holdout_titel: str, max_
         rms = float(np.sqrt(np.mean(a**2)) + 1e-8)
         hs.append((a / rms * RMS_ZIEL).astype(np.float32))
         hc.append((b / rms * RMS_ZIEL).astype(np.float32))
-    return xs, xc, hs, hc
+        rms_c = float(np.sqrt(np.mean(b**2)) + 1e-8)
+        hc_id.append((b / rms_c * RMS_ZIEL).astype(np.float32))
+    return xs, xc, xc_id, hs, hc, hc_id
 
 
 def _stack(x: list[np.ndarray]) -> torch.Tensor:
@@ -225,13 +232,16 @@ def trainiere(
     lam: float,
     device: str,
     max_regionen: int = 0,
+    lam_id: float = 0.5,
 ) -> dict[str, Any]:
     regionen, holdout_titel, n_gesamt = _baue_regionen(klasse)
-    xs, xc, hs, hc = _lade_split(regionen, holdout_titel, max_regionen)
+    xs, xc, xc_id, hs, hc, hc_id = _lade_split(regionen, holdout_titel, max_regionen)
     if not xs:
         return {"klasse": klasse, "fehler": "keine verwertbaren Regionen"}
     Xs_t, Xc_t = _stack(xs), _stack(xc)
+    Xc_id_t = _stack(xc_id)
     Hs_t, Hc_t = _stack(hs), _stack(hc)
+    Hc_id_t = _stack(hc_id)
 
     w_ckpt = _ROOT / "models" / f"witness_{klasse}" / "witness.pt"
     if not w_ckpt.is_file():
@@ -267,21 +277,31 @@ def trainiere(
             s_b, c_b = Xs_t[idx].to(device), Xc_t[idx].to(device)
             out = model(s_b)
             l1 = nn.functional.l1_loss(out, c_b)
+            # Identitäts-Anker (D-K3-95-Nacharbeiten 2026-11-15): der Kopf muss auf
+            # clean-Regionen identisch bleiben — das ist der Never-worsen-Schutz-Arm
+            # als Loss-Ziel. Die gate-verfehlten Kanäle überrestaurierten auf clean,
+            # weil das Training nie clean→clean gesehen hatte (§V7 (copilot-instructions.md):
+            # Ursache statt Symptom — nicht die Gate-Schwelle, das Training war falsch).
+            out_id = model(Xc_id_t[idx].to(device))
+            l1_id = nn.functional.l1_loss(out_id, Xc_id_t[idx].to(device))
             mel_out = _mel_torch(out.reshape(len(out), -1))
             pen = torch.sigmoid(witness(mel_out[:, None, :, :])).mean()
-            loss = l1 + lam * pen
+            loss = l1 + lam * pen + lam_id * l1_id
             opt.zero_grad()
             loss.backward()
             opt.step()
             total += float(loss.item())
-        # Holdout-Score (Gate-Ziel) für die Modellauswahl
+        # Holdout-Score (Gate-Ziel) für die Modellauswahl — inklusive Identitäts-Anker:
+        # die Auswahl bewertet Gewinn- UND Schutz-Arm zusammen wie das Gate.
         model.eval()
         with torch.no_grad():
             out_h = model(Hs_t.to(device))
             l1_h = nn.functional.l1_loss(out_h, Hc_t.to(device)).item()
+            out_h_id = model(Hc_id_t.to(device))
+            l1_id_h = nn.functional.l1_loss(out_h_id, Hc_id_t.to(device)).item()
             mel_h = _mel_torch(out_h.reshape(len(out_h), -1))
             pen_h = float(torch.sigmoid(witness(mel_h[:, None, :, :])).mean())
-        score_h = l1_h + lam * pen_h
+        score_h = l1_h + lam * pen_h + lam_id * l1_id_h
         if score_h < best["score"]:
             best = {"score": score_h, "ep": ep, "state": {k: v.cpu().clone() for k, v in model.state_dict().items()}}
         if (ep + 1) % max(1, epochen // 4) == 0 or ep == epochen - 1:
@@ -315,6 +335,7 @@ def trainiere(
         "hidden": hidden,
         "stufen": stufen,
         "lambda_witness": lam,
+        "lambda_id": lam_id,
         "n_regionen_gesamt": n_gesamt,
         "n_train": len(xs),
         "n_holdout": len(hs),
@@ -344,11 +365,21 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--hidden", type=int, default=64)
     ap.add_argument("--stufen", type=int, default=4)
     ap.add_argument("--lambda-witness", type=float, default=0.1)
+    ap.add_argument(
+        "--lambda-id", type=float, default=0.5, help="Identitäts-Anker-Gewicht (Never-worsen-Schutz im Loss)"
+    )
     ap.add_argument("--device", default="cpu")
     ap.add_argument("--max-regionen", type=int, default=0, help=">0 = Smoke (begrenzte Regionen)")
     args = ap.parse_args(argv)
     report = trainiere(
-        args.klasse, args.epochen, args.hidden, args.stufen, args.lambda_witness, args.device, args.max_regionen
+        args.klasse,
+        args.epochen,
+        args.hidden,
+        args.stufen,
+        args.lambda_witness,
+        args.device,
+        args.max_regionen,
+        args.lambda_id,
     )
     print(json.dumps(report, indent=2, ensure_ascii=False))
     return 0

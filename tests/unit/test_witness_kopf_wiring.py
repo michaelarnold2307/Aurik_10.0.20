@@ -17,6 +17,31 @@ from backend.core import music_model_flags
 def test_flag_default_aus() -> None:
     assert music_model_flags.use_witness_kopf_groove_echo is False
     assert music_model_flags.use_witness_kopf_tape_head_level_dip is False
+    assert music_model_flags.use_witness_kopf_clicks is False
+    assert music_model_flags.use_witness_kopf_compression_artifacts is False
+    assert music_model_flags.use_witness_kopf_tape_head_clog is False
+    assert music_model_flags.use_witness_kopf_phase_rotation is False
+    assert music_model_flags.use_witness_kopf_sibilance is False
+    assert music_model_flags.use_witness_kopf_sticky_shed_residue is False
+    assert music_model_flags.use_witness_kopf_jitter_artifacts is False
+
+
+def test_lesestelle_phase_07_rest_koepfe_verdrahtet() -> None:
+    """Ausrollung: Phase 07 konsumiert auch die clicks- und compression-Flags."""
+    phase = (Path(__file__).resolve().parents[2] / "backend" / "core" / "phases" / "phase_07_declipper.py").read_text(
+        encoding="utf-8"
+    )
+    assert "use_witness_kopf_clicks" in phase
+    assert "use_witness_kopf_compression_artifacts" in phase
+    assert '"witness_kopf_clicks"' in phase
+    assert '"witness_kopf_compression"' in phase
+    assert "witness_kopf_clicks_used" in phase
+    assert "witness_kopf_compression_used" in phase
+    assert "witness_kopf_tape_head_clog_used" in phase
+    assert "witness_kopf_phase_rotation_used" in phase
+    assert "witness_kopf_sibilance_used" in phase
+    assert "witness_kopf_sticky_shed_used" in phase
+    assert "witness_kopf_jitter_used" in phase
 
 
 def test_lesestelle_phase_07_tape_head_verdrahtet() -> None:

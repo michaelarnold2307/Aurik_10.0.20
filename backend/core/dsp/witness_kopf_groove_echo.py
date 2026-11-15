@@ -36,7 +36,7 @@ import numpy as np
 
 logger = logging.getLogger(__name__)
 
-_ROOT = Path(__file__).resolve().parents[2]
+_ROOT = Path(__file__).resolve().parents[3]
 if str(_ROOT) not in sys.path:
     sys.path.insert(0, str(_ROOT))
 
@@ -145,6 +145,12 @@ def witness_kopf_groove_echo(
         if sr != _TARGET_SR:
             g = int(np.gcd(sr, _TARGET_SR))
             x = resample_poly(x.astype(np.float64), _TARGET_SR // g, sr // g).astype(np.float32)
+        laenge_in = len(x)
+        # Training-Parität (§G5 (copilot-instructions.md)): Trainer/Gate padden kurze
+        # k398-Regionen (0,1 s) mit Nullen auf 1 s — ohne dieses Pad sieht das Witness
+        # in der Produktion eine andere Repräsentation (Befund 2026-11-15: P=0,0 statt 0,92).
+        if len(x) < _FENSTER:
+            x = np.pad(x, (0, _FENSTER - len(x)))
 
         ckpt = torch.load(str(_KOPF_CKPT), map_location="cpu", weights_only=False)
         kopf = WitnessKopf(int(ckpt.get("hidden", 64)), int(ckpt.get("stufen", 4)))
@@ -207,6 +213,9 @@ def witness_kopf_groove_echo(
             )
             return None
 
+        # Rückgabe auf die Eingangslänge schneiden — das 1-s-Pad ist nur
+        # Inferenz-Parität, kein Ausgabe-Artefakt (Phase 07 erwartet dieselbe Shape).
+        kandidat = kandidat[:laenge_in]
         if sr != _TARGET_SR:
             g = int(np.gcd(sr, _TARGET_SR))
             kandidat = resample_poly(kandidat.astype(np.float64), sr // g, _TARGET_SR // g)[: len(audio)]

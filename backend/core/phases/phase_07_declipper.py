@@ -598,6 +598,101 @@ class DeclipperPhase(PhaseInterface):
                     _wt_exc,
                 )
 
+        # D-K3-95-Ausrollung (2026-11-15): weitere gate-bestandene Witness-Köpfe
+        # (clicks q_median 1,19/never_worsen 1,0; compression_artifacts q_median
+        # 1,02/never_worsen 1,0). Baugleich zu den groove_echo/tape_head-Blöcken;
+        # Konsum NUR hinter dem jeweiligen Flag (Default AUS, §4 für den Flip).
+        _witness_kopf_rest_used: dict[str, bool] = {}
+        from backend.core.music_model_flags import (  # pylint: disable=import-outside-toplevel
+            use_witness_kopf_clicks,
+            use_witness_kopf_compression_artifacts,
+            use_witness_kopf_jitter_artifacts,
+            use_witness_kopf_phase_rotation,
+            use_witness_kopf_sibilance,
+            use_witness_kopf_sticky_shed_residue,
+            use_witness_kopf_tape_head_clog,
+        )
+
+        for _wk_name, _wk_flag, _wk_modul, _wk_funktion in (
+            ("clicks", use_witness_kopf_clicks, "witness_kopf_clicks", "witness_kopf_clicks"),
+            (
+                "compression_artifacts",
+                use_witness_kopf_compression_artifacts,
+                "witness_kopf_compression",
+                "witness_kopf_compression_artifacts",
+            ),
+            (
+                "tape_head_clog",
+                use_witness_kopf_tape_head_clog,
+                "witness_kopf_tape_head_clog",
+                "witness_kopf_tape_head_clog",
+            ),
+            (
+                "phase_rotation",
+                use_witness_kopf_phase_rotation,
+                "witness_kopf_phase_rotation",
+                "witness_kopf_phase_rotation",
+            ),
+            ("sibilance", use_witness_kopf_sibilance, "witness_kopf_sibilance", "witness_kopf_sibilance"),
+            (
+                "sticky_shed_residue",
+                use_witness_kopf_sticky_shed_residue,
+                "witness_kopf_sticky_shed",
+                "witness_kopf_sticky_shed_residue",
+            ),
+            (
+                "jitter_artifacts",
+                use_witness_kopf_jitter_artifacts,
+                "witness_kopf_jitter",
+                "witness_kopf_jitter_artifacts",
+            ),
+        ):
+            _witness_kopf_rest_used[_wk_name] = False
+            if not _wk_flag:
+                continue
+            try:
+                import importlib
+
+                _wk_dsp = importlib.import_module(f"backend.core.dsp.{_wk_modul}")
+                _wk_fn = getattr(_wk_dsp, _wk_funktion)
+                _wr_out = np.asarray(audio_out, dtype=np.float64).copy()
+                _wr_acc = 0
+                for _ch in range(audio_in.shape[0]):
+                    _wr_cand = _wk_fn(audio_in[_ch], sample_rate)
+                    if _wr_cand is None:
+                        continue  # §V6-Warnung erfolgte im Modul
+                    _wr_cand = np.asarray(_wr_cand, dtype=np.float64)
+                    if _wr_cand.shape != audio_in[_ch].shape or not bool(np.isfinite(_wr_cand).all()):
+                        logger.warning(
+                            "Verarbeitungsschritt 07 Witness-Kopf %s: ungültiger Kandidat "
+                            "(Shape/NaN) — bleibt (§V6 (copilot-instructions.md))",
+                            _wk_name,
+                        )
+                        continue
+                    _pin = _harmonic_distortion_proxy(audio_in[_ch], sample_rate)
+                    _pinc = _harmonic_distortion_proxy(_wr_out[_ch], sample_rate)
+                    _pout = _harmonic_distortion_proxy(_wr_cand, sample_rate)
+                    if _pout < _pin and _pout < _pinc:
+                        _wr_out[_ch] = _wr_cand
+                        _wr_acc += 1
+                if _wr_acc > 0:
+                    audio_out = _wr_out
+                    _witness_kopf_rest_used[_wk_name] = True
+                    logger.info(
+                        "Verarbeitungsschritt 07 Witness-Kopf %s: %d/%d Kanäle übernommen "
+                        "(Witness-Trigger + Harmonik-Proxy sank gegen Input und Amtsinhaber)",
+                        _wk_name,
+                        _wr_acc,
+                        audio_in.shape[0],
+                    )
+            except Exception as _wr_exc:
+                logger.warning(
+                    "Verarbeitungsschritt 07 Witness-Kopf %s fehlgeschlagen (%s) — "
+                    "Kaskade bleibt (§V6 (copilot-instructions.md))",
+                    _wk_name,
+                    _wr_exc,
+                )
+
         # §DECLIPPER_SOTA_PLAN.md Slice B/C (2026-09-12): A-SPADE-ONNX als
         # erster neuronaler Zweig für schwere Fälle — Never-worsen über den
         # Harmonik-Proxy; ohne Modell oder ohne Gewinn bleibt CQT-Diff.
@@ -760,6 +855,24 @@ class DeclipperPhase(PhaseInterface):
             _metrics07["witness_kopf_used"] = bool(_witness_kopf_used)
         if use_witness_kopf_tape_head_level_dip:
             _metrics07["witness_kopf_tape_used"] = bool(_witness_kopf_tape_used)
+        if use_witness_kopf_clicks:
+            _metrics07["witness_kopf_clicks_used"] = bool(_witness_kopf_rest_used.get("clicks", False))
+        if use_witness_kopf_compression_artifacts:
+            _metrics07["witness_kopf_compression_used"] = bool(
+                _witness_kopf_rest_used.get("compression_artifacts", False)
+            )
+        if use_witness_kopf_tape_head_clog:
+            _metrics07["witness_kopf_tape_head_clog_used"] = bool(_witness_kopf_rest_used.get("tape_head_clog", False))
+        if use_witness_kopf_phase_rotation:
+            _metrics07["witness_kopf_phase_rotation_used"] = bool(_witness_kopf_rest_used.get("phase_rotation", False))
+        if use_witness_kopf_sibilance:
+            _metrics07["witness_kopf_sibilance_used"] = bool(_witness_kopf_rest_used.get("sibilance", False))
+        if use_witness_kopf_sticky_shed_residue:
+            _metrics07["witness_kopf_sticky_shed_used"] = bool(
+                _witness_kopf_rest_used.get("sticky_shed_residue", False)
+            )
+        if use_witness_kopf_jitter_artifacts:
+            _metrics07["witness_kopf_jitter_used"] = bool(_witness_kopf_rest_used.get("jitter_artifacts", False))
 
         return PhaseResult(
             success=True,

@@ -333,6 +333,23 @@ _WIRING_ALLOWLIST: dict[str, str] = {
         "Snapshot-Archiv der Kandidaten-Archivierung (Pfeiler 3, §9/5 SOTA-Urteil D-K0-4 2026-10-28) — "
         "Kopien deployter Artefakte zur reversiblen Aufbewahrung; kein Laufzeitpfad (Muster _archive_20260920)."
     ),
+    "witness_jitter_artifacts": (
+        "Witness-Checkpoint der gate-verfehlten Klasse jitter_artifacts (D-K3-95-Ausrollung 2026-11-15: "
+        "never_worsen 0,90 < 0,95 — Schutz-Arm verfehlt). Bewusst-verwaist: kein Kopf-Checkpoint in "
+        "models/klassen_koepfe wird verdrahtet, solange das Gate nicht bestanden ist; Beleg "
+        "docs/reports/current/2026-11-15_q0_erstbeleg_witness_kopf_jitter_artifacts.json. "
+        "Wiederverwendbar für die Nacharbeit (schärferer Trigger)."
+    ),
+    "witness_phase_rotation": (
+        "Witness-Checkpoint der Klasse phase_rotation (D-K3-95-Nacharbeit mit Identitaets-Anker 2026-11-15): "
+        "Gate BESTANDEN (q 1,06, never_worsen 0,979) — Produktionskonsument witness_kopf_phase_rotation in "
+        "phase_07 hinter music_model_flags.use_witness_kopf_phase_rotation (Default AUS, §4 fuer den Flip)."
+    ),
+    "witness_tape_head_clog": (
+        "Witness-Checkpoint der Klasse tape_head_clog (D-K3-95-Nacharbeit mit Identitaets-Anker 2026-11-15): "
+        "Gate BESTANDEN (q 1,55, never_worsen 1,0) — Produktionskonsument witness_kopf_tape_head_clog in "
+        "phase_07 hinter music_model_flags.use_witness_kopf_tape_head_clog (Default AUS, §4 fuer den Flip)."
+    ),
     "applade": (
         "port/ ist ein Zwilling von models/aspade/aspade_declipper.onnx (identischer SHA 8161ed93…) — "
         "das Musik-Finetune ist bereits über A-SPADE in phase_07 PRODUKTIV; nur applade_dnn.onnx (Basis) ist verwaist"

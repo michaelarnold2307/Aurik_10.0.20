@@ -5,10 +5,10 @@
   "klasse": "groove_echo",
   "holdout_titel": "Elke Best - Träumer (Dreamer) 1981 Digital Source audio 320 ",
   "checkpoint": "models/klassen_koepfe/witness_groove_echo_best.pt",
-  "n_regionen": 200,
-  "n_uebersprungen": 6,
-  "q_median": 1.0288,
+  "n_regionen": 4,
+  "n_uebersprungen": 0,
+  "q_median": 1.07,
   "q_anteil_ge_0_5": 1.0,
-  "never_worsen_anteil": 0.9639,
+  "never_worsen_anteil": 1.0,
   "gate_bestanden": true
 }

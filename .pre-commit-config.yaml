@@ -400,6 +400,13 @@ repos:
         language: system
         pass_filenames: true
 
+      # Spec 26 — Defekt-Reparatur-Trainingsvertrag (DRT-1..DRT-6), fail-closed
+      - id: aurik-drt-vertrag
+        name: "Defekt-Reparatur-Trainingsvertrag (Spec 26)"
+        entry: .venv_aurik/bin/python scripts/compliance/drt_contract_gate.py
+        language: system
+        pass_filenames: false
+
       # §G188–§G190 (GEBOTE.md) Wirkungs-Kalibrierung: blockierende
       # Begrenzungen bzw. nicht-selbstberechenbare Intensitäten MELDEN
       - id: aurik-g188-wirkungskalibrierung

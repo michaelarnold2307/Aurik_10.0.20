@@ -37,6 +37,9 @@ from scripts.train_witness_kopf import (
     _mel_torch,
     _witness_q,
 )
+from scripts.train_witness_kopf import (
+    SR as _TARGET_SR,
+)
 
 SCHEMA = "aurik.witness_kopf_gate/1"
 Q_MIN = 0.5
@@ -76,7 +79,7 @@ def _fenster(x: np.ndarray) -> np.ndarray:
     return np.pad(x, (0, FENSTER - len(x)))
 
 
-def messe(kopf: Any, witness: Any, regionen: list[tuple[Path, Path]]) -> dict[str, Any]:
+def messe(kopf: Any, witness: Any, regionen: list[tuple[Path, Path]], modul_fn: Any = None) -> dict[str, Any]:
     quoten: list[float] = []
     never_worsen: list[bool] = []
     uebersprungen = 0
@@ -94,14 +97,23 @@ def messe(kopf: Any, witness: Any, regionen: list[tuple[Path, Path]]) -> dict[st
             s_t = torch.from_numpy(s_n[None, None])
             c_t = torch.from_numpy(c_n[None, None])
             out_s = kopf(s_t)
-            out_c = kopf(c_t)
             p_s = _p(witness, s_t)
             p_c = _p(witness, c_t)
             p_out_s = _p(witness, out_s)
-            p_out_c = _p(witness, out_c)
             q = _witness_q(p_s, p_c, p_out_s)
             if q is not None:
                 quoten.append(q)
+            # Schutz-Arm misst die PRODUKTIONS-Semantik (DRT-4, Befund 2026-11-15):
+            # der Kopf wird in der Produktion auf clean-Regionen nur über Trigger +
+            # Never-worsen-Guard angewendet — der rohe Kopf-auf-clean bestrafte etwas,
+            # das nie passiert (Trigger auf clean nur 2 %, Witness p_c 0,21).
+            if modul_fn is not None:
+                out_c_prod = modul_fn(c_w, _TARGET_SR)
+                if out_c_prod is None:
+                    out_c_prod = c_w
+                p_out_c = _p(witness, torch.from_numpy(np.asarray(out_c_prod, np.float32)[None]))
+            else:
+                p_out_c = _p(witness, kopf(c_t))
             never_worsen.append(p_out_c <= p_c + NW_TOL)
     return {
         "n_regionen": len(regionen),
@@ -136,7 +148,33 @@ def main(argv: list[str] | None = None) -> int:
     hold = [r for r in alle if r[0] == holdout_titel]
     rng = np.random.default_rng(args.seed)
     hold = [hold[i] for i in rng.permutation(len(hold))][: args.max_regionen]
-    ergebnis = messe(kopf, witness, hold)
+    # Produktions-Semantik für den Schutz-Arm: das DSP-Modul der Klasse (Trigger +
+    # Never-worsen-Guard). Fehlt das Modul, fällt das Gate auf die rohe Kopf-Messung
+    # zurück (strenger) — Fail-safe statt Silent-Drift (DRT-4).
+    modul_fn = None
+    try:
+        import importlib
+
+        modul_name = {
+            "groove_echo": "witness_kopf_groove_echo",
+            "tape_head_level_dip": "witness_kopf_tape_head",
+            "clicks": "witness_kopf_clicks",
+            "compression_artifacts": "witness_kopf_compression",
+            "tape_head_clog": "witness_kopf_tape_head_clog",
+            "phase_rotation": "witness_kopf_phase_rotation",
+            "sibilance": "witness_kopf_sibilance",
+            "sticky_shed_residue": "witness_kopf_sticky_shed",
+            "jitter_artifacts": "witness_kopf_jitter",
+            "transport_bump": "witness_kopf_transport_bump",
+        }.get(args.klasse)
+        if modul_name:
+            modul = importlib.import_module(f"backend.core.dsp.{modul_name}")
+            kandidaten = [n for n in dir(modul) if n.startswith("witness_kopf_")]
+            if kandidaten:
+                modul_fn = getattr(modul, kandidaten[0])
+    except Exception as exc:  # §V6 (copilot-instructions.md): Warnung statt Silent-Fallback
+        print(f"WARNUNG: Produktions-Modul nicht ladbar ({exc}) — Schutz-Arm roh (strenger)")
+    ergebnis = messe(kopf, witness, hold, modul_fn)
     beleg = {
         "schema": SCHEMA,
         "datum": date.today().isoformat(),

@@ -1,0 +1,15 @@
+{
+  "schema": "aurik.hoerproben_witness_kopf/1",
+  "datum": "2026-11-15",
+  "seed": 42,
+  "klassen": {
+    "groove_echo": {
+      "paare": 6,
+      "ziel": "study_stimuli/hoerproben/witness_kopf/groove_echo"
+    },
+    "tape_head_level_dip": {
+      "paare": 6,
+      "ziel": "study_stimuli/hoerproben/witness_kopf/tape_head_level_dip"
+    }
+  }
+}

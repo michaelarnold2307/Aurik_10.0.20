@@ -7,8 +7,8 @@
   "checkpoint": "models/klassen_koepfe/witness_sticky_shed_residue_best.pt",
   "n_regionen": 200,
   "n_uebersprungen": 10,
-  "q_median": 0.9925,
+  "q_median": 0.9803,
   "q_anteil_ge_0_5": 1.0,
-  "never_worsen_anteil": 0.4895,
-  "gate_bestanden": false
+  "never_worsen_anteil": 1.0,
+  "gate_bestanden": true
 }

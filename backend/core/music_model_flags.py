@@ -101,6 +101,27 @@ use_witness_kopf_groove_echo: bool = False
 # never_worsen 1,0). Konsum in phase_07 (backend/core/dsp/witness_kopf_tape_head.py).
 # Default AUS = bit-identisches Bestandsverhalten; Flag-Flip NUR nach §4-Hör-Sign-off.
 use_witness_kopf_tape_head_level_dip: bool = False
+# Witness-Köpfe clicks + compression_artifacts (D-K3-95-Ausrollung, 2026-11-15):
+# gate-bestandene Reparatur-Köpfe (clicks q_median 1,19/never_worsen 1,0;
+# compression_artifacts q_median 1,02/never_worsen 1,0). Konsum in phase_07.
+# Default AUS = bit-identisches Bestandsverhalten; Flag-Flip NUR nach §4-Hör-Sign-off.
+use_witness_kopf_clicks: bool = False
+use_witness_kopf_compression_artifacts: bool = False
+# Witness-Köpfe tape_head_clog, phase_rotation, sibilance (D-K3-95-Nacharbeit mit
+# Identitäts-Anker, Spec 26 DRT-2, 2026-11-15): gate-bestanden (tape_head_clog
+# q 1,55/nw 1,0; phase_rotation q 1,06/nw 0,979; sibilance q 1,15/nw 0,960).
+# Konsum in phase_07. Default AUS; Flag-Flip NUR nach §4-Hör-Sign-off.
+use_witness_kopf_tape_head_clog: bool = False
+use_witness_kopf_phase_rotation: bool = False
+use_witness_kopf_sibilance: bool = False
+# Witness-Kopf sticky_shed_residue (D-K3-95-Nacharbeit Runde 3, 2026-11-15): gate-bestanden
+# mit Produktions-Semantik-Schutz-Arm (q 0,98, never_worsen 1,0). Konsum in phase_07.
+# Default AUS; Flag-Flip NUR nach §4-Hör-Sign-off.
+use_witness_kopf_sticky_shed_residue: bool = False
+# Witness-Kopf jitter_artifacts (D-K3-95-Nacharbeit Runde 4, 2026-11-15): gate-bestanden
+# mit Produktions-Semantik-Schutz-Arm (q 0,57, never_worsen 1,0). Konsum in phase_07.
+# Default AUS; Flag-Flip NUR nach §4-Hör-Sign-off.
+use_witness_kopf_jitter_artifacts: bool = False
 # (MediumDetector.detect, Roh-Aufruf) statt 9 handgebaute Skalar-Features/Gauss-Mixture. Default AUS =
 # bisheriges Verhalten. Gelernte Spektrogramm-Repraesentation: 95.3% vs. 59-63% (gemessen). Flag-Flip
 # offen — nur nach §4-Verfahren (scripts/flag_freigabe.py: Verdikt → Register-Buchung → Flag-Flip → Commit).
