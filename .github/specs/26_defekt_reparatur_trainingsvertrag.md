@@ -123,6 +123,16 @@ niemals eine Schwellwert- oder Mess-Anpassung. Befund 2026-11-15: Jets-vinyl
 defektlast −0,203 bei musik_mos −0,551 — die Regionen-Gates (Witness-Q) sehen
 diesen Wohlklang-Verlust nicht; erst die Ganz-Titel-Zwei-Metrik-Messung deckt ihn auf.
 
+## DRT-11 — Trigger-Kontext-Parität (Sperre gegen Fremd-Kontext-Fehltrigger)
+
+Ein Reparatur-Kanal darf NUR auf Material feuern, dessen Kontext seinem
+Trainings-Kontext entspricht. Die Witness-Köpfe sind auf k398-Regionen trainiert —
+auf Rezept-Material (vinyl/kassette/clipping/mp3_128) triggern sie falsch und
+blockieren die Bestands-Reparatur. Ablations-Befund 2026-11-15 (Boogie):
+Bestands-Pipeline OHNE Kanäle 4/4 besser; MIT Kanälen 0/4. Vor jeder Aktivierung
+braucht der Kanal eine Kontext-Sperre (nur auf detektiertem k398-Material feuern,
+sonst Bypass) — die Sperre ist Teil der Verdrahtung, nicht des Trainings.
+
 ## Normative Einordnung
 
 Diese Spec konkretisiert für das Reparatur-Training: §G5 (copilot-instructions.md)

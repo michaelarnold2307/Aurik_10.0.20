@@ -1,0 +1,11 @@
+{
+  "schema": "aurik.schadensbewertung/1",
+  "datum": "2026-11-15",
+  "lauf": "ablations_kontrolle_boogie",
+  "befund": "KONTROLLE (Bestands-Pipeline, OHNE die 10 Witness-Kopf-Kanäle) auf Boogie: 4/4 besser (vinyl -0,080/+0,081; kassette -0,079/+0,095; clipping -0,070/+0,119; mp3_128 -0,144/+0,127). MIT den 10 Kanälen aktiv: 0/4 — die Kanäle triggern auf Rezept-Material falsch und blockieren/verschlechtern die Bestands-Reparatur (vinyl/mp3 No-Op, kassette mos-negativ, clipping defektlast-positiv). URACHE: Trigger-Kontext-Lücke — die Witness-Trigger sind auf k398-Regionen trainiert, die Rezept-Titel (vinyl/kassette/clipping/mp3) sind ein anderer Kontext; der Trigger braucht eine Kontext-Sperre (nur auf detektiertem k398-Material feuern) — DRT-11-Kandidat. JETS-KONTROLLE (ohne Kanäle): vinyl -0,060/+0,101 BESSER, mp3_128 -0,008/+0,008 BESSER; MIT Kanälen: vinyl -0,203/-0,551 ÜBERRESTAURATION, mp3 No-Op, kassette doppelt schlechter (-0,139 vs -0,071). BESTAETIGT auf 2/2 Titeln: die 10 Kanäle verschlechtern die Bestands-Pipeline auf Rezept-Material — DRT-11 (Trigger-Kontext-Sperre) ist Voraussetzung jeder Aktivierung.",
+  "quellen": [
+    "/tmp/sinn_kontrolle/bewertung.json",
+    "study_stimuli/sinn_beweis_neu_v2/bewertung.json",
+    "/tmp/sinn_jets_kontrolle/bewertung.json"
+  ]
+}
