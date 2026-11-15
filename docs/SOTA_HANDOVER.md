@@ -1013,3 +1013,16 @@ ist frisch: `audit/uat_results_2026-11-15.json`, `latest.date=2026-11-15`,
 (120→1800 s, Generator 1200→3600 s), keine Qualitaetsschwelle. Kein Flag,
 keine Klangwirkung, kein GPU-Training. Beleg:
 `docs/reports/current/2026-11-15_uat_freshness_d_k3_13.md`.
+
+**Update 2026-11-15 (D-K3-88 geschlossen — GPU-Nachweis):** Die letzte offene
+Frage der Cantus-`fine_tune`-Zeile ist beantwortet: Der Kette-1-R4-Lauf
+`fine_tune-20261110T230105Z-b06a07` hielt mit `--batch-size 2 --grad-accum 4`
+auf der 24-GiB-Karte **30/30 Epochen** durch (`ergebnis=erfolgreich`,
+`exit_code=0`, `timed_out=false`, 20159,7 s, `final_val_loss=3.5380738750100136`,
+kein OOM; Manifest `docs/reports/current/train_job_c2_cantus_finetune.json`,
+SHA `93b313d6…`; Trainer-Report `models/cantus/train_report_fine_tune.json`,
+SHA `a6dff1c2…`). Die beiden Cantus-Vertragstests sind grün (2 passed); der
+allgemeine TF-GridNet-Akkumulationstest ist in der `.venv_aurik`-Umgebung rot
+und kein Cantus-Beleg. Kein Flag-Flip, kein Deploy, kein neues GPU-Training;
+Aktivierung bleibt §4/Hör-Instanz. Beleg:
+`docs/reports/current/2026-11-15_d_k3_88_gpu_nachweis.md`.
