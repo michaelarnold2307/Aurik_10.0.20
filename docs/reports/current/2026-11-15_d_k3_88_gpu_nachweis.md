@@ -49,7 +49,12 @@ realen Karte durch?
 
 `models/` ist per `.gitignore` nicht versioniert; der getrackte Beleg ist das
 Manifest, der Trainer-Report ist das lokale Ausgabeartefakt desselben Laufs.
-Beide stimmen in Phase, Befehl, Epochenzahl und Checkpoint-Hashes überein.
+Beide stimmen in Phase (`fine_tune`) und Epochenzahl (30/30) überein; der
+Befehl und die Checkpoint-Hashes stehen im Manifest, der Trainer-Report
+liefert `final_val_loss`, `device`, `preset` und `run_id`. Die beiden
+`run_id`-Werte unterscheiden sich um 15 s (`...230105Z-b06a07` vs.
+`...230120Z-596634`), weil der Job-Wrapper vor dem Trainer startet; die
+übrigen Werte sind konsistent.
 
 ### 2.3 Kette
 
