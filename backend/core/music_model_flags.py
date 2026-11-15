@@ -96,6 +96,11 @@ use_material_crnn: bool = (
 # phase_07_declipper (backend/core/dsp/witness_kopf_groove_echo.py, Witness-Trigger + Never-worsen
 # fail-closed). Default AUS = bit-identisches Bestandsverhalten; Flag-Flip NUR nach §4-Hör-Sign-off.
 use_witness_kopf_groove_echo: bool = False
+# Witness-Kopf tape_head_level_dip (D-K3-95-Folge, 2026-11-15): zweiter gate-bestandener
+# Reparatur-Kopf (verify_witness_kopf_gate.py: q_median 0,995 auf 200 Holdout-Regionen,
+# never_worsen 1,0). Konsum in phase_07 (backend/core/dsp/witness_kopf_tape_head.py).
+# Default AUS = bit-identisches Bestandsverhalten; Flag-Flip NUR nach §4-Hör-Sign-off.
+use_witness_kopf_tape_head_level_dip: bool = False
 # (MediumDetector.detect, Roh-Aufruf) statt 9 handgebaute Skalar-Features/Gauss-Mixture. Default AUS =
 # bisheriges Verhalten. Gelernte Spektrogramm-Repraesentation: 95.3% vs. 59-63% (gemessen). Flag-Flip
 # offen — nur nach §4-Verfahren (scripts/flag_freigabe.py: Verdikt → Register-Buchung → Flag-Flip → Commit).

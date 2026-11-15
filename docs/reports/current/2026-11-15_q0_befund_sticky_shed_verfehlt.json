@@ -1,0 +1,16 @@
+{
+  "schema": "aurik.q0_erstbeleg/1",
+  "datum": "2026-11-15",
+  "klasse": "sticky_shed_residue",
+  "kandidat": "witness_kopf",
+  "status": "gate_verfehlt",
+  "q_median_gate": 0.9925,
+  "q_anteil_ge_0_5_gate": 1.0,
+  "never_worsen_anteil_gate": 0.4895,
+  "n_gate_regionen": 200,
+  "befund": "Gewinn-Arm stark (Q 0,99 auf allen Regionen), aber Schutz-Arm verfehlt (never_worsen 0,49) — der Kopf verschlechtert auf clean-Regionen. Kanal bleibt report-only: keine Verdrahtung, kein Flag. Nacharbeit: schaerferer Trigger oder mehr Training.",
+  "quellen": [
+    "models/klassen_koepfe/witness_sticky_shed_residue_report.json",
+    "docs/reports/current/2026-11-15_witness_kopf_gate_sticky_shed_residue.json"
+  ]
+}

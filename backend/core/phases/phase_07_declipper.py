@@ -548,6 +548,56 @@ class DeclipperPhase(PhaseInterface):
                     _wk_exc,
                 )
 
+        # D-K3-95-Folge (2026-11-15): Witness-Kopf tape_head_level_dip — zweiter
+        # gate-bestandener Reparatur-Kopf (q_median 0,995, never_worsen 1,0).
+        # Baugleich zum groove_echo-Block; Konsum NUR hinter
+        # use_witness_kopf_tape_head_level_dip (Default AUS, §4 für den Flip).
+        _witness_kopf_tape_used = False
+        from backend.core.music_model_flags import (
+            use_witness_kopf_tape_head_level_dip,  # pylint: disable=import-outside-toplevel
+        )
+
+        if use_witness_kopf_tape_head_level_dip:
+            try:
+                from backend.core.dsp.witness_kopf_tape_head import (  # pylint: disable=import-outside-toplevel
+                    witness_kopf_tape_head_level_dip,
+                )
+
+                _wt_out = np.asarray(audio_out, dtype=np.float64).copy()
+                _wt_acc = 0
+                for _ch in range(audio_in.shape[0]):
+                    _wt_cand = witness_kopf_tape_head_level_dip(audio_in[_ch], sample_rate)
+                    if _wt_cand is None:
+                        continue  # §V6-Warnung erfolgte im Modul (Trigger ohne Gewinn / Fallback)
+                    _wt_cand = np.asarray(_wt_cand, dtype=np.float64)
+                    if _wt_cand.shape != audio_in[_ch].shape or not bool(np.isfinite(_wt_cand).all()):
+                        logger.warning(
+                            "Verarbeitungsschritt 07 Witness-Kopf tape_head: ungültiger Kandidat "
+                            "(Shape/NaN) — bleibt (§V6 (copilot-instructions.md))"
+                        )
+                        continue
+                    _pin = _harmonic_distortion_proxy(audio_in[_ch], sample_rate)
+                    _pinc = _harmonic_distortion_proxy(_wt_out[_ch], sample_rate)
+                    _pout = _harmonic_distortion_proxy(_wt_cand, sample_rate)
+                    if _pout < _pin and _pout < _pinc:
+                        _wt_out[_ch] = _wt_cand
+                        _wt_acc += 1
+                if _wt_acc > 0:
+                    audio_out = _wt_out
+                    _witness_kopf_tape_used = True
+                    logger.info(
+                        "Verarbeitungsschritt 07 Witness-Kopf tape_head_level_dip: %d/%d Kanäle übernommen "
+                        "(Witness-Trigger + Harmonik-Proxy sank gegen Input und Amtsinhaber)",
+                        _wt_acc,
+                        audio_in.shape[0],
+                    )
+            except Exception as _wt_exc:
+                logger.warning(
+                    "Verarbeitungsschritt 07 Witness-Kopf tape_head fehlgeschlagen (%s) — "
+                    "Kaskade bleibt (§V6 (copilot-instructions.md))",
+                    _wt_exc,
+                )
+
         # §DECLIPPER_SOTA_PLAN.md Slice B/C (2026-09-12): A-SPADE-ONNX als
         # erster neuronaler Zweig für schwere Fälle — Never-worsen über den
         # Harmonik-Proxy; ohne Modell oder ohne Gewinn bleibt CQT-Diff.
@@ -708,6 +758,8 @@ class DeclipperPhase(PhaseInterface):
             _metrics07["musik_kopf_used"] = bool(_musik_kopf_used)
         if use_witness_kopf_groove_echo:
             _metrics07["witness_kopf_used"] = bool(_witness_kopf_used)
+        if use_witness_kopf_tape_head_level_dip:
+            _metrics07["witness_kopf_tape_used"] = bool(_witness_kopf_tape_used)
 
         return PhaseResult(
             success=True,

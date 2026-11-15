@@ -16,6 +16,20 @@ from backend.core import music_model_flags
 
 def test_flag_default_aus() -> None:
     assert music_model_flags.use_witness_kopf_groove_echo is False
+    assert music_model_flags.use_witness_kopf_tape_head_level_dip is False
+
+
+def test_lesestelle_phase_07_tape_head_verdrahtet() -> None:
+    """Zweiter Kanal: Phase 07 konsumiert auch das tape_head-Flag und ruft das Modul."""
+    phase = (Path(__file__).resolve().parents[2] / "backend" / "core" / "phases" / "phase_07_declipper.py").read_text(
+        encoding="utf-8"
+    )
+    assert "use_witness_kopf_tape_head_level_dip" in phase
+    assert "witness_kopf_tape_head_level_dip(" in phase
+    assert "witness_kopf_tape_used" in phase
+    i_flag = phase.find("if use_witness_kopf_tape_head_level_dip:")
+    i_import = phase.find("from backend.core.dsp.witness_kopf_tape_head import")
+    assert i_flag > 0 and i_import > i_flag
 
 
 def test_lesestelle_phase_07_und_modul_verdrahtet() -> None:
