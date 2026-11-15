@@ -37,6 +37,20 @@ providers = ["CPUExecutionProvider"]
   (copilot-instructions.md)) + fail-closed-Fallback — Muster: bsr317/
   banquet/whisper/fcpe/muq_mulan_torch_rocm.py.
 
+## Repräsentations-Parität gelernter Modelle (2026-11-15, DRT-4-Verankerung)
+
+Die Eingabe-Repräsentation eines gelernnten Modells ist Teil des Modells:
+Training, Gate und Produktion MÜSSEN dieselben Parameter aus EINER Quelle
+nutzen — Mel-Transformation (n_fft/hop/n_mels, slaney-Norm, power_to_db mit
+10·log10 + amin-Clipping), Fenster-/Padding-Konvention (z. B. 1-s-Zero-Pad für
+0,1-s-Regionen) und RMS-Normalisierung (Ziel-RMS als Import statt Duplikat,
+§V25 (copilot-instructions.md)). Belege 2026-11-15: (a) ohne slaney + 10·log10
+sättigt das Witness (p_s ≈ p_c ≈ 0,94 statt Kontrast 0,66); (b) ohne
+1-s-Zero-Pad in der Produktion kollabiert der Trigger (P 0,0 statt 0,92);
+(c) ein Anker mit falscher RMS-Quelle lernt eine Pegel- statt einer
+Identitäts-Korrektur. Jeder Repräsentations-Kanal braucht einen
+Produktions-Paritäts-Test (Muster: tests/unit/test_witness_kopf_produktion_paritaet.py).
+
 ## Phonem-Klassifikation — sprachadaptiv (§v10.303.52, 2026-09-18)
 
 - Die Detektions-Schwellen (§2.36 ZCR/HF-Dominanz/Plosiv-Kappe) sind

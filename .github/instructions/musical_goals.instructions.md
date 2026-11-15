@@ -162,6 +162,18 @@ VERBOTEN: Alle Böden auf CD-Wert anheben
 → Shellac-Restaurierungen wären permanenter Fail → Recovery-Kaskade sinnlos aktiv
 ```
 
+## Ganz-Titel-Zwei-Metrik-Never-worsen (2026-11-15, DRT-8/10-Verankerung)
+
+Aktivierungs- und Hör-Entscheidungen MÜSSEN beide Ebenen der zertifizierten
+Zeugen abdecken: (a) Regions-Ebene (Witness-Q je Defektklasse) UND (b) die
+Ganz-Titel-Ebene mit BEIDEN Metriken — defektlast-Gewinn UND musik_mos-
+Never-worsen (Δ mos ≥ −JND, JND = 0,05). Ein Paar, das defektlast deutlich
+gewinnt und musik_mos deutlich verliert, ist ÜBERRESTAURATION und nicht
+aktivierungsfähig — Ursachen-Analyse Pflicht (§V7 (copilot-instructions.md)).
+Kontroll-Bedingung: derselbe Lauf OHNE den Kandidaten (Bestands-Pipeline) ist
+Teil des Belegs; kein Paar darf durch den Kandidaten netto schlechter werden
+(Beleg 2026-11-15: Jets-vinyl defektlast −0,203 bei musik_mos −0,551).
+
 ## Per-Song Studio-Day-Target (§0k)
 
 ```python

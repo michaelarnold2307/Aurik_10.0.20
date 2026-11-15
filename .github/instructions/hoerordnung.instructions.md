@@ -269,6 +269,17 @@ Warnung geloggt und die Messung ggf. auf einem korrekten Fenster wiederholt
 Wenn Ebene 1 verletzt ist, hat die Hör-Instanz **keinen** Vorrang — die
 Invariante dominiert.
 
+**Zwei-Ebenen-Zeugen-Pflicht für Aktivierungs-Entscheidungen (2026-11-15,
+DRT-5/8/12-Verankerung):** Eine Hör-Entscheidung über die Aktivierung eines
+Reparatur-Kanals ist nur entscheidungsreif, wenn BEIDE Zeugen-Ebenen belegt
+sind — (a) die Regions-Ebene (Witness-Q je Defektklasse, leak-frei) UND
+(b) die Ganz-Titel-Ebene mit beiden Metriken inkl. Kontroll-Lauf ohne den
+Kandidaten (musical_goals.instructions.md „Ganz-Titel-Zwei-Metrik-Never-worsen").
+Fehlt eine Ebene, ist die Messung nicht entscheidungsreif — die Hör-Instanz
+kann die Lücke benennen, aber nicht durch Hören ersetzen (Beleg 2026-11-15:
+Jets-vinyl bestand die Regions-Ebene, kollabierte aber auf Ganz-Titel-Ebene
+musik_mos −0,551 — erst die zweite Ebene machte die Überrestauration sichtbar).
+
 **Zeugen (Report-Only):** `musik_mos` und `defektlast` (zertifiziert,
 Spearman 0,95) sowie der **Defekt-Delta-Witness** (`aurik.defektdelta/3`,
 §G191 (GEBOTE.md); /3 trägt zusätzlich den gain-invarianten
