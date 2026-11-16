@@ -1,0 +1,6 @@
+{
+  "schema": "aurik.befund/1",
+  "datum": "2026-11-16",
+  "titel": "Reproduzierbarer Thread-Pool-Deadlock im 3-Titel-Kontext (Boogie-Restaurat nach 4 Jets-Paaren)",
+  "befund": "Die 12-Paar-Laeufe (v2/v4/v5/v6) haengen reproduzierbar beim ERSTEN Boogie-Paar nach den 4 Jets-Paaren. Diagnose (v6, /proc/wchan): Der Hauptprozess wartet do_wait auf einen KIND-Prozess (gleicher Skriptname), dessen 8+ Threads ALLE in futex_do_wait haengen — klassischer Thread-Pool-Deadlock im Spektral-Aufruf (scipy _spectral_helper-Traceback-Fragmente im Log). Handover kennt den Befund: verschachtelte Pools + _thread.lock-Konkurrenz (Scanner-Kaltstart-Fix 2026-11-14, ThreadPoolExecutor ≤6) — der Boogie-Pfad nutzt offenbar einen weiteren verschachtelten Pool. NAECHSTER SCHRITT: py-spy installieren + den Boogie-Restaurat unter py-spy laufen lassen, um den Deadlock-Stack zu bekommen (§V7 Ursache statt Symptom). Der v6-Lauf hat die Jets×4 komplett + Boogie-vinyl-Schaden (Restaurat fehlt)."
+}
