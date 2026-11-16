@@ -27,5 +27,11 @@
     "defektlast": -0.0279,
     "mos": 0.05,
     "befund": "Frischer Prozess, alle 10 AN: -0,028/+0,050 — defektlast verbessert gegen Bestand (-0,016), aber mos-Verlust 0,057 > JND 0,05 ⇒ Zwei-Metrik-Pflicht (DRT-8/10) KNAPP verfehlt. Der Wert entspricht exakt dem groove_echo-Einzelwert — groove_echo dominiert die Kombination (die uebrigen 9 Kanaele bypassen offenbar in der Kombination). Der v4-Pass-Through (0,000/0,000) ist damit endgueltig als Kontext-Artefakt eingeordnet. NAECHSTER KANDIDAT: global_scalar-Daempfung des Kombi-Blends (z.B. 0,5×) — mos-Gewinn >= +0,05 halten und defektlast verbessern waere der erste Zwei-Metrik-bestandene Kandidat (§V7: Staerke zentral ueber global_scalar)."
+  },
+  "daempfung": {
+    "alpha": 0.5,
+    "defektlast": -0.0251,
+    "mos": 0.047,
+    "befund": "Pipeline-Test mit 0,5×-Blend (Monkey-Patch zur Laufzeit, 10/10 Kanäle gedämpft, Report-only): -0,025/+0,047 — die Dämpfung verschiebt nur LINEAR zwischen Bestand (-0,016/+0,107) und Voll-Blend (-0,028/+0,050). Der mos-Verlust (~0,06) bleibt bei JEDER Blend-Stärke ⇒ der Verlust ist KANDIDATEN-INHÄRENT (die Kopf-Ausgabe opfert Wohlklang), kein Stärke-Problem. URSACHE (§V7): Der Trainings-Loss (L1 + λ·BCE(Witness(out), 0)) zieht in Richtung „kein Defekt\", aber nie in Richtung „mos-gut\" — die Modellauswahl (kleinster Holdout-Score L1 + λ·Witness) hat den Wohlklang nie gemessen. NAECHSTER ANSATZ: musik_mos/Wohlklang-Term im Trainings-Loss + Zwei-Metrik-Modellauswahl (defektlast UND mos, DRT-8/10) — GPU-Block."
   }
 }
