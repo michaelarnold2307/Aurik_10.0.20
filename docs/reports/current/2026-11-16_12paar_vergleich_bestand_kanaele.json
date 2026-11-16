@@ -1,0 +1,108 @@
+{
+  "schema": "aurik.schadensbewertung/1",
+  "datum": "2026-11-16",
+  "lauf": "12paar_vergleich_bestand_kanaele_input_identisch",
+  "befund": "Erster belastbarer Ganz-Titel-Vergleich (DRT-12-Input-identisch): Die 10 Witness-Kopf-Kanaele (DRT-11-Sperre aktiv) wirkten auf 11/12 Paaren korrekt NICHT (Fremd-Kontext ⇒ Bypass, bit-identisch zum Bestand). Auf dem einen wirkenden Paar (Boogie-vinyl) NEUTRALISIERTEN sie die Bestands-Reparatur vollstaendig: Bestand -0,0158/+0,107 (defektlast- UND mos-Gewinn) vs. Kanaele 0,0000/0,0000 (Restaurat = Schaden). Ganz-Titel-Bilanz: 0/12 besser, 1/12 netto schlechter, 11/12 neutral. SCHLUSSFOLGERUNG: Die Kanaele loesen die Q≈0-Luecke auf Ganz-Titel-Ebene NICHT — Regions-Gates bestanden, aber die Ganz-Titel-Zwei-Metrik-Pflicht (DRT-8/10) ist verfehlt ⇒ KEIN §4-Aktivierungsweg mit dieser Verdrahtung. Der Weg fuer die Q≈0-Klassen bleibt die Witness-Metrik-/Kopf-Arbeit (K1/K4), nicht die Kanal-Aktivierung.",
+  "ergebnis": {
+    "schema": "aurik.schadensbewertung/1",
+    "datum": "2026-11-16",
+    "zeilen": [
+      {
+        "titel": "Boogie",
+        "rezept": "vinyl",
+        "bestand_defektlast": -0.0158,
+        "bestand_mos": 0.107,
+        "kanaele_defektlast": 0.0,
+        "kanaele_mos": 0.0,
+        "kanaele_wirkt": true
+      },
+      {
+        "titel": "Boogie",
+        "rezept": "kassette",
+        "status": "FEHLT"
+      },
+      {
+        "titel": "Boogie",
+        "rezept": "clipping",
+        "status": "FEHLT"
+      },
+      {
+        "titel": "Boogie",
+        "rezept": "mp3_128",
+        "status": "FEHLT"
+      },
+      {
+        "titel": "Jets",
+        "rezept": "vinyl",
+        "bestand_defektlast": -0.2032,
+        "bestand_mos": -0.551,
+        "kanaele_defektlast": -0.2032,
+        "kanaele_mos": -0.551,
+        "kanaele_wirkt": false
+      },
+      {
+        "titel": "Jets",
+        "rezept": "kassette",
+        "bestand_defektlast": -0.0025,
+        "bestand_mos": -0.129,
+        "kanaele_defektlast": -0.0025,
+        "kanaele_mos": -0.129,
+        "kanaele_wirkt": false
+      },
+      {
+        "titel": "Jets",
+        "rezept": "clipping",
+        "bestand_defektlast": 0.1049,
+        "bestand_mos": -0.029,
+        "kanaele_defektlast": 0.1049,
+        "kanaele_mos": -0.029,
+        "kanaele_wirkt": false
+      },
+      {
+        "titel": "Jets",
+        "rezept": "mp3_128",
+        "bestand_defektlast": 0.0,
+        "bestand_mos": 0.0,
+        "kanaele_defektlast": 0.0,
+        "kanaele_mos": 0.0,
+        "kanaele_wirkt": false
+      },
+      {
+        "titel": "Traeumer",
+        "rezept": "vinyl",
+        "bestand_defektlast": 0.0,
+        "bestand_mos": 0.0,
+        "kanaele_defektlast": 0.0,
+        "kanaele_mos": 0.0,
+        "kanaele_wirkt": false
+      },
+      {
+        "titel": "Traeumer",
+        "rezept": "kassette",
+        "bestand_defektlast": 0.0,
+        "bestand_mos": 0.0,
+        "kanaele_defektlast": 0.0,
+        "kanaele_mos": 0.0,
+        "kanaele_wirkt": false
+      },
+      {
+        "titel": "Traeumer",
+        "rezept": "clipping",
+        "bestand_defektlast": 0.3922,
+        "bestand_mos": -0.277,
+        "kanaele_defektlast": 0.3922,
+        "kanaele_mos": -0.277,
+        "kanaele_wirkt": false
+      },
+      {
+        "titel": "Traeumer",
+        "rezept": "mp3_128",
+        "bestand_defektlast": 0.0219,
+        "bestand_mos": -0.019,
+        "kanaele_defektlast": 0.0219,
+        "kanaele_mos": -0.019,
+        "kanaele_wirkt": false
+      }
+    ]
+  }
+}
