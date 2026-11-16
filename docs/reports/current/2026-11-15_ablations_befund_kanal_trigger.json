@@ -7,5 +7,7 @@
     "/tmp/sinn_kontrolle/bewertung.json",
     "study_stimuli/sinn_beweis_neu_v2/bewertung.json",
     "/tmp/sinn_jets_kontrolle/bewertung.json"
-  ]
+  ],
+  "status": "interpretation_korrigiert_durch_v5",
+  "korrektur": "Die Interpretation war voreilig: v5 (3 Titel OHNE Kanäle) zeigt identische Werte — die Verschlechterung stammt aus dem 3-Titel-Kontext der Bestands-Pipeline selbst. Kanäle entlastet; DRT-11-Sperre bleibt korrekt."
 }
