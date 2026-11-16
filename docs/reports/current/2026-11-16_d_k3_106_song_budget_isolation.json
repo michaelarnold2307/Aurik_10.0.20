@@ -1,0 +1,97 @@
+{
+  "schema": "aurik.dk3106_budget_isolation/1",
+  "phase": "phase_39_air_band_enhancement",
+  "material": "vinyl",
+  "schritte": [
+    {
+      "tag": "vortitel_gelernt",
+      "historie": {
+        "vinyl": {
+          "phase_39": {
+            "samples": 2.0,
+            "mean_net_gain": 0.001
+          }
+        }
+      },
+      "skip_reason": {
+        "reason": "historically_weak_delta",
+        "history_samples": 2,
+        "history_mean_net_gain": 0.001,
+        "remaining_budget_s": 12.0,
+        "estimated_time_s": 24.0
+      },
+      "retry_hint": {
+        "reason": "historically_weak_delta",
+        "phase_priority": false,
+        "remaining_budget_s": 100.0,
+        "estimated_time_s": 1.0,
+        "retry_budget_scale": 0.15,
+        "max_retries_cap": 1,
+        "history_samples": 2,
+        "history_mean_net_gain": 0.001
+      }
+    },
+    {
+      "tag": "folgesong_ohne_reset",
+      "historie": {
+        "vinyl": {
+          "phase_39": {
+            "samples": 2.0,
+            "mean_net_gain": 0.001
+          }
+        }
+      },
+      "skip_reason": {
+        "reason": "historically_weak_delta",
+        "history_samples": 2,
+        "history_mean_net_gain": 0.001,
+        "remaining_budget_s": 12.0,
+        "estimated_time_s": 24.0
+      },
+      "retry_hint": {
+        "reason": "historically_weak_delta",
+        "phase_priority": false,
+        "remaining_budget_s": 100.0,
+        "estimated_time_s": 1.0,
+        "retry_budget_scale": 0.15,
+        "max_retries_cap": 1,
+        "history_samples": 2,
+        "history_mean_net_gain": 0.001
+      }
+    },
+    {
+      "tag": "folgesong_nach_reset",
+      "historie": {},
+      "skip_reason": null,
+      "retry_hint": null
+    },
+    {
+      "tag": "innerhalb_desselben_songs",
+      "historie": {
+        "vinyl": {
+          "phase_39": {
+            "samples": 2.0,
+            "mean_net_gain": 0.001
+          }
+        }
+      },
+      "skip_reason": {
+        "reason": "historically_weak_delta",
+        "history_samples": 2,
+        "history_mean_net_gain": 0.001,
+        "remaining_budget_s": 12.0,
+        "estimated_time_s": 24.0
+      },
+      "retry_hint": {
+        "reason": "historically_weak_delta",
+        "phase_priority": false,
+        "remaining_budget_s": 100.0,
+        "estimated_time_s": 1.0,
+        "retry_budget_scale": 0.15,
+        "max_retries_cap": 1,
+        "history_samples": 2,
+        "history_mean_net_gain": 0.001
+      }
+    }
+  ]
+}

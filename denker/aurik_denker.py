@@ -427,6 +427,11 @@ class AurikDenker:
             ("backend.core.listening_witness", "reset_witness_bundle_cache"),
             ("backend.core.cross_phase_naturalness", "reset_tracker"),
             ("backend.core.mushra_proxy", "reset_mushra_proxy"),
+            # §V8/§G1 (copilot-instructions.md): Budget-Lernhistorie des Restorer-Singletons
+            # (`_phase_budget_gain_history`) — sie speist `historically_weak_delta`
+            # (Skip) und die Retry-Drosselung und überlebte bisher den Song-Wechsel
+            # (D-K3-106; Docstring `reset_song_budget_state`).
+            ("backend.core.unified_restorer_v3", "reset_song_budget_state"),
         ]
         for _mod_name_v8, _fn_name_v8 in _song_resets_v8:
             try:

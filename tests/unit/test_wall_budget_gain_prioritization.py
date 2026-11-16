@@ -3,6 +3,7 @@ import types
 import numpy as np
 import pytest
 
+import backend.core.unified_restorer_v3 as uv3
 from backend.core.defect_scanner import MaterialType
 from backend.core.unified_restorer_v3 import RestorationConfig, UnifiedRestorerV3
 
@@ -204,3 +205,105 @@ def test_general_wall_budget_protection_ignores_phase39_without_goal_deficit() -
         applicable_goals={"brillanz", "transparenz", "artikulation"},
     )
     assert protected is False
+
+
+# ── D-K3-106 (§V8/§G1, copilot-instructions.md): Budget-Lernhistorie pro Song isolieren ──
+# Die Historie lebt im Restorer-Singleton. Der Denker-Reset-Katalog ruft
+# `reset_song_budget_state()` am Anfang von `AurikDenker.restauriere`; die
+# Tests messen die WIRKUNG an den beiden echten Verbrauchern
+# (`_budget_pressure_skip_reason`, `_pmgg_retry_budget_hint`) statt am Text.
+
+
+def test_reset_song_budget_state_loescht_songuebergreifende_skip_historie(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    restorer = _build_restorer()
+    restorer._phase_budget_gain_history = {"vinyl": {"phase_39": {"samples": 3.0, "mean_net_gain": 0.001}}}
+    monkeypatch.setattr(uv3, "_restorer_singleton", restorer, raising=False)
+
+    vorher = restorer._budget_pressure_skip_reason(
+        "phase_39_air_band_enhancement",
+        material_key="vinyl",
+        remaining_budget_s=12.0,
+        estimated_time_s=24.0,
+        future_phases=[],
+    )
+    assert vorher is not None
+    assert vorher["reason"] == "historically_weak_delta"
+    assert vorher["history_samples"] == 3
+
+    uv3.reset_song_budget_state()
+
+    assert restorer._phase_budget_gain_history == {}
+    nachher = restorer._budget_pressure_skip_reason(
+        "phase_39_air_band_enhancement",
+        material_key="vinyl",
+        remaining_budget_s=12.0,
+        estimated_time_s=24.0,
+        future_phases=[],
+    )
+    assert nachher is None
+
+
+def test_reset_song_budget_state_loescht_songuebergreifende_retry_drosselung(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    restorer = _build_restorer()
+    restorer._phase_budget_gain_history = {"vinyl": {"phase_39": {"samples": 4.0, "mean_net_gain": 0.0}}}
+    monkeypatch.setattr(uv3, "_restorer_singleton", restorer, raising=False)
+
+    vorher = restorer._pmgg_retry_budget_hint(
+        "phase_39_air_band_enhancement",
+        material_key="vinyl",
+        remaining_budget_s=100.0,
+        estimated_time_s=1.0,
+        future_phases=[],
+    )
+    assert vorher is not None
+    assert vorher["reason"] == "historically_weak_delta"
+
+    uv3.reset_song_budget_state()
+
+    nachher = restorer._pmgg_retry_budget_hint(
+        "phase_39_air_band_enhancement",
+        material_key="vinyl",
+        remaining_budget_s=100.0,
+        estimated_time_s=1.0,
+        future_phases=[],
+    )
+    assert nachher is None
+
+
+def test_budget_lernen_bleibt_innerhalb_eines_songs_aktiv(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    restorer = _build_restorer()
+    monkeypatch.setattr(uv3, "_restorer_singleton", restorer, raising=False)
+
+    for _ in range(2):
+        restorer._record_phase_budget_gain("phase_39_air_band_enhancement", "vinyl", 0.001)
+
+    entry = restorer._phase_budget_gain_history["vinyl"]["phase_39"]
+    assert entry["samples"] == 2.0
+    assert entry["mean_net_gain"] == pytest.approx(0.001)
+
+    reason = restorer._budget_pressure_skip_reason(
+        "phase_39_air_band_enhancement",
+        material_key="vinyl",
+        remaining_budget_s=12.0,
+        estimated_time_s=24.0,
+        future_phases=[],
+    )
+    assert reason is not None
+    assert reason["reason"] == "historically_weak_delta"
+    assert reason["history_samples"] == 2
+
+    uv3.reset_song_budget_state()
+    assert restorer._phase_budget_gain_history == {}
+
+
+def test_reset_song_budget_state_ohne_singleton_ist_failsafe(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(uv3, "_restorer_singleton", None, raising=False)
+    uv3.reset_song_budget_state()  # §V6 (copilot-instructions.md): darf nie werfen

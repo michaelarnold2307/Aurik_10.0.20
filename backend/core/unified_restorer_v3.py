@@ -48706,6 +48706,37 @@ def get_restorer(mode: str = "quality") -> "UnifiedRestorerV3":
     return _restorer_singleton_ref
 
 
+def reset_song_budget_state() -> None:
+    """§V8/§G1 (copilot-instructions.md): Budget-Lernhistorie pro Song zurücksetzen.
+
+    ``_phase_budget_gain_history`` sammelt je Material und Phasen-Präfix den
+    laufenden Mittelwert des akzeptierten Netto-Gewinns
+    (``_record_phase_budget_gain``) und speist damit zwei Budget-Entscheidungen:
+    ``_budget_pressure_skip_reason`` und ``_pmgg_retry_budget_hint`` markieren
+    eine Phase ab zwei Samples mit ``mean_net_gain < 0,004`` als
+    ``historically_weak_delta`` (Skip bzw. gedrosselte Retries).
+
+    Die Historie lebt im Restorer-Singleton und überlebte bisher den
+    Song-Wechsel: ein Lauf desselben Materials entschied damit über die
+    Budget-Skips des Folgesongs mit — ein §V8-Verstoß (Lernparameter pro Song
+    zurücksetzen). Der Denker-Reset-Katalog ruft diese Funktion am Anfang von
+    ``AurikDenker.restauriere`` (also vor jeder Verarbeitung des Songs).
+
+    Innerhalb eines Songs bleibt das Lernen aktiv — auch über Chunks, weil der
+    Chunked-Pfad denselben Singleton nutzt; erst der Song-Übergang leert die
+    Historie. Ob dieser Kanal die gemessene Jets-vinyl-Kontextdifferenz
+    erklärt, ist NICHT belegt (Beleg und offene Diagnose:
+    ``docs/reports/current/2026-11-16_d_k3_106_song_budget_isolation.md``).
+    """
+    _restorer_ref = globals().get("_restorer_singleton")
+    if _restorer_ref is None:
+        return
+    try:
+        _restorer_ref._phase_budget_gain_history.clear()
+    except Exception as _h_exc:  # §V6 (copilot-instructions.md): Reset darf den Lauf nie abbrechen
+        logger.debug("Song-Isolation: Lernhistorie nicht zurücksetzbar: %s", _h_exc)
+
+
 if __name__ == "__main__":
     # Test UnifiedRestorerV3 mit Beispiel-Audio.
 

@@ -1068,3 +1068,38 @@ Vorschein (D-K3-103 trug die Manifest-Evidenz in der Domänen-Spalte) —
 Spalten repariert, Inhalt unverändert. Belege:
 `docs/reports/current/2026-11-16_d_k3_105_export_gate_kontext.md`,
 Register D-K3-105.
+
+**Update 2026-11-16 (D-K3-106 geschlossen — §V8-Leck in der Budget-Lernhistorie):**
+Der zuletzt notierte „nächste §V7-Schritt" (Kontext-Isolation) hatte einen
+konkreten, autonom schließbaren Kern: `_phase_budget_gain_history` (laufender
+Mittelwert des akzeptierten Netto-Gewinns je Material/Phasen-Präfix,
+`backend/core/unified_restorer_v3.py:1927`) lebte im Restorer-Singleton und
+wurde nie am Song-Wechsel geleert. Zwei echte Verbraucher lesen sie —
+`_budget_pressure_skip_reason` (Skip) und `_pmgg_retry_budget_hint`
+(Retry-Drosselung 0,15/1) — beide über `historically_weak_delta` ab 2 Samples
+mit `mean_net_gain < 0,004`. **Gemessen** (deterministisch, CPU-only, echte
+Lernfunktion `_record_phase_budget_gain`): Vortitel 2×0,001 Netto-Gewinn ⇒
+Folgesong ohne Reset `historically_weak_delta`; nach
+`reset_song_budget_state()` Historie `{}` und beide Entscheidungen `null`;
+innerhalb desselben Songs bleibt das Lernen aktiv (2 neue Samples ⇒ wieder
+`historically_weak_delta`). **Fix:** 9. Eintrag im §V8-Reset-Katalog des
+Denkers (Aufruf am Anfang von `AurikDenker.restauriere`, also vor jeder
+Verarbeitung; CLI/GUI/Batch laufen über `bridge → AurikDenker`, direkte
+`restorer.restore()`-Aufrufe gibt es nur in Debug-Werkzeugen). 4 neue
+Vertragstests (`tests/unit/test_wall_budget_gain_prioritization.py`, 12
+passed), Register-Gate **134 Einträge, keine Verstöße**,
+`tests/normative/test_sota_deficit_gate.py` 28 passed. **Zwei
+Vorlauf-Behauptungen verworfen, weil unbelegt:** `_gdd_budget.phase_history`
+ist NICHT song-übergreifend (der Manager entsteht je `_ausfuehren_pipeline`
+neu, `unified_restorer_v3.py:37586`), und das Zahlenpaar „−0,132/−0,014"
+existiert in keinem Beleg-Artefakt. **Ehrlich offen:** die
+Jets-vinyl-Kontextdifferenz ist damit **nicht** erklärt — belegt ist der Kanal
+und seine Entscheidungswirkung, nicht ihr Anteil an −0,203/−0,551. Die
+vorhandenen Diagnose-Dumps `study_stimuli/kontext_diagnose/dump_solo.json` /
+`dump_kontext.json` sind **kein A/B** (unterschiedliche Eingänge:
+`rms_original_db` −19,25 vs. −14,47, `peak_original` 0,7685 vs. 0,995) ⇒
+Kontext-Diagnose mit identischem Eingang + Ganz-Titel-Metriken bleibt der
+nächste Schritt. Kein Flag-Flip, keine Klang-Design-Änderung, kein
+GPU-Training. Belege:
+`docs/reports/current/2026-11-16_d_k3_106_song_budget_isolation.md` /
+`.json`, Register D-K3-106.

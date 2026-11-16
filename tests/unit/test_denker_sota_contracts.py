@@ -181,6 +181,7 @@ def test_denker_reset_kette_deckt_verwaiste_stateful_module_ab() -> None:
         "reset_witness_bundle_cache",
         "reset_tracker",
         "reset_mushra_proxy",
+        "reset_song_budget_state",
     ):
         assert token in src, f"{token} fehlt in der §V8-Reset-Kette des Denkers (D-K3-95/97)"
 
