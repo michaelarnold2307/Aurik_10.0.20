@@ -1,0 +1,11 @@
+{
+  "schema": "aurik.schadensbewertung/1",
+  "datum": "2026-11-16",
+  "lauf": "artefakt_befund_input_gleichheit",
+  "befund": "ARTEFAKT-KORREKTUR: Mit BIT-IDENTISCHEM Schaden-Input (v5-WAV) zeigt Jets-vinyl SOLO -0,203/-0,551 — identisch zum 3-Titel-Lauf. Der vermeintliche „3-Titel-Kontext-Effekt\" war ein Input-Artefakt: der 1-Titel-Kontroll-Lauf nutzte einen ANDEREN Schaden (rng-Key [42,0,0]) als der 3-Titel-Lauf (rng-Key [42,idx]). Die Nadel-Klick-Platzierung ist seed-abhaengig → verschiedene Schaeden → verschiedene Deltas. Die Kontext-Jagd (Budget-Historie, Leck-Detektor) war auf ein Phantom gerichtet; die Bestands-Pipeline ist fuer dieses Paar VOLL entlastet. Der Budget-Historie-Reset bleibt trotzdem korrekt (echtes §V8-Leck, belegt). DRT-12-Lehre: Kontroll-Laeufe muessen mit BIT-IDENTISCHEM Input laufen, sonst ist der Vergleich wertlos.",
+  "quellen": [
+    "study_stimuli/kontext_diagnose/Jets_solo_restauriert.wav",
+    "study_stimuli/kontext_diagnose/Jets_kontext_restauriert.wav",
+    "study_stimuli/sinn_beweis_neu_v5/"
+  ]
+}

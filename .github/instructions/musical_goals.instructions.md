@@ -171,8 +171,13 @@ Never-worsen (Δ mos ≥ −JND, JND = 0,05). Ein Paar, das defektlast deutlich
 gewinnt und musik_mos deutlich verliert, ist ÜBERRESTAURATION und nicht
 aktivierungsfähig — Ursachen-Analyse Pflicht (§V7 (copilot-instructions.md)).
 Kontroll-Bedingung: derselbe Lauf OHNE den Kandidaten (Bestands-Pipeline) ist
-Teil des Belegs; kein Paar darf durch den Kandidaten netto schlechter werden
-(Beleg 2026-11-15: Jets-vinyl defektlast −0,203 bei musik_mos −0,551).
+Teil des Belegs; kein Paar darf durch den Kandidaten netto schlechter werden.
+Input-Gleichheits-Pflicht (2026-11-16, DRT-12-Artefakt-Befund): Kontroll-Lauf
+und Kandidaten-Lauf MÜSSEN mit BIT-IDENTISCHEM Schaden-Input laufen (gleicher
+rng-Key/Seed für die Schadens-Erzeugung). Ein seed-abhängig anderer Schaden
+(z.B. Nadel-Klick-Platzierung) macht den Vergleich wertlos — der vermeintliche
+„3-Titel-Kontext-Effekt" (−0,203/−0,551 auf Jets-vinyl) war genau so ein
+Artefakt: mit identischem Input ist Solo = 3-Titel.
 
 ## Per-Song Studio-Day-Target (§0k)
 
