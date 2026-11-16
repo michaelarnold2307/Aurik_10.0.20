@@ -1,0 +1,6 @@
+{
+  "schema": "aurik.befund/1",
+  "datum": "2026-11-16",
+  "titel": "Pool-Race: intermittierende Deadlocks UND Pass-Throughs — Ganz-Titel-Messwerte kontaminiert",
+  "befund": "Der Deadlock (futex_do_wait, v2/v4/v5/v6 + Repro-1) und die Pass-Throughs (Restaurat bit-gleich Schaden: v4-Boogie-vinyl 0,000/0,000, deadlock_repro-Boogie 0,000/0,000 — verifiziert max diff 0,0) sind ZWEI SEITEN DESSELBEN Pool-Race: Die Voranalyse (SNR/clean-digital-Einstufung) und die Spektral-Pools racen — mal haengt der Lauf, mal stuft die Pipeline Boogie-vinyl faelschlich als clean digital ein (Pass-Through). Repro-2 lief durch (Race nicht deterministisch). KONSEQUENZ: Die 3-Titel-Messwerte sind kontaminiert (v5 repariert -0,016/+0,107, v4/repro Pass-Through 0,000/0,000) — der vermeintliche Kontext-Effekt ist ein Race-Artefakt. NAECHSTER SCHRITT (§V7 Ursache statt Symptom): Pool-Race lokalisieren und fixen (Kandidat: ThreadPoolExecutor-Verschachtelung im Voranalyse-/Spektral-Pfad, Handover-Befund 2026-11-14); erst danach sind Ganz-Titel-Messungen belastbar. faulthandler-Timer bleibt im Repro-Wrapper."
+}
