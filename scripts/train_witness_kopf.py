@@ -313,7 +313,11 @@ def trainiere(
             l1_id = nn.functional.l1_loss(out_id, Xc_id_t[idx].to(device))
             mel_out = _mel_torch(out.reshape(len(out), -1))
             pen = torch.sigmoid(witness(mel_out[:, None, :, :])).mean()
-            loss = l1 + lam * pen + lam_id * l1_id
+            # Wohlklang-Term IM TRAININGS-LOSS (lambda-Sweep-Befund 2026-11-16): die
+            # Auswahl-Gewichtung allein konvergiert bei mos-Verlust 0,057 (knapp über JND) —
+            # der Gradient muss Wohlklang optimieren, nicht nur die Auswahl (§V7 (copilot-instructions.md)).
+            spec_train = _spektral_abstand(out.reshape(len(out), -1), c_b.reshape(len(c_b), -1))
+            loss = l1 + lam * pen + lam_id * l1_id + lam_spec * spec_train
             opt.zero_grad()
             loss.backward()
             opt.step()

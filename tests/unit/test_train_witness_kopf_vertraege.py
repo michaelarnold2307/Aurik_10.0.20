@@ -19,10 +19,11 @@ def _text() -> str:
 
 
 def test_zwei_metrik_term_im_holdout_score() -> None:
-    """Der Spektral-Abstand (Wohlklang-Proxy) ist Teil des Holdout-Scores."""
+    """Der Spektral-Abstand (Wohlklang-Proxy) ist Teil des Holdout-Scores UND des Trainings-Loss."""
     src = _text()
     assert "def _spektral_abstand" in src
     assert "lam_spec * spec_h" in src
+    assert "lam_spec * spec_train" in src  # Loss-Term (Sweep-Befund: Auswahl allein reicht nicht)
     assert "lambda_spektral" in src
 
 

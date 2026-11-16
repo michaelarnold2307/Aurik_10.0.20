@@ -1,0 +1,19 @@
+{
+  "schema": "aurik.befund/1",
+  "datum": "2026-11-16",
+  "titel": "Zwei-Metrik-Training Runde 1 (sticky_shed_residue, lambda-spektral 0,3)",
+  "befund": "Erster GPU-Lauf mit der Zwei-Metrik-Modellauswahl: Training 30/30 (Pre-Flight Q bestanden), Regions-Gate BESTANDEN mit besseren Werten als Alt (Q_median 0,89 -> 1,049, Q-Anteil 1,0, never_worsen 1,0). Ganz-Titel (Boogie-vinyl): -0,028/+0,050 vs. Alt -0,079/+0,029 vs. Bestand -0,016/+0,107 — der mos-Verlust HALBIERT sich (0,078 -> 0,057), die Richtung der Zwei-Metrik-Auswahl ist belegt wirksam. Die Zwei-Metrik-Pflicht (mos-Verlust <= JND 0,05) bleibt KNAPP verfehlt. NAECHSTER SCHRITT: lambda-spektral-Sweep (0,6 / 1,0) — stärkere Wohlklang-Gewichtung in der Modellauswahl.",
+  "werte": {
+    "gate": {
+      "q_median": 1.0492,
+      "q_anteil_ge_0_5": 1.0,
+      "never_worsen_anteil": 1.0
+    },
+    "ganztitel": {
+      "defektlast": -0.0279,
+      "mos": 0.05,
+      "alt_defektlast": -0.0794,
+      "alt_mos": 0.029
+    }
+  }
+}
