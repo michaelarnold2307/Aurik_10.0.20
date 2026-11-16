@@ -123,6 +123,22 @@ def _mel_torch(audio: torch.Tensor) -> torch.Tensor:
     return mel
 
 
+def _spektral_abstand(a: torch.Tensor, b: torch.Tensor) -> torch.Tensor:
+    """Mehrskaliger Spektral-Abstand (Wohlklang-Proxy) — Ablations-/Dämpfungs-Befund
+    2026-11-16: L1 + Witness-BCE ziehen in Richtung „kein Defekt", aber nie in
+    Richtung „mos-gut". Der Spektral-Abstand zum Clean misst die Klangtreue
+    (das mos-relevante Ziel) und macht die Modellauswahl Zwei-Metrik-fähig
+    (defektlast UND Wohlklang, DRT-8/10). Deterministisch, CPU-fähig."""
+    total = torch.tensor(0.0, dtype=a.dtype, device=a.device)
+    for n_fft in (2048, 1024, 512):
+        hop = max(64, n_fft // 4)
+        win = torch.hann_window(n_fft, dtype=a.dtype, device=a.device)
+        sa = torch.stft(a, n_fft=n_fft, hop_length=hop, window=win, center=True, return_complex=True)
+        sb = torch.stft(b, n_fft=n_fft, hop_length=hop, window=win, center=True, return_complex=True)
+        total = total + nn.functional.l1_loss(sa.abs(), sb.abs())
+    return total / 3.0
+
+
 class WitnessKopf(nn.Module):
     """1D-Conv-Autoencoder (Bottleneck, ohne Skips — bewusst einfach: korrekt,
     deterministisch; Skips sind eine spätere Verbesserung)."""
@@ -234,6 +250,7 @@ def trainiere(
     max_regionen: int = 0,
     lam_id: float = 0.5,
     lam_lokal: float = 0.0,
+    lam_spec: float = 0.3,
 ) -> dict[str, Any]:
     regionen, holdout_titel, n_gesamt = _baue_regionen(klasse)
     xs, xc, xc_id, hs, hc, hc_id = _lade_split(regionen, holdout_titel, max_regionen)
@@ -311,7 +328,10 @@ def trainiere(
             l1_id_h = nn.functional.l1_loss(out_h_id, Hc_id_t.to(device)).item()
             mel_h = _mel_torch(out_h.reshape(len(out_h), -1))
             pen_h = float(torch.sigmoid(witness(mel_h[:, None, :, :])).mean())
-        score_h = l1_h + lam * pen_h + lam_id * l1_id_h
+            spec_h = float(
+                _spektral_abstand(out_h.reshape(len(out_h), -1), Hc_t.to(device).reshape(len(Hc_t), -1)).item()
+            )
+        score_h = l1_h + lam * pen_h + lam_id * l1_id_h + lam_spec * spec_h
         if score_h < best["score"]:
             best = {"score": score_h, "ep": ep, "state": {k: v.cpu().clone() for k, v in model.state_dict().items()}}
         if (ep + 1) % max(1, epochen // 4) == 0 or ep == epochen - 1:
@@ -347,6 +367,7 @@ def trainiere(
         "lambda_witness": lam,
         "lambda_id": lam_id,
         "lambda_lokal": lam_lokal,
+        "lambda_spektral": lam_spec,
         "n_regionen_gesamt": n_gesamt,
         "n_train": len(xs),
         "n_holdout": len(hs),
@@ -360,10 +381,17 @@ def trainiere(
     }
     out_dir = OUT_BASE
     out_dir.mkdir(parents=True, exist_ok=True)
-    ckpt = out_dir / f"witness_{klasse}_best.pt"
+    # Smoke-Schutz (2026-11-16): --max-regionen > 0 schreibt einen separaten
+    # Smoke-Pfad — der kanonische Checkpoint wurde 2026-11-16 von einem
+    # 1-Epochen-Smoke überschrieben (groove_echo, 7,68 MB -> 42 KB).
+    _ist_smoke = max_regionen > 0
+    ckpt_name = f"smoke_witness_{klasse}_best.pt" if _ist_smoke else f"witness_{klasse}_best.pt"
+    ckpt = out_dir / ckpt_name
     torch.save({"state_dict": best["state"], "hidden": hidden, "stufen": stufen, "klasse": klasse}, ckpt)
     report["checkpoint"] = str(ckpt.relative_to(_ROOT))
-    (out_dir / f"witness_{klasse}_report.json").write_text(
+    if _ist_smoke:
+        report["smoke"] = True
+    (out_dir / f"{ckpt_name.replace('.pt', '_report')}.json").write_text(
         json.dumps(report, indent=2, ensure_ascii=False) + "\n", encoding="utf-8"
     )
     return report
@@ -385,6 +413,12 @@ def main(argv: list[str] | None = None) -> int:
         default=0.0,
         help=">0 = lokalisierter L1 über die |schaden-clean|-Maske (transiente Defekte)",
     )
+    ap.add_argument(
+        "--lambda-spektral",
+        type=float,
+        default=0.3,
+        help="Wohlklang-Term (MR-Spektral-Abstand zum Clean) im Holdout-Score — Zwei-Metrik-Modellauswahl (DRT-8/10)",
+    )
     ap.add_argument("--device", default="cpu")
     ap.add_argument("--max-regionen", type=int, default=0, help=">0 = Smoke (begrenzte Regionen)")
     args = ap.parse_args(argv)
@@ -398,6 +432,7 @@ def main(argv: list[str] | None = None) -> int:
         args.max_regionen,
         args.lambda_id,
         args.lambda_lokal,
+        args.lambda_spektral,
     )
     print(json.dumps(report, indent=2, ensure_ascii=False))
     return 0

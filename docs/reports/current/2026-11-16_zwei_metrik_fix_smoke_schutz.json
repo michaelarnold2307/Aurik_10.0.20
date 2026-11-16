@@ -1,0 +1,6 @@
+{
+  "schema": "aurik.befund/1",
+  "datum": "2026-11-16",
+  "titel": "Zwei-Metrik-Fix + Smoke-Überschreibungs-Vorfall (train_witness_kopf)",
+  "befund": "(a) ZWEI-METRIK-FIX: Der Holdout-Score der Modellauswahl enthielt nur L1 + Witness-BCE + Identity — der Wohlklang wurde nie gemessen (belegte Ursache des mos-Verlusts aus der Ablations-/Dämpfungs-Kette). Neu: MR-Spektral-Abstand zum Clean (--lambda-spektral, Default 0,3) als Wohlklang-Term im Score — die Auswahl ist damit Zwei-Metrik-fähig (DRT-8/10). CPU-Smoke verifiziert. (b) VORFALL (ehrlich): Der Verifikations-Smoke (--max-regionen 40 --epochen 1) hat den kanonischen Checkpoint witness_groove_echo_best.pt (7,68 MB, 15.11.) mit dem 42-KB-Smoke-Modell überschrieben. Der Verlust ist begrenzt (groove_echo war GATE-VERFEHLT, Flag AUS, kein Produktionspfad; Reproduktion deterministisch per Seed 42 über train_job_runner möglich). (c) SMOKE-SCHUTZ-FIX: --max-regionen > 0 schreibt jetzt models/klassen_koepfe/smoke_witness_<klasse>_best.pt und fasst den kanonischen Pfad nicht mehr an. 2 Pin-Tests."
+}
