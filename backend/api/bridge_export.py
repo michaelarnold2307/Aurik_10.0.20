@@ -174,13 +174,10 @@ def build_export_quality_gate_payload(result: object) -> dict[str, Any]:
     primary_fail_reason = str(meta.get("fail_reason", "") or "")
     degradation_status = str(meta.get("degradation_status", "") or "")
     fqf = _coerce_dict_str_any(meta.get("fallback_quality_floor"))
-    export_gate_profile = str(meta.get("export_gate_profile", "") or "")
-    export_gate_material = str(meta.get("export_gate_material", "") or "")
     _export_gate_thresholds_raw = meta.get("export_gate_thresholds")
     export_gate_thresholds = _coerce_dict_str_any(_export_gate_thresholds_raw)
     _export_gate_signal_signature_raw = meta.get("export_gate_signal_signature")
     export_gate_signal_signature = _coerce_dict_str_any(_export_gate_signal_signature_raw)
-    export_gate_preserve_signal = float(np.clip(float(meta.get("export_gate_preserve_signal", 0.0) or 0.0), 0.0, 1.0))
 
     _degradation_norm = degradation_status.strip().lower()
     _has_structured_gate_issue = _degradation_norm not in {"", "ok"} or bool(fail_reasons)
@@ -212,6 +209,37 @@ def build_export_quality_gate_payload(result: object) -> dict[str, Any]:
 
     if not degradation_status:
         degradation_status = "ok" if passed else "degraded"
+
+    # §D-K3-105: derselbe EINE Ableitungspfad wie der kanonische Builder
+    # (`build_export_quality_gate_payload` in bridge.py) — kein zweites Regelwerk
+    # (§G9 (copilot-instructions.md)). Lazy-Import, weil bridge.py dieses Modul
+    # nicht kennt; ein Fehlschlag bleibt fail-safe — §V6 (copilot-instructions.md).
+    try:
+        from backend.api.bridge import _export_gate_kontext as _gate_kontext_fn
+
+        _gate_ctx = _gate_kontext_fn(
+            result,
+            meta,
+            _coerce_dict_str_any(getattr(result, "stage_notes", None)),
+            str(degradation_status or "").strip().lower(),
+        )
+    except Exception as _gate_ctx_exc:
+        logger.warning(
+            "bridge_export.py: Gate-Kontext nicht auflösbar — Export-Gate bleibt ohne Profil: %s", _gate_ctx_exc
+        )
+        _gate_ctx = {
+            "profile": "",
+            "profile_source": "absent",
+            "material": "",
+            "material_source": "absent",
+            "preserve_signal": 0.0,
+            "thresholds": export_gate_thresholds,
+            "thresholds_source": "export_gate_meta" if export_gate_thresholds else "absent",
+        }
+    export_gate_profile = str(_gate_ctx["profile"])
+    export_gate_material = str(_gate_ctx["material"])
+    export_gate_preserve_signal = float(_gate_ctx["preserve_signal"])
+    _export_gate_thresholds_source = str(_gate_ctx["thresholds_source"])
 
     # §GO/NO-GO (§0c-Kopplung): Deterministischer Hör-Verdict aus den
     # vorhandenen Proxies — degradiert den Export bei NO_GO, BLOCKIERT NIE
@@ -345,7 +373,9 @@ def build_export_quality_gate_payload(result: object) -> dict[str, Any]:
     )
     _failure_class = "none"
     if degradation_status in {"blocked", "critical_degraded", "degraded"}:
-        if _pipeline_like_failure or (_qe_threshold <= 0.0001 and bool(_root_cause)):
+        if _pipeline_like_failure or (
+            _export_gate_thresholds_source == "export_gate_meta" and _qe_threshold <= 0.0001 and bool(_root_cause)
+        ):
             _failure_class = "technical_failure"
         else:
             _failure_class = "quality_failure"
@@ -385,12 +415,15 @@ def build_export_quality_gate_payload(result: object) -> dict[str, Any]:
         "temporal_consistency": tcg_metric,
         "fallback_quality_floor": dict(fqf) if fqf else {},
         "profile": export_gate_profile,
+        "profile_source": str(_gate_ctx["profile_source"]),
         "material": export_gate_material,
+        "material_source": str(_gate_ctx["material_source"]),
         "preserve_signal": export_gate_preserve_signal,
         "thresholds": {
             "quality_estimate": _qe_threshold,
             "level_drop_db": float(export_gate_thresholds.get("level_drop_db", 0.0) or 0.0),
         },
+        "thresholds_source": str(_export_gate_thresholds_source),
         "signal_signature": {
             "crest_db": float(export_gate_signal_signature.get("crest_db", 0.0) or 0.0),
             "hf_ratio": float(export_gate_signal_signature.get("hf_ratio", 0.0) or 0.0),

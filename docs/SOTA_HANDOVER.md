@@ -1026,3 +1026,45 @@ allgemeine TF-GridNet-Akkumulationstest ist in der `.venv_aurik`-Umgebung rot
 und kein Cantus-Beleg. Kein Flag-Flip, kein Deploy, kein neues GPU-Training;
 Aktivierung bleibt §4/Hör-Instanz. Beleg:
 `docs/reports/current/2026-11-15_d_k3_88_gpu_nachweis.md`.
+
+**Update 2026-11-16 (Kandidatenlage gemessen + D-K3-105 geschlossen):** Die
+sieben im Auftrag genannten Kandidaten (D-K3-13, D-K3-60, D-K3-71, D-K3-75,
+D-K3-83, D-K3-90, D-K3-92) stehen **alle** auf `geschlossen`; offen sind nur
+hör-, GPU- oder modellgebundene Zeilen (D-K3-65, D-K3-87/94/95/96,
+D-K3-97, D-K4-*). Beim Nachprüfen des Belegs von D-K3-60 ("Ersatz Beleg
+prüfen", SOTA-M22) kam eine echte, autonom schließbare Lücke zum Vorschein:
+**der Export-Gate-Kontext existierte nur im CLI-Pfad.** `profile`, `material`,
+`thresholds` und `preserve_signal` im `quality_gate`-Payload stammen aus
+`export_gate_*`-Metadaten, die **nur** `cli/aurik_cli.py` schreibt; GUI und
+Batch rufen den Builder ohne diesen Kontext. Gemessen (`material_type=vinyl`,
+`preserve_signal=0,12`, `degradation_status=ok`, WCS 0,912/vocal): Experience-
+Payload `profile=modern_stable`, Export-Payload `profile=""`, `material=""`,
+Schwellen `{0,0; 0,0}` — zwei Wahrheiten für einen Lauf (§G9), und der
+Leerwert war **kein** Beleg für "kein Gate" (genau diese Lesart hatte
+D-K3-60 benutzt). Zweite Folge: `_qe_threshold <= 1e-4` galt als
+Technik-Fehlersignal ⇒ jede Degradierung mit Grund wurde `technical_failure`.
+**Fix (Ursache, §V7):** `_export_gate_kontext()` als EINE Ableitung in
+`backend/api/bridge.py` (CLI-Meta gewinnt, sonst die bisher inline stehende
+Experience-Regel), genutzt von Experience- und Export-Payload sowie
+`bridge_export.py`; neue Herkunftsfelder `profile_source` /
+`material_source` / `thresholds_source` statt stiller Nullwerte (keine
+erfundenen Schwellen, §G8); die Heuristik gilt nur noch bei
+`thresholds_source="export_gate_meta"`; GUI/Batch/CLI schreiben
+`quality_gate_profile_source` / `quality_gate_thresholds_source` in die
+Export-Metadaten. **Nachher:** GUI-Form `modern_stable` /
+`derived_preserve_signal`, `material=vinyl`, `thresholds_source=absent`,
+`failure_class=quality_failure`; CLI-Form bit-identisch
+(`fragile_or_transient_risk(risk=0,54)`, Schwellen 0,42/4,3). **Tests:**
+`tests/unit/test_dk3_105_export_gate_kontext.py` 13 passed; Bestand 39 + 328
+passed; Ruff clean. Kein Flag-Flip, keine Klangwirkung, kein GPU-Training.
+
+**Nebenbefund 2026-11-16 (Gate-Blindstelle, im selben Zug geschlossen):**
+`scripts/sota_deficit_gate.py` parste IDs mit `\d{1,2}` — jede Zeile ab
+D-…-100 war für das fail-closed Gate **unsichtbar** (6 Zeilen,
+D-K3-100…D-K3-105), es meldete "127 Einträge, keine Verstöße". Jetzt `\d{1,3}`:
+**133 Einträge, keine Verstöße**; Regressionstest pinnt dreistellige IDs und
+"keine Tabellenzeile unsichtbar". Dabei kam eine verschobene Zeile zum
+Vorschein (D-K3-103 trug die Manifest-Evidenz in der Domänen-Spalte) —
+Spalten repariert, Inhalt unverändert. Belege:
+`docs/reports/current/2026-11-16_d_k3_105_export_gate_kontext.md`,
+Register D-K3-105.

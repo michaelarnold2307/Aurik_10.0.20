@@ -516,6 +516,84 @@ def resolve_pipeline_fail_reason(
     )
 
 
+# ── §D-K3-105: EINE Ableitung des Export-Gate-Kontexts ───────────────────────
+# Der CLI-Pfad schreibt `export_gate_profile`/`export_gate_thresholds` selbst in
+# die Metadaten; GUI- und Batch-Pfad rufen nur diesen Bridge-Builder und hatten
+# deshalb `profile=""` plus Schwellen 0.0 im Export. Der Leerwert war weder von
+# "nicht bewertet" unterscheidbar noch harmlos: die Fehlerklassifikation las
+# `_qe_threshold <= 1e-4` als Signal und stufte jede Degradierung als
+# `technical_failure` ein. Profil/Material/Signal-Erhalt werden jetzt an EINER
+# Stelle abgeleitet und mit Herkunft ausgewiesen; Schwellen werden nie
+# erfunden (§G8 (copilot-instructions.md)) — fehlen sie, steht das da.
+
+
+def _kontext_01(value: Any) -> float:
+    """Begrenzt einen optionalen Metrikwert auf [0, 1] — fail-safe statt Exception."""
+    try:
+        _v = float(value)
+    except (TypeError, ValueError):
+        return 0.0
+    if not np.isfinite(_v):
+        return 0.0
+    return float(np.clip(_v, 0.0, 1.0))
+
+
+def _derive_export_gate_profile(preserve_signal: float, degradation_status: str) -> str:
+    """Leitet das Export-Gate-Profil aus dem Signal-Erhalt ab (Regel des Experience-Payloads)."""
+    if preserve_signal >= 0.55:
+        return "fragile_or_transient_risk"
+    if preserve_signal <= 0.20 and degradation_status == "ok":
+        return "modern_stable"
+    return "neutral"
+
+
+def _export_gate_kontext(
+    result: Any,
+    meta: dict[str, Any],
+    stage_notes: dict[str, Any],
+    degradation_status: str,
+) -> dict[str, Any]:
+    """Liefert Profil, Material, Signal-Erhalt und deren Herkunft für einen Gate-Payload.
+
+    Reihenfolge ist bewusst: ein vom CLI berechneter Gate-Kontext gewinnt immer
+    (er trägt die Material-/Signatur-Risikorechnung), sonst gilt die abgeleitete
+    Regel. ``*_source`` macht "gemessen" von "abgeleitet" unterscheidbar, und
+    ein fehlender Schwellenwert bleibt ``absent`` statt als 0.0 gelesen zu werden.
+    """
+    _meta_profile = str(meta.get("export_gate_profile", "") or "").strip()
+    _xp_profile = _coerce_dict_str_any(stage_notes.get("exzellenz_recovery_profile"))
+    _preserve_signal = max(
+        _kontext_01(meta.get("export_gate_preserve_signal", 0.0)),
+        _kontext_01(_xp_profile.get("preserve_signal", 0.0)),
+    )
+    if _meta_profile:
+        _profile = _meta_profile
+        _profile_source = "export_gate_meta"
+    else:
+        _profile = _derive_export_gate_profile(_preserve_signal, str(degradation_status or ""))
+        _profile_source = "derived_preserve_signal"
+
+    _meta_material = str(meta.get("export_gate_material", "") or "").strip()
+    if _meta_material:
+        _material = _meta_material
+        _material_source = "export_gate_meta"
+    else:
+        _material_type = getattr(result, "material_type", "")
+        _material = str(getattr(_material_type, "value", _material_type) or "").strip()
+        _material_source = "result_material_type" if _material else "absent"
+
+    _thresholds = _coerce_dict_str_any(meta.get("export_gate_thresholds"))
+    return {
+        "profile": _profile,
+        "profile_source": _profile_source,
+        "material": _material,
+        "material_source": _material_source,
+        "preserve_signal": _preserve_signal,
+        "thresholds": _thresholds,
+        "thresholds_source": "export_gate_meta" if _thresholds else "absent",
+    }
+
+
 def get_experience_insights(result: Any) -> dict[str, Any]:
     """Extrahiert normalized joy/fatigue/recommendation insights from a result object.
 
@@ -633,21 +711,13 @@ def get_experience_insights(result: Any) -> dict[str, Any]:
     _fqf_triggered = bool(_fqf.get("triggered", False))
     _fqf_status = str(_fqf.get("status", "") or "").strip().lower()
     _fqf_attempts = int(_fqf.get("attempts", 0)) if isinstance(_fqf.get("attempts", 0), (int, float)) else 0
-    _exp_profile = str(_meta.get("export_gate_profile", "") or "").strip()
-    _exp_material = str(_meta.get("export_gate_material", "") or "").strip()
-    _exp_thresholds = _coerce_dict_str_any(_meta.get("export_gate_thresholds"))
+    _exp_ctx = _export_gate_kontext(result, _meta, _stage_notes, str(_degradation_status))
+    _exp_profile = str(_exp_ctx["profile"])
+    _exp_material = str(_exp_ctx["material"])
+    _exp_thresholds = _coerce_dict_str_any(_exp_ctx["thresholds"])
+    _exp_thresholds_source = str(_exp_ctx["thresholds_source"])
     _exp_signature = _coerce_dict_str_any(_meta.get("export_gate_signal_signature"))
-    _exp_preserve_signal = _safe01(_meta.get("export_gate_preserve_signal", 0.0))
-    _xp_stage_profile = _coerce_dict_str_any(_stage_notes.get("exzellenz_recovery_profile"))
-    if _xp_stage_profile:
-        _exp_preserve_signal = max(_exp_preserve_signal, _safe01(_xp_stage_profile.get("preserve_signal", 0.0)))
-    if not _exp_profile:
-        if _exp_preserve_signal >= 0.55:
-            _exp_profile = "fragile_or_transient_risk"
-        elif _exp_preserve_signal <= 0.20 and _degradation_status == "ok":
-            _exp_profile = "modern_stable"
-        else:
-            _exp_profile = "neutral"
+    _exp_preserve_signal = float(_exp_ctx["preserve_signal"])
 
     # Keep bridge and export-workflow semantics aligned for recovered/degraded fallback-floor runs.
     if _fqf_triggered and _fqf_status in {"recovered", "degraded", "failed", "fail"}:
@@ -673,7 +743,9 @@ def get_experience_insights(result: Any) -> dict[str, Any]:
     )
     _failure_class = "none"
     if _degradation_status in {"blocked", "critical_degraded", "degraded"}:
-        if _pipeline_like_failure or (_qe_threshold <= 0.0001 and bool(_root_cause)):
+        if _pipeline_like_failure or (
+            _exp_thresholds_source == "export_gate_meta" and _qe_threshold <= 0.0001 and bool(_root_cause)
+        ):
             _failure_class = "technical_failure"
         else:
             _failure_class = "quality_failure"
@@ -756,12 +828,15 @@ def get_experience_insights(result: Any) -> dict[str, Any]:
             "best_possible_reached": bool(_fqf_status == "recovered"),
             "fallback_quality_floor_status": str(_fqf.get("status", "passed") or "passed"),
             "profile": str(_exp_profile),
+            "profile_source": str(_exp_ctx["profile_source"]),
             "material": str(_exp_material),
+            "material_source": str(_exp_ctx["material_source"]),
             "preserve_signal": float(_exp_preserve_signal),
             "thresholds": {
                 "quality_estimate": _qe_threshold,
                 "level_drop_db": _safe_float(_exp_thresholds.get("level_drop_db", 0.0), 0.0),
             },
+            "thresholds_source": str(_exp_thresholds_source),
             "signal_signature": {
                 "crest_db": _safe_float(_exp_signature.get("crest_db", 0.0), 0.0),
                 "hf_ratio": _safe01(_exp_signature.get("hf_ratio", 0.0)),
@@ -1216,13 +1291,10 @@ def build_export_quality_gate_payload(result: object) -> dict[str, Any]:
     primary_fail_reason = str(meta.get("fail_reason", "") or "")
     degradation_status = str(meta.get("degradation_status", "") or "")
     fqf = _coerce_dict_str_any(meta.get("fallback_quality_floor"))
-    export_gate_profile = str(meta.get("export_gate_profile", "") or "")
-    export_gate_material = str(meta.get("export_gate_material", "") or "")
     _export_gate_thresholds_raw = meta.get("export_gate_thresholds")
     export_gate_thresholds = _coerce_dict_str_any(_export_gate_thresholds_raw)
     _export_gate_signal_signature_raw = meta.get("export_gate_signal_signature")
     export_gate_signal_signature = _coerce_dict_str_any(_export_gate_signal_signature_raw)
-    export_gate_preserve_signal = float(np.clip(float(meta.get("export_gate_preserve_signal", 0.0) or 0.0), 0.0, 1.0))
 
     _degradation_norm = degradation_status.strip().lower()
     _has_structured_gate_issue = _degradation_norm not in {"", "ok"} or bool(fail_reasons)
@@ -1254,6 +1326,23 @@ def build_export_quality_gate_payload(result: object) -> dict[str, Any]:
 
     if not degradation_status:
         degradation_status = "ok" if passed else "degraded"
+
+    # §D-K3-105: Profil/Material/Signal-Erhalt aus der EINEN Ableitung — der
+    # CLI-Pfad liefert seinen Gate-Kontext über die Metadaten, GUI/Batch nicht.
+    _stage_notes_export: dict[str, Any] = _coerce_dict_str_any(getattr(result, "stage_notes", None))
+    try:
+        _gate_degradation = normalize_pipeline_health_state(degradation_status).value
+    except Exception:
+        logger.warning(
+            "bridge.py::build_export_quality_gate_payload: Degradations-Normalisierung fehlgeschlagen — Rohwert genutzt",
+            exc_info=True,
+        )
+        _gate_degradation = str(degradation_status or "").strip().lower()
+    _gate_ctx = _export_gate_kontext(result, meta, _stage_notes_export, _gate_degradation)
+    export_gate_profile = str(_gate_ctx["profile"])
+    export_gate_material = str(_gate_ctx["material"])
+    export_gate_preserve_signal = float(_gate_ctx["preserve_signal"])
+    _export_gate_thresholds_source = str(_gate_ctx["thresholds_source"])
 
     # Music-Lover Telemetrie: liefert musikalisch relevante Exportindikatoren
     # für UI/Reporter, ohne bestehende Gate-Semantik zu verändern.
@@ -1326,7 +1415,9 @@ def build_export_quality_gate_payload(result: object) -> dict[str, Any]:
     )
     _failure_class = "none"
     if degradation_status in {"blocked", "critical_degraded", "degraded"}:
-        if _pipeline_like_failure or (_qe_threshold <= 0.0001 and bool(_root_cause)):
+        if _pipeline_like_failure or (
+            _export_gate_thresholds_source == "export_gate_meta" and _qe_threshold <= 0.0001 and bool(_root_cause)
+        ):
             _failure_class = "technical_failure"
         else:
             _failure_class = "quality_failure"
@@ -1363,12 +1454,15 @@ def build_export_quality_gate_payload(result: object) -> dict[str, Any]:
         "degradation_status": degradation_status,
         "fallback_quality_floor": dict(fqf) if fqf else {},
         "profile": export_gate_profile,
+        "profile_source": str(_gate_ctx["profile_source"]),
         "material": export_gate_material,
+        "material_source": str(_gate_ctx["material_source"]),
         "preserve_signal": export_gate_preserve_signal,
         "thresholds": {
             "quality_estimate": _qe_threshold,
             "level_drop_db": float(export_gate_thresholds.get("level_drop_db", 0.0) or 0.0),
         },
+        "thresholds_source": str(_export_gate_thresholds_source),
         "signal_signature": {
             "crest_db": float(export_gate_signal_signature.get("crest_db", 0.0) or 0.0),
             "hf_ratio": float(export_gate_signal_signature.get("hf_ratio", 0.0) or 0.0),

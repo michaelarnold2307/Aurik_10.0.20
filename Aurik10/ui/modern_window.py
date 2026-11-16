@@ -3970,6 +3970,7 @@ class BatchProcessingThread(QThread):
                             (_eq_payload.get("fallback_quality_floor", {}) or {}).get("status", "passed")
                         ),
                         "quality_gate_profile": str(_eq_payload.get("profile", "")),
+                        "quality_gate_profile_source": str(_eq_payload.get("profile_source", "")),
                         "quality_gate_material": str(_eq_payload.get("material", "")),
                         "quality_gate_preserve_signal": str(float(_eq_payload.get("preserve_signal", 0.0) or 0.0)),
                         "quality_gate_threshold_qe": str(
@@ -3978,6 +3979,7 @@ class BatchProcessingThread(QThread):
                         "quality_gate_threshold_level_drop_db": str(
                             float((_eq_payload.get("thresholds", {}) or {}).get("level_drop_db", 0.0) or 0.0)
                         ),
+                        "quality_gate_thresholds_source": str(_eq_payload.get("thresholds_source", "")),
                         "quality_gate_worldclass_score": str(float(_wcs_payload.get("wcs", 0.0) or 0.0)),
                         "quality_gate_worldclass_threshold": str(float(_wcs_payload.get("threshold", 0.0) or 0.0)),
                         "quality_gate_worldclass_passed": str(bool(_wcs_payload.get("passed", False))),
@@ -20478,7 +20480,9 @@ class ModernMainWindow(QMainWindow):
 
         # ── 6. Echtzeit-Defektzähler (EINE Quelle, §G9 copilot-instructions.md) ──
         if hasattr(self, "defect_count_live_label") and _def_total > 0:
-            self.defect_count_live_label.setText(t("defects.resolved_progress", n_open=_def_remaining, n_done=_def_resolved, pct=_def_pct))
+            self.defect_count_live_label.setText(
+                t("defects.resolved_progress", n_open=_def_remaining, n_done=_def_resolved, pct=_def_pct)
+            )
             self.defect_count_live_label.setVisible(True)
 
         # §v10.305: Periodisches Refresh der Defekt-Counts (jedes 4. Heartbeat-Tick, ~800ms)

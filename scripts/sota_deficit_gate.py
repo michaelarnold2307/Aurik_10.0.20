@@ -51,7 +51,10 @@ EVIDENCE_DOMAINS: tuple[str, ...] = ("musik", "sprache", "gemischt")
 GENERIC_EVIDENCE_MARKER = "nicht einzeln belegt"
 _MIN_ACCEPT_BEGRUENDUNG = 20
 
-ENTRY_ID_RE = re.compile(r"^D-K(\d)-\d{1,2}$")
+# §D-K3-105-Nebenbefund (2026-11-16): `{1,2}` machte jede ID ab D-…-100
+# unsichtbar — die Zeilen D-K3-100…D-K3-105 wurden stillschweigend übersprungen,
+# und das fail-closed Gate meldete "keine Verstöße". Drei Stellen sind erlaubt.
+ENTRY_ID_RE = re.compile(r"^D-K(\d)-\d{1,3}$")
 BACKTICK_RE = re.compile(r"`([^`]+)`")
 PATHISH_RE = re.compile(r"^[\w./-]+$")
 SEPARATOR_RE = re.compile(r":?-{3,}:?")

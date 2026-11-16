@@ -1,19 +1,24 @@
 # TASK_CHANGES — Live-Ledger der aktuellen Aufgabe
 
-> Generiert von `scripts/change_ledger.py snapshot` (Base: `HEAD`, Stand: 2026-11-15 17:37 CET).
+> Generiert von `scripts/change_ledger.py snapshot` (Base: `HEAD`, Stand: 2026-11-16 02:57 CET).
 > CI (`ci-lite.yml` pr-evidence-gate) erzwingt Abdeckung: jede geänderte Code-Datei muss hier stehen.
 
 ## Geänderte Dateien
 
 | Status | Pfad | Art |
 |---|---|---|
+| M | `.github/FILE_REGISTRY.md` | modifiziert |
 | M | `.github/SOTA_DEFICIT_REGISTER.md` | modifiziert |
+| M | `Aurik10/ui/modern_window.py` | modifiziert |
+| M | `backend/api/bridge.py` | modifiziert |
+| M | `backend/api/bridge_export.py` | modifiziert |
+| M | `batch_processor.py` | modifiziert |
+| M | `cli/aurik_cli.py` | modifiziert |
 | M | `docs/SOTA_HANDOVER.md` | modifiziert |
-| M | `scripts/b3_komposition_suche.py` | modifiziert |
-| M | `scripts/flag_wirkung_gate.py` | modifiziert |
-| M | `tests/unit/test_dk0_k1_rest_luecken.py` | modifiziert |
-| M | `tests/unit/test_flag_wirkung_gate.py` | modifiziert |
-| ?? | `docs/reports/current/2026-11-15_d_k3_92_schalter_wirkung.md` | ungetrackt |
+| M | `scripts/sota_deficit_gate.py` | modifiziert |
+| M | `tests/normative/test_sota_deficit_gate.py` | modifiziert |
+| ?? | `docs/reports/current/2026-11-16_d_k3_105_export_gate_kontext.md` | ungetrackt |
+| ?? | `tests/unit/test_dk3_105_export_gate_kontext.py` | ungetrackt |
 
 ## Entscheidungen
 

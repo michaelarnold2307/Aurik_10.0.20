@@ -334,6 +334,7 @@ class BatchProcessor:
                 "quality_gate_recovery_attempted": str(bool(eq_payload.get("recovery_attempted", False))),
                 "quality_gate_best_possible_reached": str(bool(eq_payload.get("best_possible_reached", False))),
                 "quality_gate_profile": str(eq_payload.get("profile", "")),
+                "quality_gate_profile_source": str(eq_payload.get("profile_source", "")),
                 "quality_gate_material": str(eq_payload.get("material", "")),
                 "quality_gate_preserve_signal": str(float(eq_payload.get("preserve_signal", 0.0) or 0.0)),
                 "fallback_quality_floor_status": str(
@@ -345,6 +346,7 @@ class BatchProcessor:
                 "quality_gate_threshold_level_drop_db": str(
                     float((eq_payload.get("thresholds", {}) or {}).get("level_drop_db", 0.0) or 0.0)
                 ),
+                "quality_gate_thresholds_source": str(eq_payload.get("thresholds_source", "")),
                 "quality_gate_worldclass_score": str(float(_wcs_gate.get("wcs", 0.0) or 0.0)),
                 "quality_gate_worldclass_threshold": str(float(_wcs_payload.get("threshold", 0.0) or 0.0)),
                 "quality_gate_worldclass_passed": str(bool(_wcs_payload.get("passed", False))),

@@ -311,3 +311,18 @@ def test_cli_exit_codes(capsys: pytest.CaptureFixture[str]) -> None:
     assert main(["--json"]) == 0
     out = capsys.readouterr().out
     assert '"violations"' in out
+
+
+def test_dreistellige_ids_sind_fuer_das_gate_sichtbar() -> None:
+    r"""Regression D-K3-105: `\d{1,2}` machte jede ID ab D-…-100 unsichtbar.
+
+    Das Gate ist fail-closed gedacht, übersprang aber still sechs Zeilen
+    (D-K3-100…D-K3-105) und meldete „keine Verstöße“. Der Test pinnt zweierlei:
+    dreistellige IDs werden geparst, und keine Tabellenzeile verschwindet.
+    """
+    text = REGISTER.read_text(encoding="utf-8")
+    zeilen = [zeile for zeile in text.splitlines() if zeile.startswith("| D-")]
+    eintraege, _ = parse_register(text)
+    ids = {eintrag.id for eintrag in eintraege}
+    assert "D-K3-105" in ids, "dreistellige ID nicht geparst"
+    assert len(eintraege) == len(zeilen), "Registerzeile für das Gate unsichtbar"

@@ -421,6 +421,7 @@ def _export_audio_frontend_parity(
             (eq_payload.get("fallback_quality_floor", {}) or {}).get("status", "passed")
         ),
         "quality_gate_profile": str(eq_payload.get("profile", "")),
+        "quality_gate_profile_source": str(eq_payload.get("profile_source", "")),
         "quality_gate_material": str(eq_payload.get("material", "")),
         "quality_gate_preserve_signal": str(float(eq_payload.get("preserve_signal", 0.0) or 0.0)),
         "quality_gate_threshold_qe": str(
@@ -429,6 +430,7 @@ def _export_audio_frontend_parity(
         "quality_gate_threshold_level_drop_db": str(
             float((eq_payload.get("thresholds", {}) or {}).get("level_drop_db", 0.0) or 0.0)
         ),
+        "quality_gate_thresholds_source": str(eq_payload.get("thresholds_source", "")),
         "quality_gate_worldclass_score": str(float(_wcs_payload.get("wcs", 0.0) or 0.0)),
         "quality_gate_worldclass_threshold": str(float(_wcs_payload.get("threshold", 0.0) or 0.0)),
         "quality_gate_worldclass_passed": str(bool(_wcs_payload.get("passed", False))),
