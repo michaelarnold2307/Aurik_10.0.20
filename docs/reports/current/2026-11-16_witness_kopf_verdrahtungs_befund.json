@@ -1,0 +1,6 @@
+{
+  "schema": "aurik.befund/1",
+  "datum": "2026-11-16",
+  "titel": "Witness-Klassen-Kopf-Stand — 4 Gates bestanden, kein Produktionskonsument",
+  "befund": "Bestandsaufnahme fuer den naechsten Sinn-Beweis-Block: (a) Die Witness-Q-Erstbelege (2026-11-14) zeigen Q=0,0 auf allen 6 Klassen — die Bestands-Restauration bewegt diese Defektklassen nicht (die Q≈0-Luecke ist jetzt mit dem gelernten Witness MESSBAR belegt). (b) Die neuen Klassen-Koepfe (models/klassen_kopf_witness/<klasse>_best.pt, Witness-Ziel D-K3-95) haben auf Regionsebene 4/4 Gates BESTANDEN (2026-11-15: sticky_shed_residue, tape_head_clog, tape_head_level_dip, transport_bump — median_anteil_gegate ~0,89, never_worsen 1,0). (c) ABER: kein backend/denker/plugins-Treffer fuer klassen_kopf_witness — die Koepfe sind trainiert + gate-bestanden OHNE Produktionskonsument (K0-Muster: stilles Kapital). NAECHSTER BLOCK: Verdrahtung der 4 gate-bestandenen Koepfe als Flag-geschuetzter Kandidat (Default AUS, Mel-Paritaet DRT-1, §V6-Fallback) + 12-Paar-Vergleich gegen die Messbasis (study_stimuli/sinn_beweis_neu_v5/_v4) + Ganz-Titel-Zwei-Metrik-Gate (DRT-8/10)."
+}
