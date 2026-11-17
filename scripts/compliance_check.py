@@ -226,6 +226,24 @@ RULES: list[Rule] = [
         pattern=re.compile(r'\blogger\.(debug|info|warning|error|critical)\s*\(\s*f["\']'),
         severity="warning",
     ),
+    # R19 — Fork-basiertes Prozess-Spawning (Fork-Safety, §III.14 copilot-instructions.md)
+    Rule(
+        id="R19",
+        description=(
+            "Fork-basiertes Prozess-Spawning verboten (§III.14 copilot-instructions.md) — "
+            'multiprocessing.get_context("spawn") verwenden; fork() eines multithreaded '
+            "Prozesses vererbt verklemmte Kind-Locks (v7-Deadlock-Befund 2026-11-17)"
+        ),
+        pattern=re.compile(
+            r"\bmp\.Process\s*\(|\bmultiprocessing\.Process\s*\(|"
+            r"\bmp\.Pool\s*\(|\bmultiprocessing\.Pool\s*\(|"
+            r"(?<![\w.])Pool\(processes=|"
+            r"\bProcessPoolExecutor\s*\((?!.*mp_context)|"
+            r"\bos\.fork\s*\(|"
+            r"get_context\(\s*[\"']fork[\"']"
+        ),
+        severity="error",
+    ),
 ]
 
 # ---------------------------------------------------------------------------

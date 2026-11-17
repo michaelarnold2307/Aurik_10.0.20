@@ -13,6 +13,8 @@ from __future__ import annotations
 
 from typing import Any
 
+from Aurik10.i18n import t
+
 
 def _ag(meta: dict) -> dict:
     v = meta.get("audibility_gate") or {}
@@ -64,7 +66,7 @@ def hearing_gate_status(meta: dict) -> str:
 def hearing_gates_line(meta: dict) -> str:
     """Kurzzeile für den Qualitäts-Score-Text."""
     icon = {"green": "\U0001f7e2", "yellow": "\U0001f7e1", "red": "\U0001f534"}[hearing_gate_status(meta)]
-    return f"Hör-Gates: {icon} {hearing_gate_status(meta).upper()}"
+    return t("hearing.gates_line", icon=icon, status=hearing_gate_status(meta).upper())
 
 
 def hearing_gates_details(meta: dict) -> list[str]:
@@ -74,57 +76,66 @@ def hearing_gates_details(meta: dict) -> list[str]:
     wo = _wo(meta)
     if ag:
         out.append(
-            "Audibility: bestanden" if ag.get("gate_passed") is not False else "Audibility: Restdefekte über Schwelle"
+            t("hearing.audibility_passed") if ag.get("gate_passed") is not False else t("hearing.audibility_residual")
         )
         if _num(ag.get("n_audible_unmasked")) > 0:
-            out.append(f"  hörbar: {int(_num(ag.get('n_audible_unmasked')))} Typ(en)")
+            out.append(t("hearing.audible_n", n=int(_num(ag.get("n_audible_unmasked")))))
         if ag.get("improvable_types"):
             if meta.get("m1b_retry_applied") is True:
                 # §P1-7: Backend hat die Stufe-2-Nachbehandlung intern ausgeführt
-                out.append("  Stufe-2: ausgeführt (" + ", ".join(str(x) for x in ag["improvable_types"][:6]) + ")")
+                out.append(t("hearing.stufe2_executed", types=", ".join(str(x) for x in ag["improvable_types"][:6])))
             else:
-                out.append("  Stufe-2-Queue: " + ", ".join(str(x) for x in ag["improvable_types"][:6]))
+                out.append(t("hearing.stufe2_queue", types=", ".join(str(x) for x in ag["improvable_types"][:6])))
         if _num(ag.get("n_masked")) > 0:
-            out.append(f"  maskiert: {int(_num(ag.get('n_masked')))} Typ(en)")
+            out.append(t("hearing.masked_n", n=int(_num(ag.get("n_masked")))))
     if wo.get("status") == "VIOLATION":
         goals = wo.get("violated_goals") or []
         names = ", ".join(str(g) for g in goals)
-        out.append(f"Wohlklang-Ordnung: verletzt ({names})")
+        out.append(t("hearing.wohlklang_ordnung_violated", names=names))
     elif wo.get("status") == "PASS":
-        out.append("Wohlklang-Ordnung: erfüllt")
+        out.append(t("hearing.wohlklang_ordnung_ok"))
     eg_passed = meta.get("einladungs_gate_passed")
     if eg_passed is False:
         if meta.get("einladungs_gate_corrected"):
-            out.append("Wohlklang: korrigiert (Blend)")
+            out.append(t("hearing.wohlklang_corrected"))
         else:
-            out.append("Wohlklang: verletzt")
+            out.append(t("hearing.wohlklang_violated"))
     elif eg_passed is True:
-        out.append("Wohlklang: erfüllt")
+        out.append(t("hearing.wohlklang_ok"))
     if meta.get("vocal_drive_hard_revert") is True:
-        out.append("Vocal-Drive: Phasen-Rücknahme aktiv")
+        out.append(t("hearing.vocal_revert"))
     elif meta.get("vocal_drive_blend", 1.0) < 1.0:
-        out.append(f"Vocal-Drive: Blend {_num(meta.get('vocal_drive_blend')):.2f}")
+        out.append(t("hearing.vocal_blend", blend=f"{_num(meta.get('vocal_drive_blend')):.2f}"))
     inv = _inv(meta)
     if inv:
         if inv.get("fluctuation_regression"):
             out.append(
-                "Einladungs-Gate: Pumpen-Regression "
-                f"({_num(inv.get('max_vacil')):.2f} vacil > Input {_num(inv.get('max_vacil_input')):.2f})"
+                t(
+                    "hearing.invite_pumping",
+                    max_vacil=f"{_num(inv.get('max_vacil')):.2f}",
+                    max_vacil_input=f"{_num(inv.get('max_vacil_input')):.2f}",
+                )
             )
         if inv.get("loudness_jump_regression"):
             out.append(
-                "Einladungs-Gate: Lautheits-Sprung-Regression "
-                f"({_num(inv.get('loudness_jump_max')):.2f} phon > Input {_num(inv.get('loudness_jump_max_input')):.2f})"
+                t(
+                    "hearing.invite_loudness_jump",
+                    loudness=f"{_num(inv.get('loudness_jump_max')):.2f}",
+                    loudness_input=f"{_num(inv.get('loudness_jump_max_input')):.2f}",
+                )
             )
         if not inv.get("fluctuation_regression") and not inv.get("loudness_jump_regression"):
             if inv.get("passed") is False:
                 out.append(
-                    "Einladungs-Gate: advisory (asper="
-                    f"{_num(inv.get('max_asper_in_voice')):.2f}, sharpness_sprung={_num(inv.get('sharpness_jump_max')):.2f})"
+                    t(
+                        "hearing.invite_advisory",
+                        asper=f"{_num(inv.get('max_asper_in_voice')):.2f}",
+                        sharpness=f"{_num(inv.get('sharpness_jump_max')):.2f}",
+                    )
                 )
             else:
-                out.append("Einladungs-Gate (Ebene 4): erfüllt")
-    return out or ["Hör-Gates: keine Gate-Metadaten (n/a)"]
+                out.append(t("hearing.invite_ok"))
+    return out or [t("hearing.no_metadata")]
 
 
 def apply_resolved_defects(counts: dict[str, int], resolved: list[str] | None) -> tuple[dict[str, int], int, list[str]]:

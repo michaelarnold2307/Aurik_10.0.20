@@ -280,6 +280,16 @@ kann die Lücke benennen, aber nicht durch Hören ersetzen (Beleg 2026-11-15:
 Jets-vinyl bestand die Regions-Ebene, kollabierte aber auf Ganz-Titel-Ebene
 musik_mos −0,551 — erst die zweite Ebene machte die Überrestauration sichtbar).
 
+**Sub-JND-Sperre für Kompositions-Kandidaten (2026-11-17):** Ein
+Kompositions-Kandidat der B3-Suche (`scripts/b3_komposition_suche.py`) wird
+nur dann für eine Hör-Session empfohlen (`kandidat_empfohlen=true`), wenn die
+beste Komposition gegen die Baseline eine **Mindest-JND-Marge auf BEIDEN
+Metriken** zeigt — musik_mos ≥ +JND UND defektlast ≤ −JND (JND =
+`JND_TOLERANZ` aus `backend/core/dsp/wohlklang_zeuge.py`, EINE Quelle).
+Sub-JND-Kandidaten verbrauchen keine Hör-Sitzung der menschlichen Instanz
+(Befund 2026-11-11: beste Komposition W-3,W-8 lag sub-JND); stattdessen
+Ursachen-Analyse (§V7 (copilot-instructions.md)).
+
 **Zeugen (Report-Only):** `musik_mos` und `defektlast` (zertifiziert,
 Spearman 0,95) sowie der **Defekt-Delta-Witness** (`aurik.defektdelta/3`,
 §G191 (GEBOTE.md); /3 trägt zusätzlich den gain-invarianten

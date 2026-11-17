@@ -110,21 +110,21 @@ class GoalEntry:
 
 # Standard-Goals gemäß §1.2 der Spec — vollständige deutsche Bezeichnungen
 DEFAULT_GOALS: list[GoalEntry] = [
-    GoalEntry("brillanz", "Brillanz", 0.85),
-    GoalEntry("waerme", "Wärme", 0.80),
-    GoalEntry("natuerlichkeit", "Natürlichkeit", 0.90),
-    GoalEntry("authentizitaet", "Authentizität", 0.88),
-    GoalEntry("emotionalitaet", "Emotionalität", 0.87),
-    GoalEntry("transparenz", "Transparenz", 0.89),
-    GoalEntry("bass_kraft", "Bass-Kraft", 0.85),
-    GoalEntry("groove", "Groove", 0.88),
-    GoalEntry("spatial_depth", "Raumtiefe", 0.75),
-    GoalEntry("timbre_authentizitaet", "Klangfarbe", 0.87),
-    GoalEntry("tonal_center", "Tonart-Treue", 0.95),
-    GoalEntry("micro_dynamics", "Fein-Dynamik", 0.92),
-    GoalEntry("separation_fidelity", "Trennschärfe", 0.82),
-    GoalEntry("artikulation", "Artikulation", 0.85),
-    GoalEntry("transient_energie", "Transienten-Energie", 0.88),
+    GoalEntry("brillanz", t("goals.label_brillanz"), 0.85),
+    GoalEntry("waerme", t("goals.label_waerme"), 0.80),
+    GoalEntry("natuerlichkeit", t("goals.label_natuerlichkeit"), 0.90),
+    GoalEntry("authentizitaet", t("goals.label_authentizitaet"), 0.88),
+    GoalEntry("emotionalitaet", t("goals.label_emotionalitaet"), 0.87),
+    GoalEntry("transparenz", t("goals.label_transparenz"), 0.89),
+    GoalEntry("bass_kraft", t("goals.label_bass_kraft"), 0.85),
+    GoalEntry("groove", t("goals.label_groove"), 0.88),
+    GoalEntry("spatial_depth", t("goals.label_spatial_depth"), 0.75),
+    GoalEntry("timbre_authentizitaet", t("goals.label_timbre_authentizitaet"), 0.87),
+    GoalEntry("tonal_center", t("goals.label_tonal_center"), 0.95),
+    GoalEntry("micro_dynamics", t("goals.label_micro_dynamics"), 0.92),
+    GoalEntry("separation_fidelity", t("goals.label_trennschaerfe"), 0.82),
+    GoalEntry("artikulation", t("goals.label_artikulation"), 0.85),
+    GoalEntry("transient_energie", t("goals.label_transient_energie"), 0.88),
 ]
 
 # Farb-Konstanten
@@ -416,10 +416,10 @@ class MusicalGoalsRadarWidget(QWidget):
         painter.setFont(font)
 
         items = [
-            (COLOR_PASS, "Erfüllt"),
-            (COLOR_WARN, "Knapp"),
-            (COLOR_FAIL, "Nicht erreicht"),
-            (COLOR_THRESH, "Zielwert"),
+            (COLOR_PASS, t("goals.legend_passed")),
+            (COLOR_WARN, t("goals.legend_close")),
+            (COLOR_FAIL, t("goals.legend_not_reached")),
+            (COLOR_THRESH, t("goals.legend_target")),
         ]
         x = float(self._PAD_X)
         for color, text in items:
@@ -471,28 +471,28 @@ class MusicalGoalsRadarWidget(QWidget):
         """Laienverständlicher Tooltip-Text für ein Goal."""
         # Human-readable descriptions per goal
         _DESCRIPTIONS: dict[str, str] = {
-            "brillanz": "Helligkeit und Klarheit in den Höhen (Obertöne, Luftigkeit).",
-            "waerme": "Wärme und Fülle im Bassbereich — angenehmes Klangfundament.",
-            "natuerlichkeit": "Klingt die Aufnahme natürlich und unverarbeitet?",
-            "authentizitaet": "Entspricht der Klang dem Original-Charakter der Aufnahme?",
-            "emotionalitaet": "Transportiert die Restaurierung die emotionale Intensität?",
-            "transparenz": "Sind alle Instrumente klar voneinander trennbar?",
-            "bass_kraft": "Kraft und Tiefe im Bass inkl. fehlende Grundtöne.",
-            "groove": "Rhythmisches Timing — keine Verschmierung von Transienten.",
-            "spatial_depth": "Stereobreite und Raumtiefe (nur bei Stereo-Aufnahmen).",
-            "timbre_authentizitaet": "Klangfarbe der Instrumente — klingt die Oboe noch wie eine Oboe?",
-            "tonal_center": "Tonart und Stimmung — kein Pitch-Shift durch die Restaurierung.",
-            "micro_dynamics": "Lautstärke-Feinstruktur — Atemzüge, Pianissimo-Stellen.",
-            "separation_fidelity": "Stimme und Instrumente bleiben getrennt (kein Matsch).",
-            "artikulation": "Ansätze, Transienten und Konsonanten bleiben scharf.",
-            "transient_energie": "Attack und Einschwingenergie bleiben erhalten.",
+            "brillanz": t("goals.desc_brillanz"),
+            "waerme": t("goals.desc_waerme"),
+            "natuerlichkeit": t("goals.desc_natuerlichkeit"),
+            "authentizitaet": t("goals.desc_authentizitaet"),
+            "emotionalitaet": t("goals.desc_emotionalitaet"),
+            "transparenz": t("goals.desc_transparenz"),
+            "bass_kraft": t("goals.desc_bass_kraft"),
+            "groove": t("goals.desc_groove"),
+            "spatial_depth": t("goals.desc_spatial_depth"),
+            "timbre_authentizitaet": t("goals.desc_timbre_authentizitaet"),
+            "tonal_center": t("goals.desc_tonal_center"),
+            "micro_dynamics": t("goals.desc_micro_dynamics"),
+            "separation_fidelity": t("goals.desc_separation_fidelity"),
+            "artikulation": t("goals.desc_artikulation"),
+            "transient_energie": t("goals.desc_transient_energie"),
         }
         lines: list[str] = [f"<b>{g.label}</b>"]
         if _desc := _DESCRIPTIONS.get(g.key, ""):
             lines.append(f"<br><i>{_desc}</i>")
 
         if not g.applicable:
-            lines.append("<br><br>⚪ <i>Nicht messbar für diese Aufnahme.</i>")
+            lines.append(t("goals.not_measurable"))
             if g.inapplicable_reason:
                 lines.append(f"<br>{g.inapplicable_reason}")
             return "".join(lines)
@@ -502,27 +502,27 @@ class MusicalGoalsRadarWidget(QWidget):
         thresh_pct = int(t_eff * 100)
 
         if g.score >= t_eff + 0.04:
-            status = "✅ Exzellent — deutlich über dem Zielwert"
+            status = t("goals.status_excellent")
             color = "#4CAF50"
         elif g.score >= t_eff:
-            status = "🟡 Bestanden — knapp am Zielwert"
+            status = t("goals.status_passed")
             color = "#FFC107"
         else:
-            status = "❌ Unter Zielwert"
+            status = t("goals.status_below")
             color = "#F44336"
 
         lines.append(f'<br><br><span style="color:{color}"><b>{status}</b></span>')
-        lines.append(f"<br>Erreicht: <b>{score_pct} %</b> &nbsp;|&nbsp; Zielwert: <b>{thresh_pct} %</b>")
+        lines.append(t("goals.reached_target", score=score_pct, target=thresh_pct))
 
         if g.adaptive_threshold >= 0 and abs(g.adaptive_threshold - g.threshold) > 0.005:
             orig_pct = int(g.threshold * 100)
             diff = int((g.adaptive_threshold - g.threshold) * 100)
             sign = "+" if diff >= 0 else ""
-            lines.append(f"<br><i>Zielwert angepasst: {sign}{diff} % gegenüber Standard ({orig_pct} %)</i>")
+            lines.append(t("goals.target_adjusted", sign=sign, diff=diff, orig=orig_pct))
         if g.adaptation_reason:
             lines.append(f"<br>{g.adaptation_reason}")
         if g.synthesized:
-            lines.append("<br>✦ <i>Frequenzbereich wurde era-authentisch ergänzt.</i>")
+            lines.append(t("goals.freq_era_synthesized"))
 
         return "".join(lines)
 

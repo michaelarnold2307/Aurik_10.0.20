@@ -25,7 +25,6 @@ from collections import defaultdict
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from enum import Enum
-from multiprocessing import Pool
 from typing import Any
 
 import numpy as np
@@ -264,7 +263,9 @@ class AdaptiveCoreScheduler:
         current_audio = audio.copy()
 
         # Execution Loop
-        with Pool(processes=self.num_cores):
+        # §III.14 (copilot-instructions.md): spawn statt fork — fork() eines
+        # multithreaded Prozesses vererbt verklemmte Kind-Locks (v7-Befund).
+        with mp.get_context("spawn").Pool(processes=self.num_cores):
             while len(self.completed_phases) < len(self.phases):
                 # Finde Phasen, die jetzt ausgeführt werden können
                 ready_phases = self.get_ready_phases()

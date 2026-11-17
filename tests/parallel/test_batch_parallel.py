@@ -44,8 +44,10 @@ def _selective_fail(input_path, output_path):
 
 
 def _slow_process(input_path, output_path):
-    """Slow processing with delay (100ms per file so parallel speedup is clearly measurable)."""
-    time.sleep(0.1)
+    """Slow processing (1s pro Datei): Spawn-Startup (§III.14 copilot-instructions.md,
+    ~0,5-1s pro Worker) amortisiert sich erst bei dateigroßen Tasks — die reale
+    Batch-Nutzung sind ganze Audiodateien, keine 100ms-Mikro-Tasks."""
+    time.sleep(1.0)
     output_path.write_text(input_path.read_text())
 
 
@@ -217,6 +219,8 @@ class TestPerformance:
         # Parallel should be faster (with some tolerance)
         # Toleranz erhöht für CI/xdist-Umgebung mit CPU-Konkurrenz:
         # Prüft nur, dass Parallel-Modus nicht drastisch langsamer ist.
+        # §III.14 (copilot-instructions.md): spawn-Startup dominiert bei
+        # Mikro-Tasks — _slow_process nutzt daher 1s/Task (dateigroße Last).
         assert parallel_time < sequential_time * 1.5, (
             f"Parallel ({parallel_time:.3f}s) sollte nicht wesentlich "
             f"langsamer als Sequential ({sequential_time:.3f}s) sein"

@@ -193,7 +193,9 @@ class BatchParallelProcessor:
                     progress_callback(progress)
         else:
             # Parallel processing
-            with ProcessPoolExecutor(max_workers=self.n_jobs) as executor:
+            # §III.14 (copilot-instructions.md): spawn statt fork (Fork-Safety)
+            _spawn_ctx = mp.get_context("spawn")
+            with ProcessPoolExecutor(max_workers=self.n_jobs, mp_context=_spawn_ctx) as executor:
                 # Submit all tasks
                 future_to_task = {executor.submit(_process_file_worker, task, process_func): task for task in tasks}
 

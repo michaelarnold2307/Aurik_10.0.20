@@ -98,7 +98,7 @@ class MLMediumDetector:
             n_estimators=n_estimators,
             max_depth=max_depth,
             random_state=random_state,
-            n_jobs=-1,
+            n_jobs=1,  # §III.14 (copilot-instructions.md): kein loky-Prozess-Pool (fork)
             class_weight="balanced",
         )
 
@@ -157,8 +157,8 @@ class MLMediumDetector:
             logger.info("   laeuft %s-fold cross-Validierung...", cv_folds)
 
         cv = StratifiedKFold(n_splits=cv_folds, shuffle=True, random_state=self.random_state)
-        rf_cv_scores = cross_val_score(self.rf_model, X_scaled, y_encoded, cv=cv, n_jobs=-1)
-        gb_cv_scores = cross_val_score(self.gb_model, X_scaled, y_encoded, cv=cv, n_jobs=-1)
+        rf_cv_scores = cross_val_score(self.rf_model, X_scaled, y_encoded, cv=cv, n_jobs=1)  # §III.14: kein loky-fork
+        gb_cv_scores = cross_val_score(self.gb_model, X_scaled, y_encoded, cv=cv, n_jobs=1)  # §III.14: kein loky-fork
 
         # Ensemble (average predictions)
         self.training_accuracy = (rf_train_acc + gb_train_acc) / 2

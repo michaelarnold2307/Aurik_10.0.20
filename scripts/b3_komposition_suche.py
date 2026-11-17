@@ -84,6 +84,57 @@ def never_worsen_ok(messung: dict, baseline: dict) -> bool:
     return bool(mos_ok and last_ok)
 
 
+def jnd_marge_ok(messung: dict, baseline: dict) -> bool:
+    """Mindest-JND-Marge auf BEIDEN Metriken (Hörordnung §7, 2026-11-17).
+
+    Sub-JND-Schutz: ein Kompositions-Kandidat wird nur für eine Hör-Session
+    empfohlen, wenn er die Baseline um mindestens JND verbessert —
+    musik_mos ≥ +JND UND defektlast ≤ −JND (Befund 2026-11-11: beste
+    Komposition W-3,W-8 lag sub-JND; solche Kandidaten verbrauchen keine
+    Hör-Sitzung der menschlichen Instanz).
+    """
+    mos_marge = round(float(messung.get("musik_mos", 0.0)) - float(baseline.get("musik_mos", 0.0)), 4)
+    last_marge = round(float(baseline.get("defektlast", 0.0)) - float(messung.get("defektlast", 1e9)), 4)
+    # Marge auf 4 Nachkommastellen gerundet (Mess-Konvention des Wohlklang-Zeugen,
+    # round(..., 4)) — schützt die JND-Grenze vor Float-Artefakten
+    # (4.05 − 4.0 = 0.04999… < 0.05 ohne Rundung); kein Schwellwert-Trick (§V25).
+    return bool(mos_marge >= JND_TOLERANZ and last_marge >= JND_TOLERANZ)
+
+
+def empfohlen_verdict(ergebnis: dict) -> dict:
+    """Sub-JND-Sperre (Hörordnung §7): ``kandidat_empfohlen``/``hinweis`` aus
+    dem ``suche()``-Ergebnis ableiten — rein, modell-frei testbar.
+    """
+    _best_set = frozenset(ergebnis.get("beste") or [])
+    _best_messung = dict(ergebnis.get("beste_messung") or {})
+    _baseline = dict(ergebnis.get("baseline") or {})
+    _marge_ok = bool(_best_set) and jnd_marge_ok(_best_messung, _baseline)
+    if not _best_set:
+        return {
+            "jnd_marge_ok": False,
+            "kandidat_empfohlen": False,
+            "hinweis": "Keine Komposition besser als Baseline — kein Kandidat für eine Hör-Session.",
+        }
+    if _marge_ok:
+        return {
+            "jnd_marge_ok": True,
+            "kandidat_empfohlen": True,
+            "hinweis": (
+                "KANDIDAT für EINE Hör-Session — keine Entscheidung, kein dauerhafter "
+                "Flag-Flip; Freigabe nur über §4-Verfahren (flag_freigabe.py)."
+            ),
+        }
+    return {
+        "jnd_marge_ok": False,
+        "kandidat_empfohlen": False,
+        "hinweis": (
+            "SUB-JND: Beste Komposition besser als Baseline, aber unter der "
+            "Mindest-JND-Marge auf beiden Metriken (Hörordnung §7) — KEINE "
+            "Hör-Session-Empfehlung; Ursachen-Analyse statt Hör-Sitzung (§V7 (copilot-instructions.md))."
+        ),
+    }
+
+
 def forward_auswahl(scores: dict, kandidaten: list[str], reihenfolge: list[str]) -> tuple[list[str], list[str]]:
     """Greedy-Forward-Selection mit Never-worsen-Schranke (deterministisch).
 
@@ -128,7 +179,7 @@ def suche(measure_fn, kandidaten: list[str], reihenfolge: list[str]) -> dict:
         if never_worsen_ok(messung, baseline) and zielwert(messung) > zielwert(beste_messung):
             beste.add(kandidat)
             beste_messung = dict(messung)
-    return {"beste": sorted(beste), "protokoll": protokoll, "baseline": baseline}
+    return {"beste": sorted(beste), "protokoll": protokoll, "baseline": baseline, "beste_messung": beste_messung}
 
 
 def _echtes_measure_fn():
@@ -216,10 +267,9 @@ def main(argv: list[str] | None = None) -> int:
 
     ergebnis["seed"] = args.seed
     ergebnis["kandidaten"] = kandidaten
-    ergebnis["hinweis"] = (
-        "KANDIDAT für EINE Hör-Session — keine Entscheidung, kein dauerhafter "
-        "Flag-Flip; Freigabe nur über §4-Verfahren (flag_freigabe.py)."
-    )
+    ergebnis.update(empfohlen_verdict(ergebnis))
+    if not ergebnis["kandidat_empfohlen"]:
+        log.warning("Keine Hör-Session-Empfehlung: %s", ergebnis["hinweis"])
     out = PROJECT_ROOT / "docs" / "reports" / "current" / "b3_komposition_suche.json"
     out.write_text(json.dumps(ergebnis, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
     log.info("Beste Komposition: %s -> %s", ",".join(ergebnis["beste"]) or "(leer)", out)

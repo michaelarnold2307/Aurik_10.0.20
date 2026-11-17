@@ -121,10 +121,10 @@ class RestorationStatusPanel(QFrame):
 
     # Human-readable labels for the 4 dimensions
     _DIM_LABELS: dict[str, str] = {
-        "tonal_center": "Tonart",
-        "timbre_authentizitaet": "Klangfarbe",
-        "natuerlichkeit": "Natürlichkeit",
-        "authentizitaet": "Originaltreue",
+        "tonal_center": t("panel.dim.tonal_center"),
+        "timbre_authentizitaet": t("panel.dim.timbre_authentizitaet"),
+        "natuerlichkeit": t("panel.dim.natuerlichkeit"),
+        "authentizitaet": t("panel.dim.authentizitaet"),
     }
 
     def __init__(self, parent: QWidget | None = None) -> None:
@@ -471,7 +471,7 @@ class RestorationStatusPanel(QFrame):
         parts: list[str] = []
         if found:
             parts.append(
-                "Gefunden: " + ", ".join(f"{f['label']} ({f.get('severity', '')})".rstrip() for f in found[:4])
+                t("panel.gefunden") + ", ".join(f"{f['label']} ({f.get('severity', '')})".rstrip() for f in found[:4])
             )
         if actions:
             _marks = {"done": "✓", "current": "▶", "pending": "○"}
@@ -479,9 +479,9 @@ class RestorationStatusPanel(QFrame):
                 _chain = [
                     f"{_marks.get(self._plan_progress.get(i, ''), '')} {a}".strip() for i, a in enumerate(actions[:8])
                 ]
-                parts.append("Aurik: " + " → ".join(_chain))
+                parts.append(t("panel.aurik") + " → ".join(_chain))
             else:
-                parts.append("Aurik wird: " + " → ".join(actions[:8]))
+                parts.append(t("panel.wird") + " → ".join(actions[:8]))
         text = "   ·   ".join(parts)
         fm = self._consent_label.fontMetrics()
         _max_w = max(320, self.width() - 48)

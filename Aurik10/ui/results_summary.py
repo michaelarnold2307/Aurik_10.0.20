@@ -98,9 +98,10 @@ class ResultsSummaryDialog(QtWidgets.QDialog):
 
             _lines: list[tuple[str, str]] = []
             if _found:
+                _found_text = ", ".join(f"{f['label']} ({f.get('severity', '')})".rstrip() for f in _found)
                 _lines.append(
                     (
-                        "🔍 Gefunden: " + ", ".join(f"{f['label']} ({f.get('severity', '')})".rstrip() for f in _found),
+                        t("results.found_follows", items=_found_text),
                         "#8894A8",
                     )
                 )
@@ -111,17 +112,17 @@ class ResultsSummaryDialog(QtWidgets.QDialog):
                 _noeff = int(_bericht.get("no_effect_count", 0) or 0)
                 _lines.append(
                     (
-                        "✅ Aurik hat: " + " → ".join(_planned[:6]),
+                        t("results.aurik_did", steps=" → ".join(_planned[:6])),
                         "#82B89A",
                     )
                 )
-                _exec_parts = [f"{_done_n} Schritte ausgeführt"]
+                _exec_parts = [t("results.steps_executed", count=_done_n)]
                 if _skip_n:
-                    _exec_parts.append(f"{_skip_n} übersprungen")
+                    _exec_parts.append(t("results.steps_skipped", count=_skip_n))
                 if _noeff:
-                    _exec_parts.append(f"{_noeff} ohne Effekt")
+                    _exec_parts.append(t("results.steps_no_effect", count=_noeff))
                 if _def_n:
-                    _exec_parts.append(f"{_def_n} zur ML-Veredelung verschoben")
+                    _exec_parts.append(t("results.steps_deferred", count=_def_n))
                 _lines.append(("   " + " · ".join(_exec_parts), "#8894A8"))
 
             _guards = _bericht.get("guards") or {}
@@ -133,9 +134,9 @@ class ResultsSummaryDialog(QtWidgets.QDialog):
                 + int(_g.get("spectral", 0) or 0)
             )
             _iters = int((_guards.get("utmos_loop") or {}).get("iterations", 0) or 0)
-            _guard_text = f"🛡️ Sicherheitsnetz: {_fired} Eingriffe"
+            _guard_text = t("results.safety_net", count=_fired)
             if _iters:
-                _guard_text += f" · UTMOS-Kontrolle {_iters}×"
+                _guard_text += t("results.utmos_control", count=_iters)
             _lines.append((_guard_text, "#82B89A" if _fired == 0 else "#B8A068"))
 
             _proof = _bericht.get("proof") or {}
@@ -161,44 +162,42 @@ class ResultsSummaryDialog(QtWidgets.QDialog):
 
         # §v10.14 P0: Keine Fake-Werte — wenn Qualität nicht verfügbar, ehrlich sein
         if quality_before is None or quality_after is None or (quality_before == 0 and quality_after == 0):
-            quality_text = "Qualitätsmetriken nicht verfügbar — Messung fehlgeschlagen oder Audio zu kurz."
+            quality_text = t("results.quality_metrics_unavailable")
             _color = "#8899AA"
             _bg = "rgba(136, 153, 170, 0.08)"
         elif was_reverted:
             revert_reason = d.get("revert_reason", "")
             quality_text = (
-                (
-                    f"⚠️ Bearbeitung verworfen — keine Verbesserung möglich.\n"
-                    f"Das Original wurde unverändert gespeichert.\n"
-                    f"Grund: {revert_reason}"
-                )
+                t("results.revert_with_reason", reason=revert_reason)
                 if revert_reason
-                else (
-                    "⚠️ Bearbeitung verworfen — keine Verbesserung möglich.\nDas Original wurde unverändert gespeichert."
-                )
+                else t("results.revert_no_reason")
             )
             _color = "#B8A068"
             _bg = "rgba(184, 160, 104, 0.10)"
         elif quality_after > quality_before and quality_before > 0:
             delta = quality_after - quality_before
-            quality_text = (
-                f"Restaurierbarkeit: {int(quality_before)}% → Ergebnisqualität: {int(quality_after)}% (+{int(delta)}%)"
+            quality_text = t(
+                "results.quality_improved",
+                before=int(quality_before),
+                after=int(quality_after),
+                delta=int(delta),
             )
             if mushra > 0:
-                quality_text += f"\n🎧 Klangqualität: {mushra:.0f}/100"
+                quality_text += t("results.audio_quality", mushra=f"{mushra:.0f}")
             if hpi > 0:
-                quality_text += f" · 📈 Klangverbesserung: {hpi:.0%}"
+                quality_text += t("results.improvement_pct", hpi=f"{hpi:.0%}")
             _color = "#82B89A"
             _bg = "rgba(130, 184, 154, 0.08)"
         elif quality_after <= quality_before and quality_before > 0:
-            quality_text = (
-                f"Restaurierbarkeit: {int(quality_before)}% → Ergebnisqualität: {int(quality_after)}%\n"
-                f"Die Aufnahme ist bereits so gut, wie es das Quellmaterial erlaubt."
+            quality_text = t(
+                "results.quality_no_change",
+                before=int(quality_before),
+                after=int(quality_after),
             )
             _color = "#8894A8"
             _bg = "rgba(136, 148, 168, 0.08)"
         else:
-            quality_text = "Qualitätsbewertung nicht verfügbar"
+            quality_text = t("results.quality_assessment_unavailable")
             _color = "#8894A8"
             _bg = "rgba(136, 148, 168, 0.08)"
 
@@ -210,13 +209,9 @@ class ResultsSummaryDialog(QtWidgets.QDialog):
         # §v10.207: Laienverständliche Tooltips
         _tooltip_parts = []
         if mushra > 0:
-            _tooltip_parts.append(
-                "Klangqualität (0-100): Wie gut die Aufnahme für menschliche Ohren klingt — bewertet nach internationalem MUSHRA-Standard"
-            )
+            _tooltip_parts.append(t("results.tooltip_mushra"))
         if hpi > 0:
-            _tooltip_parts.append(
-                "Klangverbesserung (0-1): Wie viel besser die restaurierte Version im Vergleich zum Original klingt"
-            )
+            _tooltip_parts.append(t("results.tooltip_improvement"))
         if _tooltip_parts:
             quality_label.setToolTip("\n\n".join(_tooltip_parts))
         layout.addWidget(quality_label)
@@ -225,10 +220,9 @@ class ResultsSummaryDialog(QtWidgets.QDialog):
         _chain_depth = d.get("chain_depth", 1)
         if _chain_depth >= 3:
             _chain_note = (
-                f"🔗 {_chain_depth}-stufige Transfer-Kette — "
-                "Aurik hat die Restauration an die Mehrfach-Überspielung angepasst."
+                t("results.chain_deep", depth=_chain_depth)
                 if _chain_depth >= 4
-                else f"🔗 {_chain_depth}-stufige Transfer-Kette — leichte Anpassung der Restauration."
+                else t("results.chain_moderate", depth=_chain_depth)
             )
             _depth_label = QtWidgets.QLabel(_chain_note)
             _depth_label.setStyleSheet("font-size: 10pt; color: #8894A8; padding: 4px 8px;")
@@ -364,8 +358,8 @@ class ResultsSummaryDialog(QtWidgets.QDialog):
         # Mode
         mode = d.get("mode", "")
         if mode:
-            mode_name = "Studio 2026" if "STUDIO" in str(mode).upper() else "Restoration"
-            items.append(("⚙️", t("results.mode_used").format(mode=mode_name), "#8894A8"))
+            mode_name = t("results.mode_studio") if "STUDIO" in str(mode).upper() else t("results.mode_restoration")
+            items.append(("⚙️", t("results.mode_used", mode=mode_name), "#8894A8"))
 
         # Era
         era = d.get("era_detected", "")
@@ -395,15 +389,12 @@ def interpret_mushra_score(mushra_score: float) -> str:
     Skala nach ITU-R BS.1534: 80-100 exzellent, 60-80 gut, 40-60 mittel, <40 schwach.
     """
     if mushra_score >= 90:
-        return "🏆 Weltklasse-Klangqualität — auf dem Niveau professioneller Studio-Restaurierung."
+        return t("results.mushra_world_class")
     if mushra_score >= 80:
-        return "✨ Sehr gute Klangqualität — kaum von einer professionellen Restaurierung zu unterscheiden."
+        return t("results.mushra_very_good")
     if mushra_score >= 50:
-        return "🎧 Hörbar verbesserte Klangqualität — die Restaurierung ist deutlich wahrnehmbar."
-    return (
-        "🛡️ Das System ist vorsichtshalber in einen sicheren Checkpoint zurückgekehrt, "
-        "um keine hörbare Verschlechterung zu riskieren."
-    )
+        return t("results.mushra_improved")
+    return t("results.mushra_checkpoint")
 
 
 def interpret_hpi_score(hpi_score: float) -> str:
@@ -412,12 +403,12 @@ def interpret_hpi_score(hpi_score: float) -> str:
     Bildet ab, wie sicher sich die Pipeline bei ihren eigenen Entscheidungen war.
     """
     if hpi_score >= 0.85:
-        return "✅ Die Restaurierung wurde mit hoher Sicherheit durchgeführt."
+        return t("results.hpi_high_confidence")
     if hpi_score >= 0.65:
-        return "👍 Das Ergebnis ist vertrauenswürdig — die Pipeline war sich ihrer Entscheidungen sicher."
+        return t("results.hpi_trustworthy")
     if hpi_score >= 0.45:
-        return "🤔 Die Pipeline ist an einigen Stellen vorsichtig vorgegangen, um Risiken zu vermeiden."
-    return "🛡️ Die Pipeline lief größtenteils im Schutzmodus, um das Original nicht zu gefährden."
+        return t("results.hpi_cautious")
+    return t("results.hpi_protection_mode")
 
 
 def build_results_data(

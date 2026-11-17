@@ -100,7 +100,7 @@ class AurikSplashScreen(QWidget):
                     )
                     break
 
-        self._status: str = "Initialisierung …"
+        self._status: str = t("splash.status.initializing")
         self._phase: float = 0.0  # equalizer / dot animation phase
 
         self._timer = QTimer(self)

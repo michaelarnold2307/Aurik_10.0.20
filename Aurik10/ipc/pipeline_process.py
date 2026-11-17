@@ -35,6 +35,7 @@ import traceback
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass, field
 from enum import Enum, auto
+from multiprocessing.process import BaseProcess
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
@@ -463,10 +464,16 @@ class PipelineProcess:
     """
 
     def __init__(self):
-        self._process: mp.Process | None = None
+        # §V7 (copilot-instructions.md) / Fork-Safety: Der GUI-Hauptprozess ist
+        # multithreaded (torch-Threads, Qt, GPU-Detection). Ein fork() eines
+        # multithreaded Prozesses vererbt verklemmte Locks an das Kind und
+        # deadlockt den Pipeline-Worker (v7-Befund: Vater do_wait, Kind in
+        # futex_do_wait). Daher explizit "spawn" statt Linux-Default "fork".
+        self._ctx = mp.get_context("spawn")
+        self._process: BaseProcess | None = None
         self._parent_pipe: mp.connection.Connection | None = None
         self._child_pipe: mp.connection.Connection | None = None
-        self._ready_event = mp.Event()
+        self._ready_event = self._ctx.Event()
         self._ring: SharedAudioRing | None = None
         self._ring_name: str = ""
         self.latest_status = PipelineStatus()
@@ -509,11 +516,11 @@ class PipelineProcess:
             self._ring_name = self._ring._name
 
             # ── Pipes erstellen ─────────────────────────────────────
-            self._parent_pipe, self._child_pipe = mp.Pipe(duplex=False)
+            self._parent_pipe, self._child_pipe = self._ctx.Pipe(duplex=False)
 
-            # ── Kindprozess starten ─────────────────────────────────
+            # ── Kindprozess starten (spawn, siehe __init__) ─────────
             self._ready_event.clear()
-            self._process = mp.Process(
+            self._process = self._ctx.Process(
                 target=_pipeline_worker,
                 args=(
                     self._child_pipe,

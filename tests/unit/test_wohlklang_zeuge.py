@@ -227,3 +227,84 @@ def test_jitter_kanal_sieht_fm_jitter() -> None:
 def test_jitter_kanal_stille_ist_null() -> None:
     """Stille-Guard: ohne Signal-Energie ist Jitter nicht definiert ⇒ 0,0."""
     assert wz.jitter_kanal(np.zeros(8192, dtype=np.float32), SR) == 0.0
+
+
+# ---------------------------------------------------------------------------
+# DRT-10-Produktions-Verdikt (Spec 26 DRT-10, 2026-11-17)
+# ---------------------------------------------------------------------------
+
+
+def test_ueberrestauration_flag_drt10(monkeypatch) -> None:
+    """Überrestauration = defektlast-Gewinn ≥ JND bei musik_mos-Verlust ≥ JND."""
+    x = _musik()
+    y = _musik(seed=7)
+    zaehler: dict[str, int] = {"last": 0, "mos": 0}
+
+    def _fake_last(a: np.ndarray, sr: int) -> float:
+        zaehler["last"] += 1
+        return 1.0 if zaehler["last"] == 1 else 0.8  # Δ −0,2 ≤ −JND (Gewinn)
+
+    def _fake_mos(a: np.ndarray, sr: int) -> float:
+        zaehler["mos"] += 1
+        return 3.0 if zaehler["mos"] == 1 else 2.8  # Δ −0,2 ≤ −JND (Verlust)
+
+    monkeypatch.setattr(wz, "defektlast", _fake_last)
+    monkeypatch.setattr(wz, "_musik_mos", _fake_mos)
+
+    befund = wz.messe_wohlklang_zeuge(x, y, SR)
+
+    assert befund["ueberrestauration"] is True
+    assert befund["gerichteter_fall"] is True
+    assert any("UEBERRESTAURATION" in g for g in befund["grund"])
+
+
+def _befund_ueberrestauration() -> dict:
+    return {"verfuegbar": True, "ueberrestauration": True}
+
+
+def test_drt10_verdict_degradiert_bei_aktivem_kandidat() -> None:
+    meta: dict = {"wohlklang_zeuge": _befund_ueberrestauration()}
+
+    assert wz.drt10_verdict_in_metadata(meta, kandidat_aktiv=True) is True
+    assert meta["degradation_status"] == "degraded"
+    assert meta["fail_reason"] == wz.DRT10_FAIL_REASON
+    assert any(r["error_code"] == wz.DRT10_FAIL_REASON for r in meta["fail_reasons"])
+
+
+def test_drt10_verdict_ohne_kandidat_kein_eingriff() -> None:
+    """Ohne aktiven Kandidaten bleibt der Zeuge REPORT-ONLY (Hörordnung §7/§8a)."""
+    meta: dict = {"wohlklang_zeuge": _befund_ueberrestauration()}
+
+    assert wz.drt10_verdict_in_metadata(meta, kandidat_aktiv=False) is False
+    assert "degradation_status" not in meta
+    assert "fail_reasons" not in meta
+
+
+def test_drt10_verdict_ohne_ueberrestauration_kein_eingriff() -> None:
+    meta: dict = {"wohlklang_zeuge": {"verfuegbar": True, "ueberrestauration": False}}
+
+    assert wz.drt10_verdict_in_metadata(meta, kandidat_aktiv=True) is False
+    assert "degradation_status" not in meta
+
+
+def test_drt10_verdict_unverfuegbarer_befund_kein_eingriff() -> None:
+    meta: dict = {"wohlklang_zeuge": {"verfuegbar": False}}
+
+    assert wz.drt10_verdict_in_metadata(meta, kandidat_aktiv=True) is False
+    assert "degradation_status" not in meta
+
+
+def test_drt10_verdict_idempotent() -> None:
+    meta: dict = {"wohlklang_zeuge": _befund_ueberrestauration()}
+    wz.drt10_verdict_in_metadata(meta, kandidat_aktiv=True)
+    assert wz.drt10_verdict_in_metadata(meta, kandidat_aktiv=True) is True
+    codes = [r["error_code"] for r in meta["fail_reasons"] if isinstance(r, dict)]
+    assert codes.count(wz.DRT10_FAIL_REASON) == 1
+
+
+def test_drt10_verdrahtung_drei_pfade() -> None:
+    """Wirkungs-Pin: der Verdikt hängt in Einzel-, Options- und Chunked-Pfad."""
+    quelle = (PROJEKT / "backend/core/unified_restorer_v3.py").read_text(encoding="utf-8")
+
+    assert quelle.count("self._drt10_verdict_in_metadata(") == 3
+    assert "def _drt10_kandidat_aktiv(" in quelle

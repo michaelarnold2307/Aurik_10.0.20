@@ -16,11 +16,20 @@ verschlechtert hat.
 
 Rolle (Hörordnung §7/§8a — „Metriken sind Zeugen, die Hör-Instanz
 entscheidet"): **REPORT-ONLY**. Der Zeuge verändert kein Sample, löst keinen
-Rollback aus, blockiert keinen Export und setzt kein Flag. Er schreibt
+Rollback aus und blockiert keinen Export. Er schreibt
 ``metadata["wohlklang_zeuge"]`` und markiert ``gerichteter_fall`` = True,
 sobald eine Metrik über die JND hinaus in die falsche Richtung läuft — solche
 Läufe sind der Hör-Instanz vorzulegen (``§V7`` (copilot-instructions.md):
 kein stiller Flip, keine automatische Gegenmaßnahme).
+
+**Eine** Ausnahme vom reinen Zeugen-Status ist der **DRT-10-Produktions-Verdikt**
+(Spec 26 DRT-10, 2026-11-17): Ist ein Reparatur-Kandidat aktiv (Witness-Kopf-
+Flags in ``backend/core/music_model_flags.py``) UND der Ganz-Titel-Befund ist
+**Überrestauration** (defektlast-Gewinn ≥ JND bei musik_mos-Verlust ≥ JND),
+dann markiert ``drt10_verdict_in_metadata`` den Lauf als ``degraded`` mit
+``fail_reason=RESTORATION_DRT10_UEBERRESTAURATION`` (§0c: bestmögliches
+sicheres Ergebnis wird exportiert — kein Hardstop, kein Sample-Eingriff).
+Ohne aktiven Kandidaten bleibt alles beim REPORT-ONLY-Zeugen.
 
 Determinismus (``§G5`` (copilot-instructions.md)): reine numpy-Operationen,
 keine Zufallsgrößen, keine Zeit-/Umgebungsabhängigkeit — derselbe Eingang
@@ -43,6 +52,9 @@ logger = logging.getLogger(__name__)
 
 SCHEMA = "aurik.wohlklang_zeuge/1"
 ZERTIFIKAT = "docs/reports/current/qualitaetsmetrik_richtungszertifikat.json"
+# DRT-10-Produktions-Verdikt (Spec 26 DRT-10): Fehlercode des degradierten
+# Exports, wenn ein aktiver Reparatur-Kandidat überrestauriert (§0c).
+DRT10_FAIL_REASON = "RESTORATION_DRT10_UEBERRESTAURATION"
 # Never-worsen-Toleranz der B3-/Audibility-Stufe (MOS-Punkte). EINE Quelle für
 # Stufenmessung, Kompositions-Suche und Produktions-Zeugen — ein Test pinnt die
 # Gleichheit, damit die drei Pfade nicht still auseinanderlaufen.
@@ -202,14 +214,26 @@ def messe_wohlklang_zeuge(
     # defektlast: höher = schlechter ⇒ Regression, wenn der Ausgang DEUTLICH steigt.
     reg_mos = bool(delta_mos < -float(jnd))
     reg_last = bool(delta_last > float(jnd))
+    # DRT-10 (Spec 26): Überrestauration = defektlast-Gewinn ≥ JND bei
+    # gleichzeitigem musik_mos-Verlust ≥ JND (Jets-vinyl-Befund 2026-11-15:
+    # defektlast −0,203 bei musik_mos −0,551 — die Regionen-Gates sehen diesen
+    # Wohlklang-Verlust nicht). Der Lauf ist dann nicht aktivierungsfähig; der
+    # Produktions-Verdikt (``drt10_verdict_in_metadata``) degradiert den Export,
+    # sobald ein Reparatur-Kandidat (Witness-Kopf) aktiv ist.
+    ueberrestauration = bool(delta_last <= -float(jnd) and delta_mos <= -float(jnd))
 
     grund: list[str] = []
     if reg_mos:
         grund.append(f"musik_mos {delta_mos:+.4f} < -{float(jnd):.2f}")
     if reg_last:
         grund.append(f"defektlast {delta_last:+.4f} > +{float(jnd):.2f}")
+    if ueberrestauration:
+        grund.append(
+            f"UEBERRESTAURATION (DRT-10): defektlast {delta_last:+.4f} ≤ -{float(jnd):.2f}"
+            f" bei musik_mos {delta_mos:+.4f} ≤ -{float(jnd):.2f}"
+        )
 
-    gerichtet = bool(reg_mos or reg_last)
+    gerichtet = bool(reg_mos or reg_last or ueberrestauration)
     befund: dict[str, Any] = {
         "schema": SCHEMA,
         "verfuegbar": True,
@@ -236,6 +260,7 @@ def messe_wohlklang_zeuge(
             "jitter_kanal": delta_jitter,
         },
         "regression": {"musik_mos": reg_mos, "defektlast": reg_last},
+        "ueberrestauration": ueberrestauration,
         "gerichteter_fall": gerichtet,
         "hoer_instanz": "vorzulegen" if gerichtet else "keine_vorlage",
         "grund": grund,
@@ -277,3 +302,59 @@ def zeuge_meta(
             "hoer_instanz": "keine_aussage",
             "grund": f"{type(exc).__name__}: {exc}",
         }
+
+
+def drt10_verdict_in_metadata(meta: dict[str, Any], *, kandidat_aktiv: bool) -> bool:
+    """DRT-10-Produktions-Verdikt (Spec 26 DRT-10, 2026-11-17).
+
+    Rein auf Metadaten wirkend (§0c): kein Sample-Eingriff, kein Hardstop,
+    kein Rollback — bei Überrestauration wird der Lauf als ``degraded``
+    markiert, damit das Export-Gate das bestmögliche sichere Ergebnis mit
+    Status „degraded" exportiert.
+
+    Wirkung NUR, wenn **beides** gilt:
+
+    * ``kandidat_aktiv`` — mindestens ein Reparatur-Kandidat (Witness-Kopf-Flag
+      in ``backend/core/music_model_flags.py``) ist im Lauf aktiv, und
+    * ``meta["wohlklang_zeuge"]["ueberrestauration"]`` ist True (Ganz-Titel:
+      defektlast-Gewinn ≥ JND bei musik_mos-Verlust ≥ JND).
+
+    Sonst: kein Eingriff (der Zeuge bleibt REPORT-ONLY, Hörordnung §7/§8a).
+    Idempotent: ein zweiter Aufruf erzeugt keinen doppelten fail_reasons-Eintrag.
+
+    Returns:
+        True, wenn der Lauf degradiert wurde (für Tests/Logik), sonst False.
+    """
+    if not kandidat_aktiv:
+        return False
+    befund = meta.get("wohlklang_zeuge")
+    if not isinstance(befund, dict):
+        return False
+    if not befund.get("verfuegbar") or not befund.get("ueberrestauration"):
+        return False
+
+    _reasons = meta.setdefault("fail_reasons", [])
+    if not any(isinstance(r, dict) and r.get("error_code") == DRT10_FAIL_REASON for r in _reasons):
+        _reasons.append(
+            {
+                "component": "drt10_ganztitel_verdict",
+                "severity": "degraded",
+                "error_code": DRT10_FAIL_REASON,
+                "exc_type": "ueberrestauration",
+                "exc_msg": (
+                    "Ganz-Titel-Zwei-Metrik-Never-worsen verletzt (Spec 26 DRT-10): "
+                    "defektlast gewinnt ≥ JND bei musik_mos-Verlust ≥ JND — "
+                    "Lauf ist nicht aktivierungsfähig (§0c-degradierter Export)"
+                ),
+            }
+        )
+    if str(meta.get("degradation_status", "") or "").strip().lower() in {"", "ok", "none"}:
+        meta["degradation_status"] = "degraded"
+    if not meta.get("fail_reason"):
+        meta["fail_reason"] = DRT10_FAIL_REASON
+    logger.warning(
+        "👂 DRT-10-Verdikt: Überrestauration bei aktivem Reparatur-Kandidat — "
+        "Lauf als degraded markiert (%s, §0c, kein Sample-Eingriff)",
+        DRT10_FAIL_REASON,
+    )
+    return True

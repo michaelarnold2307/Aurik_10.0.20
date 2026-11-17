@@ -163,10 +163,10 @@ class OnboardingWizard(QtWidgets.QDialog):
 
         # Features grid
         features = [
-            ("🔇", "Entfernt Knackser & Rauschen"),
-            ("🎚️", "Automatisch – kein Fachwissen nötig"),
-            ("🔒", "100% offline – deine Daten bleiben privat"),
-            ("💿", "Für Vinyl, Kassette, CD & MP3"),
+            ("🔇", t("onboard.feature.denoise")),
+            ("🎚️", t("onboard.feature.auto")),
+            ("🔒", t("onboard.feature.offline")),
+            ("💿", t("onboard.feature.formats")),
         ]
 
         for icon, text in features:
@@ -198,15 +198,15 @@ class OnboardingWizard(QtWidgets.QDialog):
         for mode_id, mode_name, desc, icon, color in [
             (
                 "restoration",
-                "💿 Restoration",
-                "Behutsam · Original bleibt erhalten\nFür Vinyl, Kassetten & Archiv",
+                t("onboard.mode.restoration.name"),
+                t("onboard.mode.restoration.desc"),
                 "💿",
                 "#FFB300",
             ),
             (
                 "studio",
-                "🎯 Studio 2026",
-                "Modern · Klar & kraftvoll\nFür Spotify, YouTube & Streaming",
+                t("onboard.mode.studio.name"),
+                t("onboard.mode.studio.desc"),
                 "🎯",
                 "#00B0FF",
             ),

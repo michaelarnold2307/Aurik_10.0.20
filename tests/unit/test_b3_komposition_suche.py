@@ -17,7 +17,9 @@ from scripts.b3_komposition_suche import (
     JND_TOLERANZ,
     KANDIDATEN,
     NICHT_MESSBAR,
+    empfohlen_verdict,
     forward_auswahl,
+    jnd_marge_ok,
     never_worsen_ok,
     suche,
     zielwert,
@@ -129,3 +131,54 @@ def test_flag_restore_vertrag_im_quelltext() -> None:
     assert "aktive_urspruenglich" in _SRC_TEXT
     assert "try:" in _SRC_TEXT and "finally:" in _SRC_TEXT
     assert "_flag_setzen(s, wert)" in _SRC_TEXT
+
+
+def test_jnd_marge_verlangt_beide_metriken() -> None:
+    base = _messung(4.0, 0.5)
+    # Beide Arme über JND ⇒ ok
+    assert jnd_marge_ok(_messung(4.0 + JND_TOLERANZ, 0.5 - JND_TOLERANZ), base) is True
+    # Nur MOS-Marge ⇒ nicht ok (defektlast neutral)
+    assert jnd_marge_ok(_messung(4.1, 0.5), base) is False
+    # Nur Defektlast-Marge ⇒ nicht ok (mos neutral)
+    assert jnd_marge_ok(_messung(4.0, 0.3), base) is False
+    # Sub-JND auf beiden ⇒ nicht ok (Befund W-3,W-8)
+    assert jnd_marge_ok(_messung(4.0 + JND_TOLERANZ / 2, 0.5 - JND_TOLERANZ / 2), base) is False
+
+
+def test_empfohlen_verdict_empfiehlt_nur_ueber_jnd() -> None:
+    ergebnis = {
+        "beste": ["W-2"],
+        "baseline": _messung(4.0, 0.5),
+        "beste_messung": _messung(4.0 + JND_TOLERANZ, 0.5 - JND_TOLERANZ),
+    }
+    verdict = empfohlen_verdict(ergebnis)
+    assert verdict["kandidat_empfohlen"] is True
+    assert verdict["jnd_marge_ok"] is True
+    assert "KANDIDAT" in verdict["hinweis"]
+
+
+def test_empfohlen_verdict_sub_jnd_sperre() -> None:
+    ergebnis = {
+        "beste": ["W-3", "W-8"],
+        "baseline": _messung(4.0, 0.5),
+        "beste_messung": _messung(4.0 + JND_TOLERANZ / 2, 0.5 - JND_TOLERANZ / 2),
+    }
+    verdict = empfohlen_verdict(ergebnis)
+    assert verdict["kandidat_empfohlen"] is False
+    assert "SUB-JND" in verdict["hinweis"]
+
+
+def test_empfohlen_verdict_ohne_verbesserung_kein_kandidat() -> None:
+    ergebnis = {"beste": [], "baseline": _messung(4.0, 0.5), "beste_messung": {}}
+    verdict = empfohlen_verdict(ergebnis)
+    assert verdict["kandidat_empfohlen"] is False
+    assert "kein Kandidat" in verdict["hinweis"]
+
+
+def test_suche_exportiert_beste_messung() -> None:
+    tabelle = {
+        frozenset(): _messung(4.0, 0.5),
+        frozenset({"W-2"}): _messung(4.3, 0.5),
+    }
+    ergebnis = suche(lambda komp: tabelle[komp], ["W-2"], ["W-2"])
+    assert ergebnis["beste_messung"] == _messung(4.3, 0.5)

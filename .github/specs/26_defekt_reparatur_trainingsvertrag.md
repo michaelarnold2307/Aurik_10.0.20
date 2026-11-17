@@ -122,6 +122,14 @@ geflaggt (`ueberrestauration`-Feld in `bewerte_schadens_proben.py`) und ist
 niemals eine Schwellwert- oder Mess-Anpassung. Befund 2026-11-15: Jets-vinyl
 defektlast −0,203 bei musik_mos −0,551 — die Regionen-Gates (Witness-Q) sehen
 diesen Wohlklang-Verlust nicht; erst die Ganz-Titel-Zwei-Metrik-Messung deckt ihn auf.
+**Produktions-Verdikt (2026-11-17):** Ist ein Reparatur-Kandidat im Lauf aktiv
+(Witness-Kopf-Flags `use_witness_kopf_*` in `backend/core/music_model_flags.py`),
+wird die Überrestauration zur Laufzeit geflaggt (`wohlklang_zeuge.ueberrestauration`)
+und der Lauf als `degraded` mit `fail_reason=RESTORATION_DRT10_UEBERRESTAURATION`
+exportiert (§0c: bestmögliches sicheres Ergebnis, kein Hardstop, kein
+Sample-Eingriff — `drt10_verdict_in_metadata` in `backend/core/dsp/wohlklang_zeuge.py`,
+Verdrahtung in `unified_restorer_v3._drt10_verdict_in_metadata`). Ohne aktiven
+Kandidaten bleibt der Zeuge REPORT-ONLY (Hörordnung §7/§8a).
 
 ## DRT-11 — Trigger-Kontext-Parität (Sperre gegen Fremd-Kontext-Fehltrigger)
 

@@ -302,6 +302,27 @@ Jedes VERBOT definiert eine unzulässige Handlung. Verstöße sind Build-Fehler.
    - `nara_wpe` ist **unüberwacht** (kein Trainingskorpus) → domain-neutral.
    - Pflege: `python scripts/model_inventory.py --domains`;
      Registry im selben Commit aktualisieren (§G9).
+14. **Process-Spawning / Fork-Safety (2026-11-17)**: Im Produktionspfad
+    (`backend/`, `core/`, `plugins/`, `denker/`, `Aurik10/`) MUSS
+    Prozess-Spawning über einen expliziten
+    `multiprocessing.get_context("spawn")` erfolgen
+    (Context-`.Process`/`.Pool`, `ProcessPoolExecutor(mp_context=…)`).
+    Der Linux-Default **`fork`** — `mp.Process(…)`, `multiprocessing.Pool`,
+    `Pool(processes=…)`, `ProcessPoolExecutor` ohne `mp_context`,
+    `os.fork()`, `get_context("fork")` — ist im Produktionspfad **VERBOTEN**,
+    sobald der Prozess multithreaded sein kann oder ML-Runtimes
+    (torch/ORT/OpenBLAS) geladen hat: `fork()` eines multithreaded Prozesses
+    vererbt verklemmte Locks an das Kind (v7-Deadlock-Befund 2026-11-17:
+    Vater `do_wait`, Kind `futex_do_wait` mit 8+ Threads, CPU 0 %; Ursache war
+    `Aurik10/ipc/pipeline_process.py` `mp.Process` — gefixt auf `spawn`).
+    - Ausnahme: `fork()` nachweislich **vor** jedem Thread-/ML-Import
+      (single-threaded am Fork-Zeitpunkt), mit Begründung im Code-Kommentar.
+    - sklearn/joblib: `n_jobs=-1` startet den loky-**Prozess**-Pool (fork);
+      im Produktionspfad ist `n_jobs=-1` nur mit explizitem
+      Threading-Backend (`joblib.parallel_backend("threading")`) zulässig,
+      sonst `n_jobs=1` (so in `ml_era_detector.py`/`ml_medium_detector.py`).
+    - Enforcement: `scripts/compliance_check.py` R19 (fail-closed,
+      Pre-Commit `aurik-compliance`).
 
 ---
 

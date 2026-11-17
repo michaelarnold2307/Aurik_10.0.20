@@ -24378,6 +24378,9 @@ class UnifiedRestorerV3:
         if isinstance(getattr(result, "metadata", None), dict):
             result.metadata["wohlklang_zeuge"] = self._wohlklang_zeuge_meta(audio, result.audio, sample_rate)
             result.metadata["sii_zeuge"] = self._sii_zeuge_meta(audio, result.audio, sample_rate)
+            # Spec 26 DRT-10: Produktions-Verdikt (degraded bei Überrestauration
+            # mit aktivem Reparatur-Kandidaten, §0c — sonst kein Eingriff).
+            self._drt10_verdict_in_metadata(result.metadata)
 
         return result
 
@@ -45698,21 +45701,25 @@ class UnifiedRestorerV3:
 
         from backend.core.unified_restorer_v3 import RestorationResult
 
+        _meta_options = {
+            "optimization": "closed_loop",
+            "initial_score": opt_result.initial_score,
+            "final_score": opt_result.final_score,
+            "iterations": opt_result.iterations,
+            "segment_strategies": opt_result.segment_strategies,
+            "wohlklang_zeuge": self._wohlklang_zeuge_meta(audio, opt_result.audio, sample_rate),
+            "sii_zeuge": self._sii_zeuge_meta(audio, opt_result.audio, sample_rate),
+        }
+        # Spec 26 DRT-10: Produktions-Verdikt auch im Options-Pfad (§0c).
+        self._drt10_verdict_in_metadata(_meta_options)
+
         return RestorationResult(
             audio=opt_result.audio,
             config=self.config,
             material_type=self.config.material_type or MaterialType.UNKNOWN,
             defect_scores=dict(getattr(self, "_defect_result_scores", {}) or {}),
             total_time_seconds=time.monotonic() - t0,
-            metadata={
-                "optimization": "closed_loop",
-                "initial_score": opt_result.initial_score,
-                "final_score": opt_result.final_score,
-                "iterations": opt_result.iterations,
-                "segment_strategies": opt_result.segment_strategies,
-                "wohlklang_zeuge": self._wohlklang_zeuge_meta(audio, opt_result.audio, sample_rate),
-                "sii_zeuge": self._sii_zeuge_meta(audio, opt_result.audio, sample_rate),
-            },
+            metadata=_meta_options,
         )
 
     def get_phase_info(self) -> dict[str, dict]:
@@ -47601,6 +47608,39 @@ class UnifiedRestorerV3:
 
         return zeuge_meta(eingang, ausgang, sample_rate)
 
+    def _drt10_kandidat_aktiv(self) -> bool:
+        """DRT-10-Verdikt-Gate: True, wenn ein Reparatur-Kandidat aktiv ist.
+
+        Spec 26 DRT-10: der Produktions-Verdikt greift nur, wenn ein
+        Reparatur-Kandidat (Witness-Kopf-Kanal, ``use_witness_kopf_*`` in
+        ``backend/core/music_model_flags.py``) im Lauf aktiv ist — sonst bleibt
+        der Wohlklang-Zeuge REPORT-ONLY (Hörordnung §7/§8a).
+        """
+        try:
+            from backend.core import music_model_flags as _flags  # pylint: disable=import-outside-toplevel
+        except Exception as _exc:
+            logger.debug(
+                "§V6 (copilot-instructions.md) DRT-10-Kandidaten-Status nicht lesbar: %s",
+                _exc,
+            )
+            return False
+        return any(
+            bool(getattr(_flags, _name, False)) for _name in dir(_flags) if _name.startswith("use_witness_kopf_")
+        )
+
+    def _drt10_verdict_in_metadata(self, meta: dict[str, Any]) -> None:
+        """DRT-10-Produktions-Verdikt in die Lauf-Metadaten schreiben (§0c).
+
+        Delegiert an die reine Funktion ``wohlklang_zeuge.drt10_verdict_in_metadata``
+        (testbar ohne UV3-Import); der Kandidaten-Status kommt aus
+        ``_drt10_kandidat_aktiv``. Kein Sample-Eingriff, kein Hardstop.
+        """
+        from backend.core.dsp.wohlklang_zeuge import (  # pylint: disable=import-outside-toplevel
+            drt10_verdict_in_metadata,
+        )
+
+        drt10_verdict_in_metadata(meta, kandidat_aktiv=self._drt10_kandidat_aktiv())
+
     def _sii_zeuge_meta(self, eingang: Any, ausgang: Any, sample_rate: int) -> dict[str, Any]:
         """Hörordnung §3 (L1, 2026-11-09): Verständlichkeits-Zeuge je Lauf.
 
@@ -48599,6 +48639,8 @@ class UnifiedRestorerV3:
             # REPORT-ONLY; Eingang ist die Original-Audio (wie beim Einladungs-Gate).
             _meta["wohlklang_zeuge"] = self._wohlklang_zeuge_meta(audio, output, sample_rate)
             _meta["sii_zeuge"] = self._sii_zeuge_meta(audio, output, sample_rate)
+            # Spec 26 DRT-10: Produktions-Verdikt auch im Chunked-Pfad (§0c).
+            self._drt10_verdict_in_metadata(_meta)
 
             return RestorationResult(
                 audio=output,

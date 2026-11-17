@@ -171,54 +171,54 @@ class _DefectPill(QLabel):
 # DEFECT_LABELS: German user-readable names for limiting defects
 # ---------------------------------------------------------------------------
 _DEFECT_LABELS: dict[str, str] = {
-    "extremes_rauschen": "Extremes Rauschen",
-    "starkes_rauschen": "Starkes Rauschen",
-    "leichtes_rauschen": "Leichtes Rauschen",
-    "starkes_clipping": "Starke Übersteuerung",
-    "leichtes_clipping": "Übersteuerung",
-    "sehr_schmale_bandbreite": "Sehr schmale Bandbreite",
-    "schmale_bandbreite": "Schmale Bandbreite",
-    "starkes_crackle": "Starkes Knistern",
-    "leichtes_crackle": "Leichtes Knistern",
+    "extremes_rauschen": t("prognose.defect.extremes_rauschen"),
+    "starkes_rauschen": t("prognose.defect.starkes_rauschen"),
+    "leichtes_rauschen": t("prognose.defect.leichtes_rauschen"),
+    "starkes_clipping": t("prognose.defect.starkes_clipping"),
+    "leichtes_clipping": t("prognose.defect.leichtes_clipping"),
+    "sehr_schmale_bandbreite": t("prognose.defect.sehr_schmale_bandbreite"),
+    "schmale_bandbreite": t("prognose.defect.schmale_bandbreite"),
+    "starkes_crackle": t("prognose.defect.starkes_crackle"),
+    "leichtes_crackle": t("prognose.defect.leichtes_crackle"),
     # DefectScanner keys
-    "CRACKLE": "Knistern",
-    "CLICKS": "Knackser",
-    "CLIPPING": "Übersteuerung",
-    "HUM": "Netzbrummen",
-    "NOISE": "Rauschen",
-    "DROPOUT": "Aussetzer",
-    "WOW_FLUTTER": "Gleichlaufschwankungen",
-    "REVERB": "Nachhall",
-    "TAPE_HISS": "Bandrauschen",
-    "DC_OFFSET": "Gleichspannung",
+    "CRACKLE": t("prognose.defect.crackle"),
+    "CLICKS": t("prognose.defect.clicks"),
+    "CLIPPING": t("prognose.defect.clipping"),
+    "HUM": t("prognose.defect.hum"),
+    "NOISE": t("prognose.defect.noise"),
+    "DROPOUT": t("prognose.defect.dropout"),
+    "WOW_FLUTTER": t("prognose.defect.wow_flutter"),
+    "REVERB": t("prognose.defect.reverb"),
+    "TAPE_HISS": t("prognose.defect.tape_hiss"),
+    "DC_OFFSET": t("prognose.defect.dc_offset"),
     # Extended DefectType enum labels
-    "WOW": "Gleichlaufschwankung (Wow)",
-    "FLUTTER": "Tonhöhenzittern (Flutter)",
-    "ALIASING": "Aliasing-Verzerrung",
-    "AZIMUTH_ERROR": "Azimuth-Abweichung",
-    "HEAD_MISALIGNMENT": "Bandkopf-Ausrichtungsschaden",
-    "BIAS_ERROR": "Vormagnetisierungsfehler",
-    "BANDWIDTH_LOSS": "Bandbreitenverlust",
-    "PHASE_ISSUES": "Phasenproblem",
-    "STEREO_IMBALANCE": "Stereo-Ungleichgewicht",
-    "PITCH_DRIFT": "Tonhöhendrift",
-    "REVERB_EXCESS": "Übermäßiger Nachhall",
-    "PRINT_THROUGH": "Übersprechen (Print-Through)",
-    "QUANTIZATION_NOISE": "Quantisierungsrauschen",
-    "JITTER_ARTIFACTS": "Jitter-Artefakte",
-    "DYNAMIC_COMPRESSION_EXCESS": "Starke Dynamikkompression",
-    "PRE_ECHO": "Vor-Echo",
-    "TRANSIENT_SMEARING": "Transienten-Verschmierung",
-    "SOFT_SATURATION": "Weiche Sättigung",
-    "HEAD_WEAR": "Tonkopf-Verschleiß",
-    "RIAA_CURVE_ERROR": "RIAA-Kurven-Abweichung",
-    "TRANSPORT_BUMP": "Transportgeräusch",
-    "VOCAL_HARSHNESS": "Stimmlich-Rauheit",
-    "HISS": "Rauschen",
-    "SURFACE_NOISE": "Oberflächenrauschen",
-    "DISTORTION": "Verzerrung",
-    "SATURATION": "Sättigung",
-    "SIBILANCE": "Zischlaute",
+    "WOW": t("prognose.defect.wow"),
+    "FLUTTER": t("prognose.defect.flutter"),
+    "ALIASING": t("prognose.defect.aliasing"),
+    "AZIMUTH_ERROR": t("prognose.defect.azimuth_error"),
+    "HEAD_MISALIGNMENT": t("prognose.defect.head_misalignment"),
+    "BIAS_ERROR": t("prognose.defect.bias_error"),
+    "BANDWIDTH_LOSS": t("prognose.defect.bandwidth_loss"),
+    "PHASE_ISSUES": t("prognose.defect.phase_issues"),
+    "STEREO_IMBALANCE": t("prognose.defect.stereo_imbalance"),
+    "PITCH_DRIFT": t("prognose.defect.pitch_drift"),
+    "REVERB_EXCESS": t("prognose.defect.reverb_excess"),
+    "PRINT_THROUGH": t("prognose.defect.print_through"),
+    "QUANTIZATION_NOISE": t("prognose.defect.quantization_noise"),
+    "JITTER_ARTIFACTS": t("prognose.defect.jitter_artifacts"),
+    "DYNAMIC_COMPRESSION_EXCESS": t("prognose.defect.dynamic_compression_excess"),
+    "PRE_ECHO": t("prognose.defect.pre_echo"),
+    "TRANSIENT_SMEARING": t("prognose.defect.transient_smearing"),
+    "SOFT_SATURATION": t("prognose.defect.soft_saturation"),
+    "HEAD_WEAR": t("prognose.defect.head_wear"),
+    "RIAA_CURVE_ERROR": t("prognose.defect.riaa_curve_error"),
+    "TRANSPORT_BUMP": t("prognose.defect.transport_bump"),
+    "VOCAL_HARSHNESS": t("prognose.defect.vocal_harshness"),
+    "HISS": t("prognose.defect.hiss"),
+    "SURFACE_NOISE": t("prognose.defect.surface_noise"),
+    "DISTORTION": t("prognose.defect.distortion"),
+    "SATURATION": t("prognose.defect.saturation"),
+    "SIBILANCE": t("prognose.defect.sibilance"),
 }
 
 
@@ -282,44 +282,44 @@ def _pill_label(key: str, val: float, n_events: int) -> str:
 # Phase prognosis heuristics
 # ---------------------------------------------------------------------------
 _GRADE_PHASES: dict[str, tuple[int, int, str]] = {
-    "excellent": (22, 28, "Leichte Behandlung"),
-    "good": (28, 34, "Standard-Restaurierung"),
-    "fair": (34, 40, "Intensive Restaurierung"),
-    "poor": (38, 45, "Tiefgreifende Restaurierung"),
-    "critical": (40, 50, "Vollständige Rekonstruktion"),
-    "unknown": (28, 38, "Analyse läuft …"),
+    "excellent": (22, 28, t("prognose.grade.phase.excellent")),
+    "good": (28, 34, t("prognose.grade.phase.good")),
+    "fair": (34, 40, t("prognose.grade.phase.fair")),
+    "poor": (38, 45, t("prognose.grade.phase.poor")),
+    "critical": (40, 50, t("prognose.grade.phase.critical")),
+    "unknown": (28, 38, t("prognose.grade.phase.unknown")),
 }
 
 _GRADE_LABELS_DE: dict[str, tuple[str, str, str]] = {
-    "excellent": (_C_GREEN, "Exzellent", "▶  Sehr gut restaurierbar"),
-    "good": (_C_GREEN, "Gut", "▶  Gut restaurierbar"),
-    "fair": (_C_AMBER, "Mäßig", "▶  Mäßig restaurierbar"),
-    "poor": (_C_RED, "Schwierig", "▶  Schwierig restaurierbar"),
-    "critical": (_C_RED, "Kritisch", "▶  Sehr stark beschädigt"),
-    "unknown": (_C_MUTED, "—", "— wird analysiert …"),
+    "excellent": (_C_GREEN, t("prognose.grade.name.excellent"), t("prognose.grade.line.excellent")),
+    "good": (_C_GREEN, t("prognose.grade.name.good"), t("prognose.grade.line.good")),
+    "fair": (_C_AMBER, t("prognose.grade.name.fair"), t("prognose.grade.line.fair")),
+    "poor": (_C_RED, t("prognose.grade.name.poor"), t("prognose.grade.line.poor")),
+    "critical": (_C_RED, t("prognose.grade.name.critical"), t("prognose.grade.line.critical")),
+    "unknown": (_C_MUTED, "—", t("prognose.grade.line.unknown")),
 }
 
 # Material human-readable names
 _MATERIAL_NAMES: dict[str, str] = {
-    "wax_cylinder": "Wachswalze",
-    "lacquer_disc": "Lackfolie",
-    "shellac": "Schellack",
-    "vinyl": "Vinyl",
-    "wire_recording": "Drahtband",
-    "reel_tape": "Spulenband",
-    "tape": "Kassette (Band)",
-    "cassette": "Kassette (Band)",
+    "wax_cylinder": t("prognose.material.wax_cylinder"),
+    "lacquer_disc": t("prognose.material.lacquer_disc"),
+    "shellac": t("prognose.material.shellac"),
+    "vinyl": t("prognose.material.vinyl"),
+    "wire_recording": t("prognose.material.wire_recording"),
+    "reel_tape": t("prognose.material.reel_tape"),
+    "tape": t("prognose.material.tape"),
+    "cassette": t("prognose.material.cassette"),
     "dat": "DAT",
-    "cd_digital": "CD / Digital",
+    "cd_digital": t("prognose.material.cd_digital"),
     "cd": "CD",
-    "digital": "Digital",
+    "digital": t("prognose.material.digital"),
     "minidisc": "MiniDisc",
-    "mp3_low": "MP3 (niedrige Bitrate)",
+    "mp3_low": t("prognose.material.mp3_low"),
     "mp3_high": "MP3",
-    "damaged_mp3": "MP3 (beschädigt)",
+    "damaged_mp3": t("prognose.material.damaged_mp3"),
     "aac": "AAC",
-    "streaming": "Streaming-Format",
-    "unknown": "Unbekannt",
+    "streaming": t("prognose.material.streaming"),
+    "unknown": t("prognose.material.unknown"),
 }
 
 
@@ -738,12 +738,12 @@ class SongPrognoseWidget(QWidget):
         if hasattr(self, "_phase_count_lbl") and _depth >= 3:
             _current = self._phase_count_lbl.text()
             if f"({_depth}-stufig" not in _current:
-                _note = f"  ({_depth}-stufige Kette)"
+                _note = t("prognose.phase.chain_note", depth=_depth)
                 self._phase_count_lbl.setText(_current + _note)
 
         # ── Deep-Chain-Warnung ──
         if hasattr(self, "_rec_lbl") and _depth >= 4:
-            _warn = "⚠️ Tiefe Transfer-Kette — erwartete Einschränkungen bei Brillanz und Transparenz."
+            _warn = t("prognose.warning.deep_chain")
             _current_rec = self._rec_lbl.text() if hasattr(self._rec_lbl, "text") else ""
             if _warn not in str(_current_rec):
                 self._rec_lbl.setText(str(_current_rec) + "\n" + _warn)
@@ -922,7 +922,7 @@ class SongPrognoseWidget(QWidget):
         if self._material in ("shellac", "wax_cylinder", "lacquer_disc", "wire_recording"):
             lo += 4
             hi += 6
-            desc += " (historisches Analog-Material)"
+            desc += t("prognose.phase.analog_material")
         elif self._material in ("vinyl", "reel_tape", "tape", "cassette"):
             lo += 2
             hi += 3
@@ -935,7 +935,7 @@ class SongPrognoseWidget(QWidget):
             if _stages >= 3:
                 lo += (_stages - 1) * 2
                 hi += (_stages - 1) * 2
-                desc += f" ({_stages}-stufige Kette)"
+                desc += t("prognose.phase.chain_suffix", stages=_stages)
 
         self._phase_count_lbl.setText(f"~ {lo}–{hi}")
         self._phase_desc_lbl.setText(desc)
