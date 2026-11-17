@@ -12,8 +12,8 @@
   "messung": "docs/reports/current/b3_stufenmessung_M5-vocos.json",
   "zielmetrik": {
     "name": "musik_mos (G-2)",
-    "vorteile": "1/6",
-    "p_wert": 0.21875
+    "vorteile": "2/6",
+    "p_wert": 0.6875
   },
   "ergebnis": "ABGELEHNT",
   "quelle": "scripts/b3_stufenmessung.py"
