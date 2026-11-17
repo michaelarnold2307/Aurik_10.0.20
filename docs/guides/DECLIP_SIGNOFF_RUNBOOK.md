@@ -12,8 +12,9 @@
 | --- | --- |
 | Leak-freier Produktions-Gate-Lauf, 10 MUSDB-Titel 61–90 (nie im Training) | **4/10 besser, 0/10 schlechter** über JND — Never-worsen ✓ |
 | k398-Gegenmaterial leave-one-out | **3/3 besser** (Boogie +15,6 dB SDR) |
+| **k398-ΔSDR-Gate NEUMESSUNG 2026-11-17** | **BESTANDEN** (Träumer −13,722 → −12,916 dB; Boogie/Jets never-worse; pchip-nw ✓, harmonik ✓) — objektiver Teil der D-K4-1-Aktivierung erfüllt, §4-only |
 | Produktionspfad-Erreichbarkeit | 6/6 Skip-Schichten gefixt; Probe v11: Phase läuft, Flag-Wirkung delta 1,86 |
-| Hörpaket | 3 blinde A/B-Paare, 10 s, 48 kHz, p25-Pegelmatching (rel. Delta 0,00 %), Schlüssel getrennt |
+| Hörpaket | 3 blinde A/B-Paare, 10 s, 48 kHz, p25-Pegelmatching (rel. Delta 0,00 %), Schlüssel getrennt — NEU RENDERN nach dem 48-kHz-Erkenntnis-Fix (`python3 -B scripts/erstelle_aspade_hoerpaare.py --produktionspfad`), sobald die GPU frei ist (M9-Retrain läuft) |
 
 ## 1. Hörpaket prüfen
 

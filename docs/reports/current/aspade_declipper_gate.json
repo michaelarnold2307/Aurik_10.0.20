@@ -23,13 +23,13 @@
       "titel": "Elke Best - Träumer (Dreamer) 1981 Digital Source audio 320 ",
       "sdr_input_db": -13.722,
       "sdr_pchip_db": -13.722,
-      "sdr_aspade_db": -13.73,
+      "sdr_aspade_db": -12.916,
       "harmonik_input": 0.272,
       "harmonik_pchip": 0.272,
-      "harmonik_aspade": 0.27091,
-      "delta_musik_mos_aspade_vs_input": 0.0487,
+      "harmonik_aspade": 0.22369,
+      "delta_musik_mos_aspade_vs_input": 0.0204,
       "delta_defektlast_aspade_vs_input": 0.0,
-      "delta_musik_mos_aspade_vs_pchip": 0.0487,
+      "delta_musik_mos_aspade_vs_pchip": 0.0204,
       "delta_defektlast_aspade_vs_pchip": 0.0
     },
     {
@@ -46,9 +46,9 @@
       "delta_defektlast_aspade_vs_pchip": 0.0
     }
   ],
-  "nie_schlechter_gegen_pchip": false,
-  "nie_schlechter_gegen_input": false,
+  "nie_schlechter_gegen_pchip": true,
+  "nie_schlechter_gegen_input": true,
   "harmonik_never_worsen": true,
-  "gate_bestanden": false,
+  "gate_bestanden": true,
   "hinweis": "Objektiver Teil der D-K4-1-Aktivierung. Blindes A/B + Hörordnungs-Sign-off bleiben §4/Hör-Instanz — kein Flag-Flip."
 }

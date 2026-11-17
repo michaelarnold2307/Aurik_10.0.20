@@ -1,6 +1,6 @@
 {
   "schema": "aurik.train_job/1",
-  "run_id": "sota_m9-20261108T023317Z-fe4191",
+  "run_id": "sota_m9-20261117T175953Z-808100",
   "name": "m9_tf_gridnet",
   "phase": "sota_m9",
   "seed": null,
@@ -8,29 +8,6 @@
   "resume_befehl": "bash -c if [ -f models/tf_gridnet/checkpoint_latest.pt ]; then exec env PYTHONPATH=. /home/michael/.local/share/aurik/venv_rocm72/bin/python -B scripts/train_tf_gridnet_denoiser.py --epochs 30 --device cuda --clean-dir data/tfgrid_pairs/clean --noisy-dir data/tfgrid_pairs/noisy --batch-size 1 --grad-accum 4 --resume models/tf_gridnet/checkpoint_latest.pt; else exec env PYTHONPATH=. /home/michael/.local/share/aurik/venv_rocm72/bin/python -B scripts/train_tf_gridnet_denoiser.py --epochs 30 --device cuda --clean-dir data/tfgrid_pairs/clean --noisy-dir data/tfgrid_pairs/noisy --batch-size 1 --grad-accum 4; fi",
   "timeout_s": 21600.0,
   "retries": 1,
-  "versuche": [
-    {
-      "exit_code": -15,
-      "sekunden": 21600.5,
-      "timed_out": true,
-      "output_tail": "INFO Effektive Batch-Größe 4 (batch_size=1 × grad_accum=4)\nINFO Ep 1/30 | Tr 0.1298 | Val 0.0729 | 784s\nINFO >> Best: 0.0729\nINFO Ep 2/30 | Tr 0.0680 | Val 0.0585 | 746s\nINFO >> Best: 0.0585\nINFO Ep 3/30 | Tr 0.0519 | Val 0.0490 | 749s\nINFO >> Best: 0.0490\nINFO Ep 4/30 | Tr 0.0493 | Val 0.0412 | 750s\nINFO >> Best: 0.0412\nINFO Ep 5/30 | Tr 0.0398 | Val 0.0344 | 749s\nINFO >> Best: 0.0344\nINFO Ep 6/30 | Tr 0.0353 | Val 0.0331 | 747s\nINFO >> Best: 0.0331\nINFO Ep 7/30 | Tr 0.0345 | Val 0.0308 | 776s\nINFO >> Best: 0.0308\nINFO Ep 8/30 | Tr 0.0328 | Val 0.0286 | 776s\nINFO >> Best: 0.0286\nINFO Ep 9/30 | Tr 0.0303 | Val 0.0256 | 776s\nINFO >> Best: 0.0256\nINFO Ep 10/30 | Tr 0.0280 | Val 0.0259 | 772s\nINFO Ep 11/30 | Tr 0.0256 | Val 0.0233 | 744s\nINFO >> Best: 0.0233\nINFO Ep 12/30 | Tr 0.0247 | Val 0.0236 | 758s\nINFO Ep 13/30 | Tr 0.0242 | Val 0.0223 | 781s\nINFO >> Best: 0.0223\nINFO Ep 14/30 | Tr 0.0240 | Val 0.0224 | 778s\nINFO Ep 15/30 | Tr 0.0233 | Val 0.0212 | 778s\nINFO >> Best: 0.0212\nINFO Ep 16/30 | Tr 0.0232 | Val 0.0231 | 777s\nINFO Ep 17/30 | Tr 0.0234 | Val 0.0228 | 777s\nINFO Ep 18/30 | Tr 0.0225 | Val 0.0210 | 779s\nINFO >> Best: 0.0210\nINFO Ep 19/30 | Tr 0.0224 | Val 0.0229 | 777s\nINFO Ep 20/30 | Tr 0.0235 | Val 0.0240 | 777s\nINFO Ep 21/30 | Tr 0.0224 | Val 0.0203 | 776s\nINFO >> Best: 0.0203\nINFO Ep 22/30 | Tr 0.0216 | Val 0.0199 | 776s\nINFO >> Best: 0.0199\nINFO Ep 23/30 | Tr 0.0214 | Val 0.0197 | 768s\nINFO >> Best: 0.0197\nINFO Ep 24/30 | Tr 0.0210 | Val 0.0195 | 768s\nINFO >> Best: 0.0195\nINFO Ep 25/30 | Tr 0.0207 | Val 0.0193 | 776s\nINFO >> Best: 0.0193\nINFO Ep 26/30 | Tr 0.0206 | Val 0.0195 | 776s\nINFO Ep 27/30 | Tr 0.0207 | Val 0.0190 | 776s\nINFO >> Best: 0.0190\nINFO Ep 28/30 | Tr 0.0204 | Val 0.0191 | 776s\n",
-      "versuch": 1,
-      "befehl": "env PYTHONPATH=. /home/michael/.local/share/aurik/venv_rocm72/bin/python -B scripts/train_tf_gridnet_denoiser.py --epochs 30 --device cuda --clean-dir data/tfgrid_pairs/clean --noisy-dir data/tfgrid_pairs/noisy --batch-size 1 --grad-accum 4"
-    },
-    {
-      "exit_code": 0,
-      "sekunden": 1665.9,
-      "timed_out": false,
-      "output_tail": "laced initializer 'val_449' with existing initializer 'val_32'\nINFO Replaced initializer 'val_450' with existing initializer 'val_36'\nINFO Replaced initializer 'val_479' with existing initializer 'val_28'\nINFO Replaced initializer 'val_481' with existing initializer 'val_28'\nINFO Replaced initializer 'val_482' with existing initializer 'val_32'\nINFO Replaced initializer 'val_484' with existing initializer 'val_32'\nINFO Replaced initializer 'val_485' with existing initializer 'val_36'\nINFO Replaced initializer 'val_488' with existing initializer 'val_28'\nINFO Replaced initializer 'val_490' with existing initializer 'val_28'\nINFO Replaced initializer 'val_491' with existing initializer 'val_32'\nINFO Replaced initializer 'val_493' with existing initializer 'val_32'\nINFO Replaced initializer 'val_494' with existing initializer 'val_36'\nINFO Replaced initializer 'val_535' with existing initializer 'val_267'\nINFO Replaced initializer 'val_544' with existing initializer 'val_276'\nINFO Replaced initializer 'val_163' with existing initializer 'val_23'\nINFO Replaced initializer 'val_297' with existing initializer 'val_23'\nINFO Replaced initializer 'val_431' with existing initializer 'val_23'\nINFO Parität normal: rel=8.71e-07\nINFO Parität sane: rel=6.10e-05\nINFO Parität const05: rel=1.89e-05\nINFO ONNX exportiert: /media/michael/Software 4TB/Aurik_Standalone/models/tf_gridnet/tf_gridnet_quality.onnx\nINFO Fertig. best_val=0.0190 | /media/michael/Software 4TB/Aurik_Standalone/models/tf_gridnet/tf_gridnet_best.pt\n[torch.onnx] Obtain model graph for `TFGridNetClassModel([...]` with `torch.export.export(..., strict=False)`...\n[torch.onnx] Obtain model graph for `TFGridNetClassModel([...]` with `torch.export.export(..., strict=False)`... ✅\n[torch.onnx] Run decompositions...\n[torch.onnx] Run decompositions... ✅\n[torch.onnx] Translate the graph into ONNX...\n[torch.onnx] Translate the graph into ONNX... ✅\n[torch.onnx] Optimize the ONNX graph...\n[torch.onnx] Optimize the ONNX graph... ✅\n",
-      "versuch": 2,
-      "befehl": "bash -c if [ -f models/tf_gridnet/checkpoint_latest.pt ]; then exec env PYTHONPATH=. /home/michael/.local/share/aurik/venv_rocm72/bin/python -B scripts/train_tf_gridnet_denoiser.py --epochs 30 --device cuda --clean-dir data/tfgrid_pairs/clean --noisy-dir data/tfgrid_pairs/noisy --batch-size 1 --grad-accum 4 --resume models/tf_gridnet/checkpoint_latest.pt; else exec env PYTHONPATH=. /home/michael/.local/share/aurik/venv_rocm72/bin/python -B scripts/train_tf_gridnet_denoiser.py --epochs 30 --device cuda --clean-dir data/tfgrid_pairs/clean --noisy-dir data/tfgrid_pairs/noisy --batch-size 1 --grad-accum 4; fi"
-    }
-  ],
-  "quelle": "scripts/train_job_runner.py",
-  "checkpoint_hashes": {
-    "checkpoint_latest.pt": "dbf75540002d97a29eb39b06db3f5c3846ce99370a31c32186b1e1e394fc6d6c",
-    "tf_gridnet_best.pt": "5d964d9699b0afbb000f5296e167ab46d7c2ede8282c61f7885a90a2d3a8d596",
-    "tf_gridnet_quality.onnx": "cf235e3228e985f5e23aeb88e846eab027d868f2c5d93b1ce96637a3d64f0e13"
-  },
-  "ergebnis": "erfolgreich"
+  "versuche": [],
+  "quelle": "scripts/train_job_runner.py"
 }

@@ -1,6 +1,6 @@
 # TASK_CHANGES — Live-Ledger der aktuellen Aufgabe
 
-> Generiert von `scripts/change_ledger.py snapshot` (Base: `HEAD`, Stand: 2026-11-17 18:49 CET).
+> Generiert von `scripts/change_ledger.py snapshot` (Base: `HEAD`, Stand: 2026-11-17 19:13 CET).
 > CI (`ci-lite.yml` pr-evidence-gate) erzwingt Abdeckung: jede geänderte Code-Datei muss hier stehen.
 
 ## Geänderte Dateien
@@ -8,10 +8,10 @@
 | Status | Pfad | Art |
 |---|---|---|
 | M | `.github/SOTA_DEFICIT_REGISTER.md` | modifiziert |
-| M | `TASK_CHANGES.md` | modifiziert |
 | M | `docs/SOTA_HANDOVER.md` | modifiziert |
-| M | `docs/reports/current/b3_objektivbeschluss_M5-vocos.json` | modifiziert |
-| M | `docs/reports/current/b3_stufenmessung_M5-vocos.json` | modifiziert |
+| M | `docs/guides/DECLIP_SIGNOFF_RUNBOOK.md` | modifiziert |
+| M | `docs/reports/current/aspade_declipper_gate.json` | modifiziert |
+| M | `docs/reports/current/train_job_m9_tf_gridnet.json` | modifiziert |
 
 ## Entscheidungen
 
