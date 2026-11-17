@@ -62,6 +62,21 @@ from scipy.ndimage import uniform_filter1d
 
 from backend.core.material_canonical import canonical_material_key
 
+# §PERF-R21e (2026-11-16, Pool-Race-Befund): Reentranz-Schutz gegen
+# verschachtelte Thread-Pools. Der Defekt-Scan-Pool (≤8) ruft Detektor-Tasks,
+# die intern den Subband-FM-/Scrape-AM-Pool (≤6) nutzen — Pool im Pool
+# ⇒ intermittierende Deadlocks (futex_do_wait, belegt 2026-11-16) und
+# race-beeinflusste Pass-Through-Einstufungen. Im Scan-Worker laufen die
+# inneren Kerne ab jetzt SERIELL (threading.local — kein Pool im Pool,
+# bit-identisch §G5 (copilot-instructions.md), deterministisch).
+_SCAN_POOL_AKTIV = threading.local()
+
+
+def _set_pool_flag(wert: bool) -> None:
+    """Setzt das Reentranz-Flag im laufenden Scan-Worker-Thread."""
+    _SCAN_POOL_AKTIV.flag = wert
+
+
 # §6.3 CLIPPING vs SOFT_SATURATION discrimination via THD analysis (lazy import)
 try:
     from backend.core.clipping_detection import ClippingType as _ClippingType
@@ -207,7 +222,9 @@ class DefectType(Enum):
     PRE_ECHO = "pre_echo"  # MP3/AAC Temporal-Masking-Artefakt - Herre & Johnston (1996) AES Conv. 101 (§6.3)
     # --- Spec §6.3 v10.0.0c: 3 neue DefectTypes → 27 Gesamtanzahl ---
     RIAA_CURVE_ERROR = "riaa_curve_error"  # Falsche Disc-Entzerrungskurve (Shellac/Vinyl: AES/NAB/FFRR) → phase_04
-    ALIASING = "aliasing"  # Spiegelfrequenzen durch unzureichenden AA-Filter bei ADC-Digitalisierung → phase_03
+    ALIASING = (
+        "aliasing"  # Spiegelfrequenzen durch unzureichenden AA-Filter bei ADC-Digitalisierung → phase_23 (+ phase_50)
+    )
     BIAS_ERROR = "bias_error"  # Falscher Vormagnetisierungsstrom bei Bandaufnahme → phase_04 + phase_29
     # --- Spec §6.3 v10.0.0: Sibilanten-Überbetonung (ergibt 28 DefectTypes) ---
     SIBILANCE = "sibilance"  # Zischlautüberbetonung (> 6 kHz) - De-Esser-Trigger (phase_19 + phase_43)
@@ -247,7 +264,7 @@ class DefectType(Enum):
     # VERBOTEN: phase_05 allein als Primary - schmalbandige Resonanzen brauchen parametrischen Notch-EQ (§4.11, V31).
     ROOM_MODE_RESONANCE = "room_mode_resonance"
     # Dolby/dbx NR Pumpen/Atmen (korrekt dekodiert); Dolby (1967) → phase_54 Envelope-Re-Smoothing + phase_08.
-    # VERBOTEN: phase_03_denoise / phase_29 als Primary - weiteres NR verstärkt Pumpen (§4.11, V28).
+    # VERBOTEN: Phase-3-Denoise / phase_29 als Primary - weiteres NR verstärkt Pumpen (§4.11, V28).
     NR_BREATHING_ARTIFACT = "nr_breathing_artifact"
     # Flutter-Seitenbänder ±flutter_rate Hz um Spektralpeaks → phase_12 Ergänzung + phase_23.
     FLUTTER_SPECTRAL_SIDEBANDS = "flutter_spectral_sidebands"
@@ -265,7 +282,7 @@ class DefectType(Enum):
     # Analoger Preamp/Console-Klirr: asymm. Verzerrung, H3/H5-dominant → phase_09/phase_23.
     # VERBOTEN: phase_63_intermodulation_reduction - Harmonische ≠ Intermodulationsprodukte (§4.11, V29).
     OVERLOAD_DISTORTION = "overload_distortion"
-    # Acetat-Zersetzung: Substrat-Rissbildung, Lackschicht-Oxidation; Hess (1988) → phase_03 + phase_09.
+    # Acetat-Zersetzung: Substrat-Rissbildung, Lackschicht-Oxidation; Hess (1988) → Phase 3 + phase_09.
     LACQUER_DISC_DEGRADATION = "lacquer_disc_degradation"
     # Hochfrequentes Tape-Scrape-Flutter (typ. 40-120 Hz) → phase_12 mit transport-spezifischer Korrektur.
     SCRAPE_FLUTTER = "scrape_flutter"
@@ -2836,7 +2853,15 @@ class DefectScanner:
         # erhöhen den RAM-Spitzenbedarf unnötig.
         _det_workers = min(8, max(1, (os.cpu_count() or 4) // 2))
         with ThreadPoolExecutor(max_workers=_det_workers, thread_name_prefix="defectscan") as _det_pool:
-            _det_results = list(_det_pool.map(lambda _t: (_t[0], _t[1]()), _det_tasks))
+
+            def _det_task(_t: tuple[Any, Callable[[], Any]]) -> tuple[Any, Any]:
+                _set_pool_flag(True)
+                try:
+                    return _t[0], _t[1]()
+                finally:
+                    _set_pool_flag(False)
+
+            _det_results = list(_det_pool.map(_det_task, _det_tasks))
         for _det_dt, _det_score in _det_results:
             if isinstance(_det_score, dict):
                 scores.update(_det_score)  # Dropout-Subtypen-Task liefert 3 Scores
@@ -5450,6 +5475,8 @@ class DefectScanner:
             from concurrent.futures import ThreadPoolExecutor
 
             _fm_workers = min(6, max(1, (os.cpu_count() or 4) // 2))
+            if getattr(_SCAN_POOL_AKTIV, "flag", False):
+                _fm_workers = 1  # §PERF-R21e: im Scan-Worker seriell (kein Pool im Pool)
             with ThreadPoolExecutor(max_workers=_fm_workers, thread_name_prefix="subbandfm") as _fm_pool:
                 _band_ergebnisse = list(_fm_pool.map(_fm_band, centers))
             for _res in _band_ergebnisse:
@@ -5560,6 +5587,8 @@ class DefectScanner:
             from concurrent.futures import ThreadPoolExecutor
 
             _am_workers = min(6, max(1, (os.cpu_count() or 4) // 2))
+            if getattr(_SCAN_POOL_AKTIV, "flag", False):
+                _am_workers = 1  # §PERF-R21e: im Scan-Worker seriell (kein Pool im Pool)
             with ThreadPoolExecutor(max_workers=_am_workers, thread_name_prefix="scrapeam") as _am_pool:
                 _band_ergebnisse = list(_am_pool.map(_am_band, centers))
             for _res in _band_ergebnisse:

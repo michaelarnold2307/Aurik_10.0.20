@@ -1,0 +1,6 @@
+{
+  "schema": "aurik.befund/1",
+  "datum": "2026-11-16",
+  "titel": "Pool-Reentranz-Fix (§PERF-R21e) — verschachtelte Pools aufgelöst",
+  "befund": "Ursache des Pool-Race (Deadlocks + Pass-Throughs): Der Defekt-Scan-Pool (≤8) rief Detektor-Tasks, die intern den Subband-FM-/Scrape-AM-Pool (≤6) nutzten — Pool im Pool. FIX: threading.local-Reentranz-Schutz — im Scan-Worker laufen FM/AM seriell (max_workers=1), kein Pool im Pool. Bit-identisch (die Band-Berechnungen sind reine Funktionen, Sammlung in Band-Reihenfolge — belegt: Scan 2× identisch, 63 Scores). Tests: 4 neue Pin-Tests + 32 Scanner-Tests grün, compile/ruff sauber. Klangneutral (Performanz/Determinismus), kein Flag."
+}
