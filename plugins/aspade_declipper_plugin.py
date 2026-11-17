@@ -86,6 +86,34 @@ def _apl_pi_gamma(x: np.ndarray, idx: dict, clipped: np.ndarray) -> np.ndarray:
     return y
 
 
+def _mask16_from_mask48(mask: np.ndarray, n16: int) -> np.ndarray:
+    """Projiziert die 48-kHz-Clip-Maske auf die 16-kHz-Achse (OR je 3 Samples).
+
+    Erkenntnis-Schwelle (Analyse 2026-11-13): die AA-Filterung des
+    ``resample_poly(1, 3)`` dämpft schwelle-nahe Clips (±0,90-Plateaus) unter
+    die Detektionsschwelle — die Detektion MUSS in der 48-kHz-Domäne
+    geschehen, bevor resampelt wird (Träumer-Befund: Δ = 0,0).
+    """
+    m16 = np.zeros(n16, dtype=bool)
+    avail = min(len(mask), 3 * n16)
+    blocks = avail // 3
+    if blocks:
+        m16[:blocks] = mask[: blocks * 3].reshape(blocks, 3).any(axis=1)
+    if avail % 3:
+        m16[blocks] = mask[blocks * 3 : avail].any()
+    return m16  # type: ignore[no-any-return]
+
+
+def _region_idx_48k(x16: np.ndarray, mask16: np.ndarray) -> dict[str, np.ndarray]:
+    """ADMM-Regionen-Partition aus der 48-kHz-Maske (Vorzeichen aus x16)."""
+    idx: dict[str, np.ndarray] = {
+        "H": mask16 & (x16 >= 0.0),
+        "L": mask16 & (x16 < 0.0),
+    }
+    idx["R"] = ~(idx["H"] | idx["L"])
+    return idx
+
+
 class AspadeDeclipperPlugin:
     """Lädt A-SPADE-ONNX und de-clippt deterministisch (Waveform→Waveform)."""
 
@@ -194,6 +222,7 @@ class AspadeDeclipperPlugin:
 
         Deterministisch; 16 384-Sample-Blöcke (64 DGT-Frames); Rückmischung
         nur in den geclippten Regionen (Masken-Blend, 48-kHz-Treue sonst).
+        Detektion in der 48-kHz-Domäne VOR dem Resampling (2026-11-13-Befund).
         """
         from scipy.signal import resample_poly  # pylint: disable=import-outside-toplevel
 
@@ -201,16 +230,15 @@ class AspadeDeclipperPlugin:
             x = np.asarray(audio, dtype=np.float32)
             x = np.nan_to_num(x, nan=0.0, posinf=0.0, neginf=0.0)
             theta = float(np.clip(clip_threshold, 0.05, 0.999))
-            mask = np.abs(x) >= theta  # 48-kHz-Domäne
+            mask = np.abs(x) >= theta  # 48-kHz-Domäne — EINE Wahrheit (Detektion + Blend)
+            if not mask.any():
+                return x.copy()  # type: ignore[no-any-return]
 
             x16 = resample_poly(x.astype(np.float64), 1, 3).astype(np.float64)
-            idx = {
-                "H": (x16 > theta) | (np.abs(x16 - theta) < 1e-9),
-                "L": x16 < -theta,
-            }
-            idx["R"] = ~(idx["H"] | idx["L"])
-            if not idx["H"].any() and not idx["L"].any():
-                return x.copy()  # type: ignore[no-any-return]
+            # Erkenntnis-Schwelle (2026-11-13-Analyse): das 16-kHz-Gate verpasst
+            # schwelle-nahe Clips — die AA-Filterung dämpft ±0,90-Plateaus unter
+            # theta (Träumer-Befund: Δ = 0,0). Partition aus der 48-kHz-Maske.
+            idx = _region_idx_48k(x16, _mask16_from_mask48(mask, len(x16)))
             pct = float(np.mean(~idx["R"]) * 100.0)
             lam = 30.0 * pct / 100.0
             weight = ((np.arange(1, _APL_M // 2 + 2, dtype=np.float64) / (_APL_M // 2 + 1)) ** 2).reshape(-1, 1)
@@ -226,10 +254,11 @@ class AspadeDeclipperPlugin:
                 orig_len = len(blk)
                 if orig_len < block:
                     blk = np.pad(blk, (0, block - orig_len))
-                # Block-lokale Masks (idx ist block-relativ)
+                # Block-lokale Masks: Slice der 48-kHz-Ableitung (padding-aware) —
+                # NICHT aus den 16-kHz-Werten (AA-Dämpfung, 2026-11-13-Befund).
                 _bidx = {
-                    "H": (blk > theta) | (np.abs(blk - theta) < 1e-9),
-                    "L": blk < -theta,
+                    "H": np.pad(idx["H"][s0 : s0 + orig_len], (0, block - orig_len)),
+                    "L": np.pad(idx["L"][s0 : s0 + orig_len], (0, block - orig_len)),
                 }
                 _bidx["R"] = ~(_bidx["H"] | _bidx["L"])
                 _v = _apl_dgt(blk)

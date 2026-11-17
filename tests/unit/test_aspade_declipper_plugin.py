@@ -136,3 +136,53 @@ def test_plugin_resampling_robustheit(tmp_path):
     assert np.array_equal(out, out2), "Determinismus (§G5 (copilot-instructions.md))"
     # ungültige Rate fail-closed (§V6 (copilot-instructions.md))
     assert plug.declip(x32, 0, 0.99) is None
+
+
+def _spikes_schwellennah(n: int = 48000) -> np.ndarray:
+    """±0,90-Einzelsample-Clips — der Träumer-Fall (2026-11-13): nach AA-Resampling
+    liegen die Plateaus unter der Schwelle, nur die 48-kHz-Maske sieht sie."""
+    x = np.zeros(n, dtype=np.float32)
+    x[::2400] = 0.90
+    x[1200::2400] = -0.90
+    return x
+
+
+def test_region_idx_48k_findet_schwellennahe_plateaus():
+    """2026-11-13-Befund: das alte 16-kHz-Gate verpasste schwelle-nahe Clips
+    (Träumer Δ = 0,0) — die 48-kHz-Maske muss sie markieren."""
+    from scipy.signal import resample_poly
+
+    from plugins.aspade_declipper_plugin import _mask16_from_mask48, _region_idx_48k
+
+    x = _spikes_schwellennah()
+    theta = 0.85
+    mask = np.abs(x) >= theta
+    assert mask.any()
+    x16 = resample_poly(x.astype(np.float64), 1, 3).astype(np.float64)
+
+    # Defekt-Beweis: das alte 16-kHz-Gate hätte gar nichts gesehen
+    alt_h = (x16 > theta) | (np.abs(x16 - theta) < 1e-9)
+    alt_l = x16 < -theta
+    assert not alt_h.any() and not alt_l.any(), "Annahme verletzt: AA hätte die Spikes gedämpft"
+
+    m16 = _mask16_from_mask48(mask, len(x16))
+    idx = _region_idx_48k(x16, m16)
+    assert idx["H"].any() and idx["L"].any()
+    assert (~idx["R"]).sum() >= 1
+
+
+def test_declip_applade_bearbeitet_schwellennahe_clips(tmp_path):
+    """E2E: vor dem Fix gab der Zweig bei schwelle-nahen Clips den Eingang
+    unverändert zurück (Passthrough) — jetzt werden sie bearbeitet."""
+    from plugins.aspade_declipper_plugin import AspadeDeclipperPlugin
+
+    _save_identity_onnx(tmp_path / "aspade_declipper.onnx")
+    plug = AspadeDeclipperPlugin(model_dir=str(tmp_path))
+    assert plug.is_available() is True
+
+    x = _spikes_schwellennah()
+    out = plug.declip(x, SR, 0.85)
+    assert out is not None
+    assert out.shape == x.shape
+    assert np.isfinite(out).all()
+    assert np.abs(out - x).max() > 1e-6, "Clip-Regionen müssen bearbeitet werden (kein stummes Passthrough)"
