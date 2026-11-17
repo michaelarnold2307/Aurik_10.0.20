@@ -23,13 +23,15 @@ Läufe sind der Hör-Instanz vorzulegen (``§V7`` (copilot-instructions.md):
 kein stiller Flip, keine automatische Gegenmaßnahme).
 
 **Eine** Ausnahme vom reinen Zeugen-Status ist der **DRT-10-Produktions-Verdikt**
-(Spec 26 DRT-10, 2026-11-17): Ist ein Reparatur-Kandidat aktiv (Witness-Kopf-
-Flags in ``backend/core/music_model_flags.py``) UND der Ganz-Titel-Befund ist
+(Spec 26 DRT-10, M1-Verschärfung 2026-11-17): Ist der Ganz-Titel-Befund
 **Überrestauration** (defektlast-Gewinn ≥ JND bei musik_mos-Verlust ≥ JND),
-dann markiert ``drt10_verdict_in_metadata`` den Lauf als ``degraded`` mit
+dann markiert ``drt10_verdict_in_metadata`` **jeden** Lauf als ``degraded`` mit
 ``fail_reason=RESTORATION_DRT10_UEBERRESTAURATION`` (§0c: bestmögliches
-sicheres Ergebnis wird exportiert — kein Hardstop, kein Sample-Eingriff).
-Ohne aktiven Kandidaten bleibt alles beim REPORT-ONLY-Zeugen.
+sicheres Ergebnis wird exportiert — kein Hardstop, kein Sample-Eingriff durch
+den Zeugen selbst). Der Aufrufer (UV3) setzt zusätzlich den
+**Identitäts-Rollback** um (Eingang statt Ausgabe), sofern keine hohe
+Hör-Instanz vorliegt (HPI ≥ 0,75 ⇒ §7-Konfliktregel: Messartefakt-Verdacht,
+kein Rollback). Ohne Überrestauration bleibt alles beim REPORT-ONLY-Zeugen.
 
 Determinismus (``§G5`` (copilot-instructions.md)): reine numpy-Operationen,
 keine Zufallsgrößen, keine Zeit-/Umgebungsabhängigkeit — derselbe Eingang
@@ -304,29 +306,27 @@ def zeuge_meta(
         }
 
 
-def drt10_verdict_in_metadata(meta: dict[str, Any], *, kandidat_aktiv: bool) -> bool:
+def drt10_verdict_in_metadata(meta: dict[str, Any]) -> bool:
     """DRT-10-Produktions-Verdikt (Spec 26 DRT-10, 2026-11-17).
 
-    Rein auf Metadaten wirkend (§0c): kein Sample-Eingriff, kein Hardstop,
-    kein Rollback — bei Überrestauration wird der Lauf als ``degraded``
-    markiert, damit das Export-Gate das bestmögliche sichere Ergebnis mit
-    Status „degraded" exportiert.
+    **Produktions-Invariante für JEDEN Lauf** (M1-Verschärfung 2026-11-17):
+    Überrestauration wird unabhängig von aktiven Reparatur-Kandidaten
+    geflaggt — auch die Bestands-Pipeline darf Ganz-Titel nicht
+    überrestaurieren (Jets-vinyl-Befund: defektlast −0,203 bei
+    musik_mos −0,551).
 
-    Wirkung NUR, wenn **beides** gilt:
+    Rein auf Metadaten wirkend (§0c): kein Sample-Eingriff, kein Hardstop —
+    bei Überrestauration wird der Lauf als ``degraded`` markiert, damit das
+    Export-Gate das bestmögliche sichere Ergebnis mit Status „degraded"
+    exportiert. Den **Identitäts-Rollback** entscheidet der Aufrufer mit der
+    §7-Konfliktregel (Hörordnung): hohe Hör-Instanz ⇒ Messartefakt-Verdacht,
+    kein Rollback (``_drt10_rollback_zulaessig`` in UV3).
 
-    * ``kandidat_aktiv`` — mindestens ein Reparatur-Kandidat (Witness-Kopf-Flag
-      in ``backend/core/music_model_flags.py``) ist im Lauf aktiv, und
-    * ``meta["wohlklang_zeuge"]["ueberrestauration"]`` ist True (Ganz-Titel:
-      defektlast-Gewinn ≥ JND bei musik_mos-Verlust ≥ JND).
-
-    Sonst: kein Eingriff (der Zeuge bleibt REPORT-ONLY, Hörordnung §7/§8a).
     Idempotent: ein zweiter Aufruf erzeugt keinen doppelten fail_reasons-Eintrag.
 
     Returns:
         True, wenn der Lauf degradiert wurde (für Tests/Logik), sonst False.
     """
-    if not kandidat_aktiv:
-        return False
     befund = meta.get("wohlklang_zeuge")
     if not isinstance(befund, dict):
         return False

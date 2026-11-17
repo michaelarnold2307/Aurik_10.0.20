@@ -158,6 +158,24 @@ class TestPrioritaetsDrift:
             is False
         )
 
+    def test_unprofilierte_phase_ist_kritisch_und_nie_skipbar_m6(self) -> None:
+        """M6 (2026-11-17): Phasen ohne PHASE_PRIORITIES-Eintrag sind CRITICAL (10).
+
+        D-K3-76-Lehre: zwei CRITICAL-Phasen fielen als „unbekannt“ auf MEDIUM
+        und waren unter Budgetdruck skipbar — Budget-Spielraum entsteht durch
+        Profilierung, nicht durch das Skip unprofilierter Phasen.
+        """
+        assert PerformanceGuard.BUDGET_ALLOCATION_DEFAULT_PRIORITY == 10
+        guard = _guard(60.0)
+        guard.enable_adaptive_skipping = True
+        guard.current_rt_factor = 30.4  # 95 % Budget verbraucht
+
+        assert guard._is_phase_critical("phase_99_voellig_unbekannt") is True
+        assert (
+            guard.should_skip_phase("phase_99_voellig_unbekannt", estimated_time_seconds=120.0, remaining_phases=5)
+            is False
+        )
+
     def test_aliasse_zeigen_auf_existierende_tabelleneintraege(self) -> None:
         """Kein Phantom-Alias: jedes Ziel existiert, jeder Schlüssel ist ein echter Kurzname."""
         for alias, target in PerformanceGuard.PHASE_PRIORITY_ALIASES.items():

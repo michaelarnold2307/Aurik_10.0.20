@@ -24373,14 +24373,22 @@ class UnifiedRestorerV3:
             logger.debug("Terminal-100-Callback nicht blockierend")
 
         # §2b Hebel F (2026-11-08): referenzfreier Wohlklang-Zeuge je Lauf —
-        # REPORT-ONLY (kein Sample-Eingriff, kein Rollback); gerichtete Fälle
-        # werden der Hör-Instanz vorgelegt (Hörordnung §7/§8a).
+        # REPORT-ONLY (kein Sample-Eingriff, kein Rollback durch den Zeugen selbst);
+        # gerichtete Fälle werden der Hör-Instanz vorgelegt (Hörordnung §7/§8a).
+        # Ausnahme: der DRT-10-Produktions-Verdikt direkt darunter (Spec 26, M1).
         if isinstance(getattr(result, "metadata", None), dict):
             result.metadata["wohlklang_zeuge"] = self._wohlklang_zeuge_meta(audio, result.audio, sample_rate)
             result.metadata["sii_zeuge"] = self._sii_zeuge_meta(audio, result.audio, sample_rate)
-            # Spec 26 DRT-10: Produktions-Verdikt (degraded bei Überrestauration
-            # mit aktivem Reparatur-Kandidaten, §0c — sonst kein Eingriff).
-            self._drt10_verdict_in_metadata(result.metadata)
+            # Spec 26 DRT-10 (M1, 2026-11-17): Produktions-Invariante — Überrestauration
+            # degradiert JEDEN Lauf (§0c); Identitäts-Rollback nur ohne hohe
+            # Hör-Instanz (§7-Konfliktregel).
+            if self._drt10_verdict_in_metadata(result.metadata) and self._drt10_rollback_zulaessig(result.metadata):
+                result.audio = audio
+                result.metadata["drt10_rollback"] = True
+                logger.warning(
+                    "👂 DRT-10: Identitäts-Rollback — Ganz-Titel-Überrestauration, "
+                    "Eingang zurückgegeben (§0c-degradiert)"
+                )
 
         return result
 
@@ -45710,11 +45718,17 @@ class UnifiedRestorerV3:
             "wohlklang_zeuge": self._wohlklang_zeuge_meta(audio, opt_result.audio, sample_rate),
             "sii_zeuge": self._sii_zeuge_meta(audio, opt_result.audio, sample_rate),
         }
-        # Spec 26 DRT-10: Produktions-Verdikt auch im Options-Pfad (§0c).
-        self._drt10_verdict_in_metadata(_meta_options)
+        # Spec 26 DRT-10 (M1): Produktions-Verdikt auch im Options-Pfad (§0c);
+        # Rollback = Eingang zurückgeben (nur ohne hohe Hör-Instanz, §7).
+        _drt10_rollback = self._drt10_verdict_in_metadata(_meta_options) and self._drt10_rollback_zulaessig(
+            _meta_options
+        )
+        if _drt10_rollback:
+            _meta_options["drt10_rollback"] = True
+            logger.warning("👂 DRT-10: Identitäts-Rollback (Options-Pfad) — Überrestauration, Eingang zurückgegeben")
 
         return RestorationResult(
-            audio=opt_result.audio,
+            audio=audio if _drt10_rollback else opt_result.audio,
             config=self.config,
             material_type=self.config.material_type or MaterialType.UNKNOWN,
             defect_scores=dict(getattr(self, "_defect_result_scores", {}) or {}),
@@ -47608,38 +47622,40 @@ class UnifiedRestorerV3:
 
         return zeuge_meta(eingang, ausgang, sample_rate)
 
-    def _drt10_kandidat_aktiv(self) -> bool:
-        """DRT-10-Verdikt-Gate: True, wenn ein Reparatur-Kandidat aktiv ist.
+    def _drt10_verdict_in_metadata(self, meta: dict[str, Any]) -> bool:
+        """DRT-10-Produktions-Verdikt in die Lauf-Metadaten schreiben (§0c, M1).
 
-        Spec 26 DRT-10: der Produktions-Verdikt greift nur, wenn ein
-        Reparatur-Kandidat (Witness-Kopf-Kanal, ``use_witness_kopf_*`` in
-        ``backend/core/music_model_flags.py``) im Lauf aktiv ist — sonst bleibt
-        der Wohlklang-Zeuge REPORT-ONLY (Hörordnung §7/§8a).
-        """
-        try:
-            from backend.core import music_model_flags as _flags  # pylint: disable=import-outside-toplevel
-        except Exception as _exc:
-            logger.debug(
-                "§V6 (copilot-instructions.md) DRT-10-Kandidaten-Status nicht lesbar: %s",
-                _exc,
-            )
-            return False
-        return any(
-            bool(getattr(_flags, _name, False)) for _name in dir(_flags) if _name.startswith("use_witness_kopf_")
-        )
-
-    def _drt10_verdict_in_metadata(self, meta: dict[str, Any]) -> None:
-        """DRT-10-Produktions-Verdikt in die Lauf-Metadaten schreiben (§0c).
-
-        Delegiert an die reine Funktion ``wohlklang_zeuge.drt10_verdict_in_metadata``
-        (testbar ohne UV3-Import); der Kandidaten-Status kommt aus
-        ``_drt10_kandidat_aktiv``. Kein Sample-Eingriff, kein Hardstop.
+        Produktions-Invariante für JEDEN Lauf (2026-11-17): Überrestauration wird
+        unabhängig von aktiven Reparatur-Kandidaten geflaggt. Delegiert an die
+        reine Funktion ``wohlklang_zeuge.drt10_verdict_in_metadata`` (testbar ohne
+        UV3-Import). Rückgabe True = Lauf degradiert — der Aufrufer entscheidet
+        den Identitäts-Rollback über ``_drt10_rollback_zulaessig`` (§7-Konfliktregel).
         """
         from backend.core.dsp.wohlklang_zeuge import (  # pylint: disable=import-outside-toplevel
             drt10_verdict_in_metadata,
         )
 
-        drt10_verdict_in_metadata(meta, kandidat_aktiv=self._drt10_kandidat_aktiv())
+        return bool(drt10_verdict_in_metadata(meta))
+
+    def _drt10_rollback_zulaessig(self, meta: dict[str, Any]) -> bool:
+        """§7-Konfliktregel (Hörordnung): Identitäts-Rollback nur ohne hohe Hör-Instanz.
+
+        Hält die Hör-Instanz hoch (HPI ≥ 0,75), gilt der Zwei-Metrik-Befund als
+        Messartefakt-Verdacht — kein Rollback (nur degraded + Vorlage an die
+        Hör-Instanz, wie der Wohlklang-Zeuge sie ohnehin markiert).
+        """
+        try:
+            _hpi = float(meta.get("hpi_score", 0.0) or 0.0)
+        except (TypeError, ValueError):
+            _hpi = 0.0
+        if _hpi >= 0.75:
+            logger.warning(
+                "👂 DRT-10: Überrestauration, aber Hör-Instanz hoch (HPI %.2f ≥ 0.75) — "
+                "Messartefakt-Verdacht (§7), KEIN Identitäts-Rollback",
+                _hpi,
+            )
+            return False
+        return True
 
     def _sii_zeuge_meta(self, eingang: Any, ausgang: Any, sample_rate: int) -> dict[str, Any]:
         """Hörordnung §3 (L1, 2026-11-09): Verständlichkeits-Zeuge je Lauf.
@@ -48639,8 +48655,14 @@ class UnifiedRestorerV3:
             # REPORT-ONLY; Eingang ist die Original-Audio (wie beim Einladungs-Gate).
             _meta["wohlklang_zeuge"] = self._wohlklang_zeuge_meta(audio, output, sample_rate)
             _meta["sii_zeuge"] = self._sii_zeuge_meta(audio, output, sample_rate)
-            # Spec 26 DRT-10: Produktions-Verdikt auch im Chunked-Pfad (§0c).
-            self._drt10_verdict_in_metadata(_meta)
+            # Spec 26 DRT-10 (M1): Produktions-Verdikt auch im Chunked-Pfad (§0c);
+            # Rollback = Original-Audio zurückgeben (nur ohne hohe Hör-Instanz, §7).
+            if self._drt10_verdict_in_metadata(_meta) and self._drt10_rollback_zulaessig(_meta):
+                output = audio
+                _meta["drt10_rollback"] = True
+                logger.warning(
+                    "👂 DRT-10: Identitäts-Rollback (Chunked-Pfad) — Überrestauration, Original zurückgegeben"
+                )
 
             return RestorationResult(
                 audio=output,

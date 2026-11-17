@@ -262,49 +262,43 @@ def _befund_ueberrestauration() -> dict:
     return {"verfuegbar": True, "ueberrestauration": True}
 
 
-def test_drt10_verdict_degradiert_bei_aktivem_kandidat() -> None:
+def test_drt10_verdict_degradiert_bei_ueberrestauration() -> None:
+    """M1: Produktions-Invariante — Überrestauration degradiert JEDEN Lauf."""
     meta: dict = {"wohlklang_zeuge": _befund_ueberrestauration()}
 
-    assert wz.drt10_verdict_in_metadata(meta, kandidat_aktiv=True) is True
+    assert wz.drt10_verdict_in_metadata(meta) is True
     assert meta["degradation_status"] == "degraded"
     assert meta["fail_reason"] == wz.DRT10_FAIL_REASON
     assert any(r["error_code"] == wz.DRT10_FAIL_REASON for r in meta["fail_reasons"])
 
 
-def test_drt10_verdict_ohne_kandidat_kein_eingriff() -> None:
-    """Ohne aktiven Kandidaten bleibt der Zeuge REPORT-ONLY (Hörordnung §7/§8a)."""
-    meta: dict = {"wohlklang_zeuge": _befund_ueberrestauration()}
-
-    assert wz.drt10_verdict_in_metadata(meta, kandidat_aktiv=False) is False
-    assert "degradation_status" not in meta
-    assert "fail_reasons" not in meta
-
-
 def test_drt10_verdict_ohne_ueberrestauration_kein_eingriff() -> None:
     meta: dict = {"wohlklang_zeuge": {"verfuegbar": True, "ueberrestauration": False}}
 
-    assert wz.drt10_verdict_in_metadata(meta, kandidat_aktiv=True) is False
+    assert wz.drt10_verdict_in_metadata(meta) is False
     assert "degradation_status" not in meta
 
 
 def test_drt10_verdict_unverfuegbarer_befund_kein_eingriff() -> None:
     meta: dict = {"wohlklang_zeuge": {"verfuegbar": False}}
 
-    assert wz.drt10_verdict_in_metadata(meta, kandidat_aktiv=True) is False
+    assert wz.drt10_verdict_in_metadata(meta) is False
     assert "degradation_status" not in meta
 
 
 def test_drt10_verdict_idempotent() -> None:
     meta: dict = {"wohlklang_zeuge": _befund_ueberrestauration()}
-    wz.drt10_verdict_in_metadata(meta, kandidat_aktiv=True)
-    assert wz.drt10_verdict_in_metadata(meta, kandidat_aktiv=True) is True
+    wz.drt10_verdict_in_metadata(meta)
+    assert wz.drt10_verdict_in_metadata(meta) is True
     codes = [r["error_code"] for r in meta["fail_reasons"] if isinstance(r, dict)]
     assert codes.count(wz.DRT10_FAIL_REASON) == 1
 
 
 def test_drt10_verdrahtung_drei_pfade() -> None:
-    """Wirkungs-Pin: der Verdikt hängt in Einzel-, Options- und Chunked-Pfad."""
+    """Wirkungs-Pin: Verdikt + Identitäts-Rollback in Einzel-, Options- und Chunked-Pfad."""
     quelle = (PROJEKT / "backend/core/unified_restorer_v3.py").read_text(encoding="utf-8")
 
     assert quelle.count("self._drt10_verdict_in_metadata(") == 3
-    assert "def _drt10_kandidat_aktiv(" in quelle
+    assert quelle.count("self._drt10_rollback_zulaessig(") == 3
+    assert quelle.count('"drt10_rollback"') >= 3
+    assert "_drt10_kandidat_aktiv" not in quelle  # M1: Kandidaten-Gate entfernt

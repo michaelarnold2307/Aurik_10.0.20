@@ -52,8 +52,10 @@ class TestPerformanceGuardSpecCompliance:
         assert should_skip_light is False
 
         # Heavy ML phase (0.8× RT marginal = 8s on 10s audio) SHOULD be skipped/deferred.
+        # M6 (2026-11-17): unprofilierte Phasen sind CRITICAL (nie skipbar) —
+        # die Skip-Probe nutzt daher eine PROFILIERTE MEDIUM-Phase.
         should_skip_heavy = guard.should_skip_phase(
-            phase_id="diffusion_inpainting",
+            phase_id="stereo_enhancement",
             estimated_time_seconds=8.0,
             remaining_phases=2,
         )
@@ -101,8 +103,10 @@ class TestPerformanceGuardSpecCompliance:
         guard.audio_duration = 10.0
 
         # Baseline: heavy non-mandatory phase is deferred near the RT budget.
+        # M6 (2026-11-17): unprofilierte Phasen sind CRITICAL (nie skipbar) —
+        # die Baseline-Probe nutzt eine PROFILIERTE MEDIUM-Phase.
         should_skip_non_mandatory = guard.should_skip_phase(
-            phase_id="phase_55_diffusion_inpainting",
+            phase_id="stereo_enhancement",
             estimated_time_seconds=8.0,
             remaining_phases=2,
         )

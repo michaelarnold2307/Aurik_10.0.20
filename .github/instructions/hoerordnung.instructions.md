@@ -296,7 +296,13 @@ Spearman 0,95) sowie der **Defekt-Delta-Witness** (`aurik.defektdelta/3`,
 Sättigungskanal 1/Crest, D-K3-95/97) sind Zeugen, keine Richter: Sie
 dokumentieren, wo und wie Reparatur wirkt (Regionen-Deltas,
 Reparaturquote Q), lösen aber **keinen**
-Re-Run, kein Veto, keinen Rollback und keinen Phase-Strip aus. Der
+Re-Run, kein Veto, keinen Rollback und keinen Phase-Strip aus. **Ausnahme
+(DRT-10/M1, 2026-11-17):** Der Ganz-Titel-Produktions-Verdikt hat keine reine
+Zeugen-Rolle — Überrestauration (defektlast-Gewinn ≥ JND bei musik_mos-Verlust
+≥ JND) degradiert **jeden** Lauf (§0c) und löst, sofern die Hör-Instanz nicht
+hoch hält (HPI < 0,75 — die §7-Schutzbedingung „Ebene 1 + hohe Hör-Instanz"
+greift nur bei HPI ≥ 0,75), den **Identitäts-Rollback** auf den Eingang aus;
+bei hoher Hör-Instanz gilt der Messartefakt-Verdacht (kein Rollback). Der
 Defekt-Delta-Witness trägt **kein** Richtungszertifikat, solange seine
 Regionen-Urteile nicht gegen Hör-Labels kalibriert sind (D-K4-9); bis dahin
 darf er B3-Beschlüsse nur **begleiten**, nie eine Bedingung ersetzen.

@@ -503,6 +503,14 @@ automatisch geprüft werden.
 **Absolutes Zeitlimit Stufe 1:** `_MAX_TOTAL_SECONDS = 14400.0` (240 Minuten, §K 64×RT-aligned)
 Nach Überschreitung: KMV Stufe 2 (`MLRefinementThread`) übernimmt automatisch.
 
+**M6-Norm (2026-11-17):** Phasen **ohne** Eintrag in der normativen
+`PHASE_PRIORITIES`-Ordnung gelten als **CRITICAL (10)** — sie dürfen unter
+Budgetdruck **nie** übersprungen werden (`BUDGET_ALLOCATION_DEFAULT_PRIORITY = 10`,
+`performance_guard.py`; D-K3-76-Lehre: zwei CRITICAL-Phasen fielen als
+„unbekannt“ auf MEDIUM und waren skipbar). Budget-Spielraum entsteht durch
+Profilierung (RT-Messung + Hör-Impact), nicht durch das Skip unprofilierter
+Phasen. Fail-closed: `test_unprofilierte_phase_ist_kritisch_und_nie_skipbar_m6`.
+
 ### §9.1d Matrix-Harness-CI-Gate (Budget-Enforcement, Bootstrap-CI, Phase-Profiling, Ebene-3-Audit)
 
 `scripts/benchmark_effizienz_matrix.py` stellt das maschinelle Gate gegen die

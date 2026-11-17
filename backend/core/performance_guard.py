@@ -547,7 +547,9 @@ class PerformanceGuard:
         # allein genügt hier NICHT — die Prioritäts-Suche braucht die
         # Alias-Auflösung (wow_flutter_fix → wow_flutter, crackle_removal →
         # decracklé), sonst gelten zwei CRITICAL-Phasen als MEDIUM.
-        phase_priority = self.PHASE_PRIORITIES.get(self._priority_key(phase_id), 5)  # Default: Medium
+        phase_priority = self.PHASE_PRIORITIES.get(
+            self._priority_key(phase_id), self.BUDGET_ALLOCATION_DEFAULT_PRIORITY
+        )  # M6: unprofilierte Phase = CRITICAL — nie skipbar
 
         # Skip-Thresholds relativ zum aktiven Budget.
         if phase_priority <= 3:  # LOW Priority
@@ -746,8 +748,8 @@ class PerformanceGuard:
         """Prüft ob Phase kritisch für Quality ist."""
         # §PERF-R21b: Alias-Auflösung ist Teil der Prioritäts-Wahrheit.
         short = self._priority_key(phase_id)
-        priority = self.PHASE_PRIORITIES.get(short, 5)
-        return priority >= 9  # Priority ≥ 9 = CRITICAL
+        priority = self.PHASE_PRIORITIES.get(short, self.BUDGET_ALLOCATION_DEFAULT_PRIORITY)
+        return priority >= 9  # Priority ≥ 9 = CRITICAL (unprofilierte Phasen inklusive, M6)
 
     def _calculate_quality_degradation(self) -> float:
         """
@@ -761,7 +763,10 @@ class PerformanceGuard:
 
         # Summiere Priorities der geskippten Phasen
         total_priority = sum(self.PHASE_PRIORITIES.values())
-        skipped_priority = sum(self.PHASE_PRIORITIES.get(self._priority_key(pid), 5) for pid in self.skipped_phases)
+        skipped_priority = sum(
+            self.PHASE_PRIORITIES.get(self._priority_key(pid), self.BUDGET_ALLOCATION_DEFAULT_PRIORITY)
+            for pid in self.skipped_phases
+        )
 
         # Degradation = Anteil der geskippten Priority
         degradation = skipped_priority / total_priority if total_priority > 0 else 0
@@ -777,9 +782,11 @@ class PerformanceGuard:
     # Phasenzeiten. REINE BUCHFÜHRUNG — keine Skip-/Deferral-Entscheidung liest
     # das Ergebnis (§V7 (copilot-instructions.md): kein stiller Verhaltens-Flip).
 
-    # Unbekannte Phase: Median der Prioritäts-Tabelle, nicht 0 (sonst würde eine
-    # unbenannte Phase stillschweigend aus der Allokation fallen).
-    BUDGET_ALLOCATION_DEFAULT_PRIORITY: int = 5
+    # Unbekannte Phase (M6, 2026-11-17): CRITICAL statt Median — eine unprofilierte
+    # Phase darf unter Budgetdruck NIE übersprungen werden (D-K3-76-Lehre: zwei
+    # CRITICAL-Phasen fielen als „unbekannt“ auf MEDIUM und waren skipbar).
+    # Profilierung ist der Weg, Budget-Spielraum zurückzugewinnen — nicht das Skip.
+    BUDGET_ALLOCATION_DEFAULT_PRIORITY: int = 10
 
     # §PERF-R21b (2026-11-08, D-K3-76): Zwei Tabelleneinträge trafen KEINE echte
     # Phase. `_normalize_phase_id` erzeugt aus den Modulnamen
