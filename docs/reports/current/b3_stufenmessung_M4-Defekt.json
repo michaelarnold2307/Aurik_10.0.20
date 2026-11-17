@@ -24,10 +24,10 @@
     },
     {
       "trial_id": "cassette_1980s_wow__w3",
-      "mos_an": 4.8405,
-      "mos_aus": 4.8399,
-      "last_an": 0.489,
-      "last_aus": 0.489
+      "mos_an": 4.8398,
+      "mos_aus": 4.8394,
+      "last_an": 0.4891,
+      "last_aus": 0.4894
     },
     {
       "trial_id": "reel_1940s_dropout__w4",
@@ -51,7 +51,7 @@
   "defekt_fallbacks": 0,
   "b1_sauber": true,
   "pfad_wirksam": true,
-  "fussabdruck_max_rms": 0.01860613065178631,
+  "fussabdruck_max_rms": 0.018873750803253393,
   "wirksam_probleme": [],
   "messung_ungueltig": false,
   "erfuellt": false

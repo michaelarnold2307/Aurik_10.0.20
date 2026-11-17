@@ -11,23 +11,23 @@
     {
       "trial_id": "cassette_1980s_wow__w1",
       "mos_an": 4.8051,
-      "mos_aus": 4.795,
+      "mos_aus": 4.7951,
       "last_an": 0.486,
-      "last_aus": 0.4852
+      "last_aus": 0.4853
     },
     {
       "trial_id": "cassette_1980s_wow__w2",
       "mos_an": 4.7861,
       "mos_aus": 4.7925,
       "last_an": 0.4798,
-      "last_aus": 0.4577
+      "last_aus": 0.4578
     },
     {
       "trial_id": "cassette_1980s_wow__w3",
-      "mos_an": 4.8546,
-      "mos_aus": 4.8339,
-      "last_an": 0.4489,
-      "last_aus": 0.4891
+      "mos_an": 4.8413,
+      "mos_aus": 4.8518,
+      "last_an": 0.4864,
+      "last_aus": 0.4499
     },
     {
       "trial_id": "reel_1940s_dropout__w4",
@@ -45,13 +45,13 @@
     }
   ],
   "never_worsen": true,
-  "vorteile": "2/6",
-  "p_wert": 0.6875,
+  "vorteile": "1/6",
+  "p_wert": 0.21875,
   "signifikant": false,
   "defekt_fallbacks": 0,
   "b1_sauber": true,
   "pfad_wirksam": true,
-  "fussabdruck_max_rms": 0.06107369436344531,
+  "fussabdruck_max_rms": 0.02994968310047438,
   "wirksam_probleme": [],
   "messung_ungueltig": false,
   "erfuellt": false

@@ -1,14 +1,24 @@
 # TASK_CHANGES — Live-Ledger der aktuellen Aufgabe
 
-> Generiert von `scripts/change_ledger.py snapshot` (Base: `HEAD`, Stand: 2026-11-17 14:45 CET).
+> Generiert von `scripts/change_ledger.py snapshot` (Base: `HEAD`, Stand: 2026-11-17 16:56 CET).
 > CI (`ci-lite.yml` pr-evidence-gate) erzwingt Abdeckung: jede geänderte Code-Datei muss hier stehen.
 
 ## Geänderte Dateien
 
 | Status | Pfad | Art |
 |---|---|---|
-| M | `.github/SOTA_DEFICIT_REGISTER.md` | modifiziert |
-| M | `docs/SOTA_HANDOVER.md` | modifiziert |
+| M | `.github/instructions/dsp.instructions.md` | modifiziert |
+| M | `.github/instructions/phases.instructions.md` | modifiziert |
+| M | `.github/instructions/pipeline.instructions.md` | modifiziert |
+| M | `AGENTS.md` | modifiziert |
+| M | `audit/spec_integration_report.json` | modifiziert |
+| M | `audit/spec_integration_report.md` | modifiziert |
+| M | `backend/core/phases/phase_42_vocal_enhancement.py` | modifiziert |
+| M | `docs/reports/current/b3_objektivbeschluss_M4-ERA.json` | modifiziert |
+| M | `docs/reports/current/b3_stufenmessung_M4-Defekt.json` | modifiziert |
+| M | `docs/reports/current/b3_stufenmessung_M4-ERA.json` | modifiziert |
+| M | `docs/reports/current/b3_stufenmessung_M4-Material.json` | modifiziert |
+| M | `reports/spec_drift_baseline.json` | modifiziert |
 
 ## Entscheidungen
 

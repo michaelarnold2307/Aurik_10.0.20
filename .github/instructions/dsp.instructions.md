@@ -4,6 +4,25 @@ applyTo: "{backend/core/dsp/*.py,plugins/*.py}"
 
 # DSP / Plugin-Regeln (normativ, Aurik 10.2.0.x)
 
+## Zugehörige Specs (normativ — Referenz-Anker)
+
+- `.github/specs/11_decision_intelligence.md` — Entscheidungsintelligenz (Pleasantness-First)
+- `.github/specs/18_depth_threshold_calibration_shift.md` — Depth-Threshold Calibration-Shift (§v10.120)
+- `.github/specs/19_sota_export_gap_closure.md` — SOTA-Export-Gap-Closure (§v10.52)
+- `.github/specs/24_ml_fallback_architektur.md` — Kein stiller ML-Ausfall (§V6)
+- `.github/specs/20_predictive_quality_guard.md` — Predictive Quality Guard (v10.53)
+- `.github/specs/selbstkalibrierung_v10_15.md` — Selbstkalibrierungs-Architektur
+- `.github/specs/praezisionsstandard_v10_16.md` — Präzisionsstandard (Toningenieur-Niveau)
+- `.github/specs/preset_lernen_selbstkalibrierung_v10_18.md` — Preset-Learning × Selbstkalibrierung
+- `.github/specs/v10.19_carrier_chain_reliability.md` — Trägerketten-Zuverlässigkeit
+- `.github/specs/v10.21_swinir_musik_phase67.md` — SwinIR-Musik Phasen 6/7
+- `.github/specs/v10.18_onnx_export_roadmap.md` — ONNX-Export-Roadmap
+- `.github/specs/v10.14_miipher_dit_roadmap.md` — Miipher-DiT-Roadmap
+- `.github/specs/v10.20_dit_post_mortem.md` — DiT-Post-Mortem
+- `.github/specs/v10.303.23_fine_tuning_spec.md` — Fine-Tuning-Spec
+- `.github/specs/v10.330_bayesian_precision_and_cross_validation.md` — Bayesianische Präzision & Cross-Validation
+- `.github/specs/v10.307_oom_stability_chain_consistency.md` — OOM-Stabilität & Ketten-Konsistenz
+
 ## ML-Device — IMMER über ml_device_manager
 
 ```python

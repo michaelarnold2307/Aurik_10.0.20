@@ -1,6 +1,9 @@
 """Phase 42: Vocal Enhancement v2.0 - Professional.
 Comprehensive vocal processing chain for clarity, presence, and polish.
 
+Normative Spec: `.github/specs/v10.116-118_artifact_free_vocal_enhancement.md`
+(artefaktfreie Stimm-Anhebung).
+
 Algorithm Overview:
 1. Vocal Detection:
    - Frequency range analysis (fundamental @ 80-400 Hz)

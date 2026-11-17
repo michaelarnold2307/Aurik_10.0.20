@@ -183,6 +183,15 @@ Kollisions-Karte und Bereinigungsplan `docs/ID_COLLISION_MAP.md`.
   Kennzahlen aktualisiert, aber von keinem Tool referenziert.
 - `.github/GOVERNANCE.md` — Prozess-Hintergrund; veralteter §5.1-Verweis
   entfernt.
+- `.github/specs/`-Historie/Prozess (nicht normativ; Referenz-Anker für die
+  Spec-Integration): `16_phantom_rollout.md` (Rolls-Royce-Gesangs-Ereignis),
+  `18_verification_plan.md` (ersetzt durch `18_depth_threshold_calibration_shift.md`),
+  `19_major_version_roadmap.md` (Roadmap-Prosa, §v10.124),
+  `20_fair_payment_model.md` (FAIR-PAY, Geschäftsprozess),
+  `22_dataflow_audit.md` (Audit-Prozess),
+  `bug_hunt_exception_forensics.md` (Juli-2026-Bug-Jagd, historisch),
+  `aurik_gesamtoekosystem_v10_17.md` (Gesamtökosystem-Prosa),
+  `CHANGELOG_2026-08-12.md` (Changelog 2026-08-11/12).
 
 ## 7. Aufgabenbezogene Lektüre
 

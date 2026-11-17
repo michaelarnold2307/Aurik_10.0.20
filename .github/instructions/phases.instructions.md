@@ -4,6 +4,14 @@ applyTo: "backend/core/phases/phase_*.py"
 
 # Phasen-Regeln (normativ, Aurik 10.2.0.x)
 
+## Zugehörige Specs (normativ — Referenz-Anker)
+
+- `.github/specs/v10.650_contradiction_resolution.md` — Widerspruchs-Auflösung
+- `.github/specs/v10.704_hpi_restorability_gate.md` — Restorability-adaptiver HPI-Gate
+- `.github/specs/v10.706_denker_iq_material_awareness.md` — Denker-IQ & Material-Awareness
+- `.github/specs/v10.23_album_prior.md` — Albumweite Trägerketten-Kohärenz
+- `.github/specs/v10.25_echtmusik_training.md` — Echtmusik-Trainings-Roadmap
+
 ## Pflicht-Checkliste bei jeder neuen Phase
 
 ```

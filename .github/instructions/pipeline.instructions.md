@@ -4,6 +4,25 @@ applyTo: "backend/core/unified_restorer_v3.py"
 
 # UV3 — Pipeline-Regeln (normativ, Aurik 10.2.0.x)
 
+## Zugehörige Specs (normativ — Referenz-Anker)
+
+- `.github/specs/10_lag_integrity_architecture.md` — Lag-Integritäts-Architektur (§G60–§G67, §V27–§V33)
+- `.github/specs/12_evolution_260_30.md` — Denker → UV3 Evolutionsstufen (§2.60–§3.0, RELEASE_MUST)
+- `.github/specs/12_perceptual_optimization.md` — Perceptual Optimization Patterns
+- `.github/specs/14_completeness_and_perfection.md` — Vollständigkeit & Perfektion (RELEASE_MUST)
+- `.github/specs/19_non_plus_ultra_quality_ceiling_elimination.md` — Strukturelle Qualitäts-Deckel beseitigt (§v10.90–§v10.94)
+- `.github/specs/20_log_analysis_optimal_values.md` — Logbasierte Tiefenanalyse & optimale Werte (§v10.300)
+- `.github/specs/21_pre_run_briefing.md` — Pre-Run Briefing (§v10.117)
+- `.github/specs/v10.24_architecture_reference.md` — Architektur-Referenz
+- `.github/specs/v10.600_sota_pipeline_architecture.md` — SOTA-Pipeline-Architektur
+- `.github/specs/v10.900_sota_pipeline_architecture.md` — SOTA-Pipeline-Architektur (v10.900)
+- `.github/specs/v10.99x_stimmiges_gesamtsystem.md` — Stimmiges Gesamtsystem
+- `.github/specs/v10.14_durchblick_hoeherwertigkeit.md` — Durchblick & Höherwertigkeit
+- `.github/specs/v10.350_plm_singleton_and_chunked_streaming.md` — PLM-Singleton & Chunked-Streaming
+- `.github/specs/v10.340_causal_material_and_ram_diagnostics.md` — Kausales Material & RAM-Diagnostik
+- `.github/specs/v10.22_model_orchestration.md` — Modell-Orchestrierung
+- `.github/specs/v10.15_non_plus_ultra_qualitaetsvertraege.md` — Non-Plus-Ultra-Qualitätsverträge
+
 ## §2.31 Material-Phase-Initialstärken — Transfer-Chain-Aware [RELEASE_MUST v10.0.0]
 
 **Problem**: Wenn `_restoration_context["transfer_chain"]` mehrere Stufen enthält (z.B. `["vinyl", "cassette"]`), darf nur die **strengste** Schwächungsstufe über alle Kettenglieder die Initialstärke einer Phase bestimmen.

@@ -12,8 +12,8 @@
   "messung": "docs/reports/current/b3_stufenmessung_M4-ERA.json",
   "zielmetrik": {
     "name": "musik_mos (G-2)",
-    "vorteile": "2/6",
-    "p_wert": 0.6875
+    "vorteile": "1/6",
+    "p_wert": 0.21875
   },
   "ergebnis": "ABGELEHNT",
   "quelle": "scripts/b3_stufenmessung.py"
