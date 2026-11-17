@@ -313,8 +313,14 @@ Jedes VERBOT definiert eine unzulässige Handlung. Verstöße sind Build-Fehler.
     sobald der Prozess multithreaded sein kann oder ML-Runtimes
     (torch/ORT/OpenBLAS) geladen hat: `fork()` eines multithreaded Prozesses
     vererbt verklemmte Locks an das Kind (v7-Deadlock-Befund 2026-11-17:
-    Vater `do_wait`, Kind `futex_do_wait` mit 8+ Threads, CPU 0 %; Ursache war
-    `Aurik10/ipc/pipeline_process.py` `mp.Process` — gefixt auf `spawn`).
+    Vater `do_wait`, Kind `futex_do_wait` mit 8+ Threads, CPU 0 %).
+    E2E-Klärung 2026-11-17: `Aurik10/ipc/pipeline_process.py` (`mp.Process`)
+    ist eine **tote GUI-Scaffolding-Klasse** (die reale GUI fährt `denke()` im
+    QThread, in-process) — die live wirksamen Fork-Quellen waren sklearn/loky
+    (`n_jobs=-1` ⇒ `n_jobs=1`, siehe unten) und Batch-`ProcessPoolExecutor`
+    (⇒ `spawn`); die Klasse wurde dennoch auf `spawn` gehärtet und dabei
+    repariert (D-K3-108: zwei getrennte Pipes, Bridge-Import über
+    `backend/api/bridge.py`, Worker-E2E `completed`).
     - Ausnahme: `fork()` nachweislich **vor** jedem Thread-/ML-Import
       (single-threaded am Fork-Zeitpunkt), mit Begründung im Code-Kommentar.
     - sklearn/joblib: `n_jobs=-1` startet den loky-**Prozess**-Pool (fork);

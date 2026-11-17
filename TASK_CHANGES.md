@@ -1,46 +1,18 @@
 # TASK_CHANGES — Live-Ledger der aktuellen Aufgabe
 
-> Generiert von `scripts/change_ledger.py snapshot` (Base: `HEAD`, Stand: 2026-11-17 07:08 CET).
+> Generiert von `scripts/change_ledger.py snapshot` (Base: `HEAD`, Stand: 2026-11-17 09:43 CET).
 > CI (`ci-lite.yml` pr-evidence-gate) erzwingt Abdeckung: jede geänderte Code-Datei muss hier stehen.
 
 ## Geänderte Dateien
 
 | Status | Pfad | Art |
 |---|---|---|
-| M | `.github/FILE_REGISTRY.md` | modifiziert |
 | M | `.github/SOTA_DEFICIT_REGISTER.md` | modifiziert |
 | M | `.github/copilot-instructions.md` | modifiziert |
-| M | `.github/instructions/hoerordnung.instructions.md` | modifiziert |
-| M | `.github/specs/26_defekt_reparatur_trainingsvertrag.md` | modifiziert |
-| M | `Aurik10/i18n/__init__.py` | modifiziert |
 | M | `Aurik10/ipc/pipeline_process.py` | modifiziert |
-| M | `Aurik10/ui/hearing_gates_summary.py` | modifiziert |
-| M | `Aurik10/ui/musical_goals_radar.py` | modifiziert |
-| M | `Aurik10/ui/onboarding.py` | modifiziert |
-| M | `Aurik10/ui/restoration_status_panel.py` | modifiziert |
-| M | `Aurik10/ui/results_summary.py` | modifiziert |
-| M | `Aurik10/ui/song_prognose_widget.py` | modifiziert |
-| M | `Aurik10/ui/splash_screen.py` | modifiziert |
-| M | `TASK_CHANGES.md` | modifiziert |
-| M | `audit/spec_integration_report.json` | modifiziert |
-| M | `audit/spec_integration_report.md` | modifiziert |
-| M | `backend/core/adaptive_core_scheduler.py` | modifiziert |
-| M | `backend/core/dsp/wohlklang_zeuge.py` | modifiziert |
-| M | `backend/core/forensics/ml_era_detector.py` | modifiziert |
-| M | `backend/core/forensics/ml_medium_detector.py` | modifiziert |
-| M | `backend/core/parallel/batch_parallel.py` | modifiziert |
-| M | `backend/core/unified_restorer_v3.py` | modifiziert |
 | M | `docs/reports/current/2026-11-17_v7_deadlock_trotz_reentranzfix.json` | modifiziert |
 | M | `reports/spec_drift_baseline.json` | modifiziert |
-| M | `scripts/b3_komposition_suche.py` | modifiziert |
-| M | `scripts/compliance_check.py` | modifiziert |
-| M | `tests/parallel/test_batch_parallel.py` | modifiziert |
-| M | `tests/unit/test_b3_komposition_suche.py` | modifiziert |
-| M | `tests/unit/test_wohlklang_zeuge.py` | modifiziert |
 | ?? | `docs/reports/current/2026-11-16_witness_kopf_gate_sticky_shed_residue.json` | ungetrackt |
-| ?? | `scripts/fork_site_finder.py` | ungetrackt |
-| ?? | `scripts/frontend_prosa_scanner.py` | ungetrackt |
-| ?? | `tests/unit/test_frontend_prosa_folgewelle.py` | ungetrackt |
 
 ## Entscheidungen
 

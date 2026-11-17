@@ -177,8 +177,11 @@ def _pipeline_worker(
         # (ONNX-Sessions, PMGG-Modelle, etc.)
         denker = None
         try:
-            # Bridge-Import für Singletons im Kindprozess
-            from Aurik10.bridge import (
+            # Bridge-Import für Singletons im Kindprozess (§V4 (copilot-instructions.md):
+            # Aurik10 importiert backend ausschließlich über backend/api/bridge.py —
+            # der frühere Import "Aurik10.bridge" existiert nicht (Fix 2026-11-17,
+            # E2E-Befund: ModuleNotFoundError im Worker).
+            from backend.api.bridge import (
                 get_aurik_denker_instance as _bridge_denker,
             )
 
@@ -187,7 +190,7 @@ def _pipeline_worker(
                 raise RuntimeError("Denker-Singleton nicht verfügbar")
 
             # ROCm warmup (falls im Kindprozess nötig)
-            from Aurik10.bridge import warmup_rocm as _bridge_warmup
+            from backend.api.bridge import warmup_rocm as _bridge_warmup
 
             if _bridge_warmup is not None:
                 _bridge_warmup()
@@ -516,15 +519,24 @@ class PipelineProcess:
             self._ring_name = self._ring._name
 
             # ── Pipes erstellen ─────────────────────────────────────
-            self._parent_pipe, self._child_pipe = self._ctx.Pipe(duplex=False)
+            # ZWEI getrennte unidirektionale Pipes (Fix 2026-11-17, E2E-Befund):
+            # eine einzige Pipe (duplex=False) kann nur eine Richtung —
+            # Aufträge (Eltern→Kind) und Status (Kind→Eltern) brauchen je einen
+            # eigenen Kanal, sonst lesen Eltern und Kind um dieselbe Empfangs-
+            # Seite (Race: der Worker fing seine eigenen Status-Strings als
+            # „Job" ⇒ AttributeError 'str' has no attribute 'get').
+            _jobs_recv, self._child_pipe = self._ctx.Pipe(duplex=False)  # c1: Worker-Eingang, c2: Eltern senden Jobs
+            self._parent_pipe, _status_send = self._ctx.Pipe(
+                duplex=False
+            )  # c1: Eltern-Eingang, c2: Worker sendet Status
 
             # ── Kindprozess starten (spawn, siehe __init__) ─────────
             self._ready_event.clear()
             self._process = self._ctx.Process(
                 target=_pipeline_worker,
                 args=(
-                    self._child_pipe,
-                    self._parent_pipe,
+                    _jobs_recv,
+                    _status_send,
                     self._ring_name,
                     self._ready_event,
                 ),
