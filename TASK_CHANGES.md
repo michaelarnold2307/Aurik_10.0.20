@@ -1,23 +1,14 @@
 # TASK_CHANGES — Live-Ledger der aktuellen Aufgabe
 
-> Generiert von `scripts/change_ledger.py snapshot` (Base: `HEAD`, Stand: 2026-11-17 12:32 CET).
+> Generiert von `scripts/change_ledger.py snapshot` (Base: `HEAD`, Stand: 2026-11-17 14:45 CET).
 > CI (`ci-lite.yml` pr-evidence-gate) erzwingt Abdeckung: jede geänderte Code-Datei muss hier stehen.
 
 ## Geänderte Dateien
 
 | Status | Pfad | Art |
 |---|---|---|
-| M | `.github/instructions/hoerordnung.instructions.md` | modifiziert |
-| M | `.github/specs/07_quality_and_tests.md` | modifiziert |
-| M | `.github/specs/26_defekt_reparatur_trainingsvertrag.md` | modifiziert |
-| M | `backend/core/dsp/wohlklang_zeuge.py` | modifiziert |
-| M | `backend/core/performance_guard.py` | modifiziert |
-| M | `backend/core/unified_restorer_v3.py` | modifiziert |
-| M | `reports/spec_drift_baseline.json` | modifiziert |
-| M | `tests/unit/test_performance_guard_budget_ledger.py` | modifiziert |
-| M | `tests/unit/test_performance_guard_spec_compliance.py` | modifiziert |
-| M | `tests/unit/test_wohlklang_zeuge.py` | modifiziert |
-| ?? | `docs/reports/current/2026-11-16_witness_kopf_gate_sticky_shed_residue.json` | ungetrackt |
+| M | `.github/SOTA_DEFICIT_REGISTER.md` | modifiziert |
+| M | `docs/SOTA_HANDOVER.md` | modifiziert |
 
 ## Entscheidungen
 
