@@ -6,7 +6,21 @@ sie belegen den Bestand, nicht den Kandidaten-Zustand. Dieses Skript misst
 die fehlende Seite: dieselben Schadens-Paare, dieselben Metriken, aber mit
 allen gate-bestandenen Witness-Kanälen AKTIV (prozess-lokal).
 
-Vertrag:
+**Crash-Härtung Runde 2 (2026-11-19, Smoke-SIGABRT-Befund):** der 4-Paar-Smoke
+endete mit `Fatal Python error: Aborted` (Faulthandler: phase_10_compression →
+perceptual_loudness_cap → temporal_loudness) — der Prozess starb MITTEN im
+Lauf, ohne Beleg. Für die 45-Paar-Evidenz ist das untragbar, deshalb:
+
+- **Subprozess-Isolation:** jedes Paar wird in einem EIGENEN Kindprozess
+  gerechnet (`--einzel N`). Ein nativer Crash des Kinds kostet nur dieses
+  eine Paar; der Elternprozess schreibt `status: "abgestuerzt"` + Returncode
+  und rechnet die übrigen Paare weiter.
+- **Inkrementeller Beleg:** nach JEDEM Paar wird der Beleg neu geschrieben
+  (abgeschlossene Paare gehen nie verloren).
+- **Resume:** fertige Paar-Zeilendateien werden übersprungen — ein Abbruch
+  setzt ohne Zeitverlust fort.
+
+Vertrag (unverändert):
 - **Mess-only:** die Kanal-Flags werden nur in DIESEM Prozess gesetzt
   (`backend.core.music_model_flags`-Attribute); keine Flag-Datei wird
   geschrieben, keine Produktions-Defaults werden verändert (§G1 (copilot-instructions.md)-Bit-Identität bleibt unangetastet).
@@ -21,8 +35,9 @@ Vertrag:
 - **Determinismus (§G5 (copilot-instructions.md)):** feste Paar-Auswahl über
   Seed 42; CPU-only via AURIK_FORCE_CPU (stört die GPU-Kette nicht).
 
-Beleg: `docs/reports/current/<datum>_kanalsatz_ab.json`, Schema
-`aurik.kanalsatz_ab/1`.
+Beleg: `docs/reports/current/<datum>_kanalsatz_ab[_voll].json`, Schema
+`aurik.kanalsatz_ab/1` (additiv um `status`/`returncode` je Zeile +
+`modus: subprozess-isoliert`).
 """
 
 from __future__ import annotations
@@ -30,6 +45,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import subprocess
 import sys
 from datetime import date
 from pathlib import Path
@@ -94,7 +110,131 @@ def _paare_auswaehlen(verzeichnis: Path, anzahl: int, seed: int) -> list[tuple[s
     return [(p.stem, p) for p in auswahl]
 
 
+def _bestand_laden(bestand_pfad: Path | None) -> dict[str, dict[str, Any]]:
+    bestand: dict[str, dict[str, Any]] = {}
+    if bestand_pfad is not None and bestand_pfad.is_file():
+        roh = json.loads(bestand_pfad.read_text(encoding="utf-8"))
+        for z in roh.get("zeilen", []):
+            song = z.get("song") or z.get("stamm") or ""
+            rezept = z.get("rezept")
+            key = f"{song} ({rezept})" if rezept else song
+            bestand[key] = {
+                "delta_musik_mos": z.get("delta_musik_mos"),
+                "delta_defektlast": z.get("delta_defektlast"),
+                "besser": bool(z.get("besser")),
+            }
+    return bestand
+
+
+def _zeilen_dir(beleg: Path) -> Path:
+    return beleg.parent / (beleg.stem + "_zeilen")
+
+
+def _beleg_schreiben(
+    beleg: Path,
+    paare: list[tuple[str, Path]],
+    verzeichnis: Path,
+    seed: int,
+    bestand_pfad: Path | None,
+    zeilen: list[dict[str, Any]],
+) -> None:
+    beleg_pfad = beleg
+    daten = {
+        "schema": SCHEMA,
+        "datum": date.today().isoformat(),
+        "seed": seed,
+        "modus": "subprozess-isoliert",
+        "verzeichnis": str(verzeichnis.relative_to(_ROOT)) if verzeichnis.is_relative_to(_ROOT) else str(verzeichnis),
+        "kanalsatz_flags": KANALSAETZ_FLAGS,
+        "n_paare": len(zeilen),
+        "n_geplant": len(paare),
+        "bestand_beleg": str(bestand_pfad) if bestand_pfad else None,
+        "zeilen": zeilen,
+    }
+    beleg_pfad.write_text(json.dumps(daten, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+
+
+def _kind_einzel(argv: list[str]) -> int:
+    """Kind-Modus: EIN Paar rechnen und als Zeilen-Datei ablegen (crash-isoliert)."""
+    import faulthandler as _fh_mod
+
+    _fh_log = _ROOT / "logs" / "python_faulthandler_ketten.log"
+    _fh_log.parent.mkdir(parents=True, exist_ok=True)
+    _fh_handle = open(_fh_log, "a", encoding="utf-8")
+    _fh_mod.enable(file=_fh_handle, all_threads=True)
+
+    ap = argparse.ArgumentParser(description="DRT-12-Kanalsatz: Einzelpaar-Kindprozess")
+    ap.add_argument("--verzeichnis", required=True)
+    ap.add_argument("--seed", type=int, default=42)
+    ap.add_argument("--bestand", type=Path, default=None)
+    ap.add_argument("--ausgang", type=Path, default=None)
+    ap.add_argument("--index", type=int, required=True)
+    ap.add_argument("--paare", type=int, required=True)
+    ap.add_argument("--zeile-datei", type=Path, required=True)
+    args = ap.parse_args(argv)
+
+    os.environ.setdefault("AURIK_FORCE_CPU", "1")
+    os.environ.setdefault("AURIK_NO_RT_LIMIT", "1")
+
+    from scripts.erstelle_schadens_proben import restauriere_schnipsel  # pylint: disable=import-outside-toplevel
+
+    _aktiviere_kanalsatz()
+    bestand = _bestand_laden(args.bestand)
+    paare = _paare_auswaehlen(Path(args.verzeichnis), args.paare, args.seed)
+    stamm, pfad = paare[args.index]
+
+    from scipy.io import wavfile
+
+    roh = wavfile.read(pfad)
+    if not isinstance(roh, tuple) or len(roh) != 2:
+        ergebnis: dict[str, Any] = {"stamm": stamm, "status": "format_fehler"}
+    else:
+        sr = int(roh[0])
+        d = roh[1]
+        x = np.asarray(d, np.float32) / 32768.0 if np.asarray(d).dtype != np.float32 else np.asarray(d, np.float32)
+        schaden = x.mean(axis=1) if x.ndim == 2 else x
+
+        restauriert = restauriere_schnipsel(schaden, sr, str(pfad))
+        z = _zeugen(schaden, restauriert, sr)
+
+        ergebnis = {
+            "stamm": stamm,
+            "status": "ok",
+            "kanalsatz_delta_musik_mos": round(z["delta_musik_mos"], 4),
+            "kanalsatz_delta_defektlast": round(z["delta_defektlast"], 4),
+        }
+        b = bestand.get(stamm)
+        if b is not None and b.get("delta_musik_mos") is not None:
+            ergebnis["bestand_delta_musik_mos"] = round(float(b["delta_musik_mos"]), 4)
+            ergebnis["bestand_delta_defektlast"] = round(float(b["delta_defektlast"]), 4)
+            ergebnis["delta_zu_bestand_mos"] = round(z["delta_musik_mos"] - float(b["delta_musik_mos"]), 4)
+            ergebnis["delta_zu_bestand_defektlast"] = round(z["delta_defektlast"] - float(b["delta_defektlast"]), 4)
+
+        if args.ausgang is not None:
+            import soundfile as sf
+
+            args.ausgang.mkdir(parents=True, exist_ok=True)
+            sf.write(str(args.ausgang / f"{stamm}_kanalsatz.wav"), restauriert, sr)
+        print(
+            f"[{args.index + 1}/{args.paare}] {stamm} — ΔMOS {z['delta_musik_mos']:+.3f}, Δdefektlast {z['delta_defektlast']:+.3f}"
+        )
+
+    args.zeile_datei.parent.mkdir(parents=True, exist_ok=True)
+    tmp = args.zeile_datei.with_suffix(".tmp")
+    tmp.write_text(json.dumps(ergebnis, ensure_ascii=False) + "\n", encoding="utf-8")
+    tmp.replace(args.zeile_datei)
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
+    if argv is None:
+        argv = sys.argv[1:]
+    if "--index" in argv or "--einzel" in argv:
+        argv = [a for a in argv if a != "--einzel"]
+        if "--index" not in argv:
+            raise SystemExit("Kind-Modus braucht --index")
+        return _kind_einzel(argv)
+
     ap = argparse.ArgumentParser(description="DRT-12: Witness-Kanalsatz-A/B auf identischen Paaren")
     ap.add_argument("--verzeichnis", required=True, help="Ordner mit <titel> (<rezept>).wav-Schadenspaaren")
     ap.add_argument("--paare", type=int, default=6)
@@ -106,26 +246,8 @@ def main(argv: list[str] | None = None) -> int:
     )
     args = ap.parse_args(argv)
 
-    # CPU-Vertrag VOR allen backend-Importen (GPU-Kette läuft parallel).
     os.environ.setdefault("AURIK_FORCE_CPU", "1")
     os.environ.setdefault("AURIK_NO_RT_LIMIT", "1")
-
-    from scripts.erstelle_schadens_proben import restauriere_schnipsel  # pylint: disable=import-outside-toplevel
-
-    _aktiviere_kanalsatz()
-
-    bestand = {}
-    if args.bestand is not None and Path(args.bestand).is_file():
-        roh = json.loads(Path(args.bestand).read_text(encoding="utf-8"))
-        for z in roh.get("zeilen", []):
-            song = z.get("song") or z.get("stamm") or ""
-            rezept = z.get("rezept")
-            key = f"{song} ({rezept})" if rezept else song
-            bestand[key] = {
-                "delta_musik_mos": z.get("delta_musik_mos"),
-                "delta_defektlast": z.get("delta_defektlast"),
-                "besser": bool(z.get("besser")),
-            }
 
     verzeichnis = Path(args.verzeichnis)
     paare = _paare_auswaehlen(verzeichnis, args.paare, args.seed)
@@ -133,56 +255,58 @@ def main(argv: list[str] | None = None) -> int:
         print("ABBRUCH: keine Schadens-Paare gefunden.")
         return 2
 
-    zeilen = []
-    for i, (stamm, pfad) in enumerate(paare):
-        import soundfile as sf
-        from scipy.io import wavfile
-
-        roh = wavfile.read(pfad)
-        if not isinstance(roh, tuple) or len(roh) != 2:
-            print(f"ÜBERSPRUNGEN (Format): {pfad.name}")
-            continue
-        sr = int(roh[0])
-        d = roh[1]
-        x = np.asarray(d, np.float32) / 32768.0 if np.asarray(d).dtype != np.float32 else np.asarray(d, np.float32)
-        schaden = x.mean(axis=1) if x.ndim == 2 else x
-
-        restauriert = restauriere_schnipsel(schaden, sr, str(pfad))
-        z = _zeugen(schaden, restauriert, sr)
-
-        eintrag: dict[str, Any] = {
-            "stamm": stamm,
-            "kanalsatz_delta_musik_mos": round(z["delta_musik_mos"], 4),
-            "kanalsatz_delta_defektlast": round(z["delta_defektlast"], 4),
-        }
-        b = bestand.get(stamm)
-        if b is not None and b.get("delta_musik_mos") is not None:
-            eintrag["bestand_delta_musik_mos"] = round(float(b["delta_musik_mos"]), 4)
-            eintrag["bestand_delta_defektlast"] = round(float(b["delta_defektlast"]), 4)
-            eintrag["delta_zu_bestand_mos"] = round(z["delta_musik_mos"] - float(b["delta_musik_mos"]), 4)
-            eintrag["delta_zu_bestand_defektlast"] = round(z["delta_defektlast"] - float(b["delta_defektlast"]), 4)
-        zeilen.append(eintrag)
-
-        if args.ausgang is not None:
-            args.ausgang.mkdir(parents=True, exist_ok=True)
-            sf.write(str(args.ausgang / f"{stamm}_kanalsatz.wav"), restauriert, sr)
-        print(
-            f"[{i + 1}/{len(paare)}] {stamm} — ΔMOS {z['delta_musik_mos']:+.3f}, Δdefektlast {z['delta_defektlast']:+.3f}"
-        )
-
-    beleg = {
-        "schema": SCHEMA,
-        "datum": date.today().isoformat(),
-        "seed": args.seed,
-        "verzeichnis": str(verzeichnis.relative_to(_ROOT)) if verzeichnis.is_relative_to(_ROOT) else str(verzeichnis),
-        "kanalsatz_flags": KANALSAETZ_FLAGS,
-        "n_paare": len(zeilen),
-        "bestand_beleg": str(args.bestand) if args.bestand else None,
-        "zeilen": zeilen,
-    }
     ziel = args.beleg if args.beleg is not None else REPORT_DIR / f"{date.today().isoformat()}_kanalsatz_ab.json"
-    ziel.write_text(json.dumps(beleg, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
-    print(f"Beleg: {ziel}")
+    zdir = _zeilen_dir(ziel)
+    zdir.mkdir(parents=True, exist_ok=True)
+
+    zeilen: list[dict[str, Any]] = []
+    for i, (stamm, _pfad) in enumerate(paare):
+        zeile_pfad = zdir / f"{i:03d}_{stamm[:40].replace('/', '_')}.json"
+        if zeile_pfad.is_file():
+            fertig = json.loads(zeile_pfad.read_text(encoding="utf-8"))
+            zeilen.append(fertig)
+            print(f"[{i + 1}/{len(paare)}] {stamm} — vorhanden (Resume): {fertig.get('status')}")
+            continue
+
+        kind_argv = [
+            sys.executable,
+            "-B",
+            str(Path(__file__).resolve()),
+            "--verzeichnis",
+            str(verzeichnis),
+            "--seed",
+            str(args.seed),
+            "--paare",
+            str(args.paare),
+            "--index",
+            str(i),
+            "--zeile-datei",
+            str(zeile_pfad),
+        ]
+        if args.bestand is not None:
+            kind_argv += ["--bestand", str(args.bestand)]
+        if args.ausgang is not None:
+            kind_argv += ["--ausgang", str(args.ausgang)]
+
+        print(f"[{i + 1}/{len(paare)}] {stamm} — Kindprozess gestartet …")
+        abgeschlossen = subprocess.run(kind_argv, check=False, cwd=str(_ROOT))
+        if abgeschlossen.returncode == 0 and zeile_pfad.is_file():
+            fertig = json.loads(zeile_pfad.read_text(encoding="utf-8"))
+        else:
+            fertig = {
+                "stamm": stamm,
+                "status": "abgestuerzt",
+                "returncode": abgeschlossen.returncode,
+            }
+            zeile_pfad.write_text(json.dumps(fertig, ensure_ascii=False) + "\n", encoding="utf-8")
+            print(f"[{i + 1}/{len(paare)}] {stamm} — Kind abgestürzt (rc={abgeschlossen.returncode}), weiter.")
+        zeilen.append(fertig)
+        _beleg_schreiben(ziel, paare, verzeichnis, args.seed, args.bestand, zeilen)
+
+    _beleg_schreiben(ziel, paare, verzeichnis, args.seed, args.bestand, zeilen)
+    n_ok = sum(1 for z in zeilen if z.get("status") == "ok")
+    n_crash = sum(1 for z in zeilen if z.get("status") == "abgestuerzt")
+    print(f"Beleg: {ziel} ({n_ok} ok, {n_crash} abgestürzt, {len(zeilen)} gesamt)")
     return 0
 
 

@@ -326,23 +326,23 @@ _WIRING_ALLOWLIST: dict[str, str] = {
     ),
     "witness_wow": (
         "Witness-Kopf wow: Gate 2026-11-19 VERFEHLT (q 0,95, never-worsen) — keine Aktivierung; "
-        "Runde 2 (CPU, lambda-mos 0.1/lambda-id 0.8, 50 Epochen) läuft, Wieder-Vorlage erst bei bestandenem Gate."
+        "Runde 2 (CPU, 50 Epochen) ehrlich VERFEHLT (q 0,93, nw 0,06) — bleibt report-only bis die Datenlage besser ist."
     ),
     "witness_hum": (
         "Witness-Kopf hum: Gate 2026-11-19 VERFEHLT (q 0,61, never-worsen) — keine Aktivierung; "
-        "Runde 2 (CPU, 50 Epochen) läuft, Wieder-Vorlage erst bei bestandenem Gate."
+        "Runde 2 (CPU, 50 Epochen) ehrlich VERFEHLT (q 0,64, nw 0,25) — bleibt report-only bis die Datenlage besser ist."
     ),
     "witness_dropouts": (
         "Witness-Kopf dropouts: Gate 2026-11-19 VERFEHLT (q 1,51, never-worsen = Überrestauration) — "
-        "keine Aktivierung; Runde 2 (lambda-id 0,8) läuft, Wieder-Vorlage erst bei bestandenem Gate."
+        "keine Aktivierung; Runde 2 (lambda-id 0,8) ehrlich VERFEHLT (q 0,88, nw 0,58) — bleibt report-only bis die Datenlage besser ist."
     ),
     "witness_dropout_oxide": (
         "Witness-Kopf dropout_oxide: Detektor-AUC nur 0,79 (2026-11-19) — keine Aktivierung; "
-        "Runde 2 läuft, Wieder-Vorlage erst bei bestandenem Gate."
+        "Runde 2 ehrlich VERFEHLT — bleibt report-only bis der Detektor besser ist."
     ),
     "witness_tape_splice_artifact": (
         "Witness-Kopf tape_splice_artifact: Gate 2026-11-19 VERFEHLT — keine Aktivierung; "
-        "Runde 2 (lambda-id 0,8) läuft, Wieder-Vorlage erst bei bestandenem Gate."
+        "Runde 2 (lambda-id 0,8) ehrlich VERFEHLT — bleibt report-only bis die Datenlage besser ist."
     ),
     "diffwave_vocal_inpaint": (
         "Trainingsziel der Matrix-D.3-Kette (DiffWave-Vokal-Inpaint, S1 -1,7 dB Beleg) — "

@@ -67,3 +67,32 @@ def test_schema_pin_und_cpu_only() -> None:
     quelle = (ab._ROOT / "scripts" / "messe_kanalsatz_ab.py").read_text(encoding="utf-8")
     assert 'os.environ.setdefault("AURIK_FORCE_CPU", "1")' in quelle
     assert ".cuda(" not in quelle and "cuda()" not in quelle
+
+
+def test_subprozess_isolation_pro_paar() -> None:
+    """Crash-Härtung (Produktionsbefund 2026-11-19: SIGABRT in phase_10/
+    temporal_loudness riss den 4-Paar-Smoke): JEDES Paar läuft im eigenen
+    Kindprozess, ein Absturz erzeugt einen `abgestuerzt`-Eintrag statt den
+    Lauf zu beenden; der Beleg wird nach jedem Paar inkrementell geschrieben."""
+    quelle = (ab._ROOT / "scripts" / "messe_kanalsatz_ab.py").read_text(encoding="utf-8")
+    assert "subprocess.run(kind_argv, check=False" in quelle
+    assert '"status": "abgestuerzt"' in quelle
+    assert '"returncode": abgeschlossen.returncode' in quelle
+    assert "_beleg_schreiben(ziel, paare, verzeichnis, args.seed, args.bestand, zeilen)" in quelle
+    assert "_fh_mod.enable(" in quelle  # Kind trägt den Crash ins Faulthandler-Log
+
+
+def test_resume_pro_zeilen_datei() -> None:
+    """Fertige Paare werden über ihre Zeilen-Datei übersprungen (Resume-sicher)."""
+    quelle = (ab._ROOT / "scripts" / "messe_kanalsatz_ab.py").read_text(encoding="utf-8")
+    assert "vorhanden (Resume)" in quelle
+    assert "if zeile_pfad.is_file():" in quelle
+
+
+def test_kind_dispatch_und_modus_marker() -> None:
+    """`--index`/`--einzel` dispatcht in den Kind-Modus; der Beleg trägt
+    `modus: subprozess-isoliert` (Schema-additiv, DRT-12-Nachvollziehbarkeit)."""
+    quelle = (ab._ROOT / "scripts" / "messe_kanalsatz_ab.py").read_text(encoding="utf-8")
+    assert 'if "--index" in argv or "--einzel" in argv:' in quelle
+    assert '"modus": "subprozess-isoliert"' in quelle
+    assert "tmp.replace(args.zeile_datei)" in quelle  # atomare Zeilen-Datei
