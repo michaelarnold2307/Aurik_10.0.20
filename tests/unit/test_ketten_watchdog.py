@@ -20,6 +20,51 @@ def test_end_marker_erkannt(tmp_path) -> None:
     assert wd._end_marker_da(str(log), "KETTE_END=")
 
 
+def test_end_status_fehlender_marker_liefert_none(tmp_path) -> None:
+    log = tmp_path / "kette.log"
+    log.write_text("läuft noch\n", encoding="utf-8")
+    assert wd._end_status(str(log), "KETTE_END=") is None
+    assert wd._end_status(str(tmp_path / "fehlt.log"), "KETTE_END=") is None
+
+
+def test_end_status_unterscheidet_sauber_von_abgesturzt(tmp_path) -> None:
+    """Härtungs-Schicht 4b: der ursprüngliche Bug behandelte JEDEN Marker als
+    'fertig' — ein Absturzstatus (z. B. 139 = SIGSEGV) muss als Absturz, nicht
+    als sauberer Abschluss erkannt werden."""
+    log = tmp_path / "kette.log"
+    log.write_text("KETTE_END=0\n", encoding="utf-8")
+    assert wd._end_status(str(log), "KETTE_END=") == 0
+    log.write_text("KETTE_END=139\n", encoding="utf-8")
+    assert wd._end_status(str(log), "KETTE_END=") == 139
+
+
+def test_end_status_nimmt_den_letzten_versuch(tmp_path) -> None:
+    """Mehrere Neustarts hängen je eine eigene Markerzeile an — maßgeblich
+    für den aktuellen Zustand ist die ZULETZT geloggte."""
+    log = tmp_path / "kette.log"
+    log.write_text("KETTE_END=139\nweiter...\nKETTE_END=0\n", encoding="utf-8")
+    assert wd._end_status(str(log), "KETTE_END=") == 0
+
+
+def test_anzahl_abgestuerzter_versuche_zaehlt_nur_fehlschlaege(tmp_path) -> None:
+    log = tmp_path / "kette.log"
+    log.write_text("KETTE_END=139\nKETTE_END=137\nKETTE_END=0\n", encoding="utf-8")
+    assert wd._anzahl_abgestuerzter_versuche(str(log), "KETTE_END=") == 2
+    log.write_text("KETTE_END=0\n", encoding="utf-8")
+    assert wd._anzahl_abgestuerzter_versuche(str(log), "KETTE_END=") == 0
+
+
+def test_anzahl_abgestuerzter_versuche_fehlende_datei_ist_null(tmp_path) -> None:
+    assert wd._anzahl_abgestuerzter_versuche(str(tmp_path / "fehlt.log"), "KETTE_END=") == 0
+
+
+def test_max_crash_restarts_ist_endlich_begrenzt() -> None:
+    """Keine Endlosschleife bei dauerhaft kaputtem Kommando — der Guard muss
+    eine endliche, positive Obergrenze sein."""
+    assert isinstance(wd.MAX_CRASH_RESTARTS, int)
+    assert 0 < wd.MAX_CRASH_RESTARTS < 100
+
+
 def test_prozess_check_ohne_self_match(monkeypatch) -> None:
     import subprocess
 

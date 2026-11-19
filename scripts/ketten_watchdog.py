@@ -6,12 +6,21 @@ eine Kette doch stirbt (SIGSEGV, OOM, Laufzeit-Neustart-Folge), startet sie
 bisher niemand neu. Dieser Watchdog schließt die Lücke:
 
 - alle INTERVALL_S wird je Kette geprüft: (a) läuft der Prozess noch?
-  (b) steht im Log der END-Marker (sauberer Abschluss)?
-- nur wenn KEIN Prozess UND KEIN END-Marker: Auto-Restart detached mit
-  derselben Start-Semantik (setsid/nohup, Resume-fähig) + Log-Eintrag.
+  (b) welcher Exit-Status steht im Log an der letzten Marker-Zeile?
+- Status 0 (sauberer Abschluss) ⇒ kein Neustart. Kein Marker (nie gelaufen/
+  getötet) ODER Status ≠ 0 (Absturz) ⇒ Auto-Restart detached mit derselben
+  Start-Semantik (setsid/nohup, Resume-fähig) + Log-Eintrag.
 - Die Muster liegen NICHT in der Kommandozeile des Watchdogs (kein
   pgrep-Self-Match): sie werden aus `KETTEN_CONFIG` (Quelltext) gelesen —
   die cmdline trägt nur „ketten_watchdog.py“.
+- Härtungs-Schicht 4b (2026-11-19, Produktionsbefund): der ursprüngliche
+  Abschluss-Test prüfte nur die Text-Anwesenheit des Markers — ein Absturz
+  (`…_END=139`, SIGSEGV) trug den Marker GENAUSO wie ein sauberer Abschluss
+  (`…_END=0`) und wurde deshalb NIE neu gestartet, obwohl der echte Status
+  schon geloggt wurde (Ursache statt Symptom, §V7 (copilot-instructions.md)).
+  `_end_status` parst den Status; Abstürze werden erneut versucht, begrenzt
+  durch `MAX_CRASH_RESTARTS` (keine Endlosschleife bei dauerhaft kaputtem
+  Kommando — dann Log-Warnung statt stillem Dauer-Neustart).
 
 Der Watchdog selbst startet detached und idempotent (ein zweiter Start endet
 sofort, wenn schon einer läuft — Lockfile /tmp/ketten_watchdog.lock mit PID).
@@ -19,8 +28,8 @@ sofort, wenn schon einer läuft — Lockfile /tmp/ketten_watchdog.lock mit PID).
 
 from __future__ import annotations
 
-import json
 import os
+import re
 import subprocess
 import sys
 import time
@@ -186,6 +195,47 @@ def _end_marker_da(log_pfad: str, marker: str) -> bool:
     return marker in inhalt
 
 
+# Produktionsbefund 2026-11-19 (D-K3-108-Nachfolge): `_end_marker_da` prüft nur
+# die Text-Anwesenheit des Markers — ein Absturz (z. B. `SIGNAL10_RESUME_END=139`,
+# SIGSEGV) trägt den Marker GENAUSO wie ein sauberer Abschluss (`…_END=0`) und
+# wurde deshalb NIE neu gestartet (§V7 (copilot-instructions.md): Ursache statt
+# Symptom — der Status wurde schon geloggt, aber nie ausgewertet). `_end_status`
+# liefert den geparsten Exit-Status der ZULETZT geloggten Markerzeile; `main()`
+# startet bei Status ≠ 0 erneut, begrenzt durch `MAX_CRASH_RESTARTS` (keine
+# Endlosschleife bei einem dauerhaft kaputten Kommando).
+_END_STATUS_RE = re.compile(r"(-?\d+)")
+MAX_CRASH_RESTARTS = 5
+
+
+def _end_status(log_pfad: str, marker: str) -> int | None:
+    """Exit-Status der zuletzt geloggten `marker<status>`-Zeile, oder None,
+    wenn der Marker fehlt oder der Status nicht parsebar ist."""
+    try:
+        inhalt = Path(log_pfad).read_text(encoding="utf-8", errors="replace")
+    except FileNotFoundError:
+        return None
+    letzte = None
+    for teil in inhalt.split(marker)[1:]:
+        m = _END_STATUS_RE.match(teil)
+        if m:
+            letzte = int(m.group(1))
+    return letzte
+
+
+def _anzahl_abgestuerzter_versuche(log_pfad: str, marker: str) -> int:
+    """Zählt bisherige Markerzeilen mit Status ≠ 0 (Absturz-Historie)."""
+    try:
+        inhalt = Path(log_pfad).read_text(encoding="utf-8", errors="replace")
+    except FileNotFoundError:
+        return 0
+    n = 0
+    for teil in inhalt.split(marker)[1:]:
+        m = _END_STATUS_RE.match(teil)
+        if m and int(m.group(1)) != 0:
+            n += 1
+    return n
+
+
 def main() -> int:
     # Idempotenz: nur EIN Watchdog.
     if LOCKFILE.is_file():
@@ -203,15 +253,29 @@ def main() -> int:
         while True:
             for name, muster, start_cmd, log_pfad, marker in KETTEN_CONFIG:
                 laeuft = _prozess_laeuft(muster)
-                fertig = _end_marker_da(log_pfad, marker)
-                if not laeuft and not fertig:
-                    _log(f"Kette {name} tot (kein Prozess, kein END-Marker) — Auto-Restart detached.")
+                status = _end_status(log_pfad, marker)
+                abgestuerzt = status is not None and status != 0
+                soll_neustarten = not laeuft and (status is None or abgestuerzt)
+                if soll_neustarten and abgestuerzt:
+                    versuche = _anzahl_abgestuerzter_versuche(log_pfad, marker)
+                    if versuche >= MAX_CRASH_RESTARTS:
+                        _log(
+                            f"Kette {name} wiederholt abgestürzt (zuletzt Status {status}, "
+                            f"{versuche}× seit letztem Erfolg) — Auto-Restart GESTOPPT "
+                            f"(MAX_CRASH_RESTARTS={MAX_CRASH_RESTARTS} erreicht, menschliche Prüfung nötig)."
+                        )
+                        soll_neustarten = False
+                if soll_neustarten:
+                    grund = "kein Prozess, kein END-Marker" if status is None else f"abgestürzt, Status {status}"
+                    _log(f"Kette {name} tot ({grund}) — Auto-Restart detached.")
                     try:
                         # Stdout/Stderr in DAS geprüfte Log, damit der END-Marker
                         # sicher landet (sonst Endlosschleife fertiger Ketten).
                         # STATUS fängt den ECHTEN Exit-Status der Kette ein — der
                         # Marker trägt ihn, damit ein stiller Fehlschlag (train.py
-                        # Exit 1, Produktionsbefund 2026-11-19) sichtbar bleibt.
+                        # Exit 1, Produktionsbefund 2026-11-19) sichtbar bleibt und
+                        # ein Absturz (Status ≠ 0, z. B. SIGSEGV=139) automatisch
+                        # erneut versucht wird, statt dauerhaft als „fertig“ zu gelten.
                         cmd = f"{start_cmd} >> {log_pfad} 2>&1; STATUS=$?; echo '{marker}'$STATUS >> {log_pfad}"
                         subprocess.Popen(
                             ["setsid", "nohup", "bash", "-lc", cmd],
@@ -223,7 +287,7 @@ def main() -> int:
                         )
                     except Exception as exc:  # pragma: no cover
                         _log(f"Restart von {name} fehlgeschlagen: {exc}")
-                elif laeuft and fertig:
+                elif laeuft and status is not None:
                     # End-Marker da, aber Prozess noch da: Abschluss-Phase.
                     pass
             time.sleep(INTERVALL_S)
