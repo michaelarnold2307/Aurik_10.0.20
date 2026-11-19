@@ -10506,12 +10506,17 @@ class RecordSleeveWidget(QtWidgets.QFrame):
         self._stack.addWidget(page)
 
     def _panel_play(self):
-        """Startet Wiedergabe des restaurierten Audios."""
-        if hasattr(self, "_rest_audio") and self._rest_audio is not None:
-            self._play_restored()
-        elif hasattr(self, "batch_thread") and self.batch_thread is not None:
-            # Während Batch: Live-Preview
-            self._play_live_preview()
+        """Startet Wiedergabe des restaurierten Audios.
+
+        §v10.999 Live-Mithören (Bugfix 2026-11-19, Paritäts-Register
+        „Bedienung/Echtzeit“): rief zuvor zwei nie definierte Methoden auf
+        (AttributeError, §V6 (copilot-instructions.md) Silent-Failure-Verbot
+        verletzt, da der Fehler nie geloggt/gemeldet wurde). Die bereits
+        implementierte und verdrahtete Logik `_play_restored_or_preview`
+        deckt exakt beide Fälle ab (fertiges Ergebnis ODER
+        Zwischenstand-Snapshot während eines laufenden Batches).
+        """
+        self._play_restored_or_preview()
 
     def _panel_pause(self):
         """Pausiert die Wiedergabe."""
