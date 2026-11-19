@@ -35,6 +35,36 @@ def noisy_audio(clean_audio):
 
 
 class TestDenoisePhase:
+    @pytest.mark.parametrize("channels_first", [True, False])
+    def test_masking_threshold_uses_full_length_mono_mix(self, phase, monkeypatch, channels_first):
+        import backend.core.adaptive_parameter_infrastructure as adaptive_params
+        import backend.core.dsp.masking_model as masking_model
+
+        mono = np.random.default_rng(42).standard_normal(2048).astype(np.float32) * 0.05
+        stereo_cf = np.stack([mono, mono * 0.8], axis=0)
+        audio = stereo_cf if channels_first else stereo_cf.T.copy()
+        observed_shapes = []
+
+        monkeypatch.setattr(
+            adaptive_params,
+            "derive_noise_floor",
+            lambda *_args: {
+                "band_reduction_factors": {},
+                "noise_floor_db": -10.0,
+                "estimated_snr_db": 20.0,
+            },
+        )
+
+        def capture_masking_input(audio_mono, _sample_rate):
+            observed_shapes.append(audio_mono.shape)
+            return np.full(8, -20.0, dtype=np.float32), []
+
+        monkeypatch.setattr(masking_model, "compute_masking_threshold_db", capture_masking_input)
+
+        phase.process(audio, material_type="unknown", strength=0.0, sample_rate=48000)
+
+        assert observed_shapes == [(2048,)]
+
     def test_process_returns_ndarray(self, phase, noisy_audio):
         result = phase.process(noisy_audio, sample_rate=48000, material_type="vinyl")
         assert isinstance(result.audio, np.ndarray)
