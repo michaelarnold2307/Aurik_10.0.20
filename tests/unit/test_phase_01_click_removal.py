@@ -46,3 +46,26 @@ class TestClickRemovalPhase:
         result = phase.process(clean, sample_rate=48000, material_type="vinyl")
         corr = float(np.corrcoef(clean, result.audio[: len(clean)])[0, 1])
         assert corr > 0.95, f"Clean audio degraded (corr={corr:.4f})"
+
+    def test_click_score_uses_sample_count_in_both_stereo_layouts(self, phase, monkeypatch):
+        stats = {
+            "total": 40,
+            "short": 40,
+            "medium": 0,
+            "long": 0,
+            "transients_preserved": 0,
+            "ml_repaired": 0,
+            "subaudible_skipped": 0,
+        }
+
+        def fake_linked(stereo_audio, mono_mix, *_args, **kwargs):
+            return stereo_audio.copy(), stats
+
+        monkeypatch.setattr(phase, "_remove_clicks_linked_stereo", fake_linked)
+        audio_cf = np.zeros((2, 48000), dtype=np.float32)
+        result_cf = phase.process(audio_cf, sample_rate=48000)
+        result_sf = phase.process(audio_cf.T.copy(), sample_rate=48000)
+
+        assert result_cf.resolved_defects["CLICKS"] == pytest.approx(
+            result_sf.resolved_defects["CLICKS"]
+        )
