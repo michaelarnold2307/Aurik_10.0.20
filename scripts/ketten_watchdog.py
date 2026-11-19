@@ -21,6 +21,11 @@ bisher niemand neu. Dieser Watchdog schließt die Lücke:
   `_end_status` parst den Status; Abstürze werden erneut versucht, begrenzt
   durch `MAX_CRASH_RESTARTS` (keine Endlosschleife bei dauerhaft kaputtem
   Kommando — dann Log-Warnung statt stillem Dauer-Neustart).
+- Abhängige Ketten benötigen einen erfolgreichen Abschluss des aktuellen
+  Versuchs. Ein Startmarker entwertet ältere Abschlüsse; bei bereits laufenden
+  Alt-Prozessen ohne Startmarker wird auf einen neuen Abschluss gewartet.
+  Ist ein Abschluss nicht eindeutig zuordenbar, bleibt die Kette mit Warnung
+  stehen, statt einen alten Erfolg als Nachweis zu verwenden.
 
 Der Watchdog selbst startet detached und idempotent (ein zweiter Start endet
 sofort, wenn schon einer läuft — Lockfile /tmp/ketten_watchdog.lock mit PID).
@@ -28,17 +33,29 @@ sofort, wenn schon einer läuft — Lockfile /tmp/ketten_watchdog.lock mit PID).
 
 from __future__ import annotations
 
+import argparse
+import logging
 import os
 import re
+import shlex
 import subprocess
 import sys
 import time
 from pathlib import Path
 
+logger = logging.getLogger(__name__)
+
 INTERVALL_S = 300
 LOCKFILE = Path("/tmp/ketten_watchdog.lock")
 LOGFILE = Path("/tmp/ketten_watchdog.log")
 _REPO = "/media/michael/Software 4TB/Aurik_Standalone"
+
+
+def _wait_for_success(name: str) -> str:
+    python = shlex.quote(sys.executable)
+    script = shlex.quote(str(Path(__file__).resolve()))
+    return f"{python} -B {script} --wait-for {shlex.quote(name)}"
+
 
 # (name, pgrep-muster, start-kommando (bash -lc-String), log-pfad, end-marker)
 KETTEN_CONFIG: list[tuple[str, str, str, str, str]] = [
@@ -66,7 +83,7 @@ KETTEN_CONFIG: list[tuple[str, str, str, str, str]] = [
             "AURIK_FORCE_CPU=1 AURIK_NO_RT_LIMIT=1 && PY='" + _REPO + "/.venv_aurik/bin/python' && "
             'nice -n 19 "$PY" -B scripts/erstelle_crackle_expansion.py --titel 6 --seed 42 && '
             '"$PY" -B scripts/erstelle_klassen_paare.py --schaden-dir data/klassen_paare_expand_src '
-            "--clean-dir data/klassen_paare_expand_clean --rezepte vinyl --out data/klassen_paare_crackle_expansion; "
+            "--clean-dir data/klassen_paare_expand_clean --rezepte vinyl --out data/klassen_paare_crackle_expansion && "
             '"$PY" -B scripts/haenge_klassen_manifest_an.py --quelle data/klassen_paare_crackle_expansion/manifest.jsonl --klasse crackle'
         ),
         "/tmp/crackle_chain.log",
@@ -118,8 +135,11 @@ KETTEN_CONFIG: list[tuple[str, str, str, str, str]] = [
         "messe_kanalsatz_ab.py --verzeichnis data/schadens_proben --paare 45",
         (
             "cd '" + _REPO + "' && export LANG=C.UTF-8 LC_ALL=C.UTF-8 PYTHONPATH=. "
-            "AURIK_FORCE_CPU=1 AURIK_NO_RT_LIMIT=1 && PY='" + _REPO + "/.venv_aurik/bin/python' && "
-            "while ! grep -q 'KANALSATZ_END=' /tmp/kanalsatz_ab_smoke.log 2>/dev/null; do sleep 120; done; "
+            "AURIK_FORCE_CPU=1 AURIK_NO_RT_LIMIT=1 && PY='"
+            + _REPO
+            + "/.venv_aurik/bin/python' && "
+            + _wait_for_success("kanalsatz-smoke")
+            + " && "
             'nice -n 19 "$PY" -B scripts/messe_kanalsatz_ab.py --verzeichnis data/schadens_proben '
             "--paare 45 --seed 42 --bestand data/schadens_proben/bewertung.json "
             "--beleg docs/reports/current/$(date +%F)_kanalsatz_ab_voll.json"
@@ -132,8 +152,11 @@ KETTEN_CONFIG: list[tuple[str, str, str, str, str]] = [
         "ausgang data/schadens_proben_signal10d",
         (
             "cd '" + _REPO + "' && export LANG=C.UTF-8 LC_ALL=C.UTF-8 PYTHONPATH=. "
-            "AURIK_FORCE_CPU=1 AURIK_NO_RT_LIMIT=1 && PY='" + _REPO + "/.venv_aurik/bin/python' && "
-            "while ! grep -q 'SIGNAL10_RESUME_END=' /tmp/signal10_resume.log 2>/dev/null; do sleep 120; done; "
+            "AURIK_FORCE_CPU=1 AURIK_NO_RT_LIMIT=1 && PY='"
+            + _REPO
+            + "/.venv_aurik/bin/python' && "
+            + _wait_for_success("signal10-resume")
+            + " && "
             '"$PY" -B scripts/erstelle_schadens_proben.py --verzeichnis data/schadens_quellen '
             "--ausgang data/schadens_proben_signal10d --rezepte kompression,verzerrung,vinyl,kassette --songs 10 --seed 42 && "
             '"$PY" -B scripts/bewerte_schadens_proben.py --verzeichnis data/schadens_proben_signal10d'
@@ -146,12 +169,15 @@ KETTEN_CONFIG: list[tuple[str, str, str, str, str]] = [
         "erstelle_vocal_harshness_expansion.py",
         (
             "cd '" + _REPO + "' && export LANG=C.UTF-8 LC_ALL=C.UTF-8 PYTHONPATH=. "
-            "AURIK_FORCE_CPU=1 AURIK_NO_RT_LIMIT=1 && PY='" + _REPO + "/.venv_aurik/bin/python' && "
-            "while ! grep -q 'CRACKLE_CHAIN_END=' /tmp/crackle_chain.log 2>/dev/null; do sleep 120; done; "
-            '"$PY" -B scripts/haenge_klassen_manifest_an.py --quelle data/klassen_paare_crackle_expansion/manifest.jsonl --klasse crackle; '
+            "AURIK_FORCE_CPU=1 AURIK_NO_RT_LIMIT=1 && PY='"
+            + _REPO
+            + "/.venv_aurik/bin/python' && "
+            + _wait_for_success("crackle-kette")
+            + " && "
+            '"$PY" -B scripts/haenge_klassen_manifest_an.py --quelle data/klassen_paare_crackle_expansion/manifest.jsonl --klasse crackle && '
             'nice -n 19 "$PY" -B scripts/erstelle_vocal_harshness_expansion.py --titel 20 --seed 42 && '
             '"$PY" -B scripts/erstelle_klassen_paare.py --schaden-dir data/vocal_harshness_expand_src '
-            "--clean-dir data/vocal_harshness_expand_clean --rezepte clipping,kassette --out data/klassen_paare_vh; "
+            "--clean-dir data/vocal_harshness_expand_clean --rezepte clipping,kassette --out data/klassen_paare_vh && "
             '"$PY" -B scripts/haenge_klassen_manifest_an.py --quelle data/klassen_paare_vh/manifest.jsonl --klasse vocal_harshness'
         ),
         "/tmp/vh_expansion.log",
@@ -167,18 +193,23 @@ def _log(msg: str) -> None:
 
 def _prozess_laeuft(muster: str) -> bool:
     try:
-        out = subprocess.run(
+        result = subprocess.run(
             ["/usr/bin/pgrep", "-f", muster],
             capture_output=True,
             text=True,
             timeout=10,
             check=False,
-        ).stdout.strip()
-    except Exception:
+        )
+    except (OSError, subprocess.SubprocessError) as exc:
         # Fail-safe: bei unklarer Prozess-Sicht NICHT neu starten (ein
         # Massen-Restart lebender Ketten wäre schädlicher als ein
         # versäumter Restart — nächster Zyklus prüft erneut).
+        logger.warning("Prozessprüfung für %s fehlgeschlagen: %s", muster, exc)
         return True
+    if result.returncode not in (0, 1):
+        logger.warning("Prozessprüfung für %s fehlgeschlagen: %s", muster, result.stderr.strip())
+        return True
+    out = result.stdout.strip()
     if not out:
         return False
     # Self-Match-Schutz: der Watchdog selbst trägt das Muster NICHT in seiner
@@ -207,23 +238,59 @@ _END_STATUS_RE = re.compile(r"(-?\d+)")
 MAX_CRASH_RESTARTS = 5
 
 
-def _end_status(log_pfad: str, marker: str) -> int | None:
-    """Exit-Status der zuletzt geloggten `marker<status>`-Zeile, oder None,
-    wenn der Marker fehlt oder der Status nicht parsebar ist."""
+def _start_marker(marker: str) -> str:
+    return f"AURIK_WATCHDOG_START:{marker}"
+
+
+def _end_verlauf(log_pfad: str, marker: str) -> tuple[int | None, int]:
     try:
         inhalt = Path(log_pfad).read_text(encoding="utf-8", errors="replace")
     except FileNotFoundError:
-        return None
-    letzte = None
-    for teil in inhalt.split(marker)[1:]:
-        m = _END_STATUS_RE.match(teil)
-        if m:
-            letzte = int(m.group(1))
-    return letzte
+        return None, 0
+    status = None
+    abschluesse = 0
+    muster = rf"{re.escape(_start_marker(marker))}|{re.escape(marker)}(-?\d+)"
+    for ereignis in re.finditer(muster, inhalt):
+        if ereignis.group(1) is None:
+            status = None
+        else:
+            status = int(ereignis.group(1))
+            abschluesse += 1
+    return status, abschluesse
+
+
+def _end_status(log_pfad: str, marker: str) -> int | None:
+    """Status des letzten Versuchs; ein neuer Start verwirft ältere Abschlüsse."""
+    return _end_verlauf(log_pfad, marker)[0]
+
+
+def _warte_auf_vorgaenger(name: str) -> None:
+    vorgaenger = next((kette for kette in KETTEN_CONFIG if kette[0] == name), None)
+    if vorgaenger is None:
+        raise ValueError(f"Unbekannte Vorgängerkette: {name}")
+    _, muster, _, log_pfad, marker = vorgaenger
+    abschluesse_bei_laufbeginn = None
+    while True:
+        status, abschluesse = _end_verlauf(log_pfad, marker)
+        laeuft = _prozess_laeuft(muster)
+        if laeuft and abschluesse_bei_laufbeginn is None:
+            abschluesse_bei_laufbeginn = abschluesse
+            if status == 0:
+                logger.warning(
+                    "Kette %s läuft trotz vorhandenem Erfolgsmarker; warte auf einen neuen Abschluss.",
+                    name,
+                )
+        if (
+            not laeuft
+            and status == 0
+            and (abschluesse_bei_laufbeginn is None or abschluesse > abschluesse_bei_laufbeginn)
+        ):
+            return
+        time.sleep(120)
 
 
 def _anzahl_abgestuerzter_versuche(log_pfad: str, marker: str) -> int:
-    """Zählt bisherige Markerzeilen mit Status ≠ 0 (Absturz-Historie)."""
+    """Zählt Fehlversuche seit dem zuletzt erfolgreich abgeschlossenen Lauf."""
     try:
         inhalt = Path(log_pfad).read_text(encoding="utf-8", errors="replace")
     except FileNotFoundError:
@@ -231,8 +298,11 @@ def _anzahl_abgestuerzter_versuche(log_pfad: str, marker: str) -> int:
     n = 0
     for teil in inhalt.split(marker)[1:]:
         m = _END_STATUS_RE.match(teil)
-        if m and int(m.group(1)) != 0:
-            n += 1
+        if m:
+            if int(m.group(1)) == 0:
+                n = 0
+            else:
+                n += 1
     return n
 
 
@@ -269,6 +339,8 @@ def main() -> int:
                     grund = "kein Prozess, kein END-Marker" if status is None else f"abgestürzt, Status {status}"
                     _log(f"Kette {name} tot ({grund}) — Auto-Restart detached.")
                     try:
+                        with Path(log_pfad).open("a", encoding="utf-8") as log:
+                            log.write(f"\n{_start_marker(marker)}\n")
                         # Stdout/Stderr in DAS geprüfte Log, damit der END-Marker
                         # sicher landet (sonst Endlosschleife fertiger Ketten).
                         # STATUS fängt den ECHTEN Exit-Status der Kette ein — der
@@ -300,4 +372,10 @@ def main() -> int:
 
 
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--wait-for", metavar="KETTE")
+    args = parser.parse_args()
+    if args.wait_for:
+        _warte_auf_vorgaenger(args.wait_for)
+        raise SystemExit(0)
     raise SystemExit(main())

@@ -1,0 +1,32 @@
+{
+  "besser": false,
+  "clean": {
+    "defektlast": 0.0158,
+    "musik_mos": 4.9274
+  },
+  "datum": "2026-11-19",
+  "dauer_restauration_s": 2563.7,
+  "delta_defektlast": 0.0,
+  "delta_musik_mos": 0.0,
+  "pegel_gain_ist": 1.0,
+  "restauriert": {
+    "defektlast": 0.0156,
+    "musik_mos": 4.9275
+  },
+  "rezept": "stereo_imbalance",
+  "schaden": {
+    "defektlast": 0.0156,
+    "musik_mos": 4.9275
+  },
+  "schema": "aurik.snowmine_stereo_fix/1",
+  "stereo_balance": {
+    "abstand_restauriert_db": 3.475,
+    "abstand_schaden_db": 3.475,
+    "besser": false,
+    "clean_db": -0.6194,
+    "restauriert_db": -4.0943,
+    "schaden_db": -4.0943
+  },
+  "titel": "Snowmine - Curfews",
+  "ueberrestauration": false
+}
