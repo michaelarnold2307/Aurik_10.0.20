@@ -24379,16 +24379,58 @@ class UnifiedRestorerV3:
         if isinstance(getattr(result, "metadata", None), dict):
             result.metadata["wohlklang_zeuge"] = self._wohlklang_zeuge_meta(audio, result.audio, sample_rate)
             result.metadata["sii_zeuge"] = self._sii_zeuge_meta(audio, result.audio, sample_rate)
+            # DRT-14 (Spec 26, 2026-11-17): Wirksamkeits-Gebot — Klassen-Bilanz
+            # (Reparatur-Nachweis oder unrepariert mit Ursache), Report-Only.
+            try:
+                from backend.core.dsp.wohlklang_zeuge import (
+                    reparatur_nachweis_bericht,  # pylint: disable=import-outside-toplevel
+                )
+
+                result.metadata["reparatur_nachweis"] = reparatur_nachweis_bericht(
+                    result.metadata, getattr(result, "defect_scores", None)
+                )
+            except Exception as _rn_exc:
+                logger.debug("DRT-14-Nachweis nicht verfügbar: %s", _rn_exc)
             # Spec 26 DRT-10 (M1, 2026-11-17): Produktions-Invariante — Überrestauration
             # degradiert JEDEN Lauf (§0c); Identitäts-Rollback nur ohne hohe
             # Hör-Instanz (§7-Konfliktregel).
             if self._drt10_verdict_in_metadata(result.metadata) and self._drt10_rollback_zulaessig(result.metadata):
-                result.audio = audio
-                result.metadata["drt10_rollback"] = True
-                logger.warning(
-                    "👂 DRT-10: Identitäts-Rollback — Ganz-Titel-Überrestauration, "
-                    "Eingang zurückgegeben (§0c-degradiert)"
-                )
+                # DRT-13 (Spec 26, 2026-11-17): Teil-Rollback vor Identitäts-Rollback —
+                # nur die Reparatur-Regionen zurücknehmen, wenn die Phase-AUS-Variante
+                # frei von Überrestauration ist; sonst M1-Fallback (Ganz-Titel).
+                try:
+                    from backend.core.dsp.reparatur_phasen_attribution import (
+                        phase_aus_variante,  # pylint: disable=import-outside-toplevel
+                    )
+
+                    _variant, _attribution = phase_aus_variante(result.audio)
+                except Exception:
+                    _variant, _attribution = None, {}
+                if _variant is not None and _attribution:
+                    _vmeta = self._wohlklang_zeuge_meta(audio, _variant, sample_rate)
+                    if not (isinstance(_vmeta, dict) and _vmeta.get("verfuegbar") and _vmeta.get("ueberrestauration")):
+                        result.audio = _variant
+                        result.metadata["drt10_teil_rollback"] = True
+                        result.metadata["phase_attribution"] = _attribution
+                        logger.warning(
+                            "👂 DRT-13: Teil-Rollback — Reparatur-Regionen zurückgenommen "
+                            "(Phase-AUS-Variante frei von Überrestauration): %s",
+                            sorted(_attribution),
+                        )
+                    else:
+                        result.audio = audio
+                        result.metadata["drt10_rollback"] = True
+                        result.metadata["phase_attribution"] = _attribution
+                        logger.warning(
+                            "👂 DRT-10: Identitäts-Rollback — auch die Phase-AUS-Variante "
+                            "überrestauriert (§0c-degradiert)"
+                        )
+                else:
+                    result.audio = audio
+                    result.metadata["drt10_rollback"] = True
+                    logger.warning(
+                        "👂 DRT-10: Identitäts-Rollback — keine DRT-13-Attribution verfügbar (§0c-degradiert)"
+                    )
 
         return result
 
@@ -39580,6 +39622,23 @@ class UnifiedRestorerV3:
                     }
                     if not _ok:
                         _penalty += max(0.0, _imb_sig - (_stereo_target + 0.75)) * 1.5
+
+                # §III.15 (2026-11-18): Für die Stereo-Balance-Phase muss die
+                # Intervention BELOHNEN, wenn die Imbalance richtungskorrekt
+                # verkleinert wird (JND 0,5 dB) — sonst verwirft der Closed-Loop
+                # die Reparatur als „kein beneficial delta“ (Befund Stereo-Sinn-Beweis:
+                # Schaden −4,09 dB blieb trotz korrekter Phase erhalten).
+                if str(phase_id).startswith("phase_15_stereo_balance"):
+                    _improve_db = abs(_imb_ref_sig) - abs(_imb_sig)
+                    _ok_improve = bool(_improve_db >= 0.5)
+                    _targets_local["stereo_balance_improvement"] = {
+                        "ref_imbalance_abs_db": round(float(abs(_imb_ref_sig)), 3),
+                        "cand_imbalance_abs_db": round(float(abs(_imb_sig)), 3),
+                        "improvement_db": round(float(_improve_db), 3),
+                        "met": _ok_improve,
+                    }
+                    if _ok_improve:
+                        _penalty -= 0.6  # Belohnung: Balance näher an der Mitte (Richtungs-Fix)
 
                 if "transient_recovery" in _action_types:
                     _tr_floor_eval = float(_prof.get("transient_floor", 0.60))

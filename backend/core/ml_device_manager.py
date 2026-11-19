@@ -1510,7 +1510,9 @@ class MLDeviceManager:
         self._lock wird NICHT während der GPU-Operation gehalten —
         sonst Deadlock wenn force_cpu_fallback denselben Lock braucht.
         """
-        if self._backend != GPUBackend.ROCM or not self._gpu_available:
+        from backend.core.gpu_model_registry import force_cpu_requested  # pylint: disable=import-outside-toplevel
+
+        if self._backend != GPUBackend.ROCM or not self._gpu_available or force_cpu_requested():
             return False
         try:
             import torch  # type: ignore[import]

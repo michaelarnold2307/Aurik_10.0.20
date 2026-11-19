@@ -79,10 +79,11 @@ from typing import Any
 import numpy as np
 from scipy import signal
 
+from backend.core.audio_layout import normalize_channels_first
 from backend.core.audio_utils import apply_musical_gain_envelope as _amge_09
 from backend.core.audio_utils import compute_gated_rms_dbfs as _gated_rms_dbfs_09
 from backend.core.audio_utils import compute_signal_relative_gate_dbfs as _sig_gate_09
-from backend.core.audio_utils import to_channels_last
+from backend.core.audio_utils import restore_layout, to_channels_last
 from backend.core.ml_model_readiness import check_ml_model_ready
 from backend.core.restoration_policy import get_effective_song_goal_weights
 
@@ -807,7 +808,31 @@ class CrackleRemovalPhase(PhaseInterface):
         except Exception:
             logger.debug("verarbeiten: silent except suppressed", exc_info=True)
         assert sample_rate == 48000, f"SR must be 48000 Hz, got: {sample_rate}"
-        audio, _p09_transposed = to_channels_last(audio)
+        if audio.ndim == 1:
+            p09_output_layout = "mono"
+        elif audio.ndim == 2:
+            audio_channels_first, mono_was_transposed = normalize_channels_first(audio)
+            channel_count = audio_channels_first.shape[0]
+            if channel_count == 1:
+                audio = audio_channels_first[0]
+                p09_output_layout = "mono_samples_first" if mono_was_transposed else "mono_channels_first"
+            elif channel_count == 2:
+                audio, stereo_was_transposed = to_channels_last(audio)
+                p09_output_layout = "stereo_channels_first" if stereo_was_transposed else "stereo_samples_first"
+            else:
+                raise ValueError(f"CrackleRemovalPhase erwartet Mono oder Stereo, erhalten: {audio.shape}")
+        else:
+            raise ValueError(f"CrackleRemovalPhase erwartet Mono oder Stereo, erhalten: {audio.shape}")
+
+        def _restore_p09_output_layout(output: np.ndarray) -> np.ndarray:
+            if p09_output_layout == "mono_channels_first":
+                return output[None, :]
+            if p09_output_layout == "mono_samples_first":
+                return output[:, None]
+            if p09_output_layout == "stereo_channels_first":
+                return restore_layout(output, was_transposed=True)
+            return output
+
         start_time = time.time()
         # §v10.15 Shape-Invariante: garantierte (N,2)-Orientierung für Stereo
         _p09_stereo = audio.ndim == 2 and audio.shape[1] == 2
@@ -969,7 +994,7 @@ class CrackleRemovalPhase(PhaseInterface):
             # Keine effektive Stärke → Passthrough mit Warnung
             return PhaseResult(
                 success=True,
-                audio=passthrough,
+                audio=_restore_p09_output_layout(passthrough),
                 execution_time_seconds=time.time() - start_time,
                 metadata={
                     "algorithm": "skipped_zero_strength",
@@ -1047,7 +1072,7 @@ class CrackleRemovalPhase(PhaseInterface):
                 restored, _hf_delta_09, _b11_rollback = _apply_b11_hf_guard(audio, restored, sample_rate)
 
                 return create_phase_result(
-                    audio=restored,
+                    audio=_restore_p09_output_layout(restored),
                     modifications={
                         "method": "ml_banquet_vinyl_onnx_direct",
                         "crackle_reduction_db": crackle_reduction_db,
@@ -1081,7 +1106,10 @@ class CrackleRemovalPhase(PhaseInterface):
                 banquet = self._get_banquet_plugin()
                 if banquet is not None:
                     try:
-                        restored = self._remove_crackle_ml(audio, banquet, params, sample_rate)
+                        ml_audio = audio.T if _p09_stereo else audio
+                        restored = self._remove_crackle_ml(ml_audio, banquet, params, sample_rate)
+                        if _p09_stereo:
+                            restored = restored.T
                         if 0.0 < _effective_strength < 1.0:
                             _, _, _, _cr_ml = self._compute_crackle_regions_with_protection(audio, params)
                             restored = self._apply_region_selective_strength_blend(
@@ -1102,7 +1130,7 @@ class CrackleRemovalPhase(PhaseInterface):
                         restored, _hf_delta_09, _b11_rollback = _apply_b11_hf_guard(audio, restored, sample_rate)
 
                         return create_phase_result(
-                            audio=restored,
+                            audio=_restore_p09_output_layout(restored),
                             modifications={
                                 "method": "ml_banquet_vinyl_onnx",
                                 "crackle_reduction_db": crackle_reduction_db,
@@ -1329,7 +1357,7 @@ class CrackleRemovalPhase(PhaseInterface):
                 logger.debug("§2.71 Envelope nicht blockierend: %s", _se_exc)
 
         return create_phase_result(
-            audio=restored,
+            audio=_restore_p09_output_layout(restored),
             modifications={
                 "transients_short": len(transients_short),
                 "transients_medium": len(transients_medium),
@@ -1357,7 +1385,7 @@ class CrackleRemovalPhase(PhaseInterface):
             },
             resolved_defects={
                 "CRACKLE": float(
-                    np.clip(1.0 - min(len(crackle_regions) / max(audio.shape[-1] * 0.00005, 1), 0.99), 0.0, 0.3)
+                    np.clip(1.0 - min(len(crackle_regions) / max(audio.shape[0] * 0.00005, 1), 0.99), 0.0, 0.3)
                 ),
             },
             resolved_defect_counts={"CRACKLE": int(len(crackle_regions))},

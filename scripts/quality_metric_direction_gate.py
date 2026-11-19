@@ -114,7 +114,10 @@ def _degradiere(
 
 def _lade_rauschen() -> np.ndarray | None:
     bank = PROJECT_ROOT / "data" / "vinyl_noise_bank"
-    kandidaten = sorted(bank.glob("leerrille_*.wav")) if bank.is_dir() else []
+    # CC0-Vinyl-Rauschbank (freesound, Recordist-eigene Aufnahmen) — 2026-11-17:
+    # Altbestand (`leerrille_*`, Great-78-Schellack) war akustisch falsches
+    # Trägermaterial für Vinyl und lizenzrechtlich nie freigegeben (§9/7).
+    kandidaten = sorted(bank.glob("vinyl_*.wav")) if bank.is_dir() else []
     if not kandidaten:
         return None
     import soundfile as sf

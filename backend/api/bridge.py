@@ -143,6 +143,39 @@ def _coerce_dict_str_any(raw: Any) -> dict[str, Any]:
     return dict(raw) if isinstance(raw, dict) else {}
 
 
+def restore_segment_preview(audio, sr: int, input_path: str = "", mode: str | None = None):
+    """Bridge: Segment-Vorschau über den Produktions-Pfad (Bedienung/Echtzeit-Zeile).
+
+    Derselbe Pfad wie `scripts.erstelle_schadens_proben.restauriere_schnipsel`
+    (Pre-Analysis → Denker), aber OHNE Env-Seiteneffekte — die Aufrufer-Ebene
+    (GUI) entscheidet über CPU/GPU (GPU-Erkennung im Hauptthread, §v10.304.30).
+    `store_in_bridge_cache=False`: Vorschau-Segmente verschmutzen den
+    Song-Cache nicht (§V8 (copilot-instructions.md) Song-Isolation).
+    Rückgabe: float32-ndarray in Eingangs-Shape; Exceptions propagieren
+    (der Aufrufer behandelt den §V6-Fallback mit logger.warning).
+    """
+    import numpy as _np
+
+    pre = run_pre_analysis(
+        audio_native=audio,
+        sr_native=int(sr),
+        audio_48k=audio,
+        file_path=input_path or "",
+        store_in_bridge_cache=False,
+    )
+    denker = get_aurik_denker_instance()
+    result = denker.denke(
+        audio,
+        sr=int(sr),
+        mode=normalize_user_mode(mode),
+        no_rt_limit=False,
+        input_path=input_path or "",
+        output_path="",
+        pre_analysis_result=pre,
+    )
+    return _np.asarray(result.audio, dtype=_np.float32)
+
+
 def _coerce_list_any(raw: Any) -> list[Any]:
     """Normalisiert optionale Metadaten auf eine Liste."""
     return list(raw) if isinstance(raw, list) else []

@@ -63,6 +63,7 @@ import numpy as np
 from scipy.interpolate import CubicSpline
 from scipy.signal import lfilter
 
+from backend.core.audio_layout import normalize_channels_first
 from backend.core.audio_utils import level_match, limit_quiet_edge_boost, restore_layout, safe_to_mono, to_channels_last
 from backend.core.defect_scanner import MaterialType  # §v10.113
 from backend.core.dsp.declick_core import local_median_scale
@@ -482,10 +483,29 @@ class ClickRemovalPhase(PhaseInterface):
         _pmgg_strength = float(kwargs.get("strength", 1.0))
         _effective_strength = float(np.clip(_pmgg_strength * phase_locality_factor, 0.0, 1.0))
 
+        if audio.ndim == 1:
+            mono_audio = audio
+            mono_audio_was_transposed = False
+            is_stereo = False
+        elif audio.ndim == 2:
+            audio_channels_first, was_transposed = normalize_channels_first(audio)
+            channel_count = audio_channels_first.shape[0]
+            if channel_count == 1:
+                mono_audio = audio_channels_first[0]
+                mono_audio_was_transposed = was_transposed
+                is_stereo = False
+            elif channel_count == 2:
+                mono_audio = audio
+                mono_audio_was_transposed = False
+                is_stereo = True
+            else:
+                raise ValueError(f"ClickRemovalPhase erwartet Mono oder Stereo, erhalten: {audio.shape}")
+        else:
+            raise ValueError(f"ClickRemovalPhase erwartet Mono oder Stereo, erhalten: {audio.shape}")
+
         # §2.51 Linked-Stereo: Click-Detektion auf Mono-Mix, Repair synchron auf L+R
         # aber OHNE globalen Gain-Transfer. Stattdessen werden nur die erkannten
         # Ereignisfenster kanalweise gepatcht. Saubere Gegenkanäle bleiben unverändert.
-        is_stereo = audio.ndim == 2
         if is_stereo:
             stereo_audio, was_transposed = to_channels_last(audio)
             mono_mix = safe_to_mono(stereo_audio)
@@ -516,7 +536,7 @@ class ClickRemovalPhase(PhaseInterface):
             }
         else:
             result_audio, stats = self._remove_clicks_professional(
-                audio,
+                mono_audio,
                 sample_rate,
                 thresholds,
                 preserve_transients,
@@ -528,6 +548,8 @@ class ClickRemovalPhase(PhaseInterface):
                 protected_zones=_p01_protected_zones or None,
                 base_strength=_effective_strength,
             )
+            if audio.ndim == 2:
+                result_audio = result_audio[:, None] if mono_audio_was_transposed else result_audio[None, :]
             total_clicks = stats["total"]
             ml_repaired_count = stats.get("ml_repaired", 0)
             click_types = {
@@ -633,7 +655,9 @@ class ClickRemovalPhase(PhaseInterface):
                 "effective_strength": _effective_strength,
             },
             resolved_defects={
-                "CLICKS": float(np.clip(1.0 - min(total_clicks / max(audio.shape[-1] * 0.001, 1), 1.0), 0.0, 0.3)),
+                "CLICKS": float(
+                    np.clip(1.0 - min(total_clicks / max(self._sample_count(audio) * 0.001, 1), 1.0), 0.0, 0.3)
+                ),
             },
             resolved_defect_counts={"CLICKS": int(total_clicks)},
         )

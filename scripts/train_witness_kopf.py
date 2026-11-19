@@ -20,6 +20,16 @@ Rauschen statt echten Defekten. Dieser Kopf dreht alle drei Punkte um:
      NICHT Val-L1 und NICHT In-Sample (M9-V2 wählte nach Val-MSE und verfehlte
      das Gate). Zusätzlich wird die Witness-Q-Quote auf In-Sample UND Holdout
      im Report ausgewiesen (Pre-flight: In-Sample-Q ≥ 0,5).
+  4. **musik_mos/Wohlklang-Term im Loss + Zwei-Metrik-Modellauswahl (DRT-8/10,
+     SOTA-HANDOVER Punkt 34f, D-K3-95-Folge):** schaltbarer musik_mos-Proxy-Term —
+     ein kleines differenzierbares Proxy (Log-Mel → MOS ∈ [1, 5]) zieht die
+     Ausgabe per Hinge Richtung ziel-mos (singmos-Proxy-Muster in
+     scripts/train_cantus.py); der nicht-differenzierbare musik_mos-Teacher
+     (plugins/musik_mos_plugin, zertifizierter Zeuge) kalibriert das Proxy
+     epoch-weise und liefert die Holdout-mos für die Modellauswahl nach
+     defektlast UND musik_mos (Mindest-Schwelle JND 0,05 statt nur val_loss).
+     Default AUS: ohne --lambda-mos > 0 bleibt jeder Lauf bit-identisch zum
+     Vorgänger (§G5 (GEBOTE.md) Rückwärtskompatibilität).
 
 Soft-Gating (Sanft-Blend Input↔Kopf über global_scalar, 6 dB/200 ms §III
 (copilot-instructions.md)) erfolgt bei der Verdrahtung — dieser Trainer liefert
@@ -35,6 +45,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import logging
 import random
 import sys
 from datetime import date
@@ -62,6 +73,10 @@ N_MELS = 128
 FRAMES = 64
 RMS_ZIEL = 0.2
 SCHEMA = "aurik.witness_kopf_training/1"
+MOS_JND = 0.05  # DRT-8/10: musik_mos-JND (defekt_delta; Ablations-Befund 2026-11-16)
+MOS_ZIEL = 4.0  # Hinge-Ziel-mos des musik_mos-Proxy-Terms (Regularisierer-Richtwert)
+
+logger = logging.getLogger(__name__)
 
 
 def _seed_all(seed: int) -> None:
@@ -137,6 +152,118 @@ def _spektral_abstand(a: torch.Tensor, b: torch.Tensor) -> torch.Tensor:
         sb = torch.stft(b, n_fft=n_fft, hop_length=hop, window=win, center=True, return_complex=True)
         total = total + nn.functional.l1_loss(sa.abs(), sb.abs())
     return total / 3.0
+
+
+class MusikMOSProxy(nn.Module):
+    """Kleines differenzierbares Proxy-Netz Log-Mel → MOS-Schätzung ∈ [1, 5].
+
+    Das singmos-Proxy-Muster (scripts/train_cantus.py) für musik_mos
+    (SOTA-HANDOVER Punkt 34f, DRT-8/10): der zertifizierte musik_mos-Teacher
+    (plugins/musik_mos_plugin, Spearman 0,95) ist nicht differenzierbar — dieses
+    Proxy trägt den Wohlklang-Gradienten in den Loss und wird epoch-weise gegen
+    den Teacher kalibriert (detached, nie im Autograd-Pfad des Kopfes). Nur aktiv
+    bei --lambda-mos > 0 (Default AUS, §G5 (GEBOTE.md) Rückwärtskompatibilität).
+    """
+
+    def __init__(self, n_mels: int = N_MELS, frames: int = FRAMES):
+        super().__init__()
+        self.n_mels = n_mels
+        self.frames = frames
+        self.body = nn.Sequential(
+            nn.Conv2d(1, 8, 3, padding=1),
+            nn.GELU(),
+            nn.Conv2d(8, 16, 3, padding=1),
+            nn.GELU(),
+            nn.AdaptiveAvgPool2d((4, 4)),
+        )
+        self.head = nn.Sequential(nn.Linear(16 * 4 * 4, 32), nn.GELU(), nn.Linear(32, 1))
+
+    def forward(self, mel: torch.Tensor) -> torch.Tensor:
+        """mel [B, 1, N_MELS, FRAMES] (Witness-Eingabelayout) → mos [B] ∈ (1, 5)."""
+        h = self.body(mel).flatten(1)
+        return 1.0 + 4.0 * torch.sigmoid(self.head(h)).squeeze(-1)
+
+
+def _mos_proxy_verlust(mos: torch.Tensor, ziel: float) -> torch.Tensor:
+    """Hinge Richtung ziel-mos (höher = besser): relu(ziel − mos).mean().
+
+    Differenzierbar durch das Proxy (DRT-8/10). Mit Gewicht 0 wird der Term gar
+    nicht aufgerufen — der Loss bleibt bit-identisch zum Vorgänger
+    (§G5 (GEBOTE.md))."""
+    return torch.relu(ziel - mos).mean()
+
+
+def _mos_teacher_werte(wellen: np.ndarray, sr: int = SR) -> list[float] | None:
+    """Nicht-differenzierbarer musik_mos-Teacher (plugins/musik_mos_plugin — der
+    zertifizierte Wohlklang-Zeuge, Spearman 0,95): je Fenster ein MOS-Wert [N].
+    None bei Ladefehler oder leeren Ergebnissen (§V6 (VERBOTEN.md):
+    logger.warning statt Stillfehler). Nie im Autograd-Pfad."""
+    wellen = np.asarray(wellen, dtype=np.float32)
+    if wellen.ndim == 3:
+        wellen = wellen.reshape(wellen.shape[0], -1)
+    try:
+        from plugins.musik_mos_plugin import get_musik_mos
+    except Exception as exc:  # §V6 (VERBOTEN.md): dokumentierter Ersatzpfad
+        logger.warning(
+            "§V6 (VERBOTEN.md) ML→Ersatzpfad: musik_mos-Teacher nicht ladbar (%s) — "
+            "Zwei-Metrik-Auswahl läuft ohne mos (Fallback defektlast)",
+            exc,
+        )
+        return None
+    ergebnisse: list[float] = []
+    for i in range(int(wellen.shape[0])):
+        try:
+            ergebnisse.append(float(get_musik_mos().estimate_mos(wellen[i], sr).mos))
+        except Exception as exc:
+            logger.warning(
+                "§V6 (VERBOTEN.md): musik_mos-Teacher-Inferenz fehlgeschlagen (%s) — Fenster übersprungen",
+                exc,
+            )
+    return ergebnisse or None
+
+
+def _zwei_metrik_auswahl(kandidaten: list[dict[str, Any]], mos_jnd: float = MOS_JND) -> dict[str, Any] | None:
+    """Checkpoint-Auswahl nach defektlast UND musik_mos statt nur val_loss (DRT-8/10).
+
+    Mindest-Schwelle (Pareto-konform): gewinnen kann nur, wer mit dem Holdout-mos
+    höchstens mos_jnd unter dem besten gesehenen mos liegt — die reine
+    defektlast-Auswahl opferte den Wohlklang (Ablations-Befund 2026-11-16:
+    mos-Verluste 0,06–0,10 > JND 0,05). Unter den Schwellen-Kandidaten gewinnt
+    die kleinste defektlast. Ohne messbaren mos gilt der alte Weg (kleinster
+    Score, §V6 (VERBOTEN.md) Fallback).
+    """
+    if not kandidaten:
+        return None
+    messbar = [k for k in kandidaten if k.get("mos") is not None]
+    if not messbar:
+        return min(kandidaten, key=lambda k: float(k["score"]))
+    best_mos = max(float(k["mos"]) for k in messbar)
+    schwellen_ok = [k for k in messbar if float(k["mos"]) >= best_mos - float(mos_jnd)]
+    return min(schwellen_ok, key=lambda k: float(k["score"]))
+
+
+def _kombinierter_loss(
+    l1: torch.Tensor,
+    pen: torch.Tensor,
+    l1_id: torch.Tensor,
+    spec_train: torch.Tensor,
+    mos_term: torch.Tensor | None,
+    lam: float,
+    lam_id: float,
+    lam_spec: float,
+    lam_mos: float,
+) -> torch.Tensor:
+    """Gesamt-Loss-Assemblage des Witness-Kopfes.
+
+    mos_term None oder lam_mos == 0 ⇒ exakt der bisherige Loss
+    (l1 + λ·pen + λ_id·l1_id + λ_spec·spec_train) ohne Zusatz-Operation —
+    bestehende Läufe ohne --lambda-mos bleiben bit-identisch
+    (§G5 (GEBOTE.md) Rückwärtskompatibilität).
+    """
+    loss = l1 + lam * pen + lam_id * l1_id + lam_spec * spec_train
+    if mos_term is not None and lam_mos > 0.0:
+        loss = loss + lam_mos * mos_term
+    return loss
 
 
 class WitnessKopf(nn.Module):
@@ -251,6 +378,8 @@ def trainiere(
     lam_id: float = 0.5,
     lam_lokal: float = 0.0,
     lam_spec: float = 0.3,
+    lam_mos: float = 0.0,
+    mos_ziel: float = MOS_ZIEL,
 ) -> dict[str, Any]:
     regionen, holdout_titel, n_gesamt = _baue_regionen(klasse)
     xs, xc, xc_id, hs, hc, hc_id = _lade_split(regionen, holdout_titel, max_regionen)
@@ -285,6 +414,18 @@ def trainiere(
     model = WitnessKopf(hidden, stufen).to(device)
     opt = torch.optim.Adam(model.parameters(), lr=1e-3)
     best = {"score": float("inf"), "ep": -1, "state": None}
+    # musik_mos-Proxy-Term (DRT-8/10, SOTA-HANDOVER Punkt 34f): Default AUS —
+    # ohne --lambda-mos > 0 entsteht kein Proxy, kein Teacher-Aufruf, der Loss
+    # bleibt bit-identisch zum Vorgänger (§G5 (GEBOTE.md)). Mit Flag: kleines
+    # differenzierbares Proxy (singmos-Proxy-Muster, scripts/train_cantus.py),
+    # epoch-weise gegen den nicht-differenzierbaren musik_mos-Teacher kalibriert.
+    mos_proxy: MusikMOSProxy | None = None
+    mos_opt: torch.optim.Adam | None = None
+    kandidaten: list[dict[str, Any]] = []
+    if lam_mos > 0.0:
+        _seed_all(SEED)  # deterministische Proxy-Initialisierung (§G5 (GEBOTE.md))
+        mos_proxy = MusikMOSProxy().to(device)
+        mos_opt = torch.optim.Adam(mos_proxy.parameters(), lr=1e-3)
     batch = 8
     for ep in range(epochen):
         model.train()
@@ -317,7 +458,14 @@ def trainiere(
             # Auswahl-Gewichtung allein konvergiert bei mos-Verlust 0,057 (knapp über JND) —
             # der Gradient muss Wohlklang optimieren, nicht nur die Auswahl (§V7 (copilot-instructions.md)).
             spec_train = _spektral_abstand(out.reshape(len(out), -1), c_b.reshape(len(c_b), -1))
-            loss = l1 + lam * pen + lam_id * l1_id + lam_spec * spec_train
+            # musik_mos-Proxy-Term im Loss (DRT-8/10): Hinge Richtung ziel-mos durch
+            # das differenzierbare Proxy — der Wohlklang-Gradient zieht die Ausgabe
+            # nicht nur weg vom Defekt, sondern Richtung „mos-gut" (Ablations-Befund
+            # 2026-11-16: L1 + Witness-BCE allein opfern den musik_mos-Gewinn).
+            mos_term = (
+                _mos_proxy_verlust(mos_proxy(mel_out[:, None, :, :]), mos_ziel) if mos_proxy is not None else None
+            )
+            loss = _kombinierter_loss(l1, pen, l1_id, spec_train, mos_term, lam, lam_id, lam_spec, lam_mos)
             opt.zero_grad()
             loss.backward()
             opt.step()
@@ -336,14 +484,64 @@ def trainiere(
                 _spektral_abstand(out_h.reshape(len(out_h), -1), Hc_t.to(device).reshape(len(Hc_t), -1)).item()
             )
         score_h = l1_h + lam * pen_h + lam_id * l1_id_h + lam_spec * spec_h
-        if score_h < best["score"]:
-            best = {"score": score_h, "ep": ep, "state": {k: v.cpu().clone() for k, v in model.state_dict().items()}}
+        mos_h: float | None = None
+        if mos_proxy is None:
+            # Unveränderter Default-Auswahlpfad: kleinster Holdout-Score
+            # (bit-identisch ohne Flag, §G5 (GEBOTE.md)).
+            if score_h < best["score"]:
+                best = {
+                    "score": score_h,
+                    "ep": ep,
+                    "state": {k: v.cpu().clone() for k, v in model.state_dict().items()},
+                }
+        else:
+            # Zwei-Metrik-Modellauswahl (DRT-8/10): defektlast (score_h) UND
+            # musik_mos (Teacher, detached) werden je Epoche festgehalten — die
+            # Auswahl am Ende verlangt die mos-Mindest-Schwelle statt nur val_loss.
+            lehrer = _mos_teacher_werte(out_h.detach().cpu().numpy())
+            mos_h = float(np.mean(lehrer)) if lehrer else None
+            kandidaten.append(
+                {
+                    "ep": ep,
+                    "score": float(score_h),
+                    "mos": mos_h,
+                    "state": {k: v.cpu().clone() for k, v in model.state_dict().items()},
+                }
+            )
+            # Proxy-Kalibrierung gegen den Teacher (detached; singmos-Muster):
+            # MSE(mos_proxy(mel_h), teacher(out_h)) hält das Proxy am zertifizierten
+            # Zeugen — ohne Teacher bleibt es Regularisierer (§V6 (VERBOTEN.md):
+            # Warnung in _mos_teacher_werte, kein Stillfehler).
+            if lehrer and mos_opt is not None:
+                ziel_mos_t = torch.tensor(lehrer, dtype=torch.float32, device=device)
+                mos_pred_h = mos_proxy(mel_h[:, None, :, :])
+                kal = nn.functional.mse_loss(mos_pred_h, ziel_mos_t)
+                mos_opt.zero_grad()
+                kal.backward()
+                mos_opt.step()
         if (ep + 1) % max(1, epochen // 4) == 0 or ep == epochen - 1:
             print(
                 f"  {klasse}: ep {ep + 1}/{epochen} loss {total / max(1, len(Xs_t) // batch):.4f} hold {score_h:.4f}",
                 flush=True,
             )
+            if mos_proxy is not None:
+                print(f"    mos-hold {mos_h:.3f}" if mos_h is not None else "    mos-hold n/a", flush=True)
 
+    if mos_proxy is not None:
+        # Zwei-Metrik-Modellauswahl am Epochen-Ende (DRT-8/10): unter allen
+        # Kandidaten, deren Holdout-mos höchstens MOS_JND unter dem besten liegt,
+        # gewinnt die kleinste defektlast — die reine defektlast-Auswahl opferte
+        # den Wohlklang (Ablations-Befund 2026-11-16: mos-Verlust 0,06–0,10 > JND).
+        gewaehlt = _zwei_metrik_auswahl(kandidaten)
+        if gewaehlt is not None:
+            best = {
+                "score": float(gewaehlt["score"]),
+                "ep": int(gewaehlt["ep"]),
+                "state": gewaehlt["state"],
+                "mos": gewaehlt["mos"],
+            }
+        else:
+            logger.warning("§V6 (VERBOTEN.md): Zwei-Metrik-Auswahl ohne Kandidaten — kein Checkpoint gewählt")
     model.load_state_dict(best["state"])
     model.eval()
     with torch.no_grad():
@@ -383,6 +581,27 @@ def trainiere(
         "preflight_q_ge_0_5": bool(q_in is not None and q_in >= 0.5),
         "hinweis": "Report-only: Aktivierung erst nach Never-worsen-Gate (verify_witness_kopf_gate.py) + §4",
     }
+    if mos_proxy is not None:
+        # DRT-8/10-Dokumentation nur im Flag-Lauf — ohne Flag bleibt der Report
+        # bit-identisch zum Vorgänger (§G5 (GEBOTE.md) Rückwärtskompatibilität).
+        report["lambda_mos"] = lam_mos
+        report["mos_ziel"] = mos_ziel
+        report["mos_jnd"] = MOS_JND
+        report["auswahl_modus"] = "zwei_metrik_drt_8_10"
+        report["holdout_mos"] = round(float(best["mos"]), 4) if best.get("mos") is not None else None
+        report["drt_8_10"] = (
+            "Zwei-Metrik-Modellauswahl (defektlast UND musik_mos, Mindest-Schwelle JND) — "
+            "D-K3-95-Folge; Aktivierung bleibt dem Never-worsen-Gate + §4 vorbehalten"
+        )
+        if kandidaten:
+            report["kandidaten_zwischenstaende"] = [
+                {
+                    "ep": int(k["ep"]) + 1,
+                    "score": round(float(k["score"]), 4),
+                    "mos": round(float(k["mos"]), 4) if k["mos"] is not None else None,
+                }
+                for k in kandidaten
+            ]
     out_dir = OUT_BASE
     out_dir.mkdir(parents=True, exist_ok=True)
     # Smoke-Schutz (2026-11-16): --max-regionen > 0 schreibt einen separaten
@@ -423,6 +642,15 @@ def main(argv: list[str] | None = None) -> int:
         default=0.3,
         help="Wohlklang-Term (MR-Spektral-Abstand zum Clean) im Holdout-Score — Zwei-Metrik-Modellauswahl (DRT-8/10)",
     )
+    ap.add_argument(
+        "--lambda-mos",
+        type=float,
+        default=0.0,
+        help="musik_mos-Proxy-Term im Trainings-Loss (DRT-8/10); Default AUS — ohne Flag bit-identisch (§G5 (GEBOTE.md))",
+    )
+    ap.add_argument(
+        "--mos-ziel", type=float, default=MOS_ZIEL, help="Hinge-Ziel-mos des Proxy-Terms (nur mit --lambda-mos > 0)"
+    )
     ap.add_argument("--device", default="cpu")
     ap.add_argument("--max-regionen", type=int, default=0, help=">0 = Smoke (begrenzte Regionen)")
     args = ap.parse_args(argv)
@@ -437,6 +665,8 @@ def main(argv: list[str] | None = None) -> int:
         args.lambda_id,
         args.lambda_lokal,
         args.lambda_spektral,
+        args.lambda_mos,
+        args.mos_ziel,
     )
     print(json.dumps(report, indent=2, ensure_ascii=False))
     return 0

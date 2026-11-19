@@ -5,6 +5,10 @@ Misst das, was der M9-Pfad nicht konnte: defekt-spezifische Wirkung + Never-wors
   reduzieren — Witness-Q = (P_s − P_out)/(P_s − P_c), Median ≥ 0,5.
 - Schutz-Arm: auf clean-Regionen darf der Kopf nichts verschlechtern —
   P(out(clean)) ≤ P(clean) + 0,02 in ≥ 95 % der Regionen.
+- DRT-8/10 (SOTA-HANDOVER Punkt 34f, D-K3-95-Folge): --mos schaltet die
+  Zwei-Metrik-Messung zu — der zertifizierte musik_mos-Teacher misst den
+  Wohlklang-Delta des Kopf-Ausgangs gegen den Schaden-Input als
+  Report-only-Zeuge; das Gate-Urteil bleibt defektlast + Never-worsen.
 CPU-only, Seed 42 (§G5 (copilot-instructions.md)), fail-closed, Report-only:
 kein Flag-Flip, kein Produktionskonsument — die Aktivierung bleibt §4 vorbehalten.
 """
@@ -35,6 +39,7 @@ from scripts.train_witness_kopf import (
     _baue_regionen,
     _lade_mono,
     _mel_torch,
+    _mos_teacher_werte,
     _witness_q,
 )
 from scripts.train_witness_kopf import (
@@ -45,6 +50,7 @@ SCHEMA = "aurik.witness_kopf_gate/1"
 Q_MIN = 0.5
 NW_TOL = 0.02
 NW_ANTEIL_MIN = 0.95
+MOS_JND = 0.05  # DRT-8/10: musik_mos-JND (defekt_delta; Ablations-Befund 2026-11-16)
 MAX_REGIONEN = 200
 
 
@@ -79,9 +85,16 @@ def _fenster(x: np.ndarray) -> np.ndarray:
     return np.pad(x, (0, FENSTER - len(x)))
 
 
-def messe(kopf: Any, witness: Any, regionen: list[tuple[Path, Path]], modul_fn: Any = None) -> dict[str, Any]:
+def messe(
+    kopf: Any,
+    witness: Any,
+    regionen: list[tuple[Path, Path]],
+    modul_fn: Any = None,
+    mos_messen: bool = False,
+) -> dict[str, Any]:
     quoten: list[float] = []
     never_worsen: list[bool] = []
+    mos_deltas: list[float] = []
     uebersprungen = 0
     with torch.no_grad():
         for _titel, s_pfad, c_pfad in regionen:
@@ -103,6 +116,14 @@ def messe(kopf: Any, witness: Any, regionen: list[tuple[Path, Path]], modul_fn: 
             q = _witness_q(p_s, p_c, p_out_s)
             if q is not None:
                 quoten.append(q)
+            if mos_messen:
+                # DRT-8/10-Zwei-Metrik-Zeuge (Report-only, nur mit --mos): der
+                # zertifizierte musik_mos-Teacher misst den Wohlklang-Delta des
+                # Kopf-Ausgangs gegen den Schaden-Input (höher = besser; JND 0,05).
+                lehrer_s = _mos_teacher_werte(s_w.astype(np.float32)[None])
+                lehrer_out = _mos_teacher_werte(out_s.detach().cpu().numpy())
+                if lehrer_s and lehrer_out:
+                    mos_deltas.append(lehrer_out[0] - lehrer_s[0])
             # Schutz-Arm misst die PRODUKTIONS-Semantik (DRT-4, Befund 2026-11-15):
             # der Kopf wird in der Produktion auf clean-Regionen nur über Trigger +
             # Never-worsen-Guard angewendet — der rohe Kopf-auf-clean bestrafte etwas,
@@ -115,7 +136,7 @@ def messe(kopf: Any, witness: Any, regionen: list[tuple[Path, Path]], modul_fn: 
             else:
                 p_out_c = _p(witness, kopf(c_t))
             never_worsen.append(p_out_c <= p_c + NW_TOL)
-    return {
+    ergebnis = {
         "n_regionen": len(regionen),
         "n_uebersprungen": uebersprungen,
         "q_median": round(float(np.median(quoten)), 4) if quoten else None,
@@ -125,6 +146,15 @@ def messe(kopf: Any, witness: Any, regionen: list[tuple[Path, Path]], modul_fn: 
             quoten and float(np.median(quoten)) >= Q_MIN and float(np.mean(never_worsen)) >= NW_ANTEIL_MIN
         ),
     }
+    if mos_messen:
+        # Report-only-DRT-8/10-Felder — ohne --mos bleibt das Ergebnis
+        # bit-identisch zum Vorgänger (§G5 (GEBOTE.md)).
+        ergebnis["musik_mos_delta_mittel"] = round(float(np.mean(mos_deltas)), 4) if mos_deltas else None
+        ergebnis["musik_mos_delta_anteil_ge_minus_jnd"] = (
+            round(float(np.mean([d >= -MOS_JND for d in mos_deltas])), 4) if mos_deltas else None
+        )
+        ergebnis["drt_8_10"] = "Report-only Zwei-Metrik-Messung (defektlast UND musik_mos); Gate-Urteil unverändert"
+    return ergebnis
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -133,6 +163,11 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--checkpoint", default=None)
     ap.add_argument("--max-regionen", type=int, default=MAX_REGIONEN)
     ap.add_argument("--seed", type=int, default=42)
+    ap.add_argument(
+        "--mos",
+        action="store_true",
+        help="DRT-8/10-Zwei-Metrik-Messung (musik_mos-Teacher, Report-only) — Default AUS",
+    )
     args = ap.parse_args(argv)
     checkpoint = (
         Path(args.checkpoint)
@@ -174,7 +209,7 @@ def main(argv: list[str] | None = None) -> int:
                 modul_fn = getattr(modul, kandidaten[0])
     except Exception as exc:  # §V6 (copilot-instructions.md): Warnung statt Silent-Fallback
         print(f"WARNUNG: Produktions-Modul nicht ladbar ({exc}) — Schutz-Arm roh (strenger)")
-    ergebnis = messe(kopf, witness, hold, modul_fn)
+    ergebnis = messe(kopf, witness, hold, modul_fn, mos_messen=args.mos)
     beleg = {
         "schema": SCHEMA,
         "datum": date.today().isoformat(),

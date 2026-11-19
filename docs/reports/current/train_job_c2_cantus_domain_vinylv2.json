@@ -1,0 +1,13 @@
+{
+  "schema": "aurik.train_job/1",
+  "run_id": "domain_adapt-20261118T035446Z-cf58e8",
+  "name": "c2_cantus_domain_vinylv2",
+  "phase": "domain_adapt",
+  "seed": null,
+  "befehl": "env PYTHONPATH=. PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True /home/michael/.local/share/aurik/venv_rocm72/bin/python -B scripts/train_cantus.py --phase=domain_adapt --preset=full --epochs=40 --batch-size 2 --grad-accum 4 --data data/cantus_real --resume models/cantus/checkpoint_latest.pt",
+  "resume_befehl": "env PYTHONPATH=. PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True /home/michael/.local/share/aurik/venv_rocm72/bin/python -B scripts/train_cantus.py --phase=domain_adapt --preset=full --epochs=40 --batch-size 2 --grad-accum 4 --data data/cantus_real --resume models/cantus/checkpoint_latest.pt",
+  "timeout_s": 43200.0,
+  "retries": 1,
+  "versuche": [],
+  "quelle": "scripts/train_job_runner.py"
+}

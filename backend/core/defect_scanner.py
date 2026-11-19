@@ -6152,11 +6152,23 @@ class DefectScanner:
         )
 
     def _detect_stereo_imbalance(self, audio: np.ndarray) -> DefectScore:
-        """Erkennt Stereo-Imbalance (L/R Kanal-Unterschiede)."""
+        """Erkennt Stereo-Imbalance (L/R Kanal-Unterschiede).
+
+        §Stereo-Layout-Invariante (copilot-instructions.md): BEIDE Layouts
+        bedienen — (C, N) channels-first und (N, 2) channels-last. Befund
+        Snowmine (2026-11-19): der channels-first-Input erzeugte über
+        `audio[:, 0]`/`audio[:, 1]` nur 2-Sample-RMS-Werte ⇒ Imbalance
+        unsichtbar ⇒ phase_15 nie geplant. Muster: _detect_azimuth_error.
+        """
         if audio.ndim != 2:
             return DefectScore(DefectType.STEREO_IMBALANCE, 0.0, 0.0)
 
-        left, right = audio[:, 0], audio[:, 1]
+        if audio.shape[0] == 2 and audio.shape[1] > 2:
+            left, right = audio[0], audio[1]  # channels-first (C, N)
+        elif audio.shape[1] == 2 and audio.shape[0] > 2:
+            left, right = audio[:, 0], audio[:, 1]  # channels-last (N, 2)
+        else:
+            return DefectScore(DefectType.STEREO_IMBALANCE, 0.0, 0.0)
 
         # RMS-Level Vergleich
         rms_left = np.sqrt(np.mean(left**2))

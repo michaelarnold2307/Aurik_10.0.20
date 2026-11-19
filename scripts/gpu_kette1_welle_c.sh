@@ -52,10 +52,17 @@ for cand in data/cantus_pairs/manifest.jsonl; do
 done
 
 echo "=== R3: KP-8 Cantus pretrain (Full-Preset, GPU) ==="
+# D-K3-103-Erbe (2026-11-18): Batch 8 = 22,77 GiB Peak → CUDA-OOM auf
+# torch 2.11/ROCm 7.2. Kanonischer Fix wie R4/R5: Batch 2 × Grad-Accum 4
+# (effektive Batch 8, Trainingsdynamik äquivalent) + expandable_segments.
+# ACHTUNG Manifest-Drift: der alte pretrain-Erfolg (train_job_c2_cantus_pretrain.json,
+# Befehl ohne Batch-Flags) matcht diesen Befehl NICHT mehr → Kette-Neulauf
+# trainiert pretrain neu (korrekt: der alte Checkpoint-Stand existiert nicht mehr;
+# die saubere Neu-Leiter läuft ohnehin als _v2-Jobs, siehe Handover Punkt 35/36).
 if [ -n "$CANTUS_DATA" ]; then
   R --name c2_cantus_pretrain --ckpt-dir models/cantus --phase pretrain \
-    --cmd "env PYTHONPATH=. $PY -B scripts/train_cantus.py --phase=pretrain --preset=full --freeze-encoder --epochs=50 --data $CANTUS_DATA" \
-    --resume-cmd "env PYTHONPATH=. $PY -B scripts/train_cantus.py --phase=pretrain --preset=full --freeze-encoder --epochs=50 --data $CANTUS_DATA --resume models/cantus/checkpoint_latest.pt" \
+    --cmd "env PYTHONPATH=. PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True $PY -B scripts/train_cantus.py --phase=pretrain --preset=full --freeze-encoder --epochs=50 --batch-size 2 --grad-accum 4 --data $CANTUS_DATA" \
+    --resume-cmd "env PYTHONPATH=. PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True $PY -B scripts/train_cantus.py --phase=pretrain --preset=full --freeze-encoder --epochs=50 --batch-size 2 --grad-accum 4 --data $CANTUS_DATA --resume models/cantus/checkpoint_latest.pt" \
     --timeout-s 43200 --retries 1
 else
   echo "Cantus-Paar-Manifest fehlt (data/cantus_pairs/manifest.jsonl) — R3 uebersprungen (datenblockiert, SOTA-M14)."

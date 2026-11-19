@@ -106,6 +106,27 @@ def measure_phase_quality_delta(
         return 0.0
 
 
+def _stereo_balance_delta(audio_before: np.ndarray, audio_after: np.ndarray) -> float:
+    """Delta für Stereo-Balance-Phasen: Annäherung der Inter-Kanal-Balance an die
+    Mitte, skaliert auf die Qualitäts-Delta-Skala des Regelkreises (§III.15).
+
+    Befund 2026-11-18 (Stereo-Sinn-Beweis): `measure_phase_quality_delta` ist MONO —
+    Balance-Änderungen sind dort unsichtbar, der Regelkreis verfiel die Strength
+    (0,69→0,05, „decision=skip“) und die Reparatur wurde wegkalibriert.
+    """
+
+    def _imb_abs(a: np.ndarray) -> float:
+        if a.ndim != 2 or a.shape[1] != 2:
+            return 0.0
+        _l = float(np.sqrt(np.mean(a[:, 0] ** 2)))
+        _r = float(np.sqrt(np.mean(a[:, 1] ** 2)))
+        return float(abs(20.0 * np.log10((_l + 1e-12) / (_r + 1e-12))))
+
+    _d = _imb_abs(audio_before) - _imb_abs(audio_after)
+    # 1 dB Balance-Gewinn ≈ 0,05 Delta-Einheiten (STRONG_IMPROVEMENT = 0,08)
+    return float(np.clip(_d * 0.05, 0.0, 0.5))
+
+
 def closed_loop_calibrate(
     state: ClosedLoopState,
     phase_id: str,
@@ -139,6 +160,10 @@ def closed_loop_calibrate(
 
     # 2. Messe Qualitäts-Delta (mit Repair-Bonus §v10.650 W5)
     _delta = measure_phase_quality_delta(audio_before, audio_after, is_repair=_is_repair)
+    # §III.15 (2026-11-18): Stereo-Phasen werden mit der BALANCE-Metrik gemessen —
+    # die mono-blinde Qualitäts-Metrik kann Balance-Reparatur nicht sehen.
+    if str(phase_id).startswith("phase_15_stereo_balance") or str(phase_id).startswith("phase_25_azimuth"):
+        _delta = _stereo_balance_delta(audio_before, audio_after)
 
     # 3. Regelkreis-Entscheidung
     _current = float(np.clip(strength_used, 0.0, 1.0))

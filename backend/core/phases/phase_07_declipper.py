@@ -402,6 +402,17 @@ class DeclipperPhase(PhaseInterface):
         # AGENTS.md Guard-Kalibrierung); bei Fehler: §V6 (copilot-instructions.md)
         # logger.warning + PCHIP-Kaskade bleibt. Kein Flag-Flip (§v10.802
         # (copilot-instructions.md): erst ΔSDR-Gate + Hörordnungs-Sign-off).
+        # DRT-13 (Spec 26, 2026-11-17): Reparatur-Phasen-Snapshot — der
+        # DRT-10-Verdikt kann damit vor dem Identitäts-Rollback nur die
+        # Declip-Regionen zurücknehmen (Teil-Rollback statt Ganz-Titel-Verlust).
+        try:
+            from backend.core.dsp.reparatur_phasen_attribution import (
+                snapshot as _drt13_snapshot,  # pylint: disable=import-outside-toplevel
+            )
+
+            _drt13_snapshot("phase_07_declip", audio_in, np.abs(audio_in) >= float(self._clip_threshold))
+        except Exception as _drt13_exc:
+            logger.debug("DRT-13-Snapshot nicht verfügbar: %s", _drt13_exc)
         from backend.core.music_model_flags import use_aspade_declipper  # pylint: disable=import-outside-toplevel
 
         _aspade_class_used = False
@@ -606,6 +617,8 @@ class DeclipperPhase(PhaseInterface):
         from backend.core.music_model_flags import (  # pylint: disable=import-outside-toplevel
             use_witness_kopf_clicks,
             use_witness_kopf_compression_artifacts,
+            use_witness_kopf_dropout_head_contact,
+            use_witness_kopf_dynamic_compression_excess,
             use_witness_kopf_jitter_artifacts,
             use_witness_kopf_phase_rotation,
             use_witness_kopf_sibilance,
@@ -652,6 +665,18 @@ class DeclipperPhase(PhaseInterface):
                 use_witness_kopf_jitter_artifacts,
                 "witness_kopf_jitter",
                 "witness_kopf_jitter_artifacts",
+            ),
+            (
+                "dynamic_compression_excess",
+                use_witness_kopf_dynamic_compression_excess,
+                "witness_kopf_dynamic_compression",
+                "witness_kopf_dynamic_compression_excess",
+            ),
+            (
+                "dropout_head_contact",
+                use_witness_kopf_dropout_head_contact,
+                "witness_kopf_dropout_head",
+                "witness_kopf_dropout_head_contact",
             ),
         ):
             _witness_kopf_rest_used[_wk_name] = False

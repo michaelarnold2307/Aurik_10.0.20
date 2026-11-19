@@ -249,6 +249,12 @@ def _run_startup_model_check(_app: QApplication) -> None:
         if result is None:
             return
         if not result.all_ok and result.user_message_de:
+            _headless = os.getenv("QT_QPA_PLATFORM", "") == "offscreen"
+            if _headless:
+                # Headless/CI: kein modaler Dialog — der Start darf nie auf
+                # einen Klick warten (§3.9.2-Härtung).
+                logger.warning("Start-Modellprüfung (headless, Auto-OK): %s", result.user_message_de)
+                return
             icon = QMessageBox.Icon.Critical if result.is_critical else QMessageBox.Icon.Warning
             box = QMessageBox()
             box.setWindowTitle("AURIK — " + result.user_title_de)
@@ -258,6 +264,9 @@ def _run_startup_model_check(_app: QApplication) -> None:
             repair_btn = box.addButton("Modelle reparieren", QMessageBox.ActionRole)
             box.setStandardButtons(QMessageBox.StandardButton.Ok)
             box.setDefaultButton(QMessageBox.StandardButton.Ok)
+            # Auto-Close-Fallback: ein übersehener Dialog darf den Start nicht
+            # dauerhaft blockieren — nach 45 s wird er geschlossen (§3.9.2).
+            QTimer.singleShot(45000, lambda: box.reject() if box.isVisible() else None)
             box.exec_()
             if box.clickedButton() == repair_btn:
                 # Start automatic self-healing
@@ -365,11 +374,13 @@ def _sigterm_handler(signum: int, _frame: object) -> None:
         if _app:
             # Schedule via event loop (non-blocking from signal handler)
             QTimer.singleShot(0, _finalize_sigterm_shutdown)
+            _arm_hard_exit_fallback()
             return
     except Exception as _exc:
         logger.debug("SIGTERM QTimer dispatch fehlgeschlagen, Ersatzpfad: %s", _exc)
 
     # Fallback if QTimer dispatch failed (e.g., no event loop)
+    _arm_hard_exit_fallback()
     _finalize_sigterm_shutdown()
 
 
@@ -381,33 +392,125 @@ def _process_events_ms(app: "QApplication", ms: int) -> None:
         time.sleep(0.016)  # ~60 fps
 
 
+# ---------------------------------------------------------------------------
+# CLI-Oberfläche: --help / --version / --check vor der GUI (§release_invariants)
+# ---------------------------------------------------------------------------
+
+CLI_HELP = """AURIK Professional — Audio-Restaurierung (GUI)
+
+Aufruf:
+  python3 -B Aurik10/main.py            # GUI starten
+  python3 -B Aurik10/main.py --help     # diese Hilfe
+  python3 -B Aurik10/main.py --version  # Version ausgeben
+  python3 -B Aurik10/main.py --check    # Headless-Startup-Smoke (Exit 0/1)
+
+Umgebungsvariablen:
+  AURIK_FORCE_CPU=1                 ML-Kerne ausschließlich auf CPU
+  AURIK_DEBUG=1                     Debug-Logging (logs/aurik_debug_<zeit>.log)
+  AURIK_FORCE_SOFTWARE_OPENGL=0     Software-OpenGL abschalten (Troubleshooting)
+  QT_QPA_PLATFORM=offscreen         Headless-Modus (CI/Smoke)
+"""
+
+# --check Watchdog: der ModernMainWindow-Konstruktor darf den Smoke nie endlos
+# blockieren (CI-Fähigkeit). Der Daemon-Thread terminiert den Prozess hart.
+_CHECK_TIMEOUT_S = 240.0
+
+
+def _configure_qt_attributes() -> None:
+    """Qt-Attribute, die VOR der QApplication-Erzeugung gesetzt werden müssen."""
+    _force_sw_gl = os.getenv("AURIK_FORCE_SOFTWARE_OPENGL", "1") == "1"
+    QApplication.setAttribute(Qt.AA_EnableHighDpiScaling, True)  # type: ignore[attr-defined]
+    QApplication.setAttribute(Qt.AA_UseHighDpiPixmaps, True)  # type: ignore[attr-defined]
+    if sys.platform.startswith("linux") and _force_sw_gl:
+        QApplication.setAttribute(Qt.AA_UseSoftwareOpenGL, True)  # type: ignore[attr-defined]
+    QApplication.setAttribute(Qt.AA_DontUseNativeDialogs, True)  # type: ignore[attr-defined]
+
+
+def _headless_smoke() -> int:
+    """--check: GUI-Startup-Smoke ohne Event-Loop (CI-fähig, Exit 0/1).
+
+    Baut QApplication + ModernMainWindow offscreen auf und beendet sofort —
+    fängt Konstruktor-Defekte ab, bevor der Nutzer sie sieht.
+    """
+    os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
+    os.environ.setdefault("AURIK_FORCE_CPU", "1")
+
+    def _watchdog() -> None:
+        logger.error("GUI-Smoke ZEITÜBERSCHREITUNG nach %.0f s — harter Abbruch", _CHECK_TIMEOUT_S)
+        sys.stdout.write(f"GUI-Smoke TIMEOUT nach {_CHECK_TIMEOUT_S:.0f}s\n")
+        sys.stdout.flush()
+        os._exit(2)
+
+    _wd = threading.Timer(_CHECK_TIMEOUT_S, _watchdog)
+    _wd.daemon = True
+    _wd.start()
+    try:
+        _configure_qt_attributes()
+        app = QApplication(sys.argv)
+        app.setStyle("Fusion")
+        window = ModernMainWindow()
+        ok = bool(window is not None and window.isWindow())
+        sys.stdout.write(f"GUI-Smoke: {'OK' if ok else 'FEHLER'} (ModernMainWindow konstruiert)\n")
+        return 0 if ok else 1
+    except Exception as exc:
+        logger.error("GUI-Smoke FEHLER: %s", exc)
+        sys.stdout.write(f"GUI-Smoke FEHLER: {exc}\n")
+        return 1
+    finally:
+        _wd.cancel()
+
+
+def _handle_cli() -> int | None:
+    """CLI-Flags vor dem GUI-Start; None = GUI normal starten."""
+    argv = [a for a in sys.argv[1:] if not a.startswith("--qt")]
+    if "-h" in argv or "--help" in argv:
+        sys.stdout.write(CLI_HELP)
+        return 0
+    if "--version" in argv:
+        sys.stdout.write(f"AURIK Professional {__version__}\n")
+        return 0
+    if "--check" in argv:
+        return _headless_smoke()
+    return None
+
+
+def _arm_hard_exit_fallback() -> None:
+    """Garantiert die Terminierung nach SIGTERM/SIGINT (§3.9.2-Härtung).
+
+    Der grace Path (Checkpoint → Qt-quit) braucht einen laufenden Event-Loop;
+    hängt der Startup (z. B. modaler Dialog, langer Konstruktor), liefe der
+    Prozess sonst unendlich weiter. Der Daemon-Timer erzwingt den Exit.
+    """
+    _timer = threading.Timer(8.0, lambda: os._exit(0))
+    _timer.daemon = True
+    _timer.start()
+
+
 def main():
     """Launch AURIK Professional"""
     global _main_window_ref
+
+    # CLI-Oberfläche VOR der GUI: --help/--version/--check terminieren sofort
+    # (kein Qt nötig) — Voraussetzung für CI und unbeaufsichtigte Starts.
+    _cli_exit = _handle_cli()
+    if _cli_exit is not None:
+        sys.exit(_cli_exit)
 
     _enable_crash_forensics()
 
     # Linux hardening: prefer software OpenGL to reduce GPU driver related Qt crashes.
     # Can be disabled for troubleshooting via: AURIK_FORCE_SOFTWARE_OPENGL=0
-    _force_sw_gl = os.getenv("AURIK_FORCE_SOFTWARE_OPENGL", "1") == "1"
-
-    # Enable high DPI scaling (PyQt5 stubs do not expose these attributes -> ignore)
-    QApplication.setAttribute(Qt.AA_EnableHighDpiScaling, True)  # type: ignore[attr-defined]
-    QApplication.setAttribute(Qt.AA_UseHighDpiPixmaps, True)  # type: ignore[attr-defined]
-    if sys.platform.startswith("linux") and _force_sw_gl:
-        QApplication.setAttribute(Qt.AA_UseSoftwareOpenGL, True)  # type: ignore[attr-defined]
-    # Prevent XDG/GTK portal hang on Linux: native file dialogs must not be used
-    # (portal daemon can block the main thread before DontUseNativeDialog takes effect)
-    QApplication.setAttribute(Qt.AA_DontUseNativeDialogs, True)  # type: ignore[attr-defined]
+    _configure_qt_attributes()
 
     app = QApplication(sys.argv)
     app.setApplicationName("AURIK Professional")
     app.setOrganizationName("AURIK")
     app.setApplicationVersion(__version__)
 
-    # §3.9.2: Register SIGTERM handler for graceful shutdown + emergency checkpoint.
+    # §3.9.2: Register SIGTERM/SIGINT handler for graceful shutdown + emergency checkpoint.
     # Must be installed after QApplication to avoid race with Qt's signal handling.
     signal.signal(signal.SIGTERM, _sigterm_handler)
+    signal.signal(signal.SIGINT, _sigterm_handler)
 
     # Application icon (taskbar, dock, alt-tab)
     _res = Path(__file__).parent / "resources"
@@ -480,7 +583,7 @@ def main():
         from backend.api.bridge import get_ml_device_manager as _gpu_mgr
 
         _mgr = _gpu_mgr()
-        _mgr.wait_for_detection(timeout=5.0)  # type: ignore[call-arg]
+        _mgr.wait_for_detection(timeout_s=5.0)
         logger.info("main: GPU-Erkennung abgeschlossen — %s", _mgr.gpu_name)
     except Exception as _gpu_exc:
         logger.debug("main: GPU-Erkennung fehlgeschlagen (CPU-only): %s", _gpu_exc)

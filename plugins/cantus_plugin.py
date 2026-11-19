@@ -216,7 +216,9 @@ class CantusPlugin:
         if not _TORCH_AVAILABLE or self._checkpoint_path is None or not self._checkpoint_path.is_file():
             return False
         try:
-            if not torch.cuda.is_available():
+            from backend.core.gpu_model_registry import force_cpu_requested  # pylint: disable=import-outside-toplevel
+
+            if not torch.cuda.is_available() or force_cpu_requested():
                 return False
             from models.cantus.cantus_model import create_cantus  # pylint: disable=import-outside-toplevel
 

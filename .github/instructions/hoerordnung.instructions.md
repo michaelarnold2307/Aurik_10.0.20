@@ -251,6 +251,19 @@ wird als Fenster-Gate gemessen, nicht als Einzelwert:
   statt blindem High-Shelf. Kein neuer Schwellwert, keine Regeländerung.
 - **Bezugspunkt:** Die Goosebumps-/HPE-Bewertung bleibt erhalten, aber ein
   „EXZELLENT" ersetzt das Einladungs-Gate nicht — beide müssen unabhängig halten.
+- **Mess-Material-Konsistenz (2026-11-17):** §4-Sign-off-Entscheidungen MÜSSEN
+  auf den drei Vertrags-Referenz-Songs gemessen sein (nicht auf Korpus-Clips).
+  B3-Messungen auf Korpus-Clips sind Vor-Filter, kein Beschluss-Material; ein
+  Beschluss auf anderem Material ist ungültig und verlangt die Neumessung
+  (Konsistenz mit Spec 26 DRT-15: Ablehnung nur mit belegter Komposition).
+- **§4-Skalierung (2026-11-17):** Bei mehreren aktivierungsreifen Kandidaten
+  werden Sessions gepoolt und priorisiert geführt: (1) Reihenfolge nach
+  objektiver Stärke (Regionen-Q/never-worsen), (2) pro Session mehrere
+  Kandidaten in getrennten Blöcken mit eigenen Schlüsseln, (3) die MUSHRA-
+  n≥30-Beschaffung (Panel) ist Teil jeder Aktivierungs-Planung — kein
+  aktivierungsreifer Kandidat bleibt ohne geplanten Hörweg offen. Die
+  Proben-Erzeugung liegt bei `scripts/erstelle_hoerproben.py`/
+  `erstelle_aspade_hoerpaare.py` (deterministisch, A≠B-verifiziert).
 
 ## 7. Konfliktregel — die Hör-Instanz entscheidet
 

@@ -407,6 +407,14 @@ repos:
         language: system
         pass_filenames: false
 
+      # Wettbewerbs-Parität (2026-11-17): Mission RX/Cedar/Acon je Disziplin,
+      # Register-Vollständigkeit + Verankerung in Handover/AGENTS/Spec 01 — fail-closed
+      - id: aurik-wettbewerbs-paritaet
+        name: "Wettbewerbs-Parität (RX/Cedar/Acon je Disziplin)"
+        entry: .venv_aurik/bin/python scripts/compliance/wettbewerbs_paritaet_gate.py
+        language: system
+        pass_filenames: false
+
       # §G188–§G190 (GEBOTE.md) Wirkungs-Kalibrierung: blockierende
       # Begrenzungen bzw. nicht-selbstberechenbare Intensitäten MELDEN
       - id: aurik-g188-wirkungskalibrierung

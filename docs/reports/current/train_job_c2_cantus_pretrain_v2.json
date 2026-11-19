@@ -1,0 +1,36 @@
+{
+  "schema": "aurik.train_job/1",
+  "run_id": "pretrain-20261118T041113Z-1b728e",
+  "name": "c2_cantus_pretrain_v2",
+  "phase": "pretrain",
+  "seed": null,
+  "befehl": "env PYTHONPATH=. PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True /home/michael/.local/share/aurik/venv_rocm72/bin/python -B scripts/train_cantus.py --phase=pretrain --preset=full --freeze-encoder --epochs=50 --batch-size 2 --grad-accum 4 --data data/cantus_pairs/manifest.jsonl",
+  "resume_befehl": "env PYTHONPATH=. PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True /home/michael/.local/share/aurik/venv_rocm72/bin/python -B scripts/train_cantus.py --phase=pretrain --preset=full --freeze-encoder --epochs=50 --batch-size 2 --grad-accum 4 --data data/cantus_pairs/manifest.jsonl --resume models/cantus/checkpoint_latest.pt",
+  "timeout_s": 43200.0,
+  "retries": 1,
+  "versuche": [
+    {
+      "exit_code": -15,
+      "sekunden": 43200.4,
+      "timed_out": true,
+      "output_tail": " (best=4.6899)\nINFO __main__: epoch=24/50 val=4.9791 (best=4.6899)\nINFO __main__: epoch=25/50 val=6.3028 (best=4.6899)\nINFO __main__: epoch=26/50 val=5.0709 (best=4.6899)\nINFO __main__: epoch=27/50 val=4.9949 (best=4.6899)\nINFO __main__: epoch=28/50 val=6.6255 (best=4.6899)\nINFO __main__: epoch=29/50 val=5.3099 (best=4.6899)\nINFO __main__: epoch=30/50 val=4.8056 (best=4.6899)\nINFO __main__: epoch=31/50 val=5.1762 (best=4.6899)\nINFO __main__: epoch=32/50 val=6.4787 (best=4.6899)\nINFO __main__: epoch=33/50 val=6.4612 (best=4.6899)\nINFO __main__: epoch=34/50 val=5.2180 (best=4.6899)\nINFO __main__: epoch=35/50 val=6.4419 (best=4.6899)\nINFO backend.core.plugin_lifecycle_manager: PLM: Entlade 'FCPE' (0.07 GB, last_used=31191s ago) …\nINFO backend.core.ml_memory_budget: ml_memory_Grenze: 'FCPE' released (0.1 GB)  →  total 0.0 / 10.4 GB used.\nINFO backend.core.plugin_lifecycle_manager: PLM: 'FCPE' erfolgreich entladen.\nINFO backend.core.plugin_lifecycle_manager: PLM: 1 Plugin(s) entladen — RAM nach GC: 78 %\nINFO backend.core.ml_memory_budget: ml_memory_Grenze: 'FCPE' allocated 0.1 GB  →  total 0.1 / 10.4 GB used.\nINFO backend.core.gpu_model_registry: §v10.40c GPU-Policy: fcpe.onnx → CPU erzwungen (Registry: cpu)\nINFO plugins.fcpe_plugin: fcpe_plugin: ONNX model geladen: fcpe.onnx (provider=CPUExecutionProvider)\nINFO __main__: epoch=36/50 val=5.6386 (best=4.6899)\nINFO __main__: epoch=37/50 val=5.0874 (best=4.6899)\nINFO __main__: epoch=38/50 val=5.6227 (best=4.6899)\nINFO __main__: epoch=39/50 val=4.8313 (best=4.6899)\nINFO __main__: epoch=40/50 val=6.2074 (best=4.6899)\nINFO __main__: epoch=41/50 val=5.8298 (best=4.6899)\nINFO __main__: epoch=42/50 val=5.2863 (best=4.6899)\nINFO __main__: epoch=43/50 val=4.7969 (best=4.6899)\nINFO __main__: epoch=44/50 val=5.4058 (best=4.6899)\nINFO __main__: epoch=45/50 val=5.2677 (best=4.6899)\nINFO __main__: epoch=46/50 val=5.4901 (best=4.6899)\nINFO __main__: epoch=47/50 val=5.0259 (best=4.6899)\nINFO __main__: epoch=48/50 val=5.4223 (best=4.6899)\n",
+      "versuch": 1,
+      "befehl": "env PYTHONPATH=. PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True /home/michael/.local/share/aurik/venv_rocm72/bin/python -B scripts/train_cantus.py --phase=pretrain --preset=full --freeze-encoder --epochs=50 --batch-size 2 --grad-accum 4 --data data/cantus_pairs/manifest.jsonl"
+    },
+    {
+      "exit_code": 0,
+      "sekunden": 1664.8,
+      "timed_out": false,
+      "output_tail": "d.core.gpu_model_registry: §v10.40c GPU-Policy: mert_330m.onnx → CPU erzwungen (Registry: cpu)\nINFO backend.core.mert_feature_extractor: MERT geladen: mert.onnx (330M params, CPUExecutionProvider)\nINFO backend.core.ml_memory_budget: ml_memory_Grenze: guard thresholds kalibriert for 31.2 GB RAM — heavy_avail_Verhaeltnis=0.20, heavy_swap_early=52%, heavy_swap=75%, min_free_mb=2399, margin_base=1.30, margin_min=1.08\nINFO backend.core.ml_memory_budget: ml_memory_Grenze: Systemprofil — RAM total=31.2 GB, verfuegbar=23.3 GB (74%), swap total=32.0 GB, used=12%, CPU=16 logical/8 physical\nINFO backend.core.ml_memory_budget: ml_memory_Grenze: Start reconciliation — Grenze zurueckgesetzt to 0.0 GB\n/home/michael/.local/share/aurik/venv_rocm72/lib/python3.10/site-packages/torch/nn/utils/weight_norm.py:144: FutureWarning: `torch.nn.utils.weight_norm` is deprecated in favor of `torch.nn.utils.parametrizations.weight_norm`.\n  WeightNorm.apply(module, name, dim)\nINFO backend.core.dsp.muq_mulan_torch_rocm: §SOTA-ML-V8 MuQ-MuLan-Audio-Turm auf ROCm geladen (Radeon RX 7900 XTX)\nINFO backend.core.ml_memory_budget: ml_memory_Grenze: 'FCPE' allocated 0.1 GB  →  total 0.1 / 10.4 GB used.\nINFO backend.core.ml_model_readiness: ml_model_readiness SELBSTTEST: 39/39 Checks validiert (0 Attribut-Fehler, 0 Import-Fehler)\nINFO backend.core.gpu_model_registry: §v10.40c GPU-Policy: fcpe.onnx → CPU erzwungen (Registry: cpu)\nINFO plugins.fcpe_plugin: fcpe_plugin: ONNX model geladen: fcpe.onnx (provider=CPUExecutionProvider)\nINFO backend.core.plugin_lifecycle_manager: PluginLifecycleManager: initialisiert (RAM eviction Schwelle 75 %)\nINFO backend.core.dsp.fcpe_torch_rocm: §SOTA-ML-V7 FCPE-Kern auf ROCm geladen (Radeon RX 7900 XTX)\nINFO __main__: epoch=49/50 val=5.9698 (best=5.4223)\nINFO __main__: epoch=50/50 val=5.9026 (best=5.4223)\nINFO __main__: Fertig: best_val=5.4223 — Report: /media/michael/Software 4TB/Aurik_Standalone/models/cantus/train_report_pretrain.json\nLoading weights from local directory\n",
+      "versuch": 2,
+      "befehl": "env PYTHONPATH=. PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True /home/michael/.local/share/aurik/venv_rocm72/bin/python -B scripts/train_cantus.py --phase=pretrain --preset=full --freeze-encoder --epochs=50 --batch-size 2 --grad-accum 4 --data data/cantus_pairs/manifest.jsonl --resume models/cantus/checkpoint_latest.pt"
+    }
+  ],
+  "quelle": "scripts/train_job_runner.py",
+  "checkpoint_hashes": {
+    "cantus_dit.onnx": "ea2556b23dd511bb8e73eb231efd06bfdfd3128f4bf941f3550bdf5b6d7820cc",
+    "checkpoint_best.pt": "093d25868ee85b50d6e2456327c5d4503af1c6b1c79425948a3d54ecf3b2506a",
+    "checkpoint_latest.pt": "c8b82502d51c5b8efed90899d6006730d284d122f4aedda06793301ad431e75c"
+  },
+  "ergebnis": "erfolgreich"
+}

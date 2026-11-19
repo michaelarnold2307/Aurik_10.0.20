@@ -253,7 +253,9 @@ def _resolve_device() -> Any:
     except Exception:
         _dev = None
     if _dev is None or "cpu" in str(_dev):
-        if torch is not None and torch.cuda.is_available():
+        from backend.core.gpu_model_registry import force_cpu_requested  # pylint: disable=import-outside-toplevel
+
+        if torch is not None and torch.cuda.is_available() and not force_cpu_requested():
             _dev = torch.device("cuda")
             logger.info("MuQ: Device-Manager meldet CPU — torch.cuda verfügbar, GPU wird verwendet")
     if _dev is None and torch is not None:

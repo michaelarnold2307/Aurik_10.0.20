@@ -521,8 +521,12 @@ class StereoBalancePhaseV2(PhaseInterface):
             right_gain = 10 ** (half_correction_db / 20)
         else:
             # Right louder: reduce right, boost left
-            left_gain = 10 ** (half_correction_db / 20)
-            right_gain = 10 ** (-half_correction_db / 20)
+            # Befund 2026-11-18 (Stereo-Sinn-Beweis): die Gains waren hier
+            # vertauscht — die Phase verstärkte die Imbalance (−4,09 → −7,67 dB)
+            # statt zu korrigieren. half_correction_db ist in diesem Zweig
+            # NEGATIV (imbalance_db < 0) ⇒ links = −h/20 = Boost, rechts = +h/20 = Reduktion.
+            left_gain = 10 ** (-half_correction_db / 20)
+            right_gain = 10 ** (half_correction_db / 20)
 
         # Create smooth gain envelope (ramp from 1.0 to target gain)
         smoothing_samples = int(self.SMOOTHING_WINDOW_MS * sample_rate / 1000)

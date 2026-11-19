@@ -157,6 +157,71 @@ blockieren. Ohne Kontrolle wäre die Verschlechterung unsichtbar geblieben.
 Kontroll-Delta-Pflicht: Kandidat aktiviert nur, wenn MIT-Kanal ≥ OHNE-Kanal
 (kein Paar darf durch den Kanal netto schlechter werden als die Bestands-Pipeline).
 
+## DRT-13 — Phasen-Attribution & Teil-Rollback statt Ganz-Titel-Vernichtung
+
+DRT-10/M1 schreibt bei Überrestauration den Identitäts-Rollback des ganzen
+Titels vor — damit gehen belegte Defekt-Gewinne verloren (Jets-vinyl: defektlast
+−0,203 bei musik_mos −0,551; das Ohr bekommt „alles oder nichts“). DRT-13
+schärft das Verhältnis:
+
+1. **Reparatur-Phasen-Snapshot:** Für Reparatur-Phasen (Declip, Denoise,
+   De-Crackle, Witness-Köpfe) hält die Pipeline den Phasen-Eingang chunk-lokal
+   als Snapshot (`backend/core/dsp/reparatur_phasen_attribution.py`) —
+   Teil-Rollback = Snapshot statt Phasen-Ausgabe, nur in den Regionen, die die
+   Phase verändert hat (Region-Maske, nie der ganze Titel).
+2. **Attribution:** Der Verdict misst vor dem Voll-Rollback die Variante mit
+   zurückgenommener(n) Reparatur-Phase(n) („Phase-AUS-Variante“) — wer den
+   mos-Verlust verursacht, wird gemessen statt vermutet; das Ergebnis wird in
+   `phase_attribution` berichtet.
+3. **Teil-Rollback vor Voll-Rollback:** Ist die Phase-AUS-Variante frei von
+   Überrestauration, wird SIE das Ergebnis (Teil-Rollback) — der
+   Identitäts-Rollback (M1) bleibt NUR der Fallback, wenn keine Attribution
+   greift oder auch die AUS-Variante überrestauriert.
+
+Kein stiller Flip: Teil-Rollback ist ein deklarierter, belegter Eingriff
+(§V7 (copilot-instructions.md)); der M1-Fallback bleibt unverändert, bis die
+Attribution nachweislich greift. Stufe 1 (2026-11-17): Snapshot + Attribution
+
+- Teil-Rollback im Einzel-Pfad; Options-/Chunked-Pfad nutzen den M1-Fallback
+(Stufe 2 folgt im nächsten freien GPU-Fenster).
+
+## DRT-14 — Wirksamkeits-Gebot: kein „neutral ist genug“
+
+Die Norm kennt bisher nur Never-worsen — Wirksamkeit ist nicht gefordert;
+der 0/12-Sinn-Beweis ist normativ legal. DRT-14 ergänzt den positiven Arm:
+
+1. **Reparatur-Nachweis je Lauf:** Für jede erkannte Defektklasse mit
+   Schaden-Score ≥ Schwelle MUSS der Lauf einen Reparatur-Nachweis führen
+   (Regionen-Q bzw. defektlast-Delta aus `defekt_delta`/Wohlklang-Zeuge)
+   ODER die Klasse als `unrepariert` mit Ursache berichten (Metadaten
+   `reparatur_nachweis` / `unrepariert[]`, Helper im Wohlklang-Zeugen).
+2. **Kein Hard-Fail:** Der Nachweis ist ein Zeuge (Hörordnung §7) — Eskalation
+   über die Hör-Instanz; nie ein stiller Abbruch oder Rollback allein wegen
+   fehlender Wirksamkeit.
+3. **Ehrliche Bilanz:** Ohne Wirksamkeits-Bericht ist „besser/schlechter“ auf
+   Klassen-Ebene nicht bewertbar — der Bericht ist die Voraussetzung für
+   künftige Sinn-Beweis-Vergleiche.
+4. **Abdeckungs-Pflicht (2026-11-17):** Der Ganz-Titel-Sinn-Beweis MUSS alle
+   erzeugbaren Rezept-Klassen abdecken (nicht nur vinyl/kassette/clipping/
+   mp3_128). `scripts/erstelle_schadens_proben.py` trägt mindestens die
+   fünfzehn Rezept-Klassen vinyl, kassette, clipping, mp3_128, hum,
+   wowflutter, kompression, kammfilter, verzerrung, clicks, pitch_drift,
+   dropout, raum, lautheit, amp_drift; jede nicht gemessene erzeugbare
+   Klasse ist im Beleg als `nicht_gemessen` auszuweisen — die Abdeckung wird
+   maschinell gepinnt (DRT-14-Coverage im Pre-Commit-Gate).
+
+## DRT-15 — B3: Ablehnung auf Substanz nur in der besten Komposition
+
+1. **Kompositions-Pflicht:** Eine Einzel-Stufe darf auf Substanz ABGELEHNT
+   werden, wenn ihre Messung in der besten gefundenen Komposition erfolgt ist
+   (`scripts/b3_komposition_suche.py`) — sonst ist das Urteil auf
+   „Einzel-Wirkung nicht signifikant“ zu beschränken.
+2. **Sub-JND ≠ Ablehnung:** Liegt der Kompositions-Vorteil unter der JND,
+   gilt „Messgrenze erreicht“ (kein Qualitätsurteil) — die Stufe bleibt
+   mess-offen, nie still verworfen.
+3. **Beleg-Pflicht:** Jeder B3-Beschluss trägt `kompositions_status`:
+   `gemessen` / `sub_jnd` / `nicht_gemessen` (Schema `aurik.objektivbeschluss/1`).
+
 ## Normative Einordnung
 
 Diese Spec konkretisiert für das Reparatur-Training: §G5 (copilot-instructions.md)
@@ -164,3 +229,28 @@ Diese Spec konkretisiert für das Reparatur-Training: §G5 (copilot-instructions
 (copilot-instructions.md) (Ursache statt Symptom), §V25 (copilot-instructions.md)
 (kein hartcodierter Schwellwert), §III (copilot-instructions.md) (Soft-Knee
 6 dB/200 ms), Hörordnung §4 (Sign-off für klangwirksame Aktivierungen).
+
+## DRT-12 — Kanalsatz-A/B-Pflicht vor dem §4-Sign-off (2026-11-19)
+
+Befund: Die Ganz-Titel-Sinn-Beweise (2026-11-15: 0/12 besser; 2026-11-18:
+6/45) wurden mit **deaktivierten** Witness-Kanälen gemessen (alle Flags
+Default AUS) — sie belegen den Bestand, nicht den Kandidaten-Zustand. Ein
+§4-Sign-off ohne A/B auf identischen Paaren würde Kanäle freigeben, deren
+Ganz-Titel-Wirkung nie gemessen wurde („0/12“-Muster).
+
+1. **A/B-Pflicht:** Vor dem §4-Sign-off eines Witness-Kanals MUSS der
+   Ganz-Titel-A/B auf IDENTISCHEN Paaren belegt sein — Kanalsatz AN vs.
+   Bestand AUS (gleiche Schadensdateien, gleiche Metriken defektlast/
+   musik_mos, deterministische Auswahl Seed 42). Werkzeug:
+   `scripts/messe_kanalsatz_ab.py` (mess-only: setzt die Kanal-Flags
+   prozess-lokal, schreibt KEINE Flag-Datei, kein Produktions-Flip).
+2. **Aufnahme-Kriterium:** Nur Kanäle, deren Kanalsatz-Konfiguration den
+   A/B auf den zugehörigen Rezept-Paaren gewinnt (nie schlechter als der
+   Bestand um mehr als JND UND mindestens ein Paar messbar besser), kommen
+   in den kombinierten §4-Batch.
+3. **Kombinierter §4-Batch:** Die aufgenommenen Kanäle werden als EIN Satz
+   gehört (eine Sitzung, ein Verdikt über die Menge) — der menschliche
+   Aufwand skaliert nicht mit der Kanalzahl.
+4. **Kein Schaden am Bestand:** Der A/B-Vergleich ist mess-only; die
+   Produktions-Defaults bleiben AUS, bis der §4-Batch bucht (§G1
+   (copilot-instructions.md)-Bit-Identität).

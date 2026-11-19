@@ -119,6 +119,99 @@ def _pruefe_drt_789(fehler: list[str]) -> None:
     belege = list((_ROOT / "docs" / "reports" / "current").glob("*sinnbeweis*.json"))
     if not belege:
         _fehler("DRT-8: kein Sinn-Beweis-Beleg (Ganz-Titel-Ebene unbelegt — Aktivierung nicht erlaubt)", fehler)
+    # DRT-7 (flächendeckend, 2026-11-17): auch BESTEHENDE Kandidaten brauchen ihr
+    # Produktions-Semantik-Gate (Never-worsen vor Übernahme) — sonst bliebe die
+    # Spec-Aussage „für ALLE Reparatur-Kandidaten“ Prosa.
+    phase07 = _ROOT / "backend" / "core" / "phases" / "phase_07_declipper.py"
+    if phase07.is_file() and "_harmonic_distortion_proxy" not in phase07.read_text(encoding="utf-8"):
+        _fehler("DRT-7: Declip-Kandidaten ohne Harmonik-Never-worsen-Witness", fehler)
+    phase09 = _ROOT / "backend" / "core" / "phases" / "phase_09_crackle_removal.py"
+    if phase09.is_file() and "Spitzenwachstum" not in phase09.read_text(encoding="utf-8"):
+        _fehler("DRT-7: de_crackle (VinylNet) ohne Spitzenwachstum-Never-worsen", fehler)
+    hybrid = _ROOT / "backend" / "core" / "dsp" / "hybrid_denoise_fusion.py"
+    if hybrid.is_file() and "never_worsen" not in hybrid.read_text(encoding="utf-8"):
+        _fehler("DRT-7: Dritt-Denoiser-Fusion ohne Never-worsen", fehler)
+
+
+def _pruefe_drt_131415(fehler: list[str]) -> None:
+    """DRT-13/14/15 (2026-11-17): Teil-Rollback, Wirksamkeits-Gebot, B3-Komposition."""
+    # DRT-13: Snapshot-Modul + Verdrahtung (Phase 07 → UV3-Verdikt)
+    mod = _ROOT / "backend" / "core" / "dsp" / "reparatur_phasen_attribution.py"
+    if not mod.is_file():
+        _fehler("DRT-13: backend/core/dsp/reparatur_phasen_attribution.py fehlt (Snapshot/Teil-Rollback)", fehler)
+    else:
+        q = mod.read_text(encoding="utf-8")
+        if "def phase_aus_variante" not in q or "def snapshot" not in q:
+            _fehler("DRT-13: Modul ohne snapshot/phase_aus_variante (Teil-Rollback unmöglich)", fehler)
+    phase07 = _ROOT / "backend" / "core" / "phases" / "phase_07_declipper.py"
+    if phase07.is_file():
+        q7 = phase07.read_text(encoding="utf-8")
+        if "reparatur_phasen_attribution" not in q7:
+            _fehler("DRT-13: Phase 07 ohne Reparatur-Snapshot (Attribution nicht verdrahtet)", fehler)
+    uv3 = _ROOT / "backend" / "core" / "unified_restorer_v3.py"
+    if uv3.is_file():
+        qu = uv3.read_text(encoding="utf-8")
+        if "drt10_teil_rollback" not in qu or "phase_aus_variante" not in qu:
+            _fehler("DRT-13: UV3-Verdikt ohne Teil-Rollback-Pfad (M1-Fallback allein ist Normverstoß)", fehler)
+    # DRT-14: Wirksamkeits-Bericht (Zeuge-Helper + UV3-Verdrahtung)
+    zeuge = _ROOT / "backend" / "core" / "dsp" / "wohlklang_zeuge.py"
+    if zeuge.is_file():
+        qz = zeuge.read_text(encoding="utf-8")
+        if "def reparatur_nachweis_bericht" not in qz:
+            _fehler("DRT-14: wohlklang_zeuge ohne reparatur_nachweis_bericht", fehler)
+        if "reparaturquote_median" not in qz:
+            _fehler(
+                "DRT-14: Bericht liest nicht das reale defekt_delta-Schema (aggregate/reparaturquote_median)", fehler
+            )
+    if uv3.is_file():
+        if "reparatur_nachweis" not in uv3.read_text(encoding="utf-8"):
+            _fehler("DRT-14: UV3 ohne reparatur_nachweis-Metadaten (Wirksamkeits-Gebot unbelegt)", fehler)
+    # DRT-14-Coverage (2026-11-17): der Sinn-Beweis muss ≥ 15 Rezept-Klassen abdecken
+    proben = _ROOT / "scripts" / "erstelle_schadens_proben.py"
+    if proben.is_file():
+        qp = proben.read_text(encoding="utf-8")
+        for r in (
+            "vinyl",
+            "kassette",
+            "clipping",
+            "mp3_128",
+            "hum",
+            "wowflutter",
+            "kompression",
+            "kammfilter",
+            "verzerrung",
+            "clicks",
+            "pitch_drift",
+            "dropout",
+            "raum",
+            "lautheit",
+            "amp_drift",
+        ):
+            if f'"{r}"' not in qp:
+                _fehler(f"DRT-14-Coverage: Rezept {r!r} fehlt in erstelle_schadens_proben.py", fehler)
+    # DRT-15: B3-Beschluss trägt kompositions_status
+    b3 = _ROOT / "scripts" / "b3_stufenmessung.py"
+    if b3.is_file():
+        if "kompositions_status" not in b3.read_text(encoding="utf-8"):
+            _fehler("DRT-15: B3-Beschluss ohne kompositions_status (Ablehnung ohne Kompositions-Beleg)", fehler)
+
+
+def _pruefe_drt_12(fehler: list[str]) -> None:
+    """DRT-12 (2026-11-19): Kanalsatz-A/B-Pflicht vor dem §4-Sign-off."""
+    skript = _ROOT / "scripts" / "messe_kanalsatz_ab.py"
+    if not skript.is_file():
+        _fehler("DRT-12: scripts/messe_kanalsatz_ab.py fehlt (Kanalsatz-A/B-Infrastruktur)", fehler)
+        return
+    q = skript.read_text(encoding="utf-8")
+    if "KANALSAETZ_FLAGS" not in q or "_aktiviere_kanalsatz" not in q:
+        _fehler("DRT-12: Kanalsatz-Aktivierung fehlt", fehler)
+    if "flag_freigabe" in q:
+        _fehler("DRT-12: A/B-Skript darf keine Flag-Freigabe berühren (mess-only)", fehler)
+    if 'os.environ.setdefault("AURIK_FORCE_CPU", "1")' not in q:
+        _fehler("DRT-12: A/B-Skript ohne CPU-only-Vertrag (stört die GPU-Kette)", fehler)
+    spec26 = (_ROOT / ".github" / "specs" / "26_defekt_reparatur_trainingsvertrag.md").read_text(encoding="utf-8")
+    if "## DRT-12 — Kanalsatz-A/B-Pflicht" not in spec26:
+        _fehler("DRT-12: Spec-26-Abschnitt fehlt", fehler)
 
 
 def main() -> int:
@@ -127,6 +220,8 @@ def main() -> int:
     _pruefe_gate(fehler)
     _pruefe_dsp(fehler)
     _pruefe_drt_789(fehler)
+    _pruefe_drt_131415(fehler)
+    _pruefe_drt_12(fehler)
     if fehler:
         print("🔌 DRT-VERTRAG (Spec 26) — VERSTOSS:")
         for f in fehler:

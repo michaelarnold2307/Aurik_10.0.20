@@ -38,6 +38,75 @@ def test_length_preserved(phase, audio):
     assert len(result.audio) == len(audio)
 
 
+def test_stereo_layout_is_restored_and_crackle_score_uses_sample_count(phase, monkeypatch, audio):
+    stereo = np.stack([audio, audio * 0.8], axis=0).astype(np.float32)
+    monkeypatch.setattr(phase, "_compute_crackle_regions_with_protection", lambda *_args: ([], [], [], [(10, 20)]))
+    monkeypatch.setattr(phase, "_union_scanner_crackle_regions", lambda _audio, regions, _kwargs: regions)
+    monkeypatch.setattr(phase, "_model_background_texture", lambda *_args: None)
+    monkeypatch.setattr(phase, "_remove_crackle_spectral", lambda mono, *_args: mono.copy())
+
+    result_cf = phase.process(stereo, sample_rate=48000, material_type="unknown")
+    result_sf = phase.process(stereo.T.copy(), sample_rate=48000, material_type="unknown")
+
+    assert result_cf.audio.shape == stereo.shape
+    assert result_sf.audio.shape == (stereo.shape[1], 2)
+    assert result_cf.resolved_defects["CRACKLE"] == pytest.approx(0.3)
+    assert result_sf.resolved_defects["CRACKLE"] == pytest.approx(0.3)
+    assert np.isfinite(result_cf.audio).all()
+    assert np.isfinite(result_sf.audio).all()
+
+
+@pytest.mark.parametrize("shape", [(1, 48000), (48000, 1)])
+def test_two_dimensional_mono_uses_mono_processing_and_preserves_layout(phase, monkeypatch, shape):
+    mono = np.zeros(shape, dtype=np.float32)
+    observed_shapes = []
+
+    def fake_regions(audio, _params):
+        observed_shapes.append(audio.shape)
+        return [], [], [], []
+
+    monkeypatch.setattr(phase, "_compute_crackle_regions_with_protection", fake_regions)
+    monkeypatch.setattr(phase, "_model_background_texture", lambda *_args: None)
+    monkeypatch.setattr(phase, "_remove_crackle_spectral", lambda audio, *_args: audio.copy())
+
+    result = phase.process(mono, sample_rate=48000, material_type="unknown")
+
+    assert observed_shapes == [(48000,)]
+    assert result.audio.shape == mono.shape
+
+
+@pytest.mark.parametrize("shape", [(3, 48000), (48000, 3), (2, 48000, 1)])
+def test_unsupported_channel_layout_raises(phase, shape):
+    with pytest.raises(ValueError, match="erwartet Mono oder Stereo"):
+        phase.process(np.zeros(shape, dtype=np.float32), sample_rate=48000, material_type="unknown")
+
+
+def test_banquet_fallback_receives_channels_first_and_restores_layout(phase, monkeypatch, audio):
+    import backend.core.phases.phase_09_crackle_removal as phase09
+
+    stereo = np.stack([audio, audio * 0.8], axis=0).astype(np.float32)
+    received_shapes = []
+
+    monkeypatch.setattr(phase09, "QUALITY_MODE_AVAILABLE", True)
+    monkeypatch.setattr(phase09, "is_phase_ml_enabled", lambda _phase: True, raising=False)
+
+    def fail_direct(*_args):
+        raise RuntimeError("force the documented Docker fallback")
+
+    monkeypatch.setattr(phase, "_remove_crackle_onnx_direct", fail_direct)
+    monkeypatch.setattr(phase, "_get_banquet_plugin", lambda: object())
+
+    def fake_ml(audio_cf, *_args):
+        received_shapes.append(audio_cf.shape)
+        return audio_cf * 0.9
+
+    monkeypatch.setattr(phase, "_remove_crackle_ml", fake_ml)
+    result = phase.process(stereo, sample_rate=48000, material_type="vinyl", strength=1.0)
+
+    assert received_shapes == [stereo.shape]
+    assert result.audio.shape == stereo.shape
+
+
 def test_banquet_stereo_per_channel_layout(phase, monkeypatch, audio):
     """BANQUET-Direktpfad delegiert an die kanonische Plugin-Pipeline
     (§V7 (copilot-instructions.md)): Layout identisch zum Input, kanalweise

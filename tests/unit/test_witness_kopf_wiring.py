@@ -25,6 +25,8 @@ def test_flag_default_aus() -> None:
     assert music_model_flags.use_witness_kopf_sticky_shed_residue is False
     assert music_model_flags.use_witness_kopf_jitter_artifacts is False
     assert music_model_flags.use_witness_kopf_transport_bump is False
+    assert music_model_flags.use_witness_kopf_dynamic_compression_excess is False
+    assert music_model_flags.use_witness_kopf_dropout_head_contact is False
 
 
 def test_drt11_kontext_sperre_in_allen_modulen() -> None:
@@ -54,6 +56,10 @@ def test_lesestelle_phase_07_rest_koepfe_verdrahtet() -> None:
     assert "witness_kopf_sticky_shed_used" in phase
     assert "witness_kopf_jitter_used" in phase
     assert "witness_kopf_transport_used" in phase
+    assert '"dynamic_compression_excess"' in phase
+    assert '"witness_kopf_dynamic_compression"' in phase
+    assert '"dropout_head_contact"' in phase
+    assert '"witness_kopf_dropout_head"' in phase
 
 
 def test_lesestelle_phase_07_tape_head_verdrahtet() -> None:

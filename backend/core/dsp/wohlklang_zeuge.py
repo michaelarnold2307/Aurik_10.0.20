@@ -353,8 +353,57 @@ def drt10_verdict_in_metadata(meta: dict[str, Any]) -> bool:
     if not meta.get("fail_reason"):
         meta["fail_reason"] = DRT10_FAIL_REASON
     logger.warning(
-        "👂 DRT-10-Verdikt: Überrestauration bei aktivem Reparatur-Kandidat — "
-        "Lauf als degraded markiert (%s, §0c, kein Sample-Eingriff)",
+        "👂 DRT-10-Verdikt: Überrestauration (Ganz-Titel-Zwei-Metrik) — "
+        "Lauf als degraded markiert (%s, §0c, kein Sample-Eingriff durch den Zeugen)",
         DRT10_FAIL_REASON,
     )
     return True
+
+
+def reparatur_nachweis_bericht(meta: dict[str, Any], defect_scores: Any) -> dict[str, Any]:
+    """DRT-14 (Spec 26, 2026-11-17): Wirksamkeits-Gebot — Klassen-Bilanz je Lauf.
+
+    Für jede erkannte Defektklasse mit Schaden-Score ≥ 0,5 wird ein
+    Reparatur-Nachweis geführt (Regionen-Q aus ``defekt_delta`` ≥ 0,5) ODER die
+    Klasse als ``unrepariert`` mit Ursache berichtet. Report-Only (Hörordnung
+    §7) — kein Hard-Fail, kein Rollback allein wegen fehlender Wirksamkeit.
+    """
+    scores = defect_scores or meta.get("defect_scores") or {}
+    if not isinstance(scores, dict) or not scores:
+        return {
+            "schema": "aurik.reparatur_nachweis/1",
+            "status": "nicht_bewertbar",
+            "grund": "keine_defect_scores",
+            "nachweis": [],
+            "unrepariert": [],
+        }
+    delta = meta.get("defekt_delta")
+    klassen = (delta or {}).get("aggregate") if isinstance(delta, dict) else None
+    if not isinstance(klassen, dict):
+        klassen = {}
+    nachweis: list[str] = []
+    unrepariert: list[dict[str, Any]] = []
+    for klasse, wert in sorted(scores.items()):
+        try:
+            score = float(wert)
+        except (TypeError, ValueError):
+            continue
+        if score < 0.5:
+            continue
+        kq = klassen.get(klasse) if isinstance(klassen, dict) else None
+        q = 0.0
+        if isinstance(kq, dict):
+            try:
+                q = float(kq.get("reparaturquote_median") or kq.get("q") or 0.0)
+            except (TypeError, ValueError):
+                q = 0.0
+        if q >= 0.5:
+            nachweis.append(klasse)
+        else:
+            unrepariert.append({"klasse": klasse, "q": round(q, 3), "grund": "reparaturquote_median < 0.5"})
+    return {
+        "schema": "aurik.reparatur_nachweis/1",
+        "status": "vollstaendig" if not unrepariert else "teilweise",
+        "nachweis": sorted(nachweis),
+        "unrepariert": unrepariert,
+    }

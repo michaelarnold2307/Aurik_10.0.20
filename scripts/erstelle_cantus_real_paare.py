@@ -9,7 +9,7 @@ Degradationen (§V7 (copilot-instructions.md): Ursache statt Symptom).
 
 Echte Quellen (lokal, ohne Lizenz-/Beschaffungsrisiko):
 - ``data/vinyl_noise_bank/`` — echte, beschädigte Vinyl-Aufnahmen
-  (Leerrillen, echt_beschaedigt) als realer Rausch-/Knistern-Träger;
+  (CC0-Vinyl-Rauschaufnahmen, freesound) als realer Rausch-/Knistern-Träger;
 - ``data/rir_real/`` — echte Raumimpulsantworten (Omni-Erdeworks-Messungen);
 - Clean-Seite: MUSDB18-HQ-Vocals (trainiertes, lizenziertes Korpus).
 

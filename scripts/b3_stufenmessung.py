@@ -283,6 +283,7 @@ def beschluss_schreiben(name: str, messung: dict, out_dir: Path, seed: int) -> P
             "NICHT_BEWERTBAR" if messung.get("messung_ungueltig") else ("ERFUELLT" if erfuellt else "ABGELEHNT")
         ),
         "quelle": "scripts/b3_stufenmessung.py",
+        "kompositions_status": "nicht_gemessen",  # DRT-15 (Spec 26): Kompositions-Messung erfolgt separat
     }
     if messung.get("messung_ungueltig"):
         daten["messung_ungueltig_grund"] = "; ".join(messung.get("wirksam_probleme", ["unbekannt"]))[:400]

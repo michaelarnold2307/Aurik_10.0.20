@@ -1236,7 +1236,11 @@ class CoordinatedRepair:
                 log.warning("Harmonic Inpainting: weder .pt noch .onnx in %s — Pass-Through", base_dir)
                 return audio
 
-            device = torch.device("cuda" if model is not None and torch.cuda.is_available() else "cpu")
+            from backend.core.gpu_model_registry import force_cpu_requested  # pylint: disable=import-outside-toplevel
+
+            device = torch.device(
+                "cuda" if model is not None and torch.cuda.is_available() and not force_cpu_requested() else "cpu"
+            )
             if model is not None:
                 model.to(device)
                 model.eval()

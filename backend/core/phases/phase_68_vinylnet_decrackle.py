@@ -19,7 +19,8 @@ per gelernter Pipeline. Abgrenzung (Either-Or, wie Spec 06):
 Pflicht-Invarianten:
 - Deterministisch (§G5 copilot-instructions.md): eval() + inference_mode im Plugin, keine RNG;
   Resampling (nur bei SR != 44100) per deterministischem resample_poly.
-- Stereo-Layout-Invariante: beide Layouts bedienen, intern channels-first (C, N).
+- Eingabeumfang: Mono und Stereo; beide Stereo-Layouts werden kanonisch zu channels-first (C, N)
+  normalisiert. Andere Kanalzahlen werden abgewiesen, nicht still kollabiert.
 - Passthrough-Semantik (§0a copilot-instructions.md): Modell nicht ladbar -> bit-identischer
   Passthrough mit Warning (§V6 copilot-instructions.md: kein stiller Fallback).
 """
@@ -27,10 +28,11 @@ Pflicht-Invarianten:
 from __future__ import annotations
 
 import logging
-from typing import Any, cast
+from typing import Any
 
 import numpy as np
 
+from backend.core.audio_layout import normalize_channels_first
 from backend.core.phases.phase_interface import (
     PhaseCategory,
     PhaseInterface,
@@ -96,20 +98,20 @@ class VinylNetDeCracklePhase(PhaseInterface):
     ) -> PhaseResult:
         arr = np.asarray(audio, dtype=np.float32)
         if arr.ndim == 1:
-            mono = True
-            x = np.stack([arr, arr], axis=0)
+            x = np.repeat(arr[None, :], 2, axis=0)
             out_orientation = "mono"
-        else:
-            mono = False
-            if arr.shape[0] == 2 and arr.shape[1] > 2:
-                x = arr
-                out_orientation = "channels_first"
-            elif arr.shape[1] == 2 and arr.shape[0] > 2:
-                x = arr.T
-                out_orientation = "samples_first"
+        elif arr.ndim == 2:
+            x, was_transposed = normalize_channels_first(arr)
+            channels = x.shape[0]
+            if channels == 1:
+                x = np.repeat(x, 2, axis=0)
+                out_orientation = "mono_samples_first" if was_transposed else "mono_channels_first"
+            elif channels == 2:
+                out_orientation = "samples_first" if was_transposed else "channels_first"
             else:
-                x = np.stack([arr[:, 0], arr[:, 0]], axis=0)
-                out_orientation = "channels_first"
+                raise ValueError(f"VinylNetDeCrackle erwartet Mono oder Stereo, erhalten: {arr.shape}")
+        else:
+            raise ValueError(f"VinylNetDeCrackle erwartet Mono oder Stereo, erhalten: {arr.shape}")
 
         plugin = self._get_plugin()
         if plugin is None or not getattr(plugin, "available", False):
@@ -135,8 +137,12 @@ class VinylNetDeCracklePhase(PhaseInterface):
             )
             est = np.nan_to_num(est, nan=0.0, posinf=0.0, neginf=0.0)
 
-        if mono or out_orientation == "mono":
+        if out_orientation == "mono":
             out_arr: np.ndarray = est[0]
+        elif out_orientation == "mono_channels_first":
+            out_arr = est[:1]
+        elif out_orientation == "mono_samples_first":
+            out_arr = est[0, :, None]
         elif out_orientation == "samples_first":
             out_arr = est.T
         else:

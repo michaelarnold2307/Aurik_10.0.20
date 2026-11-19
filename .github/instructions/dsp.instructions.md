@@ -712,3 +712,23 @@ audio_out = get_lpc_formant_tracker().enhance(
 **VERBOTEN**: `get_lpc_formant_tracker().enhance(audio, sr)` ohne `era_decade`
 wenn era_decade < 1960 bekannt ist (V55). Standard-Burg-LPC → Rausch-Formanten als
 Korrekturen angewendet → Stimm-Verfärbung in historischem Material.
+
+## Stereo-Balance / Inter-Kanal-Imbalance-Reparatur (2026-11-18)
+
+Normative Pflicht (§III.15 (copilot-instructions.md)): Eine
+Inter-Kanal-Pegel-Imbalance |20·log10(RMS_L/RMS_R)| ≥ **JND 0,5 dB** ist ein
+reparierbarer Defekt (DefectType `stereo_imbalance` → `phase_15_stereo_balance`,
+GENTLE). Regeln:
+
+- **Richtungskorrektheit ist Pflicht.** Befund 2026-11-18 (Stereo-Sinn-Beweis):
+  vertauschte Gains im else-Zweig von `_apply_smooth_correction` verstärkten die
+  Imbalance (−4,09 → −7,67 dB). Fix + dauerhafter Richtungs-Pin beider
+  Vorzeichen: `tests/unit/test_phase_15_stereo_balance_direction.py` (5 Tests).
+- Soft-Knee/zeitgeglättet (§III.1), unterhalb der materialabhängigen
+  Band-Schwelle keine Korrektur, **kein Überschießen** über die Balance-Mitte.
+- Kanäle dürfen nie auf einen Kanal kollabieren — Stereo-Layout-Invariante
+  channels-first (C, N).
+- **Nachweis:** Stereo-Sinn-Beweis (`stereo_imbalance`-Rezept,
+  `balance_besser`-Kriterium, JND 0,5 dB) + Never-worsen. Die
+  Paritäts-Register-Zeile „Stereo-Imaging/Azimuth“ wird NUR mit diesem Beleg
+  bewegt (kein Statuswechsel ohne Mess-Beleg).

@@ -42,6 +42,11 @@ KANAELE = {
     "sticky_shed_residue": ("witness_kopf_sticky_shed", "witness_kopf_sticky_shed_residue"),
     "jitter_artifacts": ("witness_kopf_jitter", "witness_kopf_jitter_artifacts"),
     "transport_bump": ("witness_kopf_transport_bump", "witness_kopf_transport_bump"),
+    "dynamic_compression_excess": (
+        "witness_kopf_dynamic_compression",
+        "witness_kopf_dynamic_compression_excess",
+    ),
+    "dropout_head_contact": ("witness_kopf_dropout_head", "witness_kopf_dropout_head_contact"),
 }
 
 

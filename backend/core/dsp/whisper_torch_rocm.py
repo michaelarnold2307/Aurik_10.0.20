@@ -71,16 +71,21 @@ def get_whisper_torch_core() -> dict | None:
     """Lazy-Singleton: {model, processor} auf ROCm oder None
     (fail-closed, §V6 (copilot-instructions.md))."""
     global _core, _core_resolved
+    try:
+        import os as _os
+
+        import torch  # pylint: disable=import-outside-toplevel
+
+        from backend.core.gpu_model_registry import force_cpu_requested  # pylint: disable=import-outside-toplevel
+    except ImportError:
+        logger.debug("§SOTA-ML-V6 Whisper-Torch-ROCm: torch/Registry nicht importierbar — ONNX-CPU-Pfad bleibt")
+        return None
     with _lock:
         if _core_resolved:
             return _core
         _core_resolved = True
         try:
-            import os as _os
-
-            import torch  # pylint: disable=import-outside-toplevel
-
-            if not torch.cuda.is_available():
+            if not torch.cuda.is_available() or force_cpu_requested():
                 logger.debug("§SOTA-ML-V6 Whisper-Torch-ROCm nicht verfügbar — ONNX-CPU-Pfad bleibt")
                 return None
             # §SOTA-ML-V10 (2026-09-18): Turbo-Upgrade per Opt-in

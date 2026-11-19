@@ -91,6 +91,11 @@ _TRANSLATIONS: dict[str, dict[str, str]] = {
         "action.restore_restoration": "Restaurierung starten",
         "action.restore_studio": "Studio 2026 starten",
         "action.preview": "Vorschau anzeigen",
+        # Vorher/Nachher-Segmentvorschau (Bedienung/Echtzeit, 2026-11-19)
+        "preview.button": "🔍 Vorschau",
+        "preview.tooltip": "6-s-Ausschnitt restaurieren und Vorher/Nachher anhören — vor dem Batch",
+        "preview.keine_datei": "Bitte zuerst eine Audiodatei laden — die Vorschau braucht einen Ausschnitt.",
+        "preview.laeuft_schon": "Eine Vorschau läuft bereits — bitte kurz warten.",
         "action.cancel": "Abbrechen",
         "action.cancel_compact": "■ Stoppen",
         "action.cancel_full": "■  Restaurierung stoppen",

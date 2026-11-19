@@ -520,7 +520,7 @@ class DenoisePhase(PhaseInterface):
             try:
                 from backend.core.dsp.masking_model import compute_masking_threshold_db as _cmt03
 
-                _thr03, _bands03 = _cmt03(audio.mean(axis=0) if audio.ndim == 2 else audio, sample_rate)
+                _thr03, _bands03 = _cmt03(_mono_of(audio), sample_rate)
                 _thr_floor03 = float(np.percentile(_thr03, 30))
                 _nf_db03 = float(_nf.get("noise_floor_db", 0.0))
                 if _nf_db03 < _thr_floor03:

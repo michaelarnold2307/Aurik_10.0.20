@@ -324,6 +324,26 @@ _WIRING_ALLOWLIST: dict[str, str] = {
         "Produktionskonsument witness_groove_echo in phase_07 hinter music_model_flags.use_witness_kopf_groove_echo "
         "(Default AUS = bit-identisch; §4 für den Flag-Flip). Übrige Klassen bleiben report-only bis zum eigenen Nachweis."
     ),
+    "witness_wow": (
+        "Witness-Kopf wow: Gate 2026-11-19 VERFEHLT (q 0,95, never-worsen) — keine Aktivierung; "
+        "Runde 2 (CPU, lambda-mos 0.1/lambda-id 0.8, 50 Epochen) läuft, Wieder-Vorlage erst bei bestandenem Gate."
+    ),
+    "witness_hum": (
+        "Witness-Kopf hum: Gate 2026-11-19 VERFEHLT (q 0,61, never-worsen) — keine Aktivierung; "
+        "Runde 2 (CPU, 50 Epochen) läuft, Wieder-Vorlage erst bei bestandenem Gate."
+    ),
+    "witness_dropouts": (
+        "Witness-Kopf dropouts: Gate 2026-11-19 VERFEHLT (q 1,51, never-worsen = Überrestauration) — "
+        "keine Aktivierung; Runde 2 (lambda-id 0,8) läuft, Wieder-Vorlage erst bei bestandenem Gate."
+    ),
+    "witness_dropout_oxide": (
+        "Witness-Kopf dropout_oxide: Detektor-AUC nur 0,79 (2026-11-19) — keine Aktivierung; "
+        "Runde 2 läuft, Wieder-Vorlage erst bei bestandenem Gate."
+    ),
+    "witness_tape_splice_artifact": (
+        "Witness-Kopf tape_splice_artifact: Gate 2026-11-19 VERFEHLT — keine Aktivierung; "
+        "Runde 2 (lambda-id 0,8) läuft, Wieder-Vorlage erst bei bestandenem Gate."
+    ),
     "diffwave_vocal_inpaint": (
         "Trainingsziel der Matrix-D.3-Kette (DiffWave-Vokal-Inpaint, S1 -1,7 dB Beleg) — "
         "Checkpoints entstehen ueber scripts/gpu_kette2_matrix_d3.sh (Auto-Resume), "

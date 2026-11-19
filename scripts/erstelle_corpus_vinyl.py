@@ -133,10 +133,11 @@ def _vinyl_rezept(clean: np.ndarray, bank: list[Path], rng: np.random.Generator)
     _noise, _nparams = _noise_flaeche(_band.size, bank, rng)
     _y = np.asarray(_band, dtype=np.float64) + _noise.astype(np.float64)
     _y = _klicker(_y.astype(np.float32), rng)
-    # seltener Scratch-Einspieler aus der echt-beschädigten Bank
+    # seltener Scratch-Einspieler aus der CC0-Vinyl-Rauschbank (2026-11-17:
+    # `echt_beschaedigt` — Schellack-78-Musikseiten — entfernt)
     _scratch = bool(rng.random() < 0.25)
     if _scratch:
-        _kand = [p for p in bank if "echt_beschaedigt" in p.name]
+        _kand = [p for p in bank if p.name.startswith("vinyl_")]
         if _kand:
             _s = _decode_48k(_kand[int(rng.integers(0, len(_kand)))])
             if _s.size > _SR:

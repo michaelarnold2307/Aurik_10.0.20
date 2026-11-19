@@ -176,8 +176,9 @@ def test_uv3_verdrahtung_beide_produktionspfade() -> None:
     quelle = (PROJEKT / "backend/core/unified_restorer_v3.py").read_text(encoding="utf-8")
 
     assert "def _wohlklang_zeuge_meta(" in quelle
-    # 3 Aufrufe (Einzelpfad, Chunked-Pfad, Options-Pfad) — Definition separat geprüft
-    assert quelle.count("self._wohlklang_zeuge_meta(") == 3
+    # 4 Aufrufe: Einzelpfad, Chunked-Pfad, Options-Pfad + DRT-13-Attributionsmessung
+    # (Teil-Rollback-Variante, 2026-11-17) — Definition separat geprüft
+    assert quelle.count("self._wohlklang_zeuge_meta(") == 4
     assert 'result.metadata["wohlklang_zeuge"]' in quelle
     assert '_meta["wohlklang_zeuge"]' in quelle
     # REPORT-ONLY: genau DREI Schreibstellen, keine Lesestelle (kein Gate/Pfad
@@ -302,3 +303,40 @@ def test_drt10_verdrahtung_drei_pfade() -> None:
     assert quelle.count("self._drt10_rollback_zulaessig(") == 3
     assert quelle.count('"drt10_rollback"') >= 3
     assert "_drt10_kandidat_aktiv" not in quelle  # M1: Kandidaten-Gate entfernt
+    # DRT-13/14 (2026-11-17): Teil-Rollback + Wirksamkeits-Bericht im Einzel-Pfad verdrahtet
+    assert "drt10_teil_rollback" in quelle
+    assert "phase_aus_variante" in quelle
+    assert 'result.metadata["reparatur_nachweis"]' in quelle
+
+
+def test_reparatur_nachweis_bericht_klassen_bilanz() -> None:
+    """DRT-14: Nachweis bei Q ≥ 0,5, sonst unrepariert mit Ursache (reales defekt_delta-Schema)."""
+    meta: dict = {
+        "defekt_delta": {
+            "aggregate": {
+                "clicks": {"reparaturquote_median": 0.9},
+                "hum": {"reparaturquote_median": 0.2},
+            },
+        },
+    }
+    scores = {"clicks": 0.8, "hum": 1.0, "leise_klasse": 0.3}
+    bericht = wz.reparatur_nachweis_bericht(meta, scores)
+    assert bericht["status"] == "teilweise"
+    assert bericht["nachweis"] == ["clicks"]
+    assert [u["klasse"] for u in bericht["unrepariert"]] == ["hum"]
+    assert bericht["unrepariert"][0]["grund"] == "reparaturquote_median < 0.5"
+
+
+def test_reparatur_nachweis_ohne_scores_nicht_bewertbar() -> None:
+    bericht = wz.reparatur_nachweis_bericht({}, None)
+    assert bericht["status"] == "nicht_bewertbar"
+    assert bericht["nachweis"] == [] and bericht["unrepariert"] == []
+
+
+def test_reparatur_nachweis_robust_gegen_kaputte_eintraege() -> None:
+    """§V6-Fail-safe: kaputte Scores/Delta-Strukturen werfen nicht."""
+    meta: dict = {"defekt_delta": {"aggregate": "kaputt"}}
+    scores = {"clicks": "kein_float", "hum": 0.9}
+    bericht = wz.reparatur_nachweis_bericht(meta, scores)
+    assert bericht["status"] == "teilweise"
+    assert bericht["unrepariert"][0]["klasse"] == "hum"

@@ -3,6 +3,12 @@
 Projekt: **Aurik 10 — Audio-Restaurierung** — psychoakustisch präzise
 Musikwiederherstellung mit deterministischer Reproduzierbarkeit und natürlichem Wohlklang für das menschliche Gehör.
 
+> **Wettbewerbs-Parität (2026-11-17):** Aurik muss für das menschliche Gehör
+> in **jeder** Disziplin mindestens die Stufe von iZotope RX, Cedar und Acon
+> erreichen. Pflichtlektüre: `.github/WETTBEWERBS_PARITAET.md` (Status je
+> Disziplin, Evidenz-Pflicht, Schritt-Pflicht) — gepinnt durch das
+> Pre-Commit-Gate `aurik-wettbewerbs-paritaet`.
+>
 > Diese Datei ist der verbindliche Einstieg für jeden Agenten (Kun, Claude Code, GPT,
 > Codex, GitHub Copilot, Cursor, …). Sie definiert keine eigenen Regeln, sondern
 > routet auf die normativen Dokumente und legt die Konflikt-Auflösung fest.

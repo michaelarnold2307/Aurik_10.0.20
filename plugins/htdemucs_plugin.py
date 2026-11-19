@@ -444,7 +444,9 @@ class HtdemucsPlugin:
         """Separation mit PyTorch."""
         import torch
 
-        device = "cuda" if _DEMUX_GPU_ENABLED and torch.cuda.is_available() else "cpu"
+        from backend.core.gpu_model_registry import force_cpu_requested  # pylint: disable=import-outside-toplevel
+
+        device = "cuda" if _DEMUX_GPU_ENABLED and torch.cuda.is_available() and not force_cpu_requested() else "cpu"
         self._model = self._model.to(device)
 
         with torch.no_grad():

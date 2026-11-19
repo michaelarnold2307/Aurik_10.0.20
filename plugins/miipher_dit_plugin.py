@@ -162,16 +162,13 @@ class MiipherDiTPlugin:
             return
 
         try:
+            # §v10.40c + Registry-Verdikt sind die EINZIGE Provider-Quelle
+            # (get_onnx_providers erzwingt CPU bei AURIK_FORCE_CPU=1 und bei
+            # fail-closed-CPU-Verdikt). Ein manueller ROCm/CUDA-Override würde
+            # beides aushebeln (Befund 2026-11-18: hipblaslt-OOM bei voller GPU
+            # trotz AURIK_FORCE_CPU=1).
             _providers = get_onnx_providers(self._dit_onnx_path)
-            if ort is not None:
-                _available = ort.get_available_providers()
-                if "ROCMExecutionProvider" in _available:
-                    # §v10.304: ROCm-EP vor CUDA-EP — AMD-Systeme liefern CUDA-EP nie.
-                    _providers = ["ROCMExecutionProvider", "CPUExecutionProvider"]
-                    self._device = "cuda"
-                elif "CUDAExecutionProvider" in _available:
-                    _providers = ["CUDAExecutionProvider", "CPUExecutionProvider"]
-                    self._device = "cuda"
+            self._device = "cuda" if any("ROCM" in p or "CUDA" in p for p in _providers) else "cpu"
 
             self._ort_session = ort.InferenceSession(
                 str(self._dit_onnx_path),

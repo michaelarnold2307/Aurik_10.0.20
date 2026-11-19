@@ -1,0 +1,17 @@
+{
+  "schema": "aurik.witness_kopf_gate/1",
+  "datum": "2026-11-19",
+  "seed": 42,
+  "klasse": "dropout_head_contact",
+  "holdout_titel": "Elke Best - Boogie Woogie Mama (1977) HD audio 320 kbps engl",
+  "checkpoint": "models/klassen_koepfe/witness_dropout_head_contact_best.pt",
+  "n_regionen": 93,
+  "n_uebersprungen": 29,
+  "q_median": 2.0,
+  "q_anteil_ge_0_5": 1.0,
+  "never_worsen_anteil": 1.0,
+  "gate_bestanden": true,
+  "musik_mos_delta_mittel": 1.2965,
+  "musik_mos_delta_anteil_ge_minus_jnd": 1.0,
+  "drt_8_10": "Report-only Zwei-Metrik-Messung (defektlast UND musik_mos); Gate-Urteil unverändert"
+}

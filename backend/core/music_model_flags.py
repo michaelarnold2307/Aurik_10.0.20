@@ -126,6 +126,13 @@ use_witness_kopf_jitter_artifacts: bool = False
 # mit lokalisiertem Loss (|schaden-clean|-Maske) + Produktions-Semantik-Schutz-Arm
 # (q 0,66, never_worsen 1,0). Konsum in phase_07. Default AUS; Flag-Flip NUR nach §4-Hör-Sign-off.
 use_witness_kopf_transport_bump: bool = False
+# Witness-Köpfe dynamic_compression_excess + dropout_head_contact (DRT-8/10-Expansion,
+# 2026-11-19, --lambda-mos 0.1): gate-bestanden mit Zwei-Metrik-Auswahl
+# (dynamic_compression_excess q 1,186; dropout_head_contact q 2,0 = Clip-Obergrenze,
+# Detektor-AUC 0,72 — ehrlich dokumentiert). Beide musik_mos-Anteil 1,0.
+# Konsum in phase_07. Default AUS; Flag-Flip NUR nach §4-Hör-Sign-off.
+use_witness_kopf_dynamic_compression_excess: bool = False
+use_witness_kopf_dropout_head_contact: bool = False
 # (MediumDetector.detect, Roh-Aufruf) statt 9 handgebaute Skalar-Features/Gauss-Mixture. Default AUS =
 # bisheriges Verhalten. Gelernte Spektrogramm-Repraesentation: 95.3% vs. 59-63% (gemessen). Flag-Flip
 # offen — nur nach §4-Verfahren (scripts/flag_freigabe.py: Verdikt → Register-Buchung → Flag-Flip → Commit).

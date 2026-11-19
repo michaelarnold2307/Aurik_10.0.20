@@ -96,6 +96,17 @@ def _force_cpu_requested() -> bool:
     return os.environ.get("AURIK_FORCE_CPU", "").strip().lower() in ("1", "true", "yes")
 
 
+def force_cpu_requested() -> bool:
+    """Öffentlicher Zugang zum globalen CPU-Stopp (§v10.40c).
+
+    Plugins/DSP-Stufen mit eigenen torch-Device-Bezügen MÜSSEN diesen Guard
+    konsultieren statt nur `torch.cuda.is_available()` — sonst feuern sie bei
+    vollem GPU-Speicher oder erzwungenem CPU-Betrieb GPU-Ops (Befund
+    2026-11-18: hipblaslt-OOM bei AURIK_FORCE_CPU=1).
+    """
+    return _force_cpu_requested()
+
+
 _device_probe_cache: dict[str, bool] = {}
 
 

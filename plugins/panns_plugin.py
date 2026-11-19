@@ -180,7 +180,9 @@ class PANNsPlugin(MLPluginBase):  # §A2
         try:
             import torch  # pylint: disable=import-outside-toplevel
 
-            if torch.cuda.is_available():
+            from backend.core.gpu_model_registry import force_cpu_requested  # pylint: disable=import-outside-toplevel
+
+            if torch.cuda.is_available() and not force_cpu_requested():
                 device = "cuda"
                 # Prüfe auf fp16-Unterstützung (ab Compute Capability 5.3 bzw. Volta+)
                 fp16_ok = torch.cuda.get_device_capability(0)[0] >= 7

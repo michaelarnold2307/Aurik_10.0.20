@@ -6,6 +6,13 @@
 > **Hör-Entscheidungen:** Bei Konflikten zwischen Messgrößen regelt
 > `.github/instructions/hoerordnung.instructions.md` den Entscheidungsfluss
 > (Hör-Invarianten → Audibility → Wohlklang-Ordnung → Einladungs-Gate).
+>
+> **Wettbewerbs-Parität (2026-11-17):** Aurik muss für das menschliche Gehör
+> in jeder Restaurierungs-Disziplin mindestens die Stufe der Amtsinhaber
+> iZotope RX, Cedar und Acon erreichen. Jedes Defizit ist in
+> `.github/WETTBEWERBS_PARITAET.md` registerpflichtig (Status + Evidenz +
+> nächster Schritt); das Pre-Commit-Gate `aurik-wettbewerbs-paritaet` pinnt
+> die Verankerung dieser Mission in Handover, AGENTS und dieser Spec.
 > Diese Spec bleibt für die **Berechnung** der Größen normativ.
 >
 > **Zweck**: Die 15 Ziele operationalisieren §0 — sie messen, ob Aurik bei jeder Importdatei
@@ -700,6 +707,14 @@ Für jedes Stück muss die richtige Gewichtung aus dem musikalischen Kontext ber
 `SongGoalImportance` mit 15 Gewichten ∈ [0.3, 2.0] — eines je Eintrag in `ALL_GOAL_NAMES`
 (`backend/core/song_goal_importance.py`). Diese Gewichte bestimmen, welche Goals
 bei diesem konkreten Song Vorrang genießen und welche toleranter behandelt werden.
+
+**Hörordnungs-Bindung (2026-11-17):** Zielkonflikt-Auflösungen der Gewichtung
+folgen der lexikografischen Wohlklang-Ordnung der Hörordnung §5 — Ebene 1
+(Hör-Invarianten) geht jeder Goal-Präferenz vor, Audibility (Ebene 2) geht
+Wohlklang-Präferenzen (Ebene 3) vor. Ein Gewichtungs-Ergebnis, das eine
+Ebene-1-Invariante oder die Maskierungsschwelle verletzen würde, ist zu
+beschneiden — die Hörordnung ist die normative Spitze der Ziel-Ordnung, nicht
+die Pareto-Heuristik.
 
 ### §2.56a 5-Stufen-Gewichtungsarchitektur (v10.0.0)
 

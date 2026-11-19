@@ -10492,6 +10492,14 @@ class RecordSleeveWidget(QtWidgets.QFrame):
         self._panel_btn_stop.clicked.connect(self._panel_stop)
         for _b in [self._panel_btn_play, self._panel_btn_pause, self._panel_btn_stop]:
             row.addWidget(_b)
+        # Bedienung/Echtzeit (2026-11-19): Vorher/Nachher-Vorschau VOR dem Batch —
+        # 6-s-Segment über den echten Produktions-Pfad restaurieren, dann A/B hören.
+        self._panel_btn_preview = QtWidgets.QPushButton(t("preview.button"))
+        self._panel_btn_preview.setToolTip(t("preview.tooltip"))
+        self._panel_btn_preview.setAccessibleName(t("preview.button"))
+        self._panel_btn_preview.setFixedHeight(36)
+        self._panel_btn_preview.clicked.connect(self._start_restore_preview)
+        row.addWidget(self._panel_btn_preview)
         row.addStretch()
         layout.addLayout(row)
         layout.addStretch()
@@ -10512,6 +10520,54 @@ class RecordSleeveWidget(QtWidgets.QFrame):
     def _panel_stop(self):
         """Stoppt die Wiedergabe vollständig."""
         self._stop_song_playback_only()
+
+    def _start_restore_preview(self):
+        """Vorher/Nachher-Vorschau: 6-s-Segment restaurieren, dann A/B abspielen.
+
+        Läuft im PreviewRestorerThread (UI bleibt responsiv); Fehler landen
+        als Dialog (§V6 (copilot-instructions.md), kein stiller Fallback).
+        """
+        if getattr(self, "_orig_audio", None) is None:
+            QtWidgets.QMessageBox.information(self, "AURIK — Vorschau", t("preview.keine_datei"))
+            return
+        if getattr(self, "_preview_thread", None) is not None and self._preview_thread.isRunning():
+            QtWidgets.QMessageBox.information(self, "AURIK — Vorschau", t("preview.laeuft_schon"))
+            return
+        from Aurik10.ui.preview_restorer import PreviewRestorerThread, segment_fuer_preview
+
+        _sr = int(getattr(self, "_orig_sr", 48000) or 48000)
+        _seg = segment_fuer_preview(self._orig_audio, _sr)
+        self._preview_thread = PreviewRestorerThread(
+            _seg,
+            _sr,
+            input_path=str(getattr(self, "_orig_path", "") or ""),
+        )
+        self._preview_thread.done.connect(self._on_preview_done)
+        self._preview_thread.failed.connect(self._on_preview_failed)
+        self._preview_thread.start()
+
+    def _on_preview_done(self, restored) -> None:
+        """A/B: erst Original-Segment, danach automatisch das restaurierte."""
+        from Aurik10.ui.preview_restorer import segment_fuer_preview
+
+        _sr = int(getattr(self, "_orig_sr", 48000) or 48000)
+        _orig = segment_fuer_preview(self._orig_audio, _sr)
+        _rest = np.asarray(restored, dtype=np.float32)
+        _sp = getattr(self, "_streaming_player", None)
+        if _sp is None:
+            from Aurik10.ui.audio_player import get_streaming_player
+
+            _sp = get_streaming_player()
+            self._streaming_player = _sp
+        _sp.play(
+            _orig,
+            _sr,
+            label="Original (Vorschau)",
+            on_finished=lambda: _sp.play(_rest, _sr, label="Restauriert (Vorschau)"),
+        )
+
+    def _on_preview_failed(self, message: str) -> None:
+        QtWidgets.QMessageBox.warning(self, "AURIK — Vorschau", str(message))
 
     def _build_info_panel(self):
         page = QtWidgets.QWidget()
@@ -12832,7 +12888,15 @@ class ModernMainWindow(QMainWindow):
             _geo = self._settings.window_geometry()
             if _geo is not None:
                 self.restoreGeometry(_geo)
-                _geometry_restored = True
+                if self._geometry_sichtbar():
+                    _geometry_restored = True
+                else:
+                    # Gespeicherte Position liegt außerhalb aller Bildschirme
+                    # (Monitor abgezogen o. ä.) — sonst unsichtbares Fenster.
+                    logger.warning(
+                        "Gespeicherte Fenstergeometrie liegt außerhalb der Bildschirme — Fenster wird neu zentriert."
+                    )
+                    _geometry_restored = False
             if self._settings.window_maximized():
                 self.is_maximized = True
                 self.showMaximized()
@@ -15781,6 +15845,19 @@ class ModernMainWindow(QMainWindow):
         x = screen.x() + max(0, (screen.width() - size.width()) // 2)
         y = screen.y() + max(0, (screen.height() - size.height()) // 2)
         self.move(x, y)
+
+    def _geometry_sichtbar(self) -> bool:
+        """GUI-Reifegrad: schneidet die wiederhergestellte Fensterfläche einen
+        sichtbaren Bildschirm? (Monitor abgezogen/Auflösungswechsel ⇒ sonst
+        unsichtbares Fenster nach dem Start.)"""
+        try:
+            _frame = self.frameGeometry()
+            _screens = QApplication.screens() or []
+            if not _screens:
+                return True  # Kein Screen-Layout bekannt — nichts erzwingen
+            return any(_frame.intersects(_s.geometry()) for _s in _screens)
+        except Exception:
+            return True
 
     def _animate_fade_in(self):
         """Animate window fade-in"""

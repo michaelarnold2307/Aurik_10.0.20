@@ -329,6 +329,20 @@ Jedes VERBOT definiert eine unzulässige Handlung. Verstöße sind Build-Fehler.
       sonst `n_jobs=1` (so in `ml_era_detector.py`/`ml_medium_detector.py`).
     - Enforcement: `scripts/compliance_check.py` R19 (fail-closed,
       Pre-Commit `aurik-compliance`).
+15. **Inter-Kanal-Imbalance-Reparatur / Stereo-Balance (2026-11-18)**: Eine
+    Inter-Kanal-Pegel-Imbalance |20·log10(RMS_L/RMS_R)| ≥ JND **0,5 dB** ist ein
+    reparierbarer Defekt (DefectType `stereo_imbalance` → `phase_15_stereo_balance`,
+    GENTLE). Die Korrektur MUSS **richtungskorrekt** sein — Befund 2026-11-18
+    (Stereo-Sinn-Beweis): vertauschte Gains im else-Zweig von
+    `_apply_smooth_correction` verstärkten die Imbalance (−4,09 → −7,67 dB) statt
+    sie zu beheben; Fix + dauerhafter Richtungs-Pin
+    `tests/unit/test_phase_15_stereo_balance_direction.py` (links- UND
+    rechts-lauter). Vorgaben: Soft-Knee/zeitgeglättet (§III.1), unterhalb der
+    materialabhängigen Band-Schwelle keine Korrektur, kein Überschießen über die
+    Balance-Mitte, Kanäle nie auf einen Kanal kollabieren (Stereo-Layout-Invariante
+    channels-first (C, N)). **Nachweis:** Stereo-Sinn-Beweis (`stereo_imbalance`-Rezept,
+    `balance_besser`-Kriterium, JND 0,5 dB) + Never-worsen — die
+    Paritäts-Register-Zeile „Stereo-Imaging/Azimuth“ wird nur mit diesem Beleg bewegt.
 
 ---
 

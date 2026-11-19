@@ -66,6 +66,25 @@ def test_layout_normalisierung_ohne_modell(monkeypatch: pytest.MonkeyPatch) -> N
     assert p.process(x_cf[0], sample_rate=44100).audio.shape == (24000,)
 
 
+def test_einkanalige_2d_layouts_bleiben_mono(monkeypatch: pytest.MonkeyPatch) -> None:
+    """2D-Mono wird intern dupliziert und in der Eingangsform zurückgegeben."""
+    p = VinylNetDeCracklePhase()
+    monkeypatch.setattr(p, "_get_plugin", lambda: _FakePlugin(lambda a: a))
+    mono = np.linspace(-0.2, 0.2, 48000, dtype=np.float32)
+
+    for audio in (mono[None, :], mono[:, None]):
+        result = p.process(audio, sample_rate=44100)
+        assert result.audio.shape == audio.shape
+        np.testing.assert_array_equal(result.audio, audio)
+
+
+@pytest.mark.parametrize("shape", [(3, 12), (12, 3), (12, 1, 1)])
+def test_unsupported_channel_layout_raises_instead_of_collapsing(shape: tuple[int, ...]) -> None:
+    """Nicht-Mono-/Stereo-Layouts dürfen nicht still auf einen Kanal kollabieren."""
+    with pytest.raises(ValueError, match="erwartet Mono oder Stereo"):
+        VinylNetDeCracklePhase().process(np.zeros(shape, dtype=np.float32), sample_rate=44100)
+
+
 def test_verarbeitung_mit_stub_deterministisch(monkeypatch: pytest.MonkeyPatch) -> None:
     """§G5 (copilot-instructions.md): gleicher Input → bit-identischer Output; ML-Metadaten gesetzt."""
     p = VinylNetDeCracklePhase()

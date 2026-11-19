@@ -3517,7 +3517,7 @@ unabhängigen Daten verbessert werden. Ein abgeschalteter Proxy oder das
 
 | TODO-ID | Maßnahme | Register-IDs | Status |
 | --- | --- | --- | --- |
-| `SOTA-M18` | D1–D6 · Vinyl↔Reissue-Paare ≥30 · Leerrillen-Noise-Bank · Echt-Träger ≥50 je Klasse · Gender-Labels · Genre-Labels · MUSHRA n≥30 | D-K0-8, D-K1-2, D-K1-3, D-K1-4 | offen — teils Lizenz §9/7 |
+| `SOTA-M18` | D1–D6 · Vinyl↔Reissue-Paare ≥30 · Leerrillen-Noise-Bank · Echt-Träger ≥50 je Klasse · Gender-Labels · Genre-Labels · MUSHRA n≥30 | D-K0-8, D-K1-2, D-K1-3, D-K1-4 | **Leerrillen-Noise-Bank ✓ (2026-11-17, CC0-Vinyl/freesound, §9/7-frei; VinylNet-Retrain mit `--noise-bank` im GPU-Fenster)**; Rest offen (Paare/Echt-Träger/Labels/MUSHRA) |
 
 ### Welle E — hartes SOTA-Gleis (Hygiene & Klassen-Lücken)
 

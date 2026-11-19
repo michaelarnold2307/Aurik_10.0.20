@@ -924,7 +924,15 @@ class LyricsGuidedEnhancement:
             # fällt sichtbar (§V6 (copilot-instructions.md)) auf CPU zurück.
             self._whisper_hf_device = "cpu"
             try:
-                if os.environ.get("AURIK_WHISPER_GPU", "1") != "0" and torch.cuda.is_available():
+                from backend.core.gpu_model_registry import (
+                    force_cpu_requested,  # pylint: disable=import-outside-toplevel
+                )
+
+                if (
+                    os.environ.get("AURIK_WHISPER_GPU", "1") != "0"
+                    and torch.cuda.is_available()
+                    and not force_cpu_requested()
+                ):
                     self._whisper_hf_model = self._whisper_hf_model.to("cuda:0")
                     self._whisper_hf_device = "cuda:0"
                     logger.info(
